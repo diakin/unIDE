@@ -93,8 +93,8 @@
 | QHead.inc | 118 | inc2026 | QHead (QCanvas) | да |
 | QICMP.INC | 152 | ? | QICMP (QObject) | да |
 | QICON.inc | 353 | 2010-12-31 | QICON (QOBJECT) | да |
-| QImageBox.inc | 281 | 2008-07-09 | QImageBox (QScrollbox) | да |
-| QImageDialog.inc | 595 | 2008-07-09 | QImageDialog (QObject) | да |
+| QImageBox.inc | 281 | 2008-07-09 | QImageBox (QScrollbox) | отдельно: своя DLL NVIEWLIB (nviewlib.dll) |
+| QImageDialog.inc | 595 | 2008-07-09 | QImageDialog (QObject) | отдельно: своя DLL NVIEWLIB (nviewlib.dll) |
 | QImageEx.inc | 111 | inc2026 | QImageEx (QIMAGE) | да |
 | QImageListEx.inc | 87 | 2013-08-11 | QImageListEX (QImageList) | да |
 | QIni.inc | 122 | inc2026 | QINI (QObject) | да |
@@ -169,7 +169,7 @@
 | XP_MANIFEST.INC | 136 | inc2026 | XpGroupBox (QPANEL) | да |
 | apiRe.inc | 167 | 2004-03-17 | QRichEdit_api (QObject) | да |
 | cREdit.inc | 218 | 2004-03-17 | QMAXEDIT (QRICHEDIT) | да |
-| odbc.inc | 324 | inc2026 | qODBC (QOBJECT) | да |
+| odbc.inc | 324 | inc2026 | qODBC (QOBJECT) | да, строки 1-320 (дальше DIM myDB и myDB.ODBCInit - соединение ODBC при запуске) |
 | qEditEx.inc | 71 | 2021-02-26 | QxEDIT (QEDIT) | да |
 | qREdit.inc | 218 | ? | QMAXEDIT (QRICHEDIT) | да |
 | qcalendar.inc | 393 | inc2026 | qcalendar (Qpanel) | да |
@@ -190,6 +190,7 @@
 | ultraRichEd.inc | 218 | 2004-03-17 | QMAXEDIT (QRICHEDIT) | да |
 | vfw2.inc | 1096 | 2012-03-21 | QWebCam (QOBJECT) | да |
 | xp_manifest1.inc | 136 | 2021-04-10 | XpGroupBox (QPANEL) | да |
+| RapidQ_D3D.inc | 1014 | inc2026 | (Direct3D) | отдельно: DLL d3drm.dll (Direct3D Retained Mode) - в Windows Vista и новее её нет |
 
 ## 3. Файлы с константами, DECLARE и процедурами (кандидаты в rapidqAllProc.inc)
 
@@ -230,7 +231,7 @@
 | DBT.INC | 156 | 2004-03-17 | 1 | 0 | 6 |  | да |
 | Dbase.inc | 652 | 2004-03-17 | 0 | 0 | 32 |  | ? |
 | DxfONE!h.inc | 202 | 2004-03-17 | 0 | 5 | 5 |  | ? |
-| FBFunctions.inc | 25 | 2006-11-20 | 0 | 4 | 1 |  | да |
+| FBFunctions.inc | 25 | 2006-11-20 | 0 | 4 | 1 |  | отдельно: свои DLL fbfunc2.dll, fbrqfunctions.dll, fbrqsr10.dll |
 | FileUtils.inc | 157 | 2004-03-17 | 0 | 0 | 5 |  | да |
 | Files.inc | 1486 | inc2026 | 19 | 7 | 42 |  | да |
 | Files1.inc | 1256 | 2004-01-28 | 8 | 3 | 36 |  | да |
@@ -250,17 +251,17 @@
 | Minimize.inc | 5 | 2007-01-25 | 0 | 1 | 1 |  | да |
 | NI6210.inc | 390 | 2010-03-18 | 3 | 19 | 0 | DAQmxConst.inc | ? |
 | NOTA.inc | 616 | 2000-07-07 | 11 | 23 | 23 |  | да |
-| NewWindow23.inc | 0 | 2005-09-25 | 0 | 0 | 0 |  | да |
+| NewWindow23.inc | 0 | 2005-09-25 | 0 | 0 | 0 |  | нет: в файле только PRINT своего пути (отладка) |
 | NewWndProc.Inc | 53 | 2026-10-09 | 2 | 5 | 2 |  | да |
 | ODMenuXP.inc | 2928 | 2005-11-10 | 207 | 77 | 33 |  | да |
-| PRINTERDLL.INC | 420 | 2004-11-09 | 172 | 235 | 0 |  | да |
+| PRINTERDLL.INC | 420 | 2004-11-09 | 172 | 235 | 0 |  | отдельно: своя DLL PrinterDLL.dll |
 | QDXF.inc | 258 | 2005-11-10 | 0 | 9 | 9 |  | ? |
 | QFiles.inc | 125 | ? | 1 | 8 | 8 |  | да |
 | QFormLocale.inc | 154 | 2009-09-05 | 7 | 2 | 1 |  | да |
 | QFormSkin.inc | 1106 | 2005-11-10 | 99 | 45 | 13 |  | да |
 | QFuncLib.inc | 204 | 2006-05-26 | 1 | 0 | 17 |  | да |
 | QPoint.inc | 10 | 2005-11-10 | 0 | 0 | 1 |  | да |
-| QPrintDialog.inc | 60 | 2005-11-10 | 18 | 1 | 0 |  | да |
+| QPrintDialog.inc | 60 | 2005-11-10 | 18 | 1 | 0 |  | отдельно: пример - при запуске открывает окно параметров страницы и печатает поля через PRINT |
 | QStringGridEx.inc | 44 | 2008-07-09 | 3 | 0 | 1 |  | да |
 | QTButton_AddOns.inc | 1112 | 2005-11-10 | 23 | 13 | 4 |  | нет: дополнение к QTButton, нужен ресурс btn_BMP в программе; подключать отдельно |
 | QXLS.INC | 771 | ? | 42 | 25 | 25 |  | да |
@@ -280,8 +281,8 @@
 | SplashForm.inc | 33 | 2005-11-10 | 0 | 1 | 1 |  | нет: фрагмент программы (заставка, CREATE формы и показ) |
 | StayOnTop.inc | 30 | 2005-11-10 | 4 | 2 | 1 |  | нет: подключать отдельно - включает $OPTION VBDLL ON и WEAKTYPE ON для всего, что ниже, и создаёт таймер |
 | SysUtils.inc | 120 | inc2026 | 1 | 0 | 10 |  | да |
-| TRM_RQDeclares.INC | 121 | 2004-03-17 | 43 | 1 | 0 |  | да |
-| TestIncPAth.inc | 0 | 2005-09-25 | 0 | 0 | 0 |  | да |
+| TRM_RQDeclares.INC | 121 | 2004-03-17 | 43 | 1 | 0 |  | отдельно: своя DLL TRM.DLL |
+| TestIncPAth.inc | 0 | 2005-09-25 | 0 | 0 | 0 |  | нет: в файле только PRINT своего пути (отладка) |
 | User32.inc | 235 | 2000-07-07 | 45 | 26 | 0 |  | да |
 | WFunctions.inc | 50 | 2005-11-10 | 6 | 13 | 0 |  | да |
 | WIN32API.INC | 15648 | 2007-05-02 | 5 | 1514 | 0 |  | да |
@@ -298,9 +299,9 @@
 | conversionOld.inc | 1402 | 2008-04-05 | 50 | 10 | 33 |  | да |
 | createWind.inc | 33 | 2004-03-17 | 9 | 6 | 0 |  | да |
 | dbtools.inc | 57 | 2004-03-17 | 4 | 0 | 6 |  | ? |
-| debug.inc | 126 | 2004-10-11 | 1 | 4 | 5 |  | нет: подключать отдельно - при запуске создаёт окно отладки _DebugFORM |
-| debugNoSend.inc | 94 | 2004-10-11 | 0 | 3 | 3 |  | нет: подключать отдельно - при запуске создаёт окно отладки _DebugFORM и таймер; вызывает senddata из debug.inc |
-| debugWindow.inc | 119 | 2005-01-14 | 0 | 3 | 2 |  | да |
+| debug.inc | 126 | 2004-10-11 | 1 | 4 | 5 |  | отдельно: при запуске создаёт окно отладки _DebugFORM |
+| debugNoSend.inc | 94 | 2004-10-11 | 0 | 3 | 3 |  | отдельно: при запуске создаёт окно отладки _DebugFORM и таймер; вызывает senddata из debug.inc |
+| debugWindow.inc | 119 | 2005-01-14 | 0 | 3 | 2 |  | отдельно: при запуске создаёт форму отладки ~DebugForm с кнопками |
 | delTags.inc | 335 | 2026-10-08 | 0 | 0 | 6 |  | да |
 | eMail.Inc | 139 | 2005-11-10 | 11 | 1 | 1 |  | да |
 | eml.inc | 597 | inc2026 | 0 | 0 | 14 |  | да |
@@ -329,15 +330,15 @@
 | pdecl.inc | 46 | 2004-03-17 | 0 | 1 | 1 |  | да |
 | printdlg.inc | 60 | ? | 18 | 1 | 0 |  | да |
 | printrichedit.inc | 173 | ? | 0 | 0 | 1 |  | да |
-| pulsar.inc | 213 | 2004-11-18 | 0 | 22 | 3 |  | да |
+| pulsar.inc | 213 | 2004-11-18 | 0 | 22 | 3 |  | отдельно: при запуске вызывает pulsar.dll (crea_pulsar_db) и грузит test1.bmp / test2.bmp |
 | registryVars.inc | 139 | 2004-10-13 | 6 | 0 | 5 |  | да |
 | rq_math.inc | 481 | 2004-03-17 | 4 | 0 | 45 |  | да |
 | setup.inc | 5 | 2004-03-17 | 0 | 1 | 1 |  | да |
 | stdObjMnu.inc | 245 | 2005-07-22 | 0 | 0 | 0 |  | нет: фрагмент программы (объекты и процедуры основной программы) |
 | stdObjbar.inc | 351 | 2021-03-13 | 0 | 0 | 0 |  | нет: фрагмент программы (панель кнопок конструктора форм, картинки Form_BMP и др. - ресурсы программы) |
 | using.inc | 243 | 2004-03-17 | 8 | 1 | 0 |  | да, строки 1-232 (дальше пример программы) |
-| var.inc | 353 | 2021-04-01 | 1 | 0 | 0 |  | да |
-| var2008.inc | 258 | 2013-05-24 | 15 | 0 | 0 |  | да |
+| var.inc | 353 | 2021-04-01 | 1 | 0 | 0 |  | отдельно: переменные одной программы (klas, dopusk$, omega!, SubArcPath$ ...) |
+| var2008.inc | 258 | 2013-05-24 | 15 | 0 | 0 |  | отдельно: переменные одной программы (Kpogr, DDelKol!, tipOb$ ...) |
 | zlib.inc | 143 | 2006-10-04 | 37 | 50 | 0 |  | ? |
 
 ## 4. Файлы rapidq*.inc

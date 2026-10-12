@@ -20,6 +20,7 @@ SUB/FUNCTION, глобальный DIM/DEFxxx, CREATE) превращается 
 import os
 import re
 import collections
+import copy
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REF = os.path.dirname(HERE)
@@ -1349,6 +1350,27 @@ def main():
     out.append("$ENDIF ' __RQCOMPONENTS_INC")
     write(os.path.join(OUT, 'rapidqComponents.inc'), out)
 
+    # Отдельные файлы ("отдельно: ..." в плане): не входят в общие, потому
+    # что при запуске программы что-то делают сами (PRINT, окно, загрузка
+    # файла, вызов своей DLL) или нужны одной программе. Собираются по
+    # состоянию после общих файлов: то, что там уже объявлено, - '~dup, и
+    # общие файлы подключаются в начале.
+    separate = [by_low[low] for low in sorted(take) if take[low].startswith('отдельно')
+                and low in by_low]
+    for f in separate:
+        sep_builder = copy.deepcopy(builder)
+        guard = '__SEP_' + re.sub(r'\W', '_', os.path.splitext(f)[0]).upper() + '_INC'
+        out = ["' %s - отдельный inc, не входит в rapidqAllProc.inc /" % f,
+               "' rapidqComponents.inc: %s." % take[f.lower()][len('отдельно'):].lstrip(': '),
+               "' Собран rapidq_ref/tools/build_inc.py из incOld/%s; повторы объявлений" % f,
+               "' общих файлов - '~dup. Подключать в программе, которой он нужен.",
+               "$IFNDEF %s" % guard,
+               "$DEFINE %s" % guard,
+               '$INCLUDE "rapidqComponents.inc"']
+        sep_builder.emit_file(f, texts[f], keep=line_keep(take[f.lower()]), out=out)
+        out.append("$ENDIF ' %s" % guard)
+        write(os.path.join(OUT, f), out)
+
     # Отчёт
     rep = ['# Сборка rapidqAllProc.inc и rapidqComponents.inc', '',
            'Собрано rapidq_ref/tools/build_inc.py из incOld по inc_merge_plan.md.', '',
@@ -1357,6 +1379,7 @@ def main():
            'и %d файлов: %s' % (len(proc_files), ', '.join(proc_files)),
            '- rapidqComponents.inc: разделы компонентов rapidq2.inc и %d файлов: %s'
            % (len(ordered), ', '.join(ordered)),
+           '- отдельными файлами в inc_sys: %d: %s' % (len(separate), ', '.join(separate)),
            '- не вошли: %d файлов (ниже)' % len(skipped), '']
     cut = [(f, take[f.lower()]) for f in ordered + proc_files if line_keep(take.get(f.lower(), 'да'))]
     if cut:

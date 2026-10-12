@@ -90,8 +90,39 @@
   - QXpTheme.INC пишет `.manifest` и перезапускает программу;
   - StayOnTop.inc включает `$OPTION VBDLL ON` и `WEAKTYPE ON` для всего, что
     ниже, и создаёт таймер;
-  - debug.inc и debugNoSend.inc создают окно отладки `_DebugFORM`;
-  - WebCam.inc сразу вызывает webcam.dll.
+  - debug.inc и debugNoSend.inc создают окно отладки `_DebugFORM`,
+    debugWindow.inc — форму `~DebugForm` с кнопками;
+  - WebCam.inc сразу вызывает webcam.dll;
+  - pulsar.inc при запуске вызывает pulsar.dll (`crea_pulsar_db`) и грузит
+    test1.bmp / test2.bmp — в общем файле любая программа останавливалась с
+    «Cannot open file test1.bmp», затем «Can't find library pulsar.dll»;
+  - QPrintDialog.inc — пример: открывает окно параметров страницы и печатает
+    поля через PRINT;
+  - NewWindow23.inc и TestIncPAth.inc — в них только `PRINT` своего пути
+    (отладка); не взяты совсем. PRINT в inc делает консольной любую
+    программу, где его подключили.
+- **Свои DLL, которых нет в Windows**: FBFunctions.inc (fbfunc2.dll,
+  fbrqfunctions.dll, fbrqsr10.dll), PRINTERDLL.INC (PrinterDLL.dll),
+  TRM_RQDeclares.INC (TRM.DLL), QImageBox.inc и QImageDialog.inc
+  (nviewlib.dll), RapidQ_D3D.inc (d3drm.dll — в Windows Vista и новее её нет).
+- **Переменные одной программы**: var.inc, var2008.inc.
+
+Файлы, отмеченные в плане «отдельно: ...», собираются в `inc_sys` своими
+файлами под прежними именами: повторы объявлений общих файлов в них
+закомментированы (`'~dup`), а `rapidqComponents.inc` они подключают сами.
+Программе, которой такой файл нужен, достаточно `$INCLUDE "pulsar.inc"` и т.п.
+Сейчас так собраны: debug.inc, debugNoSend.inc, debugWindow.inc, pulsar.inc,
+QPrintDialog.inc, FBFunctions.inc, PRINTERDLL.INC, TRM_RQDeclares.INC,
+QImageBox.inc, QImageDialog.inc, RapidQ_D3D.inc, var.inc, var2008.inc.
+
+Сборщик сам комментирует в общих файлах:
+- `$APPTYPE` и `$OPTION ICON` (`'~app`) — тип и иконку exe задаёт программа;
+  `$APPTYPE GUI` из HiLight.inc делал GUI-программой консольную, и первый
+  PRINT/CLS давал I/O error 103;
+- загрузку файлов вне процедур — `.BMP`/`.ICO`/`.ICON = "файл"`,
+  `.LoadFromFile` (`'~file`).
+- odbc.inc взят до строки 320: дальше `DIM myDB AS qODBC` и
+  `myDB.ODBCInit` — соединение ODBC при запуске любой программы.
 - **Файлам нужны ресурсы (`$RESOURCE`) или объявления программы**:
   - CodeSense.inc, QDirListView1.inc, QMarker.inc, Resources2.inc — картинки,
     которых нет;

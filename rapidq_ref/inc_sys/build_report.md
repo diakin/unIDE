@@ -4,12 +4,14 @@
 
 ## Состав
 
-- rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, и 99 файлов: AddMenuItemBitmaps4a.inc, AdvAPI32.inc, Api.inc, ApiDate.inc, CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc, CallBack_4.Inc, CallBack_5.Inc, CallBack_6.Inc, CallBack_7.Inc, CallBack_8.Inc, CallBackAll.Inc, CallBackForwarder.Inc, CallBacks.Inc, CMD5.inc, CommCtrl.inc, commctrl32.inc, Common.inc, constants.inc, Control.inc, conversion.inc, conversion1.inc, conversionOld.inc, ConvertToTruePath.inc, Copy of NOTA.inc, createWind.inc, DBT.INC, debugWindow.inc, delTags.inc, eMail.Inc, eml.inc, emlOld.inc, evaluate.inc, FBFunctions.inc, fbscancodes.inc, fileops.inc, Files.inc, Files1.inc, Files2.inc, FilesBug.inc, FileUtils.inc, Form.inc, func_array.inc, GDI32.inc, htmlhelp.inc, Kernel32.inc, keys.inc, like.inc, Math.inc, MDI_API.INC, Memory.inc, microTIMER.inc, Minimize.inc, msgdlg.inc, NewWindow23.inc, NewWndProc.Inc, NOTA.inc, objectToolbox.inc, ODMenuXP.inc, ole.inc, parse.inc, pdecl.inc, printdlg.inc, PRINTERDLL.INC, printrichedit.inc, pulsar.inc, QFiles.inc, QFormLocale.inc, QFormSkin.inc, QFuncLib.inc, QPoint.inc, QPrintDialog.inc, QStringGridEx.inc, QXLS.INC, registryVars.inc, RichEditApi.inc, rq_math.inc, RqAsmUtils.Inc, RQDialog.inc, RQProcess.inc, SetFileTimeAttrib.inc, setup.inc, Shell32.inc, ShellRedir.Inc, SysUtils.inc, TestIncPAth.inc, TRM_RQDeclares.INC, User32.inc, using.inc, var.inc, var2008.inc, WFunctions.inc, Win32_constants.inc, WIN32API.INC, WINDOWS.INC, WindowsAPI.inc, WinMM.Inc
-- rapidqComponents.inc: разделы компонентов rapidq2.inc и 94 файлов: apiRe.inc, odbc.inc, QCoolBarXPv1d.inc, QDataBase.inc, qdrive2024.inc, qEditEx.inc, QIni.inc, QIniFile.inc, QMaxSplitter.inc, QRedEx.Inc, qspintext.inc, QTextEdit.inc, RichEdPopUp.inc, VFW.inc, XP_MANIFEST.INC, COMPORTxp.inc, HiLight.inc, QAnim.inc, QAnimate.inc, QAVI.inc, QBevel.inc, QBrowseDialog.inc, QButtonXP.INC, qcalendar.inc, Qcdaudio.inc, qcgi.inc, QChart.inc, QColorButton.inc, QCursor.inc, qdataBaseSQL.inc, QDesktop.inc, QDigDisplay.inc, QDir.Inc, qdownload.inc, QDrawFocus.inc, QDrawMenu.inc, QFileListView.inc, QFlashLabel.inc, QFlatButton.inc, qfocus.inc, QFTPCLIENT.INC, qgraph.inc, QGridColor.inc, QHead.inc, QHTML.inc, QICMP.INC, QICON.inc, Qid3Tag.inc, QImageBox.inc, QImageDialog.inc, QImageListEx.inc, QInputBox.inc, QLed.inc, QLedScroll.inc, QLibrary.Inc, QLine.inc, QListBoxEx.inc, QMailLabel.inc, qmenu.inc, QMidi.inc, Qmp3.inc, qposic.inc, QPrinterInfo.inc, QProcess.inc, QProgress.inc, QProgressBar.inc, QRichEditXt.inc, QrPanel.inc, QRun.inc, QSavePlus.inc, QSHFileOperation.inc, QShutdown.inc, QSkin.inc, QSkinBtn.inc, QSocketEx.inc, QSpinEdit.inc, QSplash.inc, QStatusBarEx.inc, QtabControlEx.inc, QTextBtn.inc, QToolBar.inc, QToolBarEX.inc, QTreeviewEx.inc, QVideo.inc, QVolumeInfo.inc, QVuMeter.inc, QWave.inc, QXPButton.inc, RapidFRM.inc, RapidQ_D3D.inc, RC4crypt.inc, RSocket.INC, TstRichEd.inc, XPThemes.inc
-- не вошли: 97 файлов (ниже)
+- rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, и 89 файлов: AddMenuItemBitmaps4a.inc, AdvAPI32.inc, Api.inc, ApiDate.inc, CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc, CallBack_4.Inc, CallBack_5.Inc, CallBack_6.Inc, CallBack_7.Inc, CallBack_8.Inc, CallBackAll.Inc, CallBackForwarder.Inc, CallBacks.Inc, CMD5.inc, CommCtrl.inc, commctrl32.inc, Common.inc, constants.inc, Control.inc, conversion.inc, conversion1.inc, conversionOld.inc, ConvertToTruePath.inc, Copy of NOTA.inc, createWind.inc, DBT.INC, delTags.inc, eMail.Inc, eml.inc, emlOld.inc, evaluate.inc, fbscancodes.inc, fileops.inc, Files.inc, Files1.inc, Files2.inc, FilesBug.inc, FileUtils.inc, Form.inc, func_array.inc, GDI32.inc, htmlhelp.inc, Kernel32.inc, keys.inc, like.inc, Math.inc, MDI_API.INC, Memory.inc, microTIMER.inc, Minimize.inc, msgdlg.inc, NewWndProc.Inc, NOTA.inc, objectToolbox.inc, ODMenuXP.inc, ole.inc, parse.inc, pdecl.inc, printdlg.inc, printrichedit.inc, QFiles.inc, QFormLocale.inc, QFormSkin.inc, QFuncLib.inc, QPoint.inc, QStringGridEx.inc, QXLS.INC, registryVars.inc, RichEditApi.inc, rq_math.inc, RqAsmUtils.Inc, RQDialog.inc, RQProcess.inc, SetFileTimeAttrib.inc, setup.inc, Shell32.inc, ShellRedir.Inc, SysUtils.inc, User32.inc, using.inc, WFunctions.inc, Win32_constants.inc, WIN32API.INC, WINDOWS.INC, WindowsAPI.inc, WinMM.Inc
+- rapidqComponents.inc: разделы компонентов rapidq2.inc и 91 файлов: apiRe.inc, odbc.inc, QCoolBarXPv1d.inc, QDataBase.inc, qdrive2024.inc, qEditEx.inc, QIni.inc, QIniFile.inc, QMaxSplitter.inc, QRedEx.Inc, qspintext.inc, QTextEdit.inc, RichEdPopUp.inc, VFW.inc, XP_MANIFEST.INC, COMPORTxp.inc, HiLight.inc, QAnim.inc, QAnimate.inc, QAVI.inc, QBevel.inc, QBrowseDialog.inc, QButtonXP.INC, qcalendar.inc, Qcdaudio.inc, qcgi.inc, QChart.inc, QColorButton.inc, QCursor.inc, qdataBaseSQL.inc, QDesktop.inc, QDigDisplay.inc, QDir.Inc, qdownload.inc, QDrawFocus.inc, QDrawMenu.inc, QFileListView.inc, QFlashLabel.inc, QFlatButton.inc, qfocus.inc, QFTPCLIENT.INC, qgraph.inc, QGridColor.inc, QHead.inc, QHTML.inc, QICMP.INC, QICON.inc, Qid3Tag.inc, QImageListEx.inc, QInputBox.inc, QLed.inc, QLedScroll.inc, QLibrary.Inc, QLine.inc, QListBoxEx.inc, QMailLabel.inc, qmenu.inc, QMidi.inc, Qmp3.inc, qposic.inc, QPrinterInfo.inc, QProcess.inc, QProgress.inc, QProgressBar.inc, QRichEditXt.inc, QrPanel.inc, QRun.inc, QSavePlus.inc, QSHFileOperation.inc, QShutdown.inc, QSkin.inc, QSkinBtn.inc, QSocketEx.inc, QSpinEdit.inc, QSplash.inc, QStatusBarEx.inc, QtabControlEx.inc, QTextBtn.inc, QToolBar.inc, QToolBarEX.inc, QTreeviewEx.inc, QVideo.inc, QVolumeInfo.inc, QVuMeter.inc, QWave.inc, QXPButton.inc, RapidFRM.inc, RC4crypt.inc, RSocket.INC, TstRichEd.inc, XPThemes.inc
+- отдельными файлами в inc_sys: 13: debug.inc, debugNoSend.inc, debugWindow.inc, FBFunctions.inc, PRINTERDLL.INC, pulsar.inc, QImageBox.inc, QImageDialog.inc, QPrintDialog.inc, RapidQ_D3D.inc, TRM_RQDeclares.INC, var.inc, var2008.inc
+- не вошли: 110 файлов (ниже)
 
 ## Взята часть файла
 
+- odbc.inc: строки 1-320 (дальше DIM myDB и myDB.ODBCInit - соединение ODBC при запуске)
 - QDrawMenu.inc: строки 1-228 (дальше пример программы)
 - QSavePlus.inc: строки 1-216 (дальше пример программы)
 - RichEditApi.inc: строки 1-226 (дальше структуры, недопереведённые с ассемблера: "AS AS COLORREF", "CHARRANGE <>")
@@ -33,9 +35,11 @@
 | DAQmxConst.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | Dbase.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | dbtools.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
-| debug.inc | нет: подключать отдельно - при запуске создаёт окно отладки _DebugFORM |
-| debugNoSend.inc | нет: подключать отдельно - при запуске создаёт окно отладки _DebugFORM и таймер; вызывает senddata из debug.inc |
+| debug.inc | отдельно: при запуске создаёт окно отладки _DebugFORM |
+| debugNoSend.inc | отдельно: при запуске создаёт окно отладки _DebugFORM и таймер; вызывает senddata из debug.inc |
+| debugWindow.inc | отдельно: при запуске создаёт форму отладки ~DebugForm с кнопками |
 | DxfONE!h.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
+| FBFunctions.inc | отдельно: свои DLL fbfunc2.dll, fbrqfunctions.dll, fbrqsr10.dll |
 | Form1.inc | нет: фрагмент программы (форма Form1 с кнопкой) |
 | ftiQuery.inc | нет: FUNCTION внутри FUNCTION (ftiExtractProgPath вставлена в ftiExtractFileName, строки 110-143) |
 | Functions.inc | нет: часть CodeSense (cmcs21.dll), тип Bool - из $Define Bool Integer в CodeSense.inc; подключать CodeSense.inc |
@@ -50,7 +54,10 @@
 | LangIniHeader.inc | нет: фрагмент программы (StartPath$, DIM LangIni AS QINI - класс из компонентов) |
 | menu.inc | нет: фрагмент программы (меню формы MainForm, "Menu file for test.rqw") |
 | MYSQL.INC | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
+| NewWindow23.inc | нет: в файле только PRINT своего пути (отладка) |
 | NI6210.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
+| PRINTERDLL.INC | отдельно: своя DLL PrinterDLL.dll |
+| pulsar.inc | отдельно: при запуске вызывает pulsar.dll (crea_pulsar_db) и грузит test1.bmp / test2.bmp |
 | QAbout.inc | взята другая версия: QAbout - rapidq2.inc |
 | QBitmapEx.inc | взята другая версия: QBitmapEx - rapidq2.inc |
 | QCanvasEx.inc | взята другая версия: QCanvasEx - rapidq2.inc |
@@ -69,12 +76,15 @@
 | QFormEx.inc | взята другая версия: QFormEx - rapidq2.inc |
 | QFormMDI.inc | взята другая версия: QFormMDI - rapidq2.inc |
 | QGL.inc | подключает не вошедший gl.inc |
+| QImageBox.inc | отдельно: своя DLL NVIEWLIB (nviewlib.dll) |
+| QImageDialog.inc | отдельно: своя DLL NVIEWLIB (nviewlib.dll) |
 | QImageEx.inc | взята другая версия: QImageEx - rapidq2.inc |
 | QListviewEx.inc | взята другая версия: Qlistviewex - rapidq2.inc |
 | QMarker.inc | нет: $RESOURCE на файлы, которых нет в inc; подключать отдельно |
 | qmaxedit.inc | взята другая версия: QMAXEDIT - RichEdPopUp.inc |
 | qodbc.inc | взята другая версия: qODBC - odbc.inc |
 | QPageSetup.inc | взята другая версия: QPageSetup - rapidq2.inc |
+| QPrintDialog.inc | отдельно: пример - при запуске открывает окно параметров страницы и печатает поля через PRINT |
 | QREDEXTest.INC | взята другая версия: QRedEx - QRedEx.Inc |
 | QREDEXTest2.INC | взята другая версия: QRedEx - QRedEx.Inc |
 | qREdit.inc | взята другая версия: QMAXEDIT - RichEdPopUp.inc |
@@ -96,6 +106,7 @@
 | RapidFRM_Mods.inc | нет: фрагмент программы (объекты и процедуры основной программы) |
 | rapidq2007.inc | старая версия rapidq.inc |
 | rapidq3.inc | копия rapidq.inc |
+| RapidQ_D3D.inc | отдельно: DLL d3drm.dll (Direct3D Retained Mode) - в Windows Vista и новее её нет |
 | rapidq_ex.inc | старая версия rapidq.inc |
 | RAPIDQbug.INC | старая версия rapidq.inc |
 | RAPIDQl.INC | старая версия rapidq.inc |
@@ -109,7 +120,11 @@
 | StayOnTop.inc | нет: подключать отдельно - включает $OPTION VBDLL ON и WEAKTYPE ON для всего, что ниже, и создаёт таймер |
 | stdObjbar.inc | нет: фрагмент программы (панель кнопок конструктора форм, картинки Form_BMP и др. - ресурсы программы) |
 | stdObjMnu.inc | нет: фрагмент программы (объекты и процедуры основной программы) |
+| TestIncPAth.inc | нет: в файле только PRINT своего пути (отладка) |
+| TRM_RQDeclares.INC | отдельно: своя DLL TRM.DLL |
 | ultraRichEd.inc | взята другая версия: QMAXEDIT - RichEdPopUp.inc |
+| var.inc | отдельно: переменные одной программы (klas, dopusk$, omega!, SubArcPath$ ...) |
+| var2008.inc | отдельно: переменные одной программы (Kpogr, DDelKol!, tipOb$ ...) |
 | vfw2.inc | взята другая версия: QWebCam - VFW.inc |
 | Wad3.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | WebCam.inc | нет: при подключении сразу вызывает webcam.dll; подключать отдельно |
@@ -233,7 +248,6 @@
 - WIN32API.INC: DECLARE QUERYPERFORMANCEFREQUENCY - QueryPerformanceFrequency_WIN32API (параметры не те, что у microTIMER.inc)
 - WIN32API.INC: DECLARE REDRAWWINDOW - RedrawWindow_WIN32API (параметры не те, что у QFormSkin.inc)
 - WIN32API.INC: DECLARE REGISTERCLASSEX - RegisterClassEx_WIN32API (параметры не те, что у rapidq2.inc)
-- WIN32API.INC: DECLARE RESETDC - ResetDC_WIN32API (параметры не те, что у PRINTERDLL.INC)
 - WIN32API.INC: DECLARE SETMENUITEMINFO - SetMenuItemInfo_WIN32API (параметры не те, что у rapidq2.inc)
 - WIN32API.INC: DECLARE SETWINDOWPLACEMENT - SetWindowPlacement_WIN32API (параметры не те, что у Form.inc)
 - WIN32API.INC: DECLARE SETWINDOWRGN - SetWindowRgn_WIN32API (параметры не те, что у QFormSkin.inc)
@@ -270,12 +284,12 @@
 
 ## Убрано как повтор
 
-- CONST: 7414
-- DECLARE: 2037
-- $DEFINE: 2022
+- CONST: 7249
+- DECLARE: 2031
+- $DEFINE: 2014
 - SUB/FUNCTION: 237
-- TYPE: 478
-- DIM/DEFxxx/CREATE: 132
+- TYPE: 477
+- DIM/DEFxxx/CREATE: 15
 
 ## Повторы с другим текстом (оставлено первое)
 
@@ -415,10 +429,6 @@
 | CONST | MFS_UNCHECKED | rapidq2.inc(1560): `&H0` | ODMenuXP.inc(607): `CONST MFS_UNCHECKED = MF_UNCHECKED` |
 | CONST | MFS_UNHILITE | rapidq2.inc(1561): `&H0` | ODMenuXP.inc(608): `CONST MFS_UNHILITE = MF_UNHILITE` |
 | DECLARE | PAGESETUPDLG | rapidq2.inc(7261): `DECLARE FUNCTION PAGESETUPDLG LIB "COMDLG32" ALIAS "PAGESETUPDLGA" (PTR AS TPSD)` | printdlg.inc(46): `DECLARE FUNCTION PAGESETUPDLG LIB "COMDLG32" ALIAS "PAGESETUPDLGA" _ (PTR AS TPS` |
-| DECLARE | GETDESKTOPWINDOW | rapidq2.inc(1475): `DECLARE FUNCTION GETDESKTOPWINDOW LIB "USER32" ALIAS "GETDESKTOPWINDOW" () AS LO` | PRINTERDLL.INC(186): `DECLARE FUNCTION GETDESKTOPWINDOW LIB "USER32.DLL" ALIAS "GETDESKTOPWINDOW" () A` |
-| DECLARE | GETDC | rapidq2.inc(1482): `DECLARE FUNCTION GETDC LIB "USER32.DLL" ALIAS "GETDC"(BYVAL HWND AS LONG) AS LON` | PRINTERDLL.INC(187): `DECLARE FUNCTION GETDC LIB "USER32.DLL" ALIAS "GETDC" (HWND AS LONG) AS LONG` |
-| DECLARE | GETDEVICECAPS | rapidq2.inc(1454): `DECLARE FUNCTION GETDEVICECAPS LIB "GDI32.DLL" ALIAS "GETDEVICECAPS"(BYVAL HDC A` | PRINTERDLL.INC(188): `DECLARE FUNCTION GETDEVICECAPS LIB "GDI32.DLL" ALIAS "GETDEVICECAPS" (HDC AS LON` |
-| DECLARE | RELEASEDC | rapidq2.inc(1483): `DECLARE FUNCTION RELEASEDC LIB "USER32.DLL" ALIAS "RELEASEDC"(BYVAL HWND AS LONG` | PRINTERDLL.INC(189): `DECLARE FUNCTION RELEASEDC LIB "USER32.DLL" ALIAS "RELEASEDC" (HWND AS LONG, HDC` |
 | CONST | WM_TRAYICON | rapidq2.inc(867): `&H590` | QFormSkin.inc(47): `CONST WM_TRAYICON = WM_USER + 400` |
 | DECLARE | SETWINDOWLONG | rapidq2.inc(1039): `DECLARE FUNCTION SETWINDOWLONG LIB "USER32" ALIAS "SETWINDOWLONGA" (HWND AS LONG` | QFormSkin.inc(89): `DECLARE FUNCTION SETWINDOWLONG LIB "USER32" ALIAS "SETWINDOWLONGA" ( _ BYVAL HWN` |
 | DECLARE | GETWINDOWLONG | rapidq2.inc(1037): `DECLARE FUNCTION GETWINDOWLONG LIB "USER32" ALIAS "GETWINDOWLONGA" (HWND AS LONG` | QFormSkin.inc(93): `DECLARE FUNCTION GETWINDOWLONG LIB "USER32" ALIAS "GETWINDOWLONGA" ( _ BYVAL HWN` |
@@ -433,11 +443,9 @@
 | DECLARE | STRETCHBLT | rapidq2.inc(1467): `DECLARE FUNCTION STRETCHBLT LIB "GDI32" ALIAS "STRETCHBLT" (HDC AS LONG,X AS LON` | QFormSkin.inc(187): `DECLARE FUNCTION STRETCHBLT LIB "GDI32" ALIAS "STRETCHBLT" ( _ BYVAL HDC AS LONG` |
 | DECLARE | DRAWICONEX | rapidq2.inc(1477): `DECLARE FUNCTION DRAWICONEX LIB "USER32" ALIAS "DRAWICONEX" (HDC AS LONG,XLEFT A` | QFormSkin.inc(206): `DECLARE FUNCTION DRAWICONEX LIB "USER32" ALIAS "DRAWICONEX" ( _ BYVAL HDC AS LON` |
 | DECLARE | SETBKMODE | rapidq2.inc(1466): `DECLARE FUNCTION SETBKMODE LIB "GDI32" ALIAS "SETBKMODE" (HDC AS LONG,NBKMODE AS` | QFormSkin.inc(231): `DECLARE FUNCTION SETBKMODE LIB "GDI32" ALIAS "SETBKMODE" ( _ BYVAL HDC AS LONG, ` |
-| DECLARE | COPYMEMORY | PRINTERDLL.INC(185): `DECLARE SUB COPYMEMORY LIB "KERNEL32.DLL" ALIAS "RTLMOVEMEMORY" (BYVAL DEST AS L` | QFormSkin.inc(234): `DECLARE SUB COPYMEMORY LIB "KERNEL32" ALIAS "RTLMOVEMEMORY" ( _ PDEST AS LONG, P` |
 | DECLARE | SENDMESSAGEAPI | rapidq2.inc(980): `DECLARE FUNCTION SENDMESSAGEAPI LIB "USER32" ALIAS "SENDMESSAGEA" (HWND AS LONG,` | QFormSkin.inc(236): `DECLARE FUNCTION SENDMESSAGEAPI LIB "USER32" ALIAS "SENDMESSAGEA" ( _ BYVAL HWND` |
 | SUB/FUNCTION | SETODMENUHOOKENABLED | ODMenuXP.inc(416): `SUB SETODMENUHOOKENABLED(HWND AS LONG, ENABLED AS INTEGER, ALTHOOK AS INTEGER) D` | QFormSkin.inc(265): `SUB SETODMENUHOOKENABLED(HWND AS LONG, ENABLED AS INTEGER) IF SETODMENUHOOKENABL` |
 | SUB/FUNCTION | HEXTODEC | rapidq2.inc(8136): `FUNCTION HEXTODEC(HEX AS STRING)AS LONG RESULT = VAL(CONVBASE$(HEX, 16, 10)) END` | QFuncLib.inc(176): `FUNCTION HEXTODEC(HEX AS STRING)AS LONG DIM BIT AS LONG DIM VALBIT AS INTEGER DI` |
-| DECLARE | PAGESETUPDLG | rapidq2.inc(7261): `DECLARE FUNCTION PAGESETUPDLG LIB "COMDLG32" ALIAS "PAGESETUPDLGA" (PTR AS TPSD)` | QPrintDialog.inc(46): `DECLARE FUNCTION PAGESETUPDLG LIB "COMDLG32" ALIAS "PAGESETUPDLGA" _ (PTR AS TPS` |
 | CONST | EM_CANPASTE | constants.inc(62): `CONST EM_CANPASTE = 1074` | RichEditApi.inc(10): `CONST EM_CANPASTE =WM_USER + 50` |
 | CONST | EM_DISPLAYBAND | constants.inc(65): `CONST EM_DISPLAYBAND = 1075` | RichEditApi.inc(11): `CONST EM_DISPLAYBAND =WM_USER + 51` |
 | CONST | EM_EXGETSEL | constants.inc(67): `CONST EM_EXGETSEL = 1076` | RichEditApi.inc(12): `CONST EM_EXGETSEL =WM_USER + 52` |
@@ -829,7 +837,7 @@
 | DECLARE | LINETO | rapidq2.inc(1459): `DECLARE FUNCTION LINETO LIB "GDI32" ALIAS "LINETO" (HDC AS LONG,X AS LONG,Y AS L` | WINDOWS.INC(4634): `DECLARE FUNCTION LINETO LIB "GDI32" ALIAS "LINETO" (BYVAL HDC AS LONG, BYVAL X A` |
 | DECLARE | PATBLT | rapidq2.inc(1461): `DECLARE FUNCTION PATBLT LIB "GDI32" ALIAS "PATBLT" (HDC AS LONG,X AS LONG,Y AS L` | WINDOWS.INC(4640): `DECLARE FUNCTION PATBLT LIB "GDI32" ALIAS "PATBLT" (BYVAL HDC AS LONG, BYVAL X A` |
 | DECLARE | RECTANGLE | rapidq2.inc(1462): `DECLARE FUNCTION RECTANGLE LIB "GDI32" ALIAS "RECTANGLE" (HDC AS LONG,X1 AS LONG` | WINDOWS.INC(4649): `DECLARE FUNCTION RECTANGLE LIB "GDI32" ALIAS "RECTANGLE" (BYVAL HDC AS LONG, BYV` |
-| DECLARE | RESETDC | PRINTERDLL.INC(190): `DECLARE FUNCTION RESETDC LIB "GDI32.DLL" ALIAS "RESETDCA" (HDC AS LONG, INITDATA` | WINDOWS.INC(4651): `DECLARE FUNCTION RESETDC LIB "GDI32" ALIAS "RESETDCA" (BYVAL HDC AS LONG, LPINIT` |
+| DECLARE | RESETDC | WIN32API.INC(4525): `DECLARE FUNCTION RESETDC LIB "GDI32" ALIAS "RESETDCA" (BYVAL HDC AS LONG, LPINIT` | WINDOWS.INC(4651): `DECLARE FUNCTION RESETDC LIB "GDI32" ALIAS "RESETDCA" (BYVAL HDC AS LONG, LPINIT` |
 | DECLARE | ROUNDRECT | rapidq2.inc(1463): `DECLARE FUNCTION ROUNDRECT LIB "GDI32" ALIAS "ROUNDRECT" (HDC AS LONG,X1 AS LONG` | WINDOWS.INC(4654): `DECLARE FUNCTION ROUNDRECT LIB "GDI32" ALIAS "ROUNDRECT" (BYVAL HDC AS LONG, BYV` |
 | DECLARE | SELECTOBJECT | rapidq2.inc(1464): `DECLARE FUNCTION SELECTOBJECT LIB "GDI32" ALIAS "SELECTOBJECT" (HDC AS LONG,HOBJ` | WINDOWS.INC(4661): `DECLARE FUNCTION SELECTOBJECT LIB "GDI32" ALIAS "SELECTOBJECT" (BYVAL HDC AS LON` |
 | DECLARE | SETBKMODE | rapidq2.inc(1466): `DECLARE FUNCTION SETBKMODE LIB "GDI32" ALIAS "SETBKMODE" (HDC AS LONG,NBKMODE AS` | WINDOWS.INC(4664): `DECLARE FUNCTION SETBKMODE LIB "GDI32" ALIAS "SETBKMODE" (BYVAL HDC AS LONG, BYV` |
@@ -1128,8 +1136,6 @@
 | $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QICON.inc(14): `INTEGER` |
 | DECLARE | EXTRACTICON | WIN32API.INC(14408): `DECLARE FUNCTION EXTRACTICON LIB "SHELL32.DLL" ALIAS "EXTRACTICONA" (BYVAL HINST` | QICON.inc(18): `DECLARE FUNCTION EXTRACTICON LIB "SHELL32.DLL" ALIAS "EXTRACTICONA" (HINST AS LO` |
 | DECLARE | DESTROYICON | QFormSkin.inc(215): `DECLARE FUNCTION DESTROYICON LIB "USER32" ALIAS "DESTROYICON" ( _ BYVAL HICON AS` | QICON.inc(19): `DECLARE FUNCTION DESTROYICON LIB "USER32" ALIAS "DESTROYICON" (HICON AS LONG) AS` |
-| $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QImageBox.inc(14): `INTEGER` |
-| $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QImageDialog.inc(14): `INTEGER` |
 | SUB/FUNCTION | TRIM$ | rapidq.inc(641): `FUNCTION TRIM$(S AS STRING) AS STRING RESULT=LTRIM$(RTRIM$(S)) END FUNCTION` | QLibrary.Inc(9): `FUNCTION TRIM$ (DATUM AS STRING) AS STRING RESULT = LTRIM$(RTRIM$(DATUM)) END FU` |
 | TYPE | QINIFILE | QIniFile.inc(11): `TYPE QINIFILE EXTENDS QSTRINGLIST PRIVATE: WINDOWSDIR AS STRING NAME AS STRING P` | QLibrary.Inc(137): `TYPE QINIFILE EXTENDS QOBJECT PUBLIC: NAME AS STRING LINES AS QSTRINGLIST LINECO` |
 | DECLARE | DRAWLINE | QChart.inc(141): `DECLARE SUB DRAWLINE (OVERLAY AS INTEGER, COLNUM AS INTEGER)` | QLine.inc(5): `DECLARE FUNCTION DRAWLINE LIB "USER32" ALIAS "DRAWEDGE" (HDC AS LONG,QRC AS QREC` |
@@ -1218,7 +1224,7 @@
 | DECLARE | IOCTLSOCKET | QSocketEx.inc(34): `DECLARE FUNCTION IOCTLSOCKET LIB "WSOCK32.DLL" ALIAS "IOCTLSOCKET"(BYVAL S AS LO` | RSocket.INC(21): `DECLARE FUNCTION IOCTLSOCKET LIB "WSOCK32.DLL" ALIAS "IOCTLSOCKET"_ (S AS LONG,C` |
 | DECLARE | SHUTDOWN | QSocketEx.inc(29): `DECLARE FUNCTION SHUTDOWN LIB "WSOCK32.DLL" ALIAS "SHUTDOWN"(S AS LONG,HOW AS LO` | RSocket.INC(26): `DECLARE FUNCTION SHUTDOWN LIB "WSOCK32.DLL" ALIAS "SHUTDOWN"_ (S AS LONG,HOW AS ` |
 | DECLARE | WSAGETLASTERROR | rapidq2.inc(1888): `DECLARE FUNCTION WSAGETLASTERROR LIB "WSOCK32" ALIAS "WSAGETLASTERROR" () AS LON` | RSocket.INC(30): `DECLARE FUNCTION WSAGETLASTERROR LIB "WSOCK32.DLL" ALIAS "WSAGETLASTERROR"_ () A` |
-| DECLARE | COPYMEMORY | PRINTERDLL.INC(185): `DECLARE SUB COPYMEMORY LIB "KERNEL32.DLL" ALIAS "RTLMOVEMEMORY" (BYVAL DEST AS L` | RSocket.INC(42): `DECLARE SUB COPYMEMORY LIB "KERNEL32.DLL" ALIAS "RTLMOVEMEMORY"_ (HPVDEST AS LON` |
+| DECLARE | COPYMEMORY | QFormSkin.inc(234): `DECLARE SUB COPYMEMORY LIB "KERNEL32" ALIAS "RTLMOVEMEMORY" ( _ PDEST AS LONG, P` | RSocket.INC(42): `DECLARE SUB COPYMEMORY LIB "KERNEL32.DLL" ALIAS "RTLMOVEMEMORY"_ (HPVDEST AS LON` |
 | DECLARE | LSTRLEN | WIN32API.INC(2345): `DECLARE FUNCTION LSTRLEN LIB "KERNEL32" ALIAS "LSTRLENA" (BYVAL LPSTRING AS STRI` | RSocket.INC(44): `DECLARE FUNCTION LSTRLEN LIB "KERNEL32.DLL" ALIAS "LSTRLENA"_ (BYVAL LPSTRING AS` |
 | DECLARE | LSTRCPY | WIN32API.INC(15379): `DECLARE FUNCTION LSTRCPY LIB "KERNEL32" ALIAS "LSTRCPYA" (BYVAL LPSTRING1 AS STR` | RSocket.INC(46): `DECLARE FUNCTION LSTRCPY LIB "KERNEL32.DLL" ALIAS "LSTRCPYA"_ (BYVAL LPSTRING1 A` |
 | DECLARE | SENDMESSAGEA | Common.inc(14): `DECLARE FUNCTION SENDMESSAGEA LIB "USER32" ALIAS "SENDMESSAGEA" _ (HWND AS LONG,` | TstRichEd.inc(2): `DECLARE FUNCTION SENDMESSAGEA LIB "USER32" ALIAS "SENDMESSAGEA" (HWND _ AS LONG,` |
@@ -1247,8 +1253,6 @@
 
 ## Директивы, на которые стоит посмотреть
 
-- pulsar.inc: `Image1_editor.BMP = "test1.bmp"`
-- pulsar.inc: `Image2_editor.BMP = "test2.bmp"`
 - WIN32API.INC: `$UNDEF TRUE, FALSE, ANY, INTEGER`
 - WINDOWS.INC: `$UNDEF BOOLEAN`
 - HiLight.inc: `$APPTYPE GUI`

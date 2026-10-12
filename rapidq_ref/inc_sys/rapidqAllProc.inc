@@ -14942,102 +14942,6 @@ DECLARE function memoUpdate(newtext as string) as long
 
    
 '============================================================================
-'[build_inc] debugWindow.inc
-'============================================================================
-'------------- constant part DebugForm etc. -------
-Dim WatchedVars(1) as string
-
-Dim Operators(1) as string
-dim OperatorsPos(1) as integer
-dim OperatorsLenth(1) as integer
-
-declare sub ~Continue
-declare sub Trace
-declare sub ViewStep (OperPos,OperLength)
-
-dim ModeFlg as byte
-'0 - StepByStep
-'1 - Continue
-
-  dim ~DebugForm as QFORM
-  dim ~WatchDisplay as QRICHEDIT
-  dim ~SrcDisplay as QRICHEDIT
-
-  dim ~StepBtn as QButton
-  with ~StepBtn
-  .top=2
-  .left=520
-  .caption="Trace"
-  .onclick=Trace
-  .parent=~DebugForm
-  end with
-  
-  dim ~ContBtn as QButton
-  with ~ContBtn
-  .top=40
-  .left=520
-  .caption="Continue"
-  .onclick=~Continue
-  .parent=~DebugForm
-  end with
-  
-    ~DebugForm.Caption="Debug console"
-    ~DebugForm.Width=680
-    ~DebugForm.Height=400
-    ~DebugForm.BorderStyle=5
-
-    ~WatchDisplay.parent=~DebugForm
-    ~WatchDisplay.Font.bold=1
-    '~WatchDisplay.Align=5
-    ~WatchDisplay.Top=2
-    ~WatchDisplay.Left=2
-    ~WatchDisplay.Height=(~DebugForm.Height-40)/2
-    ~WatchDisplay.Width=~DebugForm.Width-280
-
-    ~WatchDisplay.PlainText=1
-    ~WatchDisplay.ReadOnly=1
-    ~WatchDisplay.ScrollBars=3
-    ~WatchDisplay.WordWrap=0
-    ~WatchDisplay.color=&h77EEFF
-
-
-    ~SrcDisplay.parent=~DebugForm
-    ~SrcDisplay.Font.bold=1
-    '~WatchDisplay.Align=5
-    ~SrcDisplay.Top=(~DebugForm.Height-40)/2+5
-    ~SrcDisplay.Left=2
-    ~SrcDisplay.Height=(~DebugForm.Height-40)/2
-    ~SrcDisplay.Width=~DebugForm.Width-280
-
-    ~SrcDisplay.PlainText=1
-    ~SrcDisplay.ReadOnly=1
-    ~SrcDisplay.ScrollBars=3
-    ~SrcDisplay.WordWrap=0
-    ~SrcDisplay.color=&HE2F978
-
-    ~DebugForm.center
-
-'--**************************************************'
-DECLARE Subi RQDebug(...)
-'~body Subi RQDebug(...)   ' сборка: тело - в конце файла
-
-
-'***************************************
-'~body sub ViewStep (OperPos,OperLength)   ' сборка: тело - в конце файла
-
-'***************************************
-'~body sub Trace   ' сборка: тело - в конце файла
-
-'***************************************
-sub ~Continue
-ModeFlg=1
-~DebugForm.close
-end sub
-'=================================================
-
-'-------- end of constant part -------------------
-  
-'============================================================================
 '[build_inc] delTags.inc
 '============================================================================
 '-- ************************************************************************'
@@ -16640,33 +16544,6 @@ END SUB
 '~body SUB CheckE(newstring$ AS STRING)   ' сборка: тело - в конце файла
   
 $TYPECHECK OFF   ' сборка: вернуть после evaluate.inc
-'============================================================================
-'[build_inc] FBFunctions.inc
-'============================================================================
-'C:\BAS\RAPIDQ\RQSR_SRC\CurVer\FBFunctions.inc
-
-'declare Function  FBSEARCREPLACEINWORD lib "fbrqsr.dll" alias "FBSEARCREPLACEINWORD@8"_
-'( WordFileNAme as string, debugmode as long) as long 
-
-'declare Function  FBSEARCREPLACEINWORD lib "fbrqsr8.dll" alias "FBSEARCREPLACEINWORD@4"_
-'( WordFileNAme as string) as long  ', dllpath as string
-
-declare Function  FBSEARCREPLACEINWORD lib "fbrqsr10.dll" alias "FBSEARCREPLACEINWORD@4"_
-( WordFileNAme as string) as long  ', dllpath as string
-
-declare function FBReplaceSubStrInFile lib "fbrqsr10.dll" alias "FBREPLACESUBSTRINFILE@12" _
-( FileName as string,  SString as string, RString as string ) as integer 
-
-
-declare function fLoadString lib "fbrqfunctions.dll" alias "FLOADSTRING@8" _
-(FileName as string,  byref SString as string) as integer 
-
-declare function FBReplaceSubStrFunc lib "fbfunc2.dll" alias "FBREPLACESUBSTRFUNC@12"_
-(byref SrcString as string, SString as string, RString as string ) as integer
-
-
-DECLARE function fbReplaceSubStr$ (SrcString as string, SString as string, RString as string ) as string
-'~body function fbReplaceSubStr$ (SrcString as string, SString as string, RSt   ' сборка: тело - в конце файла
 '============================================================================
 '[build_inc] fileops.inc
 '============================================================================
@@ -21490,10 +21367,6 @@ Declare Function MDlg Lib "user32" Alias "MessageBoxA" (ByVal hwnd As Long, ByVa
 '
   
 '============================================================================
-'[build_inc] NewWindow23.inc
-'============================================================================
-print "inc dir   C:\BAS\RAPIDQ\inc\NewWindow23.inc"
-'============================================================================
 '[build_inc] NOTA.inc
 '============================================================================
 'Network of the Apes RapidQ Include
@@ -25345,430 +25218,6 @@ PSD.hWndOwner = 0
 '?PSD.rtMarginBottom
 
 '============================================================================
-'[build_inc] PRINTERDLL.INC
-'============================================================================
-' printerdll CONST
-CONST DONT_CREATE_PDC=0
-CONST CREATE_THE_PDC=1
-CONST DONT_DELETE_PDC=0
-CONST DELETE_THE_PDC=1
-CONST DIALOG_FILE_INVISIBLE=0
-CONST DIALOG_FILE_VISIBLE=1
-CONST DIALOG_PAGES_INVISIBLE=0
-CONST DIALOG_PAGES_VISIBLE=1
-CONST DIALOG_SELECTION_INVISIBLE=0
-CONST DIALOG_SELECTION_VISIBLE=1
-CONST DIALOG_NO_WARNINGS=0
-CONST DIALOG_SHOW_WARNINGS=1
-CONST DIALOG_PAGENUMBERS_OFF=0
-CONST DIALOG_PAGENUMBERS_ON=1
-CONST DIALOG_SELECTION_OFF=0
-CONST DIALOG_SELECTION_ON=1
-CONST DIALOG_USE_MILLIMETERS=0
-CONST DIALOG_USE_INCHES=1
-CONST DIALOG_DEFAULT_MARGINS=0
-CONST DIALOG_VALUE_MARGINS=1
-CONST DIALOG_DISABLE_MARGINS=2
-CONST DIALOG_DEFAULT_MINMARGINS=0
-CONST DIALOG_VALUE_MINMARGINS=1
-CONST DIALOG_DISABLE_PAPER=0
-CONST DIALOG_VALUE_PAPER=1
-CONST DIALOG_PRINTER_DISABLED=0
-CONST DIALOG_PRINTER_ENABLED=1
-CONST DIALOG_ORIENTATION_DISABLED=0
-CONST DIALOG_ORIENTATION_ENABLED=1
-CONST SET_PI_ONLY=1
-CONST SET_DM_ONLY=2
-CONST SET_PI_AND_DM=0
-CONST SET_LOCALLY=0
-CONST SET_GLOBALLY=1
-
-' Hatch Styles.
-Const HS_HORIZONTAL=0   '  -----
-Const HS_VERTICAL=1     '  |||||
-Const HS_FDIAGONAL=2    '  \\\\\
-Const HS_BDIAGONAL=3    '  /////
-Const HS_CROSS=4        '  +++++
-
-' Font Styles/Characteristics.
-Const FW_DONTCARE = 0
-Const FW_THIN = 100
-Const FW_EXTRALIGHT = 200
-Const FW_LIGHT = 300
-Const FW_NORMAL = 400
-Const FW_MEDIUM = 500
-Const FW_SEMIBOLD = 600
-Const FW_BOLD = 700
-Const FW_EXTRABOLD = 800
-Const FW_HEAVY = 900
-Const ITALIC_OFF = 0
-Const ITALIC_ON = 1
-Const UNDERLINE_OFF = 0
-Const UNDERLINE_ON = 1
-Const STRIKEOUT_OFF = 0
-Const STRIKEOUT_ON = 1
-Const OUT_DEFAULT_PRECIS = 0
-Const OUT_STRING_PRECIS = 1
-Const OUT_CHARACTER_PRECIS = 2
-Const OUT_STROKE_PRECIS = 3
-Const OUT_TT_PRECIS = 4
-Const OUT_DEVICE_PRECIS = 5
-Const OUT_RASTER_PRECIS = 6
-Const OUT_TT_ONLY_PRECIS = 7
-Const OUT_OUTLINE_PRECIS = 8
-Const CLIP_DEFAULT_PRECIS = 0
-Const CLIP_CHARACTER_PRECIS = 1
-Const CLIP_STROKE_PRECIS = 2
-Const CLIP_MASK = &HF
-Const CLIP_LH_ANGLES = 16
-Const CLIP_TT_ALWAYS = 32
-Const CLIP_EMBEDDED = 128
-Const DEFAULT_QUALITY = 0
-Const DRAFT_QUALITY = 1
-Const PROOF_QUALITY = 2
-Const DEFAULT_PITCH = 0
-Const FIXED_PITCH = 1
-Const VARIABLE_PITCH = 2
-'~dup Const ANSI_CHARSET = 0   ' повтор, первое: rapidq2.inc(191)
-'~dup Const DEFAULT_CHARSET = 1   ' повтор, первое: rapidq2.inc(192)
-'~dup Const SYMBOL_CHARSET = 2   ' повтор, первое: rapidq2.inc(193)
-'~dup Const SHIFTJIS_CHARSET = 128   ' повтор, первое: rapidq2.inc(195)
-'~dup Const HANGEUL_CHARSET = 129   ' повтор, первое: rapidq2.inc(196)
-'~dup Const CHINESEBIG5_CHARSET = 136   ' повтор, первое: rapidq2.inc(199)
-'~dup Const OEM_CHARSET = 255   ' повтор, первое: rapidq2.inc(209)
-Const FF_DONTCARE = 0
-Const FF_ROMAN = 16
-Const FF_SWISS = 32
-Const FF_MODERN = 48
-Const FF_SCRIPT = 64
-Const FF_DECORATIVE = 80
-
-' Border Styles.
-Const BDR_RAISEDOUTER = &H1
-Const BDR_SUNKENOUTER = &H2
-Const BDR_RAISEDINNER = &H4
-Const BDR_SUNKENINNER = &H8
-Const BDR_OUTER = &H3
-Const BDR_INNER = &HC
-Const BDR_RAISED = &H5
-Const BDR_SUNKEN = &HA
-Const EDGE_RAISED = (BDR_RAISEDOUTER Or BDR_RAISEDINNER)
-Const EDGE_SUNKEN = (BDR_SUNKENOUTER Or BDR_SUNKENINNER)
-Const EDGE_ETCHED = (BDR_SUNKENOUTER Or BDR_RAISEDINNER)
-Const EDGE_BUMP = (BDR_RAISEDOUTER Or BDR_SUNKENINNER)
-Const BF_LEFT = &H1
-Const BF_TOP = &H2
-Const BF_RIGHT = &H4
-Const BF_BOTTOM = &H8
-Const BF_TOPLEFT = (BF_TOP Or BF_LEFT)
-Const BF_TOPRIGHT = (BF_TOP Or BF_RIGHT)
-Const BF_BOTTOMLEFT = (BF_BOTTOM Or BF_LEFT)
-Const BF_BOTTOMRIGHT = (BF_BOTTOM Or BF_RIGHT)
-Const BF_RECT = (BF_LEFT Or BF_TOP Or BF_RIGHT Or BF_BOTTOM)
-Const BF_DIAGONAL = &H10
-Const BF_DIAGONAL_ENDTOPRIGHT = (BF_DIAGONAL Or BF_TOP Or BF_RIGHT)
-Const BF_DIAGONAL_ENDTOPLEFT = (BF_DIAGONAL Or BF_TOP Or BF_LEFT)
-Const BF_DIAGONAL_ENDBOTTOMLEFT = (BF_DIAGONAL Or BF_BOTTOM Or BF_LEFT)
-Const BF_DIAGONAL_ENDBOTTOMRIGHT = (BF_DIAGONAL Or BF_BOTTOM Or BF_RIGHT)
-Const BF_MIDDLE = &H800    ' Fill in the middle.
-Const BF_SOFT = &H1000     ' Use for softer buttons.
-Const BF_ADJUST = &H2000   ' Calculate the space left over.
-Const BF_FLAT = &H4000     ' For flat rather than 3-D borders.
-Const BF_MONO = &H8000     ' For monochrome borders.
-
-' MS Defined Styles.
-'~dup Const WHITE_BRUSH = 0   ' повтор, первое: rapidq2.inc(1256)
-'~dup Const BLACK_BRUSH = 4   ' повтор, первое: rapidq2.inc(1260)
-'~dup Const WHITE_PEN = 6   ' повтор, первое: rapidq2.inc(1263)
-'~dup Const BLACK_PEN = 7   ' повтор, первое: rapidq2.inc(1264)
-'~dup Const NULL_PEN = 8   ' повтор, первое: rapidq2.inc(1265)
-'~dup Const OEM_FIXED_FONT = 10   ' повтор, первое: rapidq2.inc(1266)
-'~dup Const ANSI_FIXED_FONT = 11   ' повтор, первое: rapidq2.inc(1267)
-'~dup Const ANSI_VAR_FONT = 12   ' повтор, первое: rapidq2.inc(1268)
-'~dup Const SYSTEM_FONT = 13   ' повтор, первое: rapidq2.inc(1269)
-'~dup Const DEVICE_DEFAULT_FONT = 14   ' повтор, первое: rapidq2.inc(1270)
-'~dup Const DEFAULT_PALETTE = 15   ' повтор, первое: rapidq2.inc(1271)
-'~dup Const SYSTEM_FIXED_FONT = 16   ' повтор, первое: rapidq2.inc(1272)
-Const CLR_INVALID = &HFFFF
-
-' Bitmap Styles.
-Const RC_NONE = 0
-Const RC_BITBLT = 1                  '  Can do standard BLT.
-Const RC_BANDING = 2                 '  Device requires banding support
-Const RC_SCALING = 4                 '  Device requires scaling support
-Const RC_BITMAP64 = 8                '  Device can support >64K bitmap
-Const RC_GDI20_OUTPUT = &H10             '  has 2.0 output calls
-Const RC_GDI20_STATE = &H20
-Const RC_SAVEBITMAP = &H40
-Const RC_DI_BITMAP = &H80                '  supports DIB to memory
-Const RC_PALETTE = &H100                 '  supports a palette
-Const RC_DIBTODEV = &H200                '  supports DIBitsToDevice
-Const RC_BIGFONT = &H400                 '  supports >64K fonts
-Const RC_STRETCHBLT = &H800              '  supports StretchBlt
-Const RC_FLOODFILL = &H1000              '  supports FloodFill
-Const RC_STRETCHDIB = &H2000             '  supports StretchDIBits
-Const RC_OP_DX_OUTPUT = &H4000
-Const RC_DEVBITS = &H8000
-'~dup Const SRCCOPY = &HCC0020         ' (DWORD) dest = source   ' повтор, первое: rapidq2.inc(1283)
-'~dup Const SRCPAINT = &HEE0086        ' (DWORD) dest = source OR dest   ' повтор, первое: rapidq2.inc(1284)
-'~dup Const SRCAND = &H8800C6          ' (DWORD) dest = source AND dest   ' повтор, первое: rapidq2.inc(1285)
-'~dup Const SRCINVERT = &H660046       ' (DWORD) dest = source XOR dest   ' повтор, первое: rapidq2.inc(1286)
-'~dup Const SRCERASE = &H440328        ' (DWORD) dest = source AND (NOT dest )   ' повтор, первое: rapidq2.inc(1287)
-'~dup Const NOTSRCCOPY = &H330008      ' (DWORD) dest = (NOT source)   ' повтор, первое: rapidq2.inc(1288)
-'~dup Const NOTSRCERASE = &H1100A6     ' (DWORD) dest = (NOT src) AND (NOT dest)   ' повтор, первое: rapidq2.inc(1289)
-'~dup Const MERGECOPY = &HC000CA       ' (DWORD) dest = (source AND pattern)   ' повтор, первое: rapidq2.inc(1290)
-'~dup Const MERGEPAINT = &HBB0226      ' (DWORD) dest = (NOT source) OR dest   ' повтор, первое: rapidq2.inc(1291)
-'~dup Const PATCOPY = &HF00021         ' (DWORD) dest = pattern   ' повтор, первое: rapidq2.inc(1292)
-'~dup Const PATPAINT = &HFB0A09        ' (DWORD) dest = DPSnoo   ' повтор, первое: rapidq2.inc(1293)
-'~dup Const PATINVERT = &H5A0049       ' (DWORD) dest = pattern XOR dest   ' повтор, первое: rapidq2.inc(1294)
-'~dup Const DSTINVERT = &H550009       ' (DWORD) dest = (NOT dest)   ' повтор, первое: rapidq2.inc(1295)
-'~dup Const BLACKNESS = &H42           ' (DWORD) dest = BLACK   ' повтор, первое: rapidq2.inc(1296)
-'~dup Const WHITENESS = &HFF0062       ' (DWORD) dest = WHITE   ' повтор, первое: rapidq2.inc(1297)
-Const HGDI_ERROR = &HFFFF
-Const BLACKONWHITE = 1
-Const WHITEONBLACK = 2
-Const COLORONCOLOR = 3
-Const HALFTONE = 4
-Const MAXSTRETCHBLTMODE = 4
-
-Declare Sub CopyMemory Lib "kernel32.dll" Alias "RtlMoveMemory" (ByVal dest As LONG, ByVal source As LONG, ByVal numBytes As LONG)
-'~dup Declare Function GetDesktopWindow Lib "user32.dll" Alias "GetDesktopWindow" () As Long   ' повтор, первое: rapidq2.inc(1475)
-'~dup Declare Function GetDC Lib "user32.dll" Alias "GetDC" (hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(1482)
-'~dup Declare Function GetDeviceCaps Lib "gdi32.dll" Alias "GetDeviceCaps" (hdc As Long, query_flag As Long) As Long   ' повтор, первое: rapidq2.inc(1454)
-'~dup Declare Function ReleaseDC Lib "user32.dll" Alias "ReleaseDC" (hwnd As Long, hdc As Long) As Long   ' повтор, первое: rapidq2.inc(1483)
-Declare Function ResetDC Lib "gdi32.dll" Alias "ResetDCA" (hdc As Long, initData As long) As Long
-
-Declare Function Printer_OpenDefault Lib "printerdll.dll" Alias "Printer_OpenDefault" (internalBufSize As Long) As Long
-Declare Function XPrinter_OpenDefault Lib "printerdll.dll" Alias "XPrinter_OpenDefault" (internalBufSize As Long, printerName As String, portName As String, driverName As String, dataType As String, pDevMode As Long, access As Long) As Long
-Declare Function Printer_CreatePDC Lib "printerdll.dll" Alias "Printer_CreatePDC" () As Long
-Declare Function XPrinter_CreatePDC Lib "printerdll.dll" Alias "XPrinter_CreatePDC" (driverName As String, printerName As String, output As String, pDevMode As Long) As Long
-Declare Function Printer_GetHandle Lib "printerdll.dll" Alias "Printer_GetHandle" () As Long
-Declare Function Printer_Pause Lib "printerdll.dll" Alias "Printer_Pause" () As Long
-Declare Function Printer_Delete Lib "printerdll.dll" Alias "Printer_Delete" () As Long
-Declare Function Printer_Purge Lib "printerdll.dll" Alias "Printer_Purge" () As Long
-Declare Function Printer_GetDefault Lib "printerdll.dll" Alias "Printer_GetDefault" () As Long
-Declare Function Printer_SetDefault Lib "printerdll.dll" Alias "Printer_SetDefault" (printerName As String) As Long
-Declare Function Printer_AddConnection Lib "printerdll.dll" Alias "Printer_AddConnection" (printerName As String) As Long
-Declare Function Printer_DeleteConnection Lib "printerdll.dll" Alias "Printer_DeleteConnection" (printerName As String) As Long
-Declare Function Dialog_Connection Lib "PrinterDLL.dll" Alias "Dialog_Connection" (hWindow As Long) As Long
-Declare Function Dialog_Port Lib "PrinterDLL.dll" Alias "Dialog_Port" (serverName AS STRING, hWindow AS LONG, portName AS String) As Long
-Declare Function Dialog_AdvancedProperties Lib "PrinterDLL.dll" Alias "Dialog_AdvancedProperties" (hWindow AS LONG) As Long
-Declare Function Dialog_Properties Lib "PrinterDLL.dll" Alias "Dialog_Properties" (hWindow AS LONG, hPrinter As Long) As Long
-Declare Function Dialog_PageSetup Lib "PrinterDLL.dll" Alias "Dialog_PageSetup" (flag As Long,hWindow As Long, measurement As Long, mo As Long, l1 As Long, t1 As Long, r1 As Long, b1 As Long, mmo As Long, l2 As Long, t2 As Long, r2 As Long, b2 As Long, po As Long, x As Long, y As Long, pbo As Long, oo As Long, wo As Long) As Long
-Declare Function Dialog_PrintSetup Lib "PrinterDLL.dll" Alias "Dialog_PrintSetup" (flag As Long,hWindow As Long, fp As Long, tp As Long, minp As Long, maxp As Long, fo As Long, po As Long, so As Long, wo As Long, pn As Long,ss As Long) As Long
-Declare Function Dialog_Print Lib "PrinterDLL.dll" Alias "Dialog_Print" (flag As Long,hWindow As Long, fp As Long, tp As Long, minp As Long, maxp As Long, fo As Long, po As Long, so As Long, wo As Long, pn As Long,ss As Long) As Long
-Declare Function Printer_AddPrinter Lib "printerdll.dll" Alias "Printer_AddPrinter" (serverName As String, printerName As String, portName As String, driverName As String, processorName As String) As Long
-Declare Function Printer_DeletePrinter Lib "printerdll.dll" Alias "Printer_DeletePrinter" (hPrinter As Long) As Long
-Declare Function Printer_AddDriver Lib "printerdll.dll" Alias "Printer_AddDriver" (serverName As String, Version As Long, printer As String, environment As String, driverPath As String, dataFile As String, configFile As String) As Long
-Declare Function Printer_GetDriver Lib "printerdll.dll" Alias "Printer_GetDriver" (hPrinter As Long, enviroment As String) As Long
-Declare Function Job_Pause Lib "printerdll.dll" Alias "Job_Pause" (jobID As Long) As Long
-Declare Function Job_Resume Lib "printerdll.dll" Alias "Job_Resume" (jobID As Long) As Long
-Declare Function Job_Delete Lib "printerdll.dll" Alias "Job_Delete" (jobID As Long) As Long
-Declare Function Job_Restart Lib "printerdll.dll" Alias "Job_Restart" (jobID As Long) As Long
-Declare Function Document_Open Lib "printerdll.dll" Alias "Document_Open" (docTitle As String, outputName As String, datatypeName As String) As Long
-Declare Function Page_New Lib "printerdll.dll" Alias "Page_New" () As Long
-Declare Function Page_String Lib "printerdll.dll" Alias "Page_String" (x As Long, y As Long, buffer As String, bufSize As Long) As Long
-Declare Function Page_Clipboard Lib "printerdll.dll" Alias "Page_Clipboard" (x As Long, y As Long) As Long
-Declare Function Page_Print Lib "printerdll.dll" Alias "Page_Print" () As Long
-Declare Function Document_Abort Lib "printerdll.dll" Alias "Document_Abort" () As Long
-Declare Function Document_Close Lib "printerdll.dll" Alias "Document_Close" () As Long
-Declare Function RawDocument_Open Lib "printerdll.dll" Alias "RawDocument_Open" (docTitle As String, outputName As String, datatypeName As String) As Long
-Declare Function RawPage_New Lib "printerdll.dll" Alias "RawPage_New" () As Long
-Declare Function RawPage_Buffer Lib "printerdll.dll" Alias "RawPage_Buffer" (buffer As Long, bufSize As Long) As Long
-Declare Function RawPage_Clipboard Lib "printerdll.dll" Alias "RawPage_Clipboard" () As Long
-Declare Function RawPage_Print Lib "printerdll.dll" Alias "RawPage_Print" () As Long
-Declare Function RawDocument_Close Lib "printerdll.dll" Alias "RawDocument_Close" () As Long
-Declare Function Brush_CreateHatch Lib "printerdll.dll" Alias "Brush_CreateHatch" (colour As Long, style As Long) As Long
-Declare Function Brush_CreateSolid Lib "printerdll.dll" Alias "Brush_CreateSolid" (colour As Long) As Long
-Declare Function Brush_CreateHollow Lib "printerdll.dll" Alias "Brush_CreateHollow" () As Long
-Declare Function Brush_DeleteHatch Lib "printerdll.dll" Alias "Brush_DeleteHatch" () As Long
-Declare Function Brush_DeleteSolid Lib "printerdll.dll" Alias "Brush_DeleteSolid" () As Long
-Declare Function Brush_DeleteHollow Lib "printerdll.dll" Alias "Brush_DeleteHollow" () As Long
-Declare Function Font_Create Lib "printerdll.dll" Alias "Font_Create" (height As Long, width As Long, esc As Long, ori As Long, fw As Long, ita As Long, unl As Long, strike As Long, cs As Long, op As Long, cp As Long, quality As Long, pitch As Long, fontName As String) As Long
-Declare Function Font_Delete Lib "printerdll.dll" Alias "Font_Delete" () As Long
-Declare Function Pen_Create Lib "printerdll.dll" Alias "Pen_Create" (style As Long, thickness As Long, colour As Long) As Long
-Declare Function Pen_CreateSolid Lib "printerdll.dll" Alias "Pen_CreateSolid" (thickness As Long, colour As Long) As Long
-Declare Function Pen_Delete Lib "printerdll.dll" Alias "Pen_Delete" () As Long
-Declare Function Pen_DeleteSolid Lib "printerdll.dll" Alias "Pen_DeleteSolid" () As Long
-Declare Function Pen_UseDefined Lib "printerdll.dll" Alias "Pen_UseDefined" (style As Long) As Long
-Declare Function Font_UseDefined Lib "printerdll.dll" Alias "Font_UseDefined" (style As Long) As Long
-Declare Function Brush_UseDefined Lib "printerdll.dll" Alias "Brush_UseDefined" (style As Long) As Long
-Declare Function Pen_DeleteDefined Lib "printerdll.dll" Alias "Pen_DeleteDefined" () As Long
-Declare Function Font_DeleteDefined Lib "printerdll.dll" Alias "Font_DeleteDefined" () As Long
-Declare Function Brush_DeleteDefined Lib "printerdll.dll" Alias "Brush_DeleteDefined" () As Long
-Declare Function Brush_CreateBMPattern Lib "printerdll.dll" Alias "Brush_CreateBMPattern" (bmWidth As Long, bmHeight As Long, bmPlanes As Long, bmBitPerPlane As Long, bmArray As Long) As Long
-Declare Function Brush_DeleteBMPattern Lib "printerdll.dll" Alias "Brush_DeleteBMPattern" () As Long
-Declare Function Draw_Ellipse Lib "printerdll.dll" Alias "Draw_Ellipse" (left As Long, top As Long, right As Long, bottom As Long) As Long
-Declare Function Draw_Rectangle Lib "printerdll.dll" Alias "Draw_Rectangle" (left As Long, top As Long, right As Long, bottom As Long) As Long
-Declare Function Draw_RoundRectangle Lib "printerdll.dll" Alias "Draw_RoundRectangle" (left As Long, top As Long, right As Long, bottom As Long, width As Long, height As Long) As Long
-Declare Function Draw_LineTo Lib "printerdll.dll" Alias "Draw_LineTo" (x As Long, y As Long) As Long
-Declare Function Draw_MoveCursorTo Lib "printerdll.dll" Alias "Draw_MoveCursorTo" (x As Long, y As Long) As Long
-Declare Function Draw_PolyLine Lib "printerdll.dll" Alias "Draw_PolyLine" (pointsArray As Long, numPoints As Long) As Long
-Declare Function Draw_PolyLineTo Lib "printerdll.dll" Alias "Draw_PolyLineTo" (pointsArray As Long, numPoints As Long) As Long
-Declare Function Draw_FilledRectangle Lib "printerdll.dll" Alias "Draw_FilledRectangle" (left As Long, top As Long, right As Long, bottom As Long) As Long
-Declare Function Draw_Arc Lib "printerdll.dll" Alias "Draw_Arc" (left As Long, top As Long, right As Long, bottom As Long, xpoint As long, ypoint As Long, xarc As Long, yarc As Long) As Long
-Declare Function Draw_ArcTo Lib "printerdll.dll" Alias "Draw_ArcTo" (left As Long, top As Long, right As Long, bottom As Long, xrad1 As long, yrad1 As Long, xrad2 As Long, yrad2 As Long) As Long
-Declare Function Draw_AngleArc Lib "printerdll.dll" Alias "Draw_AngleArc" (x As Long, y As Long, radius As Long, start As Long, sweep As Long) As Long
-Declare Function Draw_PolyBezier Lib "printerdll.dll" Alias "Draw_PolyBezier" (pointsArray As Long, numPoints As Long) As Long
-Declare Function Draw_PolyBezierTo Lib "printerdll.dll" Alias "Draw_PolyBezierTo" (pointsArray As Long, numPoints As Long) As Long
-Declare Function Draw_Border Lib "printerdll.dll" Alias "Draw_Border" (left As Long, top As Long, right As Long, bottom As Long, edgeStyle As Long, borderStyle As Long) As Long
-Declare Function Draw_Chord Lib "printerdll.dll" Alias "Draw_Chord" (left As Long, top As Long, right As Long, bottom As Long, xrad1 As long, yrad1 As Long, xrad2 As Long, yrad2 As Long) As Long
-Declare Function Draw_FramedRectangle Lib "printerdll.dll" Alias "Draw_FramedRectangle" (left As Long, top As Long, right As Long, bottom As Long, hBrush As long) As Long
-Declare Function Draw_Pie Lib "printerdll.dll" Alias "Draw_Pie" (left As Long, top As Long, right As Long, bottom As Long, xrad1 As long, yrad1 As Long, xrad2 As Long, yrad2 As Long) As Long
-Declare Function Draw_Bitmap Lib "printerdll.dll" Alias "Draw_Bitmap" (sourceDC As Long, xSourceBM As Long, ySourceBM As Long, xDestBM As Long, yDestBM As Long, wDestBM As Long, hDestBM As Long, blitMethod As Long) As Long
-Declare Function Draw_ResizedBitmap Lib "printerdll.dll" Alias "Draw_ResizedBitmap" (sourceDC As Long, xSourceBM As Long, ySourceBM As Long, wSourceBM As Long, hSourceBM As Long, xDestBM As Long, yDestBM As Long, wDestBM As Long, hDestBM As Long, blitMethod As Long) As Long
-Declare Function Draw_PatternedBitmap Lib "printerdll.dll" Alias "Draw_PatternedBitmap" (xBM As Long, yBM As Long, wBM As Long, hBM As Long, blitMethod As Long) As Long
-Declare Function BGColor_GetCurrentColor Lib "printerdll.dll" Alias "BGColor_GetCurrentColor" () As Long
-Declare Function BGColor_SetCurrentColor Lib "printerdll.dll" Alias "BGColor_SetCurrentColor" (colour As Long) As Long
-Declare Function BGMode_GetCurrentMode Lib "printerdll.dll" Alias "BGMode_GetCurrentMode" () As Long
-Declare Function BGMode_SetTransparentMode Lib "printerdll.dll" Alias "BGMode_SetTransparentMode" () As Long
-Declare Function BGMode_SetOpaqueMode Lib "printerdll.dll" Alias "BGMode_SetOpaqueMode" () As Long
-Declare Function BGMode_SetMode Lib "printerdll.dll" Alias "BGMode_SetMode" (mode As Long) As Long
-Declare Function MapMode_SetCurrentMode Lib "printerdll.dll" Alias "MapMode_SetCurrentMode" (mode As Long) As Long
-Declare Function MapMode_GetCurrentMode Lib "printerdll.dll" Alias "MapMode_GetCurrentMode" () As Long
-Declare Function MapperFlags_SetGetFlags Lib "printerdll.dll" Alias "MapperFlags_SetGetFlags" (flags As Long) As Long
-Declare Function GraphicsMode_SetGetMode Lib "printerdll.dll" Alias "GraphicsMode_SetGetMode" (mode As Long) As Long
-Declare Function ArcDirection_SetAntiClockwise Lib "printerdll.dll" Alias "ArcDirection_SetAntiClockwise" () As Long
-Declare Function ArcDirection_SetClockwise Lib "printerdll.dll" Alias "ArcDirection_SetClockwise" () As Long
-Declare Function ArcDirection_GetDirection Lib "printerdll.dll" Alias "ArcDirection_GetDirection" () As Long
-Declare Function PrintFormat_SetPortrait Lib "printerdll.dll" Alias "PrintFormat_SetPortrait" (flag As Long) As Long
-Declare Function PrintFormat_SetLandscape Lib "printerdll.dll" Alias "PrintFormat_SetLandscape" (flag As Long) As Long
-Declare Function PrintQuality_SetLow Lib "printerdll.dll" Alias "PrintQuality_SetLow" (flag As Long) As Long
-Declare Function PrintQuality_SetMedium Lib "printerdll.dll" Alias "PrintQuality_SetMedium" (flag As Long) As Long
-Declare Function PrintQuality_SetHigh Lib "printerdll.dll" Alias "PrintQuality_SetHigh" (flag As Long) As Long
-Declare Function PrintQuality_SetDraft Lib "printerdll.dll" Alias "PrintQuality_SetDraft" (flag As Long) As Long
-Declare Function PrintColor_SetColor Lib "printerdll.dll" Alias "PrintColor_SetColor" (flag As Long) As Long
-Declare Function PrintColor_SetBW Lib "printerdll.dll" Alias "PrintColor_SetBW" (flag As Long) As Long
-Declare Function PrintDuplex_SetHorizontal Lib "printerdll.dll" Alias "PrintDuplex_SetHorizontal" (flag As Long) As Long
-Declare Function PrintDuplex_SetVertical Lib "printerdll.dll" Alias "PrintDuplex_SetVertical" (flag As Long) As Long
-Declare Function PrintDuplex_SetSimple Lib "printerdll.dll" Alias "PrintDuplex_SetSimple" (flag As Long) As Long
-Declare Function PrintTTFont_SetBitmap Lib "printerdll.dll" Alias "PrintTTFont_SetBitmap" (flag As Long) As Long
-Declare Function PrintTTFont_SetDownload Lib "printerdll.dll" Alias "PrintTTFont_SetDownload" (flag As Long) As Long
-Declare Function PrintTTFont_SetSubstitute Lib "printerdll.dll" Alias "PrintTTFont_SetSubstitute" (flag As Long) As Long
-Declare Function PrintScale_SetHalfSize Lib "printerdll.dll" Alias "PrintScale_SetHalfSize" (flag As Long) As Long
-Declare Function PrintScale_SetSize Lib "printerdll.dll" Alias "PrintScale_SetSize" (flag As Long,sSize As Word) As Long
-Declare Function PrintCopies_SetSize Lib "printerdll.dll" Alias "PrintCopies_SetSize" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetWidth Lib "printerdll.dll" Alias "PrintPaper_SetWidth" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetLength Lib "printerdll.dll" Alias "PrintPaper_SetLength" (flag As Long,sSize As Word) As Long
-Declare Function PrintDPI_SetYResolution Lib "printerdll.dll" Alias "PrintDPI_SetYResolution" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetLetter Lib "printerdll.dll" Alias "PrintPaper_SetLetter" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetLegal Lib "printerdll.dll" Alias "PrintPaper_SetLegal" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetA4 Lib "printerdll.dll" Alias "PrintPaper_SetA4" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetCSheet Lib "printerdll.dll" Alias "PrintPaper_SetCSheet" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetDSheet Lib "printerdll.dll" Alias "PrintPaper_SetDSheet" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetESheet Lib "printerdll.dll" Alias "PrintPaper_SetESheet" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetLetterSmall Lib "printerdll.dll" Alias "PrintPaper_SetLetterSmall" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetTabloid Lib "printerdll.dll" Alias "PrintPaper_SetTabloid" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetLedger Lib "printerdll.dll" Alias "PrintPaper_SetLedger" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetStatement Lib "printerdll.dll" Alias "PrintPaper_SetStatement" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetExecutive Lib "printerdll.dll" Alias "PrintPaper_SetExecutive" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetA3 Lib "printerdll.dll" Alias "PrintPaper_SetA3" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetA4Small Lib "printerdll.dll" Alias "PrintPaper_SetA4Small" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetA5 Lib "printerdll.dll" Alias "PrintPaper_SetA5" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetB4 Lib "printerdll.dll" Alias "PrintPaper_SetB4" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetB5 Lib "printerdll.dll" Alias "PrintPaper_SetB5" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetFolio Lib "printerdll.dll" Alias "PrintPaper_SetFolio" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetQuarto Lib "printerdll.dll" Alias "PrintPaper_SetQuarto" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_Set10x14 Lib "printerdll.dll" Alias "PrintPaper_Set10x14" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_Set11x17 Lib "printerdll.dll" Alias "PrintPaper_Set11x17" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetNote Lib "printerdll.dll" Alias "PrintPaper_SetNote" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnv9 Lib "printerdll.dll" Alias "PrintPaper_SetEnv9" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnv10 Lib "printerdll.dll" Alias "PrintPaper_SetEnv10" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnv11 Lib "printerdll.dll" Alias "PrintPaper_SetEnv11" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnv12 Lib "printerdll.dll" Alias "PrintPaper_SetEnv12" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnv14 Lib "printerdll.dll" Alias "PrintPaper_SetEnv14" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnvDL Lib "printerdll.dll" Alias "PrintPaper_SetEnvDL" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnvC5 Lib "printerdll.dll" Alias "PrintPaper_SetEnvC5" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnvC3 Lib "printerdll.dll" Alias "PrintPaper_SetEnvC3" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnvC4 Lib "printerdll.dll" Alias "PrintPaper_SetEnvC4" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnvC6 Lib "printerdll.dll" Alias "PrintPaper_SetEnvC6" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnvC65 Lib "printerdll.dll" Alias "PrintPaper_SetEnvC65" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnvB4 Lib "printerdll.dll" Alias "PrintPaper_SetEnvB4" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnvB5 Lib "printerdll.dll" Alias "PrintPaper_SetEnvB5" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetEnvB6 Lib "printerdll.dll" Alias "PrintPaper_SetEnvB6" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetItaly Lib "printerdll.dll" Alias "PrintPaper_SetItaly" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetMonarch Lib "printerdll.dll" Alias "PrintPaper_SetMonarch" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetPersonal Lib "printerdll.dll" Alias "PrintPaper_SetPersonal" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetFFUS Lib "printerdll.dll" Alias "PrintPaper_SetFFUS" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetSFFGerman Lib "printerdll.dll" Alias "PrintPaper_SetSFFGerman" (flag As Long,sSize As Word) As Long
-Declare Function PrintPaper_SetLFFGerman Lib "printerdll.dll" Alias "PrintPaper_SetLFFGerman" (flag As Long,sSize As Word) As Long
-Declare Function PrintCollate_SetTrue Lib "printerdll.dll" Alias "PrintCollate_SetTrue" (flag As Long) As Long
-Declare Function PrintCollate_SetFalse Lib "printerdll.dll" Alias "PrintCollate_SetFalse" (flag As Long) As Long
-Declare Function PrintDither_SetNone Lib "printerdll.dll" Alias "PrintDither_SetNone" (flag As Long) As Long
-Declare Function PrintDither_SetCoarse Lib "printerdll.dll" Alias "PrintDither_SetCoarse" (flag As Long) As Long
-Declare Function PrintDither_SetFine Lib "printerdll.dll" Alias "PrintDither_SetFine" (flag As Long) As Long
-Declare Function PrintDither_SetLineArt Lib "printerdll.dll" Alias "PrintDither_SetLineArt" (flag As Long) As Long
-Declare Function PrintDither_SetGrayScale Lib "printerdll.dll" Alias "PrintDither_SetGrayScale" (flag As Long) As Long
-Declare Function PrintDevice_SetName Lib "printerdll.dll" Alias "PrintDevice_SetName" (flag As Long, name As String) As Long
-Declare Function PrintAttr_SetDefault Lib "printerdll.dll" Alias "PrintAttr_SetDefault" (flag As Long) As Long
-Declare Function PrintAttr_SetDirect Lib "printerdll.dll" Alias "PrintAttr_SetDirect" (flag As Long) As Long
-Declare Function PrintAttr_SetCompleteTest Lib "printerdll.dll" Alias "PrintAttr_SetCompleteTest" (flag As Long) As Long
-Declare Function PrintAttr_SetEnableBidi Lib "printerdll.dll" Alias "PrintAttr_SetEnableBidi" (flag As Long) As Long
-Declare Function PrintAttr_SetEnableDevQ Lib "printerdll.dll" Alias "PrintAttr_SetEnableDevQ" (flag As Long) As Long
-Declare Function PrintAttr_SetKeepPrintedJobs Lib "printerdll.dll" Alias "PrintAttr_SetKeepPrintedJobs" (flag As Long) As Long
-Declare Function PrintAttr_SetQueued Lib "printerdll.dll" Alias "PrintAttr_SetQueued" (flag As Long) As Long
-Declare Function PrintAttr_SetShared Lib "printerdll.dll" Alias "PrintAttr_SetShared" (flag As Long) As Long
-Declare Function PrintAttr_SetWorkOffline Lib "printerdll.dll" Alias "PrintAttr_SetWorkOffline" (flag As Long) As Long
-Declare Function PrintAttr_SetValue Lib "printerdll.dll" Alias "PrintAttr_SetValue" (flag As Long,value As Long) As Long
-Declare Function PrintPriority_SetValue Lib "printerdll.dll" Alias "PrintPriority_SetValue" (flag As Long,value As Long) As Long
-Declare Function PrintDefaultPriority_SetValue Lib "printerdll.dll" Alias "PrintDefaultPriority_SetValue" (flag As Long,value As Long) As Long
-Declare Function PrintStartTime_SetValue Lib "printerdll.dll" Alias "PrintStartTime_SetValue" (flag As Long,value As Long) As Long
-Declare Function PrintUntilTime_SetValue Lib "printerdll.dll" Alias "PrintUntilTime_SetValue" (flag As Long,value As Long) As Long
-Declare Function PrintPrinter_SetName Lib "printerdll.dll" Alias "PrintPrinter_SetName" (flag As Long,name As String) As Long
-Declare Function PrintShare_SetName Lib "printerdll.dll" Alias "PrintShare_SetName" (flag As Long,name As String) As Long
-Declare Function PrintPort_SetName Lib "printerdll.dll" Alias "PrintPort_SetName" (flag As Long,name As String) As Long
-Declare Function PrintDriver_SetName Lib "printerdll.dll" Alias "PrintDriver_SetName" (flag As Long,name As String) As Long
-Declare Function PrintComment_SetName Lib "printerdll.dll" Alias "PrintComment_SetName" (flag As Long,name As String) As Long
-Declare Function PrintLocation_SetName Lib "printerdll.dll" Alias "PrintLocation_SetName" (flag As Long,name As String) As Long
-Declare Function PrintSepFile_SetName Lib "printerdll.dll" Alias "PrintSepFile_SetName" (flag As Long,name As String) As Long
-Declare Function PrintProcessor_SetName Lib "printerdll.dll" Alias "PrintProcessor_SetName" (flag As Long,name As String) As Long
-Declare Function PrintDatatype_SetName Lib "printerdll.dll" Alias "PrintDatatype_SetName" (flag As Long,name As String) As Long
-Declare Function PrintParameters_SetName Lib "printerdll.dll" Alias "PrintParameters_SetName" (flag As Long,name As String) As Long
-Declare Function PrintFormat_GetValue Lib "printerdll.dll" Alias "PrintFormat_GetValue" () As Word
-Declare Function PrintQuality_GetValue Lib "printerdll.dll" Alias "PrintQuality_GetValue" () As Word
-Declare Function PrintColor_GetValue Lib "printerdll.dll" Alias "PrintColor_GetValue" () As Word
-Declare Function PrintDuplex_GetValue Lib "printerdll.dll" Alias "PrintDuplex_GetValue" () As Word
-Declare Function PrintTTFont_GetValue Lib "printerdll.dll" Alias "PrintTTFont_GetValue" () As Word
-Declare Function PrintScale_GetValue Lib "printerdll.dll" Alias "PrintScale_GetValue" () As Word
-Declare Function PrintCopies_GetValue Lib "printerdll.dll" Alias "PrintCopies_GetValue" () As Word
-Declare Function PrintPaperWidth_GetValue Lib "printerdll.dll" Alias "PrintPaperWidth_GetValue" () As Word
-Declare Function PrintPaperLength_GetValue Lib "printerdll.dll" Alias "PrintPaperLength_GetValue" () As Word
-Declare Function PrintPaperSize_GetValue Lib "printerdll.dll" Alias "PrintPaperSize_GetValue" () As Word
-Declare Function PrintYDPI_GetValue Lib "printerdll.dll" Alias "PrintYDPI_GetValue" () As Word
-Declare Function PrintCollate_GetValue Lib "printerdll.dll" Alias "PrintCollate_GetValue" () As Word
-Declare Function PrintDither_GetValue Lib "printerdll.dll" Alias "PrintDither_GetValue" () As Long
-Declare Function PrintAttr_GetValue Lib "printerdll.dll" Alias "PrintAttr_GetValue" () As Long
-Declare Function PrintPriority_GetValue Lib "printerdll.dll" Alias "PrintPriority_GetValue" () As Long
-Declare Function PrintDefaultPriority_GetValue Lib "printerdll.dll" Alias "PrintDefaultPriority_GetValue" () As Long
-Declare Function PrintStartTime_GetValue Lib "printerdll.dll" Alias "PrintStartTime_GetValue" () As Long
-Declare Function PrintUntilTime_GetValue Lib "printerdll.dll" Alias "PrintUntilTime_GetValue" () As Long
-Declare Function PrintStatus_GetValue Lib "printerdll.dll" Alias "PrintStatus_GetValue" () As Long
-Declare Function PrintJobCount_GetValue Lib "printerdll.dll" Alias "PrintJobCount_GetValue" () As Long
-Declare Function PrintAveragePPM_GetValue Lib "printerdll.dll" Alias "PrintAveragePPM_GetValue" () As Long
-Declare Function PrintForm_GetName Lib "printerdll.dll" Alias "PrintForm_GetName" () As Long
-Declare Function PrintDevice_GetName Lib "printerdll.dll" Alias "PrintDevice_GetName" () As Long
-Declare Function PrintPrinter_GetName Lib "printerdll.dll" Alias "PrintPrinter_GetName" () As Long
-Declare Function PrintShare_GetName Lib "printerdll.dll" Alias "PrintShare_GetName" () As Long
-Declare Function PrintPort_GetName Lib "printerdll.dll" Alias "PrintPort_GetName" () As Long
-Declare Function PrintDriver_GetName Lib "printerdll.dll" Alias "PrintDriver_GetName" () As Long
-Declare Function PrintComment_GetName Lib "printerdll.dll" Alias "PrintComment_GetName" () As Long
-Declare Function PrintLocation_GetName Lib "printerdll.dll" Alias "PrintLocation_GetName" () As Long
-Declare Function PrintSepFile_GetName Lib "printerdll.dll" Alias "PrintSepFile_GetName" () As Long
-Declare Function PrintProcessor_GetName Lib "printerdll.dll" Alias "PrintProcessor_GetName" () As Long
-Declare Function PrintDatatype_GetName Lib "printerdll.dll" Alias "PrintDatatype_GetName" () As Long
-Declare Function PrintParameters_GetName Lib "printerdll.dll" Alias "PrintParameters_GetName" () As Long
-Declare Function PI2_GetAllInfo Lib "printerdll.dll" Alias "PI2_GetAllInfo" () As Long
-Declare Function DM_GetAllInfo Lib "printerdll.dll" Alias "DM_GetAllInfo" () As Long
-Declare Function Enum_RegLocalPrinters Lib "PrinterDLL.dll" Alias "Enum_RegLocalPrinters" () As Long
-Declare Function Enum_LocalPrinters Lib "PrinterDLL.dll" Alias "Enum_LocalPrinters" () As Long
-Declare Function Enum_Ports Lib "PrinterDLL.dll" Alias "Enum_Ports" (serverName As String) As Long
-Declare Function XPrinter_DeletePDC Lib "printerdll.dll" Alias "XPrinter_DeletePDC" (hPDC As Long) As Long
-Declare Function Printer_Close Lib "printerdll.dll" Alias "Printer_Close" (hPrinter As Long) As Long
-Declare Function Printer_CloseDefault Lib "printerdll.dll" Alias "Printer_CloseDefault" () As Long
-Declare Function Get_WinVer Lib "printerdll.dll" Alias "Get_WinVer" () As Long
-Declare Function Dialog_ControlPanel Lib "printerdll.dll" Alias "Dialog_ControlPanel" (cplName As String) As Long
-
-'============================================================================
 '[build_inc] printrichedit.inc
 '============================================================================
 ''=============================================================
@@ -25945,223 +25394,6 @@ function PrintRichedit(sender as qrichedit,lmarge as integer) as long
 	printer.enddoc 
 end function
   
-'============================================================================
-'[build_inc] pulsar.inc
-'============================================================================
-
-
-
-
-
-DECLARE sub crea_pulsar_db
-DECLARE sub inserisci_oggetto_in_pulsar_db
-declare sub visualizza_tutti_da_pulsar_db
-DECLARE SUB RQ_PulsarEngine LIB "pulsar.dll" ALIAS "RQ_PulsarEngine"(RetFunction$)
-DECLARE SUB RQ_PulsarBuild LIB "pulsar.dll" ALIAS "RQ_PulsarBuild"(RetFunction$)
-DECLARE SUB RQ_NewConventionalDB LIB "pulsar.dll" ALIAS "RQ_NewConventionalDB"(RetFunction$,Structure$,IndexField$,PulsarPath$,PulsarFile$)
-DECLARE SUB RQ_SaveIndexConvDB LIB "pulsar.dll" ALIAS "RQ_SaveIndexConvDB"(RetFunction$,PulsarPath$,PulsarFile$,RecordToSave$)
-DECLARE SUB RQ_GetQuantityOfRecords LIB "pulsar.dll" ALIAS "RQ_GetQuantityOfRecords"(RetFunction$,PulsarPath$,PulsarFile$)
-DECLARE SUB RQ_GetRecordConvDB LIB "pulsar.dll" ALIAS "RQ_GetRecordConvDB"(RetFunction$,PulsarPath$,PulsarFile$,RecordNumber$)
-DECLARE SUB RQ_SINEConvDB LIB "pulsar.dll" ALIAS "RQ_SINEConvDB"(RetFunction$,PulsarPath$,PulsarFile$,RecordToSave$)
-DECLARE SUB RQ_SaveConvDB LIB "pulsar.dll" ALIAS "RQ_SaveConvDB"(RetFunction$,PulsarPath$,PulsarFile$,RecordToSave$)
-DECLARE SUB RQ_ReindexConvDB LIB "pulsar.dll" ALIAS "RQ_ReindexConvDB"(RetFunction$,PulsarPath$,PulsarFile$)
-DECLARE SUB RQ_ReturnRecordByte LIB "pulsar.dll" ALIAS "RQ_ReturnRecordByte"(RetFunction$,PulsarPath$,PulsarFile$,RecordNumber$)
-DECLARE SUB RQ_SARIndexConDB LIB "pulsar.dll" ALIAS "RQ_SARIndexConDB"(RetFunction$,PulsarPath$,PulsarFile$,DataToSearch$)
-DECLARE SUB RQ_SARByteConDB LIB "pulsar.dll" ALIAS "RQ_SARByteConDB"(RetFunction$,PulsarPath$,PulsarFile$,DataToSearch$)
-DECLARE SUB RQ_DeleteRecordConvDB LIB "pulsar.dll" ALIAS "RQ_DeleteRecordConvDB"(RetFunction$,PulsarPath$,PulsarFile$,RecordNumber$)
-DECLARE SUB RQ_ModifyRecordConvDB LIB "pulsar.dll" ALIAS "RQ_ModifyRecordConvDB"(RetFunction$,PulsarPath$,PulsarFile$,NewRecordInDB$,RecordToModify$)
-DECLARE SUB RQ_GetCounter LIB "pulsar.dll" ALIAS "RQ_GetCounter"(RetFunction$,PulsarPath$,PulsarFile$)
-DECLARE SUB RQ_SetCounter LIB "pulsar.dll" ALIAS "RQ_SetCounter"(RetFunction$,PulsarPath$,PulsarFile$,NumberToSet$)
-DECLARE SUB RQ_DeleteLog LIB "pulsar.dll" ALIAS "RQ_DeleteLog"(RetFunction$,PulsarPath$,PulsarFile$)
-DECLARE SUB RQ_SaveInLog LIB "pulsar.dll" ALIAS "RQ_SaveInLog"(RetFunction$,PulsarPath$,PulsarFile$,TextToSave$)
-DECLARE SUB RQ_ReadLog LIB "pulsar.dll" ALIAS "RQ_ReadLog"(RetFunction$,PulsarPath$,PulsarFile$)
-
-'-------------------- declare variabili per  oggetti n inseriti---------------------------------
-'ogni oggetto inserito ha bisogno di diversi parametri posizione iniziale-xy1-xy2
-'tipologia di oggetto
-dim posizione_oggetto_1x(1000) as integer
-dim posizione_oggetto_1y(1000) as integer
-dim posizione_oggetto_2x(1000) as integer
-dim posizione_oggetto_2y(1000) as integer
-dim indice_oggetto(1000) as integer
-dim nome_oggetto(1000) as string
-dim nome_bmp(1000) as string
-dim testo_oggetto(1000) as string
-
-'-------inutilizzati - servono come esempio per la scala
-
-DIM Image1_editor AS Qbitmap
-'~file Image1_editor.BMP = "test1.bmp"   ' сборка: файл грузится при старте программы
-DIM Image2_editor AS Qbitmap
-'~file Image2_editor.BMP = "test2.bmp"   ' сборка: файл грузится при старте программы
-
-dim rect1_editor as qrect
-dim rect2_editor as qrect
-
-'-----------------------------------------------------------------------------------------------
-
-    TYPE Articoli
-        Articolo_Nome AS STRING * 10
-        Articolo_Codice AS STRING * 10
-        Articolo_Descrizione AS STRING * 30
-        Articolo_Categoria AS STRING * 10
-        Articolo_Immagine 	AS STRING * 15 
-        Articolo_Larghezza   	AS STRING * 4 
-        Articolo_Profondita   AS STRING * 4 
-        Articolo_Altezza   	AS STRING * 4
-        Articolo_VDX     	AS STRING * 10
-        Articolo_VDY   		AS STRING * 10 
-        Articolo_Peso     	AS STRING * 4
-        Articolo_Costo     	AS STRING * 6
-        Articolo_UTILITA     	AS STRING * 10 
-    END TYPE
-
-
-
-
-    DIM DatabaseRecord AS Articoli 
-    PulsarPath$="database"
-    PulsarFile$="temp_DB" 
-    IndexField$="Articolo_Nome"
-    Structure$="Articolo_Nome:10,Articolo_Codice:10,Articolo_Descrizione:30,Articolo_Categoria:10,Articolo_Immagine:15,Articolo_Larghezza:4,Articolo_Profondita:4,Articolo_Altezza:4,Articolo_VDX:10,Articolo_VDY:10,Articolo_Peso:4,Articolo_Costo:6,Articolo_UTILITA:10"
-    IndexField$="Articolo_Nome"
-    RetFunction$=SPACE$(160)
-sub crea_pulsar_db
-
-    RQ_NewConventionalDB @RetFunction$,Structure$,IndexField$,PulsarPath$,PulsarFile$
-
-    IF LEFT$(RetFunction$,2)<>"ok" THEN
-        Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-        MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-    ELSE
-    END IF
-end sub
-
-'------inizializzazione database temporaneo-----------
-  dim path as string
-  path="database\temp_db.IDX"
-IF FileExists(path) = 0 Then 
-  'Dim FileOp As QSHFileOperation
-  'FileOp.DefaultFlagsEx = fofSimpleProgress or fofNoConfirmMkDir
-  'FileOp.CopyEx("tempus sans itc.TTF",path,DefaultFlagsEx=0,FALSE)
-   crea_pulsar_db
-end if
-
-'----------------------inserisce oggetto da librerie a designer-preventivi-------------
-sub inserisci_oggetto_in_pulsar_db
-
-ShowMessage "selezionato item " + str$(Edit_nome.text)
-
-    DatabaseRecord.Articolo_Nome=Edit_nome.text
-    DatabaseRecord.Articolo_Codice=Edit_codice.text
-    DatabaseRecord.Articolo_Descrizione=Edit_descrizione.text
-    DatabaseRecord.Articolo_Categoria=Edit_categoria.text
-    DatabaseRecord.Articolo_Immagine=image1.bmp
-    DatabaseRecord.Articolo_Larghezza=Edit_larghezza.text
-    DatabaseRecord.Articolo_Profondita=Edit_profondita.text
-    DatabaseRecord.Articolo_Altezza=Edit_altezza.text
-    DatabaseRecord.Articolo_VDX=" "
-    DatabaseRecord.Articolo_VDY=" "
-    DatabaseRecord.Articolo_Peso=Edit_peso.text
-    DatabaseRecord.Articolo_Costo=Edit_prezzo.text
-    DatabaseRecord.Articolo_UTILITA=" "
-
-
-    	RecordToSave$=DatabaseRecord.Articolo_Nome
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Codice
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Descrizione
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Categoria
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Immagine
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Larghezza
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Profondita
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Altezza
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_VDX
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_VDY
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Peso
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Costo
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_UTILITA
-
-
-    RetFunction$=SPACE$(160)
-
-    RQ_SaveConvDB @RetFunction$,PulsarPath$,PulsarFile$,RecordToSave$
-
-    IF LEFT$(RetFunction$,5)="ERROR" THEN
-
-        'If record is saved, the packed function return "ok".
-        'If error occur, function return error code in string
-        'format: "ERROR CODE:xxx...." (xxx is error code -see pъlsar manual-)
-        Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-        MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-
-    ELSE
-
-        'record is saved
-        MESSAGEBOX("OPERACION OK.", "Pъlsar 3.0 in RapidQ", mbOK)
-
-    END IF
-
-end sub
-
-sub visualizza_tutti_da_pulsar_db
-
-    RetFunction$=SPACE$(160)
-
-    RQ_GetQuantityOfRecords @RetFunction$,PulsarPath$,PulsarFile$
-
-    IF LEFT$(RetFunction$,5)="ERROR" THEN
-
-
-         Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-         MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-         END
-
-    END IF
-
-    RecordsInDB$=LTRIM$(RTRIM$(RetFunction$)) 
-
-    FOR Reading%=1 TO VAL(RecordsInDB$)
-
-       RQ_GetRecordConvDB @RetFunction$,PulsarPath$,PulsarFile$,LTRIM$(RTRIM$(STR$(Reading%)))
-
-       IF LCASE$(LEFT$(RetFunction$,5))="error" THEN
-
-            Msg$="Error reading record number:"+ LTRIM$ ( RTRIM$ ( STR$ ( Reading% ) ) )
-            MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-            END
-
-        ELSE
-
-
-    DatabaseRecord.Articolo_Nome=LEFT$(RetFunction$,10)
-    DatabaseRecord.Articolo_Codice=MID$(RetFunction$,11,10)
-    DatabaseRecord.Articolo_Descrizione=MID$(RetFunction$,21,30)
-    DatabaseRecord.Articolo_Categoria=MID$(RetFunction$,51,10)
-    DatabaseRecord.Articolo_Immagine=MID$(RetFunction$,61,15)
-    DatabaseRecord.Articolo_Larghezza=MID$(RetFunction$,76,4)
-    DatabaseRecord.Articolo_Profondita=MID$(RetFunction$,80,4)
-    DatabaseRecord.Articolo_Altezza=MID$(RetFunction$,84,4)
-    DatabaseRecord.Articolo_VDX=MID$(RetFunction$,88,10)
-    DatabaseRecord.Articolo_VDY=MID$(RetFunction$,98,10)
-    DatabaseRecord.Articolo_Peso=MID$(RetFunction$,108,4)
-    DatabaseRecord.Articolo_Costo=MID$(RetFunction$,112,6)
-    DatabaseRecord.Articolo_UTILITA=MID$(RetFunction$,118,10)
-
-
-            'show the record
-            dim Msg1$ as string
-            Msg1$="APELLIDO: "+DatabaseRecord.Articolo_Nome+CHR$(10)+CHR$(13)
-            Msg1$=Msg$+"NOMBRES: "+DatabaseRecord.Articolo_Descrizione+CHR$(10)+CHR$(13)
-            Msg1$=Msg$+"E-MAIL: "+DatabaseRecord.Articolo_Immagine+CHR$(10)+CHR$(13)
-            Msg1$=Msg$+"WEB: "+DatabaseRecord.Articolo_Categoria
-
-            MESSAGEBOX(Msg1$, "Pъlsar 3.0 in RapidQ", mbOK)
-
-         END IF
-
-    NEXT Reading%
-
-end sub
 '============================================================================
 '[build_inc] QFiles.inc
 '============================================================================
@@ -26606,8 +25838,8 @@ Declare Function SetTextColor Lib "gdi32" Alias "SetTextColor" ( _
 '~dup Declare Function SetBkMode Lib "gdi32" Alias "SetBkMode" ( _   ' повтор, первое: rapidq2.inc(1466)
 '~dup 		ByVal hdc As Long, ByVal nBkMode As Long) As Long
 
-'~dup Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" ( _   ' повтор, первое: PRINTERDLL.INC(185)
-'~dup 		pDest As Long, pSource As Long, ByVal ByteLen As Long)
+Declare Sub CopyMemory Lib "kernel32" Alias "RtlMoveMemory" ( _
+		pDest As Long, pSource As Long, ByVal ByteLen As Long)
 '~dup Declare Function SendMessageAPI Lib "user32" Alias "SendMessageA" ( _   ' повтор, первое: rapidq2.inc(980)
 '~dup 		ByVal hwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, lParam As Long) As Long
 
@@ -27204,70 +26436,6 @@ End Type
 DECLARE Sub Point(FPoint as QPoint, x as long, y as long)
 '~body Sub Point(FPoint as QPoint, x as long, y as long)   ' сборка: тело - в конце файла
 
-
-'============================================================================
-'[build_inc] QPrintDialog.inc
-'============================================================================
-' Page setup dialog example
-
-'~dup CONST PSD_DEFAULTMINMARGINS = 0   ' повтор, первое: rapidq2.inc(7210)
-'~dup CONST PSD_MINMARGINS = &H1   ' повтор, первое: rapidq2.inc(7211)
-'~dup CONST PSD_MARGINS = &H2   ' повтор, первое: rapidq2.inc(7212)
-'~dup CONST PSD_INTHOUSANDTHSOFINCHES = &H4   ' повтор, первое: rapidq2.inc(7213)
-'~dup CONST PSD_INHUNDREDTHSOFMILLIMETERS = &H8   ' повтор, первое: rapidq2.inc(7214)
-'~dup CONST PSD_DISABLEMARGINS = &H10   ' повтор, первое: rapidq2.inc(7215)
-'~dup CONST PSD_DISABLEPRINTER = &H20   ' повтор, первое: rapidq2.inc(7216)
-'~dup CONST PSD_NOWARNING = &H80   ' повтор, первое: rapidq2.inc(7217)
-'~dup CONST PSD_DISABLEORIENTATION = &H100   ' повтор, первое: rapidq2.inc(7218)
-'~dup CONST PSD_DISABLEPAPER = &H200   ' повтор, первое: rapidq2.inc(7219)
-'~dup CONST PSD_RETURNDEFAULT = &H400   ' повтор, первое: rapidq2.inc(7220)
-'~dup CONST PSD_SHOWHELP = &H800   ' повтор, первое: rapidq2.inc(7221)
-'~dup CONST PSD_ENABLEPAGESETUPHOOK = &H2000   ' повтор, первое: rapidq2.inc(7222)
-'~dup CONST PSD_ENABLEPAGESETUPTEMPLATE = &H8000   ' повтор, первое: rapidq2.inc(7223)
-'~dup CONST PSD_ENABLEPAGESETUPTEMPLATEHANDLE = &H20000   ' повтор, первое: rapidq2.inc(7224)
-'~dup CONST PSD_ENABLEPAGEPAINTHOOK = &H40000   ' повтор, первое: rapidq2.inc(7225)
-'~dup CONST PSD_DISABLEPAGEPAINTING = &H80000   ' повтор, первое: rapidq2.inc(7226)
-'~dup CONST PSD_NONETWORKBUTTON = &H200000   ' повтор, первое: rapidq2.inc(7227)
-
-'~dup TYPE TPSD   ' повтор, первое: rapidq2.inc(7232)
-'~dup     lStructSize AS LONG
-'~dup     hWndOwner AS LONG
-'~dup     hDevMode AS LONG
-'~dup     hDevNames AS LONG
-'~dup     Flags AS LONG
-'~dup     ptPaperSizeX AS LONG
-'~dup     ptPaperSizeY AS LONG
-'~dup     rtMinMarginLeft AS LONG
-'~dup     rtMinMarginTop AS LONG
-'~dup     rtMinMarginRight AS LONG
-'~dup     rtMinMarginBottom AS LONG
-'~dup     rtMarginLeft AS LONG
-'~dup     rtMarginTop AS LONG
-'~dup     rtMarginRight AS LONG
-'~dup     rtMarginBottom AS LONG
-'~dup     hInstance AS LONG
-'~dup     lParam AS LONG
-'~dup     lpfnPageSetupHook AS LONG
-'~dup     lpfnPagePaintHook AS LONG
-'~dup     lpPageSetupTemplate AS LONG
-'~dup     hPageSetupTemplate AS LONG
-'~dup END TYPE
-
-'~dup DECLARE FUNCTION PageSetupDlg LIB "COMDLG32" ALIAS "PageSetupDlgA" _   ' повтор, первое: rapidq2.inc(7261)
-'~dup                  (Ptr AS TPSD) AS LONG
-
-
-'~dup DIM PSD AS TPSD   ' повтор, первое: printdlg.inc(50)
-
-PSD.lStructSize = SIZEOF(PSD)
-PSD.Flags = PSD_MINMARGINS + PSD_MARGINS
-PSD.hWndOwner = 0
-
-PRINT IIF(PageSetupDlg(PSD), "Start printing", "Cancel print")
-?PSD.rtMarginLeft
-?PSD.rtMarginTop
-?PSD.rtMarginRight
-?PSD.rtMarginBottom
 
 '============================================================================
 '[build_inc] QStringGridEx.inc
@@ -29543,135 +28711,6 @@ Function SysErrorMessage(Error As Integer) As String
 End Function
 
 '============================================================================
-'[build_inc] TestIncPAth.inc
-'============================================================================
-print "inc dir   C:\BAS\RAPIDQ\inc\TestIncPAth.inc" 
-'============================================================================
-'[build_inc] TRM_RQDeclares.INC
-'============================================================================
-
-' TRM_RQDeclares.INC - INCLUDE file for the Tsunami Record Manager - TRM.DLL
-
-' EQUATES and DECLARES for 32-bit PowerBASIC compilers
-
-' Version 2.5 ... 2003-04-15
-
- const CASE_SENSITIVE  = 1
- const NO_DUPLICATES   = 2
- const NO_COMPRESSION  = 4
- const BINARY_KEY      = 8
- const KEY_ONLY        = 4096
- const REBUILD_IDS     = 2
-
-'--- String base API
-
-' DECLARE FUNCTION trm_Accelerate        LIB "TRM.DLL" ALIAS "trm_Accelerate"        (FileHandle AS LONG, CacheSize AS LONG) AS LONG
-' DECLARE FUNCTION trm_Close             LIB "TRM.DLL" ALIAS "trm_Close"             (FileHandle AS LONG) AS LONG
-' DECLARE FUNCTION trm_CloseAll          LIB "TRM.DLL" ALIAS "trm_CloseAll"          () AS LONG
-' DECLARE FUNCTION trm_Count             LIB "TRM.DLL" ALIAS "trm_Count"             (FileHandle AS LONG) AS LONG
-' DECLARE FUNCTION trm_Create            LIB "TRM.DLL" ALIAS "trm_Create"            (PathFileName AS STRING, FileDef AS STRING, OverWrite AS LONG) AS LONG
-' DECLARE FUNCTION trm_CurrKeyPos        LIB "TRM.DLL" ALIAS "trm_CurrKeyPos"        (FileHandle AS LONG) AS LONG
-' DECLARE FUNCTION trm_Delete            LIB "TRM.DLL" ALIAS "trm_Delete"            (FileHandle AS LONG) AS LONG
-' DECLARE FUNCTION trm_FileIsOpen        LIB "TRM.DLL" ALIAS "trm_FileIsOpen"        (FileHandle AS LONG) AS LONG
-' DECLARE FUNCTION trm_FileSize          LIB "TRM.DLL" ALIAS "trm_FileSize"          (FileHandle AS LONG) AS LONG
-' DECLARE FUNCTION trm_Flush             LIB "TRM.DLL" ALIAS "trm_Flush"             () AS LONG
-' DECLARE FUNCTION trm_GetByKeyPos       LIB "TRM.DLL" ALIAS "trm_GetByKeyPos"       (FileHandle AS LONG, KeyPos AS LONG) AS STRING
-' DECLARE FUNCTION trm_GetDirect         LIB "TRM.DLL" ALIAS "trm_GetDirect"         (FileHandle AS LONG, RecordPtr AS STRING) AS STRING
-' DECLARE FUNCTION trm_GetEqual          LIB "TRM.DLL" ALIAS "trm_GetEqual"          (FileHandle AS LONG, KeyNo AS LONG, KeyVal AS STRING) AS STRING
-' DECLARE FUNCTION trm_GetEqualOrGreater LIB "TRM.DLL" ALIAS "trm_GetEqualOrGreater" (FileHandle AS LONG, KeyNo AS LONG, KeyVal AS STRING) AS STRING
-' DECLARE FUNCTION trm_GetEqualOrLess    LIB "TRM.DLL" ALIAS "trm_GetEqualOrLess"    (FileHandle AS LONG, KeyNo AS LONG, KeyVal AS STRING) AS STRING
-' DECLARE FUNCTION trm_GetFileDef        LIB "TRM.DLL" ALIAS "trm_GetFileDef"        (FileHandle AS LONG) AS STRING
-' DECLARE FUNCTION trm_GetFileVer        LIB "TRM.DLL" ALIAS "trm_GetFileVer"        (FileHandle AS LONG) AS STRING
-' DECLARE FUNCTION trm_GetFirst          LIB "TRM.DLL" ALIAS "trm_GetFirst"          (FileHandle AS LONG, KeyNo AS LONG) AS STRING
-' DECLARE FUNCTION trm_GetGreater        LIB "TRM.DLL" ALIAS "trm_GetGreater"        (FileHandle AS LONG, KeyNo AS LONG, KeyVal AS STRING) AS STRING
-' DECLARE FUNCTION trm_GetLast           LIB "TRM.DLL" ALIAS "trm_GetLast"           (FileHandle AS LONG, KeyNo AS LONG) AS STRING
-' DECLARE FUNCTION trm_GetLess           LIB "TRM.DLL" ALIAS "trm_GetLess"           (FileHandle AS LONG, KeyNo AS LONG, KeyVal AS STRING) AS STRING
-' DECLARE FUNCTION trm_GetNext           LIB "TRM.DLL" ALIAS "trm_GetNext"           (FileHandle AS LONG) AS STRING
-' DECLARE FUNCTION trm_GetPosition       LIB "TRM.DLL" ALIAS "trm_GetPosition"       (FileHandle AS LONG, Direction AS LONG) AS STRING
-' DECLARE FUNCTION trm_GetPrev           LIB "TRM.DLL" ALIAS "trm_GetPrev"           (FileHandle AS LONG) AS STRING
-' DECLARE FUNCTION trm_Insert            LIB "TRM.DLL" ALIAS "trm_Insert"            (FileHandle AS LONG, Record AS STRING) AS LONG
-' DECLARE FUNCTION trm_Integrity         LIB "TRM.DLL" ALIAS "trm_Integrity"         (FileHandle AS LONG) AS LONG
-' DECLARE FUNCTION trm_Open              LIB "TRM.DLL" ALIAS "trm_Open"              (PathFileName AS STRING, MultiUser AS LONG) AS LONG
-' DECLARE FUNCTION trm_Rebuild           LIB "TRM.DLL" ALIAS "trm_Rebuild"           (PathFileName AS STRING, SaveFile AS STRING, FileDef AS STRING) AS LONG
-' DECLARE FUNCTION trm_Recover           LIB "TRM.DLL" ALIAS "trm_Recover"           (PathFileName AS STRING, OutFile AS STRING, PageSize AS LONG, Compression AS LONG) AS LONG
-' DECLARE FUNCTION trm_Result            LIB "TRM.DLL" ALIAS "trm_Result"            (FileHandle AS LONG) AS LONG
-' DECLARE FUNCTION trm_SetKeyPath        LIB "TRM.DLL" ALIAS "trm_SetKeyPath"        (FileHandle AS LONG, KeyNo AS LONG) AS LONG
-' DECLARE FUNCTION trm_StepFirst         LIB "TRM.DLL" ALIAS "trm_StepFirst"         (FileHandle AS LONG) AS STRING
-' DECLARE FUNCTION trm_StepLast          LIB "TRM.DLL" ALIAS "trm_StepLast"          (FileHandle AS LONG) AS STRING
-' DECLARE FUNCTION trm_StepNext          LIB "TRM.DLL" ALIAS "trm_StepNext"          (FileHandle AS LONG) AS STRING
-' DECLARE FUNCTION trm_StepPrev          LIB "TRM.DLL" ALIAS "trm_StepPrev"          (FileHandle AS LONG) AS STRING
-' DECLARE FUNCTION trm_TimeOut           LIB "TRM.DLL" ALIAS "trm_TimeOut"           (Limit AS LONG) AS LONG
-' DECLARE FUNCTION trm_Update            LIB "TRM.DLL" ALIAS "trm_Update"            (FileHandle AS LONG, Record AS STRING) AS LONG
-' DECLARE FUNCTION trm_Version           LIB "TRM.DLL" ALIAS "trm_Version"           () AS LONG
-
-'--- Pointer based API's
- 
-' DECLARE FUNCTION trm                   LIB "TRM.DLL" ALIAS "trm"                   (Op AS LONG, File AS LONG, DataPtr AS LONG, DataLen AS LONG, KeyPtr AS LONG, KeyLen AS LONG, KeyNo AS LONG) AS LONG
- DECLARE FUNCTION trm_udt               LIB "TRM.DLL" ALIAS "trm_udt"                (CmdTsu AS LONG) AS LONG
-
-'--- Pointer based API UDT type 
- 
- TYPE TRMtype
-    op      AS LONG  ' Tsunami operation number
-    file    AS LONG  ' Tsunami file handle
-    dataptr AS LONG  ' Address of data buffer
-    datalen AS LONG  ' Length of data buffer
-    keyptr  AS LONG  ' Address of key buffer
-    keylen  AS LONG  ' Length of key buffer
-    keyno   AS LONG  ' Key number
- END TYPE
-
- TYPE TRMdKey
-      FDef    as String * 93  'Definition key is stored here for processing multiple keys
-      PageSize AS Byte         'Byte 1 = Chr(PageSize) ; 1 - 8 Ascii value 
-      Compress AS Byte         'Byte 2 = Chr(Compress) : #True or #False 
-      Segments AS Byte         'Byte 3 = Chr(Segments) ; 1 - 128 Ascii value 
-      SegName  AS String * 25  'Byte 4 - 28 = Description ; a 25 byte description of the key 
-         KeyNo    AS Byte      'Byte 29 = Chr(KeyNo) ; 1 - 128 Ascii value 
-         KeyPos   AS Word      'Byte 30 - 31 = Chr(KeyPos Mod 256)+ Chr(KeyPos / 256) ; key position in string 1 - 65535 
-         KeyLen   AS Byte      'Byte 32 = Chr(KeyLen) ; 1 - 255 Ascii value 
-         KeyFlags AS Byte      'Byte 33 = Chr(KeyFlags) : a bit mask created by adding possible flag values 
- END TYPE
- 
- const  Tsu_Accelerate        = 32
- const  Tsu_Close             =  1
- const  Tsu_CloseAll          = 28
- const  Tsu_Count             = 17
- const  Tsu_Create            = 14
- const  Tsu_CurrKeyPos        = 45
- const  Tsu_Delete            =  4
- const  Tsu_FileIsOpen        = 16
- const  Tsu_FileSize          = 18
- const  Tsu_Flush             = 29
- const  Tsu_GetByKeyPos       = 44
- const  Tsu_GetDirect         = 23
- const  Tsu_GetEqual          =  5
- const  Tsu_GetEqualOrGreater =  9
- const  Tsu_GetEqualOrLess    = 11
- const  Tsu_GetFileDef        = 36
- const  Tsu_GetFileVer        = 25
- const  Tsu_GetFirst          = 12
- const  Tsu_GetGreater        =  8
- const  Tsu_GetLast           = 13
- const  Tsu_GetLess           = 10
- const  Tsu_GetNext           =  6
- const  Tsu_GetPosition       = 22
- const  Tsu_GetPrev           =  7
- const  Tsu_Insert            =  2
- const  Tsu_Integrity         = 37
- const  Tsu_Open              =  0
- const  Tsu_Rebuild           = 38
- const  Tsu_Recover           = 39
- const  Tsu_SetKeyPath        = 30
- const  Tsu_StepFirst         = 33
- const  Tsu_StepLast          = 34
- const  Tsu_StepNext          = 24
- const  Tsu_StepPrev          = 35
- const  Tsu_TimeOut           = 31
- const  Tsu_Update            =  3
- const  Tsu_Version           = 26
-  
-'============================================================================
 '[build_inc] User32.inc
 '============================================================================
 'USER32.DLL Functions
@@ -30148,626 +29187,6 @@ return
 end functioni
 $TYPECHECK OFF   ' сборка: вернуть после using.inc
 $ESCAPECHARS OFF   ' сборка: вернуть после using.inc
-'============================================================================
-'[build_inc] var.inc
-'============================================================================
-
-DIM klas(4) as integer
-DIM dopusk$(4) as string
-DIM dopsk!(40)  as single
-DIM FZK!(7) as single
-DIM SumNak!(1) as single
-DIM SredNF!(1) as single 
-DIM SredNFr!(1) as single 
-DIM fzko!(7) as single 
-DIM fzkoR!(7) as single 
-
-
-const Kpogr as integer = 1296000 'число угл секунд в обороте   '
-'defint pnt 
-omega!=360 ' r-т для пересчета в градусы
-CrdOrigin=30
-UglR$="-"
-Ugl$="-"
-LostP=0
-
-defstr tipOb$ = "\stan" '========================================================'
-'DIM klas(4) as integer ' класс точности
-'DIM dopusk$(4) as string 'допуск 
-defsng DopNakop!,DopCikl! ' допуск на накопленную и на циклическую
-
-defstr DATAP$,vreM$,stanok$, model$,Invent$,FIO$,koleso$, ZSt$ '!!! ------- архивные параметры --------------
-defstr opisanie$ ,klas$
-
-dim ZDatIn as integer 'число штрихов входного датчика с учетом к-та фаз'
-dim ZDatOut as integer 'число штрихов выходного датчика с учетом к-та фаз '
-
-defint PosOut,PosIn,ZDtOut,ZDtIn
-defsng KoordIn,KoordInPriv,KoordOut ,deltaFiq' - в оборотах
-
-
-DIM Pch!(1, 1) as  single 'передаточное число от вала (1 к 2)
-DIM Pch1!(1) as  single 'передаточное число от вала (i к 1)
-
-
-'!!!-------------------- lpod --------------
-dim LPod as single  'ход  перемещение на котором дожна быть определена функция кинематической погрешности'
-'-------------------
-
-dim LpodEnd! as single 'реальное перемещение звена, LPod+ запас на фильтрацию и т.п.
-
-dim ZDiskr as integer   'число штрихов датчика дискретизации приведенное (на одном обороте выходного вала ) ZDiskr= min( ZDtIn*Peredat, ZDtOut) 
-
-'!!!------------ число точек для расчета масштаба графика исходя из перемещения 30 град---------------
-
-dim NumPnt as integer   'основное число точек для показа на графике
-dim Numbrd as integer       'запас по краям (число добавочных точек) для фильтрации
-dim NumPntRs as integer 'число точек  передискретизированное к степени 2 для спектра
-
-'----------------- число точек  для результатов измерений ----------
-dim NumPnt1 as integer   'основное число точек для показа на графике
-dim Numbrd1 as integer       'запас по краям (число добавочных точек) для фильтрации
-dim NumPntRs1 as integer 'число точек  передискретизированное к степени 2 для спектра
-
-dim NumPnt2 as integer   'основное число точек для показа на графике
-dim Numbrd2 as integer       'запас по краям (число добавочных точек) для фильтрации
-dim NumPntRs2 as integer 'число точек  передискретизированное к степени 2 для спектра
-
-dim NumPnt3 as integer   'основное число точек для показа на графике
-dim Numbrd3 as integer       'запас по краям (число добавочных точек) для фильтрации
-dim NumPntRs3 as integer 'число точек  передискретизированное к степени 2 для спектра
-
-dim NumPnt4 as integer   'основное число точек для показа на графике
-dim Numbrd4 as integer       'запас по краям (число добавочных точек) для фильтрации
-dim NumPntRs4 as integer 'число точек  передискретизированное к степени 2 для спектра
-
-'------------------------------------------------------------------------'
-dim NumPntF as integer '!!! расширенное число точек    NumBrd+NumPnt+NumBrd
-
-'                        0123 01234567 0123
-'                        0123 45678901 2345
-'                                    1 1 11
-
-'                        0    NumBrd
-'                                    NumPnt+NumBrd-1
-'------------------------------------------------------------------------'
-DEFBYTE prohod
-'DeltaFi=0
-
-dim NumGarm as integer ' число гармоник на графике  '
-
-dim NPnt as integer                  
-
-
-dim StToc as integer 'степень точности
-dim kpnt#  as double
-
-dim InputH as integer '    ;// 16 бит 2 байта  номер входа датчика входного звена
-dim InputL as integer'' ;// 16 бит 2 байта  номер входа датчика выходного звена
-dim Peredat as single '; // передаточное отношение
-dim TipPeredat as single '; // передаточное отношение
-dim Nfltr as integer ';//- число точек уcреднения (фильтрации)
-dim PuskModeint as integer   '; //- режим пуска (ручной, по метке, по событию)
-dim MoveModeint as integer   '; //- режим движения
-dim NumCkl as integer ' - число циклов измерения (устаревш.)
-dim TipDatIn as integer    ' число фаз датчика входного звена
-dim TipDatOut as integer ' число фаз датчика выходного звена
-dim Delz as integer ' коэффициент деления '
-
-defstr RazmPogr=" угл.сек "
-defstr RazmPod=" град. "
-
-'!!! - -------------результаты  обработки ----------------------------------------'
-defsng DMax1!, DMax2! ' максимальное абсолютное значение кин. погрешности прямой ход, обратный ход
-defint Period ' число точек усреднения для выделения накопленной погрешности'
-defsng Kin1!,Kin2!     ' вел-на кинематической погр.     = CLNG(FRazmah!(fDat1$) * 10) / 10 ' fDat$
-defsng Fpr1!,Fpr2!     ' вел-на накоп. погp. Fpr    = CLNG(FRazmah!(FileNakop1$) * 10) / 10  '
-defsng CikD1!,CikD2!   ' вел-на цикл. погp. Fpr    = CLNG(FRazmah!(CikDis1$) * 10) / 10
-defsng ZazorMax! ' = CLNG(fAbsMax!(Zazor$, 1, -1) * 10) / 10
-defsng ZazorMin! ' = CLNG(ARRMin!(Zazor!()) * 10) / 10
-defsng ZNech!    ' зона нечувствительности
-defsng DeltaFiMax, DeltaFiMin, NakopMax, NakopMin
-defsng DRazmah1, DRazmah2, NRazmah1, NRazmah2, CRazmah1, CRazmah2 '- 
-
-defsng Ugol(4) ' величина угла поворота в конце прохода
-defsng Ugol1(4) ' величина угла поворота в конце прохода с учетом знака
-defsng Nol(4)  ' значение нулевого положения при проходах
-defsng Otkl(4) ' наибольшее отклонение кривой кинематической погрешности от нулевой точки при соответствующем проходе
-
-defsng KPH ' величина угла поворота в конце прямого хода  1
-defsng KHR ' величина угла поворота в конце реверса прямого хода  2
-defsng KOH ' величина угла поворота в конце прямого хода  3
-defsng KOR ' величина угла поворота в конце реверса прямого хода  4
-
-defsng Ap ' наибольшее отклонение кривой кинематической погрешности ПХ от точки 0ПХ
-defsng Apr ' наибольшее отклонение кривой кинематической погрешности ПХР от точки 0ПХ
-defsng Ao ' наибольшее отклонение кривой кинематической погрешности ОХ от точки 0oХ
-defsng Aor ' наибольшее отклонение кривой кинематической погрешности ОХР от точки 0oХ
-
-defsng AMax ' максимальная погрешность отработки текущего угла
-
-defsng ZIP ' величина зоны индикации при прямом ходе
-defsng oZIO ' ноль  зоны индикации при обратном ходе
-defsng ZIO ' величина зоны индикации при обратном ходе
-
-'!!! ------- массивы функций ---------------------------
-DIM Arg!(1) as single      ' текущее перемещение выходного звена ПХ
-
-DIM Arg1(1) as single      ' текущее перемещение выходного звена ПХ
-DIM Arg2(1) as single      ' текущее перемещение выходного звена реверс ПХ
-DIM Arg3(1) as single      ' текущее перемещение выходного звена ОХ
-DIM Arg4(1) as single      ' текущее перемещение выходного звена реверс ОХ
-
-DIM ArgIdeal1!(1) as single ' заданное текущее перемещение выходного звена 
-DIM ArgIdeal2!(1) as single ' заданное текущее перемещение выходного звена 
-DIM ArgIdeal3!(1) as single ' заданное текущее перемещение выходного звена 
-DIM ArgIdeal4!(1) as single ' заданное текущее перемещение выходного звена 
-
-' ArgIdeal!(i)=Ni*360/ (peredat*P)
-' Ni - число импульсов на данный момент
-' peredat - передаточное отношение привода
-' P - число импульсов на 1 оборот шагового двигателя
-
-DIM DeltaFi(1)  as single   ' значения функции погрешности ПХ
-
-defint bpnt1,bpnt2,bpnt3,bpnt4 ' начальные точки функций
-
-DIM DeltaFiD(1)  as single   ' значения функции погрешности в функции точек полного перемещения
-DIM DeltaFiR(1) as single   ' значения функции погрешности в функции точек полного перемещения
-
-dim DeltaFiDList as QStringList 
-dim DeltaFiRList as QStringList 
-
-DIM DeltaFi1(1)  as single   ' значения функции погрешности ПХ
-DIM DeltaFi2(1) as single   ' значения функции погрешности реверс ПХ
-DIM DeltaFi3(1) as single   ' значения функции погрешности ОХ
-DIM DeltaFi4(1) as single   ' значения функции погрешности реверс ОХ
-
-DIM Veloc1(1)  as single   ' значения функции погрешности ПХ
-DIM Veloc2(1) as single   ' значения функции погрешности реверс ПХ
-DIM Veloc3(1) as single   ' значения функции погрешности ОХ
-DIM Veloc4(1) as single   ' значения функции погрешности реверс ОХ
-
-
-DIM Nakop1(1) as single ' значения функции накопленной погрешности при  прямом ходе
-DIM Nakop2(1) as single ' значения функции накопленной погрешности при  обратном ходе
-DIM Nakop3(1) as single ' значения функции накопленной погрешности при  обратном ходе
-DIM Nakop4(1) as single ' значения функции накопленной погрешности при  обратном ходе
-
-DIM CikDis1(1) as single ' значения функции циклической погрешности при  прямом ходе
-DIM CikDis2(1) as single ' значения функции циклической погрешности при  обратном ходе
-DIM CikDis3(1) as single ' значения функции циклической погрешности при  обратном ходе
-DIM CikDis4(1) as single ' значения функции циклической погрешности при  обратном ходе
-
-DIM Ogib1u(1) as single ' значения функции огибающей циклической погрешности при  прямом ходе
-DIM Ogib1d(1) as single ' значения функции огибающей циклической погрешности при  обратном ходе
-
-DIM Ogib2u(1) as single ' значения функции огибающей циклической погрешности при  прямом ходе
-DIM Ogib2d(1) as single ' значения функции огибающей циклической погрешности при  обратном ходе
-
-DIM Ogib3u(1) as single ' значения функции огибающей циклической погрешности при  прямом ходе
-DIM Ogib3d(1) as single ' значения функции огибающей циклической погрешности при  обратном ходе
-
-DIM Ogib4u(1) as single ' значения функции огибающей циклической погрешности при  прямом ходе
-DIM Ogib4d(1) as single ' значения функции огибающей циклической погрешности при  обратном ходе
-
-DIM DeltaFiRS(1) as single ' значения функции погрешности  передискретизированые
-DIM DeltaFiRS2(1) as single ' значения функции погрешности  передискретизированые при  обратном ходе
-DIM DeltaFiRS3(1) as single ' значения функции погрешности  передискретизированые при  обратном ходе
-DIM DeltaFiRS4(1) as single ' значения функции погрешности  передискретизированые при  обратном ходе
-
-DIM DeltaFiDbl(1) as single ' удвоенная по длине функция (проходы 2-3) для вычисления спектра
-'DeltaFiDbl
-DIM Nakop1RS(1) as single ' значения функции накопленной погрешности  передискретизированые при  прямом ходе
-DIM Nakop2RS(1) as single ' значения функции накопленной погрешности  передискретизированые при  обратном ходе
-DIM Nakop3RS(1) as single ' значения функции накопленной погрешности  передискретизированые при  обратном ходе
-DIM Nakop4RS(1) as single ' значения функции накопленной погрешности  передискретизированые при  обратном ходе
-
-DIM CikDis1RS(1) as single ' значения функции циклической погрешности  передискретизированые при  прямом ходе
-DIM CikDis2RS(1) as single ' значения функции циклической погрешности  передискретизированые при  обратном ходе
-DIM CikDis3RS(1) as single ' значения функции циклической погрешности  передискретизированые при  обратном ходе
-DIM CikDis4RS(1) as single ' значения функции циклической погрешности  передискретизированые при  обратном ходе
-
-DIM Ogib1uRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  прямом ходе
-DIM Ogib1dRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  обратном ходе
-
-DIM Ogib2uRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  прямом ходе
-DIM Ogib2dRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  обратном ходе
-
-DIM Ogib3uRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  прямом ходе
-DIM Ogib3dRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  обратном ходе
-
-DIM Ogib4uRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  прямом ходе
-DIM Ogib4dRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  обратном ходе
-
-dim Spectr (1) as single   ' спектр
-
-
-'defsng Kin1! '= CLNG(FRazmah!(fDat1$) * 10) / 10 ' fDat$
-'defsng Fpr1! '= CLNG(FRazmah!(FileNakop1$) * 10) / 10  'вел-на накоп. погp. Fpr
-'defsng CikD1! '= CLNG(FRazmah!(CikDis1$) * 10) / 10
-
-'defsng Kin2! '= CLNG(FRazmah!(fDat2$) * 10) / 10 ' fDat$
-'defsng Fpr2! '= CLNG(FRazmah!(FileNakop2$) * 10) / 10  'вел-на накоп. погp. Fpr
-'defsng CikD2! '= CLNG(FRazmah!(CikDis2$) * 10) / 10
-
-'defsng ZazorMax! '= CLNG(fAbsMax!(Zazor$, 1, -1) * 10) / 10
-
-'CikD1! = rondo!((fSred!(Ogib1u$) - fSred!(Ogib1d$)), 1)
-
-' мгновенной  местной кин погр
-'REDIM LocCikDisRew!(NumPntF), LocCikDis!(NumPntF)
-
-'FOR i = 1 TO NumPntF - 1
-'LocCikDis!(i) = InterMax!(i) - InterMin!(i)
-'LocCikDisRew!(i) = InterMaxRew!(i) - InterMinRew!(i)
-'Locl! = Locl! + LocCikDis!(i)' накопление для суммы
-'LocRew! = LocRew! + LocCikDisRew!(i)
-'          StepX = Xstep# * i
-'NEXT i
-
-' средней  местной кинематической погрешности
-'LocCik! = Locl! / NumPnt: LocCikRew! = LocRew! / NumPnt
-
-'!!! - ------------ графики -----------------------------------------
-defstr NameGraf$ ' 
-defsng DatGraf!(1) ' массив с текущим графиком
-
-'!!!- ------------ обработка -----------------------------------------
-DIM gamp!(1) as single
-defsng gampp!
-
-'!!!- ------------ архивы -----------------------------------------
-'.rzm - файлы с расширенным числом точек для последующей фильтрации
-'.rdt - файлы с  точек соответствующим Lpod! для вывода графика
-'.pzm - исходный файл посл. доступа формата "номер точки, значение ф-ции"
-
-defstr  ArcNum '- номер текущего архива
-defstr  ProvNum$ '- номер текущей проверки (которых 12 штук)
-
-defstr  ArcPath$ '- путь текущего  архива
-
-'defstr  ArcP1$ '-   синоним- путь текущего  архива
-
-defstr NSObr$ '- направление вращения стола'
-
-
-dim SubArcPath$(12) as string
-SubArcPath$(1)="\Z_NU_M"
-SubArcPath$(2)="\Z_NU_R"
-SubArcPath$(3)="\Z_+45_M" 
-SubArcPath$(4)="\Z_+45_r"
-SubArcPath$(5)="\Z_-45_M"
-SubArcPath$(6)="\Z_-45_r"
-
-SubArcPath$(7)="\Y_NU_M"
-SubArcPath$(8)="\Y_NU_R"
-SubArcPath$(9)="\Y_+45_M"
-SubArcPath$(10)="\Y_+45_r"
-SubArcPath$(11)="\Y_-45_M"
-SubArcPath$(12)="\Y_-45_r"
-
-
-'!!!---файлы -  ----
-
-defstr fIzm1$= "DELTAFI1.pzm" '- исходные результаты измерений, прямой ход (текстовый файл  формата pnt,dat!)
-defstr fIzm2$="DELTAFI2.pzm" '- исходные результаты измерений, реверс прямого хода  (текстовый файл  формата pnt,dat!)
-defstr fIzm3$="DELTAFI3.pzm" '- исходные результаты измерений, обратный ход (текстовый файл  формата pnt,dat!)
-defstr fIzm4$="DELTAFI4.pzm" '- исходные результаты измерений, реверс обратного хода (текстовый файл  формата pnt,dat!)
-
-'-- если есть несколько отсчетов на точку - усредняем их.
-defstr fIzn1$= "DELTAFI1.pzn" '- исходные результаты измерений, прямой ход (текстовый файл  формата pnt,dat!)
-defstr fIzn2$="DELTAFI2.pzn" '- исходные результаты измерений, реверс прямого хода  (текстовый файл  формата pnt,dat!)
-defstr fIzn3$="DELTAFI3.pzn" '- исходные результаты измерений, обратный ход (текстовый файл  формата pnt,dat!)
-defstr fIzn4$="DELTAFI4.pzn" '- исходные результаты измерений, реверс обратного хода (текстовый файл  формата pnt,dat!)
-
-defstr fPrIzm1$="DELTAFI1.izm" '- результаты измерений с восстановлением числа точек при прямом ходе (бинарный файл dat!)
-defstr fPrIzm2$="DELTAFI2.izm" '- результаты измерений с восстановлением числа точек при обратном ходе (бинарный файл dat!)
-defstr fPrIzm3$="DELTAFI3.izm" '- результаты измерений с восстановлением числа точек при прямом ходе (бинарный файл dat!)
-defstr fPrIzm4$="DELTAFI4.izm" ' - результаты измерений с восстановлением числа точек при обратном ходе (бинарный файл dat!)
-
-defstr fNzm1$="DELTAFI1.nzm"' - нормализованный файл измерений для показа  при прямом ходе (без запаса на фильтрацию dat!)
-defstr fNzm2$="DELTAFI2.nzm"' - нормализованный файл измерений для показа  при обратном ходе (без запаса на фильтрацию dat!)
-defstr fNzm3$="DELTAFI3.nzm"' - нормализованный файл измерений для показа  при прямом ходе (без запаса на фильтрацию dat!)
-defstr fNzm4$="DELTAFI4.nzm"' - нормализованный файл измерений для показа  при обратном ходе (без запаса на фильтрацию dat!)
-'--- 
-
-'!!!--- накопленная погрешность ----
-defstr fNak1$  = "nakop1.pzm"
-defstr fNak2$  = "nakop2.pzm"
-defstr fNak3$  = "nakop1.pzm"
-defstr fNak4$  ="nakop2.pzm"
-
-'--- циклическая погрешность ----
-defstr fCik1$ ="CikDis1.pzm": 
-defstr fCik2$ ="CikDis2.pzm":
-defstr fCik3$ ="CikDis1.pzm": 
-defstr fCik4$ ="CikDis2.pzm":
-
-'--- огибающая  циклической погрешности ----
-defstr fOgib1u$ ="Ogib1u.pzm": '- верхняя
-defstr fOgib1d$ ="Ogib1d.pzm":  '- нижняя
-
-defstr fOgib2u$ = "Ogib2u.pzm": 
-defstr fOgib2d$ = "Ogib2d.pzm":
-
-defstr fOgib3u$ = "Ogib2u.pzm": 
-defstr fOgib3d$ = "Ogib2d.pzm":
-
-defstr fOgib4u$ = "Ogib2u.pzm": 
-defstr fOgib4d$ ="Ogib2d.pzm":
-'--- 
-
-defstr fZazor$ ="zazor.pzm"               
-
-defstr Fdiagnoz$ ="diagnoz"
-defstr FSpectr$ = "spectr.fft" 'скопировать из рабочей директории в архив'
-
-defstr UgolDat$="Ugol.Dat" ' файл с величинами угловых перемещений в заданных точках                        
-
-'============================================================================
-'[build_inc] var2008.inc
-'============================================================================
-' C:\BAS\RAPIDQ\INC\var2008.inc
-' ShowWindow() Commands
-'~dup Const SW_HIDE=0   ' повтор, первое: Form.inc(6)
-'~dup Const SW_SHOWNORMAL=1   ' повтор, первое: Form.inc(7)
-'~dup Const SW_NORMAL=1   ' повтор, первое: Form.inc(8)
-'~dup Const SW_SHOWMINIMIZED=2   ' повтор, первое: Form.inc(9)
-'~dup Const SW_SHOWMAXIMIZED=3   ' повтор, первое: Form.inc(10)
-'~dup Const SW_MAXIMIZE=3   ' повтор, первое: Form.inc(11)
-'~dup Const SW_SHOWNOACTIVATE=4   ' повтор, первое: Form.inc(12)
-'~dup Const SW_SHOW=5   ' повтор, первое: Form.inc(13)
-'~dup Const SW_MINIMIZE=6   ' повтор, первое: Form.inc(14)
-'~dup Const SW_SHOWMINNOACTIVE=7   ' повтор, первое: Form.inc(15)
-'~dup Const SW_SHOWNA=8   ' повтор, первое: Form.inc(16)
-'~dup Const SW_RESTORE=9   ' повтор, первое: Form.inc(17)
-'~dup Const SW_SHOWDEFAULT=10   ' повтор, первое: Form.inc(18)
-'~dup Const SW_MAX=10   ' повтор, первое: Form.inc(19)
-
-'~dup const Kpogr as integer = 1296000 'число угл секунд в обороте   '   ' повтор, первое: var.inc(13)
-'defint pnt 
-
-defsng DDelKol!
-defsng ZubStep
-
-'~dup defstr tipOb$ = "\stan"    ' повтор, первое: var.inc(21)
-
-'!!! --- допуски ----
-'~dup DIM klas(4) as integer   ' повтор, первое: var.inc(2)
-'~dup DIM dopusk$(4) as string   ' повтор, первое: var.inc(3)
-'~dup DIM dopsk!(40)  as single   ' повтор, первое: var.inc(4)
-defsng Asum!,A123!,A456!
-'~dup defsng DopKin!,DopNakop!,DopCikl!,DopZub!
-defsng DopKin!, DopZub!   ' сборка: без уже объявленных DOPNAKOP!, DOPCIKL!
-'---------------------
-
-'~dup defstr DATAP$,vreM$,stanok$, model$,Invent$,FIO$,koleso$, ZSt$ '------- архивные параметры --------------   ' повтор, первое: var.inc(26)
-'~dup defstr opisanie$ ,klas$   ' повтор, первое: var.inc(27)
-
-'~dup dim ZDatIn as double 'as integer 'число штрихов входного датчика с учетом к-та фаз'   ' повтор, первое: var.inc(29)
-'~dup dim ZDatOut as double 'single 'integer 'число штрихов выходного датчика с учетом к-та фаз '   ' повтор, первое: var.inc(30)
-
-'~dup dim LPod as single  'ход  перемещение на котором дожна быть определена функция кинематической погрешности'   ' повтор, первое: var.inc(41)
-'~dup dim LpodEnd! as single 'реальное перемещение звена, LPod+ запас на фильтрацию и т.п.   ' повтор, первое: var.inc(44)
-'~dup dim ZDiskr as integer ' число штрихов датчика дискретизации на одном обороте выходного вала ZDiskr= min( ZDtIn*Peredat, ZDtOut)    ' повтор, первое: var.inc(46)
-' после расчета числа точек в нем хранится число отсчетов
-
-dim ZDiskrVozm as integer ' максимально возможное число отсчетов исходя из числа штрихов датчика и передаточного отношения
-
-'~dup dim NumPnt as integer    'основное число точек для измерения   ' повтор, первое: var.inc(50)
-'~dup dim Numbrd as integer   'запас по краям (число добавочных точек) для фильтрации   ' повтор, первое: var.inc(51)
-'~dup dim NumPntRs as integer  'число точек  передискретизированное к степени 2 для спектра   ' повтор, первое: var.inc(52)
-
-Dim FrMax as single ' максимальная частота вращения звена в кинематической схеме для фильтрации ВЧ шума
-Dim frmin as single ' максимальная частота вращения звена в кинематической схеме для выделения накопленной
-
-'------------------------------------------------------------------------'
-'~dup dim NumPntF as integer ' расширенное число точек    NumBrd+NumPnt+NumBrd   ' повтор, первое: var.inc(72)
-
-'                        0123 01234567 0123
-'                        0123 45678901 2345
-'                                    1 1 11
-
-'                        0    NumBrd
-'                                    NumPnt+NumBrd-1
-'
-'
-'
-dim NumPntGraf as integer ' число точек на графике для просмотра функции - на весь ход.
-NumPntGraf=2048
-'~dup dim NPnt as integer                     ' повтор, первое: var.inc(86)
-dim NPr as integer   ' Np=5*imax - 5 точек на макс оборотную в кинематике.
-'------------------------------------------------------------------------'
-
-'~dup dim NumGarm as integer ' число гармоник на графике  '   ' повтор, первое: var.inc(84)
-
-
-'~dup dim StToc as integer 'степень точности   ' повтор, первое: var.inc(89)
-
-'~dup dim kpnt#  as double   ' повтор, первое: var.inc(90)
-
-'~dup dim InputH as integer '      ;// 16 бит 2 байта  номер входа датчика входного звена   ' повтор, первое: var.inc(92)
-'~dup dim InputL as integer''    ;// 16 бит 2 байта  номер входа датчика выходного звена   ' повтор, первое: var.inc(93)
-
-'~dup dim Peredat as single  ';  // передаточное отношение   ' повтор, первое: var.inc(94)
-'~dup dim TipPeredat as single  ';  // передаточное отношение   ' повтор, первое: var.inc(95)
-
-'~dup dim Nfltr as integer   '; //  - число точек уcреднения (фильтрации)   ' повтор, первое: var.inc(96)
-
-'~dup dim PuskModeint as integer   '; //- режим пуска (ручной, по метке, по событию)   ' повтор, первое: var.inc(97)
-'~dup dim MoveModeint as integer   '; //- режим движения   ' повтор, первое: var.inc(98)
-'~dup dim NumCkl as integer ' - число циклов измерения (устаревш.)   ' повтор, первое: var.inc(99)
-
-
-'~dup dim TipDatIn as integer    ' число фаз датчика входного звена   ' повтор, первое: var.inc(100)
-'~dup dim TipDatOut as integer ' число фаз датчика выходного звена   ' повтор, первое: var.inc(101)
-'~dup dim Delz as integer ' коэффициент деления '   ' повтор, первое: var.inc(102)
-
-'~dup defstr RazmPogr=" угл.сек "   ' повтор, первое: var.inc(104)
-defstr RazmPogrMkm="мкМ "
-'~dup defstr RazmPod=" об. "   ' повтор, первое: var.inc(105)
-
-'- ------------- обработка ----------------------------------------'
-'~dup defsng DMax1!, DMax2! ' максимальное абсолютное значение кин. погрешности прямой ход, обратный ход   ' повтор, первое: var.inc(108)
-
-'~dup defint Period ' число точек усреднения для выделения накопленной погрешности'   ' повтор, первое: var.inc(109)
-'~dup defsng Kin1!,Kin2!     ' вел-на кинематической погр.     = CLNG(FRazmah!(fDat1$) * 10) / 10 ' fDat$   ' повтор, первое: var.inc(110)
-'~dup defsng Fpr1!,Fpr2!     ' вел-на накоп. погp. Fpr    = CLNG(FRazmah!(FileNakop1$) * 10) / 10  '   ' повтор, первое: var.inc(111)
-defsng Fpr1Nakop!,Fpr2Nakop!     ' вел-на накоп. погp. Fpr    = CLNG(FRazmah!(FileNakop1$) * 10) / 10  '
-'~dup defsng CikD1!,CikD2!   ' вел-на цикл. погp. Fpr    = CLNG(FRazmah!(CikDis1$) * 10) / 10   ' повтор, первое: var.inc(112)
-'~dup defsng ZazorMax! ' = CLNG(fAbsMax!(Zazor$, 1, -1) * 10) / 10   ' повтор, первое: var.inc(113)
-'~dup defsng ZazorMin! ' = CLNG(ARRMin!(Zazor!()) * 10) / 10   ' повтор, первое: var.inc(114)
-'~dup defsng ZNech!    ' зона нечувствительности   ' повтор, первое: var.inc(115)
-
-defsng Fzz!, FzzR!
-
-'~dup defsng DeltaFiMax, DeltaFiMin, NakopMax, NakopMin   ' повтор, первое: var.inc(116)
-defsng DeltaFi2Max, DeltaFi2Min, Nakop2MaxR, Nakop2MinR
-
-'~dup defsng DRazmah1, DRazmah2, NRazmah1, NRazmah2, CRazmah1, CRazmah2 '-    ' повтор, первое: var.inc(117)
-
-'~dup DIM Nakop1(1) as single ' значения функции накопленной погрешности при  прямом ходе   ' повтор, первое: var.inc(179)
-'~dup DIM Nakop2(1) as single ' значения функции накопленной погрешности при  обратном ходе   ' повтор, первое: var.inc(180)
-
-'~dup DIM CikDis1(1) as single ' значения функции циклической погрешности при  прямом ходе   ' повтор, первое: var.inc(184)
-'~dup DIM CikDis2(1) as single ' значения функции циклической погрешности при  обратном ходе   ' повтор, первое: var.inc(185)
-
-dim Zazor!(1) as single ' 
-dim Zaznak!(1) as single ' 
-
-'~dup DIM FZK!(7) as single   ' повтор, первое: var.inc(5)
-'~dup DIM SumNak!(1) as single   ' повтор, первое: var.inc(6)
-'~dup DIM SredNF!(1) as single    ' повтор, первое: var.inc(7)
-'~dup DIM SredNFr!(1) as single    ' повтор, первое: var.inc(8)
-'~dup DIM fzko!(7) as single    ' повтор, первое: var.inc(9)
-'~dup DIM fzkoR!(7) as single    ' повтор, первое: var.inc(10)
-
-
-
-'~dup DIM Ogib1u(1) as single ' значения функции огибающей циклической погрешности при  прямом ходе   ' повтор, первое: var.inc(189)
-'~dup DIM Ogib1d(1) as single ' значения функции огибающей циклической погрешности при  обратном ходе   ' повтор, первое: var.inc(190)
-
-'~dup DIM Ogib2u(1) as single ' значения функции огибающей циклической погрешности при  прямом ходе   ' повтор, первое: var.inc(192)
-'~dup DIM Ogib2d(1) as single ' значения функции огибающей циклической погрешности при  обратном ходе   ' повтор, первое: var.inc(193)
-
-
-'~dup DIM Arg!(1) as single      ' значения аргумента   ' повтор, первое: var.inc(141)
-DIM Arg2!(1) as single      ' значения аргумента
-
-'DIM DeltaFi(1) as single   ' значения функции погрешности
-
-'~dup DIM DeltaFi1(1) as single   ' значения функции погрешности   ' повтор, первое: var.inc(168)
-'~dup DIM DeltaFi2(1) as single   ' значения функции погрешности при обратном ходе   ' повтор, первое: var.inc(169)
-
-
-'~dup DIM DeltaFiRS(1) as single ' значения функции погрешности  передискретизированые   ' повтор, первое: var.inc(201)
-'~dup DIM DeltaFiRS2(1) as single ' значения функции погрешности  передискретизированые при  обратном ходе   ' повтор, первое: var.inc(202)
-
-'~dup DIM Nakop1RS(1) as single ' значения функции накопленной погрешности  передискретизированые при  прямом ходе   ' повтор, первое: var.inc(208)
-'~dup DIM Nakop2RS(1) as single ' значения функции накопленной погрешности  передискретизированые при  обратном ходе   ' повтор, первое: var.inc(209)
-
-'~dup DIM CikDis1RS(1) as single ' значения функции циклической погрешности  передискретизированые при  прямом ходе   ' повтор, первое: var.inc(213)
-'~dup DIM CikDis2RS(1) as single ' значения функции циклической погрешности  передискретизированые при  обратном ходе   ' повтор, первое: var.inc(214)
-
-'~dup DIM Ogib1uRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  прямом ходе   ' повтор, первое: var.inc(218)
-'~dup DIM Ogib1dRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  обратном ходе   ' повтор, первое: var.inc(219)
-
-'~dup DIM Ogib2uRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  прямом ходе   ' повтор, первое: var.inc(221)
-'~dup DIM Ogib2dRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  обратном ходе   ' повтор, первое: var.inc(222)
-
-
-'~dup dim Spectr (1) as single   ' спектр   ' повтор, первое: var.inc(230)
-
-
-
-'defsng Kin1! '= CLNG(FRazmah!(fDat1$) * 10) / 10 ' fDat$
-'defsng Fpr1! '= CLNG(FRazmah!(FileNakop1$) * 10) / 10  'вел-на накоп. погp. Fpr
-'defsng CikD1! '= CLNG(FRazmah!(CikDis1$) * 10) / 10
-
-'defsng Kin2! '= CLNG(FRazmah!(fDat2$) * 10) / 10 ' fDat$
-'defsng Fpr2! '= CLNG(FRazmah!(FileNakop2$) * 10) / 10  'вел-на накоп. погp. Fpr
-'defsng CikD2! '= CLNG(FRazmah!(CikDis2$) * 10) / 10
-
-'defsng ZazorMax! '= CLNG(fAbsMax!(Zazor$, 1, -1) * 10) / 10
-
-'CikD1! = rondo!((fSred!(Ogib1u$) - fSred!(Ogib1d$)), 1)
-
-' мгновенной  местной кин погр
-'REDIM LocCikDisRew!(NumPntF), LocCikDis!(NumPntF)
-
-'FOR i = 1 TO NumPntF - 1
-'LocCikDis!(i) = InterMax!(i) - InterMin!(i)
-'LocCikDisRew!(i) = InterMaxRew!(i) - InterMinRew!(i)
-'Locl! = Locl! + LocCikDis!(i)' накопление для суммы
-'LocRew! = LocRew! + LocCikDisRew!(i)
-'          StepX = Xstep# * i
-'NEXT i
-
-' средней  местной кинематической погрешности
-'LocCik! = Locl! / NumPnt: LocCikRew! = LocRew! / NumPnt
-'- ------------ графики -----------------------------------------
-'~dup defstr NameGraf$ '    ' повтор, первое: var.inc(260)
-'~dup defsng DatGraf!(1) ' массив с текущим графиком   ' повтор, первое: var.inc(261)
-
-'- ------------ обработка -----------------------------------------
-'~dup DIM gamp!(1) as single   ' повтор, первое: var.inc(264)
-'~dup defsng gampp!   ' повтор, первое: var.inc(265)
-
-'- ------------ архивы -----------------------------------------
-'.rzm - файлы с расширенным числом точек для последующей фильтрации
-'.rdt - файлы с  точек соответствующим Lpod! для вывода графика
-'.pzm - исходный файл посл. доступа формата "номер точки, значение ф-ции"
-
-'~dup defstr  ArcNum '- номер текущего архива   ' повтор, первое: var.inc(272)
-'~dup defstr  ArcPath$ '- путь текущего  архива   ' повтор, первое: var.inc(275)
-'defstr  ArcP1$ '-   синоним- путь текущего  архива
-
-'~dup defstr NSObr$ '- направление вращения стола'   ' повтор, первое: var.inc(279)
-
-'--- кинематическая погрешность ----
-
-'~dup defstr fIzm1$  '  - DELTAFI1.pzm - исходные результаты измерений при прямом ходе   (текстовый файл  формата pnt,dat!)   ' повтор, первое: var.inc(300)
-'~dup defstr fIzm2$  '  - DELTAFI2.pzm - исходные результаты измерений при обратном ходе (текстовый файл  формата pnt,dat!)   ' повтор, первое: var.inc(301)
-
-'~dup defstr fPrIzm1$  '  - DELTAFI1.izm - результаты измерений с восстановлением числа точек при прямом ходе (бинарный файл dat!)   ' повтор, первое: var.inc(311)
-'~dup defstr fPrIzm2$  '  - DELTAFI2.izm - результаты измерений с восстановлением числа точек при обратном ходе (бинарный файл dat!)   ' повтор, первое: var.inc(312)
-
-'~dup defstr fNzm1$  '  - DELTAFI1.nzm - нормализованный файл измерений для показа  при прямом ходе (без запаса на фильтрацию dat!)   ' повтор, первое: var.inc(316)
-'~dup defstr fNzm2$  '  - DELTAFI2.nzm - нормализованный файл измерений для показа  при обратном ходе (без запаса на фильтрацию dat!)   ' повтор, первое: var.inc(317)
-'--- 
-
-'--- накопленная погрешность ----
-'~dup defstr fNak1$  '= ArcP1$ + "\nakop1.pzm"   ' повтор, первое: var.inc(323)
-'~dup defstr fNak2$  '= ArcP1$ + "\nakop2.pzm"   ' повтор, первое: var.inc(324)
-
-'--- циклическая погрешность ----
-'~dup defstr fCik1$ '= ArcP1$ + "\CikDis1.pzm":    ' повтор, первое: var.inc(329)
-'~dup defstr fCik2$ '= ArcP1$ + "\CikDis2.pzm":   ' повтор, первое: var.inc(330)
-
-'--- огибающая  циклической погрешности ----
-'~dup defstr fOgib1u$ '= ArcP1$ + "\Ogib1u.pzm": '- верхняя   ' повтор, первое: var.inc(335)
-'~dup defstr fOgib1d$ '= ArcP1$ + "\Ogib1d.pzm":  - нижняя   ' повтор, первое: var.inc(336)
-
-'~dup defstr fOgib2u$ '= ArcP1$ + "\Ogib2u.pzm":    ' повтор, первое: var.inc(338)
-'~dup defstr fOgib2d$ '= ArcP1$ + "\Ogib2d.pzm":   ' повтор, первое: var.inc(339)
-'--- 
-
-'~dup defstr fZazor$ '= ArcP1$ + "\zazor.pzm"                  ' повтор, первое: var.inc(348)
-
-'~dup defstr Fdiagnoz$ '= ArcP1$ + "\diagnoz"   ' повтор, первое: var.inc(350)
-'~dup defstr FSpectr$  'ArcP1$ + "\spectr.fft" 'скопировать из рабочей директории в архив'   ' повтор, первое: var.inc(351)
-
-
-
-
-
-
-
-
-
-
-
 '============================================================================
 '[build_inc] WFunctions.inc
 '============================================================================
@@ -34197,7 +32616,7 @@ Public Const R2_LAST = 16
 '~dup Public Const WHITENESS = &HFF0062       ' (DWORD) dest = WHITE   ' повтор, первое: rapidq2.inc(1297)
 
 Public Const GDI_ERROR = &HFFFF
-'~dup Public Const HGDI_ERROR = &HFFFF   ' повтор, первое: PRINTERDLL.INC(178)
+Public Const HGDI_ERROR = &HFFFF
 
 ' Region Flags
 Public Const ERRORAPI = 0
@@ -34215,11 +32634,11 @@ Public Const RGN_MIN = RGN_AND
 Public Const RGN_MAX = RGN_COPY
 
 ' StretchBlt() Modes
-'~dup Public Const BLACKONWHITE = 1   ' повтор, первое: PRINTERDLL.INC(179)
-'~dup Public Const WHITEONBLACK = 2   ' повтор, первое: PRINTERDLL.INC(180)
-'~dup Public Const COLORONCOLOR = 3   ' повтор, первое: PRINTERDLL.INC(181)
-'~dup Public Const HALFTONE = 4   ' повтор, первое: PRINTERDLL.INC(182)
-'~dup Public Const MAXSTRETCHBLTMODE = 4   ' повтор, первое: PRINTERDLL.INC(183)
+Public Const BLACKONWHITE = 1
+Public Const WHITEONBLACK = 2
+Public Const COLORONCOLOR = 3
+Public Const HALFTONE = 4
+Public Const MAXSTRETCHBLTMODE = 4
 
 ' PolyFill() Modes
 Public Const ALTERNATE = 1
@@ -34738,31 +33157,31 @@ Type ENUMLOGFONT
         elfStyle(LF_FACESIZE) As Byte
 End Type
 
-'~dup Public Const OUT_DEFAULT_PRECIS = 0   ' повтор, первое: PRINTERDLL.INC(61)
-'~dup Public Const OUT_STRING_PRECIS = 1   ' повтор, первое: PRINTERDLL.INC(62)
-'~dup Public Const OUT_CHARACTER_PRECIS = 2   ' повтор, первое: PRINTERDLL.INC(63)
-'~dup Public Const OUT_STROKE_PRECIS = 3   ' повтор, первое: PRINTERDLL.INC(64)
-'~dup Public Const OUT_TT_PRECIS = 4   ' повтор, первое: PRINTERDLL.INC(65)
-'~dup Public Const OUT_DEVICE_PRECIS = 5   ' повтор, первое: PRINTERDLL.INC(66)
-'~dup Public Const OUT_RASTER_PRECIS = 6   ' повтор, первое: PRINTERDLL.INC(67)
-'~dup Public Const OUT_TT_ONLY_PRECIS = 7   ' повтор, первое: PRINTERDLL.INC(68)
-'~dup Public Const OUT_OUTLINE_PRECIS = 8   ' повтор, первое: PRINTERDLL.INC(69)
+Public Const OUT_DEFAULT_PRECIS = 0
+Public Const OUT_STRING_PRECIS = 1
+Public Const OUT_CHARACTER_PRECIS = 2
+Public Const OUT_STROKE_PRECIS = 3
+Public Const OUT_TT_PRECIS = 4
+Public Const OUT_DEVICE_PRECIS = 5
+Public Const OUT_RASTER_PRECIS = 6
+Public Const OUT_TT_ONLY_PRECIS = 7
+Public Const OUT_OUTLINE_PRECIS = 8
 
-'~dup Public Const CLIP_DEFAULT_PRECIS = 0   ' повтор, первое: PRINTERDLL.INC(70)
-'~dup Public Const CLIP_CHARACTER_PRECIS = 1   ' повтор, первое: PRINTERDLL.INC(71)
-'~dup Public Const CLIP_STROKE_PRECIS = 2   ' повтор, первое: PRINTERDLL.INC(72)
-'~dup Public Const CLIP_MASK = &HF   ' повтор, первое: PRINTERDLL.INC(73)
-'~dup Public Const CLIP_LH_ANGLES = 16   ' повтор, первое: PRINTERDLL.INC(74)
-'~dup Public Const CLIP_TT_ALWAYS = 32   ' повтор, первое: PRINTERDLL.INC(75)
-'~dup Public Const CLIP_EMBEDDED = 128   ' повтор, первое: PRINTERDLL.INC(76)
+Public Const CLIP_DEFAULT_PRECIS = 0
+Public Const CLIP_CHARACTER_PRECIS = 1
+Public Const CLIP_STROKE_PRECIS = 2
+Public Const CLIP_MASK = &HF
+Public Const CLIP_LH_ANGLES = 16
+Public Const CLIP_TT_ALWAYS = 32
+Public Const CLIP_EMBEDDED = 128
 
-'~dup Public Const DEFAULT_QUALITY = 0   ' повтор, первое: PRINTERDLL.INC(77)
-'~dup Public Const DRAFT_QUALITY = 1   ' повтор, первое: PRINTERDLL.INC(78)
-'~dup Public Const PROOF_QUALITY = 2   ' повтор, первое: PRINTERDLL.INC(79)
+Public Const DEFAULT_QUALITY = 0
+Public Const DRAFT_QUALITY = 1
+Public Const PROOF_QUALITY = 2
 
-'~dup Public Const DEFAULT_PITCH = 0   ' повтор, первое: PRINTERDLL.INC(80)
-'~dup Public Const FIXED_PITCH = 1   ' повтор, первое: PRINTERDLL.INC(81)
-'~dup Public Const VARIABLE_PITCH = 2   ' повтор, первое: PRINTERDLL.INC(82)
+Public Const DEFAULT_PITCH = 0
+Public Const FIXED_PITCH = 1
+Public Const VARIABLE_PITCH = 2
 
 '~dup Public Const ANSI_CHARSET = 0   ' повтор, первое: rapidq2.inc(191)
 '~dup Public Const DEFAULT_CHARSET = 1   ' повтор, первое: rapidq2.inc(192)
@@ -34774,30 +33193,30 @@ End Type
 
 ' Font Families
 '
-'~dup Public Const FF_DONTCARE = 0    '  Don't care or don't know.   ' повтор, первое: PRINTERDLL.INC(90)
-'~dup Public Const FF_ROMAN = 16      '  Variable stroke width, serifed.   ' повтор, первое: PRINTERDLL.INC(91)
+Public Const FF_DONTCARE = 0    '  Don't care or don't know.
+Public Const FF_ROMAN = 16      '  Variable stroke width, serifed.
 
 ' Times Roman, Century Schoolbook, etc.
-'~dup Public Const FF_SWISS = 32      '  Variable stroke width, sans-serifed.   ' повтор, первое: PRINTERDLL.INC(92)
+Public Const FF_SWISS = 32      '  Variable stroke width, sans-serifed.
 
 ' Helvetica, Swiss, etc.
-'~dup Public Const FF_MODERN = 48     '  Constant stroke width, serifed or sans-serifed.   ' повтор, первое: PRINTERDLL.INC(93)
+Public Const FF_MODERN = 48     '  Constant stroke width, serifed or sans-serifed.
 
 ' Pica, Elite, Courier, etc.
-'~dup Public Const FF_SCRIPT = 64     '  Cursive, etc.   ' повтор, первое: PRINTERDLL.INC(94)
-'~dup Public Const FF_DECORATIVE = 80 '  Old English, etc.   ' повтор, первое: PRINTERDLL.INC(95)
+Public Const FF_SCRIPT = 64     '  Cursive, etc.
+Public Const FF_DECORATIVE = 80 '  Old English, etc.
 
 ' Font Weights
-'~dup Public Const FW_DONTCARE = 0   ' повтор, первое: PRINTERDLL.INC(45)
-'~dup Public Const FW_THIN = 100   ' повтор, первое: PRINTERDLL.INC(46)
-'~dup Public Const FW_EXTRALIGHT = 200   ' повтор, первое: PRINTERDLL.INC(47)
-'~dup Public Const FW_LIGHT = 300   ' повтор, первое: PRINTERDLL.INC(48)
-'~dup Public Const FW_NORMAL = 400   ' повтор, первое: PRINTERDLL.INC(49)
-'~dup Public Const FW_MEDIUM = 500   ' повтор, первое: PRINTERDLL.INC(50)
-'~dup Public Const FW_SEMIBOLD = 600   ' повтор, первое: PRINTERDLL.INC(51)
-'~dup Public Const FW_BOLD = 700   ' повтор, первое: PRINTERDLL.INC(52)
-'~dup Public Const FW_EXTRABOLD = 800   ' повтор, первое: PRINTERDLL.INC(53)
-'~dup Public Const FW_HEAVY = 900   ' повтор, первое: PRINTERDLL.INC(54)
+Public Const FW_DONTCARE = 0
+Public Const FW_THIN = 100
+Public Const FW_EXTRALIGHT = 200
+Public Const FW_LIGHT = 300
+Public Const FW_NORMAL = 400
+Public Const FW_MEDIUM = 500
+Public Const FW_SEMIBOLD = 600
+Public Const FW_BOLD = 700
+Public Const FW_EXTRABOLD = 800
+Public Const FW_HEAVY = 900
 
 Public Const FW_ULTRALIGHT = FW_EXTRALIGHT
 Public Const FW_REGULAR = FW_NORMAL
@@ -35022,7 +33441,7 @@ Public Const RELATIVE = 2
 '~dup Public Const SYSTEM_FIXED_FONT = 16   ' повтор, первое: rapidq2.inc(1272)
 '~dup Public Const STOCK_LAST = 16   ' повтор, первое: rapidq2.inc(1273)
 
-'~dup Public Const CLR_INVALID = &HFFFF   ' повтор, первое: PRINTERDLL.INC(143)
+Public Const CLR_INVALID = &HFFFF
 
 ' Brush Styles
 Public Const BS_SOLID = 0
@@ -35037,11 +33456,11 @@ Public Const BS_PATTERN8X8 = 7
 Public Const BS_DIBPATTERN8X8 = 8
 
 '  Hatch Styles
-'~dup Public Const HS_HORIZONTAL = 0              '  -----   ' повтор, первое: PRINTERDLL.INC(38)
-'~dup Public Const HS_VERTICAL = 1                '  |||||   ' повтор, первое: PRINTERDLL.INC(39)
-'~dup Public Const HS_FDIAGONAL = 2               '  \\\\\   ' повтор, первое: PRINTERDLL.INC(40)
-'~dup Public Const HS_BDIAGONAL = 3               '  /////   ' повтор, первое: PRINTERDLL.INC(41)
-'~dup Public Const HS_CROSS = 4                   '  +++++   ' повтор, первое: PRINTERDLL.INC(42)
+Public Const HS_HORIZONTAL = 0              '  -----
+Public Const HS_VERTICAL = 1                '  |||||
+Public Const HS_FDIAGONAL = 2               '  \\\\\
+Public Const HS_BDIAGONAL = 3               '  /////
+Public Const HS_CROSS = 4                   '  +++++
 Public Const HS_DIAGCROSS = 5               '  xxxxx
 Public Const HS_FDIAGONAL1 = 6
 Public Const HS_BDIAGONAL1 = 7
@@ -35203,23 +33622,23 @@ Public Const TC_RESERVED = &H8000
 Public Const TC_SCROLLBLT = &H10000             '  do text scroll with blt
 
 '  Raster Capabilities
-'~dup Public Const RC_NONE = 0   ' повтор, первое: PRINTERDLL.INC(146)
-'~dup Public Const RC_BITBLT = 1                  '  Can do standard BLT.   ' повтор, первое: PRINTERDLL.INC(147)
-'~dup Public Const RC_BANDING = 2                 '  Device requires banding support   ' повтор, первое: PRINTERDLL.INC(148)
-'~dup Public Const RC_SCALING = 4                 '  Device requires scaling support   ' повтор, первое: PRINTERDLL.INC(149)
-'~dup Public Const RC_BITMAP64 = 8                '  Device can support >64K bitmap   ' повтор, первое: PRINTERDLL.INC(150)
-'~dup Public Const RC_GDI20_OUTPUT = &H10             '  has 2.0 output calls   ' повтор, первое: PRINTERDLL.INC(151)
-'~dup Public Const RC_GDI20_STATE = &H20   ' повтор, первое: PRINTERDLL.INC(152)
-'~dup Public Const RC_SAVEBITMAP = &H40   ' повтор, первое: PRINTERDLL.INC(153)
-'~dup Public Const RC_DI_BITMAP = &H80                '  supports DIB to memory   ' повтор, первое: PRINTERDLL.INC(154)
-'~dup Public Const RC_PALETTE = &H100                 '  supports a palette   ' повтор, первое: PRINTERDLL.INC(155)
-'~dup Public Const RC_DIBTODEV = &H200                '  supports DIBitsToDevice   ' повтор, первое: PRINTERDLL.INC(156)
-'~dup Public Const RC_BIGFONT = &H400                 '  supports >64K fonts   ' повтор, первое: PRINTERDLL.INC(157)
-'~dup Public Const RC_STRETCHBLT = &H800              '  supports StretchBlt   ' повтор, первое: PRINTERDLL.INC(158)
-'~dup Public Const RC_FLOODFILL = &H1000              '  supports FloodFill   ' повтор, первое: PRINTERDLL.INC(159)
-'~dup Public Const RC_STRETCHDIB = &H2000             '  supports StretchDIBits   ' повтор, первое: PRINTERDLL.INC(160)
-'~dup Public Const RC_OP_DX_OUTPUT = &H4000   ' повтор, первое: PRINTERDLL.INC(161)
-'~dup Public Const RC_DEVBITS = &H8000   ' повтор, первое: PRINTERDLL.INC(162)
+Public Const RC_NONE = 0
+Public Const RC_BITBLT = 1                  '  Can do standard BLT.
+Public Const RC_BANDING = 2                 '  Device requires banding support
+Public Const RC_SCALING = 4                 '  Device requires scaling support
+Public Const RC_BITMAP64 = 8                '  Device can support >64K bitmap
+Public Const RC_GDI20_OUTPUT = &H10             '  has 2.0 output calls
+Public Const RC_GDI20_STATE = &H20
+Public Const RC_SAVEBITMAP = &H40
+Public Const RC_DI_BITMAP = &H80                '  supports DIB to memory
+Public Const RC_PALETTE = &H100                 '  supports a palette
+Public Const RC_DIBTODEV = &H200                '  supports DIBitsToDevice
+Public Const RC_BIGFONT = &H400                 '  supports >64K fonts
+Public Const RC_STRETCHBLT = &H800              '  supports StretchBlt
+Public Const RC_FLOODFILL = &H1000              '  supports FloodFill
+Public Const RC_STRETCHDIB = &H2000             '  supports StretchDIBits
+Public Const RC_OP_DX_OUTPUT = &H4000
+Public Const RC_DEVBITS = &H8000
 
 ' DIB color table identifiers
 Public Const DIB_RGB_COLORS = 0 '  color table in RGBs
@@ -35704,7 +34123,7 @@ Declare Function RectVisible Lib "gdi32" Alias "RectVisible" (ByVal hdc As Long,
 Declare Function RectInRegion Lib "gdi32" Alias "RectInRegion" (ByVal hRgn As Long, lpRect As RECT) As Long
 '~dup Declare Function Rectangle Lib "gdi32" Alias "Rectangle" (ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long   ' повтор, первое: rapidq2.inc(1462)
 Declare Function RestoreDC Lib "gdi32" Alias "RestoreDC" (ByVal hdc As Long, ByVal nSavedDC As Long) As Long
-Declare Function ResetDC_WIN32API Lib "gdi32" Alias "ResetDCA" (ByVal hdc As Long, lpInitData As DEVMODE_WIN32API) As Long
+Declare Function ResetDC Lib "gdi32" Alias "ResetDCA" (ByVal hdc As Long, lpInitData As DEVMODE_WIN32API) As Long
 Declare Function RealizePalette Lib "gdi32" Alias "RealizePalette" (ByVal hdc As Long) As Long
 Declare Function RemoveFontResource Lib "gdi32" Alias "RemoveFontResourceA" (ByVal lpFileName As String) As Long
 '~dup Declare Function RoundRect Lib "gdi32" Alias "RoundRect" (ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long) As Long   ' повтор, первое: rapidq2.inc(1463)
@@ -46815,46 +45234,46 @@ Declare Function WNetGetUniversalName Lib "mpr" Alias "WNetGetUniversalNameA" (B
 Public Const INVALID_HANDLE_VALUE = -1
 
 'DrawEdge Constants
-'~dup Public Const BDR_RAISEDOUTER = &H1   ' повтор, первое: PRINTERDLL.INC(98)
-'~dup Public Const BDR_SUNKENOUTER = &H2   ' повтор, первое: PRINTERDLL.INC(99)
-'~dup Public Const BDR_RAISEDINNER = &H4   ' повтор, первое: PRINTERDLL.INC(100)
-'~dup Public Const BDR_SUNKENINNER = &H8   ' повтор, первое: PRINTERDLL.INC(101)
+Public Const BDR_RAISEDOUTER = &H1
+Public Const BDR_SUNKENOUTER = &H2
+Public Const BDR_RAISEDINNER = &H4
+Public Const BDR_SUNKENINNER = &H8
 
-'~dup Public Const BDR_OUTER = &H3   ' повтор, первое: PRINTERDLL.INC(102)
-'~dup Public Const BDR_INNER = &HC   ' повтор, первое: PRINTERDLL.INC(103)
-'~dup Public Const BDR_RAISED = &H5   ' повтор, первое: PRINTERDLL.INC(104)
-'~dup Public Const BDR_SUNKEN = &HA   ' повтор, первое: PRINTERDLL.INC(105)
+Public Const BDR_OUTER = &H3
+Public Const BDR_INNER = &HC
+Public Const BDR_RAISED = &H5
+Public Const BDR_SUNKEN = &HA
 
-'~dup Public Const EDGE_RAISED = (BDR_RAISEDOUTER Or BDR_RAISEDINNER)   ' повтор, первое: PRINTERDLL.INC(106)
-'~dup Public Const EDGE_SUNKEN = (BDR_SUNKENOUTER Or BDR_SUNKENINNER)   ' повтор, первое: PRINTERDLL.INC(107)
-'~dup Public Const EDGE_ETCHED = (BDR_SUNKENOUTER Or BDR_RAISEDINNER)   ' повтор, первое: PRINTERDLL.INC(108)
-'~dup Public Const EDGE_BUMP = (BDR_RAISEDOUTER Or BDR_SUNKENINNER)   ' повтор, первое: PRINTERDLL.INC(109)
+Public Const EDGE_RAISED = (BDR_RAISEDOUTER Or BDR_RAISEDINNER)
+Public Const EDGE_SUNKEN = (BDR_SUNKENOUTER Or BDR_SUNKENINNER)
+Public Const EDGE_ETCHED = (BDR_SUNKENOUTER Or BDR_RAISEDINNER)
+Public Const EDGE_BUMP = (BDR_RAISEDOUTER Or BDR_SUNKENINNER)
 
-'~dup Public Const BF_LEFT = &H1   ' повтор, первое: PRINTERDLL.INC(110)
-'~dup Public Const BF_TOP = &H2   ' повтор, первое: PRINTERDLL.INC(111)
-'~dup Public Const BF_RIGHT = &H4   ' повтор, первое: PRINTERDLL.INC(112)
-'~dup Public Const BF_BOTTOM = &H8   ' повтор, первое: PRINTERDLL.INC(113)
+Public Const BF_LEFT = &H1
+Public Const BF_TOP = &H2
+Public Const BF_RIGHT = &H4
+Public Const BF_BOTTOM = &H8
 
-'~dup Public Const BF_TOPLEFT = (BF_TOP Or BF_LEFT)   ' повтор, первое: PRINTERDLL.INC(114)
-'~dup Public Const BF_TOPRIGHT = (BF_TOP Or BF_RIGHT)   ' повтор, первое: PRINTERDLL.INC(115)
-'~dup Public Const BF_BOTTOMLEFT = (BF_BOTTOM Or BF_LEFT)   ' повтор, первое: PRINTERDLL.INC(116)
-'~dup Public Const BF_BOTTOMRIGHT = (BF_BOTTOM Or BF_RIGHT)   ' повтор, первое: PRINTERDLL.INC(117)
-'~dup Public Const BF_RECT = (BF_LEFT Or BF_TOP Or BF_RIGHT Or BF_BOTTOM)   ' повтор, первое: PRINTERDLL.INC(118)
+Public Const BF_TOPLEFT = (BF_TOP Or BF_LEFT)
+Public Const BF_TOPRIGHT = (BF_TOP Or BF_RIGHT)
+Public Const BF_BOTTOMLEFT = (BF_BOTTOM Or BF_LEFT)
+Public Const BF_BOTTOMRIGHT = (BF_BOTTOM Or BF_RIGHT)
+Public Const BF_RECT = (BF_LEFT Or BF_TOP Or BF_RIGHT Or BF_BOTTOM)
 
-'~dup Public Const BF_DIAGONAL = &H10   ' повтор, первое: PRINTERDLL.INC(119)
+Public Const BF_DIAGONAL = &H10
 
 ' For diagonal lines, the BF_RECT flags specify the end point of
 ' the vector bounded by the rectangle parameter.
-'~dup Public Const BF_DIAGONAL_ENDTOPRIGHT = (BF_DIAGONAL Or BF_TOP Or BF_RIGHT)   ' повтор, первое: PRINTERDLL.INC(120)
-'~dup Public Const BF_DIAGONAL_ENDTOPLEFT = (BF_DIAGONAL Or BF_TOP Or BF_LEFT)   ' повтор, первое: PRINTERDLL.INC(121)
-'~dup Public Const BF_DIAGONAL_ENDBOTTOMLEFT = (BF_DIAGONAL Or BF_BOTTOM Or BF_LEFT)   ' повтор, первое: PRINTERDLL.INC(122)
-'~dup Public Const BF_DIAGONAL_ENDBOTTOMRIGHT = (BF_DIAGONAL Or BF_BOTTOM Or BF_RIGHT)   ' повтор, первое: PRINTERDLL.INC(123)
+Public Const BF_DIAGONAL_ENDTOPRIGHT = (BF_DIAGONAL Or BF_TOP Or BF_RIGHT)
+Public Const BF_DIAGONAL_ENDTOPLEFT = (BF_DIAGONAL Or BF_TOP Or BF_LEFT)
+Public Const BF_DIAGONAL_ENDBOTTOMLEFT = (BF_DIAGONAL Or BF_BOTTOM Or BF_LEFT)
+Public Const BF_DIAGONAL_ENDBOTTOMRIGHT = (BF_DIAGONAL Or BF_BOTTOM Or BF_RIGHT)
 
-'~dup Public Const BF_MIDDLE = &H800    ' Fill in the middle.   ' повтор, первое: PRINTERDLL.INC(124)
-'~dup Public Const BF_SOFT = &H1000     ' Use for softer buttons.   ' повтор, первое: PRINTERDLL.INC(125)
-'~dup Public Const BF_ADJUST = &H2000   ' Calculate the space left over.   ' повтор, первое: PRINTERDLL.INC(126)
-'~dup Public Const BF_FLAT = &H4000     ' For flat rather than 3-D borders.   ' повтор, первое: PRINTERDLL.INC(127)
-'~dup Public Const BF_MONO = &H8000     ' For monochrome borders.   ' повтор, первое: PRINTERDLL.INC(128)
+Public Const BF_MIDDLE = &H800    ' Fill in the middle.
+Public Const BF_SOFT = &H1000     ' Use for softer buttons.
+Public Const BF_ADJUST = &H2000   ' Calculate the space left over.
+Public Const BF_FLAT = &H4000     ' For flat rather than 3-D borders.
+Public Const BF_MONO = &H8000     ' For monochrome borders.
 
 '~undef $UNDEF TRUE, FALSE, ANY, INTEGER   ' сборка: TRUE, FALSE объявлены другим файлом
 $UNDEF ANY, INTEGER
@@ -49932,7 +48351,7 @@ $ENDIF
 '~dup Public Const WHITENESS = &HFF0062       ' (DWORD) dest = WHITE   ' повтор, первое: rapidq2.inc(1297)
 
 '~dup Public Const GDI_ERROR = &HFFFF   ' повтор, первое: WIN32API.INC(3017)
-'~dup Public Const HGDI_ERROR = &HFFFF   ' повтор, первое: PRINTERDLL.INC(178)
+'~dup Public Const HGDI_ERROR = &HFFFF   ' повтор, первое: WIN32API.INC(3018)
 
 ' Region Flags
 '~dup Public Const ERRORAPI = 0   ' повтор, первое: WIN32API.INC(3021)
@@ -49950,11 +48369,11 @@ $ENDIF
 '~dup Public Const RGN_MAX = RGN_COPY   ' повтор, первое: WIN32API.INC(3033)
 
 ' StretchBlt() Modes
-'~dup Public Const BLACKONWHITE = 1   ' повтор, первое: PRINTERDLL.INC(179)
-'~dup Public Const WHITEONBLACK = 2   ' повтор, первое: PRINTERDLL.INC(180)
-'~dup Public Const COLORONCOLOR = 3   ' повтор, первое: PRINTERDLL.INC(181)
-'~dup Public Const HALFTONE = 4   ' повтор, первое: PRINTERDLL.INC(182)
-'~dup Public Const MAXSTRETCHBLTMODE = 4   ' повтор, первое: PRINTERDLL.INC(183)
+'~dup Public Const BLACKONWHITE = 1   ' повтор, первое: WIN32API.INC(3036)
+'~dup Public Const WHITEONBLACK = 2   ' повтор, первое: WIN32API.INC(3037)
+'~dup Public Const COLORONCOLOR = 3   ' повтор, первое: WIN32API.INC(3038)
+'~dup Public Const HALFTONE = 4   ' повтор, первое: WIN32API.INC(3039)
+'~dup Public Const MAXSTRETCHBLTMODE = 4   ' повтор, первое: WIN32API.INC(3040)
 
 ' PolyFill() Modes
 '~dup Public Const ALTERNATE = 1   ' повтор, первое: WIN32API.INC(3043)
@@ -50505,31 +48924,31 @@ $ENDIF
 '~dup         elfStyle(LF_FACESIZE) As Byte
 '~dup End Type
 
-'~dup Public Const OUT_DEFAULT_PRECIS = 0   ' повтор, первое: PRINTERDLL.INC(61)
-'~dup Public Const OUT_STRING_PRECIS = 1   ' повтор, первое: PRINTERDLL.INC(62)
-'~dup Public Const OUT_CHARACTER_PRECIS = 2   ' повтор, первое: PRINTERDLL.INC(63)
-'~dup Public Const OUT_STROKE_PRECIS = 3   ' повтор, первое: PRINTERDLL.INC(64)
-'~dup Public Const OUT_TT_PRECIS = 4   ' повтор, первое: PRINTERDLL.INC(65)
-'~dup Public Const OUT_DEVICE_PRECIS = 5   ' повтор, первое: PRINTERDLL.INC(66)
-'~dup Public Const OUT_RASTER_PRECIS = 6   ' повтор, первое: PRINTERDLL.INC(67)
-'~dup Public Const OUT_TT_ONLY_PRECIS = 7   ' повтор, первое: PRINTERDLL.INC(68)
-'~dup Public Const OUT_OUTLINE_PRECIS = 8   ' повтор, первое: PRINTERDLL.INC(69)
+'~dup Public Const OUT_DEFAULT_PRECIS = 0   ' повтор, первое: WIN32API.INC(3559)
+'~dup Public Const OUT_STRING_PRECIS = 1   ' повтор, первое: WIN32API.INC(3560)
+'~dup Public Const OUT_CHARACTER_PRECIS = 2   ' повтор, первое: WIN32API.INC(3561)
+'~dup Public Const OUT_STROKE_PRECIS = 3   ' повтор, первое: WIN32API.INC(3562)
+'~dup Public Const OUT_TT_PRECIS = 4   ' повтор, первое: WIN32API.INC(3563)
+'~dup Public Const OUT_DEVICE_PRECIS = 5   ' повтор, первое: WIN32API.INC(3564)
+'~dup Public Const OUT_RASTER_PRECIS = 6   ' повтор, первое: WIN32API.INC(3565)
+'~dup Public Const OUT_TT_ONLY_PRECIS = 7   ' повтор, первое: WIN32API.INC(3566)
+'~dup Public Const OUT_OUTLINE_PRECIS = 8   ' повтор, первое: WIN32API.INC(3567)
 
-'~dup Public Const CLIP_DEFAULT_PRECIS = 0   ' повтор, первое: PRINTERDLL.INC(70)
-'~dup Public Const CLIP_CHARACTER_PRECIS = 1   ' повтор, первое: PRINTERDLL.INC(71)
-'~dup Public Const CLIP_STROKE_PRECIS = 2   ' повтор, первое: PRINTERDLL.INC(72)
-'~dup Public Const CLIP_MASK = &HF   ' повтор, первое: PRINTERDLL.INC(73)
-'~dup Public Const CLIP_LH_ANGLES = 16   ' повтор, первое: PRINTERDLL.INC(74)
-'~dup Public Const CLIP_TT_ALWAYS = 32   ' повтор, первое: PRINTERDLL.INC(75)
-'~dup Public Const CLIP_EMBEDDED = 128   ' повтор, первое: PRINTERDLL.INC(76)
+'~dup Public Const CLIP_DEFAULT_PRECIS = 0   ' повтор, первое: WIN32API.INC(3569)
+'~dup Public Const CLIP_CHARACTER_PRECIS = 1   ' повтор, первое: WIN32API.INC(3570)
+'~dup Public Const CLIP_STROKE_PRECIS = 2   ' повтор, первое: WIN32API.INC(3571)
+'~dup Public Const CLIP_MASK = &HF   ' повтор, первое: WIN32API.INC(3572)
+'~dup Public Const CLIP_LH_ANGLES = 16   ' повтор, первое: WIN32API.INC(3573)
+'~dup Public Const CLIP_TT_ALWAYS = 32   ' повтор, первое: WIN32API.INC(3574)
+'~dup Public Const CLIP_EMBEDDED = 128   ' повтор, первое: WIN32API.INC(3575)
 
-'~dup Public Const DEFAULT_QUALITY = 0   ' повтор, первое: PRINTERDLL.INC(77)
-'~dup Public Const DRAFT_QUALITY = 1   ' повтор, первое: PRINTERDLL.INC(78)
-'~dup Public Const PROOF_QUALITY = 2   ' повтор, первое: PRINTERDLL.INC(79)
+'~dup Public Const DEFAULT_QUALITY = 0   ' повтор, первое: WIN32API.INC(3577)
+'~dup Public Const DRAFT_QUALITY = 1   ' повтор, первое: WIN32API.INC(3578)
+'~dup Public Const PROOF_QUALITY = 2   ' повтор, первое: WIN32API.INC(3579)
 
-'~dup Public Const DEFAULT_PITCH = 0   ' повтор, первое: PRINTERDLL.INC(80)
-'~dup Public Const FIXED_PITCH = 1   ' повтор, первое: PRINTERDLL.INC(81)
-'~dup Public Const VARIABLE_PITCH = 2   ' повтор, первое: PRINTERDLL.INC(82)
+'~dup Public Const DEFAULT_PITCH = 0   ' повтор, первое: WIN32API.INC(3581)
+'~dup Public Const FIXED_PITCH = 1   ' повтор, первое: WIN32API.INC(3582)
+'~dup Public Const VARIABLE_PITCH = 2   ' повтор, первое: WIN32API.INC(3583)
 
 '~dup Public Const ANSI_CHARSET = 0   ' повтор, первое: rapidq2.inc(191)
 '~dup Public Const DEFAULT_CHARSET = 1   ' повтор, первое: rapidq2.inc(192)
@@ -50541,30 +48960,30 @@ $ENDIF
 
 ' Font Families
 '
-'~dup Public Const FF_DONTCARE = 0    '  Don't care or don't know.   ' повтор, первое: PRINTERDLL.INC(90)
-'~dup Public Const FF_ROMAN = 16      '  Variable stroke width, serifed.   ' повтор, первое: PRINTERDLL.INC(91)
+'~dup Public Const FF_DONTCARE = 0    '  Don't care or don't know.   ' повтор, первое: WIN32API.INC(3595)
+'~dup Public Const FF_ROMAN = 16      '  Variable stroke width, serifed.   ' повтор, первое: WIN32API.INC(3596)
 
 ' Times Roman, Century Schoolbook, etc.
-'~dup Public Const FF_SWISS = 32      '  Variable stroke width, sans-serifed.   ' повтор, первое: PRINTERDLL.INC(92)
+'~dup Public Const FF_SWISS = 32      '  Variable stroke width, sans-serifed.   ' повтор, первое: WIN32API.INC(3599)
 
 ' Helvetica, Swiss, etc.
-'~dup Public Const FF_MODERN = 48     '  Constant stroke width, serifed or sans-serifed.   ' повтор, первое: PRINTERDLL.INC(93)
+'~dup Public Const FF_MODERN = 48     '  Constant stroke width, serifed or sans-serifed.   ' повтор, первое: WIN32API.INC(3602)
 
 ' Pica, Elite, Courier, etc.
-'~dup Public Const FF_SCRIPT = 64     '  Cursive, etc.   ' повтор, первое: PRINTERDLL.INC(94)
-'~dup Public Const FF_DECORATIVE = 80 '  Old English, etc.   ' повтор, первое: PRINTERDLL.INC(95)
+'~dup Public Const FF_SCRIPT = 64     '  Cursive, etc.   ' повтор, первое: WIN32API.INC(3605)
+'~dup Public Const FF_DECORATIVE = 80 '  Old English, etc.   ' повтор, первое: WIN32API.INC(3606)
 
 ' Font Weights
-'~dup Public Const FW_DONTCARE = 0   ' повтор, первое: PRINTERDLL.INC(45)
-'~dup Public Const FW_THIN = 100   ' повтор, первое: PRINTERDLL.INC(46)
-'~dup Public Const FW_EXTRALIGHT = 200   ' повтор, первое: PRINTERDLL.INC(47)
-'~dup Public Const FW_LIGHT = 300   ' повтор, первое: PRINTERDLL.INC(48)
-'~dup Public Const FW_NORMAL = 400   ' повтор, первое: PRINTERDLL.INC(49)
-'~dup Public Const FW_MEDIUM = 500   ' повтор, первое: PRINTERDLL.INC(50)
-'~dup Public Const FW_SEMIBOLD = 600   ' повтор, первое: PRINTERDLL.INC(51)
-'~dup Public Const FW_BOLD = 700   ' повтор, первое: PRINTERDLL.INC(52)
-'~dup Public Const FW_EXTRABOLD = 800   ' повтор, первое: PRINTERDLL.INC(53)
-'~dup Public Const FW_HEAVY = 900   ' повтор, первое: PRINTERDLL.INC(54)
+'~dup Public Const FW_DONTCARE = 0   ' повтор, первое: WIN32API.INC(3609)
+'~dup Public Const FW_THIN = 100   ' повтор, первое: WIN32API.INC(3610)
+'~dup Public Const FW_EXTRALIGHT = 200   ' повтор, первое: WIN32API.INC(3611)
+'~dup Public Const FW_LIGHT = 300   ' повтор, первое: WIN32API.INC(3612)
+'~dup Public Const FW_NORMAL = 400   ' повтор, первое: WIN32API.INC(3613)
+'~dup Public Const FW_MEDIUM = 500   ' повтор, первое: WIN32API.INC(3614)
+'~dup Public Const FW_SEMIBOLD = 600   ' повтор, первое: WIN32API.INC(3615)
+'~dup Public Const FW_BOLD = 700   ' повтор, первое: WIN32API.INC(3616)
+'~dup Public Const FW_EXTRABOLD = 800   ' повтор, первое: WIN32API.INC(3617)
+'~dup Public Const FW_HEAVY = 900   ' повтор, первое: WIN32API.INC(3618)
 
 '~dup Public Const FW_ULTRALIGHT = FW_EXTRALIGHT   ' повтор, первое: WIN32API.INC(3620)
 '~dup Public Const FW_REGULAR = FW_NORMAL   ' повтор, первое: WIN32API.INC(3621)
@@ -50789,7 +49208,7 @@ $ENDIF
 '~dup Public Const SYSTEM_FIXED_FONT = 16   ' повтор, первое: rapidq2.inc(1272)
 '~dup Public Const STOCK_LAST = 16   ' повтор, первое: rapidq2.inc(1273)
 
-'~dup Public Const CLR_INVALID = &HFFFF   ' повтор, первое: PRINTERDLL.INC(143)
+'~dup Public Const CLR_INVALID = &HFFFF   ' повтор, первое: WIN32API.INC(3843)
 
 ' Brush Styles
 '~dup Public Const BS_SOLID = 0   ' повтор, первое: WIN32API.INC(3846)
@@ -50804,11 +49223,11 @@ $ENDIF
 '~dup Public Const BS_DIBPATTERN8X8 = 8   ' повтор, первое: WIN32API.INC(3855)
 
 '  Hatch Styles
-'~dup Public Const HS_HORIZONTAL = 0              '  -----   ' повтор, первое: PRINTERDLL.INC(38)
-'~dup Public Const HS_VERTICAL = 1                '  |||||   ' повтор, первое: PRINTERDLL.INC(39)
-'~dup Public Const HS_FDIAGONAL = 2               '  \\\\\   ' повтор, первое: PRINTERDLL.INC(40)
-'~dup Public Const HS_BDIAGONAL = 3               '  /////   ' повтор, первое: PRINTERDLL.INC(41)
-'~dup Public Const HS_CROSS = 4                   '  +++++   ' повтор, первое: PRINTERDLL.INC(42)
+'~dup Public Const HS_HORIZONTAL = 0              '  -----   ' повтор, первое: WIN32API.INC(3858)
+'~dup Public Const HS_VERTICAL = 1                '  |||||   ' повтор, первое: WIN32API.INC(3859)
+'~dup Public Const HS_FDIAGONAL = 2               '  \\\\\   ' повтор, первое: WIN32API.INC(3860)
+'~dup Public Const HS_BDIAGONAL = 3               '  /////   ' повтор, первое: WIN32API.INC(3861)
+'~dup Public Const HS_CROSS = 4                   '  +++++   ' повтор, первое: WIN32API.INC(3862)
 '~dup Public Const HS_DIAGCROSS = 5               '  xxxxx   ' повтор, первое: WIN32API.INC(3863)
 '~dup Public Const HS_FDIAGONAL1 = 6   ' повтор, первое: WIN32API.INC(3864)
 '~dup Public Const HS_BDIAGONAL1 = 7   ' повтор, первое: WIN32API.INC(3865)
@@ -50970,23 +49389,23 @@ $ENDIF
 '~dup Public Const TC_SCROLLBLT = &H10000             '  do text scroll with blt   ' повтор, первое: WIN32API.INC(4021)
 
 '  Raster Capabilities
-'~dup Public Const RC_NONE = 0   ' повтор, первое: PRINTERDLL.INC(146)
-'~dup Public Const RC_BITBLT = 1                  '  Can do standard BLT.   ' повтор, первое: PRINTERDLL.INC(147)
-'~dup Public Const RC_BANDING = 2                 '  Device requires banding support   ' повтор, первое: PRINTERDLL.INC(148)
-'~dup Public Const RC_SCALING = 4                 '  Device requires scaling support   ' повтор, первое: PRINTERDLL.INC(149)
-'~dup Public Const RC_BITMAP64 = 8                '  Device can support >64K bitmap   ' повтор, первое: PRINTERDLL.INC(150)
-'~dup Public Const RC_GDI20_OUTPUT = &H10             '  has 2.0 output calls   ' повтор, первое: PRINTERDLL.INC(151)
-'~dup Public Const RC_GDI20_STATE = &H20   ' повтор, первое: PRINTERDLL.INC(152)
-'~dup Public Const RC_SAVEBITMAP = &H40   ' повтор, первое: PRINTERDLL.INC(153)
-'~dup Public Const RC_DI_BITMAP = &H80                '  supports DIB to memory   ' повтор, первое: PRINTERDLL.INC(154)
-'~dup Public Const RC_PALETTE = &H100                 '  supports a palette   ' повтор, первое: PRINTERDLL.INC(155)
-'~dup Public Const RC_DIBTODEV = &H200                '  supports DIBitsToDevice   ' повтор, первое: PRINTERDLL.INC(156)
-'~dup Public Const RC_BIGFONT = &H400                 '  supports >64K fonts   ' повтор, первое: PRINTERDLL.INC(157)
-'~dup Public Const RC_STRETCHBLT = &H800              '  supports StretchBlt   ' повтор, первое: PRINTERDLL.INC(158)
-'~dup Public Const RC_FLOODFILL = &H1000              '  supports FloodFill   ' повтор, первое: PRINTERDLL.INC(159)
-'~dup Public Const RC_STRETCHDIB = &H2000             '  supports StretchDIBits   ' повтор, первое: PRINTERDLL.INC(160)
-'~dup Public Const RC_OP_DX_OUTPUT = &H4000   ' повтор, первое: PRINTERDLL.INC(161)
-'~dup Public Const RC_DEVBITS = &H8000   ' повтор, первое: PRINTERDLL.INC(162)
+'~dup Public Const RC_NONE = 0   ' повтор, первое: WIN32API.INC(4024)
+'~dup Public Const RC_BITBLT = 1                  '  Can do standard BLT.   ' повтор, первое: WIN32API.INC(4025)
+'~dup Public Const RC_BANDING = 2                 '  Device requires banding support   ' повтор, первое: WIN32API.INC(4026)
+'~dup Public Const RC_SCALING = 4                 '  Device requires scaling support   ' повтор, первое: WIN32API.INC(4027)
+'~dup Public Const RC_BITMAP64 = 8                '  Device can support >64K bitmap   ' повтор, первое: WIN32API.INC(4028)
+'~dup Public Const RC_GDI20_OUTPUT = &H10             '  has 2.0 output calls   ' повтор, первое: WIN32API.INC(4029)
+'~dup Public Const RC_GDI20_STATE = &H20   ' повтор, первое: WIN32API.INC(4030)
+'~dup Public Const RC_SAVEBITMAP = &H40   ' повтор, первое: WIN32API.INC(4031)
+'~dup Public Const RC_DI_BITMAP = &H80                '  supports DIB to memory   ' повтор, первое: WIN32API.INC(4032)
+'~dup Public Const RC_PALETTE = &H100                 '  supports a palette   ' повтор, первое: WIN32API.INC(4033)
+'~dup Public Const RC_DIBTODEV = &H200                '  supports DIBitsToDevice   ' повтор, первое: WIN32API.INC(4034)
+'~dup Public Const RC_BIGFONT = &H400                 '  supports >64K fonts   ' повтор, первое: WIN32API.INC(4035)
+'~dup Public Const RC_STRETCHBLT = &H800              '  supports StretchBlt   ' повтор, первое: WIN32API.INC(4036)
+'~dup Public Const RC_FLOODFILL = &H1000              '  supports FloodFill   ' повтор, первое: WIN32API.INC(4037)
+'~dup Public Const RC_STRETCHDIB = &H2000             '  supports StretchDIBits   ' повтор, первое: WIN32API.INC(4038)
+'~dup Public Const RC_OP_DX_OUTPUT = &H4000   ' повтор, первое: WIN32API.INC(4039)
+'~dup Public Const RC_DEVBITS = &H8000   ' повтор, первое: WIN32API.INC(4040)
 
 ' DIB color table identifiers
 '~dup Public Const DIB_RGB_COLORS = 0 '  color table in RGBs   ' повтор, первое: WIN32API.INC(4043)
@@ -51516,7 +49935,7 @@ CONST STRING_SIZE				= 32
 '~dup Declare Function RectInRegion Lib "gdi32" Alias "RectInRegion" (ByVal hRgn As Long, lpRect As RECT) As Long   ' повтор, первое: WIN32API.INC(4522)
 '~dup Declare Function Rectangle Lib "gdi32" Alias "Rectangle" (ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long   ' повтор, первое: rapidq2.inc(1462)
 '~dup Declare Function RestoreDC Lib "gdi32" Alias "RestoreDC" (ByVal hdc As Long, ByVal nSavedDC As Long) As Long   ' повтор, первое: WIN32API.INC(4524)
-'~dup Declare Function ResetDC Lib "gdi32" Alias "ResetDCA" (ByVal hdc As Long, lpInitData As DEVMODE) As Long   ' повтор, первое: PRINTERDLL.INC(190)
+'~dup Declare Function ResetDC Lib "gdi32" Alias "ResetDCA" (ByVal hdc As Long, lpInitData As DEVMODE) As Long   ' повтор, первое: WIN32API.INC(4525)
 '~dup Declare Function RealizePalette Lib "gdi32" Alias "RealizePalette" (ByVal hdc As Long) As Long   ' повтор, первое: WIN32API.INC(4526)
 '~dup Declare Function RemoveFontResource Lib "gdi32" Alias "RemoveFontResourceA" (ByVal lpFileName As String) As Long   ' повтор, первое: WIN32API.INC(4527)
 '~dup Declare Function RoundRect Lib "gdi32" Alias "RoundRect" (ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long) As Long   ' повтор, первое: rapidq2.inc(1463)
@@ -62857,46 +61276,46 @@ End Type
 '~dup Public Const INVALID_HANDLE_VALUE = -1   ' повтор, первое: WIN32API.INC(15600)
 
 'DrawEdge Constants
-'~dup Public Const BDR_RAISEDOUTER = &H1   ' повтор, первое: PRINTERDLL.INC(98)
-'~dup Public Const BDR_SUNKENOUTER = &H2   ' повтор, первое: PRINTERDLL.INC(99)
-'~dup Public Const BDR_RAISEDINNER = &H4   ' повтор, первое: PRINTERDLL.INC(100)
-'~dup Public Const BDR_SUNKENINNER = &H8   ' повтор, первое: PRINTERDLL.INC(101)
+'~dup Public Const BDR_RAISEDOUTER = &H1   ' повтор, первое: WIN32API.INC(15603)
+'~dup Public Const BDR_SUNKENOUTER = &H2   ' повтор, первое: WIN32API.INC(15604)
+'~dup Public Const BDR_RAISEDINNER = &H4   ' повтор, первое: WIN32API.INC(15605)
+'~dup Public Const BDR_SUNKENINNER = &H8   ' повтор, первое: WIN32API.INC(15606)
 
-'~dup Public Const BDR_OUTER = &H3   ' повтор, первое: PRINTERDLL.INC(102)
-'~dup Public Const BDR_INNER = &HC   ' повтор, первое: PRINTERDLL.INC(103)
-'~dup Public Const BDR_RAISED = &H5   ' повтор, первое: PRINTERDLL.INC(104)
-'~dup Public Const BDR_SUNKEN = &HA   ' повтор, первое: PRINTERDLL.INC(105)
+'~dup Public Const BDR_OUTER = &H3   ' повтор, первое: WIN32API.INC(15608)
+'~dup Public Const BDR_INNER = &HC   ' повтор, первое: WIN32API.INC(15609)
+'~dup Public Const BDR_RAISED = &H5   ' повтор, первое: WIN32API.INC(15610)
+'~dup Public Const BDR_SUNKEN = &HA   ' повтор, первое: WIN32API.INC(15611)
 
-'~dup Public Const EDGE_RAISED = (BDR_RAISEDOUTER Or BDR_RAISEDINNER)   ' повтор, первое: PRINTERDLL.INC(106)
-'~dup Public Const EDGE_SUNKEN = (BDR_SUNKENOUTER Or BDR_SUNKENINNER)   ' повтор, первое: PRINTERDLL.INC(107)
-'~dup Public Const EDGE_ETCHED = (BDR_SUNKENOUTER Or BDR_RAISEDINNER)   ' повтор, первое: PRINTERDLL.INC(108)
-'~dup Public Const EDGE_BUMP = (BDR_RAISEDOUTER Or BDR_SUNKENINNER)   ' повтор, первое: PRINTERDLL.INC(109)
+'~dup Public Const EDGE_RAISED = (BDR_RAISEDOUTER Or BDR_RAISEDINNER)   ' повтор, первое: WIN32API.INC(15613)
+'~dup Public Const EDGE_SUNKEN = (BDR_SUNKENOUTER Or BDR_SUNKENINNER)   ' повтор, первое: WIN32API.INC(15614)
+'~dup Public Const EDGE_ETCHED = (BDR_SUNKENOUTER Or BDR_RAISEDINNER)   ' повтор, первое: WIN32API.INC(15615)
+'~dup Public Const EDGE_BUMP = (BDR_RAISEDOUTER Or BDR_SUNKENINNER)   ' повтор, первое: WIN32API.INC(15616)
 
-'~dup Public Const BF_LEFT = &H1   ' повтор, первое: PRINTERDLL.INC(110)
-'~dup Public Const BF_TOP = &H2   ' повтор, первое: PRINTERDLL.INC(111)
-'~dup Public Const BF_RIGHT = &H4   ' повтор, первое: PRINTERDLL.INC(112)
-'~dup Public Const BF_BOTTOM = &H8   ' повтор, первое: PRINTERDLL.INC(113)
+'~dup Public Const BF_LEFT = &H1   ' повтор, первое: WIN32API.INC(15618)
+'~dup Public Const BF_TOP = &H2   ' повтор, первое: WIN32API.INC(15619)
+'~dup Public Const BF_RIGHT = &H4   ' повтор, первое: WIN32API.INC(15620)
+'~dup Public Const BF_BOTTOM = &H8   ' повтор, первое: WIN32API.INC(15621)
 
-'~dup Public Const BF_TOPLEFT = (BF_TOP Or BF_LEFT)   ' повтор, первое: PRINTERDLL.INC(114)
-'~dup Public Const BF_TOPRIGHT = (BF_TOP Or BF_RIGHT)   ' повтор, первое: PRINTERDLL.INC(115)
-'~dup Public Const BF_BOTTOMLEFT = (BF_BOTTOM Or BF_LEFT)   ' повтор, первое: PRINTERDLL.INC(116)
-'~dup Public Const BF_BOTTOMRIGHT = (BF_BOTTOM Or BF_RIGHT)   ' повтор, первое: PRINTERDLL.INC(117)
-'~dup Public Const BF_RECT = (BF_LEFT Or BF_TOP Or BF_RIGHT Or BF_BOTTOM)   ' повтор, первое: PRINTERDLL.INC(118)
+'~dup Public Const BF_TOPLEFT = (BF_TOP Or BF_LEFT)   ' повтор, первое: WIN32API.INC(15623)
+'~dup Public Const BF_TOPRIGHT = (BF_TOP Or BF_RIGHT)   ' повтор, первое: WIN32API.INC(15624)
+'~dup Public Const BF_BOTTOMLEFT = (BF_BOTTOM Or BF_LEFT)   ' повтор, первое: WIN32API.INC(15625)
+'~dup Public Const BF_BOTTOMRIGHT = (BF_BOTTOM Or BF_RIGHT)   ' повтор, первое: WIN32API.INC(15626)
+'~dup Public Const BF_RECT = (BF_LEFT Or BF_TOP Or BF_RIGHT Or BF_BOTTOM)   ' повтор, первое: WIN32API.INC(15627)
 
-'~dup Public Const BF_DIAGONAL = &H10   ' повтор, первое: PRINTERDLL.INC(119)
+'~dup Public Const BF_DIAGONAL = &H10   ' повтор, первое: WIN32API.INC(15629)
 
 ' For diagonal lines, the BF_RECT flags specify the end point of
 ' the vector bounded by the rectangle parameter.
-'~dup Public Const BF_DIAGONAL_ENDTOPRIGHT = (BF_DIAGONAL Or BF_TOP Or BF_RIGHT)   ' повтор, первое: PRINTERDLL.INC(120)
-'~dup Public Const BF_DIAGONAL_ENDTOPLEFT = (BF_DIAGONAL Or BF_TOP Or BF_LEFT)   ' повтор, первое: PRINTERDLL.INC(121)
-'~dup Public Const BF_DIAGONAL_ENDBOTTOMLEFT = (BF_DIAGONAL Or BF_BOTTOM Or BF_LEFT)   ' повтор, первое: PRINTERDLL.INC(122)
-'~dup Public Const BF_DIAGONAL_ENDBOTTOMRIGHT = (BF_DIAGONAL Or BF_BOTTOM Or BF_RIGHT)   ' повтор, первое: PRINTERDLL.INC(123)
+'~dup Public Const BF_DIAGONAL_ENDTOPRIGHT = (BF_DIAGONAL Or BF_TOP Or BF_RIGHT)   ' повтор, первое: WIN32API.INC(15633)
+'~dup Public Const BF_DIAGONAL_ENDTOPLEFT = (BF_DIAGONAL Or BF_TOP Or BF_LEFT)   ' повтор, первое: WIN32API.INC(15634)
+'~dup Public Const BF_DIAGONAL_ENDBOTTOMLEFT = (BF_DIAGONAL Or BF_BOTTOM Or BF_LEFT)   ' повтор, первое: WIN32API.INC(15635)
+'~dup Public Const BF_DIAGONAL_ENDBOTTOMRIGHT = (BF_DIAGONAL Or BF_BOTTOM Or BF_RIGHT)   ' повтор, первое: WIN32API.INC(15636)
 
-'~dup Public Const BF_MIDDLE = &H800    ' Fill in the middle.   ' повтор, первое: PRINTERDLL.INC(124)
-'~dup Public Const BF_SOFT = &H1000     ' Use for softer buttons.   ' повтор, первое: PRINTERDLL.INC(125)
-'~dup Public Const BF_ADJUST = &H2000   ' Calculate the space left over.   ' повтор, первое: PRINTERDLL.INC(126)
-'~dup Public Const BF_FLAT = &H4000     ' For flat rather than 3-D borders.   ' повтор, первое: PRINTERDLL.INC(127)
-'~dup Public Const BF_MONO = &H8000     ' For monochrome borders.   ' повтор, первое: PRINTERDLL.INC(128)
+'~dup Public Const BF_MIDDLE = &H800    ' Fill in the middle.   ' повтор, первое: WIN32API.INC(15638)
+'~dup Public Const BF_SOFT = &H1000     ' Use for softer buttons.   ' повтор, первое: WIN32API.INC(15639)
+'~dup Public Const BF_ADJUST = &H2000   ' Calculate the space left over.   ' повтор, первое: WIN32API.INC(15640)
+'~dup Public Const BF_FLAT = &H4000     ' For flat rather than 3-D borders.   ' повтор, первое: WIN32API.INC(15641)
+'~dup Public Const BF_MONO = &H8000     ' For monochrome borders.   ' повтор, первое: WIN32API.INC(15642)
 
 
 
@@ -64926,42 +63345,6 @@ $TYPECHECK OFF
 $ESCAPECHARS OFF
 $OPTION WEAKTYPE OFF
 $OPTION VBDLL OFF
-'[build_inc] debugWindow.inc (тела)
-Subi RQDebug(...)
-GetLinesLack=ParamStrCount-~WatchDisplay.LineCOunt-1   
-print "GetLinesLack="; GetLinesLack
-FOR Ij = 1 TO GetLinesLack
-	~WatchDisplay.addString  "-" 'paramStr$(i)     
-next iJ
-
-FOR Ij = 1 TO ParamStrCount
-	~WatchDisplay.Line(ij-1)=paramStr$(ij)+"="+str$(paramval(ij))
-NEXT Ij
-
-pv=paramval(ParamValCount)
-'print"pv=";pv
-op=OperatorsPos(pv)
-'print"op=";op
-ol=OperatorsLenth(pv)
-'print"ol=";ol
-
-call ViewStep (Op,OL)
-
-if ModeFlg=0 then  ~DebugForm.showmodal else  ~DebugForm.show
-
-End Subi '=======================================================================
-sub ViewStep (OperPos,OperLength)
-~SrcDisplay.SelStart=OperPos
-~SrcDisplay.SelLength=OperLength
-end sub
-sub Trace
-ModeFlg=0
-~DebugForm.close
-end sub
-$TYPECHECK OFF
-$ESCAPECHARS OFF
-$OPTION WEAKTYPE OFF
-$OPTION VBDLL OFF
 '[build_inc] delTags.inc (тела)
 FUNCTION HtmTableValue(TableText AS STRING, KeyText AS STRING) AS LONG
   DIM KeyPos AS LONG, ValueStart AS LONG, ValueEnd AS LONG, FoundValue AS LONG
@@ -65187,15 +63570,6 @@ SUB CheckE(newstring$ AS STRING)
     newstring$ = newbase$
   END IF
 END SUB
-$TYPECHECK OFF
-$ESCAPECHARS OFF
-$OPTION WEAKTYPE OFF
-$OPTION VBDLL OFF
-'[build_inc] FBFunctions.inc (тела)
-function fbReplaceSubStr$ (SrcString as string, SString as string, RString as string ) as string  ' обертка FBReplaceSubStrFunc
-SrcString4$=SrcString
-fbReplaceSubStr$=varptr$(FBReplaceSubStrFunc (SrcString4$, SString, RString) )
-end function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
 $OPTION WEAKTYPE OFF
