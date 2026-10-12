@@ -850,6 +850,8 @@ type
     procedure DsgJumpTimerTick(Sender: TObject);
     procedure BusyHideTick(Sender: TObject);
     procedure RunTimerTick(Sender: TObject);
+    procedure RunConsPoll;
+    function RunConOf(const AExe: string): TObject;
     procedure OwnCaretTick(Sender: TObject);
     procedure DesignFormClick(Sender: TObject);
     procedure ObjSnapBtnClick(Sender: TObject);
@@ -1132,6 +1134,9 @@ type
     // (Objects). У каждой вкладки своя цель сборки, и состояние кнопок
     // запуска - по программе цели активной вкладки (RunHere).
     FRunList: TStringList;
+    // Консольные программы из FRunList, запущенные через RunConsole
+    // (TRunConsole): окно после конца ждёт клавишу, его текст - в лог
+    FRunCons: TList;
     // exe цели активной вкладки (RunTargetExe), запомненный: AppIdle
     // спрашивает часто, а цель RapidQ читает файлы с диска
     FRunExeCache: string;
@@ -3358,6 +3363,7 @@ var
     DlgListWnd,   // списки модулей и форм - MakeListWindow
     DlgHotFolders, // папки для поиска потерянных файлов - ShowHotFolders
     Unit3,        // Inc Manager (View) - IncManagerClick
+    RunConsole,   // Run консольной программы: окно не закрывается, текст - в лог
     DlgFindInc,   // поиск inc-файла (View) - FindIncShow
     DlgDelPrj,    // Delete Projects - DeleteProjectClick
     DlgBmClear,   // Clear List закладок - BmClearClick
@@ -21439,6 +21445,13 @@ begin
     for I := 0 to FRunList.Count - 1 do
       CloseHandle(THandle(Pointer(FRunList.Objects[I])));
     FreeAndNil(FRunList);
+  end;
+  // Консольные программы работают дальше, только без чтения окна
+  if FRunCons <> nil then
+  begin
+    for I := 0 to FRunCons.Count - 1 do
+      TRunConsole(FRunCons[I]).Free;
+    FreeAndNil(FRunCons);
   end;
   // Программа под отладчиком снимается вместе со средой
   FreeAndNil(FDbgSession);
@@ -50135,6 +50148,7 @@ var
   RunIdx: Integer;
   Process: THandle;
 begin
+  RunConsPoll;
   if FRunList <> nil then
     for RunIdx := FRunList.Count - 1 downto 0 do
     begin
@@ -50149,6 +50163,8 @@ begin
     RqDbgEnd;
   if (FRunList <> nil) and (FRunList.Count > 0) then
     Exit;
+  // cmd консольной программы мог закрыться между опросом и проверкой выше
+  RunConsPoll;
   FRunTimer.Enabled := False;
   // Preferences - Minimize on run: программа закрылась - среда обратно
   if FRunMinimized then
@@ -50158,6 +50174,65 @@ begin
     Application.BringToFront;
   end;
   DsgShowAfterRun;
+end;
+
+// Консольные программы (RunConsole): программа закончилась - текст её окна
+// в лог; закрыт и cmd - объект больше не нужен
+procedure TForm1.RunConsPoll;
+var
+  ConIdx, LineIdx: Integer;
+  Con: TRunConsole;
+  Lines: TStringList;
+begin
+  if FRunCons = nil then
+    Exit;
+  for ConIdx := FRunCons.Count - 1 downto 0 do
+  begin
+    Con := TRunConsole(FRunCons[ConIdx]);
+    if Con.Poll then
+    begin
+      Con.Logged := True;
+      Lines := TStringList.Create;
+      try
+        Lines.Text := ConsoleTrimPause(Con.Text);
+        if Lines.Count = 0 then
+          LogComp('--- Консоль ' + ExtractFileName(Con.Exe) + ': текста нет')
+        else
+        begin
+          LogComp('--- Консоль ' + ExtractFileName(Con.Exe) + ':');
+          for LineIdx := 0 to Lines.Count - 1 do
+            LogComp('  ' + Lines[LineIdx]);
+          LogComp('--- конец консоли ' + ExtractFileName(Con.Exe));
+        end;
+      finally
+        Lines.Free;
+      end;
+    end;
+    if Con.Logged and Con.Finished then
+    begin
+      Con.Free;
+      FRunCons.Delete(ConIdx);
+    end;
+  end;
+end;
+
+// Консоль (RunConsole) запущенной программы AExe, nil - запущена без неё
+// (TObject в объявлении: RunConsole подключён в implementation)
+function TForm1.RunConOf(const AExe: string): TObject;
+var
+  ConIdx: Integer;
+begin
+  Result := nil;
+  if (FRunCons = nil) or (AExe = '') then
+    Exit;
+  for ConIdx := FRunCons.Count - 1 downto 0 do
+    if (CompareText(ExpandFileName(TRunConsole(FRunCons[ConIdx]).Exe),
+                    AExe) = 0) and
+       not TRunConsole(FRunCons[ConIdx]).Finished then
+    begin
+      Result := TRunConsole(FRunCons[ConIdx]);
+      Exit;
+    end;
 end;
 
 // exe цели активной вкладки - то, что запустит Run: для RapidQ - рядом с
@@ -50294,7 +50369,11 @@ begin
   Process := RunHere;
   if Process = 0 then
     Exit;
-  TerminateProcess(Process, 1);
+  // Консольная: cmd с паузой и сама программа - вместе
+  if RunConOf(CurRunExe) <> nil then
+    TRunConsole(RunConOf(CurRunExe)).Kill
+  else
+    TerminateProcess(Process, 1);
   LogComp('--- Программа остановлена (Program reset): ' + CurRunExe);
   RunTimerTick(nil);   // дескриптор закрыть, форму конструктора вернуть
 end;
@@ -53166,9 +53245,10 @@ end;
 // проводника.
 procedure TForm1.RunTarget;
 var
-  Dpr, Exe, Dir, Cmd: string;
+  Dpr, Exe, Dir, Cmd, ErrText: string;
   SI: TStartupInfo;
   PI: TProcessInformation;
+  Con: TRunConsole;
   RapidQ: Boolean;
   Kind, OutKind, Bits: Integer;
 begin
@@ -53260,6 +53340,31 @@ begin
   if RapidQ and not FRqDbgOn and (FRqDbgInstr <> nil) and
      FileExists(FRqDbgInstr.CmdFile) then
     DeleteFile(FRqDbgInstr.CmdFile);
+
+  // Консольная программа (RapidQ без $APPTYPE GUI, FreeBASIC, консольная
+  // Delphi): окно после её конца не закрывается до клавиши, а его текст
+  // идёт в лог - иначе сообщение об ошибке при старте не прочитать
+  if ExeIsConsole(Exe) then
+  begin
+    if not RunConsoleStart(Exe, Dir, PI.hProcess, Con, ErrText) then
+    begin
+      LogComp('Запуск не удался: ' + Exe + ' (' + ErrText + ')');
+      Exit;
+    end;
+    if FRunCons = nil then
+      FRunCons := TList.Create;
+    FRunCons.Add(Con);
+    RunAdd(ExpandFileName(Exe), PI.hProcess);
+    FRunExeTick := 0;
+    LogComp('--- Запуск: ' + Exe + ' (консоль: после конца программы окно ' +
+            'ждёт клавишу, его текст - сюда)');
+    if FEnv.MinimizeOnRun then
+    begin
+      FRunMinimized := True;
+      Application.Minimize;
+    end;
+    Exit;
+  end;
 
   FillChar(SI, SizeOf(SI), 0);
   SI.cb := SizeOf(SI);
