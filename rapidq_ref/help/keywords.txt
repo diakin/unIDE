@@ -1794,6 +1794,7 @@ POSTTHREADMESSAGE=fi_win32api_inc.html#POSTTHREADMESSAGE
 POWER=fi_math_inc.html#POWER
 POWZ=fi_math_inc.html#POWZ
 PREPARETAPE=fi_win32api_inc.html#PREPARETAPE
+PREPROCESSOR=unide_preprocessor.html
 PRINT=consoledetail.html#print
 PRINTER=qprinter.html
 PRINTERDLG=fi_win32api_inc.html#PRINTERDLG

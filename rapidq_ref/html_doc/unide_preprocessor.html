@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Preprocessor: missing include files, resources and DLLs</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; unIDE</span><span class="rq-section">Appendix E: preprocessor</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>Preprocessor: missing include files, resources and DLLs</h1>
+<p class="rq-meta">unIDE: <code>RqDeps.pas</code> (scan, search, choice of a copy), <code>DlgRqDeps.pas</code> (window &laquo;&#1053;&#1077;&#1076;&#1086;&#1089;&#1090;&#1072;&#1102;&#1097;&#1080;&#1077; &#1092;&#1072;&#1081;&#1083;&#1099; &#1087;&#1088;&#1086;&#1075;&#1088;&#1072;&#1084;&#1084;&#1099;&raquo;), <code>DlgFindInc.pas</code> (View &mdash; Find inc file), <code>IncCheck.pas</code> (disk search, comparison with the reference). Include folder: <code>rapidq_ref/inc_standard</code>, built by <code>rapidq_ref/tools/build_standard.py</code>, contents in <code>rapidq_ref/inc_standard.md</code>.</p>
+
+<a name="1"></a><h2>1. Why it is needed</h2>
+<p>An old Rapid-Q program usually cannot be compiled in unIDE without changes. The <code>.bas</code> file names its include files, resources and DLLs, but not the full paths where they were on the author's computer. rc.exe stops at the first missing file (&laquo;$INCLUDE file X does not exist&raquo;), so the program has to be compiled again and again, one file at a time.</p>
+<p>Before each build unIDE reads the source itself, finds everything the program needs, and checks whether it is where rc.exe and Windows will look for it. What is missing is shown in one list, searched on disk in one pass and copied to the right folder.</p>
+
+<a name="2"></a><h2>2. What is checked</h2>
+<p>The main <code>.bas</code> of the project is read together with all include files it includes, nested ones too.</p>
+<ul>
+<li><b><code>$INCLUDE "file"</code></b> and <b><code>$INCLUDE &lt;file&gt;</code></b>: the same way rc.exe looks for them &mdash; a full path as is, otherwise the folder of the program (rc.exe runs there) and then the include folder passed with <code>-I</code>. A path inside the name is kept: <code>$INCLUDE "Object\QINI.inc"</code> must be <code>Object\QINI.inc</code> under one of these folders.</li>
+<li><b><code>$RESOURCE Name AS "file"</code></b>: in the same folders. The Rapid-Q documentation says that a resource file in quotes is searched in the current directory and the include paths (<a href="chapter3.html">chapter 3</a>).</li>
+<li><b><code>DECLARE SUB|FUNCTION ... LIB "x.dll"</code></b>: where Windows looks for a DLL when the exe starts &mdash; the folder of the exe, the system folders of Windows and the folders of PATH. A name without an extension gets <code>.dll</code>.</li>
+</ul>
+<p><b>Conditional blocks.</b> <code>$IFDEF</code>, <code>$IFNDEF</code>, <code>$ELSE</code>, <code>$ENDIF</code>, <code>$DEFINE</code>, <code>$UNDEF</code> are followed, also directives renamed with <code>$DEFINE</code> (<code>brem</code> / <code>erem</code> and <code>remb</code> / <code>reme</code> of RAPIDQ.INC are known in advance). A name counts as defined only if its <code>$DEFINE</code> was met earlier in the text. Includes, resources and DECLAREs inside an inactive block are not checked. The debugger reads conditional blocks the same way (<a href="unide_debugger.html">Debugger</a>).</p>
+<p>Lines continued with <code>_</code> are joined, so a DECLARE split over several lines is read as one statement. Comments are skipped.</p>
+
+<a name="3"></a><h2>3. When everything is in place</h2>
+<p>The compilation log gets one line &mdash; how many files were read and that nothing is missing &mdash; and the build goes on.</p>
+
+<a name="4"></a><h2>4. When something is missing</h2>
+<p>Each missing file is written to the log with the file and line where it is used. Then the window <b>&laquo;&#1053;&#1077;&#1076;&#1086;&#1089;&#1090;&#1072;&#1102;&#1097;&#1080;&#1077; &#1092;&#1072;&#1081;&#1083;&#1099; &#1087;&#1088;&#1086;&#1075;&#1088;&#1072;&#1084;&#1084;&#1099;&raquo;</b> (missing files of the program) opens. From top to bottom:</p>
+<ul>
+<li><b>The list of missing files</b>: name as written in the source, kind (inc, resource, DLL), where it is used (file and line), the number of copies found, the copy that will be taken. A check box marks what to copy.</li>
+<li><b>Copies on disk</b> of the file selected above: path, size, creation time and modification time. The selected copy is the one that will be taken; clicking another row takes that one. The creation time of a copied file is the time of copying, so the modification time is shown too.</li>
+<li><b>Preview</b>: the text of the selected copy, so that it can be read before copying. For DLLs and pictures there is no preview.</li>
+<li>The lists and the preview are separated by splitters.</li>
+<li>Below: why this copy was taken and the full path where it will be copied; &laquo;&#1050;&#1091;&#1076;&#1072;&raquo; (where); the buttons.</li>
+</ul>
+
+<h3>Search</h3>
+<p>The search starts as soon as the window opens, for all missing files in one pass:</p>
+<ol>
+<li>Include &mdash; the folder passed to rc.exe with <code>-I</code> (the folder of the project, otherwise Include of IDE Options);</li>
+<li>the common Include of IDE Options, if it is another folder;</li>
+<li>the folder of the program with subfolders;</li>
+<li>the folder above it.</li>
+</ol>
+<p>A folder already searched in an earlier step is not searched again. Inside each folder, subfolders with &laquo;inc&raquo; in the name are searched first. &laquo;&#1048;&#1089;&#1082;&#1072;&#1090;&#1100; &#1089;&#1085;&#1086;&#1074;&#1072;&raquo; repeats the search; during the search the same button stops it.</p>
+
+<h3>Which copy is taken</h3>
+<ul>
+<li>Include file: the first copy whose text matches the reference (<code>rapidq_ref/incOld</code>, compared as in INC Manager).</li>
+<li>If none matches and the name in <code>$INCLUDE</code> has a path (<code>Object\QINI.inc</code>): the first copy in a folder with the same path (<code>...\Object\QINI.inc</code>).</li>
+<li>Otherwise the first copy in the order of the search, with the note &laquo;&#1087;&#1088;&#1086;&#1074;&#1077;&#1088;&#1100;&#1090;&#1077;&raquo; (check it).</li>
+<li>Resources and DLLs: the first copy found.</li>
+</ul>
+
+<h3>Where it is copied</h3>
+<ul>
+<li>Include files and resources: to the <code>-I</code> folder of this build. For each file this can be changed to the folder of the program (&laquo;&#1050;&#1091;&#1076;&#1072;&raquo;).</li>
+<li>The path from <code>$INCLUDE</code> is kept: <code>Object\QINI.inc</code> goes to <code>&lt;folder&gt;\Object\QINI.inc</code>, the subfolder is created. Otherwise rc.exe would not find it.</li>
+<li>A name with a drive (<code>C:\...</code>) is copied to that very path.</li>
+<li>DLL: always to the folder of the program. Windows looks for a DLL next to the exe, not in the <code>-I</code> folder.</li>
+</ul>
+
+<h3>Buttons</h3>
+<ul>
+<li><b>&#1050;&#1086;&#1087;&#1080;&#1088;&#1086;&#1074;&#1072;&#1090;&#1100; &#1086;&#1090;&#1084;&#1077;&#1095;&#1077;&#1085;&#1085;&#1099;&#1077; &#1080; &#1089;&#1086;&#1073;&#1088;&#1072;&#1090;&#1100;</b> &mdash; copies the selected copies of the checked files and starts the build.</li>
+<li><b>&#1057;&#1086;&#1073;&#1088;&#1072;&#1090;&#1100; &#1073;&#1077;&#1079; &#1082;&#1086;&#1087;&#1080;&#1088;&#1086;&#1074;&#1072;&#1085;&#1080;&#1103;</b> &mdash; starts the build as is.</li>
+<li><b>&#1054;&#1090;&#1084;&#1077;&#1085;&#1072;</b> &mdash; the build does not start.</li>
+<li><b>&#1053;&#1077; &#1089;&#1087;&#1088;&#1072;&#1096;&#1080;&#1074;&#1072;&#1090;&#1100; &#1087;&#1088;&#1086; &#1085;&#1077;&#1086;&#1090;&#1084;&#1077;&#1095;&#1077;&#1085;&#1085;&#1099;&#1077;</b> &mdash; the unchecked names are no longer checked for this program. They are stored in <code>editor.ini</code>, section <code>[RqDepsIgnore]</code>, key &mdash; the path of the main <code>.bas</code>. Useful for DLLs that are declared but not used. To check them again, remove the key.</li>
+</ul>
+<p>What was copied and from where is written to the compilation log.</p>
+
+<a name="5"></a><h2>5. One include folder: inc_standard</h2>
+<p>IDE Options &mdash; Compilers &mdash; RapidQ Basic has one field <b>Include</b>. It is meant to point to <code>rapidq_ref/inc_standard</code>:</p>
+<ul>
+<li>the include files of <code>incOld</code> without errors of the INC Manager check, under their own names and unchanged &mdash; old programs include them as before;</li>
+<li><code>rapidqAllProc.inc</code> and <code>rapidqComponents.inc</code> &mdash; for new programs;</li>
+<li>the separate files of <code>inc_sys</code> with <code>_sys</code> in the name (<code>debug_sys.inc</code>, <code>var_sys.inc</code> ...), so that they do not clash with the files of <code>incOld</code> of the same name.</li>
+</ul>
+<p>The files of <code>incOld</code> that were not taken and the reasons are listed in <code>rapidq_ref/inc_standard.md</code>. A project can still have its own include folder (Project Properties); then that folder is passed with <code>-I</code>.</p>
+<p>A file found by the preprocessor and copied to the <code>-I</code> folder stays there, so the next program that needs it finds it at once.</p>
+
+<a name="6"></a><h2>6. Find inc file</h2>
+<p>View &mdash; Find inc file searches one name on disk by hand. The name may be a mask: <code>*</code> &mdash; any characters, <code>?</code> &mdash; one character (<code>QColorDialog*.inc</code>). Order: Include, Include system (if it is another folder), the current folder with subfolders, the folder above, then all local disks (check box) or a chosen folder. Copies appear in the list while the search goes on; each copy is compared with the reference. After &laquo;&#1057;&#1090;&#1086;&#1087;&raquo; the copies already found stay in the list. The window stays above the editor window.</p>
+
+<a name="7"></a><h2>7. Limits</h2>
+<ul>
+<li>A name in <code>$IFDEF</code> counts as defined only after its <code>$DEFINE</code> in the text. A name defined by rc.exe itself or on its command line is unknown, so such a block is taken as inactive.</li>
+<li>Paths of <code>$INCLUDE</code> are resolved from the folder of the program and the <code>-I</code> folder, not from the folder of the including file &mdash; as unIDE assumes rc.exe does.</li>
+<li><code>$INCLUDE &lt;file&gt;</code>: rc.exe also looks in &laquo;the environment search paths&raquo;; these are not checked.</li>
+<li>The include files nested in a file that is missing are not known until it is copied. They are checked at the next build.</li>
+<li>Only the build with rc.exe is checked. The FreeBASIC build and the probe build of a form snapshot are not.</li>
+<li>Whether a DLL is really loaded at start depends on Rapid-Q; the preprocessor only checks that Windows can find it.</li>
+</ul>
+</body>
+</html>
