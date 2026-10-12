@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFuncLib.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: QFuncLib.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>QFuncLib.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/QFuncLib.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 16 functions</p>
+<p><a href="#BINTODEC">BinToDec</a> &middot; <a href="#DISTANCE">Distance</a> &middot; <a href="#GETBLUE">GetBlue</a> &middot; <a href="#GETDEGREES">GetDegrees</a> &middot; <a href="#GETFILEEXT">GetFileExt</a> &middot; <a href="#GETFILENAME">GetFileName</a> &middot; <a href="#GETGREEN">GetGreen</a> &middot; <a href="#GETPATHNAME">GetPathName</a> &middot; <a href="#GETRADIAN">GetRadian</a> &middot; <a href="#GETRED">GetRed</a> &middot; <a href="#GETWORDCOUNT">GetWordCount</a> &middot; <a href="#RATIO">Ratio</a> &middot; <a href="#REMOVECHAR_">RemoveChar$</a> &middot; <a href="#SURFACE">Surface</a> &middot; <a href="#TRIM__">Trim_$</a> &middot; <a href="#WORD_">Word$</a></p>
+<h3><a name="BINTODEC"></a>BinToDec</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18238</p>
+<pre>function BinToDec(bin as string)as long</pre>
+<p>Converts a string of binary digits (&quot;1&quot; and &quot;0&quot;) to its numeric value. Characters other than &quot;1&quot; count as 0.</p>
+<h3><a name="DISTANCE"></a>Distance</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18208</p>
+<pre>function Distance(x as double,y as double) as double</pre>
+<p>Returns SQR(x^2 + y^2), the length of the vector (x, y).</p>
+<h3><a name="GETBLUE"></a>GetBlue</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18220</p>
+<pre>function GetBlue(Color as long) as long</pre>
+<p>Returns the blue component (bits 16-23) of an RGB color value.</p>
+<h3><a name="GETDEGREES"></a>GetDegrees</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18202</p>
+<pre>function GetDegrees(radian as double) as double</pre>
+<p>Converts radians to degrees.</p>
+<h3><a name="GETFILEEXT"></a>GetFileExt</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18131</p>
+<pre>Function GetFileExt(file as string) as string</pre>
+<p>Returns the extension of a file name (text after the last dot, without the dot). If there is no dot, the whole string is returned.</p>
+<h3><a name="GETFILENAME"></a>GetFileName</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18119</p>
+<pre>Function GetFileName(file as string) as string</pre>
+<p>Returns the file name part of a path (text after the last backslash).</p>
+<h3><a name="GETGREEN"></a>GetGreen</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18232</p>
+<pre>function GetGreen(Color as long) as long</pre>
+<p>Returns the green component (bits 8-15) of an RGB color value.</p>
+<h3><a name="GETPATHNAME"></a>GetPathName</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18125</p>
+<pre>Function GetPathName(file as string) as string</pre>
+<p>Returns the folder part of a path (text before the last backslash, without it).</p>
+<h3><a name="GETRADIAN"></a>GetRadian</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18196</p>
+<pre>function GetRadian(degrees as double) as double</pre>
+<p>Converts degrees to radians.</p>
+<h3><a name="GETRED"></a>GetRed</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18226</p>
+<pre>function GetRed(Color as long) as long</pre>
+<p>Returns the red component (low byte) of an RGB color value.</p>
+<h3><a name="GETWORDCOUNT"></a>GetWordCount</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18159</p>
+<pre>function GetWordCount(s as String) as integer</pre>
+<p>Returns the number of space-separated words in s (uses Word$).</p>
+<h3><a name="RATIO"></a>Ratio</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18190</p>
+<pre>function Ratio(Value1 as double,Value2 as double) as double</pre>
+<p>Returns (Value1 - Value2) * 100 / Value1, the percentage difference relative to Value1.</p>
+<h3><a name="REMOVECHAR_"></a>RemoveChar$</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18178</p>
+<pre>function RemoveChar$(s as string,char as string) as string</pre>
+<p>Returns s with every occurrence of the substring char removed. Returns an empty string if s is empty.</p>
+<h3><a name="SURFACE"></a>Surface</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18214</p>
+<pre>function Surface(Width as double,Height as double) as double</pre>
+<p>Returns Width * Height (rectangle area).</p>
+<h3><a name="TRIM__"></a>Trim_$</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18184</p>
+<pre>Function Trim_$(s as string) as string</pre>
+<p>Returns s without leading and trailing spaces.</p>
+<h3><a name="WORD_"></a>Word$</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18137</p>
+<pre>Function Word$(s as string,index as integer) as string</pre>
+<p>Returns word number index (1-based) of string s; runs of spaces are collapsed first. Returns an empty string if there is no such word.</p>
+</body>
+</html>

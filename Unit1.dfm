@@ -781,6 +781,18 @@ object Form1: TForm1
           Caption = 'Keyword &index'
           OnClick = mHelpRqClick
         end
+        object mHelpRqFuncs: TMenuItem
+          Tag = 6
+          Caption = 'Include &functions (Appendix D)'
+          OnClick = mHelpRqClick
+          Hint = 'Функции rapidqAllProc.inc: Windows API и процедуры старых inc, по файлам'
+        end
+        object mHelpWinApi: TMenuItem
+          Tag = 7
+          Caption = '&Windows API reference (Microsoft)'
+          OnClick = mHelpRqClick
+          Hint = 'https://learn.microsoft.com/en-us/windows/win32/api/ - в браузере'
+        end
         object mHelpRqSep: TMenuItem
           Caption = '-'
         end

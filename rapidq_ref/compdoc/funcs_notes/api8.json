@@ -1,0 +1,782 @@
+{
+ "ImmUnregisterWord@WIN32API.INC": {
+  "desc": "Removes a register string from the dictionary of the IME associated with the given input locale.",
+  "doc": "ImmUnregisterWordA"
+ },
+ "ImmGetRegisterWordStyle@WIN32API.INC": {
+  "desc": "Retrieves a list of the word styles supported by the IME associated with the given input locale; returns the number of styles copied.",
+  "doc": "ImmGetRegisterWordStyleA"
+ },
+ "ImmEnumRegisterWord@WIN32API.INC": {
+  "desc": "Enumerates the register strings having the specified reading, style and register string, calling an application callback for each.",
+  "doc": "ImmEnumRegisterWordA"
+ },
+ "ShellAbout@WIN32API.INC": {
+  "desc": "Displays the standard Windows About dialog box with the given title, extra text and icon.",
+  "doc": "ShellAboutA"
+ },
+ "DuplicateIcon@WIN32API.INC": {
+  "desc": "Creates a duplicate of the specified icon and returns the handle of the copy.",
+  "doc": "DuplicateIcon"
+ },
+ "ExtractAssociatedIcon@WIN32API.INC": {
+  "desc": "Gets the icon stored in a file or in the executable associated with the file; returns an icon handle. Note: the ALIAS in the source is misspelled (ExtractAssociateIconA).",
+  "doc": "ExtractAssociatedIconA"
+ },
+ "ExtractIcon@WIN32API.INC": {
+  "desc": "Retrieves an icon handle from an executable, DLL or icon file by index; index -1 returns the number of icons in the file.",
+  "doc": "ExtractIconA"
+ },
+ "SHAppBarMessage@WIN32API.INC": {
+  "desc": "Sends an appbar message (ABM_*) to the system, e.g. to register an application desktop toolbar or query the taskbar position.",
+  "doc": "SHAppBarMessage"
+ },
+ "DoEnvironmentSubst@WIN32API.INC": {
+  "desc": "Replaces environment variable references (%NAME%) in a string buffer with their values. Not recommended; use ExpandEnvironmentStrings instead.",
+  "doc": "DoEnvironmentSubstA"
+ },
+ "FindEnvironmentString@WIN32API.INC": {
+  "desc": "Not in the Microsoft documentation: undocumented shell32 export that apparently looks up an environment variable string by name.",
+  "doc": ""
+ },
+ "ExtractIconEx_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves handles to large and/or small icons from an executable, DLL or icon file; returns the number of icons extracted (or total count if index is -1).",
+  "doc": "ExtractIconExA"
+ },
+ "SHFileOperation@WIN32API.INC": {
+  "desc": "Copies, moves, renames or deletes file system objects as described in a SHFILEOPSTRUCT; returns 0 on success.",
+  "doc": "SHFileOperationA"
+ },
+ "SHFreeNameMappings@WIN32API.INC": {
+  "desc": "Frees a file name mapping object returned by SHFileOperation.",
+  "doc": "SHFreeNameMappings"
+ },
+ "WinExecError@WIN32API.INC": {
+  "desc": "Not in the Microsoft documentation: undocumented shell32 export that apparently displays an error message box for a failed WinExec call.",
+  "doc": ""
+ },
+ "Shell_NotifyIcon_WIN32API@WIN32API.INC": {
+  "desc": "Adds, modifies or deletes an icon in the taskbar notification area (system tray) using a NOTIFYICONDATA structure.",
+  "doc": "Shell_NotifyIconA"
+ },
+ "SHGetFileInfo_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves information about a file system object, such as its icon, display name or type name, into a SHFILEINFO structure.",
+  "doc": "SHGetFileInfoA"
+ },
+ "SHGetNewLinkInfo@WIN32API.INC": {
+  "desc": "Creates a unique name for a new shortcut (link) file for the given target path.",
+  "doc": "SHGetNewLinkInfoA"
+ },
+ "VerFindFile@WIN32API.INC": {
+  "desc": "Determines where a file should be installed based on whether it is shared and whether a copy already exists.",
+  "doc": "VerFindFileA"
+ },
+ "VerInstallFile@WIN32API.INC": {
+  "desc": "Installs a file, decompressing it if needed, after checking version information against an existing copy.",
+  "doc": "VerInstallFileA"
+ },
+ "GetFileVersionInfoSize@WIN32API.INC": {
+  "desc": "Returns the size in bytes of the version-information resource of a file, or 0 if it has none.",
+  "doc": "GetFileVersionInfoSizeA"
+ },
+ "GetFileVersionInfo@WIN32API.INC": {
+  "desc": "Reads the version-information resource of a file into a buffer; call GetFileVersionInfoSize first to get the buffer size.",
+  "doc": "GetFileVersionInfoA"
+ },
+ "VerLanguageName@WIN32API.INC": {
+  "desc": "Retrieves the name of the language associated with a binary language identifier.",
+  "doc": "VerLanguageNameA"
+ },
+ "VerQueryValue@WIN32API.INC": {
+  "desc": "Retrieves a value (such as fixed file info or a string) from a version-information buffer filled by GetFileVersionInfo.",
+  "doc": "VerQueryValueA"
+ },
+ "HeapValidate@WIN32API.INC": {
+  "desc": "Validates the specified heap or a single block in it; returns nonzero if valid.",
+  "doc": "HeapValidate"
+ },
+ "HeapCompact@WIN32API.INC": {
+  "desc": "Coalesces adjacent free blocks in a heap and returns the size of the largest committed free block.",
+  "doc": "HeapCompact"
+ },
+ "HeapLock@WIN32API.INC": {
+  "desc": "Acquires the critical section (lock) of the specified heap.",
+  "doc": "HeapLock"
+ },
+ "HeapUnlock@WIN32API.INC": {
+  "desc": "Releases the lock on a heap acquired by HeapLock.",
+  "doc": "HeapUnlock"
+ },
+ "GetBinaryType@WIN32API.INC": {
+  "desc": "Determines whether a file is executable and, if so, what type (32-bit, 64-bit, DOS, 16-bit, etc.).",
+  "doc": "GetBinaryTypeA"
+ },
+ "GetShortPathName@WIN32API.INC": {
+  "desc": "Retrieves the short (8.3) path form of the specified path; returns the length of the result.",
+  "doc": "GetShortPathNameA"
+ },
+ "GetProcessAffinityMask@WIN32API.INC": {
+  "desc": "Retrieves the process affinity mask of a process and the system affinity mask.",
+  "doc": "GetProcessAffinityMask"
+ },
+ "LogonUser@WIN32API.INC": {
+  "desc": "Logs a user on to the local computer with user name, domain and password and returns a token handle for that user.",
+  "doc": "LogonUserA"
+ },
+ "ImpersonateLoggedOnUser@WIN32API.INC": {
+  "desc": "Lets the calling thread impersonate the security context of a logged-on user given by a token handle.",
+  "doc": "ImpersonateLoggedOnUser"
+ },
+ "CreateProcessAsUser@WIN32API.INC": {
+  "desc": "Creates a new process and its primary thread that runs in the security context of the user represented by a token.",
+  "doc": "CreateProcessAsUserA"
+ },
+ "GetOpenFileName_WIN32API@WIN32API.INC": {
+  "desc": "Shows the common Open file dialog box configured by an OPENFILENAME structure; returns nonzero if the user selected a file.",
+  "doc": "GetOpenFileNameA"
+ },
+ "GetSaveFileName_WIN32API@WIN32API.INC": {
+  "desc": "Shows the common Save As dialog box configured by an OPENFILENAME structure; returns nonzero if the user chose a file name.",
+  "doc": "GetSaveFileNameA"
+ },
+ "GetFileTitle@WIN32API.INC": {
+  "desc": "Retrieves the name of the specified file (without path) as it would be displayed to the user.",
+  "doc": "GetFileTitleA"
+ },
+ "ChooseColorDlg@WIN32API.INC": {
+  "desc": "Shows the common Color dialog box using a CHOOSECOLOR structure; returns nonzero if the user clicked OK.",
+  "doc": "ChooseColorA"
+ },
+ "FindText@WIN32API.INC": {
+  "desc": "Creates a modeless system Find dialog box; returns its window handle.",
+  "doc": "FindTextA"
+ },
+ "ReplaceText@WIN32API.INC": {
+  "desc": "Creates a modeless system Replace dialog box; returns its window handle.",
+  "doc": "ReplaceTextA"
+ },
+ "ChooseFontDlg@WIN32API.INC": {
+  "desc": "Shows the common Font dialog box using a CHOOSEFONT structure; returns nonzero if the user clicked OK.",
+  "doc": "ChooseFontA"
+ },
+ "PrinterDlg@WIN32API.INC": {
+  "desc": "Shows the common Print dialog box using a PRINTDLG structure; returns nonzero if the user clicked OK.",
+  "doc": "PrintDlgA"
+ },
+ "PageSetupDlg_WIN32API@WIN32API.INC": {
+  "desc": "Shows the Page Setup dialog box for paper size, orientation and margins using a PAGESETUPDLG structure.",
+  "doc": "PageSetupDlgA"
+ },
+ "DdeInitialize@WIN32API.INC": {
+  "desc": "Registers an application with the Dynamic Data Exchange Management Library (DDEML) and returns an instance identifier.",
+  "doc": "DdeInitializeA"
+ },
+ "SetServiceBits@WIN32API.INC": {
+  "desc": "Registers a service type with the service control manager and the Server service.",
+  "doc": "SetServiceBits"
+ },
+ "CopyLZFile@WIN32API.INC": {
+  "desc": "Copies a source file to a destination, expanding it if it is LZ-compressed. Obsolete; use LZCopy instead.",
+  "doc": "CopyLZFile"
+ },
+ "LZStart@WIN32API.INC": {
+  "desc": "Not in the Microsoft documentation: obsolete lz32 export that allocates buffers for CopyLZFile; does nothing in Win32.",
+  "doc": ""
+ },
+ "LZDone@WIN32API.INC": {
+  "desc": "Not in the Microsoft documentation: obsolete lz32 export that frees buffers allocated by LZStart; does nothing in Win32.",
+  "doc": ""
+ },
+ "mciGetYieldProc@WIN32API.INC": {
+  "desc": "Retrieves the address of the yield callback function associated with an MCI device's wait flag.",
+  "doc": "mciGetYieldProc"
+ },
+ "mciSetYieldProc@WIN32API.INC": {
+  "desc": "Sets the address of a callback procedure called periodically while an MCI device waits for a command with the wait flag.",
+  "doc": "mciSetYieldProc"
+ },
+ "midiOutGetNumDevs@WIN32API.INC": {
+  "desc": "Returns the number of MIDI output devices present in the system.",
+  "doc": "midiOutGetNumDevs"
+ },
+ "mmioInstallIOProcA@WIN32API.INC": {
+  "desc": "Installs or removes a custom multimedia I/O procedure, or locates an installed one by its four-character code.",
+  "doc": "mmioInstallIOProcA"
+ },
+ "CommandLineToArgv@WIN32API.INC": {
+  "desc": "Parses a Unicode command line string into an array of argument pointers (argv style) and returns the argument count.",
+  "doc": "CommandLineToArgvW"
+ },
+ "IsTextUnicode@WIN32API.INC": {
+  "desc": "Uses statistical tests to determine whether a buffer is likely to contain Unicode text.",
+  "doc": "IsTextUnicode"
+ },
+ "NotifyChangeEventLog@WIN32API.INC": {
+  "desc": "Lets an application receive notification (an event is signaled) when an event is written to the specified event log.",
+  "doc": "NotifyChangeEventLog"
+ },
+ "SetThreadToken@WIN32API.INC": {
+  "desc": "Assigns an impersonation token to a thread, or stops the thread from using one.",
+  "doc": "SetThreadToken"
+ },
+ "CommConfigDialog@WIN32API.INC": {
+  "desc": "Displays a driver-supplied configuration dialog box for a communications device (serial port).",
+  "doc": "CommConfigDialogA"
+ },
+ "CreateIoCompletionPort@WIN32API.INC": {
+  "desc": "Creates an I/O completion port or associates a file handle with an existing port.",
+  "doc": "CreateIoCompletionPort"
+ },
+ "DisableThreadLibraryCalls@WIN32API.INC": {
+  "desc": "Disables DLL_THREAD_ATTACH and DLL_THREAD_DETACH notifications for the specified DLL.",
+  "doc": "DisableThreadLibraryCalls"
+ },
+ "EnumResourceLanguages@WIN32API.INC": {
+  "desc": "Enumerates the languages of resources with a given type and name in a module, calling a callback for each.",
+  "doc": "EnumResourceLanguagesA"
+ },
+ "EnumResourceNames@WIN32API.INC": {
+  "desc": "Enumerates resources of a given type in a module, calling a callback with each resource name.",
+  "doc": "EnumResourceNamesA"
+ },
+ "EnumResourceTypes@WIN32API.INC": {
+  "desc": "Enumerates the resource types in a module, calling a callback for each type.",
+  "doc": "EnumResourceTypesA"
+ },
+ "FreeEnvironmentStrings@WIN32API.INC": {
+  "desc": "Frees a block of environment strings returned by GetEnvironmentStrings.",
+  "doc": "FreeEnvironmentStringsA"
+ },
+ "FreeLibraryAndExitThread@WIN32API.INC": {
+  "desc": "Decrements the reference count of a loaded DLL and then exits the calling thread.",
+  "doc": "FreeLibraryAndExitThread"
+ },
+ "FreeResource@WIN32API.INC": {
+  "desc": "Obsolete in 32-bit Windows; resources are freed automatically. Kept for 16-bit compatibility.",
+  "doc": "FreeResource"
+ },
+ "GetCommConfig@WIN32API.INC": {
+  "desc": "Retrieves the current configuration of a communications device into a COMMCONFIG structure.",
+  "doc": "GetCommConfig"
+ },
+ "GetCompressedFileSize@WIN32API.INC": {
+  "desc": "Returns the actual number of bytes of disk storage used by a file, taking compression or sparseness into account.",
+  "doc": "GetCompressedFileSizeA"
+ },
+ "GetDefaultCommConfig@WIN32API.INC": {
+  "desc": "Retrieves the default configuration for the specified communications device.",
+  "doc": "GetDefaultCommConfigA"
+ },
+ "GetHandleInformation@WIN32API.INC": {
+  "desc": "Retrieves property flags (inherit, protect from close) of an object handle.",
+  "doc": "GetHandleInformation"
+ },
+ "GetProcessHeaps@WIN32API.INC": {
+  "desc": "Returns the number of active heaps of the calling process and retrieves their handles.",
+  "doc": "GetProcessHeaps"
+ },
+ "GetProcessWorkingSetSize@WIN32API.INC": {
+  "desc": "Retrieves the minimum and maximum working set sizes of the specified process.",
+  "doc": "GetProcessWorkingSetSize"
+ },
+ "GetQueuedCompletionStatus@WIN32API.INC": {
+  "desc": "Waits to dequeue an I/O completion packet from an I/O completion port.",
+  "doc": "GetQueuedCompletionStatus"
+ },
+ "GetSystemTimeAdjustment@WIN32API.INC": {
+  "desc": "Determines whether the system applies periodic time adjustments to its clock, and their size and period.",
+  "doc": "GetSystemTimeAdjustment"
+ },
+ "GlobalCompact@WIN32API.INC": {
+  "desc": "Obsolete; provided only for 16-bit compatibility. Always returns the amount of free memory, without compacting.",
+  "doc": "GlobalCompact"
+ },
+ "GlobalFix@WIN32API.INC": {
+  "desc": "Obsolete; provided only for 16-bit compatibility. Locks a global memory object like GlobalLock.",
+  "doc": "GlobalFix"
+ },
+ "GlobalUnfix@WIN32API.INC": {
+  "desc": "Obsolete; provided only for 16-bit compatibility. Unlocks a global memory object like GlobalUnlock.",
+  "doc": "GlobalUnfix"
+ },
+ "GlobalWire@WIN32API.INC": {
+  "desc": "Obsolete; provided only for 16-bit compatibility. Locks a global memory object like GlobalLock.",
+  "doc": "GlobalWire"
+ },
+ "GlobalUnWire@WIN32API.INC": {
+  "desc": "Obsolete; provided only for 16-bit compatibility. Unlocks a global memory object like GlobalUnlock.",
+  "doc": "GlobalUnWire"
+ },
+ "IsBadCodePtr@WIN32API.INC": {
+  "desc": "Determines whether the calling process has read access to memory at the given address. Obsolete; Microsoft advises not to use it.",
+  "doc": "IsBadCodePtr"
+ },
+ "LocalCompact@WIN32API.INC": {
+  "desc": "Obsolete; provided only for 16-bit compatibility. Has no effect in 32-bit Windows.",
+  "doc": "LocalCompact"
+ },
+ "LocalShrink@WIN32API.INC": {
+  "desc": "Obsolete; provided only for 16-bit compatibility. Has no effect in 32-bit Windows.",
+  "doc": "LocalShrink"
+ },
+ "SetCommConfig@WIN32API.INC": {
+  "desc": "Sets the current configuration of a communications device from a COMMCONFIG structure.",
+  "doc": "SetCommConfig"
+ },
+ "SetDefaultCommConfig@WIN32API.INC": {
+  "desc": "Sets the default configuration for a communications device.",
+  "doc": "SetDefaultCommConfigA"
+ },
+ "SetFileApisToANSI@WIN32API.INC": {
+  "desc": "Makes the file I/O functions of the process use the ANSI code page instead of the OEM code page.",
+  "doc": "SetFileApisToANSI"
+ },
+ "SetHandleInformation@WIN32API.INC": {
+  "desc": "Sets property flags (inherit, protect from close) of an object handle.",
+  "doc": "SetHandleInformation"
+ },
+ "SetProcessWorkingSetSize@WIN32API.INC": {
+  "desc": "Sets the minimum and maximum working set sizes of the specified process.",
+  "doc": "SetProcessWorkingSetSize"
+ },
+ "lstrcat@WIN32API.INC": {
+  "desc": "Appends one string to another and returns a pointer to the result. Microsoft warns it can overrun buffers; use StringCchCat instead.",
+  "doc": "lstrcatA"
+ },
+ "lstrcpyn@WIN32API.INC": {
+  "desc": "Copies up to a given number of characters from a source string to a buffer, always null-terminating it.",
+  "doc": "lstrcpynA"
+ },
+ "lstrcpy@WIN32API.INC": {
+  "desc": "Copies a string to a buffer and returns a pointer to the buffer. Microsoft warns it can overrun buffers; use StringCchCopy instead.",
+  "doc": "lstrcpyA"
+ },
+ "SetSystemTimeAdjustment@WIN32API.INC": {
+  "desc": "Enables or disables periodic time adjustments to the system clock (time-of-day clock).",
+  "doc": "SetSystemTimeAdjustment"
+ },
+ "SetThreadAffinityMask@WIN32API.INC": {
+  "desc": "Sets the processor affinity mask of a thread; returns the previous mask, or 0 on failure.",
+  "doc": "SetThreadAffinityMask"
+ },
+ "SetUnhandledExceptionFilter@WIN32API.INC": {
+  "desc": "Installs a top-level exception filter called for unhandled exceptions; returns the previous filter.",
+  "doc": "SetUnhandledExceptionFilter"
+ },
+ "SystemTimeToTzSpecificLocalTime@WIN32API.INC": {
+  "desc": "Converts a UTC time to the corresponding local time in the given time zone.",
+  "doc": "SystemTimeToTzSpecificLocalTime"
+ },
+ "WriteFileEx@WIN32API.INC": {
+  "desc": "Writes data to a file asynchronously and calls a completion routine when done or canceled; requires an overlapped handle.",
+  "doc": "WriteFileEx"
+ },
+ "ChoosePixelFormat@WIN32API.INC": {
+  "desc": "Finds the device context pixel format that best matches a PIXELFORMATDESCRIPTOR; returns its index (OpenGL).",
+  "doc": "ChoosePixelFormat"
+ },
+ "CreateDIBSection@WIN32API.INC": {
+  "desc": "Creates a device-independent bitmap that applications can write to directly; returns the bitmap handle and a pointer to its bits.",
+  "doc": "CreateDIBSection"
+ },
+ "DescribePixelFormat@WIN32API.INC": {
+  "desc": "Fills a PIXELFORMATDESCRIPTOR with the description of a pixel format of a device context; returns the maximum format index.",
+  "doc": "DescribePixelFormat"
+ },
+ "EnumFonts@WIN32API.INC": {
+  "desc": "Enumerates the fonts available on a device, calling a callback for each. Provided for 16-bit compatibility; use EnumFontFamiliesEx.",
+  "doc": "EnumFontsA"
+ },
+ "EnumMetaFile@WIN32API.INC": {
+  "desc": "Enumerates the records in a Windows-format metafile, calling a callback for each record.",
+  "doc": "EnumMetaFile"
+ },
+ "EnumObjects@WIN32API.INC": {
+  "desc": "Enumerates the pens or brushes available for a device context, calling a callback for each.",
+  "doc": "EnumObjects"
+ },
+ "FixBrushOrgEx@WIN32API.INC": {
+  "desc": "Not implemented; provided for compatibility with Win32s. Microsoft says it should not be used.",
+  "doc": "FixBrushOrgEx"
+ },
+ "GetBrushOrgEx@WIN32API.INC": {
+  "desc": "Retrieves the current brush origin of the specified device context.",
+  "doc": "GetBrushOrgEx"
+ },
+ "GetDIBColorTable@WIN32API.INC": {
+  "desc": "Retrieves RGB color entries from the color table of the DIB section selected into a device context.",
+  "doc": "GetDIBColorTable"
+ },
+ "GetPixelFormat@WIN32API.INC": {
+  "desc": "Returns the index of the pixel format currently selected into a device context.",
+  "doc": "GetPixelFormat"
+ },
+ "LineDDA@WIN32API.INC": {
+  "desc": "Computes the successive points of a line and passes each point to an application-defined callback.",
+  "doc": "LineDDA"
+ },
+ "SetAbortProcedure@WIN32API.INC": {
+  "desc": "Sets the application-defined abort function that lets a print job be canceled during spooling.",
+  "doc": "SetAbortProc"
+ },
+ "SetDIBColorTable@WIN32API.INC": {
+  "desc": "Sets RGB color entries in the color table of the DIB section selected into a device context.",
+  "doc": "SetDIBColorTable"
+ },
+ "SetPixelFormat@WIN32API.INC": {
+  "desc": "Sets the pixel format of a device context to the format given by an index (used for OpenGL).",
+  "doc": "SetPixelFormat"
+ },
+ "SwapBuffers@WIN32API.INC": {
+  "desc": "Exchanges the front and back buffers if the pixel format of the device context has a back buffer (OpenGL).",
+  "doc": "SwapBuffers"
+ },
+ "EnumCalendarInfo@WIN32API.INC": {
+  "desc": "Enumerates calendar information for a locale, calling a callback for each item. Microsoft recommends EnumCalendarInfoEx.",
+  "doc": "EnumCalendarInfoA"
+ },
+ "GetCurrencyFormat@WIN32API.INC": {
+  "desc": "Formats a number string as a currency string for the specified locale.",
+  "doc": "GetCurrencyFormatA"
+ },
+ "GetNumberFormat@WIN32API.INC": {
+  "desc": "Formats a number string as a number string customized for the specified locale.",
+  "doc": "GetNumberFormatA"
+ },
+ "GetStringTypeEx@WIN32API.INC": {
+  "desc": "Retrieves character type information (CT_CTYPE1/2/3) for the characters of a string.",
+  "doc": "GetStringTypeExA"
+ },
+ "GetStringTypeW@WIN32API.INC": {
+  "desc": "Retrieves character type information for the characters of a Unicode string.",
+  "doc": "GetStringTypeW"
+ },
+ "SetLocaleInfo@WIN32API.INC": {
+  "desc": "Sets an item of information in the user override portion of the current locale.",
+  "doc": "SetLocaleInfoA"
+ },
+ "DeletePrinter@WIN32API.INC": {
+  "desc": "Deletes the specified printer object; the handle must be opened with delete access.",
+  "doc": "DeletePrinter"
+ },
+ "FindClosePrinterChangeNotification@WIN32API.INC": {
+  "desc": "Closes a change notification object created by FindFirstPrinterChangeNotification.",
+  "doc": "FindClosePrinterChangeNotification"
+ },
+ "FindFirstPrinterChangeNotification@WIN32API.INC": {
+  "desc": "Creates a change notification object that is signaled when the specified printer or print server changes.",
+  "doc": "FindFirstPrinterChangeNotification"
+ },
+ "FindNextPrinterChangeNotification@WIN32API.INC": {
+  "desc": "Retrieves information about the most recent change to a printer or print server after its notification object was signaled.",
+  "doc": "FindNextPrinterChangeNotification"
+ },
+ "GetPrinter@WIN32API.INC": {
+  "desc": "Retrieves information about a printer at the requested level (PRINTER_INFO_n structure).",
+  "doc": "GetPrinterA"
+ },
+ "SetPrinter@WIN32API.INC": {
+  "desc": "Sets data for a printer, or pauses, resumes or purges it.",
+  "doc": "SetPrinterA"
+ },
+ "BroadcastSystemMessage@WIN32API.INC": {
+  "desc": "Sends a message to the specified recipients, such as applications, drivers or network drivers.",
+  "doc": "BroadcastSystemMessage"
+ },
+ "CascadeWindows@WIN32API.INC": {
+  "desc": "Cascades the specified child windows of a parent window; returns the number of windows arranged.",
+  "doc": "CascadeWindows"
+ },
+ "ChangeMenu@WIN32API.INC": {
+  "desc": "Obsolete; replaced by AppendMenu, InsertMenu, ModifyMenu and RemoveMenu.",
+  "doc": "ChangeMenuA"
+ },
+ "CheckMenuRadioItem@WIN32API.INC": {
+  "desc": "Checks a menu item and makes it a radio item, clearing the other items in the given range.",
+  "doc": "CheckMenuRadioItem"
+ },
+ "ChildWindowFromPointEx@WIN32API.INC": {
+  "desc": "Determines which child window of a parent contains a point, optionally skipping invisible, disabled or transparent ones.",
+  "doc": "ChildWindowFromPointEx"
+ },
+ "CloseDesktop@WIN32API.INC": {
+  "desc": "Closes an open handle to a desktop object.",
+  "doc": "CloseDesktop"
+ },
+ "CloseWindowStation@WIN32API.INC": {
+  "desc": "Closes an open window station handle.",
+  "doc": "CloseWindowStation"
+ },
+ "CreateDesktop@WIN32API.INC": {
+  "desc": "Creates a new desktop, associates it with the current window station and returns a handle to it.",
+  "doc": "CreateDesktopA"
+ },
+ "CreateDialogIndirectParam@WIN32API.INC": {
+  "desc": "Creates a modeless dialog box from a template in memory, passing an initialization value to the dialog procedure.",
+  "doc": "CreateDialogIndirectParamA"
+ },
+ "CreateDialogParam@WIN32API.INC": {
+  "desc": "Creates a modeless dialog box from a dialog template resource, passing an initialization value to the dialog procedure.",
+  "doc": "CreateDialogParamA"
+ },
+ "DialogBoxIndirectParam@WIN32API.INC": {
+  "desc": "Creates and runs a modal dialog box from a template in memory; returns the value passed to EndDialog.",
+  "doc": "DialogBoxIndirectParamA"
+ },
+ "DragDetect@WIN32API.INC": {
+  "desc": "Captures the mouse and tracks it until the user releases the button, presses ESC or moves outside the drag rectangle; returns nonzero if a drag started.",
+  "doc": "DragDetect"
+ },
+ "DragObject@WIN32API.INC": {
+  "desc": "Not in the Microsoft documentation: undocumented user32 export used for dragging an object (cursor) between windows.",
+  "doc": ""
+ },
+ "DrawAnimatedRects@WIN32API.INC": {
+  "desc": "Animates a rectangle (e.g. caption) opening, closing, minimizing or maximizing a window.",
+  "doc": "DrawAnimatedRects"
+ },
+ "DrawCaption_WIN32API@WIN32API.INC": {
+  "desc": "Draws a window caption in the given rectangle of a device context.",
+  "doc": "DrawCaption"
+ },
+ "DrawEdge_WIN32API@WIN32API.INC": {
+  "desc": "Draws one or more edges of a rectangle with 3-D effects (raised, sunken, etc.).",
+  "doc": "DrawEdge"
+ },
+ "DrawFrameControl_WIN32API@WIN32API.INC": {
+  "desc": "Draws a frame control such as a button, caption button, menu glyph or scroll bar of the given type and style.",
+  "doc": "DrawFrameControl"
+ },
+ "DrawState@WIN32API.INC": {
+  "desc": "Displays an image (text, icon, bitmap) and applies a visual effect such as disabled or default state.",
+  "doc": "DrawStateA"
+ },
+ "DrawTextEx@WIN32API.INC": {
+  "desc": "Draws formatted text in a rectangle with extra options such as tab stops and margins (DRAWTEXTPARAMS).",
+  "doc": "DrawTextExA"
+ },
+ "EnumDesktops@WIN32API.INC": {
+  "desc": "Enumerates all desktops of a window station, passing each desktop name to a callback.",
+  "doc": "EnumDesktopsA"
+ },
+ "EnumDesktopWindows@WIN32API.INC": {
+  "desc": "Enumerates all top-level windows on a desktop, passing each handle to a callback.",
+  "doc": "EnumDesktopWindows"
+ },
+ "EnumPropsEx@WIN32API.INC": {
+  "desc": "Enumerates all entries in the property list of a window, passing each to a callback with an extra application value.",
+  "doc": "EnumPropsExA"
+ },
+ "EnumProps@WIN32API.INC": {
+  "desc": "Enumerates all entries in the property list of a window, passing each to a callback.",
+  "doc": "EnumPropsA"
+ },
+ "EnumThreadWindows@WIN32API.INC": {
+  "desc": "Enumerates all non-child windows associated with a thread, passing each handle to a callback.",
+  "doc": "EnumThreadWindows"
+ },
+ "EnumWindowStations@WIN32API.INC": {
+  "desc": "Enumerates all window stations in the current session, passing each name to a callback.",
+  "doc": "EnumWindowStationsA"
+ },
+ "FindWindowEx@WIN32API.INC": {
+  "desc": "Finds a window whose class name and window name match, searching child windows starting after a given child; returns its handle.",
+  "doc": "FindWindowExA"
+ },
+ "GetKeyboardLayoutList@WIN32API.INC": {
+  "desc": "Retrieves the input locale identifiers (keyboard layout handles) for the system's active input locales; returns their count.",
+  "doc": "GetKeyboardLayoutList"
+ },
+ "GetKeyboardLayout@WIN32API.INC": {
+  "desc": "Retrieves the active input locale identifier (keyboard layout) of the specified thread.",
+  "doc": "GetKeyboardLayout"
+ },
+ "GetMenuContextHelpId@WIN32API.INC": {
+  "desc": "Retrieves the Help context identifier associated with the specified menu.",
+  "doc": "GetMenuContextHelpId"
+ },
+ "GetMenuDefaultItem@WIN32API.INC": {
+  "desc": "Returns the identifier or position of the default item of a menu, or -1 if there is none.",
+  "doc": "GetMenuDefaultItem"
+ },
+ "GetMenuItemInfo_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves information about a menu item into a MENUITEMINFO structure.",
+  "doc": "GetMenuItemInfoA"
+ },
+ "GetMenuItemRect@WIN32API.INC": {
+  "desc": "Retrieves the bounding rectangle of a menu item in screen coordinates.",
+  "doc": "GetMenuItemRect"
+ },
+ "GetScrollInfo@WIN32API.INC": {
+  "desc": "Retrieves scroll bar parameters (range, page size, position, thumb position) into a SCROLLINFO structure.",
+  "doc": "GetScrollInfo"
+ },
+ "GetSysColorBrush@WIN32API.INC": {
+  "desc": "Returns a handle to a cached brush for a system color index; the brush must not be deleted.",
+  "doc": "GetSysColorBrush"
+ },
+ "GetUserObjectInformation@WIN32API.INC": {
+  "desc": "Retrieves information about a window station or desktop object (name, type, flags).",
+  "doc": "GetUserObjectInformationA"
+ },
+ "GetWindowContextHelpId@WIN32API.INC": {
+  "desc": "Retrieves the Help context identifier associated with a window.",
+  "doc": "GetWindowContextHelpId"
+ },
+ "GetWindowRgn@WIN32API.INC": {
+  "desc": "Copies the window region of a window into a given region; returns the region type.",
+  "doc": "GetWindowRgn"
+ },
+ "GrayString@WIN32API.INC": {
+  "desc": "Draws gray (dimmed) text at a location, using a callback or default text output.",
+  "doc": "GrayStringA"
+ },
+ "InsertMenuItem_WIN32API@WIN32API.INC": {
+  "desc": "Inserts a new menu item at the given position in a menu, described by a MENUITEMINFO structure.",
+  "doc": "InsertMenuItemA"
+ },
+ "LookupIconIdFromDirectoryEx@WIN32API.INC": {
+  "desc": "Searches icon or cursor directory data for the image that best fits the given size and color format; returns its resource ID.",
+  "doc": "LookupIconIdFromDirectoryEx"
+ },
+ "MapVirtualKeyEx@WIN32API.INC": {
+  "desc": "Translates between virtual-key codes, scan codes and characters using the given keyboard layout.",
+  "doc": "MapVirtualKeyExA"
+ },
+ "MenuItemFromPoint@WIN32API.INC": {
+  "desc": "Returns the zero-based position of the menu item at a screen point, or -1 if none.",
+  "doc": "MenuItemFromPoint"
+ },
+ "MessageBoxIndirect@WIN32API.INC": {
+  "desc": "Creates and displays a message box described by a MSGBOXPARAMS structure (custom icon, help, language); returns the button pressed.",
+  "doc": "MessageBoxIndirectA"
+ },
+ "OpenDesktop@WIN32API.INC": {
+  "desc": "Opens the specified desktop object and returns a handle to it.",
+  "doc": "OpenDesktopA"
+ },
+ "OpenInputDesktop@WIN32API.INC": {
+  "desc": "Opens the desktop that receives user input and returns a handle to it.",
+  "doc": "OpenInputDesktop"
+ },
+ "OpenWindowStation@WIN32API.INC": {
+  "desc": "Opens the specified window station and returns a handle to it.",
+  "doc": "OpenWindowStationA"
+ },
+ "PaintDesktop@WIN32API.INC": {
+  "desc": "Fills the clipping region of a device context with the desktop pattern or wallpaper.",
+  "doc": "PaintDesktop"
+ },
+ "RegisterClassEx_WIN32API@WIN32API.INC": {
+  "desc": "Registers a window class described by a WNDCLASSEX structure (including small icon); returns a class atom.",
+  "doc": "RegisterClassExA"
+ },
+ "SetMenuContextHelpId@WIN32API.INC": {
+  "desc": "Associates a Help context identifier with a menu.",
+  "doc": "SetMenuContextHelpId"
+ },
+ "SetMenuDefaultItem@WIN32API.INC": {
+  "desc": "Sets the default item of a menu, by identifier or position.",
+  "doc": "SetMenuDefaultItem"
+ },
+ "SetMenuItemInfo_WIN32API@WIN32API.INC": {
+  "desc": "Changes information about a menu item using a MENUITEMINFO structure.",
+  "doc": "SetMenuItemInfoA"
+ },
+ "SetMessageExtraInfo@WIN32API.INC": {
+  "desc": "Sets the extra message information for the current thread; returns the previous value.",
+  "doc": "SetMessageExtraInfo"
+ },
+ "SetMessageQueue@WIN32API.INC": {
+  "desc": "Obsolete; message queues are enlarged dynamically in 32-bit Windows. Kept for 16-bit compatibility.",
+  "doc": ""
+ },
+ "SetProcessWindowStation@WIN32API.INC": {
+  "desc": "Assigns the specified window station to the calling process.",
+  "doc": "SetProcessWindowStation"
+ },
+ "SetScrollInfo@WIN32API.INC": {
+  "desc": "Sets scroll bar parameters (range, page size, position) from a SCROLLINFO structure and optionally redraws; returns the new position.",
+  "doc": "SetScrollInfo"
+ },
+ "SetSystemCursor@WIN32API.INC": {
+  "desc": "Replaces the contents of a system cursor (given by ID) with the specified cursor, which is then destroyed.",
+  "doc": "SetSystemCursor"
+ },
+ "SetThreadDesktop@WIN32API.INC": {
+  "desc": "Assigns the specified desktop to the calling thread.",
+  "doc": "SetThreadDesktop"
+ },
+ "SetTimer@WIN32API.INC": {
+  "desc": "Creates or replaces a timer with a time-out in milliseconds; sends WM_TIMER or calls a TimerProc. Returns the timer ID.",
+  "doc": "SetTimer"
+ },
+ "SetUserObjectInformation@WIN32API.INC": {
+  "desc": "Sets information about a window station or desktop object.",
+  "doc": "SetUserObjectInformationA"
+ },
+ "SetWindowContextHelpId@WIN32API.INC": {
+  "desc": "Associates a Help context identifier with a window.",
+  "doc": "SetWindowContextHelpId"
+ },
+ "SetWindowRgn_WIN32API@WIN32API.INC": {
+  "desc": "Sets the window region of a window, which determines where the system allows drawing.",
+  "doc": "SetWindowRgn"
+ },
+ "SetWindowsHook@WIN32API.INC": {
+  "desc": "Obsolete; installs a hook procedure. Use SetWindowsHookEx instead.",
+  "doc": ""
+ },
+ "SetWindowsHookEx@WIN32API.INC": {
+  "desc": "Installs an application-defined hook procedure into a hook chain to monitor system events; returns the hook handle.",
+  "doc": "SetWindowsHookExA"
+ },
+ "ShowWindowAsync@WIN32API.INC": {
+  "desc": "Sets the show state of a window, possibly created by another thread, without waiting for the operation to complete.",
+  "doc": "ShowWindowAsync"
+ },
+ "SwitchDesktop@WIN32API.INC": {
+  "desc": "Makes a desktop visible and activates it so it receives user input.",
+  "doc": "SwitchDesktop"
+ },
+ "TileWindows@WIN32API.INC": {
+  "desc": "Tiles the specified child windows of a parent window; returns the number of windows arranged.",
+  "doc": "TileWindows"
+ },
+ "ToAsciiEx@WIN32API.INC": {
+  "desc": "Translates a virtual-key code and keyboard state to characters using the given keyboard layout.",
+  "doc": "ToAsciiEx"
+ },
+ "TrackPopupMenuEx@WIN32API.INC": {
+  "desc": "Displays a shortcut menu at a location and tracks selection; TPMPARAMS can give an area not to overlap.",
+  "doc": "TrackPopupMenuEx"
+ },
+ "UnhookWindowsHook@WIN32API.INC": {
+  "desc": "Obsolete; removes a hook procedure. Use UnhookWindowsHookEx instead.",
+  "doc": ""
+ },
+ "VkKeyScanEx@WIN32API.INC": {
+  "desc": "Translates a character to the corresponding virtual-key code and shift state using the given keyboard layout.",
+  "doc": "VkKeyScanExA"
+ },
+ "WNetGetUniversalName@WIN32API.INC": {
+  "desc": "Converts a drive-based path for a network resource to its universal (UNC) form.",
+  "doc": "WNetGetUniversalNameA"
+ },
+ "SendInput@WINDOWS.INC": {
+  "desc": "Synthesizes keystrokes, mouse motions and button clicks from an array of INPUT structures; returns the number of events inserted.",
+  "doc": "SendInput"
+ },
+ "mciSendCdaudio@WINDOWS.INC": {
+  "desc": "Sends a command string to an MCI device (here used for CD audio); the device is named in the command string.",
+  "doc": "mciSendStringA"
+ },
+ "mciGetErrorCdaudio@WINDOWS.INC": {
+  "desc": "Retrieves a text string describing the specified MCI error code.",
+  "doc": "mciGetErrorStringA"
+ },
+ "RegisterServiceProcess@WINDOWS.INC": {
+  "desc": "Not in the Microsoft documentation: Windows 95/98/Me-only kernel32 export that registers or unregisters a process as a service (hides it from the task list).",
+  "doc": ""
+ }
+}

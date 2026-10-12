@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QXLS.INC</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: QXLS.INC</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>QXLS.INC</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/QXLS.INC</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 25 functions</p>
+<p><a href="#B2W">B2W</a> &middot; <a href="#CHANGEVALUE">ChangeValue</a> &middot; <a href="#CLEARBOOKDATA">ClearBookData</a> &middot; <a href="#FILLFILE">FillFile</a> &middot; <a href="#GETDATA">GetData</a> &middot; <a href="#GETRECORD">GetRecord</a> &middot; <a href="#PRINTSHEETNAMES">PrintSheetNames</a> &middot; <a href="#PRINTSSTRECORDS">PrintSSTRecords</a> &middot; <a href="#READOLEFILE">ReadOLEFile</a> &middot; <a href="#RK2STR">RK2str</a> &middot; <a href="#SHEETPOINTERS">SheetPointers</a> &middot; <a href="#SHIFTBOOK">ShiftBook</a> &middot; <a href="#STRRECLEN">StrRecLen</a> &middot; <a href="#XLSCLOSE">xlsCLOSE</a> &middot; <a href="#XLSMAXCOL">xlsMAXCOL</a> &middot; <a href="#XLSMAXROW">xlsMAXROW</a> &middot; <a href="#XLSMINCOL">xlsMINCOL</a> &middot; <a href="#XLSMINROW">xlsMINROW</a> &middot; <a href="#XLSNUMBERSHEETS">xlsNUMBERSHEETS</a> &middot; <a href="#XLSOPEN">xlsOPEN</a> &middot; <a href="#XLSREAD">xlsREAD</a> &middot; <a href="#XLSSAVE">xlsSAVE</a> &middot; <a href="#XLSSHEETLENGTH">xlsSHEETLENGTH</a> &middot; <a href="#XLSSHEETNAME">xlsSHEETNAME</a> &middot; <a href="#XLSWRITE">xlsWRITE</a></p>
+<h3><a name="B2W"></a>B2W</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18394</p>
+<pre>FUNCTION B2W(index As LONG) AS WORD</pre>
+<p>Returns the 16-bit little-endian word stored at buf(index) and buf(index+1). Internal helper of QXLS.</p>
+<h3><a name="CHANGEVALUE"></a>ChangeValue</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18408</p>
+<pre>SUB ChangeValue(ptr As LONG, blen As LONG, nbytes As LONG)</pre>
+<p>Adds nbytes to the blen-byte integer stored at offset ptr in M(b).</p>
+<h3><a name="CLEARBOOKDATA"></a>ClearBookData</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18403</p>
+<pre>SUB ClearBookData</pre>
+<p>Resets the sheet, shared-string and pointer tables (nSheets, nSR, SST, SheetName, P) for the current book b.</p>
+<h3><a name="FILLFILE"></a>FillFile</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18409</p>
+<pre>SUB FillFile(value As LONG, amt As LONG)</pre>
+<p>Writes the 4-byte value repeatedly to the output file F until (position - 512) is a multiple of amt. Used to pad OLE sectors when saving.</p>
+<h3><a name="GETDATA"></a>GetData</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18402</p>
+<pre>SUB GetData</pre>
+<p>Reads the data of the current BIFF record (up to MaxBytes) from M(b) into the global byte array buf.</p>
+<h3><a name="GETRECORD"></a>GetRecord</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18401</p>
+<pre>SUB GetRecord</pre>
+<p>Reads the next BIFF record header from M(b) into globals xCode and xLength and sets xNext to the start of the following record.</p>
+<h3><a name="PRINTSHEETNAMES"></a>PrintSheetNames</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18410</p>
+<pre>SUB PrintSheetNames</pre>
+<p>Console debug helper: prints the name and the pointer table values of every sheet in the current book b.</p>
+<h3><a name="PRINTSSTRECORDS"></a>PrintSSTRecords</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18411</p>
+<pre>SUB PrintSSTRecords</pre>
+<p>Console debug helper: prints the number of shared string table blocks and strings in the current book b.</p>
+<h3><a name="READOLEFILE"></a>ReadOLEFile</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18400</p>
+<pre>SUB ReadOLEFile</pre>
+<p>Opens FileSpec(b), finds the Workbook stream in the OLE compound file and copies its BIFF8 data into memory stream M(b) by following the FAT. Sets sERR if the Workbook entry is not found. Internal helper of xlsOPEN.</p>
+<h3><a name="RK2STR"></a>RK2str</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18395</p>
+<pre>FUNCTION RK2str</pre>
+<p>Converts the Excel RK number in global RK (integer or packed double, optionally divided by 100) to a string. Internal helper of QXLS.</p>
+<h3><a name="SHEETPOINTERS"></a>SheetPointers</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18407</p>
+<pre>SUB SheetPointers(s As LONG, nbytes As LONG)</pre>
+<p>After data of sheet s grew or shrank by nbytes, updates the stored offsets of all following sheets (BOUNDSHEET and INDEX records and the P table).</p>
+<h3><a name="SHIFTBOOK"></a>ShiftBook</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18406</p>
+<pre>SUB ShiftBook(ptr As LONG, nbytes As LONG)</pre>
+<p>Moves the contents of memory stream M(b) at offset ptr by nbytes (negative removes bytes, positive inserts space) and adjusts the stream size. The insert path copies one byte at a time and is slow.</p>
+<h3><a name="STRRECLEN"></a>StrRecLen</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18396</p>
+<pre>FUNCTION StrRecLen</pre>
+<p>Reads a BIFF8 string header at the current position of M(b) and returns the number of bytes of the string data, including rich-text and Far East extensions. Internal helper of QXLS.</p>
+<h3><a name="XLSCLOSE"></a>xlsCLOSE</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18393</p>
+<pre>FUNCTION xlsCLOSE</pre>
+<p>Closes the memory stream of the current book b and clears its data. Returns b, or -1 if b is out of range.</p>
+<h3><a name="XLSMAXCOL"></a>xlsMAXCOL</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18390</p>
+<pre>FUNCTION xlsMAXCOL(s As LONG) As LONG</pre>
+<p>Returns the last used column of sheet s in the current book b.</p>
+<h3><a name="XLSMAXROW"></a>xlsMAXROW</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18388</p>
+<pre>FUNCTION xlsMAXROW(s As LONG) As LONG</pre>
+<p>Returns the last used row of sheet s in the current book b.</p>
+<h3><a name="XLSMINCOL"></a>xlsMINCOL</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18389</p>
+<pre>FUNCTION xlsMINCOL(s As LONG) As LONG</pre>
+<p>Returns the first used column of sheet s in the current book b.</p>
+<h3><a name="XLSMINROW"></a>xlsMINROW</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18387</p>
+<pre>FUNCTION xlsMINROW(s As LONG) As LONG</pre>
+<p>Returns the first used row of sheet s in the current book b.</p>
+<h3><a name="XLSNUMBERSHEETS"></a>xlsNUMBERSHEETS</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18392</p>
+<pre>FUNCTION xlsNUMBERSHEETS</pre>
+<p>Returns the number of sheets found in the current book b.</p>
+<h3><a name="XLSOPEN"></a>xlsOPEN</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18384</p>
+<pre>FUNCTION xlsOPEN</pre>
+<p>Opens the Excel BIFF8 workbook FileSpec(b) for the current book index in global b: reads the OLE file into memory stream M(b) and parses sheets and shared strings. Returns -1 on failure with the reason in global sERR (e.g. &quot;File not found&quot;, &quot;Not BIFF8 file&quot;). (body longer than shown)</p>
+<h3><a name="XLSREAD"></a>xlsREAD</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18385</p>
+<pre>FUNCTION xlsREAD(s As LONG, row As LONG, col As LONG) As STRING</pre>
+<p>Returns the text of the cell at row, col on sheet s of the current book b (strings from the SST, RK and float numbers, booleans and errors). Returns an empty string and sets sERR on errors such as row or column out of bounds.</p>
+<h3><a name="XLSSAVE"></a>xlsSAVE</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18397</p>
+<pre>FUNCTION xlsSAVE(file As STRING) As LONG</pre>
+<p>Writes the current book b as an OLE Excel file to file: copies the header and directory template from qxls.dat (extracted from Resource(1) if missing), writes the BIFF data and builds the FAT. Returns the file size or -1.</p>
+<h3><a name="XLSSHEETLENGTH"></a>xlsSHEETLENGTH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18391</p>
+<pre>FUNCTION xlsSHEETLENGTH(s As LONG) As LONG</pre>
+<p>Returns the length in bytes of the BIFF data of sheet s in the current book b.</p>
+<h3><a name="XLSSHEETNAME"></a>xlsSHEETNAME</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18386</p>
+<pre>FUNCTION xlsSHEETNAME(s As LONG) As STRING</pre>
+<p>Returns the name of sheet s in the current book b.</p>
+<h3><a name="XLSWRITE"></a>xlsWRITE</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18398</p>
+<pre>FUNCTION xlsWRITE(s As LONG, row As LONG, col As LONG, value As STRING) As LONG</pre>
+<p>Writes value into the cell at row, col of sheet s in the current book b. Numeric text is stored as an RK or NUMBER record, other text as a LABEL, empty text as BLANK; the book data in memory is shifted as needed. Returns -1 on error with sERR set. (body longer than shown)</p>
+</body>
+</html>

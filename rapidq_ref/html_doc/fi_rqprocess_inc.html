@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>RQProcess.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: RQProcess.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>RQProcess.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/RQProcess.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 12 functions &middot; 6 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#CREATEAPISTRING">CreateAPIString</a> &middot; <a href="#ENUMPROCESSES">EnumProcesses</a> &middot; <a href="#ENUMPROCESSMODULES">EnumProcessModules</a> &middot; <a href="#FINDPROCESSID">FindProcessId</a> &middot; <a href="#GETEXITCODEPROCESS">GetExitCodeProcess</a> &middot; <a href="#GETMODULEBASENAME">GetModuleBaseName</a> &middot; <a href="#OPENPROCESS">OpenProcess</a> &middot; <a href="#PRINTPROCESSINFO">PrintProcessInfo</a> &middot; <a href="#READAPISTRING">ReadAPIString</a> &middot; <a href="#READNULLTERMSTRING">ReadNullTermString</a> &middot; <a href="#RQTERMINATEPROCESS">rqTerminateProcess</a> &middot; <a href="#TERMINATEPROCESS">TerminateProcess</a></p>
+<h3><a name="CREATEAPISTRING"></a>CreateAPIString</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19420</p>
+<pre>FUNCTION CreateAPIString(length AS LONG) AS STRING</pre>
+<p>Returns a string of length spaces, used as a buffer for API calls.</p>
+<h3><a name="ENUMPROCESSES"></a>EnumProcesses</h3>
+<p class="rq-meta">DLL function, psapi &middot; rapidqAllProc.inc, line 19401</p>
+<pre>DECLARE FUNCTION EnumProcesses LIB &quot;psapi&quot; ALIAS &quot;EnumProcesses&quot; ( arrayPointer AS LONG, arraySize AS LONG, BYREF arrayUsed AS LONG) AS LONG</pre>
+<p>Retrieves the process identifier of each process in the system into an array; the third parameter receives the number of bytes returned. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=EnumProcesses">EnumProcesses</a></p>
+<h3><a name="ENUMPROCESSMODULES"></a>EnumProcessModules</h3>
+<p class="rq-meta">DLL function, psapi &middot; rapidqAllProc.inc, line 19404</p>
+<pre>DECLARE FUNCTION EnumProcessModules LIB &quot;psapi&quot; ALIAS &quot;EnumProcessModules&quot; ( processHandle AS LONG, arrayPointer AS LONG, arraySize AS LONG, BYREF arrayUsed AS LONG) AS LONG</pre>
+<p>Retrieves a handle for each module loaded in the specified process into an array; the last parameter receives the bytes needed. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=EnumProcessModules">EnumProcessModules</a></p>
+<h3><a name="FINDPROCESSID"></a>FindProcessId</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19424</p>
+<pre>FUNCTION FindProcessId(name AS STRING) AS LONG</pre>
+<p>Returns the process ID of a running process whose module name equals name (case-insensitive, e.g. &quot;notepad.exe&quot;), or -1. Uses EnumProcesses, OpenProcess, EnumProcessModules and GetModuleBaseName (psapi); also stores a closed handle in global procExit.</p>
+<h3><a name="GETEXITCODEPROCESS"></a>GetExitCodeProcess</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19417</p>
+<pre>Declare Function GetExitCodeProcess Lib &quot;kernel32&quot; Alias &quot;GetExitCodeProcess&quot; ( hProcess As Long, lpExitCode As Long) As Long</pre>
+<p>Retrieves the termination status of a process; STILL_ACTIVE (259) is returned while the process is running. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetExitCodeProcess">GetExitCodeProcess</a></p>
+<h3><a name="GETMODULEBASENAME"></a>GetModuleBaseName</h3>
+<p class="rq-meta">DLL function, psapi &middot; rapidqAllProc.inc, line 19408</p>
+<pre>DECLARE FUNCTION GetModuleBaseName LIB &quot;psapi&quot; ALIAS &quot;GetModuleBaseNameA&quot; ( processHandle AS LONG, moduleHandle AS LONG, BYREF name AS STRING, nameSize AS LONG) AS LONG</pre>
+<p>Retrieves the base file name of a module loaded in the specified process (module handle 0 = the main executable). Returns the length of the copied string.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetModuleBaseNameA">GetModuleBaseNameA</a></p>
+<h3><a name="OPENPROCESS"></a>OpenProcess</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19411</p>
+<pre>DECLARE FUNCTION OpenProcess LIB &quot;kernel32&quot; ALIAS &quot;OpenProcess&quot; (desiredAccess AS LONG, inheritHandle AS LONG, pid AS LONG) AS LONG</pre>
+<p>Opens an existing process object by process ID with the requested access rights. Returns a process handle, or 0 on failure; close it with CloseHandle.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=OpenProcess">OpenProcess</a></p>
+<h3><a name="PRINTPROCESSINFO"></a>PrintProcessInfo</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 19425</p>
+<pre>DECLARE SUB PrintProcessInfo(pid AS LONG, text AS STRING)</pre>
+<p>Declaration only; no body exists in the library. A program that calls it must supply SUB PrintProcessInfo(pid AS LONG, text AS STRING) itself.</p>
+<h3><a name="READAPISTRING"></a>ReadAPIString</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19421</p>
+<pre>FUNCTION ReadAPIString(str AS STRING, length AS LONG) AS STRING</pre>
+<p>Returns the first length characters of str (or all of str if it is shorter).</p>
+<h3><a name="READNULLTERMSTRING"></a>ReadNullTermString</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19422</p>
+<pre>FUNCTION ReadNullTermString(str AS STRING) AS STRING</pre>
+<p>Returns the part of str before the first null character, trimmed of spaces. Returns an empty string if there is no null character.</p>
+<h3><a name="RQTERMINATEPROCESS"></a>rqTerminateProcess</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19451</p>
+<pre>FUNCTION rqTerminateProcess ( procID AS long ) AS LONG</pre>
+<p>Terminates the process procID with OpenProcess(PROCESS_TERMINATE) and TerminateProcess, then closes the handle. Returns the CloseHandle result, or 0 if procID is -1.</p>
+<h3><a name="TERMINATEPROCESS"></a>TerminateProcess</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19414</p>
+<pre>Declare Function TerminateProcess Lib &quot;kernel32&quot; alias &quot;TerminateProcess&quot; ( hProcess As Long, uExitCode As Long) As Long</pre>
+<p>Terminates the specified process and all its threads, setting the given exit code. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=TerminateProcess">TerminateProcess</a></p>
+</body>
+</html>

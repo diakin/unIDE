@@ -10,6 +10,7 @@ Usage: python3 -I gen_chm.py <repo dir> [chmcmd]
 - the CHM is compiled with chmcmd (Free Pascal) in a temporary copy of html_doc.
 """
 import html
+import json
 import os
 import re
 import shutil
@@ -149,6 +150,12 @@ def collect_index():
         found = re.search(r'Appendix ([AB]):\s*([A-Za-z0-9_]+)', re.sub(r'<[^>]+>', ' ', page))
         if found and found.group(2).upper() not in ('RAPID', 'CUSTOM'):
             add(found.group(2).upper(), name)
+    # Appendix D: functions of rapidqAllProc.inc (gen_funcs.py) - after the
+    # index entries, so a Rapid-Q keyword keeps its own page for F1
+    funcs_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'funcs_index.json')
+    if os.path.exists(funcs_path):
+        for name, href in sorted(json.load(open(funcs_path, encoding='utf-8')).items()):
+            add(name, href)
     return index
 
 

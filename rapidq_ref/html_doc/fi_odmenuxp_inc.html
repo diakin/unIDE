@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>ODMenuXP.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: ODMenuXP.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>ODMenuXP.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/ODMenuXP.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 100 functions &middot; 66 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#ALPHABLEND_MOD">AlphaBlend_mOD</a> &middot; <a href="#BITBLT_MOD">BitBlt_mOD</a> &middot; <a href="#CALLNEXTHOOKEX_MOD">CallNextHookEx_mOD</a> &middot; <a href="#CALLWINDOWPROC_MOD">CallWindowProc_mOD</a> &middot; <a href="#CHANGEBRUSH">ChangeBrush</a> &middot; <a href="#CHANGEFONT_MOD">ChangeFont_mOD</a> &middot; <a href="#CHANGEPEN">ChangePen</a> &middot; <a href="#CHECKIFSYSCOLOR">CheckIfSYSColor</a> &middot; <a href="#CHECKMENUBARFORITEMS">CheckMenuBarForItems</a> &middot; <a href="#CREATEBRUSHINDIRECT_MOD">CreateBrushIndirect_mOD</a> &middot; <a href="#CREATEFONT_MOD">CreateFont_mOD</a> &middot; <a href="#CREATEPENINDIRECT_MOD">CreatePenIndirect_mOD</a> &middot; <a href="#CREATEPEN_MOD">CreatePen_mOD</a> &middot; <a href="#CREATESOLIDBRUSH_MOD">CreateSolidBrush_mOD</a> &middot; <a href="#DEFSYSITEM">DefSysItem</a> &middot; <a href="#DELETEOBJECT_MOD">DeleteObject_mOD</a> &middot; <a href="#DRAWEDGE_MOD">DrawEdge_mOD</a> &middot; <a href="#DRAWMENUBAR_MOD">DrawMenuBar_mOD</a> &middot; <a href="#DRAWMENUBITMAP">DrawMenuBitmap</a> &middot; <a href="#DRAWMENURECTANGLE">DrawMenuRectangle</a> &middot; <a href="#DRAWMENUSHADOW">DrawMenuShadow</a> &middot; <a href="#DRAWMENUTEXT">DrawMenuText</a> &middot; <a href="#DRAWTEXTEX_MOD">DrawTextEx_mOD</a> &middot; <a href="#DRAWTEXT_MOD">DrawText_mOD</a> &middot; <a href="#ENDMENU_MOD">EndMenu_mOD</a> &middot; <a href="#EXCLUDECLIPRECT_MOD">ExcludeClipRect_mOD</a> &middot; <a href="#FILLRECT_MOD">FillRect_mOD</a> &middot; <a href="#FINDFIRSTMENU">FindFirstMenu</a> &middot; <a href="#FINDWINDOW_MOD">FindWindow_mOD</a> &middot; <a href="#FIXTASKBARMENU">FixTaskBarMenu</a> &middot; <a href="#GETACTIVEWINDOW_MOD">GetActiveWindow_mOD</a> &middot; <a href="#GETCLASSNAME_MOD">GetClassName_mOD</a> &middot; <a href="#GETCLIENTRECT_MOD">GetClientRect_mOD</a> &middot; <a href="#GETDC_MOD">GetDC_mOD</a> &middot; <a href="#GETDESKTOPWINDOW_MOD">GetDesktopWindow_mOD</a> &middot; <a href="#GETINFOFROMMENU">GetInfoFromMenu</a> &middot; <a href="#GETMENUCHECKSTATE">GetMenuCheckState</a> &middot; <a href="#GETMENUITEMCOUNT_MOD">GetMenuItemCount_mOD</a> &middot; <a href="#GETMENUITEMINFO_MOD">GetMenuItemInfo_mOD</a> &middot; <a href="#GETMENU_MOD">GetMenu_mOD</a> &middot; <a href="#GETOBJECT_MOD">GetObject_mOD</a> &middot; <a href="#GETPIXEL_MOD">GetPixel_mOD</a> &middot; <a href="#GETPROP_MOD">GetProp_mOD</a> &middot; <a href="#GETSTOCKOBJECT_MOD">GetStockObject_mOD</a> &middot; <a href="#GETSUBMENU_MOD">GetSubMenu_mOD</a> &middot; <a href="#GETSYSCOLORBRUSH_MOD">GetSysColorBrush_mOD</a> &middot; <a href="#GETSYSCOLOR_MOD">GetSysColor_mOD</a> &middot; <a href="#GETSYSTEMMENU_MOD">GetSystemMenu_mOD</a> &middot; <a href="#GETSYSTEMMETRICS_MOD">GetSystemMetrics_mOD</a> &middot; <a href="#GETTEXTEXTENTPOINT32_MOD">GetTextExtentPoint32_mOD</a> &middot; <a href="#GETVERSIONEX_MOD">GetVersionEx_mOD</a> &middot; <a href="#GETVERSION_MOD">GetVersion_mOD</a> &middot; <a href="#GETWINDOWDC_MOD">GetWindowDC_mOD</a> &middot; <a href="#GETWINDOWLONG_MOD">GetWindowLong_mOD</a> &middot; <a href="#GETWINDOWRECT_MOD">GetWindowRect_mOD</a> &middot; <a href="#GETWINDOWTHREADPROCESSID_MOD">GetWindowThreadProcessId_mOD</a> &middot; <a href="#INVALIDATERECT_MOD">InvalidateRect_mOD</a> &middot; <a href="#ISZOOMED_MOD">IsZoomed_mOD</a> &middot; <a href="#LOADDEFAULTCOLORS">LoadDefaultColors</a> &middot; <a href="#LOADNEWCOLORS">LoadNewColors</a> &middot; <a href="#MAKEODITEM">MakeODItem</a> &middot; <a href="#MAKEODMENU">MakeODMenu</a> &middot; <a href="#MAKEODMENUBARITEM">MakeODMenuBarItem</a> &middot; <a href="#MENUITEMFROMPOINT_MOD">MenuItemFromPoint_mOD</a> &middot; <a href="#MODIFYMENU_MOD">ModifyMenu_mOD</a> &middot; <a href="#MREPLACESYSMENU">mReplaceSysMenu</a> &middot; <a href="#PDRAWBORDER">pDrawBorder</a> &middot; <a href="#PFIXITEMSTATE">pFixItemState</a> &middot; <a href="#PGETCLASSNAME_MOD">pGetClassName_mOD</a> &middot; <a href="#PHOOKCALLWNDPROC_MOD">pHookCallWndProc_mOD</a> &middot; <a href="#PMASK">pMask</a> &middot; <a href="#PSHOWPOPUP">pShowPopup</a> &middot; <a href="#PSHOWSYSPOPUP">pShowSysPopup</a> &middot; <a href="#PSUBCLASSWNDPROC_MOD">pSubclassWndProc_mOD</a> &middot; <a href="#PTRANSFORM">pTransform</a> &middot; <a href="#RECTANGLE_MOD">Rectangle_mOD</a> &middot; <a href="#RELEASECAPTURE_MOD">ReleaseCapture_mOD</a> &middot; <a href="#RELEASEDC_MOD">ReleaseDC_mOD</a> &middot; <a href="#REMOVEMENUSHADOW">RemoveMenuShadow</a> &middot; <a href="#REMOVEPROP_MOD">RemoveProp_mOD</a> &middot; <a href="#RTLMOVEMEMORY_MOD">RtlMoveMemory_mOD</a> &middot; <a href="#SCREENTOCLIENT_MOD">ScreenToClient_mOD</a> &middot; <a href="#SELECTOBJECT_MOD">SelectObject_mOD</a> &middot; <a href="#SENDMESSAGE_MOD">SendMessage_mOD</a> &middot; <a href="#SETBKMODE_MOD">SetBkMode_mOD</a> &middot; <a href="#SETMENUDEFAULTITEM_MOD">SetMenuDefaultItem_mOD</a> &middot; <a href="#SETODMENUHOOKENABLED">SetODMenuHookEnabled</a> &middot; <a href="#SETPIXEL_MOD">SetPixel_mOD</a> &middot; <a href="#SETPROP_MOD">SetProp_mOD</a> &middot; <a href="#SETRECT_MOD">SetRect_mOD</a> &middot; <a href="#SETTEXTCOLOR_MOD">SetTextColor_mOD</a> &middot; <a href="#SETWINDOWLONG_MOD">SetWindowLong_mOD</a> &middot; <a href="#SETWINDOWSHOOKEX_MOD">SetWindowsHookEx_mOD</a> &middot; <a href="#SHOWDESCRIPTION">ShowDescription</a> &middot; <a href="#SYSTEMPARAMETERSINFO_MOD">SystemParametersInfo_mOD</a> &middot; <a href="#TRACKPOPUPMENUEX_MOD">TrackPopupMenuEx_mOD</a> &middot; <a href="#TRANSPARENTBLT_MOD">TransparentBlt_mOD</a> &middot; <a href="#UNHOOKWINDOWSHOOKEX_MOD">UnhookWindowsHookEx_mOD</a> &middot; <a href="#UPDATECOLORS">UpdateColors</a> &middot; <a href="#WINDOWFROMPOINT_MOD">WindowFromPoint_mOD</a></p>
+<h3><a name="ALPHABLEND_MOD"></a>AlphaBlend_mOD</h3>
+<p class="rq-meta">DLL function, msimg32.dll &middot; rapidqAllProc.inc, line 14460</p>
+<pre>Declare Function AlphaBlend_mOD Lib &quot;msimg32.dll&quot; Alias &quot;AlphaBlend&quot; ( ByVal hdcDest As Long, ByVal xDest As Long, ByVal yDest As Long, ByVal WidthDest As Long, ByVal HeightDest As Long, ByVal hdcSrc As Long, ByVal xSrc As Long, ByVal ySrc As Long, ByVal WidthSrc As Long, ByVal HeightSrc As Long, ByRef Blendfunc As BLENDFUNCTION_mOD) As Long</pre>
+<p>Copies a bitmap between device contexts with alpha blending (BLENDFUNCTION, packed into a long here). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=AlphaBlend">AlphaBlend</a></p>
+<h3><a name="BITBLT_MOD"></a>BitBlt_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 14881</p>
+<pre>Declare Function BitBlt_mOD Lib &quot;gdi32&quot; Alias &quot;BitBlt&quot; ( hDC As Integer, nXDest As Integer, nYDest As Integer, nWidth As Integer, nHeight As Integer, hdcSrc As Integer, nXSrc As Integer, nYSrc As Integer, dwRop As Integer ) As Integer</pre>
+<p>Copies a rectangle of pixels from a source device context to a destination one using a raster operation (SRCCOPY, ...). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=BitBlt">BitBlt</a></p>
+<h3><a name="CALLNEXTHOOKEX_MOD"></a>CallNextHookEx_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14542</p>
+<pre>Declare Function CallNextHookEx_mOD Lib &quot;user32&quot; Alias &quot;CallNextHookEx&quot; ( ByVal hHook As Long, ByVal ncode As Long, ByVal wParam As Long, lParam As Long) As Long</pre>
+<p>Passes hook information to the next hook procedure in the current hook chain. Returns the value from the next hook.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CallNextHookEx">CallNextHookEx</a></p>
+<h3><a name="CALLWINDOWPROC_MOD"></a>CallWindowProc_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14550</p>
+<pre>Declare Function CallWindowProc_mOD Lib &quot;user32&quot; Alias &quot;CallWindowProcA&quot; ( ByVal lpPrevWndFunc As Long, ByVal hWnd As Long, ByVal Msg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long</pre>
+<p>Passes message information (hWnd, msg, wParam, lParam) to a given window procedure; used when subclassing. Returns the procedure&#x27;s result.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CallWindowProcA">CallWindowProcA</a></p>
+<h3><a name="CHANGEBRUSH"></a>ChangeBrush</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15587</p>
+<pre>Sub ChangeBrush (nColor As Integer)</pre>
+<p>Creates a solid brush of color nColor and stores it in the global hSRBr. The previous brush is not deleted.</p>
+<h3><a name="CHANGEFONT_MOD"></a>ChangeFont_mOD</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 15418</p>
+<pre>Function ChangeFont_mOD(nFace As String, nSize As Integer, nWeight As Integer, nDegrees As Long) As Long</pre>
+<p>Creates a font with CreateFont (height 13, the given face name, weight and rotation in degrees) and returns its handle. nSize is not used. The caller must delete the font.</p>
+<h3><a name="CHANGEPEN"></a>ChangePen</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15591</p>
+<pre>Sub ChangePen (nSize As Integer, nColor As Integer)</pre>
+<p>Creates a solid pen of width nSize (limited to 2) and color nColor and stores it in the global hRPen. The previous pen is not deleted.</p>
+<h3><a name="CHECKIFSYSCOLOR"></a>CheckIfSYSColor</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 15621</p>
+<pre>Function CheckIfSYSColor (lColor As Integer) As Integer</pre>
+<p>Converts a RapidQ or negative system colour constant (clBtnFace, clMenu and so on) to the real RGB value with GetSysColor; other colours are returned unchanged.</p>
+<h3><a name="CHECKMENUBARFORITEMS"></a>CheckMenuBarForItems</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 14647</p>
+<pre>Sub CheckMenuBarForItems(frmTmp As Long)</pre>
+<p>Gets the menu bar of the window frmTmp, stores it in the global hMainMenu, converts it to owner-drawn with MakeODMenu if it has items, and redraws it with DrawMenuBar.</p>
+<h3><a name="CREATEBRUSHINDIRECT_MOD"></a>CreateBrushIndirect_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15582</p>
+<pre>Declare Function CreateBrushIndirect_mOD Lib &quot;gdi32&quot; Alias &quot;CreateBrushIndirect&quot; ( lpLogBrush As LOGBRUSH_mOD ) As Long</pre>
+<p>Creates a logical brush from a LOGBRUSH structure (style, color, hatch). Returns the brush handle.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateBrushIndirect">CreateBrushIndirect</a></p>
+<h3><a name="CREATEFONT_MOD"></a>CreateFont_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15399</p>
+<pre>Declare Function CreateFont_mOD Lib &quot;gdi32&quot; Alias &quot;CreateFontA&quot; ( ByVal nHeight As Long, ByVal nWidth As Long, ByVal nEscapement As Long, ByVal nOrientation As Long, ByVal fnWeight As Long, ByVal fdwItalic As Integer, ByVal fdwUnderline As Integer, ByVal fdwStrikeOut As Integer, ByVal fdwCharSet As Long, ByVal fdwOutputPrecision As Long, ByVal fdwClipPrecision As Long, ByVal fdwQuality As Long, ByVal fdwPitchAndFamily As Long, ByVal lpszFace As String ) As Long</pre>
+<p>Creates a logical font with the given height, width, weight, style, charset and face name. Returns the font handle; free it with DeleteObject.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateFontA">CreateFontA</a></p>
+<h3><a name="CREATEPENINDIRECT_MOD"></a>CreatePenIndirect_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15584</p>
+<pre>Declare Function CreatePenIndirect_mOD Lib &quot;gdi32&quot; Alias &quot;CreatePenIndirect&quot; ( lpLogPen As LOGPEN_mOD ) As Long</pre>
+<p>Creates a logical pen from a LOGPEN structure (style, width, color). Returns the pen handle.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreatePenIndirect">CreatePenIndirect</a></p>
+<h3><a name="CREATEPEN_MOD"></a>CreatePen_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15546</p>
+<pre>Declare Function CreatePen_mOD Lib &quot;gdi32&quot; Alias &quot;CreatePen&quot; ( ByVal nPenStyle As Long, ByVal nWidth As Long, ByVal crColor As Long ) As Long</pre>
+<p>Creates a logical pen with the given style, width and color. Returns the pen handle; free it with DeleteObject.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreatePen">CreatePen</a></p>
+<h3><a name="CREATESOLIDBRUSH_MOD"></a>CreateSolidBrush_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15550</p>
+<pre>Declare Function CreateSolidBrush_mOD Lib &quot;gdi32&quot; Alias &quot;CreateSolidBrush&quot; ( ByVal crColor As Long) As Long</pre>
+<p>Creates a logical brush of a solid color. Returns the brush handle; free it with DeleteObject.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateSolidBrush">CreateSolidBrush</a></p>
+<h3><a name="DEFSYSITEM"></a>DefSysItem</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15441</p>
+<pre>Sub DefSysItem ()</pre>
+<p>Sets the default (bold) item of the replacement system menu pNewSysMenu: Close when opened from the icon, otherwise Maximize or Restore depending on whether mnuSysMainForm is maximized.</p>
+<h3><a name="DELETEOBJECT_MOD"></a>DeleteObject_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15416</p>
+<pre>Declare Function DeleteObject_mOD Lib &quot;gdi32&quot; Alias &quot;DeleteObject&quot; (ByVal hObject As Long) As Long</pre>
+<p>Deletes a GDI object (pen, brush, font, bitmap, region, palette) and frees its resources. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DeleteObject">DeleteObject</a></p>
+<h3><a name="DRAWEDGE_MOD"></a>DrawEdge_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14508</p>
+<pre>Declare Function DrawEdge_mOD Lib &quot;user32&quot; Alias &quot;DrawEdge&quot; ( ByVal hdc As Long, qrc As RECT_mOD, ByVal edge As Long, ByVal grfFlags As Long) As Long</pre>
+<p>Draws one or more edges of a rectangle in 3D style (EDGE_* type, BF_* flags). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawEdge">DrawEdge</a></p>
+<h3><a name="DRAWMENUBAR_MOD"></a>DrawMenuBar_mOD</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 14352</p>
+<pre>Declare Function DrawMenuBar_mOD Lib &quot;user32.dll&quot; Alias &quot;DrawMenuBar&quot; (ByVal hwnd As Long) As Long</pre>
+<p>Redraws the menu bar of a window; call it after changing the menu bar. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawMenuBar">DrawMenuBar</a></p>
+<h3><a name="DRAWMENUBITMAP"></a>DrawMenuBitmap</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15763</p>
+<pre>Sub DrawMenuBitmap(lExtra As Integer)</pre>
+<p>Owner-draw menu helper: draws the image for the current DrawItem into a 20x20 bitmap and onto the menu DC. Depending on lExtra and item state it draws check or radio glyphs from mnuCheckBMP/mnuRadioBMP, an icon from the mnuImgL image list, or Marlett glyphs for system menu items.</p>
+<h3><a name="DRAWMENURECTANGLE"></a>DrawMenuRectangle</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15720</p>
+<pre>Sub DrawMenuRectangle( Left, Top, Right, Bottom, lColor1 As Long, lColor2 As Long, lExtra As Integer, iBrush As Integer )</pre>
+<p>Owner-draw menu helper: draws a rectangle on the global DrawItem.hDC with pen lColor1 and brush lColor2 (uses the button-face color instead for top-level menu bar items when lExtra is False). Uses ChangeBrush/ChangePen and the GDI calls SelectObject, Rectangle and DeleteObject.</p>
+<h3><a name="DRAWMENUSHADOW"></a>DrawMenuShadow</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 14904</p>
+<pre>Sub DrawMenuShadow</pre>
+<p>Draws a 4-pixel drop shadow on the right and bottom of a menu window directly on the desktop DC, first saving the covered screen area so RemoveMenuShadow can restore it. Shading is computed per pixel with pMask and SetPixel. (body longer than shown)</p>
+<h3><a name="DRAWMENUTEXT"></a>DrawMenuText</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15444</p>
+<pre>Sub DrawMenuText (lColor As Long, lExtra As Integer)</pre>
+<p>Draws the caption and shortcut text of the menu item described by the global DrawItem structure in color lColor, with layout depending on whether it is a menu bar item, system menu item or popup item; also draws the submenu arrow. Caption and shortcut are separated by Tab in itemData. (body longer than shown)</p>
+<h3><a name="DRAWTEXTEX_MOD"></a>DrawTextEx_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 15350</p>
+<pre>Declare Function DrawTextEx_mOD Lib &quot;user32&quot; Alias &quot;DrawTextExA&quot; ( ByVal hDC As Long, ByVal lpsz As String, ByVal n As Long, lpRect As RECT_mOD, ByVal un As Long, lpDrawTextParams As DRAWTEXTPARAMS_mOD) As Long</pre>
+<p>Draws formatted text in a rectangle with extra options such as tab size and margins (DRAWTEXTPARAMS). Returns the height of the text.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawTextExA">DrawTextExA</a></p>
+<h3><a name="DRAWTEXT_MOD"></a>DrawText_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 15337</p>
+<pre>Declare Function DrawText_mOD Lib &quot;user32&quot; Alias &quot;DrawTextA&quot; ( ByVal hdc As Long, ByVal lpStr As String, ByVal nCount As Long, lpRect As RECT_mOD, ByVal wFormat As Long) As Long</pre>
+<p>Draws formatted text in a rectangle (alignment, word wrap, ellipsis by DT_* flags). Returns the height of the text.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawTextA">DrawTextA</a></p>
+<h3><a name="ENDMENU_MOD"></a>EndMenu_mOD</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 14353</p>
+<pre>Declare Function EndMenu_mOD Lib &quot;user32.dll&quot; Alias &quot;EndMenu&quot; () As Long</pre>
+<p>Ends the calling thread&#x27;s active menu. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=EndMenu">EndMenu</a></p>
+<h3><a name="EXCLUDECLIPRECT_MOD"></a>ExcludeClipRect_mOD</h3>
+<p class="rq-meta">DLL function, gdi32.dll &middot; rapidqAllProc.inc, line 14858</p>
+<pre>Declare Function ExcludeClipRect_mOD Lib &quot;gdi32.dll&quot; Alias &quot;ExcludeClipRect&quot; ( ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long</pre>
+<p>Removes a rectangle from the clipping region of a device context. Returns the new region type.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ExcludeClipRect">ExcludeClipRect</a></p>
+<h3><a name="FILLRECT_MOD"></a>FillRect_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 15320</p>
+<pre>Declare Function FillRect_mOD Lib &quot;user32&quot; Alias &quot;FillRect&quot; ( ByVal hdc As Long, lpRect As RECT_mOD, ByVal hBrush As Long ) As Long</pre>
+<p>Fills a rectangle using the given brush (right and bottom edges excluded). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FillRect">FillRect</a></p>
+<h3><a name="FINDFIRSTMENU"></a>FindFirstMenu</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 14743</p>
+<pre>Sub FindFirstMenu</pre>
+<p>QTimer event handler: looks for an open popup menu window (class #32768) with FindWindow and, if found and not yet handled, forces a repaint and subclasses it with the owner-draw procedure. Keeps the timer running while no menu is found.</p>
+<h3><a name="FINDWINDOW_MOD"></a>FindWindow_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14482</p>
+<pre>Declare Function FindWindow_mOD Lib &quot;user32&quot; Alias &quot;FindWindowA&quot; ( ByVal lpClassName As String, ByVal lpWindowName As String) As Long</pre>
+<p>Returns the handle of the top-level window whose class name and/or window title match the given strings, or 0.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FindWindowA">FindWindowA</a></p>
+<h3><a name="FIXTASKBARMENU"></a>FixTaskBarMenu</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 14644</p>
+<pre>Sub FixTaskBarMenu (hWnd As Long)</pre>
+<p>Makes hWnd a top-level window (parent set to the desktop) and makes it the owner of the Application window, so the taskbar menu belongs to the form and can be owner-drawn.</p>
+<h3><a name="GETACTIVEWINDOW_MOD"></a>GetActiveWindow_mOD</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 14363</p>
+<pre>Declare Function GetActiveWindow_mOD Lib &quot;user32.dll&quot; Alias &quot;GetActiveWindow&quot; () As Long</pre>
+<p>Returns the handle of the active window attached to the calling thread&#x27;s message queue.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetActiveWindow">GetActiveWindow</a></p>
+<h3><a name="GETCLASSNAME_MOD"></a>GetClassName_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14577</p>
+<pre>Declare Function GetClassName_mOD Lib &quot;user32&quot; Alias &quot;GetClassNameA&quot; ( ByVal hwnd As Long, ByVal lpClassName As String, ByVal nMaxCount As Long) As Long</pre>
+<p>Retrieves the name of the window class to which a window belongs. Returns the number of characters copied, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetClassNameA">GetClassNameA</a></p>
+<h3><a name="GETCLIENTRECT_MOD"></a>GetClientRect_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14489</p>
+<pre>Declare Function GetClientRect_mOD Lib &quot;user32&quot; Alias &quot;GetClientRect&quot; ( ByVal hwnd As Long, lpRect As RECT_mOD) As Long</pre>
+<p>Retrieves the client area rectangle of a window (left/top are 0, right/bottom are width/height). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetClientRect">GetClientRect</a></p>
+<h3><a name="GETDC_MOD"></a>GetDC_mOD</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 14326</p>
+<pre>Declare Function GetDC_mOD Lib &quot;user32.dll&quot; Alias &quot;GetDC&quot; ( ByVal hwnd As Long) As Long</pre>
+<p>Retrieves a device context for the client area of a window (or the screen if hWnd is 0). Release it with ReleaseDC.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDC">GetDC</a></p>
+<h3><a name="GETDESKTOPWINDOW_MOD"></a>GetDesktopWindow_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14865</p>
+<pre>Declare Function GetDesktopWindow_mOD Lib &quot;user32&quot; Alias &quot;GetDesktopWindow&quot; () As Long</pre>
+<p>Returns the handle of the desktop window.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDesktopWindow">GetDesktopWindow</a></p>
+<h3><a name="GETINFOFROMMENU"></a>GetInfoFromMenu</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 14652</p>
+<pre>Declare Sub GetInfoFromMenu (iCaption As String)</pre>
+<p>Declaration only: a debug-output SUB taking a caption string that the program may supply. In the library all calls to it are commented out.</p>
+<h3><a name="GETMENUCHECKSTATE"></a>GetMenuCheckState</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 14329</p>
+<pre>Function GetMenuCheckState</pre>
+<p>Returns True if the menu item ID in hMenu has the radio-check type (MFT_RADIOCHECK), otherwise False. Uses GetMenuItemInfo and the global MII structure.</p>
+<h3><a name="GETMENUITEMCOUNT_MOD"></a>GetMenuItemCount_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 16219</p>
+<pre>Declare Function GetMenuItemCount_mOD Lib &quot;user32&quot; Alias &quot;GetMenuItemCount&quot; ( ByVal hMenu As Long ) As Long</pre>
+<p>Returns the number of items in a menu, or -1 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetMenuItemCount">GetMenuItemCount</a></p>
+<h3><a name="GETMENUITEMINFO_MOD"></a>GetMenuItemInfo_mOD</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 14844</p>
+<pre>Declare Function GetMenuItemInfo_mOD Lib &quot;user32.dll&quot; Alias &quot;GetMenuItemInfoA&quot; ( ByVal hMenu As Long, ByVal uItem As Long, ByVal fByPosition As Long, lpmii As MENUITEMINFO_mOD ) As Long</pre>
+<p>Retrieves information about a menu item into a MENUITEMINFO structure, by position or command ID. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetMenuItemInfoA">GetMenuItemInfoA</a></p>
+<h3><a name="GETMENU_MOD"></a>GetMenu_mOD</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 16214</p>
+<pre>Declare Function GetMenu_mOD Lib &quot;user32.dll&quot; Alias &quot;GetMenu&quot; ( ByVal hwnd As Long) As Long</pre>
+<p>Returns the handle of the menu assigned to a window, or 0.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetMenu">GetMenu</a></p>
+<h3><a name="GETOBJECT_MOD"></a>GetObject_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15328</p>
+<pre>Declare Function GetObject_mOD Lib &quot;gdi32&quot; Alias &quot;GetObjectA&quot; ( ByVal hObject As Long, ByVal nCount As Long, lpObject As Long) As Long</pre>
+<p>Retrieves information about a graphics object (bitmap, pen, brush, font) into a buffer. Returns the number of bytes stored.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetObjectA">GetObjectA</a></p>
+<h3><a name="GETPIXEL_MOD"></a>GetPixel_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 14867</p>
+<pre>Declare Function GetPixel_mOD Lib &quot;gdi32&quot; Alias &quot;GetPixel&quot; ( ByVal hdc As Long, ByVal x As Long, ByVal y As Long ) As Long</pre>
+<p>Returns the RGB color of the pixel at the given coordinates in a device context, or CLR_INVALID.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetPixel">GetPixel</a></p>
+<h3><a name="GETPROP_MOD"></a>GetProp_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14572</p>
+<pre>Declare Function GetProp_mOD Lib &quot;user32&quot; Alias &quot;GetPropA&quot; ( ByVal hwnd As Long, ByVal lpString As String) As Long</pre>
+<p>Returns the data handle associated with a string name in a window&#x27;s property list, or 0 if not found.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetPropA">GetPropA</a></p>
+<h3><a name="GETSTOCKOBJECT_MOD"></a>GetStockObject_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15326</p>
+<pre>Declare Function GetStockObject_mOD Lib &quot;gdi32&quot; Alias &quot;GetStockObject&quot; ( ByVal nIndex As Long) As Long</pre>
+<p>Returns a handle to a stock pen, brush, font or palette (WHITE_BRUSH, NULL_PEN, DEFAULT_GUI_FONT, ...).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetStockObject">GetStockObject</a></p>
+<h3><a name="GETSUBMENU_MOD"></a>GetSubMenu_mOD</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 16216</p>
+<pre>Declare Function GetSubMenu_mOD Lib &quot;user32.dll&quot; Alias &quot;GetSubMenu&quot; ( ByVal hMenu As Long, ByVal nPos As Long) As Long</pre>
+<p>Returns the handle of the drop-down menu or submenu at the given position in a menu, or 0.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSubMenu">GetSubMenu</a></p>
+<h3><a name="GETSYSCOLORBRUSH_MOD"></a>GetSysColorBrush_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 15324</p>
+<pre>Declare Function GetSysColorBrush_mOD Lib &quot;user32&quot; Alias &quot;GetSysColorBrush&quot; ( ByVal nIndex As Long ) As Long</pre>
+<p>Returns a handle to a cached brush for a system color index (COLOR_*); do not delete it.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSysColorBrush">GetSysColorBrush</a></p>
+<h3><a name="GETSYSCOLOR_MOD"></a>GetSysColor_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14855</p>
+<pre>Declare Function GetSysColor_mOD Lib &quot;user32&quot; Alias &quot;GetSysColor&quot; ( ByVal nIndex As Long ) As Long</pre>
+<p>Returns the current color (RGB value) of the specified display element, given a COLOR_* index.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSysColor">GetSysColor</a></p>
+<h3><a name="GETSYSTEMMENU_MOD"></a>GetSystemMenu_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14435</p>
+<pre>Declare Function GetSystemMenu_mOD Lib &quot;user32&quot; Alias &quot;GetSystemMenu&quot; ( ByVal hwnd As Long, ByVal bRevert As Long) As Long</pre>
+<p>Returns the handle of a window&#x27;s system (window) menu; bRevert=TRUE resets it to the default.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSystemMenu">GetSystemMenu</a></p>
+<h3><a name="GETSYSTEMMETRICS_MOD"></a>GetSystemMetrics_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14449</p>
+<pre>Declare Function GetSystemMetrics_mOD Lib &quot;user32&quot; Alias &quot;GetSystemMetrics&quot; (ByVal nIndex As Long) As Long</pre>
+<p>Returns a system metric or configuration setting (screen size, border widths, etc.) given an SM_* index.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSystemMetrics">GetSystemMetrics</a></p>
+<h3><a name="GETTEXTEXTENTPOINT32_MOD"></a>GetTextExtentPoint32_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 14315</p>
+<pre>Declare Function GetTextExtentPoint32_mOD Lib &quot;gdi32&quot; Alias &quot;GetTextExtentPoint32A&quot; ( ByVal hdc As Long, ByVal lpsz As String, ByVal cbString As Long, lpSize As Size_mOD) As Long</pre>
+<p>Computes the width and height of a text string in the device context&#x27;s current font. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetTextExtentPoint32A">GetTextExtentPoint32A</a></p>
+<h3><a name="GETVERSIONEX_MOD"></a>GetVersionEx_mOD</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; rapidqAllProc.inc, line 14382</p>
+<pre>Declare Function GetVersionEx_mOD Lib &quot;kernel32.dll&quot; Alias &quot;GetVersionExA&quot; (ByVal lpVersionInformation As LONG) As Long</pre>
+<p>Fills an OSVERSIONINFO structure with OS version information. Deprecated; may not report the real version after Windows 8.1.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetVersionExA">GetVersionExA</a></p>
+<h3><a name="GETVERSION_MOD"></a>GetVersion_mOD</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 14387</p>
+<pre>SUB GetVersion_mOD</pre>
+<p>Detects the Windows version with GetVersionEx and sets the global isXP_mOD: 2 for Windows XP, True for Windows 2000, False for Win9x; unchanged for other versions.</p>
+<h3><a name="GETWINDOWDC_MOD"></a>GetWindowDC_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14497</p>
+<pre>Declare Function GetWindowDC_mOD Lib &quot;user32&quot; Alias &quot;GetWindowDC&quot; ( ByVal hwnd As Long) As Long</pre>
+<p>Retrieves a device context for the entire window, including title bar, menus and borders. Release it with ReleaseDC.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowDC">GetWindowDC</a></p>
+<h3><a name="GETWINDOWLONG_MOD"></a>GetWindowLong_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14565</p>
+<pre>Declare Function GetWindowLong_mOD Lib &quot;user32&quot; Alias &quot;GetWindowLongA&quot; ( ByVal hwnd As Long, ByVal nIndex As Long) As Long</pre>
+<p>Retrieves an attribute of a window (style, extended style, window procedure, user data) at the given offset.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowLongA">GetWindowLongA</a></p>
+<h3><a name="GETWINDOWRECT_MOD"></a>GetWindowRect_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14486</p>
+<pre>Declare Function GetWindowRect_mOD Lib &quot;user32&quot; Alias &quot;GetWindowRect&quot; ( ByVal hwnd As Long, lpRect As RECT_mOD) As Long</pre>
+<p>Retrieves the bounding rectangle of a window in screen coordinates. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowRect">GetWindowRect</a></p>
+<h3><a name="GETWINDOWTHREADPROCESSID_MOD"></a>GetWindowThreadProcessId_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14547</p>
+<pre>Declare Function GetWindowThreadProcessId_mOD Lib &quot;user32&quot; Alias &quot;GetWindowThreadProcessId&quot; ( ByVal hwnd As Long, lpdwProcessId As Long) As Long</pre>
+<p>Returns the ID of the thread that created a window and optionally the ID of its process.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowThreadProcessId">GetWindowThreadProcessId</a></p>
+<h3><a name="INVALIDATERECT_MOD"></a>InvalidateRect_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14430</p>
+<pre>Declare Function InvalidateRect_mOD Lib &quot;user32&quot; Alias &quot;InvalidateRect&quot; ( ByVal hwnd As Long, lpRect As RECT_mOD, ByVal bErase As Long) As Long</pre>
+<p>Adds a rectangle (or the whole client area if null) to a window&#x27;s update region so it will be repainted; bErase erases the background. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InvalidateRect">InvalidateRect</a></p>
+<h3><a name="ISZOOMED_MOD"></a>IsZoomed_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14447</p>
+<pre>Declare Function IsZoomed_mOD Lib &quot;user32&quot; Alias &quot;IsZoomed&quot; (ByVal hwnd As Long) As Long</pre>
+<p>Returns nonzero if the window is maximized.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=IsZoomed">IsZoomed</a></p>
+<h3><a name="LOADDEFAULTCOLORS"></a>LoadDefaultColors</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15711</p>
+<pre>Sub LoadDefaultColors</pre>
+<p>Replaces the active menu colours with the predefined defaults (mnuODDefCouleurs) and calls UpdateColors.</p>
+<h3><a name="LOADNEWCOLORS"></a>LoadNewColors</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15686</p>
+<pre>Sub LoadNewColors</pre>
+<p>Converts all colours in the user colour set mnuODMesCouleurs from system colour constants to RGB with CheckIfSYSColor, makes them the active menu colours (mnuODCouleurs) and calls UpdateColors.</p>
+<h3><a name="MAKEODITEM"></a>MakeODItem</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 16130</p>
+<pre>Sub MakeODItem (ParentHnd As Long, mItem As QMenuItem, bmpIndex As Long)</pre>
+<p>Converts one QMenuItem in menu ParentHnd to an owner-drawn item: reads its info with GetMenuItemInfo, applies MFT_OWNERDRAW with ModifyMenu (grayed items become disabled so they can be hovered) and stores bmpIndex in the global mnuBitmap array. For the replacement system menu it takes the caption from the real window system menu.</p>
+<h3><a name="MAKEODMENU"></a>MakeODMenu</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 16222</p>
+<pre>Sub MakeODMenu (hSrcMenu As Long)</pre>
+<p>Recursively walks the menu hSrcMenu and its submenus and switches every item to MFT_OWNERDRAW via ModifyMenu. Fills the global arrays mnuMain, mnuSystem and mnuSubMenu (whether the item has a submenu) indexed by item ID.</p>
+<h3><a name="MAKEODMENUBARITEM"></a>MakeODMenuBarItem</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 16211</p>
+<pre>Sub MakeODMenuBarItem (ParentHnd As Long, mItem As QMenuItem, bmpIndex As Long)</pre>
+<p>Makes a top-level menu bar item owner-drawn: grows the global mnuMain/mnuBitmap/mnuSystem/mnuSubMenu arrays if needed, marks the item as a main-menu item, calls MakeODItem, redraws the menu bar and stores ParentHnd in hMainMenu.</p>
+<h3><a name="MENUITEMFROMPOINT_MOD"></a>MenuItemFromPoint_mOD</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 14355</p>
+<pre>Declare Function MenuItemFromPoint_mOD Lib &quot;user32.dll&quot; Alias &quot;MenuItemFromPoint&quot; ( ByVal hWnd As Long, ByVal hMenu As Long, ByVal ptScreen As POINTAPI_mOD) As Long</pre>
+<p>Returns the zero-based position of the menu item at the given screen point, or -1 if none.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MenuItemFromPoint">MenuItemFromPoint</a></p>
+<h3><a name="MODIFYMENU_MOD"></a>ModifyMenu_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 16123</p>
+<pre>Declare Function ModifyMenu_mOD Lib &quot;user32&quot; Alias &quot;ModifyMenuA&quot; ( ByVal hMenu As Long, ByVal nPosition As Long, ByVal wFlags As Long, ByVal wIDNewItem As Long, ByVal lpString As String) As Long</pre>
+<p>Changes an existing menu item (text, flags, ID or bitmap). Superseded by SetMenuItemInfo. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ModifyMenuA">ModifyMenuA</a></p>
+<h3><a name="MREPLACESYSMENU"></a>mReplaceSysMenu</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15114</p>
+<pre>Sub mReplaceSysMenu</pre>
+<p>Sets the global mnuReplaceSysMenu from Enabled and, when True, converts the replacement system menu pNewSysMenu to owner-drawn with MakeODMenu. The header shown has no parameter list; Enabled is expected as its argument.</p>
+<h3><a name="PDRAWBORDER"></a>pDrawBorder</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15718</p>
+<pre>Sub pDrawBorder</pre>
+<p>Draws the border of a popup menu window hMenu in its window DC: flat rectangle style when mnuStyle is True, otherwise raised edges with DrawEdge. On systems before XP it also calls DrawMenuShadow.</p>
+<h3><a name="PFIXITEMSTATE"></a>pFixItemState</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 16326</p>
+<pre>Sub pFixItemState ()</pre>
+<p>Enables or disables the items of the replacement system menu (Restore, Move, Size, Maximize) depending on whether the window mnuSysMainForm is maximized (IsZoomed).</p>
+<h3><a name="PGETCLASSNAME_MOD"></a>pGetClassName_mOD</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 14590</p>
+<pre>Function pGetClassName_mOD</pre>
+<p>Returns the Win32 class name of the window hwnd (GetClassName), or an empty string on failure.</p>
+<h3><a name="PHOOKCALLWNDPROC_MOD"></a>pHookCallWndProc_mOD</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 14580</p>
+<pre>Function pHookCallWndProc_mOD</pre>
+<p>WH_CALLWNDPROC hook procedure installed by SetODMenuHookEnabled. When a popup menu window (class #32768) is created it disables menu animation and subclasses it with the owner-draw window procedure; on destroy it restores the old procedure, removes the shadow and window properties. (body longer than shown)</p>
+<h3><a name="PMASK"></a>pMask</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 14928</p>
+<pre>Function pMask( ByVal lScale As Long, ByVal lColor As Long) As Long</pre>
+<p>Darkens an RGB colour by lScale (0 to 255) by applying pTransform to each component; returns the new RGB value. Used for shadow drawing.</p>
+<h3><a name="PSHOWPOPUP"></a>pShowPopup</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 16351</p>
+<pre>Sub pShowPopup (Popup As QPopupMenu, X As Integer, Y As Integer, hWndParent As Long)</pre>
+<p>Shows a QPopupMenu at screen position X,Y with TrackPopupMenuEx, owned by hWndParent or, if that is 0, by the window under the point. The command returned by TPM_RETURNCMD is stored locally and not used.</p>
+<h3><a name="PSHOWSYSPOPUP"></a>pShowSysPopup</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 16328</p>
+<pre>Sub pShowSysPopup (FromIcon As Integer, X As Integer, Y As Integer)</pre>
+<p>Shows the owner-drawn replacement system menu (pNewSysMenu) with TrackPopupMenuEx at X,Y, or under the window icon when FromIcon is true. Calls pFixItemState and DefSysItem first. The command returned by TPM_RETURNCMD is stored locally and not used.</p>
+<h3><a name="PSUBCLASSWNDPROC_MOD"></a>pSubclassWndProc_mOD</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 14584</p>
+<pre>Function pSubclassWndProc_mOD</pre>
+<p>Subclassed window procedure for the form and popup menu windows of ODMenuXP. Handles WM_MEASUREITEM and WM_DRAWITEM to owner-draw menu items, popup init and close, border and shadow painting, and system menu commands; other messages go to the original procedure via CallWindowProc. (body longer than shown)</p>
+<h3><a name="PTRANSFORM"></a>pTransform</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 14921</p>
+<pre>Function pTransform( ByVal lScale As Long, ByVal lColor As Long) As Long</pre>
+<p>Darkens one colour component: returns lColor - INT(lColor*lScale/255). Helper for pMask.</p>
+<h3><a name="RECTANGLE_MOD"></a>Rectangle_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15539</p>
+<pre>Declare Function Rectangle_mOD Lib &quot;gdi32&quot; Alias &quot;Rectangle&quot; ( ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long</pre>
+<p>Draws a rectangle outlined with the current pen and filled with the current brush. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=Rectangle">Rectangle</a></p>
+<h3><a name="RELEASECAPTURE_MOD"></a>ReleaseCapture_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14439</p>
+<pre>Declare Sub ReleaseCapture_mOD Lib &quot;user32&quot; Alias &quot;ReleaseCapture&quot; ()</pre>
+<p>Releases the mouse capture from a window in the current thread. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ReleaseCapture">ReleaseCapture</a></p>
+<h3><a name="RELEASEDC_MOD"></a>ReleaseDC_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14499</p>
+<pre>Declare Function ReleaseDC_mOD Lib &quot;user32&quot; Alias &quot;ReleaseDC&quot; ( ByVal hwnd As Long, ByVal hdc As Long) As Long</pre>
+<p>Releases a device context obtained with GetDC or GetWindowDC. Returns 1 if released.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ReleaseDC">ReleaseDC</a></p>
+<h3><a name="REMOVEMENUSHADOW"></a>RemoveMenuShadow</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 14910</p>
+<pre>Sub RemoveMenuShadow</pre>
+<p>Restores the screen area that DrawMenuShadow saved for menu index mnuIndex, erasing the drop shadow from the desktop DC with BitBlt.</p>
+<h3><a name="REMOVEPROP_MOD"></a>RemoveProp_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14574</p>
+<pre>Declare Function RemoveProp_mOD Lib &quot;user32&quot; Alias &quot;RemovePropA&quot; ( ByVal hwnd As Long, ByVal lpString As String) As Long</pre>
+<p>Removes an entry from a window&#x27;s property list and returns the data handle that was stored.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RemovePropA">RemovePropA</a></p>
+<h3><a name="RTLMOVEMEMORY_MOD"></a>RtlMoveMemory_mOD</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; rapidqAllProc.inc, line 14473</p>
+<pre>Declare Sub RtlMoveMemory_mOD Lib &quot;kernel32.dll&quot; Alias &quot;RtlMoveMemory&quot; ( byref Destination As long, byref Source As BLENDFUNCTION_mOD, Length As Long)</pre>
+<p>Copies a block of memory from a source to a destination address; overlapping blocks are handled. Also known as CopyMemory/MoveMemory.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RtlMoveMemory">RtlMoveMemory</a></p>
+<h3><a name="SCREENTOCLIENT_MOD"></a>ScreenToClient_mOD</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 14357</p>
+<pre>Declare Function ScreenToClient_mOD Lib &quot;user32.dll&quot; Alias &quot;ScreenToClient&quot; ( ByVal hwnd As Long, ByRef lpPoint As POINTAPI_mOD) As Long</pre>
+<p>Converts a point from screen coordinates to client coordinates of a window. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ScreenToClient">ScreenToClient</a></p>
+<h3><a name="SELECTOBJECT_MOD"></a>SelectObject_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15415</p>
+<pre>Declare Function SelectObject_mOD Lib &quot;gdi32&quot; Alias &quot;SelectObject&quot; (ByVal hdc As Long, ByVal hObject As Long) As Long</pre>
+<p>Selects a GDI object (pen, brush, font, bitmap, region) into a device context. Returns the previously selected object.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SelectObject">SelectObject</a></p>
+<h3><a name="SENDMESSAGE_MOD"></a>SendMessage_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14441</p>
+<pre>Declare Function SendMessage_mOD Lib &quot;user32&quot; Alias &quot;SendMessageA&quot; ( ByVal hwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, lParam As Long ) As Long</pre>
+<p>Sends a message to a window and waits until the window procedure has processed it. Returns the message-dependent result.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SendMessageA">SendMessageA</a></p>
+<h3><a name="SETBKMODE_MOD"></a>SetBkMode_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15316</p>
+<pre>Declare Function SetBkMode_mOD Lib &quot;gdi32&quot; Alias &quot;SetBkMode&quot; ( ByVal hdc As Long, ByVal nBkMode As Long ) As Long</pre>
+<p>Sets the background mix mode of a device context (OPAQUE or TRANSPARENT). Returns the previous mode.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetBkMode">SetBkMode</a></p>
+<h3><a name="SETMENUDEFAULTITEM_MOD"></a>SetMenuDefaultItem_mOD</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 15436</p>
+<pre>Declare Function SetMenuDefaultItem_mOD Lib &quot;user32.dll&quot; Alias &quot;SetMenuDefaultItem&quot; ( ByVal hMenu As Long, ByVal uItem As Long, ByVal fByPos As Long) As Long</pre>
+<p>Sets the default (bold) item of a menu, by command ID or position. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetMenuDefaultItem">SetMenuDefaultItem</a></p>
+<h3><a name="SETODMENUHOOKENABLED"></a>SetODMenuHookEnabled</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 14654</p>
+<pre>Sub SetODMenuHookEnabled(hWnd As Long, Enabled As Integer, AltHook As Integer)</pre>
+<p>Turns the owner-drawn XP-style menus on or off for window hWnd. When enabled it installs a WH_CALLWNDPROC hook (unless AltHook is set), subclasses hWnd and converts its menu bar; when disabled it restores the original window procedure and removes the hook.</p>
+<h3><a name="SETPIXEL_MOD"></a>SetPixel_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 14871</p>
+<pre>Declare Function SetPixel_mOD Lib &quot;gdi32&quot; Alias &quot;SetPixel&quot; ( ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal crColor As Long ) As Long</pre>
+<p>Sets the pixel at the given coordinates to a color. Returns the RGB color actually set, or -1 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetPixel">SetPixel</a></p>
+<h3><a name="SETPROP_MOD"></a>SetProp_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14570</p>
+<pre>Declare Function SetProp_mOD Lib &quot;user32&quot; Alias &quot;SetPropA&quot; ( ByVal hwnd As Long, ByVal lpString As String, ByVal hData As Long) As Long</pre>
+<p>Adds or changes an entry in a window&#x27;s property list, associating a string name with a handle/value. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetPropA">SetPropA</a></p>
+<h3><a name="SETRECT_MOD"></a>SetRect_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14492</p>
+<pre>Declare Function SetRect_mOD Lib &quot;user32&quot; Alias &quot;SetRect&quot; ( lpRect As RECT_mOD, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long</pre>
+<p>Sets the coordinates of a RECT structure. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetRect">SetRect</a></p>
+<h3><a name="SETTEXTCOLOR_MOD"></a>SetTextColor_mOD</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 15333</p>
+<pre>Declare Function SetTextColor_mOD Lib &quot;gdi32&quot; Alias &quot;SetTextColor&quot; ( ByVal hDC As Long, ByVal crColor As Long ) As Long</pre>
+<p>Sets the text color of a device context. Returns the previous text color.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetTextColor">SetTextColor</a></p>
+<h3><a name="SETWINDOWLONG_MOD"></a>SetWindowLong_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14567</p>
+<pre>Declare Function SetWindowLong_mOD Lib &quot;user32&quot; Alias &quot;SetWindowLongA&quot; ( ByVal hwnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long</pre>
+<p>Changes an attribute of a window (style, extended style, window procedure, user data) at the given offset. Returns the previous value.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowLongA">SetWindowLongA</a></p>
+<h3><a name="SETWINDOWSHOOKEX_MOD"></a>SetWindowsHookEx_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14535</p>
+<pre>Declare Function SetWindowsHookEx_mOD Lib &quot;user32&quot; Alias &quot;SetWindowsHookExA&quot; ( ByVal idHook As Long, ByVal lpfn As Long, ByVal hmod As Long, ByVal dwThreadId As Long) As Long</pre>
+<p>Installs a hook procedure (WH_* type) to monitor system or thread events. Returns the hook handle, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowsHookExA">SetWindowsHookExA</a></p>
+<h3><a name="SHOWDESCRIPTION"></a>ShowDescription</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 16472</p>
+<pre>SUB ShowDescription (wParam As Long, lParam As Long, hWnd As Long)</pre>
+<p>Handler for menu selection messages: passes the selected item&#x27;s text (from its item data, cut at the Tab) to GetInfoFromMenu, or a blank string when the menu closes. The source comment warns that wParam does not reliably give the selected item ID.</p>
+<h3><a name="SYSTEMPARAMETERSINFO_MOD"></a>SystemParametersInfo_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14349</p>
+<pre>Declare Function SystemParametersInfo_mOD Lib &quot;user32&quot; Alias &quot;SystemParametersInfoA&quot; ( ByVal uAction As Long, ByVal uParam As Long, ByVal lpvParam As Long, ByVal fuWinIni As Long) As Long</pre>
+<p>Retrieves or sets a system-wide parameter (SPI_* action), optionally updating the user profile. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SystemParametersInfoA">SystemParametersInfoA</a></p>
+<h3><a name="TRACKPOPUPMENUEX_MOD"></a>TrackPopupMenuEx_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14734</p>
+<pre>Declare Function TrackPopupMenuEx_mOD Lib &quot;user32&quot; Alias &quot;TrackPopupMenuEx&quot; ( ByVal hMenu As Long, ByVal wFlags As Long, ByVal x As Long, ByVal y As Long, ByVal hWnd As Long, ByVal lptpm As Long) As Long</pre>
+<p>Displays a shortcut (popup) menu at the given location and tracks the selection; optional TPMPARAMS excludes an area. Returns nonzero or the selected command ID.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=TrackPopupMenuEx">TrackPopupMenuEx</a></p>
+<h3><a name="TRANSPARENTBLT_MOD"></a>TransparentBlt_mOD</h3>
+<p class="rq-meta">DLL function, msimg32 &middot; rapidqAllProc.inc, line 15753</p>
+<pre>Declare Function TransparentBlt_mOD Lib &quot;msimg32&quot; Alias &quot;TransparentBlt&quot; ( ByVal hdcDest As Long, ByVal nXOriginDest As Long, ByVal nYOriginDest As Long, ByVal nWidthDest As Long, ByVal nHeightDest As Long, ByVal hdcSrc As Long, ByVal nXOriginSrc As Long, ByVal nYOriginSrc As Long, ByVal nWidthSrc As Long, ByVal nHeightSrc As Long, ByVal crTransparent As Long) As Long</pre>
+<p>Copies a bitmap between device contexts, treating one RGB color as transparent and stretching if needed. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=TransparentBlt">TransparentBlt</a></p>
+<h3><a name="UNHOOKWINDOWSHOOKEX_MOD"></a>UnhookWindowsHookEx_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14540</p>
+<pre>Declare Function UnhookWindowsHookEx_mOD Lib &quot;user32&quot; Alias &quot;UnhookWindowsHookEx&quot; ( ByVal hHook As Long) As Long</pre>
+<p>Removes a hook procedure installed with SetWindowsHookEx. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=UnhookWindowsHookEx">UnhookWindowsHookEx</a></p>
+<h3><a name="UPDATECOLORS"></a>UpdateColors</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 15666</p>
+<pre>Sub UpdateColors</pre>
+<p>Redraws the main menu bar (DrawMenuBar on hMainMenu) after the menu colours change.</p>
+<h3><a name="WINDOWFROMPOINT_MOD"></a>WindowFromPoint_mOD</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14360</p>
+<pre>Declare Function WindowFromPoint_mOD Lib &quot;user32&quot; Alias &quot;WindowFromPoint&quot; ( ByVal xPoint As Long, ByVal yPoint As Long) As Long</pre>
+<p>Returns the handle of the window that contains the given screen point.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=WindowFromPoint">WindowFromPoint</a></p>
+</body>
+</html>

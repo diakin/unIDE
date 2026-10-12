@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>CallBack_2.Inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: CallBack_2.Inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>CallBack_2.Inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/CallBack_2.Inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 3 functions</p>
+<p><a href="#FUNCBIND_2">FuncBind_2</a> &middot; <a href="#MASTERCALLBACK_2">MasterCallBack_2</a> &middot; <a href="#SETNEWCALLBACK_2">SetNewCallBack_2</a></p>
+<h3><a name="FUNCBIND_2"></a>FuncBind_2</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 6518</p>
+<pre>Declare Function FuncBind_2 (Arg1 As Long, Arg2 As Long) As Long</pre>
+<p>Declaration only, no body. Prototype used by BIND inside MasterCallBack_2 for two-argument callback functions.</p>
+<h3><a name="MASTERCALLBACK_2"></a>MasterCallBack_2</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 6517</p>
+<pre>Function MasterCallBack_2 (hFunction As Long, Arg1 As Long, Arg2 As Long) As Long</pre>
+<p>Internal callback dispatcher for two-argument callbacks: calls the function at hFunction with Arg1, Arg2 via BIND/CALLFUNC and returns its result. Used through SetNewCallBack_2.</p>
+<h3><a name="SETNEWCALLBACK_2"></a>SetNewCallBack_2</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 6523</p>
+<pre>Function SetNewCallBack_2 (hFunction As Long) As Long</pre>
+<p>Creates a callback pointer for a RapidQ function taking two Long arguments: pass CODEPTR of your function and get back an address for a Windows API. Uses SetNewFwToCallBack, which allocates a code thunk on the process heap (not freed).</p>
+</body>
+</html>

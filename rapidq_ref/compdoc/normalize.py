@@ -71,7 +71,8 @@ def normalize(text, name):
 def main():
     changed = 0
     for name in sorted(os.listdir(doc_dir)):
-        if not name.lower().endswith('.html') or name.startswith('c_') or name == 'custom.html':
+        if not name.lower().endswith('.html') or name.startswith('c_') or name == 'custom.html' or \
+                name.startswith('fi_') or name in ('funcs.html', 'funcs_az.html'):
             continue
         path = os.path.join(doc_dir, name)
         raw = open(path, 'rb').read()

@@ -1,0 +1,794 @@
+{
+ "SendMessageAPI@rapidq2.inc": {
+  "desc": "Sends a message to a window and does not return until the window procedure has processed it; returns the message-specific result.",
+  "doc": "SendMessageA"
+ },
+ "AnyPopup@rapidq2.inc": {
+  "desc": "Indicates whether an owned, visible, top-level pop-up or overlapped window exists on the screen. Obsolete; provided only for compatibility with 16-bit Windows.",
+  "doc": "AnyPopup"
+ },
+ "BringWindowToTop@rapidq2.inc": {
+  "desc": "Brings the specified window to the top of the Z order, activating it if it is a top-level window. Returns nonzero on success.",
+  "doc": "BringWindowToTop"
+ },
+ "RegisterClassEx@rapidq2.inc": {
+  "desc": "Registers a window class (described by a WNDCLASSEX structure) for later use with CreateWindowEx. Returns a class atom, or zero on failure.",
+  "doc": "RegisterClassExA"
+ },
+ "EnumChildWindows@rapidq2.inc": {
+  "desc": "Enumerates the child windows of a parent window by passing each child handle to an application-defined callback function together with lParam.",
+  "doc": "EnumChildWindows"
+ },
+ "CreateWindowEx@rapidq2.inc": {
+  "desc": "Creates an overlapped, pop-up or child window with an extended window style, class, title, position, size, parent and menu. Returns the window handle, or 0 on failure.",
+  "doc": "CreateWindowExA"
+ },
+ "DefMDIChildProc@rapidq2.inc": {
+  "desc": "Provides default processing for any window message that the window procedure of an MDI child window does not process.",
+  "doc": "DefMDIChildProcA"
+ },
+ "GetClassName@rapidq2.inc": {
+  "desc": "Retrieves the name of the class to which the specified window belongs into a buffer. Returns the number of characters copied, or 0 on failure.",
+  "doc": "GetClassNameA"
+ },
+ "SetProp@rapidq2.inc": {
+  "desc": "Adds a new entry or changes an existing entry in the property list of a window, associating a string name with a handle/value. Returns nonzero on success.",
+  "doc": "SetPropA"
+ },
+ "GetProp@rapidq2.inc": {
+  "desc": "Retrieves a data handle from the property list of a window by property name. Returns 0 if the property is not found.",
+  "doc": "GetPropA"
+ },
+ "GetClientRect@rapidq2.inc": {
+  "desc": "Retrieves the coordinates of a window's client area; left and top are 0, so right and bottom give the client width and height.",
+  "doc": "GetClientRect"
+ },
+ "MoveWindow@rapidq2.inc": {
+  "desc": "Changes the position and dimensions of a window, optionally repainting it. Top-level windows are positioned in screen coordinates, child windows relative to the parent client area.",
+  "doc": "MoveWindow"
+ },
+ "GetFocus@rapidq2.inc": {
+  "desc": "Returns the handle of the window that has the keyboard focus, if it is attached to the calling thread's message queue; otherwise 0.",
+  "doc": "GetFocus"
+ },
+ "GetParent@rapidq2.inc": {
+  "desc": "Returns the handle of the specified window's parent or owner window, or 0 if there is none.",
+  "doc": "GetParent"
+ },
+ "GetWindowRect@rapidq2.inc": {
+  "desc": "Retrieves the bounding rectangle of a window in screen coordinates, including title bar and borders.",
+  "doc": "GetWindowRect"
+ },
+ "GetWindowText@rapidq2.inc": {
+  "desc": "Copies the text of a window's title bar (or a control's text) into a buffer. Returns the number of characters copied.",
+  "doc": "GetWindowTextA"
+ },
+ "GetWindowTextLength@rapidq2.inc": {
+  "desc": "Returns the length, in characters, of a window's title bar text or a control's text (not including the terminating null).",
+  "doc": "GetWindowTextLengthA"
+ },
+ "GetCapture@rapidq2.inc": {
+  "desc": "Returns the handle of the window (in the current thread) that has captured the mouse, or 0 if none.",
+  "doc": "GetCapture"
+ },
+ "DrawEdge@rapidq2.inc": {
+  "desc": "Draws one or more edges of a rectangle in a device context using the specified edge type (raised, sunken, etc.) and border flags.",
+  "doc": "DrawEdge"
+ },
+ "DrawFrameControl@rapidq2.inc": {
+  "desc": "Draws a frame control of the specified type and state (button, caption button, menu glyph, scroll bar part) in a rectangle.",
+  "doc": "DrawFrameControl"
+ },
+ "DrawCaption@rapidq2.inc": {
+  "desc": "Draws a window caption (title bar) for the given window into a rectangle of a device context, according to uFlags.",
+  "doc": "DrawCaption"
+ },
+ "IsIconic@rapidq2.inc": {
+  "desc": "Determines whether the specified window is minimized (iconic). Returns nonzero if it is.",
+  "doc": "IsIconic"
+ },
+ "IsWindowVisible@rapidq2.inc": {
+  "desc": "Determines the visibility state of a window (WS_VISIBLE style of it and its parents). Returns nonzero if visible.",
+  "doc": "IsWindowVisible"
+ },
+ "IsZoomed@rapidq2.inc": {
+  "desc": "Determines whether a window is maximized. Returns nonzero if it is.",
+  "doc": "IsZoomed"
+ },
+ "RemoveProp@rapidq2.inc": {
+  "desc": "Removes an entry from the property list of a window and returns the data handle that was associated with it.",
+  "doc": "RemovePropA"
+ },
+ "ReleaseCapture@rapidq2.inc": {
+  "desc": "Releases the mouse capture from a window in the current thread and restores normal mouse input processing. Returns nonzero on success.",
+  "doc": "ReleaseCapture"
+ },
+ "SetCapture@rapidq2.inc": {
+  "desc": "Sets the mouse capture to the specified window so it receives all mouse input; returns the handle of the window that previously had capture.",
+  "doc": "SetCapture"
+ },
+ "SetClassLong@rapidq2.inc": {
+  "desc": "Replaces a 32-bit value at the given offset in the extra class memory or a WNDCLASSEX field of the window's class. Returns the previous value.",
+  "doc": "SetClassLongA"
+ },
+ "SetFocus@rapidq2.inc": {
+  "desc": "Sets the keyboard focus to the specified window. Returns the handle of the window that previously had the focus.",
+  "doc": "SetFocus"
+ },
+ "SetParent@rapidq2.inc": {
+  "desc": "Changes the parent window of the specified child window. Returns the handle of the previous parent, or 0 on failure.",
+  "doc": "SetParent"
+ },
+ "SetForegroundWindow@rapidq2.inc": {
+  "desc": "Brings the thread that created the window into the foreground and activates the window. Returns nonzero if successful.",
+  "doc": "SetForegroundWindow"
+ },
+ "SetWindowText@rapidq2.inc": {
+  "desc": "Changes the text of the window's title bar or, for a control, the text of the control. Returns nonzero on success.",
+  "doc": "SetWindowTextA"
+ },
+ "SetLayeredWindowAttributes@rapidq2.inc": {
+  "desc": "Sets the opacity and/or transparency color key of a layered window (WS_EX_LAYERED). Returns nonzero on success.",
+  "doc": "SetLayeredWindowAttributes"
+ },
+ "ShowWindow@rapidq2.inc": {
+  "desc": "Sets the window's show state (hide, show, minimize, maximize, restore, etc.). Returns nonzero if the window was previously visible.",
+  "doc": "ShowWindow"
+ },
+ "CallWindowProc@rapidq2.inc": {
+  "desc": "Passes message information to the specified window procedure; used to call the original procedure from a subclassing window procedure.",
+  "doc": "CallWindowProcA"
+ },
+ "EnableWindow@rapidq2.inc": {
+  "desc": "Enables or disables mouse and keyboard input to the specified window or control. Returns nonzero if the window was previously disabled.",
+  "doc": "EnableWindow"
+ },
+ "SetWindowPos@rapidq2.inc": {
+  "desc": "Changes the size, position and Z order of a window; the SWP_ flags select which of these are applied. Returns nonzero on success.",
+  "doc": "SetWindowPos"
+ },
+ "GetWindowLong@rapidq2.inc": {
+  "desc": "Retrieves information about a window (style, extended style, window procedure, ID, user data, etc.) at the given offset (GWL_ constants).",
+  "doc": "GetWindowLongA"
+ },
+ "SetWindowLong@rapidq2.inc": {
+  "desc": "Changes an attribute of a window (style, window procedure, user data, etc.) at the given offset and returns the previous value; often used for subclassing.",
+  "doc": "SetWindowLongA"
+ },
+ "ClientToScreen@rapidq2.inc": {
+  "desc": "Converts the client-area coordinates of a point to screen coordinates. Returns nonzero on success.",
+  "doc": "ClientToScreen"
+ },
+ "DefWindowProc@rapidq2.inc": {
+  "desc": "Calls the default window procedure to provide default processing for any window messages that the application does not process.",
+  "doc": "DefWindowProcA"
+ },
+ "DragAcceptFiles@rapidq2.inc": {
+  "desc": "Registers whether a window accepts dropped files; when enabled the window receives WM_DROPFILES messages.",
+  "doc": "DragAcceptFiles"
+ },
+ "DragFinish@rapidq2.inc": {
+  "desc": "Releases the memory that the system allocated for transferring file names during a drag-and-drop (the HDROP handle).",
+  "doc": "DragFinish"
+ },
+ "DragQueryFile@rapidq2.inc": {
+  "desc": "Retrieves the names of dropped files from an HDROP handle; with index 0xFFFFFFFF it returns the number of files dropped.",
+  "doc": "DragQueryFileA"
+ },
+ "DragQueryPoint@rapidq2.inc": {
+  "desc": "Retrieves the mouse position, in client coordinates, at the time a file was dropped. Returns nonzero if the drop was in the client area.",
+  "doc": "DragQueryPoint"
+ },
+ "Shell_NotifyIcon@rapidq2.inc": {
+  "desc": "Sends a message to the taskbar's notification area to add, modify or delete an icon (NOTIFYICONDATA). Returns nonzero on success.",
+  "doc": "Shell_NotifyIconA"
+ },
+ "ShellExecute@rapidq2.inc": {
+  "desc": "Performs an operation (open, print, explore, etc.) on a file, URL or program. Returns a value greater than 32 on success.",
+  "doc": "ShellExecuteA"
+ },
+ "SetCursorPos@rapidq2.inc": {
+  "desc": "Moves the mouse cursor to the specified screen coordinates. Returns nonzero on success.",
+  "doc": "SetCursorPos"
+ },
+ "GetKeyState@rapidq2.inc": {
+  "desc": "Retrieves the status of a virtual key: high-order bit set if the key is down, low-order bit set if a toggle key (e.g. Caps Lock) is on.",
+  "doc": "GetKeyState"
+ },
+ "AlphaBlend@rapidq2.inc": {
+  "desc": "Displays a bitmap with transparent or semitransparent pixels, blending a source rectangle into a destination DC using a BLENDFUNCTION.",
+  "doc": "AlphaBlend"
+ },
+ "CreateDC@rapidq2.inc": {
+  "desc": "Creates a device context for a device (such as a display or printer) by driver and device name. Returns the DC handle, or 0 on failure.",
+  "doc": "CreateDCA"
+ },
+ "BitBlt@rapidq2.inc": {
+  "desc": "Performs a bit-block transfer of color data from a source device context rectangle to a destination DC using a raster operation code.",
+  "doc": "BitBlt"
+ },
+ "CreateCompatibleBitmap@rapidq2.inc": {
+  "desc": "Creates a bitmap compatible with the device associated with the specified device context, with the given width and height.",
+  "doc": "CreateCompatibleBitmap"
+ },
+ "CreateCompatibleDC@rapidq2.inc": {
+  "desc": "Creates a memory device context compatible with the specified device; select a bitmap into it before drawing.",
+  "doc": "CreateCompatibleDC"
+ },
+ "CreatePen@rapidq2.inc": {
+  "desc": "Creates a logical pen with the specified style, width and color. Returns the pen handle; delete it with DeleteObject when done.",
+  "doc": "CreatePen"
+ },
+ "CreateSolidBrush@rapidq2.inc": {
+  "desc": "Creates a logical brush with the specified solid color. Returns the brush handle; delete it with DeleteObject when done.",
+  "doc": "CreateSolidBrush"
+ },
+ "DeleteDC@rapidq2.inc": {
+  "desc": "Deletes the specified device context (one created with CreateDC or CreateCompatibleDC). Returns nonzero on success.",
+  "doc": "DeleteDC"
+ },
+ "DeleteObject@rapidq2.inc": {
+  "desc": "Deletes a logical pen, brush, font, bitmap, region or palette and frees its system resources. Do not delete an object still selected into a DC.",
+  "doc": "DeleteObject"
+ },
+ "Ellipse@rapidq2.inc": {
+  "desc": "Draws an ellipse bounded by the given rectangle, outlined with the current pen and filled with the current brush.",
+  "doc": "Ellipse"
+ },
+ "ExtFloodFill@rapidq2.inc": {
+  "desc": "Fills an area of the display surface with the current brush, either up to a border color or over a region of a given color.",
+  "doc": "ExtFloodFill"
+ },
+ "GetDeviceCaps@rapidq2.inc": {
+  "desc": "Retrieves device-specific information (e.g. resolution, color depth, pixels per inch) for the specified device context and index.",
+  "doc": "GetDeviceCaps"
+ },
+ "GetObject@rapidq2.inc": {
+  "desc": "Retrieves information about a graphics object (bitmap, pen, brush, font, etc.) into a buffer, such as a BITMAP or LOGFONT structure.",
+  "doc": "GetObjectA"
+ },
+ "GetCurrentObject@rapidq2.inc": {
+  "desc": "Retrieves a handle to the currently selected object of the specified type (pen, brush, font, bitmap, palette) in a device context.",
+  "doc": "GetCurrentObject"
+ },
+ "GetPixel@rapidq2.inc": {
+  "desc": "Retrieves the RGB color value of the pixel at the specified coordinates in a device context; returns CLR_INVALID if outside the clip region.",
+  "doc": "GetPixel"
+ },
+ "GetStockObject@rapidq2.inc": {
+  "desc": "Retrieves a handle to one of the stock pens, brushes, fonts or palettes. Stock objects need not be deleted.",
+  "doc": "GetStockObject"
+ },
+ "LineTo@rapidq2.inc": {
+  "desc": "Draws a line with the current pen from the current position up to, but not including, the specified point, and updates the current position.",
+  "doc": "LineTo"
+ },
+ "MoveToEx@rapidq2.inc": {
+  "desc": "Updates the current position in a device context to the specified point, optionally returning the previous position.",
+  "doc": "MoveToEx"
+ },
+ "PatBlt@rapidq2.inc": {
+  "desc": "Paints a rectangle using the brush currently selected into the device context, combined with the display using a raster operation.",
+  "doc": "PatBlt"
+ },
+ "Rectangle@rapidq2.inc": {
+  "desc": "Draws a rectangle outlined with the current pen and filled with the current brush.",
+  "doc": "Rectangle"
+ },
+ "RoundRect@rapidq2.inc": {
+  "desc": "Draws a rectangle with rounded corners (given corner ellipse width and height), outlined with the current pen and filled with the current brush.",
+  "doc": "RoundRect"
+ },
+ "SelectObject@rapidq2.inc": {
+  "desc": "Selects an object (pen, brush, font, bitmap, region) into a device context and returns the handle of the object it replaces.",
+  "doc": "SelectObject"
+ },
+ "SetROP2@rapidq2.inc": {
+  "desc": "Sets the current foreground mix mode (binary raster operation) used for pens and brush interiors. Returns the previous mode.",
+  "doc": "SetROP2"
+ },
+ "SetBkMode@rapidq2.inc": {
+  "desc": "Sets the background mix mode (OPAQUE or TRANSPARENT) used for text, hatched brushes and non-solid pens. Returns the previous mode.",
+  "doc": "SetBkMode"
+ },
+ "StretchBlt@rapidq2.inc": {
+  "desc": "Copies a bitmap from a source rectangle into a destination rectangle, stretching or compressing it to fit, using a raster operation.",
+  "doc": "StretchBlt"
+ },
+ "GetDesktopWindow@rapidq2.inc": {
+  "desc": "Returns a handle to the desktop window, the window that covers the entire screen.",
+  "doc": "GetDesktopWindow"
+ },
+ "DrawIconEx@rapidq2.inc": {
+  "desc": "Draws an icon or cursor into a device context with the specified size, frame index and drawing flags.",
+  "doc": "DrawIconEx"
+ },
+ "LoadImage@rapidq2.inc": {
+  "desc": "Loads an icon, cursor, animated cursor or bitmap from a module resource or a file. Returns the image handle, or 0 on failure.",
+  "doc": "LoadImageA"
+ },
+ "EnumDisplaySettings@rapidq2.inc": {
+  "desc": "Retrieves information about one of the graphics modes of a display device into a DEVMODE structure; call with increasing index to list all modes.",
+  "doc": "EnumDisplaySettingsA"
+ },
+ "ChangeDisplaySettings@rapidq2.inc": {
+  "desc": "Changes the settings of the default display device (resolution, color depth, frequency) to the mode given in a DEVMODE structure.",
+  "doc": "ChangeDisplaySettingsA"
+ },
+ "ExitWindowsEx@rapidq2.inc": {
+  "desc": "Logs off the interactive user, shuts down, or restarts the system. Shutdown requires the SE_SHUTDOWN_NAME privilege.",
+  "doc": "ExitWindowsEx"
+ },
+ "GetDC@rapidq2.inc": {
+  "desc": "Retrieves a device context for the client area of a window (or the entire screen if hWnd is 0). Release it with ReleaseDC.",
+  "doc": "GetDC"
+ },
+ "ReleaseDC@rapidq2.inc": {
+  "desc": "Releases a common device context obtained with GetDC or GetWindowDC. Returns 1 if released.",
+  "doc": "ReleaseDC"
+ },
+ "SetActiveWindow@rapidq2.inc": {
+  "desc": "Activates a top-level window attached to the calling thread's message queue. Returns the previously active window.",
+  "doc": "SetActiveWindow"
+ },
+ "SystemParametersInfo@rapidq2.inc": {
+  "desc": "Retrieves or sets one of the system-wide parameters (work area, wallpaper, desktop and UI settings), optionally updating the user profile.",
+  "doc": "SystemParametersInfoA"
+ },
+ "RtlMoveMemory@rapidq2.inc": {
+  "desc": "Copies a block of memory from a source address to a destination address; the blocks may overlap. Documented as the MoveMemory macro.",
+  "doc": "RtlMoveMemory"
+ },
+ "SetPriorityClass@rapidq2.inc": {
+  "desc": "Sets the priority class of the specified process (e.g. NORMAL, HIGH, IDLE). Returns nonzero on success.",
+  "doc": "SetPriorityClass"
+ },
+ "GetPriorityClass@rapidq2.inc": {
+  "desc": "Returns the priority class of the specified process, or 0 on failure.",
+  "doc": "GetPriorityClass"
+ },
+ "GetCurrentProcess@rapidq2.inc": {
+  "desc": "Returns a pseudo handle for the current process; it does not need to be closed.",
+  "doc": "GetCurrentProcess"
+ },
+ "GetDriveType@rapidq2.inc": {
+  "desc": "Determines whether a disk drive is removable, fixed, CD-ROM, RAM disk or network drive, given its root path.",
+  "doc": "GetDriveTypeA"
+ },
+ "GetDiskFreeSpaceEx@rapidq2.inc": {
+  "desc": "Retrieves the total size, total free space and free space available to the caller on a disk volume, as 64-bit byte counts.",
+  "doc": "GetDiskFreeSpaceExA"
+ },
+ "GetSysColor@rapidq2.inc": {
+  "desc": "Retrieves the current color of the specified display element (COLOR_ index) as an RGB value.",
+  "doc": "GetSysColor"
+ },
+ "GetMenu@rapidq2.inc": {
+  "desc": "Returns a handle to the menu assigned to the specified window, or 0 if it has none.",
+  "doc": "GetMenu"
+ },
+ "GetMenuItemInfo@rapidq2.inc": {
+  "desc": "Retrieves information about a menu item, by position or command ID, into a MENUITEMINFO structure.",
+  "doc": "GetMenuItemInfoA"
+ },
+ "SetMenuItemInfo@rapidq2.inc": {
+  "desc": "Changes information about a menu item (text, state, bitmap, submenu, etc.) using a MENUITEMINFO structure.",
+  "doc": "SetMenuItemInfoA"
+ },
+ "InsertMenuItem@rapidq2.inc": {
+  "desc": "Inserts a new menu item at the specified position in a menu, described by a MENUITEMINFO structure.",
+  "doc": "InsertMenuItemA"
+ },
+ "ModifyMenu@rapidq2.inc": {
+  "desc": "Changes an existing menu item's content, flags and identifier. Superseded by SetMenuItemInfo.",
+  "doc": "ModifyMenuA"
+ },
+ "GetSaveFileName@rapidq2.inc": {
+  "desc": "Displays the common Save As dialog box, described by an OPENFILENAME structure. Returns nonzero if the user selected a file name.",
+  "doc": "GetSaveFileNameA"
+ },
+ "GetOpenFileName@rapidq2.inc": {
+  "desc": "Displays the common Open dialog box, described by an OPENFILENAME structure. Returns nonzero if the user selected a file.",
+  "doc": "GetOpenFileNameA"
+ },
+ "CommDlgExtendedError@rapidq2.inc": {
+  "desc": "Returns a common dialog box error code for the last common dialog function call, or 0 if the user cancelled or no error occurred.",
+  "doc": "CommDlgExtendedError"
+ },
+ "SLEEP@rapidq2.inc": {
+  "desc": "Suspends execution of the current thread for at least the specified number of milliseconds.",
+  "doc": "Sleep"
+ },
+ "SetLastError@rapidq2.inc": {
+  "desc": "Sets the last-error code for the calling thread.",
+  "doc": "SetLastError"
+ },
+ "WSAGetLastError@rapidq2.inc": {
+  "desc": "Returns the error status for the last Windows Sockets operation that failed in the calling thread.",
+  "doc": "WSAGetLastError"
+ },
+ "GetLastError@rapidq2.inc": {
+  "desc": "Retrieves the calling thread's last-error code value.",
+  "doc": "GetLastError"
+ },
+ "FormatMessage@rapidq2.inc": {
+  "desc": "Formats a message string from a message table or a string, for example to get the text of a system error code from GetLastError.",
+  "doc": "FormatMessageA"
+ },
+ "SetupComm@rapidq2.inc": {
+  "desc": "Initializes the communications parameters of a serial device, setting the recommended sizes of the input and output buffers.",
+  "doc": "SetupComm"
+ },
+ "PurgeComm@rapidq2.inc": {
+  "desc": "Discards all characters from the output or input buffer of a communications device and can abort pending read/write operations.",
+  "doc": "PurgeComm"
+ },
+ "SetCommTimeouts@rapidq2.inc": {
+  "desc": "Sets the time-out parameters (COMMTIMEOUTS) for all read and write operations on a communications device.",
+  "doc": "SetCommTimeouts"
+ },
+ "GetCommState@rapidq2.inc": {
+  "desc": "Retrieves the current control settings (baud rate, parity, etc.) of a communications device into a DCB structure.",
+  "doc": "GetCommState"
+ },
+ "SetCommState@rapidq2.inc": {
+  "desc": "Configures a communications device according to a DCB structure (baud rate, byte size, parity, stop bits, flow control).",
+  "doc": "SetCommState"
+ },
+ "ClearCommError@rapidq2.inc": {
+  "desc": "Retrieves information about a communications error, reports the device's current status (COMSTAT) and clears the error flag.",
+  "doc": "ClearCommError"
+ },
+ "CreateFile@rapidq2.inc": {
+  "desc": "Creates or opens a file or I/O device (file, directory, COM port, pipe, volume, etc.). Returns a handle, or INVALID_HANDLE_VALUE (-1) on failure.",
+  "doc": "CreateFileA"
+ },
+ "WriteFile@rapidq2.inc": {
+  "desc": "Writes data from a buffer to the specified file or I/O device; the number of bytes written is returned through a parameter.",
+  "doc": "WriteFile"
+ },
+ "WriteFileAlias2@rapidq2.inc": {
+  "desc": "Writes data from a buffer to the specified file or I/O device; the number of bytes written is returned through a parameter.",
+  "doc": "WriteFile"
+ },
+ "ReadFile@rapidq2.inc": {
+  "desc": "Reads data from the specified file or I/O device into a buffer; the number of bytes read is returned through a parameter.",
+  "doc": "ReadFile"
+ },
+ "ReadFileAlias2@rapidq2.inc": {
+  "desc": "Reads data from the specified file or I/O device into a buffer; the number of bytes read is returned through a parameter.",
+  "doc": "ReadFile"
+ },
+ "CloseHandle@rapidq2.inc": {
+  "desc": "Closes an open object handle (file, device, process, thread, event, etc.). Returns nonzero on success.",
+  "doc": "CloseHandle"
+ },
+ "ReadFileEx@rapidq2.inc": {
+  "desc": "Reads data from a file or I/O device asynchronously and calls a completion routine when the read finishes and the thread is in an alertable wait.",
+  "doc": "ReadFileEx"
+ },
+ "GetVersionEx@rapidq2.inc": {
+  "desc": "Retrieves information about the operating system version into an OSVERSIONINFO structure. Deprecated since Windows 8.1 (results may be manifest-dependent).",
+  "doc": "GetVersionExA"
+ },
+ "GetSystemPowerStatus@rapidq2.inc": {
+  "desc": "Retrieves the power status of the system: AC or battery power, battery charge and remaining battery life.",
+  "doc": "GetSystemPowerStatus"
+ },
+ "SetSystemPowerState@rapidq2.inc": {
+  "desc": "Suspends the system by shutting power down (sleep or hibernate). Not supported on newer Windows; use SetSuspendState instead.",
+  "doc": "SetSystemPowerState"
+ },
+ "SetSuspendState@rapidq2.inc": {
+  "desc": "Suspends the system by shutting power down: hibernates if Hibernate is nonzero, otherwise sleeps. Returns nonzero on success.",
+  "doc": "SetSuspendState"
+ },
+ "GlobalMemoryStatus@rapidq2.inc": {
+  "desc": "Retrieves information about the system's current physical and virtual memory usage. Use GlobalMemoryStatusEx for more than 4 GB.",
+  "doc": "GlobalMemoryStatus"
+ },
+ "GetSystemMetrics@rapidq2.inc": {
+  "desc": "Retrieves the specified system metric or configuration setting (screen size, border widths, etc.) by SM_ index.",
+  "doc": "GetSystemMetrics"
+ },
+ "OpenProcessToken@rapidq2.inc": {
+  "desc": "Opens the access token associated with a process, for example to adjust its privileges. Returns nonzero on success.",
+  "doc": "OpenProcessToken"
+ },
+ "LookupPrivilegeValue@rapidq2.inc": {
+  "desc": "Retrieves the locally unique identifier (LUID) that represents the named privilege (e.g. SeShutdownPrivilege) on a system.",
+  "doc": "LookupPrivilegeValueA"
+ },
+ "AdjustTokenPrivileges@rapidq2.inc": {
+  "desc": "Enables or disables privileges in the specified access token; requires TOKEN_ADJUST_PRIVILEGES access.",
+  "doc": "AdjustTokenPrivileges"
+ },
+ "LoadLibrary@rapidq2.inc": {
+  "desc": "Loads the specified DLL or executable module into the calling process. Returns a module handle, or 0 on failure.",
+  "doc": "LoadLibraryA"
+ },
+ "NViewSetLanguage@rapidq2.inc": {
+  "desc": "From nviewlib.dll: sets the language used by the NView image library (per the source comment, a JPEG/GIF loading DLL by K. Nishita).",
+  "doc": ""
+ },
+ "NViewLoad@rapidq2.inc": {
+  "desc": "From nviewlib.dll: loads a JPEG or GIF image file (format detected from file contents, not extension) and returns a bitmap handle.",
+  "doc": ""
+ },
+ "NViewGetHeight@rapidq2.inc": {
+  "desc": "From nviewlib.dll: returns the height of the image last loaded with NViewLoad.",
+  "doc": ""
+ },
+ "NViewGetWidth@rapidq2.inc": {
+  "desc": "From nviewlib.dll: returns the width of the image last loaded with NViewLoad.",
+  "doc": ""
+ },
+ "NViewSaveAsJPG@rapidq2.inc": {
+  "desc": "From nviewlib.dll: saves the current image as a JPEG file with the given quality.",
+  "doc": ""
+ },
+ "JpegDLL_LoadImageFile@rapidq2.inc": {
+  "desc": "From jpeg.dll: loads an image file for the given window and returns an image handle.",
+  "doc": ""
+ },
+ "JpegDLL_ImageHeight@rapidq2.inc": {
+  "desc": "From jpeg.dll: returns the height of an image loaded with LoadImageFile.",
+  "doc": ""
+ },
+ "JpegDLL_ImageWidth@rapidq2.inc": {
+  "desc": "From jpeg.dll: returns the width of an image loaded with LoadImageFile.",
+  "doc": ""
+ },
+ "FWCB_GetProcessHeap@rapidq2.inc": {
+  "desc": "Returns a handle to the default heap of the calling process.",
+  "doc": "GetProcessHeap"
+ },
+ "FWCB_HeapAlloc@rapidq2.inc": {
+  "desc": "Allocates a block of memory from the specified heap. Returns a pointer to the block, or 0 on failure.",
+  "doc": "HeapAlloc"
+ },
+ "PageSetupDlg@rapidq2.inc": {
+  "desc": "Displays the common Page Setup dialog box (PAGESETUPDLG) for setting paper size, orientation and margins. Returns nonzero on OK.",
+  "doc": "PageSetupDlgA"
+ },
+ "gRQ2_GetVersion@rapidq2.inc": {
+  "desc": "Returns the operating system version number (major/minor in the low word, build in the high word). Deprecated; use version helper functions instead.",
+  "doc": "GetVersion"
+ },
+ "gRQ2_Beep@rapidq2.inc": {
+  "desc": "Generates simple tones on the speaker with the given frequency (Hz) and duration (ms). The function is synchronous.",
+  "doc": "Beep"
+ },
+ "WaitForSingleObject@rapidq.inc": {
+  "desc": "Waits until the specified object (process, thread, event, mutex, etc.) is signaled or the time-out interval elapses.",
+  "doc": "WaitForSingleObject"
+ },
+ "CharToOem@conversion.inc": {
+  "desc": "Translates a string from the ANSI character set into the OEM-defined character set.",
+  "doc": "CharToOemA"
+ },
+ "OemToChar@conversion.inc": {
+  "desc": "Translates a string from the OEM-defined character set into an ANSI character string.",
+  "doc": "OemToCharA"
+ },
+ "CharLower@conversion.inc": {
+  "desc": "Converts a character string or a single character to lowercase, in place.",
+  "doc": "CharLowerA"
+ },
+ "CharUpper@conversion.inc": {
+  "desc": "Converts a character string or a single character to uppercase, in place.",
+  "doc": "CharUpperA"
+ },
+ "MultiByteToWideChar@conversion.inc": {
+  "desc": "Maps a character string in a given code page to a UTF-16 (wide character) string. Returns the number of characters written or required.",
+  "doc": "MultiByteToWideChar"
+ },
+ "WideCharToMultiByte@conversion.inc": {
+  "desc": "Maps a UTF-16 (wide character) string to a new character string in the specified code page. Returns the number of bytes written or required.",
+  "doc": "WideCharToMultiByte"
+ },
+ "MultiByteToWideChar1@conversion.inc": {
+  "desc": "Maps a character string in a given code page to a UTF-16 (wide character) string. Returns the number of characters written or required.",
+  "doc": "MultiByteToWideChar"
+ },
+ "WideCharToMultiByte1@conversion.inc": {
+  "desc": "Maps a UTF-16 (wide character) string to a new character string in the specified code page. Returns the number of bytes written or required.",
+  "doc": "WideCharToMultiByte"
+ },
+ "GetFileAttributes@Files.inc": {
+  "desc": "Retrieves file system attributes (read-only, hidden, directory, etc.) for a file or directory. Returns INVALID_FILE_ATTRIBUTES (-1) on failure.",
+  "doc": "GetFileAttributesA"
+ },
+ "SetFileAttributes@Files.inc": {
+  "desc": "Sets the attributes (read-only, hidden, system, archive, etc.) of a file or directory. Returns nonzero on success.",
+  "doc": "SetFileAttributesA"
+ },
+ "CreateDirectory@Files.inc": {
+  "desc": "Creates a new directory (only the last path component). Returns nonzero on success.",
+  "doc": "CreateDirectoryA"
+ },
+ "InternetOpen@Files.inc": {
+  "desc": "Initializes an application's use of the WinINet functions and returns a root Internet handle.",
+  "doc": "InternetOpenA"
+ },
+ "InternetCloseHandle@Files.inc": {
+  "desc": "Closes a single Internet handle opened by WinINet functions.",
+  "doc": "InternetCloseHandle"
+ },
+ "InternetReadFile@Files.inc": {
+  "desc": "Reads data from a handle opened by InternetOpenUrl, FtpOpenFile or HttpOpenRequest; bytes read of 0 means end of data.",
+  "doc": "InternetReadFile"
+ },
+ "InternetOpenUrl@Files.inc": {
+  "desc": "Opens a resource specified by a complete FTP or HTTP URL and returns a handle for reading it with InternetReadFile.",
+  "doc": "InternetOpenUrlA"
+ },
+ "SetWindowLongAPI@rapidq.inc": {
+  "desc": "Changes an attribute of a window (style, window procedure, user data, etc.) at the given offset and returns the previous value; often used for subclassing.",
+  "doc": "SetWindowLongA"
+ },
+ "CreateCompatibleBitmap_AMIB@AddMenuItemBitmaps4a.inc": {
+  "desc": "Creates a bitmap compatible with the device associated with the specified device context, with the given width and height.",
+  "doc": "CreateCompatibleBitmap"
+ },
+ "CreateCompatibleDC_AMIB@AddMenuItemBitmaps4a.inc": {
+  "desc": "Creates a memory device context compatible with the specified device; select a bitmap into it before drawing.",
+  "doc": "CreateCompatibleDC"
+ },
+ "DeleteDC_AMIB@AddMenuItemBitmaps4a.inc": {
+  "desc": "Deletes the specified device context (one created with CreateDC or CreateCompatibleDC). Returns nonzero on success.",
+  "doc": "DeleteDC"
+ },
+ "DeleteObject_AMIB@AddMenuItemBitmaps4a.inc": {
+  "desc": "Deletes a logical pen, brush, font, bitmap, region or palette and frees its system resources. Do not delete an object still selected into a DC.",
+  "doc": "DeleteObject"
+ },
+ "SelectObject_AMIB@AddMenuItemBitmaps4a.inc": {
+  "desc": "Selects an object (pen, brush, font, bitmap, region) into a device context and returns the handle of the object it replaces.",
+  "doc": "SelectObject"
+ },
+ "SetBkMode_AMIB@AddMenuItemBitmaps4a.inc": {
+  "desc": "Sets the background mix mode (OPAQUE or TRANSPARENT) used for text, hatched brushes and non-solid pens. Returns the previous mode.",
+  "doc": "SetBkMode"
+ },
+ "GetSystemMetrics_AMIB@AddMenuItemBitmaps4a.inc": {
+  "desc": "Retrieves the specified system metric or configuration setting (screen size, border widths, etc.) by SM_ index.",
+  "doc": "GetSystemMetrics"
+ },
+ "PatBlt_AMIB@AddMenuItemBitmaps4a.inc": {
+  "desc": "Paints a rectangle using the brush currently selected into the device context, combined with the display using a raster operation.",
+  "doc": "PatBlt"
+ },
+ "TransparentBlt_AMIB@AddMenuItemBitmaps4a.inc": {
+  "desc": "Performs a bit-block transfer from a source DC to a destination DC, treating pixels of the given color as transparent; can stretch.",
+  "doc": "TransparentBlt"
+ },
+ "SetMenuItemBitmaps_AMIB@AddMenuItemBitmaps4a.inc": {
+  "desc": "Associates the specified bitmaps with a menu item, displayed next to the item depending on whether it is checked or unchecked.",
+  "doc": "SetMenuItemBitmaps"
+ },
+ "GetUserName@AdvAPI32.inc": {
+  "desc": "Retrieves the name of the user associated with the current thread into a buffer. Returns nonzero on success.",
+  "doc": "GetUserNameA"
+ },
+ "GetDateFormat@ApiDate.inc": {
+  "desc": "Formats a date as a date string for a specified locale, using a format picture or locale defaults.",
+  "doc": "GetDateFormatA"
+ },
+ "GetLocaleInfo@ApiDate.inc": {
+  "desc": "Retrieves information about a locale (e.g. date format, decimal separator, language name) specified by an LCTYPE value.",
+  "doc": "GetLocaleInfoA"
+ },
+ "NWP_GetProcessHeap@NewWndProc.Inc": {
+  "desc": "Returns a handle to the default heap of the calling process.",
+  "doc": "GetProcessHeap"
+ },
+ "NWP_HeapAlloc@NewWndProc.Inc": {
+  "desc": "Allocates a block of memory from the specified heap. Returns a pointer to the block, or 0 on failure.",
+  "doc": "HeapAlloc"
+ },
+ "NWP_SetWindowLong@NewWndProc.Inc": {
+  "desc": "Changes an attribute of a window (style, window procedure, user data, etc.) at the given offset and returns the previous value; often used for subclassing.",
+  "doc": "SetWindowLongA"
+ },
+ "InitCommonControls@CommCtrl.inc": {
+  "desc": "Registers and initializes the common control window classes. Obsolete; new applications should use InitCommonControlsEx.",
+  "doc": "InitCommonControls"
+ },
+ "CreateStatusWindow@commctrl32.inc": {
+  "desc": "Creates a status window, typically displayed at the bottom of the parent window. Deprecated; use CreateWindow with STATUSCLASSNAME.",
+  "doc": "CreateStatusWindow"
+ },
+ "CreateUpDownControl@commctrl32.inc": {
+  "desc": "Creates an up-down control with the given style, position, buddy window, range and position. Deprecated; use CreateWindow with UPDOWN_CLASS.",
+  "doc": "CreateUpDownControl"
+ },
+ "DestroyPropertySheetPage@commctrl32.inc": {
+  "desc": "Destroys a property sheet page created with CreatePropertySheetPage; needed only for pages not passed to PropertySheet.",
+  "doc": "DestroyPropertySheetPage"
+ },
+ "DrawInsert@commctrl32.inc": {
+  "desc": "Draws the insert icon in the parent window of a drag list box at the position of the specified item.",
+  "doc": "DrawInsert"
+ },
+ "DrawStatusText@commctrl32.inc": {
+  "desc": "Draws the specified text in the style of a status window with borders, inside a rectangle of a device context.",
+  "doc": "DrawStatusText"
+ },
+ "FlatSB_EnableScrollBar@commctrl32.inc": {
+  "desc": "Enables or disables one or both flat scroll bar direction buttons.",
+  "doc": "FlatSB_EnableScrollBar"
+ },
+ "FlatSB_GetScrollPos@commctrl32.inc": {
+  "desc": "Gets the thumb position in a flat scroll bar.",
+  "doc": "FlatSB_GetScrollPos"
+ },
+ "FlatSB_GetScrollProp@commctrl32.inc": {
+  "desc": "Retrieves a property (colors, sizes, style) of a flat scroll bar.",
+  "doc": "FlatSB_GetScrollProp"
+ },
+ "FlatSB_GetScrollRange@commctrl32.inc": {
+  "desc": "Gets the scroll range (minimum and maximum) of a flat scroll bar.",
+  "doc": "FlatSB_GetScrollRange"
+ },
+ "FlatSB_SetScrollInfo@commctrl32.inc": {
+  "desc": "Sets the information (range, page size, position) for a flat scroll bar using a SCROLLINFO structure.",
+  "doc": "FlatSB_SetScrollInfo"
+ },
+ "FlatSB_SetScrollPos@commctrl32.inc": {
+  "desc": "Sets the current thumb position in a flat scroll bar, optionally redrawing it. Returns the previous position.",
+  "doc": "FlatSB_SetScrollPos"
+ },
+ "FlatSB_SetScrollRange@commctrl32.inc": {
+  "desc": "Sets the scroll range (minimum and maximum) of a flat scroll bar.",
+  "doc": "FlatSB_SetScrollRange"
+ },
+ "FlatSB_ShowScrollBar@commctrl32.inc": {
+  "desc": "Shows or hides a flat scroll bar.",
+  "doc": "FlatSB_ShowScrollBar"
+ },
+ "GetEffectiveClientRect@commctrl32.inc": {
+  "desc": "Calculates the dimensions of a rectangle in the client area that excludes the specified visible controls (e.g. status bar, toolbar).",
+  "doc": "GetEffectiveClientRect"
+ },
+ "GetMUILanguage@commctrl32.inc": {
+  "desc": "Gets the language currently in use by the common controls for a particular process (set by InitMUILanguage).",
+  "doc": "GetMUILanguage"
+ },
+ "ImageList_Add@commctrl32.inc": {
+  "desc": "Adds an image or images, with an optional mask bitmap, to an image list. Returns the index of the first new image, or -1.",
+  "doc": "ImageList_Add"
+ },
+ "ImageList_AddMasked@commctrl32.inc": {
+  "desc": "Adds an image to an image list, generating a mask from the specified color treated as transparent. Returns the image index, or -1.",
+  "doc": "ImageList_AddMasked"
+ },
+ "ImageList_BeginDrag@commctrl32.inc": {
+  "desc": "Begins dragging an image from an image list, creating a temporary drag image with the given hotspot.",
+  "doc": "ImageList_BeginDrag"
+ },
+ "ImageList_Copy@commctrl32.inc": {
+  "desc": "Copies or swaps images within an image list.",
+  "doc": "ImageList_Copy"
+ },
+ "ImageList_Create@commctrl32.inc": {
+  "desc": "Creates a new image list with the given image size, flags (color depth, mask), initial count and growth. Returns the image list handle.",
+  "doc": "ImageList_Create"
+ },
+ "ImageList_Destroy@commctrl32.inc": {
+  "desc": "Destroys an image list. Returns nonzero on success.",
+  "doc": "ImageList_Destroy"
+ },
+ "ImageList_DragEnter@commctrl32.inc": {
+  "desc": "Displays the drag image at the specified position within the window and locks that window against updates.",
+  "doc": "ImageList_DragEnter"
+ },
+ "ImageList_DragLeave@commctrl32.inc": {
+  "desc": "Unlocks the specified window and hides the drag image, allowing the window to be updated.",
+  "doc": "ImageList_DragLeave"
+ },
+ "ImageList_DragMove@commctrl32.inc": {
+  "desc": "Moves the image that is being dragged during a drag-and-drop operation, usually in response to WM_MOUSEMOVE.",
+  "doc": "ImageList_DragMove"
+ }
+}

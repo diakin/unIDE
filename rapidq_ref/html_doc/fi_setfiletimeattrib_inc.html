@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>SetFileTimeAttrib.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: SetFileTimeAttrib.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>SetFileTimeAttrib.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/SetFileTimeAttrib.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 7 functions &middot; 5 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#CHANGEFILEATTRIBUTES">ChangeFileAttributes</a> &middot; <a href="#CHANGEFILEDATEANDTIME">ChangeFileDateAndTime</a> &middot; <a href="#QDIR_CLOSEHANDLE">QDIR_CloseHandle</a> &middot; <a href="#QDIR_CREATEFILE">QDIR_CreateFile</a> &middot; <a href="#QDIR_SETFILEATTRIBUTES">QDIR_SetFileAttributes</a> &middot; <a href="#QDIR_SETFILETIME">QDIR_SetFileTime</a> &middot; <a href="#QDIR_SYSTEMTIMETOFILETIME">QDIR_SystemTimeToFileTime</a></p>
+<h3><a name="CHANGEFILEATTRIBUTES"></a>ChangeFileAttributes</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19594</p>
+<pre>Function ChangeFileAttributes (sPathFileName As string, attributesAsString As String) As Long</pre>
+<p>Sets the attributes of sPathFileName from letters in attributesAsString (A, D, H, N, R, S, T, C) with SetFileAttributes and returns its result. Prints a debug line with the file name.</p>
+<h3><a name="CHANGEFILEDATEANDTIME"></a>ChangeFileDateAndTime</h3>
+<p class="rq-meta">FUNCTIONI &middot; rapidqAllProc.inc, line 19575</p>
+<pre>Functioni ChangeFileDateAndTime ( ... ) As Long</pre>
+<p>Sets file times: ChangeFileDateAndTime(path$, [which$], year, month, day, hour, min, sec). which$ may contain &quot;CRE&quot;, &quot;ACC&quot; and/or &quot;WRI&quot;; empty means last-write time. Uses CreateFile, SystemTimeToFileTime and SetFileTime; reports errors in a local message (body longer than shown).</p>
+<h3><a name="QDIR_CLOSEHANDLE"></a>QDIR_CloseHandle</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19570</p>
+<pre>Declare Function QDIR_CloseHandle Lib &quot;kernel32&quot; Alias &quot;CloseHandle&quot; (ByVal hObject As Long) As Long</pre>
+<p>Closes an open object handle (file, process, thread, event, pipe, etc.). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CloseHandle">CloseHandle</a></p>
+<h3><a name="QDIR_CREATEFILE"></a>QDIR_CreateFile</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19566</p>
+<pre>Declare Function QDIR_CreateFile Lib &quot;kernel32&quot; Alias &quot;CreateFileA&quot; (ByRef lpFileName As String, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, ByVal lpSecurityAttributes As Long, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As Long) As Long</pre>
+<p>Creates or opens a file or I/O device (pipe, volume, console, etc.) with given access, sharing and creation mode. Returns a handle, or INVALID_HANDLE_VALUE (-1) on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateFileA">CreateFileA</a></p>
+<h3><a name="QDIR_SETFILEATTRIBUTES"></a>QDIR_SetFileAttributes</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19571</p>
+<pre>Declare Function QDIR_SetFileAttributes Lib &quot;kernel32&quot; Alias &quot;SetFileAttributesA&quot; (ByRef lpFileName As String, ByVal dwFileAttributes As Long) As Long</pre>
+<p>Sets the attributes (read-only, hidden, system, archive, etc.) of a file or directory. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetFileAttributesA">SetFileAttributesA</a></p>
+<h3><a name="QDIR_SETFILETIME"></a>QDIR_SetFileTime</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19559</p>
+<pre>Declare Function QDIR_SetFileTime Lib &quot;kernel32&quot; Alias &quot;SetFileTime&quot; (ByVal hFile As Long, lpCreationTime As T_FILETIMEcft, lpLastAccessTime As T_FILETIMEcft, lpLastWriteTime As T_FILETIMEcft) As Long</pre>
+<p>Sets the creation, last access and last write times of a file or directory, given as FILETIME structures. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetFileTime">SetFileTime</a></p>
+<h3><a name="QDIR_SYSTEMTIMETOFILETIME"></a>QDIR_SystemTimeToFileTime</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19563</p>
+<pre>Declare Function QDIR_SystemTimeToFileTime Lib &quot;kernel32&quot; Alias &quot;SystemTimeToFileTime&quot; (lpSystemTime As T_SYSTEMTIMEcft, lpFileTime As T_FILETIMEcft) As Long</pre>
+<p>Converts a SYSTEMTIME structure to FILETIME format (100-ns intervals since 1601, UTC). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SystemTimeToFileTime">SystemTimeToFileTime</a></p>
+</body>
+</html>

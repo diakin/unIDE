@@ -1,0 +1,401 @@
+{
+ "DrawMenuRectangle@ODMenuXP.inc": {
+  "desc": "Owner-draw menu helper: draws a rectangle on the global DrawItem.hDC with pen lColor1 and brush lColor2 (uses the button-face color instead for top-level menu bar items when lExtra is False). Uses ChangeBrush/ChangePen and the GDI calls SelectObject, Rectangle and DeleteObject."
+ },
+ "DrawMenuBitmap@ODMenuXP.inc": {
+  "desc": "Owner-draw menu helper: draws the image for the current DrawItem into a 20x20 bitmap and onto the menu DC. Depending on lExtra and item state it draws check or radio glyphs from mnuCheckBMP/mnuRadioBMP, an icon from the mnuImgL image list, or Marlett glyphs for system menu items."
+ },
+ "MakeODItem@ODMenuXP.inc": {
+  "desc": "Converts one QMenuItem in menu ParentHnd to an owner-drawn item: reads its info with GetMenuItemInfo, applies MFT_OWNERDRAW with ModifyMenu (grayed items become disabled so they can be hovered) and stores bmpIndex in the global mnuBitmap array. For the replacement system menu it takes the caption from the real window system menu."
+ },
+ "MakeODMenuBarItem@ODMenuXP.inc": {
+  "desc": "Makes a top-level menu bar item owner-drawn: grows the global mnuMain/mnuBitmap/mnuSystem/mnuSubMenu arrays if needed, marks the item as a main-menu item, calls MakeODItem, redraws the menu bar and stores ParentHnd in hMainMenu."
+ },
+ "MakeODMenu@ODMenuXP.inc": {
+  "desc": "Recursively walks the menu hSrcMenu and its submenus and switches every item to MFT_OWNERDRAW via ModifyMenu. Fills the global arrays mnuMain, mnuSystem and mnuSubMenu (whether the item has a submenu) indexed by item ID."
+ },
+ "pFixItemState@ODMenuXP.inc": {
+  "desc": "Enables or disables the items of the replacement system menu (Restore, Move, Size, Maximize) depending on whether the window mnuSysMainForm is maximized (IsZoomed)."
+ },
+ "pShowSysPopup@ODMenuXP.inc": {
+  "desc": "Shows the owner-drawn replacement system menu (pNewSysMenu) with TrackPopupMenuEx at X,Y, or under the window icon when FromIcon is true. Calls pFixItemState and DefSysItem first. The command returned by TPM_RETURNCMD is stored locally and not used."
+ },
+ "pShowPopup@ODMenuXP.inc": {
+  "desc": "Shows a QPopupMenu at screen position X,Y with TrackPopupMenuEx, owned by hWndParent or, if that is 0, by the window under the point. The command returned by TPM_RETURNCMD is stored locally and not used."
+ },
+ "ShowDescription@ODMenuXP.inc": {
+  "desc": "Handler for menu selection messages: passes the selected item's text (from its item data, cut at the Tab) to GetInfoFromMenu, or a blank string when the menu closes. The source comment warns that wParam does not reliably give the selected item ID."
+ },
+ "GUID$@ole.inc": {
+  "desc": "Converts a GUID string such as \"{e436ebb3-524f-11ce-9f53-0020af0ba770}\" (braces, spaces, colons and \"CLSID\" are stripped) into its 16-byte binary form and returns it as a string."
+ },
+ "GuidStringFromGUID@ole.inc": {
+  "desc": "Converts a binary GUID structure into its text form \"{xxxxxxxx-...}\" using StringFromGUID2 (ole32) and returns that string."
+ },
+ "MCALL@ole.inc": {
+  "desc": "Calls a COM method: MCALL(ObjectPtr, MethodOffset, Arg1, ..., ArgN). Packs the arguments into an array and runs the machine-code stub ptrMCALLasm via CallAsmProc; returns the method's result. Needs at least two arguments, otherwise nothing is called."
+ },
+ "GetDecl@pdecl.inc": {
+  "desc": "Parses a DECLARE line and fills an array with the procedure kind (SUB/FUNCTION), its name and the LIB file name. Note: the result assignment loop only leaves the last array element (unused return type) in Result, so the returned value is not useful as written."
+ },
+ "PrintRichedit@printrichedit.inc": {
+  "desc": "Prints the text of a QRichEdit to the printer, starting at left margin lmarge pixels. Parses the RTF (font table, color table, bold/italic/underline, sizes) and handles page breaks. If text is selected it asks whether to print only the selection; returns 1 if the user cancels."
+ },
+ "fINITIALIZE@QFiles.inc": {
+  "desc": "Marks all file slots 1..MaxQFiles as free in the global qfn array. Call once at program start before using the other QFiles routines."
+ },
+ "GetFileNum@QFiles.inc": {
+  "desc": "Returns the number of the first free file slot (1..MaxQFiles) from the global qfn array, or -1 if none is free."
+ },
+ "fOPEN@QFiles.inc": {
+  "desc": "Opens file fName$ in slot fNum (1 to 8, mapped to the global QFileStream objects qf1..qf8) with mode fHow; if the file does not exist it is created. Marks the slot as used."
+ },
+ "fCLOSE@QFiles.inc": {
+  "desc": "Closes the QFileStream in slot fNum (1 to 8) and marks the slot as free."
+ },
+ "fPOSITION@QFiles.inc": {
+  "desc": "Sets the stream position of the file in slot fNum (1 to 8) to fPosition."
+ },
+ "fWRITELINE@QFiles.inc": {
+  "desc": "Writes fString as a line to the file in slot fNum (1 to 8) and calls DoEvents."
+ },
+ "fSIZE@QFiles.inc": {
+  "desc": "Returns the size in bytes of the file open in slot fNum (1 to 8)."
+ },
+ "fREADBINSTR@QFiles.inc": {
+  "desc": "Reads fBytes bytes from the file in slot fNum (1 to 8) and returns them as a string."
+ },
+ "FormLocale@QFormLocale.inc": {
+  "desc": "Positions and sizes AppForm so it does not cover the taskbar, using SHAppBarMessage(ABM_GETTASKBARPOS) and the screen size; AppWidth/AppHeight of 0 mean full screen. Returns the SHAppBarMessage result (0 means it failed and the form was not changed, e.g. with an auto-hide taskbar)."
+ },
+ "FixTaskBar@QFormSkin.inc": {
+  "desc": "Makes the window hWnd a top-level window with its own taskbar button by setting GWL_HWNDPARENT of hWnd to the desktop and of Application.Handle to hWnd (SetWindowLong)."
+ },
+ "ConfigureNCandClient@QFormSkin.inc": {
+  "desc": "Experimental WM_NCCALCSIZE handler for the skinned form: reads NCCALCSIZE_PARAMS from lParam, computes a client region and writes new client rectangles back. Prints debug values through GetInfoFromMenu; its call in WindowProc is commented out. (body longer than shown)"
+ },
+ "TitleBarMouseDown@QFormSkin.inc": {
+  "desc": "Starts dragging window hWnd as if its caption were clicked: releases mouse capture and sends WM_NCLBUTTONDOWN with HTCAPTION."
+ },
+ "DrawWindowBorders@QFormSkin.inc": {
+  "desc": "Draws the skin bitmaps (SkinTop, SkinMid and others) over the caption and borders of the window using StretchBlt on the global dc_Skin; uses the active or inactive half of each bitmap depending on m_bActive."
+ },
+ "DrawIconText@QFormSkin.inc": {
+  "desc": "Draws the window's small icon (WM_GETICON, DrawIconEx) and caption text in white onto the skin DC dc_Skin."
+ },
+ "DrawButtons@QFormSkin.inc": {
+  "desc": "Draws the normal-state Close, Maximize and Minimize caption buttons from the skin bitmaps onto dc_Skin with StretchBlt, plus the right caption part SkinTop2."
+ },
+ "RefreshBtns@QFormSkin.inc": {
+  "desc": "Calls DrawButtons for wParam values 3 and 10..18; otherwise only writes a debug message through GetInfoFromMenu."
+ },
+ "DrawHotStateBtns@QFormSkin.inc": {
+  "desc": "Draws the hot (mouse-over) image of the caption button given by wParam (HTCLOSE, HTMAXBUTTON or HTMINBUTTON) onto dc_Skin. Note: the Minimize case takes its image from SkinBMax."
+ },
+ "DrawDownStateBtns@QFormSkin.inc": {
+  "desc": "Draws the pressed image of the caption button given by wParam (HTCLOSE, HTMAXBUTTON or HTMINBUTTON) onto dc_Skin. Note: the Minimize case takes its image from SkinBMax."
+ },
+ "ProtectFromDrawing@QFormSkin.inc": {
+  "desc": "Excludes the rectangle r_Skin from the clipping region of dc_Skin (ExcludeClipRect) and reports the result through GetInfoFromMenu. Debug helper."
+ },
+ "Redraw@QFormSkin.inc": {
+  "desc": "Forces an immediate repaint of window hwnd and its children with RedrawWindow (RDW_UPDATENOW, RDW_INVALIDATE, RDW_INTERNALPAINT, RDW_ALLCHILDREN)."
+ },
+ "GetFileName@QFuncLib.inc": {
+  "desc": "Returns the file name part of a path (text after the last backslash)."
+ },
+ "GetPathName@QFuncLib.inc": {
+  "desc": "Returns the folder part of a path (text before the last backslash, without it)."
+ },
+ "GetFileExt@QFuncLib.inc": {
+  "desc": "Returns the extension of a file name (text after the last dot, without the dot). If there is no dot, the whole string is returned."
+ },
+ "Word$@QFuncLib.inc": {
+  "desc": "Returns word number index (1-based) of string s; runs of spaces are collapsed first. Returns an empty string if there is no such word."
+ },
+ "GetWordCount@QFuncLib.inc": {
+  "desc": "Returns the number of space-separated words in s (uses Word$)."
+ },
+ "RemoveChar$@QFuncLib.inc": {
+  "desc": "Returns s with every occurrence of the substring char removed. Returns an empty string if s is empty."
+ },
+ "Trim_$@QFuncLib.inc": {
+  "desc": "Returns s without leading and trailing spaces."
+ },
+ "Ratio@QFuncLib.inc": {
+  "desc": "Returns (Value1 - Value2) * 100 / Value1, the percentage difference relative to Value1."
+ },
+ "GetRadian@QFuncLib.inc": {
+  "desc": "Converts degrees to radians."
+ },
+ "GetDegrees@QFuncLib.inc": {
+  "desc": "Converts radians to degrees."
+ },
+ "Distance@QFuncLib.inc": {
+  "desc": "Returns SQR(x^2 + y^2), the length of the vector (x, y)."
+ },
+ "Surface@QFuncLib.inc": {
+  "desc": "Returns Width * Height (rectangle area)."
+ },
+ "GetBlue@QFuncLib.inc": {
+  "desc": "Returns the blue component (bits 16-23) of an RGB color value."
+ },
+ "GetRed@QFuncLib.inc": {
+  "desc": "Returns the red component (low byte) of an RGB color value."
+ },
+ "GetGreen@QFuncLib.inc": {
+  "desc": "Returns the green component (bits 8-15) of an RGB color value."
+ },
+ "BinToDec@QFuncLib.inc": {
+  "desc": "Converts a string of binary digits (\"1\" and \"0\") to its numeric value. Characters other than \"1\" count as 0."
+ },
+ "Point@QPoint.inc": {
+  "desc": "Sets the X and Y fields of the QPoint structure FPoint."
+ },
+ "SetStyle@QStringGridEx.inc": {
+  "desc": "Sets the edit style of column Col of the QStringGridEx from the style of row Row: a list-style row copies its pick list to the column, another nonzero style sets column style 1, otherwise column style 2."
+ },
+ "xlsOPEN@QXLS.INC": {
+  "desc": "Opens the Excel BIFF8 workbook FileSpec(b) for the current book index in global b: reads the OLE file into memory stream M(b) and parses sheets and shared strings. Returns -1 on failure with the reason in global sERR (e.g. \"File not found\", \"Not BIFF8 file\"). (body longer than shown)"
+ },
+ "xlsREAD@QXLS.INC": {
+  "desc": "Returns the text of the cell at row, col on sheet s of the current book b (strings from the SST, RK and float numbers, booleans and errors). Returns an empty string and sets sERR on errors such as row or column out of bounds."
+ },
+ "xlsSHEETNAME@QXLS.INC": {
+  "desc": "Returns the name of sheet s in the current book b."
+ },
+ "xlsMINROW@QXLS.INC": {
+  "desc": "Returns the first used row of sheet s in the current book b."
+ },
+ "xlsMAXROW@QXLS.INC": {
+  "desc": "Returns the last used row of sheet s in the current book b."
+ },
+ "xlsMINCOL@QXLS.INC": {
+  "desc": "Returns the first used column of sheet s in the current book b."
+ },
+ "xlsMAXCOL@QXLS.INC": {
+  "desc": "Returns the last used column of sheet s in the current book b."
+ },
+ "xlsSHEETLENGTH@QXLS.INC": {
+  "desc": "Returns the length in bytes of the BIFF data of sheet s in the current book b."
+ },
+ "xlsNUMBERSHEETS@QXLS.INC": {
+  "desc": "Returns the number of sheets found in the current book b."
+ },
+ "xlsCLOSE@QXLS.INC": {
+  "desc": "Closes the memory stream of the current book b and clears its data. Returns b, or -1 if b is out of range."
+ },
+ "B2W@QXLS.INC": {
+  "desc": "Returns the 16-bit little-endian word stored at buf(index) and buf(index+1). Internal helper of QXLS."
+ },
+ "RK2str@QXLS.INC": {
+  "desc": "Converts the Excel RK number in global RK (integer or packed double, optionally divided by 100) to a string. Internal helper of QXLS."
+ },
+ "StrRecLen@QXLS.INC": {
+  "desc": "Reads a BIFF8 string header at the current position of M(b) and returns the number of bytes of the string data, including rich-text and Far East extensions. Internal helper of QXLS."
+ },
+ "xlsSAVE@QXLS.INC": {
+  "desc": "Writes the current book b as an OLE Excel file to file: copies the header and directory template from qxls.dat (extracted from Resource(1) if missing), writes the BIFF data and builds the FAT. Returns the file size or -1."
+ },
+ "xlsWRITE@QXLS.INC": {
+  "desc": "Writes value into the cell at row, col of sheet s in the current book b. Numeric text is stored as an RK or NUMBER record, other text as a LABEL, empty text as BLANK; the book data in memory is shifted as needed. Returns -1 on error with sERR set. (body longer than shown)"
+ },
+ "ReadOLEFile@QXLS.INC": {
+  "desc": "Opens FileSpec(b), finds the Workbook stream in the OLE compound file and copies its BIFF8 data into memory stream M(b) by following the FAT. Sets sERR if the Workbook entry is not found. Internal helper of xlsOPEN."
+ },
+ "GetRecord@QXLS.INC": {
+  "desc": "Reads the next BIFF record header from M(b) into globals xCode and xLength and sets xNext to the start of the following record."
+ },
+ "GetData@QXLS.INC": {
+  "desc": "Reads the data of the current BIFF record (up to MaxBytes) from M(b) into the global byte array buf."
+ },
+ "ClearBookData@QXLS.INC": {
+  "desc": "Resets the sheet, shared-string and pointer tables (nSheets, nSR, SST, SheetName, P) for the current book b."
+ },
+ "ShiftBook@QXLS.INC": {
+  "desc": "Moves the contents of memory stream M(b) at offset ptr by nbytes (negative removes bytes, positive inserts space) and adjusts the stream size. The insert path copies one byte at a time and is slow."
+ },
+ "SheetPointers@QXLS.INC": {
+  "desc": "After data of sheet s grew or shrank by nbytes, updates the stored offsets of all following sheets (BOUNDSHEET and INDEX records and the P table)."
+ },
+ "ChangeValue@QXLS.INC": {
+  "desc": "Adds nbytes to the blen-byte integer stored at offset ptr in M(b)."
+ },
+ "FillFile@QXLS.INC": {
+  "desc": "Writes the 4-byte value repeatedly to the output file F until (position - 512) is a multiple of amt. Used to pad OLE sectors when saving."
+ },
+ "PrintSheetNames@QXLS.INC": {
+  "desc": "Console debug helper: prints the name and the pointer table values of every sheet in the current book b."
+ },
+ "PrintSSTRecords@QXLS.INC": {
+  "desc": "Console debug helper: prints the number of shared string table blocks and strings in the current book b."
+ },
+ "floatVal@registryVars.inc": {
+  "desc": "Converts a decimal number string to a single, handling the part after the dot separately. Returns 0 for empty or zero input."
+ },
+ "putMe@registryVars.inc": {
+  "desc": "Stores a named variable in the in-memory buffer varBuf as a varInfo record. Call as putMe(name$, value$, type) or putMe(name$, number, type); type 0 is string, 1 is float. Wrong argument counts print a message and end the program."
+ },
+ "getMe@registryVars.inc": {
+  "desc": "Looks up the variable named clave in varBuf and returns its value as a string (type 0) or as a number via floatVal (type 1). Returns an empty string if not found."
+ },
+ "closeit@registryVars.inc": {
+  "desc": "Closes the variable buffer varBuf."
+ },
+ "saveTofile@registryVars.inc": {
+  "desc": "Saves the contents of varBuf to the file filename (created or overwritten). Prints a message if the file cannot be created."
+ },
+ "loadFromfile@registryVars.inc": {
+  "desc": "Replaces the contents of varBuf with the contents of file filename. Prints a message if the file cannot be opened."
+ },
+ "CallAddressManyArgs@RqAsmUtils.Inc": {
+  "desc": "Calls the function at address, passing the arguments from the structure at ptrStructArg, through a machine-code stub run by CallAsmProc. Returns the function result."
+ },
+ "CallPointerManyArgs@RqAsmUtils.Inc": {
+  "desc": "Calls the function whose address is stored at pointer, passing the arguments from the structure at ptrStructArg, through a machine-code stub run by CallAsmProc. Returns the function result."
+ },
+ "CallAddressNoArg@RqAsmUtils.Inc": {
+  "desc": "Calls the function at address with no arguments through a machine-code stub (CallAsmProc) and returns its result."
+ },
+ "CallPointerNoArg@RqAsmUtils.Inc": {
+  "desc": "Calls the function whose address is stored at pointer with no arguments through a machine-code stub (CallAsmProc) and returns its result."
+ },
+ "CallAddressOneArg@RqAsmUtils.Inc": {
+  "desc": "Calls the function at address with one argument through a machine-code stub (CallAsmProc) and returns its result."
+ },
+ "CallPointerOneArg@RqAsmUtils.Inc": {
+  "desc": "Calls the function whose address is stored at pointer with one argument through a machine-code stub (CallAsmProc) and returns its result."
+ },
+ "CallAddressTwoArgs@RqAsmUtils.Inc": {
+  "desc": "Calls the function at address with two arguments through a machine-code stub (CallAsmProc) and returns its result."
+ },
+ "CallPointerTwoArgs@RqAsmUtils.Inc": {
+  "desc": "Calls the function whose address is stored at pointer with two arguments through a machine-code stub (CallAsmProc) and returns its result."
+ },
+ "CallAddressThreeArgs@RqAsmUtils.Inc": {
+  "desc": "Calls the function at address with three arguments through a machine-code stub (CallAsmProc) and returns its result."
+ },
+ "CallPointerThreeArgs@RqAsmUtils.Inc": {
+  "desc": "Calls the function whose address is stored at pointer with three arguments through a machine-code stub (CallAsmProc) and returns its result."
+ },
+ "ReadDWordAtAddress@RqAsmUtils.Inc": {
+  "desc": "Returns the 32-bit value stored at memory address (machine-code stub via CallAsmProc)."
+ },
+ "ReadWordAtAddress@RqAsmUtils.Inc": {
+  "desc": "Returns the 16-bit value stored at memory address (machine-code stub via CallAsmProc)."
+ },
+ "ReadByteAtAddress@RqAsmUtils.Inc": {
+  "desc": "Returns the byte stored at memory address (machine-code stub via CallAsmProc)."
+ },
+ "ReadDWordAtPointer@RqAsmUtils.Inc": {
+  "desc": "Returns the 32-bit value at the address stored at pointer (one level of indirection; machine-code stub via CallAsmProc)."
+ },
+ "ReadWordAtPointer@RqAsmUtils.Inc": {
+  "desc": "Returns the 16-bit value at the address stored at pointer (one level of indirection; machine-code stub via CallAsmProc)."
+ },
+ "ReadByteAtPointer@RqAsmUtils.Inc": {
+  "desc": "Returns the byte at the address stored at pointer (one level of indirection; machine-code stub via CallAsmProc)."
+ },
+ "WriteDWordAtAddress@RqAsmUtils.Inc": {
+  "desc": "Writes the 32-bit value dwData to memory address (machine-code stub via CallAsmProc). No address check is made."
+ },
+ "WriteWordAtAddress@RqAsmUtils.Inc": {
+  "desc": "Writes the 16-bit value wData to memory address (machine-code stub via CallAsmProc). No address check is made."
+ },
+ "WriteByteAtAddress@RqAsmUtils.Inc": {
+  "desc": "Writes the byte bData to memory address (machine-code stub via CallAsmProc). No address check is made."
+ },
+ "WriteDWordAtPointer@RqAsmUtils.Inc": {
+  "desc": "Writes the 32-bit value dwData to the address stored at pointer (machine-code stub via CallAsmProc). No address check is made."
+ },
+ "WriteWordAtPointer@RqAsmUtils.Inc": {
+  "desc": "Writes the 16-bit value wData to the address stored at pointer (machine-code stub via CallAsmProc). No address check is made."
+ },
+ "WriteByteAtPointer@RqAsmUtils.Inc": {
+  "desc": "Writes the byte bData to the address stored at pointer (machine-code stub via CallAsmProc). No address check is made."
+ },
+ "RQshowdialog@RQDialog.inc": {
+  "desc": "Shows the Windows Open (savedlog%=0) or Save file dialog via GetOpenFileName/GetSaveFileName owned by window formhnd&. filter$ uses \"|\" separators, initdir$ defaults to the current folder; on Save an overwrite prompt is shown unless nooverwriteprompt% is set. Returns the chosen path or an empty string."
+ },
+ "CreateAPIString@RQProcess.inc": {
+  "desc": "Returns a string of length spaces, used as a buffer for API calls."
+ },
+ "ReadAPIString@RQProcess.inc": {
+  "desc": "Returns the first length characters of str (or all of str if it is shorter)."
+ },
+ "ReadNullTermString@RQProcess.inc": {
+  "desc": "Returns the part of str before the first null character, trimmed of spaces. Returns an empty string if there is no null character."
+ },
+ "FindProcessId@RQProcess.inc": {
+  "desc": "Returns the process ID of a running process whose module name equals name (case-insensitive, e.g. \"notepad.exe\"), or -1. Uses EnumProcesses, OpenProcess, EnumProcessModules and GetModuleBaseName (psapi); also stores a closed handle in global procExit."
+ },
+ "PrintProcessInfo@RQProcess.inc": {
+  "desc": "Declaration only; no body exists in the library. A program that calls it must supply SUB PrintProcessInfo(pid AS LONG, text AS STRING) itself."
+ },
+ "rqTerminateProcess@RQProcess.inc": {
+  "desc": "Terminates the process procID with OpenProcess(PROCESS_TERMINATE) and TerminateProcess, then closes the handle. Returns the CloseHandle result, or 0 if procID is -1."
+ },
+ "ChangeFileDateAndTime@SetFileTimeAttrib.inc": {
+  "desc": "Sets file times: ChangeFileDateAndTime(path$, [which$], year, month, day, hour, min, sec). which$ may contain \"CRE\", \"ACC\" and/or \"WRI\"; empty means last-write time. Uses CreateFile, SystemTimeToFileTime and SetFileTime; reports errors in a local message (body longer than shown)."
+ },
+ "ChangeFileAttributes@SetFileTimeAttrib.inc": {
+  "desc": "Sets the attributes of sPathFileName from letters in attributesAsString (A, D, H, N, R, S, T, C) with SetFileAttributes and returns its result. Prints a debug line with the file name."
+ },
+ "ShellRedirCallBack@ShellRedir.Inc": {
+  "desc": "Callback declaration: the program must write SUB ShellRedirCallBack(Text As String). ShellRedir calls it with each chunk of console output as it arrives, and with an error message if the pipe or process cannot be created."
+ },
+ "ShellRedir@ShellRedir.Inc": {
+  "desc": "Runs CommandLine as a hidden console process with stdout and stderr redirected to a pipe (CreatePipe, CreateProcess, ReadFile). Passes each chunk to the user SUB ShellRedirCallBack and returns all collected output; on failure returns an error text."
+ },
+ "ExtractFileExt@SysUtils.inc": {
+  "desc": "Returns the extension of File (text after the last dot, without the dot), or an empty string if there is no dot."
+ },
+ "DelFileExt@SysUtils.inc": {
+  "desc": "Returns File without its extension (text before the last dot); returns File unchanged if there is no dot."
+ },
+ "LoWord@SysUtils.inc": {
+  "desc": "Returns the low 16 bits of Value as a signed integer."
+ },
+ "HiWord@SysUtils.inc": {
+  "desc": "Returns the high 16 bits of Value."
+ },
+ "MakeLong@SysUtils.inc": {
+  "desc": "Combines two words into a 32-bit value: a is the low word, b the high word (like the Windows MAKELONG macro)."
+ },
+ "SysErrorMessage@SysUtils.inc": {
+  "desc": "Returns the Windows system message text for error code Error using FormatMessage (only when __WIN32API is defined; otherwise returns blanks trimmed to an empty string)."
+ },
+ "USING$@using.inc": {
+  "desc": "Port of QBasic PRINT USING: USING$(format$, values...) returns a formatted string. Supports # . , + $$ ** ^^^^ for numbers and & ! \\ \\ for strings; a number too large for its format is shown preceded by %. Does not print anything itself."
+ },
+ "RQConvertCodePage@conversion.inc": {
+  "desc": "Converts SourseString from code page inPage to code page outPage (e.g. 1251, 65001 for UTF-8) via MultiByteToWideChar and WideCharToMultiByte, and returns the result."
+ },
+ "GetSubjCodePage@eml.inc": {
+  "desc": "Returns the charset of a MIME-encoded mail subject (the text between the first and second \"?\", as in =?koi8-r?B?...?=). If none is given but isKOI8 detects KOI8 text, returns \"koi8-r\"; otherwise an empty string."
+ },
+ "GetSubjCodeMethod@eml.inc": {
+  "desc": "Returns the encoding letter of a MIME-encoded subject (third \"?\"-field, lower case: \"b\" or \"q\")."
+ },
+ "GetMsgBodyContentType@eml.inc": {
+  "desc": "Returns the media type from the Content-Type header of a mail message (e.g. \"text/plain\"), after unfolding header lines."
+ },
+ "GetMsgBodyCodePage@eml.inc": {
+  "desc": "Returns the charset parameter of the Content-Type header of a mail message (e.g. koi8-r, UTF-8, quotes kept if present), or an empty string."
+ },
+ "GetMsgBodyCodeMethod@eml.inc": {
+  "desc": "Reads the Content-Transfer-Encoding header of MsgBody but then only looks for a \"charset=\" parameter in it, so for normal headers such as \"8bit\" or \"base64\" it returns an empty string."
+ },
+ "GetHeaderField@eml.inc": {
+  "desc": "Returns the value of the header field Field (case-insensitive, colon optional) from a mail header, after unfolding continuation lines. Returns an empty string if the field is not present."
+ },
+ "isKOI8@eml.inc": {
+  "desc": "Heuristic check whether a string is Russian text in KOI8-R shown as cp1251: returns 1 if it contains any of a list of letter pairs typical for that case, otherwise 0."
+ },
+ "cprint@eml.inc": {
+  "desc": "Prints s to the console after converting it to the OEM code page with CharToOem."
+ },
+ "WindowProc@QFormSkin.inc": {
+  "desc": "Window procedure of the skinned form (subclassed, previous procedure in precedent_adresse_mainfrm). On paint and activation messages draws the skin borders, caption icon/text and buttons; also handles WM_NCCALCSIZE, non-client mouse clicks and moves, passing other messages to CallWindowProc. (body longer than shown)"
+ }
+}

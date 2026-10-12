@@ -609,6 +609,8 @@ type
     mHelpRqComps: TMenuItem;
     mHelpRqCustom: TMenuItem;
     mHelpRqIndex: TMenuItem;
+    mHelpRqFuncs: TMenuItem;
+    mHelpWinApi: TMenuItem;
     mHelpRqSep: TMenuItem;
     mHelpRqHtml: TMenuItem;
     mHelpSep: TMenuItem;
@@ -65882,7 +65884,8 @@ end;
 
 // Help - RapidQ: пункт по Tag (Unit1.dfm). 1 - оглавление, 2 - Appendix A
 // (компоненты RapidQ), 3 - Appendix B (свои компоненты из rapidq_ref\inc),
-// 4 - указатель, 5 - HTML-страницы html_doc в браузере
+// 4 - указатель, 5 - HTML-страницы html_doc в браузере, 6 - Appendix D
+// (функции rapidqAllProc.inc), 7 - справочник Windows API Microsoft
 procedure TForm1.mHelpRqClick(Sender: TObject);
 var
   Done: Boolean;
@@ -65893,6 +65896,12 @@ begin
     3: Done := RqHelpShowTopic('custom.html');
     4: Done := RqHelpShowIndex('');
     5: Done := RqHelpOpenHtml;
+    // Appendix D: функции rapidqAllProc.inc (compdoc/gen_funcs.py)
+    6: Done := RqHelpShowTopic('funcs.html');
+    // Справочник Windows API на сайте Microsoft - в браузере
+    7: Done := ShellExecute(Handle, 'open',
+                 'https://learn.microsoft.com/en-us/windows/win32/api/', nil, nil,
+                 SW_SHOWNORMAL) > 32;
   else
     Done := True;
   end;

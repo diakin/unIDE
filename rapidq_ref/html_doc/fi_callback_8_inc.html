@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>CallBack_8.Inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: CallBack_8.Inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>CallBack_8.Inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/CallBack_8.Inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 3 functions</p>
+<p><a href="#FUNCBIND_8">FuncBind_8</a> &middot; <a href="#MASTERCALLBACK_8">MasterCallBack_8</a> &middot; <a href="#SETNEWCALLBACK_8">SetNewCallBack_8</a></p>
+<h3><a name="FUNCBIND_8"></a>FuncBind_8</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 6745</p>
+<pre>Declare Function FuncBind_8 (Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long, Arg5 As long, Arg6 As long, Arg7 As long, Arg8 As long) As Long</pre>
+<p>Declaration only, no body. Prototype used by BIND inside MasterCallBack_8 for eight-argument callback functions.</p>
+<h3><a name="MASTERCALLBACK_8"></a>MasterCallBack_8</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 6744</p>
+<pre>Function MasterCallBack_8 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long, Arg6 As long, Arg7 As long, Arg8 As long) As Long</pre>
+<p>Internal callback dispatcher for eight-argument callbacks: calls the function at hFunction with Arg1..Arg8 via BIND/CALLFUNC and returns its result. Used through SetNewCallBack_8.</p>
+<h3><a name="SETNEWCALLBACK_8"></a>SetNewCallBack_8</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 6750</p>
+<pre>Function SetNewCallBack_8 (hFunction As Long) As Long</pre>
+<p>Creates a callback pointer for a RapidQ function taking eight Long arguments: pass CODEPTR of your function and get back an address for a Windows API. Uses SetNewFwToCallBack, which allocates a code thunk on the process heap (not freed).</p>
+</body>
+</html>

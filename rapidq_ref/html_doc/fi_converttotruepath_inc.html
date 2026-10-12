@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>ConvertToTruePath.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: ConvertToTruePath.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>ConvertToTruePath.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/ConvertToTruePath.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 2 functions &middot; 1 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#CONVERTTOTRUEPATH">ConvertToTruePath</a> &middot; <a href="#SHGETFILEINFO">SHGetFileInfo</a></p>
+<h3><a name="CONVERTTOTRUEPATH"></a>ConvertToTruePath</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 10764</p>
+<pre>Function ConvertToTruePath(ByVal sPath As String) As String</pre>
+<p>Converts a path to the form shown by the Windows shell (e.g. long names instead of 8.3 short names) by calling SHGetFileInfo with SHGFI_DISPLAYNAME for each folder level. Uses the global structure SFI; result ends with a backslash.</p>
+<h3><a name="SHGETFILEINFO"></a>SHGetFileInfo</h3>
+<p class="rq-meta">DLL function, shell32 &middot; rapidqAllProc.inc, line 10758</p>
+<pre>Declare Function SHGetFileInfo Lib &quot;shell32&quot; Alias &quot;SHGetFileInfoA&quot; (ByVal pszPath As String, ByVal dwFileAttributes As Long, ByVal psfi As Long, ByVal cbFileInfo As Long, ByVal uFlags As Long) As Dword</pre>
+<p>Retrieves information about a file system object (icon, display name, type name, attributes) into a SHFILEINFO structure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SHGetFileInfoA">SHGetFileInfoA</a></p>
+</body>
+</html>

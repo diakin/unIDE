@@ -1,0 +1,794 @@
+{
+ "TextOut@WIN32API.INC": {
+  "desc": "Writes a character string at the specified x,y location using the currently selected font, background color and text color. Returns nonzero on success.",
+  "doc": "TextOutA"
+ },
+ "ExtTextOut@WIN32API.INC": {
+  "desc": "Draws text using the current font, with optional clipping/opaquing rectangle and an optional array of character spacing values. Returns nonzero on success.",
+  "doc": "ExtTextOutA"
+ },
+ "PolyTextOut@WIN32API.INC": {
+  "desc": "Draws several strings in one call, each described by a POLYTEXT structure, using the font and text colors selected into the device context.",
+  "doc": "PolyTextOutA"
+ },
+ "CreatePolygonRgn@WIN32API.INC": {
+  "desc": "Creates a polygonal region from an array of points; the fill mode (ALTERNATE or WINDING) decides which areas are inside. Returns the region handle or 0.",
+  "doc": "CreatePolygonRgn"
+ },
+ "DPtoLP@WIN32API.INC": {
+  "desc": "Converts an array of points from device coordinates to logical coordinates, using the device context's current mapping mode and transformations.",
+  "doc": "DPtoLP"
+ },
+ "LPtoDP@WIN32API.INC": {
+  "desc": "Converts an array of points from logical coordinates to device coordinates, using the device context's current mapping mode and transformations.",
+  "doc": "LPtoDP"
+ },
+ "Polyline@WIN32API.INC": {
+  "desc": "Draws a series of connected line segments through the given array of points with the current pen. Does not use or update the current position.",
+  "doc": "Polyline"
+ },
+ "Polygon@WIN32API.INC": {
+  "desc": "Draws a closed polygon through the given points, outlined with the current pen and filled with the current brush using the polygon fill mode.",
+  "doc": "Polygon"
+ },
+ "PolyBezier@WIN32API.INC": {
+  "desc": "Draws one or more cubic Bezier curves from an array of endpoints and control points (count must be 3n+1). Does not use or update the current position.",
+  "doc": "PolyBezier"
+ },
+ "PolyBezierTo@WIN32API.INC": {
+  "desc": "Draws cubic Bezier curves starting at the current position, using points in groups of three; updates the current position to the last endpoint.",
+  "doc": "PolyBezierTo"
+ },
+ "PolylineTo@WIN32API.INC": {
+  "desc": "Draws connected lines from the current position through the given points and sets the current position to the last point.",
+  "doc": "PolylineTo"
+ },
+ "SetViewportExtEx@WIN32API.INC": {
+  "desc": "Sets the horizontal and vertical viewport extents (device units) of a device context; used with MM_ISOTROPIC/MM_ANISOTROPIC. Can return the previous extents.",
+  "doc": "SetViewportExtEx"
+ },
+ "SetViewportOrgEx@WIN32API.INC": {
+  "desc": "Sets which device point maps to the window origin (the viewport origin) of a device context. Can return the previous origin.",
+  "doc": "SetViewportOrgEx"
+ },
+ "SetWindowOrgEx@WIN32API.INC": {
+  "desc": "Sets which logical point maps to the viewport origin (the window origin) of a device context. Can return the previous origin.",
+  "doc": "SetWindowOrgEx"
+ },
+ "SetWindowExtEx@WIN32API.INC": {
+  "desc": "Sets the horizontal and vertical window extents (logical units) of a device context; used with MM_ISOTROPIC/MM_ANISOTROPIC. Can return the previous extents.",
+  "doc": "SetWindowExtEx"
+ },
+ "OffsetViewportOrgEx@WIN32API.INC": {
+  "desc": "Moves the viewport origin of a device context by the given horizontal and vertical offsets (device units).",
+  "doc": "OffsetViewportOrgEx"
+ },
+ "OffsetWindowOrgEx@WIN32API.INC": {
+  "desc": "Moves the window origin of a device context by the given horizontal and vertical offsets (logical units).",
+  "doc": "OffsetWindowOrgEx"
+ },
+ "ScaleWindowExtEx@WIN32API.INC": {
+  "desc": "Scales the window extents of a device context by the ratios formed from the given multiplicands and divisors.",
+  "doc": "ScaleWindowExtEx"
+ },
+ "ScaleViewportExtEx@WIN32API.INC": {
+  "desc": "Scales the viewport extents of a device context by the ratios formed from the given multiplicands and divisors.",
+  "doc": "ScaleViewportExtEx"
+ },
+ "SetBitmapDimensionEx@WIN32API.INC": {
+  "desc": "Assigns preferred dimensions to a bitmap, in 0.1 mm units, for use by applications; GDI itself does not use them.",
+  "doc": "SetBitmapDimensionEx"
+ },
+ "SetBrushOrgEx@WIN32API.INC": {
+  "desc": "Sets the brush origin that GDI assigns to the next brush selected into the device context. Can return the previous origin.",
+  "doc": "SetBrushOrgEx"
+ },
+ "GetTextFace@WIN32API.INC": {
+  "desc": "Copies the typeface name of the font selected into a device context into a buffer. Returns the number of characters copied, or 0 on failure.",
+  "doc": "GetTextFaceA"
+ },
+ "GetKerningPairs@WIN32API.INC": {
+  "desc": "Retrieves the kerning pairs of the font selected into a device context into an array of KERNINGPAIR structures. Returns the number of pairs.",
+  "doc": "GetKerningPairsA"
+ },
+ "GetDCOrgEx@WIN32API.INC": {
+  "desc": "Retrieves the final translation origin of a device context, i.e. the offset GDI uses to convert device coordinates to client/screen coordinates.",
+  "doc": "GetDCOrgEx"
+ },
+ "UnrealizeObject@WIN32API.INC": {
+  "desc": "Resets the origin of a brush or resets a logical palette so it is remapped when next realized. Brush origin use is obsolete on Win32 (use SetBrushOrgEx).",
+  "doc": "UnrealizeObject"
+ },
+ "GdiFlush@WIN32API.INC": {
+  "desc": "Flushes the calling thread's current batch of pending GDI drawing calls. Returns nonzero if all calls in the batch succeeded.",
+  "doc": "GdiFlush"
+ },
+ "GdiSetBatchLimit@WIN32API.INC": {
+  "desc": "Sets the maximum number of GDI calls that can be batched for the calling thread before they are flushed. Returns the previous limit; mostly a no-op on modern Windows.",
+  "doc": "GdiSetBatchLimit"
+ },
+ "GdiGetBatchLimit@WIN32API.INC": {
+  "desc": "Returns the maximum number of GDI function calls that can be batched for the calling thread.",
+  "doc": "GdiGetBatchLimit"
+ },
+ "EnumFontFamilies@WIN32API.INC": {
+  "desc": "Enumerates the fonts in a font family (or one font of each family if no name is given), calling a callback for each. Superseded by EnumFontFamiliesEx.",
+  "doc": "EnumFontFamiliesA"
+ },
+ "EnumFontFamiliesEx@WIN32API.INC": {
+  "desc": "Enumerates all fonts on a device matching the face name and character set in a LOGFONT, calling a callback function for each font found.",
+  "doc": "EnumFontFamiliesExA"
+ },
+ "GetTextCharset@WIN32API.INC": {
+  "desc": "Returns the character set identifier (e.g. ANSI_CHARSET) of the font currently selected into a device context, or DEFAULT_CHARSET on failure.",
+  "doc": "GetTextCharset"
+ },
+ "GetTextCharsetInfo@WIN32API.INC": {
+  "desc": "Returns the character set of the font selected into a device context and optionally fills a FONTSIGNATURE structure with its Unicode and code page coverage.",
+  "doc": "GetTextCharsetInfo"
+ },
+ "TranslateCharsetInfo@WIN32API.INC": {
+  "desc": "Translates between a character set, code page or font signature value and fills a CHARSETINFO structure with the corresponding values.",
+  "doc": "TranslateCharsetInfo"
+ },
+ "GetFontLanguageInfo@WIN32API.INC": {
+  "desc": "Returns flags describing the font currently selected into a device context, such as whether it needs reordering, glyph shaping or has diacritics.",
+  "doc": "GetFontLanguageInfo"
+ },
+ "GetCharacterPlacement@WIN32API.INC": {
+  "desc": "Retrieves information about a string (character widths, caret positions, ordering, glyphs) needed for layout and display. Largely superseded by Uniscribe.",
+  "doc": " GetCharacterPlacementA"
+ },
+ "SetICMMode@WIN32API.INC": {
+  "desc": "Turns Image Color Management (ICM) on, off or queries its state for a device context. Returns the previous or current mode.",
+  "doc": "SetICMMode"
+ },
+ "CheckColorsInGamut@WIN32API.INC": {
+  "desc": "Checks whether each color in an array of RGB triples lies within the output gamut of the device context, filling a result buffer.",
+  "doc": "CheckColorsInGamut"
+ },
+ "GetLogColorSpace@WIN32API.INC": {
+  "desc": "Retrieves the LOGCOLORSPACE structure that describes the given logical color space handle.",
+  "doc": "GetLogColorSpaceA"
+ },
+ "GetColorSpace@WIN32API.INC": {
+  "desc": "Returns a handle to the logical color space currently selected into a device context.",
+  "doc": "GetColorSpace"
+ },
+ "CreateColorSpace@WIN32API.INC": {
+  "desc": "Creates a logical color space from a LOGCOLORSPACE structure. Returns the color space handle, or 0 on failure.",
+  "doc": "CreateColorSpaceA"
+ },
+ "SetColorSpace@WIN32API.INC": {
+  "desc": "Selects a logical color space into a device context. Returns the handle of the previously selected color space.",
+  "doc": "SetColorSpace"
+ },
+ "DeleteColorSpace@WIN32API.INC": {
+  "desc": "Deletes a logical color space and frees its system resources. Returns nonzero on success.",
+  "doc": "DeleteColorSpace"
+ },
+ "GetICMProfile@WIN32API.INC": {
+  "desc": "Retrieves the file name of the current output color profile for a device context. The buffer size parameter receives the required length.",
+  "doc": "GetICMProfileA"
+ },
+ "SetICMProfile@WIN32API.INC": {
+  "desc": "Sets the specified color profile file as the output profile for a device context. Returns nonzero on success.",
+  "doc": "SetICMProfileA"
+ },
+ "GetDeviceGammaRamp@WIN32API.INC": {
+  "desc": "Gets the gamma ramp of a display device (three arrays of 256 WORD values for red, green and blue).",
+  "doc": "GetDeviceGammaRamp"
+ },
+ "SetDeviceGammaRamp@WIN32API.INC": {
+  "desc": "Sets the gamma ramp of a display device that supports gamma ramps (three arrays of 256 WORD values for red, green and blue).",
+  "doc": "SetDeviceGammaRamp"
+ },
+ "ColorMatchToTarget@WIN32API.INC": {
+  "desc": "Enables or disables preview of a target device's colors (e.g. a printer) on a display device context using ICM.",
+  "doc": "ColorMatchToTarget"
+ },
+ "EnumICMProfiles@WIN32API.INC": {
+  "desc": "Enumerates the color profile files supported by a device context, calling an application callback for each profile.",
+  "doc": "EnumICMProfilesA"
+ },
+ "LoadKeyboardLayout@WIN32API.INC": {
+  "desc": "Loads a keyboard layout given its identifier string (e.g. \"00000409\") and optionally activates it. Returns the input locale handle (HKL) or 0.",
+  "doc": "LoadKeyboardLayoutA"
+ },
+ "ActivateKeyboardLayout@WIN32API.INC": {
+  "desc": "Activates a loaded input locale (HKL) for the calling thread or process. Returns the previous input locale handle, or 0 on failure.",
+  "doc": "ActivateKeyboardLayout"
+ },
+ "UnloadKeyboardLayout@WIN32API.INC": {
+  "desc": "Unloads an input locale identifier (HKL) previously loaded with LoadKeyboardLayout. Returns nonzero on success.",
+  "doc": "UnloadKeyboardLayout"
+ },
+ "GetKeyboardLayoutName@WIN32API.INC": {
+  "desc": "Retrieves the name (KLID string, e.g. \"00000409\") of the active keyboard layout for the calling thread into a buffer of at least 9 characters.",
+  "doc": "GetKeyboardLayoutNameA"
+ },
+ "GetThreadDesktop@WIN32API.INC": {
+  "desc": "Returns a handle to the desktop assigned to the specified thread, or 0 on failure.",
+  "doc": "GetThreadDesktop"
+ },
+ "SetUserObjectSecurity@WIN32API.INC": {
+  "desc": "Sets the security descriptor of a user object such as a window station or desktop.",
+  "doc": "SetUserObjectSecurity"
+ },
+ "GetUserObjectSecurity@WIN32API.INC": {
+  "desc": "Retrieves security information (a security descriptor) for a user object such as a window station or desktop.",
+  "doc": "GetUserObjectSecurity"
+ },
+ "RegisterWindowMessage@WIN32API.INC": {
+  "desc": "Defines a new window message number that is unique system-wide for the given string. Returns the message identifier (0xC000-0xFFFF), or 0 on failure.",
+  "doc": "RegisterWindowMessageA"
+ },
+ "GetMessage@WIN32API.INC": {
+  "desc": "Retrieves a message from the calling thread's message queue, waiting if none is available. Returns 0 for WM_QUIT, -1 on error, otherwise nonzero.",
+  "doc": "GetMessageA"
+ },
+ "TranslateMessage@WIN32API.INC": {
+  "desc": "Translates virtual-key messages into character messages (WM_CHAR etc.) and posts them to the thread's message queue.",
+  "doc": "TranslateMessage"
+ },
+ "DispatchMessage@WIN32API.INC": {
+  "desc": "Dispatches a message retrieved by GetMessage or PeekMessage to the window procedure of its target window. Returns the window procedure's result.",
+  "doc": "DispatchMessageA"
+ },
+ "PeekMessage@WIN32API.INC": {
+  "desc": "Checks the thread's message queue for a message without waiting and optionally removes it (PM_REMOVE). Returns nonzero if a message is available.",
+  "doc": "PeekMessageA"
+ },
+ "ExitWindows@WIN32API.INC": {
+  "desc": "Logs off the interactive user. Microsoft documents it as a macro that calls ExitWindowsEx(EWX_LOGOFF, ...); user32 normally exports only ExitWindowsEx.",
+  "doc": "ExitWindows"
+ },
+ "SwapMouseButton@WIN32API.INC": {
+  "desc": "Reverses (TRUE) or restores (FALSE) the meaning of the left and right mouse buttons. Returns nonzero if the buttons were swapped before the call.",
+  "doc": "SwapMouseButton"
+ },
+ "SendMessageTimeout@WIN32API.INC": {
+  "desc": "Sends a message to a window and waits for it to be processed, but returns after the given timeout or if the receiving thread is hung.",
+  "doc": "SendMessageTimeoutA"
+ },
+ "SendNotifyMessage@WIN32API.INC": {
+  "desc": "Sends a message to a window; waits for processing if the window belongs to the calling thread, otherwise returns immediately.",
+  "doc": "SendNotifyMessageA"
+ },
+ "SendMessageCallback@WIN32API.INC": {
+  "desc": "Sends a message to a window and returns immediately; the system calls the given callback function when the window procedure has processed it.",
+  "doc": "SendMessageCallbackA"
+ },
+ "PostThreadMessage@WIN32API.INC": {
+  "desc": "Posts a message to the message queue of the specified thread and returns without waiting. Returns nonzero on success.",
+  "doc": "PostThreadMessageA"
+ },
+ "AttachThreadInput@WIN32API.INC": {
+  "desc": "Attaches or detaches the input processing (focus, active window, key state) of one thread to that of another thread.",
+  "doc": "AttachThreadInput"
+ },
+ "ReplyMessage@WIN32API.INC": {
+  "desc": "Replies to a message sent by another thread via SendMessage, so the sender can continue while the receiver keeps processing.",
+  "doc": "ReplyMessage"
+ },
+ "WaitMessage@WIN32API.INC": {
+  "desc": "Yields control and suspends the thread until a new message is placed in its message queue.",
+  "doc": "WaitMessage"
+ },
+ "WaitForInputIdle@WIN32API.INC": {
+  "desc": "Waits until the specified process has finished initialization and is waiting for user input, or until the timeout elapses. Returns 0 on success.",
+  "doc": "WaitForInputIdle"
+ },
+ "PostQuitMessage@WIN32API.INC": {
+  "desc": "Posts WM_QUIT with the given exit code to the thread's message queue, telling the message loop to end.",
+  "doc": "PostQuitMessage"
+ },
+ "InSendMessage@WIN32API.INC": {
+  "desc": "Returns nonzero if the current window procedure is processing a message sent from another thread with SendMessage.",
+  "doc": "InSendMessage"
+ },
+ "SetDoubleClickTime@WIN32API.INC": {
+  "desc": "Sets the maximum time in milliseconds between two clicks that counts as a double-click. Zero restores the default of 500 ms.",
+  "doc": "SetDoubleClickTime"
+ },
+ "RegisterClass@WIN32API.INC": {
+  "desc": "Registers a window class (WNDCLASS) for use with CreateWindow/CreateWindowEx. Returns a class atom, or 0 on failure. Note: user32 exports it as RegisterClassA/W.",
+  "doc": "RegisterClassA"
+ },
+ "UnregisterClass@WIN32API.INC": {
+  "desc": "Unregisters a window class and frees its memory. All windows of the class must be destroyed first. Returns nonzero on success.",
+  "doc": "UnregisterClassA"
+ },
+ "GetClassInfo@WIN32API.INC": {
+  "desc": "Retrieves information about a window class into a WNDCLASS structure. Returns nonzero if the class was found.",
+  "doc": "GetClassInfoA"
+ },
+ "CreateWindowEx_WIN32API@WIN32API.INC": {
+  "desc": "Creates an overlapped, pop-up or child window with an extended style, given class name, title, style, position, size, parent and menu. Returns the window handle or 0.",
+  "doc": "CreateWindowExA"
+ },
+ "IsWindow@WIN32API.INC": {
+  "desc": "Determines whether the given handle identifies an existing window. Returns nonzero if it does.",
+  "doc": "IsWindow"
+ },
+ "IsMenu@WIN32API.INC": {
+  "desc": "Determines whether a handle is a menu handle. Returns nonzero if it is.",
+  "doc": "IsMenu"
+ },
+ "IsChild@WIN32API.INC": {
+  "desc": "Determines whether a window is a child or descendant of the specified parent window. Returns nonzero if it is.",
+  "doc": "IsChild"
+ },
+ "DestroyWindow@WIN32API.INC": {
+  "desc": "Destroys the specified window, sending WM_DESTROY and WM_NCDESTROY and destroying its child windows. Returns nonzero on success.",
+  "doc": "DestroyWindow"
+ },
+ "FlashWindow@WIN32API.INC": {
+  "desc": "Flashes the specified window's title bar and taskbar button once (bInvert TRUE) or restores it. See also FlashWindowEx.",
+  "doc": "FlashWindow"
+ },
+ "ShowOwnedPopups@WIN32API.INC": {
+  "desc": "Shows or hides all pop-up windows owned by the specified window.",
+  "doc": "ShowOwnedPopups"
+ },
+ "OpenIcon@WIN32API.INC": {
+  "desc": "Restores a minimized (iconic) window to its previous size and position and activates it.",
+  "doc": "OpenIcon"
+ },
+ "CloseWindow@WIN32API.INC": {
+  "desc": "Minimizes (does not destroy) the specified window. Returns nonzero on success.",
+  "doc": "CloseWindow"
+ },
+ "GetWindowPlacement_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves the show state and the restored, minimized and maximized positions of a window into a WINDOWPLACEMENT structure (set its length field first).",
+  "doc": "GetWindowPlacement"
+ },
+ "SetWindowPlacement_WIN32API@WIN32API.INC": {
+  "desc": "Sets the show state and the restored, minimized and maximized positions of a window from a WINDOWPLACEMENT structure.",
+  "doc": "SetWindowPlacement"
+ },
+ "BeginDeferWindowPos@WIN32API.INC": {
+  "desc": "Allocates a multiple-window-position structure for the given number of windows. Returns a handle to pass to DeferWindowPos and EndDeferWindowPos.",
+  "doc": "BeginDeferWindowPos"
+ },
+ "DeferWindowPos@WIN32API.INC": {
+  "desc": "Adds a window's new position, size and z-order to a multiple-window-position structure. Returns the (possibly updated) handle to use next.",
+  "doc": "DeferWindowPos"
+ },
+ "EndDeferWindowPos@WIN32API.INC": {
+  "desc": "Moves and sizes all windows recorded in a multiple-window-position structure in a single screen refresh.",
+  "doc": "EndDeferWindowPos"
+ },
+ "EndDialog@WIN32API.INC": {
+  "desc": "Destroys a modal dialog box, ending its processing; the given result value is returned by the DialogBox call that created it.",
+  "doc": "EndDialog"
+ },
+ "GetDlgItem@WIN32API.INC": {
+  "desc": "Returns the window handle of the control with the given identifier in a dialog box, or 0 if not found.",
+  "doc": "GetDlgItem"
+ },
+ "SetDlgItemInt@WIN32API.INC": {
+  "desc": "Sets the text of a dialog box control to the string form of an integer (signed or unsigned).",
+  "doc": "SetDlgItemInt"
+ },
+ "GetDlgItemInt@WIN32API.INC": {
+  "desc": "Translates the text of a dialog box control into an integer; an optional flag receives success or failure.",
+  "doc": "GetDlgItemInt"
+ },
+ "SetDlgItemText@WIN32API.INC": {
+  "desc": "Sets the title or text of a control in a dialog box. Returns nonzero on success.",
+  "doc": "SetDlgItemTextA"
+ },
+ "GetDlgItemText@WIN32API.INC": {
+  "desc": "Copies the title or text of a dialog box control into a buffer. Returns the number of characters copied.",
+  "doc": "GetDlgItemTextA"
+ },
+ "CheckDlgButton@WIN32API.INC": {
+  "desc": "Sets the check state of a check box or radio button in a dialog (BST_CHECKED, BST_UNCHECKED, BST_INDETERMINATE). Note: user32 exports it as CheckDlgButton, without A.",
+  "doc": "CheckDlgButton"
+ },
+ "CheckRadioButton@WIN32API.INC": {
+  "desc": "Checks one radio button in a dialog and clears all others in the given ID range. Note: user32 exports it as CheckRadioButton, without A.",
+  "doc": "CheckRadioButton"
+ },
+ "IsDlgButtonChecked@WIN32API.INC": {
+  "desc": "Returns the check state of a button control in a dialog: BST_CHECKED, BST_UNCHECKED or BST_INDETERMINATE.",
+  "doc": "IsDlgButtonChecked"
+ },
+ "SendDlgItemMessage@WIN32API.INC": {
+  "desc": "Sends a message to the control with the given identifier in a dialog box. Returns the result of the message processing.",
+  "doc": "SendDlgItemMessageA"
+ },
+ "GetNextDlgGroupItem@WIN32API.INC": {
+  "desc": "Returns the handle of the previous or next control in the same group as the given control in a dialog box.",
+  "doc": "GetNextDlgGroupItem"
+ },
+ "GetNextDlgTabItem@WIN32API.INC": {
+  "desc": "Returns the handle of the previous or next control with the WS_TABSTOP style in a dialog box.",
+  "doc": "GetNextDlgTabItem"
+ },
+ "GetDlgCtrlID@WIN32API.INC": {
+  "desc": "Returns the identifier of the specified control (child window), or 0 on failure.",
+  "doc": "GetDlgCtrlID"
+ },
+ "DefDlgProc@WIN32API.INC": {
+  "desc": "Provides default message processing for windows of a custom dialog class (window procedure of the dialog class).",
+  "doc": "DefDlgProcA"
+ },
+ "CallMsgFilter@WIN32API.INC": {
+  "desc": "Passes a message and hook code to the WH_SYSMSGFILTER and WH_MSGFILTER hook procedures. Returns nonzero if a hook processed the message.",
+  "doc": "CallMsgFilterA"
+ },
+ "OpenClipboard@WIN32API.INC": {
+  "desc": "Opens the clipboard for examination and prevents other applications from changing it; the window becomes owner after EmptyClipboard. Returns nonzero on success.",
+  "doc": "OpenClipboard"
+ },
+ "CloseClipboard@WIN32API.INC": {
+  "desc": "Closes the clipboard so other windows can access it. Returns nonzero on success.",
+  "doc": "CloseClipboard"
+ },
+ "GetClipboardOwner@WIN32API.INC": {
+  "desc": "Returns the handle of the window that currently owns the clipboard, or 0.",
+  "doc": "GetClipboardOwner"
+ },
+ "SetClipboardViewer@WIN32API.INC": {
+  "desc": "Adds a window to the chain of clipboard viewers, which receive WM_DRAWCLIPBOARD. Returns the next window in the chain. Superseded by AddClipboardFormatListener.",
+  "doc": "SetClipboardViewer"
+ },
+ "GetClipboardViewer@WIN32API.INC": {
+  "desc": "Returns the handle of the first window in the clipboard viewer chain, or 0.",
+  "doc": "GetClipboardViewer"
+ },
+ "ChangeClipboardChain@WIN32API.INC": {
+  "desc": "Removes a window from the chain of clipboard viewers, given the window and the next window in the chain.",
+  "doc": "ChangeClipboardChain"
+ },
+ "SetClipboardData@WIN32API.INC": {
+  "desc": "Places data (a global memory handle) on the clipboard in the given format; the clipboard must be open. Note: user32 exports it as SetClipboardData, without A.",
+  "doc": "SetClipboardData"
+ },
+ "GetClipboardData@WIN32API.INC": {
+  "desc": "Retrieves a handle to clipboard data in the given format (e.g. CF_TEXT); the clipboard must be open. Note: user32 exports it as GetClipboardData, without A.",
+  "doc": "GetClipboardData"
+ },
+ "RegisterClipboardFormat@WIN32API.INC": {
+  "desc": "Registers a new clipboard format name. Returns the format identifier (0xC000-0xFFFF); the same name always gets the same value.",
+  "doc": "RegisterClipboardFormatA"
+ },
+ "CountClipboardFormats@WIN32API.INC": {
+  "desc": "Returns the number of different data formats currently on the clipboard.",
+  "doc": "CountClipboardFormats"
+ },
+ "EnumClipboardFormats@WIN32API.INC": {
+  "desc": "Enumerates the formats currently on the clipboard: pass 0 to get the first, then the previous value to get the next. Returns 0 when done.",
+  "doc": "EnumClipboardFormats"
+ },
+ "GetClipboardFormatName@WIN32API.INC": {
+  "desc": "Copies the name of a registered clipboard format into a buffer. Returns the length of the name, or 0 for predefined formats.",
+  "doc": "GetClipboardFormatNameA"
+ },
+ "EmptyClipboard@WIN32API.INC": {
+  "desc": "Empties the clipboard, frees its data handles and gives ownership to the window that opened it. Returns nonzero on success.",
+  "doc": "EmptyClipboard"
+ },
+ "IsClipboardFormatAvailable@WIN32API.INC": {
+  "desc": "Returns nonzero if the clipboard contains data in the specified format.",
+  "doc": "IsClipboardFormatAvailable"
+ },
+ "GetPriorityClipboardFormat@WIN32API.INC": {
+  "desc": "Returns the first format from a priority list that is available on the clipboard; 0 if the clipboard is empty, -1 if none match.",
+  "doc": "GetPriorityClipboardFormat"
+ },
+ "CharToOemBuff@WIN32API.INC": {
+  "desc": "Translates a given number of characters from the ANSI (or wide) character set to the OEM character set.",
+  "doc": "CharToOemBuffA"
+ },
+ "OemToCharBuff@WIN32API.INC": {
+  "desc": "Translates a given number of characters from the OEM character set to the ANSI (or wide) character set.",
+  "doc": "OemToCharBuffA"
+ },
+ "CharUpperBuff@WIN32API.INC": {
+  "desc": "Converts a given number of characters in a buffer to uppercase in place. Returns the number of characters processed.",
+  "doc": "CharUpperBuffA"
+ },
+ "CharLowerBuff@WIN32API.INC": {
+  "desc": "Converts a given number of characters in a buffer to lowercase in place. Returns the number of characters processed.",
+  "doc": "CharLowerBuffA"
+ },
+ "CharNext@WIN32API.INC": {
+  "desc": "Returns a pointer to the next character in a string, handling multibyte characters.",
+  "doc": "CharNextA"
+ },
+ "CharPrev@WIN32API.INC": {
+  "desc": "Returns a pointer to the preceding character in a string, handling multibyte characters.",
+  "doc": "CharPrevA"
+ },
+ "IsCharAlpha@WIN32API.INC": {
+  "desc": "Determines whether a character is alphabetic, based on the language selected by the user. Returns nonzero if it is.",
+  "doc": "IsCharAlphaA"
+ },
+ "IsCharAlphaNumeric@WIN32API.INC": {
+  "desc": "Determines whether a character is alphabetic or numeric, based on the user's language. Returns nonzero if it is.",
+  "doc": "IsCharAlphaNumericA"
+ },
+ "IsCharUpper@WIN32API.INC": {
+  "desc": "Determines whether a character is uppercase, based on the user's language. Returns nonzero if it is.",
+  "doc": "IsCharUpperA"
+ },
+ "IsCharLower@WIN32API.INC": {
+  "desc": "Determines whether a character is lowercase, based on the user's language. Returns nonzero if it is.",
+  "doc": "IsCharLowerA"
+ },
+ "GetAsyncKeyState@WIN32API.INC": {
+  "desc": "Returns whether a key is up or down at the time of the call: the high bit is set if the key is down. Takes a virtual-key code.",
+  "doc": "GetAsyncKeyState"
+ },
+ "GetKeyboardState@WIN32API.INC": {
+  "desc": "Copies the status of all 256 virtual keys into a 256-byte array (high bit = down, low bit = toggled). Returns nonzero on success.",
+  "doc": "GetKeyboardState"
+ },
+ "SetKeyboardState@WIN32API.INC": {
+  "desc": "Replaces the calling thread's keyboard state table with the values in a 256-byte array of virtual-key states.",
+  "doc": "SetKeyboardState"
+ },
+ "GetKeyboardType@WIN32API.INC": {
+  "desc": "Returns information about the keyboard: its type (0), subtype (1) or number of function keys (2), depending on the parameter.",
+  "doc": "GetKeyboardType"
+ },
+ "GetKeyNameText@WIN32API.INC": {
+  "desc": "Retrieves the name of a key (e.g. \"Shift\") from the lParam of a keyboard message. Returns the length of the name copied.",
+  "doc": "GetKeyNameTextA"
+ },
+ "ToAscii@WIN32API.INC": {
+  "desc": "Translates a virtual-key code and keyboard state to the corresponding character(s). Returns the number of characters produced (0, 1 or 2).",
+  "doc": "ToAscii"
+ },
+ "ToUnicode@WIN32API.INC": {
+  "desc": "Translates a virtual-key code and keyboard state to the corresponding Unicode character(s). Returns the count, or -1 for a dead key.",
+  "doc": "ToUnicode"
+ },
+ "OemKeyScan@WIN32API.INC": {
+  "desc": "Maps an OEM ASCII code (0-0FFh) to its OEM scan code and shift state.",
+  "doc": "OemKeyScan"
+ },
+ "VkKeyScan@WIN32API.INC": {
+  "desc": "Translates a character to its virtual-key code (low byte) and the shift state needed (high byte) for the current keyboard layout.",
+  "doc": "VkKeyScanA"
+ },
+ "keybd_event@WIN32API.INC": {
+  "desc": "Synthesizes a keystroke (key down or up for a virtual-key code). Superseded by SendInput.",
+  "doc": "keybd_event"
+ },
+ "MapVirtualKey@WIN32API.INC": {
+  "desc": "Translates between virtual-key codes, scan codes and character values, depending on the map type parameter.",
+  "doc": "MapVirtualKeyA"
+ },
+ "GetQueueStatus@WIN32API.INC": {
+  "desc": "Returns the types of messages found in the calling thread's message queue (high word: currently in queue; low word: added since last check).",
+  "doc": "GetQueueStatus"
+ },
+ "MsgWaitForMultipleObjects@WIN32API.INC": {
+  "desc": "Waits until one or all specified objects are signaled, the timeout elapses, or input of the given types arrives in the thread's queue.",
+  "doc": "MsgWaitForMultipleObjects"
+ },
+ "KillTimer@WIN32API.INC": {
+  "desc": "Destroys a timer created by SetTimer for the given window and timer identifier. Returns nonzero on success.",
+  "doc": "KillTimer"
+ },
+ "IsWindowUnicode@WIN32API.INC": {
+  "desc": "Returns nonzero if the specified window is a native Unicode window (its window procedure receives Unicode messages).",
+  "doc": "IsWindowUnicode"
+ },
+ "IsWindowEnabled@WIN32API.INC": {
+  "desc": "Returns nonzero if the specified window is enabled for mouse and keyboard input.",
+  "doc": "IsWindowEnabled"
+ },
+ "LoadAccelerators@WIN32API.INC": {
+  "desc": "Loads an accelerator table resource from a module. Returns the accelerator table handle, or 0 on failure.",
+  "doc": "LoadAcceleratorsA"
+ },
+ "CreateAcceleratorTable@WIN32API.INC": {
+  "desc": "Creates an accelerator table from an array of ACCEL structures. Returns the table handle; free it with DestroyAcceleratorTable.",
+  "doc": "CreateAcceleratorTableA"
+ },
+ "DestroyAcceleratorTable@WIN32API.INC": {
+  "desc": "Destroys an accelerator table created with CreateAcceleratorTable.",
+  "doc": "DestroyAcceleratorTable"
+ },
+ "CopyAcceleratorTable@WIN32API.INC": {
+  "desc": "Copies an accelerator table into an array of ACCEL structures, or returns the number of entries if the array is null.",
+  "doc": "CopyAcceleratorTableA"
+ },
+ "TranslateAccelerator@WIN32API.INC": {
+  "desc": "Processes accelerator keys: translates a WM_KEYDOWN/WM_SYSKEYDOWN into WM_COMMAND using the table and sends it to the window. Returns nonzero if translated.",
+  "doc": "TranslateAcceleratorA"
+ },
+ "LoadMenu@WIN32API.INC": {
+  "desc": "Loads a menu resource from a module. Returns the menu handle, or 0 on failure.",
+  "doc": "LoadMenuA"
+ },
+ "LoadMenuIndirect@WIN32API.INC": {
+  "desc": "Loads a menu from a menu template in memory. Returns the menu handle, or 0 on failure.",
+  "doc": "LoadMenuIndirectA"
+ },
+ "SetMenu@WIN32API.INC": {
+  "desc": "Assigns a new menu to a window (0 removes the menu). Returns nonzero on success.",
+  "doc": "SetMenu"
+ },
+ "HiliteMenuItem@WIN32API.INC": {
+  "desc": "Highlights or removes the highlight from an item in a window's menu bar.",
+  "doc": "HiliteMenuItem"
+ },
+ "GetMenuString@WIN32API.INC": {
+  "desc": "Copies the text string of a menu item into a buffer, identified by command ID or position. Returns the number of characters copied.",
+  "doc": "GetMenuStringA"
+ },
+ "GetMenuState@WIN32API.INC": {
+  "desc": "Returns the menu flags (checked, grayed, etc.) of a menu item, or for a submenu the item count in the high byte. Returns -1 if the item does not exist.",
+  "doc": "GetMenuState"
+ },
+ "DrawMenuBar@WIN32API.INC": {
+  "desc": "Redraws the menu bar of a window; call it after changing the menu bar.",
+  "doc": "DrawMenuBar"
+ },
+ "GetSystemMenu@WIN32API.INC": {
+  "desc": "Returns a handle to the window menu (system menu) of a window for copying and modifying, or resets it to the default (bRevert TRUE).",
+  "doc": "GetSystemMenu"
+ },
+ "CreateMenu@WIN32API.INC": {
+  "desc": "Creates an empty menu (menu bar). Returns the menu handle, or 0 on failure.",
+  "doc": "CreateMenu"
+ },
+ "CreatePopupMenu@WIN32API.INC": {
+  "desc": "Creates an empty drop-down, submenu or shortcut menu. Returns the menu handle, or 0 on failure.",
+  "doc": "CreatePopupMenu"
+ },
+ "DestroyMenu@WIN32API.INC": {
+  "desc": "Destroys the specified menu and frees its memory, including submenus. Returns nonzero on success.",
+  "doc": "DestroyMenu"
+ },
+ "CheckMenuItem@WIN32API.INC": {
+  "desc": "Sets the check-mark state of a menu item (MF_CHECKED/MF_UNCHECKED). Returns the previous state, or -1 if the item does not exist.",
+  "doc": "CheckMenuItem"
+ },
+ "EnableMenuItem@WIN32API.INC": {
+  "desc": "Enables, disables or grays a menu item (MF_ENABLED, MF_DISABLED, MF_GRAYED). Returns the previous state, or -1 if the item does not exist.",
+  "doc": "EnableMenuItem"
+ },
+ "GetSubMenu@WIN32API.INC": {
+  "desc": "Returns the handle of the drop-down menu or submenu at the given position in a menu, or 0.",
+  "doc": "GetSubMenu"
+ },
+ "GetMenuItemID@WIN32API.INC": {
+  "desc": "Returns the command identifier of the menu item at the given position, or -1 if it opens a submenu or does not exist.",
+  "doc": "GetMenuItemID"
+ },
+ "GetMenuItemCount@WIN32API.INC": {
+  "desc": "Returns the number of items in a menu, or -1 on failure.",
+  "doc": "GetMenuItemCount"
+ },
+ "InsertMenu@WIN32API.INC": {
+  "desc": "Inserts a new menu item into a menu before the given item, moving other items down. Superseded by InsertMenuItem.",
+  "doc": "InsertMenuA"
+ },
+ "AppendMenu@WIN32API.INC": {
+  "desc": "Appends a new item (string, bitmap, separator or submenu) to the end of a menu. Returns nonzero on success.",
+  "doc": "AppendMenuA"
+ },
+ "RemoveMenu@WIN32API.INC": {
+  "desc": "Removes a menu item or detaches a submenu from a menu without destroying the submenu. Returns nonzero on success.",
+  "doc": "RemoveMenu"
+ },
+ "DeleteMenu@WIN32API.INC": {
+  "desc": "Deletes an item from a menu; if it opens a submenu, the submenu is destroyed too. Returns nonzero on success.",
+  "doc": "DeleteMenu"
+ },
+ "SetMenuItemBitmaps@WIN32API.INC": {
+  "desc": "Associates bitmaps to display next to a menu item instead of the default checked and unchecked marks.",
+  "doc": "SetMenuItemBitmaps"
+ },
+ "TrackPopupMenu@WIN32API.INC": {
+  "desc": "Displays a shortcut menu at the given screen position and tracks the selection. Returns the chosen ID if TPM_RETURNCMD, otherwise nonzero on success.",
+  "doc": "TrackPopupMenu"
+ },
+ "TabbedTextOut@WIN32API.INC": {
+  "desc": "Writes a string at a location, expanding tabs to the given tab-stop positions. Returns the string's width and height packed in a long.",
+  "doc": "TabbedTextOutA"
+ },
+ "GetTabbedTextExtent@WIN32API.INC": {
+  "desc": "Computes the width (low word) and height (high word) of a string containing tabs, using the given tab stops and the current font.",
+  "doc": "GetTabbedTextExtentA"
+ },
+ "UpdateWindow@WIN32API.INC": {
+  "desc": "Sends WM_PAINT directly to the window if its update region is not empty, so it is repainted immediately.",
+  "doc": "UpdateWindow"
+ },
+ "WindowFromDC@WIN32API.INC": {
+  "desc": "Returns the handle of the window associated with a display device context, or 0.",
+  "doc": "WindowFromDC"
+ },
+ "GetDCEx@WIN32API.INC": {
+  "desc": "Retrieves a device context for the client area or entire window, with options controlling clipping. Release it with ReleaseDC.",
+  "doc": "GetDCEx"
+ },
+ "BeginPaint@WIN32API.INC": {
+  "desc": "Prepares a window for painting, fills a PAINTSTRUCT and returns a display DC. Use only in response to WM_PAINT and pair with EndPaint.",
+  "doc": "BeginPaint"
+ },
+ "EndPaint@WIN32API.INC": {
+  "desc": "Marks the end of painting in a window started with BeginPaint and releases its device context.",
+  "doc": "EndPaint"
+ },
+ "GetUpdateRect@WIN32API.INC": {
+  "desc": "Retrieves the smallest rectangle enclosing the window's update region. Returns nonzero if the update region is not empty.",
+  "doc": "GetUpdateRect"
+ },
+ "GetUpdateRgn@WIN32API.INC": {
+  "desc": "Copies a window's update region into an existing region handle. Returns the region type (e.g. NULLREGION, SIMPLEREGION).",
+  "doc": "GetUpdateRgn"
+ },
+ "RedrawWindow_WIN32API@WIN32API.INC": {
+  "desc": "Updates a rectangle or region in a window's client area, with flags to invalidate, validate, erase or repaint immediately.",
+  "doc": "RedrawWindow"
+ },
+ "LockWindowUpdate@WIN32API.INC": {
+  "desc": "Disables (hwnd) or re-enables (0) drawing in the specified window; only one window can be locked at a time.",
+  "doc": "LockWindowUpdate"
+ },
+ "ScrollWindow@WIN32API.INC": {
+  "desc": "Scrolls the contents of a window's client area by the given amounts. Superseded by ScrollWindowEx.",
+  "doc": "ScrollWindow"
+ },
+ "ScrollDC@WIN32API.INC": {
+  "desc": "Scrolls a rectangle of bits in a device context horizontally and vertically, and can return the uncovered region.",
+  "doc": "ScrollDC"
+ },
+ "ScrollWindowEx@WIN32API.INC": {
+  "desc": "Scrolls the contents of a window's client area, with options to scroll children, invalidate and erase the uncovered area.",
+  "doc": "ScrollWindowEx"
+ },
+ "SetScrollPos@WIN32API.INC": {
+  "desc": "Sets the position of the scroll box in a scroll bar and optionally redraws it. Returns the previous position. Superseded by SetScrollInfo.",
+  "doc": "SetScrollPos"
+ },
+ "GetScrollPos@WIN32API.INC": {
+  "desc": "Returns the current position of the scroll box in a window's scroll bar or scroll bar control. Superseded by GetScrollInfo.",
+  "doc": "GetScrollPos"
+ },
+ "SetScrollRange@WIN32API.INC": {
+  "desc": "Sets the minimum and maximum positions of a scroll bar. Superseded by SetScrollInfo.",
+  "doc": "SetScrollRange"
+ },
+ "GetScrollRange@WIN32API.INC": {
+  "desc": "Retrieves the minimum and maximum positions of a scroll bar. Superseded by GetScrollInfo.",
+  "doc": "GetScrollRange"
+ },
+ "ShowScrollBar@WIN32API.INC": {
+  "desc": "Shows or hides the specified scroll bar(s) of a window (SB_HORZ, SB_VERT, SB_BOTH, SB_CTL).",
+  "doc": "ShowScrollBar"
+ },
+ "EnableScrollBar@WIN32API.INC": {
+  "desc": "Enables or disables one or both scroll bar arrows (ESB_ENABLE_BOTH, ESB_DISABLE_BOTH, etc.).",
+  "doc": "EnableScrollBar"
+ },
+ "SetWindowText_WIN32API@WIN32API.INC": {
+  "desc": "Changes the title bar text of a window, or the text of a control. Returns nonzero on success.",
+  "doc": "SetWindowTextA"
+ },
+ "GetWindowText_WIN32API@WIN32API.INC": {
+  "desc": "Copies the title bar text of a window, or the text of a control, into a buffer. Returns the length of the copied string.",
+  "doc": "GetWindowTextA"
+ },
+ "GetClientRect_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves the coordinates of a window's client area; left and top are 0, so right and bottom give the width and height.",
+  "doc": "GetClientRect"
+ },
+ "GetWindowRect_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves the bounding rectangle of a window, including borders and title bar, in screen coordinates.",
+  "doc": "GetWindowRect"
+ },
+ "AdjustWindowRect@WIN32API.INC": {
+  "desc": "Calculates the window rectangle needed for a desired client-area rectangle, given the window style and whether it has a menu.",
+  "doc": "AdjustWindowRect"
+ }
+}

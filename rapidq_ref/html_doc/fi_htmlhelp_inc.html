@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>htmlhelp.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: htmlhelp.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>htmlhelp.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/htmlhelp.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 2 functions &middot; 2 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#HTMLHELP">HtmlHelp</a> &middot; <a href="#HTMLHELPSTRING">htmlHelpString</a></p>
+<h3><a name="HTMLHELP"></a>HtmlHelp</h3>
+<p class="rq-meta">DLL function, hhctrl.ocx &middot; rapidqAllProc.inc, line 13062</p>
+<pre>Declare Function HtmlHelp Lib &quot;hhctrl.ocx&quot; Alias &quot;HtmlHelpA&quot; (hwndCaller As Long, pszFile As String, uCommand As Long, dwData As Long) As Long</pre>
+<p>Opens or controls an HTML Help (.chm) window: shows a topic, table of contents, index or search depending on the uCommand value. Returns a window handle or other result.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=HtmlHelpA">HtmlHelpA</a></p>
+<h3><a name="HTMLHELPSTRING"></a>htmlHelpString</h3>
+<p class="rq-meta">DLL function, hhctrl.ocx &middot; rapidqAllProc.inc, line 13068</p>
+<pre>Declare Function htmlHelpString Lib &quot;hhctrl.ocx&quot; Alias &quot;HtmlHelpA&quot; (hwnd As Long, lpHelpFile As String, wCommand As Long, dwData As String) As Long</pre>
+<p>Same as HtmlHelp, declared with dwData as a string: opens an HTML Help (.chm) window, e.g. to show a topic or keyword passed as text.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=HtmlHelpA">HtmlHelpA</a></p>
+</body>
+</html>

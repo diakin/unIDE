@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Minimize.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: Minimize.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>Minimize.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/Minimize.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 2 functions &middot; 1 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#SETMINIMIZE">SetMinimize</a> &middot; <a href="#SETWINDOW">SetWindow</a></p>
+<h3><a name="SETMINIMIZE"></a>SetMinimize</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 13988</p>
+<pre>Sub SetMinimize (Form as QForm)</pre>
+<p>Makes Form a top-level window and sets it as the owner of the Application window (SetWindow with index -8, GWL_HWNDPARENT), so that minimizing works through Form rather than the hidden application window.</p>
+<h3><a name="SETWINDOW"></a>SetWindow</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 13987</p>
+<pre>Declare Function SetWindow Lib &quot;user32&quot; Alias &quot;SetWindowLongA&quot; (hwnd As Long, nIndex As Long, dwNewLong As Long) As Long</pre>
+<p>Changes an attribute of a window (style, extended style, window procedure, user data) at the given offset. Returns the previous value.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowLongA">SetWindowLongA</a></p>
+</body>
+</html>

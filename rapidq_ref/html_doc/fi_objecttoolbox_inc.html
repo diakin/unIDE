@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>objectToolbox.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: objectToolbox.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>objectToolbox.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/objectToolbox.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 4 functions &middot; 1 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#OBJECTTOOLBOX_TYPEOF">ObjectToolbox.TypeOf</a> &middot; <a href="#OBJECTTOOLBOX_TYPEOFA">ObjectToolbox.TypeOfA</a> &middot; <a href="#OBJECTTOOLBOX_GETCLASSNAME">ObjectToolbox_GetClassName</a> &middot; <a href="#TYPEOF">TypeOf</a></p>
+<h3><a name="OBJECTTOOLBOX_TYPEOF"></a>ObjectToolbox.TypeOf</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 14226</p>
+<pre>Function ObjectToolbox.TypeOf(Object as long) as string</pre>
+<p>Returns the RapidQ component name for the window handle Object: gets the Win32 class name, changes a leading T to Q, drops a trailing s, and maps TBitBtn to QButton, TApplication to Application and #32768 to QMenuItem.</p>
+<h3><a name="OBJECTTOOLBOX_TYPEOFA"></a>ObjectToolbox.TypeOfA</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 14216</p>
+<pre>Function ObjectToolbox.TypeOfA(Object as long) as string</pre>
+<p>Returns the native Win32 class name of the window handle Object (via ObjectToolbox_GetClassName, i.e. GetClassName), for example TButton.</p>
+<h3><a name="OBJECTTOOLBOX_GETCLASSNAME"></a>ObjectToolbox_GetClassName</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14212</p>
+<pre>Declare Function ObjectToolbox_GetClassName lib &quot;user32&quot; alias &quot;GetClassNameA&quot; (ByVal hWnd as long, ByRef lpClassName as string, ByVal nMaxCount as long) as long</pre>
+<p>Retrieves the name of the window class to which a window belongs. Returns the number of characters copied, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetClassNameA">GetClassNameA</a></p>
+<h3><a name="TYPEOF"></a>TypeOf</h3>
+<p class="rq-meta">FUNCTIONI &middot; rapidqAllProc.inc, line 14256</p>
+<pre>Functioni TypeOf(...) as string</pre>
+<p>Returns the class name of an object handle. TypeOf(handle) gives the RapidQ name (ObjectToolbox.TypeOf); TypeOf(handle, 1) gives the native Win32 class name (ObjectToolbox.TypeOfA). Uses BIND and CALLFUNC.</p>
+</body>
+</html>

@@ -1,0 +1,794 @@
+{
+ "OpenThreadToken@WIN32API.INC": {
+  "desc": "Opens the access token associated with a thread. Returns nonzero on success and the token handle in the last parameter.",
+  "doc": "OpenThreadToken"
+ },
+ "GetTokenInformation@WIN32API.INC": {
+  "desc": "Retrieves a specified type of information (user, groups, privileges, etc.) about an access token into a caller buffer. Returns nonzero on success.",
+  "doc": "GetTokenInformation"
+ },
+ "SetTokenInformation@WIN32API.INC": {
+  "desc": "Sets various types of information for a specified access token, such as owner, primary group or default DACL. Returns nonzero on success.",
+  "doc": "SetTokenInformation"
+ },
+ "AdjustTokenPrivileges_WIN32API@WIN32API.INC": {
+  "desc": "Enables or disables privileges in the specified access token; requires TOKEN_ADJUST_PRIVILEGES access. Returns nonzero on success; check GetLastError for ERROR_NOT_ALL_ASSIGNED.",
+  "doc": "AdjustTokenPrivileges"
+ },
+ "AdjustTokenGroups@WIN32API.INC": {
+  "desc": "Enables or disables groups already present in the specified access token. Returns nonzero on success.",
+  "doc": "AdjustTokenGroups"
+ },
+ "PrivilegeCheck@WIN32API.INC": {
+  "desc": "Determines whether a specified set of privileges is enabled in an access token; the result is returned in the last parameter.",
+  "doc": "PrivilegeCheck"
+ },
+ "AccessCheckAndAuditAlarm@WIN32API.INC": {
+  "desc": "Determines whether a security descriptor grants access to the client being impersonated by the calling thread, and generates audit messages if needed.",
+  "doc": "AccessCheckAndAuditAlarmA"
+ },
+ "ObjectOpenAuditAlarm@WIN32API.INC": {
+  "desc": "Generates audit messages when a client application attempts to gain access to an object or to create a new one. (Exported by advapi32.dll.)",
+  "doc": "ObjectOpenAuditAlarmA"
+ },
+ "ObjectPrivilegeAuditAlarm@WIN32API.INC": {
+  "desc": "Generates an audit message in the security event log when privileged operations are performed on an object.",
+  "doc": "ObjectPrivilegeAuditAlarmA"
+ },
+ "ObjectCloseAuditAlarm@WIN32API.INC": {
+  "desc": "Generates an audit message in the security event log when a handle to a private object is deleted.",
+  "doc": "ObjectCloseAuditAlarmA"
+ },
+ "PrivilegedServiceAuditAlarm@WIN32API.INC": {
+  "desc": "Generates an audit message in the security event log when a privileged system service operation is attempted.",
+  "doc": "PrivilegedServiceAuditAlarmA"
+ },
+ "IsValidSid@WIN32API.INC": {
+  "desc": "Validates a security identifier (SID) by checking its revision and subauthority count. Returns nonzero if the SID is valid.",
+  "doc": "IsValidSid"
+ },
+ "EqualSid@WIN32API.INC": {
+  "desc": "Tests two security identifiers (SIDs) for equality. Returns nonzero if they are equal.",
+  "doc": "EqualSid"
+ },
+ "EqualPrefixSid@WIN32API.INC": {
+  "desc": "Tests two SID prefix values for equality (all subauthorities except the last). Returns nonzero if equal.",
+  "doc": "EqualPrefixSid"
+ },
+ "GetSidLengthRequired@WIN32API.INC": {
+  "desc": "Returns the length in bytes of the buffer required to store a SID with the specified number of subauthorities.",
+  "doc": "GetSidLengthRequired"
+ },
+ "AllocateAndInitializeSid@WIN32API.INC": {
+  "desc": "Allocates and initializes a SID with up to eight subauthorities. The SID must be freed with FreeSid.",
+  "doc": "AllocateAndInitializeSid"
+ },
+ "FreeSid@WIN32API.INC": {
+  "desc": "Frees a SID previously allocated with AllocateAndInitializeSid.",
+  "doc": "FreeSid"
+ },
+ "InitializeSid@WIN32API.INC": {
+  "desc": "Initializes a caller-allocated SID structure with an identifier authority and number of subauthorities.",
+  "doc": "InitializeSid"
+ },
+ "GetSidIdentifierAuthority@WIN32API.INC": {
+  "desc": "Returns a pointer to the SID_IDENTIFIER_AUTHORITY structure in a specified SID.",
+  "doc": "GetSidIdentifierAuthority"
+ },
+ "GetSidSubAuthority@WIN32API.INC": {
+  "desc": "Returns a pointer to a specified subauthority in a SID.",
+  "doc": "GetSidSubAuthority"
+ },
+ "GetSidSubAuthorityCount@WIN32API.INC": {
+  "desc": "Returns a pointer to the member of a SID that holds the subauthority count.",
+  "doc": "GetSidSubAuthorityCount"
+ },
+ "GetLengthSid@WIN32API.INC": {
+  "desc": "Returns the length in bytes of a valid security identifier (SID).",
+  "doc": "GetLengthSid"
+ },
+ "CopySid@WIN32API.INC": {
+  "desc": "Copies a security identifier (SID) to a buffer. Returns nonzero on success.",
+  "doc": "CopySid"
+ },
+ "AreAllAccessesGranted@WIN32API.INC": {
+  "desc": "Checks whether a set of requested access rights has been granted; returns nonzero if all requested rights are in the granted mask.",
+  "doc": "AreAllAccessesGranted"
+ },
+ "AreAnyAccessesGranted@WIN32API.INC": {
+  "desc": "Tests whether any of a set of requested access rights has been granted; returns nonzero if at least one is granted.",
+  "doc": "AreAnyAccessesGranted"
+ },
+ "MapGenericMask@WIN32API.INC": {
+  "desc": "Maps the generic access rights in an access mask to specific and standard rights using a GENERIC_MAPPING structure.",
+  "doc": "MapGenericMask"
+ },
+ "IsValidAcl@WIN32API.INC": {
+  "desc": "Validates an access control list (ACL). Returns nonzero if the ACL is valid.",
+  "doc": "IsValidAcl"
+ },
+ "InitializeAcl@WIN32API.INC": {
+  "desc": "Initializes a new, empty ACL structure in a caller buffer. Returns nonzero on success.",
+  "doc": "InitializeAcl"
+ },
+ "GetAclInformation@WIN32API.INC": {
+  "desc": "Retrieves information about an access control list, such as revision or size and ACE count.",
+  "doc": "GetAclInformation"
+ },
+ "SetAclInformation@WIN32API.INC": {
+  "desc": "Sets information about an access control list (ACL), such as its revision.",
+  "doc": "SetAclInformation"
+ },
+ "AddAce@WIN32API.INC": {
+  "desc": "Adds one or more access control entries (ACEs) to a specified ACL at a given index.",
+  "doc": "AddAce"
+ },
+ "DeleteAce@WIN32API.INC": {
+  "desc": "Deletes the access control entry at the specified index from an ACL.",
+  "doc": "DeleteAce"
+ },
+ "GetAce@WIN32API.INC": {
+  "desc": "Obtains a pointer to the access control entry at the specified index in an ACL.",
+  "doc": "GetAce"
+ },
+ "AddAccessAllowedAce@WIN32API.INC": {
+  "desc": "Adds an access-allowed ACE for a specified SID and access mask to the end of an ACL.",
+  "doc": "AddAccessAllowedAce"
+ },
+ "AddAccessDeniedAce@WIN32API.INC": {
+  "desc": "Adds an access-denied ACE for a specified SID and access mask to the end of an ACL.",
+  "doc": "AddAccessDeniedAce"
+ },
+ "AddAuditAccessAce@WIN32API.INC": {
+  "desc": "Adds a system-audit ACE to a system ACL (SACL) for a SID, auditing successful and/or failed access.",
+  "doc": "AddAuditAccessAce"
+ },
+ "FindFirstFreeAce@WIN32API.INC": {
+  "desc": "Retrieves a pointer to the first free byte in an access control list (ACL).",
+  "doc": "FindFirstFreeAce"
+ },
+ "InitializeSecurityDescriptor@WIN32API.INC": {
+  "desc": "Initializes a new security descriptor in absolute format with no SACL, DACL, owner or group.",
+  "doc": "InitializeSecurityDescriptor"
+ },
+ "IsValidSecurityDescriptor@WIN32API.INC": {
+  "desc": "Determines whether the components of a security descriptor are valid. Returns nonzero if valid.",
+  "doc": "IsValidSecurityDescriptor"
+ },
+ "GetSecurityDescriptorLength@WIN32API.INC": {
+  "desc": "Returns the length in bytes of a structurally valid security descriptor, including associated structures.",
+  "doc": "GetSecurityDescriptorLength"
+ },
+ "GetSecurityDescriptorControl@WIN32API.INC": {
+  "desc": "Retrieves the control information and revision of a security descriptor.",
+  "doc": "GetSecurityDescriptorControl"
+ },
+ "SetSecurityDescriptorDacl@WIN32API.INC": {
+  "desc": "Sets information in a discretionary access control list (DACL) of a security descriptor; a NULL DACL grants full access to everyone.",
+  "doc": "SetSecurityDescriptorDacl"
+ },
+ "GetSecurityDescriptorDacl@WIN32API.INC": {
+  "desc": "Retrieves a pointer to the discretionary access control list (DACL) in a security descriptor and whether it is present/defaulted.",
+  "doc": "GetSecurityDescriptorDacl"
+ },
+ "SetSecurityDescriptorSacl@WIN32API.INC": {
+  "desc": "Sets information in a system access control list (SACL) of a security descriptor.",
+  "doc": "SetSecurityDescriptorSacl"
+ },
+ "GetSecurityDescriptorSacl@WIN32API.INC": {
+  "desc": "Retrieves a pointer to the system access control list (SACL) in a security descriptor.",
+  "doc": "GetSecurityDescriptorSacl"
+ },
+ "SetSecurityDescriptorOwner@WIN32API.INC": {
+  "desc": "Sets the owner information of an absolute-format security descriptor.",
+  "doc": "SetSecurityDescriptorOwner"
+ },
+ "GetSecurityDescriptorOwner@WIN32API.INC": {
+  "desc": "Retrieves the owner SID from a security descriptor.",
+  "doc": "GetSecurityDescriptorOwner"
+ },
+ "SetSecurityDescriptorGroup@WIN32API.INC": {
+  "desc": "Sets the primary group information of an absolute-format security descriptor.",
+  "doc": "SetSecurityDescriptorGroup"
+ },
+ "GetSecurityDescriptorGroup@WIN32API.INC": {
+  "desc": "Retrieves the primary group SID from a security descriptor.",
+  "doc": "GetSecurityDescriptorGroup"
+ },
+ "CreatePrivateObjectSecurity@WIN32API.INC": {
+  "desc": "Allocates and initializes a self-relative security descriptor for a new private object created by a resource manager.",
+  "doc": "CreatePrivateObjectSecurity"
+ },
+ "SetPrivateObjectSecurity@WIN32API.INC": {
+  "desc": "Modifies the security descriptor of a private object maintained by a resource manager.",
+  "doc": "SetPrivateObjectSecurity"
+ },
+ "GetPrivateObjectSecurity@WIN32API.INC": {
+  "desc": "Retrieves information from the security descriptor of a private object.",
+  "doc": "GetPrivateObjectSecurity"
+ },
+ "DestroyPrivateObjectSecurity@WIN32API.INC": {
+  "desc": "Deletes the security descriptor of a private object created by CreatePrivateObjectSecurity.",
+  "doc": "DestroyPrivateObjectSecurity"
+ },
+ "MakeSelfRelativeSD@WIN32API.INC": {
+  "desc": "Creates a self-relative security descriptor from one in absolute format.",
+  "doc": "MakeSelfRelativeSD"
+ },
+ "MakeAbsoluteSD@WIN32API.INC": {
+  "desc": "Creates an absolute-format security descriptor from one in self-relative format.",
+  "doc": "MakeAbsoluteSD"
+ },
+ "SetFileSecurity@WIN32API.INC": {
+  "desc": "Sets the security of a file or directory object. Returns nonzero on success. Superseded by SetNamedSecurityInfo.",
+  "doc": "SetFileSecurityA"
+ },
+ "GetFileSecurity@WIN32API.INC": {
+  "desc": "Obtains specified information about the security of a file or directory into a security descriptor buffer.",
+  "doc": "GetFileSecurityA"
+ },
+ "SetKernelObjectSecurity@WIN32API.INC": {
+  "desc": "Sets the security of a kernel object, such as a process, thread or event, given its handle.",
+  "doc": "SetKernelObjectSecurity"
+ },
+ "FindFirstChangeNotification@WIN32API.INC": {
+  "desc": "Creates a change notification handle that is signaled when a specified change occurs in a directory (optionally its subtree).",
+  "doc": "FindFirstChangeNotificationA"
+ },
+ "FindNextChangeNotification@WIN32API.INC": {
+  "desc": "Requests that the system signal a change notification handle the next time it detects an appropriate change.",
+  "doc": "FindNextChangeNotification"
+ },
+ "FindCloseChangeNotification@WIN32API.INC": {
+  "desc": "Stops change notification handle monitoring and closes the handle.",
+  "doc": "FindCloseChangeNotification"
+ },
+ "VirtualLock@WIN32API.INC": {
+  "desc": "Locks the specified region of the process's virtual address space into physical memory so it is not paged out.",
+  "doc": "VirtualLock"
+ },
+ "VirtualUnlock@WIN32API.INC": {
+  "desc": "Unlocks a range of pages in the virtual address space of a process so the system can page them out.",
+  "doc": "VirtualUnlock"
+ },
+ "MapViewOfFileEx@WIN32API.INC": {
+  "desc": "Maps a view of a file mapping into the address space of the calling process, optionally at a suggested base address. Returns the starting address.",
+  "doc": "MapViewOfFileEx"
+ },
+ "FatalExit@WIN32API.INC": {
+  "desc": "Transfers execution control to the debugger; intended for debugging only. The process terminates if no debugger is present.",
+  "doc": "FatalExit"
+ },
+ "RaiseException@WIN32API.INC": {
+  "desc": "Raises an exception in the calling thread with the specified code, flags and arguments.",
+  "doc": "RaiseException"
+ },
+ "UnhandledExceptionFilter@WIN32API.INC": {
+  "desc": "Passes unhandled exceptions to the debugger if the process is being debugged; otherwise may show an Application Error dialog.",
+  "doc": "UnhandledExceptionFilter"
+ },
+ "CreateThread@WIN32API.INC": {
+  "desc": "Creates a thread to execute within the virtual address space of the calling process. Returns a thread handle, or NULL on failure.",
+  "doc": "CreateThread"
+ },
+ "CreateRemoteThread@WIN32API.INC": {
+  "desc": "Creates a thread that runs in the virtual address space of another process. Returns a thread handle, or NULL on failure.",
+  "doc": "CreateRemoteThread"
+ },
+ "SetThreadPriority@WIN32API.INC": {
+  "desc": "Sets the priority value for the specified thread relative to its process priority class. Returns nonzero on success.",
+  "doc": "SetThreadPriority"
+ },
+ "GetThreadPriority@WIN32API.INC": {
+  "desc": "Retrieves the priority value for the specified thread, or THREAD_PRIORITY_ERROR_RETURN on failure.",
+  "doc": "GetThreadPriority"
+ },
+ "GetThreadTimes@WIN32API.INC": {
+  "desc": "Retrieves creation, exit, kernel and user time information for the specified thread as FILETIME values.",
+  "doc": "GetThreadTimes"
+ },
+ "ExitThread@WIN32API.INC": {
+  "desc": "Ends the calling thread with the specified exit code.",
+  "doc": "ExitThread"
+ },
+ "TerminateThread@WIN32API.INC": {
+  "desc": "Forcibly terminates a thread. Dangerous: the thread gets no chance to clean up; use only in extreme cases.",
+  "doc": "TerminateThread"
+ },
+ "GetExitCodeThread@WIN32API.INC": {
+  "desc": "Retrieves the termination status of the specified thread; STILL_ACTIVE (259) if it is still running.",
+  "doc": "GetExitCodeThread"
+ },
+ "GetThreadSelectorEntry@WIN32API.INC": {
+  "desc": "Retrieves a descriptor table entry for the specified selector and thread (x86 only, used by debuggers).",
+  "doc": "GetThreadSelectorEntry"
+ },
+ "GetCommTimeouts@WIN32API.INC": {
+  "desc": "Retrieves the time-out parameters for all read and write operations on a communications device into a COMMTIMEOUTS structure.",
+  "doc": "GetCommTimeouts"
+ },
+ "BuildCommDCB@WIN32API.INC": {
+  "desc": "Fills a DCB structure with values from a device-control string such as \"baud=9600 parity=N data=8 stop=1\".",
+  "doc": "BuildCommDCBA"
+ },
+ "BuildCommDCBAndTimeouts@WIN32API.INC": {
+  "desc": "Translates a device-definition string into DCB codes and optionally sets COMMTIMEOUTS values.",
+  "doc": "BuildCommDCBAndTimeoutsA"
+ },
+ "TransmitCommChar@WIN32API.INC": {
+  "desc": "Transmits a specified character ahead of any pending data in the output buffer of a communications device.",
+  "doc": "TransmitCommChar"
+ },
+ "SetCommBreak@WIN32API.INC": {
+  "desc": "Suspends character transmission and places the communications line in a break state until ClearCommBreak is called.",
+  "doc": "SetCommBreak"
+ },
+ "SetCommMask@WIN32API.INC": {
+  "desc": "Specifies the set of events (EV_RXCHAR, EV_CTS, etc.) to be monitored for a communications device.",
+  "doc": "SetCommMask"
+ },
+ "ClearCommBreak@WIN32API.INC": {
+  "desc": "Restores character transmission on a communications device and places the line in a nonbreak state.",
+  "doc": "ClearCommBreak"
+ },
+ "EscapeCommFunction@WIN32API.INC": {
+  "desc": "Directs a communications device to perform an extended function, such as setting or clearing DTR or RTS.",
+  "doc": "EscapeCommFunction"
+ },
+ "GetCommMask@WIN32API.INC": {
+  "desc": "Retrieves the value of the event mask for a communications device.",
+  "doc": "GetCommMask"
+ },
+ "GetCommProperties@WIN32API.INC": {
+  "desc": "Retrieves information about the properties of a communications device into a COMMPROP structure.",
+  "doc": "GetCommProperties"
+ },
+ "GetCommModemStatus@WIN32API.INC": {
+  "desc": "Retrieves the modem control-register values (CTS, DSR, RING, RLSD) of a communications device.",
+  "doc": "GetCommModemStatus"
+ },
+ "WaitCommEvent@WIN32API.INC": {
+  "desc": "Waits for an event to occur for a communications device; the events are set with SetCommMask.",
+  "doc": "WaitCommEvent"
+ },
+ "SetTapePosition@WIN32API.INC": {
+  "desc": "Sets the tape position on the specified tape device.",
+  "doc": "SetTapePosition"
+ },
+ "GetTapePosition@WIN32API.INC": {
+  "desc": "Retrieves the current address of the tape, in logical or absolute blocks.",
+  "doc": "GetTapePosition"
+ },
+ "PrepareTape@WIN32API.INC": {
+  "desc": "Prepares the tape to be accessed or removed (load, unload, lock, tension, etc.).",
+  "doc": "PrepareTape"
+ },
+ "EraseTape@WIN32API.INC": {
+  "desc": "Erases all or part of a tape.",
+  "doc": "EraseTape"
+ },
+ "CreateTapePartition@WIN32API.INC": {
+  "desc": "Reformats a tape and creates partitions on it.",
+  "doc": "CreateTapePartition"
+ },
+ "WriteTapemark@WIN32API.INC": {
+  "desc": "Writes a specified number of filemarks, setmarks or other tapemarks to a tape device.",
+  "doc": "WriteTapemark"
+ },
+ "GetTapeStatus@WIN32API.INC": {
+  "desc": "Determines whether the tape device is ready to process tape commands; returns NO_ERROR if ready.",
+  "doc": "GetTapeStatus"
+ },
+ "GetTapeParameters@WIN32API.INC": {
+  "desc": "Retrieves information that describes the tape or the tape drive.",
+  "doc": "GetTapeParameters"
+ },
+ "SetTapeParameters@WIN32API.INC": {
+  "desc": "Specifies the block size of a tape or configuration information for a tape drive.",
+  "doc": "SetTapeParameters"
+ },
+ "Beep@WIN32API.INC": {
+  "desc": "Generates simple tones on the speaker with the specified frequency (Hz) and duration (ms). Synchronous; returns nonzero on success.",
+  "doc": "Beep"
+ },
+ "MulDiv@WIN32API.INC": {
+  "desc": "Multiplies two 32-bit values and divides the 64-bit result by a third value, returning the rounded result, or -1 on overflow or division by zero.",
+  "doc": "MulDiv"
+ },
+ "GetSystemTime@WIN32API.INC": {
+  "desc": "Retrieves the current system date and time in UTC into a SYSTEMTIME structure.",
+  "doc": "GetSystemTime"
+ },
+ "SetSystemTime@WIN32API.INC": {
+  "desc": "Sets the current system date and time in UTC; requires the SE_SYSTEMTIME_NAME privilege.",
+  "doc": "SetSystemTime"
+ },
+ "GetLocalTime@WIN32API.INC": {
+  "desc": "Retrieves the current local date and time into a SYSTEMTIME structure.",
+  "doc": "GetLocalTime"
+ },
+ "SetLocalTime@WIN32API.INC": {
+  "desc": "Sets the current local date and time; requires the SE_SYSTEMTIME_NAME privilege.",
+  "doc": "SetLocalTime"
+ },
+ "GetSystemInfo@WIN32API.INC": {
+  "desc": "Retrieves information about the current system (processor architecture, page size, number of processors) into a SYSTEM_INFO structure.",
+  "doc": "GetSystemInfo"
+ },
+ "GetTimeZoneInformation@WIN32API.INC": {
+  "desc": "Retrieves the current time zone settings; returns TIME_ZONE_ID_STANDARD, TIME_ZONE_ID_DAYLIGHT or TIME_ZONE_ID_UNKNOWN.",
+  "doc": "GetTimeZoneInformation"
+ },
+ "SetTimeZoneInformation@WIN32API.INC": {
+  "desc": "Sets the current time zone settings for the local computer; requires the SE_TIME_ZONE_NAME privilege.",
+  "doc": "SetTimeZoneInformation"
+ },
+ "SystemTimeToFileTime@WIN32API.INC": {
+  "desc": "Converts a SYSTEMTIME structure to file time format (100-ns intervals since 1601).",
+  "doc": "SystemTimeToFileTime"
+ },
+ "FileTimeToLocalFileTime@WIN32API.INC": {
+  "desc": "Converts a UTC file time to a local file time.",
+  "doc": "FileTimeToLocalFileTime"
+ },
+ "LocalFileTimeToFileTime@WIN32API.INC": {
+  "desc": "Converts a local file time to a UTC file time.",
+  "doc": "LocalFileTimeToFileTime"
+ },
+ "FileTimeToSystemTime@WIN32API.INC": {
+  "desc": "Converts a file time to SYSTEMTIME format.",
+  "doc": "FileTimeToSystemTime"
+ },
+ "CompareFileTime@WIN32API.INC": {
+  "desc": "Compares two file times; returns -1, 0 or 1 if the first is earlier, equal or later.",
+  "doc": "CompareFileTime"
+ },
+ "FileTimeToDosDateTime@WIN32API.INC": {
+  "desc": "Converts a file time to MS-DOS date and time values.",
+  "doc": "FileTimeToDosDateTime"
+ },
+ "DosDateTimeToFileTime@WIN32API.INC": {
+  "desc": "Converts MS-DOS date and time values to a file time.",
+  "doc": "DosDateTimeToFileTime"
+ },
+ "FormatMessage_WIN32API@WIN32API.INC": {
+  "desc": "Formats a message string from a message table, system error code or format string. Returns the number of characters stored, or 0 on failure.",
+  "doc": "FormatMessageA"
+ },
+ "CreatePipe@WIN32API.INC": {
+  "desc": "Creates an anonymous pipe and returns handles to its read and write ends. Returns nonzero on success.",
+  "doc": "CreatePipe"
+ },
+ "ConnectNamedPipe@WIN32API.INC": {
+  "desc": "Enables a named pipe server process to wait for a client process to connect to an instance of a named pipe.",
+  "doc": "ConnectNamedPipe"
+ },
+ "DisconnectNamedPipe@WIN32API.INC": {
+  "desc": "Disconnects the server end of a named pipe instance from a client process.",
+  "doc": "DisconnectNamedPipe"
+ },
+ "SetNamedPipeHandleState@WIN32API.INC": {
+  "desc": "Sets the read mode and blocking mode of the specified named pipe, and collection parameters for remote clients.",
+  "doc": "SetNamedPipeHandleState"
+ },
+ "GetNamedPipeInfo@WIN32API.INC": {
+  "desc": "Retrieves information about the specified named pipe (type, buffer sizes, maximum instances).",
+  "doc": "GetNamedPipeInfo"
+ },
+ "PeekNamedPipe@WIN32API.INC": {
+  "desc": "Copies data from a named or anonymous pipe into a buffer without removing it, and reports bytes available.",
+  "doc": "PeekNamedPipe"
+ },
+ "TransactNamedPipe@WIN32API.INC": {
+  "desc": "Combines writing a message to and reading a message from a named pipe into a single operation.",
+  "doc": "TransactNamedPipe"
+ },
+ "CreateMailslot@WIN32API.INC": {
+  "desc": "Creates a mailslot with the specified name and returns a handle a mailslot server can use. Returns INVALID_HANDLE_VALUE on failure.",
+  "doc": "CreateMailslotA"
+ },
+ "GetMailslotInfo@WIN32API.INC": {
+  "desc": "Retrieves information about the specified mailslot, such as next message size and message count.",
+  "doc": "GetMailslotInfo"
+ },
+ "SetMailslotInfo@WIN32API.INC": {
+  "desc": "Sets the time-out value used by the specified mailslot for a read operation.",
+  "doc": "SetMailslotInfo"
+ },
+ "MapViewOfFile@WIN32API.INC": {
+  "desc": "Maps a view of a file mapping into the address space of the calling process. Returns the starting address, or NULL on failure.",
+  "doc": "MapViewOfFile"
+ },
+ "FlushViewOfFile@WIN32API.INC": {
+  "desc": "Writes to disk a byte range within a mapped view of a file.",
+  "doc": "FlushViewOfFile"
+ },
+ "UnmapViewOfFile@WIN32API.INC": {
+  "desc": "Unmaps a mapped view of a file from the calling process's address space.",
+  "doc": "UnmapViewOfFile"
+ },
+ "lstrcmp@WIN32API.INC": {
+  "desc": "Compares two character strings, case-sensitive, using the user locale. Returns negative, zero or positive.",
+  "doc": "lstrcmpA"
+ },
+ "lstrcmpi@WIN32API.INC": {
+  "desc": "Compares two character strings, case-insensitive, using the user locale. Returns negative, zero or positive.",
+  "doc": "lstrcmpiA"
+ },
+ "lstrlen@WIN32API.INC": {
+  "desc": "Determines the length of the specified string, not including the terminating null character.",
+  "doc": "lstrlenA"
+ },
+ "lopen@WIN32API.INC": {
+  "desc": "Opens an existing file and returns a file handle. Obsolete, for 16-bit compatibility; use CreateFile instead.",
+  "doc": "_lopen"
+ },
+ "lclose@WIN32API.INC": {
+  "desc": "Closes the specified file. Obsolete, for 16-bit compatibility; use CloseHandle instead.",
+  "doc": "_lclose"
+ },
+ "lcreat@WIN32API.INC": {
+  "desc": "Creates or opens the specified file. Obsolete, for 16-bit compatibility; use CreateFile instead.",
+  "doc": "_lcreat"
+ },
+ "llseek@WIN32API.INC": {
+  "desc": "Repositions the file pointer of an open file. Obsolete, for 16-bit compatibility; use SetFilePointer instead.",
+  "doc": "_llseek"
+ },
+ "lread@WIN32API.INC": {
+  "desc": "Reads data from the specified file. Obsolete, for 16-bit compatibility; use ReadFile instead.",
+  "doc": "_lread"
+ },
+ "lwrite@WIN32API.INC": {
+  "desc": "Writes data to the specified file. Obsolete, for 16-bit compatibility; use WriteFile instead.",
+  "doc": "_lwrite"
+ },
+ "hread@WIN32API.INC": {
+  "desc": "Reads data from the specified file. Obsolete, for 16-bit compatibility; use ReadFile instead.",
+  "doc": "_hread"
+ },
+ "hwrite@WIN32API.INC": {
+  "desc": "Writes data to the specified file. Obsolete, for 16-bit compatibility; use WriteFile instead.",
+  "doc": "_hwrite"
+ },
+ "TlsAlloc@WIN32API.INC": {
+  "desc": "Allocates a thread local storage (TLS) index. Returns the index, or TLS_OUT_OF_INDEXES on failure.",
+  "doc": "TlsAlloc"
+ },
+ "TlsGetValue@WIN32API.INC": {
+  "desc": "Retrieves the value in the calling thread's thread local storage slot for the specified TLS index.",
+  "doc": "TlsGetValue"
+ },
+ "TlsSetValue@WIN32API.INC": {
+  "desc": "Stores a value in the calling thread's thread local storage slot for the specified TLS index.",
+  "doc": "TlsSetValue"
+ },
+ "TlsFree@WIN32API.INC": {
+  "desc": "Releases a thread local storage (TLS) index, making it available for reuse.",
+  "doc": "TlsFree"
+ },
+ "SleepEx@WIN32API.INC": {
+  "desc": "Suspends the current thread for the given milliseconds, or until an I/O completion callback or APC runs if alertable is TRUE.",
+  "doc": "SleepEx"
+ },
+ "WaitForSingleObjectEx@WIN32API.INC": {
+  "desc": "Waits until the object is signaled, an I/O completion routine or APC is queued (if alertable), or the time-out elapses.",
+  "doc": "WaitForSingleObjectEx"
+ },
+ "WaitForMultipleObjectsEx@WIN32API.INC": {
+  "desc": "Waits until one or all of the objects are signaled, an APC or I/O completion routine runs (if alertable), or the time-out elapses.",
+  "doc": "WaitForMultipleObjectsEx"
+ },
+ "BackupRead@WIN32API.INC": {
+  "desc": "Backs up a file or directory, including its security information, by reading data in a stream format.",
+  "doc": "BackupRead"
+ },
+ "BackupSeek@WIN32API.INC": {
+  "desc": "Seeks forward in a data stream initially accessed with BackupRead or BackupWrite.",
+  "doc": "BackupSeek"
+ },
+ "BackupWrite@WIN32API.INC": {
+  "desc": "Restores a file or directory that was backed up using BackupRead.",
+  "doc": "BackupWrite"
+ },
+ "CreateMutex@WIN32API.INC": {
+  "desc": "Creates or opens a named or unnamed mutex object. Returns a handle, or NULL on failure; ERROR_ALREADY_EXISTS if the name existed.",
+  "doc": "CreateMutexA"
+ },
+ "OpenMutex@WIN32API.INC": {
+  "desc": "Opens an existing named mutex object. Returns a handle, or NULL on failure.",
+  "doc": "OpenMutexA"
+ },
+ "CreateEvent@WIN32API.INC": {
+  "desc": "Creates or opens a named or unnamed event object (manual- or auto-reset, initial state). Returns a handle, or NULL on failure.",
+  "doc": "CreateEventA"
+ },
+ "OpenEvent@WIN32API.INC": {
+  "desc": "Opens an existing named event object. Returns a handle, or NULL on failure.",
+  "doc": "OpenEventA"
+ },
+ "CreateSemaphore@WIN32API.INC": {
+  "desc": "Creates or opens a named or unnamed semaphore object with initial and maximum counts. Returns a handle, or NULL on failure.",
+  "doc": "CreateSemaphoreA"
+ },
+ "OpenSemaphore@WIN32API.INC": {
+  "desc": "Opens an existing named semaphore object. Returns a handle, or NULL on failure.",
+  "doc": "OpenSemaphoreA"
+ },
+ "CreateFileMapping@WIN32API.INC": {
+  "desc": "Creates or opens a named or unnamed file mapping object for a file or the paging file. Returns a handle, or NULL on failure.",
+  "doc": "CreateFileMappingA"
+ },
+ "OpenFileMapping@WIN32API.INC": {
+  "desc": "Opens a named file mapping object. Returns a handle, or NULL on failure.",
+  "doc": "OpenFileMappingA"
+ },
+ "GetLogicalDriveStrings@WIN32API.INC": {
+  "desc": "Fills a buffer with null-separated strings naming the valid drives (e.g. C:\\). Returns the length of the string copied.",
+  "doc": "GetLogicalDriveStringsA"
+ },
+ "IsBadReadPtr@WIN32API.INC": {
+  "desc": "Verifies that the calling process has read access to a memory range. Obsolete and should not be used.",
+  "doc": "IsBadReadPtr"
+ },
+ "IsBadWritePtr@WIN32API.INC": {
+  "desc": "Verifies that the calling process has write access to a memory range. Obsolete and should not be used.",
+  "doc": "IsBadWritePtr"
+ },
+ "IsBadStringPtr@WIN32API.INC": {
+  "desc": "Verifies that the calling process has read access to a string, up to a maximum length. Obsolete and should not be used.",
+  "doc": "IsBadStringPtrA"
+ },
+ "IsBadHugeReadPtr@WIN32API.INC": {
+  "desc": "Verifies read access to a memory range. Obsolete, for 16-bit compatibility; same as IsBadReadPtr in Win32 and should not be used.",
+  "doc": "IsBadHugeReadPtr"
+ },
+ "IsBadHugeWritePtr@WIN32API.INC": {
+  "desc": "Verifies write access to a memory range. Obsolete, for 16-bit compatibility; same as IsBadWritePtr in Win32 and should not be used.",
+  "doc": "IsBadHugeWritePtr"
+ },
+ "LookupAccountSid@WIN32API.INC": {
+  "desc": "Retrieves the account name and domain name for a SID, plus the SID type.",
+  "doc": "LookupAccountSidA"
+ },
+ "LookupAccountName@WIN32API.INC": {
+  "desc": "Retrieves the SID and domain name for a specified account name on a system.",
+  "doc": "LookupAccountNameA"
+ },
+ "LookupPrivilegeValue_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves the locally unique identifier (LUID) that represents a privilege name (e.g. SeShutdownPrivilege) on a system.",
+  "doc": "LookupPrivilegeValueA"
+ },
+ "LookupPrivilegeName@WIN32API.INC": {
+  "desc": "Retrieves the privilege name corresponding to a locally unique identifier (LUID).",
+  "doc": "LookupPrivilegeNameA"
+ },
+ "LookupPrivilegeDisplayName@WIN32API.INC": {
+  "desc": "Retrieves the human-readable display name for a specified privilege.",
+  "doc": "LookupPrivilegeDisplayNameA"
+ },
+ "AllocateLocallyUniqueId@WIN32API.INC": {
+  "desc": "Allocates a locally unique identifier (LUID), unique until the system restarts.",
+  "doc": "AllocateLocallyUniqueId"
+ },
+ "GetComputerName_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves the NetBIOS name of the local computer into a buffer; the size parameter receives the length.",
+  "doc": "GetComputerNameA"
+ },
+ "SetComputerName@WIN32API.INC": {
+  "desc": "Sets a new NetBIOS name for the local computer; takes effect after restart.",
+  "doc": "SetComputerNameA"
+ },
+ "GetUserName_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves the name of the user associated with the current thread into a buffer.",
+  "doc": "GetUserNameA"
+ },
+ "QueryPerformanceCounter_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves the current value of the high-resolution performance counter as a 64-bit count.",
+  "doc": "QueryPerformanceCounter"
+ },
+ "QueryPerformanceFrequency_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves the frequency of the performance counter in counts per second (fixed at boot).",
+  "doc": "QueryPerformanceFrequency"
+ },
+ "IsValidCodePage@WIN32API.INC": {
+  "desc": "Determines whether a specified code page is valid (installed). Returns nonzero if valid.",
+  "doc": "IsValidCodePage"
+ },
+ "GetACP@WIN32API.INC": {
+  "desc": "Retrieves the current Windows ANSI code page identifier for the operating system.",
+  "doc": "GetACP"
+ },
+ "GetCPInfo@WIN32API.INC": {
+  "desc": "Retrieves information about an installed or available code page (max char size, default char, lead bytes).",
+  "doc": "GetCPInfo"
+ },
+ "IsDBCSLeadByte@WIN32API.INC": {
+  "desc": "Determines whether a byte is a lead byte of a double-byte character in the system default ANSI code page.",
+  "doc": "IsDBCSLeadByte"
+ },
+ "CompareString@WIN32API.INC": {
+  "desc": "Compares two strings for a locale using flags such as case-insensitive. Returns CSTR_LESS_THAN, CSTR_EQUAL, CSTR_GREATER_THAN, or 0 on error.",
+  "doc": "CompareStringA"
+ },
+ "LCMapString@WIN32API.INC": {
+  "desc": "Maps one string to another for a locale, e.g. upper/lower case conversion or generating a sort key.",
+  "doc": "LCMapStringA"
+ },
+ "GetTimeFormat@WIN32API.INC": {
+  "desc": "Formats a time as a time string for a specified locale. Returns the number of characters written, or 0 on failure.",
+  "doc": "GetTimeFormatA"
+ },
+ "SetThreadLocale@WIN32API.INC": {
+  "desc": "Sets the current locale of the calling thread.",
+  "doc": "SetThreadLocale"
+ },
+ "GetStringTypeA@WIN32API.INC": {
+  "desc": "Retrieves character type information (e.g. upper, digit, space) for each character in a string for a specified locale. Deprecated.",
+  "doc": "GetStringTypeA"
+ },
+ "FoldString@WIN32API.INC": {
+  "desc": "Maps one string to another, performing a transformation such as converting full-width or precomposed characters.",
+  "doc": "FoldStringA"
+ },
+ "EnumTimeFormats@WIN32API.INC": {
+  "desc": "Enumerates the time formats available for a specified locale via a callback function.",
+  "doc": "EnumTimeFormats"
+ },
+ "EnumDateFormats@WIN32API.INC": {
+  "desc": "Enumerates the long or short date formats available for a specified locale via a callback function.",
+  "doc": "EnumDateFormats"
+ },
+ "IsValidLocale@WIN32API.INC": {
+  "desc": "Determines whether a locale identifier is installed or supported. Returns nonzero if valid.",
+  "doc": "IsValidLocale"
+ },
+ "ConvertDefaultLocale@WIN32API.INC": {
+  "desc": "Converts a default locale value (such as LOCALE_USER_DEFAULT) to an actual locale identifier.",
+  "doc": "ConvertDefaultLocale"
+ },
+ "EnumSystemLocales@WIN32API.INC": {
+  "desc": "Enumerates the locales installed or supported by the operating system via a callback function.",
+  "doc": "EnumSystemLocales"
+ },
+ "EnumSystemCodePages@WIN32API.INC": {
+  "desc": "Enumerates the code pages installed or supported by the operating system via a callback function.",
+  "doc": "EnumSystemCodePages"
+ },
+ "ReadConsoleOutput@WIN32API.INC": {
+  "desc": "Reads character and color attribute data from a rectangular block of cells in a console screen buffer.",
+  "doc": "ReadConsoleOutputA"
+ },
+ "WriteConsoleOutput@WIN32API.INC": {
+  "desc": "Writes character and color attribute data to a rectangular block of cells in a console screen buffer.",
+  "doc": "WriteConsoleOutputA"
+ },
+ "ReadConsoleOutputCharacter@WIN32API.INC": {
+  "desc": "Copies characters from consecutive cells of a console screen buffer, starting at a specified location.",
+  "doc": "ReadConsoleOutputCharacterA"
+ },
+ "ReadConsoleOutputAttribute@WIN32API.INC": {
+  "desc": "Copies character attributes from consecutive cells of a console screen buffer, starting at a specified location.",
+  "doc": "ReadConsoleOutputAttribute"
+ },
+ "WriteConsoleOutputCharacter@WIN32API.INC": {
+  "desc": "Copies characters to consecutive cells of a console screen buffer, starting at a specified location.",
+  "doc": "WriteConsoleOutputCharacterA"
+ },
+ "WriteConsoleOutputAttribute@WIN32API.INC": {
+  "desc": "Copies character attributes to consecutive cells of a console screen buffer, starting at a specified location.",
+  "doc": "WriteConsoleOutputAttribute"
+ },
+ "FillConsoleOutputCharacter@WIN32API.INC": {
+  "desc": "Writes a character to the console screen buffer a specified number of times, starting at given coordinates.",
+  "doc": "FillConsoleOutputCharacterA"
+ },
+ "FillConsoleOutputAttribute@WIN32API.INC": {
+  "desc": "Sets character attributes for a number of consecutive cells of a console screen buffer, starting at given coordinates.",
+  "doc": "FillConsoleOutputAttribute"
+ },
+ "GetConsoleMode@WIN32API.INC": {
+  "desc": "Retrieves the current input mode of a console input buffer or the output mode of a console screen buffer.",
+  "doc": "GetConsoleMode"
+ }
+}

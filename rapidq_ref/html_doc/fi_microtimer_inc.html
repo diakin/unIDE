@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>microTIMER.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: microTIMER.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>microTIMER.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/microTIMER.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 4 functions &middot; 2 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#MICROTIMER">microTIMER</a> &middot; <a href="#MICROTIMER_DWTODBL">MicroTimer_dwToDbl</a> &middot; <a href="#QUERYPERFORMANCECOUNTER">QueryPerformanceCounter</a> &middot; <a href="#QUERYPERFORMANCEFREQUENCY">QueryPerformanceFrequency</a></p>
+<h3><a name="MICROTIMER"></a>microTIMER</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13948</p>
+<pre>FUNCTION microTIMER() AS DOUBLE</pre>
+<p>Returns a high-resolution relative time in seconds as Double, using QueryPerformanceCounter divided by QueryPerformanceFrequency (read once on first call). Returns 0.0 if the counter frequency does not fit in 32 bits.</p>
+<h3><a name="MICROTIMER_DWTODBL"></a>MicroTimer_dwToDbl</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13945</p>
+<pre>FuncTion MicroTimer_dwToDbl (iDw As Long) As Double</pre>
+<p>Converts a 32-bit value held in a signed Long to an unsigned value as Double (adds 2^31 when the sign bit is set). Helper for microTIMER.</p>
+<h3><a name="QUERYPERFORMANCECOUNTER"></a>QueryPerformanceCounter</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 13938</p>
+<pre>Declare Function QueryPerformanceCounter Lib &quot;kernel32&quot; Alias &quot;QueryPerformanceCounter&quot; (lpPerformanceCount As long) As Long</pre>
+<p>Retrieves the current value of the high-resolution performance counter (64-bit). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=QueryPerformanceCounter">QueryPerformanceCounter</a></p>
+<h3><a name="QUERYPERFORMANCEFREQUENCY"></a>QueryPerformanceFrequency</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 13940</p>
+<pre>Declare Function QueryPerformanceFrequency Lib &quot;kernel32&quot; Alias &quot;QueryPerformanceFrequency&quot; (lpFrequency As Long) As Long</pre>
+<p>Retrieves the frequency of the performance counter in counts per second (64-bit). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=QueryPerformanceFrequency">QueryPerformanceFrequency</a></p>
+</body>
+</html>

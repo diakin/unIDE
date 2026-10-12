@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Math.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: Math.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>Math.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/Math.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 52 functions</p>
+<p><a href="#ACOSEC">ACOSEC</a> &middot; <a href="#ACOSECH">ACOSECH</a> &middot; <a href="#ACOSH">ACOSH</a> &middot; <a href="#ACOT">ACOT</a> &middot; <a href="#ACOTH">ACOTH</a> &middot; <a href="#ADDZ">ADDZ</a> &middot; <a href="#ASEC">ASEC</a> &middot; <a href="#ASECH">ASECH</a> &middot; <a href="#ASINH">ASINH</a> &middot; <a href="#ATANH">ATANH</a> &middot; <a href="#CONJZ">CONJZ</a> &middot; <a href="#COSEC">COSEC</a> &middot; <a href="#COSECH">COSECH</a> &middot; <a href="#COSH">COSH</a> &middot; <a href="#COSHZ">COSHZ</a> &middot; <a href="#COSZ">COSZ</a> &middot; <a href="#COT">COT</a> &middot; <a href="#COTH">COTH</a> &middot; <a href="#DEG2RAD">DEG2RAD</a> &middot; <a href="#DIVZ">DIVZ</a> &middot; <a href="#EVEN">EVEN</a> &middot; <a href="#EXPZ">EXPZ</a> &middot; <a href="#FAC">FAC</a> &middot; <a href="#FINDMAX_MATH">FindMax_math</a> &middot; <a href="#FINDMIN_MATH">FindMin_math</a> &middot; <a href="#GCD">GCD</a> &middot; <a href="#INVZ">INVZ</a> &middot; <a href="#LOG10">LOG10</a> &middot; <a href="#LOG10Z">LOG10Z</a> &middot; <a href="#LOGAZ">LOGAZ</a> &middot; <a href="#LOGZ">LOGZ</a> &middot; <a href="#MAGZ">MAGZ</a> &middot; <a href="#MAXINTVALUE">MaxIntValue</a> &middot; <a href="#MAXVALUE">MaxValue</a> &middot; <a href="#MININTVALUE">MinIntValue</a> &middot; <a href="#MINVALUE">MinValue</a> &middot; <a href="#MULZ">MULZ</a> &middot; <a href="#NORZ">NORZ</a> &middot; <a href="#ODD_MATH">ODD_math</a> &middot; <a href="#POLZ">POLZ</a> &middot; <a href="#POWER">Power</a> &middot; <a href="#POWZ">POWZ</a> &middot; <a href="#RAD2DEG">RAD2DEG</a> &middot; <a href="#SEC">SEC</a> &middot; <a href="#SECH">SECH</a> &middot; <a href="#SINH">SINH</a> &middot; <a href="#SINHZ">SINHZ</a> &middot; <a href="#SINZ">SINZ</a> &middot; <a href="#SQRZ">SQRZ</a> &middot; <a href="#SUBZ">SUBZ</a> &middot; <a href="#TANH">TANH</a> &middot; <a href="#TANZ">TANZ</a></p>
+<h3><a name="ACOSEC"></a>ACOSEC</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13321</p>
+<pre>Function ACOSEC(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the arccosecant of value (ASIN(1/value)). Shows an error MessageBox if ABS(value) is less than 1.</p>
+<h3><a name="ACOSECH"></a>ACOSECH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13326</p>
+<pre>Function ACOSECH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the inverse hyperbolic cosecant of value (ASINH(1/value)). Shows an error MessageBox if value is 0.</p>
+<h3><a name="ACOSH"></a>ACOSH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13306</p>
+<pre>Function ACOSH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the inverse hyperbolic cosine of value. Shows an error MessageBox if value is less than 1.</p>
+<h3><a name="ACOT"></a>ACOT</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13311</p>
+<pre>Function ACOT(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the arccotangent of value (pi/2 - ATAN(value)), using the constant rqPI.</p>
+<h3><a name="ACOTH"></a>ACOTH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13316</p>
+<pre>Function ACOTH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the inverse hyperbolic cotangent of value. Shows an error MessageBox if ABS(value) is not greater than 1.</p>
+<h3><a name="ADDZ"></a>ADDZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13331</p>
+<pre>Function ADDZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Complex addition: takes Z(0)+iZ(1) and Z(2)+iZ(3), writes the sum into Z(0), Z(1), clears Z(2), Z(3) and returns the array. The input array is modified.</p>
+<h3><a name="ASEC"></a>ASEC</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13341</p>
+<pre>Function ASEC(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the arcsecant of value (pi/2 - ASIN(1/value)). Shows an error MessageBox if ABS(value) is less than 1.</p>
+<h3><a name="ASECH"></a>ASECH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13346</p>
+<pre>Function ASECH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the inverse hyperbolic secant of value (ACOSH(1/value)). Shows an error MessageBox if value is not in the range 0 &lt; x &lt;= 1.</p>
+<h3><a name="ASINH"></a>ASINH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13336</p>
+<pre>Function ASINH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the inverse hyperbolic sine of value.</p>
+<h3><a name="ATANH"></a>ATANH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13351</p>
+<pre>Function ATANH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the inverse hyperbolic tangent of value. Shows an error MessageBox if ABS(value) is 1 or more.</p>
+<h3><a name="CONJZ"></a>CONJZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13356</p>
+<pre>Function CONJZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Complex conjugate: negates the imaginary part Z(1) of the complex number Z(0)+iZ(1) and returns the array. The input array is modified.</p>
+<h3><a name="COSEC"></a>COSEC</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13361</p>
+<pre>Function COSEC(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the cosecant of value (1/SIN(value)).</p>
+<h3><a name="COSECH"></a>COSECH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13366</p>
+<pre>Function COSECH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the hyperbolic cosecant of value.</p>
+<h3><a name="COSH"></a>COSH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13371</p>
+<pre>Function COSH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the hyperbolic cosine of value.</p>
+<h3><a name="COSHZ"></a>COSHZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13381</p>
+<pre>Function COSHZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Complex hyperbolic cosine of Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array.</p>
+<h3><a name="COSZ"></a>COSZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13376</p>
+<pre>Function COSZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Complex cosine of Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array. Note: the imaginary part is computed as +SIN(re)*SINH(im) (the usual formula has a minus sign).</p>
+<h3><a name="COT"></a>COT</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13386</p>
+<pre>Function COT(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the cotangent of value (1/TAN(value)).</p>
+<h3><a name="COTH"></a>COTH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13391</p>
+<pre>Function COTH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the hyperbolic cotangent of value. Shows an error MessageBox if value is 0.</p>
+<h3><a name="DEG2RAD"></a>DEG2RAD</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13396</p>
+<pre>Function DEG2RAD(value AS DOUBLE) AS DOUBLE</pre>
+<p>Converts degrees to radians (multiplies by 0.017453, a rounded constant).</p>
+<h3><a name="DIVZ"></a>DIVZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13402</p>
+<pre>Function DIVZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Complex division (Z(0)+iZ(1)) / (Z(2)+iZ(3)); writes the quotient into Z(0), Z(1), clears Z(2), Z(3) and returns the array. Note: the code uses an undefined variable &#x27;req&#x27; instead of re1 in the real part.</p>
+<h3><a name="EVEN"></a>EVEN</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13407</p>
+<pre>Function EVEN(value AS INTEGER ) AS INTEGER</pre>
+<p>Returns 1 if the integer value is even, otherwise 0.</p>
+<h3><a name="EXPZ"></a>EXPZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13417</p>
+<pre>Function EXPZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Complex exponential e^z of Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array.</p>
+<h3><a name="FAC"></a>FAC</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13422</p>
+<pre>Function FAC(value AS LONG) AS LONG</pre>
+<p>Returns the factorial of value. Only values up to 12 are accepted; larger values show an error MessageBox.</p>
+<h3><a name="FINDMAX_MATH"></a>FindMax_math</h3>
+<p class="rq-meta">FUNCTIONI &middot; rapidqAllProc.inc, line 13589</p>
+<pre>FunctionI FindMax_math (...) as Double</pre>
+<p>Returns the largest of a variable number of numeric arguments (FUNCTIONI using ParamVal). Starts from -999999999999, so all arguments must be above that.</p>
+<h3><a name="FINDMIN_MATH"></a>FindMin_math</h3>
+<p class="rq-meta">FUNCTIONI &middot; rapidqAllProc.inc, line 13594</p>
+<pre>FunctionI FindMin_math (...) as Double</pre>
+<p>Returns the smallest of a variable number of numeric arguments (FUNCTIONI using ParamVal). Starts from 999999999999, so all arguments must be below that.</p>
+<h3><a name="GCD"></a>GCD</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13439</p>
+<pre>Function GCD(value1 AS DOUBLE, value2 AS DOUBLE ) AS LONG</pre>
+<p>Returns the greatest common divisor of two whole numbers using the Euclidean algorithm. Returns 0 and shows an error MessageBox if either argument is not an integer or is zero.</p>
+<h3><a name="INVZ"></a>INVZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13474</p>
+<pre>Function INVZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Reciprocal 1/z of the complex number Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array. Note: the imaginary part is not negated in the code.</p>
+<h3><a name="LOG10"></a>LOG10</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13484</p>
+<pre>Function LOG10(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the base-10 logarithm of value.</p>
+<h3><a name="LOG10Z"></a>LOG10Z</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13489</p>
+<pre>Function LOG10Z(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Intended base-10 logarithm of the complex number Z(0)+iZ(1): the LOGZ formula divided by LOG(10). Writes into Z(0), Z(1) and returns the array; inherits the nonstandard formula of LOGZ.</p>
+<h3><a name="LOGAZ"></a>LOGAZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13494</p>
+<pre>Function LOGAZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Intended base-a logarithm of the complex number Z(0)+iZ(1), with the base taken from Z(3): the LOGZ formula divided by LOG(a). Writes into Z(0), Z(1) and returns the array.</p>
+<h3><a name="LOGZ"></a>LOGZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13479</p>
+<pre>Function LOGZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Intended to return the natural logarithm of the complex number Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array. The formula used in the code (LOG(re/|z|^2), im/|z|^2) differs from the standard complex logarithm.</p>
+<h3><a name="MAGZ"></a>MAGZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13499</p>
+<pre>Function MAGZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Absolute value |z| of the complex number Z(0)+iZ(1); stores it in Z(0), sets Z(1) to 0 and returns the array.</p>
+<h3><a name="MAXINTVALUE"></a>MaxIntValue</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13635</p>
+<pre>Function MaxIntValue(AData() as Integer) as Integer</pre>
+<p>Returns the largest value in an Integer array. Note: the loop stops at UBound-1, so the last element is not checked.</p>
+<h3><a name="MAXVALUE"></a>MaxValue</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13611</p>
+<pre>Function MaxValue(AData() as Double) as Double</pre>
+<p>Returns the largest value in a Double array. Note: the loop stops at UBound-1, so the last element is not checked.</p>
+<h3><a name="MININTVALUE"></a>MinIntValue</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13623</p>
+<pre>Function MinIntValue(AData() as Integer) as Integer</pre>
+<p>Returns the smallest value in an Integer array. Note: the loop stops at UBound-1, so the last element is not checked.</p>
+<h3><a name="MINVALUE"></a>MinValue</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13599</p>
+<pre>Function MinValue(AData() as Double) as Double</pre>
+<p>Returns the smallest value in a Double array. Note: the loop stops at UBound-1, so the last element is not checked.</p>
+<h3><a name="MULZ"></a>MULZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13504</p>
+<pre>Function MULZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Complex multiplication (Z(0)+iZ(1)) * (Z(2)+iZ(3)); writes the product into Z(0), Z(1), clears Z(2), Z(3) and returns the array.</p>
+<h3><a name="NORZ"></a>NORZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13510</p>
+<pre>Function NORZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Converts the complex number Z(0)+iZ(1) to polar form: Z(0) = modulus r, Z(1) = argument theta (ATAN(im/re)). Returns the array; ATAN does not handle re = 0 or quadrant.</p>
+<h3><a name="ODD_MATH"></a>ODD_math</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13515</p>
+<pre>Function ODD_math(value AS INTEGER ) AS INTEGER</pre>
+<p>Returns 1 if the integer value is odd, otherwise 0.</p>
+<h3><a name="POLZ"></a>POLZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13526</p>
+<pre>Function POLZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Computes r*cos(phi) and r*sin(phi) from the complex number Z(0)+iZ(1) (phi = ATAN(im/re)) and writes them back into Z(0), Z(1). Returns the array.</p>
+<h3><a name="POWER"></a>Power</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13647</p>
+<pre>Function Power(Base as Double, Exponent as Double) as Double</pre>
+<p>Returns Base raised to Exponent. Only whole-number exponents are accepted; a fractional exponent shows an error MessageBox and returns nothing. Uses the constant MaxInt.</p>
+<h3><a name="POWZ"></a>POWZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13531</p>
+<pre>Function POWZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Raises the complex number Z(0)+iZ(1) to the power Z(2) using the polar form (De Moivre); writes the result into Z(0), Z(1), clears Z(2) and returns the array.</p>
+<h3><a name="RAD2DEG"></a>RAD2DEG</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13536</p>
+<pre>Function RAD2DEG(value AS DOUBLE) AS DOUBLE</pre>
+<p>Converts radians to degrees (divides by 0.017453, a rounded constant).</p>
+<h3><a name="SEC"></a>SEC</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13541</p>
+<pre>Function SEC(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the secant of value (1/COS(value)).</p>
+<h3><a name="SECH"></a>SECH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13546</p>
+<pre>Function SECH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the hyperbolic secant of value.</p>
+<h3><a name="SINH"></a>SINH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13551</p>
+<pre>Function SINH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the hyperbolic sine of value.</p>
+<h3><a name="SINHZ"></a>SINHZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13561</p>
+<pre>Function SINHZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Complex hyperbolic sine of Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array.</p>
+<h3><a name="SINZ"></a>SINZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13556</p>
+<pre>Function SINZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Complex sine of Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array.</p>
+<h3><a name="SQRZ"></a>SQRZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13566</p>
+<pre>Function SQRZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Square root of the complex number Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array. The sign of the imaginary part is always positive in the code.</p>
+<h3><a name="SUBZ"></a>SUBZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13571</p>
+<pre>Function SUBZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Complex subtraction (Z(0)+iZ(1)) - (Z(2)+iZ(3)); writes the difference into Z(0), Z(1), clears Z(2), Z(3) and returns the array.</p>
+<h3><a name="TANH"></a>TANH</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13576</p>
+<pre>Function TANH(value AS DOUBLE) AS DOUBLE</pre>
+<p>Returns the hyperbolic tangent of value.</p>
+<h3><a name="TANZ"></a>TANZ</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13581</p>
+<pre>Function TANZ(Z()AS DOUBLE ) AS DOUBLE</pre>
+<p>Intended complex tangent of Z(0)+iZ(1). Note: the code reads the input into re1, im1 but computes with re and im, so the result is not correct as written.</p>
+</body>
+</html>

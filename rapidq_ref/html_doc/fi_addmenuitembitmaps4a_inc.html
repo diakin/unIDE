@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>AddMenuItemBitmaps4a.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: AddMenuItemBitmaps4a.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>AddMenuItemBitmaps4a.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/AddMenuItemBitmaps4a.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 12 functions &middot; 10 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#CLEARMENUBITMAP">ClearMenuBitmap</a> &middot; <a href="#CREATECOMPATIBLEBITMAP_AMIB">CreateCompatibleBitmap_AMIB</a> &middot; <a href="#CREATECOMPATIBLEDC_AMIB">CreateCompatibleDC_AMIB</a> &middot; <a href="#CREATEMENUBITMAP">CreateMenuBitmap</a> &middot; <a href="#DELETEDC_AMIB">DeleteDC_AMIB</a> &middot; <a href="#DELETEOBJECT_AMIB">DeleteObject_AMIB</a> &middot; <a href="#GETSYSTEMMETRICS_AMIB">GetSystemMetrics_AMIB</a> &middot; <a href="#PATBLT_AMIB">PatBlt_AMIB</a> &middot; <a href="#SELECTOBJECT_AMIB">SelectObject_AMIB</a> &middot; <a href="#SETBKMODE_AMIB">SetBkMode_AMIB</a> &middot; <a href="#SETMENUITEMBITMAPS_AMIB">SetMenuItemBitmaps_AMIB</a> &middot; <a href="#TRANSPARENTBLT_AMIB">TransparentBlt_AMIB</a></p>
+<h3><a name="CLEARMENUBITMAP"></a>ClearMenuBitmap</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 6285</p>
+<pre>Sub ClearMenuBitmap (mPopup As QPopupMenu, mItem As Long, flag_mItem As Long)</pre>
+<p>Removes the bitmap from item mItem of popup menu mPopup by calling SetMenuItemBitmaps with zero handles. flag_mItem selects by position (MF_BYPOSITION_AMIB) or by command.</p>
+<h3><a name="CREATECOMPATIBLEBITMAP_AMIB"></a>CreateCompatibleBitmap_AMIB</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 6185</p>
+<pre>Declare Function CreateCompatibleBitmap_AMIB Lib &quot;gdi32&quot; Alias &quot;CreateCompatibleBitmap&quot; ( ByVal hdc As Long, ByVal nWidth As Long, ByVal nHeight As Long) As Long</pre>
+<p>Creates a bitmap compatible with the device associated with the specified device context, with the given width and height.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateCompatibleBitmap">CreateCompatibleBitmap</a></p>
+<h3><a name="CREATECOMPATIBLEDC_AMIB"></a>CreateCompatibleDC_AMIB</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 6187</p>
+<pre>Declare Function CreateCompatibleDC_AMIB Lib &quot;gdi32&quot; Alias &quot;CreateCompatibleDC&quot; ( ByVal hdc As Long) As Long</pre>
+<p>Creates a memory device context compatible with the specified device; select a bitmap into it before drawing.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateCompatibleDC">CreateCompatibleDC</a></p>
+<h3><a name="CREATEMENUBITMAP"></a>CreateMenuBitmap</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 6244</p>
+<pre>Sub CreateMenuBitmap (mPopup As QPopupMenu, mItem As Integer, flag_mItem As Long, Me As QBitmap)</pre>
+<p>Puts a bitmap (Me) on item mItem of popup menu mPopup, scaled to the menu check-mark size with transparency taken from pixel 0,0. flag_mItem selects by position (MF_BYPOSITION_AMIB) or by command. Uses CreateCompatibleDC, TransparentBlt and SetMenuItemBitmaps; shows a message on failure.</p>
+<h3><a name="DELETEDC_AMIB"></a>DeleteDC_AMIB</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 6189</p>
+<pre>Declare Function DeleteDC_AMIB Lib &quot;gdi32&quot; Alias &quot;DeleteDC&quot; ( ByVal hdc As Long) As Long</pre>
+<p>Deletes the specified device context (one created with CreateDC or CreateCompatibleDC). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DeleteDC">DeleteDC</a></p>
+<h3><a name="DELETEOBJECT_AMIB"></a>DeleteObject_AMIB</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 6191</p>
+<pre>Declare Function DeleteObject_AMIB Lib &quot;gdi32&quot; Alias &quot;DeleteObject&quot; ( ByVal hObject As Long) As Long</pre>
+<p>Deletes a logical pen, brush, font, bitmap, region or palette and frees its system resources. Do not delete an object still selected into a DC.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DeleteObject">DeleteObject</a></p>
+<h3><a name="GETSYSTEMMETRICS_AMIB"></a>GetSystemMetrics_AMIB</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 6198</p>
+<pre>Declare Function GetSystemMetrics_AMIB Lib &quot;user32&quot; Alias &quot;GetSystemMetrics&quot; ( ByVal nIndex As Long) As Long</pre>
+<p>Retrieves the specified system metric or configuration setting (screen size, border widths, etc.) by SM_ index.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSystemMetrics">GetSystemMetrics</a></p>
+<h3><a name="PATBLT_AMIB"></a>PatBlt_AMIB</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 6201</p>
+<pre>Declare Function PatBlt_AMIB Lib &quot;gdi32&quot; Alias &quot;PatBlt&quot; ( ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal dwRop As Long) As Long</pre>
+<p>Paints a rectangle using the brush currently selected into the device context, combined with the display using a raster operation.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=PatBlt">PatBlt</a></p>
+<h3><a name="SELECTOBJECT_AMIB"></a>SelectObject_AMIB</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 6193</p>
+<pre>Declare Function SelectObject_AMIB Lib &quot;gdi32&quot; Alias &quot;SelectObject&quot; ( ByVal hdc As Long, ByVal hObject As Long) As Long</pre>
+<p>Selects an object (pen, brush, font, bitmap, region) into a device context and returns the handle of the object it replaces.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SelectObject">SelectObject</a></p>
+<h3><a name="SETBKMODE_AMIB"></a>SetBkMode_AMIB</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 6195</p>
+<pre>Declare Function SetBkMode_AMIB Lib &quot;gdi32&quot; Alias &quot;SetBkMode&quot; ( ByVal hdc As Long, ByVal nBkMode As Long) As Long</pre>
+<p>Sets the background mix mode (OPAQUE or TRANSPARENT) used for text, hatched brushes and non-solid pens. Returns the previous mode.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetBkMode">SetBkMode</a></p>
+<h3><a name="SETMENUITEMBITMAPS_AMIB"></a>SetMenuItemBitmaps_AMIB</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 6215</p>
+<pre>Declare Function SetMenuItemBitmaps_AMIB Lib &quot;user32&quot; Alias &quot;SetMenuItemBitmaps&quot; ( ByVal hMenu As Long, ByVal nPosition As Long, ByVal wFlags As Long, ByVal hBitmapUnchecked As Long, ByVal hBitmapChecked As Long) As Long</pre>
+<p>Associates the specified bitmaps with a menu item, displayed next to the item depending on whether it is checked or unchecked.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetMenuItemBitmaps">SetMenuItemBitmaps</a></p>
+<h3><a name="TRANSPARENTBLT_AMIB"></a>TransparentBlt_AMIB</h3>
+<p class="rq-meta">DLL function, msimg32.dll &middot; rapidqAllProc.inc, line 6206</p>
+<pre>Declare Function TransparentBlt_AMIB Lib &quot;msimg32.dll&quot; Alias &quot;TransparentBlt&quot; ( ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hSrcDC As Long, ByVal xSrc As Long, ByVal ySrc As Long, ByVal nSrcWidth As Long, ByVal nSrcHeight As Long, ByVal crTransparent As Long) As Long</pre>
+<p>Performs a bit-block transfer from a source DC to a destination DC, treating pixels of the given color as transparent; can stretch.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=TransparentBlt">TransparentBlt</a></p>
+</body>
+</html>

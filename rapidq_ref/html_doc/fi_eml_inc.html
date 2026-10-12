@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>eml.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: eml.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>eml.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/eml.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 15 functions</p>
+<p><a href="#CPRINT">cprint</a> &middot; <a href="#DECODESUBJ">DecodeSubj</a> &middot; <a href="#EXTRACTEMAILFROMWAB">ExtractEMailFromWab</a> &middot; <a href="#GETHEADERFIELD">GetHeaderField</a> &middot; <a href="#GETMSGBODY">GetMSGBody</a> &middot; <a href="#GETMSGBODYCODEMETHOD">GetMsgBodyCodeMethod</a> &middot; <a href="#GETMSGBODYCODEPAGE">GetMsgBodyCodePage</a> &middot; <a href="#GETMSGBODYCONTENTTYPE">GetMsgBodyContentType</a> &middot; <a href="#GETMSGHEADER">GetMSGHeader</a> &middot; <a href="#GETSUBJCODEMETHOD">GetSubjCodeMethod</a> &middot; <a href="#GETSUBJCODEPAGE">GetSubjCodePage</a> &middot; <a href="#ISEMAIL">IsEmail</a> &middot; <a href="#ISKOI8">isKOI8</a> &middot; <a href="#RQBASE64DECODE">RQBASE64Decode</a> &middot; <a href="#RQBASE64ENCODE">RQBASE64Encode</a></p>
+<h3><a name="CPRINT"></a>cprint</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 36118</p>
+<pre>sub cprint(s as string)</pre>
+<p>Prints s to the console after converting it to the OEM code page with CharToOem.</p>
+<h3><a name="DECODESUBJ"></a>DecodeSubj</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 5789</p>
+<pre>Function DecodeSubj( Subject As String) As String</pre>
+<p>Decodes an e-mail header such as Subject that contains MIME encoded-words (=?charset?Q|B?text?=), using quoted-printable or RQBASE64Decode, and converts koi8-r, utf-8 and utf-7 text to windows-1251 with RQConvertCodePage. Plain text that looks like KOI8 (isKOI8) is also converted. (body longer than shown)</p>
+<h3><a name="EXTRACTEMAILFROMWAB"></a>ExtractEMailFromWab</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 5987</p>
+<pre>Sub ExtractEMailFromWab(wabFile As String, EmailList as QStringlist)</pre>
+<p>Loads a Windows Address Book (.wab) file and extracts e-mail addresses from the zero-separated data around each @ character. Valid addresses (IsEmail, no control characters) not already present are added to EmailList; calls DoEvents. (body longer than shown)</p>
+<h3><a name="GETHEADERFIELD"></a>GetHeaderField</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 35952</p>
+<pre>Function GetHeaderField( Header As String, Field as string) As String</pre>
+<p>Returns the value of the header field Field (case-insensitive, colon optional) from a mail header, after unfolding continuation lines. Returns an empty string if the field is not present.</p>
+<h3><a name="GETMSGBODY"></a>GetMSGBody</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 5679</p>
+<pre>Function GetMSGBody( Source As String) As String</pre>
+<p>Returns the body of a raw e-mail message: all lines from the first empty line to the end (from line 1 if there is no empty line). Tabs and folded lines are normalized as in GetMSGHeader.</p>
+<h3><a name="GETMSGBODYCODEMETHOD"></a>GetMsgBodyCodeMethod</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 35932</p>
+<pre>Function GetMsgBodyCodeMethod( MsgBody As String) As String</pre>
+<p>Reads the Content-Transfer-Encoding header of MsgBody but then only looks for a &quot;charset=&quot; parameter in it, so for normal headers such as &quot;8bit&quot; or &quot;base64&quot; it returns an empty string.</p>
+<h3><a name="GETMSGBODYCODEPAGE"></a>GetMsgBodyCodePage</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 35909</p>
+<pre>Function GetMsgBodyCodePage ( Msg As String) As String</pre>
+<p>Returns the charset parameter of the Content-Type header of a mail message (e.g. koi8-r, UTF-8, quotes kept if present), or an empty string.</p>
+<h3><a name="GETMSGBODYCONTENTTYPE"></a>GetMsgBodyContentType</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 35895</p>
+<pre>Function GetMsgBodyContentType ( Msg As String) As String</pre>
+<p>Returns the media type from the Content-Type header of a mail message (e.g. &quot;text/plain&quot;), after unfolding header lines.</p>
+<h3><a name="GETMSGHEADER"></a>GetMSGHeader</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 5652</p>
+<pre>Function GetMSGHeader( Source As String) As String</pre>
+<p>Returns the header part of a raw e-mail message: all lines before the first empty line. Tabs are replaced by spaces and folded header lines are unfolded first.</p>
+<h3><a name="GETSUBJCODEMETHOD"></a>GetSubjCodeMethod</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 35892</p>
+<pre>Function GetSubjCodeMethod( Subject As String) As String</pre>
+<p>Returns the encoding letter of a MIME-encoded subject (third &quot;?&quot;-field, lower case: &quot;b&quot; or &quot;q&quot;).</p>
+<h3><a name="GETSUBJCODEPAGE"></a>GetSubjCodePage</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 35879</p>
+<pre>Function GetSubjCodePage( Subject As String) As String</pre>
+<p>Returns the charset of a MIME-encoded mail subject (the text between the first and second &quot;?&quot;, as in =?koi8-r?B?...?=). If none is given but isKOI8 detects KOI8 text, returns &quot;koi8-r&quot;; otherwise an empty string.</p>
+<h3><a name="ISEMAIL"></a>IsEmail</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 5926</p>
+<pre>Function IsEmail(wabMail As String) As long</pre>
+<p>Returns True if wabMail looks like an e-mail address: it matches *@*.* and the last domain part is 2 or 3 latin letters; otherwise False. A stricter per-character check is commented out.</p>
+<h3><a name="ISKOI8"></a>isKOI8</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 35987</p>
+<pre>Function isKOI8( Red$ As String) As long</pre>
+<p>Heuristic check whether a string is Russian text in KOI8-R shown as cp1251: returns 1 if it contains any of a list of letter pairs typical for that case, otherwise 0.</p>
+<h3><a name="RQBASE64DECODE"></a>RQBASE64Decode</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 5746</p>
+<pre>Function RQBASE64Decode (stxt As String) As String</pre>
+<p>Decodes the Base64 string stxt and returns the original bytes as a string. Uses the global constant Base64Table; trailing = padding is handled, other invalid characters are not checked.</p>
+<h3><a name="RQBASE64ENCODE"></a>RQBASE64Encode</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 5709</p>
+<pre>Function RQBASE64Encode(s As String) As String</pre>
+<p>Encodes the string s in Base64 and returns the result, with = padding. Uses the global constant Base64Table.</p>
+</body>
+</html>

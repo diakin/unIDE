@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>rapidq2.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: rapidq2.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>rapidq2.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/rapidq2.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 178 functions &middot; 140 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#ADJUSTTOKENPRIVILEGES">AdjustTokenPrivileges</a> &middot; <a href="#ALPHABLEND">AlphaBlend</a> &middot; <a href="#ANYPOPUP">AnyPopup</a> &middot; <a href="#APPLICATION_GETPRIORITY">Application.GetPriority</a> &middot; <a href="#APPLICATION_PATH">Application.Path</a> &middot; <a href="#APPLICATION_SETPRIORITY">Application.SetPriority</a> &middot; <a href="#BITBLT">BitBlt</a> &middot; <a href="#BRINGWINDOWTOTOP">BringWindowToTop</a> &middot; <a href="#CALLWINDOWPROC">CallWindowProc</a> &middot; <a href="#CHANGEDISPLAYSETTINGS">ChangeDisplaySettings</a> &middot; <a href="#CLEARCOMMERROR">ClearCommError</a> &middot; <a href="#CLIENTTOSCREEN">ClientToScreen</a> &middot; <a href="#CLOSEHANDLE">CloseHandle</a> &middot; <a href="#COMMDLGEXTENDEDERROR">CommDlgExtendedError</a> &middot; <a href="#CREATECOMPATIBLEBITMAP">CreateCompatibleBitmap</a> &middot; <a href="#CREATECOMPATIBLEDC">CreateCompatibleDC</a> &middot; <a href="#CREATEDC">CreateDC</a> &middot; <a href="#CREATEFILE">CreateFile</a> &middot; <a href="#CREATEPEN">CreatePen</a> &middot; <a href="#CREATESOLIDBRUSH">CreateSolidBrush</a> &middot; <a href="#CREATEWINDOWEX">CreateWindowEx</a> &middot; <a href="#DEFMDICHILDPROC">DefMDIChildProc</a> &middot; <a href="#DEFWINDOWPROC">DefWindowProc</a> &middot; <a href="#DELETEDC">DeleteDC</a> &middot; <a href="#DELETEOBJECT">DeleteObject</a> &middot; <a href="#DRAGACCEPTFILES">DragAcceptFiles</a> &middot; <a href="#DRAGFINISH">DragFinish</a> &middot; <a href="#DRAGQUERYFILE">DragQueryFile</a> &middot; <a href="#DRAGQUERYPOINT">DragQueryPoint</a> &middot; <a href="#DRAWCAPTION">DrawCaption</a> &middot; <a href="#DRAWEDGE">DrawEdge</a> &middot; <a href="#DRAWFRAMECONTROL">DrawFrameControl</a> &middot; <a href="#DRAWICONEX">DrawIconEx</a> &middot; <a href="#ELLIPSE">Ellipse</a> &middot; <a href="#ENABLEWINDOW">EnableWindow</a> &middot; <a href="#ENUMCHILDWINDOWS">EnumChildWindows</a> &middot; <a href="#ENUMDISPLAYSETTINGS">EnumDisplaySettings</a> &middot; <a href="#EXITWINDOWSEX">ExitWindowsEx</a> &middot; <a href="#EXTFLOODFILL">ExtFloodFill</a> &middot; <a href="#FORMATMESSAGE">FormatMessage</a> &middot; <a href="#FUNCBIND_4">FuncBind_4</a> &middot; <a href="#FWCB_GETPROCESSHEAP">FWCB_GetProcessHeap</a> &middot; <a href="#FWCB_HEAPALLOC">FWCB_HeapAlloc</a> &middot; <a href="#GETCAPTURE">GetCapture</a> &middot; <a href="#GETCLASSNAME">GetClassName</a> &middot; <a href="#GETCLIENTRECT">GetClientRect</a> &middot; <a href="#GETCOMMSTATE">GetCommState</a> &middot; <a href="#GETCURRENTOBJECT">GetCurrentObject</a> &middot; <a href="#GETCURRENTPROCESS">GetCurrentProcess</a> &middot; <a href="#GETDC">GetDC</a> &middot; <a href="#GETDESKTOPWINDOW">GetDesktopWindow</a> &middot; <a href="#GETDEVICECAPS">GetDeviceCaps</a> &middot; <a href="#GETDISKFREESPACEEX">GetDiskFreeSpaceEx</a> &middot; <a href="#GETDRIVETYPE">GetDriveType</a> &middot; <a href="#GETFOCUS">GetFocus</a> &middot; <a href="#GETKEYSTATE">GetKeyState</a> &middot; <a href="#GETLASTERROR">GetLastError</a> &middot; <a href="#GETMENU">GetMenu</a> &middot; <a href="#GETMENUITEMINFO">GetMenuItemInfo</a> &middot; <a href="#GETOBJECT">GetObject</a> &middot; <a href="#GETOPENFILENAME">GetOpenFileName</a> &middot; <a href="#GETPARENT">GetParent</a> &middot; <a href="#GETPIXEL">GetPixel</a> &middot; <a href="#GETPRIORITYCLASS">GetPriorityClass</a> &middot; <a href="#GETPROP">GetProp</a> &middot; <a href="#GETSAVEFILENAME">GetSaveFileName</a> &middot; <a href="#GETSTOCKOBJECT">GetStockObject</a> &middot; <a href="#GETSYSCOLOR">GetSysColor</a> &middot; <a href="#GETSYSTEMMETRICS">GetSystemMetrics</a> &middot; <a href="#GETSYSTEMPOWERSTATUS">GetSystemPowerStatus</a> &middot; <a href="#GETVERSIONEX">GetVersionEx</a> &middot; <a href="#GETWINDOWLONG">GetWindowLong</a> &middot; <a href="#GETWINDOWRECT">GetWindowRect</a> &middot; <a href="#GETWINDOWTEXT">GetWindowText</a> &middot; <a href="#GETWINDOWTEXTLENGTH">GetWindowTextLength</a> &middot; <a href="#GLOBALMEMORYSTATUS">GlobalMemoryStatus</a> &middot; <a href="#GRQ2_BEEP">gRQ2_Beep</a> &middot; <a href="#GRQ2_GETVERSION">gRQ2_GetVersion</a> &middot; <a href="#GRQ2_WNDPROC_EVENTTEMPLATE">gRQ2_WndProc_eventTemplate</a> &middot; <a href="#HEXTODEC">HexToDec</a> &middot; <a href="#INSERTMENUITEM">InsertMenuItem</a> &middot; <a href="#ISICONIC">IsIconic</a> &middot; <a href="#ISWINDOWVISIBLE">IsWindowVisible</a> &middot; <a href="#ISZOOMED">IsZoomed</a> &middot; <a href="#JPEGDLL_IMAGEHEIGHT">JpegDLL_ImageHeight</a> &middot; <a href="#JPEGDLL_IMAGEWIDTH">JpegDLL_ImageWidth</a> &middot; <a href="#JPEGDLL_LOADIMAGEFILE">JpegDLL_LoadImageFile</a> &middot; <a href="#LINETO">LineTo</a> &middot; <a href="#LOADIMAGE">LoadImage</a> &middot; <a href="#LOADLIBRARY">LoadLibrary</a> &middot; <a href="#LOOKUPPRIVILEGEVALUE">LookupPrivilegeValue</a> &middot; <a href="#MASTERCALLBACK_4">MasterCallBack_4</a> &middot; <a href="#MODIFYMENU">ModifyMenu</a> &middot; <a href="#MOVETOEX">MoveToEx</a> &middot; <a href="#MOVEWINDOW">MoveWindow</a> &middot; <a href="#NVIEWGETHEIGHT">NViewGetHeight</a> &middot; <a href="#NVIEWGETWIDTH">NViewGetWidth</a> &middot; <a href="#NVIEWLOAD">NViewLoad</a> &middot; <a href="#NVIEWSAVEASJPG">NViewSaveAsJPG</a> &middot; <a href="#NVIEWSETLANGUAGE">NViewSetLanguage</a> &middot; <a href="#ONCHILDACTIVE_EVENTTEMPLATE">OnChildActive_eventTemplate</a> &middot; <a href="#ONCHILDCLOSE_EVENTTEMPLATE">OnChildClose_eventTemplate</a> &middot; <a href="#ONCHILDRESIZE_EVENTTEMPLATE">OnChildResize_eventTemplate</a> &middot; <a href="#ONCLOSE_EVENTTEMPLATE">OnClose_EventTemplate</a> &middot; <a href="#ONCOMERROR_EVENTTEMPLATE">OnComError_EventTemplate</a> &middot; <a href="#ONDRAG_EVENTTEMPLATE">OnDrag_eventTemplate</a> &middot; <a href="#ONGETFOCUS_EVENTTEMPLATE">OnGetFocus_eventTemplate</a> &middot; <a href="#ONLOSTFOCUS_EVENTTEMPLATE">OnLostFocus_eventTemplate</a> &middot; <a href="#ONMINIMISE_EVENTTEMPLATE">OnMinimise_eventTemplate</a> &middot; <a href="#ONMOUSEWHEEL_EVENTTEMPLATE">OnMouseWheel_eventTemplate</a> &middot; <a href="#ONOPEN_EVENTTEMPLATE">OnOpen_EventTemplate</a> &middot; <a href="#ONREADSTRING_EVENTTEMPLATE">OnReadString_EventTemplate</a> &middot; <a href="#ONTRAYCLICK_EVENTTEMPLATE">OnTrayClick_eventTemplate</a> &middot; <a href="#ONTRAYDBLCLICK_EVENTTEMPLATE">OnTrayDblClick_eventTemplate</a> &middot; <a href="#ONWRITESTRING_EVENTTEMPLATE">OnWriteString_EventTemplate</a> &middot; <a href="#OPENPROCESSTOKEN">OpenProcessToken</a> &middot; <a href="#PAGESETUPDLG">PageSetupDlg</a> &middot; <a href="#PATBLT">PatBlt</a> &middot; <a href="#PURGECOMM">PurgeComm</a> &middot; <a href="#READFILE">ReadFile</a> &middot; <a href="#READFILEALIAS2">ReadFileAlias2</a> &middot; <a href="#READFILEEX">ReadFileEx</a> &middot; <a href="#RECTANGLE">Rectangle</a> &middot; <a href="#REGISTERCLASSEX">RegisterClassEx</a> &middot; <a href="#RELEASECAPTURE">ReleaseCapture</a> &middot; <a href="#RELEASEDC">ReleaseDC</a> &middot; <a href="#REMOVEPROP">RemoveProp</a> &middot; <a href="#ROUNDRECT">RoundRect</a> &middot; <a href="#RTLMOVEMEMORY">RtlMoveMemory</a> &middot; <a href="#SCREEN_CAPTURETOBMP">Screen.CaptureToBMP</a> &middot; <a href="#SCREEN_CAPTURETOFILE">Screen.CaptureToFile</a> &middot; <a href="#SCREEN_CLIENTHEIGHT">Screen.ClientHeight</a> &middot; <a href="#SCREEN_CLIENTWIDTH">Screen.ClientWidth</a> &middot; <a href="#SCREEN_ENUMRESOLUTION">Screen.EnumResolution</a> &middot; <a href="#SCREEN_GETPIXEL">Screen.GetPixel</a> &middot; <a href="#SCREEN_GETPIXELDEPTH">Screen.GetPixelDepth</a> &middot; <a href="#SCREEN_MONITORS">Screen.Monitors</a> &middot; <a href="#SCREEN_MOUSEBUTTONS">Screen.MouseButtons</a> &middot; <a href="#SCREEN_MOUSEPRESENT">Screen.MousePresent</a> &middot; <a href="#SCREEN_MOUSESWAP">Screen.MouseSwap</a> &middot; <a href="#SCREEN_SETMOUSEXY">Screen.SetMouseXY</a> &middot; <a href="#SCREEN_SETRESOLUTION">Screen.SetResolution</a> &middot; <a href="#SELECTOBJECT">SelectObject</a> &middot; <a href="#SENDMESSAGEAPI">SendMessageAPI</a> &middot; <a href="#SETACTIVEWINDOW">SetActiveWindow</a> &middot; <a href="#SETBKMODE">SetBkMode</a> &middot; <a href="#SETCAPTURE">SetCapture</a> &middot; <a href="#SETCLASSLONG">SetClassLong</a> &middot; <a href="#SETCOMMSTATE">SetCommState</a> &middot; <a href="#SETCOMMTIMEOUTS">SetCommTimeouts</a> &middot; <a href="#SETCURSORPOS">SetCursorPos</a> &middot; <a href="#SETFOCUS">SetFocus</a> &middot; <a href="#SETFOREGROUNDWINDOW">SetForegroundWindow</a> &middot; <a href="#SETLASTERROR">SetLastError</a> &middot; <a href="#SETLAYEREDWINDOWATTRIBUTES">SetLayeredWindowAttributes</a> &middot; <a href="#SETMENUITEMINFO">SetMenuItemInfo</a> &middot; <a href="#SETNEWCALLBACK_4">SetNewCallBack_4</a> &middot; <a href="#SETNEWFWTOCALLBACK">SetNewFwToCallBack</a> &middot; <a href="#SETPARENT">SetParent</a> &middot; <a href="#SETPRIORITYCLASS">SetPriorityClass</a> &middot; <a href="#SETPROP">SetProp</a> &middot; <a href="#SETROP2">SetROP2</a> &middot; <a href="#SETSUSPENDSTATE">SetSuspendState</a> &middot; <a href="#SETSYSTEMPOWERSTATE">SetSystemPowerState</a> &middot; <a href="#SETUPCOMM">SetupComm</a> &middot; <a href="#SETWINDOWLONG">SetWindowLong</a> &middot; <a href="#SETWINDOWPOS">SetWindowPos</a> &middot; <a href="#SETWINDOWTEXT">SetWindowText</a> &middot; <a href="#SHELLEXECUTE">ShellExecute</a> &middot; <a href="#SHELL_NOTIFYICON">Shell_NotifyIcon</a> &middot; <a href="#SHOWWINDOW">ShowWindow</a> &middot; <a href="#SLEEP">SLEEP</a> &middot; <a href="#SOUNDEX">SoundEx</a> &middot; <a href="#STRETCHBLT">StretchBlt</a> &middot; <a href="#SYSTEMPARAMETERSINFO">SystemParametersInfo</a> &middot; <a href="#WRITEFILE">WriteFile</a> &middot; <a href="#WRITEFILEALIAS2">WriteFileAlias2</a> &middot; <a href="#WSAGETLASTERROR">WSAGetLastError</a></p>
+<h3><a name="ADJUSTTOKENPRIVILEGES"></a>AdjustTokenPrivileges</h3>
+<p class="rq-meta">DLL function, advapi32 &middot; rapidqAllProc.inc, line 2087</p>
+<pre>Declare Function AdjustTokenPrivileges Lib &quot;advapi32&quot; Alias &quot;AdjustTokenPrivileges&quot; (TokenHandle As Long, DisableAllPrivileges As Long, NewState As TOKEN_PRIVILEGES, BufferLength As Long, PreviousState As TOKEN_PRIVILEGES, ReturnLength As Long) As Long</pre>
+<p>Enables or disables privileges in the specified access token; requires TOKEN_ADJUST_PRIVILEGES access.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=AdjustTokenPrivileges">AdjustTokenPrivileges</a></p>
+<h3><a name="ALPHABLEND"></a>AlphaBlend</h3>
+<p class="rq-meta">DLL function, msimg32.dll &middot; rapidqAllProc.inc, line 1347</p>
+<pre>Declare Function AlphaBlend Lib &quot;msimg32.dll&quot; Alias &quot;AlphaBlend&quot; (hdc1 As Long, X1 As integer, Y1 As integer, Width1 As integer, Height1 As integer, hdc2 As Long, X2 As integer, Y2 As integer, Width2 As integer, Height2 As integer, BLEND As Long) As Long</pre>
+<p>Displays a bitmap with transparent or semitransparent pixels, blending a source rectangle into a destination DC using a BLENDFUNCTION.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=AlphaBlend">AlphaBlend</a></p>
+<h3><a name="ANYPOPUP"></a>AnyPopup</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 933</p>
+<pre>DECLARE FUNCTION AnyPopup Lib &quot;user32&quot; Alias &quot;AnyPopup&quot; () As Long</pre>
+<p>Indicates whether an owned, visible, top-level pop-up or overlapped window exists on the screen. Obsolete; provided only for compatibility with 16-bit Windows.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=AnyPopup">AnyPopup</a></p>
+<h3><a name="APPLICATION_GETPRIORITY"></a>Application.GetPriority</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2518</p>
+<pre>FUNCTION Application.GetPriority() AS LONG</pre>
+<p>Returns the priority class of the current process (GetPriorityClass on GetCurrentProcess).</p>
+<h3><a name="APPLICATION_PATH"></a>Application.Path</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2496</p>
+<pre>FUNCTION Application.Path() AS STRING</pre>
+<p>Returns the folder of the running program: COMMAND$(0) with Application.ExeName removed, and the trailing backslash removed unless the path is a drive root like C:\. (The source comment saying it returns the program name is inaccurate.)</p>
+<h3><a name="APPLICATION_SETPRIORITY"></a>Application.SetPriority</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2510</p>
+<pre>FUNCTION Application.SetPriority(MyPriority AS LONG) AS LONG</pre>
+<p>Sets the priority class of the current process with GetCurrentProcess and SetPriorityClass. Returns the API result (0 on failure).</p>
+<h3><a name="BITBLT"></a>BitBlt</h3>
+<p class="rq-meta">DLL function, gdi32.dll &middot; rapidqAllProc.inc, line 1358</p>
+<pre>DECLARE FUNCTION BitBlt Lib &quot;gdi32.dll&quot; Alias &quot;BitBlt&quot; ( ByVal hdcDest As Long, ByVal nXDest As Long, ByVal nYDest As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hdcSrc As Long, ByVal nXSrc As Long, ByVal nYSrc As Long, ByVal dwRop As Long) AS LONG</pre>
+<p>Performs a bit-block transfer of color data from a source device context rectangle to a destination DC using a raster operation code.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=BitBlt">BitBlt</a></p>
+<h3><a name="BRINGWINDOWTOTOP"></a>BringWindowToTop</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 934</p>
+<pre>DECLARE FUNCTION BringWindowToTop Lib &quot;user32&quot; Alias &quot;BringWindowToTop&quot; (ByVal hwnd As Long) As Long</pre>
+<p>Brings the specified window to the top of the Z order, activating it if it is a top-level window. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=BringWindowToTop">BringWindowToTop</a></p>
+<h3><a name="CALLWINDOWPROC"></a>CallWindowProc</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 969</p>
+<pre>DECLARE FUNCTION CallWindowProc Lib &quot;user32.dll&quot; Alias &quot;CallWindowProcA&quot; (lpPrevWndFunc As Long, hwnd As Long, Msg As Long, wParam As Long, lParam As Long) As Long</pre>
+<p>Passes message information to the specified window procedure; used to call the original procedure from a subclassing window procedure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CallWindowProcA">CallWindowProcA</a></p>
+<h3><a name="CHANGEDISPLAYSETTINGS"></a>ChangeDisplaySettings</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1398</p>
+<pre>DECLARE FUNCTION ChangeDisplaySettings LIB &quot;user32&quot; ALIAS &quot;ChangeDisplaySettingsA&quot; (DevMo AS DevMode, ByVal dwFlags AS LONG) AS LONG</pre>
+<p>Changes the settings of the default display device (resolution, color depth, frequency) to the mode given in a DEVMODE structure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ChangeDisplaySettingsA">ChangeDisplaySettingsA</a></p>
+<h3><a name="CLEARCOMMERROR"></a>ClearCommError</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1861</p>
+<pre>DECLARE FUNCTION ClearCommError LIB &quot;kernel32&quot; ALIAS &quot;ClearCommError&quot; (hFile AS LONG, BYREF lpErrors AS DWORD, lpStat AS COMSTAT) AS LONG</pre>
+<p>Retrieves information about a communications error, reports the device&#x27;s current status (COMSTAT) and clears the error flag.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ClearCommError">ClearCommError</a></p>
+<h3><a name="CLIENTTOSCREEN"></a>ClientToScreen</h3>
+<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 987</p>
+<pre>DECLARE SUB ClientToScreen LIB &quot;USER32&quot; ALIAS &quot;ClientToScreen&quot; (hwnd AS LONG, lpPoint AS LONG)</pre>
+<p>Converts the client-area coordinates of a point to screen coordinates. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ClientToScreen">ClientToScreen</a></p>
+<h3><a name="CLOSEHANDLE"></a>CloseHandle</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1924</p>
+<pre>DECLARE FUNCTION CloseHandle LIB &quot;kernel32&quot; ALIAS &quot;CloseHandle&quot; (hObject AS LONG) AS LONG</pre>
+<p>Closes an open object handle (file, device, process, thread, event, etc.). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CloseHandle">CloseHandle</a></p>
+<h3><a name="COMMDLGEXTENDEDERROR"></a>CommDlgExtendedError</h3>
+<p class="rq-meta">DLL function, comdlg32.dll &middot; rapidqAllProc.inc, line 1624</p>
+<pre>DECLARE FUNCTION CommDlgExtendedError Lib &quot;comdlg32.dll&quot; Alias &quot;CommDlgExtendedError&quot; () As Long</pre>
+<p>Returns a common dialog box error code for the last common dialog function call, or 0 if the user cancelled or no error occurred.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CommDlgExtendedError">CommDlgExtendedError</a></p>
+<h3><a name="CREATECOMPATIBLEBITMAP"></a>CreateCompatibleBitmap</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1369</p>
+<pre>DECLARE FUNCTION CreateCompatibleBitmap Lib &quot;gdi32&quot; Alias &quot;CreateCompatibleBitmap&quot; (hdc As Long,nWidth As Long,nHeight As Long) As Long</pre>
+<p>Creates a bitmap compatible with the device associated with the specified device context, with the given width and height.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateCompatibleBitmap">CreateCompatibleBitmap</a></p>
+<h3><a name="CREATECOMPATIBLEDC"></a>CreateCompatibleDC</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1370</p>
+<pre>DECLARE FUNCTION CreateCompatibleDC Lib &quot;gdi32&quot; Alias &quot;CreateCompatibleDC&quot; (hdc As Long) As Long</pre>
+<p>Creates a memory device context compatible with the specified device; select a bitmap into it before drawing.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateCompatibleDC">CreateCompatibleDC</a></p>
+<h3><a name="CREATEDC"></a>CreateDC</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1353</p>
+<pre>DECLARE FUNCTION CreateDC Lib &quot;gdi32&quot; Alias &quot;CreateDCA&quot; ( ByVal lpDriverName As String, ByVal lpDeviceName As String, ByVal lpOutput As String, lpInitData As DEVMODE) AS LONG</pre>
+<p>Creates a device context for a device (such as a display or printer) by driver and device name. Returns the DC handle, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateDCA">CreateDCA</a></p>
+<h3><a name="CREATEFILE"></a>CreateFile</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1872</p>
+<pre>DECLARE FUNCTION CreateFile LIB &quot;kernel32&quot; ALIAS &quot;CreateFileA&quot; (lpFileName AS STRING, dwDesiredAccess AS DWORD, dwShareMode AS DWORD, lpSecurityAttributes AS SECURITYATTRIBUTES, dwCreationDisposition AS DWORD, dwFlagsAndAttributes AS DWORD, hTemplateFile AS LONG) AS LONG</pre>
+<p>Creates or opens a file or I/O device (file, directory, COM port, pipe, volume, etc.). Returns a handle, or INVALID_HANDLE_VALUE (-1) on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateFileA">CreateFileA</a></p>
+<h3><a name="CREATEPEN"></a>CreatePen</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1371</p>
+<pre>DECLARE FUNCTION CreatePen Lib &quot;gdi32&quot; Alias &quot;CreatePen&quot; (nPenStyle As Long, nWidth As Long, crColor As Long) As Long</pre>
+<p>Creates a logical pen with the specified style, width and color. Returns the pen handle; delete it with DeleteObject when done.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreatePen">CreatePen</a></p>
+<h3><a name="CREATESOLIDBRUSH"></a>CreateSolidBrush</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1372</p>
+<pre>DECLARE FUNCTION CreateSolidBrush Lib &quot;gdi32&quot; Alias &quot;CreateSolidBrush&quot; (crColor As Long) As Long</pre>
+<p>Creates a logical brush with the specified solid color. Returns the brush handle; delete it with DeleteObject when done.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateSolidBrush">CreateSolidBrush</a></p>
+<h3><a name="CREATEWINDOWEX"></a>CreateWindowEx</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 937</p>
+<pre>Declare Function CreateWindowEx LIB &quot;User32&quot; ALIAS &quot;CreateWindowExA&quot; (dwExStyle AS LONG,lpClassName AS STRING,lpWindowName AS STRING,dwStyle AS LONG,x AS LONG,y AS LONG,nWidth AS LONG,nHeight AS LONG,hWndParent AS LONG,hMenu AS LONG,hInstance AS LONG,lpParam AS LONG) AS LONG</pre>
+<p>Creates an overlapped, pop-up or child window with an extended window style, class, title, position, size, parent and menu. Returns the window handle, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateWindowExA">CreateWindowExA</a></p>
+<h3><a name="DEFMDICHILDPROC"></a>DefMDIChildProc</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 938</p>
+<pre>Declare Function DefMDIChildProc LIB &quot;User32&quot; ALIAS &quot;DefMDIChildProcA&quot; (hWnd AS LONG,uMsg AS LONG,wParam AS LONG,lParam AS LONG) AS LONG</pre>
+<p>Provides default processing for any window message that the window procedure of an MDI child window does not process.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DefMDIChildProcA">DefMDIChildProcA</a></p>
+<h3><a name="DEFWINDOWPROC"></a>DefWindowProc</h3>
+<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 988</p>
+<pre>DECLARE FUNCTION DefWindowProc LIB &quot;USER32&quot; ALIAS &quot;DefWindowProcA&quot; (hwnd AS LONG, msg as long, wparam as long, lparam as long) AS LONG</pre>
+<p>Calls the default window procedure to provide default processing for any window messages that the application does not process.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DefWindowProcA">DefWindowProcA</a></p>
+<h3><a name="DELETEDC"></a>DeleteDC</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1373</p>
+<pre>DECLARE FUNCTION DeleteDC Lib &quot;gdi32&quot; Alias &quot;DeleteDC&quot; (hdc As Long) As Long</pre>
+<p>Deletes the specified device context (one created with CreateDC or CreateCompatibleDC). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DeleteDC">DeleteDC</a></p>
+<h3><a name="DELETEOBJECT"></a>DeleteObject</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1374</p>
+<pre>DECLARE FUNCTION DeleteObject Lib &quot;gdi32&quot; Alias &quot;DeleteObject&quot; (hObject As Long) As Long</pre>
+<p>Deletes a logical pen, brush, font, bitmap, region or palette and frees its system resources. Do not delete an object still selected into a DC.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DeleteObject">DeleteObject</a></p>
+<h3><a name="DRAGACCEPTFILES"></a>DragAcceptFiles</h3>
+<p class="rq-meta">DLL function, SHELL32 &middot; rapidqAllProc.inc, line 994</p>
+<pre>DECLARE SUB DragAcceptFiles LIB &quot;SHELL32&quot; ALIAS &quot;DragAcceptFiles&quot; (hWnd AS LONG, Accept AS LONG)</pre>
+<p>Registers whether a window accepts dropped files; when enabled the window receives WM_DROPFILES messages.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DragAcceptFiles">DragAcceptFiles</a></p>
+<h3><a name="DRAGFINISH"></a>DragFinish</h3>
+<p class="rq-meta">DLL function, SHELL32 &middot; rapidqAllProc.inc, line 995</p>
+<pre>DECLARE SUB DragFinish LIB &quot;SHELL32&quot; ALIAS &quot;DragFinish&quot; (hDrop AS LONG)</pre>
+<p>Releases the memory that the system allocated for transferring file names during a drag-and-drop (the HDROP handle).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DragFinish">DragFinish</a></p>
+<h3><a name="DRAGQUERYFILE"></a>DragQueryFile</h3>
+<p class="rq-meta">DLL function, SHELL32 &middot; rapidqAllProc.inc, line 996</p>
+<pre>DECLARE FUNCTION DragQueryFile LIB &quot;SHELL32&quot; ALIAS &quot;DragQueryFileA&quot; (hDrop AS LONG, iFile AS LONG, lpszFile AS LONG, cch AS LONG) AS LONG</pre>
+<p>Retrieves the names of dropped files from an HDROP handle; with index 0xFFFFFFFF it returns the number of files dropped.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DragQueryFileA">DragQueryFileA</a></p>
+<h3><a name="DRAGQUERYPOINT"></a>DragQueryPoint</h3>
+<p class="rq-meta">DLL function, SHELL32 &middot; rapidqAllProc.inc, line 997</p>
+<pre>DECLARE FUNCTION DragQueryPoint LIB &quot;SHELL32&quot; ALIAS &quot;DragQueryPoint&quot; (hDrop AS LONG, lppt AS POINTAPI) AS LONG</pre>
+<p>Retrieves the mouse position, in client coordinates, at the time a file was dropped. Returns nonzero if the drop was in the client area.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DragQueryPoint">DragQueryPoint</a></p>
+<h3><a name="DRAWCAPTION"></a>DrawCaption</h3>
+<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 952</p>
+<pre>DECLARE FUNCTION DrawCaption LIB &quot;USER32&quot; ALIAS &quot;DrawCaption&quot; (hwnd AS LONG, hdc AS LONG, qrc AS QRECT, uFlags AS LONG) AS LONG</pre>
+<p>Draws a window caption (title bar) for the given window into a rectangle of a device context, according to uFlags.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawCaption">DrawCaption</a></p>
+<h3><a name="DRAWEDGE"></a>DrawEdge</h3>
+<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 950</p>
+<pre>DECLARE FUNCTION DrawEdge LIB &quot;USER32&quot; ALIAS &quot;DrawEdge&quot; (hdc AS LONG, qrc AS QRECT, edge AS LONG, grfFlags AS LONG) AS LONG</pre>
+<p>Draws one or more edges of a rectangle in a device context using the specified edge type (raised, sunken, etc.) and border flags.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawEdge">DrawEdge</a></p>
+<h3><a name="DRAWFRAMECONTROL"></a>DrawFrameControl</h3>
+<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 951</p>
+<pre>DECLARE FUNCTION DrawFrameControl LIB &quot;USER32&quot; ALIAS &quot;DrawFrameControl&quot; (hdc AS LONG, qrc AS QRECT, utype AS LONG, ustate AS LONG) AS LONG</pre>
+<p>Draws a frame control of the specified type and state (button, caption button, menu glyph, scroll bar part) in a rectangle.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawFrameControl">DrawFrameControl</a></p>
+<h3><a name="DRAWICONEX"></a>DrawIconEx</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1395</p>
+<pre>DECLARE FUNCTION DrawIconEx Lib &quot;user32&quot; Alias &quot;DrawIconEx&quot; (hdc As Long,xLeft As Long,yTop As Long,hIcon As Long,cxWidth As Long,cyWidth As Long,istepIfAniCur As Long,hbrFlickerFreeDraw As Long,diFlags As Long) As Long</pre>
+<p>Draws an icon or cursor into a device context with the specified size, frame index and drawing flags.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawIconEx">DrawIconEx</a></p>
+<h3><a name="ELLIPSE"></a>Ellipse</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1375</p>
+<pre>DECLARE FUNCTION Ellipse Lib &quot;gdi32&quot; Alias &quot;Ellipse&quot; (hdc As Long,X1 As Long,Y1 As Long,X2 As Long,Y2 As Long) As Long</pre>
+<p>Draws an ellipse bounded by the given rectangle, outlined with the current pen and filled with the current brush.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=Ellipse">Ellipse</a></p>
+<h3><a name="ENABLEWINDOW"></a>EnableWindow</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 974</p>
+<pre>DECLARE FUNCTION EnableWindow Lib &quot;user32&quot; Alias &quot;EnableWindow&quot; (ByVal hwnd AS LONG, ByVal fEnable AS LONG) AS LONG</pre>
+<p>Enables or disables mouse and keyboard input to the specified window or control. Returns nonzero if the window was previously disabled.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=EnableWindow">EnableWindow</a></p>
+<h3><a name="ENUMCHILDWINDOWS"></a>EnumChildWindows</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 936</p>
+<pre>Declare Function EnumChildWindows LIB &quot;User32&quot; ALIAS &quot;EnumChildWindows&quot; (hWndParent AS LONG,lpEnumFunc AS LONG,lParam AS LONG) AS LONG</pre>
+<p>Enumerates the child windows of a parent window by passing each child handle to an application-defined callback function together with lParam.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=EnumChildWindows">EnumChildWindows</a></p>
+<h3><a name="ENUMDISPLAYSETTINGS"></a>EnumDisplaySettings</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1397</p>
+<pre>DECLARE FUNCTION EnumDisplaySettings LIB &quot;user32&quot; ALIAS &quot;EnumDisplaySettingsA&quot; (byref DeviceName AS STRING, byval iModeNum AS DWORD, byref DevMo AS DevMode) AS LONG</pre>
+<p>Retrieves information about one of the graphics modes of a display device into a DEVMODE structure; call with increasing index to list all modes.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=EnumDisplaySettingsA">EnumDisplaySettingsA</a></p>
+<h3><a name="EXITWINDOWSEX"></a>ExitWindowsEx</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1399</p>
+<pre>DECLARE FUNCTION ExitWindowsEx LIB &quot;user32&quot; ALIAS &quot;ExitWindowsEx&quot; (ByVal uFlags AS LONG, ByVal dwReserved AS LONG) AS LONG</pre>
+<p>Logs off the interactive user, shuts down, or restarts the system. Shutdown requires the SE_SHUTDOWN_NAME privilege.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ExitWindowsEx">ExitWindowsEx</a></p>
+<h3><a name="EXTFLOODFILL"></a>ExtFloodFill</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1376</p>
+<pre>DECLARE FUNCTION ExtFloodFill Lib &quot;gdi32&quot; Alias &quot;ExtFloodFill&quot; (hdc As Long,x As Long,y As Long,crColor As Long,wFillType As Long) As Long</pre>
+<p>Fills an area of the display surface with the current brush, either up to a border color or over a region of a given color.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ExtFloodFill">ExtFloodFill</a></p>
+<h3><a name="FORMATMESSAGE"></a>FormatMessage</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1799</p>
+<pre>DECLARE FUNCTION FormatMessage LIB &quot;kernel32&quot; ALIAS &quot;FormatMessageA&quot; (dwFlags AS DWORD, lpSource AS LONG, dwMessageId AS DWORD, dwLanguageId AS DWORD, BYREF lpBuffer AS STRING, nSize AS DWORD, lpArguments AS LONG) AS LONG</pre>
+<p>Formats a message string from a message table or a string, for example to get the text of a system error code from GetLastError.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FormatMessageA">FormatMessageA</a></p>
+<h3><a name="FUNCBIND_4"></a>FuncBind_4</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2242</p>
+<pre>Declare Function FuncBind_4 (Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long) As Long</pre>
+<p>Declaration only, with no body: a function prototype (four LONG arguments, LONG result) used by MasterCallBack_4 with BIND/CALLFUNC to call a user function through a handle.</p>
+<h3><a name="FWCB_GETPROCESSHEAP"></a>FWCB_GetProcessHeap</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 2212</p>
+<pre>Declare Function FWCB_GetProcessHeap Lib &quot;kernel32&quot; Alias &quot;GetProcessHeap&quot; () As Long</pre>
+<p>Returns a handle to the default heap of the calling process.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetProcessHeap">GetProcessHeap</a></p>
+<h3><a name="FWCB_HEAPALLOC"></a>FWCB_HeapAlloc</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 2213</p>
+<pre>Declare Function FWCB_HeapAlloc Lib &quot;kernel32&quot; Alias &quot;HeapAlloc&quot; (ByVal hHeap As Long, ByVal dwFlags As Long, ByVal dwBytes As Long) As Long</pre>
+<p>Allocates a block of memory from the specified heap. Returns a pointer to the block, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=HeapAlloc">HeapAlloc</a></p>
+<h3><a name="GETCAPTURE"></a>GetCapture</h3>
+<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 949</p>
+<pre>DECLARE FUNCTION GetCapture LIB &quot;USER32&quot; ALIAS &quot;GetCapture&quot; () AS LONG</pre>
+<p>Returns the handle of the window (in the current thread) that has captured the mouse, or 0 if none.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCapture">GetCapture</a></p>
+<h3><a name="GETCLASSNAME"></a>GetClassName</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 939</p>
+<pre>Declare Function GetClassName LIB &quot;User32&quot; ALIAS &quot;GetClassNameA&quot; (hwnd AS LONG, lpClassName AS LONG, nMaxCount AS LONG) AS LONG</pre>
+<p>Retrieves the name of the class to which the specified window belongs into a buffer. Returns the number of characters copied, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetClassNameA">GetClassNameA</a></p>
+<h3><a name="GETCLIENTRECT"></a>GetClientRect</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 942</p>
+<pre>Declare Function GetClientRect LIB &quot;User32&quot; ALIAS &quot;GetClientRect&quot; (hwnd AS LONG,lpRect AS QRECT) AS LONG</pre>
+<p>Retrieves the coordinates of a window&#x27;s client area; left and top are 0, so right and bottom give the client width and height.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetClientRect">GetClientRect</a></p>
+<h3><a name="GETCOMMSTATE"></a>GetCommState</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1842</p>
+<pre>DECLARE FUNCTION GetCommState LIB &quot;kernel32&quot; ALIAS &quot;GetCommState&quot; (hFile AS LONG, lpDCB AS DCB) AS LONG</pre>
+<p>Retrieves the current control settings (baud rate, parity, etc.) of a communications device into a DCB structure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCommState">GetCommState</a></p>
+<h3><a name="GETCURRENTOBJECT"></a>GetCurrentObject</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1379</p>
+<pre>DECLARE FUNCTION GetCurrentObject Lib &quot;gdi32&quot; Alias &quot;GetCurrentObject&quot; (hdc As Long,uObjectType As Long) As Long</pre>
+<p>Retrieves a handle to the currently selected object of the specified type (pen, brush, font, bitmap, palette) in a device context.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCurrentObject">GetCurrentObject</a></p>
+<h3><a name="GETCURRENTPROCESS"></a>GetCurrentProcess</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1417</p>
+<pre>DECLARE FUNCTION GetCurrentProcess Lib &quot;kernel32&quot; ALIAS &quot;GetCurrentProcess&quot;() As Long</pre>
+<p>Returns a pseudo handle for the current process; it does not need to be closed.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCurrentProcess">GetCurrentProcess</a></p>
+<h3><a name="GETDC"></a>GetDC</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 1400</p>
+<pre>DECLARE FUNCTION GetDC LIB &quot;user32.dll&quot; ALIAS &quot;GetDC&quot;(ByVal hwnd AS LONG) AS LONG</pre>
+<p>Retrieves a device context for the client area of a window (or the entire screen if hWnd is 0). Release it with ReleaseDC.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDC">GetDC</a></p>
+<h3><a name="GETDESKTOPWINDOW"></a>GetDesktopWindow</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1394</p>
+<pre>DECLARE FUNCTION GetDesktopWindow Lib &quot;user32&quot; Alias &quot;GetDesktopWindow&quot; () AS LONG</pre>
+<p>Returns a handle to the desktop window, the window that covers the entire screen.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDesktopWindow">GetDesktopWindow</a></p>
+<h3><a name="GETDEVICECAPS"></a>GetDeviceCaps</h3>
+<p class="rq-meta">DLL function, gdi32.dll &middot; rapidqAllProc.inc, line 1377</p>
+<pre>DECLARE FUNCTION GetDeviceCaps LIB &quot;gdi32.dll&quot; ALIAS &quot;GetDeviceCaps&quot;(ByVal hdc AS LONG, ByVal nIndex AS LONG) AS LONG</pre>
+<p>Retrieves device-specific information (e.g. resolution, color depth, pixels per inch) for the specified device context and index.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDeviceCaps">GetDeviceCaps</a></p>
+<h3><a name="GETDISKFREESPACEEX"></a>GetDiskFreeSpaceEx</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1422</p>
+<pre>DECLARE FUNCTION GetDiskFreeSpaceEx LIB &quot;kernel32&quot; ALIAS &quot;GetDiskFreeSpaceExA&quot; (lpRootPathName AS STRING, lpFreeBytesAvailableToCaller AS LONG, lpTotalNumberOfBytes AS LONG, lpTotalNumberOfFreeBytes AS LONG) AS LONG</pre>
+<p>Retrieves the total size, total free space and free space available to the caller on a disk volume, as 64-bit byte counts.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDiskFreeSpaceExA">GetDiskFreeSpaceExA</a></p>
+<h3><a name="GETDRIVETYPE"></a>GetDriveType</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1420</p>
+<pre>DECLARE FUNCTION GetDriveType Lib &quot;kernel32&quot; Alias &quot;GetDriveTypeA&quot; (nDrive As String) As Long</pre>
+<p>Determines whether a disk drive is removable, fixed, CD-ROM, RAM disk or network drive, given its root path.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDriveTypeA">GetDriveTypeA</a></p>
+<h3><a name="GETFOCUS"></a>GetFocus</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 944</p>
+<pre>DECLARE FUNCTION GetFocus LIB &quot;user32&quot; ALIAS &quot;GetFocus&quot;() AS LONG</pre>
+<p>Returns the handle of the window that has the keyboard focus, if it is attached to the calling thread&#x27;s message queue; otherwise 0.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetFocus">GetFocus</a></p>
+<h3><a name="GETKEYSTATE"></a>GetKeyState</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1138</p>
+<pre>DECLARE FUNCTION GetKeyState Lib &quot;user32&quot; Alias &quot;GetKeyState&quot; (ByVal nVirtKey As Long) As Integer</pre>
+<p>Retrieves the status of a virtual key: high-order bit set if the key is down, low-order bit set if a toggle key (e.g. Caps Lock) is on.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetKeyState">GetKeyState</a></p>
+<h3><a name="GETLASTERROR"></a>GetLastError</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1791</p>
+<pre>DECLARE FUNCTION GetLastError LIB &quot;kernel32&quot; ALIAS &quot;GetLastError&quot; () AS DWORD</pre>
+<p>Retrieves the calling thread&#x27;s last-error code value.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetLastError">GetLastError</a></p>
+<h3><a name="GETMENU"></a>GetMenu</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1515</p>
+<pre>DECLARE FUNCTION GetMenu LIB &quot;user32&quot; ALIAS &quot;GetMenu&quot; (hWnd AS LONG) AS LONG</pre>
+<p>Returns a handle to the menu assigned to the specified window, or 0 if it has none.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetMenu">GetMenu</a></p>
+<h3><a name="GETMENUITEMINFO"></a>GetMenuItemInfo</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 1516</p>
+<pre>DECLARE FUNCTION GetMenuItemInfo LIB &quot;user32.dll&quot; ALIAS &quot;GetMenuItemInfoA&quot; (ByVal hMenu AS LONG, ByVal uItem AS LONG, ByVal fByPosition AS LONG, lpmii AS MENUITEMINFO) AS LONG</pre>
+<p>Retrieves information about a menu item, by position or command ID, into a MENUITEMINFO structure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetMenuItemInfoA">GetMenuItemInfoA</a></p>
+<h3><a name="GETOBJECT"></a>GetObject</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1378</p>
+<pre>DECLARE FUNCTION GetObject Lib &quot;gdi32&quot; Alias &quot;GetObjectA&quot; (hObject As Long,nCount As Long, lpObject AS TBITMAP) As Long</pre>
+<p>Retrieves information about a graphics object (bitmap, pen, brush, font, etc.) into a buffer, such as a BITMAP or LOGFONT structure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetObjectA">GetObjectA</a></p>
+<h3><a name="GETOPENFILENAME"></a>GetOpenFileName</h3>
+<p class="rq-meta">DLL function, COMDLG32 &middot; rapidqAllProc.inc, line 1603</p>
+<pre>DECLARE FUNCTION GetOpenFileName LIB &quot;COMDLG32&quot; ALIAS &quot;GetOpenFileNameA&quot; (pOpenfilename AS OPENFILENAME) AS LONG</pre>
+<p>Displays the common Open dialog box, described by an OPENFILENAME structure. Returns nonzero if the user selected a file.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetOpenFileNameA">GetOpenFileNameA</a></p>
+<h3><a name="GETPARENT"></a>GetParent</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 945</p>
+<pre>DECLARE FUNCTION GetParent Lib &quot;user32&quot; Alias &quot;GetParent&quot; (hwnd As Long) As Long</pre>
+<p>Returns the handle of the specified window&#x27;s parent or owner window, or 0 if there is none.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetParent">GetParent</a></p>
+<h3><a name="GETPIXEL"></a>GetPixel</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1380</p>
+<pre>DECLARE FUNCTION GetPixel Lib &quot;gdi32&quot; Alias &quot;GetPixel&quot; (hdc as Long,x as Long,y as Long) as Long</pre>
+<p>Retrieves the RGB color value of the pixel at the specified coordinates in a device context; returns CLR_INVALID if outside the clip region.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetPixel">GetPixel</a></p>
+<h3><a name="GETPRIORITYCLASS"></a>GetPriorityClass</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1416</p>
+<pre>DECLARE FUNCTION GetPriorityClass Lib &quot;kernel32&quot; ALIAS &quot;GetPriorityClass&quot; (ByVal hProcess As Long) As Long</pre>
+<p>Returns the priority class of the specified process, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetPriorityClass">GetPriorityClass</a></p>
+<h3><a name="GETPROP"></a>GetProp</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 941</p>
+<pre>Declare Function GetProp LIB &quot;User32&quot; ALIAS &quot;GetPropA&quot; (hwnd AS LONG,lpString AS STRING) AS LONG</pre>
+<p>Retrieves a data handle from the property list of a window by property name. Returns 0 if the property is not found.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetPropA">GetPropA</a></p>
+<h3><a name="GETSAVEFILENAME"></a>GetSaveFileName</h3>
+<p class="rq-meta">DLL function, COMDLG32 &middot; rapidqAllProc.inc, line 1602</p>
+<pre>DECLARE FUNCTION GetSaveFileName LIB &quot;COMDLG32&quot; ALIAS &quot;GetSaveFileNameA&quot; (pOpenfilename AS OPENFILENAME) AS LONG</pre>
+<p>Displays the common Save As dialog box, described by an OPENFILENAME structure. Returns nonzero if the user selected a file name.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSaveFileNameA">GetSaveFileNameA</a></p>
+<h3><a name="GETSTOCKOBJECT"></a>GetStockObject</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1381</p>
+<pre>DECLARE FUNCTION GetStockObject Lib &quot;gdi32&quot; Alias &quot;GetStockObject&quot; (nIndex As Long) As Long</pre>
+<p>Retrieves a handle to one of the stock pens, brushes, fonts or palettes. Stock objects need not be deleted.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetStockObject">GetStockObject</a></p>
+<h3><a name="GETSYSCOLOR"></a>GetSysColor</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1514</p>
+<pre>Declare Function GetSysColor Lib &quot;user32&quot; Alias &quot;GetSysColor&quot; (nIndex As Long) As Long</pre>
+<p>Retrieves the current color of the specified display element (COLOR_ index) as an RGB value.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSysColor">GetSysColor</a></p>
+<h3><a name="GETSYSTEMMETRICS"></a>GetSystemMetrics</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 2050</p>
+<pre>Declare Function GetSystemMetrics Lib &quot;user32&quot; Alias &quot;GetSystemMetrics&quot; (ByVal nIndex As Long) As Long</pre>
+<p>Retrieves the specified system metric or configuration setting (screen size, border widths, etc.) by SM_ index.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSystemMetrics">GetSystemMetrics</a></p>
+<h3><a name="GETSYSTEMPOWERSTATUS"></a>GetSystemPowerStatus</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1975</p>
+<pre>Declare Function GetSystemPowerStatus Lib &quot;kernel32&quot; Alias &quot;GetSystemPowerStatus&quot; (lpSystemPowerStatus As SYSTEM_POWER_STATUS) As Long</pre>
+<p>Retrieves the power status of the system: AC or battery power, battery charge and remaining battery life.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSystemPowerStatus">GetSystemPowerStatus</a></p>
+<h3><a name="GETVERSIONEX"></a>GetVersionEx</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; rapidqAllProc.inc, line 1951</p>
+<pre>Declare Function GetVersionEx Lib &quot;kernel32.dll&quot; Alias &quot;GetVersionExA&quot; (lpVersionInformation As OSVERSIONINFO) As Long</pre>
+<p>Retrieves information about the operating system version into an OSVERSIONINFO structure. Deprecated since Windows 8.1 (results may be manifest-dependent).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetVersionExA">GetVersionExA</a></p>
+<h3><a name="GETWINDOWLONG"></a>GetWindowLong</h3>
+<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 983</p>
+<pre>DECLARE FUNCTION GetWindowLong LIB &quot;USER32&quot; ALIAS &quot;GetWindowLongA&quot; (hwnd AS LONG, type AS LONG) AS LONG</pre>
+<p>Retrieves information about a window (style, extended style, window procedure, ID, user data, etc.) at the given offset (GWL_ constants).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowLongA">GetWindowLongA</a></p>
+<h3><a name="GETWINDOWRECT"></a>GetWindowRect</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 946</p>
+<pre>DECLARE FUNCTION GetWindowRect Lib &quot;user32&quot; Alias &quot;GetWindowRect&quot; (ByVal hwnd As Long, lpRect As QRECT) As Long</pre>
+<p>Retrieves the bounding rectangle of a window in screen coordinates, including title bar and borders.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowRect">GetWindowRect</a></p>
+<h3><a name="GETWINDOWTEXT"></a>GetWindowText</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 947</p>
+<pre>DECLARE FUNCTION GetWindowText Lib &quot;user32&quot; Alias &quot;GetWindowTextA&quot; (ByVal hwnd As Long, ByRef lpString As String, ByVal cch As Long) As Long</pre>
+<p>Copies the text of a window&#x27;s title bar (or a control&#x27;s text) into a buffer. Returns the number of characters copied.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowTextA">GetWindowTextA</a></p>
+<h3><a name="GETWINDOWTEXTLENGTH"></a>GetWindowTextLength</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 948</p>
+<pre>DECLARE FUNCTION GetWindowTextLength Lib &quot;user32&quot; Alias &quot;GetWindowTextLengthA&quot; (ByVal hwnd As Long) As Long</pre>
+<p>Returns the length, in characters, of a window&#x27;s title bar text or a control&#x27;s text (not including the terminating null).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowTextLengthA">GetWindowTextLengthA</a></p>
+<h3><a name="GLOBALMEMORYSTATUS"></a>GlobalMemoryStatus</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1990</p>
+<pre>Declare Sub GlobalMemoryStatus Lib &quot;kernel32&quot; ALIAS &quot;GlobalMemoryStatus&quot; (lpBuffer As MEMORYSTATUS)</pre>
+<p>Retrieves information about the system&#x27;s current physical and virtual memory usage. Use GlobalMemoryStatusEx for more than 4 GB.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GlobalMemoryStatus">GlobalMemoryStatus</a></p>
+<h3><a name="GRQ2_BEEP"></a>gRQ2_Beep</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 2737</p>
+<pre>Declare Function gRQ2_Beep Lib &quot;kernel32&quot; Alias &quot;Beep&quot; (ByVal dwFreq As Long, ByVal dwDuration As Long) As Long</pre>
+<p>Generates simple tones on the speaker with the given frequency (Hz) and duration (ms). The function is synchronous.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=Beep">Beep</a></p>
+<h3><a name="GRQ2_GETVERSION"></a>gRQ2_GetVersion</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 2735</p>
+<pre>Declare Function gRQ2_GetVersion Lib &quot;kernel32&quot; Alias &quot;GetVersion&quot; () As Long</pre>
+<p>Returns the operating system version number (major/minor in the low word, build in the high word). Deprecated; use version helper functions instead.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetVersion">GetVersion</a></p>
+<h3><a name="GRQ2_WNDPROC_EVENTTEMPLATE"></a>gRQ2_WndProc_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2277</p>
+<pre>Declare Function gRQ2_WndProc_eventTemplate(Hnd AS INTEGER, Msg AS INTEGER, Wparm AS INTEGER, Lparm AS INTEGER) AS LONG</pre>
+<p>Declaration only: window procedure prototype (Hnd, Msg, Wparm, Lparm, returns LONG) for the QFormEx extension. The program writes a FUNCTION with this signature to handle window messages; the class code is not in this file.</p>
+<h3><a name="HEXTODEC"></a>HexToDec</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2726</p>
+<pre>function HexToDec(hex as string)as long</pre>
+<p>Converts a hexadecimal string to a LONG using CONVBASE$(hex, 16, 10).</p>
+<h3><a name="INSERTMENUITEM"></a>InsertMenuItem</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 1518</p>
+<pre>DECLARE FUNCTION InsertMenuItem LIB &quot;user32.dll&quot; ALIAS &quot;InsertMenuItemA&quot; (ByVal hMenu AS LONG, ByVal uItem AS LONG, ByVal fByPosition AS LONG, lpmii AS MENUITEMINFO) AS LONG</pre>
+<p>Inserts a new menu item at the specified position in a menu, described by a MENUITEMINFO structure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InsertMenuItemA">InsertMenuItemA</a></p>
+<h3><a name="ISICONIC"></a>IsIconic</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 953</p>
+<pre>DECLARE FUNCTION IsIconic Lib &quot;user32&quot; Alias &quot;IsIconic&quot; (ByVal hwnd As Long) As Long</pre>
+<p>Determines whether the specified window is minimized (iconic). Returns nonzero if it is.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=IsIconic">IsIconic</a></p>
+<h3><a name="ISWINDOWVISIBLE"></a>IsWindowVisible</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 954</p>
+<pre>DECLARE FUNCTION IsWindowVisible Lib &quot;user32&quot; Alias &quot;IsWindowVisible&quot; (ByVal hwnd As Long) As Long</pre>
+<p>Determines the visibility state of a window (WS_VISIBLE style of it and its parents). Returns nonzero if visible.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=IsWindowVisible">IsWindowVisible</a></p>
+<h3><a name="ISZOOMED"></a>IsZoomed</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 955</p>
+<pre>DECLARE FUNCTION IsZoomed Lib &quot;user32&quot; Alias &quot;IsZoomed&quot; (ByVal hwnd As Long) As Long</pre>
+<p>Determines whether a window is maximized. Returns nonzero if it is.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=IsZoomed">IsZoomed</a></p>
+<h3><a name="JPEGDLL_IMAGEHEIGHT"></a>JpegDLL_ImageHeight</h3>
+<p class="rq-meta">DLL function, jpeg.dll &middot; rapidqAllProc.inc, line 2154</p>
+<pre>DECLARE FUNCTION JpegDLL_ImageHeight LIB &quot;jpeg.dll&quot; ALIAS &quot;ImageHeight&quot; (hImg AS LONG) AS INTEGER</pre>
+<p>From jpeg.dll: returns the height of an image loaded with LoadImageFile.</p>
+<h3><a name="JPEGDLL_IMAGEWIDTH"></a>JpegDLL_ImageWidth</h3>
+<p class="rq-meta">DLL function, jpeg.dll &middot; rapidqAllProc.inc, line 2155</p>
+<pre>DECLARE FUNCTION JpegDLL_ImageWidth LIB &quot;jpeg.dll&quot; ALIAS &quot;ImageWidth&quot; (hImg AS LONG) AS INTEGER</pre>
+<p>From jpeg.dll: returns the width of an image loaded with LoadImageFile.</p>
+<h3><a name="JPEGDLL_LOADIMAGEFILE"></a>JpegDLL_LoadImageFile</h3>
+<p class="rq-meta">DLL function, jpeg.dll &middot; rapidqAllProc.inc, line 2153</p>
+<pre>DECLARE FUNCTION JpegDLL_LoadImageFile LIB &quot;jpeg.dll&quot; ALIAS &quot;LoadImageFile&quot; (hWnd AS LONG, file$ AS STRING) AS INTEGER</pre>
+<p>From jpeg.dll: loads an image file for the given window and returns an image handle.</p>
+<h3><a name="LINETO"></a>LineTo</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1382</p>
+<pre>DECLARE FUNCTION LineTo Lib &quot;gdi32&quot; Alias &quot;LineTo&quot; (hdc As Long,x As Long,y As Long) As Long</pre>
+<p>Draws a line with the current pen from the current position up to, but not including, the specified point, and updates the current position.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=LineTo">LineTo</a></p>
+<h3><a name="LOADIMAGE"></a>LoadImage</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1396</p>
+<pre>DECLARE FUNCTION LoadImage Lib &quot;user32&quot; ALIAS &quot;LoadImageA&quot; (hInst AS LONG,lpsz AS STRING, dwImageType AS LONG,dwDesiredWidth AS LONG, dwDesiredHeight AS LONG,dwFlags AS LONG) AS LONG</pre>
+<p>Loads an icon, cursor, animated cursor or bitmap from a module resource or a file. Returns the image handle, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=LoadImageA">LoadImageA</a></p>
+<h3><a name="LOADLIBRARY"></a>LoadLibrary</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 2131</p>
+<pre>Declare Function LoadLibrary Lib &quot;kernel32&quot; Alias &quot;LoadLibraryA&quot; (ByVal lpLibFileName As String) As Long</pre>
+<p>Loads the specified DLL or executable module into the calling process. Returns a module handle, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=LoadLibraryA">LoadLibraryA</a></p>
+<h3><a name="LOOKUPPRIVILEGEVALUE"></a>LookupPrivilegeValue</h3>
+<p class="rq-meta">DLL function, advapi32 &middot; rapidqAllProc.inc, line 2082</p>
+<pre>Declare Function LookupPrivilegeValue Lib &quot;advapi32&quot; Alias &quot;LookupPrivilegeValueA&quot; (lpSystemName As String, lpName As String, lpLuid As LUID) As Long</pre>
+<p>Retrieves the locally unique identifier (LUID) that represents the named privilege (e.g. SeShutdownPrivilege) on a system.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=LookupPrivilegeValueA">LookupPrivilegeValueA</a></p>
+<h3><a name="MASTERCALLBACK_4"></a>MasterCallBack_4</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2241</p>
+<pre>Function MasterCallBack_4 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long) As Long</pre>
+<p>Dispatcher used by 4-argument callback thunks: binds the function handle hFunction to the FuncBind_4 prototype and calls it with Arg1..Arg4 via CALLFUNC, returning its result.</p>
+<h3><a name="MODIFYMENU"></a>ModifyMenu</h3>
+<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 1519</p>
+<pre>DECLARE FUNCTION ModifyMenu LIB &quot;USER32&quot; ALIAS &quot;ModifyMenuA&quot; (hMenu AS LONG,uPosition AS LONG,uFlags AS LONG,uIDNewItem AS LONG,lpNewItem AS LONG) AS LONG</pre>
+<p>Changes an existing menu item&#x27;s content, flags and identifier. Superseded by SetMenuItemInfo.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ModifyMenuA">ModifyMenuA</a></p>
+<h3><a name="MOVETOEX"></a>MoveToEx</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1383</p>
+<pre>DECLARE FUNCTION MoveToEx Lib &quot;gdi32&quot; Alias &quot;MoveToEx&quot; (hdc As Long,x As Long,y As Long, lpPoint As long) As Long</pre>
+<p>Updates the current position in a device context to the specified point, optionally returning the previous position.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MoveToEx">MoveToEx</a></p>
+<h3><a name="MOVEWINDOW"></a>MoveWindow</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 943</p>
+<pre>Declare Function MoveWindow LIB &quot;User32&quot; ALIAS &quot;MoveWindow&quot; (hwnd AS LONG,x AS LONG,y AS LONG,nWidth AS LONG,nHeight AS LONG,bRepaint AS LONG) AS LONG</pre>
+<p>Changes the position and dimensions of a window, optionally repainting it. Top-level windows are positioned in screen coordinates, child windows relative to the parent client area.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MoveWindow">MoveWindow</a></p>
+<h3><a name="NVIEWGETHEIGHT"></a>NViewGetHeight</h3>
+<p class="rq-meta">DLL function, nviewlib.dll &middot; rapidqAllProc.inc, line 2144</p>
+<pre>Declare Function NViewGetHeight Lib &quot;nviewlib.dll&quot; Alias &quot;GetHeight&quot; () As Integer</pre>
+<p>From nviewlib.dll: returns the height of the image last loaded with NViewLoad.</p>
+<h3><a name="NVIEWGETWIDTH"></a>NViewGetWidth</h3>
+<p class="rq-meta">DLL function, nviewlib.dll &middot; rapidqAllProc.inc, line 2145</p>
+<pre>Declare Function NViewGetWidth Lib &quot;nviewlib.dll&quot; Alias &quot;GetWidth&quot; () As Integer</pre>
+<p>From nviewlib.dll: returns the width of the image last loaded with NViewLoad.</p>
+<h3><a name="NVIEWLOAD"></a>NViewLoad</h3>
+<p class="rq-meta">DLL function, nviewlib.dll &middot; rapidqAllProc.inc, line 2143</p>
+<pre>Declare Function NViewLoad Lib &quot;nviewlib.dll&quot; Alias &quot;NViewLibLoad&quot; (FileName As String,Progress As Integer) As Long</pre>
+<p>From nviewlib.dll: loads a JPEG or GIF image file (format detected from file contents, not extension) and returns a bitmap handle.</p>
+<h3><a name="NVIEWSAVEASJPG"></a>NViewSaveAsJPG</h3>
+<p class="rq-meta">DLL function, nviewlib.dll &middot; rapidqAllProc.inc, line 2146</p>
+<pre>Declare Function NViewSaveAsJPG Lib &quot;nviewlib.dll&quot; Alias &quot;NViewLibSaveAsJPG&quot; (Quality As Integer,FileName As String) As Integer</pre>
+<p>From nviewlib.dll: saves the current image as a JPEG file with the given quality.</p>
+<h3><a name="NVIEWSETLANGUAGE"></a>NViewSetLanguage</h3>
+<p class="rq-meta">DLL function, nviewlib.dll &middot; rapidqAllProc.inc, line 2142</p>
+<pre>Declare Function NViewSetLanguage Lib &quot;nviewlib.dll&quot; Alias &quot;NViewLibSetLanguage&quot; (Language As String) As Integer</pre>
+<p>From nviewlib.dll: sets the language used by the NView image library (per the source comment, a JPEG/GIF loading DLL by K. Nishita).</p>
+<h3><a name="ONCHILDACTIVE_EVENTTEMPLATE"></a>OnChildActive_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2324</p>
+<pre>Declare Sub OnChildActive_eventTemplate(handleChild as long,index as integer,titleChild as string)</pre>
+<p>Event handler prototype (declaration only) for the QFormMDI multiple document interface class; write a SUB with this signature in your program and assign it to the MDI form&#x27;s matching event. Receives the child window handle, its index and caption when a child becomes active.</p>
+<h3><a name="ONCHILDCLOSE_EVENTTEMPLATE"></a>OnChildClose_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2323</p>
+<pre>Declare Sub OnChildClose_eventTemplate(handleChild as long,index as integer,titleChild as string)</pre>
+<p>Event handler prototype (declaration only) for the QFormMDI multiple document interface class; write a SUB with this signature in your program and assign it to the MDI form&#x27;s matching event. Receives the child window handle, its index and caption when a child is closed.</p>
+<h3><a name="ONCHILDRESIZE_EVENTTEMPLATE"></a>OnChildResize_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2325</p>
+<pre>Declare Sub OnChildResize_eventTemplate(handleChild as long,index as integer,titleChild as string)</pre>
+<p>Event handler prototype (declaration only) for the QFormMDI multiple document interface class; write a SUB with this signature in your program and assign it to the MDI form&#x27;s matching event. Receives the child window handle, its index and caption when a child is resized.</p>
+<h3><a name="ONCLOSE_EVENTTEMPLATE"></a>OnClose_EventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2368</p>
+<pre>DECLARE SUB OnClose_EventTemplate</pre>
+<p>Event handler prototype (declaration only) for the COMPORT serial port component (class code is not in this file); write a SUB with this signature in your program and assign it to the component&#x27;s matching event (port closed). No parameters.</p>
+<h3><a name="ONCOMERROR_EVENTTEMPLATE"></a>OnComError_EventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2366</p>
+<pre>DECLARE SUB OnComError_EventTemplate (strErrorMessage AS STRING)</pre>
+<p>Event handler prototype (declaration only) for the COMPORT serial port component (class code is not in this file); write a SUB with this signature in your program and assign it to the component&#x27;s matching event; strErrorMessage receives the error text.</p>
+<h3><a name="ONDRAG_EVENTTEMPLATE"></a>OnDrag_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2269</p>
+<pre>Declare Sub OnDrag_eventTemplate(file as string)</pre>
+<p>Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (drag and drop); file receives the dropped file name.</p>
+<h3><a name="ONGETFOCUS_EVENTTEMPLATE"></a>OnGetFocus_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2276</p>
+<pre>Declare Sub OnGetFocus_eventTemplate</pre>
+<p>Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (form got focus). No parameters.</p>
+<h3><a name="ONLOSTFOCUS_EVENTTEMPLATE"></a>OnLostFocus_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2275</p>
+<pre>Declare Sub OnLostFocus_eventTemplate</pre>
+<p>Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (form lost focus). No parameters.</p>
+<h3><a name="ONMINIMISE_EVENTTEMPLATE"></a>OnMinimise_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2272</p>
+<pre>Declare Sub OnMinimise_eventTemplate</pre>
+<p>Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (form minimized). No parameters.</p>
+<h3><a name="ONMOUSEWHEEL_EVENTTEMPLATE"></a>OnMouseWheel_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2274</p>
+<pre>Declare Sub OnMouseWheel_eventTemplate(MouseRotation AS INTEGER, Xpos AS LONG, Ypos AS LONG, Shift AS INTEGER)</pre>
+<p>Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (mouse wheel); receives wheel rotation, X/Y position and shift state.</p>
+<h3><a name="ONOPEN_EVENTTEMPLATE"></a>OnOpen_EventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2367</p>
+<pre>DECLARE SUB OnOpen_EventTemplate</pre>
+<p>Event handler prototype (declaration only) for the COMPORT serial port component (class code is not in this file); write a SUB with this signature in your program and assign it to the component&#x27;s matching event (port opened). No parameters.</p>
+<h3><a name="ONREADSTRING_EVENTTEMPLATE"></a>OnReadString_EventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2370</p>
+<pre>DECLARE SUB OnReadString_EventTemplate</pre>
+<p>Event handler prototype (declaration only) for the COMPORT serial port component (class code is not in this file); write a SUB with this signature in your program and assign it to the component&#x27;s matching event (string read). No parameters.</p>
+<h3><a name="ONTRAYCLICK_EVENTTEMPLATE"></a>OnTrayClick_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2270</p>
+<pre>Declare Sub OnTrayClick_eventTemplate</pre>
+<p>Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (click on the tray icon). No parameters.</p>
+<h3><a name="ONTRAYDBLCLICK_EVENTTEMPLATE"></a>OnTrayDblClick_eventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2271</p>
+<pre>Declare Sub OnTrayDblClick_eventTemplate</pre>
+<p>Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (double click on the tray icon). No parameters.</p>
+<h3><a name="ONWRITESTRING_EVENTTEMPLATE"></a>OnWriteString_EventTemplate</h3>
+<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 2369</p>
+<pre>DECLARE SUB OnWriteString_EventTemplate</pre>
+<p>Event handler prototype (declaration only) for the COMPORT serial port component (class code is not in this file); write a SUB with this signature in your program and assign it to the component&#x27;s matching event (string written). No parameters.</p>
+<h3><a name="OPENPROCESSTOKEN"></a>OpenProcessToken</h3>
+<p class="rq-meta">DLL function, advapi32 &middot; rapidqAllProc.inc, line 2077</p>
+<pre>Declare Function OpenProcessToken Lib &quot;advapi32&quot; Alias &quot;OpenProcessToken&quot; (ProcessHandle As Long, DesiredAccess As Long, TokenHandle As Long) As Long</pre>
+<p>Opens the access token associated with a process, for example to adjust its privileges. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=OpenProcessToken">OpenProcessToken</a></p>
+<h3><a name="PAGESETUPDLG"></a>PageSetupDlg</h3>
+<p class="rq-meta">DLL function, COMDLG32 &middot; rapidqAllProc.inc, line 2486</p>
+<pre>DECLARE FUNCTION PageSetupDlg LIB &quot;COMDLG32&quot; ALIAS &quot;PageSetupDlgA&quot; (Ptr AS TPSD) AS LONG</pre>
+<p>Displays the common Page Setup dialog box (PAGESETUPDLG) for setting paper size, orientation and margins. Returns nonzero on OK.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=PageSetupDlgA">PageSetupDlgA</a></p>
+<h3><a name="PATBLT"></a>PatBlt</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1384</p>
+<pre>DECLARE FUNCTION PatBlt Lib &quot;gdi32&quot; Alias &quot;PatBlt&quot; (hdc As Long,x As Long,y As Long,nWidth As Long,nHeight As Long,dwRop As Long) As Long</pre>
+<p>Paints a rectangle using the brush currently selected into the device context, combined with the display using a raster operation.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=PatBlt">PatBlt</a></p>
+<h3><a name="PURGECOMM"></a>PurgeComm</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1825</p>
+<pre>DECLARE FUNCTION PurgeComm LIB &quot;kernel32&quot; ALIAS &quot;PurgeComm&quot; (hFile AS LONG, dwFlags AS DWORD) AS LONG</pre>
+<p>Discards all characters from the output or input buffer of a communications device and can abort pending read/write operations.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=PurgeComm">PurgeComm</a></p>
+<h3><a name="READFILE"></a>ReadFile</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1906</p>
+<pre>DECLARE FUNCTION ReadFile LIB &quot;kernel32&quot; ALIAS &quot;ReadFile&quot; (hFile AS LONG, BYREF lpBuffer AS STRING, nNumberOfBytesToRead AS DWORD, BYREF lpNumberOfBytesRead AS DWORD, lpOverlapped AS OVERLAPPED) AS LONG</pre>
+<p>Reads data from the specified file or I/O device into a buffer; the number of bytes read is returned through a parameter.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ReadFile">ReadFile</a></p>
+<h3><a name="READFILEALIAS2"></a>ReadFileAlias2</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1915</p>
+<pre>DECLARE FUNCTION ReadFileAlias2 LIB &quot;kernel32&quot; ALIAS &quot;ReadFile&quot; (hFile AS LONG, BYREF lpBuffer AS DWORD, nNumberOfBytesToRead AS DWORD, BYREF lpNumberOfBytesRead AS DWORD, lpOverlapped AS OVERLAPPED) AS LONG</pre>
+<p>Reads data from the specified file or I/O device into a buffer; the number of bytes read is returned through a parameter.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ReadFile">ReadFile</a></p>
+<h3><a name="READFILEEX"></a>ReadFileEx</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1930</p>
+<pre>DECLARE FUNCTION ReadFileEx Lib &quot;kernel32&quot; Alias &quot;ReadFileEx&quot; (BYVAL hFile AS LONG, BYREF lpBuffer AS STRING, BYVAL nNumberOfBytesToRead AS DWORD, lpOverlapped AS OVERLAPPED, BYVAL lpCompletionRoutine AS LONG) AS LONG</pre>
+<p>Reads data from a file or I/O device asynchronously and calls a completion routine when the read finishes and the thread is in an alertable wait.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ReadFileEx">ReadFileEx</a></p>
+<h3><a name="RECTANGLE"></a>Rectangle</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1385</p>
+<pre>DECLARE FUNCTION Rectangle Lib &quot;gdi32&quot; Alias &quot;Rectangle&quot; (hdc As Long,X1 As Long,Y1 As Long,X2 As Long,Y2 As Long) As Long</pre>
+<p>Draws a rectangle outlined with the current pen and filled with the current brush.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=Rectangle">Rectangle</a></p>
+<h3><a name="REGISTERCLASSEX"></a>RegisterClassEx</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 935</p>
+<pre>Declare Function RegisterClassEx LIB &quot;User32&quot; ALIAS &quot;RegisterClassExA&quot; (pcWndClassEx AS WNDCLASSEX) AS LONG</pre>
+<p>Registers a window class (described by a WNDCLASSEX structure) for later use with CreateWindowEx. Returns a class atom, or zero on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RegisterClassExA">RegisterClassExA</a></p>
+<h3><a name="RELEASECAPTURE"></a>ReleaseCapture</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 957</p>
+<pre>DECLARE FUNCTION ReleaseCapture LIB &quot;user32&quot; ALIAS &quot;ReleaseCapture&quot; () AS LONG</pre>
+<p>Releases the mouse capture from a window in the current thread and restores normal mouse input processing. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ReleaseCapture">ReleaseCapture</a></p>
+<h3><a name="RELEASEDC"></a>ReleaseDC</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 1401</p>
+<pre>DECLARE FUNCTION ReleaseDC LIB &quot;user32.dll&quot; ALIAS &quot;ReleaseDC&quot;(ByVal hwnd AS LONG, ByVal hdc AS LONG) AS LONG</pre>
+<p>Releases a common device context obtained with GetDC or GetWindowDC. Returns 1 if released.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ReleaseDC">ReleaseDC</a></p>
+<h3><a name="REMOVEPROP"></a>RemoveProp</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 956</p>
+<pre>DECLARE FUNCTION RemoveProp Lib &quot;user32&quot; Alias &quot;RemovePropA&quot; (ByVal hwnd As Long, ByVal lpString As String) As Long</pre>
+<p>Removes an entry from the property list of a window and returns the data handle that was associated with it.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RemovePropA">RemovePropA</a></p>
+<h3><a name="ROUNDRECT"></a>RoundRect</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1386</p>
+<pre>DECLARE FUNCTION RoundRect Lib &quot;gdi32&quot; Alias &quot;RoundRect&quot; (hdc As Long,X1 As Long,Y1 As Long,X2 As Long,Y2 As Long,X3 As Long,Y3 As Long) As Long</pre>
+<p>Draws a rectangle with rounded corners (given corner ellipse width and height), outlined with the current pen and filled with the current brush.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RoundRect">RoundRect</a></p>
+<h3><a name="RTLMOVEMEMORY"></a>RtlMoveMemory</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; rapidqAllProc.inc, line 1405</p>
+<pre>DECLARE SUB RtlMoveMemory Lib &quot;kernel32.dll&quot; Alias &quot;RtlMoveMemory&quot; (byref Destination AS LONG, byref Source AS LONG, Length AS LONG)</pre>
+<p>Copies a block of memory from a source address to a destination address; the blocks may overlap. Documented as the MoveMemory macro.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RtlMoveMemory">RtlMoveMemory</a></p>
+<h3><a name="SCREEN_CAPTURETOBMP"></a>Screen.CaptureToBMP</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2643</p>
+<pre>FUNCTION Screen.CaptureToBMP(TheRect AS QRECT, CapBitMap AS QBITMAP) AS LONG</pre>
+<p>Copies the screen area TheRect (whole screen if the rectangle is all zeros) into the QBITMAP CapBitMap with BitBlt from a DISPLAY device context. Returns nonzero on success; shows &#x27;Screen Capture Failed&#x27; on error. Uses a temporary QFORM as a workaround; the created DC is not deleted.</p>
+<h3><a name="SCREEN_CAPTURETOFILE"></a>Screen.CaptureToFile</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2678</p>
+<pre>FUNCTION Screen.CaptureToFile(TheRect AS QRECT, OutFileName AS STRING) AS LONG</pre>
+<p>Captures the screen area TheRect (whole screen if all zeros) with BitBlt into a temporary QBITMAP and saves it to OutFileName if the name is not empty. Returns nonzero on success, shows a message on failure. The created DC is not deleted.</p>
+<h3><a name="SCREEN_CLIENTHEIGHT"></a>Screen.ClientHeight</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2571</p>
+<pre>FUNCTION Screen.ClientHeight() AS LONG</pre>
+<p>Returns the height of the client area of a full-screen window (GetSystemMetrics SM_CYFULLSCREEN).</p>
+<h3><a name="SCREEN_CLIENTWIDTH"></a>Screen.ClientWidth</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2567</p>
+<pre>FUNCTION Screen.ClientWidth() AS LONG</pre>
+<p>Returns the width of the client area of a full-screen window (GetSystemMetrics SM_CXFULLSCREEN), i.e. screen width excluding taskbar areas.</p>
+<h3><a name="SCREEN_ENUMRESOLUTION"></a>Screen.EnumResolution</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2621</p>
+<pre>FUNCTION Screen.EnumResolution(ListView AS QLISTBOX) AS LONG</pre>
+<p>Fills the given QLISTBOX with all display modes from EnumDisplaySettings as &#x27;W x H x BPP BPP x Hz Hz&#x27; strings. Returns 1. The loop adds an item before testing the end flag, so the last entry is repeated.</p>
+<h3><a name="SCREEN_GETPIXEL"></a>Screen.GetPixel</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2713</p>
+<pre>FUNCTION Screen.GetPixel(x AS INTEGER, y AS INTEGER) AS LONG</pre>
+<p>Returns the color of the screen pixel at x, y (GetPixel on the desktop DC).</p>
+<h3><a name="SCREEN_GETPIXELDEPTH"></a>Screen.GetPixelDepth</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2612</p>
+<pre>FUNCTION Screen.GetPixelDepth() AS LONG</pre>
+<p>Returns the current screen color depth in bits per pixel (GetDeviceCaps BITSPIXEL on the screen DC).</p>
+<h3><a name="SCREEN_MONITORS"></a>Screen.Monitors</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2575</p>
+<pre>FUNCTION Screen.Monitors() AS LONG</pre>
+<p>Returns the number of display monitors (GetSystemMetrics SM_CMONITORS).</p>
+<h3><a name="SCREEN_MOUSEBUTTONS"></a>Screen.MouseButtons</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2559</p>
+<pre>FUNCTION Screen.MouseButtons() AS LONG</pre>
+<p>Returns the number of mouse buttons (GetSystemMetrics SM_CMOUSEBUTTONS).</p>
+<h3><a name="SCREEN_MOUSEPRESENT"></a>Screen.MousePresent</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2551</p>
+<pre>FUNCTION Screen.MousePresent() AS LONG</pre>
+<p>Returns nonzero if a mouse is installed (GetSystemMetrics SM_MOUSEPRESENT).</p>
+<h3><a name="SCREEN_MOUSESWAP"></a>Screen.MouseSwap</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2555</p>
+<pre>FUNCTION Screen.MouseSwap() AS LONG</pre>
+<p>Returns nonzero if the left and right mouse buttons are swapped (GetSystemMetrics SM_SWAPBUTTON).</p>
+<h3><a name="SCREEN_SETMOUSEXY"></a>Screen.SetMouseXY</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2563</p>
+<pre>FUNCTION Screen.SetMouseXY(X AS LONG, Y AS LONG) AS LONG</pre>
+<p>Moves the mouse cursor to screen coordinates X, Y with SetCursorPos and returns the API result.</p>
+<h3><a name="SCREEN_SETRESOLUTION"></a>Screen.SetResolution</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2579</p>
+<pre>FUNCTION Screen.SetResolution(X AS DWORD, Y AS DWORD, bpp AS WORD, Freq AS DWORD) AS LONG</pre>
+<p>Changes the display mode to X by Y with bpp bits per pixel and, if Freq is not 0, the refresh rate. Tests with ChangeDisplaySettings CDS_TEST, then applies temporarily (CDS_DYNAMIC, registry not changed). Shows a message on failure and returns the ChangeDisplaySettings result.</p>
+<h3><a name="SELECTOBJECT"></a>SelectObject</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1387</p>
+<pre>DECLARE FUNCTION SelectObject Lib &quot;gdi32&quot; Alias &quot;SelectObject&quot; (hdc As Long,hObject As Long) As Long</pre>
+<p>Selects an object (pen, brush, font, bitmap, region) into a device context and returns the handle of the object it replaces.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SelectObject">SelectObject</a></p>
+<h3><a name="SENDMESSAGEAPI"></a>SendMessageAPI</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 931</p>
+<pre>DECLARE FUNCTION SendMessageAPI Lib &quot;user32&quot; Alias &quot;SendMessageA&quot; (hwnd As Long, wMsg As Long, wParam As Long, lParam As Long) As Long</pre>
+<p>Sends a message to a window and does not return until the window procedure has processed it; returns the message-specific result.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SendMessageA">SendMessageA</a></p>
+<h3><a name="SETACTIVEWINDOW"></a>SetActiveWindow</h3>
+<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 1402</p>
+<pre>DECLARE FUNCTION SetActiveWindow Lib &quot;USER32&quot; Alias &quot;SetActiveWindow&quot; (hWnd as integer) as integer</pre>
+<p>Activates a top-level window attached to the calling thread&#x27;s message queue. Returns the previously active window.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetActiveWindow">SetActiveWindow</a></p>
+<h3><a name="SETBKMODE"></a>SetBkMode</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1389</p>
+<pre>DECLARE FUNCTION SetBkMode Lib &quot;gdi32&quot; Alias &quot;SetBkMode&quot; (hdc As Long,nBkMode As Long) As Long</pre>
+<p>Sets the background mix mode (OPAQUE or TRANSPARENT) used for text, hatched brushes and non-solid pens. Returns the previous mode.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetBkMode">SetBkMode</a></p>
+<h3><a name="SETCAPTURE"></a>SetCapture</h3>
+<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 958</p>
+<pre>DECLARE FUNCTION SetCapture LIB &quot;USER32&quot; ALIAS &quot;SetCapture&quot; (hwnd AS LONG) AS LONG</pre>
+<p>Sets the mouse capture to the specified window so it receives all mouse input; returns the handle of the window that previously had capture.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetCapture">SetCapture</a></p>
+<h3><a name="SETCLASSLONG"></a>SetClassLong</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 959</p>
+<pre>DECLARE FUNCTION SetClassLong Lib &quot;user32&quot; Alias &quot;SetClassLongA&quot; (hwnd As Long,nIndex As Long,dwNewLong As Long) As Long</pre>
+<p>Replaces a 32-bit value at the given offset in the extra class memory or a WNDCLASSEX field of the window&#x27;s class. Returns the previous value.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetClassLongA">SetClassLongA</a></p>
+<h3><a name="SETCOMMSTATE"></a>SetCommState</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1850</p>
+<pre>DECLARE FUNCTION SetCommState LIB &quot;kernel32&quot; ALIAS &quot;SetCommState&quot; (hFile AS LONG, lpDCB AS DCB) AS LONG</pre>
+<p>Configures a communications device according to a DCB structure (baud rate, byte size, parity, stop bits, flow control).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetCommState">SetCommState</a></p>
+<h3><a name="SETCOMMTIMEOUTS"></a>SetCommTimeouts</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1834</p>
+<pre>DECLARE FUNCTION SetCommTimeouts LIB &quot;kernel32&quot; ALIAS &quot;SetCommTimeouts&quot; (hFile AS LONG, lpCommTimeouts AS COMMTIMEOUTS) AS LONG</pre>
+<p>Sets the time-out parameters (COMMTIMEOUTS) for all read and write operations on a communications device.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetCommTimeouts">SetCommTimeouts</a></p>
+<h3><a name="SETCURSORPOS"></a>SetCursorPos</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1006</p>
+<pre>DECLARE FUNCTION SetCursorPos Lib &quot;user32&quot; Alias &quot;SetCursorPos&quot; (ByVal x As Long, ByVal y As Long) As Long</pre>
+<p>Moves the mouse cursor to the specified screen coordinates. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetCursorPos">SetCursorPos</a></p>
+<h3><a name="SETFOCUS"></a>SetFocus</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 960</p>
+<pre>DECLARE FUNCTION SetFocus LIB &quot;User32&quot; ALIAS &quot;SetFocus&quot; (hwnd AS LONG) AS LONG</pre>
+<p>Sets the keyboard focus to the specified window. Returns the handle of the window that previously had the focus.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetFocus">SetFocus</a></p>
+<h3><a name="SETFOREGROUNDWINDOW"></a>SetForegroundWindow</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 962</p>
+<pre>DECLARE FUNCTION SetForegroundWindow Lib &quot;user32&quot; Alias &quot;SetForegroundWindow&quot; (ByVal hwnd As Long) As Long</pre>
+<p>Brings the thread that created the window into the foreground and activates the window. Returns nonzero if successful.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetForegroundWindow">SetForegroundWindow</a></p>
+<h3><a name="SETLASTERROR"></a>SetLastError</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1784</p>
+<pre>Declare Sub SetLastError Lib &quot;kernel32&quot; Alias &quot;SetLastError&quot; (ByVal dwErrCode As Long)</pre>
+<p>Sets the last-error code for the calling thread.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetLastError">SetLastError</a></p>
+<h3><a name="SETLAYEREDWINDOWATTRIBUTES"></a>SetLayeredWindowAttributes</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 964</p>
+<pre>DECLARE FUNCTION SetLayeredWindowAttributes Lib &quot;user32&quot; Alias &quot;SetLayeredWindowAttributes&quot; (hWnd AS Long, crKey AS Long, bAlpha AS Long, dwFlags AS Long) AS Long</pre>
+<p>Sets the opacity and/or transparency color key of a layered window (WS_EX_LAYERED). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetLayeredWindowAttributes">SetLayeredWindowAttributes</a></p>
+<h3><a name="SETMENUITEMINFO"></a>SetMenuItemInfo</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 1517</p>
+<pre>DECLARE FUNCTION SetMenuItemInfo LIB &quot;user32.dll&quot; ALIAS &quot;SetMenuItemInfoA&quot; (ByVal hMenu AS LONG, ByVal uItem AS LONG, ByVal fByPosition AS LONG, lpmii AS MENUITEMINFO) AS LONG</pre>
+<p>Changes information about a menu item (text, state, bitmap, submenu, etc.) using a MENUITEMINFO structure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetMenuItemInfoA">SetMenuItemInfoA</a></p>
+<h3><a name="SETNEWCALLBACK_4"></a>SetNewCallBack_4</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2252</p>
+<pre>Function SetNewCallBack_4 (hFunction As Long) As Long</pre>
+<p>Returns a callback address for a 4-argument Windows callback that forwards to the RapidQ function hFunction (via SetNewFwToCallBack and MasterCallBack_4, whose address is in global lpCallBack_4).</p>
+<h3><a name="SETNEWFWTOCALLBACK"></a>SetNewFwToCallBack</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 2216</p>
+<pre>FUNCTION SetNewFwToCallBack (ForwardTo AS LONG, hFunction AS LONG) AS LONG</pre>
+<p>Allocates 14 bytes on the process heap and writes an x86 thunk that pushes hFunction as an extra first argument and jumps to ForwardTo. Returns the thunk address. Used to build Windows callbacks that route to a RapidQ function; the memory is never freed.</p>
+<h3><a name="SETPARENT"></a>SetParent</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 961</p>
+<pre>DECLARE FUNCTION SetParent Lib &quot;user32&quot; Alias &quot;SetParent&quot; (hWndChild As Long,hWndNewParent As Long) As Long</pre>
+<p>Changes the parent window of the specified child window. Returns the handle of the previous parent, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetParent">SetParent</a></p>
+<h3><a name="SETPRIORITYCLASS"></a>SetPriorityClass</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1415</p>
+<pre>DECLARE FUNCTION SetPriorityClass Lib &quot;kernel32&quot; ALIAS &quot;SetPriorityClass&quot; (ByVal hProcess As Long, ByVal dwPriorityClass As Long) As Long</pre>
+<p>Sets the priority class of the specified process (e.g. NORMAL, HIGH, IDLE). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetPriorityClass">SetPriorityClass</a></p>
+<h3><a name="SETPROP"></a>SetProp</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 940</p>
+<pre>Declare Function SetProp LIB &quot;User32&quot; ALIAS &quot;SetPropA&quot; (hwnd AS LONG,lpString AS STRING,hData AS LONG) AS LONG</pre>
+<p>Adds a new entry or changes an existing entry in the property list of a window, associating a string name with a handle/value. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetPropA">SetPropA</a></p>
+<h3><a name="SETROP2"></a>SetROP2</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1388</p>
+<pre>DECLARE FUNCTION SetROP2 Lib &quot;gdi32&quot; Alias &quot;SetROP2&quot; (hdc As Long,nDrawMode As long) As Long</pre>
+<p>Sets the current foreground mix mode (binary raster operation) used for pens and brush interiors. Returns the previous mode.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetROP2">SetROP2</a></p>
+<h3><a name="SETSUSPENDSTATE"></a>SetSuspendState</h3>
+<p class="rq-meta">DLL function, Powrprof &middot; rapidqAllProc.inc, line 1977</p>
+<pre>Declare Function SetSuspendState Lib &quot;Powrprof&quot; Alias &quot;SetSuspendState&quot; (ByVal Hibernate As Long, ByVal ForceCritical As Long, ByVal DisableWakeEvent As Long) As Long</pre>
+<p>Suspends the system by shutting power down: hibernates if Hibernate is nonzero, otherwise sleeps. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetSuspendState">SetSuspendState</a></p>
+<h3><a name="SETSYSTEMPOWERSTATE"></a>SetSystemPowerState</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1976</p>
+<pre>Declare Function SetSystemPowerState Lib &quot;kernel32&quot; Alias &quot;SetSystemPowerState&quot; (ByVal fSuspend As Long, ByVal fForce As Long) As Long</pre>
+<p>Suspends the system by shutting power down (sleep or hibernate). Not supported on newer Windows; use SetSuspendState instead.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetSystemPowerState">SetSystemPowerState</a></p>
+<h3><a name="SETUPCOMM"></a>SetupComm</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1814</p>
+<pre>DECLARE FUNCTION SetupComm LIB &quot;kernel32&quot; ALIAS &quot;SetupComm&quot; (hFile AS LONG, dwInQueue AS DWORD, dwOutQueue AS DWORD) AS LONG</pre>
+<p>Initializes the communications parameters of a serial device, setting the recommended sizes of the input and output buffers.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetupComm">SetupComm</a></p>
+<h3><a name="SETWINDOWLONG"></a>SetWindowLong</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 985</p>
+<pre>DECLARE FUNCTION SetWindowLong LIB &quot;user32&quot; ALIAS &quot;SetWindowLongA&quot; (hWnd AS LONG,nIndex AS LONG, dwNewLong AS LONG) AS LONG</pre>
+<p>Changes an attribute of a window (style, window procedure, user data, etc.) at the given offset and returns the previous value; often used for subclassing.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowLongA">SetWindowLongA</a></p>
+<h3><a name="SETWINDOWPOS"></a>SetWindowPos</h3>
+<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 976</p>
+<pre>DECLARE SUB SetWindowPos Lib &quot;User32&quot; ALIAS &quot;SetWindowPos&quot; (ByVal hWnd As Long, ByVal hWndInsertAfter As Long, ByVal X As Long, ByVal Y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long)</pre>
+<p>Changes the size, position and Z order of a window; the SWP_ flags select which of these are applied. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowPos">SetWindowPos</a></p>
+<h3><a name="SETWINDOWTEXT"></a>SetWindowText</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 963</p>
+<pre>DECLARE FUNCTION SetWindowText Lib &quot;user32&quot; Alias &quot;SetWindowTextA&quot; (ByVal hwnd As Long, Byref lpString As String) As Long</pre>
+<p>Changes the text of the window&#x27;s title bar or, for a control, the text of the control. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowTextA">SetWindowTextA</a></p>
+<h3><a name="SHELLEXECUTE"></a>ShellExecute</h3>
+<p class="rq-meta">DLL function, shell32.dll &middot; rapidqAllProc.inc, line 1000</p>
+<pre>DECLARE FUNCTION ShellExecute LIB &quot;shell32.dll&quot; ALIAS &quot;ShellExecuteA&quot; (ByVal hwnd AS LONG, ByVal lpOperation AS STRING, ByVal lpFile AS STRING, ByVal lpParameters AS STRING, ByVal lpDirectory AS STRING, ByVal nShowCmd AS LONG) AS LONG</pre>
+<p>Performs an operation (open, print, explore, etc.) on a file, URL or program. Returns a value greater than 32 on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ShellExecuteA">ShellExecuteA</a></p>
+<h3><a name="SHELL_NOTIFYICON"></a>Shell_NotifyIcon</h3>
+<p class="rq-meta">DLL function, SHELL32 &middot; rapidqAllProc.inc, line 998</p>
+<pre>DECLARE FUNCTION Shell_NotifyIcon Lib &quot;SHELL32&quot; ALIAS &quot;Shell_NotifyIconA&quot; (ByVal dwMessage As Long, lpData As QNOTIFYICONDATA) As Long</pre>
+<p>Sends a message to the taskbar&#x27;s notification area to add, modify or delete an icon (NOTIFYICONDATA). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=Shell_NotifyIconA">Shell_NotifyIconA</a></p>
+<h3><a name="SHOWWINDOW"></a>ShowWindow</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 967</p>
+<pre>DECLARE FUNCTION ShowWindow Lib &quot;user32&quot; Alias &quot;ShowWindow&quot; (hwnd As Long,nCmdShow As Long) As Long</pre>
+<p>Sets the window&#x27;s show state (hide, show, minimize, maximize, restore, etc.). Returns nonzero if the window was previously visible.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ShowWindow">ShowWindow</a></p>
+<h3><a name="SLEEP"></a>SLEEP</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1780</p>
+<pre>DECLARE SUB SLEEP.ms LIB &quot;kernel32&quot; ALIAS &quot;Sleep&quot; (dwMilliseconds AS DWORD)</pre>
+<p>Suspends execution of the current thread for at least the specified number of milliseconds.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=Sleep">Sleep</a></p>
+<h3><a name="SOUNDEX"></a>SoundEx</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 2739</p>
+<pre>Sub SoundEx (Freq As Long, Duration As Long)</pre>
+<p>Plays a tone of Freq Hz. Duration is in 1/18 second ticks. On Windows versions below 5 it uses SOUND; otherwise it calls kernel32 Beep with Duration*55 ms (global gRQ2_SND_OS_Version).</p>
+<h3><a name="STRETCHBLT"></a>StretchBlt</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 1390</p>
+<pre>DECLARE FUNCTION StretchBlt Lib &quot;gdi32&quot; Alias &quot;StretchBlt&quot; (hdc As Long,x As Long,y As Long,nWidth As Long,nHeight As Long,hSrcDC As Long,xSrc As Long,ySrc As Long,nSrcWidth As Long,nSrcHeight As Long,dwRop As Long) As Long</pre>
+<p>Copies a bitmap from a source rectangle into a destination rectangle, stretching or compressing it to fit, using a raster operation.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=StretchBlt">StretchBlt</a></p>
+<h3><a name="SYSTEMPARAMETERSINFO"></a>SystemParametersInfo</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 1403</p>
+<pre>DECLARE FUNCTION SystemParametersInfo Lib &quot;user32&quot; Alias &quot;SystemParametersInfoA&quot; (uAction as Long,uParam as Long,lpvParam as Long,fuWinIni as Long) as Long</pre>
+<p>Retrieves or sets one of the system-wide parameters (work area, wallpaper, desktop and UI settings), optionally updating the user profile.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SystemParametersInfoA">SystemParametersInfoA</a></p>
+<h3><a name="WRITEFILE"></a>WriteFile</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1886</p>
+<pre>DECLARE FUNCTION WriteFile LIB &quot;kernel32&quot; ALIAS &quot;WriteFile&quot; (hFile AS LONG, lpBuffer AS STRING, nNumberOfBytesToWrite AS DWORD, BYREF lpNumberOfBytesWritten AS DWORD, lpOverlapped AS OVERLAPPED) AS LONG</pre>
+<p>Writes data from a buffer to the specified file or I/O device; the number of bytes written is returned through a parameter.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=WriteFile">WriteFile</a></p>
+<h3><a name="WRITEFILEALIAS2"></a>WriteFileAlias2</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 1895</p>
+<pre>DECLARE FUNCTION WriteFileAlias2 LIB &quot;kernel32&quot; ALIAS &quot;WriteFile&quot; (hFile AS LONG, lpBuffer AS DWORD, nNumberOfBytesToWrite AS DWORD, BYREF lpNumberOfBytesWritten AS DWORD, lpOverlapped AS OVERLAPPED) AS LONG</pre>
+<p>Writes data from a buffer to the specified file or I/O device; the number of bytes written is returned through a parameter.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=WriteFile">WriteFile</a></p>
+<h3><a name="WSAGETLASTERROR"></a>WSAGetLastError</h3>
+<p class="rq-meta">DLL function, WSOCK32 &middot; rapidqAllProc.inc, line 1785</p>
+<pre>Declare Function WSAGetLastError Lib &quot;WSOCK32&quot; ALIAS &quot;WSAGetLastError&quot; () As Long</pre>
+<p>Returns the error status for the last Windows Sockets operation that failed in the calling thread.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=WSAGetLastError">WSAGetLastError</a></p>
+</body>
+</html>

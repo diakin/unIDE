@@ -1,0 +1,794 @@
+{
+ "LoadCursor@QFormSkin.inc": {
+  "desc": "Loads a cursor resource from a module or a predefined system cursor (IDC_ARROW etc.). Returns the cursor handle, or 0 on failure. Superseded by LoadImage.",
+  "doc": "LoadCursorA"
+ },
+ "mouse_event@QFormSkin.inc": {
+  "desc": "Synthesizes mouse motion and button clicks (dwFlags, dx, dy, data). Superseded; use SendInput instead.",
+  "doc": "mouse_event"
+ },
+ "RedrawWindow@QFormSkin.inc": {
+  "desc": "Updates the specified rectangle or region in a window's client area; fuRedraw flags control invalidation, erasing and immediate painting. Returns nonzero on success.",
+  "doc": "RedrawWindow"
+ },
+ "EnumProcesses@RQProcess.inc": {
+  "desc": "Retrieves the process identifier of each process in the system into an array; the third parameter receives the number of bytes returned. Returns nonzero on success.",
+  "doc": "EnumProcesses"
+ },
+ "EnumProcessModules@RQProcess.inc": {
+  "desc": "Retrieves a handle for each module loaded in the specified process into an array; the last parameter receives the bytes needed. Returns nonzero on success.",
+  "doc": "EnumProcessModules"
+ },
+ "GetModuleBaseName@RQProcess.inc": {
+  "desc": "Retrieves the base file name of a module loaded in the specified process (module handle 0 = the main executable). Returns the length of the copied string.",
+  "doc": "GetModuleBaseNameA"
+ },
+ "OpenProcess@RQProcess.inc": {
+  "desc": "Opens an existing process object by process ID with the requested access rights. Returns a process handle, or 0 on failure; close it with CloseHandle.",
+  "doc": "OpenProcess"
+ },
+ "TerminateProcess@RQProcess.inc": {
+  "desc": "Terminates the specified process and all its threads, setting the given exit code. Returns nonzero on success.",
+  "doc": "TerminateProcess"
+ },
+ "GetExitCodeProcess@RQProcess.inc": {
+  "desc": "Retrieves the termination status of a process; STILL_ACTIVE (259) is returned while the process is running. Returns nonzero on success.",
+  "doc": "GetExitCodeProcess"
+ },
+ "QDIR_SetFileTime@SetFileTimeAttrib.inc": {
+  "desc": "Sets the creation, last access and last write times of a file or directory, given as FILETIME structures. Returns nonzero on success.",
+  "doc": "SetFileTime"
+ },
+ "QDIR_SystemTimeToFileTime@SetFileTimeAttrib.inc": {
+  "desc": "Converts a SYSTEMTIME structure to FILETIME format (100-ns intervals since 1601, UTC). Returns nonzero on success.",
+  "doc": "SystemTimeToFileTime"
+ },
+ "QDIR_CreateFile@SetFileTimeAttrib.inc": {
+  "desc": "Creates or opens a file or I/O device (pipe, volume, console, etc.) with given access, sharing and creation mode. Returns a handle, or INVALID_HANDLE_VALUE (-1) on failure.",
+  "doc": "CreateFileA"
+ },
+ "QDIR_CloseHandle@SetFileTimeAttrib.inc": {
+  "desc": "Closes an open object handle (file, process, thread, event, pipe, etc.). Returns nonzero on success.",
+  "doc": "CloseHandle"
+ },
+ "QDIR_SetFileAttributes@SetFileTimeAttrib.inc": {
+  "desc": "Sets the attributes (read-only, hidden, system, archive, etc.) of a file or directory. Returns nonzero on success.",
+  "doc": "SetFileAttributesA"
+ },
+ "FindExecutable@Shell32.inc": {
+  "desc": "Retrieves the name of the executable associated with the specified document file. Returns a value greater than 32 on success.",
+  "doc": "FindExecutableA"
+ },
+ "SHEmptyRecycleBin@Shell32.inc": {
+  "desc": "Empties the Recycle Bin on the specified drive (or all drives if the root path is empty); flags suppress confirmation, progress UI or sound. Returns S_OK on success.",
+  "doc": "SHEmptyRecycleBinA"
+ },
+ "SHQueryRecycleBin@Shell32.inc": {
+  "desc": "Retrieves the total size and number of items in the Recycle Bin for the specified drive into an SHQUERYRBINFO structure. Returns S_OK on success.",
+  "doc": "SHQueryRecycleBinA"
+ },
+ "RDR_CreatePipe@ShellRedir.Inc": {
+  "desc": "Creates an anonymous pipe and returns read and write handles to it; often used to redirect a child process's standard I/O. Returns nonzero on success.",
+  "doc": "CreatePipe"
+ },
+ "RDR_GetStartupInfo@ShellRedir.Inc": {
+  "desc": "Retrieves the STARTUPINFO structure that was specified when the calling process was created.",
+  "doc": "GetStartupInfoA"
+ },
+ "RDR_CreateProcess@ShellRedir.Inc": {
+  "desc": "Creates a new process and its primary thread; fills a PROCESS_INFORMATION structure with the process and thread handles and IDs. Returns nonzero on success.",
+  "doc": "CreateProcessA"
+ },
+ "RDR_SetWindowText@ShellRedir.Inc": {
+  "desc": "Changes the text of the specified window's title bar or the text of a control. Returns nonzero on success.",
+  "doc": "SetWindowTextA"
+ },
+ "RDR_ReadFile@ShellRedir.Inc": {
+  "desc": "Reads data from a file or I/O device (pipe, console, etc.) into a buffer; the number of bytes read is returned through a parameter. Returns nonzero on success.",
+  "doc": "ReadFile"
+ },
+ "RDR_SendMessage@ShellRedir.Inc": {
+  "desc": "Sends a message to a window and does not return until the window procedure has processed it. Returns the message-specific result.",
+  "doc": "SendMessageA"
+ },
+ "RDR_CloseHandle@ShellRedir.Inc": {
+  "desc": "Closes an open object handle (file, process, thread, event, pipe, etc.). Returns nonzero on success.",
+  "doc": "CloseHandle"
+ },
+ "FindWindow@User32.inc": {
+  "desc": "Retrieves the handle of the top-level window whose class name and window name match the given strings. Returns 0 if not found.",
+  "doc": "FindWindowA"
+ },
+ "GetActiveWindow@User32.inc": {
+  "desc": "Retrieves the handle of the active window attached to the calling thread's message queue, or 0 if none.",
+  "doc": "GetActiveWindow"
+ },
+ "GetCursor@User32.inc": {
+  "desc": "Retrieves a handle to the current cursor, or 0 if there is none.",
+  "doc": "GetCursor"
+ },
+ "GetDialogBaseUnits@User32.inc": {
+  "desc": "Retrieves the system's dialog base units (average character width in the low word, height in the high word) based on the system font.",
+  "doc": "GetDialogBaseUnits"
+ },
+ "GetDoubleClickTime@User32.inc": {
+  "desc": "Retrieves the current maximum time, in milliseconds, between the clicks of a double-click.",
+  "doc": "GetDoubleClickTime"
+ },
+ "GetForegroundWindow@User32.inc": {
+  "desc": "Retrieves the handle of the foreground window (the window the user is currently working with).",
+  "doc": "GetForegroundWindow"
+ },
+ "GetInputState@User32.inc": {
+  "desc": "Determines whether there are mouse-button or keyboard messages in the calling thread's message queue. Returns nonzero if there are.",
+  "doc": "GetInputState"
+ },
+ "GetKBCodePage@User32.inc": {
+  "desc": "Returns the current OEM code page. Obsolete, provided only for 16-bit compatibility; use GetOEMCP instead.",
+  "doc": "GetKBCodePage"
+ },
+ "GetMenuCheckMarkDimensions@User32.inc": {
+  "desc": "Returns the dimensions of the default check-mark bitmap (width in low word, height in high word). Obsolete; use GetSystemMetrics with SM_CXMENUCHECK/SM_CYMENUCHECK.",
+  "doc": "GetMenuCheckMarkDimensions"
+ },
+ "GetMessageExtraInfo@User32.inc": {
+  "desc": "Retrieves the extra message information for the current thread, an application- or driver-defined value associated with the input message.",
+  "doc": "GetMessageExtraInfo"
+ },
+ "GetMessagePos@User32.inc": {
+  "desc": "Retrieves the cursor position, in screen coordinates, at the time the last message from GetMessage was posted (x in low word, y in high word).",
+  "doc": "GetMessagePos"
+ },
+ "GetMessageTime@User32.inc": {
+  "desc": "Retrieves the time, in milliseconds since system start, of the last message retrieved by GetMessage.",
+  "doc": "GetMessageTime"
+ },
+ "GetOpenClipboardWindow@User32.inc": {
+  "desc": "Retrieves the handle of the window that currently has the clipboard open, or 0 if none.",
+  "doc": "GetOpenClipboardWindow"
+ },
+ "GetProcessWindowStation@User32.inc": {
+  "desc": "Retrieves a handle to the window station associated with the calling process.",
+  "doc": "GetProcessWindowStation"
+ },
+ "GetWindowText_User32@User32.inc": {
+  "desc": "Copies the text of the specified window's title bar (or a control's text) into a buffer. Returns the length of the copied string.",
+  "doc": "GetWindowTextA"
+ },
+ "RegisterHotKey@User32.inc": {
+  "desc": "Defines a system-wide hot key (modifiers + virtual key) that posts WM_HOTKEY to the given window. Returns nonzero on success.",
+  "doc": "RegisterHotKey"
+ },
+ "UnRegisterHotKey@User32.inc": {
+  "desc": "Frees a hot key previously registered by the calling thread with RegisterHotKey. Returns nonzero on success.",
+  "doc": "UnregisterHotKey"
+ },
+ "LoadCursorFromFile@WFunctions.inc": {
+  "desc": "Creates a cursor from a .cur or .ani file. Returns the cursor handle, or 0 on failure.",
+  "doc": "LoadCursorFromFileA"
+ },
+ "InterlockedIncrement@WIN32API.INC": {
+  "desc": "Increments a 32-bit variable as an atomic operation and returns the resulting value.",
+  "doc": "InterlockedIncrement"
+ },
+ "InterlockedDecrement@WIN32API.INC": {
+  "desc": "Decrements a 32-bit variable as an atomic operation and returns the resulting value.",
+  "doc": "InterlockedDecrement"
+ },
+ "InterlockedExchange@WIN32API.INC": {
+  "desc": "Atomically sets a 32-bit variable to the specified value and returns its initial value.",
+  "doc": "InterlockedExchange"
+ },
+ "GetModuleFileName@WIN32API.INC": {
+  "desc": "Retrieves the full path of the file that contains the specified module (0 = the current executable). Returns the length of the copied string.",
+  "doc": "GetModuleFileNameA"
+ },
+ "CreateProcess@WIN32API.INC": {
+  "desc": "Creates a new process and its primary thread; fills a PROCESS_INFORMATION structure with the process and thread handles and IDs. Returns nonzero on success.",
+  "doc": "CreateProcessA"
+ },
+ "SetProcessShutdownParameters@WIN32API.INC": {
+  "desc": "Sets the shutdown order level of the calling process relative to other processes, and whether the system shows a retry dialog. Returns nonzero on success.",
+  "doc": "SetProcessShutdownParameters"
+ },
+ "GetProcessShutdownParameters@WIN32API.INC": {
+  "desc": "Retrieves the shutdown level and flags of the calling process. Returns nonzero on success.",
+  "doc": "GetProcessShutdownParameters"
+ },
+ "FatalAppExit@WIN32API.INC": {
+  "desc": "Displays a message box with the given text and terminates the application when it is closed.",
+  "doc": "FatalAppExitA"
+ },
+ "GetStartupInfo@WIN32API.INC": {
+  "desc": "Retrieves the STARTUPINFO structure that was specified when the calling process was created.",
+  "doc": "GetStartupInfoA"
+ },
+ "GetEnvironmentVariable@WIN32API.INC": {
+  "desc": "Retrieves the value of the specified environment variable of the calling process into a buffer. Returns the length of the value, or 0 if not found.",
+  "doc": "GetEnvironmentVariableA"
+ },
+ "SetEnvironmentVariable@WIN32API.INC": {
+  "desc": "Sets or deletes the value of an environment variable for the current process. Returns nonzero on success.",
+  "doc": "SetEnvironmentVariableA"
+ },
+ "ExpandEnvironmentStrings@WIN32API.INC": {
+  "desc": "Expands %name% environment-variable references in a string and copies the result to a buffer. Returns the required buffer size in characters.",
+  "doc": "ExpandEnvironmentStringsA"
+ },
+ "LoadLibraryEx@WIN32API.INC": {
+  "desc": "Loads the specified module (DLL or EXE) into the process; flags can load it as a data file or alter the search path. Returns a module handle, or 0 on failure.",
+  "doc": "LoadLibraryExA"
+ },
+ "LoadModule@WIN32API.INC": {
+  "desc": "Loads and runs an application. Obsolete, provided for 16-bit compatibility; use CreateProcess instead.",
+  "doc": "LoadModule"
+ },
+ "WinExec@WIN32API.INC": {
+  "desc": "Runs the specified application with the given show-window command. Obsolete, provided for 16-bit compatibility; use CreateProcess instead.",
+  "doc": "WinExec"
+ },
+ "DebugBreak@WIN32API.INC": {
+  "desc": "Causes a breakpoint exception in the current process, handing control to a debugger.",
+  "doc": "DebugBreak"
+ },
+ "ContinueDebugEvent@WIN32API.INC": {
+  "desc": "Lets a debugger continue a thread that previously reported a debugging event. Returns nonzero on success.",
+  "doc": "ContinueDebugEvent"
+ },
+ "DebugActiveProcess@WIN32API.INC": {
+  "desc": "Attaches a debugger to an active process (by process ID) and debugs it. Returns nonzero on success.",
+  "doc": "DebugActiveProcess"
+ },
+ "InitializeCriticalSection@WIN32API.INC": {
+  "desc": "Initializes a critical section object used for mutual exclusion between threads of one process.",
+  "doc": "InitializeCriticalSection"
+ },
+ "EnterCriticalSection@WIN32API.INC": {
+  "desc": "Waits for ownership of the specified critical section object; returns when the calling thread has been granted ownership.",
+  "doc": "EnterCriticalSection"
+ },
+ "LeaveCriticalSection@WIN32API.INC": {
+  "desc": "Releases ownership of the specified critical section object.",
+  "doc": "LeaveCriticalSection"
+ },
+ "DeleteCriticalSection@WIN32API.INC": {
+  "desc": "Releases all resources used by an unowned critical section object.",
+  "doc": "DeleteCriticalSection"
+ },
+ "SetEvent@WIN32API.INC": {
+  "desc": "Sets the specified event object to the signaled state. Returns nonzero on success.",
+  "doc": "SetEvent"
+ },
+ "ResetEvent@WIN32API.INC": {
+  "desc": "Sets the specified event object to the nonsignaled state. Returns nonzero on success.",
+  "doc": "ResetEvent"
+ },
+ "PulseEvent@WIN32API.INC": {
+  "desc": "Sets an event to signaled and then resets it after releasing waiting threads. Microsoft says it is unreliable and should not be used.",
+  "doc": "PulseEvent"
+ },
+ "ReleaseSemaphore@WIN32API.INC": {
+  "desc": "Increases the count of the specified semaphore object by a given amount and can return the previous count. Returns nonzero on success.",
+  "doc": "ReleaseSemaphore"
+ },
+ "ReleaseMutex@WIN32API.INC": {
+  "desc": "Releases ownership of the specified mutex object. Returns nonzero on success.",
+  "doc": "ReleaseMutex"
+ },
+ "WaitForMultipleObjects@WIN32API.INC": {
+  "desc": "Waits until one or all of the specified objects are signaled or the time-out elapses. Returns WAIT_OBJECT_0+index, WAIT_TIMEOUT or WAIT_FAILED.",
+  "doc": "WaitForMultipleObjects"
+ },
+ "Sleep@WIN32API.INC": {
+  "desc": "Suspends execution of the current thread for the specified number of milliseconds.",
+  "doc": "Sleep"
+ },
+ "OutputDebugString@WIN32API.INC": {
+  "desc": "Sends a string to the debugger for display.",
+  "doc": "OutputDebugStringA"
+ },
+ "OpenFile@WIN32API.INC": {
+  "desc": "Creates, opens, reopens or deletes a file using an OFSTRUCT. Obsolete, 16-bit compatibility; use CreateFile instead.",
+  "doc": "OpenFile"
+ },
+ "GetTempFileName@WIN32API.INC": {
+  "desc": "Creates a name for a temporary file from a path, prefix and unique number; with uUnique = 0 it also creates the empty file. Returns the unique number used.",
+  "doc": "GetTempFileNameA"
+ },
+ "SetHandleCount@WIN32API.INC": {
+  "desc": "Has no effect in Win32 and returns the requested number. Obsolete; kept only for 16-bit compatibility.",
+  "doc": "SetHandleCount"
+ },
+ "LockFile@WIN32API.INC": {
+  "desc": "Locks the specified byte range of an open file for exclusive access by the calling process. Returns nonzero on success.",
+  "doc": "LockFile"
+ },
+ "UnlockFile@WIN32API.INC": {
+  "desc": "Unlocks a byte range of an open file previously locked with LockFile. Returns nonzero on success.",
+  "doc": "UnlockFile"
+ },
+ "LockFileEx@WIN32API.INC": {
+  "desc": "Locks a byte range of an open file for shared or exclusive access, optionally failing immediately instead of waiting. Returns nonzero on success.",
+  "doc": "LockFileEx"
+ },
+ "UnlockFileEx@WIN32API.INC": {
+  "desc": "Unlocks a byte range of an open file previously locked with LockFileEx. Returns nonzero on success.",
+  "doc": "UnlockFileEx"
+ },
+ "GetFileInformationByHandle@WIN32API.INC": {
+  "desc": "Retrieves file information (attributes, times, volume serial, size, link count, file index) into a BY_HANDLE_FILE_INFORMATION structure. Returns nonzero on success.",
+  "doc": "GetFileInformationByHandle"
+ },
+ "GetFileType@WIN32API.INC": {
+  "desc": "Retrieves the type of the specified file handle: disk, character (console/printer), pipe, or unknown.",
+  "doc": "GetFileType"
+ },
+ "GetFileSize@WIN32API.INC": {
+  "desc": "Retrieves the size of the specified file; the low 32 bits are returned and the high 32 bits go to an optional parameter. Returns INVALID_FILE_SIZE on failure.",
+  "doc": "GetFileSize"
+ },
+ "GetStdHandle@WIN32API.INC": {
+  "desc": "Retrieves a handle to the standard input, output or error device (STD_INPUT_HANDLE = -10, STD_OUTPUT_HANDLE = -11, STD_ERROR_HANDLE = -12).",
+  "doc": "GetStdHandle"
+ },
+ "SetStdHandle@WIN32API.INC": {
+  "desc": "Sets the handle for the standard input, output or error device of the process. Returns nonzero on success.",
+  "doc": "SetStdHandle"
+ },
+ "WriteFile_WIN32API@WIN32API.INC": {
+  "desc": "Writes data from a buffer to a file or I/O device; the number of bytes written is returned through a parameter. Returns nonzero on success.",
+  "doc": "WriteFile"
+ },
+ "FlushFileBuffers@WIN32API.INC": {
+  "desc": "Flushes the buffers of a file and causes all buffered data to be written to the device. Returns nonzero on success.",
+  "doc": "FlushFileBuffers"
+ },
+ "DeviceIoControl@WIN32API.INC": {
+  "desc": "Sends a control code directly to a device driver, with input and output buffers. Returns nonzero on success.",
+  "doc": "DeviceIoControl"
+ },
+ "SetEndOfFile@WIN32API.INC": {
+  "desc": "Sets the end of the file (its physical size) to the current position of the file pointer. Returns nonzero on success.",
+  "doc": "SetEndOfFile"
+ },
+ "SetFilePointer@WIN32API.INC": {
+  "desc": "Moves the file pointer of an open file by a distance relative to the beginning, current position or end. Returns the new low-order position.",
+  "doc": "SetFilePointer"
+ },
+ "FindClose@WIN32API.INC": {
+  "desc": "Closes a file search handle opened by FindFirstFile. Returns nonzero on success.",
+  "doc": "FindClose"
+ },
+ "GetFileTime@WIN32API.INC": {
+  "desc": "Retrieves the creation, last access and last write times of a file or directory as FILETIME values. Returns nonzero on success.",
+  "doc": "GetFileTime"
+ },
+ "SetFileTime@WIN32API.INC": {
+  "desc": "Sets the creation, last access and last write times of a file or directory, given as FILETIME structures. Returns nonzero on success.",
+  "doc": "SetFileTime"
+ },
+ "DuplicateHandle@WIN32API.INC": {
+  "desc": "Duplicates an object handle, possibly into another process, with the same or different access. Returns nonzero on success.",
+  "doc": "DuplicateHandle"
+ },
+ "GlobalAlloc@WIN32API.INC": {
+  "desc": "Allocates the specified number of bytes from the heap (fixed or movable). Returns a memory handle. Microsoft recommends the heap functions for new code.",
+  "doc": "GlobalAlloc"
+ },
+ "GlobalFree@WIN32API.INC": {
+  "desc": "Frees the specified global memory object. Returns 0 on success, or the handle on failure.",
+  "doc": "GlobalFree"
+ },
+ "GlobalHandle@WIN32API.INC": {
+  "desc": "Retrieves the handle of the global memory object associated with a pointer to its first byte.",
+  "doc": "GlobalHandle"
+ },
+ "GlobalLock@WIN32API.INC": {
+  "desc": "Locks a global memory object and returns a pointer to its first byte; for movable memory it increments the lock count.",
+  "doc": "GlobalLock"
+ },
+ "GlobalReAlloc@WIN32API.INC": {
+  "desc": "Changes the size or attributes of a global memory object. Returns the handle of the reallocated object, or 0 on failure.",
+  "doc": "GlobalReAlloc"
+ },
+ "GlobalSize@WIN32API.INC": {
+  "desc": "Retrieves the current size, in bytes, of the specified global memory object.",
+  "doc": "GlobalSize"
+ },
+ "GlobalUnlock@WIN32API.INC": {
+  "desc": "Decrements the lock count of a movable global memory object locked with GlobalLock.",
+  "doc": "GlobalUnlock"
+ },
+ "GlobalFlags@WIN32API.INC": {
+  "desc": "Retrieves information (allocation flags and lock count) about the specified global memory object.",
+  "doc": "GlobalFlags"
+ },
+ "LocalAlloc@WIN32API.INC": {
+  "desc": "Allocates the specified number of bytes from the heap (fixed or movable). Returns a memory handle. Microsoft recommends the heap functions for new code.",
+  "doc": "LocalAlloc"
+ },
+ "LocalFree@WIN32API.INC": {
+  "desc": "Frees the specified local memory object. Returns 0 on success, or the handle on failure.",
+  "doc": "LocalFree"
+ },
+ "LocalHandle@WIN32API.INC": {
+  "desc": "Retrieves the handle of the local memory object associated with a pointer to its first byte.",
+  "doc": "LocalHandle"
+ },
+ "LocalLock@WIN32API.INC": {
+  "desc": "Locks a local memory object and returns a pointer to its first byte.",
+  "doc": "LocalLock"
+ },
+ "LocalReAlloc@WIN32API.INC": {
+  "desc": "Changes the size or attributes of a local memory object. Returns the handle of the reallocated object, or 0 on failure.",
+  "doc": "LocalReAlloc"
+ },
+ "LocalSize@WIN32API.INC": {
+  "desc": "Retrieves the current size, in bytes, of the specified local memory object.",
+  "doc": "LocalSize"
+ },
+ "LocalUnlock@WIN32API.INC": {
+  "desc": "Decrements the lock count of a movable local memory object locked with LocalLock.",
+  "doc": "LocalUnlock"
+ },
+ "LocalFlags@WIN32API.INC": {
+  "desc": "Retrieves information (allocation flags and lock count) about the specified local memory object.",
+  "doc": "LocalFlags"
+ },
+ "FlushInstructionCache@WIN32API.INC": {
+  "desc": "Flushes the instruction cache for a process; call it after modifying code in memory. Returns nonzero on success.",
+  "doc": "FlushInstructionCache"
+ },
+ "VirtualAlloc@WIN32API.INC": {
+  "desc": "Reserves, commits or changes the state of a region of pages in the calling process's virtual address space. Returns the base address, or 0 on failure.",
+  "doc": "VirtualAlloc"
+ },
+ "VirtualFree@WIN32API.INC": {
+  "desc": "Releases, decommits, or both, a region of pages in the calling process's virtual address space. Returns nonzero on success.",
+  "doc": "VirtualFree"
+ },
+ "VirtualProtect@WIN32API.INC": {
+  "desc": "Changes the access protection of a region of committed pages in the calling process; the old protection is returned through a parameter.",
+  "doc": "VirtualProtect"
+ },
+ "VirtualQuery@WIN32API.INC": {
+  "desc": "Retrieves information about a range of pages in the calling process's address space into a MEMORY_BASIC_INFORMATION structure. Returns the bytes written.",
+  "doc": "VirtualQuery"
+ },
+ "VirtualProtectEx@WIN32API.INC": {
+  "desc": "Changes the access protection of a region of committed pages in the virtual address space of a specified process. Returns nonzero on success.",
+  "doc": "VirtualProtectEx"
+ },
+ "VirtualQueryEx@WIN32API.INC": {
+  "desc": "Retrieves information about a range of pages in the address space of a specified process into a MEMORY_BASIC_INFORMATION structure.",
+  "doc": "VirtualQueryEx"
+ },
+ "HeapReAlloc_WIN32API@WIN32API.INC": {
+  "desc": "Reallocates a block of memory from a heap, changing its size and/or properties. Returns a pointer to the block, or 0 on failure.",
+  "doc": "HeapReAlloc"
+ },
+ "HeapFree_WIN32API@WIN32API.INC": {
+  "desc": "Frees a memory block allocated from a heap by HeapAlloc or HeapReAlloc. Returns nonzero on success.",
+  "doc": "HeapFree"
+ },
+ "HeapSize_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves the size, in bytes, of a memory block allocated from a heap.",
+  "doc": "HeapSize"
+ },
+ "GetProcessTimes@WIN32API.INC": {
+  "desc": "Retrieves the creation, exit, kernel-mode and user-mode times of the specified process as FILETIME values. Returns nonzero on success.",
+  "doc": "GetProcessTimes"
+ },
+ "GetExitCodeProcess_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves the termination status of a process; STILL_ACTIVE (259) is returned while the process is running. Returns nonzero on success.",
+  "doc": "GetExitCodeProcess"
+ },
+ "SetLastErrorEx@WIN32API.INC": {
+  "desc": "Sets the last-error code for the calling thread; the dwType parameter is ignored. Microsoft lists it under kernel32 and advises using SetLastError.",
+  "doc": "SetLastErrorEx"
+ },
+ "GetOverlappedResult@WIN32API.INC": {
+  "desc": "Retrieves the result of an overlapped (asynchronous) operation on a file, pipe or device, optionally waiting for it to finish. Returns nonzero on success.",
+  "doc": "GetOverlappedResult"
+ },
+ "SetDebugErrorLevel@WIN32API.INC": {
+  "desc": "Sets the minimum error level at which Windows generates debugging events for the debugger. Microsoft says it is not implemented.",
+  "doc": "SetDebugErrorLevel"
+ },
+ "SetErrorMode@WIN32API.INC": {
+  "desc": "Controls whether the system handles serious errors itself (e.g. critical-error dialogs) or lets the process handle them. Returns the previous error mode.",
+  "doc": "SetErrorMode"
+ },
+ "ReadProcessMemory@WIN32API.INC": {
+  "desc": "Reads data from an area of memory in a specified process (requires PROCESS_VM_READ access). Returns nonzero on success.",
+  "doc": "ReadProcessMemory"
+ },
+ "WriteProcessMemory@WIN32API.INC": {
+  "desc": "Writes data to an area of memory in a specified process. Returns nonzero on success.",
+  "doc": "WriteProcessMemory"
+ },
+ "GetThreadContext@WIN32API.INC": {
+  "desc": "Retrieves the processor context (registers) of the specified thread into a CONTEXT structure. Returns nonzero on success.",
+  "doc": "GetThreadContext"
+ },
+ "SetThreadContext@WIN32API.INC": {
+  "desc": "Sets the processor context (registers) of the specified thread from a CONTEXT structure. Returns nonzero on success.",
+  "doc": "SetThreadContext"
+ },
+ "SuspendThread@WIN32API.INC": {
+  "desc": "Suspends the specified thread. Returns the thread's previous suspend count, or -1 on failure.",
+  "doc": "SuspendThread"
+ },
+ "ResumeThread@WIN32API.INC": {
+  "desc": "Decrements a thread's suspend count; when it reaches zero the thread resumes. Returns the previous suspend count, or -1 on failure.",
+  "doc": "ResumeThread"
+ },
+ "FindResource@WIN32API.INC": {
+  "desc": "Determines the location of a resource with the given type and name in a module. Returns a resource info handle for LoadResource, or 0.",
+  "doc": "FindResourceA"
+ },
+ "FindResourceEx@WIN32API.INC": {
+  "desc": "Determines the location of a resource with the given type, name and language in a module. Returns a resource info handle, or 0.",
+  "doc": "FindResourceExA"
+ },
+ "BeginUpdateResource@WIN32API.INC": {
+  "desc": "Retrieves a handle used by UpdateResource to add, delete or replace resources in an executable file. Returns 0 on failure.",
+  "doc": "BeginUpdateResourceA"
+ },
+ "UpdateResource@WIN32API.INC": {
+  "desc": "Adds, deletes or replaces a resource in a file opened with BeginUpdateResource. Returns nonzero on success.",
+  "doc": "UpdateResourceA"
+ },
+ "EndUpdateResource@WIN32API.INC": {
+  "desc": "Commits or discards the resource changes made with UpdateResource. Returns nonzero on success.",
+  "doc": "EndUpdateResourceA"
+ },
+ "LoadResource@WIN32API.INC": {
+  "desc": "Retrieves a handle that can be used to obtain a pointer to a resource found with FindResource.",
+  "doc": "LoadResource"
+ },
+ "LockResource@WIN32API.INC": {
+  "desc": "Retrieves a pointer to the specified resource in memory, from a handle returned by LoadResource.",
+  "doc": "LockResource"
+ },
+ "SizeofResource@WIN32API.INC": {
+  "desc": "Retrieves the size, in bytes, of the specified resource. Returns 0 on failure.",
+  "doc": "SizeofResource"
+ },
+ "InitAtomTable@WIN32API.INC": {
+  "desc": "Initializes the local atom table and sets the number of hash buckets. Returns nonzero on success.",
+  "doc": "InitAtomTable"
+ },
+ "AddAtom@WIN32API.INC": {
+  "desc": "Adds a string to the local atom table and returns a unique 16-bit atom value, or 0 on failure.",
+  "doc": "AddAtomA"
+ },
+ "DeleteAtom@WIN32API.INC": {
+  "desc": "Decrements the reference count of a local string atom; the atom is removed when the count reaches zero. Returns 0 on success.",
+  "doc": "DeleteAtom"
+ },
+ "FindAtom@WIN32API.INC": {
+  "desc": "Searches the local atom table for the given string and returns its atom, or 0 if not found.",
+  "doc": "FindAtomA"
+ },
+ "GetAtomName@WIN32API.INC": {
+  "desc": "Retrieves the string associated with the specified local atom. Returns the length of the copied string.",
+  "doc": "GetAtomNameA"
+ },
+ "GlobalAddAtom@WIN32API.INC": {
+  "desc": "Adds a string to the global atom table and returns a unique 16-bit atom value, or 0 on failure.",
+  "doc": "GlobalAddAtomA"
+ },
+ "GlobalDeleteAtom@WIN32API.INC": {
+  "desc": "Decrements the reference count of a global string atom; the atom is removed when the count reaches zero. Returns 0 on success.",
+  "doc": "GlobalDeleteAtom"
+ },
+ "GlobalFindAtom@WIN32API.INC": {
+  "desc": "Searches the global atom table for the given string and returns its atom, or 0 if not found.",
+  "doc": "GlobalFindAtomA"
+ },
+ "GlobalGetAtomName@WIN32API.INC": {
+  "desc": "Retrieves the string associated with the specified global atom. Returns the length of the copied string.",
+  "doc": "GlobalGetAtomNameA"
+ },
+ "GetProfileInt@WIN32API.INC": {
+  "desc": "Retrieves an integer for a key in the given section of win.ini (or its registry mapping). Returns nDefault if the key is missing. 16-bit compatibility; use the registry.",
+  "doc": "GetProfileIntA"
+ },
+ "GetProfileString@WIN32API.INC": {
+  "desc": "Retrieves the string for a key in the given section of win.ini (or its registry mapping). Provided for 16-bit compatibility; use the registry.",
+  "doc": "GetProfileStringA"
+ },
+ "WriteProfileString@WIN32API.INC": {
+  "desc": "Copies a string into the given section of win.ini (or its registry mapping). Provided for 16-bit compatibility; use the registry.",
+  "doc": "WriteProfileStringA"
+ },
+ "GetProfileSection@WIN32API.INC": {
+  "desc": "Retrieves all keys and values of the given section of win.ini. Provided for 16-bit compatibility; use the registry.",
+  "doc": "GetProfileSectionA"
+ },
+ "WriteProfileSection@WIN32API.INC": {
+  "desc": "Replaces the keys and values of the given section in win.ini. Provided for 16-bit compatibility; use the registry.",
+  "doc": "WriteProfileSectionA"
+ },
+ "GetPrivateProfileInt@WIN32API.INC": {
+  "desc": "Retrieves an integer for a key in the given section of an .ini file. Returns nDefault if the key is missing.",
+  "doc": "GetPrivateProfileIntA"
+ },
+ "GetPrivateProfileString@WIN32API.INC": {
+  "desc": "Retrieves a string for a key in the given section of an .ini file into a buffer; returns the default if missing. Returns the number of characters copied.",
+  "doc": "GetPrivateProfileStringA"
+ },
+ "WritePrivateProfileString@WIN32API.INC": {
+  "desc": "Copies a string into the given section and key of an .ini file; a null key or value deletes a section or key. Returns nonzero on success.",
+  "doc": "WritePrivateProfileStringA"
+ },
+ "GetPrivateProfileSection@WIN32API.INC": {
+  "desc": "Retrieves all keys and values of the given section of an .ini file as null-separated strings. Returns the number of characters copied.",
+  "doc": "GetPrivateProfileSectionA"
+ },
+ "WritePrivateProfileSection@WIN32API.INC": {
+  "desc": "Replaces the keys and values of the given section in an .ini file. Returns nonzero on success.",
+  "doc": "WritePrivateProfileSectionA"
+ },
+ "GetSystemDirectory@WIN32API.INC": {
+  "desc": "Retrieves the path of the system directory (e.g. C:\\Windows\\System32) into a buffer. Returns the length of the copied string.",
+  "doc": "GetSystemDirectoryA"
+ },
+ "SetCurrentDirectory@WIN32API.INC": {
+  "desc": "Changes the current directory of the current process. Returns nonzero on success.",
+  "doc": "SetCurrentDirectoryA"
+ },
+ "GetCurrentDirectory@WIN32API.INC": {
+  "desc": "Retrieves the current directory of the current process into a buffer; returns its length. Note: kernel32 exports only GetCurrentDirectoryA/W, so this alias may not resolve.",
+  "doc": "GetCurrentDirectoryA"
+ },
+ "GetDiskFreeSpace_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves sectors per cluster, bytes per sector, free clusters and total clusters for a disk. Limited to 2 GB results; use GetDiskFreeSpaceEx for large disks.",
+  "doc": "GetDiskFreeSpaceA"
+ },
+ "CreateDirectoryEx@WIN32API.INC": {
+  "desc": "Creates a new directory with the attributes of a specified template directory. Returns nonzero on success.",
+  "doc": "CreateDirectoryExA"
+ },
+ "RemoveDirectory@WIN32API.INC": {
+  "desc": "Deletes an existing empty directory. Returns nonzero on success.",
+  "doc": "RemoveDirectoryA"
+ },
+ "GetFullPathName@WIN32API.INC": {
+  "desc": "Retrieves the full path and file name of the specified file (relative to the current directory). Returns the length of the copied string.",
+  "doc": "GetFullPathNameA"
+ },
+ "DefineDosDevice@WIN32API.INC": {
+  "desc": "Defines, redefines or deletes an MS-DOS device name (such as a drive letter mapped to a path). Returns nonzero on success.",
+  "doc": "DefineDosDeviceA"
+ },
+ "QueryDosDevice@WIN32API.INC": {
+  "desc": "Retrieves the target path of an MS-DOS device name, or the list of all device names. Returns the number of characters stored.",
+  "doc": "QueryDosDeviceA"
+ },
+ "CreateFile_WIN32API@WIN32API.INC": {
+  "desc": "Creates or opens a file or I/O device (pipe, volume, console, etc.) with given access, sharing and creation mode. Returns a handle, or INVALID_HANDLE_VALUE (-1) on failure.",
+  "doc": "CreateFileA"
+ },
+ "FindFirstFile@WIN32API.INC": {
+  "desc": "Searches a directory for a file or subdirectory matching a name (wildcards allowed), filling WIN32_FIND_DATA. Returns a search handle, or -1 on failure.",
+  "doc": "FindFirstFileA"
+ },
+ "FindNextFile@WIN32API.INC": {
+  "desc": "Continues a file search started by FindFirstFile, filling WIN32_FIND_DATA with the next match. Returns 0 when no more files are found.",
+  "doc": "FindNextFileA"
+ },
+ "SearchPath@WIN32API.INC": {
+  "desc": "Searches for the specified file along a path (or the standard search order) and returns its full path. Returns the length of the copied string.",
+  "doc": "SearchPathA"
+ },
+ "MoveFile@WIN32API.INC": {
+  "desc": "Moves or renames an existing file or directory. Returns nonzero on success.",
+  "doc": "MoveFileA"
+ },
+ "MoveFileEx@WIN32API.INC": {
+  "desc": "Moves or renames a file or directory with options such as replace existing, copy across volumes, or delay until reboot. Returns nonzero on success.",
+  "doc": "MoveFileExA"
+ },
+ "CreateNamedPipe@WIN32API.INC": {
+  "desc": "Creates an instance of a named pipe and returns a server-side handle, or INVALID_HANDLE_VALUE on failure.",
+  "doc": "CreateNamedPipeA"
+ },
+ "GetNamedPipeHandleState@WIN32API.INC": {
+  "desc": "Retrieves information about a named pipe handle (mode, instances, collection settings, client user name). Returns nonzero on success.",
+  "doc": "GetNamedPipeHandleStateA"
+ },
+ "CallNamedPipe@WIN32API.INC": {
+  "desc": "Connects to a message-type named pipe, writes a message, reads a reply and closes the pipe. Returns nonzero on success.",
+  "doc": "CallNamedPipeA"
+ },
+ "WaitNamedPipe@WIN32API.INC": {
+  "desc": "Waits until a time-out elapses or an instance of the named pipe is available for connection. Returns nonzero if available.",
+  "doc": "WaitNamedPipeA"
+ },
+ "SetVolumeLabel@WIN32API.INC": {
+  "desc": "Sets the label of a file system volume. Returns nonzero on success.",
+  "doc": "SetVolumeLabelA"
+ },
+ "SetFileApisToOEM@WIN32API.INC": {
+  "desc": "Makes the file I/O functions use the OEM code page instead of the ANSI code page for the calling process.",
+  "doc": "SetFileApisToOEM"
+ },
+ "GetVolumeInformation@WIN32API.INC": {
+  "desc": "Retrieves information about a file system volume: label, serial number, maximum component length, flags and file system name. Returns nonzero on success.",
+  "doc": "GetVolumeInformationA"
+ },
+ "ClearEventLog@WIN32API.INC": {
+  "desc": "Clears the specified event log, optionally saving a backup copy first. Returns nonzero on success.",
+  "doc": "ClearEventLogA"
+ },
+ "BackupEventLog@WIN32API.INC": {
+  "desc": "Saves the specified event log to a backup file. Returns nonzero on success.",
+  "doc": "BackupEventLogA"
+ },
+ "CloseEventLog@WIN32API.INC": {
+  "desc": "Closes a read handle to an event log opened with OpenEventLog. Returns nonzero on success.",
+  "doc": "CloseEventLog"
+ },
+ "DeregisterEventSource@WIN32API.INC": {
+  "desc": "Closes an event log handle returned by RegisterEventSource. Returns nonzero on success.",
+  "doc": "DeregisterEventSource"
+ },
+ "GetNumberOfEventLogRecords@WIN32API.INC": {
+  "desc": "Retrieves the number of records in the specified event log. Returns nonzero on success.",
+  "doc": "GetNumberOfEventLogRecords"
+ },
+ "GetOldestEventLogRecord@WIN32API.INC": {
+  "desc": "Retrieves the absolute record number of the oldest record in the specified event log. Returns nonzero on success.",
+  "doc": "GetOldestEventLogRecord"
+ },
+ "OpenEventLog@WIN32API.INC": {
+  "desc": "Opens a handle to the specified event log on a server. Note: advapi32 exports only OpenEventLogA/W, so this alias may not resolve.",
+  "doc": "OpenEventLogA"
+ },
+ "RegisterEventSource@WIN32API.INC": {
+  "desc": "Retrieves a registered handle to the specified event source, used with ReportEvent. Returns 0 on failure.",
+  "doc": "RegisterEventSourceA"
+ },
+ "OpenBackupEventLog@WIN32API.INC": {
+  "desc": "Opens a handle to a backup event log file created with BackupEventLog. Returns 0 on failure.",
+  "doc": "OpenBackupEventLogA"
+ },
+ "ReadEventLog@WIN32API.INC": {
+  "desc": "Reads entries from an event log, sequentially or from a given record, forwards or backwards. Returns nonzero on success.",
+  "doc": "ReadEventLogA"
+ },
+ "ReportEvent@WIN32API.INC": {
+  "desc": "Writes an entry (type, category, event ID, strings, binary data) at the end of the event log for the given event source. Returns nonzero on success.",
+  "doc": "ReportEventA"
+ },
+ "DuplicateToken@WIN32API.INC": {
+  "desc": "Creates a new impersonation access token that duplicates an existing token. Returns nonzero on success.",
+  "doc": "DuplicateToken"
+ },
+ "GetKernelObjectSecurity@WIN32API.INC": {
+  "desc": "Retrieves a copy of the security descriptor of a kernel object (file, process, event, etc.). Returns nonzero on success.",
+  "doc": "GetKernelObjectSecurity"
+ },
+ "ImpersonateNamedPipeClient@WIN32API.INC": {
+  "desc": "Makes the calling thread impersonate the client of a named pipe. Returns nonzero on success.",
+  "doc": "ImpersonateNamedPipeClient"
+ },
+ "ImpersonateSelf@WIN32API.INC": {
+  "desc": "Obtains an access token impersonating the calling process's security context and attaches it to the calling thread. Returns nonzero on success.",
+  "doc": "ImpersonateSelf"
+ },
+ "RevertToSelf@WIN32API.INC": {
+  "desc": "Ends the impersonation of a client application by the calling thread. Returns nonzero on success.",
+  "doc": "RevertToSelf"
+ },
+ "AccessCheck@WIN32API.INC": {
+  "desc": "Determines whether a security descriptor grants the requested access rights to the client identified by an impersonation token. Returns nonzero on success.",
+  "doc": "AccessCheck"
+ },
+ "OpenProcessToken_WIN32API@WIN32API.INC": {
+  "desc": "Opens the access token associated with a process. Returns nonzero on success; the token handle is returned through a parameter.",
+  "doc": "OpenProcessToken"
+ }
+}

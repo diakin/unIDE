@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFormSkin.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: QFormSkin.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>QFormSkin.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/QFormSkin.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 41 functions &middot; 29 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#CLIENTTOSCREEN_QFORMSKIN">ClientToScreen_QFormSkin</a> &middot; <a href="#CONFIGURENCANDCLIENT">ConfigureNCandClient</a> &middot; <a href="#COPYIMAGE">CopyImage</a> &middot; <a href="#COPYMEMORY">CopyMemory</a> &middot; <a href="#CREATERECTRGNINDIRECT">CreateRectRgnIndirect</a> &middot; <a href="#DESTROYICON">DestroyIcon</a> &middot; <a href="#DRAWBUTTONS">DrawButtons</a> &middot; <a href="#DRAWDOWNSTATEBTNS">DrawDownStateBtns</a> &middot; <a href="#DRAWHOTSTATEBTNS">DrawHotStateBtns</a> &middot; <a href="#DRAWICON">DrawIcon</a> &middot; <a href="#DRAWICONTEXT">DrawIconText</a> &middot; <a href="#DRAWTEXT">DrawText</a> &middot; <a href="#DRAWWINDOWBORDERS">DrawWindowBorders</a> &middot; <a href="#EXCLUDECLIPRECT">ExcludeClipRect</a> &middot; <a href="#EXCLUDEUPDATERGN">ExcludeUpdateRgn</a> &middot; <a href="#EXTRACTICONEX">ExtractIconEx</a> &middot; <a href="#FIXTASKBAR">FixTaskBar</a> &middot; <a href="#GETCLIENTRECT_QFORMSKIN">GetClientRect_QFormSkin</a> &middot; <a href="#GETCLIPRGN">GetClipRgn</a> &middot; <a href="#GETRGNBOX">GetRgnBox</a> &middot; <a href="#GETWINDOWDC">GetWindowDC</a> &middot; <a href="#GETWINDOWRECT_QFORMSKIN">GetWindowRect_QFormSkin</a> &middot; <a href="#INVALIDATERECT">InvalidateRect</a> &middot; <a href="#INVALIDATERGN">InvalidateRgn</a> &middot; <a href="#LOADCURSOR">LoadCursor</a> &middot; <a href="#MOUSE_EVENT">mouse_event</a> &middot; <a href="#OFFSETCLIPRGN">OffsetClipRgn</a> &middot; <a href="#PROTECTFROMDRAWING">ProtectFromDrawing</a> &middot; <a href="#REDRAW">Redraw</a> &middot; <a href="#REDRAWWINDOW">RedrawWindow</a> &middot; <a href="#REFRESHBTNS">RefreshBtns</a> &middot; <a href="#SELECTCLIPRGN">SelectClipRgn</a> &middot; <a href="#SETCURSOR">SetCursor</a> &middot; <a href="#SETRECT">SetRect</a> &middot; <a href="#SETRECTRGN">SetRectRgn</a> &middot; <a href="#SETTEXTCOLOR">SetTextColor</a> &middot; <a href="#SETWINDOWRGN">SetWindowRgn</a> &middot; <a href="#TITLEBARMOUSEDOWN">TitleBarMouseDown</a> &middot; <a href="#VALIDATERECT">ValidateRect</a> &middot; <a href="#VALIDATERGN">ValidateRgn</a> &middot; <a href="#WINDOWPROC">WindowProc</a></p>
+<h3><a name="CLIENTTOSCREEN_QFORMSKIN"></a>ClientToScreen_QFormSkin</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17689</p>
+<pre>Declare Function ClientToScreen_QFormSkin Lib &quot;user32&quot; Alias &quot;ClientToScreen&quot; (ByVal hwnd As Long, lpPoint As POINTAPI) As Long</pre>
+<p>Converts a point from client coordinates of a window to screen coordinates. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ClientToScreen">ClientToScreen</a></p>
+<h3><a name="CONFIGURENCANDCLIENT"></a>ConfigureNCandClient</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17824</p>
+<pre>Sub ConfigureNCandClient(hWnd As Long, lParam As Long)</pre>
+<p>Experimental WM_NCCALCSIZE handler for the skinned form: reads NCCALCSIZE_PARAMS from lParam, computes a client region and writes new client rectangles back. Prints debug values through GetInfoFromMenu; its call in WindowProc is commented out. (body longer than shown)</p>
+<h3><a name="COPYIMAGE"></a>CopyImage</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 17709</p>
+<pre>Declare Function CopyImage Lib &quot;user32.dll&quot; Alias &quot;CopyImage&quot; ( ByVal Handle As Long, ByVal un1 As Long, ByVal n1 As Long, ByVal n2 As Long, ByVal un2 As Long) As Long</pre>
+<p>Creates a new icon, cursor or bitmap and copies the attributes of the source to it, optionally resizing it. Returns the new image handle.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CopyImage">CopyImage</a></p>
+<h3><a name="COPYMEMORY"></a>CopyMemory</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 17724</p>
+<pre>Declare Sub CopyMemory Lib &quot;kernel32&quot; Alias &quot;RtlMoveMemory&quot; ( pDest As Long, pSource As Long, ByVal ByteLen As Long)</pre>
+<p>Copies a block of memory from a source to a destination address (RtlMoveMemory, also named CopyMemory); overlapping blocks are handled.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RtlMoveMemory">RtlMoveMemory</a></p>
+<h3><a name="CREATERECTRGNINDIRECT"></a>CreateRectRgnIndirect</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 17678</p>
+<pre>Declare Function CreateRectRgnIndirect Lib &quot;gdi32&quot; Alias &quot;CreateRectRgnIndirect&quot; (lpRect As RECT) As Long</pre>
+<p>Creates a rectangular region from a RECT structure. Returns the region handle.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateRectRgnIndirect">CreateRectRgnIndirect</a></p>
+<h3><a name="DESTROYICON"></a>DestroyIcon</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17707</p>
+<pre>Declare Function DestroyIcon Lib &quot;user32&quot; Alias &quot;DestroyIcon&quot; ( ByVal hIcon As Long) As Long</pre>
+<p>Destroys an icon and frees its memory. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DestroyIcon">DestroyIcon</a></p>
+<h3><a name="DRAWBUTTONS"></a>DrawButtons</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17912</p>
+<pre>Sub DrawButtons (hWnd As Long, wParam As Long)</pre>
+<p>Draws the normal-state Close, Maximize and Minimize caption buttons from the skin bitmaps onto dc_Skin with StretchBlt, plus the right caption part SkinTop2.</p>
+<h3><a name="DRAWDOWNSTATEBTNS"></a>DrawDownStateBtns</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18021</p>
+<pre>Sub DrawDownStateBtns (hWnd As Long, wParam As Long)</pre>
+<p>Draws the pressed image of the caption button given by wParam (HTCLOSE, HTMAXBUTTON or HTMINBUTTON) onto dc_Skin. Note: the Minimize case takes its image from SkinBMax.</p>
+<h3><a name="DRAWHOTSTATEBTNS"></a>DrawHotStateBtns</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17986</p>
+<pre>Sub DrawHotStateBtns (hWnd As Long, wParam As Long)</pre>
+<p>Draws the hot (mouse-over) image of the caption button given by wParam (HTCLOSE, HTMAXBUTTON or HTMINBUTTON) onto dc_Skin. Note: the Minimize case takes its image from SkinBMax.</p>
+<h3><a name="DRAWICON"></a>DrawIcon</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17702</p>
+<pre>Declare Function DrawIcon Lib &quot;user32&quot; Alias &quot;DrawIcon&quot; ( ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal hIcon As Long) As Long</pre>
+<p>Draws an icon or cursor in a device context at the given position. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawIcon">DrawIcon</a></p>
+<h3><a name="DRAWICONTEXT"></a>DrawIconText</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17909</p>
+<pre>Sub DrawIconText (hWnd As Long, wParam As Long)</pre>
+<p>Draws the window&#x27;s small icon (WM_GETICON, DrawIconEx) and caption text in white onto the skin DC dc_Skin.</p>
+<h3><a name="DRAWTEXT"></a>DrawText</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17715</p>
+<pre>Declare Function DrawText Lib &quot;user32&quot; Alias &quot;DrawTextA&quot; ( ByVal hdc As Long, ByVal lpStr As String, ByVal nCount As Long, lpRect As RECT, ByVal wFormat As Long) As Long</pre>
+<p>Draws formatted text in a rectangle (alignment, word wrap, ellipsis by DT_* flags). Returns the height of the text.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawTextA">DrawTextA</a></p>
+<h3><a name="DRAWWINDOWBORDERS"></a>DrawWindowBorders</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17830</p>
+<pre>Sub DrawWindowBorders (hWnd As Long, wParam As Long)</pre>
+<p>Draws the skin bitmaps (SkinTop, SkinMid and others) over the caption and borders of the window using StretchBlt on the global dc_Skin; uses the active or inactive half of each bitmap depending on m_bActive.</p>
+<h3><a name="EXCLUDECLIPRECT"></a>ExcludeClipRect</h3>
+<p class="rq-meta">DLL function, gdi32.dll &middot; rapidqAllProc.inc, line 17729</p>
+<pre>Declare Function ExcludeClipRect Lib &quot;gdi32.dll&quot; Alias &quot;ExcludeClipRect&quot; ( ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long</pre>
+<p>Removes a rectangle from the clipping region of a device context. Returns the new region type.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ExcludeClipRect">ExcludeClipRect</a></p>
+<h3><a name="EXCLUDEUPDATERGN"></a>ExcludeUpdateRgn</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 17727</p>
+<pre>Declare Function ExcludeUpdateRgn Lib &quot;user32.dll&quot; Alias &quot;ExcludeUpdateRgn&quot; ( ByVal hdc As Long, ByVal hwnd As Long) As Long</pre>
+<p>Excludes a window&#x27;s update region from the clipping region of a device context, so painting skips invalid areas. Returns the region type.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ExcludeUpdateRgn">ExcludeUpdateRgn</a></p>
+<h3><a name="EXTRACTICONEX"></a>ExtractIconEx</h3>
+<p class="rq-meta">DLL function, shell32.dll &middot; rapidqAllProc.inc, line 17696</p>
+<pre>Declare Function ExtractIconEx Lib &quot;shell32.dll&quot; Alias &quot;ExtractIconExA&quot; ( ByVal lpszFile As String, ByVal nIconIndex As Long, phiconLarge As Long, phiconSmall As Long, ByVal nIcons As Long) As Long</pre>
+<p>Extracts large and/or small icons from an exe, dll or icon file, starting at a given index. Returns the number of icons extracted (or the total with index -1).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ExtractIconExA">ExtractIconExA</a></p>
+<h3><a name="FIXTASKBAR"></a>FixTaskBar</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17752</p>
+<pre>Sub FixTaskBar (hWnd As Long)</pre>
+<p>Makes the window hWnd a top-level window with its own taskbar button by setting GWL_HWNDPARENT of hWnd to the desktop and of Application.Handle to hWnd (SetWindowLong).</p>
+<h3><a name="GETCLIENTRECT_QFORMSKIN"></a>GetClientRect_QFormSkin</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17666</p>
+<pre>Declare Function GetClientRect_QFormSkin Lib &quot;user32&quot; Alias &quot;GetClientRect&quot; ( ByVal hWnd As Long, lpRect As RECT) As Long</pre>
+<p>Retrieves the client area rectangle of a window (left/top are 0, right/bottom are width/height). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetClientRect">GetClientRect</a></p>
+<h3><a name="GETCLIPRGN"></a>GetClipRgn</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 17679</p>
+<pre>Declare Function GetClipRgn Lib &quot;gdi32&quot; Alias &quot;GetClipRgn&quot; (ByVal hdc As Long, ByVal hRgn As Long) As Long</pre>
+<p>Copies the application-defined clipping region of a device context into an existing region. Returns 1, 0 if none, or -1 on error.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetClipRgn">GetClipRgn</a></p>
+<h3><a name="GETRGNBOX"></a>GetRgnBox</h3>
+<p class="rq-meta">DLL function, gdi32.dll &middot; rapidqAllProc.inc, line 17672</p>
+<pre>Declare Function GetRgnBox Lib &quot;gdi32.dll&quot; Alias &quot;GetRgnBox&quot; ( ByVal hRgn As Long, lpRect As RECT) As Long</pre>
+<p>Retrieves the bounding rectangle of a region. Returns the region type.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetRgnBox">GetRgnBox</a></p>
+<h3><a name="GETWINDOWDC"></a>GetWindowDC</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17691</p>
+<pre>DECLARE FUNCTION GetWindowDC LIB &quot;user32&quot; ALIAS &quot;GetWindowDC&quot; (hWnd AS LONG) AS LONG</pre>
+<p>Retrieves a device context for the entire window, including title bar, menus and borders. Release it with ReleaseDC.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowDC">GetWindowDC</a></p>
+<h3><a name="GETWINDOWRECT_QFORMSKIN"></a>GetWindowRect_QFormSkin</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17664</p>
+<pre>DECLARE FUNCTION GetWindowRect_QFormSkin LIB &quot;user32&quot; ALIAS &quot;GetWindowRect&quot; (hWnd AS LONG, lpRect AS Rect) AS LONG</pre>
+<p>Retrieves the bounding rectangle of a window in screen coordinates. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowRect">GetWindowRect</a></p>
+<h3><a name="INVALIDATERECT"></a>InvalidateRect</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17682</p>
+<pre>Declare Function InvalidateRect Lib &quot;user32&quot; Alias &quot;InvalidateRect&quot; (ByVal hwnd As Long, lpRect As RECT, ByVal bErase As Long) As Long</pre>
+<p>Adds a rectangle (or the whole client area if null) to a window&#x27;s update region so it will be repainted; bErase erases the background. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InvalidateRect">InvalidateRect</a></p>
+<h3><a name="INVALIDATERGN"></a>InvalidateRgn</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17684</p>
+<pre>Declare Function InvalidateRgn Lib &quot;user32&quot; Alias &quot;InvalidateRgn&quot; (ByVal hwnd As Long, ByVal hRgn As Long, ByVal bErase As Long) As Long</pre>
+<p>Adds a region to a window&#x27;s update region so it will be repainted. Returns nonzero.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InvalidateRgn">InvalidateRgn</a></p>
+<h3><a name="LOADCURSOR"></a>LoadCursor</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17736</p>
+<pre>Declare Function LoadCursor Lib &quot;user32&quot; Alias &quot;LoadCursorA&quot; (ByVal hInstance As Long, ByVal lpCursorName As Long) As Long</pre>
+<p>Loads a cursor resource from a module or a predefined system cursor (IDC_ARROW etc.). Returns the cursor handle, or 0 on failure. Superseded by LoadImage.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=LoadCursorA">LoadCursorA</a></p>
+<h3><a name="MOUSE_EVENT"></a>mouse_event</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 18069</p>
+<pre>Declare Sub mouse_event Lib &quot;user32&quot; Alias &quot;mouse_event&quot; ( ByVal dwFlags As Long, ByVal dx As Long, ByVal dy As Long, ByVal cButtons As Long, ByVal dwExtraInfo As Long)</pre>
+<p>Synthesizes mouse motion and button clicks (dwFlags, dx, dy, data). Superseded; use SendInput instead.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=mouse_event">mouse_event</a></p>
+<h3><a name="OFFSETCLIPRGN"></a>OffsetClipRgn</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 17687</p>
+<pre>Declare Function OffsetClipRgn Lib &quot;gdi32&quot; Alias &quot;OffsetClipRgn&quot; (ByVal hdc As Long, ByVal x As Long, ByVal y As Long) As Long</pre>
+<p>Moves the clipping region of a device context by the given offsets. Returns the region type.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=OffsetClipRgn">OffsetClipRgn</a></p>
+<h3><a name="PROTECTFROMDRAWING"></a>ProtectFromDrawing</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18056</p>
+<pre>Sub ProtectFromDrawing</pre>
+<p>Excludes the rectangle r_Skin from the clipping region of dc_Skin (ExcludeClipRect) and reports the result through GetInfoFromMenu. Debug helper.</p>
+<h3><a name="REDRAW"></a>Redraw</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 18095</p>
+<pre>Sub Redraw(hwnd As Long)</pre>
+<p>Forces an immediate repaint of window hwnd and its children with RedrawWindow (RDW_UPDATENOW, RDW_INVALIDATE, RDW_INTERNALPAINT, RDW_ALLCHILDREN).</p>
+<h3><a name="REDRAWWINDOW"></a>RedrawWindow</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 18089</p>
+<pre>Declare Function RedrawWindow Lib &quot;user32&quot; Alias &quot;RedrawWindow&quot; ( ByVal hwnd As Long, lprcUpdate As Long, ByVal hrgnUpdate As Long, ByVal fuRedraw As Long) As Long</pre>
+<p>Updates the specified rectangle or region in a window&#x27;s client area; fuRedraw flags control invalidation, erasing and immediate painting. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RedrawWindow">RedrawWindow</a></p>
+<h3><a name="REFRESHBTNS"></a>RefreshBtns</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17983</p>
+<pre>Sub RefreshBtns (hWnd As Long, wParam As Long)</pre>
+<p>Calls DrawButtons for wParam values 3 and 10..18; otherwise only writes a debug message through GetInfoFromMenu.</p>
+<h3><a name="SELECTCLIPRGN"></a>SelectClipRgn</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 17681</p>
+<pre>Declare Function SelectClipRgn Lib &quot;gdi32&quot; Alias &quot;SelectClipRgn&quot; (ByVal hdc As Long, ByVal hRgn As Long) As Long</pre>
+<p>Selects a region as the clipping region of a device context (0 removes clipping). Returns the region type.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SelectClipRgn">SelectClipRgn</a></p>
+<h3><a name="SETCURSOR"></a>SetCursor</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17734</p>
+<pre>Declare Function SetCursor Lib &quot;user32&quot; Alias &quot;SetCursor&quot; (ByVal hCursor As Long) As Long</pre>
+<p>Sets the mouse cursor shape. Returns the handle of the previous cursor.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetCursor">SetCursor</a></p>
+<h3><a name="SETRECT"></a>SetRect</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17668</p>
+<pre>Declare Function SetRect Lib &quot;user32&quot; Alias &quot;SetRect&quot; ( lpRect As RECT, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long</pre>
+<p>Sets the coordinates of a RECT structure. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetRect">SetRect</a></p>
+<h3><a name="SETRECTRGN"></a>SetRectRgn</h3>
+<p class="rq-meta">DLL function, gdi32.dll &middot; rapidqAllProc.inc, line 17674</p>
+<pre>Declare Function SetRectRgn Lib &quot;gdi32.dll&quot; Alias &quot;SetRectRgn&quot; ( ByVal hRgn As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long</pre>
+<p>Changes an existing region into a rectangular region with the given coordinates. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetRectRgn">SetRectRgn</a></p>
+<h3><a name="SETTEXTCOLOR"></a>SetTextColor</h3>
+<p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 17721</p>
+<pre>Declare Function SetTextColor Lib &quot;gdi32&quot; Alias &quot;SetTextColor&quot; ( ByVal hdc As Long, ByVal crColor As Long) As Long</pre>
+<p>Sets the text color of a device context. Returns the previous text color.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetTextColor">SetTextColor</a></p>
+<h3><a name="SETWINDOWRGN"></a>SetWindowRgn</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17680</p>
+<pre>Declare Function SetWindowRgn Lib &quot;user32&quot; Alias &quot;SetWindowRgn&quot; (ByVal hWnd As Long, ByVal hRgn As Long, ByVal bRedraw As Integer) As Long</pre>
+<p>Sets the window region (the visible area) of a window; the system takes ownership of the region. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowRgn">SetWindowRgn</a></p>
+<h3><a name="TITLEBARMOUSEDOWN"></a>TitleBarMouseDown</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17827</p>
+<pre>Sub TitleBarMouseDown(hWnd As Long)</pre>
+<p>Starts dragging window hWnd as if its caption were clicked: releases mouse capture and sends WM_NCLBUTTONDOWN with HTCAPTION.</p>
+<h3><a name="VALIDATERECT"></a>ValidateRect</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17683</p>
+<pre>Declare Function ValidateRect Lib &quot;user32&quot; Alias &quot;ValidateRect&quot; (ByVal hwnd As Long, lpRect As RECT) As Long</pre>
+<p>Removes a rectangle from a window&#x27;s update region, marking it as already painted. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ValidateRect">ValidateRect</a></p>
+<h3><a name="VALIDATERGN"></a>ValidateRgn</h3>
+<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17685</p>
+<pre>Declare Function ValidateRgn Lib &quot;user32&quot; Alias &quot;ValidateRgn&quot; (ByVal hwnd As Long, ByVal hRgn As Long) As Long</pre>
+<p>Removes a region from a window&#x27;s update region, marking it as already painted. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ValidateRgn">ValidateRgn</a></p>
+<h3><a name="WINDOWPROC"></a>WindowProc</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 37692</p>
+<pre>FUNCTION WindowProc</pre>
+<p>Window procedure of the skinned form (subclassed, previous procedure in precedent_adresse_mainfrm). On paint and activation messages draws the skin borders, caption icon/text and buttons; also handles WM_NCCALCSIZE, non-client mouse clicks and moves, passing other messages to CallWindowProc. (body longer than shown)</p>
+</body>
+</html>

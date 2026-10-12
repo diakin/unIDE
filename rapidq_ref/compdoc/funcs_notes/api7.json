@@ -1,0 +1,794 @@
+{
+ "auxGetDevCaps@WIN32API.INC": {
+  "desc": "Retrieves the capabilities of an auxiliary output device into an AUXCAPS structure. Returns MMSYSERR_NOERROR on success.",
+  "doc": "auxGetDevCapsA"
+ },
+ "auxSetVolume@WIN32API.INC": {
+  "desc": "Sets the volume of an auxiliary output device; the low word of dwVolume is the left channel and the high word the right channel (0 to &HFFFF).",
+  "doc": "auxSetVolume"
+ },
+ "auxGetVolume@WIN32API.INC": {
+  "desc": "Retrieves the current volume setting of an auxiliary output device into lpdwVolume (low word left channel, high word right channel).",
+  "doc": "auxGetVolume"
+ },
+ "auxOutMessage@WIN32API.INC": {
+  "desc": "Sends a message directly to an auxiliary output device driver. Returns the value returned by the driver.",
+  "doc": "auxOutMessage"
+ },
+ "timeGetSystemTime@WIN32API.INC": {
+  "desc": "Retrieves the system time in milliseconds since Windows started into an MMTIME structure. Same as timeGetTime but uses a structure.",
+  "doc": "timeGetSystemTime"
+ },
+ "timeGetTime@WIN32API.INC": {
+  "desc": "Returns the system time in milliseconds since Windows was started. The value wraps around to 0 every 2^32 milliseconds (about 49.7 days).",
+  "doc": "timeGetTime"
+ },
+ "timeSetEvent@WIN32API.INC": {
+  "desc": "Starts a multimedia timer that calls a callback function once or periodically after uDelay milliseconds. Returns a timer ID, or 0 on failure. Obsolete; use CreateTimerQueueTimer.",
+  "doc": "timeSetEvent"
+ },
+ "timeKillEvent@WIN32API.INC": {
+  "desc": "Cancels a multimedia timer event started with timeSetEvent, identified by its timer ID.",
+  "doc": "timeKillEvent"
+ },
+ "timeGetDevCaps@WIN32API.INC": {
+  "desc": "Queries the timer device for its minimum and maximum supported resolution, returned in a TIMECAPS structure.",
+  "doc": "timeGetDevCaps"
+ },
+ "timeBeginPeriod@WIN32API.INC": {
+  "desc": "Requests a minimum resolution, in milliseconds, for periodic timers. Must be matched by a call to timeEndPeriod with the same value.",
+  "doc": "timeBeginPeriod"
+ },
+ "timeEndPeriod@WIN32API.INC": {
+  "desc": "Clears a minimum timer resolution previously set with timeBeginPeriod; pass the same value used in that call.",
+  "doc": "timeEndPeriod"
+ },
+ "joyGetDevCaps@WIN32API.INC": {
+  "desc": "Queries a joystick to determine its capabilities, returned in a JOYCAPS structure.",
+  "doc": "joyGetDevCapsA"
+ },
+ "joyGetNumDevs@WIN32API.INC": {
+  "desc": "Returns the number of joysticks supported by the current joystick driver (not the number attached). Note: the source alias joyGetNumDev is misspelled; the export is joyGetNumDevs.",
+  "doc": "joyGetNumDevs"
+ },
+ "joyGetThreshold@WIN32API.INC": {
+  "desc": "Retrieves the movement threshold of a joystick, i.e. the distance it must move before a WM_JOYMOVE message is sent.",
+  "doc": "joyGetThreshold"
+ },
+ "joyReleaseCapture@WIN32API.INC": {
+  "desc": "Releases joystick capture previously set with joySetCapture for the specified joystick.",
+  "doc": "joyReleaseCapture"
+ },
+ "joySetCapture@WIN32API.INC": {
+  "desc": "Captures a joystick so its messages are sent to the specified window, polling at the given period in milliseconds.",
+  "doc": "joySetCapture"
+ },
+ "joySetThreshold@WIN32API.INC": {
+  "desc": "Sets the movement threshold of a joystick, the distance it must move before a WM_JOYMOVE message is sent.",
+  "doc": "joySetThreshold"
+ },
+ "mmioStringToFOURCC@WIN32API.INC": {
+  "desc": "Converts a null-terminated string of up to four characters into a four-character code (FOURCC) used in RIFF files.",
+  "doc": "mmioStringToFOURCCA"
+ },
+ "mmioOpen@WIN32API.INC": {
+  "desc": "Opens a file for unbuffered or buffered multimedia I/O (including RIFF files). Returns an HMMIO handle, or 0 on failure.",
+  "doc": "mmioOpenA"
+ },
+ "mmioRename@WIN32API.INC": {
+  "desc": "Renames the specified file using the multimedia I/O file system.",
+  "doc": "mmioRenameA"
+ },
+ "mmioClose@WIN32API.INC": {
+  "desc": "Closes a file that was opened with mmioOpen.",
+  "doc": "mmioClose"
+ },
+ "mmioRead@WIN32API.INC": {
+  "desc": "Reads a specified number of bytes from a file opened with mmioOpen. Returns the number of bytes read, 0 at end of file, or -1 on error.",
+  "doc": "mmioRead"
+ },
+ "mmioWrite@WIN32API.INC": {
+  "desc": "Writes a specified number of bytes to a file opened with mmioOpen. Returns the number of bytes written, or -1 on error.",
+  "doc": "mmioWrite"
+ },
+ "mmioSeek@WIN32API.INC": {
+  "desc": "Changes the current file position in a file opened with mmioOpen. Returns the new position in bytes, or -1 on error.",
+  "doc": "mmioSeek"
+ },
+ "mmioGetInfo@WIN32API.INC": {
+  "desc": "Retrieves information about a file opened with mmioOpen into an MMIOINFO structure, for direct access to its I/O buffer.",
+  "doc": "mmioGetInfo"
+ },
+ "mmioSetInfo@WIN32API.INC": {
+  "desc": "Updates the information retrieved by mmioGetInfo about a file opened with mmioOpen, ending direct buffer access.",
+  "doc": "mmioSetInfo"
+ },
+ "mmioSetBuffer@WIN32API.INC": {
+  "desc": "Enables or disables buffered I/O, or changes the buffer or buffer size, for a file opened with mmioOpen.",
+  "doc": "mmioSetBuffer"
+ },
+ "mmioFlush@WIN32API.INC": {
+  "desc": "Writes the I/O buffer of a file to disk if the buffer has been written to.",
+  "doc": "mmioFlush"
+ },
+ "mmioAdvance@WIN32API.INC": {
+  "desc": "Advances the I/O buffer of a file set up for direct buffer access, filling or flushing the buffer as needed.",
+  "doc": "mmioAdvance"
+ },
+ "mmioSendMessage@WIN32API.INC": {
+  "desc": "Sends a message to the I/O procedure associated with the specified file.",
+  "doc": "mmioSendMessage"
+ },
+ "mmioDescend@WIN32API.INC": {
+  "desc": "Descends into a chunk of a RIFF file opened with mmioOpen, optionally searching for a given chunk ID, and fills an MMCKINFO structure.",
+  "doc": "mmioDescend"
+ },
+ "mmioAscend@WIN32API.INC": {
+  "desc": "Ascends out of a chunk in a RIFF file that was descended into with mmioDescend or created with mmioCreateChunk.",
+  "doc": "mmioAscend"
+ },
+ "mmioCreateChunk@WIN32API.INC": {
+  "desc": "Creates a chunk in a RIFF file opened with mmioOpen; the new chunk is created at the current file position.",
+  "doc": "mmioCreateChunk"
+ },
+ "mciSendCommand@WIN32API.INC": {
+  "desc": "Sends a command message to the specified MCI device. Returns 0 on success or an MCI error code.",
+  "doc": "mciSendCommandA"
+ },
+ "mciSendString@WIN32API.INC": {
+  "desc": "Sends a command string (for example \"play file.wav\") to an MCI device and optionally returns information in a string buffer. Returns 0 on success or an MCI error code.",
+  "doc": "mciSendStringA"
+ },
+ "mciGetCreatorTask@WIN32API.INC": {
+  "desc": "Retrieves a handle to the creator task for the specified MCI device.",
+  "doc": "mciGetCreatorTask"
+ },
+ "mciGetDeviceID@WIN32API.INC": {
+  "desc": "Retrieves the MCI device identifier corresponding to the name of an open device.",
+  "doc": "mciGetDeviceIDA"
+ },
+ "mciGetDeviceIDFromElementID@WIN32API.INC": {
+  "desc": "Retrieves the MCI device identifier corresponding to an element identifier.",
+  "doc": "mciGetDeviceIDFromElementIDA"
+ },
+ "mciGetErrorString@WIN32API.INC": {
+  "desc": "Retrieves a string that describes the specified MCI error code.",
+  "doc": "mciGetErrorStringA"
+ },
+ "mciExecute@WIN32API.INC": {
+  "desc": "Not in the Microsoft documentation: legacy winmm export that sends an MCI command string and displays a message box if an error occurs.",
+  "doc": ""
+ },
+ "EnumPrinters@WIN32API.INC": {
+  "desc": "Enumerates available printers, print servers, domains, or print providers into an array of PRINTER_INFO structures. Returns nonzero on success.",
+  "doc": "EnumPrintersA"
+ },
+ "EnumPrinterPropertySheets@WIN32API.INC": {
+  "desc": "Not in the Microsoft documentation: by its name, enumerates the property sheet pages of a printer.",
+  "doc": ""
+ },
+ "OpenPrinter@WIN32API.INC": {
+  "desc": "Retrieves a handle to the specified printer or print server. Close the handle with ClosePrinter.",
+  "doc": "OpenPrinterA"
+ },
+ "ResetPrinter@WIN32API.INC": {
+  "desc": "Specifies the data type and device mode values used for documents submitted by StartDocPrinter; can be overridden with SetJob.",
+  "doc": "ResetPrinterA"
+ },
+ "SetJob@WIN32API.INC": {
+  "desc": "Pauses, resumes, cancels, or restarts a print job, or sets print job parameters.",
+  "doc": "SetJobA"
+ },
+ "GetJob@WIN32API.INC": {
+  "desc": "Retrieves information about a specified print job into a JOB_INFO structure.",
+  "doc": "GetJobA"
+ },
+ "EnumJobs@WIN32API.INC": {
+  "desc": "Retrieves information about a specified set of print jobs for a printer.",
+  "doc": "EnumJobsA"
+ },
+ "AddPrinter@WIN32API.INC": {
+  "desc": "Adds a printer to the list of supported printers for a specified server. Returns a printer handle, or 0 on failure.",
+  "doc": "AddPrinterA"
+ },
+ "AddPrinterDriver@WIN32API.INC": {
+  "desc": "Installs a local or remote printer driver and links the configuration, data, and driver files.",
+  "doc": "AddPrinterDriverA"
+ },
+ "EnumPrinterDrivers@WIN32API.INC": {
+  "desc": "Enumerates the printer drivers installed on a specified print server.",
+  "doc": "EnumPrinterDriversA"
+ },
+ "GetPrinterDriver@WIN32API.INC": {
+  "desc": "Retrieves driver data for the specified printer.",
+  "doc": "GetPrinterDriverA"
+ },
+ "GetPrinterDriverDirectory@WIN32API.INC": {
+  "desc": "Retrieves the path of the printer-driver directory on the specified server.",
+  "doc": "GetPrinterDriverDirectoryA"
+ },
+ "DeletePrinterDriver@WIN32API.INC": {
+  "desc": "Removes the specified printer-driver name from the list of names of supported drivers for a server.",
+  "doc": "DeletePrinterDriverA"
+ },
+ "AddPrintProcessor@WIN32API.INC": {
+  "desc": "Installs a print processor on the specified server and adds its name to the list of supported print processors.",
+  "doc": "AddPrintProcessorA"
+ },
+ "EnumPrintProcessors@WIN32API.INC": {
+  "desc": "Enumerates the print processors installed on the specified server.",
+  "doc": "EnumPrintProcessorsA"
+ },
+ "GetPrintProcessorDirectory@WIN32API.INC": {
+  "desc": "Retrieves the path to the print processor directory on the specified server.",
+  "doc": "GetPrintProcessorDirectoryA"
+ },
+ "EnumPrintProcessorDatatypes@WIN32API.INC": {
+  "desc": "Enumerates the data types that a specified print processor supports.",
+  "doc": "EnumPrintProcessorDatatypesA"
+ },
+ "DeletePrintProcessor@WIN32API.INC": {
+  "desc": "Removes a print processor added by AddPrintProcessor.",
+  "doc": "DeletePrintProcessorA"
+ },
+ "StartDocPrinter@WIN32API.INC": {
+  "desc": "Notifies the print spooler that a document is to be spooled for printing. Returns the print job identifier, or 0 on failure.",
+  "doc": "StartDocPrinterA"
+ },
+ "StartPagePrinter@WIN32API.INC": {
+  "desc": "Notifies the spooler that a page is about to be printed on the specified printer.",
+  "doc": "StartPagePrinter"
+ },
+ "WritePrinter@WIN32API.INC": {
+  "desc": "Notifies the print spooler that data should be written to the specified printer; returns the number of bytes written in pcWritten.",
+  "doc": "WritePrinter"
+ },
+ "EndPagePrinter@WIN32API.INC": {
+  "desc": "Notifies the print spooler that the application is at the end of a page in a print job.",
+  "doc": "EndPagePrinter"
+ },
+ "AbortPrinter@WIN32API.INC": {
+  "desc": "Deletes a printer's spool file if the printer is configured for spooling.",
+  "doc": "AbortPrinter"
+ },
+ "ReadPrinter@WIN32API.INC": {
+  "desc": "Retrieves data from the specified printer (bidirectional printers).",
+  "doc": "ReadPrinter"
+ },
+ "EndDocPrinter@WIN32API.INC": {
+  "desc": "Ends a print job for the specified printer started with StartDocPrinter.",
+  "doc": "EndDocPrinter"
+ },
+ "AddJob@WIN32API.INC": {
+  "desc": "Adds a print job to the list of print jobs that can be scheduled by the spooler and returns the spool file name and job ID.",
+  "doc": "AddJobA"
+ },
+ "ScheduleJob@WIN32API.INC": {
+  "desc": "Requests that the print spooler schedule a specified print job (created with AddJob) for printing.",
+  "doc": "ScheduleJob"
+ },
+ "PrinterProperties@WIN32API.INC": {
+  "desc": "Displays a printer-properties property sheet for the specified printer.",
+  "doc": "PrinterProperties"
+ },
+ "DocumentProperties@WIN32API.INC": {
+  "desc": "Retrieves or modifies printer initialization information (DEVMODE), or displays a printer-configuration property sheet for the specified printer.",
+  "doc": "DocumentPropertiesA"
+ },
+ "AdvancedDocumentProperties@WIN32API.INC": {
+  "desc": "Displays a printer-configuration dialog box for the specified printer, allowing the user to configure the printer's DEVMODE.",
+  "doc": "AdvancedDocumentPropertiesA"
+ },
+ "GetPrinterData@WIN32API.INC": {
+  "desc": "Retrieves configuration data for the specified printer or print server from the registry.",
+  "doc": "GetPrinterDataA"
+ },
+ "SetPrinterData@WIN32API.INC": {
+  "desc": "Sets the configuration data for a printer or print server.",
+  "doc": "SetPrinterDataA"
+ },
+ "WaitForPrinterChange@WIN32API.INC": {
+  "desc": "Returns when one or more requested changes occur on a print server or printer, or when the timeout expires. Obsolete; use FindFirstPrinterChangeNotification.",
+  "doc": "WaitForPrinterChange"
+ },
+ "PrinterMessageBox@WIN32API.INC": {
+  "desc": "Displays a message box on the user's system when a printer error occurs. Obsolete; no longer supported.",
+  "doc": "PrinterMessageBoxA"
+ },
+ "ClosePrinter@WIN32API.INC": {
+  "desc": "Closes the specified printer object handle obtained with OpenPrinter or AddPrinter.",
+  "doc": "ClosePrinter"
+ },
+ "AddForm@WIN32API.INC": {
+  "desc": "Adds a form to the list of available forms that can be selected for the specified printer.",
+  "doc": "AddFormA"
+ },
+ "DeleteForm@WIN32API.INC": {
+  "desc": "Removes a form name from the list of supported forms.",
+  "doc": "DeleteFormA"
+ },
+ "GetForm@WIN32API.INC": {
+  "desc": "Retrieves information about a specified form into a FORM_INFO_1 structure.",
+  "doc": "GetFormA"
+ },
+ "SetForm@WIN32API.INC": {
+  "desc": "Sets the form information for the specified printer.",
+  "doc": "SetFormA"
+ },
+ "EnumForms@WIN32API.INC": {
+  "desc": "Enumerates the forms supported by the specified printer.",
+  "doc": "EnumFormsA"
+ },
+ "EnumMonitors@WIN32API.INC": {
+  "desc": "Retrieves information about the port monitors installed on the specified server.",
+  "doc": "EnumMonitorsA"
+ },
+ "AddMonitor@WIN32API.INC": {
+  "desc": "Installs a local port monitor and links the configuration, data, and monitor files.",
+  "doc": "AddMonitorA"
+ },
+ "DeleteMonitor@WIN32API.INC": {
+  "desc": "Removes a port monitor added by AddMonitor.",
+  "doc": "DeleteMonitorA"
+ },
+ "EnumPorts@WIN32API.INC": {
+  "desc": "Enumerates the ports that are available for printing on a specified server.",
+  "doc": "EnumPortsA"
+ },
+ "AddPort@WIN32API.INC": {
+  "desc": "Adds the name of a port to the list of supported ports; displays a dialog box so the user can enter a port name. Obsolete for new code.",
+  "doc": "AddPortA"
+ },
+ "ConfigurePort@WIN32API.INC": {
+  "desc": "Displays the port-configuration dialog box for a port on the specified server. Obsolete for new code.",
+  "doc": "ConfigurePortA"
+ },
+ "DeletePort@WIN32API.INC": {
+  "desc": "Deletes a port name; displays a dialog box to confirm the deletion. Obsolete for new code.",
+  "doc": "DeletePortA"
+ },
+ "AddPrinterConnection@WIN32API.INC": {
+  "desc": "Adds a connection to the specified printer for the current user.",
+  "doc": "AddPrinterConnectionA"
+ },
+ "DeletePrinterConnection@WIN32API.INC": {
+  "desc": "Deletes a connection to a printer that was established by AddPrinterConnection or ConnectToPrinterDlg.",
+  "doc": "DeletePrinterConnectionA"
+ },
+ "ConnectToPrinterDlg@WIN32API.INC": {
+  "desc": "Displays a dialog box that lets users browse and connect to printers on a network. Returns a handle to the selected printer, or 0.",
+  "doc": "ConnectToPrinterDlg"
+ },
+ "AddPrintProvidor@WIN32API.INC": {
+  "desc": "Installs a local print provider and links the configuration, data, and provider files.",
+  "doc": "AddPrintProvidorA"
+ },
+ "DeletePrintProvidor@WIN32API.INC": {
+  "desc": "Removes a print provider added by AddPrintProvidor.",
+  "doc": "DeletePrintProvidorA"
+ },
+ "WNetAddConnection@WIN32API.INC": {
+  "desc": "Connects a local device to a network resource. Provided for 16-bit compatibility only; use WNetAddConnection2.",
+  "doc": "WNetAddConnectionA"
+ },
+ "WNetAddConnection2@WIN32API.INC": {
+  "desc": "Makes a connection to a network resource described by a NETRESOURCE structure and can redirect a local device to it. Returns NO_ERROR on success.",
+  "doc": "WNetAddConnection2A"
+ },
+ "WNetCancelConnection@WIN32API.INC": {
+  "desc": "Cancels an existing network connection. Provided for 16-bit compatibility only; use WNetCancelConnection2.",
+  "doc": "WNetCancelConnectionA"
+ },
+ "WNetCancelConnection2@WIN32API.INC": {
+  "desc": "Cancels an existing network connection, optionally updating the persistent connection information. Returns NO_ERROR on success.",
+  "doc": "WNetCancelConnection2A"
+ },
+ "WNetGetConnection@WIN32API.INC": {
+  "desc": "Retrieves the name of the network resource associated with a local device (e.g. a drive letter).",
+  "doc": "WNetGetConnectionA"
+ },
+ "WNetOpenEnum@WIN32API.INC": {
+  "desc": "Starts an enumeration of network resources or existing connections; returns a handle for WNetEnumResource.",
+  "doc": "WNetOpenEnumA"
+ },
+ "WNetEnumResource@WIN32API.INC": {
+  "desc": "Continues an enumeration of network resources started with WNetOpenEnum, returning NETRESOURCE structures.",
+  "doc": "WNetEnumResourceA"
+ },
+ "WNetCloseEnum@WIN32API.INC": {
+  "desc": "Ends a network resource enumeration started by WNetOpenEnum.",
+  "doc": "WNetCloseEnum"
+ },
+ "WNetGetUser@WIN32API.INC": {
+  "desc": "Retrieves the current default user name, or the user name used to establish a network connection.",
+  "doc": "WNetGetUserA"
+ },
+ "WNetConnectionDialog@WIN32API.INC": {
+  "desc": "Starts a general browsing dialog box for connecting to network resources.",
+  "doc": "WNetConnectionDialog"
+ },
+ "WNetDisconnectDialog@WIN32API.INC": {
+  "desc": "Starts a general browsing dialog box for disconnecting from network resources.",
+  "doc": "WNetDisconnectDialog"
+ },
+ "WNetGetLastError@WIN32API.INC": {
+  "desc": "Retrieves the most recent extended error code and text set by a WNet function (provider-specific errors).",
+  "doc": "WNetGetLastErrorA"
+ },
+ "Netbios@WIN32API.INC": {
+  "desc": "Interprets and executes the specified network control block (NCB). Provided for compatibility with NetBIOS applications.",
+  "doc": "Netbios"
+ },
+ "RegCloseKey@WIN32API.INC": {
+  "desc": "Closes a handle to the specified registry key. Returns ERROR_SUCCESS (0) on success.",
+  "doc": "RegCloseKey"
+ },
+ "RegConnectRegistry@WIN32API.INC": {
+  "desc": "Establishes a connection to a predefined registry key (such as HKEY_LOCAL_MACHINE) on another computer.",
+  "doc": "RegConnectRegistryA"
+ },
+ "RegCreateKey@WIN32API.INC": {
+  "desc": "Creates or opens the specified registry key. Provided for 16-bit compatibility; use RegCreateKeyEx.",
+  "doc": "RegCreateKeyA"
+ },
+ "RegCreateKeyEx@WIN32API.INC": {
+  "desc": "Creates the specified registry key, or opens it if it already exists. Returns ERROR_SUCCESS (0) and the key handle in phkResult.",
+  "doc": "RegCreateKeyExA"
+ },
+ "RegDeleteKey@WIN32API.INC": {
+  "desc": "Deletes a subkey and its values from the registry. The subkey must not have subkeys of its own.",
+  "doc": "RegDeleteKeyA"
+ },
+ "RegDeleteValue@WIN32API.INC": {
+  "desc": "Removes a named value from the specified registry key.",
+  "doc": "RegDeleteValueA"
+ },
+ "RegEnumKey@WIN32API.INC": {
+  "desc": "Enumerates subkeys of an open registry key, one per call. Provided for 16-bit compatibility; use RegEnumKeyEx.",
+  "doc": "RegEnumKeyA"
+ },
+ "RegEnumKeyEx@WIN32API.INC": {
+  "desc": "Enumerates the subkeys of an open registry key, retrieving one subkey name per call by index. Returns ERROR_NO_MORE_ITEMS at the end.",
+  "doc": "RegEnumKeyExA"
+ },
+ "RegEnumValue@WIN32API.INC": {
+  "desc": "Enumerates the values of an open registry key, retrieving the name, type and data of one value per call by index.",
+  "doc": "RegEnumValueA"
+ },
+ "RegFlushKey@WIN32API.INC": {
+  "desc": "Writes all the attributes of the specified open registry key to the registry on disk.",
+  "doc": "RegFlushKey"
+ },
+ "RegGetKeySecurity@WIN32API.INC": {
+  "desc": "Retrieves a copy of the security descriptor protecting the specified open registry key.",
+  "doc": "RegGetKeySecurity"
+ },
+ "RegLoadKey@WIN32API.INC": {
+  "desc": "Creates a subkey under HKEY_USERS or HKEY_LOCAL_MACHINE and loads registry information from a hive file into it.",
+  "doc": "RegLoadKeyA"
+ },
+ "RegNotifyChangeKeyValue@WIN32API.INC": {
+  "desc": "Notifies the caller about changes to the attributes or contents of a registry key, synchronously or by signaling an event.",
+  "doc": "RegNotifyChangeKeyValue"
+ },
+ "RegOpenKey@WIN32API.INC": {
+  "desc": "Opens the specified registry key. Provided for 16-bit compatibility; use RegOpenKeyEx.",
+  "doc": "RegOpenKeyA"
+ },
+ "RegOpenKeyEx@WIN32API.INC": {
+  "desc": "Opens the specified registry key with the requested access rights. Returns ERROR_SUCCESS (0) and the key handle in phkResult.",
+  "doc": "RegOpenKeyExA"
+ },
+ "RegQueryInfoKey@WIN32API.INC": {
+  "desc": "Retrieves information about a registry key, such as the number and maximum sizes of its subkeys and values.",
+  "doc": "RegQueryInfoKeyA"
+ },
+ "RegQueryValue@WIN32API.INC": {
+  "desc": "Retrieves the data of the default (unnamed) value of a registry key. Provided for 16-bit compatibility; use RegQueryValueEx.",
+  "doc": "RegQueryValueA"
+ },
+ "RegQueryValueEx@WIN32API.INC": {
+  "desc": "Retrieves the type and data of a named value of an open registry key. lpcbData gives the buffer size in and the data size out.",
+  "doc": "RegQueryValueExA"
+ },
+ "RegReplaceKey@WIN32API.INC": {
+  "desc": "Replaces the file backing a registry key and its subkeys with another file; takes effect the next time the system starts.",
+  "doc": "RegReplaceKeyA"
+ },
+ "RegRestoreKey@WIN32API.INC": {
+  "desc": "Reads registry information from a file and copies it over the specified key and its subkeys.",
+  "doc": "RegRestoreKeyA"
+ },
+ "RegSaveKey@WIN32API.INC": {
+  "desc": "Saves the specified registry key and all of its subkeys and values to a new file.",
+  "doc": "RegSaveKeyA"
+ },
+ "RegSetKeySecurity@WIN32API.INC": {
+  "desc": "Sets the security descriptor of an open registry key.",
+  "doc": "RegSetKeySecurity"
+ },
+ "RegSetValue@WIN32API.INC": {
+  "desc": "Sets the default value of a registry key as a string. Provided for 16-bit compatibility; use RegSetValueEx.",
+  "doc": "RegSetValueA"
+ },
+ "RegSetValueEx@WIN32API.INC": {
+  "desc": "Sets the data and type of a named value under an open registry key. Returns ERROR_SUCCESS (0) on success.",
+  "doc": "RegSetValueExA"
+ },
+ "RegUnLoadKey@WIN32API.INC": {
+  "desc": "Unloads the specified registry key and its subkeys that were loaded with RegLoadKey.",
+  "doc": "RegUnLoadKeyA"
+ },
+ "InitiateSystemShutdown@WIN32API.INC": {
+  "desc": "Initiates a shutdown and optional restart of the local or a remote computer, optionally displaying a message and timeout. Requires the shutdown privilege.",
+  "doc": "InitiateSystemShutdownA"
+ },
+ "AbortSystemShutdown@WIN32API.INC": {
+  "desc": "Stops a system shutdown that was started with InitiateSystemShutdown during its timeout period.",
+  "doc": "AbortSystemShutdownA"
+ },
+ "ChangeServiceConfig@WIN32API.INC": {
+  "desc": "Changes the configuration parameters of a service (start type, binary path, account, etc.).",
+  "doc": "ChangeServiceConfigA"
+ },
+ "CloseServiceHandle@WIN32API.INC": {
+  "desc": "Closes a handle to a service control manager or service object.",
+  "doc": "CloseServiceHandle"
+ },
+ "ControlService@WIN32API.INC": {
+  "desc": "Sends a control code (such as stop or pause) to a service and returns its latest status in a SERVICE_STATUS structure.",
+  "doc": "ControlService"
+ },
+ "CreateService@WIN32API.INC": {
+  "desc": "Creates a service object and adds it to the specified service control manager database. Returns a service handle, or 0 on failure.",
+  "doc": "CreateServiceA"
+ },
+ "DeleteService@WIN32API.INC": {
+  "desc": "Marks the specified service for deletion from the service control manager database.",
+  "doc": "DeleteService"
+ },
+ "EnumDependentServices@WIN32API.INC": {
+  "desc": "Retrieves the name and status of each service that depends on the specified service.",
+  "doc": "EnumDependentServicesA"
+ },
+ "EnumServicesStatus@WIN32API.INC": {
+  "desc": "Enumerates services in the service control manager database, returning name and status of each.",
+  "doc": "EnumServicesStatusA"
+ },
+ "GetServiceKeyName@WIN32API.INC": {
+  "desc": "Retrieves the service name of the specified service from its display name.",
+  "doc": "GetServiceKeyNameA"
+ },
+ "GetServiceDisplayName@WIN32API.INC": {
+  "desc": "Retrieves the display name of the specified service from its service name.",
+  "doc": "GetServiceDisplayNameA"
+ },
+ "LockServiceDatabase@WIN32API.INC": {
+  "desc": "Requests ownership of the service control manager database lock. Obsolete; the lock is no longer meaningful.",
+  "doc": "LockServiceDatabase"
+ },
+ "NotifyBootConfigStatus@WIN32API.INC": {
+  "desc": "Reports the boot status to the service control manager, marking the current configuration as last-known-good or not.",
+  "doc": "NotifyBootConfigStatus"
+ },
+ "OpenSCManager@WIN32API.INC": {
+  "desc": "Establishes a connection to the service control manager on a computer and opens its database. Returns a handle, or 0 on failure.",
+  "doc": "OpenSCManagerA"
+ },
+ "OpenService@WIN32API.INC": {
+  "desc": "Opens an existing service with the requested access. Returns a service handle, or 0 on failure.",
+  "doc": "OpenServiceA"
+ },
+ "QueryServiceConfig@WIN32API.INC": {
+  "desc": "Retrieves the configuration parameters of the specified service into a QUERY_SERVICE_CONFIG structure.",
+  "doc": "QueryServiceConfigA"
+ },
+ "QueryServiceLockStatus@WIN32API.INC": {
+  "desc": "Retrieves the lock status of the specified service control manager database.",
+  "doc": "QueryServiceLockStatusA"
+ },
+ "QueryServiceObjectSecurity@WIN32API.INC": {
+  "desc": "Retrieves a copy of the security descriptor associated with a service object.",
+  "doc": "QueryServiceObjectSecurity"
+ },
+ "QueryServiceStatus@WIN32API.INC": {
+  "desc": "Retrieves the current status of the specified service into a SERVICE_STATUS structure.",
+  "doc": "QueryServiceStatus"
+ },
+ "RegisterServiceCtrlHandler@WIN32API.INC": {
+  "desc": "Registers a function to handle service control requests; called from a service's ServiceMain. Returns a status handle for SetServiceStatus.",
+  "doc": "RegisterServiceCtrlHandlerA"
+ },
+ "SetServiceObjectSecurity@WIN32API.INC": {
+  "desc": "Sets the security descriptor of a service object.",
+  "doc": "SetServiceObjectSecurity"
+ },
+ "SetServiceStatus@WIN32API.INC": {
+  "desc": "Updates the service control manager's status information for the calling service.",
+  "doc": "SetServiceStatus"
+ },
+ "StartServiceCtrlDispatcher@WIN32API.INC": {
+  "desc": "Connects the main thread of a service process to the service control manager, which then calls the service's ServiceMain.",
+  "doc": "StartServiceCtrlDispatcherA"
+ },
+ "StartService@WIN32API.INC": {
+  "desc": "Starts a service, optionally passing arguments to its ServiceMain function.",
+  "doc": "StartServiceA"
+ },
+ "UnlockServiceDatabase@WIN32API.INC": {
+  "desc": "Unlocks a service control manager database locked by LockServiceDatabase. Obsolete.",
+  "doc": "UnlockServiceDatabase"
+ },
+ "LZCopy@WIN32API.INC": {
+  "desc": "Copies a source file to a destination file, decompressing it if it was compressed with the Lempel-Ziv algorithm. Returns the destination size or a negative error.",
+  "doc": "LZCopy"
+ },
+ "LZInit@WIN32API.INC": {
+  "desc": "Allocates memory for internal data structures needed to decompress a file opened with OpenFile and returns an LZ file handle.",
+  "doc": "LZInit"
+ },
+ "GetExpandedName@WIN32API.INC": {
+  "desc": "Retrieves the original name of a compressed file if it was compressed by COMPRESS.EXE with the /r option.",
+  "doc": "GetExpandedNameA"
+ },
+ "LZOpenFile@WIN32API.INC": {
+  "desc": "Creates, opens, reopens, or deletes the specified file, preparing it for LZ decompression. Returns an LZ file handle or a negative error.",
+  "doc": "LZOpenFileA"
+ },
+ "LZSeek@WIN32API.INC": {
+  "desc": "Moves a file pointer a number of bytes from a starting position in a file opened for LZ decompression.",
+  "doc": "LZSeek"
+ },
+ "LZRead@WIN32API.INC": {
+  "desc": "Reads up to a specified number of bytes from a file opened with LZOpenFile or LZInit, decompressing them. Returns the number of bytes read.",
+  "doc": "LZRead"
+ },
+ "LZClose@WIN32API.INC": {
+  "desc": "Closes a file that was opened with LZOpenFile or LZInit.",
+  "doc": "LZClose"
+ },
+ "ImmInstallIME@WIN32API.INC": {
+  "desc": "Installs an IME (input method editor) and returns an input locale identifier for it.",
+  "doc": "ImmInstallIMEA"
+ },
+ "ImmGetDefaultIMEWnd@WIN32API.INC": {
+  "desc": "Retrieves the default window handle of the IME class for the specified window.",
+  "doc": "ImmGetDefaultIMEWnd"
+ },
+ "ImmGetDescription@WIN32API.INC": {
+  "desc": "Copies the description of the IME associated with an input locale to a buffer.",
+  "doc": "ImmGetDescriptionA"
+ },
+ "ImmGetIMEFileName@WIN32API.INC": {
+  "desc": "Retrieves the file name of the IME associated with the specified input locale.",
+  "doc": "ImmGetIMEFileNameA"
+ },
+ "ImmGetProperty@WIN32API.INC": {
+  "desc": "Retrieves the property and capabilities of the IME associated with the specified input locale.",
+  "doc": "ImmGetProperty"
+ },
+ "ImmIsIME@WIN32API.INC": {
+  "desc": "Determines whether the specified input locale has an IME. Returns nonzero if it does.",
+  "doc": "ImmIsIME"
+ },
+ "ImmSimulateHotKey@WIN32API.INC": {
+  "desc": "Simulates the specified IME hot key, causing the same response as if the user had pressed it in the window.",
+  "doc": "ImmSimulateHotKey"
+ },
+ "ImmCreateContext@WIN32API.INC": {
+  "desc": "Creates a new input context, allocating memory for it. Returns the context handle.",
+  "doc": "ImmCreateContext"
+ },
+ "ImmDestroyContext@WIN32API.INC": {
+  "desc": "Releases an input context created by ImmCreateContext and frees its memory.",
+  "doc": "ImmDestroyContext"
+ },
+ "ImmGetContext@WIN32API.INC": {
+  "desc": "Returns the input context associated with the specified window. Release it with ImmReleaseContext.",
+  "doc": "ImmGetContext"
+ },
+ "ImmReleaseContext@WIN32API.INC": {
+  "desc": "Releases an input context obtained with ImmGetContext and unlocks its memory.",
+  "doc": "ImmReleaseContext"
+ },
+ "ImmAssociateContext@WIN32API.INC": {
+  "desc": "Associates the specified input context with a window and returns the previously associated context.",
+  "doc": "ImmAssociateContext"
+ },
+ "ImmGetCompositionString@WIN32API.INC": {
+  "desc": "Retrieves information about the composition string (reading or result string, attributes, cursor position) of an input context.",
+  "doc": "ImmGetCompositionStringA"
+ },
+ "ImmSetCompositionString@WIN32API.INC": {
+  "desc": "Sets the characters, attributes, and clauses of the composition and reading strings of an input context.",
+  "doc": "ImmSetCompositionStringA"
+ },
+ "ImmGetCandidateListCount@WIN32API.INC": {
+  "desc": "Retrieves the size in bytes of the candidate lists of an input context and the number of lists.",
+  "doc": "ImmGetCandidateListCountA"
+ },
+ "ImmGetCandidateList@WIN32API.INC": {
+  "desc": "Retrieves a candidate list from an input context into a CANDIDATELIST structure.",
+  "doc": "ImmGetCandidateListA"
+ },
+ "ImmGetGuideLine@WIN32API.INC": {
+  "desc": "Retrieves information about errors or guidance messages from the IME for an input context.",
+  "doc": "ImmGetGuideLineA"
+ },
+ "ImmGetConversionStatus@WIN32API.INC": {
+  "desc": "Retrieves the current conversion and sentence mode status of an input context.",
+  "doc": "ImmGetConversionStatus"
+ },
+ "ImmSetConversionStatus@WIN32API.INC": {
+  "desc": "Sets the current conversion and sentence mode status of an input context.",
+  "doc": "ImmSetConversionStatus"
+ },
+ "ImmGetOpenStatus@WIN32API.INC": {
+  "desc": "Determines whether the IME is open or closed for an input context. Returns nonzero if open.",
+  "doc": "ImmGetOpenStatus"
+ },
+ "ImmSetOpenStatus@WIN32API.INC": {
+  "desc": "Opens or closes the IME for an input context.",
+  "doc": "ImmSetOpenStatus"
+ },
+ "ImmGetCompositionFont@WIN32API.INC": {
+  "desc": "Retrieves information about the logical font currently used to display characters in the composition window.",
+  "doc": "ImmGetCompositionFontA"
+ },
+ "ImmSetCompositionFont@WIN32API.INC": {
+  "desc": "Sets the logical font to use to display characters in the composition window.",
+  "doc": "ImmSetCompositionFontA"
+ },
+ "ImmConfigureIME@WIN32API.INC": {
+  "desc": "Displays the configuration dialog box for the IME of the specified input locale.",
+  "doc": "ImmConfigureIME"
+ },
+ "ImmEscape@WIN32API.INC": {
+  "desc": "Accesses capabilities of a particular IME that are not available through other IMM API functions.",
+  "doc": "ImmEscapeA"
+ },
+ "ImmGetConversionList@WIN32API.INC": {
+  "desc": "Retrieves the list of characters or words resulting from converting (or reverse converting) a source string, without generating IME messages.",
+  "doc": "ImmGetConversionListA"
+ },
+ "ImmNotifyIME@WIN32API.INC": {
+  "desc": "Notifies the IME about changes to the status of an input context (e.g. complete or cancel the composition string).",
+  "doc": "ImmNotifyIME"
+ },
+ "ImmGetStatusWindowPos@WIN32API.INC": {
+  "desc": "Retrieves the position of the status window of an input context.",
+  "doc": "ImmGetStatusWindowPos"
+ },
+ "ImmSetStatusWindowPos@WIN32API.INC": {
+  "desc": "Sets the position of the status window of an input context.",
+  "doc": "ImmSetStatusWindowPos"
+ },
+ "ImmGetCompositionWindow@WIN32API.INC": {
+  "desc": "Retrieves information about the composition window into a COMPOSITIONFORM structure.",
+  "doc": "ImmGetCompositionWindow"
+ },
+ "ImmSetCompositionWindow@WIN32API.INC": {
+  "desc": "Sets the position of the composition window.",
+  "doc": "ImmSetCompositionWindow"
+ },
+ "ImmGetCandidateWindow@WIN32API.INC": {
+  "desc": "Retrieves information about the candidate list window into a CANDIDATEFORM structure.",
+  "doc": "ImmGetCandidateWindow"
+ },
+ "ImmSetCandidateWindow@WIN32API.INC": {
+  "desc": "Sets information about the candidate list window.",
+  "doc": "ImmSetCandidateWindow"
+ },
+ "ImmIsUIMessage@WIN32API.INC": {
+  "desc": "Checks for messages intended for the IME window and sends them to that window. Returns nonzero if the message was processed.",
+  "doc": "ImmIsUIMessageA"
+ },
+ "ImmGetVirtualKey@WIN32API.INC": {
+  "desc": "Recovers the original virtual-key value associated with a key input message that the IME has already processed.",
+  "doc": "ImmGetVirtualKey"
+ },
+ "ImmRegisterWord@WIN32API.INC": {
+  "desc": "Registers a string with the dictionary of the IME associated with the specified input locale.",
+  "doc": "ImmRegisterWordA"
+ }
+}

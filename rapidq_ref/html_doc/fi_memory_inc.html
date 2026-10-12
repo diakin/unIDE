@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Memory.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: Memory.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>Memory.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/Memory.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 30 functions &middot; 6 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#ALLOCATE">Allocate</a> &middot; <a href="#BYTEFROMPTR">ByteFromPtr</a> &middot; <a href="#DOUBLEFROMPTR">DoubleFromPtr</a> &middot; <a href="#HEAPALLOC">HeapAlloc</a> &middot; <a href="#HEAPCREATE">HeapCreate</a> &middot; <a href="#HEAPDESTROY">HeapDestroy</a> &middot; <a href="#HEAPFREE">HeapFree</a> &middot; <a href="#HEAPREALLOC">HeapReAlloc</a> &middot; <a href="#HEAPSIZE">HeapSize</a> &middot; <a href="#INTFROMPTR">IntFromPtr</a> &middot; <a href="#NEWBYTE">NewByte</a> &middot; <a href="#NEWBYTEARRAY">NewByteArray</a> &middot; <a href="#NEWDBLARRAY">NewDblArray</a> &middot; <a href="#NEWDOUBLE">NewDouble</a> &middot; <a href="#NEWINTARRAY">NewIntArray</a> &middot; <a href="#NEWINTEGER">NewInteger</a> &middot; <a href="#NEWPTR">NewPtr</a> &middot; <a href="#NEWSHORT">NewShort</a> &middot; <a href="#NEWSINGLE">NewSingle</a> &middot; <a href="#NEWSNGARRAY">NewSngArray</a> &middot; <a href="#NEWSTR">NewStr</a> &middot; <a href="#NEWSTRARRAY">NewStrArray</a> &middot; <a href="#NEWZSTR">NewZStr</a> &middot; <a href="#PTR">Ptr</a> &middot; <a href="#PTRFREE">PtrFree</a> &middot; <a href="#PTRSIZE">PtrSize</a> &middot; <a href="#REALLOCATE">ReAllocate</a> &middot; <a href="#SHORTFROMPTR">ShortFromPtr</a> &middot; <a href="#SINGLEFROMPTR">SingleFromPtr</a> &middot; <a href="#STRFROMPTR">StrFromPtr</a></p>
+<h3><a name="ALLOCATE"></a>Allocate</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13740</p>
+<pre>Function Allocate(Count&amp;) As Integer</pre>
+<p>Allocates Count&amp; zero-filled bytes on the process heap (HeapAlloc) and returns the pointer, or 0 on failure. Free it with PtrFree.</p>
+<h3><a name="BYTEFROMPTR"></a>ByteFromPtr</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13889</p>
+<pre>Function ByteFromPtr(P&amp;) As Integer</pre>
+<p>Reads one byte from the address P&amp; via a QMemoryStream and returns it; returns 0 if P&amp; is 0.</p>
+<h3><a name="DOUBLEFROMPTR"></a>DoubleFromPtr</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13801</p>
+<pre>Function DoubleFromPtr(P&amp;) As Double</pre>
+<p>Reads an 8-byte Double from the address P&amp; via a QMemoryStream and returns it; returns 0 if P&amp; is 0.</p>
+<h3><a name="HEAPALLOC"></a>HeapAlloc</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 13711</p>
+<pre>Declare Function HeapAlloc Lib &quot;kernel32&quot; Alias &quot;HeapAlloc&quot; (ByVal hHeap As Long, ByVal dwFlags As Long, ByVal dwBytes As Long) As Long</pre>
+<p>Allocates a block of memory from a heap. Returns a pointer to the block, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=HeapAlloc">HeapAlloc</a></p>
+<h3><a name="HEAPCREATE"></a>HeapCreate</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 13709</p>
+<pre>Declare Function HeapCreate Lib &quot;kernel32&quot; Alias &quot;HeapCreate&quot; (ByVal flOptions As Long, ByVal dwInitialSize As Long, ByVal dwMaximumSize As Long) As Long</pre>
+<p>Creates a private heap object for the process. Returns the heap handle, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=HeapCreate">HeapCreate</a></p>
+<h3><a name="HEAPDESTROY"></a>HeapDestroy</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 13710</p>
+<pre>Declare Function HeapDestroy Lib &quot;kernel32&quot; Alias &quot;HeapDestroy&quot; (ByVal hHeap As Long) As Long</pre>
+<p>Destroys a private heap created with HeapCreate, freeing all its memory. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=HeapDestroy">HeapDestroy</a></p>
+<h3><a name="HEAPFREE"></a>HeapFree</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 13713</p>
+<pre>Declare Function HeapFree Lib &quot;kernel32&quot; Alias &quot;HeapFree&quot; (ByVal hHeap As Long, ByVal dwFlags As Long, lpMem As Long) As Long</pre>
+<p>Frees a memory block allocated with HeapAlloc or HeapReAlloc. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=HeapFree">HeapFree</a></p>
+<h3><a name="HEAPREALLOC"></a>HeapReAlloc</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 13712</p>
+<pre>Declare Function HeapReAlloc Lib &quot;kernel32&quot; Alias &quot;HeapReAlloc&quot; (ByVal hHeap As Long, ByVal dwFlags As Long, lpMem As Long, ByVal dwBytes As Long) As Long</pre>
+<p>Reallocates (resizes) a memory block allocated from a heap. Returns a pointer to the block, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=HeapReAlloc">HeapReAlloc</a></p>
+<h3><a name="HEAPSIZE"></a>HeapSize</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 13714</p>
+<pre>Declare Function HeapSize Lib &quot;kernel32&quot; Alias &quot;HeapSize&quot; (ByVal hHeap As Long, ByVal dwFlags As Long, lpMem As Long) As Long</pre>
+<p>Returns the size in bytes of a memory block allocated from a heap.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=HeapSize">HeapSize</a></p>
+<h3><a name="INTFROMPTR"></a>IntFromPtr</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13845</p>
+<pre>Function IntFromPtr(P&amp;) As Integer</pre>
+<p>Reads a 4-byte Integer from the address P&amp; via a QMemoryStream and returns it; returns 0 if P&amp; is 0.</p>
+<h3><a name="NEWBYTE"></a>NewByte</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13882</p>
+<pre>Function NewByte(Typ?) As Integer</pre>
+<p>Allocates 1 byte on the process heap, stores the Byte Typ? there and returns the pointer.</p>
+<h3><a name="NEWBYTEARRAY"></a>NewByteArray</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13904</p>
+<pre>Function NewByteArray(Count&amp;) As Integer</pre>
+<p>Allocates a zero-filled process-heap block for Count&amp; bytes and returns its pointer.</p>
+<h3><a name="NEWDBLARRAY"></a>NewDblArray</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13919</p>
+<pre>Function NewDblArray(Count&amp;) As Integer</pre>
+<p>Allocates a zero-filled process-heap block for Count&amp; Doubles and returns its pointer.</p>
+<h3><a name="NEWDOUBLE"></a>NewDouble</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13794</p>
+<pre>Function NewDouble(Typ#) As Integer</pre>
+<p>Allocates 8 bytes on the process heap, stores the Double Typ# there and returns the pointer.</p>
+<h3><a name="NEWINTARRAY"></a>NewIntArray</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13909</p>
+<pre>Function NewIntArray(Count&amp;) As Integer</pre>
+<p>Allocates a zero-filled process-heap block for Count&amp; Integers and returns its pointer.</p>
+<h3><a name="NEWINTEGER"></a>NewInteger</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13838</p>
+<pre>Function NewInteger(Typ&amp;) As Integer</pre>
+<p>Allocates 4 bytes on the process heap, stores the Integer Typ&amp; there and returns the pointer.</p>
+<h3><a name="NEWPTR"></a>NewPtr</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13788</p>
+<pre>Function NewPtr(Size&amp;,Typ&amp;) As Integer</pre>
+<p>Allocates Size&amp; zero-filled bytes on the process heap and, if Typ&amp; is non-zero, copies Size&amp; bytes from the address Typ&amp; into it. Returns the pointer.</p>
+<h3><a name="NEWSHORT"></a>NewShort</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13860</p>
+<pre>Function NewShort(Typ%) As Integer</pre>
+<p>Allocates a heap block (sized SizeOf(Integer)), stores the 2-byte Short Typ% in it and returns the pointer.</p>
+<h3><a name="NEWSINGLE"></a>NewSingle</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13816</p>
+<pre>Function NewSingle(Typ!) As Integer</pre>
+<p>Allocates 4 bytes on the process heap, stores the Single Typ! there and returns the pointer.</p>
+<h3><a name="NEWSNGARRAY"></a>NewSngArray</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13914</p>
+<pre>Function NewSngArray(Count&amp;) As Integer</pre>
+<p>Allocates a zero-filled process-heap block for Count&amp; Singles and returns its pointer.</p>
+<h3><a name="NEWSTR"></a>NewStr</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13767</p>
+<pre>Function NewStr(S As String) As Integer</pre>
+<p>Copies the string S (without a terminating zero) into a new process-heap block and returns its pointer. Free it with PtrFree.</p>
+<h3><a name="NEWSTRARRAY"></a>NewStrArray</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13924</p>
+<pre>Function NewStrArray(Count&amp;) As Integer</pre>
+<p>Allocates a zero-filled process-heap block of SizeOf(String)*Count&amp; bytes and returns its pointer.</p>
+<h3><a name="NEWZSTR"></a>NewZStr</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13754</p>
+<pre>Function NewZStr(S As String) As Integer</pre>
+<p>Copies the string S plus a terminating Chr$(0) into a new process-heap block and returns its pointer (0 on failure). Free it with PtrFree.</p>
+<h3><a name="PTR"></a>Ptr</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13744</p>
+<pre>Function Ptr(P&amp;,Size&amp;,Index&amp;) As Integer</pre>
+<p>Returns the address of element Index&amp; (element size Size&amp;) inside the heap block P&amp;, or 0 if P&amp; is 0 or the index is beyond the block size.</p>
+<h3><a name="PTRFREE"></a>PtrFree</h3>
+<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 13726</p>
+<pre>Sub PtrFree(BYREF P&amp;)</pre>
+<p>Frees a process-heap block with HeapFree and sets the pointer variable P&amp; to 0. Does nothing if P&amp; is 0.</p>
+<h3><a name="PTRSIZE"></a>PtrSize</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13718</p>
+<pre>Function PtrSize(BYREF P&amp;) As Integer</pre>
+<p>Returns the size in bytes of a block allocated on the process heap (HeapSize on GetProcessHeap), or 0 if P&amp; is 0.</p>
+<h3><a name="REALLOCATE"></a>ReAllocate</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13733</p>
+<pre>Function ReAllocate(BYREF P&amp;,Count&amp;) As Integer</pre>
+<p>Resizes the heap block P&amp; with HeapReAlloc to PtrSize(P&amp;)*Count&amp; bytes (zero-filled), updates P&amp; and returns the new pointer. Note: the new size is the current size multiplied by Count&amp;, not Count&amp; bytes.</p>
+<h3><a name="SHORTFROMPTR"></a>ShortFromPtr</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13867</p>
+<pre>Function ShortFromPtr(P&amp;) As Short</pre>
+<p>Reads a 2-byte value from the address P&amp; via a QMemoryStream and returns it as Short; returns 0 if P&amp; is 0.</p>
+<h3><a name="SINGLEFROMPTR"></a>SingleFromPtr</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13823</p>
+<pre>Function SingleFromPtr(P&amp;) As Double</pre>
+<p>Reads a 4-byte Single from the address P&amp; via a QMemoryStream (ReadNum(6), fixed in inc2026) and returns it as Double; returns 0 if P&amp; is 0.</p>
+<h3><a name="STRFROMPTR"></a>StrFromPtr</h3>
+<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 13774</p>
+<pre>Function StrFromPtr(P&amp;) As String</pre>
+<p>Returns the contents of the heap block P&amp; as a string whose length is the block size (HeapSize). Returns an empty string if P&amp; is 0 or the size cannot be read.</p>
+</body>
+</html>

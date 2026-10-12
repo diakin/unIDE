@@ -29,6 +29,11 @@
 - Appendix D (функции из include-файлов, `f_*.html`) — страницы, написанные вручную; первая — `f_sadd.html` (функция `sadd` из conversion.inc и её проверка в RapidQ). Скрипты их не создают и не меняют: раздел Appendix D в `contents.html` стоит после метки `<!-- /rq-appendix-b -->`, запись SADD в `indexa.html` — обычная запись указателя.
 - Appendix E (unIDE) — `unide_debugger.html` (отладчик) и `unide_designer.html` (конструктор форм, снимки живой формы, превью), `unide_callbacks.html` (оконные процедуры: приём NewWndProc.Inc и что делает сборка FreeBASIC); принципы работы отладчика unIDE для программ RapidQ; написана вручную, как страницы Appendix D. Раздел в `contents.html` стоит перед Appendix C, запись DEBUGGER — в `indexa.html`.
 
+- Appendix D, функции `rapidq_ref/inc_sys/rapidqAllProc.inc` (2320: 1779 `DECLARE ... LIB` и процедуры старых inc):
+  - `inc_funcs.py` — разбор rapidqAllProc.inc в `inc_funcs.json`: имя, исходный файл (по меткам `'[build_inc]`), объявление, DLL и ALIAS, комментарии над ним, начало тела;
+  - `funcs_notes/*.json` — описания на английском, `{"Имя@файл": {"desc", "doc"}}`; `doc` — имя функции в документации Microsoft. Описания API написаны по документации Microsoft (без запросов к сайту), описания своих процедур — по их коду; выборочная проверка утверждений об ошибках в коде нашла и исправила две неверные (ExtractFileName / ExtractFilePath: под `$ESCAPECHARS ON` "\\\\" — одна косая черта);
+  - `gen_funcs.py` — страницы `fi_<файл>.html`, `funcs.html` (список файлов, ссылки на справочник Windows API), `funcs_az.html` (A–Z), часть Appendix D в `contents.html` между `<!-- rq-funcs -->` и `<!-- /rq-funcs -->`, `funcs_index.json` — его читает `gen_chm.py` (указатель CHM и F1; слова Rapid-Q остаются за своими страницами).
+
 ## Пересборка
 
 Из этой папки:
@@ -39,6 +44,8 @@ python3 -I catalog.py inv.json ../html_doc catalog.json batches 8
 python3 -I gen_pages.py ../..
 python3 -I clean_index.py ../..
 python3 -I gen_list.py ../..
+python3 -I inc_funcs.py ../..
+python3 -I gen_funcs.py ../..
 python3 -I gen_chm.py ../..
 ```
 
