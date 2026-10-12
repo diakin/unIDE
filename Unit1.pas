@@ -2361,6 +2361,7 @@ type
     procedure IncMgrOpenFile(const AFile: string; ALine: Integer);
     procedure IncRefDirs(var ASysDir, ARefDir: string);
     procedure FindIncShow(const AName: string);
+    function  RqDepsBeforeBuild(const ABas, AIncDir: string): Boolean;
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
     procedure PaletteIconsApplied(Sender: TObject);
@@ -3432,6 +3433,8 @@ var
     Unit3,        // Inc Manager (View) - IncManagerClick
     RunConsole,   // Run консольной программы: окно не закрывается, текст - в лог
     DlgFindInc,   // поиск inc-файла (View) - FindIncShow
+    RqDeps,       // перед сборкой RapidQ: есть ли все $INCLUDE, $RESOURCE, DLL
+    DlgRqDeps,    // окно недостающих файлов - RqDepsBeforeBuild
     DlgDelPrj,    // Delete Projects - DeleteProjectClick
     DlgBmClear,   // Clear List закладок - BmClearClick
     DlgWinList,   // Del WinList - DelWinListClick
@@ -33569,6 +33572,108 @@ begin
                                     CurDir, UserDir);
 end;
 
+// Перед сборкой RapidQ: $INCLUDE (с вложенными), $RESOURCE и DLL из
+// DECLARE ... LIB - на месте ли (RqDeps). Нет - окно DlgRqDeps: поиск по
+// Include user, Include system, папке программы и папке выше, копирование
+// в папку -I (DLL - в папку программы). Имена, про которые просили не
+// спрашивать, - editor.ini [RqDepsIgnore], ключ - путь главного .bas.
+// False - сборку отменили.
+function TForm1.RqDepsBeforeBuild(const ABas, AIncDir: string): Boolean;
+var
+  Scan: TRqDepScan;
+  Roots, CopyLog, Ignore: TStringList;
+  Ini: TIniFile;
+  SysDir, RefDir, UserDir, CfgSys, Mode, OwnDir, MainDir, BasKey,
+  IgnoreText, Rest: string;
+  ItemIdx, SepPos: Integer;
+  Dep: TRqDep;
+begin
+  Result := True;
+  BasKey := LowerCase(ExpandFileName(ABas));
+  Scan := TRqDepScan.Create;
+  Roots := TStringList.Create;
+  CopyLog := TStringList.Create;
+  Ignore := TStringList.Create;
+  try
+    Ignore.Sorted := True;
+    Ignore.Duplicates := dupIgnore;
+    IgnoreText := '';
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        IgnoreText := Ini.ReadString('RqDepsIgnore', BasKey, '');
+      finally
+        Ini.Free;
+      end;
+    end;
+    Rest := IgnoreText;
+    while Rest <> '' do
+    begin
+      SepPos := Pos('|', Rest);
+      if SepPos = 0 then
+        SepPos := Length(Rest) + 1;
+      if Trim(Copy(Rest, 1, SepPos - 1)) <> '' then
+        Ignore.Add(UpperCase(Trim(Copy(Rest, 1, SepPos - 1))));
+      Delete(Rest, 1, SepPos);
+    end;
+
+    Scan.Scan(ABas, AIncDir);
+    Scan.DropNames(Ignore);
+    if Ignore.Count > 0 then
+      LogComp('Проверка файлов: не проверяются по выбору (editor.ini ' +
+              '[RqDepsIgnore]): ' + StringReplace(IgnoreText, '|', ', ',
+                                                  [rfReplaceAll]));
+    if Scan.MissingCount = 0 then
+    begin
+      LogComp(Format('Проверка файлов: прочитано файлов %d, недостающих нет',
+                     [Scan.ScannedFiles.Count]));
+      Exit;
+    end;
+    for ItemIdx := 0 to Scan.Count - 1 do
+    begin
+      Dep := Scan[ItemIdx];
+      if Dep.Missing then
+        LogComp(Format('Нет файла (%s) %s - %s(%d)',
+                       [RqDepKindNames[Dep.Kind], Dep.Name, Dep.FromFile,
+                        Dep.FromLine]));
+    end;
+
+    IncRefDirs(SysDir, RefDir);
+    RapidQIncSettings(FCurrentProject, CfgSys, UserDir, Mode, OwnDir);
+    MainDir := ExcludeTrailingPathDelimiter(Scan.MainDir);
+    Roots.Add('Include user|' + UserDir);
+    Roots.Add('Include system|' + SysDir);
+    Roots.Add('папка программы|' + MainDir);
+    Roots.Add('папка выше|' + ExtractFileDir(MainDir));
+
+    Result := RqDepsDialog(Self, Scan, Roots, RefDir, SysDir, CopyLog, Ignore);
+    for ItemIdx := 0 to CopyLog.Count - 1 do
+      LogComp(CopyLog[ItemIdx]);
+    if Result and (Ignore.Count > 0) then
+    begin
+      IgnoreText := '';
+      for ItemIdx := 0 to Ignore.Count - 1 do
+      begin
+        if IgnoreText <> '' then
+          IgnoreText := IgnoreText + '|';
+        IgnoreText := IgnoreText + Ignore[ItemIdx];
+      end;
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        Ini.WriteString('RqDepsIgnore', BasKey, IgnoreText);
+      finally
+        Ini.Free;
+      end;
+    end;
+  finally
+    Ignore.Free;
+    CopyLog.Free;
+    Roots.Free;
+    Scan.Free;
+  end;
+end;
+
 // Имя из сообщения rc.exe "$INCLUDE file X does not exist"; '' - такого нет
 function RqMissingInclude(ALines: TStrings): string;
 const
@@ -46176,6 +46281,14 @@ begin
   if not FileExists(RcExe) then
   begin
     LogComp('Сборка RapidQ: rc.exe не найден: ' + RcExe + '   [' + Sect + ']');
+    Exit;
+  end;
+
+  // Все ли $INCLUDE, $RESOURCE и DLL на месте; нет - окно поиска и
+  // копирования (RqDeps). Отмена в окне - без сборки.
+  if not FRqProbeActive and not RqDepsBeforeBuild(Bas, IncDir) then
+  begin
+    LogComp('Сборка RapidQ отменена в окне недостающих файлов');
     Exit;
   end;
 

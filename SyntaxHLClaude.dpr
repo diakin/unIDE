@@ -57,6 +57,8 @@ uses
   IncCheck in 'IncCheck.pas',
   IncEdit in 'IncEdit.pas',
   DlgFindInc in 'DlgFindInc.pas' {DlgFindInc},
+  RqDeps in 'RqDeps.pas',
+  DlgRqDeps in 'DlgRqDeps.pas',
   RunConsole in 'RunConsole.pas';
 
 {$R *.res}

@@ -116,6 +116,12 @@ function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
                        AProgress: TIncProgress; ASkip: TStrings = nil;
                        AOnFound: TIncFound = nil): Boolean;
 
+// То же для нескольких имён сразу: ANames - имена файлов в верхнем регистре,
+// Sorted = True. Найденные - в AList полными путями.
+function IncFindNamesOnDisk(ANames: TStringList; ARoots, AList: TStrings;
+                            AProgress: TIncProgress; ASkip: TStrings = nil;
+                            AOnFound: TIncFound = nil): Boolean;
+
 // Программы .bas, подключающие файл ($INCLUDE "имя"), в папках AFolders
 // (с подпапками при ASub). Результат - число найденных.
 function IncFindDemos(const AIncFile: string; AFolders: TStrings;
@@ -1242,10 +1248,11 @@ begin
   end;
 end;
 
-function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
-                       AProgress: TIncProgress; ASkip: TStrings;
-                       AOnFound: TIncFound): Boolean;
+function IncFindNamesOnDisk(ANames: TStringList; ARoots, AList: TStrings;
+                            AProgress: TIncProgress; ASkip: TStrings;
+                            AOnFound: TIncFound): Boolean;
 var
+  NameIdx: Integer;
   Cancel: Boolean;
 
   // Папки, где своих inc не бывает, а файлов - сотни тысяч
@@ -1271,7 +1278,7 @@ var
       Exit;
     if Assigned(AProgress) then
     begin
-      AProgress('Поиск ' + AName + ': ' + ADirPath, Cancel);
+      AProgress('Поиск: ' + ADirPath, Cancel);
       if Cancel then
         Exit;
     end;
@@ -1293,7 +1300,7 @@ var
             else
               OtherDirs.Add(ADirPath + SR.Name + PathDelim);
           end
-          else if CompareText(SR.Name, AName) = 0 then
+          else if ANames.Find(UpperCase(SR.Name), NameIdx) then
           begin
             AList.Add(ADirPath + SR.Name);
             if Assigned(AOnFound) then
@@ -1333,6 +1340,23 @@ begin
       Break;
   end;
   Result := not Cancel;
+end;
+
+function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
+                       AProgress: TIncProgress; ASkip: TStrings;
+                       AOnFound: TIncFound): Boolean;
+var
+  Names: TStringList;
+begin
+  Names := TStringList.Create;
+  try
+    Names.Sorted := True;
+    Names.Add(UpperCase(AName));
+    Result := IncFindNamesOnDisk(Names, ARoots, AList, AProgress, ASkip,
+                                 AOnFound);
+  finally
+    Names.Free;
+  end;
 end;
 
 function IncFindDemos(const AIncFile: string; AFolders: TStrings;
