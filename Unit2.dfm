@@ -787,7 +787,7 @@ object Form2: TForm2
       end
     end
     object tsIdeColors: TTabSheet
-      Caption = 'IDE colors'
+      Caption = 'IDE colors and Fonts'
       object pnlUiBottom: TPanel
         Left = 0
         Top = 480
@@ -808,7 +808,7 @@ object Form2: TForm2
         object lblUiHint: TLabel
           Left = 156
           Top = 9
-          Caption = 'Двойной щелчок по цвету - выбор. Пишется в IDE.clr сразу.'
+          Caption = 'Двойной щелчок - выбор цвета или шрифта. Цвета - в IDE.clr, шрифты - в editor.ini, сразу.'
         end
       end
       object UiGrid: TStringGrid

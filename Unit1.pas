@@ -1153,6 +1153,9 @@ type
     // подпрограммы, в имени которых есть этот текст; пусто - все
     FSubFilter: TUiEdit;
     FSubFilterText: string;
+    // Шрифты групп: умолчания (как в .dfm при запуске) и выбранные
+    // (editor.ini [IdeFonts]); строка - Имя|высота|стиль (BIUS)
+    FUiFontDefs, FUiFonts: TStringList;
     // exe цели активной вкладки (RunTargetExe), запомненный: AppIdle
     // спрашивает часто, а цель RapidQ читает файлы с диска
     FRunExeCache: string;
@@ -3310,6 +3313,19 @@ type
     // выбранная для файла (Подсветка), своя ext.clr, alias.ini, для .inc -
     // по тексту файла, затем встроенное (SchemeExtFor)
     function  SchemeKeyFor(const AFile, AExt: string): string;
+    // Шрифты IDE по группам (IDE colors and Fonts): ключи Font.*, подпись,
+    // текущий шрифт, смена (пишется в editor.ini [IdeFonts] и сразу
+    // применяется), сброс к шрифтам из .dfm
+    procedure UiFontKeys(AList: TStrings);
+    procedure UiFontLimits(var AMinSize, AMaxSize: Integer);
+    function  UiFontCaption(const AKey: string): string;
+    procedure UiFontGet(const AKey: string; AFont: TFont);
+    function  UiFontText(const AKey: string): string;
+    procedure UiFontSet(const AKey: string; AFont: TFont);
+    procedure UiFontsReset;
+    procedure UiFontsInit;
+    procedure UiFontsApply;
+    procedure StatusPanelsFit;
     function  FileSchemeOf(const AFile: string): string;
     procedure FileSchemeSet(const AFile, AScheme: string);
     function  IncGuessScheme(const AFile: string): string;
@@ -20821,7 +20837,6 @@ end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 var
-  SampleBmp: TBitmap; // временный холст для замера ширины панелей
   CurrentLeft: Integer;  // правый край ряда pnlToolbarIn - для ширины FLeftPanel
   CmpLeft: Integer;      // правый край ряда Delphi - для ширины FLeftPanel
   IconsLight: TBitmap;   // лента значков для IDE Light
@@ -21204,18 +21219,8 @@ begin
   // (там та же форма), а значит, и здесь
   LogTabs.DoubleBuffered := True;
 
-  // Ширины панелей второго бара. Путь получает остаток, см. Status2Resize.
-  SampleBmp := TBitmap.Create;
-  try
-    SampleBmp.Canvas.Font.Assign(FStatus2.Font);
-    FStatus2.Panels[1].Width :=
-      SampleBmp.Canvas.TextWidth('999 999 999 б') + 16;
-    FStatus2.Panels[2].Width :=
-      SampleBmp.Canvas.TextWidth('99.99.9999 99:99') + 16;
-  finally
-    SampleBmp.Free;
-  end;
-  Status2Resize(nil);
+  // Ширины панелей второго бара - в StatusPanelsFit (после панелей
+  // первого, ниже). Путь получает остаток, см. Status2Resize.
 
   // Групбоксам двойная буферизация VCL не помогает: это системные окна класса
   // Button, и WM_PRINTCLIENT они толком не поддерживают. Зато у них по
@@ -21230,26 +21235,7 @@ begin
     StatusBar1.Panels.Add;
   StatusBar1.Panels[5].Text := 'ANSI';
 
-  // Ширины считаем по самой длинной надписи, которая может там оказаться,
-  // а не подбираем числами: при другом системном шрифте текст обрезался бы.
-  // Замер идёт на временном TBitmap, чтобы не трогать канву самого контрола.
-  SampleBmp := TBitmap.Create;
-  try
-    SampleBmp.Canvas.Font.Assign(StatusBar1.Font);
-    StatusBar1.Panels[0].Width := SampleBmp.Canvas.TextWidth('Строк: 9999999') + 16;
-    StatusBar1.Panels[1].Width := SampleBmp.Canvas.TextWidth('Стр: 9999999') + 16;
-    StatusBar1.Panels[2].Width :=
-      SampleBmp.Canvas.TextWidth('Поз в строке: 99999/99999') + 16;
-    StatusBar1.Panels[3].Width :=
-      SampleBmp.Canvas.TextWidth('Поз.: 99999999/99999999') + 16;
-    StatusBar1.Panels[4].Width := SampleBmp.Canvas.TextWidth('ASCII: 255 (''W'')') + 16;
-    StatusBar1.Panels[5].Width := SampleBmp.Canvas.TextWidth('UTF-8 BOM') + 16;
-    StatusBar1.Panels[6].Width :=
-      SampleBmp.Canvas.TextWidth('999.9 / 999.9 / 999.9 | карта 9999.9' +
-    ' | стр 99.9 фон 99.9 кс 99.9 ток 99.9 вызовов 99999') + 16;
-  finally
-    SampleBmp.Free;
-  end;
+  StatusPanelsFit;
 
   // Фильтр диалога открытия. Пункты идут парами "подпись|маска",
   // разделитель между парами - вертикальная черта.
@@ -21507,6 +21493,8 @@ begin
     FreeAndNil(FRunCons);
   end;
   FreeAndNil(FFileSchemes);
+  FreeAndNil(FUiFontDefs);
+  FreeAndNil(FUiFonts);
   FreeAndNil(FIncGuess);
   FreeAndNil(FHlNames);
   // Программа под отладчиком снимается вместе со средой
@@ -63131,6 +63119,10 @@ begin
     SubListFitColumns;
     SubFilterPlace;
   end;
+
+  // Шрифты групп IDE: умолчания - как сейчас у элементов, выбранные - из
+  // editor.ini (IDE Options - IDE colors and Fonts)
+  UiFontsInit;
 end;
 
 // Свои полосы (UiScroll, TUiListScroll) поверх полос списков и
@@ -63847,6 +63839,390 @@ begin
             SchemeKeyFor(WinFile, WindowExt(WinFile)) + ')')
   else
     LogComp('Подсветка ' + ExtractFileName(WinFile) + ': ' + SchemeName);
+end;
+
+// ---------------------------------------------------------------------------
+//  Шрифты IDE по группам (IDE Options - IDE colors and Fonts). Умолчание
+//  группы - шрифт её элемента при запуске (из .dfm, у меню - системный
+//  шрифт меню). Выбранные - editor.ini [IdeFonts], Ключ=Имя|высота|стиль.
+//  Шрифт редактора - не здесь, а в схеме подсветки (Color Scheme).
+// ---------------------------------------------------------------------------
+
+const
+  // Размер шрифта групп - в этих пределах (пункты): мельче не прочесть,
+  // крупнее - не помещаются строка меню, вкладки и панели
+  UiFontMinSize = 8;
+  UiFontMaxSize = 14;
+  UiFontKeyList: array[0..4] of string = (
+    'Font.Menu', 'Font.Tabs', 'Font.Lists', 'Font.Logs', 'Font.Status');
+
+function UiFontSpec(AFont: TFont): string;
+var
+  StyleText: string;
+begin
+  StyleText := '';
+  if fsBold in AFont.Style then
+    StyleText := StyleText + 'B';
+  if fsItalic in AFont.Style then
+    StyleText := StyleText + 'I';
+  if fsUnderline in AFont.Style then
+    StyleText := StyleText + 'U';
+  if fsStrikeOut in AFont.Style then
+    StyleText := StyleText + 'S';
+  Result := AFont.Name + '|' + IntToStr(AFont.Height) + '|' + StyleText;
+end;
+
+// Имя, высота и стиль из строки - в AFont (цвет и кодировка не трогаются)
+procedure UiFontFromSpec(const ASpec: string; AFont: TFont);
+var
+  Parts: TStringList;
+  FontHeight: Integer;
+  NewStyle: TFontStyles;
+begin
+  Parts := TStringList.Create;
+  try
+    Parts.Delimiter := '|';
+    Parts.QuoteChar := #0;
+    Parts.DelimitedText := StringReplace(ASpec, ' ', #1, [rfReplaceAll]);
+    if Parts.Count < 2 then
+      Exit;
+    if Trim(Parts[0]) <> '' then
+      AFont.Name := StringReplace(Parts[0], #1, ' ', [rfReplaceAll]);
+    FontHeight := StrToIntDef(Parts[1], 0);
+    if FontHeight <> 0 then
+      AFont.Height := FontHeight;
+    NewStyle := [];
+    if Parts.Count > 2 then
+    begin
+      if Pos('B', Parts[2]) > 0 then
+        Include(NewStyle, fsBold);
+      if Pos('I', Parts[2]) > 0 then
+        Include(NewStyle, fsItalic);
+      if Pos('U', Parts[2]) > 0 then
+        Include(NewStyle, fsUnderline);
+      if Pos('S', Parts[2]) > 0 then
+        Include(NewStyle, fsStrikeOut);
+    end;
+    AFont.Style := NewStyle;
+  finally
+    Parts.Free;
+  end;
+end;
+
+// Высота строки текста шрифтом AFont
+function UiFontLineHeight(AFont: TFont): Integer;
+var
+  MeasureBmp: TBitmap;
+begin
+  MeasureBmp := TBitmap.Create;
+  try
+    MeasureBmp.Canvas.Font.Assign(AFont);
+    Result := MeasureBmp.Canvas.TextHeight('Wg');
+  finally
+    MeasureBmp.Free;
+  end;
+end;
+
+procedure TForm1.UiFontLimits(var AMinSize, AMaxSize: Integer);
+begin
+  AMinSize := UiFontMinSize;
+  AMaxSize := UiFontMaxSize;
+end;
+
+procedure TForm1.UiFontKeys(AList: TStrings);
+var
+  KeyIdx: Integer;
+begin
+  AList.Clear;
+  for KeyIdx := Low(UiFontKeyList) to High(UiFontKeyList) do
+    AList.Add(UiFontKeyList[KeyIdx]);
+end;
+
+function TForm1.UiFontCaption(const AKey: string): string;
+begin
+  if AKey = 'Font.Menu' then
+    Result := 'Шрифт: меню'
+  else if AKey = 'Font.Tabs' then
+    Result := 'Шрифт: вкладки файлов'
+  else if AKey = 'Font.Lists' then
+    Result := 'Шрифт: правая панель (списки, деревья, инспектор)'
+  else if AKey = 'Font.Logs' then
+    Result := 'Шрифт: логи'
+  else if AKey = 'Font.Status' then
+    Result := 'Шрифт: строка состояния'
+  else
+    Result := AKey;
+end;
+
+procedure TForm1.UiFontGet(const AKey: string; AFont: TFont);
+begin
+  if (FUiFontDefs <> nil) and (FUiFontDefs.Values[AKey] <> '') then
+    UiFontFromSpec(FUiFontDefs.Values[AKey], AFont);
+  if (FUiFonts <> nil) and (FUiFonts.Values[AKey] <> '') then
+  begin
+    UiFontFromSpec(FUiFonts.Values[AKey], AFont);
+    // Выбранный шрифт (и вписанный в editor.ini руками) - в пределах
+    if AFont.Size < UiFontMinSize then
+      AFont.Size := UiFontMinSize
+    else if AFont.Size > UiFontMaxSize then
+      AFont.Size := UiFontMaxSize;
+  end;
+end;
+
+// Подпись шрифта для таблицы: Tahoma, 10, жирный курсив
+function TForm1.UiFontText(const AKey: string): string;
+var
+  TmpFont: TFont;
+begin
+  TmpFont := TFont.Create;
+  try
+    UiFontGet(AKey, TmpFont);
+    Result := TmpFont.Name + ', ' + IntToStr(TmpFont.Size);
+    if fsBold in TmpFont.Style then
+      Result := Result + ', жирный';
+    if fsItalic in TmpFont.Style then
+      Result := Result + ', курсив';
+    if fsUnderline in TmpFont.Style then
+      Result := Result + ', подчёркнутый';
+    if fsStrikeOut in TmpFont.Style then
+      Result := Result + ', зачёркнутый';
+    if (FUiFonts = nil) or (FUiFonts.Values[AKey] = '') then
+      Result := Result + '  (умолчание)';
+  finally
+    TmpFont.Free;
+  end;
+end;
+
+procedure TForm1.UiFontSet(const AKey: string; AFont: TFont);
+var
+  Ini: TIniFile;
+begin
+  if AFont.Size < UiFontMinSize then
+    AFont.Size := UiFontMinSize
+  else if AFont.Size > UiFontMaxSize then
+    AFont.Size := UiFontMaxSize;
+  if FUiFonts = nil then
+    FUiFonts := TStringList.Create;
+  FUiFonts.Values[AKey] := UiFontSpec(AFont);
+  try
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Ini.WriteString('IdeFonts', AKey, FUiFonts.Values[AKey]);
+      Ini.UpdateFile;
+    finally
+      Ini.Free;
+    end;
+  except
+    on E: Exception do
+      LogComp('Шрифты IDE: editor.ini не записан - ' + E.Message);
+  end;
+  UiFontsApply;
+end;
+
+procedure TForm1.UiFontsReset;
+var
+  Ini: TIniFile;
+begin
+  if FUiFonts <> nil then
+    FUiFonts.Clear;
+  try
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Ini.EraseSection('IdeFonts');
+      Ini.UpdateFile;
+    finally
+      Ini.Free;
+    end;
+  except
+    on E: Exception do
+      LogComp('Шрифты IDE: editor.ini не записан - ' + E.Message);
+  end;
+  UiFontsApply;
+end;
+
+// При запуске: умолчания - шрифты элементов из .dfm, выбранные - из
+// editor.ini; выбранные сразу применяются
+procedure TForm1.UiFontsInit;
+var
+  Ini: TIniFile;
+  KeyIdx: Integer;
+  Spec: string;
+begin
+  FUiFontDefs := TStringList.Create;
+  FUiFonts := TStringList.Create;
+  FUiFontDefs.Values['Font.Menu'] := UiFontSpec(Screen.MenuFont);
+  if FTabs <> nil then
+    FUiFontDefs.Values['Font.Tabs'] := UiFontSpec(FTabs.Font);
+  if lvSubList <> nil then
+    FUiFontDefs.Values['Font.Lists'] := UiFontSpec(lvSubList.Font);
+  if CompLogEdit <> nil then
+    FUiFontDefs.Values['Font.Logs'] := UiFontSpec(CompLogEdit.Font);
+  if StatusBar1 <> nil then
+    FUiFontDefs.Values['Font.Status'] := UiFontSpec(StatusBar1.Font);
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      for KeyIdx := Low(UiFontKeyList) to High(UiFontKeyList) do
+      begin
+        Spec := Trim(Ini.ReadString('IdeFonts', UiFontKeyList[KeyIdx], ''));
+        if Spec <> '' then
+          FUiFonts.Values[UiFontKeyList[KeyIdx]] := Spec;
+      end;
+    finally
+      Ini.Free;
+    end;
+  end;
+  if FUiFonts.Count > 0 then
+    UiFontsApply;
+end;
+
+procedure TForm1.UiFontsApply;
+var
+  NewFont: TFont;
+  OldLineH, NewLineH, LogIdx: Integer;
+  LogEdits: array[0..3] of TRichEdit;
+  CharFmt: TCharFormat;
+
+  // Имя, высота и стиль NewFont - в ATarget, цвет у ATarget свой
+  procedure Face(ATarget: TFont);
+  begin
+    ATarget.Name := NewFont.Name;
+    ATarget.Height := NewFont.Height;
+    ATarget.Style := NewFont.Style;
+  end;
+
+  procedure Load(const AKey: string);
+  begin
+    NewFont.Name := 'Tahoma';
+    NewFont.Height := -11;
+    NewFont.Style := [];
+    UiFontGet(AKey, NewFont);
+  end;
+
+begin
+  if FUiFontDefs = nil then
+    Exit;
+  NewFont := TFont.Create;
+  try
+    // Меню: окна пунктов берут Screen.MenuFont при каждом открытии, строка
+    // меню - здесь
+    Load('Font.Menu');
+    Face(Screen.MenuFont);
+    if FMenuBar <> nil then
+    begin
+      FMenuBar.Font := Screen.MenuFont;
+      FMenuBar.Height := Screen.MenuFont.Size + 16;
+    end;
+
+    // Вкладки файлов: высота полосы - на разницу высоты строки
+    Load('Font.Tabs');
+    if FTabs <> nil then
+    begin
+      OldLineH := UiFontLineHeight(FTabs.Font);
+      Face(FTabs.Font);
+      NewLineH := UiFontLineHeight(FTabs.Font);
+      if FTabsBaseHeight > 0 then
+        FTabsBaseHeight := FTabsBaseHeight + NewLineH - OldLineH;
+      UpdateTabsHeight;
+      FTabs.Invalidate;
+    end;
+
+    Load('Font.Lists');
+    if lvSubList <> nil then
+      Face(lvSubList.Font);
+    if FObjTree <> nil then
+      Face(FObjTree.Font);
+    if FIncTree <> nil then
+      Face(FIncTree.Font);
+    if FCodeTree <> nil then
+      Face(FCodeTree.Font);
+    if FObjProps <> nil then
+      Face(FObjProps.Font);
+    if FObjEvents <> nil then
+      Face(FObjEvents.Font);
+    SubListFitColumns;
+    SubFilterPlace;
+
+    // Логи: шрифт по умолчанию и уже написанный текст (цвета строк
+    // остаются - меняются только имя и размер)
+    Load('Font.Logs');
+    LogEdits[0] := CompLogEdit;
+    LogEdits[1] := ErrLogEdit;
+    LogEdits[2] := LogEdit;
+    LogEdits[3] := RuntimeLog;
+    for LogIdx := Low(LogEdits) to High(LogEdits) do
+    begin
+      if LogEdits[LogIdx] = nil then
+        Continue;
+      Face(LogEdits[LogIdx].Font);
+      if LogEdits[LogIdx].HandleAllocated then
+      begin
+        FillChar(CharFmt, SizeOf(CharFmt), 0);
+        CharFmt.cbSize := SizeOf(CharFmt);
+        CharFmt.dwMask := CFM_FACE or CFM_SIZE;
+        CharFmt.yHeight := NewFont.Size * 20;
+        StrPLCopy(CharFmt.szFaceName, NewFont.Name,
+                  SizeOf(CharFmt.szFaceName) - 1);
+        SendMessage(LogEdits[LogIdx].Handle, EM_SETCHARFORMAT, SCF_ALL,
+                    Integer(@CharFmt));
+      end;
+    end;
+
+    Load('Font.Status');
+    if StatusBar1 <> nil then
+      Face(StatusBar1.Font);
+    if FStatus2 <> nil then
+      Face(FStatus2.Font);
+    StatusPanelsFit;
+  finally
+    NewFont.Free;
+  end;
+end;
+
+// Ширины панелей строк состояния - по самой длинной надписи, которая может
+// там оказаться, шрифтом самой строки; высота - по шрифту. Замер идёт на
+// временном TBitmap, чтобы не трогать канву самого контрола.
+procedure TForm1.StatusPanelsFit;
+var
+  SampleBmp: TBitmap;
+  LineH: Integer;
+begin
+  SampleBmp := TBitmap.Create;
+  try
+    if (FStatus2 <> nil) and (FStatus2.Panels.Count > 2) then
+    begin
+      SampleBmp.Canvas.Font.Assign(FStatus2.Font);
+      FStatus2.Panels[1].Width :=
+        SampleBmp.Canvas.TextWidth('999 999 999 б') + 16;
+      FStatus2.Panels[2].Width :=
+        SampleBmp.Canvas.TextWidth('99.99.9999 99:99') + 16;
+      LineH := SampleBmp.Canvas.TextHeight('Wg') + 8;
+      if LineH > FStatus2.Height then
+        FStatus2.Height := LineH;
+      Status2Resize(nil);
+    end;
+    if (StatusBar1 <> nil) and (StatusBar1.Panels.Count > 6) then
+    begin
+      SampleBmp.Canvas.Font.Assign(StatusBar1.Font);
+      StatusBar1.Panels[0].Width := SampleBmp.Canvas.TextWidth('Строк: 9999999') + 16;
+      StatusBar1.Panels[1].Width := SampleBmp.Canvas.TextWidth('Стр: 9999999') + 16;
+      StatusBar1.Panels[2].Width :=
+        SampleBmp.Canvas.TextWidth('Поз в строке: 99999/99999') + 16;
+      StatusBar1.Panels[3].Width :=
+        SampleBmp.Canvas.TextWidth('Поз.: 99999999/99999999') + 16;
+      StatusBar1.Panels[4].Width := SampleBmp.Canvas.TextWidth('ASCII: 255 (''W'')') + 16;
+      StatusBar1.Panels[5].Width := SampleBmp.Canvas.TextWidth('UTF-8 BOM') + 16;
+      StatusBar1.Panels[6].Width :=
+        SampleBmp.Canvas.TextWidth('999.9 / 999.9 / 999.9 | карта 9999.9' +
+      ' | стр 99.9 фон 99.9 кс 99.9 ток 99.9 вызовов 99999') + 16;
+      LineH := SampleBmp.Canvas.TextHeight('Wg') + 8;
+      if LineH > StatusBar1.Height then
+        StatusBar1.Height := LineH;
+    end;
+  finally
+    SampleBmp.Free;
+  end;
 end;
 
 // Файл формы для модуля: .dfm (Delphi), иначе .lfm (Lazarus). '' - нет.

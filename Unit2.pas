@@ -2840,10 +2840,18 @@ end;
 // ---------------------------------------------------------------------------
 
 // Таблица из списка ролей Form1
+// Строка таблицы IDE colors and Fonts - шрифт группы, а не цвет
+function IsUiFontKey(const AKey: string): Boolean;
+begin
+  Result := Copy(AKey, 1, 5) = 'Font.';
+end;
+
 procedure TForm2.RefreshUiGrid;
 var
-  I: Integer;
+  I, RowH: Integer;
   Key: string;
+  FontKeys: TStringList;
+  SampleFont: TFont;
 begin
   if (Form1 = nil) or (Form1.UiColors = nil) then
     Exit;
@@ -2853,12 +2861,44 @@ begin
 
   UiGrid.RowCount := UiKeys.Count + 1;
   UiGrid.Cells[0, 0] := 'Элемент';
-  UiGrid.Cells[1, 0] := 'Цвет';
-  for I := 0 to UiKeys.Count - 1 do
-  begin
-    Key := UiKeys[I];
-    UiGrid.Cells[0, I + 1] := Form1.UiCaption(Key);
-    UiGrid.Cells[1, I + 1] := ColorToString(Form1.UiColor(Key));
+  UiGrid.Cells[1, 0] := 'Цвет / шрифт';
+  // Шрифты групп - строками после цветов (ключи Font.*)
+  FontKeys := TStringList.Create;
+  try
+    Form1.UiFontKeys(FontKeys);
+    UiKeys.AddStrings(FontKeys);
+  finally
+    FontKeys.Free;
+  end;
+
+  UiGrid.RowCount := UiKeys.Count + 1;
+  SampleFont := TFont.Create;
+  try
+    for I := 0 to UiKeys.Count - 1 do
+    begin
+      Key := UiKeys[I];
+      if IsUiFontKey(Key) then
+      begin
+        UiGrid.Cells[0, I + 1] := Form1.UiFontCaption(Key);
+        UiGrid.Cells[1, I + 1] := Form1.UiFontText(Key);
+        // Строка шрифта - по высоте образца
+        Form1.UiFontGet(Key, SampleFont);
+        UiGrid.Canvas.Font.Assign(SampleFont);
+        RowH := UiGrid.Canvas.TextHeight('Wg') + 6;
+        if RowH < UiGrid.DefaultRowHeight then
+          RowH := UiGrid.DefaultRowHeight;
+        UiGrid.RowHeights[I + 1] := RowH;
+        UiGrid.Canvas.Font.Assign(UiGrid.Font);
+      end
+      else
+      begin
+        UiGrid.Cells[0, I + 1] := Form1.UiCaption(Key);
+        UiGrid.Cells[1, I + 1] := ColorToString(Form1.UiColor(Key));
+        UiGrid.RowHeights[I + 1] := UiGrid.DefaultRowHeight;
+      end;
+    end;
+  finally
+    SampleFont.Free;
   end;
   UiGrid.Invalidate;
 end;
@@ -2870,6 +2910,7 @@ var
   C: TCanvas;
   R: TRect;
   S: string;
+  SampleColor: TColor;
 begin
   C := UiGrid.Canvas;
   if (ACol <> 1) or (ARow = 0) or (ARow > UiKeys.Count) then
@@ -2892,6 +2933,20 @@ begin
   C.FillRect(Rect);
 
   S := UiGrid.Cells[1, ARow];
+  // Шрифт: подпись - самим этим шрифтом
+  if IsUiFontKey(UiKeys[ARow - 1]) then
+  begin
+    SampleColor := C.Font.Color;
+    Form1.UiFontGet(UiKeys[ARow - 1], C.Font);
+    C.Font.Color := SampleColor;
+    C.Brush.Style := bsClear;
+    R := Rect;
+    R.Left := R.Left + 4;
+    DrawText(C.Handle, PChar(S), Length(S), R,
+             DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS);
+    C.Font.Assign(UiGrid.Font);
+    Exit;
+  end;
   R := Rect;
   R.Left := R.Left + 2;
   R.Top := R.Top + 3;
@@ -2921,13 +2976,33 @@ end;
 // окнам и пишется в IDE.clr: отдельной кнопки сохранения нет.
 procedure TForm2.UiGridDblClick(Sender: TObject);
 var
-  Row: Integer;
+  Row, MinSize, MaxSize: Integer;
   Key: string;
 begin
   Row := UiGrid.Row;
   if (Row < 1) or (Row > UiKeys.Count) then
     Exit;
   Key := UiKeys[Row - 1];
+  // Шрифт группы: размер - только в пределах (Form1.UiFontLimits)
+  if IsUiFontKey(Key) then
+  begin
+    Form1.UiFontGet(Key, FontDlg.Font);
+    Form1.UiFontLimits(MinSize, MaxSize);
+    FontDlg.MinFontSize := MinSize;
+    FontDlg.MaxFontSize := MaxSize;
+    FontDlg.Options := FontDlg.Options + [fdLimitSize];
+    try
+      if not FontDlg.Execute then
+        Exit;
+      Form1.UiFontSet(Key, FontDlg.Font);
+    finally
+      FontDlg.Options := FontDlg.Options - [fdLimitSize];
+      FontDlg.MinFontSize := 0;
+      FontDlg.MaxFontSize := 0;
+    end;
+    RefreshUiGrid;
+    Exit;
+  end;
   ColorDlg.Color := Form1.UiColor(Key);
   if not ColorDlg.Execute then
     Exit;
@@ -2942,6 +3017,8 @@ begin
   Form1.UiResetDefaults;
   Form1.SaveUiSchema;
   Form1.UiApply;
+  // и шрифты групп - как в .dfm
+  Form1.UiFontsReset;
   RefreshUiGrid;
 end;
 
