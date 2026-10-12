@@ -26,6 +26,8 @@ type
 
   // Ход долгой работы: AText - что делается; ACancel := True - прервать
   TIncProgress = procedure(const AText: string; var ACancel: Boolean) of object;
+  // Найден файл (IncFindOnDisk) - полный путь
+  TIncFound = procedure(const AFile: string) of object;
 
   TIncFileInfo = class
   public
@@ -108,9 +110,11 @@ function IncPathInIncDir(const AFilePath: string): Boolean;
 // Файлы с именем AName (без учёта регистра) в папках ARoots с подпапками -
 // полными путями в AList. Служебные папки Windows пропускаются. В каждой
 // папке подпапки с "inc" в имени обходятся первыми. AProgress - ход по
-// папкам (nil - без него). False - прервано.
+// папкам (nil - без него). AOnFound - сразу по каждому найденному файлу.
+// False - прервано.
 function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
-                       AProgress: TIncProgress; ASkip: TStrings = nil): Boolean;
+                       AProgress: TIncProgress; ASkip: TStrings = nil;
+                       AOnFound: TIncFound = nil): Boolean;
 
 // Программы .bas, подключающие файл ($INCLUDE "имя"), в папках AFolders
 // (с подпапками при ASub). Результат - число найденных.
@@ -1239,7 +1243,8 @@ begin
 end;
 
 function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
-                       AProgress: TIncProgress; ASkip: TStrings): Boolean;
+                       AProgress: TIncProgress; ASkip: TStrings;
+                       AOnFound: TIncFound): Boolean;
 var
   Cancel: Boolean;
 
@@ -1289,7 +1294,11 @@ var
               OtherDirs.Add(ADirPath + SR.Name + PathDelim);
           end
           else if CompareText(SR.Name, AName) = 0 then
+          begin
             AList.Add(ADirPath + SR.Name);
+            if Assigned(AOnFound) then
+              AOnFound(ADirPath + SR.Name);
+          end;
         until FindNext(SR) <> 0;
       finally
         FindClose(SR);

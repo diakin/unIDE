@@ -70,6 +70,9 @@ type
     FCurDir: string;
     FUserIncDir: string;
     FFoundWhere: TStringList;   // по найденной копии - где нашлась
+    FStageLabel: string;        // шаг поиска, который идёт сейчас
+    FFindName: string;          // искомое имя
+    FCounts: array[TIncStatus] of Integer;  // найденные по итогу проверки
     FRef: TIncRefIndex;    // nil - эталон ещё не прочитан
     FInfos: TList;         // TIncFileInfo найденных копий - владелец
     FBusy: Boolean;
@@ -77,6 +80,7 @@ type
     FLastTick: Cardinal;
     FOnOpenFile: TFindIncOpenEvent;
     procedure ProgressStep(const AText: string; var ACancel: Boolean);
+    procedure FoundStep(const AFile: string);
     procedure SetBusy(ABusy: Boolean);
     procedure ClearFound;
     procedure ShowInfo(AIndex: Integer);
@@ -232,36 +236,38 @@ begin
   lblHead.Caption := '';
 end;
 
-// Порядок найденных: пути с папкой "*inc*" - первыми, дальше по алфавиту
-function CompareFoundPaths(AList: TStringList; AIdx1, AIdx2: Integer): Integer;
+// Найден файл: сразу в список, с проверкой по эталону (после "Стоп" -
+// без проверки, серый значок)
+procedure TDlgFindInc.FoundStep(const AFile: string);
 var
-  InInc1, InInc2: Boolean;
+  Info: TIncFileInfo;
 begin
-  InInc1 := IncPathInIncDir(AList[AIdx1]);
-  InInc2 := IncPathInIncDir(AList[AIdx2]);
-  if InInc1 <> InInc2 then
+  if lstFound.Items.IndexOf(AFile) >= 0 then
+    Exit;
+  Info := TIncFileInfo.Create(AFile);
+  if not FAbort then
+    IncCheckFile(Info, FRef);
+  Inc(FCounts[Info.Status]);
+  FInfos.Add(Info);
+  FFoundWhere.Add(FStageLabel);
+  lstFound.Items.AddObject(AFile, Info);
+  lblFound.Caption := Format('Найдено копий %s: %d', [FFindName,
+                                                       lstFound.Items.Count]);
+  if lstFound.Items.Count = 1 then
   begin
-    if InInc1 then
-      Result := -1
-    else
-      Result := 1;
-  end
-  else
-    Result := AnsiCompareText(AList[AIdx1], AList[AIdx2]);
+    lstFound.ItemIndex := 0;
+    ShowInfo(0);
+  end;
 end;
 
-// Найти: имя - на дисках или в папке, каждая копия - с эталоном и на
-// ошибки. Идёт поиск - кнопка останавливает его.
 procedure TDlgFindInc.btnFindClick(Sender: TObject);
 var
-  Roots, Files, Where, Searched, StageFiles, StageList: TStringList;
+  Roots, Searched, StageFiles, StageList: TStringList;
   SearchName, StageRoot, WhereText: string;
   Drives: array[0..255] of Char;
   DrivePtr: PChar;
   FileIdx, StageIdx, SkipIdx, WhereCount: Integer;
-  Info: TIncFileInfo;
-  Cancel, Done, Covered: Boolean;
-  Counts: array[TIncStatus] of Integer;
+  Done, Covered: Boolean;
   Status: TIncStatus;
 
   // Шаг поиска: подпись и папка; папки нет на диске - шага нет
@@ -287,9 +293,8 @@ begin
     lblStatus.Caption := 'Введите имя файла, например QColorDialog10.inc';
     Exit;
   end;
+  FFindName := SearchName;
   Roots := TStringList.Create;
-  Files := TStringList.Create;
-  Where := TStringList.Create;
   Searched := TStringList.Create;
   StageFiles := TStringList.Create;
   SetBusy(True);
@@ -329,8 +334,17 @@ begin
       end;
     end;
 
+    // Список заполняется по ходу поиска (FoundStep)
+    for Status := Low(TIncStatus) to High(TIncStatus) do
+      FCounts[Status] := 0;
+    if FInfos = nil then
+      FInfos := TList.Create;
+    if FFoundWhere = nil then
+      FFoundWhere := TStringList.Create;
+    lblFound.Caption := Format('Найдено копий %s: 0', [SearchName]);
+
     // Шаг за шагом; папка, просмотренная раньше (или внутри неё), второй
-    // раз не обходится
+    // раз не обходится. В каждой папке подпапки с "inc" в имени - первыми.
     Done := True;
     Searched.Sorted := True;
     Searched.Duplicates := dupIgnore;
@@ -344,49 +358,19 @@ begin
           Covered := True;
       if Covered then
         Continue;
+      FStageLabel := Copy(Roots[StageIdx], 1, Pos('|', Roots[StageIdx]) - 1);
       StageList := TStringList.Create;
       try
         StageList.Add(Copy(Roots[StageIdx], Pos('|', Roots[StageIdx]) + 1, MaxInt));
         StageFiles.Clear;
         Done := IncFindOnDisk(SearchName, StageList, StageFiles, ProgressStep,
-                              Searched);
+                              Searched, FoundStep);
       finally
         StageList.Free;
       end;
-      // Внутри шага: сначала копии из папок с "inc" в имени, потом прочие
-      StageFiles.CustomSort(CompareFoundPaths);
-      for FileIdx := 0 to StageFiles.Count - 1 do
-        if Files.IndexOf(StageFiles[FileIdx]) < 0 then
-        begin
-          Files.Add(StageFiles[FileIdx]);
-          Where.Add(Copy(Roots[StageIdx], 1, Pos('|', Roots[StageIdx]) - 1));
-        end;
       Searched.Add(StageRoot);
       if not Done then
         Break;
-    end;
-
-    for Status := Low(TIncStatus) to High(TIncStatus) do
-      Counts[Status] := 0;
-    Cancel := False;
-    if FInfos = nil then
-      FInfos := TList.Create;
-    if FFoundWhere = nil then
-      FFoundWhere := TStringList.Create;
-    // Остановили поиск или проверку - найденное всё равно в списке, только
-    // непроверенные копии без сравнения с эталоном (серый значок)
-    for FileIdx := 0 to Files.Count - 1 do
-    begin
-      if not Cancel then
-        ProgressStep(Format('Проверка: %d из %d', [FileIdx + 1, Files.Count]),
-                     Cancel);
-      Info := TIncFileInfo.Create(Files[FileIdx]);
-      if not Cancel then
-        IncCheckFile(Info, FRef);
-      Inc(Counts[Info.Status]);
-      FInfos.Add(Info);
-      FFoundWhere.Add(Where[FileIdx]);
-      lstFound.Items.AddObject(Files[FileIdx], Info);
     end;
 
     // Сколько где нашлось, в порядке шагов
@@ -395,8 +379,8 @@ begin
     begin
       StageRoot := Copy(Roots[StageIdx], 1, Pos('|', Roots[StageIdx]) - 1);
       WhereCount := 0;
-      for FileIdx := 0 to Where.Count - 1 do
-        if Where[FileIdx] = StageRoot then
+      for FileIdx := 0 to FFoundWhere.Count - 1 do
+        if FFoundWhere[FileIdx] = StageRoot then
           Inc(WhereCount);
       if WhereCount > 0 then
       begin
@@ -405,31 +389,32 @@ begin
         WhereText := WhereText + Format('%s: %d', [StageRoot, WhereCount]);
       end;
     end;
-    lblFound.Caption := Format('Найдено копий %s: %d', [SearchName, Files.Count]);
+    lblFound.Caption := Format('Найдено копий %s: %d', [SearchName,
+                                                         lstFound.Items.Count]);
     if WhereText <> '' then
       lblFound.Caption := lblFound.Caption + ' (' + WhereText + ')';
-    if Files.Count = 0 then
+    if lstFound.Items.Count = 0 then
       lblStatus.Caption := 'Файл ' + SearchName + ' не найден'
     else
+    begin
       lblStatus.Caption := Format('Совпадают с эталоном: %d, отличаются: %d, ' +
                                   'нет в эталоне: %d',
-                                  [Counts[isSame], Counts[isChanged],
-                                   Counts[isNew]]);
-    if (Files.Count > 0) and (Counts[isUnknown] > 0) then
-      lblStatus.Caption := lblStatus.Caption +
-                           Format(', не проверено: %d', [Counts[isUnknown]]);
+                                  [FCounts[isSame], FCounts[isChanged],
+                                   FCounts[isNew]]);
+      if FCounts[isUnknown] > 0 then
+        lblStatus.Caption := lblStatus.Caption +
+                             Format(', не проверено: %d', [FCounts[isUnknown]]);
+    end;
     // Остановили - так и написать, и при пустом списке тоже
-    if not Done or Cancel then
+    if not Done or FAbort then
       lblStatus.Caption := 'Поиск остановлен. ' + lblStatus.Caption;
   finally
     SetBusy(False);
     StageFiles.Free;
     Searched.Free;
-    Where.Free;
-    Files.Free;
     Roots.Free;
   end;
-  if lstFound.Items.Count > 0 then
+  if (lstFound.ItemIndex < 0) and (lstFound.Items.Count > 0) then
   begin
     lstFound.ItemIndex := 0;
     ShowInfo(0);
@@ -526,6 +511,8 @@ end;
 
 procedure TDlgFindInc.lstFoundDblClick(Sender: TObject);
 begin
+  if FBusy then
+    Exit;
   btnOpenClick(nil);
 end;
 
