@@ -327,6 +327,21 @@ INKEY$ во всей программе. Кому нужно — пишет в �
   с `=`;
 - keys.inc: `define ИМЯ значение` без `$` — `$define`;
 - RichEditApi.inc: строки-комментарии ассемблера `; ...` — `'`.
+- WIN32API.INC: 27 объявлений `DECLARE ... LIB` с именем, которого DLL не
+  экспортирует, — вызов такой функции не находит её при запуске программы.
+  Таблица `DECL_FIXES` в `tools/build_inc.py`, список — `build_report.md`
+  («Исправлено в сборке»):
+  - ALIAS с `A` у функций без строк: `CheckDLGButtonA`, `CheckRadioButtonA`,
+    `GetClipboardDataA`, `SetClipboardDataA`, `AnimatePaletteA`,
+    `GetFontDataA`, `GetRegionDataA`, `Get/SetTextCharacterExtraA` — без `A`;
+  - ALIAS без `A` у функций со строками: `GetCurrentDirectory`,
+    `OpenEventLog`, `RegisterClass`, `VerQueryValue`, `GetShortPathName` — с `A`;
+  - опечатки: `joyGetNumDev` — `joyGetNumDevs`, `ExtractAssociateIconA` —
+    `ExtractAssociatedIconA`; пробел в начале или в конце ALIAS (`" SHFileOperationA"`,
+    `"FindTextA "` и ещё пять);
+  - `ObjectOpenAuditAlarmA`, `ImpersonateLoggedOnUser`,
+    `CreateProcessAsUserA` объявлены из kernel32 — из advapi32.
+  Найдено при описании функций для справки (Appendix D, `compdoc/funcs_notes`).
 
 ### 9. Имена программы
 

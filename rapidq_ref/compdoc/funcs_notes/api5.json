@@ -136,7 +136,7 @@
   "doc": "GetFontLanguageInfo"
  },
  "GetCharacterPlacement@WIN32API.INC": {
-  "desc": "Retrieves information about a string (character widths, caret positions, ordering, glyphs) needed for layout and display. Largely superseded by Uniscribe.",
+  "desc": "Retrieves information about a string (character widths, caret positions, ordering, glyphs) needed for layout and display. Largely superseded by Uniscribe. The ALIAS in WIN32API.INC was wrong; the build uses \"GetCharacterPlacementA\".",
   "doc": " GetCharacterPlacementA"
  },
  "SetICMMode@WIN32API.INC": {
@@ -292,7 +292,7 @@
   "doc": "SetDoubleClickTime"
  },
  "RegisterClass@WIN32API.INC": {
-  "desc": "Registers a window class (WNDCLASS) for use with CreateWindow/CreateWindowEx. Returns a class atom, or 0 on failure. Note: user32 exports it as RegisterClassA/W.",
+  "desc": "Registers a window class (WNDCLASS) for use with CreateWindow/CreateWindowEx. Returns a class atom, or 0 on failure. The ALIAS in WIN32API.INC was wrong; the build uses \"RegisterClassA\".",
   "doc": "RegisterClassA"
  },
  "UnregisterClass@WIN32API.INC": {
@@ -384,11 +384,11 @@
   "doc": "GetDlgItemTextA"
  },
  "CheckDlgButton@WIN32API.INC": {
-  "desc": "Sets the check state of a check box or radio button in a dialog (BST_CHECKED, BST_UNCHECKED, BST_INDETERMINATE). Note: user32 exports it as CheckDlgButton, without A.",
+  "desc": "Sets the check state of a check box or radio button in a dialog (BST_CHECKED, BST_UNCHECKED, BST_INDETERMINATE). The ALIAS in WIN32API.INC was wrong; the build uses \"CheckDlgButton\".",
   "doc": "CheckDlgButton"
  },
  "CheckRadioButton@WIN32API.INC": {
-  "desc": "Checks one radio button in a dialog and clears all others in the given ID range. Note: user32 exports it as CheckRadioButton, without A.",
+  "desc": "Checks one radio button in a dialog and clears all others in the given ID range. The ALIAS in WIN32API.INC was wrong; the build uses \"CheckRadioButton\".",
   "doc": "CheckRadioButton"
  },
  "IsDlgButtonChecked@WIN32API.INC": {
@@ -444,11 +444,11 @@
   "doc": "ChangeClipboardChain"
  },
  "SetClipboardData@WIN32API.INC": {
-  "desc": "Places data (a global memory handle) on the clipboard in the given format; the clipboard must be open. Note: user32 exports it as SetClipboardData, without A.",
+  "desc": "Places data (a global memory handle) on the clipboard in the given format; the clipboard must be open. The ALIAS in WIN32API.INC was wrong; the build uses \"SetClipboardData\".",
   "doc": "SetClipboardData"
  },
  "GetClipboardData@WIN32API.INC": {
-  "desc": "Retrieves a handle to clipboard data in the given format (e.g. CF_TEXT); the clipboard must be open. Note: user32 exports it as GetClipboardData, without A.",
+  "desc": "Retrieves a handle to clipboard data in the given format (e.g. CF_TEXT); the clipboard must be open. The ALIAS in WIN32API.INC was wrong; the build uses \"GetClipboardData\".",
   "doc": "GetClipboardData"
  },
  "RegisterClipboardFormat@WIN32API.INC": {

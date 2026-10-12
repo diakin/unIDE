@@ -4,7 +4,7 @@
   "doc": "ImmUnregisterWordA"
  },
  "ImmGetRegisterWordStyle@WIN32API.INC": {
-  "desc": "Retrieves a list of the word styles supported by the IME associated with the given input locale; returns the number of styles copied.",
+  "desc": "Retrieves a list of the word styles supported by the IME associated with the given input locale; returns the number of styles copied. The ALIAS in WIN32API.INC was wrong; the build uses \"ImmGetRegisterWordStyleA\".",
   "doc": "ImmGetRegisterWordStyleA"
  },
  "ImmEnumRegisterWord@WIN32API.INC": {
@@ -20,7 +20,7 @@
   "doc": "DuplicateIcon"
  },
  "ExtractAssociatedIcon@WIN32API.INC": {
-  "desc": "Gets the icon stored in a file or in the executable associated with the file; returns an icon handle. Note: the ALIAS in the source is misspelled (ExtractAssociateIconA).",
+  "desc": "Gets the icon stored in a file or in the executable associated with the file; returns an icon handle. The ALIAS in WIN32API.INC was wrong; the build uses \"ExtractAssociatedIconA\".",
   "doc": "ExtractAssociatedIconA"
  },
  "ExtractIcon@WIN32API.INC": {
@@ -44,7 +44,7 @@
   "doc": "ExtractIconExA"
  },
  "SHFileOperation@WIN32API.INC": {
-  "desc": "Copies, moves, renames or deletes file system objects as described in a SHFILEOPSTRUCT; returns 0 on success.",
+  "desc": "Copies, moves, renames or deletes file system objects as described in a SHFILEOPSTRUCT; returns 0 on success. The ALIAS in WIN32API.INC was wrong; the build uses \"SHFileOperationA\".",
   "doc": "SHFileOperationA"
  },
  "SHFreeNameMappings@WIN32API.INC": {
@@ -72,7 +72,7 @@
   "doc": "VerFindFileA"
  },
  "VerInstallFile@WIN32API.INC": {
-  "desc": "Installs a file, decompressing it if needed, after checking version information against an existing copy.",
+  "desc": "Installs a file, decompressing it if needed, after checking version information against an existing copy. The ALIAS in WIN32API.INC was wrong; the build uses \"VerInstallFileA\".",
   "doc": "VerInstallFileA"
  },
  "GetFileVersionInfoSize@WIN32API.INC": {
@@ -88,7 +88,7 @@
   "doc": "VerLanguageNameA"
  },
  "VerQueryValue@WIN32API.INC": {
-  "desc": "Retrieves a value (such as fixed file info or a string) from a version-information buffer filled by GetFileVersionInfo.",
+  "desc": "Retrieves a value (such as fixed file info or a string) from a version-information buffer filled by GetFileVersionInfo. The ALIAS in WIN32API.INC was wrong; the build uses \"VerQueryValueA\".",
   "doc": "VerQueryValueA"
  },
  "HeapValidate@WIN32API.INC": {
@@ -112,7 +112,7 @@
   "doc": "GetBinaryTypeA"
  },
  "GetShortPathName@WIN32API.INC": {
-  "desc": "Retrieves the short (8.3) path form of the specified path; returns the length of the result.",
+  "desc": "Retrieves the short (8.3) path form of the specified path; returns the length of the result. The ALIAS in WIN32API.INC was wrong; the build uses \"GetShortPathNameA\".",
   "doc": "GetShortPathNameA"
  },
  "GetProcessAffinityMask@WIN32API.INC": {
@@ -124,11 +124,11 @@
   "doc": "LogonUserA"
  },
  "ImpersonateLoggedOnUser@WIN32API.INC": {
-  "desc": "Lets the calling thread impersonate the security context of a logged-on user given by a token handle.",
+  "desc": "Lets the calling thread impersonate the security context of a logged-on user given by a token handle. WIN32API.INC declared it from kernel32; the build uses advapi32.",
   "doc": "ImpersonateLoggedOnUser"
  },
  "CreateProcessAsUser@WIN32API.INC": {
-  "desc": "Creates a new process and its primary thread that runs in the security context of the user represented by a token.",
+  "desc": "Creates a new process and its primary thread that runs in the security context of the user represented by a token. WIN32API.INC declared it from kernel32; the build uses advapi32.",
   "doc": "CreateProcessAsUserA"
  },
  "GetOpenFileName_WIN32API@WIN32API.INC": {
@@ -148,7 +148,7 @@
   "doc": "ChooseColorA"
  },
  "FindText@WIN32API.INC": {
-  "desc": "Creates a modeless system Find dialog box; returns its window handle.",
+  "desc": "Creates a modeless system Find dialog box; returns its window handle. The ALIAS in WIN32API.INC was wrong; the build uses \"FindTextA\".",
   "doc": "FindTextA"
  },
  "ReplaceText@WIN32API.INC": {

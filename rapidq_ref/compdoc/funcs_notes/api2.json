@@ -640,7 +640,7 @@
   "doc": "SetCurrentDirectoryA"
  },
  "GetCurrentDirectory@WIN32API.INC": {
-  "desc": "Retrieves the current directory of the current process into a buffer; returns its length. Note: kernel32 exports only GetCurrentDirectoryA/W, so this alias may not resolve.",
+  "desc": "Retrieves the current directory of the current process into a buffer; returns its length. The ALIAS in WIN32API.INC was wrong; the build uses \"GetCurrentDirectoryA\".",
   "doc": "GetCurrentDirectoryA"
  },
  "GetDiskFreeSpace_WIN32API@WIN32API.INC": {
@@ -744,7 +744,7 @@
   "doc": "GetOldestEventLogRecord"
  },
  "OpenEventLog@WIN32API.INC": {
-  "desc": "Opens a handle to the specified event log on a server. Note: advapi32 exports only OpenEventLogA/W, so this alias may not resolve.",
+  "desc": "Opens a handle to the specified event log on a server. The ALIAS in WIN32API.INC was wrong; the build uses \"OpenEventLogA\".",
   "doc": "OpenEventLogA"
  },
  "RegisterEventSource@WIN32API.INC": {

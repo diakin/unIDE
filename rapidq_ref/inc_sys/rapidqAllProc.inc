@@ -22286,7 +22286,7 @@ Declare Function WritePrivateProfileSection Lib "kernel32" Alias "WritePrivatePr
 
 Declare Function GetSystemDirectory Lib "kernel32" Alias "GetSystemDirectoryA" (ByVal lpBuffer As String, ByVal nSize As Long) As Long
 Declare Function SetCurrentDirectory Lib "kernel32" Alias "SetCurrentDirectoryA" (ByVal lpPathName As String) As Long
-Declare Function GetCurrentDirectory Lib "kernel32" Alias "GetCurrentDirectory" (ByVal nBufferLength As Long, ByVal lpBuffer As String) As Long
+Declare Function GetCurrentDirectory Lib "kernel32" Alias "GetCurrentDirectoryA" (ByVal nBufferLength As Long, ByVal lpBuffer As String) As Long
 Declare Function GetDiskFreeSpace_WIN32API Lib "kernel32" Alias "GetDiskFreeSpaceA" (ByVal lpRootPathName As String, lpSectorsPerCluster As Long, lpBytesPerSector As Long, lpNumberOfFreeClusters As Long, lpTtoalNumberOfClusters As Long) As Long
 Declare Function CreateDirectoryEx Lib "kernel32" Alias "CreateDirectoryExA" (ByVal lpTemplateDirectory As String, ByVal lpNewDirectory As String, lpSecurityAttributes As SECURITY_ATTRIBUTES) As Long
 Declare Function RemoveDirectory Lib "kernel32" Alias "RemoveDirectoryA" (ByVal lpPathName As String) As Long
@@ -22343,7 +22343,7 @@ Declare Function CloseEventLog Lib "advapi32.dll" Alias "CloseEventLog" (ByVal h
 Declare Function DeregisterEventSource Lib "advapi32.dll" Alias "DeregisterEventSource" (ByVal hEventLog As Long) As Long
 Declare Function GetNumberOfEventLogRecords Lib "advapi32.dll" Alias "GetNumberOfEventLogRecords" (ByVal hEventLog As Long, NumberOfRecords As Long) As Long
 Declare Function GetOldestEventLogRecord Lib "advapi32.dll" Alias "GetOldestEventLogRecord" (ByVal hEventLog As Long, OldestRecord As Long) As Long
-Declare Function OpenEventLog Lib "advapi32.dll" Alias "OpenEventLog" (ByVal lpUNCServerName As String, ByVal lpSourceName As String) As Long
+Declare Function OpenEventLog Lib "advapi32.dll" Alias "OpenEventLogA" (ByVal lpUNCServerName As String, ByVal lpSourceName As String) As Long
 Declare Function RegisterEventSource Lib "advapi32.dll" Alias "RegisterEventSourceA" (ByVal lpUNCServerName As String, ByVal lpSourceName As String) As Long
 Declare Function OpenBackupEventLog Lib "advapi32.dll" Alias "OpenBackupEventLogA" (ByVal lpUNCServerName As String, ByVal lpFileName As String) As Long
 Declare Function ReadEventLog Lib "advapi32.dll" Alias "ReadEventLogA" (ByVal hEventLog As Long, ByVal dwReadFlags As Long, ByVal dwRecordOffset As Long, lpBuffer As EVENTLOGRECORD, ByVal nNumberOfBytesToRead As Long, pnBytesRead As Long, pnMinNumberOfBytesNeeded As Long) As Long
@@ -22387,7 +22387,7 @@ Declare Function AdjustTokenPrivileges_WIN32API Lib "advapi32.dll" Alias "Adjust
 Declare Function AdjustTokenGroups Lib "advapi32.dll" Alias "AdjustTokenGroups" (ByVal TokenHandle As Long, ByVal ResetToDefault As Long, NewState As TOKEN_GROUPS, ByVal BufferLength As Long, PreviousState As TOKEN_GROUPS, ReturnLength As Long) As Long
 Declare Function PrivilegeCheck Lib "advapi32.dll" Alias "PrivilegeCheck" (ByVal ClientToken As Long, RequiredPrivileges As PRIVILEGE_SET, ByVal pfResult As Long) As Long
 Declare Function AccessCheckAndAuditAlarm Lib "advapi32.dll" Alias "AccessCheckAndAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal ObjectTypeName As String, ByVal ObjectName As String, SecurityDescriptor As SECURITY_DESCRIPTOR, ByVal DesiredAccess As Long, GenericMapping As GENERIC_MAPPING, ByVal ObjectCreation As Long, GrantedAccess As Long, ByVal AccessStatus As Long, ByVal pfGenerateOnClose As Long) As Long
-Declare Function ObjectOpenAuditAlarm Lib "kernel32" Alias "ObjectOpenAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal ObjectTypeName As String, ByVal ObjectName As String, pSecurityDescriptor As SECURITY_DESCRIPTOR, ByVal ClientToken As Long, ByVal DesiredAccess As Long, ByVal GrantedAccess As Long, Privileges As PRIVILEGE_SET, ByVal ObjectCreation As Long, ByVal AccessGranted As Long, ByVal GenerateOnClose As Long) As Long
+Declare Function ObjectOpenAuditAlarm Lib "advapi32" Alias "ObjectOpenAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal ObjectTypeName As String, ByVal ObjectName As String, pSecurityDescriptor As SECURITY_DESCRIPTOR, ByVal ClientToken As Long, ByVal DesiredAccess As Long, ByVal GrantedAccess As Long, Privileges As PRIVILEGE_SET, ByVal ObjectCreation As Long, ByVal AccessGranted As Long, ByVal GenerateOnClose As Long) As Long
 Declare Function ObjectPrivilegeAuditAlarm Lib "advapi32.dll" Alias "ObjectPrivilegeAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal ClientToken As Long, ByVal DesiredAccess As Long, Privileges As PRIVILEGE_SET, ByVal AccessGranted As Long) As Long
 Declare Function ObjectCloseAuditAlarm Lib "advapi32.dll" Alias "ObjectCloseAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal GenerateOnClose As Long) As Long
 Declare Function PrivilegedServiceAuditAlarm Lib "advapi32.dll" Alias "PrivilegedServiceAuditAlarmA" (ByVal SubsystemName As String, ByVal ServiceName As String, ByVal ClientToken As Long, Privileges As PRIVILEGE_SET, ByVal AccessGranted As Long) As Long
@@ -24395,7 +24395,7 @@ Public Const TT_ENABLED = &H2
 
 Declare Function AddFontResource Lib "gdi32" Alias "AddFontResourceA" (ByVal lpFileName As String) As Long
 
-Declare Function AnimatePalette Lib "gdi32" Alias "AnimatePaletteA" (ByVal hPalette As Long, ByVal wStartIndex As Long, ByVal wNumEntries As Long, lpPaletteColors As PALETTEENTRY) As Long
+Declare Function AnimatePalette Lib "gdi32" Alias "AnimatePalette" (ByVal hPalette As Long, ByVal wStartIndex As Long, ByVal wNumEntries As Long, lpPaletteColors As PALETTEENTRY) As Long
 Declare Function Arc Lib "gdi32" Alias "Arc" (ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long, ByVal X4 As Long, ByVal Y4 As Long) As Long
 Declare Function CancelDC Lib "gdi32" Alias "CancelDC" (ByVal hdc As Long) As Long
 Declare Function Chord Lib "gdi32" Alias "Chord" (ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long, ByVal X4 As Long, ByVal Y4 As Long) As Long
@@ -24495,7 +24495,7 @@ Declare Function GetClipBox Lib "gdi32" Alias "GetClipBox" (ByVal hdc As Long, l
 Declare Function GetMetaRgn Lib "gdi32" Alias "GetMetaRgn" (ByVal hdc As Long, ByVal hRgn As Long) As Long
 Declare Function GetCurrentPositionEx Lib "gdi32" Alias "GetCurrentPositionEx" (ByVal hdc As Long, lpPoint As POINTAPI) As Long
 Declare Function GetDIBits Lib "gdi32" Alias "GetDIBits" (ByVal aHDC As Long, ByVal hBitmap As Long, ByVal nStartScan As Long, ByVal nNumScans As Long, lpBits As Any, lpBI As BITMAPINFO, ByVal wUsage As Long) As Long
-Declare Function GetFontData Lib "gdi32" Alias "GetFontDataA" (ByVal hdc As Long, ByVal dwTable As Long, ByVal dwOffset As Long, lpvBuffer As Any, ByVal cbData As Long) As Long
+Declare Function GetFontData Lib "gdi32" Alias "GetFontData" (ByVal hdc As Long, ByVal dwTable As Long, ByVal dwOffset As Long, lpvBuffer As Any, ByVal cbData As Long) As Long
 Declare Function GetGlyphOutline Lib "gdi32" Alias "GetGlyphOutlineA" (ByVal hdc As Long, ByVal uChar As Long, ByVal fuFormat As Long, lpgm As GLYPHMETRICS, ByVal cbBuffer As Long, lpBuffer As Any, lpmat2 As MAT2) As Long
 Declare Function GetGraphicsMode Lib "gdi32" Alias "GetGraphicsMode" (ByVal hdc As Long) As Long
 Declare Function GetMapMode Lib "gdi32" Alias "GetMapMode" (ByVal hdc As Long) As Long
@@ -24510,11 +24510,11 @@ Declare Function GetOutlineTextMetrics Lib "gdi32" Alias "GetOutlineTextMetricsA
 Declare Function GetPaletteEntries Lib "gdi32" Alias "GetPaletteEntries" (ByVal hPalette As Long, ByVal wStartIndex As Long, ByVal wNumEntries As Long, lpPaletteEntries As PALETTEENTRY) As Long
 Declare Function GetPolyFillMode Lib "gdi32" Alias "GetPolyFillMode" (ByVal hdc As Long) As Long
 Declare Function GetRasterizerCaps Lib "gdi32" Alias "GetRasterizerCaps" (lpraststat As RASTERIZER_STATUS, ByVal cb As Long) As Long
-Declare Function GetRegionData Lib "gdi32" Alias "GetRegionDataA" (ByVal hRgn As Long, ByVal dwCount As Long, lpRgnData As RgnData) As Long
+Declare Function GetRegionData Lib "gdi32" Alias "GetRegionData" (ByVal hRgn As Long, ByVal dwCount As Long, lpRgnData As RgnData) As Long
 Declare Function GetStretchBltMode Lib "gdi32" Alias "GetStretchBltMode" (ByVal hdc As Long) As Long
 Declare Function GetSystemPaletteEntries Lib "gdi32" Alias "GetSystemPaletteEntries" (ByVal hdc As Long, ByVal wStartIndex As Long, ByVal wNumEntries As Long, lpPaletteEntries As PALETTEENTRY) As Long
 Declare Function GetSystemPaletteUse Lib "gdi32" Alias "GetSystemPaletteUse" (ByVal hdc As Long) As Long
-Declare Function GetTextCharacterExtra Lib "gdi32" Alias "GetTextCharacterExtraA" (ByVal hdc As Long) As Long
+Declare Function GetTextCharacterExtra Lib "gdi32" Alias "GetTextCharacterExtra" (ByVal hdc As Long) As Long
 Declare Function GetTextAlign Lib "gdi32" Alias "GetTextAlign" (ByVal hdc As Long) As Long
 Declare Function GetTextColor Lib "gdi32" Alias "GetTextColor" (ByVal hdc As Long) As Long
 
@@ -24568,7 +24568,7 @@ Declare Function SetPolyFillMode Lib "gdi32" Alias "SetPolyFillMode" (ByVal hdc 
 Declare Function StretchDIBits Lib "gdi32" Alias "StretchDIBits" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal dx As Long, ByVal dy As Long, ByVal SrcX As Long, ByVal SrcY As Long, ByVal wSrcWidth As Long, ByVal wSrcHeight As Long, lpBits As Any, lpBitsInfo As BITMAPINFO, ByVal wUsage As Long, ByVal dwRop As Long) As Long
 Declare Function SetStretchBltMode Lib "gdi32" Alias "SetStretchBltMode" (ByVal hdc As Long, ByVal nStretchMode As Long) As Long
 Declare Function SetSystemPaletteUse Lib "gdi32" Alias "SetSystemPaletteUse" (ByVal hdc As Long, ByVal wUsage As Long) As Long
-Declare Function SetTextCharacterExtra Lib "gdi32" Alias "SetTextCharacterExtraA" (ByVal hdc As Long, ByVal nCharExtra As Long) As Long
+Declare Function SetTextCharacterExtra Lib "gdi32" Alias "SetTextCharacterExtra" (ByVal hdc As Long, ByVal nCharExtra As Long) As Long
 Declare Function SetTextAlign Lib "gdi32" Alias "SetTextAlign" (ByVal hdc As Long, ByVal wFlags As Long) As Long
 Declare Function SetTextJustification Lib "gdi32" Alias "SetTextJustification" (ByVal hdc As Long, ByVal nBreakExtra As Long, ByVal nBreakCount As Long) As Long
 '~conflict Declare Function UpdateColors Lib "gdi32" Alias "UpdateColors" (ByVal hdc As Long) As Long   ' сборка: имя занято, первое: ODMenuXP.inc(1518)
@@ -25740,7 +25740,7 @@ Declare Function GetTextCharsetInfo Lib "gdi32" Alias "GetTextCharsetInfo" (ByVa
 
 Declare Function TranslateCharsetInfo Lib "gdi32" Alias "TranslateCharsetInfo" (lpSrc As Long, lpcs As CHARSETINFO, ByVal dwFlags As Long) As Long
 Declare Function GetFontLanguageInfo Lib "gdi32" Alias "GetFontLanguageInfo" (ByVal hdc As Long) As Long
-Declare Function GetCharacterPlacement Lib "gdi32" Alias " GetCharacterPlacementA" (ByVal hdc As Long, ByVal lpsz As String, ByVal n1 As Long, ByVal n2 As Long, lpGcpResults As GCP_RESULTS, ByVal dw As Long) As Long
+Declare Function GetCharacterPlacement Lib "gdi32" Alias "GetCharacterPlacementA" (ByVal hdc As Long, ByVal lpsz As String, ByVal n1 As Long, ByVal n2 As Long, lpGcpResults As GCP_RESULTS, ByVal dw As Long) As Long
 
 Public Const ICM_OFF = 1
 Public Const ICM_ON = 2
@@ -26359,7 +26359,7 @@ Declare Sub PostQuitMessage Lib "user32" Alias "PostQuitMessage" (ByVal nExitCod
 Declare Function InSendMessage Lib "user32" Alias "InSendMessage" () As Long
 
 Declare Function SetDoubleClickTime Lib "user32" Alias "SetDoubleClickTime" (ByVal wCount As Long) As Long
-Declare Function RegisterClass Lib "user32" Alias "RegisterClass" (Class As WNDCLASS) As Long
+Declare Function RegisterClass Lib "user32" Alias "RegisterClassA" (Class As WNDCLASS) As Long
 Declare Function UnregisterClass Lib "user32" Alias "UnregisterClassA" (ByVal lpClassName As String, ByVal hInstance As Long) As Long
 Declare Function GetClassInfo Lib "user32" Alias "GetClassInfoA" (ByVal hInstance As Long, ByVal lpClassName As String, lpWndClass As WNDCLASS) As Long
 
@@ -26419,8 +26419,8 @@ Declare Function SetDlgItemInt Lib "user32" Alias "SetDlgItemInt" (ByVal hDlg As
 Declare Function GetDlgItemInt Lib "user32" Alias "GetDlgItemInt" (ByVal hDlg As Long, ByVal nIDDlgItem As Long, ByVal lpTranslated As Long, ByVal bSigned As Long) As Long
 Declare Function SetDlgItemText Lib "user32" Alias "SetDlgItemTextA" (ByVal hDlg As Long, ByVal nIDDlgItem As Long, ByVal lpString As String) As Long
 Declare Function GetDlgItemText Lib "user32" Alias "GetDlgItemTextA" (ByVal hDlg As Long, ByVal nIDDlgItem As Long, ByVal lpString As String, ByVal nMaxCount As Long) As Long
-Declare Function CheckDlgButton Lib "user32" Alias "CheckDLGButtonA" (ByVal hDlg As Long, ByVal nIDButton As Long, ByVal wCheck As Long) As Long
-Declare Function CheckRadioButton Lib "user32" Alias "CheckRadioButtonA" (ByVal hDlg As Long, ByVal nIDFirstButton As Long, ByVal nIDLastButton As Long, ByVal nIDCheckButton As Long) As Long
+Declare Function CheckDlgButton Lib "user32" Alias "CheckDlgButton" (ByVal hDlg As Long, ByVal nIDButton As Long, ByVal wCheck As Long) As Long
+Declare Function CheckRadioButton Lib "user32" Alias "CheckRadioButton" (ByVal hDlg As Long, ByVal nIDFirstButton As Long, ByVal nIDLastButton As Long, ByVal nIDCheckButton As Long) As Long
 Declare Function IsDlgButtonChecked Lib "user32" Alias "IsDlgButtonChecked" (ByVal hDlg As Long, ByVal nIDButton As Long) As Long
 Declare Function SendDlgItemMessage Lib "user32" Alias "SendDlgItemMessageA" (ByVal hDlg As Long, ByVal nIDDlgItem As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
 Declare Function GetNextDlgGroupItem Lib "user32" Alias "GetNextDlgGroupItem" (ByVal hDlg As Long, ByVal hCtl As Long, ByVal bPrevious As Long) As Long
@@ -26439,8 +26439,8 @@ Declare Function GetClipboardOwner Lib "user32" Alias "GetClipboardOwner" () As 
 Declare Function SetClipboardViewer Lib "user32" Alias "SetClipboardViewer" (ByVal hwnd As Long) As Long
 Declare Function GetClipboardViewer Lib "user32" Alias "GetClipboardViewer" () As Long
 Declare Function ChangeClipboardChain Lib "user32" Alias "ChangeClipboardChain" (ByVal hwnd As Long, ByVal hWndNext As Long) As Long
-Declare Function SetClipboardData Lib "user32" Alias "SetClipboardDataA" (ByVal wFormat As Long, ByVal hMem As Long) As Long
-Declare Function GetClipboardData Lib "user32" Alias "GetClipboardDataA" (ByVal wFormat As Long) As Long
+Declare Function SetClipboardData Lib "user32" Alias "SetClipboardData" (ByVal wFormat As Long, ByVal hMem As Long) As Long
+Declare Function GetClipboardData Lib "user32" Alias "GetClipboardData" (ByVal wFormat As Long) As Long
 Declare Function RegisterClipboardFormat Lib "user32" Alias "RegisterClipboardFormatA" (ByVal lpString As String) As Long
 Declare Function CountClipboardFormats Lib "user32" Alias "CountClipboardFormats" () As Long
 Declare Function EnumClipboardFormats Lib "user32" Alias "EnumClipboardFormats" (ByVal wFormat As Long) As Long
@@ -30791,7 +30791,7 @@ End Type
 
 Declare Function joyGetDevCaps Lib "winmm.dll" Alias "joyGetDevCapsA" (ByVal id As Long, lpCaps As JOYCAPS, ByVal uSize As Long) As Long
 
-Declare Function joyGetNumDevs Lib "winmm.dll" Alias "joyGetNumDev" () As Long
+Declare Function joyGetNumDevs Lib "winmm.dll" Alias "joyGetNumDevs" () As Long
 Declare Function joyGetThreshold Lib "winmm.dll" Alias "joyGetThreshold" (ByVal id As Long, lpuThreshold As Long) As Long
 Declare Function joyReleaseCapture Lib "winmm.dll" Alias "joyReleaseCapture" (ByVal id As Long) As Long
 Declare Function joySetCapture Lib "winmm.dll" Alias "joySetCapture" (ByVal hwnd As Long, ByVal uID As Long, ByVal uPeriod As Long, ByVal bChanged As Long) As Long
@@ -33083,7 +33083,7 @@ Declare Function ImmGetCompositionString Lib "imm32.dll" Alias "ImmGetCompositio
 Declare Function ImmSetCompositionString Lib "imm32.dll" Alias "ImmSetCompositionStringA" (ByVal himc As Long, ByVal dwIndex As Long, lpComp As Any, ByVal dw As Long, lpRead As Any, ByVal dw2 As Long) As Long
 Declare Function ImmGetCandidateListCount Lib "imm32.dll" Alias "ImmGetCandidateListCountA" (ByVal himc As Long, lpdwListCount As Long) As Long
 Declare Function ImmGetCandidateList Lib "imm32.dll" Alias "ImmGetCandidateListA" (ByVal himc As Long, ByVal deIndex As Long, lpCandidateList As CANDIDATELIST, ByVal dwBufLen As Long) As Long
-Declare Function ImmGetGuideLine Lib "imm32.dll" Alias " ImmGetGuideLineA" (ByVal himc As Long, ByVal dwIndex As Long, ByVal lpStr As String, ByVal dwBufLen As Long) As Long
+Declare Function ImmGetGuideLine Lib "imm32.dll" Alias "ImmGetGuideLineA" (ByVal himc As Long, ByVal dwIndex As Long, ByVal lpStr As String, ByVal dwBufLen As Long) As Long
 Declare Function ImmGetConversionStatus Lib "imm32.dll" Alias "ImmGetConversionStatus" (ByVal himc As Long, lpdw As Long, lpdw2 As Long) As Long
 Declare Function ImmSetConversionStatus Lib "imm32.dll" Alias "ImmSetConversionStatus" (ByVal himc As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long
 Declare Function ImmGetOpenStatus Lib "imm32.dll" Alias "ImmGetOpenStatus" (ByVal himc As Long) As Long
@@ -33104,7 +33104,7 @@ Declare Function ImmIsUIMessage Lib "imm32.dll" Alias "ImmIsUIMessageA" (ByVal h
 Declare Function ImmGetVirtualKey Lib "imm32.dll" Alias "ImmGetVirtualKey" (ByVal hwnd As Long) As Long
 Declare Function ImmRegisterWord Lib "imm32.dll" Alias "ImmRegisterWordA" (ByVal hkl As Long, ByVal lpszReading As String, ByVal dw As Long, ByVal lpszRegister As String) As Long
 Declare Function ImmUnregisterWord Lib "imm32.dll" Alias "ImmUnregisterWordA" (ByVal hkl As Long, ByVal lpszReading As String, ByVal dw As Long, ByVal lpszUnregister As String) As Long
-Declare Function ImmGetRegisterWordStyle Lib "imm32.dll" Alias " ImmGetRegisterWordStyleA" (ByVal hkl As Long, ByVal nItem As Long, lpStyleBuf As STYLEBUF) As Long
+Declare Function ImmGetRegisterWordStyle Lib "imm32.dll" Alias "ImmGetRegisterWordStyleA" (ByVal hkl As Long, ByVal nItem As Long, lpStyleBuf As STYLEBUF) As Long
 Declare Function ImmEnumRegisterWord Lib "imm32.dll" Alias "ImmEnumRegisterWordA" (ByVal hkl As Long, ByVal RegisterWordEnumProc As Long, ByVal lpszReading As String, ByVal dw As Long, ByVal lpszRegister As String, lpv As Any) As Long
 '  the IME related messages
 Public Const WM_CONVERTREQUESTEX = &H108
@@ -33477,7 +33477,7 @@ Public Const MDM_V23_OVERRIDE = &H400
 
 Declare Function ShellAbout Lib "shell32.dll" Alias "ShellAboutA" (ByVal hwnd As Long, ByVal szApp As String, ByVal szOtherStuff As String, ByVal hIcon As Long) As Long
 Declare Function DuplicateIcon Lib "shell32.dll" Alias "DuplicateIcon" (ByVal hInst As Long, ByVal hIcon As Long) As Long
-Declare Function ExtractAssociatedIcon Lib "shell32.dll" Alias "ExtractAssociateIconA" (ByVal hInst As Long, ByVal lpIconPath As String, lpiIcon As Long) As Long
+Declare Function ExtractAssociatedIcon Lib "shell32.dll" Alias "ExtractAssociatedIconA" (ByVal hInst As Long, ByVal lpIconPath As String, lpiIcon As Long) As Long
 Declare Function ExtractIcon Lib "shell32.dll" Alias "ExtractIconA" (ByVal hInst As Long, ByVal lpszExeFileName As String, ByVal nIconIndex As Long) As Long
 
 Type DRAGINFO
@@ -33580,7 +33580,7 @@ Type SHFILEOPSTRUCT
         lpszProgressTitle As String '  only used if FOF_SIMPLEPROGRESS
 End Type
 
-Declare Function SHFileOperation Lib "shell32.dll" Alias " SHFileOperationA" (lpFileOp As SHFILEOPSTRUCT) As Long
+Declare Function SHFileOperation Lib "shell32.dll" Alias "SHFileOperationA" (lpFileOp As SHFILEOPSTRUCT) As Long
 
 Declare Sub SHFreeNameMappings Lib "shell32.dll" Alias "SHFreeNameMappings" (ByVal hNameMappings As Long)
 
@@ -33653,7 +33653,7 @@ Type NOTIFYICONDATA
         szTip As String * 64
 End Type
 
-Declare Function Shell_NotifyIcon_WIN32API Lib "shell32.dll" Alias " Shell_NotifyIconA" (ByVal dwMessage As Long, lpData As NOTIFYICONDATA) As Long
+Declare Function Shell_NotifyIcon_WIN32API Lib "shell32.dll" Alias "Shell_NotifyIconA" (ByVal dwMessage As Long, lpData As NOTIFYICONDATA) As Long
 
 ' // End Tray Notification Icons
 
@@ -33697,7 +33697,7 @@ Public Const SHGFI_SHELLICONSIZE = &H4                  '  get shell size icon
 Public Const SHGFI_PIDL = &H8                           '  pszPath is a pidl
 Public Const SHGFI_USEFILEATTRIBUTES = &H10             '  use passed dwFileAttribute
 
-Declare Function SHGetFileInfo_WIN32API Lib "shell32.dll" Alias " SHGetFileInfoA" (ByVal pszPath As String, ByVal dwFileAttributes As Long, psfi As SHFILEINFO, ByVal cbFileInfo As Long, ByVal uFlags As Long) As Long
+Declare Function SHGetFileInfo_WIN32API Lib "shell32.dll" Alias "SHGetFileInfoA" (ByVal pszPath As String, ByVal dwFileAttributes As Long, psfi As SHFILEINFO, ByVal cbFileInfo As Long, ByVal uFlags As Long) As Long
 
 Declare Function SHGetNewLinkInfo Lib "shell32.dll" Alias "SHGetNewLinkInfoA" (ByVal pszLinkto As String, ByVal pszDir As String, ByVal pszName As String, pfMustCopy As Long, ByVal uFlags As Long) As Long
 
@@ -33882,7 +33882,7 @@ End Type
 '  ----- Function prototypes -----
 
 Declare Function VerFindFile Lib "version.dll" Alias "VerFindFileA" (ByVal uFlags As Long, ByVal szFileName As String, ByVal szWinDir As String, ByVal szAppDir As String, ByVal szCurDir As String, lpuCurDirLen As Long, ByVal szDestDir As String, lpuDestDirLen As Long) As Long
-Declare Function VerInstallFile Lib "version.dll" Alias " VerInstallFileA" (ByVal uFlags As Long, ByVal szSrcFileName As String, ByVal szDestFileName As String, ByVal szSrcDir As String, ByVal szDestDir As String, ByVal szCurDir As String, ByVal szTmpFile As String, lpuTmpFileLen As Long) As Long
+Declare Function VerInstallFile Lib "version.dll" Alias "VerInstallFileA" (ByVal uFlags As Long, ByVal szSrcFileName As String, ByVal szDestFileName As String, ByVal szSrcDir As String, ByVal szDestDir As String, ByVal szCurDir As String, ByVal szTmpFile As String, lpuTmpFileLen As Long) As Long
 
 '  Returns size of version info in Bytes
 Declare Function GetFileVersionInfoSize Lib "version.dll" Alias "GetFileVersionInfoSizeA" (ByVal lptstrFilename As String, lpdwHandle As Long) As Long
@@ -33893,7 +33893,7 @@ Declare Function GetFileVersionInfoSize Lib "version.dll" Alias "GetFileVersionI
 ' /* Filename of version stamped file *
 Declare Function GetFileVersionInfo Lib "version.dll"  Alias "GetFileVersionInfoA" (ByVal lptstrFilename As String, ByVal dwHandle As Long, ByVal dwLen As Long, lpData As Any) As Long
 Declare Function VerLanguageName Lib "kernel32" Alias "VerLanguageNameA" (ByVal wLang As Long, ByVal szLang As String, ByVal nSize As Long) As Long
-Declare Function VerQueryValue Lib "version.dll" Alias "VerQueryValue" (pBlock As Any, ByVal lpSubBlock As String, ByVal lplpBuffer As Long, puLen As Long) As Long
+Declare Function VerQueryValue Lib "version.dll" Alias "VerQueryValueA" (pBlock As Any, ByVal lpSubBlock As String, ByVal lplpBuffer As Long, puLen As Long) As Long
 
 ' ***********************************************************************
 ' *                                                                       *
@@ -33957,7 +33957,7 @@ Public Const SCS_OS216_BINARY = 5
 
 Declare Function GetBinaryType Lib "kernel32" Alias "GetBinaryTypeA" (ByVal lpApplicationName As String, lpBinaryType As Long) As Long
 
-Declare Function GetShortPathName Lib "kernel32" Alias "GetShortPathName" (ByVal lpszLongPath As String, ByVal lpszShortPath As String, ByVal cchBuffer As Long) As Long
+Declare Function GetShortPathName Lib "kernel32" Alias "GetShortPathNameA" (ByVal lpszLongPath As String, ByVal lpszShortPath As String, ByVal cchBuffer As Long) As Long
 Declare Function GetProcessAffinityMask Lib "kernel32" Alias "GetProcessAffinityMask" (ByVal hProcess As Long, lpProcessAffinityMask As Long, SystemAffinityMask As Long) As Long
 
 '  Logon Support APIs
@@ -33971,8 +33971,8 @@ Public Const LOGON32_PROVIDER_WINNT35 = 1
 
 Declare Function LogonUser Lib "ADVAPI32.DLL" Alias "LogonUserA" (ByVal lpszUsername As String, ByVal lpszDomain As String, ByVal lpszPassword As String, ByVal dwLogonType As Long, ByVal dwLogonProvider As Long, phToken As Long) As Long
 
-Declare Function ImpersonateLoggedOnUser Lib "kernel32" Alias "ImpersonateLoggedOnUser" (ByVal hToken As Long) As Long
-Declare Function CreateProcessAsUser Lib "kernel32" Alias "CreateProcessAsUserA" (ByVal hToken As Long, ByVal lpApplicationName As String, ByVal lpCommandLine As String, ByVal lpProcessAttributes As SECURITY_ATTRIBUTES, ByVal lpThreadAttributes As SECURITY_ATTRIBUTES, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, ByVal lpEnvironment As String, ByVal lpCurrentDirectory As String, ByVal lpStartupInfo As STARTUPINFO, ByVal lpProcessInformation As PROCESS_INFORMATION) As Long
+Declare Function ImpersonateLoggedOnUser Lib "advapi32" Alias "ImpersonateLoggedOnUser" (ByVal hToken As Long) As Long
+Declare Function CreateProcessAsUser Lib "advapi32" Alias "CreateProcessAsUserA" (ByVal hToken As Long, ByVal lpApplicationName As String, ByVal lpCommandLine As String, ByVal lpProcessAttributes As SECURITY_ATTRIBUTES, ByVal lpThreadAttributes As SECURITY_ATTRIBUTES, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, ByVal lpEnvironment As String, ByVal lpCurrentDirectory As String, ByVal lpStartupInfo As STARTUPINFO, ByVal lpProcessInformation As PROCESS_INFORMATION) As Long
 
 ' *   commdlg.h -- This module defines the 32-Bit Common Dialog APIs      *
 
@@ -34091,7 +34091,7 @@ Public Const FR_HIDEUPDOWN = &H4000
 Public Const FR_HIDEMATCHCASE = &H8000
 Public Const FR_HIDEWHOLEWORD = &H10000
 
-Declare Function FindText Lib "comdlg32.dll" Alias "FindTextA " (pFindreplace As FINDREPLACE) As Long
+Declare Function FindText Lib "comdlg32.dll" Alias "FindTextA" (pFindreplace As FINDREPLACE) As Long
 
 Declare Function ReplaceText Lib "comdlg32.dll" Alias "ReplaceTextA" (pFindreplace As FINDREPLACE) As Long
 

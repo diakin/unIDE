@@ -172,8 +172,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=AngleArc">AngleArc</a></p>
 <h3><a name="ANIMATEPALETTE"></a>AnimatePalette</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 24398</p>
-<pre>Declare Function AnimatePalette Lib &quot;gdi32&quot; Alias &quot;AnimatePaletteA&quot; (ByVal hPalette As Long, ByVal wStartIndex As Long, ByVal wNumEntries As Long, lpPaletteColors As PALETTEENTRY) As Long</pre>
-<p>Replaces entries in the specified logical palette; changes are reflected immediately for PC_RESERVED entries. Note: gdi32 exports AnimatePalette (no A suffix).</p>
+<pre>Declare Function AnimatePalette Lib &quot;gdi32&quot; Alias &quot;AnimatePalette&quot; (ByVal hPalette As Long, ByVal wStartIndex As Long, ByVal wNumEntries As Long, lpPaletteColors As PALETTEENTRY) As Long</pre>
+<p>Replaces entries in the specified logical palette; changes are reflected immediately for PC_RESERVED entries. The ALIAS in WIN32API.INC was wrong; the build uses &quot;AnimatePalette&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=AnimatePalette">AnimatePalette</a></p>
 <h3><a name="APPENDMENU"></a>AppendMenu</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 26548</p>
@@ -367,8 +367,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CheckColorsInGamut">CheckColorsInGamut</a></p>
 <h3><a name="CHECKDLGBUTTON"></a>CheckDlgButton</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 26422</p>
-<pre>Declare Function CheckDlgButton Lib &quot;user32&quot; Alias &quot;CheckDLGButtonA&quot; (ByVal hDlg As Long, ByVal nIDButton As Long, ByVal wCheck As Long) As Long</pre>
-<p>Sets the check state of a check box or radio button in a dialog (BST_CHECKED, BST_UNCHECKED, BST_INDETERMINATE). Note: user32 exports it as CheckDlgButton, without A.</p>
+<pre>Declare Function CheckDlgButton Lib &quot;user32&quot; Alias &quot;CheckDlgButton&quot; (ByVal hDlg As Long, ByVal nIDButton As Long, ByVal wCheck As Long) As Long</pre>
+<p>Sets the check state of a check box or radio button in a dialog (BST_CHECKED, BST_UNCHECKED, BST_INDETERMINATE). The ALIAS in WIN32API.INC was wrong; the build uses &quot;CheckDlgButton&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CheckDlgButton">CheckDlgButton</a></p>
 <h3><a name="CHECKMENUITEM"></a>CheckMenuItem</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 26541</p>
@@ -382,8 +382,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CheckMenuRadioItem">CheckMenuRadioItem</a></p>
 <h3><a name="CHECKRADIOBUTTON"></a>CheckRadioButton</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 26423</p>
-<pre>Declare Function CheckRadioButton Lib &quot;user32&quot; Alias &quot;CheckRadioButtonA&quot; (ByVal hDlg As Long, ByVal nIDFirstButton As Long, ByVal nIDLastButton As Long, ByVal nIDCheckButton As Long) As Long</pre>
-<p>Checks one radio button in a dialog and clears all others in the given ID range. Note: user32 exports it as CheckRadioButton, without A.</p>
+<pre>Declare Function CheckRadioButton Lib &quot;user32&quot; Alias &quot;CheckRadioButton&quot; (ByVal hDlg As Long, ByVal nIDFirstButton As Long, ByVal nIDLastButton As Long, ByVal nIDCheckButton As Long) As Long</pre>
+<p>Checks one radio button in a dialog and clears all others in the given ID range. The ALIAS in WIN32API.INC was wrong; the build uses &quot;CheckRadioButton&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CheckRadioButton">CheckRadioButton</a></p>
 <h3><a name="CHILDWINDOWFROMPOINT"></a>ChildWindowFromPoint</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 26667</p>
@@ -831,9 +831,9 @@
 <p>Creates a new process and its primary thread; fills a PROCESS_INFORMATION structure with the process and thread handles and IDs. Returns nonzero on success.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateProcessA">CreateProcessA</a></p>
 <h3><a name="CREATEPROCESSASUSER"></a>CreateProcessAsUser</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 33975</p>
-<pre>Declare Function CreateProcessAsUser Lib &quot;kernel32&quot; Alias &quot;CreateProcessAsUserA&quot; (ByVal hToken As Long, ByVal lpApplicationName As String, ByVal lpCommandLine As String, ByVal lpProcessAttributes As SECURITY_ATTRIBUTES, ByVal lpThreadAttributes As SECURITY_ATTRIBUTES, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, ByVal lpEnvironment As String, ByVal lpCurrentDirectory As String, ByVal lpStartupInfo As STARTUPINFO, ByVal lpProcessInformation As PROCESS_INFORMATION) As Long</pre>
-<p>Creates a new process and its primary thread that runs in the security context of the user represented by a token.</p>
+<p class="rq-meta">DLL function, advapi32 &middot; rapidqAllProc.inc, line 33975</p>
+<pre>Declare Function CreateProcessAsUser Lib &quot;advapi32&quot; Alias &quot;CreateProcessAsUserA&quot; (ByVal hToken As Long, ByVal lpApplicationName As String, ByVal lpCommandLine As String, ByVal lpProcessAttributes As SECURITY_ATTRIBUTES, ByVal lpThreadAttributes As SECURITY_ATTRIBUTES, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, ByVal lpEnvironment As String, ByVal lpCurrentDirectory As String, ByVal lpStartupInfo As STARTUPINFO, ByVal lpProcessInformation As PROCESS_INFORMATION) As Long</pre>
+<p>Creates a new process and its primary thread that runs in the security context of the user represented by a token. WIN32API.INC declared it from kernel32; the build uses advapi32.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateProcessAsUserA">CreateProcessAsUserA</a></p>
 <h3><a name="CREATEREMOTETHREAD"></a>CreateRemoteThread</h3>
 <p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 22454</p>
@@ -1610,8 +1610,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ExtEscape">ExtEscape</a></p>
 <h3><a name="EXTRACTASSOCIATEDICON"></a>ExtractAssociatedIcon</h3>
 <p class="rq-meta">DLL function, shell32.dll &middot; rapidqAllProc.inc, line 33480</p>
-<pre>Declare Function ExtractAssociatedIcon Lib &quot;shell32.dll&quot; Alias &quot;ExtractAssociateIconA&quot; (ByVal hInst As Long, ByVal lpIconPath As String, lpiIcon As Long) As Long</pre>
-<p>Gets the icon stored in a file or in the executable associated with the file; returns an icon handle. Note: the ALIAS in the source is misspelled (ExtractAssociateIconA).</p>
+<pre>Declare Function ExtractAssociatedIcon Lib &quot;shell32.dll&quot; Alias &quot;ExtractAssociatedIconA&quot; (ByVal hInst As Long, ByVal lpIconPath As String, lpiIcon As Long) As Long</pre>
+<p>Gets the icon stored in a file or in the executable associated with the file; returns an icon handle. The ALIAS in WIN32API.INC was wrong; the build uses &quot;ExtractAssociatedIconA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ExtractAssociatedIconA">ExtractAssociatedIconA</a></p>
 <h3><a name="EXTRACTICON"></a>ExtractIcon</h3>
 <p class="rq-meta">DLL function, shell32.dll &middot; rapidqAllProc.inc, line 33481</p>
@@ -1754,8 +1754,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FindResourceExA">FindResourceExA</a></p>
 <h3><a name="FINDTEXT"></a>FindText</h3>
 <p class="rq-meta">DLL function, comdlg32.dll &middot; rapidqAllProc.inc, line 34094</p>
-<pre>Declare Function FindText Lib &quot;comdlg32.dll&quot; Alias &quot;FindTextA &quot; (pFindreplace As FINDREPLACE) As Long</pre>
-<p>Creates a modeless system Find dialog box; returns its window handle.</p>
+<pre>Declare Function FindText Lib &quot;comdlg32.dll&quot; Alias &quot;FindTextA&quot; (pFindreplace As FINDREPLACE) As Long</pre>
+<p>Creates a modeless system Find dialog box; returns its window handle. The ALIAS in WIN32API.INC was wrong; the build uses &quot;FindTextA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FindTextA">FindTextA</a></p>
 <h3><a name="FINDWINDOWEX"></a>FindWindowEx</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 34430</p>
@@ -1969,8 +1969,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCharABCWidthsFloatA">GetCharABCWidthsFloatA</a></p>
 <h3><a name="GETCHARACTERPLACEMENT"></a>GetCharacterPlacement</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 25743</p>
-<pre>Declare Function GetCharacterPlacement Lib &quot;gdi32&quot; Alias &quot; GetCharacterPlacementA&quot; (ByVal hdc As Long, ByVal lpsz As String, ByVal n1 As Long, ByVal n2 As Long, lpGcpResults As GCP_RESULTS, ByVal dw As Long) As Long</pre>
-<p>Retrieves information about a string (character widths, caret positions, ordering, glyphs) needed for layout and display. Largely superseded by Uniscribe.</p>
+<pre>Declare Function GetCharacterPlacement Lib &quot;gdi32&quot; Alias &quot;GetCharacterPlacementA&quot; (ByVal hdc As Long, ByVal lpsz As String, ByVal n1 As Long, ByVal n2 As Long, lpGcpResults As GCP_RESULTS, ByVal dw As Long) As Long</pre>
+<p>Retrieves information about a string (character widths, caret positions, ordering, glyphs) needed for layout and display. Largely superseded by Uniscribe. The ALIAS in WIN32API.INC was wrong; the build uses &quot;GetCharacterPlacementA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms= GetCharacterPlacementA"> GetCharacterPlacementA</a></p>
 <h3><a name="GETCHARWIDTH"></a>GetCharWidth</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 24487</p>
@@ -2009,8 +2009,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetClientRect">GetClientRect</a></p>
 <h3><a name="GETCLIPBOARDDATA"></a>GetClipboardData</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 26443</p>
-<pre>Declare Function GetClipboardData Lib &quot;user32&quot; Alias &quot;GetClipboardDataA&quot; (ByVal wFormat As Long) As Long</pre>
-<p>Retrieves a handle to clipboard data in the given format (e.g. CF_TEXT); the clipboard must be open. Note: user32 exports it as GetClipboardData, without A.</p>
+<pre>Declare Function GetClipboardData Lib &quot;user32&quot; Alias &quot;GetClipboardData&quot; (ByVal wFormat As Long) As Long</pre>
+<p>Retrieves a handle to clipboard data in the given format (e.g. CF_TEXT); the clipboard must be open. The ALIAS in WIN32API.INC was wrong; the build uses &quot;GetClipboardData&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetClipboardData">GetClipboardData</a></p>
 <h3><a name="GETCLIPBOARDFORMATNAME"></a>GetClipboardFormatName</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 26447</p>
@@ -2114,8 +2114,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCurrencyFormatA">GetCurrencyFormatA</a></p>
 <h3><a name="GETCURRENTDIRECTORY"></a>GetCurrentDirectory</h3>
 <p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 22289</p>
-<pre>Declare Function GetCurrentDirectory Lib &quot;kernel32&quot; Alias &quot;GetCurrentDirectory&quot; (ByVal nBufferLength As Long, ByVal lpBuffer As String) As Long</pre>
-<p>Retrieves the current directory of the current process into a buffer; returns its length. Note: kernel32 exports only GetCurrentDirectoryA/W, so this alias may not resolve.</p>
+<pre>Declare Function GetCurrentDirectory Lib &quot;kernel32&quot; Alias &quot;GetCurrentDirectoryA&quot; (ByVal nBufferLength As Long, ByVal lpBuffer As String) As Long</pre>
+<p>Retrieves the current directory of the current process into a buffer; returns its length. The ALIAS in WIN32API.INC was wrong; the build uses &quot;GetCurrentDirectoryA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCurrentDirectoryA">GetCurrentDirectoryA</a></p>
 <h3><a name="GETCURRENTPOSITIONEX"></a>GetCurrentPositionEx</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 24496</p>
@@ -2274,8 +2274,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetFileVersionInfoSizeA">GetFileVersionInfoSizeA</a></p>
 <h3><a name="GETFONTDATA"></a>GetFontData</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 24498</p>
-<pre>Declare Function GetFontData Lib &quot;gdi32&quot; Alias &quot;GetFontDataA&quot; (ByVal hdc As Long, ByVal dwTable As Long, ByVal dwOffset As Long, lpvBuffer As Any, ByVal cbData As Long) As Long</pre>
-<p>Retrieves font metric data for a TrueType font (a table or the whole font file). Note: gdi32 exports GetFontData (no A suffix).</p>
+<pre>Declare Function GetFontData Lib &quot;gdi32&quot; Alias &quot;GetFontData&quot; (ByVal hdc As Long, ByVal dwTable As Long, ByVal dwOffset As Long, lpvBuffer As Any, ByVal cbData As Long) As Long</pre>
+<p>Retrieves font metric data for a TrueType font (a table or the whole font file). The ALIAS in WIN32API.INC was wrong; the build uses &quot;GetFontData&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetFontData">GetFontData</a></p>
 <h3><a name="GETFONTLANGUAGEINFO"></a>GetFontLanguageInfo</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 25742</p>
@@ -2689,8 +2689,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetRasterizerCaps">GetRasterizerCaps</a></p>
 <h3><a name="GETREGIONDATA"></a>GetRegionData</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 24513</p>
-<pre>Declare Function GetRegionData Lib &quot;gdi32&quot; Alias &quot;GetRegionDataA&quot; (ByVal hRgn As Long, ByVal dwCount As Long, lpRgnData As RgnData) As Long</pre>
-<p>Fills a RGNDATA buffer with data describing a region. Note: gdi32 exports GetRegionData (no A suffix).</p>
+<pre>Declare Function GetRegionData Lib &quot;gdi32&quot; Alias &quot;GetRegionData&quot; (ByVal hRgn As Long, ByVal dwCount As Long, lpRgnData As RgnData) As Long</pre>
+<p>Fills a RGNDATA buffer with data describing a region. The ALIAS in WIN32API.INC was wrong; the build uses &quot;GetRegionData&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetRegionData">GetRegionData</a></p>
 <h3><a name="GETROP2"></a>GetROP2</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 24479</p>
@@ -2759,8 +2759,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetServiceKeyNameA">GetServiceKeyNameA</a></p>
 <h3><a name="GETSHORTPATHNAME"></a>GetShortPathName</h3>
 <p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 33960</p>
-<pre>Declare Function GetShortPathName Lib &quot;kernel32&quot; Alias &quot;GetShortPathName&quot; (ByVal lpszLongPath As String, ByVal lpszShortPath As String, ByVal cchBuffer As Long) As Long</pre>
-<p>Retrieves the short (8.3) path form of the specified path; returns the length of the result.</p>
+<pre>Declare Function GetShortPathName Lib &quot;kernel32&quot; Alias &quot;GetShortPathNameA&quot; (ByVal lpszLongPath As String, ByVal lpszShortPath As String, ByVal cchBuffer As Long) As Long</pre>
+<p>Retrieves the short (8.3) path form of the specified path; returns the length of the result. The ALIAS in WIN32API.INC was wrong; the build uses &quot;GetShortPathNameA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetShortPathNameA">GetShortPathNameA</a></p>
 <h3><a name="GETSIDIDENTIFIERAUTHORITY"></a>GetSidIdentifierAuthority</h3>
 <p class="rq-meta">DLL function, advapi32.dll &middot; rapidqAllProc.inc, line 22401</p>
@@ -2889,8 +2889,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetTextAlign">GetTextAlign</a></p>
 <h3><a name="GETTEXTCHARACTEREXTRA"></a>GetTextCharacterExtra</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 24517</p>
-<pre>Declare Function GetTextCharacterExtra Lib &quot;gdi32&quot; Alias &quot;GetTextCharacterExtraA&quot; (ByVal hdc As Long) As Long</pre>
-<p>Returns the current intercharacter spacing of the device context. Note: gdi32 exports GetTextCharacterExtra (no A suffix).</p>
+<pre>Declare Function GetTextCharacterExtra Lib &quot;gdi32&quot; Alias &quot;GetTextCharacterExtra&quot; (ByVal hdc As Long) As Long</pre>
+<p>Returns the current intercharacter spacing of the device context. The ALIAS in WIN32API.INC was wrong; the build uses &quot;GetTextCharacterExtra&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetTextCharacterExtra">GetTextCharacterExtra</a></p>
 <h3><a name="GETTEXTCHARSET"></a>GetTextCharset</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 25738</p>
@@ -3309,8 +3309,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImmGetDescriptionA">ImmGetDescriptionA</a></p>
 <h3><a name="IMMGETGUIDELINE"></a>ImmGetGuideLine</h3>
 <p class="rq-meta">DLL function, imm32.dll &middot; rapidqAllProc.inc, line 33086</p>
-<pre>Declare Function ImmGetGuideLine Lib &quot;imm32.dll&quot; Alias &quot; ImmGetGuideLineA&quot; (ByVal himc As Long, ByVal dwIndex As Long, ByVal lpStr As String, ByVal dwBufLen As Long) As Long</pre>
-<p>Retrieves information about errors or guidance messages from the IME for an input context.</p>
+<pre>Declare Function ImmGetGuideLine Lib &quot;imm32.dll&quot; Alias &quot;ImmGetGuideLineA&quot; (ByVal himc As Long, ByVal dwIndex As Long, ByVal lpStr As String, ByVal dwBufLen As Long) As Long</pre>
+<p>Retrieves information about errors or guidance messages from the IME for an input context. The ALIAS in WIN32API.INC was wrong; the build uses &quot;ImmGetGuideLineA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImmGetGuideLineA">ImmGetGuideLineA</a></p>
 <h3><a name="IMMGETIMEFILENAME"></a>ImmGetIMEFileName</h3>
 <p class="rq-meta">DLL function, imm32.dll &middot; rapidqAllProc.inc, line 33073</p>
@@ -3329,8 +3329,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImmGetProperty">ImmGetProperty</a></p>
 <h3><a name="IMMGETREGISTERWORDSTYLE"></a>ImmGetRegisterWordStyle</h3>
 <p class="rq-meta">DLL function, imm32.dll &middot; rapidqAllProc.inc, line 33107</p>
-<pre>Declare Function ImmGetRegisterWordStyle Lib &quot;imm32.dll&quot; Alias &quot; ImmGetRegisterWordStyleA&quot; (ByVal hkl As Long, ByVal nItem As Long, lpStyleBuf As STYLEBUF) As Long</pre>
-<p>Retrieves a list of the word styles supported by the IME associated with the given input locale; returns the number of styles copied.</p>
+<pre>Declare Function ImmGetRegisterWordStyle Lib &quot;imm32.dll&quot; Alias &quot;ImmGetRegisterWordStyleA&quot; (ByVal hkl As Long, ByVal nItem As Long, lpStyleBuf As STYLEBUF) As Long</pre>
+<p>Retrieves a list of the word styles supported by the IME associated with the given input locale; returns the number of styles copied. The ALIAS in WIN32API.INC was wrong; the build uses &quot;ImmGetRegisterWordStyleA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImmGetRegisterWordStyleA">ImmGetRegisterWordStyleA</a></p>
 <h3><a name="IMMGETSTATUSWINDOWPOS"></a>ImmGetStatusWindowPos</h3>
 <p class="rq-meta">DLL function, imm32.dll &middot; rapidqAllProc.inc, line 33097</p>
@@ -3423,9 +3423,9 @@
 <p>Enables a DDE server to impersonate the security context of a DDE client application.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImpersonateDdeClientWindow">ImpersonateDdeClientWindow</a></p>
 <h3><a name="IMPERSONATELOGGEDONUSER"></a>ImpersonateLoggedOnUser</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 33974</p>
-<pre>Declare Function ImpersonateLoggedOnUser Lib &quot;kernel32&quot; Alias &quot;ImpersonateLoggedOnUser&quot; (ByVal hToken As Long) As Long</pre>
-<p>Lets the calling thread impersonate the security context of a logged-on user given by a token handle.</p>
+<p class="rq-meta">DLL function, advapi32 &middot; rapidqAllProc.inc, line 33974</p>
+<pre>Declare Function ImpersonateLoggedOnUser Lib &quot;advapi32&quot; Alias &quot;ImpersonateLoggedOnUser&quot; (ByVal hToken As Long) As Long</pre>
+<p>Lets the calling thread impersonate the security context of a logged-on user given by a token handle. WIN32API.INC declared it from kernel32; the build uses advapi32.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImpersonateLoggedOnUser">ImpersonateLoggedOnUser</a></p>
 <h3><a name="IMPERSONATENAMEDPIPECLIENT"></a>ImpersonateNamedPipeClient</h3>
 <p class="rq-meta">DLL function, advapi32.dll &middot; rapidqAllProc.inc, line 22371</p>
@@ -3659,8 +3659,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=joyGetDevCapsA">joyGetDevCapsA</a></p>
 <h3><a name="JOYGETNUMDEVS"></a>joyGetNumDevs</h3>
 <p class="rq-meta">DLL function, winmm.dll &middot; rapidqAllProc.inc, line 30794</p>
-<pre>Declare Function joyGetNumDevs Lib &quot;winmm.dll&quot; Alias &quot;joyGetNumDev&quot; () As Long</pre>
-<p>Returns the number of joysticks supported by the current joystick driver (not the number attached). Note: the source alias joyGetNumDev is misspelled; the export is joyGetNumDevs.</p>
+<pre>Declare Function joyGetNumDevs Lib &quot;winmm.dll&quot; Alias &quot;joyGetNumDevs&quot; () As Long</pre>
+<p>Returns the number of joysticks supported by the current joystick driver (not the number attached). The ALIAS in WIN32API.INC was wrong; the build uses &quot;joyGetNumDevs&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=joyGetNumDevs">joyGetNumDevs</a></p>
 <h3><a name="JOYGETPOS"></a>joyGetPos</h3>
 <p class="rq-meta">DLL function, winmm.dll &middot; rapidqAllProc.inc, line 30311</p>
@@ -4485,9 +4485,9 @@
 <p>Generates an audit message in the security event log when a handle to a private object is deleted.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ObjectCloseAuditAlarmA">ObjectCloseAuditAlarmA</a></p>
 <h3><a name="OBJECTOPENAUDITALARM"></a>ObjectOpenAuditAlarm</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 22390</p>
-<pre>Declare Function ObjectOpenAuditAlarm Lib &quot;kernel32&quot; Alias &quot;ObjectOpenAuditAlarmA&quot; (ByVal SubsystemName As String, HandleId As Any, ByVal ObjectTypeName As String, ByVal ObjectName As String, pSecurityDescriptor As SECURITY_DESCRIPTOR, ByVal ClientToken As Long, ByVal DesiredAccess As Long, ByVal GrantedAccess As Long, Privileges As PRIVILEGE_SET, ByVal ObjectCreation As Long, ByVal AccessGranted As Long, ByVal GenerateOnClose As Long) As Long</pre>
-<p>Generates audit messages when a client application attempts to gain access to an object or to create a new one. (Exported by advapi32.dll.)</p>
+<p class="rq-meta">DLL function, advapi32 &middot; rapidqAllProc.inc, line 22390</p>
+<pre>Declare Function ObjectOpenAuditAlarm Lib &quot;advapi32&quot; Alias &quot;ObjectOpenAuditAlarmA&quot; (ByVal SubsystemName As String, HandleId As Any, ByVal ObjectTypeName As String, ByVal ObjectName As String, pSecurityDescriptor As SECURITY_DESCRIPTOR, ByVal ClientToken As Long, ByVal DesiredAccess As Long, ByVal GrantedAccess As Long, Privileges As PRIVILEGE_SET, ByVal ObjectCreation As Long, ByVal AccessGranted As Long, ByVal GenerateOnClose As Long) As Long</pre>
+<p>Generates audit messages when a client application attempts to gain access to an object or to create a new one. WIN32API.INC declared it from kernel32; the build uses advapi32.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ObjectOpenAuditAlarmA">ObjectOpenAuditAlarmA</a></p>
 <h3><a name="OBJECTPRIVILEGEAUDITALARM"></a>ObjectPrivilegeAuditAlarm</h3>
 <p class="rq-meta">DLL function, advapi32.dll &middot; rapidqAllProc.inc, line 22391</p>
@@ -4551,8 +4551,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=OpenEventA">OpenEventA</a></p>
 <h3><a name="OPENEVENTLOG"></a>OpenEventLog</h3>
 <p class="rq-meta">DLL function, advapi32.dll &middot; rapidqAllProc.inc, line 22346</p>
-<pre>Declare Function OpenEventLog Lib &quot;advapi32.dll&quot; Alias &quot;OpenEventLog&quot; (ByVal lpUNCServerName As String, ByVal lpSourceName As String) As Long</pre>
-<p>Opens a handle to the specified event log on a server. Note: advapi32 exports only OpenEventLogA/W, so this alias may not resolve.</p>
+<pre>Declare Function OpenEventLog Lib &quot;advapi32.dll&quot; Alias &quot;OpenEventLogA&quot; (ByVal lpUNCServerName As String, ByVal lpSourceName As String) As Long</pre>
+<p>Opens a handle to the specified event log on a server. The ALIAS in WIN32API.INC was wrong; the build uses &quot;OpenEventLogA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=OpenEventLogA">OpenEventLogA</a></p>
 <h3><a name="OPENFILE"></a>OpenFile</h3>
 <p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 22118</p>
@@ -4950,8 +4950,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RegGetKeySecurity">RegGetKeySecurity</a></p>
 <h3><a name="REGISTERCLASS"></a>RegisterClass</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 26362</p>
-<pre>Declare Function RegisterClass Lib &quot;user32&quot; Alias &quot;RegisterClass&quot; (Class As WNDCLASS) As Long</pre>
-<p>Registers a window class (WNDCLASS) for use with CreateWindow/CreateWindowEx. Returns a class atom, or 0 on failure. Note: user32 exports it as RegisterClassA/W.</p>
+<pre>Declare Function RegisterClass Lib &quot;user32&quot; Alias &quot;RegisterClassA&quot; (Class As WNDCLASS) As Long</pre>
+<p>Registers a window class (WNDCLASS) for use with CreateWindow/CreateWindowEx. Returns a class atom, or 0 on failure. The ALIAS in WIN32API.INC was wrong; the build uses &quot;RegisterClassA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RegisterClassA">RegisterClassA</a></p>
 <h3><a name="REGISTERCLASSEX_WIN32API"></a>RegisterClassEx_WIN32API</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 34499</p>
@@ -5270,8 +5270,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetClassWord">SetClassWord</a></p>
 <h3><a name="SETCLIPBOARDDATA"></a>SetClipboardData</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 26442</p>
-<pre>Declare Function SetClipboardData Lib &quot;user32&quot; Alias &quot;SetClipboardDataA&quot; (ByVal wFormat As Long, ByVal hMem As Long) As Long</pre>
-<p>Places data (a global memory handle) on the clipboard in the given format; the clipboard must be open. Note: user32 exports it as SetClipboardData, without A.</p>
+<pre>Declare Function SetClipboardData Lib &quot;user32&quot; Alias &quot;SetClipboardData&quot; (ByVal wFormat As Long, ByVal hMem As Long) As Long</pre>
+<p>Places data (a global memory handle) on the clipboard in the given format; the clipboard must be open. The ALIAS in WIN32API.INC was wrong; the build uses &quot;SetClipboardData&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetClipboardData">SetClipboardData</a></p>
 <h3><a name="SETCLIPBOARDVIEWER"></a>SetClipboardViewer</h3>
 <p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 26439</p>
@@ -5749,8 +5749,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetTextAlign">SetTextAlign</a></p>
 <h3><a name="SETTEXTCHARACTEREXTRA"></a>SetTextCharacterExtra</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 24571</p>
-<pre>Declare Function SetTextCharacterExtra Lib &quot;gdi32&quot; Alias &quot;SetTextCharacterExtraA&quot; (ByVal hdc As Long, ByVal nCharExtra As Long) As Long</pre>
-<p>Sets the intercharacter spacing used when writing text. Returns the previous spacing. Note: gdi32 exports SetTextCharacterExtra (no A suffix).</p>
+<pre>Declare Function SetTextCharacterExtra Lib &quot;gdi32&quot; Alias &quot;SetTextCharacterExtra&quot; (ByVal hdc As Long, ByVal nCharExtra As Long) As Long</pre>
+<p>Sets the intercharacter spacing used when writing text. Returns the previous spacing. The ALIAS in WIN32API.INC was wrong; the build uses &quot;SetTextCharacterExtra&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetTextCharacterExtra">SetTextCharacterExtra</a></p>
 <h3><a name="SETTEXTJUSTIFICATION"></a>SetTextJustification</h3>
 <p class="rq-meta">DLL function, gdi32 &middot; rapidqAllProc.inc, line 24573</p>
@@ -5898,13 +5898,13 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ShellAboutA">ShellAboutA</a></p>
 <h3><a name="SHELL_NOTIFYICON_WIN32API"></a>Shell_NotifyIcon_WIN32API</h3>
 <p class="rq-meta">DLL function, shell32.dll &middot; rapidqAllProc.inc, line 33656</p>
-<pre>Declare Function Shell_NotifyIcon_WIN32API Lib &quot;shell32.dll&quot; Alias &quot; Shell_NotifyIconA&quot; (ByVal dwMessage As Long, lpData As NOTIFYICONDATA) As Long</pre>
+<pre>Declare Function Shell_NotifyIcon_WIN32API Lib &quot;shell32.dll&quot; Alias &quot;Shell_NotifyIconA&quot; (ByVal dwMessage As Long, lpData As NOTIFYICONDATA) As Long</pre>
 <p>Adds, modifies or deletes an icon in the taskbar notification area (system tray) using a NOTIFYICONDATA structure.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=Shell_NotifyIconA">Shell_NotifyIconA</a></p>
 <h3><a name="SHFILEOPERATION"></a>SHFileOperation</h3>
 <p class="rq-meta">DLL function, shell32.dll &middot; rapidqAllProc.inc, line 33583</p>
-<pre>Declare Function SHFileOperation Lib &quot;shell32.dll&quot; Alias &quot; SHFileOperationA&quot; (lpFileOp As SHFILEOPSTRUCT) As Long</pre>
-<p>Copies, moves, renames or deletes file system objects as described in a SHFILEOPSTRUCT; returns 0 on success.</p>
+<pre>Declare Function SHFileOperation Lib &quot;shell32.dll&quot; Alias &quot;SHFileOperationA&quot; (lpFileOp As SHFILEOPSTRUCT) As Long</pre>
+<p>Copies, moves, renames or deletes file system objects as described in a SHFILEOPSTRUCT; returns 0 on success. The ALIAS in WIN32API.INC was wrong; the build uses &quot;SHFileOperationA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SHFileOperationA">SHFileOperationA</a></p>
 <h3><a name="SHFREENAMEMAPPINGS"></a>SHFreeNameMappings</h3>
 <p class="rq-meta">DLL function, shell32.dll &middot; rapidqAllProc.inc, line 33585</p>
@@ -5913,7 +5913,7 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SHFreeNameMappings">SHFreeNameMappings</a></p>
 <h3><a name="SHGETFILEINFO_WIN32API"></a>SHGetFileInfo_WIN32API</h3>
 <p class="rq-meta">DLL function, shell32.dll &middot; rapidqAllProc.inc, line 33700</p>
-<pre>Declare Function SHGetFileInfo_WIN32API Lib &quot;shell32.dll&quot; Alias &quot; SHGetFileInfoA&quot; (ByVal pszPath As String, ByVal dwFileAttributes As Long, psfi As SHFILEINFO, ByVal cbFileInfo As Long, ByVal uFlags As Long) As Long</pre>
+<pre>Declare Function SHGetFileInfo_WIN32API Lib &quot;shell32.dll&quot; Alias &quot;SHGetFileInfoA&quot; (ByVal pszPath As String, ByVal dwFileAttributes As Long, psfi As SHFILEINFO, ByVal cbFileInfo As Long, ByVal uFlags As Long) As Long</pre>
 <p>Retrieves information about a file system object, such as its icon, display name or type name, into a SHFILEINFO structure.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SHGetFileInfoA">SHGetFileInfoA</a></p>
 <h3><a name="SHGETNEWLINKINFO"></a>SHGetNewLinkInfo</h3>
@@ -6252,8 +6252,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=VerFindFileA">VerFindFileA</a></p>
 <h3><a name="VERINSTALLFILE"></a>VerInstallFile</h3>
 <p class="rq-meta">DLL function, version.dll &middot; rapidqAllProc.inc, line 33885</p>
-<pre>Declare Function VerInstallFile Lib &quot;version.dll&quot; Alias &quot; VerInstallFileA&quot; (ByVal uFlags As Long, ByVal szSrcFileName As String, ByVal szDestFileName As String, ByVal szSrcDir As String, ByVal szDestDir As String, ByVal szCurDir As String, ByVal szTmpFile As String, lpuTmpFileLen As Long) As Long</pre>
-<p>Installs a file, decompressing it if needed, after checking version information against an existing copy.</p>
+<pre>Declare Function VerInstallFile Lib &quot;version.dll&quot; Alias &quot;VerInstallFileA&quot; (ByVal uFlags As Long, ByVal szSrcFileName As String, ByVal szDestFileName As String, ByVal szSrcDir As String, ByVal szDestDir As String, ByVal szCurDir As String, ByVal szTmpFile As String, lpuTmpFileLen As Long) As Long</pre>
+<p>Installs a file, decompressing it if needed, after checking version information against an existing copy. The ALIAS in WIN32API.INC was wrong; the build uses &quot;VerInstallFileA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=VerInstallFileA">VerInstallFileA</a></p>
 <h3><a name="VERLANGUAGENAME"></a>VerLanguageName</h3>
 <p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 33895</p>
@@ -6262,8 +6262,8 @@
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=VerLanguageNameA">VerLanguageNameA</a></p>
 <h3><a name="VERQUERYVALUE"></a>VerQueryValue</h3>
 <p class="rq-meta">DLL function, version.dll &middot; rapidqAllProc.inc, line 33896</p>
-<pre>Declare Function VerQueryValue Lib &quot;version.dll&quot; Alias &quot;VerQueryValue&quot; (pBlock As Any, ByVal lpSubBlock As String, ByVal lplpBuffer As Long, puLen As Long) As Long</pre>
-<p>Retrieves a value (such as fixed file info or a string) from a version-information buffer filled by GetFileVersionInfo.</p>
+<pre>Declare Function VerQueryValue Lib &quot;version.dll&quot; Alias &quot;VerQueryValueA&quot; (pBlock As Any, ByVal lpSubBlock As String, ByVal lplpBuffer As Long, puLen As Long) As Long</pre>
+<p>Retrieves a value (such as fixed file info or a string) from a version-information buffer filled by GetFileVersionInfo. The ALIAS in WIN32API.INC was wrong; the build uses &quot;VerQueryValueA&quot;.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=VerQueryValueA">VerQueryValueA</a></p>
 <h3><a name="VIRTUALALLOC"></a>VirtualAlloc</h3>
 <p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 22198</p>

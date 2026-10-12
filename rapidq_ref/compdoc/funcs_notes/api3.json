@@ -28,7 +28,7 @@
   "doc": "AccessCheckAndAuditAlarmA"
  },
  "ObjectOpenAuditAlarm@WIN32API.INC": {
-  "desc": "Generates audit messages when a client application attempts to gain access to an object or to create a new one. (Exported by advapi32.dll.)",
+  "desc": "Generates audit messages when a client application attempts to gain access to an object or to create a new one. WIN32API.INC declared it from kernel32; the build uses advapi32.",
   "doc": "ObjectOpenAuditAlarmA"
  },
  "ObjectPrivilegeAuditAlarm@WIN32API.INC": {

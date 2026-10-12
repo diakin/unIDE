@@ -100,7 +100,7 @@
   "doc": "AddFontResourceA"
  },
  "AnimatePalette@WIN32API.INC": {
-  "desc": "Replaces entries in the specified logical palette; changes are reflected immediately for PC_RESERVED entries. Note: gdi32 exports AnimatePalette (no A suffix).",
+  "desc": "Replaces entries in the specified logical palette; changes are reflected immediately for PC_RESERVED entries. The ALIAS in WIN32API.INC was wrong; the build uses \"AnimatePalette\".",
   "doc": "AnimatePalette"
  },
  "Arc@WIN32API.INC": {
@@ -304,7 +304,7 @@
   "doc": "GetDIBits"
  },
  "GetFontData@WIN32API.INC": {
-  "desc": "Retrieves font metric data for a TrueType font (a table or the whole font file). Note: gdi32 exports GetFontData (no A suffix).",
+  "desc": "Retrieves font metric data for a TrueType font (a table or the whole font file). The ALIAS in WIN32API.INC was wrong; the build uses \"GetFontData\".",
   "doc": "GetFontData"
  },
  "GetGlyphOutline@WIN32API.INC": {
@@ -356,7 +356,7 @@
   "doc": "GetRasterizerCaps"
  },
  "GetRegionData@WIN32API.INC": {
-  "desc": "Fills a RGNDATA buffer with data describing a region. Note: gdi32 exports GetRegionData (no A suffix).",
+  "desc": "Fills a RGNDATA buffer with data describing a region. The ALIAS in WIN32API.INC was wrong; the build uses \"GetRegionData\".",
   "doc": "GetRegionData"
  },
  "GetStretchBltMode@WIN32API.INC": {
@@ -372,7 +372,7 @@
   "doc": "GetSystemPaletteUse"
  },
  "GetTextCharacterExtra@WIN32API.INC": {
-  "desc": "Returns the current intercharacter spacing of the device context. Note: gdi32 exports GetTextCharacterExtra (no A suffix).",
+  "desc": "Returns the current intercharacter spacing of the device context. The ALIAS in WIN32API.INC was wrong; the build uses \"GetTextCharacterExtra\".",
   "doc": "GetTextCharacterExtra"
  },
  "GetTextAlign@WIN32API.INC": {
@@ -564,7 +564,7 @@
   "doc": "SetSystemPaletteUse"
  },
  "SetTextCharacterExtra@WIN32API.INC": {
-  "desc": "Sets the intercharacter spacing used when writing text. Returns the previous spacing. Note: gdi32 exports SetTextCharacterExtra (no A suffix).",
+  "desc": "Sets the intercharacter spacing used when writing text. Returns the previous spacing. The ALIAS in WIN32API.INC was wrong; the build uses \"SetTextCharacterExtra\".",
   "doc": "SetTextCharacterExtra"
  },
  "SetTextAlign@WIN32API.INC": {

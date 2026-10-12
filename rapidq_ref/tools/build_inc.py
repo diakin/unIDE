@@ -192,6 +192,77 @@ RENAMES = {'cmd5.inc': ('MD5_', ['F', 'G', 'H', 'FF', 'GG', 'HH', 'II']),
            'qlibrary.inc': ('QLIB_', ['Point'])}
 
 
+# DECLARE ... LIB с неверным ALIAS или DLL: такое имя DLL не экспортирует,
+# и вызов не находит функцию при запуске программы. Найдено при описании
+# функций для справки (compdoc/funcs_notes); в сборке - исправленное
+# объявление, исходный файл не меняется. (файл, ИМЯ) -> что поставить.
+#  - у функций без строковых параметров A/W нет: CheckDlgButton,
+#    GetClipboardData, AnimatePalette ... (ALIAS "...A" не найдётся);
+#  - функции со строками есть только как ...A / ...W: GetCurrentDirectory,
+#    RegisterClass, VerQueryValue ... (ALIAS без A не найдётся);
+#  - опечатки и пробелы в ALIAS; функции advapi32, объявленные из kernel32
+DECL_FIXES = {
+    ('win32api.inc', 'GETCURRENTDIRECTORY'): {'alias': 'GetCurrentDirectoryA'},
+    ('win32api.inc', 'OPENEVENTLOG'): {'alias': 'OpenEventLogA'},
+    ('win32api.inc', 'ANIMATEPALETTE'): {'alias': 'AnimatePalette'},
+    ('win32api.inc', 'GETFONTDATA'): {'alias': 'GetFontData'},
+    ('win32api.inc', 'GETREGIONDATA'): {'alias': 'GetRegionData'},
+    ('win32api.inc', 'GETTEXTCHARACTEREXTRA'): {'alias': 'GetTextCharacterExtra'},
+    ('win32api.inc', 'SETTEXTCHARACTEREXTRA'): {'alias': 'SetTextCharacterExtra'},
+    ('win32api.inc', 'REGISTERCLASS'): {'alias': 'RegisterClassA'},
+    ('win32api.inc', 'CHECKDLGBUTTON'): {'alias': 'CheckDlgButton'},
+    ('win32api.inc', 'CHECKRADIOBUTTON'): {'alias': 'CheckRadioButton'},
+    ('win32api.inc', 'SETCLIPBOARDDATA'): {'alias': 'SetClipboardData'},
+    ('win32api.inc', 'GETCLIPBOARDDATA'): {'alias': 'GetClipboardData'},
+    ('win32api.inc', 'JOYGETNUMDEVS'): {'alias': 'joyGetNumDevs'},
+    ('win32api.inc', 'IMMGETGUIDELINE'): {'alias': 'ImmGetGuideLineA'},
+    ('win32api.inc', 'IMMGETREGISTERWORDSTYLE'): {'alias': 'ImmGetRegisterWordStyleA'},
+    ('win32api.inc', 'EXTRACTASSOCIATEDICON'): {'alias': 'ExtractAssociatedIconA'},
+    ('win32api.inc', 'SHFILEOPERATION'): {'alias': 'SHFileOperationA'},
+    ('win32api.inc', 'SHELL_NOTIFYICON'): {'alias': 'Shell_NotifyIconA'},
+    ('win32api.inc', 'SHGETFILEINFO'): {'alias': 'SHGetFileInfoA'},
+    ('win32api.inc', 'VERINSTALLFILE'): {'alias': 'VerInstallFileA'},
+    ('win32api.inc', 'VERQUERYVALUE'): {'alias': 'VerQueryValueA'},
+    ('win32api.inc', 'GETSHORTPATHNAME'): {'alias': 'GetShortPathNameA'},
+    ('win32api.inc', 'FINDTEXT'): {'alias': 'FindTextA'},
+    ('win32api.inc', 'GETCHARACTERPLACEMENT'): {'alias': 'GetCharacterPlacementA'},
+    ('win32api.inc', 'OBJECTOPENAUDITALARM'): {'lib': 'advapi32'},
+    ('win32api.inc', 'IMPERSONATELOGGEDONUSER'): {'lib': 'advapi32'},
+    ('win32api.inc', 'CREATEPROCESSASUSER'): {'lib': 'advapi32'},
+}
+
+
+def apply_decl_fixes(fname, lines, report):
+    """DECL_FIXES файла fname - в его строках (на месте). В report -
+    что исправлено."""
+    for idx, line in enumerate(lines):
+        code = code_part(line)
+        m = re.match(r'declare\s+(?:sub|function)i?\s+([\w~]+[$%&!#?]*)', code, re.I)
+        if not m:
+            continue
+        fix = DECL_FIXES.get((fname.lower(), m.group(1).upper()))
+        if not fix:
+            continue
+        done = []
+        # объявление с продолжениями через _
+        last = idx
+        while code_part(lines[last]).rstrip().endswith('_') and last + 1 < len(lines):
+            last += 1
+        for num in range(idx, last + 1):
+            if 'alias' in fix and 'alias' not in [d[0] for d in done]:
+                mm = re.search(r'(\balias\s*")([^"]*)(")', lines[num], re.I)
+                if mm:
+                    lines[num] = lines[num][:mm.start(2)] + fix['alias'] + lines[num][mm.end(2):]
+                    done.append(('alias', mm.group(2), fix['alias']))
+            if 'lib' in fix and 'lib' not in [d[0] for d in done]:
+                mm = re.search(r'(\blib\s*")([^"]*)(")', lines[num], re.I)
+                if mm:
+                    lines[num] = lines[num][:mm.start(2)] + fix['lib'] + lines[num][mm.end(2):]
+                    done.append(('lib', mm.group(2), fix['lib']))
+        for what, old, new in done:
+            report.append('%s: %s %s "%s" -> "%s"' % (fname, m.group(1), what.upper(), old, new))
+
+
 def rename_words(line, prefix, names):
     """Слова names в коде строки (вне строк в кавычках и комментария) - с
     приставкой prefix; не после точки."""
@@ -1193,6 +1264,9 @@ def main():
                 fixed += 1
         if fixed:
             renamed.append('%s: %d строк CONST без = - с =' % (f, fixed))
+    for f in files:
+        if any(key[0] == f.lower() for key in DECL_FIXES):
+            apply_decl_fixes(f, texts[f], renamed)
     for f in files:
         if f.lower() in RENAMES:
             prefix, names = RENAMES[f.lower()]

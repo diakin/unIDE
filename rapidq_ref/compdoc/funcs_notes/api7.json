@@ -48,7 +48,7 @@
   "doc": "joyGetDevCapsA"
  },
  "joyGetNumDevs@WIN32API.INC": {
-  "desc": "Returns the number of joysticks supported by the current joystick driver (not the number attached). Note: the source alias joyGetNumDev is misspelled; the export is joyGetNumDevs.",
+  "desc": "Returns the number of joysticks supported by the current joystick driver (not the number attached). The ALIAS in WIN32API.INC was wrong; the build uses \"joyGetNumDevs\".",
   "doc": "joyGetNumDevs"
  },
  "joyGetThreshold@WIN32API.INC": {
@@ -712,7 +712,7 @@
   "doc": "ImmGetCandidateListA"
  },
  "ImmGetGuideLine@WIN32API.INC": {
-  "desc": "Retrieves information about errors or guidance messages from the IME for an input context.",
+  "desc": "Retrieves information about errors or guidance messages from the IME for an input context. The ALIAS in WIN32API.INC was wrong; the build uses \"ImmGetGuideLineA\".",
   "doc": "ImmGetGuideLineA"
  },
  "ImmGetConversionStatus@WIN32API.INC": {
