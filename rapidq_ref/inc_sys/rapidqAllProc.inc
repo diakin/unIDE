@@ -36147,7 +36147,7 @@ $OPTION VBDLL OFF
 '[build_inc] CallBack_0.Inc (тела)
     Function MasterCallBack_0 (hFunction As Long) As Long
         DefInt hBind = hFunction
-        Bind hBind To FuncBind_0 : hBind = hFunction ' inc2026: РґРѕР±Р°РІР»РµРЅРѕ : hBind = hFunction РїРѕСЃР»Рµ Bind: BIND Р·Р°РїРёСЃС‹РІР°РµС‚ РІ hBind Р°РґСЂРµСЃ FuncBind_0 (РіР»Р°РІР° 11) Рё Р·Р°С‚РёСЂР°РµС‚ hFunction РёР· СЃС‚СЂРѕРєРё РІС‹С€Рµ, Р° Сѓ FuncBind_0 С‚РµР»Р° РЅРµС‚; РІ CallBack_1...8.Inc РїРѕСЂСЏРґРѕРє С‚Р°РєРѕР№ Р¶Рµ - DefInt hBind, Bind, hBind = hFunction
+        Bind hBind To FuncBind_0 : hBind = hFunction ' inc2026: добавлено : hBind = hFunction после Bind: BIND записывает в hBind адрес FuncBind_0 (глава 11) и затирает hFunction из строки выше, а у FuncBind_0 тела нет; в CallBack_1...8.Inc порядок такой же - DefInt hBind, Bind, hBind = hFunction
         Result = CallFunc (hBind, hBind)
     End Function
     Function SetNewCallBack_0 (hFunction As Long) As Long
@@ -36172,7 +36172,7 @@ $ESCAPECHARS OFF
 $OPTION WEAKTYPE OFF
 $OPTION VBDLL OFF
 '[build_inc] CallBack_2.Inc (тела)
-    Function MasterCallBack_2 (hFunction As Long, Arg1 As Long, Arg2 As Long) As Long ' inc2026: hFunction РІРјРµСЃС‚Рѕ cbIndex: РІ DECLARE (СЃС‚СЂРѕРєР° 45) Рё РІ С‚РµР»Рµ (СЃС‚СЂРѕРєР° 52) - hFunction, РєР°Рє РІ CallBack_0/1/3/4; RapidQ Р±РµСЂС‘С‚ РёРјРµРЅР° РёР· DECLARE, С‚Р°Рє С‡С‚Рѕ РїРѕРІРµРґРµРЅРёРµ РЅРµ РјРµРЅСЏРµС‚СЃСЏ, cbIndex РЅРёРіРґРµ РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ
+    Function MasterCallBack_2 (hFunction As Long, Arg1 As Long, Arg2 As Long) As Long ' inc2026: hFunction вместо cbIndex: в DECLARE (строка 45) и в теле (строка 52) - hFunction, как в CallBack_0/1/3/4; RapidQ берёт имена из DECLARE, так что поведение не меняется, cbIndex нигде не используется
         DefInt hBind
         Bind hBind To FuncBind_2
         hBind = hFunction
@@ -36200,7 +36200,7 @@ $ESCAPECHARS OFF
 $OPTION WEAKTYPE OFF
 $OPTION VBDLL OFF
 '[build_inc] CallBack_5.Inc (тела)
-    Function MasterCallBack_5 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long) As Long ' inc2026: hFunction РІРјРµСЃС‚Рѕ hBind: РІ Р·Р°РіРѕР»РѕРІРєРµ Р±С‹Р»Рѕ hBind - С‚Рѕ Р¶Рµ РёРјСЏ, С‡С‚Рѕ Сѓ Р»РѕРєР°Р»СЊРЅРѕР№ DefInt hBind (СЃС‚СЂРѕРєР° 50); РІ DECLARE (СЃС‚СЂРѕРєР° 45) Рё РІ С‚РµР»Рµ (СЃС‚СЂРѕРєР° 52) - hFunction, РєР°Рє РІ CallBack_4/6/7/8
+    Function MasterCallBack_5 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long) As Long ' inc2026: hFunction вместо hBind: в заголовке было hBind - то же имя, что у локальной DefInt hBind (строка 50); в DECLARE (строка 45) и в теле (строка 52) - hFunction, как в CallBack_4/6/7/8
         DefInt hBind
         Bind hBind To FuncBind_5
         hBind = hFunction

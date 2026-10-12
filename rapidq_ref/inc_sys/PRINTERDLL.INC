@@ -1,8 +1,8 @@
-' PRINTERDLL.INC - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: своя DLL PrinterDLL.dll.
-' Собран rapidq_ref/tools/build_inc.py из incOld/PRINTERDLL.INC; повторы объявлений
-' общих файлов убраны (build_removed.txt). Подключать в программе,
-' которой он нужен.
+' PRINTERDLL.INC - РѕС‚РґРµР»СЊРЅС‹Р№ inc, РЅРµ РІС…РѕРґРёС‚ РІ rapidqAllProc.inc /
+' rapidqComponents.inc: СЃРІРѕСЏ DLL PrinterDLL.dll.
+' РЎРѕР±СЂР°РЅ rapidq_ref/tools/build_inc.py РёР· incOld/PRINTERDLL.INC; РїРѕРІС‚РѕСЂС‹ РѕР±СЉСЏРІР»РµРЅРёР№
+' РѕР±С‰РёС… С„Р°Р№Р»РѕРІ СѓР±СЂР°РЅС‹ (build_removed.txt). РџРѕРґРєР»СЋС‡Р°С‚СЊ РІ РїСЂРѕРіСЂР°РјРјРµ,
+' РєРѕС‚РѕСЂРѕР№ РѕРЅ РЅСѓР¶РµРЅ.
 $IFNDEF __SEP_PRINTERDLL_INC
 $DEFINE __SEP_PRINTERDLL_INC
 $INCLUDE "rapidqComponents.inc"

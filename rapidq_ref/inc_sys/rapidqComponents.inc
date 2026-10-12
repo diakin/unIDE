@@ -9296,7 +9296,7 @@ Type QRedEx Extends QRichEdit
 '       mnu SEARCH
 '       ----------
         Sub OnClic_mnuSearch
-            if len(.seltext) <> 0 then .edtsearchfor.text = .seltext   ' inc2026: Р±С‹Р»Рѕ len(.seltext) <> "" - С‡РёСЃР»Рѕ СЃСЂР°РІРЅРёРІР°Р»РѕСЃСЊ СЃРѕ СЃС‚СЂРѕРєРѕР№; РЅСѓР¶РµРЅ 0 (РµСЃС‚СЊ РІС‹РґРµР»РµРЅРЅС‹Р№ С‚РµРєСЃС‚)
+            if len(.seltext) <> 0 then .edtsearchfor.text = .seltext   ' inc2026: было len(.seltext) <> "" - число сравнивалось со строкой; нужен 0 (есть выделенный текст)
             .frmSearch.Show
             QRDX_SetFocus (.edtSearchFor.Handle)
         End Sub
@@ -9304,7 +9304,7 @@ Type QRedEx Extends QRichEdit
 '       mnu REPLACE
 '       -----------
         Sub OnClic_mnuReplace
-             if len(.seltext) <> 0 then .edttobereplaced.text = .seltext   ' inc2026: Р±С‹Р»Рѕ len(.seltext) <> "" - С‡РёСЃР»Рѕ СЃСЂР°РІРЅРёРІР°Р»РѕСЃСЊ СЃРѕ СЃС‚СЂРѕРєРѕР№; РЅСѓР¶РµРЅ 0 (РµСЃС‚СЊ РІС‹РґРµР»РµРЅРЅС‹Р№ С‚РµРєСЃС‚)
+             if len(.seltext) <> 0 then .edttobereplaced.text = .seltext   ' inc2026: было len(.seltext) <> "" - число сравнивалось со строкой; нужен 0 (есть выделенный текст)
              .frmReplace.Show
              QRDX_SetFocus (.edtToBeReplaced.Handle)
         End Sub
@@ -9497,7 +9497,7 @@ Type QRedEx Extends QRichEdit
 
             .selstart = 0
 
-            QRDX_LockWindowUpdate (0)   ' inc2026: Р±С‹Р»Рѕ () Р±РµР· РїР°СЂР°РјРµС‚СЂР°: РІ DECLARE (СЃС‚СЂРѕРєР° 52) Рё РІ WinAPI Сѓ LockWindowUpdate РѕРґРёРЅ РїР°СЂР°РјРµС‚СЂ, СЃРЅСЏС‚РёРµ Р±Р»РѕРєРёСЂРѕРІРєРё - LockWindowUpdate(0) (Р±Р»РѕРєРёСЂРѕРІРєР° - СЃС‚СЂРѕРєР° 364)
+            QRDX_LockWindowUpdate (0)   ' inc2026: было () без параметра: в DECLARE (строка 52) и в WinAPI у LockWindowUpdate один параметр, снятие блокировки - LockWindowUpdate(0) (блокировка - строка 364)
             .RestorePosition
 
             findreplaceallend:
@@ -11208,7 +11208,7 @@ DIM rtn     AS LONG
 DIM OSV  AS OSVERSIONINFO
 OSV.dwOSVersionInfoSize = SIZEOF(OSV)  
 GetVersionEx(OSV)
-IF (OSV.dwMajorVersion >= 5 AND OSV.dwMinorVersion > 0 ) THEN ' inc2026: >= РІРјРµСЃС‚Рѕ => (РІ РґРѕРєСѓРјРµРЅС‚Р°С†РёРё С‚РѕР»СЊРєРѕ >=)
+IF (OSV.dwMajorVersion >= 5 AND OSV.dwMinorVersion > 0 ) THEN ' inc2026: >= вместо => (в документации только >=)
 	IF FILEEXISTS(Command$(0)+".manifest")=0 THEN     'no manifest file, so generate it
 		CREATE gRQ2_manifest AS QSTRINGLIST  
 			additems "<?xml version="+CHR$(34)+"1.0"+CHR$(34)+" encoding="+CHR$(34)+"UTF-8"+CHR$(34)+" standalone="+CHR$(34)+"yes"+CHR$(34)+"?>"
@@ -17452,7 +17452,7 @@ Type QDir Extends QObject
     PUBLIC:
         ' Event - Truely Read Write
         OnFileFound As EVENT (OnFileFound_EventTemplate)  ' RW
-        ' Find Files PР Т‘rameters - Should Be Read Only
+        ' Find Files PРґrameters - Should Be Read Only
         fileName As string
         dosFileName As string
         path As String
@@ -17939,7 +17939,7 @@ PRIVATE:
             ' -------------
             iHandle = QDIR_CreateFile(pathFileName, QDIR_GENERIC_WRITE, (QDIR_FILE_SHARE_READ Or QDIR_FILE_SHARE_WRITE), _
                                 0, QDIR_OPEN_EXISTING, 0, 0)
-            If iHandle = QDIR_INVALID_HANDLE_VALUE Then cftErr = "File Not Found":Goto cftError ' inc2026: QDIR_INVALID_HANDLE_VALUE РІРјРµСЃС‚Рѕ 0: CreateFile РїСЂРё РѕС€РёР±РєРµ РІРѕР·РІСЂР°С‰Р°РµС‚ INVALID_HANDLE_VALUE = -1, Р° РЅРµ 0 (РєРѕРЅСЃС‚Р°РЅС‚Р° РѕР±СЉСЏРІР»РµРЅР° РІ СЃС‚СЂРѕРєРµ 20 Рё РЅРµ РёСЃРїРѕР»СЊР·РѕРІР°Р»Р°СЃСЊ), РёРЅР°С‡Рµ РЅРµРЅР°Р№РґРµРЅРЅС‹Р№ С„Р°Р№Р» РЅРµ РѕР±РЅР°СЂСѓР¶РёРІР°Р»СЃСЏ
+            If iHandle = QDIR_INVALID_HANDLE_VALUE Then cftErr = "File Not Found":Goto cftError ' inc2026: QDIR_INVALID_HANDLE_VALUE вместо 0: CreateFile при ошибке возвращает INVALID_HANDLE_VALUE = -1, а не 0 (константа объявлена в строке 20 и не использовалась), иначе ненайденный файл не обнаруживался
             '
             ' Get Numeric Parameters of the Functioni
             ' ---------------------------------------
