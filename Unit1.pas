@@ -106,6 +106,8 @@ const
   RightPanelDefWidth = 300;
   RightPanelMinWidth = 80;
   RightPanelMinLeft = 200;
+  // Свёрнутая правая панель (кнопка _ ): полоска разделителя и кнопка [] 
+  RightPanelCollapsedWidth = 30;
 
   // Длинные строки. От LongLineMin символов строка рисуется окном: из неё
   // читается и меряется только видимый кусок, а X его начала берётся из
@@ -841,6 +843,9 @@ type
     procedure SplitLineDraw;
     procedure SplitDragEnd(AApply: Boolean);
     procedure ApplyRightPanelWidth(ANewWidth: Integer);
+    procedure RightPanelCollapse(ACollapse: Boolean);
+    procedure RightPanelBtnClick(Sender: TObject);
+    procedure RightPanelPlaceButtons;
     procedure SplitBarMouseUp(Sender: TObject; Button: TMouseButton;
                               Shift: TShiftState; X, Y: Integer);
     procedure ObjSourceClick(Sender: TObject);
@@ -1514,6 +1519,12 @@ type
     FCompDfmKey: string;
     FCompDfmNames: TStringList;
     FRightPanelWidth: Integer;
+    // Кнопки свернуть / развернуть правую панель (справа в строке вкладок)
+    // и её состояние: свёрнута - видны только разделитель и кнопка [];
+    // ширина до сворачивания - в FRightPanelWidth (она и пишется в ini)
+    FRightBtnMin, FRightBtnRestore: TUiButton;
+    FRightCollapsed: Boolean;
+    FRightStartCollapsed: Boolean;   // из editor.ini, ставится в FormCreate
     FTabsOldProc: TWndMethod;
     FTabsHostProc: TWndMethod; // прежний обработчик панели-родителя вкладок
     FInFitTabs: Boolean;
@@ -6340,6 +6351,8 @@ begin
     if (FRightPanel <> nil) and
        (FRightPanelWidth < ClientWidth - RightPanelMinLeft) then
       FRightPanel.Width := FRightPanelWidth;
+    FRightStartCollapsed := Ini.ReadBool('Editor', 'RightPanelCollapsed',
+                                         False);
     FHotTabBarWidth     := Ini.ReadInteger('Editor', 'HotTabBarWidth', FHotTabBarWidth);
     FHotTabPale         := Ini.ReadInteger('Editor', 'HotTabPale', FHotTabPale);
     FStartupProject     := Ini.ReadString('Editor', 'LastProject', '');
@@ -6494,9 +6507,16 @@ begin
       ThemeIniWrite(Ini, 'Editor', 'BGColor', ColorToString(FIniBGColor));
       ThemeIniWrite(Ini, 'Editor', 'GutterFG', ColorToString(FGutterFG));
       // Ноль в файл не пишем: с ним панель при следующем запуске исчезнет
-      if (FRightPanel <> nil) and
+      if FRightCollapsed then
+      begin
+        // Свёрнута: ширина - та, к которой вернёт кнопка []
+        if FRightPanelWidth >= RightPanelMinWidth then
+          Ini.WriteInteger('Editor', 'RightPanelWidth', FRightPanelWidth);
+      end
+      else if (FRightPanel <> nil) and
          (FRightPanel.Width >= RightPanelMinWidth) then
         Ini.WriteInteger('Editor', 'RightPanelWidth', FRightPanel.Width);
+      Ini.WriteBool('Editor', 'RightPanelCollapsed', FRightCollapsed);
       ThemeIniWrite(Ini, 'Editor', 'GutterBG', ColorToString(FGutterBG));
 
       // Имя проекта пишем на каждое сохранение настроек, поэтому при
@@ -21908,6 +21928,23 @@ begin
 
   FRightPanel.Width := FRightPanelWidth;
 
+  // Свернуть / развернуть панель: кнопки справа в строке вкладок, поверх
+  // FRightPages
+  FRightBtnMin := TUiButton.Create(Self);
+  FRightBtnMin.Parent := FRightPanel;
+  FRightBtnMin.Caption := '_';
+  FRightBtnMin.Hint := 'Свернуть правую панель';
+  FRightBtnMin.ShowHint := True;
+  FRightBtnMin.OnClick := RightPanelBtnClick;
+  FRightBtnRestore := TUiButton.Create(Self);
+  FRightBtnRestore.Parent := FRightPanel;
+  FRightBtnRestore.Caption := '[]';
+  FRightBtnRestore.Hint := 'Развернуть правую панель до прежней ширины';
+  FRightBtnRestore.ShowHint := True;
+  FRightBtnRestore.OnClick := RightPanelBtnClick;
+  FRightBtnRestore.Enabled := False;
+  RightPanelPlaceButtons;
+
   // Инспектор объектов разбирает .dfm только когда его вкладку открыли
   FRightPages.OnChange := RightPagesChange;
   // Двойной щелчок в Includes - открыть файл
@@ -21915,6 +21952,79 @@ begin
     FIncTree.OnDblClick := IncludesDblClick;
 
   BuildObjectInspector;
+end;
+
+// Кнопки _ и [] - в правом верхнем углу панели, в строке вкладок; у
+// свёрнутой - одна [] сразу за разделителем
+procedure TForm1.RightPanelPlaceButtons;
+const
+  BtnW = 22;
+  BtnH = 18;
+var
+  RightEdge: Integer;
+begin
+  if (FRightBtnMin = nil) or (FRightBtnRestore = nil) then
+    Exit;
+  RightEdge := FRightPanel.ClientWidth - 2;
+  if FRightCollapsed then
+  begin
+    FRightBtnMin.Visible := False;
+    FRightBtnRestore.SetBounds(FSplitBar.Width + 1, 2,
+                               FRightPanel.ClientWidth - FSplitBar.Width - 2,
+                               BtnH);
+    FRightBtnRestore.Enabled := True;
+  end
+  else
+  begin
+    FRightBtnRestore.SetBounds(RightEdge - BtnW, 2, BtnW, BtnH);
+    FRightBtnMin.SetBounds(RightEdge - 2 * BtnW - 2, 2, BtnW, BtnH);
+    FRightBtnMin.Visible := True;
+    // Развёрнута - разворачивать нечего
+    FRightBtnRestore.Enabled := False;
+  end;
+  FRightBtnRestore.Anchors := [akTop, akRight];
+  FRightBtnMin.Anchors := [akTop, akRight];
+  FRightBtnRestore.Visible := True;
+  FRightBtnMin.BringToFront;
+  FRightBtnRestore.BringToFront;
+end;
+
+procedure TForm1.RightPanelBtnClick(Sender: TObject);
+begin
+  RightPanelCollapse(Sender = FRightBtnMin);
+end;
+
+// Свернуть правую панель до полоски с кнопкой [] или вернуть прежнюю
+// ширину (FRightPanelWidth - её не трогает сворачивание)
+procedure TForm1.RightPanelCollapse(ACollapse: Boolean);
+var
+  KeepWidth: Integer;
+begin
+  if (FRightPanel = nil) or (ACollapse = FRightCollapsed) then
+    Exit;
+  KeepWidth := FRightPanelWidth;
+  if ACollapse then
+  begin
+    if FRightPanel.Width >= RightPanelMinWidth then
+      KeepWidth := FRightPanel.Width;
+    FRightCollapsed := True;
+    FRightPages.Visible := False;
+    ApplyRightPanelWidth(RightPanelCollapsedWidth);
+  end
+  else
+  begin
+    FRightCollapsed := False;
+    if KeepWidth < RightPanelMinWidth then
+      KeepWidth := RightPanelDefWidth;
+    if KeepWidth > ClientWidth - RightPanelMinLeft then
+      KeepWidth := ClientWidth - RightPanelMinLeft;
+    if KeepWidth < RightPanelMinWidth then
+      KeepWidth := RightPanelMinWidth;
+    FRightPages.Visible := True;
+    ApplyRightPanelWidth(KeepWidth);
+  end;
+  FRightPanelWidth := KeepWidth;
+  RightPanelPlaceButtons;
 end;
 
 // Перетаскивание разделителя правой панели.
@@ -21934,6 +22044,12 @@ var
 begin
   if Button <> mbLeft then
     Exit;
+  // У свёрнутой панели тянуть нечего - разворачиваем
+  if FRightCollapsed then
+  begin
+    RightPanelCollapse(False);
+    Exit;
+  end;
   GetCursorPos(P);
   FSplitDrag := True;
   FSplitStartX := P.X;
@@ -63097,7 +63213,7 @@ begin
 
   // Фильтр SubList - поле в шапке колонки Name (SubFilterPlace). Поверх
   // списка, поэтому после его обёртки полосами прокрутки.
-  if lvSubList <> nil then
+  if (lvSubList <> nil) and (FSubFilter = nil) then
   begin
     FSubFilter := TUiEdit.Create(Self);
     FSubFilter.Parent := lvSubList.Parent;
@@ -63123,6 +63239,13 @@ begin
   // Шрифты групп IDE: умолчания - как сейчас у элементов, выбранные - из
   // editor.ini (IDE Options - IDE colors and Fonts)
   UiFontsInit;
+
+  // Правая панель была свёрнута при выходе
+  if FRightStartCollapsed then
+  begin
+    FRightStartCollapsed := False;
+    RightPanelCollapse(True);
+  end;
 end;
 
 // Свои полосы (UiScroll, TUiListScroll) поверх полос списков и
@@ -64048,6 +64171,8 @@ var
   KeyIdx: Integer;
   Spec: string;
 begin
+  if FUiFontDefs <> nil then
+    Exit;     // уже (FormShow бывает не один раз)
   FUiFontDefs := TStringList.Create;
   FUiFonts := TStringList.Create;
   FUiFontDefs.Values['Font.Menu'] := UiFontSpec(Screen.MenuFont);
