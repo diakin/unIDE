@@ -1137,6 +1137,14 @@ type
     // Консольные программы из FRunList, запущенные через RunConsole
     // (TRunConsole): окно после конца ждёт клавишу, его текст - в лог
     FRunCons: TList;
+    // Подсветка, выбранная для отдельных файлов: путь (нижний регистр) =
+    // схема; editor.ini [FileSchemes]. Читается при первом обращении.
+    FFileSchemes: TStringList;
+    // .inc, узнанные по тексту: путь = дата файла|схема (IncGuessScheme)
+    FIncGuess: TStringList;
+    // Пункты меню Подсветка (вкладка и View) и схемы их подпунктов по Tag
+    FHlTabItem, FHlViewItem: TMenuItem;
+    FHlNames: TStringList;
     // exe цели активной вкладки (RunTargetExe), запомненный: AppIdle
     // спрашивает часто, а цель RapidQ читает файлы с диска
     FRunExeCache: string;
@@ -1965,7 +1973,7 @@ type
     procedure StoreWindowParse(Index: Integer);
     procedure RestoreWindowParse(Index: Integer);
     function  CompDfmKeyFor(const AFile: string): string;
-    function  MapSchemeSig(const AExt: string): string;
+    function  MapSchemeSig(const AFile: string): string;
     function  MapCacheFileFor(const AFile: string): string;
     function  LoadMapCache(Index: Integer): Boolean;
     procedure SaveMapCache(Index: Integer);
@@ -2216,7 +2224,9 @@ type
     procedure BmHistCompact;
     function  BookmarkCaption(WinIdx, BmIdx: Integer): string;
 
-    procedure LoadCustomClrSchema(const Ext: string); // Наш новый метод
+    // Схема по расширению Ext; AFile - сам файл: для него может быть выбрана
+    // своя схема (меню Подсветка) или .inc узнан по тексту (SchemeKeyFor)
+    procedure LoadCustomClrSchema(const Ext: string; const AFile: string = '');
 
     procedure NewRichEditProc(var Message: TMessage);
     procedure NewRichEditProcBody(var Message: TMessage);
@@ -3288,6 +3298,16 @@ type
     function  SchemeAliasSet(const AExt, AScheme: string): Boolean;
     // Схемы, которые есть: имена schemes\*.clr без •default•
     procedure SchemeNames(AList: TStrings);
+    // Схема (имя .clr без расширения) для файла AFile с расширением AExt:
+    // выбранная для файла (Подсветка), своя ext.clr, alias.ini, для .inc -
+    // по тексту файла, затем встроенное (SchemeExtFor)
+    function  SchemeKeyFor(const AFile, AExt: string): string;
+    function  FileSchemeOf(const AFile: string): string;
+    procedure FileSchemeSet(const AFile, AScheme: string);
+    function  IncGuessScheme(const AFile: string): string;
+    procedure HighlightMenuFill(Sender: TObject);
+    procedure HighlightItemClick(Sender: TObject);
+    function  ActiveWindowFile: string;
     function  FormFileFor(const AUnit: string): string;
     function  UnitFileFor(const AForm: string): string;
     function  IsPascalExt(const AExt: string): Boolean;
@@ -7436,7 +7456,7 @@ begin
   end;
 
   // Схема зависит от расширения, а оно могло измениться
-  LoadCustomClrSchema(ExtractFileExt(FCurrentFileName));
+  LoadCustomClrSchema(ExtractFileExt(FCurrentFileName), FCurrentFileName);
   RebuildCommentRangeMap;
   RichEdit1.Invalidate;
   AddToRecent(FCurrentFileName);
@@ -7604,7 +7624,7 @@ begin
     FWindows[Index].CompDfmKey := Key
   else
     FWindows[Index].CompDfmKey := '';
-  FWindows[Index].MapSchemeSig := MapSchemeSig(WindowExt(FWindows[Index].FileName));
+  FWindows[Index].MapSchemeSig := MapSchemeSig(FWindows[Index].FileName);
 end;
 
 // Разбор из записи окна Index - в глобальные карты и списки. Таблицу
@@ -7654,11 +7674,14 @@ end;
 
 // Подпись загруженной схемы для расширения AExt: маркеры, даты файла
 // схемы, •default•.clr и exe, есть ли в схеме цвета компонентов
-function TForm1.MapSchemeSig(const AExt: string): string;
+function TForm1.MapSchemeSig(const AFile: string): string;
+var
+  SchemeKey: string;
 begin
-  Result := FScheme.MarkersSig + ' | clr ' +
+  SchemeKey := SchemeKeyFor(AFile, WindowExt(AFile));
+  Result := FScheme.MarkersSig + ' | clr ' + SchemeKey + ' ' +
     IntToStr(FileAge(ExtractFilePath(Application.ExeName) + 'schemes\' +
-                     SchemeExtFor(AExt) + '.clr')) + ' ' +
+                     SchemeKey + '.clr')) + ' ' +
     IntToStr(FileAge(DefaultSchemaFile)) + ' | comp ' +
     IntToStr(Ord(FScheme.FCompHasColors)) + ' | exe ' +
     IntToStr(FileAge(Application.ExeName));
@@ -7689,7 +7712,7 @@ begin
   FN := MapCacheFileFor(FWindows[Index].FileName);
   if not FileExists(FN) then
     Exit;
-  Sig := MapSchemeSig(WindowExt(FWindows[Index].FileName));
+  Sig := MapSchemeSig(FWindows[Index].FileName);
   try
     FS := TFileStream.Create(FN, fmOpenRead or fmShareDenyWrite);
     try
@@ -7899,7 +7922,8 @@ begin
   end;
   FSuppressMapRebuild := True;
   try
-    LoadCustomClrSchema(WindowExt(FWindows[Index].FileName));
+    LoadCustomClrSchema(WindowExt(FWindows[Index].FileName),
+                        FWindows[Index].FileName);
   finally
     FSuppressMapRebuild := False;
   end;
@@ -7951,7 +7975,7 @@ begin
     if FWindows[Index].MapValid and
        ((FWindows[Index].MapSchemeSig = '') or
         (FWindows[Index].MapSchemeSig =
-         MapSchemeSig(WindowExt(FWindows[Index].FileName)))) then
+         MapSchemeSig(FWindows[Index].FileName))) then
     begin
       MapFrom := 'из памяти';
       RestoreWindowParse(Index);
@@ -21086,6 +21110,19 @@ begin
   // методы, а PaletteIconsClick объявлен в другой секции
   mViewIcons.OnClick := PaletteIconsClick;
 
+  // Подсветка файла: в меню вкладки и в View. Подпункты строит
+  // HighlightMenuFill при открытии; пустой пункт - чтобы было подменю.
+  FHlTabItem := TMenuItem.Create(Self);
+  FHlTabItem.Caption := 'Подсветка';
+  FHlTabItem.OnClick := HighlightMenuFill;
+  FHlTabItem.Add(NewItem('-', 0, False, False, nil, 0, ''));
+  FTabsPopup.Items.Insert(1, FHlTabItem);
+  FHlViewItem := TMenuItem.Create(Self);
+  FHlViewItem.Caption := 'Highlighting';
+  FHlViewItem.OnClick := HighlightMenuFill;
+  FHlViewItem.Add(NewItem('-', 0, False, False, nil, 0, ''));
+  mView.Add(FHlViewItem);
+
   // ВАЖНО: подменю собираем только здесь, когда все пункты главного меню уже
   // созданы. Раньше эти вызовы стояли сразу после Add(mWindows), то есть ДО
   // создания mBookmarks, и BuildBookmarksMenu обращался к nil - отсюда
@@ -21461,6 +21498,9 @@ begin
       TRunConsole(FRunCons[I]).Free;
     FreeAndNil(FRunCons);
   end;
+  FreeAndNil(FFileSchemes);
+  FreeAndNil(FIncGuess);
+  FreeAndNil(FHlNames);
   // Программа под отладчиком снимается вместе со средой
   FreeAndNil(FDbgSession);
   FreeAndNil(FDbgSyms);
@@ -63410,6 +63450,281 @@ begin
   end;
 end;
 
+// Файл активного окна ('' - нет окна)
+function TForm1.ActiveWindowFile: string;
+begin
+  Result := FCurrentFileName;
+  if (FWindowsIndex >= 0) and (FWindowsIndex < WindowsItemCount) and
+     FWindows[FWindowsIndex].Used then
+    Result := FWindows[FWindowsIndex].FileName;
+end;
+
+// Схема, выбранная для файла в меню Подсветка ('' - не выбрана)
+function TForm1.FileSchemeOf(const AFile: string): string;
+var
+  Ini: TIniFile;
+  Keys: TStringList;
+  KeyIdx: Integer;
+begin
+  Result := '';
+  if (AFile = '') or IsUntitledName(AFile) then
+    Exit;
+  if FFileSchemes = nil then
+  begin
+    FFileSchemes := TStringList.Create;
+    if FileExists(SettingsFileName) then
+    begin
+      Keys := TStringList.Create;
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        Ini.ReadSection('FileSchemes', Keys);
+        for KeyIdx := 0 to Keys.Count - 1 do
+          FFileSchemes.Values[LowerCase(Keys[KeyIdx])] :=
+            LowerCase(Trim(Ini.ReadString('FileSchemes', Keys[KeyIdx], '')));
+      finally
+        Ini.Free;
+        Keys.Free;
+      end;
+    end;
+  end;
+  Result := FFileSchemes.Values[LowerCase(ExpandFileName(AFile))];
+end;
+
+// Запомнить схему для файла (editor.ini [FileSchemes]); '' - убрать,
+// файл снова подсвечивается по расширению
+procedure TForm1.FileSchemeSet(const AFile, AScheme: string);
+var
+  Ini: TIniFile;
+  FileKey: string;
+begin
+  if (AFile = '') or IsUntitledName(AFile) then
+    Exit;
+  FileSchemeOf(AFile);   // список прочитан
+  FileKey := LowerCase(ExpandFileName(AFile));
+  if AScheme = '' then
+  begin
+    if FFileSchemes.IndexOfName(FileKey) >= 0 then
+      FFileSchemes.Delete(FFileSchemes.IndexOfName(FileKey));
+  end
+  else
+    FFileSchemes.Values[FileKey] := LowerCase(AScheme);
+  try
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      if AScheme = '' then
+        Ini.DeleteKey('FileSchemes', FileKey)
+      else
+        Ini.WriteString('FileSchemes', FileKey, LowerCase(AScheme));
+      Ini.UpdateFile;
+    finally
+      Ini.Free;
+    end;
+  except
+    on E: Exception do
+      LogComp('Подсветка: editor.ini не записан - ' + E.Message);
+  end;
+end;
+
+// .inc бывает и у Паскаля, и у RapidQ: по тексту первых 64 КБ.
+// 'bas' / 'pas', '' - не понять. Запоминается до изменения файла.
+function TForm1.IncGuessScheme(const AFile: string): string;
+const
+  ReadMax = 65536;
+var
+  Stream: TFileStream;
+  Buf: string;
+  Lines: TStringList;
+  LineIdx, BasScore, PasScore, Age: Integer;
+  LineText, FileKey, Cached: string;
+
+  function Starts(const APrefix: string): Boolean;
+  begin
+    Result := Copy(LineText, 1, Length(APrefix)) = APrefix;
+  end;
+
+begin
+  Result := '';
+  if (AFile = '') or not FileExists(AFile) then
+    Exit;
+  FileKey := LowerCase(ExpandFileName(AFile));
+  Age := FileAge(AFile);
+  if FIncGuess = nil then
+    FIncGuess := TStringList.Create;
+  Cached := FIncGuess.Values[FileKey];
+  if (Cached <> '') and (Copy(Cached, 1, Pos('|', Cached) - 1) = IntToStr(Age)) then
+  begin
+    Result := Copy(Cached, Pos('|', Cached) + 1, MaxInt);
+    Exit;
+  end;
+
+  BasScore := 0;
+  PasScore := 0;
+  Lines := TStringList.Create;
+  try
+    try
+      Stream := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
+      try
+        if Stream.Size > ReadMax then
+          SetLength(Buf, ReadMax)
+        else
+          SetLength(Buf, Stream.Size);
+        if Length(Buf) > 0 then
+          Stream.ReadBuffer(Buf[1], Length(Buf));
+      finally
+        Stream.Free;
+      end;
+    except
+      Exit;
+    end;
+    Lines.Text := Buf;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      LineText := LowerCase(Trim(Lines[LineIdx]));
+      if LineText = '' then
+        Continue;
+      // Basic: комментарий ', REM, концы блоков, DECLARE, директивы $
+      if Starts('''') or Starts('rem ') or Starts('end sub') or
+         Starts('end function') or Starts('end type') or Starts('end with') or
+         Starts('end select') or Starts('end create') or
+         Starts('declare sub') or Starts('declare function') or
+         Starts('$include') or Starts('$define') or Starts('$ifdef') or
+         Starts('$ifndef') or Starts('$typecheck') or Starts('$apptype') or
+         Starts('$resource') or Starts('dim ') or Starts('subi ') or
+         Starts('functioni ') or Starts('wend') or Starts('next') then
+        Inc(BasScore)
+      // Паскаль: {$...}, begin / end;, :=, procedure, разделы модуля
+      else if Starts('{$') or (LineText = 'begin') or Starts('end;') or
+              Starts('end.') or Starts('procedure ') or Starts('unit ') or
+              (LineText = 'interface') or (LineText = 'implementation') or
+              Starts('//') or Starts('(*') or Starts('uses ') or
+              (Pos(':=', LineText) > 0) then
+        Inc(PasScore);
+    end;
+  finally
+    Lines.Free;
+  end;
+  if BasScore > PasScore then
+    Result := 'bas'
+  else if PasScore > BasScore then
+    Result := 'pas';
+  FIncGuess.Values[FileKey] := IntToStr(Age) + '|' + Result;
+end;
+
+function TForm1.SchemeKeyFor(const AFile, AExt: string): string;
+var
+  Dir, ExtName, Chosen, Guess: string;
+  Ini: TIniFile;
+  HasAlias: Boolean;
+begin
+  Dir := ExtractFilePath(Application.ExeName) + 'schemes\';
+  // Выбрано для этого файла
+  Chosen := FileSchemeOf(AFile);
+  if (Chosen <> '') and FileExists(Dir + Chosen + '.clr') then
+  begin
+    Result := Chosen;
+    Exit;
+  end;
+  // .inc без своей inc.clr и без inc= в alias.ini - по тексту
+  ExtName := LowerCase(AExt);
+  if (ExtName <> '') and (ExtName[1] = '.') then
+    Delete(ExtName, 1, 1);
+  if (ExtName = 'inc') and not FileExists(Dir + 'inc.clr') then
+  begin
+    HasAlias := False;
+    if FileExists(Dir + 'alias.ini') then
+    begin
+      Ini := TIniFile.Create(Dir + 'alias.ini');
+      try
+        HasAlias := Trim(Ini.ReadString('Alias', 'inc', '')) <> '';
+      finally
+        Ini.Free;
+      end;
+    end;
+    if not HasAlias then
+    begin
+      Guess := IncGuessScheme(AFile);
+      if (Guess <> '') and FileExists(Dir + Guess + '.clr') then
+      begin
+        Result := Guess;
+        Exit;
+      end;
+    end;
+  end;
+  Result := SchemeExtFor(AExt);
+end;
+
+// Подменю Подсветка: Авто и схемы schemes\*.clr; галочка - у той, что
+// сейчас у активного окна. Строится при каждом открытии.
+procedure TForm1.HighlightMenuFill(Sender: TObject);
+var
+  Parent, Item: TMenuItem;
+  WinFile, Chosen, Current, AutoKey: string;
+  NameIdx: Integer;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  Parent := TMenuItem(Sender);
+  Parent.Clear;
+  if FHlNames = nil then
+    FHlNames := TStringList.Create;
+  SchemeNames(FHlNames);
+  WinFile := ActiveWindowFile;
+  Chosen := FileSchemeOf(WinFile);
+  Current := SchemeKeyFor(WinFile, WindowExt(WinFile));
+  // Что было бы без выбора - подписью у Авто
+  if Chosen <> '' then
+  begin
+    FFileSchemes.Values[LowerCase(ExpandFileName(WinFile))] := '';
+    AutoKey := SchemeKeyFor(WinFile, WindowExt(WinFile));
+    FFileSchemes.Values[LowerCase(ExpandFileName(WinFile))] := Chosen;
+  end
+  else
+    AutoKey := Current;
+
+  Item := TMenuItem.Create(Parent);
+  Item.Caption := 'Авто (по расширению): ' + AutoKey;
+  Item.Tag := -1;
+  Item.RadioItem := True;
+  Item.Checked := Chosen = '';
+  Item.Enabled := (WinFile <> '') and not IsUntitledName(WinFile);
+  Item.OnClick := HighlightItemClick;
+  Parent.Add(Item);
+  Parent.Add(NewLine);
+  for NameIdx := 0 to FHlNames.Count - 1 do
+  begin
+    Item := TMenuItem.Create(Parent);
+    Item.Caption := FHlNames[NameIdx];
+    Item.Tag := NameIdx;
+    Item.RadioItem := True;
+    Item.Checked := (Chosen <> '') and (FHlNames[NameIdx] = Current);
+    Item.Enabled := (WinFile <> '') and not IsUntitledName(WinFile);
+    Item.OnClick := HighlightItemClick;
+    Parent.Add(Item);
+  end;
+end;
+
+procedure TForm1.HighlightItemClick(Sender: TObject);
+var
+  WinFile, SchemeName: string;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  WinFile := ActiveWindowFile;
+  if (WinFile = '') or IsUntitledName(WinFile) then
+    Exit;
+  SchemeName := '';
+  if (TMenuItem(Sender).Tag >= 0) and (FHlNames <> nil) and
+     (TMenuItem(Sender).Tag < FHlNames.Count) then
+    SchemeName := FHlNames[TMenuItem(Sender).Tag];
+  FileSchemeSet(WinFile, SchemeName);
+  ReloadActiveClrSchema;
+  if SchemeName = '' then
+    LogComp('Подсветка ' + ExtractFileName(WinFile) + ': по расширению (' +
+            SchemeKeyFor(WinFile, WindowExt(WinFile)) + ')')
+  else
+    LogComp('Подсветка ' + ExtractFileName(WinFile) + ': ' + SchemeName);
+end;
+
 // Файл формы для модуля: .dfm (Delphi), иначе .lfm (Lazarus). '' - нет.
 function TForm1.FormFileFor(const AUnit: string): string;
 begin
@@ -63554,7 +63869,7 @@ begin
              GetTickCount - StartTick - TWrite]), clNavy);
 end;
 
-procedure TForm1.LoadCustomClrSchema(const Ext: string);
+procedure TForm1.LoadCustomClrSchema(const Ext: string; const AFile: string);
 var
   WasModified: Boolean; // схема тоже меняет шрифт - см. ApplyEditorLook
   ClrPath: string;
@@ -63573,7 +63888,7 @@ begin
   // Находим путь к файлу схемы (например, schemes\pas.clr). Своей схемы
   // у расширения нет - по соответствию: .pp -> pas, .lfm -> dfm
   ClrPath := ExtractFilePath(Application.ExeName) + 'schemes\' +
-             SchemeExtFor(Ext) + '.clr';
+             SchemeKeyFor(AFile, Ext) + '.clr';
 
   ResetSchemaState;
 
@@ -65057,9 +65372,10 @@ end;
 // отмене: цвета и маркеры, показанные для предпросмотра, пропадают.
 procedure TForm1.ReloadActiveClrSchema;
 var
-  Ext: string;
+  Ext, WinFile: string;
   OldSuppress: Boolean;
 begin
+  WinFile := ActiveWindowFile;
   if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
     Ext := WindowExt(FWindows[FWindowsIndex].FileName)
   else
@@ -65070,7 +65386,7 @@ begin
   OldSuppress := FSuppressMapRebuild;
   FSuppressMapRebuild := True;
   try
-    LoadCustomClrSchema(Ext);
+    LoadCustomClrSchema(Ext, WinFile);
   finally
     FSuppressMapRebuild := OldSuppress;
   end;
@@ -65237,9 +65553,9 @@ begin
   end;
 
   // Сохранение из окна настроек идёт в ту же схему, что и загрузка: для
-  // .pp - в pas.clr
+  // .pp - в pas.clr, для файла с выбранной подсветкой - в её схему
   Result := ExtractFilePath(Application.ExeName) + 'schemes\' +
-            SchemeExtFor(Ext) + '.clr';
+            SchemeKeyFor(ActiveWindowFile, Ext) + '.clr';
 end;
 
 procedure TForm1.SaveActiveClrSchema;
