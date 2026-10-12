@@ -79,6 +79,12 @@
 - **Куски программ**, а не библиотеки: AllProps.inc, stdObjMnu.inc,
   stdObjbar.inc, RapidFRM_Mods.inc, Splash.inc, SplashForm.inc, Form1.inc,
   menu.inc, LabelGrid.inc, LangIniHeader.inc.
+  Программа, которая получала из них переменные через старые inc, теперь
+  должна объявить их сама. Пример: LangIniHeader.inc объявлял
+  `DIM LangVar$(128) AS STRING`; в RQdebugger853-8NewInc.bas без него
+  `LangVar$(VarIdx)=...` даёт «Expected = but got "("» (rc.exe считает
+  LangVar$ простой переменной). Исправление - свой `DIM LangVar$(...)` в
+  программе (там он был закомментирован: `'!dim LangVar$ (2048) as string`).
 - **Файлы, которые при подключении сами что-то делают** — подключать в своей
   программе отдельно, где это нужно:
   - QXpTheme.INC пишет `.manifest` и перезапускает программу;
