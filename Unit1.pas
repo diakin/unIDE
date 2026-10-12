@@ -33626,15 +33626,18 @@ begin
       Delete(Rest, 1, SepPos);
     end;
 
+    // В логе - отдельным шагом до "--- Компиляция"
+    LogComp('--- Препроцессор: ' + ExtractFileName(ABas) +
+            ' - $INCLUDE, $RESOURCE, DLL из DECLARE ... LIB');
     Scan.Scan(ABas, AIncDir);
     Scan.DropNames(Ignore);
     if Ignore.Count > 0 then
-      LogComp('Проверка файлов: не проверяются по выбору (editor.ini ' +
+      LogComp('Препроцессор: не проверяются по выбору (editor.ini ' +
               '[RqDepsIgnore]): ' + StringReplace(IgnoreText, '|', ', ',
                                                   [rfReplaceAll]));
     if Scan.MissingCount = 0 then
     begin
-      LogComp(Format('Проверка файлов: прочитано файлов %d, недостающих нет',
+      LogComp(Format('Препроцессор: прочитано файлов %d, недостающих нет',
                      [Scan.ScannedFiles.Count]));
       Exit;
     end;
