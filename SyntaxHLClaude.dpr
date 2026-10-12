@@ -55,6 +55,7 @@ uses
   UiScroll in 'UiScroll.pas',
   Unit3 in 'Unit3.pas' {Form3},
   IncCheck in 'IncCheck.pas',
+  IncEdit in 'IncEdit.pas',
   DlgFindInc in 'DlgFindInc.pas' {DlgFindInc},
   RunConsole in 'RunConsole.pas';
 

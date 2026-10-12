@@ -16,6 +16,7 @@ object Form3: TForm3
   Position = poScreenCenter
   ShowHint = True
   OnClose = FormClose
+  OnCreate = FormCreate
   OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13
@@ -50,7 +51,7 @@ object Form3: TForm3
       Top = 28
       Width = 440
       Height = 586
-      Hint = 'Щелчок - замечания по файлу слева; двойной щелчок - файл в редакторе; галка - участвует в защитном $IFNDEF'
+      Hint = 'Щелчок - замечания и состав файла слева; двойной щелчок - файл в редакторе; галка - участвует в защитном $IFNDEF и в сборке в один'
       Align = alClient
       ItemHeight = 18
       Style = lbOwnerDrawFixed

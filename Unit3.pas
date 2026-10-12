@@ -18,6 +18,15 @@ unit Unit3;
 //      двойной щелчок - строка в редакторе. Красное число у файла - ошибки.
 //   6. "Демо-программа" - программа .bas, подключающая файл: найденная в
 //      папках из списка или новая <имя>_demo.bas рядом с файлом.
+//   7. Щелчок по надписи эталона - в правом списке файлы эталонной папки
+//      (ещё щелчок - снова свои).
+//   8. Состав выбранного файла (справа от замечаний): процедуры, функции
+//      DLL, компоненты с галками; "Изъять" - каждый отмеченный в свой
+//      <имя>.inc рядом с файлом вместе с тем, чем пользуется только он
+//      (IncEdit.pas). Пункт, нужный оставшемуся в файле или файлу, который
+//      его подключает, не изымается - причина в списке замечаний.
+//   9. "Собрать в один..." - отмеченные галкой файлы в один новый; из
+//      одноимённых объявлений остаётся первое.
 //
 // Проверки - в IncCheck.pas (без VCL). Список папок и путь эталона - в
 // editor.ini, раздел [IncManager]:
@@ -34,6 +43,8 @@ uses
   Controls, Forms, Dialogs, ExtCtrls, FileCtrl, StdCtrls, Buttons, CheckLst,
   IniFiles,
   IncCheck,     // сравнение с эталоном, проверки, защита, демо
+  IncEdit,      // состав файла, изъятие пунктов, сборка файлов в один
+  UiEditCtrls,  // TUiEdit - поле фильтра состава
   FolderDlg,    // выбор папки эталона - BrowseFolderDialog
   UiStdCtrls,   // TUiPanel
   UiButton;     // TUiButton - кнопки в цветах темы (TBitBtn рисуется белым)
@@ -89,6 +100,7 @@ type
     procedure btnRefClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure FormCreate(Sender: TObject);
   private
     FBusy: Boolean;        // идёт чтение эталона или проверка файлов
     FAbort: Boolean;       // нажат Стоп
@@ -102,6 +114,20 @@ type
     FLoading: Boolean;     // список заполняется из editor.ini - не записывать
     FOnOpenFile: TIncOpenFileEvent;
     FOnChoose: TIncChooseEvent;
+    // Правый список - файлы эталонной папки (щелчок по надписи эталона)
+    FShowRef: Boolean;
+    // Состав выбранного файла: разобранный файл, все пункты, отмеченные
+    // (отметки живут и при смене фильтра)
+    FItemsDoc: TIncDoc;
+    FItemsAll: TList;
+    FItemsChecked: TList;
+    pnlItems: TPanel;
+    Splitter3: TSplitter;
+    lblItems: TLabel;
+    edItemsFilter: TUiEdit;
+    lstItems: TCheckListBox;
+    btnItemsAll, btnItemsNone, btnExtract: TUiButton;
+    btnMerge, btnFilesAll, btnFilesNone: TUiButton;
     procedure ProgressStep(const AText: string; var ACancel: Boolean);
     procedure SetBusy(ABusy: Boolean);
     // $0128 - WM_UPDATEUISTATE, в Messages.pas Delphi 7 этой константы нет.
@@ -116,6 +142,19 @@ type
     procedure ShowMessagesOf(AIndex: Integer);
     procedure CheckedFolders(AList: TStrings);
     function  SelectedInfo: TIncFileInfo;
+    procedure BuildItemsPane;
+    procedure LoadItemsOf(const AFile: string);
+    procedure FillItems;
+    procedure ShowReport(const AHead: string; AReport: TStrings);
+    procedure SelectFileByName(const AFile: string);
+    procedure lblRefClick(Sender: TObject);
+    procedure ItemsFilterChange(Sender: TObject);
+    procedure ItemsClickCheck(Sender: TObject);
+    procedure ItemsDblClick(Sender: TObject);
+    procedure btnItemsAllClick(Sender: TObject);
+    procedure btnExtractClick(Sender: TObject);
+    procedure btnMergeClick(Sender: TObject);
+    procedure btnFilesAllClick(Sender: TObject);
   public
     // Показать окно. AIniFile - editor.ini, ASysDir - папка общих inc,
     // ADefaultRef - эталон, если в editor.ini свой не задан.
@@ -166,6 +205,9 @@ begin
   ClearInfos;
   FreeAndNil(FInfos);
   FreeAndNil(FRef);
+  FreeAndNil(FItemsDoc);
+  FreeAndNil(FItemsAll);
+  FreeAndNil(FItemsChecked);
 end;
 
 // Закрыли окно во время проверки - остановить
@@ -372,13 +414,23 @@ begin
     Files.Sorted := True;
     Files.Duplicates := dupIgnore;
     Missing := 0;
-    CheckedFolders(Folders);
+    if FShowRef then
+    begin
+      // Файлы эталонной папки - без подпапок
+      Folders.Add(FRefDir);
+      Label1.Caption := 'Файлы эталона (щелчок по надписи эталона - свои)';
+    end
+    else
+    begin
+      CheckedFolders(Folders);
+      Label1.Caption := 'Файлы inc из отмеченных папок';
+    end;
     for ItemIdx := 0 to Folders.Count - 1 do
       if not DirectoryExists(Folders[ItemIdx]) then
         Inc(Missing)
       else
-        FindFilesExt(Folders[ItemIdx], '.inc', chkSubDirs.Checked, Files,
-                     IncMgrMaxFiles);
+        FindFilesExt(Folders[ItemIdx], '.inc', chkSubDirs.Checked and
+                     not FShowRef, Files, IncMgrMaxFiles);
 
     for Status := Low(TIncStatus) to High(TIncStatus) do
       Counts[Status] := 0;
@@ -423,7 +475,10 @@ begin
   begin
     lstIncFiles.ItemIndex := 0;
     ShowMessagesOf(0);
-  end;
+    LoadItemsOf(SelectedInfo.FileName);
+  end
+  else
+    LoadItemsOf('');
 end;
 
 function TForm3.SelectedInfo: TIncFileInfo;
@@ -517,6 +572,8 @@ end;
 procedure TForm3.lstIncFilesClick(Sender: TObject);
 begin
   ShowMessagesOf(lstIncFiles.ItemIndex);
+  if SelectedInfo <> nil then
+    LoadItemsOf(SelectedInfo.FileName);
 end;
 
 procedure TForm3.lstIncFilesDblClick(Sender: TObject);
@@ -734,6 +791,386 @@ begin
     Exit;
   SaveFolders;
   FillIncFiles;
+end;
+
+// ---------------------------------------------------------------------------
+//  Состав файла, изъятие, сборка (IncEdit.pas)
+// ---------------------------------------------------------------------------
+
+procedure TForm3.FormCreate(Sender: TObject);
+begin
+  FItemsAll := TList.Create;
+  FItemsChecked := TList.Create;
+  BuildItemsPane;
+  lblRef.Cursor := crHandPoint;
+  lblRef.ShowHint := True;
+  lblRef.OnClick := lblRefClick;
+end;
+
+// Панель состава - справа от замечаний; кнопки работы с файлами - вторым
+// рядом под списком файлов
+procedure TForm3.BuildItemsPane;
+var
+  pnlItemBtns: TPanel;
+begin
+  pnlItems := TPanel.Create(Self);
+  pnlItems.Parent := Panel2;
+  pnlItems.Left := Panel2.Width;
+  pnlItems.Width := 330;
+  pnlItems.Align := alRight;
+  pnlItems.BevelOuter := bvNone;
+  pnlItems.Caption := '';
+
+  Splitter3 := TSplitter.Create(Self);
+  Splitter3.Parent := Panel2;
+  Splitter3.Left := pnlItems.Left - 6;
+  Splitter3.Width := 6;
+  Splitter3.Align := alRight;
+  Splitter3.AutoSnap := False;
+  Splitter3.MinSize := 160;
+
+  lblItems := TLabel.Create(Self);
+  lblItems.Parent := pnlItems;
+  lblItems.Align := alTop;
+  lblItems.AutoSize := False;
+  lblItems.Height := 22;
+  lblItems.Layout := tlCenter;
+  lblItems.Font.Style := [fsBold];
+  lblItems.Caption := 'Состав файла';
+
+  edItemsFilter := TUiEdit.Create(Self);
+  edItemsFilter.Parent := pnlItems;
+  edItemsFilter.Top := 22;
+  edItemsFilter.Align := alTop;
+  edItemsFilter.Hint := 'Фильтр: часть имени';
+  edItemsFilter.ShowHint := True;
+  edItemsFilter.OnChange := ItemsFilterChange;
+
+  pnlItemBtns := TPanel.Create(Self);
+  pnlItemBtns.Parent := pnlItems;
+  pnlItemBtns.Align := alBottom;
+  pnlItemBtns.Height := 38;
+  pnlItemBtns.BevelOuter := bvNone;
+  pnlItemBtns.Caption := '';
+
+  lstItems := TCheckListBox.Create(Self);
+  lstItems.Parent := pnlItems;
+  lstItems.Align := alClient;
+  lstItems.Hint := 'Процедуры (Sub / Fn), функции DLL, компоненты (Comp). ' +
+    'Галка - изъять; двойной щелчок - место в редакторе';
+  lstItems.ShowHint := True;
+  lstItems.OnClickCheck := ItemsClickCheck;
+  lstItems.OnDblClick := ItemsDblClick;
+
+  btnItemsAll := TUiButton.Create(Self);
+  btnItemsAll.Parent := pnlItemBtns;
+  btnItemsAll.SetBounds(0, 7, 60, 25);
+  btnItemsAll.Caption := 'Все';
+  btnItemsAll.Hint := 'Отметить все видимые (по фильтру)';
+  btnItemsAll.OnClick := btnItemsAllClick;
+  btnItemsNone := TUiButton.Create(Self);
+  btnItemsNone.Parent := pnlItemBtns;
+  btnItemsNone.SetBounds(66, 7, 90, 25);
+  btnItemsNone.Caption := 'Ни одного';
+  btnItemsNone.Hint := 'Снять все отметки';
+  btnItemsNone.OnClick := btnItemsAllClick;
+  btnExtract := TUiButton.Create(Self);
+  btnExtract.Parent := pnlItemBtns;
+  btnExtract.SetBounds(162, 7, 100, 25);
+  btnExtract.Caption := 'Изъять';
+  btnExtract.Hint := 'Каждый отмеченный - в свой <имя>.inc рядом с файлом ' +
+    '(прежний текст файла - в .bak)';
+  btnExtract.OnClick := btnExtractClick;
+
+  // Второй ряд кнопок под списком файлов
+  pnlFileBtns.Height := 70;
+  btnMerge := TUiButton.Create(Self);
+  btnMerge.Parent := pnlFileBtns;
+  btnMerge.SetBounds(0, 39, 140, 25);
+  btnMerge.Caption := 'Собрать в один...';
+  btnMerge.Hint := 'Отмеченные галкой файлы - в один новый; из одноимённых ' +
+    'объявлений остаётся первое';
+  btnMerge.OnClick := btnMergeClick;
+  btnFilesAll := TUiButton.Create(Self);
+  btnFilesAll.Parent := pnlFileBtns;
+  btnFilesAll.SetBounds(148, 39, 60, 25);
+  btnFilesAll.Caption := 'Все';
+  btnFilesAll.Hint := 'Отметить все файлы';
+  btnFilesAll.OnClick := btnFilesAllClick;
+  btnFilesNone := TUiButton.Create(Self);
+  btnFilesNone.Parent := pnlFileBtns;
+  btnFilesNone.SetBounds(214, 39, 90, 25);
+  btnFilesNone.Caption := 'Ни одного';
+  btnFilesNone.Hint := 'Снять галки со всех файлов';
+  btnFilesNone.OnClick := btnFilesAllClick;
+end;
+
+// Надпись эталона: свои файлы <-> файлы эталонной папки
+procedure TForm3.lblRefClick(Sender: TObject);
+begin
+  if FBusy then
+    Exit;
+  FShowRef := not FShowRef;
+  FillIncFiles;
+end;
+
+procedure TForm3.LoadItemsOf(const AFile: string);
+begin
+  FreeAndNil(FItemsDoc);
+  FItemsAll.Clear;
+  FItemsChecked.Clear;
+  if (AFile <> '') and FileExists(AFile) then
+  begin
+    FItemsDoc := TIncDoc.Create;
+    Screen.Cursor := crHourGlass;
+    try
+      if FItemsDoc.LoadFromFile(AFile) then
+        FItemsDoc.OfferedItems(FItemsAll)
+      else
+        FreeAndNil(FItemsDoc);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+  end;
+  FillItems;
+end;
+
+procedure TForm3.FillItems;
+var
+  ItemIdx: Integer;
+  Item: TIncUnit;
+  Filter: string;
+begin
+  Filter := UpperCase(Trim(edItemsFilter.Text));
+  lstItems.Items.BeginUpdate;
+  try
+    lstItems.Items.Clear;
+    for ItemIdx := 0 to FItemsAll.Count - 1 do
+    begin
+      Item := TIncUnit(FItemsAll[ItemIdx]);
+      if (Filter <> '') and (Pos(Filter, UpperCase(Item.Name)) = 0) then
+        Continue;
+      lstItems.Items.AddObject(Item.Caption, Item);
+      lstItems.Checked[lstItems.Items.Count - 1] :=
+        FItemsChecked.IndexOf(Item) >= 0;
+    end;
+  finally
+    lstItems.Items.EndUpdate;
+  end;
+  if FItemsDoc = nil then
+    lblItems.Caption := 'Состав файла'
+  else
+    lblItems.Caption := Format('Состав %s: %d, отмечено %d',
+      [ExtractFileName(FItemsDoc.FileName), FItemsAll.Count,
+       FItemsChecked.Count]);
+end;
+
+procedure TForm3.ItemsFilterChange(Sender: TObject);
+begin
+  FillItems;
+end;
+
+procedure TForm3.ItemsClickCheck(Sender: TObject);
+var
+  ItemIdx: Integer;
+  Item: TObject;
+begin
+  for ItemIdx := 0 to lstItems.Items.Count - 1 do
+  begin
+    Item := lstItems.Items.Objects[ItemIdx];
+    if lstItems.Checked[ItemIdx] then
+    begin
+      if FItemsChecked.IndexOf(Item) < 0 then
+        FItemsChecked.Add(Item);
+    end
+    else
+      FItemsChecked.Remove(Item);
+  end;
+  if FItemsDoc <> nil then
+    lblItems.Caption := Format('Состав %s: %d, отмечено %d',
+      [ExtractFileName(FItemsDoc.FileName), FItemsAll.Count,
+       FItemsChecked.Count]);
+end;
+
+procedure TForm3.ItemsDblClick(Sender: TObject);
+var
+  Item: TIncUnit;
+begin
+  if (lstItems.ItemIndex < 0) or (FItemsDoc = nil) or
+     not Assigned(FOnOpenFile) then
+    Exit;
+  Item := TIncUnit(lstItems.Items.Objects[lstItems.ItemIndex]);
+  FOnOpenFile(FItemsDoc.FileName, Item.Head + 1);
+end;
+
+// Все (видимые) / ни одного
+procedure TForm3.btnItemsAllClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  if Sender = btnItemsNone then
+    FItemsChecked.Clear;
+  for ItemIdx := 0 to lstItems.Items.Count - 1 do
+    lstItems.Checked[ItemIdx] := Sender = btnItemsAll;
+  ItemsClickCheck(nil);
+end;
+
+procedure TForm3.btnFilesAllClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  for ItemIdx := 0 to lstIncFiles.Items.Count - 1 do
+    lstIncFiles.Checked[ItemIdx] := Sender = btnFilesAll;
+end;
+
+// Отчёт - в список замечаний
+procedure TForm3.ShowReport(const AHead: string; AReport: TStrings);
+begin
+  lblErrHead.Caption := AHead;
+  lstErrors.Items.Assign(AReport);
+end;
+
+procedure TForm3.SelectFileByName(const AFile: string);
+var
+  ItemIdx: Integer;
+  Info: TIncFileInfo;
+begin
+  for ItemIdx := 0 to lstIncFiles.Items.Count - 1 do
+  begin
+    Info := TIncFileInfo(lstIncFiles.Items.Objects[ItemIdx]);
+    if CompareText(Info.FileName, AFile) = 0 then
+    begin
+      lstIncFiles.ItemIndex := ItemIdx;
+      LoadItemsOf(AFile);
+      Exit;
+    end;
+  end;
+end;
+
+procedure TForm3.btnExtractClick(Sender: TObject);
+var
+  Items: TList;
+  Report, Folder, ExtUses: TStringList;
+  ItemIdx, Existing, Done, Includers: Integer;
+  SrcFile, Head: string;
+  Overwrite: Boolean;
+begin
+  if (FItemsDoc = nil) or (FItemsChecked.Count = 0) then
+  begin
+    ShowMessage('Отметьте галкой в составе файла то, что изъять.');
+    Exit;
+  end;
+  SrcFile := FItemsDoc.FileName;
+  Items := TList.Create;
+  Report := TStringList.Create;
+  Folder := TStringList.Create;
+  ExtUses := TStringList.Create;
+  try
+    // в порядке файла
+    for ItemIdx := 0 to FItemsAll.Count - 1 do
+      if FItemsChecked.IndexOf(FItemsAll[ItemIdx]) >= 0 then
+        Items.Add(FItemsAll[ItemIdx]);
+    Existing := 0;
+    for ItemIdx := 0 to Items.Count - 1 do
+      if FileExists(IncItemFileName(FItemsDoc, TIncUnit(Items[ItemIdx]))) then
+        Inc(Existing);
+    if MessageDlg(Format('Изъять из %s пунктов: %d?'#13#10#13#10 +
+         'Каждый - в свой <имя>.inc в той же папке, вместе с тем, чем ' +
+         'пользуется только он; новый файл подключает %s. Программам, ' +
+         'которые пользуются изъятым, нужно будет подключить его файл.'#13#10 +
+         'Прежний текст %s - в .bak.',
+         [ExtractFileName(SrcFile), Items.Count, ExtractFileName(SrcFile),
+          ExtractFileName(SrcFile)]),
+         mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+      Exit;
+    Overwrite := False;
+    if Existing > 0 then
+      case MessageDlg(Format('Файлы с такими именами уже есть: %d. ' +
+             'Перезаписать их? (Нет - эти пункты не изымать)', [Existing]),
+             mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+        mrYes: Overwrite := True;
+        mrNo: Overwrite := False;
+      else
+        Exit;
+      end;
+    // Файлы той же папки, которые подключают этот: нужное им не изымать
+    FindFilesExt(ExtractFilePath(SrcFile), '.inc', False, Folder,
+                 IncMgrMaxFiles);
+    Screen.Cursor := crHourGlass;
+    try
+      Includers := IncExternalUses(SrcFile, Folder, ExtUses);
+      Done := IncExtract(FItemsDoc, Items, Overwrite, Report, ExtUses, Folder);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+    Head := Format('Изъятие из %s: изъято %d из %d', [ExtractFileName(SrcFile),
+                   Done, Items.Count]);
+    if Includers > 0 then
+      Head := Head + Format(' (учтены подключающие его файлы: %d)', [Includers]);
+    // Файлы на диске изменились - список и состав заново
+    FillIncFiles;
+    SelectFileByName(SrcFile);
+    ShowReport(Head, Report);
+  finally
+    ExtUses.Free;
+    Folder.Free;
+    Report.Free;
+    Items.Free;
+  end;
+end;
+
+procedure TForm3.btnMergeClick(Sender: TObject);
+var
+  Files, Report: TStringList;
+  ItemIdx: Integer;
+  Dlg: TSaveDialog;
+  List: string;
+begin
+  Files := TStringList.Create;
+  Report := TStringList.Create;
+  Dlg := TSaveDialog.Create(Self);
+  try
+    for ItemIdx := 0 to lstIncFiles.Items.Count - 1 do
+      if lstIncFiles.Checked[ItemIdx] then
+        Files.Add(TIncFileInfo(lstIncFiles.Items.Objects[ItemIdx]).FileName);
+    if Files.Count < 2 then
+    begin
+      ShowMessage('Отметьте галкой в списке файлов те, что собрать в один ' +
+                  '(хотя бы два). Кнопки "Все" / "Ни одного" - под списком.');
+      Exit;
+    end;
+    List := '';
+    for ItemIdx := 0 to Files.Count - 1 do
+      if ItemIdx < 15 then
+        List := List + #13#10'  ' + ExtractFileName(Files[ItemIdx]);
+    if Files.Count > 15 then
+      List := List + #13#10'  ... ещё ' + IntToStr(Files.Count - 15);
+    if MessageDlg(Format('Собрать в один файл отмеченные (%d):%s'#13#10#13#10 +
+         'Порядок - как в списке; из одноимённых объявлений остаётся первое. ' +
+         'Исходные файлы не меняются.', [Files.Count, List]),
+         mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+      Exit;
+    Dlg.Title := 'Собранный inc-файл';
+    Dlg.Filter := 'inc|*.inc';
+    Dlg.DefaultExt := 'inc';
+    Dlg.InitialDir := ExtractFilePath(Files[0]);
+    Dlg.Options := Dlg.Options + [ofOverwritePrompt];
+    if not Dlg.Execute then
+      Exit;
+    Screen.Cursor := crHourGlass;
+    try
+      IncMerge(Files, Dlg.FileName, Report);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+    FillIncFiles;
+    SelectFileByName(Dlg.FileName);
+    ShowReport('Сборка в ' + ExtractFileName(Dlg.FileName), Report);
+  finally
+    Dlg.Free;
+    Report.Free;
+    Files.Free;
+  end;
 end;
 
 end.
