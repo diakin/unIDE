@@ -876,6 +876,10 @@ type
     procedure SubListDblClick(Sender: TObject);
     procedure SubListResize(Sender: TObject);
     procedure SubListFitColumns;
+    procedure SubFilterPlace;
+    procedure SubFilterChange(Sender: TObject);
+    procedure SubFilterKeyDown(Sender: TObject; var Key: Word;
+                               Shift: TShiftState);
     procedure ObjEventsDblClick(Sender: TObject);
     procedure ObjPropsDblClick(Sender: TObject);
     procedure ObjPropsClick(Sender: TObject);
@@ -1145,6 +1149,10 @@ type
     // Пункты меню Подсветка (вкладка и View) и схемы их подпунктов по Tag
     FHlTabItem, FHlViewItem: TMenuItem;
     FHlNames: TStringList;
+    // Поле фильтра в шапке SubList (справа от Name): в списке - только
+    // подпрограммы, в имени которых есть этот текст; пусто - все
+    FSubFilter: TUiEdit;
+    FSubFilterText: string;
     // exe цели активной вкладки (RunTargetExe), запомненный: AppIdle
     // спрашивает часто, а цель RapidQ читает файлы с диска
     FRunExeCache: string;
@@ -23657,6 +23665,9 @@ begin
     lvSubList.Items.Clear;
     for K := 0 to High(FSubs) do
     begin
+      if (FSubFilterText <> '') and
+         (Pos(FSubFilterText, LowerCase(FSubs[K].Name)) = 0) then
+        Continue;
       It := lvSubList.Items.Add;
       It.Caption := SubListCaption(FSubs[K].Name);
       It.SubItems.Add(IntToStr(FSubs[K].BeginLine + 1));
@@ -23698,6 +23709,85 @@ begin
     lvSubList.Columns[0].Width := NameWidth;
   finally
     FSubListFitting := False;
+  end;
+  SubFilterPlace;
+end;
+
+// Поле фильтра - в шапке колонки Name, справа от её подписи
+procedure TForm1.SubFilterPlace;
+const
+  LVM_GETHEADER = $1000 + 31;
+var
+  HeaderWnd: HWND;
+  HeaderRect: TRect;
+  HeaderH, TextW, FilterLeft, FilterW: Integer;
+  Origin: TPoint;
+  MeasureBmp: TBitmap;
+begin
+  if (FSubFilter = nil) or (lvSubList = nil) or not lvSubList.HandleAllocated or
+     (lvSubList.Columns.Count < 1) or (FSubFilter.Parent = nil) then
+    Exit;
+  HeaderH := 24;
+  HeaderWnd := SendMessage(lvSubList.Handle, LVM_GETHEADER, 0, 0);
+  if (HeaderWnd <> 0) and GetWindowRect(HeaderWnd, HeaderRect) and
+     (HeaderRect.Bottom - HeaderRect.Top > 8) then
+    HeaderH := HeaderRect.Bottom - HeaderRect.Top;
+  // Ширина подписи Name - шрифтом списка (им же рисуется шапка)
+  MeasureBmp := TBitmap.Create;
+  try
+    MeasureBmp.Canvas.Font.Assign(lvSubList.Font);
+    TextW := MeasureBmp.Canvas.TextWidth(lvSubList.Columns[0].Caption);
+  finally
+    MeasureBmp.Free;
+  end;
+  FilterLeft := TextW + 16;
+  FilterW := lvSubList.Columns[0].Width - FilterLeft - 6;
+  Origin := FSubFilter.Parent.ScreenToClient(lvSubList.ClientOrigin);
+  if FilterW < 30 then
+  begin
+    FSubFilter.Visible := False;
+    Exit;
+  end;
+  FSubFilter.SetBounds(Origin.X + FilterLeft, Origin.Y + 2, FilterW,
+                       HeaderH - 4);
+  FSubFilter.Visible := lvSubList.Visible;
+  FSubFilter.BringToFront;
+end;
+
+procedure TForm1.SubFilterChange(Sender: TObject);
+begin
+  FSubFilterText := LowerCase(Trim(FSubFilter.Text));
+  FillSubListView;
+end;
+
+// Esc - очистить фильтр, Enter - перейти к первой найденной, вниз - в список
+procedure TForm1.SubFilterKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  case Key of
+    VK_ESCAPE:
+      begin
+        FSubFilter.Text := '';
+        Key := 0;
+      end;
+    VK_RETURN:
+      begin
+        if lvSubList.Items.Count > 0 then
+        begin
+          if lvSubList.Selected = nil then
+            lvSubList.Items[0].Selected := True;
+          SubListDblClick(lvSubList);
+        end;
+        Key := 0;
+      end;
+    VK_DOWN:
+      if lvSubList.Items.Count > 0 then
+      begin
+        if lvSubList.Selected = nil then
+          lvSubList.Items[0].Selected := True;
+        lvSubList.SetFocus;
+        Key := 0;
+      end;
   end;
 end;
 
@@ -63016,6 +63106,21 @@ begin
   // Свои полосы прокрутки у списков и деревьев правой панели, затем цвета
   // IDE (Light / Dark) - когда все элементы окна построены
   UiWrapListScrolls;
+
+  // Фильтр SubList - поле в шапке колонки Name (SubFilterPlace). Поверх
+  // списка, поэтому после его обёртки полосами прокрутки.
+  if lvSubList <> nil then
+  begin
+    FSubFilter := TUiEdit.Create(Self);
+    FSubFilter.Parent := lvSubList.Parent;
+    FSubFilter.AutoSize := False;
+    FSubFilter.Font.Name := 'Tahoma';
+    FSubFilter.Font.Height := -12;
+    FSubFilter.ShowHint := True;
+    FSubFilter.Hint := 'Фильтр: часть имени. Esc - очистить, Enter - перейти';
+    FSubFilter.OnChange := SubFilterChange;
+    FSubFilter.OnKeyDown := SubFilterKeyDown;
+  end;
   UiApply;
 
   // SubList: Name растягивается по ширине, Begin и End - у правого края.
@@ -63024,6 +63129,7 @@ begin
   begin
     TUiCtl(lvSubList).OnResize := SubListResize;
     SubListFitColumns;
+    SubFilterPlace;
   end;
 end;
 
