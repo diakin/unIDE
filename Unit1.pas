@@ -33629,8 +33629,19 @@ begin
     // В логе - отдельным шагом до "--- Компиляция"
     LogComp('--- Препроцессор: ' + ExtractFileName(ABas) +
             ' - $INCLUDE, $RESOURCE, DLL из DECLARE ... LIB');
-    Scan.Scan(ABas, AIncDir);
-    Scan.DropNames(Ignore);
+    // На панели хода над редактором: "Препроцессор ..."; итог - зелёным не
+    // показывается (сразу идёт "Компиляция"), недостающие - красным
+    BusyBegin('Препроцессор ' + ExtractFileName(ABas));
+    try
+      Scan.Scan(ABas, AIncDir);
+      Scan.DropNames(Ignore);
+    finally
+      if Scan.MissingCount = 0 then
+        BusyEnd('', True)
+      else
+        BusyEnd(Format('Препроцессор: нет файлов %d', [Scan.MissingCount]),
+                False);
+    end;
     if Ignore.Count > 0 then
       LogComp('Препроцессор: не проверяются по выбору (editor.ini ' +
               '[RqDepsIgnore]): ' + StringReplace(IgnoreText, '|', ', ',
