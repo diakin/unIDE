@@ -54,7 +54,8 @@ uses
   RqToFb in 'RqLcl\tofb\RqToFb.pas',
   UiScroll in 'UiScroll.pas',
   Unit3 in 'Unit3.pas' {Form3},
-  IncCheck in 'IncCheck.pas';
+  IncCheck in 'IncCheck.pas',
+  DlgFindInc in 'DlgFindInc.pas' {DlgFindInc};
 
 {$R *.res}
 

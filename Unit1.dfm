@@ -570,6 +570,10 @@ object Form1: TForm1
         Caption = 'IncManager...'
         OnClick = IncManagerClick
       end
+      object mFindInc: TMenuItem
+        Caption = 'Find inc file...'
+        OnClick = FindIncClick
+      end
     end
     object mProject: TMenuItem
       Caption = '&Project'

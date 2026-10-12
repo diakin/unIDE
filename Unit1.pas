@@ -639,6 +639,7 @@ type
     mViewIcons: TMenuItem;
     mSepInc: TMenuItem;
     mIncManager: TMenuItem;
+    mFindInc: TMenuItem;
     BtnPnl: TPanel;
     FObjSnapBtn: TUiButton; // снимок поверх .dfm: показать / убрать (SnapCapShow)
     FObjDsgBtn: TUiButton; // Design form - открыть конструктор
@@ -945,6 +946,7 @@ type
     procedure NewFileClick(Sender: TObject);
     // View - IncManager (OnClick в .dfm - поэтому до private)
     procedure IncManagerClick(Sender: TObject);
+    procedure FindIncClick(Sender: TObject);
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
     procedure FObjSetListClick(Sender: TObject);
@@ -1447,6 +1449,9 @@ type
     FRqStaleTick: Cardinal;    // когда UpdateToolbarState проверял снимок
     FIdleSlowTick: Cardinal;   // последняя запись о долгом простое (AppIdle)
     FPromoted: Boolean;        // пробная сборка уже стала рабочей (OwnPromoteTrial)
+    // Окно поиска inc-файла (TDlgFindInc, FindIncShow). Тип - TForm: модуль
+    // DlgFindInc подключён в implementation
+    FFindIncDlg: TForm;
     FRqInspMain: string;       // главный .bas файла в инспекторе
     FObjRebuilding: Boolean; // дерево перестраивается - Data узлов недействительны
     FDfmNodes: TList;
@@ -2313,6 +2318,8 @@ type
     procedure DsgPaletteGlyph(Sender: TObject);
     procedure PaletteIconsClick(Sender: TObject);
     procedure IncMgrOpenFile(const AFile: string; ALine: Integer);
+    procedure IncRefDirs(var ASysDir, ARefDir: string);
+    procedure FindIncShow(const AName: string);
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
     procedure PaletteIconsApplied(Sender: TObject);
@@ -3351,6 +3358,7 @@ var
     DlgListWnd,   // списки модулей и форм - MakeListWindow
     DlgHotFolders, // папки для поиска потерянных файлов - ShowHotFolders
     Unit3,        // Inc Manager (View) - IncManagerClick
+    DlgFindInc,   // поиск inc-файла (View) - FindIncShow
     DlgDelPrj,    // Delete Projects - DeleteProjectClick
     DlgBmClear,   // Clear List закладок - BmClearClick
     DlgWinList,   // Del WinList - DelWinListClick
@@ -33216,20 +33224,81 @@ end;
 // неё - rapidq_ref\incOld у exe.
 procedure TForm1.IncManagerClick(Sender: TObject);
 var
-  SysDir, UserDir, Mode, OwnDir, RefDir: string;
+  SysDir, RefDir: string;
 begin
-  RapidQIncSettings('', SysDir, UserDir, Mode, OwnDir);
-  if SysDir <> '' then
-    RefDir := ExtractFilePath(ExcludeTrailingPathDelimiter(SysDir)) + 'incOld'
-  else
-    RefDir := ExtractFilePath(Application.ExeName) + 'rapidq_ref\incOld';
-  if (SysDir = '') or not DirectoryExists(RefDir) then
-    if DirectoryExists(ExtractFilePath(Application.ExeName) +
-                       'rapidq_ref\incOld') then
-      RefDir := ExtractFilePath(Application.ExeName) + 'rapidq_ref\incOld';
+  IncRefDirs(SysDir, RefDir);
   Form3.OnOpenFile := IncMgrOpenFile;
   Form3.OnChoose := ChooseFromList;
   Form3.ShowFor(SettingsFileName, SysDir, RefDir);
+end;
+
+// Папка общих inc (SysIncPath) и эталон - исходные inc общих (incOld рядом
+// с ней, без неё - rapidq_ref\incOld у exe)
+procedure TForm1.IncRefDirs(var ASysDir, ARefDir: string);
+var
+  UserDir, Mode, OwnDir: string;
+begin
+  RapidQIncSettings('', ASysDir, UserDir, Mode, OwnDir);
+  if ASysDir <> '' then
+    ARefDir := ExtractFilePath(ExcludeTrailingPathDelimiter(ASysDir)) +
+               'incOld'
+  else
+    ARefDir := ExtractFilePath(Application.ExeName) + 'rapidq_ref\incOld';
+  if (ASysDir = '') or not DirectoryExists(ARefDir) then
+    if DirectoryExists(ExtractFilePath(Application.ExeName) +
+                       'rapidq_ref\incOld') then
+      ARefDir := ExtractFilePath(Application.ExeName) + 'rapidq_ref\incOld';
+end;
+
+// View - Find inc file
+procedure TForm1.FindIncClick(Sender: TObject);
+begin
+  FindIncShow('');
+end;
+
+// Окно поиска inc-файла (DlgFindInc). AName - имя для поиска ('' - без
+// поиска). Копировать - в папку inc текущего проекта (её читает rc.exe),
+// без неё - в папку общих inc.
+procedure TForm1.FindIncShow(const AName: string);
+var
+  SysDir, RefDir, TargetDir: string;
+begin
+  IncRefDirs(SysDir, RefDir);
+  TargetDir := ExcludeTrailingPathDelimiter(RapidQIncDir);
+  if TargetDir = '' then
+    TargetDir := ExcludeTrailingPathDelimiter(SysDir);
+  if FFindIncDlg = nil then
+  begin
+    FFindIncDlg := TDlgFindInc.Create(Self);
+    TDlgFindInc(FFindIncDlg).OnOpenFile := IncMgrOpenFile;
+  end;
+  TDlgFindInc(FFindIncDlg).ShowFind(AName, RefDir, SysDir, TargetDir);
+end;
+
+// Имя из сообщения rc.exe "$INCLUDE file X does not exist"; '' - такого нет
+function RqMissingInclude(ALines: TStrings): string;
+const
+  Head = '$INCLUDE FILE ';
+  Tail = ' DOES NOT EXIST';
+var
+  LineIdx, HeadPos, TailPos: Integer;
+  Up: string;
+begin
+  Result := '';
+  for LineIdx := 0 to ALines.Count - 1 do
+  begin
+    Up := UpperCase(ALines[LineIdx]);
+    HeadPos := Pos(Head, Up);
+    TailPos := Pos(Tail, Up);
+    if (HeadPos > 0) and (TailPos > HeadPos) then
+    begin
+      Result := Trim(Copy(ALines[LineIdx], HeadPos + Length(Head),
+                          TailPos - HeadPos - Length(Head)));
+      if (Result <> '') and (Result[1] in ['"', '<']) then
+        Result := Copy(Result, 2, Length(Result) - 2);
+      Exit;
+    end;
+  end;
 end;
 
 // Файл из INC Manager - во вкладку; ALine (с 1) - строка, 0 - без перехода
@@ -45729,8 +45798,10 @@ var
   T0: Cardinal;
   RcLines, ConsoleLines: TStringList;
   HasError, Built, DebugBuild: Boolean;
+  MissingInc: string;   // $INCLUDE, которого rc.exe не нашёл
 begin
   Result := False;
+  MissingInc := '';
   ShowCompLog;
   // Сборка копии для снимка: лог не чистится - в нём шаги снимка
   if (CompLogEdit <> nil) and not FRqProbeActive then
@@ -45929,6 +46000,7 @@ begin
 
       HasError := RapidQReportErrors(RcLines, CompileSrc, IncDir, FirstFile,
                                      FirstLine);
+      MissingInc := RqMissingInclude(RcLines);
       FRqProbeErrFile := FirstFile;
       FRqProbeErrLine := FirstLine;
     finally
@@ -45982,6 +46054,18 @@ begin
   begin
     OpenNamedFile(FirstFile);
     GotoLine(FirstLine - 1);
+  end;
+  // Нет файла из $INCLUDE - обычно он есть где-то на диске: найти его,
+  // сравнить с эталоном и скопировать в папку inc проекта (DlgFindInc)
+  if MissingInc <> '' then
+  begin
+    LogComp('Нет файла ' + MissingInc + ' - View - Find inc file найдёт ' +
+            'его копии на дисках');
+    if MessageDlg('rc.exe не нашёл ' + MissingInc + '.'#13#10#13#10 +
+                  'Найти его копии на дисках, сравнить с эталоном и ' +
+                  'скопировать в папку inc проекта?',
+                  mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+      FindIncShow(MissingInc);
   end;
 end;
 
