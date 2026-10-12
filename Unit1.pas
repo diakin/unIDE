@@ -3280,6 +3280,14 @@ type
     procedure ApplyEditorLook(AFont: TFont; AFontColor, ABkColor: TColor);
     function  ActiveSchemaFile: string; // путь к .clr активного расширения
     function  SchemeExtFor(const AExt: string): string;
+    // Расширение -> схема для IDE Options - File Types: строки
+    // ext=схема<Tab>откуда (встроенное / alias.ini / своя ext.clr)
+    procedure SchemeAliasRows(ARows: TStrings);
+    // Записать соответствие в schemes\alias.ini; AScheme = '' - убрать
+    // строку (вернётся встроенное, если оно есть)
+    function  SchemeAliasSet(const AExt, AScheme: string): Boolean;
+    // Схемы, которые есть: имена schemes\*.clr без •default•
+    procedure SchemeNames(AList: TStrings);
     function  FormFileFor(const AUnit: string): string;
     function  UnitFileFor(const AForm: string): string;
     function  IsPascalExt(const AExt: string): Boolean;
@@ -63218,19 +63226,20 @@ end;
 //  Копии схем не годятся: правка в окне настроек попала бы только в одну.
 // ---------------------------------------------------------------------------
 
-function TForm1.SchemeExtFor(const AExt: string): string;
 const
-  // Паскаль: Delphi, Free Pascal, Lazarus
-  Builtin: array[0..11] of string = (
+  // Встроенные соответствия. Паскаль: Delphi, Free Pascal, Lazarus
+  SchemeBuiltin: array[0..11] of string = (
   'dpr=pas', 'dpk=pas', 'pp=pas', 'p=pas', 'lpr=pas', 'inc=pas',
   'lfm=dfm',                         // форма Lazarus - текст того же вида
   'lpi=xml', 'lps=xml', 'lpk=xml',   // проект, сеанс и пакет Lazarus - XML
   'fpd=xml',
   'toml=ini');                       // Cargo.toml - те же [разделы]
-    var
-    E, Dir, V: string;
-    I: Integer;
-    Ini: TIniFile;
+
+function TForm1.SchemeExtFor(const AExt: string): string;
+var
+  E, Dir, V: string;
+  I: Integer;
+  Ini: TIniFile;
 begin
   E := LowerCase(AExt);
   if (E <> '') and (E[1] = '.') then
@@ -63262,15 +63271,143 @@ begin
     V := 'bas';
 
   if V = '' then
-    for I := Low(Builtin) to High(Builtin) do
-      if Copy(Builtin[I], 1, Length(E) + 1) = E + '=' then
+    for I := Low(SchemeBuiltin) to High(SchemeBuiltin) do
+      if Copy(SchemeBuiltin[I], 1, Length(E) + 1) = E + '=' then
       begin
-        V := Copy(Builtin[I], Length(E) + 2, MaxInt);
+        V := Copy(SchemeBuiltin[I], Length(E) + 2, MaxInt);
         Break;
       end;
 
   if (V <> '') and FileExists(Dir + V + '.clr') then
     Result := V;
+end;
+
+procedure TForm1.SchemeAliasRows(ARows: TStrings);
+var
+  Dir, ExtName, Where: string;
+  Rows, IniKeys: TStringList;
+  ItemIdx, SepPos: Integer;
+  Ini: TIniFile;
+begin
+  ARows.Clear;
+  Dir := ExtractFilePath(Application.ExeName) + 'schemes\';
+  Rows := TStringList.Create;
+  IniKeys := TStringList.Create;
+  try
+    Rows.Sorted := True;
+    Rows.Duplicates := dupIgnore;
+    if FileExists(Dir + 'alias.ini') then
+    begin
+      Ini := TIniFile.Create(Dir + 'alias.ini');
+      try
+        Ini.ReadSection('Alias', IniKeys);
+        for ItemIdx := 0 to IniKeys.Count - 1 do
+        begin
+          ExtName := LowerCase(Trim(IniKeys[ItemIdx]));
+          if ExtName <> '' then
+            Rows.Add(ExtName + '=' +
+                     LowerCase(Trim(Ini.ReadString('Alias', IniKeys[ItemIdx],
+                                                   ''))) + #9 + 'alias.ini');
+        end;
+      finally
+        Ini.Free;
+      end;
+    end;
+    for ItemIdx := Low(SchemeBuiltin) to High(SchemeBuiltin) do
+    begin
+      SepPos := Pos('=', SchemeBuiltin[ItemIdx]);
+      ExtName := Copy(SchemeBuiltin[ItemIdx], 1, SepPos - 1);
+      if Rows.IndexOfName(ExtName) >= 0 then
+        Continue;   // переназначено в alias.ini
+      Where := 'встроенное';
+      if ExtName = 'inc' then
+        Where := Where + '; в проекте RapidQ Basic - bas';
+      Rows.Add(SchemeBuiltin[ItemIdx] + #9 + Where);
+    end;
+    // Расширения со своей схемой ext.clr - тоже в списке
+    SchemeNames(IniKeys);
+    for ItemIdx := 0 to IniKeys.Count - 1 do
+      if Rows.IndexOfName(IniKeys[ItemIdx]) < 0 then
+        Rows.Add(IniKeys[ItemIdx] + '=' + IniKeys[ItemIdx] + #9 +
+                 'своя схема ' + IniKeys[ItemIdx] + '.clr');
+    // Своя схема ext.clr важнее любого соответствия. Строки меняются на
+    // месте - у сортированного списка это запрещено, порядок уже есть
+    Rows.Sorted := False;
+    for ItemIdx := 0 to Rows.Count - 1 do
+    begin
+      ExtName := Rows.Names[ItemIdx];
+      if FileExists(Dir + ExtName + '.clr') and
+         (Pos(#9'своя схема', Rows[ItemIdx]) = 0) then
+        Rows[ItemIdx] := Rows[ItemIdx] + ' (не действует: есть своя ' +
+                         ExtName + '.clr)';
+    end;
+    ARows.Assign(Rows);
+  finally
+    IniKeys.Free;
+    Rows.Free;
+  end;
+end;
+
+function TForm1.SchemeAliasSet(const AExt, AScheme: string): Boolean;
+var
+  Dir, ExtName: string;
+  Ini: TIniFile;
+begin
+  Result := False;
+  ExtName := LowerCase(Trim(AExt));
+  if (ExtName <> '') and (ExtName[1] = '.') then
+    Delete(ExtName, 1, 1);
+  if ExtName = '' then
+    Exit;
+  Dir := ExtractFilePath(Application.ExeName) + 'schemes\';
+  try
+    ForceDirectories(Dir);
+    Ini := TIniFile.Create(Dir + 'alias.ini');
+    try
+      if Trim(AScheme) = '' then
+        Ini.DeleteKey('Alias', ExtName)
+      else
+        Ini.WriteString('Alias', ExtName, LowerCase(Trim(AScheme)));
+      Ini.UpdateFile;
+    finally
+      Ini.Free;
+    end;
+    Result := True;
+  except
+    on E: Exception do
+      LogComp('File Types: alias.ini не записан - ' + E.Message);
+  end;
+  // Схема активной вкладки - по новому соответствию; другие вкладки
+  // возьмут свою при переходе на них (ActivateWindow)
+  ReloadActiveClrSchema;
+end;
+
+procedure TForm1.SchemeNames(AList: TStrings);
+var
+  Dir, SchemeName: string;
+  SR: TSearchRec;
+  Names: TStringList;
+begin
+  Dir := ExtractFilePath(Application.ExeName) + 'schemes\';
+  Names := TStringList.Create;
+  try
+    Names.Sorted := True;
+    Names.Duplicates := dupIgnore;
+    if FindFirst(Dir + '*.clr', faAnyFile, SR) = 0 then
+    try
+      repeat
+        SchemeName := LowerCase(ChangeFileExt(SR.Name, ''));
+        if (SR.Attr and faDirectory = 0) and
+           (CompareText(Dir + SR.Name, DefaultSchemaFile) <> 0) then
+          Names.Add(SchemeName);
+      until FindNext(SR) <> 0;
+    finally
+      FindClose(SR);
+    end;
+    AList.Assign(Names);
+  finally
+    Names.Free;
+  end;
 end;
 
 // Файл формы для модуля: .dfm (Delphi), иначе .lfm (Lazarus). '' - нет.

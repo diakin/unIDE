@@ -336,6 +336,11 @@ type
     // к строке по номеру больше нельзя - только по имени раздела.
     FRowSec: array of string;
 
+    // Вкладка File Types: расширение -> схема подсветки (InitFileTypesTab)
+    FFtTab: TTabSheet;
+    FFtList: TUiListView;
+    FFtBtnAdd, FFtBtnEdit, FFtBtnDel: TUiButton;
+
     // Заполнение окна данными при первом открытии (TForm1.PrepareOptionsForm)
     procedure InitOptions;
     function  IsBuilt: Boolean;
@@ -410,6 +415,14 @@ type
     function  EnvEditDialog(const ATitle: string; var AName, AValue: string;
                             ANameFixed: Boolean): Boolean;
     procedure EnvSetOverride(const AName, AValue: string);
+    procedure InitFileTypesTab;
+    procedure FtFill;
+    procedure FtResize(Sender: TObject);
+    function  FtEditDialog(const ATitle: string; var AExt, AScheme: string;
+                           AExtFixed: Boolean): Boolean;
+    procedure FtAddClick(Sender: TObject);
+    procedure FtEditClick(Sender: TObject);
+    procedure FtDelClick(Sender: TObject);
     procedure InitEditorInsight;
     procedure EdTabsLoad;
     procedure EdUpdateSwatches;
@@ -828,6 +841,8 @@ begin
   InitArduinoTab;
   // Editor Options: задержки и образцы цветов Code Insight
   InitEditorInsight;
+  // File Types: какие расширения какой схемой подсвечиваются
+  InitFileTypesTab;
 
   // Нажатие кнопки Base colors приходит родителю - таблице - как
   // WM_COMMAND, а таблица Delphi 7 передаёт дальше только сообщения своего
@@ -3900,6 +3915,10 @@ begin
   if (Sender is TPageControl) and (FArdTab <> nil) and
      (TPageControl(Sender).ActivePage = FArdTab) then
     ArdTabLoad;
+  // Схемы и alias.ini могли поменять руками - перечитать
+  if (Sender is TPageControl) and (FFtTab <> nil) and
+     (TPageControl(Sender).ActivePage = FFtTab) then
+    FtFill;
 end;
 
 // «Импорт из RQdb.ini» (Compilers - Arduino): пути из раздела [Arduino]
@@ -5250,6 +5269,274 @@ begin
   Form1.FEnvOverrides.Delete(LineIdx);
   Form1.EnvOverridesChanged;
   EnvFillLists;
+end;
+
+// ---------------------------------------------------------------------------
+//  File Types: какое расширение какой схемой подсвечивается. Схема ищется
+//  как schemes\<расширение>.clr; если её нет - по соответствию из
+//  schemes\alias.ini (раздел [Alias]) или встроенному (TForm1.SchemeExtFor).
+//  Здесь видны встроенные и записанные соответствия; правка пишет
+//  alias.ini, удаление строки alias.ini возвращает встроенное.
+// ---------------------------------------------------------------------------
+
+type
+  // OnResize у TControl - protected; доступ через наследника
+  TFtSheetAccess = class(TTabSheet);
+
+procedure TForm2.InitFileTypesTab;
+var
+  HintLbl: TLabel;
+begin
+  FFtTab := TTabSheet.Create(Self);
+  FFtTab.PageControl := pcOptions;
+  FFtTab.Caption := 'File Types';
+
+  HintLbl := TLabel.Create(Self);
+  HintLbl.Parent := FFtTab;
+  HintLbl.Left := 8;
+  HintLbl.Top := 8;
+  HintLbl.AutoSize := True;
+  HintLbl.Caption :=
+    'Схема ищется как schemes\<расширение>.clr. Если своей нет - по этому ' +
+    'списку.'#13#10 +
+    'Изменения пишутся в schemes\alias.ini; Delete у строки alias.ini ' +
+    'возвращает встроенное соответствие.';
+
+  FFtList := TUiListView.Create(Self);
+  FFtList.Parent := FFtTab;
+  FFtList.Left := 8;
+  FFtList.Top := 44;
+  FFtList.ViewStyle := vsReport;
+  FFtList.ReadOnly := True;
+  FFtList.RowSelect := True;
+  FFtList.HideSelection := False;
+  with FFtList.Columns.Add do
+  begin
+    Caption := 'Extension';
+    Width := 90;
+  end;
+  with FFtList.Columns.Add do
+  begin
+    Caption := 'Scheme';
+    Width := 90;
+  end;
+  with FFtList.Columns.Add do
+  begin
+    Caption := 'Where set';
+    Width := 360;
+  end;
+  FFtList.OnDblClick := FtEditClick;
+
+  FFtBtnAdd := TUiButton.Create(Self);
+  FFtBtnAdd.Parent := FFtTab;
+  FFtBtnAdd.Caption := 'Add...';
+  FFtBtnAdd.OnClick := FtAddClick;
+  FFtBtnEdit := TUiButton.Create(Self);
+  FFtBtnEdit.Parent := FFtTab;
+  FFtBtnEdit.Caption := 'Edit...';
+  FFtBtnEdit.OnClick := FtEditClick;
+  FFtBtnDel := TUiButton.Create(Self);
+  FFtBtnDel.Parent := FFtTab;
+  FFtBtnDel.Caption := 'Delete';
+  FFtBtnDel.OnClick := FtDelClick;
+
+  TFtSheetAccess(FFtTab).OnResize := FtResize;
+  FtResize(nil);
+end;
+
+// Список - на всю вкладку, кнопки - под ним справа
+procedure TForm2.FtResize(Sender: TObject);
+const
+  BtnW = 100;
+  BtnH = 26;
+  Gap = 6;
+var
+  BtnTop: Integer;
+begin
+  if (FFtTab = nil) or (FFtList = nil) then
+    Exit;
+  BtnTop := FFtTab.ClientHeight - BtnH - 8;
+  FFtList.Width := FFtTab.ClientWidth - 16;
+  FFtList.Height := BtnTop - Gap - FFtList.Top;
+  FFtBtnDel.SetBounds(FFtTab.ClientWidth - 8 - BtnW, BtnTop, BtnW, BtnH);
+  FFtBtnEdit.SetBounds(FFtBtnDel.Left - Gap - BtnW, BtnTop, BtnW, BtnH);
+  FFtBtnAdd.SetBounds(FFtBtnEdit.Left - Gap - BtnW, BtnTop, BtnW, BtnH);
+end;
+
+procedure TForm2.FtFill;
+var
+  Rows: TStringList;
+  RowIdx, TabPos: Integer;
+  Item: TListItem;
+  OldExt, Rest: string;
+begin
+  if (Form1 = nil) or (FFtList = nil) then
+    Exit;
+  OldExt := '';
+  if FFtList.Selected <> nil then
+    OldExt := FFtList.Selected.Caption;
+  Rows := TStringList.Create;
+  FFtList.Items.BeginUpdate;
+  try
+    Form1.SchemeAliasRows(Rows);
+    FFtList.Items.Clear;
+    for RowIdx := 0 to Rows.Count - 1 do
+    begin
+      Item := FFtList.Items.Add;
+      Item.Caption := Rows.Names[RowIdx];
+      Rest := Copy(Rows[RowIdx], Length(Item.Caption) + 2, MaxInt);
+      TabPos := Pos(#9, Rest);
+      if TabPos > 0 then
+      begin
+        Item.SubItems.Add(Copy(Rest, 1, TabPos - 1));
+        Item.SubItems.Add(Copy(Rest, TabPos + 1, MaxInt));
+      end
+      else
+      begin
+        Item.SubItems.Add(Rest);
+        Item.SubItems.Add('');
+      end;
+      if Item.Caption = OldExt then
+        Item.Selected := True;
+    end;
+  finally
+    FFtList.Items.EndUpdate;
+    Rows.Free;
+  end;
+end;
+
+// Окно: расширение и схема из списка schemes\*.clr
+function TForm2.FtEditDialog(const ATitle: string; var AExt,
+  AScheme: string; AExtFixed: Boolean): Boolean;
+var
+  Dlg: TForm;
+  ExtLbl, SchemeLbl: TLabel;
+  ExtEdit: TUiEdit;
+  SchemeBox: TUiComboBox;
+  OkBtn, CancelBtn: TUiButton;
+  Names: TStringList;
+begin
+  Result := False;
+  Dlg := TForm.Create(Self);
+  Names := TStringList.Create;
+  try
+    Dlg.Caption := ATitle;
+    Dlg.BorderStyle := bsDialog;
+    Dlg.Position := poOwnerFormCenter;
+    Dlg.ClientWidth := 300;
+    Dlg.ClientHeight := 120;
+
+    ExtLbl := TLabel.Create(Dlg);
+    ExtLbl.Parent := Dlg;
+    ExtLbl.SetBounds(12, 16, 90, 16);
+    ExtLbl.Caption := 'Extension:';
+    ExtEdit := TUiEdit.Create(Dlg);
+    ExtEdit.Parent := Dlg;
+    ExtEdit.SetBounds(110, 12, 178, 22);
+    ExtEdit.Text := AExt;
+    ExtEdit.ReadOnly := AExtFixed;
+
+    SchemeLbl := TLabel.Create(Dlg);
+    SchemeLbl.Parent := Dlg;
+    SchemeLbl.SetBounds(12, 48, 90, 16);
+    SchemeLbl.Caption := 'Scheme:';
+    SchemeBox := TUiComboBox.Create(Dlg);
+    SchemeBox.Parent := Dlg;
+    SchemeBox.SetBounds(110, 44, 178, 22);
+    SchemeBox.Style := csDropDownList;
+    Form1.SchemeNames(Names);
+    SchemeBox.Items.Assign(Names);
+    SchemeBox.ItemIndex := SchemeBox.Items.IndexOf(LowerCase(AScheme));
+    if (SchemeBox.ItemIndex < 0) and (SchemeBox.Items.Count > 0) then
+      SchemeBox.ItemIndex := 0;
+
+    OkBtn := TUiButton.Create(Dlg);
+    OkBtn.Parent := Dlg;
+    OkBtn.SetBounds(110, 84, 86, 26);
+    OkBtn.Caption := 'OK';
+    OkBtn.Default := True;
+    OkBtn.ModalResult := mrOk;
+    CancelBtn := TUiButton.Create(Dlg);
+    CancelBtn.Parent := Dlg;
+    CancelBtn.SetBounds(202, 84, 86, 26);
+    CancelBtn.Caption := 'Cancel';
+    CancelBtn.Cancel := True;
+    CancelBtn.ModalResult := mrCancel;
+
+    if AExtFixed then
+      Dlg.ActiveControl := SchemeBox
+    else
+      Dlg.ActiveControl := ExtEdit;
+    Form1.UiApplyForm(Dlg);
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+    AExt := LowerCase(Trim(ExtEdit.Text));
+    if (AExt <> '') and (AExt[1] = '.') then
+      Delete(AExt, 1, 1);
+    if (AExt = '') or (Pos('=', AExt) > 0) or (Pos('.', AExt) > 0) then
+    begin
+      ShowMessage('Расширение - без точки внутри и без "=", например: inc');
+      Exit;
+    end;
+    if SchemeBox.ItemIndex < 0 then
+      Exit;
+    AScheme := SchemeBox.Items[SchemeBox.ItemIndex];
+    Result := True;
+  finally
+    Names.Free;
+    Dlg.Free;
+  end;
+end;
+
+procedure TForm2.FtAddClick(Sender: TObject);
+var
+  ExtName, SchemeName: string;
+begin
+  if Form1 = nil then
+    Exit;
+  ExtName := '';
+  SchemeName := 'bas';
+  if FtEditDialog('New File Type', ExtName, SchemeName, False) then
+  begin
+    Form1.SchemeAliasSet(ExtName, SchemeName);
+    FtFill;
+  end;
+end;
+
+procedure TForm2.FtEditClick(Sender: TObject);
+var
+  ExtName, SchemeName: string;
+begin
+  if (Form1 = nil) or (FFtList.Selected = nil) then
+    Exit;
+  ExtName := FFtList.Selected.Caption;
+  SchemeName := FFtList.Selected.SubItems[0];
+  if Pos('своя схема', FFtList.Selected.SubItems[1]) = 1 then
+  begin
+    ShowMessage('У .' + ExtName + ' своя схема ' + ExtName + '.clr - она ' +
+      'важнее любого соответствия. Чтобы .' + ExtName + ' шёл по другой ' +
+      'схеме, файл ' + ExtName + '.clr нужно убрать из папки schemes.');
+    Exit;
+  end;
+  if FtEditDialog('Edit File Type', ExtName, SchemeName, True) then
+  begin
+    Form1.SchemeAliasSet(ExtName, SchemeName);
+    FtFill;
+  end;
+end;
+
+procedure TForm2.FtDelClick(Sender: TObject);
+begin
+  if (Form1 = nil) or (FFtList.Selected = nil) then
+    Exit;
+  if Pos('alias.ini', FFtList.Selected.SubItems[1]) <> 1 then
+  begin
+    ShowMessage('Встроенное соответствие не удаляется - его можно ' +
+      'переназначить кнопкой Edit.');
+    Exit;
+  end;
+  Form1.SchemeAliasSet(FFtList.Selected.Caption, '');
+  FtFill;
 end;
 
 // ---------------------------------------------------------------------------
