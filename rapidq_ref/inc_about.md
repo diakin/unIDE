@@ -65,8 +65,18 @@
 достаточно `rapidqAllProc.inc`.
 
 Старая программа, которая работала со своими inc, с общими файлами может не
-собраться или вести себя иначе. Причины — ниже. Такой программе в настройках
-проекта выбирается пользовательская (старая) папка inc.
+собраться или вести себя иначе. Причины — ниже. Такая программа подключает старые
+файлы по прежним именам.
+
+Папка для компилятора одна — `rapidq_ref/inc_standard` (IDE Options —
+Compilers — RapidQ Basic, поле Include; решение автора 2026-10-12). Её
+собирает `rapidq_ref/tools/build_standard.py`: файлы incOld без ошибок
+проверки INC Manager — под своими именами, и из inc_sys общие
+`rapidqAllProc.inc`, `rapidqComponents.inc` и отдельные файлы, которые
+build_inc.py пишет с `_sys` в имени (`debug_sys.inc`, `var_sys.inc` …),
+чтобы не совпадать с одноимёнными файлами incOld. Состав и список
+не взятых файлов — `rapidq_ref/inc_standard.md`. Выбор старой или новой
+папки в настройках проекта убран; своя папка проекта осталась.
 
 ### 1. Не все файлы вошли
 
@@ -108,13 +118,15 @@
 - **Переменные одной программы**: var.inc, var2008.inc.
 
 Файлы, отмеченные в плане «отдельно: ...», собираются в `inc_sys` своими
-файлами под прежними именами: повторы объявлений общих файлов из них
+файлами, к имени добавлено `_sys` (в inc_standard рядом лежит исходный файл
+incOld под прежним именем): повторы объявлений общих файлов из них
 убраны (список — `build_removed.txt`), а `rapidqComponents.inc` они
 подключают сами.
-Программе, которой такой файл нужен, достаточно `$INCLUDE "pulsar.inc"` и т.п.
-Сейчас так собраны: debug.inc, debugNoSend.inc, debugWindow.inc, pulsar.inc,
-QPrintDialog.inc, FBFunctions.inc, PRINTERDLL.INC, TRM_RQDeclares.INC,
-QImageBox.inc, QImageDialog.inc, RapidQ_D3D.inc, var.inc, var2008.inc.
+Программе, которой такой файл нужен, достаточно `$INCLUDE "pulsar_sys.inc"` и т.п.
+Сейчас так собраны: debug_sys.inc, debugNoSend_sys.inc, debugWindow_sys.inc,
+pulsar_sys.inc, QPrintDialog_sys.inc, FBFunctions_sys.inc, PRINTERDLL_sys.INC,
+TRM_RQDeclares_sys.INC, QImageBox_sys.inc, QImageDialog_sys.inc,
+RapidQ_D3D_sys.inc, var_sys.inc, var2008_sys.inc.
 
 Сборщик сам комментирует в общих файлах:
 - `$APPTYPE` и `$OPTION ICON` (`'~app`) — тип и иконку exe задаёт программа;

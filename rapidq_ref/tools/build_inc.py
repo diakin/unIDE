@@ -1432,10 +1432,16 @@ def main():
     # общие файлы подключаются в начале.
     separate = [by_low[low] for low in sorted(take) if take[low].startswith('отдельно')
                 and low in by_low]
+    # Имя - с _sys (debug.inc -> debug_sys.inc): в общей папке inc_standard
+    # рядом лежит исходный файл из incOld под своим именем, для старых программ
+    sep_names = []
     for f in separate:
         sep_builder = copy.deepcopy(builder)
-        guard = '__SEP_' + re.sub(r'\W', '_', os.path.splitext(f)[0]).upper() + '_INC'
-        out = ["' %s - отдельный inc, не входит в rapidqAllProc.inc /" % f,
+        stem, ext = os.path.splitext(f)
+        sep_name = stem + '_sys' + ext
+        sep_names.append(sep_name)
+        guard = '__SEP_' + re.sub(r'\W', '_', stem).upper() + '_INC'
+        out = ["' %s - отдельный inc, не входит в rapidqAllProc.inc /" % sep_name,
                "' rapidqComponents.inc: %s." % take[f.lower()][len('отдельно'):].lstrip(': '),
                "' Собран rapidq_ref/tools/build_inc.py из incOld/%s; повторы объявлений" % f,
                "' общих файлов убраны (build_removed.txt). Подключать в программе,",
@@ -1445,7 +1451,7 @@ def main():
                '$INCLUDE "rapidqComponents.inc"']
         sep_builder.emit_file(f, texts[f], keep=line_keep(take[f.lower()]), out=out)
         out.append("$ENDIF ' %s" % guard)
-        finals.append((f, out))
+        finals.append((sep_name, out))
 
     # Повторы ('~dup) и закомментированные в исходных файлах объявления
     # имён, которые в сборке объявлены, - не в файлы, а в build_removed.txt
@@ -1471,7 +1477,7 @@ def main():
            'и %d файлов: %s' % (len(proc_files), ', '.join(proc_files)),
            '- rapidqComponents.inc: разделы компонентов rapidq2.inc и %d файлов: %s'
            % (len(ordered), ', '.join(ordered)),
-           '- отдельными файлами в inc_sys: %d: %s' % (len(separate), ', '.join(separate)),
+           '- отдельными файлами в inc_sys (имя с _sys): %d: %s' % (len(separate), ', '.join(sep_names)),
            '- не вошли: %d файлов (ниже)' % len(skipped), '']
     cut = [(f, take[f.lower()]) for f in ordered + proc_files if line_keep(take.get(f.lower(), 'да'))]
     if cut:

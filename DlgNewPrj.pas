@@ -354,9 +354,17 @@ procedure TDlgNewPrj.SetRqInc(const ASysDir, AUserDir, AMode, AOwnDir: string);
 begin
   FIncSysDir := ASysDir;
   FIncUserDir := AUserDir;
-  // Выбор переключателя заполняет поле (rbIncClick) - свой путь после
-  rbIncSys.Checked := CompareText(AMode, 'sys') = 0;
-  rbIncUser.Checked := not rbIncSys.Checked;
+  // Папка inc в настройках компилятора теперь одна (Include, обычно
+  // rapidq_ref\inc_standard): выбора вида нет, в поле - она или своя папка
+  // проекта. Переключатели остались в .dfm, скрыты.
+  rbIncSys.Visible := False;
+  rbIncUser.Visible := False;
+  rbIncSys.Checked := False;
+  rbIncUser.Checked := True;
+  edIncPath.Top := 24;
+  btnIncBrowse.Top := 23;
+  grpRqInc.Caption := 'Папка inc (RapidQ): пусто или как в настройках - ' +
+                      'Include из IDE Options, иначе своя папка проекта';
   if rbIncSys.Checked then
     edIncPath.Text := FIncSysDir
   else

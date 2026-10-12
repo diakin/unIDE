@@ -25383,18 +25383,20 @@ begin
   AIncDir := RapidQIncDir;
 end;
 
-// Папки inc RapidQ (rapidq_ref/inc_about.md): в настройках компилятора
-// две - системные, новые (SysIncPath: rapidqAllProc.inc,
-// rapidqComponents.inc) и пользовательские, старые (IncPath: те, с
-// которыми программы писались). Проект выбирает вид (IncMode = sys/user)
-// и может задать свою папку (IncPath раздела Project) - Project
-// Properties. Проект без выбора (создан раньше этой настройки) -
-// пользовательские: старые программы собираются с прежними inc.
+// Папка inc RapidQ (rapidq_ref/inc_standard.md): в настройках компилятора
+// одна - Include (IncPath), обычно rapidq_ref\inc_standard: старые inc из
+// incOld под своими именами и общие rapidqAllProc.inc, rapidqComponents.inc.
+// Проект может задать свою папку (IncPath раздела Project) - Project
+// Properties. ASysDir - папка с rapidqComponents.inc (палитра, INC
+// Manager): IncPath, если файл там есть, иначе прежняя SysIncPath (ключ
+// остался в editor.ini от двух папок). AUserDir - IncPath. AMode - прежний
+// выбор вида у проекта, больше не влияет.
 procedure TForm1.RapidQIncSettings(const AProject: string;
                                    var ASysDir, AUserDir, AMode, AOwnDir: string);
 var
   Ini: TIniFile;
   Prj: TProjectIni;
+  OldSysDir: string;
 begin
   ASysDir := '';
   AUserDir := '';
@@ -25404,13 +25406,20 @@ begin
     Exit;
   Ini := TIniFile.Create(SettingsFileName);
   try
-    ASysDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-    'SysIncPath', ''));
-                                   AUserDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-    'IncPath', ''));
+    OldSysDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                     'SysIncPath', ''));
+    AUserDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                    'IncPath', ''));
   finally
     Ini.Free;
   end;
+  if (AUserDir <> '') and
+     FileExists(IncludeTrailingPathDelimiter(AUserDir) + 'rapidqComponents.inc') then
+    ASysDir := AUserDir
+  else if OldSysDir <> '' then
+    ASysDir := OldSysDir
+  else
+    ASysDir := AUserDir;
   if AProject = '' then
     Exit;
   Prj := TProjectIni.Create(SettingsFileName, AProject);
@@ -25422,8 +25431,8 @@ begin
   end;
 end;
 
-// Папка inc для сборки и разбора RapidQ текущего проекта: своя папка
-// проекта, иначе по виду (системные или пользовательские)
+// Папка inc для сборки и разбора RapidQ текущего проекта (она же -I для
+// rc.exe): своя папка проекта, иначе Include из настроек компилятора
 function TForm1.RapidQIncDir: string;
 var
   SysDir, UserDir, Mode, OwnDir: string;
@@ -25431,8 +25440,6 @@ begin
   RapidQIncSettings(FCurrentProject, SysDir, UserDir, Mode, OwnDir);
   if OwnDir <> '' then
     Result := OwnDir
-  else if Mode = 'sys' then
-    Result := SysDir
   else
     Result := UserDir;
 end;
@@ -33556,10 +33563,11 @@ var
   OwnDir: string;
 begin
   IncRefDirs(SysDir, RefDir);
-  // Порядок поиска: Include user, Include system, папка главного .bas (или
-  // открытого файла), папка выше
+  // Порядок поиска: Include (папка -I проекта), папка с общими inc, если
+  // она другая, папка главного .bas (или открытого файла), папка выше
   RapidQIncludeDirs(CurDir, IncDir);
   RapidQIncSettings(FCurrentProject, CfgSys, UserDir, Mode, OwnDir);
+  UserDir := IncDir;
   TargetDir := ExcludeTrailingPathDelimiter(RapidQIncDir);
   if TargetDir = '' then
     TargetDir := ExcludeTrailingPathDelimiter(SysDir);
@@ -33574,7 +33582,7 @@ end;
 
 // Перед сборкой RapidQ: $INCLUDE (с вложенными), $RESOURCE и DLL из
 // DECLARE ... LIB - на месте ли (RqDeps). Нет - окно DlgRqDeps: поиск по
-// Include user, Include system, папке программы и папке выше, копирование
+// Include (-I), общей Include, папке программы и папке выше, копирование
 // в папку -I (DLL - в папку программы). Имена, про которые просили не
 // спрашивать, - editor.ini [RqDepsIgnore], ключ - путь главного .bas.
 // False - сборку отменили.
@@ -33642,7 +33650,8 @@ begin
     IncRefDirs(SysDir, RefDir);
     RapidQIncSettings(FCurrentProject, CfgSys, UserDir, Mode, OwnDir);
     MainDir := ExcludeTrailingPathDelimiter(Scan.MainDir);
-    Roots.Add('Include user|' + UserDir);
+    Roots.Add('Include|' + AIncDir);
+    Roots.Add('Include (общая)|' + UserDir);
     Roots.Add('Include system|' + SysDir);
     Roots.Add('папка программы|' + MainDir);
     Roots.Add('папка выше|' + ExtractFileDir(MainDir));

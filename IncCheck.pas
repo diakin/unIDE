@@ -145,6 +145,9 @@ implementation
 const
   MaxFilesWalk = 20000;
   MaxClashMsgs = 30;
+  // Общие inc (inc_sys / inc_standard): их имена - "общие"
+  CommonIncNames: array[0..1] of string = ('rapidqAllProc.inc',
+                                           'rapidqComponents.inc');
 
   // Встроенные классы rc.exe (Component.data, кроме QCOLORDIALOG: его
   // описывают inc, и rc.exe TYPE QCOLORDIALOG принимает) и QTHREAD - он не описан в
@@ -632,9 +635,15 @@ begin
       FHashes.AddObject(TextKey(IncNormalize(Lines)), TObject(PathIdx));
     end;
 
-    // Имена общих inc - для повторов при подключении вместе
+    // Имена общих inc - для повторов при подключении вместе. Только два
+    // общих файла: папка Include (inc_standard) держит и старые inc из
+    // incOld, их имена общими не считаются.
     Files.Clear;
-    FindFilesExt(ASysDir, '.inc', False, Files, MaxFilesWalk);
+    for NameIdx := Low(CommonIncNames) to High(CommonIncNames) do
+      if FileExists(IncludeTrailingPathDelimiter(ASysDir) +
+                    CommonIncNames[NameIdx]) then
+        Files.Add(IncludeTrailingPathDelimiter(ASysDir) +
+                  CommonIncNames[NameIdx]);
     for FileIdx := 0 to Files.Count - 1 do
     begin
       if Assigned(AProgress) then

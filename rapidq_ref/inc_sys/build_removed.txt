@@ -15743,14 +15743,14 @@
 'by Pete Kleinschmidt
 'loosely based on VB code by David M. Hitchner
 'http://www.thescarms.com/vbasic/CommIO.asp
-=== debug.inc: 3 строк
+=== debug_sys.inc: 3 строк
 '~dup CONST WM_COPYDATA = &H4A   ' повтор, первое: constants.inc(161)
 '~dup TYPE COPYDATASTRUCT    ' повтор, первое: WIN32API.INC(6234)
 '~dup DECLARE FUNCTION FindWindow LIB "user32" ALIAS "FindWindowA" (ByVal lpClassName AS String, ByVal lpWindowName AS String) AS LONG    ' повтор, первое: User32.inc(17)
-=== FBFunctions.inc: 2 строк
+=== FBFunctions_sys.inc: 2 строк
 'declare Function  FBSEARCREPLACEINWORD lib "fbrqsr.dll" alias "FBSEARCREPLACEINWORD@8"_
 'declare Function  FBSEARCREPLACEINWORD lib "fbrqsr8.dll" alias "FBSEARCREPLACEINWORD@4"_
-=== PRINTERDLL.INC: 141 строк
+=== PRINTERDLL_sys.INC: 141 строк
 '~dup Const HS_HORIZONTAL=0   '  -----   ' повтор, первое: WIN32API.INC(3858)
 '~dup Const HS_VERTICAL=1     '  |||||   ' повтор, первое: WIN32API.INC(3859)
 '~dup Const HS_FDIAGONAL=2    '  \\\\\   ' повтор, первое: WIN32API.INC(3860)
@@ -15892,15 +15892,15 @@
 ' Hatch Styles.
 ' Border Styles.
 ' MS Defined Styles.
-=== QImageBox.inc: 3 строк
+=== QImageBox_sys.inc: 3 строк
 '~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 '~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 '~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
-=== QImageDialog.inc: 3 строк
+=== QImageDialog_sys.inc: 3 строк
 '~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 '~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 '~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
-=== QPrintDialog.inc: 21 строк
+=== QPrintDialog_sys.inc: 21 строк
 '~dup CONST PSD_DEFAULTMINMARGINS = 0   ' повтор, первое: rapidq2.inc(7210)
 '~dup CONST PSD_MINMARGINS = &H1   ' повтор, первое: rapidq2.inc(7211)
 '~dup CONST PSD_MARGINS = &H2   ' повтор, первое: rapidq2.inc(7212)
@@ -15922,10 +15922,10 @@
 '~dup TYPE TPSD   ' повтор, первое: rapidq2.inc(7232)
 '~dup DECLARE FUNCTION PageSetupDlg LIB "COMDLG32" ALIAS "PageSetupDlgA" _   ' повтор, первое: rapidq2.inc(7261)
 '~dup DIM PSD AS TPSD   ' повтор, первое: printdlg.inc(50)
-=== RapidQ_D3D.inc: 2 строк
+=== RapidQ_D3D_sys.inc: 2 строк
 '~dup 	$DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 '~dup 	$DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
-=== var.inc: 7 строк
+=== var_sys.inc: 7 строк
 'defint pnt 
 'DIM klas(4) as integer ' класс точности
 'DIM dopusk$(4) as string 'допуск 
@@ -15933,7 +15933,7 @@
 'defsng Fpr1! '= CLNG(FRazmah!(FileNakop1$) * 10) / 10  'вел-на накоп. погp. Fpr
 'defsng CikD1! '= CLNG(FRazmah!(CikDis1$) * 10) / 10
 'defsng ZazorMax! '= CLNG(fAbsMax!(Zazor$, 1, -1) * 10) / 10
-=== var2008.inc: 19 строк
+=== var2008_sys.inc: 19 строк
 '~dup Const SW_HIDE=0   ' повтор, первое: Form.inc(6)
 '~dup Const SW_SHOWNORMAL=1   ' повтор, первое: Form.inc(7)
 '~dup Const SW_NORMAL=1   ' повтор, первое: Form.inc(8)

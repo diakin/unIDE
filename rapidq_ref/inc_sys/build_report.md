@@ -6,7 +6,7 @@
 
 - rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, и 89 файлов: AddMenuItemBitmaps4a.inc, AdvAPI32.inc, Api.inc, ApiDate.inc, CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc, CallBack_4.Inc, CallBack_5.Inc, CallBack_6.Inc, CallBack_7.Inc, CallBack_8.Inc, CallBackAll.Inc, CallBackForwarder.Inc, CallBacks.Inc, CMD5.inc, CommCtrl.inc, commctrl32.inc, Common.inc, constants.inc, Control.inc, conversion.inc, conversion1.inc, conversionOld.inc, ConvertToTruePath.inc, Copy of NOTA.inc, createWind.inc, DBT.INC, delTags.inc, eMail.Inc, eml.inc, emlOld.inc, evaluate.inc, fbscancodes.inc, fileops.inc, Files.inc, Files1.inc, Files2.inc, FilesBug.inc, FileUtils.inc, Form.inc, func_array.inc, GDI32.inc, htmlhelp.inc, Kernel32.inc, keys.inc, like.inc, Math.inc, MDI_API.INC, Memory.inc, microTIMER.inc, Minimize.inc, msgdlg.inc, NewWndProc.Inc, NOTA.inc, objectToolbox.inc, ODMenuXP.inc, ole.inc, parse.inc, pdecl.inc, printdlg.inc, printrichedit.inc, QFiles.inc, QFormLocale.inc, QFormSkin.inc, QFuncLib.inc, QPoint.inc, QStringGridEx.inc, QXLS.INC, registryVars.inc, RichEditApi.inc, rq_math.inc, RqAsmUtils.Inc, RQDialog.inc, RQProcess.inc, SetFileTimeAttrib.inc, setup.inc, Shell32.inc, ShellRedir.Inc, SysUtils.inc, User32.inc, using.inc, WFunctions.inc, Win32_constants.inc, WIN32API.INC, WINDOWS.INC, WindowsAPI.inc, WinMM.Inc
 - rapidqComponents.inc: разделы компонентов rapidq2.inc и 91 файлов: apiRe.inc, odbc.inc, QCoolBarXPv1d.inc, QDataBase.inc, qdrive2024.inc, qEditEx.inc, QIni.inc, QIniFile.inc, QMaxSplitter.inc, QRedEx.Inc, qspintext.inc, QTextEdit.inc, RichEdPopUp.inc, VFW.inc, XP_MANIFEST.INC, COMPORTxp.inc, HiLight.inc, QAnim.inc, QAnimate.inc, QAVI.inc, QBevel.inc, QBrowseDialog.inc, QButtonXP.INC, qcalendar.inc, Qcdaudio.inc, qcgi.inc, QChart.inc, QColorButton.inc, QCursor.inc, qdataBaseSQL.inc, QDesktop.inc, QDigDisplay.inc, QDir.Inc, qdownload.inc, QDrawFocus.inc, QDrawMenu.inc, QFileListView.inc, QFlashLabel.inc, QFlatButton.inc, qfocus.inc, QFTPCLIENT.INC, qgraph.inc, QGridColor.inc, QHead.inc, QHTML.inc, QICMP.INC, QICON.inc, Qid3Tag.inc, QImageListEx.inc, QInputBox.inc, QLed.inc, QLedScroll.inc, QLibrary.Inc, QLine.inc, QListBoxEx.inc, QMailLabel.inc, qmenu.inc, QMidi.inc, Qmp3.inc, qposic.inc, QPrinterInfo.inc, QProcess.inc, QProgress.inc, QProgressBar.inc, QRichEditXt.inc, QrPanel.inc, QRun.inc, QSavePlus.inc, QSHFileOperation.inc, QShutdown.inc, QSkin.inc, QSkinBtn.inc, QSocketEx.inc, QSpinEdit.inc, QSplash.inc, QStatusBarEx.inc, QtabControlEx.inc, QTextBtn.inc, QToolBar.inc, QToolBarEX.inc, QTreeviewEx.inc, QVideo.inc, QVolumeInfo.inc, QVuMeter.inc, QWave.inc, QXPButton.inc, RapidFRM.inc, RC4crypt.inc, RSocket.INC, TstRichEd.inc, XPThemes.inc
-- отдельными файлами в inc_sys: 13: debug.inc, debugNoSend.inc, debugWindow.inc, FBFunctions.inc, PRINTERDLL.INC, pulsar.inc, QImageBox.inc, QImageDialog.inc, QPrintDialog.inc, RapidQ_D3D.inc, TRM_RQDeclares.INC, var.inc, var2008.inc
+- отдельными файлами в inc_sys (имя с _sys): 13: debug_sys.inc, debugNoSend_sys.inc, debugWindow_sys.inc, FBFunctions_sys.inc, PRINTERDLL_sys.INC, pulsar_sys.inc, QImageBox_sys.inc, QImageDialog_sys.inc, QPrintDialog_sys.inc, RapidQ_D3D_sys.inc, TRM_RQDeclares_sys.INC, var_sys.inc, var2008_sys.inc
 - не вошли: 110 файлов (ниже)
 
 ## Взята часть файла
@@ -1306,19 +1306,19 @@
 
 - rapidqAllProc.inc: 14774
 - rapidqComponents.inc: 969
-- debug.inc: 3
-- debugNoSend.inc: 0
-- debugWindow.inc: 0
-- FBFunctions.inc: 2
-- PRINTERDLL.INC: 141
-- pulsar.inc: 0
-- QImageBox.inc: 3
-- QImageDialog.inc: 3
-- QPrintDialog.inc: 21
-- RapidQ_D3D.inc: 2
-- TRM_RQDeclares.INC: 0
-- var.inc: 7
-- var2008.inc: 19
+- debug_sys.inc: 3
+- debugNoSend_sys.inc: 0
+- debugWindow_sys.inc: 0
+- FBFunctions_sys.inc: 2
+- PRINTERDLL_sys.INC: 141
+- pulsar_sys.inc: 0
+- QImageBox_sys.inc: 3
+- QImageDialog_sys.inc: 3
+- QPrintDialog_sys.inc: 21
+- RapidQ_D3D_sys.inc: 2
+- TRM_RQDeclares_sys.INC: 0
+- var_sys.inc: 7
+- var2008_sys.inc: 19
 
 ## Директивы, на которые стоит посмотреть
 
