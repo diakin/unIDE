@@ -65,6 +65,11 @@ type
     FSysDir: string;       // общие inc
     FTargetDir: string;    // куда копировать (папка inc проекта)
     FSearchDir: string;    // где искать, если не на всех дисках
+    // Сначала - текущая папка (главного .bas или открытого файла), Include
+    // user, Include system, папка выше текущей; потом диски или FSearchDir
+    FCurDir: string;
+    FUserIncDir: string;
+    FFoundWhere: TStringList;   // по найденной копии - где нашлась
     FRef: TIncRefIndex;    // nil - эталон ещё не прочитан
     FInfos: TList;         // TIncFileInfo найденных копий - владелец
     FBusy: Boolean;
@@ -85,7 +90,8 @@ type
     // Показать окно. AName - имя файла (пусто - без поиска), ARefDir -
     // эталон, ASysDir - общие inc, ATargetDir - папка inc проекта, куда
     // копировать. AName задано - поиск начинается сразу.
-    procedure ShowFind(const AName, ARefDir, ASysDir, ATargetDir: string);
+    procedure ShowFind(const AName, ARefDir, ASysDir, ATargetDir: string;
+                       const ACurDir: string = ''; const AUserIncDir: string = '');
     property OnOpenFile: TFindIncOpenEvent read FOnOpenFile write FOnOpenFile;
   end;
 
@@ -104,8 +110,11 @@ begin
 end;
 
 procedure TDlgFindInc.ShowFind(const AName, ARefDir, ASysDir,
-                               ATargetDir: string);
+                               ATargetDir: string; const ACurDir: string;
+                               const AUserIncDir: string);
 begin
+  FCurDir := ExcludeTrailingPathDelimiter(ACurDir);
+  FUserIncDir := ExcludeTrailingPathDelimiter(AUserIncDir);
   Show;
   BringToFront;
   if FBusy then
@@ -134,6 +143,7 @@ begin
   ClearFound;
   FreeAndNil(FInfos);
   FreeAndNil(FRef);
+  FreeAndNil(FFoundWhere);
 end;
 
 procedure TDlgFindInc.FormClose(Sender: TObject; var Action: TCloseAction);
@@ -144,12 +154,15 @@ end;
 
 procedure TDlgFindInc.UpdateLabels;
 begin
+  lblFolder.Caption := 'Где искать: текущая папка, Include user, Include ' +
+                       'system, папка выше';
   if chkAllDrives.Checked then
-    lblFolder.Caption := 'Где искать: все локальные диски'
-  else if FSearchDir = '' then
-    lblFolder.Caption := 'Где искать: папка не выбрана'
-  else
-    lblFolder.Caption := 'Где искать: ' + FSearchDir;
+    lblFolder.Caption := lblFolder.Caption + ', затем все локальные диски'
+  else if FSearchDir <> '' then
+    lblFolder.Caption := lblFolder.Caption + ', затем ' + FSearchDir;
+  lblFolder.Hint := 'Текущая: ' + FCurDir + #13#10'Include user: ' +
+                    FUserIncDir + #13#10'Include system: ' + FSysDir;
+  lblFolder.ShowHint := True;
   btnFolder.Enabled := not chkAllDrives.Checked and not FBusy;
   if FTargetDir = '' then
     lblTarget.Caption := 'Куда копировать: папка не задана'
@@ -198,6 +211,8 @@ begin
       TObject(FInfos[ItemIdx]).Free;
     FInfos.Clear;
   end;
+  if FFoundWhere <> nil then
+    FFoundWhere.Clear;
   if csDestroying in ComponentState then
     Exit;
   lstFound.Items.Clear;
@@ -209,15 +224,23 @@ end;
 // ошибки. Идёт поиск - кнопка останавливает его.
 procedure TDlgFindInc.btnFindClick(Sender: TObject);
 var
-  Roots, Files: TStringList;
-  SearchName: string;
+  Roots, Files, Where, Searched, StageFiles, StageList: TStringList;
+  SearchName, StageRoot, WhereText: string;
   Drives: array[0..255] of Char;
   DrivePtr: PChar;
-  FileIdx: Integer;
+  FileIdx, StageIdx, SkipIdx, WhereCount: Integer;
   Info: TIncFileInfo;
-  Cancel, Done: Boolean;
+  Cancel, Done, Covered: Boolean;
   Counts: array[TIncStatus] of Integer;
   Status: TIncStatus;
+
+  // Шаг поиска: подпись и папка; папки нет на диске - шага нет
+  procedure AddStage(const ALabel, ADir: string);
+  begin
+    if (Trim(ADir) <> '') and DirectoryExists(ADir) then
+      Roots.Add(ALabel + '|' + ExcludeTrailingPathDelimiter(ADir));
+  end;
+
 begin
   if FBusy then
   begin
@@ -234,18 +257,20 @@ begin
     lblStatus.Caption := 'Введите имя файла, например QColorDialog10.inc';
     Exit;
   end;
-  if not chkAllDrives.Checked and (FSearchDir = '') then
-  begin
-    lblStatus.Caption := 'Выберите папку поиска (кнопка "...") или ' +
-                         'отметьте "Все локальные диски"';
-    Exit;
-  end;
-
   Roots := TStringList.Create;
   Files := TStringList.Create;
+  Where := TStringList.Create;
+  Searched := TStringList.Create;
+  StageFiles := TStringList.Create;
   SetBusy(True);
   try
     ClearFound;
+    // Шаги поиска по порядку: "где|папка"
+    AddStage('текущая папка', FCurDir);
+    AddStage('Include user', FUserIncDir);
+    AddStage('Include system', FSysDir);
+    if FCurDir <> '' then
+      AddStage('папка выше', ExtractFileDir(FCurDir));
     if chkAllDrives.Checked then
     begin
       // Локальные диски: C:\, D:\ ... (без сетевых, CD и съёмных)
@@ -255,12 +280,12 @@ begin
       while DrivePtr^ <> #0 do
       begin
         if GetDriveType(DrivePtr) = DRIVE_FIXED then
-          Roots.Add(StrPas(DrivePtr));
+          AddStage('диск ' + Copy(StrPas(DrivePtr), 1, 2), StrPas(DrivePtr));
         Inc(DrivePtr, StrLen(DrivePtr) + 1);
       end;
     end
-    else
-      Roots.Add(FSearchDir);
+    else if FSearchDir <> '' then
+      AddStage('выбранная папка', FSearchDir);
 
     // Эталон - один раз за сеанс окна
     if FRef = nil then
@@ -274,14 +299,49 @@ begin
       end;
     end;
 
-    Done := IncFindOnDisk(SearchName, Roots, Files, ProgressStep);
-    Files.Sort;
+    // Шаг за шагом; папка, просмотренная раньше (или внутри неё), второй
+    // раз не обходится
+    Done := True;
+    Searched.Sorted := True;
+    Searched.Duplicates := dupIgnore;
+    for StageIdx := 0 to Roots.Count - 1 do
+    begin
+      StageRoot := UpperCase(IncludeTrailingPathDelimiter(
+                     Copy(Roots[StageIdx], Pos('|', Roots[StageIdx]) + 1, MaxInt)));
+      Covered := False;
+      for SkipIdx := 0 to Searched.Count - 1 do
+        if Copy(StageRoot, 1, Length(Searched[SkipIdx])) = Searched[SkipIdx] then
+          Covered := True;
+      if Covered then
+        Continue;
+      StageList := TStringList.Create;
+      try
+        StageList.Add(Copy(Roots[StageIdx], Pos('|', Roots[StageIdx]) + 1, MaxInt));
+        StageFiles.Clear;
+        Done := IncFindOnDisk(SearchName, StageList, StageFiles, ProgressStep,
+                              Searched);
+      finally
+        StageList.Free;
+      end;
+      StageFiles.Sort;
+      for FileIdx := 0 to StageFiles.Count - 1 do
+        if Files.IndexOf(StageFiles[FileIdx]) < 0 then
+        begin
+          Files.Add(StageFiles[FileIdx]);
+          Where.Add(Copy(Roots[StageIdx], 1, Pos('|', Roots[StageIdx]) - 1));
+        end;
+      Searched.Add(StageRoot);
+      if not Done then
+        Break;
+    end;
 
     for Status := Low(TIncStatus) to High(TIncStatus) do
       Counts[Status] := 0;
     Cancel := False;
     if FInfos = nil then
       FInfos := TList.Create;
+    if FFoundWhere = nil then
+      FFoundWhere := TStringList.Create;
     for FileIdx := 0 to Files.Count - 1 do
     begin
       ProgressStep(Format('Проверка: %d из %d', [FileIdx + 1, Files.Count]),
@@ -292,20 +352,44 @@ begin
       IncCheckFile(Info, FRef);
       Inc(Counts[Info.Status]);
       FInfos.Add(Info);
+      FFoundWhere.Add(Where[FileIdx]);
       lstFound.Items.AddObject(Files[FileIdx], Info);
     end;
 
+    // Сколько где нашлось, в порядке шагов
+    WhereText := '';
+    for StageIdx := 0 to Roots.Count - 1 do
+    begin
+      StageRoot := Copy(Roots[StageIdx], 1, Pos('|', Roots[StageIdx]) - 1);
+      WhereCount := 0;
+      for FileIdx := 0 to Where.Count - 1 do
+        if Where[FileIdx] = StageRoot then
+          Inc(WhereCount);
+      if WhereCount > 0 then
+      begin
+        if WhereText <> '' then
+          WhereText := WhereText + ', ';
+        WhereText := WhereText + Format('%s: %d', [StageRoot, WhereCount]);
+      end;
+    end;
     lblFound.Caption := Format('Найдено копий %s: %d', [SearchName, Files.Count]);
-    lblStatus.Caption := Format('Совпадают с эталоном: %d, отличаются: %d, ' +
-                                'нет в эталоне: %d',
-                                [Counts[isSame], Counts[isChanged],
-                                 Counts[isNew]]);
-    if not Done or Cancel then
-      lblStatus.Caption := 'Поиск прерван. ' + lblStatus.Caption;
+    if WhereText <> '' then
+      lblFound.Caption := lblFound.Caption + ' (' + WhereText + ')';
     if Files.Count = 0 then
-      lblStatus.Caption := 'Файл ' + SearchName + ' не найден';
+      lblStatus.Caption := 'Файл ' + SearchName + ' не найден'
+    else
+      lblStatus.Caption := Format('Совпадают с эталоном: %d, отличаются: %d, ' +
+                                  'нет в эталоне: %d',
+                                  [Counts[isSame], Counts[isChanged],
+                                   Counts[isNew]]);
+    // Остановили - так и написать, и при пустом списке тоже
+    if not Done or Cancel then
+      lblStatus.Caption := 'Поиск остановлен. ' + lblStatus.Caption;
   finally
     SetBusy(False);
+    StageFiles.Free;
+    Searched.Free;
+    Where.Free;
     Files.Free;
     Roots.Free;
   end;
@@ -456,6 +540,12 @@ begin
     Canvas.Font.Color := lstFound.Font.Color;
   end;
   TextX := Rect.Left + 18;
+  // Где нашлась: текущая папка, Include user ... - перед путём
+  if (FFoundWhere <> nil) and (Index < FFoundWhere.Count) then
+  begin
+    Canvas.TextOut(TextX, Rect.Top + 2, '[' + FFoundWhere[Index] + ']');
+    TextX := TextX + Canvas.TextWidth('[' + FFoundWhere[Index] + ']') + 6;
+  end;
   Canvas.TextOut(TextX, Rect.Top + 2, lstFound.Items[Index]);
   if Info.Errors > 0 then
   begin

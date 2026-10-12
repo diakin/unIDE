@@ -33549,9 +33549,14 @@ end;
 // без неё - в папку общих inc.
 procedure TForm1.FindIncShow(const AName: string);
 var
-  SysDir, RefDir, TargetDir: string;
+  SysDir, RefDir, TargetDir, CurDir, IncDir, CfgSys, UserDir, Mode,
+  OwnDir: string;
 begin
   IncRefDirs(SysDir, RefDir);
+  // Порядок поиска: папка главного .bas (или открытого файла), Include user,
+  // Include system, папка выше
+  RapidQIncludeDirs(CurDir, IncDir);
+  RapidQIncSettings(FCurrentProject, CfgSys, UserDir, Mode, OwnDir);
   TargetDir := ExcludeTrailingPathDelimiter(RapidQIncDir);
   if TargetDir = '' then
     TargetDir := ExcludeTrailingPathDelimiter(SysDir);
@@ -33560,7 +33565,8 @@ begin
     FFindIncDlg := TDlgFindInc.Create(Self);
     TDlgFindInc(FFindIncDlg).OnOpenFile := IncMgrOpenFile;
   end;
-  TDlgFindInc(FFindIncDlg).ShowFind(AName, RefDir, SysDir, TargetDir);
+  TDlgFindInc(FFindIncDlg).ShowFind(AName, RefDir, SysDir, TargetDir,
+                                    CurDir, UserDir);
 end;
 
 // Имя из сообщения rc.exe "$INCLUDE file X does not exist"; '' - такого нет

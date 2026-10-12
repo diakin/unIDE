@@ -104,7 +104,7 @@ function IncAddGuard(const AFile, AGuard: string; var AError: string;
 // полными путями в AList. Служебные папки Windows пропускаются. AProgress
 // - ход по папкам (nil - без него). False - прервано.
 function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
-                       AProgress: TIncProgress): Boolean;
+                       AProgress: TIncProgress; ASkip: TStrings = nil): Boolean;
 
 // Программы .bas, подключающие файл ($INCLUDE "имя"), в папках AFolders
 // (с подпапками при ASub). Результат - число найденных.
@@ -1198,7 +1198,7 @@ begin
 end;
 
 function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
-                       AProgress: TIncProgress): Boolean;
+                       AProgress: TIncProgress; ASkip: TStrings): Boolean;
 var
   Cancel: Boolean;
 
@@ -1217,6 +1217,9 @@ var
     SR: TSearchRec;
   begin
     if Cancel then
+      Exit;
+    // Папка уже просмотрена раньше (ASkip: пути в верхнем регистре со \)
+    if (ASkip <> nil) and (ASkip.IndexOf(UpperCase(ADirPath)) >= 0) then
       Exit;
     if Assigned(AProgress) then
     begin
