@@ -60,7 +60,7 @@ object Form1: TForm1
       Height = 4
       Cursor = crVSplit
       Align = alBottom
-      Color = clMenuHighlight
+      Color = $00CD6700
       ParentColor = False
     end
     object Panel2: TPanel
@@ -1365,7 +1365,7 @@ object Form1: TForm1
     Align = alRight
     object FSplitBar: TPanel
       BevelWidth = 0
-      Color = clMenuHighlight
+      Color = $00D06800
       Caption = ''
       Width = 5
       BevelOuter = bvSpace
