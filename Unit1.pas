@@ -2062,6 +2062,8 @@ type
     procedure WMObjCommit(var Msg: TMessage); message WM_USER + 317;
     procedure WMTabSwitched(var Msg: TMessage); message WM_USER + 319;
     procedure WMRelocateDeferred(var Msg: TMessage); message WM_USER + 324;
+    // Конец запуска: окно готово - показать его, закрыть окно загрузки
+    procedure WMStartupFinish(var Msg: TMessage); message WM_USER + 330;
     procedure TabWorkStage(const AStage: string);
 
     // Поиск
@@ -3478,6 +3480,7 @@ var
     RqToFb,       // перевод RapidQ -> FreeBASIC (RqLcl\tofb)
     DlgStrictFix, // окно ошибок строгой проверки перед rc.exe
     StrictFix,    // разбор лога строгой проверки
+    SplashLoad,   // окно загрузки и журнал этапов запуска (startup.log)
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     FormPreview,  // превью формы по .dfm - список модулей и форм
@@ -14039,6 +14042,7 @@ begin
       if FileExists(Path) then
       begin
         Inc(FileCount);
+        StartupStage('Чтение ' + ExtractFileName(Path));
         FWindows[I].Text := LoadTextFile(Path);
         FWindows[I].IsUtf8 := FFileIsUtf8;
         FWindows[I].HasBom := FFileHasBom;
@@ -14141,6 +14145,7 @@ begin
   UpdateCompilerCaption;
 
   // Восстанавливаем активное окно. Если указанного в файле нет - берём первое.
+  StartupStage('Открытие активной вкладки');
   StageTick := GetTickCount;
   if (CurIdx >= 0) and (CurIdx < WindowsItemCount) and FWindows[CurIdx].Used then
     ActivateWindow(CurIdx)
@@ -21655,6 +21660,16 @@ var
   end;
 
 begin
+  // Запуск: окно невидимо (прозрачно), пока не готово, - видно окно
+  // загрузки (SplashLoad). Прозрачное, а не скрытое: код запуска считает
+  // окно показанным - фокус, размеры, FormShow работают как обычно.
+  // Показывает его WMStartupFinish.
+  if StartupActive then
+  begin
+    StartupStage('Главное окно: создание');
+    AlphaBlendValue := 0;
+    AlphaBlend := True;
+  end;
 
   Position := poDesigned; // иначе VCL сам сдвинет окно при показе
 
@@ -51807,6 +51822,10 @@ procedure TForm1.AppIdle(Sender: TObject; var Done: Boolean);
 var
   StartTick, Spent: Cardinal;
 begin
+  // Пока идёт запуск (окно невидимо, WMStartupFinish ещё не было), простоя
+  // для отложенного нет: вопросы и прочее - только по видимому окну
+  if StartupActive then
+    Exit;
   // Первый простой: окно показано, запуск прошёл (OwnPromoteTrial).
   // Потерянные при запуске файлы - искать теперь, поверх нарисованного окна
   if not FStartupDone and FRelocateDeferred then
@@ -51829,6 +51848,32 @@ begin
     FIdleSlowTick := GetTickCount;
     Dbg(Format('17165: простой (AppIdle, UpdateToolbarState) %d мс', [Spent]),
         clNavy);
+  end;
+end;
+
+// Конец запуска (сообщение из FormShow): отложенный разбор карты - сейчас,
+// а не после показа; окно рисуется целиком, пока ещё прозрачное, и
+// становится видимым; окно загрузки закрывается. Отложенные вопросы и
+// действия (AppIdle: FStartupDone, поиск потерянных файлов) - после этого.
+procedure TForm1.WMStartupFinish(var Msg: TMessage);
+begin
+  if not StartupActive then
+    Exit;
+  try
+    StartupStage('Разбор карты комментариев');
+    FlushMapRebuild;
+    StartupStage('Отрисовка окна');
+    RedrawWindow(Handle, nil, 0, RDW_INVALIDATE or RDW_ERASE or
+                 RDW_ALLCHILDREN or RDW_UPDATENOW);
+  finally
+    // Сначала непрозрачно - видно уже нарисованное; потом прозрачность
+    // снимается совсем (окно с ней рисуется медленнее), и окно сразу
+    // перерисовывается само, без ожидания очереди сообщений
+    AlphaBlendValue := 255;
+    AlphaBlend := False;
+    RedrawWindow(Handle, nil, 0, RDW_INVALIDATE or RDW_ERASE or RDW_FRAME or
+                 RDW_ALLCHILDREN or RDW_UPDATENOW);
+    StartupFinish;
   end;
 end;
 
@@ -64263,6 +64308,13 @@ var
   Metrics: TTextMetric;
   I: Integer;
 begin
+  // Конец запуска - сообщением: оно придёт, когда FormShow закончится (и
+  // если в нём что-то упадёт - окно всё равно станет видимым)
+  if StartupActive then
+  begin
+    StartupStage('Показ окна: редактор');
+    PostMessage(Handle, WM_USER + 330, 0, 0);
+  end;
   // Снимаем ограничение на объём текста - см. EnsureTextLimit
   EnsureTextLimit;
   EnsureNoWrap;
@@ -64299,6 +64351,7 @@ begin
   end;
 
   // Настройки читаем ДО ApplyTabStops: она опирается на FTabChars
+  StartupStage('Настройки');
   LoadSettings;
   // IDE Options - Preferences, Designer, Environment Variables
   EnvInit;
@@ -64307,6 +64360,7 @@ begin
   // Проекты, которых нет по записанному пути, - поиск по копиям разделов
   // и по переехавшему дереву папок. Здесь, а не при проверке путей в
   // FormCreate: поиску нужны горячие папки, они читаются в LoadSettings.
+  StartupStage('Проверка путей проектов');
   RelocateMissingProjects;
 
   // Шаг табуляции RichEdit приводим к выбранной ширине
@@ -64362,6 +64416,7 @@ begin
 
   // Сбрасываем флаг модификации стартового текста
   RichEdit1.Modified := False;
+  StartupStage('Схема подсветки');
   LoadCustomClrSchema('.pas');
 
   LayoutScrollBars;
@@ -64371,7 +64426,10 @@ begin
   // CloseAllWindows, и демонстрационный текст вместе со схемой .pas будет
   // заменён на файлы проекта. Делать это раньше бессмысленно - всё затёрлось бы.
   if ProjectExists(FStartupProject) then
+  begin
+    StartupStage('Проект ' + FStartupProject);
     LoadProject(FStartupProject);
+  end;
 
   // Свои полосы прокрутки у списков и деревьев правой панели, затем цвета
   // IDE (Light / Dark) - когда все элементы окна построены
@@ -64391,6 +64449,7 @@ begin
     FSubFilter.OnChange := SubFilterChange;
     FSubFilter.OnKeyDown := SubFilterKeyDown;
   end;
+  StartupStage('Тема IDE');
   UiApply;
 
   // SubList: Name растягивается по ширине, Begin и End - у правого края.
@@ -64404,6 +64463,7 @@ begin
 
   // Шрифты групп IDE: умолчания - как сейчас у элементов, выбранные - из
   // editor.ini (IDE Options - IDE colors and Fonts)
+  StartupStage('Шрифты IDE');
   UiFontsInit;
 
   // Правая панель была свёрнута при выходе

@@ -63,14 +63,21 @@ uses
   SchemeRtf in 'SchemeRtf.pas',
   StrictFix in 'StrictFix.pas',
   DlgStrictFix in 'DlgStrictFix.pas',
+  SplashLoad in 'SplashLoad.pas',
   RunConsole in 'RunConsole.pas';
 
 {$R *.res}
 
 begin
   Application.Initialize;
+  // Окно загрузки и журнал этапов (startup.log); главное окно невидимо,
+  // пока не готово (TForm1.WMStartupFinish)
+  StartupSplashShow;
   Application.CreateForm(TForm1, Form1);
+  StartupStage('Окно настроек (Form2)');
   Application.CreateForm(TForm2, Form2);
+  StartupStage('INC Manager (Form3)');
   Application.CreateForm(TForm3, Form3);
+  StartupStage('Показ главного окна');
   Application.Run;
 end.
