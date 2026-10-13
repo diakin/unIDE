@@ -306,7 +306,10 @@ begin
   lblOffer.SetBounds(8, 2, ClientWidth - 260, 30);
   lblOffer.Anchors := [akLeft, akTop, akRight];
   lblOffer.Layout := tlCenter;
-  lblOffer.Font.Color := clBlack;
+  // Не clBlack: тема заменяет его на цвет текста темы (UiThemeFgSys)
+  lblOffer.ParentFont := False;
+  lblOffer.Transparent := True;
+  lblOffer.Font.Color := TColor($00101010);
   lblOffer.Font.Style := [fsBold];
   btnOfferFix := TUiButton.Create(Self);
   btnOfferFix.Parent := pnlOffer;
