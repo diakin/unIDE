@@ -13954,6 +13954,7 @@ var
   HotRecent, HotItem: string;
   HotSep, HotWin, HotBm: Integer;
   StartTick, StageTick, TClose, TFiles, TShow, FileCount: Cardinal;
+  ActIdx: Integer;      // активная вкладка - для этапа в startup.log
 begin
   StartTick := GetTickCount;
   TClose := 0;
@@ -14148,17 +14149,25 @@ begin
   UpdateCompilerCaption;
 
   // Восстанавливаем активное окно. Если указанного в файле нет - берём первое.
-  StartupStage('Открытие активной вкладки: уход с прежней');
-  StageTick := GetTickCount;
+  ActIdx := -1;
   if (CurIdx >= 0) and (CurIdx < WindowsItemCount) and FWindows[CurIdx].Used then
-    ActivateWindow(CurIdx)
+    ActIdx := CurIdx
   else
     for I := 0 to WindowsItemCount - 1 do
       if FWindows[I].Used then
       begin
-        ActivateWindow(I);
+        ActIdx := I;
         Break;
       end;
+  if ActIdx >= 0 then
+    StartupStage('Открытие активной вкладки ' +
+      ExtractFileName(FWindows[ActIdx].FileName) + ' (' +
+      IntToStr(Length(FWindows[ActIdx].Text) div 1024) + ' КБ): уход с прежней')
+  else
+    StartupStage('Открытие активной вкладки: открытых файлов нет');
+  StageTick := GetTickCount;
+  if ActIdx >= 0 then
+    ActivateWindow(ActIdx);
 
   TShow := GetTickCount - StageTick;
   RebuildProjectsMenu;
