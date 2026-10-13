@@ -1,3 +1,5 @@
+$IFNDEF __RQDATE_INC   ' IncManager: include guard
+$DEFINE __RQDATE_INC
 $define #define $define
 
 #define fbUseSystem           0
@@ -285,3 +287,4 @@ end function
 
 '----- end code --------------
 
+$ENDIF   ' IncManager: __RQDATE_INC

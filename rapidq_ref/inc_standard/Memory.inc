@@ -1,3 +1,5 @@
+$IFNDEF __MEMORY_INC   ' IncManager: include guard
+$DEFINE __MEMORY_INC
 $DEFINE __RQMEMORY
 
 $IFNDEF __WIN32API
@@ -236,3 +238,4 @@ Function NewStrArray(Count&) As Integer
     DefInt Ptr = HeapAlloc(GetProcessHeap,HEAP_NO_SERIALIZE Or HEAP_ZERO_MEMORY,SizeOf(String)*Count&)
     Result = Ptr
 End Function
+$ENDIF   ' IncManager: __MEMORY_INC

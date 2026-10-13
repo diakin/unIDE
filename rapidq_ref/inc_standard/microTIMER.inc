@@ -1,3 +1,5 @@
+$IFNDEF __MICROTIMER_INC   ' IncManager: include guard
+$DEFINE __MICROTIMER_INC
 
 'this structure already in RapidQ2 and Windows.inc
 $IFNDEF __WIN32API
@@ -71,3 +73,4 @@ END FUNCTION
 ' next a
 
 
+$ENDIF   ' IncManager: __MICROTIMER_INC

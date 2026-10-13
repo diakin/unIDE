@@ -1,3 +1,5 @@
+$IFNDEF __COPY_OF_NOTA_INC   ' IncManager: include guard
+$DEFINE __COPY_OF_NOTA_INC
 ' These are useful functions that are used on NetWork Of The Apes
 ' Most are wrappers to API calls.
 ' All are written by Bryn Mosher (bdmnky@hotmail.com).
@@ -523,3 +525,4 @@
 	end function
 
 
+$ENDIF   ' IncManager: __COPY_OF_NOTA_INC

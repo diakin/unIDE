@@ -1,3 +1,5 @@
+$IFNDEF __DXFONE_H_INC   ' IncManager: include guard
+$DEFINE __DXFONE_H_INC
 ' DxfONE!h.inc for DxfONE! WIN RapidQ - Jan.2003
 
 declare sub About
@@ -201,3 +203,4 @@ SUB OtherAbout
  AboutOtherForm.ShowModal
 END SUB
   
+$ENDIF   ' IncManager: __DXFONE_H_INC

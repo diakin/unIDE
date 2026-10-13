@@ -1,3 +1,5 @@
+$IFNDEF __WAD3_INC   ' IncManager: include guard
+$DEFINE __WAD3_INC
 '***************************************************************************
 'WAD3.INC (c)07/2003 by Christian Tandler,
 '
@@ -315,3 +317,4 @@ END Function
 
 'EOF
   
+$ENDIF   ' IncManager: __WAD3_INC

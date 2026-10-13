@@ -1,3 +1,5 @@
+$IFNDEF __QDRAWMENU_INC   ' IncManager: include guard
+$DEFINE __QDRAWMENU_INC
 '$INCLUDE <RapidQ2.inc>
 '=======================================================
 ' Type Objet
@@ -316,3 +318,4 @@ SUB MenuItemClick (Sender AS QMENUITEM)
   ShowMessage("Thanks for clicking " + Sender.Caption)
 END SUB
 
+$ENDIF   ' IncManager: __QDRAWMENU_INC

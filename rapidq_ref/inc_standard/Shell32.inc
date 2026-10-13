@@ -1,3 +1,5 @@
+$IFNDEF __SHELL32_INC   ' IncManager: include guard
+$DEFINE __SHELL32_INC
 'Shell32.dll Functions
 'FILE ADDED: Release Version 1
 'FILE UPDATED: Release Version 2
@@ -39,3 +41,4 @@
 	Declare Function SHQueryRecycleBin Lib "shell32.dll" Alias_
 	 "SHQueryRecycleBinA" (pszRootPath As Long, pSHQueryRBInfo As SHQUERYRBINFO) As Long
 
+$ENDIF   ' IncManager: __SHELL32_INC

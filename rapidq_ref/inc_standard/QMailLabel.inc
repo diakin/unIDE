@@ -1,3 +1,5 @@
+$IFNDEF __QMAILLABEL_INC   ' IncManager: include guard
+$DEFINE __QMAILLABEL_INC
 '*************************************************************
 '* QMailLabel - component
 '* 2005 Nastase Eodor
@@ -59,3 +61,4 @@ Type QMailLabel extends QLabel
     End Constructor
 End Type
 
+$ENDIF   ' IncManager: __QMAILLABEL_INC

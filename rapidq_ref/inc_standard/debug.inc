@@ -1,3 +1,5 @@
+$IFNDEF __DEBUG_INC   ' IncManager: include guard
+$DEFINE __DEBUG_INC
 '! --- вставляем процедуру дебаггера ----------'
 $INCLUDE"RAPIDQ.INC"
 CONST WM_COPYDATA = &H4A
@@ -125,3 +127,4 @@ strRecv="FormCloseOnClick"
 _DebugForm.Close
 end
 end sub
+$ENDIF   ' IncManager: __DEBUG_INC

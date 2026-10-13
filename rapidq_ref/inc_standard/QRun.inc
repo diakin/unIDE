@@ -1,3 +1,5 @@
+$IFNDEF __QRUN_INC   ' IncManager: include guard
+$DEFINE __QRUN_INC
 '=======================================================
 ' Type Objet
 ' Classe QRun Version 1.1
@@ -207,3 +209,4 @@ Type QRun EXTENDS QObject
     Run_SetWindowPos Handle,index,0,0,0,0,&H3 
   End Sub
 End Type
+$ENDIF   ' IncManager: __QRUN_INC

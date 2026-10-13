@@ -1,3 +1,5 @@
+$IFNDEF __SPLASHFORM_INC   ' IncManager: include guard
+$DEFINE __SPLASHFORM_INC
 Declare Sub Splash_Time(Sender as QTimer)
 
 Create SplashForm as QForm
@@ -31,3 +33,4 @@ If Sender.Tag = 4 then
    SplashForm.Close
 End If
 End Sub
+$ENDIF   ' IncManager: __SPLASHFORM_INC

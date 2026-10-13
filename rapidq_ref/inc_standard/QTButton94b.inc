@@ -1,3 +1,5 @@
+$IFNDEF __QTBUTTON94B_INC   ' IncManager: include guard
+$DEFINE __QTBUTTON94B_INC
 ' Crйй par D-йvolution / Created by D-evolution -=@=- 2004 - 2005
 
 ' Pour plus de dйtail sur l'utilisation de ce composant reportez vous
@@ -1442,3 +1444,4 @@ End Sub
 '$DEFINE QBUTTON QTBUTTON
 
 'Public:
+$ENDIF   ' IncManager: __QTBUTTON94B_INC

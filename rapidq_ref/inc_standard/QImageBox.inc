@@ -1,3 +1,5 @@
+$IFNDEF __QIMAGEBOX_INC   ' IncManager: include guard
+$DEFINE __QIMAGEBOX_INC
 '=======================================================
 ' Type Objet
 ' Classe QImageBox version 1.0
@@ -279,3 +281,4 @@ Type QImageBox Extends QScrollbox
     DllName="Nviewlib.dll"
   End Constructor
 End Type
+$ENDIF   ' IncManager: __QIMAGEBOX_INC

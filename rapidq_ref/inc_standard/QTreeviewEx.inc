@@ -1,3 +1,5 @@
+$IFNDEF __QTREEVIEWEX_INC   ' IncManager: include guard
+$DEFINE __QTREEVIEWEX_INC
 $typecheck on
 $include "fileops.inc"
 
@@ -225,3 +227,4 @@ end sub
 end type
 '===============================================================================
   
+$ENDIF   ' IncManager: __QTREEVIEWEX_INC

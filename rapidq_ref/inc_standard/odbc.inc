@@ -1,3 +1,5 @@
+$IFNDEF __ODBC_INC   ' IncManager: include guard
+$DEFINE __ODBC_INC
 'ODBC - Open DataBase Connectivity
 'Basic Steps
 'Connecting to the SQL Server DataBase for retrieving information from tables
@@ -322,3 +324,4 @@
      DIM sSQL AS STRING
 
      myDB.ODBCInit
+$ENDIF   ' IncManager: __ODBC_INC

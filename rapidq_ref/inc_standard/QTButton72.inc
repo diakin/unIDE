@@ -1,3 +1,5 @@
+$IFNDEF __QTBUTTON72_INC   ' IncManager: include guard
+$DEFINE __QTBUTTON72_INC
 '$REsource btn_BMP As "../_res/Boutons.bmp"
 $Option Explicit
 ' Vous pouvez tricher ce composante par la mкme astuce utilisй ici 
@@ -363,3 +365,4 @@ Sub FixKind: Sender.NumBMPs = oldvalue
 End Sub
 
 'Public:
+$ENDIF   ' IncManager: __QTBUTTON72_INC

@@ -1,3 +1,5 @@
+$IFNDEF __PRINTRICHEDIT_INC   ' IncManager: include guard
+$DEFINE __PRINTRICHEDIT_INC
 ''=============================================================
 '' PrintRichedit include file, put it at top off the mainprogram.
 '' Capable of printing selected text. 
@@ -172,3 +174,4 @@ function PrintRichedit(sender as qrichedit,lmarge as integer) as long
 	printer.enddoc 
 end function
   
+$ENDIF   ' IncManager: __PRINTRICHEDIT_INC

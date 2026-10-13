@@ -1,3 +1,5 @@
+$IFNDEF __QDATABASESQL_INC   ' IncManager: include guard
+$DEFINE __QDATABASESQL_INC
 'Desenvolvido por Alberto (from Brasil) (netmask@ig.com.br)'
 'Vida longa aos programadores brasileiros. Viva a nossa amada patria'
 'Nada disso seria poss?el sem a ajuda dos amigos do yahoogroups'
@@ -793,3 +795,4 @@ PUBLIC:
      END TYPE
 '--------------------------------------- END OBJECT qSQLTABLE' ====================
 
+$ENDIF   ' IncManager: __QDATABASESQL_INC

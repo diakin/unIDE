@@ -1,3 +1,5 @@
+$IFNDEF __QBEVEL_INC   ' IncManager: include guard
+$DEFINE __QBEVEL_INC
 '=============== QBEVEL =======================
 '
 ' This component duplicates the Delphi TBevel.
@@ -92,3 +94,4 @@ TYPE QBEVEL EXTENDS QPANEL
     END WITH
 END TYPE
   
+$ENDIF   ' IncManager: __QBEVEL_INC

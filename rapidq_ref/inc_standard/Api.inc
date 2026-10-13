@@ -1,3 +1,5 @@
+$IFNDEF __API_INC   ' IncManager: include guard
+$DEFINE __API_INC
 const GWL_WNDPROC = -4
 
 const ODT_MENU = 1
@@ -115,3 +117,4 @@ Declare Function InsertMenuItem Lib "user32.dll" Alias "InsertMenuItemA" _
 lpmii As MENUITEMINFO) As Long
 '------------------------------------------------------------------------
   
+$ENDIF   ' IncManager: __API_INC

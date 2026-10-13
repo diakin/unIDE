@@ -1,3 +1,5 @@
+$IFNDEF __PRINTDLG_INC   ' IncManager: include guard
+$DEFINE __PRINTDLG_INC
 ' Page setup dialog example
 
 CONST PSD_DEFAULTMINMARGINS = 0
@@ -58,3 +60,4 @@ PSD.hWndOwner = 0
 '?PSD.rtMarginTop
 '?PSD.rtMarginRight
 '?PSD.rtMarginBottom
+$ENDIF   ' IncManager: __PRINTDLG_INC

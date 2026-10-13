@@ -1,3 +1,5 @@
+$IFNDEF __QCHART_INC   ' IncManager: include guard
+$DEFINE __QCHART_INC
 '==============================================================================================
 '                           QChart:  A Charting Class for Rapid-Q
 '                          Copyright (c) 2003-2004  Michael J. Zito
@@ -2370,3 +2372,4 @@ SUB SaveToFile (FileName AS String)
 
 END TYPE'QChart
 '----- End Object Definition ***************************************************************
+$ENDIF   ' IncManager: __QCHART_INC

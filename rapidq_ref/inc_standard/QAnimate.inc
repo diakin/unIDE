@@ -1,3 +1,5 @@
+$IFNDEF __QANIMATE_INC   ' IncManager: include guard
+$DEFINE __QANIMATE_INC
 ' Animate Component fo Rapidq
 ' Version 1.2 (stable)
 ' Coded by Nastase Eodor
@@ -371,3 +373,4 @@ Type QAnimate Extends QObject
      CommonAvi   = aviNone
      End Constructor
 End Type
+$ENDIF   ' IncManager: __QANIMATE_INC

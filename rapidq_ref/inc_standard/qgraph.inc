@@ -1,3 +1,5 @@
+$IFNDEF __QGRAPH_INC   ' IncManager: include guard
+$DEFINE __QGRAPH_INC
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '' QLineGraph '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -179,3 +181,4 @@ Type QLineGraph extends qobject
     end sub
 
 End Type  
+$ENDIF   ' IncManager: __QGRAPH_INC

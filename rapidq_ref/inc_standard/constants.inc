@@ -1,3 +1,5 @@
+$IFNDEF __CONSTANTS_INC   ' IncManager: include guard
+$DEFINE __CONSTANTS_INC
 
 ' Color Types
 Public Const CTLCOLOR_MSGBOX = 0
@@ -271,3 +273,4 @@ SendMessageA(Sender.handle, EM_SETPARAFORMAT, 0, Mem.Pointer)
 Mem.Close
 end sub
 
+$ENDIF   ' IncManager: __CONSTANTS_INC

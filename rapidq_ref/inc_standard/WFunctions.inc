@@ -1,3 +1,5 @@
+$IFNDEF __WFUNCTIONS_INC   ' IncManager: include guard
+$DEFINE __WFUNCTIONS_INC
 Const HWND_TOPMOST = -1
 Const HWND_NOTOPMOST = -2
 Const SWP_NOSIZE = &H1
@@ -48,3 +50,4 @@ Declare Function GetKeyState Lib "user32" Alias "GetKeyState"_
 (nVirtKey As Long) As Integer
 
 
+$ENDIF   ' IncManager: __WFUNCTIONS_INC

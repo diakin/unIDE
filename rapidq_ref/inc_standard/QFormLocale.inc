@@ -1,3 +1,5 @@
+$IFNDEF __QFORMLOCALE_INC   ' IncManager: include guard
+$DEFINE __QFORMLOCALE_INC
 '''    Name: QFormLocale (.inc)
 '''  Author: David Burkley
 '''   Email: burkleyd@yahoo.com
@@ -152,3 +154,4 @@ Function FormLocale (AppForm As QForm, AppWidth As Integer, AppHeight As Integer
   Result = FL_lRet ' Tell the main program... whether or not this function succeeded.
 End Function
 
+$ENDIF   ' IncManager: __QFORMLOCALE_INC

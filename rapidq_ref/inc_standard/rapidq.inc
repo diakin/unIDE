@@ -1,3 +1,5 @@
+$IFNDEF __RAPIDQ_INC   ' IncManager: include guard
+$DEFINE __RAPIDQ_INC
 '    RAPIDQ.INC  -- Include file for RAPID-Q by William Yu
 '             -- attach a $INCLUDE "RAPIDQ.INC"
 '             -- to all your programs, or just extract what you need.
@@ -879,3 +881,4 @@ DECLARE FUNCTION SetWindowLongAPI LIB "user32" ALIAS "SetWindowLongA" _
 
 
 
+$ENDIF   ' IncManager: __RAPIDQ_INC

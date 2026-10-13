@@ -1,3 +1,5 @@
+$IFNDEF __DBTOOLS_INC   ' IncManager: include guard
+$DEFINE __DBTOOLS_INC
 '/1
 function sz10Convert(text as string) as string
 s$ = Left$(Rtrim$(text),10)
@@ -56,3 +58,4 @@ const fmOpenRead = 0
 const fmOpenWrite = 1
 const fmOpenReadWrite = 2
   
+$ENDIF   ' IncManager: __DBTOOLS_INC

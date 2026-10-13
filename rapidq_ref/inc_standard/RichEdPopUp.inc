@@ -1,3 +1,5 @@
+$IFNDEF __RICHEDPOPUP_INC   ' IncManager: include guard
+$DEFINE __RICHEDPOPUP_INC
 'Just the other day I whipped up a little QRICHEDIT extension to pop 
 'up a menu exactly like the default windows context menu. Here it is, 
 'enjoy:
@@ -148,3 +150,4 @@ $DEFINE QRICHEDIT QMAXEDIT
 
 'Psyclops
 
+$ENDIF   ' IncManager: __RICHEDPOPUP_INC

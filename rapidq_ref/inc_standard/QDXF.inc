@@ -1,3 +1,5 @@
+$IFNDEF __QDXF_INC   ' IncManager: include guard
+$DEFINE __QDXF_INC
 
      $TYPECHECK on
      DECLARE SUB dfBegin  ()
@@ -256,3 +258,4 @@
      END SUB 'dfpoint
 
 
+$ENDIF   ' IncManager: __QDXF_INC

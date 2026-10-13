@@ -1,3 +1,5 @@
+$IFNDEF __COMMON_INC   ' IncManager: include guard
+$DEFINE __COMMON_INC
 'RegEx to search for SUBs and FUNCTIONs in editor searches
 '^[ \t]*(public |private |friend )?(sub|function|property|class)[ \t].*
 
@@ -37,3 +39,4 @@ DIM AppStart AS BYTE: AppStart = TRUE
     'Prevents intial resize exception in Win 2000
     'Add this as 1st line of frmResize Event SUB: 
     '--->IF AppStart = TRUE THEN AppStart = FALSE : EXIT SUB    
+$ENDIF   ' IncManager: __COMMON_INC

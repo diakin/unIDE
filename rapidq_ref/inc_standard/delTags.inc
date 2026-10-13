@@ -1,3 +1,5 @@
+$IFNDEF __DELTAGS_INC   ' IncManager: include guard
+$DEFINE __DELTAGS_INC
 '-- ************************************************************************'
 ' HTML -> текст (кодировка Windows-1251)
 '
@@ -333,3 +335,4 @@ FUNCTION delTags(HTMLtext AS STRING) AS STRING
 
   delTags = OutText
 END FUNCTION
+$ENDIF   ' IncManager: __DELTAGS_INC

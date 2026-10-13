@@ -1,3 +1,5 @@
+$IFNDEF __SPLASH_INC   ' IncManager: include guard
+$DEFINE __SPLASH_INC
 
 
 
@@ -53,3 +55,4 @@ SplashForm.Show
 
 LabelStart.Caption = "Loading : Start Program"
 valoregaugestart = 10
+$ENDIF   ' IncManager: __SPLASH_INC

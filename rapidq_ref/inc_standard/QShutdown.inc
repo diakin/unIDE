@@ -1,3 +1,5 @@
+$IFNDEF __QSHUTDOWN_INC   ' IncManager: include guard
+$DEFINE __QSHUTDOWN_INC
 ' Quick shutdown/ logoff component for RapidQ
 '  Source code from RapidQ yahoo Groups posting
 '  Feb, 2006
@@ -114,3 +116,4 @@ PUBLIC:
         MyFlag = EWX_LOGOFF
     END CONSTRUCTOR
 END TYPE
+$ENDIF   ' IncManager: __QSHUTDOWN_INC

@@ -1,3 +1,5 @@
+$IFNDEF __QICMP_INC   ' IncManager: include guard
+$DEFINE __QICMP_INC
 Const IP_STATUS_BASE = 11000
 Const IP_SUCCESS = 0
 Const IP_BUF_TOO_SMALL = (11000 + 1)
@@ -151,3 +153,4 @@ END FUNCTION
 
 END TYPE
   
+$ENDIF   ' IncManager: __QICMP_INC

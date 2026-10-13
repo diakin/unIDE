@@ -1,3 +1,5 @@
+$IFNDEF __QINI_INC   ' IncManager: include guard
+$DEFINE __QINI_INC
 '=======================================================
 ' Type Objet
 ' Classe QINI
@@ -120,3 +122,4 @@ TYPE QINI EXTENDS QObject
   END CONSTRUCTOR
 End TYPE
 
+$ENDIF   ' IncManager: __QINI_INC

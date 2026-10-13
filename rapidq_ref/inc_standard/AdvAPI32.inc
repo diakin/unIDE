@@ -1,3 +1,5 @@
+$IFNDEF __ADVAPI32_INC   ' IncManager: include guard
+$DEFINE __ADVAPI32_INC
 'ADVAPI32.DLL Functions
 'FILE ADDED: Release Version 1
 'FILE UPDATED: Release Version 1
@@ -14,3 +16,4 @@
 	Declare Function GetUserName Lib "advapi32.dll" Alias_
 	 "GetUserNameA" (lpBuffer As long, nSize As Long) As Long
 
+$ENDIF   ' IncManager: __ADVAPI32_INC

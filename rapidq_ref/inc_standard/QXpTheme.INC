@@ -1,3 +1,5 @@
+$IFNDEF __QXPTHEME_INC   ' IncManager: include guard
+$DEFINE __QXPTHEME_INC
 '************************************************************************************************
 '*																
 '*	QXpTheme by Nicolas Tillet http://www.membres.lycos.fr/ntillet86     du 10/2003             	
@@ -36,3 +38,4 @@
 		RUN Command$ (0) 
 		Application.Terminate
 	END IF 
+$ENDIF   ' IncManager: __QXPTHEME_INC

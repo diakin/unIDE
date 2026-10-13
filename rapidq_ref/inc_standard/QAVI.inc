@@ -1,3 +1,5 @@
+$IFNDEF __QAVI_INC   ' IncManager: include guard
+$DEFINE __QAVI_INC
 $TYPECHECK ON
 '=============================================================================
 '                       QAVI.inc  include file and Component
@@ -789,3 +791,4 @@ END TYPE        'QAVI
 
 
   
+$ENDIF   ' IncManager: __QAVI_INC

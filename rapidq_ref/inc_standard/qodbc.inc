@@ -1,3 +1,5 @@
+$IFNDEF __QODBC_INC   ' IncManager: include guard
+$DEFINE __QODBC_INC
 $APPTYPE CONSOLE
 
 'ODBC - Open DataBase Connectivity
@@ -378,3 +380,4 @@ PRINT "FINISH"
 
 End
 
+$ENDIF   ' IncManager: __QODBC_INC

@@ -1,3 +1,5 @@
+$IFNDEF __QFILES_INC   ' IncManager: include guard
+$DEFINE __QFILES_INC
 'QFILES.INC by Doctor Electron  Copyright 2002 Global Services
 'Last Modified: Dec 20, 2002    Comments to: doctorelectron@cwdom.dm
 
@@ -124,3 +126,4 @@ END SUB
 
 'Add other QFileStream properties and methods here as you need them.
 'These routines look ugly, but are a workaround to access files by index.  
+$ENDIF   ' IncManager: __QFILES_INC

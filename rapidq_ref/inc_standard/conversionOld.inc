@@ -1,3 +1,5 @@
+$IFNDEF __CONVERSIONOLD_INC   ' IncManager: include guard
+$DEFINE __CONVERSIONOLD_INC
 '$include "C:\BAS\RAPIDQ\RQIDE\testinc.inc"
 $define cp_Win  1251
 $define cp_Dos  866
@@ -1401,3 +1403,4 @@ brem 0
       65000 Unicode UTF-7 
       65001 Unicode UTF-8 
 erem
+$ENDIF   ' IncManager: __CONVERSIONOLD_INC

@@ -1,3 +1,5 @@
+$IFNDEF __QXPBUTTON_INC   ' IncManager: include guard
+$DEFINE __QXPBUTTON_INC
 '
 ' see example below for usage
 '
@@ -500,3 +502,4 @@ End Type
 
 
 
+$ENDIF   ' IncManager: __QXPBUTTON_INC

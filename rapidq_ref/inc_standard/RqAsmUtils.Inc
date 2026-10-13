@@ -1,3 +1,5 @@
+$IFNDEF __RQASMUTILS_INC   ' IncManager: include guard
+$DEFINE __RQASMUTILS_INC
 '
 DECLARE FUNCTION CallAsmProc LIB "user32" ALIAS "CallWindowProcA" _
             (Proc AS LONG, A1 AS LONG, A2 AS LONG, A3 AS LONG, _
@@ -493,3 +495,4 @@ End Function
 '
 ' ============================================================
 '
+$ENDIF   ' IncManager: __RQASMUTILS_INC

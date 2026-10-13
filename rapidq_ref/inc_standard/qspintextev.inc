@@ -1,3 +1,5 @@
+$IFNDEF __QSPINTEXTEV_INC   ' IncManager: include guard
+$DEFINE __QSPINTEXTEV_INC
 ' Qspintext component for Rapid-Q by Mesut Akcan
 ' ver : 1.01
 ' 7 July 2000, update : 7 Sept. 2000 
@@ -90,3 +92,4 @@ OnChange1 AS EVENT (QspintextOnChange)
 
 
 end type
+$ENDIF   ' IncManager: __QSPINTEXTEV_INC

@@ -1,3 +1,5 @@
+$IFNDEF __CALLBACKALL_INC   ' IncManager: include guard
+$DEFINE __CALLBACKALL_INC
 '
 ' ------------------------------------------------------------------------
 ' MULTIPLE CALLBACK UNDER RAPIDQ    CallBackAll.Inc             by Jacques
@@ -52,3 +54,4 @@ $ENDIF
 
 
 
+$ENDIF   ' IncManager: __CALLBACKALL_INC

@@ -1,3 +1,5 @@
+$IFNDEF __QFTPCLIENT_INC   ' IncManager: include guard
+$DEFINE __QFTPCLIENT_INC
 
 ' --------------------------------------------------------------------
 ' QFtpClient OBJECT       January 2001             By Jacques Philippe
@@ -579,3 +581,4 @@ $ESCAPECHARS OFF
 $TYPECHECK OFF
 
 ' ------------------ END EXTEND QOBJECT -------------------------------
+$ENDIF   ' IncManager: __QFTPCLIENT_INC

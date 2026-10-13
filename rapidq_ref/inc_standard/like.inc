@@ -1,3 +1,5 @@
+$IFNDEF __LIKE_INC   ' IncManager: include guard
+$DEFINE __LIKE_INC
 
 ' LIKE Function - pattern matching routine for Rapid-Q by William Yu
 ' This emulates the VB LIKE operator.
@@ -128,3 +130,4 @@ END FUNCTION
 '?Like("CAT123khg","B?T*")
 
 '?Like("Combine(10, 20) = 30", "*(*?,*?)*=*#")
+$ENDIF   ' IncManager: __LIKE_INC

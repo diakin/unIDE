@@ -1,3 +1,5 @@
+$IFNDEF __DEBUGWINDOW_INC   ' IncManager: include guard
+$DEFINE __DEBUGWINDOW_INC
 '------------- constant part DebugForm etc. -------
 Dim WatchedVars(1) as string
 
@@ -118,3 +120,4 @@ end sub
 
 '-------- end of constant part -------------------
   
+$ENDIF   ' IncManager: __DEBUGWINDOW_INC

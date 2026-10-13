@@ -1,3 +1,5 @@
+$IFNDEF __FBFUNCTIONS_INC   ' IncManager: include guard
+$DEFINE __FBFUNCTIONS_INC
 'C:\BAS\RAPIDQ\RQSR_SRC\CurVer\FBFunctions.inc
 
 'declare Function  FBSEARCREPLACEINWORD lib "fbrqsr.dll" alias "FBSEARCREPLACEINWORD@8"_
@@ -24,3 +26,4 @@ function fbReplaceSubStr$ (SrcString as string, SString as string, RString as st
 SrcString4$=SrcString
 fbReplaceSubStr$=varptr$(FBReplaceSubStrFunc (SrcString4$, SString, RString) )
 end function
+$ENDIF   ' IncManager: __FBFUNCTIONS_INC

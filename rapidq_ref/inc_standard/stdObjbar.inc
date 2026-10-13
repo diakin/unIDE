@@ -1,3 +1,5 @@
+$IFNDEF __STDOBJBAR_INC   ' IncManager: include guard
+$DEFINE __STDOBJBAR_INC
 DIM cmdForm AS QCOOLBTN
 WITH cmdForm
   .Align = 3
@@ -350,3 +352,4 @@ WITH cmdOutline
 .ShowHint=1
 END WITH
     
+$ENDIF   ' IncManager: __STDOBJBAR_INC

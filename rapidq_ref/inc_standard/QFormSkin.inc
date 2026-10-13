@@ -1,3 +1,5 @@
+$IFNDEF __QFORMSKIN_INC   ' IncManager: include guard
+$DEFINE __QFORMSKIN_INC
 $Option Explicit
 
 Const GWL_WNDPROC		= (-4)
@@ -1105,3 +1107,4 @@ FUNCTION WindowProc '(ByVal hwnd AS Long, ByVal uMsg AS Long,ByVal wParam AS Lon
 	'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
 
 END FUNCTION
+$ENDIF   ' IncManager: __QFORMSKIN_INC

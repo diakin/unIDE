@@ -1,3 +1,5 @@
+$IFNDEF __FILES2_INC   ' IncManager: include guard
+$DEFINE __FILES2_INC
 Const FILE_ATTRIBUTE_READONLY = &H1
 Const FILE_ATTRIBUTE_HIDDEN = &H2
 Const FILE_ATTRIBUTE_SYSTEM = &H4
@@ -1283,3 +1285,4 @@ end function
 
 
    
+$ENDIF   ' IncManager: __FILES2_INC

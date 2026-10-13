@@ -1,3 +1,5 @@
+$IFNDEF __QDIR_INC   ' IncManager: include guard
+$DEFINE __QDIR_INC
 '
 ' ============================================================================
 ' QDIR   RAPIDQ EXTENDED COMPONENT       April 2004        By Jacques Philippe
@@ -730,3 +732,4 @@ End Type
 '
 ' =============================================================================
 '
+$ENDIF   ' IncManager: __QDIR_INC

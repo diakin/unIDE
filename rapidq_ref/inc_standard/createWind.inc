@@ -1,3 +1,5 @@
+$IFNDEF __CREATEWIND_INC   ' IncManager: include guard
+$DEFINE __CREATEWIND_INC
 '=======================================================
 
 DECLARE FUNCTION LoadLibrary LIB "KERNEL32" ALIAS "LoadLibraryA" _
@@ -32,3 +34,4 @@ DECLARE FUNCTION SetWindowText LIB "USER32" ALIAS "SetWindowTextA" _
 DECLARE SUB FormWndProc (Handle AS INTEGER, uMsg AS LONG, wParam AS LONG,lParam AS LONG)
 
   
+$ENDIF   ' IncManager: __CREATEWIND_INC

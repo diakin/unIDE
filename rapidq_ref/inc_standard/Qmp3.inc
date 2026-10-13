@@ -1,3 +1,5 @@
+$IFNDEF __QMP3_INC   ' IncManager: include guard
+$DEFINE __QMP3_INC
 ' Qmp3 Component to read mp3 header info, read/write id3 tags v 1.x, |
 ' Play and Stop. I took inspiration from the "info.bas" file by      |
 ' grog, and the mp3 example from sm0oth2003 <sm0oth@elitehaven.net>  |
@@ -453,3 +455,4 @@ mp3h = MciSendstring ("Play " + Qmp3.alias, 0, 0, 0)
 end sub
 end type
 
+$ENDIF   ' IncManager: __QMP3_INC

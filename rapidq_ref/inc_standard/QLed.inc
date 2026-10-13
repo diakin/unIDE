@@ -1,3 +1,5 @@
+$IFNDEF __QLED_INC   ' IncManager: include guard
+$DEFINE __QLED_INC
 const LdCyan   = 1
 const LdPurple = 2
 const LdBlue   = 3
@@ -60,3 +62,4 @@ Type QLed extends QCanvas
      End Constructor
 End Type
 
+$ENDIF   ' IncManager: __QLED_INC

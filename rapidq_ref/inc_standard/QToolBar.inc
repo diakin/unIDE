@@ -1,3 +1,5 @@
+$IFNDEF __QTOOLBAR_INC   ' IncManager: include guard
+$DEFINE __QTOOLBAR_INC
 ' ToolBar Component fo Rapidq
 ' Version 1.2 (stable)
 ' Coded by Nastase Eodor
@@ -588,3 +590,4 @@ Type QToolBar Extends QObject
      Height      = 26
      End Constructor
 End Type
+$ENDIF   ' IncManager: __QTOOLBAR_INC

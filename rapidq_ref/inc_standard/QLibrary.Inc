@@ -1,3 +1,5 @@
+$IFNDEF __QLIBRARY_INC   ' IncManager: include guard
+$DEFINE __QLIBRARY_INC
 '******************************************************
 '*     QLibrary.Inc - Common Routines & Functions     *
 '******************************************************
@@ -377,3 +379,4 @@ End Type
 '------------------------------------------------------
 '$EndIf '<---- End QLibrary definition check
 '------------------------------------------------------    
+$ENDIF   ' IncManager: __QLIBRARY_INC

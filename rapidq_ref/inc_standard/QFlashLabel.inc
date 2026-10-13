@@ -1,3 +1,5 @@
+$IFNDEF __QFLASHLABEL_INC   ' IncManager: include guard
+$DEFINE __QFLASHLABEL_INC
 '=======================================================
 ' Type Objet
 ' Classe QFlashLabel version 1.0
@@ -90,3 +92,4 @@ Type QFlashLabel extends QLabel
     State=0
   End Constructor  
 end type
+$ENDIF   ' IncManager: __QFLASHLABEL_INC

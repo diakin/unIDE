@@ -1,3 +1,5 @@
+$IFNDEF __QVUMETER_INC   ' IncManager: include guard
+$DEFINE __QVUMETER_INC
 '=======================================================
 ' Type Objet
 ' Classe QVuMeter version 1.0
@@ -85,3 +87,4 @@ Type QVuMeter Extends QCanvas
     Value=0
   End Constructor
 End Type
+$ENDIF   ' IncManager: __QVUMETER_INC

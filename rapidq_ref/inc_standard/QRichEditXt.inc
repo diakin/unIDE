@@ -1,3 +1,5 @@
+$IFNDEF __QRICHEDITXT_INC   ' IncManager: include guard
+$DEFINE __QRICHEDITXT_INC
 '$Include "constants.inc"
 const WM_USER = &H400
 
@@ -520,3 +522,4 @@ SendMessageApi .handle, EM_SETLANGOPTIONS, 0, SendMessageApi(.handle, EM_GETLANG
     END WITH
 
 END TYPE
+$ENDIF   ' IncManager: __QRICHEDITXT_INC

@@ -1,3 +1,5 @@
+$IFNDEF __QANIM_INC   ' IncManager: include guard
+$DEFINE __QANIM_INC
 '=======================================================
 ' Type Objet
 ' Classe QAnim Version 1.0
@@ -123,3 +125,4 @@ Type QAnim Extends QImage
   End Constructor
 End Type
       
+$ENDIF   ' IncManager: __QANIM_INC

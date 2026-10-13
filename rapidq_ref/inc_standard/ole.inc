@@ -1,3 +1,5 @@
+$IFNDEF __OLE_INC   ' IncManager: include guard
+$DEFINE __OLE_INC
 '******************************************************************************
 '  Windows Object linking Environment (OLE)
 '
@@ -168,3 +170,4 @@ End Functioni
 ' ---- RQ CODE END ----
 
 $ENDIF		'__OLE_INC
+$ENDIF   ' IncManager: __OLE_INC

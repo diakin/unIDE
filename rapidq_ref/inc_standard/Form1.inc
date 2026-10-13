@@ -1,3 +1,5 @@
+$IFNDEF __FORM1_INC   ' IncManager: include guard
+$DEFINE __FORM1_INC
 Create Form1 as QForm
       Caption = "Form1"
       Top     = 429
@@ -13,3 +15,4 @@ Create Button1 as QButton
       Height  = 25
       Caption = "Button1"
 End Create
+$ENDIF   ' IncManager: __FORM1_INC

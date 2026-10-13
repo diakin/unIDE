@@ -1,3 +1,5 @@
+$IFNDEF __QSTATUSBAREX_INC   ' IncManager: include guard
+$DEFINE __QSTATUSBAREX_INC
 '=======================================================
 ' Type Objet
 ' Classe QStatusBar version 1.0
@@ -38,3 +40,4 @@ TYPE QStatusBarEx EXTENDS QSTATUSBAR
     if panel.visible=False then panel.visible=true
   END SUB
 END TYPE
+$ENDIF   ' IncManager: __QSTATUSBAREX_INC

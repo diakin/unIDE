@@ -57,10 +57,10 @@ object Form1: TForm1
       Left = 0
       Top = 324
       Width = 0
-      Height = 6
+      Height = 4
       Cursor = crVSplit
       Align = alBottom
-      Color = clSkyBlue
+      Color = clMenuHighlight
       ParentColor = False
     end
     object Panel2: TPanel
@@ -228,6 +228,7 @@ object Form1: TForm1
       PopupMenu = FTabsPopup
     end
     object FLeftHost: TPanel
+      BevelWidth = 0
       BevelOuter = bvNone
       Caption = ''
       Align = alClient
@@ -1357,13 +1358,17 @@ object Form1: TForm1
     Menu = MainMenu1
   end
   object FRightPanel: TPanel
+    BevelWidth = 0
+    Color = clTeal
     BevelOuter = bvNone
     Caption = ''
     Align = alRight
     object FSplitBar: TPanel
+      BevelWidth = 0
+      Color = clMenuHighlight
       Caption = ''
       Width = 5
-      BevelOuter = bvRaised
+      BevelOuter = bvSpace
       Cursor = crHSplit
       Align = alLeft
       OnMouseDown = SplitBarMouseDown

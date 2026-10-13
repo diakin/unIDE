@@ -1,3 +1,5 @@
+$IFNDEF __QPRINTDIALOG_INC   ' IncManager: include guard
+$DEFINE __QPRINTDIALOG_INC
 ' Page setup dialog example
 
 CONST PSD_DEFAULTMINMARGINS = 0
@@ -58,3 +60,4 @@ PRINT IIF(PageSetupDlg(PSD), "Start printing", "Cancel print")
 ?PSD.rtMarginTop
 ?PSD.rtMarginRight
 ?PSD.rtMarginBottom
+$ENDIF   ' IncManager: __QPRINTDIALOG_INC

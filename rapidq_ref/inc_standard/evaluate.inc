@@ -1,3 +1,5 @@
+$IFNDEF __EVALUATE_INC   ' IncManager: include guard
+$DEFINE __EVALUATE_INC
 'Math-Expression Evaluator
 'Updated: Sept. 10, 2001
 'This source code is simply extracted (with minor modifications) from the source code of QEDTukak 1.52 
@@ -556,3 +558,4 @@ SUB CheckE(newstring$ AS STRING)
   END IF
 END SUB
   
+$ENDIF   ' IncManager: __EVALUATE_INC

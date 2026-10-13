@@ -1,3 +1,5 @@
+$IFNDEF __QGL_INC   ' IncManager: include guard
+$DEFINE __QGL_INC
 'Open GL wrapper, alpha release 1.0, JohnK, lots of help from FreeBasic Developers, and of course SGI
 
 
@@ -857,3 +859,4 @@ END CONSTRUCTOR
 
 END TYPE
 
+$ENDIF   ' IncManager: __QGL_INC

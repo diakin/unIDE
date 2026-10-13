@@ -1,3 +1,5 @@
+$IFNDEF __CONVERSION1_INC   ' IncManager: include guard
+$DEFINE __CONVERSION1_INC
 '--------------------------- Custom functions --------------------------
 Declare Function CharToOem Lib "user32" Alias "CharToOemA" _
 (ByVal lpszSrc As String, ByVal lpszDst As String) as Long
@@ -546,3 +548,4 @@ Ugl$=zn$+str$(abs(Grad))+"°"+str$(abs(Mint))+"'"+str$(abs(Sec))+qt
 end sub
 '*********************************************************************
               
+$ENDIF   ' IncManager: __CONVERSION1_INC

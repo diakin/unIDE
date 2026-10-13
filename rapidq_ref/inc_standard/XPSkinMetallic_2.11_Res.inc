@@ -1,3 +1,5 @@
+$IFNDEF __XPSKINMETALLIC_2_11_RES_INC   ' IncManager: include guard
+$DEFINE __XPSKINMETALLIC_2_11_RES_INC
 '===========================================================================
 'Windows XP Metallic Skin v2.13 * Fix le problиme de taille et toujours visible *	modifiй le 28 juin, 2003
 '===========================================================================
@@ -1514,3 +1516,4 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenкtre avec Skin
 END TYPE
 
 'Call ChargeSkin
+$ENDIF   ' IncManager: __XPSKINMETALLIC_2_11_RES_INC

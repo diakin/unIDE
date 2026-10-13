@@ -1,3 +1,5 @@
+$IFNDEF __PARSE_INC   ' IncManager: include guard
+$DEFINE __PARSE_INC
 '-- *********************************************************************'
 function GetCharNum (Oper$ as string, getC as string) as long
 'return Char count  in checked string
@@ -272,3 +274,4 @@ NumOpers=k
 end sub '
 '-- *********************************************************************'
          
+$ENDIF   ' IncManager: __PARSE_INC

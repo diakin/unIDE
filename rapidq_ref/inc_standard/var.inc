@@ -1,3 +1,5 @@
+$IFNDEF __VAR_INC   ' IncManager: include guard
+$DEFINE __VAR_INC
 
 DIM klas(4) as integer
 DIM dopusk$(4) as string
@@ -351,3 +353,4 @@ defstr Fdiagnoz$ ="diagnoz"
 defstr FSpectr$ = "spectr.fft" 'скопировать из рабочей директории в архив'
 
 defstr UgolDat$="Ugol.Dat" ' файл с величинами угловых перемещений в заданных точках                        
+$ENDIF   ' IncManager: __VAR_INC

@@ -1,3 +1,5 @@
+$IFNDEF __DBASE_INC   ' IncManager: include guard
+$DEFINE __DBASE_INC
 $define  .F.    0
 $define  .T.    not .F.
 
@@ -651,3 +653,4 @@ tmpStr.close            'Done
 openStr.position = pos&
 end sub
   
+$ENDIF   ' IncManager: __DBASE_INC

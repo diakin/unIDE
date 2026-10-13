@@ -1,3 +1,5 @@
+$IFNDEF __QICON_INC   ' IncManager: include guard
+$DEFINE __QICON_INC
 '=======================================================
 ' Type Objet
 ' Classe QICON Version 1.2
@@ -351,3 +353,4 @@ Public:
     end if 
   End Sub
 End Type
+$ENDIF   ' IncManager: __QICON_INC

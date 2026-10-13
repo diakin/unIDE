@@ -1,3 +1,5 @@
+$IFNDEF __QCOOLBARXPV1D_INC   ' IncManager: include guard
+$DEFINE __QCOOLBARXPV1D_INC
 ' Crйй par D-йvolution / Created by D-evolution -=@=- 2003 - 2005
 
 ' [Franзais]
@@ -2267,3 +2269,4 @@ Type QCoolBarXP Extends QPanel
 	End Constructor
 	End With
 End Type
+$ENDIF   ' IncManager: __QCOOLBARXPV1D_INC

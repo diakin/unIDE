@@ -1,3 +1,5 @@
+$IFNDEF __QMENU_INC   ' IncManager: include guard
+$DEFINE __QMENU_INC
 $INCLUDE "API.INC"
 $TYPECHECK ON
 TYPE QMenu EXTENDS QOBJECT
@@ -181,3 +183,4 @@ TYPE QMenu EXTENDS QOBJECT
           Panel = 0
        END constRUCTOR
 END TYPE  
+$ENDIF   ' IncManager: __QMENU_INC

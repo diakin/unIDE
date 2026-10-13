@@ -1,3 +1,5 @@
+$IFNDEF __QDIGDISPLAY_INC   ' IncManager: include guard
+$DEFINE __QDIGDISPLAY_INC
 ' QDigDisplay component for Rapid-Q by Peter Molloy
 ' ver : 1.00
 ' 13 April 2001
@@ -76,3 +78,4 @@ TYPE QDigDisplay EXTENDS QCanvas
 END TYPE
 
   
+$ENDIF   ' IncManager: __QDIGDISPLAY_INC

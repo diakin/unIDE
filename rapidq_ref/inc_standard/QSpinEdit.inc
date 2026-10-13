@@ -1,3 +1,5 @@
+$IFNDEF __QSPINEDIT_INC   ' IncManager: include guard
+$DEFINE __QSPINEDIT_INC
 '======================================================================
 'QSpinButton spin component for Rapidq
 ' v 1.0.0
@@ -156,3 +158,4 @@ Type QSpinButton extends QPanel
 End Type
 
 
+$ENDIF   ' IncManager: __QSPINEDIT_INC

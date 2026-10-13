@@ -1,3 +1,5 @@
+$IFNDEF __QMIDI_INC   ' IncManager: include guard
+$DEFINE __QMIDI_INC
 '=======================================================
 ' Type Objet
 ' Classe QMidi Version 1.2
@@ -252,3 +254,4 @@ PUBLIC:
   End Constructor
 End Type
       
+$ENDIF   ' IncManager: __QMIDI_INC

@@ -1,3 +1,5 @@
+$IFNDEF __QXLS_INC   ' IncManager: include guard
+$DEFINE __QXLS_INC
 'QXLS.INC by Doctor Electron  Copyright 2002,2003 Global Services
 'Last Modified: June 9, 2003
 'These functions read all sheets in multiple Excel .xls files.
@@ -769,3 +771,4 @@ PRINT "No. SST blocks=";STR$(nSST(b)+1&);" Strings in SST=";STR$(tSST(b))
 For j=0& to nSST(b): PRINT STR$(SST(b,j,1&))+" ";: Next j
 PRINT
 END SUB
+$ENDIF   ' IncManager: __QXLS_INC

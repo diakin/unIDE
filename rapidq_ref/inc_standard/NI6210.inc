@@ -1,3 +1,5 @@
+$IFNDEF __NI6210_INC   ' IncManager: include guard
+$DEFINE __NI6210_INC
 $INCLUDE "DAQmxConst.inc"
 'NI6210.inc
 
@@ -388,3 +390,4 @@ reserved2=0
 
 
 
+$ENDIF   ' IncManager: __NI6210_INC

@@ -1,3 +1,5 @@
+$IFNDEF __QINIFILE_INC   ' IncManager: include guard
+$DEFINE __QINIFILE_INC
 'coded by Nastase Eodor (2008)
 
 $IFNDEF __RQSYSUTILS
@@ -209,3 +211,4 @@ Type QIniFile Extends QstringList
      Name = ChangeFileExt(Application.ExeName,".ini")
      End Constructor
 End Type
+$ENDIF   ' IncManager: __QINIFILE_INC

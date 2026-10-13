@@ -1,3 +1,5 @@
+$IFNDEF __QWININI_INC   ' IncManager: include guard
+$DEFINE __QWININI_INC
 'Usage:
 '       first call to Ini.load([Path/FileName.ini]) Function. Parameter optional
 '       to get Values call to ini.Get(Section, Key, default-value) Fuction
@@ -112,3 +114,4 @@ TYPE QINI EXTENDS QObject
 End TYPE
 Dim Ini as QIni
   
+$ENDIF   ' IncManager: __QWININI_INC

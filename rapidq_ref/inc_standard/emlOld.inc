@@ -1,3 +1,5 @@
+$IFNDEF __EMLOLD_INC   ' IncManager: include guard
+$DEFINE __EMLOLD_INC
 '*****************************************
 Function GetSubjCodePage( Subject As String) As String
 zza$=Subject
@@ -761,3 +763,4 @@ end if
 result=decodedSubj$
 
 End Function 
+$ENDIF   ' IncManager: __EMLOLD_INC

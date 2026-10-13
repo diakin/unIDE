@@ -1,3 +1,5 @@
+$IFNDEF __QCALENDAR_INC   ' IncManager: include guard
+$DEFINE __QCALENDAR_INC
 '-------------------------------------------------------------------------------------------
 '    QCalendar Control by Pasquale P.C.B.        4-2001
 '    Dedicated to my beautiful wife Ana 
@@ -392,3 +394,4 @@ TYPE qcalendar EXTENDS Qpanel
             Today.font.addstyles=0
     END constRUCTOR    
 END TYPE  
+$ENDIF   ' IncManager: __QCALENDAR_INC

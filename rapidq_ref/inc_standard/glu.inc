@@ -1,3 +1,5 @@
+$IFNDEF __GLU_INC   ' IncManager: include guard
+$DEFINE __GLU_INC
 ''
 ''
 '' glu -- header translated with help of SWIG FB wrapper, some parts from
@@ -423,3 +425,4 @@ declare function gluUnProject_API LIB "glu32.dll" ALIAS "gluUnProject" _
 
 'declare function gluUnProject4 LIB "glu32.dll" ALIAS "gluUnProject4" (byval winX as GLdouble, byval winY as GLdouble, byval winZ as GLdouble, byval clipW as GLdouble, byref model as GLdouble, byref proj as GLdouble, byref view as GLint, byval nearVal as GLdouble, byval farVal as GLdouble, byref objX as GLdouble, byref objY as GLdouble, byref objZ as GLdouble, byref objW as GLdouble) as GLint
 $ENDIF
+$ENDIF   ' IncManager: __GLU_INC

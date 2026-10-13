@@ -1,3 +1,5 @@
+$IFNDEF __PRINTERDLL_INC   ' IncManager: include guard
+$DEFINE __PRINTERDLL_INC
 ' printerdll CONST
 CONST DONT_CREATE_PDC=0
 CONST CREATE_THE_PDC=1
@@ -418,3 +420,4 @@ Declare Function Printer_Close Lib "printerdll.dll" Alias "Printer_Close" (hPrin
 Declare Function Printer_CloseDefault Lib "printerdll.dll" Alias "Printer_CloseDefault" () As Long
 Declare Function Get_WinVer Lib "printerdll.dll" Alias "Get_WinVer" () As Long
 Declare Function Dialog_ControlPanel Lib "printerdll.dll" Alias "Dialog_ControlPanel" (cplName As String) As Long
+$ENDIF   ' IncManager: __PRINTERDLL_INC

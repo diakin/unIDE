@@ -1,3 +1,5 @@
+$IFNDEF __QCOLORDIALOG_INC   ' IncManager: include guard
+$DEFINE __QCOLORDIALOG_INC
 '=======================================================
 ' Type Objet
 ' Classe QColorDialog
@@ -103,3 +105,4 @@ TYPE QColorDialog extends QOBJECT
     End Constructor    
 END TYPE 
   
+$ENDIF   ' IncManager: __QCOLORDIALOG_INC

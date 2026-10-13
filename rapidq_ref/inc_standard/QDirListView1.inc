@@ -1,3 +1,5 @@
+$IFNDEF __QDIRLISTVIEW1_INC   ' IncManager: include guard
+$DEFINE __QDIRLISTVIEW1_INC
 '-----------------------------------------------------------------
 '
 '  QDirListView
@@ -341,3 +343,4 @@ end type
 
 
 
+$ENDIF   ' IncManager: __QDIRLISTVIEW1_INC

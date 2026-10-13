@@ -1,3 +1,5 @@
+$IFNDEF __PULSAR_INC   ' IncManager: include guard
+$DEFINE __PULSAR_INC
 
 
 
@@ -212,3 +214,4 @@ sub visualizza_tutti_da_pulsar_db
     NEXT Reading%
 
 end sub
+$ENDIF   ' IncManager: __PULSAR_INC

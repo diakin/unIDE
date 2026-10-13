@@ -1,3 +1,5 @@
+$IFNDEF __CM_CONSTANTS_INC   ' IncManager: include guard
+$DEFINE __CM_CONSTANTS_INC
 '-----------------------------------------------------------------------------|
 ' This file is a translation of the original C/C++ header file                |
 '-----------------------------------------------------------------------------|
@@ -894,3 +896,4 @@ Type CMX_Cursor
 end Type
 
   
+$ENDIF   ' IncManager: __CM_CONSTANTS_INC

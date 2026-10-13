@@ -1,3 +1,5 @@
+$IFNDEF __QFLATBUTTON_INC   ' IncManager: include guard
+$DEFINE __QFLATBUTTON_INC
 'QFlatButton - See "Appendix A QFLATBUTTON.htm" for usage
 'Special thanks to Erlend Rovik <e-rovik@online.no> for the OnMouseDown/Up suggestion.
 	Type QFlatButton EXTENDS QImage
@@ -96,3 +98,4 @@
 	const fbRaised = 1
 	const fbDepressed = 2
   
+$ENDIF   ' IncManager: __QFLATBUTTON_INC

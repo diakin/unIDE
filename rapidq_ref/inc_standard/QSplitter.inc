@@ -1,3 +1,5 @@
+$IFNDEF __QSPLITTER_INC   ' IncManager: include guard
+$DEFINE __QSPLITTER_INC
 '================= QMAXSPLITTER ==================
 '
 ' This one's a doozy. A splitter control that 
@@ -348,3 +350,4 @@ Form2.Show
 DO
     DoEvents
 LOOP UNTIL Form2.Visible = 0  
+$ENDIF   ' IncManager: __QSPLITTER_INC

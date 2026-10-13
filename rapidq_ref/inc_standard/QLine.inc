@@ -1,3 +1,5 @@
+$IFNDEF __QLINE_INC   ' IncManager: include guard
+$DEFINE __QLINE_INC
 '=======================================================
 ' Type Objet
 ' Classe QLine version 1.0
@@ -41,3 +43,4 @@ Type QLine extends QCanvas
     end Constructor        
 end type    
       
+$ENDIF   ' IncManager: __QLINE_INC

@@ -1,3 +1,5 @@
+$IFNDEF __RAPIDQ_D3D_INC   ' IncManager: include guard
+$DEFINE __RAPIDQ_D3D_INC
 '*******************************************************************
 '  Direct3D retained mode include file for the RapidQ Compiler by William Yu
 '    Last updated 4/2005,   by JohnK
@@ -1012,3 +1014,4 @@ END TYPE
 
 $UNDEF null
 $TYPECHECK OFF
+$ENDIF   ' IncManager: __RAPIDQ_D3D_INC

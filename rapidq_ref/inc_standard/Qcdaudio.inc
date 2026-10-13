@@ -1,3 +1,5 @@
+$IFNDEF __QCDAUDIO_INC   ' IncManager: include guard
+$DEFINE __QCDAUDIO_INC
 '=======================================================
 ' Type Objet
 ' Classe QCdaudio
@@ -302,3 +304,4 @@ PUBLIC:
     Timer.enabled=False
   End Constructor
 End Type
+$ENDIF   ' IncManager: __QCDAUDIO_INC

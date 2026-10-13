@@ -1,3 +1,5 @@
+$IFNDEF __CMD5_INC   ' IncManager: include guard
+$DEFINE __CMD5_INC
 $TYPECHECK ON
 'VERSION 1.0 CLASS
 'BEGIN
@@ -816,3 +818,4 @@ End Function
 'Class_initialize
 $OPTION WEAKTYPE OFF
 $OPTION VBDLL    OFF
+$ENDIF   ' IncManager: __CMD5_INC

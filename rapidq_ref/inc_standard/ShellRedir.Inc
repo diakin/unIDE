@@ -1,3 +1,5 @@
+$IFNDEF __SHELLREDIR_INC   ' IncManager: include guard
+$DEFINE __SHELLREDIR_INC
 
 ' FileName ShellRedir.Inc
 ' ============================================================================
@@ -230,3 +232,4 @@ End Function
 ' frmRQIDE.ShowModal
 ' Application.Terminate
 ' End
+$ENDIF   ' IncManager: __SHELLREDIR_INC

@@ -1,3 +1,5 @@
+$IFNDEF __LANGINIHEADER_INC   ' IncManager: include guard
+$DEFINE __LANGINIHEADER_INC
 '!!!---language -----
 dim LangList as QStringList
 dim LangIni as QINI
@@ -19,3 +21,4 @@ LangIni.Section="Language" '!!! -------------
 
 'English$=Langini.get("English","English")
 'Russian$=Langini.get("Russian","Russian")
+$ENDIF   ' IncManager: __LANGINIHEADER_INC

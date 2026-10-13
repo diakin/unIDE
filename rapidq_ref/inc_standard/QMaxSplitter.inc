@@ -1,3 +1,5 @@
+$IFNDEF __QMAXSPLITTER_INC   ' IncManager: include guard
+$DEFINE __QMAXSPLITTER_INC
 '================= QMAXSPLITTER ==================
 '
 ' This one's a doozy. A splitter control that 
@@ -262,3 +264,4 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
 END TYPE
 
   
+$ENDIF   ' IncManager: __QMAXSPLITTER_INC

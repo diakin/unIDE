@@ -1,3 +1,5 @@
+$IFNDEF __DBT_INC   ' IncManager: include guard
+$DEFINE __DBT_INC
 ' Uses rapidQ.inc
 
 'Allocates blocks of 512 bytes
@@ -155,3 +157,4 @@ result = n&     'Block count
 end function
 
    
+$ENDIF   ' IncManager: __DBT_INC

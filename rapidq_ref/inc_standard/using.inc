@@ -1,3 +1,5 @@
+$IFNDEF __USING_INC   ' IncManager: include guard
+$DEFINE __USING_INC
 'OUTPUT FORMATTING with USING$ FUNCTIONI
 DECLARE FUNCTIONI USING$(...) as string
 $TYPECHECK ON
@@ -242,3 +244,4 @@ print using$(frm$,34,"cars",1010,345678907)
 print using$(frm$,0,"cars",0,0)
 print using$(frm$,-3,"Computers",-345.6,0.000023)
 ?"Press any key..":do:loop until len(inkey$)  
+$ENDIF   ' IncManager: __USING_INC

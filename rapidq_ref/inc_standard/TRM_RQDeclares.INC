@@ -1,3 +1,5 @@
+$IFNDEF __TRM_RQDECLARES_INC   ' IncManager: include guard
+$DEFINE __TRM_RQDECLARES_INC
 
 ' TRM_RQDeclares.INC - INCLUDE file for the Tsunami Record Manager - TRM.DLL
 
@@ -120,3 +122,4 @@
  const  Tsu_Update            =  3
  const  Tsu_Version           = 26
   
+$ENDIF   ' IncManager: __TRM_RQDECLARES_INC

@@ -1,3 +1,5 @@
+$IFNDEF __QID3TAG_INC   ' IncManager: include guard
+$DEFINE __QID3TAG_INC
 'Qid3tag component. See help file for details
 '|~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
 '|Dreadsoft® Corporation      |
@@ -132,3 +134,4 @@ tagstream.close
 end sub
 end type
 
+$ENDIF   ' IncManager: __QID3TAG_INC

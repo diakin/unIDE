@@ -1,3 +1,5 @@
+$IFNDEF __RQDXF_INC   ' IncManager: include guard
+$DEFINE __RQDXF_INC
 $typecheck on
 Declare SUB dfBegin  ()
 Declare SUB dfCircle (Lay as string ,EC as string,xX as Double,xY as Double,xZ as Double,xRadius as Double)
@@ -255,3 +257,4 @@ SUB dfpoint (FileNum, Layer, EColor, X,Y, Z)
  end SUB 'dfpoint
 
   
+$ENDIF   ' IncManager: __RQDXF_INC

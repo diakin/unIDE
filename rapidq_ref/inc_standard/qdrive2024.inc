@@ -1,3 +1,5 @@
+$IFNDEF __QDRIVE2024_INC   ' IncManager: include guard
+$DEFINE __QDRIVE2024_INC
 '=======================================================
 ' Type Objet
 ' Classe QDrive
@@ -106,3 +108,4 @@ TYPE QDrive EXTENDS QObject
   END constRUCTOR
 END TYPE  
       
+$ENDIF   ' IncManager: __QDRIVE2024_INC

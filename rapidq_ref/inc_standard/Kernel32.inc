@@ -1,3 +1,5 @@
+$IFNDEF __KERNEL32_INC   ' IncManager: include guard
+$DEFINE __KERNEL32_INC
 'KERNEL32.DLL Functions
 'FILE ADDED: Release Version 1
 'FILE UPDATED: Release Version 2
@@ -212,3 +214,4 @@
 
 	Declare Function GetWindowsDirectory Lib "kernel32.dll" Alias_
 	 "GetWindowsDirectoryA" (lpBuffer As long, nSize As Long) As Long
+$ENDIF   ' IncManager: __KERNEL32_INC

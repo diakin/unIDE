@@ -1,3 +1,5 @@
+$IFNDEF __REGISTRYVARS_INC   ' IncManager: include guard
+$DEFINE __REGISTRYVARS_INC
 CONST fmCreate = 65535
 CONST fmOpenRead = 0
 CONST fmOpenWrite = 1
@@ -137,3 +139,4 @@ varBuf.CopyFrom(file, 0)
 
 file.close
 end sub
+$ENDIF   ' IncManager: __REGISTRYVARS_INC

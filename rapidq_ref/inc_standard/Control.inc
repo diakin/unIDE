@@ -1,3 +1,5 @@
+$IFNDEF __CONTROL_INC   ' IncManager: include guard
+$DEFINE __CONTROL_INC
 ' Control panel library for Rapid-Q!!!
 ' Version 1.0
 ' 3/25/01
@@ -136,3 +138,4 @@ sub OpenTweakUIDlg
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL tweakui.cpl @0", 5)
 end sub
   
+$ENDIF   ' IncManager: __CONTROL_INC

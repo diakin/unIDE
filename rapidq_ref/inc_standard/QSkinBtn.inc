@@ -1,3 +1,5 @@
+$IFNDEF __QSKINBTN_INC   ' IncManager: include guard
+$DEFINE __QSKINBTN_INC
 '=======================================================
 ' Type Objet
 ' Classe QSkinBtn version 1.0
@@ -113,3 +115,4 @@ Type QSkinBtn extends qimage
     Enabled=true
   End Constructor  
 end type
+$ENDIF   ' IncManager: __QSKINBTN_INC

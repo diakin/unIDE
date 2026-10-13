@@ -1,3 +1,5 @@
+$IFNDEF __QGRIDCOLOR_INC   ' IncManager: include guard
+$DEFINE __QGRIDCOLOR_INC
 'QGridColor v 1.0.0
 'Author : Nastase Eodor
 '2004
@@ -182,3 +184,4 @@ Type QGridColor extends QPanel
       Draw
       End Constructor
 End Type
+$ENDIF   ' IncManager: __QGRIDCOLOR_INC

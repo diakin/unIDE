@@ -1,3 +1,5 @@
+$IFNDEF __QTBUTTON85B_INC   ' IncManager: include guard
+$DEFINE __QTBUTTON85B_INC
 '$REsource btn_BMP As "_RES\Boutons.bmp"
 $Option Explicit
 
@@ -719,3 +721,4 @@ Sub BMPStretch_Property
 End Sub
 
 'Public:
+$ENDIF   ' IncManager: __QTBUTTON85B_INC

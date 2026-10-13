@@ -1,3 +1,5 @@
+$IFNDEF __QTBUTTON_ADDONS_INC   ' IncManager: include guard
+$DEFINE __QTBUTTON_ADDONS_INC
 ' Crйй par D-йvolution / Created by D-evolution -=@=- 2005
 
 ' Pour plus de dйtail sur l'utilisation de ce composant reportez vous
@@ -1111,3 +1113,4 @@ Sub Fast_QCBtnToQTBtn( _
 	tmpBitmap1.TransparentColor = tmpBitmap1.Pixel(True, True)
 	Me.BMP = tmpBitmap1.BMP
 End Sub
+$ENDIF   ' IncManager: __QTBUTTON_ADDONS_INC

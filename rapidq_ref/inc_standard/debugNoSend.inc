@@ -1,3 +1,5 @@
+$IFNDEF __DEBUGNOSEND_INC   ' IncManager: include guard
+$DEFINE __DEBUGNOSEND_INC
 '! --- вставляем процедуру дебаггера ----------'
 $INCLUDE"RAPIDQ.INC"
 
@@ -93,3 +95,4 @@ strRecv="FormCloseOnClick"
 _DebugForm.Close
 end
 end sub
+$ENDIF   ' IncManager: __DEBUGNOSEND_INC

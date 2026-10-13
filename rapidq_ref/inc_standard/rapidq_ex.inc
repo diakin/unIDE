@@ -1,3 +1,5 @@
+$IFNDEF __RAPIDQ_EX_INC   ' IncManager: include guard
+$DEFINE __RAPIDQ_EX_INC
 '    RAPIDQ.INC  -- Include file for RAPID-Q by William Yu
 '             -- attach a $INCLUDE "RAPIDQ.INC"
 '             -- to all your programs, or just extract what you need.
@@ -967,3 +969,4 @@ ELSE
 	ODD = 0 
 END IF 
 End Function
+$ENDIF   ' IncManager: __RAPIDQ_EX_INC

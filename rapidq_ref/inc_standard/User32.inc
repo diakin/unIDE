@@ -1,3 +1,5 @@
+$IFNDEF __USER32_INC   ' IncManager: include guard
+$DEFINE __USER32_INC
 'USER32.DLL Functions
 'FILE ADDED: Release Version 1
 'FILE UPDATED: Release Version 3
@@ -233,3 +235,4 @@
 	 "UnregisterHotKey" (hWnd AS LONG, ID AS LONG) AS LONG
 
 
+$ENDIF   ' IncManager: __USER32_INC

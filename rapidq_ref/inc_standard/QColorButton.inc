@@ -1,3 +1,5 @@
+$IFNDEF __QCOLORBUTTON_INC   ' IncManager: include guard
+$DEFINE __QCOLORBUTTON_INC
 'QColorButton
 'By Achilles B. Mina
 'Uploaded 7/5/03
@@ -27,3 +29,4 @@ TYPE QCOLORBUTTON EXTENDS QPANEL
   END EVENT
 END TYPE
 
+$ENDIF   ' IncManager: __QCOLORBUTTON_INC

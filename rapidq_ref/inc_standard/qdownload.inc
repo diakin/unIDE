@@ -1,3 +1,5 @@
+$IFNDEF __QDOWNLOAD_INC   ' IncManager: include guard
+$DEFINE __QDOWNLOAD_INC
 'v2 :)
 'added speedlbl as qlabel, similar to stategauge
 'added speed function
@@ -256,3 +258,4 @@ end function
 
 
 end type
+$ENDIF   ' IncManager: __QDOWNLOAD_INC

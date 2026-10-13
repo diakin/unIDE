@@ -1,3 +1,5 @@
+$IFNDEF __MATH_INC   ' IncManager: include guard
+$DEFINE __MATH_INC
 CONST rqPI = 3.141592654           '(This is PI)
 CONST rqE = 2.718281828            '(This is e)
 CONST rqh = 6.62620 * 10 ^ (-34)   '(J*S: Planck const.)
@@ -539,3 +541,4 @@ End If
   End If
 End Function
 
+$ENDIF   ' IncManager: __MATH_INC

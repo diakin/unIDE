@@ -1,3 +1,5 @@
+$IFNDEF __QSTRINGGRIDEX_INC   ' IncManager: include guard
+$DEFINE __QSTRINGGRIDEX_INC
 '=======================================================
 ' Type Objet
 ' Classe QStringGridEx version 1.0
@@ -42,3 +44,4 @@ Type QStringGridEx<Size> extends QStringGrid
     if Row=QStringGridEx.Row then QStringGridEx.SetStyle Col,Row
   End Event    
 End Type
+$ENDIF   ' IncManager: __QSTRINGGRIDEX_INC

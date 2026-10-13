@@ -1,3 +1,5 @@
+$IFNDEF __RSOCKET_INC   ' IncManager: include guard
+$DEFINE __RSOCKET_INC
 ''''''RSOCKET.INC''''''Copyright 2002,2003 Global Services
 '''by doctorelectron@cwdom.dm  FreeWare,just give attribution if you use it!!
 '''Last Updated: June 6,2003
@@ -200,3 +202,4 @@ Result=send(S,str1,len(str1),0&)
 END FUNCTION
 
 END TYPE
+$ENDIF   ' IncManager: __RSOCKET_INC

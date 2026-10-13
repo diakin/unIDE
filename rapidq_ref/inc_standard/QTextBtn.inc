@@ -1,3 +1,5 @@
+$IFNDEF __QTEXTBTN_INC   ' IncManager: include guard
+$DEFINE __QTEXTBTN_INC
 $TYPECHECK ON
 '=======================================================
 ' Type Objet
@@ -86,3 +88,4 @@ Type QTextBtn extends QLabel
     DownColor=&h0
   End Constructor  
 end type
+$ENDIF   ' IncManager: __QTEXTBTN_INC

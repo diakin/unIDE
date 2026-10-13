@@ -1,3 +1,5 @@
+$IFNDEF __VAR2008_INC   ' IncManager: include guard
+$DEFINE __VAR2008_INC
 ' C:\BAS\RAPIDQ\INC\var2008.inc
 ' ShowWindow() Commands
 Const SW_HIDE=0
@@ -256,3 +258,4 @@ defstr FSpectr$  'ArcP1$ + "\spectr.fft" 'скопировать из рабоч
 
 
 
+$ENDIF   ' IncManager: __VAR2008_INC

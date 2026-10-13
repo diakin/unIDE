@@ -1,3 +1,5 @@
+$IFNDEF __QFILELISTVIEW_INC   ' IncManager: include guard
+$DEFINE __QFILELISTVIEW_INC
 '=======================================================
 ' Type Objet
 ' Classe QFileListView version 1.1
@@ -273,3 +275,4 @@ Type QFileListView extends QListView
     ColumnCaption(4)="Modified"
   end constructor
 End Type
+$ENDIF   ' IncManager: __QFILELISTVIEW_INC

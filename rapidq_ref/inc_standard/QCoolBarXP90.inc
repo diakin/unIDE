@@ -1,3 +1,5 @@
+$IFNDEF __QCOOLBARXP90_INC   ' IncManager: include guard
+$DEFINE __QCOOLBARXP90_INC
 ' Crйй par D-йvolution / Created by D-evolution -=@=- 2003 - 2005
 
 ' Dans la sйrie de objet perso voici QCoolBarXP -- Immitation d'une Barre d'outil
@@ -2785,3 +2787,4 @@ Type QCoolBarXP Extends QPanel
   End With
 End Type
 
+$ENDIF   ' IncManager: __QCOOLBARXP90_INC

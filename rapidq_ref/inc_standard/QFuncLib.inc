@@ -1,3 +1,5 @@
+$IFNDEF __QFUNCLIB_INC   ' IncManager: include guard
+$DEFINE __QFUNCLIB_INC
 '===============================================
 ' Functions library
 '===============================================
@@ -202,3 +204,4 @@ function HexToDec(hex as string)as long
   next i
   result=value
 end function
+$ENDIF   ' IncManager: __QFUNCLIB_INC

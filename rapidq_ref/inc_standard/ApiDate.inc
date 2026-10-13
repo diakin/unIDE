@@ -1,3 +1,5 @@
+$IFNDEF __APIDATE_INC   ' IncManager: include guard
+$DEFINE __APIDATE_INC
 '----------------------------------------------------------------------
 '       APIDATE.INC   by Pasquale Battistelli   04 2001
 '----------------------------------------------------------------------
@@ -71,3 +73,4 @@ end function
 'print lastdaym("02-01-2500") 
 'print weekday("4-6-1753") 'date$)
 'while inkey$="":wend
+$ENDIF   ' IncManager: __APIDATE_INC

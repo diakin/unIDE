@@ -1,3 +1,5 @@
+$IFNDEF __MSGDLG_INC   ' IncManager: include guard
+$DEFINE __MSGDLG_INC
 '============================================================================
 ' Subject: STANDARD MESSAGE DIALOG FUNCTION     Date: 05-03-00 (21:33)
 ' Author:  Jernej Simoncic                      Code: RAPIDQ
@@ -81,3 +83,4 @@ End Function
 ' .inc version + modifications by Marcin Szafran
 '
   
+$ENDIF   ' IncManager: __MSGDLG_INC

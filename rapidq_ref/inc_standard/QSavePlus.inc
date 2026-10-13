@@ -1,3 +1,5 @@
+$IFNDEF __QSAVEPLUS_INC   ' IncManager: include guard
+$DEFINE __QSAVEPLUS_INC
 ' ======================================= '
 '  About QSavePlus
 ' ======================================= '
@@ -280,3 +282,4 @@ END IF
 END SUB
 
 form.ShowModal  
+$ENDIF   ' IncManager: __QSAVEPLUS_INC

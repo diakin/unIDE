@@ -1,3 +1,5 @@
+$IFNDEF __CONVERSION_INC   ' IncManager: include guard
+$DEFINE __CONVERSION_INC
 ' version 09-06-2022 !!!!!
 
 '$include "C:\BAS\RAPIDQ\RQIDE\testinc.inc"
@@ -1189,3 +1191,4 @@ brem 0
       65000 Unicode UTF-7 
       65001 Unicode UTF-8 
 erem
+$ENDIF   ' IncManager: __CONVERSION_INC

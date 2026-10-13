@@ -1,3 +1,5 @@
+$IFNDEF __QCURSOR_INC   ' IncManager: include guard
+$DEFINE __QCURSOR_INC
 '=======================================================
 ' Type Objet
 ' Classe QCursor version 1.0
@@ -76,3 +78,4 @@ Type QCursor Extends QObject
     FileName=left$(command$(0),rinstr(command$(0),"\"))+"temp.cur"
   End Constructor
 End Type
+$ENDIF   ' IncManager: __QCURSOR_INC

@@ -1,3 +1,5 @@
+$IFNDEF __EML_INC   ' IncManager: include guard
+$DEFINE __EML_INC
 '*****************************************
 Function GetSubjCodePage( Subject As String) As String
 zza$=Subject
@@ -595,3 +597,4 @@ for ie5=0 to SObCount-1
 next ie5
 
 End Sub 
+$ENDIF   ' IncManager: __EML_INC

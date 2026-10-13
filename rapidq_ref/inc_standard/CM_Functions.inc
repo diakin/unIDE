@@ -1,3 +1,5 @@
+$IFNDEF __CM_FUNCTIONS_INC   ' IncManager: include guard
+$DEFINE __CM_FUNCTIONS_INC
 ' *****************************************************************************
 ' Functions                                                                   *
 ' *****************************************************************************
@@ -589,3 +591,4 @@ End sub
 'Next
 
   
+$ENDIF   ' IncManager: __CM_FUNCTIONS_INC

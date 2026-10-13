@@ -1,3 +1,5 @@
+$IFNDEF __QREDEXTEST2_INC   ' IncManager: include guard
+$DEFINE __QREDEXTEST2_INC
 ' =======================================
 Type QRedEx Extends QRichEdit
 MaxMenu      AS QPOPUPMENU
@@ -13,3 +15,4 @@ END CONSTRUCTOR
 End Type
 ' =======================================
 '
+$ENDIF   ' IncManager: __QREDEXTEST2_INC

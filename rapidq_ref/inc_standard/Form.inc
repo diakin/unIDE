@@ -1,3 +1,5 @@
+$IFNDEF __FORM_INC   ' IncManager: include guard
+$DEFINE __FORM_INC
 
 'API Gude Window Placement example, adapted to RapidQ Basic
 'Andrew Shelkovenko diakin@narod.ru 16.09.2004
@@ -103,3 +105,4 @@ Sub GetFormPos (Sender as QForm)
     
 End Sub
  
+$ENDIF   ' IncManager: __FORM_INC

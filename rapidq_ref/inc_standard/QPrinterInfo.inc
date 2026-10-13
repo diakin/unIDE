@@ -1,3 +1,5 @@
+$IFNDEF __QPRINTERINFO_INC   ' IncManager: include guard
+$DEFINE __QPRINTERINFO_INC
 '=======================================================
 ' Type Objet
 ' Classe QPrinterInfo version 1.0
@@ -156,3 +158,4 @@ Type QPrinterInfo Extends QObject
   End Function
 End Type
       
+$ENDIF   ' IncManager: __QPRINTERINFO_INC

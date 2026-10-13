@@ -1,3 +1,5 @@
+$IFNDEF __GDI32_INC   ' IncManager: include guard
+$DEFINE __GDI32_INC
 'GDI32.DLL Functions
 'FILE ADDED: Release Version 3
 'FILE UPDATED: Release Version 3
@@ -75,3 +77,4 @@
      nHeightEllipse as integer) AS LONG
 
 
+$ENDIF   ' IncManager: __GDI32_INC

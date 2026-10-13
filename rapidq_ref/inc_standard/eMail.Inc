@@ -1,3 +1,5 @@
+$IFNDEF __EMAIL_INC   ' IncManager: include guard
+$DEFINE __EMAIL_INC
 ' eMail.Inc
 ' ==========
 ' Usage:
@@ -137,3 +139,4 @@ rMessage.iFileCount = mmAttCnt
 
 eMail = MAPISendMail(0, 0, rMessage, 0, 0)
 End Function
+$ENDIF   ' IncManager: __EMAIL_INC

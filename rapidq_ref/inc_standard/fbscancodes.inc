@@ -1,3 +1,5 @@
+$IFNDEF __FBSCANCODES_INC   ' IncManager: include guard
+$DEFINE __FBSCANCODES_INC
 ' Virtual Keys, Standard Set
 
 
@@ -132,3 +134,4 @@ $DEFINE VK_LMENU    &HA4
 $DEFINE VK_RMENU    &HA5
 
 ' ascii codes are the same as their virtual key codes
+$ENDIF   ' IncManager: __FBSCANCODES_INC

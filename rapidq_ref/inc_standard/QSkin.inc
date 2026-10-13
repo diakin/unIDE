@@ -1,3 +1,5 @@
+$IFNDEF __QSKIN_INC   ' IncManager: include guard
+$DEFINE __QSKIN_INC
 '=======================================================
 ' Type Objet
 ' Classe QSkin version 1.2
@@ -67,3 +69,4 @@ Type QSkin extends QForm
     OffsHeight=0
   end constructor  
 End Type
+$ENDIF   ' IncManager: __QSKIN_INC

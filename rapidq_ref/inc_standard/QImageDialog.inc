@@ -1,3 +1,5 @@
+$IFNDEF __QIMAGEDIALOG_INC   ' IncManager: include guard
+$DEFINE __QIMAGEDIALOG_INC
 '=======================================================
 ' Type Objet
 ' Classe QImageDialog version 1.1
@@ -593,3 +595,4 @@ Type QImageDialog Extends QObject
     DllName="Nviewlib.dll"
   End Constructor
 End Type
+$ENDIF   ' IncManager: __QIMAGEDIALOG_INC

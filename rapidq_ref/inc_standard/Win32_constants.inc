@@ -1,3 +1,5 @@
+$IFNDEF __WIN32_CONSTANTS_INC   ' IncManager: include guard
+$DEFINE __WIN32_CONSTANTS_INC
 '_______________________________________________________________________________
 ' Values for dwExStyle
 '_______________________________________________________________________________
@@ -336,3 +338,4 @@ const IDM_CLEAR = 1
 
 
   
+$ENDIF   ' IncManager: __WIN32_CONSTANTS_INC

@@ -1,3 +1,5 @@
+$IFNDEF __QINPUTBOX_INC   ' IncManager: include guard
+$DEFINE __QINPUTBOX_INC
 $Typecheck on
 
 'Declare Function Setfocus Lib "user32" Alias "SetFocus"(hwnd As Long) As Long
@@ -100,3 +102,4 @@ Private:
     
 end type  
 
+$ENDIF   ' IncManager: __QINPUTBOX_INC

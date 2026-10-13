@@ -1,3 +1,5 @@
+$IFNDEF __QBUTTONXP_INC   ' IncManager: include guard
+$DEFINE __QBUTTONXP_INC
 '************************************************************************************************
 '*                
 '* QButtonXP by Nicolas Tillet http://wwww.membres.lycos.fr/ntillet86  du 10/2003
@@ -42,3 +44,4 @@ END CONSTRUCTOR
 	
 End With
 END TYPE 
+$ENDIF   ' IncManager: __QBUTTONXP_INC

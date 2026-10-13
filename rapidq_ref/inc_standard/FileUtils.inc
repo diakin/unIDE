@@ -1,3 +1,5 @@
+$IFNDEF __FILEUTILS_INC   ' IncManager: include guard
+$DEFINE __FILEUTILS_INC
 $ESCAPECHARS ON
 
 'ChangeFileExt:
@@ -156,3 +158,4 @@ FUNCTION ChangeFilePath(FileName as STRING, NewPath as STRING) AS STRING
 	Result = NewPath+FileNoPath
 	ChangeFilePath = Result
 END FUNCTION  
+$ENDIF   ' IncManager: __FILEUTILS_INC

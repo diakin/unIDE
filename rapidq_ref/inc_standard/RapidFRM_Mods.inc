@@ -1,3 +1,5 @@
+$IFNDEF __RAPIDFRM_MODS_INC   ' IncManager: include guard
+$DEFINE __RAPIDFRM_MODS_INC
 '
 ' Floating component panel
 ' Modifications by JohnK
@@ -73,3 +75,4 @@ END IF
 DesignTabChange
 END SUB
 
+$ENDIF   ' IncManager: __RAPIDFRM_MODS_INC

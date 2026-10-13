@@ -1,3 +1,5 @@
+$IFNDEF __QLISTBOXEX_INC   ' IncManager: include guard
+$DEFINE __QLISTBOXEX_INC
 '=======================================================
 ' Type Objet
 ' Classe QListBoxEx version 1.0
@@ -33,3 +35,4 @@ Type QListBoxEx Extends QListBox
     PopupMenu=This.HideMenu
   End Constructor
 End Type
+$ENDIF   ' IncManager: __QLISTBOXEX_INC

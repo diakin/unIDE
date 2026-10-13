@@ -1,3 +1,5 @@
+$IFNDEF __SETFILETIMEATTRIB_INC   ' IncManager: include guard
+$DEFINE __SETFILETIMEATTRIB_INC
 
 Public Const FILE_SHARE_READ = &H1
 Public Const FILE_SHARE_WRITE = &H2
@@ -242,3 +244,4 @@ cftError:
 
 'ChangeFileDateAndTime("c:/tmp*", 1980, 1, 11, 11, 11, 11,  "ACCESS Write CREATION")   ' not working'
   
+$ENDIF   ' IncManager: __SETFILETIMEATTRIB_INC

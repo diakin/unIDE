@@ -1,3 +1,5 @@
+$IFNDEF __STDOBJMNU_INC   ' IncManager: include guard
+$DEFINE __STDOBJMNU_INC
 DIM cmdForm AS QMenuItem
 WITH cmdForm
   .Caption = "Create a new QFORM"  
@@ -244,3 +246,4 @@ ComponentMnu.AddItems cmdListView
 ComponentMnu.AddItems cmdBitmap
 ComponentMnu.AddItems cmdOutline 
      
+$ENDIF   ' IncManager: __STDOBJMNU_INC

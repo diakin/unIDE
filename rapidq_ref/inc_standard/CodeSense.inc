@@ -1,3 +1,5 @@
+$IFNDEF __CODESENSE_INC   ' IncManager: include guard
+$DEFINE __CODESENSE_INC
 $TYPECHECK ON
 $ESCAPECHARS ON
 
@@ -1162,3 +1164,4 @@ DIM Sql AS Integer
 DIM Memory AS Integer
 DIM Comport AS Integer
 DIM Socket AS Integer  
+$ENDIF   ' IncManager: __CODESENSE_INC

@@ -1,3 +1,5 @@
+$IFNDEF __APIRE_INC   ' IncManager: include guard
+$DEFINE __APIRE_INC
 $IFNDEF TRUE
   $DEFINE True 1
 $ENDIF
@@ -166,3 +168,4 @@ WS_CHILD OR WS_VISIBLE OR WS_BORDER, _
 
 END TYPE
   
+$ENDIF   ' IncManager: __APIRE_INC

@@ -1,3 +1,5 @@
+$IFNDEF __ODMENUXP_INC   ' IncManager: include guard
+$DEFINE __ODMENUXP_INC
 $IFNDEF __RQINC
 $IFNDEF __RQINCTMP
 $DEFINE __RQINCTMP
@@ -2926,3 +2928,4 @@ Function pGetClassName_mOD '(ByVal hwnd As Long) As String
 	 
 	pGetClassName_mOD = sClass
 End Function
+$ENDIF   ' IncManager: __ODMENUXP_INC

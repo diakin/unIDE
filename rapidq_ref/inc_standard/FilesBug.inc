@@ -1,3 +1,5 @@
+$IFNDEF __FILESBUG_INC   ' IncManager: include guard
+$DEFINE __FILESBUG_INC
 '===============================================================================
 '# BROWSEFORFOLDERS : Returns the selected folder
 
@@ -25,3 +27,4 @@ bff_form.showmodal
 result = bff_tree.directory
 end function
 
+$ENDIF   ' IncManager: __FILESBUG_INC

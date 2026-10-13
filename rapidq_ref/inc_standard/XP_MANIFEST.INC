@@ -1,3 +1,5 @@
+$IFNDEF __XP_MANIFEST_INC   ' IncManager: include guard
+$DEFINE __XP_MANIFEST_INC
 
 '************************************************************************************************
 '*   Automatically generate a manifest file for XP style buttons common controls             
@@ -134,3 +136,4 @@ END CONSTRUCTOR
 END TYPE
 
 
+$ENDIF   ' IncManager: __XP_MANIFEST_INC

@@ -1,3 +1,5 @@
+$IFNDEF __QBROWSEDIALOG_INC   ' IncManager: include guard
+$DEFINE __QBROWSEDIALOG_INC
 '================= QBrowseDialog =======================
 
 ' A little easier to use than QDirTree when all you 
@@ -105,3 +107,4 @@ TYPE QBROWSEDIALOG EXTENDS QOBJECT
 END TYPE
 
 
+$ENDIF   ' IncManager: __QBROWSEDIALOG_INC

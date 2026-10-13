@@ -1,3 +1,5 @@
+$IFNDEF __PDECL_INC   ' IncManager: include guard
+$DEFINE __PDECL_INC
 ' GetDecl parser version 1.0.
 ' GetDecl parses function declarations and returns an array with corresponding elements.
 declare function GetDecl(code$) as string
@@ -45,3 +47,4 @@ end function
 '?x(2)
 '?x(3)
 'input z  
+$ENDIF   ' IncManager: __PDECL_INC

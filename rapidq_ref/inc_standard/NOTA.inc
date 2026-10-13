@@ -1,3 +1,5 @@
+$IFNDEF __NOTA_INC   ' IncManager: include guard
+$DEFINE __NOTA_INC
 'Network of the Apes RapidQ Include
 'FILE ADDED: Release Version 1
 'FILE UPDATED: Release Version 2
@@ -614,3 +616,4 @@
 		ProgramName$ = bpmTheProgram$
 	end function
 
+$ENDIF   ' IncManager: __NOTA_INC

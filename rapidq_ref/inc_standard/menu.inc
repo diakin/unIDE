@@ -1,3 +1,5 @@
+$IFNDEF __MENU_INC   ' IncManager: include guard
+$DEFINE __MENU_INC
 'Menu file for test.rqw
 
 Declare Sub mOpen_Click(Sender as QMenuItem)
@@ -132,3 +134,4 @@ End Sub
 Sub mExit_Click(Sender as QMenuItem)
 
 End Sub
+$ENDIF   ' IncManager: __MENU_INC

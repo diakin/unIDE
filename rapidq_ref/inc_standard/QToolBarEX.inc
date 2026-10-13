@@ -1,3 +1,5 @@
+$IFNDEF __QTOOLBAREX_INC   ' IncManager: include guard
+$DEFINE __QTOOLBAREX_INC
 '
 ' Generic toolbar using QPanel & QCoolBtns v1.1
 ' Author:   d_homans@yahoo.com.au
@@ -289,3 +291,4 @@ CONSTRUCTOR
 END CONSTRUCTOR
 END WITH
 END TYPE
+$ENDIF   ' IncManager: __QTOOLBAREX_INC

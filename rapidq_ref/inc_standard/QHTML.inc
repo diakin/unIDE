@@ -1,3 +1,5 @@
+$IFNDEF __QHTML_INC   ' IncManager: include guard
+$DEFINE __QHTML_INC
 '************************************************************************
 '* Class QHTML Version 1.0  © Pascal Delcombel-2003-2008                *
 '************************************************************************
@@ -2048,3 +2050,4 @@ Public:
     eND CONSTRUCTOR
 END TYPE
 
+$ENDIF   ' IncManager: __QHTML_INC

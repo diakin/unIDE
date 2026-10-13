@@ -1,3 +1,5 @@
+$IFNDEF __COMPORTXP_INC   ' IncManager: include guard
+$DEFINE __COMPORTXP_INC
 'ComPort.cmp  ' inc2026: file renamed from COMPORTxp.CMP to COMPORTxp.inc (header keeps the original name ComPort.cmp)
 'Version 0.9
 'December 13, 2001
@@ -554,3 +556,4 @@ TYPE MyCom_Port EXTENDS QObject
 
 END TYPE
 
+$ENDIF   ' IncManager: __COMPORTXP_INC

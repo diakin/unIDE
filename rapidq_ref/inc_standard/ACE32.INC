@@ -1,3 +1,5 @@
+$IFNDEF __ACE32_INC   ' IncManager: include guard
+$DEFINE __ACE32_INC
 '/*******************************************************************************
 '* Source File  : ace32.bas
 '* Copyright    : 1997-2002 Extended Systems, Inc.
@@ -901,3 +903,4 @@ DECLARE FUNCTION AdsEnableAutoIncEnforcement Lib "ACE32.DLL" ALIAS "AdsEnableAut
 DECLARE FUNCTION AdsDisableAutoIncEnforcement Lib "ACE32.DLL" ALIAS "AdsDisableAutoIncEnforcement" (ByVal hConnect As Long ) As Long
 '/* EOF */
 
+$ENDIF   ' IncManager: __ACE32_INC

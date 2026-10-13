@@ -1,3 +1,5 @@
+$IFNDEF __MDI_API_INC   ' IncManager: include guard
+$DEFINE __MDI_API_INC
 TYPE WNDCLASSEX
     cbSize AS LONG
     style AS LONG
@@ -95,3 +97,4 @@ const SIZE_MAXIMIZED = 2
 
 const GWL_HWNDPARENT = (-8)
 const GWL_EXSTYLE = (-20)  
+$ENDIF   ' IncManager: __MDI_API_INC

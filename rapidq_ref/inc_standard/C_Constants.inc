@@ -1,3 +1,5 @@
+$IFNDEF __C_CONSTANTS_INC   ' IncManager: include guard
+$DEFINE __C_CONSTANTS_INC
 '-----------------------------------------------------------------------------|
 ' This file is a translation of the original C/C++ header file                |
 '-----------------------------------------------------------------------------|
@@ -868,3 +870,4 @@ const CM_TOKENTYPE_UNKNOWN AS DWORD = -1
 
 const CM_VERSION = &H02100
   
+$ENDIF   ' IncManager: __C_CONSTANTS_INC

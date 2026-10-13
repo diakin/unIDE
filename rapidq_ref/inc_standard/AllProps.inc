@@ -1,3 +1,5 @@
+$IFNDEF __ALLPROPS_INC   ' IncManager: include guard
+$DEFINE __ALLPROPS_INC
 'Suitable for building initialization file. ( *.ini file )
 'Just pick what you need and paste in to *.ini file.
 'MainForm
@@ -281,3 +283,4 @@ SplashImage.Height=331
 SplashImage.Enabled=True
 SplashImage.Visible=True
 SplashTimer.Enabled=True
+$ENDIF   ' IncManager: __ALLPROPS_INC

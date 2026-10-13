@@ -1,3 +1,5 @@
+$IFNDEF __WEBCAM_INC   ' IncManager: include guard
+$DEFINE __WEBCAM_INC
 '
 '***************************************************************************
 ' WebCam.dll is a Dynamic Linked Library written by me,
@@ -219,3 +221,4 @@ END FUNCTION
 
 
 END TYPE
+$ENDIF   ' IncManager: __WEBCAM_INC

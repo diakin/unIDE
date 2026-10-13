@@ -1,3 +1,5 @@
+$IFNDEF __SYSUTILS_INC   ' IncManager: include guard
+$DEFINE __SYSUTILS_INC
 $DEFINE __RQSYSUTILS
 
 Function ExtractFileName(File As String) As String
@@ -118,3 +120,4 @@ Function SysErrorMessage(Error As Integer) As String
      $ENDIF
      Result = RTrim$(Buffer)
 End Function
+$ENDIF   ' IncManager: __SYSUTILS_INC

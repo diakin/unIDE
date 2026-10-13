@@ -1,3 +1,5 @@
+$IFNDEF __QSHFILEOPERATION_INC   ' IncManager: include guard
+$DEFINE __QSHFILEOPERATION_INC
 ' ============================================================== '
 ' QSHFileOperation component - version 1            January 2002 '
 '                                                 Marcin Szafran '
@@ -248,3 +250,4 @@ $TYPECHECK OFF
 
 '= END =================================================== 
   
+$ENDIF   ' IncManager: __QSHFILEOPERATION_INC

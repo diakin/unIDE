@@ -1,3 +1,5 @@
+$IFNDEF __WINDOWSAPI_INC   ' IncManager: include guard
+$DEFINE __WINDOWSAPI_INC
 'This loads the other Windows API includes
 'FILE ADDED: Release Version 1
 'FILE UPDATED: Release Version 3
@@ -87,3 +89,4 @@ $Include "WinMM.Inc"
 '	$Include "RapidQ.Inc"
 '	$Include "WindowsAPI.inc"
 '	$Include "NOTA.inc"
+$ENDIF   ' IncManager: __WINDOWSAPI_INC

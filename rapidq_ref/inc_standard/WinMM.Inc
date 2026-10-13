@@ -1,3 +1,5 @@
+$IFNDEF __WINMM_INC   ' IncManager: include guard
+$DEFINE __WINMM_INC
 'WinMM.DLL Functions
 'FILE ADDED: Release Version 1
 'FILE UPDATED: Release Version 1
@@ -29,3 +31,4 @@
 	Declare Function timeGetTime Lib "winmm.dll" Alias_
 	 "timeGetTime" As Long
 
+$ENDIF   ' IncManager: __WINMM_INC

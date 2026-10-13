@@ -1,3 +1,5 @@
+$IFNDEF __QVOLUMEINFO_INC   ' IncManager: include guard
+$DEFINE __QVOLUMEINFO_INC
 '************************************************************************************
 '*                                                                                  *
 '*  QVolumeInfo: Retrieve infromation from your connected volumes                   *
@@ -201,3 +203,4 @@ type QVolumeInfo extends QObject
 end type
 
 
+$ENDIF   ' IncManager: __QVOLUMEINFO_INC

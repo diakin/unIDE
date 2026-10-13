@@ -1,3 +1,5 @@
+$IFNDEF __QSPINTEXT_INC   ' IncManager: include guard
+$DEFINE __QSPINTEXT_INC
 ' Qspintext component for Rapid-Q by Mesut Akcan
 ' ver : 1.01
 ' 7 July 2000, update : 7 Sept. 2000 
@@ -132,3 +134,4 @@ public:
 
 
 end type
+$ENDIF   ' IncManager: __QSPINTEXT_INC

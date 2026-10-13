@@ -1,3 +1,5 @@
+$IFNDEF __FUNC_ARRAY_INC   ' IncManager: include guard
+$DEFINE __FUNC_ARRAY_INC
 '-- **************************************************************************'
 function ARRAverage (Dat!() as single, MinEl  as integer, MaxEl as integer) as single
 ' calculate average value from function Dat1!()
@@ -546,3 +548,4 @@ end sub
 'CALL kTArrayr(Snak!(), 1/CINT(Npt/period))
 
 'END SUB
+$ENDIF   ' IncManager: __FUNC_ARRAY_INC

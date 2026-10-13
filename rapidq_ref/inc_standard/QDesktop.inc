@@ -1,3 +1,5 @@
+$IFNDEF __QDESKTOP_INC   ' IncManager: include guard
+$DEFINE __QDESKTOP_INC
 '=======================================================
 ' Type Objet
 ' Classe QDesktop version 1.0
@@ -74,3 +76,4 @@ Type QDesktop Extends QObject
     end if
   End Sub
 End Type
+$ENDIF   ' IncManager: __QDESKTOP_INC

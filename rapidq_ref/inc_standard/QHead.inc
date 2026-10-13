@@ -1,3 +1,5 @@
+$IFNDEF __QHEAD_INC   ' IncManager: include guard
+$DEFINE __QHEAD_INC
 Type QHead extends QCanvas
      Public :
      Icon          as QBitmap
@@ -117,3 +119,4 @@ Type QHead extends QCanvas
      RightText  = "Test Component"
      End Constructor
 End Type
+$ENDIF   ' IncManager: __QHEAD_INC

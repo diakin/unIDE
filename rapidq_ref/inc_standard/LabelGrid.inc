@@ -1,3 +1,5 @@
+$IFNDEF __LABELGRID_INC   ' IncManager: include guard
+$DEFINE __LABELGRID_INC
 '--- properties --------------
 defint RowCount=3 
 defint ColCount=3
@@ -75,3 +77,4 @@ Labels(1,0).caption="Импульсов"
 Labels(1,1).caption="Uзп"
 Labels(1,2).caption="Uфп"
       
+$ENDIF   ' IncManager: __LABELGRID_INC

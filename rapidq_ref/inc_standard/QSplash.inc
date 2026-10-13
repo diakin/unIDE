@@ -1,3 +1,5 @@
+$IFNDEF __QSPLASH_INC   ' IncManager: include guard
+$DEFINE __QSPLASH_INC
 '=======================================================
 ' Type Objet
 ' Classe QSplash version 1.2
@@ -81,3 +83,4 @@ Type QSplash Extends QObject
     TextCenter=False
   End Constructor
 End Type
+$ENDIF   ' IncManager: __QSPLASH_INC

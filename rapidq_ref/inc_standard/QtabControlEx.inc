@@ -1,3 +1,5 @@
+$IFNDEF __QTABCONTROLEX_INC   ' IncManager: include guard
+$DEFINE __QTABCONTROLEX_INC
 '=======================================================
 ' Type Objet
 ' Classe QTabControlEx version 1.0
@@ -77,3 +79,4 @@ Type QTabControlEx Extends QTabControl
   End Constructor
 End Type
 
+$ENDIF   ' IncManager: __QTABCONTROLEX_INC

@@ -1,3 +1,5 @@
+$IFNDEF __FUNCTIONS_INC   ' IncManager: include guard
+$DEFINE __FUNCTIONS_INC
 Declare Function SendMsg Lib "user32" Alias "SendMessageA" _
 (ByVal hwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, lParam As long) As Long
 
@@ -218,3 +220,4 @@ End With
 
 Cm_RegisterLanguage("RapidQ", NewLanguage)
 End sub  
+$ENDIF   ' IncManager: __FUNCTIONS_INC

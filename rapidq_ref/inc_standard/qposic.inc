@@ -1,3 +1,5 @@
+$IFNDEF __QPOSIC_INC   ' IncManager: include guard
+$DEFINE __QPOSIC_INC
 ' Based on Qspintext component for Rapid-Q by Mesut Akcan http://kaynak.cjb.net
 ' ver : 1.00
 ' 22.02.2004 
@@ -175,3 +177,4 @@ if .supress=0 then CALLFUNC(.OnChange,1)
 
     
 end type  
+$ENDIF   ' IncManager: __QPOSIC_INC

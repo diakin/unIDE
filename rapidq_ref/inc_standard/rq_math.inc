@@ -1,3 +1,5 @@
+$IFNDEF __RQ_MATH_INC   ' IncManager: include guard
+$DEFINE __RQ_MATH_INC
 '------------------------------------------------------------------
 '>>>>>>   rq-math.inc   Version 1.1 (09-2000)<<<<<<<<<<<<<<<<<<<<
 '------------------------------------------------------------------
@@ -480,3 +482,4 @@ End Function
 'LOGAZ*, LOGZ*, MAGZ*, MULZ*, NORZ*,ODD*, POLZ*, POWZ*, RAD2DEG, RQE, RQPI, SEC, SECH,
 'SINH, SINZ*,SINHZ*, SQRZ*, SUBZ*,TANH, TANZ*
 '*: new functions in this version  
+$ENDIF   ' IncManager: __RQ_MATH_INC

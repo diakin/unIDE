@@ -1,3 +1,5 @@
+$IFNDEF __DAQMX_INC   ' IncManager: include guard
+$DEFINE __DAQMX_INC
 
 brem 0
 ****************************************
@@ -740,3 +742,4 @@ int32 __CFUNC DAQmxSetAIBridgeShuntCalGainAdjust(TaskHandle taskHandle, const ch
 int32 __CFUNC DAQmxResetAIBridgeShuntCalGainAdjust(TaskHandle taskHandle, const char channel[]);
 //*** Set/Get functions for DAQmx_AI_Bridge_Balance_CoarsePot ***
 int32 __CFUNC DAQmxGetAIBr
+$ENDIF   ' IncManager: __DAQMX_INC

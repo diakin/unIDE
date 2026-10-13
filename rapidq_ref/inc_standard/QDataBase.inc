@@ -1,3 +1,5 @@
+$IFNDEF __QDATABASE_INC   ' IncManager: include guard
+$DEFINE __QDATABASE_INC
 '=======================================================
 ' Type Objet
 ' Classe QDataBase version 1.0
@@ -691,3 +693,4 @@ Type QDataBase extends QObject
     Close
   End Constructor
 End Type
+$ENDIF   ' IncManager: __QDATABASE_INC

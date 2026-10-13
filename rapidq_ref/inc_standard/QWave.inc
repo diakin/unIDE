@@ -1,3 +1,5 @@
+$IFNDEF __QWAVE_INC   ' IncManager: include guard
+$DEFINE __QWAVE_INC
 '=======================================================
 ' Type Objet
 ' Classe QWave Version 1.2
@@ -428,3 +430,4 @@ PUBLIC:
   End Constructor
 End Type
       
+$ENDIF   ' IncManager: __QWAVE_INC

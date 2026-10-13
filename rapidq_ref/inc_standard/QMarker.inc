@@ -1,3 +1,5 @@
+$IFNDEF __QMARKER_INC   ' IncManager: include guard
+$DEFINE __QMARKER_INC
 $Resource Bit_Res as "Mark.bmp"
 
 Type QMarker extends QPanel
@@ -49,3 +51,4 @@ Type QMarker extends QPanel
 End Type
  
 
+$ENDIF   ' IncManager: __QMARKER_INC

@@ -1,3 +1,5 @@
+$IFNDEF __RQPROCESS_INC   ' IncManager: include guard
+$DEFINE __RQPROCESS_INC
 
 '===== From Message #27265 Thu Sep 8, 2005 9:53 am ======
 'Michel Jose Facen
@@ -200,3 +202,4 @@ END FUNCTION
 
 
 
+$ENDIF   ' IncManager: __RQPROCESS_INC

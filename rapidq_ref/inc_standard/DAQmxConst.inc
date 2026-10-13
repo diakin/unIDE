@@ -1,3 +1,5 @@
+$IFNDEF __DAQMXCONST_INC   ' IncManager: include guard
+$DEFINE __DAQMXCONST_INC
 
 ''*****************************************************************************
 ' *** NI-DAQmx Attributes ******************************************************
@@ -1446,3 +1448,4 @@ $define DAQmx_Val_DoNotWrite                                              12540 
 $define DAQmx_Val_FirstSample                                             10424 ' First Sample
 $define DAQmx_Val_CurrWritePos                                            10430 ' Current Write Position
 
+$ENDIF   ' IncManager: __DAQMXCONST_INC

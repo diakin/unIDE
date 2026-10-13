@@ -1,3 +1,5 @@
+$IFNDEF __CONVERTTOTRUEPATH_INC   ' IncManager: include guard
+$DEFINE __CONVERTTOTRUEPATH_INC
 '/* Start Of Code */
 Const SHGFI_DISPLAYNAME = &H200
 
@@ -38,3 +40,4 @@ Function ConvertToTruePath(ByVal sPath As String) As String
 
   Result = (RootDir & TruePath)
 End Function
+$ENDIF   ' IncManager: __CONVERTTOTRUEPATH_INC

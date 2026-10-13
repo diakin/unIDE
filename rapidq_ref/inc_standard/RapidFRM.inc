@@ -1,3 +1,5 @@
+$IFNDEF __RAPIDFRM_INC   ' IncManager: include guard
+$DEFINE __RAPIDFRM_INC
 '
 ' RapidFRM.inc
 '
@@ -357,3 +359,4 @@ $DEFINE Q_D3DLight      52
 $DEFINE Q_D3DTexture    53
 $DEFINE Q_D3DVector     54
 $DEFINE Q_D3DWrap       55
+$ENDIF   ' IncManager: __RAPIDFRM_INC

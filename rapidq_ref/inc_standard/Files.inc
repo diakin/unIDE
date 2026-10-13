@@ -1,3 +1,5 @@
+$IFNDEF __FILES_INC   ' IncManager: include guard
+$DEFINE __FILES_INC
 
 $DEFINE FILE_ATTRIBUTE_READONLY  &H1
 $DEFINE FILE_ATTRIBUTE_HIDDEN  &H2
@@ -1484,3 +1486,4 @@ function DownLoadURL (sUrl as string, dFileName as string) as long
 
 End Function ' inc2026: END FUNCTION вместо END SUB: процедура открыта как function DownLoadURL (строка 1440)
 
+$ENDIF   ' IncManager: __FILES_INC

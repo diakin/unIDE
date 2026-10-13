@@ -1,3 +1,5 @@
+$IFNDEF __RESOURCES2_INC   ' IncManager: include guard
+$DEFINE __RESOURCES2_INC
 ' Vous pouvez retirer ce dont vous n'avez pas besoin.
 '
 '************  Btns Standards  **************
@@ -54,3 +56,4 @@ $RESOURCE ItmOnTop_BMP	AS "../_RES/SKIN/PopMnICO_Check.bmp"
 $RESOURCE ItmReduire_BMP	AS "../_RES/SKIN/PopMnICO_Min.bmp"
 $RESOURCE ItmFermer_BMP	AS "../_RES/SKIN/PopMnICO_Close.bmp"
 '**********  Fin de Barre de Titre  *********
+$ENDIF   ' IncManager: __RESOURCES2_INC

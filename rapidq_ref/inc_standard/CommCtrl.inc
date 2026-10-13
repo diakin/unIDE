@@ -1,3 +1,5 @@
+$IFNDEF __COMMCTRL_INC   ' IncManager: include guard
+$DEFINE __COMMCTRL_INC
 $DEFINE __COMMCTRL
 
 Declare Sub InitCommonControls Lib "comctl32.dll" Alias "InitCommonControls"()
@@ -1500,3 +1502,4 @@ Const SBT_POPOUT = &H200
 Const SBT_RTLREADING = &H400
 Const SBT_TOOLTIPS = &H800
 
+$ENDIF   ' IncManager: __COMMCTRL_INC

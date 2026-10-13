@@ -1,3 +1,5 @@
+$IFNDEF __QRPANEL_INC   ' IncManager: include guard
+$DEFINE __QRPANEL_INC
 'QRPANEL is a sister component to QRFORM. It gives you the ability to create a panel with rounded corners.
 'Thanks to everybody at the Yahoo board who shared their knowledge to build this one up :)
 '
@@ -43,3 +45,4 @@ RndY=20
 rBorder = 0
 END CONSTRUCTOR
 END TYPE
+$ENDIF   ' IncManager: __QRPANEL_INC

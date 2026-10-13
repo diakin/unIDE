@@ -1,3 +1,5 @@
+$IFNDEF __RC4CRYPT_INC   ' IncManager: include guard
+$DEFINE __RC4CRYPT_INC
 '
 ' RC4crypt.inc
 ' (C) 2003-10-04 Martin Wehner
@@ -124,3 +126,4 @@ END TYPE
 't = rc4.Pipe(t)   ' Encode stream element t
 'rc4.Init(k)   ' Initialize RC4 object with the key again
 'ShowMessage(rc4.Pipe(s & t))   ' Concatenate and decode
+$ENDIF   ' IncManager: __RC4CRYPT_INC
