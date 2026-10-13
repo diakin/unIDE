@@ -62,11 +62,12 @@
 <li>Include files and resources: to the <code>-I</code> folder of this build. For each file this can be changed to the folder of the program (&laquo;&#1050;&#1091;&#1076;&#1072;&raquo;).</li>
 <li>The path from <code>$INCLUDE</code> is kept: <code>Object\QINI.inc</code> goes to <code>&lt;folder&gt;\Object\QINI.inc</code>, the subfolder is created. Otherwise rc.exe would not find it.</li>
 <li>A name with a drive (<code>C:\...</code>) is copied to that very path.</li>
-<li>DLL: always to the folder of the program. Windows looks for a DLL next to the exe, not in the <code>-I</code> folder.</li>
+<li>DLL: by default to the folder of the program &mdash; Windows looks for a DLL next to the exe, not in the <code>-I</code> folder. &laquo;&#1050;&#1091;&#1076;&#1072;&raquo; can still send it to the <code>-I</code> folder, to keep it with the include files.</li>
 </ul>
 
 <h3>Buttons</h3>
 <ul>
+<li><b>&#1057;&#1082;&#1086;&#1087;&#1080;&#1088;&#1086;&#1074;&#1072;&#1090;&#1100;</b> &mdash; copies the selected copies of the checked files where &laquo;&#1050;&#1091;&#1076;&#1072;&raquo; says, without building; the window stays open, copied files are unchecked. What was copied goes to the compilation log when the window closes.</li>
 <li><b>&#1050;&#1086;&#1087;&#1080;&#1088;&#1086;&#1074;&#1072;&#1090;&#1100; &#1086;&#1090;&#1084;&#1077;&#1095;&#1077;&#1085;&#1085;&#1099;&#1077; &#1080; &#1089;&#1086;&#1073;&#1088;&#1072;&#1090;&#1100;</b> &mdash; copies the selected copies of the checked files and starts the build.</li>
 <li><b>&#1057;&#1086;&#1073;&#1088;&#1072;&#1090;&#1100; &#1073;&#1077;&#1079; &#1082;&#1086;&#1087;&#1080;&#1088;&#1086;&#1074;&#1072;&#1085;&#1080;&#1103;</b> &mdash; starts the build as is.</li>
 <li><b>&#1054;&#1090;&#1084;&#1077;&#1085;&#1072;</b> &mdash; the build does not start.</li>
