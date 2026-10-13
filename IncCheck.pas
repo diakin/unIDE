@@ -1716,6 +1716,9 @@ var
   begin
     if Cancel then
       Exit;
+    // Искать больше нечего: AOnFound мог убрать найденные имена из ANames
+    if ANames.Count = 0 then
+      Exit;
     // Папка уже просмотрена раньше (ASkip: пути в верхнем регистре со \)
     if (ASkip <> nil) and (ASkip.IndexOf(UpperCase(ADirPath)) >= 0) then
       Exit;

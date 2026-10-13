@@ -558,13 +558,19 @@ type
     Scan: TRqDepScan;
     StageLabel: string;
     Done: TStringList;   // номера уже найденных в папках Include
+    // Имена, которые ищет IncFindNamesOnDisk (верхний регистр). DLL и
+    // ресурс берутся первой найденной копией - после неё имя отсюда
+    // убирается, и подпапки дальше ради него не смотрятся; inc ищется
+    // дальше: из копий выбирается совпадающая с эталоном.
+    Names: TStringList;
     procedure Found(const AFile: string);
   end;
 
 procedure TRqDepCollector.Found(const AFile: string);
 var
-  ItemIdx: Integer;
+  ItemIdx, OtherIdx, NameIdx: Integer;
   Dep: TRqDep;
+  StillWanted: Boolean;
 begin
   for ItemIdx := 0 to Scan.Count - 1 do
   begin
@@ -579,6 +585,19 @@ begin
       Continue;
     Dep.Candidates.Add(AFile);
     Dep.Where.Add(StageLabel);
+    if (Dep.Kind = dpkInclude) or (Names = nil) then
+      Continue;
+    // DLL / ресурс: копия есть. Имя - из поиска, если его не ждёт ещё
+    // кто-то без копии (inc с тем же именем ищется всегда)
+    StillWanted := False;
+    for OtherIdx := 0 to Scan.Count - 1 do
+      if Scan[OtherIdx].Missing and
+         (CompareText(Scan[OtherIdx].FileNameOnly, Dep.FileNameOnly) = 0) and
+         ((Scan[OtherIdx].Kind = dpkInclude) or
+          (Scan[OtherIdx].Candidates.Count = 0)) then
+        StillWanted := True;
+    if not StillWanted and Names.Find(UpperCase(Dep.FileNameOnly), NameIdx) then
+      Names.Delete(NameIdx);
   end;
 end;
 
@@ -659,9 +678,12 @@ begin
         Break;
       // Остальные шаги - с подпапками, только то, что в папках Include не
       // нашлось
+      // DLL и ресурс с найденной копией - тоже нет (берётся первая копия)
       Names.Clear;
       for ItemIdx := 0 to AScan.Count - 1 do
-        if AScan[ItemIdx].Missing and (Done.IndexOf(IntToStr(ItemIdx)) < 0) then
+        if AScan[ItemIdx].Missing and (Done.IndexOf(IntToStr(ItemIdx)) < 0) and
+           ((AScan[ItemIdx].Kind = dpkInclude) or
+            (AScan[ItemIdx].Candidates.Count = 0)) then
           Names.Add(UpperCase(AScan[ItemIdx].FileNameOnly));
       if Names.Count = 0 then
         Break;
@@ -674,6 +696,7 @@ begin
         Continue;
       Collector.StageLabel := StageLabel;
       Collector.Done := Done;
+      Collector.Names := Names;
       StageList.Clear;
       StageList.Add(StageDir);
       Found.Clear;

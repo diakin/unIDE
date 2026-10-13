@@ -123,6 +123,7 @@ type
     procedure SetBusy(ABusy: Boolean);
     function  SelectedDep: TRqDep;
     procedure ProgressStep(const AText: string; var ACancel: Boolean);
+    procedure RefreshFoundRows;
     procedure StartTimerTick(Sender: TObject);
     procedure lvDepsSelectItem(Sender: TObject; Item: TListItem;
                                Selected: Boolean);
@@ -479,12 +480,17 @@ begin
   WrittenText := '';
   if Dep.Chosen >= 0 then
     FileStampText(Dep.Candidates[Dep.Chosen], SizeText, CreatedText,
-                  WrittenText);
+                  WrittenText)
+  else if FBusy and (Dep.Candidates.Count > 0) then
+    // Идёт поиск, копия выбирается после него - пока первая найденная
+    FileStampText(Dep.Candidates[0], SizeText, CreatedText, WrittenText);
   AItem.SubItems.Add(SizeText);
   AItem.SubItems.Add(CreatedText);
   AItem.SubItems.Add(WrittenText);
   if Dep.Chosen >= 0 then
     AItem.SubItems.Add(Dep.Candidates[Dep.Chosen])
+  else if FBusy and (Dep.Candidates.Count > 0) then
+    AItem.SubItems.Add(Dep.Candidates[0] + '  (найдено, поиск идёт)')
   else if FBusy then
     AItem.SubItems.Add('ищется...')
   else
@@ -910,6 +916,36 @@ begin
   ShowSelected;
 end;
 
+// Во время поиска: строки, у которых прибавились копии, - заново (число
+// копий, первая найденная, её размер и время)
+procedure TRqDepsForm.RefreshFoundRows;
+var
+  ItemIdx, Total: Integer;
+  Dep: TRqDep;
+begin
+  for ItemIdx := 0 to lvDeps.Items.Count - 1 do
+  begin
+    Dep := TRqDep(lvDeps.Items[ItemIdx].Data);
+    if (Dep = nil) or
+       (lvDeps.Items[ItemIdx].SubItems.Count < 3) or
+       (lvDeps.Items[ItemIdx].SubItems[2] = IntToStr(Dep.Candidates.Count)) then
+      Continue;
+    FFilling := True;
+    try
+      FillRow(lvDeps.Items[ItemIdx]);
+    finally
+      FFilling := False;
+    end;
+  end;
+  Total := 0;
+  for ItemIdx := 0 to FScan.Count - 1 do
+    if FScan[ItemIdx].Missing and (FScan[ItemIdx].Candidates.Count > 0) then
+      Inc(Total);
+  if Total > 0 then
+    lblStatus.Caption := Format('Найдены копии: %d из %d. %s',
+                                [Total, FScan.MissingCount, lblStatus.Caption]);
+end;
+
 procedure TRqDepsForm.ProgressStep(const AText: string; var ACancel: Boolean);
 begin
   ACancel := FAbort;
@@ -917,6 +953,7 @@ begin
     Exit;
   FLastTick := GetTickCount;
   lblStatus.Caption := AText;
+  RefreshFoundRows;
   Application.ProcessMessages;
   ACancel := FAbort;
 end;
