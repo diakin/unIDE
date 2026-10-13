@@ -620,8 +620,8 @@ begin
     SetBusy(False);
   end;
   FillList;
-  if Done then
-    CheckUserIncludes;
+  // Найденное в Include User - проверить сразу, и после «Стоп» тоже
+  CheckUserIncludes;
 end;
 
 procedure TRqDepsForm.StartTimerTick(Sender: TObject);
