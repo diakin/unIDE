@@ -81,6 +81,10 @@ type
     lbReport: TListBox;
     splReport: TSplitter;
     FReportPaths: TStringList;
+    // Что из середины окна видно: панель-предложение, список ошибок
+    // (копии на диске - только когда их у выбранного файла больше одной)
+    FShowOffer: Boolean;
+    FShowReport: Boolean;
     lblStatus: TLabel;
     procedure BuildControls;
     procedure FillList;
@@ -99,6 +103,7 @@ type
     procedure ShowPreview;
     procedure LoadPreview(const AFile: string; AIsText: Boolean);
     procedure SetReport(AReport: TStrings);
+    procedure ArrangeTop;
     procedure lbReportClick(Sender: TObject);
     procedure cbTargetChange(Sender: TObject);
     procedure btnSearchClick(Sender: TObject);
@@ -256,6 +261,9 @@ begin
   AddCol(lvDeps, 'Вид', 55);
   AddCol(lvDeps, 'Подключён', 170);
   AddCol(lvDeps, 'Копий', 50);
+  AddCol(lvDeps, 'Размер', 70);
+  AddCol(lvDeps, 'Создан', 105);
+  AddCol(lvDeps, 'Изменён', 105);
   AddCol(lvDeps, 'Взять', 480);
 
   splDeps := TSplitter.Create(Self);
@@ -272,11 +280,13 @@ begin
   pnlCands.Align := alTop;
   pnlCands.BevelOuter := bvNone;
   pnlCands.Caption := '';
+  pnlCands.Visible := False;
 
   lblCands := TLabel.Create(Self);
   lblCands.Parent := pnlCands;
   lblCands.Align := alTop;
-  lblCands.Caption := ' Копии на диске (выделенная - берётся, её текст - ниже):';
+  lblCands.Caption := ' Копий на диске несколько (выделенная - берётся, её ' +
+                      'текст - ниже):';
 
   lvCands := TListView.Create(Self);
   lvCands.Parent := pnlCands;
@@ -297,6 +307,7 @@ begin
   splCands.Height := 5;
   splCands.Align := alTop;
   splCands.MinSize := 60;
+  splCands.Visible := False;
 
   // Панель-предложение исправить ошибки: яркая, над просмотром со списком
   // ошибок; видна, только когда ошибки нашлись
@@ -379,9 +390,45 @@ begin
     Result := TRqDep(lvDeps.Selected.Data);
 end;
 
+// Размер и время файла: создан, изменён (местное время)
+function FileStampText(const AFile: string; var ASize, ACreated,
+                       AWritten: string): Boolean;
+var
+  SR: TSearchRec;
+  LocalTime: TFileTime;
+  SysTime: TSystemTime;
+  FileSize: Int64;
+
+  function TimeText(const AStamp: TFileTime): string;
+  begin
+    Result := '';
+    if FileTimeToLocalFileTime(AStamp, LocalTime) and
+       FileTimeToSystemTime(LocalTime, SysTime) then
+      Result := FormatDateTime('dd.mm.yyyy hh:nn', SystemTimeToDateTime(SysTime));
+  end;
+
+begin
+  ASize := '';
+  ACreated := '';
+  AWritten := '';
+  Result := FindFirst(AFile, faAnyFile, SR) = 0;
+  if not Result then
+    Exit;
+  try
+    FileSize := Int64(SR.FindData.nFileSizeHigh) shl 32 +
+                SR.FindData.nFileSizeLow;
+    ASize := FormatFloat('#,##0', FileSize);
+    ACreated := TimeText(SR.FindData.ftCreationTime);
+    AWritten := TimeText(SR.FindData.ftLastWriteTime);
+  finally
+    FindClose(SR);
+  end;
+end;
+
 procedure TRqDepsForm.FillRow(AItem: TListItem);
 var
   Dep: TRqDep;
+  SizeText, CreatedText, WrittenText: string;
 begin
   Dep := TRqDep(AItem.Data);
   AItem.SubItems.Clear;
@@ -389,6 +436,16 @@ begin
   AItem.SubItems.Add(RqDepKindNames[Dep.Kind]);
   AItem.SubItems.Add(DepWhere(Dep));
   AItem.SubItems.Add(IntToStr(Dep.Candidates.Count));
+  // Размер и время - взятой копии
+  SizeText := '';
+  CreatedText := '';
+  WrittenText := '';
+  if Dep.Chosen >= 0 then
+    FileStampText(Dep.Candidates[Dep.Chosen], SizeText, CreatedText,
+                  WrittenText);
+  AItem.SubItems.Add(SizeText);
+  AItem.SubItems.Add(CreatedText);
+  AItem.SubItems.Add(WrittenText);
   if Dep.Chosen >= 0 then
     AItem.SubItems.Add(Dep.Candidates[Dep.Chosen])
   else if FBusy then
@@ -431,41 +488,6 @@ begin
   ShowSelected;
 end;
 
-// Размер и время файла: создан, изменён (местное время)
-function FileStampText(const AFile: string; var ASize, ACreated,
-                       AWritten: string): Boolean;
-var
-  SR: TSearchRec;
-  LocalTime: TFileTime;
-  SysTime: TSystemTime;
-  FileSize: Int64;
-
-  function TimeText(const AStamp: TFileTime): string;
-  begin
-    Result := '';
-    if FileTimeToLocalFileTime(AStamp, LocalTime) and
-       FileTimeToSystemTime(LocalTime, SysTime) then
-      Result := FormatDateTime('dd.mm.yyyy hh:nn', SystemTimeToDateTime(SysTime));
-  end;
-
-begin
-  ASize := '';
-  ACreated := '';
-  AWritten := '';
-  Result := FindFirst(AFile, faAnyFile, SR) = 0;
-  if not Result then
-    Exit;
-  try
-    FileSize := Int64(SR.FindData.nFileSizeHigh) shl 32 +
-                SR.FindData.nFileSizeLow;
-    ASize := FormatFloat('#,##0', FileSize);
-    ACreated := TimeText(SR.FindData.ftCreationTime);
-    AWritten := TimeText(SR.FindData.ftLastWriteTime);
-  finally
-    FindClose(SR);
-  end;
-end;
-
 procedure TRqDepsForm.ShowSelected;
 var
   Dep: TRqDep;
@@ -502,6 +524,7 @@ begin
   finally
     FFilling := False;
   end;
+  ArrangeTop;
   cbTarget.Items.Clear;
   if Dep = nil then
   begin
@@ -628,14 +651,42 @@ begin
   finally
     lbReport.Items.EndUpdate;
   end;
-  // В конец ряда alTop: под панелью-предложением, над просмотром. Порядок
-  // alTop - по Top; скрытые не мешают, поэтому сначала скрыть оба.
-  splReport.Visible := False;
-  lbReport.Visible := False;
-  lbReport.Top := ClientHeight;
-  lbReport.Visible := True;
-  splReport.Top := lbReport.Top + lbReport.Height;
-  splReport.Visible := True;
+  FShowReport := True;
+  ArrangeTop;
+end;
+
+// Середина окна под списком недостающих, сверху вниз: копии на диске (если
+// их несколько) | панель-предложение | список ошибок | просмотр. Порядок
+// alTop - по Top: здесь Top задаётся по порядку ниже всех прочих, при
+// выключенном выравнивании, и выравнивание расставляет их разом.
+procedure TRqDepsForm.ArrangeTop;
+var
+  Dep: TRqDep;
+  NextTop: Integer;
+
+  procedure Place(ACtl: TControl; AShow: Boolean);
+  begin
+    if AShow then
+    begin
+      ACtl.Top := NextTop;
+      Inc(NextTop, ACtl.Height + 1);
+    end;
+    ACtl.Visible := AShow;
+  end;
+
+begin
+  Dep := SelectedDep;
+  NextTop := ClientHeight;
+  DisableAlign;
+  try
+    Place(pnlCands, (Dep <> nil) and (Dep.Candidates.Count > 1));
+    Place(splCands, pnlCands.Visible);
+    Place(pnlOffer, FShowOffer);
+    Place(lbReport, FShowReport);
+    Place(splReport, FShowReport);
+  finally
+    EnableAlign;
+  end;
 end;
 
 procedure TRqDepsForm.lbReportClick(Sender: TObject);
@@ -1000,7 +1051,10 @@ begin
     if ErrCount > 0 then
       ShowOffer(Files, Report, ErrCount)
     else
-      pnlOffer.Visible := False;
+    begin
+      FShowOffer := False;
+      ArrangeTop;
+    end;
   finally
     Report.Free;
     Files.Free;
@@ -1024,9 +1078,7 @@ begin
                    'с U/L и 0x из C, ";" вне строки), остальные правят ' +
                    'руками. Кнопка Undo вернёт прежние файлы.';
   lblOffer.ShowHint := True;
-  // Под сплиттером копий, над просмотром: alTop ставит по Top
-  pnlOffer.Top := splCands.Top + splCands.Height;
-  pnlOffer.Visible := True;
+  FShowOffer := True;
   SetReport(AReport);
 end;
 
@@ -1035,7 +1087,8 @@ var
   Report: TStringList;
   ErrCount: Integer;
 begin
-  pnlOffer.Visible := False;
+  FShowOffer := False;
+  ArrangeTop;
   if FOfferFiles.Count = 0 then
     Exit;
   Report := TStringList.Create;
@@ -1057,7 +1110,8 @@ end;
 
 procedure TRqDepsForm.btnOfferSkipClick(Sender: TObject);
 begin
-  pnlOffer.Visible := False;
+  FShowOffer := False;
+  ArrangeTop;
   FOfferFiles.Clear;
   lblStatus.Caption := 'Файлы не исправлены';
 end;
