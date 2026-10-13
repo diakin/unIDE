@@ -1787,6 +1787,8 @@ type
     // (отмеченные расширения и поле масок), без образца; в Match list -
     // только имена файлов (FifRun, строки mrkGroup с HitCount = -1)
     FFifFileMode: Boolean;
+    FScopeOldProc: TWndMethod;  // обработчик списка «где искать» до подмены
+    FScopeDropped: Boolean;     // список «где искать» раскрыт
     FFifProject: Boolean;     // файлы проекта; False - диск
     FFifRunning: Boolean;     // идёт поиск
     // Собирается список файлов проекта для галок расширений (FifFillExts):
@@ -2134,7 +2136,9 @@ type
     // Окно Find In Files (немодальное) - см. FifShowWindow, FifRun
     procedure FifShowWindow(AProject: Boolean; AFileMode: Boolean = False);
     procedure FileSearchShow;
-    procedure ScopeSelect(Sender: TObject);
+    procedure ScopeWndProc(var Message: TMessage);
+    procedure ScopeKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure WMScopeFileSearch(var Msg: TMessage); message WM_USER + 325;
     procedure FifListFilesOnly(AList: TStrings);
     procedure FifFillExts;
     function  FifCheckedExts: string;
@@ -16777,8 +16781,11 @@ begin
     cmbScope.Items.Add('На диске');
     cmbScope.Items.Add('Искать файл');
     cmbScope.ItemIndex := ScopeFile;
-    // Выбрали «Искать файл» - окно поиска файлов сразу
-    cmbScope.OnSelect := ScopeSelect;
+    // Выбрали «Искать файл» мышью или Enter - окно поиска файлов сразу.
+    // Перебор пунктов стрелками при закрытом списке окно не открывает.
+    FScopeOldProc := cmbScope.WindowProc;
+    cmbScope.WindowProc := ScopeWndProc;
+    cmbScope.OnKeyDown := ScopeKeyDown;
 
     W := 0;
     for I := 0 to cmbScope.Items.Count - 1 do
@@ -17432,9 +17439,39 @@ begin
   FifShowWindow(False, True);
 end;
 
-// Пункт списка «где искать» выбран: «Искать файл» - сразу окно поиска
-// файлов. Уже стояли на нём - окно открывает Find-> / <-Find.
-procedure TForm1.ScopeSelect(Sender: TObject);
+// Список «где искать»: «Искать файл», выбранный в раскрытом списке мышью
+// или Enter (CBN_SELENDOK), - сразу окно поиска файлов. Стрелки при
+// закрытом списке его не открывают: CBN_SELENDOK без раскрытого списка не
+// считается. Окно - сообщением, когда список уже закрылся.
+procedure TForm1.ScopeWndProc(var Message: TMessage);
+begin
+  FScopeOldProc(Message);
+  if Message.Msg <> CN_COMMAND then
+    Exit;
+  case TWMCommand(Message).NotifyCode of
+    CBN_DROPDOWN:
+      FScopeDropped := True;
+    CBN_SELENDOK:
+      if FScopeDropped and (cmbScope.ItemIndex = ScopeFileSearch) then
+        PostMessage(Handle, WM_USER + 325, 0, 0);
+    CBN_CLOSEUP:
+      FScopeDropped := False;
+  end;
+end;
+
+// Enter на закрытом списке, где стоит «Искать файл», - окно поиска файлов
+procedure TForm1.ScopeKeyDown(Sender: TObject; var Key: Word;
+                              Shift: TShiftState);
+begin
+  if (Key = VK_RETURN) and not cmbScope.DroppedDown and
+     (cmbScope.ItemIndex = ScopeFileSearch) then
+  begin
+    Key := 0;
+    PostMessage(Handle, WM_USER + 325, 0, 0);
+  end;
+end;
+
+procedure TForm1.WMScopeFileSearch(var Msg: TMessage);
 begin
   if (cmbScope <> nil) and (cmbScope.ItemIndex = ScopeFileSearch) then
     FileSearchShow;
