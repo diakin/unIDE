@@ -3477,6 +3477,7 @@ var
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
     RqToFb,       // перевод RapidQ -> FreeBASIC (RqLcl\tofb)
     DlgStrictFix, // окно ошибок строгой проверки перед rc.exe
+    StrictFix,    // разбор лога строгой проверки
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     FormPreview,  // превью формы по .dfm - список модулей и форм
@@ -12566,10 +12567,11 @@ var
   Options: TRqFbOptions;
   ConvResult: TRqFbResult;
   ConvMessages, Roots: TStringList;
-  MsgIdx: Integer;
+  MsgIdx, ProgErrors, Suspects, Limits: Integer;
   StartTick: Cardinal;
-  Passed: Boolean;
+  Passed, Aborted, Clean: Boolean;
   SysDir, UserDir, Mode, OwnDir: string;
+  Item: TStrictError;
 begin
   Result := True;
   if not RqStrictOf(ABas) then
@@ -12579,6 +12581,8 @@ begin
   Options.IncDirs := AIncDir;
   Options.OutDir := ExtractFilePath(ABas) + '_rqfb';
   Passed := False;
+  Aborted := True;
+  Clean := False;
   FRqFbProgTick := 0;
   ConvMessages := TStringList.Create;
   try
@@ -12587,41 +12591,52 @@ begin
     StartTick := GetTickCount;
     Passed := RqToFbConvertEx(ABas, Options, ConvMessages, ConvResult,
                               RqStrictProgress);
+    // Ограничения перевода (RETURN с меткой, CALLFUNC ...) - не ошибки
+    // программы: в лог пометкой, без "Error"
     for MsgIdx := 0 to ConvMessages.Count - 1 do
-      LogComp(ConvMessages[MsgIdx]);
+    begin
+      Item := StrictParseMessage(ConvMessages[MsgIdx]);
+      if (Item <> nil) and (Item.Kind = skLimit) then
+        LogComp(StringReplace(ConvMessages[MsgIdx], ') Error: ',
+                ') Info: ограничение перевода в FreeBASIC, для rc.exe не ' +
+                'важно: ', []))
+      else
+        LogComp(ConvMessages[MsgIdx]);
+      Item.Free;
+    end;
     LogSuspects(ConvMessages, ConvResult.SuspectCount);
-    if Passed then
-      LogComp(Format('--- Строгая проверка: ошибок нет, предупреждений %d, ' +
-                     'подозрений %d, %d мс',
-                     [ConvResult.WarningCount, ConvResult.SuspectCount,
-                      GetTickCount - StartTick]))
-    else if RqStrictInfoOf(ABas) then
-      LogComp(Format('--- Строгая проверка: ошибок %d, предупреждений %d, ' +
-                     'подозрений %d. Info only - rc.exe собирает дальше. ' +
-                     'Двойной щелчок по строке открывает исходник',
-                     [ConvResult.ErrorCount, ConvResult.WarningCount,
-                      ConvResult.SuspectCount]))
+    StrictCount(ConvMessages, ProgErrors, Suspects, Limits);
+    Aborted := not Passed and (ConvResult.ErrorCount = 0);
+    // Что rc.exe пропустит, а программа из-за этого может работать не так
+    Clean := not Aborted and (ProgErrors = 0) and (Suspects = 0);
+    if Aborted then
+      LogComp('Строгая проверка прервана - rc.exe не запускался')
+    else if Clean then
+      LogComp(Format('--- Строгая проверка: ошибок программы и подозрений ' +
+                     'нет; ограничений перевода %d (для rc.exe не важны), ' +
+                     '%d мс', [Limits, GetTickCount - StartTick]))
     else
-      LogComp(Format('--- Строгая проверка: ошибок %d, предупреждений %d, ' +
-                     'подозрений %d. Двойной щелчок по строке открывает ' +
-                     'исходник',
-                     [ConvResult.ErrorCount, ConvResult.WarningCount,
-                      ConvResult.SuspectCount]));
+    begin
+      LogComp(Format('--- Строгая проверка: ошибок программы %d, подозрений ' +
+                     '%d, ограничений перевода %d (для rc.exe не важны). ' +
+                     'Двойной щелчок по строке открывает исходник',
+                     [ProgErrors, Suspects, Limits]));
+      if RqStrictInfoOf(ABas) then
+        LogComp('Строгая проверка: Info only - rc.exe собирает дальше');
+    end;
   finally
-    if Passed then
+    if Clean then
       BusyEnd('', True)
     else
-      BusyEnd('Строгая проверка: ошибки', False);
+      BusyEnd('Строгая проверка: есть замечания', False);
   end;
-    if Passed then
-      Exit;
-    // Не прошла без ошибок - прервана (Esc, отмена сборки)
-    if ConvResult.ErrorCount = 0 then
+    if Aborted then
     begin
-      LogComp('Строгая проверка прервана - rc.exe не запускался');
       Result := False;
       Exit;
     end;
+    if Clean then
+      Exit;
     if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
       ShowErrLog;
     // Info only - ошибки только в лог
@@ -12641,7 +12656,7 @@ begin
                 ExtractFilePath(ABas))));
       if StrictFixDialog(Self, ConvMessages, Roots, ABas, AIncDir,
                          StrictOpenLine, StrictEditLine) = mrIgnore then
-        LogComp('Строгая проверка: rc.exe собирает как есть (выбрано в окне)')
+        LogComp('Строгая проверка: rc.exe собирает (выбрано в окне)')
       else
       begin
         LogComp('Строгая проверка: rc.exe не запускался. Исправленное ' +

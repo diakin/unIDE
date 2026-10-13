@@ -1,17 +1,25 @@
 unit StrictFix;
 
 // ---------------------------------------------------------------------------
-//  Разбор ошибок строгой проверки (перевод RqToFb, режим FB Smart, перед
-//  rc.exe) и варианты их исправления - без VCL; окно - DlgStrictFix.
+//  Разбор лога строгой проверки (перевод RqToFb, режим FB Smart, перед
+//  rc.exe) и варианты исправления - без VCL; окно - DlgStrictFix.
 //
-//  Что умеет предложить:
-//   - "X.Член: X не объявлен - ни переменной, ни объектом": найти DIM X /
-//     CREATE X в inc и bas папок Include, программы и папки выше; найденный
-//     файл подключить - раскомментировать его $INCLUDE в программе, если он
-//     там закомментирован, иначе добавить строку $INCLUDE;
-//   - "GOTO метка: метка в другой процедуре" и "метки нет": похожая метка в
-//     той же процедуре (опечатка: w8file вместо w81file) - заменить ею.
-//  Прочее - "не могу предложить вариант исправления".
+//  Цель - места, которые rc.exe пропускает, но из-за которых программа
+//  может работать не так. В логе перевода они двух уровней:
+//   - Error - ошибки программы (GOTO в чужую процедуру, объект без
+//     DIM / CREATE, CASE > 5 вместо CASE IS > 5 ...). Среди Error есть и
+//     ограничения самого перевода (RETURN с меткой, CALLFUNC, QUICKSORT ...):
+//     для rc.exe это правильный код - они отделяются (skLimit) и ни в окно,
+//     ни в решение "собирать или нет" не идут;
+//   - Suspect - подозрения: переменная нигде не получает значения, строка в
+//     число, DECLARE без тела, повторное объявление...
+//  Warning - подробности перевода, к rc.exe отношения не имеют.
+//
+//  Варианты: найти определение (DIM / CREATE, тело SUB / FUNCTION) в
+//  других файлах и подключить файл ($INCLUDE: раскомментировать или
+//  добавить); похожее имя (метка, переменная, процедура) - заменить им;
+//  CASE > x - CASE IS > x. Где вариантов нет - пояснение и "не могу
+//  предложить вариант исправления".
 // ---------------------------------------------------------------------------
 
 interface
@@ -21,25 +29,49 @@ uses
   IncCheck;     // IncFindNamesOnDisk, TIncProgress
 
 type
-  TStrictKind = (skOther,           // предложить нечего
-                 skUndeclared,      // объект без DIM / CREATE
-                 skLabelElsewhere,  // метка в другой процедуре
-                 skLabelMissing);   // метки нет нигде
+  TStrictLevel = (slError, slSuspect);
+
+  TStrictKind = (
+    skOther,            // предложить нечего
+    skLimit,            // ограничение перевода - для rc.exe не важно
+    // ошибки программы
+    skUndeclared,       // Объект.Член без DIM / CREATE
+    skUndeclaredVar,    // переменная без DIM при $TYPECHECK ON
+    skLabelElsewhere,   // GOTO / GOSUB в чужую процедуру
+    skLabelMissing,     // метки нет
+    skCaseOp,           // CASE > x вместо CASE IS > x
+    skBlock,            // блок не закрыт / лишний конец блока
+    skBindNoProc,       // BIND ... TO нет такой SUB
+    skTypeDefined,      // TYPE объявлен дважды
+    skIncludeMissing,   // $INCLUDE: файл не найден
+    // подозрения
+    skSusNoValue,       // не объявлена и нигде не получает значение
+    skSusImplicit,      // Объект.Член без объявления - неявная переменная
+    skSusTrueFalse,     // TRUE / FALSE без RAPIDQ.INC и CONST
+    skSusStrNum,        // строка в число / число в строку
+    skSusNoBody,        // DECLARE без тела
+    skSusDeclParams,    // параметры в DECLARE и в заголовке разные
+    skSusDefined);      // повторное объявление, повторный $DEFINE
 
   TStrictError = class
   public
+    Level: TStrictLevel;
     FileName: string;   // как в сообщении (полный путь)
     Line: Integer;      // с 1
-    Text: string;       // текст ошибки после "Error: "
+    Text: string;       // текст после "Error: " / "Suspect: "
     Kind: TStrictKind;
-    Name: string;       // имя объекта или метки
-    Member: string;     // skUndeclared: свойство / метод (Item, ItemCount)
-    Places: string;     // skLabelElsewhere: где метка (из сообщения)
-    Statement: string;  // GOTO или GOSUB
+    Name: string;       // имя объекта, метки, переменной, процедуры
+    Member: string;     // skUndeclared: свойство / метод
+    Places: string;     // skLabelElsewhere: где метка
+    Statement: string;  // GOTO / GOSUB; SUB / FUNCTION (skSusNoBody)
+    OtherFile: string;  // первое объявление (skTypeDefined, skSusDefined)
+    OtherLine: Integer;
   end;
 
-// Строка лога перевода "файл(строка) Error: текст" - ошибка; nil - строка
-// не ошибка (Warning, Suspect, прочее)
+// Строка лога перевода "файл(строка) Error: текст" или "... Suspect: ..." -
+// разобранная запись; nil - другая строка (Warning, итог, прочее)
+function StrictParseMessage(const AMsg: string): TStrictError;
+// Совместимость: только Error
 function StrictParseError(const AMsg: string): TStrictError;
 
 // Процедура (SUB / FUNCTION), в которой строка ALineIdx (с 0): первая и
@@ -51,44 +83,60 @@ function StrictProcAt(ALines: TStrings; ALineIdx: Integer;
 procedure StrictLabelsIn(ALines: TStrings; AFirst, ALast: Integer;
                          ALabels: TStrings);
 
-// Метки из ALabels, похожие на ALabel (отличие до двух букв, или одна -
-// начало другой): в AOut "Имя=строка", ближайшие первыми
+// Имена программы для поиска похожего: AProcs - SUB / FUNCTION (с телом и
+// DECLARE), иначе переменные - DIM и "Имя = ..." в начале оператора.
+// "Имя=номер строки с 1", первое место.
+procedure StrictNamesIn(ALines: TStrings; AProcs: Boolean; ANames: TStrings);
+
+// Имена из ANames, похожие на AName (до двух букв разницы, у коротких -
+// одна; или одно - начало другого): в AOut "Имя=строка", ближайшие первыми
+procedure StrictSimilarNames(const AName: string; ANames, AOut: TStrings);
 procedure StrictSimilarLabels(const ALabel: string; ALabels, AOut: TStrings);
 
 // В строке ALine GOTO / GOSUB AOld заменить на ANew. False - не нашлось.
 function StrictReplaceGoto(const ALine, AOld, ANew: string;
                            var AResult: string): Boolean;
+// Первое вхождение слова AOld (вне строк "..." и комментария) - на ANew
+function StrictReplaceWord(const ALine, AOld, ANew: string;
+                           var AResult: string): Boolean;
+// CASE > x -> CASE IS > x (и <, <=, >=, <>)
+function StrictFixCase(const ALine: string; var AResult: string): Boolean;
 
-// DIM / CREATE AName в .inc, .bas, .cmp папок ARoots с подпапками, кроме
-// файла ASkipFile. В AOut: "файл|строка|1 - закомментировано, 0 - нет|
-// текст строки". False - прервано.
-function StrictFindDefinitions(const AName: string; ARoots: TStrings;
-                               const ASkipFile: string; AOut: TStrings;
-                               AProgress: TIncProgress): Boolean;
+// Определение AName в .inc, .bas, .cmp папок ARoots с подпапками, кроме
+// ASkipFile: AProc - SUB / FUNCTION AName с телом, иначе DIM / CREATE.
+// В AOut: "файл|строка|1 - закомментировано, 0 - нет|текст строки".
+// False - прервано.
+function StrictFindDefinitions(const AName: string; AProc: Boolean;
+                               ARoots: TStrings; const ASkipFile: string;
+                               AOut: TStrings; AProgress: TIncProgress): Boolean;
 
-// Как подключить AIncFile к программе AMainLines (папка AMainDir, папка
-// -I AIncDir): закомментированный $INCLUDE этого файла - раскомментировать
-// (AInsert = False, ALineNo - его строка с 1, AOld - как есть, ANew -
-// без комментария); иначе - новая строка $INCLUDE после последнего
-// $INCLUDE в начале программы (AInsert = True, ALineNo - перед какой
-// строкой). Путь - относительно папки -I или программы, если файл в ней.
+// Как подключить AIncFile к программе AMainLines (см. реализацию):
+// закомментированный $INCLUDE этого файла - раскомментировать (AInsert =
+// False), иначе новая строка $INCLUDE после последнего $INCLUDE в начале
+// программы (AInsert = True, ALineNo - перед какой строкой)
 procedure StrictIncludePlan(AMainLines: TStrings;
                             const AIncFile, AMainDir, AIncDir: string;
                             var ALineNo: Integer; var AOld, ANew: string;
                             var AInsert: Boolean);
 
-// Пояснение к ошибке: причина и что можно сделать. ALines - текст файла
-// ошибки (nil - не прочитан).
+// Пояснение: причина и что можно сделать. ALines - текст файла ошибки
+// (nil - не прочитан).
 function StrictExplain(AErr: TStrictError; ALines: TStrings): string;
+
+// Нужен ли поиск определения в других файлах; ищется процедура или DIM
+function StrictNeedsSearch(AErr: TStrictError; var AProc: Boolean): Boolean;
 
 implementation
 
 const
   IdentStart = ['A'..'Z', 'a'..'z', '_'];
   IdentChars = ['A'..'Z', 'a'..'z', '0'..'9', '_'];
+  TypeSuffix = ['$', '%', '&', '!', '#', '?'];
 
-// Первое слово (буквы, цифры, _) с позиции APos; APos - за ним
-function WordAt(const AText: string; var APos: Integer): string;
+// Слово (буквы, цифры, _) с позиции APos, пробелы перед ним пропускаются;
+// APos - за ним. AWithSuffix - и знак типа на конце ($ % & ! # ?)
+function WordAt(const AText: string; var APos: Integer;
+                AWithSuffix: Boolean = False): string;
 var
   StartPos: Integer;
 begin
@@ -97,20 +145,222 @@ begin
   StartPos := APos;
   while (APos <= Length(AText)) and (AText[APos] in IdentChars) do
     Inc(APos);
+  if AWithSuffix and (APos > StartPos) and (APos <= Length(AText)) and
+     (AText[APos] in TypeSuffix) then
+    Inc(APos);
   Result := Copy(AText, StartPos, APos - StartPos);
 end;
 
-function StrictParseError(const AMsg: string): TStrictError;
+function StartsText(const APrefix, AText: string): Boolean;
+begin
+  Result := CompareText(Copy(AText, 1, Length(APrefix)), APrefix) = 0;
+end;
+
+// "путь(строка)" -> путь и строка
+procedure SplitPlace(const APlace: string; var AFile: string;
+                     var ALine: Integer);
 var
-  ErrPos, OpenPos, CharIdx, ColonPos: Integer;
-  Head, Body, Rest: string;
+  CharIdx: Integer;
+  Place: string;
+begin
+  AFile := '';
+  ALine := 0;
+  Place := Trim(APlace);
+  for CharIdx := Length(Place) downto 1 do
+    if Place[CharIdx] = '(' then
+    begin
+      AFile := Trim(Copy(Place, 1, CharIdx - 1));
+      ALine := StrToIntDef(Copy(Place, CharIdx + 1,
+                                Pos(')', Copy(Place, CharIdx, MaxInt)) - 2), 0);
+      Exit;
+    end;
+end;
+
+// Подстрока между AFrom и ATill (ATill = '' - до конца)
+function Between(const AText, AFrom, ATill: string): string;
+var
+  FromPos, TillPos: Integer;
+begin
+  Result := '';
+  FromPos := Pos(AFrom, AText);
+  if FromPos = 0 then
+    Exit;
+  Result := Copy(AText, FromPos + Length(AFrom), MaxInt);
+  if ATill <> '' then
+  begin
+    TillPos := Pos(ATill, Result);
+    if TillPos > 0 then
+      Result := Copy(Result, 1, TillPos - 1);
+  end;
+end;
+
+procedure ParseErrorKind(AErr: TStrictError);
+var
+  Body, Rest: string;
+  CharIdx: Integer;
+begin
+  Body := AErr.Text;
+  // Ограничения перевода: для rc.exe это правильный код
+  if (Pos('пока не поддержан', Body) > 0) or StartsText('CALLFUNC', Body) or
+     StartsText('QUICKSORT', Body) or StartsText('INITARRAY', Body) or
+     (Pos('папка вывода совпадает', Body) > 0) or
+     StartsText('не удалось записать', Body) or
+     StartsText('не удалось прочитать', Body) or
+     StartsText('перевод остановлен', Body) then
+  begin
+    AErr.Kind := skLimit;
+    Exit;
+  end;
+  if Pos(' не объявлен - ни переменной, ни объектом', Body) > 0 then
+  begin
+    CharIdx := 1;
+    AErr.Name := WordAt(Body, CharIdx);
+    if (CharIdx <= Length(Body)) and (Body[CharIdx] = '.') then
+    begin
+      Inc(CharIdx);
+      AErr.Member := WordAt(Body, CharIdx, True);
+    end;
+    if AErr.Name <> '' then
+      AErr.Kind := skUndeclared;
+    Exit;
+  end;
+  if Pos(': переменная не объявлена ($TYPECHECK ON)', Body) > 0 then
+  begin
+    CharIdx := 1;
+    AErr.Name := WordAt(Body, CharIdx, True);
+    AErr.Kind := skUndeclaredVar;
+    Exit;
+  end;
+  if StartsText('CASE ', Body) and (Pos('в RapidQ это не сравнение', Body) > 0) then
+  begin
+    AErr.Kind := skCaseOp;
+    Exit;
+  end;
+  if (Body = '$ELSE без $IFDEF') or (Body = '$ENDIF без $IFDEF') or
+     (Body = '$IFDEF без $ENDIF') or (Pos(' без END TYPE', Body) > 0) or
+     (Pos(' без END CREATE', Body) > 0) or (Body = 'нет $ENDIF') then
+  begin
+    AErr.Kind := skBlock;
+    Exit;
+  end;
+  if StartsText('BIND ... TO ', Body) and
+     (Pos(': нет такой SUB или FUNCTION', Body) > 0) then
+  begin
+    CharIdx := Length('BIND ... TO ') + 1;
+    AErr.Name := WordAt(Body, CharIdx, True);
+    AErr.Kind := skBindNoProc;
+    Exit;
+  end;
+  if StartsText('TYPE ', Body) and (Pos('already defined - уже объявлен в ', Body) > 0) then
+  begin
+    CharIdx := 6;
+    AErr.Name := WordAt(Body, CharIdx);
+    SplitPlace(Between(Body, 'уже объявлен в ', ';'), AErr.OtherFile,
+               AErr.OtherLine);
+    AErr.Kind := skTypeDefined;
+    Exit;
+  end;
+  if StartsText('$INCLUDE: файл не найден: ', Body) then
+  begin
+    AErr.Name := Trim(Copy(Body, Length('$INCLUDE: файл не найден: ') + 1, MaxInt));
+    AErr.Kind := skIncludeMissing;
+    Exit;
+  end;
+  // "goto метка: метка в другой процедуре (места) - ..." / "...: метки X нет"
+  CharIdx := 1;
+  AErr.Statement := WordAt(Body, CharIdx);
+  if (CompareText(AErr.Statement, 'GOTO') = 0) or
+     (CompareText(AErr.Statement, 'GOSUB') = 0) then
+  begin
+    AErr.Name := WordAt(Body, CharIdx);
+    Rest := Copy(Body, CharIdx, MaxInt);
+    if Pos(': метка в другой процедуре (', Rest) = 1 then
+    begin
+      AErr.Kind := skLabelElsewhere;
+      AErr.Places := Between(Rest, ': метка в другой процедуре (', ') - ');
+    end
+    else if Pos(': метки ', Rest) = 1 then
+      AErr.Kind := skLabelMissing;
+  end;
+end;
+
+procedure ParseSuspectKind(AErr: TStrictError);
+var
+  Body: string;
+  CharIdx: Integer;
+begin
+  Body := AErr.Text;
+  CharIdx := 1;
+  if Pos('не объявлена и нигде не получает значение', Body) > 0 then
+  begin
+    AErr.Name := WordAt(Body, CharIdx, True);
+    AErr.Kind := skSusNoValue;
+  end
+  else if Pos(' не объявлен - переведено как неявная переменная', Body) > 0 then
+  begin
+    AErr.Name := WordAt(Body, CharIdx);
+    if (CharIdx <= Length(Body)) and (Body[CharIdx] = '.') then
+    begin
+      Inc(CharIdx);
+      AErr.Member := WordAt(Body, CharIdx, True);
+    end;
+    AErr.Kind := skSusImplicit;
+  end
+  else if Pos(': не определено (нет $INCLUDE "RAPIDQ.INC" или CONST)', Body) > 0 then
+  begin
+    AErr.Name := WordAt(Body, CharIdx);
+    AErr.Kind := skSusTrueFalse;
+  end
+  else if (Pos(': строка в числовую переменную', Body) > 0) or
+          (Pos(': число в строковую переменную', Body) > 0) then
+    AErr.Kind := skSusStrNum
+  else if Pos(': объявлен (DECLARE), но тела в программе нет', Body) > 0 then
+  begin
+    AErr.Statement := WordAt(Body, CharIdx);
+    AErr.Name := WordAt(Body, CharIdx, True);
+    AErr.Kind := skSusNoBody;
+  end
+  else if Pos(': параметры в DECLARE (', Body) > 0 then
+  begin
+    AErr.Name := WordAt(Body, CharIdx, True);
+    AErr.Kind := skSusDeclParams;
+  end
+  else if Pos(' already defined - первое объявление: ', Body) > 0 then
+  begin
+    SplitPlace(Between(Body, ' already defined - первое объявление: ', ''),
+               AErr.OtherFile, AErr.OtherLine);
+    AErr.Kind := skSusDefined;
+  end
+  else if StartsText('$DEFINE ', Body) and
+          (Pos(' already defined - уже определён в ', Body) > 0) then
+  begin
+    CharIdx := 9;
+    AErr.Name := WordAt(Body, CharIdx);
+    SplitPlace(Between(Body, ' already defined - уже определён в ', ' как '),
+               AErr.OtherFile, AErr.OtherLine);
+    AErr.Kind := skSusDefined;
+  end;
+end;
+
+function StrictParseMessage(const AMsg: string): TStrictError;
+var
+  LevelPos, OpenPos, CharIdx: Integer;
+  Level: TStrictLevel;
+  Head, Marker: string;
 begin
   Result := nil;
-  ErrPos := Pos(') Error: ', AMsg);
-  if ErrPos = 0 then
+  Marker := ') Error: ';
+  Level := slError;
+  LevelPos := Pos(Marker, AMsg);
+  if LevelPos = 0 then
+  begin
+    Marker := ') Suspect: ';
+    Level := slSuspect;
+    LevelPos := Pos(Marker, AMsg);
+  end;
+  if LevelPos = 0 then
     Exit;
-  Head := Copy(AMsg, 1, ErrPos);          // "файл(строка)"
-  Body := Copy(AMsg, ErrPos + 9, MaxInt);
+  Head := Copy(AMsg, 1, LevelPos);          // "файл(строка)"
   OpenPos := 0;
   for CharIdx := Length(Head) downto 1 do
     if Head[CharIdx] = '(' then
@@ -121,53 +371,27 @@ begin
   if OpenPos = 0 then
     Exit;
   Result := TStrictError.Create;
+  Result.Level := Level;
   Result.FileName := Trim(Copy(Head, 1, OpenPos - 1));
   Result.Line := StrToIntDef(Copy(Head, OpenPos + 1,
                                   Length(Head) - OpenPos - 1), 0);
-  Result.Text := Body;
+  Result.Text := Copy(AMsg, LevelPos + Length(Marker), MaxInt);
   Result.Kind := skOther;
+  if Level = slError then
+    ParseErrorKind(Result)
+  else
+    ParseSuspectKind(Result);
+end;
 
-  // "Имя.Член: Имя не объявлен - ни переменной, ни объектом (DIM, CREATE)"
-  if Pos(' не объявлен - ни переменной, ни объектом', Body) > 0 then
-  begin
-    CharIdx := 1;
-    Result.Name := WordAt(Body, CharIdx);
-    if (CharIdx <= Length(Body)) and (Body[CharIdx] = '.') then
-    begin
-      Inc(CharIdx);
-      Result.Member := WordAt(Body, CharIdx);
-    end;
-    if Result.Name <> '' then
-      Result.Kind := skUndeclared;
-    Exit;
-  end;
-
-  // "goto метка: метка в другой процедуре (места) - ..." и
-  // "goto метка: метки метка нет"
-  CharIdx := 1;
-  Result.Statement := WordAt(Body, CharIdx);
-  if (CompareText(Result.Statement, 'GOTO') = 0) or
-     (CompareText(Result.Statement, 'GOSUB') = 0) then
-  begin
-    Result.Name := WordAt(Body, CharIdx);
-    Rest := Copy(Body, CharIdx, MaxInt);
-    if Pos(': метка в другой процедуре (', Rest) = 1 then
-    begin
-      Result.Kind := skLabelElsewhere;
-      Rest := Copy(Rest, Length(': метка в другой процедуре (') + 1, MaxInt);
-      ColonPos := Pos(') - ', Rest);
-      if ColonPos > 0 then
-        Result.Places := Copy(Rest, 1, ColonPos - 1)
-      else
-        Result.Places := Rest;
-    end
-    else if Pos(': метки ', Rest) = 1 then
-      Result.Kind := skLabelMissing;
-  end;
+function StrictParseError(const AMsg: string): TStrictError;
+begin
+  Result := StrictParseMessage(AMsg);
+  if (Result <> nil) and (Result.Level <> slError) then
+    FreeAndNil(Result);
 end;
 
 // Первое слово строки кода в верхнем регистре и остаток (без ведущих
-// пробелов); комментарий ' / REM - пусто
+// пробелов); комментарий REM - пусто
 function LineHead(const ALine: string; var ARest: string): string;
 var
   CharPos: Integer;
@@ -200,7 +424,7 @@ begin
      (Head = 'FUNCTIONI') then
   begin
     CharPos := 1;
-    AName := WordAt(Rest, CharPos);
+    AName := WordAt(Rest, CharPos, True);
     Result := AName <> '';
   end;
 end;
@@ -276,7 +500,6 @@ begin
     if (CharPos > Length(Line)) or not (Line[CharPos] in IdentStart) then
       Continue;
     Name := WordAt(Line, CharPos);
-    // "метка:" - двоеточие сразу за именем (у "Имя :" в RapidQ - тоже)
     while (CharPos <= Length(Line)) and (Line[CharPos] in [' ', #9]) do
       Inc(CharPos);
     if (CharPos > Length(Line)) or (Line[CharPos] <> ':') then
@@ -287,6 +510,83 @@ begin
         IsKeyword := True;
     if not IsKeyword then
       ALabels.Add(Name + '=' + IntToStr(LineIdx + 1));
+  end;
+end;
+
+procedure AddName(ANames: TStrings; const AName: string; ALine: Integer);
+begin
+  if (AName <> '') and (ANames.IndexOfName(AName) < 0) then
+    ANames.Add(AName + '=' + IntToStr(ALine));
+end;
+
+procedure StrictNamesIn(ALines: TStrings; AProcs: Boolean; ANames: TStrings);
+var
+  LineIdx, CharPos, Depth: Integer;
+  Line, Head, Rest, Tail, Name: string;
+  InStr: Boolean;
+begin
+  for LineIdx := 0 to ALines.Count - 1 do
+  begin
+    Line := ALines[LineIdx];
+    if AProcs then
+    begin
+      if IsProcStart(Line, Name) then
+        AddName(ANames, Name, LineIdx + 1)
+      else
+      begin
+        Head := LineHead(Line, Rest);
+        if Head = 'DECLARE' then
+        begin
+          Head := LineHead(Rest, Tail);
+          if (Head = 'SUB') or (Head = 'FUNCTION') or (Head = 'SUBI') or
+             (Head = 'FUNCTIONI') then
+          begin
+            CharPos := 1;
+            AddName(ANames, WordAt(Tail, CharPos, True), LineIdx + 1);
+          end;
+        end;
+      end;
+      Continue;
+    end;
+    Head := LineHead(Line, Rest);
+    if Head = 'DIM' then
+    begin
+      // DIM a AS ..., b(10) AS ... - имена до AS, через запятые вне скобок
+      CharPos := 1;
+      repeat
+        Name := WordAt(Rest, CharPos, True);
+        AddName(ANames, Name, LineIdx + 1);
+        Depth := 0;
+        InStr := False;
+        while (CharPos <= Length(Rest)) and
+              ((Rest[CharPos] <> ',') or (Depth > 0) or InStr) do
+        begin
+          if Rest[CharPos] = '"' then
+            InStr := not InStr
+          else if not InStr and (Rest[CharPos] = '(') then
+            Inc(Depth)
+          else if not InStr and (Rest[CharPos] = ')') then
+            Dec(Depth)
+          else if not InStr and (Rest[CharPos] = '''') then
+            CharPos := Length(Rest);
+          Inc(CharPos);
+        end;
+        Inc(CharPos);
+      until CharPos > Length(Rest);
+    end
+    else
+    begin
+      // "Имя = ..." в начале оператора - имени присваивается значение
+      CharPos := 1;
+      Name := WordAt(Line, CharPos, True);
+      if (Name <> '') and (Name[1] in IdentStart) then
+      begin
+        while (CharPos <= Length(Line)) and (Line[CharPos] in [' ', #9]) do
+          Inc(CharPos);
+        if (CharPos <= Length(Line)) and (Line[CharPos] = '=') then
+          AddName(ANames, Name, LineIdx + 1);
+      end;
+    end;
   end;
 end;
 
@@ -321,25 +621,34 @@ begin
   Result := Prev[Length(ASecond)];
 end;
 
-procedure StrictSimilarLabels(const ALabel: string; ALabels, AOut: TStrings);
+procedure StrictSimilarNames(const AName: string; ANames, AOut: TStrings);
 var
-  Dist, LabelIdx: Integer;
-  Name, UpLabel, UpName: string;
+  Dist, NameIdx, MaxDist: Integer;
+  Name, UpWanted, UpName: string;
 begin
-  UpLabel := UpperCase(ALabel);
+  UpWanted := UpperCase(AName);
+  // У коротких имён (до 4 знаков) две буквы разницы - уже другое имя
+  MaxDist := 2;
+  if Length(UpWanted) <= 4 then
+    MaxDist := 1;
   for Dist := 1 to 3 do
-    for LabelIdx := 0 to ALabels.Count - 1 do
+    for NameIdx := 0 to ANames.Count - 1 do
     begin
-      Name := ALabels.Names[LabelIdx];
+      Name := ANames.Names[NameIdx];
       UpName := UpperCase(Name);
-      if (UpName = UpLabel) or (AOut.IndexOfName(Name) >= 0) then
+      if (UpName = UpWanted) or (AOut.IndexOfName(Name) >= 0) then
         Continue;
-      // 1, 2 - буквы; 3 - одна метка - начало другой (w8 и w8file)
-      if ((Dist <= 2) and (EditDistance(UpName, UpLabel) = Dist)) or
-         ((Dist = 3) and (Length(UpLabel) >= 3) and (Length(UpName) >= 3) and
-          ((Pos(UpLabel, UpName) = 1) or (Pos(UpName, UpLabel) = 1))) then
-        AOut.Add(ALabels[LabelIdx]);
+      // 1, 2 - буквы; 3 - одно имя - начало другого (crlf и crlfcrlf)
+      if ((Dist <= MaxDist) and (EditDistance(UpName, UpWanted) = Dist)) or
+         ((Dist = 3) and (Length(UpWanted) >= 3) and (Length(UpName) >= 3) and
+          ((Pos(UpWanted, UpName) = 1) or (Pos(UpName, UpWanted) = 1))) then
+        AOut.Add(ANames[NameIdx]);
     end;
+end;
+
+procedure StrictSimilarLabels(const ALabel: string; ALabels, AOut: TStrings);
+begin
+  StrictSimilarNames(ALabel, ALabels, AOut);
 end;
 
 function StrictReplaceGoto(const ALine, AOld, ANew: string;
@@ -378,7 +687,6 @@ begin
           Exit;
         end;
       end;
-      // следующее вхождение
       CharPos := Pos(Keyword, Copy(UpLine, KwPos + 1, MaxInt));
       if CharPos = 0 then
         KwPos := 0
@@ -388,18 +696,73 @@ begin
   end;
 end;
 
-// Строка - объявление AUpName: [' ...] DIM / CREATE Имя ... ;
-// ACommented - перед ним комментарий
-function IsDefinition(const ALine, AUpName: string;
+function StrictReplaceWord(const ALine, AOld, ANew: string;
+                           var AResult: string): Boolean;
+var
+  CharPos: Integer;
+  InStr: Boolean;
+begin
+  Result := False;
+  AResult := ALine;
+  if AOld = '' then
+    Exit;
+  InStr := False;
+  CharPos := 1;
+  while CharPos <= Length(ALine) do
+  begin
+    if ALine[CharPos] = '"' then
+      InStr := not InStr
+    else if not InStr and (ALine[CharPos] = '''') then
+      Exit
+    else if not InStr and
+            ((CharPos = 1) or not (ALine[CharPos - 1] in IdentChars + ['.'])) and
+            (CompareText(Copy(ALine, CharPos, Length(AOld)), AOld) = 0) and
+            ((CharPos + Length(AOld) > Length(ALine)) or
+             not (ALine[CharPos + Length(AOld)] in IdentChars + TypeSuffix)) then
+    begin
+      AResult := Copy(ALine, 1, CharPos - 1) + ANew +
+                 Copy(ALine, CharPos + Length(AOld), MaxInt);
+      Result := True;
+      Exit;
+    end;
+    Inc(CharPos);
+  end;
+end;
+
+function StrictFixCase(const ALine: string; var AResult: string): Boolean;
+var
+  CharPos, KwPos: Integer;
+  Head: string;
+begin
+  Result := False;
+  AResult := ALine;
+  CharPos := 1;
+  while (CharPos <= Length(ALine)) and (ALine[CharPos] in [' ', #9]) do
+    Inc(CharPos);
+  KwPos := CharPos;
+  Head := WordAt(ALine, CharPos);
+  if CompareText(Head, 'CASE') <> 0 then
+    Exit;
+  while (CharPos <= Length(ALine)) and (ALine[CharPos] in [' ', #9]) do
+    Inc(CharPos);
+  if (CharPos > Length(ALine)) or not (ALine[CharPos] in ['<', '>']) then
+    Exit;
+  AResult := Copy(ALine, 1, KwPos + 3) + ' IS ' +
+             TrimLeft(Copy(ALine, KwPos + 4, MaxInt));
+  Result := True;
+end;
+
+// Строка - объявление AUpName: [' ...] DIM / CREATE Имя или SUB / FUNCTION
+// Имя (AProc, не DECLARE); ACommented - перед ним комментарий
+function IsDefinition(const ALine, AUpName: string; AProc: Boolean;
                       var ACommented: Boolean): Boolean;
 var
   CharPos: Integer;
-  Code, Kw: string;
+  Code, Kw, Name: string;
 begin
   Result := False;
   ACommented := False;
   Code := TrimLeft(ALine);
-  // ' и !!! перед строкой - закомментированное объявление
   while (Code <> '') and (Code[1] in ['''', '!', ' ', #9]) do
   begin
     if Code[1] = '''' then
@@ -411,22 +774,29 @@ begin
   if Kw = 'REM' then
   begin
     ACommented := True;
+    Code := Copy(Code, CharPos, MaxInt);
+    CharPos := 1;
     Kw := UpperCase(WordAt(Code, CharPos));
+  end;
+  if AProc then
+  begin
+    Result := IsProcStart(Code, Name) and (UpperCase(Name) = AUpName);
+    Exit;
   end;
   if (Kw <> 'DIM') and (Kw <> 'CREATE') then
     Exit;
-  Result := UpperCase(WordAt(Code, CharPos)) = AUpName;
+  Result := UpperCase(WordAt(Code, CharPos, True)) = AUpName;
 end;
 
-function StrictFindDefinitions(const AName: string; ARoots: TStrings;
-                               const ASkipFile: string; AOut: TStrings;
-                               AProgress: TIncProgress): Boolean;
+function StrictFindDefinitions(const AName: string; AProc: Boolean;
+                               ARoots: TStrings; const ASkipFile: string;
+                               AOut: TStrings; AProgress: TIncProgress): Boolean;
 const
   MaxSize = 4 * 1024 * 1024;
 var
   Masks, Files, Lines: TStringList;
   FileIdx, LineIdx: Integer;
-  Commented, Cancel: Boolean;
+  Commented, Cancel, TooBig: Boolean;
   UpName: string;
   Info: TSearchRec;
 begin
@@ -449,13 +819,14 @@ begin
       if CompareText(ExpandFileName(Files[FileIdx]),
                      ExpandFileName(ASkipFile)) = 0 then
         Continue;
+      TooBig := False;
       if FindFirst(Files[FileIdx], faAnyFile, Info) = 0 then
-      try
-        if Info.Size > MaxSize then
-          Continue;
-      finally
+      begin
+        TooBig := Info.Size > MaxSize;
         FindClose(Info);
       end;
+      if TooBig then
+        Continue;
       if Assigned(AProgress) then
       begin
         Cancel := False;
@@ -473,7 +844,7 @@ begin
       end;
       for LineIdx := 0 to Lines.Count - 1 do
         if (Pos(UpName, UpperCase(Lines[LineIdx])) > 0) and
-           IsDefinition(Lines[LineIdx], UpName, Commented) then
+           IsDefinition(Lines[LineIdx], UpName, AProc, Commented) then
           AOut.Add(Files[FileIdx] + '|' + IntToStr(LineIdx + 1) + '|' +
                    IntToStr(Ord(Commented)) + '|' + Trim(Lines[LineIdx]));
     end;
@@ -484,9 +855,8 @@ begin
   end;
 end;
 
-// Имя файла из строки $INCLUDE "имя" (с комментарием перед ней или без);
-// '' - не $INCLUDE. ACommented - строка закомментирована, AIncPos -
-// позиция "$INCLUDE" в строке
+// Имя файла из строки $INCLUDE "имя"; '' - не $INCLUDE. ACommented -
+// строка закомментирована, AIncPos - позиция "$INCLUDE" в строке
 function IncludeOfLine(const ALine: string; var ACommented: Boolean;
                        var AIncPos: Integer): string;
 var
@@ -504,7 +874,6 @@ begin
       ACommented := True
     else if not (ALine[CharIdx] in [' ', #9, '!']) then
     begin
-      // перед $INCLUDE - код или текст: не строка подключения
       if not ACommented then
         Exit;
     end;
@@ -515,7 +884,7 @@ begin
     if QuotePos = 0 then
       Exit;
   end;
-  QuotePos := AIncPos + QuotePos;   // первый знак имени
+  QuotePos := AIncPos + QuotePos;
   EndPos := QuotePos;
   while (EndPos <= Length(ALine)) and not (ALine[EndPos] in ['"', '>']) do
     Inc(EndPos);
@@ -535,6 +904,9 @@ begin
     Result := Copy(ExpandFileName(AFile), Length(DirSlash) + 1, MaxInt);
 end;
 
+// Закомментированный $INCLUDE этого файла - раскомментировать; иначе новая
+// строка $INCLUDE после последнего действующего $INCLUDE до первой
+// процедуры. Путь - относительно папки -I или программы, если файл в ней.
 procedure StrictIncludePlan(AMainLines: TStrings;
                             const AIncFile, AMainDir, AIncDir: string;
                             var ALineNo: Integer; var AOld, ANew: string;
@@ -552,7 +924,6 @@ begin
   InHead := True;
   for LineIdx := 0 to AMainLines.Count - 1 do
   begin
-    // Новая строка встанет в начале программы - до первой процедуры
     if InHead and IsProcStart(AMainLines[LineIdx], ProcName) then
       InHead := False;
     IncName := IncludeOfLine(AMainLines[LineIdx], Commented, IncPos);
@@ -560,7 +931,6 @@ begin
       Continue;
     if not Commented and InHead then
       LastInclude := LineIdx;
-    // Этот файл уже был подключён и закомментирован - вернуть строку
     if Commented and (CompareText(ExtractFileName(IncName),
                                   ExtractFileName(AIncFile)) = 0) then
     begin
@@ -575,85 +945,162 @@ begin
       Exit;
     end;
   end;
-  // Новая строка - за последним действующим $INCLUDE (или первой строкой)
   RelName := RelativeTo(AIncFile, AIncDir);
   if RelName = '' then
     RelName := RelativeTo(AIncFile, AMainDir);
   if RelName = '' then
     RelName := AIncFile;
   ANew := '$INCLUDE "' + RelName + '"';
-  ALineNo := LastInclude + 2;   // перед строкой за последним $INCLUDE
+  ALineNo := LastInclude + 2;
 end;
 
-function StrictExplain(AErr: TStrictError; ALines: TStrings): string;
+function StrictNeedsSearch(AErr: TStrictError; var AProc: Boolean): Boolean;
+begin
+  AProc := AErr.Kind = skSusNoBody;
+  Result := AErr.Kind in [skUndeclared, skUndeclaredVar, skSusImplicit,
+                          skSusNoValue, skSusNoBody];
+end;
+
+const
+  CantOffer = 'Не могу предложить вариант исправления.';
+  FindText = '"Найти определение" ищет его в .inc, .bas, .cmp папок ' +
+    'Include, программы (с подпапками) и папки выше; найденный файл можно ' +
+    'подключить: закомментированный $INCLUDE этого файла в программе ' +
+    'раскомментируется, иначе добавляется строка $INCLUDE. Подключается ' +
+    'весь файл - с ним придут и другие его объявления.';
+
+function LabelExplain(AErr: TStrictError; ALines: TStrings): string;
 var
   First, Last, LabelIdx: Integer;
   ProcName: string;
   Labels, Similar: TStringList;
 begin
+  if AErr.Kind = skLabelElsewhere then
+    Result := AErr.Statement + ' ' + AErr.Name + ' ведёт в другую ' +
+      'процедуру: метка ' + AErr.Name + ': - ' + AErr.Places + '.'#13#10 +
+      'В RapidQ метки общие для всей программы, и rc.exe такой переход ' +
+      'принимает: выполнение уходит в середину чужой процедуры, а ' +
+      'параметры и локальные переменные остаются от этой. В FreeBASIC ' +
+      'метка видна только в своей SUB/FUNCTION.'
+  else
+    Result := AErr.Statement + ' ' + AErr.Name + ': метки ' + AErr.Name +
+      ' нет нигде в программе.';
+  Labels := TStringList.Create;
+  Similar := TStringList.Create;
+  try
+    if (ALines <> nil) and
+       StrictProcAt(ALines, AErr.Line - 1, First, Last, ProcName) then
+    begin
+      Result := Result + #13#10'Переход стоит в процедуре ' + ProcName +
+                ' (строки ' + IntToStr(First + 1) + '-' +
+                IntToStr(Last + 1) + ').';
+      StrictLabelsIn(ALines, First, Last, Labels);
+      StrictSimilarNames(AErr.Name, Labels, Similar);
+    end;
+    if Similar.Count > 0 then
+    begin
+      Result := Result + #13#10#13#10'В этой процедуре есть похожая ' +
+        'метка - возможно, опечатка:';
+      for LabelIdx := 0 to Similar.Count - 1 do
+        Result := Result + #13#10'  ' + Similar.Names[LabelIdx] +
+          ': (строка ' + Similar.ValueFromIndex[LabelIdx] + ')';
+      Result := Result + #13#10'"Заменить" ставит в ' + AErr.Statement +
+        ' первую из них. Проверьте, что переход должен идти именно туда.';
+    end
+    else
+      Result := Result + #13#10#13#10'Похожей метки в этой процедуре нет - ' +
+        'не могу предложить вариант исправления: куда должен вести переход, ' +
+        'по тексту не видно. Вручную: поставить свою метку в этой ' +
+        'процедуре или вынести общий код в отдельную SUB и вызывать её из ' +
+        'обеих процедур.';
+  finally
+    Similar.Free;
+    Labels.Free;
+  end;
+end;
+
+function StrictExplain(AErr: TStrictError; ALines: TStrings): string;
+begin
   case AErr.Kind of
-    skUndeclared:
+    skUndeclared, skSusImplicit:
       Result := AErr.Name + ' используется как объект (' + AErr.Name + '.' +
         AErr.Member + '), но ни в программе, ни в подключённых ею файлах нет ' +
         'DIM ' + AErr.Name + ' или CREATE ' + AErr.Name + '.'#13#10 +
         'rc.exe это пропускает: при $TypeCheck off имя без объявления ' +
         'разрешено. Но объекта с таким именем в программе нет, и что вернёт ' +
         AErr.Name + '.' + AErr.Member + ', не известно.'#13#10#13#10 +
-        'Что сделать: "Найти определение" ищет DIM / CREATE ' + AErr.Name +
-        ' в .inc, .bas, .cmp папок Include, программы (с подпапками) и ' +
-        'папки выше. Найденный файл можно подключить: закомментированный ' +
-        '$INCLUDE этого файла в программе раскомментируется, иначе ' +
-        'добавляется строка $INCLUDE. Подключается весь файл - с ним придут ' +
-        'и другие его объявления. Если код с ' + AErr.Name + ' не нужен - ' +
-        'уберите его.';
+        FindText + ' Если код с ' + AErr.Name + ' не нужен - уберите его.';
+    skUndeclaredVar:
+      Result := AErr.Name + ' не объявлена, а в программе стоит ' +
+        '$TYPECHECK ON - при нём переменные объявляются (DIM).'#13#10#13#10 +
+        'Если это опечатка - ниже похожие имена программы, "Заменить" ' +
+        'ставит выбранное в строку. Если объявление в другом файле - ' +
+        FindText;
     skLabelElsewhere, skLabelMissing:
-      begin
-        if AErr.Kind = skLabelElsewhere then
-          Result := AErr.Statement + ' ' + AErr.Name + ' ведёт в другую ' +
-            'процедуру: метка ' + AErr.Name + ': - ' + AErr.Places + '.'#13#10 +
-            'В RapidQ метки общие для всей программы, и rc.exe такой переход ' +
-            'принимает: выполнение уходит в середину чужой процедуры, а ' +
-            'параметры и локальные переменные остаются от этой. В FreeBASIC ' +
-            'метка видна только в своей SUB/FUNCTION.'
-        else
-          Result := AErr.Statement + ' ' + AErr.Name + ': метки ' + AErr.Name +
-            ' нет нигде в программе.';
-        Labels := TStringList.Create;
-        Similar := TStringList.Create;
-        try
-          if (ALines <> nil) and
-             StrictProcAt(ALines, AErr.Line - 1, First, Last, ProcName) then
-          begin
-            Result := Result + #13#10'Переход стоит в процедуре ' + ProcName +
-                      ' (строки ' + IntToStr(First + 1) + '-' +
-                      IntToStr(Last + 1) + ').';
-            StrictLabelsIn(ALines, First, Last, Labels);
-            StrictSimilarLabels(AErr.Name, Labels, Similar);
-          end;
-          if Similar.Count > 0 then
-          begin
-            Result := Result + #13#10#13#10'В этой процедуре есть похожая ' +
-              'метка - возможно, опечатка:';
-            for LabelIdx := 0 to Similar.Count - 1 do
-              Result := Result + #13#10'  ' + Similar.Names[LabelIdx] +
-                ': (строка ' + Similar.ValueFromIndex[LabelIdx] + ')';
-            Result := Result + #13#10'"Заменить" ставит в ' +
-              AErr.Statement + ' первую из них. Проверьте, что переход ' +
-              'должен идти именно туда.';
-          end
-          else
-            Result := Result + #13#10#13#10'Похожей метки в этой процедуре ' +
-              'нет - не могу предложить вариант исправления. Варианты ' +
-              'вручную: поставить свою метку в этой процедуре или вынести ' +
-              'общий код в отдельную SUB и вызывать её из обеих процедур.';
-        finally
-          Similar.Free;
-          Labels.Free;
-        end;
-      end;
+      Result := LabelExplain(AErr, ALines);
+    skCaseOp:
+      Result := 'В RapidQ CASE > 5 - не сравнение: такая ветка не ' +
+        'срабатывает (проверено: x = 7, CASE > 5 не совпало). Сравнение ' +
+        'пишется CASE IS > 5 (conditions.html).'#13#10#13#10 +
+        '"Заменить" вставляет IS после CASE в этой строке.';
+    skBlock:
+      Result := AErr.Text + '.'#13#10'Блок не закрыт или закрыт лишний раз - ' +
+        'не могу предложить вариант исправления: где должен быть конец ' +
+        'блока, по тексту не видно. "Открыть строку" показывает место.';
+    skBindNoProc:
+      Result := 'BIND ... TO ' + AErr.Name + ': SUB или FUNCTION ' +
+        AErr.Name + ' в программе нет.'#13#10#13#10 +
+        'Если это опечатка - ниже похожие имена процедур программы, ' +
+        '"Заменить" ставит выбранное в строку. Иначе - ' + CantOffer;
+    skTypeDefined:
+      Result := 'TYPE ' + AErr.Name + ' объявлен дважды; первое объявление - ' +
+        ExtractFileName(AErr.OtherFile) + ', строка ' +
+        IntToStr(AErr.OtherLine) + '.'#13#10 +
+        'Какое из них нужно, по тексту не видно - не могу предложить ' +
+        'вариант исправления. "Открыть первое объявление" показывает его.';
+    skIncludeMissing:
+      Result := 'Файла ' + AErr.Name + ' нет ни в папке программы, ни в ' +
+        'папке -I. Перед сборкой его ищет и копирует окно недостающих ' +
+        'файлов (препроцессор): если оно закрыто без копирования, rc.exe ' +
+        'тоже его не найдёт.';
+    skSusNoValue:
+      Result := AErr.Name + ' нигде не объявлена и нигде не получает ' +
+        'значение - в RapidQ она всегда 0 или "". Чаще всего это опечатка ' +
+        '(crlfcrlf вместо crlf+crlf) или объявление в файле, который не ' +
+        'подключён.'#13#10#13#10'Похожие имена программы - ниже, ' +
+        '"Заменить" ставит выбранное в строку. ' + FindText;
+    skSusTrueFalse:
+      Result := AErr.Name + ' не определено: нет $INCLUDE "RAPIDQ.INC" и ' +
+        'нет CONST ' + AErr.Name + '. В RapidQ это необъявленная ' +
+        'переменная, то есть 0 - и TRUE, и FALSE.'#13#10#13#10 +
+        'Если RAPIDQ.INC нашёлся в папках Include - он ниже, "Подключить" ' +
+        'добавит $INCLUDE. Иначе: CONST TRUE = 1 и CONST FALSE = 0 в начале ' +
+        'программы.';
+    skSusStrNum:
+      Result := AErr.Text + '.'#13#10'Строка в числовой переменной даёт 0, ' +
+        'число в строковой - пустую строку. Что имелось в виду (VAL, STR$ ' +
+        'или другая переменная), по тексту не видно - не могу предложить ' +
+        'вариант исправления.';
+    skSusNoBody:
+      Result := AErr.Statement + ' ' + AErr.Name + ' объявлен (DECLARE) и ' +
+        'вызывается, но тела в программе нет: вызов ничего не делает. ' +
+        'Обычно тело - в файле, который не подключён.'#13#10#13#10 +
+        '"Найти определение" ищет ' + AErr.Statement + ' ' + AErr.Name +
+        ' с телом в .inc, .bas, .cmp папок Include, программы (с ' +
+        'подпапками) и папки выше; найденный файл можно подключить.';
+    skSusDeclParams:
+      Result := AErr.Text + #13#10#13#10'Какие имена верные, по тексту не ' +
+        'видно - не могу предложить вариант исправления. Приведите имена ' +
+        'параметров в DECLARE и в заголовке к одним.';
+    skSusDefined:
+      Result := AErr.Text + #13#10#13#10'Какое объявление нужно, по тексту ' +
+        'не видно - не могу предложить вариант исправления. "Открыть первое ' +
+        'объявление" показывает его.';
+    skLimit:
+      Result := 'Ограничение перевода в FreeBASIC, для rc.exe не важно: ' +
+        AErr.Text;
   else
-    Result := 'Не могу предложить вариант исправления.'#13#10#13#10 +
-      'Ошибка перевода RqToFb (режим FB Smart): ' + AErr.Text;
+    Result := CantOffer + #13#10#13#10 + AErr.Text;
   end;
 end;
 
