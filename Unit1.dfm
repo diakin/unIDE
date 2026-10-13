@@ -1,7 +1,7 @@
 object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
-  Left = 19
-  Top = 196
+  Left = 45
+  Top = 264
   Width = 1407
   Height = 910
   Caption = 'Form1 current'
@@ -1017,7 +1017,7 @@ object Form1: TForm1
     BevelOuter = bvNone
     Color = 15790320
     object FLeftPanel: TPanel
-      Width = 408
+      Width = 477
       Align = alLeft
       BevelOuter = bvNone
       object grpCompiler: TUiGroupBox
@@ -1265,7 +1265,7 @@ object Form1: TForm1
     end
     object grpSearch: TUiGroupBox
       Align = alLeft
-      Width = 344
+      Width = 267
       Caption = 'Search and replace'
       object pnlSearchIn: TPanel
         Align = alClient
@@ -1296,25 +1296,25 @@ object Form1: TForm1
         end
         object BtnRepl: TUiButton
           Caption = 'Replace'
-          Left = 110
-          Top = 25
+          Left = 160
+          Top = 28
           Width = 54
           Height = 22
           OnClick = DoReplace
         end
         object BtnAll: TUiButton
           Caption = 'All'
-          Left = 167
-          Top = 25
+          Left = 221
+          Top = 29
           Width = 34
           Height = 22
           OnClick = DoReplaceAll
         end
         object UndoBtn: TUiButton
           Caption = 'Undo'
-          Left = 204
-          Top = 25
-          Width = 46
+          Left = 10
+          Top = 86
+          Width = 250
           Height = 22
           OnClick = UndoReplaceAllClick
           ParentFont = False
@@ -1329,9 +1329,9 @@ object Form1: TForm1
           Height = 21
         end
         object chkCase: TUiCheckBox
-          Top = 56
+          Top = 58
           Caption = 'Case'
-          Left = 88
+          Left = 90
           Width = 44
           Height = 17
         end

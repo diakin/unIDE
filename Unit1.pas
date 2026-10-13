@@ -16720,6 +16720,7 @@ begin
     BtnRepl.Left := BtnPrev.Left;
     BtnAll.Left := BtnRepl.Left + BtnRepl.Width + 3;
     UndoBtn.Left := BtnAll.Left + BtnAll.Width + 3;
+    UndoBtn.Left :=2;// BtnAll.Left + BtnAll.Width + 3;
   finally
     Bmp.Free;
   end;
