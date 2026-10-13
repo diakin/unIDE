@@ -1012,11 +1012,16 @@ begin
 end;
 
 // Исправления эталона (строки с "inc2026:"), которых нет в файле. Номер
-// строки в файле - по ближайшей предыдущей строке эталона, найденной в нём.
+// строки в файле - по ближайшей предыдущей строке эталона, найденной в нём
+// (опорной), и отступу от неё в эталоне: строки без кода (пустые и
+// комментарии) между опорной и исправленной пропускаются, но не дальше
+// этого отступа.
 procedure CheckRefFixes(AInfo: TIncFileInfo; ALines, ARefLines: TStrings);
 var
   UserNorm: TStringList;
   RefIdx, UserIdx, LastFound, Shown, Hidden: Integer;
+  RefAnchor: Integer;   // строка эталона, совпавшая с LastFound файла
+  TargetIdx: Integer;   // строка файла для сообщения (с 0)
   Line, Up, Code, Blank, Note: string;
   Fixed: Boolean;
 begin
@@ -1028,6 +1033,7 @@ begin
       UserNorm.Add(UpperCase(Code));
     end;
     LastFound := -1;
+    RefAnchor := -1;
     Shown := 0;
     Hidden := 0;
     for RefIdx := 0 to ARefLines.Count - 1 do
@@ -1043,6 +1049,7 @@ begin
             if UserNorm[UserIdx] = Up then
             begin
               LastFound := UserIdx;
+              RefAnchor := RefIdx;
               Break;
             end;
         Continue;
@@ -1060,6 +1067,7 @@ begin
           begin
             Fixed := True;
             LastFound := UserIdx;
+            RefAnchor := RefIdx;
             Break;
           end;
         if Fixed then
@@ -1073,7 +1081,15 @@ begin
         Continue;
       end;
       Inc(Shown);
-      AInfo.AddMsg(LastFound + 2, True, 'в эталоне исправлено (' +
+      // Строка за опорной; пустые и одни комментарии - пропустить, как в
+      // эталоне между опорной и исправленной (RAPIDQ.INC: fileexist,
+      // пустая, $define int)
+      TargetIdx := LastFound + 1;
+      while (TargetIdx < UserNorm.Count - 1) and
+            (UserNorm[TargetIdx] = '') and
+            (TargetIdx - LastFound < RefIdx - RefAnchor) do
+        Inc(TargetIdx);
+      AInfo.AddMsg(TargetIdx + 1, True, 'в эталоне исправлено (' +
                    ExtractFileName(AInfo.RefFile) + ', стр. ' +
                    IntToStr(RefIdx + 1) + '): ' + Note);
     end;
