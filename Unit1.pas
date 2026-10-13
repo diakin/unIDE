@@ -1433,6 +1433,12 @@ type
     FObjRefreshName: string;   // его имя или переменная
     FObjRefreshProp: string;   // записанное свойство
     FObjComboOldProc: TWndMethod; // обработчик списка значений до подмены
+    // Список значений сейчас - цвета: квадратики цвета у строк, двойной
+    // щелчок - диалог цвета (ObjComboDrawItem, ObjComboDblClick).
+    // FObjColorRq - свойство RapidQ (число &H), иначе Delphi ($00BBGGRR).
+    FObjComboColors: Boolean;
+    FObjColorRq: Boolean;
+    FObjInColorDlg: Boolean;   // открыт диалог цвета - выход из поля не пишет
     FObjRefreshDsg: Boolean;   // отложенное перестроение перезагрузит конструктор
     // Правка в редакторе сдвигает строки: номера строк в узлах инспектора
     // поправляются по снимку до правки (ObjLinesPre / ObjLinesPost)
@@ -2729,6 +2735,10 @@ type
     procedure ObjMarkSchemeItem(AItem: TListItem; AClass: TClass);
     procedure ObjGotoParent;
     procedure ObjComboWndProc(var Message: TMessage);
+    procedure ObjComboDrawItem(Control: TWinControl; Index: Integer;
+                               Rect: TRect; State: TOwnerDrawState);
+    procedure ObjComboDblClick(Sender: TObject);
+    function  ObjColorOfText(const AText: string; var AColor: TColor): Boolean;
     function  UnitTextOf(const APas: string): string;
     function  ObjFormUnit: string;
     function  FindCreateLine(const AText: string; ANode: TObject): Integer;
@@ -24109,6 +24119,10 @@ FDsgUndo := TStringList.Create;
   // Выбор значения из выпадающего списка записывается сразу, как в Delphi
   FObjComboOldProc := FObjCombo.WindowProc;
   FObjCombo.WindowProc := ObjComboWndProc;
+  // Цвета в списке - с квадратиком цвета; двойной щелчок - диалог цвета
+  FObjCombo.ListOwnerDraw := True;
+  FObjCombo.OnDrawItem := ObjComboDrawItem;
+  FObjCombo.OnDblClick := ObjComboDblClick;
 
   // Свойства, которых нет в .dfm, - серым
   FObjProps.OnCustomDrawItem := ObjPropsDrawItem;
@@ -26249,6 +26263,7 @@ begin
   if IsEnum then
   begin
     // Перечисление и False|True - только варианты из описания
+    FObjComboColors := False;
     FObjCombo.Style := csDropDownList;
     FObjCombo.Items.Clear;
     for ChoiceIdx := 0 to Member.Choices.Count - 1 do
@@ -26260,6 +26275,8 @@ begin
   else if IsColor then
   begin
     // Цвет - константы cl... или число (&H00FF00)
+    FObjComboColors := True;
+    FObjColorRq := True;
     FObjCombo.Style := csDropDown;
     FObjCombo.Items.Clear;
     RqConstNames('cl', FObjCombo.Items);
@@ -29679,6 +29696,7 @@ ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: '
   if (TI <> nil) and (TI^.Kind = tkEnumeration) then
   begin
     // Перечисление и Boolean - только значения из списка
+    FObjComboColors := False;
     FObjCombo.Style := csDropDownList;
     FObjCombo.Items.Clear;
     TD := GetTypeData(TI);
@@ -29691,6 +29709,8 @@ ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: '
           ((TI^.Name = 'TColor') or (TI^.Name = 'TCursor')) then
   begin
     // Цвет и курсор - имена из списка или число руками
+    FObjComboColors := TI^.Name = 'TColor';
+    FObjColorRq := False;
     FObjCombo.Style := csDropDown;
     FObjCombo.Items.Clear;
     if TI^.Name = 'TColor' then
@@ -31140,7 +31160,113 @@ end;
 
 procedure TForm1.ObjEditExit(Sender: TObject);
 begin
+  if FObjInColorDlg then
+    Exit;
   ObjApplyEdit;
+end;
+
+// Цвет по тексту из списка значений: имя (clRed, clBtnFace), «Theme color»
+// (цвет темы этого свойства), $00BBGGRR, &HBBGGRR, десятичное число,
+// константа программы RapidQ. False - не цвет.
+function TForm1.ObjColorOfText(const AText: string; var AColor: TColor): Boolean;
+var
+  Txt: string;
+  Value: Integer;
+begin
+  Result := False;
+  Txt := Trim(AText);
+  if (CompareText(Txt, ObjThemeItem) = 0) and (FObjThemeColor <> '') then
+    Txt := FObjThemeColor;
+  if Txt = '' then
+    Exit;
+  if IdentToColor(Txt, Value) then
+    Result := True
+  else if Txt[1] = '$' then
+    Result := TryStrToInt(Txt, Value)
+  else if UpperCase(Copy(Txt, 1, 2)) = '&H' then
+    Result := TryStrToInt('$' + Copy(Txt, 3, MaxInt), Value)
+  else if Txt[1] in ['0'..'9', '-'] then
+    Result := TryStrToInt(Txt, Value)
+  else
+    Result := RqConstValue(Txt, Value);
+  if Result then
+    AColor := TColor(Value);
+end;
+
+// Строка списка значений: у цвета - квадратик этого цвета слева от имени
+procedure TForm1.ObjComboDrawItem(Control: TWinControl; Index: Integer;
+                                  Rect: TRect; State: TOwnerDrawState);
+var
+  Cv: TCanvas;
+  ItemText: string;
+  ItemColor: TColor;
+  TextLeft: Integer;
+  Swatch: TRect;
+begin
+  Cv := FObjCombo.Canvas;
+  Cv.FillRect(Rect);
+  if (Index < 0) or (Index >= FObjCombo.Items.Count) then
+    Exit;
+  ItemText := FObjCombo.Items[Index];
+  TextLeft := Rect.Left + 2;
+  if FObjComboColors then
+  begin
+    Swatch.Left := Rect.Left + 2;
+    Swatch.Top := Rect.Top + 2;
+    Swatch.Right := Swatch.Left + 14;
+    Swatch.Bottom := Rect.Bottom - 2;
+    Cv.Pen.Color := clGray;
+    if ObjColorOfText(ItemText, ItemColor) and (ItemColor <> clNone) and
+       (ItemColor <> clDefault) then
+    begin
+      Cv.Brush.Color := ColorToRGB(ItemColor);
+      Cv.Rectangle(Swatch.Left, Swatch.Top, Swatch.Right, Swatch.Bottom);
+    end
+    else
+    begin
+      // clNone, clDefault и не цвет - рамка с косой чертой
+      Cv.Brush.Style := bsClear;
+      Cv.Rectangle(Swatch.Left, Swatch.Top, Swatch.Right, Swatch.Bottom);
+      Cv.MoveTo(Swatch.Left, Swatch.Bottom - 1);
+      Cv.LineTo(Swatch.Right - 1, Swatch.Top);
+    end;
+    TextLeft := Swatch.Right + 4;
+  end;
+  Cv.Brush.Style := bsClear;
+  Cv.TextOut(TextLeft, Rect.Top + (Rect.Bottom - Rect.Top -
+             Cv.TextHeight(ItemText)) div 2, ItemText);
+end;
+
+// Двойной щелчок по полю цвета - диалог цвета; свой цвет записывается
+// числом: $00BBGGRR (Delphi) или &HBBGGRR (RapidQ)
+procedure TForm1.ObjComboDblClick(Sender: TObject);
+var
+  Dlg: TColorDialog;
+  CurColor: TColor;
+begin
+  if not FObjEditing or (FObjActive <> FObjCombo) or not FObjComboColors then
+    Exit;
+  if FObjCombo.DroppedDown then
+    FObjCombo.DroppedDown := False;
+  Dlg := TColorDialog.Create(Self);
+  FObjInColorDlg := True;
+  try
+    Dlg.Options := [cdFullOpen, cdAnyColor];
+    if ObjColorOfText(FObjCombo.Text, CurColor) and (CurColor <> clNone) and
+       (CurColor <> clDefault) then
+      Dlg.Color := ColorToRGB(CurColor);
+    if not Dlg.Execute then
+      Exit;
+    if FObjColorRq then
+      FObjCombo.Text := '&H' + IntToHex(Dlg.Color and $FFFFFF, 6)
+    else
+      FObjCombo.Text := '$' + IntToHex(Dlg.Color and $FFFFFF, 8);
+  finally
+    FObjInColorDlg := False;
+    Dlg.Free;
+  end;
+  // Записать сразу, как выбор из списка
+  PostMessage(Handle, WM_USER + 317, 0, 0);
 end;
 
 // ---------------------------------------------------------------------------
