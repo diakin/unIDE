@@ -105,6 +105,8 @@ type
     procedure SetReport(AReport: TStrings);
     procedure ArrangeTop;
     procedure lbReportClick(Sender: TObject);
+    procedure lbReportDrawItem(Control: TWinControl; Index: Integer;
+                               Rect: TRect; State: TOwnerDrawState);
     procedure cbTargetChange(Sender: TObject);
     procedure btnSearchClick(Sender: TObject);
     procedure btnCopyClick(Sender: TObject);
@@ -357,6 +359,10 @@ begin
   lbReport.Align := alTop;
   lbReport.Visible := False;
   lbReport.OnClick := lbReportClick;
+  // Строки с именем файла - своим фоном и жирным (lbReportDrawItem)
+  lbReport.Style := lbOwnerDrawFixed;
+  lbReport.ItemHeight := 16;
+  lbReport.OnDrawItem := lbReportDrawItem;
   lbReport.Hint := 'Щелчок по строке "стр. N" - этот файл в просмотре на ' +
                    'строке N';
   splReport := TSplitter.Create(Self);
@@ -629,9 +635,13 @@ end;
 // файл для следующих строк "стр. N: ..."
 procedure TRqDepsForm.SetReport(AReport: TStrings);
 var
-  LineIdx, DashAt: Integer;
+  LineIdx, DashAt, MaxWidth: Integer;
   CurFile, Line: string;
+  IsHead: Boolean;
 begin
+  MaxWidth := 0;
+  lbReport.Canvas.Font := lbReport.Font;
+  lbReport.Canvas.Font.Style := [fsBold];
   lbReport.Items.BeginUpdate;
   try
     lbReport.Items.Clear;
@@ -641,17 +651,23 @@ begin
     begin
       Line := AReport[LineIdx];
       DashAt := Pos(' - ', Line);
-      if (Line <> '') and (Line[1] <> ' ') and (DashAt > 1) and
-         FileExists(Copy(Line, 1, DashAt - 1)) then
+      IsHead := (Line <> '') and (Line[1] <> ' ') and (DashAt > 1) and
+                FileExists(Copy(Line, 1, DashAt - 1));
+      if IsHead then
         CurFile := Copy(Line, 1, DashAt - 1)
       else if Trim(Line) = '' then
         CurFile := '';
-      lbReport.Items.Add(Line);
+      // Objects <> nil - строка с именем файла
+      lbReport.Items.AddObject(Line, TObject(Ord(IsHead)));
       FReportPaths.Add(CurFile);
+      if lbReport.Canvas.TextWidth(Line) > MaxWidth then
+        MaxWidth := lbReport.Canvas.TextWidth(Line);
     end;
   finally
     lbReport.Items.EndUpdate;
   end;
+  // Длинные строки - горизонтальной прокруткой
+  lbReport.ScrollWidth := MaxWidth + 8;
   FShowReport := True;
   ArrangeTop;
 end;
@@ -690,6 +706,51 @@ begin
   finally
     EnableAlign;
   end;
+end;
+
+// Цвет между AColor и ATo: APercent - доля ATo
+function MixColor(AColor, ATo: TColor; APercent: Integer): TColor;
+var
+  FromRgb, ToRgb: Integer;
+
+  function Part(AShift: Integer): Integer;
+  begin
+    Result := ((FromRgb shr AShift) and $FF) * (100 - APercent) div 100 +
+              ((ToRgb shr AShift) and $FF) * APercent div 100;
+  end;
+
+begin
+  FromRgb := ColorToRGB(AColor);
+  ToRgb := ColorToRGB(ATo);
+  Result := TColor(Part(0) or (Part(8) shl 8) or (Part(16) shl 16));
+end;
+
+procedure TRqDepsForm.lbReportDrawItem(Control: TWinControl; Index: Integer;
+                                       Rect: TRect; State: TOwnerDrawState);
+var
+  Cv: TCanvas;
+  IsHead: Boolean;
+begin
+  Cv := lbReport.Canvas;
+  IsHead := (Index >= 0) and (Index < lbReport.Items.Count) and
+            (lbReport.Items.Objects[Index] <> nil);
+  Cv.Font := lbReport.Font;
+  if odSelected in State then
+  begin
+    Cv.Brush.Color := clHighlight;
+    Cv.Font.Color := clHighlightText;
+  end
+  else if IsHead then
+    // Оттенок оранжевой панели поверх фона списка - и в светлой теме, и
+    // в тёмной
+    Cv.Brush.Color := MixColor(lbReport.Color, pnlOffer.Color, 30)
+  else
+    Cv.Brush.Color := lbReport.Color;
+  if IsHead then
+    Cv.Font.Style := [fsBold];
+  Cv.FillRect(Rect);
+  if (Index >= 0) and (Index < lbReport.Items.Count) then
+    Cv.TextOut(Rect.Left + 2, Rect.Top + 1, lbReport.Items[Index]);
 end;
 
 procedure TRqDepsForm.lbReportClick(Sender: TObject);
