@@ -653,7 +653,7 @@ begin
             if (lbReport.Items.Objects[ItemIdx] <> nil) or
                (CompareText(FReportPaths[ItemIdx], AFile) <> 0) then
               Break;
-            // "    стр. 16: ошибка: ..." (строки без "ошибка:" - замечания)
+            // "    стр. 16: ошибка: ..." ("замечание:" - не выделяется)
             Txt := TrimLeft(lbReport.Items[ItemIdx]);
             if (Copy(Txt, 1, 5) = 'стр. ') and (Pos('ошибка:', Txt) > 0) then
             begin
@@ -798,7 +798,13 @@ begin
     // в тёмной
     Cv.Brush.Color := MixColor(lbReport.Color, pnlOffer.Color, 30)
   else
+  begin
     Cv.Brush.Color := lbReport.Color;
+    // Ошибки - красным: их число и есть "ошибок: N"; замечания - обычным
+    if (Index >= 0) and (Index < lbReport.Items.Count) and
+       (Pos('ошибка:', lbReport.Items[Index]) > 0) then
+      Cv.Font.Color := MixColor(lbReport.Font.Color, clRed, 60);
+  end;
   if IsHead then
     Cv.Font.Style := [fsBold];
   Cv.FillRect(Rect);
@@ -1047,8 +1053,9 @@ end;
 // сколько ошибок всего
 function TRqDepsForm.CheckFiles(AFiles, AReport: TStrings): Integer;
 var
-  FileIdx, MsgIdx: Integer;
+  FileIdx, MsgIdx, ColonAt: Integer;
   Info: TIncFileInfo;
+  Msg: string;
 begin
   Result := 0;
   for FileIdx := 0 to AFiles.Count - 1 do
@@ -1057,10 +1064,26 @@ begin
     try
       IncCheckFile(Info, FRef);
       Inc(Result, Info.Errors);
+      // Замечания (без "ошибка:") в число ошибок не входят - считаются
+      // отдельно, чтобы "ошибок: 0" рядом со списком строк не путало
       AReport.Add(AFiles[FileIdx] + ' - ' + IncStatusNames[Info.Status] +
-                  Format(', ошибок: %d', [Info.Errors]));
+                  Format(', ошибок: %d, замечаний: %d',
+                         [Info.Errors, Info.Messages.Count - Info.Errors]));
       for MsgIdx := 0 to Info.Messages.Count - 1 do
-        AReport.Add('    ' + Info.Messages[MsgIdx]);
+      begin
+        Msg := Info.Messages[MsgIdx];
+        // "стр. 6: замечание: ..." - номер строки остаётся в начале, по
+        // нему щелчок переходит к строке
+        if Pos('ошибка:', Msg) = 0 then
+        begin
+          ColonAt := Pos(': ', Msg);
+          if (Copy(Msg, 1, 5) = 'стр. ') and (ColonAt > 0) then
+            Insert('замечание: ', Msg, ColonAt + 2)
+          else
+            Msg := 'замечание: ' + Msg;
+        end;
+        AReport.Add('    ' + Msg);
+      end;
     finally
       Info.Free;
     end;
