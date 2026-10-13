@@ -89,6 +89,7 @@ type
     chkIgnore: TUiCheckBox;
     btnSearch: TUiButton;
     btnCopy: TUiButton;
+    btnCopyOnly: TUiButton;  // скопировать без сборки, окно не закрывается
     btnBuild: TUiButton;
     btnCancel: TUiButton;
     btnFix: TUiButton;      // проверить выбранную копию inc и исправить
@@ -141,6 +142,8 @@ type
     procedure cbTargetChange(Sender: TObject);
     procedure btnSearchClick(Sender: TObject);
     procedure btnCopyClick(Sender: TObject);
+    procedure btnCopyOnlyClick(Sender: TObject);
+    function  CopyChecked(var ACopied, AFailed: Integer): Boolean;
     procedure btnBuildClick(Sender: TObject);
     procedure btnFixClick(Sender: TObject);
     procedure btnUndoClick(Sender: TObject);
@@ -244,8 +247,8 @@ begin
   cbTarget.OnChange := cbTargetChange;
   cbTarget.Hint := 'Куда копировать выбранный файл. Путь из $INCLUDE ' +
                    '(Object\QINI.inc) сохраняется: файл ляжет в подпапку. ' +
-                   'DLL - всегда в папку программы: Windows ищет её рядом с ' +
-                   'exe, а не в папке -I';
+                   'DLL - по умолчанию в папку программы: при запуске exe ' +
+                   'Windows ищет её там, а не в папке -I';
   chkIgnore := TUiCheckBox.Create(Self);
   chkIgnore.Parent := pnlBottom;
   chkIgnore.SetBounds(620, 36, 270, 17);
@@ -253,16 +256,19 @@ begin
   chkIgnore.Hint := 'Неотмеченные файлы для этой программы больше не ' +
                     'проверяются (editor.ini, [RqDepsIgnore])';
 
-  btnSearch := MakeButton('Искать снова', 8, 110, btnSearchClick);
+  btnSearch := MakeButton('Искать снова', 8, 100, btnSearchClick);
   btnSearch.Hint := 'Искать недостающие на диске ещё раз; во время поиска - ' +
                     'остановить';
-  btnCopy := MakeButton('Копировать отмеченные и собрать', 126, 220, btnCopyClick);
+  btnCopyOnly := MakeButton('Скопировать', 116, 100, btnCopyOnlyClick);
+  btnCopyOnly.Hint := 'Скопировать выбранные копии отмеченных файлов туда, ' +
+                      'куда указано, без сборки; окно остаётся открытым';
+  btnCopy := MakeButton('Копировать отмеченные и собрать', 224, 200, btnCopyClick);
   btnCopy.Hint := 'Скопировать выбранные копии отмеченных файлов и начать сборку';
-  btnBuild := MakeButton('Собрать без копирования', 354, 170, btnBuildClick);
-  btnCancel := MakeButton('Отмена', 532, 90, nil);
+  btnBuild := MakeButton('Собрать без копирования', 432, 160, btnBuildClick);
+  btnCancel := MakeButton('Отмена', 600, 80, nil);
   btnCancel.ModalResult := mrCancel;
-  btnFix := MakeButton('Проверить и исправить', 630, 160, btnFixClick);
-  btnUndo := MakeButton('Undo', 796, 70, btnUndoClick);
+  btnFix := MakeButton('Проверить и исправить', 688, 150, btnFixClick);
+  btnUndo := MakeButton('Undo', 846, 60, btnUndoClick);
   btnUndo.Hint := 'Отменить исправления: исправленные файлы удалить, ' +
                   'прежние вернуть из .bak';
   btnUndo.Enabled := False;
@@ -581,16 +587,8 @@ begin
     IncText := '(не задана - папка программы)';
   cbTarget.Items.Add('в папку -I сборки: ' + IncText);
   cbTarget.Items.Add('в папку программы: ' + FScan.MainDir);
-  if Dep.Kind = dpkLib then
-  begin
-    cbTarget.ItemIndex := 1;
-    cbTarget.Enabled := False;
-  end
-  else
-  begin
-    cbTarget.ItemIndex := Ord(Dep.Target);
-    cbTarget.Enabled := not FBusy;
-  end;
+  cbTarget.ItemIndex := Ord(Dep.Target);
+  cbTarget.Enabled := not FBusy;
   UpdateNote;
   ShowPreview;
 end;
@@ -910,7 +908,7 @@ var
   Dep: TRqDep;
 begin
   Dep := SelectedDep;
-  if (Dep = nil) or (Dep.Kind = dpkLib) or (cbTarget.ItemIndex < 0) then
+  if (Dep = nil) or (cbTarget.ItemIndex < 0) then
     Exit;
   Dep.Target := TRqDepTarget(cbTarget.ItemIndex);
   ShowSelected;
@@ -970,6 +968,7 @@ begin
   else
     btnSearch.Caption := 'Искать снова';
   btnCopy.Enabled := not ABusy;
+  btnCopyOnly.Enabled := not ABusy;
   btnFix.Enabled := not ABusy;
   btnUndo.Enabled := not ABusy and (FFixFiles <> nil) and (FFixFiles.Count > 0);
   btnBuild.Enabled := not ABusy;
@@ -1052,14 +1051,18 @@ begin
     end;
 end;
 
-procedure TRqDepsForm.btnCopyClick(Sender: TObject);
+// Отмеченные - выбранной копией туда, куда указано (RqDepTargetPath); что
+// скопировано - в лог сборки (FLog). Скопированное снимается с отметки:
+// второй раз не копируется. Результат - было ли что копировать.
+function TRqDepsForm.CopyChecked(var ACopied, AFailed: Integer): Boolean;
 var
-  ItemIdx, Copied, Failed: Integer;
+  ItemIdx: Integer;
   Dep: TRqDep;
   Target: string;
 begin
-  Copied := 0;
-  Failed := 0;
+  ACopied := 0;
+  AFailed := 0;
+  Result := False;
   for ItemIdx := 0 to lvDeps.Items.Count - 1 do
   begin
     if not lvDeps.Items[ItemIdx].Checked then
@@ -1067,11 +1070,12 @@ begin
     Dep := TRqDep(lvDeps.Items[ItemIdx].Data);
     if Dep.Chosen < 0 then
       Continue;
+    Result := True;
     Target := RqDepTargetPath(Dep, FScan.IncDir, FScan.MainDir);
     if FileExists(Target) then
     begin
       FLog.Add('Не скопирован ' + Dep.Name + ': ' + Target + ' уже есть');
-      Inc(Failed);
+      Inc(AFailed);
       Continue;
     end;
     ForceDirectories(ExtractFilePath(Target));
@@ -1079,15 +1083,28 @@ begin
     begin
       FLog.Add('Скопирован ' + Dep.Name + ': ' + Dep.Candidates[Dep.Chosen] +
                ' -> ' + Target + ' (' + Dep.ChosenNote + ')');
-      Inc(Copied);
+      Inc(ACopied);
+      FFilling := True;
+      try
+        lvDeps.Items[ItemIdx].Checked := False;
+      finally
+        FFilling := False;
+      end;
     end
     else
     begin
       FLog.Add('Не скопирован ' + Dep.Name + ': ' +
                SysErrorMessage(GetLastError));
-      Inc(Failed);
+      Inc(AFailed);
     end;
   end;
+end;
+
+procedure TRqDepsForm.btnCopyClick(Sender: TObject);
+var
+  Copied, Failed: Integer;
+begin
+  CopyChecked(Copied, Failed);
   CollectIgnore;
   if Failed > 0 then
   begin
@@ -1095,6 +1112,27 @@ begin
                                 'подробности в логе сборки', [Copied, Failed]);
   end;
   ModalResult := mrOk;
+end;
+
+// Только скопировать: окно остаётся, итог - в строке состояния, подробности
+// (что, откуда, куда) - в логе сборки после закрытия окна
+procedure TRqDepsForm.btnCopyOnlyClick(Sender: TObject);
+var
+  Copied, Failed, LogFrom: Integer;
+begin
+  LogFrom := FLog.Count;
+  if not CopyChecked(Copied, Failed) then
+  begin
+    lblStatus.Caption := 'Нечего копировать: нет отмеченных файлов с ' +
+                         'найденной копией';
+    Exit;
+  end;
+  lblStatus.Caption := Format('Скопировано: %d', [Copied]);
+  if Failed > 0 then
+    lblStatus.Caption := lblStatus.Caption +
+      Format(', не скопировано: %d (%s)', [Failed, FLog[FLog.Count - 1]]);
+  if (Copied = 1) and (Failed = 0) and (FLog.Count > LogFrom) then
+    lblStatus.Caption := FLog[FLog.Count - 1];
 end;
 
 // Эталон для проверки inc - один раз за окно. False - не прочитан.

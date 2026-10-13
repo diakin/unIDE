@@ -222,7 +222,9 @@ begin
     Result := RelName;
     Exit;
   end;
-  if (ADep.Target = dptIncDir) and (AIncDir <> '') and (ADep.Kind <> dpkLib) then
+  // DLL - по умолчанию в папку программы (Windows ищет её рядом с exe), но
+  // можно и в папку -I: положить на хранение рядом с inc
+  if (ADep.Target = dptIncDir) and (AIncDir <> '') then
     BaseDir := AIncDir
   else
     BaseDir := AMainDir;
