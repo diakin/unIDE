@@ -3388,6 +3388,7 @@ type
     function  IsPascalExt(const AExt: string): Boolean;
     function  IsFormExt(const AExt: string): Boolean;
     function  DefaultSchemaFile: string; // schemes\•default•.clr
+    function  SchemeCopyFor(const AFile: string): TClrScheme;
     procedure SaveClrSchemaTo(const APath: string);
     procedure LoadSchemaFileForEdit(const APath: string);
     procedure ResetSchemaState;
@@ -34027,6 +34028,7 @@ var
   IgnoreText, Rest: string;
   ItemIdx, SepPos: Integer;
   Dep: TRqDep;
+  Scheme: TClrScheme;
 begin
   Result := True;
   BasKey := LowerCase(ExpandFileName(ABas));
@@ -34103,7 +34105,14 @@ begin
     Roots.Add('папка программы|' + MainDir);
     Roots.Add('папка выше|' + ExtractFileDir(MainDir));
 
-    Result := RqDepsDialog(Self, Scan, Roots, RefDir, SysDir, CopyLog, Ignore);
+    // Просмотр текста в окне - с подсветкой схемой программы
+    Scheme := SchemeCopyFor(ABas);
+    try
+      Result := RqDepsDialog(Self, Scan, Roots, RefDir, SysDir, CopyLog,
+                             Ignore, Scheme);
+    finally
+      Scheme.Free;
+    end;
     for ItemIdx := 0 to CopyLog.Count - 1 do
       LogComp(CopyLog[ItemIdx]);
     if Result and (Ignore.Count > 0) then
@@ -64105,6 +64114,33 @@ function TForm1.DefaultSchemaFile: string;
 begin
   Result := ExtractFilePath(Application.ExeName) + 'schemes\' +
             #149 + 'default' + #149 + '.clr';
+end;
+
+// Отдельная схема подсветки для файла AFile - та же, что выбрал бы
+// редактор (•default•.clr, схема расширения, выбранная тема), но своим
+// объектом: схема редактора остаётся как есть. Для окон с просмотром
+// текста (недостающие файлы). Освобождает вызвавший; nil - не прочиталась.
+function TForm1.SchemeCopyFor(const AFile: string): TClrScheme;
+var
+  ClrPath: string;
+begin
+  Result := TClrScheme.Create;
+  try
+    Result.FTheme := FScheme.FTheme;
+    Result.ResetSchemaState(FIniFontColor, FIniBGColor);
+    if FileExists(DefaultSchemaFile) then
+    begin
+      Result.ParseClrFile(DefaultSchemaFile);
+      Result.ClearKeywordGroups; // ключевые слова - свои у каждого языка
+    end;
+    ClrPath := ExtractFilePath(Application.ExeName) + 'schemes\' +
+               SchemeKeyFor(AFile, ExtractFileExt(AFile)) + '.clr';
+    if FileExists(ClrPath) then
+      Result.ParseClrFile(ClrPath);
+    Result.ApplyTheme;
+  except
+    FreeAndNil(Result);
+  end;
 end;
 
 

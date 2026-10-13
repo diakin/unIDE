@@ -14,7 +14,9 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
-  ExtCtrls, ComCtrls, Dialogs,
+  ExtCtrls, ComCtrls, Dialogs, RichEdit,
+  ClrScheme,    // схема подсветки для просмотра
+  SchemeRtf,    // текст -> RTF с цветами схемы
   IncCheck,     // эталон, TIncProgress
   RqDeps,       // TRqDepScan, поиск и выбор копий
   UiButton,     // TUiButton
@@ -26,7 +28,8 @@ uses
 // регистр), про которые больше не спрашивать. True - собирать дальше.
 function RqDepsDialog(AOwner: TComponent; AScan: TRqDepScan; ARoots: TStrings;
                       const ARefDir, ASysDir: string;
-                      ALog, AIgnore: TStrings): Boolean;
+                      ALog, AIgnore: TStrings;
+                      AScheme: TClrScheme = nil): Boolean;
 
 implementation
 
@@ -52,7 +55,10 @@ type
     lvCands: TListView;     // копии на диске: путь, размер, создан, изменён
     splDeps: TSplitter;
     splCands: TSplitter;
-    memPreview: TMemo;      // текст копии, выделенной в lvCands
+    memPreview: TRichEdit;  // текст копии, выделенной в lvCands
+    // Схема подсветки просмотра (не своя - её освобождает вызвавший); nil -
+    // просмотр без подсветки
+    FScheme: TClrScheme;
     lblNote: TLabel;
     pnlBottom: TPanel;
     lblTarget: TLabel;
@@ -374,7 +380,7 @@ begin
   splReport.Visible := False;
   FReportPaths := TStringList.Create;
 
-  memPreview := TMemo.Create(Self);
+  memPreview := TRichEdit.Create(Self);
   memPreview.Parent := Self;
   memPreview.Align := alClient;
   memPreview.ReadOnly := True;
@@ -597,14 +603,18 @@ begin
 end;
 
 // Текст файла в просмотр; строки - как в файле (LF -> CRLF), чтобы номер
-// строки из проверки совпадал со строкой просмотра
+// строки из проверки совпадал со строкой просмотра. Есть схема - с
+// подсветкой: текст переводится в RTF и загружается разом.
 procedure TRqDepsForm.LoadPreview(const AFile: string; AIsText: Boolean);
 const
   PreviewMax = 1048576;
 var
   Stream: TFileStream;
+  RtfStream: TStringStream;
   Buf: string;
 begin
+  // Без этого RichEdit берёт не больше 32К знаков
+  memPreview.Perform(EM_EXLIMITTEXT, 0, $7FFFFFF0);
   memPreview.Lines.Clear;
   if not AIsText then
   begin
@@ -623,7 +633,20 @@ begin
     finally
       Stream.Free;
     end;
-    memPreview.Text := AdjustLineBreaks(Buf);
+    if FScheme <> nil then
+    begin
+      memPreview.Color := SchemePageColor(FScheme);
+      RtfStream := TStringStream.Create(SchemeTextToRtf(AdjustLineBreaks(Buf),
+                                        FScheme, 'Courier New', 9));
+      try
+        memPreview.PlainText := False;
+        memPreview.Lines.LoadFromStream(RtfStream);
+      finally
+        RtfStream.Free;
+      end;
+    end
+    else
+      memPreview.Text := AdjustLineBreaks(Buf);
     memPreview.SelStart := 0;
   except
     on E: Exception do
@@ -1229,7 +1252,8 @@ end;
 
 function RqDepsDialog(AOwner: TComponent; AScan: TRqDepScan; ARoots: TStrings;
                       const ARefDir, ASysDir: string;
-                      ALog, AIgnore: TStrings): Boolean;
+                      ALog, AIgnore: TStrings;
+                      AScheme: TClrScheme): Boolean;
 var
   Dlg: TRqDepsForm;
   Kinds: string;
@@ -1242,6 +1266,7 @@ begin
     Dlg.FSysDir := ASysDir;
     Dlg.FLog := ALog;
     Dlg.FIgnore := AIgnore;
+    Dlg.FScheme := AScheme;
     Dlg.BuildControls;
     Kinds := Format('inc: %d, ресурсы: %d, DLL: %d',
                     [AScan.CountOf(dpkInclude), AScan.CountOf(dpkResource),

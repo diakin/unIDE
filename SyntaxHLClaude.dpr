@@ -60,6 +60,7 @@ uses
   RqDeps in 'RqDeps.pas',
   IniBuf in 'IniBuf.pas',
   DlgRqDeps in 'DlgRqDeps.pas',
+  SchemeRtf in 'SchemeRtf.pas',
   RunConsole in 'RunConsole.pas';
 
 {$R *.res}
