@@ -88,6 +88,9 @@ type
     // Вкладки в несколько рядов: на сколько пикселей ряды вкладок выше
     // одного ряда; меняется - OnTabRows (владелец подгоняет высоту панели)
     FTabRowsExtra: Integer;
+    // Высота палитры, при которой видны все ряды вкладок и все ряды кнопок
+    // (по всем страницам) - без пустого места снизу; 0 - ещё не считали
+    FNeededHeight: Integer;
     FOnTabRows: TNotifyEvent;
     // Пересчёт рядов уже заказан сообщением (RequestTabRows): при запуске
     // страницы добавляются по одной и размер меняется много раз - считать
@@ -119,6 +122,7 @@ type
     // Пересчитать число рядов вкладок (после смены ширины или страниц)
     procedure CheckTabRows;
     property TabRowsExtra: Integer read FTabRowsExtra;
+    property NeededHeight: Integer read FNeededHeight;
     property OnTabRows: TNotifyEvent read FOnTabRows write FOnTabRows;
     // AParent - куда встать (заполняет его целиком). ADelphiBin - папка
     // Bin установки Delphi со слэшем, '' - без значков.
@@ -199,6 +203,7 @@ procedure DsgDrawSmoothScript(ABmp: TBitmap; const AScript: string;
 implementation
 
 uses
+  CommCtrl,   // TCM_ADJUSTRECT - место под кнопки внутри вкладок
   DsgClasses,
   DsgIcons;   // сглаженные значки компонентов Delphi - скриптами
 
@@ -972,11 +977,16 @@ begin
   CheckTabRows;
 end;
 
-// Ряды вкладок: от низа верхнего ряда до низа нижнего - добавка к одному
+// Ряды вкладок: от низа верхнего ряда до низа нижнего - добавка к одному.
+// И нужная высота палитры: место кнопок (TCM_ADJUSTRECT) сверху и снизу +
+// низ самой нижней кнопки по всем страницам. Изменилось одно из двух -
+// OnTabRows (владелец подгоняет высоту).
 procedure TDsgPalette.CheckTabRows;
 var
-  TabIdx, TopBottom, LowBottom, NewExtra: Integer;
-  TabBox: TRect;
+  TabIdx, TopBottom, LowBottom, NewExtra, NewNeeded, PageIdx, BtnIdx,
+  BtnBottom: Integer;
+  TabBox, ShowArea: TRect;
+  Btn: TControl;
 begin
   if (FTabs = nil) or not FTabs.HandleAllocated then
     Exit;
@@ -996,9 +1006,27 @@ begin
     NewExtra := 0
   else
     NewExtra := LowBottom - TopBottom;
-  if NewExtra = FTabRowsExtra then
+
+  // Место под кнопки внутри вкладок
+  ShowArea := FTabs.ClientRect;
+  SendMessage(FTabs.Handle, TCM_ADJUSTRECT, 0, Integer(@ShowArea));
+  BtnBottom := FArrow.Top + FArrow.Height;
+  for PageIdx := 0 to FPageBtns.Count - 1 do
+    for BtnIdx := 0 to TList(FPageBtns[PageIdx]).Count - 1 do
+    begin
+      Btn := TControl(TList(FPageBtns[PageIdx])[BtnIdx]);
+      if Btn.Top + Btn.Height > BtnBottom then
+        BtnBottom := Btn.Top + Btn.Height;
+    end;
+  NewNeeded := (Height - FTabs.Height) + ShowArea.Top + BtnBottom + 3 +
+               (FTabs.ClientHeight - ShowArea.Bottom);
+  if FBox.HorzScrollBar.IsScrollBarVisible then
+    Inc(NewNeeded, GetSystemMetrics(SM_CYHSCROLL));
+
+  if (NewExtra = FTabRowsExtra) and (NewNeeded = FNeededHeight) then
     Exit;
   FTabRowsExtra := NewExtra;
+  FNeededHeight := NewNeeded;
   if Assigned(FOnTabRows) then
     FOnTabRows(Self);
 end;

@@ -21976,11 +21976,23 @@ begin
   BuildObjectInspector;
 end;
 
-// Ряды вкладок палитры добавились или убавились - тулбар на ту же разницу
+// Палитре нужна другая высота (ряды вкладок, ряды кнопок): тулбар на ту же
+// разницу, но не ниже исходного (FToolbarBaseHeight) - столько нужно левой
+// части (кнопки и рамка Project). Прежде добавлялась вся высота лишних
+// рядов вкладок, хотя исходный тулбар их уже вмещал, - снизу палитры
+// оставалось пустое место.
 procedure TForm1.PaletteTabRows(Sender: TObject);
+var
+  NewHeight: Integer;
 begin
-  if (FToolbarBaseHeight > 0) and (FDsgPalette <> nil) then
-    FToolbar.Height := FToolbarBaseHeight + FDsgPalette.TabRowsExtra;
+  if (FToolbarBaseHeight <= 0) or (FDsgPalette = nil) or
+     (FDsgPalette.NeededHeight <= 0) then
+    Exit;
+  NewHeight := FToolbar.Height + FDsgPalette.NeededHeight - FDsgPalette.Height;
+  if NewHeight < FToolbarBaseHeight then
+    NewHeight := FToolbarBaseHeight;
+  if NewHeight <> FToolbar.Height then
+    FToolbar.Height := NewHeight;
 end;
 
 // Кнопки _ и [] - в правом верхнем углу панели, в строке вкладок; у
