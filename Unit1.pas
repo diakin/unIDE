@@ -2330,11 +2330,19 @@ type
     // строгая проверка исходника переводом RqToFb в режиме Smart.
     // FRqStrict - главные файлы с галкой (editor.ini [RapidQ.Strict]).
     chkRqStrict: TUiCheckBox;
+    // "Info only" правее: ошибки строгой проверки только в лог, rc.exe
+    // собирает дальше; без неё - окно вариантов исправления (DlgStrictFix)
+    chkRqInfo: TUiCheckBox;
     FRqStrict: TStringList;
     private
     function  RqStrictOf(const AMain: string): Boolean;
-    procedure SetRqStrict(const AMain: string; AOn: Boolean);
+    function  RqStrictInfoOf(const AMain: string): Boolean;
+    procedure SetRqStrict(const AMain: string; AOn, AInfo: Boolean);
     procedure chkRqStrictClick(Sender: TObject);
+    procedure StrictOpenLine(const AFile: string; ALine: Integer);
+    function  StrictEditLine(const AFile: string; ALine: Integer;
+                             const AOld, ANew: string;
+                             AInsert: Boolean): Boolean;
     function  RqStrictCheck(const ABas, AIncDir: string): Boolean;
     function  RqStrictProgress(APass: Integer; const AFile: string;
                                ALinesDone, ALinesTotal: Integer): Boolean;
@@ -3468,6 +3476,7 @@ var
     DelphiOpts,   // Project options Delphi: номер сборки и версия в .res
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
     RqToFb,       // перевод RapidQ -> FreeBASIC (RqLcl\tofb)
+    DlgStrictFix, // окно ошибок строгой проверки перед rc.exe
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     FormPreview,  // превью формы по .dfm - список модулей и форм
@@ -12248,6 +12257,8 @@ cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target
       FBuildBarBusy := True;
       try
         chkRqStrict.Checked := RqStrictOf(Target);
+        if chkRqInfo <> nil then
+          chkRqInfo.Checked := RqStrictInfoOf(Target);
       finally
         FBuildBarBusy := False;
       end;
@@ -12258,8 +12269,15 @@ cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target
       if Target <> '' then
         chkRqStrict.Hint := chkRqStrict.Hint + ' ' + ExtractFileName(Target) +
           ' перед rc.exe: перевод RqToFb в режиме FB Smart, без сборки ' +
-          'fbc. Нашлись ошибки - rc.exe не запускается. Запоминается для ' +
-          'главного файла';
+          'fbc. Нашлись ошибки - окно с вариантами исправления (или ' +
+          'только лог, если стоит Info only). Запоминается для главного ' +
+          'файла';
+    end;
+    if chkRqInfo <> nil then
+    begin
+      chkRqInfo.Visible := chkRqStrict.Visible;
+      chkRqInfo.Left := chkRqStrict.Left + chkRqStrict.Width + 4;
+      chkRqInfo.Enabled := chkRqStrict.Enabled and chkRqStrict.Checked;
     end;
   end;
 end;
@@ -12381,7 +12399,7 @@ begin
 end;
 
 // Галка "FB smart" для главного файла AMain (editor.ini [RapidQ.Strict],
-// ключ - путь в нижнем регистре, значение 1)
+// ключ - путь в нижнем регистре, значение 1; info - с галкой "Info only")
 function TForm1.RqStrictOf(const AMain: string): Boolean;
 var
   Ini: TIniFile;
@@ -12400,13 +12418,20 @@ begin
     end;
   end;
   Result := (AMain <> '') and
-            (Trim(FRqStrict.Values[LowerCase(ExpandFileName(AMain))]) = '1');
+            ((Trim(FRqStrict.Values[LowerCase(ExpandFileName(AMain))]) = '1') or
+             (Trim(FRqStrict.Values[LowerCase(ExpandFileName(AMain))]) = 'info'));
 end;
 
-procedure TForm1.SetRqStrict(const AMain: string; AOn: Boolean);
+function TForm1.RqStrictInfoOf(const AMain: string): Boolean;
+begin
+  Result := RqStrictOf(AMain) and
+            (Trim(FRqStrict.Values[LowerCase(ExpandFileName(AMain))]) = 'info');
+end;
+
+procedure TForm1.SetRqStrict(const AMain: string; AOn, AInfo: Boolean);
 var
   Ini: TIniFile;
-  Key: string;
+  Key, Value: string;
 begin
   if AMain = '' then
     Exit;
@@ -12416,8 +12441,12 @@ begin
   try
     if AOn then
     begin
-      FRqStrict.Values[Key] := '1';
-      Ini.WriteString('RapidQ.Strict', Key, '1');
+      if AInfo then
+        Value := 'info'
+      else
+        Value := '1';
+      FRqStrict.Values[Key] := Value;
+      Ini.WriteString('RapidQ.Strict', Key, Value);
     end
     else
     begin
@@ -12442,13 +12471,73 @@ begin
     UpdateBuildBar;
     Exit;
   end;
-  SetRqStrict(MainBas, chkRqStrict.Checked);
-  if chkRqStrict.Checked then
-    Dbg('RapidQ ' + ExtractFileName(MainBas) + ': перед rc.exe - строгая ' +
-        'проверка FB Smart (editor.ini [RapidQ.Strict])', clGray)
-  else
+  SetRqStrict(MainBas, chkRqStrict.Checked,
+              (chkRqInfo <> nil) and chkRqInfo.Checked);
+  if chkRqInfo <> nil then
+    chkRqInfo.Enabled := chkRqStrict.Checked;
+  if not chkRqStrict.Checked then
     Dbg('RapidQ ' + ExtractFileName(MainBas) + ': без строгой проверки',
-        clGray);
+        clGray)
+  else if (chkRqInfo <> nil) and chkRqInfo.Checked then
+    Dbg('RapidQ ' + ExtractFileName(MainBas) + ': перед rc.exe - строгая ' +
+        'проверка FB Smart, ошибки только в лог (editor.ini [RapidQ.Strict])',
+        clGray)
+  else
+    Dbg('RapidQ ' + ExtractFileName(MainBas) + ': перед rc.exe - строгая ' +
+        'проверка FB Smart, при ошибках - окно исправления (editor.ini ' +
+        '[RapidQ.Strict])', clGray);
+end;
+
+// Окно строгой проверки: файл ошибки - в редактор, на строку ALine (с 1)
+procedure TForm1.StrictOpenLine(const AFile: string; ALine: Integer);
+begin
+  OpenNamedFile(AFile);
+  if ALine > 0 then
+    GotoLine(ALine - 1);
+end;
+
+// Окно строгой проверки: правка строки через редактор - её можно отменить
+// там же. Строка ALine (с 1) должна быть AOld, иначе (текст уже другой)
+// правки нет; AInsert - ANew вставляется перед строкой ALine. После правки
+// файл сохраняется: окно читает его с диска и считает строки по нему.
+function TForm1.StrictEditLine(const AFile: string; ALine: Integer;
+                               const AOld, ANew: string;
+                               AInsert: Boolean): Boolean;
+var
+  LineStart, LineLen: Integer;
+begin
+  Result := False;
+  if ALine < 1 then
+    Exit;
+  OpenNamedFile(AFile);
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(AFile)) <> 0 then
+    Exit;
+  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALine - 1, 0);
+  if LineStart < 0 then
+    Exit;
+  LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+  if not AInsert and (ReadLineText(ALine - 1, LineStart, LineLen) <> AOld) then
+    Exit;
+  EditorFreeze;
+  try
+    RichEdit1.SelStart := LineStart;
+    if AInsert then
+    begin
+      RichEdit1.SelLength := 0;
+      RichEdit1.SelText := ANew + #13#10;
+    end
+    else
+    begin
+      RichEdit1.SelLength := LineLen;
+      RichEdit1.SelText := ANew;
+    end;
+  finally
+    EditorThaw;
+  end;
+  GotoLine(ALine - 1);
+  LogComp('Строгая проверка: ' + ExtractFileName(AFile) + ', строка ' +
+          IntToStr(ALine) + ' -> ' + Trim(ANew));
+  Result := SaveCurrentFile;
 end;
 
 // Ход строгой проверки - в панель занятости над редактором
@@ -12476,10 +12565,11 @@ function TForm1.RqStrictCheck(const ABas, AIncDir: string): Boolean;
 var
   Options: TRqFbOptions;
   ConvResult: TRqFbResult;
-  ConvMessages: TStringList;
+  ConvMessages, Roots: TStringList;
   MsgIdx: Integer;
   StartTick: Cardinal;
   Passed: Boolean;
+  SysDir, UserDir, Mode, OwnDir: string;
 begin
   Result := True;
   if not RqStrictOf(ABas) then
@@ -12491,6 +12581,7 @@ begin
   Passed := False;
   FRqFbProgTick := 0;
   ConvMessages := TStringList.Create;
+  try
   BusyBegin('Строгая проверка ' + ExtractFileName(ABas));
   try
     StartTick := GetTickCount;
@@ -12504,25 +12595,64 @@ begin
                      'подозрений %d, %d мс',
                      [ConvResult.WarningCount, ConvResult.SuspectCount,
                       GetTickCount - StartTick]))
+    else if RqStrictInfoOf(ABas) then
+      LogComp(Format('--- Строгая проверка: ошибок %d, предупреждений %d, ' +
+                     'подозрений %d. Info only - rc.exe собирает дальше. ' +
+                     'Двойной щелчок по строке открывает исходник',
+                     [ConvResult.ErrorCount, ConvResult.WarningCount,
+                      ConvResult.SuspectCount]))
     else
       LogComp(Format('--- Строгая проверка: ошибок %d, предупреждений %d, ' +
-                     'подозрений %d. rc.exe не запускается. Двойной щелчок по ' +
-                     'строке открывает исходник; собрать как есть - снять ' +
-                     'галку FB smart в рамке Project',
+                     'подозрений %d. Двойной щелчок по строке открывает ' +
+                     'исходник',
                      [ConvResult.ErrorCount, ConvResult.WarningCount,
                       ConvResult.SuspectCount]));
   finally
-    ConvMessages.Free;
     if Passed then
       BusyEnd('', True)
     else
       BusyEnd('Строгая проверка: ошибки', False);
   end;
-  if not Passed then
-  begin
+    if Passed then
+      Exit;
+    // Не прошла без ошибок - прервана (Esc, отмена сборки)
+    if ConvResult.ErrorCount = 0 then
+    begin
+      LogComp('Строгая проверка прервана - rc.exe не запускался');
+      Result := False;
+      Exit;
+    end;
     if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
       ShowErrLog;
-    Result := False;
+    // Info only - ошибки только в лог
+    if RqStrictInfoOf(ABas) then
+      Exit;
+    // Окно: причина каждой ошибки и что можно сделать
+    RapidQIncSettings(FCurrentProject, SysDir, UserDir, Mode, OwnDir);
+    Roots := TStringList.Create;
+    try
+      Roots.Add(AIncDir);
+      if CompareText(SysDir, AIncDir) <> 0 then
+        Roots.Add(SysDir);
+      if (UserDir <> '') and (CompareText(UserDir, AIncDir) <> 0) then
+        Roots.Add(UserDir);
+      Roots.Add(ExcludeTrailingPathDelimiter(ExtractFilePath(ABas)));
+      Roots.Add(ExtractFileDir(ExcludeTrailingPathDelimiter(
+                ExtractFilePath(ABas))));
+      if StrictFixDialog(Self, ConvMessages, Roots, ABas, AIncDir,
+                         StrictOpenLine, StrictEditLine) = mrIgnore then
+        LogComp('Строгая проверка: rc.exe собирает как есть (выбрано в окне)')
+      else
+      begin
+        LogComp('Строгая проверка: rc.exe не запускался. Исправленное ' +
+                'проверится при следующей сборке');
+        Result := False;
+      end;
+    finally
+      Roots.Free;
+    end;
+  finally
+    ConvMessages.Free;
   end;
 end;
 
@@ -21567,6 +21697,17 @@ begin
     chkRqStrict.ShowHint := True;
     chkRqStrict.Visible := False;
     chkRqStrict.OnClick := chkRqStrictClick;
+    chkRqInfo := TUiCheckBox.Create(Self);
+    chkRqInfo.Parent := cmbRqComp.Parent;
+    chkRqInfo.SetBounds(chkRqStrict.Left + chkRqStrict.Width + 4,
+                        chkRqStrict.Top, 80, 17);
+    chkRqInfo.Caption := 'Info only';
+    chkRqInfo.Hint := 'Ошибки строгой проверки - только в лог, rc.exe ' +
+                      'собирает дальше. Без галки - окно с вариантами ' +
+                      'исправления, rc.exe не запускается';
+    chkRqInfo.ShowHint := True;
+    chkRqInfo.Visible := False;
+    chkRqInfo.OnClick := chkRqStrictClick;
   end;
 
   // Точки останова: щелчок по полосе номеров строк

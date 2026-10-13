@@ -61,6 +61,8 @@ uses
   IniBuf in 'IniBuf.pas',
   DlgRqDeps in 'DlgRqDeps.pas',
   SchemeRtf in 'SchemeRtf.pas',
+  StrictFix in 'StrictFix.pas',
+  DlgStrictFix in 'DlgStrictFix.pas',
   RunConsole in 'RunConsole.pas';
 
 {$R *.res}
