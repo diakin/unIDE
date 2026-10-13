@@ -1229,10 +1229,6 @@ type
     // выбранный порт
     FArdHwScanned: Boolean;     // платы с диска прочитаны (FArdHw.Scan)
     FStartupDone: Boolean;      // был первый простой программы (AppIdle):
-    // При запуске потерянные файлы не ищутся (ResolveFileName): вопросы
-    // «Найдена копия» шли поверх недорисованного окна. Поиск - после
-    // первого простоя, сообщением WM_USER + 324 (WMRelocateDeferred).
-    FRelocateDeferred: Boolean;
     // запуск прошёл, см. OwnPromoteTrial
     FArdPortComboBusy: Boolean; // список плат на USB заполняется из кода
     FWatchList: TStringList;
@@ -2061,7 +2057,6 @@ type
     procedure WMObjRefresh(var Msg: TMessage); message WM_USER + 316;
     procedure WMObjCommit(var Msg: TMessage); message WM_USER + 317;
     procedure WMTabSwitched(var Msg: TMessage); message WM_USER + 319;
-    procedure WMRelocateDeferred(var Msg: TMessage); message WM_USER + 324;
     // Конец запуска: окно готово - показать его, закрыть окно загрузки
     procedure WMStartupFinish(var Msg: TMessage); message WM_USER + 330;
     procedure TabWorkStage(const AStage: string);
@@ -13679,14 +13674,6 @@ begin
   if (AFile = '') or FileExists(AFile) then
     Exit;
 
-  // Запуск ещё идёт: окно останется помеченным как потерянное, искать и
-  // спрашивать - когда окно среды уже нарисовано (WMRelocateDeferred)
-  if not FStartupDone then
-  begin
-    FRelocateDeferred := True;
-    Exit;
-  end;
-
   Found := RelocateFile(AFile);
   if Found = '' then
     Exit;
@@ -13900,16 +13887,6 @@ begin
   end;
 
   AskSaveRelocated(FCurrentProject, OldSample, NewSample, Changed);
-end;
-
-// Отложенный с запуска поиск потерянных файлов: окно среды уже нарисовано
-procedure TForm1.WMRelocateDeferred(var Msg: TMessage);
-begin
-  if not FRelocateDeferred then
-    Exit;
-  FRelocateDeferred := False;
-  if BrokenWindowsCount > 0 then
-    RelocateBrokenWindows;
 end;
 
 // Пункт Windows -> Find lost files...
@@ -51826,10 +51803,7 @@ begin
   // для отложенного нет: вопросы и прочее - только по видимому окну
   if StartupActive then
     Exit;
-  // Первый простой: окно показано, запуск прошёл (OwnPromoteTrial).
-  // Потерянные при запуске файлы - искать теперь, поверх нарисованного окна
-  if not FStartupDone and FRelocateDeferred then
-    PostMessage(Handle, WM_USER + 324, 0, 0);
+  // Первый простой: окно показано, запуск прошёл (OwnPromoteTrial)
   FStartupDone := True;
   // Простой наступает после КАЖДОГО сообщения, в том числе после каждого
   // движения мыши. Пока в конструкторе тянут компонент или рамку, вид
@@ -51853,8 +51827,8 @@ end;
 
 // Конец запуска (сообщение из FormShow): отложенный разбор карты - сейчас,
 // а не после показа; окно рисуется целиком, пока ещё прозрачное, и
-// становится видимым; окно загрузки закрывается. Отложенные вопросы и
-// действия (AppIdle: FStartupDone, поиск потерянных файлов) - после этого.
+// становится видимым; окно загрузки закрывается. Отложенное до первого
+// простоя (AppIdle: FStartupDone) - после этого.
 procedure TForm1.WMStartupFinish(var Msg: TMessage);
 begin
   if not StartupActive then
