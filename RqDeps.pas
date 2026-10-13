@@ -89,9 +89,12 @@ function RqLibExists(const ALib, AExeDir: string): Boolean;
 function RqDepTargetPath(ADep: TRqDep; const AIncDir, AMainDir: string): string;
 
 // Поиск недостающих на диске: ARoots - строки "шаг|папка" по порядку.
-// Копии - в Candidates / Where каждого. False - прервано.
+// Копии - в Candidates / Where каждого. AStopAfterInclude - если в
+// папках Include (шаги "Include ...") что-то нашлось, дальше не искать:
+// остальное - при следующем поиске без этого флага. False - прервано.
 function RqDepsFindOnDisk(AScan: TRqDepScan; ARoots: TStrings;
-                          AProgress: TIncProgress): Boolean;
+                          AProgress: TIncProgress;
+                          AStopAfterInclude: Boolean = False): Boolean;
 
 // Выбор копии: inc - первая, совпадающая с эталоном ARef (nil - без
 // сравнения), иначе первая по порядку
@@ -580,7 +583,8 @@ begin
 end;
 
 function RqDepsFindOnDisk(AScan: TRqDepScan; ARoots: TStrings;
-                          AProgress: TIncProgress): Boolean;
+                          AProgress: TIncProgress;
+                          AStopAfterInclude: Boolean): Boolean;
 var
   Names, Searched, StageList, Found, Done: TStringList;
   Collector: TRqDepCollector;
@@ -650,6 +654,9 @@ begin
         Continue;
       end;
 
+      // В папках Include нашлось - на первый раз хватит
+      if AStopAfterInclude and (Done.Count > 0) then
+        Break;
       // Остальные шаги - с подпапками, только то, что в папках Include не
       // нашлось
       Names.Clear;

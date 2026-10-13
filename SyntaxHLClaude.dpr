@@ -58,6 +58,7 @@ uses
   IncEdit in 'IncEdit.pas',
   DlgFindInc in 'DlgFindInc.pas' {DlgFindInc},
   RqDeps in 'RqDeps.pas',
+  IniBuf in 'IniBuf.pas',
   DlgRqDeps in 'DlgRqDeps.pas',
   RunConsole in 'RunConsole.pas';
 

@@ -72,7 +72,7 @@ type
     procedure FillList;
     procedure FillRow(AItem: TListItem);
     procedure ShowSelected;
-    procedure RunSearch;
+    procedure RunSearch(AFull: Boolean);
     procedure SetBusy(ABusy: Boolean);
     function  SelectedDep: TRqDep;
     procedure ProgressStep(const AText: string; var ACancel: Boolean);
@@ -578,15 +578,18 @@ begin
   chkIgnore.Enabled := not ABusy;
 end;
 
-procedure TRqDepsForm.RunSearch;
+// AFull = False (первый поиск при открытии окна): нашлось в папках
+// Include UnIde / Include User - на этом поиск кончается; остальное -
+// "Искать снова" (AFull = True), с папкой программы и папкой выше
+procedure TRqDepsForm.RunSearch(AFull: Boolean);
 var
   Done, NeedRef: Boolean;
-  ItemIdx, FoundCount: Integer;
+  ItemIdx, FoundCount, NotFound: Integer;
 begin
   SetBusy(True);
   try
     FillList;
-    Done := RqDepsFindOnDisk(FScan, FRoots, ProgressStep);
+    Done := RqDepsFindOnDisk(FScan, FRoots, ProgressStep, not AFull);
     // Эталон - только если есть копии inc для сравнения
     NeedRef := False;
     for ItemIdx := 0 to FScan.Count - 1 do
@@ -606,6 +609,11 @@ begin
         Inc(FoundCount);
     lblStatus.Caption := Format('Нет на месте: %d, найдены копии: %d',
                                 [FScan.MissingCount, FoundCount]);
+    NotFound := FScan.MissingCount - FoundCount;
+    if not AFull and (NotFound > 0) then
+      lblStatus.Caption := lblStatus.Caption + Format('. Не найдено в папках ' +
+        'Include: %d - "Искать снова" ищет их в папке программы и выше',
+        [NotFound]);
     if not Done then
       lblStatus.Caption := 'Поиск остановлен. ' + lblStatus.Caption;
   finally
@@ -619,7 +627,7 @@ end;
 procedure TRqDepsForm.StartTimerTick(Sender: TObject);
 begin
   FStartTimer.Enabled := False;
-  RunSearch;
+  RunSearch(False);
 end;
 
 procedure TRqDepsForm.btnSearchClick(Sender: TObject);
@@ -627,7 +635,7 @@ begin
   if FBusy then
     FAbort := True
   else
-    RunSearch;
+    RunSearch(True);
 end;
 
 procedure TRqDepsForm.CollectIgnore;

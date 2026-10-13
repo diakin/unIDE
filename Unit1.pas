@@ -3342,7 +3342,8 @@ type
     procedure SymHintSetup;
     procedure SymHintHide;
     procedure SymHintTimerTick(Sender: TObject);
-    procedure SaveFormBounds(Ini: TIniFile);
+    procedure SaveFormBounds(Ini: TCustomIniFile);
+    procedure IniOwnWritten(const AFile: string);
     procedure RestoreFormBounds(Ini: TIniFile);
 
     procedure SaveActiveClrSchema; // В public, чтобы Unit2 мог её вызвать
@@ -3468,6 +3469,7 @@ var
     RunConsole,   // Run консольной программы: окно не закрывается, текст - в лог
     DlgFindInc,   // поиск inc-файла (View) - FindIncShow
     RqDeps,       // перед сборкой RapidQ: есть ли все $INCLUDE, $RESOURCE, DLL
+    IniBuf,       // TBufIniFile - editor.ini одной записью (SaveSettings)
     UiStdDlgs,    // TUiColorDialog - диалог цвета в цветах темы (инспектор)
     DlgRqDeps,    // окно недостающих файлов - RqDepsBeforeBuild
     DlgDelPrj,    // Delete Projects - DeleteProjectClick
@@ -6466,7 +6468,7 @@ end;
 // GetWindowPlacement: у развёрнутого окна свойства формы дают размер во
 // весь экран, и при следующем запуске восстанавливать было бы нечего -
 // окно навсегда осталось бы «развёрнутым» по своим же координатам.
-procedure TForm1.SaveFormBounds(Ini: TIniFile);
+procedure TForm1.SaveFormBounds(Ini: TCustomIniFile);
 var
   WP: TWindowPlacement;
 begin
@@ -6523,13 +6525,15 @@ begin
     WindowState := wsMaximized;
 end;
 
+// editor.ini - одной записью (TBufIniFile): через TIniFile каждый ключ
+// переписывал весь файл, а ключей здесь десятки
 procedure TForm1.SaveSettings;
 var
-  Ini: TIniFile;
+  Ini: TBufIniFile;
   K: Integer;
 begin
   try
-    Ini := TIniFile.Create(SettingsFileName);
+    Ini := TBufIniFile.Create(SettingsFileName);
     try
       SaveFormBounds(Ini);
       Ini.WriteBool('Editor', 'HotTabHighlight', FUseHotTab);
@@ -7287,6 +7291,32 @@ begin
     Changed.Free;
     FDiskCheckBusy := False;
   end;
+end;
+
+// Ini-файл записал сам редактор (TBufIniFile): открытое окно этого файла
+// без правок перечитывается молча - проверка диска не примет запись за
+// изменение другой программой. Окно с правками не трогается: там вопрос
+// проверки диска нужен.
+procedure TForm1.IniOwnWritten(const AFile: string);
+var
+  WinIdx: Integer;
+  IsMod: Boolean;
+begin
+  // Запуск ещё идёт или окно закрывается - перечитывать нечего
+  if not FStartupDone or (csDestroying in ComponentState) then
+    Exit;
+  WinIdx := IndexOfWindowByFile(AFile);
+  if (WinIdx < 0) or not FWindows[WinIdx].Used or FWindows[WinIdx].Broken then
+    Exit;
+  if WinIdx = FWindowsIndex then
+    IsMod := RichEdit1.Modified
+  else
+    IsMod := FWindows[WinIdx].Modified;
+  if IsMod then
+    Exit;
+  if WinIdx = FWindowsIndex then
+    FWindows[WinIdx].CursorPos := RichEdit1.SelStart;
+  ReloadWindowFromDisk(WinIdx, False);
 end;
 
 procedure TForm1.NoteDisk(const AFile, AText: string);
@@ -12633,7 +12663,7 @@ end;
 // Objects хранит только признак галочки - Self или nil.
 procedure TForm1.HfSaveList;
 var
-  Ini: TIniFile;
+  Ini: TBufIniFile;
   ItemIdx: Integer;
 begin
   if FHfList = nil then
@@ -12647,7 +12677,7 @@ begin
     else
       FHotFolders.AddObject(FHfList.Items[ItemIdx], nil);
   try
-    Ini := TIniFile.Create(SettingsFileName);
+    Ini := TBufIniFile.Create(SettingsFileName);
     try
       Ini.EraseSection('HotFolders');
       for ItemIdx := 0 to FHotFolders.Count - 1 do
@@ -19343,13 +19373,13 @@ end;
 procedure TForm1.FifSaveSettings;
 var
   Dlg: TDlgFifDisk;
-  Ini: TIniFile;
+  Ini: TBufIniFile;
   AllExts, CheckedExts, OffExts, OldOff, Ext: string;
   ItemIdx, SemiAt: Integer;
   Present: string;
 begin
   Dlg := TDlgFifDisk(FFifDlg);
-  Ini := TIniFile.Create(SettingsFileName);
+  Ini := TBufIniFile.Create(SettingsFileName);
   try
     if FFifProject then
     begin
@@ -21189,6 +21219,8 @@ begin
   FWatchCondTexts := TStringList.Create;
   PaintBox1.OnMouseDown := PaintBox1MouseDown;
 
+  // editor.ini записан самим редактором (TBufIniFile) - не правка снаружи
+  IniBufOnWritten := IniOwnWritten;
   HangWatchStart(Application.Handle,
                  ExtractFilePath(Application.ExeName) + 'hang.log', Handle);
 
@@ -21646,6 +21678,7 @@ var
 begin
   // Сторож - первым: дальше главный поток занят закрытием, и это не
   // зависание
+  IniBufOnWritten := nil;
   HangWatchStop;
   WndWatchStop;
   // Пробная сборка редактора запустилась и закрывается - она рабочая.
