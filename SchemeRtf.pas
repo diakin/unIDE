@@ -24,8 +24,14 @@ uses
 // AText - текст файла; AFontName, AFontPt - шрифт. Цвет фона окна просмотра
 // - SchemePageColor: подложка символов с ним совпадает, и \highlight
 // пишется только там, где подложка другая (CUSTOM-комментарии и т.п.).
+// AMarkLines - номера строк (с 1, Integer в Pointer), которые выделить как
+// ошибочные: красным жирным текстом и красноватой подложкой. Подложку
+// (\highlight) RichEdit 1.0 может не показать - красный текст виден всегда.
+// Разбор строки при этом идёт как обычно: блочный комментарий, начатый в
+// ней, продолжается и дальше.
 function SchemeTextToRtf(const AText: string; AScheme: TClrScheme;
-                         const AFontName: string; AFontPt: Integer): string;
+                         const AFontName: string; AFontPt: Integer;
+                         AMarkLines: TList = nil): string;
 function SchemePageColor(AScheme: TClrScheme): TColor;
 
 implementation
@@ -79,7 +85,8 @@ begin
 end;
 
 function SchemeTextToRtf(const AText: string; AScheme: TClrScheme;
-                         const AFontName: string; AFontPt: Integer): string;
+                         const AFontName: string; AFontPt: Integer;
+                         AMarkLines: TList): string;
 var
   Body: TRtfBuf;
   Colors: TList;          // RGB цветов таблицы; индекс в \cf = позиция + 1
@@ -88,6 +95,8 @@ var
   TextFg, PageBg: TColor;
   CurFg, CurBg: TColor;   // цвета, которые сейчас действуют в RTF
   InBlock: Integer;       // пара маркеров открытого блочного комментария, -1
+  LineMarked: Boolean;    // эта строка - с ошибкой (AMarkLines)
+  MarkFg, MarkBg: TColor; // её цвета
   LineIdx, CharPos, LineLen, GroupIdx, WordIdx: Integer;
   Line: string;
 
@@ -110,6 +119,11 @@ var
   begin
     if AChunk = '' then
       Exit;
+    if LineMarked then
+    begin
+      AFg := MarkFg;
+      ABg := MarkBg;
+    end;
     if (AFg = clNone) or (AFg = clDefault) then
       AFg := TextFg;
     if (ABg = clNone) or (ABg = clDefault) then
@@ -390,6 +404,22 @@ begin
     CurFg := TextFg;
     CurBg := PageBg;
     ColorIndex(TextFg);   // \cf1 - цвет текста
+    LineMarked := False;
+    // Ошибочная строка: на тёмном фоне - светло-красный текст, на светлом -
+    // тёмно-красный; подложка - фон с примесью красного
+    Rgb := ColorToRGB(PageBg);
+    if (Rgb and $FF) + ((Rgb shr 8) and $FF) + ((Rgb shr 16) and $FF) < 384 then
+    begin
+      MarkFg := TColor($006060FF);
+      MarkBg := TColor(((Rgb and $FF) * 6 div 10 + $66) or
+                       ((((Rgb shr 8) and $FF) * 6 div 10) shl 8) or
+                       ((((Rgb shr 16) and $FF) * 6 div 10) shl 16));
+    end
+    else
+    begin
+      MarkFg := TColor($000000B0);
+      MarkBg := TColor($00D8D8FF);
+    end;
 
     Keywords.CaseSensitive := False;
     Keywords.Sorted := True;
@@ -408,6 +438,15 @@ begin
       Line := Lines[LineIdx];
       LineLen := Length(Line);
       CharPos := 1;
+      LineMarked := (AMarkLines <> nil) and
+                    (AMarkLines.IndexOf(Pointer(LineIdx + 1)) >= 0);
+      if LineMarked then
+      begin
+        Body.Add('\b ');
+        // Пустая ошибочная строка - пробел, чтобы подложка была видна
+        if LineLen = 0 then
+          Emit(' ', TextFg, PageBg);
+      end;
       if InBlock >= 0 then
         EmitBlockTail;
       while CharPos <= LineLen do
@@ -418,6 +457,8 @@ begin
         Emit(Line[CharPos], TextFg, PageBg);
         Inc(CharPos);
       end;
+      if LineMarked then
+        Body.Add('\b0 ');
       Body.Add('\par'#13#10);
     end;
 

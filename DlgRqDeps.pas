@@ -612,6 +612,9 @@ var
   Stream: TFileStream;
   RtfStream: TStringStream;
   Buf: string;
+  ErrLines: TList;
+  ItemIdx, HeadIdx, LineNo: Integer;
+  Txt: string;
 begin
   // Без этого RichEdit берёт не больше 32К знаков
   memPreview.Perform(EM_EXLIMITTEXT, 0, $7FFFFFF0);
@@ -635,14 +638,41 @@ begin
     end;
     if FScheme <> nil then
     begin
-      memPreview.Color := SchemePageColor(FScheme);
-      RtfStream := TStringStream.Create(SchemeTextToRtf(AdjustLineBreaks(Buf),
-                                        FScheme, 'Courier New', 9));
+      // Строки с ошибками этого файла - из последней его проверки в списке
+      // ошибок: от последней строки с его именем до следующего файла
+      ErrLines := TList.Create;
       try
-        memPreview.PlainText := False;
-        memPreview.Lines.LoadFromStream(RtfStream);
+        HeadIdx := -1;
+        for ItemIdx := 0 to lbReport.Items.Count - 1 do
+          if (lbReport.Items.Objects[ItemIdx] <> nil) and
+             (CompareText(FReportPaths[ItemIdx], AFile) = 0) then
+            HeadIdx := ItemIdx;
+        if HeadIdx >= 0 then
+          for ItemIdx := HeadIdx + 1 to lbReport.Items.Count - 1 do
+          begin
+            if (lbReport.Items.Objects[ItemIdx] <> nil) or
+               (CompareText(FReportPaths[ItemIdx], AFile) <> 0) then
+              Break;
+            // "    стр. 16: ошибка: ..." (строки без "ошибка:" - замечания)
+            Txt := TrimLeft(lbReport.Items[ItemIdx]);
+            if (Copy(Txt, 1, 5) = 'стр. ') and (Pos('ошибка:', Txt) > 0) then
+            begin
+              LineNo := StrToIntDef(Copy(Txt, 6, Pos(':', Txt) - 6), 0);
+              if LineNo > 0 then
+                ErrLines.Add(Pointer(LineNo));
+            end;
+          end;
+        memPreview.Color := SchemePageColor(FScheme);
+        RtfStream := TStringStream.Create(SchemeTextToRtf(AdjustLineBreaks(Buf),
+                                          FScheme, 'Courier New', 9, ErrLines));
+        try
+          memPreview.PlainText := False;
+          memPreview.Lines.LoadFromStream(RtfStream);
+        finally
+          RtfStream.Free;
+        end;
       finally
-        RtfStream.Free;
+        ErrLines.Free;
       end;
     end
     else
