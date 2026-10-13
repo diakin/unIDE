@@ -3444,6 +3444,7 @@ var
     RunConsole,   // Run консольной программы: окно не закрывается, текст - в лог
     DlgFindInc,   // поиск inc-файла (View) - FindIncShow
     RqDeps,       // перед сборкой RapidQ: есть ли все $INCLUDE, $RESOURCE, DLL
+    UiStdDlgs,    // TUiColorDialog - диалог цвета в цветах темы (инспектор)
     DlgRqDeps,    // окно недостающих файлов - RqDepsBeforeBuild
     DlgDelPrj,    // Delete Projects - DeleteProjectClick
     DlgBmClear,   // Clear List закладок - BmClearClick
@@ -31241,14 +31242,15 @@ end;
 // числом: $00BBGGRR (Delphi) или &HBBGGRR (RapidQ)
 procedure TForm1.ObjComboDblClick(Sender: TObject);
 var
-  Dlg: TColorDialog;
+  Dlg: TUiColorDialog;
   CurColor: TColor;
 begin
   if not FObjEditing or (FObjActive <> FObjCombo) or not FObjComboColors then
     Exit;
   if FObjCombo.DroppedDown then
     FObjCombo.DroppedDown := False;
-  Dlg := TColorDialog.Create(Self);
+  // Свой диалог в цветах темы IDE (UiStdDlgs), как в IDE Options
+  Dlg := TUiColorDialog.Create(Self);
   FObjInColorDlg := True;
   try
     Dlg.Options := [cdFullOpen, cdAnyColor];
