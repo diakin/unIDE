@@ -1891,6 +1891,9 @@ type
     // "Да для всех" в диалоге подтверждения находки. Живёт ровно один
     // прогон поиска: сбрасывается перед каждым пакетом.
     FRelocateAll: Boolean;
+    // Последняя находка RelocateFile - из папки Include (inc_standard): её
+    // открывают оттуда, на прежнее место не копируют (ConfirmRelocate)
+    FRelocateFromInc: Boolean;
     // Автопоиск потерянного файла в дереве над папкой программы
     // (RelocateFile -> FindFileInTree) ограничен по времени: над exe может
     // лежать весь диск. FRelocateUpEnd - до какого GetTickCount искать при
@@ -2094,6 +2097,7 @@ type
     function  ParentOfExeDir: string;
     function  SuggestDir: string;
     function  ConfirmRelocate(const AOld, ANew: string): string;
+    function  RelocateIncStandard(const AFile: string): string;
     procedure HfTreeExpanding(Sender: TObject; Node: TTreeNode;
                               var AllowExpansion: Boolean);
     procedure HfTreeChange(Sender: TObject; Node: TTreeNode);
@@ -12783,10 +12787,16 @@ begin
   Result := '';
 
   Dir := ExtractFilePath(AOld);
-  CanCopy := (Dir <> '') and DirectoryExists(Dir);
+  CanCopy := (Dir <> '') and DirectoryExists(Dir) and not FRelocateFromInc;
 
   if not FRelocateAll then
   begin
+    if FRelocateFromInc then
+      Msg := 'Файл не найден:'#13#10 + AOld + #13#10#13#10 +
+      'Есть в папке Include (общая папка inc):'#13#10 + ANew + #13#10#13#10 +
+      'Открыть его оттуда? На прежнее место он не копируется.'
+    else
+    begin
     Msg := 'Файл не найден:'#13#10 + AOld + #13#10#13#10 +
     'Найдена копия:'#13#10 + ANew + #13#10#13#10;
 
@@ -12795,6 +12805,7 @@ if CanCopy then
     else
       Msg := Msg + 'Прежней папки больше нет.'#13#10 +
       'Открыть файл прямо по найденному пути?';
+    end;
 
 Res := MessageDlg('7588:' + Msg, mtConfirmation, [mbYes, mbNo, mbYesToAll], 0);
 
@@ -12960,6 +12971,37 @@ begin
   end;
 end;
 
+// Потерянный .inc / .cmp с тем же именем в папке Include: из настроек
+// компилятора RapidQ (IncPath), иначе rapidq_ref\inc_standard рядом с
+// программой. '' - нет.
+function TForm1.RelocateIncStandard(const AFile: string): string;
+var
+  Ext, SysDir, UserDir, Mode, OwnDir, Cand: string;
+  DirIdx: Integer;
+begin
+  Result := '';
+  Ext := LowerCase(ExtractFileExt(AFile));
+  if (Ext <> '.inc') and (Ext <> '.cmp') then
+    Exit;
+  RapidQIncSettings('', SysDir, UserDir, Mode, OwnDir);
+  for DirIdx := 0 to 1 do
+  begin
+    if DirIdx = 0 then
+      Cand := UserDir
+    else
+      Cand := ExtractFilePath(Application.ExeName) + 'rapidq_ref\inc_standard';
+    if (Cand = '') or not DirectoryExists(Cand) then
+      Continue;
+    Cand := IncludeTrailingPathDelimiter(Cand) + ExtractFileName(AFile);
+    if FileExists(Cand) and
+       (CompareText(ExpandFileName(Cand), ExpandFileName(AFile)) <> 0) then
+    begin
+      Result := Cand;
+      Exit;
+    end;
+  end;
+end;
+
 // Полный поиск потерянного файла: сначала рядом с программой, потом в папке
 // уровнем выше, и только в самом конце - по отмеченным горячим папкам.
 //
@@ -12986,8 +13028,19 @@ var
 
 begin
   Result := '';
+  FRelocateFromInc := False;
   if AFile = '' then
     Exit;
+
+  // inc RapidQ - сначала в папке Include (inc_standard): там старые inc под
+  // своими именами, а файлы из inc_sys и incOld переехали туда или
+  // переименованы (debug.inc -> debug_sys.inc)
+  Result := RelocateIncStandard(AFile);
+  if Result <> '' then
+  begin
+    FRelocateFromInc := True;
+    Exit;
+  end;
 
   // Имя папки, в которой файл лежал раньше
   Parent := ExtractFileName(
