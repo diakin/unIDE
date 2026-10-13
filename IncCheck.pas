@@ -1011,17 +1011,45 @@ begin
   end;
 end;
 
+// Код строки для сравнения: пробелы и табуляции подряд - один пробел
+function CollapseSpaces(const AText: string): string;
+var
+  CharIdx: Integer;
+  PrevSpace: Boolean;
+begin
+  Result := '';
+  PrevSpace := False;
+  for CharIdx := 1 to Length(AText) do
+    if AText[CharIdx] in [' ', #9] then
+      PrevSpace := True
+    else
+    begin
+      if PrevSpace and (Result <> '') then
+        Result := Result + ' ';
+      PrevSpace := False;
+      Result := Result + AText[CharIdx];
+    end;
+end;
+
 // Исправления эталона (строки с "inc2026:"), которых нет в файле. Номер
-// строки в файле - по ближайшей предыдущей строке эталона, найденной в нём
-// (опорной), и отступу от неё в эталоне: строки без кода (пустые и
-// комментарии) между опорной и исправленной пропускаются, но не дальше
-// этого отступа.
+// строки в файле ищется между опорными строками - ближайшей строкой
+// эталона перед исправленной и ближайшей после неё, найденными в файле:
+//  1. строка с тем же текстом, что исправленная строка эталона без заметки
+//     inc2026 (и без ' перед ней, если строку в эталоне закомментировали):
+//     RAPIDQ.INC '$define int integer - в файле $define int integer;
+//  2. нет такой - опорная после: место, куда встаёт строка, добавленная в
+//     эталоне (RAPIDQ.INC $IFNDEF FALSE - перед $define False 0);
+//  3. нет и её - строка за опорной до, строки без кода пропускаются, но не
+//     дальше отступа исправленной от опорной в эталоне.
 procedure CheckRefFixes(AInfo: TIncFileInfo; ALines, ARefLines: TStrings);
 var
   UserNorm: TStringList;
   RefIdx, UserIdx, LastFound, Shown, Hidden: Integer;
   RefAnchor: Integer;   // строка эталона, совпавшая с LastFound файла
   TargetIdx: Integer;   // строка файла для сообщения (с 0)
+  NextIdx: Integer;     // опорная после исправленной (строка файла), -1
+  RefScan, RefTried, NotePos: Integer;
+  RefKey, NextKey, RefBody: string;
   Line, Up, Code, Blank, Note: string;
   Fixed: Boolean;
 begin
@@ -1081,14 +1109,66 @@ begin
         Continue;
       end;
       Inc(Shown);
-      // Строка за опорной; пустые и одни комментарии - пропустить, как в
-      // эталоне между опорной и исправленной (RAPIDQ.INC: fileexist,
-      // пустая, $define int)
-      TargetIdx := LastFound + 1;
-      while (TargetIdx < UserNorm.Count - 1) and
-            (UserNorm[TargetIdx] = '') and
-            (TargetIdx - LastFound < RefIdx - RefAnchor) do
-        Inc(TargetIdx);
+      // Опорная после: первая из следующих строк кода эталона (до пяти),
+      // что нашлась в файле за опорной до, не дальше 200 строк
+      NextIdx := -1;
+      RefTried := 0;
+      RefScan := RefIdx + 1;
+      while (NextIdx < 0) and (RefTried < 5) and (RefScan < ARefLines.Count) do
+      begin
+        if Pos('INC2026:', UpperCase(ARefLines[RefScan])) = 0 then
+        begin
+          IncSplitLine(ARefLines[RefScan], Code, Blank);
+          NextKey := CollapseSpaces(UpperCase(Code));
+          if NextKey <> '' then
+          begin
+            Inc(RefTried);
+            for UserIdx := LastFound + 1 to UserNorm.Count - 1 do
+            begin
+              if UserIdx > LastFound + 200 then
+                Break;
+              if CollapseSpaces(UserNorm[UserIdx]) = NextKey then
+              begin
+                NextIdx := UserIdx;
+                Break;
+              end;
+            end;
+          end;
+        end;
+        Inc(RefScan);
+      end;
+      // Текст исправленной строки без заметки и без ' в начале
+      NotePos := Pos('INC2026:', UpperCase(Line));
+      RefBody := Trim(Copy(Line, 1, NotePos - 1));
+      if (RefBody <> '') and (RefBody[Length(RefBody)] = '''') then
+        RefBody := Trim(Copy(RefBody, 1, Length(RefBody) - 1));
+      if (RefBody <> '') and (RefBody[1] = '''') then
+        RefBody := Trim(Copy(RefBody, 2, MaxInt));
+      IncSplitLine(RefBody, Code, Blank);
+      RefKey := CollapseSpaces(UpperCase(Code));
+      TargetIdx := -1;
+      if RefKey <> '' then
+        for UserIdx := LastFound + 1 to UserNorm.Count - 1 do
+        begin
+          if ((NextIdx >= 0) and (UserIdx >= NextIdx)) or
+             ((NextIdx < 0) and (UserIdx > LastFound + 20)) then
+            Break;
+          if CollapseSpaces(UserNorm[UserIdx]) = RefKey then
+          begin
+            TargetIdx := UserIdx;
+            Break;
+          end;
+        end;
+      if (TargetIdx < 0) and (NextIdx >= 0) then
+        TargetIdx := NextIdx;
+      if TargetIdx < 0 then
+      begin
+        TargetIdx := LastFound + 1;
+        while (TargetIdx < UserNorm.Count - 1) and
+              (UserNorm[TargetIdx] = '') and
+              (TargetIdx - LastFound < RefIdx - RefAnchor) do
+          Inc(TargetIdx);
+      end;
       AInfo.AddMsg(TargetIdx + 1, True, 'в эталоне исправлено (' +
                    ExtractFileName(AInfo.RefFile) + ', стр. ' +
                    IntToStr(RefIdx + 1) + '): ' + Note);
