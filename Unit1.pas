@@ -50127,12 +50127,30 @@ begin
   end;
 end;
 
-// Список модулей по цели сборки (DelphiTargetDpr)
+// Список модулей по цели сборки: у RapidQ .dpr нет - главный .bas проекта
+// (RapidQTargetBas), а без него - открытый файл RapidQ; формы - блоки
+// CREATE ... AS QFORM, те же, что в дереве Objects (FillModuleListOf,
+// FillRapidQ). Иначе - .dpr (DelphiTargetDpr).
 procedure TForm1.FillModuleList;
 var
   Dpr: string;
 begin
-  Dpr := DelphiTargetDpr;
+  Dpr := '';
+  if (FCurrentFileName <> '') and
+     (IsRapidQSource(FCurrentFileName) or (CurBuildKind = bkRapidQ)) then
+  begin
+    Dpr := RapidQTargetBas(False);
+    if (Dpr = '') and IsRapidQSource(FCurrentFileName) then
+      Dpr := FCurrentFileName;
+    if Dpr = '' then
+    begin
+      ShowMessage('26766:Главный .bas проекта не найден. Откройте главный ' +
+                  '.bas программы RapidQ.');
+      Exit;
+    end;
+  end
+  else
+    Dpr := DelphiTargetDpr;
   if Dpr = '' then
   begin
     ShowMessage('26766:Цель сборки не задана. Откройте .dpr проекта.');
