@@ -174,6 +174,7 @@ begin
   Font.Name := 'Tahoma';
   Font.Height := -11;
   ShowHint := True;
+  AutoScroll := False;   // всё размещает выравнивание, прокрутка не нужна
   OnCloseQuery := FormCloseQuery;
 
   lblInfo := TLabel.Create(Self);
@@ -657,8 +658,8 @@ end;
 
 // Середина окна под списком недостающих, сверху вниз: копии на диске (если
 // их несколько) | панель-предложение | список ошибок | просмотр. Порядок
-// alTop - по Top: здесь Top задаётся по порядку ниже всех прочих, при
-// выключенном выравнивании, и выравнивание расставляет их разом.
+// alTop - по Top: здесь Top задаётся по порядку ниже списка недостающих,
+// при выключенном выравнивании, и выравнивание расставляет их разом.
 procedure TRqDepsForm.ArrangeTop;
 var
   Dep: TRqDep;
@@ -669,14 +670,16 @@ var
     if AShow then
     begin
       ACtl.Top := NextTop;
-      Inc(NextTop, ACtl.Height + 1);
+      Inc(NextTop);
     end;
     ACtl.Visible := AShow;
   end;
 
 begin
   Dep := SelectedDep;
-  NextTop := ClientHeight;
+  // Сразу под сплиттером недостающих и по 1 вниз: порядок задан, а
+  // Top не уходит за окно (за окном у формы появлялась прокрутка)
+  NextTop := splDeps.Top + splDeps.Height + 1;
   DisableAlign;
   try
     Place(pnlCands, (Dep <> nil) and (Dep.Candidates.Count > 1));
