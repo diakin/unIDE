@@ -442,17 +442,28 @@ end;
 
 // Имена, определённые на уровне файла: CONST, TYPE, SUB/FUNCTION вне
 // классов, DECLARE, $DEFINE, DIM и CREATE вне процедур. ANames: ИМЯ, Objects
-// - номер строки (с 1). Имена защиты (__X) не считаются.
-procedure IncDefinedNames(ALines: TStrings; ANames: TStrings);
+// - номер строки (с 1). Имена защиты (__X) не считаются. ASkipGuarded -
+// не считать и имя, определённое внутри $IFNDEF с этим же именем:
+//   $IFNDEF FALSE / $DEFINE False 0 / $ENDIF
+// - с общими inc оно не столкнётся, повтор пропустит сам $IFNDEF. Так -
+// для проверяемого файла; для общих inc (эталон имён) имя считается: с ним
+// столкнётся незащищённое определение в другом файле.
+procedure IncDefinedNames(ALines: TStrings; ANames: TStrings;
+                          ASkipGuarded: Boolean);
 var
   LineIdx, TypeDepth, ProcDepth, StmtIdx: Integer;
   Code, Blank, Up: string;
   InBrem: Boolean;
   Stmts: TStringList;
+  // Открытые $IF-блоки: имя из $IFNDEF X (верхний регистр) или '' -
+  // $IFDEF, $IF и ветка $ELSE, которые от повтора не защищают
+  CondStack: TStringList;
 
   procedure AddName(const AName: string);
   begin
     if (AName = '') or (Copy(AName, 1, 2) = '__') then
+      Exit;
+    if ASkipGuarded and (CondStack.IndexOf(UpperCase(AName)) >= 0) then
       Exit;
     ANames.AddObject(UpperCase(AName), TObject(LineIdx + 1));
   end;
@@ -463,6 +474,29 @@ var
     Name, Kw: string;
   begin
     Kw := FirstWord(Up);
+    // Условные блоки - для защиты имён своим $IFNDEF
+    if Kw = '$IFNDEF' then
+    begin
+      CondStack.Add(FirstWord(AfterWord(Up)));
+      Exit;
+    end;
+    if (Kw = '$IFDEF') or (Kw = '$IF') then
+    begin
+      CondStack.Add('');
+      Exit;
+    end;
+    if Kw = '$ELSE' then
+    begin
+      if CondStack.Count > 0 then
+        CondStack[CondStack.Count - 1] := '';
+      Exit;
+    end;
+    if Kw = '$ENDIF' then
+    begin
+      if CondStack.Count > 0 then
+        CondStack.Delete(CondStack.Count - 1);
+      Exit;
+    end;
     if (Kw = 'END') then
     begin
       Kw := FirstWord(AfterWord(Up));
@@ -524,6 +558,7 @@ var
 
 begin
   Stmts := TStringList.Create;
+  CondStack := TStringList.Create;
   try
     TypeDepth := 0;
     ProcDepth := 0;
@@ -550,6 +585,7 @@ begin
         DoStatement(Stmts[StmtIdx]);
     end;
   finally
+    CondStack.Free;
     Stmts.Free;
   end;
 end;
@@ -679,7 +715,7 @@ begin
         Lines.Clear;
       end;
       Names.Clear;
-      IncDefinedNames(Lines, Names);
+      IncDefinedNames(Lines, Names, False);
       for NameIdx := 0 to Names.Count - 1 do
         FDefined.Add(Names[NameIdx] + '=' + ExtractFileName(Files[FileIdx]));
     end;
@@ -966,7 +1002,7 @@ begin
     Exit;
   Names := TStringList.Create;
   try
-    IncDefinedNames(ALines, Names);
+    IncDefinedNames(ALines, Names, True);
     Clashes := 0;
     ClashList := '';
     for NameIdx := 0 to Names.Count - 1 do
