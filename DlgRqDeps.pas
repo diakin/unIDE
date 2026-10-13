@@ -34,6 +34,29 @@ function RqDepsDialog(AOwner: TComponent; AScan: TRqDepScan; ARoots: TStrings;
 implementation
 
 type
+  // TRichEdit Delphi 7 создаёт окно RichEdit 1.0 (RICHED32.DLL, класс
+  // RICHEDIT). Оно не показывает подложку символов из RTF (\highlight), а
+  // ею просмотр выделяет строки с ошибками и строку перехода. Этот - то же
+  // самое окном RichEdit 2.0 (RICHED20.DLL, класс RichEdit20A); нет DLL -
+  // остаётся 1.0.
+  TRichEdit20 = class(TRichEdit)
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
+  end;
+
+var
+  RichEdit20Lib: HMODULE = 0;
+
+procedure TRichEdit20.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  if RichEdit20Lib = 0 then
+    RichEdit20Lib := LoadLibrary('RICHED20.DLL');
+  if RichEdit20Lib <> 0 then
+    CreateSubClass(Params, 'RichEdit20A');
+end;
+
+type
   TRqDepsForm = class(TForm)
   private
     FScan: TRqDepScan;
@@ -55,7 +78,7 @@ type
     lvCands: TListView;     // копии на диске: путь, размер, создан, изменён
     splDeps: TSplitter;
     splCands: TSplitter;
-    memPreview: TRichEdit;  // текст копии, выделенной в lvCands
+    memPreview: TRichEdit20;  // текст копии, выделенной в lvCands
     // Схема подсветки просмотра (не своя - её освобождает вызвавший); nil -
     // просмотр без подсветки
     FScheme: TClrScheme;
@@ -381,7 +404,7 @@ begin
   splReport.Visible := False;
   FReportPaths := TStringList.Create;
 
-  memPreview := TRichEdit.Create(Self);
+  memPreview := TRichEdit20.Create(Self);
   memPreview.Parent := Self;
   memPreview.Align := alClient;
   memPreview.ReadOnly := True;
@@ -1340,5 +1363,11 @@ begin
     Dlg.Free;
   end;
 end;
+
+initialization
+
+finalization
+  if RichEdit20Lib <> 0 then
+    FreeLibrary(RichEdit20Lib);
 
 end.
