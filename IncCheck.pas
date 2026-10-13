@@ -100,11 +100,16 @@ procedure IncCheckFile(AInfo: TIncFileInfo; ARef: TIncRefIndex);
 // исправить в самом файле AFile: директива без $ (DEFINE -> $DEFINE),
 // число с суффиксом U/L из C (880U -> 880), запись 0x из C (0x1F -> &H1F),
 // ";" вне строки (кроме строк с PRINT) -> '. Внутри brem ... erem и в
-// строках "..." не трогается. Прежний текст - в <файл>.bak (если такого
-// ещё нет). В AReport - строки "стр. N: было -> стало". Результат - число
-// исправленных строк; -1 - файл не прочитан или не записан (AError).
+// строках "..." не трогается. Прежний текст - копией байт в байт в
+// <файл>.bak (занят - .bak2, .bak3 ...), её имя - в ABackup ('' - ничего
+// не исправлено): по ней исправление отменяют (IncUndoFix). В AReport -
+// строки "стр. N: было -> стало". Результат - число исправленных строк;
+// -1 - файл не прочитан или не записан (AError).
 function IncAutoFix(const AFile: string; AReport: TStrings;
-                    var AError: string): Integer;
+                    var ABackup, AError: string): Integer;
+// Отменить IncAutoFix: исправленный AFile удалить, ABackup - обратно в
+// AFile. False - не вышло (AError).
+function IncUndoFix(const AFile, ABackup: string; var AError: string): Boolean;
 
 // Защитный $IFNDEF в начало и $ENDIF в конец файла. Прежний текст - в
 // <файл>.bak (если такого ещё нет; ABackup = False - без него: файл - свежая
@@ -1237,17 +1242,40 @@ begin
   end;
 end;
 
+function IncUndoFix(const AFile, ABackup: string; var AError: string): Boolean;
+begin
+  Result := False;
+  AError := '';
+  if (ABackup = '') or not FileExists(ABackup) then
+  begin
+    AError := 'нет копии ' + ABackup;
+    Exit;
+  end;
+  if FileExists(AFile) and not DeleteFile(AFile) then
+  begin
+    AError := 'не удалось удалить ' + AFile;
+    Exit;
+  end;
+  if not RenameFile(ABackup, AFile) then
+  begin
+    AError := 'не удалось переименовать ' + ABackup + ' в ' + AFile;
+    Exit;
+  end;
+  Result := True;
+end;
+
 function IncAutoFix(const AFile: string; AReport: TStrings;
-                    var AError: string): Integer;
+                    var ABackup, AError: string): Integer;
 var
   Lines: TStringList;
   Src, Dst: TFileStream;
-  LineIdx, CommentAt, CharIdx, SemiAt: Integer;
+  LineIdx, CommentAt, CharIdx, SemiAt, BakIdx: Integer;
   Line, Code, Rest, Fixed, Kw, Lead: string;
   InBrem, InStr: Boolean;
 begin
   Result := 0;
   AError := '';
+  ABackup := '';
   Lines := TStringList.Create;
   try
     try
@@ -1325,12 +1353,18 @@ begin
     if Result = 0 then
       Exit;
     try
-      // .bak - байт в байт как было
-      if not FileExists(AFile + '.bak') then
+      // .bak - байт в байт как было; имя занято - .bak2, .bak3 ...
+      ABackup := AFile + '.bak';
+      BakIdx := 1;
+      while FileExists(ABackup) do
+      begin
+        Inc(BakIdx);
+        ABackup := AFile + '.bak' + IntToStr(BakIdx);
+      end;
       begin
         Src := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
         try
-          Dst := TFileStream.Create(AFile + '.bak', fmCreate);
+          Dst := TFileStream.Create(ABackup, fmCreate);
           try
             Dst.CopyFrom(Src, 0);
           finally

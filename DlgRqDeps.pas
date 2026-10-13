@@ -63,6 +63,10 @@ type
     btnBuild: TUiButton;
     btnCancel: TUiButton;
     btnFix: TUiButton;      // проверить выбранную копию inc и исправить
+    btnUndo: TUiButton;     // отменить исправления файлов
+    // Исправленные файлы и их копии до исправления (IncAutoFix) - для Undo
+    FFixFiles: TStringList;
+    FFixBaks: TStringList;
     lblStatus: TLabel;
     procedure BuildControls;
     procedure FillList;
@@ -84,6 +88,11 @@ type
     procedure btnCopyClick(Sender: TObject);
     procedure btnBuildClick(Sender: TObject);
     procedure btnFixClick(Sender: TObject);
+    procedure btnUndoClick(Sender: TObject);
+    function  CheckFiles(AFiles, AReport: TStrings): Integer;
+    procedure FixFiles(AFiles, AReport: TStrings);
+    procedure CheckUserIncludes;
+    function  EnsureRef: Boolean;
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure CollectIgnore;
   public
@@ -99,6 +108,8 @@ end;
 
 destructor TRqDepsForm.Destroy;
 begin
+  FFixFiles.Free;
+  FFixBaks.Free;
   FRef.Free;
   inherited Destroy;
 end;
@@ -188,7 +199,13 @@ begin
   btnBuild := MakeButton('Собрать без копирования', 354, 170, btnBuildClick);
   btnCancel := MakeButton('Отмена', 532, 90, nil);
   btnCancel.ModalResult := mrCancel;
-  btnFix := MakeButton('Проверить и исправить', 630, 170, btnFixClick);
+  btnFix := MakeButton('Проверить и исправить', 630, 160, btnFixClick);
+  btnUndo := MakeButton('Undo', 796, 70, btnUndoClick);
+  btnUndo.Hint := 'Отменить исправления: исправленные файлы удалить, ' +
+                  'прежние вернуть из .bak';
+  btnUndo.Enabled := False;
+  FFixFiles := TStringList.Create;
+  FFixBaks := TStringList.Create;
   btnFix.Hint := 'Проверка INC Manager выбранной копии inc; однозначные ' +
                  'ошибки (директивы без $, U/L и 0x из C, ";" вне строки) - ' +
                  'исправить в самом файле, прежний текст - в .bak';
@@ -555,6 +572,7 @@ begin
     btnSearch.Caption := 'Искать снова';
   btnCopy.Enabled := not ABusy;
   btnFix.Enabled := not ABusy;
+  btnUndo.Enabled := not ABusy and (FFixFiles <> nil) and (FFixFiles.Count > 0);
   btnBuild.Enabled := not ABusy;
   btnCancel.Enabled := not ABusy;
   chkIgnore.Enabled := not ABusy;
@@ -594,6 +612,8 @@ begin
     SetBusy(False);
   end;
   FillList;
+  if Done then
+    CheckUserIncludes;
 end;
 
 procedure TRqDepsForm.StartTimerTick(Sender: TObject);
@@ -670,43 +690,9 @@ begin
   ModalResult := mrOk;
 end;
 
-// Проверить выбранную копию inc (как INC Manager) и исправить однозначные
-// ошибки на месте; отчёт - в окне просмотра
-procedure TRqDepsForm.btnFixClick(Sender: TObject);
-var
-  Dep: TRqDep;
-  FileName, Err: string;
-  Info: TIncFileInfo;
-  Report, FixRep: TStringList;
-  ErrCount, Fixed: Integer;
-
-  procedure CheckInto(AHead: string);
-  var
-    MsgIdx: Integer;
-  begin
-    Info := TIncFileInfo.Create(FileName);
-    try
-      IncCheckFile(Info, FRef);
-      ErrCount := Info.Errors;
-      Report.Add(AHead + IncStatusNames[Info.Status] +
-                 Format(', ошибок: %d', [Info.Errors]));
-      for MsgIdx := 0 to Info.Messages.Count - 1 do
-        Report.Add('  ' + Info.Messages[MsgIdx]);
-    finally
-      Info.Free;
-    end;
-  end;
-
+// Эталон для проверки inc - один раз за окно. False - не прочитан.
+function TRqDepsForm.EnsureRef: Boolean;
 begin
-  Dep := SelectedDep;
-  if (Dep = nil) or (lvCands.Selected = nil) or FBusy then
-    Exit;
-  if Dep.Kind <> dpkInclude then
-  begin
-    lblStatus.Caption := 'Проверка - только для inc';
-    Exit;
-  end;
-  FileName := lvCands.Selected.Caption;
   if FRef = nil then
   begin
     SetBusy(True);
@@ -717,44 +703,199 @@ begin
     finally
       SetBusy(False);
     end;
-    if FRef = nil then
-    begin
-      lblStatus.Caption := 'Эталон не прочитан - проверка прервана';
-      Exit;
+  end;
+  Result := FRef <> nil;
+  if not Result then
+    lblStatus.Caption := 'Эталон не прочитан - проверка прервана';
+end;
+
+// Проверка INC Manager по файлам AFiles: отчёт - в AReport, результат -
+// сколько ошибок всего
+function TRqDepsForm.CheckFiles(AFiles, AReport: TStrings): Integer;
+var
+  FileIdx, MsgIdx: Integer;
+  Info: TIncFileInfo;
+begin
+  Result := 0;
+  for FileIdx := 0 to AFiles.Count - 1 do
+  begin
+    Info := TIncFileInfo.Create(AFiles[FileIdx]);
+    try
+      IncCheckFile(Info, FRef);
+      Inc(Result, Info.Errors);
+      AReport.Add(AFiles[FileIdx] + ' - ' + IncStatusNames[Info.Status] +
+                  Format(', ошибок: %d', [Info.Errors]));
+      for MsgIdx := 0 to Info.Messages.Count - 1 do
+        AReport.Add('    ' + Info.Messages[MsgIdx]);
+    finally
+      Info.Free;
     end;
   end;
-  Report := TStringList.Create;
+end;
+
+// Исправить однозначные ошибки в AFiles (IncAutoFix); копии до
+// исправления - в список Undo
+procedure TRqDepsForm.FixFiles(AFiles, AReport: TStrings);
+var
+  FileIdx, Fixed: Integer;
+  Backup, Err: string;
+  FixRep: TStringList;
+begin
   FixRep := TStringList.Create;
   try
-    Report.Add(FileName);
-    CheckInto('Проверка: ');
-    if (ErrCount > 0) and
-       (MessageDlg(Format('%s: ошибок %d.'#13#10#13#10'Исправить однозначные ' +
-                          '(директивы без $, числа с U/L и 0x из C, ";" вне ' +
-                          'строки) прямо в файле? Прежний текст - в .bak. ' +
-                          'Остальные ошибки - в отчёте, их правят руками.',
-                          [ExtractFileName(FileName), ErrCount]),
-                   mtConfirmation, [mbYes, mbNo], 0) = mrYes) then
+    for FileIdx := 0 to AFiles.Count - 1 do
     begin
-      Fixed := IncAutoFix(FileName, FixRep, Err);
-      Report.Add('');
+      FixRep.Clear;
+      Fixed := IncAutoFix(AFiles[FileIdx], FixRep, Backup, Err);
       if Fixed < 0 then
-        Report.Add('Не исправлено: ' + Err)
+        AReport.Add(AFiles[FileIdx] + ' - не исправлен: ' + Err)
+      else if Fixed = 0 then
+        AReport.Add(AFiles[FileIdx] + ' - исправлять нечего ' +
+                    '(ошибки только те, что правят руками)')
       else
       begin
-        Report.Add(Format('Исправлено строк: %d', [Fixed]));
-        Report.AddStrings(FixRep);
-        Report.Add('');
-        CheckInto('После исправления: ');
+        AReport.Add(Format('%s - исправлено строк: %d, прежний текст - %s',
+                           [AFiles[FileIdx], Fixed, ExtractFileName(Backup)]));
+        AReport.AddStrings(FixRep);
+        FFixFiles.Add(AFiles[FileIdx]);
+        FFixBaks.Add(Backup);
       end;
     end;
-    memPreview.Lines.Assign(Report);
-    lblStatus.Caption := Format('%s: ошибок %d', [ExtractFileName(FileName),
-                                                  ErrCount]);
   finally
     FixRep.Free;
+  end;
+  btnUndo.Enabled := FFixFiles.Count > 0;
+end;
+
+// После поиска: копии, найденные в Include User, - проверить; есть
+// ошибки - список в просмотре и вопрос, исправить ли файлы
+procedure TRqDepsForm.CheckUserIncludes;
+var
+  ItemIdx, ErrCount: Integer;
+  Dep: TRqDep;
+  Files, Report: TStringList;
+begin
+  Files := TStringList.Create;
+  Report := TStringList.Create;
+  try
+    for ItemIdx := 0 to FScan.Count - 1 do
+    begin
+      Dep := FScan[ItemIdx];
+      if Dep.Missing and (Dep.Kind = dpkInclude) and (Dep.Chosen >= 0) and
+         (CompareText(Dep.Where[Dep.Chosen], 'Include User') = 0) and
+         (Files.IndexOf(Dep.Candidates[Dep.Chosen]) < 0) then
+        Files.Add(Dep.Candidates[Dep.Chosen]);
+    end;
+    if (Files.Count = 0) or not EnsureRef then
+      Exit;
+    Report.Add(Format('Найдены в Include User: %d. Проверка:', [Files.Count]));
+    ErrCount := CheckFiles(Files, Report);
+    memPreview.Lines.Assign(Report);
+    if ErrCount = 0 then
+    begin
+      lblStatus.Caption := 'Файлы из Include User проверены - ошибок нет';
+      Exit;
+    end;
+    lblStatus.Caption := Format('В файлах из Include User ошибок: %d',
+                                [ErrCount]);
+    if MessageDlg(Format('В файлах из Include User ошибок: %d (список - в окне ' +
+                         'просмотра).'#13#10#13#10'Исправить файлы? Исходные ' +
+                         'будут сохранены с расширением .bak. Исправляются ' +
+                         'однозначные ошибки (директивы без $, числа с U/L и ' +
+                         '0x из C, ";" вне строки), остальные правят руками. ' +
+                         'Кнопка Undo вернёт прежние файлы.', [ErrCount]),
+                  mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+      Exit;
+    Report.Add('');
+    Report.Add('Исправление:');
+    FixFiles(Files, Report);
+    Report.Add('');
+    Report.Add('После исправления:');
+    ErrCount := CheckFiles(Files, Report);
+    memPreview.Lines.Assign(Report);
+    lblStatus.Caption := Format('Исправлено; ошибок осталось: %d', [ErrCount]);
+  finally
+    Report.Free;
+    Files.Free;
+  end;
+end;
+
+// Проверить выбранную копию inc (как INC Manager) и исправить однозначные
+// ошибки на месте; отчёт - в окне просмотра
+procedure TRqDepsForm.btnFixClick(Sender: TObject);
+var
+  Dep: TRqDep;
+  Files, Report: TStringList;
+  ErrCount: Integer;
+begin
+  Dep := SelectedDep;
+  if (Dep = nil) or (lvCands.Selected = nil) or FBusy then
+    Exit;
+  if Dep.Kind <> dpkInclude then
+  begin
+    lblStatus.Caption := 'Проверка - только для inc';
+    Exit;
+  end;
+  if not EnsureRef then
+    Exit;
+  Files := TStringList.Create;
+  Report := TStringList.Create;
+  try
+    Files.Add(lvCands.Selected.Caption);
+    ErrCount := CheckFiles(Files, Report);
+    if (ErrCount > 0) and
+       (MessageDlg(Format('%s: ошибок %d.'#13#10#13#10'Исправить файл? ' +
+                          'Исходный будет сохранён с расширением .bak. ' +
+                          'Исправляются однозначные ошибки, остальные - в ' +
+                          'отчёте. Кнопка Undo вернёт прежний файл.',
+                          [ExtractFileName(Files[0]), ErrCount]),
+                   mtConfirmation, [mbYes, mbNo], 0) = mrYes) then
+    begin
+      Report.Add('');
+      FixFiles(Files, Report);
+      Report.Add('');
+      Report.Add('После исправления:');
+      ErrCount := CheckFiles(Files, Report);
+    end;
+    memPreview.Lines.Assign(Report);
+    lblStatus.Caption := Format('%s: ошибок %d', [ExtractFileName(Files[0]),
+                                                  ErrCount]);
+  finally
+    Report.Free;
+    Files.Free;
+  end;
+end;
+
+// Undo: исправленные файлы удалить, прежние - из .bak обратно
+procedure TRqDepsForm.btnUndoClick(Sender: TObject);
+var
+  FileIdx: Integer;
+  Err: string;
+  Report: TStringList;
+begin
+  if FFixFiles.Count = 0 then
+    Exit;
+  Report := TStringList.Create;
+  try
+    Report.Add('Undo:');
+    for FileIdx := FFixFiles.Count - 1 downto 0 do
+      if IncUndoFix(FFixFiles[FileIdx], FFixBaks[FileIdx], Err) then
+      begin
+        Report.Add(FFixFiles[FileIdx] + ' - возвращён прежний');
+        FFixFiles.Delete(FileIdx);
+        FFixBaks.Delete(FileIdx);
+      end
+      else
+        Report.Add(FFixFiles[FileIdx] + ' - не вышло: ' + Err);
+    memPreview.Lines.Assign(Report);
+    if FFixFiles.Count = 0 then
+      lblStatus.Caption := 'Исправления отменены'
+    else
+      lblStatus.Caption := Format('Не отменено файлов: %d', [FFixFiles.Count]);
+  finally
     Report.Free;
   end;
+  btnUndo.Enabled := FFixFiles.Count > 0;
 end;
 
 procedure TRqDepsForm.btnBuildClick(Sender: TObject);
@@ -795,7 +936,7 @@ begin
       ' Этих файлов нет там, где их возьмёт rc.exe (папка программы ' +
       AScan.MainDir + ', папка -I ' + AScan.IncDir + ') или Windows (DLL: ' +
       'папка exe, системные папки, PATH). Недостающих - ' + Kinds + '.'#13#10 +
-      ' Поиск: Include (-I), Include UnIde, Include User, папка программы с подпапками, ' +
+      ' Поиск: Include UnIde, Include User, папка программы с подпапками, ' +
       'папка выше. Отмеченные копируются, затем сборка.';
     Result := Dlg.ShowModal = mrOk;
   finally

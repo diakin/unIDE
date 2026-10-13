@@ -34063,9 +34063,8 @@ begin
     IncRefDirs(SysDir, RefDir);
     RapidQIncSettings(FCurrentProject, CfgSys, UserDir, Mode, OwnDir);
     MainDir := ExcludeTrailingPathDelimiter(Scan.MainDir);
-    // Папка -I сборки, потом обе папки IDE Options (папка, уже
-    // просмотренная раньше, второй раз не обходится)
-    Roots.Add('Include (-I)|' + AIncDir);
+    // Сначала Include UnIde, потом Include User (папку -I смотреть незачем:
+    // недостающих в ней нет); найденное в Include User окно проверит
     Roots.Add('Include UnIde|' + CfgSys);
     Roots.Add('Include User|' + UserDir);
     Roots.Add('папка программы|' + MainDir);
