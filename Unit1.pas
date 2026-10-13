@@ -7669,13 +7669,20 @@ end;
 //  На диске - dsgcache\<файл>_<crc пути>.mapcache. При выходе пишутся
 //  окна, чей разбор в этом сеансе строился заново (MapSaved = False); при
 //  первом показе окна файл читается. Ключ - контрольная сумма и длина
-//  текста и подпись схемы (маркеры, даты файлов схемы и exe, есть ли цвета
-//  компонентов): что-то из этого другое - файл не подходит, и разбор идёт
-//  как обычно. Файл испорчен или не читается - так же.
+//  текста и подпись схемы (маркеры, даты файлов схемы, есть ли цвета
+//  компонентов) и версия разбора MapCacheSign: что-то из этого другое -
+//  файл не подходит, и разбор идёт как обычно. Файл испорчен или не
+//  читается - так же.
+//
+//  Дата exe в ключ не входит: каждая сборка давала бы новую дату, и после
+//  каждой пересборки большой файл разбирался заново (~1 с на Unit1.pas).
+//  Взамен - номер в MapCacheSign: ИЗМЕНИЛСЯ РАЗБОР (RebuildCommentRangeMap,
+//  подпрограммы, глубина строк, имена компонентов) или формат файла кэша -
+//  увеличить номер, иначе старые карты будут считаться верными.
 // ---------------------------------------------------------------------------
 
 const
-  MapCacheSign = 'SHLMAP1';
+  MapCacheSign = 'SHLMAP2';
 
 procedure MapWriteInt(S: TStream; V: Integer);
 begin
@@ -7825,7 +7832,8 @@ begin
 end;
 
 // Подпись загруженной схемы для расширения AExt: маркеры, даты файла
-// схемы, •default•.clr и exe, есть ли в схеме цвета компонентов
+// схемы и •default•.clr, есть ли в схеме цвета компонентов. Даты exe нет -
+// см. MapCacheSign
 function TForm1.MapSchemeSig(const AFile: string): string;
 var
   SchemeKey: string;
@@ -7835,8 +7843,7 @@ begin
     IntToStr(FileAge(ExtractFilePath(Application.ExeName) + 'schemes\' +
                      SchemeKey + '.clr')) + ' ' +
     IntToStr(FileAge(DefaultSchemaFile)) + ' | comp ' +
-    IntToStr(Ord(FScheme.FCompHasColors)) + ' | exe ' +
-    IntToStr(FileAge(Application.ExeName));
+    IntToStr(Ord(FScheme.FCompHasColors));
 end;
 
 function TForm1.MapCacheFileFor(const AFile: string): string;
