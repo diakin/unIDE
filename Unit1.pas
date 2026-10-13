@@ -8014,6 +8014,7 @@ var
   T0, TA, TLeave, TSchema, TText, TMap, TTabStops, TUi, TPaint: Cardinal;
   MapFlushed: Boolean;
   Stages, MapFrom, TabWhole: string;
+  StartupTab: string;   // имя и размер вкладки - для этапов startup.log
 begin
   CiHideAll;   // список и подсказки Code Insight - от прежней вкладки
   TabWhole := '';
@@ -8063,6 +8064,13 @@ begin
   // Unit1.dfm, 219-234 мс - с Unit2.pas, 0-78 мс - с небольших файлов. На
   // пустом редакторе - почти ничего; новый текст ниже заливается уже с
   // новым шрифтом, табуляция - тоже до заливки, на пустом тексте.
+  // Запуск: части показа вкладки - этапами в startup.log
+  if StartupActive then
+  begin
+    StartupTab := ExtractFileName(FWindows[Index].FileName) + ' (' +
+      IntToStr(Length(FWindows[Index].Text) div 1024) + ' КБ)';
+    StartupStage('Вкладка ' + StartupTab + ': схема');
+  end;
   TA := GetTickCount;
   Inc(FObjOwnWrite);
   FLockHighlight := True;
@@ -8096,6 +8104,8 @@ begin
 
   // Заливка текста вкладки - не правка: номера строк узлов инспектора
   // относятся к этому же тексту
+  if StartupActive then
+    StartupStage('Вкладка ' + StartupTab + ': текст в редактор');
   TA := GetTickCount;
   Inc(FObjOwnWrite);
   FLockHighlight := True;
@@ -8118,6 +8128,8 @@ begin
   // иначе из файла кэша на диске; иначе строится заново (см. «Кэш разбора
   // текста»). Таблицу подпрограмм в правой панели FillSubListView на это
   // время не заполняет (FTabSwitching), её заполнит WMTabSwitched.
+  if StartupActive then
+    StartupStage('Вкладка ' + StartupTab + ': карта');
   TA := GetTickCount;
   FTabSwitching := True;
   FMapRebuilt := False;
@@ -8158,6 +8170,11 @@ begin
   // Карта вкладки - под маркеры её схемы, загруженной выше
   FMapMarkersSig := FScheme.MarkersSig;
   TMap := GetTickCount - TA;
+  if StartupActive then
+  begin
+    StartupStageNote(' (' + MapFrom + ')');
+    StartupStage('Вкладка ' + StartupTab + ': табуляция, окно');
+  end;
 
   // Шаг табуляции поставлен до заливки, на пустом тексте (см. выше), и
   // новый текст его перенял - на весь текст не ставим. Не перенял -
@@ -8205,6 +8222,8 @@ begin
   // до их конца на экране оставался бы текст прежней вкладки. Отрисовку
   // вызываем сами: WM_PAINT в очереди идёт после отправленных сообщений,
   // и вторая половина началась бы раньше неё.
+  if StartupActive then
+    StartupStage('Вкладка ' + StartupTab + ': отрисовка');
   TA := GetTickCount;
   RichEdit1.Update;
   if PaintBox1 <> nil then
@@ -14129,7 +14148,7 @@ begin
   UpdateCompilerCaption;
 
   // Восстанавливаем активное окно. Если указанного в файле нет - берём первое.
-  StartupStage('Открытие активной вкладки');
+  StartupStage('Открытие активной вкладки: уход с прежней');
   StageTick := GetTickCount;
   if (CurIdx >= 0) and (CurIdx < WindowsItemCount) and FWindows[CurIdx].Used then
     ActivateWindow(CurIdx)

@@ -23,6 +23,9 @@ uses
 
 procedure StartupSplashShow;
 procedure StartupStage(const AName: string);
+// Дописать к названию текущего этапа (что выяснилось по ходу: откуда
+// взята карта и т.п.)
+procedure StartupStageNote(const ANote: string);
 procedure StartupFinish;
 // Идёт запуск (окно загрузки показано)
 function  StartupActive: Boolean;
@@ -178,6 +181,12 @@ begin
   Splash.lblStage.Caption := AName;
   // Цикл сообщений занят запуском - рисуем сразу
   Splash.Update;
+end;
+
+procedure StartupStageNote(const ANote: string);
+begin
+  if Active and (StageName <> '') then
+    StageName := StageName + ANote;
 end;
 
 procedure StartupFinish;
