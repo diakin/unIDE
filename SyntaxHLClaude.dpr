@@ -64,6 +64,7 @@ uses
   StrictFix in 'StrictFix.pas',
   DlgStrictFix in 'DlgStrictFix.pas',
   SplashLoad in 'SplashLoad.pas',
+  GitInfo in 'GitInfo.pas',
   RunConsole in 'RunConsole.pas';
 
 {$R *.res}

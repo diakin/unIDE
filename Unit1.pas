@@ -3476,6 +3476,7 @@ var
     DlgStrictFix, // окно ошибок строгой проверки перед rc.exe
     StrictFix,    // разбор лога строгой проверки
     SplashLoad,   // окно загрузки и журнал этапов запуска (startup.log)
+    GitInfo,      // ветка и коммит исходников сборки (<exe>.build.txt)
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     FormPreview,  // превью формы по .dfm - список модулей и форм
@@ -6964,10 +6965,16 @@ begin
     Age := FileAge(Application.ExeName);
     // Полный путь запущенного exe: рабочий SyntaxHLClaude.exe или пробный
     // SyntaxHLClaude_new.exe - по заголовку видно, что именно запущено
+    // Из какой версии исходников собран (ветка, коммит, незакоммиченные
+    // изменения) - файл <exe>.build.txt, его пишет сборка (GitInfo)
     if Age <> -1 then
+    begin
       GAppTitle := GAppTitle + ' [сборка ' +
-        FormatDateTime('dd.mm.yyyy hh:nn', FileDateToDateTime(Age)) + ', ' +
-        Application.ExeName + ']'
+        FormatDateTime('dd.mm.yyyy hh:nn', FileDateToDateTime(Age)) + ', ';
+      if GitBuildInfoShort(Application.ExeName) <> '' then
+        GAppTitle := GAppTitle + GitBuildInfoShort(Application.ExeName) + ', ';
+      GAppTitle := GAppTitle + Application.ExeName + ']';
+    end
     else
       GAppTitle := GAppTitle + ' [' + Application.ExeName + ']';
   end;
@@ -22176,6 +22183,13 @@ begin
   if FileExists(TrialExe + '.manifest') and
      FileExists(MainExe + '.manifest') then
     DeleteFile(TrialExe + '.manifest');
+  // Сведения о сборке - вместе с exe
+  if FileExists(GitBuildInfoFile(TrialExe)) then
+  begin
+    if FileExists(GitBuildInfoFile(MainExe)) then
+      DeleteFile(GitBuildInfoFile(MainExe));
+    MoveFile(PChar(GitBuildInfoFile(TrialExe)), PChar(GitBuildInfoFile(MainExe)));
+  end;
   TrialMap := ChangeFileExt(TrialExe, '.map');
   MainMap := ChangeFileExt(MainExe, '.map');
   if FileExists(TrialMap) then
@@ -45533,6 +45547,7 @@ var
   OutDir: string;       // куда dcc32 кладёт exe (-E)
   OwnBuild: Boolean;    // собирается сам редактор - пробной сборкой
   UiDir: string;
+  BuiltExe: string;     // собранный exe - для сведений о сборке (GitInfo)
   Code: Integer;
   T0: Cardinal;
   DofLog: TStringList;
@@ -45972,6 +45987,19 @@ begin
     LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - T0,
                    IncludeTrailingPathDelimiter(ExeDir) +
                    ChangeFileExt(ExtractFileName(Dpr), '.exe')]));
+  if (Code = 0) and not FProbeActive then
+  begin
+    // Из какой версии исходников собран exe - файл рядом с ним
+    if OwnBuild then
+      BuiltExe := OwnTrialExeOf(IncludeTrailingPathDelimiter(ExeDir) +
+                                OwnExeBase + '.exe')
+    else
+      BuiltExe := IncludeTrailingPathDelimiter(ExeDir) +
+                  ChangeFileExt(ExtractFileName(Dpr), '.exe');
+    if GitWriteBuildInfo(BuiltExe, OrigDpr) then
+      LogComp('--- Исходники: ' + GitBuildInfoShort(BuiltExe) + ' (' +
+              ExtractFileName(GitBuildInfoFile(BuiltExe)) + ')');
+  end;
   if Code = 0 then
   begin
     // Собран сам редактор - его файлы рядом с новым exe
