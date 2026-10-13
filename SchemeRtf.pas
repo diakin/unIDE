@@ -29,9 +29,13 @@ uses
 // (\highlight) RichEdit 1.0 может не показать - красный текст виден всегда.
 // Разбор строки при этом идёт как обычно: блочный комментарий, начатый в
 // ней, продолжается и дальше.
+// ACurLine - строка (с 1), на которую перешли: своя подложка (синеватая),
+// цвета текста - как есть. Вместо выделения: системное выделение рисует
+// светлым фоном, и светлые цвета схемы на нём не видны. 0 - нет.
 function SchemeTextToRtf(const AText: string; AScheme: TClrScheme;
                          const AFontName: string; AFontPt: Integer;
-                         AMarkLines: TList = nil): string;
+                         AMarkLines: TList = nil;
+                         ACurLine: Integer = 0): string;
 function SchemePageColor(AScheme: TClrScheme): TColor;
 
 implementation
@@ -86,7 +90,7 @@ end;
 
 function SchemeTextToRtf(const AText: string; AScheme: TClrScheme;
                          const AFontName: string; AFontPt: Integer;
-                         AMarkLines: TList): string;
+                         AMarkLines: TList; ACurLine: Integer): string;
 var
   Body: TRtfBuf;
   Colors: TList;          // RGB цветов таблицы; индекс в \cf = позиция + 1
@@ -97,6 +101,8 @@ var
   InBlock: Integer;       // пара маркеров открытого блочного комментария, -1
   LineMarked: Boolean;    // эта строка - с ошибкой (AMarkLines)
   MarkFg, MarkBg: TColor; // её цвета
+  LineCurrent: Boolean;   // строка ACurLine
+  CurLineBg: TColor;      // её подложка
   LineIdx, CharPos, LineLen, GroupIdx, WordIdx: Integer;
   Line: string;
 
@@ -124,6 +130,8 @@ var
       AFg := MarkFg;
       ABg := MarkBg;
     end;
+    if LineCurrent then
+      ABg := CurLineBg;
     if (AFg = clNone) or (AFg = clDefault) then
       AFg := TextFg;
     if (ABg = clNone) or (ABg = clDefault) then
@@ -405,12 +413,14 @@ begin
     CurBg := PageBg;
     ColorIndex(TextFg);   // \cf1 - цвет текста
     LineMarked := False;
+    LineCurrent := False;
     // Ошибочная строка: на тёмном фоне - светло-красный текст, на светлом -
     // тёмно-красный; подложка - фон с примесью красного
     Rgb := ColorToRGB(PageBg);
     if (Rgb and $FF) + ((Rgb shr 8) and $FF) + ((Rgb shr 16) and $FF) < 384 then
     begin
       MarkFg := TColor($006060FF);
+      CurLineBg := TColor($00704020);
       MarkBg := TColor(((Rgb and $FF) * 6 div 10 + $66) or
                        ((((Rgb shr 8) and $FF) * 6 div 10) shl 8) or
                        ((((Rgb shr 16) and $FF) * 6 div 10) shl 16));
@@ -418,6 +428,7 @@ begin
     else
     begin
       MarkFg := TColor($000000B0);
+      CurLineBg := TColor($00FFE0B0);
       MarkBg := TColor($00D8D8FF);
     end;
 
@@ -440,13 +451,12 @@ begin
       CharPos := 1;
       LineMarked := (AMarkLines <> nil) and
                     (AMarkLines.IndexOf(Pointer(LineIdx + 1)) >= 0);
+      LineCurrent := LineIdx + 1 = ACurLine;
       if LineMarked then
-      begin
         Body.Add('\b ');
-        // Пустая ошибочная строка - пробел, чтобы подложка была видна
-        if LineLen = 0 then
-          Emit(' ', TextFg, PageBg);
-      end;
+      // Пустая выделенная строка - пробел, чтобы подложка была видна
+      if (LineMarked or LineCurrent) and (LineLen = 0) then
+        Emit(' ', TextFg, PageBg);
       if InBlock >= 0 then
         EmitBlockTail;
       while CharPos <= LineLen do

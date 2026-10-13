@@ -107,7 +107,8 @@ type
                                 Selected: Boolean);
     procedure UpdateNote;
     procedure ShowPreview;
-    procedure LoadPreview(const AFile: string; AIsText: Boolean);
+    procedure LoadPreview(const AFile: string; AIsText: Boolean;
+                          ACurLine: Integer = 0);
     procedure SetReport(AReport: TStrings);
     procedure ArrangeTop;
     procedure lbReportClick(Sender: TObject);
@@ -605,7 +606,8 @@ end;
 // Текст файла в просмотр; строки - как в файле (LF -> CRLF), чтобы номер
 // строки из проверки совпадал со строкой просмотра. Есть схема - с
 // подсветкой: текст переводится в RTF и загружается разом.
-procedure TRqDepsForm.LoadPreview(const AFile: string; AIsText: Boolean);
+procedure TRqDepsForm.LoadPreview(const AFile: string; AIsText: Boolean;
+                                  ACurLine: Integer);
 const
   PreviewMax = 1048576;
 var
@@ -664,7 +666,8 @@ begin
           end;
         memPreview.Color := SchemePageColor(FScheme);
         RtfStream := TStringStream.Create(SchemeTextToRtf(AdjustLineBreaks(Buf),
-                                          FScheme, 'Courier New', 9, ErrLines));
+                                          FScheme, 'Courier New', 9, ErrLines,
+                                          ACurLine));
         try
           memPreview.PlainText := False;
           memPreview.Lines.LoadFromStream(RtfStream);
@@ -821,19 +824,21 @@ begin
   if (ItemIdx < 0) or (ItemIdx >= FReportPaths.Count) or
      (FReportPaths[ItemIdx] = '') then
     Exit;
-  LoadPreview(FReportPaths[ItemIdx], True);
   // "    стр. 12: ..." или "стр. 12: ... -> ..." (исправление)
   Txt := TrimLeft(lbReport.Items[ItemIdx]);
   LineNo := 0;
   if Copy(Txt, 1, 5) = 'стр. ' then
     LineNo := StrToIntDef(Copy(Txt, 6, Pos(':', Txt) - 6), 0);
+  // Строка LineNo - своей подложкой (SchemeTextToRtf), не выделением:
+  // на системном выделении светлые цвета схемы не видны
+  LoadPreview(FReportPaths[ItemIdx], True, LineNo);
   if LineNo <= 0 then
     Exit;
   CharPos := memPreview.Perform(EM_LINEINDEX, LineNo - 1, 0);
   if CharPos < 0 then
     Exit;
   memPreview.SelStart := CharPos;
-  memPreview.SelLength := memPreview.Perform(EM_LINELENGTH, CharPos, 0);
+  memPreview.SelLength := 0;
   // Строку - не к самому верху, с тремя строками перед ней
   FirstVisible := memPreview.Perform(EM_GETFIRSTVISIBLELINE, 0, 0);
   memPreview.Perform(EM_LINESCROLL, 0, LineNo - 4 - FirstVisible);
