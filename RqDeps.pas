@@ -554,6 +554,7 @@ type
   public
     Scan: TRqDepScan;
     StageLabel: string;
+    Done: TStringList;   // номера уже найденных в папках Include
     procedure Found(const AFile: string);
   end;
 
@@ -567,6 +568,8 @@ begin
     Dep := Scan[ItemIdx];
     if not Dep.Missing or (Dep.Candidates.Count >= MaxCandidates) then
       Continue;
+    if (Done <> nil) and (Done.IndexOf(IntToStr(ItemIdx)) >= 0) then
+      Continue;
     if CompareText(Dep.FileNameOnly, ExtractFileName(AFile)) <> 0 then
       Continue;
     if Dep.Candidates.IndexOf(AFile) >= 0 then
@@ -579,17 +582,47 @@ end;
 function RqDepsFindOnDisk(AScan: TRqDepScan; ARoots: TStrings;
                           AProgress: TIncProgress): Boolean;
 var
-  Names, Searched, StageList, Found: TStringList;
+  Names, Searched, StageList, Found, Done: TStringList;
   Collector: TRqDepCollector;
   ItemIdx, StageIdx, SkipIdx: Integer;
-  StageRoot: string;
+  StageRoot, StageLabel, StageDir, Cand: string;
   Covered: Boolean;
+  Dep: TRqDep;
+
+  // Шаг "Include ...": папка inc - как её смотрит rc.exe, без подпапок:
+  // имя из $INCLUDE (с путём Object\QINI.inc), потом само имя файла.
+  // Нашлось - этот файл дальше не ищется.
+  procedure IncludeStage;
+  var
+    DepIdx: Integer;
+  begin
+    for DepIdx := 0 to AScan.Count - 1 do
+    begin
+      Dep := AScan[DepIdx];
+      if not Dep.Missing or (Done.IndexOf(IntToStr(DepIdx)) >= 0) then
+        Continue;
+      Cand := StageDir + StringReplace(Dep.Name, '/', '\', [rfReplaceAll]);
+      if (ExtractFileDrive(Dep.Name) <> '') or not FileExists(Cand) then
+        Cand := StageDir + Dep.FileNameOnly;
+      if not FileExists(Cand) then
+        Continue;
+      Cand := ExpandFileName(Cand);
+      if Dep.Candidates.IndexOf(Cand) < 0 then
+      begin
+        Dep.Candidates.Add(Cand);
+        Dep.Where.Add(StageLabel);
+      end;
+      Done.Add(IntToStr(DepIdx));
+    end;
+  end;
+
 begin
   Result := True;
   Names := TStringList.Create;
   Searched := TStringList.Create;
   StageList := TStringList.Create;
   Found := TStringList.Create;
+  Done := TStringList.Create;
   Collector := TRqDepCollector.Create;
   try
     Names.Sorted := True;
@@ -600,29 +633,42 @@ begin
         AScan[ItemIdx].Candidates.Clear;
         AScan[ItemIdx].Where.Clear;
         AScan[ItemIdx].Chosen := -1;
-        Names.Add(UpperCase(AScan[ItemIdx].FileNameOnly));
       end;
-    if Names.Count = 0 then
-      Exit;
     Collector.Scan := AScan;
     Searched.Sorted := True;
     Searched.Duplicates := dupIgnore;
     for StageIdx := 0 to ARoots.Count - 1 do
     begin
-      StageRoot := Copy(ARoots[StageIdx], Pos('|', ARoots[StageIdx]) + 1, MaxInt);
-      if (Trim(StageRoot) = '') or not DirectoryExists(StageRoot) then
+      StageLabel := Copy(ARoots[StageIdx], 1, Pos('|', ARoots[StageIdx]) - 1);
+      StageDir := Copy(ARoots[StageIdx], Pos('|', ARoots[StageIdx]) + 1, MaxInt);
+      if (Trim(StageDir) = '') or not DirectoryExists(StageDir) then
         Continue;
-      StageRoot := UpperCase(IncludeTrailingPathDelimiter(StageRoot));
+      StageDir := IncludeTrailingPathDelimiter(StageDir);
+      if CompareText(Copy(StageLabel, 1, 7), 'Include') = 0 then
+      begin
+        IncludeStage;
+        Continue;
+      end;
+
+      // Остальные шаги - с подпапками, только то, что в папках Include не
+      // нашлось
+      Names.Clear;
+      for ItemIdx := 0 to AScan.Count - 1 do
+        if AScan[ItemIdx].Missing and (Done.IndexOf(IntToStr(ItemIdx)) < 0) then
+          Names.Add(UpperCase(AScan[ItemIdx].FileNameOnly));
+      if Names.Count = 0 then
+        Break;
+      StageRoot := UpperCase(StageDir);
       Covered := False;
       for SkipIdx := 0 to Searched.Count - 1 do
         if Copy(StageRoot, 1, Length(Searched[SkipIdx])) = Searched[SkipIdx] then
           Covered := True;
       if Covered then
         Continue;
-      Collector.StageLabel := Copy(ARoots[StageIdx], 1,
-                                   Pos('|', ARoots[StageIdx]) - 1);
+      Collector.StageLabel := StageLabel;
+      Collector.Done := Done;
       StageList.Clear;
-      StageList.Add(Copy(ARoots[StageIdx], Pos('|', ARoots[StageIdx]) + 1, MaxInt));
+      StageList.Add(StageDir);
       Found.Clear;
       Result := IncFindNamesOnDisk(Names, StageList, Found, AProgress, Searched,
                                    Collector.Found);
@@ -632,6 +678,7 @@ begin
     end;
   finally
     Collector.Free;
+    Done.Free;
     Found.Free;
     StageList.Free;
     Searched.Free;
@@ -653,6 +700,13 @@ begin
     Dep.ChosenNote := '';
     if not Dep.Missing or (Dep.Candidates.Count = 0) then
       Continue;
+    // Нашёлся в папке Include UnIde / User - его и брать: дальше не искали
+    if CompareText(Copy(Dep.Where[0], 1, 7), 'Include') = 0 then
+    begin
+      Dep.Chosen := 0;
+      Dep.ChosenNote := 'есть в папке ' + Dep.Where[0];
+      Continue;
+    end;
     if (Dep.Kind = dpkInclude) and (ARef <> nil) then
       for CandIdx := 0 to Dep.Candidates.Count - 1 do
       begin
