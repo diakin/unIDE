@@ -3269,8 +3269,8 @@ type
     procedure UiGridNote(Sender: TCustomListView; const AWhat: string);
     procedure ReadThemeColors(Ini: TIniFile);
     procedure ApplySchemeTheme;
-    function  ThemeIniRead(Ini: TIniFile; const ASect, AKey, ADef: string): string;
-    procedure ThemeIniWrite(Ini: TIniFile; const ASect, AKey, AVal: string);
+    function  ThemeIniRead(Ini: TCustomIniFile; const ASect, AKey, ADef: string): string;
+    procedure ThemeIniWrite(Ini: TCustomIniFile; const ASect, AKey, AVal: string);
     procedure SaveUiSchema;
     procedure UiResetDefaults;
     procedure UiApply;
@@ -6202,7 +6202,7 @@ begin
 end;
 
 // Значение editor.ini с учётом темы: Ключ@Тема, если он есть, иначе Ключ
-function TForm1.ThemeIniRead(Ini: TIniFile; const ASect, AKey,
+function TForm1.ThemeIniRead(Ini: TCustomIniFile; const ASect, AKey,
                              ADef: string): string;
 begin
   Result := Ini.ReadString(ASect, AKey, ADef);
@@ -6213,7 +6213,7 @@ end;
 // Запись с учётом темы: основная тема - в Ключ; другая - в Ключ@Тема, если
 // значение отличается от основного или такой ключ уже есть. Основной ключ
 // под другой темой не трогаем.
-procedure TForm1.ThemeIniWrite(Ini: TIniFile; const ASect, AKey,
+procedure TForm1.ThemeIniWrite(Ini: TCustomIniFile; const ASect, AKey,
                                AVal: string);
 var
   TK: string;
