@@ -67,6 +67,14 @@ type
     // Исправленные файлы и их копии до исправления (IncAutoFix) - для Undo
     FFixFiles: TStringList;
     FFixBaks: TStringList;
+    // Предложение исправить - панелью над просмотром, не окном: сначала
+    // смотрят список ошибок, потом решают. FOfferFiles - что исправлять.
+    pnlOffer: TPanel;
+    lblOffer: TLabel;
+    btnOfferFix: TUiButton;
+    btnOfferSkip: TUiButton;
+    FOfferFiles: TStringList;
+    FOfferReport: TStringList;
     lblStatus: TLabel;
     procedure BuildControls;
     procedure FillList;
@@ -89,6 +97,9 @@ type
     procedure btnBuildClick(Sender: TObject);
     procedure btnFixClick(Sender: TObject);
     procedure btnUndoClick(Sender: TObject);
+    procedure ShowOffer(AFiles, AReport: TStrings; AErrors: Integer);
+    procedure btnOfferFixClick(Sender: TObject);
+    procedure btnOfferSkipClick(Sender: TObject);
     function  CheckFiles(AFiles, AReport: TStrings): Integer;
     procedure FixFiles(AFiles, AReport: TStrings);
     procedure CheckUserIncludes;
@@ -110,6 +121,8 @@ destructor TRqDepsForm.Destroy;
 begin
   FFixFiles.Free;
   FFixBaks.Free;
+  FOfferFiles.Free;
+  FOfferReport.Free;
   FRef.Free;
   inherited Destroy;
 end;
@@ -274,6 +287,41 @@ begin
   splCands.Height := 5;
   splCands.Align := alTop;
   splCands.MinSize := 60;
+
+  // Панель-предложение исправить ошибки: яркая, над просмотром со списком
+  // ошибок; видна, только когда ошибки нашлись
+  pnlOffer := TPanel.Create(Self);
+  pnlOffer.Parent := Self;
+  pnlOffer.Top := 490;
+  pnlOffer.Height := 34;
+  pnlOffer.Align := alTop;
+  pnlOffer.BevelOuter := bvNone;
+  pnlOffer.Caption := '';
+  pnlOffer.Color := $0040C0FF;          // оранжевый
+  pnlOffer.Visible := False;
+  lblOffer := TLabel.Create(Self);
+  lblOffer.Parent := pnlOffer;
+  lblOffer.AutoSize := False;
+  lblOffer.WordWrap := True;
+  lblOffer.SetBounds(8, 2, ClientWidth - 260, 30);
+  lblOffer.Anchors := [akLeft, akTop, akRight];
+  lblOffer.Layout := tlCenter;
+  lblOffer.Font.Color := clBlack;
+  lblOffer.Font.Style := [fsBold];
+  btnOfferFix := TUiButton.Create(Self);
+  btnOfferFix.Parent := pnlOffer;
+  btnOfferFix.SetBounds(ClientWidth - 244, 5, 110, 25);
+  btnOfferFix.Anchors := [akTop, akRight];
+  btnOfferFix.Caption := 'Исправить';
+  btnOfferFix.OnClick := btnOfferFixClick;
+  btnOfferSkip := TUiButton.Create(Self);
+  btnOfferSkip.Parent := pnlOffer;
+  btnOfferSkip.SetBounds(ClientWidth - 128, 5, 120, 25);
+  btnOfferSkip.Anchors := [akTop, akRight];
+  btnOfferSkip.Caption := 'Не исправлять';
+  btnOfferSkip.OnClick := btnOfferSkipClick;
+  FOfferFiles := TStringList.Create;
+  FOfferReport := TStringList.Create;
 
   memPreview := TMemo.Create(Self);
   memPreview.Parent := Self;
@@ -806,22 +854,7 @@ begin
     end;
     lblStatus.Caption := Format('В файлах из Include User ошибок: %d',
                                 [ErrCount]);
-    if MessageDlg(Format('В файлах из Include User ошибок: %d (список - в окне ' +
-                         'просмотра).'#13#10#13#10'Исправить файлы? Исходные ' +
-                         'будут сохранены с расширением .bak. Исправляются ' +
-                         'однозначные ошибки (директивы без $, числа с U/L и ' +
-                         '0x из C, ";" вне строки), остальные правят руками. ' +
-                         'Кнопка Undo вернёт прежние файлы.', [ErrCount]),
-                  mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
-      Exit;
-    Report.Add('');
-    Report.Add('Исправление:');
-    FixFiles(Files, Report);
-    Report.Add('');
-    Report.Add('После исправления:');
-    ErrCount := CheckFiles(Files, Report);
-    memPreview.Lines.Assign(Report);
-    lblStatus.Caption := Format('Исправлено; ошибок осталось: %d', [ErrCount]);
+    ShowOffer(Files, Report, ErrCount);
   finally
     Report.Free;
     Files.Free;
@@ -851,27 +884,72 @@ begin
   try
     Files.Add(lvCands.Selected.Caption);
     ErrCount := CheckFiles(Files, Report);
-    if (ErrCount > 0) and
-       (MessageDlg(Format('%s: ошибок %d.'#13#10#13#10'Исправить файл? ' +
-                          'Исходный будет сохранён с расширением .bak. ' +
-                          'Исправляются однозначные ошибки, остальные - в ' +
-                          'отчёте. Кнопка Undo вернёт прежний файл.',
-                          [ExtractFileName(Files[0]), ErrCount]),
-                   mtConfirmation, [mbYes, mbNo], 0) = mrYes) then
-    begin
-      Report.Add('');
-      FixFiles(Files, Report);
-      Report.Add('');
-      Report.Add('После исправления:');
-      ErrCount := CheckFiles(Files, Report);
-    end;
     memPreview.Lines.Assign(Report);
     lblStatus.Caption := Format('%s: ошибок %d', [ExtractFileName(Files[0]),
                                                   ErrCount]);
+    if ErrCount > 0 then
+      ShowOffer(Files, Report, ErrCount)
+    else
+      pnlOffer.Visible := False;
   finally
     Report.Free;
     Files.Free;
   end;
+end;
+
+// Панель-предложение: ошибки - в просмотре, решение - кнопками на панели
+procedure TRqDepsForm.ShowOffer(AFiles, AReport: TStrings; AErrors: Integer);
+begin
+  FOfferFiles.Assign(AFiles);
+  FOfferReport.Assign(AReport);
+  memPreview.Lines.Assign(AReport);
+  if AFiles.Count = 1 then
+    lblOffer.Caption := Format('%s: ошибок %d (список ниже). Исправить файл? ' +
+      'Исходный будет сохранён с расширением .bak',
+      [ExtractFileName(AFiles[0]), AErrors])
+  else
+    lblOffer.Caption := Format('В файлах из Include User ошибок: %d (список ' +
+      'ниже). Исправить файлы? Исходные будут сохранены с расширением .bak',
+      [AErrors]);
+  lblOffer.Hint := 'Исправляются однозначные ошибки (директивы без $, числа ' +
+                   'с U/L и 0x из C, ";" вне строки), остальные правят ' +
+                   'руками. Кнопка Undo вернёт прежние файлы.';
+  lblOffer.ShowHint := True;
+  // Под сплиттером копий, над просмотром: alTop ставит по Top
+  pnlOffer.Top := splCands.Top + splCands.Height;
+  pnlOffer.Visible := True;
+end;
+
+procedure TRqDepsForm.btnOfferFixClick(Sender: TObject);
+var
+  Report: TStringList;
+  ErrCount: Integer;
+begin
+  pnlOffer.Visible := False;
+  if FOfferFiles.Count = 0 then
+    Exit;
+  Report := TStringList.Create;
+  try
+    Report.Assign(FOfferReport);
+    Report.Add('');
+    Report.Add('Исправление:');
+    FixFiles(FOfferFiles, Report);
+    Report.Add('');
+    Report.Add('После исправления:');
+    ErrCount := CheckFiles(FOfferFiles, Report);
+    memPreview.Lines.Assign(Report);
+    lblStatus.Caption := Format('Исправлено; ошибок осталось: %d', [ErrCount]);
+  finally
+    Report.Free;
+  end;
+  FOfferFiles.Clear;
+end;
+
+procedure TRqDepsForm.btnOfferSkipClick(Sender: TObject);
+begin
+  pnlOffer.Visible := False;
+  FOfferFiles.Clear;
+  lblStatus.Caption := 'Файлы не исправлены';
 end;
 
 // Undo: исправленные файлы удалить, прежние - из .bak обратно
