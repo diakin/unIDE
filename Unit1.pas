@@ -250,6 +250,8 @@ type
     Box: TRect;
     Line: Integer;
     Level: Integer;
+    AtTop: Boolean;   // у верхнего края (щелчок - начало блока), иначе у
+                      // нижнего (щелчок - конец блока)
   end;
   TStrArray = array of string;
 
@@ -1612,6 +1614,7 @@ type
     // В панели - начало блока по метке направляющей (GuideMarkClick), а не
     // объявление: своя подсказка
     FDeclIsBlock: Boolean;
+    FDeclBlockEnd: Boolean;   // в панели - конец блока (нижняя метка)
     // Подпись панели для "не найдено", когда она своя (RapidQ); '' - общая
     FDeclNoneText: string;
     // RapidQ: разобранные файлы с диска и список файлов поиска
@@ -42737,7 +42740,10 @@ begin
     begin
       S := IntToStr(FDeclLine + 1) + ':   ' + FDeclText;
       FDeclPanel.Color := UiColor('Decl.FoundBG');
-      if FDeclIsBlock then
+      if FDeclIsBlock and FDeclBlockEnd then
+        FDeclPanel.Hint := 'Конец блока. Щелчок - перейти к строке ' +
+                           IntToStr(FDeclLine + 1) + ', второй - обратно'
+      else if FDeclIsBlock then
         FDeclPanel.Hint := 'Начало блока. Щелчок - перейти к строке ' +
                            IntToStr(FDeclLine + 1) + ', второй - обратно'
       else if FDeclOtherFile = '' then
@@ -42801,11 +42807,12 @@ begin
   end;
 end;
 
-// Щелчок по метке направляющей: строка, с которой начинается блок этой
-// полосы, - в панель объявления (как объявление идентификатора). Начало
+// Щелчок по метке направляющей: у верхнего края - строка, с которой
+// начинается блок этой полосы, у нижнего - строка, которой он кончается;
+// она - в панель объявления (как объявление идентификатора). Начало
 // блока - первая строка выше, вложенность которой не больше уровня
-// полосы (FLineDepth). Щелчок по панели - туда, второй - обратно к
-// каретке.
+// полосы (FLineDepth), конец - такая же первая строка ниже. Щелчок по
+// панели - туда, второй - обратно к каретке.
 procedure TForm1.GuideMarkClick(AMarkIdx: Integer);
 var
   HeadLine, Level, FirstPos: Integer;
@@ -42817,11 +42824,23 @@ begin
     Exit;
   Level := FGuideMarks[AMarkIdx].Level;
   HeadLine := FGuideMarks[AMarkIdx].Line;
-  while (HeadLine >= 0) and (HeadLine <= High(FLineDepth)) and
-        (FLineDepth[HeadLine] > Level) do
-    Dec(HeadLine);
-  if HeadLine < 0 then
-    HeadLine := 0;
+  if FGuideMarks[AMarkIdx].AtTop then
+  begin
+    while (HeadLine >= 0) and (HeadLine <= High(FLineDepth)) and
+          (FLineDepth[HeadLine] > Level) do
+      Dec(HeadLine);
+    if HeadLine < 0 then
+      HeadLine := 0;
+  end
+  else
+  begin
+    // Нижняя метка: вниз до строки уровня полосы - конец блока
+    while (HeadLine >= 0) and (HeadLine <= High(FLineDepth)) and
+          (FLineDepth[HeadLine] > Level) do
+      Inc(HeadLine);
+    if HeadLine >= RichEdit1.Lines.Count then
+      HeadLine := RichEdit1.Lines.Count - 1;
+  end;
   if HeadLine >= RichEdit1.Lines.Count then
     Exit;
   LineText := RichEdit1.Lines[HeadLine];
@@ -42839,6 +42858,7 @@ begin
   FDeclFromLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
                                 FDeclFromPos);
   FDeclIsBlock := True;
+  FDeclBlockEnd := not FGuideMarks[AMarkIdx].AtTop;
   FDeclMode := 2;
   DeclPanelShow;
 end;
@@ -62994,6 +63014,7 @@ var
     FGuideMarks[MarkIdx].Box := MarkBox;
     FGuideMarks[MarkIdx].Line := CurrentLineIdx;
     FGuideMarks[MarkIdx].Level := ALevel;
+    FGuideMarks[MarkIdx].AtTop := ATop;
   end;
 
 // Направляющие отступов: слева от текста рисуются полосы, по одной на
