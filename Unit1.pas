@@ -2134,6 +2134,7 @@ type
     // Окно Find In Files (немодальное) - см. FifShowWindow, FifRun
     procedure FifShowWindow(AProject: Boolean; AFileMode: Boolean = False);
     procedure FileSearchShow;
+    procedure ScopeSelect(Sender: TObject);
     procedure FifListFilesOnly(AList: TStrings);
     procedure FifFillExts;
     function  FifCheckedExts: string;
@@ -16776,6 +16777,8 @@ begin
     cmbScope.Items.Add('На диске');
     cmbScope.Items.Add('Искать файл');
     cmbScope.ItemIndex := ScopeFile;
+    // Выбрали «Искать файл» - окно поиска файлов сразу
+    cmbScope.OnSelect := ScopeSelect;
 
     W := 0;
     for I := 0 to cmbScope.Items.Count - 1 do
@@ -17427,6 +17430,14 @@ begin
     Exit;
   end;
   FifShowWindow(False, True);
+end;
+
+// Пункт списка «где искать» выбран: «Искать файл» - сразу окно поиска
+// файлов. Уже стояли на нём - окно открывает Find-> / <-Find.
+procedure TForm1.ScopeSelect(Sender: TObject);
+begin
+  if (cmbScope <> nil) and (cmbScope.ItemIndex = ScopeFileSearch) then
+    FileSearchShow;
 end;
 
 procedure TForm1.DoFindNext(Sender: TObject);
