@@ -786,7 +786,7 @@ object Form1: TForm1
           Tag = 6
           Caption = 'Include &functions (Appendix D)'
           OnClick = mHelpRqClick
-          Hint = 'Функции rapidqAllProc.inc: Windows API и процедуры старых inc, по файлам'
+          Hint = 'Функции RQProc.inc: Windows API и процедуры старых inc, по файлам'
         end
         object mHelpWinApi: TMenuItem
           Tag = 7

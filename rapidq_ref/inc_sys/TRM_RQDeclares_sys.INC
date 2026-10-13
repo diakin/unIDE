@@ -1,11 +1,11 @@
-' TRM_RQDeclares_sys.INC - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: своя DLL TRM.DLL.
+' TRM_RQDeclares_sys.INC - отдельный inc, не входит в RQProc.inc /
+' RQControls.inc: своя DLL TRM.DLL.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/TRM_RQDeclares.INC; повторы объявлений
 ' общих файлов убраны (build_removed.txt). Подключать в программе,
 ' которой он нужен.
 $IFNDEF __SEP_TRM_RQDECLARES_INC
 $DEFINE __SEP_TRM_RQDECLARES_INC
-$INCLUDE "rapidqComponents.inc"
+$INCLUDE "RQControls.inc"
 '============================================================================
 '[build_inc] TRM_RQDeclares.INC
 '============================================================================

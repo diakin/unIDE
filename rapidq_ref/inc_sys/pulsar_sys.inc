@@ -1,11 +1,11 @@
-' pulsar_sys.inc - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: при запуске вызывает pulsar.dll (crea_pulsar_db) и грузит test1.bmp / test2.bmp.
+' pulsar_sys.inc - отдельный inc, не входит в RQProc.inc /
+' RQControls.inc: при запуске вызывает pulsar.dll (crea_pulsar_db) и грузит test1.bmp / test2.bmp.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/pulsar.inc; повторы объявлений
 ' общих файлов убраны (build_removed.txt). Подключать в программе,
 ' которой он нужен.
 $IFNDEF __SEP_PULSAR_INC
 $DEFINE __SEP_PULSAR_INC
-$INCLUDE "rapidqComponents.inc"
+$INCLUDE "RQControls.inc"
 '============================================================================
 '[build_inc] pulsar.inc
 '============================================================================

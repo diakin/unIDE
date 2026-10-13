@@ -12,21 +12,21 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>QFormLocale.inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/QFormLocale.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 3 functions &middot; 2 DLL functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/QFormLocale.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 3 functions &middot; 2 DLL functions</p>
 <p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
 <p><a href="#FL_GETSYSTEMMETRICS">FL_GetSystemMetrics</a> &middot; <a href="#FL_SHAPPBARMESSAGE">FL_SHAppBarMessage</a> &middot; <a href="#FORMLOCALE">FormLocale</a></p>
 <h3><a name="FL_GETSYSTEMMETRICS"></a>FL_GetSystemMetrics</h3>
-<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17552</p>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 17552</p>
 <pre>Declare Function FL_GetSystemMetrics Lib &quot;user32&quot; Alias &quot;GetSystemMetrics&quot; (ByVal nIndex As Long) As Long</pre>
 <p>Returns a system metric or configuration setting (screen size, border widths, etc.) given an SM_* index.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSystemMetrics">GetSystemMetrics</a></p>
 <h3><a name="FL_SHAPPBARMESSAGE"></a>FL_SHAppBarMessage</h3>
-<p class="rq-meta">DLL function, shell32 &middot; rapidqAllProc.inc, line 17551</p>
+<p class="rq-meta">DLL function, shell32 &middot; RQProc.inc, line 17551</p>
 <pre>Declare Function FL_SHAppBarMessage Lib &quot;shell32&quot; Alias &quot;SHAppBarMessage&quot; (ByVal dwMessage As Long, pData As APPBARDATA) As Long</pre>
 <p>Sends an appbar message (ABM_*) to the system, e.g. to get the taskbar position and state. Returns a message-dependent value.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SHAppBarMessage">SHAppBarMessage</a></p>
 <h3><a name="FORMLOCALE"></a>FormLocale</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 17555</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 17555</p>
 <pre>Function FormLocale (AppForm As QForm, AppWidth As Integer, AppHeight As Integer) As Long</pre>
 <p>Positions and sizes AppForm so it does not cover the taskbar, using SHAppBarMessage(ABM_GETTASKBARPOS) and the screen size; AppWidth/AppHeight of 0 mean full screen. Returns the SHAppBarMessage result (0 means it failed and the form was not changed, e.g. with an auto-hide taskbar).</p>
 </body>

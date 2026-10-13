@@ -1,11 +1,11 @@
-' debugNoSend_sys.inc - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: при запуске создаёт окно отладки _DebugFORM и таймер; вызывает senddata из debug.inc.
+' debugNoSend_sys.inc - отдельный inc, не входит в RQProc.inc /
+' RQControls.inc: при запуске создаёт окно отладки _DebugFORM и таймер; вызывает senddata из debug.inc.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/debugNoSend.inc; повторы объявлений
 ' общих файлов убраны (build_removed.txt). Подключать в программе,
 ' которой он нужен.
 $IFNDEF __SEP_DEBUGNOSEND_INC
 $DEFINE __SEP_DEBUGNOSEND_INC
-$INCLUDE "rapidqComponents.inc"
+$INCLUDE "RQControls.inc"
 '============================================================================
 '[build_inc] debugNoSend.inc
 '============================================================================

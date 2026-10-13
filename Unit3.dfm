@@ -288,7 +288,7 @@ object Form3: TForm3
         Top = 5
         Width = 36
         Height = 25
-        Hint = 'Папка эталонных inc (исходные файлы общих rapidqAllProc.inc и rapidqComponents.inc)'
+        Hint = 'Папка эталонных inc (исходные файлы общих RQProc.inc и RQControls.inc)'
         Anchors = [akTop, akRight]
         Caption = '...'
         TabOrder = 0

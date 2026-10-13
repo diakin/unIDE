@@ -1,4 +1,4 @@
-# План сведения inc: rapidqAllProc.inc и rapidqComponents.inc
+# План сведения inc: RQProc.inc и RQControls.inc
 
 Составлено скриптом по rapidq_ref/inc_good (2026-10-11; с того же дня эти файлы - rapidq_ref/incOld, inc_good удалена). Дата файла - из inc_sort_list.md (архив RQIDEdistr2026inc; «inc2026» - исправленный файл, новее архива; «?» - даты нет).
 
@@ -44,7 +44,7 @@
 | QxEDIT | QxEdit.inc (71, 2004-02-20)<br>qEditEx.inc (71, 2021-02-26) | qEditEx.inc |
 | XpGroupBox | XP_MANIFEST.INC (136, inc2026)<br>xp_manifest1.inc (136, 2021-04-10) | XP_MANIFEST.INC |
 
-## 2. Файлы с компонентами (кандидаты в rapidqComponents.inc)
+## 2. Файлы с компонентами (кандидаты в RQControls.inc)
 
 | Файл | Строк | Дата | Классы (базовый) | Брать |
 |---|---|---|---|---|
@@ -192,7 +192,7 @@
 | xp_manifest1.inc | 136 | 2021-04-10 | XpGroupBox (QPANEL) | да |
 | RapidQ_D3D.inc | 1014 | inc2026 | (Direct3D) | отдельно: DLL d3drm.dll (Direct3D Retained Mode) - в Windows Vista и новее её нет |
 
-## 3. Файлы с константами, DECLARE и процедурами (кандидаты в rapidqAllProc.inc)
+## 3. Файлы с константами, DECLARE и процедурами (кандидаты в RQProc.inc)
 
 Особые библиотеки (OpenGL, DAQmx, ODBC, MySQL и т.п.) помечены «?» - нужны ли они в общем файле, решите.
 

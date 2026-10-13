@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Папка rapidq_ref/inc_standard - одна папка inc для компилятора RapidQ
-(IDE Options - Compilers - RapidQ Basic, поле Include).
+"""Папка rapidq_ref/RQInc - набор inc, который ставится с unIDE (IDE Options -
+Compilers - RapidQ Basic, поле Include UnIde).
 
 Состав:
 - файлы incOld (*.inc, *.cmp) без ошибок проверки INC Manager (IncCheck.pas,
   CheckLines: блоки, директивы без $, числа из C, CONST без =, ";" вне
   строки, $UNDEF/$DEFINE и TYPE с именем встроенного класса) - под своими
   именами, без изменений: старые программы собираются как раньше;
-- из inc_sys: rapidqAllProc.inc, rapidqComponents.inc и отдельные файлы
+- из inc_sys: RQProc.inc, RQControls.inc и отдельные файлы
   *_sys.* (build_inc.py пишет их с _sys, чтобы не совпадать с именами incOld).
 
 Файлы с ошибками - в EXCLUDE (проверка 2026-10-12, INC Manager на папке
 incOld). Чтобы взять файл несмотря на замечания - внести его в ALLOW.
-Отчёт - rapidq_ref/inc_standard.md. Запуск: python3 build_standard.py.
-Папка inc_standard пишется заново (старые файлы в ней удаляются).
+Отчёт - rapidq_ref/RQInc.md. Запуск: python3 build_standard.py.
+Папка RQInc пишется заново (старые файлы в ней удаляются).
 """
 import os
 import shutil
@@ -22,8 +22,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REF = os.path.normpath(os.path.join(HERE, '..'))
 OLD = os.path.join(REF, 'incOld')
 SYS = os.path.join(REF, 'inc_sys')
-OUT = os.path.join(REF, 'inc_standard')
-REPORT = os.path.join(REF, 'inc_standard.md')
+OUT = os.path.join(REF, 'RQInc')
+REPORT = os.path.join(REF, 'RQInc.md')
 
 # Файл incOld: что нашла проверка INC Manager (ошибки)
 EXCLUDE = {
@@ -83,7 +83,7 @@ def main():
         low = name.lower()
         if os.path.splitext(low)[1] not in ('.inc', '.cmp'):
             continue
-        if low not in ('rapidqallproc.inc', 'rapidqcomponents.inc') and \
+        if low not in ('rqproc.inc', 'rqcontrols.inc') and \
            not os.path.splitext(low)[0].endswith('_sys'):
             continue
         if low in have:
@@ -91,16 +91,18 @@ def main():
         shutil.copyfile(os.path.join(SYS, name), os.path.join(OUT, name))
         taken_sys.append(name)
 
-    rep = ['# Папка inc_standard', '',
-           'Собрана `rapidq_ref/tools/build_standard.py`. Одна папка inc для '
-           'компилятора RapidQ: IDE Options - Compilers - RapidQ Basic, поле Include.', '',
+    rep = ['# Папка RQInc', '',
+           'Собрана `rapidq_ref/tools/build_standard.py`. Набор inc, который ставится '
+           'с unIDE: IDE Options - Compilers - RapidQ Basic, поле Include UnIde. '
+           'Свои inc пользователя - поле Include User; какую папку берёт проект - '
+           'Project Properties.', '',
            '- из `incOld` без изменений: %d файлов (без ошибок проверки INC Manager);' % len(taken_old),
            '- из `inc_sys`: %d файлов: %s;' % (len(taken_sys), ', '.join(taken_sys)),
            '- не взяты: %d файлов incOld с ошибками (ниже).' % len(skipped), '',
            'Старая программа подключает файлы incOld под прежними именами. Новая - '
-           '`rapidqComponents.inc` (он подключает `rapidqAllProc.inc`) и при '
+           '`RQControls.inc` (он подключает `RQProc.inc`) и при '
            'необходимости отдельные файлы `*_sys.inc`. Отдельный файл `*_sys` сам '
-           'подключает `rapidqComponents.inc`, поэтому вместе со старым '
+           'подключает `RQControls.inc`, поэтому вместе со старым '
            '`RAPIDQ.INC` его не подключают.', '',
            '## Не взяты', '',
            'Чтобы взять файл - внести имя в `ALLOW` в build_standard.py и собрать '

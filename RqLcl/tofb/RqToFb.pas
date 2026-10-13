@@ -8667,7 +8667,7 @@ end;
 // ниже по тексту, чем эта SUB её упоминает: в FreeBASIC такая ещё не
 // видна в SUB ("Variable not declared"), переменная остаётся локальной
 // (ApiDate.inc: FOR i в FUNCTION weekday, DIM i другого файла ниже - в
-// общем rapidqAllProc.inc). Неявная переменная модуля объявляется в
+// общем RQProc.inc). Неявная переменная модуля объявляется в
 // начале файла - с ней SUB по-прежнему общая.
 procedure TRqFbConv.EndOfPass1;
 var
@@ -8708,7 +8708,7 @@ begin
     end;
   end;
   // Локальная переменная или параметр с именем SUB/FUNCTION модуля: в
-  // FreeBASIC - "Duplicated definition" (общий rapidqAllProc.inc: SUB II
+  // FreeBASIC - "Duplicated definition" (общий RQProc.inc: SUB II
   // из CMD5.inc и FOR ii в функциях eml.inc). Своё имя функции (результат)
   // не трогается.
   for VarIdx := 0 to FVars.Count - 1 do

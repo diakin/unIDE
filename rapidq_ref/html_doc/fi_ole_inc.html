@@ -12,88 +12,88 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>ole.inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/ole.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 17 functions &middot; 14 DLL functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/ole.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 17 functions &middot; 14 DLL functions</p>
 <p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
 <p><a href="#CALLASMPROC">CallAsmProc</a> &middot; <a href="#CLSIDFROMPROGID">CLSIDFromProgID</a> &middot; <a href="#CLSIDFROMPROGIDEX">CLSIDFromProgIDEx</a> &middot; <a href="#COCREATEGUID">CoCreateGuid</a> &middot; <a href="#COCREATEINSTANCE">CoCreateInstance</a> &middot; <a href="#COINITIALIZE">CoInitialize</a> &middot; <a href="#COUNINITIALIZE">CoUninitialize</a> &middot; <a href="#GUID_">GUID$</a> &middot; <a href="#GUIDSTRINGFROMGUID">GuidStringFromGUID</a> &middot; <a href="#IIDFROMSTRING">IIDFromString</a> &middot; <a href="#ISEQUALGUID">IsEqualGUID</a> &middot; <a href="#MCALL">MCALL</a> &middot; <a href="#OLEINITIALIZE">OleInitialize</a> &middot; <a href="#OLEUNINITIALIZE">OleUninitialize</a> &middot; <a href="#PROGIDFROMCLSID">ProgIDFromCLSID</a> &middot; <a href="#STRINGFROMCLSID">StringFromCLSID</a> &middot; <a href="#STRINGFROMGUID2">StringFromGUID2</a></p>
 <h3><a name="CALLASMPROC"></a>CallAsmProc</h3>
-<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 17117</p>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 17117</p>
 <pre>DECLARE FUNCTION CallAsmProc LIB &quot;user32&quot; ALIAS &quot;CallWindowProcA&quot; (Proc AS LONG, A1 AS LONG, A2 AS LONG, A3 AS LONG, A4 AS LONG) AS LONG</pre>
 <p>CallWindowProc declared to call a machine-code procedure: passes four values to the procedure at address Proc and returns its result.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CallWindowProcA">CallWindowProcA</a></p>
 <h3><a name="CLSIDFROMPROGID"></a>CLSIDFromProgID</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17085</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17085</p>
 <pre>Declare Function CLSIDFromProgID Lib &quot;ole32.dll&quot; ALIAS &quot;CLSIDFromProgID&quot;(ByVal lpszProgID As Long, pCLSID As GUID) As Long</pre>
 <p>Looks up a CLSID in the registry from a ProgID (e.g. &quot;Excel.Application&quot;). Returns an HRESULT.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CLSIDFromProgID">CLSIDFromProgID</a></p>
 <h3><a name="CLSIDFROMPROGIDEX"></a>CLSIDFromProgIDEx</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17086</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17086</p>
 <pre>Declare Function CLSIDFromProgIDEx Lib &quot;ole32.dll&quot; ALIAS &quot;CLSIDFromProgIDEx&quot;(ByVal lpszProgID As Long, pCLSID As GUID) As Long</pre>
 <p>Looks up a CLSID from a ProgID, triggering automatic installation of the class if required. Returns an HRESULT.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CLSIDFromProgIDEx">CLSIDFromProgIDEx</a></p>
 <h3><a name="COCREATEGUID"></a>CoCreateGuid</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17093</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17093</p>
 <pre>Declare Function CoCreateGuid Lib &quot;ole32.dll&quot; ALIAS &quot;CoCreateGuid&quot; (lpGUID as GUID) as Long</pre>
 <p>Creates a new unique GUID. Returns an HRESULT (S_OK on success).</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CoCreateGuid">CoCreateGuid</a></p>
 <h3><a name="COCREATEINSTANCE"></a>CoCreateInstance</h3>
-<p class="rq-meta">DLL function, ole32 &middot; rapidqAllProc.inc, line 17102</p>
+<p class="rq-meta">DLL function, ole32 &middot; RQProc.inc, line 17102</p>
 <pre>Declare Function CoCreateInstance Lib &quot;ole32&quot; ALIAS &quot;CoCreateInstance&quot;( rclsid As Long, pUnkOuter As Long, dwClsContext As Long, riid As long, ppv As long) As Long</pre>
 <p>Creates and default-initializes one object of the class associated with a CLSID and returns the requested interface pointer. Returns an HRESULT.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CoCreateInstance">CoCreateInstance</a></p>
 <h3><a name="COINITIALIZE"></a>CoInitialize</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17095</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17095</p>
 <pre>Declare Function CoInitialize Lib &quot;ole32.dll&quot; ALIAS &quot;CoInitialize&quot; (ByVal pvReserved As Long) As Long</pre>
 <p>Initializes the COM library on the current thread (single-threaded apartment). Returns an HRESULT. CoInitializeEx is recommended instead.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CoInitialize">CoInitialize</a></p>
 <h3><a name="COUNINITIALIZE"></a>CoUninitialize</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17094</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17094</p>
 <pre>Declare Sub CoUninitialize Lib &quot;ole32.dll&quot; ALIAS &quot;CoUninitialize&quot; ()</pre>
 <p>Closes the COM library on the current thread; call once for each successful CoInitialize.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CoUninitialize">CoUninitialize</a></p>
 <h3><a name="GUID_"></a>GUID$</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 17057</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 17057</p>
 <pre>FUNCTION GUID$(ClassID AS STRING) AS STRING</pre>
 <p>Converts a GUID string such as &quot;{e436ebb3-524f-11ce-9f53-0020af0ba770}&quot; (braces, spaces, colons and &quot;CLSID&quot; are stripped) into its 16-byte binary form and returns it as a string.</p>
 <h3><a name="GUIDSTRINGFROMGUID"></a>GuidStringFromGUID</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 17110</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 17110</p>
 <pre>Function GuidStringFromGUID(rclsid As GUID) As String</pre>
 <p>Converts a binary GUID structure into its text form &quot;{xxxxxxxx-...}&quot; using StringFromGUID2 (ole32) and returns that string.</p>
 <h3><a name="IIDFROMSTRING"></a>IIDFromString</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17090</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17090</p>
 <pre>Declare Function IIDFromString Lib &quot;ole32.dll&quot; ALIAS &quot;IIDFromString&quot;(ByVal lpsz As String, ByRef lpiid As GUID) As Long</pre>
 <p>Converts a string in braces (as made by StringFromIID) into an interface identifier (IID). Returns an HRESULT.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=IIDFromString">IIDFromString</a></p>
 <h3><a name="ISEQUALGUID"></a>IsEqualGUID</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17099</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17099</p>
 <pre>Declare Function IsEqualGUID Lib &quot;ole32.dll&quot; ALIAS &quot;IsEqualGUID&quot;(rguid1 As GUID, rguid2 As GUID) As Long</pre>
 <p>Compares two GUIDs and returns nonzero if they are equal.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=IsEqualGUID">IsEqualGUID</a></p>
 <h3><a name="MCALL"></a>MCALL</h3>
-<p class="rq-meta">FUNCTIONI &middot; rapidqAllProc.inc, line 17142</p>
+<p class="rq-meta">FUNCTIONI &middot; RQProc.inc, line 17142</p>
 <pre>Functioni MCALL (...) As Long</pre>
 <p>Calls a COM method: MCALL(ObjectPtr, MethodOffset, Arg1, ..., ArgN). Packs the arguments into an array and runs the machine-code stub ptrMCALLasm via CallAsmProc; returns the method&#x27;s result. Needs at least two arguments, otherwise nothing is called.</p>
 <h3><a name="OLEINITIALIZE"></a>OleInitialize</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17096</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17096</p>
 <pre>declare function OleInitialize lib &quot;ole32.dll&quot; alias &quot;OleInitialize&quot; (pvReserved as long) as long</pre>
 <p>Initializes the COM library (STA) and OLE features such as clipboard and drag and drop on the current thread. Returns an HRESULT.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=OleInitialize">OleInitialize</a></p>
 <h3><a name="OLEUNINITIALIZE"></a>OleUninitialize</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17097</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17097</p>
 <pre>declare sub OleUninitialize lib &quot;ole32.dll&quot; alias &quot;OleUninitialize&quot;</pre>
 <p>Closes the OLE library on the current thread, freeing its resources.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=OleUninitialize">OleUninitialize</a></p>
 <h3><a name="PROGIDFROMCLSID"></a>ProgIDFromCLSID</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17087</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17087</p>
 <pre>Declare Function ProgIDFromCLSID Lib &quot;ole32.dll&quot; ALIAS &quot;ProgIDFromCLSID&quot;(pCLSID As GUID, lpszProgID As Long) As Long</pre>
 <p>Retrieves the ProgID for a CLSID; the returned string must be freed with CoTaskMemFree. Returns an HRESULT.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ProgIDFromCLSID">ProgIDFromCLSID</a></p>
 <h3><a name="STRINGFROMCLSID"></a>StringFromCLSID</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17088</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17088</p>
 <pre>Declare Function StringFromCLSID Lib &quot;ole32.dll&quot; ALIAS &quot;StringFromCLSID&quot;(pCLSID As GUID, lpszProgID As Long) As Long</pre>
 <p>Converts a CLSID into a string in braces; the returned string must be freed with CoTaskMemFree. Returns an HRESULT.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=StringFromCLSID">StringFromCLSID</a></p>
 <h3><a name="STRINGFROMGUID2"></a>StringFromGUID2</h3>
-<p class="rq-meta">DLL function, ole32.dll &middot; rapidqAllProc.inc, line 17084</p>
+<p class="rq-meta">DLL function, ole32.dll &middot; RQProc.inc, line 17084</p>
 <pre>Declare Function StringFromGUID2 Lib &quot;ole32.dll&quot; ALIAS &quot;StringFromGUID2&quot;(rclsid As GUID, ByVal lpsz As Long, ByVal cbMax As Long) As Long</pre>
 <p>Converts a GUID into a string of printable characters in braces, written to a wide-character buffer. Returns the number of characters, or 0 if the buffer is too small.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=StringFromGUID2">StringFromGUID2</a></p>

@@ -3,7 +3,7 @@ unit IncCheck;
 // ---------------------------------------------------------------------------
 //  Проверка своих inc-файлов пользователя (INC Manager, Unit3):
 //    - сравнение с эталоном - исходными inc, из которых собраны общие
-//      rapidqAllProc.inc и rapidqComponents.inc (rapidq_ref\incOld);
+//      RQProc.inc и RQControls.inc (rapidq_ref\incOld);
 //    - ошибки, которые уже встречались и исправлены в эталоне (суффиксы
 //      чисел из C, директивы без $, CONST без =, незакрытые блоки ...), и
 //      имена, которые есть и в общих inc (при подключении вместе - "already
@@ -150,9 +150,9 @@ implementation
 const
   MaxFilesWalk = 20000;
   MaxClashMsgs = 30;
-  // Общие inc (inc_sys / inc_standard): их имена - "общие"
-  CommonIncNames: array[0..1] of string = ('rapidqAllProc.inc',
-                                           'rapidqComponents.inc');
+  // Общие inc (inc_sys / RQInc): их имена - "общие"
+  CommonIncNames: array[0..1] of string = ('RQProc.inc',
+                                           'RQControls.inc');
 
   // Встроенные классы rc.exe (Component.data, кроме QCOLORDIALOG: его
   // описывают inc, и rc.exe TYPE QCOLORDIALOG принимает) и QTHREAD - он не описан в
@@ -641,7 +641,7 @@ begin
     end;
 
     // Имена общих inc - для повторов при подключении вместе. Только два
-    // общих файла: папка Include (inc_standard) держит и старые inc из
+    // общих файла: папка Include (RQInc) держит и старые inc из
     // incOld, их имена общими не считаются.
     Files.Clear;
     for NameIdx := Low(CommonIncNames) to High(CommonIncNames) do

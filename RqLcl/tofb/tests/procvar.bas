@@ -1,4 +1,4 @@
-' Неявная переменная в FUNCTION с именем SUB модуля (общий rapidqAllProc.inc:
+' Неявная переменная в FUNCTION с именем SUB модуля (общий RQProc.inc:
 ' SUB II из CMD5.inc, FOR ii в eml.inc). Перевод: переменная ii_v.
 ' Ожидается: 6 и II
 SUB II(s AS STRING)

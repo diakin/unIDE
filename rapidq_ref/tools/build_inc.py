@@ -4,9 +4,9 @@
 Сборка системных inc RapidQ из rapidq_ref/incOld по плану
 rapidq_ref/inc_merge_plan.md (см. rapidq_ref/inc_about.md):
 
-  inc_sys/rapidqAllProc.inc     - константы, DECLARE, процедуры;
-  inc_sys/rapidqComponents.inc  - компоненты (TYPE ... EXTENDS), подключает
-                                  rapidqAllProc.inc сам;
+  inc_sys/RQProc.inc     - константы, DECLARE, процедуры;
+  inc_sys/RQControls.inc  - компоненты (TYPE ... EXTENDS), подключает
+                                  RQProc.inc сам;
   inc_sys/build_report.md       - что убрано как повтор, что расходится.
 
 Каждое имя объявляется один раз: повтор (CONST, $DEFINE, DECLARE, TYPE,
@@ -1391,7 +1391,7 @@ def main():
                 builder.const_defs.setdefault(unit.names[0], (fname, unit.first + 1,
                                                               lines[unit.first:unit.last + 1], unit.text))
 
-    head = ["' rapidqAllProc.inc - константы, DECLARE и процедуры RapidQ одним файлом.",
+    head = ["' RQProc.inc - константы, DECLARE и процедуры RapidQ одним файлом.",
             "' Собран rapidq_ref/tools/build_inc.py из rapidq_ref/incOld по",
             "' rapidq_ref/inc_merge_plan.md. Не правьте вручную - правьте исходные",
             "' файлы или план и соберите заново. Повторы убраны - их список и место",
@@ -1409,21 +1409,21 @@ def main():
     out = append_bodies(out, moved)
     print('bodies moved', len(moved))
     out.append("$ENDIF ' __RQALLPROC_INC")
-    finals = [('rapidqAllProc.inc', out)]
+    finals = [('RQProc.inc', out)]
 
-    out = ["' rapidqComponents.inc - компоненты RapidQ (TYPE ... EXTENDS) одним файлом.",
-           "' Собран rapidq_ref/tools/build_inc.py; подключает rapidqAllProc.inc.",
+    out = ["' RQControls.inc - компоненты RapidQ (TYPE ... EXTENDS) одним файлом.",
+           "' Собран rapidq_ref/tools/build_inc.py; подключает RQProc.inc.",
            "' Не правьте вручную - правьте исходные файлы или план и соберите заново.",
            "$IFNDEF __RQCOMPONENTS_INC",
            "$DEFINE __RQCOMPONENTS_INC",
-           '$INCLUDE "rapidqAllProc.inc"']
+           '$INCLUDE "RQProc.inc"']
     builder.emit_file(rq2 + ' (компоненты)', texts[rq2], keep=lambda n: n in in_comp, out=out)
     for f in ordered:
         if f.lower() in builder.emitted:
             continue
         builder.emit_file(f, texts[f], keep=line_keep(take.get(f.lower(), 'да')), out=out)
     out.append("$ENDIF ' __RQCOMPONENTS_INC")
-    finals.append(('rapidqComponents.inc', out))
+    finals.append(('RQControls.inc', out))
 
     # Отдельные файлы ("отдельно: ..." в плане): не входят в общие, потому
     # что при запуске программы что-то делают сами (PRINT, окно, загрузка
@@ -1432,7 +1432,7 @@ def main():
     # общие файлы подключаются в начале.
     separate = [by_low[low] for low in sorted(take) if take[low].startswith('отдельно')
                 and low in by_low]
-    # Имя - с _sys (debug.inc -> debug_sys.inc): в общей папке inc_standard
+    # Имя - с _sys (debug.inc -> debug_sys.inc): в общей папке RQInc
     # рядом лежит исходный файл из incOld под своим именем, для старых программ
     sep_names = []
     for f in separate:
@@ -1441,14 +1441,14 @@ def main():
         sep_name = stem + '_sys' + ext
         sep_names.append(sep_name)
         guard = '__SEP_' + re.sub(r'\W', '_', stem).upper() + '_INC'
-        out = ["' %s - отдельный inc, не входит в rapidqAllProc.inc /" % sep_name,
-               "' rapidqComponents.inc: %s." % take[f.lower()][len('отдельно'):].lstrip(': '),
+        out = ["' %s - отдельный inc, не входит в RQProc.inc /" % sep_name,
+               "' RQControls.inc: %s." % take[f.lower()][len('отдельно'):].lstrip(': '),
                "' Собран rapidq_ref/tools/build_inc.py из incOld/%s; повторы объявлений" % f,
                "' общих файлов убраны (build_removed.txt). Подключать в программе,",
                "' которой он нужен.",
                "$IFNDEF %s" % guard,
                "$DEFINE %s" % guard,
-               '$INCLUDE "rapidqComponents.inc"']
+               '$INCLUDE "RQControls.inc"']
         sep_builder.emit_file(f, texts[f], keep=line_keep(take[f.lower()]), out=out)
         out.append("$ENDIF ' %s" % guard)
         finals.append((sep_name, out))
@@ -1459,7 +1459,7 @@ def main():
     removed_log = []
     strip_count = {}
     for fname, lines in finals:
-        names = common if fname in ('rapidqAllProc.inc', 'rapidqComponents.inc') \
+        names = common if fname in ('RQProc.inc', 'RQControls.inc') \
             else common | active_decl_names(lines)
         kept, removed = strip_commented_dups(lines, names)
         strip_count[fname] = len(removed)
@@ -1470,12 +1470,12 @@ def main():
     write(os.path.join(OUT, 'build_removed.txt'), removed_log)
 
     # Отчёт
-    rep = ['# Сборка rapidqAllProc.inc и rapidqComponents.inc', '',
+    rep = ['# Сборка RQProc.inc и RQControls.inc', '',
            'Собрано rapidq_ref/tools/build_inc.py из incOld по inc_merge_plan.md.', '',
            '## Состав', '',
-           '- rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, '
+           '- RQProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, '
            'и %d файлов: %s' % (len(proc_files), ', '.join(proc_files)),
-           '- rapidqComponents.inc: разделы компонентов rapidq2.inc и %d файлов: %s'
+           '- RQControls.inc: разделы компонентов rapidq2.inc и %d файлов: %s'
            % (len(ordered), ', '.join(ordered)),
            '- отдельными файлами в inc_sys (имя с _sys): %d: %s' % (len(separate), ', '.join(sep_names)),
            '- не вошли: %d файлов (ниже)' % len(skipped), '']

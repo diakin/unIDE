@@ -10,7 +10,7 @@
 <div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; unIDE</span><span class="rq-section">Appendix E: preprocessor</span></div>
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
 <h1>Preprocessor: missing include files, resources and DLLs</h1>
-<p class="rq-meta">unIDE: <code>RqDeps.pas</code> (scan, search, choice of a copy), <code>DlgRqDeps.pas</code> (window &laquo;&#1053;&#1077;&#1076;&#1086;&#1089;&#1090;&#1072;&#1102;&#1097;&#1080;&#1077; &#1092;&#1072;&#1081;&#1083;&#1099; &#1087;&#1088;&#1086;&#1075;&#1088;&#1072;&#1084;&#1084;&#1099;&raquo;), <code>DlgFindInc.pas</code> (View &mdash; Find inc file), <code>IncCheck.pas</code> (disk search, comparison with the reference). Include folder: <code>rapidq_ref/inc_standard</code>, built by <code>rapidq_ref/tools/build_standard.py</code>, contents in <code>rapidq_ref/inc_standard.md</code>.</p>
+<p class="rq-meta">unIDE: <code>RqDeps.pas</code> (scan, search, choice of a copy), <code>DlgRqDeps.pas</code> (window &laquo;&#1053;&#1077;&#1076;&#1086;&#1089;&#1090;&#1072;&#1102;&#1097;&#1080;&#1077; &#1092;&#1072;&#1081;&#1083;&#1099; &#1087;&#1088;&#1086;&#1075;&#1088;&#1072;&#1084;&#1084;&#1099;&raquo;), <code>DlgFindInc.pas</code> (View &mdash; Find inc file), <code>IncCheck.pas</code> (disk search, comparison with the reference). Include folder: <code>rapidq_ref/RQInc</code>, built by <code>rapidq_ref/tools/build_standard.py</code>, contents in <code>rapidq_ref/RQInc.md</code>.</p>
 
 <a name="1"></a><h2>1. Why it is needed</h2>
 <p>An old Rapid-Q program usually cannot be compiled in unIDE without changes. The <code>.bas</code> file names its include files, resources and DLLs, but not the full paths where they were on the author's computer. rc.exe stops at the first missing file (&laquo;$INCLUDE file X does not exist&raquo;), so the program has to be compiled again and again, one file at a time.</p>
@@ -74,18 +74,17 @@
 </ul>
 <p>What was copied and from where is written to the compilation log.</p>
 
-<a name="5"></a><h2>5. One include folder: inc_standard</h2>
-<p>IDE Options &mdash; Compilers &mdash; RapidQ Basic has one field <b>Include</b>. It is meant to point to <code>rapidq_ref/inc_standard</code>:</p>
+<a name="5"></a><h2>5. Include folders: Include UnIde and Include User</h2>
+<p>IDE Options &mdash; Compilers &mdash; RapidQ Basic has two fields:</p>
 <ul>
-<li>the include files of <code>incOld</code> without errors of the INC Manager check, under their own names and unchanged &mdash; old programs include them as before;</li>
-<li><code>rapidqAllProc.inc</code> and <code>rapidqComponents.inc</code> &mdash; for new programs;</li>
-<li>the separate files of <code>inc_sys</code> with <code>_sys</code> in the name (<code>debug_sys.inc</code>, <code>var_sys.inc</code> ...), so that they do not clash with the files of <code>incOld</code> of the same name.</li>
+<li><b>Include UnIde</b> &mdash; the set that comes with unIDE, <code>rapidq_ref/RQInc</code> (empty field &mdash; this folder next to the exe): <code>RQProc.inc</code> (numeric constants and functions), <code>RQControls.inc</code> (components), and next to them checked separate include files &mdash; the files of <code>incOld</code> without errors of the INC Manager check under their own names (mostly components: they exist in several versions) and the separate files of <code>inc_sys</code> with <code>_sys</code> in the name (<code>debug_sys.inc</code>, <code>var_sys.inc</code> ...);</li>
+<li><b>Include User</b> &mdash; the user's own common path to the include files his programs were written with.</li>
 </ul>
-<p>The files of <code>incOld</code> that were not taken and the reasons are listed in <code>rapidq_ref/inc_standard.md</code>. A project can still have its own include folder (Project Properties); then that folder is passed with <code>-I</code>.</p>
+<p>In Project Properties the project chooses one folder from a list: Include UnIde (default), Include User, or a folder of its own (&laquo;...&raquo; adds it to the list; &laquo;&#1059;&#1076;&#1072;&#1083;&#1080;&#1090;&#1100;&raquo; and &laquo;&#1059;&#1076;&#1072;&#1083;&#1080;&#1090;&#1100; &#1074;&#1089;&#1077;&raquo; remove own folders). Below the list both standard paths are shown. The chosen folder is passed to rc.exe with <code>-I</code>; the choice and the list are stored in the project settings. The files of <code>incOld</code> that were not taken into RQInc and the reasons are listed in <code>rapidq_ref/RQInc.md</code>.</p>
 <p>A file found by the preprocessor and copied to the <code>-I</code> folder stays there, so the next program that needs it finds it at once.</p>
 
 <a name="6"></a><h2>6. Find inc file</h2>
-<p>View &mdash; Find inc file searches one name on disk by hand. The name may be a mask: <code>*</code> &mdash; any characters, <code>?</code> &mdash; one character (<code>QColorDialog*.inc</code>). Order: Include, Include system (if it is another folder), the current folder with subfolders, the folder above, then all local disks (check box) or a chosen folder. Copies appear in the list while the search goes on; each copy is compared with the reference. After &laquo;&#1057;&#1090;&#1086;&#1087;&raquo; the copies already found stay in the list. The window stays above the editor window.</p>
+<p>View &mdash; Find inc file searches one name on disk by hand. The name may be a mask: <code>*</code> &mdash; any characters, <code>?</code> &mdash; one character (<code>QColorDialog*.inc</code>). Order: Include (-I), Include UnIde, Include User (each only if it is another folder), the current folder with subfolders, the folder above, then all local disks (check box) or a chosen folder. Copies appear in the list while the search goes on; each copy is compared with the reference. After &laquo;&#1057;&#1090;&#1086;&#1087;&raquo; the copies already found stay in the list. The window stays above the editor window.</p>
 
 <a name="7"></a><h2>7. Limits</h2>
 <ul>

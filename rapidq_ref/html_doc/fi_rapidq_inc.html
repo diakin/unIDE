@@ -12,108 +12,108 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>rapidq.inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/rapidq.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 25 functions &middot; 2 DLL functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/rapidq.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 25 functions &middot; 2 DLL functions</p>
 <p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
 <p><a href="#ADDCLRSTRING">AddClrString</a> &middot; <a href="#ADDFONTSTRING">AddFontString</a> &middot; <a href="#CLEARGRID">ClearGrid</a> &middot; <a href="#CPRINT">cprint</a> &middot; <a href="#DECODESUBJ">DecodeSubj</a> &middot; <a href="#FTALLY">fTally</a> &middot; <a href="#GETHEADERFIELD">GetHeaderField</a> &middot; <a href="#GETMSGBODY">GetMSGBody</a> &middot; <a href="#GETMSGBODYCODEMETHOD">GetMsgBodyCodeMethod</a> &middot; <a href="#GETMSGBODYCODEPAGE">GetMsgBodyCodePage</a> &middot; <a href="#GETMSGBODYCONTENTTYPE">GetMsgBodyContentType</a> &middot; <a href="#GETMSGHEADER">GetMSGHeader</a> &middot; <a href="#GETRUSDATE">GetRusdate</a> &middot; <a href="#GETSUBJCODEMETHOD">GetSubjCodeMethod</a> &middot; <a href="#GETSUBJCODEPAGE">GetSubjCodePage</a> &middot; <a href="#ISKOI8">isKOI8</a> &middot; <a href="#ODD">ODD</a> &middot; <a href="#RQBASE64DECODE">RQBASE64Decode</a> &middot; <a href="#RQBASE64ENCODE">RQBASE64Encode</a> &middot; <a href="#RQCONVERTCODEPAGE">RQConvertCodePage</a> &middot; <a href="#RUDATE">Rudate</a> &middot; <a href="#RUSDATE">Rusdate</a> &middot; <a href="#SETWINDOWLONGAPI">SetWindowLongAPI</a> &middot; <a href="#TRIM_">Trim$</a> &middot; <a href="#WAITFORSINGLEOBJECT">WaitForSingleObject</a></p>
 <h3><a name="ADDCLRSTRING"></a>AddClrString</h3>
-<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 3017</p>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 3017</p>
 <pre>sub AddClrString (AddString$, Clr, Sender as QRICHEDIT)</pre>
 <p>Appends AddString$ to the end of a QRICHEDIT in color Clr (sets SelStart/SelAttributes.Color, then AddStrings).</p>
 <h3><a name="ADDFONTSTRING"></a>AddFontString</h3>
-<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 3020</p>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 3020</p>
 <pre>sub AddFontString (AddString$, FontStr as QFont, Sender as QRICHEDIT)</pre>
 <p>Appends AddString$ to the end of a QRICHEDIT using the color and font name of the given QFONT (other font attributes are not applied).</p>
 <h3><a name="CLEARGRID"></a>ClearGrid</h3>
-<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 6006</p>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 6006</p>
 <pre>Sub ClearGrid(Sender As QStringGrid)</pre>
 <p>Clears a QStringGrid by deleting all non-first rows and columns and then restoring the original RowCount, ColCount, FixedRows and FixedCols, so cells come back empty. Selection and scroll position are reset to cell 1,1.</p>
 <h3><a name="CPRINT"></a>cprint</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 5993</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 5993</p>
 <pre>DECLARE sub cprint(s as string)</pre>
 <p>Declaration only. Body in eml.inc.</p>
 <h3><a name="DECODESUBJ"></a>DecodeSubj</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3043</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3043</p>
 <pre>declare Function DecodeSubj( Subject As String) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="FTALLY"></a>fTally</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 3024</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3024</p>
 <pre>Function fTally (sSearchIn As String, sToFind As string) As Long</pre>
 <p>Counts how many characters of sSearchIn are equal to sToFind and returns the count. Compares single characters, so sToFind should be one character.</p>
 <h3><a name="GETHEADERFIELD"></a>GetHeaderField</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3037</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3037</p>
 <pre>declare Function GetHeaderField( Header As String, Field as string) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="GETMSGBODY"></a>GetMSGBody</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3039</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3039</p>
 <pre>declare Function GetMSGBody( Source As String) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="GETMSGBODYCODEMETHOD"></a>GetMsgBodyCodeMethod</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3036</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3036</p>
 <pre>declare Function GetMsgBodyCodeMethod( Msg As String) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="GETMSGBODYCODEPAGE"></a>GetMsgBodyCodePage</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3035</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3035</p>
 <pre>declare Function GetMsgBodyCodePage ( Msg As String) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="GETMSGBODYCONTENTTYPE"></a>GetMsgBodyContentType</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3034</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3034</p>
 <pre>declare Function GetMsgBodyContentType ( Msg As String) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="GETMSGHEADER"></a>GetMSGHeader</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3038</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3038</p>
 <pre>declare Function GetMSGHeader( Source As String) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="GETRUSDATE"></a>GetRusdate</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 3050</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3050</p>
 <pre>function GetRusdate as string</pre>
 <p>Returns the current date (DATE$, MM-DD-YYYY) reordered as DD-MM-YY.</p>
 <h3><a name="GETSUBJCODEMETHOD"></a>GetSubjCodeMethod</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3033</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3033</p>
 <pre>declare Function GetSubjCodeMethod( Subject As String) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="GETSUBJCODEPAGE"></a>GetSubjCodePage</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3032</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3032</p>
 <pre>declare Function GetSubjCodePage( Subject As String) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="ISKOI8"></a>isKOI8</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3040</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3040</p>
 <pre>declare Function isKOI8( Red$ As String) As long</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="ODD"></a>ODD</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 5997</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 5997</p>
 <pre>Function ODD(value AS INTEGER ) AS INTEGER</pre>
 <p>Returns 1 if value is odd and 0 if it is even.</p>
 <h3><a name="RQBASE64DECODE"></a>RQBASE64Decode</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3042</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3042</p>
 <pre>declare Function RQBASE64Decode (stxt As String) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="RQBASE64ENCODE"></a>RQBASE64Encode</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3041</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3041</p>
 <pre>declare Function RQBASE64Encode(s As String) As String</pre>
 <p>Forward declaration only. Body in eml.inc.</p>
 <h3><a name="RQCONVERTCODEPAGE"></a>RQConvertCodePage</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 3044</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 3044</p>
 <pre>declare Function RQConvertCodePage (SourseString As String, inPage As long, outPage As long) As String</pre>
 <p>Forward declaration only. Body in conversion.inc.</p>
 <h3><a name="RUDATE"></a>Rudate</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 3058</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3058</p>
 <pre>function Rudate as string</pre>
 <p>Returns the current date (DATE$, MM-DD-YYYY) reordered as DD-MM-YY. Same code as GetRusdate.</p>
 <h3><a name="RUSDATE"></a>Rusdate</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 3054</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3054</p>
 <pre>function Rusdate as string</pre>
 <p>Returns the current date (DATE$, MM-DD-YYYY) reordered as DD-MM-YY. Same code as GetRusdate.</p>
 <h3><a name="SETWINDOWLONGAPI"></a>SetWindowLongAPI</h3>
-<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 6163</p>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 6163</p>
 <pre>DECLARE FUNCTION SetWindowLongAPI LIB &quot;user32&quot; ALIAS &quot;SetWindowLongA&quot; (ByVal hWnd AS LONG, ByVal nIndex AS LONG, ByVal dwNewLong AS LONG) AS LONG</pre>
 <p>Changes an attribute of a window (style, window procedure, user data, etc.) at the given offset and returns the previous value; often used for subclassing.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowLongA">SetWindowLongA</a></p>
 <h3><a name="TRIM_"></a>Trim$</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 3028</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3028</p>
 <pre>Function Trim$(s as string) as string</pre>
 <p>Returns the string with leading and trailing spaces removed (LTRIM$ of RTRIM$).</p>
 <h3><a name="WAITFORSINGLEOBJECT"></a>WaitForSingleObject</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 3046</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 3046</p>
 <pre>DECLARE FUNCTION WaitForSingleObject Lib &quot;kernel32&quot; Alias &quot;WaitForSingleObject&quot; (ByVal hHandle As Long, ByVal dwMilliseconds As Long) As Long</pre>
 <p>Waits until the specified object (process, thread, event, mutex, etc.) is signaled or the time-out interval elapses.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=WaitForSingleObject">WaitForSingleObject</a></p>

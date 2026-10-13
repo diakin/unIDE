@@ -150,7 +150,7 @@ def collect_index():
         found = re.search(r'Appendix ([AB]):\s*([A-Za-z0-9_]+)', re.sub(r'<[^>]+>', ' ', page))
         if found and found.group(2).upper() not in ('RAPID', 'CUSTOM'):
             add(found.group(2).upper(), name)
-    # Appendix D: functions of rapidqAllProc.inc (gen_funcs.py) - after the
+    # Appendix D: functions of RQProc.inc (gen_funcs.py) - after the
     # index entries, so a Rapid-Q keyword keeps its own page for F1
     funcs_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'funcs_index.json')
     if os.path.exists(funcs_path):

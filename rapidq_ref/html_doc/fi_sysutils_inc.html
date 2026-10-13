@@ -12,30 +12,30 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>SysUtils.inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/SysUtils.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 6 functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/SysUtils.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 6 functions</p>
 <p><a href="#DELFILEEXT">DelFileExt</a> &middot; <a href="#EXTRACTFILEEXT">ExtractFileExt</a> &middot; <a href="#HIWORD">HiWord</a> &middot; <a href="#LOWORD">LoWord</a> &middot; <a href="#MAKELONG">MakeLong</a> &middot; <a href="#SYSERRORMESSAGE">SysErrorMessage</a></p>
 <h3><a name="DELFILEEXT"></a>DelFileExt</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19798</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19798</p>
 <pre>Function DelFileExt(File As String) As String</pre>
 <p>Returns File without its extension (text before the last dot); returns File unchanged if there is no dot.</p>
 <h3><a name="EXTRACTFILEEXT"></a>ExtractFileExt</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19795</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19795</p>
 <pre>Function ExtractFileExt(File As String) As String</pre>
 <p>Returns the extension of File (text after the last dot, without the dot), or an empty string if there is no dot.</p>
 <h3><a name="HIWORD"></a>HiWord</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19809</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19809</p>
 <pre>Function HiWord(Value As Long) As Integer</pre>
 <p>Returns the high 16 bits of Value.</p>
 <h3><a name="LOWORD"></a>LoWord</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19801</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19801</p>
 <pre>Function LoWord(Value As Long) As Integer</pre>
 <p>Returns the low 16 bits of Value as a signed integer.</p>
 <h3><a name="MAKELONG"></a>MakeLong</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19813</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19813</p>
 <pre>Function MakeLong(a As Word, b As Word) As Long</pre>
 <p>Combines two words into a 32-bit value: a is the low word, b the high word (like the Windows MAKELONG macro).</p>
 <h3><a name="SYSERRORMESSAGE"></a>SysErrorMessage</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19816</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19816</p>
 <pre>Function SysErrorMessage(Error As Integer) As String</pre>
 <p>Returns the Windows system message text for error code Error using FormatMessage (only when __WIN32API is defined; otherwise returns blanks trimmed to an empty string).</p>
 </body>

@@ -12,26 +12,26 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>NewWndProc.Inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/NewWndProc.Inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 4 functions &middot; 3 DLL functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/NewWndProc.Inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 4 functions &middot; 3 DLL functions</p>
 <p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
 <p><a href="#NWP_GETPROCESSHEAP">NWP_GetProcessHeap</a> &middot; <a href="#NWP_HEAPALLOC">NWP_HeapAlloc</a> &middot; <a href="#NWP_SETWINDOWLONG">NWP_SetWindowLong</a> &middot; <a href="#SETNEWWNDPROC">SetNewWndProc</a></p>
 <h3><a name="NWP_GETPROCESSHEAP"></a>NWP_GetProcessHeap</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 6824</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 6824</p>
 <pre>Declare Function NWP_GetProcessHeap Lib &quot;kernel32&quot; Alias &quot;GetProcessHeap&quot; () As Long</pre>
 <p>Returns a handle to the default heap of the calling process.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetProcessHeap">GetProcessHeap</a></p>
 <h3><a name="NWP_HEAPALLOC"></a>NWP_HeapAlloc</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 6825</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 6825</p>
 <pre>Declare Function NWP_HeapAlloc Lib &quot;kernel32&quot; Alias &quot;HeapAlloc&quot; (ByVal hHeap As Long, ByVal dwFlags As Long, ByVal dwBytes As Long) As Long</pre>
 <p>Allocates a block of memory from the specified heap. Returns a pointer to the block, or 0 on failure.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=HeapAlloc">HeapAlloc</a></p>
 <h3><a name="NWP_SETWINDOWLONG"></a>NWP_SetWindowLong</h3>
-<p class="rq-meta">DLL function, USER32 &middot; rapidqAllProc.inc, line 6827</p>
+<p class="rq-meta">DLL function, USER32 &middot; RQProc.inc, line 6827</p>
 <pre>DECLARE FUNCTION NWP_SetWindowLong LIB &quot;USER32&quot; ALIAS &quot;SetWindowLongA&quot; (hWnd AS LONG, nIndex AS LONG, dwNewLong AS LONG) AS LONG</pre>
 <p>Changes an attribute of a window (style, window procedure, user data, etc.) at the given offset and returns the previous value; often used for subclassing.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowLongA">SetWindowLongA</a></p>
 <h3><a name="SETNEWWNDPROC"></a>SetNewWndProc</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 6829</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 6829</p>
 <pre>FUNCTION SetNewWndProc (ObjectHandle AS LONG, hFunction AS LONG) AS LONG</pre>
 <p>Subclasses a window: builds a 14-byte code thunk on the process heap that forwards messages to the RapidQ function hFunction (via lpCallBack_4, four-argument dispatcher) and installs it with SetWindowLong(GWL_WNDPROC). Returns the previous window procedure; the thunk is never freed.</p>
 </body>

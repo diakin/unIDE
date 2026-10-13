@@ -12,18 +12,18 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>emlOld.inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/emlOld.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 3 functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/emlOld.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 3 functions</p>
 <p><a href="#DECODESUBJ1">DecodeSubj1</a> &middot; <a href="#DECODESUBJOLD">DecodeSubjOld</a> &middot; <a href="#DECODESUBJOLD1">DecodeSubjOld1</a></p>
 <h3><a name="DECODESUBJ1"></a>DecodeSubj1</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 11803</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11803</p>
 <pre>Function DecodeSubj1( Subject As String) As String</pre>
 <p>Variant of the MIME encoded-word header decoder (=?charset?Q|B?...?=): decodes quoted-printable or base64 parts, converts koi8-r, utf-8 and utf-7 to Windows-1251 via RQConvertCodePage1(VARPTR(...)), and applies a KOI8 fix-up if isKOI8 detects it. Returns the decoded subject.</p>
 <h3><a name="DECODESUBJOLD"></a>DecodeSubjOld</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 11590</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11590</p>
 <pre>Function DecodeSubjOld( MSubject As String) As String</pre>
 <p>Older decoder for MIME encoded-word e-mail headers (=?charset?Q|B?text?=). Decodes quoted-printable or base64 parts (RQBASE64Decode) and converts koi8-r, utf-8 or utf-7 to Windows-1251 with RQConvertCodePage1; returns the decoded subject. Kept as an earlier version of DecodeSubj.</p>
 <h3><a name="DECODESUBJOLD1"></a>DecodeSubjOld1</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 11692</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11692</p>
 <pre>Function DecodeSubjOld1( Subject As String) As String</pre>
 <p>Earlier variant of the MIME encoded-word header decoder. Decodes each =?charset?Q|B?...?= part (quoted-printable or base64), converts koi8-r, utf-8 and utf-7 to Windows-1251 with RQConvertCodePage, keeps plain text between parts, and converts the whole result from KOI8 if isKOI8 detects it. Returns the decoded string.</p>
 </body>

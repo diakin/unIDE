@@ -1,4 +1,4 @@
-"""Functions of rapidq_ref/inc_sys/rapidqAllProc.inc for Appendix D of the
+"""Functions of rapidq_ref/inc_sys/RQProc.inc for Appendix D of the
 help: every DECLARE ... LIB (Windows API and other DLLs) and every own SUB /
 FUNCTION, grouped by the source include file (the '[build_inc] file'
 sections of the merged file; 'file (тела)' sections - bodies moved to the
@@ -18,7 +18,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 repo = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, '..', '..')
 out_path = sys.argv[2] if len(sys.argv) > 2 else os.path.join(HERE, 'inc_funcs.json')
-src = os.path.join(repo, 'rapidq_ref', 'inc_sys', 'rapidqAllProc.inc')
+src = os.path.join(repo, 'rapidq_ref', 'inc_sys', 'RQProc.inc')
 
 
 def code_part(line):

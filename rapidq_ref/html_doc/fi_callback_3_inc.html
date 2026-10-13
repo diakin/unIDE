@@ -12,18 +12,18 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>CallBack_3.Inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/CallBack_3.Inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 3 functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/CallBack_3.Inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 3 functions</p>
 <p><a href="#FUNCBIND_3">FuncBind_3</a> &middot; <a href="#MASTERCALLBACK_3">MasterCallBack_3</a> &middot; <a href="#SETNEWCALLBACK_3">SetNewCallBack_3</a></p>
 <h3><a name="FUNCBIND_3"></a>FuncBind_3</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 6556</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 6556</p>
 <pre>Declare Function FuncBind_3 (Arg1 As Long, Arg2 As Long, Arg3 As Long) As Long</pre>
 <p>Declaration only, no body. Prototype used by BIND inside MasterCallBack_3 for three-argument callback functions.</p>
 <h3><a name="MASTERCALLBACK_3"></a>MasterCallBack_3</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 6555</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 6555</p>
 <pre>Function MasterCallBack_3 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long) As Long</pre>
 <p>Internal callback dispatcher for three-argument callbacks: calls the function at hFunction with Arg1..Arg3 via BIND/CALLFUNC and returns its result. Used through SetNewCallBack_3.</p>
 <h3><a name="SETNEWCALLBACK_3"></a>SetNewCallBack_3</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 6561</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 6561</p>
 <pre>Function SetNewCallBack_3 (hFunction As Long) As Long</pre>
 <p>Creates a callback pointer for a RapidQ function taking three Long arguments: pass CODEPTR of your function and get back an address for a Windows API. Uses SetNewFwToCallBack, which allocates a code thunk on the process heap (not freed).</p>
 </body>

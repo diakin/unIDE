@@ -1215,7 +1215,7 @@ begin
   else
   begin
     // Значка нет - имя класса без Q (QSTRINGLIST - STRINGLIST); класс
-    // не на Q (ComPort из rapidqComponents.inc) - как есть
+    // не на Q (ComPort из RQControls.inc) - как есть
     if (AClass <> '') and (AClass[1] in ['Q', 'q']) then
       ABtn.Caption := Copy(AClass, 2, MaxInt)
     else

@@ -1,11 +1,11 @@
-' FBFunctions_sys.inc - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: свои DLL fbfunc2.dll, fbrqfunctions.dll, fbrqsr10.dll.
+' FBFunctions_sys.inc - отдельный inc, не входит в RQProc.inc /
+' RQControls.inc: свои DLL fbfunc2.dll, fbrqfunctions.dll, fbrqsr10.dll.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/FBFunctions.inc; повторы объявлений
 ' общих файлов убраны (build_removed.txt). Подключать в программе,
 ' которой он нужен.
 $IFNDEF __SEP_FBFUNCTIONS_INC
 $DEFINE __SEP_FBFUNCTIONS_INC
-$INCLUDE "rapidqComponents.inc"
+$INCLUDE "RQControls.inc"
 '============================================================================
 '[build_inc] FBFunctions.inc
 '============================================================================

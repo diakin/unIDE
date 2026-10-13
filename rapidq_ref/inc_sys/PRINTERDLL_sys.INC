@@ -1,11 +1,11 @@
-' PRINTERDLL_sys.INC - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: своя DLL PrinterDLL.dll.
+' PRINTERDLL_sys.INC - отдельный inc, не входит в RQProc.inc /
+' RQControls.inc: своя DLL PrinterDLL.dll.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/PRINTERDLL.INC; повторы объявлений
 ' общих файлов убраны (build_removed.txt). Подключать в программе,
 ' которой он нужен.
 $IFNDEF __SEP_PRINTERDLL_INC
 $DEFINE __SEP_PRINTERDLL_INC
-$INCLUDE "rapidqComponents.inc"
+$INCLUDE "RQControls.inc"
 '============================================================================
 '[build_inc] PRINTERDLL.INC
 '============================================================================

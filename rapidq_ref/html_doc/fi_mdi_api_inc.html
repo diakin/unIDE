@@ -12,26 +12,26 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>MDI_API.INC</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/MDI_API.INC</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 4 functions &middot; 4 DLL functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/MDI_API.INC</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 4 functions &middot; 4 DLL functions</p>
 <p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
 <p><a href="#CREATEFILE_MDI_API">CreateFile_MDI_API</a> &middot; <a href="#GETWINDOWTEXT_MDI_API">GetWindowText_MDI_API</a> &middot; <a href="#READFILE_MDI_API">ReadFile_MDI_API</a> &middot; <a href="#SETWINDOWLONG1">SetWindowLong1</a></p>
 <h3><a name="CREATEFILE_MDI_API"></a>CreateFile_MDI_API</h3>
-<p class="rq-meta">DLL function, Kernel32 &middot; rapidqAllProc.inc, line 13657</p>
+<p class="rq-meta">DLL function, Kernel32 &middot; RQProc.inc, line 13657</p>
 <pre>DECLARE FUNCTION CreateFile_MDI_API LIB &quot;Kernel32&quot; ALIAS &quot;CreateFileA&quot; (lpFileName AS STRING, dwDesiredAccess AS LONG, dwShareMode AS LONG, lpSecurityAttributes AS LONG, dwCreationDisposition AS LONG, dwFlagsAndAttributes AS LONG, hTemplateFile AS LONG) AS LONG</pre>
 <p>Creates or opens a file or I/O device (disk, pipe, console, COM port) with given access, sharing and creation mode. Returns a handle or INVALID_HANDLE_VALUE (-1).</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateFileA">CreateFileA</a></p>
 <h3><a name="GETWINDOWTEXT_MDI_API"></a>GetWindowText_MDI_API</h3>
-<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 13663</p>
+<p class="rq-meta">DLL function, User32 &middot; RQProc.inc, line 13663</p>
 <pre>DECLARE FUNCTION GetWindowText_MDI_API LIB &quot;User32&quot; ALIAS &quot;GetWindowTextA&quot; (hwnd AS LONG, lpString AS STRING, cch AS LONG) AS LONG</pre>
 <p>Copies the text of a window&#x27;s title bar or a control into a buffer. Returns the length of the copied text.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowTextA">GetWindowTextA</a></p>
 <h3><a name="READFILE_MDI_API"></a>ReadFile_MDI_API</h3>
-<p class="rq-meta">DLL function, Kernel32 &middot; rapidqAllProc.inc, line 13654</p>
+<p class="rq-meta">DLL function, Kernel32 &middot; RQProc.inc, line 13654</p>
 <pre>DECLARE FUNCTION ReadFile_MDI_API LIB &quot;Kernel32&quot; ALIAS &quot;ReadFile&quot; (hFile AS LONG, lpBuffer AS LONG, nNumberOfBytesToRead AS LONG, lpNumberOfBytesRead AS LONG, lpOverlapped AS LONG) AS LONG</pre>
 <p>Reads data from a file or I/O device into a buffer and returns the number of bytes read. Returns nonzero on success.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ReadFile">ReadFile</a></p>
 <h3><a name="SETWINDOWLONG1"></a>SetWindowLong1</h3>
-<p class="rq-meta">DLL function, User32 &middot; rapidqAllProc.inc, line 13661</p>
+<p class="rq-meta">DLL function, User32 &middot; RQProc.inc, line 13661</p>
 <pre>DECLARE FUNCTION SetWindowLong1 LIB &quot;User32&quot; ALIAS &quot;SetWindowLongA&quot; (hwnd AS LONG, nIndex AS LONG, dwNewLong AS LONG) AS LONG</pre>
 <p>Changes an attribute of a window (style, extended style, window procedure, user data) at the given offset. Returns the previous value.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowLongA">SetWindowLongA</a></p>

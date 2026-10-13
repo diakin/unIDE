@@ -1,11 +1,11 @@
-' QPrintDialog_sys.inc - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: пример - при запуске открывает окно параметров страницы и печатает поля через PRINT.
+' QPrintDialog_sys.inc - отдельный inc, не входит в RQProc.inc /
+' RQControls.inc: пример - при запуске открывает окно параметров страницы и печатает поля через PRINT.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/QPrintDialog.inc; повторы объявлений
 ' общих файлов убраны (build_removed.txt). Подключать в программе,
 ' которой он нужен.
 $IFNDEF __SEP_QPRINTDIALOG_INC
 $DEFINE __SEP_QPRINTDIALOG_INC
-$INCLUDE "rapidqComponents.inc"
+$INCLUDE "RQControls.inc"
 '============================================================================
 '[build_inc] QPrintDialog.inc
 '============================================================================

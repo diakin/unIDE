@@ -12,16 +12,16 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>msgdlg.inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/msgdlg.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 2 functions &middot; 1 DLL functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/msgdlg.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 2 functions &middot; 1 DLL functions</p>
 <p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
 <p><a href="#MDLG">MDlg</a> &middot; <a href="#MSGDLG">MsgDlg</a></p>
 <h3><a name="MDLG"></a>MDlg</h3>
-<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 14058</p>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 14058</p>
 <pre>Declare Function MDlg Lib &quot;user32&quot; Alias &quot;MessageBoxA&quot; (ByVal hwnd As Long, ByVal lpText As String, ByVal lpCaption As String, ByVal wType As Long) As Long</pre>
 <p>Displays a modal message box with text, caption, icon and buttons. Returns the ID of the button pressed (IDOK, IDCANCEL, ...).</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MessageBoxA">MessageBoxA</a></p>
 <h3><a name="MSGDLG"></a>MsgDlg</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 14057</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 14057</p>
 <pre>Function MsgDlg (MsgDlgText As String, MsgDlgTitle As String, MsgDlgButtons As Long) As Long</pre>
 <p>Shows a message box with text, title and button flags through MDlg, owned by the global Form. Returns the button pressed: 1 OK, 2 Cancel, 3 Abort, 4 Retry, 5 Ignore, 6 Yes, 7 No.</p>
 </body>

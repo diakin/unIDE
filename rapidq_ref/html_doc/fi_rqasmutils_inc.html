@@ -12,94 +12,94 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>RqAsmUtils.Inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/RqAsmUtils.Inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 22 functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/RqAsmUtils.Inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 22 functions</p>
 <p><a href="#CALLADDRESSMANYARGS">CallAddressManyArgs</a> &middot; <a href="#CALLADDRESSNOARG">CallAddressNoArg</a> &middot; <a href="#CALLADDRESSONEARG">CallAddressOneArg</a> &middot; <a href="#CALLADDRESSTHREEARGS">CallAddressThreeArgs</a> &middot; <a href="#CALLADDRESSTWOARGS">CallAddressTwoArgs</a> &middot; <a href="#CALLPOINTERMANYARGS">CallPointerManyArgs</a> &middot; <a href="#CALLPOINTERNOARG">CallPointerNoArg</a> &middot; <a href="#CALLPOINTERONEARG">CallPointerOneArg</a> &middot; <a href="#CALLPOINTERTHREEARGS">CallPointerThreeArgs</a> &middot; <a href="#CALLPOINTERTWOARGS">CallPointerTwoArgs</a> &middot; <a href="#READBYTEATADDRESS">ReadByteAtAddress</a> &middot; <a href="#READBYTEATPOINTER">ReadByteAtPointer</a> &middot; <a href="#READDWORDATADDRESS">ReadDWordAtAddress</a> &middot; <a href="#READDWORDATPOINTER">ReadDWordAtPointer</a> &middot; <a href="#READWORDATADDRESS">ReadWordAtAddress</a> &middot; <a href="#READWORDATPOINTER">ReadWordAtPointer</a> &middot; <a href="#WRITEBYTEATADDRESS">WriteByteAtAddress</a> &middot; <a href="#WRITEBYTEATPOINTER">WriteByteAtPointer</a> &middot; <a href="#WRITEDWORDATADDRESS">WriteDWordAtAddress</a> &middot; <a href="#WRITEDWORDATPOINTER">WriteDWordAtPointer</a> &middot; <a href="#WRITEWORDATADDRESS">WriteWordAtAddress</a> &middot; <a href="#WRITEWORDATPOINTER">WriteWordAtPointer</a></p>
 <h3><a name="CALLADDRESSMANYARGS"></a>CallAddressManyArgs</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18818</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18818</p>
 <pre>Function CallAddressManyArgs (address As Long, ptrStructArg As Long) As Long</pre>
 <p>Calls the function at address, passing the arguments from the structure at ptrStructArg, through a machine-code stub run by CallAsmProc. Returns the function result.</p>
 <h3><a name="CALLADDRESSNOARG"></a>CallAddressNoArg</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18864</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18864</p>
 <pre>Function CallAddressNoArg (address As Long) As Long</pre>
 <p>Calls the function at address with no arguments through a machine-code stub (CallAsmProc) and returns its result.</p>
 <h3><a name="CALLADDRESSONEARG"></a>CallAddressOneArg</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18906</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18906</p>
 <pre>Function CallAddressOneArg (address As Long, arg1 As Long) As Long</pre>
 <p>Calls the function at address with one argument through a machine-code stub (CallAsmProc) and returns its result.</p>
 <h3><a name="CALLADDRESSTHREEARGS"></a>CallAddressThreeArgs</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18992</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18992</p>
 <pre>Function CallAddressThreeArgs (address As Long, arg1 As Long, arg2 As Long, arg3 As Long) As Long</pre>
 <p>Calls the function at address with three arguments through a machine-code stub (CallAsmProc) and returns its result.</p>
 <h3><a name="CALLADDRESSTWOARGS"></a>CallAddressTwoArgs</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18949</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18949</p>
 <pre>Function CallAddressTwoArgs (address As Long, arg1 As Long, arg2 As Long) As Long</pre>
 <p>Calls the function at address with two arguments through a machine-code stub (CallAsmProc) and returns its result.</p>
 <h3><a name="CALLPOINTERMANYARGS"></a>CallPointerManyArgs</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18844</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18844</p>
 <pre>Function CallPointerManyArgs (pointer As Long, ptrStructArg As Long) As Long</pre>
 <p>Calls the function whose address is stored at pointer, passing the arguments from the structure at ptrStructArg, through a machine-code stub run by CallAsmProc. Returns the function result.</p>
 <h3><a name="CALLPOINTERNOARG"></a>CallPointerNoArg</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18885</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18885</p>
 <pre>Function CallPointerNoArg (pointer As Long) As Long</pre>
 <p>Calls the function whose address is stored at pointer with no arguments through a machine-code stub (CallAsmProc) and returns its result.</p>
 <h3><a name="CALLPOINTERONEARG"></a>CallPointerOneArg</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18928</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18928</p>
 <pre>Function CallPointerOneArg (pointer As Long, arg1 As Long) As Long</pre>
 <p>Calls the function whose address is stored at pointer with one argument through a machine-code stub (CallAsmProc) and returns its result.</p>
 <h3><a name="CALLPOINTERTHREEARGS"></a>CallPointerThreeArgs</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19014</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19014</p>
 <pre>Function CallPointerThreeArgs (pointer As Long, arg1 As Long, arg2 As Long, arg3 As Long) As Long</pre>
 <p>Calls the function whose address is stored at pointer with three arguments through a machine-code stub (CallAsmProc) and returns its result.</p>
 <h3><a name="CALLPOINTERTWOARGS"></a>CallPointerTwoArgs</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 18971</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18971</p>
 <pre>Function CallPointerTwoArgs (pointer As Long, arg1 As Long, arg2 As Long) As Long</pre>
 <p>Calls the function whose address is stored at pointer with two arguments through a machine-code stub (CallAsmProc) and returns its result.</p>
 <h3><a name="READBYTEATADDRESS"></a>ReadByteAtAddress</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19075</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19075</p>
 <pre>Function ReadByteAtAddress (address As Long) As Long</pre>
 <p>Returns the byte stored at memory address (machine-code stub via CallAsmProc).</p>
 <h3><a name="READBYTEATPOINTER"></a>ReadByteAtPointer</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19137</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19137</p>
 <pre>Function ReadByteAtPointer (pointer As Long) As Long</pre>
 <p>Returns the byte at the address stored at pointer (one level of indirection; machine-code stub via CallAsmProc).</p>
 <h3><a name="READDWORDATADDRESS"></a>ReadDWordAtAddress</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19034</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19034</p>
 <pre>Function ReadDWordAtAddress (address As Long) As Long</pre>
 <p>Returns the 32-bit value stored at memory address (machine-code stub via CallAsmProc).</p>
 <h3><a name="READDWORDATPOINTER"></a>ReadDWordAtPointer</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19095</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19095</p>
 <pre>Function ReadDWordAtPointer (pointer As Long) As Long</pre>
 <p>Returns the 32-bit value at the address stored at pointer (one level of indirection; machine-code stub via CallAsmProc).</p>
 <h3><a name="READWORDATADDRESS"></a>ReadWordAtAddress</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19055</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19055</p>
 <pre>Function ReadWordAtAddress (address As Long) As Long</pre>
 <p>Returns the 16-bit value stored at memory address (machine-code stub via CallAsmProc).</p>
 <h3><a name="READWORDATPOINTER"></a>ReadWordAtPointer</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19116</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19116</p>
 <pre>Function ReadWordAtPointer (pointer As Long) As Long</pre>
 <p>Returns the 16-bit value at the address stored at pointer (one level of indirection; machine-code stub via CallAsmProc).</p>
 <h3><a name="WRITEBYTEATADDRESS"></a>WriteByteAtAddress</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19199</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19199</p>
 <pre>Function WriteByteAtAddress (address As Long, bData As Long) As Long</pre>
 <p>Writes the byte bData to memory address (machine-code stub via CallAsmProc). No address check is made.</p>
 <h3><a name="WRITEBYTEATPOINTER"></a>WriteByteAtPointer</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19261</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19261</p>
 <pre>Function WriteByteAtPointer (pointer As Long, bData As Long) As Long</pre>
 <p>Writes the byte bData to the address stored at pointer (machine-code stub via CallAsmProc). No address check is made.</p>
 <h3><a name="WRITEDWORDATADDRESS"></a>WriteDWordAtAddress</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19157</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19157</p>
 <pre>Function WriteDWordAtAddress (address As Long, dwData As Long) As Long</pre>
 <p>Writes the 32-bit value dwData to memory address (machine-code stub via CallAsmProc). No address check is made.</p>
 <h3><a name="WRITEDWORDATPOINTER"></a>WriteDWordAtPointer</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19219</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19219</p>
 <pre>Function WriteDWordAtPointer (pointer As Long, dwData As Long) As Long</pre>
 <p>Writes the 32-bit value dwData to the address stored at pointer (machine-code stub via CallAsmProc). No address check is made.</p>
 <h3><a name="WRITEWORDATADDRESS"></a>WriteWordAtAddress</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19178</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19178</p>
 <pre>Function WriteWordAtAddress (address As Long, wData As Long) As Long</pre>
 <p>Writes the 16-bit value wData to memory address (machine-code stub via CallAsmProc). No address check is made.</p>
 <h3><a name="WRITEWORDATPOINTER"></a>WriteWordAtPointer</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19240</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19240</p>
 <pre>Function WriteWordAtPointer (pointer As Long, wData As Long) As Long</pre>
 <p>Writes the 16-bit value wData to the address stored at pointer (machine-code stub via CallAsmProc). No address check is made.</p>
 </body>

@@ -1,4 +1,4 @@
-=== rapidqAllProc.inc: 14774 строк
+=== RQProc.inc: 14774 строк
 'CONST stData = 1
 '$DEFINE WS_EX_LAYERED  &H80000
 ' DECLARE SUB mouse_event Lib "user32" ALIAS "mouse_event"(ByVal dwFlags As Long, ByVal dx As Long, ByVal dy As Long, ByVal cButtons As Long, ByVal dwExtraInfo As Long)
@@ -14773,7 +14773,7 @@
 ' Module Name:
 ' Copyright (C) 1993 - 1995 Microsoft Corporation
 ' // End SHGetFileInfo
-=== rapidqComponents.inc: 969 строк
+=== RQControls.inc: 969 строк
       'DIM Point AS POINTAPI
 '~dup DECLARE SUB OnClose_eventTemplate   ' повтор, первое: rapidq2.inc(5271)
     ' Type BLENDFUNCTION

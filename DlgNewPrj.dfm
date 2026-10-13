@@ -104,7 +104,7 @@ object DlgNewPrj: TDlgNewPrj
           Top = 22
           Width = 680
           Height = 17
-          Caption = 'Системные (новые): rapidqAllProc.inc, rapidqComponents.inc'
+          Caption = 'Системные (новые): RQProc.inc, RQControls.inc'
           TabOrder = 0
           OnClick = rbIncClick
         end

@@ -1904,7 +1904,7 @@ type
     // "Да для всех" в диалоге подтверждения находки. Живёт ровно один
     // прогон поиска: сбрасывается перед каждым пакетом.
     FRelocateAll: Boolean;
-    // Последняя находка RelocateFile - из папки Include (inc_standard): её
+    // Последняя находка RelocateFile - из папки Include (RQInc): её
     // открывают оттуда, на прежнее место не копируют (ConfirmRelocate)
     FRelocateFromInc: Boolean;
     // Автопоиск потерянного файла в дереве над папкой программы
@@ -2320,6 +2320,7 @@ type
     function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
     function  RapidQIncDir: string;
+    function  RapidQIncUnIdeDefault: string;
     procedure RapidQIncSettings(const AProject: string;
                                 var ASysDir, AUserDir, AMode, AOwnDir: string);
     function  RapidQLoadCustomTypes(ALines: TStrings;
@@ -9927,7 +9928,7 @@ var
   Keys, OptLog: TStringList;
   OldName, OldDir, OldType, OldTarget: string;
   NewName, NewDir, NewType, NewTarget, Dir, Val, SectName: string;
-  IncSysDir, IncUserDir, IncMode, IncOwnDir: string;
+  IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList: string;
   K, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
   DirChanged, OptionsChanged: Boolean;
 begin
@@ -9970,7 +9971,13 @@ begin
     // Папка inc (проект RapidQ): виды из настроек компилятора, выбор и
     // своя папка проекта
     RapidQIncSettings(OldName, IncSysDir, IncUserDir, IncMode, IncOwnDir);
-    Dlg.SetRqInc(IncSysDir, IncUserDir, IncMode, IncOwnDir);
+    Prj := TProjectIni.Create(SettingsFileName, OldName);
+    try
+      IncOwnList := Prj.ReadString('Project', 'IncPaths', '');
+    finally
+      Prj.Free;
+    end;
+    Dlg.SetRqInc(IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList);
 
     // Проект Delphi с главным .dpr - вкладка Project options
     if (CompareText(OldType, 'Delphi') = 0) and
@@ -10009,6 +10016,7 @@ begin
       try
         Prj.WriteString('Project', 'IncMode', Dlg.RqIncMode);
         Prj.WriteString('Project', 'IncPath', Dlg.RqIncOwnDir);
+        Prj.WriteString('Project', 'IncPaths', Dlg.RqIncOwnList);
       finally
         Prj.Free;
       end;
@@ -10200,7 +10208,7 @@ var
   cbType: TUiComboBox;
   chkBase: TUiCheckBox;
   Dir, Nm, Tp, TargetFile: string;
-  IncSysDir, IncUserDir, IncMode, IncOwnDir: string;
+  IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList: string;
   OnBase: Boolean;
   Existing: Boolean;  // в папке уже лежит проект - своих файлов не пишем
   Prj: TProjectIni;
@@ -10273,7 +10281,7 @@ begin
     FNewPrjType := cbType;
     // Папка inc нового проекта RapidQ - по умолчанию системные (новые)
     RapidQIncSettings('', IncSysDir, IncUserDir, IncMode, IncOwnDir);
-    Dlg.SetRqInc(IncSysDir, IncUserDir, 'sys', '');
+    Dlg.SetRqInc(IncSysDir, IncUserDir, 'sys', '', '');
     if DelphiKind > 0 then
     begin
       if cbType.Items.IndexOf('Delphi') >= 0 then
@@ -10319,6 +10327,7 @@ begin
     OnBase := chkBase.Checked;
     IncMode := Dlg.RqIncMode;
     IncOwnDir := Dlg.RqIncOwnDir;
+    IncOwnList := Dlg.RqIncOwnList;
 
     if (Nm = '') or (Dir = '') then
     begin
@@ -10753,6 +10762,7 @@ begin
       begin
         Prj.WriteString('Project', 'IncMode', IncMode);
         Prj.WriteString('Project', 'IncPath', IncOwnDir);
+        Prj.WriteString('Project', 'IncPaths', IncOwnList);
       end;
     finally
       Prj.Free;
@@ -12990,9 +13000,8 @@ begin
   end;
 end;
 
-// Потерянный .inc / .cmp с тем же именем в папке Include: из настроек
-// компилятора RapidQ (IncPath), иначе rapidq_ref\inc_standard рядом с
-// программой. '' - нет.
+// Потерянный .inc / .cmp с тем же именем в папке Include UnIde, потом в
+// Include User (IDE Options - Compilers - RapidQ Basic). '' - нет.
 function TForm1.RelocateIncStandard(const AFile: string): string;
 var
   Ext, SysDir, UserDir, Mode, OwnDir, Cand: string;
@@ -13005,10 +13014,11 @@ begin
   RapidQIncSettings('', SysDir, UserDir, Mode, OwnDir);
   for DirIdx := 0 to 1 do
   begin
+    // Include UnIde, потом Include User
     if DirIdx = 0 then
-      Cand := UserDir
+      Cand := SysDir
     else
-      Cand := ExtractFilePath(Application.ExeName) + 'rapidq_ref\inc_standard';
+      Cand := UserDir;
     if (Cand = '') or not DirectoryExists(Cand) then
       Continue;
     Cand := IncludeTrailingPathDelimiter(Cand) + ExtractFileName(AFile);
@@ -13051,7 +13061,7 @@ begin
   if AFile = '' then
     Exit;
 
-  // inc RapidQ - сначала в папке Include (inc_standard): там старые inc под
+  // inc RapidQ - сначала в папке Include (RQInc): там старые inc под
   // своими именами, а файлы из inc_sys и incOld переехали туда или
   // переименованы (debug.inc -> debug_sys.inc)
   Result := RelocateIncStandard(AFile);
@@ -25641,44 +25651,42 @@ begin
   AIncDir := RapidQIncDir;
 end;
 
-// Папка inc RapidQ (rapidq_ref/inc_standard.md): в настройках компилятора
-// одна - Include (IncPath), обычно rapidq_ref\inc_standard: старые inc из
-// incOld под своими именами и общие rapidqAllProc.inc, rapidqComponents.inc.
-// Проект может задать свою папку (IncPath раздела Project) - Project
-// Properties. ASysDir - папка с rapidqComponents.inc (палитра, INC
-// Manager): IncPath, если файл там есть, иначе прежняя SysIncPath (ключ
-// остался в editor.ini от двух папок). AUserDir - IncPath. AMode - прежний
-// выбор вида у проекта, больше не влияет.
+// Папки inc RapidQ (rapidq_ref/RQInc.md). В настройках компилятора две:
+//   Include UnIde (SysIncPath) - набор, который ставится с unIDE:
+//     rapidq_ref\RQInc - RQProc.inc, RQControls.inc и проверенные
+//     отдельные inc; пусто - эта папка рядом с exe;
+//   Include User (IncPath) - свой общий путь пользователя.
+// Проект (Project Properties) выбирает одну: IncMode = sys (по умолчанию),
+// user или own - своя папка IncPath раздела Project; список своих папок,
+// из которых выбирали, - IncPaths ("|"). Проект прежней версии: IncMode
+// нет, IncPath есть - своя папка.
+// ASysDir - Include UnIde, AUserDir - Include User, AMode - sys/user/own,
+// AOwnDir - своя папка проекта.
 procedure TForm1.RapidQIncSettings(const AProject: string;
                                    var ASysDir, AUserDir, AMode, AOwnDir: string);
 var
   Ini: TIniFile;
   Prj: TProjectIni;
-  OldSysDir: string;
 begin
   ASysDir := '';
   AUserDir := '';
-  AMode := '';
+  AMode := 'sys';
   AOwnDir := '';
-  if not FileExists(SettingsFileName) then
-    Exit;
-  Ini := TIniFile.Create(SettingsFileName);
-  try
-    OldSysDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      ASysDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
                                      'SysIncPath', ''));
-    AUserDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-                                    'IncPath', ''));
-  finally
-    Ini.Free;
+      AUserDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                      'IncPath', ''));
+    finally
+      Ini.Free;
+    end;
   end;
-  if (AUserDir <> '') and
-     FileExists(IncludeTrailingPathDelimiter(AUserDir) + 'rapidqComponents.inc') then
-    ASysDir := AUserDir
-  else if OldSysDir <> '' then
-    ASysDir := OldSysDir
-  else
-    ASysDir := AUserDir;
-  if AProject = '' then
+  if ASysDir = '' then
+    ASysDir := RapidQIncUnIdeDefault;
+  if (AProject = '') or not FileExists(SettingsFileName) then
     Exit;
   Prj := TProjectIni.Create(SettingsFileName, AProject);
   try
@@ -25687,19 +25695,39 @@ begin
   finally
     Prj.Free;
   end;
+  if (AMode <> 'sys') and (AMode <> 'user') and (AMode <> 'own') then
+  begin
+    if AOwnDir <> '' then
+      AMode := 'own'
+    else
+      AMode := 'sys';
+  end;
+  if (AMode = 'own') and (AOwnDir = '') then
+    AMode := 'sys';
+end;
+
+// Include UnIde по умолчанию: rapidq_ref\RQInc рядом с exe ('' - её нет)
+function TForm1.RapidQIncUnIdeDefault: string;
+begin
+  Result := ExtractFilePath(Application.ExeName) + 'rapidq_ref\RQInc';
+  if not DirectoryExists(Result) then
+    Result := '';
 end;
 
 // Папка inc для сборки и разбора RapidQ текущего проекта (она же -I для
-// rc.exe): своя папка проекта, иначе Include из настроек компилятора
+// rc.exe): выбранная в Project Properties - Include UnIde, Include User
+// или своя папка проекта
 function TForm1.RapidQIncDir: string;
 var
   SysDir, UserDir, Mode, OwnDir: string;
 begin
   RapidQIncSettings(FCurrentProject, SysDir, UserDir, Mode, OwnDir);
-  if OwnDir <> '' then
+  if Mode = 'own' then
     Result := OwnDir
+  else if Mode = 'user' then
+    Result := UserDir
   else
-    Result := UserDir;
+    Result := SysDir;
 end;
 
 // Классы программы (TYPE ... EXTENDS) и её константы (CONST Имя = целое,
@@ -33938,7 +33966,7 @@ begin
   // она другая, папка главного .bas (или открытого файла), папка выше
   RapidQIncludeDirs(CurDir, IncDir);
   RapidQIncSettings(FCurrentProject, CfgSys, UserDir, Mode, OwnDir);
-  UserDir := IncDir;
+  // UserDir из настроек - Include User; папка -I проекта - IncDir
   TargetDir := ExcludeTrailingPathDelimiter(RapidQIncDir);
   if TargetDir = '' then
     TargetDir := ExcludeTrailingPathDelimiter(SysDir);
@@ -33948,7 +33976,7 @@ begin
     TDlgFindInc(FFindIncDlg).OnOpenFile := IncMgrOpenFile;
   end;
   TDlgFindInc(FFindIncDlg).ShowFind(AName, RefDir, SysDir, TargetDir,
-                                    CurDir, UserDir);
+                                    CurDir, IncDir, UserDir);
 end;
 
 // Перед сборкой RapidQ: $INCLUDE (с вложенными), $RESOURCE и DLL из
@@ -34035,9 +34063,11 @@ begin
     IncRefDirs(SysDir, RefDir);
     RapidQIncSettings(FCurrentProject, CfgSys, UserDir, Mode, OwnDir);
     MainDir := ExcludeTrailingPathDelimiter(Scan.MainDir);
-    Roots.Add('Include|' + AIncDir);
-    Roots.Add('Include (общая)|' + UserDir);
-    Roots.Add('Include system|' + SysDir);
+    // Папка -I сборки, потом обе папки IDE Options (папка, уже
+    // просмотренная раньше, второй раз не обходится)
+    Roots.Add('Include (-I)|' + AIncDir);
+    Roots.Add('Include UnIde|' + CfgSys);
+    Roots.Add('Include User|' + UserDir);
     Roots.Add('папка программы|' + MainDir);
     Roots.Add('папка выше|' + ExtractFileDir(MainDir));
 
@@ -51583,7 +51613,7 @@ begin
   DsgAddRqCompPages;
 end;
 
-// Компоненты rapidqComponents.inc системной папки inc (SysIncPath,
+// Компоненты RQControls.inc системной папки inc (SysIncPath,
 // rapidq_ref/inc_about.md) - страницы RQ Comp (визуальные) и RQ Comp
 // System (прочие) сразу после страниц RapidQ. Класс - строка
 // TYPE Имя EXTENDS Базовый (закомментированные повторы сборки
@@ -51631,7 +51661,7 @@ var
       RqBtn := TSpeedButton.Create(FDsgPalette);
       FDsgPalette.PlaceRapidQ(RqBtn, AList.Names[ItemIdx], '',
                               AList.Names[ItemIdx] + ' EXTENDS ' + AList.Values[AList.Names[ItemIdx]] +
-      ' (rapidqComponents.inc)', PageNum);
+      ' (RQControls.inc)', PageNum);
     end;
   end;
 
@@ -51642,7 +51672,7 @@ begin
   RapidQIncSettings('', SysDir, UserDir, Mode, OwnDir);
   if SysDir = '' then
     Exit;
-  FileName := IncludeTrailingPathDelimiter(SysDir) + 'rapidqComponents.inc';
+  FileName := IncludeTrailingPathDelimiter(SysDir) + 'RQControls.inc';
   if not FileExists(FileName) then
     Exit;
   Src := TStringList.Create;
@@ -51731,7 +51761,7 @@ begin
   end;
 end;
 
-// $INCLUDE "rapidqComponents.inc" в текст программы - поставлен класс со
+// $INCLUDE "RQControls.inc" в текст программы - поставлен класс со
 // страницы RQ Comp, а файл не подключён: после последней строки $INCLUDE
 // выше ABefore, нет таких - первой строкой. Папка inc проекта не
 // системная - с полным путём системной папки.
@@ -51743,7 +51773,7 @@ begin
   RapidQIncSettings(FCurrentProject, SysDir, UserDir, Mode, OwnDir);
   if SysDir = '' then
     Exit;
-  IncName := 'rapidqComponents.inc';
+  IncName := 'RQControls.inc';
   if CompareText(ExcludeTrailingPathDelimiter(RapidQIncDir),
                  ExcludeTrailingPathDelimiter(SysDir)) <> 0 then
     IncName := IncludeTrailingPathDelimiter(SysDir) + IncName;
@@ -52033,11 +52063,11 @@ begin
     finally
       Dec(FObjOwnWrite);
     end;
-    // Класс страницы RQ Comp - программе нужен rapidqComponents.inc (выше
+    // Класс страницы RQ Comp - программе нужен RQControls.inc (выше
     // блока: строки до InsAt те же, что в Lines)
     if (FRqCompClasses <> nil) and
        (FRqCompClasses.IndexOf(UpperCase(AClass)) >= 0) and
-       (Pos('rapidqcomponents.inc', TextLow) = 0) then
+       (Pos('rqcontrols.inc', TextLow) = 0) then
       RqDsgAddCompInclude(Lines, InsAt);
     RichEdit1.Modified := True;
   finally
@@ -66454,7 +66484,7 @@ end;
 // Help - RapidQ: пункт по Tag (Unit1.dfm). 1 - оглавление, 2 - Appendix A
 // (компоненты RapidQ), 3 - Appendix B (свои компоненты из rapidq_ref\inc),
 // 4 - указатель, 5 - HTML-страницы html_doc в браузере, 6 - Appendix D
-// (функции rapidqAllProc.inc), 7 - справочник Windows API Microsoft
+// (функции RQProc.inc), 7 - справочник Windows API Microsoft
 procedure TForm1.mHelpRqClick(Sender: TObject);
 var
   Done: Boolean;
@@ -66465,7 +66495,7 @@ begin
     3: Done := RqHelpShowTopic('custom.html');
     4: Done := RqHelpShowIndex('');
     5: Done := RqHelpOpenHtml;
-    // Appendix D: функции rapidqAllProc.inc (compdoc/gen_funcs.py)
+    // Appendix D: функции RQProc.inc (compdoc/gen_funcs.py)
     6: Done := RqHelpShowTopic('funcs.html');
     // Справочник Windows API на сайте Microsoft - в браузере
     7: Done := ShellExecute(Handle, 'open',

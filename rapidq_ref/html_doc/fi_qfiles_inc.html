@@ -12,38 +12,38 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>QFiles.inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/QFiles.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 8 functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/QFiles.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 8 functions</p>
 <p><a href="#FCLOSE">fCLOSE</a> &middot; <a href="#FINITIALIZE">fINITIALIZE</a> &middot; <a href="#FOPEN">fOPEN</a> &middot; <a href="#FPOSITION">fPOSITION</a> &middot; <a href="#FREADBINSTR">fREADBINSTR</a> &middot; <a href="#FSIZE">fSIZE</a> &middot; <a href="#FWRITELINE">fWRITELINE</a> &middot; <a href="#GETFILENUM">GetFileNum</a></p>
 <h3><a name="FCLOSE"></a>fCLOSE</h3>
-<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17406</p>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 17406</p>
 <pre>SUB fCLOSE(fNum As LONG)</pre>
 <p>Closes the QFileStream in slot fNum (1 to 8) and marks the slot as free.</p>
 <h3><a name="FINITIALIZE"></a>fINITIALIZE</h3>
-<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17403</p>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 17403</p>
 <pre>SUB fINITIALIZE</pre>
 <p>Marks all file slots 1..MaxQFiles as free in the global qfn array. Call once at program start before using the other QFiles routines.</p>
 <h3><a name="FOPEN"></a>fOPEN</h3>
-<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17405</p>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 17405</p>
 <pre>SUB fOPEN(fNum As LONG, fName$ AS STRING, fHow AS LONG)</pre>
 <p>Opens file fName$ in slot fNum (1 to 8, mapped to the global QFileStream objects qf1..qf8) with mode fHow; if the file does not exist it is created. Marks the slot as used.</p>
 <h3><a name="FPOSITION"></a>fPOSITION</h3>
-<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17407</p>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 17407</p>
 <pre>SUB fPOSITION(fNum As LONG, fPosition As LONG)</pre>
 <p>Sets the stream position of the file in slot fNum (1 to 8) to fPosition.</p>
 <h3><a name="FREADBINSTR"></a>fREADBINSTR</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 17410</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 17410</p>
 <pre>FUNCTION fReadBinStr(fNum As LONG, fBytes As LONG) As STRING</pre>
 <p>Reads fBytes bytes from the file in slot fNum (1 to 8) and returns them as a string.</p>
 <h3><a name="FSIZE"></a>fSIZE</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 17409</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 17409</p>
 <pre>FUNCTION fSIZE(fNum As LONG) As LONG</pre>
 <p>Returns the size in bytes of the file open in slot fNum (1 to 8).</p>
 <h3><a name="FWRITELINE"></a>fWRITELINE</h3>
-<p class="rq-meta">SUB &middot; rapidqAllProc.inc, line 17408</p>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 17408</p>
 <pre>SUB fWriteLine(fNum As LONG, fString As STRING)</pre>
 <p>Writes fString as a line to the file in slot fNum (1 to 8) and calls DoEvents.</p>
 <h3><a name="GETFILENUM"></a>GetFileNum</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 17404</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 17404</p>
 <pre>FUNCTION GetFileNum() As LONG</pre>
 <p>Returns the number of the first free file slot (1..MaxQFiles) from the global qfn array, or -1 if none is free.</p>
 </body>

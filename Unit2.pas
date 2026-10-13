@@ -3082,10 +3082,14 @@ begin
     begin
       Fields.Add('IdePath|IDE path');
       Fields.Add('CompPath|Compiler');
-      // Папка inc - одна (rapidq_ref/inc_standard.md): старые inc из incOld
-      // и общие rapidqAllProc.inc, rapidqComponents.inc. Свою папку проект
-      // задаёт в Project Properties (Unit1, RapidQIncDir)
-      Fields.Add('IncPath|Include');
+      // Папки inc (rapidq_ref/RQInc.md): Include UnIde - набор inc,
+      // который ставится с unIDE (rapidq_ref\RQInc: RQProc.inc,
+      // RQControls.inc и проверенные отдельные inc; пусто - эта папка рядом
+      // с exe), Include User - свой общий путь пользователя (с Use IDE
+      // path - INC папки RapidQ). Какую берёт проект - Project Properties
+      // (Unit1, RapidQIncDir)
+      Fields.Add('SysIncPath|Include UnIde');
+      Fields.Add('IncPath|Include User');
       Fields.Add('LibPath|Library');
       Fields.Add('PrjPath|Projects');
       Fields.Add('TplPath|Templates');

@@ -1,4 +1,4 @@
-"""Appendix D pages for the functions of rapidq_ref/inc_sys/rapidqAllProc.inc.
+"""Appendix D pages for the functions of rapidq_ref/inc_sys/RQProc.inc.
 
 Usage: python3 -I gen_funcs.py <repo dir>
 Inputs next to this script: inc_funcs.json (inc_funcs.py) and
@@ -94,7 +94,7 @@ for fname, group in by_file.items():
     out = [page_start(fname, 'Appendix D: ' + fname)]
     out.append('<h1>%s</h1>' % esc(fname))
     out.append('<p class="rq-meta">Source: <code>rapidq_ref/incOld/%s</code>, merged into '
-               '<code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; %d functions'
+               '<code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; %d functions'
                '%s</p>' % (esc(fname), len(group),
                            (' &middot; %d DLL functions' % api_count) if api_count else ''))
     if api_count:
@@ -107,7 +107,7 @@ for fname, group in by_file.items():
     for item in group:
         note = notes.get(item['id'], {})
         out.append('<h3><a name="%s"></a>%s</h3>' % (anchor(item['name']), esc(item['name'])))
-        out.append('<p class="rq-meta">%s &middot; rapidqAllProc.inc, line %d</p>'
+        out.append('<p class="rq-meta">%s &middot; RQProc.inc, line %d</p>'
                    % (esc(kind_text(item)), item['line']))
         out.append('<pre>%s</pre>' % esc(item['decl']))
         out.append('<p>%s</p>' % esc(note.get('desc', '')))
@@ -119,9 +119,9 @@ for fname, group in by_file.items():
     write_page(page, '\n'.join(out) + '\n')
 
 # funcs.html - files
-out = [page_start('Functions of rapidqAllProc.inc', 'Appendix D: include functions')]
-out.append('<h1>Functions of rapidqAllProc.inc</h1>')
-out.append('<p><code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> joins the constants, '
+out = [page_start('Functions of RQProc.inc', 'Appendix D: include functions')]
+out.append('<h1>Functions of RQProc.inc</h1>')
+out.append('<p><code>rapidq_ref/inc_sys/RQProc.inc</code> joins the constants, '
            'DECLAREs and procedures of the old include files. Here are its %d functions, one page '
            'per source file: %d DLL functions (Windows API and a few other DLLs, '
            '<code>DECLARE ... LIB</code>) and %d procedures written in Rapid-Q.</p>'
@@ -140,7 +140,7 @@ write_page('funcs.html', '\n'.join(out) + '\n')
 
 # funcs_az.html
 out = [page_start('Include functions A-Z', 'Appendix D: A-Z')]
-out.append('<h1>Functions of rapidqAllProc.inc, A&ndash;Z</h1>')
+out.append('<h1>Functions of RQProc.inc, A&ndash;Z</h1>')
 letters = collections.OrderedDict()
 for item in sorted(items, key=lambda it: it['name'].upper()):
     first = item['name'][0].upper()
@@ -160,7 +160,7 @@ write_page('funcs_az.html', '\n'.join(out) + '\n')
 contents_path = os.path.join(doc_dir, 'contents.html')
 text = open(contents_path, 'rb').read().decode('cp1252')
 block = ['<!-- rq-funcs -->',
-         '  <LI><a href="funcs.html">Functions of rapidqAllProc.inc</a> &mdash; %d functions of the merged '
+         '  <LI><a href="funcs.html">Functions of RQProc.inc</a> &mdash; %d functions of the merged '
          'include file, one page per source file: Windows API declarations with descriptions and links '
          'to Microsoft, and procedures written in Rapid-Q.' % len(items),
          '     <UL>']

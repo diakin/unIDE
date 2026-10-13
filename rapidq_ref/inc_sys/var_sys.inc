@@ -1,11 +1,11 @@
-' var_sys.inc - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: переменные одной программы (klas, dopusk$, omega!, SubArcPath$ ...).
+' var_sys.inc - отдельный inc, не входит в RQProc.inc /
+' RQControls.inc: переменные одной программы (klas, dopusk$, omega!, SubArcPath$ ...).
 ' Собран rapidq_ref/tools/build_inc.py из incOld/var.inc; повторы объявлений
 ' общих файлов убраны (build_removed.txt). Подключать в программе,
 ' которой он нужен.
 $IFNDEF __SEP_VAR_INC
 $DEFINE __SEP_VAR_INC
-$INCLUDE "rapidqComponents.inc"
+$INCLUDE "RQControls.inc"
 '============================================================================
 '[build_inc] var.inc
 '============================================================================

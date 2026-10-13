@@ -1,11 +1,11 @@
-' RapidQ_D3D_sys.inc - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: DLL d3drm.dll (Direct3D Retained Mode) - в Windows Vista и новее её нет.
+' RapidQ_D3D_sys.inc - отдельный inc, не входит в RQProc.inc /
+' RQControls.inc: DLL d3drm.dll (Direct3D Retained Mode) - в Windows Vista и новее её нет.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/RapidQ_D3D.inc; повторы объявлений
 ' общих файлов убраны (build_removed.txt). Подключать в программе,
 ' которой он нужен.
 $IFNDEF __SEP_RAPIDQ_D3D_INC
 $DEFINE __SEP_RAPIDQ_D3D_INC
-$INCLUDE "rapidqComponents.inc"
+$INCLUDE "RQControls.inc"
 '============================================================================
 '[build_inc] RapidQ_D3D.inc
 '============================================================================

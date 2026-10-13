@@ -226,6 +226,12 @@ type
     // пользовательские (старые) - см. SetRqInc
     FIncSysDir: string;
     FIncUserDir: string;
+    // Выбор папки inc: Include UnIde, Include User и свои папки проекта
+    // (строятся кодом в grpRqInc при первом SetRqInc)
+    cbIncDir: TUiComboBox;
+    btnIncDel: TUiButton;
+    btnIncDelAll: TUiButton;
+    lblIncPaths: TLabel;
     FDpr: string;               // .dpr проекта; '' - вкладки Delphi нет
     FDof: TMemIniFile;          // <проект>.dof в памяти
     FDofBefore: string;         // текст .dof после загрузки - для сравнения
@@ -244,6 +250,11 @@ type
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
     procedure SetOptionsVisible(AVisible: Boolean);
     procedure UpdateRqIncVisible;
+    procedure BuildIncControls;
+    procedure UpdateIncPaths;
+    procedure cbIncDirChange(Sender: TObject);
+    procedure btnIncDelClick(Sender: TObject);
+    procedure btnIncDelAllClick(Sender: TObject);
     function CompFlag(const AKey: string): Boolean;
     procedure SetCompFlag(const AKey: string; AValue: Boolean);
     procedure LoadForms;
@@ -271,13 +282,18 @@ type
   public
     // Показать вкладку Project options и заполнить её по ADpr
     procedure LoadDelphiOptions(const ADpr: string);
-    // Папка inc проекта RapidQ: ASysDir, AUserDir - из настроек
-    // компилятора; AMode - 'sys' или 'user' ('' - user); AOwnDir - свой
-    // путь проекта ('' - по выбору)
-    procedure SetRqInc(const ASysDir, AUserDir, AMode, AOwnDir: string);
+    // Папка inc проекта RapidQ: ASysDir (Include UnIde), AUserDir (Include
+    // User) - из настроек компилятора; AMode - 'sys', 'user' или 'own';
+    // AOwnDir - своя папка проекта (при own); AOwnList - свои папки,
+    // из которых выбирали, через "|"
+    procedure SetRqInc(const ASysDir, AUserDir, AMode, AOwnDir,
+                       AOwnList: string);
+    // 'sys' - Include UnIde, 'user' - Include User, 'own' - своя папка
     function RqIncMode: string;
-    // Свой путь проекта: '' - путь в поле совпадает с путём выбранного вида
+    // Своя папка проекта (при 'own'), иначе ''
     function RqIncOwnDir: string;
+    // Свои папки списка через "|"
+    function RqIncOwnList: string;
     // Записать .dof, .dpr и .res. AChanged - было ли что записано. Что
     // сделано и ошибки - строками в ALog.
     function SaveDelphiOptions(ALog: TStrings; out AChanged: Boolean): Boolean;
@@ -350,68 +366,225 @@ begin
   UpdateRqIncVisible;
 end;
 
-procedure TDlgNewPrj.SetRqInc(const ASysDir, AUserDir, AMode, AOwnDir: string);
+const
+  IncItemUnIde = 'Include UnIde';
+  IncItemUser = 'Include User';
+
+// Рамка папки inc: список (Include UnIde, Include User, свои папки),
+// "..." - добавить свою папку, Удалить, Удалить все (свои), под списком -
+// пути обеих стандартных папок. Переключатели и поле из .dfm спрятаны.
+procedure TDlgNewPrj.BuildIncControls;
+begin
+  if cbIncDir <> nil then
+    Exit;
+  rbIncSys.Visible := False;
+  rbIncUser.Visible := False;
+  edIncPath.Visible := False;
+  grpRqInc.Caption := 'Папка inc (RapidQ) - её получает rc.exe (-I)';
+
+  cbIncDir := TUiComboBox.Create(Self);
+  cbIncDir.Parent := grpRqInc;
+  cbIncDir.Style := csDropDownList;
+  cbIncDir.SetBounds(12, 22, 500, 21);
+  cbIncDir.OnChange := cbIncDirChange;
+  cbIncDir.Hint := 'Include UnIde и Include User - папки из IDE Options; ' +
+                   'ниже - свои папки этого проекта';
+  cbIncDir.ShowHint := True;
+
+  btnIncBrowse.SetBounds(518, 21, 30, 23);
+  btnIncBrowse.Hint := 'Добавить свою папку inc в список и выбрать её';
+  btnIncBrowse.ShowHint := True;
+
+  btnIncDel := TUiButton.Create(Self);
+  btnIncDel.Parent := grpRqInc;
+  btnIncDel.SetBounds(554, 21, 66, 23);
+  btnIncDel.Caption := 'Удалить';
+  btnIncDel.Hint := 'Убрать выбранную свою папку из списка';
+  btnIncDel.ShowHint := True;
+  btnIncDel.OnClick := btnIncDelClick;
+
+  btnIncDelAll := TUiButton.Create(Self);
+  btnIncDelAll.Parent := grpRqInc;
+  btnIncDelAll.SetBounds(626, 21, 76, 23);
+  btnIncDelAll.Caption := 'Удалить все';
+  btnIncDelAll.Hint := 'Убрать все свои папки (Include UnIde и Include ' +
+                       'User остаются)';
+  btnIncDelAll.ShowHint := True;
+  btnIncDelAll.OnClick := btnIncDelAllClick;
+
+  lblIncPaths := TLabel.Create(Self);
+  lblIncPaths.Parent := grpRqInc;
+  lblIncPaths.AutoSize := False;
+  lblIncPaths.WordWrap := True;
+  lblIncPaths.SetBounds(12, 48, 690, 44);
+
+  lblIncNote.Caption := 'Выбор и свои папки сохраняются в настройках ' +
+                        'проекта; пути Include UnIde и Include User - в ' +
+                        'IDE Options - Compilers - RapidQ Basic';
+end;
+
+procedure TDlgNewPrj.SetRqInc(const ASysDir, AUserDir, AMode, AOwnDir,
+                              AOwnList: string);
+var
+  Rest, Item: string;
+  SepPos, ItemIdx: Integer;
+
+  procedure AddOwn(const ADir: string);
+  var
+    Idx: Integer;
+  begin
+    if Trim(ADir) = '' then
+      Exit;
+    for Idx := 2 to cbIncDir.Items.Count - 1 do
+      if CompareText(ExcludeTrailingPathDelimiter(cbIncDir.Items[Idx]),
+                     ExcludeTrailingPathDelimiter(Trim(ADir))) = 0 then
+        Exit;
+    cbIncDir.Items.Add(Trim(ADir));
+  end;
+
 begin
   FIncSysDir := ASysDir;
   FIncUserDir := AUserDir;
-  // Папка inc в настройках компилятора теперь одна (Include, обычно
-  // rapidq_ref\inc_standard): выбора вида нет, в поле - она или своя папка
-  // проекта. Переключатели остались в .dfm, скрыты.
-  rbIncSys.Visible := False;
-  rbIncUser.Visible := False;
-  rbIncSys.Checked := False;
-  rbIncUser.Checked := True;
-  edIncPath.Top := 24;
-  btnIncBrowse.Top := 23;
-  grpRqInc.Caption := 'Папка inc (RapidQ): пусто или как в настройках - ' +
-                      'Include из IDE Options, иначе своя папка проекта';
-  if rbIncSys.Checked then
-    edIncPath.Text := FIncSysDir
-  else
-    edIncPath.Text := FIncUserDir;
-  if AOwnDir <> '' then
-    edIncPath.Text := AOwnDir;
+  BuildIncControls;
+  cbIncDir.Items.Clear;
+  cbIncDir.Items.Add(IncItemUnIde);
+  cbIncDir.Items.Add(IncItemUser);
+  Rest := AOwnList;
+  while Rest <> '' do
+  begin
+    SepPos := Pos('|', Rest);
+    if SepPos = 0 then
+      SepPos := Length(Rest) + 1;
+    Item := Copy(Rest, 1, SepPos - 1);
+    Delete(Rest, 1, SepPos);
+    AddOwn(Item);
+  end;
+  AddOwn(AOwnDir);
+  cbIncDir.ItemIndex := 0;
+  if AMode = 'user' then
+    cbIncDir.ItemIndex := 1
+  else if (AMode = 'own') and (AOwnDir <> '') then
+    for ItemIdx := 2 to cbIncDir.Items.Count - 1 do
+      if CompareText(ExcludeTrailingPathDelimiter(cbIncDir.Items[ItemIdx]),
+                     ExcludeTrailingPathDelimiter(AOwnDir)) = 0 then
+        cbIncDir.ItemIndex := ItemIdx;
+  UpdateIncPaths;
   UpdateRqIncVisible;
 end;
 
-// Переключатель - в поле путь выбранного вида из настроек компилятора
-procedure TDlgNewPrj.rbIncClick(Sender: TObject);
+// Под списком - пути обеих стандартных папок; Удалить - только у своей
+procedure TDlgNewPrj.UpdateIncPaths;
+
+  function Shown(const ADir: string): string;
+  begin
+    if ADir = '' then
+      Result := '(не задана в IDE Options)'
+    else if not DirectoryExists(ADir) then
+      Result := ADir + '  (папки нет)'
+    else
+      Result := ADir;
+  end;
+
 begin
-  if rbIncSys.Checked then
-    edIncPath.Text := FIncSysDir
-  else
-    edIncPath.Text := FIncUserDir;
+  if cbIncDir = nil then
+    Exit;
+  lblIncPaths.Caption := IncItemUnIde + ':  ' + Shown(FIncSysDir) + #13#10 +
+                         IncItemUser + ':  ' + Shown(FIncUserDir);
+  btnIncDel.Enabled := cbIncDir.ItemIndex >= 2;
+  btnIncDelAll.Enabled := cbIncDir.Items.Count > 2;
 end;
 
+procedure TDlgNewPrj.cbIncDirChange(Sender: TObject);
+begin
+  UpdateIncPaths;
+end;
+
+// "..." - своя папка: в список (если её там нет) и выбрать
 procedure TDlgNewPrj.btnIncBrowseClick(Sender: TObject);
 var
   FolderPath: string;
+  ItemIdx: Integer;
 begin
-  FolderPath := Trim(edIncPath.Text);
-  if BrowseFolderDialog('Папка inc', FolderPath) then
-    edIncPath.Text := FolderPath;
+  if cbIncDir = nil then
+    Exit;
+  case cbIncDir.ItemIndex of
+    0: FolderPath := FIncSysDir;
+    1: FolderPath := FIncUserDir;
+  else
+    FolderPath := cbIncDir.Text;
+  end;
+  if not BrowseFolderDialog('Папка inc', FolderPath) then
+    Exit;
+  FolderPath := ExcludeTrailingPathDelimiter(Trim(FolderPath));
+  if FolderPath = '' then
+    Exit;
+  for ItemIdx := 2 to cbIncDir.Items.Count - 1 do
+    if CompareText(ExcludeTrailingPathDelimiter(cbIncDir.Items[ItemIdx]),
+                   FolderPath) = 0 then
+    begin
+      cbIncDir.ItemIndex := ItemIdx;
+      UpdateIncPaths;
+      Exit;
+    end;
+  cbIncDir.ItemIndex := cbIncDir.Items.Add(FolderPath);
+  UpdateIncPaths;
+end;
+
+procedure TDlgNewPrj.btnIncDelClick(Sender: TObject);
+begin
+  if (cbIncDir = nil) or (cbIncDir.ItemIndex < 2) then
+    Exit;
+  cbIncDir.Items.Delete(cbIncDir.ItemIndex);
+  cbIncDir.ItemIndex := 0;
+  UpdateIncPaths;
+end;
+
+procedure TDlgNewPrj.btnIncDelAllClick(Sender: TObject);
+begin
+  if cbIncDir = nil then
+    Exit;
+  while cbIncDir.Items.Count > 2 do
+    cbIncDir.Items.Delete(cbIncDir.Items.Count - 1);
+  cbIncDir.ItemIndex := 0;
+  UpdateIncPaths;
+end;
+
+// Переключатели из .dfm скрыты (BuildIncControls) - обработчик остался
+procedure TDlgNewPrj.rbIncClick(Sender: TObject);
+begin
 end;
 
 function TDlgNewPrj.RqIncMode: string;
 begin
-  if rbIncSys.Checked then
-    Result := 'sys'
-  else
-    Result := 'user';
+  Result := 'sys';
+  if cbIncDir = nil then
+    Exit;
+  if cbIncDir.ItemIndex = 1 then
+    Result := 'user'
+  else if cbIncDir.ItemIndex >= 2 then
+    Result := 'own';
 end;
 
 function TDlgNewPrj.RqIncOwnDir: string;
-var
-  KindDir: string;
 begin
-  Result := Trim(edIncPath.Text);
-  if rbIncSys.Checked then
-    KindDir := FIncSysDir
-  else
-    KindDir := FIncUserDir;
-  if CompareText(ExcludeTrailingPathDelimiter(Result),
-                 ExcludeTrailingPathDelimiter(KindDir)) = 0 then
-    Result := '';
+  Result := '';
+  if (cbIncDir <> nil) and (cbIncDir.ItemIndex >= 2) then
+    Result := cbIncDir.Items[cbIncDir.ItemIndex];
+end;
+
+function TDlgNewPrj.RqIncOwnList: string;
+var
+  ItemIdx: Integer;
+begin
+  Result := '';
+  if cbIncDir = nil then
+    Exit;
+  for ItemIdx := 2 to cbIncDir.Items.Count - 1 do
+  begin
+    if Result <> '' then
+      Result := Result + '|';
+    Result := Result + cbIncDir.Items[ItemIdx];
+  end;
 end;
 
 function TDlgNewPrj.DofText: string;

@@ -1,11 +1,11 @@
-' debug_sys.inc - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: при запуске создаёт окно отладки _DebugFORM.
+' debug_sys.inc - отдельный inc, не входит в RQProc.inc /
+' RQControls.inc: при запуске создаёт окно отладки _DebugFORM.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/debug.inc; повторы объявлений
 ' общих файлов убраны (build_removed.txt). Подключать в программе,
 ' которой он нужен.
 $IFNDEF __SEP_DEBUG_INC
 $DEFINE __SEP_DEBUG_INC
-$INCLUDE "rapidqComponents.inc"
+$INCLUDE "RQControls.inc"
 '============================================================================
 '[build_inc] debug.inc
 '============================================================================

@@ -701,7 +701,7 @@ begin
       ' Этих файлов нет там, где их возьмёт rc.exe (папка программы ' +
       AScan.MainDir + ', папка -I ' + AScan.IncDir + ') или Windows (DLL: ' +
       'папка exe, системные папки, PATH). Недостающих - ' + Kinds + '.'#13#10 +
-      ' Поиск: Include (-I), общая Include, папка программы с подпапками, ' +
+      ' Поиск: Include (-I), Include UnIde, Include User, папка программы с подпапками, ' +
       'папка выше. Отмеченные копируются, затем сборка.';
     Result := Dlg.ShowModal = mrOk;
   finally

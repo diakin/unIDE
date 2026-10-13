@@ -12,50 +12,50 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>ShellRedir.Inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/ShellRedir.Inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 9 functions &middot; 7 DLL functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/ShellRedir.Inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 9 functions &middot; 7 DLL functions</p>
 <p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
 <p><a href="#RDR_CLOSEHANDLE">RDR_CloseHandle</a> &middot; <a href="#RDR_CREATEPIPE">RDR_CreatePipe</a> &middot; <a href="#RDR_CREATEPROCESS">RDR_CreateProcess</a> &middot; <a href="#RDR_GETSTARTUPINFO">RDR_GetStartupInfo</a> &middot; <a href="#RDR_READFILE">RDR_ReadFile</a> &middot; <a href="#RDR_SENDMESSAGE">RDR_SendMessage</a> &middot; <a href="#RDR_SETWINDOWTEXT">RDR_SetWindowText</a> &middot; <a href="#SHELLREDIR">ShellRedir</a> &middot; <a href="#SHELLREDIRCALLBACK">ShellRedirCallBack</a></p>
 <h3><a name="RDR_CLOSEHANDLE"></a>RDR_CloseHandle</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19729</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 19729</p>
 <pre>Declare Function RDR_CloseHandle Lib &quot;kernel32&quot; Alias &quot;CloseHandle&quot; (ByVal hObject As Long) As Long</pre>
 <p>Closes an open object handle (file, process, thread, event, pipe, etc.). Returns nonzero on success.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CloseHandle">CloseHandle</a></p>
 <h3><a name="RDR_CREATEPIPE"></a>RDR_CreatePipe</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19713</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 19713</p>
 <pre>Declare Function RDR_CreatePipe Lib &quot;kernel32&quot; Alias &quot;CreatePipe&quot; (phReadPipe As Long, phWritePipe As Long, lpPipeAttributes As RDR_SECURITY_ATTRIBUTES, ByVal nSize As Long) As Long</pre>
 <p>Creates an anonymous pipe and returns read and write handles to it; often used to redirect a child process&#x27;s standard I/O. Returns nonzero on success.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreatePipe">CreatePipe</a></p>
 <h3><a name="RDR_CREATEPROCESS"></a>RDR_CreateProcess</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19716</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 19716</p>
 <pre>Declare Function RDR_CreateProcess Lib &quot;kernel32&quot; Alias &quot;CreateProcessA&quot; (lpApplicationName As Long, lpCommandLine As Long, lpProcessAttributes As RDR_SECURITY_ATTRIBUTES, lpThreadAttributes As RDR_SECURITY_ATTRIBUTES, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, lpEnvironment As Long, lpCurrentDriectory As Long, lpStartupInfo As RDR_STARTUPINFO, lpProcessInformation As RDR_PROCESS_INFORMATION) As Long</pre>
 <p>Creates a new process and its primary thread; fills a PROCESS_INFORMATION structure with the process and thread handles and IDs. Returns nonzero on success.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateProcessA">CreateProcessA</a></p>
 <h3><a name="RDR_GETSTARTUPINFO"></a>RDR_GetStartupInfo</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19715</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 19715</p>
 <pre>Declare Sub RDR_GetStartupInfo Lib &quot;kernel32&quot; Alias &quot;GetStartupInfoA&quot; (lpStartupInfo As RDR_STARTUPINFO)</pre>
 <p>Retrieves the STARTUPINFO structure that was specified when the calling process was created.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetStartupInfoA">GetStartupInfoA</a></p>
 <h3><a name="RDR_READFILE"></a>RDR_ReadFile</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 19724</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 19724</p>
 <pre>Declare Function RDR_ReadFile Lib &quot;kernel32&quot; Alias &quot;ReadFile&quot; (ByVal hFile As Long, lpBuffer As Long, ByVal nNumberOfBytesToRead As Long, lpNumberOfBytesRead As Long, lpOverlapped As RDR_OVERLAPPED) As Long</pre>
 <p>Reads data from a file or I/O device (pipe, console, etc.) into a buffer; the number of bytes read is returned through a parameter. Returns nonzero on success.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ReadFile">ReadFile</a></p>
 <h3><a name="RDR_SENDMESSAGE"></a>RDR_SendMessage</h3>
-<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 19727</p>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 19727</p>
 <pre>Declare Function RDR_SendMessage Lib &quot;user32&quot; Alias &quot;SendMessageA&quot; (ByVal hwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, lParam As Long) As Long</pre>
 <p>Sends a message to a window and does not return until the window procedure has processed it. Returns the message-specific result.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SendMessageA">SendMessageA</a></p>
 <h3><a name="RDR_SETWINDOWTEXT"></a>RDR_SetWindowText</h3>
-<p class="rq-meta">DLL function, user32 &middot; rapidqAllProc.inc, line 19722</p>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 19722</p>
 <pre>Declare Function RDR_SetWindowText Lib &quot;user32&quot; Alias &quot;SetWindowTextA&quot; (ByVal hwnd As Long, ByVal lpString As String) As Long</pre>
 <p>Changes the text of the specified window&#x27;s title bar or the text of a control. Returns nonzero on success.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowTextA">SetWindowTextA</a></p>
 <h3><a name="SHELLREDIR"></a>ShellRedir</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 19737</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 19737</p>
 <pre>Function ShellRedir (CommandLine As String) As String</pre>
 <p>Runs CommandLine as a hidden console process with stdout and stderr redirected to a pipe (CreatePipe, CreateProcess, ReadFile). Passes each chunk to the user SUB ShellRedirCallBack and returns all collected output; on failure returns an error text.</p>
 <h3><a name="SHELLREDIRCALLBACK"></a>ShellRedirCallBack</h3>
-<p class="rq-meta">declaration only &middot; rapidqAllProc.inc, line 19733</p>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 19733</p>
 <pre>Declare Sub ShellRedirCallBack (Text As String)</pre>
 <p>Callback declaration: the program must write SUB ShellRedirCallBack(Text As String). ShellRedir calls it with each chunk of console output as it arrives, and with an error message if the pipe or process cannot be created.</p>
 </body>

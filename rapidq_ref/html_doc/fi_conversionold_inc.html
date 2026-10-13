@@ -12,38 +12,38 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>conversionOld.inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/conversionOld.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 7 functions &middot; 4 DLL functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/conversionOld.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 7 functions &middot; 4 DLL functions</p>
 <p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
 <p><a href="#MULTIBYTETOWIDECHAR1_CONVERSIONOLD">MultiByteToWideChar1_conversionOld</a> &middot; <a href="#MULTIBYTETOWIDECHAR_CONVERSIONOLD">MultiByteToWideChar_conversionOld</a> &middot; <a href="#QPDECODE">QPDecode</a> &middot; <a href="#QPDECODEOLD">QPDecodeOld</a> &middot; <a href="#QPMSGHEADERDECODE">QPMSGHeaderDecode</a> &middot; <a href="#WIDECHARTOMULTIBYTE1_CONVERSIONOLD">WideCharToMultiByte1_conversionOld</a> &middot; <a href="#WIDECHARTOMULTIBYTE_CONVERSIONOLD">WideCharToMultiByte_conversionOld</a></p>
 <h3><a name="MULTIBYTETOWIDECHAR1_CONVERSIONOLD"></a>MultiByteToWideChar1_conversionOld</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 10416</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 10416</p>
 <pre>Declare Function MultiByteToWideChar1_conversionOld Lib &quot;kernel32&quot; alias &quot;MultiByteToWideChar&quot; ( CodePage As Long, dwFlags As Long, lpMultiByteStr As string, cchMultiByte As Long, byref lpWideCharStr As Long, cchWideChar As Long) As Long</pre>
 <p>Maps a character string in the given code page to a UTF-16 (wide) string. Returns the number of characters written, or 0 on failure.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MultiByteToWideChar">MultiByteToWideChar</a></p>
 <h3><a name="MULTIBYTETOWIDECHAR_CONVERSIONOLD"></a>MultiByteToWideChar_conversionOld</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 10404</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 10404</p>
 <pre>Declare Function MultiByteToWideChar_conversionOld Lib &quot;kernel32&quot; alias &quot;MultiByteToWideChar&quot; ( CodePage As Long, dwFlags As Long, lpMultiByteStr As string, cchMultiByte As Long, byref lpWideCharStr As Long, cchWideChar As Long) As Long</pre>
 <p>Maps a character string in the given code page to a UTF-16 (wide) string. Returns the number of characters written, or 0 on failure.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MultiByteToWideChar">MultiByteToWideChar</a></p>
 <h3><a name="QPDECODE"></a>QPDecode</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 10506</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10506</p>
 <pre>Function QPDecode( Source As String) As String</pre>
 <p>Decodes a quoted-printable string: removes soft line breaks (= at line end) and replaces each =XX hex code with its character. Returns the decoded text. Assumes every = is followed by two hex digits.</p>
 <h3><a name="QPDECODEOLD"></a>QPDecodeOld</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 10428</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10428</p>
 <pre>Function QPDecodeOld( Source As String) As String</pre>
 <p>Old decoder for MIME quoted-printable encoded-words (=?charset?Q?text?=) in a mail header; returns the decoded text, or Source unchanged if there is no =? or the encoding is not Q. Prints debug output with PRINT. Superseded by DecodeSubj.</p>
 <h3><a name="QPMSGHEADERDECODE"></a>QPMSGHeaderDecode</h3>
-<p class="rq-meta">FUNCTION &middot; rapidqAllProc.inc, line 10510</p>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10510</p>
 <pre>Function QPMSGHeaderDecode( Source As String) As String</pre>
 <p>Decodes quoted-printable MIME encoded-words (=?charset?Q?text?=) in a mail header and returns the text; returns Source unchanged if there is no =? or the encoding is not Q. Prints debug output with PRINT. Same logic as QPDecodeOld.</p>
 <h3><a name="WIDECHARTOMULTIBYTE1_CONVERSIONOLD"></a>WideCharToMultiByte1_conversionOld</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 10422</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 10422</p>
 <pre>Declare Function WideCharToMultiByte1_conversionOld Lib &quot;kernel32&quot; alias &quot;WideCharToMultiByte&quot; ( CodePage As Long, dwFlags As Long, byref lpWideCharStr As long, cchWideChar As Long,byref lpMultiByteStr As string, cchMultiByte As Long, lpDefaultChar As long, lpUsedDefaultChar As Long) As Long</pre>
 <p>Maps a UTF-16 (wide) string to a string in the given code page. Returns the number of bytes written, or 0 on failure.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=WideCharToMultiByte">WideCharToMultiByte</a></p>
 <h3><a name="WIDECHARTOMULTIBYTE_CONVERSIONOLD"></a>WideCharToMultiByte_conversionOld</h3>
-<p class="rq-meta">DLL function, kernel32 &middot; rapidqAllProc.inc, line 10410</p>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 10410</p>
 <pre>Declare Function WideCharToMultiByte_conversionOld Lib &quot;kernel32&quot; alias &quot;WideCharToMultiByte&quot; ( CodePage As Long, dwFlags As Long, byref lpWideCharStr As Long, cchWideChar As Long, byref lpMultiByteStr As string, cchMultiByte As Long, lpDefaultChar As long, lpUsedDefaultChar As Long) As Long</pre>
 <p>Maps a UTF-16 (wide) string to a string in the given code page. Returns the number of bytes written, or 0 on failure.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=WideCharToMultiByte">WideCharToMultiByte</a></p>

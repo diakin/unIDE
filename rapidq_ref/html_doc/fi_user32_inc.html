@@ -12,91 +12,91 @@
 <div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
 
 <h1>User32.inc</h1>
-<p class="rq-meta">Source: <code>rapidq_ref/incOld/User32.inc</code>, merged into <code>rapidq_ref/inc_sys/rapidqAllProc.inc</code> &middot; 17 functions &middot; 17 DLL functions</p>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/User32.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 17 functions &middot; 17 DLL functions</p>
 <p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
 <p><a href="#FINDWINDOW">FindWindow</a> &middot; <a href="#GETACTIVEWINDOW">GetActiveWindow</a> &middot; <a href="#GETCURSOR">GetCursor</a> &middot; <a href="#GETDIALOGBASEUNITS">GetDialogBaseUnits</a> &middot; <a href="#GETDOUBLECLICKTIME">GetDoubleClickTime</a> &middot; <a href="#GETFOREGROUNDWINDOW">GetForegroundWindow</a> &middot; <a href="#GETINPUTSTATE">GetInputState</a> &middot; <a href="#GETKBCODEPAGE">GetKBCodePage</a> &middot; <a href="#GETMENUCHECKMARKDIMENSIONS">GetMenuCheckMarkDimensions</a> &middot; <a href="#GETMESSAGEEXTRAINFO">GetMessageExtraInfo</a> &middot; <a href="#GETMESSAGEPOS">GetMessagePos</a> &middot; <a href="#GETMESSAGETIME">GetMessageTime</a> &middot; <a href="#GETOPENCLIPBOARDWINDOW">GetOpenClipboardWindow</a> &middot; <a href="#GETPROCESSWINDOWSTATION">GetProcessWindowStation</a> &middot; <a href="#GETWINDOWTEXT_USER32">GetWindowText_User32</a> &middot; <a href="#REGISTERHOTKEY">RegisterHotKey</a> &middot; <a href="#UNREGISTERHOTKEY">UnRegisterHotKey</a></p>
 <h3><a name="FINDWINDOW"></a>FindWindow</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19843</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19843</p>
 <pre>Declare Function FindWindow Lib &quot;user32.dll&quot; Alias &quot;FindWindowA&quot; (lpClassName As String, lpWindowName As String) As Long</pre>
 <p>Retrieves the handle of the top-level window whose class name and window name match the given strings. Returns 0 if not found.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FindWindowA">FindWindowA</a></p>
 <h3><a name="GETACTIVEWINDOW"></a>GetActiveWindow</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19848</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19848</p>
 <pre>Declare Function GetActiveWindow Lib &quot;user32.dll&quot; Alias &quot;GetActiveWindow&quot; As Long</pre>
 <p>Retrieves the handle of the active window attached to the calling thread&#x27;s message queue, or 0 if none.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetActiveWindow">GetActiveWindow</a></p>
 <h3><a name="GETCURSOR"></a>GetCursor</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19853</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19853</p>
 <pre>Declare Function GetCursor Lib &quot;user32.dll&quot; Alias &quot;GetCursor&quot; As Long</pre>
 <p>Retrieves a handle to the current cursor, or 0 if there is none.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCursor">GetCursor</a></p>
 <h3><a name="GETDIALOGBASEUNITS"></a>GetDialogBaseUnits</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19858</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19858</p>
 <pre>Declare Function GetDialogBaseUnits Lib &quot;user32.dll&quot; Alias &quot;GetDialogBaseUnits&quot; As Long</pre>
 <p>Retrieves the system&#x27;s dialog base units (average character width in the low word, height in the high word) based on the system font.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDialogBaseUnits">GetDialogBaseUnits</a></p>
 <h3><a name="GETDOUBLECLICKTIME"></a>GetDoubleClickTime</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19863</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19863</p>
 <pre>Declare Function GetDoubleClickTime Lib &quot;user32.dll&quot; Alias &quot;GetDoubleClickTime&quot; As Long</pre>
 <p>Retrieves the current maximum time, in milliseconds, between the clicks of a double-click.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDoubleClickTime">GetDoubleClickTime</a></p>
 <h3><a name="GETFOREGROUNDWINDOW"></a>GetForegroundWindow</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19868</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19868</p>
 <pre>Declare Function GetForegroundWindow Lib &quot;user32.dll&quot; Alias &quot;GetForegroundWindow&quot; As Long</pre>
 <p>Retrieves the handle of the foreground window (the window the user is currently working with).</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetForegroundWindow">GetForegroundWindow</a></p>
 <h3><a name="GETINPUTSTATE"></a>GetInputState</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19873</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19873</p>
 <pre>Declare Function GetInputState Lib &quot;user32.dll&quot; Alias &quot;GetInputState&quot; As Long</pre>
 <p>Determines whether there are mouse-button or keyboard messages in the calling thread&#x27;s message queue. Returns nonzero if there are.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetInputState">GetInputState</a></p>
 <h3><a name="GETKBCODEPAGE"></a>GetKBCodePage</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19878</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19878</p>
 <pre>Declare Function GetKBCodePage Lib &quot;user32.dll&quot; Alias &quot;GetKBCodePage&quot; As Long</pre>
 <p>Returns the current OEM code page. Obsolete, provided only for 16-bit compatibility; use GetOEMCP instead.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetKBCodePage">GetKBCodePage</a></p>
 <h3><a name="GETMENUCHECKMARKDIMENSIONS"></a>GetMenuCheckMarkDimensions</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19883</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19883</p>
 <pre>Declare Function GetMenuCheckMarkDimensions Lib &quot;user32.dll&quot; Alias &quot;GetMenuCheckMarkDimensions&quot; As Long</pre>
 <p>Returns the dimensions of the default check-mark bitmap (width in low word, height in high word). Obsolete; use GetSystemMetrics with SM_CXMENUCHECK/SM_CYMENUCHECK.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetMenuCheckMarkDimensions">GetMenuCheckMarkDimensions</a></p>
 <h3><a name="GETMESSAGEEXTRAINFO"></a>GetMessageExtraInfo</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19888</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19888</p>
 <pre>Declare Function GetMessageExtraInfo Lib &quot;user32.dll&quot; Alias &quot;GetMessageExtraInfo&quot; As Long</pre>
 <p>Retrieves the extra message information for the current thread, an application- or driver-defined value associated with the input message.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetMessageExtraInfo">GetMessageExtraInfo</a></p>
 <h3><a name="GETMESSAGEPOS"></a>GetMessagePos</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19893</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19893</p>
 <pre>Declare Function GetMessagePos Lib &quot;user32.dll&quot; Alias &quot;GetMessagePos&quot; As Long</pre>
 <p>Retrieves the cursor position, in screen coordinates, at the time the last message from GetMessage was posted (x in low word, y in high word).</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetMessagePos">GetMessagePos</a></p>
 <h3><a name="GETMESSAGETIME"></a>GetMessageTime</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19898</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19898</p>
 <pre>Declare Function GetMessageTime Lib &quot;user32.dll&quot; Alias &quot;GetMessageTime&quot; As Long</pre>
 <p>Retrieves the time, in milliseconds since system start, of the last message retrieved by GetMessage.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetMessageTime">GetMessageTime</a></p>
 <h3><a name="GETOPENCLIPBOARDWINDOW"></a>GetOpenClipboardWindow</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19903</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19903</p>
 <pre>Declare Function GetOpenClipboardWindow Lib &quot;user32.dll&quot; Alias &quot;GetOpenClipboardWindow&quot; As Long</pre>
 <p>Retrieves the handle of the window that currently has the clipboard open, or 0 if none.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetOpenClipboardWindow">GetOpenClipboardWindow</a></p>
 <h3><a name="GETPROCESSWINDOWSTATION"></a>GetProcessWindowStation</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19908</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19908</p>
 <pre>Declare Function GetProcessWindowStation Lib &quot;user32.dll&quot; Alias &quot;GetProcessWindowStation&quot; As Long</pre>
 <p>Retrieves a handle to the window station associated with the calling process.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetProcessWindowStation">GetProcessWindowStation</a></p>
 <h3><a name="GETWINDOWTEXT_USER32"></a>GetWindowText_User32</h3>
-<p class="rq-meta">DLL function, user32.dll &middot; rapidqAllProc.inc, line 19913</p>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 19913</p>
 <pre>Declare Function GetWindowText_User32 Lib &quot;user32.dll&quot; Alias &quot;GetWindowTextA&quot; (hWnd As Long, lpString As String, nMaxCount As Long) As Long</pre>
 <p>Copies the text of the specified window&#x27;s title bar (or a control&#x27;s text) into a buffer. Returns the length of the copied string.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowTextA">GetWindowTextA</a></p>
 <h3><a name="REGISTERHOTKEY"></a>RegisterHotKey</h3>
-<p class="rq-meta">DLL function, USER32.dll &middot; rapidqAllProc.inc, line 19919</p>
+<p class="rq-meta">DLL function, USER32.dll &middot; RQProc.inc, line 19919</p>
 <pre>DECLARE FUNCTION RegisterHotKey LIB &quot;USER32.dll&quot; ALIAS &quot;RegisterHotKey&quot; (hWnd AS LONG, ID AS LONG, fsModifiers AS LONG, vk AS LONG) AS LONG</pre>
 <p>Defines a system-wide hot key (modifiers + virtual key) that posts WM_HOTKEY to the given window. Returns nonzero on success.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=RegisterHotKey">RegisterHotKey</a></p>
 <h3><a name="UNREGISTERHOTKEY"></a>UnRegisterHotKey</h3>
-<p class="rq-meta">DLL function, USER32.dll &middot; rapidqAllProc.inc, line 19925</p>
+<p class="rq-meta">DLL function, USER32.dll &middot; RQProc.inc, line 19925</p>
 <pre>DECLARE FUNCTION UnRegisterHotKey LIB &quot;USER32.dll&quot; ALIAS &quot;UnregisterHotKey&quot; (hWnd AS LONG, ID AS LONG) AS LONG</pre>
 <p>Frees a hot key previously registered by the calling thread with RegisterHotKey. Returns nonzero on success.</p>
 <p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=UnregisterHotKey">UnregisterHotKey</a></p>
