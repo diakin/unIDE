@@ -74,6 +74,16 @@
 </ul>
 <p>What was copied and from where is written to the compilation log.</p>
 
+<h3>Check of include files from Include User</h3>
+<p>Copies taken from Include User were written for the user's own programs and may contain errors that rc.exe does not accept. After the search they are checked as in INC Manager. If there are errors:</p>
+<ul>
+<li>an orange panel with the number of errors and two buttons, &#171;&#1048;&#1089;&#1087;&#1088;&#1072;&#1074;&#1080;&#1090;&#1100;&#187; and &#171;&#1053;&#1077; &#1080;&#1089;&#1087;&#1088;&#1072;&#1074;&#1083;&#1103;&#1090;&#1100;&#187;, appears under the list of copies;</li>
+<li>below it is the list of errors: for each file a line with its path and status, then the lines &#171;&#1089;&#1090;&#1088;. N: ...&#187;. A click on such a line shows that file in the preview and selects line N. Selecting another copy in the list above does not clear the list of errors;</li>
+<li>&#171;&#1048;&#1089;&#1087;&#1088;&#1072;&#1074;&#1080;&#1090;&#1100;&#187; corrects the unambiguous errors in the files themselves: directives without <code>$</code>, numbers with U/L suffixes, <code>0x</code> of C (becomes <code>&amp;H</code>), <code>;</code> outside a string (becomes a comment). The other errors are corrected by hand. The original file is kept as <code>.bak</code> (or <code>.bak1</code>, <code>.bak2</code> ... if it exists). The list then shows what was changed and the result of a new check;</li>
+<li><b>Undo</b> deletes the corrected files and restores them from <code>.bak</code>;</li>
+<li>&#171;&#1055;&#1088;&#1086;&#1074;&#1077;&#1088;&#1080;&#1090;&#1100; &#1080; &#1080;&#1089;&#1087;&#1088;&#1072;&#1074;&#1080;&#1090;&#1100;&#187; does the same for the copy selected in the list of copies.</li>
+</ul>
+
 <a name="5"></a><h2>5. Include folders: Include UnIde and Include User</h2>
 <p>IDE Options &mdash; Compilers &mdash; RapidQ Basic has two fields:</p>
 <ul>

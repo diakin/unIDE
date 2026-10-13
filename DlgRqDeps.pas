@@ -75,6 +75,12 @@ type
     btnOfferSkip: TUiButton;
     FOfferFiles: TStringList;
     FOfferReport: TStringList;
+    // Список ошибок проверки - отдельно от просмотра, чтобы выбор копии
+    // его не стирал. Щелчок по строке "стр. N" - файл в просмотре на
+    // строке N. FReportPaths - файл каждой строки списка.
+    lbReport: TListBox;
+    splReport: TSplitter;
+    FReportPaths: TStringList;
     lblStatus: TLabel;
     procedure BuildControls;
     procedure FillList;
@@ -91,6 +97,9 @@ type
                                 Selected: Boolean);
     procedure UpdateNote;
     procedure ShowPreview;
+    procedure LoadPreview(const AFile: string; AIsText: Boolean);
+    procedure SetReport(AReport: TStrings);
+    procedure lbReportClick(Sender: TObject);
     procedure cbTargetChange(Sender: TObject);
     procedure btnSearchClick(Sender: TObject);
     procedure btnCopyClick(Sender: TObject);
@@ -123,6 +132,7 @@ begin
   FFixBaks.Free;
   FOfferFiles.Free;
   FOfferReport.Free;
+  FReportPaths.Free;
   FRef.Free;
   inherited Destroy;
 end;
@@ -326,12 +336,33 @@ begin
   FOfferFiles := TStringList.Create;
   FOfferReport := TStringList.Create;
 
+  // Список ошибок: под панелью-предложением, над просмотром; виден после
+  // проверки
+  lbReport := TListBox.Create(Self);
+  lbReport.Parent := Self;
+  lbReport.Top := 530;
+  lbReport.Height := 130;
+  lbReport.Align := alTop;
+  lbReport.Visible := False;
+  lbReport.OnClick := lbReportClick;
+  lbReport.Hint := 'Щелчок по строке "стр. N" - этот файл в просмотре на ' +
+                   'строке N';
+  splReport := TSplitter.Create(Self);
+  splReport.Parent := Self;
+  splReport.Top := 670;
+  splReport.Height := 5;
+  splReport.Align := alTop;
+  splReport.MinSize := 40;
+  splReport.Visible := False;
+  FReportPaths := TStringList.Create;
+
   memPreview := TMemo.Create(Self);
   memPreview.Parent := Self;
   memPreview.Align := alClient;
   memPreview.ReadOnly := True;
   memPreview.WordWrap := False;
   memPreview.ScrollBars := ssBoth;
+  memPreview.HideSelection := False;
   memPreview.Font.Name := 'Courier New';
   memPreview.Font.Height := -12;
 
@@ -518,28 +549,40 @@ end;
 
 // Текст выбранной копии (inc и прочие текстовые; DLL и картинки - нет)
 procedure TRqDepsForm.ShowPreview;
-const
-  PreviewMax = 1048576;
 var
   Dep: TRqDep;
   FileName, Ext: string;
+begin
+  Dep := SelectedDep;
+  if (Dep = nil) or (lvCands.Selected = nil) then
+  begin
+    memPreview.Lines.Clear;
+    Exit;
+  end;
+  FileName := lvCands.Selected.Caption;
+  Ext := LowerCase(ExtractFileExt(FileName));
+  LoadPreview(FileName, not ((Dep.Kind = dpkLib) or (Ext = '.bmp') or
+              (Ext = '.ico') or (Ext = '.jpg') or (Ext = '.gif') or
+              (Ext = '.cur') or (Ext = '.wav')));
+end;
+
+// Текст файла в просмотр; строки - как в файле (LF -> CRLF), чтобы номер
+// строки из проверки совпадал со строкой просмотра
+procedure TRqDepsForm.LoadPreview(const AFile: string; AIsText: Boolean);
+const
+  PreviewMax = 1048576;
+var
   Stream: TFileStream;
   Buf: string;
 begin
   memPreview.Lines.Clear;
-  Dep := SelectedDep;
-  if (Dep = nil) or (lvCands.Selected = nil) then
-    Exit;
-  FileName := lvCands.Selected.Caption;
-  Ext := LowerCase(ExtractFileExt(FileName));
-  if (Dep.Kind = dpkLib) or (Ext = '.bmp') or (Ext = '.ico') or
-     (Ext = '.jpg') or (Ext = '.gif') or (Ext = '.cur') or (Ext = '.wav') then
+  if not AIsText then
   begin
-    memPreview.Lines.Add('(' + FileName + ' - не текст, просмотра нет)');
+    memPreview.Lines.Add('(' + AFile + ' - не текст, просмотра нет)');
     Exit;
   end;
   try
-    Stream := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
+    Stream := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
     try
       if Stream.Size > PreviewMax then
         SetLength(Buf, PreviewMax)
@@ -550,12 +593,76 @@ begin
     finally
       Stream.Free;
     end;
-    memPreview.Text := Buf;
+    memPreview.Text := AdjustLineBreaks(Buf);
     memPreview.SelStart := 0;
   except
     on E: Exception do
       memPreview.Lines.Add('Не прочитан: ' + E.Message);
   end;
+end;
+
+// Отчёт проверки / исправления - в список ошибок. Строка "путь - ..." задаёт
+// файл для следующих строк "стр. N: ..."
+procedure TRqDepsForm.SetReport(AReport: TStrings);
+var
+  LineIdx, DashAt: Integer;
+  CurFile, Line: string;
+begin
+  lbReport.Items.BeginUpdate;
+  try
+    lbReport.Items.Clear;
+    FReportPaths.Clear;
+    CurFile := '';
+    for LineIdx := 0 to AReport.Count - 1 do
+    begin
+      Line := AReport[LineIdx];
+      DashAt := Pos(' - ', Line);
+      if (Line <> '') and (Line[1] <> ' ') and (DashAt > 1) and
+         FileExists(Copy(Line, 1, DashAt - 1)) then
+        CurFile := Copy(Line, 1, DashAt - 1)
+      else if Trim(Line) = '' then
+        CurFile := '';
+      lbReport.Items.Add(Line);
+      FReportPaths.Add(CurFile);
+    end;
+  finally
+    lbReport.Items.EndUpdate;
+  end;
+  // В конец ряда alTop: под панелью-предложением, над просмотром. Порядок
+  // alTop - по Top; скрытые не мешают, поэтому сначала скрыть оба.
+  splReport.Visible := False;
+  lbReport.Visible := False;
+  lbReport.Top := ClientHeight;
+  lbReport.Visible := True;
+  splReport.Top := lbReport.Top + lbReport.Height;
+  splReport.Visible := True;
+end;
+
+procedure TRqDepsForm.lbReportClick(Sender: TObject);
+var
+  ItemIdx, LineNo, CharPos, FirstVisible: Integer;
+  Txt: string;
+begin
+  ItemIdx := lbReport.ItemIndex;
+  if (ItemIdx < 0) or (ItemIdx >= FReportPaths.Count) or
+     (FReportPaths[ItemIdx] = '') then
+    Exit;
+  LoadPreview(FReportPaths[ItemIdx], True);
+  // "    стр. 12: ..." или "стр. 12: ... -> ..." (исправление)
+  Txt := TrimLeft(lbReport.Items[ItemIdx]);
+  LineNo := 0;
+  if Copy(Txt, 1, 5) = 'стр. ' then
+    LineNo := StrToIntDef(Copy(Txt, 6, Pos(':', Txt) - 6), 0);
+  if LineNo <= 0 then
+    Exit;
+  CharPos := memPreview.Perform(EM_LINEINDEX, LineNo - 1, 0);
+  if CharPos < 0 then
+    Exit;
+  memPreview.SelStart := CharPos;
+  memPreview.SelLength := memPreview.Perform(EM_LINELENGTH, CharPos, 0);
+  // Строку - не к самому верху, с тремя строками перед ней
+  FirstVisible := memPreview.Perform(EM_GETFIRSTVISIBLELINE, 0, 0);
+  memPreview.Perform(EM_LINESCROLL, 0, LineNo - 4 - FirstVisible);
 end;
 
 procedure TRqDepsForm.lvDepsSelectItem(Sender: TObject; Item: TListItem;
@@ -849,7 +956,7 @@ begin
       Exit;
     Report.Add(Format('Найдены в Include User: %d. Проверка:', [Files.Count]));
     ErrCount := CheckFiles(Files, Report);
-    memPreview.Lines.Assign(Report);
+    SetReport(Report);
     if ErrCount = 0 then
     begin
       lblStatus.Caption := 'Файлы из Include User проверены - ошибок нет';
@@ -887,7 +994,7 @@ begin
   try
     Files.Add(lvCands.Selected.Caption);
     ErrCount := CheckFiles(Files, Report);
-    memPreview.Lines.Assign(Report);
+    SetReport(Report);
     lblStatus.Caption := Format('%s: ошибок %d', [ExtractFileName(Files[0]),
                                                   ErrCount]);
     if ErrCount > 0 then
@@ -905,7 +1012,6 @@ procedure TRqDepsForm.ShowOffer(AFiles, AReport: TStrings; AErrors: Integer);
 begin
   FOfferFiles.Assign(AFiles);
   FOfferReport.Assign(AReport);
-  memPreview.Lines.Assign(AReport);
   if AFiles.Count = 1 then
     lblOffer.Caption := Format('%s: ошибок %d (список ниже). Исправить файл? ' +
       'Исходный будет сохранён с расширением .bak',
@@ -921,6 +1027,7 @@ begin
   // Под сплиттером копий, над просмотром: alTop ставит по Top
   pnlOffer.Top := splCands.Top + splCands.Height;
   pnlOffer.Visible := True;
+  SetReport(AReport);
 end;
 
 procedure TRqDepsForm.btnOfferFixClick(Sender: TObject);
@@ -940,7 +1047,7 @@ begin
     Report.Add('');
     Report.Add('После исправления:');
     ErrCount := CheckFiles(FOfferFiles, Report);
-    memPreview.Lines.Assign(Report);
+    SetReport(Report);
     lblStatus.Caption := Format('Исправлено; ошибок осталось: %d', [ErrCount]);
   finally
     Report.Free;
@@ -976,7 +1083,7 @@ begin
       end
       else
         Report.Add(FFixFiles[FileIdx] + ' - не вышло: ' + Err);
-    memPreview.Lines.Assign(Report);
+    SetReport(Report);
     if FFixFiles.Count = 0 then
       lblStatus.Caption := 'Исправления отменены'
     else
