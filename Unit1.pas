@@ -2326,7 +2326,18 @@ type
     private
     cmbRqInc: TUiComboBox;
     FRqIncItems: TStringList;
+    // Галка "FB smart" в рамке Project (сборка rc.exe): перед rc.exe -
+    // строгая проверка исходника переводом RqToFb в режиме Smart.
+    // FRqStrict - главные файлы с галкой (editor.ini [RapidQ.Strict]).
+    chkRqStrict: TUiCheckBox;
+    FRqStrict: TStringList;
     private
+    function  RqStrictOf(const AMain: string): Boolean;
+    procedure SetRqStrict(const AMain: string; AOn: Boolean);
+    procedure chkRqStrictClick(Sender: TObject);
+    function  RqStrictCheck(const ABas, AIncDir: string): Boolean;
+    function  RqStrictProgress(APass: Integer; const AFile: string;
+                               ALinesDone, ALinesTotal: Integer): Boolean;
     // Папка inc в рамке Project (после "чем собирать"): какая -I у проекта
     // сейчас и переключение; FRqIncItems - вид каждого пункта: sys, user
     // или own|<папка>
@@ -12047,7 +12058,7 @@ end;
 // (BuildTargetOf), подсказки - почему выбран и полный путь цели
 procedure TForm1.UpdateBuildBar;
 var
-  Kind, OutKind, Bits, RqComp: Integer;
+  Kind, OutKind, Bits, RqComp, IncLeft: Integer;
   RqViaFb: Boolean;
   Target, Why, Fqbn, BoardName, BoardText, PortText, ManualMark: string;
 begin
@@ -12201,22 +12212,54 @@ cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target
     else if cmbFbKind <> nil then
       cmbFbBits.Left := cmbFbKind.Left + cmbFbKind.Width + 4;
   end;
-  // RapidQ: папка inc проекта - за "чем собирать" (и разрядностью), до
-  // правого края рамки
+  // RapidQ: папка inc проекта - верхней строкой, за подписью цели, до
+  // правого края рамки; подпись - до списка
   if (cmbRqInc <> nil) and (FRqIncItems <> nil) then
   begin
     cmbRqInc.Visible := Kind = bkRapidQ;
     if Kind = bkRapidQ then
     begin
       FillRqIncCombo;
-      if RqViaFb and (cmbFbBits <> nil) then
-        cmbRqInc.Left := cmbFbBits.Left + cmbFbBits.Width + 4
-      else if cmbRqComp <> nil then
-        cmbRqInc.Left := cmbRqComp.Left + cmbRqComp.Width + 4;
-      if cmbRqInc.Parent.ClientWidth - cmbRqInc.Left - 8 > 70 then
-        cmbRqInc.Width := cmbRqInc.Parent.ClientWidth - cmbRqInc.Left - 8
-      else
-        cmbRqInc.Width := 70;
+      // Canvas у подписи (TGraphicControl) закрыт - ширина текста по
+      // холсту списка с шрифтом подписи
+      cmbRqInc.Canvas.Font := lblBuildTarget.Font;
+      IncLeft := lblBuildTarget.Left +
+                 cmbRqInc.Canvas.TextWidth(lblBuildTarget.Caption) + 12;
+      if IncLeft > cmbRqInc.Parent.ClientWidth - 8 - 100 then
+        IncLeft := cmbRqInc.Parent.ClientWidth - 8 - 100;
+      if IncLeft < lblBuildTarget.Left + 60 then
+        IncLeft := lblBuildTarget.Left + 60;
+      cmbRqInc.SetBounds(IncLeft, 2,
+                         cmbRqInc.Parent.ClientWidth - IncLeft - 8,
+                         cmbRqInc.Height);
+      lblBuildTarget.Width := IncLeft - lblBuildTarget.Left - 4;
+    end
+    else
+      lblBuildTarget.Width := lblBuildTarget.Parent.ClientWidth -
+                              lblBuildTarget.Left - 8;
+  end;
+  // Галка строгой проверки - только у сборки rc.exe (у FreeBASIC проверка
+  // и так идёт переводом)
+  if chkRqStrict <> nil then
+  begin
+    chkRqStrict.Visible := (Kind = bkRapidQ) and not RqViaFb;
+    if chkRqStrict.Visible then
+    begin
+      FBuildBarBusy := True;
+      try
+        chkRqStrict.Checked := RqStrictOf(Target);
+      finally
+        FBuildBarBusy := False;
+      end;
+      chkRqStrict.Enabled := Target <> '';
+      if cmbRqComp <> nil then
+        chkRqStrict.Left := cmbRqComp.Left + cmbRqComp.Width + 6;
+      chkRqStrict.Hint := 'Строгая проверка исходника';
+      if Target <> '' then
+        chkRqStrict.Hint := chkRqStrict.Hint + ' ' + ExtractFileName(Target) +
+          ' перед rc.exe: перевод RqToFb в режиме FB Smart, без сборки ' +
+          'fbc. Нашлись ошибки - rc.exe не запускается. Запоминается для ' +
+          'главного файла';
     end;
   end;
 end;
@@ -12335,6 +12378,152 @@ begin
   UpdateBuildBar;
   if not cmbRqInc.DroppedDown and RichEdit1.CanFocus then
     RichEdit1.SetFocus;
+end;
+
+// Галка "FB smart" для главного файла AMain (editor.ini [RapidQ.Strict],
+// ключ - путь в нижнем регистре, значение 1)
+function TForm1.RqStrictOf(const AMain: string): Boolean;
+var
+  Ini: TIniFile;
+begin
+  if FRqStrict = nil then
+  begin
+    FRqStrict := TStringList.Create;
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        Ini.ReadSectionValues('RapidQ.Strict', FRqStrict);
+      finally
+        Ini.Free;
+      end;
+    end;
+  end;
+  Result := (AMain <> '') and
+            (Trim(FRqStrict.Values[LowerCase(ExpandFileName(AMain))]) = '1');
+end;
+
+procedure TForm1.SetRqStrict(const AMain: string; AOn: Boolean);
+var
+  Ini: TIniFile;
+  Key: string;
+begin
+  if AMain = '' then
+    Exit;
+  RqStrictOf(AMain);   // список прочитан
+  Key := LowerCase(ExpandFileName(AMain));
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    if AOn then
+    begin
+      FRqStrict.Values[Key] := '1';
+      Ini.WriteString('RapidQ.Strict', Key, '1');
+    end
+    else
+    begin
+      if FRqStrict.IndexOfName(Key) >= 0 then
+        FRqStrict.Delete(FRqStrict.IndexOfName(Key));
+      Ini.DeleteKey('RapidQ.Strict', Key);
+    end;
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure TForm1.chkRqStrictClick(Sender: TObject);
+var
+  MainBas: string;
+begin
+  if FBuildBarBusy or (chkRqStrict = nil) then
+    Exit;
+  MainBas := RapidQTargetBas(False);
+  if MainBas = '' then
+  begin
+    UpdateBuildBar;
+    Exit;
+  end;
+  SetRqStrict(MainBas, chkRqStrict.Checked);
+  if chkRqStrict.Checked then
+    Dbg('RapidQ ' + ExtractFileName(MainBas) + ': перед rc.exe - строгая ' +
+        'проверка FB Smart (editor.ini [RapidQ.Strict])', clGray)
+  else
+    Dbg('RapidQ ' + ExtractFileName(MainBas) + ': без строгой проверки',
+        clGray);
+end;
+
+// Ход строгой проверки - в панель занятости над редактором
+function TForm1.RqStrictProgress(APass: Integer; const AFile: string;
+                                 ALinesDone, ALinesTotal: Integer): Boolean;
+begin
+  Result := not CompAbortWanted;
+  if not Result or (GetTickCount - FRqFbProgTick < 100) then
+    Exit;
+  FRqFbProgTick := GetTickCount;
+  BusyStage(Format('Строгая проверка: проход %d из 2, %s, строк %d',
+                   [APass, ExtractFileName(AFile), ALinesDone]));
+  BusyTick;
+  Application.ProcessMessages;
+  Result := not CompAbortWanted;
+end;
+
+// Строгая проверка перед rc.exe (галка "FB smart"): перевод RqToFb в
+// режиме Smart - те же проверки, что у сборки FB Smart, без fbc. RapidQ
+// сам такие места пропускает: метки у него общие для всей программы, имена
+// без DIM разрешены при $TypeCheck off. Переведённые файлы - в _rqfb рядом
+// с программой, как у сборки FreeBASIC. False - нашлись ошибки (или
+// прервано), rc.exe не запускать.
+function TForm1.RqStrictCheck(const ABas, AIncDir: string): Boolean;
+var
+  Options: TRqFbOptions;
+  ConvResult: TRqFbResult;
+  ConvMessages: TStringList;
+  MsgIdx: Integer;
+  StartTick: Cardinal;
+  Passed: Boolean;
+begin
+  Result := True;
+  if not RqStrictOf(ABas) then
+    Exit;
+  LogComp('--- Строгая проверка (FB Smart): ' + ExtractFileName(ABas));
+  Options.Mode := rfmSmart;
+  Options.IncDirs := AIncDir;
+  Options.OutDir := ExtractFilePath(ABas) + '_rqfb';
+  Passed := False;
+  FRqFbProgTick := 0;
+  ConvMessages := TStringList.Create;
+  BusyBegin('Строгая проверка ' + ExtractFileName(ABas));
+  try
+    StartTick := GetTickCount;
+    Passed := RqToFbConvertEx(ABas, Options, ConvMessages, ConvResult,
+                              RqStrictProgress);
+    for MsgIdx := 0 to ConvMessages.Count - 1 do
+      LogComp(ConvMessages[MsgIdx]);
+    LogSuspects(ConvMessages, ConvResult.SuspectCount);
+    if Passed then
+      LogComp(Format('--- Строгая проверка: ошибок нет, предупреждений %d, ' +
+                     'подозрений %d, %d мс',
+                     [ConvResult.WarningCount, ConvResult.SuspectCount,
+                      GetTickCount - StartTick]))
+    else
+      LogComp(Format('--- Строгая проверка: ошибок %d, предупреждений %d, ' +
+                     'подозрений %d. rc.exe не запускается. Двойной щелчок по ' +
+                     'строке открывает исходник; собрать как есть - снять ' +
+                     'галку FB smart в рамке Project',
+                     [ConvResult.ErrorCount, ConvResult.WarningCount,
+                      ConvResult.SuspectCount]));
+  finally
+    ConvMessages.Free;
+    if Passed then
+      BusyEnd('', True)
+    else
+      BusyEnd('Строгая проверка: ошибки', False);
+  end;
+  if not Passed then
+  begin
+    if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+      ShowErrLog;
+    Result := False;
+  end;
 end;
 
 // Чем собирать программу RapidQ - выбрано в рамке Project: запоминается
@@ -21366,6 +21555,18 @@ begin
     cmbRqInc.ShowHint := True;
     cmbRqInc.Visible := False;
     cmbRqInc.OnChange := cmbRqIncChange;
+    // Строкой выше, за подписью цели: ширина - до правого края рамки
+    cmbRqInc.Anchors := [akLeft, akTop, akRight];
+    // Строгая проверка перед rc.exe - за "чем собирать"
+    chkRqStrict := TUiCheckBox.Create(Self);
+    chkRqStrict.Parent := cmbRqComp.Parent;
+    chkRqStrict.SetBounds(cmbRqComp.Left + cmbRqComp.Width + 6,
+                          cmbRqComp.Top + 2, 80, 17);
+    chkRqStrict.Caption := 'FB smart';
+    chkRqStrict.Hint := 'Строгая проверка исходника';
+    chkRqStrict.ShowHint := True;
+    chkRqStrict.Visible := False;
+    chkRqStrict.OnClick := chkRqStrictClick;
   end;
 
   // Точки останова: щелчок по полосе номеров строк
@@ -21846,6 +22047,7 @@ begin
     FRestartExe := ExtractFilePath(Application.ExeName) + OwnExeBase + '.exe';
   ArdFreeAll;
   FreeAndNil(FRqIncItems);
+  FreeAndNil(FRqStrict);
   FreeAndNil(FEnvOverrides);
   FreeAndNil(FRqCompClasses);
   CiFreeAll;
@@ -46929,6 +47131,10 @@ begin
     LogComp('Сборка RapidQ отменена в окне недостающих файлов');
     Exit;
   end;
+
+  // Галка "FB smart": строгая проверка исходника до rc.exe
+  if not FRqProbeActive and not RqStrictCheck(Bas, IncDir) then
+    Exit;
 
   // Чего нет на диске - не передаём, но пишем об этом: иначе ошибка придёт
   // от компилятора, без связи с настройками
