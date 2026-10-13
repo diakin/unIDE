@@ -646,7 +646,9 @@ begin
   memPreview.Lines.Clear;
   if not AIsText then
   begin
-    memPreview.Lines.Add('(' + AFile + ' - не текст, просмотра нет)');
+    // Не Lines.Add: у окна RichEdit 2.0 вставка строки через Lines
+    // кончается исключением "RichEdit line insertion error"
+    memPreview.Text := '(' + AFile + ' - не текст, просмотра нет)';
     Exit;
   end;
   try
@@ -706,7 +708,7 @@ begin
     memPreview.SelStart := 0;
   except
     on E: Exception do
-      memPreview.Lines.Add('Не прочитан: ' + E.Message);
+      memPreview.Text := 'Не прочитан: ' + E.Message;
   end;
 end;
 
