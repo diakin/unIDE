@@ -34,15 +34,20 @@ type
                              const AOld, ANew: string;
                              AInsert: Boolean): Boolean of object;
 
-// Записи лога перевода, которые покажет окно: ошибки программы и
-// подозрения (без ограничений перевода)
-procedure StrictCount(AMessages: TStrings;
-                      var AErrors, ASuspects, ALimits: Integer);
+// Записи лога перевода: ошибки программы, подозрения в её файлах,
+// подозрения в файлах папок Include ALibDirs (чужие библиотеки: окно их
+// прячет и из-за них не открывается), ограничения перевода
+procedure StrictCount(AMessages, ALibDirs: TStrings;
+                      var AErrors, ASuspects, ALibSuspects, ALimits: Integer);
+
+// Файл - в одной из папок ALibDirs (с подпапками)
+function StrictInLibDir(const AFile: string; ALibDirs: TStrings): Boolean;
 
 // Показать окно. AMessages - строки лога перевода; ARoots - папки поиска
 // определений (Include, программа, папка выше); AMainFile - главный .bas,
 // AIncDir - папка -I. mrIgnore - собрать rc.exe, иначе - не собирать.
-function StrictFixDialog(AOwner: TComponent; AMessages, ARoots: TStrings;
+function StrictFixDialog(AOwner: TComponent;
+                         AMessages, ARoots, ALibDirs: TStrings;
                          const AMainFile, AIncDir: string;
                          AOpenLine: TStrictOpenLine;
                          AEditLine: TStrictEditLine): TModalResult;
@@ -57,6 +62,8 @@ type
     FPrepared: TStringList;  // номера записей, для которых варианты собраны
     FDone: TStringList;      // номера исправленных записей
     FRoots: TStrings;
+    FLibDirs: TStrings;
+    FMessages: TStrings;
     FMainFile, FIncDir: string;
     FOpenLine: TStrictOpenLine;
     FEditLine: TStrictEditLine;
@@ -64,6 +71,7 @@ type
     FLastTick: Cardinal;
     FErrCount: Integer;
     lblInfo: TLabel;
+    chkLib: TCheckBox;       // показать подозрения в файлах папок Include
     lvItems: TListView;
     splItems: TSplitter;
     memExplain: TMemo;
@@ -79,7 +87,8 @@ type
     btnBuild: TUiButton;
     btnClose: TUiButton;
     procedure BuildControls;
-    procedure FillItems(AMessages: TStrings);
+    procedure FillItems;
+    procedure chkLibClick(Sender: TObject);
     function  CurIndex: Integer;
     function  CurItem: TStrictError;
     function  CurOptions: TStringList;
@@ -113,14 +122,37 @@ const
   fixGoto = 1;     // GOTO / GOSUB AOld - на ANew
   fixCase = 2;     // CASE > - CASE IS >
 
-procedure StrictCount(AMessages: TStrings;
-                      var AErrors, ASuspects, ALimits: Integer);
+function StrictInLibDir(const AFile: string; ALibDirs: TStrings): Boolean;
+var
+  DirIdx: Integer;
+  DirSlash: string;
+begin
+  Result := False;
+  if ALibDirs = nil then
+    Exit;
+  for DirIdx := 0 to ALibDirs.Count - 1 do
+  begin
+    if Trim(ALibDirs[DirIdx]) = '' then
+      Continue;
+    DirSlash := IncludeTrailingPathDelimiter(ExpandFileName(ALibDirs[DirIdx]));
+    if CompareText(Copy(ExpandFileName(AFile), 1, Length(DirSlash)),
+                   DirSlash) = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
+procedure StrictCount(AMessages, ALibDirs: TStrings;
+                      var AErrors, ASuspects, ALibSuspects, ALimits: Integer);
 var
   MsgIdx: Integer;
   Item: TStrictError;
 begin
   AErrors := 0;
   ASuspects := 0;
+  ALibSuspects := 0;
   ALimits := 0;
   for MsgIdx := 0 to AMessages.Count - 1 do
   begin
@@ -131,6 +163,8 @@ begin
       Inc(ALimits)
     else if Item.Level = slError then
       Inc(AErrors)
+    else if StrictInLibDir(Item.FileName, ALibDirs) then
+      Inc(ALibSuspects)
     else
       Inc(ASuspects);
     Item.Free;
@@ -228,6 +262,16 @@ begin
   lblInfo.Align := alTop;
   lblInfo.AutoSize := True;
   lblInfo.WordWrap := True;
+  chkLib := TCheckBox.Create(Self);
+  chkLib.Parent := Self;
+  chkLib.Top := 30;
+  chkLib.Height := 20;
+  chkLib.Align := alTop;
+  chkLib.Caption := ' Подозрения в файлах папок Include';
+  chkLib.Hint := 'Чужие библиотеки (inc из папок Include): подозрения в них ' +
+                 'обычно не про вашу программу - по умолчанию скрыты';
+  chkLib.Checked := False;
+  chkLib.OnClick := chkLibClick;
 
   pnlBottom := TPanel.Create(Self);
   pnlBottom.Parent := Self;
@@ -323,19 +367,31 @@ begin
   end;
 end;
 
-procedure TStrictFixForm.FillItems(AMessages: TStrings);
+procedure TStrictFixForm.FillItems;
 var
-  Pass, MsgIdx, Limits, Suspects: Integer;
+  Pass, MsgIdx, Limits, Suspects, LibSuspects, ItemIdx: Integer;
   Item: TStrictError;
   Row: TListItem;
 begin
+  // Заново (переключение "Подозрения в файлах папок Include")
+  for ItemIdx := 0 to FItems.Count - 1 do
+    TObject(FItems[ItemIdx]).Free;
+  for ItemIdx := 0 to FOptions.Count - 1 do
+    TObject(FOptions[ItemIdx]).Free;
+  FItems.Clear;
+  FOptions.Clear;
+  FPrepared.Clear;
+  FDone.Clear;
+  lvItems.Items.Clear;
+  FErrCount := 0;
   Limits := 0;
   Suspects := 0;
+  LibSuspects := 0;
   // Сначала ошибки программы, потом подозрения
   for Pass := 0 to 1 do
-    for MsgIdx := 0 to AMessages.Count - 1 do
+    for MsgIdx := 0 to FMessages.Count - 1 do
     begin
-      Item := StrictParseMessage(AMessages[MsgIdx]);
+      Item := StrictParseMessage(FMessages[MsgIdx]);
       if Item = nil then
         Continue;
       if (Item.Kind = skLimit) or (Ord(Item.Level) <> Pass) then
@@ -344,6 +400,15 @@ begin
           Inc(Limits);
         Item.Free;
         Continue;
+      end;
+      if (Item.Level = slSuspect) and StrictInLibDir(Item.FileName, FLibDirs) then
+      begin
+        Inc(LibSuspects);
+        if not chkLib.Checked then
+        begin
+          Item.Free;
+          Continue;
+        end;
       end;
       if Item.Level = slError then
         Inc(FErrCount)
@@ -360,16 +425,23 @@ begin
                        IntToStr(Item.Line) + ')');
       Row.SubItems.Add(Item.Text);
     end;
+  if chkLib.Checked then
+    Dec(Suspects, LibSuspects);
   lblInfo.Caption := Format(' Строгая проверка (FB Smart): ошибок программы %d, ' +
     'подозрений %d - то, что rc.exe пропускает, а программа из-за этого ' +
     'может работать не так.', [FErrCount, Suspects]);
+  chkLib.Caption := Format(' Подозрения в файлах папок Include: %d',
+                           [LibSuspects]);
+  chkLib.Enabled := LibSuspects > 0;
   if Limits > 0 then
     lblInfo.Caption := lblInfo.Caption + Format(' Ограничений перевода в ' +
       'FreeBASIC: %d - для rc.exe не важны, они только в логе.', [Limits]);
   lblInfo.Caption := lblInfo.Caption + ' Правки идут через редактор, их ' +
     'можно отменить там же (Undo).';
   if FErrCount = 0 then
-    btnBuild.Caption := 'Собрать rc.exe';
+    btnBuild.Caption := 'Собрать rc.exe'
+  else
+    btnBuild.Caption := 'Собрать rc.exe как есть';
   if lvItems.Items.Count > 0 then
     lvItems.Selected := lvItems.Items[0];
   ShowCurrent;
@@ -665,6 +737,12 @@ begin
     ShowCurrent;
 end;
 
+procedure TStrictFixForm.chkLibClick(Sender: TObject);
+begin
+  if not FBusy and (FMessages <> nil) then
+    FillItems;
+end;
+
 procedure TStrictFixForm.lbOptionsClick(Sender: TObject);
 begin
   UpdateApply;
@@ -815,7 +893,8 @@ begin
   end;
 end;
 
-function StrictFixDialog(AOwner: TComponent; AMessages, ARoots: TStrings;
+function StrictFixDialog(AOwner: TComponent;
+                         AMessages, ARoots, ALibDirs: TStrings;
                          const AMainFile, AIncDir: string;
                          AOpenLine: TStrictOpenLine;
                          AEditLine: TStrictEditLine): TModalResult;
@@ -825,12 +904,14 @@ begin
   Dlg := TStrictFixForm.CreateNew(AOwner);
   try
     Dlg.FRoots := ARoots;
+    Dlg.FLibDirs := ALibDirs;
+    Dlg.FMessages := AMessages;
     Dlg.FMainFile := AMainFile;
     Dlg.FIncDir := AIncDir;
     Dlg.FOpenLine := AOpenLine;
     Dlg.FEditLine := AEditLine;
     Dlg.BuildControls;
-    Dlg.FillItems(AMessages);
+    Dlg.FillItems;
     Result := Dlg.ShowModal;
   finally
     Dlg.Free;

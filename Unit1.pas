@@ -12566,8 +12566,8 @@ function TForm1.RqStrictCheck(const ABas, AIncDir: string): Boolean;
 var
   Options: TRqFbOptions;
   ConvResult: TRqFbResult;
-  ConvMessages, Roots: TStringList;
-  MsgIdx, ProgErrors, Suspects, Limits: Integer;
+  ConvMessages, Roots, LibDirs: TStringList;
+  MsgIdx, ProgErrors, Suspects, LibSuspects, Limits: Integer;
   StartTick: Cardinal;
   Passed, Aborted, Clean: Boolean;
   SysDir, UserDir, Mode, OwnDir: string;
@@ -12585,6 +12585,7 @@ begin
   Clean := False;
   FRqFbProgTick := 0;
   ConvMessages := TStringList.Create;
+  LibDirs := TStringList.Create;
   try
   BusyBegin('Строгая проверка ' + ExtractFileName(ABas));
   try
@@ -12605,7 +12606,14 @@ begin
       Item.Free;
     end;
     LogSuspects(ConvMessages, ConvResult.SuspectCount);
-    StrictCount(ConvMessages, ProgErrors, Suspects, Limits);
+    // Папки Include - чужие библиотеки: подозрения в их файлах окно не
+    // открывают (в окне - под галкой)
+    RapidQIncSettings(FCurrentProject, SysDir, UserDir, Mode, OwnDir);
+    LibDirs.Add(AIncDir);
+    LibDirs.Add(SysDir);
+    LibDirs.Add(UserDir);
+    StrictCount(ConvMessages, LibDirs, ProgErrors, Suspects, LibSuspects,
+                Limits);
     Aborted := not Passed and (ConvResult.ErrorCount = 0);
     // Что rc.exe пропустит, а программа из-за этого может работать не так
     Clean := not Aborted and (ProgErrors = 0) and (Suspects = 0);
@@ -12613,14 +12621,16 @@ begin
       LogComp('Строгая проверка прервана - rc.exe не запускался')
     else if Clean then
       LogComp(Format('--- Строгая проверка: ошибок программы и подозрений ' +
-                     'нет; ограничений перевода %d (для rc.exe не важны), ' +
-                     '%d мс', [Limits, GetTickCount - StartTick]))
+                     'в её файлах нет; подозрений в файлах папок Include %d, ' +
+                     'ограничений перевода %d (для rc.exe не важны), %d мс',
+                     [LibSuspects, Limits, GetTickCount - StartTick]))
     else
     begin
       LogComp(Format('--- Строгая проверка: ошибок программы %d, подозрений ' +
-                     '%d, ограничений перевода %d (для rc.exe не важны). ' +
-                     'Двойной щелчок по строке открывает исходник',
-                     [ProgErrors, Suspects, Limits]));
+                     '%d (и в файлах папок Include %d), ограничений перевода ' +
+                     '%d (для rc.exe не важны). Двойной щелчок по строке ' +
+                     'открывает исходник',
+                     [ProgErrors, Suspects, LibSuspects, Limits]));
       if RqStrictInfoOf(ABas) then
         LogComp('Строгая проверка: Info only - rc.exe собирает дальше');
     end;
@@ -12643,7 +12653,6 @@ begin
     if RqStrictInfoOf(ABas) then
       Exit;
     // Окно: причина каждой ошибки и что можно сделать
-    RapidQIncSettings(FCurrentProject, SysDir, UserDir, Mode, OwnDir);
     Roots := TStringList.Create;
     try
       Roots.Add(AIncDir);
@@ -12654,7 +12663,7 @@ begin
       Roots.Add(ExcludeTrailingPathDelimiter(ExtractFilePath(ABas)));
       Roots.Add(ExtractFileDir(ExcludeTrailingPathDelimiter(
                 ExtractFilePath(ABas))));
-      if StrictFixDialog(Self, ConvMessages, Roots, ABas, AIncDir,
+      if StrictFixDialog(Self, ConvMessages, Roots, LibDirs, ABas, AIncDir,
                          StrictOpenLine, StrictEditLine) = mrIgnore then
         LogComp('Строгая проверка: rc.exe собирает (выбрано в окне)')
       else
@@ -12667,6 +12676,7 @@ begin
       Roots.Free;
     end;
   finally
+    LibDirs.Free;
     ConvMessages.Free;
   end;
 end;
