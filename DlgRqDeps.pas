@@ -14,7 +14,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
-  ExtCtrls, ComCtrls,
+  ExtCtrls, ComCtrls, Dialogs,
   IncCheck,     // эталон, TIncProgress
   RqDeps,       // TRqDepScan, поиск и выбор копий
   UiButton,     // TUiButton
@@ -62,6 +62,7 @@ type
     btnCopy: TUiButton;
     btnBuild: TUiButton;
     btnCancel: TUiButton;
+    btnFix: TUiButton;      // проверить выбранную копию inc и исправить
     lblStatus: TLabel;
     procedure BuildControls;
     procedure FillList;
@@ -82,6 +83,7 @@ type
     procedure btnSearchClick(Sender: TObject);
     procedure btnCopyClick(Sender: TObject);
     procedure btnBuildClick(Sender: TObject);
+    procedure btnFixClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure CollectIgnore;
   public
@@ -186,6 +188,10 @@ begin
   btnBuild := MakeButton('Собрать без копирования', 354, 170, btnBuildClick);
   btnCancel := MakeButton('Отмена', 532, 90, nil);
   btnCancel.ModalResult := mrCancel;
+  btnFix := MakeButton('Проверить и исправить', 630, 170, btnFixClick);
+  btnFix.Hint := 'Проверка INC Manager выбранной копии inc; однозначные ' +
+                 'ошибки (директивы без $, U/L и 0x из C, ";" вне строки) - ' +
+                 'исправить в самом файле, прежний текст - в .bak';
 
   lblStatus := TLabel.Create(Self);
   lblStatus.Parent := pnlBottom;
@@ -548,6 +554,7 @@ begin
   else
     btnSearch.Caption := 'Искать снова';
   btnCopy.Enabled := not ABusy;
+  btnFix.Enabled := not ABusy;
   btnBuild.Enabled := not ABusy;
   btnCancel.Enabled := not ABusy;
   chkIgnore.Enabled := not ABusy;
@@ -661,6 +668,93 @@ begin
                                 'подробности в логе сборки', [Copied, Failed]);
   end;
   ModalResult := mrOk;
+end;
+
+// Проверить выбранную копию inc (как INC Manager) и исправить однозначные
+// ошибки на месте; отчёт - в окне просмотра
+procedure TRqDepsForm.btnFixClick(Sender: TObject);
+var
+  Dep: TRqDep;
+  FileName, Err: string;
+  Info: TIncFileInfo;
+  Report, FixRep: TStringList;
+  ErrCount, Fixed: Integer;
+
+  procedure CheckInto(AHead: string);
+  var
+    MsgIdx: Integer;
+  begin
+    Info := TIncFileInfo.Create(FileName);
+    try
+      IncCheckFile(Info, FRef);
+      ErrCount := Info.Errors;
+      Report.Add(AHead + IncStatusNames[Info.Status] +
+                 Format(', ошибок: %d', [Info.Errors]));
+      for MsgIdx := 0 to Info.Messages.Count - 1 do
+        Report.Add('  ' + Info.Messages[MsgIdx]);
+    finally
+      Info.Free;
+    end;
+  end;
+
+begin
+  Dep := SelectedDep;
+  if (Dep = nil) or (lvCands.Selected = nil) or FBusy then
+    Exit;
+  if Dep.Kind <> dpkInclude then
+  begin
+    lblStatus.Caption := 'Проверка - только для inc';
+    Exit;
+  end;
+  FileName := lvCands.Selected.Caption;
+  if FRef = nil then
+  begin
+    SetBusy(True);
+    try
+      FRef := TIncRefIndex.Create;
+      if not FRef.Load(FRefDir, FSysDir, ProgressStep) then
+        FreeAndNil(FRef);
+    finally
+      SetBusy(False);
+    end;
+    if FRef = nil then
+    begin
+      lblStatus.Caption := 'Эталон не прочитан - проверка прервана';
+      Exit;
+    end;
+  end;
+  Report := TStringList.Create;
+  FixRep := TStringList.Create;
+  try
+    Report.Add(FileName);
+    CheckInto('Проверка: ');
+    if (ErrCount > 0) and
+       (MessageDlg(Format('%s: ошибок %d.'#13#10#13#10'Исправить однозначные ' +
+                          '(директивы без $, числа с U/L и 0x из C, ";" вне ' +
+                          'строки) прямо в файле? Прежний текст - в .bak. ' +
+                          'Остальные ошибки - в отчёте, их правят руками.',
+                          [ExtractFileName(FileName), ErrCount]),
+                   mtConfirmation, [mbYes, mbNo], 0) = mrYes) then
+    begin
+      Fixed := IncAutoFix(FileName, FixRep, Err);
+      Report.Add('');
+      if Fixed < 0 then
+        Report.Add('Не исправлено: ' + Err)
+      else
+      begin
+        Report.Add(Format('Исправлено строк: %d', [Fixed]));
+        Report.AddStrings(FixRep);
+        Report.Add('');
+        CheckInto('После исправления: ');
+      end;
+    end;
+    memPreview.Lines.Assign(Report);
+    lblStatus.Caption := Format('%s: ошибок %d', [ExtractFileName(FileName),
+                                                  ErrCount]);
+  finally
+    FixRep.Free;
+    Report.Free;
+  end;
 end;
 
 procedure TRqDepsForm.btnBuildClick(Sender: TObject);

@@ -96,6 +96,16 @@ function IncGuardName(AInfo: TIncFileInfo): string;
 // Сравнение с эталоном и проверка файла; заполняет AInfo
 procedure IncCheckFile(AInfo: TIncFileInfo; ARef: TIncRefIndex);
 
+// Однозначные ошибки, которые находит проверка (IncCheckFile), -
+// исправить в самом файле AFile: директива без $ (DEFINE -> $DEFINE),
+// число с суффиксом U/L из C (880U -> 880), запись 0x из C (0x1F -> &H1F),
+// ";" вне строки (кроме строк с PRINT) -> '. Внутри brem ... erem и в
+// строках "..." не трогается. Прежний текст - в <файл>.bak (если такого
+// ещё нет). В AReport - строки "стр. N: было -> стало". Результат - число
+// исправленных строк; -1 - файл не прочитан или не записан (AError).
+function IncAutoFix(const AFile: string; AReport: TStrings;
+                    var AError: string): Integer;
+
 // Защитный $IFNDEF в начало и $ENDIF в конец файла. Прежний текст - в
 // <файл>.bak (если такого ещё нет; ABackup = False - без него: файл - свежая
 // копия). False - не поставлен, причина в AError.
@@ -1143,6 +1153,202 @@ begin
                    'подключатся оба файла');
   finally
     RefLines.Free;
+    Lines.Free;
+  end;
+end;
+
+// Начало комментария ' вне строк "..." (или Length + 1)
+function FixCommentPos(const ALine: string): Integer;
+var
+  InStr: Boolean;
+begin
+  InStr := False;
+  for Result := 1 to Length(ALine) do
+  begin
+    if ALine[Result] = '"' then
+      InStr := not InStr
+    else if (ALine[Result] = '''') and not InStr then
+      Exit;
+  end;
+  Result := Length(ALine) + 1;
+end;
+
+// Код строки (без комментария): числа с U/L и 0x - по-RapidQ; строки
+// "..." не трогаются
+function FixNumbers(const ACode: string): string;
+var
+  CharIdx, NumStart: Integer;
+  InStr: Boolean;
+begin
+  Result := '';
+  InStr := False;
+  CharIdx := 1;
+  while CharIdx <= Length(ACode) do
+  begin
+    if ACode[CharIdx] = '"' then
+    begin
+      InStr := not InStr;
+      Result := Result + ACode[CharIdx];
+      Inc(CharIdx);
+      Continue;
+    end;
+    if InStr or not (ACode[CharIdx] in ['0'..'9']) or
+       ((CharIdx > 1) and IsWordCh(ACode[CharIdx - 1])) then
+    begin
+      Result := Result + ACode[CharIdx];
+      Inc(CharIdx);
+      Continue;
+    end;
+    // 0x1F -> &H1F
+    if (ACode[CharIdx] = '0') and (CharIdx + 2 <= Length(ACode)) and
+       (ACode[CharIdx + 1] in ['x', 'X']) and
+       (ACode[CharIdx + 2] in ['0'..'9', 'a'..'f', 'A'..'F']) then
+    begin
+      Result := Result + '&H';
+      Inc(CharIdx, 2);
+      while (CharIdx <= Length(ACode)) and
+            (ACode[CharIdx] in ['0'..'9', 'a'..'f', 'A'..'F']) do
+      begin
+        Result := Result + ACode[CharIdx];
+        Inc(CharIdx);
+      end;
+      // суффикс U/L после шестнадцатеричного - тоже убрать
+      NumStart := CharIdx;
+      while (CharIdx <= Length(ACode)) and
+            (ACode[CharIdx] in ['u', 'U', 'l', 'L']) do
+        Inc(CharIdx);
+      if (CharIdx <= Length(ACode)) and IsWordCh(ACode[CharIdx]) then
+        Result := Result + Copy(ACode, NumStart, CharIdx - NumStart);
+      Continue;
+    end;
+    // 880U, 10L, 5UL -> без суффикса
+    NumStart := CharIdx;
+    while (CharIdx <= Length(ACode)) and (ACode[CharIdx] in ['0'..'9', '.']) do
+      Inc(CharIdx);
+    Result := Result + Copy(ACode, NumStart, CharIdx - NumStart);
+    NumStart := CharIdx;
+    while (CharIdx <= Length(ACode)) and
+          (ACode[CharIdx] in ['u', 'U', 'l', 'L']) do
+      Inc(CharIdx);
+    if (CharIdx > NumStart) and (CharIdx <= Length(ACode)) and
+       IsWordCh(ACode[CharIdx]) then
+      // не суффикс, а часть слова - как было
+      Result := Result + Copy(ACode, NumStart, CharIdx - NumStart);
+  end;
+end;
+
+function IncAutoFix(const AFile: string; AReport: TStrings;
+                    var AError: string): Integer;
+var
+  Lines: TStringList;
+  Src, Dst: TFileStream;
+  LineIdx, CommentAt, CharIdx, SemiAt: Integer;
+  Line, Code, Rest, Fixed, Kw, Lead: string;
+  InBrem, InStr: Boolean;
+begin
+  Result := 0;
+  AError := '';
+  Lines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(AFile);
+    except
+      on E: Exception do
+      begin
+        AError := E.Message;
+        Result := -1;
+        Exit;
+      end;
+    end;
+    InBrem := False;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      Line := Lines[LineIdx];
+      Kw := FirstWord(UpperCase(TrimLeft(Line)));
+      if InBrem then
+      begin
+        if Kw = 'EREM' then
+          InBrem := False;
+        Continue;
+      end;
+      if Kw = 'BREM' then
+      begin
+        InBrem := True;
+        Continue;
+      end;
+      CommentAt := FixCommentPos(Line);
+      Code := Copy(Line, 1, CommentAt - 1);
+      Rest := Copy(Line, CommentAt, MaxInt);
+      if Trim(Code) = '' then
+        Continue;
+
+      // Директива без $
+      if (Kw = 'DEFINE') or (Kw = 'UNDEF') or (Kw = 'IFDEF') or
+         (Kw = 'IFNDEF') or (Kw = 'ENDIF') or (Kw = 'INCLUDE') then
+      begin
+        Lead := Copy(Code, 1, Length(Code) - Length(TrimLeft(Code)));
+        Code := Lead + '$' + TrimLeft(Code);
+      end;
+
+      Code := FixNumbers(Code);
+
+      // ";" вне строк -> комментарий '
+      if Pos('PRINT', UpperCase(Code)) = 0 then
+      begin
+        InStr := False;
+        SemiAt := 0;
+        for CharIdx := 1 to Length(Code) do
+          if Code[CharIdx] = '"' then
+            InStr := not InStr
+          else if (Code[CharIdx] = ';') and not InStr then
+          begin
+            SemiAt := CharIdx;
+            Break;
+          end;
+        if SemiAt > 0 then
+        begin
+          Rest := '''' + Copy(Code, SemiAt + 1, MaxInt) + Rest;
+          Code := Copy(Code, 1, SemiAt - 1);
+        end;
+      end;
+
+      Fixed := Code + Rest;
+      if Fixed <> Line then
+      begin
+        Lines[LineIdx] := Fixed;
+        Inc(Result);
+        if AReport <> nil then
+          AReport.Add(Format('стр. %d: %s  ->  %s',
+                             [LineIdx + 1, Trim(Line), Trim(Fixed)]));
+      end;
+    end;
+    if Result = 0 then
+      Exit;
+    try
+      // .bak - байт в байт как было
+      if not FileExists(AFile + '.bak') then
+      begin
+        Src := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
+        try
+          Dst := TFileStream.Create(AFile + '.bak', fmCreate);
+          try
+            Dst.CopyFrom(Src, 0);
+          finally
+            Dst.Free;
+          end;
+        finally
+          Src.Free;
+        end;
+      end;
+      Lines.SaveToFile(AFile);
+    except
+      on E: Exception do
+      begin
+        AError := E.Message;
+        Result := -1;
+      end;
+    end;
+  finally
     Lines.Free;
   end;
 end;
