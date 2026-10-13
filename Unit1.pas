@@ -2323,6 +2323,15 @@ type
     function  RapidQIncUnIdeDefault: string;
     procedure RapidQIncSettings(const AProject: string;
                                 var ASysDir, AUserDir, AMode, AOwnDir: string);
+    private
+    cmbRqInc: TUiComboBox;
+    FRqIncItems: TStringList;
+    private
+    // Папка inc в рамке Project (после "чем собирать"): какая -I у проекта
+    // сейчас и переключение; FRqIncItems - вид каждого пункта: sys, user
+    // или own|<папка>
+    procedure FillRqIncCombo;
+    procedure cmbRqIncChange(Sender: TObject);
     function  RapidQLoadCustomTypes(ALines: TStrings;
                                     const AFile: string): Integer;
     procedure RapidQFillObjTables(AObj: TObject);
@@ -10187,6 +10196,8 @@ begin
          FCurrentProject := NewName;
          RebuildProjectsMenu;
          LoadProject(NewName);
+  // Папка inc могла смениться - список в рамке Project
+  UpdateBuildBar;
 end;
 
 // NEW PROJECT: имя, папка, тип.
@@ -12190,6 +12201,140 @@ cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target
     else if cmbFbKind <> nil then
       cmbFbBits.Left := cmbFbKind.Left + cmbFbKind.Width + 4;
   end;
+  // RapidQ: папка inc проекта - за "чем собирать" (и разрядностью), до
+  // правого края рамки
+  if (cmbRqInc <> nil) and (FRqIncItems <> nil) then
+  begin
+    cmbRqInc.Visible := Kind = bkRapidQ;
+    if Kind = bkRapidQ then
+    begin
+      FillRqIncCombo;
+      if RqViaFb and (cmbFbBits <> nil) then
+        cmbRqInc.Left := cmbFbBits.Left + cmbFbBits.Width + 4
+      else if cmbRqComp <> nil then
+        cmbRqInc.Left := cmbRqComp.Left + cmbRqComp.Width + 4;
+      if cmbRqInc.Parent.ClientWidth - cmbRqInc.Left - 8 > 70 then
+        cmbRqInc.Width := cmbRqInc.Parent.ClientWidth - cmbRqInc.Left - 8
+      else
+        cmbRqInc.Width := 70;
+    end;
+  end;
+end;
+
+// Пункты списка папки inc в рамке Project: Include UnIde, Include User и
+// свои папки проекта (IncPaths, IncPath) - как в Project Properties;
+// выбран тот, что у проекта сейчас (RapidQIncSettings). Без проекта выбора
+// нет: папка - Include UnIde, хранить выбор негде.
+procedure TForm1.FillRqIncCombo;
+var
+  SysDir, UserDir, Mode, OwnDir, OwnList, Rest, OneDir: string;
+  Prj: TProjectIni;
+  SepPos, SelIdx, WidthIdx, MaxWidth: Integer;
+
+  function DirText(const ADir: string): string;
+  begin
+    if ADir = '' then
+      Result := '(не задана в IDE Options)'
+    else
+      Result := ADir;
+  end;
+
+  procedure AddOwn(const ADir: string);
+  begin
+    if (ADir = '') or (FRqIncItems.IndexOf('own|' + ADir) >= 0) then
+      Exit;
+    cmbRqInc.Items.Add(ADir);
+    FRqIncItems.Add('own|' + ADir);
+  end;
+
+begin
+  RapidQIncSettings(FCurrentProject, SysDir, UserDir, Mode, OwnDir);
+  OwnList := '';
+  if (FCurrentProject <> '') and FileExists(SettingsFileName) then
+  begin
+    Prj := TProjectIni.Create(SettingsFileName, FCurrentProject);
+    try
+      OwnList := Prj.ReadString('Project', 'IncPaths', '');
+    finally
+      Prj.Free;
+    end;
+  end;
+  FBuildBarBusy := True;
+  try
+    cmbRqInc.Items.Clear;
+    FRqIncItems.Clear;
+    cmbRqInc.Items.Add('Include UnIde - ' + DirText(SysDir));
+    FRqIncItems.Add('sys');
+    cmbRqInc.Items.Add('Include User - ' + DirText(UserDir));
+    FRqIncItems.Add('user');
+    Rest := OwnList;
+    while Rest <> '' do
+    begin
+      SepPos := Pos('|', Rest);
+      if SepPos = 0 then
+        SepPos := Length(Rest) + 1;
+      OneDir := Trim(Copy(Rest, 1, SepPos - 1));
+      Delete(Rest, 1, SepPos);
+      AddOwn(OneDir);
+    end;
+    AddOwn(OwnDir);
+    if Mode = 'own' then
+      SelIdx := FRqIncItems.IndexOf('own|' + OwnDir)
+    else if Mode = 'user' then
+      SelIdx := 1
+    else
+      SelIdx := 0;
+    cmbRqInc.ItemIndex := SelIdx;
+  finally
+    FBuildBarBusy := False;
+  end;
+  // Список шире самого поля: пути видны целиком
+  MaxWidth := 0;
+  cmbRqInc.Canvas.Font := cmbRqInc.Font;
+  for WidthIdx := 0 to cmbRqInc.Items.Count - 1 do
+    if cmbRqInc.Canvas.TextWidth(cmbRqInc.Items[WidthIdx]) > MaxWidth then
+      MaxWidth := cmbRqInc.Canvas.TextWidth(cmbRqInc.Items[WidthIdx]);
+  SendMessage(cmbRqInc.Handle, CB_SETDROPPEDWIDTH, MaxWidth + 24, 0);
+  cmbRqInc.Enabled := FCurrentProject <> '';
+  if FCurrentProject = '' then
+    cmbRqInc.Hint := 'Папка inc (-I для rc.exe): ' + DirText(SysDir) +
+      #13#10'Файл без проекта - Include UnIde. Выбор папки хранится в ' +
+      'проекте (Project Properties)'
+  else
+    cmbRqInc.Hint := 'Папка inc проекта ' + FCurrentProject +
+      ' (-I для rc.exe): ' + DirText(RapidQIncDir) + #13#10 +
+      'Include UnIde, Include User - IDE Options - Compilers - RapidQ ' +
+      'Basic; свои папки - Project Properties. Выбор запоминается в проекте';
+end;
+
+// Папка inc выбрана в рамке Project - в настройки проекта, как в Project
+// Properties (IncMode; своя папка - IncPath)
+procedure TForm1.cmbRqIncChange(Sender: TObject);
+var
+  Prj: TProjectIni;
+  Item: string;
+begin
+  if FBuildBarBusy or (cmbRqInc = nil) or (FCurrentProject = '') or
+     (cmbRqInc.ItemIndex < 0) or (cmbRqInc.ItemIndex >= FRqIncItems.Count) then
+    Exit;
+  Item := FRqIncItems[cmbRqInc.ItemIndex];
+  Prj := TProjectIni.Create(SettingsFileName, FCurrentProject);
+  try
+    if Copy(Item, 1, 4) = 'own|' then
+    begin
+      Prj.WriteString('Project', 'IncMode', 'own');
+      Prj.WriteString('Project', 'IncPath', Copy(Item, 5, MaxInt));
+    end
+    else
+      Prj.WriteString('Project', 'IncMode', Item);
+  finally
+    Prj.Free;
+  end;
+  Dbg('RapidQ: папка inc проекта ' + FCurrentProject + ' - ' +
+      RapidQIncDir, clGray);
+  UpdateBuildBar;
+  if not cmbRqInc.DroppedDown and RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
 end;
 
 // Чем собирать программу RapidQ - выбрано в рамке Project: запоминается
@@ -21211,6 +21356,16 @@ begin
     cmbRqComp.Items.Add('rc.exe');
     cmbRqComp.Items.Add('FB Smart');
     cmbRqComp.Items.Add('FB Compat');
+    // Папка inc проекта - справа от него, в той же рамке (FillRqIncCombo)
+    FRqIncItems := TStringList.Create;
+    cmbRqInc := TUiComboBox.Create(Self);
+    cmbRqInc.Parent := cmbRqComp.Parent;
+    cmbRqInc.Style := csDropDownList;
+    cmbRqInc.SetBounds(cmbRqComp.Left + cmbRqComp.Width + 4, cmbRqComp.Top,
+                       120, cmbRqComp.Height);
+    cmbRqInc.ShowHint := True;
+    cmbRqInc.Visible := False;
+    cmbRqInc.OnChange := cmbRqIncChange;
   end;
 
   // Точки останова: щелчок по полосе номеров строк
@@ -21690,6 +21845,7 @@ begin
   if FPromoted then
     FRestartExe := ExtractFilePath(Application.ExeName) + OwnExeBase + '.exe';
   ArdFreeAll;
+  FreeAndNil(FRqIncItems);
   FreeAndNil(FEnvOverrides);
   FreeAndNil(FRqCompClasses);
   CiFreeAll;
