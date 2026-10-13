@@ -89,7 +89,13 @@ type
     // одного ряда; меняется - OnTabRows (владелец подгоняет высоту панели)
     FTabRowsExtra: Integer;
     FOnTabRows: TNotifyEvent;
+    // Пересчёт рядов уже заказан сообщением (RequestTabRows): при запуске
+    // страницы добавляются по одной и размер меняется много раз - считать
+    // по каждому разу незачем, хватит одного раза после них
+    FTabRowsPosted: Boolean;
     procedure SetButtonPopup(AValue: TPopupMenu);
+    procedure RequestTabRows;
+    procedure UMTabRows(var Message: TMessage); message WM_USER + 401;
     function HasGlyphRes(const AName: string): Boolean;
     procedure LoadLibs(const ADelphiBin: string);
     function LoadGlyph(AClass: TClass; ABmp: TBitmap): Boolean;
@@ -108,6 +114,7 @@ type
     procedure SetSelected(AClass: TComponentClass);
   protected
     procedure Resize; override;
+    procedure CreateWnd; override;
   public
     // Пересчитать число рядов вкладок (после смены ширины или страниц)
     procedure CheckTabRows;
@@ -932,12 +939,36 @@ begin
     TabIdx := 0;
   FTabs.TabIndex := TabIdx;
   ShowPage;
-  CheckTabRows;
+  RequestTabRows;
 end;
 
 procedure TDsgPalette.Resize;
 begin
   inherited Resize;
+  RequestTabRows;
+end;
+
+// Пересчёт рядов - один раз, когда очередь сообщений дойдёт до него. Окна
+// ещё нет - пересчитает CheckTabRows владельца после показа (Unit1).
+procedure TDsgPalette.RequestTabRows;
+begin
+  if FTabRowsPosted or not HandleAllocated then
+    Exit;
+  FTabRowsPosted := True;
+  PostMessage(Handle, WM_USER + 401, 0, 0);
+end;
+
+// Окно создано заново (смена темы и т. п.): заказ к прежнему окну пропал
+procedure TDsgPalette.CreateWnd;
+begin
+  inherited CreateWnd;
+  FTabRowsPosted := False;
+  RequestTabRows;
+end;
+
+procedure TDsgPalette.UMTabRows(var Message: TMessage);
+begin
+  FTabRowsPosted := False;
   CheckTabRows;
 end;
 
@@ -1051,7 +1082,7 @@ end;
 function TDsgPalette.AddPage(const AName: string): Integer;
 begin
   FTabs.Tabs.Add(AName);
-  CheckTabRows;
+  RequestTabRows;
   FPageBtns.Add(TList.Create);
   Result := FPageBtns.Count - 1;
   FPageNames.Add(AName);
