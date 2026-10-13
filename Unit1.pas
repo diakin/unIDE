@@ -1783,6 +1783,10 @@ type
     // implementation) и ход поиска. Поиск немодальный: FifStep раз в
     // 100 мс отдаёт управление очереди сообщений
     FFifDlg: TForm;
+    // Окно Find In Files в режиме «Искать файл»: ищутся файлы по маскам
+    // (отмеченные расширения и поле масок), без образца; в Match list -
+    // только имена файлов (FifRun, строки mrkGroup с HitCount = -1)
+    FFifFileMode: Boolean;
     FFifProject: Boolean;     // файлы проекта; False - диск
     FFifRunning: Boolean;     // идёт поиск
     // Собирается список файлов проекта для галок расширений (FifFillExts):
@@ -2128,7 +2132,9 @@ type
 
     // Поиск в файлах
     // Окно Find In Files (немодальное) - см. FifShowWindow, FifRun
-    procedure FifShowWindow(AProject: Boolean);
+    procedure FifShowWindow(AProject: Boolean; AFileMode: Boolean = False);
+    procedure FileSearchShow;
+    procedure FifListFilesOnly(AList: TStrings);
     procedure FifFillExts;
     function  FifCheckedExts: string;
     procedure FifMasksToExts;
@@ -16701,6 +16707,7 @@ const
   ScopeTabs = 2;      // во вкладках
   ScopeProject = 3;   // в файлах проекта
   ScopeDisk = 4;      // на диске
+  ScopeFileSearch = 5; // искать файл: файлы по маске, без образца
 
   // Раскладка в три ряда по 24 пикселя (панель под надписью - около 75):
   //   1: [Find      ] [<-Find][Find->]
@@ -16762,11 +16769,12 @@ begin
 
     cmbScope.Left := chkCase.Left + chkCase.Width + 4;
     // Порядок пунктов важен (ScopeFile ... ScopeDisk), подписи - нет
-    cmbScope.Items.Add('В файле');
+    cmbScope.Items.Add('В окне');
     cmbScope.Items.Add('Список');
     cmbScope.Items.Add('Во вкладках');
-    cmbScope.Items.Add('В файлах проекта');
+    cmbScope.Items.Add('В проекте');
     cmbScope.Items.Add('На диске');
+    cmbScope.Items.Add('Искать файл');
     cmbScope.ItemIndex := ScopeFile;
 
     W := 0;
@@ -17363,14 +17371,18 @@ end;
 // ---------------------------------------------------------------------------
 //  Область поиска и замены (список cmbScope)
 //
-//    В файле           - текущий файл: Find-> / <-Find - следующее и
+//    В окне            - текущий файл: Find-> / <-Find - следующее и
 //                        предыдущее вхождение, Replace - по одному с
 //                        вопросом, All - все сразу (FileFindNext,
 //                        FileFindPrev, FileReplace, FileReplaceAll)
 //    Список            - то же, и найденное в файле - в Match list
 //    Во вкладках       - открытые вкладки;
-//    В файлах проекта  - файлы проекта (окно Find In Files: расширения);
-//    На диске          - папки (окно Find In Files: папки, расширения).
+//    В проекте         - файлы проекта (окно Find In Files: расширения);
+//    На диске          - папки (окно Find In Files: папки, расширения);
+//    Искать файл       - то же окно, но ищутся сами файлы по маскам
+//                        (расширения и поле масок), образец не нужен; в
+//                        Match list - имена файлов с размером и временем,
+//                        щелчок открывает файл (FileSearchShow).
 //  Для трёх последних: Find-> - Match list по области и переход к первому
 //  вхождению, следующие нажатия - к следующему по списку (<-Find - к
 //  предыдущему); Replace - поиск заново и по одному вхождению с вопросом,
@@ -17390,7 +17402,7 @@ begin
   Result := ScopeFile;
   if cmbScope <> nil then
     Result := cmbScope.ItemIndex;
-  if (Result < ScopeFile) or (Result > ScopeDisk) then
+  if (Result < ScopeFile) or (Result > ScopeFileSearch) then
     Result := ScopeFile;
   // Go to line - переход по номеру строки в текущем файле
   if (cmbMode <> nil) and (cmbMode.ItemIndex = 2) then
@@ -17405,9 +17417,23 @@ begin
             IntToStr(Ord(chkCase.Checked)) + '|' + IntToStr(cmbMode.ItemIndex);
 end;
 
+// Искать файл: окно поиска на диске в режиме масок; Find-> и <-Find
+// открывают его, поиск - кнопкой «Найти» в нём
+procedure TForm1.FileSearchShow;
+begin
+  if FFifRunning then
+  begin
+    FFifAbort := True;   // идёт поиск - кнопка его останавливает
+    Exit;
+  end;
+  FifShowWindow(False, True);
+end;
+
 procedure TForm1.DoFindNext(Sender: TObject);
 begin
-  if SearchScope <= ScopeList then
+  if SearchScope = ScopeFileSearch then
+    FileSearchShow
+  else if SearchScope <= ScopeList then
     FileFindNext
   else
     MultiFindStep(True);
@@ -17415,7 +17441,9 @@ end;
 
 procedure TForm1.DoFindPrev(Sender: TObject);
 begin
-  if SearchScope <= ScopeList then
+  if SearchScope = ScopeFileSearch then
+    FileSearchShow
+  else if SearchScope <= ScopeList then
     FileFindPrev
   else
     MultiFindStep(False);
@@ -17423,7 +17451,12 @@ end;
 
 procedure TForm1.DoReplace(Sender: TObject);
 begin
-  if SearchScope <= ScopeList then
+  if SearchScope = ScopeFileSearch then
+  begin
+    StatusBar1.SimpleText := 'Искать файл: замены нет - только поиск файлов';
+    StatusBar1.SimplePanel := True;
+  end
+  else if SearchScope <= ScopeList then
     FileReplace
   else
     MultiReplace;
@@ -17431,7 +17464,12 @@ end;
 
 procedure TForm1.DoReplaceAll(Sender: TObject);
 begin
-  if SearchScope <= ScopeList then
+  if SearchScope = ScopeFileSearch then
+  begin
+    StatusBar1.SimpleText := 'Искать файл: замены нет - только поиск файлов';
+    StatusBar1.SimplePanel := True;
+  end
+  else if SearchScope <= ScopeList then
     FileReplaceAll
   else
     MultiReplaceAll;
@@ -18502,6 +18540,17 @@ begin
       Cnv.FillRect(Rect);
       Cnv.Font.Color := FMatchGrid.Font.Color;
 
+      // Искать файл: строка-файл без вхождений - без квадратика, справа
+      // размер и время
+      if FMatchRows[Idx].HitCount < 0 then
+      begin
+        Cnv.Brush.Style := bsClear;
+        if ACol = 1 then
+          Cnv.TextOut(Rect.Left + 3, Rect.Top + 1, FMatchRows[Idx].FileName +
+                      '      ' + FMatchRows[Idx].Text);
+        Cnv.Brush.Style := bsSolid;
+        Exit;
+      end;
       if ACol = 0 then
       begin
         BoxSize := 9;
@@ -18657,7 +18706,10 @@ begin
 
   // По заголовку сворачиваем группу целиком, а не только по квадратику:
   // попасть в девять пикселей мышью труднее, чем в строку
-  if FMatchRows[Idx].Kind = mrkGroup then
+  if (FMatchRows[Idx].Kind = mrkGroup) and (FMatchRows[Idx].HitCount < 0) then
+    // Искать файл: строка-файл - открыть файл
+    OpenNamedFile(FMatchRows[Idx].FileName)
+  else if FMatchRows[Idx].Kind = mrkGroup then
     ToggleMatchGroup(Idx)
   else
     JumpToMatch(Idx);
@@ -18932,7 +18984,7 @@ end;
 
 // Окно Find In Files: создать (один раз), заполнить и показать. Во время
 // поиска - только показать
-procedure TForm1.FifShowWindow(AProject: Boolean);
+procedure TForm1.FifShowWindow(AProject: Boolean; AFileMode: Boolean);
 var
   Dlg: TDlgFifDisk;
   Ini: TIniFile;
@@ -18960,6 +19012,7 @@ begin
   FFifListAborted := False;
 
   FFifProject := AProject;
+  FFifFileMode := AFileMode and not AProject;
   DirText := '';
   OtherMasks := '';
   SubDirs := True;
@@ -18989,7 +19042,10 @@ begin
   end
   else
   begin
-    Dlg.Caption := 'Find In Files - на диске';
+    if FFifFileMode then
+      Dlg.Caption := 'Искать файл - по маскам, на диске'
+    else
+      Dlg.Caption := 'Find In Files - на диске';
     Dlg.lblDir.Caption := 'Папки';
     if DirText = '' then
       if FCurrentFileName <> '' then
@@ -19014,7 +19070,10 @@ begin
   FifFillExts;
   if FFifListAborted then
     Exit;
-  if cmbFind.Text = '' then
+  if FFifFileMode then
+    FifStatus('Ищутся файлы по маскам: отмеченные расширения и поле масок ' +
+              '(QColorDialog*.inc). Поле Find не нужно')
+  else if cmbFind.Text = '' then
     FifStatus('Образец поиска - в поле Find главного окна')
   else
     FifStatus('Образец: ' + cmbFind.Text);
@@ -19407,12 +19466,18 @@ begin
   FFifListAborted := False;
 
   Pattern := cmbFind.Text; // без Trim: образец - как введён
-  if Pattern = '' then
+  // Искать файл: образец не нужен, ищутся имена по маскам
+  if FFifFileMode then
+    Pattern := ''
+  else
   begin
-    FifStatus('Образец поиска пуст: введите его в поле Find главного окна');
-    Exit;
+    if Pattern = '' then
+    begin
+      FifStatus('Образец поиска пуст: введите его в поле Find главного окна');
+      Exit;
+    end;
+    AddHistory(cmbFind, Pattern);
   end;
-  AddHistory(cmbFind, Pattern);
 
   if not FFifProject then
     FifMasksToExts;
@@ -19473,7 +19538,10 @@ begin
   FMatchPattern := Pattern;
   ResetMatchRows;
   FillMatchGrid;
-  FMatchForm.Caption := 'Match list - поиск: ' + Pattern;
+  if FFifFileMode then
+    FMatchForm.Caption := 'Match list - поиск файлов'
+  else
+    FMatchForm.Caption := 'Match list - поиск: ' + Pattern;
   if not FMatchForm.Visible then
     PlaceMatchForm;
   FMatchForm.Show;
@@ -19529,7 +19597,15 @@ begin
       end;
       FifCollectDirs(DirText, Masks, Dlg.chkSub.Checked, List, Cancel);
     end;
-    if not Cancel and not FFifAbort then
+    if FFifFileMode then
+    begin
+      // Только имена файлов, без содержимого
+      if not Cancel and not FFifAbort then
+        FifListFilesOnly(List);
+      Files := List.Count;
+      Total := List.Count;
+    end
+    else if not Cancel and not FFifAbort then
       FifScanList(List, Pattern, Total, Files, Cancel);
   finally
     FFifRunning := False;
@@ -19541,6 +19617,8 @@ begin
       FifGridGrow;
       if Total = 0 then
         FMatchForm.Caption := 'Match list - ничего не найдено'
+      else if FFifFileMode then
+        FMatchForm.Caption := Format('Match list - файлов: %d', [Files])
       else
         FMatchForm.Caption :=
           Format('Match list - %d в %d файлах', [Total, Files]);
@@ -19557,6 +19635,8 @@ begin
         FMatchKey := MatchKeyFor(ScopeDisk, Pattern);
       FMatchCur := -1;
     end;
+    if (FinalText = '') and FFifFileMode then
+      FinalText := Format('Найдено файлов: %d', [Files]);
     if FinalText = '' then
     begin
       FinalText := Format('Найдено: %d в %d файлах, просмотрено файлов: %d',
@@ -19765,6 +19845,29 @@ end;
 // (ExtractShortPathName) по всем окнам, и на тысячах файлов папки это
 // заметно. Поиск немодальный (FifStep): окно из списка могли закрыть или
 // открыть в нём другой файл - перед чтением слот сверяется с именем.
+// Искать файл: найденные файлы - строками Match list без вхождений.
+// HitCount = -1 - строка-файл: справа размер и время, щелчок открывает
+// файл (MatchGridDrawCell, MatchGridMouseDown)
+procedure TForm1.FifListFilesOnly(AList: TStrings);
+var
+  FileIdx, RowIdx: Integer;
+  Found: TSearchRec;
+begin
+  for FileIdx := 0 to AList.Count - 1 do
+  begin
+    RowIdx := AddMatchGroup(AList[FileIdx], IndexOfWindowByFile(AList[FileIdx]));
+    FMatchRows[RowIdx].HitCount := -1;
+    if FindFirst(AList[FileIdx], faAnyFile, Found) = 0 then
+    try
+      FMatchRows[RowIdx].Text := FormatFloat('#,##0', Found.Size) + ' байт, ' +
+        FormatDateTime('dd.mm.yyyy hh:nn', FileDateToDateTime(Found.Time));
+    finally
+      FindClose(Found);
+    end;
+  end;
+  FillMatchGrid;
+end;
+
 procedure TForm1.FifScanList(AList: TStrings; const APattern: string;
                              var ATotal, AFiles: Integer; var ACancel: Boolean);
 var
