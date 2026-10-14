@@ -12632,6 +12632,15 @@ var
   SysDir, UserDir, Mode, OwnDir: string;
   Item: TStrictError;
 begin
+  // Окно строгой проверки немодальное: пока оно открыто, вторая сборка его
+  // не открывает - окно поднимается наверх
+  if StrictFixDialogActive then
+  begin
+    LogComp('Окно строгой проверки уже открыто: сборка продолжится после ' +
+            'него');
+    Result := False;
+    Exit;
+  end;
   Result := True;
   if not RqStrictOf(ABas) then
     Exit;

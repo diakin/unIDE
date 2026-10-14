@@ -46,11 +46,18 @@ function StrictInLibDir(const AFile: string; ALibDirs: TStrings): Boolean;
 // Показать окно. AMessages - строки лога перевода; ARoots - папки поиска
 // определений (Include, программа, папка выше); AMainFile - главный .bas,
 // AIncDir - папка -I. mrIgnore - собрать rc.exe, иначе - не собирать.
+//
+// Окно немодальное: пока оно открыто, с главным окном можно работать
+// (смотреть и править исходник). Функция ждёт его закрытия своим циклом
+// сообщений, поэтому сборка продолжается после него, как раньше.
 function StrictFixDialog(AOwner: TComponent;
                          AMessages, ARoots, ALibDirs: TStrings;
                          const AMainFile, AIncDir: string;
                          AOpenLine: TStrictOpenLine;
                          AEditLine: TStrictEditLine): TModalResult;
+
+// Окно уже открыто (сборка ждёт его): поднять его наверх, True
+function StrictFixDialogActive: Boolean;
 
 implementation
 
@@ -112,9 +119,16 @@ type
     procedure btnFindClick(Sender: TObject);
     procedure btnApplyClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
   public
     destructor Destroy; override;
   end;
+
+var
+  // Открытое окно (сборка ждёт его) - второй раз не открывается
+  OpenStrictDlg: TStrictFixForm = nil;
 
 const
   // Вид правки строки (ReplaceInLine)
@@ -251,6 +265,7 @@ begin
   ShowHint := True;
   AutoScroll := False;
   OnCloseQuery := FormCloseQuery;
+  OnClose := FormClose;
 
   FItems := TList.Create;
   FOptions := TList.Create;
@@ -893,6 +908,22 @@ begin
   end;
 end;
 
+// Окно немодальное, но над главным окном IDE: иначе оно уходило бы за него
+procedure TStrictFixForm.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
+    Params.WndParent := Application.MainForm.Handle;
+end;
+
+// Крестик: окно немодальное, закрытие = Закрыть (без сборки)
+procedure TStrictFixForm.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  if ModalResult = mrNone then
+    ModalResult := mrCancel;
+  Action := caHide;
+end;
+
 function StrictFixDialog(AOwner: TComponent;
                          AMessages, ARoots, ALibDirs: TStrings;
                          const AMainFile, AIncDir: string;
@@ -901,7 +932,11 @@ function StrictFixDialog(AOwner: TComponent;
 var
   Dlg: TStrictFixForm;
 begin
+  Result := mrCancel;
+  if OpenStrictDlg <> nil then
+    Exit;
   Dlg := TStrictFixForm.CreateNew(AOwner);
+  OpenStrictDlg := Dlg;
   try
     Dlg.FRoots := ARoots;
     Dlg.FLibDirs := ALibDirs;
@@ -912,9 +947,31 @@ begin
     Dlg.FEditLine := AEditLine;
     Dlg.BuildControls;
     Dlg.FillItems;
-    Result := Dlg.ShowModal;
+    // Немодально: ждём здесь, пока окно не закроют кнопкой (ModalResult)
+    // или крестиком; программу закрыли - без сборки
+    Dlg.Show;
+    repeat
+      Application.HandleMessage;
+    until (Dlg.ModalResult <> mrNone) or not Dlg.Visible or
+          Application.Terminated;
+    Result := Dlg.ModalResult;
+    if Application.Terminated or (Result = mrNone) then
+      Result := mrCancel;
+    Dlg.Hide;
   finally
+    OpenStrictDlg := nil;
     Dlg.Free;
+  end;
+end;
+
+function StrictFixDialogActive: Boolean;
+begin
+  Result := OpenStrictDlg <> nil;
+  if Result then
+  begin
+    if OpenStrictDlg.WindowState = wsMinimized then
+      OpenStrictDlg.WindowState := wsNormal;
+    OpenStrictDlg.BringToFront;
   end;
 end;
 
