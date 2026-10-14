@@ -4873,10 +4873,16 @@ begin
   // UiTheme: режим IDE и цвета ролей из IDE.clr. Тема рассылает смену
   // сама: все элементы перерисовываются.
            if StartupActive then
+           begin
              StartupStage('Тема IDE: элементы темы (UiPushTheme)');
+             UiThemeProfileStart;
+           end;
            ThemeTick := GetTickCount;
            UiPushTheme;
            ThemeTick := GetTickCount - ThemeTick;
+           // Запуск: какие классы элементов заняли рассылку - в тот же этап
+           if StartupActive then
+             StartupStageNote(': ' + UiThemeProfileReport(8));
 
   // Номер текущей строки на полосе номеров, текст свойств инспектора
            if StartupActive then
@@ -6096,8 +6102,14 @@ begin
     else
     begin
       SendMessage(F.Handle, WM_SETREDRAW, 1, 0);
-      RedrawWindow(F.Handle, nil, 0, RDW_ERASE or RDW_FRAME or
-                   RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_UPDATENOW);
+      // При запуске главное окно ещё прозрачное, и его целиком рисует
+      // WMStartupFinish - здесь только помечаем к перерисовке
+      if StartupActive then
+        RedrawWindow(F.Handle, nil, 0, RDW_ERASE or RDW_FRAME or
+                     RDW_INVALIDATE or RDW_ALLCHILDREN)
+      else
+        RedrawWindow(F.Handle, nil, 0, RDW_ERASE or RDW_FRAME or
+                     RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_UPDATENOW);
     end;
   end;
   // Список свойств - последним, когда окно уже в новых цветах
