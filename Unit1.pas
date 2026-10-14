@@ -2305,6 +2305,7 @@ type
     procedure UpdateStatusBarInfo; // Заказать обновление статус-бара
     procedure RefreshStatusBar;    // Собственно пересчёт полей
     function  CharAt(APos: Integer): Char;
+    procedure TrimWordSelection;
     procedure ScheduleMapRebuild; // заказать пересборку карты
     procedure FlushMapRebuild;    // выполнить заказанную немедленно
     procedure InvalidateCaretLine;
@@ -62527,6 +62528,25 @@ end;
 // другие сообщения (EN_SELCHANGE и т.п.). Если такое сообщение приходило
 // раньше EN_CHANGE, снимок пропадал, и EN_CHANGE его уже не видел: карта не
 // сдвигалась, кэш ширин сбрасывался целиком (диагностика "en 0/N").
+// Выделение без пробелов и табуляций в конце (после двойного щелчка по
+// слову); выделение из одних пробелов не трогается
+procedure TForm1.TrimWordSelection;
+var
+  Sel: TCharRange;
+  NewEnd: Integer;
+begin
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  NewEnd := Sel.cpMax;
+  while (NewEnd > Sel.cpMin) and (CharAt(NewEnd - 1) in [' ', #9]) do
+    Dec(NewEnd);
+  if (NewEnd = Sel.cpMax) or (NewEnd = Sel.cpMin) then
+    Exit;
+  Sel.cpMax := NewEnd;
+  SendMessageA(RichEdit1.Handle, EM_EXSETSEL, 0, Integer(@Sel));
+end;
+
 procedure TForm1.NewRichEditProc(var Message: TMessage);
 var
   MarkIdx: Integer;
@@ -62614,6 +62634,10 @@ begin
     if PaintBox1 <> nil then
       PaintBox1.Update;
   end;
+  // Двойной щелчок: RichEdit выделяет слово вместе с пробелами за ним -
+  // пробелы и табуляции с конца выделения снимаются
+  if (Message.Msg = WM_LBUTTONDBLCLK) and (FMsgDepth = 0) then
+    TrimWordSelection;
   // Отпустили левую кнопку - каретка уже на месте щелчка: объявление
   // идентификатора под ней - в панель над редактором
   if (Message.Msg = WM_LBUTTONUP) and (FMsgDepth = 0) then
