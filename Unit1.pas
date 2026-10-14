@@ -838,6 +838,10 @@ type
     procedure mArdCliClick(Sender: TObject);
     procedure mHelpClick(Sender: TObject);
     procedure mHelpRqClick(Sender: TObject);
+    procedure mHelpFbClick(Sender: TObject);
+    procedure FbHelpMenuBuild;
+    function  FbHelpFile(AAsk: Boolean): string;
+    function  FbHelpPick: string;
     procedure Status2MouseDown(Sender: TObject; Button: TMouseButton;
                                Shift: TShiftState; X, Y: Integer);
     procedure SplitBarMouseDown(Sender: TObject; Button: TMouseButton;
@@ -21938,6 +21942,8 @@ begin
   FFormLightColor := Color;
   ReadThemeSetting;
   Screen.OnActiveFormChange := UiActiveFormChange;
+  // Help - FreeBASIC: пункты меню - до построения строки меню
+  FbHelpMenuBuild;
   // Цвета оформления IDE - до создания вкладок и дерева объектов
   LoadUiSchema;
 
@@ -68037,14 +68043,223 @@ begin
     ShowMessage('Справка RapidQ: ' + RqHelpLastError);
 end;
 
+// ---------------------------------------------------------------------------
+//  Справка FreeBASIC: руководство FreeBASIC в CHM (FB-manual-*.chm с сайта
+//  FreeBASIC). Файл не входит в архив компилятора и ищется так:
+//    - поле HelpFile раздела FreeBASIC в editor.ini (выбранный файл);
+//    - *.chm с "fb" или "freebasic" в имени в папке fbc (32 и 64 бит), её
+//      подпапке doc и папке выше;
+//    - то же рядом с unIDE и в его подпапке help.
+//  Не нашёлся - выбор файла (запоминается в HelpFile) или руководство на
+//  сайте FreeBASIC в браузере.
+//  F1 в файле FreeBASIC - слово под кареткой по указателю CHM
+//  (HH_KEYWORD_LOOKUP): есть - его страница, нет - указатель с этим словом.
+// ---------------------------------------------------------------------------
+
+const
+  FbHelpOnline = 'https://www.freebasic.net/wiki/DocToc';
+
+// Help - FreeBASIC: пункты по Tag. 1 - оглавление, 2 - указатель,
+// 3 - выбрать файл справки, 4 - руководство на сайте
+procedure TForm1.FbHelpMenuBuild;
+var
+  SubMenu: TMenuItem;
+
+  procedure AddItem(const ACaption, AHint: string; ATag: Integer);
+  var
+    NewItem: TMenuItem;
+  begin
+    NewItem := TMenuItem.Create(Self);
+    NewItem.Caption := ACaption;
+    NewItem.Hint := AHint;
+    NewItem.Tag := ATag;
+    if ATag > 0 then
+      NewItem.OnClick := mHelpFbClick;
+    SubMenu.Add(NewItem);
+  end;
+
+begin
+  if (mHelp = nil) or (mHelpRq = nil) then
+    Exit;
+  SubMenu := TMenuItem.Create(Self);
+  SubMenu.Caption := '&FreeBASIC';
+  SubMenu.Hint := 'Руководство FreeBASIC (FB-manual-*.chm); F1 в файле ' +
+                  'FreeBASIC - по слову под кареткой';
+  mHelp.Insert(mHelp.IndexOf(mHelpRq) + 1, SubMenu);
+  AddItem('&Contents', '', 1);
+  AddItem('Keyword &index', '', 2);
+  AddItem('-', '', 0);
+  AddItem('&Select help file...', 'Указать FB-manual-*.chm - запоминается ' +
+          'в editor.ini', 3);
+  AddItem('&Online manual (freebasic.net)', FbHelpOnline + ' - в браузере', 4);
+end;
+
+// Выбор файла справки FreeBASIC; выбранный - в editor.ini. '' - отказ
+function TForm1.FbHelpPick: string;
+var
+  PickDlg: TOpenDialog;
+  Ini: TIniFile;
+begin
+  Result := '';
+  PickDlg := TOpenDialog.Create(Self);
+  try
+    PickDlg.Title := 'Справка FreeBASIC (FB-manual-*.chm)';
+    PickDlg.Filter := 'Справка CHM (*.chm)|*.chm|Все файлы (*.*)|*.*';
+    PickDlg.Options := PickDlg.Options + [ofFileMustExist];
+    if not PickDlg.Execute then
+      Exit;
+    Result := PickDlg.FileName;
+  finally
+    PickDlg.Free;
+  end;
+  try
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Ini.WriteString(CompilerSection('FreeBASIC'), 'HelpFile', Result);
+      Ini.UpdateFile;
+    finally
+      Ini.Free;
+    end;
+  except
+    on E: Exception do
+      LogComp('Справка FreeBASIC: editor.ini не записан - ' + E.Message);
+  end;
+end;
+
+// Файл справки FreeBASIC (см. выше). AAsk - не нашёлся: спросить, выбрать
+// ли файл или открыть руководство на сайте. '' - справки нет
+function TForm1.FbHelpFile(AAsk: Boolean): string;
+var
+  Dirs: TStringList;
+  Ini: TIniFile;
+  Stored, FbcExe, FbcDir, Problem, ExeDir, LowName: string;
+  Bits, DirIdx: Integer;
+  Found: TSearchRec;
+  Answer: Integer;
+begin
+  Result := '';
+  Stored := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Stored := Trim(Ini.ReadString(CompilerSection('FreeBASIC'),
+                                    'HelpFile', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+  if (Stored <> '') and FileExists(Stored) then
+  begin
+    Result := Stored;
+    Exit;
+  end;
+
+  Dirs := TStringList.Create;
+  try
+    for Bits := 0 to 1 do
+    begin
+      if Bits = 0 then
+        FbcExe := FbCompilerExe(32, Problem)
+      else
+        FbcExe := FbCompilerExe(64, Problem);
+      if FbcExe = '' then
+        Continue;
+      FbcDir := ExtractFilePath(FbcExe);
+      Dirs.Add(FbcDir);
+      Dirs.Add(FbcDir + 'doc\');
+      Dirs.Add(ExtractFilePath(ExcludeTrailingPathDelimiter(FbcDir)));
+    end;
+    ExeDir := ExtractFilePath(Application.ExeName);
+    Dirs.Add(ExeDir);
+    Dirs.Add(ExeDir + 'help\');
+    for DirIdx := 0 to Dirs.Count - 1 do
+    begin
+      if FindFirst(Dirs[DirIdx] + '*.chm', faAnyFile, Found) = 0 then
+      try
+        repeat
+          LowName := LowerCase(Found.Name);
+          if (Pos('fb', LowName) > 0) or (Pos('freebasic', LowName) > 0) then
+          begin
+            Result := Dirs[DirIdx] + Found.Name;
+            Exit;
+          end;
+        until FindNext(Found) <> 0;
+      finally
+        FindClose(Found);
+      end;
+    end;
+  finally
+    Dirs.Free;
+  end;
+
+  if not AAsk then
+    Exit;
+  Answer := MessageDlg('Справка FreeBASIC (FB-manual-*.chm) не найдена: ее ' +
+    'нет ни в папке компилятора, ни рядом с unIDE.'#13#10#13#10 +
+    'Yes - указать файл (запомнится),'#13#10 +
+    'No - открыть руководство на сайте FreeBASIC,'#13#10 +
+    'Cancel - ничего.', mtInformation, [mbYes, mbNo, mbCancel], 0);
+  if Answer = mrYes then
+    Result := FbHelpPick
+  else if Answer = mrNo then
+    ShellExecute(Handle, 'open', FbHelpOnline, nil, nil, SW_SHOWNORMAL);
+end;
+
+procedure TForm1.mHelpFbClick(Sender: TObject);
+var
+  ChmFile: string;
+  Done: Boolean;
+begin
+  Done := True;
+  case TComponent(Sender).Tag of
+    1, 2:
+    begin
+      ChmFile := FbHelpFile(True);
+      if ChmFile = '' then
+        Exit;
+      if TComponent(Sender).Tag = 1 then
+        Done := ChmShowTopic(ChmFile, '')
+      else
+        Done := ChmShowIndex(ChmFile, '');
+    end;
+    3:
+    begin
+      ChmFile := FbHelpPick;
+      if ChmFile <> '' then
+        Done := ChmShowTopic(ChmFile, '');
+    end;
+    4:
+      Done := ShellExecute(Handle, 'open', FbHelpOnline, nil, nil,
+                           SW_SHOWNORMAL) > 32;
+  end;
+  if not Done then
+    ShowMessage('Справка FreeBASIC: ' + RqHelpLastError);
+end;
+
 // F1 в редакторе файла RapidQ - справка по слову под кареткой: страница
 // из rapidq_ref\help\keywords.txt, иначе указатель CHM с этим словом
 function TForm1.HelpKey(AKey: Word): Boolean;
+var
+  BuildKind: Integer;
+  ChmFile: string;
 begin
   Result := False;
   if (AKey <> VK_F1) or (GetKeyState(VK_CONTROL) < 0) or
      (GetKeyState(VK_SHIFT) < 0) or (GetKeyState(VK_MENU) < 0) or
-     (ActiveControl <> RichEdit1) or (CurBuildKind <> bkRapidQ) then
+     (ActiveControl <> RichEdit1) then
+    Exit;
+  BuildKind := CurBuildKind;
+  if BuildKind = bkFreeBasic then
+  begin
+    // Файл FreeBASIC - руководство FreeBASIC, слово по его указателю
+    Result := True;
+    ChmFile := FbHelpFile(True);
+    if (ChmFile <> '') and not ChmKeyword(ChmFile, HelpWordAtCaret) then
+      ShowMessage('Справка FreeBASIC: ' + RqHelpLastError);
+    Exit;
+  end;
+  if BuildKind <> bkRapidQ then
     Exit;
   Result := True;
   if not RqHelpKeyword(HelpWordAtCaret) then

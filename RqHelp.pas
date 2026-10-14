@@ -37,6 +37,13 @@ function RqHelpOpenHtml: Boolean;
 procedure RqHelpCloseAll;
 function RqHelpLastError: string;
 
+// Любой CHM (справка FreeBASIC и другие): страница ATopic ('' - стартовая
+// страница файла), указатель со словом, переход по слову указателя
+// (HH_KEYWORD_LOOKUP: слово найдено - его страница, нет - указатель с ним)
+function ChmShowTopic(const AChm, ATopic: string): Boolean;
+function ChmShowIndex(const AChm, AKeyword: string): Boolean;
+function ChmKeyword(const AChm, AWord: string): Boolean;
+
 implementation
 
 uses
@@ -49,10 +56,23 @@ const
   HH_DISPLAY_TOPIC = $0000;
   HH_DISPLAY_INDEX = $0002;
   HH_CLOSE_ALL = $0012;
+  HH_KEYWORD_LOOKUP = $000D;
   // окно [WINDOWS] main из rapidq.hhp: оглавление, указатель, поиск
   ChmWindow = '>main';
 
 type
+  // HH_AKLINK из htmlhelp.h
+  THhAkLink = packed record
+    cbStruct: Integer;
+    fReserved: BOOL;
+    pszKeywords: PChar;
+    pszUrl: PChar;
+    pszMsgText: PChar;
+    pszMsgTitle: PChar;
+    pszWindow: PChar;
+    fIndexOnFail: BOOL;
+  end;
+
   THtmlHelpA = function(hwndCaller: HWND; pszFile: PChar; uCommand: UINT;
                         dwData: DWORD): HWND; stdcall;
 
@@ -208,6 +228,63 @@ begin
                          PChar(ExtractFilePath(HtmlFile)), SW_SHOWNORMAL) > 32;
   if not Result then
     HelpError := 'не открылся ' + HtmlFile;
+end;
+
+function ChmShowTopic(const AChm, ATopic: string): Boolean;
+var
+  Target: string;
+begin
+  Result := False;
+  if not LoadHtmlHelp then
+    Exit;
+  Target := AChm;
+  if ATopic <> '' then
+    Target := Target + '::/' + ATopic;
+  Result := HtmlHelpProc(0, PChar(Target), HH_DISPLAY_TOPIC, 0) <> 0;
+  if not Result then
+    HelpError := 'окно справки не открылось: ' + Target;
+end;
+
+function ChmShowIndex(const AChm, AKeyword: string): Boolean;
+begin
+  Result := False;
+  if not LoadHtmlHelp then
+    Exit;
+  Result := HtmlHelpProc(0, PChar(AChm), HH_DISPLAY_INDEX,
+                         DWORD(PChar(AKeyword))) <> 0;
+  if not Result then
+    HelpError := 'указатель справки не открылся: ' + AChm;
+end;
+
+function ChmKeyword(const AChm, AWord: string): Boolean;
+var
+  Link: THhAkLink;
+  HelpWnd: HWND;
+begin
+  Result := False;
+  if not LoadHtmlHelp then
+    Exit;
+  if AWord = '' then
+  begin
+    Result := ChmShowTopic(AChm, '');
+    Exit;
+  end;
+  // Поиск по указателю работает в открытом окне справки - сначала оно
+  HelpWnd := HtmlHelpProc(0, PChar(AChm), HH_DISPLAY_TOPIC, 0);
+  if HelpWnd = 0 then
+  begin
+    HelpError := 'окно справки не открылось: ' + AChm;
+    Exit;
+  end;
+  FillChar(Link, SizeOf(Link), 0);
+  Link.cbStruct := SizeOf(Link);
+  Link.pszKeywords := PChar(AWord);
+  Link.fIndexOnFail := True;
+  Result := HtmlHelpProc(0, PChar(AChm), HH_KEYWORD_LOOKUP,
+                         DWORD(@Link)) <> 0;
+  if not Result then
+    // Указатель не открылся по слову - хотя бы указатель с ним
+    Result := ChmShowIndex(AChm, AWord);
 end;
 
 procedure RqHelpCloseAll;
