@@ -2851,6 +2851,7 @@ type
     function  IsSubBeginLine(ALine: Integer): Boolean;
     function  FmtSuspectAt(ALineIdx: Integer): Boolean;
     procedure FmtSuspectCheck;
+    function  RqParentLevels(const ASrc: string): TIntArray;
     procedure FmtSuspectClear;
     procedure LayoutScrollBars;
     function  ViewWidth: Integer;
@@ -67289,8 +67290,263 @@ begin
   end;
 end;
 
+// ---------------------------------------------------------------------------
+//  RapidQ: дерево объектов в отступах (Format text). Объекты, объявленные
+//  DIM ... AS Qxxx и привязанные к родителю "Имя.Parent = Родитель", стоят
+//  ступенькой: строка DIM ребёнка - на уровень правее строки DIM родителя,
+//  строки свойств объекта (Имя.Свойство = ...) - на уровень правее его DIM.
+//  Линии отступа (направляющие) тогда сами показывают, где чьи дети.
+//    DIM Panel AS QPANEL: Panel.Parent = Form
+//        Panel.Top = 3
+//        DIM Lbl AS QLABEL: Lbl.Parent = Panel
+//            Lbl.Caption = "..."
+//  Глубина объекта - число предков, объявленных в этом же файле; родитель
+//  из другого файла глубины не добавляет. Объект без родителя и без детей
+//  в файле не трогается. Комментарий-строка берёт уровень следующей строки
+//  кода. Результат - добавка уровня к отступу для каждой строки ASrc
+//  (строки - как в FormatIndentText: CR, LF или CR LF).
+// ---------------------------------------------------------------------------
+function TForm1.RqParentLevels(const ASrc: string): TIntArray;
+const
+  NameChars = ['A'..'Z', 'a'..'z', '0'..'9', '_'];
+  MaxDepth = 32;
+var
+  Lines: TStringList;       // код строк без комментариев
+  Parents: TStringList;     // ИМЯ=РОДИТЕЛЬ
+  Declared: TStringList;    // объявленные DIM ... AS, с сортировкой
+  HasKids: TStringList;     // объекты, у которых в файле есть дети
+  LineIdx, CharIdx, LineStart, StmtIdx, Pending, PendIdx: Integer;
+  Code, Group, ObjName, Kind: string;
+  Stmts: TStringList;
+  Extra: Integer;
+
+  // Код строки [AFrom..ATo] до первого символа комментария (карта
+  // CommentRanges): комментарий RapidQ идёт до конца строки
+  function LineCode(AFrom, ATo: Integer): string;
+  var
+    Pos1: Integer;
+  begin
+    Pos1 := AFrom;
+    while (Pos1 <= ATo) and not InRanges(CommentRanges, Pos1 - 1) do
+      Inc(Pos1);
+    Result := Copy(ASrc, AFrom, Pos1 - AFrom);
+  end;
+
+  // Операторы строки через ":" (двоеточие в кавычках - не разделитель)
+  procedure SplitStmts(const ACode: string; AOut: TStrings);
+  var
+    Pos1: Integer;
+    InStr: Boolean;
+    Part: string;
+  begin
+    AOut.Clear;
+    Part := '';
+    InStr := False;
+    for Pos1 := 1 to Length(ACode) do
+    begin
+      if ACode[Pos1] = '"' then
+        InStr := not InStr;
+      if (ACode[Pos1] = ':') and not InStr then
+      begin
+        AOut.Add(Trim(Part));
+        Part := '';
+      end
+      else
+        Part := Part + ACode[Pos1];
+    end;
+    AOut.Add(Trim(Part));
+  end;
+
+  // Слово с позиции APos (после пробелов); APos - за ним
+  function NextWord(const AText: string; var APos: Integer): string;
+  var
+    StartPos: Integer;
+  begin
+    while (APos <= Length(AText)) and (AText[APos] in [' ', #9]) do
+      Inc(APos);
+    StartPos := APos;
+    while (APos <= Length(AText)) and (AText[APos] in NameChars) do
+      Inc(APos);
+    Result := UpperCase(Copy(AText, StartPos, APos - StartPos));
+  end;
+
+  // "DIM [SHARED] Имя AS Тип" - имя объекта, иначе ''
+  function DimName(const AStmt: string): string;
+  var
+    Pos1: Integer;
+    Word1: string;
+  begin
+    Result := '';
+    Pos1 := 1;
+    if NextWord(AStmt, Pos1) <> 'DIM' then
+      Exit;
+    Word1 := NextWord(AStmt, Pos1);
+    if Word1 = 'SHARED' then
+      Word1 := NextWord(AStmt, Pos1);
+    if (Word1 = '') or (NextWord(AStmt, Pos1) <> 'AS') then
+      Exit;
+    if NextWord(AStmt, Pos1) = '' then
+      Exit;
+    Result := Word1;
+  end;
+
+  // "Имя.Что-то ..." - имя объекта (до первой точки), иначе ''; AProp -
+  // слово после точки
+  function DotName(const AStmt: string; var AProp: string): string;
+  var
+    Pos1: Integer;
+  begin
+    Result := '';
+    AProp := '';
+    Pos1 := 1;
+    Result := NextWord(AStmt, Pos1);
+    if (Result = '') or (Pos1 > Length(AStmt)) or (AStmt[Pos1] <> '.') then
+    begin
+      Result := '';
+      Exit;
+    end;
+    Inc(Pos1);
+    AProp := NextWord(AStmt, Pos1);
+  end;
+
+  // "Имя.Parent = Родитель" - в Parents
+  procedure NoteParent(const AStmt: string);
+  var
+    Pos1: Integer;
+    Child, Prop, Parent: string;
+  begin
+    Child := DotName(AStmt, Prop);
+    if (Child = '') or (Prop <> 'PARENT') then
+      Exit;
+    Pos1 := Pos('=', AStmt);
+    if Pos1 = 0 then
+      Exit;
+    Inc(Pos1);
+    Parent := NextWord(AStmt, Pos1);
+    if (Parent <> '') and (Parents.IndexOfName(Child) < 0) then
+      Parents.Add(Child + '=' + Parent);
+  end;
+
+  function Depth(const AName: string): Integer;
+  var
+    Cur: string;
+    Steps: Integer;
+  begin
+    Result := 0;
+    Cur := AName;
+    Steps := 0;
+    while Steps < MaxDepth do
+    begin
+      Cur := Parents.Values[Cur];
+      if (Cur = '') or (Declared.IndexOf(Cur) < 0) then
+        Break;
+      Inc(Result);
+      Inc(Steps);
+    end;
+  end;
+
+  // Объект в дереве файла: есть объявленный родитель или дети
+  function InTree(const AName: string): Boolean;
+  begin
+    Result := (Declared.IndexOf(AName) >= 0) and
+              ((Depth(AName) > 0) or (HasKids.IndexOf(AName) >= 0));
+  end;
+
+begin
+  Lines := TStringList.Create;
+  Parents := TStringList.Create;
+  Declared := TStringList.Create;
+  HasKids := TStringList.Create;
+  Stmts := TStringList.Create;
+  try
+    Declared.Sorted := True;
+    Declared.Duplicates := dupIgnore;
+    HasKids.Sorted := True;
+    HasKids.Duplicates := dupIgnore;
+
+    // Строки - так же, как их делит FormatIndentText
+    LineStart := 1;
+    CharIdx := 1;
+    while CharIdx <= Length(ASrc) + 1 do
+    begin
+      if (CharIdx > Length(ASrc)) or (ASrc[CharIdx] = #13) or
+         (ASrc[CharIdx] = #10) then
+      begin
+        Lines.Add(Trim(LineCode(LineStart, CharIdx - 1)));
+        if (CharIdx < Length(ASrc)) and (ASrc[CharIdx] = #13) and
+           (ASrc[CharIdx + 1] = #10) then
+          Inc(CharIdx);
+        LineStart := CharIdx + 1;
+      end;
+      Inc(CharIdx);
+    end;
+
+    // Проход 1: объявления и родители
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      if Lines[LineIdx] = '' then
+        Continue;
+      SplitStmts(Lines[LineIdx], Stmts);
+      for StmtIdx := 0 to Stmts.Count - 1 do
+      begin
+        ObjName := DimName(Stmts[StmtIdx]);
+        if ObjName <> '' then
+          Declared.Add(ObjName);
+        NoteParent(Stmts[StmtIdx]);
+      end;
+    end;
+    for StmtIdx := 0 to Parents.Count - 1 do
+      if Declared.IndexOf(Parents.Names[StmtIdx]) >= 0 then
+        HasKids.Add(Parents.ValueFromIndex[StmtIdx]);
+
+    // Проход 2: уровни строк
+    SetLength(Result, Lines.Count);
+    Group := '';
+    Pending := 0;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      Result[LineIdx] := 0;
+      Code := Lines[LineIdx];
+      if Code = '' then
+      begin
+        Inc(Pending);   // пустая или комментарий - по следующей строке
+        Continue;
+      end;
+      Extra := 0;
+      SplitStmts(Code, Stmts);
+      ObjName := DimName(Stmts[0]);
+      if (ObjName <> '') and InTree(ObjName) then
+      begin
+        Extra := Depth(ObjName);
+        Group := ObjName;
+      end
+      else
+      begin
+        ObjName := DotName(Stmts[0], Kind);
+        if (Group <> '') and (ObjName = Group) then
+          Extra := Depth(Group) + 1
+        else
+          Group := '';
+      end;
+      Result[LineIdx] := Extra;
+      // Комментарии над строкой - с ней (пустые строки отступа не имеют)
+      for PendIdx := LineIdx - Pending to LineIdx - 1 do
+        Result[PendIdx] := Extra;
+      Pending := 0;
+    end;
+  finally
+    Stmts.Free;
+    HasKids.Free;
+    Declared.Free;
+    Parents.Free;
+    Lines.Free;
+  end;
+end;
+
 procedure TForm1.FormatIndentText;
 var
+  // RapidQ: добавка уровня строки за родителя объекта (RqParentLevels)
+  ParentLevels: TIntArray;
   Src, Res, Raw, Body, Pad: string;
   SL: TStringList;
   I, Len, LineStart, K, Unop, Base, Step: Integer;
@@ -67457,6 +67713,12 @@ begin
   if Len = 0 then
     Exit;
 
+  // RapidQ: дети объектов - ступенькой под родителями
+  SetLength(ParentLevels, 0);
+  if not IsDfm and (FCurrentFileName <> '') and IncludesApply and
+     (CurBuildKind = bkRapidQ) then
+    ParentLevels := RqParentLevels(Src);
+
   SL := TStringList.Create;
   try
     BlockInit(B);
@@ -67595,6 +67857,9 @@ begin
               Inc(Base);
             if L.IsOutdent then
               Dec(Base);
+            // RapidQ: объект под родителем, свойства - под объектом
+            if SL.Count < Length(ParentLevels) then
+              Inc(Base, ParentLevels[SL.Count]);
 
             // В режиме тегов уровень задаёт стек, а не счётчик: у
             // закрывающего тега это уровень его парного
