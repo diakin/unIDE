@@ -53,12 +53,19 @@ function StrictInLibDir(const AFile: string; ALibDirs: TStrings): Boolean;
 // Окно немодальное: пока оно открыто, с главным окном можно работать
 // (смотреть и править исходник). Функция ждёт его закрытия своим циклом
 // сообщений, поэтому сборка продолжается после него, как раньше.
+type
+  // Выбор папок - окно Directory Tree главного окна: APreselect - какую
+  // раскрыть, ADirs - отмеченные через ";"
+  TStrictPickDirs = function(const APreselect: string;
+                             var ADirs: string): Boolean of object;
+
 function StrictFixDialog(AOwner: TComponent;
                          AMessages, ARoots, ALibDirs: TStrings;
                          const AMainFile, AIncDir: string;
                          AOpenLine: TStrictOpenLine;
                          AEditLine: TStrictEditLine;
-                         const AIniFile: string = ''): TModalResult;
+                         const AIniFile: string = '';
+                         APickDirs: TStrictPickDirs = nil): TModalResult;
 
 // Окно уже открыто (сборка ждёт его): поднять его наверх, True
 function StrictFixDialogActive: Boolean;
@@ -104,6 +111,12 @@ type
     btnOpenOther: TUiButton;
     btnFind: TUiButton;
     edExts: TUiEdit;         // где искать определение: расширения через ";"
+    btnDirs: TUiButton;      // [...] - свои папки поиска (Directory Tree)
+    // Типовые расширения программ RapidQ: галка - расширение в edExts
+    FExtChecks: array of TUiCheckBox;
+    FExtSyncing: Boolean;    // галки и поле правятся друг из друга
+    FUserDirs: TStringList;  // свои папки поиска определений
+    FPickDirs: TStrictPickDirs;
     btnApply: TUiButton;
     lblOptions: TLabel;
     lbOptions: TListBox;
@@ -118,6 +131,11 @@ type
     btnClose: TUiButton;
     procedure BuildControls;
     procedure pbNoOptionsPaint(Sender: TObject);
+    procedure ExtCheckClick(Sender: TObject);
+    procedure edExtsChange(Sender: TObject);
+    procedure SyncExtChecks;
+    procedure btnDirsClick(Sender: TObject);
+    procedure PlaceActions;
     procedure FillItems;
     procedure chkLibClick(Sender: TObject);
     procedure CollectChecks;
@@ -160,6 +178,8 @@ var
 const
   // Где искать определение по умолчанию - файлы программ RapidQ
   StrictDefaultExts = '.inc;.bas;.cmp';
+  // Галки рядом с полем: типовые расширения файлов программ RapidQ
+  StrictTypicalExts: array[0..3] of string = ('.inc', '.bas', '.cmp', '.rqb');
   // Вид правки строки (ReplaceInLine)
   fixWord = 0;     // слово AOld - на ANew
   fixGoto = 1;     // GOTO / GOSUB AOld - на ANew
@@ -257,6 +277,7 @@ begin
   FPrepared.Free;
   FDone.Free;
   FSkipped.Free;
+  FUserDirs.Free;
   inherited Destroy;
 end;
 
@@ -282,6 +303,8 @@ procedure TStrictFixForm.BuildControls;
     Result.OnClick := AClick;
   end;
 
+var
+  ExtIdx: Integer;
 begin
   Caption := 'Строгая проверка';
   Width := 940;
@@ -400,13 +423,27 @@ begin
   btnFind.Hint := 'Искать определение в .inc, .bas, .cmp папок Include, ' +
                   'программы и папки выше; во время поиска - остановить';
   // Расширения файлов для "Найти определение" - справа от кнопки
+  btnDirs := MakeButton(pnlActions, '...', 468, 5, 28, btnDirsClick);
+  btnDirs.Hint := 'Свои папки для поиска определения: окно Directory Tree, ' +
+                  'отмеченные в его списке папки (с подпапками)';
+  FUserDirs := TStringList.Create;
   edExts := TUiEdit.Create(Self);
   edExts.Parent := pnlActions;
-  edExts.SetBounds(472, 7, 120, 21);
+  edExts.SetBounds(502, 7, 110, 21);
   edExts.Text := StrictDefaultExts;
-  edExts.Hint := 'Где искать определение: расширения файлов через ";" ' +
-                 '(для программ RapidQ - .inc;.bas;.cmp)';
-  btnApply := MakeButton(pnlActions, 'Исправить', 600, 5, 300, btnApplyClick);
+  edExts.Hint := 'Где искать определение: расширения файлов через ";". ' +
+                 'Галки справа ставят и убирают типовые; можно дописать своё';
+  edExts.OnChange := edExtsChange;
+  SetLength(FExtChecks, Length(StrictTypicalExts));
+  for ExtIdx := 0 to High(StrictTypicalExts) do
+  begin
+    FExtChecks[ExtIdx] := TUiCheckBox.Create(Self);
+    FExtChecks[ExtIdx].Parent := pnlActions;
+    FExtChecks[ExtIdx].SetBounds(620 + ExtIdx * 52, 9, 50, 17);
+    FExtChecks[ExtIdx].Caption := StrictTypicalExts[ExtIdx];
+    FExtChecks[ExtIdx].OnClick := ExtCheckClick;
+  end;
+  btnApply := MakeButton(pnlActions, 'Исправить', 836, 5, 300, btnApplyClick);
 
   lblOptions := TLabel.Create(Self);
   lblOptions.Parent := Self;
@@ -428,6 +465,7 @@ begin
 
   // Строка хода поиска меняется часто - без мерцания
   pnlBottom.DoubleBuffered := True;
+  SyncExtChecks;
 end;
 
 function TStrictFixForm.FileLines(const AFile: string;
@@ -653,6 +691,7 @@ end;
 
 procedure TStrictFixForm.ShowCurrent;
 var
+  ExtIdx: Integer;
   Item: TStrictError;
   Lines, Options: TStringList;
   OptIdx: Integer;
@@ -666,6 +705,9 @@ begin
     btnOpenOther.Hint := Item.OtherFile + ', строка ' + IntToStr(Item.OtherLine);
   btnFind.Visible := (Item <> nil) and StrictNeedsSearch(Item, NeedProc);
   edExts.Visible := btnFind.Visible;
+  btnDirs.Visible := btnFind.Visible;
+  for ExtIdx := 0 to High(FExtChecks) do
+    FExtChecks[ExtIdx].Visible := btnFind.Visible;
   memExplain.Lines.Clear;
   lbOptions.Items.Clear;
   if Item = nil then
@@ -764,6 +806,7 @@ begin
       end;
     end;
   end;
+  PlaceActions;
   btnApply.Enabled := btnApply.Visible and not IsDone and
     ((Item.Kind in [skLabelElsewhere, skLabelMissing, skCaseOp]) or
      (lbOptions.ItemIndex >= 0));
@@ -850,6 +893,151 @@ begin
            DT_CENTER or DT_WORDBREAK);
 end;
 
+// Расширения из поля - списком ".INC", ".BAS" (с точкой, верхний регистр)
+procedure ExtsOfText(const AText: string; AList: TStrings);
+var
+  Rest, OneExt: string;
+  SemiAt: Integer;
+begin
+  AList.Clear;
+  Rest := StringReplace(AText, ',', ';', [rfReplaceAll]);
+  Rest := StringReplace(Rest, ' ', ';', [rfReplaceAll]);
+  while Rest <> '' do
+  begin
+    SemiAt := Pos(';', Rest);
+    if SemiAt = 0 then
+      SemiAt := Length(Rest) + 1;
+    OneExt := UpperCase(Trim(Copy(Rest, 1, SemiAt - 1)));
+    Delete(Rest, 1, SemiAt);
+    if Copy(OneExt, 1, 1) = '*' then
+      Delete(OneExt, 1, 1);
+    if (OneExt <> '') and (OneExt[1] <> '.') then
+      OneExt := '.' + OneExt;
+    if (OneExt <> '') and (AList.IndexOf(OneExt) < 0) then
+      AList.Add(OneExt);
+  end;
+end;
+
+// Галки - по полю: расширение есть в поле - галка стоит
+procedure TStrictFixForm.SyncExtChecks;
+var
+  Exts: TStringList;
+  ExtIdx: Integer;
+begin
+  if FExtSyncing then
+    Exit;
+  FExtSyncing := True;
+  Exts := TStringList.Create;
+  try
+    ExtsOfText(edExts.Text, Exts);
+    for ExtIdx := 0 to High(FExtChecks) do
+      FExtChecks[ExtIdx].Checked :=
+        Exts.IndexOf(UpperCase(StrictTypicalExts[ExtIdx])) >= 0;
+  finally
+    Exts.Free;
+    FExtSyncing := False;
+  end;
+end;
+
+procedure TStrictFixForm.edExtsChange(Sender: TObject);
+begin
+  SyncExtChecks;
+end;
+
+// Галка: расширение - в поле или из поля; остальное в поле (дописанное
+// руками) остаётся
+procedure TStrictFixForm.ExtCheckClick(Sender: TObject);
+var
+  Exts: TStringList;
+  ExtIdx, Found: Integer;
+  Joined: string;
+begin
+  if FExtSyncing then
+    Exit;
+  Exts := TStringList.Create;
+  try
+    ExtsOfText(edExts.Text, Exts);
+    for ExtIdx := 0 to High(FExtChecks) do
+      if Sender = FExtChecks[ExtIdx] then
+      begin
+        Found := Exts.IndexOf(UpperCase(StrictTypicalExts[ExtIdx]));
+        if FExtChecks[ExtIdx].Checked and (Found < 0) then
+          Exts.Add(UpperCase(StrictTypicalExts[ExtIdx]))
+        else if not FExtChecks[ExtIdx].Checked and (Found >= 0) then
+          Exts.Delete(Found);
+      end;
+    Joined := '';
+    for ExtIdx := 0 to Exts.Count - 1 do
+    begin
+      if Joined <> '' then
+        Joined := Joined + ';';
+      Joined := Joined + LowerCase(Exts[ExtIdx]);
+    end;
+    FExtSyncing := True;
+    try
+      edExts.Text := Joined;
+    finally
+      FExtSyncing := False;
+    end;
+  finally
+    Exts.Free;
+  end;
+end;
+
+// [...]: свои папки поиска определения - Directory Tree, отмеченные папки
+procedure TStrictFixForm.btnDirsClick(Sender: TObject);
+var
+  Picked, OneDir, Preselect: string;
+  SemiAt: Integer;
+begin
+  if not Assigned(FPickDirs) or FBusy then
+    Exit;
+  Preselect := ExtractFileDir(FMainFile);
+  if FUserDirs.Count > 0 then
+    Preselect := FUserDirs[0];
+  Picked := '';
+  if not FPickDirs(Preselect, Picked) then
+    Exit;
+  FUserDirs.Clear;
+  while Picked <> '' do
+  begin
+    SemiAt := Pos(';', Picked);
+    if SemiAt = 0 then
+      SemiAt := Length(Picked) + 1;
+    OneDir := Trim(Copy(Picked, 1, SemiAt - 1));
+    Delete(Picked, 1, SemiAt);
+    if Length(OneDir) > 3 then
+      OneDir := ExcludeTrailingPathDelimiter(OneDir);
+    if (OneDir <> '') and (FUserDirs.IndexOf(OneDir) < 0) then
+      FUserDirs.Add(OneDir);
+  end;
+  if FUserDirs.Count = 0 then
+    lblStatus.Caption := 'Своих папок поиска нет: только папки Include, ' +
+                         'программы и выше'
+  else
+    lblStatus.Caption := 'Свои папки поиска: ' +
+      StringReplace(Trim(FUserDirs.Text), #13#10, '; ', [rfReplaceAll]);
+  btnDirs.Hint := 'Свои папки для поиска определения (Directory Tree): ' +
+    StringReplace(Trim(FUserDirs.Text), #13#10, '; ', [rfReplaceAll]);
+end;
+
+// "Исправить" - правее последнего видимого элемента ряда
+procedure TStrictFixForm.PlaceActions;
+var
+  CtlIdx, RightEdge: Integer;
+  OneCtl: TControl;
+begin
+  RightEdge := 0;
+  for CtlIdx := 0 to pnlActions.ControlCount - 1 do
+  begin
+    OneCtl := pnlActions.Controls[CtlIdx];
+    if (OneCtl <> btnApply) and OneCtl.Visible and
+       (OneCtl.Left + OneCtl.Width > RightEdge) then
+      RightEdge := OneCtl.Left + OneCtl.Width;
+  end;
+  btnApply.Left := RightEdge + 8;
+end;
+
 procedure TStrictFixForm.Progress(const AText: string; var ACancel: Boolean);
 begin
   ACancel := FAbort;
@@ -934,7 +1122,7 @@ end;
 procedure TStrictFixForm.btnFindClick(Sender: TObject);
 var
   Item: TStrictError;
-  Found: TStringList;
+  Found, SearchRoots: TStringList;
   FoundIdx, FoundTotal: Integer;
   Done, AsProc: Boolean;
 begin
@@ -946,6 +1134,7 @@ begin
   Item := CurItem;
   if (Item = nil) or not StrictNeedsSearch(Item, AsProc) then
     Exit;
+  SearchRoots := TStringList.Create;
   Found := TStringList.Create;
   FoundTotal := 0;
   FBusy := True;
@@ -956,7 +1145,9 @@ begin
   btnBuild.Enabled := False;
   btnClose.Enabled := False;
   try
-    Done := StrictFindDefinitions(Item.Name, AsProc, FRoots, FMainFile,
+    SearchRoots.Assign(FRoots);
+    SearchRoots.AddStrings(FUserDirs);
+    Done := StrictFindDefinitions(Item.Name, AsProc, SearchRoots, FMainFile,
                                   Found, Progress, edExts.Text);
     // Найденное - к вариантам (прежние найденные - заново)
     FoundTotal := Found.Count;
@@ -972,6 +1163,7 @@ begin
     btnBuild.Enabled := True;
     btnClose.Enabled := True;
     Found.Free;
+    SearchRoots.Free;
   end;
   if FoundTotal = 0 then
     lblStatus.Caption := 'Определение ' + Item.Name + ' не найдено - не могу ' +
@@ -1101,6 +1293,8 @@ begin
     if ExplainHeight >= 30 then
       memExplain.Height := ExplainHeight;
     edExts.Text := Ini.ReadString(Sect, 'Exts', StrictDefaultExts);
+    FUserDirs.Text := StringReplace(Ini.ReadString(Sect, 'Dirs', ''), '|',
+                                    #13#10, [rfReplaceAll]);
     if Ini.ReadBool(Sect, 'Maximized', False) then
       WindowState := wsMaximized;
   finally
@@ -1133,6 +1327,8 @@ begin
     Ini.WriteInteger(Sect, 'ListHeight', lvItems.Height);
     Ini.WriteInteger(Sect, 'ExplainHeight', memExplain.Height);
     Ini.WriteString(Sect, 'Exts', Trim(edExts.Text));
+    Ini.WriteString(Sect, 'Dirs', StringReplace(Trim(FUserDirs.Text), #13#10,
+                                                '|', [rfReplaceAll]));
   finally
     Ini.Free;
   end;
@@ -1151,7 +1347,8 @@ function StrictFixDialog(AOwner: TComponent;
                          const AMainFile, AIncDir: string;
                          AOpenLine: TStrictOpenLine;
                          AEditLine: TStrictEditLine;
-                         const AIniFile: string): TModalResult;
+                         const AIniFile: string;
+                         APickDirs: TStrictPickDirs): TModalResult;
 var
   Dlg: TStrictFixForm;
 begin
@@ -1169,6 +1366,7 @@ begin
     Dlg.FOpenLine := AOpenLine;
     Dlg.FEditLine := AEditLine;
     Dlg.FIniFile := AIniFile;
+    Dlg.FPickDirs := APickDirs;
     Dlg.BuildControls;
     Dlg.LoadPlacement;
     StrictLoadSkipped(AIniFile, AMainFile, Dlg.FSkipped);

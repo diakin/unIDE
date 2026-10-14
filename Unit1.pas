@@ -12752,7 +12752,7 @@ begin
                 ExtractFilePath(ABas))));
       if StrictFixDialog(Self, ConvMessages, Roots, LibDirs, ABas, AIncDir,
                          StrictOpenLine, StrictEditLine,
-                         SettingsFileName) = mrIgnore then
+                         SettingsFileName, RqDepsPickDirs) = mrIgnore then
         LogComp('Строгая проверка: rc.exe собирает (выбрано в окне)')
       else
       begin
