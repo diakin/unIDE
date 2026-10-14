@@ -673,25 +673,43 @@ def emit_toc(toc):
 #  F1: слова алфавитного списка CatPgFullIndex
 # ---------------------------------------------------------------------------
 
+def keyword_map_words(title):
+    title = re.sub(r'\s*\(.*?\)\s*$', '', title).strip()
+    # "IF...THEN", "DO...LOOP" - каждое слово отдельно
+    return [word.strip() for word in re.split(r'\s*,\s*|\.\.\.', title)
+            if word.strip()]
+
+
 def keyword_map(pages):
-    result = {}
-    tokens = pages.get('CatPgFullIndex', [])
-    for tok in tokens:
+    """Слово -> страница для F1 по алфавитному списку CatPgFullIndex.
+    Сначала заголовки из одного слова (NEXT - своя страница, а не
+    FOR...NEXT), функции раньше операторов (MID - функция), затем
+    составные заголовки и их первые слова."""
+    entries = []
+    for tok in pages.get('CatPgFullIndex', []):
         if tok.kind != 'ACTION' or tok.name.lower() != 'fbdoc' or \
            tok.param('item').lower() != 'keyword':
             continue
         page, title = explode_link(tok.param('value'))
-        if not page.lower().startswith('keypg'):
-            continue
-        # "PRINT", "Open Com", "... (Ellipsis)", "Operator + (Add)"
-        title = re.sub(r'\s*\(.*?\)\s*$', '', title).strip()
-        for word in re.split(r'\s*,\s*', title):
-            word = word.strip()
-            if word:
-                result.setdefault(word.upper(), page + '.html')
-                first = word.split(' ')[0]
-                if first.upper() not in ('OPERATOR',):
-                    result.setdefault(first.upper(), page + '.html')
+        if page.lower().startswith('keypg'):
+            entries.append((title, page))
+
+    def rank(entry):
+        title, page = entry
+        words = keyword_map_words(title)
+        simple = len(words) == 1 and ' ' not in words[0]
+        statement = '(Statement)' in title
+        return (0 if simple else 1, 1 if statement else 0)
+
+    result = {}
+    for title, page in sorted(entries, key=rank):
+        for word in keyword_map_words(title):
+            result.setdefault(word.upper(), page + '.html')
+    for title, page in sorted(entries, key=rank):
+        for word in keyword_map_words(title):
+            first = word.split(' ')[0]
+            if first.upper() != 'OPERATOR':
+                result.setdefault(first.upper(), page + '.html')
     return result
 
 
