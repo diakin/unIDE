@@ -103,7 +103,8 @@ function StrictReplaceWord(const ALine, AOld, ANew: string;
 function StrictFixCase(const ALine: string; var AResult: string): Boolean;
 
 // Определение AName в .inc, .bas, .cmp папок ARoots с подпапками, кроме
-// ASkipFile: AProc - SUB / FUNCTION AName с телом, иначе DIM / CREATE.
+// ASkipFile: AProc - SUB / FUNCTION AName с телом, иначе DIM, CREATE,
+// CONST, $DEFINE, DEFxxx (IsDefinition).
 // В AOut: "файл|строка|1 - закомментировано, 0 - нет|текст строки".
 // AExts - расширения через ";" (".inc;.bas;.cmp"); '' - эти три.
 // False - прервано.
@@ -754,13 +755,51 @@ begin
   Result := True;
 end;
 
-// Строка - объявление AUpName: [' ...] DIM / CREATE Имя или SUB / FUNCTION
-// Имя (AProc, не DECLARE); ACommented - перед ним комментарий
+// Имена списка через запятую с позиции APos: "A = 1, B AS LONG, C(10)" -
+// первое слово каждой части. Запятые в скобках и в строках - не разделители.
+function ListNames(const ACode: string; APos: Integer; ANames: TStrings): Boolean;
+var
+  Depth: Integer;
+  InStr: Boolean;
+  PartPos: Integer;
+begin
+  ANames.Clear;
+  Depth := 0;
+  InStr := False;
+  PartPos := APos;
+  ANames.Add(UpperCase(WordAt(ACode, PartPos, True)));
+  while APos <= Length(ACode) do
+  begin
+    case ACode[APos] of
+      '"': InStr := not InStr;
+      '(': if not InStr then Inc(Depth);
+      ')': if not InStr and (Depth > 0) then Dec(Depth);
+      '''': if not InStr then Break;    // комментарий до конца строки
+      ',':
+        if not InStr and (Depth = 0) then
+        begin
+          PartPos := APos + 1;
+          ANames.Add(UpperCase(WordAt(ACode, PartPos, True)));
+        end;
+    end;
+    Inc(APos);
+  end;
+  Result := ANames.Count > 0;
+end;
+
+// Строка - объявление AUpName; ACommented - перед ним комментарий.
+// AProc - SUB / FUNCTION Имя с телом (не DECLARE). Иначе - всё, что даёт
+// имени значение или тип: DIM, CREATE, CONST (и PUBLIC / PRIVATE / GLOBAL
+// перед ним, список через запятую), $DEFINE, DEFINT / DEFLNG / DEFSTR и
+// прочие DEFxxx. Раньше - только DIM / CREATE, и константа из inc
+// (CONST WS_CHILD = &H40000000) не находилась.
 function IsDefinition(const ALine, AUpName: string; AProc: Boolean;
                       var ACommented: Boolean): Boolean;
 var
   CharPos: Integer;
   Code, Kw, Name: string;
+  Names: TStringList;
+  SavePos: Integer;
 begin
   Result := False;
   ACommented := False;
@@ -785,9 +824,37 @@ begin
     Result := IsProcStart(Code, Name) and (UpperCase(Name) = AUpName);
     Exit;
   end;
-  if (Kw <> 'DIM') and (Kw <> 'CREATE') then
-    Exit;
-  Result := UpperCase(WordAt(Code, CharPos, True)) = AUpName;
+  // $DEFINE: "$" - не буква, слово за ним
+  if (Kw = '') and (Copy(Code, 1, 1) = '$') then
+  begin
+    CharPos := 2;
+    Kw := '$' + UpperCase(WordAt(Code, CharPos));
+  end;
+  // PUBLIC CONST, PRIVATE CONST, GLOBAL DIM, DIM SHARED ...
+  while (Kw = 'PUBLIC') or (Kw = 'PRIVATE') or (Kw = 'GLOBAL') do
+    Kw := UpperCase(WordAt(Code, CharPos));
+  if Kw = 'DIM' then
+  begin
+    SavePos := CharPos;
+    if UpperCase(WordAt(Code, CharPos)) <> 'SHARED' then
+      CharPos := SavePos;
+  end;
+  if (Kw = 'DIM') or (Kw = 'CONST') or (Kw = 'CREATE') or (Kw = '$DEFINE') or
+     ((Length(Kw) >= 6) and (Copy(Kw, 1, 3) = 'DEF') and (Kw <> 'DEFAULT')) then
+  begin
+    if (Kw = 'CREATE') or (Kw = '$DEFINE') then
+    begin
+      Result := UpperCase(WordAt(Code, CharPos, True)) = AUpName;
+      Exit;
+    end;
+    Names := TStringList.Create;
+    try
+      ListNames(Code, CharPos, Names);
+      Result := Names.IndexOf(AUpName) >= 0;
+    finally
+      Names.Free;
+    end;
+  end;
 end;
 
 function StrictFindDefinitions(const AName: string; AProc: Boolean;
