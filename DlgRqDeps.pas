@@ -873,13 +873,23 @@ var
   NamePos: Integer;
   Done: Boolean;
 
-  // Найденная копия - там, где её возьмёт rc.exe: больше не недостающий
+  // Файл лежит там, где его возьмёт rc.exe: папка -I или папка программы
+  // плюс имя из $INCLUDE (с подпапкой) - больше не недостающий. Сравнивается
+  // полный путь, не папка: "Object\QINI.inc" - это RQInc\Object\QINI.inc.
   procedure MarkResolved(const APath: string);
+  var
+    CurName: string;
+
+    function IsAt(const ABase: string): Boolean;
+    begin
+      Result := (ABase <> '') and
+        (CompareText(ExpandFileName(APath), ExpandFileName(
+           IncludeTrailingPathDelimiter(ABase) + CurName)) = 0);
+    end;
+
   begin
-    if (CompareText(ExtractFilePath(ExpandFileName(APath)),
-         IncludeTrailingPathDelimiter(ExpandFileName(FScan.IncDir))) = 0) or
-       (CompareText(ExtractFilePath(ExpandFileName(APath)),
-         IncludeTrailingPathDelimiter(ExpandFileName(FScan.MainDir))) = 0) then
+    CurName := StringReplace(ADep.Name, '/', '\', [rfReplaceAll]);
+    if IsAt(FScan.IncDir) or IsAt(FScan.MainDir) then
       ADep.Resolved := APath;
   end;
 
