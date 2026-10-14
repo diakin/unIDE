@@ -105,6 +105,12 @@ type
     btnApply: TUiButton;
     lblOptions: TLabel;
     lbOptions: TListBox;
+    // Вместо списка вариантов, когда их нет: цветом списка (берётся при
+    // отрисовке - тема IDE ложится после заполнения), с пояснением; иначе
+    // место выглядело пустым
+    pbNoOptions: TPaintBox;
+    FNoOptionsText: string;
+    procedure pbNoOptionsPaint(Sender: TObject);
     pnlBottom: TPanel;
     lblStatus: TLabel;
     btnBuild: TUiButton;
@@ -352,6 +358,8 @@ begin
   lvItems.ReadOnly := True;
   lvItems.HideSelection := False;
   lvItems.OnSelectItem := lvItemsSelectItem;
+  // Двойной щелчок по записи - как "Открыть строку"
+  lvItems.OnDblClick := btnOpenClick;
   AddCol('Вид', 90);
   AddCol('Где', 200);
   AddCol('Текст', 590);
@@ -400,6 +408,15 @@ begin
   lbOptions.Align := alClient;
   lbOptions.OnClick := lbOptionsClick;
   lbOptions.OnDblClick := lbOptionsDblClick;
+
+  pbNoOptions := TPaintBox.Create(Self);
+  pbNoOptions.Parent := Self;
+  pbNoOptions.Align := alClient;
+  pbNoOptions.Visible := False;
+  pbNoOptions.OnPaint := pbNoOptionsPaint;
+
+  // Строка хода поиска меняется часто - без мерцания
+  pnlBottom.DoubleBuffered := True;
 end;
 
 function TStrictFixForm.FileLines(const AFile: string;
@@ -676,6 +693,19 @@ begin
   end;
   lblOptions.Visible := Options.Count > 0;
   lbOptions.Visible := Options.Count > 0;
+  // Вариантов нет - на их месте поле цвета списка с пояснением
+  pbNoOptions.Visible := Options.Count = 0;
+  if pbNoOptions.Visible then
+  begin
+    if btnFind.Visible then
+      FNoOptionsText := 'Вариантов исправления пока нет. "Найти ' +
+        'определение" ищет их в папках Include, программы и выше - найденные ' +
+        'файлы появятся здесь'
+    else
+      FNoOptionsText := 'Вариантов исправления для этой записи нет - ' +
+        'причина и что можно сделать - в пояснении выше';
+    pbNoOptions.Invalidate;
+  end;
   UpdateApply;
 end;
 
@@ -785,10 +815,34 @@ begin
       ' в редакторе уже другая или файл не открылся';
 end;
 
+procedure TStrictFixForm.pbNoOptionsPaint(Sender: TObject);
+var
+  TextRect: TRect;
+begin
+  with pbNoOptions.Canvas do
+  begin
+    Brush.Color := lvItems.Color;
+    FillRect(pbNoOptions.ClientRect);
+    Font := Self.Font;
+    Font.Color := lvItems.Font.Color;
+    Brush.Style := bsClear;
+    TextRect := Rect(16, 0, pbNoOptions.Width - 16, pbNoOptions.Height);
+    // По центру, с переносом: высоту текста узнаём, потом сдвигаем
+    DrawText(Handle, PChar(FNoOptionsText), -1, TextRect,
+             DT_CENTER or DT_WORDBREAK or DT_CALCRECT);
+    OffsetRect(TextRect, (pbNoOptions.Width - 32 -
+               (TextRect.Right - TextRect.Left)) div 2,
+               (pbNoOptions.Height - (TextRect.Bottom - TextRect.Top)) div 2);
+    DrawText(Handle, PChar(FNoOptionsText), -1, TextRect,
+             DT_CENTER or DT_WORDBREAK);
+  end;
+end;
+
 procedure TStrictFixForm.Progress(const AText: string; var ACancel: Boolean);
 begin
   ACancel := FAbort;
-  if ACancel or (GetTickCount - FLastTick < 100) then
+  // Не чаще трёх раз в секунду: строка не мелькает, а ход виден
+  if ACancel or (GetTickCount - FLastTick < 300) then
     Exit;
   FLastTick := GetTickCount;
   lblStatus.Caption := AText;
