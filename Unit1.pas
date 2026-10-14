@@ -2417,6 +2417,8 @@ type
     procedure IncRefDirs(var ASysDir, ARefDir: string);
     procedure FindIncShow(const AName: string);
     function  RqDepsBeforeBuild(const ABas, AIncDir: string): Boolean;
+    function  RqDepsPickDirs(const APreselect: string;
+                             var ADirs: string): Boolean;
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
     procedure PaletteIconsApplied(Sender: TObject);
@@ -34710,7 +34712,8 @@ begin
     Scheme := SchemeCopyFor(ABas);
     try
       Result := RqDepsDialog(Self, Scan, Roots, RefDir, SysDir, CopyLog,
-                             Ignore, Scheme, SettingsFileName);
+                             Ignore, Scheme, SettingsFileName,
+                             RqDepsPickDirs, StrictEditLine);
     finally
       Scheme.Free;
     end;
@@ -34738,6 +34741,15 @@ begin
     Roots.Free;
     Scan.Free;
   end;
+end;
+
+// Кнопка [...] окна недостающих файлов: Directory Tree, отмеченные в его
+// списке папки - через ";"
+function TForm1.RqDepsPickDirs(const APreselect: string;
+                               var ADirs: string): Boolean;
+begin
+  Result := HotFoldersDialog(APreselect, 'Directory Tree - отмеченные папки ' +
+                             'для поиска', True, ADirs);
 end;
 
 // Имя из сообщения rc.exe "$INCLUDE file X does not exist"; '' - такого нет

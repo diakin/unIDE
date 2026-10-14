@@ -14,13 +14,24 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
-  ExtCtrls, ComCtrls, Dialogs, RichEdit, CommCtrl, IniFiles, FileCtrl,
+  ExtCtrls, ComCtrls, Dialogs, RichEdit, CommCtrl, IniFiles,
   ClrScheme,    // схема подсветки для просмотра
   SchemeRtf,    // текст -> RTF с цветами схемы
   IncCheck,     // эталон, TIncProgress
   RqDeps,       // TRqDepScan, поиск и выбор копий
   UiButton,     // TUiButton
   UiStdCtrls;   // TUiCheckBox
+
+type
+  // Выбор папок поиска - окно Directory Tree главного окна. APreselect -
+  // папка, которую раскрыть; ADirs - отмеченные папки через ";"
+  TRqPickDirs = function(const APreselect: string;
+                         var ADirs: string): Boolean of object;
+  // Замена строки ALine файла AFile в редакторе (AOld - прежний текст) и
+  // сохранение файла; True - заменено
+  TRqEditLine = function(const AFile: string; ALine: Integer;
+                         const AOld, ANew: string;
+                         AInsert: Boolean): Boolean of object;
 
 // Показать окно. AScan - результат проверки (есть недостающие); ARoots -
 // шаги поиска "подпись|папка"; ARefDir / ASysDir - эталон для inc. ALog -
@@ -35,7 +46,9 @@ function RqDepsDialog(AOwner: TComponent; AScan: TRqDepScan; ARoots: TStrings;
                       const ARefDir, ASysDir: string;
                       ALog, AIgnore: TStrings;
                       AScheme: TClrScheme = nil;
-                      const AIniFile: string = ''): Boolean;
+                      const AIniFile: string = '';
+                      APickDirs: TRqPickDirs = nil;
+                      AEditLine: TRqEditLine = nil): Boolean;
 
 // Окно уже открыто (сборка ждёт его): поднять его наверх, True
 function RqDepsDialogActive: Boolean;
@@ -126,111 +139,6 @@ begin
 end;
 
 type
-  // Окно списка своих папок поиска (кнопка [...])
-  TRqDirsEditor = class(TForm)
-  public
-    lbDirs: TListBox;
-    procedure Build(AFont: TFont);
-    procedure AddClick(Sender: TObject);
-    procedure DelClick(Sender: TObject);
-    procedure UpClick(Sender: TObject);
-    procedure DownClick(Sender: TObject);
-    procedure MoveSel(ADelta: Integer);
-  end;
-
-procedure TRqDirsEditor.Build(AFont: TFont);
-
-  function AddButton(const ACaption: string; ATop: Integer;
-                     AClick: TNotifyEvent): TUiButton;
-  begin
-    Result := TUiButton.Create(Self);
-    Result.Parent := Self;
-    Result.SetBounds(ClientWidth - 108, ATop, 100, 25);
-    Result.Anchors := [akTop, akRight];
-    Result.Caption := ACaption;
-    Result.OnClick := AClick;
-  end;
-
-var
-  lblHint: TLabel;
-  btnOk, btnCancel: TUiButton;
-begin
-  Caption := 'Папки поиска недостающих файлов';
-  BorderIcons := [biSystemMenu];
-  Position := poOwnerFormCenter;
-  Width := 640;
-  Height := 320;
-  Font := AFont;
-  lblHint := TLabel.Create(Self);
-  lblHint.Parent := Self;
-  lblHint.SetBounds(8, 8, 480, 13);
-  lblHint.Caption := 'После папки программы и папки выше - эти, с подпапками:';
-  lbDirs := TListBox.Create(Self);
-  lbDirs.Parent := Self;
-  lbDirs.SetBounds(8, 26, ClientWidth - 124, ClientHeight - 34);
-  lbDirs.Anchors := [akLeft, akTop, akRight, akBottom];
-  AddButton('Добавить...', 26, AddClick);
-  AddButton('Убрать', 56, DelClick);
-  AddButton('Выше', 86, UpClick);
-  AddButton('Ниже', 116, DownClick);
-  btnOk := AddButton('OK', ClientHeight - 64, nil);
-  btnOk.Anchors := [akRight, akBottom];
-  btnOk.ModalResult := mrOk;
-  btnCancel := AddButton('Отмена', ClientHeight - 34, nil);
-  btnCancel.Anchors := [akRight, akBottom];
-  btnCancel.ModalResult := mrCancel;
-end;
-
-procedure TRqDirsEditor.AddClick(Sender: TObject);
-var
-  NewDir: string;
-begin
-  NewDir := '';
-  if lbDirs.ItemIndex >= 0 then
-    NewDir := lbDirs.Items[lbDirs.ItemIndex];
-  if not SelectDirectory('Папка для поиска недостающих файлов', '', NewDir) then
-    Exit;
-  NewDir := ExcludeTrailingPathDelimiter(NewDir);
-  if lbDirs.Items.IndexOf(NewDir) < 0 then
-    lbDirs.ItemIndex := lbDirs.Items.Add(NewDir);
-end;
-
-procedure TRqDirsEditor.DelClick(Sender: TObject);
-var
-  SelIdx: Integer;
-begin
-  SelIdx := lbDirs.ItemIndex;
-  if SelIdx < 0 then
-    Exit;
-  lbDirs.Items.Delete(SelIdx);
-  if SelIdx >= lbDirs.Items.Count then
-    SelIdx := lbDirs.Items.Count - 1;
-  lbDirs.ItemIndex := SelIdx;
-end;
-
-procedure TRqDirsEditor.UpClick(Sender: TObject);
-begin
-  MoveSel(-1);
-end;
-
-procedure TRqDirsEditor.DownClick(Sender: TObject);
-begin
-  MoveSel(1);
-end;
-
-procedure TRqDirsEditor.MoveSel(ADelta: Integer);
-var
-  SelIdx: Integer;
-begin
-  SelIdx := lbDirs.ItemIndex;
-  if (SelIdx < 0) or (SelIdx + ADelta < 0) or
-     (SelIdx + ADelta >= lbDirs.Items.Count) then
-    Exit;
-  lbDirs.Items.Exchange(SelIdx, SelIdx + ADelta);
-  lbDirs.ItemIndex := SelIdx + ADelta;
-end;
-
-type
   TRqDepsForm = class(TForm)
   private
     FScan: TRqDepScan;
@@ -251,12 +159,13 @@ type
     pnlTop: TPanel;
     lblHead: TLabel;
     lblUnIdeName: TLabel;
-    lblUnIdePath: TLabel;
+    edUnIdePath: TEdit;     // пути - полем: выделить и скопировать
     lblUserName: TLabel;
-    lblUserPath: TLabel;
+    edUserPath: TEdit;
     lblPress: TLabel;
-    lblDirs: TLabel;
     btnDirs: TUiButton;
+    FPickDirs: TRqPickDirs;
+    FEditLine: TRqEditLine;
     lvDeps: TRqListView;
     lblCands: TLabel;
     pnlCands: TPanel;
@@ -305,6 +214,9 @@ type
     procedure FillTop;
     procedure PlaceTop;
     procedure btnDirsClick(Sender: TObject);
+    procedure lvDepsClick(Sender: TObject);
+    function  WrongSubDir(ADep: TRqDep; var ARootLabel, ARootDir: string): Boolean;
+    procedure AskSubDir(ADep: TRqDep);
     procedure FitColumns(AList: TListView);
     procedure LoadPlacement;
     procedure SavePlacement;
@@ -426,7 +338,7 @@ begin
   pnlTop := TPanel.Create(Self);
   pnlTop.Parent := Self;
   pnlTop.Top := 0;
-  pnlTop.Height := 112;
+  pnlTop.Height := 118;
   pnlTop.Align := alTop;
   pnlTop.BevelOuter := bvNone;
   pnlTop.Caption := '';
@@ -440,40 +352,36 @@ begin
   lblUnIdeName.Parent := pnlTop;
   lblUnIdeName.SetBounds(8, 26, 90, 13);
   lblUnIdeName.Caption := 'Include UnIde';
-  lblUnIdePath := TLabel.Create(Self);
-  lblUnIdePath.Parent := pnlTop;
-  lblUnIdePath.Left := 100;
-  lblUnIdePath.Top := 26;
+  edUnIdePath := TEdit.Create(Self);
+  edUnIdePath.Parent := pnlTop;
+  edUnIdePath.SetBounds(100, 26, ClientWidth - 108, 15);
+  edUnIdePath.Anchors := [akLeft, akTop, akRight];
   lblUserName := TLabel.Create(Self);
   lblUserName.Parent := pnlTop;
   lblUserName.SetBounds(8, 44, 90, 13);
   lblUserName.Caption := 'Include User';
-  lblUserPath := TLabel.Create(Self);
-  lblUserPath.Parent := pnlTop;
-  lblUserPath.Left := 100;
-  lblUserPath.Top := 44;
+  edUserPath := TEdit.Create(Self);
+  edUserPath.Parent := pnlTop;
+  edUserPath.SetBounds(100, 44, ClientWidth - 108, 15);
+  edUserPath.Anchors := [akLeft, akTop, akRight];
   lblPress := TLabel.Create(Self);
   lblPress.Parent := pnlTop;
   lblPress.Left := 8;
   lblPress.Top := 68;
-  lblPress.Caption := 'Нажмите "Искать" для поиска недостающих файлов в папках';
-  btnSearch := TUiButton.Create(Self);
-  btnSearch.Parent := pnlTop;
-  btnSearch.SetBounds(0, 63, 90, 23);
-  btnSearch.Caption := 'Искать';
-  btnSearch.OnClick := btnSearchClick;
-  btnSearch.Hint := 'Искать недостающие файлы в папках из строки ниже; во ' +
-                    'время поиска - остановить';
-  lblDirs := TLabel.Create(Self);
-  lblDirs.Parent := pnlTop;
-  lblDirs.Left := 8;
-  lblDirs.Top := 92;
   btnDirs := TUiButton.Create(Self);
   btnDirs.Parent := pnlTop;
-  btnDirs.SetBounds(0, 89, 30, 20);
+  btnDirs.SetBounds(0, 65, 30, 20);
   btnDirs.Caption := '...';
   btnDirs.OnClick := btnDirsClick;
-  btnDirs.Hint := 'Свои папки для поиска: добавить, убрать, порядок';
+  btnDirs.Hint := 'Свои папки для поиска: окно Directory Tree, отмеченные ' +
+                  'в его списке папки';
+  btnSearch := TUiButton.Create(Self);
+  btnSearch.Parent := pnlTop;
+  btnSearch.SetBounds(8, 89, 90, 23);
+  btnSearch.Caption := 'Искать';
+  btnSearch.OnClick := btnSearchClick;
+  btnSearch.Hint := 'Искать недостающие файлы в папках из строки выше; во ' +
+                    'время поиска - остановить';
 
   // Низ окна: пояснение, куда, кнопки, строка хода
   pnlBottom := TPanel.Create(Self);
@@ -549,6 +457,7 @@ begin
   lvDeps.ReadOnly := True;
   lvDeps.HideSelection := False;
   lvDeps.OnSelectItem := lvDepsSelectItem;
+  lvDeps.OnClick := lvDepsClick;
   AddCol(lvDeps, 'Файл', 170);
   AddCol(lvDeps, 'Вид', 55);
   AddCol(lvDeps, 'Подключён', 170);
@@ -694,29 +603,41 @@ begin
     lblHead.Caption := Format('Файлы не найдены в папках по умолчанию ' +
       '(inc: %d, ресурсы: %d, DLL: %d)', [FScan.CountOf(dpkInclude),
       FScan.CountOf(dpkResource), FScan.CountOf(dpkLib)]);
-  lblUnIdePath.Caption := '(не задана)';
-  lblUserPath.Caption := '(не задана)';
-  DirsText := 'папка программы с подпапками, папка выше,';
+  edUnIdePath.Text := '(не задана)';
+  edUserPath.Text := '(не задана)';
+  DirsText := 'Нажмите "Искать" для поиска недостающих файлов в папках:  ' +
+              'папка программы с подпапками, папка выше,';
   for RootIdx := 0 to FRoots.Count - 1 do
   begin
     RootLabel := Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1);
     RootDir := Copy(FRoots[RootIdx], Pos('|', FRoots[RootIdx]) + 1, MaxInt);
     if (CompareText(RootLabel, 'Include UnIde') = 0) and (RootDir <> '') then
-      lblUnIdePath.Caption := RootDir
+      edUnIdePath.Text := RootDir
     else if (CompareText(RootLabel, 'Include User') = 0) and (RootDir <> '') then
-      lblUserPath.Caption := RootDir
+      edUserPath.Text := RootDir
     else if RootLabel = RqDepsUserRootLabel then
       DirsText := DirsText + ' ' + RootDir + ',';
   end;
-  lblDirs.Caption := DirsText;
+  lblPress.Caption := DirsText;
   PlaceTop;
 end;
 
 // Кнопки - сразу за текстом своей строки
 procedure TRqDepsForm.PlaceTop;
+
+  // Поле пути - как надпись: без рамки, цветами панели (тема уже легла)
+  procedure AsLabel(AEdit: TEdit);
+  begin
+    AEdit.BorderStyle := bsNone;
+    AEdit.ReadOnly := True;
+    AEdit.Color := pnlTop.Color;
+    AEdit.Font.Color := lblUnIdeName.Font.Color;
+  end;
+
 begin
-  btnSearch.Left := lblPress.Left + lblPress.Width + 8;
-  btnDirs.Left := lblDirs.Left + lblDirs.Width + 6;
+  btnDirs.Left := lblPress.Left + lblPress.Width + 6;
+  AsLabel(edUnIdePath);
+  AsLabel(edUserPath);
 end;
 
 // Ширина столбцов - по самому длинному тексту (и заголовку)
@@ -751,51 +672,69 @@ begin
   end;
 end;
 
-// Свои папки поиска: список, кнопки добавить / убрать / порядок. Итог - в
-// шаги поиска (FRoots) и в editor.ini.
+// Свои папки поиска: окно Directory Tree главного окна (отмеченные в его
+// списке папки). Итог - в шаги поиска (FRoots) и в editor.ini.
 procedure TRqDepsForm.btnDirsClick(Sender: TObject);
 var
-  Editor: TRqDirsEditor;
   RootIdx: Integer;
-  Joined: string;
+  Preselect, Picked, Joined: string;
+  NewDirs: TStringList;
   Ini: TIniFile;
+  SemiAt: Integer;
 begin
-  Editor := TRqDirsEditor.CreateNew(Self);
+  if not Assigned(FPickDirs) then
+    Exit;
+  Preselect := '';
+  for RootIdx := 0 to FRoots.Count - 1 do
+    if (Preselect = '') and
+       (Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1) =
+        RqDepsUserRootLabel) then
+      Preselect := Copy(FRoots[RootIdx], Pos('|', FRoots[RootIdx]) + 1, MaxInt);
+  if Preselect = '' then
+    Preselect := FScan.MainDir;
+  Picked := '';
+  if not FPickDirs(Preselect, Picked) then
+    Exit;
+  NewDirs := TStringList.Create;
   try
-    Editor.Build(Font);
-    for RootIdx := 0 to FRoots.Count - 1 do
-      if Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1) =
-         RqDepsUserRootLabel then
-        Editor.lbDirs.Items.Add(Copy(FRoots[RootIdx],
-                                     Pos('|', FRoots[RootIdx]) + 1, MaxInt));
-    if Editor.ShowModal <> mrOk then
-      Exit;
+    while Picked <> '' do
+    begin
+      SemiAt := Pos(';', Picked);
+      if SemiAt = 0 then
+        SemiAt := Length(Picked) + 1;
+      Joined := Trim(Copy(Picked, 1, SemiAt - 1));
+      Delete(Picked, 1, SemiAt);
+      if Length(Joined) > 3 then
+        Joined := ExcludeTrailingPathDelimiter(Joined);
+      if (Joined <> '') and (NewDirs.IndexOf(Joined) < 0) then
+        NewDirs.Add(Joined);
+    end;
     // Шаги поиска: прежние свои папки - долой, новые - в конец
     for RootIdx := FRoots.Count - 1 downto 0 do
       if Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1) =
          RqDepsUserRootLabel then
         FRoots.Delete(RootIdx);
     Joined := '';
-    for RootIdx := 0 to Editor.lbDirs.Items.Count - 1 do
+    for RootIdx := 0 to NewDirs.Count - 1 do
     begin
-      FRoots.Add(RqDepsUserRootLabel + '|' + Editor.lbDirs.Items[RootIdx]);
+      FRoots.Add(RqDepsUserRootLabel + '|' + NewDirs[RootIdx]);
       if Joined <> '' then
         Joined := Joined + '|';
-      Joined := Joined + Editor.lbDirs.Items[RootIdx];
+      Joined := Joined + NewDirs[RootIdx];
     end;
-    if FIniFile <> '' then
-    begin
-      Ini := TIniFile.Create(FIniFile);
-      try
-        Ini.WriteString('RqDepsSearch', 'Dirs', Joined);
-      finally
-        Ini.Free;
-      end;
-    end;
-    FillTop;
   finally
-    Editor.Free;
+    NewDirs.Free;
   end;
+  if FIniFile <> '' then
+  begin
+    Ini := TIniFile.Create(FIniFile);
+    try
+      Ini.WriteString('RqDepsSearch', 'Dirs', Joined);
+    finally
+      Ini.Free;
+    end;
+  end;
+  FillTop;
 end;
 
 // Положение и размер окна, высота списка недостающих - из editor.ini
@@ -874,6 +813,190 @@ begin
   if ModalResult = mrNone then
     ModalResult := mrCancel;
   Action := caHide;
+end;
+
+// $INCLUDE с подпапкой ("Object\QStatusBarEx.inc"), а копия найдена в
+// корне папки Include (по одному имени файла): подпапки там нет. ARootLabel /
+// ARootDir - эта папка Include.
+function TRqDepsForm.WrongSubDir(ADep: TRqDep;
+                                 var ARootLabel, ARootDir: string): Boolean;
+var
+  RootIdx: Integer;
+  RelName: string;
+begin
+  Result := False;
+  if (ADep = nil) or (ADep.Kind <> dpkInclude) or (ADep.Chosen < 0) or
+     (ADep.Chosen >= ADep.Where.Count) then
+    Exit;
+  RelName := StringReplace(ADep.Name, '/', '\', [rfReplaceAll]);
+  if (Pos('\', RelName) = 0) or (ExtractFileDrive(RelName) <> '') then
+    Exit;
+  ARootLabel := ADep.Where[ADep.Chosen];
+  if CompareText(Copy(ARootLabel, 1, 7), 'Include') <> 0 then
+    Exit;
+  ARootDir := '';
+  for RootIdx := 0 to FRoots.Count - 1 do
+    if CompareText(Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1),
+                   ARootLabel) = 0 then
+      ARootDir := Copy(FRoots[RootIdx], Pos('|', FRoots[RootIdx]) + 1, MaxInt);
+  if ARootDir = '' then
+    Exit;
+  ARootDir := IncludeTrailingPathDelimiter(ExpandFileName(ARootDir));
+  Result := CompareText(ExpandFileName(ADep.Candidates[ADep.Chosen]),
+                        ARootDir + ADep.FileNameOnly) = 0;
+end;
+
+// Щелчок по строке недостающего: подпапки из $INCLUDE нет - спросить,
+// что делать
+procedure TRqDepsForm.lvDepsClick(Sender: TObject);
+var
+  RootLabel, RootDir: string;
+begin
+  if FBusy then
+    Exit;
+  if WrongSubDir(SelectedDep, RootLabel, RootDir) then
+    AskSubDir(SelectedDep);
+end;
+
+// Окно с выбором: исправить путь в $INCLUDE исходника или создать подпапку
+// в папке Include и скопировать туда файл
+procedure TRqDepsForm.AskSubDir(ADep: TRqDep);
+var
+  AskDlg: TForm;
+  lblText: TLabel;
+  rbFixSource, rbMakeDir: TUiRadioButton;
+  btnOk, btnCancel: TUiButton;
+  RootLabel, RootDir, RelName, SubDir, Found, Target, LineText, NewLine: string;
+  Lines: TStringList;
+  NamePos: Integer;
+  Done: Boolean;
+
+  // Найденная копия - там, где её возьмёт rc.exe: больше не недостающий
+  procedure MarkResolved(const APath: string);
+  begin
+    if (CompareText(ExtractFilePath(ExpandFileName(APath)),
+         IncludeTrailingPathDelimiter(ExpandFileName(FScan.IncDir))) = 0) or
+       (CompareText(ExtractFilePath(ExpandFileName(APath)),
+         IncludeTrailingPathDelimiter(ExpandFileName(FScan.MainDir))) = 0) then
+      ADep.Resolved := APath;
+  end;
+
+begin
+  if not WrongSubDir(ADep, RootLabel, RootDir) then
+    Exit;
+  RelName := StringReplace(ADep.Name, '/', '\', [rfReplaceAll]);
+  SubDir := ExtractFilePath(RelName);           // "Object\"
+  Found := ADep.Candidates[ADep.Chosen];
+  AskDlg := TForm.CreateNew(Self);
+  try
+    AskDlg.Caption := 'Подпапки из $INCLUDE нет';
+    AskDlg.BorderStyle := bsDialog;
+    AskDlg.Position := poOwnerFormCenter;
+    AskDlg.Font := Font;
+    AskDlg.ClientWidth := 620;
+    AskDlg.ClientHeight := 168;
+    lblText := TLabel.Create(AskDlg);
+    lblText.Parent := AskDlg;
+    lblText.AutoSize := False;
+    lblText.WordWrap := True;
+    lblText.SetBounds(12, 10, 596, 56);
+    lblText.Caption := 'В исходнике ' + ExtractFileName(ADep.FromFile) +
+      ' (строка ' + IntToStr(ADep.FromLine) + '): $INCLUDE "' + ADep.Name +
+      '". Файл ' + ADep.FileNameOnly + ' лежит в ' + RootDir + ' (' +
+      RootLabel + '), подпапки ' + SubDir + ' там нет.';
+    rbFixSource := TUiRadioButton.Create(AskDlg);
+    rbFixSource.Parent := AskDlg;
+    rbFixSource.SetBounds(12, 72, 596, 18);
+    rbFixSource.Caption := 'Исправить путь в исходном файле: $INCLUDE "' +
+                           ADep.FileNameOnly + '"';
+    rbFixSource.Checked := True;
+    rbMakeDir := TUiRadioButton.Create(AskDlg);
+    rbMakeDir.Parent := AskDlg;
+    rbMakeDir.SetBounds(12, 96, 596, 18);
+    rbMakeDir.Caption := 'Создать подпапку \' + SubDir + ' в ' + RootLabel +
+                         ' и скопировать туда ' + ADep.FileNameOnly;
+    btnOk := TUiButton.Create(AskDlg);
+    btnOk.Parent := AskDlg;
+    btnOk.SetBounds(AskDlg.ClientWidth - 196, 130, 90, 25);
+    btnOk.Caption := 'OK';
+    btnOk.ModalResult := mrOk;
+    btnCancel := TUiButton.Create(AskDlg);
+    btnCancel.Parent := AskDlg;
+    btnCancel.SetBounds(AskDlg.ClientWidth - 100, 130, 90, 25);
+    btnCancel.Caption := 'Отмена';
+    btnCancel.ModalResult := mrCancel;
+    if AskDlg.ShowModal <> mrOk then
+      Exit;
+
+    Done := False;
+    if rbFixSource.Checked then
+    begin
+      // Строка $INCLUDE - с диска (перед сборкой файлы сохранены), правка -
+      // в редакторе, как правки строгой проверки
+      Lines := TStringList.Create;
+      try
+        try
+          Lines.LoadFromFile(ADep.FromFile);
+        except
+          Lines.Clear;
+        end;
+        LineText := '';
+        if (ADep.FromLine >= 1) and (ADep.FromLine <= Lines.Count) then
+          LineText := Lines[ADep.FromLine - 1];
+      finally
+        Lines.Free;
+      end;
+      NamePos := Pos(UpperCase(ADep.Name), UpperCase(LineText));
+      if NamePos = 0 then
+        lblStatus.Caption := 'Путь не исправлен: в строке ' +
+          IntToStr(ADep.FromLine) + ' ' + ExtractFileName(ADep.FromFile) +
+          ' нет "' + ADep.Name + '"'
+      else if not Assigned(FEditLine) then
+        lblStatus.Caption := 'Путь не исправлен: правка исходника отсюда ' +
+                             'недоступна'
+      else
+      begin
+        NewLine := Copy(LineText, 1, NamePos - 1) + ADep.FileNameOnly +
+                   Copy(LineText, NamePos + Length(ADep.Name), MaxInt);
+        if FEditLine(ADep.FromFile, ADep.FromLine, LineText, NewLine, False) then
+        begin
+          FLog.Add('Исправлен путь $INCLUDE: ' + ExtractFileName(ADep.FromFile) +
+                   '(' + IntToStr(ADep.FromLine) + ') "' + ADep.Name +
+                   '" -> "' + ADep.FileNameOnly + '"');
+          lblStatus.Caption := 'Исправлено: $INCLUDE "' + ADep.FileNameOnly +
+                               '" в ' + ExtractFileName(ADep.FromFile);
+          ADep.Name := ADep.FileNameOnly;
+          MarkResolved(Found);
+          Done := True;
+        end
+        else
+          lblStatus.Caption := 'Путь не исправлен: строка ' +
+            IntToStr(ADep.FromLine) + ' в редакторе другая или файл не ' +
+            'сохранён';
+      end;
+    end
+    else
+    begin
+      Target := RootDir + RelName;
+      ForceDirectories(ExtractFilePath(Target));
+      if FileExists(Target) then
+        lblStatus.Caption := 'Не скопирован: ' + Target + ' уже есть'
+      else if CopyFile(PChar(Found), PChar(Target), True) then
+      begin
+        FLog.Add('Скопирован ' + ADep.Name + ': ' + Found + ' -> ' + Target);
+        lblStatus.Caption := 'Скопирован в ' + Target;
+        ADep.Candidates[ADep.Chosen] := Target;
+        MarkResolved(Target);
+        Done := True;
+      end
+      else
+        lblStatus.Caption := 'Не скопирован: ' + SysErrorMessage(GetLastError);
+    end;
+    if Done then
+      FillList;
+  finally
+    AskDlg.Free;
+  end;
 end;
 
 function TRqDepsForm.SelectedDep: TRqDep;
@@ -1864,7 +1987,9 @@ end;
 function RqDepsDialog(AOwner: TComponent; AScan: TRqDepScan; ARoots: TStrings;
                       const ARefDir, ASysDir: string;
                       ALog, AIgnore: TStrings;
-                      AScheme: TClrScheme; const AIniFile: string): Boolean;
+                      AScheme: TClrScheme; const AIniFile: string;
+                      APickDirs: TRqPickDirs;
+                      AEditLine: TRqEditLine): Boolean;
 var
   Dlg: TRqDepsForm;
 begin
@@ -1882,6 +2007,8 @@ begin
     Dlg.FIgnore := AIgnore;
     Dlg.FScheme := AScheme;
     Dlg.FIniFile := AIniFile;
+    Dlg.FPickDirs := APickDirs;
+    Dlg.FEditLine := AEditLine;
     Dlg.BuildControls;
     Dlg.LoadPlacement;
     Dlg.FillTop;
