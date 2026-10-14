@@ -4823,6 +4823,8 @@ begin
   try
     UiApplyNow;
   finally
+    if StartupActive then
+      StartupStage('Тема IDE: разморозка окон');
     UiFreezeForms(False);
   end;
 end;
@@ -4857,17 +4859,28 @@ begin
   // DsgRetheme в конце
            FormsTick := GetTickCount;
            for I := 0 to Screen.FormCount - 1 do
-           UiApplyForm(Screen.Forms[I]);
+           begin
+             // Запуск: каждое окно - этапом в startup.log
+             if StartupActive then
+               StartupStage('Тема IDE: окно ' + Screen.Forms[I].Name + ' (' +
+                 Screen.Forms[I].ClassName + ', компонентов ' +
+                 IntToStr(Screen.Forms[I].ComponentCount) + ')');
+             UiApplyForm(Screen.Forms[I]);
+           end;
            FormsTick := GetTickCount - FormsTick;
 
   // Свои элементы (кнопки, рамки, полосы прокрутки, списки) - по теме
   // UiTheme: режим IDE и цвета ролей из IDE.clr. Тема рассылает смену
   // сама: все элементы перерисовываются.
+           if StartupActive then
+             StartupStage('Тема IDE: элементы темы (UiPushTheme)');
            ThemeTick := GetTickCount;
            UiPushTheme;
            ThemeTick := GetTickCount - ThemeTick;
 
   // Номер текущей строки на полосе номеров, текст свойств инспектора
+           if StartupActive then
+             StartupStage('Тема IDE: инспектор, подсказки, конструктор');
            if PaintBox1 <> nil then
            PaintBox1.Invalidate;
            DeclPanelShow;
@@ -64486,7 +64499,7 @@ begin
     FSubFilter.OnChange := SubFilterChange;
     FSubFilter.OnKeyDown := SubFilterKeyDown;
   end;
-  StartupStage('Тема IDE');
+  StartupStage('Тема IDE: заморозка окон');
   UiApply;
 
   // SubList: Name растягивается по ширине, Begin и End - у правого края.
