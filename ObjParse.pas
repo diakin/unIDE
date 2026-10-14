@@ -53,6 +53,10 @@ type
     IsLive: Boolean;            // значения подставлены из снимка
     Note: string;               // приписка к подписи в дереве инспектора
                                 // (у объектов RapidQ - номер строки CREATE)
+    // Объект RapidQ/FreeBASIC, объявленный "DIM Имя AS Qкласс", а не блоком
+    // CREATE: свойства в коде - "Имя.Свойство = значение", CreateLine -
+    // строка DIM, EndLine - последняя строка его свойств
+    IsDim: Boolean;
     constructor Create;
     destructor Destroy; override;
   end;

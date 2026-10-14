@@ -2419,6 +2419,8 @@ type
     function  RapidQSnapStale: Boolean;
     procedure RqSnapBtnState;
     procedure RapidQEventJump;
+    procedure RapidQEventCreate(const AEvent: string);
+    function  FbEventParams(const AEvent, ARqParams: string): string;
     function  DsgGetText: string;
     procedure DsgSetText(const AText: string);
     function  DsgOpenKeep(const AFile: string): Integer;
@@ -26178,6 +26180,7 @@ begin
             Node.Name := RapidQDimName(Parts[PartIdx]);
             Node.ClassNm := Trim(ClassPart);
             Node.EndLine := LineIdx;
+            Node.IsDim := True;
             DimNodes.AddObject(NameWord, Node);
             Inc(Result);
           end;
@@ -26765,6 +26768,28 @@ end;
 // AEq - вид знака: "=" или " = ", как у последнего присваивания.
 // -1 - блок в одну строку (его правит RapidQInsertBeforeEnd) или END
 // CREATE не найден.
+// Левая часть присваивания свойства AProp объекта ANode в коде: в блоке
+// CREATE - само свойство, у объекта DIM - "Имя.Свойство"
+function RapidQAssignName(ANode: TDfmNode; const AProp: string): string;
+begin
+  if ANode.IsDim then
+    Result := ANode.Name + '.' + AProp
+  else
+    Result := AProp;
+end;
+
+// Строка объекта DIM ANode в ALines всё ещё его: DIM ... Имя
+function RapidQDimLineOk(ALines: TStrings; ANode: TDfmNode): Boolean;
+var
+  LineUp: string;
+begin
+  Result := False;
+  if (ANode.CreateLine < 0) or (ANode.CreateLine >= ALines.Count) then
+    Exit;
+  LineUp := UpperCase(ALines[ANode.CreateLine]);
+  Result := (Pos('DIM', LineUp) > 0) and (Pos(UpperCase(ANode.Name), LineUp) > 0);
+end;
+
 function RapidQInsertPlace(ALines: TStrings; ANode: TDfmNode;
                            var AIndent, AEq: string): Integer;
 var
@@ -26785,6 +26810,38 @@ begin
   Result := -1;
   AIndent := '';
   AEq := ' = ';
+  // Объект DIM: новая строка "Имя.Свойство = ..." - за последней строкой
+  // его свойств (или за DIM), с её отступом
+  if ANode.IsDim then
+  begin
+    if (ANode.CreateLine < 0) or (ANode.CreateLine >= ALines.Count) then
+      Exit;
+    LastLine := ANode.CreateLine;
+    for ItemIdx := 0 to ANode.PropN.Count - 1 do
+    begin
+      ItemLine := Integer(ANode.PropN.Objects[ItemIdx]);
+      if (ItemLine > LastLine) and (ItemLine <= ANode.EndLine) then
+        LastLine := ItemLine;
+    end;
+    for ItemIdx := 0 to ANode.EvN.Count - 1 do
+    begin
+      ItemLine := Integer(ANode.EvN.Objects[ItemIdx]);
+      if (ItemLine > LastLine) and (ItemLine <= ANode.EndLine) then
+        LastLine := ItemLine;
+    end;
+    if LastLine >= ALines.Count then
+      Exit;
+    Result := LastLine + 1;
+    LastText := ALines[LastLine];
+    AIndent := IndentOf(LastText);
+    if LastLine > ANode.CreateLine then
+    begin
+      EqPos := Pos('=', LastText);
+      if (EqPos > 1) and (LastText[EqPos - 1] <> ' ') then
+        AEq := '=';
+    end;
+    Exit;
+  end;
   if (ANode.CreateLine < 0) or (ANode.EndLine <= ANode.CreateLine) or
      (ANode.EndLine >= ALines.Count) then
     Exit;
@@ -27496,7 +27553,8 @@ begin
       end;
       LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
       CurLine := ReadLineText(LineNo, LineStart, LineLen);
-      if not RapidQFindAssign(CurLine, FObjEditName, ValStart, ValLen) or
+      if not RapidQFindAssign(CurLine, RapidQAssignName(Obj, FObjEditName),
+                              ValStart, ValLen) or
          (Trim(Copy(CurLine, ValStart, ValLen)) <> Trim(FRqEditSrcOld)) then
       begin
         TextChanged;
@@ -27509,7 +27567,8 @@ begin
          not RapidQUnquote(OldSrc, OldStr) then
       begin
         if not RqReplaceExprLine(LineNo, LineStart, CurLine, ValStart, ValLen,
-                                 FObjEditName, NewText) then
+                                 RapidQAssignName(Obj, FObjEditName),
+                                 NewText) then
         begin
           TextChanged;
           Exit;
@@ -27530,25 +27589,34 @@ begin
     end
     else
     begin
-      // Новая строка в блоке CREATE; строка CREATE сверяется с узлом
+      // Новая строка в блоке CREATE (у объекта DIM - за строками его
+      // свойств); строка CREATE или DIM сверяется с узлом
       Lines := TStringList.Create;
       try
         Lines.Text := GetEditorTextCR;
-        if (Obj.CreateLine >= Lines.Count) or
+        if Obj.IsDim then
+        begin
+          if not RapidQDimLineOk(Lines, Obj) then
+          begin
+            TextChanged;
+            Exit;
+          end;
+        end
+        else if (Obj.CreateLine >= Lines.Count) or
            (Pos('CREATE', UpperCase(Lines[Obj.CreateLine])) = 0) or
            (Pos(UpperCase(Obj.Name), UpperCase(Lines[Obj.CreateLine])) = 0) then
         begin
           TextChanged;
           Exit;
         end;
-        if Obj.EndLine = Obj.CreateLine then
+        if (Obj.EndLine = Obj.CreateLine) and not Obj.IsDim then
           InsAt := -1
         else
           InsAt := RapidQInsertPlace(Lines, Obj, LineIndent, EqText);
       finally
         Lines.Free;
       end;
-      if Obj.EndLine = Obj.CreateLine then
+      if (Obj.EndLine = Obj.CreateLine) and not Obj.IsDim then
       begin
         // Блок в одну строку: оператор - перед его END CREATE, через ":"
         LineNo := Obj.CreateLine;
@@ -27585,7 +27653,8 @@ begin
         TextChanged;
         Exit;
       end;
-      NewLine := LineIndent + FObjEditName + EqText + NewText;
+      NewLine := LineIndent + RapidQAssignName(Obj, FObjEditName) + EqText +
+                 NewText;
       LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
       if LineStart < 0 then
       begin
@@ -28618,7 +28687,8 @@ begin
         Exit;
       LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
       CurLine := ReadLineText(LineNo, LineStart, LineLen);
-      if not RapidQFindAssign(CurLine, AProp, ValStart, ValLen) then
+      if not RapidQFindAssign(CurLine, RapidQAssignName(Node, AProp), ValStart,
+                              ValLen) then
         Exit;
       OldText := Trim(Copy(CurLine, ValStart, ValLen));
       if RqDsgNumber(RapidQMemberOf(Node, AProp), OldText, Num) then
@@ -28640,7 +28710,8 @@ begin
           end;
         end;
         Result := RqReplaceExprLine(LineNo, LineStart, CurLine, ValStart,
-                                    ValLen, AProp, AValue);
+                                    ValLen, RapidQAssignName(Node, AProp),
+                                    AValue);
         Exit;
       end;
       if OldText = NewText then
@@ -28662,7 +28733,7 @@ begin
     if AOnlyIfExists then
       Exit;
 
-    if Node.EndLine = Node.CreateLine then
+    if (Node.EndLine = Node.CreateLine) and not Node.IsDim then
     begin
       // Блок в одну строку: перед его END CREATE, через ":"
       LineNo := Node.CreateLine;
@@ -28696,7 +28767,8 @@ begin
     try
       RichEdit1.SelStart := LineStart;
       RichEdit1.SelLength := 0;
-      RichEdit1.SelText := LineIndent + AProp + EqText + AValue + #13#10;
+      RichEdit1.SelText := LineIndent + RapidQAssignName(Node, AProp) + EqText +
+                           AValue + #13#10;
     finally
       EditorThaw;
     end;
@@ -28778,11 +28850,20 @@ var
   Handler, LineWord, Rest, SubName: string;
   LineIdx, AssignLine, CharIdx: Integer;
 begin
-  if (FObjEvents.Selected = nil) or
-     (FObjEvents.Selected.SubItems.Count = 0) or
-     (Integer(FObjEvents.Selected.Data) < 0) then
+  if FObjEvents.Selected = nil then
+    Exit;
+  // Событие не назначено - обработчик создаётся, как в Delphi
+  if Integer(FObjEvents.Selected.Data) < 0 then
+  begin
+    RapidQEventCreate(FObjEvents.Selected.Caption);
+    Exit;
+  end;
+  if FObjEvents.Selected.SubItems.Count = 0 then
     Exit;
   Handler := Trim(FObjEvents.Selected.SubItems[0]);
+  // FreeBASIC: OnClick = @BtnClick
+  if Copy(Handler, 1, 1) = '@' then
+    Handler := Trim(Copy(Handler, 2, MaxInt));
   AssignLine := Integer(FObjEvents.Selected.Data);
   if Handler = '' then
     Exit;
@@ -28812,6 +28893,325 @@ begin
   LogComp('Обработчик ' + Handler + ' в ' + ExtractFileName(FCurrentFileName) +
   ' не найден - переход к строке, где он назначен');
           GotoLine(AssignLine);
+end;
+
+// Параметры обработчика события AEvent для FreeBASIC (RqLcl): виды и типы
+// - из типа RqEvProc<Событие> в RqLcl\inc\rqlcl.bi ("ByRef As Long, ByVal
+// As Long"), имена - из параметров RapidQ ARqParams ("(Key AS WORD, Shift
+// AS INTEGER)"). Типа нет - '' (обработчик без параметров).
+function TForm1.FbEventParams(const AEvent, ARqParams: string): string;
+var
+  LclDir, Problem, BiText, Pattern, SigText, NameText: string;
+  BiFile: TStringList;
+  StartPos, EndPos, ParamIdx: Integer;
+  Sig, Names: TStringList;
+
+  procedure SplitList(const AText: string; AOut: TStrings);
+  var
+    Pos1, Depth: Integer;
+    Part: string;
+  begin
+    AOut.Clear;
+    Part := '';
+    Depth := 0;
+    for Pos1 := 1 to Length(AText) do
+    begin
+      if AText[Pos1] = '(' then
+        Inc(Depth)
+      else if AText[Pos1] = ')' then
+        Dec(Depth);
+      if (AText[Pos1] = ',') and (Depth = 0) then
+      begin
+        AOut.Add(Trim(Part));
+        Part := '';
+      end
+      else
+        Part := Part + AText[Pos1];
+    end;
+    if Trim(Part) <> '' then
+      AOut.Add(Trim(Part));
+  end;
+
+begin
+  Result := '';
+  LclDir := RqLclDir(Problem);
+  if (LclDir = '') or not FileExists(LclDir + 'inc\rqlcl.bi') then
+    Exit;
+  BiFile := TStringList.Create;
+  Sig := TStringList.Create;
+  Names := TStringList.Create;
+  try
+    BiFile.LoadFromFile(LclDir + 'inc\rqlcl.bi');
+    BiText := BiFile.Text;
+    Pattern := 'RQEVPROC' + UpperCase(Copy(AEvent, 3, MaxInt)) + ' AS SUB(';
+    StartPos := Pos(Pattern, UpperCase(BiText));
+    if StartPos = 0 then
+      Exit;
+    Inc(StartPos, Length(Pattern));
+    EndPos := StartPos;
+    while (EndPos <= Length(BiText)) and (BiText[EndPos] <> ')') and
+          (BiText[EndPos] <> #13) and (BiText[EndPos] <> #10) do
+      Inc(EndPos);
+    SigText := Copy(BiText, StartPos, EndPos - StartPos);
+    SplitList(SigText, Sig);
+    NameText := Trim(ARqParams);
+    if (Copy(NameText, 1, 1) = '(') and
+       (Copy(NameText, Length(NameText), 1) = ')') then
+      NameText := Copy(NameText, 2, Length(NameText) - 2);
+    SplitList(NameText, Names);
+    for ParamIdx := 0 to Sig.Count - 1 do
+    begin
+      if ParamIdx > 0 then
+        Result := Result + ', ';
+      // "ByRef As Long" -> "ByRef Key As Long"
+      if (ParamIdx < Names.Count) and (Pos(' ', Names[ParamIdx]) > 0) then
+        NameText := Copy(Names[ParamIdx], 1, Pos(' ', Names[ParamIdx]) - 1)
+      else
+        NameText := 'Param' + IntToStr(ParamIdx + 1);
+      StartPos := Pos(' AS ', UpperCase(' ' + Sig[ParamIdx]));
+      if StartPos > 0 then
+        Result := Result + Trim(Copy(Sig[ParamIdx], 1, StartPos - 1)) + ' ' +
+                  NameText + ' ' + Trim(Copy(Sig[ParamIdx], StartPos, MaxInt))
+      else
+        Result := Result + NameText + ' ' + Sig[ParamIdx];
+    end;
+  finally
+    Names.Free;
+    Sig.Free;
+    BiFile.Free;
+  end;
+end;
+
+// Двойной щелчок по неназначенному событию AEvent объекта RapidQ (или
+// FreeBASIC - перевода RqLcl) - как в Delphi: обработчик Имя+Событие без
+// On (BtnClick) создаётся и назначается, каретка - в его тело.
+//   SUB - в конце файла (уже есть такой - только назначается);
+//   DECLARE SUB - перед строкой DIM объекта или перед внешним CREATE, в
+//     котором он стоит (до первого обращения к имени);
+//   назначение - в блоке CREATE "OnClick = BtnClick", у объекта DIM
+//     "Btn.OnClick = BtnClick" за строками его свойств.
+// FreeBASIC (сборщик по тексту файла): "@BtnClick", Sub/End Sub, параметры
+// по типу события в RqLcl (FbEventParams).
+procedure TForm1.RapidQEventCreate(const AEvent: string);
+var
+  Obj, Outer: TDfmNode;
+  Lines: TStringList;
+  Chain: TList;
+  ChainIdx, LineIdx, InsAt, AnchorLine, SubLine, TextEnd, LineStart: Integer;
+  RqParams, Handler, ParamText, DeclText, SubText, AssignText, Indent,
+    EqText, LineWord, Rest, SubName, AnchorIndent: string;
+  IsFb, HasSub, HasDecl: Boolean;
+  Event: TRqEvent;
+
+  function IndentOf(const AText: string): string;
+  var
+    CharIdx: Integer;
+  begin
+    CharIdx := 1;
+    while (CharIdx <= Length(AText)) and (AText[CharIdx] in [' ', #9]) do
+      Inc(CharIdx);
+    Result := Copy(AText, 1, CharIdx - 1);
+  end;
+
+  procedure InsertAt(ALine: Integer; const AText: string);
+  begin
+    LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALine, 0);
+    if LineStart < 0 then
+      LineStart := RichEdit1.GetTextLen;
+    RichEdit1.SelStart := LineStart;
+    RichEdit1.SelLength := 0;
+    RichEdit1.SelText := AText;
+  end;
+
+begin
+  if (FObjCurNode = nil) or RichEdit1.ReadOnly then
+    Exit;
+  Obj := TDfmNode(FObjCurNode);
+  if (Obj.Name = '') or (Obj.CreateLine < 0) or (Length(AEvent) < 3) then
+    Exit;
+  IsFb := CurBuildKind = bkFreeBasic;
+  Handler := Obj.Name + Copy(AEvent, 3, MaxInt);
+
+  // Параметры обработчика - по описанию класса
+  RqParams := '';
+  Chain := TList.Create;
+  try
+    RqClassChain(Obj.ClassNm, Chain);
+    for ChainIdx := 0 to Chain.Count - 1 do
+    begin
+      Event := TRqClass(Chain[ChainIdx]).EventOf(AEvent);
+      if Event <> nil then
+      begin
+        RqParams := Event.Params;
+        Break;
+      end;
+    end;
+  finally
+    Chain.Free;
+  end;
+  if IsFb then
+    ParamText := FbEventParams(AEvent, RqParams)
+  else if Pos(' AS ', UpperCase(RqParams)) > 0 then
+  begin
+    ParamText := Trim(RqParams);
+    if Copy(ParamText, 1, 1) = '(' then
+      ParamText := Copy(ParamText, 2, Length(ParamText) - 2);
+  end
+  else
+    ParamText := '';
+
+  Lines := TStringList.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    if Obj.IsDim then
+    begin
+      if not RapidQDimLineOk(Lines, Obj) then
+        Exit;
+    end
+    else if (Obj.CreateLine >= Lines.Count) or
+            (Pos('CREATE', UpperCase(Lines[Obj.CreateLine])) = 0) then
+      Exit;
+
+    // Есть ли уже SUB и DECLARE с этим именем
+    HasSub := False;
+    HasDecl := False;
+    SubLine := -1;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      LineWord := RapidQFirstWord(Trim(Lines[LineIdx]), Rest);
+      if LineWord = 'DECLARE' then
+      begin
+        SubName := Rest;
+        LineWord := RapidQFirstWord(SubName, Rest);
+        SubName := Rest;
+        if Pos('(', SubName) > 0 then
+          SubName := Copy(SubName, 1, Pos('(', SubName) - 1);
+        if (Pos(' ', Trim(SubName)) > 0) then
+          SubName := Copy(Trim(SubName), 1, Pos(' ', Trim(SubName)) - 1);
+        if ((LineWord = 'SUB') or (LineWord = 'FUNCTION')) and
+           (CompareText(Trim(SubName), Handler) = 0) then
+          HasDecl := True;
+        Continue;
+      end;
+      if (LineWord = 'SUB') or (LineWord = 'SUBI') then
+      begin
+        SubName := Rest;
+        if Pos('(', SubName) > 0 then
+          SubName := Copy(SubName, 1, Pos('(', SubName) - 1);
+        if (Pos(' ', Trim(SubName)) > 0) then
+          SubName := Copy(Trim(SubName), 1, Pos(' ', Trim(SubName)) - 1);
+        if CompareText(Trim(SubName), Handler) = 0 then
+        begin
+          HasSub := True;
+          SubLine := LineIdx;
+        end;
+      end;
+    end;
+
+    // Место назначения
+    if Obj.IsDim then
+    begin
+      InsAt := RapidQInsertPlace(Lines, Obj, Indent, EqText);
+      AssignText := Obj.Name + '.' + AEvent;
+    end
+    else
+    begin
+      if Obj.EndLine <= Obj.CreateLine then
+      begin
+        ShowMessage('Блок CREATE ' + Obj.Name + ' в одну строку - назначьте ' +
+                    AEvent + ' в нём вручную.');
+        Exit;
+      end;
+      InsAt := RapidQInsertPlace(Lines, Obj, Indent, EqText);
+      AssignText := AEvent;
+    end;
+    if InsAt < 0 then
+      Exit;
+    if IsFb then
+      AssignText := Indent + AssignText + EqText + '@' + Handler
+    else
+      AssignText := Indent + AssignText + EqText + Handler;
+
+    // DECLARE - перед DIM объекта или перед внешним CREATE
+    Outer := Obj;
+    if not Obj.IsDim then
+      while (Outer.Parent <> nil) and not Outer.Parent.IsDim and
+            (Outer.Parent.CreateLine >= 0) and
+            (Outer.Parent.CreateLine < Outer.CreateLine) and
+            (Outer.Parent.EndLine >= Outer.EndLine) do
+        Outer := Outer.Parent;
+    AnchorLine := Outer.CreateLine;
+    AnchorIndent := IndentOf(Lines[AnchorLine]);
+    if IsFb then
+    begin
+      DeclText := AnchorIndent + 'Declare Sub ' + Handler + '(' + ParamText +
+                  ')';
+      SubText := 'Sub ' + Handler + '(' + ParamText + ')'#13#10 + '    '#13#10 +
+                 'End Sub'#13#10;
+    end
+    else
+    begin
+      if ParamText <> '' then
+        ParamText := ' (' + ParamText + ')';
+      DeclText := AnchorIndent + 'DECLARE SUB ' + Handler + ParamText;
+      SubText := 'SUB ' + Handler + ParamText + #13#10 + '    '#13#10 +
+                 'END SUB'#13#10;
+    end;
+    // SUB выше объекта - DECLARE не нужен
+    if HasSub and (SubLine < AnchorLine) then
+      HasDecl := True;
+  finally
+    Lines.Free;
+  end;
+
+  // Снизу вверх: номера строк выше остаются прежними
+  Inc(FObjOwnWrite);
+  EditorFreeze;
+  try
+    if not HasSub then
+    begin
+      TextEnd := RichEdit1.GetTextLen;
+      RichEdit1.SelStart := TextEnd;
+      RichEdit1.SelLength := 0;
+      if (TextEnd > 0) and (Copy(GetEditorTextCR, TextEnd, 1) <> #13) then
+        RichEdit1.SelText := #13#10#13#10 + SubText
+      else
+        RichEdit1.SelText := #13#10 + SubText;
+    end;
+    InsertAt(InsAt, AssignText + #13#10);
+    if not HasDecl then
+      InsertAt(AnchorLine, DeclText + #13#10);
+  finally
+    EditorThaw;
+    Dec(FObjOwnWrite);
+  end;
+  LogComp('Инспектор: ' + Obj.Name + '.' + AEvent + ' = ' + Handler +
+          IfThen(HasSub, ' (обработчик уже был)', ' - обработчик добавлен в ' +
+                 'конец файла'));
+  ObjScheduleRelines(Obj, '');
+  // Каретка - в тело обработчика
+  Lines := TStringList.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    for LineIdx := Lines.Count - 1 downto 0 do
+    begin
+      LineWord := RapidQFirstWord(Trim(Lines[LineIdx]), Rest);
+      if ((LineWord = 'SUB') or (LineWord = 'SUBI')) and
+         (CompareText(Copy(Rest, 1, Length(Handler)), Handler) = 0) and
+         ((Length(Rest) = Length(Handler)) or
+          not (Rest[Length(Handler) + 1] in ['A'..'Z', 'a'..'z', '0'..'9',
+                                              '_'])) then
+      begin
+        if LineIdx + 1 < Lines.Count then
+          GotoLine(LineIdx + 1)
+        else
+          GotoLine(LineIdx);
+        Break;
+      end;
+    end;
+  finally
+    Lines.Free;
+  end;
 end;
 
 // Дерево всех компонентов, которые создаёт код открытого модуля: главная
