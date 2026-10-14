@@ -2982,6 +2982,7 @@ type
     function  RqLclDir(var AProblem: string): string;
     function  CompileRapidQFb: Boolean;
     function  CompileRapidQFbRun: Boolean;
+    procedure RqFbShowConverted(const AFile: string);
     function  RqFbConvProgress(APass: Integer; const AFile: string;
                                ALinesDone, ALinesTotal: Integer): Boolean;
     procedure RqFbFbcLine(const ALine: string);
@@ -48795,6 +48796,38 @@ begin
   end;
 end;
 
+// Главный файл после перевода RqToFb (папка _rqfb) - во вкладку редактора.
+// Уже открыт и без правок - перечитывается: перевод его переписал. С
+// правками - не трогаем, только переключаемся (вопрос о файле на диске
+// задаст обычная проверка изменений).
+procedure TForm1.RqFbShowConverted(const AFile: string);
+var
+  WinIdx: Integer;
+  IsMod: Boolean;
+begin
+  if (AFile = '') or not FileExists(AFile) then
+    Exit;
+  WinIdx := IndexOfWindowByFile(AFile);
+  if WinIdx >= 0 then
+  begin
+    if WinIdx = FWindowsIndex then
+      IsMod := RichEdit1.Modified
+    else
+      IsMod := FWindows[WinIdx].Modified;
+    if not IsMod then
+    begin
+      if WinIdx = FWindowsIndex then
+        FWindows[WinIdx].CursorPos := RichEdit1.SelStart;
+      ReloadWindowFromDisk(WinIdx, False);
+    end;
+    if WinIdx <> FWindowsIndex then
+      ActivateWindow(WinIdx);
+  end
+  else
+    OpenNamedFile(AFile);
+  LogComp('Переведённый файл для fbc открыт во вкладке: ' + AFile);
+end;
+
 // Перевод RqToFb и сборка fbc. True - собрано, exe на месте. Этапы - в
 // окне хода сборки (CompileRapidQFb открыл его, FCompDlg).
 function TForm1.CompileRapidQFbRun: Boolean;
@@ -49004,6 +49037,10 @@ begin
       BusyEnd('Компиляция: ошибки', False);
   end;
   Result := Built;
+
+  // Переведённый главный файл - тот, что получил fbc, - во вкладку. При
+  // ошибках следом откроется исходник RapidQ с первой ошибкой (ниже)
+  RqFbShowConverted(ConvResult.MainOut);
 
   if Built then
   begin
