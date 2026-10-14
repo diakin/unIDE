@@ -52345,8 +52345,9 @@ begin
   if Kind = bkRapidQ then
   begin
     TargetSrc := RapidQTargetBas(False);
+    // Перевод из _rqfb - exe рядом с исходником RapidQ (RqFbConvertedExe)
     if TargetSrc <> '' then
-      Result := ChangeFileExt(TargetSrc, '.exe');
+      Result := RqFbConvertedExe(TargetSrc);
   end
   else if Kind = bkDelphi then
   begin
