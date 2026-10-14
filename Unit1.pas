@@ -2100,7 +2100,8 @@ type
     // Горячие папки и поиск потерянных файлов
     procedure ShowHotFolders(const APreselect: string);
     function  HotFoldersDialog(const APreselect, ACaption: string;
-                               APick: Boolean; var ADir: string): Boolean;
+                               APick: Boolean; var ADir: string;
+                               ACheckedOnly: Boolean = False): Boolean;
     procedure HfListClick(Sender: TObject);
     procedure HfListCheck(Sender: TObject);
     procedure HfSaveList;
@@ -13105,8 +13106,12 @@ end;
 // папки через ";", а если отмеченных нет - папку из строки над деревом
 // (выбранную в дереве или щелчком в списке). Список горячих папок по OK
 // записывается в обоих случаях. ACaption - заголовок окна ('' - из .dfm).
+// ACheckedOnly (с APick) - только отмеченные в списке: строка пути не
+// подставляется, ни одной отметки - ADir пустая, и это не ошибка (папки
+// поиска окна недостающих файлов: снятая галка - папка не ищется).
 function TForm1.HotFoldersDialog(const APreselect, ACaption: string;
-                                 APick: Boolean; var ADir: string): Boolean;
+                                 APick: Boolean; var ADir: string;
+                                 ACheckedOnly: Boolean): Boolean;
 var
   Dlg: TDlgHotFolders;
   I, K: Integer;
@@ -13185,9 +13190,9 @@ begin
             Picked := Picked + ';';
           Picked := Picked + ExcludeTrailingPathDelimiter(FHfList.Items[I]);
         end;
-    if Picked = '' then
+    if (Picked = '') and not (APick and ACheckedOnly) then
       Picked := Trim(FHfPath.Caption);
-    if APick and (Picked = '') then
+    if APick and not ACheckedOnly and (Picked = '') then
     begin
       ShowMessage('Папка не выбрана: отметьте папки в списке или выберите ' +
       'папку в дереве');
@@ -34748,8 +34753,9 @@ end;
 function TForm1.RqDepsPickDirs(const APreselect: string;
                                var ADirs: string): Boolean;
 begin
+  // Только отмеченные: снятая галка - папка в поиске не участвует
   Result := HotFoldersDialog(APreselect, 'Directory Tree - отмеченные папки ' +
-                             'для поиска', True, ADirs);
+                             'для поиска', True, ADirs, True);
 end;
 
 // Имя из сообщения rc.exe "$INCLUDE file X does not exist"; '' - такого нет
