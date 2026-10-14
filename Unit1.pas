@@ -12732,7 +12732,8 @@ begin
       Roots.Add(ExtractFileDir(ExcludeTrailingPathDelimiter(
                 ExtractFilePath(ABas))));
       if StrictFixDialog(Self, ConvMessages, Roots, LibDirs, ABas, AIncDir,
-                         StrictOpenLine, StrictEditLine) = mrIgnore then
+                         StrictOpenLine, StrictEditLine,
+                         SettingsFileName) = mrIgnore then
         LogComp('Строгая проверка: rc.exe собирает (выбрано в окне)')
       else
       begin

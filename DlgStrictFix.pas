@@ -20,7 +20,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
-  ExtCtrls, ComCtrls,
+  ExtCtrls, ComCtrls, IniFiles,
   StrictFix,    // разбор записей и варианты исправления
   UiButton;     // TUiButton
 
@@ -54,7 +54,8 @@ function StrictFixDialog(AOwner: TComponent;
                          AMessages, ARoots, ALibDirs: TStrings;
                          const AMainFile, AIncDir: string;
                          AOpenLine: TStrictOpenLine;
-                         AEditLine: TStrictEditLine): TModalResult;
+                         AEditLine: TStrictEditLine;
+                         const AIniFile: string = ''): TModalResult;
 
 // Окно уже открыто (сборка ждёт его): поднять его наверх, True
 function StrictFixDialogActive: Boolean;
@@ -74,6 +75,7 @@ type
     FMainFile, FIncDir: string;
     FOpenLine: TStrictOpenLine;
     FEditLine: TStrictEditLine;
+    FIniFile: string;        // editor.ini: положение окна, [StrictFixWindow]
     FBusy, FAbort: Boolean;
     FLastTick: Cardinal;
     FErrCount: Integer;
@@ -120,6 +122,8 @@ type
     procedure btnApplyClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure LoadPlacement;
+    procedure SavePlacement;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
   public
@@ -916,6 +920,85 @@ begin
     Params.WndParent := Application.MainForm.Handle;
 end;
 
+// Положение и размер окна, высота списка записей и пояснения - из
+// editor.ini
+procedure TStrictFixForm.LoadPlacement;
+const
+  Sect = 'StrictFixWindow';
+var
+  Ini: TIniFile;
+  WinLeft, WinTop, WinWidth, WinHeight, ListHeight, ExplainHeight: Integer;
+  Work: TRect;
+begin
+  if (FIniFile = '') or not FileExists(FIniFile) then
+    Exit;
+  Ini := TIniFile.Create(FIniFile);
+  try
+    WinLeft := Ini.ReadInteger(Sect, 'Left', MaxInt);
+    WinTop := Ini.ReadInteger(Sect, 'Top', MaxInt);
+    WinWidth := Ini.ReadInteger(Sect, 'Width', Width);
+    WinHeight := Ini.ReadInteger(Sect, 'Height', Height);
+    ListHeight := Ini.ReadInteger(Sect, 'ListHeight', 0);
+    ExplainHeight := Ini.ReadInteger(Sect, 'ExplainHeight', 0);
+    if (WinLeft <> MaxInt) and (WinTop <> MaxInt) then
+    begin
+      // Окно - целиком на рабочем столе (монитор могли отключить)
+      Work := Screen.DesktopRect;
+      if WinWidth > Work.Right - Work.Left then
+        WinWidth := Work.Right - Work.Left;
+      if WinHeight > Work.Bottom - Work.Top then
+        WinHeight := Work.Bottom - Work.Top;
+      if WinLeft + WinWidth > Work.Right then
+        WinLeft := Work.Right - WinWidth;
+      if WinTop + WinHeight > Work.Bottom then
+        WinTop := Work.Bottom - WinHeight;
+      if WinLeft < Work.Left then
+        WinLeft := Work.Left;
+      if WinTop < Work.Top then
+        WinTop := Work.Top;
+      Position := poDesigned;
+      SetBounds(WinLeft, WinTop, WinWidth, WinHeight);
+    end;
+    if ListHeight >= 60 then
+      lvItems.Height := ListHeight;
+    if ExplainHeight >= 30 then
+      memExplain.Height := ExplainHeight;
+    if Ini.ReadBool(Sect, 'Maximized', False) then
+      WindowState := wsMaximized;
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure TStrictFixForm.SavePlacement;
+const
+  Sect = 'StrictFixWindow';
+var
+  Ini: TIniFile;
+  Place: TWindowPlacement;
+begin
+  if FIniFile = '' then
+    Exit;
+  // Размер "в обычном виде", и когда окно развёрнуто
+  Place.length := SizeOf(Place);
+  if not GetWindowPlacement(Handle, @Place) then
+    Exit;
+  Ini := TIniFile.Create(FIniFile);
+  try
+    Ini.WriteInteger(Sect, 'Left', Place.rcNormalPosition.Left);
+    Ini.WriteInteger(Sect, 'Top', Place.rcNormalPosition.Top);
+    Ini.WriteInteger(Sect, 'Width', Place.rcNormalPosition.Right -
+                     Place.rcNormalPosition.Left);
+    Ini.WriteInteger(Sect, 'Height', Place.rcNormalPosition.Bottom -
+                     Place.rcNormalPosition.Top);
+    Ini.WriteBool(Sect, 'Maximized', WindowState = wsMaximized);
+    Ini.WriteInteger(Sect, 'ListHeight', lvItems.Height);
+    Ini.WriteInteger(Sect, 'ExplainHeight', memExplain.Height);
+  finally
+    Ini.Free;
+  end;
+end;
+
 // Крестик: окно немодальное, закрытие = Закрыть (без сборки)
 procedure TStrictFixForm.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
@@ -928,7 +1011,8 @@ function StrictFixDialog(AOwner: TComponent;
                          AMessages, ARoots, ALibDirs: TStrings;
                          const AMainFile, AIncDir: string;
                          AOpenLine: TStrictOpenLine;
-                         AEditLine: TStrictEditLine): TModalResult;
+                         AEditLine: TStrictEditLine;
+                         const AIniFile: string): TModalResult;
 var
   Dlg: TStrictFixForm;
 begin
@@ -945,7 +1029,9 @@ begin
     Dlg.FIncDir := AIncDir;
     Dlg.FOpenLine := AOpenLine;
     Dlg.FEditLine := AEditLine;
+    Dlg.FIniFile := AIniFile;
     Dlg.BuildControls;
+    Dlg.LoadPlacement;
     Dlg.FillItems;
     // Немодально: ждём здесь, пока окно не закроют кнопкой (ModalResult)
     // или крестиком; программу закрыли - без сборки
@@ -957,6 +1043,7 @@ begin
     Result := Dlg.ModalResult;
     if Application.Terminated or (Result = mrNone) then
       Result := mrCancel;
+    Dlg.SavePlacement;
     Dlg.Hide;
   finally
     OpenStrictDlg := nil;
