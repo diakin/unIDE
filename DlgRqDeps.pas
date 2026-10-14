@@ -21,6 +21,7 @@ uses
   RqDeps,       // TRqDepScan, поиск и выбор копий
   UiButton,     // TUiButton
   UiComCtrls,   // TUiListView - шапка колонок в цветах темы
+  UiEditCtrls,  // TUiComboBox
   UiStdCtrls;   // TUiCheckBox
 
 type
@@ -181,7 +182,7 @@ type
     lblNote: TLabel;
     pnlBottom: TPanel;
     lblTarget: TLabel;
-    cbTarget: TComboBox;
+    cbTarget: TUiComboBox;   // поле и список - в цветах темы
     chkIgnore: TUiCheckBox;
     btnSearch: TUiButton;
     btnCopy: TUiButton;
@@ -405,7 +406,7 @@ begin
   lblTarget.Parent := pnlBottom;
   lblTarget.SetBounds(8, 38, 40, 13);
   lblTarget.Caption := 'Куда:';
-  cbTarget := TComboBox.Create(Self);
+  cbTarget := TUiComboBox.Create(Self);
   cbTarget.Parent := pnlBottom;
   cbTarget.Style := csDropDownList;
   cbTarget.SetBounds(50, 34, 560, 21);
