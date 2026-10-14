@@ -59133,7 +59133,8 @@ end;
 //
 //  Code Insight:
 //  - Code completion: список имён (CodeInsight, TCiListPopup) по
-//    Ctrl+Space всегда, после точки - с задержкой, если включено.
+//    Ctrl+Space всегда, после точки - с задержкой, если включено, и на
+//    третьей букве имени (вне строк и комментариев), если включено.
 //    После точки - члены типа выражения перед ней (с предками; классы
 //    VCL - из исходников Delphi, Compilers - Delphi - DelphiPath\Source);
 //    тип не нашёлся - списка нет. Без точки - имена файла, члены класса
@@ -60384,8 +60385,16 @@ end;
 
 // Сообщение редактору - после контрола: текст и каретка уже новые
 procedure TForm1.CiAfterMessage(const Message: TMessage);
+const
+  // Список по первым буквам: столько знаков имени, и пауза перед показом -
+  // пока набор идёт без остановки, список не открывается на каждой букве
+  CiAutoPrefixLen = 3;
+  CiAutoDelayMs = 120;
 var
   TypedChar: Char;
+  Prefix: string;
+  PrefixStart: Integer;
+  AutoList: Boolean;
 begin
   case Message.Msg of
     WM_CHAR:
@@ -60416,6 +60425,33 @@ begin
           FCiTriggerPos := CiCaretPos;
           FCiTimer.Enabled := True;
         end;
+      // Третья буква имени - список имён, во всех файлах. Ровно третья:
+      // закрытый по Esc список при наборе дальше не открывается снова.
+      // В строке и в комментарии - нет.
+      AutoList := False;
+      if FEdIns.CodeCompletion and not CiCompletionShown and
+         (TypedChar in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+      begin
+        Prefix := CiPrefixAt(CiCaretPos, PrefixStart);
+        AutoList := (Length(Prefix) = CiAutoPrefixLen) and
+                    (Prefix[1] in ['A'..'Z', 'a'..'z', '_']);
+        if AutoList and not FMapStale then
+          AutoList := not InRanges(StringRanges, PrefixStart) and
+                      not InRanges(CommentRanges, PrefixStart);
+      end;
+      if AutoList then
+      begin
+        if FCiTimer = nil then
+        begin
+          FCiTimer := TTimer.Create(Self);
+          FCiTimer.OnTimer := CiTimerTick;
+        end;
+        FCiTimer.Enabled := False;
+        FCiTimer.Interval := CiAutoDelayMs;
+        FCiTimerMode := 1;
+        FCiTriggerPos := CiCaretPos;
+        FCiTimer.Enabled := True;
+      end;
       CiCheckParams;
     end;
     WM_KEYDOWN:
