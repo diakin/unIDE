@@ -973,6 +973,8 @@ type
     // главного); FUtilSig - каким набором окон меню построено
     FUtilMenu: TMenuItem;
     FUtilSig: string;
+    // Плашки открытых окон утилит в строке меню, после Help (TPanel)
+    FUtilChips: TList;
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
     FCurrentFileName: string; // Сюда мы будем записывать путь к открытому/сохраненному файлу
 
@@ -2435,6 +2437,7 @@ type
     // Меню Started Util (поля FUtilMenu, FUtilSig - в начале private)
     procedure UtilMenuUpdate;
     procedure UtilMenuClick(Sender: TObject);
+    procedure UtilChipsPlace;
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
     procedure PaletteIconsApplied(Sender: TObject);
@@ -34946,12 +34949,54 @@ end;
 // окна отладчика ...). Немодальное окно может уйти под главное; пункт
 // поднимает его. Перестраивается по простою, только когда набор окон или
 // их заголовки сменились.
+// Короткое имя окна утилиты для плашки: до " - " / ":", не длиннее 18
+function UtilShortName(const ACaption: string): string;
+var
+  CutAt: Integer;
+begin
+  Result := Trim(ACaption);
+  CutAt := Pos(' - ', Result);
+  if CutAt > 1 then
+    Result := Copy(Result, 1, CutAt - 1);
+  CutAt := Pos(':', Result);
+  if CutAt > 1 then
+    Result := Copy(Result, 1, CutAt - 1);
+  if Length(Result) > 18 then
+    Result := Copy(Result, 1, 17) + '.';
+end;
+
+// Плашки - правее последнего пункта строки меню, по ширине текста
+procedure TForm1.UtilChipsPlace;
+var
+  ChipIdx, NextLeft, ChipWidth: Integer;
+  Chip: TPanel;
+begin
+  if (FUtilChips = nil) or (FMenuBar = nil) then
+    Exit;
+  if FMenuBar.TopCount > 0 then
+    NextLeft := FMenuBar.TopRect(FMenuBar.TopCount - 1).Right + 12
+  else
+    NextLeft := 8;
+  for ChipIdx := 0 to FUtilChips.Count - 1 do
+  begin
+    Chip := TPanel(FUtilChips[ChipIdx]);
+    // Canvas строки меню защищённый - меряем канвой окна
+    Canvas.Font := Chip.Font;
+    ChipWidth := Canvas.TextWidth(Chip.Caption) + 16;
+    if (Chip.Left <> NextLeft) or (Chip.Width <> ChipWidth) or
+       (Chip.Height <> FMenuBar.Height - 4) then
+      Chip.SetBounds(NextLeft, 2, ChipWidth, FMenuBar.Height - 4);
+    Inc(NextLeft, ChipWidth + 6);
+  end;
+end;
+
 procedure TForm1.UtilMenuUpdate;
 var
   FormIdx: Integer;
   OneForm: TCustomForm;
   Sig: string;
   Item: TMenuItem;
+  Chip: TPanel;
 begin
   if FUtilMenu = nil then
     Exit;
@@ -34964,7 +35009,11 @@ begin
     Sig := Sig + IntToHex(Integer(OneForm), 8) + OneForm.Caption + #1;
   end;
   if Sig = FUtilSig then
+  begin
+    // Набор тот же; строка меню могла сменить шрифт или высоту
+    UtilChipsPlace;
     Exit;
+  end;
   FUtilSig := Sig;
   FUtilMenu.Clear;
   for FormIdx := 0 to Screen.CustomFormCount - 1 do
@@ -34978,6 +35027,39 @@ begin
     Item.OnClick := UtilMenuClick;
     FUtilMenu.Add(Item);
   end;
+  // Плашки в строке меню - заново, по тем же окнам
+  if FUtilChips = nil then
+    FUtilChips := TList.Create;
+  for FormIdx := 0 to FUtilChips.Count - 1 do
+    TObject(FUtilChips[FormIdx]).Free;
+  FUtilChips.Clear;
+  if FMenuBar <> nil then
+    for FormIdx := 0 to FUtilMenu.Count - 1 do
+    begin
+      Chip := TPanel.Create(Self);
+      Chip.Parent := FMenuBar;
+      Chip.BevelOuter := bvNone;
+      Chip.ParentBackground := False;
+      // Яркая: открытое окно утилиты должно быть видно сразу. Цвет текста
+      // - не clBlack: его тема заменяет своим (UiThemeFgSys)
+      Chip.Color := $0000C8FF;
+      Chip.ParentFont := False;
+      Chip.Font.Name := 'Tahoma';
+      Chip.Font.Height := -11;
+      Chip.Font.Style := [fsBold];
+      Chip.Font.Color := TColor($00101010);
+      Chip.Caption := UtilShortName(StringReplace(FUtilMenu.Items[FormIdx].Caption,
+                                                  '&&', '&', [rfReplaceAll]));
+      Chip.Hint := StringReplace(FUtilMenu.Items[FormIdx].Caption, '&&', '&',
+                                 [rfReplaceAll]) + ' - показать окно';
+      Chip.ShowHint := True;
+      Chip.Cursor := crHandPoint;
+      Chip.Tag := FUtilMenu.Items[FormIdx].Tag;
+      Chip.OnClick := UtilMenuClick;
+      FUtilChips.Add(Chip);
+    end;
+  UtilChipsPlace;
+
   // Пустое меню строка меню не раскрывает - пункт-пояснение
   if FUtilMenu.Count = 0 then
   begin
@@ -35000,7 +35082,8 @@ begin
   for FormIdx := 0 to Screen.CustomFormCount - 1 do
   begin
     OneForm := Screen.CustomForms[FormIdx];
-    if Integer(OneForm) <> TMenuItem(Sender).Tag then
+    // Пункт меню или плашка в строке меню: окно - в Tag
+    if Integer(OneForm) <> TComponent(Sender).Tag then
       Continue;
     if not OneForm.Visible then
       Exit;
