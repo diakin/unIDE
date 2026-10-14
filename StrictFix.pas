@@ -105,10 +105,12 @@ function StrictFixCase(const ALine: string; var AResult: string): Boolean;
 // Определение AName в .inc, .bas, .cmp папок ARoots с подпапками, кроме
 // ASkipFile: AProc - SUB / FUNCTION AName с телом, иначе DIM / CREATE.
 // В AOut: "файл|строка|1 - закомментировано, 0 - нет|текст строки".
+// AExts - расширения через ";" (".inc;.bas;.cmp"); '' - эти три.
 // False - прервано.
 function StrictFindDefinitions(const AName: string; AProc: Boolean;
                                ARoots: TStrings; const ASkipFile: string;
-                               AOut: TStrings; AProgress: TIncProgress): Boolean;
+                               AOut: TStrings; AProgress: TIncProgress;
+                               const AExts: string = ''): Boolean;
 
 // Как подключить AIncFile к программе AMainLines (см. реализацию):
 // закомментированный $INCLUDE этого файла - раскомментировать (AInsert =
@@ -790,15 +792,17 @@ end;
 
 function StrictFindDefinitions(const AName: string; AProc: Boolean;
                                ARoots: TStrings; const ASkipFile: string;
-                               AOut: TStrings; AProgress: TIncProgress): Boolean;
+                               AOut: TStrings; AProgress: TIncProgress;
+                               const AExts: string): Boolean;
 const
   MaxSize = 4 * 1024 * 1024;
 var
   Masks, Files, Lines: TStringList;
   FileIdx, LineIdx: Integer;
   Commented, Cancel, TooBig: Boolean;
-  UpName: string;
+  UpName, Rest, OneExt: string;
   Info: TSearchRec;
+  SemiAt: Integer;
 begin
   UpName := UpperCase(AName);
   Masks := TStringList.Create;
@@ -806,9 +810,30 @@ begin
   Lines := TStringList.Create;
   try
     Masks.Sorted := True;
-    Masks.Add('*.INC');
-    Masks.Add('*.BAS');
-    Masks.Add('*.CMP');
+    Masks.Duplicates := dupIgnore;
+    // ".inc;.bas" / "inc bas" / "*.inc" - маски "*.INC", "*.BAS"
+    Rest := StringReplace(AExts, ',', ';', [rfReplaceAll]);
+    Rest := StringReplace(Rest, ' ', ';', [rfReplaceAll]);
+    while Rest <> '' do
+    begin
+      SemiAt := Pos(';', Rest);
+      if SemiAt = 0 then
+        SemiAt := Length(Rest) + 1;
+      OneExt := UpperCase(Trim(Copy(Rest, 1, SemiAt - 1)));
+      Delete(Rest, 1, SemiAt);
+      if Copy(OneExt, 1, 1) = '*' then
+        Delete(OneExt, 1, 1);
+      if Copy(OneExt, 1, 1) = '.' then
+        Delete(OneExt, 1, 1);
+      if OneExt <> '' then
+        Masks.Add('*.' + OneExt);
+    end;
+    if Masks.Count = 0 then
+    begin
+      Masks.Add('*.INC');
+      Masks.Add('*.BAS');
+      Masks.Add('*.CMP');
+    end;
     Files.Sorted := True;
     Files.Duplicates := dupIgnore;
     Result := IncFindNamesOnDisk(Masks, ARoots, Files, AProgress);

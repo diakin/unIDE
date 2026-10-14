@@ -24,6 +24,7 @@ uses
   StrictFix,    // разбор записей и варианты исправления
   UiButton,     // TUiButton
   UiStdCtrls,   // TUiCheckBox
+  UiEditCtrls,  // TUiEdit
   UiComCtrls;   // TUiListView
 
 type
@@ -102,6 +103,7 @@ type
     btnOpen: TUiButton;
     btnOpenOther: TUiButton;
     btnFind: TUiButton;
+    edExts: TUiEdit;         // где искать определение: расширения через ";"
     btnApply: TUiButton;
     lblOptions: TLabel;
     lbOptions: TListBox;
@@ -156,6 +158,8 @@ var
   OpenStrictDlg: TStrictFixForm = nil;
 
 const
+  // Где искать определение по умолчанию - файлы программ RapidQ
+  StrictDefaultExts = '.inc;.bas;.cmp';
   // Вид правки строки (ReplaceInLine)
   fixWord = 0;     // слово AOld - на ANew
   fixGoto = 1;     // GOTO / GOSUB AOld - на ANew
@@ -395,7 +399,14 @@ begin
                         btnFindClick);
   btnFind.Hint := 'Искать определение в .inc, .bas, .cmp папок Include, ' +
                   'программы и папки выше; во время поиска - остановить';
-  btnApply := MakeButton(pnlActions, 'Исправить', 472, 5, 300, btnApplyClick);
+  // Расширения файлов для "Найти определение" - справа от кнопки
+  edExts := TUiEdit.Create(Self);
+  edExts.Parent := pnlActions;
+  edExts.SetBounds(472, 7, 120, 21);
+  edExts.Text := StrictDefaultExts;
+  edExts.Hint := 'Где искать определение: расширения файлов через ";" ' +
+                 '(для программ RapidQ - .inc;.bas;.cmp)';
+  btnApply := MakeButton(pnlActions, 'Исправить', 600, 5, 300, btnApplyClick);
 
   lblOptions := TLabel.Create(Self);
   lblOptions.Parent := Self;
@@ -654,6 +665,7 @@ begin
   if btnOpenOther.Visible then
     btnOpenOther.Hint := Item.OtherFile + ', строка ' + IntToStr(Item.OtherLine);
   btnFind.Visible := (Item <> nil) and StrictNeedsSearch(Item, NeedProc);
+  edExts.Visible := btnFind.Visible;
   memExplain.Lines.Clear;
   lbOptions.Items.Clear;
   if Item = nil then
@@ -945,7 +957,7 @@ begin
   btnClose.Enabled := False;
   try
     Done := StrictFindDefinitions(Item.Name, AsProc, FRoots, FMainFile,
-                                  Found, Progress);
+                                  Found, Progress, edExts.Text);
     // Найденное - к вариантам (прежние найденные - заново)
     FoundTotal := Found.Count;
     for FoundIdx := CurOptions.Count - 1 downto 0 do
@@ -1088,6 +1100,7 @@ begin
       lvItems.Height := ListHeight;
     if ExplainHeight >= 30 then
       memExplain.Height := ExplainHeight;
+    edExts.Text := Ini.ReadString(Sect, 'Exts', StrictDefaultExts);
     if Ini.ReadBool(Sect, 'Maximized', False) then
       WindowState := wsMaximized;
   finally
@@ -1119,6 +1132,7 @@ begin
     Ini.WriteBool(Sect, 'Maximized', WindowState = wsMaximized);
     Ini.WriteInteger(Sect, 'ListHeight', lvItems.Height);
     Ini.WriteInteger(Sect, 'ExplainHeight', memExplain.Height);
+    Ini.WriteString(Sect, 'Exts', Trim(edExts.Text));
   finally
     Ini.Free;
   end;
