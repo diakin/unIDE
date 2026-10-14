@@ -2968,6 +2968,10 @@ type
     procedure SetFbBuild(const AMain: string; AOutKind, ABits: Integer);
     function  FbCompilerExe(ABits: Integer; var AProblem: string): string;
     function  FbOutFileOf(const AMain: string): string;
+    function  RqFbConvertedInfo(const ABas: string;
+                                var ASmart, AConsole: Boolean): Boolean;
+    function  RqFbConvertedExe(const ABas: string): string;
+    procedure RqFbCopyDll(const ALclDir, AExeDir: string; ABits: Integer);
     function  FbIncDirs(ABits: Integer; var AUserInc: string): string;
     function  RapidQFindSourceLine(const AFile, AText,
                                    ASection: string): Integer;
@@ -48225,6 +48229,94 @@ begin
 end;
 
 // Что получится из главного файла: <имя>.dll у DLL, иначе <имя>.exe
+// Файл - перевод RapidQ от RqToFb: в заголовке (MainHeader) строка
+// "Переведено из RapidQ препроцессором RqToFb" и #include "rqrt.bi".
+// ASmart - #define RQ_SMART, AConsole - #define RQ_CONSOLE
+function TForm1.RqFbConvertedInfo(const ABas: string;
+                                  var ASmart, AConsole: Boolean): Boolean;
+const
+  HeadLines = 12;
+var
+  Src: TextFile;
+  LineText: string;
+  LineNo: Integer;
+  HasMark, HasRt: Boolean;
+begin
+  Result := False;
+  ASmart := False;
+  AConsole := False;
+  if (ABas = '') or not FileExists(ABas) then
+    Exit;
+  HasMark := False;
+  HasRt := False;
+  AssignFile(Src, ABas);
+  try
+    Reset(Src);
+    try
+      LineNo := 0;
+      while not Eof(Src) and (LineNo < HeadLines) do
+      begin
+        ReadLn(Src, LineText);
+        Inc(LineNo);
+        if Pos('RqToFb (unIDE)', LineText) > 0 then
+          HasMark := True
+        else if Pos('"rqrt.bi"', LowerCase(LineText)) > 0 then
+          HasRt := True
+        else if Pos('#define RQ_SMART', LineText) = 1 then
+          ASmart := True
+        else if Pos('#define RQ_CONSOLE', LineText) = 1 then
+          AConsole := True;
+      end;
+    finally
+      CloseFile(Src);
+    end;
+  except
+    Exit;
+  end;
+  Result := HasMark and HasRt;
+end;
+
+// Exe программы: у перевода из папки _rqfb - рядом с исходником RapidQ,
+// там же, где его собирает FB Smart (программа берёт свою папку из пути
+// к exe); у прочих - рядом с файлом
+function TForm1.RqFbConvertedExe(const ABas: string): string;
+var
+  FileDir: string;
+  IsSmart, IsConsole: Boolean;
+begin
+  Result := ChangeFileExt(ABas, '.exe');
+  FileDir := ExcludeTrailingPathDelimiter(ExtractFilePath(ABas));
+  if (CompareText(ExtractFileName(FileDir), '_rqfb') = 0) and
+     RqFbConvertedInfo(ABas, IsSmart, IsConsole) then
+    Result := ExtractFilePath(FileDir) +
+              ChangeFileExt(ExtractFileName(ABas), '.exe');
+end;
+
+// rqlcl32.dll / rqlcl64.dll из RqLcl\bin - рядом с exe, если там нет или
+// старее
+procedure TForm1.RqFbCopyDll(const ALclDir, AExeDir: string; ABits: Integer);
+var
+  DllName, DllSrc, DllDst: string;
+begin
+  if ABits = 64 then
+    DllName := 'rqlcl64.dll'
+  else
+    DllName := 'rqlcl32.dll';
+  DllSrc := ALclDir + 'bin\' + DllName;
+  DllDst := IncludeTrailingPathDelimiter(AExeDir) + DllName;
+  if not FileExists(DllSrc) then
+    LogComp('Нет ' + DllSrc + ' - программе с компонентами она нужна ' +
+            'рядом с exe')
+  else if not FileExists(DllDst) or (FileAge(DllSrc) > FileAge(DllDst)) then
+  begin
+    if CopyFile(PChar(DllSrc), PChar(DllDst), False) then
+      LogComp('Скопирован ' + DllName + ' рядом с exe')
+    else
+      LogComp('Не удалось скопировать ' + DllSrc + ' в ' + DllDst + ' (' +
+              SysErrorMessage(GetLastError) + ')');
+  end;
+end;
+
 function TForm1.FbOutFileOf(const AMain: string): string;
 var
   OutKind, Bits: Integer;
@@ -48272,10 +48364,12 @@ var
   Ini: TIniFile;
   Sect, IncDir, LibDir, FbcExe, Problem, MainBas, OutFile, Dir: string;
   Params, LogLine, ErrFile, FirstFile, ShortName, DefInc, DefLib: string;
+  LclDir, ResFile: string;
   OutKind, Bits, Code, LogStart, LineIdx, ErrLine, FirstLine: Integer;
   ErrCount, WarnCount: Integer;
   StartTick: Cardinal;
   Built, IsError: Boolean;
+  IsConverted, ConvSmart, ConvConsole: Boolean;
 begin
   Result := False;
   ShowCompLog;
@@ -48320,6 +48414,23 @@ begin
   begin
     SettingsAlert('Сборка FreeBASIC: ' + Problem);
     Exit;
+  end;
+
+  // Файл из _rqfb - перевод RapidQ (RqToFb): собирается как в FB Smart -
+  // ключи по его заголовку, inc и dll из папки RqLcl, exe рядом с
+  // исходником RapidQ
+  IsConverted := RqFbConvertedInfo(MainBas, ConvSmart, ConvConsole);
+  LclDir := '';
+  if IsConverted then
+  begin
+    LclDir := RqLclDir(Problem);
+    if LclDir = '' then
+    begin
+      SettingsAlert('Сборка переведённого RapidQ: ' + Problem);
+      Exit;
+    end;
+    LogComp('Файл - перевод RapidQ (RqToFb): ключи сборки FB Smart, ' +
+            'папка RqLcl ' + LclDir);
   end;
 
   Sect := CompilerSection('FreeBASIC');
@@ -48377,7 +48488,26 @@ begin
             OutFile := FbOutFileOf(MainBas);
             Dir := ExtractFilePath(MainBas);
             ShortName := ExtractFileName(MainBas);
-            Params := Params + ' -x "' + OutFile + '" "' + MainBas + '"';
+  if IsConverted then
+  begin
+    if ConvConsole then
+      Params := StringReplace(Params, '-s gui', '-s console', [])
+    else
+      Params := StringReplace(Params, '-s console', '-s gui', []);
+    Params := StringReplace(Params, '-dll', '-s gui', []);
+    if ConvSmart then
+      Params := Params + ' -exx';
+    Params := Params + ' -i "' + LclDir + 'inc"';
+    OutFile := RqFbConvertedExe(MainBas);
+  end;
+  Params := Params + ' -x "' + OutFile + '" "' + MainBas + '"';
+  // $RESOURCE: .rc от перевода рядом с файлом
+  if IsConverted then
+  begin
+    ResFile := ChangeFileExt(MainBas, '') + '_res.rc';
+    if FileExists(ResFile) then
+      Params := Params + ' "' + ResFile + '"';
+  end;
 
   // Запущенный exe переименовывается в .old (как у Delphi и RapidQ),
   // прежний результат удаляется: по его появлению видно, что сборка прошла
@@ -48452,6 +48582,8 @@ begin
 
   if Built then
   begin
+    if IsConverted then
+      RqFbCopyDll(LclDir, ExtractFilePath(OutFile), Bits);
     if WarnCount > 0 then
       LogComp(Format('--- Готово, %d мс, предупреждений: %d: %s',
                      [GetTickCount - StartTick, WarnCount, OutFile]))
@@ -52228,7 +52360,7 @@ begin
     TargetSrc := FbTargetBas(False);
     if (TargetSrc <> '') and
        (LowerCase(ExtractFileExt(FbOutFileOf(TargetSrc))) = '.exe') then
-      Result := ChangeFileExt(TargetSrc, '.exe');
+      Result := RqFbConvertedExe(TargetSrc);
   end;
   if Result <> '' then
     Result := ExpandFileName(Result);
