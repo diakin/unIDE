@@ -4330,6 +4330,10 @@ begin
   UiDefault('Menu.HotBG', clHighlight, $00784F26);
   UiDefault('Menu.HotText', clHighlightText, clWhite);
   UiDefault('Menu.Border', clBtnShadow, $00505050);
+  // Выделение текста в редакторе: в светлой - как было (жёлтый на тёмно-
+  // синем), в тёмной - ярче: белый на синем
+  UiDefault('Editor.SelBG', clNavy, $00E07F2F);
+  UiDefault('Editor.SelText', clYellow, clWhite);
   UiDefault('ObjTree.SelBG', $00C0FFC0, $00784F26);
   UiDefault('ObjTree.SelText', clBlack, clWhite);
   UiDefault('ObjTree.Broken', clRed, $006060FF);    // объект без имени
@@ -4626,6 +4630,10 @@ begin
     Result := 'Вкладки: крестик остальных'
   else if AKey = 'Tabs.Owner' then
     Result := 'Вкладки: главный файл у $INCLUDE-файла'
+  else if AKey = 'Editor.SelBG' then
+    Result := 'Редактор: фон выделенного текста'
+  else if AKey = 'Editor.SelText' then
+    Result := 'Редактор: цвет выделенного текста'
   else if AKey = 'ObjTree.SelBG' then
     Result := 'Дерево объектов: фон выделения'
   else if AKey = 'ObjTree.SelText' then
@@ -63324,6 +63332,9 @@ var
   // а раньше EM_EXGETSEL уходил в RichEdit на каждый токен и на каждый символ.
   Sel: TCharRange;
   SelMin, SelMax: Integer;
+  // Цвета выделения - роли IDE Editor.SelBG / Editor.SelText (по теме),
+  // берутся раз на кадр
+  SelBgRgb, SelFgRgb: COLORREF;
 
   // Переменные для вертикальной синхронизации плавного скроллинга
   FirstCharPos: TPoint;
@@ -63513,8 +63524,8 @@ var
         Exit;
       if Sel then
       begin
-        SetTextColor(DC, clYellow);
-        SetBkColor(DC, clNavy);
+        SetTextColor(DC, SelFgRgb);
+        SetBkColor(DC, SelBgRgb);
       end
       else if LineMarked then
       begin
@@ -64388,6 +64399,8 @@ begin
     SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
     SelMin := Sel.cpMin;
     SelMax := Sel.cpMax;
+    SelBgRgb := ColorToRGB(UiColor('Editor.SelBG'));
+    SelFgRgb := ColorToRGB(UiColor('Editor.SelText'));
 
     LineStartCharIdx := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FirstVisibleLine, 0);
     SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstCharPos), LineStartCharIdx);
