@@ -3433,6 +3433,7 @@ type
     procedure UiFontsReset;
     procedure UiFontsInit;
     procedure UiFontsApply;
+    procedure UiFormFontApply(AForm: TCustomForm);
     procedure StatusPanelsFit;
     function  FileSchemeOf(const AFile: string): string;
     procedure FileSchemeSet(const AFile, AScheme: string);
@@ -6102,6 +6103,8 @@ procedure TForm1.UiActiveFormChange(Sender: TObject);
 begin
   if FIdeDark or (FUiApplied <> nil) then
     UiApplyForm(Screen.ActiveForm);
+  // Шрифт окон и панелей - и окнам, созданным после его выбора
+  UiFormFontApply(Screen.ActiveForm);
 end;
 
 // Все видимые окна программы (и форма конструктора): AFreeze = True -
@@ -66021,8 +66024,9 @@ const
   // крупнее - не помещаются строка меню, вкладки и панели
   UiFontMinSize = 8;
   UiFontMaxSize = 14;
-  UiFontKeyList: array[0..4] of string = (
-    'Font.Menu', 'Font.Tabs', 'Font.Lists', 'Font.Logs', 'Font.Status');
+  UiFontKeyList: array[0..5] of string = (
+    'Font.Windows', 'Font.Menu', 'Font.Tabs', 'Font.Lists', 'Font.Logs',
+    'Font.Status');
 
 function UiFontSpec(AFont: TFont): string;
 var
@@ -66108,7 +66112,9 @@ end;
 
 function TForm1.UiFontCaption(const AKey: string): string;
 begin
-  if AKey = 'Font.Menu' then
+  if AKey = 'Font.Windows' then
+    Result := 'Шрифт: окна и панели (подписи, кнопки, поля, диалоги)'
+  else if AKey = 'Font.Menu' then
     Result := 'Шрифт: меню'
   else if AKey = 'Font.Tabs' then
     Result := 'Шрифт: вкладки файлов'
@@ -66220,6 +66226,7 @@ begin
     Exit;     // уже (FormShow бывает не один раз)
   FUiFontDefs := TStringList.Create;
   FUiFonts := TStringList.Create;
+  FUiFontDefs.Values['Font.Windows'] := UiFontSpec(Font);
   FUiFontDefs.Values['Font.Menu'] := UiFontSpec(Screen.MenuFont);
   if FTabs <> nil then
     FUiFontDefs.Values['Font.Tabs'] := UiFontSpec(FTabs.Font);
@@ -66270,9 +66277,15 @@ var
     UiFontGet(AKey, NewFont);
   end;
 
+var
+  FormIdx: Integer;
 begin
   if FUiFontDefs = nil then
     Exit;
+  // Окна и панели - первыми: у главного окна группы ниже (вкладки, списки,
+  // логи, строка состояния) затем ставят свои шрифты поверх
+  for FormIdx := 0 to Screen.FormCount - 1 do
+    UiFormFontApply(Screen.Forms[FormIdx]);
   NewFont := TFont.Create;
   try
     // Меню: окна пунктов берут Screen.MenuFont при каждом открытии, строка
@@ -66345,6 +66358,76 @@ begin
     if FStatus2 <> nil then
       Face(FStatus2.Font);
     StatusPanelsFit;
+  finally
+    NewFont.Free;
+  end;
+end;
+
+// Шрифт "окна и панели" (Font.Windows) - окну AForm. Меняются само окно и
+// элементы с его шрифтом: наследующие (ParentFont) - сами, остальные - если
+// их шрифт совпадает со шрифтом окна (имя, высота, стиль). Свой шрифт
+// элемента (редактор, моноширинные поля, жирные заголовки) не трогается.
+// Окно конструктора форм - не IDE, его не трогаем. Зовётся при смене
+// шрифта для всех окон и при активации окна (UiActiveFormChange) - так
+// шрифт получают и окна, созданные позже.
+procedure TForm1.UiFormFontApply(AForm: TCustomForm);
+var
+  NewFont: TFont;
+  OldName: string;
+  OldHeight: Integer;
+  OldStyle: TFontStyles;
+
+  procedure Walk(ACtl: TControl);
+  var
+    ChildIdx: Integer;
+    CtlFont: TFont;
+  begin
+    if (ACtl = RichEdit1) or (ACtl = PaintBox1) or (ACtl = MarksBox) then
+      Exit;
+    if not TUiCtl(ACtl).ParentFont then
+    begin
+      CtlFont := TUiCtl(ACtl).Font;
+      if (CompareText(CtlFont.Name, OldName) = 0) and
+         (CtlFont.Height = OldHeight) and (CtlFont.Style = OldStyle) then
+      begin
+        CtlFont.Name := NewFont.Name;
+        CtlFont.Height := NewFont.Height;
+        CtlFont.Style := NewFont.Style;
+      end;
+    end;
+    if ACtl is TWinControl then
+      for ChildIdx := 0 to TWinControl(ACtl).ControlCount - 1 do
+        Walk(TWinControl(ACtl).Controls[ChildIdx]);
+  end;
+
+var
+  ChildIdx: Integer;
+begin
+  if (AForm = nil) or (FUiFontDefs = nil) then
+    Exit;
+  if (FDesigner <> nil) and (AForm = FDesigner.Form) then
+    Exit;
+  // Шрифт не выбран: у прочих окон остаётся свой из .dfm; главному окну -
+  // умолчание (после "Вернуть умолчания")
+  if (AForm <> Self) and
+     ((FUiFonts = nil) or (FUiFonts.Values['Font.Windows'] = '')) then
+    Exit;
+  NewFont := TFont.Create;
+  try
+    NewFont.Assign(TUiCtl(AForm).Font);
+    UiFontGet('Font.Windows', NewFont);
+    OldName := TUiCtl(AForm).Font.Name;
+    OldHeight := TUiCtl(AForm).Font.Height;
+    OldStyle := TUiCtl(AForm).Font.Style;
+    if (CompareText(NewFont.Name, OldName) = 0) and
+       (NewFont.Height = OldHeight) and (NewFont.Style = OldStyle) then
+      Exit;
+    // Сначала элементы (сравнение - с прежним шрифтом окна), потом окно
+    for ChildIdx := 0 to AForm.ControlCount - 1 do
+      Walk(AForm.Controls[ChildIdx]);
+    TUiCtl(AForm).Font.Name := NewFont.Name;
+    TUiCtl(AForm).Font.Height := NewFont.Height;
+    TUiCtl(AForm).Font.Style := NewFont.Style;
   finally
     NewFont.Free;
   end;
