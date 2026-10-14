@@ -973,8 +973,6 @@ type
     // главного); FUtilSig - каким набором окон меню построено
     FUtilMenu: TMenuItem;
     FUtilSig: string;
-    procedure UtilMenuUpdate;
-    procedure UtilMenuClick(Sender: TObject);
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
     FCurrentFileName: string; // Сюда мы будем записывать путь к открытому/сохраненному файлу
 
@@ -2426,6 +2424,9 @@ type
     function  RqDepsBeforeBuild(const ABas, AIncDir: string): Boolean;
     function  RqDepsPickDirs(const APreselect: string;
                              var ADirs: string): Boolean;
+    // Меню Started Util (поля FUtilMenu, FUtilSig - в начале private)
+    procedure UtilMenuUpdate;
+    procedure UtilMenuClick(Sender: TObject);
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
     procedure PaletteIconsApplied(Sender: TObject);
