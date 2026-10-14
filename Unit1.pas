@@ -25902,6 +25902,19 @@ begin
   ARest := Trim(Copy(AStmt, WordEnd, MaxInt));
 end;
 
+// Имя объекта из "DIM [SHARED] Имя AS ..." как в тексте (без перевода в
+// заглавные)
+function RapidQDimName(const AStmt: string): string;
+var
+  Rest, Tail: string;
+begin
+  RapidQFirstWord(AStmt, Rest);           // DIM
+  if RapidQFirstWord(Rest, Tail) = 'SHARED' then
+    Rest := Tail;
+  RapidQFirstWord(Rest, Tail);
+  Result := Trim(Copy(Rest, 1, Length(Rest) - Length(Tail)));
+end;
+
 // Присваивание в блоке CREATE: "Width = 100", "Font.Name = "courier"",
 // "OnClick = BtnClick". AName - то, что слева, AValue - текст справа как
 // есть (выражение не вычисляется).
@@ -26033,8 +26046,17 @@ end;
 // свойствами узла (PropN, PropV; в PropN.Objects - номер строки), On... -
 // событиями (EvN, EvV, номер строки в EvN.Objects). Результат - число
 // объектов.
+//
+// Объекты DIM: "DIM [SHARED] Имя AS Qкласс" вне блоков CREATE - тоже узел
+// (так пишут формы вручную, и так выглядит перевод RqToFb в _rqfb, где
+// каждый CREATE стал DIM). Свойства и события такого объекта - строки
+// "Имя.Свойство = значение" ниже по тексту, первое присваивание каждого
+// свойства (дальше это уже работа программы).
 function RapidQCreateNodes(ALines: TStrings; ANodes, ARoots: TList): Integer;
 var
+  DimNodes: TStringList;   // ИМЯ -> узел объекта DIM, с сортировкой
+  DimIdx, DotPos: Integer;
+  UpLine, ObjPart, MemberPart: string;
   Parts, CodeParents: TStringList;
   OpenNodes: TList;   // узлы CREATE, для которых ещё не было END CREATE
   LineIdx, PartIdx, NodeIdx: Integer;
@@ -26061,15 +26083,21 @@ begin
   Parts := TStringList.Create;
   CodeParents := TStringList.Create;
   OpenNodes := TList.Create;
+  DimNodes := TStringList.Create;
+  DimNodes.Sorted := True;
+  DimNodes.Duplicates := dupIgnore;
   try
     for LineIdx := 0 to ALines.Count - 1 do
     begin
-      // Быстрый отсев: вне блоков CREATE нужны только строки со словом
-      // CREATE и присваивания Parent (Имя.Parent = ...)
-      if (OpenNodes.Count = 0) and
-         (Pos('CREATE', UpperCase(ALines[LineIdx])) = 0) and
-         (Pos('.PARENT', UpperCase(ALines[LineIdx])) = 0) then
-        Continue;
+      // Быстрый отсев: вне блоков CREATE нужны только строки со словами
+      // CREATE и DIM и присваивания через точку (Имя.Parent = ...)
+      if OpenNodes.Count = 0 then
+      begin
+        UpLine := UpperCase(ALines[LineIdx]);
+        if (Pos('CREATE', UpLine) = 0) and (Pos('DIM', UpLine) = 0) and
+           ((Pos('.', UpLine) = 0) or (Pos('=', UpLine) = 0)) then
+          Continue;
+      end;
       RapidQSplitStatements(ALines[LineIdx], Parts);
       for PartIdx := 0 to Parts.Count - 1 do
       begin
@@ -26129,6 +26157,63 @@ begin
             Node.PropRaw.Add(PropValue);
           end;
         end
+        else if (OpenNodes.Count = 0) and (FirstWord = 'DIM') then
+        begin
+          // DIM [SHARED] Имя AS Qкласс - объект
+          NameWord := RapidQFirstWord(Rest, Tail);
+          if NameWord = 'SHARED' then
+          begin
+            UpLine := Tail;
+            NameWord := RapidQFirstWord(UpLine, Tail);
+          end;
+          ClassPart := '';
+          if (NameWord <> '') and (Pos('(', NameWord) = 0) and
+             (RapidQFirstWord(Tail, ClassPart) = 'AS') and
+             (UpperCase(Copy(Trim(ClassPart), 1, 1)) = 'Q') and
+             (Pos(' ', Trim(ClassPart)) = 0) and
+             (DimNodes.IndexOf(NameWord) < 0) then
+          begin
+            Node := NewNode(nil, LineIdx);
+            // Имя - как в тексте, не заглавными
+            Node.Name := RapidQDimName(Parts[PartIdx]);
+            Node.ClassNm := Trim(ClassPart);
+            Node.EndLine := LineIdx;
+            DimNodes.AddObject(NameWord, Node);
+            Inc(Result);
+          end;
+        end
+        else if (OpenNodes.Count = 0) and (DimNodes.Count > 0) and
+                RapidQAssignment(Parts[PartIdx], PropName, PropValue) and
+                (Pos('.', PropName) > 0) and
+                (DimNodes.IndexOf(UpperCase(Copy(PropName, 1,
+                  Pos('.', PropName) - 1))) >= 0) then
+        begin
+          // Имя.Свойство = значение у объекта DIM
+          DotPos := Pos('.', PropName);
+          ObjPart := UpperCase(Copy(PropName, 1, DotPos - 1));
+          MemberPart := Copy(PropName, DotPos + 1, MaxInt);
+          DimIdx := DimNodes.IndexOf(ObjPart);
+          Node := TDfmNode(DimNodes.Objects[DimIdx]);
+          if MemberPart <> '' then
+          begin
+            if UpperCase(Copy(MemberPart, 1, 2)) = 'ON' then
+            begin
+              if Node.EvN.IndexOf(MemberPart) < 0 then
+              begin
+                Node.EvN.AddObject(MemberPart, TObject(LineIdx));
+                Node.EvV.Add(PropValue);
+              end;
+            end
+            else if Node.PropN.IndexOf(MemberPart) < 0 then
+            begin
+              Node.PropN.AddObject(MemberPart, TObject(LineIdx));
+              Node.PropV.Add(PropValue);
+              Node.PropRaw.Add(PropValue);
+              if LineIdx > Node.EndLine then
+                Node.EndLine := LineIdx;
+            end;
+          end;
+        end
         else if (OpenNodes.Count = 0) and
                 RapidQAssignment(Parts[PartIdx], PropName, PropValue) and
                 (Length(PropName) > 7) and
@@ -26155,6 +26240,7 @@ begin
       Node.Note := Node.Note + '  нет END CREATE';
     end;
   finally
+    DimNodes.Free;
     OpenNodes.Free;
     CodeParents.Free;
     Parts.Free;
@@ -26198,10 +26284,10 @@ begin
       FObjRoots.Add(Roots[RootIdx]);
     if ObjCount = 0 then
       FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
-      ': CREATE в файле нет'
+      ': объектов CREATE и DIM ... AS Q... в файле нет'
     else
       FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
-      ': объектов CREATE - ' + IntToStr(ObjCount) +
+      ': объектов (CREATE, DIM) - ' + IntToStr(ObjCount) +
       ', классов TYPE ... EXTENDS - ' +
       IntToStr(CustomCount) +
       '. Значения - текст из блоков CREATE, снимка пока нет';
