@@ -2438,6 +2438,7 @@ type
     procedure UtilMenuUpdate;
     procedure UtilMenuClick(Sender: TObject);
     procedure UtilChipsPlace;
+    procedure SettingsAlert(const AText: string);
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
     procedure PaletteIconsApplied(Sender: TObject);
@@ -34949,6 +34950,17 @@ end;
 // окна отладчика ...). Немодальное окно может уйти под главное; пункт
 // поднимает его. Перестраивается по простою, только когда набор окон или
 // их заголовки сменились.
+// Не настроен компилятор (папка не задана, exe не найден): в лог сборки и
+// окном - иначе сообщение легко пропустить среди строк лога. Снимок
+// RapidQ (повторные сборки копии) окном не прерывается.
+procedure TForm1.SettingsAlert(const AText: string);
+begin
+  LogComp(AText);
+  if FRqProbeActive then
+    Exit;
+  MessageDlg(AText, mtWarning, [mbOK], 0);
+end;
+
 // Короткое имя окна утилиты для плашки: до " - " / ":", не длиннее 18
 function UtilShortName(const ACaption: string): string;
 var
@@ -45640,8 +45652,8 @@ begin
     begin
       NewRoot := RecoverDelphiRoot(Sect);
       if NewRoot = '' then
-        LogComp('Delphi в реестре не найдена. Путь задаётся в IDE Options ' +
-        '-> Compilers, поле Delphi path')
+        SettingsAlert('Delphi в реестре не найдена. Путь задаётся в IDE ' +
+        'Options -> Compilers, поле Delphi path')
       else
         LogComp('Delphi: ' + OldRoot + '  ->  ' + NewRoot);
     end;
@@ -47722,7 +47734,7 @@ begin
 
   if CompDir = '' then
   begin
-    LogComp('Сборка RapidQ: не задана папка компилятора [' + Sect + ']. ' +
+    SettingsAlert('Сборка RapidQ: не задана папка компилятора [' + Sect + ']. ' +
     'IDE Options - Compilers - RapidQ Basic, поле Compiler: ' +
     'папка с rc.exe');
             Exit;
@@ -47733,7 +47745,8 @@ begin
     RcExe := IncludeTrailingPathDelimiter(CompDir) + 'rc.exe';
   if not FileExists(RcExe) then
   begin
-    LogComp('Сборка RapidQ: rc.exe не найден: ' + RcExe + '   [' + Sect + ']');
+    SettingsAlert('Сборка RapidQ: rc.exe не найден: ' + RcExe + '   [' + Sect +
+                  ']. IDE Options - Compilers - RapidQ Basic, поле Compiler');
     Exit;
   end;
 
@@ -48258,7 +48271,7 @@ begin
   FbcExe := FbCompilerExe(Bits, Problem);
   if FbcExe = '' then
   begin
-    LogComp('Сборка FreeBASIC: ' + Problem);
+    SettingsAlert('Сборка FreeBASIC: ' + Problem);
     Exit;
   end;
 
@@ -48794,14 +48807,14 @@ begin
   LclDir := RqLclDir(Problem);
   if LclDir = '' then
   begin
-    LogComp('Сборка RapidQ через FreeBASIC: ' + Problem);
+    SettingsAlert('Сборка RapidQ через FreeBASIC: ' + Problem);
     Exit;
   end;
   FbBuildOf(MainBas, OutKind, Bits);
   FbcExe := FbCompilerExe(Bits, Problem);
   if FbcExe = '' then
   begin
-    LogComp('Сборка RapidQ через FreeBASIC: ' + Problem);
+    SettingsAlert('Сборка RapidQ через FreeBASIC: ' + Problem);
     Exit;
   end;
   Sect := CompilerSection('RapidQ Basic');
