@@ -2308,6 +2308,7 @@ type
     procedure RefreshStatusBar;    // Собственно пересчёт полей
     function  CharAt(APos: Integer): Char;
     procedure TrimWordSelection;
+    function  BracketColorAt(APos: Integer): TColor;
     procedure ScheduleMapRebuild; // заказать пересборку карты
     procedure FlushMapRebuild;    // выполнить заказанную немедленно
     procedure InvalidateCaretLine;
@@ -3142,6 +3143,10 @@ type
     // рисует HighlightVisibleText поверх текста.
     FPairA1, FPairA2: Integer;
     FPairB1, FPairB2: Integer;
+    // Каретка на скобке: все скобки её строки - X позиция в тексте (от
+    // нуля), Y уровень вложенности в строке; цвет - цвет линии отступа
+    // этого уровня (FHotTabColors). Считает UpdatePairMatch.
+    FLineBrackets: array of TPoint;
 
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
@@ -23613,6 +23618,8 @@ var
   Closing, IsClose: Boolean;
   TagStart, TagEnd, NameEnd, J: Integer;
   OldA1, OldB1: Integer;
+  OldBrackets, NewBrackets: string;  // скобки строки - для сравнения
+  Level, BrIdx: Integer;
   LineIdx, LineBeg, Col: Integer;
   LineTxt: string;
   Quick: Boolean;
@@ -23628,6 +23635,10 @@ var
 begin
   OldA1 := FPairA1;
   OldB1 := FPairB1;
+  OldBrackets := '';
+  for BrIdx := 0 to High(FLineBrackets) do
+    OldBrackets := OldBrackets + IntToStr(FLineBrackets[BrIdx].X) + ',';
+  SetLength(FLineBrackets, 0);
   FPairA1 := -1;
   FPairA2 := -1;
   FPairB1 := -1;
@@ -23636,7 +23647,7 @@ begin
   if not FUseSyntaxHighlight or FMapStale then
   begin
     // Карта устарела - искать не по чему; на следующем перестроении найдём
-    if (OldA1 >= 0) or (OldB1 >= 0) then
+    if (OldA1 >= 0) or (OldB1 >= 0) or (OldBrackets <> '') then
       RichEdit1.Invalidate;
     Exit;
   end;
@@ -23649,7 +23660,7 @@ begin
   LineBeg := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
   if (LineIdx < 0) or (LineBeg < 0) then
   begin
-    if (OldA1 >= 0) or (OldB1 >= 0) then
+    if (OldA1 >= 0) or (OldB1 >= 0) or (OldBrackets <> '') then
       RichEdit1.Invalidate;
     Exit;
   end;
@@ -23685,7 +23696,7 @@ begin
 
   if not Quick then
   begin
-    if (OldA1 >= 0) or (OldB1 >= 0) then
+    if (OldA1 >= 0) or (OldB1 >= 0) or (OldBrackets <> '') then
       RichEdit1.Invalidate;
     Exit;
   end;
@@ -23695,7 +23706,7 @@ begin
   Caret := RichEdit1.SelStart + 1; // в тексте позиции от единицы
   if (Len = 0) or (Caret < 1) or (Caret > Len + 1) then
   begin
-    if (OldA1 >= 0) or (OldB1 >= 0) then
+    if (OldA1 >= 0) or (OldB1 >= 0) or (OldBrackets <> '') then
       RichEdit1.Invalidate;
     Exit;
   end;
@@ -23713,6 +23724,30 @@ begin
 
   if P > 0 then
   begin
+    // Все скобки строки каретки - по уровню вложенности в этой строке:
+    // открывающая - на текущем уровне, закрывающая - на уровень выше
+    // своего содержимого; пара получает один уровень, а значит один цвет
+    Level := 0;
+    for J := 1 to Length(LineTxt) do
+    begin
+      K := LineBeg + J;   // позиция в Txt (от единицы)
+      if (K > Len) or not Live(K) then
+        Continue;
+      if Pos(Txt[K], OpenCh) > 0 then
+      begin
+        SetLength(FLineBrackets, Length(FLineBrackets) + 1);
+        FLineBrackets[High(FLineBrackets)] := Point(K - 1, Level);
+        Inc(Level);
+      end
+      else if Pos(Txt[K], CloseCh) > 0 then
+      begin
+        if Level > 0 then
+          Dec(Level);
+        SetLength(FLineBrackets, Length(FLineBrackets) + 1);
+        FLineBrackets[High(FLineBrackets)] := Point(K - 1, Level);
+      end;
+    end;
+
     Ch := Txt[P];
     K := Pos(Ch, OpenCh);
     Forward_ := K > 0;
@@ -23853,8 +23888,11 @@ begin
     end;
   end;
 
-  // Перерисовываем, только если пара изменилась
-  if (FPairA1 <> OldA1) or (FPairB1 <> OldB1) then
+  // Перерисовываем, только если пара или скобки строки изменились
+  NewBrackets := '';
+  for BrIdx := 0 to High(FLineBrackets) do
+    NewBrackets := NewBrackets + IntToStr(FLineBrackets[BrIdx].X) + ',';
+  if (FPairA1 <> OldA1) or (FPairB1 <> OldB1) or (NewBrackets <> OldBrackets) then
     RichEdit1.Invalidate;
 end;
 
@@ -62704,6 +62742,23 @@ end;
 // другие сообщения (EN_SELCHANGE и т.п.). Если такое сообщение приходило
 // раньше EN_CHANGE, снимок пропадал, и EN_CHANGE его уже не видел: карта не
 // сдвигалась, кэш ширин сбрасывался целиком (диагностика "en 0/N").
+// Цвет скобки в позиции APos (от нуля) строки каретки - цвет линии
+// отступа её уровня; не скобка строки - цвет текста схемы
+function TForm1.BracketColorAt(APos: Integer): TColor;
+var
+  BrIdx: Integer;
+begin
+  for BrIdx := 0 to High(FLineBrackets) do
+    if FLineBrackets[BrIdx].X = APos then
+    begin
+      Result := FHotTabColors[FLineBrackets[BrIdx].Y mod HotTabLevels];
+      Exit;
+    end;
+  Result := FScheme.FTextFG;
+  if Result = clNone then
+    Result := RichEdit1.Font.Color;
+end;
+
 // Выделение без пробелов и табуляций в конце (после двойного щелчка по
 // слову); выделение из одних пробелов не трогается
 procedure TForm1.TrimWordSelection;
@@ -64059,6 +64114,7 @@ var
     procedure DrawOne(AFrom, ATo: Integer);
     var
       F, T: Integer;
+      FgColor: TColor;
     begin
       if AFrom < 0 then
         Exit;
@@ -64071,12 +64127,34 @@ var
         F := 1;
       if T > LineLen then
         T := LineLen;
-      DrawRun(F, T, FScheme.FPairFG, FScheme.FPairBG);
+      // Цвет текста пары не задан (clNone) - цвет скобки по уровню
+      FgColor := FScheme.FPairFG;
+      if FgColor = clNone then
+        FgColor := BracketColorAt(AFrom);
+      DrawRun(F, T, ColorToRGB(FgColor), ColorToRGB(FScheme.FPairBG));
     end;
 
   begin
     DrawOne(FPairA1, FPairA2);
     DrawOne(FPairB1, FPairB2);
+  end;
+
+// Каретка на скобке: все скобки строки - цветами линий отступа по уровню
+  procedure DrawLineBrackets;
+  var
+    BrIdx, F: Integer;
+    BgColor: TColor;
+  begin
+    BgColor := FScheme.FTextBG;
+    if BgColor = clNone then
+      BgColor := RichEdit1.Color;
+    for BrIdx := 0 to High(FLineBrackets) do
+    begin
+      F := FLineBrackets[BrIdx].X - LineStartCharIdx + 1;
+      if (F >= 1) and (F <= LineLen) then
+        DrawRun(F, F, ColorToRGB(BracketColorAt(FLineBrackets[BrIdx].X)),
+                ColorToRGB(BgColor));
+    end;
   end;
 
 // Непечатные символы: точка на месте пробела, двойная стрелка на месте
@@ -64753,7 +64831,10 @@ begin
         end; // if not LineCommentBefore
       end; // if FUseSyntaxHighlight
 
-      // Пара под кареткой - поверх текста, но под направляющими
+      // Скобки строки каретки - цветами уровней, пара под кареткой - поверх
+      // них своей подложкой; всё поверх текста, но под направляющими
+      if Length(FLineBrackets) > 0 then
+        DrawLineBrackets;
       if FPairA1 >= 0 then
         DrawPairMark;
 
@@ -66294,6 +66375,7 @@ begin
       if not IsKeywordSection(DefSections[I]) and
          (FScheme.SchemaSections.IndexOf(DefSections[I]) < 0) then
         FScheme.SchemaSections.Add(DefSections[I]);
+    FScheme.EnsureSchemaSection('PairMark');
   finally
     DefSections.Free;
   end;
@@ -66326,6 +66408,7 @@ begin
   ApplySchemeTheme;
   // Схема одна, без умолчаний под ней - порядок разделов её собственный
   FScheme.SchemaSections.Assign(FScheme.FFileSections);
+  FScheme.EnsureSchemaSection('PairMark');
   FScheme.BuildMarkerChars;
   RefreshMapIfMarkersChanged;
   RichEdit1.Invalidate;

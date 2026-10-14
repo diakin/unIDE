@@ -603,6 +603,8 @@ begin
     Result := 'Sub Style (words/braces)'
   else if AName = 'SubScope' then
     Result := 'Sub Scope (search below)'
+  else if AName = 'PairMark' then
+    Result := 'Pair Mark (bracket under caret)'
   else if (Length(AName) > 6) and (Copy(AName, 1, 6) = 'CUSTOM') then
   begin
     N := StrToIntDef(Copy(AName, 7, 1), 0);

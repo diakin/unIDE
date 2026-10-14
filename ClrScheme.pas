@@ -250,6 +250,9 @@ type
     function  BcEndMark(AKind: Integer): string;
     procedure BcColors(AKind: Integer; var AFg, ABg: TColor);
     procedure BuildMarkerChars;
+    // Раздел в таблице схемы, даже если в файле его нет (PairMark): строка
+    // есть - цвет можно поменять, и при сохранении раздел допишется
+    procedure EnsureSchemaSection(const AName: string);
     procedure ParseDigitFormats(const S: string);
     function  BuildDigitFormats: string;
     procedure SaveClrSchemaTo(const APath: string);
@@ -1664,6 +1667,17 @@ begin
   if FCompHasColors then
     Result.Add('Components');
   Result.Add('Text');
+end;
+
+procedure TClrScheme.EnsureSchemaSection(const AName: string);
+var
+  FgC, BgC: TColor;
+begin
+  if SchemaSections.IndexOf(AName) < 0 then
+    SchemaSections.Add(AName);
+  if (FBaseColors.IndexOfName(AName) < 0) and
+     SectionColors(AName, FgC, BgC) then
+    FBaseColors.Values[AName] := ColorToString(FgC) + ' ' + ColorToString(BgC);
 end;
 
 procedure TClrScheme.BuildMarkerChars;
