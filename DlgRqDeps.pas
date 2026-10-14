@@ -20,6 +20,7 @@ uses
   IncCheck,     // эталон, TIncProgress
   RqDeps,       // TRqDepScan, поиск и выбор копий
   UiButton,     // TUiButton
+  UiComCtrls,   // TUiListView - шапка колонок в цветах темы
   UiStdCtrls;   // TUiCheckBox
 
 type
@@ -86,10 +87,11 @@ begin
 end;
 
 type
-  // Таблица, у которой выделенная строка - в цветах самой таблицы (тема):
-  // Windows рисует выделение системными цветами, и без фокуса строка
-  // выходила белой. Цвет выделения - смесь фона и текста таблицы.
-  TRqListView = class(TListView)
+  // Таблица темы IDE (TUiListView: цвета, шапка колонок), у которой и
+  // выделенная строка - в цветах самой таблицы: Windows рисует выделение
+  // системными цветами, и без фокуса строка выходила белой. Цвет выделения
+  // - смесь фона и текста таблицы.
+  TRqListView = class(TUiListView)
   private
     procedure CNNotify(var Message: TWMNotify); message CN_NOTIFY;
   end;
