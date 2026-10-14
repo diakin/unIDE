@@ -167,6 +167,37 @@ def write_index(index, path):
     open(path, 'wb').write(''.join(lines).encode('cp1252', 'xmlcharrefreplace'))
 
 
+def fix_body_for_search(work):
+    """Full-text search of chmcmd (Free Pascal) indexes the page text only
+    after a bare <body> tag: with attributes (<body class="rqdoc">) only the
+    title got into $FIftiMain, and the search found nothing in the text (for
+    example "clear"). In the copy that is compiled: <body class="..."> ->
+    <body>, the class moves to a <div> around the page text, and rq.css
+    selectors "body.X" become ".X". html_doc itself is not changed."""
+    body_re = re.compile(rb'<body\s+class="([^"]*)"\s*>', re.I)
+    for name in os.listdir(work):
+        if os.path.splitext(name)[1].lower() not in ('.html', '.htm'):
+            continue
+        path = os.path.join(work, name)
+        data = open(path, 'rb').read()
+        found = body_re.search(data)
+        if not found:
+            continue
+        data = (data[:found.start()] + b'<body><div class="' + found.group(1) +
+                b'">' + data[found.end():])
+        end = data.lower().rfind(b'</body>')
+        if end >= 0:
+            data = data[:end] + b'</div>' + data[end:]
+        open(path, 'wb').write(data)
+    css = os.path.join(work, 'rq.css')
+    if os.path.exists(css):
+        text = open(css, 'rb').read()
+        text = re.sub(rb'body\.(rqdoc|rq-index)', rb'.\1', text)
+        # The page around the <div> - the same colour as before
+        text += b'\nbody { margin: 0; background: #fbfaf7; }\n'
+        open(css, 'wb').write(text)
+
+
 def main():
     parser = ContentsParser()
     parser.feed(read('contents.html'))
@@ -186,6 +217,7 @@ def main():
     try:
         work = os.path.join(build, 'html_doc')
         shutil.copytree(doc_dir, work)
+        fix_body_for_search(work)
         write_toc(root, os.path.join(work, 'rapidq.hhc'))
         write_index(index, os.path.join(work, 'rapidq.hhk'))
         files = sorted(name for name in os.listdir(work)
