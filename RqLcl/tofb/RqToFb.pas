@@ -334,6 +334,10 @@ type
     IsConst: Boolean;
     Explicit: Boolean;  // объявлена (DIM, DEF..., параметр, CONST)
     Assigned: Boolean;  // получает значение: Перем = ..., FOR, INC/DEC
+    // Где впервые получила значение (MarkAssigned) - для подсказки в
+    // подозрении "нигде не получает значение" у одноимённой в другой SUB
+    AssignFile: string;
+    AssignLine: Integer;
     // Неявная Имя_Свойство из Имя.Свойство (DottedImplicit): Имя в
     // верхнем регистре; иначе ''
     DotBase: string;
@@ -615,6 +619,9 @@ type
                         AIsArray, AExplicit, AIsConst: Boolean): TRqVar;
     function ResolveVar(const ADisplay: string; AIsArray: Boolean): TRqVar;
     function DefaultValueText(const ARqType: string): string;
+    procedure MarkAssigned(AVar: TRqVar);
+    function  ScopeText(const AScope: string): string;
+    function  AssignedElsewhere(AVar: TRqVar): string;
     function MatchBracket(const AToks: TToks; AOpen, ATo: Integer): Integer;
     procedure WrapStrIndex(var AToks: TToks; AIdx, ATo: Integer; AVar: TRqVar);
     procedure RewriteStrSub(var AToks: TToks; AFrom, ATo: Integer);
@@ -2477,7 +2484,7 @@ begin
   ProcessExpr(AToks, AFirst, TargetEnd);
   VarRec := FindVar(AToks[AFirst].Up);
   if VarRec <> nil then
-    VarRec.Assigned := True;
+    MarkAssigned(VarRec);
   AToks[PlusIdx].OutText := OpChar + '= 1';
   AToks[LastIdx].OutText := '';
   if PlusIdx + 1 < LastIdx then
@@ -2485,6 +2492,73 @@ begin
   if AToks[PlusIdx - 1].Kind <> tkSpace then
     AToks[PlusIdx].Pre := ' ' + AToks[PlusIdx].Pre;
   Result := True;
+end;
+
+// Переменная получает значение; первое место - запоминается
+procedure TRqFbConv.MarkAssigned(AVar: TRqVar);
+begin
+  if AVar = nil then
+    Exit;
+  AVar.Assigned := True;
+  if AVar.AssignLine = 0 then
+  begin
+    AVar.AssignFile := FCurFile;
+    AVar.AssignLine := FCurLine;
+  end;
+end;
+
+// Одноимённые неявные переменные других процедур (или модуля), которым
+// присваивается значение: "R2Change (RQdebugger.bas(10951))"; '' - таких
+// нет. Для подозрения "нигде не получает значение": у неявной переменной
+// своя область - SUB, и присваивание в другой SUB её не касается.
+function TRqFbConv.AssignedElsewhere(AVar: TRqVar): string;
+var
+  VarIdx, Shown: Integer;
+  Other: TRqVar;
+  Where: string;
+begin
+  Result := '';
+  Shown := 0;
+  for VarIdx := 0 to FVars.Count - 1 do
+  begin
+    Other := TRqVar(FVars.Objects[VarIdx]);
+    if (Other = AVar) or (Other.Name <> AVar.Name) or
+       (Other.Scope = AVar.Scope) or not Other.Assigned then
+      Continue;
+    Inc(Shown);
+    if Shown > 3 then
+    begin
+      Result := Result + ', ...';
+      Break;
+    end;
+    if Other.Scope = '' then
+      Where := 'вне SUB'
+    else
+      Where := 'в ' + Other.Scope;
+    if Other.AssignLine > 0 then
+      Where := Where + ' (' + ExtractFileName(Other.AssignFile) + '(' +
+               IntToStr(Other.AssignLine) + '))';
+    if Result <> '' then
+      Result := Result + ', ';
+    Result := Result + Where;
+  end;
+end;
+
+// Область переменной словами: "SUB Name" / "FUNCTION Name" / "модуле"
+function TRqFbConv.ScopeText(const AScope: string): string;
+var
+  ProcRec: TRqProc;
+begin
+  if AScope = '' then
+  begin
+    Result := 'модуле';
+    Exit;
+  end;
+  ProcRec := FindProc(AScope);
+  if (ProcRec <> nil) and ProcRec.IsFunc then
+    Result := 'FUNCTION ' + AScope
+  else
+    Result := 'SUB ' + AScope;
 end;
 
 // Значение необъявленной переменной в тексте предупреждения
@@ -4263,7 +4337,7 @@ end;
 
 procedure TRqFbConv.ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
 var
-  Up: string;
+  Up, Elsewhere: string;
   PrevIdx, NextIdx, TypeIdx, CloseIdx, VarFound: Integer;
   VarRec: TRqVar;
   ProcRec: TRqProc;
@@ -4603,9 +4677,22 @@ begin
   // всегда 0 / "" (так RapidQ молча и работает); чаще всего опечатка:
   // REPLACESUBSTR$(s, crlfcrlf, crlf) вместо crlf+crlf
   if (FPass = 2) and not VarRec.Explicit and not VarRec.Assigned then
-    SuspectOnce('NA|' + VarRec.Scope + '|' + VarRec.Name, AToks[AIdx].Text +
-      ': не объявлена и нигде не получает значение - в RapidQ всегда ' +
-      DefaultValueText(VarRec.RqType) + ' (опечатка или объявлена в файле, которого нет?)');
+  begin
+    Elsewhere := AssignedElsewhere(VarRec);
+    if Elsewhere = '' then
+      SuspectOnce('NA|' + VarRec.Scope + '|' + VarRec.Name, AToks[AIdx].Text +
+        ': не объявлена и нигде не получает значение - в RapidQ всегда ' +
+        DefaultValueText(VarRec.RqType) + ' (опечатка или объявлена в файле, которого нет?)')
+    else
+      // Одноимённой в другой SUB значение присваивается - но это другая
+      // переменная: без DIM у каждой SUB своя
+      SuspectOnce('NA|' + VarRec.Scope + '|' + VarRec.Name, AToks[AIdx].Text +
+        ' в ' + ScopeText(VarRec.Scope) + ': не объявлена и здесь не ' +
+        'получает значение - всегда ' + DefaultValueText(VarRec.RqType) +
+        '. Значение присваивается одноимённой ' + Elsewhere +
+        ' - это другая переменная: без DIM у каждой SUB своя. Нужна одна ' +
+        'на все - DIM ' + AToks[AIdx].Text + ' вне SUB');
+  end;
 end;
 
 // Присваивание (Переменная = выражение, Объект.Свойство = выражение) или
@@ -4856,13 +4943,13 @@ begin
     begin
       CloseIdx := MatchParen(AToks, LhsEnd, EqIdx - 1);
       VarRec := ResolveVar(Display, True);
-      VarRec.Assigned := True;
+      MarkAssigned(VarRec);
       if CloseIdx > 0 then
         ProcessExpr(AToks, LhsEnd + 1, CloseIdx - 1);
     end
     else
       VarRec := ResolveVar(Display, False);
-    VarRec.Assigned := True;
+    MarkAssigned(VarRec);
     AToks[FirstIdx].OutText := VarRec.FbName;
     if (VarRec.Scope = '') and VarRec.Explicit then
       GlobalQualify(AToks, FirstIdx);
@@ -6483,7 +6570,7 @@ begin
   if (VarIdx >= 0) and (AToks[VarIdx].Kind = tkIdent) then
   begin
     VarRec := ResolveVar(AToks[VarIdx].Text, False);
-    VarRec.Assigned := True;
+    MarkAssigned(VarRec);
     AToks[VarIdx].OutText := VarRec.FbName;
     ProcessExpr(AToks, VarIdx + 1, ATo);
   end
@@ -7191,7 +7278,7 @@ begin
   ProcessExpr(AToks, TargetIdx, CommaIdx - 1);
   VarRec := FindVar(AToks[TargetIdx].Up);
   if VarRec <> nil then
-    VarRec.Assigned := True;
+    MarkAssigned(VarRec);
   Target := RangeText(AToks, TargetIdx, CommaIdx - 1);
   Step := '1';
   if CommaIdx < ArgTo then
