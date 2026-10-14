@@ -34941,6 +34941,78 @@ begin
     FHfPath.Caption := Note;
 end;
 
+// Меню Started Util: все видимые окна программы, кроме главного, - окна
+// утилит (недостающие файлы, строгая проверка, Find In Files, INC Manager,
+// окна отладчика ...). Немодальное окно может уйти под главное; пункт
+// поднимает его. Перестраивается по простою, только когда набор окон или
+// их заголовки сменились.
+procedure TForm1.UtilMenuUpdate;
+var
+  FormIdx: Integer;
+  OneForm: TCustomForm;
+  Sig: string;
+  Item: TMenuItem;
+begin
+  if FUtilMenu = nil then
+    Exit;
+  Sig := '';
+  for FormIdx := 0 to Screen.CustomFormCount - 1 do
+  begin
+    OneForm := Screen.CustomForms[FormIdx];
+    if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
+      Continue;
+    Sig := Sig + IntToHex(Integer(OneForm), 8) + OneForm.Caption + #1;
+  end;
+  if Sig = FUtilSig then
+    Exit;
+  FUtilSig := Sig;
+  FUtilMenu.Clear;
+  for FormIdx := 0 to Screen.CustomFormCount - 1 do
+  begin
+    OneForm := Screen.CustomForms[FormIdx];
+    if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
+      Continue;
+    Item := TMenuItem.Create(FUtilMenu);
+    Item.Caption := StringReplace(OneForm.Caption, '&', '&&', [rfReplaceAll]);
+    Item.Tag := Integer(OneForm);
+    Item.OnClick := UtilMenuClick;
+    FUtilMenu.Add(Item);
+  end;
+  // Пустое меню строка меню не раскрывает - пункт-пояснение
+  if FUtilMenu.Count = 0 then
+  begin
+    Item := TMenuItem.Create(FUtilMenu);
+    Item.Caption := '(открытых окон утилит нет)';
+    Item.Enabled := False;
+    FUtilMenu.Add(Item);
+  end;
+  if FMenuBar <> nil then
+    FMenuBar.Invalidate;
+end;
+
+// Пункт Started Util: окно - наверх (свёрнутое - развернуть). Окно могло
+// закрыться после постройки меню - ищется среди открытых.
+procedure TForm1.UtilMenuClick(Sender: TObject);
+var
+  FormIdx: Integer;
+  OneForm: TCustomForm;
+begin
+  for FormIdx := 0 to Screen.CustomFormCount - 1 do
+  begin
+    OneForm := Screen.CustomForms[FormIdx];
+    if Integer(OneForm) <> TMenuItem(Sender).Tag then
+      Continue;
+    if not OneForm.Visible then
+      Exit;
+    if OneForm.WindowState = wsMinimized then
+      OneForm.WindowState := wsNormal;
+    OneForm.BringToFront;
+    if OneForm.CanFocus then
+      OneForm.SetFocus;
+    Exit;
+  end;
+end;
+
 // Имя из сообщения rc.exe "$INCLUDE file X does not exist"; '' - такого нет
 function RqMissingInclude(ALines: TStrings): string;
 const
