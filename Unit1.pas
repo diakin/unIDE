@@ -55306,6 +55306,9 @@ begin
   // Справка RapidQ (Help - RapidQ, F1): CHM и слова для F1 (RqHelp)
   CopyIfNewer('rapidq_ref\help\rapidq.chm');
   CopyIfNewer('rapidq_ref\help\keywords.txt');
+  // Руководство FreeBASIC (Help - FreeBASIC, F1): fb_ref\gen_fb_chm.py
+  CopyIfNewer('fb_ref\help\freebasic.chm');
+  CopyIfNewer('fb_ref\help\fbkeywords.txt');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
     'schemes, rapidq_ref\Component*.data - которых там не было или ' +
@@ -68044,9 +68047,10 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-//  Справка FreeBASIC: руководство FreeBASIC в CHM (FB-manual-*.chm с сайта
-//  FreeBASIC). Файл не входит в архив компилятора и ищется так:
+//  Справка FreeBASIC: руководство FreeBASIC в CHM. Ищется так:
 //    - поле HelpFile раздела FreeBASIC в editor.ini (выбранный файл);
+//    - fb_ref\help\freebasic.chm - своя сборка из исходников fbc
+//      (fb_ref\gen_fb_chm.py), рядом с exe, выше или в projects\*;
 //    - *.chm с "fb" или "freebasic" в имени в папке fbc (32 и 64 бит), её
 //      подпапке doc и папке выше;
 //    - то же рядом с unIDE и в его подпапке help.
@@ -68154,6 +68158,9 @@ begin
     Result := Stored;
     Exit;
   end;
+  Result := FbRefChm;
+  if Result <> '' then
+    Exit;
 
   Dirs := TStringList.Create;
   try
@@ -68255,7 +68262,7 @@ begin
     // Файл FreeBASIC - руководство FreeBASIC, слово по его указателю
     Result := True;
     ChmFile := FbHelpFile(True);
-    if (ChmFile <> '') and not ChmKeyword(ChmFile, HelpWordAtCaret) then
+    if (ChmFile <> '') and not FbHelpKeyword(ChmFile, HelpWordAtCaret) then
       ShowMessage('Справка FreeBASIC: ' + RqHelpLastError);
     Exit;
   end;

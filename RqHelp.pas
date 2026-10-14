@@ -44,6 +44,14 @@ function ChmShowTopic(const AChm, ATopic: string): Boolean;
 function ChmShowIndex(const AChm, AKeyword: string): Boolean;
 function ChmKeyword(const AChm, AWord: string): Boolean;
 
+// Руководство FreeBASIC из исходников fbc (fb_ref\gen_fb_chm.py):
+// fb_ref\help\freebasic.chm - путь, '' - нет (папка fb_ref ищется там же,
+// где rapidq_ref)
+function FbRefChm: string;
+// F1: страница слова по fbkeywords.txt рядом с CHM (слово с суффиксом типа
+// и без него), иначе переход по указателю CHM (ChmKeyword)
+function FbHelpKeyword(const AChm, AWord: string): Boolean;
+
 implementation
 
 uses
@@ -89,22 +97,23 @@ begin
   Result := HelpError;
 end;
 
-// Папки-кандидаты rapidq_ref, с "\" в конце
-procedure CandidateDirs(AList: TStrings);
+// Папки-кандидаты AFolder (rapidq_ref, fb_ref), с "\" в конце
+procedure CandidateDirs(AList: TStrings; const AFolder: string = 'rapidq_ref');
 var
   ExeDir, ProjDir: string;
   Found: TSearchRec;
 begin
   ExeDir := ExtractFilePath(Application.ExeName);
-  AList.Add(ExeDir + 'rapidq_ref\');
-  AList.Add(ExtractFilePath(ExcludeTrailingPathDelimiter(ExeDir)) + 'rapidq_ref\');
+  AList.Add(ExeDir + AFolder + '\');
+  AList.Add(ExtractFilePath(ExcludeTrailingPathDelimiter(ExeDir)) + AFolder +
+            '\');
   ProjDir := ExeDir + 'projects\';
   if FindFirst(ProjDir + '*', faDirectory, Found) = 0 then
   try
     repeat
       if ((Found.Attr and faDirectory) <> 0) and (Found.Name <> '.') and
          (Found.Name <> '..') then
-        AList.Add(ProjDir + Found.Name + '\rapidq_ref\');
+        AList.Add(ProjDir + Found.Name + '\' + AFolder + '\');
     until FindNext(Found) <> 0;
   finally
     FindClose(Found);
@@ -287,6 +296,65 @@ begin
     Result := ChmShowIndex(AChm, AWord);
 end;
 
+function FbRefChm: string;
+var
+  Dirs: TStringList;
+  DirIdx: Integer;
+begin
+  Result := '';
+  Dirs := TStringList.Create;
+  try
+    CandidateDirs(Dirs, 'fb_ref');
+    for DirIdx := 0 to Dirs.Count - 1 do
+      if FileExists(Dirs[DirIdx] + 'help\freebasic.chm') then
+      begin
+        Result := ExpandFileName(Dirs[DirIdx] + 'help\freebasic.chm');
+        Exit;
+      end;
+  finally
+    Dirs.Free;
+  end;
+end;
+
+var
+  FbKeywords: TStringList = nil;
+  FbKeywordsFile: string = '';
+  FbKeywordsAge: Integer = -1;
+
+function FbHelpKeyword(const AChm, AWord: string): Boolean;
+var
+  KeyFile, Topic, Bare: string;
+  Age: Integer;
+begin
+  Topic := '';
+  KeyFile := ExtractFilePath(AChm) + 'fbkeywords.txt';
+  if (AWord <> '') and FileExists(KeyFile) then
+  begin
+    Age := FileAge(KeyFile);
+    if (FbKeywords = nil) or (CompareText(KeyFile, FbKeywordsFile) <> 0) or
+       (Age <> FbKeywordsAge) then
+    begin
+      if FbKeywords = nil then
+        FbKeywords := TStringList.Create;
+      FbKeywords.LoadFromFile(KeyFile);
+      FbKeywordsFile := KeyFile;
+      FbKeywordsAge := Age;
+    end;
+    Topic := FbKeywords.Values[UpperCase(AWord)];
+    // Left$ - страница Left: суффикс типа в списке не пишется
+    if (Topic = '') and (Length(AWord) > 1) and
+       (AWord[Length(AWord)] in ['$', '%', '&', '!', '#']) then
+    begin
+      Bare := Copy(AWord, 1, Length(AWord) - 1);
+      Topic := FbKeywords.Values[UpperCase(Bare)];
+    end;
+  end;
+  if Topic <> '' then
+    Result := ChmShowTopic(AChm, Topic)
+  else
+    Result := ChmKeyword(AChm, AWord);
+end;
+
 procedure RqHelpCloseAll;
 begin
   // Окна справки - до выхода: потоки hhctrl.ocx при выгрузке программы с
@@ -299,5 +367,6 @@ initialization
 
 finalization
   FreeAndNil(Keywords);
+  FreeAndNil(FbKeywords);
 
 end.
