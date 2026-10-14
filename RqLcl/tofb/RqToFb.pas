@@ -489,6 +489,9 @@ type
     FRedims: TStringList;         // имена, у которых есть REDIM
     FDefines: TRqNameMap;         // NAME -> замена
     FResources: TStringList;      // $RESOURCE: ИМЯ=полный путь ('' - не найден)
+    // Файлы исходника по номерам для RqRtAt (место ошибки RqLcl/rqrt):
+    // перед оператором строки - "RqRtAt = номер*1000000 + __LINE__ :"
+    FAtFiles: TStringList;
     // $OPTION ICON "файл.ico": значок exe (полный путь; '' - не задан)
     FAppIcon: string;
     FDoneFiles: TStringList;      // исходный файл (верхний регистр) -> вывод
@@ -635,6 +638,7 @@ type
 
     // Операторы
     procedure ProcessLine(const AText: string; var AOut: string);
+    function  AtTrackable(const AToks: TToks; AFirstIdx: Integer): Boolean;
     procedure ProcessStatement(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessExpr(var AToks: TToks; AFrom, ATo: Integer);
     procedure WrapLibArgs(var AToks: TToks; AFrom, ATo: Integer; AProc: TRqProc);
@@ -1342,6 +1346,7 @@ begin
   FHoistConsts := TStringList.Create;
   FHoistDecls := TStringList.Create;
   FResources := TStringList.Create;
+  FAtFiles := TStringList.Create;
   FDoneFiles := TStringList.Create;
   FOutNames := TStringList.Create;
   FWarnedNames := TStringList.Create;
@@ -1421,6 +1426,7 @@ begin
   FHoistConsts.Free;
   FHoistDecls.Free;
   FResources.Free;
+  FAtFiles.Free;
   FDoneFiles.Free;
   FOutNames.Free;
   FWarnedNames.Free;
@@ -2990,6 +2996,63 @@ begin
 
   // DECLARE ... LIB и CONST с числом или строкой - в начало программы
   HoistLine(Toks, FirstIdx, AText, AOut);
+
+  // Место строки для сообщений об ошибках RqLcl и rqrt: перед обычным
+  // оператором - "RqRtAt = файл*1000000 + __LINE__ :" (одна запись числа;
+  // __LINE__ из-за #line - строка исходника RapidQ). Окно ошибки
+  // "Line(0) ..." тогда называет файл и строку, где был вызов.
+  if (FCurType = nil) and not FInType and (StartIdx = 0) and
+     AtTrackable(Toks, FirstIdx) then
+  begin
+    TokIdx := 1;
+    while (TokIdx <= Length(AOut)) and (AOut[TokIdx] in [' ', #9]) do
+      Inc(TokIdx);
+    if (TokIdx <= Length(AOut)) and not (AOut[TokIdx] in ['''', '#']) then
+    begin
+      Depth := FAtFiles.IndexOf(FCurFile);
+      if Depth < 0 then
+        Depth := FAtFiles.Add(FCurFile);
+      if Depth = 0 then
+        Insert('RqRtAt = __LINE__ : ', AOut, TokIdx)
+      else
+        Insert('RqRtAt = ' + IntToStr(Depth) + '000000 + __LINE__ : ', AOut,
+               TokIdx);
+    end;
+  end;
+end;
+
+// Строка начинается обычным оператором, перед которым можно поставить
+// другой через ":" (присваивание, вызов, IF, SELECT CASE, циклы, PRINT).
+// Не годятся: объявления, заголовки и концы блоков, CASE, ELSE, LOOP...
+function TRqFbConv.AtTrackable(const AToks: TToks; AFirstIdx: Integer): Boolean;
+var
+  Up: string;
+begin
+  Result := False;
+  if AFirstIdx < 0 then
+    Exit;
+  if IsOp(AToks, AFirstIdx, '?') or IsOp(AToks, AFirstIdx, '.') then
+  begin
+    Result := True;
+    Exit;
+  end;
+  if AToks[AFirstIdx].Kind <> tkIdent then
+    Exit;
+  Up := AToks[AFirstIdx].Up;
+  if Pos(' ' + Up + ' ', ' IF SELECT PRINT WHILE DO FOR CALL LET SWAP INC ' +
+         'DEC ') > 0 then
+  begin
+    Result := True;
+    Exit;
+  end;
+  if InList(FKeywords, Up) and (FindProc(Up) = nil) then
+    Exit;
+  if Pos(' ' + Up + ' ', ' DIM REDIM CONST DECLARE SUB FUNCTION SUBI ' +
+         'FUNCTIONI END TYPE CREATE CASE ELSE ELSEIF LOOP WEND NEXT ' +
+         'PUBLIC PRIVATE REM EXIT RETURN GOTO GOSUB DEFINT DEFSTR DEFDBL ' +
+         'DEFSNG DEFBYTE DEFWORD DEFDWORD DEFLNG DEFSHORT ') > 0 then
+    Exit;
+  Result := True;
 end;
 
 // Строка - один оператор DECLARE ... LIB (параметры и результат - числа и
@@ -8731,6 +8794,18 @@ begin
   Result := Result + '#include once "rqrt.bi"' + CrLf +
             '#include once "rqstream.bi"' + CrLf +
             '#include once "rqlcl.bi"' + CrLf;
+  // Имена файлов исходника для сообщений об ошибках (RqRtAtText)
+  if FAtFiles.Count > 0 then
+  begin
+    Result := Result + 'RqRtAtFiles = "';
+    for VarIdx := 0 to FAtFiles.Count - 1 do
+    begin
+      if VarIdx > 0 then
+        Result := Result + '" & Chr(1) & "';
+      Result := Result + StringReplace(FAtFiles[VarIdx], '"', '', [rfReplaceAll]);
+    end;
+    Result := Result + '"' + CrLf;
+  end;
   // CONST и DECLARE ... LIB со всей программы - до первого обращения
   // (HoistLine); на своих местах они - комментарии
   for VarIdx := 0 to FHoistConsts.Count - 1 do

@@ -151,7 +151,10 @@ Sub RqLclShowError(ByRef What As String)
         ErrText = Space(ErrLen)
         If ErrLen > 0 Then RqLastError(StrPtr(ErrText), ErrLen + 1)
     End If
-    RqLclMessageBox(0, What & Chr(13, 10) & ErrText, "RqLcl", &h10)
+    ' Где был вызов: файл и строка исходника RapidQ (RqRtAt, rqrt.bi)
+    Dim AtText As String = RqRtAtText()
+    If AtText <> "" Then AtText = Chr(13, 10, 13, 10) & "Строка исходника: " & AtText
+    RqLclMessageBox(0, What & Chr(13, 10) & ErrText & AtText, "RqLcl", &h10)
 End Sub
 
 ' Загрузить DLL и найти функции; при ошибке - окно и конец программы

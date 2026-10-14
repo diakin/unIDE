@@ -32,6 +32,38 @@ Const RqRtMaxWarnings = 50      ' предупреждений в лог за о
 
 Dim Shared RqRtWarnCount As Long
 
+' Где программа сейчас: перед операторами строки препроцессор ставит
+' RqRtAt = номер_файла * 1000000 + строка исходника RapidQ. Имена файлов -
+' в RqRtAtFiles через Chr(1) (заполняет начало программы).
+Dim Shared RqRtAt As Long
+Dim Shared RqRtAtFiles As String
+
+' Файл исходника последней строки RqRtAt ("" - неизвестно)
+Function RqRtAtFile() As String
+    Dim FileIdx As Long = RqRtAt \ 1000000
+    Dim StartPos As Long = 1
+    Dim NextPos As Long
+    Do While FileIdx > 0
+        NextPos = InStr(StartPos, RqRtAtFiles, Chr(1))
+        If NextPos = 0 Then Return ""
+        StartPos = NextPos + 1
+        FileIdx -= 1
+    Loop
+    NextPos = InStr(StartPos, RqRtAtFiles, Chr(1))
+    If NextPos = 0 Then Return Mid(RqRtAtFiles, StartPos)
+    Return Mid(RqRtAtFiles, StartPos, NextPos - StartPos)
+End Function
+
+Function RqRtAtLine() As Long
+    Return RqRtAt Mod 1000000
+End Function
+
+' "файл(строка)" последнего оператора, "" - неизвестно
+Function RqRtAtText() As String
+    If RqRtAt <= 0 Then Return ""
+    Return RqRtAtFile() & "(" & RqRtAtLine() & ")"
+End Function
+
 ' Лог-файл: <папка exe>\<имя exe>_error.log
 Function RqRtLogName() As String
     Dim ExeName As String = Command(0)
@@ -85,10 +117,17 @@ End Sub
 ' Ошибка в классе RapidQ (номер вне списка, нет файла): Smart -
 ' предупреждение, программа продолжает работу; Compat - конец программы
 Sub RqRtClassError(ByRef Msg As String)
+    ' Место - последняя строка исходника, отмеченная препроцессором
+    Dim AtFile As String
+    Dim AtLine As Long
+    If RqRtAt > 0 Then
+        AtFile = RqRtAtFile()
+        AtLine = RqRtAtLine()
+    End If
 #ifdef RQ_COMPAT
-    RqRtFatal(Msg, "", 0)
+    RqRtFatal(Msg, AtFile, AtLine)
 #else
-    RqRtWarn(Msg, "", 0)
+    RqRtWarn(Msg, AtFile, AtLine)
 #endif
 End Sub
 
