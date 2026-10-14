@@ -64484,17 +64484,13 @@ begin
   LayoutScrollBars;
   UpdateScrollBars;
 
-  // Последний проект поднимаем В САМОМ КОНЦЕ: LoadProject вызывает
-  // CloseAllWindows, и демонстрационный текст вместе со схемой .pas будет
-  // заменён на файлы проекта. Делать это раньше бессмысленно - всё затёрлось бы.
-  if ProjectExists(FStartupProject) then
-  begin
-    StartupStage('Проект ' + FStartupProject);
-    LoadProject(FStartupProject);
-  end;
-
   // Свои полосы прокрутки у списков и деревьев правой панели, затем цвета
-  // IDE (Light / Dark) - когда все элементы окна построены
+  // IDE (Light / Dark) - когда все элементы окна построены (FormCreate).
+  //
+  // ДО загрузки проекта: тема и шрифты меняют размеры полос окна, и окно
+  // перестраивается. С коротким демонстрационным текстом в редакторе это
+  // дёшево; с текстом проекта (Unit1.pas, 2,2 МБ) одно выравнивание
+  // занимало ~250 мс (startup.log, «Тема и шрифты: выравнивание окна»).
   UiWrapListScrolls;
 
   // Фильтр SubList - поле в шапке колонки Name (SubFilterPlace). Поверх
@@ -64543,6 +64539,15 @@ begin
   begin
     SubListFitColumns;
     SubFilterPlace;
+  end;
+
+  // Последний проект поднимаем В САМОМ КОНЦЕ: LoadProject вызывает
+  // CloseAllWindows, и демонстрационный текст вместе со схемой .pas будет
+  // заменён на файлы проекта. Делать это раньше бессмысленно - всё затёрлось бы.
+  if ProjectExists(FStartupProject) then
+  begin
+    StartupStage('Проект ' + FStartupProject);
+    LoadProject(FStartupProject);
   end;
 
   // Правая панель была свёрнута при выходе
