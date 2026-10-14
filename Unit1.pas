@@ -34620,6 +34620,15 @@ var
   Dep: TRqDep;
   Scheme: TClrScheme;
 begin
+  // Окно недостающих файлов немодальное: пока оно открыто, вторая сборка
+  // его не открывает - окно поднимается наверх
+  if RqDepsDialogActive then
+  begin
+    LogComp('Окно недостающих файлов уже открыто: сборка продолжится после ' +
+            'него');
+    Result := False;
+    Exit;
+  end;
   Result := True;
   BasKey := LowerCase(ExpandFileName(ABas));
   Scan := TRqDepScan.Create;
@@ -34694,12 +34703,14 @@ begin
     Roots.Add('Include User|' + UserDir);
     Roots.Add('папка программы|' + MainDir);
     Roots.Add('папка выше|' + ExtractFileDir(MainDir));
+    // Свои папки - кнопка [...] в окне
+    RqDepsAddUserRoots(Roots, SettingsFileName);
 
     // Просмотр текста в окне - с подсветкой схемой программы
     Scheme := SchemeCopyFor(ABas);
     try
       Result := RqDepsDialog(Self, Scan, Roots, RefDir, SysDir, CopyLog,
-                             Ignore, Scheme);
+                             Ignore, Scheme, SettingsFileName);
     finally
       Scheme.Free;
     end;
@@ -47374,7 +47385,7 @@ begin
   // копирования (RqDeps). Отмена в окне - без сборки.
   if not FRqProbeActive and not RqDepsBeforeBuild(Bas, IncDir) then
   begin
-    LogComp('Сборка RapidQ отменена в окне недостающих файлов');
+    LogComp('Сборка RapidQ не продолжена (окно недостающих файлов)');
     Exit;
   end;
 

@@ -14,7 +14,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
-  ExtCtrls, ComCtrls, Dialogs, RichEdit,
+  ExtCtrls, ComCtrls, Dialogs, RichEdit, CommCtrl, IniFiles, FileCtrl,
   ClrScheme,    // схема подсветки для просмотра
   SchemeRtf,    // текст -> RTF с цветами схемы
   IncCheck,     // эталон, TIncProgress
@@ -25,11 +25,27 @@ uses
 // Показать окно. AScan - результат проверки (есть недостающие); ARoots -
 // шаги поиска "подпись|папка"; ARefDir / ASysDir - эталон для inc. ALog -
 // что скопировано (строки для лога сборки); AIgnore - имена (верхний
-// регистр), про которые больше не спрашивать. True - собирать дальше.
+// регистр), про которые больше не спрашивать. AIniFile - editor.ini:
+// положение окна, свои папки поиска. True - собирать дальше.
+//
+// Окно немодальное: пока оно открыто, с главным окном можно работать.
+// Функция ждёт его закрытия (свой цикл сообщений), поэтому сборка
+// продолжается после него, как раньше.
 function RqDepsDialog(AOwner: TComponent; AScan: TRqDepScan; ARoots: TStrings;
                       const ARefDir, ASysDir: string;
                       ALog, AIgnore: TStrings;
-                      AScheme: TClrScheme = nil): Boolean;
+                      AScheme: TClrScheme = nil;
+                      const AIniFile: string = ''): Boolean;
+
+// Окно уже открыто (сборка ждёт его): поднять его наверх, True
+function RqDepsDialogActive: Boolean;
+
+// Свои папки поиска (кнопка [...] в окне) - в конец ARoots шагами
+// "RqDepsUserRootLabel|папка"; хранятся в AIniFile, [RqDepsSearch] Dirs
+procedure RqDepsAddUserRoots(ARoots: TStrings; const AIniFile: string);
+
+const
+  RqDepsUserRootLabel = 'своя папка';
 
 implementation
 
@@ -57,6 +73,164 @@ begin
 end;
 
 type
+  // Таблица, у которой выделенная строка - в цветах самой таблицы (тема):
+  // Windows рисует выделение системными цветами, и без фокуса строка
+  // выходила белой. Цвет выделения - смесь фона и текста таблицы.
+  TRqListView = class(TListView)
+  private
+    procedure CNNotify(var Message: TWMNotify); message CN_NOTIFY;
+  end;
+
+// Цвет между AColor и ATo: APercent - доля ATo
+function MixColor(AColor, ATo: TColor; APercent: Integer): TColor;
+var
+  FromRgb, ToRgb: Integer;
+
+  function Part(AShift: Integer): Integer;
+  begin
+    Result := ((FromRgb shr AShift) and $FF) * (100 - APercent) div 100 +
+              ((ToRgb shr AShift) and $FF) * APercent div 100;
+  end;
+
+begin
+  FromRgb := ColorToRGB(AColor);
+  ToRgb := ColorToRGB(ATo);
+  Result := TColor(Part(0) or (Part(8) shl 8) or (Part(16) shl 16));
+end;
+
+procedure TRqListView.CNNotify(var Message: TWMNotify);
+var
+  Draw: PNMLVCustomDraw;
+begin
+  if Message.NMHdr^.code <> NM_CUSTOMDRAW then
+  begin
+    inherited;
+    Exit;
+  end;
+  Draw := PNMLVCustomDraw(Message.NMHdr);
+  inherited;
+  case Draw^.nmcd.dwDrawStage of
+    CDDS_PREPAINT:
+      Message.Result := Message.Result or CDRF_NOTIFYITEMDRAW;
+    CDDS_ITEMPREPAINT:
+      if ListView_GetItemState(Handle, Integer(Draw^.nmcd.dwItemSpec),
+                               LVIS_SELECTED) <> 0 then
+      begin
+        // Без признака "выделена" Windows берёт наши цвета строки
+        Draw^.nmcd.uItemState := Draw^.nmcd.uItemState and
+                                 not (CDIS_SELECTED or CDIS_FOCUS);
+        Draw^.clrTextBk := ColorToRGB(MixColor(Color, Font.Color, 30));
+        Draw^.clrText := ColorToRGB(Font.Color);
+      end;
+  end;
+end;
+
+type
+  // Окно списка своих папок поиска (кнопка [...])
+  TRqDirsEditor = class(TForm)
+  public
+    lbDirs: TListBox;
+    procedure Build(AFont: TFont);
+    procedure AddClick(Sender: TObject);
+    procedure DelClick(Sender: TObject);
+    procedure UpClick(Sender: TObject);
+    procedure DownClick(Sender: TObject);
+    procedure MoveSel(ADelta: Integer);
+  end;
+
+procedure TRqDirsEditor.Build(AFont: TFont);
+
+  function AddButton(const ACaption: string; ATop: Integer;
+                     AClick: TNotifyEvent): TUiButton;
+  begin
+    Result := TUiButton.Create(Self);
+    Result.Parent := Self;
+    Result.SetBounds(ClientWidth - 108, ATop, 100, 25);
+    Result.Anchors := [akTop, akRight];
+    Result.Caption := ACaption;
+    Result.OnClick := AClick;
+  end;
+
+var
+  lblHint: TLabel;
+  btnOk, btnCancel: TUiButton;
+begin
+  Caption := 'Папки поиска недостающих файлов';
+  BorderIcons := [biSystemMenu];
+  Position := poOwnerFormCenter;
+  Width := 640;
+  Height := 320;
+  Font := AFont;
+  lblHint := TLabel.Create(Self);
+  lblHint.Parent := Self;
+  lblHint.SetBounds(8, 8, 480, 13);
+  lblHint.Caption := 'После папки программы и папки выше - эти, с подпапками:';
+  lbDirs := TListBox.Create(Self);
+  lbDirs.Parent := Self;
+  lbDirs.SetBounds(8, 26, ClientWidth - 124, ClientHeight - 34);
+  lbDirs.Anchors := [akLeft, akTop, akRight, akBottom];
+  AddButton('Добавить...', 26, AddClick);
+  AddButton('Убрать', 56, DelClick);
+  AddButton('Выше', 86, UpClick);
+  AddButton('Ниже', 116, DownClick);
+  btnOk := AddButton('OK', ClientHeight - 64, nil);
+  btnOk.Anchors := [akRight, akBottom];
+  btnOk.ModalResult := mrOk;
+  btnCancel := AddButton('Отмена', ClientHeight - 34, nil);
+  btnCancel.Anchors := [akRight, akBottom];
+  btnCancel.ModalResult := mrCancel;
+end;
+
+procedure TRqDirsEditor.AddClick(Sender: TObject);
+var
+  NewDir: string;
+begin
+  NewDir := '';
+  if lbDirs.ItemIndex >= 0 then
+    NewDir := lbDirs.Items[lbDirs.ItemIndex];
+  if not SelectDirectory('Папка для поиска недостающих файлов', '', NewDir) then
+    Exit;
+  NewDir := ExcludeTrailingPathDelimiter(NewDir);
+  if lbDirs.Items.IndexOf(NewDir) < 0 then
+    lbDirs.ItemIndex := lbDirs.Items.Add(NewDir);
+end;
+
+procedure TRqDirsEditor.DelClick(Sender: TObject);
+var
+  SelIdx: Integer;
+begin
+  SelIdx := lbDirs.ItemIndex;
+  if SelIdx < 0 then
+    Exit;
+  lbDirs.Items.Delete(SelIdx);
+  if SelIdx >= lbDirs.Items.Count then
+    SelIdx := lbDirs.Items.Count - 1;
+  lbDirs.ItemIndex := SelIdx;
+end;
+
+procedure TRqDirsEditor.UpClick(Sender: TObject);
+begin
+  MoveSel(-1);
+end;
+
+procedure TRqDirsEditor.DownClick(Sender: TObject);
+begin
+  MoveSel(1);
+end;
+
+procedure TRqDirsEditor.MoveSel(ADelta: Integer);
+var
+  SelIdx: Integer;
+begin
+  SelIdx := lbDirs.ItemIndex;
+  if (SelIdx < 0) or (SelIdx + ADelta < 0) or
+     (SelIdx + ADelta >= lbDirs.Items.Count) then
+    Exit;
+  lbDirs.Items.Exchange(SelIdx, SelIdx + ADelta);
+  lbDirs.ItemIndex := SelIdx + ADelta;
+end;
+
+type
   TRqDepsForm = class(TForm)
   private
     FScan: TRqDepScan;
@@ -71,11 +245,22 @@ type
     FLastTick: Cardinal;
     FFilling: Boolean;
     FStartTimer: TTimer;
-    lblInfo: TLabel;
-    lvDeps: TListView;
+    FIniFile: string;
+    // Верхнее поле: что не найдено, папки по умолчанию, кнопка поиска и
+    // список папок поиска
+    pnlTop: TPanel;
+    lblHead: TLabel;
+    lblUnIdeName: TLabel;
+    lblUnIdePath: TLabel;
+    lblUserName: TLabel;
+    lblUserPath: TLabel;
+    lblPress: TLabel;
+    lblDirs: TLabel;
+    btnDirs: TUiButton;
+    lvDeps: TRqListView;
     lblCands: TLabel;
     pnlCands: TPanel;
-    lvCands: TListView;     // копии на диске: путь, размер, создан, изменён
+    lvCands: TRqListView;     // копии на диске: путь, размер, создан, изменён
     splDeps: TSplitter;
     splCands: TSplitter;
     memPreview: TRichEdit20;  // текст копии, выделенной в lvCands
@@ -117,6 +302,14 @@ type
     FShowReport: Boolean;
     lblStatus: TLabel;
     procedure BuildControls;
+    procedure FillTop;
+    procedure PlaceTop;
+    procedure btnDirsClick(Sender: TObject);
+    procedure FitColumns(AList: TListView);
+    procedure LoadPlacement;
+    procedure SavePlacement;
+    procedure EmptyPreview(const AText: string);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FillList;
     procedure FillRow(AItem: TListItem);
     procedure ShowSelected;
@@ -156,9 +349,15 @@ type
     function  EnsureRef: Boolean;
     procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure CollectIgnore;
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
   public
     destructor Destroy; override;
   end;
+
+var
+  // Открытое окно (сборка ждёт его) - второй раз не открывается
+  OpenDlg: TRqDepsForm = nil;
 
 function DepWhere(ADep: TRqDep): string;
 begin
@@ -166,6 +365,14 @@ begin
 end;
 
 { TRqDepsForm }
+
+// Окно немодальное, но над главным окном IDE: иначе оно уходило бы за него
+procedure TRqDepsForm.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
+    Params.WndParent := Application.MainForm.Handle;
+end;
 
 destructor TRqDepsForm.Destroy;
 begin
@@ -212,13 +419,61 @@ begin
   ShowHint := True;
   AutoScroll := False;   // всё размещает выравнивание, прокрутка не нужна
   OnCloseQuery := FormCloseQuery;
+  OnClose := FormClose;
 
-  lblInfo := TLabel.Create(Self);
-  lblInfo.Parent := Self;
-  lblInfo.Align := alTop;
-  lblInfo.AutoSize := True;
-  lblInfo.WordWrap := True;
-  lblInfo.Layout := tlCenter;
+  // Верхнее поле: заголовок, папки Include, кнопка "Искать", папки поиска
+  // и кнопка [...] их списка. Тексты и места - FillTop / PlaceTop.
+  pnlTop := TPanel.Create(Self);
+  pnlTop.Parent := Self;
+  pnlTop.Top := 0;
+  pnlTop.Height := 112;
+  pnlTop.Align := alTop;
+  pnlTop.BevelOuter := bvNone;
+  pnlTop.Caption := '';
+
+  lblHead := TLabel.Create(Self);
+  lblHead.Parent := pnlTop;
+  lblHead.Left := 8;
+  lblHead.Top := 6;
+  lblHead.Font.Style := [fsBold];
+  lblUnIdeName := TLabel.Create(Self);
+  lblUnIdeName.Parent := pnlTop;
+  lblUnIdeName.SetBounds(8, 26, 90, 13);
+  lblUnIdeName.Caption := 'Include UnIde';
+  lblUnIdePath := TLabel.Create(Self);
+  lblUnIdePath.Parent := pnlTop;
+  lblUnIdePath.Left := 100;
+  lblUnIdePath.Top := 26;
+  lblUserName := TLabel.Create(Self);
+  lblUserName.Parent := pnlTop;
+  lblUserName.SetBounds(8, 44, 90, 13);
+  lblUserName.Caption := 'Include User';
+  lblUserPath := TLabel.Create(Self);
+  lblUserPath.Parent := pnlTop;
+  lblUserPath.Left := 100;
+  lblUserPath.Top := 44;
+  lblPress := TLabel.Create(Self);
+  lblPress.Parent := pnlTop;
+  lblPress.Left := 8;
+  lblPress.Top := 68;
+  lblPress.Caption := 'Нажмите "Искать" для поиска недостающих файлов в папках';
+  btnSearch := TUiButton.Create(Self);
+  btnSearch.Parent := pnlTop;
+  btnSearch.SetBounds(0, 63, 90, 23);
+  btnSearch.Caption := 'Искать';
+  btnSearch.OnClick := btnSearchClick;
+  btnSearch.Hint := 'Искать недостающие файлы в папках из строки ниже; во ' +
+                    'время поиска - остановить';
+  lblDirs := TLabel.Create(Self);
+  lblDirs.Parent := pnlTop;
+  lblDirs.Left := 8;
+  lblDirs.Top := 92;
+  btnDirs := TUiButton.Create(Self);
+  btnDirs.Parent := pnlTop;
+  btnDirs.SetBounds(0, 89, 30, 20);
+  btnDirs.Caption := '...';
+  btnDirs.OnClick := btnDirsClick;
+  btnDirs.Hint := 'Свои папки для поиска: добавить, убрать, порядок';
 
   // Низ окна: пояснение, куда, кнопки, строка хода
   pnlBottom := TPanel.Create(Self);
@@ -256,19 +511,16 @@ begin
   chkIgnore.Hint := 'Неотмеченные файлы для этой программы больше не ' +
                     'проверяются (editor.ini, [RqDepsIgnore])';
 
-  btnSearch := MakeButton('Искать снова', 8, 100, btnSearchClick);
-  btnSearch.Hint := 'Искать недостающие на диске ещё раз; во время поиска - ' +
-                    'остановить';
-  btnCopyOnly := MakeButton('Скопировать', 116, 100, btnCopyOnlyClick);
+  btnCopyOnly := MakeButton('Скопировать', 8, 100, btnCopyOnlyClick);
   btnCopyOnly.Hint := 'Скопировать выбранные копии отмеченных файлов туда, ' +
                       'куда указано, без сборки; окно остаётся открытым';
-  btnCopy := MakeButton('Копировать отмеченные и собрать', 224, 200, btnCopyClick);
+  btnCopy := MakeButton('Копировать отмеченные и собрать', 116, 200, btnCopyClick);
   btnCopy.Hint := 'Скопировать выбранные копии отмеченных файлов и начать сборку';
-  btnBuild := MakeButton('Собрать без копирования', 432, 160, btnBuildClick);
-  btnCancel := MakeButton('Отмена', 600, 80, nil);
+  btnBuild := MakeButton('Собрать без копирования', 324, 160, btnBuildClick);
+  btnCancel := MakeButton('Отмена', 492, 80, nil);
   btnCancel.ModalResult := mrCancel;
-  btnFix := MakeButton('Проверить и исправить', 688, 150, btnFixClick);
-  btnUndo := MakeButton('Undo', 846, 60, btnUndoClick);
+  btnFix := MakeButton('Проверить и исправить', 580, 150, btnFixClick);
+  btnUndo := MakeButton('Undo', 738, 60, btnUndoClick);
   btnUndo.Hint := 'Отменить исправления: исправленные файлы удалить, ' +
                   'прежние вернуть из .bak';
   btnUndo.Enabled := False;
@@ -286,9 +538,9 @@ begin
 
   // Середина сверху вниз: недостающие | сплиттер | копии | сплиттер |
   // просмотр. Порядок alTop - по Top, поэтому Top задаётся до Align.
-  lvDeps := TListView.Create(Self);
+  lvDeps := TRqListView.Create(Self);
   lvDeps.Parent := Self;
-  lvDeps.Top := 100;
+  lvDeps.Top := 200;
   lvDeps.Height := 170;
   lvDeps.Align := alTop;
   lvDeps.ViewStyle := vsReport;
@@ -328,7 +580,7 @@ begin
   lblCands.Caption := ' Копий на диске несколько (выделенная - берётся, её ' +
                       'текст - ниже):';
 
-  lvCands := TListView.Create(Self);
+  lvCands := TRqListView.Create(Self);
   lvCands.Parent := pnlCands;
   lvCands.Align := alClient;
   lvCands.ViewStyle := vsReport;
@@ -420,11 +672,208 @@ begin
   memPreview.HideSelection := False;
   memPreview.Font.Name := 'Courier New';
   memPreview.Font.Height := -12;
+  // Цвет пустого просмотра - как у таблицы (тема), см. EmptyPreview
+  memPreview.ParentColor := False;
 
   FStartTimer := TTimer.Create(Self);
   FStartTimer.Interval := 50;
   FStartTimer.OnTimer := StartTimerTick;
   FStartTimer.Enabled := True;
+end;
+
+// Тексты верхнего поля: заголовок, папки Include (из шагов поиска), папки
+// поиска с подпапками - свои папки из списка [...]
+procedure TRqDepsForm.FillTop;
+var
+  RootIdx: Integer;
+  RootLabel, RootDir, DirsText: string;
+begin
+  if (FScan.CountOf(dpkResource) = 0) and (FScan.CountOf(dpkLib) = 0) then
+    lblHead.Caption := 'Inc файлы не найдены в папках по умолчанию'
+  else
+    lblHead.Caption := Format('Файлы не найдены в папках по умолчанию ' +
+      '(inc: %d, ресурсы: %d, DLL: %d)', [FScan.CountOf(dpkInclude),
+      FScan.CountOf(dpkResource), FScan.CountOf(dpkLib)]);
+  lblUnIdePath.Caption := '(не задана)';
+  lblUserPath.Caption := '(не задана)';
+  DirsText := 'папка программы с подпапками, папка выше,';
+  for RootIdx := 0 to FRoots.Count - 1 do
+  begin
+    RootLabel := Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1);
+    RootDir := Copy(FRoots[RootIdx], Pos('|', FRoots[RootIdx]) + 1, MaxInt);
+    if (CompareText(RootLabel, 'Include UnIde') = 0) and (RootDir <> '') then
+      lblUnIdePath.Caption := RootDir
+    else if (CompareText(RootLabel, 'Include User') = 0) and (RootDir <> '') then
+      lblUserPath.Caption := RootDir
+    else if RootLabel = RqDepsUserRootLabel then
+      DirsText := DirsText + ' ' + RootDir + ',';
+  end;
+  lblDirs.Caption := DirsText;
+  PlaceTop;
+end;
+
+// Кнопки - сразу за текстом своей строки
+procedure TRqDepsForm.PlaceTop;
+begin
+  btnSearch.Left := lblPress.Left + lblPress.Width + 8;
+  btnDirs.Left := lblDirs.Left + lblDirs.Width + 6;
+end;
+
+// Ширина столбцов - по самому длинному тексту (и заголовку)
+procedure TRqDepsForm.FitColumns(AList: TListView);
+var
+  ColIdx, ItemIdx, TextW, MaxW: Integer;
+  Item: TListItem;
+begin
+  if not AList.HandleAllocated then
+    Exit;
+  AList.Canvas.Font := AList.Font;
+  for ColIdx := 0 to AList.Columns.Count - 1 do
+  begin
+    MaxW := AList.Canvas.TextWidth(AList.Columns[ColIdx].Caption);
+    for ItemIdx := 0 to AList.Items.Count - 1 do
+    begin
+      Item := AList.Items[ItemIdx];
+      if ColIdx = 0 then
+        TextW := AList.Canvas.TextWidth(Item.Caption)
+      else if ColIdx - 1 < Item.SubItems.Count then
+        TextW := AList.Canvas.TextWidth(Item.SubItems[ColIdx - 1])
+      else
+        TextW := 0;
+      if TextW > MaxW then
+        MaxW := TextW;
+    end;
+    // Поля ячейки; у первого столбца ещё флажок
+    Inc(MaxW, 16);
+    if (ColIdx = 0) and AList.Checkboxes then
+      Inc(MaxW, 20);
+    AList.Columns[ColIdx].Width := MaxW;
+  end;
+end;
+
+// Свои папки поиска: список, кнопки добавить / убрать / порядок. Итог - в
+// шаги поиска (FRoots) и в editor.ini.
+procedure TRqDepsForm.btnDirsClick(Sender: TObject);
+var
+  Editor: TRqDirsEditor;
+  RootIdx: Integer;
+  Joined: string;
+  Ini: TIniFile;
+begin
+  Editor := TRqDirsEditor.CreateNew(Self);
+  try
+    Editor.Build(Font);
+    for RootIdx := 0 to FRoots.Count - 1 do
+      if Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1) =
+         RqDepsUserRootLabel then
+        Editor.lbDirs.Items.Add(Copy(FRoots[RootIdx],
+                                     Pos('|', FRoots[RootIdx]) + 1, MaxInt));
+    if Editor.ShowModal <> mrOk then
+      Exit;
+    // Шаги поиска: прежние свои папки - долой, новые - в конец
+    for RootIdx := FRoots.Count - 1 downto 0 do
+      if Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1) =
+         RqDepsUserRootLabel then
+        FRoots.Delete(RootIdx);
+    Joined := '';
+    for RootIdx := 0 to Editor.lbDirs.Items.Count - 1 do
+    begin
+      FRoots.Add(RqDepsUserRootLabel + '|' + Editor.lbDirs.Items[RootIdx]);
+      if Joined <> '' then
+        Joined := Joined + '|';
+      Joined := Joined + Editor.lbDirs.Items[RootIdx];
+    end;
+    if FIniFile <> '' then
+    begin
+      Ini := TIniFile.Create(FIniFile);
+      try
+        Ini.WriteString('RqDepsSearch', 'Dirs', Joined);
+      finally
+        Ini.Free;
+      end;
+    end;
+    FillTop;
+  finally
+    Editor.Free;
+  end;
+end;
+
+// Положение и размер окна, высота списка недостающих - из editor.ini
+procedure TRqDepsForm.LoadPlacement;
+var
+  Ini: TIniFile;
+  WinLeft, WinTop, WinWidth, WinHeight, ListHeight: Integer;
+  Work: TRect;
+begin
+  if (FIniFile = '') or not FileExists(FIniFile) then
+    Exit;
+  Ini := TIniFile.Create(FIniFile);
+  try
+    WinLeft := Ini.ReadInteger('RqDepsWindow', 'Left', MaxInt);
+    WinTop := Ini.ReadInteger('RqDepsWindow', 'Top', MaxInt);
+    WinWidth := Ini.ReadInteger('RqDepsWindow', 'Width', Width);
+    WinHeight := Ini.ReadInteger('RqDepsWindow', 'Height', Height);
+    ListHeight := Ini.ReadInteger('RqDepsWindow', 'ListHeight', 0);
+    if (WinLeft <> MaxInt) and (WinTop <> MaxInt) then
+    begin
+      // Окно - целиком на рабочем столе (монитор могли отключить)
+      Work := Screen.DesktopRect;
+      if WinWidth > Work.Right - Work.Left then
+        WinWidth := Work.Right - Work.Left;
+      if WinHeight > Work.Bottom - Work.Top then
+        WinHeight := Work.Bottom - Work.Top;
+      if WinLeft + WinWidth > Work.Right then
+        WinLeft := Work.Right - WinWidth;
+      if WinTop + WinHeight > Work.Bottom then
+        WinTop := Work.Bottom - WinHeight;
+      if WinLeft < Work.Left then
+        WinLeft := Work.Left;
+      if WinTop < Work.Top then
+        WinTop := Work.Top;
+      Position := poDesigned;
+      SetBounds(WinLeft, WinTop, WinWidth, WinHeight);
+    end;
+    if ListHeight >= 60 then
+      lvDeps.Height := ListHeight;
+    if Ini.ReadBool('RqDepsWindow', 'Maximized', False) then
+      WindowState := wsMaximized;
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure TRqDepsForm.SavePlacement;
+var
+  Ini: TIniFile;
+  Place: TWindowPlacement;
+begin
+  if FIniFile = '' then
+    Exit;
+  // Размер "в обычном виде", и когда окно развёрнуто
+  Place.length := SizeOf(Place);
+  if not GetWindowPlacement(Handle, @Place) then
+    Exit;
+  Ini := TIniFile.Create(FIniFile);
+  try
+    Ini.WriteInteger('RqDepsWindow', 'Left', Place.rcNormalPosition.Left);
+    Ini.WriteInteger('RqDepsWindow', 'Top', Place.rcNormalPosition.Top);
+    Ini.WriteInteger('RqDepsWindow', 'Width', Place.rcNormalPosition.Right -
+                     Place.rcNormalPosition.Left);
+    Ini.WriteInteger('RqDepsWindow', 'Height', Place.rcNormalPosition.Bottom -
+                     Place.rcNormalPosition.Top);
+    Ini.WriteBool('RqDepsWindow', 'Maximized', WindowState = wsMaximized);
+    Ini.WriteInteger('RqDepsWindow', 'ListHeight', lvDeps.Height);
+  finally
+    Ini.Free;
+  end;
+end;
+
+// Крестик: окно немодальное, закрытие = Отмена
+procedure TRqDepsForm.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  if ModalResult = mrNone then
+    ModalResult := mrCancel;
+  Action := caHide;
 end;
 
 function TRqDepsForm.SelectedDep: TRqDep;
@@ -528,6 +977,7 @@ begin
     lvDeps.Items.EndUpdate;
     FFilling := False;
   end;
+  FitColumns(lvDeps);
   if lvDeps.Items.Count > 0 then
   begin
     if KeepIdx >= lvDeps.Items.Count then
@@ -564,6 +1014,7 @@ begin
     finally
       lvCands.Items.EndUpdate;
     end;
+    FitColumns(lvCands);
     if (Dep <> nil) and (Dep.Chosen >= 0) and
        (Dep.Chosen < lvCands.Items.Count) then
     begin
@@ -620,7 +1071,7 @@ begin
   Dep := SelectedDep;
   if (Dep = nil) or (lvCands.Selected = nil) then
   begin
-    memPreview.Lines.Clear;
+    EmptyPreview('');
     Exit;
   end;
   FileName := lvCands.Selected.Caption;
@@ -650,9 +1101,7 @@ begin
   memPreview.Lines.Clear;
   if not AIsText then
   begin
-    // Не Lines.Add: у окна RichEdit 2.0 вставка строки через Lines
-    // кончается исключением "RichEdit line insertion error"
-    memPreview.Text := '(' + AFile + ' - не текст, просмотра нет)';
+    EmptyPreview('(' + AFile + ' - не текст, просмотра нет)');
     Exit;
   end;
   try
@@ -708,12 +1157,27 @@ begin
       end;
     end
     else
+    begin
+      EmptyPreview('');
       memPreview.Text := AdjustLineBreaks(Buf);
+    end;
     memPreview.SelStart := 0;
   except
     on E: Exception do
-      memPreview.Text := 'Не прочитан: ' + E.Message;
+      EmptyPreview('Не прочитан: ' + E.Message);
   end;
+end;
+
+// Просмотр без подсветки: цвета таблицы (тема IDE), не белый фон и не
+// фон схемы от прошлого файла. AText - пояснение вместо текста файла.
+procedure TRqDepsForm.EmptyPreview(const AText: string);
+begin
+  memPreview.Color := lvDeps.Color;
+  memPreview.Font.Color := lvDeps.Font.Color;
+  memPreview.DefAttributes.Color := lvDeps.Font.Color;
+  // Не Lines.Add: у окна RichEdit 2.0 вставка строки через Lines
+  // кончается исключением "RichEdit line insertion error"
+  memPreview.Text := AText;
 end;
 
 // Отчёт проверки / исправления - в список ошибок. Строка "путь - ..." задаёт
@@ -793,23 +1257,6 @@ begin
   end;
 end;
 
-// Цвет между AColor и ATo: APercent - доля ATo
-function MixColor(AColor, ATo: TColor; APercent: Integer): TColor;
-var
-  FromRgb, ToRgb: Integer;
-
-  function Part(AShift: Integer): Integer;
-  begin
-    Result := ((FromRgb shr AShift) and $FF) * (100 - APercent) div 100 +
-              ((ToRgb shr AShift) and $FF) * APercent div 100;
-  end;
-
-begin
-  FromRgb := ColorToRGB(AColor);
-  ToRgb := ColorToRGB(ATo);
-  Result := TColor(Part(0) or (Part(8) shl 8) or (Part(16) shl 16));
-end;
-
 procedure TRqDepsForm.lbReportDrawItem(Control: TWinControl; Index: Integer;
                                        Rect: TRect; State: TOwnerDrawState);
 var
@@ -821,10 +1268,8 @@ begin
             (lbReport.Items.Objects[Index] <> nil);
   Cv.Font := lbReport.Font;
   if odSelected in State then
-  begin
-    Cv.Brush.Color := clHighlight;
-    Cv.Font.Color := clHighlightText;
-  end
+    // Не системное выделение: в тёмной теме оно было белым пятном
+    Cv.Brush.Color := MixColor(lbReport.Color, lbReport.Font.Color, 30)
   else if IsHead then
     // Оттенок оранжевой панели поверх фона списка - и в светлой теме, и
     // в тёмной
@@ -920,7 +1365,9 @@ procedure TRqDepsForm.RefreshFoundRows;
 var
   ItemIdx, Total: Integer;
   Dep: TRqDep;
+  Changed: Boolean;
 begin
+  Changed := False;
   for ItemIdx := 0 to lvDeps.Items.Count - 1 do
   begin
     Dep := TRqDep(lvDeps.Items[ItemIdx].Data);
@@ -934,7 +1381,10 @@ begin
     finally
       FFilling := False;
     end;
+    Changed := True;
   end;
+  if Changed then
+    FitColumns(lvDeps);
   Total := 0;
   for ItemIdx := 0 to FScan.Count - 1 do
     if FScan[ItemIdx].Missing and (FScan[ItemIdx].Candidates.Count > 0) then
@@ -966,7 +1416,8 @@ begin
     btnSearch.Caption := 'Стоп';
   end
   else
-    btnSearch.Caption := 'Искать снова';
+    btnSearch.Caption := 'Искать';
+  btnDirs.Enabled := not ABusy;
   btnCopy.Enabled := not ABusy;
   btnCopyOnly.Enabled := not ABusy;
   btnFix.Enabled := not ABusy;
@@ -1010,7 +1461,7 @@ begin
     NotFound := FScan.MissingCount - FoundCount;
     if not AFull and (NotFound > 0) then
       lblStatus.Caption := lblStatus.Caption + Format('. Не найдено в папках ' +
-        'Include: %d - "Искать снова" ищет их в папке программы и выше',
+        'Include: %d - "Искать" ищет их в папках из верхнего поля',
         [NotFound]);
     if not Done then
       lblStatus.Caption := 'Поиск остановлен. ' + lblStatus.Caption;
@@ -1025,6 +1476,8 @@ end;
 procedure TRqDepsForm.StartTimerTick(Sender: TObject);
 begin
   FStartTimer.Enabled := False;
+  // Шрифты окна к этому времени - по теме IDE: кнопки - за текстом заново
+  PlaceTop;
   RunSearch(False);
 end;
 
@@ -1411,12 +1864,15 @@ end;
 function RqDepsDialog(AOwner: TComponent; AScan: TRqDepScan; ARoots: TStrings;
                       const ARefDir, ASysDir: string;
                       ALog, AIgnore: TStrings;
-                      AScheme: TClrScheme): Boolean;
+                      AScheme: TClrScheme; const AIniFile: string): Boolean;
 var
   Dlg: TRqDepsForm;
-  Kinds: string;
 begin
+  Result := False;
+  if OpenDlg <> nil then
+    Exit;
   Dlg := TRqDepsForm.CreateNew(AOwner);
+  OpenDlg := Dlg;
   try
     Dlg.FScan := AScan;
     Dlg.FRoots := ARoots;
@@ -1425,19 +1881,60 @@ begin
     Dlg.FLog := ALog;
     Dlg.FIgnore := AIgnore;
     Dlg.FScheme := AScheme;
+    Dlg.FIniFile := AIniFile;
     Dlg.BuildControls;
-    Kinds := Format('inc: %d, ресурсы: %d, DLL: %d',
-                    [AScan.CountOf(dpkInclude), AScan.CountOf(dpkResource),
-                     AScan.CountOf(dpkLib)]);
-    Dlg.lblInfo.Caption :=
-      ' Этих файлов нет там, где их возьмёт rc.exe (папка программы ' +
-      AScan.MainDir + ', папка -I ' + AScan.IncDir + ') или Windows (DLL: ' +
-      'папка exe, системные папки, PATH). Недостающих - ' + Kinds + '.'#13#10 +
-      ' Поиск: Include UnIde, Include User, папка программы с подпапками, ' +
-      'папка выше. Отмеченные копируются, затем сборка.';
-    Result := Dlg.ShowModal = mrOk;
+    Dlg.LoadPlacement;
+    Dlg.FillTop;
+    // Немодально: главное окно доступно. Ждём здесь, пока окно не закроют
+    // кнопкой (ModalResult) или крестиком; программу закрыли - отмена.
+    Dlg.Show;
+    repeat
+      Application.HandleMessage;
+    until (Dlg.ModalResult <> mrNone) or not Dlg.Visible or
+          Application.Terminated;
+    Result := Dlg.ModalResult = mrOk;
+    Dlg.SavePlacement;
+    Dlg.Hide;
   finally
+    OpenDlg := nil;
     Dlg.Free;
+  end;
+end;
+
+function RqDepsDialogActive: Boolean;
+begin
+  Result := OpenDlg <> nil;
+  if Result then
+  begin
+    if OpenDlg.WindowState = wsMinimized then
+      OpenDlg.WindowState := wsNormal;
+    OpenDlg.BringToFront;
+  end;
+end;
+
+procedure RqDepsAddUserRoots(ARoots: TStrings; const AIniFile: string);
+var
+  Ini: TIniFile;
+  Rest, OneDir: string;
+  SepPos: Integer;
+begin
+  if (AIniFile = '') or not FileExists(AIniFile) then
+    Exit;
+  Ini := TIniFile.Create(AIniFile);
+  try
+    Rest := Ini.ReadString('RqDepsSearch', 'Dirs', '');
+  finally
+    Ini.Free;
+  end;
+  while Rest <> '' do
+  begin
+    SepPos := Pos('|', Rest);
+    if SepPos = 0 then
+      SepPos := Length(Rest) + 1;
+    OneDir := Trim(Copy(Rest, 1, SepPos - 1));
+    if OneDir <> '' then
+      ARoots.Add(RqDepsUserRootLabel + '|' + OneDir);
+    Delete(Rest, 1, SepPos);
   end;
 end;
 
