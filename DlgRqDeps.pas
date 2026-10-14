@@ -285,12 +285,13 @@ end;
 
 { TRqDepsForm }
 
-// Окно немодальное, но над главным окном IDE: иначе оно уходило бы за него
+// Окно немодальное и обычное: может уйти за главное окно - поднимает его
+// меню Started Util
 procedure TRqDepsForm.CreateParams(var Params: TCreateParams);
 begin
   inherited CreateParams(Params);
-  if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
-    Params.WndParent := Application.MainForm.Handle;
+  // Не над главным окном: окна утилит - обычные, на передний план их
+  // поднимает меню Started Util
 end;
 
 destructor TRqDepsForm.Destroy;

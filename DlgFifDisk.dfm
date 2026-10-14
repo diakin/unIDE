@@ -11,7 +11,6 @@ object DlgFifDisk: TDlgFifDisk
   Font.Height = -13
   Font.Name = 'Tahoma'
   Font.Style = []
-  FormStyle = fsStayOnTop
   OldCreateOrder = False
   Position = poMainFormCenter
   PixelsPerInch = 96

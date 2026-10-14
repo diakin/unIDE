@@ -122,10 +122,8 @@ end;
 procedure TDlgFindInc.CreateParams(var Params: TCreateParams);
 begin
   inherited CreateParams(Params);
-  // Без владельца немодальное окно Delphi 7 принадлежит скрытому окну
-  // Application и уходит под редактор при щелчке по нему
-  if (Owner is TWinControl) and TWinControl(Owner).HandleAllocated then
-    Params.WndParent := TWinControl(Owner).Handle;
+  // Окно утилиты - обычное, не над главным окном: уходит под редактор при
+  // щелчке по нему, на передний план его поднимает меню Started Util
 end;
 
 procedure TDlgFindInc.ShowFind(const AName, ARefDir, ASysDir,
