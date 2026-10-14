@@ -2420,6 +2420,21 @@ type
     procedure RqSnapBtnState;
     procedure RapidQEventJump;
     procedure RapidQEventCreate(const AEvent: string);
+    function  RqFbIsGenerated(const AFile: string): Boolean;
+    function  RqFbSourceMain(const AFile: string): string;
+    function  RqFbModeGet(const ASrcMain: string): string;
+    procedure RqFbModeSet(const ASrcMain, AMode: string);
+    function  RqFbAskMode: Boolean;
+    procedure RqFbEditAttempt;
+    function  RqFbDetach: Boolean;
+    function  RqFbMapLine(ALines: TStrings; ALine: Integer; var AFile: string;
+                          var ASrcLine: Integer): Boolean;
+    function  RqSetPropInEditor(const AName: string; ACreateLine: Integer;
+                                const AProp, AValue, AOldValue: string;
+                                ACheckOld: Boolean;
+                                var AMsg: string): Boolean;
+    function  RqFbLinkedSet(const AName, AProp, AValue, AOldValue: string;
+                            ACheckOld: Boolean): Boolean;
     function  FbEventParams(const AEvent, ARqParams: string): string;
     function  DsgGetText: string;
     procedure DsgSetText(const AText: string);
@@ -3159,6 +3174,10 @@ type
     // нуля), Y уровень вложенности в строке; цвет - цвет линии отступа
     // этого уровня (FHotTabColors). Считает UpdatePairMatch.
     FLineBrackets: array of TPoint;
+    // Активная вкладка - перевод RqToFb в папке _rqfb (RqFbIsGenerated):
+    // текст только для чтения, правка свойств в инспекторе уходит в
+    // исходник RapidQ и повторяется здесь (RqFbLinkedSet)
+    FRqFbTab: Boolean;
 
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
@@ -8326,6 +8345,12 @@ begin
       IntToStr(TSchema) + ', текст ' + IntToStr(TText) + ', карта ' +
       IntToStr(TMap) + ' ' + MapFrom + ', табуляция ' + IntToStr(TTabStops) + ' ' + TabWhole + ', окно ' +
       IntToStr(TUi) + ', отрисовка ' + IntToStr(TPaint) + ')', clGray);
+
+  // Перевод RqToFb (_rqfb) - только для чтения: его пересоздаёт сборка
+  FRqFbTab := RqFbIsGenerated(FWindows[Index].FileName);
+  RichEdit1.ReadOnly := FRqFbTab;
+  if FRqFbTab then
+    StatusBar1.Panels[0].Text := 'Перевод RapidQ (_rqfb) - только чтение';
 
   // Таблица окна настроек - под схему новой вкладки. Иначе OK записал бы
   // таблицу прежней схемы в схему этой вкладки.
@@ -27538,6 +27563,15 @@ begin
     Exit;
   Obj := TDfmNode(FObjCurNode);
 
+  // Перевод _rqfb: правка - в исходник RapidQ и тут же сюда
+  if FRqFbTab then
+  begin
+    if RqFbAskMode then
+      RqFbLinkedSet(Obj.Name, FObjEditName, NewText, FRqEditSrcOld,
+                    not FObjEditInsert);
+    Exit;
+  end;
+
   Inc(FObjOwnWrite);
   try
     if not FObjEditInsert then
@@ -28653,6 +28687,13 @@ var
   CodeSet: Boolean;
 begin
   Result := False;
+  // Перевод _rqfb: место и размер - в исходник RapidQ и сюда
+  if FRqFbTab then
+  begin
+    if not AOnlyIfExists and RqFbAskMode then
+      Result := RqFbLinkedSet(AName, AProp, AValue, '', False);
+    Exit;
+  end;
   Lines := TStringList.Create;
   Nodes := TList.Create;
   Roots := TList.Create;
@@ -28895,6 +28936,582 @@ begin
           GotoLine(AssignLine);
 end;
 
+// ---------------------------------------------------------------------------
+//  Перевод RqToFb в папке _rqfb: связь с исходником RapidQ.
+//
+//  Файл _rqfb пересоздаётся при каждой сборке FB Smart / FB Compat, поэтому
+//  во вкладке он только для чтения. Как с ним работать, решает пользователь
+//  при первой попытке правки (RqFbAskMode), выбор - в editor.ini
+//  [RqFbMode], ключ - главный файл RapidQ:
+//    linked - связь с RapidQ: в инспекторе (и в конструкторе) правятся
+//             свойства, которые есть в исходнике RapidQ с тем же значением
+//             или которых нет ни там, ни здесь; правка пишется в исходник
+//             (RqSetPropInEditor на его вкладке) и сразу повторяется в
+//             переводе, чтобы он показывал то же до пересборки. Остальное -
+//             только чтение;
+//    fb|<файл> - переход на FreeBASIC: папка _rqfb скопирована в
+//             <главный>_fb рядом с исходником (RqFbDetach), без #line, и
+//             дальше это обычные файлы FreeBASIC. Сам _rqfb остаётся
+//             переводом - только для чтения.
+//  Где в исходнике строка перевода - по директивам #line (RqFbMapLine).
+// ---------------------------------------------------------------------------
+
+function TForm1.RqFbIsGenerated(const AFile: string): Boolean;
+var
+  IsSmart, IsConsole: Boolean;
+begin
+  Result := (AFile <> '') and
+            (CompareText(ExtractFileName(ExcludeTrailingPathDelimiter(
+               ExtractFilePath(AFile))), '_rqfb') = 0) and
+            RqFbConvertedInfo(AFile, IsSmart, IsConsole);
+end;
+
+// Главный файл RapidQ перевода AFile: файл первой директивы #line
+function TForm1.RqFbSourceMain(const AFile: string): string;
+var
+  Src: TextFile;
+  LineText: string;
+  LineNo, QuotePos: Integer;
+begin
+  Result := '';
+  if not FileExists(AFile) then
+    Exit;
+  AssignFile(Src, AFile);
+  try
+    Reset(Src);
+    try
+      LineNo := 0;
+      while not Eof(Src) and (LineNo < 400) do
+      begin
+        ReadLn(Src, LineText);
+        Inc(LineNo);
+        LineText := Trim(LineText);
+        if CompareText(Copy(LineText, 1, 6), '#line ') <> 0 then
+          Continue;
+        QuotePos := Pos('"', LineText);
+        if QuotePos = 0 then
+          Continue;
+        Result := Copy(LineText, QuotePos + 1, MaxInt);
+        if Pos('"', Result) > 0 then
+          Result := Copy(Result, 1, Pos('"', Result) - 1);
+        Break;
+      end;
+    finally
+      CloseFile(Src);
+    end;
+  except
+    Result := '';
+  end;
+end;
+
+function TForm1.RqFbModeGet(const ASrcMain: string): string;
+var
+  Ini: TIniFile;
+begin
+  Result := '';
+  if (ASrcMain = '') or not FileExists(SettingsFileName) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Result := Ini.ReadString('RqFbMode', ASrcMain, '');
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure TForm1.RqFbModeSet(const ASrcMain, AMode: string);
+var
+  Ini: TIniFile;
+begin
+  if ASrcMain = '' then
+    Exit;
+  try
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Ini.WriteString('RqFbMode', ASrcMain, AMode);
+      Ini.UpdateFile;
+    finally
+      Ini.Free;
+    end;
+  except
+    on E: Exception do
+      LogComp('editor.ini не записан: ' + E.Message);
+  end;
+end;
+
+// Режим работы с переводом активной вкладки. Не выбран - вопрос. True -
+// связь с RapidQ (правка свойств идёт в исходник), False - править здесь
+// нельзя (отказ или переход на FreeBASIC - открыта копия)
+function TForm1.RqFbAskMode: Boolean;
+var
+  SrcMain, Mode, FbFile: string;
+  Dlg: TForm;
+  BtnIdx, Answer: Integer;
+  Btn: TButton;
+begin
+  Result := False;
+  SrcMain := RqFbSourceMain(FCurrentFileName);
+  Mode := RqFbModeGet(SrcMain);
+  if Mode = 'linked' then
+  begin
+    Result := True;
+    Exit;
+  end;
+  if Copy(Mode, 1, 3) = 'fb|' then
+  begin
+    FbFile := Copy(Mode, 4, MaxInt);
+    if MessageDlg('Проект переведён на FreeBASIC: ' + FbFile +
+         #13#10#13#10'Этот файл (_rqfb) - перевод исходника RapidQ, он ' +
+         'пересоздаётся при сборке и только для чтения. Открыть файл ' +
+         'FreeBASIC?', mtInformation, [mbYes, mbNo], 0) = mrYes then
+      if FileExists(FbFile) then
+        OpenNamedFile(FbFile);
+    Exit;
+  end;
+
+  Dlg := CreateMessageDialog(
+    'Файл ' + ExtractFileName(FCurrentFileName) + ' - перевод исходника ' +
+    'RapidQ ' + ExtractFileName(SrcMain) + ' во FreeBASIC. Сборка FB Smart ' +
+    'пересоздаёт его каждый раз, правки в нём пропадут.'#13#10#13#10 +
+    'Связь с RapidQ - исходником остаётся RapidQ. Перевод только для ' +
+    'чтения; в инспекторе правятся свойства, которые можно перенести в ' +
+    'исходник RapidQ: правка пишется туда и сразу показывается здесь.'#13#10#13#10 +
+    'Перейти на FreeBASIC - перевод копируется в папку ' +
+    ChangeFileExt(ExtractFileName(SrcMain), '') + '_fb рядом с исходником ' +
+    'и дальше правится как обычный файл FreeBASIC. Исходник RapidQ ' +
+    'остаётся как есть и с ним больше не связан.'#13#10#13#10 +
+    'Выбор запоминается для ' + ExtractFileName(SrcMain) +
+    ' (editor.ini, раздел [RqFbMode]).',
+    mtConfirmation, [mbYes, mbNo, mbCancel]);
+  try
+    Dlg.Caption := 'Перевод RapidQ -> FreeBASIC';
+    Dlg.Width := Dlg.Width + 160;
+    for BtnIdx := 0 to Dlg.ComponentCount - 1 do
+      if Dlg.Components[BtnIdx] is TButton then
+      begin
+        Btn := TButton(Dlg.Components[BtnIdx]);
+        if Btn.ModalResult = mrYes then
+        begin
+          Btn.Caption := 'Связь с RapidQ';
+          Btn.Width := 140;
+          Btn.Left := Dlg.ClientWidth - 3 * 150 - 10;
+        end
+        else if Btn.ModalResult = mrNo then
+        begin
+          Btn.Caption := 'Перейти на FreeBASIC';
+          Btn.Width := 140;
+          Btn.Left := Dlg.ClientWidth - 2 * 150 - 10;
+        end
+        else if Btn.ModalResult = mrCancel then
+        begin
+          Btn.Width := 140;
+          Btn.Left := Dlg.ClientWidth - 150 - 10;
+        end;
+      end;
+    Answer := Dlg.ShowModal;
+  finally
+    Dlg.Free;
+  end;
+  if Answer = mrYes then
+  begin
+    RqFbModeSet(SrcMain, 'linked');
+    LogComp('Перевод ' + ExtractFileName(FCurrentFileName) + ': связь с ' +
+            'исходником RapidQ ' + SrcMain);
+    Result := True;
+  end
+  else if Answer = mrNo then
+    RqFbDetach;
+end;
+
+// Попытка набрать или вставить текст во вкладке перевода
+procedure TForm1.RqFbEditAttempt;
+var
+  Mode: string;
+begin
+  Mode := RqFbModeGet(RqFbSourceMain(FCurrentFileName));
+  if Mode = 'linked' then
+  begin
+    StatusBar1.Panels[0].Text := 'Перевод RapidQ (_rqfb) - только чтение: ' +
+      'код правится в исходнике RapidQ, свойства - в инспекторе';
+    MessageBeep(MB_OK);
+    Exit;
+  end;
+  RqFbAskMode;
+end;
+
+// Переход на FreeBASIC: _rqfb -> <главный>_fb рядом с исходником. В копиях
+// .bas/.bi/.inc/.rc убираются #line (ошибки - по самим файлам FreeBASIC),
+// пути в _rqfb - на новую папку, заголовок - "отделено от исходника"
+// (метка RqToFb (unIDE) остаётся: по ней сборка добавляет папку RqLcl)
+function TForm1.RqFbDetach: Boolean;
+var
+  SrcMain, OldDir, NewDir, NewMain, Ext, LineText, Stamp: string;
+  Files, Lines: TStringList;
+  FileIdx, LineIdx: Integer;
+
+  procedure Collect(const ADir, ARel: string);
+  var
+    Found: TSearchRec;
+  begin
+    if FindFirst(ADir + '*', faAnyFile, Found) = 0 then
+    try
+      repeat
+        if (Found.Name = '.') or (Found.Name = '..') then
+          Continue;
+        if (Found.Attr and faDirectory) <> 0 then
+          Collect(ADir + Found.Name + '\', ARel + Found.Name + '\')
+        else
+          Files.Add(ARel + Found.Name);
+      until FindNext(Found) <> 0;
+    finally
+      FindClose(Found);
+    end;
+  end;
+
+begin
+  Result := False;
+  SrcMain := RqFbSourceMain(FCurrentFileName);
+  OldDir := ExtractFilePath(FCurrentFileName);
+  if SrcMain <> '' then
+    NewDir := ExtractFilePath(SrcMain) +
+              ChangeFileExt(ExtractFileName(SrcMain), '') + '_fb\'
+  else
+    NewDir := ExtractFilePath(ExcludeTrailingPathDelimiter(OldDir)) +
+              ChangeFileExt(ExtractFileName(FCurrentFileName), '') + '_fb\';
+  if DirectoryExists(NewDir) and
+     (MessageDlg('Папка ' + NewDir + ' уже есть - файлы в ней будут ' +
+       'заменены переводом. Продолжить?', mtWarning, [mbYes, mbNo], 0) <>
+       mrYes) then
+    Exit;
+  Stamp := FormatDateTime('yyyy-mm-dd hh:nn', Now);
+  Files := TStringList.Create;
+  Lines := TStringList.Create;
+  try
+    Collect(OldDir, '');
+    for FileIdx := 0 to Files.Count - 1 do
+    begin
+      ForceDirectories(ExtractFilePath(NewDir + Files[FileIdx]));
+      Ext := LowerCase(ExtractFileExt(Files[FileIdx]));
+      if (Ext <> '.bas') and (Ext <> '.bi') and (Ext <> '.inc') and
+         (Ext <> '.rc') then
+      begin
+        CopyFile(PChar(OldDir + Files[FileIdx]),
+                 PChar(NewDir + Files[FileIdx]), False);
+        Continue;
+      end;
+      Lines.LoadFromFile(OldDir + Files[FileIdx]);
+      for LineIdx := Lines.Count - 1 downto 0 do
+      begin
+        LineText := Lines[LineIdx];
+        if CompareText(Copy(TrimLeft(LineText), 1, 6), '#line ') = 0 then
+        begin
+          Lines.Delete(LineIdx);
+          Continue;
+        end;
+        if Pos('создаётся заново при каждой сборке', LineText) > 0 then
+          LineText := '''' + ' Переведено из RapidQ препроцессором RqToFb ' +
+            '(unIDE) из ' + SrcMain + ', отделено ' + Stamp +
+            '. Дальше - обычный файл FreeBASIC.';
+        // Пути в старую папку перевода - на новую
+        Lines[LineIdx] := StringReplace(LineText,
+                            ExcludeTrailingPathDelimiter(OldDir),
+                            ExcludeTrailingPathDelimiter(NewDir),
+                            [rfReplaceAll, rfIgnoreCase]);
+      end;
+      Lines.SaveToFile(NewDir + Files[FileIdx]);
+    end;
+  finally
+    Lines.Free;
+    Files.Free;
+  end;
+  NewMain := NewDir + ExtractFileName(FCurrentFileName);
+  if not FileExists(NewMain) then
+  begin
+    ShowMessage('Перевод не скопирован: ' + NewMain);
+    Exit;
+  end;
+  RqFbModeSet(SrcMain, 'fb|' + NewMain);
+  LogComp('Переход на FreeBASIC: ' + OldDir + ' -> ' + NewDir +
+          ' (#line убраны). Главный файл: ' + NewMain);
+  OpenNamedFile(NewMain);
+  Result := True;
+end;
+
+// Строка ALine перевода (от нуля) - файл и строка (от нуля) исходника по
+// ближайшей директиве #line выше: "#line N "файл"" - следующая строка это
+// строка N+1 файла (от единицы), то есть N от нуля
+function TForm1.RqFbMapLine(ALines: TStrings; ALine: Integer;
+                            var AFile: string; var ASrcLine: Integer): Boolean;
+var
+  LineIdx, QuotePos, Code, BaseNum, PrevLine: Integer;
+  LineText, NumText: string;
+begin
+  Result := False;
+  AFile := '';
+  ASrcLine := -1;
+  for LineIdx := ALine - 1 downto 0 do
+  begin
+    LineText := Trim(ALines[LineIdx]);
+    if CompareText(Copy(LineText, 1, 6), '#line ') <> 0 then
+      Continue;
+    QuotePos := Pos('"', LineText);
+    if QuotePos > 0 then
+    begin
+      NumText := Trim(Copy(LineText, 7, QuotePos - 7));
+      AFile := Copy(LineText, QuotePos + 1, MaxInt);
+      if Pos('"', AFile) > 0 then
+        AFile := Copy(AFile, 1, Pos('"', AFile) - 1);
+    end
+    else
+      NumText := Trim(Copy(LineText, 7, MaxInt));
+    Val(NumText, BaseNum, Code);
+    if Code <> 0 then
+      Exit;
+    // Номер без файла - файл прежней директивы выше
+    if AFile = '' then
+      if not RqFbMapLine(ALines, LineIdx, AFile, PrevLine) or
+         (AFile = '') then
+        Exit;
+    ASrcLine := BaseNum + (ALine - LineIdx - 1);
+    Result := True;
+    Exit;
+  end;
+end;
+
+// Свойство AProp объекта AName в тексте активного редактора: есть
+// присваивание - значение на AValue (ACheckOld - только если там сейчас
+// AOldValue), нет - новая строка в блоке CREATE или за свойствами объекта
+// DIM. ACreateLine >= 0 - объект с этой строкой CREATE/DIM (одноимённых
+// может быть несколько). Что сделано или причина отказа - в AMsg.
+function TForm1.RqSetPropInEditor(const AName: string; ACreateLine: Integer;
+                                  const AProp, AValue, AOldValue: string;
+                                  ACheckOld: Boolean;
+                                  var AMsg: string): Boolean;
+var
+  Lines: TStringList;
+  Nodes, Roots: TList;
+  Node: TDfmNode;
+  NodeIdx, PropIdx, LineNo, LineStart, LineLen, ValStart, ValLen,
+    InsAt: Integer;
+  CurLine, NewLine, LineIndent, EqText, OldText: string;
+begin
+  Result := False;
+  AMsg := '';
+  Lines := TStringList.Create;
+  Nodes := TList.Create;
+  Roots := TList.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    RapidQCreateNodes(Lines, Nodes, Roots);
+    Node := nil;
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      if CompareText(TDfmNode(Nodes[NodeIdx]).Name, AName) = 0 then
+        if (Node = nil) or
+           (TDfmNode(Nodes[NodeIdx]).CreateLine = ACreateLine) then
+          Node := TDfmNode(Nodes[NodeIdx]);
+    if (Node = nil) or (Node.CreateLine < 0) then
+    begin
+      AMsg := 'объект ' + AName + ' не найден';
+      Exit;
+    end;
+    PropIdx := -1;
+    for NodeIdx := Node.PropN.Count - 1 downto 0 do
+      if CompareText(Node.PropN[NodeIdx], AProp) = 0 then
+      begin
+        PropIdx := NodeIdx;
+        Break;
+      end;
+    if PropIdx >= 0 then
+    begin
+      LineNo := Integer(Node.PropN.Objects[PropIdx]);
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      if LineStart < 0 then
+        Exit;
+      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      CurLine := ReadLineText(LineNo, LineStart, LineLen);
+      if not RapidQFindAssign(CurLine, RapidQAssignName(Node, AProp),
+                              ValStart, ValLen) then
+      begin
+        AMsg := 'строка ' + IntToStr(LineNo + 1) + ' не разобрана';
+        Exit;
+      end;
+      OldText := Trim(Copy(CurLine, ValStart, ValLen));
+      if ACheckOld and (CompareText(OldText, Trim(AOldValue)) <> 0) then
+      begin
+        AMsg := 'там ' + AProp + ' = ' + OldText + ' (строка ' +
+                IntToStr(LineNo + 1) + '), а в переводе ' + Trim(AOldValue);
+        Exit;
+      end;
+      if OldText <> AValue then
+      begin
+        EditorFreeze;
+        try
+          RichEdit1.SelStart := LineStart + ValStart - 1;
+          RichEdit1.SelLength := ValLen;
+          RichEdit1.SelText := AValue;
+        finally
+          EditorThaw;
+        end;
+      end;
+      AMsg := 'строка ' + IntToStr(LineNo + 1);
+      Result := True;
+      Exit;
+    end;
+    if ACheckOld then
+    begin
+      AMsg := 'присваивания ' + AProp + ' там нет';
+      Exit;
+    end;
+    if (Node.EndLine = Node.CreateLine) and not Node.IsDim then
+    begin
+      LineNo := Node.CreateLine;
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      if LineStart < 0 then
+        Exit;
+      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      CurLine := ReadLineText(LineNo, LineStart, LineLen);
+      if not RapidQInsertBeforeEnd(CurLine, Node.Name,
+                                   AProp + RapidQEqStyle(CurLine) + AValue,
+                                   NewLine) then
+      begin
+        AMsg := 'блок CREATE в строке ' + IntToStr(LineNo + 1) +
+                ' не разобран';
+        Exit;
+      end;
+      EditorFreeze;
+      try
+        RichEdit1.SelStart := LineStart;
+        RichEdit1.SelLength := LineLen;
+        RichEdit1.SelText := NewLine;
+      finally
+        EditorThaw;
+      end;
+      AMsg := 'добавлено в строку ' + IntToStr(LineNo + 1);
+      Result := True;
+      Exit;
+    end;
+    InsAt := RapidQInsertPlace(Lines, Node, LineIndent, EqText);
+    if InsAt < 0 then
+    begin
+      AMsg := 'некуда добавить строку';
+      Exit;
+    end;
+    LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+    if LineStart < 0 then
+      Exit;
+    EditorFreeze;
+    try
+      RichEdit1.SelStart := LineStart;
+      RichEdit1.SelLength := 0;
+      RichEdit1.SelText := LineIndent + RapidQAssignName(Node, AProp) +
+                           EqText + AValue + #13#10;
+    finally
+      EditorThaw;
+    end;
+    AMsg := 'добавлена строка ' + IntToStr(InsAt + 1);
+    Result := True;
+  finally
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      TObject(Nodes[NodeIdx]).Free;
+    Roots.Free;
+    Nodes.Free;
+    Lines.Free;
+  end;
+end;
+
+// Связь с RapidQ: свойство AProp объекта AName (вкладка перевода активна)
+// - в исходник RapidQ, затем то же в перевод. ACheckOld - у свойства уже
+// есть значение AOldValue в переводе: в исходнике должно быть то же самое
+// (иначе это выражение, которое перевод переписал, - правка отклоняется).
+function TForm1.RqFbLinkedSet(const AName, AProp, AValue, AOldValue: string;
+                              ACheckOld: Boolean): Boolean;
+var
+  FbLines: TStringList;
+  FbNodes, FbRoots: TList;
+  FbWin, SrcWin, NodeIdx, DimLine, SrcLine: Integer;
+  SrcFile, Msg, SrcMsg: string;
+begin
+  Result := False;
+  FbWin := FWindowsIndex;
+  // Строка объекта в переводе -> файл и строка в исходнике
+  DimLine := -1;
+  SrcFile := '';
+  SrcLine := -1;
+  FbLines := TStringList.Create;
+  FbNodes := TList.Create;
+  FbRoots := TList.Create;
+  try
+    FbLines.Text := GetEditorTextCR;
+    RapidQCreateNodes(FbLines, FbNodes, FbRoots);
+    for NodeIdx := 0 to FbNodes.Count - 1 do
+      if CompareText(TDfmNode(FbNodes[NodeIdx]).Name, AName) = 0 then
+      begin
+        DimLine := TDfmNode(FbNodes[NodeIdx]).CreateLine;
+        Break;
+      end;
+    if DimLine >= 0 then
+      RqFbMapLine(FbLines, DimLine, SrcFile, SrcLine);
+  finally
+    for NodeIdx := 0 to FbNodes.Count - 1 do
+      TObject(FbNodes[NodeIdx]).Free;
+    FbRoots.Free;
+    FbNodes.Free;
+    FbLines.Free;
+  end;
+  if (SrcFile = '') or not FileExists(SrcFile) then
+  begin
+    ShowMessage('Объект ' + AName + ': строка в исходнике RapidQ не найдена ' +
+                '(нет директивы #line или файла ' + SrcFile + ') - свойство ' +
+                'только для чтения.');
+    Exit;
+  end;
+
+  // Исходник - во вкладку (если не открыт), правка в нём
+  SrcWin := IndexOfWindowByFile(SrcFile);
+  if SrcWin < 0 then
+  begin
+    OpenNamedFile(SrcFile);
+    SrcWin := IndexOfWindowByFile(SrcFile);
+  end
+  else
+    ActivateWindow(SrcWin);
+  if SrcWin < 0 then
+    Exit;
+  Inc(FObjOwnWrite);
+  try
+    Result := RqSetPropInEditor(AName, SrcLine, AProp, AValue, AOldValue,
+                                ACheckOld, SrcMsg);
+  finally
+    Dec(FObjOwnWrite);
+  end;
+  // Назад к переводу; удалось - то же и в нём
+  ActivateWindow(FbWin);
+  if not Result then
+  begin
+    ShowMessage(AName + '.' + AProp + ' в исходнике ' +
+                ExtractFileName(SrcFile) + ' не изменён: ' + SrcMsg + '.' +
+                #13#10'В переводе это свойство только для чтения.');
+    Exit;
+  end;
+  Inc(FObjOwnWrite);
+  RichEdit1.ReadOnly := False;
+  try
+    if RqSetPropInEditor(AName, -1, AProp, AValue, AOldValue, ACheckOld,
+                         Msg) then
+      Msg := 'тоже записано (' + Msg + ')'
+    else
+      Msg := 'не повторено (' + Msg + ') - покажется после сборки';
+  finally
+    RichEdit1.ReadOnly := FRqFbTab;
+    Dec(FObjOwnWrite);
+  end;
+  LogComp('Инспектор: ' + AName + '.' + AProp + ' = ' + AValue + ' -> ' +
+          ExtractFileName(SrcFile) + ' (' + SrcMsg + '), перевод: ' + Msg);
+  // Узлы после смены вкладок - новые: выделение вернётся по имени
+  ObjScheduleRelines(nil, AProp);
+  FObjRefreshName := AName;
+end;
+
 // Параметры обработчика события AEvent для FreeBASIC (RqLcl): виды и типы
 // - из типа RqEvProc<Событие> в RqLcl\inc\rqlcl.bi ("ByRef As Long, ByVal
 // As Long"), имена - из параметров RapidQ ARqParams ("(Key AS WORD, Shift
@@ -29024,7 +29641,16 @@ var
   end;
 
 begin
-  if (FObjCurNode = nil) or RichEdit1.ReadOnly then
+  if FObjCurNode = nil then
+    Exit;
+  if FRqFbTab then
+  begin
+    ShowMessage('Это перевод RapidQ (_rqfb): обработчик ' + AEvent +
+      ' создаётся в исходнике RapidQ - откройте его вкладку и назначьте ' +
+      'событие там. Перевод получит его при следующей сборке.');
+    Exit;
+  end;
+  if RichEdit1.ReadOnly then
     Exit;
   Obj := TDfmNode(FObjCurNode);
   if (Obj.Name = '') or (Obj.CreateLine < 0) or (Length(AEvent) < 3) then
@@ -63595,6 +64221,25 @@ var
   EnterCount, EnterIdx: Integer;
   EnterIndent, EnterText: string;
 begin
+  // Перевод RqToFb (_rqfb): набор, вставка, удаление до редактора не
+  // доходят - вместо них вопрос, как работать с переводом (RqFbEditAttempt)
+  if FRqFbTab and
+     (((Message.Msg = WM_CHAR) and (Message.WParam >= 8) and
+       (Message.WParam <> VK_ESCAPE) and (GetKeyState(VK_CONTROL) >= 0)) or
+      (Message.Msg = WM_PASTE) or (Message.Msg = WM_CUT) or
+      (Message.Msg = WM_CLEAR) or (Message.Msg = WM_UNDO) or
+      ((Message.Msg = WM_KEYDOWN) and
+       ((Message.WParam = VK_DELETE) or
+        ((GetKeyState(VK_CONTROL) < 0) and
+         ((Message.WParam = Ord('V')) or (Message.WParam = Ord('X')) or
+          (Message.WParam = Ord('Z')) or (Message.WParam = Ord('Y')))) or
+        ((GetKeyState(VK_SHIFT) < 0) and (Message.WParam = VK_INSERT))))) then
+  begin
+    Message.Result := 0;
+    RqFbEditAttempt;
+    Exit;
+  end;
+
   // Всё, что добавляет текст, - после проверки предела объёма. Стоит до
   // FLockHighlight: массовые правки идут как раз под ним. Ctrl+V контрол
   // разбирает сам внутри WM_KEYDOWN, без WM_PASTE, поэтому WM_KEYDOWN тоже
