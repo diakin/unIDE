@@ -25,7 +25,8 @@ uses
   UiButton,     // TUiButton
   UiStdCtrls,   // TUiCheckBox
   UiEditCtrls,  // TUiEdit
-  UiComCtrls;   // TUiListView
+  UiComCtrls,   // TUiListView
+  SearchDirs;   // папки поиска: стандартные и свои, галки
 
 type
   // Открыть файл в редакторе на строке (с 1)
@@ -54,10 +55,10 @@ function StrictInLibDir(const AFile: string; ALibDirs: TStrings): Boolean;
 // (смотреть и править исходник). Функция ждёт его закрытия своим циклом
 // сообщений, поэтому сборка продолжается после него, как раньше.
 type
-  // Выбор папок - окно Directory Tree главного окна: APreselect - какую
-  // раскрыть, ADirs - отмеченные через ";"
-  TStrictPickDirs = function(const APreselect: string;
-                             var ADirs: string): Boolean of object;
+  // Папки поиска - окно Directory Tree главного окна (SearchDirsDialog):
+  // AFixed - стандартные папки, AItems - галки и свои папки (SearchDirs)
+  TStrictPickDirs = function(const ACaption: string;
+                             AFixed, AItems: TStrings): Boolean of object;
 
 function StrictFixDialog(AOwner: TComponent;
                          AMessages, ARoots, ALibDirs: TStrings;
@@ -115,7 +116,7 @@ type
     // Типовые расширения программ RapidQ: галка - расширение в edExts
     FExtChecks: array of TUiCheckBox;
     FExtSyncing: Boolean;    // галки и поле правятся друг из друга
-    FUserDirs: TStringList;  // свои папки поиска определений
+    FDirItems: TStringList;  // галки стандартных и свои папки (SearchDirs)
     FPickDirs: TStrictPickDirs;
     btnApply: TUiButton;
     lblOptions: TLabel;
@@ -178,6 +179,7 @@ var
 const
   // Где искать определение по умолчанию - файлы программ RapidQ
   StrictDefaultExts = '.inc;.bas;.cmp';
+  StrictDirsSection = 'StrictFixDirs';
   // Галки рядом с полем: типовые расширения файлов программ RapidQ
   StrictTypicalExts: array[0..3] of string = ('.inc', '.bas', '.cmp', '.rqb');
   // Вид правки строки (ReplaceInLine)
@@ -277,7 +279,7 @@ begin
   FPrepared.Free;
   FDone.Free;
   FSkipped.Free;
-  FUserDirs.Free;
+  FDirItems.Free;
   inherited Destroy;
 end;
 
@@ -426,7 +428,7 @@ begin
   btnDirs := MakeButton(pnlActions, '...', 468, 5, 28, btnDirsClick);
   btnDirs.Hint := 'Свои папки для поиска определения: окно Directory Tree, ' +
                   'отмеченные в его списке папки (с подпапками)';
-  FUserDirs := TStringList.Create;
+  FDirItems := TStringList.Create;
   edExts := TUiEdit.Create(Self);
   edExts.Parent := pnlActions;
   edExts.SetBounds(502, 7, 110, 21);
@@ -984,41 +986,30 @@ begin
   end;
 end;
 
-// [...]: свои папки поиска определения - Directory Tree, отмеченные папки
+// [...]: папки поиска определения - Directory Tree: стандартные (Include,
+// программа, выше) с галками и свои
 procedure TStrictFixForm.btnDirsClick(Sender: TObject);
 var
-  Picked, OneDir, Preselect: string;
-  SemiAt: Integer;
+  Checked: TStringList;
 begin
   if not Assigned(FPickDirs) or FBusy then
     Exit;
-  Preselect := ExtractFileDir(FMainFile);
-  if FUserDirs.Count > 0 then
-    Preselect := FUserDirs[0];
-  Picked := '';
-  if not FPickDirs(Preselect, Picked) then
+  if not FPickDirs('Directory Tree - папки поиска определения', FRoots,
+                   FDirItems) then
     Exit;
-  FUserDirs.Clear;
-  while Picked <> '' do
-  begin
-    SemiAt := Pos(';', Picked);
-    if SemiAt = 0 then
-      SemiAt := Length(Picked) + 1;
-    OneDir := Trim(Copy(Picked, 1, SemiAt - 1));
-    Delete(Picked, 1, SemiAt);
-    if Length(OneDir) > 3 then
-      OneDir := ExcludeTrailingPathDelimiter(OneDir);
-    if (OneDir <> '') and (FUserDirs.IndexOf(OneDir) < 0) then
-      FUserDirs.Add(OneDir);
+  SearchDirsSave(FIniFile, StrictDirsSection, FDirItems);
+  Checked := TStringList.Create;
+  try
+    SearchDirsChecked(FRoots, FDirItems, Checked);
+    if Checked.Count = 0 then
+      lblStatus.Caption := 'Папок поиска нет: отметьте хотя бы одну'
+    else
+      lblStatus.Caption := 'Папки поиска: ' +
+        StringReplace(Trim(Checked.Text), #13#10, '; ', [rfReplaceAll]);
+    btnDirs.Hint := lblStatus.Caption;
+  finally
+    Checked.Free;
   end;
-  if FUserDirs.Count = 0 then
-    lblStatus.Caption := 'Своих папок поиска нет: только папки Include, ' +
-                         'программы и выше'
-  else
-    lblStatus.Caption := 'Свои папки поиска: ' +
-      StringReplace(Trim(FUserDirs.Text), #13#10, '; ', [rfReplaceAll]);
-  btnDirs.Hint := 'Свои папки для поиска определения (Directory Tree): ' +
-    StringReplace(Trim(FUserDirs.Text), #13#10, '; ', [rfReplaceAll]);
 end;
 
 // "Исправить" - правее последнего видимого элемента ряда
@@ -1145,8 +1136,8 @@ begin
   btnBuild.Enabled := False;
   btnClose.Enabled := False;
   try
-    SearchRoots.Assign(FRoots);
-    SearchRoots.AddStrings(FUserDirs);
+    // Отмеченные стандартные и свои; вложенные в отмеченную - не дважды
+    SearchDirsChecked(FRoots, FDirItems, SearchRoots);
     Done := StrictFindDefinitions(Item.Name, AsProc, SearchRoots, FMainFile,
                                   Found, Progress, edExts.Text);
     // Найденное - к вариантам (прежние найденные - заново)
@@ -1293,8 +1284,7 @@ begin
     if ExplainHeight >= 30 then
       memExplain.Height := ExplainHeight;
     edExts.Text := Ini.ReadString(Sect, 'Exts', StrictDefaultExts);
-    FUserDirs.Text := StringReplace(Ini.ReadString(Sect, 'Dirs', ''), '|',
-                                    #13#10, [rfReplaceAll]);
+    SearchDirsLoad(FIniFile, StrictDirsSection, FDirItems);
     if Ini.ReadBool(Sect, 'Maximized', False) then
       WindowState := wsMaximized;
   finally
@@ -1327,8 +1317,7 @@ begin
     Ini.WriteInteger(Sect, 'ListHeight', lvItems.Height);
     Ini.WriteInteger(Sect, 'ExplainHeight', memExplain.Height);
     Ini.WriteString(Sect, 'Exts', Trim(edExts.Text));
-    Ini.WriteString(Sect, 'Dirs', StringReplace(Trim(FUserDirs.Text), #13#10,
-                                                '|', [rfReplaceAll]));
+
   finally
     Ini.Free;
   end;

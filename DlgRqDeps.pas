@@ -22,13 +22,14 @@ uses
   UiButton,     // TUiButton
   UiComCtrls,   // TUiListView - шапка колонок в цветах темы
   UiEditCtrls,  // TUiComboBox
-  UiStdCtrls;   // TUiCheckBox
+  UiStdCtrls,   // TUiCheckBox
+  SearchDirs;   // папки поиска: стандартные и свои, галки
 
 type
-  // Выбор папок поиска - окно Directory Tree главного окна. APreselect -
-  // папка, которую раскрыть; ADirs - отмеченные папки через ";"
-  TRqPickDirs = function(const APreselect: string;
-                         var ADirs: string): Boolean of object;
+  // Папки поиска - окно Directory Tree главного окна (SearchDirsDialog):
+  // AFixed - стандартные папки, AItems - галки и свои папки (SearchDirs)
+  TRqPickDirs = function(const ACaption: string;
+                         AFixed, AItems: TStrings): Boolean of object;
   // Замена строки ALine файла AFile в редакторе (AOld - прежний текст) и
   // сохранение файла; True - заменено
   TRqEditLine = function(const AFile: string; ALine: Integer;
@@ -55,12 +56,15 @@ function RqDepsDialog(AOwner: TComponent; AScan: TRqDepScan; ARoots: TStrings;
 // Окно уже открыто (сборка ждёт его): поднять его наверх, True
 function RqDepsDialogActive: Boolean;
 
-// Свои папки поиска (кнопка [...] в окне) - в конец ARoots шагами
-// "RqDepsUserRootLabel|папка"; хранятся в AIniFile, [RqDepsSearch] Dirs
+// Папки поиска после папок Include (кнопка [...] в окне): шаги "папка
+// программы" и "папка выше" из ARoots - только если их галка не снята,
+// затем отмеченные свои ("RqDepsUserRootLabel|папка"). Хранятся в
+// AIniFile, раздел [RqDepsSearchDirs] (SearchDirs)
 procedure RqDepsAddUserRoots(ARoots: TStrings; const AIniFile: string);
 
 const
   RqDepsUserRootLabel = 'своя папка';
+  RqDepsDirsSection = 'RqDepsSearchDirs';
 
 implementation
 
@@ -608,8 +612,7 @@ begin
       FScan.CountOf(dpkResource), FScan.CountOf(dpkLib)]);
   edUnIdePath.Text := '(не задана)';
   edUserPath.Text := '(не задана)';
-  DirsText := 'Нажмите "Искать" для поиска недостающих файлов в папках:  ' +
-              'папка программы с подпапками, папка выше,';
+  DirsText := 'Нажмите "Искать" для поиска недостающих файлов в папках: ';
   for RootIdx := 0 to FRoots.Count - 1 do
   begin
     RootLabel := Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1);
@@ -618,6 +621,10 @@ begin
       edUnIdePath.Text := RootDir
     else if (CompareText(RootLabel, 'Include User') = 0) and (RootDir <> '') then
       edUserPath.Text := RootDir
+    else if RootLabel = 'папка программы' then
+      DirsText := DirsText + ' папка программы с подпапками,'
+    else if RootLabel = 'папка выше' then
+      DirsText := DirsText + ' папка выше,'
     else if RootLabel = RqDepsUserRootLabel then
       DirsText := DirsText + ' ' + RootDir + ',';
   end;
@@ -679,63 +686,33 @@ end;
 // списке папки). Итог - в шаги поиска (FRoots) и в editor.ini.
 procedure TRqDepsForm.btnDirsClick(Sender: TObject);
 var
+  Items, Fixed: TStringList;
   RootIdx: Integer;
-  Preselect, Picked, Joined: string;
-  NewDirs: TStringList;
-  Ini: TIniFile;
-  SemiAt: Integer;
+  MainDir: string;
 begin
   if not Assigned(FPickDirs) then
     Exit;
-  Preselect := '';
-  for RootIdx := 0 to FRoots.Count - 1 do
-    if (Preselect = '') and
-       (Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1) =
-        RqDepsUserRootLabel) then
-      Preselect := Copy(FRoots[RootIdx], Pos('|', FRoots[RootIdx]) + 1, MaxInt);
-  if Preselect = '' then
-    Preselect := FScan.MainDir;
-  Picked := '';
-  if not FPickDirs(Preselect, Picked) then
-    Exit;
-  NewDirs := TStringList.Create;
+  Items := TStringList.Create;
+  Fixed := TStringList.Create;
   try
-    while Picked <> '' do
-    begin
-      SemiAt := Pos(';', Picked);
-      if SemiAt = 0 then
-        SemiAt := Length(Picked) + 1;
-      Joined := Trim(Copy(Picked, 1, SemiAt - 1));
-      Delete(Picked, 1, SemiAt);
-      if Length(Joined) > 3 then
-        Joined := ExcludeTrailingPathDelimiter(Joined);
-      if (Joined <> '') and (NewDirs.IndexOf(Joined) < 0) then
-        NewDirs.Add(Joined);
-    end;
-    // Шаги поиска: прежние свои папки - долой, новые - в конец
+    SearchDirsLoad(FIniFile, RqDepsDirsSection, Items);
+    MainDir := ExcludeTrailingPathDelimiter(FScan.MainDir);
+    Fixed.Add(MainDir);
+    Fixed.Add(ExtractFileDir(MainDir));
+    if not FPickDirs('Directory Tree - папки поиска недостающих файлов',
+                     Fixed, Items) then
+      Exit;
+    SearchDirsSave(FIniFile, RqDepsDirsSection, Items);
+    // Шаги поиска после Include - заново: стандартные с галкой, свои
     for RootIdx := FRoots.Count - 1 downto 0 do
-      if Copy(FRoots[RootIdx], 1, Pos('|', FRoots[RootIdx]) - 1) =
-         RqDepsUserRootLabel then
+      if CompareText(Copy(FRoots[RootIdx], 1, 7), 'Include') <> 0 then
         FRoots.Delete(RootIdx);
-    Joined := '';
-    for RootIdx := 0 to NewDirs.Count - 1 do
-    begin
-      FRoots.Add(RqDepsUserRootLabel + '|' + NewDirs[RootIdx]);
-      if Joined <> '' then
-        Joined := Joined + '|';
-      Joined := Joined + NewDirs[RootIdx];
-    end;
+    FRoots.Add('папка программы|' + Fixed[0]);
+    FRoots.Add('папка выше|' + Fixed[1]);
+    RqDepsAddUserRoots(FRoots, FIniFile);
   finally
-    NewDirs.Free;
-  end;
-  if FIniFile <> '' then
-  begin
-    Ini := TIniFile.Create(FIniFile);
-    try
-      Ini.WriteString('RqDepsSearch', 'Dirs', Joined);
-    finally
-      Ini.Free;
-    end;
+    Fixed.Free;
+    Items.Free;
   end;
   FillTop;
 end;
@@ -2054,27 +2031,45 @@ end;
 
 procedure RqDepsAddUserRoots(ARoots: TStrings; const AIniFile: string);
 var
-  Ini: TIniFile;
-  Rest, OneDir: string;
-  SepPos: Integer;
+  Items, Fixed, Picked: TStringList;
+  RootIdx: Integer;
+  RootLabel, RootDir: string;
 begin
-  if (AIniFile = '') or not FileExists(AIniFile) then
-    Exit;
-  Ini := TIniFile.Create(AIniFile);
+  Items := TStringList.Create;
+  Fixed := TStringList.Create;
+  Picked := TStringList.Create;
   try
-    Rest := Ini.ReadString('RqDepsSearch', 'Dirs', '');
+    SearchDirsLoad(AIniFile, RqDepsDirsSection, Items);
+    // Стандартные (не Include): папка программы, папка выше - из ARoots
+    for RootIdx := ARoots.Count - 1 downto 0 do
+    begin
+      RootLabel := Copy(ARoots[RootIdx], 1, Pos('|', ARoots[RootIdx]) - 1);
+      RootDir := Copy(ARoots[RootIdx], Pos('|', ARoots[RootIdx]) + 1, MaxInt);
+      if CompareText(Copy(RootLabel, 1, 7), 'Include') = 0 then
+        Continue;
+      if RootLabel <> RqDepsUserRootLabel then
+        Fixed.Insert(0, RootLabel + '|' + RootDir);
+      ARoots.Delete(RootIdx);
+    end;
+    // Папки - без подписей, для SearchDirsChecked
+    for RootIdx := 0 to Fixed.Count - 1 do
+      Picked.Add(Copy(Fixed[RootIdx], Pos('|', Fixed[RootIdx]) + 1, MaxInt));
+    Fixed.Assign(Picked);
+    SearchDirsChecked(Fixed, Items, Picked);
+    for RootIdx := 0 to Picked.Count - 1 do
+      if (Fixed.Count > 0) and (CompareText(ExcludeTrailingPathDelimiter(Picked[RootIdx]),
+           ExcludeTrailingPathDelimiter(Fixed[0])) = 0) then
+        ARoots.Add('папка программы|' + Picked[RootIdx])
+      else if (Fixed.Count > 1) and
+              (CompareText(ExcludeTrailingPathDelimiter(Picked[RootIdx]),
+                 ExcludeTrailingPathDelimiter(Fixed[1])) = 0) then
+        ARoots.Add('папка выше|' + Picked[RootIdx])
+      else
+        ARoots.Add(RqDepsUserRootLabel + '|' + Picked[RootIdx]);
   finally
-    Ini.Free;
-  end;
-  while Rest <> '' do
-  begin
-    SepPos := Pos('|', Rest);
-    if SepPos = 0 then
-      SepPos := Length(Rest) + 1;
-    OneDir := Trim(Copy(Rest, 1, SepPos - 1));
-    if OneDir <> '' then
-      ARoots.Add(RqDepsUserRootLabel + '|' + OneDir);
-    Delete(Rest, 1, SepPos);
+    Picked.Free;
+    Fixed.Free;
+    Items.Free;
   end;
 end;
 

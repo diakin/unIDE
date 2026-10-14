@@ -65,6 +65,7 @@ uses
   DlgStrictFix in 'DlgStrictFix.pas',
   SplashLoad in 'SplashLoad.pas',
   GitInfo in 'GitInfo.pas',
+  SearchDirs in 'SearchDirs.pas',
   RunConsole in 'RunConsole.pas';
 
 {$R *.res}

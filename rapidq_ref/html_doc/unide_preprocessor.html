@@ -70,7 +70,7 @@
 <li>Include UnIde &#8212; the Include folder that comes with unIDE;</li>
 <li>Include User &#8212; your own Include folder (RapidQ include settings).</li>
 </ol>
-<p>&#171;&#1048;&#1089;&#1082;&#1072;&#1090;&#1100;&#187; looks for what is still missing in the folder of the program with subfolders, in the folder above it and in the folders chosen with the button &#171;...&#187;: it opens the window Directory Tree, and the folders checked in its list are taken (with subfolders, in the order of the list; stored in <code>editor.ini</code>, section <code>[RqDepsSearch]</code>).</p>
+<p>&#171;&#1048;&#1089;&#1082;&#1072;&#1090;&#1100;&#187; looks for what is still missing in the folder of the program with subfolders, in the folder above it and in the folders chosen with the button &#171;...&#187;. It opens the window Directory Tree with the list of search folders: the standard folders (the folder of the program and the folder above it; in the strict check also the Include folders) are always in the list and cannot be removed, their check box can be cleared; your own folders are added from the tree and can be removed. Only checked folders are searched, with subfolders. A folder inside another checked folder cannot be checked: it is searched anyway. Stored in <code>editor.ini</code>, sections <code>[RqDepsSearchDirs]</code> and <code>[StrictFixDirs]</code>.</p>
 <p>A folder already searched in an earlier step is not searched again. Inside each folder, subfolders with &#171;inc&#187; in the name are searched first. During the search the button &#171;&#1048;&#1089;&#1082;&#1072;&#1090;&#1100;&#187; becomes &#171;&#1057;&#1090;&#1086;&#1087;&#187; and stops it.</p>
 
 <h3>A subfolder from $INCLUDE that does not exist</h3>

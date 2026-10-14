@@ -1922,6 +1922,11 @@ type
     FHfTree: TTreeView;
     FHfList: TCheckListBox;
     FHfPath: TPanel;
+    // Окно Directory Tree как "папки поиска" окна утилиты (SearchDirsDialog):
+    // список - не горячие папки; первые FHfFixedCount строк - стандартные
+    // папки, их не удалить; вложенную в отмеченную не отметить
+    FHfSearchMode: Boolean;
+    FHfFixedCount: Integer;
 
     // Красный крестик у потерянных файлов в меню Windows
     FBrokenGlyph: TBitmap;
@@ -2423,8 +2428,9 @@ type
     procedure IncRefDirs(var ASysDir, ARefDir: string);
     procedure FindIncShow(const AName: string);
     function  RqDepsBeforeBuild(const ABas, AIncDir: string): Boolean;
-    function  RqDepsPickDirs(const APreselect: string;
-                             var ADirs: string): Boolean;
+    function  SearchDirsDialog(const ACaption: string;
+                               AFixed, AItems: TStrings): Boolean;
+    procedure HfSearchFixNested(AChanged: Integer);
     // Меню Started Util (поля FUtilMenu, FUtilSig - в начале private)
     procedure UtilMenuUpdate;
     procedure UtilMenuClick(Sender: TObject);
@@ -3506,6 +3512,7 @@ var
     DlgMatchList, // Match list - EnsureMatchForm
     DlgListWnd,   // списки модулей и форм - MakeListWindow
     DlgHotFolders, // папки для поиска потерянных файлов - ShowHotFolders
+    SearchDirs,   // папки поиска окон утилит - SearchDirsDialog
     Unit3,        // Inc Manager (View) - IncManagerClick
     RunConsole,   // Run консольной программы: окно не закрывается, текст - в лог
     DlgFindInc,   // поиск inc-файла (View) - FindIncShow
@@ -12752,7 +12759,7 @@ begin
                 ExtractFilePath(ABas))));
       if StrictFixDialog(Self, ConvMessages, Roots, LibDirs, ABas, AIncDir,
                          StrictOpenLine, StrictEditLine,
-                         SettingsFileName, RqDepsPickDirs) = mrIgnore then
+                         SettingsFileName, SearchDirsDialog) = mrIgnore then
         LogComp('Строгая проверка: rc.exe собирает (выбрано в окне)')
       else
       begin
@@ -13099,6 +13106,7 @@ begin
   I := FHfList.Items.Add(S);
   FHfList.Checked[I] := True; // только что добавили - значит она и нужна
   FHfList.ItemIndex := I;
+  HfSearchFixNested(I);
   HfSaveList;
 end;
 
@@ -13110,6 +13118,14 @@ begin
     Exit;
 
   I := FHfList.ItemIndex;
+  // Папки поиска: стандартные не удаляются
+  if FHfSearchMode and (I < FHfFixedCount) then
+  begin
+    if FHfPath <> nil then
+      FHfPath.Caption := '  Стандартную папку удалить нельзя - снимите галку, ' +
+                         'и она не будет искаться';
+    Exit;
+  end;
   FHfList.Items.Delete(I);
 
   if I > FHfList.Items.Count - 1 then
@@ -13250,7 +13266,8 @@ var
   Ini: TBufIniFile;
   ItemIdx: Integer;
 begin
-  if FHfList = nil then
+  // Папки поиска окна утилиты - не горячие папки
+  if (FHfList = nil) or FHfSearchMode then
     Exit;
   if FHotFolders = nil then
     FHotFolders := TStringList.Create;
@@ -13281,6 +13298,8 @@ end;
 
 procedure TForm1.HfListCheck(Sender: TObject);
 begin
+  if FHfSearchMode and (FHfList <> nil) then
+    HfSearchFixNested(FHfList.ItemIndex);
   HfSaveList;
 end;
 
@@ -34764,7 +34783,7 @@ begin
     try
       Result := RqDepsDialog(Self, Scan, Roots, RefDir, SysDir, CopyLog,
                              Ignore, Scheme, SettingsFileName,
-                             RqDepsPickDirs, StrictEditLine);
+                             SearchDirsDialog, StrictEditLine);
     finally
       Scheme.Free;
     end;
@@ -34794,86 +34813,131 @@ begin
   end;
 end;
 
-// Кнопка [...] окна недостающих файлов: Directory Tree, отмеченные в его
-// списке папки - через ";"
-function TForm1.RqDepsPickDirs(const APreselect: string;
-                               var ADirs: string): Boolean;
-begin
-  // Только отмеченные: снятая галка - папка в поиске не участвует
-  Result := HotFoldersDialog(APreselect, 'Directory Tree - отмеченные папки ' +
-                             'для поиска', True, ADirs, True);
-end;
-
-// Меню Started Util: все видимые окна программы, кроме главного, - окна
-// утилит (недостающие файлы, строгая проверка, Find In Files, INC Manager,
-// окна отладчика ...). Немодальное окно может уйти под главное; пункт
-// поднимает его. Перестраивается по простою, только когда набор окон или
-// их заголовки сменились.
-procedure TForm1.UtilMenuUpdate;
+// Окно Directory Tree как список папок поиска окна утилиты (недостающие
+// файлы, строгая проверка). Справа - стандартные папки AFixed (всегда в
+// списке, удалить нельзя, галку снять можно) и свои папки из AItems (см.
+// SearchDirs: "U1|папка", "U0|папка", "F0|папка"); свои добавляются из
+// дерева и удаляются. Ищется только отмеченное; вложенную в отмеченную
+// папку отметить нельзя - её и так обойдут. Горячие папки не трогаются.
+// OK - AItems заново.
+function TForm1.SearchDirsDialog(const ACaption: string;
+                                 AFixed, AItems: TStrings): Boolean;
 var
-  FormIdx: Integer;
-  OneForm: TCustomForm;
-  Sig: string;
-  Item: TMenuItem;
+  Dlg: TDlgHotFolders;
+  ItemIdx, ListIdx: Integer;
 begin
-  if FUtilMenu = nil then
-    Exit;
-  Sig := '';
-  for FormIdx := 0 to Screen.CustomFormCount - 1 do
-  begin
-    OneForm := Screen.CustomForms[FormIdx];
-    if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
-      Continue;
-    Sig := Sig + IntToHex(Integer(OneForm), 8) + OneForm.Caption + #1;
-  end;
-  if Sig = FUtilSig then
-    Exit;
-  FUtilSig := Sig;
-  FUtilMenu.Clear;
-  for FormIdx := 0 to Screen.CustomFormCount - 1 do
-  begin
-    OneForm := Screen.CustomForms[FormIdx];
-    if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
-      Continue;
-    Item := TMenuItem.Create(FUtilMenu);
-    Item.Caption := StringReplace(OneForm.Caption, '&', '&&', [rfReplaceAll]);
-    Item.Tag := Integer(OneForm);
-    Item.OnClick := UtilMenuClick;
-    FUtilMenu.Add(Item);
-  end;
-  // Пустое меню строка меню не раскрывает - пункт-пояснение
-  if FUtilMenu.Count = 0 then
-  begin
-    Item := TMenuItem.Create(FUtilMenu);
-    Item.Caption := '(открытых окон утилит нет)';
-    Item.Enabled := False;
-    FUtilMenu.Add(Item);
-  end;
-  if FMenuBar <> nil then
-    FMenuBar.Invalidate;
-end;
+  Result := False;
+  Dlg := TDlgHotFolders.Create(Self);
+  try
+    Dlg.Caption := ACaption;
+    FHfPath := Dlg.pnlPath;
+    FHfTree := Dlg.tvFolders;
+    FHfList := Dlg.lstFolders;
+    FHfSearchMode := True;
+    Dlg.btnAdd.OnClick := HfAddClick;
+    Dlg.btnDel.OnClick := HfDelClick;
+    FHfTree.OnExpanding := HfTreeExpanding;
+    FHfTree.OnChange := HfTreeChange;
+    FHfTree.OnDblClick := HfTreeDblClick;
+    FHfList.OnClick := HfListClick;
+    FHfList.OnClickCheck := HfListCheck;
+    HfFillDrives;
 
-// Пункт Started Util: окно - наверх (свёрнутое - развернуть). Окно могло
-// закрыться после постройки меню - ищется среди открытых.
-procedure TForm1.UtilMenuClick(Sender: TObject);
-var
-  FormIdx: Integer;
-  OneForm: TCustomForm;
-begin
-  for FormIdx := 0 to Screen.CustomFormCount - 1 do
-  begin
-    OneForm := Screen.CustomForms[FormIdx];
-    if Integer(OneForm) <> TMenuItem(Sender).Tag then
-      Continue;
-    if not OneForm.Visible then
+    // Стандартные - первыми, с галкой, если её не снимали
+    for ItemIdx := 0 to AFixed.Count - 1 do
+      if Trim(AFixed[ItemIdx]) <> '' then
+      begin
+        ListIdx := FHfList.Items.Add(ExcludeTrailingPathDelimiter(
+                                       AFixed[ItemIdx]));
+        FHfList.Checked[ListIdx] := SearchDirsFixedOn(AItems, AFixed[ItemIdx]);
+      end;
+    FHfFixedCount := FHfList.Items.Count;
+    for ItemIdx := 0 to AItems.Count - 1 do
+      if Copy(AItems[ItemIdx], 1, 1) = 'U' then
+      begin
+        ListIdx := FHfList.Items.Add(Copy(AItems[ItemIdx], 4, MaxInt));
+        FHfList.Checked[ListIdx] := Copy(AItems[ItemIdx], 2, 1) = '1';
+      end;
+    HfSearchFixNested(-1);
+    if FHfList.Items.Count > 0 then
+    begin
+      FHfList.ItemIndex := 0;
+      HfSelectPath(FHfList.Items[0]);
+      FHfPath.Caption := '  Стандартные папки (первые ' +
+        IntToStr(FHfFixedCount) + ') не удаляются - галку можно снять';
+    end;
+
+    if Dlg.ShowModal <> mrOk then
       Exit;
-    if OneForm.WindowState = wsMinimized then
-      OneForm.WindowState := wsNormal;
-    OneForm.BringToFront;
-    if OneForm.CanFocus then
-      OneForm.SetFocus;
-    Exit;
+    HfSearchFixNested(-1);
+    AItems.Clear;
+    for ListIdx := 0 to FHfList.Items.Count - 1 do
+      if ListIdx < FHfFixedCount then
+      begin
+        if not FHfList.Checked[ListIdx] then
+          AItems.Add('F0|' + FHfList.Items[ListIdx]);
+      end
+      else if FHfList.Checked[ListIdx] then
+        AItems.Add('U1|' + FHfList.Items[ListIdx])
+      else
+        AItems.Add('U0|' + FHfList.Items[ListIdx]);
+    Result := True;
+  finally
+    FHfSearchMode := False;
+    FHfFixedCount := 0;
+    FHfTree := nil;
+    FHfList := nil;
+    FHfPath := nil;
+    Dlg.Free;
   end;
+end;
+
+// Папки поиска: отмеченная внутри другой отмеченной - галка снимается
+// (подпапки и так обходятся). AChanged - строка, у которой только что
+// поставили галку: если она внутри отмеченной - снимается её галка, если
+// она объемлет отмеченные - снимаются их. -1 - проверить весь список.
+procedure TForm1.HfSearchFixNested(AChanged: Integer);
+var
+  OuterIdx, InnerIdx: Integer;
+  Note: string;
+begin
+  if (FHfList = nil) or not FHfSearchMode then
+    Exit;
+  Note := '';
+  if (AChanged >= 0) and FHfList.Checked[AChanged] then
+  begin
+    for OuterIdx := 0 to FHfList.Items.Count - 1 do
+      if (OuterIdx <> AChanged) and FHfList.Checked[OuterIdx] and
+         SearchDirInside(FHfList.Items[AChanged], FHfList.Items[OuterIdx]) then
+      begin
+        FHfList.Checked[AChanged] := False;
+        Note := '  Не отмечена: она внутри ' + FHfList.Items[OuterIdx] +
+                ' - её подпапки и так ищутся';
+        Break;
+      end;
+    if FHfList.Checked[AChanged] then
+      for InnerIdx := 0 to FHfList.Items.Count - 1 do
+        if (InnerIdx <> AChanged) and FHfList.Checked[InnerIdx] and
+           SearchDirInside(FHfList.Items[InnerIdx], FHfList.Items[AChanged]) then
+        begin
+          FHfList.Checked[InnerIdx] := False;
+          Note := '  Сняты галки вложенных папок: они внутри ' +
+                  FHfList.Items[AChanged];
+        end;
+  end
+  else
+    // Весь список: по порядку, первая отмеченная остаётся
+    for InnerIdx := 0 to FHfList.Items.Count - 1 do
+      if FHfList.Checked[InnerIdx] then
+        for OuterIdx := 0 to FHfList.Items.Count - 1 do
+          if (OuterIdx <> InnerIdx) and FHfList.Checked[OuterIdx] and
+             SearchDirInside(FHfList.Items[InnerIdx], FHfList.Items[OuterIdx]) then
+          begin
+            FHfList.Checked[InnerIdx] := False;
+            Break;
+          end;
+  if (Note <> '') and (FHfPath <> nil) then
+    FHfPath.Caption := Note;
 end;
 
 // Имя из сообщения rc.exe "$INCLUDE file X does not exist"; '' - такого нет
