@@ -55410,7 +55410,7 @@ begin
       'запускать нечего. Вид результата - в рамке Project');
               Exit;
     end;
-    Exe := ChangeFileExt(Dpr, '.exe');
+    Exe := RqFbConvertedExe(Dpr);   // перевод из _rqfb - exe выше
   end
   else if RapidQ then
   begin
@@ -55420,7 +55420,7 @@ begin
       LogComp('Запуск: главный .bas не найден. Откройте его и соберите проект');
       Exit;
     end;
-    Exe := ChangeFileExt(Dpr, '.exe');
+    Exe := RqFbConvertedExe(Dpr);   // перевод из _rqfb - exe выше
   end
   else
   begin
