@@ -112,12 +112,12 @@ type
     // место выглядело пустым
     pbNoOptions: TPaintBox;
     FNoOptionsText: string;
-    procedure pbNoOptionsPaint(Sender: TObject);
     pnlBottom: TPanel;
     lblStatus: TLabel;
     btnBuild: TUiButton;
     btnClose: TUiButton;
     procedure BuildControls;
+    procedure pbNoOptionsPaint(Sender: TObject);
     procedure FillItems;
     procedure chkLibClick(Sender: TObject);
     procedure CollectChecks;
@@ -829,25 +829,25 @@ end;
 
 procedure TStrictFixForm.pbNoOptionsPaint(Sender: TObject);
 var
-  TextRect: TRect;
+  PaintCanvas: TCanvas;
+  DrawArea: TRect;
 begin
-  with pbNoOptions.Canvas do
-  begin
-    Brush.Color := lvItems.Color;
-    FillRect(pbNoOptions.ClientRect);
-    Font := Self.Font;
-    Font.Color := lvItems.Font.Color;
-    Brush.Style := bsClear;
-    TextRect := Rect(16, 0, pbNoOptions.Width - 16, pbNoOptions.Height);
-    // По центру, с переносом: высоту текста узнаём, потом сдвигаем
-    DrawText(Handle, PChar(FNoOptionsText), -1, TextRect,
-             DT_CENTER or DT_WORDBREAK or DT_CALCRECT);
-    OffsetRect(TextRect, (pbNoOptions.Width - 32 -
-               (TextRect.Right - TextRect.Left)) div 2,
-               (pbNoOptions.Height - (TextRect.Bottom - TextRect.Top)) div 2);
-    DrawText(Handle, PChar(FNoOptionsText), -1, TextRect,
-             DT_CENTER or DT_WORDBREAK);
-  end;
+  // Без with: у TCanvas свои Rect-подобные имена (TextRect)
+  PaintCanvas := pbNoOptions.Canvas;
+  PaintCanvas.Brush.Color := lvItems.Color;
+  PaintCanvas.FillRect(pbNoOptions.ClientRect);
+  PaintCanvas.Font := Font;
+  PaintCanvas.Font.Color := lvItems.Font.Color;
+  PaintCanvas.Brush.Style := bsClear;
+  DrawArea := Rect(16, 0, pbNoOptions.Width - 16, pbNoOptions.Height);
+  // По центру, с переносом: размер текста узнаём, потом сдвигаем
+  DrawText(PaintCanvas.Handle, PChar(FNoOptionsText), -1, DrawArea,
+           DT_CENTER or DT_WORDBREAK or DT_CALCRECT);
+  OffsetRect(DrawArea, (pbNoOptions.Width - 32 -
+             (DrawArea.Right - DrawArea.Left)) div 2,
+             (pbNoOptions.Height - (DrawArea.Bottom - DrawArea.Top)) div 2);
+  DrawText(PaintCanvas.Handle, PChar(FNoOptionsText), -1, DrawArea,
+           DT_CENTER or DT_WORDBREAK);
 end;
 
 procedure TStrictFixForm.Progress(const AText: string; var ACancel: Boolean);
