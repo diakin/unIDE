@@ -64511,22 +64511,39 @@ begin
     FSubFilter.OnChange := SubFilterChange;
     FSubFilter.OnKeyDown := SubFilterKeyDown;
   end;
-  StartupStage('Тема IDE: заморозка окон');
-  UiApply;
+  // Тема и шрифты меняют размеры полос окна: строка меню вместо системного
+  // меню, её высота, высота вкладок. Каждая такая смена перестраивала
+  // окно, и редактор с большим текстом менял размер несколько раз (по
+  // startup.log - сотни мс на Unit1.pas). Выравнивание окна - один раз,
+  // после шрифтов.
+  DisableAlign;
+  try
+    StartupStage('Тема IDE: заморозка окон');
+    UiApply;
 
-  // SubList: Name растягивается по ширине, Begin и End - у правого края.
-  // OnResize у TControl защищённый, отсюда TUiCtl
+    // SubList: Name растягивается по ширине, Begin и End - у правого края.
+    // OnResize у TControl защищённый, отсюда TUiCtl
+    if lvSubList <> nil then
+    begin
+      TUiCtl(lvSubList).OnResize := SubListResize;
+      SubListFitColumns;
+      SubFilterPlace;
+    end;
+
+    // Шрифты групп IDE: умолчания - как сейчас у элементов, выбранные - из
+    // editor.ini (IDE Options - IDE colors and Fonts)
+    StartupStage('Шрифты IDE');
+    UiFontsInit;
+    StartupStage('Тема и шрифты: выравнивание окна');
+  finally
+    EnableAlign;
+  end;
+  // Колонки SubList и поле фильтра - по размерам после выравнивания
   if lvSubList <> nil then
   begin
-    TUiCtl(lvSubList).OnResize := SubListResize;
     SubListFitColumns;
     SubFilterPlace;
   end;
-
-  // Шрифты групп IDE: умолчания - как сейчас у элементов, выбранные - из
-  // editor.ini (IDE Options - IDE colors and Fonts)
-  StartupStage('Шрифты IDE');
-  UiFontsInit;
 
   // Правая панель была свёрнута при выходе
   // Ряды вкладок палитры - когда окно уже показано и страницы добавлены
