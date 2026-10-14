@@ -22,7 +22,9 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
   ExtCtrls, ComCtrls, IniFiles,
   StrictFix,    // разбор записей и варианты исправления
-  UiButton;     // TUiButton
+  UiButton,     // TUiButton
+  UiStdCtrls,   // TUiCheckBox
+  UiComCtrls;   // TUiListView
 
 type
   // Открыть файл в редакторе на строке (с 1)
@@ -60,6 +62,16 @@ function StrictFixDialog(AOwner: TComponent;
 // Окно уже открыто (сборка ждёт его): поднять его наверх, True
 function StrictFixDialogActive: Boolean;
 
+// Пропущенные записи (галка снята в окне) - ключи StrictItemKey, хранятся
+// в editor.ini, раздел "RapidQ.StrictSkip <главный файл>"
+function  StrictItemKey(AItem: TStrictError): string;
+procedure StrictLoadSkipped(const AIniFile, AMainFile: string;
+                            ASkipped: TStrings);
+procedure StrictSaveSkipped(const AIniFile, AMainFile: string;
+                            ASkipped: TStrings);
+// Из AMessages - строки пропущенных записей; результат - сколько убрано
+function  StrictDropSkipped(AMessages, ASkipped: TStrings): Integer;
+
 implementation
 
 type
@@ -80,8 +92,10 @@ type
     FLastTick: Cardinal;
     FErrCount: Integer;
     lblInfo: TLabel;
-    chkLib: TCheckBox;       // показать подозрения в файлах папок Include
-    lvItems: TListView;
+    chkLib: TUiCheckBox;     // показать подозрения в файлах папок Include
+    chkSkipped: TUiCheckBox; // показать пропущенные (галка снята)
+    FSkipped: TStringList;   // ключи пропущенных записей (StrictItemKey)
+    lvItems: TUiListView;    // с галками: снята - пропускать в следующий раз
     splItems: TSplitter;
     memExplain: TMemo;
     pnlActions: TPanel;
@@ -98,6 +112,7 @@ type
     procedure BuildControls;
     procedure FillItems;
     procedure chkLibClick(Sender: TObject);
+    procedure CollectChecks;
     function  CurIndex: Integer;
     function  CurItem: TStrictError;
     function  CurOptions: TStringList;
@@ -231,6 +246,7 @@ begin
   FOptions.Free;
   FPrepared.Free;
   FDone.Free;
+  FSkipped.Free;
   inherited Destroy;
 end;
 
@@ -281,7 +297,7 @@ begin
   lblInfo.Align := alTop;
   lblInfo.AutoSize := True;
   lblInfo.WordWrap := True;
-  chkLib := TCheckBox.Create(Self);
+  chkLib := TUiCheckBox.Create(Self);
   chkLib.Parent := Self;
   chkLib.Top := 30;
   chkLib.Height := 20;
@@ -291,6 +307,20 @@ begin
                  'обычно не про вашу программу - по умолчанию скрыты';
   chkLib.Checked := False;
   chkLib.OnClick := chkLibClick;
+  chkSkipped := TUiCheckBox.Create(Self);
+  chkSkipped.Parent := Self;
+  chkSkipped.Top := 52;
+  chkSkipped.Height := 20;
+  chkSkipped.Align := alTop;
+  chkSkipped.Caption := ' Пропущенные';
+  chkSkipped.Hint := 'Записи со снятой галкой при следующих проверках не ' +
+                     'показываются и не открывают окно; галка - вернуть';
+  chkSkipped.Checked := False;
+  chkSkipped.OnClick := chkLibClick;
+  FSkipped := TStringList.Create;
+  FSkipped.Sorted := True;
+  FSkipped.Duplicates := dupIgnore;
+  FSkipped.CaseSensitive := False;
 
   pnlBottom := TPanel.Create(Self);
   pnlBottom.Parent := Self;
@@ -311,9 +341,10 @@ begin
   btnClose.Hint := 'Закрыть окно, rc.exe не запускать';
 
   // Сверху вниз: записи | сплиттер | пояснение | кнопки | варианты
-  lvItems := TListView.Create(Self);
+  lvItems := TUiListView.Create(Self);
   lvItems.Parent := Self;
-  lvItems.Top := 40;
+  lvItems.Checkboxes := True;
+  lvItems.Top := 80;
   lvItems.Height := 170;
   lvItems.Align := alTop;
   lvItems.ViewStyle := vsReport;
@@ -388,11 +419,14 @@ end;
 
 procedure TStrictFixForm.FillItems;
 var
-  Pass, MsgIdx, Limits, Suspects, LibSuspects, ItemIdx: Integer;
+  Pass, MsgIdx, Limits, Suspects, LibSuspects, ItemIdx, SkipCount: Integer;
   Item: TStrictError;
   Row: TListItem;
+  IsSkipped: Boolean;
 begin
-  // Заново (переключение "Подозрения в файлах папок Include")
+  // Заново (переключение галок над списком): сначала - галки строк
+  CollectChecks;
+  SkipCount := 0;
   for ItemIdx := 0 to FItems.Count - 1 do
     TObject(FItems[ItemIdx]).Free;
   for ItemIdx := 0 to FOptions.Count - 1 do
@@ -429,13 +463,24 @@ begin
           Continue;
         end;
       end;
-      if Item.Level = slError then
+      IsSkipped := FSkipped.IndexOf(StrictItemKey(Item)) >= 0;
+      if IsSkipped then
+      begin
+        Inc(SkipCount);
+        if not chkSkipped.Checked then
+        begin
+          Item.Free;
+          Continue;
+        end;
+      end
+      else if Item.Level = slError then
         Inc(FErrCount)
       else
         Inc(Suspects);
       FItems.Add(Item);
       FOptions.Add(TStringList.Create);
       Row := lvItems.Items.Add;
+      Row.Checked := not IsSkipped;
       if Item.Level = slError then
         Row.Caption := 'Ошибка'
       else
@@ -452,6 +497,8 @@ begin
   chkLib.Caption := Format(' Подозрения в файлах папок Include: %d',
                            [LibSuspects]);
   chkLib.Enabled := LibSuspects > 0;
+  chkSkipped.Caption := Format(' Пропущенные (галка снята): %d', [SkipCount]);
+  chkSkipped.Enabled := SkipCount > 0;
   if Limits > 0 then
     lblInfo.Caption := lblInfo.Caption + Format(' Ограничений перевода в ' +
       'FreeBASIC: %d - для rc.exe не важны, они только в логе.', [Limits]);
@@ -756,6 +803,30 @@ begin
     ShowCurrent;
 end;
 
+// Галки строк - в список пропущенных: снята - ключ записи туда, стоит -
+// оттуда. Строки, которых в списке нет (скрытые), не трогаются.
+procedure TStrictFixForm.CollectChecks;
+var
+  RowIdx: Integer;
+  Key: string;
+  SkipIdx: Integer;
+begin
+  for RowIdx := 0 to lvItems.Items.Count - 1 do
+  begin
+    if RowIdx >= FItems.Count then
+      Break;
+    Key := StrictItemKey(TStrictError(FItems[RowIdx]));
+    if lvItems.Items[RowIdx].Checked then
+    begin
+      SkipIdx := FSkipped.IndexOf(Key);
+      if SkipIdx >= 0 then
+        FSkipped.Delete(SkipIdx);
+    end
+    else
+      FSkipped.Add(Key);
+  end;
+end;
+
 procedure TStrictFixForm.chkLibClick(Sender: TObject);
 begin
   if not FBusy and (FMessages <> nil) then
@@ -1032,6 +1103,7 @@ begin
     Dlg.FIniFile := AIniFile;
     Dlg.BuildControls;
     Dlg.LoadPlacement;
+    StrictLoadSkipped(AIniFile, AMainFile, Dlg.FSkipped);
     Dlg.FillItems;
     // Немодально: ждём здесь, пока окно не закроют кнопкой (ModalResult)
     // или крестиком; программу закрыли - без сборки
@@ -1044,10 +1116,90 @@ begin
     if Application.Terminated or (Result = mrNone) then
       Result := mrCancel;
     Dlg.SavePlacement;
+    Dlg.CollectChecks;
+    StrictSaveSkipped(AIniFile, AMainFile, Dlg.FSkipped);
     Dlg.Hide;
   finally
     OpenStrictDlg := nil;
     Dlg.Free;
+  end;
+end;
+
+function StrictItemKey(AItem: TStrictError): string;
+begin
+  // Без номера строки: строки сдвигаются при правках выше
+  Result := UpperCase(ExtractFileName(AItem.FileName)) + ': ' + AItem.Text;
+end;
+
+function SkipSection(const AMainFile: string): string;
+begin
+  Result := 'RapidQ.StrictSkip ' + LowerCase(ExpandFileName(AMainFile));
+end;
+
+procedure StrictLoadSkipped(const AIniFile, AMainFile: string;
+                            ASkipped: TStrings);
+var
+  Ini: TIniFile;
+  Count, KeyIdx: Integer;
+begin
+  ASkipped.Clear;
+  if (AIniFile = '') or not FileExists(AIniFile) then
+    Exit;
+  Ini := TIniFile.Create(AIniFile);
+  try
+    Count := Ini.ReadInteger(SkipSection(AMainFile), 'Count', 0);
+    for KeyIdx := 1 to Count do
+      ASkipped.Add(Ini.ReadString(SkipSection(AMainFile), IntToStr(KeyIdx), ''));
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure StrictSaveSkipped(const AIniFile, AMainFile: string;
+                            ASkipped: TStrings);
+var
+  Ini: TIniFile;
+  KeyIdx: Integer;
+begin
+  if AIniFile = '' then
+    Exit;
+  Ini := TIniFile.Create(AIniFile);
+  try
+    Ini.EraseSection(SkipSection(AMainFile));
+    if ASkipped.Count = 0 then
+      Exit;
+    Ini.WriteInteger(SkipSection(AMainFile), 'Count', ASkipped.Count);
+    for KeyIdx := 0 to ASkipped.Count - 1 do
+      Ini.WriteString(SkipSection(AMainFile), IntToStr(KeyIdx + 1),
+                      ASkipped[KeyIdx]);
+  finally
+    Ini.Free;
+  end;
+end;
+
+function StrictDropSkipped(AMessages, ASkipped: TStrings): Integer;
+var
+  MsgIdx: Integer;
+  Item: TStrictError;
+begin
+  Result := 0;
+  if ASkipped.Count = 0 then
+    Exit;
+  for MsgIdx := AMessages.Count - 1 downto 0 do
+  begin
+    Item := StrictParseMessage(AMessages[MsgIdx]);
+    if Item = nil then
+      Continue;
+    try
+      if (Item.Kind <> skLimit) and
+         (ASkipped.IndexOf(StrictItemKey(Item)) >= 0) then
+      begin
+        AMessages.Delete(MsgIdx);
+        Inc(Result);
+      end;
+    finally
+      Item.Free;
+    end;
   end;
 end;
 

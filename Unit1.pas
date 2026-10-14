@@ -969,6 +969,12 @@ type
 
     private
     OldRichEditProc: TWndMethod;
+    // Меню Started Util: открытые окна утилит (немодальные окна поверх
+    // главного); FUtilSig - каким набором окон меню построено
+    FUtilMenu: TMenuItem;
+    FUtilSig: string;
+    procedure UtilMenuUpdate;
+    procedure UtilMenuClick(Sender: TObject);
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
     FCurrentFileName: string; // Сюда мы будем записывать путь к открытому/сохраненному файлу
 
@@ -12626,7 +12632,8 @@ var
   Options: TRqFbOptions;
   ConvResult: TRqFbResult;
   ConvMessages, Roots, LibDirs: TStringList;
-  MsgIdx, ProgErrors, Suspects, LibSuspects, Limits: Integer;
+  CountMessages, Skipped: TStringList;   // без пропущенных (галка в окне)
+  MsgIdx, ProgErrors, Suspects, LibSuspects, Limits, SkipCount: Integer;
   StartTick: Cardinal;
   Passed, Aborted, Clean: Boolean;
   SysDir, UserDir, Mode, OwnDir: string;
@@ -12654,6 +12661,8 @@ begin
   FRqFbProgTick := 0;
   ConvMessages := TStringList.Create;
   LibDirs := TStringList.Create;
+  CountMessages := TStringList.Create;
+  Skipped := TStringList.Create;
   try
   BusyBegin('Строгая проверка ' + ExtractFileName(ABas));
   try
@@ -12680,7 +12689,15 @@ begin
     LibDirs.Add(AIncDir);
     LibDirs.Add(SysDir);
     LibDirs.Add(UserDir);
-    StrictCount(ConvMessages, LibDirs, ProgErrors, Suspects, LibSuspects,
+    // Записи, у которых в окне снята галка, - не считаются и окно не
+    // открывают (в окне они - под галкой "Пропущенные")
+    StrictLoadSkipped(SettingsFileName, ABas, Skipped);
+    CountMessages.Assign(ConvMessages);
+    SkipCount := StrictDropSkipped(CountMessages, Skipped);
+    if SkipCount > 0 then
+      LogComp(Format('Строгая проверка: пропущено по выбору %d (в окне ' +
+                     'строгой проверки снята галка)', [SkipCount]));
+    StrictCount(CountMessages, LibDirs, ProgErrors, Suspects, LibSuspects,
                 Limits);
     Aborted := not Passed and (ConvResult.ErrorCount = 0);
     // Что rc.exe пропустит, а программа из-за этого может работать не так
@@ -12745,6 +12762,8 @@ begin
       Roots.Free;
     end;
   finally
+    Skipped.Free;
+    CountMessages.Free;
     LibDirs.Free;
     ConvMessages.Free;
   end;
@@ -21731,6 +21750,13 @@ begin
     AlphaBlendValue := 0;
     AlphaBlend := True;
   end;
+
+  // Меню Started Util - после Window; пункты - UtilMenuUpdate (по простою)
+  FUtilMenu := TMenuItem.Create(Self);
+  FUtilMenu.Caption := 'Started Util';
+  MainMenu1.Items.Insert(mWindows.MenuIndex + 1, FUtilMenu);
+  FUtilSig := #1;
+  UtilMenuUpdate;
 
   Position := poDesigned; // иначе VCL сам сдвинет окно при показе
 
@@ -34766,6 +34792,78 @@ begin
   // Только отмеченные: снятая галка - папка в поиске не участвует
   Result := HotFoldersDialog(APreselect, 'Directory Tree - отмеченные папки ' +
                              'для поиска', True, ADirs, True);
+end;
+
+// Меню Started Util: все видимые окна программы, кроме главного, - окна
+// утилит (недостающие файлы, строгая проверка, Find In Files, INC Manager,
+// окна отладчика ...). Немодальное окно может уйти под главное; пункт
+// поднимает его. Перестраивается по простою, только когда набор окон или
+// их заголовки сменились.
+procedure TForm1.UtilMenuUpdate;
+var
+  FormIdx: Integer;
+  OneForm: TCustomForm;
+  Sig: string;
+  Item: TMenuItem;
+begin
+  if FUtilMenu = nil then
+    Exit;
+  Sig := '';
+  for FormIdx := 0 to Screen.CustomFormCount - 1 do
+  begin
+    OneForm := Screen.CustomForms[FormIdx];
+    if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
+      Continue;
+    Sig := Sig + IntToHex(Integer(OneForm), 8) + OneForm.Caption + #1;
+  end;
+  if Sig = FUtilSig then
+    Exit;
+  FUtilSig := Sig;
+  FUtilMenu.Clear;
+  for FormIdx := 0 to Screen.CustomFormCount - 1 do
+  begin
+    OneForm := Screen.CustomForms[FormIdx];
+    if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
+      Continue;
+    Item := TMenuItem.Create(FUtilMenu);
+    Item.Caption := StringReplace(OneForm.Caption, '&', '&&', [rfReplaceAll]);
+    Item.Tag := Integer(OneForm);
+    Item.OnClick := UtilMenuClick;
+    FUtilMenu.Add(Item);
+  end;
+  // Пустое меню строка меню не раскрывает - пункт-пояснение
+  if FUtilMenu.Count = 0 then
+  begin
+    Item := TMenuItem.Create(FUtilMenu);
+    Item.Caption := '(открытых окон утилит нет)';
+    Item.Enabled := False;
+    FUtilMenu.Add(Item);
+  end;
+  if FMenuBar <> nil then
+    FMenuBar.Invalidate;
+end;
+
+// Пункт Started Util: окно - наверх (свёрнутое - развернуть). Окно могло
+// закрыться после постройки меню - ищется среди открытых.
+procedure TForm1.UtilMenuClick(Sender: TObject);
+var
+  FormIdx: Integer;
+  OneForm: TCustomForm;
+begin
+  for FormIdx := 0 to Screen.CustomFormCount - 1 do
+  begin
+    OneForm := Screen.CustomForms[FormIdx];
+    if Integer(OneForm) <> TMenuItem(Sender).Tag then
+      Continue;
+    if not OneForm.Visible then
+      Exit;
+    if OneForm.WindowState = wsMinimized then
+      OneForm.WindowState := wsNormal;
+    OneForm.BringToFront;
+    if OneForm.CanFocus then
+      OneForm.SetFocus;
+    Exit;
+  end;
 end;
 
 // Имя из сообщения rc.exe "$INCLUDE file X does not exist"; '' - такого нет
@@ -51941,6 +52039,7 @@ begin
     Exit;
   StartTick := GetTickCount;
   UpdateToolbarState;
+  UtilMenuUpdate;
   // Долгий простой - в HiLite log (не чаще раза в 2 с): он тормозит всё,
   // что идёт сообщениями, - мышь, клавиатуру, перерисовку
   Spent := GetTickCount - StartTick;
