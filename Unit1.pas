@@ -1807,6 +1807,7 @@ type
     FFifListTaken: Boolean;   // Match list занят другим списком - не трогать
     FFifCloseAfter: Boolean;  // главное окно закрывают во время поиска
     FFifLastTick: Cardinal;
+    FFifStatusTick: Cardinal;  // строка хода - не чаще 3 раз в секунду
     FFifTotal: Integer;       // найдено совпадений
     FFifFiles: Integer;       // в скольких файлах
     FFifChecked: Integer;     // просмотрено файлов
@@ -19662,6 +19663,8 @@ begin
   begin
     Dlg := TDlgFifDisk.Create(Self);
     FFifDlg := Dlg;
+    // Строка хода меняется во время поиска - без мерцания
+    Dlg.DoubleBuffered := True;
     Dlg.btnOk.OnClick := FifFindClick;
     Dlg.btnCancel.OnClick := FifCloseClick;
     Dlg.btnBrowse.OnClick := FifBrowseClick;
@@ -20008,7 +20011,8 @@ end;
 // Строка хода поиска в окне Find In Files
 procedure TForm1.FifStatus(const AText: string);
 begin
-  if FFifDlg <> nil then
+  // Тот же текст - не перерисовывать
+  if (FFifDlg <> nil) and (TDlgFifDisk(FFifDlg).lblStatus.Caption <> AText) then
     TDlgFifDisk(FFifDlg).lblStatus.Caption := AText;
 end;
 
@@ -20053,7 +20057,12 @@ begin
   if GetTickCount - FFifLastTick < 100 then
     Exit;
   FFifLastTick := GetTickCount;
-  FifStatus(AText);
+  // Строка хода - реже, чем шаг (раз в 300 мс): иначе путь файла мелькал
+  if GetTickCount - FFifStatusTick >= 300 then
+  begin
+    FFifStatusTick := GetTickCount;
+    FifStatus(AText);
+  end;
   FifGridGrow;
   if FFifRunning and (FMatchForm <> nil) and not FFifListTaken then
     FMatchForm.Caption := Format('Match list - %d в %d файлах (поиск...)',
