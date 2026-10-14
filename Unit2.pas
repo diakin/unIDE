@@ -388,6 +388,7 @@ type
     procedure SaveToolList(const AType: string);
     procedure ShowCompilerPage(const AType: string);
     procedure CompBrowseClick(Sender: TObject);
+    function  FbBrowseStart(const AKey: string): string;
     procedure CompEditChange(Sender: TObject);
     procedure CompEditExit(Sender: TObject);
     procedure CompUseIdeClick(Sender: TObject);
@@ -4622,6 +4623,53 @@ begin
 end;
 
 // Кнопка выбора: ключ, кончающийся на File, спрашивает файл, прочие - папку
+// Стартовая папка кнопки «...» пустого поля FreeBASIC (CompBrowseClick)
+function TForm2.FbBrowseStart(const AKey: string): string;
+var
+  Comp32, Comp64, CompDir, SubDir: string;
+
+  function FieldText(const AFieldKey: string): string;
+  var
+    FieldIdx: Integer;
+  begin
+    Result := '';
+    FieldIdx := CompFieldIdx(AFieldKey);
+    if FieldIdx >= 0 then
+      Result := ExcludeTrailingPathDelimiter(Trim(FCompEdits[FieldIdx].Text));
+  end;
+
+begin
+  Result := '';
+  Comp32 := FieldText('FBCompPath');
+  Comp64 := FieldText('FBComp64Path');
+  if CompareText(AKey, 'FBComp64Path') = 0 then
+  begin
+    if Comp32 <> '' then
+      Result := ExtractFilePath(Comp32);
+    Exit;
+  end;
+  if CompareText(AKey, 'FBCompPath') = 0 then
+  begin
+    if Comp64 <> '' then
+      Result := ExtractFilePath(Comp64);
+    Exit;
+  end;
+  if CompareText(AKey, 'IncPath') = 0 then
+    SubDir := 'inc'
+  else if CompareText(AKey, 'LibPath') = 0 then
+    SubDir := 'lib'
+  else
+    Exit;
+  CompDir := Comp32;
+  if (CompDir = '') or not DirectoryExists(CompDir) then
+    CompDir := Comp64;
+  if CompDir = '' then
+    Exit;
+  Result := IncludeTrailingPathDelimiter(CompDir) + SubDir;
+  if not DirectoryExists(Result) then
+    Result := CompDir;
+end;
+
 procedure TForm2.CompBrowseClick(Sender: TObject);
 var
   I: Integer;
@@ -4657,7 +4705,12 @@ begin
   end
   else
   begin
-    Dir := FCompEdits[I].Text;
+    Dir := Trim(FCompEdits[I].Text);
+    // FreeBASIC, поле пустое: Include и Library - с inc и lib компилятора
+    // (их fbc и берёт, когда поля пустые), папка второго компилятора - с
+    // папки над первым (обе версии обычно лежат рядом)
+    if (Dir = '') and (CompareText(FCompType, 'FreeBASIC') = 0) then
+      Dir := FbBrowseStart(FCompKeys[I]);
     // Поле пустое - начинаем с папки текущего проекта, а её нет - с папки
     // самой программы: искать с корня диска неудобно
     if (Dir = '') and (Form1 <> nil) then
