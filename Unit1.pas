@@ -59962,66 +59962,59 @@ begin
   Application.ProcessMessages;
 end;
 
-// ReactOS - Install RosBE 2.2.1. Уже установлен (запись App Paths) -
-// только запоминается путь. Иначе установщик с SourceForge во временную
-// папку и запуск: без окон (/S, всегда в C:\RosBE - так задано в самом
-// установщике) или с его окнами - если есть прежняя установка RosBE (в
-// тихом режиме установщик на ней прерывается) или папку выбирают сами.
-// Путь RosBE.cmd - из записи установщика; в editor.ini и в скрипт
-// окружения открытого проекта ReactOS, если он там не задан.
+// ReactOS - Install RosBE 2.2.1. Уже есть (запись App Paths или
+// C:\RosBE\RosBE.cmd) - только запоминается путь. Иначе установщик с
+// SourceForge во временную папку и распаковка 7-Zip в C:\RosBE: сам
+// установщик не проходит свою проверку целостности (RosTools). Путь
+// RosBE.cmd - в editor.ini и в скрипт окружения открытого проекта ReactOS,
+// если он там не задан.
 procedure TForm1.RosInstallRosBEClick(Sender: TObject);
 var
-  EnvScript, InstallDir, Installer, ErrText, PrevVersion, Params: string;
-  FileHash: string;
+  EnvScript, InstallDir, Installer, ErrText, FileHash, SevenZip: string;
   TempBuf: array[0..MAX_PATH] of Char;
-  Answer, StageDownload, StageInstall: Integer;
-  InstallCode: DWORD;
+  StageDownload, StageExtract, ExtractCode: Integer;
   Ini: TIniFile;
   Prj: TProjectIni;
   RosCfg: TRosSettings;
-  Done, Silent: Boolean;
+  Done: Boolean;
 begin
   ShowCompLog;
+  InstallDir := RosBE221DefaultDir;
   EnvScript := RosBERegisteredScript;
+  if (EnvScript = '') and RosBEInstalledIn(InstallDir) then
+    EnvScript := IncludeTrailingPathDelimiter(InstallDir) + RosBEScript;
   if EnvScript <> '' then
     LogComp('RosBE: уже установлен - ' + EnvScript)
   else
   begin
-    InstallDir := RosBE221DefaultDir;
-    if RosBEPreviousInstall(PrevVersion) then
+    SevenZip := RosFind7Zip;
+    if SevenZip = '' then
     begin
-      if PrevVersion = '' then
-        PrevVersion := 'версия не записана';
-      Answer := MessageDlg('9804:В реестре есть запись об установленном ' +
-                'RosBE (' + PrevVersion + '), а RosBE.cmd по ней не ' +
-                'найден.'#13#10#13#10'Установщик RosBE 2.2.1 предложит ' +
-                'удалить прежнюю версию, поэтому он запустится со своими ' +
-                'окнами. Скачать (74 МБ) и запустить?',
-                mtConfirmation, [mbOK, mbCancel], 0);
-      if Answer <> mrOk then
-        Exit;
-      Silent := False;
-    end
-    else
-    begin
-      Answer := MessageDlg('9803:RosBE 2.2.1 будет скачан с SourceForge ' +
-                '(74 МБ) и установлен в ' + InstallDir + ' - эту папку ' +
-                'задаёт сам установщик.'#13#10'Windows спросит разрешение ' +
-                'на установку (права администратора).'#13#10#13#10'Yes - ' +
-                'установить без окон, No - запустить установщик с окнами ' +
-                '(папку можно выбрать в нём)',
-                mtConfirmation, [mbYes, mbNo, mbCancel], 0);
-      if Answer = mrCancel then
-        Exit;
-      Silent := Answer = mrYes;
+      LogComp('RosBE: 7-Zip не найден. Установите его (ReactOS - ' +
+      'Download Build Tools - 7-Zip) и повторите Install RosBE');
+      MessageDlg('9805:Для установки RosBE 2.2.1 нужен 7-Zip: установщик ' +
+                 'с SourceForge не проходит собственную проверку ' +
+                 'целостности, и файлы RosBE берутся из него распаковкой.' +
+                 #13#10#13#10'Установите 7-Zip (меню ReactOS - Download ' +
+                 'Build Tools - 7-Zip) и повторите Install RosBE.',
+                 mtInformation, [mbOK], 0);
+      Exit;
     end;
+    if MessageDlg('9803:RosBE 2.2.1 будет скачан с SourceForge (74 МБ) и ' +
+                  'распакован 7-Zip в ' + InstallDir + ' (около 300 МБ).' +
+                  #13#10#13#10'Установщик с SourceForge не проходит ' +
+                  'собственную проверку целостности и не запускается, ' +
+                  'поэтому файлы берутся из него распаковкой - без ' +
+                  'ярлыков и записей в реестре; RosBE.cmd они не нужны.',
+                  mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+      Exit;
 
     GetTempPath(MAX_PATH, TempBuf);
     Installer := IncludeTrailingPathDelimiter(TempBuf) + RosBE221File;
     CompDlgOpen('RosBE 2.2.1');
     FCompDlg.Caption := 'Установка RosBE';
-    StageDownload := FCompDlg.AddStage('Скачивание ' + RosBE221File, 90);
-    StageInstall := FCompDlg.AddStage('Установка', 10);
+    StageDownload := FCompDlg.AddStage('Скачивание ' + RosBE221File, 60);
+    StageExtract := FCompDlg.AddStage('Распаковка в ' + InstallDir, 40);
     Done := False;
     BusyBegin('Установка RosBE 2.2.1');
     try
@@ -60042,14 +60035,6 @@ begin
           LogComp('RosBE: не скачан - ' + ErrText);
           Exit;
         end;
-        if FileSizeOf(Installer) <> RosBE221Size then
-        begin
-          FCompDlg.EndStage(StageDownload, False, 'не тот размер');
-          LogComp(Format('RosBE: размер файла %d байт, ожидался %d - ' +
-          'файл не тот, установка не запускается', [FileSizeOf(Installer),
-                                                    RosBE221Size]));
-          Exit;
-        end;
         FileHash := RosFileSha256(Installer);
         if FileHash <> RosBE221Sha256 then
         begin
@@ -60065,59 +60050,31 @@ begin
         FCompDlg.EndStage(StageDownload, True, 'SHA-256 совпадает');
       end;
 
-      // Второй экземпляр установщик сам прервёт с кодом 2
-      if RosBE221InstallerRunning then
-      begin
-        FCompDlg.SkipStage(StageInstall, 'установщик уже запущен');
-        LogComp('RosBE: установщик RosBE 2.2.1 уже запущен (возможно, ' +
-        'его окно за другими окнами или он завис). Закройте его или ' +
-        'завершите RosBE-2.2.1.exe в Диспетчере задач и повторите');
-        Exit;
+      LogComp('RosBE: распаковка в ' + InstallDir + ' - ' + SevenZip);
+      FCompDlg.StartStage(StageExtract, 0, '7-Zip');
+      FRosInstallStage := StageExtract;
+      // Как при сборке ReactOS: строки 7-Zip не разбираются как вывод fbc,
+      // Стоп снимает 7z.exe
+      FRosBuilding := True;
+      try
+        ExtractCode := RunCompiler(SevenZip,
+                                   RosExtractArgs(Installer, InstallDir),
+                                   ExtractFileDir(Installer));
+      finally
+        FRosBuilding := False;
       end;
-
-      if Silent then
-      begin
-        LogComp('RosBE: установка без окон в ' + InstallDir);
-        Params := '/S';
-        FCompDlg.StartStage(StageInstall, 0, 'ответьте на запрос Windows');
-      end
-      else
-      begin
-        LogComp('RosBE: установщик запущен с окнами');
-        Params := '';
-        FCompDlg.StartStage(StageInstall, 0, 'идёт в окнах установщика');
-      end;
-      FRosInstallStage := StageInstall;
-      if not RosRunInstaller(Installer, Params, RosInstallProgress,
-                             InstallCode, ErrText) then
-      begin
-        FCompDlg.EndStage(StageInstall, False, ErrText);
-        LogComp('RosBE: ' + ErrText);
-        Exit;
-      end;
-      // Путь - из записи установщика; в тихом режиме он ещё и известен
-      EnvScript := RosBERegisteredScript;
-      if (EnvScript = '') and Silent and RosBEInstalledIn(InstallDir) then
-        EnvScript := IncludeTrailingPathDelimiter(InstallDir) + RosBEScript;
-      Done := EnvScript <> '';
-      FCompDlg.EndStage(StageInstall, Done,
-                        'код завершения ' + IntToStr(InstallCode));
+      Done := (ExtractCode = 0) and RosBEInstalledIn(InstallDir);
+      FCompDlg.EndStage(StageExtract, Done,
+                        'код 7-Zip ' + IntToStr(ExtractCode));
       if not Done then
       begin
-        LogComp('RosBE: установщик завершился с кодом ' +
-        IntToStr(InstallCode) + ', RosBE.cmd не найден');
-        // Код 2 - Abort в сценарии установщика или ошибка запуска NSIS
-        // (RosTools). Файл и мьютекс проверены выше, остаётся сообщение
-        // установщика - в режиме с окнами оно было на экране
-        if InstallCode = 2 then
-          if Silent then
-            LogComp('RosBE: установщик прерван. Запустите Install RosBE ' +
-            'ещё раз и выберите No - установщик покажет причину в окне')
-          else
-            LogComp('RosBE: установщик прерван при запуске - причину он ' +
-            'показал в своём окне сообщения');
+        LogComp('RosBE: 7-Zip завершился с кодом ' + IntToStr(ExtractCode) +
+        ', ' + InstallDir + '\' + RosBEScript + ' нет. Старые версии ' +
+        '7-Zip могут не открывать установщики NSIS 3 - тогда нужен ' +
+        'новый 7-Zip');
         Exit;
       end;
+      EnvScript := IncludeTrailingPathDelimiter(InstallDir) + RosBEScript;
     finally
       BusyEnd('Установка RosBE', Done);
       if FCompDlg.AbortRequested then

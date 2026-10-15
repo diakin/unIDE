@@ -336,6 +336,8 @@ begin
   AList.Add('Git for Windows 2.46.2 - последний для Windows 7=' +
             'https://github.com/git-for-windows/git/releases/tag/' +
             'v2.46.2.windows.1');
+  AList.Add('7-Zip - распаковка RosBE 2.2.1 (Install RosBE)=' +
+            'https://www.7-zip.org/');
 end;
 
 function RosParseNinjaStatus(const ALine: string;

@@ -19,6 +19,16 @@ unit RosTools;
 //      папка - NSIS 3.05, Source/exehead/Main.c, ExitProcess(2);
 //    - после установки HKCU\Software\Microsoft\Windows\CurrentVersion\
 //      App Paths\RosBE.cmd (значение по умолчанию) = <папка>\RosBE.cmd.
+//  Файл на SourceForge (SHA-256 ниже, совпадает с MD5/SHA1 на странице
+//  файла) сам не проходит эту проверку целостности: CRC32 данных
+//  0x7AD84B9F, записано 0x12A04F53 (проверено 15.10.2026 по алгоритму
+//  NSIS 3.05 exehead/fileform.c, на nsis-3.05-setup.exe он сходится).
+//  Запуск всегда даёт "Installer integrity check has failed" и код 2, а
+//  CRCCheck force не даёт обойти её ключом /NCRC. Сами файлы 7-Zip
+//  распаковывает без ошибок (9457 файлов; заголовки PE и архивов .a
+//  целы), поэтому установка - распаковкой 7-Zip (RosExtractArgs).
+//  RosBE.cmd переносим (%~dp0), записи в реестре ему не нужны.
+//
 //  RosBE.cmd - скрипт окружения проекта (ReactOS_EnvScript, см. RosProj).
 //
 //  Скачивание - WinINet (InternetOpenUrl): переадресации SourceForge на
@@ -59,6 +69,13 @@ function RosBEInstalledIn(const ADir: string): Boolean;
 function RosFileSha256(const AFile: string): string;
 // Запущен установщик RosBE 2.2.1 (занят его мьютекс из .onInit)
 function RosBE221InstallerRunning: Boolean;
+// 7z.exe установленного 7-Zip (запись в реестре или Program Files); нет -
+// пусто
+function RosFind7Zip: string;
+// Параметры 7z.exe: распаковать установщик AInstaller в ADestDir так, как
+// ставит установщик по умолчанию - без своих служебных папок ($PLUGINSDIR,
+// $DESKTOP), деинсталлятора и компилятора AMD64 (он в установщике выключен)
+function RosExtractArgs(const AInstaller, ADestDir: string): string;
 // Скачать AUrl в AFile. Ошибка или остановка - False и текст в AError.
 function RosDownload(const AUrl, AFile: string; AOnProgress: TRosStepEvent;
                      var AError: string): Boolean;
@@ -226,6 +243,76 @@ begin
   end
   else
     Result := GetLastError = ERROR_ACCESS_DENIED;
+end;
+
+function RosFind7Zip: string;
+const
+  KEY_WOW64_64KEY = $0100;
+  SevenZipKey = 'Software\7-Zip';
+var
+  Reg: TRegistry;
+  Dirs: TStringList;
+  Idx, Pass: Integer;
+  Value: string;
+  EnvBuf: array[0..MAX_PATH] of Char;
+begin
+  Result := '';
+  Dirs := TStringList.Create;
+  try
+    // Ключ Path пишет установщик 7-Zip; 64-битный 7-Zip - в 64-битную
+    // ветвь реестра, которую 32-битный unIDE без KEY_WOW64_64KEY не видит
+    for Pass := 0 to 1 do
+    begin
+      Reg := TRegistry.Create;
+      try
+        Reg.RootKey := HKEY_LOCAL_MACHINE;
+        if Pass = 0 then
+          Reg.Access := KEY_READ or KEY_WOW64_64KEY
+        else
+          Reg.Access := KEY_READ;
+        if Reg.OpenKey(SevenZipKey, False) then
+        try
+          if Reg.ValueExists('Path') then
+            Dirs.Add(Reg.ReadString('Path'));
+          if Reg.ValueExists('Path64') then
+            Dirs.Add(Reg.ReadString('Path64'));
+        finally
+          Reg.CloseKey;
+        end;
+      finally
+        Reg.Free;
+      end;
+    end;
+    // ProgramW6432 - 64-битный Program Files, виден и 32-битным процессам
+    if Windows.GetEnvironmentVariable('ProgramW6432', EnvBuf,
+                                      MAX_PATH) > 0 then
+      Dirs.Add(IncludeTrailingPathDelimiter(EnvBuf) + '7-Zip');
+    if Windows.GetEnvironmentVariable('ProgramFiles', EnvBuf,
+                                      MAX_PATH) > 0 then
+      Dirs.Add(IncludeTrailingPathDelimiter(EnvBuf) + '7-Zip');
+    for Idx := 0 to Dirs.Count - 1 do
+    begin
+      Value := Trim(Dirs[Idx]);
+      if Value = '' then
+        Continue;
+      Value := IncludeTrailingPathDelimiter(Value) + '7z.exe';
+      if FileExists(Value) then
+      begin
+        Result := Value;
+        Exit;
+      end;
+    end;
+  finally
+    Dirs.Free;
+  end;
+end;
+
+function RosExtractArgs(const AInstaller, ADestDir: string): string;
+begin
+  // -bd - без индикатора процентов: вывод идёт в журнал построчно
+  Result := 'x -y -bd -o"' + ExcludeTrailingPathDelimiter(ADestDir) +
+            '" "' + AInstaller + '" -x!$PLUGINSDIR -x!$DESKTOP ' +
+            '-x!Uninstall.exe -x!amd64';
 end;
 
 function RosBEInstalledIn(const ADir: string): Boolean;
