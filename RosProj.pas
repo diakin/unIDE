@@ -82,6 +82,9 @@ type
 // OEM-кодировке.
 procedure RosBuildScript(const ASettings: TRosSettings; AStep: TRosStep;
                          ALines: TStrings);
+// Где скачать инструменты сборки (меню ReactOS - Download Build Tools):
+// строки "подпись=адрес"; '-' - разделитель
+procedure RosToolLinks(AList: TStrings);
 // Строка хода ninja "[12/3456] Building C object ...": ADone = 12,
 // ATotal = 3456
 function RosParseNinjaStatus(const ALine: string;
@@ -311,6 +314,28 @@ begin
     end;
   end;
   ALines.Add('exit /b %errorlevel%');
+end;
+
+procedure RosToolLinks(AList: TStrings);
+begin
+  AList.Clear;
+  // reactosVG14 (ReactOS 0.4.14)
+  AList.Add('RosBE 2.2.1 - для reactosVG14 (установщик, Windows XP и новее)=' +
+            'https://sourceforge.net/projects/reactos/files/RosBE-Windows/' +
+            'i386/2.2.1/');
+  AList.Add('-');
+  // LiberNT: установщик rosbe.exe на Windows 7 не запускается - архивы
+  // компонентов распаковываются руками в %LOCALAPPDATA%\RosBE\pkgs\<версия>
+  AList.Add('RosBE для LiberNT - выпуски winget-rosbe (архивы компонентов)=' +
+            'https://github.com/ahmedarif193/winget-rosbe/releases');
+  AList.Add('Universal C Runtime (KB2999226) - нужен GCC 16 и Clang LiberNT=' +
+            'https://www.microsoft.com/en-us/download/details.aspx?id=48234');
+  AList.Add('Python 3.8.10 - последний для Windows 7, нужен LiberNT /clang=' +
+            'https://www.python.org/downloads/release/python-3810/');
+  AList.Add('-');
+  AList.Add('Git for Windows 2.46.2 - последний для Windows 7=' +
+            'https://github.com/git-for-windows/git/releases/tag/' +
+            'v2.46.2.windows.1');
 end;
 
 function RosParseNinjaStatus(const ALine: string;

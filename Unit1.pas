@@ -2672,6 +2672,8 @@ type
     procedure ArdFolderMenuClick(Sender: TObject);
     procedure ArdSketchItemClick(Sender: TObject);
     procedure ArdBuildMenu;
+    procedure RosBuildMenu;
+    procedure RosToolLinkClick(Sender: TObject);
     procedure ArdFreeAll;
     procedure mArduinoClick(Sender: TObject);
     procedure mArdSketchbookClick(Sender: TObject);
@@ -22442,6 +22444,8 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
 
   // Меню Arduino: Sketchbook, Examples, Include Library, Board, Port ...
   ArdBuildMenu;
+  // Меню ReactOS: где скачать инструменты сборки
+  RosBuildMenu;
 
   // Журнал окна wnd.log рядом с exe: поиск давней ошибки - белые полосы на
   // полосе вкладок и строке состояния, когда поверх окна двигают другое
@@ -59842,6 +59846,61 @@ begin
   mArdMonitor := NewItem('Serial Monitor', mArdMonitorClick, False);
   mArdMonitor.ShortCut := ShortCut(Ord('M'), [ssCtrl, ssShift]);
   NewItem('-', nil, False);
+end;
+
+// Меню ReactOS - после Arduino. Download Build Tools: страницы загрузки
+// инструментов (RosToolLinks); адрес - в Hint пункта, его же видно в
+// строке состояния.
+procedure TForm1.RosBuildMenu;
+var
+  RosMenu, ToolsMenu, LinkItem: TMenuItem;
+  Links: TStringList;
+  LinkIdx: Integer;
+begin
+  RosMenu := TMenuItem.Create(Self);
+  RosMenu.Caption := 'ReactOS';
+  RosMenu.AutoHotkeys := maManual;
+  MainMenu1.Items.Insert(mArduino.MenuIndex + 1, RosMenu);
+
+  ToolsMenu := TMenuItem.Create(Self);
+  ToolsMenu.Caption := 'Download Build Tools';
+  ToolsMenu.AutoHotkeys := maManual;
+  RosMenu.Add(ToolsMenu);
+
+  Links := TStringList.Create;
+  try
+    RosToolLinks(Links);
+    for LinkIdx := 0 to Links.Count - 1 do
+    begin
+      LinkItem := TMenuItem.Create(Self);
+      if Links[LinkIdx] = '-' then
+        LinkItem.Caption := '-'
+      else
+      begin
+        LinkItem.Caption := Links.Names[LinkIdx];
+        LinkItem.Hint := Links.Values[Links.Names[LinkIdx]];
+        LinkItem.OnClick := RosToolLinkClick;
+      end;
+      ToolsMenu.Add(LinkItem);
+    end;
+  finally
+    Links.Free;
+  end;
+end;
+
+// Страница загрузки - в браузере по умолчанию
+procedure TForm1.RosToolLinkClick(Sender: TObject);
+var
+  LinkUrl: string;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  LinkUrl := TMenuItem(Sender).Hint;
+  if LinkUrl = '' then
+    Exit;
+  if ShellExecute(Handle, 'open', PChar(LinkUrl), nil, nil,
+                  SW_SHOWNORMAL) <= 32 then
+    ShowMessage('9802:Не удалось открыть в браузере:'#13#10 + LinkUrl);
 end;
 
 procedure TForm1.ArdFreeAll;
