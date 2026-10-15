@@ -38,6 +38,7 @@ uses
   EnvOptions,     // IDE Options: Preferences, Designer, Environment Variables
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
+  RosProj,        // проект ReactOS / LiberNT: CMake + Ninja (TRosSettings)
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -1338,7 +1339,8 @@ type
     FRqPalLast: Integer;     // последняя (с RQ Comp, RQ Comp System)
     FRqCompClasses: TStringList; // классы страниц RQ Comp (верхний регистр)
     // Режим среды (ApplyLangMode): -1 - ещё не применён, иначе сборщик
-    // активной вкладки (bkDelphi, bkRapidQ, bkFreeBasic, bkArduino); для
+    // активной вкладки (bkDelphi, bkRapidQ, bkFreeBasic, bkArduino,
+    // bkCMakeNinja); для
     // какого файла и проекта считан; места кнопок ряда Project из .dfm
     FLangMode: Integer;
     FBuildReason: string;       // почему CurBuildKind выбрал этот сборщик
@@ -2981,6 +2983,8 @@ type
     function  BuildTargetOf(AKind: Integer): string;
     procedure UpdateBuildBar;
     function  ProjectBuildKind(const APrj: string): Integer;
+    function  RosSettingsOf(const APrj: string;
+                            var ASettings: TRosSettings): Boolean;
     function  BasDialectOf(const AFile: string): Integer;
     function  DelphiDprInFolder(const ADir: string; AAsk: Boolean): string;
     procedure DelphiRenameOtherDprs(ADprs: TStrings; const AKeep: string);
@@ -3645,6 +3649,7 @@ const
   bkRapidQ = 1;
   bkFreeBasic = 2;
   bkArduino = 3;
+  bkCMakeNinja = 4;  // ReactOS / LiberNT: configure.cmd + ninja (RosProj)
   // FreeBASIC: вид результата (cmbFbKind, FbBuildOf)
   fbOutGui = 0;       // -s gui
   fbOutConsole = 1;   // -s console
@@ -10125,6 +10130,7 @@ var
   IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList: string;
   K, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
   DirChanged, OptionsChanged: Boolean;
+  RosCfg: TRosSettings;
 begin
   if FCurrentProject = '' then
   begin
@@ -10172,6 +10178,10 @@ begin
       Prj.Free;
     end;
     Dlg.SetRqInc(IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList);
+    // Проект ReactOS: папка сборки, цель ninja, configure, скрипт RosBE
+    if (CompareText(OldType, RosProjectType) = 0) and
+       RosSettingsOf(OldName, RosCfg) then
+      Dlg.SetRosSettings(RosCfg);
 
     // Проект Delphi с главным .dpr - вкладка Project options
     if (CompareText(OldType, 'Delphi') = 0) and
@@ -10211,6 +10221,20 @@ begin
         Prj.WriteString('Project', 'IncMode', Dlg.RqIncMode);
         Prj.WriteString('Project', 'IncPath', Dlg.RqIncOwnDir);
         Prj.WriteString('Project', 'IncPaths', Dlg.RqIncOwnList);
+      finally
+        Prj.Free;
+      end;
+    end;
+    // Настройки ReactOS - туда же. Папка сборки не задана - output-*
+    // папки исходников (RosDefaultBuildDir)
+    if CompareText(NewType, RosProjectType) = 0 then
+    begin
+      Dlg.GetRosSettings(RosCfg);
+      if RosCfg.BuildDir = '' then
+        RosCfg.BuildDir := RosDefaultBuildDir(RosCfg.SourceDir);
+      Prj := TProjectIni.Create(SettingsFileName, OldName);
+      try
+        RosSaveSettings(Prj, RosCfg);
       finally
         Prj.Free;
       end;
@@ -10271,6 +10295,8 @@ begin
     begin
       if OptionsChanged then
         LoadProject(OldName);
+      // Папка сборки и цель ReactOS - в подписи рамки Project
+      UpdateBuildBar;
       Exit;
     end;
 
@@ -10411,6 +10437,7 @@ var
   ExMain: string;     // его главный файл, '' - не найден
   SL: TStringList;
   DelphiKind: Integer; // FNewDelphiKind этого вызова
+  RosCfg: TRosSettings; // настройки проекта ReactOS из окна
 
   // Есть ли в папке хоть один .pas. Расширение сверяется ещё раз: маска
   // *.pas по коротким именам находит и file.pas~ (FILE~1.PAS).
@@ -10524,6 +10551,8 @@ begin
     IncMode := Dlg.RqIncMode;
     IncOwnDir := Dlg.RqIncOwnDir;
     IncOwnList := Dlg.RqIncOwnList;
+    if Dlg.IsRosType then
+      Dlg.GetRosSettings(RosCfg);
 
     if (Nm = '') or (Dir = '') then
     begin
@@ -10543,6 +10572,17 @@ begin
     end;
 
     Dir := IncludeTrailingPathDelimiter(Dir);
+
+    // ReactOS / LiberNT - только на готовом дереве исходников: заготовки
+    // нет, и пустую папку собирать нечем
+    if (CompareText(Tp, RosProjectType) = 0) and not RosIsSourceDir(Dir) then
+    begin
+      ShowMessage('9801:Проект ReactOS создаётся на базе дерева исходников. ' +
+      'В папке нет configure.cmd, CMakeLists.txt или PreLoad.cmake:'#13#10 +
+      Dir + #13#10#13#10'Отметьте "На базе существующего проекта" и ' +
+      'выберите корень исходников (reactos, LiberNT).');
+      Exit;
+    end;
 
     if OnBase then
     begin
@@ -10602,6 +10642,14 @@ begin
         else
           LogDiag('New Project: в ' + Dir + ' есть .pas без файла проекта ' +
           '- заготовка не создаётся, Target пустой');
+    end;
+
+    // ReactOS, папка задана руками (без галки): дерево проверено выше,
+    // главный файл - его configure.cmd
+    if (CompareText(Tp, RosProjectType) = 0) and not OnBase then
+    begin
+      Existing := True;
+      ExMain := Dir + RosMainFile;
     end;
 
     // Проект с этим именем уже есть в списке (editor.ini, [Projects])
@@ -10960,6 +11008,21 @@ begin
         Prj.WriteString('Project', 'IncPath', IncOwnDir);
         Prj.WriteString('Project', 'IncPaths', IncOwnList);
       end;
+      // ReactOS: папка сборки не задана - output-* дерева исходников
+      // (одна - она, несколько - первая с build.ninja)
+      if CompareText(Tp, RosProjectType) = 0 then
+      begin
+        RosCfg.SourceDir := ExtractFilePath(TargetFile);
+        if RosCfg.BuildDir = '' then
+          RosCfg.BuildDir := RosDefaultBuildDir(RosCfg.SourceDir);
+        RosSaveSettings(Prj, RosCfg);
+        if RosCfg.BuildDir = '' then
+          LogDiag('New Project: папки сборки output-* в ' +
+          RosCfg.SourceDir + ' нет - задайте её в Project Properties ' +
+          'после configure.cmd')
+        else
+          LogDiag('New Project: папка сборки ' + RosCfg.BuildDir);
+      end;
     finally
       Prj.Free;
     end;
@@ -11211,6 +11274,9 @@ begin
     Result := 'src\main.rs;src\lib.rs;*.rs'
   else if CompareText(AType, 'WebSite') = 0 then
     Result := '*.html;*.htm'
+    // Дерево исходников ReactOS / LiberNT: в корне configure.cmd (RosProj)
+  else if CompareText(AType, RosProjectType) = 0 then
+    Result := RosMainFile
   else
     Result := '';
 end;
@@ -11409,10 +11475,12 @@ begin
 end;
 
 // Имя готового проекта - по главному файлу (Balanset4A.dpr -> Balanset4A).
-// У сайта главный файл - index.html, у Rust - main.rs: имя по папке.
+// У сайта главный файл - index.html, у Rust - main.rs, у ReactOS -
+// configure.cmd: имя по папке.
 function TForm1.NewPrjNameFor(const ADir, AType, AMain: string): string;
 begin
-  if (CompareText(AType, 'WebSite') = 0) or (CompareText(AType, 'Rust') = 0) then
+  if (CompareText(AType, 'WebSite') = 0) or (CompareText(AType, 'Rust') = 0) or
+     (CompareText(AType, RosProjectType) = 0) then
     Result := ExtractFileName(ExcludeTrailingPathDelimiter(ADir))
   else
     Result := ChangeFileExt(ExtractFileName(AMain), '');
@@ -11441,6 +11509,7 @@ begin
     bkRapidQ: Result := 'RapidQ';
     bkFreeBasic: Result := 'FreeBASIC';
     bkArduino: Result := 'Arduino';
+    bkCMakeNinja: Result := 'CMake+Ninja';
   else
     Result := '(не определён)';
   end;
@@ -11794,7 +11863,34 @@ begin
   else if CompareText(PrjType, 'FreeBASIC') = 0 then
     Result := bkFreeBasic
   else if CompareText(PrjType, 'Arduino') = 0 then
-    Result := bkArduino;
+    Result := bkArduino
+  else if CompareText(PrjType, RosProjectType) = 0 then
+    Result := bkCMakeNinja;
+end;
+
+// Настройки проекта ReactOS APrj (RosProj). Папка исходников - папка
+// Target (configure.cmd), без него - папка проекта. Проекта нет - False.
+function TForm1.RosSettingsOf(const APrj: string;
+                              var ASettings: TRosSettings): Boolean;
+var
+  Prj: TProjectIni;
+  SourceDir, Target: string;
+begin
+  Result := False;
+  if (APrj = '') or not ProjectExists(APrj) then
+    Exit;
+  Target := ProjectTargetOf(APrj);
+  if Target <> '' then
+    SourceDir := ExtractFilePath(Target)
+  else
+    SourceDir := ProjectDir(APrj);
+  Prj := TProjectIni.Create(SettingsFileName, APrj);
+  try
+    RosLoadSettings(Prj, SourceDir, ASettings);
+  finally
+    Prj.Free;
+  end;
+  Result := True;
 end;
 
 // Диалект .bas по файлу на диске (BasDialectOfText по первым 64 КБ).
@@ -12123,7 +12219,7 @@ begin
   KindName := FBuildKindManual.Values[LowerCase(ExpandFileName(AFile))];
   if KindName = '' then
     Exit;
-  for KindIdx := bkDelphi to bkArduino do
+  for KindIdx := bkDelphi to bkCMakeNinja do
     if CompareText(BuildKindName(KindIdx), KindName) = 0 then
     begin
       Result := KindIdx;
@@ -12169,6 +12265,7 @@ end;
 function TForm1.BuildTargetOf(AKind: Integer): string;
 var
   Ext, Dir, Folder: string;
+  RosCfg: TRosSettings;
 begin
   Result := '';
   if FCurrentFileName = '' then
@@ -12193,6 +12290,10 @@ begin
       else if (Ext = '.ino') or (Ext = '.pde') then
         Result := FCurrentFileName;
     end;
+    // ReactOS / LiberNT: папка сборки проекта (output-*)
+    bkCMakeNinja:
+      if RosSettingsOf(BuildProject, RosCfg) then
+        Result := RosCfg.BuildDir;
   end;
 end;
 
@@ -12204,6 +12305,7 @@ var
   Kind, OutKind, Bits, RqComp, IncLeft: Integer;
   RqViaFb: Boolean;
   Target, Why, Fqbn, BoardName, BoardText, PortText, ManualMark: string;
+  RosCfg: TRosSettings;
 begin
   if (cmbBuildKind = nil) or (lblBuildTarget = nil) then
     Exit;
@@ -12240,6 +12342,14 @@ Target := '';
   else
     lblBuildTarget.Caption := '» ' + ManualMark + ExtractFileName(Target);
   lblBuildTarget.Hint := Target;
+  // ReactOS: за папкой сборки - цель ninja
+  if (Kind = bkCMakeNinja) and (Target <> '') and
+     RosSettingsOf(BuildProject, RosCfg) then
+  begin
+    lblBuildTarget.Caption := lblBuildTarget.Caption + '  ' +
+                              RosCfg.NinjaTarget;
+    lblBuildTarget.Hint := Target + #13#10 + RosNinjaCommand(RosCfg);
+  end;
 
   // Arduino: список плат на USB; у скетча ещё порт в подписи, плата и
   // порт в подсказке
@@ -12918,7 +13028,7 @@ begin
     Exit;
   end;
   NewKind := cmbBuildKind.ItemIndex;
-  if (NewKind < bkDelphi) or (NewKind > bkArduino) then
+  if (NewKind < bkDelphi) or (NewKind > bkCMakeNinja) then
     NewKind := bkNone;
   SetManualBuildKind(FCurrentFileName, NewKind);
   // Запись в editor.ini [BuildKind] - строкой в лог: по ней видно, когда
@@ -20583,6 +20693,11 @@ begin
     Masks := '*.rs;*.toml'
   else if CompareText(Tp, 'WebSite') = 0 then
     Masks := '*.html;*.htm;*.css;*.js;*.php'
+    // ReactOS / LiberNT: исходники и описания сборки. Папки output-* пока
+    // не исключаются (этап 6 plan.md)
+  else if CompareText(Tp, RosProjectType) = 0 then
+    Masks := '*.c;*.h;*.cpp;*.hpp;*.s;*.asm;*.inc;*.spec;*.rc;*.inf;' +
+             '*.idl;*.cmake;CMakeLists.txt'
   else
     Masks := MainMasksFor(Tp);
   if Masks = '' then
@@ -21861,13 +21976,14 @@ begin
   DsgClipMenuExtra;
   DsgLayoutMenuExtra;
 
-  // Переключатель сборщика: номер пункта - bkDelphi..bkArduino, последний
+  // Переключатель сборщика: номер пункта - bkDelphi..bkCMakeNinja, последний
   // пункт Auto - снова выбор по файлу (UpdateBuildBar, cmbBuildKindChange)
   cmbBuildKind.Items.Clear;
   cmbBuildKind.Items.Add('Delphi');
   cmbBuildKind.Items.Add('RapidQ');
   cmbBuildKind.Items.Add('FreeBASIC');
   cmbBuildKind.Items.Add('Arduino');
+  cmbBuildKind.Items.Add('CMake+Ninja');
   cmbBuildKind.Items.Add('Auto');
   // FreeBASIC: номер пункта - fbOutGui..fbOutDll; 32 и 64 бит
   if cmbFbKind <> nil then
@@ -47731,8 +47847,10 @@ end;
 // работают только с проектами Delphi.
 function TForm1.CompileProject: Boolean;
 var
-  Kind: Integer;
+  Kind, LineIdx: Integer;
   BuildPrj, PrjType: string;
+  RosCfg: TRosSettings;
+  RosLines: TStringList;
 begin
   Result := False;
   AutoSaveEditorFiles;
@@ -47759,6 +47877,37 @@ begin
     end;
     bkArduino:
       Result := CompileArduino(False);   // Verify
+    bkCMakeNinja:
+    begin
+      // ReactOS / LiberNT. Этап 1: только что и как будет собрано; запуск
+      // configure.cmd и ninja - этапы 3-4 (plan.md)
+      ShowCompLog;
+      if CompLogEdit <> nil then
+        CompLogEdit.Lines.Clear;
+      if ErrLogEdit <> nil then
+        ErrLogEdit.Lines.Clear;
+      LogComp('Сборщик: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')');
+      BuildPrj := BuildProject;
+      if not RosSettingsOf(BuildPrj, RosCfg) then
+      begin
+        LogComp('Сборка CMake+Ninja: нет открытого проекта ReactOS - ' +
+        'папка исходников и папка сборки берутся из него');
+        Exit;
+      end;
+      LogComp('Проект: ' + BuildPrj);
+      RosLines := TStringList.Create;
+      try
+        RosDescribeBuild(RosCfg, RosLines);
+        for LineIdx := 0 to RosLines.Count - 1 do
+          LogComp(RosLines[LineIdx]);
+      finally
+        RosLines.Free;
+      end;
+      LogComp('');
+      LogComp('Запуск сборки из среды пока не подключён (этапы 3-4). ' +
+      'Команды выше можно выполнить в окне RosBE.');
+      UpdateBuildBar;
+    end;
   else
     ShowCompLog;
     if CompLogEdit <> nil then
@@ -53886,6 +54035,10 @@ bkArduino:
 btnCompileRun.Hint := 'Собрать скетч (arduino-cli compile) и ' +
     'загрузить в плату (Upload). Плата и порт - ' +
     'меню Arduino - Board и Port';
+bkCMakeNinja:
+btnCompileRun.Hint := 'ReactOS / LiberNT: показать в логе, что и как ' +
+    'будет собрано (configure.cmd, ninja). Запуск сборки - на ' +
+    'следующих этапах';
   else
     btnCompileRun.Hint := 'Сборка ' + BuildKindName(Kind) +
     ' здесь пока не подключена';

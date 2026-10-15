@@ -35,6 +35,7 @@ uses
   ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',
   PrjStore in 'PrjStore.pas',
+  RosProj in 'RosProj.pas',
   RqComponents in 'RqComponents.pas',
   RqDesign in 'RqDesign.pas',
   RqHelp in 'RqHelp.pas',

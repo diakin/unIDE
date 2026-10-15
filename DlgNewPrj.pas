@@ -6,6 +6,10 @@ unit DlgNewPrj;
 // Compiler, Compiler Messages, Linker, Directories/Conditionals,
 // Version Info, Packages.
 //
+// Проект ReactOS / LiberNT (CMake + Ninja) - рамка grpRos под типом: папка
+// сборки output-*, цель ninja, параметры configure.cmd, скрипт окружения
+// RosBE. Рамка строится кодом (BuildRosControls); хранение - RosProj.
+//
 // Окно описано в DlgNewPrj.dfm и правится в конструкторе форм.
 // Обработчики полей вкладки Project (NewPrjNameChange, NewPrjDirChange,
 // NewPrjOnBaseClick), подсказку папки и само создание проекта ведёт
@@ -34,6 +38,7 @@ uses
   DelphiOpts,   // .dof, .dpr
   ResFile,      // .res: VERSIONINFO, MAINICON
   FolderDlg,    // BrowseFolderDialog
+  RosProj,      // настройки проекта ReactOS / LiberNT
   Dialogs,      // TOpenDialog
   // Окна сообщений по теме - последним, поверх Dialogs
   UiDialogs;
@@ -232,6 +237,14 @@ type
     btnIncDel: TUiButton;
     btnIncDelAll: TUiButton;
     lblIncPaths: TLabel;
+    // Рамка проекта ReactOS / LiberNT (строится кодом в BuildRosControls)
+    grpRos: TUiGroupBox;
+    cbRosBuildDir: TUiComboBox;
+    btnRosBuildDir: TUiButton;
+    cbRosTarget: TUiComboBox;
+    edRosArgs: TUiEdit;
+    edRosEnv: TUiEdit;
+    btnRosEnv: TUiButton;
     FDpr: string;               // .dpr проекта; '' - вкладки Delphi нет
     FDof: TMemIniFile;          // <проект>.dof в памяти
     FDofBefore: string;         // текст .dof после загрузки - для сравнения
@@ -255,6 +268,11 @@ type
     procedure cbIncDirChange(Sender: TObject);
     procedure btnIncDelClick(Sender: TObject);
     procedure btnIncDelAllClick(Sender: TObject);
+    procedure BuildRosControls;
+    function RosSourceDir: string;
+    procedure cbRosBuildDirDropDown(Sender: TObject);
+    procedure btnRosBuildDirClick(Sender: TObject);
+    procedure btnRosEnvClick(Sender: TObject);
     function CompFlag(const AKey: string): Boolean;
     procedure SetCompFlag(const AKey: string; AValue: Boolean);
     procedure LoadForms;
@@ -294,6 +312,12 @@ type
     function RqIncOwnDir: string;
     // Свои папки списка через "|"
     function RqIncOwnList: string;
+    // Выбран тип ReactOS
+    function IsRosType: Boolean;
+    // Рамка ReactOS: заполнить по настройкам проекта и прочитать. Пути в
+    // поле папки сборки - от папки проекта (edDir), если они внутри неё.
+    procedure SetRosSettings(const ASettings: TRosSettings);
+    procedure GetRosSettings(var ASettings: TRosSettings);
     // Записать .dof, .dpr и .res. AChanged - было ли что записано. Что
     // сделано и ошибки - строками в ALog.
     function SaveDelphiOptions(ALog: TStrings; out AChanged: Boolean): Boolean;
@@ -309,6 +333,7 @@ const
   // (проект RapidQ) - выше на её высоту
   CompactClientHeight = 224;
   CompactRqClientHeight = 352;
+  CompactRosClientHeight = 400;
   FullClientHeight = 560;
   // Design-пакеты Delphi 7
   KnownPackagesKey = 'Software\Borland\Delphi\7.0\Known Packages';
@@ -331,6 +356,7 @@ begin
   FVerKeys := TStringList.Create;
   FFormClasses := TStringList.Create;
   FPkgPaths := TStringList.Create;
+  BuildRosControls;
   SetOptionsVisible(False);
 end;
 
@@ -349,16 +375,193 @@ begin
   UpdateRqIncVisible;
 end;
 
-// Рамка папки inc - только у проекта RapidQ; высота окна - по ней
+// Рамка папки inc - только у проекта RapidQ, рамка ReactOS - у проекта
+// ReactOS; высота окна - по ним
 procedure TDlgNewPrj.UpdateRqIncVisible;
 begin
   grpRqInc.Visible := CompareText(cbType.Text, 'RapidQ Basic') = 0;
+  if grpRos <> nil then
+    grpRos.Visible := IsRosType;
   if tsOptions.TabVisible then
     ClientHeight := FullClientHeight
   else if grpRqInc.Visible then
     ClientHeight := CompactRqClientHeight
+  else if (grpRos <> nil) and grpRos.Visible then
+    ClientHeight := CompactRosClientHeight
   else
     ClientHeight := CompactClientHeight;
+end;
+
+function TDlgNewPrj.IsRosType: Boolean;
+begin
+  Result := CompareText(cbType.Text, RosProjectType) = 0;
+end;
+
+// Рамка ReactOS - на месте рамки папки inc (они не видны вместе):
+//   Папка сборки  [output-*  v] [...]
+//   Цель ninja    [bootcd    v]
+//   configure     [параметры        ]
+//   Скрипт RosBE  [путь        ] [...]
+//   пояснение
+procedure TDlgNewPrj.BuildRosControls;
+const
+  LabelLeft = 12;
+  FieldLeft = 130;
+
+  procedure AddLabel(ATop: Integer; const ACaption: string);
+  var
+    RowLabel: TLabel;
+  begin
+    RowLabel := TLabel.Create(Self);
+    RowLabel.Parent := grpRos;
+    RowLabel.SetBounds(LabelLeft, ATop + 4, FieldLeft - LabelLeft - 4, 13);
+    RowLabel.Caption := ACaption;
+  end;
+
+var
+  NoteLabel: TLabel;
+begin
+  if grpRos <> nil then
+    Exit;
+  grpRos := TUiGroupBox.Create(Self);
+  grpRos.Parent := tsProject;
+  grpRos.SetBounds(grpRqInc.Left, grpRqInc.Top, grpRqInc.Width, 166);
+  grpRos.Caption := 'ReactOS / LiberNT: CMake + Ninja';
+  grpRos.Visible := False;
+
+  AddLabel(22, 'Папка сборки');
+  cbRosBuildDir := TUiComboBox.Create(Self);
+  cbRosBuildDir.Parent := grpRos;
+  cbRosBuildDir.Style := csDropDown;
+  cbRosBuildDir.SetBounds(FieldLeft, 22, 530, 21);
+  cbRosBuildDir.OnDropDown := cbRosBuildDirDropDown;
+  cbRosBuildDir.Hint := 'Папка, которую создал configure.cmd (output-*); ' +
+                        'в списке - такие папки в папке проекта';
+  cbRosBuildDir.ShowHint := True;
+
+  btnRosBuildDir := TUiButton.Create(Self);
+  btnRosBuildDir.Parent := grpRos;
+  btnRosBuildDir.SetBounds(FieldLeft + 536, 21, 30, 23);
+  btnRosBuildDir.Caption := '...';
+  btnRosBuildDir.Hint := 'Выбрать папку сборки';
+  btnRosBuildDir.ShowHint := True;
+  btnRosBuildDir.OnClick := btnRosBuildDirClick;
+
+  AddLabel(50, 'Цель ninja');
+  cbRosTarget := TUiComboBox.Create(Self);
+  cbRosTarget.Parent := grpRos;
+  cbRosTarget.Style := csDropDown;
+  cbRosTarget.SetBounds(FieldLeft, 50, 200, 21);
+  RosNinjaTargets(cbRosTarget.Items);
+  cbRosTarget.Text := RosDefaultTarget;
+  cbRosTarget.Hint := 'bootcd, livecd; у LiberNT ещё liberntimg, ' +
+                      'liberntvhd; можно вписать имя модуля (ntoskrnl)';
+  cbRosTarget.ShowHint := True;
+
+  AddLabel(78, 'Параметры configure');
+  edRosArgs := TUiEdit.Create(Self);
+  edRosArgs.Parent := grpRos;
+  edRosArgs.SetBounds(FieldLeft, 78, 566, 21);
+  edRosArgs.Hint := 'Параметры configure.cmd. LiberNT: /gcc (по ' +
+                    'умолчанию), /clang, /arch=amd64, /r - release';
+  edRosArgs.ShowHint := True;
+
+  AddLabel(106, 'Скрипт RosBE');
+  edRosEnv := TUiEdit.Create(Self);
+  edRosEnv.Parent := grpRos;
+  edRosEnv.SetBounds(FieldLeft, 106, 530, 21);
+  edRosEnv.Hint := 'Скрипт окружения перед сборкой: для reactosVG14 - ' +
+                   'RosBE.cmd из RosBE 2.2.1. Для LiberNT пусто: ' +
+                   'configure.cmd находит RosBE сам';
+  edRosEnv.ShowHint := True;
+
+  btnRosEnv := TUiButton.Create(Self);
+  btnRosEnv.Parent := grpRos;
+  btnRosEnv.SetBounds(FieldLeft + 536, 105, 30, 23);
+  btnRosEnv.Caption := '...';
+  btnRosEnv.Hint := 'Выбрать скрипт окружения (.cmd, .bat)';
+  btnRosEnv.ShowHint := True;
+  btnRosEnv.OnClick := btnRosEnvClick;
+
+  NoteLabel := TLabel.Create(Self);
+  NoteLabel.Parent := grpRos;
+  NoteLabel.AutoSize := False;
+  NoteLabel.WordWrap := True;
+  NoteLabel.SetBounds(LabelLeft, 134, 690, 28);
+  NoteLabel.Caption := 'Папка проекта - корень исходников (configure.cmd, ' +
+                       'CMakeLists.txt, PreLoad.cmake). Запуск configure и ' +
+                       'ninja из среды будет подключён на следующих этапах.';
+end;
+
+function TDlgNewPrj.RosSourceDir: string;
+begin
+  Result := Trim(edDir.Text);
+  if Result <> '' then
+    Result := IncludeTrailingPathDelimiter(Result);
+end;
+
+// Список папок сборки - по папке проекта на момент открытия списка: в New
+// Project её могли сменить после открытия окна
+procedure TDlgNewPrj.cbRosBuildDirDropDown(Sender: TObject);
+var
+  OldText: string;
+begin
+  OldText := cbRosBuildDir.Text;
+  RosFindOutputDirs(RosSourceDir, cbRosBuildDir.Items);
+  cbRosBuildDir.Text := OldText;
+end;
+
+procedure TDlgNewPrj.btnRosBuildDirClick(Sender: TObject);
+var
+  FolderPath: string;
+begin
+  FolderPath := RosPathFromStore(RosSourceDir, cbRosBuildDir.Text);
+  if FolderPath = '' then
+    FolderPath := RosSourceDir;
+  if not BrowseFolderDialog('Папка сборки (output-*)', FolderPath) then
+    Exit;
+  cbRosBuildDir.Text := RosPathToStore(RosSourceDir, FolderPath);
+end;
+
+procedure TDlgNewPrj.btnRosEnvClick(Sender: TObject);
+var
+  OpenDlg: TOpenDialog;
+begin
+  OpenDlg := TOpenDialog.Create(Self);
+  try
+    OpenDlg.Filter := 'Скрипт (*.cmd;*.bat)|*.cmd;*.bat|*.*|*.*';
+    if Trim(edRosEnv.Text) <> '' then
+      OpenDlg.InitialDir := ExtractFilePath(Trim(edRosEnv.Text));
+    if OpenDlg.Execute then
+      edRosEnv.Text := OpenDlg.FileName;
+  finally
+    OpenDlg.Free;
+  end;
+end;
+
+procedure TDlgNewPrj.SetRosSettings(const ASettings: TRosSettings);
+begin
+  BuildRosControls;
+  cbRosBuildDir.Text := RosPathToStore(ASettings.SourceDir, ASettings.BuildDir);
+  if ASettings.NinjaTarget <> '' then
+    cbRosTarget.Text := ASettings.NinjaTarget
+  else
+    cbRosTarget.Text := RosDefaultTarget;
+  edRosArgs.Text := ASettings.ConfigureArgs;
+  edRosEnv.Text := ASettings.EnvScript;
+  UpdateRqIncVisible;
+end;
+
+procedure TDlgNewPrj.GetRosSettings(var ASettings: TRosSettings);
+begin
+  ASettings.SourceDir := RosSourceDir;
+  ASettings.BuildDir := RosPathFromStore(ASettings.SourceDir,
+                                         cbRosBuildDir.Text);
+  ASettings.NinjaTarget := Trim(cbRosTarget.Text);
+  if ASettings.NinjaTarget = '' then
+    ASettings.NinjaTarget := RosDefaultTarget;
+  ASettings.ConfigureArgs := Trim(edRosArgs.Text);
+  ASettings.EnvScript := Trim(edRosEnv.Text);
 end;
 
 procedure TDlgNewPrj.cbTypeChange(Sender: TObject);

@@ -89,7 +89,8 @@ object DlgNewPrj: TDlgNewPrj
           'Go'
           'Python'
           'Rust'
-          'WebSite')
+          'WebSite'
+          'ReactOS')
         OnChange = cbTypeChange
       end
       object grpRqInc: TUiGroupBox
