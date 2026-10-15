@@ -92,3 +92,7 @@ Output/
 *.compiled
 RqLcl/dll/out/
 *.$$$
+
+# Рабочая папка сборки CHM
+unide_ref/chm_work/
+fb_ref/chm_work/

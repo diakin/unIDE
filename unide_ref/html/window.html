@@ -1,0 +1,83 @@
+<h1>Главное окно</h1>
+<p>Сверху вниз: строка меню, панель инструментов (файлы, поиск и замена, рамка Project со
+сборкой), вкладки открытых файлов, панель объявления, редактор с полосой номеров и полосой
+меток, логи. Справа &mdash; правая панель со списками и инспектором.</p>
+
+<h2><a name="menu"></a>Меню</h2>
+<table>
+<tr><th>Меню</th><th>Что в нём</th></tr>
+<tr><td><b>File</b></td><td>New (Text File; Pascal: Application, Form, Unit, Data Module, Frame,
+  DLL, Console Application, Other...; BASIC, C++, HTML, SQL), Open..., Reopen (до 9 недавних
+  файлов, Clear list), SaveFile (Ctrl+S), SaveFileAs..., NewProject, OpenPrjFile,
+  OpenProjectFolder, SaveProject (Ctrl+Shift+S), SaveProjectAs..., Exit.</td></tr>
+<tr><td><b>Edit</b></td><td>Undo (Ctrl+Z), Redo (Ctrl+Shift+Z), Cut, Copy, Paste, Delete,
+  Select All, Find (Ctrl+F &mdash; фокус в поле поиска), <i>Отменить массовую замену</i>
+  (откат последней замены All и Format text).</td></tr>
+<tr><td><b>View</b></td><td>Просмотр модулей, Просмотр форм, Снимок формы редактора, Конструктор
+  формы, Palette Icons..., IncManager..., Find inc file..., Highlighting (схема подсветки для
+  активного файла).</td></tr>
+<tr><td><b>Projects</b></td><td>Manage Projects (Scan projects folder, Delete wrong projects
+  names, Tidy editor.ini...), New / Open / Reopen / Close Project, Project Properties...,
+  Delete Projects..., Add to project, Open Project Folder, Fix paths after move, Build Release,
+  Release files..., список проектов. См. <a href="projects.html">Проекты</a>.</td></tr>
+<tr><td><b>Format text</b></td><td>Сразу расставляет отступы в активном файле
+  (<a href="editor.html#format">Format text</a>).</td></tr>
+<tr><td><b>Windows</b></td><td>Закрытие окна, Remove missing files from list, Check wrong file
+  names, Find lost files..., Search folders..., Del WinList..., список открытых файлов.</td></tr>
+<tr><td><b>Started Util</b></td><td>Открытые окна утилит; щелчок поднимает окно
+  (<a href="utils.html#started">Started Util</a>).</td></tr>
+<tr><td><b>Bookmarks</b>, <b>LastBM</b>, <b>Hot Bookmarks</b></td><td>Закладки
+  (<a href="editor.html#bookmarks">Закладки</a>).</td></tr>
+<tr><td><b>Arduino</b></td><td>Sketchbook, Examples, Include Library, Board, Port, Get Board
+  Info, Serial Monitor (Ctrl+Shift+M), Board Manager..., Library Manager..., Arduino CLI
+  Help... (<a href="arduino.html">Arduino</a>).</td></tr>
+<tr><td><b>Options</b></td><td>Окно <a href="options.html">IDE Options</a>.</td></tr>
+<tr><td><b>Help</b></td><td>RapidQ, FreeBASIC, это руководство, About (<a href="help.html">Справка</a>).</td></tr>
+</table>
+<p>Отдельных меню поиска и сборки нет: поиск &mdash; на панели инструментов, сборка и запуск &mdash;
+кнопками рамки Project и клавишами F9, F7, F8, F4.</p>
+
+<h2><a name="tabs"></a>Вкладки файлов</h2>
+<ul>
+<li>Одноимённые .pas и .dfm стоят рядом: модуль слева, форма справа.</li>
+<li>Include-файл RapidQ, открытый из дерева Includes или остановкой отладчика, помнит свой
+  главный .bas: его имя показано на вкладке после имени файла, а сборка и запуск с этой
+  вкладки идут по главному файлу.</li>
+<li>Меню вкладки (правый щелчок): Перечитать файл с диска, Подсветка, Закрыть вкладку,
+  Закрыть остальные вкладки.</li>
+<li>Файл перевода RapidQ в папке <code>_rqfb</code> открывается только для чтения
+  (<a href="freebasic.html#rqfb">Перевод _rqfb</a>).</li>
+</ul>
+
+<h2><a name="right"></a>Правая панель</h2>
+<table>
+<tr><th>Вкладка</th><th>Что показывает</th></tr>
+<tr><td><b>SubList</b></td><td>Подпрограммы файла: Name, Begin, End. Над списком &mdash; фильтр
+  (Esc &mdash; очистить, Enter &mdash; к первой найденной, стрелка вниз &mdash; в список). Двойной
+  щелчок переходит к подпрограмме.</td></tr>
+<tr><td><b>Objects</b></td><td>Инспектор объектов: дерево объектов формы, свойства и события
+  (<a href="inspector.html">Инспектор</a>).</td></tr>
+<tr><td><b>Code</b></td><td>Только Delphi: все компоненты, которые создаёт код модуля, с номером
+  строки создания; щелчок &mdash; к строке.</td></tr>
+<tr><td><b>Includes</b></td><td>Только RapidQ и FreeBASIC: дерево подключённых файлов с путями и
+  номерами строк. Ненайденный файл помечен; двойной щелчок открывает строку подключения. Для
+  файлов C/C++ вкладка называется Headers; при сборщике Arduino она скрыта.</td></tr>
+</table>
+<p>Какие вкладки видны, зависит от режима среды: для Basic видны Includes и страницы палитры
+RQ, для Delphi &mdash; Code, Build Release и «Перенести в .dfm».</p>
+
+<h2><a name="logs"></a>Логи</h2>
+<table>
+<tr><th>Вкладка</th><th>Что в ней</th></tr>
+<tr><td>Compilation log</td><td>Весь вывод сборки. Ошибки красные, подозрения тёмно-оранжевые.</td></tr>
+<tr><td>Error log</td><td>Только ошибки; открывается сам при неудачной сборке.</td></tr>
+<tr><td>HiLite log</td><td>Служебные сообщения среды (выбор сборщика, замеры, разбор).</td></tr>
+<tr><td>Runtime log</td><td>Вывод программы и отладочные строки AddClrString.</td></tr>
+</table>
+<p>Двойной щелчок по строке ошибки открывает файл на этой строке. Понимаются форматы dcc32,
+fbc, gcc и сообщения перевода RqToFb.</p>
+
+<h2><a name="status"></a>Строка состояния</h2>
+<p>Номер строки и позиция каретки, код символа под кареткой, кодировка файла
+(<code>UTF-8 BOM</code>, <code>UTF-8</code> или <code>ANSI</code>), замеры отрисовки. Над ней &mdash;
+строка с полным путём файла, размером и датой.</p>

@@ -48,6 +48,9 @@ function ChmKeyword(const AChm, AWord: string): Boolean;
 // fb_ref\help\freebasic.chm - путь, '' - нет (папка fb_ref ищется там же,
 // где rapidq_ref)
 function FbRefChm: string;
+// Руководство unIDE (unide_ref\gen_unide_chm.py): unide_ref\help\unide.chm,
+// '' - нет (папка unide_ref ищется там же, где rapidq_ref)
+function UnideRefChm: string;
 // F1: страница слова по fbkeywords.txt рядом с CHM (слово с суффиксом типа
 // и без него), иначе переход по указателю CHM (ChmKeyword)
 function FbHelpKeyword(const AChm, AWord: string): Boolean;
@@ -311,6 +314,28 @@ begin
         Result := ExpandFileName(Dirs[DirIdx] + 'help\freebasic.chm');
         Exit;
       end;
+  finally
+    Dirs.Free;
+  end;
+end;
+
+function UnideRefChm: string;
+var
+  Dirs: TStringList;
+  DirIdx: Integer;
+begin
+  Result := '';
+  Dirs := TStringList.Create;
+  try
+    CandidateDirs(Dirs, 'unide_ref');
+    for DirIdx := 0 to Dirs.Count - 1 do
+      if FileExists(Dirs[DirIdx] + 'help\unide.chm') then
+      begin
+        Result := ExpandFileName(Dirs[DirIdx] + 'help\unide.chm');
+        Exit;
+      end;
+    HelpError := 'не найден unide_ref\help\unide.chm (проверено: ' +
+                 StringReplace(Trim(Dirs.Text), #13#10, '; ', [rfReplaceAll]) + ')';
   finally
     Dirs.Free;
   end;

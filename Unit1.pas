@@ -839,6 +839,7 @@ type
     procedure mHelpClick(Sender: TObject);
     procedure mHelpRqClick(Sender: TObject);
     procedure mHelpFbClick(Sender: TObject);
+    procedure mHelpUnideClick(Sender: TObject);
     procedure FbHelpMenuBuild;
     function  FbHelpFile(AAsk: Boolean): string;
     function  FbHelpPick: string;
@@ -56422,6 +56423,8 @@ begin
   // Руководство FreeBASIC (Help - FreeBASIC, F1): fb_ref\gen_fb_chm.py
   CopyIfNewer('fb_ref\help\freebasic.chm');
   CopyIfNewer('fb_ref\help\fbkeywords.txt');
+  // Руководство unIDE (Help - unIDE manual)
+  CopyIfNewer('unide_ref\help\unide.chm');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
     'schemes, rapidq_ref\Component*.data - которых там не было или ' +
@@ -69465,7 +69468,7 @@ const
 // 3 - выбрать файл справки, 4 - руководство на сайте
 procedure TForm1.FbHelpMenuBuild;
 var
-  SubMenu: TMenuItem;
+  SubMenu, ManualItem: TMenuItem;
 
   procedure AddItem(const ACaption, AHint: string; ATag: Integer);
   var
@@ -69488,6 +69491,12 @@ begin
   SubMenu.Hint := 'Руководство FreeBASIC (FB-manual-*.chm); F1 в файле ' +
                   'FreeBASIC - по слову под кареткой';
   mHelp.Insert(mHelp.IndexOf(mHelpRq) + 1, SubMenu);
+  // Руководство unIDE - первым пунктом Help
+  ManualItem := TMenuItem.Create(Self);
+  ManualItem.Caption := '&unIDE manual';
+  ManualItem.Hint := 'Руководство пользователя unIDE (unide_ref\help\unide.chm)';
+  ManualItem.OnClick := mHelpUnideClick;
+  mHelp.Insert(0, ManualItem);
   AddItem('&Contents', '', 1);
   AddItem('Keyword &index', '', 2);
   AddItem('-', '', 0);
@@ -69609,6 +69618,16 @@ begin
     Result := FbHelpPick
   else if Answer = mrNo then
     ShellExecute(Handle, 'open', FbHelpOnline, nil, nil, SW_SHOWNORMAL);
+end;
+
+// Help - unIDE manual: руководство пользователя unIDE
+procedure TForm1.mHelpUnideClick(Sender: TObject);
+var
+  ChmFile: string;
+begin
+  ChmFile := UnideRefChm;
+  if (ChmFile = '') or not ChmShowTopic(ChmFile, '') then
+    ShowMessage('Руководство unIDE: ' + RqHelpLastError);
 end;
 
 procedure TForm1.mHelpFbClick(Sender: TObject);

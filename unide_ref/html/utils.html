@@ -1,0 +1,45 @@
+<h1>Утилиты</h1>
+
+<h2><a name="started"></a>Started Util</h2>
+<p>Меню <b>Started Util</b> перечисляет открытые окна утилит (все видимые окна, кроме
+главного); щелчок поднимает окно, свёрнутое разворачивает. Те же окна показаны оранжевыми
+плашками справа в строке меню: имя окна, полный заголовок &mdash; в подсказке, щелчок поднимает
+окно.</p>
+
+<h2><a name="findinc"></a>Find inc file</h2>
+<p>View &rarr; Find inc file...: поиск include-файла на дисках по имени (маски допускаются),
+галка «Все локальные диски», список найденных копий, кнопки «Копировать в папку inc проекта» и
+«Открыть в редакторе». Окно предлагается само, когда rc.exe не находит
+<code>$INCLUDE</code>.</p>
+
+<h2><a name="incmanager"></a>INC Manager</h2>
+<p>View &rarr; IncManager...: проверка своих include-файлов RapidQ против эталона, защитный
+<code>$IFNDEF</code>, демо-программа, сборка нескольких файлов в один.</p>
+
+<h2><a name="deps"></a>Недостающие файлы и строгая проверка</h2>
+<p>Окна, которые открываются перед сборкой RapidQ: «Недостающие файлы программы» и «Строгая
+проверка» (<a href="rapidq.html#deps">RapidQ</a>).</p>
+
+<h2><a name="tidy"></a>Tidy editor.ini</h2>
+<p>Projects &rarr; Manage Projects &rarr; Tidy editor.ini...: поиск файлов editor*.ini и *.prj в
+выбранной папке (Scan), перенос отмеченных проектов (Add to editor.ini), разбор настроек
+(Tidy and restart). Tidy пишет рядом <code>editorNew.ini</code>, копии для других компьютеров
+(<code>editorN.ini</code>) и <code>editorOLD.ini</code>; при перезапуске <code>editorNew.ini</code>
+становится editor.ini, прежний сохраняется как <code>editor_prev.ini</code>. Add to editor.ini
+дописывает отмеченные проекты прямо в editor.ini.</p>
+
+<h2><a name="release"></a>Build Release, Release files</h2>
+<p>Только для проектов Delphi. unIDE находит файлы, которые нужны exe (по файловым операциям в
+исходниках), показывает их списком с галками и кладёт выбранное вместе с exe в папку
+<code>Release</code> рядом с .dpr (прежняя папка Release удаляется).</p>
+
+<h2><a name="icons"></a>Palette Icons</h2>
+<p>View &rarr; Palette Icons... или правая кнопка на кнопке палитры &rarr; Edit Icon...: свои значки
+компонентов палитры. Хранятся в <code>palette_icons.txt</code> рядом с программой.</p>
+
+<h2><a name="wins"></a>Окна и закладки</h2>
+<ul>
+<li>Windows &rarr; Del WinList... &mdash; отметить несколько окон галками и закрыть разом.</li>
+<li>Bookmarks &rarr; Clear List... &mdash; удалить отмеченные закладки.</li>
+<li>Hot Bookmarks &rarr; Закрепить... &mdash; закрепить закладки.</li>
+</ul>

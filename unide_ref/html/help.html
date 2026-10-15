@@ -1,0 +1,30 @@
+<h1>Справка</h1>
+
+<h2>Меню Help</h2>
+<table>
+<tr><th>Пункт</th><th>Что открывает</th></tr>
+<tr><td>unIDE manual</td><td>Это руководство (<code>unide_ref\help\unide.chm</code>).</td></tr>
+<tr><td>RapidQ</td><td>Справка RapidQ: Contents, Components (Appendix A), Custom components
+  (Appendix B), Keyword index, Include functions (Appendix D), Windows API reference (сайт
+  Microsoft), HTML pages in browser.</td></tr>
+<tr><td>FreeBASIC</td><td>Руководство FreeBASIC: Contents, Keyword index, Select help file...,
+  Online manual (freebasic.net).</td></tr>
+<tr><td>About...</td><td>О программе.</td></tr>
+</table>
+
+<h2>F1</h2>
+<ul>
+<li><b>Файл RapidQ</b> &mdash; страница слова под кареткой по списку
+  <code>rapidq_ref\help\keywords.txt</code>; слова нет &mdash; указатель справки RapidQ с этим
+  словом.</li>
+<li><b>Файл FreeBASIC</b> &mdash; страница слова по списку <code>fb_ref\help\fbkeywords.txt</code>
+  (суффикс типа учитывается: <code>Left$</code> &rarr; Left); слова нет &mdash; поиск по указателю
+  руководства FreeBASIC.</li>
+</ul>
+
+<h2>Руководство FreeBASIC</h2>
+<p>Ищется в таком порядке: файл, выбранный через Select help file...;
+<code>fb_ref\help\freebasic.chm</code>; любой <code>*.chm</code> с «fb» или «freebasic» в имени в
+папке fbc (32 и 64 бит), её подпапке <code>doc</code> и папке выше, а также рядом с unIDE и в
+его подпапке <code>help</code>. Если ничего не найдено, unIDE предлагает
+указать файл или открыть руководство на сайте.</p>
