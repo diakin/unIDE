@@ -5,14 +5,18 @@ unit RosTools;
 //
 //  RosBE 2.2.1 (для reactosVG14) - установщик NSIS 3.05 с SourceForge,
 //  77 584 546 байт. Установщик просит права администратора (в манифесте
-//  requireAdministrator) - Windows покажет запрос UAC. Тихая установка:
-//  /S /D=<папка>; /D - последним и без кавычек, даже с пробелами в пути.
-//  После установки в папке лежит RosBE.cmd - скрипт окружения проекта
-//  (ReactOS_EnvScript, см. RosProj).
-//
-//  Папка по умолчанию - %LOCALAPPDATA%\RosBE\2.2.1: писать туда можно без
-//  прав администратора, рядом - RosBE для LiberNT
-//  (%LOCALAPPDATA%\RosBE\pkgs\<версия>, его ищет configure.cmd LiberNT).
+//  requireAdministrator) - Windows покажет запрос UAC. Его сценарий -
+//  RosBE-Windows/RosBE.nsi, тег RosBE-2.2.1 в github.com/reactos/RosBE:
+//    - .onInit ставит $INSTDIR := C:\RosBE, поэтому /D=<папка> не
+//      действует: тихая установка (/S) - всегда в C:\RosBE; другую папку
+//      можно выбрать только в окнах установщика;
+//    - есть запись об удалении "ReactOS Build Environment" (HKCU или HKLM)
+//      - установщик спрашивает, удалить ли прежнюю версию (MessageBox без
+//      /SD); ответ не Yes и не No ведёт в Abort - код завершения 2. Тот же
+//      код - при уже запущенном установщике;
+//    - после установки HKCU\Software\Microsoft\Windows\CurrentVersion\
+//      App Paths\RosBE.cmd (значение по умолчанию) = <папка>\RosBE.cmd.
+//  RosBE.cmd - скрипт окружения проекта (ReactOS_EnvScript, см. RosProj).
 //
 //  Скачивание - WinINet (InternetOpenUrl): переадресации SourceForge на
 //  зеркало он проходит сам. HTTPS на Windows 7 идёт через настройки
@@ -23,7 +27,7 @@ unit RosTools;
 interface
 
 uses
-  Windows, SysUtils, Classes, WinInet, ShellAPI;
+  Windows, SysUtils, Classes, WinInet, ShellAPI, Registry;
 
 const
   RosBE221Url = 'https://downloads.sourceforge.net/project/reactos/' +
@@ -37,8 +41,12 @@ type
   // False - остановить.
   TRosStepEvent = function(ADone, ATotal: Cardinal): Boolean of object;
 
-// %LOCALAPPDATA%\RosBE\2.2.1, без \ в конце
+// Папка тихой установки RosBE 2.2.1 - C:\RosBE (её задаёт сам установщик)
 function RosBE221DefaultDir: string;
+// RosBE.cmd из записи установщика (App Paths), если файл есть; иначе пусто
+function RosBERegisteredScript: string;
+// Есть запись об удалении RosBE (прежняя установка): AVersion - её версия
+function RosBEPreviousInstall(var AVersion: string): Boolean;
 // В папке установлен RosBE (есть RosBE.cmd)
 function RosBEInstalledIn(const ADir: string): Boolean;
 // Скачать AUrl в AFile. Ошибка или остановка - False и текст в AError.
@@ -51,17 +59,66 @@ function RosRunInstaller(const AExe, AParams: string; AOnWait: TRosStepEvent;
 
 implementation
 
+const
+  RosBEAppPathKey = 'Software\Microsoft\Windows\CurrentVersion\App Paths\' +
+                    'RosBE.cmd';
+  RosBEUninstallKey = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\' +
+                      'ReactOS Build Environment';
+
 function RosBE221DefaultDir: string;
+begin
+  Result := 'C:\RosBE';
+end;
+
+// Значение ключа реестра; ключа или значения нет - пусто
+function ReadRegValue(ARoot: HKEY; const AKey, AName: string): string;
 var
-  EnvBuf: array[0..MAX_PATH] of Char;
+  Reg: TRegistry;
 begin
   Result := '';
-  if Windows.GetEnvironmentVariable(PChar('LOCALAPPDATA'), EnvBuf,
-                                    SizeOf(EnvBuf)) > 0 then
-    Result := EnvBuf;
-  if Result = '' then
-    Result := 'C:';
-  Result := IncludeTrailingPathDelimiter(Result) + 'RosBE\2.2.1';
+  Reg := TRegistry.Create;
+  try
+    Reg.RootKey := ARoot;
+    if Reg.OpenKeyReadOnly(AKey) then
+    try
+      if Reg.ValueExists(AName) then
+        Result := Reg.ReadString(AName);
+    finally
+      Reg.CloseKey;
+    end;
+  finally
+    Reg.Free;
+  end;
+end;
+
+function RosBERegisteredScript: string;
+begin
+  Result := Trim(ReadRegValue(HKEY_CURRENT_USER, RosBEAppPathKey, ''));
+  // Значение могут записать в кавычках
+  if (Length(Result) > 1) and (Result[1] = '"') then
+    Result := Copy(Result, 2, Length(Result) - 2);
+  if (Result <> '') and not FileExists(Result) then
+    Result := '';
+end;
+
+function RosBEPreviousInstall(var AVersion: string): Boolean;
+var
+  Uninstall: string;
+begin
+  AVersion := '';
+  Uninstall := ReadRegValue(HKEY_CURRENT_USER, RosBEUninstallKey,
+                            'UninstallString');
+  if Uninstall <> '' then
+    AVersion := ReadRegValue(HKEY_CURRENT_USER, RosBEUninstallKey,
+                             'DisplayVersion')
+  else
+  begin
+    Uninstall := ReadRegValue(HKEY_LOCAL_MACHINE, RosBEUninstallKey,
+                              'UninstallString');
+    AVersion := ReadRegValue(HKEY_LOCAL_MACHINE, RosBEUninstallKey,
+                             'DisplayVersion');
+  end;
+  Result := Uninstall <> '';
 end;
 
 function RosBEInstalledIn(const ADir: string): Boolean;

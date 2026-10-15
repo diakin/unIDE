@@ -59926,23 +59926,27 @@ begin
 end;
 
 // RosBE.cmd, установленный из меню ReactOS (editor.ini [ReactOS]
-// RosBE221Dir); нет - пусто
+// RosBE221Dir), иначе - из записи установщика RosBE; нет - пусто
 function TForm1.RosKnownEnvScript: string;
 var
   Ini: TIniFile;
   RosDir: string;
 begin
-  Result := '';
-  if not FileExists(SettingsFileName) then
-    Exit;
-  Ini := TIniFile.Create(SettingsFileName);
-  try
-    RosDir := Ini.ReadString('ReactOS', 'RosBE221Dir', '');
-  finally
-    Ini.Free;
+  RosDir := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      RosDir := Ini.ReadString('ReactOS', 'RosBE221Dir', '');
+    finally
+      Ini.Free;
+    end;
   end;
   if RosBEInstalledIn(RosDir) then
-    Result := IncludeTrailingPathDelimiter(RosDir) + RosBEScript;
+    Result := IncludeTrailingPathDelimiter(RosDir) + RosBEScript
+  else
+    // Установлен не из меню - запись установщика RosBE
+    Result := RosBERegisteredScript;
 end;
 
 // Ход скачивания и ожидания установщика - в окне хода сборки; Стоп -
@@ -59958,49 +59962,66 @@ begin
   Application.ProcessMessages;
 end;
 
-// ReactOS - Install RosBE 2.2.1: установщик с SourceForge во временную
-// папку, тихая установка (RosTools), путь - в editor.ini и в скрипт
-// окружения открытого проекта ReactOS, если он там не задан
+// ReactOS - Install RosBE 2.2.1. Уже установлен (запись App Paths) -
+// только запоминается путь. Иначе установщик с SourceForge во временную
+// папку и запуск: без окон (/S, всегда в C:\RosBE - так задано в самом
+// установщике) или с его окнами - если есть прежняя установка RosBE (в
+// тихом режиме установщик на ней прерывается) или папку выбирают сами.
+// Путь RosBE.cmd - из записи установщика; в editor.ini и в скрипт
+// окружения открытого проекта ReactOS, если он там не задан.
 procedure TForm1.RosInstallRosBEClick(Sender: TObject);
 var
-  InstallDir, Installer, ErrText: string;
+  EnvScript, InstallDir, Installer, ErrText, PrevVersion, Params: string;
   TempBuf: array[0..MAX_PATH] of Char;
   Answer, StageDownload, StageInstall: Integer;
   InstallCode: DWORD;
   Ini: TIniFile;
   Prj: TProjectIni;
   RosCfg: TRosSettings;
-  Done: Boolean;
+  Done, Silent: Boolean;
 begin
-  InstallDir := RosBE221DefaultDir;
-  Answer := MessageDlg('9803:RosBE 2.2.1 будет скачан с SourceForge (74 МБ) ' +
-            'и установлен в папку'#13#10#13#10 + InstallDir + #13#10#13#10 +
-            'Windows спросит разрешение на установку (права ' +
-            'администратора).'#13#10#13#10'Yes - установить сюда, No - ' +
-            'выбрать другую папку', mtConfirmation, [mbYes, mbNo, mbCancel], 0);
-  if Answer = mrCancel then
-    Exit;
-  if Answer = mrNo then
-  begin
-    if not BrowseFolderDialog('Папка для RosBE 2.2.1', InstallDir) then
-      Exit;
-    InstallDir := ExcludeTrailingPathDelimiter(Trim(InstallDir));
-    if InstallDir = '' then
-      Exit;
-  end;
-
   ShowCompLog;
-  Done := RosBEInstalledIn(InstallDir);
-  if Done then
-    LogComp('RosBE: уже установлен в ' + InstallDir + ' - путь записывается')
+  EnvScript := RosBERegisteredScript;
+  if EnvScript <> '' then
+    LogComp('RosBE: уже установлен - ' + EnvScript)
   else
   begin
+    InstallDir := RosBE221DefaultDir;
+    if RosBEPreviousInstall(PrevVersion) then
+    begin
+      if PrevVersion = '' then
+        PrevVersion := 'версия не записана';
+      Answer := MessageDlg('9804:В реестре есть запись об установленном ' +
+                'RosBE (' + PrevVersion + '), а RosBE.cmd по ней не ' +
+                'найден.'#13#10#13#10'Установщик RosBE 2.2.1 предложит ' +
+                'удалить прежнюю версию, поэтому он запустится со своими ' +
+                'окнами. Скачать (74 МБ) и запустить?',
+                mtConfirmation, [mbOK, mbCancel], 0);
+      if Answer <> mrOk then
+        Exit;
+      Silent := False;
+    end
+    else
+    begin
+      Answer := MessageDlg('9803:RosBE 2.2.1 будет скачан с SourceForge ' +
+                '(74 МБ) и установлен в ' + InstallDir + ' - эту папку ' +
+                'задаёт сам установщик.'#13#10'Windows спросит разрешение ' +
+                'на установку (права администратора).'#13#10#13#10'Yes - ' +
+                'установить без окон, No - запустить установщик с окнами ' +
+                '(папку можно выбрать в нём)',
+                mtConfirmation, [mbYes, mbNo, mbCancel], 0);
+      if Answer = mrCancel then
+        Exit;
+      Silent := Answer = mrYes;
+    end;
+
     GetTempPath(MAX_PATH, TempBuf);
     Installer := IncludeTrailingPathDelimiter(TempBuf) + RosBE221File;
-    CompDlgOpen('RosBE 2.2.1  ->  ' + InstallDir);
+    CompDlgOpen('RosBE 2.2.1');
     FCompDlg.Caption := 'Установка RosBE';
     StageDownload := FCompDlg.AddStage('Скачивание ' + RosBE221File, 90);
     StageInstall := FCompDlg.AddStage('Установка', 10);
+    Done := False;
     BusyBegin('Установка RosBE 2.2.1');
     try
       // Скачанный раньше файл того же размера - не качаем заново
@@ -60029,25 +60050,42 @@ begin
         FCompDlg.EndStage(StageDownload, True, '');
       end;
 
-      LogComp('RosBE: установка в ' + InstallDir);
-      FCompDlg.StartStage(StageInstall, 0, 'ответьте на запрос Windows');
+      if Silent then
+      begin
+        LogComp('RosBE: установка без окон в ' + InstallDir);
+        Params := '/S';
+        FCompDlg.StartStage(StageInstall, 0, 'ответьте на запрос Windows');
+      end
+      else
+      begin
+        LogComp('RosBE: установщик запущен с окнами');
+        Params := '';
+        FCompDlg.StartStage(StageInstall, 0, 'идёт в окнах установщика');
+      end;
       FRosInstallStage := StageInstall;
-      // /D - последним и без кавычек (правило NSIS)
-      if not RosRunInstaller(Installer, '/S /D=' + InstallDir,
-                             RosInstallProgress, InstallCode, ErrText) then
+      if not RosRunInstaller(Installer, Params, RosInstallProgress,
+                             InstallCode, ErrText) then
       begin
         FCompDlg.EndStage(StageInstall, False, ErrText);
         LogComp('RosBE: ' + ErrText);
         Exit;
       end;
-      Done := RosBEInstalledIn(InstallDir);
+      // Путь - из записи установщика; в тихом режиме он ещё и известен
+      EnvScript := RosBERegisteredScript;
+      if (EnvScript = '') and Silent and RosBEInstalledIn(InstallDir) then
+        EnvScript := IncludeTrailingPathDelimiter(InstallDir) + RosBEScript;
+      Done := EnvScript <> '';
       FCompDlg.EndStage(StageInstall, Done,
                         'код завершения ' + IntToStr(InstallCode));
       if not Done then
       begin
         LogComp('RosBE: установщик завершился с кодом ' +
-        IntToStr(InstallCode) + ', но ' + RosBEScript + ' в ' + InstallDir +
-        ' нет');
+        IntToStr(InstallCode) + ', RosBE.cmd не найден');
+        // Код 2 - Abort в сценарии установщика: в тихом режиме это
+        // вопрос об удалении прежней версии (RosTools)
+        if Silent and (InstallCode = 2) then
+          LogComp('RosBE: установщик прерван. Запустите Install RosBE ' +
+          'ещё раз и выберите No - установка с окнами установщика');
         Exit;
       end;
     finally
@@ -60063,17 +60101,18 @@ begin
   end;
 
   // Путь - в editor.ini и в открытый проект ReactOS без скрипта окружения
+  InstallDir := ExtractFileDir(EnvScript);
   Ini := TIniFile.Create(SettingsFileName);
   try
     Ini.WriteString('ReactOS', 'RosBE221Dir', InstallDir);
   finally
     Ini.Free;
   end;
-  LogComp('RosBE: ' + IncludeTrailingPathDelimiter(InstallDir) + RosBEScript);
+  LogComp('RosBE: ' + EnvScript);
   if (ProjectBuildKind(FCurrentProject) = bkCMakeNinja) and
      RosSettingsOf(FCurrentProject, RosCfg) and (RosCfg.EnvScript = '') then
   begin
-    RosCfg.EnvScript := IncludeTrailingPathDelimiter(InstallDir) + RosBEScript;
+    RosCfg.EnvScript := EnvScript;
     Prj := TProjectIni.Create(SettingsFileName, FCurrentProject);
     try
       RosSaveSettings(Prj, RosCfg);
