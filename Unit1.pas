@@ -57844,6 +57844,8 @@ begin
     RqDbgIncludeSet(ABas, nil, IncInline);
     // Имена событий - свои у каждой сборки: программа прежней сборки, если
     // ещё работает, их не поднимет
+    // Описание компонентов - типы свойств для выражений Watch (Объект.Свойство)
+    RapidQComponentsReady(False);
     Built := FRqDbgInstr.Build(ABas, ACopy, BaseName + '_rqdbg.cmd',
                                BaseName + '_rqdbg.state',
     'unIDE_RqDbg_' +

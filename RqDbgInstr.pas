@@ -156,7 +156,8 @@ unit RqDbgInstr;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils,
+  RqComponents;   // типы свойств компонентов (Component.data) для Watch
 
 const
   RqDbgModeRun   = 0;   // до точки останова
@@ -1842,8 +1843,51 @@ var
   // Строки вычисления выражения AIdx в области ALocal. Пусто - вычислять
   // не нужно или нельзя (простое имя - его покажет дамп, массив целиком,
   // объект).
+  // "Объект.Свойство": простой тип свойства (ShowableType) по классу
+  // объекта из CREATE / DIM и описанию компонентов; '' - не такое
+  // выражение, класс или свойство неизвестны, тип не простой
+  function ObjPropType(const AExpr: string; ALocal: TStrings): string;
+  var
+    DotPos, CharIdx: Integer;
+    ObjName, PropName, ObjType: string;
+    Known: Boolean;
+    Chain: TList;
+    Member: TRqMember;
+  begin
+    Result := '';
+    DotPos := Pos('.', AExpr);
+    if DotPos < 2 then
+      Exit;
+    ObjName := UpperCase(Trim(Copy(AExpr, 1, DotPos - 1)));
+    PropName := Trim(Copy(AExpr, DotPos + 1, MaxInt));
+    if (ObjName = '') or (PropName = '') then
+      Exit;
+    for CharIdx := 1 to Length(ObjName) do
+      if not (ObjName[CharIdx] in ['A'..'Z', '0'..'9', '_']) then
+        Exit;
+    for CharIdx := 1 to Length(PropName) do
+      if not (PropName[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+        Exit;   // Font.Size, Item(0) - по-прежнему через VARIANT
+    ObjType := NameType(ObjName, ALocal, Known);
+    if not Known or (ObjType = '') then
+      Exit;
+    Chain := TList.Create;
+    try
+      RqClassChain(ObjType, Chain);
+      if Chain.Count = 0 then
+        Exit;
+      Member := nil;
+      RqDefaultOf(Chain, PropName, Member);
+      if Member <> nil then
+        Result := ShowableType(UpperCase(Member.TypeName));
+    finally
+      Chain.Free;
+    end;
+  end;
+
   procedure WatchCode(AIdx: Integer; ALocal: TStrings; ALines: TStrings);
   var
+    PropType: string;
     ExprText, SimpleName, SimpleType, ElemType, IdxText: string;
     HasArgs, Known, IsArray: Boolean;
   begin
@@ -1883,6 +1927,21 @@ var
                      '", STR$(' + ExprText + '))');
         Exit;
       end;
+    end;
+    // Объект.Свойство простого типа по описанию класса (TabIndex у
+    // QTABCONTROL - INTEGER): STR$ или строка как есть, без VARIANT
+    PropType := ObjPropType(ExprText, ALocal);
+    if PropType = 'STRING' then
+    begin
+      ALines.Add(Pfx('RqDbgVal("w", "') + IdxText + '", "STRING", ' +
+                 ExprText + ')');
+      Exit;
+    end
+    else if PropType <> '' then
+    begin
+      ALines.Add(Pfx('RqDbgVal("w", "') + IdxText + '", "' + PropType +
+                 '", STR$(' + ExprText + '))');
+      Exit;
     end;
     // Остальное - через VARIANT
     ALines.Add(Pfx('RqDbgWV = ') + ExprText);
