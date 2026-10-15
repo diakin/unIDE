@@ -25,9 +25,12 @@ unit RosProj;
 //                                         пусто - configure.cmd находит
 //                                         RosBE сам
 //
-//  Этап 1: тип проекта, настройки и распознавание папки. Запуск configure
-//  и ninja - на следующих этапах (plan.md, этапы 3-4); пока Compile только
-//  показывает, что и как будет собрано (RosDescribeBuild).
+//  Сборка (Unit1, CompileReactOS) - два шага, каждый своим .cmd во
+//  временной папке (RosBuildScript), вывод - в лог:
+//    configure - если в папке сборки нет build.ninja: скрипт окружения,
+//                затем configure.cmd в папке исходников;
+//    ninja     - скрипт окружения, затем ninja <цель> в папке сборки.
+//  ninja должен быть в PATH после скрипта окружения (RosBE его добавляет).
 // ---------------------------------------------------------------------------
 
 interface
@@ -71,6 +74,18 @@ procedure RosSaveSettings(APrj: TProjectIni; const ASettings: TRosSettings);
 function RosNinjaCommand(const ASettings: TRosSettings): string;
 // Что и как будет собрано - строками для лога сборки
 procedure RosDescribeBuild(const ASettings: TRosSettings; ALines: TStrings);
+
+type
+  TRosStep = (rsConfigure, rsNinja);
+
+// Текст .cmd для шага сборки. Пояснения - латиницей: cmd читает файл в
+// OEM-кодировке.
+procedure RosBuildScript(const ASettings: TRosSettings; AStep: TRosStep;
+                         ALines: TStrings);
+// Строка хода ninja "[12/3456] Building C object ...": ADone = 12,
+// ATotal = 3456
+function RosParseNinjaStatus(const ALine: string;
+                             var ADone, ATotal: Integer): Boolean;
 
 implementation
 
@@ -255,7 +270,7 @@ begin
     ALines.Add('Скрипт окружения: ' + ASettings.EnvScript);
 
   ALines.Add('');
-  ALines.Add('Будет выполнено:');
+  ALines.Add('Команды:');
   if ASettings.EnvScript <> '' then
     ALines.Add('  call "' + ASettings.EnvScript + '"');
   if not HasNinjaFile then
@@ -265,6 +280,56 @@ begin
     ALines.Add('  ' + RosNinjaCommand(ASettings))
   else
     ALines.Add('  ninja -C "<папка сборки>" ' + ASettings.NinjaTarget);
+end;
+
+procedure RosBuildScript(const ASettings: TRosSettings; AStep: TRosStep;
+                         ALines: TStrings);
+var
+  Target: string;
+begin
+  ALines.Clear;
+  ALines.Add('@echo off');
+  ALines.Add('rem unIDE: ReactOS build step, file is rewritten on every build');
+  // Скрипт окружения RosBE ставит PATH (gcc, cmake, ninja) и переменные
+  // сборки. call - чтобы после него вернуться в этот файл.
+  if ASettings.EnvScript <> '' then
+    ALines.Add('call "' + ASettings.EnvScript + '"');
+  case AStep of
+    rsConfigure:
+    begin
+      ALines.Add('cd /d "' + ExcludeTrailingPathDelimiter(ASettings.SourceDir) +
+                 '"');
+      ALines.Add('call ' + RosMainFile + ' ' + Trim(ASettings.ConfigureArgs));
+    end;
+    rsNinja:
+    begin
+      Target := Trim(ASettings.NinjaTarget);
+      if Target = '' then
+        Target := RosDefaultTarget;
+      ALines.Add('cd /d "' + ASettings.BuildDir + '"');
+      ALines.Add('ninja ' + Target);
+    end;
+  end;
+  ALines.Add('exit /b %errorlevel%');
+end;
+
+function RosParseNinjaStatus(const ALine: string;
+                             var ADone, ATotal: Integer): Boolean;
+var
+  Text: string;
+  SlashPos, ClosePos: Integer;
+begin
+  Result := False;
+  Text := TrimLeft(ALine);
+  if (Text = '') or (Text[1] <> '[') then
+    Exit;
+  SlashPos := Pos('/', Text);
+  ClosePos := Pos(']', Text);
+  if (SlashPos < 3) or (ClosePos < SlashPos + 2) then
+    Exit;
+  ADone := StrToIntDef(Copy(Text, 2, SlashPos - 2), -1);
+  ATotal := StrToIntDef(Copy(Text, SlashPos + 1, ClosePos - SlashPos - 1), -1);
+  Result := (ADone >= 0) and (ATotal > 0);
 end;
 
 end.

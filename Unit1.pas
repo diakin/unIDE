@@ -2989,6 +2989,10 @@ type
     function  DelphiDprInFolder(const ADir: string; AAsk: Boolean): string;
     procedure DelphiRenameOtherDprs(ADprs: TStrings; const AKeep: string);
     function  CompileProject: Boolean;
+    function  CompileReactOS: Boolean;
+    function  RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
+                         const AWorkDir: string): Integer;
+    procedure RosNinjaLine(const ALine: string);
     function  RapidQTargetBas(ARemember: Boolean): string;
     function  FbTargetBas(ARemember: Boolean): string;
     procedure FbBuildOf(const AMain: string; var AOutKind, ABits: Integer);
@@ -3204,6 +3208,14 @@ type
     FCompProgHints: Integer;
     FCompProgWarns: Integer;
     FCompProgErrors: Integer;
+    // Сборка ReactOS (CompileReactOS) идёт: окно хода ведёт она сама, Стоп
+    // снимает всё дерево процессов (cmd -> ninja -> gcc). FRosNinjaRun -
+    // шаг ninja: строки хода "[n/N]" - в долю этапа FRosNinjaStage, в лог
+    // не все (RosNinjaLine).
+    FRosBuilding: Boolean;
+    FRosNinjaRun: Boolean;
+    FRosNinjaStage: Integer;
+    FRosNinjaLogged: Integer;
     // Ход перевода RqToFb (RqFbConvProgress): строк в прошлой сборке, время
     // последнего обновления окна
     FRqFbPrevLines: Integer;
@@ -46240,6 +46252,27 @@ begin
   end;
 end;
 
+// Снять процесс со всеми дочерними: taskkill /T есть в Windows с XP
+// Professional. Ждём его не дольше 10 с.
+procedure KillProcessTree(APid: DWORD);
+var
+  KillSI: TStartupInfo;
+  KillPI: TProcessInformation;
+  KillCmd: string;
+begin
+  FillChar(KillSI, SizeOf(KillSI), 0);
+  KillSI.cb := SizeOf(KillSI);
+  KillSI.dwFlags := STARTF_USESHOWWINDOW;
+  KillSI.wShowWindow := SW_HIDE;
+  KillCmd := 'taskkill /T /F /PID ' + IntToStr(APid);
+  if not CreateProcess(nil, PChar(KillCmd), nil, nil, False, CREATE_NO_WINDOW,
+                       nil, nil, KillSI, KillPI) then
+    Exit;
+  WaitForSingleObject(KillPI.hProcess, 10000);
+  CloseHandle(KillPI.hThread);
+  CloseHandle(KillPI.hProcess);
+end;
+
 function TForm1.RunCompiler(const AExe, AParams, AWorkDir: string): Integer;
 var
   SecAttr: TSecurityAttributes;
@@ -46320,6 +46353,10 @@ begin
       if not Killed and CompAbortWanted then
       begin
         Killed := True;
+        // ReactOS: под cmd идут ninja и gcc - снимается всё дерево, иначе
+        // они держат канал и работают дальше
+        if FRosBuilding then
+          KillProcessTree(PI.dwProcessId);
         TerminateProcess(PI.hProcess, 1);
         LogComp('Сборка остановлена: компилятор снят кнопкой Стоп');
       end;
@@ -46358,7 +46395,10 @@ begin
           SetLength(Line, Length(Line) - 1);
         if Trim(Line) <> '' then
         begin
-          LogComp(Line);
+          if FRosNinjaRun then
+            RosNinjaLine(Line)
+          else
+            LogComp(Line);
           CompProgressLine(Line);
         end;
         NL := Pos(#10, Acc);
@@ -47847,10 +47887,8 @@ end;
 // работают только с проектами Delphi.
 function TForm1.CompileProject: Boolean;
 var
-  Kind, LineIdx: Integer;
+  Kind: Integer;
   BuildPrj, PrjType: string;
-  RosCfg: TRosSettings;
-  RosLines: TStringList;
 begin
   Result := False;
   AutoSaveEditorFiles;
@@ -47879,34 +47917,8 @@ begin
       Result := CompileArduino(False);   // Verify
     bkCMakeNinja:
     begin
-      // ReactOS / LiberNT. Этап 1: только что и как будет собрано; запуск
-      // configure.cmd и ninja - этапы 3-4 (plan.md)
-      ShowCompLog;
-      if CompLogEdit <> nil then
-        CompLogEdit.Lines.Clear;
-      if ErrLogEdit <> nil then
-        ErrLogEdit.Lines.Clear;
-      LogComp('Сборщик: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')');
-      BuildPrj := BuildProject;
-      if not RosSettingsOf(BuildPrj, RosCfg) then
-      begin
-        LogComp('Сборка CMake+Ninja: нет открытого проекта ReactOS - ' +
-        'папка исходников и папка сборки берутся из него');
-        Exit;
-      end;
-      LogComp('Проект: ' + BuildPrj);
-      RosLines := TStringList.Create;
-      try
-        RosDescribeBuild(RosCfg, RosLines);
-        for LineIdx := 0 to RosLines.Count - 1 do
-          LogComp(RosLines[LineIdx]);
-      finally
-        RosLines.Free;
-      end;
-      LogComp('');
-      LogComp('Запуск сборки из среды пока не подключён (этапы 3-4). ' +
-      'Команды выше можно выполнить в окне RosBE.');
-      UpdateBuildBar;
+      Result := CompileReactOS;
+      UpdateBuildBar;   // папка сборки могла записаться в проект
     end;
   else
     ShowCompLog;
@@ -47944,6 +47956,238 @@ begin
         LogComp('  Сборки не требуется: python main.py');
     end;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Сборка ReactOS / LiberNT (CMake + Ninja, RosProj). Шаги:
+//    1. configure - если в папке сборки нет build.ninja (или папка не
+//       задана): скрипт окружения и configure.cmd в папке исходников.
+//       Папка сборки не задана - после configure берётся созданная им
+//       output-* и записывается в проект;
+//    2. ninja <цель> в папке сборки.
+//  Каждый шаг - свой .cmd во временной папке (RosBuildScript), запуск -
+//  RunCompiler через cmd.exe: вывод в лог, ошибки gcc - красным и в Error
+//  log. Окно хода сборки открывается всегда: доля шага ninja - по его
+//  строкам "[n/N]", Стоп снимает дерево процессов.
+// ---------------------------------------------------------------------------
+
+const
+  RosStageConfigure = 0;
+  RosStageNinja = 1;
+  // Строки хода ninja в лог - каждая RosNinjaLogEvery-я: их десятки тысяч,
+  // а ход и так виден в окне хода сборки
+  RosNinjaLogEvery = 200;
+
+function TForm1.CompileReactOS: Boolean;
+var
+  BuildPrj, NinjaFile, ImageFile: string;
+  RosCfg: TRosSettings;
+  RosLines: TStringList;
+  Prj: TProjectIni;
+  LineIdx, StepCode: Integer;
+  NeedConfigure: Boolean;
+begin
+  Result := False;
+  ShowCompLog;
+  if CompLogEdit <> nil then
+    CompLogEdit.Lines.Clear;
+  if ErrLogEdit <> nil then
+    ErrLogEdit.Lines.Clear;
+  LogComp('Сборщик: ' + BuildKindName(bkCMakeNinja) + ' (' + FBuildReason +
+  ')');
+  BuildPrj := BuildProject;
+  if not RosSettingsOf(BuildPrj, RosCfg) then
+  begin
+    LogComp('Сборка CMake+Ninja: нет открытого проекта ReactOS - папка ' +
+    'исходников и папка сборки берутся из него');
+    Exit;
+  end;
+  LogComp('Проект: ' + BuildPrj);
+  RosLines := TStringList.Create;
+  try
+    RosDescribeBuild(RosCfg, RosLines);
+    for LineIdx := 0 to RosLines.Count - 1 do
+      LogComp(RosLines[LineIdx]);
+  finally
+    RosLines.Free;
+  end;
+  LogComp('');
+
+  if not RosIsSourceDir(RosCfg.SourceDir) then
+  begin
+    LogComp('Сборка остановлена: ' + RosCfg.SourceDir + ' - не корень ' +
+    'исходников ReactOS');
+    Exit;
+  end;
+  if (RosCfg.EnvScript <> '') and not FileExists(RosCfg.EnvScript) then
+  begin
+    LogComp('Сборка остановлена: нет скрипта окружения ' + RosCfg.EnvScript +
+    ' (Project - Properties, поле "Скрипт RosBE")');
+    Exit;
+  end;
+
+  NeedConfigure := (RosCfg.BuildDir = '') or
+    not FileExists(IncludeTrailingPathDelimiter(RosCfg.BuildDir) +
+                   'build.ninja');
+
+  CompDlgOpen(BuildPrj + '   ' + RosCfg.NinjaTarget);
+  FCompDlg.Caption := 'Сборка ReactOS';
+  FCompDlg.AddStage('configure.cmd', 5);
+  FCompDlg.AddStage('ninja ' + RosCfg.NinjaTarget, 95);
+  FCompDlgOwned := True;
+  FRosBuilding := True;
+  BusyBegin('Сборка ' + BuildPrj);
+  try
+    // 1. configure
+    if NeedConfigure then
+    begin
+      LogComp('--- configure.cmd');
+      FCompDlg.StartStage(RosStageConfigure, 0, '');
+      StepCode := RosRunStep(RosCfg, rsConfigure, RosCfg.SourceDir);
+      if FCompDlg.AbortRequested then
+        Exit;
+      if StepCode <> 0 then
+      begin
+        FCompDlg.EndStage(RosStageConfigure, False,
+                          'код завершения ' + IntToStr(StepCode));
+        LogComp('configure.cmd: код завершения ' + IntToStr(StepCode));
+        Exit;
+      end;
+      // Папка сборки не задана - та, что создал configure; запоминается
+      // в проекте
+      if RosCfg.BuildDir = '' then
+      begin
+        RosCfg.BuildDir := RosDefaultBuildDir(RosCfg.SourceDir);
+        if RosCfg.BuildDir <> '' then
+        begin
+          Prj := TProjectIni.Create(SettingsFileName, BuildPrj);
+          try
+            RosSaveSettings(Prj, RosCfg);
+          finally
+            Prj.Free;
+          end;
+          LogComp('Папка сборки записана в проект: ' + RosCfg.BuildDir);
+        end;
+      end;
+      NinjaFile := IncludeTrailingPathDelimiter(RosCfg.BuildDir) +
+                   'build.ninja';
+      if (RosCfg.BuildDir = '') or not FileExists(NinjaFile) then
+      begin
+        FCompDlg.EndStage(RosStageConfigure, False, 'build.ninja нет');
+        if RosCfg.BuildDir = '' then
+          LogComp('После configure.cmd папки output-* в ' +
+          RosCfg.SourceDir + ' нет')
+        else
+          LogComp('После configure.cmd нет ' + NinjaFile);
+        Exit;
+      end;
+      FCompDlg.EndStage(RosStageConfigure, True, '');
+    end
+    else
+      FCompDlg.SkipStage(RosStageConfigure, 'build.ninja уже есть');
+
+    // 2. ninja
+    LogComp('--- ' + RosNinjaCommand(RosCfg));
+    FCompDlg.StartStage(RosStageNinja, 0, '');
+    FRosNinjaStage := RosStageNinja;
+    FRosNinjaLogged := 0;
+    FRosNinjaRun := True;
+    try
+      StepCode := RosRunStep(RosCfg, rsNinja, RosCfg.BuildDir);
+    finally
+      FRosNinjaRun := False;
+    end;
+    if FCompDlg.AbortRequested then
+      Exit;
+    FCompDlg.EndStage(RosStageNinja, StepCode = 0,
+                      'код завершения ' + IntToStr(StepCode));
+    if StepCode <> 0 then
+    begin
+      LogComp('ninja: код завершения ' + IntToStr(StepCode) +
+      ' - ошибки выше и в Error log');
+      Exit;
+    end;
+    Result := True;
+    ImageFile := IncludeTrailingPathDelimiter(RosCfg.BuildDir) +
+                 RosCfg.NinjaTarget + '.iso';
+    if FileExists(ImageFile) then
+      LogComp('Готово: ' + ImageFile)
+    else
+      LogComp('Готово: ' + RosCfg.NinjaTarget + ' в ' + RosCfg.BuildDir);
+  finally
+    FRosBuilding := False;
+    FCompDlgOwned := False;
+    if Result then
+      BusyEnd('Сборка: готово', True)
+    else
+      BusyEnd('Сборка: не собрано', False);
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result then
+      FCompDlg.FinishBuild(True, 'Готово')
+    else
+      FCompDlg.FinishBuild(False, 'Не собрано, подробности - Compilation log');
+  end;
+end;
+
+// Шаг сборки ReactOS: .cmd во временной папке и запуск через cmd.exe.
+// Результат - код завершения (-1 - не запустился).
+function TForm1.RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
+                           const AWorkDir: string): Integer;
+var
+  Script: TStringList;
+  TempBuf, ComBuf: array[0..MAX_PATH] of Char;
+  ScriptFile, ComSpec: string;
+begin
+  Result := -1;
+  TempBuf[0] := #0;
+  GetTempPath(MAX_PATH, TempBuf);
+  if AStep = rsConfigure then
+    ScriptFile := IncludeTrailingPathDelimiter(TempBuf) + 'unide_ros_configure.cmd'
+  else
+    ScriptFile := IncludeTrailingPathDelimiter(TempBuf) + 'unide_ros_ninja.cmd';
+  Script := TStringList.Create;
+  try
+    RosBuildScript(ASettings, AStep, Script);
+    try
+      Script.SaveToFile(ScriptFile);
+    except
+      LogComp('Не удалось записать ' + ScriptFile);
+      Exit;
+    end;
+  finally
+    Script.Free;
+  end;
+  // Тот же вызов, что в подменах переменных окружения: Windows-вариант
+  ComSpec := 'cmd.exe';
+  if GetEnvironmentVariable(PChar('ComSpec'), ComBuf, SizeOf(ComBuf)) > 0 then
+    ComSpec := ComBuf;
+  // /s /c ""файл"": внешние кавычки снимает cmd, путь с пробелами цел
+  Result := RunCompiler(ComSpec, '/s /c ""' + ScriptFile + '""',
+                        ExcludeTrailingPathDelimiter(AWorkDir));
+end;
+
+// Строка вывода шага ninja. "[n/N] ..." - доля этапа в окне хода и в лог
+// каждая RosNinjaLogEvery-я и последняя; остальные строки (ошибки gcc,
+// предупреждения, вывод команд) - в лог все.
+procedure TForm1.RosNinjaLine(const ALine: string);
+var
+  Done, Total: Integer;
+begin
+  if not RosParseNinjaStatus(ALine, Done, Total) then
+  begin
+    LogComp(ALine);
+    Exit;
+  end;
+  if (FCompDlg <> nil) and FCompDlg.Building then
+  begin
+    FCompDlg.StageFraction(FRosNinjaStage, Done / Total, True,
+                           IntToStr(Done) + ' / ' + IntToStr(Total));
+    FCompDlg.ShowLine(Trim(ALine));
+  end;
+  Inc(FRosNinjaLogged);
+  if (FRosNinjaLogged mod RosNinjaLogEvery = 1) or (Done = Total) then
+    LogComp(ALine);
 end;
 
 // ---------------------------------------------------------------------------
@@ -54036,9 +54280,8 @@ btnCompileRun.Hint := 'Собрать скетч (arduino-cli compile) и ' +
     'загрузить в плату (Upload). Плата и порт - ' +
     'меню Arduino - Board и Port';
 bkCMakeNinja:
-btnCompileRun.Hint := 'ReactOS / LiberNT: показать в логе, что и как ' +
-    'будет собрано (configure.cmd, ninja). Запуск сборки - на ' +
-    'следующих этапах';
+btnCompileRun.Hint := 'ReactOS / LiberNT: собрать цель ninja (если ' +
+    'build.ninja нет - сначала configure.cmd). Запуска нет';
   else
     btnCompileRun.Hint := 'Сборка ' + BuildKindName(Kind) +
     ' здесь пока не подключена';
@@ -60555,7 +60798,7 @@ begin
   else if HasTag('hint:') then
     Inc(FCompProgHints);
   FCompDlg.SetCounts(FCompProgErrors, FCompProgWarns, FCompProgHints);
-  if FCompDlgOwned then
+  if FCompDlgOwned and not FRosBuilding then
     RqFbFbcLine(ALine);
 end;
 
