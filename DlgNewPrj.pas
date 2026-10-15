@@ -489,8 +489,8 @@ begin
   NoteLabel.WordWrap := True;
   NoteLabel.SetBounds(LabelLeft, 134, 690, 28);
   NoteLabel.Caption := 'Папка проекта - корень исходников (configure.cmd, ' +
-                       'CMakeLists.txt, PreLoad.cmake). Запуск configure и ' +
-                       'ninja из среды будет подключён на следующих этапах.';
+                       'CMakeLists.txt, PreLoad.cmake). Compile: configure, ' +
+                       'если в папке сборки нет build.ninja, затем ninja.';
 end;
 
 function TDlgNewPrj.RosSourceDir: string;
