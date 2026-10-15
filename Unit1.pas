@@ -46306,6 +46306,7 @@ var
   Ini: TIniFile;
   Oem, Ended, Killed: Boolean;
   Avail, Want: DWORD;
+  CreateFlags: DWORD;
 begin
   Result := -1;
   Killed := False;
@@ -46347,7 +46348,15 @@ begin
     SI.hStdInput := 0;
 
     Cmd := '"' + AExe + '" ' + AParams;
-    if not CreateProcess(nil, PChar(Cmd), nil, nil, True, CREATE_NO_WINDOW,
+    // ReactOS: RosBE.cmd вызывает doskey; в процессе без консоли
+    // (CREATE_NO_WINDOW) он завершался аварийно - окно Windows "Прекращена
+    // работа программы" (Windows 7, 15.10.2026). Поэтому - своя консоль,
+    // скрытая (SW_HIDE); вывод всё равно идёт в канал
+    if FRosBuilding then
+      CreateFlags := CREATE_NEW_CONSOLE
+    else
+      CreateFlags := CREATE_NO_WINDOW;
+    if not CreateProcess(nil, PChar(Cmd), nil, nil, True, CreateFlags,
                          nil, PChar(AWorkDir), SI, PI) then
     begin
       LogComp('Не удалось запустить: ' + AExe);
