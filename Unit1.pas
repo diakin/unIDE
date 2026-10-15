@@ -39,6 +39,7 @@ uses
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   RosProj,        // проект ReactOS / LiberNT: CMake + Ninja (TRosSettings)
+  RosTools,       // скачивание и установка RosBE
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -2674,6 +2675,9 @@ type
     procedure ArdBuildMenu;
     procedure RosBuildMenu;
     procedure RosToolLinkClick(Sender: TObject);
+    procedure RosInstallRosBEClick(Sender: TObject);
+    function  RosInstallProgress(ADone, ATotal: Cardinal): Boolean;
+    function  RosKnownEnvScript: string;
     procedure ArdFreeAll;
     procedure mArduinoClick(Sender: TObject);
     procedure mArdSketchbookClick(Sender: TObject);
@@ -3218,6 +3222,7 @@ type
     FRosNinjaRun: Boolean;
     FRosNinjaStage: Integer;
     FRosNinjaLogged: Integer;
+    FRosInstallStage: Integer;  // этап окна хода в RosInstallRosBEClick
     // Ход перевода RqToFb (RqFbConvProgress): строк в прошлой сборке, время
     // последнего обновления окна
     FRqFbPrevLines: Integer;
@@ -10195,7 +10200,11 @@ begin
     // Проект ReactOS: папка сборки, цель ninja, configure, скрипт RosBE
     if (CompareText(OldType, RosProjectType) = 0) and
        RosSettingsOf(OldName, RosCfg) then
+    begin
+      if RosCfg.EnvScript = '' then
+        RosCfg.EnvScript := RosKnownEnvScript;
       Dlg.SetRosSettings(RosCfg);
+    end;
 
     // Проект Delphi с главным .dpr - вкладка Project options
     if (CompareText(OldType, 'Delphi') = 0) and
@@ -11029,6 +11038,9 @@ begin
         RosCfg.SourceDir := ExtractFilePath(TargetFile);
         if RosCfg.BuildDir = '' then
           RosCfg.BuildDir := RosDefaultBuildDir(RosCfg.SourceDir);
+        // RosBE, установленный из меню ReactOS
+        if RosCfg.EnvScript = '' then
+          RosCfg.EnvScript := RosKnownEnvScript;
         RosSaveSettings(Prj, RosCfg);
         if RosCfg.BuildDir = '' then
           LogDiag('New Project: папки сборки output-* в ' +
@@ -59862,6 +59874,16 @@ begin
   RosMenu.AutoHotkeys := maManual;
   MainMenu1.Items.Insert(mArduino.MenuIndex + 1, RosMenu);
 
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Install RosBE 2.2.1 (reactosVG14)...';
+  LinkItem.Hint := 'Скачать установщик RosBE 2.2.1 и установить; путь к ' +
+                   'RosBE.cmd - в проект ReactOS';
+  LinkItem.OnClick := RosInstallRosBEClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := '-';
+  RosMenu.Add(LinkItem);
+
   ToolsMenu := TMenuItem.Create(Self);
   ToolsMenu.Caption := 'Download Build Tools';
   ToolsMenu.AutoHotkeys := maManual;
@@ -59901,6 +59923,165 @@ begin
   if ShellExecute(Handle, 'open', PChar(LinkUrl), nil, nil,
                   SW_SHOWNORMAL) <= 32 then
     ShowMessage('9802:Не удалось открыть в браузере:'#13#10 + LinkUrl);
+end;
+
+// RosBE.cmd, установленный из меню ReactOS (editor.ini [ReactOS]
+// RosBE221Dir); нет - пусто
+function TForm1.RosKnownEnvScript: string;
+var
+  Ini: TIniFile;
+  RosDir: string;
+begin
+  Result := '';
+  if not FileExists(SettingsFileName) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    RosDir := Ini.ReadString('ReactOS', 'RosBE221Dir', '');
+  finally
+    Ini.Free;
+  end;
+  if RosBEInstalledIn(RosDir) then
+    Result := IncludeTrailingPathDelimiter(RosDir) + RosBEScript;
+end;
+
+// Ход скачивания и ожидания установщика - в окне хода сборки; Стоп -
+// остановить
+function TForm1.RosInstallProgress(ADone, ATotal: Cardinal): Boolean;
+begin
+  Result := not ((FCompDlg <> nil) and FCompDlg.AbortRequested);
+  if (FCompDlg <> nil) and (ATotal > 0) then
+    FCompDlg.StageFraction(FRosInstallStage, ADone / ATotal, True,
+                           Format('%d из %d МБ', [ADone div 1048576,
+                                                  ATotal div 1048576]));
+  BusyTick;
+  Application.ProcessMessages;
+end;
+
+// ReactOS - Install RosBE 2.2.1: установщик с SourceForge во временную
+// папку, тихая установка (RosTools), путь - в editor.ini и в скрипт
+// окружения открытого проекта ReactOS, если он там не задан
+procedure TForm1.RosInstallRosBEClick(Sender: TObject);
+var
+  InstallDir, Installer, ErrText: string;
+  TempBuf: array[0..MAX_PATH] of Char;
+  Answer, StageDownload, StageInstall: Integer;
+  InstallCode: DWORD;
+  Ini: TIniFile;
+  Prj: TProjectIni;
+  RosCfg: TRosSettings;
+  Done: Boolean;
+begin
+  InstallDir := RosBE221DefaultDir;
+  Answer := MessageDlg('9803:RosBE 2.2.1 будет скачан с SourceForge (74 МБ) ' +
+            'и установлен в папку'#13#10#13#10 + InstallDir + #13#10#13#10 +
+            'Windows спросит разрешение на установку (права ' +
+            'администратора).'#13#10#13#10'Yes - установить сюда, No - ' +
+            'выбрать другую папку', mtConfirmation, [mbYes, mbNo, mbCancel], 0);
+  if Answer = mrCancel then
+    Exit;
+  if Answer = mrNo then
+  begin
+    if not BrowseFolderDialog('Папка для RosBE 2.2.1', InstallDir) then
+      Exit;
+    InstallDir := ExcludeTrailingPathDelimiter(Trim(InstallDir));
+    if InstallDir = '' then
+      Exit;
+  end;
+
+  ShowCompLog;
+  Done := RosBEInstalledIn(InstallDir);
+  if Done then
+    LogComp('RosBE: уже установлен в ' + InstallDir + ' - путь записывается')
+  else
+  begin
+    GetTempPath(MAX_PATH, TempBuf);
+    Installer := IncludeTrailingPathDelimiter(TempBuf) + RosBE221File;
+    CompDlgOpen('RosBE 2.2.1  ->  ' + InstallDir);
+    FCompDlg.Caption := 'Установка RosBE';
+    StageDownload := FCompDlg.AddStage('Скачивание ' + RosBE221File, 90);
+    StageInstall := FCompDlg.AddStage('Установка', 10);
+    BusyBegin('Установка RosBE 2.2.1');
+    try
+      // Скачанный раньше файл того же размера - не качаем заново
+      if FileExists(Installer) and (FileSizeOf(Installer) = RosBE221Size) then
+        FCompDlg.SkipStage(StageDownload, 'уже скачан')
+      else
+      begin
+        LogComp('RosBE: скачивание ' + RosBE221Url);
+        FCompDlg.StartStage(StageDownload, 0, '');
+        FRosInstallStage := StageDownload;
+        if not RosDownload(RosBE221Url, Installer, RosInstallProgress,
+                           ErrText) then
+        begin
+          FCompDlg.EndStage(StageDownload, False, ErrText);
+          LogComp('RosBE: не скачан - ' + ErrText);
+          Exit;
+        end;
+        if FileSizeOf(Installer) <> RosBE221Size then
+        begin
+          FCompDlg.EndStage(StageDownload, False, 'не тот размер');
+          LogComp(Format('RosBE: размер файла %d байт, ожидался %d - ' +
+          'файл не тот, установка не запускается', [FileSizeOf(Installer),
+                                                    RosBE221Size]));
+          Exit;
+        end;
+        FCompDlg.EndStage(StageDownload, True, '');
+      end;
+
+      LogComp('RosBE: установка в ' + InstallDir);
+      FCompDlg.StartStage(StageInstall, 0, 'ответьте на запрос Windows');
+      FRosInstallStage := StageInstall;
+      // /D - последним и без кавычек (правило NSIS)
+      if not RosRunInstaller(Installer, '/S /D=' + InstallDir,
+                             RosInstallProgress, InstallCode, ErrText) then
+      begin
+        FCompDlg.EndStage(StageInstall, False, ErrText);
+        LogComp('RosBE: ' + ErrText);
+        Exit;
+      end;
+      Done := RosBEInstalledIn(InstallDir);
+      FCompDlg.EndStage(StageInstall, Done,
+                        'код завершения ' + IntToStr(InstallCode));
+      if not Done then
+      begin
+        LogComp('RosBE: установщик завершился с кодом ' +
+        IntToStr(InstallCode) + ', но ' + RosBEScript + ' в ' + InstallDir +
+        ' нет');
+        Exit;
+      end;
+    finally
+      BusyEnd('Установка RosBE', Done);
+      if FCompDlg.AbortRequested then
+        FCompDlg.FinishBuild(False, 'Остановлено')
+      else if Done then
+        FCompDlg.FinishBuild(True, 'Установлено')
+      else
+        FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
+                             'Compilation log');
+    end;
+  end;
+
+  // Путь - в editor.ini и в открытый проект ReactOS без скрипта окружения
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Ini.WriteString('ReactOS', 'RosBE221Dir', InstallDir);
+  finally
+    Ini.Free;
+  end;
+  LogComp('RosBE: ' + IncludeTrailingPathDelimiter(InstallDir) + RosBEScript);
+  if (ProjectBuildKind(FCurrentProject) = bkCMakeNinja) and
+     RosSettingsOf(FCurrentProject, RosCfg) and (RosCfg.EnvScript = '') then
+  begin
+    RosCfg.EnvScript := IncludeTrailingPathDelimiter(InstallDir) + RosBEScript;
+    Prj := TProjectIni.Create(SettingsFileName, FCurrentProject);
+    try
+      RosSaveSettings(Prj, RosCfg);
+    finally
+      Prj.Free;
+    end;
+    LogComp('RosBE: скрипт окружения записан в проект ' + FCurrentProject);
+  end;
 end;
 
 procedure TForm1.ArdFreeAll;

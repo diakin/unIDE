@@ -36,6 +36,7 @@ uses
   ObjParse in 'ObjParse.pas',
   PrjStore in 'PrjStore.pas',
   RosProj in 'RosProj.pas',
+  RosTools in 'RosTools.pas',
   RqComponents in 'RqComponents.pas',
   RqDesign in 'RqDesign.pas',
   RqHelp in 'RqHelp.pas',
