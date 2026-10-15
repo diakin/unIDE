@@ -52,6 +52,24 @@ const
     'a72b220a1b21927629cb7bc5606baf64fd7c30666b9bdc4ba21aabcbe00b3649';
   RosBEScript = 'RosBE.cmd';
 
+  // 7-Zip 24.09 - выпуски ip7z/7zip на GitHub (официальные с 23.01);
+  // MD5/SHA1 совпадают с указанными на SourceForge (sevenzip), манифест
+  // объявляет Windows 7, 7z.exe x64 импортирует только системные DLL
+  // Windows 7 (проверено 15.10.2026). Установщик: /S - без окон, права
+  // администратора; ставит в Program Files\7-Zip, путь - HKLM\SOFTWARE\
+  // 7-Zip, Path (RosFind7Zip)
+  SevenZipVersion = '24.09';
+  SevenZipUrl64 = 'https://github.com/ip7z/7zip/releases/download/24.09/' +
+                  '7z2409-x64.exe';
+  SevenZipSize64 = 1637343;
+  SevenZipSha64 =
+    'bdd1a33de78618d16ee4ce148b849932c05d0015491c34887846d431d29f308e';
+  SevenZipUrl32 = 'https://github.com/ip7z/7zip/releases/download/24.09/' +
+                  '7z2409.exe';
+  SevenZipSize32 = 1348869;
+  SevenZipSha32 =
+    'e35e4374100b52e697e002859aefdd5533bcbf4118e5d2210fae6de318947c41';
+
 type
   // Ход долгого шага: ADone из ATotal (ATotal = 0 - размер не известен).
   // False - остановить.
@@ -69,6 +87,8 @@ function RosBEInstalledIn(const ADir: string): Boolean;
 function RosFileSha256(const AFile: string): string;
 // Запущен установщик RosBE 2.2.1 (занят его мьютекс из .onInit)
 function RosBE221InstallerRunning: Boolean;
+// 64-битная Windows (unIDE 32-битный и работает под WOW64)
+function RosIs64BitWindows: Boolean;
 // 7z.exe установленного 7-Zip (запись в реестре или Program Files); нет -
 // пусто
 function RosFind7Zip: string;
@@ -243,6 +263,22 @@ begin
   end
   else
     Result := GetLastError = ERROR_ACCESS_DENIED;
+end;
+
+function RosIs64BitWindows: Boolean;
+type
+  TIsWow64Process = function(hProcess: THandle;
+                             var Wow64Process: BOOL): BOOL; stdcall;
+var
+  IsWow64Proc: TIsWow64Process;
+  Wow64: BOOL;
+begin
+  Result := False;
+  // IsWow64Process есть не во всех Windows и не объявлена в Delphi 7
+  @IsWow64Proc := GetProcAddress(GetModuleHandle(kernel32),
+                                 'IsWow64Process');
+  if Assigned(IsWow64Proc) and IsWow64Proc(GetCurrentProcess, Wow64) then
+    Result := Wow64;
 end;
 
 function RosFind7Zip: string;

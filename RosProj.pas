@@ -337,7 +337,7 @@ begin
             'https://github.com/git-for-windows/git/releases/tag/' +
             'v2.46.2.windows.1');
   AList.Add('7-Zip - распаковка RosBE 2.2.1 (Install RosBE)=' +
-            'https://www.7-zip.org/');
+            'https://www.7-zip.org/download.html');
 end;
 
 function RosParseNinjaStatus(const ALine: string;
