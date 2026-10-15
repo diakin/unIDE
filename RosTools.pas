@@ -13,7 +13,10 @@ unit RosTools;
 //    - есть запись об удалении "ReactOS Build Environment" (HKCU или HKLM)
 //      - установщик спрашивает, удалить ли прежнюю версию (MessageBox без
 //      /SD); ответ не Yes и не No ведёт в Abort - код завершения 2. Тот же
-//      код - при уже запущенном установщике;
+//      код - при уже запущенном установщике (мьютекс RosBE-v2.2.1-
+//      Installer) и при ошибке запуска самого NSIS: файл не прошёл
+//      проверку целостности (CRCCheck force) или не создаётся временная
+//      папка - NSIS 3.05, Source/exehead/Main.c, ExitProcess(2);
 //    - после установки HKCU\Software\Microsoft\Windows\CurrentVersion\
 //      App Paths\RosBE.cmd (значение по умолчанию) = <папка>\RosBE.cmd.
 //  RosBE.cmd - скрипт окружения проекта (ReactOS_EnvScript, см. RosProj).
@@ -34,6 +37,9 @@ const
                 'RosBE-Windows/i386/2.2.1/RosBE-2.2.1.exe';
   RosBE221File = 'RosBE-2.2.1.exe';
   RosBE221Size = 77584546;
+  // SHA-256 файла с SourceForge (проверено 15.10.2026)
+  RosBE221Sha256 =
+    'a72b220a1b21927629cb7bc5606baf64fd7c30666b9bdc4ba21aabcbe00b3649';
   RosBEScript = 'RosBE.cmd';
 
 type
@@ -49,6 +55,10 @@ function RosBERegisteredScript: string;
 function RosBEPreviousInstall(var AVersion: string): Boolean;
 // В папке установлен RosBE (есть RosBE.cmd)
 function RosBEInstalledIn(const ADir: string): Boolean;
+// SHA-256 файла строчными hex-цифрами; ошибка чтения или CryptoAPI - пусто
+function RosFileSha256(const AFile: string): string;
+// Запущен установщик RosBE 2.2.1 (занят его мьютекс из .onInit)
+function RosBE221InstallerRunning: Boolean;
 // Скачать AUrl в AFile. Ошибка или остановка - False и текст в AError.
 function RosDownload(const AUrl, AFile: string; AOnProgress: TRosStepEvent;
                      var AError: string): Boolean;
@@ -58,6 +68,34 @@ function RosRunInstaller(const AExe, AParams: string; AOnWait: TRosStepEvent;
                          var AExitCode: DWORD; var AError: string): Boolean;
 
 implementation
+
+const
+  RosBE221Mutex = 'RosBE-v2.2.1-Installer';
+  // CryptoAPI (wincrypt.h): в Windows.pas Delphi 7 этих объявлений нет
+  PROV_RSA_AES = 24;
+  CRYPT_VERIFYCONTEXT = $F0000000;
+  CALG_SHA_256 = $0000800C;
+  HP_HASHVAL = 2;
+
+type
+  HCRYPTPROV = Cardinal;
+  HCRYPTHASH = Cardinal;
+
+function CryptAcquireContext(var phProv: HCRYPTPROV; pszContainer,
+  pszProvider: PChar; dwProvType, dwFlags: DWORD): BOOL; stdcall;
+  external advapi32 name 'CryptAcquireContextA';
+function CryptReleaseContext(hProv: HCRYPTPROV; dwFlags: DWORD): BOOL;
+  stdcall; external advapi32 name 'CryptReleaseContext';
+function CryptCreateHash(hProv: HCRYPTPROV; Algid: Cardinal; hKey: Cardinal;
+  dwFlags: DWORD; var phHash: HCRYPTHASH): BOOL; stdcall;
+  external advapi32 name 'CryptCreateHash';
+function CryptHashData(hHash: HCRYPTHASH; pbData: Pointer; dwDataLen,
+  dwFlags: DWORD): BOOL; stdcall; external advapi32 name 'CryptHashData';
+function CryptGetHashParam(hHash: HCRYPTHASH; dwParam: DWORD; pbData: Pointer;
+  var pdwDataLen: DWORD; dwFlags: DWORD): BOOL; stdcall;
+  external advapi32 name 'CryptGetHashParam';
+function CryptDestroyHash(hHash: HCRYPTHASH): BOOL; stdcall;
+  external advapi32 name 'CryptDestroyHash';
 
 const
   RosBEAppPathKey = 'Software\Microsoft\Windows\CurrentVersion\App Paths\' +
@@ -119,6 +157,75 @@ begin
                              'DisplayVersion');
   end;
   Result := Uninstall <> '';
+end;
+
+function RosFileSha256(const AFile: string): string;
+const
+  ChunkSize = 65536;
+var
+  Provider: HCRYPTPROV;
+  Hash: HCRYPTHASH;
+  Input: TFileStream;
+  Buffer: array[0..ChunkSize - 1] of Byte;
+  Digest: array[0..31] of Byte;
+  BytesRead: Integer;
+  DigestLen: DWORD;
+  Idx: Integer;
+  HashOk: Boolean;
+begin
+  Result := '';
+  if not FileExists(AFile) then
+    Exit;
+  if not CryptAcquireContext(Provider, nil, nil, PROV_RSA_AES,
+                             CRYPT_VERIFYCONTEXT) then
+    Exit;
+  try
+    if not CryptCreateHash(Provider, CALG_SHA_256, 0, 0, Hash) then
+      Exit;
+    try
+      try
+        Input := TFileStream.Create(AFile, fmOpenRead or fmShareDenyWrite);
+      except
+        Exit;
+      end;
+      HashOk := True;
+      try
+        repeat
+          BytesRead := Input.Read(Buffer, ChunkSize);
+          if (BytesRead > 0) and
+             not CryptHashData(Hash, @Buffer, BytesRead, 0) then
+            HashOk := False;
+        until (BytesRead <= 0) or not HashOk;
+      finally
+        Input.Free;
+      end;
+      DigestLen := SizeOf(Digest);
+      if HashOk and CryptGetHashParam(Hash, HP_HASHVAL, @Digest, DigestLen, 0)
+         and (DigestLen = SizeOf(Digest)) then
+        for Idx := 0 to High(Digest) do
+          Result := Result + LowerCase(IntToHex(Digest[Idx], 2));
+    finally
+      CryptDestroyHash(Hash);
+    end;
+  finally
+    CryptReleaseContext(Provider, 0);
+  end;
+end;
+
+function RosBE221InstallerRunning: Boolean;
+var
+  Mutex: THandle;
+begin
+  // Мьютекс создаёт установщик с правами администратора: обычному процессу
+  // OpenMutex может ответить "доступ запрещён" - это тоже значит "есть"
+  Mutex := OpenMutex(SYNCHRONIZE, False, RosBE221Mutex);
+  if Mutex <> 0 then
+  begin
+    CloseHandle(Mutex);
+    Result := True;
+  end
+  else
+    Result := GetLastError = ERROR_ACCESS_DENIED;
 end;
 
 function RosBEInstalledIn(const ADir: string): Boolean;

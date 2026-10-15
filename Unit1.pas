@@ -59972,6 +59972,7 @@ end;
 procedure TForm1.RosInstallRosBEClick(Sender: TObject);
 var
   EnvScript, InstallDir, Installer, ErrText, PrevVersion, Params: string;
+  FileHash: string;
   TempBuf: array[0..MAX_PATH] of Char;
   Answer, StageDownload, StageInstall: Integer;
   InstallCode: DWORD;
@@ -60024,9 +60025,11 @@ begin
     Done := False;
     BusyBegin('Установка RosBE 2.2.1');
     try
-      // Скачанный раньше файл того же размера - не качаем заново
-      if FileExists(Installer) and (FileSizeOf(Installer) = RosBE221Size) then
-        FCompDlg.SkipStage(StageDownload, 'уже скачан')
+      // Скачанный раньше файл с той же SHA-256 - не качаем заново;
+      // другой - удаляется и скачивается снова
+      if FileExists(Installer) and (FileSizeOf(Installer) = RosBE221Size) and
+         (RosFileSha256(Installer) = RosBE221Sha256) then
+        FCompDlg.SkipStage(StageDownload, 'уже скачан, SHA-256 совпадает')
       else
       begin
         LogComp('RosBE: скачивание ' + RosBE221Url);
@@ -60047,7 +60050,29 @@ begin
                                                     RosBE221Size]));
           Exit;
         end;
-        FCompDlg.EndStage(StageDownload, True, '');
+        FileHash := RosFileSha256(Installer);
+        if FileHash <> RosBE221Sha256 then
+        begin
+          FCompDlg.EndStage(StageDownload, False, 'SHA-256 не совпадает');
+          if FileHash = '' then
+            FileHash := 'не вычислена';
+          LogComp('RosBE: SHA-256 скачанного файла ' + FileHash +
+          ', ожидалась ' + RosBE221Sha256 + ' - файл удалён, установка ' +
+          'не запускается');
+          DeleteFile(Installer);
+          Exit;
+        end;
+        FCompDlg.EndStage(StageDownload, True, 'SHA-256 совпадает');
+      end;
+
+      // Второй экземпляр установщик сам прервёт с кодом 2
+      if RosBE221InstallerRunning then
+      begin
+        FCompDlg.SkipStage(StageInstall, 'установщик уже запущен');
+        LogComp('RosBE: установщик RosBE 2.2.1 уже запущен (возможно, ' +
+        'его окно за другими окнами или он завис). Закройте его или ' +
+        'завершите RosBE-2.2.1.exe в Диспетчере задач и повторите');
+        Exit;
       end;
 
       if Silent then
@@ -60081,11 +60106,16 @@ begin
       begin
         LogComp('RosBE: установщик завершился с кодом ' +
         IntToStr(InstallCode) + ', RosBE.cmd не найден');
-        // Код 2 - Abort в сценарии установщика: в тихом режиме это
-        // вопрос об удалении прежней версии (RosTools)
-        if Silent and (InstallCode = 2) then
-          LogComp('RosBE: установщик прерван. Запустите Install RosBE ' +
-          'ещё раз и выберите No - установка с окнами установщика');
+        // Код 2 - Abort в сценарии установщика или ошибка запуска NSIS
+        // (RosTools). Файл и мьютекс проверены выше, остаётся сообщение
+        // установщика - в режиме с окнами оно было на экране
+        if InstallCode = 2 then
+          if Silent then
+            LogComp('RosBE: установщик прерван. Запустите Install RosBE ' +
+            'ещё раз и выберите No - установщик покажет причину в окне')
+          else
+            LogComp('RosBE: установщик прерван при запуске - причину он ' +
+            'показал в своём окне сообщения');
         Exit;
       end;
     finally
