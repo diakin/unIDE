@@ -39,6 +39,7 @@ uses
   ResFile,      // .res: VERSIONINFO, MAINICON
   FolderDlg,    // BrowseFolderDialog
   RosProj,      // настройки проекта ReactOS / LiberNT
+  PciIds,       // список производителей PCI по умолчанию
   Dialogs,      // TOpenDialog
   // Окна сообщений по теме - последним, поверх Dialogs
   UiDialogs;
@@ -245,6 +246,7 @@ type
     edRosArgs: TUiEdit;
     edRosEnv: TUiEdit;
     btnRosEnv: TUiButton;
+    edRosPciVendors: TUiEdit;
     FDpr: string;               // .dpr проекта; '' - вкладки Delphi нет
     FDof: TMemIniFile;          // <проект>.dof в памяти
     FDofBefore: string;         // текст .dof после загрузки - для сравнения
@@ -333,7 +335,7 @@ const
   // (проект RapidQ) - выше на её высоту
   CompactClientHeight = 224;
   CompactRqClientHeight = 352;
-  CompactRosClientHeight = 400;
+  CompactRosClientHeight = 428;
   FullClientHeight = 560;
   // Design-пакеты Delphi 7
   KnownPackagesKey = 'Software\Borland\Delphi\7.0\Known Packages';
@@ -402,6 +404,7 @@ end;
 //   Цель ninja    [bootcd    v]
 //   configure     [параметры        ]
 //   Скрипт RosBE  [путь        ] [...]
+//   Производители PCI [8086 1022 ...  ]
 //   пояснение
 procedure TDlgNewPrj.BuildRosControls;
 const
@@ -425,7 +428,7 @@ begin
     Exit;
   grpRos := TUiGroupBox.Create(Self);
   grpRos.Parent := tsProject;
-  grpRos.SetBounds(grpRqInc.Left, grpRqInc.Top, grpRqInc.Width, 166);
+  grpRos.SetBounds(grpRqInc.Left, grpRqInc.Top, grpRqInc.Width, 194);
   grpRos.Caption := 'ReactOS / LiberNT: CMake + Ninja';
   grpRos.Visible := False;
 
@@ -483,11 +486,22 @@ begin
   btnRosEnv.ShowHint := True;
   btnRosEnv.OnClick := btnRosEnvClick;
 
+  AddLabel(134, 'Производители PCI');
+  edRosPciVendors := TUiEdit.Create(Self);
+  edRosPciVendors.Parent := grpRos;
+  edRosPciVendors.SetBounds(FieldLeft, 134, 566, 21);
+  edRosPciVendors.Text := PciDefaultVendors;
+  edRosPciVendors.Hint := 'Коды производителей чипсетов (8086 Intel, ' +
+    '1022 AMD ...) для ReactOS - Generate System Devices INF: их ' +
+    'служебные устройства (контроллер памяти, SMBus ...) попадают в ' +
+    'pciids.inf. Мосты PCI берутся от всех производителей';
+  edRosPciVendors.ShowHint := True;
+
   NoteLabel := TLabel.Create(Self);
   NoteLabel.Parent := grpRos;
   NoteLabel.AutoSize := False;
   NoteLabel.WordWrap := True;
-  NoteLabel.SetBounds(LabelLeft, 134, 690, 28);
+  NoteLabel.SetBounds(LabelLeft, 162, 690, 28);
   NoteLabel.Caption := 'Папка проекта - корень исходников (configure.cmd, ' +
                        'CMakeLists.txt, PreLoad.cmake). Compile: configure, ' +
                        'если в папке сборки нет build.ninja, затем ninja.';
@@ -549,6 +563,10 @@ begin
     cbRosTarget.Text := RosDefaultTarget;
   edRosArgs.Text := ASettings.ConfigureArgs;
   edRosEnv.Text := ASettings.EnvScript;
+  if ASettings.PciVendors <> '' then
+    edRosPciVendors.Text := ASettings.PciVendors
+  else
+    edRosPciVendors.Text := PciDefaultVendors;
   UpdateRqIncVisible;
 end;
 
@@ -562,6 +580,7 @@ begin
     ASettings.NinjaTarget := RosDefaultTarget;
   ASettings.ConfigureArgs := Trim(edRosArgs.Text);
   ASettings.EnvScript := Trim(edRosEnv.Text);
+  ASettings.PciVendors := Trim(edRosPciVendors.Text);
 end;
 
 procedure TDlgNewPrj.cbTypeChange(Sender: TObject);

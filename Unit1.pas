@@ -39,6 +39,7 @@ uses
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   RosProj,        // проект ReactOS / LiberNT: CMake + Ninja (TRosSettings)
+  PciIds,         // pci.ids и media\inf\pciids.inf (меню ReactOS)
   RosTools,       // скачивание и установка RosBE
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
@@ -2680,6 +2681,11 @@ type
     function  RosSetup7Zip(AStage: Integer): string;
     function  RosInstallProgress(ADone, ATotal: Cardinal): Boolean;
     function  RosKnownEnvScript: string;
+    function  RosPciSourceDir(var ASettings: TRosSettings): Boolean;
+    function  RosDownloadPciIds(const ASourceDir, AVendors: string;
+                                AStage: Integer): Boolean;
+    procedure RosUpdatePciIdsClick(Sender: TObject);
+    procedure RosGenPciInfClick(Sender: TObject);
     procedure ArdFreeAll;
     procedure mArduinoClick(Sender: TObject);
     procedure mArdSketchbookClick(Sender: TObject);
@@ -59901,6 +59907,22 @@ begin
   LinkItem.Caption := '-';
   RosMenu.Add(LinkItem);
 
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Update pci.ids...';
+  LinkItem.Hint := 'Скачать базу pci.ids в ' + PciIdsRelFile + ' открытого ' +
+                   'проекта ReactOS';
+  LinkItem.OnClick := RosUpdatePciIdsClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Generate System Devices INF...';
+  LinkItem.Hint := 'Создать ' + PciInfRelFile + ' из pci.ids: имена мостов ' +
+                   'и служебных устройств чипсетов';
+  LinkItem.OnClick := RosGenPciInfClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := '-';
+  RosMenu.Add(LinkItem);
+
   ToolsMenu := TMenuItem.Create(Self);
   ToolsMenu.Caption := 'Download Build Tools';
   ToolsMenu.AutoHotkeys := maManual;
@@ -60234,6 +60256,205 @@ begin
     else
       FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
                            'Compilation log');
+  end;
+end;
+
+// Папка исходников открытого проекта ReactOS (настройки - в ASettings).
+// Проект не открыт или не ReactOS - сообщение и False.
+function TForm1.RosPciSourceDir(var ASettings: TRosSettings): Boolean;
+begin
+  Result := (ProjectBuildKind(FCurrentProject) = bkCMakeNinja) and
+            RosSettingsOf(FCurrentProject, ASettings) and
+            RosIsSourceDir(ASettings.SourceDir);
+  if not Result then
+    ShowMessage('9807:Откройте проект ReactOS / LiberNT: pci.ids и ' +
+                'pciids.inf лежат в его дереве исходников.');
+end;
+
+// Скачать pci.ids в sdk\tools\pciids дерева ASourceDir. Скачивается в
+// pci.ids.new; файл без заголовка Version или без устройств удаляется, и
+// прежний остаётся. В журнал - версии прежней и новой базы и разница для
+// производителей AVendors. Окно хода открыто вызывающим, этап - AStage.
+function TForm1.RosDownloadPciIds(const ASourceDir, AVendors: string;
+                                  AStage: Integer): Boolean;
+var
+  DbFile, NewFile, ErrText, Invalid, NewVersion: string;
+  OldDb, NewDb: TPciDb;
+  VendorList: TStringList;
+  Compare: TPciCompare;
+begin
+  Result := False;
+  DbFile := PciPath(ASourceDir, PciIdsRelFile);
+  NewFile := DbFile + '.new';
+  ForceDirectories(ExtractFileDir(DbFile));
+  LogComp('pci.ids: скачивание ' + PciIdsUrl);
+  FCompDlg.StartStage(AStage, 0, '');
+  FRosInstallStage := AStage;
+  if not RosDownload(PciIdsUrl, NewFile, RosInstallProgress, ErrText) then
+  begin
+    FCompDlg.EndStage(AStage, False, ErrText);
+    LogComp('pci.ids: не скачан - ' + ErrText);
+    Exit;
+  end;
+  OldDb := TPciDb.Create;
+  NewDb := TPciDb.Create;
+  VendorList := TStringList.Create;
+  try
+    if not NewDb.LoadFromFile(NewFile) then
+    begin
+      FCompDlg.EndStage(AStage, False, 'это не pci.ids');
+      LogComp('pci.ids: в скачанном файле нет заголовка Version или ' +
+      'устройств - файл удалён, прежний не тронут');
+      DeleteFile(NewFile);
+      Exit;
+    end;
+    NewVersion := NewDb.Version;
+    if OldDb.LoadFromFile(DbFile) then
+    begin
+      PciParseVendors(AVendors, VendorList, Invalid);
+      PciCompareDb(OldDb, NewDb, VendorList, Compare);
+      LogComp('pci.ids: было ' + OldDb.Version + ' (' + OldDb.Date +
+      '), стало ' + NewDb.Version + ' (' + NewDb.Date + ')');
+      LogComp(Format('pci.ids: у производителей из списка проекта новых ' +
+      'устройств %d, с другим именем %d, удалено %d', [Compare.Added,
+      Compare.Changed, Compare.Removed]));
+    end
+    else
+      LogComp('pci.ids: ' + NewDb.Version + ' (' + NewDb.Date + '), ' +
+      'прежнего файла не было');
+  finally
+    OldDb.Free;
+    NewDb.Free;
+    VendorList.Free;
+  end;
+  if (FileExists(DbFile) and not DeleteFile(DbFile)) or
+     not RenameFile(NewFile, DbFile) then
+  begin
+    FCompDlg.EndStage(AStage, False, 'не заменён');
+    LogComp('pci.ids: не удалось заменить ' + DbFile + ' файлом ' + NewFile);
+    Exit;
+  end;
+  FCompDlg.EndStage(AStage, True, 'версия ' + NewVersion);
+  LogComp('pci.ids: ' + DbFile + ' (в git не добавлен)');
+  Result := True;
+end;
+
+// ReactOS - Update pci.ids: база в дерево исходников открытого проекта
+procedure TForm1.RosUpdatePciIdsClick(Sender: TObject);
+var
+  RosCfg: TRosSettings;
+  StageDownload: Integer;
+  Done: Boolean;
+begin
+  if not RosPciSourceDir(RosCfg) then
+    Exit;
+  ShowCompLog;
+  CompDlgOpen('pci.ids');
+  FCompDlg.Caption := 'Обновление pci.ids';
+  StageDownload := FCompDlg.AddStage('Скачивание pci.ids', 100);
+  Done := False;
+  BusyBegin('Обновление pci.ids');
+  try
+    Done := RosDownloadPciIds(RosCfg.SourceDir, RosCfg.PciVendors,
+                              StageDownload);
+  finally
+    BusyEnd('Обновление pci.ids', Done);
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Done then
+      FCompDlg.FinishBuild(True, 'Обновлено')
+    else
+      FCompDlg.FinishBuild(False, 'Не обновлено, подробности - ' +
+                           'Compilation log');
+  end;
+end;
+
+// ReactOS - Generate System Devices INF: media\inf\pciids.inf из pci.ids
+// (PciIds). Отчёт - sdk\tools\pciids\pciids-report.txt, сводка - в
+// журнал; файла нет в INF_FILES - предложение вписать.
+procedure TForm1.RosGenPciInfClick(Sender: TObject);
+var
+  RosCfg: TRosSettings;
+  Report: TStringList;
+  Stats: TPciGenStats;
+  ErrText, ReportFile, Line: string;
+  LineIdx: Integer;
+  Generated: Boolean;
+begin
+  if not RosPciSourceDir(RosCfg) then
+    Exit;
+  ShowCompLog;
+  if not FileExists(PciPath(RosCfg.SourceDir, PciIdsRelFile)) then
+  begin
+    if MessageDlg('9808:В дереве исходников нет ' + PciIdsRelFile +
+                  '.'#13#10#13#10'Скачать pci.ids с ' + PciIdsUrl + '?',
+                  mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+      Exit;
+    RosUpdatePciIdsClick(nil);
+    if not FileExists(PciPath(RosCfg.SourceDir, PciIdsRelFile)) then
+      Exit;
+  end;
+
+  Report := TStringList.Create;
+  try
+    LogComp('pciids.inf: генерация, производители для NO_DRV - ' +
+            RosCfg.PciVendors);
+    Screen.Cursor := crHourGlass;
+    try
+      Generated := PciGenerateInf(RosCfg.SourceDir, RosCfg.PciVendors,
+                                  Report, Stats, ErrText);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+    if not Generated then
+    begin
+      LogComp('pciids.inf: не создан - ' + ErrText);
+      ShowMessage('9809:pciids.inf не создан: ' + ErrText);
+      Exit;
+    end;
+
+    ReportFile := PciPath(RosCfg.SourceDir, PciReportRelFile);
+    try
+      Report.SaveToFile(ReportFile);
+    except
+      on E: Exception do
+        LogComp('pciids.inf: отчёт не записан - ' + E.Message);
+    end;
+    // В журнал - сводка без числа записей по производителям и без
+    // списков изменений и проверки (они в отчёте)
+    for LineIdx := 0 to Report.Count - 1 do
+    begin
+      Line := Report[LineIdx];
+      if (Line = '') or (Copy(Line, 1, 2) = '  ') or
+         (Copy(Line, 1, 4) = 'PCI\') or (Copy(Line, 2, 1) = ' ') then
+        Continue;
+      LogComp('pciids.inf: ' + Line);
+    end;
+    LogComp('pciids.inf: отчёт - ' + ReportFile);
+
+    if not PciCMakeHasInf(RosCfg.SourceDir) and
+       (MessageDlg('9810:' + PciInfName + ' нет в списке INF_FILES в ' +
+                   PciCMakeRelFile + ', и на образ диска он не ' +
+                   'попадёт.'#13#10#13#10'Вписать его после machine.inf?',
+                   mtConfirmation, [mbOK, mbCancel], 0) = mrOk) then
+    begin
+      if PciCMakeAddInf(RosCfg.SourceDir) then
+        LogComp('pciids.inf: вписан в ' + PciCMakeRelFile + '; ninja ' +
+        'перезапустит cmake при следующей сборке')
+      else
+        LogComp('pciids.inf: не вписан - в ' + PciCMakeRelFile + ' нет ' +
+        'строки machine.inf в list(APPEND INF_FILES ...)');
+    end;
+
+    if MessageDlg(Format('9811:Создан %s: записей %d (PCI_ISA_Inst %d, ' +
+                  'PCI_Inst %d, NO_DRV %d), на ручную проверку ' +
+                  '%d.'#13#10#13#10'Открыть отчёт (изменения и список на ' +
+                  'проверку)?', [PciInfRelFile, Stats.PciIsa + Stats.Pci +
+                  Stats.NoDrv, Stats.PciIsa, Stats.Pci, Stats.NoDrv,
+                  Stats.Review]), mtInformation, [mbYes, mbNo], 0) = mrYes then
+      OpenNamedFile(ReportFile);
+  finally
+    Report.Free;
   end;
 end;
 

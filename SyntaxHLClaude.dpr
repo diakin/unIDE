@@ -34,6 +34,7 @@ uses
   DlgEnvVar in 'DlgEnvVar.pas' {DlgEnvVar},
   ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',
+  PciIds in 'PciIds.pas',
   PrjStore in 'PrjStore.pas',
   RosProj in 'RosProj.pas',
   RosTools in 'RosTools.pas',

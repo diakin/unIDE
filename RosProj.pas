@@ -24,6 +24,10 @@ unit RosProj;
 //                                         ...\RosBE\RosBE.cmd); у LiberNT
 //                                         пусто - configure.cmd находит
 //                                         RosBE сам
+//    ReactOS_PciVendors=8086 1022 ...     производители чипсетов для
+//                                         служебных устройств (NO_DRV) в
+//                                         media\inf\pciids.inf (PciIds);
+//                                         пусто - список по умолчанию
 //
 //  Сборка (Unit1, CompileReactOS) - два шага, каждый своим .cmd во
 //  временной папке (RosBuildScript), вывод - в лог:
@@ -36,7 +40,7 @@ unit RosProj;
 interface
 
 uses
-  SysUtils, Classes, PrjStore;
+  SysUtils, Classes, PrjStore, PciIds;
 
 const
   RosProjectType = 'ReactOS';      // тип в [Project.<имя>] Type
@@ -51,6 +55,7 @@ type
     NinjaTarget: string;
     ConfigureArgs: string;
     EnvScript: string;      // полный путь или пусто
+    PciVendors: string;     // коды производителей через пробел (PciIds)
   end;
 
 // В папке - дерево исходников ReactOS / LiberNT
@@ -216,6 +221,10 @@ begin
                                                   'ConfigureArgs', ''));
   ASettings.EnvScript := RosPathFromStore(ASettings.SourceDir,
     APrj.ReadString(RosSection, 'EnvScript', ''));
+  ASettings.PciVendors := Trim(APrj.ReadString(RosSection, 'PciVendors',
+                                               ''));
+  if ASettings.PciVendors = '' then
+    ASettings.PciVendors := PciDefaultVendors;
 end;
 
 procedure RosSaveSettings(APrj: TProjectIni; const ASettings: TRosSettings);
@@ -226,6 +235,7 @@ begin
   APrj.WriteString(RosSection, 'ConfigureArgs', Trim(ASettings.ConfigureArgs));
   // Скрипт RosBE обычно вне дерева исходников - полный путь
   APrj.WriteString(RosSection, 'EnvScript', Trim(ASettings.EnvScript));
+  APrj.WriteString(RosSection, 'PciVendors', Trim(ASettings.PciVendors));
 end;
 
 function RosNinjaCommand(const ASettings: TRosSettings): string;
