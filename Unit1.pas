@@ -2076,6 +2076,9 @@ type
     function  TabCaptionFor(WinIdx: Integer): string;
     function  TabHintFor(WinIdx: Integer): string;
     function  TabCloseWidth: Integer;
+    // Кнопка Txt / Fmt слева на вкладке файла с видом "по формату" (.md)
+    function  TabHasFmtView(WinIdx: Integer): Boolean;
+    function  TabFmtWidth: Integer;
     procedure TabsDrawTab(ADC: HDC; const ARect: TRect; ATab: Integer;
                           AActive: Boolean);
     procedure CloseTab(TabIdx: Integer);
@@ -16741,6 +16744,11 @@ end;
 // Знак между именем файла и его главным .bas на вкладке ("Lib.inc « Main.bas")
 const
   TabOwnerMark = ' « ';
+  // Начало подписи вкладки файла с видом "по формату": место под кнопку
+  // Txt / Fmt. Сам текст не рисуется - ширину вкладки Windows считает по
+  // подписи, а на этом месте рисуется кнопка (TabsDrawTab). Одна строка
+  // для обоих видов: при переключении ширина вкладки не меняется.
+  TabFmtPrefix = 'Fmt   ';
 
   // Подпись вкладки. Пробелы по краям - не украшение: ширину вкладки Windows
   // считает по тексту, а нам нужно место под маркер изменений слева и крестик
@@ -16798,6 +16806,9 @@ begin
   Result := Nm;
   if IsMod then
     Result := '* ' + Result;
+  // Место под кнопку Txt / Fmt - самым первым, у левого края вкладки
+  if TabHasFmtView(WinIdx) then
+    Result := TabFmtPrefix + Result;
 
   // Хвост под кнопку закрытия. Клик по ней ловится по координате X,
   // см. TabsMouseDown и TabCloseWidth.
@@ -16823,6 +16834,8 @@ begin
     IsMod := FWindows[WinIdx].Modified;
   if IsMod then
     Result := Result + #13#10'Изменён, не сохранён';
+  if TabHasFmtView(WinIdx) then
+    Result := Result + #13#10'Txt / Fmt слева - текст / по формату (F12)';
 end;
 
 // Подсказка - у вкладки под мышью. Сменилась вкладка - прежнюю подсказку
@@ -16851,6 +16864,11 @@ var
   C: TCanvas;
   S, Main, Cross, OwnerPart: string;
   P, X, Y, OwnerPos: Integer;
+  TabWin, FmtWidth, Side: Integer;
+  HasFmt, ShowFmt: Boolean;
+  BtnRect: TRect;
+  BtnText: string;
+  TextColor, BackColor: TColor;
 begin
   C := TCanvas.Create;
   try
@@ -16882,6 +16900,60 @@ begin
     C.Font.Color := UiColor('Tabs.Text');
     C.Brush.Style := bsClear;
 
+    // Кнопка Txt / Fmt (TabCaptionFor: место под неё - TabFmtPrefix)
+    TabWin := -1;
+    if ATab <= High(FTabWin) then
+      TabWin := FTabWin[ATab];
+    HasFmt := TabHasFmtView(TabWin) and
+              (Copy(Main, 1, Length(TabFmtPrefix)) = TabFmtPrefix);
+    FmtWidth := 0;
+    if HasFmt then
+    begin
+      Delete(Main, 1, Length(TabFmtPrefix));
+      FmtWidth := C.TextWidth(TabFmtPrefix);
+      ShowFmt := FWindows[TabWin].MdPreview;
+      // Квадрат по высоте вкладки, но не шире отведённого места
+      Side := (ARect.Bottom - ARect.Top) - 6;
+      if Side > FmtWidth - 2 then
+        Side := FmtWidth - 2;
+      if Side < 12 then
+        Side := 12;
+      BtnRect.Left := ARect.Left + 5;
+      BtnRect.Top := ARect.Top + ((ARect.Bottom - ARect.Top) - Side) div 2;
+      BtnRect.Right := BtnRect.Left + Side;
+      BtnRect.Bottom := BtnRect.Top + Side;
+      TextColor := UiColor('Tabs.Text');
+      if AActive then
+        BackColor := UiColor('Tabs.ActiveBG')
+      else
+        BackColor := UiColor('Tabs.InactiveBG');
+      // Txt - рамка, Fmt - залитый квадрат: вид видно, не читая подпись
+      C.Pen.Color := TextColor;
+      C.Pen.Width := 1;
+      if ShowFmt then
+      begin
+        C.Brush.Style := bsSolid;
+        C.Brush.Color := TextColor;
+        BtnText := 'Fmt';
+      end
+      else
+      begin
+        C.Brush.Style := bsClear;
+        BtnText := 'Txt';
+      end;
+      C.Rectangle(BtnRect.Left, BtnRect.Top, BtnRect.Right, BtnRect.Bottom);
+      C.Brush.Style := bsClear;
+      C.Font.Size := 7;
+      if ShowFmt then
+        C.Font.Color := BackColor
+      else
+        C.Font.Color := TextColor;
+      C.TextOut(BtnRect.Left + (Side - C.TextWidth(BtnText)) div 2,
+                BtnRect.Top + (Side - C.TextHeight(BtnText)) div 2, BtnText);
+      C.Font := FTabs.Font;
+      C.Font.Color := UiColor('Tabs.Text');
+    end;
+
     // Главный файл include (TabCaptionFor) - своим цветом
     OwnerPart := '';
     OwnerPos := Pos(TabOwnerMark, Main);
@@ -16892,7 +16964,7 @@ begin
     end;
 
     Y := ARect.Top + ((ARect.Bottom - ARect.Top) - C.TextHeight('Wg')) div 2;
-    X := ARect.Left + 6;
+    X := ARect.Left + 6 + FmtWidth;
     C.TextOut(X, Y, Main);
     if OwnerPart <> '' then
     begin
@@ -16926,6 +16998,28 @@ begin
   Result := 16;
 end;
 
+// У файла есть вид "по формату" - пока это Markdown (MdView)
+function TForm1.TabHasFmtView(WinIdx: Integer): Boolean;
+begin
+  Result := (WinIdx >= 0) and (WinIdx <= WindowsItemCount - 1) and
+            FWindows[WinIdx].Used and IsMarkdownFile(FWindows[WinIdx].FileName);
+end;
+
+// Ширина места под кнопку Txt / Fmt от левого края вкладки (щелчок левее -
+// по кнопке)
+function TForm1.TabFmtWidth: Integer;
+var
+  MeasureBmp: TBitmap;
+begin
+  MeasureBmp := TBitmap.Create;
+  try
+    MeasureBmp.Canvas.Font := FTabs.Font;
+    Result := 6 + MeasureBmp.Canvas.TextWidth(TabFmtPrefix);
+  finally
+    MeasureBmp.Free;
+  end;
+end;
+
 // Клик по крестику закрывает вкладку, не трогая само окно
 procedure TForm1.TabsMouseDown(Sender: TObject; Button: TMouseButton;
                                Shift: TShiftState; X, Y: Integer);
@@ -16939,6 +17033,25 @@ begin
   Idx := FTabs.IndexOfTabAt(X, Y);
   if Idx < 0 then
     Exit;
+
+  // Кнопка Txt / Fmt у левого края вкладки .md. Вкладку под ней Windows
+  // уже сделала активной (выбор вкладки - до OnMouseDown); если нет -
+  // вид меняется у её окна и окно показывается
+  if (Idx <= High(FTabWin)) and TabHasFmtView(FTabWin[Idx]) then
+  begin
+    R := FTabs.TabRect(Idx);
+    if X < R.Left + TabFmtWidth then
+    begin
+      if FTabWin[Idx] = FWindowsIndex then
+        MdToggle
+      else
+      begin
+        FWindows[FTabWin[Idx]].MdPreview := not FWindows[FTabWin[Idx]].MdPreview;
+        ActivateWindow(FTabWin[Idx]);
+      end;
+      Exit;
+    end;
+  end;
 
   // Кнопка закрытия - это хвост подписи, поэтому проверяем попадание
   // в правую часть вкладки
@@ -70102,6 +70215,9 @@ begin
     mViewMd.Enabled := MdTabIsMarkdown;
     mViewMd.Checked := ShowPreview;
   end;
+  // Кнопка Txt / Fmt на вкладке - под новый вид
+  if FTabs <> nil then
+    FTabs.Invalidate;
   if ShowPreview then
     StatusBar1.Panels[0].Text := 'Просмотр Markdown - F12: текст';
 end;
