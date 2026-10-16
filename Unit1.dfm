@@ -561,6 +561,12 @@ object Form1: TForm1
         Caption = 'Конструктор формы'
         OnClick = DesignFormClick
       end
+      object mViewMd: TMenuItem
+        Caption = 'Просмотр Markdown'
+        Enabled = False
+        OnClick = MdPreviewClick
+        ShortCut = 123
+      end
       object mViewIcons: TMenuItem
         Caption = 'Palette Icons...'
       end

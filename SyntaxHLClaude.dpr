@@ -66,7 +66,9 @@ uses
   SplashLoad in 'SplashLoad.pas',
   GitInfo in 'GitInfo.pas',
   SearchDirs in 'SearchDirs.pas',
-  RunConsole in 'RunConsole.pas';
+  RunConsole in 'RunConsole.pas',
+  MdHtml in 'MdHtml.pas',
+  MdView in 'MdView.pas';
 
 {$R *.res}
 

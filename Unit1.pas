@@ -38,6 +38,7 @@ uses
   EnvOptions,     // IDE Options: Preferences, Designer, Environment Variables
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
+  MdView,         // просмотр .md во вкладке: F12 - текст / страница (IE)
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -302,6 +303,10 @@ type
     // Сколько мс в прошлый раз шла вторая половина переключения на это
     // окно (WMTabSwitched): по нему решается, показывать ли панель хода
     WorkMs: Cardinal;
+
+    // Вкладка .md показана страницей (просмотр Markdown, F12), а не
+    // текстом. См. MdApplyTab
+    MdPreview: Boolean;
   end;
 
 type
@@ -642,6 +647,7 @@ type
     FRunTimer: TTimer; // проверка, не закрылась ли она
     FOwnCaretTimer: TTimer;
     DsgItem: TMenuItem;
+    mViewMd: TMenuItem;
     mViewIcons: TMenuItem;
     mSepInc: TMenuItem;
     mIncManager: TMenuItem;
@@ -869,6 +875,7 @@ type
     function RunConOf(const AExe: string): TObject;
     procedure OwnCaretTick(Sender: TObject);
     procedure DesignFormClick(Sender: TObject);
+    procedure MdPreviewClick(Sender: TObject);
     procedure ObjSnapBtnClick(Sender: TObject);
     procedure DsgShowHideClick(Sender: TObject);
     procedure ObjMoveClick(Sender: TObject);
@@ -2742,6 +2749,12 @@ type
     function  DbgKey(AKey: Word): Boolean;
     function  FindKey(AKey: Word): Boolean;
     function  HelpKey(AKey: Word): Boolean;
+    // Просмотр Markdown (MdView): F12 во вкладке .md
+    function  MdKey(AKey: Word): Boolean;
+    function  MdTabIsMarkdown: Boolean;
+    procedure MdApplyTab;
+    procedure MdToggle;
+    procedure MdOpenFromView(const AFileName: string);
     function  HelpWordAtCaret: string;
     procedure DbgLinesPre(const Message: TMessage; AWhole: Boolean);
     procedure DbgLinesPost;
@@ -3179,6 +3192,9 @@ type
     // текст только для чтения, правка свойств в инспекторе уходит в
     // исходник RapidQ и повторяется здесь (RqFbLinkedSet)
     FRqFbTab: Boolean;
+    // Просмотр Markdown поверх редактора (TWebBrowser); создаётся при
+    // первом показе страницы, см. MdApplyTab
+    FMdView: TMdPreview;
 
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
@@ -8353,6 +8369,10 @@ begin
   if FRqFbTab then
     StatusBar1.Panels[0].Text := 'Перевод RapidQ (_rqfb) - только чтение';
 
+  // Вкладка .md в режиме просмотра - страница поверх редактора; у
+  // остальных вкладок страница убирается
+  MdApplyTab;
+
   // Таблица окна настроек - под схему новой вкладки. Иначе OK записал бы
   // таблицу прежней схемы в схему этой вкладки.
   if (Form2 <> nil) and Form2.Visible then
@@ -9262,12 +9282,15 @@ begin
     FWindows[I].CursorPos := 0;
     FWindows[I].Modified := False;
     FWindows[I].Broken := False;
+    FWindows[I].MdPreview := False;
     FWindows[I].MapValid := False;
     SetLength(FWindows[I].CommentRanges, 0);
     SetLength(FWindows[I].StringRanges, 0);
     SetLength(FWindows[I].Bookmarks, 0);
     BmHistDropWindow(I);
   end;
+  // Страница .md могла остаться на экране - вкладок больше нет
+  MdApplyTab;
 
   FWindowsIndex := -1;
   FCurrentFileName := '';
@@ -17143,6 +17166,7 @@ begin
   FWindows[WinIdx].CursorPos := 0;
   FWindows[WinIdx].Modified := False;
   FWindows[WinIdx].Broken := False;
+  FWindows[WinIdx].MdPreview := False;
   FWindows[WinIdx].MapValid := False;
   SetLength(FWindows[WinIdx].CommentRanges, 0);
   SetLength(FWindows[WinIdx].StringRanges, 0);
@@ -17177,6 +17201,8 @@ begin
       Caption := AppTitle;
       UpdatePathBar;
       RichEdit1.Invalidate;
+      // Страница закрытой вкладки .md - убрать
+      MdApplyTab;
     end;
   end;
 
@@ -21690,10 +21716,11 @@ begin
   // в главном окне: у конструктора и диалогов свои клавиши.
   // F3 / Shift+F3 в редакторе - поиск, см. FindKey
   // F1 в файле RapidQ - справка по слову под кареткой, см. HelpKey
+  // F12 во вкладке .md - текст / просмотр Markdown, см. MdKey
   if (Msg.message = WM_KEYDOWN) and (Screen.ActiveForm = Self) then
   begin
     if DbgKey(Word(Msg.wParam)) or FindKey(Word(Msg.wParam)) or
-       HelpKey(Word(Msg.wParam)) then
+       HelpKey(Word(Msg.wParam)) or MdKey(Word(Msg.wParam)) then
       Handled := True;
     Exit;
   end;
@@ -22419,6 +22446,7 @@ begin
   FreeAndNil(FRqDeclCache);  // панель объявления RapidQ
   FreeAndNil(FRqDeclFiles);
   RqHelpCloseAll;   // окна справки CHM - до выхода программы
+  FreeAndNil(FMdView); // просмотр Markdown: браузер и временная страница
   // Возвращаем старую процедуру на место. Если FormShow не отработал,
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then
@@ -69967,6 +69995,127 @@ end;
 
 
 
+
+// ---------------------------------------------------------------------------
+//  Просмотр Markdown (MdView)
+//
+//  У вкладки .md два вида: текст (редактор) и страница - .md, переведённый
+//  в HTML и показанный встроенным IE поверх всей панели редактора
+//  (FLeftHost: номера строк, текст, полосы прокрутки). Вид хранится в
+//  записи окна (MdPreview) и переключается F12 или View - Просмотр
+//  Markdown. Редактор под страницей на это время только для чтения:
+//  фокус может вернуться в него из кода или щелчком, а невидимую правку
+//  пользователь не заметил бы.
+// ---------------------------------------------------------------------------
+
+function TForm1.MdTabIsMarkdown: Boolean;
+begin
+  Result := (FWindowsIndex >= 0) and (FWindowsIndex <= WindowsItemCount - 1) and
+            FWindows[FWindowsIndex].Used and
+            IsMarkdownFile(FWindows[FWindowsIndex].FileName);
+end;
+
+// Показать или убрать страницу по виду активной вкладки. Зовётся при
+// каждом показе вкладки (ActivateWindow) и при F12.
+procedure TForm1.MdApplyTab;
+var
+  ShowPreview: Boolean;
+  Utf8Text, ErrText: string;
+begin
+  ShowPreview := MdTabIsMarkdown and FWindows[FWindowsIndex].MdPreview;
+  if ShowPreview then
+  begin
+    if FMdView = nil then
+    begin
+      FMdView := TMdPreview.Create(FLeftHost);
+      FMdView.OnOpenFile := MdOpenFromView;
+    end;
+    // Текст - с диска, если в редакторе он не правился: редактор держит
+    // ANSI, и символы вне кодовой страницы (стрелки, математические
+    // знаки) в нём уже заменены на '?'. Правленый - из редактора.
+    if RichEdit1.Modified or (FCurrentFileName = '') or
+       not MdFileToUtf8(FCurrentFileName, Utf8Text) then
+      Utf8Text := AnsiToUtf8(GetEditorText);
+    if not FMdView.ShowText(Utf8Text, FCurrentFileName, RichEdit1.Color,
+                            RichEdit1.Font.Color) then
+    begin
+      ErrText := FMdView.LastError;
+      FWindows[FWindowsIndex].MdPreview := False;
+      ShowPreview := False;
+      Dbg('Просмотр Markdown: ' + ErrText, clRed);
+      ShowMessage('Просмотр Markdown недоступен.' + #13#10 + ErrText);
+    end;
+  end;
+  if not ShowPreview and (FMdView <> nil) and FMdView.IsShown then
+    FMdView.HideView;
+
+  RichEdit1.ReadOnly := FRqFbTab or ShowPreview;
+  if mViewMd <> nil then
+  begin
+    mViewMd.Enabled := MdTabIsMarkdown;
+    mViewMd.Checked := ShowPreview;
+  end;
+  if ShowPreview then
+    StatusBar1.Panels[0].Text := 'Просмотр Markdown - F12: текст';
+end;
+
+procedure TForm1.MdToggle;
+begin
+  if not MdTabIsMarkdown then
+    Exit;
+  FWindows[FWindowsIndex].MdPreview := not FWindows[FWindowsIndex].MdPreview;
+  MdApplyTab;
+  if FWindows[FWindowsIndex].MdPreview then
+  begin
+    if FMdView <> nil then
+      FMdView.FocusView;
+  end
+  else
+  begin
+    UpdateStatusBarInfo;
+    if RichEdit1.CanFocus then
+      RichEdit1.SetFocus;
+  end;
+end;
+
+// F12 без Ctrl, Shift, Alt во вкладке .md. В остальных вкладках клавиша
+// не занята - идёт дальше как обычно.
+function TForm1.MdKey(AKey: Word): Boolean;
+begin
+  Result := False;
+  // Страница на экране: Ctrl+C и Ctrl+A - для неё, а не для редактора под
+  // ней (иначе их взяли бы пункты меню Copy и Select All)
+  if (FMdView <> nil) and FMdView.IsShown and
+     (GetKeyState(VK_CONTROL) < 0) and (GetKeyState(VK_SHIFT) >= 0) and
+     (GetKeyState(VK_MENU) >= 0) and ((AKey = Ord('C')) or (AKey = Ord('A'))) then
+  begin
+    if AKey = Ord('C') then
+      FMdView.CopySelection
+    else
+      FMdView.SelectAll;
+    Result := True;
+    Exit;
+  end;
+  if (AKey <> VK_F12) or (GetKeyState(VK_CONTROL) < 0) or
+     (GetKeyState(VK_SHIFT) < 0) or (GetKeyState(VK_MENU) < 0) then
+    Exit;
+  if not MdTabIsMarkdown then
+    Exit;
+  MdToggle;
+  Result := True;
+end;
+
+procedure TForm1.MdPreviewClick(Sender: TObject);
+begin
+  MdToggle;
+end;
+
+// Ссылка со страницы на файл, который правится в редакторе (другой .md,
+// исходник): открыть его вкладкой
+procedure TForm1.MdOpenFromView(const AFileName: string);
+begin
+  OpenNamedFile(AFileName);
+end;
 
 // Что не пишется в снимок формы для инспектора и конструктора:
 //   - свои полосы прокрутки поверх полос списков (UiScroll) - служебные;
