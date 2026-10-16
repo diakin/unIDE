@@ -29,6 +29,7 @@ uses
 
 type
   TMdOpenFileEvent = procedure(const AFileName: string) of object;
+  TMdLogEvent = procedure(const AText: string) of object;
 
   TMdPreview = class
   private
@@ -42,6 +43,11 @@ type
     FPendingOpen: string;     // файл для OnOpenFile
     FLastError: string;
     FOnOpenFile: TMdOpenFileEvent;
+    FOnLog: TMdLogEvent;
+    // Navigate своей страницы вызван, её BeforeNavigate2 ещё не приходил
+    FExpectOwn: Boolean;
+    function IsOwnPage(const AUrl, ALocalPath: string): Boolean;
+    procedure Log(const AText: string);
     function EnsureBrowser: Boolean;
     function ReadScroll: Integer;
     procedure RememberScroll;
@@ -70,6 +76,8 @@ type
     property SourceFile: string read FSourceFile;
     property LastError: string read FLastError;
     property OnOpenFile: TMdOpenFileEvent read FOnOpenFile write FOnOpenFile;
+    // Журнал переходов браузера (адрес и что с ним сделано)
+    property OnLog: TMdLogEvent read FOnLog write FOnLog;
   end;
 
 // .md, .markdown, .mdown, .mkd
@@ -202,7 +210,9 @@ begin
     Result.Link := '#0b5cad';
 end;
 
-// file:///C:/Папка/a%20b.md#метка -> C:\Папка\a b.md ('' - не file:)
+// file:///C:/Папка/a%20b.md#метка -> C:\Папка\a b.md. Путь без file:
+// (C:\..., C:/..., \\сервер\...) - тоже: IE может отдать адрес локального
+// файла и так. '' - не файл (http:, mailto: ...)
 function UrlToPath(const AUrl: string): string;
 var
   Body, Decoded: string;
@@ -210,9 +220,15 @@ var
   HasHigh: Boolean;
 begin
   Result := '';
-  if CompareText(Copy(AUrl, 1, 5), 'file:') <> 0 then
+  if (Length(AUrl) >= 3) and (AUrl[1] in ['A'..'Z', 'a'..'z']) and
+     (AUrl[2] = ':') and (AUrl[3] in ['\', '/']) then
+    Body := '///' + AUrl
+  else if Copy(AUrl, 1, 2) = '\\' then
+    Body := AUrl
+  else if CompareText(Copy(AUrl, 1, 5), 'file:') = 0 then
+    Body := Copy(AUrl, 6, MaxInt)
+  else
     Exit;
-  Body := Copy(AUrl, 6, MaxInt);
   HashAt := Pos('#', Body);
   if HashAt > 0 then
     Body := Copy(Body, 1, HashAt - 1);
@@ -413,6 +429,7 @@ begin
     TWinControl(FBrowser).Visible := True;
     FBrowser.BringToFront;
     Flags := NavFlagsReload;
+    FExpectOwn := True;
     FBrowser.Navigate(WideString(MdFileUrl(FHtmlFile, False)), Flags);
     Result := True;
   except
@@ -489,27 +506,58 @@ begin
   // about:blank и страницы ошибок самого IE (res://ieframe.dll/...)
   if (Url = '') or (CompareText(Copy(Url, 1, 6), 'about:') = 0) or
      (CompareText(Copy(Url, 1, 4), 'res:') = 0) then
+  begin
+    Log('браузер: ' + Url + ' - внутри');
     Exit;
+  end;
   LocalPath := UrlToPath(Url);
-  // Своя страница: первая загрузка и переходы по меткам #раздел. По имени
-  // файла: путь к временной папке IE может вернуть длинным, а GetTempPath
-  // даёт его короткими именами (ADMINI~1), имя же у страницы своё
-  // (unide_md_<pid>.html)
-  if (LocalPath <> '') and
-     (CompareText(ExtractFileName(LocalPath), ExtractFileName(FHtmlFile)) = 0) then
+  if IsOwnPage(Url, LocalPath) then
+  begin
+    FExpectOwn := False;
+    Log('браузер: ' + Url + ' - своя страница');
     Exit;
+  end;
 
   ACancel := True;
   if (LocalPath <> '') and IsEditableFile(LocalPath) and
      Assigned(FOnOpenFile) then
   begin
+    Log('браузер: ' + Url + ' - вкладкой: ' + LocalPath);
     FPendingOpen := LocalPath;
     PostMessage(FMsgWnd, WM_MD_OPENFILE, 0, 0);
   end
   else if LocalPath <> '' then
-    ShellExecute(0, 'open', PChar(LocalPath), nil, nil, SW_SHOWNORMAL)
+  begin
+    Log('браузер: ' + Url + ' - программой Windows: ' + LocalPath);
+    ShellExecute(0, 'open', PChar(LocalPath), nil, nil, SW_SHOWNORMAL);
+  end
   else
+  begin
+    Log('браузер: ' + Url + ' - программой Windows');
     ShellExecute(0, 'open', PChar(Url), nil, nil, SW_SHOWNORMAL);
+  end;
+end;
+
+// Своя страница: её первая загрузка после Navigate и переходы по меткам
+// #раздел. Узнаётся по имени файла (unide_md_<pid>.html) в адресе в любом
+// виде - file:///, путь, короткие (ADMINI~1) или длинные имена папок;
+// первый переход после Navigate - своя страница, какой бы ни был адрес.
+// Наружу (ShellExecute) своя страница не отдаётся никогда.
+function TMdPreview.IsOwnPage(const AUrl, ALocalPath: string): Boolean;
+var
+  PageName: string;
+begin
+  PageName := LowerCase(ExtractFileName(FHtmlFile));
+  Result := FExpectOwn or
+            (Pos(PageName, LowerCase(AUrl)) > 0) or
+            ((ALocalPath <> '') and
+             (CompareText(ExtractFileName(ALocalPath), PageName) = 0));
+end;
+
+procedure TMdPreview.Log(const AText: string);
+begin
+  if Assigned(FOnLog) then
+    FOnLog(AText);
 end;
 
 procedure TMdPreview.MsgWndProc(var Message: TMessage);

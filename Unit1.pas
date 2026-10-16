@@ -2755,6 +2755,7 @@ type
     procedure MdApplyTab;
     procedure MdToggle;
     procedure MdOpenFromView(const AFileName: string);
+    procedure MdLog(const AText: string);
     function  HelpWordAtCaret: string;
     procedure DbgLinesPre(const Message: TMessage; AWhole: Boolean);
     procedure DbgLinesPost;
@@ -70029,6 +70030,7 @@ begin
     begin
       FMdView := TMdPreview.Create(FLeftHost);
       FMdView.OnOpenFile := MdOpenFromView;
+      FMdView.OnLog := MdLog;
     end;
     // Текст - с диска, если в редакторе он не правился: редактор держит
     // ANSI, и символы вне кодовой страницы (стрелки, математические
@@ -70115,6 +70117,13 @@ end;
 procedure TForm1.MdOpenFromView(const AFileName: string);
 begin
   OpenNamedFile(AFileName);
+end;
+
+// Переходы браузера просмотра: какой адрес пришёл и куда он ушёл (своя
+// страница, вкладка, программа Windows) - строкой в HiLite log
+procedure TForm1.MdLog(const AText: string);
+begin
+  Dbg('Просмотр Markdown, ' + AText, clGray);
 end;
 
 // Что не пишется в снимок формы для инспектора и конструктора:
