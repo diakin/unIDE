@@ -521,7 +521,16 @@ type
     FMapTimer: TTimer;
     FTabsPopup: TUiPopupMenu;
     FPopupMenu: TUiPopupMenu;
+    pmuMdText: TMenuItem;
+    pmuMdFormat: TMenuItem;
+    pmuSepMd: TMenuItem;
     pmuSearch: TMenuItem;
+    FMdPopup: TUiPopupMenu;
+    mdpText: TMenuItem;
+    mdpFormat: TMenuItem;
+    mdpSep: TMenuItem;
+    mdpCopy: TMenuItem;
+    mdpSelectAll: TMenuItem;
     pmuSepSearch: TMenuItem;
     pmuDebug: TMenuItem;
     pmuSepDebug: TMenuItem;
@@ -801,6 +810,10 @@ type
     procedure StatusTimerTick(Sender: TObject);
     procedure MapTimerTick(Sender: TObject);
     procedure PopupMenuPopup(Sender: TObject);
+    procedure MdViewModeClick(Sender: TObject);
+    procedure MdPopupPopup(Sender: TObject);
+    procedure MdCopyClick(Sender: TObject);
+    procedure MdSelectAllClick(Sender: TObject);
     procedure SearchSelectedClick(Sender: TObject);
     procedure DebugLineClick(Sender: TObject);
     procedure EditClickEvent(Sender: TObject);
@@ -2756,6 +2769,7 @@ type
     procedure MdToggle;
     procedure MdOpenFromView(const AFileName: string);
     procedure MdLog(const AText: string);
+    procedure MdShowPopup(const APoint: TPoint);
     function  HelpWordAtCaret: string;
     procedure DbgLinesPre(const Message: TMessage; AWhole: Boolean);
     procedure DbgLinesPost;
@@ -18958,6 +18972,17 @@ begin
   if pmuSearch = nil then
     Exit;
 
+  // Вкладка .md: вид "Как текст" / "По формату" (меню редактора - значит,
+  // сейчас текст)
+  if pmuMdText <> nil then
+  begin
+    pmuMdText.Visible := MdTabIsMarkdown;
+    pmuMdFormat.Visible := MdTabIsMarkdown;
+    pmuSepMd.Visible := MdTabIsMarkdown;
+    pmuMdFormat.Checked := False;
+    pmuMdText.Checked := True;
+  end;
+
   // Для подписи хватает начала выделения
   S := SelTextA(MaxLen * 4);
   for I := 1 to Length(S) do
@@ -21710,7 +21735,27 @@ end;
 procedure TForm1.AppMessage(var Msg: TMsg; var Handled: Boolean);
 var
   C: TWinControl;
+  CursorPt: TPoint;
 begin
+  // Страница .md: правый щелчок - своё меню (Как текст / По формату,
+  // копирование) вместо меню IE. Отпускание клавиши Menu тоже не отдаётся
+  // IE: меню по ней показывает MdKey.
+  if (FMdView <> nil) and FMdView.OwnsWindow(Msg.hwnd) then
+  begin
+    if Msg.message = WM_RBUTTONUP then
+    begin
+      GetCursorPos(CursorPt);
+      MdShowPopup(CursorPt);
+      Handled := True;
+      Exit;
+    end;
+    if (Msg.message = WM_KEYUP) and (Msg.wParam = VK_APPS) then
+    begin
+      Handled := True;
+      Exit;
+    end;
+  end;
+
   // Клавиши отладчика, как в Delphi: F9 - Run и продолжение после
   // остановки, Ctrl+F2 - Program reset, F5 - точка останова на строке с
   // кареткой, F7 - Trace into, F8 - Step over, F4 - Run to cursor. Только
@@ -70085,6 +70130,13 @@ end;
 function TForm1.MdKey(AKey: Word): Boolean;
 begin
   Result := False;
+  // Клавиша Menu на странице - своё меню у левого верхнего угла страницы
+  if (AKey = VK_APPS) and (FMdView <> nil) and FMdView.IsShown then
+  begin
+    MdShowPopup(FLeftHost.ClientToScreen(Point(16, 16)));
+    Result := True;
+    Exit;
+  end;
   // Страница на экране: Ctrl+C и Ctrl+A - для неё, а не для редактора под
   // ней (иначе их взяли бы пункты меню Copy и Select All)
   if (FMdView <> nil) and FMdView.IsShown and
@@ -70117,6 +70169,45 @@ end;
 procedure TForm1.MdOpenFromView(const AFileName: string);
 begin
   OpenNamedFile(AFileName);
+end;
+
+// Пункты "Как текст" / "По формату": в меню редактора (FPopupMenu, только
+// во вкладке .md) и в меню страницы (FMdPopup)
+procedure TForm1.MdViewModeClick(Sender: TObject);
+var
+  WantFormat: Boolean;
+begin
+  if not MdTabIsMarkdown then
+    Exit;
+  WantFormat := (Sender = pmuMdFormat) or (Sender = mdpFormat);
+  if WantFormat <> FWindows[FWindowsIndex].MdPreview then
+    MdToggle;
+end;
+
+procedure TForm1.MdPopupPopup(Sender: TObject);
+begin
+  // Меню страницы открыто - вид "по формату"
+  mdpText.Checked := False;
+  mdpFormat.Checked := True;
+end;
+
+procedure TForm1.MdCopyClick(Sender: TObject);
+begin
+  if FMdView <> nil then
+    FMdView.CopySelection;
+end;
+
+procedure TForm1.MdSelectAllClick(Sender: TObject);
+begin
+  if FMdView <> nil then
+    FMdView.SelectAll;
+end;
+
+// Своё меню страницы в точке экрана APoint (меню IE не показывается)
+procedure TForm1.MdShowPopup(const APoint: TPoint);
+begin
+  if FMdPopup <> nil then
+    FMdPopup.Popup(APoint.X, APoint.Y);
 end;
 
 // Переходы браузера просмотра: какой адрес пришёл и куда он ушёл (своя

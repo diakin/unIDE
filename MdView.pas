@@ -73,6 +73,9 @@ type
     // Ctrl+A: эти клавиши перехватывает меню формы, до IE они не доходят)
     procedure CopySelection;
     procedure SelectAll;
+    // Окно AWnd - браузер просмотра или его дочернее окно (Internet
+    // Explorer_Server), и просмотр на экране
+    function OwnsWindow(AWnd: HWND): Boolean;
     property SourceFile: string read FSourceFile;
     property LastError: string read FLastError;
     property OnOpenFile: TMdOpenFileEvent read FOnOpenFile write FOnOpenFile;
@@ -457,6 +460,17 @@ begin
     FBrowser.ExecWB(12, 0);
   except
   end;
+end;
+
+function TMdPreview.OwnsWindow(AWnd: HWND): Boolean;
+var
+  BrowserWnd: HWND;
+begin
+  Result := False;
+  if (AWnd = 0) or not IsShown or not TWinControl(FBrowser).HandleAllocated then
+    Exit;
+  BrowserWnd := TWinControl(FBrowser).Handle;
+  Result := (AWnd = BrowserWnd) or IsChild(BrowserWnd, AWnd);
 end;
 
 procedure TMdPreview.SelectAll;

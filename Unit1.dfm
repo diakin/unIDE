@@ -876,6 +876,22 @@ object Form1: TForm1
     OnPopup = PopupMenuPopup
     Left = 16
     Top = 584
+    object pmuMdText: TMenuItem
+      Caption = 'Как текст'
+      RadioItem = True
+      Visible = False
+      OnClick = MdViewModeClick
+    end
+    object pmuMdFormat: TMenuItem
+      Caption = 'По формату'#9'F12'
+      RadioItem = True
+      Visible = False
+      OnClick = MdViewModeClick
+    end
+    object pmuSepMd: TMenuItem
+      Caption = '-'
+      Visible = False
+    end
     object pmuSearch: TMenuItem
       Caption = 'Search {}'
       OnClick = SearchSelectedClick
@@ -963,6 +979,32 @@ object Form1: TForm1
     object pmuLower: TMenuItem
       Caption = 'To LowerCase {}'
       OnClick = CaseConvertClick
+    end
+  end
+  object FMdPopup: TUiPopupMenu
+    OnPopup = MdPopupPopup
+    Left = 16
+    Top = 616
+    object mdpText: TMenuItem
+      Caption = 'Как текст'#9'F12'
+      RadioItem = True
+      OnClick = MdViewModeClick
+    end
+    object mdpFormat: TMenuItem
+      Caption = 'По формату'
+      RadioItem = True
+      OnClick = MdViewModeClick
+    end
+    object mdpSep: TMenuItem
+      Caption = '-'
+    end
+    object mdpCopy: TMenuItem
+      Caption = 'Копировать'#9'Ctrl+C'
+      OnClick = MdCopyClick
+    end
+    object mdpSelectAll: TMenuItem
+      Caption = 'Выделить всё'#9'Ctrl+A'
+      OnClick = MdSelectAllClick
     end
   end
   object FLogPopup: TUiPopupMenu
