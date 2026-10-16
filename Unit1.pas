@@ -4394,6 +4394,10 @@ begin
   UiDefault('Tabs.CloseOn', clRed);        // крестик активной вкладки
   UiDefault('Tabs.CloseOff', clGray, $00808080);
   UiDefault('Tabs.Owner', clGray, $00A0A0A0);   // главный .bas у include
+  // Кнопка Txt / Fmt на вкладке .md: рамка и надпись Txt, заливка Fmt -
+  // синий, не цвет подписи вкладки; надпись на заливке - белая / тёмная
+  UiDefault('Tabs.FmtBtn', $00CC6600, $00FFB04A);
+  UiDefault('Tabs.FmtBtnText', clWhite, $00202020);
   // Рамки ярлычков - у вкладок редактора и у всех вкладок окон IDE
   UiDefault('Tabs.Border', clBtnShadow, $00707070);
   // Своё меню (TUiMenuBar, TUiPopupMenu) - в темах Dark и Custom
@@ -4702,6 +4706,10 @@ begin
     Result := 'Вкладки: крестик остальных'
   else if AKey = 'Tabs.Owner' then
     Result := 'Вкладки: главный файл у $INCLUDE-файла'
+  else if AKey = 'Tabs.FmtBtn' then
+    Result := 'Вкладки: кнопка Txt / Fmt (рамка, заливка)'
+  else if AKey = 'Tabs.FmtBtnText' then
+    Result := 'Вкладки: надпись на залитой кнопке Fmt'
   else if AKey = 'Editor.SelBG' then
     Result := 'Редактор: фон выделенного текста'
   else if AKey = 'Editor.SelText' then
@@ -16922,12 +16930,11 @@ begin
       BtnRect.Top := ARect.Top + ((ARect.Bottom - ARect.Top) - Side) div 2;
       BtnRect.Right := BtnRect.Left + Side;
       BtnRect.Bottom := BtnRect.Top + Side;
-      TextColor := UiColor('Tabs.Text');
-      if AActive then
-        BackColor := UiColor('Tabs.ActiveBG')
-      else
-        BackColor := UiColor('Tabs.InactiveBG');
-      // Txt - рамка, Fmt - залитый квадрат: вид видно, не читая подпись
+      // Свой цвет кнопки (Tabs.FmtBtn), не цвет подписи: кнопку видно
+      // отдельно от имени файла. Txt - рамка и надпись этим цветом, Fmt -
+      // залитый им квадрат с надписью Tabs.FmtBtnText
+      TextColor := UiColor('Tabs.FmtBtn');
+      BackColor := UiColor('Tabs.FmtBtnText');
       C.Pen.Color := TextColor;
       C.Pen.Width := 1;
       if ShowFmt then
@@ -16942,8 +16949,13 @@ begin
         BtnText := 'Txt';
       end;
       C.Rectangle(BtnRect.Left, BtnRect.Top, BtnRect.Right, BtnRect.Bottom);
+      // Рамка Txt - в два пикселя: тонкая на фоне вкладки теряется
+      if not ShowFmt then
+        C.Rectangle(BtnRect.Left + 1, BtnRect.Top + 1, BtnRect.Right - 1,
+                    BtnRect.Bottom - 1);
       C.Brush.Style := bsClear;
       C.Font.Size := 7;
+      C.Font.Style := [fsBold];
       if ShowFmt then
         C.Font.Color := BackColor
       else
