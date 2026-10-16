@@ -16757,6 +16757,8 @@ const
   // подписи, а на этом месте рисуется кнопка (TabsDrawTab). Одна строка
   // для обоих видов: при переключении ширина вкладки не меняется.
   TabFmtPrefix = 'Fmt';
+  // Поля кнопки Txt / Fmt по ширине (слева и справа вместе), пикселей
+  TabFmtPadding = 4;
 
   // Подпись вкладки. Пробелы по краям - не украшение: ширину вкладки Windows
   // считает по тексту, а нам нужно место под маркер изменений слева и крестик
@@ -16872,7 +16874,7 @@ var
   C: TCanvas;
   S, Main, Cross, OwnerPart: string;
   P, X, Y, OwnerPos: Integer;
-  TabWin, FmtWidth, Side: Integer;
+  TabWin, FmtWidth, BtnWidth, BtnHeight: Integer;
   HasFmt, ShowFmt: Boolean;
   BtnRect: TRect;
   BtnText: string;
@@ -16920,16 +16922,21 @@ begin
       Delete(Main, 1, Length(TabFmtPrefix));
       FmtWidth := C.TextWidth(TabFmtPrefix);
       ShowFmt := FWindows[TabWin].MdPreview;
-      // Квадрат по высоте вкладки, но не шире отведённого места
-      Side := (ARect.Bottom - ARect.Top) - 6;
-      if Side > FmtWidth - 2 then
-        Side := FmtWidth - 2;
-      if Side < 12 then
-        Side := 12;
+      // Прямоугольник: ширина - по надписи (шире из Txt и Fmt, чтобы при
+      // переключении кнопка не меняла размер), высота - по вкладке
+      C.Font.Size := 7;
+      C.Font.Style := [fsBold];
+      BtnWidth := C.TextWidth('Txt');
+      if C.TextWidth('Fmt') > BtnWidth then
+        BtnWidth := C.TextWidth('Fmt');
+      BtnWidth := BtnWidth + TabFmtPadding;
+      BtnHeight := (ARect.Bottom - ARect.Top) - 6;
+      if BtnHeight < C.TextHeight('Txt') + 2 then
+        BtnHeight := C.TextHeight('Txt') + 2;
       BtnRect.Left := ARect.Left + 5;
-      BtnRect.Top := ARect.Top + ((ARect.Bottom - ARect.Top) - Side) div 2;
-      BtnRect.Right := BtnRect.Left + Side;
-      BtnRect.Bottom := BtnRect.Top + Side;
+      BtnRect.Top := ARect.Top + ((ARect.Bottom - ARect.Top) - BtnHeight) div 2;
+      BtnRect.Right := BtnRect.Left + BtnWidth;
+      BtnRect.Bottom := BtnRect.Top + BtnHeight;
       // Свой цвет кнопки (Tabs.FmtBtn), не цвет подписи: кнопку видно
       // отдельно от имени файла. Txt - рамка и надпись этим цветом, Fmt -
       // залитый им квадрат с надписью Tabs.FmtBtnText
@@ -16954,16 +16961,19 @@ begin
         C.Rectangle(BtnRect.Left + 1, BtnRect.Top + 1, BtnRect.Right - 1,
                     BtnRect.Bottom - 1);
       C.Brush.Style := bsClear;
-      C.Font.Size := 7;
-      C.Font.Style := [fsBold];
       if ShowFmt then
         C.Font.Color := BackColor
       else
         C.Font.Color := TextColor;
-      C.TextOut(BtnRect.Left + (Side - C.TextWidth(BtnText)) div 2,
-                BtnRect.Top + (Side - C.TextHeight(BtnText)) div 2, BtnText);
+      C.TextOut(BtnRect.Left + (BtnWidth - C.TextWidth(BtnText)) div 2,
+                BtnRect.Top + (BtnHeight - C.TextHeight(BtnText)) div 2,
+                BtnText);
       C.Font := FTabs.Font;
       C.Font.Color := UiColor('Tabs.Text');
+      // Имя файла - правее кнопки, даже если места под неё (TabFmtPrefix)
+      // в этом шрифте вышло меньше
+      if BtnRect.Right + 6 > ARect.Left + 6 + FmtWidth then
+        FmtWidth := BtnRect.Right - ARect.Left;
     end;
 
     // Главный файл include (TabCaptionFor) - своим цветом
@@ -17022,11 +17032,21 @@ end;
 function TForm1.TabFmtWidth: Integer;
 var
   MeasureBmp: TBitmap;
+  BtnRight: Integer;
 begin
   MeasureBmp := TBitmap.Create;
   try
     MeasureBmp.Canvas.Font := FTabs.Font;
     Result := 6 + MeasureBmp.Canvas.TextWidth(TabFmtPrefix);
+    // Кнопка шире отведённого места (TabsDrawTab) - щелчок по всей кнопке
+    MeasureBmp.Canvas.Font.Size := 7;
+    MeasureBmp.Canvas.Font.Style := [fsBold];
+    BtnRight := MeasureBmp.Canvas.TextWidth('Txt');
+    if MeasureBmp.Canvas.TextWidth('Fmt') > BtnRight then
+      BtnRight := MeasureBmp.Canvas.TextWidth('Fmt');
+    BtnRight := 5 + BtnRight + TabFmtPadding;
+    if BtnRight > Result then
+      Result := BtnRight;
   finally
     MeasureBmp.Free;
   end;
