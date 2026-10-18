@@ -40,6 +40,7 @@ uses
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
+  FileSearch,     // Find In Files: маски, чтение файлов, обход папок (TFifFileFound)
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -3647,7 +3648,6 @@ var
     Unit2, // Подключили вторую форму к первой!
     FormSnapshot, // снимок живой формы для инспектора объектов
     Registry,     // поиск установленных Delphi, когда dcc32 не на месте
-    FileSearch,   // Find In Files: маски, чтение файлов, обход папок
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
     DelphiOpts,   // Project options Delphi: номер сборки и версия в .res
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
