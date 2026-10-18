@@ -946,7 +946,7 @@ type
     procedure FileReplace;
     procedure FileReplaceAll;
     function  TabsToList(const APattern: string): Integer;
-    function  SearchToList: Boolean;
+    function  SearchToList(AFindButton: Boolean = False): Boolean;
     function  NextHitRow(AFrom: Integer; AForward: Boolean): Integer;
     procedure MultiFindStep(AForward: Boolean);
     procedure ShowMatchRow(ARow: Integer);
@@ -18556,8 +18556,11 @@ end;
 
 // Match list по области (вкладки, проект, диск) - поиск заново. False -
 // список не построен (пустой образец, поиск остановлен или его список
-// заменили)
-function TForm1.SearchToList: Boolean;
+// заменили).
+// AFindButton - вызов от Find-> / <-Find: для области "На диске" только
+// открывается окно Find In Files (папки, маски можно поправить), поиск -
+// кнопкой "Найти" в нём. Replace и All ищут сразу
+function TForm1.SearchToList(AFindButton: Boolean): Boolean;
 var
   Pattern: string;
 begin
@@ -18573,6 +18576,13 @@ begin
       TabsToList(Pattern);
     ScopeProject, ScopeDisk:
     begin
+      if AFindButton and (SearchScope = ScopeDisk) then
+      begin
+        FifShowWindow(False);
+        Dbg('Find In Files (Find->): окно показано, поиск - кнопкой ' +
+            '"Найти" в нём', clGray);
+        Exit;
+      end;
       EnsureMatchForm;
       ResetMatchRows;
       FillMatchGrid;
@@ -18650,7 +18660,7 @@ begin
   if (FMatchKey <> MatchKeyFor(SearchScope, Pattern)) or (FMatchForm = nil) or
      not FMatchForm.Visible or (Length(FMatchRows) = 0) then
   begin
-    if not SearchToList then
+    if not SearchToList(True) then
       Exit;
     RowIdx := NextHitRow(-1, AForward);
   end
