@@ -2159,7 +2159,7 @@ type
     procedure AddMatchHit(const AFile: string; AWinIdx, ALineNo,
                           AMatchPos: Integer; const ALine: string);
     procedure FillMatchGrid;
-    procedure ApplyMatchRowHeights;
+    procedure ApplyMatchRowHeights(AFirst: Integer = 0);
     procedure MatchGridDrawCell(Sender: TObject; ACol, ARow: Integer;
                                 Rect: TRect; State: TGridDrawState);
     procedure MatchGridMouseDown(Sender: TObject; Button: TMouseButton;
@@ -18927,13 +18927,26 @@ begin
   JumpToMatch(RowIdx);
 end;
 
-// Строка Match list - выделить в гриде (если её группа не свёрнута)
+// Строка Match list - выделить в гриде; её группа свёрнута - раскрывается
 procedure TForm1.ShowMatchRow(ARow: Integer);
+var
+  GrpIdx: Integer;
 begin
   if (FMatchGrid = nil) or (ARow < 0) or (ARow + 1 >= FMatchGrid.RowCount) then
     Exit;
   if FMatchGrid.RowHeights[ARow + 1] <= 0 then
-    Exit;
+  begin
+    GrpIdx := ARow;
+    while (GrpIdx >= 0) and (FMatchRows[GrpIdx].Kind <> mrkGroup) do
+      Dec(GrpIdx);
+    if (GrpIdx < 0) or not FMatchRows[GrpIdx].Collapsed then
+      Exit;
+    FMatchRows[GrpIdx].Collapsed := False;
+    ApplyMatchRowHeights(GrpIdx);
+    FMatchGrid.Invalidate;
+    if FMatchGrid.RowHeights[ARow + 1] <= 0 then
+      Exit;
+  end;
   FMatchGrid.Row := ARow + 1;
 end;
 
@@ -19732,7 +19745,9 @@ begin
   FMatchRows[N].MatchPos := 0;
   FMatchRows[N].Text := '';
   FMatchRows[N].HitCount := 0;
-  FMatchRows[N].Collapsed := False;
+  // Find In Files: сначала только имена файлов, вхождения - по щелчку
+  // на плюсе (или Find-> раскрывает группу, в которую переходит)
+  FMatchRows[N].Collapsed := FFifRunning;
   Result := N;
 end;
 
@@ -19781,7 +19796,8 @@ end;
 // остаётся её разделитель: сто восемьдесят свёрнутых вхождений давали сплошную
 // серую полосу в сто восемьдесят пикселей. При -GridLineWidth сумма ровно
 // ноль, и строка исчезает целиком.
-procedure TForm1.ApplyMatchRowHeights;
+// AFirst - с какой строки (новые строки по ходу поиска, FifGridGrow)
+procedure TForm1.ApplyMatchRowHeights(AFirst: Integer);
 var
   I, Grp, Hidden: Integer;
 begin
@@ -19789,9 +19805,18 @@ begin
     Exit;
 
   Hidden := -FMatchGrid.GridLineWidth;
+  if AFirst < 0 then
+    AFirst := 0;
 
+  // Группа строки AFirst - ближайший заголовок выше
   Grp := -1;
-  for I := 0 to High(FMatchRows) do
+  for I := AFirst - 1 downto 0 do
+    if (I <= High(FMatchRows)) and (FMatchRows[I].Kind = mrkGroup) then
+    begin
+      Grp := I;
+      Break;
+    end;
+  for I := AFirst to High(FMatchRows) do
   begin
     if FMatchRows[I].Kind = mrkGroup then
     begin
@@ -20702,12 +20727,18 @@ end;
 // Новые строки Match list - в грид. Выделение и прокрутку не трогаем:
 // пользователь может уже работать со списком
 procedure TForm1.FifGridGrow;
+var
+  OldRows: Integer;
 begin
   if (FMatchGrid = nil) or FFifListTaken or (Length(FMatchRows) = 0) then
     Exit;
   if FMatchGrid.RowCount = Length(FMatchRows) + 1 then
     Exit;
+  OldRows := FMatchGrid.RowCount;
   FMatchGrid.RowCount := Length(FMatchRows) + 1;
+  // Новые строки: вхождения свёрнутых групп - нулевой высоты. Пустой список
+  // показывал одну строку-заглушку (RowCount = 2) - с первой строки
+  ApplyMatchRowHeights(OldRows - 2);
   FMatchGrid.Invalidate;
 end;
 
