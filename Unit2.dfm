@@ -613,7 +613,7 @@ object Form2: TForm2
         Left = 0
         Top = 120
         Width = 612
-        Height = 48
+        Height = 72
         Caption = ' Margin and gutter '
         TabOrder = 3
         Align = alTop
@@ -688,6 +688,31 @@ object Form2: TForm2
             '50'
             '60'
             '80')
+        end
+        object lblEdTextIndent: TLabel
+          Left = 8
+          Top = 45
+          Caption = 'Text indent:'
+        end
+        object cmbEdTextIndent: TUiComboBox
+          Left = 82
+          Top = 40
+          Width = 56
+          Height = 21
+          ItemHeight = 13
+          TabOrder = 4
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Отступ текста от полосы номеров слева, в точках (0 - без отступа)'
+          OnChange = EdOptionClick
+          Items.Strings = (
+            '0'
+            '2'
+            '3'
+            '5'
+            '8'
+            '10'
+            '15')
         end
       end
       object grpEdInsight: TUiGroupBox

@@ -48,6 +48,7 @@ type
     ShowGutter: Boolean;         // полоса слева: номера строк и метки
     ShowLineNumbers: Boolean;    // номера строк в полосе
     GutterWidth: Integer;        // ширина полосы; 0 - по числу цифр
+    TextIndent: Integer;         // отступ текста от полосы слева, точек
     CodeCompletion: Boolean;     // список имён: Ctrl+Space и после точки
     CodeParams: Boolean;         // параметры подпрограммы после "("
     TooltipEval: Boolean;        // значение под мышью на остановке
@@ -59,6 +60,8 @@ type
 const
   EnvGridMin = 2;
   EnvGridMax = 128;
+  // Наибольший отступ текста от полосы номеров, точек
+  EdTextIndentMax = 40;
 
   // Цвета Code Insight - номера в TEdInsightOptions.Colors
   CiColAbstract = 0;
@@ -238,6 +241,7 @@ begin
   AOpts.ShowGutter := True;
   AOpts.ShowLineNumbers := True;
   AOpts.GutterWidth := 0;
+  AOpts.TextIndent := 5;
   AOpts.CodeCompletion := True;
   AOpts.CodeParams := True;
   AOpts.TooltipEval := True;
@@ -277,6 +281,10 @@ begin
                                          AOpts.GutterWidth);
     if (AOpts.GutterWidth < 0) or (AOpts.GutterWidth > 400) then
       AOpts.GutterWidth := 0;
+    AOpts.TextIndent := Ini.ReadInteger(SecEditor, 'TextIndent',
+                                        AOpts.TextIndent);
+    if (AOpts.TextIndent < 0) or (AOpts.TextIndent > EdTextIndentMax) then
+      AOpts.TextIndent := 5;
     AOpts.CodeCompletion := Ini.ReadBool(SecInsight, 'CodeCompletion',
                                          AOpts.CodeCompletion);
     AOpts.CodeParams := Ini.ReadBool(SecInsight, 'CodeParameters',
@@ -317,6 +325,7 @@ begin
     Ini.WriteBool(SecEditor, 'VisibleGutter', AOpts.ShowGutter);
     Ini.WriteBool(SecEditor, 'ShowLineNumbers', AOpts.ShowLineNumbers);
     Ini.WriteInteger(SecEditor, 'GutterWidth', AOpts.GutterWidth);
+    Ini.WriteInteger(SecEditor, 'TextIndent', AOpts.TextIndent);
     Ini.WriteBool(SecInsight, 'CodeCompletion', AOpts.CodeCompletion);
     Ini.WriteBool(SecInsight, 'CodeParameters', AOpts.CodeParams);
     Ini.WriteBool(SecInsight, 'TooltipEvaluation', AOpts.TooltipEval);

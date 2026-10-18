@@ -99,6 +99,8 @@ type
     chkEdGutter: TUiCheckBox;
     lblEdGutterWidth: TLabel;
     cmbEdGutterWidth: TUiComboBox;
+    lblEdTextIndent: TLabel;
+    cmbEdTextIndent: TUiComboBox;
     grpEdInsight: TUiGroupBox;
     chkEdCompletion: TUiCheckBox;
     chkEdParams: TUiCheckBox;
@@ -5753,6 +5755,7 @@ begin
       cmbEdGutterWidth.Text := IntToStr(Form1.FEdIns.GutterWidth)
     else
       cmbEdGutterWidth.Text := 'Auto';
+    cmbEdTextIndent.Text := IntToStr(Form1.FEdIns.TextIndent);
     chkEdCompletion.Checked := Form1.FEdIns.CodeCompletion;
     chkEdParams.Checked := Form1.FEdIns.CodeParams;
     chkEdTipEval.Checked := Form1.FEdIns.TooltipEval;
@@ -5817,6 +5820,9 @@ begin
     if (NumValue >= 8) and (NumValue <= 400) then
       Form1.FEdIns.GutterWidth := NumValue;
   end;
+  NumValue := StrToIntDef(Trim(cmbEdTextIndent.Text), -1);
+  if (NumValue >= 0) and (NumValue <= EdTextIndentMax) then
+    Form1.FEdIns.TextIndent := NumValue;
   Form1.FEdIns.CodeCompletion := chkEdCompletion.Checked;
   Form1.FEdIns.CodeParams := chkEdParams.Checked;
   Form1.FEdIns.TooltipEval := chkEdTipEval.Checked;

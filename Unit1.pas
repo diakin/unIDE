@@ -119,10 +119,10 @@ const
   XBlockLen = 1024;
   LineInfoCount = 256;
 
-  // Панель номеров строк: сколько цифр должно помещаться, и зазор между
-  // PaintBox1 и текстом (полоса Panel1 правее PaintBox1, как в дизайнере:
-  // 57 - 45). Семь знакомест - номер до 9999999.
-  GutterDigits = 7;
+  // Панель номеров строк: сколько цифр помещается самое меньшее. Номера
+  // длиннее (больше 99999 строк) - полоса шире на нужное число знакомест,
+  // см. GutterDigitsFor и UpdateGutterWidth.
+  GutterMinDigits = 5;
 
   // Предел объёма текста для RichEdit1 (EM_EXLIMITTEXT), символов.
   // Раньше был 65535 * 32 = 2 097 120 - меньше больших файлов в 15 раз.
@@ -1453,6 +1453,8 @@ type
     // Время частей колонки «Строка кода» последнего заполнения (мс) - для
     // строки 17151 HiLite log
     FObjTSetIndex, FObjTCodeProps: Cardinal;
+    // Сколько знакомест под номер строки сейчас в полосе (UpdateGutterWidth)
+    FGutterDigits: Integer;
     // Счётчик правок текста в редакторе: растёт на любой смене текста
     // (EN_CHANGE, правка через наши сообщения, замена целиком). По нему
     // указатель строк модуля (ObjSetterIndex) узнаёт, что текст активной
@@ -3124,6 +3126,8 @@ type
     procedure EnsureNoWrap;
     procedure EnsureEventMask;
     procedure UpdateGutterWidth;
+    function  GutterDigitsFor(ALineCount: Integer): Integer;
+    function  MarksAutoColor: TColor;
     procedure MarksLayout(ACanvas: TCanvas; var ABmH, ABmW, ADotD,
                           AWidth: Integer);
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
@@ -4848,7 +4852,7 @@ begin
   else if AKey = 'Gutter.CurText' then
     Result := 'Полоса номеров: текст текущей строки (clDefault - как цифры)'
   else if AKey = 'Gutter.MarksBG' then
-    Result := 'Полоса меток: фон (clDefault - цвет зазора Panel1)'
+    Result := 'Полоса меток: фон (clDefault - чуть светлее / темнее фона редактора)'
   else if AKey = 'Gutter.BmBG' then
     Result := 'Полоса меток: фон закладки'
   else if AKey = 'Gutter.BmBorder' then
@@ -21301,6 +21305,10 @@ begin
      (CaretLine = FNumCaretLine) then
     Exit;
 
+  // Номер последней строки стал длиннее или короче - полоса под него
+  if (TotalLines <> FNumTotalLines) and
+     (GutterDigitsFor(TotalLines) <> FGutterDigits) then
+    UpdateGutterWidth;
   FNumTopLine := TopLine;
   FNumTotalLines := TotalLines;
   FNumCaretLine := CaretLine;
@@ -58972,7 +58980,7 @@ begin
   BoxCanvas := MarksBox.Canvas;
   BgColor := UiColor('Gutter.MarksBG');
   if BgColor = clDefault then
-    BgColor := Panel1.Color;
+    BgColor := MarksAutoColor;
   BoxCanvas.Brush.Style := bsSolid;
   BoxCanvas.Brush.Color := BgColor;
   BoxCanvas.FillRect(MarksBox.ClientRect);
@@ -66769,7 +66777,44 @@ begin
   Wrap(FObjEvents);
 end;
 
-// Ширина панели номеров под GutterDigits цифр.
+// Число знакомест под номер строки при ALineCount строках - не меньше
+// GutterMinDigits
+function TForm1.GutterDigitsFor(ALineCount: Integer): Integer;
+begin
+  Result := Length(IntToStr(ALineCount));
+  if Result < GutterMinDigits then
+    Result := GutterMinDigits;
+end;
+
+// Фон полосы меток (закладки, точки останова), когда цвет
+// Gutter.MarksBG не задан (clDefault): чуть светлее фона редактора в
+// тёмной теме, чуть темнее - в светлой; полоса видна отдельно от текста
+function TForm1.MarksAutoColor: TColor;
+var
+  BaseRgb: Longint;
+  RedPart, GreenPart, BluePart: Integer;
+  Dark: Boolean;
+
+  function Shift(APart: Integer): Integer;
+  begin
+    if Dark then
+      Result := APart + (255 - APart) * 12 div 100
+    else
+      Result := APart - APart * 8 div 100;
+  end;
+
+begin
+  BaseRgb := ColorToRGB(RichEdit1.Color);
+  RedPart := GetRValue(BaseRgb);
+  GreenPart := GetGValue(BaseRgb);
+  BluePart := GetBValue(BaseRgb);
+  Dark := (RedPart * 299 + GreenPart * 587 + BluePart * 114) div 1000 < 128;
+  Result := RGB(Shift(RedPart), Shift(GreenPart), Shift(BluePart));
+end;
+
+// Ширина панели номеров под номер последней строки (не меньше
+// GutterMinDigits цифр); справа от полосы меток - отступ текста
+// (FEdIns.TextIndent), цветом фона редактора (Panel1.Color).
 //
 // Считается по шрифту панели и ЖИРНОМУ начертанию: так пишется номер строки
 // с кареткой, а жирные цифры шире. Берётся самая широкая цифра - в
@@ -66785,6 +66830,7 @@ var
   C: Char;
   DigitW, W, NewW: Integer;
   BmH, BmW, DotD, MarksW: Integer;
+  LineCount: Integer;
 begin
   if (PaintBox1 = nil) or (Panel1 = nil) then
     Exit;
@@ -66806,7 +66852,15 @@ begin
     Bmp.Free;
   end;
 
-  NewW := 4 + DigitW * GutterDigits + 9;
+  LineCount := 1;
+  if RichEdit1.HandleAllocated then
+    LineCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  FGutterDigits := GutterDigitsFor(LineCount);
+  NewW := 4 + DigitW * FGutterDigits + 9;
+  // Полоса меток - своей ширины (alLeft за номерами); за ней - отступ
+  // текста, там видна сама Panel1 цветом фона редактора
+  if MarksBox <> nil then
+    MarksBox.Width := MarksW;
   // Editor Options - Gutter width: вся полоса, номера - что останется
   // после меток
   if FEdIns.GutterWidth > 0 then
@@ -66818,14 +66872,15 @@ begin
   // Номера выключены - в полосе одни метки
   if not FEdIns.ShowLineNumbers then
   begin
-    if Panel1.Width <> MarksW then
-      Panel1.Width := MarksW;
+    if Panel1.Width <> MarksW + FEdIns.TextIndent then
+      Panel1.Width := MarksW + FEdIns.TextIndent;
     Exit;
   end;
-  if (PaintBox1.Width <> NewW) or (Panel1.Width <> NewW + MarksW) then
+  if (PaintBox1.Width <> NewW) or
+     (Panel1.Width <> NewW + MarksW + FEdIns.TextIndent) then
   begin
     PaintBox1.Width := NewW;
-    Panel1.Width := NewW + MarksW;
+    Panel1.Width := NewW + MarksW + FEdIns.TextIndent;
   end;
 end;
 

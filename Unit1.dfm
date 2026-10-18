@@ -327,7 +327,7 @@ object Form1: TForm1
       Top = 0
       Width = 12
       Height = 457
-      Align = alClient
+      Align = alLeft
       OnClick = MarksBoxClick
       OnDblClick = MarksBoxDblClick
       OnMouseDown = MarksBoxMouseDown
