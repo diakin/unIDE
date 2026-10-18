@@ -33,6 +33,11 @@ unit FmtView;
 //        IE, и переключение вкладки отсюда снова звало бы Navigate;
 //      - остальное (http, mailto, pdf, картинки, папки) - программой Windows.
 //
+//    Режим IE - по <!DOCTYPE> страницы, как в самом Internet Explorer:
+//    при первом показе для exe unIDE ставится FEATURE_BROWSER_EMULATION
+//    (EnsureBrowserEmulation), без него встроенный IE рисует всё в режиме
+//    IE 7.
+//
 //  RichEdit (TRtfPreview). RTF загружается EM_STREAMIN. Фон - белый, как
 //  лист: цвета текста задаёт сам документ, и чёрный текст на тёмном фоне
 //  темы Dark был бы не виден.
@@ -45,7 +50,8 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls,
-  ComCtrls, Menus, Forms, ShellAPI, Variants, ComObj, SHDocVw, MdHtml;
+  ComCtrls, Menus, Forms, ShellAPI, Variants, ComObj, Registry, SHDocVw,
+  MdHtml;
 
 type
   TFmtKind = (fkNone, fkMarkdown, fkHtml, fkMht, fkRtf, fkRvf);
@@ -485,6 +491,91 @@ begin
   Result := StringReplace(AFileName, '=', #1, [rfReplaceAll]);
 end;
 
+// Режим встроенного IE для exe unIDE (FEATURE_BROWSER_EMULATION, HKCU).
+// Без записи встроенный IE рисует страницы в режиме IE 7, какая бы версия
+// IE ни стояла. Значение - по установленному IE: 11000 для IE 11, 10000
+// для IE 10 и т.д. - "режим по <!DOCTYPE>": страница с полным
+// объявлением - в режиме этой версии, без объявления или с неполным -
+// в режиме совместимости (IE 5), как в самом Internet Explorer.
+// Запись, которую поставил кто-то другой (значение уже есть), не
+// меняется. Читается при первом создании браузера в процессе - поэтому
+// до TWebBrowser.Create. Результат - строка для журнала.
+function EnsureBrowserEmulation: string;
+const
+  EmulationKey = 'Software\Microsoft\Internet Explorer\Main\FeatureControl\' +
+                 'FEATURE_BROWSER_EMULATION';
+  IeKey = 'Software\Microsoft\Internet Explorer';
+var
+  Reg: TRegistry;
+  ExeName, IeVersion: string;
+  IeMajor, DotAt, Emulation: Integer;
+begin
+  Result := '';
+  ExeName := ExtractFileName(ParamStr(0));
+  // Версия IE: svcVersion (IE 10 и новее: '11.0.9600...'), иначе Version
+  // (IE 9 и старше: '9.0.8112...'; у IE 10-11 там '9.10...', '9.11...')
+  IeVersion := '';
+  Reg := TRegistry.Create;
+  try
+    Reg.RootKey := HKEY_LOCAL_MACHINE;
+    try
+      if Reg.OpenKeyReadOnly(IeKey) then
+      begin
+        if Reg.ValueExists('svcVersion') then
+          IeVersion := Reg.ReadString('svcVersion')
+        else if Reg.ValueExists('Version') then
+          IeVersion := Reg.ReadString('Version');
+        Reg.CloseKey;
+      end;
+    except
+      IeVersion := '';
+    end;
+  finally
+    Reg.Free;
+  end;
+  DotAt := Pos('.', IeVersion);
+  if DotAt > 0 then
+    IeMajor := StrToIntDef(Copy(IeVersion, 1, DotAt - 1), 0)
+  else
+    IeMajor := StrToIntDef(IeVersion, 0);
+  if IeMajor > 11 then
+    IeMajor := 11;
+  if IeMajor < 8 then
+  begin
+    Result := 'режим IE: версия IE не определена (' + IeVersion +
+              '), запись не сделана';
+    Exit;
+  end;
+  Emulation := IeMajor * 1000;
+
+  Reg := TRegistry.Create;
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    try
+      if Reg.OpenKey(EmulationKey, True) then
+      begin
+        if Reg.ValueExists(ExeName) then
+          Result := 'режим IE: для ' + ExeName + ' уже записан (' +
+                    IntToStr(Reg.ReadInteger(ExeName)) + ')'
+        else
+        begin
+          Reg.WriteInteger(ExeName, Emulation);
+          Result := 'режим IE: для ' + ExeName + ' записан ' +
+                    IntToStr(Emulation) + ' (IE ' + IeVersion + ')';
+        end;
+        Reg.CloseKey;
+      end
+      else
+        Result := 'режим IE: ключ реестра не открылся';
+    except
+      on E: Exception do
+        Result := 'режим IE: не записан - ' + E.Message;
+    end;
+  finally
+    Reg.Free;
+  end;
+end;
+
 function TempFolder: string;
 var
   Buf: array[0..MAX_PATH] of Char;
@@ -626,6 +717,7 @@ begin
   Result := FBrowser <> nil;
   if Result then
     Exit;
+  Log(EnsureBrowserEmulation);
   try
     FBrowser := TWebBrowser.Create(nil);
     // У TWebBrowser свои свойства Parent и Visible (свойства IWebBrowser2) -
