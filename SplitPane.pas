@@ -20,8 +20,12 @@ unit SplitPane;
 //  alLeft, alBottom / alTop). Смена родителя пересоздала бы окна RichEdit
 //  редактора со всей их настройкой.
 //
-//  Заголовок второй панели: имя файла (щелчок - выбор вкладки), кнопка
-//  Txt / Fmt (у файлов с видом "по формату") и кнопка закрытия.
+//  Заголовок (TPaneHeader) - у обеих панелей: у второй - здесь, у
+//  редактора - сверху FLeftHost (Unit1, FEditHeader). Имя файла (щелчок -
+//  выбор вкладки), кнопка Txt / Fmt (у файлов с видом "по формату"), у
+//  второй панели - кнопка закрытия. Заголовок активной панели - цветом
+//  активной вкладки. Вид каждой панели (текст / по формату) свой и при
+//  переходе из панели в панель не меняется.
 // ---------------------------------------------------------------------------
 
 interface
@@ -37,16 +41,42 @@ type
   TSplitView = (svNone, svText, svWeb, svFmt);
   TSplitTextClickEvent = procedure(ALine, ACol, ATopLine: Integer) of object;
 
+  // Строка заголовка панели редактора: имя файла (щелчок - выбор вкладки),
+  // кнопка Txt / Fmt (у файлов с видом "по формату"), кнопка закрытия.
+  // Цвет - по тому, активна ли панель (SetColors)
+  TPaneHeader = class
+  private
+    FPanel: TPanel;
+    FTitle: TLabel;
+    FFmtBtn: TUiButton;
+    FCloseBtn: TUiButton;
+    FOnTitleClick: TNotifyEvent;
+    FOnFmtClick: TNotifyEvent;
+    FOnCloseClick: TNotifyEvent;
+    procedure TitleClick(Sender: TObject);
+    procedure FmtBtnClick(Sender: TObject);
+    procedure CloseBtnClick(Sender: TObject);
+  public
+    // AParent - панель, сверху которой встаёт заголовок (alTop);
+    // AWithClose - с кнопкой закрытия
+    constructor Create(AParent: TWinControl; AWithClose: Boolean;
+      const ACloseHint: string);
+    destructor Destroy; override;
+    procedure SetTitle(const ATitle, AHint: string; AHasFmt, AFmtShown: Boolean);
+    procedure SetColors(ABack, AText: TColor);
+    property Panel: TPanel read FPanel;
+    property OnTitleClick: TNotifyEvent read FOnTitleClick write FOnTitleClick;
+    property OnFmtClick: TNotifyEvent read FOnFmtClick write FOnFmtClick;
+    property OnCloseClick: TNotifyEvent read FOnCloseClick write FOnCloseClick;
+  end;
+
   TSplitPane = class
   private
     FParent: TWinControl;
     FEditorHost: TWinControl;
     FPanel: TPanel;
-    FHeader: TPanel;
+    FHeader: TPaneHeader;
     FBody: TPanel;
-    FTitle: TLabel;
-    FFmtBtn: TUiButton;
-    FCloseBtn: TUiButton;
     FSplitter: TSplitter;
     FText: TRtfPreview;      // текст с подсветкой
     FWeb: TWebPreview;       // по формату: md, html, mht
@@ -60,9 +90,9 @@ type
     FOnFmtClick: TNotifyEvent;
     FOnCloseClick: TNotifyEvent;
     procedure TextClickPos(Sender: TObject; ALine, ACol, ATopLine: Integer);
-    procedure TitleClick(Sender: TObject);
-    procedure FmtBtnClick(Sender: TObject);
-    procedure CloseBtnClick(Sender: TObject);
+    procedure HeaderTitleClick(Sender: TObject);
+    procedure HeaderFmtClick(Sender: TObject);
+    procedure HeaderCloseClick(Sender: TObject);
     procedure CopyClick(Sender: TObject);
     procedure SelectAllClick(Sender: TObject);
     function IsShown: Boolean;
@@ -91,6 +121,7 @@ type
     procedure CopySelection;
     procedure SelectAll;
     property Panel: TPanel read FPanel;
+    property Header: TPaneHeader read FHeader;
     property Splitter: TSplitter read FSplitter;
     property Web: TWebPreview read FWeb;
     property Fmt: TRtfPreview read FFmt;
@@ -110,6 +141,121 @@ implementation
 const
   SplitterSize = 5;
   MinPaneSize = 80;
+  PaneHeaderHeight = 22;
+
+// ---------------------------------------------------------------------------
+//  TPaneHeader
+// ---------------------------------------------------------------------------
+
+constructor TPaneHeader.Create(AParent: TWinControl; AWithClose: Boolean;
+  const ACloseHint: string);
+begin
+  inherited Create;
+  FPanel := TPanel.Create(nil);
+  FPanel.Parent := AParent;
+  FPanel.Align := alTop;
+  FPanel.Height := PaneHeaderHeight;
+  FPanel.BevelOuter := bvNone;
+  FPanel.Caption := '';
+  // Свой цвет (активная панель - цветом активной вкладки): фон темы
+  // Windows его перекрыл бы
+  FPanel.ParentBackground := False;
+
+  if AWithClose then
+  begin
+    FCloseBtn := TUiButton.Create(FPanel);
+    FCloseBtn.Parent := FPanel;
+    FCloseBtn.Left := 2000;   // у alRight правее тот, у кого Left больше
+    FCloseBtn.Align := alRight;
+    FCloseBtn.Width := 24;
+    FCloseBtn.Caption := 'x';
+    FCloseBtn.TabStop := False;
+    FCloseBtn.Hint := ACloseHint;
+    FCloseBtn.ShowHint := True;
+    FCloseBtn.OnClick := CloseBtnClick;
+  end;
+
+  FFmtBtn := TUiButton.Create(FPanel);
+  FFmtBtn.Parent := FPanel;
+  FFmtBtn.Left := 1000;
+  FFmtBtn.Align := alRight;
+  FFmtBtn.Width := 40;
+  FFmtBtn.Caption := 'Txt';
+  FFmtBtn.TabStop := False;
+  FFmtBtn.Hint := 'Текст / по формату';
+  FFmtBtn.ShowHint := True;
+  FFmtBtn.Visible := False;
+  FFmtBtn.OnClick := FmtBtnClick;
+
+  FTitle := TLabel.Create(FPanel);
+  FTitle.Parent := FPanel;
+  FTitle.Align := alClient;
+  FTitle.Layout := tlCenter;
+  FTitle.AutoSize := False;
+  FTitle.Transparent := True;
+  FTitle.ShowAccelChar := False;   // '&' в имени файла - не ускоритель
+  FTitle.Cursor := crHandPoint;
+  FTitle.ShowHint := True;
+  FTitle.Caption := '';
+  FTitle.OnClick := TitleClick;
+end;
+
+destructor TPaneHeader.Destroy;
+begin
+  FreeAndNil(FPanel);   // кнопки и подпись - его компоненты
+  inherited Destroy;
+end;
+
+procedure TPaneHeader.SetTitle(const ATitle, AHint: string;
+  AHasFmt, AFmtShown: Boolean);
+begin
+  FTitle.Caption := '  ' + ATitle + '  ...';
+  FTitle.Hint := AHint;
+  // Скрытая кнопка alRight хранит прежний Left: показанная после сужения
+  // заголовка, она могла бы встать правее кнопки закрытия
+  if AHasFmt and not FFmtBtn.Visible then
+  begin
+    if FCloseBtn <> nil then
+      FFmtBtn.Left := FCloseBtn.Left - FFmtBtn.Width
+    else
+      FFmtBtn.Left := FPanel.ClientWidth - FFmtBtn.Width;
+  end;
+  FFmtBtn.Visible := AHasFmt;
+  if AFmtShown then
+    FFmtBtn.Caption := 'Fmt'
+  else
+    FFmtBtn.Caption := 'Txt';
+end;
+
+procedure TPaneHeader.SetColors(ABack, AText: TColor);
+begin
+  if FPanel.Color <> ABack then
+    FPanel.Color := ABack;
+  if FTitle.Font.Color <> AText then
+    FTitle.Font.Color := AText;
+end;
+
+procedure TPaneHeader.TitleClick(Sender: TObject);
+begin
+  if Assigned(FOnTitleClick) then
+    FOnTitleClick(Self);
+end;
+
+procedure TPaneHeader.FmtBtnClick(Sender: TObject);
+begin
+  if Assigned(FOnFmtClick) then
+    FOnFmtClick(Self);
+end;
+
+procedure TPaneHeader.CloseBtnClick(Sender: TObject);
+begin
+  if Assigned(FOnCloseClick) then
+    FOnCloseClick(Self);
+end;
+
+// ---------------------------------------------------------------------------
+//  TSplitPane
+// ---------------------------------------------------------------------------
 
 constructor TSplitPane.Create(AParent, AEditorHost: TWinControl);
 var
@@ -145,43 +291,10 @@ begin
   FSplitter.MinSize := MinPaneSize;
   FSplitter.ResizeStyle := rsUpdate;
 
-  FHeader := TPanel.Create(FPanel);
-  FHeader.Parent := FPanel;
-  FHeader.Align := alTop;
-  FHeader.Height := 22;
-  FHeader.BevelOuter := bvNone;
-  FHeader.Caption := '';
-
-  FCloseBtn := TUiButton.Create(FHeader);
-  FCloseBtn.Parent := FHeader;
-  FCloseBtn.Align := alRight;
-  FCloseBtn.Width := 24;
-  FCloseBtn.Caption := 'x';
-  FCloseBtn.TabStop := False;
-  FCloseBtn.Hint := 'Убрать вторую панель';
-  FCloseBtn.ShowHint := True;
-  FCloseBtn.OnClick := CloseBtnClick;
-
-  FFmtBtn := TUiButton.Create(FHeader);
-  FFmtBtn.Parent := FHeader;
-  FFmtBtn.Align := alRight;
-  FFmtBtn.Width := 40;
-  FFmtBtn.Caption := 'Txt';
-  FFmtBtn.TabStop := False;
-  FFmtBtn.Hint := 'Текст / по формату';
-  FFmtBtn.ShowHint := True;
-  FFmtBtn.Visible := False;
-  FFmtBtn.OnClick := FmtBtnClick;
-
-  FTitle := TLabel.Create(FHeader);
-  FTitle.Parent := FHeader;
-  FTitle.Align := alClient;
-  FTitle.Layout := tlCenter;
-  FTitle.AutoSize := False;
-  FTitle.Cursor := crHandPoint;
-  FTitle.ShowHint := True;
-  FTitle.Caption := '';
-  FTitle.OnClick := TitleClick;
+  FHeader := TPaneHeader.Create(FPanel, True, 'Убрать вторую панель');
+  FHeader.OnTitleClick := HeaderTitleClick;
+  FHeader.OnFmtClick := HeaderFmtClick;
+  FHeader.OnCloseClick := HeaderCloseClick;
 
   FBody := TPanel.Create(FPanel);
   FBody.Parent := FPanel;
@@ -201,6 +314,7 @@ begin
   FreeAndNil(FText);
   FreeAndNil(FWeb);
   FreeAndNil(FFmt);
+  FreeAndNil(FHeader);
   FreeAndNil(FSplitter);
   FreeAndNil(FPanel);
   FreeAndNil(FMenu);
@@ -321,13 +435,7 @@ end;
 procedure TSplitPane.SetTitle(const ATitle, AHint: string;
   AHasFmt, AFmtShown: Boolean);
 begin
-  FTitle.Caption := '  ' + ATitle + '  ...';
-  FTitle.Hint := AHint;
-  FFmtBtn.Visible := AHasFmt;
-  if AFmtShown then
-    FFmtBtn.Caption := 'Fmt'
-  else
-    FFmtBtn.Caption := 'Txt';
+  FHeader.SetTitle(ATitle, AHint, AHasFmt, AFmtShown);
 end;
 
 procedure TSplitPane.KeepOnly(AView: TSplitView);
@@ -403,19 +511,19 @@ begin
     FOnTextClick(ALine, ACol, ATopLine);
 end;
 
-procedure TSplitPane.TitleClick(Sender: TObject);
+procedure TSplitPane.HeaderTitleClick(Sender: TObject);
 begin
   if Assigned(FOnTitleClick) then
     FOnTitleClick(Self);
 end;
 
-procedure TSplitPane.FmtBtnClick(Sender: TObject);
+procedure TSplitPane.HeaderFmtClick(Sender: TObject);
 begin
   if Assigned(FOnFmtClick) then
     FOnFmtClick(Self);
 end;
 
-procedure TSplitPane.CloseBtnClick(Sender: TObject);
+procedure TSplitPane.HeaderCloseClick(Sender: TObject);
 begin
   if Assigned(FOnCloseClick) then
     FOnCloseClick(Self);

@@ -2806,6 +2806,13 @@ type
     procedure SplitFmtClick(Sender: TObject);
     procedure SplitCloseClick(Sender: TObject);
     procedure SplitWindowClosed(AWinIdx: Integer);
+    function  SplitEditTop: Integer;
+    procedure SplitUpdateHeaders;
+    procedure SplitTrackClick(AWnd: HWND);
+    procedure SplitShowTabsMenu(ACurrent: Integer; AHandler: TNotifyEvent);
+    procedure EditHeaderTitleClick(Sender: TObject);
+    procedure EditTabMenuClick(Sender: TObject);
+    procedure EditHeaderFmtClick(Sender: TObject);
     function  HelpWordAtCaret: string;
     procedure DbgLinesPre(const Message: TMessage; AWhole: Boolean);
     procedure DbgLinesPost;
@@ -3252,6 +3259,10 @@ type
     // её вид (текст / по формату), таймеры обновления и смены панелей,
     // место щелчка по её тексту. См. раздел "Вторая панель редактора"
     FSplit: TSplitPane;
+    // Заголовок панели редактора (сверху FLeftHost), виден при разделении;
+    // FSplitActive - работают во второй панели (её заголовок подсвечен)
+    FEditHeader: TPaneHeader;
+    FSplitActive: Boolean;
     FSplitWin: Integer;
     FSplitFmt: Boolean;
     FSplitTimer: TTimer;
@@ -8240,6 +8251,11 @@ begin
     // ещё активна (SaveActiveClrSchema пишет в схему активной вкладки)
     if (Form2 <> nil) and Form2.Visible then
       Form2.BeforeTabSwitch;
+    // Во второй панели эта же вкладка, а последние правки ещё не дошли до
+    // неё (SplitTimerTick ждёт паузы) - обновить, пока текст в редакторе
+    if (FSplit <> nil) and (FSplitWin = FWindowsIndex) and
+       (FEditSerial <> FSplitSerial) then
+      SplitRefresh(-1);
     StoreCurrentWindow;
   end;
   TLeave := GetTickCount - T0;
@@ -21952,6 +21968,10 @@ var
   C: TWinControl;
   CursorPt: TPoint;
 begin
+  // Окно разделено: нажатие мыши в панели делает её активной (заголовок)
+  if (FSplit <> nil) and ((Msg.message = WM_LBUTTONDOWN) or
+     (Msg.message = WM_RBUTTONDOWN) or (Msg.message = WM_MBUTTONDOWN)) then
+    SplitTrackClick(Msg.hwnd);
   // Страница IE (просмотр по формату): правый щелчок - своё меню (Как
   // текст / По формату, копирование) вместо меню IE. Отпускание клавиши Menu тоже не отдаётся
   // IE: меню по ней показывает FmtKey.
@@ -22719,6 +22739,7 @@ begin
   FreeAndNil(FWebView); // просмотр по формату: браузер и временная страница
   FreeAndNil(FRtfView); // просмотр RTF / RVF
   FreeAndNil(FSplit);   // вторая панель редактора
+  FreeAndNil(FEditHeader);
   // Возвращаем старую процедуру на место. Если FormShow не отработал,
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then
@@ -70347,6 +70368,9 @@ begin
   if ShowView then
   begin
     FmtEnsureViews;
+    // Окно разделено - над просмотром заголовок панели редактора
+    FWebView.SetHostTop(SplitEditTop);
+    FRtfView.SetHostTop(SplitEditTop);
     FromDisk := not RichEdit1.Modified and (FCurrentFileName <> '') and
                 FileExists(FCurrentFileName);
     case Kind of
@@ -70411,6 +70435,8 @@ begin
       StatusText := StatusText + ' (показан файл с диска, без правок)';
     StatusBar1.Panels[0].Text := StatusText;
   end;
+  // Заголовок панели редактора (окно разделено): имя файла, Txt / Fmt
+  SplitUpdateHeaders;
 end;
 
 procedure TForm1.FmtFocusView;
@@ -70478,6 +70504,15 @@ begin
   if (AKey <> VK_F12) or (GetKeyState(VK_CONTROL) < 0) or
      (GetKeyState(VK_SHIFT) < 0) or (GetKeyState(VK_MENU) < 0) then
     Exit;
+  // Работают во второй панели - F12 переключает её вид
+  if (FSplit <> nil) and FSplit.Shown and FSplitActive then
+  begin
+    if SplitWinValid(FSplitWin) and
+       (FmtKindOf(FWindows[FSplitWin].FileName) <> fkNone) then
+      SplitFmtClick(nil);
+    Result := True;
+    Exit;
+  end;
   if not FmtTabHasView then
     Exit;
   FmtToggle;
@@ -70656,6 +70691,13 @@ begin
   FSplitTabsMenu := TUiPopupMenu.Create(Self);
   FSplitTabsMenu.AutoHotkeys := maManual;
 
+  // Заголовок панели редактора - сверху FLeftHost, над номерами строк и
+  // текстом
+  FEditHeader := TPaneHeader.Create(FLeftHost, False, '');
+  FEditHeader.Panel.Visible := False;
+  FEditHeader.OnTitleClick := EditHeaderTitleClick;
+  FEditHeader.OnFmtClick := EditHeaderFmtClick;
+
   UiPaintTree(FSplit.Panel);
   UiPaintTree(FSplit.Splitter);
 end;
@@ -70683,6 +70725,8 @@ begin
     begin
       FSplit.SetLayout(soNone, True);
       FSplitTimer.Enabled := False;
+      FEditHeader.Panel.Visible := False;
+      FSplitActive := False;
     end;
   end
   else
@@ -70690,10 +70734,18 @@ begin
     SplitEnsure;
     if not SplitWinValid(FSplitWin) then
       FSplitWin := FWindowsIndex;
+    FEditHeader.Panel.Visible := True;
+    FEditHeader.Panel.Top := 0;
     FSplit.SetLayout(AOrient, (FSplit.Orient = soNone) or FSplit.EditorFirst);
     SplitRefresh(-1);
     FSplitTimer.Enabled := True;
   end;
+  // Просмотр по формату в панели редактора - под её заголовком
+  if FWebView <> nil then
+    FWebView.SetHostTop(SplitEditTop);
+  if FRtfView <> nil then
+    FRtfView.SetHostTop(SplitEditTop);
+  SplitUpdateHeaders;
   SplitUpdateMenu;
   if FTabs <> nil then
     FTabs.Invalidate;
@@ -70732,6 +70784,7 @@ begin
     StringReplace(FileName, '/', '\', [rfReplaceAll]) + #13#10 +
     'Щелчок по тексту - править здесь; по заголовку - другая вкладка',
     Kind <> fkNone, FSplitFmt);
+  SplitUpdateHeaders;
 
   if FSplitFmt then
   begin
@@ -70836,6 +70889,7 @@ end;
 procedure TForm1.SplitSwapTick(Sender: TObject);
 var
   OldWin, NewWin, OldTop: Integer;
+  OldFmt: Boolean;
 begin
   FSplitSwapTimer.Enabled := False;
   if (FSplit = nil) or not FSplit.Shown or not SplitWinValid(FSplitWin) then
@@ -70847,15 +70901,19 @@ begin
   if RichEdit1.HandleAllocated then
     OldTop := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
 
+  // Вид каждой панели при смене панелей остаётся своим: на месте
+  // редактора остаётся его вид (страница по формату - страница), на
+  // месте щелчка - текст, теперь редактор
+  OldFmt := FWindows[OldWin].FmtShown;
   FSplit.SetLayout(FSplit.Orient, not FSplit.EditorFirst);
-  // Щёлкнули по тексту, чтобы править, - вкладка в редакторе текстом
   FWindows[NewWin].FmtShown := False;
+  FSplitActive := False;
   if NewWin <> OldWin then
     ActivateWindow(NewWin)
   else
     FmtApplyTab;
   FSplitWin := OldWin;
-  FSplitFmt := False;
+  FSplitFmt := OldFmt;
   SplitRefresh(OldTop);
   FSplitPlaceTimer.Enabled := True;
 end;
@@ -70888,27 +70946,8 @@ end;
 
 // Заголовок второй панели: список открытых вкладок - какую показать
 procedure TForm1.SplitTitleClick(Sender: TObject);
-var
-  TabIdx, WinIdx: Integer;
-  Item: TMenuItem;
-  CursorPt: TPoint;
 begin
-  FSplitTabsMenu.Items.Clear;
-  for TabIdx := 0 to High(FTabWin) do
-  begin
-    WinIdx := FTabWin[TabIdx];
-    if not SplitWinValid(WinIdx) then
-      Continue;
-    Item := TMenuItem.Create(FSplitTabsMenu);
-    Item.Caption := TabFileName(FWindows[WinIdx].FileName);
-    Item.Tag := WinIdx;
-    Item.RadioItem := True;
-    Item.Checked := WinIdx = FSplitWin;
-    Item.OnClick := SplitTabMenuClick;
-    FSplitTabsMenu.Items.Add(Item);
-  end;
-  GetCursorPos(CursorPt);
-  FSplitTabsMenu.Popup(CursorPt.X, CursorPt.Y);
+  SplitShowTabsMenu(FSplitWin, SplitTabMenuClick);
 end;
 
 procedure TForm1.SplitTabMenuClick(Sender: TObject);
@@ -70963,6 +71002,117 @@ begin
     SplitSet(soVertical);
   FSplitWin := FTabWin[TabIdx];
   SplitRefresh(0);
+end;
+
+// Отступ сверху для просмотра по формату в панели редактора: над ним -
+// заголовок панели (виден, когда окно разделено)
+function TForm1.SplitEditTop: Integer;
+begin
+  Result := 0;
+  if (FEditHeader <> nil) and FEditHeader.Panel.Visible then
+    Result := FEditHeader.Panel.Height;
+end;
+
+// Заголовки обеих панелей: имя файла, Txt / Fmt, цвет активной
+procedure TForm1.SplitUpdateHeaders;
+var
+  EditKind: TFmtKind;
+  ActiveBack, IdleBack, TextColor: TColor;
+  EditFile: string;
+begin
+  if (FSplit = nil) or (FEditHeader = nil) or not FSplit.Shown then
+    Exit;
+  if SplitWinValid(FWindowsIndex) then
+  begin
+    EditFile := FWindows[FWindowsIndex].FileName;
+    EditKind := FmtKindOf(EditFile);
+    FEditHeader.SetTitle(TabFileName(EditFile),
+      StringReplace(EditFile, '/', '\', [rfReplaceAll]) + #13#10 +
+      'Щелчок - другая вкладка в этой панели',
+      EditKind <> fkNone, FWindows[FWindowsIndex].FmtShown);
+  end
+  else
+    FEditHeader.SetTitle('(нет вкладки)', '', False, False);
+
+  ActiveBack := UiColor('Tabs.ActiveBG');
+  IdleBack := UiColor('Tabs.InactiveBG');
+  TextColor := UiColor('Tabs.Text');
+  if FSplitActive then
+  begin
+    FSplit.Header.SetColors(ActiveBack, TextColor);
+    FEditHeader.SetColors(IdleBack, TextColor);
+  end
+  else
+  begin
+    FSplit.Header.SetColors(IdleBack, TextColor);
+    FEditHeader.SetColors(ActiveBack, TextColor);
+  end;
+end;
+
+// Нажатие мыши в окне AWnd (AppMessage): в какой панели теперь работают
+procedure TForm1.SplitTrackClick(AWnd: HWND);
+var
+  NewActive: Boolean;
+begin
+  if (FSplit = nil) or not FSplit.Shown or (AWnd = 0) then
+    Exit;
+  if FSplit.Panel.HandleAllocated and
+     ((AWnd = FSplit.Panel.Handle) or IsChild(FSplit.Panel.Handle, AWnd)) then
+    NewActive := True
+  else if FLeftHost.HandleAllocated and
+          ((AWnd = FLeftHost.Handle) or IsChild(FLeftHost.Handle, AWnd)) then
+    NewActive := False
+  else
+    Exit;
+  if NewActive <> FSplitActive then
+  begin
+    FSplitActive := NewActive;
+    SplitUpdateHeaders;
+  end;
+end;
+
+// Список открытых вкладок у мыши; ACurrent - отмеченная, AHandler -
+// выбор (Tag пункта - окно)
+procedure TForm1.SplitShowTabsMenu(ACurrent: Integer; AHandler: TNotifyEvent);
+var
+  TabIdx, WinIdx: Integer;
+  Item: TMenuItem;
+  CursorPt: TPoint;
+begin
+  FSplitTabsMenu.Items.Clear;
+  for TabIdx := 0 to High(FTabWin) do
+  begin
+    WinIdx := FTabWin[TabIdx];
+    if not SplitWinValid(WinIdx) then
+      Continue;
+    Item := TMenuItem.Create(FSplitTabsMenu);
+    Item.Caption := StringReplace(TabFileName(FWindows[WinIdx].FileName),
+                                  '&', '&&', [rfReplaceAll]);
+    Item.Tag := WinIdx;
+    Item.RadioItem := True;
+    Item.Checked := WinIdx = ACurrent;
+    Item.OnClick := AHandler;
+    FSplitTabsMenu.Items.Add(Item);
+  end;
+  GetCursorPos(CursorPt);
+  FSplitTabsMenu.Popup(CursorPt.X, CursorPt.Y);
+end;
+
+// Заголовок панели редактора: другая вкладка в редакторе
+procedure TForm1.EditHeaderTitleClick(Sender: TObject);
+begin
+  SplitShowTabsMenu(FWindowsIndex, EditTabMenuClick);
+end;
+
+procedure TForm1.EditTabMenuClick(Sender: TObject);
+begin
+  if (Sender is TMenuItem) and SplitWinValid(TMenuItem(Sender).Tag) then
+    ActivateWindow(TMenuItem(Sender).Tag);
+end;
+
+procedure TForm1.EditHeaderFmtClick(Sender: TObject);
+begin
+  FmtToggle;
 end;
 
 // Окно закрыто (AWinIdx; -1 - закрыты все): его вкладки во второй панели

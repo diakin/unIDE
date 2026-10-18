@@ -80,8 +80,10 @@ type
     FLastError: string;
     FOnOpenFile: TFmtOpenFileEvent;
     FOnLog: TFmtLogEvent;
+    FHostTop: Integer;
     // Navigate вызван, BeforeNavigate2 этой страницы ещё не приходил
     FExpectOwn: Boolean;
+    procedure PlaceInHost;
     function IsOwnPage(const AUrl, ALocalPath: string): Boolean;
     function IsTopFrame(const ADisp: IDispatch): Boolean;
     function IsMovedAnchor(const AUrl, ALocalPath: string;
@@ -124,6 +126,8 @@ type
     // Окно AWnd - браузер просмотра или его дочернее окно (Internet
     // Explorer_Server), и просмотр на экране
     function OwnsWindow(AWnd: HWND): Boolean;
+    // Отступ сверху в панели-хозяине (над просмотром - заголовок панели)
+    procedure SetHostTop(ATop: Integer);
     property SourceFile: string read FSourceFile;
     property LastError: string read FLastError;
     property OnOpenFile: TFmtOpenFileEvent read FOnOpenFile write FOnOpenFile;
@@ -150,6 +154,8 @@ type
     FPaperColor: TColor;
     FWrapLines: Boolean;
     FOnClickPos: TFmtClickPosEvent;
+    FHostTop: Integer;
+    procedure PlaceInHost;
     procedure SetPaperColor(AColor: TColor);
     procedure SetWrapLines(AValue: Boolean);
     procedure EditMouseDown(Sender: TObject; Button: TMouseButton;
@@ -176,6 +182,8 @@ type
     procedure CopySelection;
     procedure SelectAll;
     function OwnsWindow(AWnd: HWND): Boolean;
+    // Отступ сверху в панели-хозяине (над просмотром - заголовок панели)
+    procedure SetHostTop(ATop: Integer);
     // Первая видимая строка (с 0) / прокрутить так, чтобы ATopLine была
     // первой видимой
     function TopLine: Integer;
@@ -720,12 +728,19 @@ end;
 //  TWebPreview
 // ---------------------------------------------------------------------------
 
+var
+  // Номер просмотра в процессе - для имени временной страницы: у
+  // редактора и второй панели страницы свои
+  WebPreviewSerial: Integer = 0;
+
 constructor TWebPreview.Create(AHost: TWinControl);
 begin
   inherited Create;
   FHost := AHost;
   FScrollPos := TStringList.Create;
-  FTempBase := TempFolder + 'unide_fmt_' + IntToStr(GetCurrentProcessId);
+  Inc(WebPreviewSerial);
+  FTempBase := TempFolder + 'unide_fmt_' + IntToStr(GetCurrentProcessId) +
+               '_' + IntToStr(WebPreviewSerial);
   FMsgWnd := Classes.AllocateHWnd(MsgWndProc);
 end;
 
@@ -754,7 +769,7 @@ begin
     // прячется
     TWinControl(FBrowser).Parent := FHost;
     TWinControl(FBrowser).Visible := False;
-    FBrowser.SetBounds(0, 0, FHost.ClientWidth, FHost.ClientHeight);
+    PlaceInHost;
     FBrowser.Anchors := [akLeft, akTop, akRight, akBottom];
     FBrowser.Silent := True;                 // без окон ошибок скриптов
     FBrowser.RegisterAsDropTarget := False;  // файл, брошенный мышью, не открывать
@@ -840,6 +855,7 @@ begin
   FCurrentPage := APage;
   FPendingScroll := StrToIntDef(FScrollPos.Values[ScrollKey(FSourceFile)], 0);
   try
+    PlaceInHost;
     TWinControl(FBrowser).Visible := True;
     FBrowser.BringToFront;
     Flags := NavFlagsReload;
@@ -942,6 +958,21 @@ begin
     FBrowser.ExecWB(17, 0);
   except
   end;
+end;
+
+procedure TWebPreview.PlaceInHost;
+begin
+  if FBrowser <> nil then
+    FBrowser.SetBounds(0, FHostTop, FHost.ClientWidth,
+                       FHost.ClientHeight - FHostTop);
+end;
+
+procedure TWebPreview.SetHostTop(ATop: Integer);
+begin
+  if ATop = FHostTop then
+    Exit;
+  FHostTop := ATop;
+  PlaceInHost;
 end;
 
 function TWebPreview.OwnsWindow(AWnd: HWND): Boolean;
@@ -1313,7 +1344,7 @@ begin
     FEdit := TRtfViewEdit.Create(nil);
     FEdit.Visible := False;
     FEdit.Parent := FHost;
-    FEdit.SetBounds(0, 0, FHost.ClientWidth, FHost.ClientHeight);
+    PlaceInHost;
     FEdit.Anchors := [akLeft, akTop, akRight, akBottom];
     FEdit.BorderStyle := bsNone;
     FEdit.ReadOnly := True;
@@ -1396,9 +1427,16 @@ begin
     Exit;
   RememberScroll;
   FSourceFile := ASourceFile;
+  PlaceInHost;
   FEdit.Visible := True;
   FEdit.BringToFront;
   FEdit.HandleNeeded;
+  // Без переноса RichEdit всё равно делит строку шире ~24575 пикселей на
+  // строки экрана, и номера строк (EM_EXLINEFROMCHAR, EM_LINEINDEX) уже не
+  // совпадали бы со строками текста. EM_SETTARGETDEVICE с шириной 1 -
+  // строка не переносится совсем
+  if not FWrapLines then
+    SendMessage(FEdit.Handle, WM_USER + 72, 0, 1);
   SendMessage(FEdit.Handle, WM_SETREDRAW, 0, 0);
   try
     Result := StreamIn(ABytes);
@@ -1587,6 +1625,21 @@ begin
   CurTop := SendMessage(FEdit.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
   if ATopLine <> CurTop then
     SendMessage(FEdit.Handle, EM_LINESCROLL, 0, ATopLine - CurTop);
+end;
+
+procedure TRtfPreview.PlaceInHost;
+begin
+  if FEdit <> nil then
+    FEdit.SetBounds(0, FHostTop, FHost.ClientWidth,
+                    FHost.ClientHeight - FHostTop);
+end;
+
+procedure TRtfPreview.SetHostTop(ATop: Integer);
+begin
+  if ATop = FHostTop then
+    Exit;
+  FHostTop := ATop;
+  PlaceInHost;
 end;
 
 function TRtfPreview.OwnsWindow(AWnd: HWND): Boolean;
