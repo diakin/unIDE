@@ -77,6 +77,7 @@ type
     function IsMovedAnchor(const AUrl, ALocalPath: string;
       out AAnchor: string): Boolean;
     procedure JumpToAnchor(const AAnchor: string);
+    procedure LogImages;
     procedure Log(const AText: string);
     function EnsureBrowser: Boolean;
     function ReadScroll: Integer;
@@ -848,7 +849,10 @@ procedure TWebPreview.BrowserDocumentComplete(Sender: TObject;
 var
   Doc: OleVariant;
 begin
-  if (FPendingScroll <= 0) or not IsTopFrame(ADisp) then
+  if not IsTopFrame(ADisp) then
+    Exit;
+  LogImages;
+  if FPendingScroll <= 0 then
     Exit;
   try
     Doc := FBrowser.Document;
@@ -857,6 +861,56 @@ begin
     // страница без окна (не загрузилась) - остаётся вверху
   end;
   FPendingScroll := 0;
+end;
+
+// Картинки загруженной страницы - в журнал (OnLog): адрес страницы, режим
+// IE, сколько картинок и какие не показаны, с адресом каждой. К
+// DocumentComplete картинки уже загружены или не загрузились. Не
+// показанная - naturalWidth = 0 (есть с IE9; в режиме ниже - width, у
+// значка битой картинки он не 0, такие видны только по адресу)
+procedure TWebPreview.LogImages;
+var
+  Doc, Images, Img: OleVariant;
+  ImgIdx, ImgCount, BrokenCount, ImgWidth: Integer;
+  DocMode, ImgSrc: string;
+begin
+  if not Assigned(FOnLog) or (FBrowser = nil) or (FBrowser.Document = nil) then
+    Exit;
+  try
+    Doc := FBrowser.Document;
+    Images := Doc.images;
+    ImgCount := Images.length;
+  except
+    Exit;
+  end;
+  try
+    DocMode := VarToStr(Doc.documentMode);
+  except
+    DocMode := '?';
+  end;
+  Log('страница: ' + VarToStr(Doc.URL) + ', режим IE ' + DocMode +
+      ', картинок: ' + IntToStr(ImgCount));
+  BrokenCount := 0;
+  for ImgIdx := 0 to ImgCount - 1 do
+    try
+      Img := Images.item(ImgIdx);
+      ImgSrc := VarToStr(Img.src);
+      try
+        ImgWidth := Img.naturalWidth;
+      except
+        ImgWidth := Img.width;
+      end;
+      if ImgWidth <= 0 then
+      begin
+        Inc(BrokenCount);
+        Log('картинка не показана: ' + ImgSrc);
+      end;
+    except
+      // элемент без свойств картинки - пропустить
+    end;
+  if BrokenCount > 0 then
+    Log('не показано картинок: ' + IntToStr(BrokenCount) + ' из ' +
+        IntToStr(ImgCount));
 end;
 
 // Событие - от самой страницы, а не от кадра (frame, iframe) внутри неё
