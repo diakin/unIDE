@@ -4546,6 +4546,9 @@ begin
   UiDefault('Format.SuspectText', clNone, clNone);
   // Полоса меток: закладка (квадратик с номером) и стрелка строки остановки
   UiDefault('Gutter.MarksBG', clDefault, clDefault);
+  // Список совпадений (Match list, Find in Files): строка файла
+  UiDefault('Match.FileBG', $00F0D8B0, $00905020);
+  UiDefault('Match.FileText', clBlack, clWhite);
   UiDefault('Gutter.BmBG', $0080FFFF, $00406060);
   UiDefault('Gutter.BmBorder', $00404040, $00A0C0C0);
   UiDefault('Gutter.BmText', clBlack, $00F0FFFF);
@@ -4851,6 +4854,10 @@ begin
     Result := 'Полоса номеров: фон текущей строки'
   else if AKey = 'Gutter.CurText' then
     Result := 'Полоса номеров: текст текущей строки (clDefault - как цифры)'
+  else if AKey = 'Match.FileBG' then
+    Result := 'Список совпадений: фон строки файла'
+  else if AKey = 'Match.FileText' then
+    Result := 'Список совпадений: текст строки файла'
   else if AKey = 'Gutter.MarksBG' then
     Result := 'Полоса меток: фон (clDefault - чуть светлее / темнее фона редактора)'
   else if AKey = 'Gutter.BmBG' then
@@ -19570,12 +19577,14 @@ begin
       Exit;
     end;
 
-    // --- заголовок файла
+    // --- заголовок файла: свой цвет (Match.FileBG, Match.FileText) и
+    // полужирный - строку файла видно среди найденных строк
     if FMatchRows[Idx].Kind = mrkGroup then
     begin
-      Cnv.Brush.Color := FMatchGrid.FixedColor;
+      Cnv.Brush.Color := UiColor('Match.FileBG');
       Cnv.FillRect(Rect);
-      Cnv.Font.Color := FMatchGrid.Font.Color;
+      Cnv.Font.Color := UiColor('Match.FileText');
+      Cnv.Font.Style := [fsBold];
 
       // Искать файл: строка-файл без вхождений - без квадратика, справа
       // размер и время
