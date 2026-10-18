@@ -567,6 +567,25 @@ object Form1: TForm1
         OnClick = FmtViewClick
         ShortCut = 123
       end
+      object mViewSplitSep: TMenuItem
+        Caption = '-'
+      end
+      object mViewSplitV: TMenuItem
+        Caption = 'Разделить по вертикали'
+        RadioItem = True
+        OnClick = SplitVClick
+      end
+      object mViewSplitH: TMenuItem
+        Caption = 'Разделить по горизонтали'
+        RadioItem = True
+        OnClick = SplitHClick
+      end
+      object mViewSplitOff: TMenuItem
+        Caption = 'Без разделения'
+        Checked = True
+        RadioItem = True
+        OnClick = SplitOffClick
+      end
       object mViewIcons: TMenuItem
         Caption = 'Palette Icons...'
       end
@@ -869,6 +888,15 @@ object Form1: TForm1
     object FTabsPopupItem4: TMenuItem
       Caption = 'Закрыть остальные вкладки'
       OnClick = CloseAllTabsClick
+      ShortCut = 0
+    end
+    object FTabsPopupItem5: TMenuItem
+      Caption = '-'
+      ShortCut = 0
+    end
+    object FTabsPopupItem6: TMenuItem
+      Caption = 'Во второй панели'
+      OnClick = TabToSplitClick
       ShortCut = 0
     end
   end

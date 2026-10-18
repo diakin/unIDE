@@ -68,7 +68,8 @@ uses
   SearchDirs in 'SearchDirs.pas',
   RunConsole in 'RunConsole.pas',
   MdHtml in 'MdHtml.pas',
-  FmtView in 'FmtView.pas';
+  FmtView in 'FmtView.pas',
+  SplitPane in 'SplitPane.pas';
 
 {$R *.res}
 

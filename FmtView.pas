@@ -58,6 +58,10 @@ type
 
   TFmtOpenFileEvent = procedure(const AFileName: string) of object;
   TFmtLogEvent = procedure(const AText: string) of object;
+  // Щелчок левой кнопкой по тексту RichEdit просмотра: строка и позиция в
+  // ней (с 0) под мышью, первая видимая строка
+  TFmtClickPosEvent = procedure(Sender: TObject;
+    ALine, ACol, ATopLine: Integer) of object;
 
   // Встроенный IE: Markdown, HTML, MHT
   TWebPreview = class
@@ -143,6 +147,13 @@ type
     FScrollLine: TStringList; // файл вкладки = первая видимая строка
     FLastError: string;
     FOnLog: TFmtLogEvent;
+    FPaperColor: TColor;
+    FWrapLines: Boolean;
+    FOnClickPos: TFmtClickPosEvent;
+    procedure SetPaperColor(AColor: TColor);
+    procedure SetWrapLines(AValue: Boolean);
+    procedure EditMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
     function EnsureEdit: Boolean;
     procedure RememberScroll;
     procedure Log(const AText: string);
@@ -164,8 +175,19 @@ type
     procedure FocusView;
     procedure CopySelection;
     procedure SelectAll;
+    function OwnsWindow(AWnd: HWND): Boolean;
+    // Первая видимая строка (с 0) / прокрутить так, чтобы ATopLine была
+    // первой видимой
+    function TopLine: Integer;
+    procedure SetTopLine(ATopLine: Integer);
     property LastError: string read FLastError;
     property OnLog: TFmtLogEvent read FOnLog write FOnLog;
+    // Фон окна (по умолчанию белый - лист документа)
+    property PaperColor: TColor read FPaperColor write SetPaperColor;
+    // Перенос строк по ширине окна (по умолчанию да; для текста
+    // программы - нет, с горизонтальной прокруткой)
+    property WrapLines: Boolean read FWrapLines write SetWrapLines;
+    property OnClickPos: TFmtClickPosEvent read FOnClickPos write FOnClickPos;
   end;
 
 // Вид просмотра по расширению файла; fkNone - просмотра по формату нет
@@ -182,6 +204,8 @@ function MdColorsFor(ABack, AFore: TColor): TMdColors;
 // Элемент - окно просмотра (браузер или RichEdit просмотра). Темы IDE и
 // снимок формы его не трогают: цвета просмотра свои
 function FmtIsViewControl(AControl: TControl): Boolean;
+// Текст -> RTF (кириллица - \'xx в cp1251): сообщение в просмотре
+function FmtPlainToRtf(const AText: string): string;
 // Путь к rvf2rtf.exe ('' - не найден): рядом с exe unIDE, в его tools\ и
 // tools\rvf2rtf\, то же на уровень выше
 function FmtRvfHelperPath: string;
@@ -658,6 +682,11 @@ begin
     end;
   end;
   Result := Result + '}';
+end;
+
+function FmtPlainToRtf(const AText: string): string;
+begin
+  Result := PlainToRtf(AText);
 end;
 
 function FmtIsViewControl(AControl: TControl): Boolean;
@@ -1264,6 +1293,8 @@ begin
   FHost := AHost;
   FPopup := APopup;
   FScrollLine := TStringList.Create;
+  FPaperColor := clWhite;
+  FWrapLines := True;
 end;
 
 destructor TRtfPreview.Destroy;
@@ -1286,16 +1317,22 @@ begin
     FEdit.Anchors := [akLeft, akTop, akRight, akBottom];
     FEdit.BorderStyle := bsNone;
     FEdit.ReadOnly := True;
-    FEdit.WordWrap := True;
-    FEdit.ScrollBars := ssVertical;
+    FEdit.WordWrap := FWrapLines;
+    if FWrapLines then
+      FEdit.ScrollBars := ssVertical
+    else
+      FEdit.ScrollBars := ssBoth;
     FEdit.HideSelection := False;
     FEdit.PlainText := False;
-    // Лист белый: цвета текста задаёт документ (см. в начале модуля)
-    FEdit.Color := clWhite;
+    // Лист по умолчанию белый: цвета текста задаёт документ (см. в начале
+    // модуля)
+    FEdit.Color := FPaperColor;
     FEdit.Font.Name := 'Tahoma';
     FEdit.Font.Size := 10;
     FEdit.Font.Color := clBlack;
     FEdit.PopupMenu := FPopup;
+    FEdit.TabStop := False;
+    FEdit.OnMouseDown := EditMouseDown;
     Result := True;
   except
     on E: Exception do
@@ -1488,6 +1525,74 @@ begin
   end;
   SysUtils.DeleteFile(RtfFile);
   Result := ShowRtf(Bytes, AFileName);
+end;
+
+procedure TRtfPreview.SetPaperColor(AColor: TColor);
+begin
+  FPaperColor := AColor;
+  if FEdit <> nil then
+    FEdit.Color := AColor;
+end;
+
+procedure TRtfPreview.SetWrapLines(AValue: Boolean);
+begin
+  FWrapLines := AValue;
+  if FEdit <> nil then
+  begin
+    FEdit.WordWrap := AValue;
+    if AValue then
+      FEdit.ScrollBars := ssVertical
+    else
+      FEdit.ScrollBars := ssBoth;
+  end;
+end;
+
+// EM_CHARFROMPOS у RichEdit: lParam - адрес точки (POINTL), а не
+// координаты в самом lParam, как у простого поля
+procedure TRtfPreview.EditMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+const
+  EM_EXLINEFROMCHAR_ = WM_USER + 54;
+var
+  ClickPt: TPoint;
+  CharIdx, LineIdx, LineStart: Integer;
+begin
+  if (Button <> mbLeft) or not Assigned(FOnClickPos) or
+     not FEdit.HandleAllocated then
+    Exit;
+  ClickPt := Point(X, Y);
+  CharIdx := SendMessage(FEdit.Handle, EM_CHARFROMPOS, 0, Longint(@ClickPt));
+  if CharIdx < 0 then
+    CharIdx := 0;
+  LineIdx := SendMessage(FEdit.Handle, EM_EXLINEFROMCHAR_, 0, CharIdx);
+  LineStart := SendMessage(FEdit.Handle, EM_LINEINDEX, LineIdx, 0);
+  if LineStart < 0 then
+    LineStart := CharIdx;
+  FOnClickPos(Self, LineIdx, CharIdx - LineStart, TopLine);
+end;
+
+function TRtfPreview.TopLine: Integer;
+begin
+  Result := 0;
+  if (FEdit <> nil) and FEdit.HandleAllocated then
+    Result := SendMessage(FEdit.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+end;
+
+procedure TRtfPreview.SetTopLine(ATopLine: Integer);
+var
+  CurTop: Integer;
+begin
+  if (FEdit = nil) or not FEdit.HandleAllocated then
+    Exit;
+  CurTop := SendMessage(FEdit.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  if ATopLine <> CurTop then
+    SendMessage(FEdit.Handle, EM_LINESCROLL, 0, ATopLine - CurTop);
+end;
+
+function TRtfPreview.OwnsWindow(AWnd: HWND): Boolean;
+begin
+  Result := (AWnd <> 0) and IsShown and FEdit.HandleAllocated and
+            (AWnd = FEdit.Handle);
 end;
 
 procedure TRtfPreview.HideView;

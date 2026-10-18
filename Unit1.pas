@@ -39,6 +39,7 @@ uses
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
+  SplitPane,      // вторая панель редактора: вкладка только для чтения
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -568,6 +569,8 @@ type
     FTabsPopupItem2: TMenuItem;
     FTabsPopupItem3: TMenuItem;
     FTabsPopupItem4: TMenuItem;
+    FTabsPopupItem5: TMenuItem;
+    FTabsPopupItem6: TMenuItem;
     mSepFind: TMenuItem;
     mFind: TMenuItem;
     mUndoReplace: TMenuItem;
@@ -657,6 +660,10 @@ type
     FOwnCaretTimer: TTimer;
     DsgItem: TMenuItem;
     mViewFmt: TMenuItem;
+    mViewSplitSep: TMenuItem;
+    mViewSplitV: TMenuItem;
+    mViewSplitH: TMenuItem;
+    mViewSplitOff: TMenuItem;
     mViewIcons: TMenuItem;
     mSepInc: TMenuItem;
     mIncManager: TMenuItem;
@@ -889,6 +896,10 @@ type
     procedure OwnCaretTick(Sender: TObject);
     procedure DesignFormClick(Sender: TObject);
     procedure FmtViewClick(Sender: TObject);
+    procedure SplitVClick(Sender: TObject);
+    procedure SplitHClick(Sender: TObject);
+    procedure SplitOffClick(Sender: TObject);
+    procedure TabToSplitClick(Sender: TObject);
     procedure ObjSnapBtnClick(Sender: TObject);
     procedure DsgShowHideClick(Sender: TObject);
     procedure ObjMoveClick(Sender: TObject);
@@ -2777,6 +2788,24 @@ type
     procedure FmtFocusView;
     procedure FmtLog(const AText: string);
     procedure FmtShowPopup(const APoint: TPoint);
+    // Вторая панель редактора (SplitPane)
+    function  SplitWinValid(AWinIdx: Integer): Boolean;
+    function  SplitWinText(AWinIdx: Integer): string;
+    function  SplitWinModified(AWinIdx: Integer): Boolean;
+    function  SplitWinBytes(AWinIdx: Integer): string;
+    procedure SplitEnsure;
+    procedure SplitUpdateMenu;
+    procedure SplitSet(AOrient: TSplitOrient);
+    procedure SplitRefresh(ATopLine: Integer);
+    procedure SplitTimerTick(Sender: TObject);
+    procedure SplitTextClick(ALine, ACol, ATopLine: Integer);
+    procedure SplitSwapTick(Sender: TObject);
+    procedure SplitPlaceTick(Sender: TObject);
+    procedure SplitTitleClick(Sender: TObject);
+    procedure SplitTabMenuClick(Sender: TObject);
+    procedure SplitFmtClick(Sender: TObject);
+    procedure SplitCloseClick(Sender: TObject);
+    procedure SplitWindowClosed(AWinIdx: Integer);
     function  HelpWordAtCaret: string;
     procedure DbgLinesPre(const Message: TMessage; AWhole: Boolean);
     procedure DbgLinesPost;
@@ -3219,6 +3248,21 @@ type
     FWebView: TWebPreview;
     // Просмотр RTF и RVF поверх редактора (RichEdit только для чтения)
     FRtfView: TRtfPreview;
+    // Вторая панель редактора: окно вкладки в ней (FSplitWin, -1 - нет),
+    // её вид (текст / по формату), таймеры обновления и смены панелей,
+    // место щелчка по её тексту. См. раздел "Вторая панель редактора"
+    FSplit: TSplitPane;
+    FSplitWin: Integer;
+    FSplitFmt: Boolean;
+    FSplitTimer: TTimer;
+    FSplitSwapTimer: TTimer;
+    FSplitPlaceTimer: TTimer;
+    FSplitTabsMenu: TUiPopupMenu;
+    FSplitSerial: Cardinal;      // FEditSerial, по которому панель построена
+    FSplitTickSerial: Cardinal;  // FEditSerial на прошлом такте таймера
+    FSplitClickLine: Integer;
+    FSplitClickCol: Integer;
+    FSplitClickTop: Integer;
 
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
@@ -3601,6 +3645,7 @@ var
     DlgFindInc,   // поиск inc-файла (View) - FindIncShow
     RqDeps,       // перед сборкой RapidQ: есть ли все $INCLUDE, $RESOURCE, DLL
     IniBuf,       // TBufIniFile - editor.ini одной записью (SaveSettings)
+    SchemeRtf,    // текст с подсветкой -> RTF (вторая панель редактора)
     UiStdDlgs,    // TUiColorDialog - диалог цвета в цветах темы (инспектор)
     DlgRqDeps,    // окно недостающих файлов - RqDepsBeforeBuild
     DlgDelPrj,    // Delete Projects - DeleteProjectClick
@@ -6539,6 +6584,8 @@ begin
   'схема %d, конструктор %d',
              [FThemeName, GetTickCount - StartTick, TColors, TMaps, TSchema,
              TDesigner]), clNavy);
+  // Текст второй панели - цветами новой темы
+  SplitRefresh(-1);
 end;
 
 procedure TForm1.LoadSettings;
@@ -9327,6 +9374,7 @@ begin
   end;
   // Просмотр мог остаться на экране - вкладок больше нет
   FmtApplyTab;
+  SplitWindowClosed(-1);
 
   FWindowsIndex := -1;
   FCurrentFileName := '';
@@ -17018,6 +17066,16 @@ begin
            (TabCloseWidth - C.TextWidth(Cross)) div 2;
       C.TextOut(X, Y, Cross);
     end;
+
+    // Вкладка второй панели редактора - черта снизу цветом кнопки Txt / Fmt
+    if (FSplit <> nil) and FSplit.Shown and (TabWin >= 0) and
+       (TabWin = FSplitWin) then
+    begin
+      C.Brush.Style := bsSolid;
+      C.Brush.Color := UiColor('Tabs.FmtBtn');
+      C.FillRect(Rect(ARect.Left + 2, ARect.Bottom - 3, ARect.Right - 2,
+                      ARect.Bottom - 1));
+    end;
   finally
     C.Handle := 0;
     C.Free;
@@ -17376,6 +17434,7 @@ begin
       FmtApplyTab;
     end;
   end;
+  SplitWindowClosed(WinIdx);
 
   RebuildWindowsMenu;
   RebuildBookmarksMenu;
@@ -21911,6 +21970,15 @@ begin
       Exit;
     end;
   end;
+  // Страница IE во второй панели: правый щелчок - меню панели
+  if (FSplit <> nil) and (Msg.message = WM_RBUTTONUP) and
+     FSplit.WebOwnsWindow(Msg.hwnd) then
+  begin
+    GetCursorPos(CursorPt);
+    FSplit.ShowMenu(CursorPt);
+    Handled := True;
+    Exit;
+  end;
 
   // Клавиши отладчика, как в Delphi: F9 - Run и продолжение после
   // остановки, Ctrl+F2 - Program reset, F5 - точка останова на строке с
@@ -22650,6 +22718,7 @@ begin
   RqHelpCloseAll;   // окна справки CHM - до выхода программы
   FreeAndNil(FWebView); // просмотр по формату: браузер и временная страница
   FreeAndNil(FRtfView); // просмотр RTF / RVF
+  FreeAndNil(FSplit);   // вторая панель редактора
   // Возвращаем старую процедуру на место. Если FormShow не отработал,
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then
@@ -70381,6 +70450,18 @@ begin
     Result := True;
     Exit;
   end;
+  // Фокус во второй панели: Ctrl+C и Ctrl+A - для неё
+  if (FSplit <> nil) and FSplit.OwnsWindow(GetFocus) and
+     (GetKeyState(VK_CONTROL) < 0) and (GetKeyState(VK_SHIFT) >= 0) and
+     (GetKeyState(VK_MENU) >= 0) and ((AKey = Ord('C')) or (AKey = Ord('A'))) then
+  begin
+    if AKey = Ord('C') then
+      FSplit.CopySelection
+    else
+      FSplit.SelectAll;
+    Result := True;
+    Exit;
+  end;
   // Просмотр на экране: Ctrl+C и Ctrl+A - для него, а не для редактора под
   // ним (иначе их взяли бы пункты меню Copy и Select All)
   if FmtAnyShown and
@@ -70472,6 +70553,429 @@ end;
 procedure TForm1.FmtLog(const AText: string);
 begin
   Dbg('Просмотр по формату, ' + AText, clGray);
+end;
+
+// ---------------------------------------------------------------------------
+//  Вторая панель редактора (SplitPane)
+//
+//  View - Разделить по вертикали / по горизонтали. Во второй панели - любая
+//  открытая вкладка (выбор - щелчком по заголовку панели или пунктом "Во
+//  второй панели" в меню вкладки), только для чтения: текст с подсветкой
+//  по схеме файла (SchemeTextToRtf) или вид "по формату" (кнопка Txt / Fmt
+//  в заголовке). Щелчок по тексту второй панели - править в ней: панели
+//  меняются местами (редактор переезжает на сторону щелчка), редактор
+//  открывает вкладку панели с кареткой в месте щелчка, а прежняя вкладка
+//  редактора становится текстом второй панели на том же месте прокрутки.
+//
+//  Если во второй панели та же вкладка, что в редакторе, она обновляется
+//  после паузы в наборе (SplitTimerTick); текст с подсветкой больше
+//  SplitLiveLimit символов - только при смене панелей и выборе вкладки.
+// ---------------------------------------------------------------------------
+
+const
+  SplitLiveLimit = 1000000;
+
+function TForm1.SplitWinValid(AWinIdx: Integer): Boolean;
+begin
+  Result := (AWinIdx >= 0) and (AWinIdx <= WindowsItemCount - 1) and
+            FWindows[AWinIdx].Used;
+end;
+
+// Текст окна: активного - из редактора, остальных - из записи окна
+function TForm1.SplitWinText(AWinIdx: Integer): string;
+begin
+  if AWinIdx = FWindowsIndex then
+    Result := GetEditorText
+  else
+    Result := FWindows[AWinIdx].Text;
+end;
+
+function TForm1.SplitWinModified(AWinIdx: Integer): Boolean;
+begin
+  if AWinIdx = FWindowsIndex then
+    Result := RichEdit1.Modified
+  else
+    Result := FWindows[AWinIdx].Modified;
+end;
+
+// Текст окна в кодировке его файла - как его записало бы сохранение
+function TForm1.SplitWinBytes(AWinIdx: Integer): string;
+var
+  IsUtf8, HasBom: Boolean;
+begin
+  Result := SplitWinText(AWinIdx);
+  if AWinIdx = FWindowsIndex then
+  begin
+    IsUtf8 := FFileIsUtf8;
+    HasBom := FFileHasBom;
+  end
+  else
+  begin
+    IsUtf8 := FWindows[AWinIdx].IsUtf8;
+    HasBom := FWindows[AWinIdx].HasBom;
+  end;
+  if IsUtf8 then
+  begin
+    Result := AnsiToUtf8(Result);
+    if HasBom then
+      Result := #$EF#$BB#$BF + Result;
+  end;
+end;
+
+procedure TForm1.SplitEnsure;
+begin
+  if FSplit <> nil then
+    Exit;
+  FSplitWin := -1;
+  FSplit := TSplitPane.Create(FLeftHost.Parent, FLeftHost);
+  FSplit.OnTextClick := SplitTextClick;
+  FSplit.OnTitleClick := SplitTitleClick;
+  FSplit.OnFmtClick := SplitFmtClick;
+  FSplit.OnCloseClick := SplitCloseClick;
+  FSplit.Web.OnOpenFile := FmtOpenFromView;
+  FSplit.Web.OnLog := FmtLog;
+  FSplit.Fmt.OnLog := FmtLog;
+
+  FSplitTimer := TTimer.Create(Self);
+  FSplitTimer.Enabled := False;
+  FSplitTimer.Interval := 700;
+  FSplitTimer.OnTimer := SplitTimerTick;
+  // Смена панелей - не внутри щелчка мыши по второй панели (у её RichEdit
+  // в этот момент захвачена мышь), а следующим тактом; каретка и
+  // прокрутка редактора - ещё тактом позже, когда закончится показ вкладки
+  // (WMTabSwitched приходит сообщением)
+  FSplitSwapTimer := TTimer.Create(Self);
+  FSplitSwapTimer.Enabled := False;
+  FSplitSwapTimer.Interval := 1;
+  FSplitSwapTimer.OnTimer := SplitSwapTick;
+  FSplitPlaceTimer := TTimer.Create(Self);
+  FSplitPlaceTimer.Enabled := False;
+  FSplitPlaceTimer.Interval := 1;
+  FSplitPlaceTimer.OnTimer := SplitPlaceTick;
+
+  FSplitTabsMenu := TUiPopupMenu.Create(Self);
+  FSplitTabsMenu.AutoHotkeys := maManual;
+
+  UiPaintTree(FSplit.Panel);
+  UiPaintTree(FSplit.Splitter);
+end;
+
+procedure TForm1.SplitUpdateMenu;
+var
+  Orient: TSplitOrient;
+begin
+  Orient := soNone;
+  if (FSplit <> nil) and FSplit.Shown then
+    Orient := FSplit.Orient;
+  if mViewSplitV <> nil then
+    mViewSplitV.Checked := Orient = soVertical;
+  if mViewSplitH <> nil then
+    mViewSplitH.Checked := Orient = soHorizontal;
+  if mViewSplitOff <> nil then
+    mViewSplitOff.Checked := Orient = soNone;
+end;
+
+procedure TForm1.SplitSet(AOrient: TSplitOrient);
+begin
+  if AOrient = soNone then
+  begin
+    if FSplit <> nil then
+    begin
+      FSplit.SetLayout(soNone, True);
+      FSplitTimer.Enabled := False;
+    end;
+  end
+  else
+  begin
+    SplitEnsure;
+    if not SplitWinValid(FSplitWin) then
+      FSplitWin := FWindowsIndex;
+    FSplit.SetLayout(AOrient, (FSplit.Orient = soNone) or FSplit.EditorFirst);
+    SplitRefresh(-1);
+    FSplitTimer.Enabled := True;
+  end;
+  SplitUpdateMenu;
+  if FTabs <> nil then
+    FTabs.Invalidate;
+end;
+
+// Показать во второй панели её вкладку (FSplitWin) в её виде (FSplitFmt).
+// ATopLine - первая видимая строка текста; -1 - оставить, как есть
+procedure TForm1.SplitRefresh(ATopLine: Integer);
+var
+  Kind: TFmtKind;
+  FileName, Utf8Text, Rtf, ErrText: string;
+  Scheme: TClrScheme;
+  Shown, FromDisk: Boolean;
+  TopLine: Integer;
+begin
+  if (FSplit = nil) or not FSplit.Shown then
+    Exit;
+  FSplitSerial := FEditSerial;
+  FSplitTickSerial := FEditSerial;
+  if FTabs <> nil then
+    FTabs.Invalidate;   // отметка вкладки второй панели (TabsDrawTab)
+  if not SplitWinValid(FSplitWin) then
+  begin
+    FSplit.SetTitle('(нет вкладки)', '', False, False);
+    FSplit.ShowNotice('Во второй панели нет вкладки.'#10#10 +
+      'Выберите её щелчком по заголовку этой панели или пунктом ' +
+      '"Во второй панели" в меню правой кнопки на вкладке.');
+    Exit;
+  end;
+
+  FileName := FWindows[FSplitWin].FileName;
+  Kind := FmtKindOf(FileName);
+  if Kind = fkNone then
+    FSplitFmt := False;
+  FSplit.SetTitle(TabFileName(FileName),
+    StringReplace(FileName, '/', '\', [rfReplaceAll]) + #13#10 +
+    'Щелчок по тексту - править здесь; по заголовку - другая вкладка',
+    Kind <> fkNone, FSplitFmt);
+
+  if FSplitFmt then
+  begin
+    FromDisk := not SplitWinModified(FSplitWin) and
+                not IsUntitledName(FileName) and FileExists(FileName);
+    Shown := False;
+    ErrText := '';
+    case Kind of
+      fkMarkdown:
+        begin
+          if not FromDisk or not MdFileToUtf8(FileName, Utf8Text) then
+            Utf8Text := AnsiToUtf8(SplitWinText(FSplitWin));
+          Shown := FSplit.Web.ShowMarkdown(Utf8Text, FileName,
+                                           RichEdit1.Color, RichEdit1.Font.Color);
+        end;
+      fkHtml, fkMht:
+        if FromDisk then
+          Shown := FSplit.Web.ShowFile(FileName)
+        else
+          Shown := FSplit.Web.ShowEdited(SplitWinBytes(FSplitWin), FileName,
+                                         Kind);
+      fkRtf:
+        if FromDisk then
+          Shown := FSplit.Fmt.ShowRtfFile(FileName)
+        else
+          Shown := FSplit.Fmt.ShowRtf(SplitWinBytes(FSplitWin), FileName);
+      fkRvf:
+        Shown := FileExists(FileName) and FSplit.Fmt.ShowRvfFile(FileName);
+    end;
+    if Shown then
+    begin
+      if FmtKindIsWeb(Kind) then
+        FSplit.KeepOnly(svWeb)
+      else
+        FSplit.KeepOnly(svFmt);
+    end
+    else
+    begin
+      if FmtKindIsWeb(Kind) then
+        ErrText := FSplit.Web.LastError
+      else
+        ErrText := FSplit.Fmt.LastError;
+      FSplit.ShowNotice('Просмотр по формату не открылся.'#10 + ErrText);
+    end;
+    Exit;
+  end;
+
+  // Текст с подсветкой по схеме этого файла - своей копией схемы:
+  // схема редактора остаётся схемой его вкладки
+  if ATopLine >= 0 then
+    TopLine := ATopLine
+  else if FSplit.View = svText then
+    TopLine := FSplit.TextTopLine
+  else
+    TopLine := 0;
+  Scheme := SchemeCopyFor(FileName);
+  if Scheme = nil then
+  begin
+    FSplit.ShowNotice('Схема подсветки для ' + TabFileName(FileName) +
+                      ' не прочиталась.');
+    Exit;
+  end;
+  try
+    Rtf := SchemeTextToRtf(AdjustLineBreaks(SplitWinText(FSplitWin)), Scheme,
+                           RichEdit1.Font.Name, RichEdit1.Font.Size);
+    FSplit.ShowText(Rtf, FileName, SchemePageColor(Scheme), TopLine);
+  finally
+    Scheme.Free;
+  end;
+end;
+
+// Во второй панели та же вкладка, что в редакторе: обновить после паузы
+// в наборе - текст поменялся, а на следующем такте уже не менялся
+procedure TForm1.SplitTimerTick(Sender: TObject);
+begin
+  if (FSplit = nil) or not FSplit.Shown then
+  begin
+    FSplitTimer.Enabled := False;
+    Exit;
+  end;
+  if (FSplitWin <> FWindowsIndex) or (FEditSerial = FSplitSerial) then
+    Exit;
+  if FEditSerial <> FSplitTickSerial then
+  begin
+    FSplitTickSerial := FEditSerial;   // ещё набирают - подождать
+    Exit;
+  end;
+  if not FSplitFmt and (RichEdit1.GetTextLen > SplitLiveLimit) then
+    Exit;
+  SplitRefresh(-1);
+end;
+
+procedure TForm1.SplitTextClick(ALine, ACol, ATopLine: Integer);
+begin
+  FSplitClickLine := ALine;
+  FSplitClickCol := ACol;
+  FSplitClickTop := ATopLine;
+  FSplitSwapTimer.Enabled := True;
+end;
+
+// Править во второй панели: панели меняются местами (см. начало раздела)
+procedure TForm1.SplitSwapTick(Sender: TObject);
+var
+  OldWin, NewWin, OldTop: Integer;
+begin
+  FSplitSwapTimer.Enabled := False;
+  if (FSplit = nil) or not FSplit.Shown or not SplitWinValid(FSplitWin) then
+    Exit;
+  ReleaseCapture;
+  OldWin := FWindowsIndex;
+  NewWin := FSplitWin;
+  OldTop := 0;
+  if RichEdit1.HandleAllocated then
+    OldTop := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+
+  FSplit.SetLayout(FSplit.Orient, not FSplit.EditorFirst);
+  // Щёлкнули по тексту, чтобы править, - вкладка в редакторе текстом
+  FWindows[NewWin].FmtShown := False;
+  if NewWin <> OldWin then
+    ActivateWindow(NewWin)
+  else
+    FmtApplyTab;
+  FSplitWin := OldWin;
+  FSplitFmt := False;
+  SplitRefresh(OldTop);
+  FSplitPlaceTimer.Enabled := True;
+end;
+
+procedure TForm1.SplitPlaceTick(Sender: TObject);
+var
+  LineStart, LineLen, CurTop: Integer;
+begin
+  FSplitPlaceTimer.Enabled := False;
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FSplitClickLine, 0);
+  if LineStart >= 0 then
+  begin
+    LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+    if FSplitClickCol > LineLen then
+      FSplitClickCol := LineLen;
+    RichEdit1.SelStart := LineStart + FSplitClickCol;
+    RichEdit1.SelLength := 0;
+  end;
+  CurTop := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  if CurTop <> FSplitClickTop then
+    SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, FSplitClickTop - CurTop);
+  if RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
+  UpdateLineNumbers;
+  UpdateStatusBarInfo;
+  RichEdit1.Invalidate;
+end;
+
+// Заголовок второй панели: список открытых вкладок - какую показать
+procedure TForm1.SplitTitleClick(Sender: TObject);
+var
+  TabIdx, WinIdx: Integer;
+  Item: TMenuItem;
+  CursorPt: TPoint;
+begin
+  FSplitTabsMenu.Items.Clear;
+  for TabIdx := 0 to High(FTabWin) do
+  begin
+    WinIdx := FTabWin[TabIdx];
+    if not SplitWinValid(WinIdx) then
+      Continue;
+    Item := TMenuItem.Create(FSplitTabsMenu);
+    Item.Caption := TabFileName(FWindows[WinIdx].FileName);
+    Item.Tag := WinIdx;
+    Item.RadioItem := True;
+    Item.Checked := WinIdx = FSplitWin;
+    Item.OnClick := SplitTabMenuClick;
+    FSplitTabsMenu.Items.Add(Item);
+  end;
+  GetCursorPos(CursorPt);
+  FSplitTabsMenu.Popup(CursorPt.X, CursorPt.Y);
+end;
+
+procedure TForm1.SplitTabMenuClick(Sender: TObject);
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  FSplitWin := TMenuItem(Sender).Tag;
+  SplitRefresh(0);
+end;
+
+procedure TForm1.SplitFmtClick(Sender: TObject);
+begin
+  FSplitFmt := not FSplitFmt;
+  SplitRefresh(-1);
+end;
+
+procedure TForm1.SplitCloseClick(Sender: TObject);
+begin
+  SplitSet(soNone);
+end;
+
+procedure TForm1.SplitVClick(Sender: TObject);
+begin
+  SplitSet(soVertical);
+end;
+
+procedure TForm1.SplitHClick(Sender: TObject);
+begin
+  SplitSet(soHorizontal);
+end;
+
+procedure TForm1.SplitOffClick(Sender: TObject);
+begin
+  SplitSet(soNone);
+end;
+
+// Меню вкладки: "Во второй панели" - вкладка под мышью
+procedure TForm1.TabToSplitClick(Sender: TObject);
+var
+  ClickPt: TPoint;
+  TabIdx: Integer;
+begin
+  if FTabs = nil then
+    Exit;
+  ClickPt := FTabs.ScreenToClient(FTabsPopup.PopupAt);
+  TabIdx := FTabs.IndexOfTabAt(ClickPt.X, ClickPt.Y);
+  if TabIdx < 0 then
+    TabIdx := FTabs.TabIndex;
+  if (TabIdx < 0) or (TabIdx > High(FTabWin)) then
+    Exit;
+  if (FSplit = nil) or not FSplit.Shown then
+    SplitSet(soVertical);
+  FSplitWin := FTabWin[TabIdx];
+  SplitRefresh(0);
+end;
+
+// Окно закрыто (AWinIdx; -1 - закрыты все): его вкладки во второй панели
+// больше нет
+procedure TForm1.SplitWindowClosed(AWinIdx: Integer);
+begin
+  if FSplit = nil then
+    Exit;
+  if (AWinIdx < 0) or (FSplitWin = AWinIdx) then
+  begin
+    FSplitWin := -1;
+    SplitRefresh(0);
+  end;
 end;
 
 // Что не пишется в снимок формы для инспектора и конструктора:
