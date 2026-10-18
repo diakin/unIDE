@@ -2196,7 +2196,7 @@ type
     procedure FifListFilesOnly(AList: TStrings);
     procedure FifFillExts;
     function  FifCheckedExts: string;
-    procedure FifMasksToExts;
+    function  FifMasksToExts: Integer;
     procedure FifSaveSettings;
     procedure FifStatus(const AText: string);
     function  FifPathLine(const APrefix, APath: string): string;
@@ -2209,6 +2209,8 @@ type
     procedure FifBrowseClick(Sender: TObject);
     procedure FifExtAllClick(Sender: TObject);
     procedure FifExtNoneClick(Sender: TObject);
+    procedure FifExtDeleteClick(Sender: TObject);
+    procedure FifMaskAddClick(Sender: TObject);
     procedure FifProgress(const ADir: string; ACount: Integer;
                           var ACancel: Boolean);
     procedure FifCollectDirs(const ADirs, AMasks: string; ASubDirs: Boolean;
@@ -20057,6 +20059,8 @@ begin
     Dlg.btnBrowse.OnClick := FifBrowseClick;
     Dlg.btnExtAll.OnClick := FifExtAllClick;
     Dlg.btnExtNone.OnClick := FifExtNoneClick;
+    Dlg.btnExtDelete.OnClick := FifExtDeleteClick;
+    Dlg.btnMaskAdd.OnClick := FifMaskAddClick;
     Dlg.OnClose := FifDlgClose;
     UiApplyForm(Dlg);
   end;
@@ -20096,6 +20100,9 @@ begin
     Dlg.edMask.Text := '';
     Dlg.edMask.Enabled := False;
     Dlg.chkSub.Enabled := False;
+    // Список масок проекта - расширения его файлов, не правится
+    Dlg.btnMaskAdd.Enabled := False;
+    Dlg.btnExtDelete.Enabled := False;
   end
   else
   begin
@@ -20116,6 +20123,8 @@ begin
     Dlg.edMask.Text := OtherMasks;
     Dlg.edMask.Enabled := True;
     Dlg.chkSub.Enabled := True;
+    Dlg.btnMaskAdd.Enabled := True;
+    Dlg.btnExtDelete.Enabled := True;
     Dlg.chkSub.Checked := SubDirs;
   end;
 
@@ -20295,14 +20304,16 @@ begin
       FifExtAdd(Result, FifExtOfItem(Dlg.lstExt.Items[ItemIdx]));
 end;
 
-// Маски вида *.ext из поля других масок - в список расширений, отмеченными;
-// в поле остаётся остальное
-procedure TForm1.FifMasksToExts;
+// Маски вида *.ext и .ext из поля других масок - в список расширений,
+// отмеченными; в поле остаётся остальное. Результат - сколько масок ушло
+// в список
+function TForm1.FifMasksToExts: Integer;
 var
   Dlg: TDlgFifDisk;
   Rest, MaskItem, Kept, Ext: string;
   SemiAt, ItemIdx, Found: Integer;
 begin
+  Result := 0;
   Dlg := TDlgFifDisk(FFifDlg);
   Rest := Dlg.edMask.Text;
   Kept := '';
@@ -20315,9 +20326,13 @@ begin
     Delete(Rest, 1, SemiAt);
     if MaskItem = '' then
       Continue;
+    // .ext - то же, что *.ext
+    if (MaskItem[1] = '.') and (Length(MaskItem) > 1) then
+      MaskItem := '*' + MaskItem;
     if (Copy(MaskItem, 1, 2) = '*.') and (Pos('*', Copy(MaskItem, 3, MaxInt)) = 0) and
        (Pos('?', MaskItem) = 0) and (Length(MaskItem) > 2) then
     begin
+      Inc(Result);
       Ext := LowerCase(Copy(MaskItem, 2, MaxInt));
       Found := -1;
       for ItemIdx := 0 to Dlg.lstExt.Items.Count - 1 do
@@ -20506,6 +20521,72 @@ begin
   with TDlgFifDisk(FFifDlg) do
     for ItemIdx := 0 to lstExt.Items.Count - 1 do
       lstExt.Checked[ItemIdx] := False;
+end;
+
+// Удалить: отмеченные маски - из списка, после вопроса; список - в
+// editor.ini ([FindInFiles] DiskExts)
+procedure TForm1.FifExtDeleteClick(Sender: TObject);
+var
+  Dlg: TDlgFifDisk;
+  ItemIdx, CheckedCount: Integer;
+  Names: string;
+begin
+  if (FFifDlg = nil) or FFifProject or FFifRunning or FFifListing then
+    Exit;
+  Dlg := TDlgFifDisk(FFifDlg);
+  Names := '';
+  CheckedCount := 0;
+  for ItemIdx := 0 to Dlg.lstExt.Items.Count - 1 do
+    if Dlg.lstExt.Checked[ItemIdx] then
+    begin
+      Inc(CheckedCount);
+      if Names <> '' then
+        Names := Names + ', ';
+      Names := Names + FifExtOfItem(Dlg.lstExt.Items[ItemIdx]);
+    end;
+  if CheckedCount = 0 then
+  begin
+    FifStatus('Отметьте маски, которые удалить из списка');
+    Exit;
+  end;
+  if MessageDlg('Удалить из списка масок (' + IntToStr(CheckedCount) + '):'#13#10 +
+                Names + '?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+  Dlg.lstExt.Items.BeginUpdate;
+  try
+    for ItemIdx := Dlg.lstExt.Items.Count - 1 downto 0 do
+      if Dlg.lstExt.Checked[ItemIdx] then
+        Dlg.lstExt.Items.Delete(ItemIdx);
+  finally
+    Dlg.lstExt.Items.EndUpdate;
+  end;
+  FifSaveSettings;
+  FifStatus('Удалено из списка масок: ' + Names);
+end;
+
+// Add: маски вида *.ext (и .ext) из поля "Доп. маски" - в список масок,
+// отмеченными; остальные маски остаются в поле. Список - в editor.ini
+procedure TForm1.FifMaskAddClick(Sender: TObject);
+var
+  Dlg: TDlgFifDisk;
+  AddedCount: Integer;
+begin
+  if (FFifDlg = nil) or FFifProject or FFifRunning or FFifListing then
+    Exit;
+  Dlg := TDlgFifDisk(FFifDlg);
+  if Trim(Dlg.edMask.Text) = '' then
+  begin
+    FifStatus('Поле "Доп. маски" пустое: впишите маски через ";" (*.txt;.log)');
+    Exit;
+  end;
+  AddedCount := FifMasksToExts;
+  FifSaveSettings;
+  if Trim(Dlg.edMask.Text) <> '' then
+    FifStatus('Добавлено в список масок: ' + IntToStr(AddedCount) +
+              '. В поле остались маски не вида *.ext - они ищутся как есть: ' +
+              Dlg.edMask.Text)
+  else
+    FifStatus('Добавлено в список масок: ' + IntToStr(AddedCount));
 end;
 
 // Поиск по настройкам окна Find In Files. Уже идёт - остановить

@@ -24,21 +24,21 @@ object DlgFifDisk: TDlgFifDisk
   end
   object lblExt: TLabel
     Left = 12
-    Top = 48
-    Width = 64
-    Height = 18
-    Caption = 'Файлы'
-  end
-  object lblMask: TLabel
-    Left = 12
-    Top = 158
+    Top = 74
     Width = 64
     Height = 18
     Caption = 'Маски'
   end
+  object lblMask: TLabel
+    Left = 12
+    Top = 184
+    Width = 66
+    Height = 18
+    Caption = 'Доп. маски'
+  end
   object lblStatus: TLabel
     Left = 12
-    Top = 214
+    Top = 216
     Width = 496
     Height = 40
     AutoSize = False
@@ -61,51 +61,72 @@ object DlgFifDisk: TDlgFifDisk
   end
   object lstExt: TCheckListBox
     Left = 80
-    Top = 46
+    Top = 72
     Width = 428
     Height = 98
     Hint = 'Расширения файлов, в которых искать'
     Columns = 4
     ItemHeight = 16
     ShowHint = True
-    TabOrder = 2
+    TabOrder = 3
   end
   object btnExtAll: TUiButton
     Left = 12
-    Top = 72
+    Top = 76
     Width = 62
     Height = 24
     Hint = 'Отметить все расширения'
     Caption = 'Все'
     ShowHint = True
-    TabOrder = 3
+    TabOrder = 4
   end
   object btnExtNone: TUiButton
     Left = 12
-    Top = 100
+    Top = 104
     Width = 62
     Height = 24
     Hint = 'Снять все отметки'
     Caption = 'Снять'
     ShowHint = True
-    TabOrder = 4
+    TabOrder = 5
+  end
+  object btnExtDelete: TUiButton
+    Left = 12
+    Top = 132
+    Width = 62
+    Height = 24
+    Hint = 'Удалить отмеченные маски из списка'
+    Caption = 'Удалить'
+    ShowHint = True
+    TextColor = clRed
+    TabOrder = 6
   end
   object edMask: TUiEdit
-    Left = 80
-    Top = 154
-    Width = 428
+    Left = 84
+    Top = 180
+    Width = 336
     Height = 24
-    Hint = 'Другие маски через ";" (readme*;*.txt). Маска вида *.txt при поиске уходит в список расширений'
+    Hint = 'Другие маски через ";" (readme*;*.txt). Add - маски вида *.txt и .txt в список масок выше; при поиске такие маски уходят туда сами'
     ShowHint = True
-    TabOrder = 5
+    TabOrder = 7
+  end
+  object btnMaskAdd: TUiButton
+    Left = 428
+    Top = 179
+    Width = 80
+    Height = 26
+    Hint = 'Добавить маски вида *.txt из поля в список масок'
+    Caption = 'Add'
+    ShowHint = True
+    TabOrder = 8
   end
   object chkSub: TUiCheckBox
     Left = 80
-    Top = 186
+    Top = 42
     Width = 300
     Height = 21
     Caption = 'Во вложенных папках'
-    TabOrder = 6
+    TabOrder = 2
   end
   object btnOk: TUiButton
     Left = 332
@@ -114,7 +135,7 @@ object DlgFifDisk: TDlgFifDisk
     Height = 26
     Caption = 'Найти'
     Default = True
-    TabOrder = 7
+    TabOrder = 9
   end
   object btnCancel: TUiButton
     Left = 424
@@ -123,6 +144,6 @@ object DlgFifDisk: TDlgFifDisk
     Height = 26
     Cancel = True
     Caption = 'Закрыть'
-    TabOrder = 8
+    TabOrder = 10
   end
 end
