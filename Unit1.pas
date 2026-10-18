@@ -38,7 +38,7 @@ uses
   EnvOptions,     // IDE Options: Preferences, Designer, Environment Variables
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
-  MdView,         // просмотр .md во вкладке: F12 - текст / страница (IE)
+  FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -304,9 +304,9 @@ type
     // окно (WMTabSwitched): по нему решается, показывать ли панель хода
     WorkMs: Cardinal;
 
-    // Вкладка .md показана страницей (просмотр Markdown, F12), а не
-    // текстом. См. MdApplyTab
-    MdPreview: Boolean;
+    // Вкладка показана просмотром по формату (F12, Txt / Fmt), а не
+    // текстом. См. FmtApplyTab
+    FmtShown: Boolean;
   end;
 
 type
@@ -521,16 +521,16 @@ type
     FMapTimer: TTimer;
     FTabsPopup: TUiPopupMenu;
     FPopupMenu: TUiPopupMenu;
-    pmuMdText: TMenuItem;
-    pmuMdFormat: TMenuItem;
-    pmuSepMd: TMenuItem;
+    pmuFmtText: TMenuItem;
+    pmuFmtFormat: TMenuItem;
+    pmuSepFmt: TMenuItem;
     pmuSearch: TMenuItem;
-    FMdPopup: TUiPopupMenu;
-    mdpText: TMenuItem;
-    mdpFormat: TMenuItem;
-    mdpSep: TMenuItem;
-    mdpCopy: TMenuItem;
-    mdpSelectAll: TMenuItem;
+    FFmtPopup: TUiPopupMenu;
+    fmpText: TMenuItem;
+    fmpFormat: TMenuItem;
+    fmpSep: TMenuItem;
+    fmpCopy: TMenuItem;
+    fmpSelectAll: TMenuItem;
     pmuSepSearch: TMenuItem;
     pmuDebug: TMenuItem;
     pmuSepDebug: TMenuItem;
@@ -656,7 +656,7 @@ type
     FRunTimer: TTimer; // проверка, не закрылась ли она
     FOwnCaretTimer: TTimer;
     DsgItem: TMenuItem;
-    mViewMd: TMenuItem;
+    mViewFmt: TMenuItem;
     mViewIcons: TMenuItem;
     mSepInc: TMenuItem;
     mIncManager: TMenuItem;
@@ -810,10 +810,10 @@ type
     procedure StatusTimerTick(Sender: TObject);
     procedure MapTimerTick(Sender: TObject);
     procedure PopupMenuPopup(Sender: TObject);
-    procedure MdViewModeClick(Sender: TObject);
-    procedure MdPopupPopup(Sender: TObject);
-    procedure MdCopyClick(Sender: TObject);
-    procedure MdSelectAllClick(Sender: TObject);
+    procedure FmtModeClick(Sender: TObject);
+    procedure FmtPopupPopup(Sender: TObject);
+    procedure FmtCopyClick(Sender: TObject);
+    procedure FmtSelectAllClick(Sender: TObject);
     procedure SearchSelectedClick(Sender: TObject);
     procedure DebugLineClick(Sender: TObject);
     procedure EditClickEvent(Sender: TObject);
@@ -888,7 +888,7 @@ type
     function RunConOf(const AExe: string): TObject;
     procedure OwnCaretTick(Sender: TObject);
     procedure DesignFormClick(Sender: TObject);
-    procedure MdPreviewClick(Sender: TObject);
+    procedure FmtViewClick(Sender: TObject);
     procedure ObjSnapBtnClick(Sender: TObject);
     procedure DsgShowHideClick(Sender: TObject);
     procedure ObjMoveClick(Sender: TObject);
@@ -2076,7 +2076,7 @@ type
     function  TabCaptionFor(WinIdx: Integer): string;
     function  TabHintFor(WinIdx: Integer): string;
     function  TabCloseWidth: Integer;
-    // Кнопка Txt / Fmt слева на вкладке файла с видом "по формату" (.md)
+    // Кнопка Txt / Fmt слева на вкладке файла с видом "по формату"
     function  TabHasFmtView(WinIdx: Integer): Boolean;
     function  TabFmtWidth: Integer;
     procedure TabsDrawTab(ADC: HDC; const ARect: TRect; ATab: Integer;
@@ -2765,14 +2765,18 @@ type
     function  DbgKey(AKey: Word): Boolean;
     function  FindKey(AKey: Word): Boolean;
     function  HelpKey(AKey: Word): Boolean;
-    // Просмотр Markdown (MdView): F12 во вкладке .md
-    function  MdKey(AKey: Word): Boolean;
-    function  MdTabIsMarkdown: Boolean;
-    procedure MdApplyTab;
-    procedure MdToggle;
-    procedure MdOpenFromView(const AFileName: string);
-    procedure MdLog(const AText: string);
-    procedure MdShowPopup(const APoint: TPoint);
+    // Просмотр по формату (FmtView): F12, Txt / Fmt, меню
+    function  FmtKey(AKey: Word): Boolean;
+    function  FmtTabHasView: Boolean;
+    procedure FmtApplyTab;
+    procedure FmtToggle;
+    procedure FmtOpenFromView(const AFileName: string);
+    function  FmtEditorBytes: string;
+    procedure FmtEnsureViews;
+    function  FmtAnyShown: Boolean;
+    procedure FmtFocusView;
+    procedure FmtLog(const AText: string);
+    procedure FmtShowPopup(const APoint: TPoint);
     function  HelpWordAtCaret: string;
     procedure DbgLinesPre(const Message: TMessage; AWhole: Boolean);
     procedure DbgLinesPost;
@@ -3210,9 +3214,11 @@ type
     // текст только для чтения, правка свойств в инспекторе уходит в
     // исходник RapidQ и повторяется здесь (RqFbLinkedSet)
     FRqFbTab: Boolean;
-    // Просмотр Markdown поверх редактора (TWebBrowser); создаётся при
-    // первом показе страницы, см. MdApplyTab
-    FMdView: TMdPreview;
+    // Просмотр .md, .html, .mht поверх редактора (TWebBrowser); оба
+    // просмотра создаются при первом показе, см. FmtApplyTab
+    FWebView: TWebPreview;
+    // Просмотр RTF и RVF поверх редактора (RichEdit только для чтения)
+    FRtfView: TRtfPreview;
 
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
@@ -4394,7 +4400,7 @@ begin
   UiDefault('Tabs.CloseOn', clRed);        // крестик активной вкладки
   UiDefault('Tabs.CloseOff', clGray, $00808080);
   UiDefault('Tabs.Owner', clGray, $00A0A0A0);   // главный .bas у include
-  // Кнопка Txt / Fmt на вкладке .md: рамка и надпись Txt, заливка Fmt -
+  // Кнопка Txt / Fmt на вкладке: рамка и надпись Txt, заливка Fmt -
   // синий, не цвет подписи вкладки; надпись на заливке - белая / тёмная
   UiDefault('Tabs.FmtBtn', $00CC6600, $00FFB04A);
   UiDefault('Tabs.FmtBtnText', clWhite, $00202020);
@@ -5768,6 +5774,10 @@ begin
   // Редактор и то, что красится цветами редактора или само
   if (C = RichEdit1) or (C = Panel1) or (C = FTabs) or (C = FDeclPanel) or
      (C = FBusyPanel) or ((C = FSubLabel) and (FSubLabel <> nil)) then
+    Exit;
+  // Просмотр по формату: цвета свои (страница, белый лист RTF), полосы
+  // прокрутки - свои у браузера и RichEdit
+  if FmtIsViewControl(C) then
     Exit;
 
   // Значок кнопки - под светлый фон; в IDE Dark - тёмный значок (свой, из
@@ -8395,9 +8405,9 @@ begin
   if FRqFbTab then
     StatusBar1.Panels[0].Text := 'Перевод RapidQ (_rqfb) - только чтение';
 
-  // Вкладка .md в режиме просмотра - страница поверх редактора; у
-  // остальных вкладок страница убирается
-  MdApplyTab;
+  // Вкладка в виде "по формату" - просмотр поверх редактора; у
+  // остальных вкладок просмотр убирается
+  FmtApplyTab;
 
   // Таблица окна настроек - под схему новой вкладки. Иначе OK записал бы
   // таблицу прежней схемы в схему этой вкладки.
@@ -9308,15 +9318,15 @@ begin
     FWindows[I].CursorPos := 0;
     FWindows[I].Modified := False;
     FWindows[I].Broken := False;
-    FWindows[I].MdPreview := False;
+    FWindows[I].FmtShown := False;
     FWindows[I].MapValid := False;
     SetLength(FWindows[I].CommentRanges, 0);
     SetLength(FWindows[I].StringRanges, 0);
     SetLength(FWindows[I].Bookmarks, 0);
     BmHistDropWindow(I);
   end;
-  // Страница .md могла остаться на экране - вкладок больше нет
-  MdApplyTab;
+  // Просмотр мог остаться на экране - вкладок больше нет
+  FmtApplyTab;
 
   FWindowsIndex := -1;
   FCurrentFileName := '';
@@ -16921,7 +16931,7 @@ begin
     begin
       Delete(Main, 1, Length(TabFmtPrefix));
       FmtWidth := C.TextWidth(TabFmtPrefix);
-      ShowFmt := FWindows[TabWin].MdPreview;
+      ShowFmt := FWindows[TabWin].FmtShown;
       // Прямоугольник: ширина - по надписи (шире из Txt и Fmt, чтобы при
       // переключении кнопка не меняла размер), высота - по вкладке
       C.Font.Size := 7;
@@ -17020,11 +17030,12 @@ begin
   Result := 16;
 end;
 
-// У файла есть вид "по формату" - пока это Markdown (MdView)
+// У файла есть вид "по формату" (FmtKindOf: .md, .html, .mht, .rtf, .rvf)
 function TForm1.TabHasFmtView(WinIdx: Integer): Boolean;
 begin
   Result := (WinIdx >= 0) and (WinIdx <= WindowsItemCount - 1) and
-            FWindows[WinIdx].Used and IsMarkdownFile(FWindows[WinIdx].FileName);
+            FWindows[WinIdx].Used and
+            (FmtKindOf(FWindows[WinIdx].FileName) <> fkNone);
 end;
 
 // Ширина места под кнопку Txt / Fmt от левого края вкладки (щелчок левее -
@@ -17066,7 +17077,7 @@ begin
   if Idx < 0 then
     Exit;
 
-  // Кнопка Txt / Fmt у левого края вкладки .md. Вкладку под ней Windows
+  // Кнопка Txt / Fmt у левого края вкладки. Вкладку под ней Windows
   // уже сделала активной (выбор вкладки - до OnMouseDown); если нет -
   // вид меняется у её окна и окно показывается
   if (Idx <= High(FTabWin)) and TabHasFmtView(FTabWin[Idx]) then
@@ -17075,10 +17086,10 @@ begin
     if X < R.Left + TabFmtWidth then
     begin
       if FTabWin[Idx] = FWindowsIndex then
-        MdToggle
+        FmtToggle
       else
       begin
-        FWindows[FTabWin[Idx]].MdPreview := not FWindows[FTabWin[Idx]].MdPreview;
+        FWindows[FTabWin[Idx]].FmtShown := not FWindows[FTabWin[Idx]].FmtShown;
         ActivateWindow(FTabWin[Idx]);
       end;
       Exit;
@@ -17326,7 +17337,7 @@ begin
   FWindows[WinIdx].CursorPos := 0;
   FWindows[WinIdx].Modified := False;
   FWindows[WinIdx].Broken := False;
-  FWindows[WinIdx].MdPreview := False;
+  FWindows[WinIdx].FmtShown := False;
   FWindows[WinIdx].MapValid := False;
   SetLength(FWindows[WinIdx].CommentRanges, 0);
   SetLength(FWindows[WinIdx].StringRanges, 0);
@@ -17361,8 +17372,8 @@ begin
       Caption := AppTitle;
       UpdatePathBar;
       RichEdit1.Invalidate;
-      // Страница закрытой вкладки .md - убрать
-      MdApplyTab;
+      // Просмотр закрытой вкладки - убрать
+      FmtApplyTab;
     end;
   end;
 
@@ -19117,15 +19128,15 @@ begin
   if pmuSearch = nil then
     Exit;
 
-  // Вкладка .md: вид "Как текст" / "По формату" (меню редактора - значит,
-  // сейчас текст)
-  if pmuMdText <> nil then
+  // Вкладка с просмотром по формату: "Как текст" / "По формату" (меню
+  // редактора - значит, сейчас текст)
+  if pmuFmtText <> nil then
   begin
-    pmuMdText.Visible := MdTabIsMarkdown;
-    pmuMdFormat.Visible := MdTabIsMarkdown;
-    pmuSepMd.Visible := MdTabIsMarkdown;
-    pmuMdFormat.Checked := False;
-    pmuMdText.Checked := True;
+    pmuFmtText.Visible := FmtTabHasView;
+    pmuFmtFormat.Visible := FmtTabHasView;
+    pmuSepFmt.Visible := FmtTabHasView;
+    pmuFmtFormat.Checked := False;
+    pmuFmtText.Checked := True;
   end;
 
   // Для подписи хватает начала выделения
@@ -21882,15 +21893,15 @@ var
   C: TWinControl;
   CursorPt: TPoint;
 begin
-  // Страница .md: правый щелчок - своё меню (Как текст / По формату,
-  // копирование) вместо меню IE. Отпускание клавиши Menu тоже не отдаётся
-  // IE: меню по ней показывает MdKey.
-  if (FMdView <> nil) and FMdView.OwnsWindow(Msg.hwnd) then
+  // Страница IE (просмотр по формату): правый щелчок - своё меню (Как
+  // текст / По формату, копирование) вместо меню IE. Отпускание клавиши Menu тоже не отдаётся
+  // IE: меню по ней показывает FmtKey.
+  if (FWebView <> nil) and FWebView.OwnsWindow(Msg.hwnd) then
   begin
     if Msg.message = WM_RBUTTONUP then
     begin
       GetCursorPos(CursorPt);
-      MdShowPopup(CursorPt);
+      FmtShowPopup(CursorPt);
       Handled := True;
       Exit;
     end;
@@ -21907,11 +21918,11 @@ begin
   // в главном окне: у конструктора и диалогов свои клавиши.
   // F3 / Shift+F3 в редакторе - поиск, см. FindKey
   // F1 в файле RapidQ - справка по слову под кареткой, см. HelpKey
-  // F12 во вкладке .md - текст / просмотр Markdown, см. MdKey
+  // F12 во вкладке .md, .html, .mht, .rtf, .rvf - текст / просмотр, см. FmtKey
   if (Msg.message = WM_KEYDOWN) and (Screen.ActiveForm = Self) then
   begin
     if DbgKey(Word(Msg.wParam)) or FindKey(Word(Msg.wParam)) or
-       HelpKey(Word(Msg.wParam)) or MdKey(Word(Msg.wParam)) then
+       HelpKey(Word(Msg.wParam)) or FmtKey(Word(Msg.wParam)) then
       Handled := True;
     Exit;
   end;
@@ -22637,7 +22648,8 @@ begin
   FreeAndNil(FRqDeclCache);  // панель объявления RapidQ
   FreeAndNil(FRqDeclFiles);
   RqHelpCloseAll;   // окна справки CHM - до выхода программы
-  FreeAndNil(FMdView); // просмотр Markdown: браузер и временная страница
+  FreeAndNil(FWebView); // просмотр по формату: браузер и временная страница
+  FreeAndNil(FRtfView); // просмотр RTF / RVF
   // Возвращаем старую процедуру на место. Если FormShow не отработал,
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then
@@ -70188,83 +70200,166 @@ end;
 
 
 // ---------------------------------------------------------------------------
-//  Просмотр Markdown (MdView)
+//  Просмотр по формату (FmtView)
 //
-//  У вкладки .md два вида: текст (редактор) и страница - .md, переведённый
-//  в HTML и показанный встроенным IE поверх всей панели редактора
-//  (FLeftHost: номера строк, текст, полосы прокрутки). Вид хранится в
-//  записи окна (MdPreview) и переключается F12 или View - Просмотр
-//  Markdown. Редактор под страницей на это время только для чтения:
-//  фокус может вернуться в него из кода или щелчком, а невидимую правку
-//  пользователь не заметил бы.
+//  У вкладки файла, для которого есть просмотр по формату (FmtKindOf: .md,
+//  .html, .htm, .mht, .rtf, .rvf), два вида: текст (редактор) и просмотр
+//  поверх всей панели редактора (FLeftHost: номера строк, текст, полосы
+//  прокрутки):
+//    - .md, .html, .mht - встроенный IE (FWebView);
+//    - .rtf, .rvf - RichEdit только для чтения (FRtfView); RVF переводит в
+//      RTF помощник rvf2rtf.exe.
+//  Вид хранится в записи окна (FmtShown) и переключается F12, кнопкой
+//  Txt / Fmt на вкладке, View - Просмотр по формату и меню правой кнопки.
+//  Редактор под просмотром только для чтения: фокус может вернуться в него
+//  из кода или щелчком, а невидимую правку пользователь не заметил бы.
 // ---------------------------------------------------------------------------
 
-function TForm1.MdTabIsMarkdown: Boolean;
+function TForm1.FmtTabHasView: Boolean;
 begin
   Result := (FWindowsIndex >= 0) and (FWindowsIndex <= WindowsItemCount - 1) and
             FWindows[FWindowsIndex].Used and
-            IsMarkdownFile(FWindows[FWindowsIndex].FileName);
+            (FmtKindOf(FWindows[FWindowsIndex].FileName) <> fkNone);
 end;
 
-// Показать или убрать страницу по виду активной вкладки. Зовётся при
-// каждом показе вкладки (ActivateWindow) и при F12.
-procedure TForm1.MdApplyTab;
-var
-  ShowPreview: Boolean;
-  Utf8Text, ErrText: string;
+// Текст редактора в кодировке файла - как его записало бы сохранение
+function TForm1.FmtEditorBytes: string;
 begin
-  ShowPreview := MdTabIsMarkdown and FWindows[FWindowsIndex].MdPreview;
-  if ShowPreview then
+  Result := GetEditorText;
+  if FFileIsUtf8 then
   begin
-    if FMdView = nil then
-    begin
-      FMdView := TMdPreview.Create(FLeftHost);
-      FMdView.OnOpenFile := MdOpenFromView;
-      FMdView.OnLog := MdLog;
+    Result := AnsiToUtf8(Result);
+    if FFileHasBom then
+      Result := #$EF#$BB#$BF + Result;
+  end;
+end;
+
+procedure TForm1.FmtEnsureViews;
+begin
+  if FWebView = nil then
+  begin
+    FWebView := TWebPreview.Create(FLeftHost);
+    FWebView.OnOpenFile := FmtOpenFromView;
+    FWebView.OnLog := FmtLog;
+  end;
+  if FRtfView = nil then
+  begin
+    FRtfView := TRtfPreview.Create(FLeftHost, FFmtPopup);
+    FRtfView.OnLog := FmtLog;
+  end;
+end;
+
+// Какой-нибудь из просмотров на экране
+function TForm1.FmtAnyShown: Boolean;
+begin
+  Result := ((FWebView <> nil) and FWebView.IsShown) or
+            ((FRtfView <> nil) and FRtfView.IsShown);
+end;
+
+// Показать или убрать просмотр по виду активной вкладки. Зовётся при
+// каждом показе вкладки (ActivateWindow), при закрытии вкладок и при
+// переключении вида.
+//
+// Файл не правился - просмотр по файлу на диске: символы вне кодовой
+// страницы Windows (редактор держит ANSI и заменяет их на '?') целы, а
+// HTML и MHT открываются с диска со всеми картинками. Правился - по
+// тексту редактора. RVF - всегда с диска: правленый в редакторе текст RVF
+// помощник не прочтёт.
+procedure TForm1.FmtApplyTab;
+var
+  Kind: TFmtKind;
+  ShowView, Shown, FromDisk: Boolean;
+  Utf8Text, ErrText, StatusText: string;
+begin
+  Kind := fkNone;
+  if FmtTabHasView then
+    Kind := FmtKindOf(FWindows[FWindowsIndex].FileName);
+  ShowView := (Kind <> fkNone) and FWindows[FWindowsIndex].FmtShown;
+  if ShowView then
+  begin
+    FmtEnsureViews;
+    FromDisk := not RichEdit1.Modified and (FCurrentFileName <> '') and
+                FileExists(FCurrentFileName);
+    case Kind of
+      fkMarkdown:
+        begin
+          if not FromDisk or not MdFileToUtf8(FCurrentFileName, Utf8Text) then
+            Utf8Text := AnsiToUtf8(GetEditorText);
+          Shown := FWebView.ShowMarkdown(Utf8Text, FCurrentFileName,
+                                         RichEdit1.Color, RichEdit1.Font.Color);
+        end;
+      fkHtml, fkMht:
+        if FromDisk then
+          Shown := FWebView.ShowFile(FCurrentFileName)
+        else
+          Shown := FWebView.ShowEdited(FmtEditorBytes, FCurrentFileName, Kind);
+      fkRtf:
+        if FromDisk then
+          Shown := FRtfView.ShowRtfFile(FCurrentFileName)
+        else
+          Shown := FRtfView.ShowRtf(FmtEditorBytes, FCurrentFileName);
+      fkRvf:
+        Shown := (FCurrentFileName <> '') and
+                 FRtfView.ShowRvfFile(FCurrentFileName);
+    else
+      Shown := False;
     end;
-    // Текст - с диска, если в редакторе он не правился: редактор держит
-    // ANSI, и символы вне кодовой страницы (стрелки, математические
-    // знаки) в нём уже заменены на '?'. Правленый - из редактора.
-    if RichEdit1.Modified or (FCurrentFileName = '') or
-       not MdFileToUtf8(FCurrentFileName, Utf8Text) then
-      Utf8Text := AnsiToUtf8(GetEditorText);
-    if not FMdView.ShowText(Utf8Text, FCurrentFileName, RichEdit1.Color,
-                            RichEdit1.Font.Color) then
+    if not Shown then
     begin
-      ErrText := FMdView.LastError;
-      FWindows[FWindowsIndex].MdPreview := False;
-      ShowPreview := False;
-      Dbg('Просмотр Markdown: ' + ErrText, clRed);
-      ShowMessage('Просмотр Markdown недоступен.' + #13#10 + ErrText);
+      if FmtKindIsWeb(Kind) then
+        ErrText := FWebView.LastError
+      else if FCurrentFileName = '' then
+        ErrText := 'файл ещё не сохранён на диск'
+      else
+        ErrText := FRtfView.LastError;
+      FWindows[FWindowsIndex].FmtShown := False;
+      ShowView := False;
+      Dbg('Просмотр по формату: ' + ErrText, clRed);
+      ShowMessage('Просмотр по формату недоступен.' + #13#10 + ErrText);
     end;
   end;
-  if not ShowPreview and (FMdView <> nil) and FMdView.IsShown then
-    FMdView.HideView;
+  // Второй просмотр (или оба, если вид - текст) - убрать
+  if (FWebView <> nil) and FWebView.IsShown and
+     not (ShowView and FmtKindIsWeb(Kind)) then
+    FWebView.HideView;
+  if (FRtfView <> nil) and FRtfView.IsShown and
+     not (ShowView and not FmtKindIsWeb(Kind)) then
+    FRtfView.HideView;
 
-  RichEdit1.ReadOnly := FRqFbTab or ShowPreview;
-  if mViewMd <> nil then
+  RichEdit1.ReadOnly := FRqFbTab or ShowView;
+  if mViewFmt <> nil then
   begin
-    mViewMd.Enabled := MdTabIsMarkdown;
-    mViewMd.Checked := ShowPreview;
+    mViewFmt.Enabled := FmtTabHasView;
+    mViewFmt.Checked := ShowView;
   end;
   // Кнопка Txt / Fmt на вкладке - под новый вид
   if FTabs <> nil then
     FTabs.Invalidate;
-  if ShowPreview then
-    StatusBar1.Panels[0].Text := 'Просмотр Markdown - F12: текст';
+  if ShowView then
+  begin
+    StatusText := 'Просмотр ' + FmtKindName(Kind) + ' - F12: текст';
+    if (Kind = fkRvf) and RichEdit1.Modified then
+      StatusText := StatusText + ' (показан файл с диска, без правок)';
+    StatusBar1.Panels[0].Text := StatusText;
+  end;
 end;
 
-procedure TForm1.MdToggle;
+procedure TForm1.FmtFocusView;
 begin
-  if not MdTabIsMarkdown then
+  if (FWebView <> nil) and FWebView.IsShown then
+    FWebView.FocusView
+  else if (FRtfView <> nil) and FRtfView.IsShown then
+    FRtfView.FocusView;
+end;
+
+procedure TForm1.FmtToggle;
+begin
+  if not FmtTabHasView then
     Exit;
-  FWindows[FWindowsIndex].MdPreview := not FWindows[FWindowsIndex].MdPreview;
-  MdApplyTab;
-  if FWindows[FWindowsIndex].MdPreview then
-  begin
-    if FMdView <> nil then
-      FMdView.FocusView;
-  end
+  FWindows[FWindowsIndex].FmtShown := not FWindows[FWindowsIndex].FmtShown;
+  FmtApplyTab;
+  if FWindows[FWindowsIndex].FmtShown then
+    FmtFocusView
   else
   begin
     UpdateStatusBarInfo;
@@ -70273,96 +70368,110 @@ begin
   end;
 end;
 
-// F12 без Ctrl, Shift, Alt во вкладке .md. В остальных вкладках клавиша
-// не занята - идёт дальше как обычно.
-function TForm1.MdKey(AKey: Word): Boolean;
+// F12 без Ctrl, Shift, Alt во вкладке с просмотром по формату. В остальных
+// вкладках клавиша не занята - идёт дальше как обычно.
+function TForm1.FmtKey(AKey: Word): Boolean;
 begin
   Result := False;
-  // Клавиша Menu на странице - своё меню у левого верхнего угла страницы
-  if (AKey = VK_APPS) and (FMdView <> nil) and FMdView.IsShown then
+  // Клавиша Menu на странице IE - своё меню у левого верхнего угла. У
+  // RichEdit меню по ней показывает сама VCL (PopupMenu).
+  if (AKey = VK_APPS) and (FWebView <> nil) and FWebView.IsShown then
   begin
-    MdShowPopup(FLeftHost.ClientToScreen(Point(16, 16)));
+    FmtShowPopup(FLeftHost.ClientToScreen(Point(16, 16)));
     Result := True;
     Exit;
   end;
-  // Страница на экране: Ctrl+C и Ctrl+A - для неё, а не для редактора под
-  // ней (иначе их взяли бы пункты меню Copy и Select All)
-  if (FMdView <> nil) and FMdView.IsShown and
+  // Просмотр на экране: Ctrl+C и Ctrl+A - для него, а не для редактора под
+  // ним (иначе их взяли бы пункты меню Copy и Select All)
+  if FmtAnyShown and
      (GetKeyState(VK_CONTROL) < 0) and (GetKeyState(VK_SHIFT) >= 0) and
      (GetKeyState(VK_MENU) >= 0) and ((AKey = Ord('C')) or (AKey = Ord('A'))) then
   begin
     if AKey = Ord('C') then
-      FMdView.CopySelection
+      FmtCopyClick(nil)
     else
-      FMdView.SelectAll;
+      FmtSelectAllClick(nil);
     Result := True;
     Exit;
   end;
   if (AKey <> VK_F12) or (GetKeyState(VK_CONTROL) < 0) or
      (GetKeyState(VK_SHIFT) < 0) or (GetKeyState(VK_MENU) < 0) then
     Exit;
-  if not MdTabIsMarkdown then
+  if not FmtTabHasView then
     Exit;
-  MdToggle;
+  FmtToggle;
   Result := True;
 end;
 
-procedure TForm1.MdPreviewClick(Sender: TObject);
+procedure TForm1.FmtViewClick(Sender: TObject);
 begin
-  MdToggle;
+  FmtToggle;
 end;
 
-// Ссылка со страницы на файл, который правится в редакторе (другой .md,
-// исходник): открыть его вкладкой
-procedure TForm1.MdOpenFromView(const AFileName: string);
+// Ссылка со страницы на файл, который открывается в unIDE: вкладкой. У
+// файла с просмотром по формату вкладка открывается сразу в этом виде -
+// по ссылке переходили, читая страницу, а не текст
+procedure TForm1.FmtOpenFromView(const AFileName: string);
 begin
   OpenNamedFile(AFileName);
+  if FmtTabHasView and
+     (CompareText(FCurrentFileName, AFileName) = 0) and
+     not FWindows[FWindowsIndex].FmtShown then
+  begin
+    FWindows[FWindowsIndex].FmtShown := True;
+    FmtApplyTab;
+    FmtFocusView;
+  end;
 end;
 
 // Пункты "Как текст" / "По формату": в меню редактора (FPopupMenu, только
-// во вкладке .md) и в меню страницы (FMdPopup)
-procedure TForm1.MdViewModeClick(Sender: TObject);
+// во вкладке с просмотром по формату) и в меню просмотра (FFmtPopup)
+procedure TForm1.FmtModeClick(Sender: TObject);
 var
   WantFormat: Boolean;
 begin
-  if not MdTabIsMarkdown then
+  if not FmtTabHasView then
     Exit;
-  WantFormat := (Sender = pmuMdFormat) or (Sender = mdpFormat);
-  if WantFormat <> FWindows[FWindowsIndex].MdPreview then
-    MdToggle;
+  WantFormat := (Sender = pmuFmtFormat) or (Sender = fmpFormat);
+  if WantFormat <> FWindows[FWindowsIndex].FmtShown then
+    FmtToggle;
 end;
 
-procedure TForm1.MdPopupPopup(Sender: TObject);
+procedure TForm1.FmtPopupPopup(Sender: TObject);
 begin
-  // Меню страницы открыто - вид "по формату"
-  mdpText.Checked := False;
-  mdpFormat.Checked := True;
+  // Меню просмотра открыто - вид "по формату"
+  fmpText.Checked := False;
+  fmpFormat.Checked := True;
 end;
 
-procedure TForm1.MdCopyClick(Sender: TObject);
+procedure TForm1.FmtCopyClick(Sender: TObject);
 begin
-  if FMdView <> nil then
-    FMdView.CopySelection;
+  if (FWebView <> nil) and FWebView.IsShown then
+    FWebView.CopySelection
+  else if (FRtfView <> nil) and FRtfView.IsShown then
+    FRtfView.CopySelection;
 end;
 
-procedure TForm1.MdSelectAllClick(Sender: TObject);
+procedure TForm1.FmtSelectAllClick(Sender: TObject);
 begin
-  if FMdView <> nil then
-    FMdView.SelectAll;
+  if (FWebView <> nil) and FWebView.IsShown then
+    FWebView.SelectAll
+  else if (FRtfView <> nil) and FRtfView.IsShown then
+    FRtfView.SelectAll;
 end;
 
-// Своё меню страницы в точке экрана APoint (меню IE не показывается)
-procedure TForm1.MdShowPopup(const APoint: TPoint);
+// Своё меню страницы IE в точке экрана APoint (меню IE не показывается)
+procedure TForm1.FmtShowPopup(const APoint: TPoint);
 begin
-  if FMdPopup <> nil then
-    FMdPopup.Popup(APoint.X, APoint.Y);
+  if FFmtPopup <> nil then
+    FFmtPopup.Popup(APoint.X, APoint.Y);
 end;
 
-// Переходы браузера просмотра: какой адрес пришёл и куда он ушёл (своя
-// страница, вкладка, программа Windows) - строкой в HiLite log
-procedure TForm1.MdLog(const AText: string);
+// Переходы браузера просмотра (какой адрес пришёл и куда он ушёл) и работа
+// rvf2rtf - строкой в HiLite log
+procedure TForm1.FmtLog(const AText: string);
 begin
-  Dbg('Просмотр Markdown, ' + AText, clGray);
+  Dbg('Просмотр по формату, ' + AText, clGray);
 end;
 
 // Что не пишется в снимок формы для инспектора и конструктора:
@@ -70374,6 +70483,9 @@ end;
 function DsgSnapSkip(C: TComponent): Boolean;
 begin
   Result := UiScrollIsService(C);
+  // Окна просмотра по формату (FmtView) - не часть формы, их создаёт код
+  if not Result and (C is TControl) then
+    Result := FmtIsViewControl(TControl(C));
   if not Result and (C is TSpeedButton) and (C.Owner is TDsgPalette) then
     Result := TDsgPalette(C.Owner).ForeignOf(TControl(C)) <> '';
 end;

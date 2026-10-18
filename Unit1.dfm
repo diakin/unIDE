@@ -561,10 +561,10 @@ object Form1: TForm1
         Caption = 'Конструктор формы'
         OnClick = DesignFormClick
       end
-      object mViewMd: TMenuItem
-        Caption = 'Просмотр Markdown'
+      object mViewFmt: TMenuItem
+        Caption = 'Просмотр по формату'
         Enabled = False
-        OnClick = MdPreviewClick
+        OnClick = FmtViewClick
         ShortCut = 123
       end
       object mViewIcons: TMenuItem
@@ -876,19 +876,19 @@ object Form1: TForm1
     OnPopup = PopupMenuPopup
     Left = 16
     Top = 584
-    object pmuMdText: TMenuItem
+    object pmuFmtText: TMenuItem
       Caption = 'Как текст'
       RadioItem = True
       Visible = False
-      OnClick = MdViewModeClick
+      OnClick = FmtModeClick
     end
-    object pmuMdFormat: TMenuItem
+    object pmuFmtFormat: TMenuItem
       Caption = 'По формату'#9'F12'
       RadioItem = True
       Visible = False
-      OnClick = MdViewModeClick
+      OnClick = FmtModeClick
     end
-    object pmuSepMd: TMenuItem
+    object pmuSepFmt: TMenuItem
       Caption = '-'
       Visible = False
     end
@@ -981,30 +981,30 @@ object Form1: TForm1
       OnClick = CaseConvertClick
     end
   end
-  object FMdPopup: TUiPopupMenu
-    OnPopup = MdPopupPopup
+  object FFmtPopup: TUiPopupMenu
+    OnPopup = FmtPopupPopup
     Left = 16
     Top = 616
-    object mdpText: TMenuItem
+    object fmpText: TMenuItem
       Caption = 'Как текст'#9'F12'
       RadioItem = True
-      OnClick = MdViewModeClick
+      OnClick = FmtModeClick
     end
-    object mdpFormat: TMenuItem
+    object fmpFormat: TMenuItem
       Caption = 'По формату'
       RadioItem = True
-      OnClick = MdViewModeClick
+      OnClick = FmtModeClick
     end
-    object mdpSep: TMenuItem
+    object fmpSep: TMenuItem
       Caption = '-'
     end
-    object mdpCopy: TMenuItem
+    object fmpCopy: TMenuItem
       Caption = 'Копировать'#9'Ctrl+C'
-      OnClick = MdCopyClick
+      OnClick = FmtCopyClick
     end
-    object mdpSelectAll: TMenuItem
+    object fmpSelectAll: TMenuItem
       Caption = 'Выделить всё'#9'Ctrl+A'
-      OnClick = MdSelectAllClick
+      OnClick = FmtSelectAllClick
     end
   end
   object FLogPopup: TUiPopupMenu
