@@ -1974,6 +1974,9 @@ type
     // список - не горячие папки; первые FHfFixedCount строк - стандартные
     // папки, их не удалить; вложенную в отмеченную не отметить
     FHfSearchMode: Boolean;
+    // Папка из списка, о которой уже предупредили, что её нет на диске:
+    // повторный щелчок (или галка) по ней же второй раз не предупреждает
+    FHfWarnedDir: string;
     FHfFixedCount: Integer;
 
     // Красный крестик у потерянных файлов в меню Windows
@@ -13397,6 +13400,7 @@ begin
     FHfTree.OnChange := HfTreeChange;
     FHfTree.OnDblClick := HfTreeDblClick;
     FHfList.OnClick := HfListClick;
+    FHfWarnedDir := '';
     FHfList.OnClickCheck := HfListCheck;
 
     HfFillDrives;
@@ -13520,11 +13524,34 @@ begin
   HfSaveList;
 end;
 
-// Щелчок по папке в списке - она в строке пути (её вернёт выбор папки)
+// Щелчок по папке в списке - она в строке пути (её вернёт выбор папки) и
+// выделяется в дереве слева. Папки нет на диске - предупреждение
 procedure TForm1.HfListClick(Sender: TObject);
+var
+  DirPath: string;
 begin
-  if (FHfPath <> nil) and (FHfList <> nil) and (FHfList.ItemIndex >= 0) then
-    FHfPath.Caption := '  ' + FHfList.Items[FHfList.ItemIndex];
+  if (FHfList = nil) or (FHfList.ItemIndex < 0) then
+    Exit;
+  DirPath := FHfList.Items[FHfList.ItemIndex];
+  if DirectoryExists(DirPath) then
+  begin
+    FHfWarnedDir := '';
+    // Выделение в дереве меняет строку пути (HfTreeChange) - она ставится
+    // после, как записана в списке
+    HfSelectPath(ExcludeTrailingPathDelimiter(DirPath));
+    if FHfPath <> nil then
+      FHfPath.Caption := '  ' + DirPath;
+  end
+  else
+  begin
+    if FHfPath <> nil then
+      FHfPath.Caption := '  ' + DirPath;
+    if CompareText(DirPath, FHfWarnedDir) <> 0 then
+    begin
+      FHfWarnedDir := DirPath;
+      MessageDlg('Папки нет на диске:'#13#10 + DirPath, mtWarning, [mbOK], 0);
+    end;
+  end;
 end;
 
 // Пункт меню Search folders... - тот же список, но без подсказанной папки
@@ -36561,6 +36588,7 @@ begin
     FHfTree.OnChange := HfTreeChange;
     FHfTree.OnDblClick := HfTreeDblClick;
     FHfList.OnClick := HfListClick;
+    FHfWarnedDir := '';
     FHfList.OnClickCheck := HfListCheck;
     HfFillDrives;
 
