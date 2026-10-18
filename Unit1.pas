@@ -1851,6 +1851,14 @@ type
     FFifTotal: Integer;       // найдено совпадений
     FFifFiles: Integer;       // в скольких файлах
     FFifChecked: Integer;     // просмотрено файлов
+    // Поиск в файлах по одному (FifScanFile): образец, открытые окна
+    // (полный путь -> окно), уже просмотренные при обходе папок (одна папка
+    // внутри другой), сколько файлов всего (0 - ещё не известно: файлы
+    // ищутся одновременно с поиском в них)
+    FFifPattern: string;
+    FFifOpen: TStringList;
+    FFifSeen: TStringList;
+    FFifListCount: Integer;
 
     // Снимок состава проекта на момент последней загрузки или сохранения.
     // По расхождению с текущим видно, что проект пора сохранять.
@@ -2214,9 +2222,16 @@ type
     procedure FifProgress(const ADir: string; ACount: Integer;
                           var ACancel: Boolean);
     procedure FifCollectDirs(const ADirs, AMasks: string; ASubDirs: Boolean;
-                             AList: TStrings; var ACancel: Boolean);
+                             AList: TStrings; var ACancel: Boolean;
+                             AOnFile: TFifFileFound = nil);
     procedure FifCollectDir(const ADir, AMasks: string; ASubDirs: Boolean;
-                            AList: TStrings; var ACancel: Boolean);
+                            AList: TStrings; var ACancel: Boolean;
+                            AOnFile: TFifFileFound = nil);
+    // Поиск в одном файле (FFifPattern, открытые окна - FFifOpen)
+    procedure FifOpenMapBuild;
+    procedure FifScanFile(const AFile: string; var ACancel: Boolean);
+    // Файл найден обходом папок (на диске) - сразу поиск в нём
+    procedure FifFileFound(const AFile: string; var ACancel: Boolean);
     function  FifProjectFiles(AList: TStrings; var ANote: string): Boolean;
     procedure FifScanList(AList: TStrings; const APattern: string;
                           var ATotal, AFiles: Integer; var ACancel: Boolean);
@@ -20759,7 +20774,27 @@ begin
           Masks := Masks + ';';
         Masks := Masks + OtherMasks;
       end;
-      FifCollectDirs(DirText, Masks, Dlg.chkSub.Checked, List, Cancel);
+      if FFifFileMode then
+        FifCollectDirs(DirText, Masks, Dlg.chkSub.Checked, List, Cancel)
+      else
+      begin
+        // Файл найден - сразу поиск в нём, его вхождения - в Match list,
+        // потом обход идёт к следующему файлу (FifFileFound)
+        FFifPattern := Pattern;
+        FFifListCount := 0;
+        FifOpenMapBuild;
+        FFifSeen := TStringList.Create;
+        try
+          FFifSeen.Sorted := True;
+          FifCollectDirs(DirText, Masks, Dlg.chkSub.Checked, List, Cancel,
+                         FifFileFound);
+        finally
+          FreeAndNil(FFifSeen);
+          FreeAndNil(FFifOpen);
+        end;
+        Total := FFifTotal;
+        Files := FFifFiles;
+      end;
     end;
     if FFifFileMode then
     begin
@@ -20769,7 +20804,7 @@ begin
       Files := List.Count;
       Total := List.Count;
     end
-    else if not Cancel and not FFifAbort then
+    else if FFifProject and not Cancel and not FFifAbort then
       FifScanList(List, Pattern, Total, Files, Cancel);
   finally
     FFifRunning := False;
@@ -20818,9 +20853,11 @@ end;
 // Обход папки для Find In Files - FifCollectFiles (FileSearch); здесь
 // только строка состояния и Esc
 procedure TForm1.FifCollectDir(const ADir, AMasks: string; ASubDirs: Boolean;
-                               AList: TStrings; var ACancel: Boolean);
+                               AList: TStrings; var ACancel: Boolean;
+                               AOnFile: TFifFileFound);
 begin
-  FifCollectFiles(ADir, AMasks, ASubDirs, AList, ACancel, FifProgress);
+  FifCollectFiles(ADir, AMasks, ASubDirs, AList, ACancel, FifProgress,
+                  AOnFile);
 end;
 
 // Несколько папок через ";" (FifSplitDirs). Папка внутри другой
@@ -20828,7 +20865,8 @@ end;
 // остаётся
 procedure TForm1.FifCollectDirs(const ADirs, AMasks: string;
                                 ASubDirs: Boolean; AList: TStrings;
-                                var ACancel: Boolean);
+                                var ACancel: Boolean;
+                                AOnFile: TFifFileFound);
 var
   Dirs, Seen: TStringList;
   DirIdx, FileIdx, Found: Integer;
@@ -20840,7 +20878,7 @@ begin
     for DirIdx := 0 to Dirs.Count - 1 do
     begin
       FifCollectDir(IncludeTrailingPathDelimiter(Dirs[DirIdx]), AMasks,
-                    ASubDirs, AList, ACancel);
+                    ASubDirs, AList, ACancel, AOnFile);
       if ACancel then
         Break;
     end;
@@ -20880,8 +20918,16 @@ begin
                    #13#10'Файлов: ' + IntToStr(ACount) + ' (Стоп - прервать)') then
       ACancel := True;
   end
+  else if FFifFileMode or FFifProject then
+  begin
+    if not FifStep(FifPathLine('Папка: ', ADir) +
+                   #13#10'Найдено файлов по маскам: ' + IntToStr(ACount)) then
+      ACancel := True;
+  end
   else if not FifStep(FifPathLine('Папка: ', ADir) +
-                      #13#10'Найдено файлов по маскам: ' + IntToStr(ACount)) then
+                      #13#10'Проверено файлов: ' + IntToStr(FFifChecked) +
+                      '; найдено: ' + IntToStr(FFifTotal) + ' совпадений в ' +
+                      IntToStr(FFifFiles) + ' файлах') then
     ACancel := True;
 end;
 
@@ -21035,72 +21081,116 @@ end;
 procedure TForm1.FifScanList(AList: TStrings; const APattern: string;
                              var ATotal, AFiles: Integer; var ACancel: Boolean);
 var
-  FileIdx, WinIdx, MatchCount, Found: Integer;
-  Txt: string;
-  Open: TStringList;
+  FileIdx: Integer;
 begin
-  Open := TStringList.Create;
+  FFifPattern := APattern;
+  FFifListCount := AList.Count;
+  FFifTotal := ATotal;
+  FFifFiles := AFiles;
+  FifOpenMapBuild;
   try
-    Open.Sorted := True;
-    Open.Duplicates := dupIgnore;
-    for WinIdx := 0 to WindowsItemCount - 1 do
-      if FWindows[WinIdx].Used and (FWindows[WinIdx].FileName <> '') then
-        Open.AddObject(ExpandFileName(FWindows[WinIdx].FileName), TObject(WinIdx));
-
     for FileIdx := 0 to AList.Count - 1 do
     begin
-      // Строка хода: текущий файл и счётчики. Текст собирается, только когда
-      // его пора показать (FifStep - не чаще раза в 100 мс)
-      if FFifAbort then
-      begin
-        ACancel := True;
-        Exit;
-      end;
-      if GetTickCount - FFifLastTick >= 100 then
-        if not FifStep(FifPathLine('Файл: ', AList[FileIdx]) +
-                       #13#10'Проверено файлов: ' + IntToStr(FileIdx) + ' из ' +
-                       IntToStr(AList.Count) + '; найдено: ' + IntToStr(ATotal) +
-        ' совпадений в ' + IntToStr(AFiles) + ' файлах') then
-      begin
-        ACancel := True;
-        Exit;
-      end;
-
-      WinIdx := -1;
-      if Open.Find(ExpandFileName(AList[FileIdx]), Found) then
-      begin
-        WinIdx := Integer(Open.Objects[Found]);
-        if (WinIdx > WindowsItemCount - 1) or not FWindows[WinIdx].Used or
-           (CompareText(ExpandFileName(FWindows[WinIdx].FileName),
-                        ExpandFileName(AList[FileIdx])) <> 0) then
-          WinIdx := -1;
-      end;
-      if WinIdx >= 0 then
-        Txt := FWindows[WinIdx].Text
-      else if not FifReadFile(AList[FileIdx], Txt) then
-      begin
-        FFifChecked := FileIdx + 1;
-        Continue;
-      end;
-
-      MatchCount := ScanTextForMatches(AList[FileIdx], WinIdx, Txt, APattern);
-      FFifChecked := FileIdx + 1;
-      if MatchCount > 0 then
-      begin
-        Inc(ATotal, MatchCount);
-        Inc(AFiles);
-        FFifTotal := ATotal;
-        FFifFiles := AFiles;
-      end;
-      if ATotal >= FifMaxHits then
-      begin
-        ACancel := True;
-        Exit;
-      end;
+      FifScanFile(AList[FileIdx], ACancel);
+      if ACancel then
+        Break;
     end;
   finally
-    Open.Free;
+    FreeAndNil(FFifOpen);
+    ATotal := FFifTotal;
+    AFiles := FFifFiles;
   end;
+end;
+
+// Открытые окна: полный путь файла -> окно. Текст открытого файла берётся
+// из окна (в памяти, с несохранёнными правками), а не с диска
+procedure TForm1.FifOpenMapBuild;
+var
+  WinIdx: Integer;
+begin
+  FreeAndNil(FFifOpen);
+  FFifOpen := TStringList.Create;
+  FFifOpen.Sorted := True;
+  FFifOpen.Duplicates := dupIgnore;
+  for WinIdx := 0 to WindowsItemCount - 1 do
+    if FWindows[WinIdx].Used and (FWindows[WinIdx].FileName <> '') then
+      FFifOpen.AddObject(ExpandFileName(FWindows[WinIdx].FileName),
+                         TObject(WinIdx));
+end;
+
+// Поиск FFifPattern в одном файле: вхождения - в Match list, счётчики -
+// FFifTotal, FFifFiles, FFifChecked. ACancel - остановлен или набралось
+// FifMaxHits вхождений
+procedure TForm1.FifScanFile(const AFile: string; var ACancel: Boolean);
+var
+  WinIdx, MatchCount, Found: Integer;
+  Txt, CountText: string;
+begin
+  if FFifAbort then
+  begin
+    ACancel := True;
+    Exit;
+  end;
+  // Строка хода: текущий файл и счётчики. Текст собирается, только когда
+  // его пора показать (FifStep - не чаще раза в 100 мс)
+  if GetTickCount - FFifLastTick >= 100 then
+  begin
+    CountText := IntToStr(FFifChecked);
+    if FFifListCount > 0 then
+      CountText := CountText + ' из ' + IntToStr(FFifListCount);
+    if not FifStep(FifPathLine('Файл: ', AFile) +
+                   #13#10'Проверено файлов: ' + CountText + '; найдено: ' +
+                   IntToStr(FFifTotal) + ' совпадений в ' +
+                   IntToStr(FFifFiles) + ' файлах') then
+    begin
+      ACancel := True;
+      Exit;
+    end;
+  end;
+
+  WinIdx := -1;
+  if (FFifOpen <> nil) and FFifOpen.Find(ExpandFileName(AFile), Found) then
+  begin
+    WinIdx := Integer(FFifOpen.Objects[Found]);
+    if (WinIdx > WindowsItemCount - 1) or not FWindows[WinIdx].Used or
+       (CompareText(ExpandFileName(FWindows[WinIdx].FileName),
+                    ExpandFileName(AFile)) <> 0) then
+      WinIdx := -1;
+  end;
+  if WinIdx >= 0 then
+    Txt := FWindows[WinIdx].Text
+  else if not FifReadFile(AFile, Txt) then
+  begin
+    Inc(FFifChecked);
+    Exit;
+  end;
+
+  MatchCount := ScanTextForMatches(AFile, WinIdx, Txt, FFifPattern);
+  Inc(FFifChecked);
+  if MatchCount > 0 then
+  begin
+    Inc(FFifTotal, MatchCount);
+    Inc(FFifFiles);
+  end;
+  if FFifTotal >= FifMaxHits then
+    ACancel := True;
+end;
+
+// Обход папок нашёл файл: тот же файл второй раз (папка внутри другой
+// отмеченной) - мимо, иначе сразу поиск в нём
+procedure TForm1.FifFileFound(const AFile: string; var ACancel: Boolean);
+var
+  FileKey: string;
+  Found: Integer;
+begin
+  if FFifSeen <> nil then
+  begin
+    FileKey := AnsiLowerCase(AFile);
+    if FFifSeen.Find(FileKey, Found) then
+      Exit;
+    FFifSeen.Add(FileKey);
+  end;
+  FifScanFile(AFile, ACancel);
 end;
 
 // ---------------------------------------------------------------------------
