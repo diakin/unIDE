@@ -1981,6 +1981,9 @@ type
     // Отмеченная папка, из-за которой не поставлена галка вложенной в неё
     // (или объемлющей) - красным шрифтом в списке, до закрытия окна
     FHfRedDir: string;
+    // Проект, в разделе которого хранится список папок окна (выбор папок
+    // Find In Files при открытом проекте); '' - общий список горячих папок
+    FHfProject: string;
     FHfFixedCount: Integer;
 
     // Красный крестик у потерянных файлов в меню Windows
@@ -2176,6 +2179,8 @@ type
     function  HfNestedChecked(AIdx: Integer): Integer;
     procedure HfNestedRefused(AIdx, AOther: Integer);
     procedure HfUncheckInner(AIdx: Integer);
+    procedure HfListPrepare;
+    function  HfProjectLoad: Boolean;
     procedure HfListCheck(Sender: TObject);
     procedure HfSaveList;
     procedure HfSelectPath(const APath: string);
@@ -13425,15 +13430,15 @@ begin
     FHfTree.OnChange := HfTreeChange;
     FHfTree.OnDblClick := HfTreeDblClick;
     FHfList.OnClick := HfListClick;
-    FHfList.OnDrawItem := HfListDrawItem;
-    FHfWarnedDir := '';
-    FHfRedDir := '';
+    HfListPrepare;
     FHfList.OnClickCheck := HfListCheck;
 
     HfFillDrives;
 
-    // Переносим сохранённый список в диалог вместе с галочками
-    if FHotFolders <> nil then
+    // Переносим сохранённый список в диалог вместе с галочками: список
+    // проекта (выбор папок Find In Files), а пока у проекта своего списка
+    // нет - общий список горячих папок
+    if not HfProjectLoad and (FHotFolders <> nil) then
       for I := 0 to FHotFolders.Count - 1 do
       begin
         FHfList.Items.Add(FHotFolders[I]);
@@ -13512,11 +13517,39 @@ end;
 procedure TForm1.HfSaveList;
 var
   Ini: TBufIniFile;
+  Prj: TProjectIni;
   ItemIdx: Integer;
 begin
   // Папки поиска окна утилиты - не горячие папки
   if (FHfList = nil) or FHfSearchMode then
     Exit;
+  // Выбор папок Find In Files при открытом проекте - в раздел проекта
+  // ([Project.<имя>], ключи FifFolders_Count, FifFolders_Dir1=1 <папка>);
+  // общий список горячих папок не меняется
+  if FHfProject <> '' then
+  begin
+    if not ProjectExists(FHfProject) then
+      Exit;
+    try
+      Prj := TProjectIni.Create(SettingsFileName, FHfProject);
+      try
+        Prj.EraseSection('FifFolders');
+        Prj.WriteInteger('FifFolders', 'Count', FHfList.Items.Count);
+        for ItemIdx := 0 to FHfList.Items.Count - 1 do
+          if FHfList.Checked[ItemIdx] then
+            Prj.WriteString('FifFolders', 'Dir' + IntToStr(ItemIdx + 1),
+                            '1 ' + FHfList.Items[ItemIdx])
+          else
+            Prj.WriteString('FifFolders', 'Dir' + IntToStr(ItemIdx + 1),
+                            '0 ' + FHfList.Items[ItemIdx]);
+      finally
+        Prj.Free;
+      end;
+    except
+      // папка программы только для чтения - список не сохраняется
+    end;
+    Exit;
+  end;
   if FHotFolders = nil then
     FHotFolders := TStringList.Create;
   FHotFolders.Clear;
@@ -13621,6 +13654,60 @@ begin
   if (Count > 0) and (FHfPath <> nil) then
     FHfPath.Caption := '  Сняты галки вложенных папок (' + IntToStr(Count) +
                        '): они внутри ' + FHfList.Items[AIdx];
+end;
+
+// Список папок окна: строки рисуются сами (HfListDrawItem - красная
+// папка). У TCheckListBox в стиле lbStandard OnDrawItem не вызывается,
+// поэтому стиль - lbOwnerDrawFixed, высота строки - по шрифту
+procedure TForm1.HfListPrepare;
+begin
+  FHfWarnedDir := '';
+  FHfRedDir := '';
+  if FHfList = nil then
+    Exit;
+  FHfList.Style := lbOwnerDrawFixed;
+  FHfList.Canvas.Font := FHfList.Font;
+  FHfList.ItemHeight := FHfList.Canvas.TextHeight('Wg') + 2;
+  FHfList.OnDrawItem := HfListDrawItem;
+end;
+
+// Список папок проекта FHfProject - в FHfList. False - проекта нет или у
+// него своего списка ещё нет (тогда берётся общий список горячих папок)
+function TForm1.HfProjectLoad: Boolean;
+var
+  Prj: TProjectIni;
+  Count, KeyIdx, ItemIdx: Integer;
+  Line: string;
+begin
+  Result := False;
+  if (FHfList = nil) or (FHfProject = '') or
+     not ProjectExists(FHfProject) then
+    Exit;
+  Prj := TProjectIni.Create(SettingsFileName, FHfProject);
+  try
+    if not Prj.ValueExists('FifFolders', 'Count') then
+      Exit;
+    Result := True;
+    Count := Prj.ReadInteger('FifFolders', 'Count', 0);
+    for KeyIdx := 1 to Count do
+    begin
+      Line := Trim(Prj.ReadString('FifFolders', 'Dir' + IntToStr(KeyIdx), ''));
+      if Line = '' then
+        Continue;
+      if (Copy(Line, 1, 2) = '1 ') or (Copy(Line, 1, 2) = '0 ') then
+      begin
+        ItemIdx := FHfList.Items.Add(Copy(Line, 3, MaxInt));
+        FHfList.Checked[ItemIdx] := Line[1] = '1';
+      end
+      else
+      begin
+        ItemIdx := FHfList.Items.Add(Line);
+        FHfList.Checked[ItemIdx] := True;
+      end;
+    end;
+  finally
+    Prj.Free;
+  end;
 end;
 
 // Строка списка папок: как у TCheckListBox по умолчанию, папка FHfRedDir -
@@ -20676,9 +20763,18 @@ var
 begin
   Dlg := TDlgFifDisk(FFifDlg);
   DirText := Trim(Dlg.edDir.Text);
-  if HotFoldersDialog(DirText, 'Directory Tree - отмеченные папки для ' +
-  'поиска', True, DirText) then
-                      Dlg.edDir.Text := DirText;
+  // Список папок - свой у каждого проекта; без проекта - общий
+  if ProjectExists(FCurrentProject) then
+    FHfProject := FCurrentProject
+  else
+    FHfProject := '';
+  try
+    if HotFoldersDialog(DirText, 'Directory Tree - отмеченные папки для ' +
+                        'поиска', True, DirText) then
+      Dlg.edDir.Text := DirText;
+  finally
+    FHfProject := '';
+  end;
 end;
 
 procedure TForm1.FifExtAllClick(Sender: TObject);
@@ -36707,9 +36803,7 @@ begin
     FHfTree.OnChange := HfTreeChange;
     FHfTree.OnDblClick := HfTreeDblClick;
     FHfList.OnClick := HfListClick;
-    FHfList.OnDrawItem := HfListDrawItem;
-    FHfWarnedDir := '';
-    FHfRedDir := '';
+    HfListPrepare;
     FHfList.OnClickCheck := HfListCheck;
     HfFillDrives;
 
