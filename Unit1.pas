@@ -1978,6 +1978,9 @@ type
     // Папка из списка, о которой уже предупредили, что её нет на диске:
     // повторный щелчок (или галка) по ней же второй раз не предупреждает
     FHfWarnedDir: string;
+    // Отмеченная папка, из-за которой не поставлена галка вложенной в неё
+    // (или объемлющей) - красным шрифтом в списке, до закрытия окна
+    FHfRedDir: string;
     FHfFixedCount: Integer;
 
     // Красный крестик у потерянных файлов в меню Windows
@@ -2168,6 +2171,10 @@ type
                                APick: Boolean; var ADir: string;
                                ACheckedOnly: Boolean = False): Boolean;
     procedure HfListClick(Sender: TObject);
+    procedure HfListDrawItem(Control: TWinControl; Index: Integer;
+                             Rect: TRect; State: TOwnerDrawState);
+    function  HfNestedChecked(AIdx: Integer): Integer;
+    procedure HfNestedRefused(AIdx, AOther: Integer);
     procedure HfListCheck(Sender: TObject);
     procedure HfSaveList;
     procedure HfSelectPath(const APath: string);
@@ -13306,7 +13313,7 @@ end;
 procedure TForm1.HfAddClick(Sender: TObject);
 var
   S: string;
-  I: Integer;
+  I, K: Integer;
 begin
   if (FHfTree = nil) or (FHfTree.Selected = nil) then
     Exit;
@@ -13324,9 +13331,22 @@ begin
     end;
 
   I := FHfList.Items.Add(S);
-  FHfList.Checked[I] := True; // только что добавили - значит она и нужна
   FHfList.ItemIndex := I;
-  HfSearchFixNested(I);
+  if FHfSearchMode then
+  begin
+    FHfList.Checked[I] := True; // только что добавили - значит она и нужна
+    HfSearchFixNested(I);
+  end
+  else
+  begin
+    // Внутри отмеченной (или сама объемлет отмеченную) - без галки, а та
+    // отмеченная - красным; иначе галка: только что добавили - она и нужна
+    K := HfNestedChecked(I);
+    if K >= 0 then
+      HfNestedRefused(I, K)
+    else
+      FHfList.Checked[I] := True;
+  end;
   HfSaveList;
 end;
 
@@ -13400,7 +13420,9 @@ begin
     FHfTree.OnChange := HfTreeChange;
     FHfTree.OnDblClick := HfTreeDblClick;
     FHfList.OnClick := HfListClick;
+    FHfList.OnDrawItem := HfListDrawItem;
     FHfWarnedDir := '';
+    FHfRedDir := '';
     FHfList.OnClickCheck := HfListCheck;
 
     HfFillDrives;
@@ -13518,10 +13540,90 @@ begin
 end;
 
 procedure TForm1.HfListCheck(Sender: TObject);
+var
+  ItemIdx, OtherIdx: Integer;
 begin
-  if FHfSearchMode and (FHfList <> nil) then
-    HfSearchFixNested(FHfList.ItemIndex);
+  if FHfList = nil then
+    Exit;
+  ItemIdx := FHfList.ItemIndex;
+  if FHfSearchMode then
+    HfSearchFixNested(ItemIdx)
+  // Галку вложенной в отмеченную (или объемлющей отмеченную) не ставим:
+  // сначала надо снять галку на той, она - красным
+  else if (ItemIdx >= 0) and FHfList.Checked[ItemIdx] then
+  begin
+    OtherIdx := HfNestedChecked(ItemIdx);
+    if OtherIdx >= 0 then
+    begin
+      FHfList.Checked[ItemIdx] := False;
+      HfNestedRefused(ItemIdx, OtherIdx);
+    end;
+  end;
   HfSaveList;
+end;
+
+// Отмеченная папка списка, внутри которой лежит папка строки AIdx или
+// которая сама лежит внутри неё; -1 - такой нет
+function TForm1.HfNestedChecked(AIdx: Integer): Integer;
+var
+  ItemIdx: Integer;
+begin
+  Result := -1;
+  if (FHfList = nil) or (AIdx < 0) or (AIdx > FHfList.Items.Count - 1) then
+    Exit;
+  // Сначала объемлющая (папка верхнего уровня), потом вложенные
+  for ItemIdx := 0 to FHfList.Items.Count - 1 do
+    if (ItemIdx <> AIdx) and FHfList.Checked[ItemIdx] and
+       SearchDirInside(FHfList.Items[AIdx], FHfList.Items[ItemIdx]) then
+    begin
+      Result := ItemIdx;
+      Exit;
+    end;
+  for ItemIdx := 0 to FHfList.Items.Count - 1 do
+    if (ItemIdx <> AIdx) and FHfList.Checked[ItemIdx] and
+       SearchDirInside(FHfList.Items[ItemIdx], FHfList.Items[AIdx]) then
+    begin
+      Result := ItemIdx;
+      Exit;
+    end;
+end;
+
+// Галка на строке AIdx не поставлена из-за отмеченной AOther: та - красным
+// (прежняя красная - обычным), пояснение - в строке пути
+procedure TForm1.HfNestedRefused(AIdx, AOther: Integer);
+begin
+  if FHfList = nil then
+    Exit;
+  FHfRedDir := FHfList.Items[AOther];
+  FHfList.Invalidate;
+  if FHfPath = nil then
+    Exit;
+  if SearchDirInside(FHfList.Items[AIdx], FHfList.Items[AOther]) then
+    FHfPath.Caption := '  Галка не поставлена: папка внутри отмеченной ' +
+                       FHfList.Items[AOther] + ' - снимите галку на ней'
+  else
+    FHfPath.Caption := '  Галка не поставлена: внутри папки отмечена ' +
+                       FHfList.Items[AOther] + ' - снимите галку на ней';
+end;
+
+// Строка списка папок: как у TCheckListBox по умолчанию, папка FHfRedDir -
+// красным шрифтом. Галку рисует сам TCheckListBox, Rect - правее неё
+procedure TForm1.HfListDrawItem(Control: TWinControl; Index: Integer;
+                                Rect: TRect; State: TOwnerDrawState);
+var
+  Lst: TCheckListBox;
+  TextRect: TRect;
+begin
+  Lst := TCheckListBox(Control);
+  Lst.Canvas.FillRect(Rect);
+  if (Index < 0) or (Index > Lst.Items.Count - 1) then
+    Exit;
+  if (FHfRedDir <> '') and (CompareText(Lst.Items[Index], FHfRedDir) = 0) then
+    Lst.Canvas.Font.Color := $3C3CFF; // ярко-красный: виден и на тёмном фоне
+  TextRect := Rect;
+  Inc(TextRect.Left, 2);
+  DrawText(Lst.Canvas.Handle, PChar(Lst.Items[Index]), -1, TextRect,
+           DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
 end;
 
 // Щелчок по папке в списке - она в строке пути (её вернёт выбор папки) и
@@ -36588,7 +36690,9 @@ begin
     FHfTree.OnChange := HfTreeChange;
     FHfTree.OnDblClick := HfTreeDblClick;
     FHfList.OnClick := HfListClick;
+    FHfList.OnDrawItem := HfListDrawItem;
     FHfWarnedDir := '';
+    FHfRedDir := '';
     FHfList.OnClickCheck := HfListCheck;
     HfFillDrives;
 
@@ -36662,6 +36766,8 @@ begin
         FHfList.Checked[AChanged] := False;
         Note := '  Не отмечена: она внутри ' + FHfList.Items[OuterIdx] +
                 ' - её подпапки и так ищутся';
+        FHfRedDir := FHfList.Items[OuterIdx];
+        FHfList.Invalidate;
         Break;
       end;
     if FHfList.Checked[AChanged] then
