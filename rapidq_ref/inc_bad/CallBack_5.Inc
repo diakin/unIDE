@@ -21,41 +21,42 @@ Declare Function FWCB_HeapAlloc Lib "kernel32" Alias "HeapAlloc" (ByVal hHeap As
 '
 ' ================================================================
 FUNCTION SetNewFwToCallBack (ForwardTo AS LONG, hFunction AS LONG) AS LONG
-    DEFLNG hProcessHeap = FWCB_GetProcessHeap
-    DEFLNG ptrForwarder = FWCB_HeapAlloc (hProcessHeap, 12, 14)
-    DIM mTmp AS QMEMORYSTREAM
-    WITH mTmp
-        .Size = 14
-        .Position = 0 
-        .WriteNum(&H58        , 1)    ' pop Eax
-        .WriteNum(&H68        , 1)    ' push ...
-        .WriteNum(hFunction   , 4)    ' ... hRqFunction
-        .WriteNum(&H50        , 1)    ' push eax
-        .WriteNum(&HB8        , 1)    ' mov  eax, ...
-        .WriteNum(Forwardto   , 4)    ' ... ForwardTo
-        .WriteNum(&HE0FF      , 2)    ' jmp eax
-        memcpy (ptrForwarder, .Pointer, 14)
-    END WITH
-    Result = ptrForwarder
+  DEFLNG hProcessHeap = FWCB_GetProcessHeap
+  DEFLNG ptrForwarder = FWCB_HeapAlloc (hProcessHeap, 12, 14)
+  DIM mTmp AS QMEMORYSTREAM
+  WITH mTmp
+    .Size = 14
+    .Position = 0
+    .WriteNum(&H58        , 1)    ' pop Eax
+    .WriteNum(&H68        , 1)    ' push ...
+    .WriteNum(hFunction   , 4)    ' ... hRqFunction
+    .WriteNum(&H50        , 1)    ' push eax
+    .WriteNum(&HB8        , 1)    ' mov  eax, ...
+    .WriteNum(Forwardto   , 4)    ' ... ForwardTo
+    .WriteNum(&HE0FF      , 2)    ' jmp eax
+    memcpy (ptrForwarder, .Pointer, 14)
+  END WITH
+  Result = ptrForwarder
 END FUNCTION
 $ENDIF
 ' **********************************************************************************
 $IFNDEF _CALLBACK_5
-    $DEFINE _CALLBACK_5
-    Declare Function MasterCallBack_5 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long, Arg5 As long) As Long
-    Declare Function FuncBind_5 (Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long, Arg5 As long) As Long
-    DefInt lpCallBack_5  = CodePtr(MasterCallBack_5)
+$DEFINE _CALLBACK_5
+Declare Function MasterCallBack_5 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long, Arg5 As long) As Long
+Declare Function FuncBind_5 (Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long, Arg5 As long) As Long
+DefInt lpCallBack_5  = CodePtr(MasterCallBack_5)
 
-    Function MasterCallBack_5 (hBind As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long) As Long
-        DefInt hBind
-        Bind hBind To FuncBind_5
-        hBind = hFunction
-        Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4, Arg5)
-    End Function
+Function MasterCallBack_5 (hBind As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long) As Long
+  DefInt hBind
+  Bind hBind To FuncBind_5
+  hBind = hFunction
+  Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4, Arg5)
+End Function
 
-    Function SetNewCallBack_5 (hFunction As Long) As Long
-        Result = SetNewFwToCallBack (lpCallBack_5, hFunction)
-    End Function
+Function SetNewCallBack_5 (hFunction As Long) As Long
+  Result = SetNewFwToCallBack (lpCallBack_5, hFunction)
+End Function
 $ENDIF
 ' ----------------------------------------------------------------------------------
 '
+
