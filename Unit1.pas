@@ -18580,7 +18580,12 @@ begin
       // Список файлов проекта прервали Стопом - или он ещё собирается
       // (Find-> нажали снова во время сбора)
       if FFifListAborted or FFifListing then
+      begin
+        Dbg('Find In Files (Find->): поиск не начат - список файлов ' +
+            'прерван или ещё собирается', clGray);
         Exit;
+      end;
+      Dbg('Find In Files (Find->): окно показано, поиск запускается', clGray);
       FifRun;
       if FFifListTaken then
         Exit;
@@ -20618,6 +20623,7 @@ begin
     if Pattern = '' then
     begin
       FifStatus('Образец поиска пуст: введите его в поле Find главного окна');
+      Dbg('Find In Files: поиск не начат - образец пуст', clGray);
       Exit;
     end;
     AddHistory(cmbFind, Pattern);
@@ -20632,6 +20638,7 @@ begin
   if (Exts = '') and (OtherMasks = '') then
   begin
     FifStatus('Не отмечено ни одного расширения');
+    Dbg('Find In Files: поиск не начат - не отмечено ни одной маски', clGray);
     Exit;
   end;
 
@@ -20659,11 +20666,14 @@ begin
     if Missing <> '' then
     begin
       FifStatus('Папка не найдена:' + Missing);
+      Dbg('Find In Files: поиск не начат - папка не найдена:' + Missing, clGray);
       Exit;
     end;
     Dlg.edDir.Text := DirText;
   end;
   FifSaveSettings;
+  Dbg('Find In Files: поиск начат, образец "' + Pattern + '", маски ' + Exts +
+      ' ' + OtherMasks, clGray);
 
   // Текущее окно - в свой слот: ищем по тексту в памяти
   StoreCurrentWindow;
