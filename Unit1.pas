@@ -15074,8 +15074,12 @@ begin
       Lst.Items.Add(S);
       Names.Add(Nm);
     end;
+    Dlg.FitScrollWidth;
+    Dlg.LoadPlacement(SettingsFileName);
 
-    if Dlg.ShowModal <> mrOk then
+    Dlg.ShowModal;
+    Dlg.SavePlacement(SettingsFileName);
+    if Dlg.ModalResult <> mrOk then
       Exit;
 
     Folders := Dlg.rbAll.Checked;
