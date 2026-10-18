@@ -866,8 +866,8 @@ end;
 // Картинки загруженной страницы - в журнал (OnLog): адрес страницы, режим
 // IE, сколько картинок и какие не показаны, с адресом каждой. К
 // DocumentComplete картинки уже загружены или не загрузились. Не
-// показанная - naturalWidth = 0 (есть с IE9; в режиме ниже - width, у
-// значка битой картинки он не 0, такие видны только по адресу)
+// показанная - naturalWidth = 0 (есть с IE9; в режиме ниже 9 его нет -
+// тогда в журнал идёт адрес каждой картинки)
 procedure TWebPreview.LogImages;
 var
   Doc, Images, Img: OleVariant;
@@ -898,13 +898,18 @@ begin
       try
         ImgWidth := Img.naturalWidth;
       except
-        ImgWidth := Img.width;
+        // Режим IE ниже 9: naturalWidth нет, а width у значка битой
+        // картинки не 0 - загрузилась ли, не узнать; адрес - в журнал
+        ImgWidth := -1;
       end;
-      if ImgWidth <= 0 then
+      if ImgWidth = 0 then
       begin
         Inc(BrokenCount);
         Log('картинка не показана: ' + ImgSrc);
-      end;
+      end
+      else if ImgWidth < 0 then
+        Log('картинка (режим IE ' + DocMode + ', показана ли - не узнать): ' +
+            ImgSrc);
     except
       // элемент без свойств картинки - пропустить
     end;
