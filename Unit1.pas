@@ -4549,6 +4549,9 @@ begin
   // Список совпадений (Match list, Find in Files): строка файла
   UiDefault('Match.FileBG', $00F0D8B0, $00905020);
   UiDefault('Match.FileText', clBlack, clWhite);
+  // Найденный кусок в строке списка - приглушённым цветом
+  UiDefault('Match.HitBG', $00B0F0FF, $00604830);
+  UiDefault('Match.HitText', clBlack, $00F0F0F0);
   UiDefault('Gutter.BmBG', $0080FFFF, $00406060);
   UiDefault('Gutter.BmBorder', $00404040, $00A0C0C0);
   UiDefault('Gutter.BmText', clBlack, $00F0FFFF);
@@ -4858,6 +4861,10 @@ begin
     Result := 'Список совпадений: фон строки файла'
   else if AKey = 'Match.FileText' then
     Result := 'Список совпадений: текст строки файла'
+  else if AKey = 'Match.HitBG' then
+    Result := 'Список совпадений: фон найденного куска'
+  else if AKey = 'Match.HitText' then
+    Result := 'Список совпадений: текст найденного куска'
   else if AKey = 'Gutter.MarksBG' then
     Result := 'Полоса меток: фон (clDefault - чуть светлее / темнее фона редактора)'
   else if AKey = 'Gutter.BmBG' then
@@ -19695,9 +19702,11 @@ begin
         Inc(X, Cnv.TextWidth(Part));
       end;
 
+      // Найденный кусок - своим спокойным цветом (Match.HitBG,
+      // Match.HitText), а не системным цветом выделения
       Part := Copy(S, Q, Length(FMatchPattern));
-      Cnv.Brush.Color := clHighlight;
-      Cnv.Font.Color := clHighlightText;
+      Cnv.Brush.Color := UiColor('Match.HitBG');
+      Cnv.Font.Color := UiColor('Match.HitText');
       Cnv.TextOut(X, Rect.Top + 1, Part);
       Inc(X, Cnv.TextWidth(Part));
 
