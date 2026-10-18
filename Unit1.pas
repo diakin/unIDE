@@ -2175,6 +2175,7 @@ type
                              Rect: TRect; State: TOwnerDrawState);
     function  HfNestedChecked(AIdx: Integer): Integer;
     procedure HfNestedRefused(AIdx, AOther: Integer);
+    procedure HfUncheckInner(AIdx: Integer);
     procedure HfListCheck(Sender: TObject);
     procedure HfSaveList;
     procedure HfSelectPath(const APath: string);
@@ -13339,13 +13340,17 @@ begin
   end
   else
   begin
-    // Внутри отмеченной (или сама объемлет отмеченную) - без галки, а та
-    // отмеченная - красным; иначе галка: только что добавили - она и нужна
+    // Внутри отмеченной - без галки, а та отмеченная - красным; иначе
+    // галка (только что добавили - она и нужна), а с вложенных в неё
+    // галки снимаются
     K := HfNestedChecked(I);
     if K >= 0 then
       HfNestedRefused(I, K)
     else
+    begin
       FHfList.Checked[I] := True;
+      HfUncheckInner(I);
+    end;
   end;
   HfSaveList;
 end;
@@ -13548,8 +13553,9 @@ begin
   ItemIdx := FHfList.ItemIndex;
   if FHfSearchMode then
     HfSearchFixNested(ItemIdx)
-  // Галку вложенной в отмеченную (или объемлющей отмеченную) не ставим:
-  // сначала надо снять галку на той, она - красным
+  // Галку вложенной в отмеченную не ставим: сначала надо снять галку на
+  // папке верхнего уровня, она - красным. Галка на папке верхнего уровня
+  // снимает галки вложенных в неё
   else if (ItemIdx >= 0) and FHfList.Checked[ItemIdx] then
   begin
     OtherIdx := HfNestedChecked(ItemIdx);
@@ -13557,13 +13563,15 @@ begin
     begin
       FHfList.Checked[ItemIdx] := False;
       HfNestedRefused(ItemIdx, OtherIdx);
-    end;
+    end
+    else
+      HfUncheckInner(ItemIdx);
   end;
   HfSaveList;
 end;
 
-// Отмеченная папка списка, внутри которой лежит папка строки AIdx или
-// которая сама лежит внутри неё; -1 - такой нет
+// Отмеченная папка списка, внутри которой лежит папка строки AIdx (папка
+// верхнего уровня); -1 - такой нет
 function TForm1.HfNestedChecked(AIdx: Integer): Integer;
 var
   ItemIdx: Integer;
@@ -13571,7 +13579,6 @@ begin
   Result := -1;
   if (FHfList = nil) or (AIdx < 0) or (AIdx > FHfList.Items.Count - 1) then
     Exit;
-  // Сначала объемлющая (папка верхнего уровня), потом вложенные
   for ItemIdx := 0 to FHfList.Items.Count - 1 do
     if (ItemIdx <> AIdx) and FHfList.Checked[ItemIdx] and
        SearchDirInside(FHfList.Items[AIdx], FHfList.Items[ItemIdx]) then
@@ -13579,31 +13586,41 @@ begin
       Result := ItemIdx;
       Exit;
     end;
-  for ItemIdx := 0 to FHfList.Items.Count - 1 do
-    if (ItemIdx <> AIdx) and FHfList.Checked[ItemIdx] and
-       SearchDirInside(FHfList.Items[ItemIdx], FHfList.Items[AIdx]) then
-    begin
-      Result := ItemIdx;
-      Exit;
-    end;
 end;
 
-// Галка на строке AIdx не поставлена из-за отмеченной AOther: та - красным
-// (прежняя красная - обычным), пояснение - в строке пути
+// Галка на строке AIdx не поставлена из-за отмеченной папки верхнего
+// уровня AOther: та - красным (прежняя красная - обычным), пояснение - в
+// строке пути
 procedure TForm1.HfNestedRefused(AIdx, AOther: Integer);
 begin
   if FHfList = nil then
     Exit;
   FHfRedDir := FHfList.Items[AOther];
   FHfList.Invalidate;
-  if FHfPath = nil then
-    Exit;
-  if SearchDirInside(FHfList.Items[AIdx], FHfList.Items[AOther]) then
+  if FHfPath <> nil then
     FHfPath.Caption := '  Галка не поставлена: папка внутри отмеченной ' +
-                       FHfList.Items[AOther] + ' - снимите галку на ней'
-  else
-    FHfPath.Caption := '  Галка не поставлена: внутри папки отмечена ' +
                        FHfList.Items[AOther] + ' - снимите галку на ней';
+end;
+
+// Отмечена папка строки AIdx: галки вложенных в неё папок снимаются (их
+// подпапки и так обходятся), пояснение - в строке пути
+procedure TForm1.HfUncheckInner(AIdx: Integer);
+var
+  ItemIdx, Count: Integer;
+begin
+  if (FHfList = nil) or (AIdx < 0) or (AIdx > FHfList.Items.Count - 1) then
+    Exit;
+  Count := 0;
+  for ItemIdx := 0 to FHfList.Items.Count - 1 do
+    if (ItemIdx <> AIdx) and FHfList.Checked[ItemIdx] and
+       SearchDirInside(FHfList.Items[ItemIdx], FHfList.Items[AIdx]) then
+    begin
+      FHfList.Checked[ItemIdx] := False;
+      Inc(Count);
+    end;
+  if (Count > 0) and (FHfPath <> nil) then
+    FHfPath.Caption := '  Сняты галки вложенных папок (' + IntToStr(Count) +
+                       '): они внутри ' + FHfList.Items[AIdx];
 end;
 
 // Строка списка папок: как у TCheckListBox по умолчанию, папка FHfRedDir -
