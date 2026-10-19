@@ -1012,6 +1012,10 @@ type
     FUtilSig: string;
     // Плашки открытых окон утилит в строке меню, после Help (TPanel)
     FUtilChips: TList;
+    // Окна, спрятанные щелчком по плашке: их плашки остаются (другого
+    // цвета), повторный щелчок показывает окно. Закрытое крестиком окно
+    // сюда не попадает - его плашка пропадает
+    FUtilHidden: TList;
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
     FCurrentFileName: string; // Сюда мы будем записывать путь к открытому/сохраненному файлу
 
@@ -2536,7 +2540,12 @@ type
     // Меню Started Util (поля FUtilMenu, FUtilSig - в начале private)
     procedure UtilMenuUpdate;
     procedure UtilMenuClick(Sender: TObject);
+    procedure UtilChipClick(Sender: TObject);
     procedure UtilChipsPlace;
+    procedure UtilChipsPaint;
+    function  UtilFormOf(ATag: Integer): TCustomForm;
+    function  UtilListed(AForm: TCustomForm): Boolean;
+    procedure UtilShowForm(AForm: TCustomForm);
     procedure SettingsAlert(const AText: string);
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
@@ -23502,6 +23511,7 @@ begin
   if FPromoted then
     FRestartExe := ExtractFilePath(Application.ExeName) + OwnExeBase + '.exe';
   ArdFreeAll;
+  FreeAndNil(FUtilHidden);
   FreeAndNil(FRqIncItems);
   FreeAndNil(FRqStrict);
   FreeAndNil(FEnvOverrides);
@@ -37274,75 +37284,177 @@ begin
   end;
 end;
 
-procedure TForm1.UtilMenuUpdate;
+// Цвета плашки: окно на экране - яркая, спрятано плашкой - серая
+const
+  UtilChipShownColor = $0000C8FF;
+  UtilChipHiddenColor = $00A0A0A0;
+
+// Окно программы по указателю из Tag пункта или плашки; nil - его уже нет
+// (закрылось после постройки меню). Указатель только сравнивается со
+// списком окон, сам не разыменовывается
+function TForm1.UtilFormOf(ATag: Integer): TCustomForm;
 var
   FormIdx: Integer;
+begin
+  Result := nil;
+  for FormIdx := 0 to Screen.CustomFormCount - 1 do
+    if Integer(Screen.CustomForms[FormIdx]) = ATag then
+    begin
+      Result := Screen.CustomForms[FormIdx];
+      Exit;
+    end;
+end;
+
+// Окно - в меню Started Util и на плашке: видимое окно утилиты или
+// конструктора, либо спрятанное плашкой
+function TForm1.UtilListed(AForm: TCustomForm): Boolean;
+begin
+  Result := (AForm <> Self) and (AForm.Caption <> '') and
+            (AForm.Visible or
+             ((FUtilHidden <> nil) and (FUtilHidden.IndexOf(AForm) >= 0)));
+end;
+
+// Окно - на экран и наверх (свёрнутое - развернуть); из списка спрятанных
+// плашкой - убрать
+procedure TForm1.UtilShowForm(AForm: TCustomForm);
+begin
+  if FUtilHidden <> nil then
+    FUtilHidden.Remove(AForm);
+  if not AForm.Visible then
+    AForm.Show;
+  if AForm.WindowState = wsMinimized then
+    AForm.WindowState := wsNormal;
+  AForm.BringToFront;
+  if AForm.CanFocus then
+    AForm.SetFocus;
+end;
+
+// Цвет и подсказка плашек - по тому, на экране ли окно
+procedure TForm1.UtilChipsPaint;
+var
+  ChipIdx: Integer;
+  Chip: TPanel;
+  OneForm: TCustomForm;
+begin
+  if FUtilChips = nil then
+    Exit;
+  for ChipIdx := 0 to FUtilChips.Count - 1 do
+  begin
+    Chip := TPanel(FUtilChips[ChipIdx]);
+    OneForm := UtilFormOf(Chip.Tag);
+    if OneForm = nil then
+      Continue;
+    if OneForm.Visible then
+    begin
+      if Chip.Color <> UtilChipShownColor then
+        Chip.Color := UtilChipShownColor;
+      Chip.Hint := OneForm.Caption + ' - щелчок прячет окно';
+    end
+    else
+    begin
+      if Chip.Color <> UtilChipHiddenColor then
+        Chip.Color := UtilChipHiddenColor;
+      Chip.Hint := OneForm.Caption + ' - окно спрятано, щелчок показывает';
+    end;
+  end;
+end;
+
+procedure TForm1.UtilMenuUpdate;
+var
+  FormIdx, HiddenIdx: Integer;
   OneForm: TCustomForm;
   Sig: string;
   Item: TMenuItem;
   Chip: TPanel;
+  Listed: TList;
+  StillHidden: Boolean;
 begin
   if FUtilMenu = nil then
     Exit;
-  Sig := '';
-  for FormIdx := 0 to Screen.CustomFormCount - 1 do
-  begin
-    OneForm := Screen.CustomForms[FormIdx];
-    if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
-      Continue;
-    Sig := Sig + IntToHex(Integer(OneForm), 8) + OneForm.Caption + #1;
-  end;
-  if Sig = FUtilSig then
-  begin
-    // Набор тот же; строка меню могла сменить шрифт или высоту
-    UtilChipsPlace;
-    Exit;
-  end;
-  FUtilSig := Sig;
-  FUtilMenu.Clear;
-  for FormIdx := 0 to Screen.CustomFormCount - 1 do
-  begin
-    OneForm := Screen.CustomForms[FormIdx];
-    if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
-      Continue;
-    Item := TMenuItem.Create(FUtilMenu);
-    Item.Caption := StringReplace(OneForm.Caption, '&', '&&', [rfReplaceAll]);
-    Item.Tag := Integer(OneForm);
-    Item.OnClick := UtilMenuClick;
-    FUtilMenu.Add(Item);
-  end;
-  // Плашки в строке меню - заново, по тем же окнам
-  if FUtilChips = nil then
-    FUtilChips := TList.Create;
-  for FormIdx := 0 to FUtilChips.Count - 1 do
-    TObject(FUtilChips[FormIdx]).Free;
-  FUtilChips.Clear;
-  if FMenuBar <> nil then
-    for FormIdx := 0 to FUtilMenu.Count - 1 do
+
+  // Спрятанные плашкой: окно закрыто и разрушено - из списка; окно снова
+  // на экране (показано не плашкой) - тоже, оно теперь просто видимое
+  if FUtilHidden <> nil then
+    for HiddenIdx := FUtilHidden.Count - 1 downto 0 do
     begin
-      Chip := TPanel.Create(Self);
-      Chip.Parent := FMenuBar;
-      Chip.BevelOuter := bvNone;
-      Chip.ParentBackground := False;
-      // Яркая: открытое окно утилиты должно быть видно сразу. Цвет текста
-      // - не clBlack: его тема заменяет своим (UiThemeFgSys)
-      Chip.Color := $0000C8FF;
-      Chip.ParentFont := False;
-      Chip.Font.Name := 'Tahoma';
-      Chip.Font.Height := -11;
-      Chip.Font.Style := [fsBold];
-      Chip.Font.Color := TColor($00101010);
-      Chip.Caption := UtilShortName(StringReplace(FUtilMenu.Items[FormIdx].Caption,
-                                                  '&&', '&', [rfReplaceAll]));
-      Chip.Hint := StringReplace(FUtilMenu.Items[FormIdx].Caption, '&&', '&',
-                                 [rfReplaceAll]) + ' - показать окно';
-      Chip.ShowHint := True;
-      Chip.Cursor := crHandPoint;
-      Chip.Tag := FUtilMenu.Items[FormIdx].Tag;
-      Chip.OnClick := UtilMenuClick;
-      FUtilChips.Add(Chip);
+      StillHidden := False;
+      for FormIdx := 0 to Screen.CustomFormCount - 1 do
+        if Screen.CustomForms[FormIdx] = FUtilHidden[HiddenIdx] then
+        begin
+          StillHidden := not Screen.CustomForms[FormIdx].Visible;
+          Break;
+        end;
+      if not StillHidden then
+        FUtilHidden.Delete(HiddenIdx);
     end;
-  UtilChipsPlace;
+
+  Listed := TList.Create;
+  try
+    Sig := '';
+    for FormIdx := 0 to Screen.CustomFormCount - 1 do
+    begin
+      OneForm := Screen.CustomForms[FormIdx];
+      if not UtilListed(OneForm) then
+        Continue;
+      Listed.Add(OneForm);
+      // Видимость в подпись не входит: плашка при щелчке не пересоздаётся,
+      // только перекрашивается (UtilChipsPaint)
+      Sig := Sig + IntToHex(Integer(OneForm), 8) + OneForm.Caption + #1;
+    end;
+    if Sig = FUtilSig then
+    begin
+      // Набор тот же; строка меню могла сменить шрифт или высоту, окно -
+      // спрятаться или показаться
+      UtilChipsPaint;
+      UtilChipsPlace;
+      Exit;
+    end;
+    FUtilSig := Sig;
+    FUtilMenu.Clear;
+    for FormIdx := 0 to Listed.Count - 1 do
+    begin
+      OneForm := TCustomForm(Listed[FormIdx]);
+      Item := TMenuItem.Create(FUtilMenu);
+      Item.Caption := StringReplace(OneForm.Caption, '&', '&&', [rfReplaceAll]);
+      Item.Tag := Integer(OneForm);
+      Item.OnClick := UtilMenuClick;
+      FUtilMenu.Add(Item);
+    end;
+    // Плашки в строке меню - заново, по тем же окнам
+    if FUtilChips = nil then
+      FUtilChips := TList.Create;
+    for FormIdx := 0 to FUtilChips.Count - 1 do
+      TObject(FUtilChips[FormIdx]).Free;
+    FUtilChips.Clear;
+    if FMenuBar <> nil then
+      for FormIdx := 0 to Listed.Count - 1 do
+      begin
+        OneForm := TCustomForm(Listed[FormIdx]);
+        Chip := TPanel.Create(Self);
+        Chip.Parent := FMenuBar;
+        Chip.BevelOuter := bvNone;
+        Chip.ParentBackground := False;
+        // Яркая: открытое окно утилиты должно быть видно сразу. Цвет
+        // текста - не clBlack: его тема заменяет своим (UiThemeFgSys).
+        // Цвет фона и подсказка - UtilChipsPaint
+        Chip.Color := UtilChipShownColor;
+        Chip.ParentFont := False;
+        Chip.Font.Name := 'Tahoma';
+        Chip.Font.Height := -11;
+        Chip.Font.Style := [fsBold];
+        Chip.Font.Color := TColor($00101010);
+        Chip.Caption := UtilShortName(OneForm.Caption);
+        Chip.ShowHint := True;
+        Chip.Cursor := crHandPoint;
+        Chip.Tag := Integer(OneForm);
+        Chip.OnClick := UtilChipClick;
+        FUtilChips.Add(Chip);
+      end;
+    UtilChipsPaint;
+    UtilChipsPlace;
+  finally
+    Listed.Free;
+  end;
 
   // Пустое меню строка меню не раскрывает - пункт-пояснение
   if FUtilMenu.Count = 0 then
@@ -37356,28 +37468,40 @@ begin
     FMenuBar.Invalidate;
 end;
 
-// Пункт Started Util: окно - наверх (свёрнутое - развернуть). Окно могло
-// закрыться после постройки меню - ищется среди открытых.
+// Пункт Started Util: окно - на экран и наверх (спрятанное плашкой -
+// показать, свёрнутое - развернуть)
 procedure TForm1.UtilMenuClick(Sender: TObject);
 var
-  FormIdx: Integer;
   OneForm: TCustomForm;
 begin
-  for FormIdx := 0 to Screen.CustomFormCount - 1 do
-  begin
-    OneForm := Screen.CustomForms[FormIdx];
-    // Пункт меню или плашка в строке меню: окно - в Tag
-    if Integer(OneForm) <> TComponent(Sender).Tag then
-      Continue;
-    if not OneForm.Visible then
-      Exit;
-    if OneForm.WindowState = wsMinimized then
-      OneForm.WindowState := wsNormal;
-    OneForm.BringToFront;
-    if OneForm.CanFocus then
-      OneForm.SetFocus;
+  OneForm := UtilFormOf(TComponent(Sender).Tag);
+  if OneForm = nil then
     Exit;
-  end;
+  UtilShowForm(OneForm);
+  UtilChipsPaint;
+end;
+
+// Плашка окна в строке меню: окно на экране - спрятать (плашка остаётся,
+// серая), спрятано - показать (плашка снова яркая). Плашка здесь только
+// перекрашивается: пересоздать её из её же OnClick нельзя
+procedure TForm1.UtilChipClick(Sender: TObject);
+var
+  OneForm: TCustomForm;
+begin
+  OneForm := UtilFormOf(TComponent(Sender).Tag);
+  if OneForm = nil then
+    Exit;
+  if OneForm.Visible then
+  begin
+    if FUtilHidden = nil then
+      FUtilHidden := TList.Create;
+    if FUtilHidden.IndexOf(OneForm) < 0 then
+      FUtilHidden.Add(OneForm);
+    OneForm.Hide;
+  end
+  else
+    UtilShowForm(OneForm);
+  UtilChipsPaint;
 end;
 
 // Имя из сообщения rc.exe "$INCLUDE file X does not exist"; '' - такого нет
