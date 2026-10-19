@@ -1012,10 +1012,6 @@ type
     FUtilSig: string;
     // Плашки открытых окон утилит в строке меню, после Help (TPanel)
     FUtilChips: TList;
-    // Окна, спрятанные щелчком по плашке: их плашки остаются (другого
-    // цвета), повторный щелчок показывает окно. Закрытое крестиком окно
-    // сюда не попадает - его плашка пропадает
-    FUtilHidden: TList;
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
     FCurrentFileName: string; // Сюда мы будем записывать путь к открытому/сохраненному файлу
 
@@ -2544,7 +2540,6 @@ type
     procedure UtilChipsPlace;
     procedure UtilChipsPaint;
     function  UtilFormOf(ATag: Integer): TCustomForm;
-    function  UtilListed(AForm: TCustomForm): Boolean;
     procedure UtilShowForm(AForm: TCustomForm);
     procedure SettingsAlert(const AText: string);
     procedure PaletteIconEditClick(Sender: TObject);
@@ -23511,7 +23506,6 @@ begin
   if FPromoted then
     FRestartExe := ExtractFilePath(Application.ExeName) + OwnExeBase + '.exe';
   ArdFreeAll;
-  FreeAndNil(FUtilHidden);
   FreeAndNil(FRqIncItems);
   FreeAndNil(FRqStrict);
   FreeAndNil(FEnvOverrides);
@@ -37284,7 +37278,7 @@ begin
   end;
 end;
 
-// Цвета плашки: окно на экране - яркая, спрятано плашкой - серая
+// Цвета плашки: окно развёрнуто - яркая, свёрнуто - серая
 const
   UtilChipShownColor = $0000C8FF;
   UtilChipHiddenColor = $00A0A0A0;
@@ -37305,23 +37299,11 @@ begin
     end;
 end;
 
-// Окно - в меню Started Util и на плашке: видимое окно утилиты или
-// конструктора, либо спрятанное плашкой
-function TForm1.UtilListed(AForm: TCustomForm): Boolean;
-begin
-  Result := (AForm <> Self) and (AForm.Caption <> '') and
-            (AForm.Visible or
-             ((FUtilHidden <> nil) and (FUtilHidden.IndexOf(AForm) >= 0)));
-end;
-
-// Окно - на экран и наверх (свёрнутое - развернуть); из списка спрятанных
-// плашкой - убрать
+// Окно - на экран и наверх: свёрнутое - развернуть
 procedure TForm1.UtilShowForm(AForm: TCustomForm);
 begin
-  if FUtilHidden <> nil then
-    FUtilHidden.Remove(AForm);
   if not AForm.Visible then
-    AForm.Show;
+    Exit;
   if AForm.WindowState = wsMinimized then
     AForm.WindowState := wsNormal;
   AForm.BringToFront;
@@ -37329,7 +37311,7 @@ begin
     AForm.SetFocus;
 end;
 
-// Цвет и подсказка плашек - по тому, на экране ли окно
+// Цвет и подсказка плашек - по тому, свёрнуто ли окно
 procedure TForm1.UtilChipsPaint;
 var
   ChipIdx: Integer;
@@ -37344,49 +37326,32 @@ begin
     OneForm := UtilFormOf(Chip.Tag);
     if OneForm = nil then
       Continue;
-    if OneForm.Visible then
+    if OneForm.WindowState <> wsMinimized then
     begin
       if Chip.Color <> UtilChipShownColor then
         Chip.Color := UtilChipShownColor;
-      Chip.Hint := OneForm.Caption + ' - щелчок прячет окно';
+      Chip.Hint := OneForm.Caption + ' - щелчок сворачивает окно';
     end
     else
     begin
       if Chip.Color <> UtilChipHiddenColor then
         Chip.Color := UtilChipHiddenColor;
-      Chip.Hint := OneForm.Caption + ' - окно спрятано, щелчок показывает';
+      Chip.Hint := OneForm.Caption + ' - окно свёрнуто, щелчок разворачивает';
     end;
   end;
 end;
 
 procedure TForm1.UtilMenuUpdate;
 var
-  FormIdx, HiddenIdx: Integer;
+  FormIdx: Integer;
   OneForm: TCustomForm;
   Sig: string;
   Item: TMenuItem;
   Chip: TPanel;
   Listed: TList;
-  StillHidden: Boolean;
 begin
   if FUtilMenu = nil then
     Exit;
-
-  // Спрятанные плашкой: окно закрыто и разрушено - из списка; окно снова
-  // на экране (показано не плашкой) - тоже, оно теперь просто видимое
-  if FUtilHidden <> nil then
-    for HiddenIdx := FUtilHidden.Count - 1 downto 0 do
-    begin
-      StillHidden := False;
-      for FormIdx := 0 to Screen.CustomFormCount - 1 do
-        if Screen.CustomForms[FormIdx] = FUtilHidden[HiddenIdx] then
-        begin
-          StillHidden := not Screen.CustomForms[FormIdx].Visible;
-          Break;
-        end;
-      if not StillHidden then
-        FUtilHidden.Delete(HiddenIdx);
-    end;
 
   Listed := TList.Create;
   try
@@ -37394,17 +37359,17 @@ begin
     for FormIdx := 0 to Screen.CustomFormCount - 1 do
     begin
       OneForm := Screen.CustomForms[FormIdx];
-      if not UtilListed(OneForm) then
+      if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
         Continue;
       Listed.Add(OneForm);
-      // Видимость в подпись не входит: плашка при щелчке не пересоздаётся,
-      // только перекрашивается (UtilChipsPaint)
+      // Свёрнуто ли окно, в подпись не входит: плашка при щелчке не
+      // пересоздаётся, только перекрашивается (UtilChipsPaint)
       Sig := Sig + IntToHex(Integer(OneForm), 8) + OneForm.Caption + #1;
     end;
     if Sig = FUtilSig then
     begin
       // Набор тот же; строка меню могла сменить шрифт или высоту, окно -
-      // спрятаться или показаться
+      // свернуться или развернуться
       UtilChipsPaint;
       UtilChipsPlace;
       Exit;
@@ -37468,8 +37433,7 @@ begin
     FMenuBar.Invalidate;
 end;
 
-// Пункт Started Util: окно - на экран и наверх (спрятанное плашкой -
-// показать, свёрнутое - развернуть)
+// Пункт Started Util: окно - наверх (свёрнутое - развернуть)
 procedure TForm1.UtilMenuClick(Sender: TObject);
 var
   OneForm: TCustomForm;
@@ -37481,9 +37445,16 @@ begin
   UtilChipsPaint;
 end;
 
-// Плашка окна в строке меню: окно на экране - спрятать (плашка остаётся,
-// серая), спрятано - показать (плашка снова яркая). Плашка здесь только
-// перекрашивается: пересоздать её из её же OnClick нельзя
+// Плашка окна в строке меню: окно развёрнуто - свернуть (плашка серая),
+// свёрнуто - развернуть и наверх (плашка снова яркая).
+//
+// Сворачивание, а не Hide: свёрнутое окно для программы остаётся видимым
+// (Visible = True), и конструктор форм работает с ним так же, как с
+// развёрнутым. Спрятанная через Hide форма конструктора при щелчке по
+// вкладке .dfm показывалась кусками.
+//
+// Плашка здесь только перекрашивается: пересоздать её из её же OnClick
+// нельзя
 procedure TForm1.UtilChipClick(Sender: TObject);
 var
   OneForm: TCustomForm;
@@ -37491,16 +37462,10 @@ begin
   OneForm := UtilFormOf(TComponent(Sender).Tag);
   if OneForm = nil then
     Exit;
-  if OneForm.Visible then
-  begin
-    if FUtilHidden = nil then
-      FUtilHidden := TList.Create;
-    if FUtilHidden.IndexOf(OneForm) < 0 then
-      FUtilHidden.Add(OneForm);
-    OneForm.Hide;
-  end
+  if OneForm.WindowState = wsMinimized then
+    UtilShowForm(OneForm)
   else
-    UtilShowForm(OneForm);
+    OneForm.WindowState := wsMinimized;
   UtilChipsPaint;
 end;
 
