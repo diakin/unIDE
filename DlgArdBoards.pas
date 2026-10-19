@@ -177,6 +177,9 @@ type
 
 implementation
 
+uses
+  DlgArdWait;    // окно хода загрузки - ArdWaitBegin
+
 {$R *.dfm}
 
 const
@@ -289,12 +292,14 @@ begin
     LogAdd('> arduino-cli ' + AArgs);
     SetStatus('arduino-cli ' + AArgs);
     FProgressIdx := -1;
+    ArdWaitBegin(AArgs);
     Result := ArdRunCli(FSettings, AArgs, AOutput, CliLine, CliIdle,
                         CliProgress);
   finally
     Screen.Cursor := crDefault;
     btnStop.Enabled := False;
     FBusy := False;
+    ArdWaitEnd(Result);
   end;
 
   if Result = ArdRunCancelled then
@@ -317,6 +322,7 @@ end;
 procedure TDlgArdBoards.CliLine(const ALine: string);
 begin
   ArdLogLine(memLog.Lines, FProgressIdx, ALine);
+  ArdWaitLine(ALine);
   if Trim(ALine) <> '' then
     lblStatus.Caption := ALine;
 end;
@@ -325,13 +331,14 @@ end;
 procedure TDlgArdBoards.CliProgress(const AText: string);
 begin
   ArdLogProgress(memLog.Lines, FProgressIdx, AText);
+  ArdWaitProgress(AText);
   SetStatus(AText);
 end;
 
 procedure TDlgArdBoards.CliIdle(var ACancel: Boolean);
 begin
   Application.ProcessMessages;
-  ACancel := FStop;
+  ACancel := FStop or ArdWaitStopped;
 end;
 
 procedure TDlgArdBoards.SetStatus(const AText: string);

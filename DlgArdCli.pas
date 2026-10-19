@@ -88,6 +88,9 @@ type
 
 implementation
 
+uses
+  DlgArdWait;    // окно хода загрузки - ArdWaitBegin
+
 {$R *.dfm}
 
 const
@@ -343,18 +346,20 @@ end;
 procedure TDlgArdCli.CliLine(const ALine: string);
 begin
   ArdLogLine(memHelp.Lines, FProgressIdx, ALine);
+  ArdWaitLine(ALine);
 end;
 
 // Ход загрузки: одна строка, обновляется на месте
 procedure TDlgArdCli.CliProgress(const AText: string);
 begin
   ArdLogProgress(memHelp.Lines, FProgressIdx, AText);
+  ArdWaitProgress(AText);
 end;
 
 procedure TDlgArdCli.CliIdle(var ACancel: Boolean);
 begin
   Application.ProcessMessages;
-  ACancel := FStop;
+  ACancel := FStop or ArdWaitStopped;
 end;
 
 // Run: строка команды, вывод - справа по мере поступления
@@ -386,13 +391,16 @@ begin
   btnStop.Enabled := True;
   btnRun.Enabled := False;
   lblStatus.Caption := ArdCommandLine(FSettings, Args);
+  FProgressIdx := -1;
+  ExitCode := ArdRunNoStart;
+  ArdWaitBegin(Args);
   try
-    FProgressIdx := -1;
     ExitCode := ArdRunCli(FSettings, Args, nil, CliLine, CliIdle, CliProgress);
   finally
     btnRun.Enabled := True;
     btnStop.Enabled := False;
     FBusy := False;
+    ArdWaitEnd(ExitCode);
   end;
   if ExitCode = ArdRunCancelled then
     memHelp.Lines.Add('Прервано')

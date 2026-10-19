@@ -3691,6 +3691,7 @@ var
     DlgPickFolder, // выбор папки - PickFolderDialog
     FolderDlg,    // выбор папки окном Проводника - BrowseFolderDialog
     DlgProgress,  // ход долгой операции - ProgressStart
+    DlgArdWait,   // окно хода загрузки arduino-cli - ArdWaitBegin
     DlgMatchList, // Match list - EnsureMatchForm
     DlgListWnd,   // списки модулей и форм - MakeListWindow
     DlgHotFolders, // папки для поиска потерянных файлов - ShowHotFolders
@@ -49159,6 +49160,7 @@ end;
 
 procedure TForm1.ArdBuildLine(const ALine: string);
 begin
+  ArdWaitLine(ALine);   // окно загрузки - только пока идёт core install
   if Trim(ALine) <> '' then
     LogComp(ALine);
 end;
@@ -49169,13 +49171,14 @@ procedure TForm1.ArdInstallProgress(const AText: string);
 begin
   BusyStage(AText);
   StatusBar1.Panels[0].Text := AText;
+  ArdWaitProgress(AText);
 end;
 
 procedure TForm1.ArdBuildIdle(var ACancel: Boolean);
 begin
   BusyTick;
   Application.ProcessMessages;
-  if FArdCancel then
+  if FArdCancel or ArdWaitStopped then
     ACancel := True;
 end;
 
@@ -49257,10 +49260,12 @@ begin
   ArdBuildButtons;
   BusyBegin('Arduino: установка ' + APlatform);
   ExitCode := ArdRunNoStart;
+  ArdWaitBegin(Args);
   try
     ExitCode := ArdRunCli(ASettings, Args, nil, ArdBuildLine, ArdBuildIdle,
                           ArdInstallProgress);
   finally
+    ArdWaitEnd(ExitCode);
     FArdBuilding := False;
     if ExitCode = 0 then
       BusyEnd('Arduino: ' + APlatform + ' установлена', True)

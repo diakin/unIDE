@@ -101,6 +101,9 @@ type
 
 implementation
 
+uses
+  DlgArdWait;    // окно хода загрузки - ArdWaitBegin
+
 {$R *.dfm}
 
 const
@@ -393,11 +396,13 @@ begin
   try
     memLog.Lines.Add('> arduino-cli ' + AArgs);
     FProgressIdx := -1;
+    ArdWaitBegin(AArgs);
     Result := ArdRunCli(FSettings, AArgs, nil, CliLine, CliIdle, CliProgress);
   finally
     Screen.Cursor := crDefault;
     btnStop.Enabled := False;
     FBusy := False;
+    ArdWaitEnd(Result);
   end;
 
   if Result = ArdRunCancelled then
@@ -409,18 +414,20 @@ end;
 procedure TDlgArdLibs.CliLine(const ALine: string);
 begin
   ArdLogLine(memLog.Lines, FProgressIdx, ALine);
+  ArdWaitLine(ALine);
 end;
 
 // Ход загрузки: одна строка в логе, обновляется на месте
 procedure TDlgArdLibs.CliProgress(const AText: string);
 begin
   ArdLogProgress(memLog.Lines, FProgressIdx, AText);
+  ArdWaitProgress(AText);
 end;
 
 procedure TDlgArdLibs.CliIdle(var ACancel: Boolean);
 begin
   Application.ProcessMessages;
-  ACancel := FStop;
+  ACancel := FStop or ArdWaitStopped;
 end;
 
 // Строка состояния окна - подсказка строки файла индекса и сам лог
