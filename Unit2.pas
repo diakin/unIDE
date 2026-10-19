@@ -187,6 +187,10 @@ type
     chkPrefProgress: TUiCheckBox;
     chkPrefMinimize: TUiCheckBox;
     chkPrefHideDsg: TUiCheckBox;
+    grpPrefModList: TUiGroupBox;
+    lblPrefPreviewDelay: TLabel;
+    edPrefPreviewDelay: TUiEdit;
+    udPrefPreviewDelay: TUiUpDown;
     tsDesigner: TTabSheet;
     grpDsgGrid: TUiGroupBox;
     chkDsgGrid: TUiCheckBox;
@@ -278,6 +282,7 @@ type
     procedure ArdCfgWriteClick(Sender: TObject);
     procedure EnvOptionClick(Sender: TObject);
     procedure EnvGridChange(Sender: TObject);
+    procedure EnvPreviewDelayChange(Sender: TObject);
     procedure EnvOverrideClick(Sender: TObject);
     procedure EnvNewClick(Sender: TObject);
     procedure EnvEditClick(Sender: TObject);
@@ -5196,6 +5201,8 @@ begin
     chkPrefProgress.Checked := Form1.FEnv.ShowCompileProgress;
     chkPrefMinimize.Checked := Form1.FEnv.MinimizeOnRun;
     chkPrefHideDsg.Checked := Form1.FEnv.HideDesignersOnRun;
+    udPrefPreviewDelay.Position := Form1.FEnv.FormPreviewDelay;
+    edPrefPreviewDelay.Text := IntToStr(Form1.FEnv.FormPreviewDelay);
     chkDsgGrid.Checked := Form1.FEnv.DsgShowGrid;
     chkDsgSnap.Checked := Form1.FEnv.DsgSnapToGrid;
     udDsgGridX.Position := Form1.FEnv.DsgGridX;
@@ -5248,6 +5255,22 @@ begin
     Form1.FEnv.DsgGridX := GridValue
   else
     Form1.FEnv.DsgGridY := GridValue;
+  Form1.EnvOptionsChanged;
+end;
+
+// Задержка превью формы в окне модулей (View Unit / View Form), мс: число
+// в поле (стрелки счётчика пишут туда же)
+procedure TForm2.EnvPreviewDelayChange(Sender: TObject);
+var
+  DelayMs: Integer;
+begin
+  // До заполнения окна текст поля пишет счётчик - это не правка
+  if FEnvLoading or not FBuilt or (Form1 = nil) then
+    Exit;
+  DelayMs := StrToIntDef(Trim(edPrefPreviewDelay.Text), -1);
+  if (DelayMs < EnvPreviewDelayMin) or (DelayMs > EnvPreviewDelayMax) then
+    Exit;     // набирают число - ждём правильного
+  Form1.FEnv.FormPreviewDelay := DelayMs;
   Form1.EnvOptionsChanged;
 end;
 

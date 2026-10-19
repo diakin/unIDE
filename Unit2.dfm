@@ -1380,6 +1380,43 @@ object Form2: TForm2
           OnClick = EnvOptionClick
         end
       end
+      object grpPrefModList: TUiGroupBox
+        Left = 8
+        Top = 88
+        Width = 290
+        Height = 56
+        Caption = ' View Unit / View Form '
+        TabOrder = 2
+        object lblPrefPreviewDelay: TLabel
+          Left = 12
+          Top = 26
+          Caption = 'Form preview delay, ms'
+        end
+        object edPrefPreviewDelay: TUiEdit
+          Left = 196
+          Top = 22
+          Width = 56
+          Height = 24
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Превью формы справа в окне модулей показывается через столько миллисекунд после того, как строка под мышью перестала меняться (0 - сразу, до 2000)'
+          TabOrder = 0
+          Text = '100'
+          OnChange = EnvPreviewDelayChange
+        end
+        object udPrefPreviewDelay: TUiUpDown
+          Left = 252
+          Top = 22
+          Width = 16
+          Height = 24
+          Associate = edPrefPreviewDelay
+          Max = 2000
+          Increment = 50
+          Position = 100
+          Thousands = False
+          TabOrder = 1
+        end
+      end
     end
     object tsDesigner: TTabSheet
       Caption = 'Designer'

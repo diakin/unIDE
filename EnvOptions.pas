@@ -27,6 +27,8 @@ type
     ShowCompileProgress: Boolean; // окно хода сборки
     MinimizeOnRun: Boolean;       // свернуть среду, пока работает программа
     HideDesignersOnRun: Boolean;  // спрятать конструкторы форм на время работы
+    FormPreviewDelay: Integer;    // View Unit / View Form: превью формы -
+                                  // через столько мс после остановки мыши
     // Designer
     DsgShowGrid: Boolean;
     DsgSnapToGrid: Boolean;
@@ -60,6 +62,9 @@ type
 const
   EnvGridMin = 2;
   EnvGridMax = 128;
+  // Задержка превью формы в окне модулей, мс; 0 - сразу
+  EnvPreviewDelayMin = 0;
+  EnvPreviewDelayMax = 2000;
   // Наибольший отступ текста от полосы номеров, точек
   EdTextIndentMax = 40;
 
@@ -126,6 +131,7 @@ begin
   AOpts.ShowCompileProgress := False;
   AOpts.MinimizeOnRun := False;
   AOpts.HideDesignersOnRun := True;   // так среда работала и раньше
+  AOpts.FormPreviewDelay := 100;
   AOpts.DsgShowGrid := True;
   AOpts.DsgDragTrace := False;
   AOpts.DsgSnapToGrid := True;
@@ -135,6 +141,15 @@ begin
   AOpts.DsgShowCaptions := False;
   AOpts.DsgShowHints := True;
   AOpts.DsgExtendedHints := True;
+end;
+
+function PreviewDelayValue(AValue: Integer): Integer;
+begin
+  Result := AValue;
+  if Result < EnvPreviewDelayMin then
+    Result := EnvPreviewDelayMin;
+  if Result > EnvPreviewDelayMax then
+    Result := EnvPreviewDelayMax;
 end;
 
 function GridValue(AValue: Integer): Integer;
@@ -165,6 +180,8 @@ begin
                                         AOpts.MinimizeOnRun);
     AOpts.HideDesignersOnRun := Ini.ReadBool(SecPrefs, 'HideDesignersOnRun',
                                              AOpts.HideDesignersOnRun);
+    AOpts.FormPreviewDelay := PreviewDelayValue(
+      Ini.ReadInteger(SecPrefs, 'FormPreviewDelayMs', AOpts.FormPreviewDelay));
     AOpts.DsgShowGrid := Ini.ReadBool(SecDesigner, 'DisplayGrid',
                                       AOpts.DsgShowGrid);
     AOpts.DsgDragTrace := Ini.ReadBool(SecDesigner, 'DragTrace',
@@ -201,6 +218,8 @@ begin
     Ini.WriteBool(SecPrefs, 'ShowCompilerProgress', AOpts.ShowCompileProgress);
     Ini.WriteBool(SecPrefs, 'MinimizeOnRun', AOpts.MinimizeOnRun);
     Ini.WriteBool(SecPrefs, 'HideDesignersOnRun', AOpts.HideDesignersOnRun);
+    Ini.WriteInteger(SecPrefs, 'FormPreviewDelayMs',
+                     PreviewDelayValue(AOpts.FormPreviewDelay));
     Ini.WriteBool(SecDesigner, 'DisplayGrid', AOpts.DsgShowGrid);
     Ini.WriteBool(SecDesigner, 'DragTrace', AOpts.DsgDragTrace);
     Ini.WriteBool(SecDesigner, 'SnapToGrid', AOpts.DsgSnapToGrid);

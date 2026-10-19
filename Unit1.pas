@@ -54232,11 +54232,13 @@ begin
   end;
 end;
 
-// Превью формы строки - через 100 мс после того, как строка под мышью
+// Превью формы строки - через FEnv.FormPreviewDelay мс (IDE Options -
+// Preferences, по умолчанию 100) после того, как строка под мышью
 // перестала меняться (ModPreviewTick), и готовое (в памяти или в
 // dsgcache), и то, что надо строить. При движении мыши по списку превью
 // не меняется на каждой строке, а несобранные формы не строятся все
-// подряд. По журналу построение формы занимает 20-130 мс.
+// подряд. По журналу построение формы занимает 20-130 мс. Задержка 0 -
+// превью сразу.
 procedure TForm1.ModPreviewSchedule(AItem: TListItem);
 begin
   if FModPreview = nil then
@@ -54245,14 +54247,20 @@ begin
   begin
     FModPreviewTimer := TTimer.Create(Self);
     FModPreviewTimer.Enabled := False;
-    FModPreviewTimer.Interval := 100;
     FModPreviewTimer.OnTimer := ModPreviewTick;
   end;
   FModPreviewTimer.Enabled := False;
   if AItem = nil then
     Exit;    // мышь ушла со строк - остаётся последнее превью
   FModPreviewItem := AItem;
-  FModPreviewTimer.Enabled := True;
+  if FEnv.FormPreviewDelay <= 0 then
+    ModPreviewTick(nil)
+  else
+  begin
+    // Задержку могли сменить в настройках - берётся каждый раз
+    FModPreviewTimer.Interval := FEnv.FormPreviewDelay;
+    FModPreviewTimer.Enabled := True;
+  end;
 end;
 
 // Превью формы строки FModPreviewItem. Картинка строится один раз на
