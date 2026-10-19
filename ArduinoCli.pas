@@ -98,11 +98,25 @@ function ArdHttpUrls(const AText: string): string;
 function ArdCommandLine(const ASettings: TArdSettings;
                         const AArgs: string): string;
 // Запуск arduino-cli с аргументами AArgs. Строки вывода - в AOutput (если
-// не nil) и в AOnLine (если задан) по мере поступления. Результат - код
-// завершения или ArdRunNoStart / ArdRunCancelled.
+// не nil) и в AOnLine (если задан) по мере поступления. AOnProgress - ход
+// загрузки (core install, lib install, update-index): строка прогресса
+// "<пакет> 6.12 MiB / 49.01 MiB 12.50%", которую arduino-cli
+// перерисовывает через #13 без перевода строки; зовётся при каждом её
+// изменении. Итог загрузки ("<пакет> downloaded") приходит в AOnLine.
+// Результат - код завершения или ArdRunNoStart / ArdRunCancelled.
 function ArdRunCli(const ASettings: TArdSettings; const AArgs: string;
                    AOutput: TStrings; AOnLine: TArdLineEvent;
-                   AOnIdle: TArdIdleEvent): Integer;
+                   AOnIdle: TArdIdleEvent;
+                   AOnProgress: TArdLineEvent = nil): Integer;
+// Строка прогресса загрузки в логе ALines: первая - новой строкой в конце,
+// следующие заменяют её. AProgressIdx - номер этой строки, -1 - её нет.
+procedure ArdLogProgress(ALines: TStrings; var AProgressIdx: Integer;
+                         const AText: string);
+// Строка вывода в лог ALines: последняя строка лога - строка прогресса -
+// заменяется ею (итог загрузки встаёт на место прогресса), иначе
+// добавляется
+procedure ArdLogLine(ALines: TStrings; var AProgressIdx: Integer;
+                     const ALine: string);
 function ArdUtf8ToAnsi(const AText: string): string;
 // Значение в кавычках, если в нём есть пробел
 function ArdQuote(const AValue: string): string;
@@ -432,7 +446,8 @@ end;
 
 function ArdRunCli(const ASettings: TArdSettings; const AArgs: string;
                    AOutput: TStrings; AOnLine: TArdLineEvent;
-                   AOnIdle: TArdIdleEvent): Integer;
+                   AOnIdle: TArdIdleEvent;
+                   AOnProgress: TArdLineEvent = nil): Integer;
 var
   SecAttr: TSecurityAttributes;
   StartInfo: TStartupInfo;
@@ -440,7 +455,7 @@ var
   ReadPipe, WritePipe: THandle;
   Buffer: array[0..4095] of Char;
   BytesRead, BytesAvail, ExitCode: DWORD;
-  Pending, LineText, CmdLine, WorkDir: string;
+  Pending, LineText, CmdLine, WorkDir, LastProgress: string;
   LocaleBuf: array[0..255] of Char;
   HadLocale, Cancel, Ended, Started: Boolean;
   NewLinePos, CarriagePos: Integer;
@@ -465,6 +480,33 @@ var
       AOutput.Add(LineAnsi);
     if Assigned(AOnLine) then
       AOnLine(LineAnsi);
+  end;
+
+  // Хвост без перевода строки с #13 - строка прогресса загрузки:
+  // arduino-cli пишет каждое её состояние как #13 + текст. Состояние
+  // считается целым, когда за ним пришёл следующий #13 (чтение могло
+  // застать запись на середине): отдаётся последнее целое, если оно
+  // изменилось. Полоса до имени пакета (" 0 / 51395093 0.00%" - имя ещё
+  // не задано) пропускается.
+  procedure EmitProgress;
+  var
+    ProgressText: string;
+    LastCarriage: Integer;
+  begin
+    if not Assigned(AOnProgress) then
+      Exit;
+    LastCarriage := LastDelimiter(#13, Pending);
+    if LastCarriage <= 1 then
+      Exit;
+    ProgressText := Copy(Pending, 1, LastCarriage - 1);
+    LastCarriage := LastDelimiter(#13, ProgressText);
+    ProgressText := Trim(ArdUtf8ToAnsi(Copy(ProgressText, LastCarriage + 1,
+                                            Length(ProgressText))));
+    if (ProgressText = '') or (ProgressText[1] in ['0'..'9']) or
+       (ProgressText = LastProgress) then
+      Exit;
+    LastProgress := ProgressText;
+    AOnProgress(ProgressText);
   end;
 
 begin
@@ -519,6 +561,7 @@ begin
     WritePipe := 0;
 
     Pending := '';
+    LastProgress := '';
     Ended := False;
     Cancel := False;
     try
@@ -556,8 +599,10 @@ begin
           LineText := Copy(Pending, 1, NewLinePos - 1);
           Pending := Copy(Pending, NewLinePos + 1, Length(Pending));
           EmitLine(LineText);
+          LastProgress := '';
           NewLinePos := Pos(#10, Pending);
         end;
+        EmitProgress;
 
         if Assigned(AOnIdle) then
           AOnIdle(Cancel);
@@ -590,6 +635,27 @@ begin
       CloseHandle(WritePipe);
     CloseHandle(ReadPipe);
   end;
+end;
+
+procedure ArdLogProgress(ALines: TStrings; var AProgressIdx: Integer;
+                         const AText: string);
+begin
+  // Строка прогресса должна быть последней: лог чистили или в него
+  // писали после неё - начинаем новую
+  if (AProgressIdx >= 0) and (AProgressIdx = ALines.Count - 1) then
+    ALines[AProgressIdx] := AText
+  else
+    AProgressIdx := ALines.Add(AText);
+end;
+
+procedure ArdLogLine(ALines: TStrings; var AProgressIdx: Integer;
+                     const ALine: string);
+begin
+  if (AProgressIdx >= 0) and (AProgressIdx = ALines.Count - 1) then
+    ALines[AProgressIdx] := ALine
+  else
+    ALines.Add(ALine);
+  AProgressIdx := -1;
 end;
 
 // ---------------------------------------------------------------------------

@@ -2773,6 +2773,7 @@ type
     function  CompileArduino(AUpload: Boolean;
                              AKeepLog: Boolean = False): Boolean;
     procedure ArdBuildLine(const ALine: string);
+    procedure ArdInstallProgress(const AText: string);
     procedure ArdBuildButtons;
     procedure ArdFillPortCombo;
     procedure ArdBoardFromPort(APortIdx: Integer);
@@ -49162,6 +49163,14 @@ begin
     LogComp(ALine);
 end;
 
+// Ход загрузки при core install - на индикаторе работы над редактором и
+// в строке состояния; в Compilation log - только итог ("... downloaded")
+procedure TForm1.ArdInstallProgress(const AText: string);
+begin
+  BusyStage(AText);
+  StatusBar1.Panels[0].Text := AText;
+end;
+
 procedure TForm1.ArdBuildIdle(var ACancel: Boolean);
 begin
   BusyTick;
@@ -49249,7 +49258,8 @@ begin
   BusyBegin('Arduino: установка ' + APlatform);
   ExitCode := ArdRunNoStart;
   try
-    ExitCode := ArdRunCli(ASettings, Args, nil, ArdBuildLine, ArdBuildIdle);
+    ExitCode := ArdRunCli(ASettings, Args, nil, ArdBuildLine, ArdBuildIdle,
+                          ArdInstallProgress);
   finally
     FArdBuilding := False;
     if ExitCode = 0 then

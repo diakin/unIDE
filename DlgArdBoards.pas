@@ -137,6 +137,7 @@ type
     FLoaded: Boolean;          // списки уже читались
     FBusy: Boolean;            // идёт команда arduino-cli
     FStop: Boolean;            // нажата Stop
+    FProgressIdx: Integer;     // строка прогресса загрузки в Log, -1 - нет
     FSelFqbn: string;          // выбранная плата
     FSelBoardName: string;
     FSelCore: string;
@@ -149,6 +150,7 @@ type
     function  UrlArgs: string;
     function  RunCli(const AArgs: string; AOutput: TStrings): Integer;
     procedure CliLine(const ALine: string);
+    procedure CliProgress(const AText: string);
     procedure CliIdle(var ACancel: Boolean);
     procedure SetStatus(const AText: string);
     procedure LogAdd(const AText: string);
@@ -286,7 +288,9 @@ begin
   try
     LogAdd('> arduino-cli ' + AArgs);
     SetStatus('arduino-cli ' + AArgs);
-    Result := ArdRunCli(FSettings, AArgs, AOutput, CliLine, CliIdle);
+    FProgressIdx := -1;
+    Result := ArdRunCli(FSettings, AArgs, AOutput, CliLine, CliIdle,
+                        CliProgress);
   finally
     Screen.Cursor := crDefault;
     btnStop.Enabled := False;
@@ -312,9 +316,16 @@ end;
 
 procedure TDlgArdBoards.CliLine(const ALine: string);
 begin
-  memLog.Lines.Add(ALine);
+  ArdLogLine(memLog.Lines, FProgressIdx, ALine);
   if Trim(ALine) <> '' then
     lblStatus.Caption := ALine;
+end;
+
+// Ход загрузки: одна строка в Log, обновляется на месте, и строка статуса
+procedure TDlgArdBoards.CliProgress(const AText: string);
+begin
+  ArdLogProgress(memLog.Lines, FProgressIdx, AText);
+  SetStatus(AText);
 end;
 
 procedure TDlgArdBoards.CliIdle(var ACancel: Boolean);

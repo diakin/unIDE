@@ -70,6 +70,7 @@ type
     FLoaded: Boolean;
     FBusy: Boolean;
     FStop: Boolean;
+    FProgressIdx: Integer;     // строка прогресса загрузки, -1 - нет
     // $0128 - WM_UPDATEUISTATE, в Messages.pas Delphi 7 этой константы нет
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
     // Списки после показа окна (FormShow его посылает)
@@ -78,6 +79,7 @@ type
     procedure FillDefaultLists;
     function  RunCli(const AArgs: string; AOutput: TStrings): Integer;
     procedure CliLine(const ALine: string);
+    procedure CliProgress(const AText: string);
     procedure CliIdle(var ACancel: Boolean);
     procedure ShowHelpOf(const AArgs: string; AFillSubs: Boolean);
   public
@@ -340,7 +342,13 @@ end;
 
 procedure TDlgArdCli.CliLine(const ALine: string);
 begin
-  memHelp.Lines.Add(ALine);
+  ArdLogLine(memHelp.Lines, FProgressIdx, ALine);
+end;
+
+// Ход загрузки: одна строка, обновляется на месте
+procedure TDlgArdCli.CliProgress(const AText: string);
+begin
+  ArdLogProgress(memHelp.Lines, FProgressIdx, AText);
 end;
 
 procedure TDlgArdCli.CliIdle(var ACancel: Boolean);
@@ -379,7 +387,8 @@ begin
   btnRun.Enabled := False;
   lblStatus.Caption := ArdCommandLine(FSettings, Args);
   try
-    ExitCode := ArdRunCli(FSettings, Args, nil, CliLine, CliIdle);
+    FProgressIdx := -1;
+    ExitCode := ArdRunCli(FSettings, Args, nil, CliLine, CliIdle, CliProgress);
   finally
     btnRun.Enabled := True;
     btnStop.Enabled := False;

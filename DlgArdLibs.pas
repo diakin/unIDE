@@ -80,6 +80,7 @@ type
     FLoaded: Boolean;
     FBusy: Boolean;
     FStop: Boolean;
+    FProgressIdx: Integer;     // строка прогресса загрузки в логе, -1 - нет
     // $0128 - WM_UPDATEUISTATE, в Messages.pas Delphi 7 этой константы нет
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
     // Чтение индекса после показа окна (FormShow его посылает)
@@ -91,6 +92,7 @@ type
     procedure ApplyFilter;
     function  RunCli(const AArgs: string): Integer;
     procedure CliLine(const ALine: string);
+    procedure CliProgress(const AText: string);
     procedure CliIdle(var ACancel: Boolean);
     procedure SetStatus(const AText: string);
   public
@@ -390,7 +392,8 @@ begin
   Screen.Cursor := crAppStart;
   try
     memLog.Lines.Add('> arduino-cli ' + AArgs);
-    Result := ArdRunCli(FSettings, AArgs, nil, CliLine, CliIdle);
+    FProgressIdx := -1;
+    Result := ArdRunCli(FSettings, AArgs, nil, CliLine, CliIdle, CliProgress);
   finally
     Screen.Cursor := crDefault;
     btnStop.Enabled := False;
@@ -405,7 +408,13 @@ end;
 
 procedure TDlgArdLibs.CliLine(const ALine: string);
 begin
-  memLog.Lines.Add(ALine);
+  ArdLogLine(memLog.Lines, FProgressIdx, ALine);
+end;
+
+// Ход загрузки: одна строка в логе, обновляется на месте
+procedure TDlgArdLibs.CliProgress(const AText: string);
+begin
+  ArdLogProgress(memLog.Lines, FProgressIdx, AText);
 end;
 
 procedure TDlgArdLibs.CliIdle(var ACancel: Boolean);
