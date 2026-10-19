@@ -2334,6 +2334,12 @@ type
     procedure FixProjectTarget(const AProject, ADir, AName: string);
     procedure RepointWindows(const AOldDir, ANewDir, AOldTarget,
                              AOldName, ANewName: string);
+    // Скетч Arduino - в папке своего имени
+    function  SketchSavePath(const AFile: string): string;
+    function  AskMoveSketchHome(const AFile: string): Boolean;
+    function  MoveSketchHome(const AFile: string): string;
+    procedure ProjectRepointWindow(AWinIdx: Integer;
+                                   const AOldFile, ANewFile: string);
     procedure ProjectItemClick(Sender: TObject);
     procedure DelPrjCheckAll(Sender: TObject);
     procedure DelPrjClickCheck(Sender: TObject);
@@ -2530,7 +2536,11 @@ type
     // Меню Started Util (поля FUtilMenu, FUtilSig - в начале private)
     procedure UtilMenuUpdate;
     procedure UtilMenuClick(Sender: TObject);
+    procedure UtilChipClick(Sender: TObject);
     procedure UtilChipsPlace;
+    procedure UtilChipsPaint;
+    function  UtilFormOf(ATag: Integer): TCustomForm;
+    procedure UtilShowForm(AForm: TCustomForm);
     procedure SettingsAlert(const AText: string);
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
@@ -2767,6 +2777,7 @@ type
     function  CompileArduino(AUpload: Boolean;
                              AKeepLog: Boolean = False): Boolean;
     procedure ArdBuildLine(const ALine: string);
+    procedure ArdInstallProgress(const AText: string);
     procedure ArdBuildButtons;
     procedure ArdFillPortCombo;
     procedure ArdBoardFromPort(APortIdx: Integer);
@@ -3684,6 +3695,7 @@ var
     DlgPickFolder, // выбор папки - PickFolderDialog
     FolderDlg,    // выбор папки окном Проводника - BrowseFolderDialog
     DlgProgress,  // ход долгой операции - ProgressStart
+    DlgArdWait,   // окно хода загрузки arduino-cli - ArdWaitBegin
     DlgMatchList, // Match list - EnsureMatchForm
     DlgListWnd,   // списки модулей и форм - MakeListWindow
     DlgHotFolders, // папки для поиска потерянных файлов - ShowHotFolders
@@ -7707,11 +7719,59 @@ begin
   SaveSettings;
 end;
 
+// Папка - скетч Arduino: в ней <имя папки>.ino (или .pde)
+function IsSketchFolder(const ADir: string): Boolean;
+var
+  Dir, Folder: string;
+begin
+  Result := False;
+  if ADir = '' then
+    Exit;
+  Dir := IncludeTrailingPathDelimiter(ADir);
+  Folder := ExtractFileName(ExcludeTrailingPathDelimiter(ADir));
+  Result := (Folder <> '') and (FileExists(Dir + Folder + '.ino') or
+                                FileExists(Dir + Folder + '.pde'));
+end;
+
+// Главный файл скетча Arduino: .ino или .pde
+function IsSketchExt(const AFile: string): Boolean;
+var
+  Ext: string;
+begin
+  Ext := LowerCase(ExtractFileExt(AFile));
+  Result := (Ext = '.ino') or (Ext = '.pde');
+end;
+
+// Где должен лежать скетч AFile: в папке своего имени,
+// <папка>\<имя>\<имя>.ino. Уже лежит в ней - сам AFile.
+function SketchHomePath(const AFile: string): string;
+var
+  Dir, Folder, BaseName: string;
+begin
+  Dir := ExtractFilePath(AFile);
+  Folder := ExtractFileName(ExcludeTrailingPathDelimiter(Dir));
+  BaseName := ChangeFileExt(ExtractFileName(AFile), '');
+  if CompareText(Folder, BaseName) = 0 then
+    Result := AFile
+  else
+    Result := Dir + BaseName + '\' + ExtractFileName(AFile);
+end;
+
+// .ino / .pde лежит не в папке своего имени и не дополнительным файлом
+// другого скетча (в папке нет <имя папки>.ino) - arduino-cli такой файл
+// скетчем не примет
+function SketchMisplaced(const AFile: string): Boolean;
+begin
+  Result := IsSketchExt(AFile) and
+            (CompareText(SketchHomePath(AFile), AFile) <> 0) and
+            not IsSketchFolder(ExtractFilePath(AFile));
+end;
+
 // Открывает файл по готовому пути. Общая часть для Open... и Reopen.
 procedure TForm1.OpenNamedFile(const FileName: string);
 var
   Idx: Integer;
-  FN: string;
+  FN, NewFN: string;
 begin
   // Путь мог прийти из .prj или из списка недавних и указывать на прежнее
   // расположение папки - пробуем найти файл рядом с программой. Прямые
@@ -7730,6 +7790,16 @@ begin
       SaveSettings;
     end;
     Exit;
+  end;
+
+  // Скетч Arduino не в папке своего имени - предложить перенос, как
+  // Arduino IDE. Пока идёт запуск - без вопроса (окно вопроса ушло бы под
+  // заставку); при сборке вопрос будет
+  if FStartupDone and SketchMisplaced(FN) and AskMoveSketchHome(FN) then
+  begin
+    NewFN := MoveSketchHome(FN);
+    if NewFN <> '' then
+      FN := NewFN;
   end;
 
   // Сохранить не спрашиваем: текущее окно остаётся открытым, его текст и
@@ -7842,7 +7912,7 @@ end;
 // Save As...: всегда спрашивает новое имя, в отличие от Save
 procedure TForm1.SaveAsClick(Sender: TObject);
 var
-  Old: string;
+  Old, NewName: string;
 begin
   // Диалог должен открыться в папке САМОГО файла. Для этого мало положить
   // в FileName одно имя: без InitialDir Windows уводит диалог в текущий
@@ -7856,8 +7926,13 @@ begin
   if not SaveDialog1.Execute then
     Exit;
 
+  // Скетч Arduino - в папку своего имени
+  NewName := SketchSavePath(SaveDialog1.FileName);
+  if NewName = '' then
+    Exit;
+
   Old := FCurrentFileName;
-  FCurrentFileName := SaveDialog1.FileName;
+  FCurrentFileName := NewName;
   if not SaveCurrentFile then
   begin
     FCurrentFileName := Old; // сохранение сорвалось - имя не меняем
@@ -8808,6 +8883,229 @@ begin
   if (ExtractFileDrive(Result) <> '') or (Result[1] = '') then
     Exit;
   Result := ExpandFileName(ExtractFilePath(ExpandFileName(APrjFile)) + Result);
+end;
+
+// ---------------------------------------------------------------------------
+//  Скетч Arduino - в папке своего имени
+//
+//  arduino-cli собирает папку, в которой главный файл называется как папка:
+//  SketchBook\BalA-190-1\BalA-190-1.ino. Поэтому, как в Arduino IDE:
+//  - сохранение .ino из диалога (Save, Save As) кладёт файл в папку его
+//    имени внутри выбранной, папку создаёт (SketchSavePath);
+//  - открытие .ino, лежащего не так, и сборка такого скетча предлагают
+//    перенести его в папку своего имени (AskMoveSketchHome, MoveSketchHome).
+//  Дополнительные .ino в папке скетча (вкладки скетча) не трогаются.
+// ---------------------------------------------------------------------------
+
+// Путь записи скетча, выбранного в диалоге сохранения под именем AFile.
+// Выбрана папка другого скетча - вопрос: отдельный скетч или
+// дополнительный файл этого. '' - отмена.
+function TForm1.SketchSavePath(const AFile: string): string;
+var
+  Home, Dir, Folder: string;
+begin
+  Result := AFile;
+  if not IsSketchExt(AFile) then
+    Exit;
+  Home := SketchHomePath(AFile);
+  if CompareText(Home, AFile) = 0 then
+    Exit;
+  Dir := ExtractFilePath(AFile);
+  if IsSketchFolder(Dir) then
+  begin
+    Folder := ExtractFileName(ExcludeTrailingPathDelimiter(Dir));
+    case MessageDlg('Папка ' + Folder + ' - скетч ' + Folder + '.'#13#10#13#10 +
+                    'Да - сохранить отдельным скетчем:'#13#10 + Home +
+                    #13#10#13#10'Нет - сохранить дополнительным файлом ' +
+                    'скетча ' + Folder + ':'#13#10 + AFile,
+                    mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+      mrYes:
+        ;
+      mrNo:
+        Exit;
+    else
+      begin
+        Result := '';
+        Exit;
+      end;
+    end;
+  end;
+  if FileExists(Home) and
+     (MessageDlg('Файл уже есть:'#13#10 + Home + #13#10#13#10'Заменить его?',
+                 mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
+  begin
+    Result := '';
+    Exit;
+  end;
+  if not ForceDirectories(ExtractFilePath(Home)) then
+  begin
+    ShowMessage('Не удалось создать папку скетча:'#13#10 +
+                ExtractFilePath(Home));
+    Result := '';
+    Exit;
+  end;
+  Result := Home;
+  LogComp('Скетч сохраняется в папку своего имени: ' + Home);
+end;
+
+// Вопрос перед переносом скетча AFile в папку своего имени
+function TForm1.AskMoveSketchHome(const AFile: string): Boolean;
+begin
+  Result := MessageDlg('Скетч Arduino лежит не в папке своего имени - ' +
+                       'arduino-cli его не соберёт:'#13#10 + AFile +
+                       #13#10#13#10'Создать папку ' +
+                       ChangeFileExt(ExtractFileName(AFile), '') +
+                       ' и перенести файл туда?'#13#10 +
+                       SketchHomePath(AFile),
+                       mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+end;
+
+// Запись окна AWinIdx в разделе проекта (Windows win<N>, вкладки Tabs) -
+// с пути AOldFile на ANewFile. Остальной раздел проекта не меняется.
+procedure TForm1.ProjectRepointWindow(AWinIdx: Integer;
+                                      const AOldFile, ANewFile: string);
+var
+  Ini: TProjectIni;
+  PrjDir, Raw, NewRaw: string;
+  TabIdx, TabCount: Integer;
+
+  // "<номер> <путь>" с путём AOldFile -> тот же номер и ANewFile;
+  // '' - запись о другом файле
+  function RepointValue(const AValue: string): string;
+  var
+    Stored, NumText: string;
+    DigitEnd: Integer;
+  begin
+    Result := '';
+    Stored := PrjPathFromStore(PrjDir, StripLeadingNumber(AValue));
+    if CompareText(ExpandFileName(Stored), ExpandFileName(AOldFile)) <> 0 then
+      Exit;
+    DigitEnd := 0;
+    while (DigitEnd < Length(AValue)) and
+          (AValue[DigitEnd + 1] in ['0'..'9']) do
+      Inc(DigitEnd);
+    NumText := Copy(AValue, 1, DigitEnd);
+    if NumText = '' then
+      Result := ANewFile
+    else
+      Result := NumText + ' ' + ANewFile;
+  end;
+
+begin
+  if (FCurrentProject = '') or not ProjectExists(FCurrentProject) then
+    Exit;
+  PrjDir := ProjectDir(FCurrentProject);
+  Ini := TProjectIni.Create(SettingsFileName, FCurrentProject);
+  try
+    Raw := Trim(Ini.ReadString('Windows', 'win' + IntToStr(AWinIdx), ''));
+    if Raw <> '' then
+    begin
+      NewRaw := RepointValue(Raw);
+      if NewRaw <> '' then
+        Ini.WriteString('Windows', 'win' + IntToStr(AWinIdx), NewRaw);
+    end;
+    TabCount := StrToIntDef(StripIniComment(
+                  Ini.ReadString('Tabs', 'TabCount', '0')), 0);
+    for TabIdx := 0 to TabCount - 1 do
+    begin
+      Raw := Trim(Ini.ReadString('Tabs', IntToStr(TabIdx), ''));
+      if Raw = '' then
+        Continue;
+      NewRaw := RepointValue(Raw);
+      if NewRaw <> '' then
+        Ini.WriteString('Tabs', IntToStr(TabIdx), NewRaw);
+    end;
+  finally
+    Ini.Free;     // записывает раздел, если он изменился
+  end;
+end;
+
+// Переносит скетч AFile в папку своего имени (SketchHomePath) и переводит
+// на новый путь окно с ним, запись окна в проекте, список недавних и
+// отметку для проверки изменений на диске. Результат - новый путь, '' -
+// не перенесён (причина - сообщением).
+function TForm1.MoveSketchHome(const AFile: string): string;
+var
+  Home, OldKey, NewKey: string;
+  WinIdx, AgeIdx, RecentIdx: Integer;
+  PrjWasSaved: Boolean;
+begin
+  Result := '';
+  Home := SketchHomePath(AFile);
+  if CompareText(Home, AFile) = 0 then
+  begin
+    Result := AFile;
+    Exit;
+  end;
+  if FileExists(Home) then
+  begin
+    ShowMessage('Файл не перенесён: в папке скетча уже есть'#13#10 + Home);
+    Exit;
+  end;
+  if not ForceDirectories(ExtractFilePath(Home)) then
+  begin
+    ShowMessage('Не удалось создать папку скетча:'#13#10 +
+                ExtractFilePath(Home));
+    Exit;
+  end;
+
+  // Окно ищем до переноса: после него старого файла на диске нет
+  WinIdx := IndexOfWindowByFile(AFile);
+  PrjWasSaved := (FCurrentProject <> '') and
+                 (ProjectSignature = FProjectSig);
+
+  if not MoveFile(PChar(AFile), PChar(Home)) then
+  begin
+    ShowMessage('Не удалось перенести'#13#10 + AFile + #13#10'в'#13#10 +
+                Home + #13#10#13#10 + SysErrorMessage(GetLastError));
+    Exit;
+  end;
+  Result := Home;
+  LogComp('Скетч перенесён в папку своего имени: ' + AFile + ' -> ' + Home);
+
+  // Отметка проверки диска - под новым ключом. Время записи файла
+  // MoveFile не меняет, текст с диска тот же
+  if FDiskAges <> nil then
+  begin
+    OldKey := AnsiUpperCase(ExpandFileName(AFile));
+    NewKey := AnsiUpperCase(ExpandFileName(Home));
+    AgeIdx := FDiskAges.IndexOfName(OldKey);
+    if AgeIdx >= 0 then
+      FDiskAges[AgeIdx] := NewKey + '=' + FDiskAges.ValueFromIndex[AgeIdx];
+  end;
+
+  if WinIdx >= 0 then
+  begin
+    FWindows[WinIdx].FileName := Home;
+    if WinIdx = FWindowsIndex then
+      FCurrentFileName := Home;
+    ProjectRepointWindow(WinIdx, AFile, Home);
+    // Проект был сохранён - после правки его записи он и остаётся
+    // сохранённым, вопроса при выходе не будет
+    if PrjWasSaved then
+      FProjectSig := ProjectSignature;
+  end;
+
+  if FRecentFiles <> nil then
+  begin
+    for RecentIdx := 0 to FRecentFiles.Count - 1 do
+      if CompareText(FRecentFiles[RecentIdx], AFile) = 0 then
+        FRecentFiles[RecentIdx] := Home;
+    RebuildReopenMenu;
+    SaveSettings;
+  end;
+
+  if WinIdx >= 0 then
+  begin
+    RefreshAllTabCaptions;
+    RebuildWindowsMenu;
+    if WinIdx = FWindowsIndex then
+    begin
+      UpdatePathBar;
+      Form1.Caption := AppTitle + ' - ' + ExtractFileName(Home);
+      UpdateBuildBar;
+    end;
+  end;
 end;
 
 // Цель сборки в разделе проекта ([Project.<имя>] Target): файл в папке
@@ -11909,20 +12207,6 @@ begin
             (Copy(LowText, 1, 19) = 'compiling rc failed') or
             (Pos('ld.exe: cannot find', LowText) > 0) or
             (Pos('undefined reference to', LowText) > 0);
-end;
-
-// Папка - скетч Arduino: в ней <имя папки>.ino (или .pde)
-function IsSketchFolder(const ADir: string): Boolean;
-var
-  Dir, Folder: string;
-begin
-  Result := False;
-  if ADir = '' then
-    Exit;
-  Dir := IncludeTrailingPathDelimiter(ADir);
-  Folder := ExtractFileName(ExcludeTrailingPathDelimiter(ADir));
-  Result := (Folder <> '') and (FileExists(Dir + Folder + '.ino') or
-                                FileExists(Dir + Folder + '.pde'));
 end;
 
 // Файлы .dpr в папке - полными путями, по имени. Маска *.dpr находит и
@@ -36994,6 +37278,69 @@ begin
   end;
 end;
 
+// Цвета плашки: окно развёрнуто - яркая, свёрнуто - серая
+const
+  UtilChipShownColor = $0000C8FF;
+  UtilChipHiddenColor = $00A0A0A0;
+
+// Окно программы по указателю из Tag пункта или плашки; nil - его уже нет
+// (закрылось после постройки меню). Указатель только сравнивается со
+// списком окон, сам не разыменовывается
+function TForm1.UtilFormOf(ATag: Integer): TCustomForm;
+var
+  FormIdx: Integer;
+begin
+  Result := nil;
+  for FormIdx := 0 to Screen.CustomFormCount - 1 do
+    if Integer(Screen.CustomForms[FormIdx]) = ATag then
+    begin
+      Result := Screen.CustomForms[FormIdx];
+      Exit;
+    end;
+end;
+
+// Окно - на экран и наверх: свёрнутое - развернуть
+procedure TForm1.UtilShowForm(AForm: TCustomForm);
+begin
+  if not AForm.Visible then
+    Exit;
+  if AForm.WindowState = wsMinimized then
+    AForm.WindowState := wsNormal;
+  AForm.BringToFront;
+  if AForm.CanFocus then
+    AForm.SetFocus;
+end;
+
+// Цвет и подсказка плашек - по тому, свёрнуто ли окно
+procedure TForm1.UtilChipsPaint;
+var
+  ChipIdx: Integer;
+  Chip: TPanel;
+  OneForm: TCustomForm;
+begin
+  if FUtilChips = nil then
+    Exit;
+  for ChipIdx := 0 to FUtilChips.Count - 1 do
+  begin
+    Chip := TPanel(FUtilChips[ChipIdx]);
+    OneForm := UtilFormOf(Chip.Tag);
+    if OneForm = nil then
+      Continue;
+    if OneForm.WindowState <> wsMinimized then
+    begin
+      if Chip.Color <> UtilChipShownColor then
+        Chip.Color := UtilChipShownColor;
+      Chip.Hint := OneForm.Caption + ' - щелчок сворачивает окно';
+    end
+    else
+    begin
+      if Chip.Color <> UtilChipHiddenColor then
+        Chip.Color := UtilChipHiddenColor;
+      Chip.Hint := OneForm.Caption + ' - окно свёрнуто, щелчок разворачивает';
+    end;
+  end;
+end;
+
 procedure TForm1.UtilMenuUpdate;
 var
   FormIdx: Integer;
@@ -37001,68 +37348,78 @@ var
   Sig: string;
   Item: TMenuItem;
   Chip: TPanel;
+  Listed: TList;
 begin
   if FUtilMenu = nil then
     Exit;
-  Sig := '';
-  for FormIdx := 0 to Screen.CustomFormCount - 1 do
-  begin
-    OneForm := Screen.CustomForms[FormIdx];
-    if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
-      Continue;
-    Sig := Sig + IntToHex(Integer(OneForm), 8) + OneForm.Caption + #1;
-  end;
-  if Sig = FUtilSig then
-  begin
-    // Набор тот же; строка меню могла сменить шрифт или высоту
-    UtilChipsPlace;
-    Exit;
-  end;
-  FUtilSig := Sig;
-  FUtilMenu.Clear;
-  for FormIdx := 0 to Screen.CustomFormCount - 1 do
-  begin
-    OneForm := Screen.CustomForms[FormIdx];
-    if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
-      Continue;
-    Item := TMenuItem.Create(FUtilMenu);
-    Item.Caption := StringReplace(OneForm.Caption, '&', '&&', [rfReplaceAll]);
-    Item.Tag := Integer(OneForm);
-    Item.OnClick := UtilMenuClick;
-    FUtilMenu.Add(Item);
-  end;
-  // Плашки в строке меню - заново, по тем же окнам
-  if FUtilChips = nil then
-    FUtilChips := TList.Create;
-  for FormIdx := 0 to FUtilChips.Count - 1 do
-    TObject(FUtilChips[FormIdx]).Free;
-  FUtilChips.Clear;
-  if FMenuBar <> nil then
-    for FormIdx := 0 to FUtilMenu.Count - 1 do
+
+  Listed := TList.Create;
+  try
+    Sig := '';
+    for FormIdx := 0 to Screen.CustomFormCount - 1 do
     begin
-      Chip := TPanel.Create(Self);
-      Chip.Parent := FMenuBar;
-      Chip.BevelOuter := bvNone;
-      Chip.ParentBackground := False;
-      // Яркая: открытое окно утилиты должно быть видно сразу. Цвет текста
-      // - не clBlack: его тема заменяет своим (UiThemeFgSys)
-      Chip.Color := $0000C8FF;
-      Chip.ParentFont := False;
-      Chip.Font.Name := 'Tahoma';
-      Chip.Font.Height := -11;
-      Chip.Font.Style := [fsBold];
-      Chip.Font.Color := TColor($00101010);
-      Chip.Caption := UtilShortName(StringReplace(FUtilMenu.Items[FormIdx].Caption,
-                                                  '&&', '&', [rfReplaceAll]));
-      Chip.Hint := StringReplace(FUtilMenu.Items[FormIdx].Caption, '&&', '&',
-                                 [rfReplaceAll]) + ' - показать окно';
-      Chip.ShowHint := True;
-      Chip.Cursor := crHandPoint;
-      Chip.Tag := FUtilMenu.Items[FormIdx].Tag;
-      Chip.OnClick := UtilMenuClick;
-      FUtilChips.Add(Chip);
+      OneForm := Screen.CustomForms[FormIdx];
+      if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
+        Continue;
+      Listed.Add(OneForm);
+      // Свёрнуто ли окно, в подпись не входит: плашка при щелчке не
+      // пересоздаётся, только перекрашивается (UtilChipsPaint)
+      Sig := Sig + IntToHex(Integer(OneForm), 8) + OneForm.Caption + #1;
     end;
-  UtilChipsPlace;
+    if Sig = FUtilSig then
+    begin
+      // Набор тот же; строка меню могла сменить шрифт или высоту, окно -
+      // свернуться или развернуться
+      UtilChipsPaint;
+      UtilChipsPlace;
+      Exit;
+    end;
+    FUtilSig := Sig;
+    FUtilMenu.Clear;
+    for FormIdx := 0 to Listed.Count - 1 do
+    begin
+      OneForm := TCustomForm(Listed[FormIdx]);
+      Item := TMenuItem.Create(FUtilMenu);
+      Item.Caption := StringReplace(OneForm.Caption, '&', '&&', [rfReplaceAll]);
+      Item.Tag := Integer(OneForm);
+      Item.OnClick := UtilMenuClick;
+      FUtilMenu.Add(Item);
+    end;
+    // Плашки в строке меню - заново, по тем же окнам
+    if FUtilChips = nil then
+      FUtilChips := TList.Create;
+    for FormIdx := 0 to FUtilChips.Count - 1 do
+      TObject(FUtilChips[FormIdx]).Free;
+    FUtilChips.Clear;
+    if FMenuBar <> nil then
+      for FormIdx := 0 to Listed.Count - 1 do
+      begin
+        OneForm := TCustomForm(Listed[FormIdx]);
+        Chip := TPanel.Create(Self);
+        Chip.Parent := FMenuBar;
+        Chip.BevelOuter := bvNone;
+        Chip.ParentBackground := False;
+        // Яркая: открытое окно утилиты должно быть видно сразу. Цвет
+        // текста - не clBlack: его тема заменяет своим (UiThemeFgSys).
+        // Цвет фона и подсказка - UtilChipsPaint
+        Chip.Color := UtilChipShownColor;
+        Chip.ParentFont := False;
+        Chip.Font.Name := 'Tahoma';
+        Chip.Font.Height := -11;
+        Chip.Font.Style := [fsBold];
+        Chip.Font.Color := TColor($00101010);
+        Chip.Caption := UtilShortName(OneForm.Caption);
+        Chip.ShowHint := True;
+        Chip.Cursor := crHandPoint;
+        Chip.Tag := Integer(OneForm);
+        Chip.OnClick := UtilChipClick;
+        FUtilChips.Add(Chip);
+      end;
+    UtilChipsPaint;
+    UtilChipsPlace;
+  finally
+    Listed.Free;
+  end;
 
   // Пустое меню строка меню не раскрывает - пункт-пояснение
   if FUtilMenu.Count = 0 then
@@ -37076,28 +37433,40 @@ begin
     FMenuBar.Invalidate;
 end;
 
-// Пункт Started Util: окно - наверх (свёрнутое - развернуть). Окно могло
-// закрыться после постройки меню - ищется среди открытых.
+// Пункт Started Util: окно - наверх (свёрнутое - развернуть)
 procedure TForm1.UtilMenuClick(Sender: TObject);
 var
-  FormIdx: Integer;
   OneForm: TCustomForm;
 begin
-  for FormIdx := 0 to Screen.CustomFormCount - 1 do
-  begin
-    OneForm := Screen.CustomForms[FormIdx];
-    // Пункт меню или плашка в строке меню: окно - в Tag
-    if Integer(OneForm) <> TComponent(Sender).Tag then
-      Continue;
-    if not OneForm.Visible then
-      Exit;
-    if OneForm.WindowState = wsMinimized then
-      OneForm.WindowState := wsNormal;
-    OneForm.BringToFront;
-    if OneForm.CanFocus then
-      OneForm.SetFocus;
+  OneForm := UtilFormOf(TComponent(Sender).Tag);
+  if OneForm = nil then
     Exit;
-  end;
+  UtilShowForm(OneForm);
+  UtilChipsPaint;
+end;
+
+// Плашка окна в строке меню: окно развёрнуто - свернуть (плашка серая),
+// свёрнуто - развернуть и наверх (плашка снова яркая).
+//
+// Сворачивание, а не Hide: свёрнутое окно для программы остаётся видимым
+// (Visible = True), и конструктор форм работает с ним так же, как с
+// развёрнутым. Спрятанная через Hide форма конструктора при щелчке по
+// вкладке .dfm показывалась кусками.
+//
+// Плашка здесь только перекрашивается: пересоздать её из её же OnClick
+// нельзя
+procedure TForm1.UtilChipClick(Sender: TObject);
+var
+  OneForm: TCustomForm;
+begin
+  OneForm := UtilFormOf(TComponent(Sender).Tag);
+  if OneForm = nil then
+    Exit;
+  if OneForm.WindowState = wsMinimized then
+    UtilShowForm(OneForm)
+  else
+    OneForm.WindowState := wsMinimized;
+  UtilChipsPaint;
 end;
 
 // Имя из сообщения rc.exe "$INCLUDE file X does not exist"; '' - такого нет
@@ -48880,15 +49249,25 @@ end;
 
 procedure TForm1.ArdBuildLine(const ALine: string);
 begin
+  ArdWaitLine(ALine);   // окно загрузки - только пока идёт core install
   if Trim(ALine) <> '' then
     LogComp(ALine);
+end;
+
+// Ход загрузки при core install - на индикаторе работы над редактором и
+// в строке состояния; в Compilation log - только итог ("... downloaded")
+procedure TForm1.ArdInstallProgress(const AText: string);
+begin
+  BusyStage(AText);
+  StatusBar1.Panels[0].Text := AText;
+  ArdWaitProgress(AText);
 end;
 
 procedure TForm1.ArdBuildIdle(var ACancel: Boolean);
 begin
   BusyTick;
   Application.ProcessMessages;
-  if FArdCancel then
+  if FArdCancel or ArdWaitStopped then
     ACancel := True;
 end;
 
@@ -48970,9 +49349,12 @@ begin
   ArdBuildButtons;
   BusyBegin('Arduino: установка ' + APlatform);
   ExitCode := ArdRunNoStart;
+  ArdWaitBegin(Args);
   try
-    ExitCode := ArdRunCli(ASettings, Args, nil, ArdBuildLine, ArdBuildIdle);
+    ExitCode := ArdRunCli(ASettings, Args, nil, ArdBuildLine, ArdBuildIdle,
+                          ArdInstallProgress);
   finally
+    ArdWaitEnd(ExitCode);
     FArdBuilding := False;
     if ExitCode = 0 then
       BusyEnd('Arduino: ' + APlatform + ' установлена', True)
@@ -48998,7 +49380,7 @@ var
   Settings: TArdSettings;
   Options: TArdBuildOptions;
   Sketch, SketchDir, SketchName, Fqbn, BoardName, Port, Args: string;
-  ErrText, Stage, PlatformId: string;
+  ErrText, Stage, PlatformId, NewSketch: string;
   Output: TStringList;
   ExitCode, LineIdx, PortIdx: Integer;
   MonitorPaused, PlatformMissing: Boolean;
@@ -49036,6 +49418,20 @@ begin
   end;
   SketchDir := ExtractFilePath(ExpandFileName(Sketch));
   SketchName := ExtractFileName(ExcludeTrailingPathDelimiter(SketchDir));
+  // Не в папке своего имени - предложить перенос
+  if (CompareText(ChangeFileExt(ExtractFileName(Sketch), ''),
+                  SketchName) <> 0) and
+     SketchMisplaced(ExpandFileName(Sketch)) and
+     AskMoveSketchHome(ExpandFileName(Sketch)) then
+  begin
+    NewSketch := MoveSketchHome(ExpandFileName(Sketch));
+    if NewSketch <> '' then
+    begin
+      Sketch := NewSketch;
+      SketchDir := ExtractFilePath(Sketch);
+      SketchName := ExtractFileName(ExcludeTrailingPathDelimiter(SketchDir));
+    end;
+  end;
   if CompareText(ChangeFileExt(ExtractFileName(Sketch), ''),
                  SketchName) <> 0 then
   begin
@@ -68743,9 +69139,12 @@ begin
     SaveDialog1.FileName := '';
 
     if SaveDialog1.Execute then
-      FCurrentFileName := SaveDialog1.FileName
+      // Скетч Arduino - в папку своего имени; '' - отмена
+      FCurrentFileName := SketchSavePath(SaveDialog1.FileName)
     else
       Exit; // Пользователь нажал "Отмена" в диалоге выбора пути
+    if FCurrentFileName = '' then
+      Exit;
   end;
 
   // Файл на диске успели изменить снаружи - спросить до записи поверх.

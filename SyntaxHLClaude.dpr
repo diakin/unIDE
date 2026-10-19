@@ -24,6 +24,7 @@ uses
   DlgArdBoards in 'DlgArdBoards.pas' {DlgArdBoards},
   DlgArdLibs in 'DlgArdLibs.pas' {DlgArdLibs},
   DlgArdCli in 'DlgArdCli.pas' {DlgArdCli},
+  DlgArdWait in 'DlgArdWait.pas' {DlgArdWait},
   ArduinoCli in 'ArduinoCli.pas',
   ArduinoHw in 'ArduinoHw.pas',
   ArduinoPorts in 'ArduinoPorts.pas',
