@@ -41,6 +41,7 @@ uses
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   FileSearch,     // Find In Files: маски, чтение файлов, обход папок (TFifFileFound)
+  UnFar,          // unIDE FAR: двухпанельный файловый менеджер (Utils)
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -1002,6 +1003,11 @@ type
     procedure IncManagerClick(Sender: TObject);
     procedure UtilsMenuOpen(Sender: TObject);
     procedure FindIncClick(Sender: TObject);
+    // Utils - unIDE FAR
+    procedure FarMenuClick(Sender: TObject);
+    procedure FarLayout;
+    procedure FarClose(Sender: TObject);
+    procedure FarStatus(const AText: string);
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
     procedure FObjSetListClick(Sender: TObject);
@@ -1016,6 +1022,11 @@ type
     // (UtilsMenuOpen по простою - тип проекта читается, когда проект сменился)
     FUtilsPrjKey: string;
     FUtilsPrjDone: Boolean;
+    // unIDE FAR (UnFar): окно поверх области редактора, создаётся при
+    // первом открытии. FFarEatF10Up - FAR закрыт по F10, отпускание F10
+    // приходит уже другому окну и не должно открыть меню IDE
+    FFar: TFarView;
+    FFarEatF10Up: Boolean;
     // Плашки открытых окон утилит в строке меню, после Help (TPanel)
     FUtilChips: TList;
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
@@ -22835,6 +22846,26 @@ var
   C: TWinControl;
   CursorPt: TPoint;
 begin
+  // unIDE FAR: клавиши его окна - ему первым. Что он разобрал, и все его
+  // F-клавиши дальше не идут: ни к отладчику (F4..F9), ни к ярлыкам меню,
+  // ни к полосе меню (F10, Alt+F1 ... приходят как WM_SYSKEYDOWN)
+  if (FFar <> nil) and FFar.Visible and FFar.HandleAllocated and
+     (Msg.hwnd = FFar.Handle) and
+     ((Msg.message = WM_KEYDOWN) or (Msg.message = WM_SYSKEYDOWN) or
+      (Msg.message = WM_KEYUP) or (Msg.message = WM_SYSKEYUP)) then
+  begin
+    if FFar.KeyMessage(Msg) then
+      Handled := True;
+    Exit;
+  end;
+  if FFarEatF10Up and (Msg.wParam = VK_F10) and
+     ((Msg.message = WM_SYSKEYUP) or (Msg.message = WM_KEYUP)) then
+  begin
+    FFarEatF10Up := False;
+    Handled := True;
+    Exit;
+  end;
+
   // Окно разделено: нажатие мыши в панели делает её активной (заголовок)
   if (FSplit <> nil) and ((Msg.message = WM_LBUTTONDOWN) or
      (Msg.message = WM_RBUTTONDOWN) or (Msg.message = WM_MBUTTONDOWN)) then
@@ -23590,6 +23621,9 @@ begin
   IniBufOnWritten := nil;
   HangWatchStop;
   WndWatchStop;
+  // unIDE FAR открыт - его папки в editor.ini (при F10 - в FarClose)
+  if (FFar <> nil) and FFar.Visible then
+    FFar.SaveState(SettingsFileName);
   // Пробная сборка редактора запустилась и закрывается - она рабочая.
   // Перезапуск после Tidy editor.ini - уже рабочим exe
   FRestartExe := Application.ExeName;
@@ -37019,6 +37053,91 @@ begin
   FindIncShow('');
 end;
 
+// Utils - unIDE FAR: двухпанельный файловый менеджер поверх области
+// редактора (вкладки, тулбар, лог и остальное остаются видны). Окно
+// создаётся при первом открытии и дальше только прячется (F10) - пути
+// панелей держит само; при новом открытии папки перечитываются.
+procedure TForm1.FarMenuClick(Sender: TObject);
+var
+  StartDir: string;
+begin
+  if FFar = nil then
+  begin
+    StartDir := '';
+    if FCurrentFileName <> '' then
+      StartDir := ExtractFilePath(FCurrentFileName);
+    if (StartDir = '') or not DirectoryExists(StartDir) then
+      StartDir := ExtractFilePath(Application.ExeName);
+    FFar := TFarView.Create(Self);
+    FFar.Visible := False;
+    FFar.Parent := pnlMain;
+    FFar.OnClose := FarClose;
+    FFar.OnStatus := FarStatus;
+    FFar.LoadState(SettingsFileName, StartDir);
+  end
+  else if not FFar.Visible then
+    FFar.RereadAll;
+  FFar.Visible := True;
+  FarLayout;
+  FFar.BringToFront;
+  if FFar.CanFocus then
+    FFar.SetFocus;
+  StatusBar1.SimpleText := 'unIDE FAR ' + FarBuild + ': F10 - закрыть';
+  StatusBar1.SimplePanel := True;
+end;
+
+// Место окна unIDE FAR: вся ширина pnlMain, от строки вкладок до лога
+// (сплиттер лога, лог, вторая строка состояния - внизу pnlMain). Вторая
+// панель разделённого редактора и строка объявления - под окном FAR.
+procedure TForm1.FarLayout;
+var
+  TopEdge, BottomEdge: Integer;
+
+  procedure TakeBottom(ACtl: TControl);
+  begin
+    if (ACtl <> nil) and ACtl.Visible and (ACtl.Parent = pnlMain) and
+       (ACtl.Top < BottomEdge) then
+      BottomEdge := ACtl.Top;
+  end;
+
+begin
+  if (FFar = nil) or not FFar.Visible then
+    Exit;
+  TopEdge := 0;
+  if (FTabs <> nil) and FTabs.Visible and (FTabs.Parent = pnlMain) then
+    TopEdge := FTabs.Top + FTabs.Height;
+  BottomEdge := pnlMain.ClientHeight;
+  TakeBottom(Splitter1);
+  TakeBottom(pnlLog);
+  TakeBottom(Panel2);
+  if BottomEdge < TopEdge then
+    BottomEdge := TopEdge;
+  FFar.SetBounds(0, TopEdge, pnlMain.ClientWidth, BottomEdge - TopEdge);
+end;
+
+// F10 в unIDE FAR: папки панелей - в editor.ini, окно прячется, фокус -
+// редактору
+procedure TForm1.FarClose(Sender: TObject);
+begin
+  if FFar = nil then
+    Exit;
+  FFar.SaveState(SettingsFileName);
+  FFar.Visible := False;
+  FFarEatF10Up := True;
+  StatusBar1.SimplePanel := False;
+  UpdateStatusBarInfo;
+  if RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
+end;
+
+// Сообщения unIDE FAR (клавиша не сделана, папку не открыть) - строкой
+// состояния
+procedure TForm1.FarStatus(const AText: string);
+begin
+  StatusBar1.SimpleText := AText;
+  StatusBar1.SimplePanel := True;
+end;
+
 // Меню Utils: IncManager и Find inc file - про inc-файлы RapidQ, доступны
 // только в проектах Basic (RapidQ Basic, FreeBASIC). Зовётся по простою,
 // когда сменился текущий проект (тип читается из editor.ini)
@@ -42226,6 +42345,9 @@ var
   HostHeight: Integer;
   TextRect: TRect;
 begin
+  // Область редактора сменила размер (окно, сплиттер лога, строки
+  // вкладок) - окно unIDE FAR за ней
+  FarLayout;
   if (FEditHost = nil) or (RichEdit1.Parent <> FEditHost) or
      not RichEdit1.HandleAllocated then
     Exit;

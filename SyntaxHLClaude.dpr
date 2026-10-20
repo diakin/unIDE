@@ -70,7 +70,8 @@ uses
   RunConsole in 'RunConsole.pas',
   MdHtml in 'MdHtml.pas',
   FmtView in 'FmtView.pas',
-  SplitPane in 'SplitPane.pas';
+  SplitPane in 'SplitPane.pas',
+  UnFar in 'UnFar.pas';
 
 {$R *.res}
 

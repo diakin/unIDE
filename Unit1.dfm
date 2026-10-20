@@ -776,6 +776,13 @@ object Form1: TForm1
         Caption = 'Find inc file...'
         OnClick = FindIncClick
       end
+      object mUtilsSep1: TMenuItem
+        Caption = '-'
+      end
+      object mFar: TMenuItem
+        Caption = 'unIDE FAR'
+        OnClick = FarMenuClick
+      end
     end
     object mOptions: TMenuItem
       Caption = '&Options'
