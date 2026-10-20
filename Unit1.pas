@@ -1057,6 +1057,10 @@ type
     FFarBtnRestore: TUiButton;
     FFarCollapsed: Boolean;
     FFarUpdateDepth: Integer;     // FarBeginUpdate / FarEndUpdate
+    // Двойной щелчок по вкладке, когда FAR на всю область (= F4): по
+    // какой вкладке и когда был прошлый щелчок
+    FFarLastTabIdx: Integer;
+    FFarLastTabTick: Cardinal;
     // Плашки открытых окон утилит в строке меню, после Help (TPanel)
     FUtilChips: TList;
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
@@ -17838,14 +17842,34 @@ begin
     Exit;
 
   // unIDE FAR открыт (на всю область или в режиме F4): курсор активной
-  // панели - на файл вкладки (кроме щелчка по крестику закрытия)
+  // панели - на файл вкладки (кроме щелчка по крестику закрытия).
+  // Двойной щелчок, когда FAR на всю область, - как F4: FAR - на
+  // половину, файл вкладки - в редакторе. Двойной щелчок считаем сами
+  // (та же вкладка за время двойного щелчка Windows): у окна вкладок
+  // может не быть стиля CS_DBLCLKS
   if (FFar <> nil) and FFar.Visible and
      (Idx <= High(FTabWin)) and (FTabWin[Idx] >= 0) and
      (FTabWin[Idx] <= WindowsItemCount - 1) then
   begin
     R := FTabs.TabRect(Idx);
     if (FTabs.Tabs.Count <= 1) or (X < R.Right - TabCloseWidth) then
+    begin
       FFar.ShowFile(FWindows[FTabWin[Idx]].FileName);
+      if not FFarHalf then
+      begin
+        if ((ssDouble in Shift) or ((Idx = FFarLastTabIdx) and
+            (GetTickCount - FFarLastTabTick <= GetDoubleClickTime))) and
+           not IsUntitledName(FWindows[FTabWin[Idx]].FileName) and
+           FileExists(FWindows[FTabWin[Idx]].FileName) then
+        begin
+          FFarLastTabIdx := -1;
+          FarEditFile(FWindows[FTabWin[Idx]].FileName, False);
+          Exit;
+        end;
+        FFarLastTabIdx := Idx;
+        FFarLastTabTick := GetTickCount;
+      end;
+    end;
   end;
 
   // Кнопка Txt / Fmt у левого края вкладки. Вкладку под ней Windows
@@ -37159,6 +37183,7 @@ begin
     FFar.OnEditFile := FarEditFile;
     FFar.OnLeave := FarLeave;
     FFarOwnWin := -1;
+    FFarLastTabIdx := -1;
     FFar.LoadState(SettingsFileName, StartDir);
   end
   else if FFarHalf and FFarCollapsed then

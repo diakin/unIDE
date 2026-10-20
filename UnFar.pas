@@ -68,7 +68,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.10';
+  FarBuild = 'b.11';
 
 type
   TFarItem = record
