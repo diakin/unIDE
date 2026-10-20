@@ -1008,6 +1008,11 @@ type
     procedure FarLayout;
     procedure FarClose(Sender: TObject);
     procedure FarStatus(const AText: string);
+    procedure FarEditFile(const AFileName: WideString; ACreated: Boolean);
+    procedure FarLeave(Sender: TObject);
+    procedure FarHalfOn;
+    procedure FarHalfOff;
+    procedure FarEditorEsc;
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
     procedure FObjSetListClick(Sender: TObject);
@@ -1027,6 +1032,16 @@ type
     // приходит уже другому окну и не должно открыть меню IDE
     FFar: TFarView;
     FFarEatF10Up: Boolean;
+    // Режим F4 unIDE FAR: окно FAR - половина области редактора (одна
+    // панель), другая половина - редактор; место FAR держит FFarSpacer
+    // (alLeft / alRight в pnlMain). FFarOwnWin - окно, которое открыл F4
+    // (его Esc закрывает; -1 - файл был открыт и до F4). FFarCreatedFile -
+    // пустой файл, созданный Shift+F4: не сохранили (F2) - Esc его удаляет
+    FFarHalf: Boolean;
+    FFarSpacer: TPanel;
+    FFarOwnWin: Integer;
+    FFarCreatedFile: string;
+    FFarEditSaved: Boolean;
     // Плашки открытых окон утилит в строке меню, после Help (TPanel)
     FUtilChips: TList;
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
@@ -17807,6 +17822,17 @@ begin
   if Idx < 0 then
     Exit;
 
+  // unIDE FAR открыт на всю область: курсор активной панели - на файл
+  // вкладки (кроме щелчка по крестику закрытия)
+  if (FFar <> nil) and FFar.Visible and not FFarHalf and
+     (Idx <= High(FTabWin)) and (FTabWin[Idx] >= 0) and
+     (FTabWin[Idx] <= WindowsItemCount - 1) then
+  begin
+    R := FTabs.TabRect(Idx);
+    if (FTabs.Tabs.Count <= 1) or (X < R.Right - TabCloseWidth) then
+      FFar.ShowFile(FWindows[FTabWin[Idx]].FileName);
+  end;
+
   // Кнопка Txt / Fmt у левого края вкладки. Вкладку под ней Windows
   // уже сделала активной (выбор вкладки - до OnMouseDown); если нет -
   // вид меняется у её окна и окно показывается
@@ -22867,6 +22893,38 @@ begin
     Handled := True;
     Exit;
   end;
+  // Режим F4 unIDE FAR, клавиши редактора: Esc - закрыть редактор (если не
+  // открыта подсказка Code Insight - её Esc закрывает, как раньше), F2 /
+  // Shift+F2 - Save / Save As
+  if FFarHalf and (FFar <> nil) and (Msg.message = WM_KEYDOWN) and
+     RichEdit1.HandleAllocated and (Msg.hwnd = RichEdit1.Handle) and
+     (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
+  begin
+    if (Msg.wParam = VK_ESCAPE) and (GetKeyState(VK_SHIFT) >= 0) and
+       not CiCompletionShown and not FCiParamShown then
+    begin
+      FarEditorEsc;
+      Handled := True;
+      Exit;
+    end;
+    if Msg.wParam = VK_F2 then
+    begin
+      if GetKeyState(VK_SHIFT) < 0 then
+        SaveAsClick(nil)
+      else
+        N3Click(nil);
+      FFarEditSaved := True;
+      Handled := True;
+      Exit;
+    end;
+  end;
+  // Щелчок по вкладке, когда FAR открыт на всю область: курсор FAR уже
+  // поставлен на файл (TabsMouseDown), фокус - обратно ему
+  if (FFar <> nil) and FFar.Visible and not FFarHalf and
+     (Msg.message = WM_LBUTTONUP) and (FTabs <> nil) and
+     FTabs.HandleAllocated and (Msg.hwnd = FTabs.Handle) and
+     FFar.CanFocus then
+    FFar.SetFocus;
 
   // Окно разделено: нажатие мыши в панели делает её активной (заголовок)
   if (FSplit <> nil) and ((Msg.message = WM_LBUTTONDOWN) or
@@ -37075,6 +37133,9 @@ begin
     FFar.Parent := pnlMain;
     FFar.OnClose := FarClose;
     FFar.OnStatus := FarStatus;
+    FFar.OnEditFile := FarEditFile;
+    FFar.OnLeave := FarLeave;
+    FFarOwnWin := -1;
     FFar.LoadState(SettingsFileName, StartDir);
   end
   else if not FFar.Visible then
@@ -37105,6 +37166,16 @@ var
 begin
   if (FFar = nil) or not FFar.Visible then
     Exit;
+  // Режим F4: FAR - на месте распорки (половина области), остальное -
+  // редактору
+  if FFarHalf and (FFarSpacer <> nil) and FFarSpacer.Visible then
+  begin
+    if FFarSpacer.Width <> pnlMain.ClientWidth div 2 then
+      FFarSpacer.Width := pnlMain.ClientWidth div 2;
+    FFar.SetBounds(FFarSpacer.Left, FFarSpacer.Top, FFarSpacer.Width,
+      FFarSpacer.Height);
+    Exit;
+  end;
   TopEdge := 0;
   if (FTabs <> nil) and FTabs.Visible and (FTabs.Parent = pnlMain) then
     TopEdge := FTabs.Top + FTabs.Height;
@@ -37123,6 +37194,17 @@ procedure TForm1.FarClose(Sender: TObject);
 begin
   if FFar = nil then
     Exit;
+  // Закрыт в режиме F4: редактор - снова на всю область, файл F4 остаётся
+  // обычной вкладкой
+  if FFarHalf then
+  begin
+    FFarHalf := False;
+    FFarOwnWin := -1;
+    FFarCreatedFile := '';
+    if FFarSpacer <> nil then
+      FFarSpacer.Visible := False;
+    FFar.SetSingle(-1);
+  end;
   FFar.SaveState(SettingsFileName);
   FFar.Visible := False;
   FFarEatF10Up := True;
@@ -37138,6 +37220,142 @@ procedure TForm1.FarStatus(const AText: string);
 begin
   StatusBar1.SimpleText := AText;
   StatusBar1.SimplePanel := True;
+end;
+
+// Режим F4: распорка шириной в половину pnlMain со стороны активной панели
+// FAR (alLeft / alRight, крайняя), FAR - поверх неё с одной панелью,
+// редактор (FLeftHost, alClient) - на оставшейся половине. Редактор не
+// меняет родителя - RichEdit не пересоздаётся.
+procedure TForm1.FarHalfOn;
+begin
+  if FFar = nil then
+    Exit;
+  if FFarSpacer = nil then
+  begin
+    FFarSpacer := TPanel.Create(Self);
+    FFarSpacer.Visible := False;
+    FFarSpacer.BevelOuter := bvNone;
+    FFarSpacer.Caption := '';
+    FFarSpacer.ParentBackground := False;
+    FFarSpacer.Color := clNavy;
+    FFarSpacer.Parent := pnlMain;
+  end;
+  FFarHalf := True;
+  FFar.SetSingle(FFar.ActiveIndex);
+  FFarSpacer.Width := pnlMain.ClientWidth div 2;
+  if FFar.ActiveIndex = 0 then
+  begin
+    FFarSpacer.Align := alLeft;
+    FFarSpacer.Left := -10;    // левее всех alLeft
+  end
+  else
+  begin
+    FFarSpacer.Align := alRight;
+    FFarSpacer.Left := pnlMain.ClientWidth + 10;  // правее всех alRight
+  end;
+  FFarSpacer.Visible := True;
+  FarLayout;
+  FFar.BringToFront;
+end;
+
+// Конец режима F4: распорка убрана, FAR - снова две панели на всю область
+procedure TForm1.FarHalfOff;
+begin
+  FFarHalf := False;
+  FFarOwnWin := -1;
+  FFarCreatedFile := '';
+  FFarEditSaved := False;
+  if FFarSpacer <> nil then
+    FFarSpacer.Visible := False;
+  if FFar = nil then
+    Exit;
+  FFar.SetSingle(-1);
+  FarLayout;
+  FFar.BringToFront;
+  if FFar.CanFocus then
+    FFar.SetFocus;
+end;
+
+// F4 / Shift+F4 в unIDE FAR: файл - в редактор во второй половине. Путь
+// редактору - в кодировке Windows или коротким именем 8.3 (FarToAnsiPath)
+procedure TForm1.FarEditFile(const AFileName: WideString; ACreated: Boolean);
+var
+  FN: string;
+  WasOpen: Boolean;
+  WinIdx: Integer;
+begin
+  FN := FarToAnsiPath(AFileName);
+  if FN = '' then
+  begin
+    FarStatus('unIDE FAR: имя файла с символами вне кодировки Windows, ' +
+      'короткого имени нет - редактор его не откроет');
+    Exit;
+  end;
+  // F4 ещё раз, другой файл: прежний файл F4, если в нём ничего не
+  // меняли, закрывается; изменённый остаётся вкладкой
+  if FFarHalf and (FFarOwnWin >= 0) and (FFarOwnWin = FWindowsIndex) and
+     FWindows[FFarOwnWin].Used and not RichEdit1.Modified and
+     (IndexOfWindowByFile(FN) <> FFarOwnWin) then
+    CloseWindow(FFarOwnWin);
+  WasOpen := IndexOfWindowByFile(FN) >= 0;
+  if not FFarHalf then
+    FarHalfOn;
+  OpenNamedFile(FN);
+  WinIdx := IndexOfWindowByFile(FN);
+  if (WinIdx >= 0) and not WasOpen then
+    FFarOwnWin := WinIdx
+  else
+    FFarOwnWin := -1;
+  if ACreated then
+    FFarCreatedFile := FN
+  else
+    FFarCreatedFile := '';
+  FFarEditSaved := False;
+  StatusBar1.SimpleText := 'unIDE FAR: Esc - закрыть редактор, ' +
+    'F2 / Shift+F2 - сохранить / сохранить как';
+  StatusBar1.SimplePanel := True;
+  if RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
+end;
+
+// Tab в FAR с одной панелью - в редактор
+procedure TForm1.FarLeave(Sender: TObject);
+begin
+  if FFarHalf and RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
+end;
+
+// Esc в редакторе в режиме F4. Вкладку, которую открыл F4, - закрыть
+// (изменённый файл - вопрос Сохранить / Не сохранять / Отмена; Отмена -
+// редактор остаётся); вкладка, открытая до F4, остаётся. Дальше FAR - снова
+// на всю область.
+procedure TForm1.FarEditorEsc;
+var
+  WinIdx: Integer;
+  SearchRec: TSearchRec;
+  IsEmpty: Boolean;
+begin
+  WinIdx := FWindowsIndex;
+  if (FFarOwnWin >= 0) and (WinIdx = FFarOwnWin) and
+     (WinIdx <= WindowsItemCount - 1) then
+  begin
+    CloseWindow(WinIdx);
+    if FWindows[WinIdx].Used then
+      Exit;  // Отмена в вопросе о сохранении
+    // Пустой файл от Shift+F4, который так и не сохранили, - убрать
+    if (FFarCreatedFile <> '') and not FFarEditSaved then
+    begin
+      IsEmpty := False;
+      if SysUtils.FindFirst(FFarCreatedFile, faAnyFile, SearchRec) = 0 then
+      begin
+        IsEmpty := SearchRec.Size = 0;
+        SysUtils.FindClose(SearchRec);
+      end;
+      if IsEmpty then
+        SysUtils.DeleteFile(FFarCreatedFile);
+    end;
+  end;
+  FarHalfOff;
 end;
 
 // Меню Utils: IncManager и Find inc file - про inc-файлы RapidQ, доступны

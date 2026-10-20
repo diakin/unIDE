@@ -30,7 +30,12 @@ unit UnFar;
 //      обратный порядок), Shift+F12 - выделенные первыми; буква
 //      сортировки - в левом верхнем углу панели; Alt+F12 - история папок
 //      (Del - убрать папку из истории). Сортировка панелей, история и
-//      последние папки дисков - в editor.ini ([Far], [FarHistory]).
+//      последние папки дисков - в editor.ini ([Far], [FarHistory]);
+//    - b.7: F4 - файл под курсором в редактор unIDE: окно FAR остаётся с
+//      одной (активной) панелью, редактор - во второй половине (это
+//      делает Unit1 по OnEditFile, панель - SetSingle); Shift+F4 - имя
+//      файла в диалоге, нет файла - создаётся пустой; Tab в FAR с одной
+//      панелью - в редактор (OnLeave); ShowFile - курсор на файл вкладки.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -60,7 +65,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.6';
+  FarBuild = 'b.7';
 
 type
   TFarItem = record
@@ -81,7 +86,7 @@ type
   TFarNames = array of WideString;
 
   // Открытый диалог: копирование, перенос, папка, удаление
-  TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete);
+  TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew);
 
   // Сортировка панели (порядок - как в меню Ctrl+F12 и клавиши Ctrl+F3 ..
   // Ctrl+F9)
@@ -144,6 +149,10 @@ type
   end;
 
   TFarStatusEvent = procedure(const AText: string) of object;
+  // F4 / Shift+F4: файл - в редактор. ACreated - файла не было, его создал
+  // Shift+F4 (пустой)
+  TFarEditEvent = procedure(const AFileName: WideString;
+    ACreated: Boolean) of object;
 
   TFarView = class(TCustomControl)
   private
@@ -164,6 +173,9 @@ type
     FEatAltUp: Boolean;
     FOnClose: TNotifyEvent;
     FOnStatus: TFarStatusEvent;
+    FOnEditFile: TFarEditEvent;
+    FOnLeave: TNotifyEvent;
+    FSingle: Integer;             // -1 - две панели; 0 / 1 - только эта (F4)
     // Диалог (F5 - F8): рисуется поверх панелей, клавиши - ему
     FDlgKind: TFarDlgKind;
     FDlgTitle: WideString;
@@ -257,6 +269,9 @@ type
     procedure DoCopyMove(AMove: Boolean; const ATarget: WideString);
     procedure DoMkDir(const AName: WideString);
     procedure DoDelete;
+    procedure EditCurrent;
+    procedure StartEditNew;
+    procedure DoEditNew(const AName: WideString);
     function RunShellOp(AFunc: UINT; const AFrom, ATo: WideString;
       AFlags: Word; var AAborted: Boolean): Boolean;
     procedure AfterOperation(const AFocusName: WideString);
@@ -293,11 +308,26 @@ type
     function KeyMessage(const AMsg: TMsg): Boolean;
     // Перечитать обе панели (окно открыли снова - файлы могли измениться)
     procedure RereadAll;
+    // Одна панель на всё окно (APanel 0 / 1, она же активная) или обе (-1).
+    // Режим F4: окно FAR - половина области, вторая половина - редактор.
+    procedure SetSingle(APanel: Integer);
+    function ActiveIndex: Integer;
+    // Курсор активной панели - на файл AFileName (папка другая - перейти
+    // в неё). Щелчок по вкладке редактора, когда FAR открыт.
+    procedure ShowFile(const AFileName: WideString);
     procedure LoadState(const AIniName: string; const ADefaultDir: WideString);
     procedure SaveState(const AIniName: string);
     property OnClose: TNotifyEvent read FOnClose write FOnClose;
     property OnStatus: TFarStatusEvent read FOnStatus write FOnStatus;
+    property OnEditFile: TFarEditEvent read FOnEditFile write FOnEditFile;
+    // Tab, когда видна одна панель: фокус - редактору
+    property OnLeave: TNotifyEvent read FOnLeave write FOnLeave;
+    property SinglePanel: Integer read FSingle;
   end;
+
+// Путь для ANSI-кода IDE (Delphi 7): в кодировке Windows, если она вмещает
+// все символы, иначе - короткое имя 8.3; нельзя ни так, ни так - ''
+function FarToAnsiPath(const APath: WideString): string;
 
 implementation
 
@@ -451,6 +481,13 @@ function FarGetVolumeInfo(ARoot, AVolumeName: PWideChar; AVolumeNameSize: DWORD;
   external 'kernel32.dll' name 'GetVolumeInformationW';
 function FarSetErrorMode(AMode: UINT): UINT; stdcall;
   external 'kernel32.dll' name 'SetErrorMode';
+function FarGetShortPath(ALongPath, AShortPath: PWideChar;
+  ABufferLen: DWORD): DWORD; stdcall;
+  external 'kernel32.dll' name 'GetShortPathNameW';
+function FarCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
+  ASecurity: Pointer; ADisposition, AFlags: DWORD;
+  ATemplate: THandle): THandle; stdcall;
+  external 'kernel32.dll' name 'CreateFileW';
 
 var
   FarFontTried: Boolean = False;
@@ -727,6 +764,53 @@ end;
 
 // Путь в ini: в кодировке Windows, если она вмещает все символы, иначе
 // 'utf8:' и UTF-8
+// Текст в кодировке Windows без замен; False - есть символы вне неё
+function FarWideToAnsi(const AText: WideString; var AResult: string): Boolean;
+var
+  UsedDefault: BOOL;
+  Buffer: string;
+  Written: Integer;
+begin
+  Result := False;
+  AResult := '';
+  if AText = '' then
+  begin
+    Result := True;
+    Exit;
+  end;
+  SetLength(Buffer, Length(AText) * 2 + 1);
+  UsedDefault := False;
+  Written := FarWideToMulti(CP_ACP, FarNoBestFit, PWideChar(AText),
+    Length(AText), PAnsiChar(Buffer), Length(Buffer), nil, UsedDefault);
+  if (Written > 0) and not UsedDefault then
+  begin
+    AResult := Copy(Buffer, 1, Written);
+    Result := True;
+  end;
+end;
+
+function FarToAnsiPath(const APath: WideString): string;
+var
+  ShortBuffer: array[0..MAX_PATH] of WideChar;
+  ShortLen: DWORD;
+  ShortPath: WideString;
+begin
+  Result := '';
+  if APath = '' then
+    Exit;
+  if FarWideToAnsi(APath, Result) then
+    Exit;
+  ShortLen := FarGetShortPath(PWideChar(APath), ShortBuffer, MAX_PATH + 1);
+  if (ShortLen = 0) or (ShortLen > MAX_PATH) then
+  begin
+    Result := '';
+    Exit;
+  end;
+  ShortPath := PWideChar(@ShortBuffer[0]);
+  if not FarWideToAnsi(ShortPath, Result) then
+    Result := '';
+end;
+
 function FarEncodePath(const APath: WideString): string;
 var
   UsedDefault: BOOL;
@@ -1104,6 +1188,7 @@ begin
   CreateFonts;
   FDlgKind := fdNone;
   FDlgFocus := -1;
+  FSingle := -1;
   FWatch[0] := 0;
   FWatch[1] := 0;
   FWatchTimer := TTimer.Create(Self);
@@ -1200,6 +1285,16 @@ end;
 
 procedure TFarView.PanelBounds(AIndex: Integer; var AX0, AWidth: Integer);
 begin
+  // Одна панель (F4): она на всё окно, другой нет
+  if FSingle >= 0 then
+  begin
+    AX0 := 0;
+    if AIndex = FSingle then
+      AWidth := FCols
+    else
+      AWidth := 0;
+    Exit;
+  end;
   if AIndex = 0 then
   begin
     AX0 := 0;
@@ -1655,7 +1750,9 @@ begin
   AItemIndex := -1;
   Col := AX div FCellW;
   Row := AY div FCellH;
-  if Col < FCols div 2 then
+  if FSingle >= 0 then
+    APanelIndex := FSingle
+  else if Col < FCols div 2 then
     APanelIndex := 0
   else
     APanelIndex := 1;
@@ -1918,6 +2015,14 @@ begin
               FOnClose(Self);
             Exit;
           end;
+        VK_F4:              // F4 - файл в редактор, Shift+F4 - по имени
+          begin
+            if AShift then
+              StartEditNew
+            else
+              EditCurrent;
+            Exit;
+          end;
         VK_F5:              // Shift+F5 - только файл под курсором
           begin
             StartCopy(False, AShift);
@@ -1969,6 +2074,13 @@ begin
       VK_END:
         MoveCursor(ActivePanel.Count, AShift);
       VK_TAB:
+        if FSingle >= 0 then
+        begin
+          // Видна одна панель (F4) - Tab уводит в редактор
+          if Assigned(FOnLeave) then
+            FOnLeave(Self);
+        end
+        else
         begin
           FActive := 1 - FActive;
           Invalidate;
@@ -2331,6 +2443,8 @@ begin
       DoMkDir(EditText);
     fdDelete:
       DoDelete;
+    fdEditNew:
+      DoEditNew(EditText);
   end;
 end;
 
@@ -2536,6 +2650,127 @@ begin
     DlgOpen(fdCopy, FarDlgTitleCopy, [Prompt], False, False, True, Target,
       ['Copy', 'Cancel']);
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  F4 / Shift+F4: файл - в редактор unIDE (OnEditFile, делает Unit1)
+// ---------------------------------------------------------------------------
+
+procedure TFarView.EditCurrent;
+var
+  Panel: TFarPanel;
+begin
+  Panel := ActivePanel;
+  if (Panel.Count = 0) or (Panel.Cursor < 0) or
+     (Panel.Cursor >= Panel.Count) then
+    Exit;
+  // Папку F4 не открывает (так в FAR)
+  if Panel.FItems[Panel.Cursor].IsDir then
+    Exit;
+  if Assigned(FOnEditFile) then
+    FOnEditFile(Panel.Path + Panel.FItems[Panel.Cursor].Name, False);
+end;
+
+procedure TFarView.StartEditNew;
+begin
+  if ActivePanel.Path = '' then
+    Exit;
+  DlgOpen(fdEditNew, 'Editor', ['File to edit:'], False, False, True, '',
+    ['OK', 'Cancel']);
+end;
+
+// Shift+F4: есть файл - открыть; нет - создать пустой (и недостающие
+// папки) и открыть
+procedure TFarView.DoEditNew(const AName: WideString);
+var
+  Name, FullPath, FileDir, FileName: WideString;
+  FileHandle: THandle;
+  Created: Boolean;
+  ItemIndex: Integer;
+begin
+  Name := FarTrimW(AName);
+  if Name = '' then
+    Exit;
+  FullPath := FarFullPath(ActivePanel.Path, Name);
+  if FarDirExists(FullPath) then
+  begin
+    Status('unIDE FAR: это папка: ' + FullPath);
+    Exit;
+  end;
+  Created := False;
+  if FarGetAttributes(PWideChar(FullPath)) = FarInvalidAttr then
+  begin
+    FarSplitPath(FullPath, FileDir, FileName);
+    if (FileDir <> '') and not FarForceDirs(FileDir) then
+    begin
+      Status('unIDE FAR: папку не создать: ' + SysErrorMessage(GetLastError));
+      Exit;
+    end;
+    FileHandle := FarCreateFile(PWideChar(FullPath), GENERIC_WRITE, 0, nil,
+      CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
+    if FileHandle = INVALID_HANDLE_VALUE then
+    begin
+      Status('unIDE FAR: файл не создать: ' + SysErrorMessage(GetLastError));
+      Exit;
+    end;
+    CloseHandle(FileHandle);
+    Created := True;
+    // Новый файл в той же папке - курсор на него
+    if FarSameName(FileDir, ActivePanel.Path) then
+    begin
+      ActivePanel.Reread;
+      ItemIndex := ActivePanel.IndexOfName(FileName);
+      if ItemIndex >= 0 then
+        ActivePanel.Cursor := ItemIndex;
+      EnsureVisible(ActivePanel);
+      Invalidate;
+    end;
+  end;
+  if Assigned(FOnEditFile) then
+    FOnEditFile(FullPath, Created);
+end;
+
+procedure TFarView.SetSingle(APanel: Integer);
+begin
+  if (APanel < -1) or (APanel > 1) then
+    APanel := -1;
+  FSingle := APanel;
+  if APanel >= 0 then
+    FActive := APanel;
+  UpdateGrid;
+  Invalidate;
+end;
+
+function TFarView.ActiveIndex: Integer;
+begin
+  Result := FActive;
+end;
+
+procedure TFarView.ShowFile(const AFileName: WideString);
+var
+  FileDir, FileName: WideString;
+  Panel: TFarPanel;
+  ItemIndex: Integer;
+begin
+  FarSplitPath(AFileName, FileDir, FileName);
+  if (FileDir = '') or (FileName = '') then
+    Exit;
+  Panel := ActivePanel;
+  if FarSameName(FarWithSlash(FileDir), Panel.Path) then
+  begin
+    ItemIndex := Panel.IndexOfName(FileName);
+    if ItemIndex < 0 then
+    begin
+      Panel.Reread;
+      ItemIndex := Panel.IndexOfName(FileName);
+    end;
+    if ItemIndex >= 0 then
+      Panel.Cursor := ItemIndex;
+    EnsureVisible(Panel);
+    Invalidate;
+  end
+  else if FarDirExists(FileDir) then
+    ChangeDir(Panel, FileDir, FileName);
 end;
 
 procedure TFarView.StartMkDir;
