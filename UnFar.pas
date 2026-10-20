@@ -59,7 +59,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.3';
+  FarBuild = 'b.4';
 
 type
   TFarItem = record
@@ -3320,7 +3320,7 @@ var
   Items: TFarMenuItems;
   DriveMask: DWORD;
   DriveIndex, CurrentDrive, CursorIndex: Integer;
-  Root, TypeText, VolumeLabel: WideString;
+  Root, TypeText, VolumeLabel, Letter: WideString;
   LabelBuffer: array[0..MAX_PATH] of WideChar;
   DriveType: UINT;
   OldMode: UINT;
@@ -3336,7 +3336,7 @@ begin
     begin
       if DriveMask and (DWORD(1) shl DriveIndex) = 0 then
         Continue;
-      Root := WideChar(Ord('A') + DriveIndex) + ':\';
+      Root := WideString(WideChar(Ord('A') + DriveIndex)) + ':\';
       DriveType := FarGetDriveType(PWideChar(Root));
       case DriveType of
         FarDriveRemovable: TypeText := 'removable';
@@ -3357,17 +3357,17 @@ begin
              nil, nil, 0) then
           VolumeLabel := PWideChar(@LabelBuffer[0]);
       end;
+      // Delphi 7 не складывает символ-литерал с WideChar - буква отдельной
+      // строкой
+      Letter := WideChar(Ord('A') + DriveIndex);
       SetLength(Items, Length(Items) + 1);
-      with Items[High(Items)] do
-      begin
-        Text := '&' + WideChar(Ord('A') + DriveIndex) + ':  ' +
-          FarPadRight(TypeText, 10) + '  ' + FarEscapeAmp(VolumeLabel);
-        RightText := '';
-        Mark := ' ';
-        Separator := False;
-        Data := WideChar(Ord('A') + DriveIndex);
-        Tag := DriveIndex;
-      end;
+      Items[High(Items)].Text := WideString('&') + Letter + ':  ' +
+        FarPadRight(TypeText, 10) + '  ' + FarEscapeAmp(VolumeLabel);
+      Items[High(Items)].RightText := '';
+      Items[High(Items)].Mark := ' ';
+      Items[High(Items)].Separator := False;
+      Items[High(Items)].Data := Letter;
+      Items[High(Items)].Tag := DriveIndex;
       if DriveIndex = CurrentDrive then
         CursorIndex := High(Items);
     end;
@@ -3383,7 +3383,7 @@ var
   DriveIndex: Integer;
   OldMode: UINT;
 begin
-  Root := ALetter + ':\';
+  Root := WideString(ALetter) + ':\';
   DriveIndex := FarDriveIndex(Root);
   if DriveIndex < 0 then
     Exit;
