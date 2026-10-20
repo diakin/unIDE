@@ -35,7 +35,10 @@ unit UnFar;
 //      одной (активной) панелью, редактор - во второй половине (это
 //      делает Unit1 по OnEditFile, панель - SetSingle); Shift+F4 - имя
 //      файла в диалоге, нет файла - создаётся пустой; Tab в FAR с одной
-//      панелью - в редактор (OnLeave); ShowFile - курсор на файл вкладки.
+//      панелью - в редактор (OnLeave); ShowFile - курсор на файл вкладки;
+//    - b.8: узкое окно (меньше 8 клеток на клавишу) - кейбар в две строки:
+//      F1..F6 и F7..F12; HalfWidth - ширина окна FAR в режиме F4 (её
+//      меняет сплиттер в Unit1), хранится в editor.ini.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -65,7 +68,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.7';
+  FarBuild = 'b.8';
 
 type
   TFarItem = record
@@ -176,6 +179,7 @@ type
     FOnEditFile: TFarEditEvent;
     FOnLeave: TNotifyEvent;
     FSingle: Integer;             // -1 - две панели; 0 / 1 - только эта (F4)
+    FHalfWidth: Integer;          // ширина окна в режиме F4, пикселей (0 - нет)
     // Диалог (F5 - F8): рисуется поверх панелей, клавиши - ему
     FDlgKind: TFarDlgKind;
     FDlgTitle: WideString;
@@ -223,6 +227,7 @@ type
     function ActivePanel: TFarPanel;
     procedure PanelBounds(AIndex: Integer; var AX0, AWidth: Integer);
     function PanelHeight: Integer;
+    function KeyBarRows: Integer;
     function FileRows: Integer;
     procedure ColumnWidths(AWidth: Integer; var AFirst, ASecond: Integer);
     function PageSize: Integer;
@@ -323,6 +328,9 @@ type
     // Tab, когда видна одна панель: фокус - редактору
     property OnLeave: TNotifyEvent read FOnLeave write FOnLeave;
     property SinglePanel: Integer read FSingle;
+    // Ширина окна FAR в режиме F4 (пикселей, 0 - не задана): ставит и
+    // читает Unit1 (сплиттер), хранится в editor.ini ([Far] HalfWidth)
+    property HalfWidth: Integer read FHalfWidth write FHalfWidth;
   end;
 
 // Путь для ANSI-кода IDE (Delphi 7): в кодировке Windows, если она вмещает
@@ -1310,7 +1318,17 @@ end;
 // Строк у панели: всё окно без нижней строки (кейбар)
 function TFarView.PanelHeight: Integer;
 begin
-  Result := FRows - 1;
+  Result := FRows - KeyBarRows;
+end;
+
+// Кейбар: на клавишу нужно 8 клеток (номер до 2 и подпись до 6). Не
+// вмещаются 12 в строку - две строки по 6
+function TFarView.KeyBarRows: Integer;
+begin
+  if FCols div 12 < 8 then
+    Result := 2
+  else
+    Result := 1;
 end;
 
 // Строки имён: рамка сверху, заголовок колонок, (имена), разделитель,
@@ -1639,22 +1657,27 @@ end;
 
 procedure TFarView.DrawKeyBar;
 var
-  KeyIndex, SlotW, SlotCol, LabelW: Integer;
+  KeyIndex, SlotW, SlotCol, LabelW, RowCount, PerRow, KeyRow, SlotIndex: Integer;
   Number, KeyLabel: string;
   AltDown, CtrlDown, ShiftDown: Boolean;
 begin
-  if FRows < 1 then
+  RowCount := KeyBarRows;
+  if FRows < RowCount then
     Exit;
   AltDown := GetKeyState(VK_MENU) < 0;
   CtrlDown := GetKeyState(VK_CONTROL) < 0;
   ShiftDown := GetKeyState(VK_SHIFT) < 0;
-  FillCells(0, FRows - 1, FCols, FarBlack);
-  SlotW := FCols div 12;
+  PerRow := 12 div RowCount;
+  for KeyRow := FRows - RowCount to FRows - 1 do
+    FillCells(0, KeyRow, FCols, FarBlack);
+  SlotW := FCols div PerRow;
   if SlotW < 3 then
     Exit;
   for KeyIndex := 0 to 11 do
   begin
-    SlotCol := KeyIndex * SlotW;
+    KeyRow := FRows - RowCount + KeyIndex div PerRow;
+    SlotIndex := KeyIndex mod PerRow;
+    SlotCol := SlotIndex * SlotW;
     if AltDown then
       KeyLabel := FarKeysAlt[KeyIndex]
     else if CtrlDown then
@@ -1665,11 +1688,10 @@ begin
       KeyLabel := FarKeysNormal[KeyIndex];
     Number := IntToStr(KeyIndex + 1);
     LabelW := SlotW - Length(Number);
-    if KeyIndex = 11 then
-      LabelW := FCols - SlotCol - Length(Number);
-    PutText(SlotCol, FRows - 1, Length(Number), Number, FarLightGray,
-      FarBlack);
-    PutText(SlotCol + Length(Number), FRows - 1, LabelW, KeyLabel, FarBlack,
+    if SlotIndex = PerRow - 1 then
+      LabelW := FCols - SlotCol - Length(Number);  // последняя - до края
+    PutText(SlotCol, KeyRow, Length(Number), Number, FarLightGray, FarBlack);
+    PutText(SlotCol + Length(Number), KeyRow, LabelW, KeyLabel, FarBlack,
       FarCyan);
   end;
 end;
@@ -3776,6 +3798,7 @@ begin
       if not FPanels[PanelIndex].ReadDir(SavedPath, SavedFile, ErrorText) then
         FPanels[PanelIndex].ReadDir(ADefaultDir, '', ErrorText);
     end;
+    FHalfWidth := Ini.ReadInteger(FarIniSection, 'HalfWidth', 0);
     FActive := Ini.ReadInteger(FarIniSection, 'Active', 0);
     if (FActive < 0) or (FActive > 1) then
       FActive := 0;
@@ -3841,6 +3864,8 @@ begin
         FarEncodePath(CurrentName));
     end;
     Ini.WriteInteger(FarIniSection, 'Active', FActive);
+    if FHalfWidth > 0 then
+      Ini.WriteInteger(FarIniSection, 'HalfWidth', FHalfWidth);
   finally
     Ini.Free;
   end;

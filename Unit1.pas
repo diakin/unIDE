@@ -1013,6 +1013,10 @@ type
     procedure FarHalfOn;
     procedure FarHalfOff;
     procedure FarEditorEsc;
+    procedure FarSplitterMoved(Sender: TObject);
+    procedure FarBtnClick(Sender: TObject);
+    procedure FarCollapse(ACollapse: Boolean);
+    procedure FarPlaceSplitter;
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
     procedure FObjSetListClick(Sender: TObject);
@@ -1042,6 +1046,13 @@ type
     FFarOwnWin: Integer;
     FFarCreatedFile: string;
     FFarEditSaved: Boolean;
+    // Режим F4: сплиттер между FAR и редактором, кнопки _ и [] в правом
+    // верхнем углу окна FAR (как у правой панели); FFarCollapsed - FAR
+    // свёрнут до полоски с кнопкой []
+    FFarSplitter: TSplitter;
+    FFarBtnMin: TUiButton;
+    FFarBtnRestore: TUiButton;
+    FFarCollapsed: Boolean;
     // Плашки открытых окон утилит в строке меню, после Help (TPanel)
     FUtilChips: TList;
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
@@ -37113,6 +37124,14 @@ begin
   FindIncShow('');
 end;
 
+const
+  // Режим F4: окно FAR не уже, редактор рядом с ним - не уже (пикселей)
+  FarHalfMinWidth = 200;
+  FarHalfMinEditor = 150;
+  FarSplitterWidth = 5;
+  FarBtnW = 22;
+  FarBtnH = 18;
+
 // Utils - unIDE FAR: двухпанельный файловый менеджер поверх области
 // редактора (вкладки, тулбар, лог и остальное остаются видны). Окно
 // создаётся при первом открытии и дальше только прячется (F10) - пути
@@ -37138,6 +37157,12 @@ begin
     FFarOwnWin := -1;
     FFar.LoadState(SettingsFileName, StartDir);
   end
+  else if FFarHalf and FFarCollapsed then
+  begin
+    // Режим F4, FAR свёрнут - развернуть
+    FarCollapse(False);
+    Exit;
+  end
   else if not FFar.Visible then
     FFar.RereadAll;
   FFar.Visible := True;
@@ -37154,7 +37179,7 @@ end;
 // панель разделённого редактора и строка объявления - под окном FAR.
 procedure TForm1.FarLayout;
 var
-  TopEdge, BottomEdge: Integer;
+  TopEdge, BottomEdge, NewWidth, MaxWidth, RightEdge: Integer;
 
   procedure TakeBottom(ACtl: TControl);
   begin
@@ -37164,18 +37189,61 @@ var
   end;
 
 begin
-  if (FFar = nil) or not FFar.Visible then
+  if FFar = nil then
     Exit;
-  // Режим F4: FAR - на месте распорки (половина области), остальное -
-  // редактору
+  // Режим F4: FAR - на месте распорки, остальное - редактору
   if FFarHalf and (FFarSpacer <> nil) and FFarSpacer.Visible then
   begin
-    if FFarSpacer.Width <> pnlMain.ClientWidth div 2 then
-      FFarSpacer.Width := pnlMain.ClientWidth div 2;
+    // Свёрнут - полоска с одной кнопкой []
+    if FFarCollapsed then
+    begin
+      if FFarSpacer.Width <> RightPanelCollapsedWidth then
+        FFarSpacer.Width := RightPanelCollapsedWidth;
+      if FFarBtnMin <> nil then
+        FFarBtnMin.Visible := False;
+      if FFarBtnRestore <> nil then
+      begin
+        FFarBtnRestore.SetBounds(FFarSpacer.Left + 2, FFarSpacer.Top + 2,
+          FFarSpacer.Width - 4, FarBtnH);
+        FFarBtnRestore.Enabled := True;
+        FFarBtnRestore.Visible := True;
+        FFarBtnRestore.BringToFront;
+      end;
+      Exit;
+    end;
+    // Ширина - заданная сплиттером (HalfWidth), без неё - половина; не
+    // уже FarHalfMinWidth, редактору - не меньше FarHalfMinEditor
+    NewWidth := FFar.HalfWidth;
+    if NewWidth <= 0 then
+      NewWidth := pnlMain.ClientWidth div 2;
+    MaxWidth := pnlMain.ClientWidth - FarHalfMinEditor - FarSplitterWidth;
+    if NewWidth > MaxWidth then
+      NewWidth := MaxWidth;
+    if NewWidth < FarHalfMinWidth then
+      NewWidth := FarHalfMinWidth;
+    if FFarSpacer.Width <> NewWidth then
+      FFarSpacer.Width := NewWidth;
     FFar.SetBounds(FFarSpacer.Left, FFarSpacer.Top, FFarSpacer.Width,
       FFarSpacer.Height);
+    // Кнопки _ и [] - в правом верхнем углу окна FAR; развёрнут -
+    // разворачивать нечего, [] недоступна (как у правой панели)
+    if (FFarBtnMin <> nil) and (FFarBtnRestore <> nil) then
+    begin
+      RightEdge := FFarSpacer.Left + FFarSpacer.Width - 2;
+      FFarBtnRestore.SetBounds(RightEdge - FarBtnW, FFarSpacer.Top,
+        FarBtnW, FarBtnH);
+      FFarBtnMin.SetBounds(RightEdge - 2 * FarBtnW - 2, FFarSpacer.Top,
+        FarBtnW, FarBtnH);
+      FFarBtnRestore.Enabled := False;
+      FFarBtnMin.Visible := True;
+      FFarBtnRestore.Visible := True;
+      FFarBtnMin.BringToFront;
+      FFarBtnRestore.BringToFront;
+    end;
     Exit;
   end;
+  if not FFar.Visible then
+    Exit;
   TopEdge := 0;
   if (FTabs <> nil) and FTabs.Visible and (FTabs.Parent = pnlMain) then
     TopEdge := FTabs.Top + FTabs.Height;
@@ -37199,8 +37267,15 @@ begin
   if FFarHalf then
   begin
     FFarHalf := False;
+    FFarCollapsed := False;
     FFarOwnWin := -1;
     FFarCreatedFile := '';
+    if FFarSplitter <> nil then
+      FFarSplitter.Visible := False;
+    if FFarBtnMin <> nil then
+      FFarBtnMin.Visible := False;
+    if FFarBtnRestore <> nil then
+      FFarBtnRestore.Visible := False;
     if FFarSpacer <> nil then
       FFarSpacer.Visible := False;
     FFar.SetSingle(-1);
@@ -37240,9 +37315,41 @@ begin
     FFarSpacer.Color := clNavy;
     FFarSpacer.Parent := pnlMain;
   end;
+  if FFarSplitter = nil then
+  begin
+    // Сплиттер: при перетаскивании - линия-след (rsPattern), ширина
+    // ставится при отпускании (FarSplitterMoved)
+    FFarSplitter := TSplitter.Create(Self);
+    FFarSplitter.Visible := False;
+    FFarSplitter.Width := FarSplitterWidth;
+    FFarSplitter.Beveled := False;
+    FFarSplitter.AutoSnap := False;
+    FFarSplitter.MinSize := FarHalfMinWidth;
+    FFarSplitter.ResizeStyle := rsPattern;
+    FFarSplitter.Color := $00D06800;   // как разделитель правой панели
+    FFarSplitter.OnMoved := FarSplitterMoved;
+    FFarSplitter.Parent := pnlMain;
+  end;
+  if FFarBtnMin = nil then
+  begin
+    FFarBtnMin := TUiButton.Create(Self);
+    FFarBtnMin.Visible := False;
+    FFarBtnMin.Parent := pnlMain;
+    FFarBtnMin.Caption := '_';
+    FFarBtnMin.Hint := 'Свернуть панель FAR';
+    FFarBtnMin.ShowHint := True;
+    FFarBtnMin.OnClick := FarBtnClick;
+    FFarBtnRestore := TUiButton.Create(Self);
+    FFarBtnRestore.Visible := False;
+    FFarBtnRestore.Parent := pnlMain;
+    FFarBtnRestore.Caption := '[]';
+    FFarBtnRestore.Hint := 'Развернуть панель FAR до прежней ширины';
+    FFarBtnRestore.ShowHint := True;
+    FFarBtnRestore.OnClick := FarBtnClick;
+  end;
   FFarHalf := True;
+  FFarCollapsed := False;
   FFar.SetSingle(FFar.ActiveIndex);
-  FFarSpacer.Width := pnlMain.ClientWidth div 2;
   if FFar.ActiveIndex = 0 then
   begin
     FFarSpacer.Align := alLeft;
@@ -37255,7 +37362,71 @@ begin
   end;
   FFarSpacer.Visible := True;
   FarLayout;
+  FarPlaceSplitter;
   FFar.BringToFront;
+  FarLayout;
+end;
+
+// Сплиттер - сразу за распоркой, со стороны редактора
+procedure TForm1.FarPlaceSplitter;
+begin
+  if (FFarSplitter = nil) or (FFarSpacer = nil) then
+    Exit;
+  FFarSplitter.Visible := False;
+  if FFarSpacer.Align = alLeft then
+  begin
+    FFarSplitter.Align := alLeft;
+    FFarSplitter.Left := FFarSpacer.Left + FFarSpacer.Width;
+  end
+  else
+  begin
+    FFarSplitter.Align := alRight;
+    FFarSplitter.Left := FFarSpacer.Left - FFarSplitter.Width;
+  end;
+  FFarSplitter.Visible := True;
+end;
+
+// Сплиттер отпустили: новая ширина окна FAR - запомнить (editor.ini,
+// [Far] HalfWidth) и разложить
+procedure TForm1.FarSplitterMoved(Sender: TObject);
+begin
+  if (FFar = nil) or (FFarSpacer = nil) then
+    Exit;
+  FFar.HalfWidth := FFarSpacer.Width;
+  FarLayout;
+end;
+
+procedure TForm1.FarBtnClick(Sender: TObject);
+begin
+  FarCollapse(Sender = FFarBtnMin);
+end;
+
+// Режим F4: свернуть окно FAR до полоски с кнопкой [] (фокус - редактору)
+// или развернуть до прежней ширины (HalfWidth не меняется)
+procedure TForm1.FarCollapse(ACollapse: Boolean);
+begin
+  if not FFarHalf or (FFar = nil) or (ACollapse = FFarCollapsed) then
+    Exit;
+  FFarCollapsed := ACollapse;
+  if ACollapse then
+  begin
+    FFar.Visible := False;
+    if FFarSplitter <> nil then
+      FFarSplitter.Visible := False;
+    FarLayout;
+    if RichEdit1.CanFocus then
+      RichEdit1.SetFocus;
+  end
+  else
+  begin
+    FFar.Visible := True;
+    FarLayout;
+    FarPlaceSplitter;
+    FFar.BringToFront;
+    FarLayout;
+    if FFar.CanFocus then
+      FFar.SetFocus;
+  end;
 end;
 
 // Конец режима F4: распорка убрана, FAR - снова две панели на всю область
@@ -37265,10 +37436,19 @@ begin
   FFarOwnWin := -1;
   FFarCreatedFile := '';
   FFarEditSaved := False;
+  if FFarSplitter <> nil then
+    FFarSplitter.Visible := False;
+  if FFarBtnMin <> nil then
+    FFarBtnMin.Visible := False;
+  if FFarBtnRestore <> nil then
+    FFarBtnRestore.Visible := False;
   if FFarSpacer <> nil then
     FFarSpacer.Visible := False;
   if FFar = nil then
     Exit;
+  // Был свёрнут - окно FAR снова видно
+  FFarCollapsed := False;
+  FFar.Visible := True;
   FFar.SetSingle(-1);
   FarLayout;
   FFar.BringToFront;
