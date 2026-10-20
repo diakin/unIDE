@@ -15,7 +15,14 @@ unit UnFar;
 //    - курсор: стрелки, Home/End, PgUp/PgDn (на страницу, как в FAR);
 //    - выделение: Ins, Shift+стрелки, Shift+PgUp/PgDn, Shift+Home/End;
 //    - нижняя строка - кейбар FAR, при Shift / Ctrl / Alt - свой слой;
-//    - пути панелей и файл под курсором - в editor.ini, раздел [Far].
+//    - пути панелей и файл под курсором - в editor.ini, раздел [Far];
+//    - b.2: F5 / Shift+F5 - копирование, F6 / Shift+F6 - перенос и
+//      переименование, F7 - папка, F8 / Shift+F8 / Del - удаление в
+//      корзину, Shift+Del - удаление мимо корзины. Диалоги - свои, в
+//      духе FAR, поверх панелей; сами операции - SHFileOperationW
+//      (ход и вопросы о замене файлов - стандартные окна Windows);
+//    - b.2: панели следят за своими папками (FindFirstChangeNotification)
+//      и перечитываются сами, когда в папке что-то изменилось.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -41,10 +48,11 @@ unit UnFar;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, IniBuf;
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
+  Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.1';
+  FarBuild = 'b.2';
 
 type
   TFarItem = record
@@ -59,6 +67,10 @@ type
   // Один тип массива для поля и локальных переменных: в Delphi 7 два
   // отдельно описанных 'array of TFarItem' - разные типы, присвоить нельзя
   TFarItems = array of TFarItem;
+  TFarNames = array of WideString;
+
+  // Открытый диалог: копирование, перенос, папка, удаление
+  TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete);
 
   // Одна панель: папка, её список и курсор
   TFarPanel = class
@@ -114,6 +126,31 @@ type
     FEatAltUp: Boolean;
     FOnClose: TNotifyEvent;
     FOnStatus: TFarStatusEvent;
+    // Диалог (F5 - F8): рисуется поверх панелей, клавиши - ему
+    FDlgKind: TFarDlgKind;
+    FDlgTitle: WideString;
+    FDlgLines: TFarNames;
+    FDlgCentered: Boolean;
+    FDlgWarn: Boolean;            // красный, как предупреждения FAR
+    FDlgHasEdit: Boolean;
+    FDlgEdit: WideString;
+    FDlgEditPos: Integer;         // каретка: 0..Length(FDlgEdit)
+    FDlgEditScroll: Integer;
+    FDlgEditFresh: Boolean;       // текст не трогали: ввод заменяет его
+    FDlgButtons: TFarNames;
+    FDlgFocus: Integer;           // -1 - поле ввода, 0.. - кнопка
+    FDlgButtonCol: array of Integer;  // где нарисованы кнопки (для мыши)
+    FDlgButtonRow: Integer;
+    FDlgNames: TFarNames;         // с чем работает операция
+    FDlgPermanent: Boolean;       // удаление мимо корзины
+    // Слежение за папками панелей
+    FWatch: array[0..1] of THandle;
+    FWatchPath: array[0..1] of WideString;
+    FWatchDirty: array[0..1] of Boolean;
+    FWatchFirstTick: Cardinal;    // первый сигнал из ещё не перечитанных
+    FWatchLastTick: Cardinal;     // последний сигнал
+    FWatchTimer: TTimer;
+    FBusy: Boolean;               // идёт операция с файлами
     procedure CreateFonts;
     procedure FreeFonts;
     procedure UpdateGrid;
@@ -149,6 +186,28 @@ type
     procedure WMSetFocus(var Message: TWMSetFocus); message WM_SETFOCUS;
     procedure WMKillFocus(var Message: TWMKillFocus); message WM_KILLFOCUS;
     procedure WMMouseWheel(var Message: TWMMouseWheel); message WM_MOUSEWHEEL;
+    // Диалоги и операции с файлами
+    function CollectNames(ACurrentOnly: Boolean): TFarNames;
+    procedure DlgOpen(AKind: TFarDlgKind; const ATitle: WideString;
+      const ALines: array of WideString; ACentered, AWarn, AHasEdit: Boolean;
+      const AEdit: WideString; const AButtons: array of WideString);
+    procedure DlgClose;
+    function DlgKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    procedure DlgInsertText(const AText: WideString);
+    procedure DlgActivate(AButton: Integer);
+    procedure DrawBox(ALeft, ATop, ARight, ABottom: Integer; AColor: TColor);
+    procedure DrawDialog;
+    procedure StartCopy(AMove, ACurrentOnly: Boolean);
+    procedure StartMkDir;
+    procedure StartDelete(ACurrentOnly, APermanent: Boolean);
+    procedure DoCopyMove(AMove: Boolean; const ATarget: WideString);
+    procedure DoMkDir(const AName: WideString);
+    procedure DoDelete;
+    function RunShellOp(AFunc: UINT; const AFrom, ATo: WideString;
+      AFlags: Word; var AAborted: Boolean): Boolean;
+    procedure AfterOperation(const AFocusName: WideString);
+    procedure WatchTick(Sender: TObject);
+    procedure WatchStop;
   protected
     procedure Paint; override;
     procedure Resize; override;
@@ -197,7 +256,28 @@ const
   FarFrPrivate = $10;              // FR_PRIVATE
   FarNoBestFit = $400;             // WC_NO_BEST_FIT_CHARS
   FarQualityNoAntialias = 3;       // NONANTIALIASED_QUALITY
-  FarVkBackslash = $DC;            // VK_OEM_5: '\'
+  FarVkBackslash = $DC;            // VK_OEM_5: '\' над Enter
+  FarVkBackslash2 = $E2;           // VK_OEM_102: '\' у левого Shift
+
+  // Диалоги (палитра FAR: Dialog.*, WarnDialog.*)
+  FarRed = $000080;                // B_RED
+  FarDlgTitleCopy = 'Copy';
+  FarDlgTitleMove = 'Rename/Move';
+
+  // SHFileOperation
+  FarFoMove = 1;
+  FarFoCopy = 2;
+  FarFoDelete = 3;
+  FarFofNoConfirmation = $10;
+  FarFofAllowUndo = $40;
+  FarFofNoConfirmMkDir = $200;
+
+  // FindFirstChangeNotification: имена файлов и папок, атрибуты, размер,
+  // время записи
+  FarNotifyFilter = $01 or $02 or $04 or $08 or $10;
+  FarWatchInterval = 250;          // мс, опрос сигналов
+  FarWatchQuiet = 300;             // мс без новых сигналов - перечитать
+  FarWatchMaxDelay = 2000;         // но не реже, чем раз в столько мс
   FarInvalidAttr = $FFFFFFFF;
 
   // Кейбар: подписи FAR (far\farlang.templ.m4) для того, что есть или
@@ -227,6 +307,18 @@ type
 
   TFarInt64Ptr = ^Int64;
 
+  // SHFILEOPSTRUCTW - в 32-битной Windows без выравнивания (packed)
+  TFarShFileOp = packed record
+    Wnd: HWND;
+    Func: UINT;
+    From: PWideChar;
+    Dest: PWideChar;
+    Flags: Word;
+    AnyAborted: BOOL;
+    NameMappings: Pointer;
+    ProgressTitle: PWideChar;
+  end;
+
 // W-функции Windows - свои объявления, чтобы не зависеть от того, как они
 // описаны в Windows.pas Delphi 7
 function FarFindFirst(AFileName: PWideChar;
@@ -253,6 +345,20 @@ function FarExtTextOut(ADC: HDC; AX, AY: Integer; AOptions: UINT;
 function FarAddFontResourceEx(AFileName: PAnsiChar; AFlags: DWORD;
   AReserved: Pointer): Integer; stdcall;
   external 'gdi32.dll' name 'AddFontResourceExA';
+function FarMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
+  AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
+  external 'kernel32.dll' name 'MultiByteToWideChar';
+function FarCreateDir(APath: PWideChar; ASecurity: Pointer): BOOL; stdcall;
+  external 'kernel32.dll' name 'CreateDirectoryW';
+function FarShFileOperation(var AOp: TFarShFileOp): Integer; stdcall;
+  external 'shell32.dll' name 'SHFileOperationW';
+function FarFindFirstChange(APath: PWideChar; AWatchSubtree: BOOL;
+  AFilter: DWORD): THandle; stdcall;
+  external 'kernel32.dll' name 'FindFirstChangeNotificationW';
+function FarFindNextChange(AHandle: THandle): BOOL; stdcall;
+  external 'kernel32.dll' name 'FindNextChangeNotification';
+function FarFindCloseChange(AHandle: THandle): BOOL; stdcall;
+  external 'kernel32.dll' name 'FindCloseChangeNotification';
 
 var
   FarFontTried: Boolean = False;
@@ -443,6 +549,75 @@ begin
   end;
 end;
 
+function FarTrimW(const AText: WideString): WideString;
+var
+  FirstPos, LastPos: Integer;
+begin
+  FirstPos := 1;
+  LastPos := Length(AText);
+  while (FirstPos <= LastPos) and (AText[FirstPos] <= ' ') do
+    Inc(FirstPos);
+  while (LastPos >= FirstPos) and (AText[LastPos] <= ' ') do
+    Dec(LastPos);
+  Result := Copy(AText, FirstPos, LastPos - FirstPos + 1);
+end;
+
+function FarSameName(const ANameA, ANameB: WideString): Boolean;
+begin
+  Result := FarCompareNames(ANameA, ANameB) = 0;
+end;
+
+// Путь из диалога: полный - как есть, '\...' - от корня диска панели,
+// остальное - от папки панели ABase
+function FarFullPath(const ABase, ATarget: WideString): WideString;
+begin
+  if (Length(ATarget) >= 2) and (ATarget[2] = ':') then
+    Result := ATarget
+  else if Copy(ATarget, 1, 2) = '\\' then
+    Result := ATarget
+  else if (ATarget <> '') and (ATarget[1] = '\') then
+    Result := Copy(FarRootOf(ABase), 1, Length(FarRootOf(ABase)) - 1) +
+      ATarget
+  else
+    Result := ABase + ATarget;
+end;
+
+// 'D:\a\b.txt' -> ADir = 'D:\a\', AName = 'b.txt'
+procedure FarSplitPath(const APath: WideString; var ADir, AName: WideString);
+var
+  SlashPos: Integer;
+begin
+  SlashPos := Length(APath);
+  while (SlashPos > 0) and (APath[SlashPos] <> '\') do
+    Dec(SlashPos);
+  ADir := Copy(APath, 1, SlashPos);
+  AName := Copy(APath, SlashPos + 1, MaxInt);
+end;
+
+// Папка со всеми недостающими папками выше
+function FarForceDirs(const APath: WideString): Boolean;
+var
+  DirPath, Upper, ChildName: WideString;
+begin
+  DirPath := APath;
+  if (Length(DirPath) > 3) and (DirPath[Length(DirPath)] = '\') then
+    SetLength(DirPath, Length(DirPath) - 1);
+  if FarDirExists(DirPath) then
+  begin
+    Result := True;
+    Exit;
+  end;
+  Upper := FarParentOf(FarWithSlash(DirPath), ChildName);
+  if (Upper <> '') and not FarDirExists(Upper) then
+    if not FarForceDirs(Upper) then
+    begin
+      Result := False;
+      Exit;
+    end;
+  Result := FarCreateDir(PWideChar(DirPath), nil) or
+            (GetLastError = ERROR_ALREADY_EXISTS);
+end;
+
 // Путь в ini: в кодировке Windows, если она вмещает все символы, иначе
 // 'utf8:' и UTF-8
 function FarEncodePath(const APath: WideString): string;
@@ -615,12 +790,13 @@ procedure TFarPanel.Reread;
 var
   FocusName: WideString;
   SelectedNames: array of WideString;
-  SelectedCount, ItemIndex, NameIndex, OldTop: Integer;
+  SelectedCount, ItemIndex, NameIndex, OldTop, OldCursor: Integer;
   ErrorText: string;
 begin
   if FPath = '' then
     Exit;
   FocusName := '';
+  OldCursor := FCursor;
   if (FCursor >= 0) and (FCursor < FCount) then
     FocusName := FItems[FCursor].Name;
   SelectedCount := 0;
@@ -635,6 +811,16 @@ begin
   if not ReadDir(FPath, FocusName, ErrorText) then
     Exit;
   FTopIndex := OldTop;
+  // Файла под курсором больше нет (удалён, переименован) - курсор на том
+  // же месте списка, как в FAR
+  if (FocusName <> '') and (IndexOfName(FocusName) < 0) then
+  begin
+    FCursor := OldCursor;
+    if FCursor >= FCount then
+      FCursor := FCount - 1;
+    if FCursor < 0 then
+      FCursor := 0;
+  end;
   for NameIndex := 0 to SelectedCount - 1 do
   begin
     ItemIndex := IndexOfName(SelectedNames[NameIndex]);
@@ -710,10 +896,20 @@ begin
   FActive := 0;
   FBuffer := TBitmap.Create;
   CreateFonts;
+  FDlgKind := fdNone;
+  FDlgFocus := -1;
+  FWatch[0] := 0;
+  FWatch[1] := 0;
+  FWatchTimer := TTimer.Create(Self);
+  FWatchTimer.Interval := FarWatchInterval;
+  FWatchTimer.OnTimer := WatchTick;
+  FWatchTimer.Enabled := True;
 end;
 
 destructor TFarView.Destroy;
 begin
+  FWatchTimer.Enabled := False;
+  WatchStop;
   FreeFonts;
   FBuffer.Free;
   FPanels[0].Free;
@@ -1191,6 +1387,8 @@ begin
       DrawPanel(0);
       DrawPanel(1);
       DrawKeyBar;
+      if FDlgKind <> fdNone then
+        DrawDialog;
     end;
   finally
     SelectObject(FBuffer.Canvas.Handle, OldFont);
@@ -1269,6 +1467,21 @@ begin
   inherited MouseDown(Button, Shift, X, Y);
   if CanFocus and not Focused then
     SetFocus;
+  // Открыт диалог: щелчок по его кнопке нажимает её, панели не трогаем
+  if FDlgKind <> fdNone then
+  begin
+    if (Button = mbLeft) and (Y div FCellH = FDlgButtonRow) then
+      for ItemIndex := 0 to High(FDlgButtonCol) do
+        if (X div FCellW >= FDlgButtonCol[ItemIndex]) and
+           (X div FCellW < FDlgButtonCol[ItemIndex] +
+                           Length(FDlgButtons[ItemIndex]) + 4) then
+        begin
+          DlgActivate(ItemIndex);
+          Break;
+        end;
+    Invalidate;
+    Exit;
+  end;
   HasItem := ItemAt(X, Y, PanelIndex, ItemIndex);
   FActive := PanelIndex;
   if HasItem then
@@ -1288,6 +1501,8 @@ var
   CursorPos: TPoint;
 begin
   inherited DblClick;
+  if FDlgKind <> fdNone then
+    Exit;
   CursorPos := ScreenToClient(Mouse.CursorPos);
   if ItemAt(CursorPos.X, CursorPos.Y, PanelIndex, ItemIndex) then
     EnterItem;
@@ -1295,6 +1510,9 @@ end;
 
 procedure TFarView.WMMouseWheel(var Message: TWMMouseWheel);
 begin
+  Message.Result := 1;
+  if FDlgKind <> fdNone then
+    Exit;
   if Message.WheelDelta > 0 then
     MoveCursor(-1, False)
   else if Message.WheelDelta < 0 then
@@ -1331,9 +1549,29 @@ function TFarView.KeyMessage(const AMsg: TMsg): Boolean;
 var
   KeyCode: Word;
   ShiftDown, CtrlDown, AltDown: Boolean;
+  AnsiCh: AnsiChar;
+  WideCh: WideChar;
 begin
   Result := False;
   KeyCode := Word(AMsg.wParam);
+
+  // Символ для поля ввода диалога. Окно VCL в Delphi 7 - ANSI: символ
+  // приходит в кодировке Windows
+  if AMsg.message = WM_CHAR then
+  begin
+    if (FDlgKind <> fdNone) and FDlgHasEdit and (FDlgFocus < 0) and
+       (KeyCode >= 32) then
+    begin
+      AnsiCh := AnsiChar(KeyCode and $FF);
+      WideCh := #0;
+      FarMultiToWide(CP_ACP, 0, @AnsiCh, 1, @WideCh, 1);
+      if WideCh <> #0 then
+        DlgInsertText(WideCh);
+      Invalidate;
+      Result := True;
+    end;
+    Exit;
+  end;
 
   if (AMsg.message = WM_KEYUP) or (AMsg.message = WM_SYSKEYUP) then
   begin
@@ -1366,7 +1604,13 @@ begin
   CtrlDown := GetKeyState(VK_CONTROL) < 0;
   AltDown := GetKeyState(VK_MENU) < 0;
 
-  Result := DoKey(KeyCode, ShiftDown, CtrlDown, AltDown);
+  if FDlgKind <> fdNone then
+  begin
+    Result := DlgKey(KeyCode, ShiftDown, CtrlDown, AltDown);
+    Invalidate;
+  end
+  else
+    Result := DoKey(KeyCode, ShiftDown, CtrlDown, AltDown);
   // F-клавиши FAR не отдаёт никому: ни отладчику, ни ярлыкам меню
   if (KeyCode >= VK_F1) and (KeyCode <= VK_F12) then
     Result := True;
@@ -1384,12 +1628,37 @@ begin
   // F-клавиши
   if (AKey >= VK_F1) and (AKey <= VK_F12) then
   begin
-    if (AKey = VK_F10) and Plain and not AShift then
-    begin
-      if Assigned(FOnClose) then
-        FOnClose(Self);
-      Exit;
-    end;
+    if Plain then
+      case AKey of
+        VK_F10:
+          if not AShift then
+          begin
+            if Assigned(FOnClose) then
+              FOnClose(Self);
+            Exit;
+          end;
+        VK_F5:              // Shift+F5 - только файл под курсором
+          begin
+            StartCopy(False, AShift);
+            Exit;
+          end;
+        VK_F6:              // Shift+F6 - переименовать файл под курсором
+          begin
+            StartCopy(True, AShift);
+            Exit;
+          end;
+        VK_F7:
+          if not AShift then
+          begin
+            StartMkDir;
+            Exit;
+          end;
+        VK_F8:              // Shift+F8 - только файл под курсором
+          begin
+            StartDelete(AShift, False);
+            Exit;
+          end;
+      end;
     if Plain and not AShift and ((AKey = VK_F1) or (AKey = VK_F2) or
        (AKey = VK_F3) or (AKey = VK_F12)) then
       Status('unIDE FAR: ' + KeyName(AKey, AShift, ACtrl, AAlt) +
@@ -1433,6 +1702,8 @@ begin
           ToggleSelection
         else
           Result := False;
+      VK_DELETE:            // Del - как F8, Shift+Del - мимо корзины
+        StartDelete(False, AShift);
     else
       Result := False;
     end
@@ -1442,7 +1713,7 @@ begin
         GoUp;
       VK_NEXT:
         EnterItem;
-      FarVkBackslash:
+      FarVkBackslash, FarVkBackslash2:
         GoRoot;
       Ord('R'):
         begin
@@ -1581,6 +1852,731 @@ begin
   FPanels[1].Reread;
   EnsureVisible(FPanels[0]);
   EnsureVisible(FPanels[1]);
+  Invalidate;
+end;
+
+// ---------------------------------------------------------------------------
+//  Диалоги в духе FAR: рамка, строки текста, поле ввода, кнопки.
+//  Esc и F10 - отмена, Enter - кнопка в фокусе (из поля ввода - первая),
+//  Tab / стрелки вверх-вниз - следующий элемент, стрелки влево-вправо на
+//  кнопках - соседняя кнопка. В поле ввода: Home/End, стрелки, Backspace,
+//  Del, Ctrl+Y - очистить, Ctrl+V / Shift+Ins - вставить. Пока текст не
+//  трогали, он показан выделенным и первый набранный символ заменяет его.
+// ---------------------------------------------------------------------------
+
+procedure TFarView.DlgOpen(AKind: TFarDlgKind; const ATitle: WideString;
+  const ALines: array of WideString; ACentered, AWarn, AHasEdit: Boolean;
+  const AEdit: WideString; const AButtons: array of WideString);
+var
+  LineIndex: Integer;
+begin
+  FDlgKind := AKind;
+  FDlgTitle := ATitle;
+  SetLength(FDlgLines, Length(ALines));
+  for LineIndex := 0 to High(ALines) do
+    FDlgLines[LineIndex] := ALines[LineIndex];
+  SetLength(FDlgButtons, Length(AButtons));
+  for LineIndex := 0 to High(AButtons) do
+    FDlgButtons[LineIndex] := AButtons[LineIndex];
+  SetLength(FDlgButtonCol, Length(AButtons));
+  FDlgCentered := ACentered;
+  FDlgWarn := AWarn;
+  FDlgHasEdit := AHasEdit;
+  FDlgEdit := AEdit;
+  FDlgEditPos := Length(AEdit);
+  FDlgEditScroll := 0;
+  FDlgEditFresh := AEdit <> '';
+  if AHasEdit then
+    FDlgFocus := -1
+  else
+    FDlgFocus := 0;
+  FDlgButtonRow := -1;
+  Invalidate;
+end;
+
+procedure TFarView.DlgClose;
+begin
+  FDlgKind := fdNone;
+  FDlgLines := nil;
+  FDlgButtons := nil;
+  FDlgButtonCol := nil;
+  Invalidate;
+end;
+
+procedure TFarView.DlgInsertText(const AText: WideString);
+begin
+  if FDlgEditFresh then
+  begin
+    FDlgEdit := '';
+    FDlgEditPos := 0;
+    FDlgEditFresh := False;
+  end;
+  Insert(AText, FDlgEdit, FDlgEditPos + 1);
+  Inc(FDlgEditPos, Length(AText));
+end;
+
+function TFarView.DlgKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+var
+  InEdit: Boolean;
+  ButtonCount: Integer;
+begin
+  Result := True;
+  InEdit := FDlgHasEdit and (FDlgFocus < 0);
+  ButtonCount := Length(FDlgButtons);
+  case AKey of
+    VK_ESCAPE, VK_F10:
+      DlgClose;
+    VK_RETURN:
+      if FDlgFocus < 0 then
+        DlgActivate(0)
+      else
+        DlgActivate(FDlgFocus);
+    VK_SPACE:
+      if FDlgFocus >= 0 then
+        DlgActivate(FDlgFocus)
+      else
+        Result := False;  // пробел - символ поля ввода (WM_CHAR)
+    VK_TAB, VK_UP, VK_DOWN:
+      begin
+        if (AKey = VK_UP) or ((AKey = VK_TAB) and AShift) then
+          Dec(FDlgFocus)
+        else
+          Inc(FDlgFocus);
+        if FDlgFocus >= ButtonCount then
+        begin
+          if FDlgHasEdit then
+            FDlgFocus := -1
+          else
+            FDlgFocus := 0;
+        end;
+        if (FDlgFocus < -1) or ((FDlgFocus = -1) and not FDlgHasEdit) then
+          FDlgFocus := ButtonCount - 1;
+      end;
+    VK_LEFT, VK_RIGHT:
+      if InEdit then
+      begin
+        FDlgEditFresh := False;
+        if (AKey = VK_LEFT) and (FDlgEditPos > 0) then
+          Dec(FDlgEditPos)
+        else if (AKey = VK_RIGHT) and (FDlgEditPos < Length(FDlgEdit)) then
+          Inc(FDlgEditPos);
+      end
+      else if ButtonCount > 0 then
+      begin
+        if AKey = VK_LEFT then
+          FDlgFocus := (FDlgFocus + ButtonCount - 1) mod ButtonCount
+        else
+          FDlgFocus := (FDlgFocus + 1) mod ButtonCount;
+      end;
+    VK_HOME, VK_END:
+      if InEdit then
+      begin
+        FDlgEditFresh := False;
+        if AKey = VK_HOME then
+          FDlgEditPos := 0
+        else
+          FDlgEditPos := Length(FDlgEdit);
+      end;
+    VK_BACK:
+      if InEdit then
+      begin
+        if FDlgEditFresh then
+          DlgInsertText('')
+        else if FDlgEditPos > 0 then
+        begin
+          Delete(FDlgEdit, FDlgEditPos, 1);
+          Dec(FDlgEditPos);
+        end;
+      end;
+    VK_DELETE:
+      if InEdit then
+      begin
+        if FDlgEditFresh then
+          DlgInsertText('')
+        else if FDlgEditPos < Length(FDlgEdit) then
+          Delete(FDlgEdit, FDlgEditPos + 1, 1);
+      end;
+    VK_INSERT:
+      if InEdit and AShift and Clipboard.HasFormat(CF_TEXT) then
+        DlgInsertText(Clipboard.AsText);
+  else
+    if InEdit and ACtrl and not AAlt and (AKey = Ord('V')) then
+    begin
+      if Clipboard.HasFormat(CF_TEXT) then
+        DlgInsertText(Clipboard.AsText);
+    end
+    else if InEdit and ACtrl and not AAlt and (AKey = Ord('Y')) then
+    begin
+      FDlgEdit := '';
+      FDlgEditPos := 0;
+      FDlgEditFresh := False;
+    end
+    else if ACtrl or AAlt then
+      Result := True   // сочетания в диалоге никуда не отдаём (ярлыки меню)
+    else
+      Result := False; // буквы, цифры - символы поля ввода (WM_CHAR)
+  end;
+end;
+
+procedure TFarView.DlgActivate(AButton: Integer);
+var
+  Kind: TFarDlgKind;
+  EditText: WideString;
+begin
+  Kind := FDlgKind;
+  EditText := FDlgEdit;
+  DlgClose;
+  // Первая кнопка - действие, остальные (Cancel) - отмена
+  if AButton <> 0 then
+    Exit;
+  case Kind of
+    fdCopy:
+      DoCopyMove(False, EditText);
+    fdMove:
+      DoCopyMove(True, EditText);
+    fdMkDir:
+      DoMkDir(EditText);
+    fdDelete:
+      DoDelete;
+  end;
+end;
+
+// Двойная рамка по клеткам: линии посередине клеток краёв
+procedure TFarView.DrawBox(ALeft, ATop, ARight, ABottom: Integer;
+  AColor: TColor);
+var
+  LeftX, RightX, TopY, BottomY: Integer;
+begin
+  LeftX := ALeft * FCellW + FCellW div 2;
+  RightX := ARight * FCellW + FCellW div 2;
+  TopY := ATop * FCellH + FCellH div 2;
+  BottomY := ABottom * FCellH + FCellH div 2;
+  with FBuffer.Canvas do
+  begin
+    Pen.Style := psSolid;
+    Pen.Width := 1;
+    Pen.Color := AColor;
+    Brush.Style := bsClear;
+    Rectangle(LeftX - 1, TopY - 1, RightX + 2, BottomY + 2);
+    Rectangle(LeftX + 1, TopY + 1, RightX, BottomY);
+    Brush.Style := bsSolid;
+  end;
+end;
+
+procedure TFarView.DrawDialog;
+var
+  BoxW, BoxH, BoxLeft, BoxTop, InnerLeft, InnerW, Row, LineIndex: Integer;
+  ButtonIndex, ButtonsW, ButtonCol, SepY: Integer;
+  Back, Fore, ButtonBack, ButtonFore, FocusBack, FocusFore: TColor;
+  ButtonText, ShownText: WideString;
+  CaretX: Integer;
+begin
+  BoxW := 72;
+  if BoxW > FCols - 2 then
+    BoxW := FCols - 2;
+  if BoxW < 20 then
+    Exit;
+  BoxH := Length(FDlgLines) + 6;
+  if FDlgHasEdit then
+    Inc(BoxH);
+  BoxLeft := (FCols - BoxW) div 2;
+  BoxTop := (PanelHeight - BoxH) div 2;
+  if BoxTop < 0 then
+    BoxTop := 0;
+  InnerLeft := BoxLeft + 5;
+  InnerW := BoxW - 10;
+
+  if FDlgWarn then
+  begin
+    Back := FarRed;
+    Fore := FarWhite;
+    ButtonBack := FarRed;
+    ButtonFore := FarWhite;
+    FocusBack := FarLightGray;
+    FocusFore := FarBlack;
+  end
+  else
+  begin
+    Back := FarLightGray;
+    Fore := FarBlack;
+    ButtonBack := FarLightGray;
+    ButtonFore := FarBlack;
+    FocusBack := FarCyan;
+    FocusFore := FarBlack;
+  end;
+
+  for Row := BoxTop to BoxTop + BoxH - 1 do
+    FillCells(BoxLeft, Row, BoxW, Back);
+  DrawBox(BoxLeft + 2, BoxTop + 1, BoxLeft + BoxW - 3, BoxTop + BoxH - 2, Fore);
+  PutCentered(BoxLeft, BoxTop + 1, BoxW, ' ' + FDlgTitle + ' ', Fore, Back);
+
+  Row := BoxTop + 2;
+  for LineIndex := 0 to High(FDlgLines) do
+  begin
+    if FDlgCentered then
+      PutCentered(InnerLeft, Row, InnerW,
+        FarFitName(FDlgLines[LineIndex], InnerW), Fore, Back)
+    else
+      PutText(InnerLeft, Row, InnerW,
+        FarFitName(FDlgLines[LineIndex], InnerW), Fore, Back);
+    Inc(Row);
+  end;
+
+  // Поле ввода: чёрным по бирюзовому, нетронутый текст - выделен
+  if FDlgHasEdit then
+  begin
+    if FDlgEditPos < FDlgEditScroll then
+      FDlgEditScroll := FDlgEditPos;
+    if FDlgEditPos > FDlgEditScroll + InnerW - 1 then
+      FDlgEditScroll := FDlgEditPos - InnerW + 1;
+    ShownText := Copy(FDlgEdit, FDlgEditScroll + 1, InnerW);
+    FillCells(InnerLeft, Row, InnerW, FarCyan);
+    if FDlgEditFresh then
+      PutText(InnerLeft, Row, Length(ShownText), ShownText, FarWhite, FarBlack)
+    else
+      PutText(InnerLeft, Row, Length(ShownText), ShownText, FarBlack, FarCyan);
+    if FDlgFocus < 0 then
+    begin
+      CaretX := (InnerLeft + FDlgEditPos - FDlgEditScroll) * FCellW;
+      FBuffer.Canvas.Brush.Style := bsSolid;
+      FBuffer.Canvas.Brush.Color := FarBlack;
+      FBuffer.Canvas.FillRect(Rect(CaretX, Row * FCellH + 1, CaretX + 2,
+        (Row + 1) * FCellH - 1));
+    end;
+    Inc(Row);
+  end;
+
+  // Разделитель над кнопками - одинарная линия до внутренней рамки
+  SepY := Row * FCellH + FCellH div 2;
+  with FBuffer.Canvas do
+  begin
+    Pen.Color := Fore;
+    MoveTo((BoxLeft + 2) * FCellW + FCellW div 2 + 1, SepY);
+    LineTo((BoxLeft + BoxW - 3) * FCellW + FCellW div 2, SepY);
+  end;
+  Inc(Row);
+
+  // Кнопки по центру: [ Copy ] [ Cancel ]
+  ButtonsW := 0;
+  for ButtonIndex := 0 to High(FDlgButtons) do
+    Inc(ButtonsW, Length(FDlgButtons[ButtonIndex]) + 4 + 1);
+  Dec(ButtonsW);
+  ButtonCol := BoxLeft + (BoxW - ButtonsW) div 2;
+  FDlgButtonRow := Row;
+  for ButtonIndex := 0 to High(FDlgButtons) do
+  begin
+    ButtonText := '[ ' + FDlgButtons[ButtonIndex] + ' ]';
+    FDlgButtonCol[ButtonIndex] := ButtonCol;
+    if ButtonIndex = FDlgFocus then
+      PutText(ButtonCol, Row, Length(ButtonText), ButtonText, FocusFore,
+        FocusBack)
+    else
+      PutText(ButtonCol, Row, Length(ButtonText), ButtonText, ButtonFore,
+        ButtonBack);
+    Inc(ButtonCol, Length(ButtonText) + 1);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  F5 - F8: копирование, перенос, папка, удаление
+// ---------------------------------------------------------------------------
+
+// Имена для операции: выделенные, а нет выделенных (или ACurrentOnly) -
+// файл под курсором. '..' не берётся.
+function TFarView.CollectNames(ACurrentOnly: Boolean): TFarNames;
+var
+  Panel: TFarPanel;
+  ItemIndex, NameCount: Integer;
+begin
+  Result := nil;
+  Panel := ActivePanel;
+  if Panel.Count = 0 then
+    Exit;
+  if not ACurrentOnly and (Panel.SelCount > 0) then
+  begin
+    SetLength(Result, Panel.SelCount);
+    NameCount := 0;
+    for ItemIndex := 0 to Panel.Count - 1 do
+      if Panel.FItems[ItemIndex].Selected then
+      begin
+        Result[NameCount] := Panel.FItems[ItemIndex].Name;
+        Inc(NameCount);
+      end;
+    SetLength(Result, NameCount);
+  end
+  else if (Panel.Cursor >= 0) and (Panel.Cursor < Panel.Count) and
+          not Panel.FItems[Panel.Cursor].IsUp then
+  begin
+    SetLength(Result, 1);
+    Result[0] := Panel.FItems[Panel.Cursor].Name;
+  end;
+end;
+
+procedure TFarView.StartCopy(AMove, ACurrentOnly: Boolean);
+var
+  Names: TFarNames;
+  Subject, Prompt, Target: WideString;
+begin
+  Names := CollectNames(ACurrentOnly);
+  if Length(Names) = 0 then
+    Exit;
+  FDlgNames := Names;
+  // F5 / F6 - в папку другой панели; Shift+F5 / Shift+F6 - новое имя
+  // в той же папке
+  if ACurrentOnly then
+    Target := Names[0]
+  else
+    Target := FPanels[1 - FActive].Path;
+  if Length(Names) = 1 then
+    Subject := '"' + Names[0] + '"'
+  else
+    Subject := IntToStr(Length(Names)) + ' items';
+  if AMove then
+  begin
+    Prompt := 'Rename or move ' + Subject + ' to:';
+    DlgOpen(fdMove, FarDlgTitleMove, [Prompt], False, False, True, Target,
+      ['Rename', 'Cancel']);
+  end
+  else
+  begin
+    Prompt := 'Copy ' + Subject + ' to:';
+    DlgOpen(fdCopy, FarDlgTitleCopy, [Prompt], False, False, True, Target,
+      ['Copy', 'Cancel']);
+  end;
+end;
+
+procedure TFarView.StartMkDir;
+begin
+  if ActivePanel.Path = '' then
+    Exit;
+  DlgOpen(fdMkDir, 'Make folder', ['Create the folder:'], False, False, True,
+    '', ['OK', 'Cancel']);
+end;
+
+procedure TFarView.StartDelete(ACurrentOnly, APermanent: Boolean);
+var
+  Names: TFarNames;
+  Lines: TFarNames;
+  ItemIndex: Integer;
+  What: WideString;
+begin
+  Names := CollectNames(ACurrentOnly);
+  if Length(Names) = 0 then
+    Exit;
+  FDlgNames := Names;
+  FDlgPermanent := APermanent;
+  if Length(Names) = 1 then
+  begin
+    ItemIndex := ActivePanel.IndexOfName(Names[0]);
+    if (ItemIndex >= 0) and ActivePanel.FItems[ItemIndex].IsDir then
+      What := 'the folder'
+    else
+      What := 'the file';
+    SetLength(Lines, 3);
+    Lines[0] := 'Do you wish to delete';
+    Lines[1] := What;
+    Lines[2] := Names[0];
+  end
+  else
+  begin
+    SetLength(Lines, 2);
+    Lines[0] := 'Do you wish to delete';
+    Lines[1] := IntToStr(Length(Names)) + ' items';
+  end;
+  if APermanent then
+  begin
+    SetLength(Lines, Length(Lines) + 1);
+    Lines[High(Lines)] := 'bypassing the Recycle Bin';
+  end;
+  DlgOpen(fdDelete, 'Delete', Lines, True, True, False, '',
+    ['Delete', 'Cancel']);
+end;
+
+function TFarView.RunShellOp(AFunc: UINT; const AFrom, ATo: WideString;
+  AFlags: Word; var AAborted: Boolean): Boolean;
+var
+  ShellOp: TFarShFileOp;
+  ParentForm: TCustomForm;
+  ResultCode: Integer;
+begin
+  FillChar(ShellOp, SizeOf(ShellOp), 0);
+  ParentForm := GetParentForm(Self);
+  if ParentForm <> nil then
+    ShellOp.Wnd := ParentForm.Handle
+  else
+    ShellOp.Wnd := Handle;
+  ShellOp.Func := AFunc;
+  ShellOp.From := PWideChar(AFrom);
+  if ATo <> '' then
+    ShellOp.Dest := PWideChar(ATo)
+  else
+    ShellOp.Dest := nil;
+  ShellOp.Flags := AFlags;
+  FBusy := True;
+  try
+    ResultCode := FarShFileOperation(ShellOp);
+  finally
+    FBusy := False;
+  end;
+  AAborted := ShellOp.AnyAborted;
+  Result := ResultCode = 0;
+  if not Result and not AAborted then
+    Status('unIDE FAR: операция не выполнена (код ' +
+      IntToStr(ResultCode) + ')');
+end;
+
+// Список для pFrom / pTo SHFileOperation: полные пути через #0, в конце
+// ещё #0
+function FarZeroList(const ADir: WideString; const ANames: TFarNames): WideString;
+var
+  NameIndex: Integer;
+begin
+  Result := '';
+  for NameIndex := 0 to High(ANames) do
+    Result := Result + ADir + ANames[NameIndex] + WideChar(#0);
+  Result := Result + WideChar(#0);
+end;
+
+procedure TFarView.DoCopyMove(AMove: Boolean; const ATarget: WideString);
+var
+  Source: TFarPanel;
+  Target, TargetDir, DestPath, SourceDir, TargetName, NewName: WideString;
+  NameIndex, ItemIndex: Integer;
+  IntoDir, Aborted, Done: Boolean;
+  Func: UINT;
+begin
+  Source := ActivePanel;
+  Target := FarTrimW(ATarget);
+  if (Target = '') or (Length(FDlgNames) = 0) then
+    Exit;
+  Target := FarFullPath(Source.Path, Target);
+  NewName := '';
+
+  // В папку: путь кончается на '\', папка уже есть или имён несколько.
+  // Иначе (одно имя) - копия / перенос под новым именем.
+  IntoDir := (Target[Length(Target)] = '\') or FarDirExists(Target) or
+             (Length(FDlgNames) > 1);
+  if IntoDir then
+  begin
+    TargetDir := FarWithSlash(Target);
+    if FarSameName(TargetDir, Source.Path) then
+    begin
+      if not AMove then
+        Status('unIDE FAR: нельзя копировать файл сам в себя');
+      Exit;
+    end;
+    // Папку нельзя копировать или переносить внутрь неё самой
+    for NameIndex := 0 to High(FDlgNames) do
+      if FarSameName(Copy(TargetDir, 1,
+           Length(Source.Path + FDlgNames[NameIndex]) + 1),
+           Source.Path + FDlgNames[NameIndex] + '\') then
+      begin
+        Status('unIDE FAR: нельзя копировать или переносить папку в саму себя');
+        Exit;
+      end;
+    if not FarForceDirs(TargetDir) then
+    begin
+      Status('unIDE FAR: папку не создать: ' + SysErrorMessage(GetLastError));
+      Exit;
+    end;
+    if Length(TargetDir) > 3 then
+      DestPath := Copy(TargetDir, 1, Length(TargetDir) - 1)
+    else
+      DestPath := TargetDir;
+  end
+  else
+  begin
+    if FarSameName(Target, Source.Path + FDlgNames[0]) then
+    begin
+      if not AMove then
+        Status('unIDE FAR: нельзя копировать файл сам в себя');
+      Exit;
+    end;
+    FarSplitPath(Target, SourceDir, TargetName);
+    if (SourceDir <> '') and not FarForceDirs(SourceDir) then
+    begin
+      Status('unIDE FAR: папку не создать: ' + SysErrorMessage(GetLastError));
+      Exit;
+    end;
+    if FarSameName(SourceDir, Source.Path) then
+      NewName := TargetName;  // курсор - на новое имя
+    DestPath := Target;
+  end;
+
+  if AMove then
+    Func := FarFoMove
+  else
+    Func := FarFoCopy;
+  Done := RunShellOp(Func, FarZeroList(Source.Path, FDlgNames),
+    DestPath + WideChar(#0) + WideChar(#0),
+    FarFofNoConfirmMkDir or FarFofAllowUndo, Aborted);
+
+  // Обработанные - без выделения (так в FAR)
+  if Done and not Aborted then
+    for NameIndex := 0 to High(FDlgNames) do
+    begin
+      ItemIndex := Source.IndexOfName(FDlgNames[NameIndex]);
+      if ItemIndex >= 0 then
+        Source.SetSelected(ItemIndex, False);
+    end;
+  AfterOperation(NewName);
+end;
+
+procedure TFarView.DoMkDir(const AName: WideString);
+var
+  Name, FullPath, FirstPart: WideString;
+  SlashPos: Integer;
+begin
+  Name := FarTrimW(AName);
+  if Name = '' then
+    Exit;
+  FullPath := FarFullPath(ActivePanel.Path, Name);
+  if not FarForceDirs(FullPath) then
+  begin
+    Status('unIDE FAR: папку не создать: ' + SysErrorMessage(GetLastError));
+    Exit;
+  end;
+  // 'a\b\c' - курсор на 'a'
+  FirstPart := Name;
+  SlashPos := 1;
+  while (SlashPos <= Length(FirstPart)) and (FirstPart[SlashPos] <> '\') do
+    Inc(SlashPos);
+  FirstPart := Copy(FirstPart, 1, SlashPos - 1);
+  if (Length(FirstPart) >= 2) and (FirstPart[2] = ':') then
+    FirstPart := '';
+  AfterOperation(FirstPart);
+end;
+
+procedure TFarView.DoDelete;
+var
+  Flags: Word;
+  Aborted: Boolean;
+begin
+  if Length(FDlgNames) = 0 then
+    Exit;
+  // Подтверждение уже было - своё; Windows не спрашивает ещё раз
+  Flags := FarFofNoConfirmation;
+  if not FDlgPermanent then
+    Flags := Flags or FarFofAllowUndo;
+  RunShellOp(FarFoDelete, FarZeroList(ActivePanel.Path, FDlgNames), '',
+    Flags, Aborted);
+  AfterOperation('');
+end;
+
+// После операции - обе панели перечитать, курсор на AFocusName (если задан)
+procedure TFarView.AfterOperation(const AFocusName: WideString);
+var
+  ItemIndex: Integer;
+begin
+  ActivePanel.Reread;
+  if AFocusName <> '' then
+  begin
+    ItemIndex := ActivePanel.IndexOfName(AFocusName);
+    if ItemIndex >= 0 then
+      ActivePanel.Cursor := ItemIndex;
+  end;
+  FPanels[1 - FActive].Reread;
+  EnsureVisible(FPanels[0]);
+  EnsureVisible(FPanels[1]);
+  FWatchDirty[0] := False;
+  FWatchDirty[1] := False;
+  FDlgNames := nil;
+  Invalidate;
+end;
+
+// ---------------------------------------------------------------------------
+//  Слежение за папками панелей: FindFirstChangeNotification на каждую,
+//  сигналы опрашивает таймер. Перечитывается, когда сигналы затихли
+//  (копирование многих файлов даёт их подряд), но не реже FarWatchMaxDelay.
+//  Окно спрятано - слежение снято: открытый handle папки мешает удалить её.
+// ---------------------------------------------------------------------------
+
+procedure TFarView.WatchStop;
+var
+  PanelIndex: Integer;
+begin
+  for PanelIndex := 0 to 1 do
+  begin
+    if FWatch[PanelIndex] <> 0 then
+      FarFindCloseChange(FWatch[PanelIndex]);
+    FWatch[PanelIndex] := 0;
+    FWatchPath[PanelIndex] := '';
+    FWatchDirty[PanelIndex] := False;
+  end;
+end;
+
+procedure TFarView.WatchTick(Sender: TObject);
+var
+  PanelIndex: Integer;
+  Panel: TFarPanel;
+  NowTick: Cardinal;
+  UpperPath, ChildName: WideString;
+  AnyDirty: Boolean;
+begin
+  if not Visible or not HandleAllocated then
+  begin
+    if (FWatch[0] <> 0) or (FWatch[1] <> 0) then
+      WatchStop;
+    Exit;
+  end;
+  if FBusy then
+    Exit;
+  NowTick := GetTickCount;
+  AnyDirty := False;
+  for PanelIndex := 0 to 1 do
+  begin
+    Panel := FPanels[PanelIndex];
+    if Panel.Path <> FWatchPath[PanelIndex] then
+    begin
+      if FWatch[PanelIndex] <> 0 then
+        FarFindCloseChange(FWatch[PanelIndex]);
+      FWatch[PanelIndex] := 0;
+      FWatchPath[PanelIndex] := Panel.Path;
+      if Panel.Path <> '' then
+      begin
+        FWatch[PanelIndex] := FarFindFirstChange(PWideChar(Panel.Path),
+          False, FarNotifyFilter);
+        if FWatch[PanelIndex] = INVALID_HANDLE_VALUE then
+          FWatch[PanelIndex] := 0;
+      end;
+    end;
+    if (FWatch[PanelIndex] <> 0) and
+       (WaitForSingleObject(FWatch[PanelIndex], 0) = WAIT_OBJECT_0) then
+    begin
+      FarFindNextChange(FWatch[PanelIndex]);
+      if not FWatchDirty[0] and not FWatchDirty[1] then
+        FWatchFirstTick := NowTick;
+      FWatchDirty[PanelIndex] := True;
+      FWatchLastTick := NowTick;
+    end;
+    if FWatchDirty[PanelIndex] then
+      AnyDirty := True;
+  end;
+
+  if not AnyDirty or (FDlgKind <> fdNone) then
+    Exit;
+  if (NowTick - FWatchLastTick < FarWatchQuiet) and
+     (NowTick - FWatchFirstTick < FarWatchMaxDelay) then
+    Exit;
+
+  for PanelIndex := 0 to 1 do
+    if FWatchDirty[PanelIndex] then
+    begin
+      FWatchDirty[PanelIndex] := False;
+      Panel := FPanels[PanelIndex];
+      if (Panel.Path <> '') and not FarDirExists(Panel.Path) then
+      begin
+        // Папку удалили - ближайшая существующая выше, как в FAR
+        UpperPath := Panel.Path;
+        while (UpperPath <> '') and not FarDirExists(UpperPath) do
+          UpperPath := FarParentOf(UpperPath, ChildName);
+        if UpperPath <> '' then
+          ChangeDir(Panel, UpperPath, '');
+      end
+      else
+        Panel.Reread;
+      EnsureVisible(Panel);
+    end;
   Invalidate;
 end;
 

@@ -22848,11 +22848,13 @@ var
 begin
   // unIDE FAR: клавиши его окна - ему первым. Что он разобрал, и все его
   // F-клавиши дальше не идут: ни к отладчику (F4..F9), ни к ярлыкам меню,
-  // ни к полосе меню (F10, Alt+F1 ... приходят как WM_SYSKEYDOWN)
+  // ни к полосе меню (F10, Alt+F1 ... приходят как WM_SYSKEYDOWN).
+  // WM_CHAR - символы для поля ввода его диалогов (F5, F6, F7)
   if (FFar <> nil) and FFar.Visible and FFar.HandleAllocated and
      (Msg.hwnd = FFar.Handle) and
      ((Msg.message = WM_KEYDOWN) or (Msg.message = WM_SYSKEYDOWN) or
-      (Msg.message = WM_KEYUP) or (Msg.message = WM_SYSKEYUP)) then
+      (Msg.message = WM_KEYUP) or (Msg.message = WM_SYSKEYUP) or
+      (Msg.message = WM_CHAR)) then
   begin
     if FFar.KeyMessage(Msg) then
       Handled := True;
