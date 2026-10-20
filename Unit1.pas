@@ -17062,7 +17062,9 @@ begin
   BmHistCompact;
   if Length(FBmHistWin) < 2 then
   begin
-    ShowMessage('9657:Предыдущей закладки нет.');
+    // Без окна сообщения - строкой состояния
+    StatusBar1.SimpleText := 'Предыдущей закладки нет';
+    StatusBar1.SimplePanel := True;
     Exit;
   end;
 
