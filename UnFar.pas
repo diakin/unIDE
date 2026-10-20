@@ -44,7 +44,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, IniBuf;
 
 const
-  FarBuild = 'b.0';
+  FarBuild = 'b.1';
 
 type
   TFarItem = record
@@ -56,12 +56,15 @@ type
     IsUp: Boolean;       // строка '..'
     Selected: Boolean;
   end;
+  // Один тип массива для поля и локальных переменных: в Delphi 7 два
+  // отдельно описанных 'array of TFarItem' - разные типы, присвоить нельзя
+  TFarItems = array of TFarItem;
 
   // Одна панель: папка, её список и курсор
   TFarPanel = class
   private
     FPath: WideString;          // всегда с '\' на конце
-    FItems: array of TFarItem;
+    FItems: TFarItems;
     FCount: Integer;
     FCursor: Integer;
     FTopIndex: Integer;
@@ -515,7 +518,7 @@ var
   FindData: TFarFindData;
   FindHandle: THandle;
   FoundName: WideString;
-  NewItems: array of TFarItem;
+  NewItems: TFarItems;
   NewCount, LastError, ItemIndex: Integer;
   IsRootDir: Boolean;
   FreeAvail, TotalBytes, TotalFree: Int64;
