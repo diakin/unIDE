@@ -1019,6 +1019,7 @@ type
     procedure FarCollapse(ACollapse: Boolean);
     procedure FarPlaceSplitter;
     procedure FarBeginUpdate;
+    procedure FarApplyHalfWidth;
     procedure FarEndUpdate;
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
@@ -37240,11 +37241,12 @@ begin
       end;
       Exit;
     end;
-    // Ширина - заданная сплиттером (HalfWidth), без неё - половина; не
-    // уже FarHalfMinWidth, редактору - не меньше FarHalfMinEditor
-    NewWidth := FFar.HalfWidth;
-    if NewWidth <= 0 then
-      NewWidth := pnlMain.ClientWidth div 2;
+    // Ширина - та, что у распорки сейчас (её ставит FarApplyHalfWidth и
+    // сплиттер), только в пределах: не уже FarHalfMinWidth, редактору - не
+    // меньше FarHalfMinEditor. Здесь её не возвращаем к HalfWidth: сплиттер
+    // меняет ширину распорки до OnMoved, и раскладка, которую это вызывает
+    // (EditHostResize), откатывала бы новую ширину к прежней
+    NewWidth := FFarSpacer.Width;
     MaxWidth := pnlMain.ClientWidth - FarHalfMinEditor - FarSplitterWidth;
     if NewWidth > MaxWidth then
       NewWidth := MaxWidth;
@@ -37397,6 +37399,7 @@ begin
       FFarSpacer.Align := alRight;
       FFarSpacer.Left := pnlMain.ClientWidth + 10;  // правее всех alRight
     end;
+    FarApplyHalfWidth;
     FFarSpacer.Visible := True;
     FarLayout;
     FarPlaceSplitter;
@@ -37436,6 +37439,21 @@ begin
   end;
 end;
 
+// Ширина распорки (окна FAR) - запомненная HalfWidth, без неё - половина
+// pnlMain; пределы - в FarLayout
+procedure TForm1.FarApplyHalfWidth;
+var
+  NewWidth: Integer;
+begin
+  if (FFar = nil) or (FFarSpacer = nil) then
+    Exit;
+  NewWidth := FFar.HalfWidth;
+  if NewWidth <= 0 then
+    NewWidth := pnlMain.ClientWidth div 2;
+  if FFarSpacer.Width <> NewWidth then
+    FFarSpacer.Width := NewWidth;
+end;
+
 // Сплиттер - сразу за распоркой, со стороны редактора
 procedure TForm1.FarPlaceSplitter;
 begin
@@ -37463,8 +37481,8 @@ begin
     Exit;
   FarBeginUpdate;
   try
+    FarLayout;   // в пределах ширины
     FFar.HalfWidth := FFarSpacer.Width;
-    FarLayout;
   finally
     FarEndUpdate;
   end;
@@ -37502,6 +37520,7 @@ begin
     else
     begin
       FFar.Visible := True;
+      FarApplyHalfWidth;
       FarLayout;
       FarPlaceSplitter;
       FFar.BringToFront;
