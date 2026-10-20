@@ -69,17 +69,33 @@ object DlgHotFolders: TDlgHotFolders
       Caption = 'Удалить из списка'
       TabOrder = 1
     end
+    object lblNote: TLabel
+      Left = 290
+      Top = 13
+      Width = 340
+      Height = 13
+      Anchors = [akLeft, akTop, akRight]
+      AutoSize = False
+      ParentShowHint = False
+      ShowHint = True
+    end
   end
   object pnlPath: TPanel
     Left = 0
     Top = 38
     Width = 640
-    Height = 20
+    Height = 21
     Align = alTop
-    Alignment = taLeftJustify
-    BevelOuter = bvLowered
-    Caption = ''
+    BevelOuter = bvNone
     TabOrder = 2
+    object edPath: TUiEdit
+      Left = 0
+      Top = 0
+      Width = 640
+      Height = 21
+      Anchors = [akLeft, akTop, akRight]
+      TabOrder = 0
+    end
   end
   object tvFolders: TUiTreeView
     Left = 0

@@ -1970,14 +1970,15 @@ type
     // Контролы диалога горячих папок. Живут только пока он открыт.
     FHfTree: TTreeView;
     FHfList: TCheckListBox;
-    FHfPath: TPanel;
+    FHfPath: TUiEdit;         // путь над деревом: выбранная папка, правится
+    FHfNote: TLabel;          // правее "Удалить из списка": пояснения
+    FHfNoteMissing: Boolean;  // FHfNote сейчас - "Папка не существует"
+    FHfPathSetting: Boolean;  // FHfPath.Text ставит код - дерево не трогать
+    FHfPathTyping: Boolean;   // дерево идёт за набранным путём - путь не менять
     // Окно Directory Tree как "папки поиска" окна утилиты (SearchDirsDialog):
     // список - не горячие папки; первые FHfFixedCount строк - стандартные
     // папки, их не удалить; вложенную в отмеченную не отметить
     FHfSearchMode: Boolean;
-    // Папка из списка, о которой уже предупредили, что её нет на диске:
-    // повторный щелчок (или галка) по ней же второй раз не предупреждает
-    FHfWarnedDir: string;
     // Отмеченная папка, из-за которой не поставлена галка вложенной в неё
     // (или объемлющей) - красным шрифтом в списке, до закрытия окна
     FHfRedDir: string;
@@ -2180,6 +2181,10 @@ type
     procedure HfNestedRefused(AIdx, AOther: Integer);
     procedure HfUncheckInner(AIdx: Integer);
     procedure HfListPrepare;
+    procedure HfPathSet(const APath: string);
+    procedure HfPathState;
+    procedure HfPathChange(Sender: TObject);
+    procedure HfNote(const AText: string; AMissing: Boolean = False);
     function  HfProjectLoad: Boolean;
     procedure HfListCheck(Sender: TObject);
     procedure HfSaveList;
@@ -13591,8 +13596,83 @@ end;
 
 procedure TForm1.HfTreeChange(Sender: TObject; Node: TTreeNode);
 begin
-  if (FHfPath <> nil) and (Node <> nil) then
-    FHfPath.Caption := '  ' + HfNodePath(Node);
+  // Дерево идёт за набранным путём - набранное не трогаем
+  if FHfPathTyping then
+    Exit;
+  if Node <> nil then
+    HfPathSet(HfNodePath(Node));
+end;
+
+// Путь над деревом ставит программа (выбор в дереве, щелчок в списке):
+// дерево за ним не идёт, проверяется только, есть ли папка
+procedure TForm1.HfPathSet(const APath: string);
+begin
+  if FHfPath = nil then
+    Exit;
+  FHfPathSetting := True;
+  try
+    FHfPath.Text := APath;
+  finally
+    FHfPathSetting := False;
+  end;
+  HfPathState;
+end;
+
+// Папки из строки пути нет на диске - путь красным, правее кнопок -
+// "Папка не существует"; есть (или строка пуста) - обычным цветом, надпись
+// убирается
+procedure TForm1.HfPathState;
+var
+  DirPath: string;
+begin
+  if FHfPath = nil then
+    Exit;
+  DirPath := Trim(FHfPath.Text);
+  if (DirPath <> '') and not DirectoryExists(DirPath) then
+  begin
+    FHfPath.Font.Color := $3C3CFF; // ярко-красный: виден и на тёмном фоне
+    HfNote('Папка не существует', True);
+  end
+  else
+  begin
+    FHfPath.Font.Color := UiThemeColorFor(FHfPath, 'Edit.Text');
+    if FHfNoteMissing then
+      HfNote('');
+  end;
+end;
+
+// Строку пути правят руками: папка есть - дерево раскрывается до неё
+procedure TForm1.HfPathChange(Sender: TObject);
+var
+  DirPath: string;
+begin
+  if (FHfPath = nil) or FHfPathSetting then
+    Exit;
+  HfPathState;
+  DirPath := Trim(FHfPath.Text);
+  if (DirPath = '') or not DirectoryExists(DirPath) then
+    Exit;
+  FHfPathTyping := True;
+  try
+    HfSelectPath(ExcludeTrailingPathDelimiter(DirPath));
+  finally
+    FHfPathTyping := False;
+  end;
+end;
+
+// Пояснение правее кнопки "Удалить из списка". AMissing - "Папка не
+// существует", красным; остальное - цветом текста поля
+procedure TForm1.HfNote(const AText: string; AMissing: Boolean);
+begin
+  if FHfNote = nil then
+    Exit;
+  FHfNote.Caption := AText;
+  FHfNote.Hint := AText;
+  FHfNoteMissing := AMissing;
+  if AMissing then
+    FHfNote.Font.Color := $3C3CFF
+  else if FHfPath <> nil then
+    FHfNote.Font.Color := UiThemeColorFor(FHfPath, 'Edit.Text');
 end;
 
 procedure TForm1.HfTreeDblClick(Sender: TObject);
@@ -13607,6 +13687,14 @@ var
 begin
   if (FHfTree = nil) or (FHfTree.Selected = nil) then
     Exit;
+  // В строке пути - папка, которой нет: в дереве выделена другая, её не
+  // добавляем (строка уже красная, надпись "Папка не существует")
+  if (FHfPath <> nil) and (Trim(FHfPath.Text) <> '') and
+     not DirectoryExists(Trim(FHfPath.Text)) then
+  begin
+    HfPathState;
+    Exit;
+  end;
 
   S := HfNodePath(FHfTree.Selected);
   if S = '' then
@@ -13655,9 +13743,8 @@ begin
   // Папки поиска: стандартные не удаляются
   if FHfSearchMode and (I < FHfFixedCount) then
   begin
-    if FHfPath <> nil then
-      FHfPath.Caption := '  Стандартную папку удалить нельзя - снимите галку, ' +
-                         'и она не будет искаться';
+    HfNote('Стандартную папку удалить нельзя - снимите галку, ' +
+           'и она не будет искаться');
     Exit;
   end;
   FHfList.Items.Delete(I);
@@ -13705,7 +13792,11 @@ begin
   try
     if ACaption <> '' then
       Dlg.Caption := ACaption;
-    FHfPath := Dlg.pnlPath;
+    FHfPath := Dlg.edPath;
+    FHfNote := Dlg.lblNote;
+    FHfNote.Caption := '';
+    FHfNoteMissing := False;
+    FHfPath.OnChange := HfPathChange;
     FHfTree := Dlg.tvFolders;
     FHfList := Dlg.lstFolders;
     Dlg.btnAdd.OnClick := HfAddClick;
@@ -13738,7 +13829,7 @@ begin
       if Picked <> '' then
       begin
         HfSelectPath(Picked);
-        FHfPath.Caption := '  ' + IncludeTrailingPathDelimiter(Picked);
+        HfPathSet(IncludeTrailingPathDelimiter(Picked));
       end;
     end
     // Подсказанная папка: в списке она должна быть отмечена, а в дереве -
@@ -13775,7 +13866,7 @@ begin
           Picked := Picked + ExcludeTrailingPathDelimiter(FHfList.Items[I]);
         end;
     if (Picked = '') and not (APick and ACheckedOnly) then
-      Picked := Trim(FHfPath.Caption);
+      Picked := Trim(FHfPath.Text);
     if APick and not ACheckedOnly and (Picked = '') then
     begin
       ShowMessage('Папка не выбрана: отметьте папки в списке или выберите ' +
@@ -13790,6 +13881,7 @@ begin
     FHfTree := nil;
     FHfList := nil;
     FHfPath := nil;
+    FHfNote := nil;
     Dlg.Free;
   end;
 end;
@@ -13914,9 +14006,8 @@ begin
     Exit;
   FHfRedDir := FHfList.Items[AOther];
   FHfList.Invalidate;
-  if FHfPath <> nil then
-    FHfPath.Caption := '  Галка не поставлена: папка внутри отмеченной ' +
-                       FHfList.Items[AOther] + ' - снимите галку на ней';
+  HfNote('Галка не поставлена: папка внутри отмеченной ' +
+         FHfList.Items[AOther] + ' - снимите галку на ней');
 end;
 
 // Отмечена папка строки AIdx: галки вложенных в неё папок снимаются (их
@@ -13935,9 +14026,9 @@ begin
       FHfList.Checked[ItemIdx] := False;
       Inc(Count);
     end;
-  if (Count > 0) and (FHfPath <> nil) then
-    FHfPath.Caption := '  Сняты галки вложенных папок (' + IntToStr(Count) +
-                       '): они внутри ' + FHfList.Items[AIdx];
+  if Count > 0 then
+    HfNote('Сняты галки вложенных папок (' + IntToStr(Count) +
+           '): они внутри ' + FHfList.Items[AIdx]);
 end;
 
 // Список папок окна: строки рисуются сами (HfListDrawItem - красная
@@ -13945,7 +14036,6 @@ end;
 // поэтому стиль - lbOwnerDrawFixed, высота строки - по шрифту
 procedure TForm1.HfListPrepare;
 begin
-  FHfWarnedDir := '';
   FHfRedDir := '';
   if FHfList = nil then
     Exit;
@@ -14015,7 +14105,8 @@ begin
 end;
 
 // Щелчок по папке в списке - она в строке пути (её вернёт выбор папки) и
-// выделяется в дереве слева. Папки нет на диске - предупреждение
+// выделяется в дереве слева. Папки нет на диске - путь красным и надпись
+// "Папка не существует" (HfPathState), без окна сообщения
 procedure TForm1.HfListClick(Sender: TObject);
 var
   DirPath: string;
@@ -14023,25 +14114,11 @@ begin
   if (FHfList = nil) or (FHfList.ItemIndex < 0) then
     Exit;
   DirPath := FHfList.Items[FHfList.ItemIndex];
+  // Выделение в дереве меняет строку пути (HfTreeChange) - она ставится
+  // после, как записана в списке
   if DirectoryExists(DirPath) then
-  begin
-    FHfWarnedDir := '';
-    // Выделение в дереве меняет строку пути (HfTreeChange) - она ставится
-    // после, как записана в списке
     HfSelectPath(ExcludeTrailingPathDelimiter(DirPath));
-    if FHfPath <> nil then
-      FHfPath.Caption := '  ' + DirPath;
-  end
-  else
-  begin
-    if FHfPath <> nil then
-      FHfPath.Caption := '  ' + DirPath;
-    if CompareText(DirPath, FHfWarnedDir) <> 0 then
-    begin
-      FHfWarnedDir := DirPath;
-      MessageDlg('Папки нет на диске:'#13#10 + DirPath, mtWarning, [mbOK], 0);
-    end;
-  end;
+  HfPathSet(DirPath);
 end;
 
 // Пункт меню Search folders... - тот же список, но без подсказанной папки
@@ -37108,7 +37185,11 @@ begin
   Dlg := TDlgHotFolders.Create(Self);
   try
     Dlg.Caption := ACaption;
-    FHfPath := Dlg.pnlPath;
+    FHfPath := Dlg.edPath;
+    FHfNote := Dlg.lblNote;
+    FHfNote.Caption := '';
+    FHfNoteMissing := False;
+    FHfPath.OnChange := HfPathChange;
     FHfTree := Dlg.tvFolders;
     FHfList := Dlg.lstFolders;
     FHfSearchMode := True;
@@ -37142,8 +37223,8 @@ begin
     begin
       FHfList.ItemIndex := 0;
       HfSelectPath(FHfList.Items[0]);
-      FHfPath.Caption := '  Стандартные папки (первые ' +
-        IntToStr(FHfFixedCount) + ') не удаляются - галку можно снять';
+      HfNote('Стандартные папки (первые ' + IntToStr(FHfFixedCount) +
+             ') не удаляются - галку можно снять');
     end;
 
     if Dlg.ShowModal <> mrOk then
@@ -37167,6 +37248,7 @@ begin
     FHfTree := nil;
     FHfList := nil;
     FHfPath := nil;
+    FHfNote := nil;
     Dlg.Free;
   end;
 end;
@@ -37217,8 +37299,8 @@ begin
             FHfList.Checked[InnerIdx] := False;
             Break;
           end;
-  if (Note <> '') and (FHfPath <> nil) then
-    FHfPath.Caption := Note;
+  if Note <> '' then
+    HfNote(Trim(Note));
 end;
 
 // Меню Started Util: все видимые окна программы, кроме главного, - окна

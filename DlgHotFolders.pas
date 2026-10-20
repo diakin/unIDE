@@ -16,6 +16,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   StdCtrls, ExtCtrls, ComCtrls, CheckLst,
   UiButton,     // TUiButton
+  UiEditCtrls,  // TUiEdit
   UiComCtrls;   // TUiTreeView
 
 type
@@ -26,7 +27,9 @@ type
     pnlTop: TPanel;
     btnAdd: TUiButton;
     btnDel: TUiButton;
+    lblNote: TLabel;
     pnlPath: TPanel;
+    edPath: TUiEdit;
     tvFolders: TUiTreeView;
     splFolders: TSplitter;
     lstFolders: TCheckListBox;
