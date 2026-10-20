@@ -16681,7 +16681,9 @@ begin
       Exit;
     end;
 
-  ShowMessage('9471:На этой строке закладки нет.');
+  // Без окна сообщения - строкой состояния
+  StatusBar1.SimpleText := 'На этой строке закладки нет';
+  StatusBar1.SimplePanel := True;
 end;
 
 // Sort BookMark: упорядочивает список по номеру строки.
