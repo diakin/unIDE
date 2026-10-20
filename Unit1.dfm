@@ -589,17 +589,6 @@ object Form1: TForm1
       object mViewIcons: TMenuItem
         Caption = 'Palette Icons...'
       end
-      object mSepInc: TMenuItem
-        Caption = '-'
-      end
-      object mIncManager: TMenuItem
-        Caption = 'IncManager...'
-        OnClick = IncManagerClick
-      end
-      object mFindInc: TMenuItem
-        Caption = 'Find inc file...'
-        OnClick = FindIncClick
-      end
     end
     object mProject: TMenuItem
       Caption = '&Project'
@@ -777,9 +766,23 @@ object Form1: TForm1
         Hint = 'Команды arduino-cli и их справка'
       end
     end
+    object mUtils: TMenuItem
+      Caption = '&Utils'
+      object mIncManager: TMenuItem
+        Caption = 'IncManager...'
+        OnClick = IncManagerClick
+      end
+      object mFindInc: TMenuItem
+        Caption = 'Find inc file...'
+        OnClick = FindIncClick
+      end
+    end
     object mOptions: TMenuItem
       Caption = '&Options'
-      OnClick = mOptionsClick
+      object mOptionsIde: TMenuItem
+        Caption = 'IDE Options...'
+        OnClick = mOptionsClick
+      end
     end
     object mHelp: TMenuItem
       Caption = '&Help'

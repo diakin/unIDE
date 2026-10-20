@@ -622,7 +622,9 @@ type
     mArdLibs: TMenuItem;
     mArdSep: TMenuItem;
     mArdCli: TMenuItem;
+    mUtils: TMenuItem;
     mOptions: TMenuItem;
+    mOptionsIde: TMenuItem;
     mHelp: TMenuItem;
     mHelpRq: TMenuItem;
     mHelpRqContents: TMenuItem;
@@ -666,7 +668,6 @@ type
     mViewSplitH: TMenuItem;
     mViewSplitOff: TMenuItem;
     mViewIcons: TMenuItem;
-    mSepInc: TMenuItem;
     mIncManager: TMenuItem;
     mFindInc: TMenuItem;
     BtnPnl: TPanel;
@@ -999,6 +1000,7 @@ type
     procedure NewFileClick(Sender: TObject);
     // View - IncManager (OnClick в .dfm - поэтому до private)
     procedure IncManagerClick(Sender: TObject);
+    procedure UtilsMenuOpen(Sender: TObject);
     procedure FindIncClick(Sender: TObject);
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
@@ -1010,6 +1012,10 @@ type
     // главного); FUtilSig - каким набором окон меню построено
     FUtilMenu: TMenuItem;
     FUtilSig: string;
+    // Меню Utils: для какого проекта выставлена доступность пунктов
+    // (UtilsMenuOpen по простою - тип проекта читается, когда проект сменился)
+    FUtilsPrjKey: string;
+    FUtilsPrjDone: Boolean;
     // Плашки открытых окон утилит в строке меню, после Help (TPanel)
     FUtilChips: TList;
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
@@ -10812,6 +10818,7 @@ begin
         end;
       end;
     Prj.WriteString('Project', 'Type', NewType);
+    FUtilsPrjDone := False; // тип сменился - меню Utils заново
     if NewTarget <> '' then
       Prj.WriteString('Project', 'Target', PrjTargetToStore(NewDir, NewTarget));
   finally
@@ -11429,6 +11436,7 @@ begin
     Prj := TProjectIni.Create(SettingsFileName, Nm);
     try
       Prj.WriteString('Project', 'Type', Tp);
+      FUtilsPrjDone := False; // тип сменился - меню Utils заново
       if TargetFile <> '' then
         Prj.WriteString('Project', 'Target', PrjTargetToStore(Dir, TargetFile));
       if CompareText(Tp, 'RapidQ Basic') = 0 then
@@ -23335,7 +23343,7 @@ begin
   // методы, а PaletteIconsClick объявлен в другой секции
   mViewIcons.OnClick := PaletteIconsClick;
 
-  // Подсветка файла: в меню вкладки и в View. Подпункты строит
+  // Подсветка файла: в меню вкладки и в Options. Подпункты строит
   // HighlightMenuFill при открытии; пустой пункт - чтобы было подменю.
   FHlTabItem := TMenuItem.Create(Self);
   FHlTabItem.Caption := 'Подсветка';
@@ -23346,7 +23354,10 @@ begin
   FHlViewItem.Caption := 'Highlighting';
   FHlViewItem.OnClick := HighlightMenuFill;
   FHlViewItem.Add(NewItem('-', 0, False, False, nil, 0, ''));
-  mView.Add(FHlViewItem);
+  mOptions.Add(FHlViewItem);
+  // Utils: пункты inc-файлов RapidQ - только в проектах Basic (по простою,
+  // когда сменился проект, - UtilsMenuOpen)
+  UtilsMenuOpen(nil);
 
   // ВАЖНО: подменю собираем только здесь, когда все пункты главного меню уже
   // созданы. Раньше эти вызовы стояли сразу после Add(mWindows), то есть ДО
@@ -36967,7 +36978,7 @@ end;
 //  чтобы перенести значки во встроенные (DsgIcons.pas).
 // ---------------------------------------------------------------------------
 
-// View - IncManager: свои inc-файлы пользователя против эталона (Unit3).
+// Utils - IncManager: свои inc-файлы пользователя против эталона (Unit3).
 // Эталон по умолчанию - incOld рядом с папкой общих inc (SysIncPath), без
 // неё - rapidq_ref\incOld у exe.
 procedure TForm1.IncManagerClick(Sender: TObject);
@@ -36998,10 +37009,31 @@ begin
       ARefDir := ExtractFilePath(Application.ExeName) + 'rapidq_ref\incOld';
 end;
 
-// View - Find inc file
+// Utils - Find inc file
 procedure TForm1.FindIncClick(Sender: TObject);
 begin
   FindIncShow('');
+end;
+
+// Меню Utils: IncManager и Find inc file - про inc-файлы RapidQ, доступны
+// только в проектах Basic (RapidQ Basic, FreeBASIC). Зовётся по простою,
+// когда сменился текущий проект (тип читается из editor.ini)
+procedure TForm1.UtilsMenuOpen(Sender: TObject);
+var
+  PrjType: string;
+  IsBasic: Boolean;
+begin
+  FUtilsPrjKey := FCurrentProject;
+  FUtilsPrjDone := True;
+  IsBasic := False;
+  if (FCurrentProject <> '') and ProjectExists(FCurrentProject) then
+  begin
+    PrjType := ProjectTypeOf(FCurrentProject);
+    IsBasic := (CompareText(PrjType, 'RapidQ Basic') = 0) or
+               (CompareText(PrjType, 'FreeBASIC') = 0);
+  end;
+  mIncManager.Enabled := IsBasic;
+  mFindInc.Enabled := IsBasic;
 end;
 
 // Окно поиска inc-файла (DlgFindInc). AName - имя для поиска ('' - без
@@ -54903,6 +54935,8 @@ begin
   StartTick := GetTickCount;
   UpdateToolbarState;
   UtilMenuUpdate;
+  if not FUtilsPrjDone or (FUtilsPrjKey <> FCurrentProject) then
+    UtilsMenuOpen(nil);
   // Долгий простой - в HiLite log (не чаще раза в 2 с): он тормозит всё,
   // что идёт сообщениями, - мышь, клавиатуру, перерисовку
   Spent := GetTickCount - StartTick;
@@ -57349,6 +57383,7 @@ begin
   Prj := TProjectIni.Create(SettingsFileName, Nm);
   try
     Prj.WriteString('Project', 'Type', 'Delphi');
+    FUtilsPrjDone := False; // тип сменился - меню Utils заново
     Prj.WriteString('Project', 'Target', PrjTargetToStore(Dir, Dir + Nm + '.dpr'));
   finally
     Prj.Free;
