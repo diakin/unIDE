@@ -68,7 +68,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.13';
+  FarBuild = 'b.14';
 
 type
   TFarItem = record
@@ -2125,12 +2125,18 @@ begin
   else if ACtrl and not AAlt and not AShift then
     case AKey of
       VK_TAB:
-        // Режим F4 (одна панель): Ctrl+Tab - в редактор; обратно -
-        // Ctrl+Tab в редакторе (Unit1)
-        if (FSingle >= 0) and Assigned(FOnLeave) then
-          FOnLeave(Self)
+        // Режим F4 (одна панель): Ctrl+Tab - в редактор (обратно -
+        // Ctrl+Tab в редакторе, Unit1); две панели - как Tab, другая панель
+        if FSingle >= 0 then
+        begin
+          if Assigned(FOnLeave) then
+            FOnLeave(Self);
+        end
         else
-          Result := False;
+        begin
+          FActive := 1 - FActive;
+          Invalidate;
+        end;
       VK_PRIOR:
         GoUp;
       VK_NEXT:

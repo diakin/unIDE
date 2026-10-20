@@ -22933,18 +22933,20 @@ begin
     Handled := True;
     Exit;
   end;
-  // Режим F4 unIDE FAR: Ctrl+Tab в редакторе - в панель FAR (свёрнут -
-  // развернуть), табуляцию не вставляет. Обратно - Ctrl+Tab в FAR
+  // Ctrl+Tab в редакторе табуляцию не вставляет. В режиме F4 unIDE FAR -
+  // фокус в панель FAR (свёрнут - развернуть); обратно - Ctrl+Tab в FAR
   // (TFarView, OnLeave)
-  if FFarHalf and (FFar <> nil) and (Msg.message = WM_KEYDOWN) and
-     (Msg.wParam = VK_TAB) and RichEdit1.HandleAllocated and
-     (Msg.hwnd = RichEdit1.Handle) and (GetKeyState(VK_CONTROL) < 0) and
-     (GetKeyState(VK_MENU) >= 0) then
+  if (Msg.message = WM_KEYDOWN) and (Msg.wParam = VK_TAB) and
+     RichEdit1.HandleAllocated and (Msg.hwnd = RichEdit1.Handle) and
+     (GetKeyState(VK_CONTROL) < 0) and (GetKeyState(VK_MENU) >= 0) then
   begin
-    if FFarCollapsed then
-      FarCollapse(False)
-    else if FFar.CanFocus then
-      FFar.SetFocus;
+    if FFarHalf and (FFar <> nil) then
+    begin
+      if FFarCollapsed then
+        FarCollapse(False)
+      else if FFar.CanFocus then
+        FFar.SetFocus;
+    end;
     Handled := True;
     Exit;
   end;
