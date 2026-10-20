@@ -59,7 +59,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.4';
+  FarBuild = 'b.5';
 
 type
   TFarItem = record
@@ -201,8 +201,10 @@ type
     FMenuRows: Integer;
     // История папок (Alt+F12): старые сверху, новые снизу
     FHistory: TFarNames;
-    // Последняя папка на каждом диске A..Z - куда вести при смене диска
-    FDriveLast: array[0..25] of WideString;
+    // Последняя папка каждой панели на каждом диске A..Z - куда вести
+    // при смене диска (у каждой панели своя: другая панель на том же
+    // диске сюда не влияет)
+    FDriveLast: array[0..1, 0..25] of WideString;
     procedure CreateFonts;
     procedure FreeFonts;
     procedure UpdateGrid;
@@ -2098,7 +2100,12 @@ begin
   HistoryAdd(APanel.Path);
   DriveIndex := FarDriveIndex(APanel.Path);
   if DriveIndex >= 0 then
-    FDriveLast[DriveIndex] := APanel.Path;
+  begin
+    if APanel = FPanels[0] then
+      FDriveLast[0, DriveIndex] := APanel.Path
+    else
+      FDriveLast[1, DriveIndex] := APanel.Path;
+  end;
   EnsureVisible(APanel);
   Invalidate;
 end;
@@ -3394,12 +3401,18 @@ begin
       Status('unIDE FAR: диск ' + Root + ' не готов');
       Exit;
     end;
-    // На диск - в папку, где были на нём последний раз
-    Target := FDriveLast[DriveIndex];
+    // Тот же диск, что у панели, - папка не меняется. Другой диск - папка,
+    // где эта панель была на нём последний раз, а если не была - корень
+    if FarDriveIndex(FPanels[APanelIndex].Path) = DriveIndex then
+      Target := FPanels[APanelIndex].Path
+    else
+      Target := FDriveLast[APanelIndex, DriveIndex];
     if (Target = '') or not FarDirExists(Target) then
       Target := Root;
-    FActive := APanelIndex;
     ChangeDir(FPanels[APanelIndex], Target, '');
+    // Панель, которой сменили диск, становится активной (как в FAR)
+    FActive := APanelIndex;
+    Invalidate;
   finally
     FarSetErrorMode(OldMode);
   end;
@@ -3480,8 +3493,12 @@ begin
   try
     // Последние папки дисков и история папок
     for DriveIndex := 0 to 25 do
-      FDriveLast[DriveIndex] := FarDecodePath(Ini.ReadString(FarIniSection,
-        'Drive' + Chr(Ord('A') + DriveIndex), ''));
+    begin
+      FDriveLast[0, DriveIndex] := FarDecodePath(Ini.ReadString(
+        FarIniSection, 'LeftDrive' + Chr(Ord('A') + DriveIndex), ''));
+      FDriveLast[1, DriveIndex] := FarDecodePath(Ini.ReadString(
+        FarIniSection, 'RightDrive' + Chr(Ord('A') + DriveIndex), ''));
+    end;
     HistoryCount := Ini.ReadInteger(FarHistorySection, 'Count', 0);
     if HistoryCount > FarHistoryMax then
       HistoryCount := FarHistoryMax;
@@ -3555,12 +3572,19 @@ begin
   try
     for DriveIndex := 0 to 25 do
     begin
+      // Ключи DriveX сборки b.3 (одна память на обе панели) - не нужны
       DriveKey := 'Drive' + Chr(Ord('A') + DriveIndex);
-      if FDriveLast[DriveIndex] <> '' then
-        Ini.WriteString(FarIniSection, DriveKey,
-          FarEncodePath(FDriveLast[DriveIndex]))
-      else if Ini.ReadString(FarIniSection, DriveKey, '') <> '' then
+      if Ini.ReadString(FarIniSection, DriveKey, '') <> '' then
         Ini.DeleteKey(FarIniSection, DriveKey);
+      for PanelIndex := 0 to 1 do
+      begin
+        DriveKey := SidePrefix[PanelIndex] + 'Drive' + Chr(Ord('A') + DriveIndex);
+        if FDriveLast[PanelIndex, DriveIndex] <> '' then
+          Ini.WriteString(FarIniSection, DriveKey,
+            FarEncodePath(FDriveLast[PanelIndex, DriveIndex]))
+        else if Ini.ReadString(FarIniSection, DriveKey, '') <> '' then
+          Ini.DeleteKey(FarIniSection, DriveKey);
+      end;
     end;
     Ini.EraseSection(FarHistorySection);
     Ini.WriteInteger(FarHistorySection, 'Count', Length(FHistory));
