@@ -1012,11 +1012,14 @@ type
     procedure FarLeave(Sender: TObject);
     procedure FarHalfOn;
     procedure FarHalfOff;
+    procedure FarHalfOffLayout;
     procedure FarEditorEsc;
     procedure FarSplitterMoved(Sender: TObject);
     procedure FarBtnClick(Sender: TObject);
     procedure FarCollapse(ACollapse: Boolean);
     procedure FarPlaceSplitter;
+    procedure FarBeginUpdate;
+    procedure FarEndUpdate;
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
     procedure FObjSetListClick(Sender: TObject);
@@ -1053,6 +1056,7 @@ type
     FFarBtnMin: TUiButton;
     FFarBtnRestore: TUiButton;
     FFarCollapsed: Boolean;
+    FFarUpdateDepth: Integer;     // FarBeginUpdate / FarEndUpdate
     // Плашки открытых окон утилит в строке меню, после Help (TPanel)
     FUtilChips: TList;
     FLockHighlight: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ
@@ -37264,24 +37268,29 @@ begin
     Exit;
   // Закрыт в режиме F4: редактор - снова на всю область, файл F4 остаётся
   // обычной вкладкой
-  if FFarHalf then
-  begin
-    FFarHalf := False;
-    FFarCollapsed := False;
-    FFarOwnWin := -1;
-    FFarCreatedFile := '';
-    if FFarSplitter <> nil then
-      FFarSplitter.Visible := False;
-    if FFarBtnMin <> nil then
-      FFarBtnMin.Visible := False;
-    if FFarBtnRestore <> nil then
-      FFarBtnRestore.Visible := False;
-    if FFarSpacer <> nil then
-      FFarSpacer.Visible := False;
-    FFar.SetSingle(-1);
+  FarBeginUpdate;
+  try
+    if FFarHalf then
+    begin
+      FFarHalf := False;
+      FFarCollapsed := False;
+      FFarOwnWin := -1;
+      FFarCreatedFile := '';
+      if FFarSplitter <> nil then
+        FFarSplitter.Visible := False;
+      if FFarBtnMin <> nil then
+        FFarBtnMin.Visible := False;
+      if FFarBtnRestore <> nil then
+        FFarBtnRestore.Visible := False;
+      if FFarSpacer <> nil then
+        FFarSpacer.Visible := False;
+      FFar.SetSingle(-1);
+    end;
+    FFar.SaveState(SettingsFileName);
+    FFar.Visible := False;
+  finally
+    FarEndUpdate;
   end;
-  FFar.SaveState(SettingsFileName);
-  FFar.Visible := False;
   FFarEatF10Up := True;
   StatusBar1.SimplePanel := False;
   UpdateStatusBarInfo;
@@ -37347,24 +37356,58 @@ begin
     FFarBtnRestore.ShowHint := True;
     FFarBtnRestore.OnClick := FarBtnClick;
   end;
-  FFarHalf := True;
-  FFarCollapsed := False;
-  FFar.SetSingle(FFar.ActiveIndex);
-  if FFar.ActiveIndex = 0 then
-  begin
-    FFarSpacer.Align := alLeft;
-    FFarSpacer.Left := -10;    // левее всех alLeft
-  end
-  else
-  begin
-    FFarSpacer.Align := alRight;
-    FFarSpacer.Left := pnlMain.ClientWidth + 10;  // правее всех alRight
+  FarBeginUpdate;
+  try
+    FFarHalf := True;
+    FFarCollapsed := False;
+    FFar.SetSingle(FFar.ActiveIndex);
+    if FFar.ActiveIndex = 0 then
+    begin
+      FFarSpacer.Align := alLeft;
+      FFarSpacer.Left := -10;    // левее всех alLeft
+    end
+    else
+    begin
+      FFarSpacer.Align := alRight;
+      FFarSpacer.Left := pnlMain.ClientWidth + 10;  // правее всех alRight
+    end;
+    FFarSpacer.Visible := True;
+    FarLayout;
+    FarPlaceSplitter;
+    FFar.BringToFront;
+    FarLayout;
+  finally
+    FarEndUpdate;
   end;
-  FFarSpacer.Visible := True;
-  FarLayout;
-  FarPlaceSplitter;
-  FFar.BringToFront;
-  FarLayout;
+end;
+
+// Смена места и ширины окна FAR в режиме F4 (вкл / выкл, сплиттер,
+// свернуть / развернуть) - как у правой панели (ApplyRightPanelWidth):
+// перерисовка на время раскладки выключена, потом полосы прокрутки
+// редактора заново (FormResizeEvent) и всё окно перерисовывается со всеми
+// дочерними окнами. Иначе редактор, сдвинутый влево, оставался на экране
+// на прежнем месте, а на новом была пустота.
+procedure TForm1.FarBeginUpdate;
+begin
+  if FFarUpdateDepth = 0 then
+    SendMessage(Handle, WM_SETREDRAW, 0, 0);
+  Inc(FFarUpdateDepth);
+end;
+
+procedure TForm1.FarEndUpdate;
+begin
+  if FFarUpdateDepth <= 0 then
+    Exit;
+  Dec(FFarUpdateDepth);
+  if FFarUpdateDepth > 0 then
+    Exit;
+  try
+    FormResizeEvent(Self);
+  finally
+    SendMessage(Handle, WM_SETREDRAW, 1, 0);
+    RedrawWindow(Handle, nil, 0, RDW_ERASE or RDW_FRAME or RDW_INVALIDATE or
+                 RDW_ALLCHILDREN or RDW_UPDATENOW);
+  end;
 end;
 
 // Сплиттер - сразу за распоркой, со стороны редактора
@@ -37392,8 +37435,13 @@ procedure TForm1.FarSplitterMoved(Sender: TObject);
 begin
   if (FFar = nil) or (FFarSpacer = nil) then
     Exit;
-  FFar.HalfWidth := FFarSpacer.Width;
-  FarLayout;
+  FarBeginUpdate;
+  try
+    FFar.HalfWidth := FFarSpacer.Width;
+    FarLayout;
+  finally
+    FarEndUpdate;
+  end;
 end;
 
 procedure TForm1.FarBtnClick(Sender: TObject);
@@ -37408,29 +37456,49 @@ begin
   if not FFarHalf or (FFar = nil) or (ACollapse = FFarCollapsed) then
     Exit;
   FFarCollapsed := ACollapse;
+  FarBeginUpdate;
+  try
+    if ACollapse then
+    begin
+      FFar.Visible := False;
+      if FFarSplitter <> nil then
+        FFarSplitter.Visible := False;
+      FarLayout;
+    end
+    else
+    begin
+      FFar.Visible := True;
+      FarLayout;
+      FarPlaceSplitter;
+      FFar.BringToFront;
+      FarLayout;
+    end;
+  finally
+    FarEndUpdate;
+  end;
   if ACollapse then
   begin
-    FFar.Visible := False;
-    if FFarSplitter <> nil then
-      FFarSplitter.Visible := False;
-    FarLayout;
     if RichEdit1.CanFocus then
       RichEdit1.SetFocus;
   end
-  else
-  begin
-    FFar.Visible := True;
-    FarLayout;
-    FarPlaceSplitter;
-    FFar.BringToFront;
-    FarLayout;
-    if FFar.CanFocus then
-      FFar.SetFocus;
-  end;
+  else if FFar.CanFocus then
+    FFar.SetFocus;
 end;
 
 // Конец режима F4: распорка убрана, FAR - снова две панели на всю область
 procedure TForm1.FarHalfOff;
+begin
+  FarBeginUpdate;
+  try
+    FarHalfOffLayout;
+  finally
+    FarEndUpdate;
+  end;
+  if (FFar <> nil) and FFar.CanFocus then
+    FFar.SetFocus;
+end;
+
+procedure TForm1.FarHalfOffLayout;
 begin
   FFarHalf := False;
   FFarOwnWin := -1;
@@ -37452,8 +37520,6 @@ begin
   FFar.SetSingle(-1);
   FarLayout;
   FFar.BringToFront;
-  if FFar.CanFocus then
-    FFar.SetFocus;
 end;
 
 // F4 / Shift+F4 в unIDE FAR: файл - в редактор во второй половине. Путь
