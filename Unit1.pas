@@ -22933,6 +22933,21 @@ begin
     Handled := True;
     Exit;
   end;
+  // Режим F4 unIDE FAR: Ctrl+Tab в редакторе - в панель FAR (свёрнут -
+  // развернуть), табуляцию не вставляет. Обратно - Ctrl+Tab в FAR
+  // (TFarView, OnLeave)
+  if FFarHalf and (FFar <> nil) and (Msg.message = WM_KEYDOWN) and
+     (Msg.wParam = VK_TAB) and RichEdit1.HandleAllocated and
+     (Msg.hwnd = RichEdit1.Handle) and (GetKeyState(VK_CONTROL) < 0) and
+     (GetKeyState(VK_MENU) >= 0) then
+  begin
+    if FFarCollapsed then
+      FarCollapse(False)
+    else if FFar.CanFocus then
+      FFar.SetFocus;
+    Handled := True;
+    Exit;
+  end;
   // Режим F4 unIDE FAR, клавиши редактора: Esc - закрыть редактор (если не
   // открыта подсказка Code Insight - её Esc закрывает, как раньше), F2 /
   // Shift+F2 - Save / Save As
