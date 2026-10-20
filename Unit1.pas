@@ -17837,9 +17837,9 @@ begin
   if Idx < 0 then
     Exit;
 
-  // unIDE FAR открыт на всю область: курсор активной панели - на файл
-  // вкладки (кроме щелчка по крестику закрытия)
-  if (FFar <> nil) and FFar.Visible and not FFarHalf and
+  // unIDE FAR открыт (на всю область или в режиме F4): курсор активной
+  // панели - на файл вкладки (кроме щелчка по крестику закрытия)
+  if (FFar <> nil) and FFar.Visible and
      (Idx <= High(FTabWin)) and (FTabWin[Idx] >= 0) and
      (FTabWin[Idx] <= WindowsItemCount - 1) then
   begin
@@ -37229,8 +37229,8 @@ begin
       FFarSpacer.Width := NewWidth;
     FFar.SetBounds(FFarSpacer.Left, FFarSpacer.Top, FFarSpacer.Width,
       FFarSpacer.Height);
-    // Кнопки _ и [] - в правом верхнем углу окна FAR; развёрнут -
-    // разворачивать нечего, [] недоступна (как у правой панели)
+    // Кнопки _ и [] - в правом верхнем углу окна FAR; у развёрнутого []
+    // - FAR на всю ширину (FarBtnClick)
     if (FFarBtnMin <> nil) and (FFarBtnRestore <> nil) then
     begin
       RightEdge := FFarSpacer.Left + FFarSpacer.Width - 2;
@@ -37238,7 +37238,7 @@ begin
         FarBtnW, FarBtnH);
       FFarBtnMin.SetBounds(RightEdge - 2 * FarBtnW - 2, FFarSpacer.Top,
         FarBtnW, FarBtnH);
-      FFarBtnRestore.Enabled := False;
+      FFarBtnRestore.Enabled := True;
       FFarBtnMin.Visible := True;
       FFarBtnRestore.Visible := True;
       FFarBtnMin.BringToFront;
@@ -37352,7 +37352,8 @@ begin
     FFarBtnRestore.Visible := False;
     FFarBtnRestore.Parent := pnlMain;
     FFarBtnRestore.Caption := '[]';
-    FFarBtnRestore.Hint := 'Развернуть панель FAR до прежней ширины';
+    FFarBtnRestore.Hint := 'Свёрнута - развернуть до прежней ширины; ' +
+      'развёрнута - FAR на всю ширину (файл остаётся вкладкой)';
     FFarBtnRestore.ShowHint := True;
     FFarBtnRestore.OnClick := FarBtnClick;
   end;
@@ -37444,9 +37445,17 @@ begin
   end;
 end;
 
+// _ - свернуть FAR; [] у свёрнутого - развернуть до прежней ширины, у
+// развёрнутого - FAR на всю ширину с обеими панелями: режим F4 кончается,
+// файл остаётся обычной вкладкой (без вопроса о сохранении)
 procedure TForm1.FarBtnClick(Sender: TObject);
 begin
-  FarCollapse(Sender = FFarBtnMin);
+  if Sender = FFarBtnMin then
+    FarCollapse(True)
+  else if FFarCollapsed then
+    FarCollapse(False)
+  else
+    FarHalfOff;
 end;
 
 // Режим F4: свернуть окно FAR до полоски с кнопкой [] (фокус - редактору)
