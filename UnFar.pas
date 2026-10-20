@@ -22,7 +22,14 @@ unit UnFar;
 //      духе FAR, поверх панелей; сами операции - SHFileOperationW
 //      (ход и вопросы о замене файлов - стандартные окна Windows);
 //    - b.2: панели следят за своими папками (FindFirstChangeNotification)
-//      и перечитываются сами, когда в папке что-то изменилось.
+//      и перечитываются сами, когда в папке что-то изменилось;
+//    - b.3: Alt+F1 / Alt+F2 - смена диска левой / правой панели (на диске -
+//      в папку, где были на нём последний раз); Ctrl+F12 - меню
+//      сортировки, Ctrl+F3 .. Ctrl+F9 - сортировка сразу (повтор -
+//      обратный порядок), Shift+F12 - выделенные первыми; буква
+//      сортировки - в левом верхнем углу панели; Alt+F12 - история папок
+//      (Del - убрать папку из истории). Сортировка панелей, история и
+//      последние папки дисков - в editor.ini ([Far], [FarHistory]).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -52,7 +59,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.2';
+  FarBuild = 'b.3';
 
 type
   TFarItem = record
@@ -60,6 +67,9 @@ type
     Size: Int64;
     Attr: DWORD;
     WriteTime: TFileTime;
+    CreateTime: TFileTime;
+    AccessTime: TFileTime;
+    OrigIndex: Integer;  // порядок, в котором отдала Windows (Unsorted)
     IsDir: Boolean;
     IsUp: Boolean;       // строка '..'
     Selected: Boolean;
@@ -71,6 +81,25 @@ type
 
   // Открытый диалог: копирование, перенос, папка, удаление
   TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete);
+
+  // Сортировка панели (порядок - как в меню Ctrl+F12 и клавиши Ctrl+F3 ..
+  // Ctrl+F9)
+  TFarSortMode = (fsName, fsExt, fsWrite, fsSize, fsUnsorted, fsCreation,
+    fsAccess);
+
+  // Открытое меню: смена диска (Alt+F1 / Alt+F2), сортировка (Ctrl+F12),
+  // история папок (Alt+F12)
+  TFarMenuKind = (fmNone, fmDrive, fmSort, fmHistory);
+
+  TFarMenuItem = record
+    Text: WideString;       // '&' перед буквой быстрого выбора
+    RightText: WideString;  // справа: клавиша и т.п.
+    Mark: WideChar;         // слева: ' ', '+', '-', отметка
+    Separator: Boolean;
+    Data: WideString;       // что выбрано: путь, буква диска
+    Tag: Integer;
+  end;
+  TFarMenuItems = array of TFarMenuItem;
 
   // Одна панель: папка, её список и курсор
   TFarPanel = class
@@ -84,9 +113,17 @@ type
     FFileBytes: Int64;
     FFreeBytes: Int64;
     FFreeKnown: Boolean;
+    FSortMode: TFarSortMode;
+    FSortReverse: Boolean;
+    FDirsFirst: Boolean;
+    FSelFirst: Boolean;
     procedure SortItems;
     function ItemLess(const ItemA, ItemB: TFarItem): Boolean;
   public
+    constructor Create;
+    // Пересортировать (сменилась сортировка или выделение при
+    // FSelFirst); курсор остаётся на том же файле
+    procedure Resort;
     // Прочитать папку APath и поставить курсор на AFocusName. False - папку
     // прочитать нельзя (нет доступа и т.п.), прежнее содержимое остаётся.
     function ReadDir(const APath, AFocusName: WideString;
@@ -151,6 +188,21 @@ type
     FWatchLastTick: Cardinal;     // последний сигнал
     FWatchTimer: TTimer;
     FBusy: Boolean;               // идёт операция с файлами
+    // Меню (Alt+F1 / Alt+F2, Ctrl+F12, Alt+F12): рисуется поверх панелей
+    FMenuKind: TFarMenuKind;
+    FMenuTitle: WideString;
+    FMenuItems: TFarMenuItems;
+    FMenuCursor: Integer;
+    FMenuTop: Integer;            // первый видимый пункт
+    FMenuPanel: Integer;          // к какой панели относится
+    FMenuLeft: Integer;           // где нарисовано (для мыши)
+    FMenuTopRow: Integer;
+    FMenuWidth: Integer;
+    FMenuRows: Integer;
+    // История папок (Alt+F12): старые сверху, новые снизу
+    FHistory: TFarNames;
+    // Последняя папка на каждом диске A..Z - куда вести при смене диска
+    FDriveLast: array[0..25] of WideString;
     procedure CreateFonts;
     procedure FreeFonts;
     procedure UpdateGrid;
@@ -208,6 +260,22 @@ type
     procedure AfterOperation(const AFocusName: WideString);
     procedure WatchTick(Sender: TObject);
     procedure WatchStop;
+    // Меню, сортировка, диски, история папок
+    procedure MenuOpen(AKind: TFarMenuKind; const ATitle: WideString;
+      const AItems: TFarMenuItems; ACursor, APanel: Integer);
+    procedure MenuClose;
+    function MenuKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    procedure MenuMove(ADelta: Integer);
+    procedure MenuActivate(AIndex: Integer);
+    function MenuItemAt(AX, AY: Integer): Integer;
+    procedure DrawMenu;
+    procedure ShowDriveMenu(APanelIndex: Integer);
+    procedure ShowSortMenu;
+    procedure ShowHistoryMenu;
+    procedure SetSort(APanel: TFarPanel; AMode: TFarSortMode);
+    procedure ToggleSelFirst(APanel: TFarPanel);
+    procedure SelectDrive(APanelIndex: Integer; ALetter: WideChar);
+    procedure HistoryAdd(const APath: WideString);
   protected
     procedure Paint; override;
     procedure Resize; override;
@@ -278,6 +346,20 @@ const
   FarWatchInterval = 250;          // мс, опрос сигналов
   FarWatchQuiet = 300;             // мс без новых сигналов - перечитать
   FarWatchMaxDelay = 2000;         // но не реже, чем раз в столько мс
+
+  // Буква сортировки в левом верхнем углу панели (как в FAR 2): по
+  // возрастанию - строчная, обратный порядок - прописная
+  FarSortLetters = 'nxmsuca';
+  FarHistoryMax = 50;
+  FarHistorySection = 'FarHistory';
+  FarCheckMark = WideChar($221A);  // отметка в меню (в Terminus cp1251 её
+                                   // нет - рисует Lucida Console)
+  FarSemFailCritical = 1;          // SEM_FAILCRITICALERRORS
+  FarDriveRemovable = 2;
+  FarDriveFixed = 3;
+  FarDriveRemote = 4;
+  FarDriveCdRom = 5;
+  FarDriveRamDisk = 6;
   FarInvalidAttr = $FFFFFFFF;
 
   // Кейбар: подписи FAR (far\farlang.templ.m4) для того, что есть или
@@ -285,11 +367,11 @@ const
   FarKeysNormal: array[0..11] of string = ('Help', 'UserMn', 'View', 'Edit',
     'Copy', 'RenMov', 'MkFold', 'Delete', 'ConfMn', 'Quit', '', 'Screen');
   FarKeysShift: array[0..11] of string = ('', '', '', 'Edit..', 'Copy',
-    'Rename', '', 'Delete', 'Save', '', '', '');
+    'Rename', '', 'Delete', 'Save', '', '', 'SelUp');
   FarKeysAlt: array[0..11] of string = ('Left', 'Right', '', '', '', '', '',
     '', '', '', '', 'FoldHs');
-  FarKeysCtrl: array[0..11] of string = ('', '', '', '', '', '', '', '', '',
-    '', '', 'Sort');
+  FarKeysCtrl: array[0..11] of string = ('', '', 'Name', 'Extens', 'Write',
+    'Size', 'Unsort', 'Creatn', 'Access', '', '', 'Sort');
 
 type
   TFarFindData = record
@@ -359,6 +441,14 @@ function FarFindNextChange(AHandle: THandle): BOOL; stdcall;
   external 'kernel32.dll' name 'FindNextChangeNotification';
 function FarFindCloseChange(AHandle: THandle): BOOL; stdcall;
   external 'kernel32.dll' name 'FindCloseChangeNotification';
+function FarGetDriveType(ARoot: PWideChar): UINT; stdcall;
+  external 'kernel32.dll' name 'GetDriveTypeW';
+function FarGetVolumeInfo(ARoot, AVolumeName: PWideChar; AVolumeNameSize: DWORD;
+  ASerial, AMaxComponent, AFsFlags: Pointer; AFsName: PWideChar;
+  AFsNameSize: DWORD): BOOL; stdcall;
+  external 'kernel32.dll' name 'GetVolumeInformationW';
+function FarSetErrorMode(AMode: UINT): UINT; stdcall;
+  external 'kernel32.dll' name 'SetErrorMode';
 
 var
   FarFontTried: Boolean = False;
@@ -594,6 +684,21 @@ begin
   AName := Copy(APath, SlashPos + 1, MaxInt);
 end;
 
+// Номер диска пути: 'D:\...' - 3 (A = 0); не диск - -1
+function FarDriveIndex(const APath: WideString): Integer;
+var
+  Code: Integer;
+begin
+  Result := -1;
+  if (Length(APath) < 2) or (APath[2] <> ':') then
+    Exit;
+  Code := Ord(APath[1]);
+  if (Code >= Ord('a')) and (Code <= Ord('z')) then
+    Dec(Code, 32);
+  if (Code >= Ord('A')) and (Code <= Ord('Z')) then
+    Result := Code - Ord('A');
+end;
+
 // Папка со всеми недостающими папками выше
 function FarForceDirs(const APath: WideString): Boolean;
 var
@@ -651,15 +756,105 @@ end;
 //  TFarPanel
 // ---------------------------------------------------------------------------
 
-function TFarPanel.ItemLess(const ItemA, ItemB: TFarItem): Boolean;
+constructor TFarPanel.Create;
 begin
-  // '..' - первым, папки - перед файлами, дальше по имени без учёта регистра
-  if ItemA.IsUp <> ItemB.IsUp then
-    Result := ItemA.IsUp
-  else if ItemA.IsDir <> ItemB.IsDir then
-    Result := ItemA.IsDir
+  inherited Create;
+  FSortMode := fsName;
+  FSortReverse := False;
+  FDirsFirst := True;
+  FSelFirst := False;
+end;
+
+// Расширение имени: после последней точки ('' - нет точки)
+function FarNameExt(const AName: WideString): WideString;
+var
+  DotPos: Integer;
+begin
+  DotPos := Length(AName);
+  while (DotPos > 0) and (AName[DotPos] <> '.') do
+    Dec(DotPos);
+  if DotPos > 1 then
+    Result := Copy(AName, DotPos + 1, MaxInt)
   else
-    Result := FarCompareNames(ItemA.Name, ItemB.Name) < 0;
+    Result := '';
+end;
+
+function FarCompareInt64(AValueA, AValueB: Int64): Integer;
+begin
+  if AValueA < AValueB then
+    Result := -1
+  else if AValueA > AValueB then
+    Result := 1
+  else
+    Result := 0;
+end;
+
+// Порядок, как в FAR (filelist.cpp, SortModes): '..' - первым; при
+// FSelFirst - выделенные, при FDirsFirst - папки перед файлами; дальше по
+// ключу сортировки. Имя и расширение - по возрастанию, время и размер - по
+// убыванию (новые и большие сверху); FSortReverse переворачивает ключ.
+// Равные по ключу - по имени.
+function TFarPanel.ItemLess(const ItemA, ItemB: TFarItem): Boolean;
+var
+  Cmp: Integer;
+begin
+  if ItemA.IsUp <> ItemB.IsUp then
+  begin
+    Result := ItemA.IsUp;
+    Exit;
+  end;
+  if FSelFirst and (ItemA.Selected <> ItemB.Selected) then
+  begin
+    Result := ItemA.Selected;
+    Exit;
+  end;
+  if FDirsFirst and (ItemA.IsDir <> ItemB.IsDir) then
+  begin
+    Result := ItemA.IsDir;
+    Exit;
+  end;
+  case FSortMode of
+    fsExt:
+      Cmp := FarCompareNames(FarNameExt(ItemA.Name), FarNameExt(ItemB.Name));
+    fsWrite:
+      Cmp := -CompareFileTime(ItemA.WriteTime, ItemB.WriteTime);
+    fsSize:
+      Cmp := -FarCompareInt64(ItemA.Size, ItemB.Size);
+    fsUnsorted:
+      Cmp := ItemA.OrigIndex - ItemB.OrigIndex;
+    fsCreation:
+      Cmp := -CompareFileTime(ItemA.CreateTime, ItemB.CreateTime);
+    fsAccess:
+      Cmp := -CompareFileTime(ItemA.AccessTime, ItemB.AccessTime);
+  else
+    Cmp := 0;
+  end;
+  if (Cmp = 0) and (FSortMode <> fsUnsorted) then
+  begin
+    Cmp := FarCompareNames(ItemA.Name, ItemB.Name);
+    if Cmp = 0 then
+      Cmp := ItemA.OrigIndex - ItemB.OrigIndex;
+  end;
+  if FSortReverse then
+    Cmp := -Cmp;
+  Result := Cmp < 0;
+end;
+
+procedure TFarPanel.Resort;
+var
+  FocusName: WideString;
+  NewIndex: Integer;
+begin
+  FocusName := '';
+  if (FCursor >= 0) and (FCursor < FCount) then
+    FocusName := FItems[FCursor].Name;
+  SortItems;
+  if FocusName <> '' then
+  begin
+    NewIndex := IndexOfName(FocusName);
+    if NewIndex >= 0 then
+      FCursor := NewIndex;
+  end;
 end;
 
 procedure TFarPanel.SortItems;
@@ -714,6 +909,9 @@ begin
     NewItems[0].Size := 0;
     NewItems[0].Attr := FILE_ATTRIBUTE_DIRECTORY;
     NewItems[0].Selected := False;
+    NewItems[0].OrigIndex := -1;
+    FillChar(NewItems[0].CreateTime, SizeOf(TFileTime), 0);
+    FillChar(NewItems[0].AccessTime, SizeOf(TFileTime), 0);
     FillChar(NewItems[0].WriteTime, SizeOf(TFileTime), 0);
     NewCount := 1;
   end;
@@ -744,6 +942,9 @@ begin
         NewItems[NewCount].IsUp := False;
         NewItems[NewCount].Selected := False;
         NewItems[NewCount].WriteTime := FindData.ftLastWriteTime;
+        NewItems[NewCount].CreateTime := FindData.ftCreationTime;
+        NewItems[NewCount].AccessTime := FindData.ftLastAccessTime;
+        NewItems[NewCount].OrigIndex := NewCount;
         if NewItems[NewCount].IsDir then
           NewItems[NewCount].Size := 0
         else
@@ -827,6 +1028,9 @@ begin
     if ItemIndex >= 0 then
       SetSelected(ItemIndex, True);
   end;
+  // Выделенные первыми: при чтении выделения ещё не было
+  if FSelFirst and (SelectedCount > 0) then
+    Resort;
 end;
 
 function TFarPanel.IndexOfName(const AName: WideString): Integer;
@@ -1203,6 +1407,7 @@ var
   IsActive: Boolean;
   Title, ItemName, RightText, Totals, FreeText, SelText: WideString;
   TotalsLen, StartCol: Integer;
+  SortLetter: string;
 begin
   Panel := FPanels[AIndex];
   PanelBounds(AIndex, PanelX, PanelW);
@@ -1284,6 +1489,12 @@ begin
     end;
 
   DrawFrame(PanelX, PanelW, PanelH, FirstW);
+
+  // Буква сортировки в левом верхнем углу
+  SortLetter := Copy(FarSortLetters, Ord(Panel.FSortMode) + 1, 1);
+  if Panel.FSortReverse then
+    SortLetter := UpperCase(SortLetter);
+  PutText(PanelX + 1, 0, 1, SortLetter, FarLightCyan, FarBlue);
 
   // Заголовок - путь; у активной панели - цветом курсора
   Title := Panel.Path;
@@ -1387,6 +1598,8 @@ begin
       DrawPanel(0);
       DrawPanel(1);
       DrawKeyBar;
+      if FMenuKind <> fmNone then
+        DrawMenu;
       if FDlgKind <> fdNone then
         DrawDialog;
     end;
@@ -1467,6 +1680,17 @@ begin
   inherited MouseDown(Button, Shift, X, Y);
   if CanFocus and not Focused then
     SetFocus;
+  // Открыто меню: щелчок по пункту выбирает его, мимо меню - закрывает
+  if FMenuKind <> fmNone then
+  begin
+    ItemIndex := MenuItemAt(X, Y);
+    if ItemIndex >= 0 then
+      MenuActivate(ItemIndex)
+    else
+      MenuClose;
+    Invalidate;
+    Exit;
+  end;
   // Открыт диалог: щелчок по его кнопке нажимает её, панели не трогаем
   if FDlgKind <> fdNone then
   begin
@@ -1501,7 +1725,7 @@ var
   CursorPos: TPoint;
 begin
   inherited DblClick;
-  if FDlgKind <> fdNone then
+  if (FDlgKind <> fdNone) or (FMenuKind <> fmNone) then
     Exit;
   CursorPos := ScreenToClient(Mouse.CursorPos);
   if ItemAt(CursorPos.X, CursorPos.Y, PanelIndex, ItemIndex) then
@@ -1511,6 +1735,15 @@ end;
 procedure TFarView.WMMouseWheel(var Message: TWMMouseWheel);
 begin
   Message.Result := 1;
+  if FMenuKind <> fmNone then
+  begin
+    if Message.WheelDelta > 0 then
+      MenuMove(-1)
+    else if Message.WheelDelta < 0 then
+      MenuMove(1);
+    Invalidate;
+    Exit;
+  end;
   if FDlgKind <> fdNone then
     Exit;
   if Message.WheelDelta > 0 then
@@ -1604,7 +1837,12 @@ begin
   CtrlDown := GetKeyState(VK_CONTROL) < 0;
   AltDown := GetKeyState(VK_MENU) < 0;
 
-  if FDlgKind <> fdNone then
+  if FMenuKind <> fmNone then
+  begin
+    Result := MenuKey(KeyCode, ShiftDown, CtrlDown, AltDown);
+    Invalidate;
+  end
+  else if FDlgKind <> fdNone then
   begin
     Result := DlgKey(KeyCode, ShiftDown, CtrlDown, AltDown);
     Invalidate;
@@ -1628,8 +1866,49 @@ begin
   // F-клавиши
   if (AKey >= VK_F1) and (AKey <= VK_F12) then
   begin
+    // Ctrl+F3 .. Ctrl+F9 - сортировка (повтор - обратный порядок),
+    // Ctrl+F12 - меню сортировки
+    if ACtrl and not AAlt and not AShift then
+      case AKey of
+        VK_F3..VK_F9:
+          begin
+            SetSort(ActivePanel, TFarSortMode(AKey - VK_F3));
+            Exit;
+          end;
+        VK_F12:
+          begin
+            ShowSortMenu;
+            Exit;
+          end;
+      end;
+    // Alt+F1 / Alt+F2 - смена диска левой / правой панели, Alt+F12 -
+    // история папок
+    if AAlt and not ACtrl and not AShift then
+      case AKey of
+        VK_F1:
+          begin
+            ShowDriveMenu(0);
+            Exit;
+          end;
+        VK_F2:
+          begin
+            ShowDriveMenu(1);
+            Exit;
+          end;
+        VK_F12:
+          begin
+            ShowHistoryMenu;
+            Exit;
+          end;
+      end;
     if Plain then
       case AKey of
+        VK_F12:             // Shift+F12 - выделенные первыми
+          if AShift then
+          begin
+            ToggleSelFirst(ActivePanel);
+            Exit;
+          end;
         VK_F10:
           if not AShift then
           begin
@@ -1762,6 +2041,8 @@ begin
         Panel.SetSelected(Panel.Cursor, FShiftSelValue);
         Panel.Cursor := Panel.Cursor + Step;
       end;
+    if Panel.FSelFirst then
+      Panel.Resort;
   end
   else
     Panel.Cursor := Target;
@@ -1796,18 +2077,28 @@ begin
     Exit;
   Panel.SetSelected(Panel.Cursor, not Panel.FItems[Panel.Cursor].Selected);
   MoveCursor(1, False);
+  if Panel.FSelFirst then
+  begin
+    Panel.Resort;
+    EnsureVisible(Panel);
+  end;
 end;
 
 procedure TFarView.ChangeDir(APanel: TFarPanel; const APath,
   AFocus: WideString);
 var
   ErrorText: string;
+  DriveIndex: Integer;
 begin
   if not APanel.ReadDir(APath, AFocus, ErrorText) then
   begin
     Status('unIDE FAR: папку не открыть: ' + ErrorText);
     Exit;
   end;
+  HistoryAdd(APanel.Path);
+  DriveIndex := FarDriveIndex(APanel.Path);
+  if DriveIndex >= 0 then
+    FDriveLast[DriveIndex] := APanel.Path;
   EnsureVisible(APanel);
   Invalidate;
 end;
@@ -2553,7 +2844,7 @@ begin
       AnyDirty := True;
   end;
 
-  if not AnyDirty or (FDlgKind <> fdNone) then
+  if not AnyDirty or (FDlgKind <> fdNone) or (FMenuKind <> fmNone) then
     Exit;
   if (NowTick - FWatchLastTick < FarWatchQuiet) and
      (NowTick - FWatchFirstTick < FarWatchMaxDelay) then
@@ -2581,6 +2872,595 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+//  Меню в духе FAR (VMenu): белым по бирюзовому, пункт под курсором -
+//  белым по чёрному, буква быстрого выбора - жёлтая. Стрелки, Home/End,
+//  PgUp/PgDn, Enter - выбрать, буква - выбрать пункт с этой буквой,
+//  Esc / F10 - закрыть. В истории папок Del удаляет пункт.
+// ---------------------------------------------------------------------------
+
+// Текст пункта без '&': AHotPos - номер буквы быстрого выбора (0 - нет).
+// '&&' - сам знак '&'.
+function FarStripAmp(const AText: WideString; var AHotPos: Integer): WideString;
+var
+  CharIndex: Integer;
+begin
+  Result := '';
+  AHotPos := 0;
+  CharIndex := 1;
+  while CharIndex <= Length(AText) do
+  begin
+    if (AText[CharIndex] = '&') and (CharIndex < Length(AText)) then
+    begin
+      Inc(CharIndex);
+      if (AText[CharIndex] <> '&') and (AHotPos = 0) then
+        AHotPos := Length(Result) + 1;
+    end;
+    Result := Result + AText[CharIndex];
+    Inc(CharIndex);
+  end;
+end;
+
+// Знак '&' в тексте пункта - буквально (пути в истории папок)
+function FarEscapeAmp(const AText: WideString): WideString;
+var
+  CharIndex: Integer;
+begin
+  Result := '';
+  for CharIndex := 1 to Length(AText) do
+  begin
+    if AText[CharIndex] = '&' then
+      Result := Result + '&';
+    Result := Result + AText[CharIndex];
+  end;
+end;
+
+function FarPadRight(const AText: WideString; AWidth: Integer): WideString;
+begin
+  Result := AText;
+  while Length(Result) < AWidth do
+    Result := Result + ' ';
+end;
+
+procedure TFarView.MenuOpen(AKind: TFarMenuKind; const ATitle: WideString;
+  const AItems: TFarMenuItems; ACursor, APanel: Integer);
+begin
+  if Length(AItems) = 0 then
+    Exit;
+  FMenuKind := AKind;
+  FMenuTitle := ATitle;
+  FMenuItems := AItems;
+  FMenuCursor := ACursor;
+  if (FMenuCursor < 0) or (FMenuCursor >= Length(AItems)) then
+    FMenuCursor := 0;
+  FMenuTop := 0;
+  FMenuPanel := APanel;
+  FMenuRows := 0;
+  Invalidate;
+end;
+
+procedure TFarView.MenuClose;
+begin
+  FMenuKind := fmNone;
+  FMenuItems := nil;
+  FMenuRows := 0;
+  Invalidate;
+end;
+
+// Курсор на ADelta пунктов, разделители пропускаются. Шаг на 1 с края
+// списка переходит на другой край (так в FAR).
+procedure TFarView.MenuMove(ADelta: Integer);
+var
+  ItemCount, Target, Step: Integer;
+begin
+  ItemCount := Length(FMenuItems);
+  if ItemCount = 0 then
+    Exit;
+  if Abs(ADelta) = 1 then
+  begin
+    Target := FMenuCursor;
+    repeat
+      Target := (Target + ADelta + ItemCount) mod ItemCount;
+    until not FMenuItems[Target].Separator or (Target = FMenuCursor);
+  end
+  else
+  begin
+    Target := FMenuCursor + ADelta;
+    if Target < 0 then
+      Target := 0;
+    if Target >= ItemCount then
+      Target := ItemCount - 1;
+    if ADelta < 0 then
+      Step := 1
+    else
+      Step := -1;
+    while FMenuItems[Target].Separator and (Target + Step >= 0) and
+          (Target + Step < ItemCount) do
+      Inc(Target, Step);
+  end;
+  FMenuCursor := Target;
+end;
+
+function TFarView.MenuKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+var
+  ItemIndex, HotPos, HistoryIndex: Integer;
+  ItemText: WideString;
+  HotChar: Integer;
+begin
+  // Пока меню открыто, клавиши - только ему
+  Result := True;
+  case AKey of
+    VK_ESCAPE, VK_F10:
+      MenuClose;
+    VK_UP:
+      MenuMove(-1);
+    VK_DOWN:
+      MenuMove(1);
+    VK_HOME:
+      begin
+        FMenuCursor := 0;
+        MenuMove(0);
+      end;
+    VK_END:
+      begin
+        FMenuCursor := High(FMenuItems);
+        MenuMove(0);
+      end;
+    VK_PRIOR:
+      MenuMove(-FMenuRows + 1);
+    VK_NEXT:
+      MenuMove(FMenuRows - 1);
+    VK_RETURN:
+      MenuActivate(FMenuCursor);
+    VK_DELETE:
+      // История папок: Del - убрать папку из истории
+      if (FMenuKind = fmHistory) and (FMenuCursor >= 0) and
+         (FMenuCursor <= High(FMenuItems)) then
+      begin
+        for HistoryIndex := High(FHistory) downto 0 do
+          if FarSameName(FHistory[HistoryIndex],
+                         FMenuItems[FMenuCursor].Data) then
+          begin
+            for ItemIndex := HistoryIndex to High(FHistory) - 1 do
+              FHistory[ItemIndex] := FHistory[ItemIndex + 1];
+            SetLength(FHistory, Length(FHistory) - 1);
+          end;
+        for ItemIndex := FMenuCursor to High(FMenuItems) - 1 do
+          FMenuItems[ItemIndex] := FMenuItems[ItemIndex + 1];
+        SetLength(FMenuItems, Length(FMenuItems) - 1);
+        if Length(FMenuItems) = 0 then
+          MenuClose
+        else if FMenuCursor > High(FMenuItems) then
+          FMenuCursor := High(FMenuItems);
+      end;
+  else
+    // Буква - пункт с этой буквой быстрого выбора
+    if not ACtrl and not AAlt and
+       (((AKey >= Ord('A')) and (AKey <= Ord('Z'))) or
+        ((AKey >= Ord('0')) and (AKey <= Ord('9')))) then
+      for ItemIndex := 0 to High(FMenuItems) do
+      begin
+        if FMenuItems[ItemIndex].Separator then
+          Continue;
+        ItemText := FarStripAmp(FMenuItems[ItemIndex].Text, HotPos);
+        if HotPos = 0 then
+          Continue;
+        HotChar := Ord(ItemText[HotPos]);
+        if (HotChar >= Ord('a')) and (HotChar <= Ord('z')) then
+          Dec(HotChar, 32);
+        if HotChar = AKey then
+        begin
+          FMenuCursor := ItemIndex;
+          MenuActivate(ItemIndex);
+          Break;
+        end;
+      end;
+  end;
+end;
+
+procedure TFarView.MenuActivate(AIndex: Integer);
+var
+  Item: TFarMenuItem;
+  Kind: TFarMenuKind;
+  PanelIndex: Integer;
+  Panel: TFarPanel;
+begin
+  if (AIndex < 0) or (AIndex > High(FMenuItems)) then
+    Exit;
+  Item := FMenuItems[AIndex];
+  if Item.Separator then
+    Exit;
+  Kind := FMenuKind;
+  PanelIndex := FMenuPanel;
+  MenuClose;
+  case Kind of
+    fmDrive:
+      if Item.Data <> '' then
+        SelectDrive(PanelIndex, Item.Data[1]);
+    fmSort:
+      begin
+        Panel := FPanels[PanelIndex];
+        if Item.Tag <= Ord(High(TFarSortMode)) then
+          SetSort(Panel, TFarSortMode(Item.Tag))
+        else if Item.Tag = 100 then
+          ToggleSelFirst(Panel)
+        else if Item.Tag = 101 then
+        begin
+          Panel.FDirsFirst := not Panel.FDirsFirst;
+          Panel.Resort;
+          EnsureVisible(Panel);
+        end;
+      end;
+    fmHistory:
+      if FarDirExists(Item.Data) then
+        ChangeDir(ActivePanel, Item.Data, '')
+      else
+        Status('unIDE FAR: папки нет: ' + Item.Data);
+  end;
+  Invalidate;
+end;
+
+// Номер пункта меню под точкой (клиентские координаты); -1 - не пункт
+function TFarView.MenuItemAt(AX, AY: Integer): Integer;
+var
+  Col, Row: Integer;
+begin
+  Result := -1;
+  if FMenuRows <= 0 then
+    Exit;
+  Col := AX div FCellW;
+  Row := AY div FCellH;
+  if (Col <= FMenuLeft) or (Col >= FMenuLeft + FMenuWidth - 1) then
+    Exit;
+  if (Row <= FMenuTopRow) or (Row > FMenuTopRow + FMenuRows) then
+    Exit;
+  Result := FMenuTop + Row - FMenuTopRow - 1;
+  if (Result > High(FMenuItems)) or FMenuItems[Result].Separator then
+    Result := -1;
+end;
+
+procedure TFarView.DrawMenu;
+var
+  ItemIndex, RowIndex, MaxW, ItemW, BoxW, BoxH, AreaX, AreaW, RowY: Integer;
+  TextW, HotPos, SepY: Integer;
+  Item: TFarMenuItem;
+  ItemText: WideString;
+  Back, Fore, HotFore: TColor;
+begin
+  MaxW := Length(FMenuTitle) + 4;
+  for ItemIndex := 0 to High(FMenuItems) do
+  begin
+    ItemW := Length(FarStripAmp(FMenuItems[ItemIndex].Text, HotPos)) + 2;
+    if FMenuItems[ItemIndex].RightText <> '' then
+      Inc(ItemW, Length(FMenuItems[ItemIndex].RightText) + 3);
+    if ItemW > MaxW then
+      MaxW := ItemW;
+  end;
+  BoxW := MaxW + 4;
+  if BoxW > FCols - 2 then
+    BoxW := FCols - 2;
+  if BoxW < 10 then
+    Exit;
+  FMenuRows := Length(FMenuItems);
+  if FMenuRows > PanelHeight - 4 then
+    FMenuRows := PanelHeight - 4;
+  if FMenuRows < 1 then
+    FMenuRows := 1;
+  BoxH := FMenuRows + 2;
+  FMenuWidth := BoxW;
+
+  // Смена диска и сортировка - над своей панелью, история - посередине
+  if FMenuKind = fmHistory then
+  begin
+    AreaX := 0;
+    AreaW := FCols;
+  end
+  else
+    PanelBounds(FMenuPanel, AreaX, AreaW);
+  FMenuLeft := AreaX + (AreaW - BoxW) div 2;
+  if FMenuLeft + BoxW > FCols then
+    FMenuLeft := FCols - BoxW;
+  if FMenuLeft < 0 then
+    FMenuLeft := 0;
+  FMenuTopRow := (PanelHeight - BoxH) div 2;
+  if FMenuTopRow < 0 then
+    FMenuTopRow := 0;
+
+  if FMenuCursor < FMenuTop then
+    FMenuTop := FMenuCursor;
+  if FMenuCursor >= FMenuTop + FMenuRows then
+    FMenuTop := FMenuCursor - FMenuRows + 1;
+  if FMenuTop > Length(FMenuItems) - FMenuRows then
+    FMenuTop := Length(FMenuItems) - FMenuRows;
+  if FMenuTop < 0 then
+    FMenuTop := 0;
+
+  for RowIndex := FMenuTopRow to FMenuTopRow + BoxH - 1 do
+    FillCells(FMenuLeft, RowIndex, BoxW, FarCyan);
+  DrawBox(FMenuLeft, FMenuTopRow, FMenuLeft + BoxW - 1,
+    FMenuTopRow + BoxH - 1, FarWhite);
+  PutCentered(FMenuLeft, FMenuTopRow, BoxW, ' ' + FMenuTitle + ' ', FarWhite,
+    FarCyan);
+  // Пункты выше / ниже видимых - стрелки на рамке
+  if FMenuTop > 0 then
+    PutText(FMenuLeft + BoxW - 2, FMenuTopRow, 1, '^', FarYellow, FarCyan);
+  if FMenuTop + FMenuRows < Length(FMenuItems) then
+    PutText(FMenuLeft + BoxW - 2, FMenuTopRow + BoxH - 1, 1, 'v', FarYellow,
+      FarCyan);
+
+  for RowIndex := 0 to FMenuRows - 1 do
+  begin
+    ItemIndex := FMenuTop + RowIndex;
+    if ItemIndex > High(FMenuItems) then
+      Break;
+    Item := FMenuItems[ItemIndex];
+    RowY := FMenuTopRow + 1 + RowIndex;
+    if Item.Separator then
+    begin
+      SepY := RowY * FCellH + FCellH div 2;
+      with FBuffer.Canvas do
+      begin
+        Pen.Color := FarWhite;
+        MoveTo(FMenuLeft * FCellW + FCellW div 2 + 2, SepY);
+        LineTo((FMenuLeft + BoxW - 1) * FCellW + FCellW div 2 - 1, SepY);
+      end;
+      Continue;
+    end;
+    Fore := FarWhite;
+    HotFore := FarYellow;
+    if ItemIndex = FMenuCursor then
+      Back := FarBlack
+    else
+      Back := FarCyan;
+    FillCells(FMenuLeft + 1, RowY, BoxW - 2, Back);
+    PutText(FMenuLeft + 2, RowY, 1, Item.Mark, Fore, Back);
+    ItemText := FarStripAmp(Item.Text, HotPos);
+    TextW := BoxW - 6;
+    if Item.RightText <> '' then
+      Dec(TextW, Length(Item.RightText) + 1);
+    if FMenuKind = fmHistory then
+      ItemText := FarFitPath(ItemText, TextW)
+    else
+      ItemText := FarFitName(ItemText, TextW);
+    PutText(FMenuLeft + 4, RowY, TextW, ItemText, Fore, Back);
+    if (HotPos > 0) and (HotPos <= Length(ItemText)) then
+      PutText(FMenuLeft + 4 + HotPos - 1, RowY, 1, ItemText[HotPos], HotFore,
+        Back);
+    if Item.RightText <> '' then
+      PutText(FMenuLeft + BoxW - 2 - Length(Item.RightText), RowY,
+        Length(Item.RightText), Item.RightText, Fore, Back);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Сортировка (Ctrl+F12, Ctrl+F3 .. Ctrl+F9, Shift+F12)
+// ---------------------------------------------------------------------------
+
+procedure TFarView.SetSort(APanel: TFarPanel; AMode: TFarSortMode);
+begin
+  // Та же сортировка ещё раз - обратный порядок (так в FAR)
+  if APanel.FSortMode = AMode then
+    APanel.FSortReverse := not APanel.FSortReverse
+  else
+  begin
+    APanel.FSortMode := AMode;
+    APanel.FSortReverse := False;
+  end;
+  APanel.Resort;
+  EnsureVisible(APanel);
+  Invalidate;
+end;
+
+procedure TFarView.ToggleSelFirst(APanel: TFarPanel);
+begin
+  APanel.FSelFirst := not APanel.FSelFirst;
+  APanel.Resort;
+  EnsureVisible(APanel);
+  Invalidate;
+end;
+
+procedure TFarView.ShowSortMenu;
+const
+  SortTexts: array[TFarSortMode] of string = ('&Name', 'E&xtension',
+    '&Write time', '&Size', '&Unsorted', '&Creation time', '&Access time');
+  SortKeys: array[TFarSortMode] of string = ('Ctrl+F3', 'Ctrl+F4', 'Ctrl+F5',
+    'Ctrl+F6', 'Ctrl+F7', 'Ctrl+F8', 'Ctrl+F9');
+var
+  Items: TFarMenuItems;
+  Mode: TFarSortMode;
+  Panel: TFarPanel;
+  ItemIndex: Integer;
+begin
+  Panel := ActivePanel;
+  SetLength(Items, Ord(High(TFarSortMode)) + 1 + 3);
+  ItemIndex := 0;
+  for Mode := Low(TFarSortMode) to High(TFarSortMode) do
+  begin
+    Items[ItemIndex].Text := SortTexts[Mode];
+    Items[ItemIndex].RightText := SortKeys[Mode];
+    Items[ItemIndex].Mark := ' ';
+    if Mode = Panel.FSortMode then
+    begin
+      if Panel.FSortReverse then
+        Items[ItemIndex].Mark := '-'
+      else
+        Items[ItemIndex].Mark := '+';
+    end;
+    Items[ItemIndex].Separator := False;
+    Items[ItemIndex].Tag := Ord(Mode);
+    Inc(ItemIndex);
+  end;
+  Items[ItemIndex].Separator := True;
+  Inc(ItemIndex);
+  Items[ItemIndex].Text := 'Show selected f&irst';
+  Items[ItemIndex].RightText := 'Shift+F12';
+  Items[ItemIndex].Separator := False;
+  Items[ItemIndex].Tag := 100;
+  if Panel.FSelFirst then
+    Items[ItemIndex].Mark := FarCheckMark
+  else
+    Items[ItemIndex].Mark := ' ';
+  Inc(ItemIndex);
+  Items[ItemIndex].Text := 'Show &directories first';
+  Items[ItemIndex].RightText := '';
+  Items[ItemIndex].Separator := False;
+  Items[ItemIndex].Tag := 101;
+  if Panel.FDirsFirst then
+    Items[ItemIndex].Mark := FarCheckMark
+  else
+    Items[ItemIndex].Mark := ' ';
+  MenuOpen(fmSort, 'Sort by', Items, Ord(Panel.FSortMode), FActive);
+end;
+
+// ---------------------------------------------------------------------------
+//  Смена диска (Alt+F1 - левая панель, Alt+F2 - правая)
+// ---------------------------------------------------------------------------
+
+procedure TFarView.ShowDriveMenu(APanelIndex: Integer);
+var
+  Items: TFarMenuItems;
+  DriveMask: DWORD;
+  DriveIndex, CurrentDrive, CursorIndex: Integer;
+  Root, TypeText, VolumeLabel: WideString;
+  LabelBuffer: array[0..MAX_PATH] of WideChar;
+  DriveType: UINT;
+  OldMode: UINT;
+begin
+  CurrentDrive := FarDriveIndex(FPanels[APanelIndex].Path);
+  CursorIndex := 0;
+  SetLength(Items, 0);
+  DriveMask := GetLogicalDrives;
+  // Нет диска в дисководе - без окна Windows с ошибкой
+  OldMode := FarSetErrorMode(FarSemFailCritical);
+  try
+    for DriveIndex := 0 to 25 do
+    begin
+      if DriveMask and (DWORD(1) shl DriveIndex) = 0 then
+        Continue;
+      Root := WideChar(Ord('A') + DriveIndex) + ':\';
+      DriveType := FarGetDriveType(PWideChar(Root));
+      case DriveType of
+        FarDriveRemovable: TypeText := 'removable';
+        FarDriveFixed: TypeText := 'fixed';
+        FarDriveRemote: TypeText := 'network';
+        FarDriveCdRom: TypeText := 'CD-ROM';
+        FarDriveRamDisk: TypeText := 'RAM disk';
+      else
+        TypeText := '';
+      end;
+      // Метка - только у жёстких и RAM-дисков: у сменных, CD и сетевых
+      // чтение может ждать устройство или сеть
+      VolumeLabel := '';
+      if (DriveType = FarDriveFixed) or (DriveType = FarDriveRamDisk) then
+      begin
+        LabelBuffer[0] := #0;
+        if FarGetVolumeInfo(PWideChar(Root), LabelBuffer, MAX_PATH, nil, nil,
+             nil, nil, 0) then
+          VolumeLabel := PWideChar(@LabelBuffer[0]);
+      end;
+      SetLength(Items, Length(Items) + 1);
+      with Items[High(Items)] do
+      begin
+        Text := '&' + WideChar(Ord('A') + DriveIndex) + ':  ' +
+          FarPadRight(TypeText, 10) + '  ' + FarEscapeAmp(VolumeLabel);
+        RightText := '';
+        Mark := ' ';
+        Separator := False;
+        Data := WideChar(Ord('A') + DriveIndex);
+        Tag := DriveIndex;
+      end;
+      if DriveIndex = CurrentDrive then
+        CursorIndex := High(Items);
+    end;
+  finally
+    FarSetErrorMode(OldMode);
+  end;
+  MenuOpen(fmDrive, 'Change drive', Items, CursorIndex, APanelIndex);
+end;
+
+procedure TFarView.SelectDrive(APanelIndex: Integer; ALetter: WideChar);
+var
+  Root, Target: WideString;
+  DriveIndex: Integer;
+  OldMode: UINT;
+begin
+  Root := ALetter + ':\';
+  DriveIndex := FarDriveIndex(Root);
+  if DriveIndex < 0 then
+    Exit;
+  OldMode := FarSetErrorMode(FarSemFailCritical);
+  try
+    if not FarDirExists(Root) then
+    begin
+      Status('unIDE FAR: диск ' + Root + ' не готов');
+      Exit;
+    end;
+    // На диск - в папку, где были на нём последний раз
+    Target := FDriveLast[DriveIndex];
+    if (Target = '') or not FarDirExists(Target) then
+      Target := Root;
+    FActive := APanelIndex;
+    ChangeDir(FPanels[APanelIndex], Target, '');
+  finally
+    FarSetErrorMode(OldMode);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  История папок (Alt+F12): общая для обеих панелей, до FarHistoryMax
+// ---------------------------------------------------------------------------
+
+procedure TFarView.HistoryAdd(const APath: WideString);
+var
+  HistoryIndex, MoveIndex: Integer;
+begin
+  if APath = '' then
+    Exit;
+  for HistoryIndex := High(FHistory) downto 0 do
+    if FarSameName(FHistory[HistoryIndex], APath) then
+    begin
+      for MoveIndex := HistoryIndex to High(FHistory) - 1 do
+        FHistory[MoveIndex] := FHistory[MoveIndex + 1];
+      SetLength(FHistory, Length(FHistory) - 1);
+    end;
+  SetLength(FHistory, Length(FHistory) + 1);
+  FHistory[High(FHistory)] := APath;
+  if Length(FHistory) > FarHistoryMax then
+  begin
+    for MoveIndex := 0 to FarHistoryMax - 1 do
+      FHistory[MoveIndex] := FHistory[MoveIndex + Length(FHistory) -
+        FarHistoryMax];
+    SetLength(FHistory, FarHistoryMax);
+  end;
+end;
+
+procedure TFarView.ShowHistoryMenu;
+var
+  Items: TFarMenuItems;
+  HistoryIndex: Integer;
+  ShownPath: WideString;
+begin
+  if Length(FHistory) = 0 then
+  begin
+    Status('unIDE FAR: история папок пуста');
+    Exit;
+  end;
+  SetLength(Items, Length(FHistory));
+  for HistoryIndex := 0 to High(FHistory) do
+  begin
+    ShownPath := FHistory[HistoryIndex];
+    if (Length(ShownPath) > 3) and (ShownPath[Length(ShownPath)] = '\') then
+      SetLength(ShownPath, Length(ShownPath) - 1);
+    Items[HistoryIndex].Text := FarEscapeAmp(ShownPath);
+    Items[HistoryIndex].RightText := '';
+    Items[HistoryIndex].Mark := ' ';
+    Items[HistoryIndex].Separator := False;
+    Items[HistoryIndex].Data := FHistory[HistoryIndex];
+    Items[HistoryIndex].Tag := HistoryIndex;
+  end;
+  MenuOpen(fmHistory, 'Folders history', Items, High(Items), FActive);
+end;
+
+// ---------------------------------------------------------------------------
 //  Состояние в editor.ini, раздел [Far]
 // ---------------------------------------------------------------------------
 
@@ -2589,16 +3469,52 @@ procedure TFarView.LoadState(const AIniName: string;
 const
   PathKeys: array[0..1] of string = ('LeftPath', 'RightPath');
   FileKeys: array[0..1] of string = ('LeftFile', 'RightFile');
+  SidePrefix: array[0..1] of string = ('Left', 'Right');
 var
   Ini: TBufIniFile;
-  PanelIndex: Integer;
+  PanelIndex, DriveIndex, HistoryCount, HistoryIndex, SortIndex: Integer;
   SavedPath, SavedFile, ChildName: WideString;
   ErrorText: string;
 begin
   Ini := TBufIniFile.Create(AIniName);
   try
+    // Последние папки дисков и история папок
+    for DriveIndex := 0 to 25 do
+      FDriveLast[DriveIndex] := FarDecodePath(Ini.ReadString(FarIniSection,
+        'Drive' + Chr(Ord('A') + DriveIndex), ''));
+    HistoryCount := Ini.ReadInteger(FarHistorySection, 'Count', 0);
+    if HistoryCount > FarHistoryMax then
+      HistoryCount := FarHistoryMax;
+    if HistoryCount < 0 then
+      HistoryCount := 0;
+    SetLength(FHistory, 0);
+    for HistoryIndex := 1 to HistoryCount do
+    begin
+      SavedPath := FarDecodePath(Ini.ReadString(FarHistorySection,
+        'Folder' + IntToStr(HistoryIndex), ''));
+      if SavedPath <> '' then
+      begin
+        SetLength(FHistory, Length(FHistory) + 1);
+        FHistory[High(FHistory)] := SavedPath;
+      end;
+    end;
+
     for PanelIndex := 0 to 1 do
     begin
+      // Сортировка панели - до чтения папки
+      SortIndex := Ini.ReadInteger(FarIniSection,
+        SidePrefix[PanelIndex] + 'Sort', 0);
+      if (SortIndex < Ord(Low(TFarSortMode))) or
+         (SortIndex > Ord(High(TFarSortMode))) then
+        SortIndex := 0;
+      FPanels[PanelIndex].FSortMode := TFarSortMode(SortIndex);
+      FPanels[PanelIndex].FSortReverse := Ini.ReadInteger(FarIniSection,
+        SidePrefix[PanelIndex] + 'SortReverse', 0) <> 0;
+      FPanels[PanelIndex].FDirsFirst := Ini.ReadInteger(FarIniSection,
+        SidePrefix[PanelIndex] + 'DirsFirst', 1) <> 0;
+      FPanels[PanelIndex].FSelFirst := Ini.ReadInteger(FarIniSection,
+        SidePrefix[PanelIndex] + 'SelFirst', 0) <> 0;
+
       SavedPath := FarDecodePath(Ini.ReadString(FarIniSection,
         PathKeys[PanelIndex], ''));
       SavedFile := FarDecodePath(Ini.ReadString(FarIniSection,
@@ -2628,15 +3544,40 @@ procedure TFarView.SaveState(const AIniName: string);
 const
   PathKeys: array[0..1] of string = ('LeftPath', 'RightPath');
   FileKeys: array[0..1] of string = ('LeftFile', 'RightFile');
+  SidePrefix: array[0..1] of string = ('Left', 'Right');
 var
   Ini: TBufIniFile;
-  PanelIndex: Integer;
+  PanelIndex, DriveIndex, HistoryIndex: Integer;
   CurrentName: WideString;
+  DriveKey: string;
 begin
   Ini := TBufIniFile.Create(AIniName);
   try
+    for DriveIndex := 0 to 25 do
+    begin
+      DriveKey := 'Drive' + Chr(Ord('A') + DriveIndex);
+      if FDriveLast[DriveIndex] <> '' then
+        Ini.WriteString(FarIniSection, DriveKey,
+          FarEncodePath(FDriveLast[DriveIndex]))
+      else if Ini.ReadString(FarIniSection, DriveKey, '') <> '' then
+        Ini.DeleteKey(FarIniSection, DriveKey);
+    end;
+    Ini.EraseSection(FarHistorySection);
+    Ini.WriteInteger(FarHistorySection, 'Count', Length(FHistory));
+    for HistoryIndex := 0 to High(FHistory) do
+      Ini.WriteString(FarHistorySection, 'Folder' + IntToStr(HistoryIndex + 1),
+        FarEncodePath(FHistory[HistoryIndex]));
     for PanelIndex := 0 to 1 do
     begin
+      Ini.WriteInteger(FarIniSection, SidePrefix[PanelIndex] + 'Sort',
+        Ord(FPanels[PanelIndex].FSortMode));
+      Ini.WriteInteger(FarIniSection, SidePrefix[PanelIndex] + 'SortReverse',
+        Ord(FPanels[PanelIndex].FSortReverse));
+      Ini.WriteInteger(FarIniSection, SidePrefix[PanelIndex] + 'DirsFirst',
+        Ord(FPanels[PanelIndex].FDirsFirst));
+      Ini.WriteInteger(FarIniSection, SidePrefix[PanelIndex] + 'SelFirst',
+        Ord(FPanels[PanelIndex].FSelFirst));
+
       Ini.WriteString(FarIniSection, PathKeys[PanelIndex],
         FarEncodePath(FPanels[PanelIndex].Path));
       CurrentName := '';
