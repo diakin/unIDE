@@ -311,6 +311,11 @@ type
     // Вкладка показана просмотром по формату (F12, Txt / Fmt), а не
     // текстом. См. FmtApplyTab
     FmtShown: Boolean;
+
+    // Меню редактора - «Очистить формат»: у этой вкладки направляющие
+    // отступов не рисуются (журналы и другой текст, где отступ - не
+    // структура). Только на время работы, в editor.ini не пишется
+    NoGuides: Boolean;
   end;
 
 type
@@ -553,6 +558,7 @@ type
     pmuSelectAll: TMenuItem;
     pmuSepClear: TMenuItem;
     pmuClear: TMenuItem;
+    pmuNoGuides: TMenuItem;
     pmuSepCase: TMenuItem;
     pmuUpper: TMenuItem;
     pmuLower: TMenuItem;
@@ -832,6 +838,7 @@ type
     function  EnterIndentText: string;
     procedure ShiftDepthForEdit;
     procedure ClearAllClick(Sender: TObject);
+    procedure NoGuidesClick(Sender: TObject);
     procedure CaseConvertClick(Sender: TObject);
     procedure LogPopupPopup(Sender: TObject);
     procedure ReloadFileClick(Sender: TObject);
@@ -7903,6 +7910,7 @@ begin
   FWindows[Idx].HasBom := FFileHasBom;
   FWindows[Idx].Broken := False;
   FWindows[Idx].WorkMs := 0;
+  FWindows[Idx].NoGuides := False;
 
   // Последний загруженный файл и становится текущим
   ActivateWindow(Idx);
@@ -7940,6 +7948,7 @@ begin
   FWindows[Idx].HasBom := False;
   FWindows[Idx].Broken := False;
   FWindows[Idx].WorkMs := 0;
+  FWindows[Idx].NoGuides := False;
 
   ActivateWindow(Idx);
   // У нового файла нет пути на диске, поэтому FCurrentFileName пустой:
@@ -9792,6 +9801,7 @@ begin
     FWindows[I].Modified := False;
     FWindows[I].Broken := False;
     FWindows[I].FmtShown := False;
+    FWindows[I].NoGuides := False;
     FWindows[I].MapValid := False;
     SetLength(FWindows[I].CommentRanges, 0);
     SetLength(FWindows[I].StringRanges, 0);
@@ -18138,6 +18148,7 @@ begin
   FWindows[WinIdx].Modified := False;
   FWindows[WinIdx].Broken := False;
   FWindows[WinIdx].FmtShown := False;
+  FWindows[WinIdx].NoGuides := False;
   FWindows[WinIdx].MapValid := False;
   SetLength(FWindows[WinIdx].CommentRanges, 0);
   SetLength(FWindows[WinIdx].StringRanges, 0);
@@ -19956,6 +19967,17 @@ var
 begin
   if pmuSearch = nil then
     Exit;
+
+  // Очистить формат / Вернуть формат - направляющие отступов вкладки; есть,
+  // только когда направляющие включены в настройках
+  if pmuNoGuides <> nil then
+  begin
+    pmuNoGuides.Visible := FUseHotTab and (FWindowsIndex >= 0);
+    if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].NoGuides then
+      pmuNoGuides.Caption := 'Вернуть формат'
+    else
+      pmuNoGuides.Caption := 'Очистить формат';
+  end;
 
   // Вкладка с просмотром по формату: "Как текст" / "По формату" (меню
   // редактора - значит, сейчас текст)
@@ -57903,6 +57925,7 @@ FWindows[Idx].CursorPos := 0;
   FWindows[Idx].HasBom := False;
   FWindows[Idx].Broken := False;
   FWindows[Idx].WorkMs := 0;
+  FWindows[Idx].NoGuides := False;
 
   ActivateWindow(Idx);
   FCurrentFileName := '';
@@ -65492,6 +65515,18 @@ begin
   UpdateStatusBarInfo;
 end;
 
+// Меню редактора - Очистить формат: у активной вкладки не рисовать
+// направляющие отступов (вертикальные линии уровней); ещё раз - Вернуть
+// формат. Текст не меняется
+procedure TForm1.NoGuidesClick(Sender: TObject);
+begin
+  if (FWindowsIndex < 0) or (FWindowsIndex >= WindowsItemCount) or
+     not FWindows[FWindowsIndex].Used then
+    Exit;
+  FWindows[FWindowsIndex].NoGuides := not FWindows[FWindowsIndex].NoGuides;
+  RichEdit1.Invalidate;
+end;
+
 // Границы слова под кареткой; False - каретка не на слове
 function TForm1.WordRangeAtCaret(var ASel: TCharRange): Boolean;
 var
@@ -66748,6 +66783,8 @@ var
   HotTabBrushes: array[0..HotTabLevels - 1] of HBRUSH;
   // Метки у краёв окна (полоса уходит за край) - полным цветом уровня
   GuideMarkBrushes: array[0..HotTabLevels - 1] of HBRUSH;
+  // Вкладка с «Очистить формат» - направляющие отступов не рисуются
+  GuidesOff: Boolean;
   HB: Integer;
   CurrentLineIdx: Integer;
   LineStartCharIdx: Integer;
@@ -67826,6 +67863,10 @@ begin
     if CharW < 1 then
       CharW := 1;
 
+    // «Очистить формат» у вкладки - её направляющие отступов не рисуются
+    GuidesOff := (FWindowsIndex >= 0) and (FWindowsIndex < WindowsItemCount) and
+                 FWindows[FWindowsIndex].NoGuides;
+
     // Кисти направляющих создаём ОДИН раз на кадр, а не на каждую строку
     for HB := 0 to HotTabLevels - 1 do
       if FUseHotTab then
@@ -67881,7 +67922,7 @@ begin
       if LineLen <= 0 then
       begin
         LineStartX := Pt.X;
-        if FUseHotTab then
+        if FUseHotTab and not GuidesOff then
           DrawTabGuides;
         Continue;
       end;
@@ -68219,7 +68260,7 @@ begin
 
       // Направляющие отступов - последним слоем. Отступ стоит в начале
       // строки, и в окне, начатом не с неё, его нет.
-      if FUseHotTab and (WinStart = 1) then
+      if FUseHotTab and not GuidesOff and (WinStart = 1) then
         DrawTabGuides;
     end;
     Lap(FPerfTok);

@@ -1007,6 +1007,11 @@ object Form1: TForm1
       Caption = 'Clear'
       OnClick = ClearAllClick
     end
+    object pmuNoGuides: TMenuItem
+      Caption = 'Очистить формат'
+      Hint = 'Не рисовать вертикальные линии отступов в этой вкладке'
+      OnClick = NoGuidesClick
+    end
     object pmuSepCase: TMenuItem
       Caption = '-'
     end
