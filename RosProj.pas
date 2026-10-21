@@ -75,6 +75,18 @@ function RosPathFromStore(const ASourceDir, AValue: string): string;
 procedure RosLoadSettings(APrj: TProjectIni; const ASourceDir: string;
                           var ASettings: TRosSettings);
 procedure RosSaveSettings(APrj: TProjectIni; const ASettings: TRosSettings);
+// Папка исходников, для которой настроена папка сборки ABuildDir:
+// CMAKE_HOME_DIRECTORY из CMakeCache.txt, с \ вместо /, без \ в конце.
+// Кэша или ключа нет - пусто
+function RosCacheSourceDir(const ABuildDir: string): string;
+// AFirst и ASecond - одна папка (без учёта регистра, / и \ в конце)
+function RosSameDir(const AFirst, ASecond: string): Boolean;
+// Удаляет CMakeCache.txt в папке сборки и в её подпапках первого уровня
+// (host-tools настраивается отдельным cmake со своим кэшем, configure.cmd
+// его не трогает). Удалённые файлы - в ADeleted, не удалённые - в
+// AFailed. Результат - число удалённых
+function RosClearCaches(const ABuildDir: string;
+                        ADeleted, AFailed: TStrings): Integer;
 // Команда сборки: ninja -C "<папка сборки>" <цель>
 function RosNinjaCommand(const ASettings: TRosSettings): string;
 // Что и как будет собрано - строками для лога сборки
@@ -236,6 +248,100 @@ begin
   // Скрипт RosBE обычно вне дерева исходников - полный путь
   APrj.WriteString(RosSection, 'EnvScript', Trim(ASettings.EnvScript));
   APrj.WriteString(RosSection, 'PciVendors', Trim(ASettings.PciVendors));
+end;
+
+function RosCacheSourceDir(const ABuildDir: string): string;
+const
+  HomeKey = 'CMAKE_HOME_DIRECTORY:';
+var
+  CacheFile, Line, AnsiPath: string;
+  Cache: TStringList;
+  LineIdx, EqPos: Integer;
+begin
+  Result := '';
+  if Trim(ABuildDir) = '' then
+    Exit;
+  CacheFile := IncludeTrailingPathDelimiter(Trim(ABuildDir)) +
+               'CMakeCache.txt';
+  if not FileExists(CacheFile) then
+    Exit;
+  Cache := TStringList.Create;
+  try
+    try
+      Cache.LoadFromFile(CacheFile);
+    except
+      Exit;   // файл занят - проверки нет
+    end;
+    for LineIdx := 0 to Cache.Count - 1 do
+    begin
+      Line := Cache[LineIdx];
+      if Copy(Line, 1, Length(HomeKey)) <> HomeKey then
+        Continue;
+      EqPos := Pos('=', Line);
+      if EqPos = 0 then
+        Exit;
+      Result := Trim(Copy(Line, EqPos + 1, MaxInt));
+      // CMake пишет пути в UTF-8; русские буквы в пути - в ANSI
+      AnsiPath := Utf8ToAnsi(Result);
+      if AnsiPath <> '' then
+        Result := AnsiPath;
+      Result := ExcludeTrailingPathDelimiter(
+                  StringReplace(Result, '/', '\', [rfReplaceAll]));
+      Exit;
+    end;
+  finally
+    Cache.Free;
+  end;
+end;
+
+function RosSameDir(const AFirst, ASecond: string): Boolean;
+
+  function NormDir(const APath: string): string;
+  begin
+    Result := StringReplace(Trim(APath), '/', '\', [rfReplaceAll]);
+    if Result <> '' then
+      Result := ExcludeTrailingPathDelimiter(ExpandFileName(Result));
+  end;
+
+begin
+  Result := AnsiCompareText(NormDir(AFirst), NormDir(ASecond)) = 0;
+end;
+
+function RosClearCaches(const ABuildDir: string;
+                        ADeleted, AFailed: TStrings): Integer;
+var
+  Dir: string;
+  Found: TSearchRec;
+
+  procedure DropCache(const AFile: string);
+  begin
+    if not FileExists(AFile) then
+      Exit;
+    if DeleteFile(AFile) then
+    begin
+      Inc(Result);
+      ADeleted.Add(AFile);
+    end
+    else
+      AFailed.Add(AFile);
+  end;
+
+begin
+  Result := 0;
+  if Trim(ABuildDir) = '' then
+    Exit;
+  Dir := IncludeTrailingPathDelimiter(Trim(ABuildDir));
+  DropCache(Dir + 'CMakeCache.txt');
+  if FindFirst(Dir + '*', faDirectory, Found) = 0 then
+  try
+    repeat
+      if ((Found.Attr and faDirectory) <> 0) and (Found.Name <> '.') and
+         (Found.Name <> '..') then
+        DropCache(Dir + Found.Name + PathDelim + 'CMakeCache.txt');
+    until FindNext(Found) <> 0;
+  finally
+    FindClose(Found);
+  end;
 end;
 
 function RosNinjaCommand(const ASettings: TRosSettings): string;
