@@ -50049,12 +50049,14 @@ const
 
 function TForm1.CompileReactOS: Boolean;
 var
-  BuildPrj, NinjaFile, ImageFile, CacheSource, ProjectSource: string;
+  BuildPrj, NinjaFile, ImageFile, CacheSource, ProjectSource,
+  HostSource: string;
   RosCfg: TRosSettings;
   RosLines: TStringList;
   Prj: TProjectIni;
-  LineIdx, StepCode: Integer;
+  LineIdx, StepCode, FileIdx, DlgAnswer: Integer;
   NeedConfigure: Boolean;
+  DeletedCaches, FailedCaches: TStringList;
 begin
   Result := False;
   ShowCompLog;
@@ -50101,12 +50103,21 @@ begin
 
   // Папка сборки настроена для исходников в другом месте (дерево
   // перенесли или скопировали): ninja перезапустит CMake со старым путём и
-  // остановится. configure.cmd сам удаляет CMakeCache.txt и настраивает
-  // папку заново.
-  if not NeedConfigure then
+  // остановится, configure.cmd - тоже, на кэше host-tools (свой кэш в
+  // папке сборки он удаляет сам, а кэш host-tools - нет).
+  if RosCfg.BuildDir <> '' then
   begin
-    CacheSource := RosCacheSourceDir(RosCfg.BuildDir);
     ProjectSource := ExcludeTrailingPathDelimiter(RosCfg.SourceDir);
+    CacheSource := RosCacheSourceDir(RosCfg.BuildDir);
+    // Прошлый configure мог обновить главный кэш и остановиться на
+    // host-tools: тогда старый путь остался только в кэше host-tools
+    if (CacheSource = '') or RosSameDir(CacheSource, ProjectSource) then
+    begin
+      HostSource := RosCacheSourceDir(
+        IncludeTrailingPathDelimiter(RosCfg.BuildDir) + 'host-tools');
+      if (HostSource <> '') and not RosSameDir(HostSource, ProjectSource) then
+        CacheSource := HostSource;
+    end;
     if CacheSource = '' then
       LogComp('CMakeCache.txt: путь к исходникам не найден, проверки нет')
     else if RosSameDir(CacheSource, ProjectSource) then
@@ -50116,16 +50127,37 @@ begin
       LogComp('Папка сборки настроена для других исходников:');
       LogComp('  в CMakeCache.txt: ' + CacheSource);
       LogComp('  папка проекта:    ' + ProjectSource);
-      case MessageDlg('Папка сборки'#13#10 + RosCfg.BuildDir + #13#10 +
-                      'настроена для исходников в'#13#10 + CacheSource +
-                      #13#10'а исходники проекта - в'#13#10 + ProjectSource +
-                      #13#10#13#10'ninja с этой папкой остановится на ' +
-                      'перезапуске CMake.'#13#10#13#10'Запустить ' +
-                      'configure.cmd заново?'#13#10'Нет - всё равно ' +
-                      'запустить ninja.',
-                      mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+      // configure и так будет запущен - спрашивать не о чем
+      if NeedConfigure then
+        DlgAnswer := mrYes
+      else
+        DlgAnswer := MessageDlg('Папка сборки'#13#10 + RosCfg.BuildDir +
+          #13#10'настроена для исходников в'#13#10 + CacheSource +
+          #13#10'а исходники проекта - в'#13#10 + ProjectSource +
+          #13#10#13#10'ninja с этой папкой остановится на перезапуске ' +
+          'CMake.'#13#10#13#10'Удалить CMakeCache.txt (и в host-tools) и ' +
+          'запустить configure.cmd заново?'#13#10'Нет - всё равно ' +
+          'запустить ninja.', mtConfirmation, [mbYes, mbNo, mbCancel], 0);
+      case DlgAnswer of
         mrYes:
         begin
+          DeletedCaches := TStringList.Create;
+          FailedCaches := TStringList.Create;
+          try
+            RosClearCaches(RosCfg.BuildDir, DeletedCaches, FailedCaches);
+            for FileIdx := 0 to DeletedCaches.Count - 1 do
+              LogComp('Удалён ' + DeletedCaches[FileIdx]);
+            if FailedCaches.Count > 0 then
+            begin
+              for FileIdx := 0 to FailedCaches.Count - 1 do
+                LogComp('Не удалось удалить ' + FailedCaches[FileIdx]);
+              LogComp('Сборка остановлена: файл занят или нет прав');
+              Exit;
+            end;
+          finally
+            DeletedCaches.Free;
+            FailedCaches.Free;
+          end;
           NeedConfigure := True;
           LogComp('Перед ninja будет запущен configure.cmd');
         end;
@@ -50135,8 +50167,8 @@ begin
         LogComp('Сборка остановлена');
         Exit;
       end;
-      LogComp('');
     end;
+    LogComp('');
   end;
 
   CompDlgOpen(BuildPrj + '   ' + RosCfg.NinjaTarget);

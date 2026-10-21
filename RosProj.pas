@@ -81,6 +81,12 @@ procedure RosSaveSettings(APrj: TProjectIni; const ASettings: TRosSettings);
 function RosCacheSourceDir(const ABuildDir: string): string;
 // AFirst и ASecond - одна папка (без учёта регистра, / и \ в конце)
 function RosSameDir(const AFirst, ASecond: string): Boolean;
+// Удаляет CMakeCache.txt в папке сборки и в её подпапках первого уровня
+// (host-tools настраивается отдельным cmake со своим кэшем, configure.cmd
+// его не трогает). Удалённые файлы - в ADeleted, не удалённые - в
+// AFailed. Результат - число удалённых
+function RosClearCaches(const ABuildDir: string;
+                        ADeleted, AFailed: TStrings): Integer;
 // Команда сборки: ninja -C "<папка сборки>" <цель>
 function RosNinjaCommand(const ASettings: TRosSettings): string;
 // Что и как будет собрано - строками для лога сборки
@@ -299,6 +305,43 @@ function RosSameDir(const AFirst, ASecond: string): Boolean;
 
 begin
   Result := AnsiCompareText(NormDir(AFirst), NormDir(ASecond)) = 0;
+end;
+
+function RosClearCaches(const ABuildDir: string;
+                        ADeleted, AFailed: TStrings): Integer;
+var
+  Dir: string;
+  Found: TSearchRec;
+
+  procedure DropCache(const AFile: string);
+  begin
+    if not FileExists(AFile) then
+      Exit;
+    if DeleteFile(AFile) then
+    begin
+      Inc(Result);
+      ADeleted.Add(AFile);
+    end
+    else
+      AFailed.Add(AFile);
+  end;
+
+begin
+  Result := 0;
+  if Trim(ABuildDir) = '' then
+    Exit;
+  Dir := IncludeTrailingPathDelimiter(Trim(ABuildDir));
+  DropCache(Dir + 'CMakeCache.txt');
+  if FindFirst(Dir + '*', faDirectory, Found) = 0 then
+  try
+    repeat
+      if ((Found.Attr and faDirectory) <> 0) and (Found.Name <> '.') and
+         (Found.Name <> '..') then
+        DropCache(Dir + Found.Name + PathDelim + 'CMakeCache.txt');
+    until FindNext(Found) <> 0;
+  finally
+    FindClose(Found);
+  end;
 end;
 
 function RosNinjaCommand(const ASettings: TRosSettings): string;
