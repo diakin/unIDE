@@ -50107,7 +50107,11 @@ begin
   begin
     CacheSource := RosCacheSourceDir(RosCfg.BuildDir);
     ProjectSource := ExcludeTrailingPathDelimiter(RosCfg.SourceDir);
-    if (CacheSource <> '') and not RosSameDir(CacheSource, ProjectSource) then
+    if CacheSource = '' then
+      LogComp('CMakeCache.txt: путь к исходникам не найден, проверки нет')
+    else if RosSameDir(CacheSource, ProjectSource) then
+      LogComp('CMakeCache.txt: исходники совпадают с папкой проекта')
+    else
     begin
       LogComp('Папка сборки настроена для других исходников:');
       LogComp('  в CMakeCache.txt: ' + CacheSource);
