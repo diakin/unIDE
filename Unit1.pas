@@ -50049,7 +50049,7 @@ const
 
 function TForm1.CompileReactOS: Boolean;
 var
-  BuildPrj, NinjaFile, ImageFile: string;
+  BuildPrj, NinjaFile, ImageFile, CacheSource, ProjectSource: string;
   RosCfg: TRosSettings;
   RosLines: TStringList;
   Prj: TProjectIni;
@@ -50098,6 +50098,42 @@ begin
   NeedConfigure := (RosCfg.BuildDir = '') or
     not FileExists(IncludeTrailingPathDelimiter(RosCfg.BuildDir) +
                    'build.ninja');
+
+  // Папка сборки настроена для исходников в другом месте (дерево
+  // перенесли или скопировали): ninja перезапустит CMake со старым путём и
+  // остановится. configure.cmd сам удаляет CMakeCache.txt и настраивает
+  // папку заново.
+  if not NeedConfigure then
+  begin
+    CacheSource := RosCacheSourceDir(RosCfg.BuildDir);
+    ProjectSource := ExcludeTrailingPathDelimiter(RosCfg.SourceDir);
+    if (CacheSource <> '') and not RosSameDir(CacheSource, ProjectSource) then
+    begin
+      LogComp('Папка сборки настроена для других исходников:');
+      LogComp('  в CMakeCache.txt: ' + CacheSource);
+      LogComp('  папка проекта:    ' + ProjectSource);
+      case MessageDlg('Папка сборки'#13#10 + RosCfg.BuildDir + #13#10 +
+                      'настроена для исходников в'#13#10 + CacheSource +
+                      #13#10'а исходники проекта - в'#13#10 + ProjectSource +
+                      #13#10#13#10'ninja с этой папкой остановится на ' +
+                      'перезапуске CMake.'#13#10#13#10'Запустить ' +
+                      'configure.cmd заново?'#13#10'Нет - всё равно ' +
+                      'запустить ninja.',
+                      mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+        mrYes:
+        begin
+          NeedConfigure := True;
+          LogComp('Перед ninja будет запущен configure.cmd');
+        end;
+        mrNo:
+          LogComp('ninja без configure - выбрано вручную');
+      else
+        LogComp('Сборка остановлена');
+        Exit;
+      end;
+      LogComp('');
+    end;
+  end;
 
   CompDlgOpen(BuildPrj + '   ' + RosCfg.NinjaTarget);
   FCompDlg.Caption := 'Сборка ReactOS';

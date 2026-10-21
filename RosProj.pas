@@ -75,6 +75,12 @@ function RosPathFromStore(const ASourceDir, AValue: string): string;
 procedure RosLoadSettings(APrj: TProjectIni; const ASourceDir: string;
                           var ASettings: TRosSettings);
 procedure RosSaveSettings(APrj: TProjectIni; const ASettings: TRosSettings);
+// Папка исходников, для которой настроена папка сборки ABuildDir:
+// CMAKE_HOME_DIRECTORY из CMakeCache.txt, с \ вместо /, без \ в конце.
+// Кэша или ключа нет - пусто
+function RosCacheSourceDir(const ABuildDir: string): string;
+// AFirst и ASecond - одна папка (без учёта регистра, / и \ в конце)
+function RosSameDir(const AFirst, ASecond: string): Boolean;
 // Команда сборки: ninja -C "<папка сборки>" <цель>
 function RosNinjaCommand(const ASettings: TRosSettings): string;
 // Что и как будет собрано - строками для лога сборки
@@ -236,6 +242,63 @@ begin
   // Скрипт RosBE обычно вне дерева исходников - полный путь
   APrj.WriteString(RosSection, 'EnvScript', Trim(ASettings.EnvScript));
   APrj.WriteString(RosSection, 'PciVendors', Trim(ASettings.PciVendors));
+end;
+
+function RosCacheSourceDir(const ABuildDir: string): string;
+const
+  HomeKey = 'CMAKE_HOME_DIRECTORY:';
+var
+  CacheFile, Line, AnsiPath: string;
+  Cache: TStringList;
+  LineIdx, EqPos: Integer;
+begin
+  Result := '';
+  if Trim(ABuildDir) = '' then
+    Exit;
+  CacheFile := IncludeTrailingPathDelimiter(Trim(ABuildDir)) +
+               'CMakeCache.txt';
+  if not FileExists(CacheFile) then
+    Exit;
+  Cache := TStringList.Create;
+  try
+    try
+      Cache.LoadFromFile(CacheFile);
+    except
+      Exit;   // файл занят - проверки нет
+    end;
+    for LineIdx := 0 to Cache.Count - 1 do
+    begin
+      Line := Cache[LineIdx];
+      if Copy(Line, 1, Length(HomeKey)) <> HomeKey then
+        Continue;
+      EqPos := Pos('=', Line);
+      if EqPos = 0 then
+        Exit;
+      Result := Trim(Copy(Line, EqPos + 1, MaxInt));
+      // CMake пишет пути в UTF-8; русские буквы в пути - в ANSI
+      AnsiPath := Utf8ToAnsi(Result);
+      if AnsiPath <> '' then
+        Result := AnsiPath;
+      Result := ExcludeTrailingPathDelimiter(
+                  StringReplace(Result, '/', '\', [rfReplaceAll]));
+      Exit;
+    end;
+  finally
+    Cache.Free;
+  end;
+end;
+
+function RosSameDir(const AFirst, ASecond: string): Boolean;
+
+  function NormDir(const APath: string): string;
+  begin
+    Result := StringReplace(Trim(APath), '/', '\', [rfReplaceAll]);
+    if Result <> '' then
+      Result := ExcludeTrailingPathDelimiter(ExpandFileName(Result));
+  end;
+
+begin
+  Result := AnsiCompareText(NormDir(AFirst), NormDir(ASecond)) = 0;
 end;
 
 function RosNinjaCommand(const ASettings: TRosSettings): string;
