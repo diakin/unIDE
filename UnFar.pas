@@ -53,7 +53,12 @@ unit UnFar;
 //      Ctrl+] - путь левой / правой панели, Ctrl+S / Ctrl+D - каретка,
 //      Ctrl+O - спрятать / показать панели (виден весь вывод), Ctrl+Break -
 //      прервать команду. Свои команды: cd, X:, cls. Пока строка не пуста,
-//      Del и Backspace правят её, файлы не удаляются.
+//      Del и Backspace правят её, файлы не удаляются;
+//    - b.19: Enter (и двойной щелчок) на файле: exe, com, bat, cmd -
+//      выполнить, как команду (вывод - под панелями), остальные - открыть
+//      программой по ассоциации (ShellExecute; ассоциации нет - окно
+//      «Открыть с помощью»). Shift+Enter - открыть в своём окне (exe -
+//      в отдельном окне, папку - в Проводнике).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -83,7 +88,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.18';
+  FarBuild = 'b.19';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -345,6 +350,8 @@ type
     procedure StartDelete(ACurrentOnly, APermanent: Boolean);
     procedure DoCopyMove(AMove: Boolean; const ATarget: WideString);
     procedure DoMkDir(const AName: WideString);
+    procedure OpenItem(ASeparate: Boolean);
+    procedure ShellOpen(const AFile, ADir: WideString);
     procedure DoDelete;
     procedure EditCurrent;
     procedure StartEditNew;
@@ -509,6 +516,7 @@ const
   FarCmdHistorySection = 'FarCmdHistory';
   FarVkLeftBracket = $DB;          // VK_OEM_4: '['
   FarVkRightBracket = $DD;         // VK_OEM_6: ']'
+  FarSeErrNoAssoc = 31;            // SE_ERR_NOASSOC: нет программы для файла
   FarInvalidAttr = $FFFFFFFF;
 
   // Кейбар: подписи FAR (far\farlang.templ.m4) для того, что есть или
@@ -653,6 +661,9 @@ function FarCreateProcess(AAppName, ACommandLine: PWideChar;
   var AStartupInfo: TFarStartupInfo;
   var AProcessInfo: TFarProcessInfo): BOOL; stdcall;
   external 'kernel32.dll' name 'CreateProcessW';
+function FarShellExecute(AWnd: HWND; AOperation, AFile, AParameters,
+  ADirectory: PWideChar; AShowCmd: Integer): THandle; stdcall;
+  external 'shell32.dll' name 'ShellExecuteW';
 function FarCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
   ASecurity: Pointer; ADisposition, AFlags: DWORD;
   ATemplate: THandle): THandle; stdcall;
@@ -858,6 +869,20 @@ begin
   while (LastPos >= FirstPos) and (AText[LastPos] <= ' ') do
     Dec(LastPos);
   Result := Copy(AText, FirstPos, LastPos - FirstPos + 1);
+end;
+
+// Имя для вставки в строку: с пробелом - в кавычках
+function FarQuoteName(const AName: WideString): WideString;
+var
+  CharIndex: Integer;
+begin
+  Result := AName;
+  for CharIndex := 1 to Length(AName) do
+    if AName[CharIndex] = ' ' then
+    begin
+      Result := WideString('"') + AName + WideString('"');
+      Exit;
+    end;
 end;
 
 function FarSameName(const ANameA, ANameB: WideString): Boolean;
@@ -2277,8 +2302,10 @@ begin
   if (FDlgKind <> fdNone) or (FMenuKind <> fmNone) then
     Exit;
   CursorPos := ScreenToClient(Mouse.CursorPos);
+  if FPanelsHidden or (CursorPos.Y div FCellH >= PanelHeight) then
+    Exit;
   if ItemAt(CursorPos.X, CursorPos.Y, PanelIndex, ItemIndex) then
-    EnterItem;
+    OpenItem(False);   // как Enter: папка - войти, файл - выполнить / открыть
 end;
 
 procedure TFarView.WMMouseWheel(var Message: TWMMouseWheel);
@@ -2589,11 +2616,8 @@ begin
           FActive := 1 - FActive;
           Invalidate;
         end;
-      VK_RETURN:
-        if not AShift then
-          EnterItem
-        else
-          Result := False;
+      VK_RETURN:            // Shift+Enter - в своём окне
+        OpenItem(AShift);
       VK_INSERT:
         if not AShift then
           ToggleSelection
@@ -2750,6 +2774,88 @@ begin
       GoUp
     else if IsDir then
       ChangeDir(Panel, Panel.Path + Name + '\', '');
+end;
+
+// Enter на файле: exe, com, bat, cmd - выполнить, как команду из
+// командной строки (cmd.exe /C, вывод - под панелями); остальные - открыть
+// по ассоциации. ASeparate (Shift+Enter) - в своём окне через ShellExecute:
+// exe - отдельным окном, папка - в Проводнике. На папке без Shift - войти
+procedure TFarView.OpenItem(ASeparate: Boolean);
+var
+  Panel: TFarPanel;
+  Name, Ext: WideString;
+  IsUp, IsDir: Boolean;
+begin
+  Panel := ActivePanel;
+  if (Panel.Count = 0) or (Panel.Cursor < 0) or
+     (Panel.Cursor >= Panel.Count) then
+    Exit;
+  Name := Panel.FItems[Panel.Cursor].Name;
+  IsUp := Panel.FItems[Panel.Cursor].IsUp;
+  IsDir := Panel.FItems[Panel.Cursor].IsDir;
+  if IsUp then
+  begin
+    if not ASeparate then
+      GoUp;
+    Exit;
+  end;
+  if ASeparate then
+  begin
+    ShellOpen(Panel.Path + Name, Panel.Path);
+    Exit;
+  end;
+  if IsDir then
+  begin
+    EnterItem;
+    Exit;
+  end;
+  Ext := WideLowerCase(FarNameExt(Name));
+  if (Ext = 'exe') or (Ext = 'com') or (Ext = 'bat') or (Ext = 'cmd') then
+  begin
+    if FProcHandle <> 0 then
+    begin
+      Status('unIDE FAR: прежняя команда ещё выполняется (Ctrl+Break - ' +
+        'прервать; Shift+Enter - запустить в своём окне)');
+      Exit;
+    end;
+    CmdHistoryAdd(FarQuoteName(Name));
+    FOutScroll := 0;
+    OutLine(PromptText + FarQuoteName(Name));
+    // Имя - в двойных кавычках: cmd.exe /C снимает внешнюю пару, и имя с
+    // пробелами и знаками & ( ) остаётся в кавычках
+    CmdRun(WideString('""') + Name + WideString('""'));
+    if not FPanelsHidden and (PanelHeight >= CmdRow) then
+      Status('unIDE FAR: вывод команды - Ctrl+O или Ctrl+Up');
+    Invalidate;
+    Exit;
+  end;
+  ShellOpen(Panel.Path + Name, Panel.Path);
+end;
+
+// Открыть файл (папку) программой Windows по ассоциации; программы для
+// файла нет - окно «Открыть с помощью»
+procedure TFarView.ShellOpen(const AFile, ADir: WideString);
+var
+  ParentForm: TCustomForm;
+  OwnerWnd: HWND;
+  ResultCode: Integer;
+  Verb: WideString;
+begin
+  ParentForm := GetParentForm(Self);
+  if ParentForm <> nil then
+    OwnerWnd := ParentForm.Handle
+  else
+    OwnerWnd := Handle;
+  ResultCode := Integer(FarShellExecute(OwnerWnd, nil, PWideChar(AFile), nil,
+    PWideChar(ADir), SW_SHOWNORMAL));
+  if ResultCode = FarSeErrNoAssoc then
+  begin
+    Verb := 'openas';
+    ResultCode := Integer(FarShellExecute(OwnerWnd, PWideChar(Verb),
+      PWideChar(AFile), nil, PWideChar(ADir), SW_SHOWNORMAL));
+  end;
+  if (ResultCode >= 0) and (ResultCode <= 32) then
+    Status('unIDE FAR: файл не открыть: ' + SysErrorMessage(ResultCode));
 end;
 
 procedure TFarView.GoUp;
@@ -4290,20 +4396,6 @@ begin
   Invalidate;
 end;
 
-// Имя для вставки в строку: с пробелом - в кавычках
-function FarQuoteName(const AName: WideString): WideString;
-var
-  CharIndex: Integer;
-begin
-  Result := AName;
-  for CharIndex := 1 to Length(AName) do
-    if AName[CharIndex] = ' ' then
-    begin
-      Result := WideString('"') + AName + WideString('"');
-      Exit;
-    end;
-end;
-
 // Клавиши командной строки. True - клавиша её (AHandled - забрать ли
 // нажатие: False - пусть придёт символом WM_CHAR); False - не её, дальше
 // панелям. Пока строка не пуста, Enter, Esc, Backspace и Del - её: Del
@@ -4393,7 +4485,7 @@ begin
   // Без Ctrl и Alt
   case AKey of
     VK_RETURN:
-      if (FCmdText <> '') and not AShift then
+      if FCmdText <> '' then
         CmdExecute
       else
         Result := False;
