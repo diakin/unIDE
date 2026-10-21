@@ -2837,6 +2837,7 @@ type
     function  RosEnsureQemu: string;
     procedure RosStartEmulator(const ACmdLine, AWorkDir, ALogFile: string);
     procedure RosRunImage;
+    procedure RosRunImageClick(Sender: TObject);
     function  RosKnownEnvScript: string;
     function  RosPciSourceDir(var ASettings: TRosSettings): Boolean;
     function  RosDownloadPciIds(const ASourceDir, AVendors: string;
@@ -56445,7 +56446,9 @@ btnCompileRun.Hint := 'Собрать скетч (arduino-cli compile) и ' +
     'меню Arduino - Board и Port';
 bkCMakeNinja:
 btnCompileRun.Hint := 'ReactOS / LiberNT: собрать цель ninja (если ' +
-    'build.ninja нет - сначала configure.cmd). Запуска нет';
+    'build.ninja нет - сначала configure.cmd) и запустить образ ' +
+    '(<цель>.iso) в своём QEMU unIDE или командой из свойств ' +
+    'проекта. Без сборки - меню ReactOS - Run Image';
   else
     btnCompileRun.Hint := 'Сборка ' + BuildKindName(Kind) +
     ' здесь пока не подключена';
@@ -62032,6 +62035,16 @@ begin
   MainMenu1.Items.Insert(mArduino.MenuIndex + 1, RosMenu);
 
   LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Run Image (QEMU)';
+  LinkItem.Hint := 'Запустить собранный образ (<цель>.iso) без сборки - в ' +
+                   'своём QEMU unIDE или командой из свойств проекта';
+  LinkItem.OnClick := RosRunImageClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := '-';
+  RosMenu.Add(LinkItem);
+
+  LinkItem := TMenuItem.Create(Self);
   LinkItem.Caption := 'Install RosBE 2.2.1 (reactosVG14)...';
   LinkItem.Hint := 'Скачать установщик RosBE 2.2.1 и установить; путь к ' +
                    'RosBE.cmd - в проект ReactOS';
@@ -62591,6 +62604,20 @@ begin
       LogLines.Free;
     end;
   end;
+end;
+
+// ReactOS - Run Image: образ последней сборки - в эмуляторе, без сборки
+procedure TForm1.RosRunImageClick(Sender: TObject);
+begin
+  if FBusyDepth > 0 then
+    Exit;   // идёт сборка
+  ShowCompLog;
+  if ProjectBuildKind(FCurrentProject) <> bkCMakeNinja then
+  begin
+    LogComp('Run Image: открыт не проект ReactOS / LiberNT (Projects)');
+    Exit;
+  end;
+  RosRunImage;
 end;
 
 // Run проекта ReactOS: собранный образ (<папка сборки>\<цель>.iso, .img или
