@@ -58,7 +58,14 @@ unit UnFar;
 //      выполнить, как команду (вывод - под панелями), остальные - открыть
 //      программой по ассоциации (ShellExecute; ассоциации нет - окно
 //      «Открыть с помощью»). Shift+Enter - открыть в своём окне (exe -
-//      в отдельном окне, папку - в Проводнике).
+//      в отдельном окне, папку - в Проводнике);
+//    - b.20: архивы (7-Zip из папки tools\7zip рядом с exe): Enter на
+//      архиве (Ctrl+PgDn - на любом файле) раскрывает его в этой же панели,
+//      по архиву - как по папкам, '..' в корне - выход; архив в архиве
+//      (.tar в .gz) - так же, вложенно. F5 из архива - распаковать
+//      выбранное в папку другой панели; Enter на файле в архиве -
+//      распаковать во временную папку и открыть. Пароль - спрашивается.
+//      Остальные операции в архиве пока не делаются (сообщение).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -88,7 +95,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.19';
+  FarBuild = 'b.20';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -112,7 +119,30 @@ type
   TFarNames = array of WideString;
 
   // Открытый диалог: копирование, перенос, папка, удаление
-  TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew);
+  TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew,
+    fdArcExtract, fdPassword);
+
+  // Запись архива (из списка 7z l -slt): путь в архиве через ''
+  TFarArcEntry = record
+    Path: WideString;
+    IsDir: Boolean;
+    Size: Int64;
+    Time: TFileTime;      // UTC
+  end;
+  TFarArcEntries = array of TFarArcEntry;
+
+  // Внешний архив, когда открыт вложенный (.tar в .gz): к нему '..'
+  TFarArcLevel = record
+    ArcFile: WideString;
+    Title: WideString;
+    Dir: WideString;
+    Password: WideString;
+    Entries: TFarArcEntries;
+  end;
+  TFarArcLevels = array of TFarArcLevel;
+
+  // Что делает запущенный 7z.exe
+  TFarArcAction = (aaNone, aaList, aaExtract, aaOpenFile);
 
   // Сортировка панели (порядок - как в меню Ctrl+F12 и клавиши Ctrl+F3 ..
   // Ctrl+F9)
@@ -150,6 +180,16 @@ type
     FSortReverse: Boolean;
     FDirsFirst: Boolean;
     FSelFirst: Boolean;
+    // Архив в панели: файл архива ('' - обычная папка; вложенный - его
+    // копия во временной папке), заголовок (путь для показа), папка в
+    // архиве ('' - корень), записи, пароль, внешние архивы. FPath при
+    // этом - папка, где лежит (внешний) архив
+    FArcFile: WideString;
+    FArcTitle: WideString;
+    FArcDir: WideString;
+    FArcEntries: TFarArcEntries;
+    FArcPassword: WideString;
+    FArcLevels: TFarArcLevels;
     procedure SortItems;
     function ItemLess(const ItemA, ItemB: TFarItem): Boolean;
   public
@@ -163,6 +203,13 @@ type
       var AError: string): Boolean;
     // Перечитать текущую папку: курсор и выделение по именам сохраняются
     procedure Reread;
+    // Архив: содержимое папки FArcDir из FArcEntries, курсор - на AFocus
+    procedure BuildArcView(const AFocusName: WideString);
+    function IsArchive: Boolean;
+    // Путь для заголовка: в архиве - архив и папка в нём
+    function DisplayPath: WideString;
+    // Путь элемента панели в архиве
+    function ArcInnerPath(const AName: WideString): WideString;
     function IndexOfName(const AName: WideString): Integer;
     function SelCount: Integer;
     function SelBytes: Int64;
@@ -238,6 +285,23 @@ type
     FProcHandle: THandle;
     FProcPipe: THandle;
     FProcTimer: TTimer;
+    // Вывод процесса не в окно, а в буфер (7z.exe: список архива, ошибки)
+    FProcCapture: Boolean;
+    FProcRaw: string;
+    // Работа с архивом через 7z.exe: что делается и с чем (для повтора с
+    // паролем - всё здесь)
+    FArcAction: TFarArcAction;
+    FArcJobPanel: Integer;
+    FArcJobFile: WideString;      // файл архива
+    FArcJobTitle: WideString;     // его заголовок (для вложенного)
+    FArcJobNested: Boolean;       // открыть как вложенный в текущий архив
+    FArcJobStart: WideString;     // DisplayPath панели при запуске
+    FArcJobPrefix: WideString;    // папка в архиве ('' - корень)
+    FArcJobNames: TFarNames;      // что распаковать (имена в FArcJobPrefix)
+    FArcJobDest: WideString;      // куда (с '')
+    FArcJobTemp: WideString;      // временная папка распаковки (с '')
+    FArcJobPassword: WideString;
+    FArcJobForce: Boolean;        // файл из архива - открыть как архив
     // Диалог (F5 - F8): рисуется поверх панелей, клавиши - ему
     FDlgKind: TFarDlgKind;
     FDlgTitle: WideString;
@@ -255,6 +319,7 @@ type
     FDlgButtonRow: Integer;
     FDlgNames: TFarNames;         // с чем работает операция
     FDlgPermanent: Boolean;       // удаление мимо корзины
+    FDlgMasked: Boolean;          // поле ввода звёздочками (пароль)
     // Слежение за папками панелей
     FWatch: array[0..1] of THandle;
     FWatchPath: array[0..1] of WideString;
@@ -352,6 +417,23 @@ type
     procedure DoMkDir(const AName: WideString);
     procedure OpenItem(ASeparate: Boolean);
     procedure ShellOpen(const AFile, ADir: WideString);
+    // Архивы (7z.exe)
+    function SevenZipPath: WideString;
+    function IsArchiveName(const AName: WideString): Boolean;
+    function ArcBlocked: Boolean;
+    function StartProcess(const ACommandLine, AWorkDir: WideString;
+      ACapture: Boolean): Boolean;
+    procedure OpenArchive(APanelIndex: Integer; const AFile,
+      ATitle: WideString; ANested: Boolean; const APassword: WideString);
+    procedure ArcRun;
+    procedure ArcDone(AExitCode: DWORD);
+    procedure ArcApplyList(const AOutput: WideString);
+    procedure ArcCleanupTemp;
+    procedure ArcUp(APanel: TFarPanel);
+    procedure ArcOpenItem(ASeparate, AForceArchive: Boolean);
+    procedure StartArcExtract;
+    procedure DoArcExtract(const ATarget: WideString);
+    procedure ArcError(const AOutput: WideString);
     procedure DoDelete;
     procedure EditCurrent;
     procedure StartEditNew;
@@ -517,6 +599,18 @@ const
   FarVkLeftBracket = $DB;          // VK_OEM_4: '['
   FarVkRightBracket = $DD;         // VK_OEM_6: ']'
   FarSeErrNoAssoc = 31;            // SE_ERR_NOASSOC: нет программы для файла
+
+  // Архивы: 7z.exe - в папке tools\7zip рядом с exe unIDE. Enter
+  // раскрывает файлы с этими расширениями (остальные - Ctrl+PgDn): exe,
+  // msi, docx, jar, chm и т.п. Enter запускает или открывает программой
+  FarSevenZipRel = 'tools\7zip\7z.exe';
+  FarArcExts = ' 7z zip zipx rar arj cab lzh lha tar gz gzip tgz tpz bz2 ' +
+    'bzip2 tbz2 tbz xz txz zst lzma z taz cpio rpm deb xar wim swm esd ' +
+    'iso udf img vhd vhdx vmdk vdi qcow qcow2 dmg squashfs cramfs 001 r00 ' +
+    'chm msi jar apk xpi war ear ';
+  FarFofSilent = $4;
+  FarFofNoErrorUI = $400;
+  FarArcTempDir = 'unIDE_far';
   FarInvalidAttr = $FFFFFFFF;
 
   // Кейбар: подписи FAR (far\farlang.templ.m4) для того, что есть или
@@ -661,6 +755,8 @@ function FarCreateProcess(AAppName, ACommandLine: PWideChar;
   var AStartupInfo: TFarStartupInfo;
   var AProcessInfo: TFarProcessInfo): BOOL; stdcall;
   external 'kernel32.dll' name 'CreateProcessW';
+function FarGetTempPath(ABufferLen: DWORD; ABuffer: PWideChar): DWORD;
+  stdcall; external 'kernel32.dll' name 'GetTempPathW';
 function FarShellExecute(AWnd: HWND; AOperation, AFile, AParameters,
   ADirectory: PWideChar; AShowCmd: Integer): THandle; stdcall;
   external 'shell32.dll' name 'ShellExecuteW';
@@ -756,6 +852,28 @@ begin
   Result := APath;
   if (Result <> '') and (Result[Length(Result)] <> '\') then
     Result := Result + '\';
+end;
+
+// Удалить папку ADir (с '\' в конце или без) со всем содержимым, без
+// окон и сообщений; для временных папок архивов
+procedure FarDeleteTree(const ADir: WideString);
+var
+  ShellOp: TFarShFileOp;
+  FromList: WideString;
+begin
+  FromList := ADir;
+  if (FromList <> '') and (FromList[Length(FromList)] = '\') then
+    SetLength(FromList, Length(FromList) - 1);
+  if (FromList = '') or not FarDirExists(FromList) then
+    Exit;
+  FromList := FromList + WideChar(#0) + WideChar(#0);
+  FillChar(ShellOp, SizeOf(ShellOp), 0);
+  ShellOp.Wnd := 0;
+  ShellOp.Func := FarFoDelete;
+  ShellOp.From := PWideChar(FromList);
+  ShellOp.Dest := nil;
+  ShellOp.Flags := FarFofNoConfirmation or FarFofSilent or FarFofNoErrorUI;
+  FarShFileOperation(ShellOp);
 end;
 
 // 1234567 -> '1 234 567'
@@ -1443,6 +1561,13 @@ begin
   FItems := NewItems;
   FCount := NewCount;
   SortItems;
+  // Обычная папка - архив (если был) закрыт
+  FArcFile := '';
+  FArcTitle := '';
+  FArcDir := '';
+  FArcEntries := nil;
+  FArcPassword := '';
+  FArcLevels := nil;
 
   FFileCount := 0;
   FFileBytes := 0;
@@ -1469,6 +1594,178 @@ begin
   Result := True;
 end;
 
+function TFarPanel.IsArchive: Boolean;
+begin
+  Result := FArcFile <> '';
+end;
+
+function TFarPanel.DisplayPath: WideString;
+begin
+  if FArcFile = '' then
+    Result := FPath
+  else if FArcDir = '' then
+    Result := FArcTitle
+  else
+    Result := FArcTitle + '\' + FArcDir;
+end;
+
+function TFarPanel.ArcInnerPath(const AName: WideString): WideString;
+begin
+  if FArcDir = '' then
+    Result := AName
+  else
+    Result := FArcDir + '\' + AName;
+end;
+
+// Кандидат в список папки архива: имя, явная ли это запись (а не только
+// часть пути другой записи), номер записи
+type
+  TFarArcCandidate = record
+    Name: WideString;
+    Direct: Boolean;
+    EntryIndex: Integer;
+  end;
+
+procedure TFarPanel.BuildArcView(const AFocusName: WideString);
+var
+  Prefix, Rest: WideString;
+  Candidates: array of TFarArcCandidate;
+  Temp: TFarArcCandidate;
+  CandCount, EntryIndex, SlashPos, Gap, Outer, Inner, ItemIndex,
+    CandIndex: Integer;
+  NewItems: TFarItems;
+  NewCount: Integer;
+begin
+  if FArcDir = '' then
+    Prefix := ''
+  else
+    Prefix := FArcDir + '\';
+
+  // Имена первого уровня под FArcDir: записи самой папки и папки, которые
+  // видны только по путям записей глубже
+  SetLength(Candidates, 64);
+  CandCount := 0;
+  for EntryIndex := 0 to High(FArcEntries) do
+  begin
+    if (Prefix <> '') and
+       (Copy(FArcEntries[EntryIndex].Path, 1, Length(Prefix)) <> Prefix) then
+      Continue;
+    Rest := Copy(FArcEntries[EntryIndex].Path, Length(Prefix) + 1, MaxInt);
+    if Rest = '' then
+      Continue;
+    SlashPos := 1;
+    while (SlashPos <= Length(Rest)) and (Rest[SlashPos] <> '\') do
+      Inc(SlashPos);
+    if CandCount >= Length(Candidates) then
+      SetLength(Candidates, Length(Candidates) * 2);
+    Candidates[CandCount].Name := Copy(Rest, 1, SlashPos - 1);
+    Candidates[CandCount].Direct := SlashPos > Length(Rest);
+    Candidates[CandCount].EntryIndex := EntryIndex;
+    Inc(CandCount);
+  end;
+
+  // По имени (точное сравнение), явная запись - первой из одинаковых
+  Gap := CandCount div 2;
+  while Gap > 0 do
+  begin
+    for Outer := Gap to CandCount - 1 do
+    begin
+      Temp := Candidates[Outer];
+      Inner := Outer;
+      while (Inner >= Gap) and
+            ((Temp.Name < Candidates[Inner - Gap].Name) or
+             ((Temp.Name = Candidates[Inner - Gap].Name) and Temp.Direct and
+              not Candidates[Inner - Gap].Direct)) do
+      begin
+        Candidates[Inner] := Candidates[Inner - Gap];
+        Dec(Inner, Gap);
+      end;
+      Candidates[Inner] := Temp;
+    end;
+    Gap := Gap div 2;
+  end;
+
+  SetLength(NewItems, CandCount + 1);
+  NewCount := 0;
+  // '..' - всегда: в корне архива это выход из него
+  NewItems[0].Name := '..';
+  NewItems[0].IsUp := True;
+  NewItems[0].IsDir := True;
+  NewItems[0].Size := 0;
+  NewItems[0].Attr := FILE_ATTRIBUTE_DIRECTORY;
+  NewItems[0].Selected := False;
+  NewItems[0].OrigIndex := -1;
+  FillChar(NewItems[0].WriteTime, SizeOf(TFileTime), 0);
+  FillChar(NewItems[0].CreateTime, SizeOf(TFileTime), 0);
+  FillChar(NewItems[0].AccessTime, SizeOf(TFileTime), 0);
+  NewCount := 1;
+  CandIndex := 0;
+  while CandIndex < CandCount do
+  begin
+    with Candidates[CandIndex] do
+    begin
+      ItemIndex := NewCount;
+      NewItems[ItemIndex].Name := Name;
+      NewItems[ItemIndex].IsUp := False;
+      NewItems[ItemIndex].Selected := False;
+      NewItems[ItemIndex].OrigIndex := EntryIndex;
+      if Direct then
+      begin
+        NewItems[ItemIndex].IsDir := FArcEntries[EntryIndex].IsDir;
+        if NewItems[ItemIndex].IsDir then
+          NewItems[ItemIndex].Size := 0
+        else
+          NewItems[ItemIndex].Size := FArcEntries[EntryIndex].Size;
+        NewItems[ItemIndex].WriteTime := FArcEntries[EntryIndex].Time;
+      end
+      else
+      begin
+        NewItems[ItemIndex].IsDir := True;
+        NewItems[ItemIndex].Size := 0;
+        FillChar(NewItems[ItemIndex].WriteTime, SizeOf(TFileTime), 0);
+      end;
+      if NewItems[ItemIndex].IsDir then
+        NewItems[ItemIndex].Attr := FILE_ATTRIBUTE_DIRECTORY
+      else
+        NewItems[ItemIndex].Attr := 0;
+      NewItems[ItemIndex].CreateTime := NewItems[ItemIndex].WriteTime;
+      NewItems[ItemIndex].AccessTime := NewItems[ItemIndex].WriteTime;
+      Inc(NewCount);
+    end;
+    // Одинаковые имена - один элемент (первый - явная запись, если есть)
+    Inc(CandIndex);
+    while (CandIndex < CandCount) and
+          (Candidates[CandIndex].Name = NewItems[NewCount - 1].Name) do
+    begin
+      // Файл с тем же именем, что и папка, - не бывает; а путь глубже
+      // делает элемент папкой
+      if not Candidates[CandIndex].Direct then
+        NewItems[NewCount - 1].IsDir := True;
+      Inc(CandIndex);
+    end;
+  end;
+
+  FItems := NewItems;
+  FCount := NewCount;
+  SortItems;
+  FFileCount := 0;
+  FFileBytes := 0;
+  for ItemIndex := 0 to FCount - 1 do
+    if not FItems[ItemIndex].IsDir then
+    begin
+      Inc(FFileCount);
+      Inc(FFileBytes, FItems[ItemIndex].Size);
+    end;
+  FCursor := 0;
+  FTopIndex := 0;
+  if AFocusName <> '' then
+  begin
+    FCursor := IndexOfName(AFocusName);
+    if FCursor < 0 then
+      FCursor := 0;
+  end;
+end;
+
 procedure TFarPanel.Reread;
 var
   FocusName: WideString;
@@ -1491,7 +1788,10 @@ begin
       Inc(SelectedCount);
     end;
   OldTop := FTopIndex;
-  if not ReadDir(FPath, FocusName, ErrorText) then
+  // Архив перечитывать нечего - его папка строится заново из записей
+  if IsArchive then
+    BuildArcView(FocusName)
+  else if not ReadDir(FPath, FocusName, ErrorText) then
     Exit;
   FTopIndex := OldTop;
   // Файла под курсором больше нет (удалён, переименован) - курсор на том
@@ -1598,10 +1898,19 @@ begin
 end;
 
 destructor TFarView.Destroy;
+var
+  TempBuffer: array[0..MAX_PATH] of WideChar;
+  TempLen: DWORD;
 begin
+  FOnStatus := nil;
   FProcTimer.Enabled := False;
   if FProcHandle <> 0 then
     ProcFinish(True);
+  // Файлы, открытые из архивов (Enter), - %TEMP%\unIDE_far; FAR закрыт -
+  // удалить
+  TempLen := FarGetTempPath(MAX_PATH + 1, TempBuffer);
+  if (TempLen > 0) and (TempLen <= MAX_PATH) then
+    FarDeleteTree(FarWithSlash(PWideChar(@TempBuffer[0])) + FarArcTempDir);
   FWatchTimer.Enabled := False;
   WatchStop;
   FreeFonts;
@@ -2050,7 +2359,7 @@ begin
   PutText(PanelX + 1, 0, 1, SortLetter, FarLightCyan, FarBlue);
 
   // Заголовок - путь; у активной панели - цветом курсора
-  Title := Panel.Path;
+  Title := Panel.DisplayPath;
   if (Length(Title) > 3) and (Title[Length(Title)] = '\') then
     SetLength(Title, Length(Title) - 1);
   Title := ' ' + FarFitPath(Title, PanelW - 6) + ' ';
@@ -2769,11 +3078,20 @@ begin
   Panel := ActivePanel;
   if (Panel.Count = 0) or (Panel.Cursor >= Panel.Count) then
     Exit;
+  // Ctrl+PgDn: в архиве - как Enter, файл - открыть как архив
+  if Panel.IsArchive then
+  begin
+    ArcOpenItem(False, True);
+    Exit;
+  end;
   with Panel.FItems[Panel.Cursor] do
     if IsUp then
       GoUp
     else if IsDir then
-      ChangeDir(Panel, Panel.Path + Name + '\', '');
+      ChangeDir(Panel, Panel.Path + Name + '\', '')
+    else
+      // Файл - открыть как архив, какое бы ни было расширение
+      OpenArchive(FActive, Panel.Path + Name, Panel.Path + Name, False, '');
 end;
 
 // Enter на файле: exe, com, bat, cmd - выполнить, как команду из
@@ -2790,6 +3108,11 @@ begin
   if (Panel.Count = 0) or (Panel.Cursor < 0) or
      (Panel.Cursor >= Panel.Count) then
     Exit;
+  if Panel.IsArchive then
+  begin
+    ArcOpenItem(ASeparate, False);
+    Exit;
+  end;
   Name := Panel.FItems[Panel.Cursor].Name;
   IsUp := Panel.FItems[Panel.Cursor].IsUp;
   IsDir := Panel.FItems[Panel.Cursor].IsDir;
@@ -2807,6 +3130,12 @@ begin
   if IsDir then
   begin
     EnterItem;
+    Exit;
+  end;
+  // Архив - раскрыть в этой же панели (7-Zip из tools\7zip)
+  if IsArchiveName(Name) then
+  begin
+    OpenArchive(FActive, Panel.Path + Name, Panel.Path + Name, False, '');
     Exit;
   end;
   Ext := WideLowerCase(FarNameExt(Name));
@@ -2864,6 +3193,11 @@ var
   ParentDir, ChildName: WideString;
 begin
   Panel := ActivePanel;
+  if Panel.IsArchive then
+  begin
+    ArcUp(Panel);
+    Exit;
+  end;
   ParentDir := Panel.ParentPath(ChildName);
   if ParentDir <> '' then
     ChangeDir(Panel, ParentDir, ChildName);
@@ -2874,6 +3208,15 @@ var
   Panel: TFarPanel;
 begin
   Panel := ActivePanel;
+  // В архиве: Ctrl+\ - в корень архива, в корне - в корень диска
+  if Panel.IsArchive and (Panel.FArcDir <> '') then
+  begin
+    Panel.FArcDir := '';
+    Panel.BuildArcView('');
+    EnsureVisible(Panel);
+    Invalidate;
+    Exit;
+  end;
   if Panel.Path <> '' then
     ChangeDir(Panel, FarRootOf(Panel.Path), '');
 end;
@@ -2918,6 +3261,7 @@ begin
   FDlgEditPos := Length(AEdit);
   FDlgEditScroll := 0;
   FDlgEditFresh := AEdit <> '';
+  FDlgMasked := False;
   if AHasEdit then
     FDlgFocus := -1
   else
@@ -2928,6 +3272,13 @@ end;
 
 procedure TFarView.DlgClose;
 begin
+  // Окно пароля закрыто (Esc, Cancel) - работа с архивом отменена; OK
+  // возвращает её сам (DlgActivate)
+  if FDlgKind = fdPassword then
+  begin
+    FArcAction := aaNone;
+    FArcJobTemp := '';
+  end;
   FDlgKind := fdNone;
   FDlgLines := nil;
   FDlgButtons := nil;
@@ -3053,10 +3404,13 @@ end;
 procedure TFarView.DlgActivate(AButton: Integer);
 var
   Kind: TFarDlgKind;
-  EditText: WideString;
+  EditText, SavedTemp: WideString;
+  SavedAction: TFarArcAction;
 begin
   Kind := FDlgKind;
   EditText := FDlgEdit;
+  SavedAction := FArcAction;
+  SavedTemp := FArcJobTemp;
   DlgClose;
   // Первая кнопка - действие, остальные (Cancel) - отмена
   if AButton <> 0 then
@@ -3072,6 +3426,17 @@ begin
       DoDelete;
     fdEditNew:
       DoEditNew(EditText);
+    fdArcExtract:
+      DoArcExtract(EditText);
+    fdPassword:
+      // Повтор работы с архивом с паролем
+      if (SavedAction <> aaNone) and (EditText <> '') then
+      begin
+        FArcAction := SavedAction;
+        FArcJobTemp := SavedTemp;
+        FArcJobPassword := EditText;
+        ArcRun;
+      end;
   end;
 end;
 
@@ -3164,6 +3529,9 @@ begin
     if FDlgEditPos > FDlgEditScroll + InnerW - 1 then
       FDlgEditScroll := FDlgEditPos - InnerW + 1;
     ShownText := Copy(FDlgEdit, FDlgEditScroll + 1, InnerW);
+    if FDlgMasked then
+      for LineIndex := 1 to Length(ShownText) do
+        ShownText[LineIndex] := '*';
     FillCells(InnerLeft, Row, InnerW, FarCyan);
     if FDlgEditFresh then
       PutText(InnerLeft, Row, Length(ShownText), ShownText, FarWhite, FarBlack)
@@ -3251,6 +3619,20 @@ var
   Names: TFarNames;
   Subject, Prompt, Target: WideString;
 begin
+  // Из архива: F5 - распаковать; F6, Shift+F5, Shift+F6 - нельзя
+  if ActivePanel.IsArchive then
+  begin
+    if AMove or ACurrentOnly then
+      ArcBlocked
+    else
+      StartArcExtract;
+    Exit;
+  end;
+  if not ACurrentOnly and FPanels[1 - FActive].IsArchive then
+  begin
+    Status('unIDE FAR: упаковка в архив - позже (Shift+F1)');
+    Exit;
+  end;
   Names := CollectNames(ACurrentOnly);
   if Length(Names) = 0 then
     Exit;
@@ -3291,6 +3673,8 @@ begin
   if (Panel.Count = 0) or (Panel.Cursor < 0) or
      (Panel.Cursor >= Panel.Count) then
     Exit;
+  if ArcBlocked then
+    Exit;
   // Папку F4 не открывает (так в FAR)
   if Panel.FItems[Panel.Cursor].IsDir then
     Exit;
@@ -3300,7 +3684,7 @@ end;
 
 procedure TFarView.StartEditNew;
 begin
-  if ActivePanel.Path = '' then
+  if ArcBlocked or (ActivePanel.Path = '') then
     Exit;
   DlgOpen(fdEditNew, 'Editor', ['File to edit:'], False, False, True, '',
     ['OK', 'Cancel']);
@@ -3383,7 +3767,8 @@ begin
   if (FileDir = '') or (FileName = '') then
     Exit;
   Panel := ActivePanel;
-  if FarSameName(FarWithSlash(FileDir), Panel.Path) then
+  if not Panel.IsArchive and
+     FarSameName(FarWithSlash(FileDir), Panel.Path) then
   begin
     ItemIndex := Panel.IndexOfName(FileName);
     if ItemIndex < 0 then
@@ -3402,7 +3787,7 @@ end;
 
 procedure TFarView.StartMkDir;
 begin
-  if ActivePanel.Path = '' then
+  if ArcBlocked or (ActivePanel.Path = '') then
     Exit;
   DlgOpen(fdMkDir, 'Make folder', ['Create the folder:'], False, False, True,
     '', ['OK', 'Cancel']);
@@ -3415,6 +3800,8 @@ var
   ItemIndex: Integer;
   What: WideString;
 begin
+  if ArcBlocked then
+    Exit;
   Names := CollectNames(ACurrentOnly);
   if Length(Names) = 0 then
     Exit;
@@ -4655,18 +5042,42 @@ end;
 // файла). Окна консоли нет. Вывод читает ProcTick.
 procedure TFarView.CmdRun(const ACommand: WideString);
 var
+  ComSpec: WideString;
+  EnvBuffer: array[0..MAX_PATH] of WideChar;
+  EnvLen: DWORD;
+begin
+  EnvLen := FarGetEnvVar('ComSpec', EnvBuffer, MAX_PATH + 1);
+  if (EnvLen > 0) and (EnvLen <= MAX_PATH) then
+    ComSpec := PWideChar(@EnvBuffer[0])
+  else
+    ComSpec := 'cmd.exe';
+  StartProcess(WideString('"') + ComSpec + WideString('" /C ') + ACommand,
+    ActivePanel.Path, False);
+end;
+
+// Процесс без окна консоли: stdout и stderr - в трубу, ввода нет (конец
+// файла). ACapture - вывод в буфер FProcRaw (7z.exe), иначе - в окно
+// вывода (OEM). Вывод читает ProcTick, конец - ProcFinish
+function TFarView.StartProcess(const ACommandLine, AWorkDir: WideString;
+  ACapture: Boolean): Boolean;
+var
   Security: TFarSecurityAttributes;
   OutRead, OutWrite, InRead, InWrite: THandle;
   Startup: TFarStartupInfo;
   ProcInfo: TFarProcessInfo;
-  ComSpec, CommandLine, WorkDir: WideString;
-  EnvBuffer: array[0..MAX_PATH] of WideChar;
-  EnvLen: DWORD;
+  CommandLine, WorkDir: WideString;
+  PipeSize: DWORD;
 begin
+  Result := False;
   Security.nLength := SizeOf(Security);
   Security.lpSecurityDescriptor := nil;
   Security.bInheritHandle := True;
-  if not FarCreatePipe(OutRead, OutWrite, @Security, 0) then
+  // Список большого архива - мегабайты: труба побольше
+  if ACapture then
+    PipeSize := 1024 * 1024
+  else
+    PipeSize := 0;
+  if not FarCreatePipe(OutRead, OutWrite, @Security, PipeSize) then
   begin
     OutLine('unIDE FAR: трубу вывода не создать: ' +
       SysErrorMessage(GetLastError));
@@ -4684,14 +5095,8 @@ begin
   FarSetHandleInfo(OutRead, FarHandleInherit, 0);
   FarSetHandleInfo(InWrite, FarHandleInherit, 0);
 
-  EnvLen := FarGetEnvVar('ComSpec', EnvBuffer, MAX_PATH + 1);
-  if (EnvLen > 0) and (EnvLen <= MAX_PATH) then
-    ComSpec := PWideChar(@EnvBuffer[0])
-  else
-    ComSpec := 'cmd.exe';
-  CommandLine := WideString('"') + ComSpec + WideString('" /C ') + ACommand;
-  WorkDir := ActivePanel.Path;
-
+  CommandLine := ACommandLine;
+  WorkDir := AWorkDir;
   FillChar(Startup, SizeOf(Startup), 0);
   Startup.cb := SizeOf(Startup);
   Startup.dwFlags := FarStartfUseStdHandles or FarStartfUseShowWindow;
@@ -4705,8 +5110,7 @@ begin
   if not FarCreateProcess(nil, PWideChar(CommandLine), nil, nil, True,
        FarCreateNoWindow, nil, PWideChar(WorkDir), Startup, ProcInfo) then
   begin
-    OutLine('unIDE FAR: команду не запустить: ' +
-      SysErrorMessage(GetLastError));
+    OutLine('unIDE FAR: не запустить: ' + SysErrorMessage(GetLastError));
     CloseHandle(OutRead);
     CloseHandle(OutWrite);
     CloseHandle(InRead);
@@ -4720,7 +5124,10 @@ begin
   CloseHandle(ProcInfo.hThread);
   FProcHandle := ProcInfo.hProcess;
   FProcPipe := OutRead;
+  FProcCapture := ACapture;
+  FProcRaw := '';
   FProcTimer.Enabled := True;
+  Result := True;
 end;
 
 // Вывод процесса: что есть в трубе - прочитать (OEM -> Unicode); процесс
@@ -4730,7 +5137,7 @@ var
   Available, BytesRead: DWORD;
   Buffer: array[0..8191] of AnsiChar;
   WideBuffer: array[0..8192] of WideChar;
-  WideLen, Rounds: Integer;
+  WideLen, Rounds, MaxRounds, OldLen: Integer;
   Text: WideString;
   Changed: Boolean;
 begin
@@ -4741,7 +5148,12 @@ begin
   end;
   Changed := False;
   Rounds := 0;
-  while Rounds < 16 do
+  // В буфер (7z.exe) - читаем всё, что есть: список архива бывает большим
+  if FProcCapture then
+    MaxRounds := 4096
+  else
+    MaxRounds := 16;
+  while Rounds < MaxRounds do
   begin
     Inc(Rounds);
     Available := 0;
@@ -4755,6 +5167,13 @@ begin
     if not FarReadFile(FProcPipe, @Buffer[0], Available, @BytesRead, nil) or
        (BytesRead = 0) then
       Break;
+    if FProcCapture then
+    begin
+      OldLen := Length(FProcRaw);
+      SetLength(FProcRaw, OldLen + Integer(BytesRead));
+      Move(Buffer[0], FProcRaw[OldLen + 1], BytesRead);
+      Continue;
+    end;
     WideLen := FarMultiToWide(FarCpOem, 0, @Buffer[0], BytesRead,
       @WideBuffer[0], Length(WideBuffer) - 1);
     if WideLen > 0 then
@@ -4784,14 +5203,18 @@ end;
 procedure TFarView.ProcFinish(AKill: Boolean);
 var
   ProcExitCode: DWORD;
+  WasCapture: Boolean;
 begin
   FProcTimer.Enabled := False;
+  ProcExitCode := 0;
+  WasCapture := FProcCapture;
   if FProcHandle <> 0 then
   begin
     if AKill then
       FarTerminate(FProcHandle, 1)
-    else if FarGetExitCode(FProcHandle, ProcExitCode) and
-            (ProcExitCode <> 0) then
+    else if not FarGetExitCode(FProcHandle, ProcExitCode) then
+      ProcExitCode := 0
+    else if (ProcExitCode <> 0) and not WasCapture then
       Status('unIDE FAR: команда завершилась с кодом ' +
         IntToStr(ProcExitCode));
     CloseHandle(FProcHandle);
@@ -4800,7 +5223,20 @@ begin
     CloseHandle(FProcPipe);
   FProcHandle := 0;
   FProcPipe := 0;
+  FProcCapture := False;
   FOutOpen := False;
+  // 7z.exe: что дальше - по работе с архивом
+  if FArcAction <> aaNone then
+  begin
+    if AKill then
+    begin
+      ArcCleanupTemp;
+      FArcAction := aaNone;
+      Status('unIDE FAR: работа с архивом прервана');
+    end
+    else
+      ArcDone(ProcExitCode);
+  end;
 end;
 
 // Текст вывода: переводы строк - новые строки, табуляция - пробелами до
@@ -4949,6 +5385,633 @@ begin
     FBuffer.Canvas.FillRect(Rect(CaretCol * FCellW, (Row + 1) * FCellH - 3,
       (CaretCol + 1) * FCellW, (Row + 1) * FCellH - 1));
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Архивы: 7z.exe (7-Zip) из папки tools\7zip рядом с exe unIDE.
+//  Список - 7z l -slt -sccUTF-8 (в буфер, разбор - FarParseSlt);
+//  распаковка - 7z x во временную папку и перенос на место (7z x кладёт
+//  файлы с полным путём из архива). Всё - асинхронно, через StartProcess /
+//  ProcTick / ProcFinish -> ArcDone.
+// ---------------------------------------------------------------------------
+
+// Подстрока в WideString (точно, с учётом регистра); 0 - нет
+function FarPosText(const ASub, AText: WideString): Integer;
+var
+  StartIndex, SubIndex: Integer;
+begin
+  Result := 0;
+  if (ASub = '') or (Length(ASub) > Length(AText)) then
+    Exit;
+  for StartIndex := 1 to Length(AText) - Length(ASub) + 1 do
+  begin
+    SubIndex := 1;
+    while (SubIndex <= Length(ASub)) and
+          (AText[StartIndex + SubIndex - 1] = ASub[SubIndex]) do
+      Inc(SubIndex);
+    if SubIndex > Length(ASub) then
+    begin
+      Result := StartIndex;
+      Exit;
+    end;
+  end;
+end;
+
+// 'ГГГГ-ММ-ДД ЧЧ:ММ:СС[.ддддддд]' (местное время, как печатает 7z) -> UTC
+function FarParseArcTime(const AText: WideString; var ATime: TFileTime): Boolean;
+var
+  SysTime: Windows.TSystemTime;
+  LocalTime: TFileTime;
+  Text: string;
+begin
+  Result := False;
+  FillChar(ATime, SizeOf(ATime), 0);
+  Text := Trim(string(AText));
+  if Length(Text) < 19 then
+    Exit;
+  FillChar(SysTime, SizeOf(SysTime), 0);
+  SysTime.wYear := StrToIntDef(Copy(Text, 1, 4), 0);
+  SysTime.wMonth := StrToIntDef(Copy(Text, 6, 2), 0);
+  SysTime.wDay := StrToIntDef(Copy(Text, 9, 2), 0);
+  SysTime.wHour := StrToIntDef(Copy(Text, 12, 2), 0);
+  SysTime.wMinute := StrToIntDef(Copy(Text, 15, 2), 0);
+  SysTime.wSecond := StrToIntDef(Copy(Text, 18, 2), 0);
+  if (SysTime.wYear < 1601) or (SysTime.wMonth < 1) or (SysTime.wDay < 1) then
+    Exit;
+  if not SystemTimeToFileTime(SysTime, LocalTime) then
+    Exit;
+  Result := LocalFileTimeToFileTime(LocalTime, ATime);
+end;
+
+// Разбор 7z l -slt: после строки '----------' - записи, по строке
+// 'Ключ = значение', записи разделены пустой строкой. False - списка нет
+// (не архив, ошибка)
+function FarParseSlt(const AText: WideString;
+  var AEntries: TFarArcEntries): Boolean;
+var
+  LineStart, LineEnd, EqPos, Count: Integer;
+  Line, Key, Value: WideString;
+  InList, HasPath, HasFolder: Boolean;
+  Current: TFarArcEntry;
+  CharIndex: Integer;
+
+  procedure Flush;
+  begin
+    if HasPath and (Current.Path <> '') then
+    begin
+      if Count >= Length(AEntries) then
+        SetLength(AEntries, Length(AEntries) * 2 + 64);
+      AEntries[Count] := Current;
+      Inc(Count);
+    end;
+    HasPath := False;
+    HasFolder := False;
+    Current.Path := '';
+    Current.IsDir := False;
+    Current.Size := 0;
+    FillChar(Current.Time, SizeOf(Current.Time), 0);
+  end;
+
+begin
+  SetLength(AEntries, 0);
+  Count := 0;
+  InList := False;
+  HasPath := False;
+  HasFolder := False;
+  Current.Path := '';
+  Current.IsDir := False;
+  Current.Size := 0;
+  FillChar(Current.Time, SizeOf(Current.Time), 0);
+  LineStart := 1;
+  while LineStart <= Length(AText) do
+  begin
+    LineEnd := LineStart;
+    while (LineEnd <= Length(AText)) and (AText[LineEnd] <> #10) do
+      Inc(LineEnd);
+    Line := Copy(AText, LineStart, LineEnd - LineStart);
+    if (Line <> '') and (Line[Length(Line)] = #13) then
+      SetLength(Line, Length(Line) - 1);
+    LineStart := LineEnd + 1;
+
+    if not InList then
+    begin
+      if Line = '----------' then
+        InList := True;
+      Continue;
+    end;
+    if Line = '' then
+    begin
+      Flush;
+      Continue;
+    end;
+    EqPos := FarPosText(' = ', Line);
+    if EqPos = 0 then
+    begin
+      // 'Ключ =' без значения
+      if (Length(Line) >= 2) and (Copy(Line, Length(Line) - 1, 2) = ' =') then
+      begin
+        Key := Copy(Line, 1, Length(Line) - 2);
+        Value := '';
+      end
+      else
+        Continue;
+    end
+    else
+    begin
+      Key := Copy(Line, 1, EqPos - 1);
+      Value := Copy(Line, EqPos + 3, MaxInt);
+    end;
+    if Key = 'Path' then
+    begin
+      Flush;
+      for CharIndex := 1 to Length(Value) do
+        if Value[CharIndex] = '/' then
+          Value[CharIndex] := '\';
+      while (Value <> '') and (Value[Length(Value)] = '\') do
+        SetLength(Value, Length(Value) - 1);
+      Current.Path := Value;
+      HasPath := True;
+    end
+    else if Key = 'Folder' then
+    begin
+      Current.IsDir := Value = '+';
+      HasFolder := True;
+    end
+    else if Key = 'Size' then
+      Current.Size := StrToInt64Def(string(Value), 0)
+    else if Key = 'Modified' then
+      FarParseArcTime(Value, Current.Time)
+    else if (Key = 'Attributes') and not HasFolder and (Value <> '') and
+            (Value[1] = 'D') then
+      Current.IsDir := True;
+  end;
+  Flush;
+  SetLength(AEntries, Count);
+  Result := InList;
+end;
+
+function TFarView.SevenZipPath: WideString;
+begin
+  Result := ExtractFilePath(Application.ExeName) + FarSevenZipRel;
+end;
+
+function TFarView.IsArchiveName(const AName: WideString): Boolean;
+var
+  Ext: WideString;
+begin
+  Ext := WideLowerCase(FarNameExt(AName));
+  Result := (Ext <> '') and
+            (FarPosText(' ' + Ext + ' ', WideString(FarArcExts)) > 0);
+end;
+
+// Операция, которой в архиве пока нет: сообщение, True
+function TFarView.ArcBlocked: Boolean;
+begin
+  Result := ActivePanel.IsArchive;
+  if Result then
+    Status('unIDE FAR: в архиве пока только просмотр и распаковка (F5, ' +
+      'Enter)');
+end;
+
+// Открыть архив AFile в панели APanelIndex (ANested - внутри текущего
+// архива этой панели). Сначала - список (асинхронно), панель меняется в
+// ArcApplyList
+procedure TFarView.OpenArchive(APanelIndex: Integer; const AFile,
+  ATitle: WideString; ANested: Boolean; const APassword: WideString);
+begin
+  if FProcHandle <> 0 then
+  begin
+    Status('unIDE FAR: выполняется команда - архив откроется после неё');
+    Exit;
+  end;
+  FArcAction := aaList;
+  FArcJobPanel := APanelIndex;
+  FArcJobFile := AFile;
+  FArcJobTitle := ATitle;
+  FArcJobNested := ANested;
+  FArcJobStart := FPanels[APanelIndex].DisplayPath;
+  FArcJobPassword := APassword;
+  FArcJobTemp := '';
+  ArcRun;
+end;
+
+// Запуск 7z.exe для FArcAction (повтор с паролем - тоже сюда)
+procedure TFarView.ArcRun;
+var
+  SevenZip, Command, ListFile: WideString;
+  ListText: UTF8String;
+  ListHandle: THandle;
+  NameIndex: Integer;
+  Written: DWORD;
+  ListOk: Boolean;
+begin
+  SevenZip := SevenZipPath;
+  if FarGetAttributes(PWideChar(SevenZip)) = FarInvalidAttr then
+  begin
+    Status('unIDE FAR: нет 7-Zip: ' + string(SevenZip) + ' (папка tools\7zip ' +
+      'должна лежать рядом с exe)');
+    FArcAction := aaNone;
+    Exit;
+  end;
+  Command := WideString('"') + SevenZip + WideString('"');
+  if FArcAction = aaList then
+  begin
+    Command := Command + ' l -slt -sccUTF-8';
+    if FArcJobPassword <> '' then
+      Command := Command + WideString(' "-p') + FArcJobPassword +
+        WideString('"');
+    Command := Command + WideString(' "') + FArcJobFile + WideString('"');
+    Status('unIDE FAR: открываю архив...');
+  end
+  else
+  begin
+    // Распаковка: что - списком в файле (UTF-8), куда - во временную папку
+    ListFile := FArcJobTemp + '~unide_list.txt';
+    if not FarForceDirs(FArcJobTemp) then
+    begin
+      Status('unIDE FAR: временную папку не создать: ' +
+        SysErrorMessage(GetLastError));
+      FArcAction := aaNone;
+      Exit;
+    end;
+    ListText := '';
+    for NameIndex := 0 to High(FArcJobNames) do
+    begin
+      if FArcJobPrefix <> '' then
+        ListText := ListText + UTF8Encode(FArcJobPrefix + '\' +
+          FArcJobNames[NameIndex]) + #13#10
+      else
+        ListText := ListText + UTF8Encode(FArcJobNames[NameIndex]) + #13#10;
+    end;
+    // Файл списка - W-функцией: в пути могут быть символы вне cp1251
+    ListOk := False;
+    ListHandle := FarCreateFile(PWideChar(ListFile), GENERIC_WRITE, 0, nil,
+      CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if ListHandle <> INVALID_HANDLE_VALUE then
+    begin
+      Written := 0;
+      ListOk := (ListText = '') or
+        (WriteFile(ListHandle, ListText[1], Length(ListText), Written, nil) and
+         (Integer(Written) = Length(ListText)));
+      CloseHandle(ListHandle);
+    end;
+    if not ListOk then
+    begin
+      Status('unIDE FAR: список для 7-Zip не записать');
+      ArcCleanupTemp;
+      FArcAction := aaNone;
+      Exit;
+    end;
+    Command := Command + ' x -y -sccUTF-8 -scsUTF-8 -bso0 -bsp0';
+    // Без пароля -p не ставим: '-p' без значения - вопрос пароля
+    if FArcJobPassword <> '' then
+      Command := Command + WideString(' "-p') + FArcJobPassword +
+        WideString('"');
+    Command := Command + WideString(' "-o') +
+      Copy(FArcJobTemp, 1, Length(FArcJobTemp) - 1) + WideString('" "') +
+      FArcJobFile + WideString('" "@') + ListFile + WideString('"');
+    Status('unIDE FAR: распаковка...');
+  end;
+  if not StartProcess(Command, FPanels[FArcJobPanel].Path, True) then
+  begin
+    ArcCleanupTemp;
+    FArcAction := aaNone;
+  end;
+end;
+
+// Сообщение об ошибке 7-Zip: первая строка с ERROR / Error / Wrong
+procedure TFarView.ArcError(const AOutput: WideString);
+var
+  LineStart, LineEnd: Integer;
+  Line, Found: WideString;
+begin
+  Found := '';
+  LineStart := 1;
+  while (LineStart <= Length(AOutput)) and (Found = '') do
+  begin
+    LineEnd := LineStart;
+    while (LineEnd <= Length(AOutput)) and (AOutput[LineEnd] <> #10) do
+      Inc(LineEnd);
+    Line := FarTrimW(Copy(AOutput, LineStart, LineEnd - LineStart));
+    LineStart := LineEnd + 1;
+    if (FarPosText('ERROR', Line) > 0) or (FarPosText('Error', Line) > 0) or
+       (FarPosText('Is not archive', Line) > 0) or
+       (FarPosText('Wrong password', Line) > 0) then
+      Found := Line;
+  end;
+  if Found = '' then
+    Found := 'архив не открыть';
+  Status('unIDE FAR: 7-Zip: ' + string(Found));
+  // Весь ответ 7-Zip - в вывод под панелями
+  OutLine('7-Zip: ' + FArcJobFile);
+  OutAppend(AOutput);
+  OutLine('');
+end;
+
+procedure TFarView.ArcCleanupTemp;
+begin
+  if FArcJobTemp = '' then
+    Exit;
+  FarDeleteTree(FArcJobTemp);
+  FArcJobTemp := '';
+end;
+
+// 7z.exe закончил: по FArcAction - список в панель, перенос распакованного
+// на место или открытие файла; нужен пароль - спросить и повторить
+procedure TFarView.ArcDone(AExitCode: DWORD);
+var
+  Output, SourceDir, FromList, OpenPath: WideString;
+  NeedPassword, Aborted: Boolean;
+  NameIndex: Integer;
+  Action: TFarArcAction;
+  DestPanel: Integer;
+begin
+  Output := UTF8Decode(FProcRaw);
+  FProcRaw := '';
+  Action := FArcAction;
+  NeedPassword := (FarPosText('Enter password', Output) > 0) or
+    (FarPosText('Wrong password', Output) > 0) or
+    (FarPosText('Can not open encrypted archive', Output) > 0) or
+    (FarPosText('Cannot open encrypted archive', Output) > 0);
+  if NeedPassword then
+  begin
+    // Временную папку - очистить, путь - оставить для повтора
+    if Action <> aaList then
+    begin
+      SourceDir := FArcJobTemp;
+      ArcCleanupTemp;
+      FArcJobTemp := SourceDir;
+    end;
+    // FArcAction остаётся: повтор - из окна пароля (DlgActivate)
+    DlgOpen(fdPassword, 'Password', ['Password for', FarFitName(
+      ExtractFileName(string(FArcJobFile)), 60)], True, False, True, '',
+      ['OK', 'Cancel']);
+    FDlgMasked := True;
+    Status('unIDE FAR: архив защищён паролем');
+    Exit;
+  end;
+  FArcAction := aaNone;
+  case Action of
+    aaList:
+      ArcApplyList(Output);
+    aaExtract, aaOpenFile:
+      begin
+        // 0 - всё хорошо, 1 - предупреждения, дальше - ошибки
+        if AExitCode >= 2 then
+        begin
+          ArcError(Output);
+          ArcCleanupTemp;
+          Exit;
+        end;
+        if AExitCode = 1 then
+          ArcError(Output);
+        SourceDir := FArcJobTemp;
+        if FArcJobPrefix <> '' then
+          SourceDir := SourceDir + FArcJobPrefix + '\';
+        if Action = aaOpenFile then
+        begin
+          // Файл - во временной папке unIDE_far, она остаётся до выхода
+          OpenPath := SourceDir + FArcJobNames[0];
+          if FPanels[FArcJobPanel].DisplayPath = FArcJobStart then
+            FPanels[FArcJobPanel].FArcPassword := FArcJobPassword;
+          if IsArchiveName(FArcJobNames[0]) or FArcJobForce then
+            OpenArchive(FArcJobPanel, OpenPath,
+              FPanels[FArcJobPanel].DisplayPath + '\' + FArcJobNames[0], True,
+              '')
+          else
+            ShellOpen(OpenPath, SourceDir);
+          FArcJobTemp := '';
+          Exit;
+        end;
+        // Распаковка: верхние элементы - на место (замену спросит Windows)
+        FromList := '';
+        for NameIndex := 0 to High(FArcJobNames) do
+          FromList := FromList + SourceDir + FArcJobNames[NameIndex] +
+            WideChar(#0);
+        FromList := FromList + WideChar(#0);
+        RunShellOp(FarFoMove, FromList, FArcJobDest + WideChar(#0) +
+          WideChar(#0), FarFofNoConfirmMkDir, Aborted);
+        if FPanels[FArcJobPanel].DisplayPath = FArcJobStart then
+          FPanels[FArcJobPanel].FArcPassword := FArcJobPassword;
+        ArcCleanupTemp;
+        // Папка, куда распаковали, - перечитать
+        for DestPanel := 0 to 1 do
+          if not FPanels[DestPanel].IsArchive and
+             FarSameName(FPanels[DestPanel].Path, FArcJobDest) then
+          begin
+            FPanels[DestPanel].Reread;
+            EnsureVisible(FPanels[DestPanel]);
+          end;
+        if not Aborted and (AExitCode = 0) then
+          Status('unIDE FAR: распаковано: ' + IntToStr(Length(FArcJobNames)));
+        Invalidate;
+      end;
+  end;
+end;
+
+// Список архива готов: панель - в архив (вложенный - поверх текущего)
+procedure TFarView.ArcApplyList(const AOutput: WideString);
+var
+  Entries: TFarArcEntries;
+  Panel: TFarPanel;
+  Level: Integer;
+begin
+  Panel := FPanels[FArcJobPanel];
+  // Панель за это время ушла в другую папку - не трогаем
+  if Panel.DisplayPath <> FArcJobStart then
+  begin
+    Status('unIDE FAR: панель уже в другой папке - архив не открыт');
+    Exit;
+  end;
+  if not FarParseSlt(AOutput, Entries) then
+  begin
+    ArcError(AOutput);
+    Exit;
+  end;
+  if FArcJobNested and Panel.IsArchive then
+  begin
+    Level := Length(Panel.FArcLevels);
+    SetLength(Panel.FArcLevels, Level + 1);
+    Panel.FArcLevels[Level].ArcFile := Panel.FArcFile;
+    Panel.FArcLevels[Level].Title := Panel.FArcTitle;
+    Panel.FArcLevels[Level].Dir := Panel.FArcDir;
+    Panel.FArcLevels[Level].Password := Panel.FArcPassword;
+    Panel.FArcLevels[Level].Entries := Panel.FArcEntries;
+  end
+  else
+    Panel.FArcLevels := nil;
+  Panel.FArcFile := FArcJobFile;
+  Panel.FArcTitle := FArcJobTitle;
+  Panel.FArcDir := '';
+  Panel.FArcEntries := Entries;
+  Panel.FArcPassword := FArcJobPassword;
+  Panel.BuildArcView('');
+  EnsureVisible(Panel);
+  Status('unIDE FAR: ' + string(ExtractFileName(string(FArcJobFile))) +
+    ' - записей: ' + IntToStr(Length(Entries)));
+  Invalidate;
+end;
+
+// '..' в архиве: на папку выше; в корне вложенного - во внешний архив; в
+// корне внешнего - выход из архива (курсор - на файл архива)
+procedure TFarView.ArcUp(APanel: TFarPanel);
+var
+  ChildName, ArcName: WideString;
+  SlashPos, Level: Integer;
+begin
+  if APanel.FArcDir <> '' then
+  begin
+    SlashPos := Length(APanel.FArcDir);
+    while (SlashPos > 0) and (APanel.FArcDir[SlashPos] <> '\') do
+      Dec(SlashPos);
+    ChildName := Copy(APanel.FArcDir, SlashPos + 1, MaxInt);
+    if SlashPos > 0 then
+      APanel.FArcDir := Copy(APanel.FArcDir, 1, SlashPos - 1)
+    else
+      APanel.FArcDir := '';
+    APanel.BuildArcView(ChildName);
+    EnsureVisible(APanel);
+    Invalidate;
+    Exit;
+  end;
+  Level := High(APanel.FArcLevels);
+  if Level >= 0 then
+  begin
+    // Имя вложенного архива - курсор на него во внешнем
+    FarSplitPath(APanel.FArcFile, ChildName, ArcName);
+    APanel.FArcFile := APanel.FArcLevels[Level].ArcFile;
+    APanel.FArcTitle := APanel.FArcLevels[Level].Title;
+    APanel.FArcDir := APanel.FArcLevels[Level].Dir;
+    APanel.FArcPassword := APanel.FArcLevels[Level].Password;
+    APanel.FArcEntries := APanel.FArcLevels[Level].Entries;
+    SetLength(APanel.FArcLevels, Level);
+    APanel.BuildArcView(ArcName);
+    EnsureVisible(APanel);
+    Invalidate;
+    Exit;
+  end;
+  // Из архива - в его папку
+  ArcName := APanel.FArcTitle;
+  SlashPos := Length(ArcName);
+  while (SlashPos > 0) and (ArcName[SlashPos] <> '\') do
+    Dec(SlashPos);
+  ArcName := Copy(ArcName, SlashPos + 1, MaxInt);
+  ChangeDir(APanel, APanel.Path, ArcName);
+end;
+
+// Enter (Ctrl+PgDn - AForceArchive) в архиве: папка - войти, '..' - выше,
+// файл - распаковать во временную папку и открыть (архив - вложенно)
+procedure TFarView.ArcOpenItem(ASeparate, AForceArchive: Boolean);
+var
+  Panel: TFarPanel;
+  Name: WideString;
+  TempBuffer: array[0..MAX_PATH] of WideChar;
+  TempLen: DWORD;
+begin
+  Panel := ActivePanel;
+  if (Panel.Count = 0) or (Panel.Cursor < 0) or
+     (Panel.Cursor >= Panel.Count) then
+    Exit;
+  if ASeparate then
+  begin
+    ArcBlocked;
+    Exit;
+  end;
+  Name := Panel.FItems[Panel.Cursor].Name;
+  if Panel.FItems[Panel.Cursor].IsUp then
+  begin
+    ArcUp(Panel);
+    Exit;
+  end;
+  if Panel.FItems[Panel.Cursor].IsDir then
+  begin
+    Panel.FArcDir := Panel.ArcInnerPath(Name);
+    Panel.BuildArcView('');
+    EnsureVisible(Panel);
+    Invalidate;
+    Exit;
+  end;
+  if FProcHandle <> 0 then
+  begin
+    Status('unIDE FAR: выполняется команда - подождите');
+    Exit;
+  end;
+  // Файл из архива - во временную папку %TEMP%\unIDE_far\<метка>\
+  TempLen := FarGetTempPath(MAX_PATH + 1, TempBuffer);
+  if (TempLen = 0) or (TempLen > MAX_PATH) then
+  begin
+    Status('unIDE FAR: нет временной папки Windows');
+    Exit;
+  end;
+  FArcAction := aaOpenFile;
+  FArcJobForce := AForceArchive;
+  FArcJobPanel := FActive;
+  FArcJobFile := Panel.FArcFile;
+  FArcJobStart := Panel.DisplayPath;
+  FArcJobPrefix := Panel.FArcDir;
+  SetLength(FArcJobNames, 1);
+  FArcJobNames[0] := Name;
+  FArcJobPassword := Panel.FArcPassword;
+  FArcJobTemp := FarWithSlash(PWideChar(@TempBuffer[0])) + FarArcTempDir +
+    '\' + IntToHex(GetTickCount, 8) + '\';
+  ArcRun;
+end;
+
+// F5 из панели архива: окно «Extract to» с папкой другой панели
+procedure TFarView.StartArcExtract;
+var
+  Names: TFarNames;
+  Subject: WideString;
+begin
+  if FPanels[1 - FActive].IsArchive then
+  begin
+    Status('unIDE FAR: из архива - только в обычную папку');
+    Exit;
+  end;
+  Names := CollectNames(False);
+  if Length(Names) = 0 then
+    Exit;
+  FDlgNames := Names;
+  if Length(Names) = 1 then
+    Subject := '"' + Names[0] + '"'
+  else
+    Subject := IntToStr(Length(Names)) + ' items';
+  DlgOpen(fdArcExtract, 'Extract', ['Extract ' + Subject + ' to:'], False,
+    False, True, FPanels[1 - FActive].Path, ['Extract', 'Cancel']);
+end;
+
+procedure TFarView.DoArcExtract(const ATarget: WideString);
+var
+  Panel: TFarPanel;
+  Target: WideString;
+begin
+  Panel := ActivePanel;
+  Target := FarTrimW(ATarget);
+  if (Target = '') or (Length(FDlgNames) = 0) or not Panel.IsArchive then
+    Exit;
+  if FProcHandle <> 0 then
+  begin
+    Status('unIDE FAR: выполняется команда - подождите');
+    Exit;
+  end;
+  Target := FarWithSlash(FarFullPath(FPanels[1 - FActive].Path, Target));
+  if not FarForceDirs(Target) then
+  begin
+    Status('unIDE FAR: папку не создать: ' + SysErrorMessage(GetLastError));
+    Exit;
+  end;
+  FArcAction := aaExtract;
+  FArcJobPanel := FActive;
+  FArcJobFile := Panel.FArcFile;
+  FArcJobStart := Panel.DisplayPath;
+  FArcJobPrefix := Panel.FArcDir;
+  FArcJobNames := FDlgNames;
+  FArcJobDest := Target;
+  FArcJobPassword := Panel.FArcPassword;
+  // Временная папка - в папке назначения: перенос оттуда - без копирования
+  FArcJobTemp := Target + '~unIDE_7z_' + IntToHex(GetTickCount, 8) + '\';
+  FDlgNames := nil;
+  ArcRun;
 end;
 
 // ---------------------------------------------------------------------------
