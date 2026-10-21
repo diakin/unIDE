@@ -35,6 +35,18 @@ unit HangWatch;
 //  строк, ни динамических массивов): поток мог остановиться, держа её
 //  блокировку, и тогда сторож повис бы сам. Всё на это время - в массивах
 //  фиксированного размера на стеке сторожа и системных вызовах.
+//
+//  Сбой - crash.log рядом с exe. Исключение, которое не перехватил никто
+//  (ни VCL, ни try), Windows перед окном «Прекращена работа программы»
+//  отдаёт обработчику SetUnhandledExceptionFilter. Обработчик работает в
+//  упавшем потоке, у которого стека может почти не остаться (переполнение
+//  стека), поэтому сам он только копирует запись исключения и регистры в
+//  глобальные переменные, будит сторожа и ждёт. Сторож со своим стеком
+//  пишет в журнал код исключения, адрес (процедура, модуль, строка по
+//  .map), для обращения к памяти - какой адрес и чтение или запись, для
+//  исключения Delphi - класс и сообщение, и цепочку вызовов упавшего
+//  потока - как при зависании. Потом обработчик возвращает управление
+//  Windows. Под отладчиком Windows обработчик не вызывает.
 // ---------------------------------------------------------------------------
 
 interface
@@ -45,9 +57,14 @@ uses
 // AWnd - окно, которое обслуживает главный поток (Application.Handle).
 // ALogFile - журнал; пишется только при зависании. AUiWnd - главное окно
 // программы: по нему спрашивается IsHungAppWindow (0 - по AWnd).
+// Сбои - в crash.log рядом с ALogFile.
 procedure HangWatchStart(AWnd: HWND; const ALogFile: string;
                          AUiWnd: HWND = 0);
 procedure HangWatchStop;
+// Цепочка вызовов текущего потока - строками в ALines, теми же словами,
+// что в hang.log (процедура и строка по .map). Для журналов, которым надо
+// знать, кто сделал вызов (WndWatch: кто скрыл главное окно).
+procedure HangWatchCallStack(ALines: TStrings);
 
 implementation
 
@@ -79,6 +96,7 @@ type
     FWhy: string;          // по какому признаку зависание
     FStop: THandle;        // событие: пора выходить
     FLogFile: string;
+    FCrashFile: string;    // crash.log
     FMapFile: string;
     FCodeBase, FCodeEnd: Cardinal;   // сегмент кода exe в памяти
     // Карта: публичные имена и номера строк, смещения от начала сегмента
@@ -97,7 +115,12 @@ type
     function InCode(A: Cardinal): Boolean;
     function Describe(A: Cardinal): string;
     procedure Sample(ANum: Integer; AHungMs: Cardinal);
+    procedure DescribeStack(AEip, AEsp, AEbp: Cardinal;
+                            const AStack: TStackCopy; AGot: Cardinal;
+                            ALines: TStrings);
+    procedure CrashReport;
     procedure WriteLog(const S: string);
+    procedure WriteCrash(ALines: TStrings);
     function ThreadCpuMs: Int64;
   protected
     procedure Execute; override;
@@ -108,6 +131,35 @@ type
 
 var
   Watch: THangWatch = nil;
+
+  // Сбой: что скопировал обработчик (HangCrashFilter) - без кучи, его
+  // стека может не хватить
+  CrashRec: TExceptionRecord;
+  CrashCtx: TContext;
+  CrashThread: DWORD;
+  CrashEvent: THandle = 0;   // обработчик - сторожу: сбой, разбери
+  CrashDone: THandle = 0;    // сторож - обработчику: записано
+  CrashOnce: Integer = 0;    // второй сбой (в разборе первого) не ждёт
+  OldCrashFilter: Pointer = nil;  // прежний обработчик (TCrashFilter)
+
+const
+  // Исключение Delphi (raise): ExceptionInformation[1] - объект исключения
+  DelphiExceptCode = $0EEDFADE;
+  // Ответ обработчика: исключение не разобрано, дальше - как у Windows
+  CrashContinueSearch = 0;
+
+type
+  // EXCEPTION_POINTERS (winnt.h) и обработчик SetUnhandledExceptionFilter -
+  // свои описания: в Windows.pas Delphi 7 их нет или они другие
+  PCrashPointers = ^TCrashPointers;
+  TCrashPointers = record
+    ExceptionRecord: ^TExceptionRecord;
+    ContextRecord: ^TContext;
+  end;
+  TCrashFilter = function(AInfo: PCrashPointers): Longint; stdcall;
+
+function CrashSetFilter(AFilter: Pointer): Pointer; stdcall;
+  external kernel32 name 'SetUnhandledExceptionFilter';
 
 // ---------------------------------------------------------------------------
 
@@ -120,6 +172,7 @@ begin
   if FUiWnd = 0 then
     FUiWnd := AWnd;
   FLogFile := ALogFile;
+  FCrashFile := ExtractFilePath(ALogFile) + 'crash.log';
   FMapFile := ChangeFileExt(ParamStr(0), '.map');
   FStop := CreateEvent(nil, True, False, nil);
   // Настоящий дескриптор главного потока: GetCurrentThread даёт
@@ -398,12 +451,10 @@ procedure THangWatch.Sample(ANum: Integer; AHungMs: Cardinal);
 var
   Ctx: TContext;
   Stack: TStackCopy;
-  Frames: array[0..MaxFrames - 1] of Cardinal;
-  Codes: array[0..MaxCodeAddrs - 1] of Cardinal;
-  Got, Size, Esp, Ebp, E, Nxt, V: Cardinal;
+  Got, Size, Esp, Ebp, Eip: Cardinal;
   MBI: TMemoryBasicInformation;
-  FC, CC, I, J: Integer;
-  Ok, Dup: Boolean;
+  I: Integer;
+  Ok: Boolean;
   SL: TStringList;
   Cpu: Int64;
 
@@ -424,10 +475,10 @@ begin
   if FMain = 0 then
     Exit;
   Got := 0;
-  FC := 0;
   Ok := False;
   Esp := 0;
   Ebp := 0;
+  Eip := 0;
 
   if SuspendThread(FMain) = DWORD(-1) then
     Exit;
@@ -439,8 +490,7 @@ begin
       Ok := True;
       Esp := Ctx.Esp;
       Ebp := Ctx.Ebp;
-      Frames[0] := Ctx.Eip;
-      FC := 1;
+      Eip := Ctx.Eip;
       // Копия стека от ESP до конца его области памяти, не больше StackBytes
       if VirtualQuery(Pointer(Esp), MBI, SizeOf(MBI)) = SizeOf(MBI) then
       begin
@@ -457,44 +507,6 @@ begin
   end;
   if not Ok then
     Exit;
-
-  // Цепочка по EBP: [EBP] - EBP вызывающего, [EBP+4] - адрес возврата.
-  // Только внутри копии; процедуры без кадра стека в неё не попадают.
-  E := Ebp;
-  while (FC < MaxFrames) and (E >= Esp) and (E + 8 <= Esp + Got) and
-        ((E and 3) = 0) do
-  begin
-    Nxt := Stack[(E - Esp) div 4];
-    V := Stack[(E - Esp) div 4 + 1];
-    Frames[FC] := V;
-    Inc(FC);
-    if Nxt <= E then
-      Break;
-    E := Nxt;
-  end;
-
-  // Все адреса кода exe в копии стека, кроме уже найденных цепочкой
-  CC := 0;
-  for I := 0 to Integer(Got div 4) - 1 do
-  begin
-    if CC >= MaxCodeAddrs then
-      Break;
-    V := Stack[I];
-    if not InCode(V) then
-      Continue;
-    Dup := False;
-    for J := 0 to FC - 1 do
-      if Frames[J] = V then
-        Dup := True;
-    for J := 0 to CC - 1 do
-      if Codes[J] = V then
-        Dup := True;
-    if not Dup then
-    begin
-      Codes[CC] := V;
-      Inc(CC);
-    end;
-  end;
 
   // Дальше - уже можно и строки, и кучу: поток продолжил работу
   SL := TStringList.Create;
@@ -515,19 +527,7 @@ begin
       SL.Add('Карты ' + FMapFile + ' нет - адреса без имён. Нужна сборка ' +
              'с картой: Project -> Options -> Linker -> Map file: Detailed ' +
              '(у dcc32 ключ -GD).');
-    SL.Add(Format('EIP  %.8x  %s', [Frames[0], Describe(Frames[0])]));
-    if FC > 1 then
-    begin
-      SL.Add('Цепочка вызовов (по EBP):');
-      for I := 1 to FC - 1 do
-        SL.Add(Format('  %2d  %.8x  %s', [I, Frames[I], Describe(Frames[I])]));
-    end;
-    if CC > 0 then
-    begin
-      SL.Add('Адреса кода в стеке (не только цепочка - бывают и старые):');
-      for I := 0 to CC - 1 do
-        SL.Add(Format('      %.8x  %s', [Codes[I], Describe(Codes[I])]));
-    end;
+    DescribeStack(Eip, Esp, Ebp, Stack, Got, SL);
     SL.Add('');
     for I := 0 to SL.Count - 1 do
       WriteLog(SL[I]);
@@ -536,24 +536,256 @@ begin
   end;
 end;
 
+// EIP, цепочка вызовов по EBP и адреса кода в копии стека AStack (AGot
+// байт от AEsp) - строками в ALines
+procedure THangWatch.DescribeStack(AEip, AEsp, AEbp: Cardinal;
+                                   const AStack: TStackCopy; AGot: Cardinal;
+                                   ALines: TStrings);
+var
+  Frames: array[0..MaxFrames - 1] of Cardinal;
+  Codes: array[0..MaxCodeAddrs - 1] of Cardinal;
+  E, Nxt, V: Cardinal;
+  FC, CC, I, J: Integer;
+  Dup: Boolean;
+begin
+  Frames[0] := AEip;
+  FC := 1;
+  // Цепочка по EBP: [EBP] - EBP вызывающего, [EBP+4] - адрес возврата.
+  // Только внутри копии; процедуры без кадра стека в неё не попадают.
+  E := AEbp;
+  while (FC < MaxFrames) and (E >= AEsp) and (E + 8 <= AEsp + AGot) and
+        ((E and 3) = 0) do
+  begin
+    Nxt := AStack[(E - AEsp) div 4];
+    V := AStack[(E - AEsp) div 4 + 1];
+    Frames[FC] := V;
+    Inc(FC);
+    if Nxt <= E then
+      Break;
+    E := Nxt;
+  end;
+
+  // Все адреса кода exe в копии стека, кроме уже найденных цепочкой
+  CC := 0;
+  for I := 0 to Integer(AGot div 4) - 1 do
+  begin
+    if CC >= MaxCodeAddrs then
+      Break;
+    V := AStack[I];
+    if not InCode(V) then
+      Continue;
+    Dup := False;
+    for J := 0 to FC - 1 do
+      if Frames[J] = V then
+        Dup := True;
+    for J := 0 to CC - 1 do
+      if Codes[J] = V then
+        Dup := True;
+    if not Dup then
+    begin
+      Codes[CC] := V;
+      Inc(CC);
+    end;
+  end;
+
+  ALines.Add(Format('EIP  %.8x  %s', [Frames[0], Describe(Frames[0])]));
+  if FC > 1 then
+  begin
+    ALines.Add('Цепочка вызовов (по EBP):');
+    for I := 1 to FC - 1 do
+      ALines.Add(Format('  %2d  %.8x  %s', [I, Frames[I], Describe(Frames[I])]));
+  end;
+  if CC > 0 then
+  begin
+    ALines.Add('Адреса кода в стеке (не только цепочка - бывают и старые):');
+    for I := 0 to CC - 1 do
+      ALines.Add(Format('      %.8x  %s', [Codes[I], Describe(Codes[I])]));
+  end;
+end;
+
+// Код исключения словами
+function CrashCodeText(ACode: DWORD): string;
+begin
+  // Сравнения, а не case: коды больше MaxInt
+  if ACode = $C0000005 then
+    Result := 'обращение к недоступной памяти (access violation)'
+  else if ACode = $C00000FD then
+    Result := 'переполнение стека (stack overflow) - обычно бесконечная ' +
+              'рекурсия: в цепочке повторяются одни и те же строки'
+  else if ACode = $C0000094 then
+    Result := 'целое деление на ноль'
+  else if ACode = $C0000095 then
+    Result := 'переполнение целого'
+  else if ACode = $C000008E then
+    Result := 'деление на ноль с плавающей точкой'
+  else if ACode = $C0000090 then
+    Result := 'недопустимая операция с плавающей точкой'
+  else if ACode = $C0000091 then
+    Result := 'переполнение с плавающей точкой'
+  else if ACode = $C000001D then
+    Result := 'недопустимая команда процессора'
+  else if ACode = $C0000096 then
+    Result := 'привилегированная команда'
+  else if ACode = $C0000409 then
+    Result := 'порча буфера в стеке'
+  else if ACode = $C0000374 then
+    Result := 'порча кучи'
+  else if ACode = $C0000025 then
+    Result := 'продолжение после неустранимого исключения'
+  else if ACode = $80000003 then
+    Result := 'точка останова (int 3)'
+  else if ACode = DelphiExceptCode then
+    Result := 'исключение Delphi (raise), не перехваченное'
+  else
+    Result := '';
+end;
+
+// Разбор сбоя по тому, что скопировал HangCrashFilter, - в crash.log.
+// Упавший поток стоит в обработчике и ждёт, его стек выше ESP исключения
+// не меняется: копия читается без остановки потока.
+procedure THangWatch.CrashReport;
+var
+  Stack: TStackCopy;
+  Got, Size, FaultAddr: Cardinal;
+  MBI: TMemoryBasicInformation;
+  SL: TStringList;
+  ExcObj: TObject;
+  AccessKind: string;
+begin
+  SL := TStringList.Create;
+  try
+    SL.Add(Format('==== %s  сбой: исключение $%.8x  %s',
+                  [FormatDateTime('dd.mm.yyyy hh:nn:ss', Now),
+                   CrashRec.ExceptionCode,
+                   CrashCodeText(CrashRec.ExceptionCode)]));
+    if CrashThread = MainThreadID then
+      SL.Add('Поток: главный')
+    else
+      SL.Add('Поток: ' + IntToStr(CrashThread) + ' (не главный)');
+    FaultAddr := Cardinal(CrashRec.ExceptionAddress);
+    SL.Add(Format('Адрес: %.8x  %s', [FaultAddr, Describe(FaultAddr)]));
+    // Обращение к памяти: что делали и по какому адресу
+    if (CrashRec.ExceptionCode = $C0000005) and
+       (CrashRec.NumberParameters >= 2) then
+    begin
+      case CrashRec.ExceptionInformation[0] of
+        0: AccessKind := 'чтение';
+        1: AccessKind := 'запись';
+        8: AccessKind := 'исполнение (DEP)';
+      else
+        AccessKind := 'доступ';
+      end;
+      SL.Add(Format('Память: %s по адресу %.8x',
+                    [AccessKind, CrashRec.ExceptionInformation[1]]));
+    end;
+    // Исключение Delphi: класс и сообщение объекта. Объект в куче - если
+    // она испорчена, чтение может упасть: тогда без него.
+    if (CrashRec.ExceptionCode = DelphiExceptCode) and
+       (CrashRec.NumberParameters >= 2) then
+    try
+      ExcObj := TObject(CrashRec.ExceptionInformation[1]);
+      if ExcObj is Exception then
+        SL.Add('Исключение: ' + ExcObj.ClassName + ': ' +
+               Exception(ExcObj).Message)
+      else if ExcObj <> nil then
+        SL.Add('Исключение: объект ' + ExcObj.ClassName);
+    except
+      SL.Add('Исключение: объект не прочитался');
+    end;
+    if not FileExists(FMapFile) then
+      SL.Add('Карты ' + FMapFile + ' нет - адреса без имён. Нужна сборка ' +
+             'с картой: Project -> Options -> Linker -> Map file: Detailed ' +
+             '(у dcc32 ключ -GD).');
+
+    // Стек упавшего потока от ESP исключения
+    Got := 0;
+    if VirtualQuery(Pointer(CrashCtx.Esp), MBI, SizeOf(MBI)) = SizeOf(MBI) then
+    begin
+      Size := Cardinal(MBI.BaseAddress) + MBI.RegionSize - CrashCtx.Esp;
+      if Size > StackBytes then
+        Size := StackBytes;
+      if not ReadProcessMemory(GetCurrentProcess, Pointer(CrashCtx.Esp),
+                               @Stack, Size, Got) then
+        Got := 0;
+    end;
+    DescribeStack(CrashCtx.Eip, CrashCtx.Esp, CrashCtx.Ebp, Stack, Got, SL);
+    SL.Add('');
+    WriteCrash(SL);
+  finally
+    SL.Free;
+  end;
+end;
+
+procedure THangWatch.WriteCrash(ALines: TStrings);
+var
+  F: TextFile;
+  LineIdx: Integer;
+begin
+  try
+    AssignFile(F, FCrashFile);
+    if FileExists(FCrashFile) then
+      Append(F)
+    else
+      Rewrite(F);
+    try
+      for LineIdx := 0 to ALines.Count - 1 do
+        Writeln(F, ALines[LineIdx]);
+    finally
+      CloseFile(F);
+    end;
+  except
+    // журнал не записался - ничего не поделать
+  end;
+end;
+
 procedure THangWatch.Execute;
 var
-  R: DWORD;
+  R, Waited: DWORD;
   HungSince, Now_: Cardinal;
   Samples: Integer;
   Ok: Boolean;
+  WaitFor2: array[0..1] of THandle;
+
+  // Обработчик сбоя ждёт разбора - разобрать и отпустить его
+  function CrashPending: Boolean;
+  begin
+    Result := (CrashEvent <> 0) and
+              (WaitForSingleObject(CrashEvent, 0) = WAIT_OBJECT_0);
+    if Result then
+    begin
+      try
+        CrashReport;
+      except
+        // разбор не удался - Windows покажет своё окно и так
+      end;
+      SetEvent(CrashDone);
+    end;
+  end;
+
 begin
   HungSince := 0;
   Samples := 0;
+  WaitFor2[0] := FStop;
+  WaitFor2[1] := CrashEvent;
   while not Terminated do
   begin
-    if WaitForSingleObject(FStop, PingEvery) = WAIT_OBJECT_0 then
+    if CrashEvent <> 0 then
+      Waited := WaitForMultipleObjects(2, @WaitFor2, False, PingEvery)
+    else
+      Waited := WaitForSingleObject(FStop, PingEvery);
+    if Waited = WAIT_OBJECT_0 then
       Break;
+    // Сбой - разбор и дальше: процесс всё равно закроется
+    if CrashPending then
+      Continue;
     if not IsWindow(FWnd) then
       Break;
     R := 0;
     Ok := SendMessageTimeout(FWnd, WM_NULL, 0, 0, SMTO_NORMAL, PingWait,
                              R) <> 0;
+    // Главный поток не ответил, потому что упал и ждёт в обработчике
+    if CrashPending then
+      Continue;
     if not Ok then
       FWhy := 'нет ответа на WM_NULL ' + IntToStr(PingWait div 1000) + ' с'
     else if IsWindow(FUiWnd) and IsHungAppWindow(FUiWnd) then
@@ -602,13 +834,80 @@ end;
 
 // ---------------------------------------------------------------------------
 
+// Исключение, которое никто не перехватил. Здесь - только копии в
+// глобальные переменные и ожидание: стека у упавшего потока может почти не
+// остаться. Разбирает и пишет сторож (CrashReport). Сбой в самом стороже
+// или повторный - без разбора.
+function HangCrashFilter(ExceptionInfo: PCrashPointers): Longint; stdcall;
+begin
+  Result := CrashContinueSearch;
+  if (Watch <> nil) and (CrashEvent <> 0) and (ExceptionInfo <> nil) and
+     (GetCurrentThreadId <> Watch.ThreadID) and
+     (InterlockedExchange(CrashOnce, 1) = 0) then
+  begin
+    if ExceptionInfo^.ExceptionRecord <> nil then
+      CrashRec := ExceptionInfo^.ExceptionRecord^;
+    if ExceptionInfo^.ContextRecord <> nil then
+      CrashCtx := ExceptionInfo^.ContextRecord^;
+    CrashThread := GetCurrentThreadId;
+    SetEvent(CrashEvent);
+    WaitForSingleObject(CrashDone, 20000);
+  end;
+  if OldCrashFilter <> nil then
+    Result := TCrashFilter(OldCrashFilter)(ExceptionInfo);
+end;
+
 procedure HangWatchStart(AWnd: HWND; const ALogFile: string;
                          AUiWnd: HWND = 0);
 begin
   if Watch <> nil then
     Exit;
+  // С ручным сбросом: сторож и ждёт его в WaitForMultipleObjects, и
+  // проверяет потом - сигнал не должен съедаться
+  CrashEvent := CreateEvent(nil, True, False, nil);
+  CrashDone := CreateEvent(nil, False, False, nil);
   Watch := THangWatch.Create(AWnd, ALogFile, AUiWnd);
   Watch.Resume;
+  OldCrashFilter := CrashSetFilter(@HangCrashFilter);
+end;
+
+procedure HangWatchCallStack(ALines: TStrings);
+var
+  FrameBase: Cardinal;     // EBP этой процедуры
+  StackFrom: Cardinal;     // откуда копировать: адрес своей переменной
+  StackTop: Cardinal;      // верх выделенной части стека
+  CopyBytes: Cardinal;
+  StackBuf: ^TStackCopy;
+  MemInfo: TMemoryBasicInformation;
+begin
+  if Watch = nil then
+  begin
+    ALines.Add('(сторож не запущен - цепочки нет)');
+    Exit;
+  end;
+  asm
+    mov FrameBase, ebp
+  end;
+  StackFrom := Cardinal(@FrameBase) and not 3;
+  // Копируем до конца выделенной области стека, не больше StackBytes
+  StackTop := StackFrom + StackBytes;
+  if VirtualQuery(Pointer(StackFrom), MemInfo, SizeOf(MemInfo)) =
+     SizeOf(MemInfo) then
+    if Cardinal(MemInfo.BaseAddress) + MemInfo.RegionSize < StackTop then
+      StackTop := Cardinal(MemInfo.BaseAddress) + MemInfo.RegionSize;
+  CopyBytes := StackTop - StackFrom;
+
+  New(StackBuf);
+  try
+    FillChar(StackBuf^, SizeOf(TStackCopy), 0);
+    Move(Pointer(StackFrom)^, StackBuf^, CopyBytes);
+    // Первая строка - адрес возврата из этой процедуры, то есть место
+    // вызова; цепочка - от кадра вызывающего
+    Watch.DescribeStack(PDWORD(FrameBase + 4)^, StackFrom,
+                        PDWORD(FrameBase)^, StackBuf^, CopyBytes, ALines);
+  finally
+    Dispose(StackBuf);
+  end;
 end;
 
 // Событие и Terminate, потом ожидание. Если сторож в это время сидит в
@@ -619,10 +918,18 @@ procedure HangWatchStop;
 begin
   if Watch = nil then
     Exit;
+  CrashSetFilter(OldCrashFilter);
+  OldCrashFilter := nil;
   SetEvent(Watch.FStop);
   Watch.Terminate;
   Watch.WaitFor;
   FreeAndNil(Watch);
+  if CrashEvent <> 0 then
+    CloseHandle(CrashEvent);
+  if CrashDone <> 0 then
+    CloseHandle(CrashDone);
+  CrashEvent := 0;
+  CrashDone := 0;
 end;
 
 end.

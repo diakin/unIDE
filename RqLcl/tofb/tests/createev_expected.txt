@@ -1,0 +1,11 @@
+select 1 1
+keydown 65 0 10
+press 98
+btn down
+select 1 2
+select 2 2
+select 3 2
+col 2
+cell a width 80
+drawn
+edit left 10 form Create test

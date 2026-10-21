@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QANIM</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QANIM</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QANIM Component</h1>
+<p class="rq-meta">Extends <a href="qimage.html">QIMAGE</a> &middot; source: <code>inc/QAnim.inc</code>, line 17 &middot; version: 1.0</p>
+<p><b>Animated image: a QImage that shows the frames of its QImageList one after another on a timer.</b></p>
+<p>QAnim extends QImage and has an internal QTimer (default 200 ms). On each timer tick it puts the bitmap of ImageList frame Index into its BMP, shows itself, repaints and moves Index to the next frame, starting again at 0 after the last frame. The control is hidden until a frame has been shown.</p>
+<p>Set Width and Height (they also set the image list size), add the frames to ImageList, set Speed and assign Move = True to start. The comments in the file are in French.</p>
+<p>QANIM inherits the properties, methods and events of <a href="qimage.html">QIMAGE</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QAnim Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Speed</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Assigning sets the timer interval in milliseconds between frames (default 200). The value itself is not stored in the field.</td></tr>
+<tr><td class="rq-name">ImageList</td><td class="rq-type">QIMAGELIST</td><td>RW</td><td></td><td>QImageList that holds the animation frames.</td></tr>
+<tr><td class="rq-name">Index</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Current frame. Assigning it while ImageList has images stores it, shows that frame and makes the control visible; with an empty list, assigning does nothing. The timer increases it.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Assigning sets the control width and ImageList.Width.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Assigning sets the control height and ImageList.Height.</td></tr>
+<tr><td class="rq-name">BackColor</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Assigning sets ImageList.BkColor and redraws the current frame when the list has images and the control is visible.</td></tr>
+<tr><td class="rq-name">Masked</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Assigning sets ImageList.Masked and redraws the current frame when the list has images and the control is visible.</td></tr>
+<tr><td class="rq-name">Move</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>false</td><td>Assigning True starts the animation timer, but only if ImageList has images. Assigning False stops the timer and decreases Index by one.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>Timer.OnTimer</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The Speed setter only changes the timer interval and does not store the value, so reading Speed does not return what was assigned.</li>
+<li>Every assignment of Move = False decreases Index by one, even if the animation was already stopped.</li>
+<li>In the BackColor and Masked setters, the line that makes the control visible is inside a block that runs only when it is already visible, so it never has an effect.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QAnim.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QAnim Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QAnim.inc&quot;
+CREATE Form AS QFORM
+  Width = 200
+  Height = 150
+END CREATE
+DIM Anim AS QAnim
+Anim.Parent = Form
+Anim.Left = 20
+Anim.Top = 20
+Anim.Width = 32
+Anim.Height = 32
+Anim.ImageList.AddBMPFile(&quot;frame1.bmp&quot;, 0)
+Anim.ImageList.AddBMPFile(&quot;frame2.bmp&quot;, 0)
+Anim.ImageList.AddBMPFile(&quot;frame3.bmp&quot;, 0)
+Anim.Speed = 100
+Anim.Move = True
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qabout.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qanimate.html">Next component</a></div>
+</body>
+</html>

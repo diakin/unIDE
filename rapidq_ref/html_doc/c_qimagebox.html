@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QIMAGEBOX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QIMAGEBOX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QIMAGEBOX Component</h1>
+<p class="rq-meta">Extends <a href="qscrollbox.html">QSCROLLBOX</a> &middot; source: <code>inc/QImageBox.inc</code>, line 53 &middot; version: 1.0</p>
+<p><b>A scroll box that displays an image file (BMP, ICO, CUR, ANI, and GIF, JPG, PCX, TGA and others through Nviewlib.dll), scaled down to fit and centered.</b></p>
+<p>QImageBox extends QScrollbox and contains a stretched QImage. Assigning FileName loads the file into an internal QBitmap and shows it: .bmp files are loaded directly, .ico files with LoadImageA, and .ani and .cur files with ExtractIconA (drawn at 32 x 32 on the box color). GIF, JPG, JIF, DIB, RLE, TGA and PCX files are loaded with the NViewLibLoad function of Nviewlib.dll, which must be in the program folder or the Windows system folder.</p>
+<p>An image larger than the box (minus 10 pixels) is reduced by the same percentage in both directions to fit; smaller images are shown at their own size. The image is centered and redrawn when the box is resized. ImgWidth and ImgHeight give the original size of the loaded image. Comments in the source are in French.</p>
+<p>QIMAGEBOX inherits the properties, methods and events of <a href="qscrollbox.html">QSCROLLBOX</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>NVIEWLIB.DLL (Nviewlib.dll) for GIF, JPG, JIF, DIB, RLE, TGA and PCX files; it must be in the program folder or the Windows system folder</li>
+</ul>
+<a name="1"></a><h2>QImageBox Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Language</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>String passed to NViewLibSetLanguage before a file is loaded through Nviewlib.dll (only when not empty); the source does not say which values are accepted.</td></tr>
+<tr><td class="rq-name">Progress</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Passed as the Progress argument of NViewLibLoad when a file is loaded through Nviewlib.dll; the source does not say what it changes.</td></tr>
+<tr><td class="rq-name">FileName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Image file to display. Assigning it loads and shows the file according to its extension; for an unsupported extension, or a DLL format when Nviewlib.dll is missing, the image is hidden and ImgWidth and ImgHeight are set to 0.</td></tr>
+<tr><td class="rq-name">ImgWidth</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Read only (the setter is empty): width in pixels of the loaded image before scaling.</td></tr>
+<tr><td class="rq-name">ImgHeight</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Read only (the setter is empty): height in pixels of the loaded image before scaling.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnResize</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The file type is chosen with INSTR on the lowercase name, so the extension text anywhere in the name matches (for example &quot;a.bmp.jpg&quot; is treated as BMP).</li>
+<li>Images are only reduced to fit, never enlarged.</li>
+<li>Nviewlib.dll is looked for only in the folder of the executable and in the Windows system folder.</li>
+<li>Icons other than .ico (.ani, .cur) are always drawn at 32 x 32.</li>
+</ul>
+<a name="4"></a><h2>QImageBox Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>CREATE ImgBox AS QImageBox
+  Parent = Form
+  Width = 320
+  Height = 240
+END CREATE
+
+ImgBox.FileName = &quot;photo.jpg&quot;
+ShowMessage STR$(ImgBox.ImgWidth) + &quot; x &quot; + STR$(ImgBox.ImgHeight)</pre>
+<div class="rq-foot"><a href="c_qid3tag.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qimagedialog.html">Next component</a></div>
+</body>
+</html>

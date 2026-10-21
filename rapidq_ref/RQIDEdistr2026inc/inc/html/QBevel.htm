@@ -1,0 +1,153 @@
+<html>
+<head>
+<title>QBevel.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=============== QBEVEL =======================</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' This component duplicates the Delphi TBevel.</i></font> 
+<font color="007700"><i>' Not an entirely revolutionary thing, but as </i></font> 
+<font color="007700"><i>' with most of my components, something to save</i></font> 
+<font color="007700"><i>' time and coding. Play around with the combo</i></font> 
+<font color="007700"><i>' boxes to see the effects. Rather simple</i></font> 
+<font color="007700"><i>' actually, only two new properties: Shape and</i></font> 
+<font color="007700"><i>' Style. I think you'll find them pretty self-</i></font> 
+<font color="007700"><i>' explanatory...</i></font> 
+
+
+<font color="0000AA"><b>CONST</b></font> bsLowered    = 0
+<font color="0000AA"><b>CONST</b></font> bsRaised     = 1
+<font color="0000AA"><b>CONST</b></font> bsSpacer     = 0
+<font color="0000AA"><b>CONST</b></font> bsBox        = 1
+<font color="0000AA"><b>CONST</b></font> bsTopLine    = 2
+<font color="0000AA"><b>CONST</b></font> bsBottomLine = 3
+<font color="0000AA"><b>CONST</b></font> bsLeftLine   = 4
+<font color="0000AA"><b>CONST</b></font> bsRightLine  = 5
+<font color="0000AA"><b>CONST</b></font> bsFrame      = 6   
+
+
+<font color="0000AA"><b>TYPE</b></font> QBEVEL <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QPANEL</b></font>
+    
+    <font color="0000AA"><b>WITH</b></font> QBEVEL
+    
+        Style <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font> PROPERTY SET Set_Style
+        Shape <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font> PROPERTY SET Set_Shape
+        Canvas <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QCANVAS</b></font>
+
+        <font color="0000AA"><b>EVENT</b></font> Canvas.OnPaint
+        
+            <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> .Shape
+                <font color="0000AA"><b>CASE</b></font> 0, 1, 6
+                    <font color="0000AA"><b>EXIT</b></font> <font color="000099"><b>EVENT</b></font>
+                <font color="0000AA"><b>CASE</b></font> 2
+                    .Canvas.Line<b>(</b>0, 0, .Width, 0, <font color="0000AA"><b>IIF</b></font><b>(</b>.Style, &HFFFFFF, &H808080<b>)</b><b>)</b>
+                    .Canvas.Line<b>(</b>0, 1, .Width, 1, <font color="0000AA"><b>IIF</b></font><b>(</b>.Style, &H808080, &HFFFFFF<b>)</b><b>)</b>
+                <font color="0000AA"><b>CASE</b></font> 3
+                    .Canvas.Line<b>(</b>0, 0, .Width, 0, <font color="0000AA"><b>IIF</b></font><b>(</b>.Style, &HFFFFFF, &H808080<b>)</b><b>)</b>
+                    .Canvas.Line<b>(</b>0, 1, .Width, 1, <font color="0000AA"><b>IIF</b></font><b>(</b>.Style, &H808080, &HFFFFFF<b>)</b><b>)</b>
+                <font color="0000AA"><b>CASE</b></font> 4
+                    .Canvas.Line<b>(</b>0, 0, 0, .Height, <font color="0000AA"><b>IIF</b></font><b>(</b>.Style, &HFFFFFF, &H808080<b>)</b><b>)</b>
+                    .Canvas.Line<b>(</b>1, 0, 1, .Height, <font color="0000AA"><b>IIF</b></font><b>(</b>.Style, &H808080, &HFFFFFF<b>)</b><b>)</b>
+                <font color="0000AA"><b>CASE</b></font> 5
+                    .Canvas.Line<b>(</b>0, 0, 0, .Height, <font color="0000AA"><b>IIF</b></font><b>(</b>.Style, &HFFFFFF, &H808080<b>)</b><b>)</b>
+                    .Canvas.Line<b>(</b>1, 0, 1, .Height, <font color="0000AA"><b>IIF</b></font><b>(</b>.Style, &H808080, &HFFFFFF<b>)</b><b>)</b>
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+        
+        PROPERTY SET Set_Style<b>(</b>NewStyle <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+            .Style = NewStyle
+            <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> .Shape
+                <font color="0000AA"><b>CASE</b></font> 1
+                    .BevelInner = 0
+                    .BevelOuter = .Style+1
+                <font color="0000AA"><b>CASE</b></font> 6
+                    .BevelInner = 2-.Style
+                    .BevelOuter = 1+.Style
+                <font color="0000AA"><b>CASE</b></font> <font color="000099"><b>ELSE</b></font>
+                    .BevelInner = 0
+                    .BevelOuter = 0
+                    .Canvas.Repaint
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+        <font color="0000AA"><b>END</b></font> PROPERTY
+
+        PROPERTY SET Set_Shape<b>(</b>NewShape <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+            .Shape = NewShape
+            <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> .Shape
+                <font color="0000AA"><b>CASE</b></font> 1
+                    .BevelInner = 0
+                    .BevelOuter = .Style+1 
+                <font color="0000AA"><b>CASE</b></font> 6
+                    .BevelInner = 2-.Style
+                    .BevelOuter = 1+.Style                    
+                <font color="0000AA"><b>CASE</b></font> <font color="000099"><b>ELSE</b></font>
+                    .BevelInner = 0
+                    .BevelOuter = 0
+                    .Canvas.Align = .Shape-1
+                    .Canvas.Repaint
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+        <font color="0000AA"><b>END</b></font> PROPERTY
+       
+        <font color="000099"><b>CONSTRUCTOR</b></font>
+            Set_Shape<b>(</b>0<b>)</b>
+            Set_Style<b>(</b>0<b>)</b>
+            Canvas.Parent = This
+            Canvas.Width = 2
+            Canvas.Height = 2
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="007700"><i>'=================================================</i></font> 
+<font color="007700"><i>'        Sample program</i></font> 
+<font color="007700"><i>'=================================================</i></font> 
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> ChangeStyle
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> ChangeShape
+
+<font color="0000AA"><b>CREATE</b></font> Form <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QFORM</b></font>
+    <font color="0000AA"><b>CREATE</b></font> Menu <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMAINMENU</b></font>
+        <font color="0000AA"><b>CREATE</b></font> Item <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            Caption = "<font color="990000">Menu</font>"
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+    <font color="0000AA"><b>CREATE</b></font> ToolBar <font color="0000AA"><b>AS</b></font> QBEVEL
+        Align = 1
+        Height = 50
+        Shape = bsTopLine
+        Caption = "<font color="990000">ToolBar</font>"
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+    <font color="0000AA"><b>CREATE</b></font> Bevel <font color="0000AA"><b>AS</b></font> QBEVEL
+        Top = 80
+        Left = 30
+        Width = 130
+        Height = 30
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+    <font color="0000AA"><b>CREATE</b></font> Style <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QCOMBOBOX</b></font>
+        Top = 150
+        Left = 10
+        AddItems "<font color="990000">bsLowered</font>", "<font color="990000">bsRaised</font>"
+        ItemIndex = 0
+        OnChange = ChangeStyle
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+    <font color="0000AA"><b>CREATE</b></font> Shape <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QCOMBOBOX</b></font>
+        Top = 150
+        Left = 160
+        AddItems "<font color="990000">bsSpacer</font>", "<font color="990000">bsBox</font>", "<font color="990000">bsTopLine</font>", "<font color="990000">bsBottomLine</font>", "<font color="990000">bsLeftLine</font>", "<font color="990000">bsRightLine</font>", "<font color="990000">bsFrame</font>"
+        ItemIndex = 0
+        OnChange = ChangeShape
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+Form.ShowModal
+
+<font color="0000AA"><b>SUB</b></font> ChangeStyle
+    Bevel.Style = Style.ItemIndex
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="0000AA"><b>SUB</b></font> ChangeShape
+    Bevel.Shape = Shape.ItemIndex
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>SUB</b></font> 
+</pre>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>MYXPSKINNEDFORM</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: MYXPSKINNEDFORM</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>MYXPSKINNEDFORM Component</h1>
+<p class="rq-meta">Extends <a href="qform.html">QFORM</a> &middot; source: <code>inc/XPSkinMetallic_2.11_Res.inc</code>, line 462 &middot; version: 2.13 &middot; date: 28 juin, 2003</p>
+<p><b>A skinned form that replaces the Windows title bar and borders with Windows XP Metallic style bitmaps, its own title buttons, a system popup menu, rounded corners and a default button.</b></p>
+<p>myXPSkinnedForm extends QForm. In OnShow it hides the real title bar, cuts the window to a rounded rectangle (CreateRoundRectRgn, SetWindowRgn) and builds the frame from QImage pieces (title left, middle and right, side borders, bottom pieces) loaded from bitmap resources, plus close, maximize, minimize and help buttons, an icon, a caption and a default button MainBtn (caption &quot;Fermer&quot;, closes the form). Dragging the title moves the window; clicking the icon or right-clicking the title shows an XP-style popup menu (a borderless QForm) with Always on top, Move, Minimize, Maximize and Close items, with French captions.</p>
+<p>The skin switches between active and inactive bitmaps; ActiveInactive installs a replacement window procedure (SetWindowLong GWL_WNDPROC) that does this on WM_NCPAINT and WM_ACTIVATE. The first instance is the main form; every later instance is treated as a dialog (PopupBox): it is centered, has no minimize and maximize buttons and disables the main window while shown. Closing the main form terminates the application. TweakSkin draws simple colored lines instead of border bitmaps. All comments are in French.</p>
+<p>MYXPSKINNEDFORM inherits the properties, methods and events of <a href="qform.html">QFORM</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Bitmap and icon resources declared by the user with $RESOURCE (the file declares none): ICO, TITLE_LEFT, TITLE_MID, TITLE_RIGHT, TITLE_LDIS, TITLE_MDIS, TITLE_RDIS, TITLE_CAP, TITLE_CAPDIS, TITLE_ICO, BOT_LEFT, BOT_MID, BOT_RIGHT, BOT_LDIS, BOT_MDIS, BOT_RDIS, BORDER_LEFT, BORDER_RIGHT, BORDER_LDIS, BORDER_RDIS, TCLOSE_BMP, TCLOSEON_BMP, TCLOSEPRS_BMP, TCLOSEDIS_BMP, TFIX_BMP, TFIXON_BMP, TFIXPRS_BMP, TFIXDIS_BMP, TRED_BMP, TREDON_BMP, TREDPRS_BMP, TREDDIS_BMP, TAIDE_BMP, TAIDEON_BMP, TAIDEPRS_BMP, TAIDEDIS_BMP, BNORM_BMP, BSEL_BMP, BOVER_BMP, BPRES_BMP, ItmOnTop_BMP, ItmReduire_BMP, ItmRestaurer_BMP, ItmAgrandir_BMP, ItmFermer_BMP</li>
+<li>CONST myMainFormName (the main window caption) defined before the $INCLUDE</li>
+<li>The main form instance must be named MainForm</li>
+<li>The global QBitmap array TitleBtnsBg(0 TO 1) (title button background, inactive and active) must be loaded by the user; the file declares it but never loads it</li>
+</ul>
+<a name="1"></a><h2>myXPSkinnedForm Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">TitleBarHide</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Set to 1 by OnShow after the real title bar is hidden and the height is increased by the caption height; reset to 0 when the window is maximized.</td></tr>
+<tr class="rq-internal"><td class="rq-name">pOldProc</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Internal: address of the original window procedure saved by ActiveInactive.</td></tr>
+<tr class="rq-internal"><td class="rq-name">flagWinProc</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Internal: True while the replacement window procedure should handle messages; also used with a global flagWinProc variable.</td></tr>
+<tr><td class="rq-name">XPPopupMenu</td><td class="rq-type">QFORM</td><td>RW</td><td></td><td>Borderless QForm used as the XP-style system popup menu.</td></tr>
+<tr><td class="rq-name">ItmOptions</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>QLabel menu item &quot;Options...&quot; in the popup menu; its click action is empty.</td></tr>
+<tr><td class="rq-name">ItmOnTop</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>QLabel menu item &quot;Toujours Visible&quot; (always on top) in the popup menu.</td></tr>
+<tr><td class="rq-name">ItmOnTop_ICO</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage check mark next to the always-on-top item, shown while ToujoursVisible is set.</td></tr>
+<tr><td class="rq-name">ItmDeplace</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>QLabel menu item &quot;Deplacement&quot; (move) in the popup menu.</td></tr>
+<tr><td class="rq-name">ItmReduire</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>QLabel menu item &quot;Reduire&quot; (minimize), or &quot;Restaurer&quot; when the window is cropped.</td></tr>
+<tr><td class="rq-name">ItmReduire_ICO</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage icon of the minimize menu item.</td></tr>
+<tr><td class="rq-name">ItmAgrandir</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>QLabel menu item &quot;Agrandissement&quot; (maximize), or &quot;Restauration&quot; when maximized.</td></tr>
+<tr><td class="rq-name">ItmAgrandir_ICO</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage icon of the maximize menu item.</td></tr>
+<tr><td class="rq-name">ItmFermer</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>QLabel menu item &quot;Fermeture Alt+F4&quot; (close) in the popup menu.</td></tr>
+<tr><td class="rq-name">ItmFermer_ICO</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage icon of the close menu item.</td></tr>
+<tr><td class="rq-name">HiLight</td><td class="rq-type">QPANEL</td><td>RW</td><td></td><td>QPanel that highlights the popup menu item under the mouse; clicking it runs that item&#x27;s action.</td></tr>
+<tr><td class="rq-name">QfRegion</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Handle of the rounded window region created in OnShow and deleted in OnClose.</td></tr>
+<tr><td class="rq-name">Rnd</td><td class="rq-type">LONG</td><td>RW</td><td>15</td><td>Corner radius used for the rounded window region; the constructor sets 15.</td></tr>
+<tr><td class="rq-name">ToujoursVisible</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>1 while the window is always on top (FormStyle 3); toggled by OnTop.</td></tr>
+<tr class="rq-internal"><td class="rq-name">IsInBackGround</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Internal paint state read by ActiveOrInactive: 1 = draw inactive skin, 2 = draw active skin; OnPaint resets it to 0.</td></tr>
+<tr class="rq-internal"><td class="rq-name">Maximized</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Internal: non-zero while the window is maximized (values 1 to 3 are set at different stages by OnResize and OnPaint).</td></tr>
+<tr><td class="rq-name">Minimized</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Declared for the minimized state, but only commented-out code sets it.</td></tr>
+<tr><td class="rq-name">Croped</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>1 while the window is cropped (rolled up to its title bar); the window height and CropHeight are swapped when this changes.</td></tr>
+<tr><td class="rq-name">CropHeight</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Height swapped with Height when the window is cropped or restored; OnTop initializes it to the title plus bottom border height.</td></tr>
+<tr><td class="rq-name">scrWIDTH</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Desktop width from GetSystemMetrics(SM_CXFULLSCREEN), updated in OnResize and on title double-click.</td></tr>
+<tr><td class="rq-name">scrHEIGHT</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Desktop height from GetSystemMetrics (SM_CYSCREEN or SM_CYFULLSCREEN), updated in OnResize and on title double-click.</td></tr>
+<tr><td class="rq-name">PopupBox</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>1 when this form is a dialog rather than the main form: minimize and maximize are removed, menu items are grayed and Close only closes this form.</td></tr>
+<tr><td class="rq-name">Title_Left</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage for the left part of the title bar.</td></tr>
+<tr><td class="rq-name">Title_Mid</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage for the stretched middle part of the title bar.</td></tr>
+<tr><td class="rq-name">Title_Right</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage for the right part of the title bar.</td></tr>
+<tr><td class="rq-name">Title_ICO</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>16 x 16 QImage showing the window icon in the title bar; clicking it opens the popup menu.</td></tr>
+<tr><td class="rq-name">TitleBtnsBg</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage background behind the title buttons, taken from the global TitleBtnsBg bitmaps.</td></tr>
+<tr><td class="rq-name">ICOAsBMP</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, the title icon shows the TITLE_ICO bitmap resource instead of the icon from icoList.</td></tr>
+<tr><td class="rq-name">icoList</td><td class="rq-type">QIMAGELIST</td><td>RW</td><td></td><td>16 x 16 QImageList holding the ICO resource icon; its first image is shown as the title icon.</td></tr>
+<tr><td class="rq-name">Title_Cap</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage showing the caption as a bitmap (TITLE_CAP resource) when TitleAsBMP is set.</td></tr>
+<tr><td class="rq-name">Title_Caption</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>QLabel showing the form Caption in the title bar (Tahoma, bold, transparent) when TitleAsBMP is 0.</td></tr>
+<tr><td class="rq-name">TitleAsBMP</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, the title text is the TITLE_CAP bitmap instead of the Title_Caption label.</td></tr>
+<tr><td class="rq-name">Title_Hot</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>Transparent QImage over the whole title bar that handles dragging, double-click and the right-click menu.</td></tr>
+<tr><td class="rq-name">Bot_Left</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage for the bottom-left border piece.</td></tr>
+<tr><td class="rq-name">Bot_Mid</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage for the stretched bottom border.</td></tr>
+<tr><td class="rq-name">Bot_Right</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage for the bottom-right border piece.</td></tr>
+<tr><td class="rq-name">Border_Left</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage for the stretched left border.</td></tr>
+<tr><td class="rq-name">Border_Right</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage for the stretched right border.</td></tr>
+<tr><td class="rq-name">MainBtn</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage used as the default button (caption in MainBtn.Caption, default &quot;Fermer&quot;); clicking it closes the form.</td></tr>
+<tr class="rq-internal"><td class="rq-name">MainBtnIsOn</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Internal: 1 while the mouse is over MainBtn and the hover bitmap is shown.</td></tr>
+<tr><td class="rq-name">MainBtnIs1st</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>When non-zero (default 1), MainBtn is drawn as the selected default button (BSEL_BMP) instead of a normal one (BNORM_BMP).</td></tr>
+<tr><td class="rq-name">MainBtnCentered</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>When non-zero (default 1), MainBtn is centered horizontally and placed 34 pixels above the bottom.</td></tr>
+<tr><td class="rq-name">PopupL</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Screen X position where the popup menu is shown.</td></tr>
+<tr><td class="rq-name">PopupT</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Screen Y position where the popup menu is shown.</td></tr>
+<tr><td class="rq-name">ClickHold</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Set to 1 when the title icon opens the popup menu; no active code reads it (the reset code is commented out).</td></tr>
+<tr><td class="rq-name">TiTleDblClick</td><td class="rq-type">INTEGER</td><td>RW</td><td>ttDefault</td><td>Action of a double-click on the title bar: ttNothing (0), ttDefault (1, maximize or restore, the default) or ttCrop (2, roll the window up to the title bar or back).</td></tr>
+<tr><td class="rq-name">TweakSkin</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, the bottom and side border bitmaps are not used and a few colored lines (TwkColor) are drawn instead; per the comment, this speeds up the skin and reduces the EXE size.</td></tr>
+<tr class="rq-internal"><td class="rq-name">MainBtnTimer</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>Internal QTimer that restores the MainBtn bitmap after the mouse leaves it.</td></tr>
+<tr class="rq-internal"><td class="rq-name">ActiveTimer</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>Internal QTimer (200 ms) that checks whether the window is active and redraws the active or inactive skin; used for dialog forms.</td></tr>
+<tr class="rq-internal"><td class="rq-name">MenuTimer</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>Internal QTimer that closes the popup menu when it is no longer the active window.</td></tr>
+</table>
+<a name="2"></a><h2>myXPSkinnedForm Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">DelTitleIcons</td><td class="rq-type">SUBI(...)</td><td>DelTitleIcons(...) hides the title buttons and menu items given as ti constants (tiSystemMenu, tiMinimize, tiMaximize, tiHelp, tiOnTop) and calls DelBorderIcons with the same values; use it instead of DelBorderIcons.</td></tr>
+<tr><td class="rq-name">AddTitleIcons</td><td class="rq-type">SUBI(...)</td><td>AddTitleIcons(...) shows the title buttons and menu items given as ti constants and calls AddBorderIcons with the same values; use it instead of AddBorderIcons.</td></tr>
+<tr class="rq-internal"><td class="rq-name">ActiveOrInactive</td><td class="rq-type">SUB</td><td>Internal: switches all skin bitmaps to the active or inactive set according to IsInBackGround and re-positions the frame pieces.</td></tr>
+<tr class="rq-internal"><td class="rq-name">WindowProc</td><td class="rq-type">FUNCTION(hwnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG</td><td>Internal: replacement window procedure installed by ActiveInactive; on WM_NCPAINT and WM_ACTIVATE it redraws the active or inactive skin, other messages go to the original procedure.</td></tr>
+<tr><td class="rq-name">ActiveInactive</td><td class="rq-type">FUNCTION(Value AS boolean) AS BOOLEAN</td><td>ActiveInactive(Value) installs the replacement window procedure the first time it is called, so the skin follows activation changes; it returns no value.</td></tr>
+<tr class="rq-internal"><td class="rq-name">MButOut</td><td class="rq-type">SUB</td><td>Internal: draws MainBtn.Caption centered on the MainBtn image.</td></tr>
+<tr><td class="rq-name">OnTop</td><td class="rq-type">SUB</td><td>Toggles always-on-top mode (FormStyle 3 or 0) and ToujoursVisible; when turning it off a cropped window gets its height back.</td></tr>
+<tr><td class="rq-name">ItmOptions_Click</td><td class="rq-type">SUB</td><td>Action of the Options menu item; the SUB is empty.</td></tr>
+<tr><td class="rq-name">ItmOnTop_Click</td><td class="rq-type">SUB</td><td>Action of the always-on-top menu item; calls OnTop.</td></tr>
+<tr><td class="rq-name">ItmDeplace_Click</td><td class="rq-type">SUB</td><td>Action of the Move menu item: closes the menu and starts a window move with WM_SYSCOMMAND SC_MOVE.</td></tr>
+<tr><td class="rq-name">ItmReduire_Click</td><td class="rq-type">SUB</td><td>Action of the minimize menu item: an always-on-top window is cropped to its title bar (or restored if already cropped); otherwise the window is minimized.</td></tr>
+<tr><td class="rq-name">ItmAgrandir_Click</td><td class="rq-type">SUB</td><td>Action of the maximize menu item and the maximize button: toggles WindowState between maximized and normal.</td></tr>
+<tr><td class="rq-name">ItmFermer_Click</td><td class="rq-type">SUB</td><td>Action of the Close menu item: a dialog form (PopupBox) is closed; the main form calls Application.Terminate.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>ActiveTimer.OnTimer</code>, <code>btn_Agrandir.OnClick</code>, <code>btn_Agrandir.OnMouseDown</code>, <code>btn_Agrandir.OnMouseMove</code>, <code>btn_Agrandir.OnMouseUp</code>, <code>btn_Aide.OnMouseDown</code>, <code>btn_Aide.OnMouseMove</code>, <code>btn_Aide.OnMouseUp</code>, <code>btn_Fermer.OnClick</code>, <code>btn_Fermer.OnMouseDown</code>, <code>btn_Fermer.OnMouseMove</code>, <code>btn_Fermer.OnMouseUp</code>, <code>btn_Reduire.OnClick</code>, <code>btn_Reduire.OnMouseDown</code>, <code>btn_Reduire.OnMouseMove</code>, <code>btn_Reduire.OnMouseUp</code>, <code>HiLight.OnClick</code>, <code>ItmAgrandir.OnMouseMove</code>, <code>ItmDeplace.OnMouseMove</code>, <code>ItmFermer.OnMouseMove</code>, <code>ItmOnTop.OnMouseMove</code>, <code>ItmOptions.OnMouseMove</code>, <code>ItmReduire.OnMouseMove</code>, <code>MainBtn.OnClick</code>, <code>MainBtn.OnMouseDown</code>, <code>MainBtn.OnMouseMove</code>, <code>MainBtn.OnMouseUp</code>, <code>MainBtnTimer.OnTimer</code>, <code>MenuTimer.OnTimer</code>, <code>OnClose</code>, <code>OnPaint</code>, <code>OnResize</code>, <code>OnShow</code>, <code>Title_Hot.OnDblClick</code>, <code>Title_Hot.OnMouseDown</code>, <code>Title_Hot.OnMouseMove</code>, <code>Title_ICO.OnMouseDown</code>, <code>XPPopupMenu.OnClose</code>, <code>XPPopupMenu.OnPaint</code>, <code>XPPopupMenu.OnShow</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The file name says 2.11 but the header says Windows XP Metallic Skin v2.13.</li>
+<li>The main form must be named MainForm and myMainFormName must be defined before the include; if it is missing or the main window is not found, OnShow shows a French warning message. At include time the code also uses FindWindow with myMainFormName to bring an already running copy to the front and END the new one.</li>
+<li>No $RESOURCE lines are included: all skin bitmaps and the ICO icon must be provided by the program, and the global TitleBtnsBg bitmaps are never loaded by this file.</li>
+<li>In OnShow, EnableWindow(mhWnd,) is called with an empty second argument.</li>
+<li>In WindowProc the CASE list is &quot;WM_NCPAINT, WM_ACTIVATE, .XPPopupMenu.Visible=0&quot;, so the boolean expression is compared with the message number.</li>
+<li>Known problems listed in the header: menu images are not redrawn when an item is hovered; bottom borders are drawn incorrectly with ActiveInactive(True); a second window tries to appear in the taskbar; external dialog boxes are hidden behind the main window in always-on-top mode (the header suggests CTRL+ALT+F4); some bitmap formats crash the program and should be re-saved from Internet Explorer.</li>
+<li>The header says WM_NCACTIVATE causes problems, and that after always-on-top mode is used the inactive colors still have a bug.</li>
+<li>ActiveInactive never sets its return value; the Options item and the help button have no action; Minimized is never set by active code.</li>
+<li>The constructor fixes the size at 400 x 400 and the popup menu width at 123 pixels; button positions are hard-coded offsets from the right edge (27, 50, 73, 98 pixels).</li>
+</ul>
+<a name="4"></a><h2>myXPSkinnedForm Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>CONST myMainFormName = &quot;Form style WinXP&quot;
+&#x27; $RESOURCE lines for ICO, TITLE_LEFT, TITLE_MID, ... (see requires)
+$INCLUDE &quot;XPSkinMetallic_2.11_Res.inc&quot;
+
+CREATE MainForm AS myXPSkinnedForm
+  Caption = myMainFormName
+  Width = 320
+  Height = 240
+END CREATE
+
+MainForm.AddTitleIcons(tiMinimize, tiMaximize)
+MainForm.ActiveInactive(True)
+MainForm.ShowModal</pre>
+<div class="rq-foot"><a href="c_mycom_port.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qabout.html">Next component</a></div>
+</body>
+</html>

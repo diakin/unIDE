@@ -1,0 +1,868 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <title>Appendix A: QWAVE</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2000-2004</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QWAVE</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QWAVE Component</h1>
+
+<dd>
+QWAVE is a media component used to play or record wave files.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QWAVE Properties</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>Default</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Timer</td>
+
+<td>QTIMER</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Controle the fr&eacute;quency of &eacute;vent
+OnChange.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Lenght</td>
+
+<td>LONG</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Lenght of wave file or record time.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>State</td>
+
+<td>INTEGER</td>
+
+<td>R</td>
+
+<td>VD_CLOSE</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">State of player,can be WV_PLAY,WV_STOP,WV_PAUSE,WV_RECORD.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>FileOpen</td>
+
+<td>BOOLEAN</td>
+
+<td>R</td>
+
+<td>False</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">It's at true if a wave file is open to
+play or record.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CurrentPos</td>
+
+<td>LONG</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Position of wave file in milliseconds.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Bits</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Bit number by sample of wave,can be WV_BIT8
+ou WV_BIT16.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Frequence</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Sample frequency of wave,can be WV_KHZ8,WV_KHZ11,WV_KHZ44.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Mode</td>
+
+<td>SHORT</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Output mode,can be WV_STEREO ou WV_MONO.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Error</td>
+
+<td>STRING</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCCCC">Text error if OPEN method return FALSE</td>
+
+<td BGCOLOR="#FFCCCC"></td>
+
+<td BGCOLOR="#FFCCCC"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Volume</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>DeviceType</td>
+
+<td>STRING</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Codec type ,example for mp3:MpegVideo</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QWAVE Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Close</td>
+
+<td NOWRAP>SUB</td>
+
+<td NOWRAP>Close the wave file</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Open</td>
+
+<td NOWRAP>FUNCTION(FileName as string)</td>
+
+<td NOWRAP>Open a&nbsp; wave file and return True if no error.</td>
+
+<td NOWRAP>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Play</td>
+
+<td NOWRAP>SUB</td>
+
+<td NOWRAP>Play the wave file.</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Stop</td>
+
+<td NOWRAP>SUB</td>
+
+<td NOWRAP>Stop the player.</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Pause</td>
+
+<td NOWRAP>SUB</td>
+
+<td NOWRAP>Set the player to mode pause</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>New</td>
+
+<td NOWRAP>SUB</td>
+
+<td NOWRAP>Create a new wave</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Record</td>
+
+<td NOWRAP>SUB</td>
+
+<td NOWRAP>Set the player to record,if the wave is new,his record time
+is define by the Lenght property.</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Save</td>
+
+<td NOWRAP>FUNCTION(FileName as string)</td>
+
+<td NOWRAP>Save the wave file and return True</td>
+
+<td NOWRAP>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Delete</td>
+
+<td NOWRAP>Sub(Pos1 as long,Pos2 as long)</td>
+
+<td NOWRAP>Delete some sample data from wave file from position pos1 to
+pos2 in milliseconds</td>
+
+<td NOWRAP>2</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QWAVE Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnChange</td>
+
+<td>(position as long)</td>
+
+<td>Position of player in mode play or mode record.</td>
+
+<td>1</td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QWAVE Examples</font></b>
+<pre><i><font color="#008000">'**************************************************************************</font></i>&nbsp;
+<i><font color="#008000">'* application:player Wave&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *</font></i>&nbsp;
+<i><font color="#008000">'* auteur:D.Glodt&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *</font></i>&nbsp;
+<i><font color="#008000">'* date:17-1-2004&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *</font></i>&nbsp;
+<i><font color="#008000">'**************************************************************************</font></i>&nbsp;
+<b><font color="#0000A0">$OPTION</font></b> ICON "<font color="#800000">wave.ico</font>"
+<b><font color="#0000A0">$TYPECHECK</font></b> ON
+<b><font color="#0000A0">$Include</font></b> "<font color="#800000">Rapidq.inc</font>"
+<b><font color="#0000A0">$include</font></b> "<font color="#800000">Object\QWave.inc</font>"
+
+<b><font color="#0000A0">$RESOURCE</font></b> PLAYBMP <b><font color="#0000A0">as</font></b> "<font color="#800000">play.bmp</font>"
+<b><font color="#0000A0">$RESOURCE</font></b> STOPBMP <b><font color="#0000A0">as</font></b> "<font color="#800000">Stop.bmp</font>"
+<b><font color="#0000A0">$RESOURCE</font></b> PAUSEBMP <b><font color="#0000A0">as</font></b> "<font color="#800000">Pause.bmp</font>"
+<b><font color="#0000A0">$RESOURCE</font></b> RECORDBMP <b><font color="#0000A0">as</font></b> "<font color="#800000">record.bmp</font>"
+<b><font color="#0000A0">$RESOURCE</font></b> SCREENBMP <b><font color="#0000A0">as</font></b> "<font color="#800000">gramo.bmp</font>"
+
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Play
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Stop
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Pause
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Open
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Close
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Quitter
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> SaveAs
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> New
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Record
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> TrackBarChange
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> PostimerOnTimer<b>(</b>Position <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font>)
+<font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Mono
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Stereo
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Bit8
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Bit16
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Khz8
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Khz11
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Khz44
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> DeleteStart
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> DeleteEnd
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> ShowParam
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> TimeRecordChange
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Init
+
+<b><font color="#0000A0">Dim</font></b> OpenDialog <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QOpenDialog
+</font></b>OpenDialog.Filter="<font color="#800000">Fichier Wave|*.wav|Fichier Mp3|*.mp3</font>"
+OpenDialog.Caption= "<font color="#800000">Selectionner une onde</font>"
+<b><font color="#0000A0">Dim</font></b> SaveDialog <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QSaveDialog
+</font></b>SaveDialog.Filter="<font color="#800000">Fichier Wave|*.wav</font>"
+SaveDialog.Caption= "<font color="#800000">Sauver une onde</font>"
+<b><font color="#0000A0">Dim</font></b> Wave <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QWave
+</font></b>Wave.DeviceType="<font color="#800000">MpegVideo</font>"
+Wave.OnChange=PostimerOnTimer
+Wave.timer.interval=200
+
+<b><font color="#0000A0">CREATE</font></b> Form2 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QFORM
+</font></b>&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Parametres d'enregistrement</font>"
+&nbsp;&nbsp;&nbsp; Width=288
+&nbsp;&nbsp;&nbsp; Height=180
+&nbsp;&nbsp;&nbsp; Center
+&nbsp;&nbsp;&nbsp; BorderStyle=bsDialog
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> groupe1 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QGROUPBOX
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=10
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=70
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=60
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Mode</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> MonoBt <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QRADIOBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=15
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=5
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=50
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Mono</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Mono
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> StereoBt <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QRADIOBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=35
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=5
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=50
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Stereo</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Stereo
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> groupe2 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QGROUPBOX
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=10
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=82
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=70
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=60
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Bits</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Bit8Bt <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QRADIOBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=15
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=5
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=50
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">8bits</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Bit8
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Bit16Bt <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QRADIOBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=35
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=5
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=50
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">16bits</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Bit16
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp; <b><font color="#0000A0">CREATE</font></b> groupe3 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QGROUPBOX
+</font></b>&nbsp;&nbsp;&nbsp; Top=10
+&nbsp;&nbsp;&nbsp; Left=162
+&nbsp;&nbsp;&nbsp; Width=70
+&nbsp;&nbsp;&nbsp; Height=80
+&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Freq</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Freq8Bt <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QRADIOBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=15
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=5
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=50
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">8Khz</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Khz8
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Freq11Bt <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QRADIOBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=35
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=5
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=50
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">11Khz</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Khz11
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Freq44Bt <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QRADIOBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=55
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=5
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=50
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">44Khz</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Khz44
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp; <b><font color="#0000A0">CREATE</font></b> label1 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QLABEL
+</font></b>&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Temps enregistrement(s):10</font>"
+&nbsp;&nbsp;&nbsp; top=100
+&nbsp;&nbsp;&nbsp; left=2
+&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp; <b><font color="#0000A0">CREATE</font></b> TrackBar2 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QTRACKBAR
+</font></b>&nbsp;&nbsp;&nbsp; TickMarks=tmTopLeft
+&nbsp;&nbsp;&nbsp; TickStyle=tsNone
+&nbsp;&nbsp;&nbsp; Left=2
+&nbsp;&nbsp;&nbsp; Top=130
+&nbsp;&nbsp;&nbsp; Max=300
+&nbsp;&nbsp;&nbsp; LineSize=0
+&nbsp;&nbsp;&nbsp; Width=272
+&nbsp;&nbsp;&nbsp; Height=22
+&nbsp;&nbsp;&nbsp; Position=10
+&nbsp;&nbsp;&nbsp; OnChange=TimeRecordChange
+&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+END</font></b> <b><font color="#0000A0">CREATE
+
+CREATE</font></b> Form <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QFORM
+</font></b>&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Wave</font>"
+&nbsp;&nbsp;&nbsp; Width=288
+&nbsp;&nbsp;&nbsp; Height=180
+&nbsp;&nbsp;&nbsp; Center
+&nbsp;&nbsp;&nbsp; BorderStyle=bsSingle
+&nbsp;&nbsp;&nbsp; DelBorderIcons 2
+&nbsp;&nbsp;&nbsp; OnClose=Quitter
+&nbsp;&nbsp;&nbsp; OnShow=Init
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> MENU <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMAINMENU
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> FileMenu <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Fichier</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item1 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Nouveau</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=New
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item2 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Ouvrir</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Open
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item3 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Fermer</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Close
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item4 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Sauver sous</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SaveAs
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item5 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">-</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item6 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Quitter</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Quitter
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> EditMenu <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Edition</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item11 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Supprimer depuis le debut</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=DeleteStart
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item12 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Supprimer depuis la fin</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=DeleteEnd
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item13 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">-</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item14 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Parametres</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowParam
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Panel1 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QPANEL
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=281
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=130
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BevelOuter=bvNone
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> image <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QIMAGE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=100
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height=70
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BmpHandle=SCREENBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtPlay <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QCOOLBTN
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=PLAYBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=88
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Play</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Play
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtStop <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QCOOLBTN
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=STOPBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=116
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Down=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Stop</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Stop
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtPause <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QCOOLBTN
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=PAUSEBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=144
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Pause</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Pause
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtRecord <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QCOOLBTN
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=RECORDBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=172
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Down=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Record</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Record
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> TrackBar1 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QTRACKBAR
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TickMarks=tmBoth
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TickStyle=tsNone
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=76
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LineSize=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Position</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=272
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=21
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnChange=TrackBarChange
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Infos <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QSTATUSBAR
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AddPanels "<font color="#800000">Temps:</font>","<font color="#800000">position:</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Panel<b>(</b>0<b>)</b>.width=100
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+END</font></b> <b><font color="#0000A0">CREATE
+
+</font></b>Form.ShowModal
+
+<b><font color="#0000A0">Sub</font></b> Open&nbsp;&nbsp;
+&nbsp; <b><font color="#0000A0">If</font></b> OpenDialog.Execute <b><font color="#0000A0">Then
+</font></b>&nbsp;&nbsp; Wave.close
+&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> Wave.open<b>(</b>OpenDialog.FileName<b>)</b> <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp; EditMenu.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Max=Wave.lenght
+&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Position=0
+&nbsp;&nbsp;&nbsp;&nbsp; infos.panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Temps:</font>"+<b><font color="#0000A0">str$</font>(</b>wave.lenght/1000<b>)</b>+"<font color="#800000">s</font>"
+&nbsp;&nbsp;&nbsp;&nbsp; infos.panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Position:0</font>"
+&nbsp;&nbsp;&nbsp;&nbsp; BtPlay.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; BtStop.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; BtPause.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; item4.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; item3.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> wave.mode=WV_MONO <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; MonoBt.checked=true
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; StereoBt.checked=true
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> wave.bits=WV_BIT8 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bit8Bt.checked=true
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bit16Bt.checked=true
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> wave.frequence=WV_KHZ8 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Freq8Bt.checked=true
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">elseif</font></b> wave.frequence=WV_KHZ11 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Freq11Bt.checked=true
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">elseif</font></b> wave.frequence=WV_KHZ44 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Freq44Bt.checked=true
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">showmessage</font></b> wave.error
+&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Close
+&nbsp; Wave.close
+&nbsp; BtPlay.Enabled=false
+&nbsp; BtStop.Enabled=false
+&nbsp; BtPause.Enabled=false
+&nbsp; EditMenu.Enabled=false
+&nbsp; item4.Enabled=false
+&nbsp; item3.Enabled=false
+&nbsp; infos.panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Temps:</font>"
+&nbsp; infos.panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Position:</font>"
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Play
+&nbsp; <b><font color="#0000A0">if</font></b> wave.FileOpen=false <b><font color="#0000A0">then</font></b> BtStop.Down=True
+&nbsp; TrackBar1.Max=Wave.lenght
+&nbsp; Wave.play
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Stop
+&nbsp; Wave.stop
+&nbsp; TrackBar1.Position=0
+&nbsp; infos.panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Temps:</font>"+<b><font color="#0000A0">str$</font>(</b>wave.lenght/1000<b>)</b>+"<font color="#800000">s</font>"
+&nbsp; infos.panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Position:0</font>"
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Pause
+&nbsp; <b><font color="#0000A0">if</font></b> wave.FileOpen=false <b><font color="#0000A0">then</font></b> BtStop.Down=True
+&nbsp; Wave.pause
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> TrackBarChange
+&nbsp; Wave.currentPos=TrackBar1.Position
+&nbsp; infos.panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Position:</font>"+<b><font color="#0000A0">str$</font>(</b>TrackBar1.Position/1000<b>)
+<font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> PostimerOnTimer<b>(</b>Position <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font>)
+</b>&nbsp; TrackBar1.Position=Position
+&nbsp; infos.panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Position:</font>"+<b><font color="#0000A0">str$</font>(</b>Position/1000<b>)
+</b>&nbsp; <b><font color="#0000A0">If</font></b> Wave.state=WV_STOP <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; Wave.stop
+&nbsp;&nbsp;&nbsp; TrackBar1.Position=0
+&nbsp;&nbsp;&nbsp; BtStop.Down=True
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Quitter
+&nbsp; Wave.close
+&nbsp; form2.close
+&nbsp; form.close
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Mono
+&nbsp; wave.mode=WV_MONO
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Stereo
+&nbsp; wave.mode=WV_STEREO
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Bit8
+&nbsp; wave.bits=WV_BIT8
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Bit16
+&nbsp; wave.bits=WV_BIT16
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Khz8
+&nbsp; wave.frequence=WV_KHZ8
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Khz11
+&nbsp; wave.frequence=WV_KHZ11
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Khz44
+&nbsp; wave.frequence=WV_KHZ44
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> New
+&nbsp; wave.close
+&nbsp; wave.new
+&nbsp; infos.panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Temps:</font>"+<b><font color="#0000A0">str$</font>(</b>TrackBar2.Position<b>)</b>+"<font color="#800000">s</font>"
+&nbsp; infos.panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Position:0</font>"
+&nbsp; EditMenu.Enabled=true
+&nbsp; BtPlay.Enabled=true
+&nbsp; BtStop.Enabled=true
+&nbsp; BtPause.Enabled=true
+&nbsp; item4.Enabled=true
+&nbsp; item3.Enabled=true
+&nbsp; <b><font color="#0000A0">if</font></b> wave.mode=WV_MONO <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; MonoBt.checked=true
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; StereoBt.checked=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">if</font></b> wave.bits=WV_BIT8 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; Bit8Bt.checked=true
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; Bit16Bt.checked=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">if</font></b> wave.frequence=WV_KHZ8 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; Freq8Bt.checked=true
+&nbsp; <b><font color="#0000A0">elseif</font></b> wave.frequence=WV_KHZ11 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; Freq11Bt.checked=true
+&nbsp; <b><font color="#0000A0">elseif</font></b> wave.frequence=WV_KHZ44 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; Freq44Bt.checked=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> SaveAs
+&nbsp; <b><font color="#0000A0">If</font></b> SaveDialog.Execute <b><font color="#0000A0">Then
+</font></b>&nbsp;&nbsp;&nbsp; form.cursor=crHourglass
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> <b><font color="#0000A0">instr</font>(<font color="#0000A0">lcase$</font>(</b>SaveDialog.FileName<b>)</b>,"<font color="#800000">.wav</font>"<b>)</b>>0 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wave.save<b>(</b>SaveDialog.FileName<b>)
+</b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; wave.save<b>(</b>SaveDialog.FileName+"<font color="#800000">.wav</font>"<b>)
+</b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp; form.cursor=crDefault
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Record
+&nbsp; <b><font color="#0000A0">if</font></b> wave.FileOpen=false <b><font color="#0000A0">then</font></b> BtStop.Down=True
+&nbsp; wave.lenght=Trackbar2.Position*1000
+&nbsp; TrackBar1.Max=Wave.lenght
+&nbsp; wave.record
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> DeleteStart
+&nbsp; wave.Delete<b>(</b>0,wave.currentPos<b>)
+</b>&nbsp; infos.panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Temps:</font>"+<b><font color="#0000A0">str$</font>(</b>wave.lenght/1000<b>)
+<font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> DeleteEnd
+&nbsp; wave.Delete<b>(</b>wave.currentPos,wave.lenght<b>)
+</b>&nbsp; infos.panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Temps:</font>"+<b><font color="#0000A0">str$</font>(</b>wave.lenght/1000<b>)</b>+"<font color="#800000">s</font>"
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> ShowParam
+&nbsp; form2.show
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> TimeRecordChange
+&nbsp; label1.caption="<font color="#800000">Temps enregistrement(s):</font>"+<b><font color="#0000A0">str$</font>(</b>TrackBar2.Position<b>)
+</b>&nbsp; infos.panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Temps:</font>"+<b><font color="#0000A0">str$</font>(</b>TrackBar2.Position<b>)
+<font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Init
+&nbsp; New
+&nbsp; infos.panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Temps:</font>"+<b><font color="#0000A0">str$</font>(</b>TrackBar2.Position<b>)</b>+"<font color="#800000">s</font>"
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b></pre>
+
+<pre></pre>
+
+</body>
+</html>

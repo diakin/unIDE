@@ -1,0 +1,81 @@
+<html>
+<head>
+<title>QxEdit.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'Uploaded by : psyclops420 &lt;psyclops420@yahoo.com> </i></font> 
+<font color="007700"><i>'Description : New QEDIT component, two new events, OnGetFocus and OnLoseFocus, plus implemented WndProc </i></font> 
+
+
+
+<font color="007700"><i>' v1.0:</i></font> 
+<font color="007700"><i>' Fixed WndProc (actually, wrote it from scratch ·)</i></font> 
+<font color="007700"><i>' Two new events, OnGetFocus and OnLoseFocus</i></font> 
+<font color="007700"><i>' When using the new events, you MUST use the Sender parameter</i></font> 
+<font color="007700"><i>' Custom events MUST have at least one paramater, haven't found</i></font> 
+<font color="007700"><i>' a way aroud this yet</i></font> 
+
+<font color="007700"><i>' v1.1:</i></font> 
+<font color="007700"><i>' Fixed a little bug in WndProc(check for assignment)</i></font> 
+<font color="007700"><i>' Added Property EnterKey</i></font> 
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> CallWindowProc <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">CallWindowProcA</font>"<b>(</b>lpPrevWndFunc <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, uMsg <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, wParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, lParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> SetWindowLong <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SetWindowLongA</font>"<b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, nIndex <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, dwNewLong <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> GetParent <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetParent</font>" <b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>CONST</b></font> ekNormal = 0
+<font color="0000AA"><b>CONST</b></font> ekTab = 1
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> OnGetFocus_EventTemplate<b>(</b>Sender <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QEDIT</b></font><b>)</b>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> OnLoseFocus_EventTemplate<b>(</b>Sender <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QEDIT</b></font><b>)</b>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> WndProc_EventTemplate<b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, uMsg <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, wParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, lParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+
+<font color="0000AA"><b>TYPE</b></font> QxEDIT <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QEDIT</b></font>
+    Tmr <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QTIMER</b></font>
+    OldWndProc <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    EnterKey <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font> PROPERTY SET Set_EnterKey
+    OnGetFocus <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>OnGetFocus_EventTemplate<b>)</b>
+    OnLoseFocus <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>OnLoseFocus_EventTemplate<b>)</b>
+    WndProc <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>WndProc_EventTemplate<b>)</b>
+    
+    <font color="0000AA"><b>WITH</b></font> This
+        
+        PROPERTY SET Set_EnterKey<b>(</b>NewEnterKey <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+            .EnterKey = NewEnterKey
+        <font color="0000AA"><b>END</b></font> PROPERTY SET
+        
+        <font color="0000AA"><b>FUNCTION</b></font> Proc<b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, uMsg <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, wParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, lParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+            <font color="0000AA"><b>IF</b></font> hWnd = .Handle <font color="000099"><b>THEN</b></font>
+                Result = CallWindowProc<b>(</b>.OldWndProc, hWnd, uMsg, wParam, lParam<b>)</b> 
+                <font color="0000AA"><b>IF</b></font> uMsg = &H7 <font color="000099"><b>THEN</b></font>
+                    <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>.OnGetFocus, This<b>)</b>
+                <font color="0000AA"><b>ELSEIF</b></font> uMsg = &H8 <font color="000099"><b>THEN</b></font>
+                    <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>.OnLoseFocus, This<b>)</b>
+                <font color="0000AA"><b>ELSEIF</b></font> uMsg = &H100  <font color="0000AA"><b>AND</b></font> wParam = &HD <font color="0000AA"><b>AND</b></font> .EnterKey <font color="000099"><b>THEN</b></font>
+                    KillMessage<b>(</b>GetParent<b>(</b>.Handle<b>)</b>, &H102<b>)</b>
+                    SendMessage<b>(</b>GetParent<b>(</b>.Handle<b>)</b>, &H28, 0, 0<b>)</b>
+                <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+                <font color="0000AA"><b>IF</b></font> .WndProc>0 <font color="0000AA"><b>THEN</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>.WndProc, hWnd, uMsg, wParam, lParam<b>)</b>
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+        
+        <font color="0000AA"><b>EVENT</b></font> Tmr.OnTimer
+                .OldWndProc = SetWindowLong<b>(</b>This.Handle, -4, <font color="0000AA"><b>CODEPTR</b></font><b>(</b>This.Proc<b>)</b><b>)</b>
+                .Tmr.Enabled = 0
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+    
+        <font color="000099"><b>CONSTRUCTOR</b></font>
+            Tmr.Interval = 1
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+    
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="0000AA"><b>$UNDEF</b></font> <font color="000099"><b>QEDIT</b></font>
+<font color="0000AA"><b>$DEFINE</b></font> <font color="0000AA"><b>QEDIT</b></font> QxEDIT
+ 
+</pre>
+</body>
+</html>

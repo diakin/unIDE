@@ -1,0 +1,12 @@
+test1 120
+test1 11
+test2 24
+test2 14
+twice 42
+lres 10
+template 200
+codeptr 500 -1
+setnewwndproc 300 -1
+list still works 2
+children 3
+timer -1

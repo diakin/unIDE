@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QGRIDCOLOR</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QGRIDCOLOR</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QGRIDCOLOR Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QGridColor.inc</code>, line 11 &middot; author: Nastase Eodor &middot; version: 1.0.0 &middot; date: 2004</p>
+<p><b>QGridColor is a QPanel showing the 16 standard colors as clickable cells; left click picks a foreground color and right click a background color.</b></p>
+<p>The panel contains 16 child QPanel cells filled with the classic 16-color palette (Black, Navy, Green, ... White). The layout is chosen with Style: st1x16 (one row), st2x8 (two rows) or st4x4 (four rows); cell sizes are derived from the panel&#x27;s Width and Height when Draw runs.</p>
+<p>A left click stores the cell color in FGColor, a right click in BKColor, and OnCellClick is fired. With ShowCaption the selected cells are marked &quot;FG&quot; and &quot;BK&quot;; with ShowHints each cell shows its color name as a hint.</p>
+<p>QGRIDCOLOR inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QGridColor Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">FGColor</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Color of the last cell clicked with the left mouse button.</td></tr>
+<tr><td class="rq-name">BKColor</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Color of the last cell clicked with the right mouse button.</td></tr>
+<tr><td class="rq-name">Style</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Cell layout: st1x16 (0), st2x8 (1) or st4x4 (2). Assigning it stores the value and calls Draw to lay out the cells again.</td></tr>
+<tr><td class="rq-name">ShowCaption</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, the cell last clicked with the left button shows &quot;FG&quot; and the one clicked with the right button shows &quot;BK&quot;.</td></tr>
+<tr><td class="rq-name">ShowHints</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning a non-zero value sets each cell&#x27;s hint to its color name and turns ShowHint on.</td></tr>
+</table>
+<a name="2"></a><h2>QGridColor Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">LoadColors</td><td class="rq-type">SUB</td><td>Internal: fills the 16 color values and their names; called by the constructor.</td></tr>
+<tr class="rq-internal"><td class="rq-name">CellClick</td><td class="rq-type">SUB(Button as integer,x as integer,y as integer,Shift as integer,Sender as QPanel)</td><td>Internal: OnMouseDown handler assigned to every cell; updates FGColor or BKColor, the captions, and fires OnCellClick.</td></tr>
+<tr><td class="rq-name">Draw</td><td class="rq-type">SUB</td><td>Positions and sizes the 16 cells according to Style and the current Width and Height, sets their colors, hints and click handler. Call it after changing the panel size.</td></tr>
+</table>
+<a name="3"></a><h2>QGridColor Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnCellClick</td><td class="rq-type">SUB</td><td>Event without parameters (CellClicked), fired after a left or right click has updated FGColor or BKColor.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The constructor calls Draw with the panel&#x27;s default size; after changing Width or Height the cells are not resized until Style is assigned or Draw is called.</li>
+<li>Assigning 0 to ShowHints does not turn off hints that were already enabled.</li>
+<li>Only the left (Button 0) and right (Button 1) mouse buttons are handled.</li>
+<li>The file defines global constants st1x16, st2x8 and st4x4 and declares a global SUB CellClicked as the event template.</li>
+</ul>
+<a name="4"></a><h2>QGridColor Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QGridColor.inc&quot;
+DECLARE SUB ColorPicked
+CREATE Form AS QFORM
+  Caption = &quot;Colors&quot;
+  CREATE Grid AS QGridColor
+    Parent = Form
+    Width = 160
+    Height = 40
+    Style = st2x8
+    ShowCaption = 1
+    ShowHints = 1
+    OnCellClick = ColorPicked
+  END CREATE
+END CREATE
+Form.ShowModal
+
+SUB ColorPicked
+  Form.Color = Grid.FGColor
+END SUB</pre>
+<div class="rq-foot"><a href="c_qgl.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qgroupboxux.html">Next component</a></div>
+</body>
+</html>

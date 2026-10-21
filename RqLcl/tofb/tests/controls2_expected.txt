@@ -1,0 +1,26 @@
+scroll 1002550 changes 1
+kind 1102
+track 0100
+track 7224 changes -1
+box 10
+box 51-1
+box pos 30
+oval 7525 Oval
+oval 00FFFFFF 1
+outline 4 Child of Parent 1 level 1
+outline 6 First Child of Parent 2
+outline Top index 2 style 5
+outline 5 \
+printer RqLcl test 1 -1 0
+open -1 type 1
+connect -1
+ready 1
+accept -1 peer 127.0.0.1
+writeline 6
+client ready 1
+readline hello 6
+peek abc
+read abc 3
+readbyte 65
+host -1
+nid -1 Tip

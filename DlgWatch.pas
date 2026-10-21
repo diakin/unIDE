@@ -24,6 +24,9 @@ type
     pmWatch: TUiPopupMenu;
     miWatchAdd: TMenuItem;
     miWatchEdit: TMenuItem;
+    // Условие строки (=10, <5): точки останова RapidQ стоят, только если
+    // оно выполнено
+    miWatchCond: TMenuItem;
     miWatchDelete: TMenuItem;
     miWatchDeleteAll: TMenuItem;
     miWatchSep: TMenuItem;

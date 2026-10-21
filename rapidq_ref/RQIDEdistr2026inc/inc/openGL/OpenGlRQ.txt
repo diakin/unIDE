@@ -1,0 +1,9 @@
+OpenGl for RapidQ(http://www.basicguru.com/abc/rapidq/index/)
+by Kris Dawson.
+Copyright (c) 2001 Myriad Studios. All Rights Reserved.
+Email: cooldaddyk7@hotmail.com
+
+Copy rqglaux to your c:\windows\system directory.
+
+Contained in this Zip file are the include files for using OpenGl in 
+your RapidQ applications. Its based upon the PB/DLL API. Enjoy!

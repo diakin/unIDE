@@ -1,0 +1,384 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QImageDialog</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2004</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QImageDialog</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QImageDialog Component</h1>
+
+<dd>
+QImageDialog is dialog box selection of&nbsp; files with visualization
+of the graphic types.</dd>
+
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; This component
+requires DLL NVIEWLIB for the visualization of the jig , gif, jpg, pcx,
+tga, dib, rle types ,
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if this one
+is not present in the system or in the directory of executable, only&nbsp;
+the bmp, ico, cur, ani&nbsp; types will be
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; visualized.
+<p><a NAME="1"></a><b><font size=+1>QImageDialog Properties</font></b>
+<table BORDER=0 WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>D&eacute;fault</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Caption</td>
+
+<td>STRING</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Title of&nbsp; dialog box</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>FileName</td>
+
+<td>STRING</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>File name with path.</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Filter</td>
+
+<td>STRING</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Filter for file type.</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>FilterIndex</td>
+
+<td>INTEGER</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Filter index for file type.</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>InitialDir</td>
+
+<td>STRING</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Set the initial directory</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>DlgCaption</td>
+
+<td>ARRAY OF STRING</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Label of controls of dialog box,in english by default
+<br>item 1 is label of&nbsp; file name
+<br>item 2 is label of file type
+<br>item 3 is caption of open button
+<br>item 4 is caption of cancel button</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ErrorLanguage</td>
+
+<td>STRING</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Error language for dll.
+<br>(French,English,German,Dutch,Portuguese,Spanish,Japanese,Italian)</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>MultiSelect</td>
+
+<td>BOOLEAN</td>
+
+<td>R/W</td>
+
+<td>FALSE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>SelCount</td>
+
+<td>INTEGER</td>
+
+<td>R</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Number of file selected</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Selected</td>
+
+<td>QSTRINGLIST</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Files selected with path</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QImageDialog Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr VALIGN=TOP BGCOLOR="#CCFFFF">
+<td>Execute</td>
+
+<td>FUNCTION AS BOOLEAN</td>
+
+<td NOWRAP>Show the dialog box</td>
+
+<td NOWRAP>0</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QImageDialog Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QImageDialog Examples</font></b><b><font size=+1></font></b>
+<p><b><font color="#0000A0">$typecheck</font></b> on<br>
+<b><font color="#0000A0">$include</font></b> "<font color="#800000">object\QImageDialog.inc</font>"<br>
+<br>
+<b><font color="#0000A0">dim</font></b> a <b><font color="#0000A0">as</font></b>
+<b><font color="#0000A0">QimageDialog<br>
+</font></b>&nbsp;&nbsp;&nbsp; a.filter="<font color="#800000">Tous format(*.bmp;*.ico;*.ani;*.cur*.gif;*.jpg;*.dib;*.rle;*.tga;*.pcx)|*.bmp;*.ico;*.ani;*.cur*.gif;*.jpg;*.dib;*.rle;*.tga;*.pcx|Fichiers
+bitmap(*.bmp)|*.bmp|Fichiers gif(*.gif)|*.gif|Fichiers jpg(*.jpg)|*.jpg|Fichiers
+ico(*.ico)|*.ico|Fichiers curseur(*.cur;*.ani)|*.cur;*.ani</font>"<br>
+&nbsp;&nbsp;&nbsp; a.caption="<font color="#800000">Ouvrir</font>"<br>
+&nbsp;&nbsp;&nbsp; a.DlgCaption<b>(</b>1<b>)</b>="<font color="#800000">Nom
+du fichier:</font>"<br>
+&nbsp;&nbsp;&nbsp; a.DlgCaption<b>(</b>2<b>)</b>="<font color="#800000">Type
+du fichier:</font>"<br>
+&nbsp;&nbsp;&nbsp; a.DlgCaption<b>(</b>3<b>)</b>="<font color="#800000">Ouvrir</font>"<br>
+&nbsp;&nbsp;&nbsp; a.DlgCaption<b>(</b>4<b>)</b>="<font color="#800000">Annuler</font>"<br>
+&nbsp;&nbsp;&nbsp; a.errorLanguage="<font color="#800000">french</font>"<br>
+&nbsp;&nbsp;&nbsp; a.MultiSelect=true<br>
+&nbsp;&nbsp;&nbsp; a.execute<br>
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b>
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

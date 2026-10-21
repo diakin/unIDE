@@ -1,0 +1,7 @@
+form send 1 hwnd -1 params 5
+form post 2 params 30
+copydata 1
+edit 1 sender edit
+list 2
+label down 1
+recreated -1 form 3 hwnd -1

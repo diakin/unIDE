@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>constants.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: constants.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>constants.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/constants.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 3 functions &middot; 2 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#GETSYSCOLOR1">GetSysColor1</a> &middot; <a href="#SETPARAFORMAT">SetPARAFORMAT</a> &middot; <a href="#SETSYSCOLORS1">SetSysColors1</a></p>
+<h3><a name="GETSYSCOLOR1"></a>GetSysColor1</h3>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 10088</p>
+<pre>Declare Function GetSysColor1 Lib &quot;user32&quot; Alias &quot;GetSysColor&quot; (ByVal nIndex As Long) As Long</pre>
+<p>Returns the current color (RGB value) of the specified display element, given a COLOR_* index.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSysColor">GetSysColor</a></p>
+<h3><a name="SETPARAFORMAT"></a>SetPARAFORMAT</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10266</p>
+<pre>sub SetPARAFORMAT (Sender as QRichedit)</pre>
+<p>Sets tab stops in a QRichEdit: sends EM_SETPARAFORMAT with a PARAFORMAT structure giving 8 tab stops spaced 0.2 inch (288 twips) apart. Other paragraph options in the code are commented out.</p>
+<h3><a name="SETSYSCOLORS1"></a>SetSysColors1</h3>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 10089</p>
+<pre>Declare Function SetSysColors1 Lib &quot;user32&quot; Alias &quot;SetSysColors&quot; (ByVal nChanges As Long, lpSysColor As Long, lpColorValues As Long) As Long</pre>
+<p>Sets the colors of one or more display elements (COLOR_* indexes) for the current session. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetSysColors">SetSysColors</a></p>
+</body>
+</html>

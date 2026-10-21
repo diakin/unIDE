@@ -1,0 +1,59 @@
+Is Direct3D dead for Rapid-Q? 
+
+RapidQ is an easy and great programming language but unfinished. This is a bad thing. However, you might be interested in knowing more documentation about D3D in RapidQ.
+
+First it uses an API interface called Retained mode in D3D - also called D3DRM apparently this was going to be the next step in D3D but is no longer supported after about DX7 by Microsoft Development (MSDN). The older is still supported with new versions of DirectX but don't  expect it to last. So it is now nearly impossible to get documentation on RapidQ D3D. However, all is not lost.
+
+I have included a windows (32-bit) help file that describes the classes used in QD3D objects. They consist of IDirect3DRMObjects 
+I = "Interface"  (the API)
+Direct3D = you know this
+RM = retained mode
+Objects = like objects in Rapidq or QDXSCREEN
+
+For example, if you want to know about the mesh builder:
+Wu documents that "QD3DMeshBuilder implements IDirect3DRMMeshBuilder"
+
+In the help file search for IDirect3DRMMeshBuilder
+You will see the Methods and Properties associated with it.
+For example,
+In C++ :
+IDirect3DRMMeshBuilder::AddFace (LPDIRECT3DRMFACE lpD3DRMFace)
+
+In RapidQ:
+QD3DmeshBuilder.AddFace(QD3Dface)
+
+Here is Sample code:
+' other code....
+'
+DIM MeshBuilder AS QD3DMeshBuilder
+DIM Face AS QD3Dface
+DXScreen.CreateMeshBuilder(MeshBuilder)
+DXScreen.CreateFace(Face)
+'
+Face.AddVertex(0.996094,1.000000,-0.995850)
+Face.AddVertex(-0.995850,1.000000,-0.995850)
+'and so on
+'
+MeshBuilder.AddFace(Face)
+MeshBuilder.Scale(2,2,2)
+
+The problem is that RapidQ did not use all the IDirect3DRM classes
+For instance there is a IDirect3DRMMeshBuilder::GetBox
+But in RapidQ there is no
+MeshBuilder.GetBox(QD3DRMBOX)  and RapidQ will not recognize the other parts as well.
+
+Other useful links are
+
+Chong Jiayi's  Bolt-3D a standard API for a 3-d engine - can work with visual basic (and should work with RapidQ) but it has bugs and is still under development
+http://www.geocities.com/SiliconValley/Way/7233/index.html
+
+a list of potential 3-D engines is at:
+http://cg.cs.tu-berlin.de/~ki/engines.html
+
+A directX wrapper (need to convert API header in C++  to RapidQ)
+www.codeproject.com/directx/dxsmith.asp
+
+
+
+When all else fails - go OpenGL!!!!
+                    

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSKIN</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSKIN</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSKIN Component</h1>
+<p class="rq-meta">Extends <a href="qform.html">QFORM</a> &middot; source: <code>inc/QSkin.inc</code>, line 20 &middot; version: 1.2</p>
+<p><b>Skinned form: a QFORM without title bar whose size follows a skin image, and which can be dragged by that image.</b></p>
+<p>QSkin extends QFORM and contains Skin, an auto-sized QImage at 0, 0. Load the skin bitmap into Skin and call Resize: the form takes the size of the image plus OffsWidth and OffsHeight and hides its title bar. The same happens on every OnResize.</p>
+<p>Pressing a mouse button on the skin calls ReleaseCapture and sends WM_SYSCOMMAND with &amp;HF012 to the form, so the window is moved with the mouse. SetDeskBar changes the owner windows with SetWindowLongA (GWL_HWNDPARENT); the French comment describes it as the method for minimizing the application into the taskbar.</p>
+<p>QSKIN inherits the properties, methods and events of <a href="qform.html">QFORM</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QSkin Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Skin</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage (AutoSize, at 0, 0) that holds the skin picture; pressing the mouse on it drags the form.</td></tr>
+<tr><td class="rq-name">OffsWidth</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Extra pixels added to the skin width when the form is sized by Resize or OnResize. Default 0.</td></tr>
+<tr><td class="rq-name">OffsHeight</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Extra pixels added to the skin height when the form is sized by Resize or OnResize. Default 0.</td></tr>
+</table>
+<a name="2"></a><h2>QSkin Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">SetDeskBar</td><td class="rq-type">SUB</td><td>Sets the form&#x27;s owner to the desktop and makes the form the owner of the Application window, so that (per the comment) the application is minimized into the taskbar.</td></tr>
+<tr><td class="rq-name">Resize</td><td class="rq-type">SUB</td><td>Sizes the form to the Skin size plus OffsWidth and OffsHeight and hides the title bar.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnResize</code>, <code>Skin.onmousedown</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The component uses the form&#x27;s OnResize event itself, so every resize is forced back to the Skin size plus the offsets.</li>
+<li>The constructor sets BorderStyle = 1 and calls DelBorderIcons 2.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QSkin.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QSkin Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QSkin.inc&quot;
+DIM Win AS QSkin
+Win.Skin.BMP = &quot;skin.bmp&quot;
+Win.Resize
+Win.SetDeskBar
+Win.ShowModal</pre>
+<div class="rq-foot"><a href="c_qshutdown.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qskinbtn.html">Next component</a></div>
+</body>
+</html>

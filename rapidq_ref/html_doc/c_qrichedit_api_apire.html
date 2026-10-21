@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QRICHEDIT_API</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QRICHEDIT_API</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QRICHEDIT_API Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/apiRe.inc</code>, line 86</p>
+<p><b>Minimal wrapper that creates a Windows RichEdit control (RICHED32.DLL) with CreateWindowEx and lets you move, size, show and hide it.</b></p>
+<p>QRichEdit_api extends QObject, so it is not a RapidQ visual control. Assigning Parent (a window handle such as Form.Handle) loads RICHED32.DLL with LoadLibrary and creates a child window of class &quot;RichEdit&quot; at Left, Top, Width, Height; its handle is stored in Handle. The position and size setters then move the window with MoveWindow, and Visible calls ShowWindow.</p>
+<p>There are no methods for the text; work with the control by sending messages to Handle. The file also defines many window style constants (WS_...) as Public Const.</p>
+<p>QRICHEDIT_API inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Constants WS_EX_CLIENTEDGE, WS_EX_MDICHILD and WS_EX_OVERLAPPEDWINDOW (used but not defined in this file; they are defined for example in Win32_constants.inc)</li>
+<li>RICHED32.DLL (loaded at run time with LoadLibrary)</li>
+</ul>
+<a name="1"></a><h2>QRichEdit_api Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Parent</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Window handle of the parent. Assigning it stores it, loads RICHED32.DLL and creates the RichEdit window at the current Left, Top, Width and Height.</td></tr>
+<tr><td class="rq-name">left</td><td class="rq-type">SHORT</td><td>RW</td><td>65</td><td>Assigning stores it and moves the window with MoveWindow. Default 65.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">SHORT</td><td>RW</td><td>5</td><td>Assigning stores it and moves the window with MoveWindow. Default 5.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">SHORT</td><td>RW</td><td>200</td><td>Assigning stores it and resizes the window with MoveWindow. Default 200.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">SHORT</td><td>RW</td><td>100</td><td>Assigning stores it and resizes the window with MoveWindow. Default 100.</td></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Assigning 0 hides the window (ShowWindow SW_HIDE); any other value shows it (SW_SHOW).</td></tr>
+<tr><td class="rq-name">Handle</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Window handle of the created RichEdit control; 0 until Parent is assigned.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Each assignment of Parent loads the library again and creates a new window; the earlier window is not destroyed and FreeLibrary is never called.</li>
+<li>Before Parent is assigned, the Left, Top, Width, Height and Visible setters call MoveWindow or ShowWindow with Handle = 0.</li>
+<li>The window is created with the extended styles WS_EX_MDICHILD, WS_EX_OVERLAPPEDWINDOW and WS_EX_TRANSPARENT among others; a simpler call with only WS_EX_CLIENTEDGE is left commented out.</li>
+<li>The file declares a global variable hInst, $DEFINE HWND INTEGER and many Public Const window styles, which can clash with other include files.</li>
+</ul>
+<a name="4"></a><h2>QRichEdit_api Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>CONST WS_EX_CLIENTEDGE = &amp;H200
+CONST WS_EX_MDICHILD = &amp;H40
+CONST WS_EX_OVERLAPPEDWINDOW = &amp;H300
+$INCLUDE &quot;apiRe.inc&quot;
+CREATE Form AS QFORM
+  Width = 400
+  Height = 300
+END CREATE
+DIM RE AS QRichEdit_api
+RE.Left = 5
+RE.Top = 5
+RE.Width = 380
+RE.Height = 250
+RE.Parent = Form.Handle
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qrichedit_api_api_richedid.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qrichedit_xt.html">Next component</a></div>
+</body>
+</html>

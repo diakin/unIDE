@@ -1,0 +1,612 @@
+{
+ "QDFPANEL@QDOCKFORM.inc": {
+  "summary_en": "Helper panel type used inside QDOCKFORM: a QPANEL whose appearance properties are hidden by redeclaring them as private.",
+  "summary_ru": "Вспомогательная панель для QDOCKFORM: QPANEL, у которой свойства внешнего вида скрыты (объявлены как Private).",
+  "description_en": [
+   "QDFPANEL extends QPANEL and redeclares Alignment, BevelInner, BevelOuter, BevelWidth, BorderStyle, Caption, ClientHeight, ClientWidth, Color, Cursor, Hint, ShowHint and Visible as private BYTE fields, following the source comment \"Disable old methods / functions by overriding them and making them private\". It adds no members of its own.",
+   "QDOCKFORM uses it for its Panel (the movable inner panel that holds the title canvas and the Client panel) and for its private AltPanel (the alternative docking place). It is not meant to be used on its own."
+  ],
+  "requires": [],
+  "members": {},
+  "example": "$INCLUDE \"QDOCKFORM.inc\"\n' QDFPANEL is created by QDOCKFORM; it is reached through the Panel field\nDIM Dock AS QDOCKFORM\nDock.Panel.Width = 200",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "QDOCKFORM still assigns Visible on its AltPanel, although QDFPANEL redeclares Visible as private."
+  ]
+ },
+ "QDOCKFORM@QDOCKFORM.inc": {
+  "summary_en": "Dockable tool panel: a QPANEL with a title bar that can be dragged off its form into a floating borderless window and dragged back to dock again.",
+  "summary_ru": "Пристыковываемая панель инструментов: QPANEL с заголовком, которую можно перетащить с формы в плавающее окно без рамки и пристыковать обратно.",
+  "description_en": [
+   "QDOCKFORM extends QPANEL. It contains an inner Panel (QDFPANEL) with a Canvas that draws the title area and a Client panel where you put your own controls. When the user drags the title bar (or the grip, for grip styles) more than 30 pixels away from the docked position, the Panel is moved into UndockedForm, a borderless QFORM sized UndockedWidth x UndockedHeight, and that form follows the mouse. Dragging the floating form back within 29 pixels of the original position docks it again. With Style = 1 it can also dock into an alternative panel on the opposite side of the form (or on the side given by AltAlign).",
+   "The title area is painted on each Canvas.OnPaint according to DockStyle (when docked) or UndockStyle (when floating): styles 0-2 and 10 have a caption bar 25 pixels high, styles 3-6 have a vertical grip on the left. The close button is drawn with the user32 DrawFrameControl function, style 10 uses DrawCaption, and resizing of the floating form (Sizeable = 1) is done by sending WM_SYSCOMMAND size commands to it. SetCapture, ReleaseCapture and ClientToScreen from user32 are used while dragging.",
+   "Use: set Parent and Align (default 3, left), Caption and the styles, then place child controls on .Client. The public SUB Close (not in the parsed member list) closes the panel the same way as the close button. Call Dock to dock or undock from code."
+  ],
+  "requires": [],
+  "members": {
+   "TITLECOLOR": "Color of the caption text drawn in the title area. Default 0 (black).",
+   "ST1_TITLEBACKGROUND": "Fill color of the title bar in style 1 (DockStyle or UndockStyle = 1); it is drawn only while Locked = 0. Default -2147483632 (a system color value).",
+   "DRAGCURSOR": "Cursor shown when the mouse is over the drag area (title bar or grip) and the panel is not locked. Default -21.",
+   "ALTALIGN": "Align value for the alternative docking panel. When 0 (default) the alternative panel is placed on the side opposite to the component's own Align (left/right, top/bottom).",
+   "SIZEABLE": "When 1 and the panel is floating, dragging the 4-pixel border of the canvas resizes the floating form; the new size is stored in UndockedWidth and UndockedHeight.",
+   "STYLE": "Docking mode. 0: only the normal docking place. Greater than 0: Dock(2) docks into the alternative panel. 1: the user can also dock into the alternative panel by dragging the floating form to it.",
+   "UNDOCKEDHEIGHT": "Height of the floating form. Default 400; updated when the user resizes the floating form.",
+   "UNDOCKEDWIDTH": "Width of the floating form. Default 170; updated when the user resizes the floating form.",
+   "CAPTION": "Title text. Assigning it also sets the Caption of UndockedForm.",
+   "DOCKED": "Read-only (its setter does nothing): 1 while the panel is docked, 0 while it floats.",
+   "UNDOCKEDFORM": "The borderless QFORM (BorderStyle 0) that holds the Panel while the component is floating.",
+   "PANEL": "The inner QDFPANEL that holds Canvas, Client and the close button; it is moved between the component, the alternative panel and UndockedForm.",
+   "CANVAS": "QCANVAS filling the Panel. The frame, caption and grip are painted on it, and its mouse events implement dragging and resizing.",
+   "CLIENT": "QPANEL where user controls are placed. It is positioned below the caption (or right of the grip) on every repaint.",
+   "DOCKSTYLE": "Appearance while docked: 0 centered caption over three lines (default), 1 caption on a colored bar, 2 caption followed by a dotted grip, 3 to 6 vertical grips on the left without caption, 10 a system caption drawn with DrawCaption. Other values are drawn like 0.",
+   "UNDOCKSTYLE": "Appearance while floating, with the same values as DockStyle; the value 6 is changed to 1 when the floating panel is painted.",
+   "LOCKED": "Assigning a value greater than 0 sets it to 1 and repaints; 0 or less sets 0 and repaints. While locked the panel cannot be dragged and the title background or grip is not drawn.",
+   "CANCLOSE": "Assigning a value greater than 0 sets it to 1 and shows the close button; otherwise sets 0 and hides it. While 0, the user cannot close the floating form.",
+   "CLOSED": "Read-only (its setter does nothing): set to 1 when the panel is closed with the close button, Close, or by closing the floating form; cleared by the next Dock.",
+   "ALTDOCK": "Read-only (its setter does nothing): 1 when the panel is docked in the alternative panel, otherwise 0.",
+   "ONDOCK": "Event (Docked AS INTEGER, Alt AS INTEGER) fired when the user docks or undocks by dragging: (0, 0) when undocked, (1, 0) when docked in the normal place, (1, 1) when docked in the alternative panel. Dock does not fire it.",
+   "ONPAINT": "Event without parameters fired at the end of each Canvas repaint, after the title area has been drawn.",
+   "ONCLOSE": "Event without parameters fired when the close button is clicked, Close is called, or the user closes the floating form while CanClose = 1.",
+   "DOCK": "Dock(n): n = 1 docks the panel in its normal place; n = 2 docks it in the alternative panel when Style > 0 (otherwise like 1); any other value undocks it into the floating form, centered on the screen with UndockedWidth x UndockedHeight."
+  },
+  "example": "$INCLUDE \"QDOCKFORM.inc\"\nCREATE Form AS QFORM\n  Width = 600\n  Height = 400\nEND CREATE\nDIM Tools AS QDOCKFORM\nTools.Parent = Form\nTools.Caption = \"Tools\"\nTools.DockStyle = 1\nTools.UndockStyle = 1\nTools.CanClose = 1\nTools.Sizeable = 1\nDIM Btn AS QBUTTON\nBtn.Parent = Tools.Client\nBtn.Caption = \"OK\"\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Dock centers the floating form by computing Left and Top, because (source comment) Center loses the parent, which is hard to get back.",
+   "Sizes are hard-coded: the caption area is 25 pixels high, the close button is 16 x 14 pixels, the grip area is 15 pixels wide, the resize border is 4 pixels, and docking snaps within 29-30 pixels.",
+   "MinWidth and MinHeight are commented out in the constructor, so the floating form has no minimum size when resized.",
+   "OnDock is fired only for docking by dragging, not by the Dock method.",
+   "Several API calls (ShowWindow, ReleaseCapture, SetWindowLong) are left commented out in the code."
+  ]
+ },
+ "QDir@QDir.Inc": {
+  "summary_en": "Non-visual file finder that scans a directory, or a directory tree, for files matching a filter and attribute rules, and fires an event for each file found.",
+  "summary_ru": "Невизуальный компонент поиска файлов в каталоге или дереве каталогов по маске и атрибутам с событием на каждый найденный файл.",
+  "description_en": [
+   "QDir searches with the kernel32 functions FindFirstFileA and FindNextFileA. Dir scans one directory and Dirs scans it and all its subdirectories. For every entry that passes the attribute filter it fills its properties (names, path, size, attributes, and creation, last access and last write times converted to local time) and calls OnFileFound. The date/time properties at the top level (Date, Time, DateEU and so on) are copied from the last write time.",
+   "Attributes are given as letters: A archive, D directory, H hidden, N normal, R read-only, S system, T temporary, C compressed, and 0 for no attribute. An entry is rejected when it has any attribute listed in RejectedAttributes, and it must have every attribute listed in MustAttributes. While a search runs, a small black window (frmDirStop) is shown; clicking it sets FlagStop and aborts the scan. DoEvents is called in the scanning loops.",
+   "Two extra functions change file times (SetFileTime) and attributes (SetFileAttributesA)."
+  ],
+  "requires": [],
+  "members": {
+   "FILENAME": "Long name of the entry just found; read it inside OnFileFound.",
+   "DOSFILENAME": "Short 8.3 alternate name of the entry just found (cAlternateFileName from the find data).",
+   "PATH": "Directory of the entry just found, ending with a backslash. When the filter has no drive letter, the application path is put in front of it.",
+   "PATHFILENAME": "Path and FileName joined.",
+   "SIZE": "File size in bytes as a Double, built from the high and low 32-bit parts.",
+   "WITHDOTSDIRS": "When 1 (default) the \".\" and \"..\" entries are passed to OnFileFound; any other value skips them.",
+   "DATETIME": "Last write time as the raw 64-bit FILETIME value converted to a Double (not converted to local time); the source comments it with \"???\".",
+   "TIME": "Last write time as \"HH:MM:SS\" (local time).",
+   "TIMEMS": "Last write time as \"HH:MM:SS.iii\" with milliseconds.",
+   "DATE": "Last write date as \"mm/dd/yyyy\".",
+   "DATEEU": "Last write date in European format \"dd/mm/yyyy\".",
+   "DATEALPHA": "Last write date as \"ddd mmm DD, yyyy\", using the first three letters of Days() and Months().",
+   "DATEALPHAEU": "Last write date as \"ddd DD mmm yyyy\".",
+   "STRDAYOFWEEK": "First three letters of the Days() entry for the last write date.",
+   "STRMONTHOFYEAR": "First three letters of the Months() entry for the last write date.",
+   "ATTRIBUTES": "Win32 attribute bits of the entry just found.",
+   "ATTRIBUTESASSTRING": "Attributes as letters from \"ADHNRSTC\", or \"0\" when no attribute is set.",
+   "DAYS": "Array Days(0 To 6) of weekday names, Sunday to Saturday by default. It can be changed (for example to another language) and is used to build the day abbreviations.",
+   "MONTHS": "Array Months(1 To 12) of month names, January to December by default. It can be changed and is used to build the month abbreviations.",
+   "CREATION": "Creation time as a QDIR_SYSTEMTIME record: numeric year, month, dayOfWeek, day, hour, minute, second, milliseconds, plus DateTime and the same string formats as the top-level date properties.",
+   "LASTACCESS": "Last access time as a QDIR_SYSTEMTIME record (same fields as Creation).",
+   "LASTWRITE": "Last write time as a QDIR_SYSTEMTIME record (same fields as Creation).",
+   "FLAGSTOP": "Set it to a non-zero value to stop a running Dir or Dirs; clicking the abort window sets it. It is reset to 0 when a search starts.",
+   "FLAGSHOWFORMSTOPDIR": "When non-zero (default 1) the abort window frmDirStop is shown during a search.",
+   "FRMDIRSTOP": "Borderless black QForm (400 x 200 at 40, 40) shown during a search; clicking its label aborts the search.",
+   "LBLDIRSTOP": "QLabel filling frmDirStop with the text \"CLIC ME TO ABORT DIRECTORY SCANNING\"; its OnClick sets FlagStop.",
+   "ONFILEFOUND": "Event without parameters called for each accepted entry; read FileName, Path, Size and the other properties inside the handler.",
+   "DIR": "Dir(PathFilter, RejectedAttributes, MustAttributes): scans one directory for entries matching PathFilter (for example \"C:/temp/*.bas\"; \"/\" is accepted as separator) and calls OnFileFound for each one that passes the attribute rules.",
+   "DIRS": "Dirs(PathFilter, RejectedAttributes, MustAttributes): like Dir, but also scans all subdirectories of the starting directory.",
+   "CHANGEFILEDATEANDTIME": "ChangeFileDateAndTime(PathFileName$, [WhichTimes$], year, month, day, hour, minute, second): sets file times; WhichTimes may contain \"CRE\", \"ACC\" and \"WRI\" (empty means last write time only). Returns 1 on success; on error it shows a message and returns 0.",
+   "CHANGEFILEATTRIBUTES": "ChangeFileAttributes(PathFileName, AttributesAsString): sets the file attributes from letters \"ADHNRSTC\" and returns the result of SetFileAttributesA (non-zero on success)."
+  },
+  "example": "$INCLUDE \"QDir.Inc\"\nCREATE Form AS QFORM\n  Width = 500\n  Height = 300\n  CREATE List AS QLISTBOX\n    Align = 5\n  END CREATE\nEND CREATE\nDIM D AS QDir\nSUB FileFound\n  List.AddItems D.PathFileName & \"  \" & STR$(D.Size) & \"  \" & D.DateEU\nEND SUB\nD.OnFileFound = FileFound\nD.WithDotsDirs = 0\nD.Dirs(\"C:/Projects/*.bas\", \"H\", \"\")\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Jacques Philippe",
+  "version": "1.0.4",
+  "date": "April 2004",
+  "caveats_en": [
+   "Only one search per QDir can run at a time; a second call shows \"QDIR ERROR : QDIR ALREADY SEARCHING\".",
+   "A filter that matches nothing, or a directory that does not exist, gives no error; the error messages are commented out.",
+   "ChangeFileDateAndTime treats a CreateFile result of 0 as failure, but CreateFile returns -1 on failure, so a missing file is not detected at that point.",
+   "ChangeFileDateAndTime passes the given time to SystemTimeToFileTime without converting from local time, while the times read by Dir and Dirs are converted to local time. It always sets the milliseconds to 333.",
+   "Dir: for a relative filter, Path gets the application path in front, but FindFirstFile is called with the filter as given. Dirs searches with Path & \"*.*\" and Path & Filter, which already include the application path.",
+   "In Dirs, FlagStop is checked only after all files of the current directory have been processed.",
+   "The source notes RapidQ bugs with nested types, so the FILETIME fields of WIN32_FIND_DATA are written out as separate LONGs."
+  ]
+ },
+ "QAVI@QAVI.inc": {
+  "summary_en": "Non-visual component that reads frames from AVI video files into bitmaps and writes bitmaps as frames into new AVI files, using the Video for Windows AVIFile API.",
+  "summary_ru": "Невизуальный компонент для чтения кадров AVI-файла в QBITMAP и записи битмапов в новый AVI-файл через Video for Windows (AVIFile API).",
+  "description_en": [
+   "QAVI wraps functions of avifil32.dll (AVIFileOpen, AVIFileGetStream, AVIStreamGetFrame, AVIFileCreateStream, AVIStreamWrite, AVIMakeCompressedStream, AVISaveOptions and others). GetAVIFileInfo opens a file and fills the frame count, size, frame rate and stream rectangle. AVItoBMP extracts one frame into a QBITMAP: 24 bits per pixel for uncompressed \"DIB \" streams, otherwise 8 bits, letting the API choose the decompressor. The pixel data is copied straight into the bitmap memory, whose address is found with GetCurrentObject and GetObject.",
+   "To write a video, call CreateAVIFile with the file name, size, bit depth (8 or 24) and frame rate, then call BMPtoAVIFile once per frame with a QBITMAP of that size, and finish with CloseAVIFile. Setting UseCompression makes an RLE compressed stream, and ShowDialog shows the Windows compression options dialog.",
+   "Errors returned by the AVI functions are turned into text in Error (and shown with ShowMessage when ShowError is set); on error the streams and the library are released. The file defines its own TBITMAP and BITMAPINFOHEADER types and constants unless RapidQ2.inc or Windows.inc have already been loaded."
+  ],
+  "requires": [],
+  "members": {
+   "NUMFRAMES": "Number of frames in the video stream, set by GetAVIFileInfo and AVItoBMP. When creating a file, its value is written into the stream header length.",
+   "FIRSTFRAME": "Start position of the video stream (AVIStreamStart), set by GetAVIFileInfo and AVItoBMP.",
+   "ERROR": "Text of the last AVI error, prefixed with \"AVI Function: \".",
+   "SHOWERROR": "When non-zero, error texts are also shown with ShowMessage. Default 0.",
+   "WIDTH": "Frame width in pixels, read from the file or set by CreateAVIFile.",
+   "HEIGHT": "Frame height in pixels, read from the file or set by CreateAVIFile.",
+   "LEFT": "Left of the stream rectangle, read by GetAVIFileInfo. When creating, a non-zero value is written to the stream header, otherwise 0 is used.",
+   "RIGHT": "Right of the stream rectangle, read by GetAVIFileInfo. When creating, a non-zero value is written to the stream header, otherwise the frame width is used.",
+   "TOP": "Top of the stream rectangle, read by GetAVIFileInfo. When creating, a non-zero value is written to the stream header, otherwise 0 is used.",
+   "BOTTOM": "Bottom of the stream rectangle, read by GetAVIFileInfo. When creating, a non-zero value is written to the stream header, otherwise the frame height is used.",
+   "FPS": "Frames per second read by GetAVIFileInfo (dwRate \\ dwScale).",
+   "FILETYPE": "File type text from the AVI file information (szFileType), set by GetAVIFileInfo.",
+   "QUALITY": "Compression quality written into the stream header and the compression options; default 10000. Read from the file by GetAVIFileInfo.",
+   "BPP": "Bits per pixel, 8 or 24; default 24. Set by CreateAVIFile and by AVItoBMP.",
+   "SAMPLESIZE": "Frame size in bytes from the stream information, set by GetAVIFileInfo.",
+   "FRAMESWRITTEN": "Number of frames written since CreateAVIFile; it is also the stream position of the next frame.",
+   "BYTESWRITTEN": "Number of bytes written by the last BMPtoAVIFile call.",
+   "SHOWDIALOG": "When non-zero, CreateAVIFile shows the Windows compression options dialog (AVISaveOptions) and uses the chosen compressor.",
+   "USECOMPRESSION": "When non-zero, CreateAVIFile creates an RLE compressed stream; frames are then written to that stream.",
+   "CLOSEAVIFILE": "Releases the streams and the file, calls AVIFileExit and clears the internal pointers. Returns 1. Call it when you have finished reading or writing.",
+   "CREATEAVIFILE": "CreateAVIFile(FileName, Width, Height, Bpp, Fps): opens the AVIFile library, creates the file for writing and a \"DIB \" video stream with the given format. Returns 1 on success and 0 on error.",
+   "GETAVIFILEINFO": "GetAVIFileInfo(FileName): opens the file and its first video stream and fills NumFrames, FirstFrame, Width, Height, FileType, FPS, Quality, the stream rectangle and SampleSize. Returns 1 on success and 0 on error; the file stays open.",
+   "AVITOBMP": "AVItoBMP(FileName, Bitmap, FrameNum): reads frame FrameNum of the file into the QBITMAP, setting its size and PixelFormat (24 or 8 bit). Opens the file first if needed.",
+   "BMPTOAVIFILE": "BMPtoAVIFile(Bitmap): writes the QBITMAP as the next key frame of the stream created by CreateAVIFile. The bitmap should have the Width, Height and Bpp given to CreateAVIFile. Returns 1 on success and 0 on error.",
+   "NEW": "Resets the internal pointers and the public properties to their defaults (Quality 10000, Bpp 24, everything else 0 or empty). The constructor calls it."
+  },
+  "example": "$INCLUDE \"QAVI.inc\"\nDIM Avi AS QAVI\nDIM Bmp AS QBITMAP\nAvi.ShowError = 1\n' read the first frame of a video\nIF Avi.GetAVIFileInfo(\"clip.avi\") THEN\n  ShowMessage \"Frames: \" & STR$(Avi.NumFrames) & \"  Size: \" & STR$(Avi.Width) & \" x \" & STR$(Avi.Height)\n  Avi.AVItoBMP(\"clip.avi\", Bmp, 0)\n  Bmp.SaveToFile(\"frame0.bmp\")\n  Avi.CloseAVIFile\nEND IF\n' write 30 frames of 320 x 240, 24 bits, 15 frames per second\nDIM i AS INTEGER\nBmp.PixelFormat = 6   ' 24 bit\nBmp.Width = 320\nBmp.Height = 240\nIF Avi.CreateAVIFile(\"out.avi\", 320, 240, 24, 15) THEN\n  FOR i = 1 TO 30\n    Bmp.FillRect(0, 0, 320, 240, &HFFFFFF)\n    Bmp.Circle(i * 8, 100, i * 8 + 40, 140, &HFF0000, &HFF0000)\n    Avi.BMPtoAVIFile(Bmp)\n  NEXT\n  Avi.CloseAVIFile\nEND IF",
+  "example_origin": "written",
+  "author": "JohnK (John Kelly); code contributions by Ray Mercer",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "The compression part of CreateAVIFile is marked \"this part is tricky, work in progress\", and the line after AVIMakeCompressedStream carries the comment \"crashes\".",
+   "CreateAVIFile limits the FPS property to 60, but the stream uses the fps parameter, so the limit has no effect.",
+   "The comments give two ranges for Quality: 0 - 100000 (with 10000 = best) and 0 - 10000.",
+   "If the user cancels the compression dialog, the error handler releases the file and streams, but CreateAVIFile continues and can still return 1.",
+   "AVItoBMP opens the file again when a file is already open, without releasing the earlier handles, and it never calls AVIStreamGetFrameClose.",
+   "AVItoBMP accepts FrameNum from 0 to NumFrames inclusive (one past the last frame) and does not add FirstFrame. It returns 1 even after reporting a bad frame number.",
+   "AVItoBMP copies Height * Width * Bpp / 8 bytes, without the DWORD row padding it computes for biSizeImage. For 8-bit frames the 1024-byte palette is skipped and not copied to the bitmap.",
+   "CheckAVIError, CreateAVIFile, GetAVIFileInfo and AVItoBMP start with FUNCTION but end with END SUB."
+  ]
+ },
+ "QCGI@qcgi.inc": {
+  "summary_en": "Non-visual CGI helper that reads the CGI environment variables and parses GET or POST form data into name/value pairs.",
+  "summary_ru": "Невизуальный помощник для CGI-программ: читает переменные окружения CGI и разбирает данные формы GET/POST на пары имя/значение.",
+  "description_en": [
+   "The constructor reads the standard CGI environment variables (HTTP_ACCEPT, CONTENT_LENGTH, QUERY_STRING, REMOTE_ADDR, HTTP_USER_AGENT and so on) with ENVIRON$; each is returned by a method of the same name.",
+   "Parse reads the form data: for REQUEST_METHOD POST it reads CONTENT_LENGTH characters (at most MaxInput) from standard input with GET$, for GET it uses QUERY_STRING. The data is split at \"&\" and \"=\"; with AutoConvert on, %XX codes and \"+\" are decoded. Names are stored in upper case in a table kept in alphabetical order, so Get finds them by binary search and the lookup is not case-sensitive.",
+   "Use it in a console program run by a web server: create a QCGI object and call Get(name, value) for each form field. Get calls Parse automatically the first time."
+  ],
+  "requires": [],
+  "members": {
+   "MAXINPUT": "Maximum number of characters of form data that Parse reads. Default CGI_INPUT_DEFAULT (32767); the file also defines CGI_INPUT_LARGE (65535) and CGI_INPUT_SMALL (255). Assigning 0 or a negative value is ignored.",
+   "AUTOCONVERT": "When 1 (default), Parse decodes %XX codes and turns \"+\" into a space. Assigning 1 sets it to 1; any other value sets 0.",
+   "ACCEPT": "Returns the HTTP_ACCEPT environment variable.",
+   "AUTHTYPE": "Returns the AUTH_TYPE environment variable.",
+   "CONTENTLENGTH": "Returns CONTENT_LENGTH as an integer.",
+   "CONTENTTYPE": "Returns the CONTENT_TYPE environment variable.",
+   "COOKIE": "Returns the raw HTTP_COOKIE string; it is not split into cookies.",
+   "GATEWAYINTERFACE": "Returns the GATEWAY_INTERFACE environment variable.",
+   "PATHINFO": "Returns the PATH_INFO environment variable.",
+   "PATHTRANSLATED": "Returns the PATH_TRANSLATED environment variable.",
+   "REFERER": "Returns the HTTP_REFERER environment variable.",
+   "REMOTEADDR": "Returns the REMOTE_ADDR environment variable (client IP address).",
+   "REMOTEHOST": "Returns the REMOTE_HOST environment variable.",
+   "REMOTEIDENT": "Returns the REMOTE_IDENT environment variable.",
+   "REMOTEUSER": "Returns the REMOTE_USER environment variable.",
+   "REQUESTMETHOD": "Returns the REQUEST_METHOD environment variable, for example GET or POST.",
+   "SCRIPTNAME": "Returns the SCRIPT_NAME environment variable.",
+   "SERVERSOFTWARE": "Returns the SERVER_SOFTWARE environment variable.",
+   "SERVERNAME": "Returns the SERVER_NAME environment variable.",
+   "SERVERPORT": "Returns SERVER_PORT as an integer.",
+   "SERVERPROTOCOL": "Returns the SERVER_PROTOCOL environment variable.",
+   "QUERYSTRING": "Returns the raw QUERY_STRING environment variable, not decoded.",
+   "USERAGENT": "Returns the HTTP_USER_AGENT environment variable.",
+   "PARSE": "Reads the GET or POST form data and stores the name/value pairs. It runs only once; later calls do nothing.",
+   "GET": "Get(Name, BYREF Value): calls Parse if needed, looks up Name (case-insensitive) and puts its value into Value. Returns 1 when the name is found, 0 otherwise."
+  },
+  "example": "$APPTYPE CONSOLE\n$INCLUDE \"qcgi.inc\"\nDIM Cgi AS QCGI\nDIM UserName AS STRING\nPRINT \"Content-type: text/plain\"\nPRINT \"\"\nIF Cgi.Get(\"name\", UserName) THEN\n  PRINT \"Hello, \" & UserName\nELSE\n  PRINT \"No name given. Request method: \" & Cgi.RequestMethod\nEND IF",
+  "example_origin": "written",
+  "author": "Chris Warrington (with modifications by C. Baker)",
+  "version": "1.6",
+  "date": "2005-Feb-22",
+  "caveats_en": [
+   "At most CGI_MAX_PAIRS (256) name/value pairs are stored; parsing stops when the table is full.",
+   "%XX codes are decoded only when they give a printable ASCII character (space to \"~\"); other codes, such as line breaks or non-ASCII bytes, stay in the text as \"%XX\".",
+   "A \"+\" followed by another \"+\" or a space is kept as \"+\" instead of being turned into a space.",
+   "When a name occurs more than once, only the last value is kept.",
+   "POST data is always parsed as name=value pairs; the content type is not checked.",
+   "Parse runs only once, so changing MaxInput or AutoConvert after the first Get has no effect.",
+   "The library is released under the GNU GPL version 2 or later; the header says programs that use it must release their source code."
+  ]
+ },
+ "Qcdaudio@Qcdaudio.inc": {
+  "summary_en": "Non-visual audio CD player that controls the MCI \"cdaudio\" device: open, play, pause, stop, eject and track selection, with a change event while playing.",
+  "summary_ru": "Невизуальный проигрыватель аудио-CD через MCI-устройство cdaudio: открытие, воспроизведение, пауза, стоп, извлечение диска и выбор дорожки с событием изменения позиции.",
+  "description_en": [
+   "Qcdaudio sends MCI command strings (\"open cdaudio\", \"play cdaudio from ...\", \"status cdaudio position\" and so on) with mciSendStringA from winmm.dll. Times are kept in the MCI tmsf (track:minute:second:frame) format as strings.",
+   "Call Open to open the device; it checks that a disc is present and reads the number of tracks and the total length. Set CurrentTrack to choose a track and call Play. While playing, an internal timer polls the current track, position and mode once per second and fires OnChange. The states are given by the constants CD_CLOSE (0), CD_PLAY (1), CD_PAUSE (2) and CD_STOP (3).",
+   "The comments in the file are in French."
+  ],
+  "requires": [],
+  "members": {
+   "TIMER": "Internal: QTIMER with a 1000 ms interval that runs while playing, updates CurrentTrack, TimePosition and State, and fires OnChange.",
+   "TIME": "Total length of the disc (tmsf format) as returned by MCI, set by Open.",
+   "TRACKTIME": "Length of the current track, read when CurrentTrack is assigned while the device is open.",
+   "TRACKNUMBER": "Number of tracks on the disc, set by Open.",
+   "TIMEPOSITION": "Current position as returned by \"status cdaudio position\" (tmsf format); updated by the timer and by Pause, and used by Play to resume after a pause.",
+   "POSITION": "Meant for the position in milliseconds (the private GetPosition reads it), but no code assigns it except Close, which sets 0.",
+   "STATE": "Player state: CD_CLOSE (0), CD_PLAY (1), CD_PAUSE (2) or CD_STOP (3).",
+   "AUDIOOPEN": "True after a successful Open, False after Close.",
+   "PRESENT": "True when Open found a disc in the drive; set to False by Eject.",
+   "ERROR": "MCI error text, set when \"open cdaudio\" fails.",
+   "CURRENTTRACK": "Current track number. Assigning it while the device is open limits the value to 1..TrackNumber, seeks to that track and reads its length into TrackTime; it does not start playback. While the device is closed, assigning does nothing.",
+   "ONCHANGE": "Event (Track AS INTEGER, Time AS STRING) fired by the timer every second while playing, with the current track and position.",
+   "CLOSE": "Stops the timer, stops and closes the cdaudio device and resets the properties; State becomes CD_CLOSE.",
+   "OPEN": "Closes the device first, then opens cdaudio, checks that a disc is present and reads TrackNumber and Time. Returns True on success; on failure it closes the device again.",
+   "PLAY": "Starts playback from TimePosition when paused, otherwise from CurrentTrack, and starts the timer.",
+   "STOP": "Stops playback, stops the timer, sets CurrentTrack to 1 and seeks to the start of the disc.",
+   "PAUSE": "Pauses when playing and stores the current track and position for Play to resume.",
+   "EJECT": "Calls Stop and Close, opens the drive door and sets Present to False."
+  },
+  "example": "$INCLUDE \"Qcdaudio.inc\"\nCREATE Form AS QFORM\n  Width = 300\n  Height = 100\nEND CREATE\nDIM CD AS Qcdaudio\nSUB CDChange(Track AS INTEGER, Time AS STRING)\n  Form.Caption = \"Track \" & STR$(Track) & \"  \" & Time\nEND SUB\nCD.OnChange = CDChange\nIF CD.Open THEN\n  CD.CurrentTrack = 2\n  CD.Play\nELSE\n  ShowMessage CD.Error\nEND IF\nForm.ShowModal\nCD.Close",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The MCI declarations and the event template event_change are inside $IFNDEF __WIN32API, so they are skipped when a Windows API include defining __WIN32API is loaded first, and the component then misses mciSendCdaudio, mciGetErrorCdaudio and event_change.",
+   "The timer calls OnChange with CALLFUNC without checking that a handler has been assigned.",
+   "Position is never updated.",
+   "Close assigns CurrentTrack = 0 after setting AudioOpen to False, so the setter ignores it and CurrentTrack keeps its old value.",
+   "Several MCI calls are written with a stray \"+\" before the comma, for example mciSendCdaudio(\"status cdaudio current track\"+,...).",
+   "The MCI device name \"cdaudio\" is fixed, so there is no way to choose a drive."
+  ]
+ },
+ "QCanvasEx@QCanvasEx.inc": {
+  "summary_en": "Extended QCANVAS with GDI drawing that uses a pen style, pen size and raster (mix) mode, plus filled shapes, icons, flood fill, color inversion, mirroring and clipboard bitmap copy/paste.",
+  "summary_ru": "Расширенный QCANVAS: рисование через GDI со стилем и толщиной пера и режимом смешивания, заливка фигур, иконки, заливка области, инверсия, зеркалирование и обмен битмапами через буфер обмена.",
+  "description_en": [
+   "QCanvasEx extends QCANVAS and draws directly with gdi32 and user32 functions on the canvas Handle. Each shape method creates a pen from PenStyle, PenSize and the given color (and a solid brush for the filled versions), sets the raster operation from MixMode with SetROP2, draws, and then restores and deletes the GDI objects. Line, Rectangle, Circle, RoundRect and TextOut replace the QCANVAS methods of the same name, some with different parameters.",
+   "Constants for MixMode (R2_..._CAN), PenStyle (PS_..._CAN) and raster copy modes (..._CAN) are defined in the file. Clipboard methods copy a rectangle of the canvas as a CF_BITMAP and paste a clipboard bitmap at a position. The comments in the file are in French."
+  ],
+  "requires": [],
+  "members": {
+   "MIXMODE": "Raster mode set with SetROP2 before each shape is drawn, one of the R2_..._CAN constants (for example R2_XORPEN_CAN = 7). Default R2_COPYPEN_CAN (13).",
+   "PENSTYLE": "Pen style for the shape methods: PS_SOLID_CAN (0), PS_DASH_CAN (1), PS_DOT_CAN (2), PS_DASHDOT_CAN (3), PS_DASHDOTDOT_CAN (4), PS_NULL_CAN (5), PS_INSIDEFRAME_CAN (6). Default solid.",
+   "PENSIZE": "Pen width in pixels for the shape methods. Default 1.",
+   "DRAWICO": "DrawIco(Left, Top, Width, Height, hIcon): draws the icon handle at the given position and size with DrawIconEx.",
+   "COPYTOCLIPBOARD": "CopyToClipboard(Rect AS QRECT): copies that area of the canvas to the clipboard as a bitmap.",
+   "PASTEFROMCLIPBOARD": "PasteFromClipboard(X, Y): if the clipboard holds a bitmap, draws it on the canvas with its top-left corner at X, Y.",
+   "GETWIDTHCLIPBOARD": "Returns the width of the bitmap on the clipboard, if there is one.",
+   "GETHEIGHTCLIPBOARD": "Returns the height of the bitmap on the clipboard, if there is one.",
+   "CANPASTE": "Returns whether the clipboard holds a bitmap (CF_BITMAP).",
+   "CIRCLE": "Circle(X1, Y1, X2, Y2, Color): draws an unfilled ellipse inside the given rectangle with the current pen settings.",
+   "CIRCLEFILLED": "CircleFilled(X1, Y1, X2, Y2, Color, Fill): draws an ellipse with outline Color, filled with Fill.",
+   "RECTANGLE": "Rectangle(X1, Y1, X2, Y2, Color): draws an unfilled rectangle with the current pen settings.",
+   "ROUNDRECT": "RoundRect(X1, Y1, X2, Y2, X3, Y3, Color): draws an unfilled rectangle with rounded corners; X3 and Y3 are the width and height of the corner ellipse.",
+   "ROUNDRECTFILLED": "RoundRectFilled(X1, Y1, X2, Y2, X3, Y3, Color, Fill): draws a filled rectangle with rounded corners.",
+   "RECTANGLEFILLED": "RectangleFilled(X1, Y1, X2, Y2, Color, Fill): draws a rectangle with outline Color, filled with Fill.",
+   "LINE": "Line(X1, Y1, X2, Y2, Color): draws a line with the current pen settings.",
+   "FILLSURFACE": "FillSurface(X, Y, Color): flood-fills the area that has the same color as the pixel at X, Y with Color (ExtFloodFill).",
+   "TEXTOUT": "TextOut(X, Y, Text, ForeColor, BackColor): calls the QCANVAS TextOut with the background mode set to transparent, then sets the mode back to opaque.",
+   "INVERTCOLOR": "InvertColor(X, Y, Width, Height): inverts the colors of that area (PatBlt with DSTINVERT).",
+   "MIRROR": "Mirror(X, Y, Width, Height): mirrors that area horizontally in place.",
+   "FLIP": "Flip(X, Y, Width, Height): mirrors that area vertically in place."
+  },
+  "example": "$INCLUDE \"QCanvasEx.inc\"\nCREATE Form AS QFORM\n  Width = 320\n  Height = 240\nEND CREATE\nDIM Cnv AS QCanvasEx\nCnv.Parent = Form\nCnv.Align = 5\nSUB PaintCnv\n  Cnv.PenSize = 3\n  Cnv.RectangleFilled(10, 10, 150, 100, &H000000, &H00FFFF)\n  Cnv.CircleFilled(60, 30, 200, 160, &HFF0000, &H00FF00)\n  Cnv.TextOut(20, 180, \"QCanvasEx\", &H0000FF, 0)\nEND SUB\nCnv.OnPaint = PaintCnv\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "CopyToClipboard calls DeleteObject on the bitmap right after giving it to the clipboard with SetAsHandle.",
+   "The file defines a global TBITMAP type without an $IFNDEF guard, which can clash with other include files that define TBITMAP.",
+   "GetWidthClipboard and GetHeightClipboard do not set a result when the clipboard holds no bitmap."
+  ]
+ },
+ "QFileListView@QFileListView.inc": {
+  "summary_en": "QListView that lists the files of a directory with their system icons, size, type and modification date, filtered by one or more masks.",
+  "summary_ru": "QListView со списком файлов каталога с системными значками, размером, типом и датой изменения, с фильтром по одной или нескольким маскам.",
+  "description_en": [
+   "QFileListView extends QListView. Refresh clears the list, attaches the system image lists (large and small icons, obtained with SHGetFileInfoA from shell32.dll), and adds one item per file found with Dir$ for each mask. Every item gets its icon, its size in KB, its type name from the shell and its date as \"dd/mm/yyyy hh:mm\". The four columns are created the first time Refresh runs and the list is then sorted.",
+   "Assigning Directory or Mask refreshes the list. Several masks can be given separated by \";\". When the selection changes, FileName is set to the full path and OnFileChange fires; double-clicking an item or pressing Enter fires OnFileSelect. Use the report view (ViewStyle) to see the columns. The comments in the file are in French."
+  ],
+  "requires": [],
+  "members": {
+   "FILENAME": "Read-only (its setter does nothing): full path of the selected file (Directory plus item caption), set when the selection changes; empty when nothing is selected.",
+   "COLUMNCAPTION": "Array ColumnCaption(4); elements 1 to 4 are the captions of the Name, Size, Type and Modified columns (English by default). They are used only when Refresh creates the columns the first time.",
+   "DIRECTORY": "Directory to list. Assigning an existing directory stores it and refreshes the list; a directory that does not exist is ignored. Default CurDir$.",
+   "MASK": "File mask, for example \"*.bas\" or \"*.bas;*.inc\". Assigning it stores it and refreshes the list. Default \"*.*\".",
+   "ONFILESELECT": "Event (File AS STRING) fired with FileName when an item is double-clicked or Enter is pressed on a selected item.",
+   "ONFILECHANGE": "Event (File AS STRING) fired with the new FileName when the selection moves to an item.",
+   "REFRESH": "Reloads the file list from Directory and Mask, as described above.",
+   "SETFOCUS": "Gives the keyboard focus to the list with the user32 SetFocus function."
+  },
+  "example": "$INCLUDE \"QFileListView.inc\"\nCREATE Form AS QFORM\n  Width = 500\n  Height = 300\nEND CREATE\nDIM Files AS QFileListView\nSUB FileChosen(File AS STRING)\n  ShowMessage File\nEND SUB\nFiles.Parent = Form\nFiles.Align = 5\nFiles.ViewStyle = 3   ' report view, shows the columns\nFiles.OnFileSelect = FileChosen\nFiles.Mask = \"*.bas;*.inc\"\nFiles.Directory = \"C:\\RapidQ\"\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.1",
+  "date": "",
+  "caveats_en": [
+   "The system image lists are obtained by querying the hard-coded path \"c:\\\".",
+   "Column widths are hard-coded (150, 80, 80 and 120 pixels).",
+   "Only files are listed (Dir$ with attribute 0); subdirectories are not shown.",
+   "Files whose name has no \".\" get no icon or type name.",
+   "Files smaller than 1 KB, including empty files, are shown as \"1 KB\".",
+   "The date column is built by splitting FileRec.Date at \"-\" as month-day-year and FileRec.Time at \":\".",
+   "The SHFILEINFO type, the constants and the API declarations (SHGetFileInfoFileListView, DestroyIconFileListView, SetFocusFileListView) are inside $IFNDEF __WIN32API, so they are missing when a Windows API include defining __WIN32API is loaded first."
+  ]
+ },
+ "QMAXSPLITTER@QMaxSplitter.inc": {
+  "summary_en": "Splitter control based on QPANEL that emulates the Delphi 6 splitter styles: dragging it resizes the neighboring aligned control.",
+  "summary_ru": "Разделитель (сплиттер) на основе QPANEL, повторяющий стили сплиттера Delphi 6: при перетаскивании изменяет размер соседнего выровненного элемента.",
+  "description_en": [
+   "QMAXSPLITTER is a thin aligned panel (default 5 x 5, Align = 1, cursor -15). Shortly after it becomes visible, an internal timer finds its parent window (Owner) and the control just outside it on its aligned side (Mover) with ChildWindowFromPoint. While the mouse is dragged, an 8 x 8 pattern brush bar is drawn on the screen with PatBlt and PATINVERT; when the button is released, the Mover is resized with MoveWindow and the parent receives WM_SIZE. With Style = 3 the Mover is resized continuously during the drag.",
+   "Place it after the control to resize, with the same Align (1 top, 2 bottom, 3 left, 4 right). The author's header notes that it is based on a QPanel rather than a QCanvas to get a window handle and better drawing and aligning. Style constants: rsNone (0), rsSolid (1), rsPattern (2), rsUpdate (3)."
+  ],
+  "requires": [],
+  "members": {
+   "OWNER": "Internal: window handle of the parent, found by the timer.",
+   "TMR": "Internal: QTIMER (1 ms) that, once the splitter is visible, finds Owner and Mover and then disables itself.",
+   "MINSIZE": "Minimum distance in pixels from the parent's edge that the splitter can be dragged to. Default 30.",
+   "BEVELED": "Assigning stores the value, shows or hides the Canvas and repaints it; when shown, three-line 3D edges are drawn on both long sides. Default 0.",
+   "MOVER": "Internal: window handle of the control that is resized, found next to the splitter on its aligned side.",
+   "MOVERRECT": "Internal: client rectangle of Mover used while resizing it.",
+   "STYLE": "Assigning sets the drag bar pattern and stores the value: 1 (rsSolid) a solid pattern, 2 (rsPattern, default) a checkered pattern, 0 (rsNone) and 3 (rsUpdate) an empty pattern. With 3 the neighboring control is also resized during the drag.",
+   "PATTERN": "Internal: the eight WORDs of the 8 x 8 monochrome pattern for the drag bar, set by Style.",
+   "CANVAS": "QCANVAS filling the splitter. It receives the mouse events and, when Beveled is set, draws the bevel lines.",
+   "MOVECHILD": "Internal: MoveChild(Where AS POINTAPI) resizes Mover to the given screen position and sends WM_SIZE to Owner.",
+   "DRAWSPLITTER": "Internal: DrawSplitter(Split AS POINTAPI) draws or erases the drag bar on the screen at the given position (XOR with PATINVERT)."
+  },
+  "example": "$INCLUDE \"QMaxSplitter.inc\"\nCREATE Form AS QFORM\n  Width = 500\n  Height = 350\n  CREATE LeftPanel AS QPANEL\n    Align = 3\n    Width = 150\n  END CREATE\nEND CREATE\nDIM Split AS QMAXSPLITTER\nSplit.Parent = Form\nSplit.Align = 3\nSplit.Style = 1\nSplit.Beveled = 1\nSplit.MinSize = 50\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Psyclops",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Known issue from the header: if the mouse moves too fast it leaves the splitter behind; SetCapture did not solve it.",
+   "Known issue from the header: setting MinSize to 0 sometimes causes resizing problems.",
+   "Known issue from the header: the creation order of aligned controls and the order in which properties are assigned to sibling windows matter; in the author's demo (Rich3 and Split3, not included) the problem goes away when Rich3 is created after Split3.",
+   "Canvas.OnMouseMove calls GetClientRect(.Owner, R) with an undeclared R, while the limits and MoveChild use the global Rect1, which is never filled.",
+   "Moving, SplitPos, OldSplitPos, OldWhere, Org and Rect1 are global variables shared by all splitters.",
+   "The global variables of type POINTAPI are declared before the POINTAPI type, which is defined only inside $IFNDEF __WIN32API.",
+   "The header apologizes for the lack of comments."
+  ]
+ },
+ "QLineGraph@qgraph.inc": {
+  "summary_en": "Simple line graph object that plots X/Y points from a QStringGrid on a QCanvas, with title, axis titles, automatic scale and tick labels.",
+  "summary_ru": "Простой линейный график: рисует точки X/Y из QStringGrid на QCanvas с заголовком, подписями осей, автоматическим масштабом и делениями.",
+  "description_en": [
+   "QLineGraph extends QObject and draws on its Image field (a QCanvas). The data points are stored in the Data grid: X in Data.Cell(0, i) and Y in Data.Cell(1, i). Paint clears the canvas, writes the title and axis titles, draws the axes at fixed fractions of the canvas size, rounds the largest X and Y values up to a power-of-ten based scale, draws the tick marks with labels and joins the points with lines in LineColour.",
+   "Set the properties and fill Data, then call Initialise: it copies the position and size to Image and sets Image.OnPaint to Paint, so the graph is redrawn on every repaint. The component does not set Image.Parent; the program has to do that. SaveToFile copies the canvas into a QBitmap and saves it as a .bmp file."
+  ],
+  "requires": [
+   "clWhite color constant (not defined in this file; defined for example in rapidq.inc)"
+  ],
+  "members": {
+   "HEIGHT": "Height of the graph canvas; default 300. Applied by Initialise and Paint.",
+   "WIDTH": "Width of the graph canvas; default 400. Applied by Initialise and Paint.",
+   "TOP": "Top position of the graph canvas; default 0. Applied by Initialise and Paint.",
+   "LEFT": "Left position of the graph canvas; default 0. Applied by Initialise and Paint.",
+   "EXTRAPOLATETOZERO": "When non-zero (default 1), a line is drawn from the origin, so that (according to the header) the graph starts at 0,0.",
+   "AXISCOLOUR": "Color of the axes and tick marks; default 0 (black).",
+   "TEXTCOLOUR": "Color of the title, axis titles and tick labels; default 0 (black).",
+   "BACKCOLOUR": "Background color used behind the text; default &HFFFFFF. The canvas itself is always cleared to white.",
+   "XTITLE": "X axis title (fixed-length string of 50 characters); default \"X Axis\".",
+   "YTITLE": "Y axis title (fixed-length string of 50 characters); default \"Y Axis\".",
+   "TITLE": "Graph title (fixed-length string of 100 characters); default \"X Axis vs. Y Axis\".",
+   "XSCALE": "Declared but not used by any code in the file.",
+   "YSCALE": "Declared but not used by any code in the file.",
+   "LINECOLOUR": "Color of the plotted line; default &HFF (red).",
+   "DATA": "QStringGrid that holds the points: X in Cell(0, i) and Y in Cell(1, i).",
+   "VISIBLE": "Visibility copied to Image by Initialise and Paint; default 1.",
+   "HINT": "Hint text copied to Image by Paint.",
+   "TEXTFONT": "QFont copied to Image.Font by Paint.",
+   "CURSOR": "Cursor copied to Image by Paint.",
+   "SHOWHINT": "ShowHint value copied to Image by Paint.",
+   "IMAGE": "QCanvas on which the graph is drawn; Initialise sets its OnPaint to Paint.",
+   "MAXX": "Internal: largest X value rounded up (integer part plus 1), computed by Paint.",
+   "MAXY": "Internal: largest Y value rounded up (integer part plus 1), computed by Paint.",
+   "POWERX": "Internal: number of decimal digits of MaxX; the X tick step is 10^(PowerX-1).",
+   "POWERY": "Internal: number of decimal digits of MaxY; the Y tick step is 10^(PowerY-1).",
+   "ROUNDEDUPX": "Internal: end value of the X axis, the first multiple of the tick step above MaxX.",
+   "ROUNDEDUPY": "Internal: end value of the Y axis, the first multiple of the tick step above MaxY.",
+   "PAINT": "Draws the whole graph on Image; called by Image.OnPaint after Initialise.",
+   "INITIALISE": "Copies Left, Top, Width, Height and Visible to Image and sets Image.OnPaint to Paint. Call it after setting the properties.",
+   "SAVETOFILE": "SaveToFile(File): copies the canvas into a QBitmap and saves it as a .bmp file."
+  },
+  "example": "$INCLUDE \"rapidq.inc\"\n$INCLUDE \"qgraph.inc\"\nCREATE Form AS QFORM\n  Width = 420\n  Height = 340\nEND CREATE\nDIM Graph AS QLineGraph\nDIM i AS INTEGER\nGraph.Data.ColCount = 2\nGraph.Data.RowCount = 5\nFOR i = 0 TO 4\n  Graph.Data.Cell(0, i) = STR$(i * 10)\n  Graph.Data.Cell(1, i) = STR$(i * i)\nNEXT\nGraph.Title = \"Squares\"\nGraph.XTitle = \"x\"\nGraph.YTitle = \"y\"\nGraph.Image.Parent = Form\nGraph.Initialise\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Jonathan Boles",
+  "version": "",
+  "date": "2002",
+  "caveats_en": [
+   "SaveToFile: the header says the author could not get it to work.",
+   "XScale and YScale are never used.",
+   "The canvas is always cleared with clWhite; BackColour is only the text background.",
+   "The X axis title is centered using the width of YTitle instead of XTitle.",
+   "With ExtrapolateToZero, the line from the origin goes to the row given by the loop variable i left over from the Y tick loop, not to the first data row.",
+   "MaxX and MaxY are never reset, so they can only grow between repaints.",
+   "The loops that find the maximum values run from row 0 to RowCount, one row past the last row.",
+   "The scale is computed with log(MaxX) and log(MaxY); without positive values these stay 0."
+  ]
+ },
+ "Qid3tag@Qid3Tag.inc": {
+  "summary_en": "Non-visual reader and writer for the ID3v1 tag at the end of MP3 files (title, artist, album, year, comment, track and genre), with a genre list and combo box.",
+  "summary_ru": "Невизуальный компонент чтения и записи тега ID3v1 в конце MP3-файла (название, исполнитель, альбом, год, комментарий, номер дорожки, жанр) со списком жанров и выпадающим списком.",
+  "description_en": [
+   "ReadTags opens FileName with a QFileStream, goes to the last 128 bytes of the file, skips the 3-byte header and reads the fixed-size fields: title, artist and album (30 bytes each), year (4), comment (29), track (1 byte) and genre number (1 byte). The genre name is looked up in GenresList. WriteTags writes the same fields back into the same place, each padded with CHR$(0) or cut to its size by the global helper function fitlength.",
+   "GenresList (QStringList) holds the standard genre names in ID3v1 order. GenresCB is a drop-down combo box that can be filled with LoadList; choosing an entry sets GenreID through SelectGenre. The header refers to a help file for details."
+  ],
+  "requires": [],
+  "members": {
+   "FILENAME": "Path of the MP3 file. ReadTags and WriteTags show the message \"Please, give me a file name\" when it is empty.",
+   "TITLE": "Song title (30 bytes in the tag).",
+   "ARTIST": "Artist name (30 bytes in the tag).",
+   "ALBUM": "Album name (30 bytes in the tag).",
+   "YEAR": "Year as a string (4 bytes in the tag).",
+   "COMMENT": "Comment (29 bytes in the tag).",
+   "TRACK": "Track number byte, read and written after the comment.",
+   "GENRE": "Genre name, set by ReadTags from GenreID; WriteTags does not use it.",
+   "GENREID": "Genre number byte. Set by ReadTags or SelectGenre and written by WriteTags.",
+   "GENRESLIST": "QStringList with the genre names, filled in the constructor; the index is the ID3v1 genre number.",
+   "GENRESCB": "QComboBox (drop-down list style, 20 visible items) whose OnChange calls SelectGenre. Give it a Parent and fill it with LoadList before use.",
+   "LOADLIST": "Fills GenresCB with the genre names.",
+   "SELECTGENRE": "Sets GenreID to GenresCB.ItemIndex; assigned as the combo box OnChange handler in the constructor.",
+   "READTAGS": "Reads the ID3v1 fields from the end of FileName into the properties.",
+   "WRITETAGS": "Writes the properties into the ID3v1 fields at the end of FileName."
+  },
+  "example": "$INCLUDE \"Qid3Tag.inc\"\nCREATE Form AS QFORM\n  Width = 300\n  Height = 100\nEND CREATE\nDIM Tag AS Qid3tag\nTag.FileName = \"song.mp3\"\nTag.ReadTags\nForm.Caption = Tag.Artist & \" - \" & Tag.Title & \" (\" & Tag.Genre & \")\"\nTag.GenresCB.Parent = Form\nTag.LoadList\nTag.GenresCB.ItemIndex = Tag.GenreID\nForm.ShowModal\nTag.Comment = \"Edited with RapidQ\"\nTag.WriteTags",
+  "example_origin": "written",
+  "author": "Dreadsoft® Corporation",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Neither ReadTags nor WriteTags checks for the \"TAG\" signature. On a file without an ID3v1 tag, ReadTags returns garbage and WriteTags overwrites the last 125 bytes of the audio data instead of adding a tag.",
+   "ReadTags removes all CHR$(0) characters from each text field and then cuts one more character, so a field that fills its whole size loses its last character.",
+   "ReadTags looks up GenresList.Item(GenreID) without checking the range, for example for genre number 255.",
+   "fitlength is a global function defined outside the type.",
+   "The header says \"See help file for details\", but no help file comes with the include."
+  ]
+ },
+ "QAnim@QAnim.inc": {
+  "summary_en": "Animated image: a QImage that shows the frames of its QImageList one after another on a timer.",
+  "summary_ru": "Анимированное изображение: QImage, который по таймеру по очереди показывает кадры из своего QImageList.",
+  "description_en": [
+   "QAnim extends QImage and has an internal QTimer (default 200 ms). On each timer tick it puts the bitmap of ImageList frame Index into its BMP, shows itself, repaints and moves Index to the next frame, starting again at 0 after the last frame. The control is hidden until a frame has been shown.",
+   "Set Width and Height (they also set the image list size), add the frames to ImageList, set Speed and assign Move = True to start. The comments in the file are in French."
+  ],
+  "requires": [],
+  "members": {
+   "SPEED": "Assigning sets the timer interval in milliseconds between frames (default 200). The value itself is not stored in the field.",
+   "IMAGELIST": "QImageList that holds the animation frames.",
+   "INDEX": "Current frame. Assigning it while ImageList has images stores it, shows that frame and makes the control visible; with an empty list, assigning does nothing. The timer increases it.",
+   "WIDTH": "Assigning sets the control width and ImageList.Width.",
+   "HEIGHT": "Assigning sets the control height and ImageList.Height.",
+   "BACKCOLOR": "Assigning sets ImageList.BkColor and redraws the current frame when the list has images and the control is visible.",
+   "MASKED": "Assigning sets ImageList.Masked and redraws the current frame when the list has images and the control is visible.",
+   "MOVE": "Assigning True starts the animation timer, but only if ImageList has images. Assigning False stops the timer and decreases Index by one."
+  },
+  "example": "$INCLUDE \"QAnim.inc\"\nCREATE Form AS QFORM\n  Width = 200\n  Height = 150\nEND CREATE\nDIM Anim AS QAnim\nAnim.Parent = Form\nAnim.Left = 20\nAnim.Top = 20\nAnim.Width = 32\nAnim.Height = 32\nAnim.ImageList.AddBMPFile(\"frame1.bmp\", 0)\nAnim.ImageList.AddBMPFile(\"frame2.bmp\", 0)\nAnim.ImageList.AddBMPFile(\"frame3.bmp\", 0)\nAnim.Speed = 100\nAnim.Move = True\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "The Speed setter only changes the timer interval and does not store the value, so reading Speed does not return what was assigned.",
+   "Every assignment of Move = False decreases Index by one, even if the animation was already stopped.",
+   "In the BackColor and Masked setters, the line that makes the control visible is inside a block that runs only when it is already visible, so it never has an effect."
+  ]
+ },
+ "QRichEdit_api@apiRe.inc": {
+  "summary_en": "Minimal wrapper that creates a Windows RichEdit control (RICHED32.DLL) with CreateWindowEx and lets you move, size, show and hide it.",
+  "summary_ru": "Минимальная обёртка, создающая элемент Windows RichEdit (RICHED32.DLL) через CreateWindowEx, с перемещением, размером, показом и скрытием.",
+  "description_en": [
+   "QRichEdit_api extends QObject, so it is not a RapidQ visual control. Assigning Parent (a window handle such as Form.Handle) loads RICHED32.DLL with LoadLibrary and creates a child window of class \"RichEdit\" at Left, Top, Width, Height; its handle is stored in Handle. The position and size setters then move the window with MoveWindow, and Visible calls ShowWindow.",
+   "There are no methods for the text; work with the control by sending messages to Handle. The file also defines many window style constants (WS_...) as Public Const."
+  ],
+  "requires": [
+   "Constants WS_EX_CLIENTEDGE, WS_EX_MDICHILD and WS_EX_OVERLAPPEDWINDOW (used but not defined in this file; they are defined for example in Win32_constants.inc)",
+   "RICHED32.DLL (loaded at run time with LoadLibrary)"
+  ],
+  "members": {
+   "PARENT": "Window handle of the parent. Assigning it stores it, loads RICHED32.DLL and creates the RichEdit window at the current Left, Top, Width and Height.",
+   "LEFT": "Assigning stores it and moves the window with MoveWindow. Default 65.",
+   "TOP": "Assigning stores it and moves the window with MoveWindow. Default 5.",
+   "WIDTH": "Assigning stores it and resizes the window with MoveWindow. Default 200.",
+   "HEIGHT": "Assigning stores it and resizes the window with MoveWindow. Default 100.",
+   "VISIBLE": "Assigning 0 hides the window (ShowWindow SW_HIDE); any other value shows it (SW_SHOW).",
+   "HANDLE": "Window handle of the created RichEdit control; 0 until Parent is assigned."
+  },
+  "example": "CONST WS_EX_CLIENTEDGE = &H200\nCONST WS_EX_MDICHILD = &H40\nCONST WS_EX_OVERLAPPEDWINDOW = &H300\n$INCLUDE \"apiRe.inc\"\nCREATE Form AS QFORM\n  Width = 400\n  Height = 300\nEND CREATE\nDIM RE AS QRichEdit_api\nRE.Left = 5\nRE.Top = 5\nRE.Width = 380\nRE.Height = 250\nRE.Parent = Form.Handle\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Each assignment of Parent loads the library again and creates a new window; the earlier window is not destroyed and FreeLibrary is never called.",
+   "Before Parent is assigned, the Left, Top, Width, Height and Visible setters call MoveWindow or ShowWindow with Handle = 0.",
+   "The window is created with the extended styles WS_EX_MDICHILD, WS_EX_OVERLAPPEDWINDOW and WS_EX_TRANSPARENT among others; a simpler call with only WS_EX_CLIENTEDGE is left commented out.",
+   "The file declares a global variable hInst, $DEFINE HWND INTEGER and many Public Const window styles, which can clash with other include files."
+  ]
+ },
+ "QBEVEL@QBevel.inc": {
+  "summary_en": "Bevel control like the Delphi TBevel: a QPANEL that shows a raised or lowered box, frame or single line.",
+  "summary_ru": "Элемент «фаска» как TBevel в Delphi: QPANEL, показывающая выпуклую или вдавленную рамку, контур или одиночную линию.",
+  "description_en": [
+   "QBEVEL extends QPANEL and adds only Shape and Style. For the box and frame shapes it uses the panel's own BevelInner and BevelOuter. For the line shapes it aligns a 2-pixel Canvas to the matching side of the panel and draws a two-color line on it (gray &H808080 and white &HFFFFFF; the order depends on Style).",
+   "Constants: Style bsLowered (0), bsRaised (1); Shape bsSpacer (0), bsBox (1), bsTopLine (2), bsBottomLine (3), bsLeftLine (4), bsRightLine (5), bsFrame (6)."
+  ],
+  "requires": [],
+  "members": {
+   "STYLE": "Assigning sets lowered (0, bsLowered) or raised (1, bsRaised): for bsBox it sets BevelOuter to Style+1, for bsFrame it sets BevelInner to 2-Style and BevelOuter to 1+Style, and for the other shapes it clears the bevels and repaints the line.",
+   "SHAPE": "Assigning sets the shape: 0 bsSpacer (nothing drawn), 1 bsBox, 2 to 5 a line at the top, bottom, left or right (the Canvas is aligned to that side), 6 bsFrame.",
+   "CANVAS": "QCANVAS, 2 pixels wide or high, on which the line shapes are drawn."
+  },
+  "example": "$INCLUDE \"QBevel.inc\"\nCREATE Form AS QFORM\n  Width = 300\n  Height = 200\nEND CREATE\nDIM Line1 AS QBEVEL\nLine1.Parent = Form\nLine1.Left = 10\nLine1.Top = 40\nLine1.Width = 270\nLine1.Height = 2\nLine1.Shape = bsTopLine\nLine1.Style = bsLowered\nDIM Frame1 AS QBEVEL\nFrame1.Parent = Form\nFrame1.Left = 10\nFrame1.Top = 60\nFrame1.Width = 270\nFrame1.Height = 100\nFrame1.Shape = bsFrame\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "For Shape 0 (bsSpacer) the setter assigns Canvas.Align = -1.",
+   "When the shape changes from a line to bsBox or bsFrame, the Canvas keeps its old alignment (nothing is drawn on it for those shapes).",
+   "The line colors are fixed RGB values, not system colors.",
+   "The header mentions combo boxes of a demo program that is not part of the include."
+  ]
+ },
+ "QRC4@RC4crypt.inc": {
+  "summary_en": "Non-visual RC4 stream cipher that encrypts and decrypts strings with a key.",
+  "summary_ru": "Невизуальный потоковый шифр RC4 для шифрования и расшифровки строк по ключу.",
+  "description_en": [
+   "QRC4 is an adaptation of the RC4 algorithm to RapidQ Basic. Init(key) sets up the 256-byte state table from a key of any length, and Pipe(s) returns s XORed with the next bytes of the key stream. Because RC4 is symmetric, decoding is the same operation: call Init with the same key again and pass the encoded string to Pipe.",
+   "The state continues from one Pipe call to the next, so data can be processed in pieces of any size: Pipe(s) & Pipe(t) is always equal to Pipe(s & t)."
+  ],
+  "requires": [],
+  "members": {
+   "RESET": "Sets the state table back to 0..255 in order and clears the indexes. Init and the constructor call it.",
+   "INIT": "Init(Key): resets the state and runs the RC4 key setup with Key. With an empty key only the reset is done.",
+   "PIPE": "Pipe(Str): encodes or decodes Str with the key stream and returns the result, continuing the stream state."
+  },
+  "example": "$INCLUDE \"RC4crypt.inc\"\nDEFSTR k = \"1234567890\"   ' This is the key\nDEFSTR s = \"abcdefghijklmnopqrstuvwxyz\"\nDEFSTR t = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"\nDIM rc4 AS QRC4\nrc4.Init(k)   ' Initialize RC4 object with the key\ns = rc4.Pipe(s)   ' Encode stream element s\nt = rc4.Pipe(t)   ' Encode stream element t\nrc4.Init(k)   ' Initialize RC4 object with the key again\nShowMessage(rc4.Pipe(s & t))   ' Concatenate and decode",
+  "example_origin": "source",
+  "author": "Martin Wehner",
+  "version": "",
+  "date": "2003-10-04",
+  "caveats_en": [
+   "Init must be called again with the same key before decoding, because Pipe continues the key stream.",
+   "Init with an empty key gives no error; the object keeps the unkeyed state."
+  ]
+ },
+ "QSkin@QSkin.inc": {
+  "summary_en": "Skinned form: a QFORM without title bar whose size follows a skin image, and which can be dragged by that image.",
+  "summary_ru": "Форма со скином: QFORM без заголовка, размер которой подстраивается под изображение скина и которую можно перетаскивать за это изображение.",
+  "description_en": [
+   "QSkin extends QFORM and contains Skin, an auto-sized QImage at 0, 0. Load the skin bitmap into Skin and call Resize: the form takes the size of the image plus OffsWidth and OffsHeight and hides its title bar. The same happens on every OnResize.",
+   "Pressing a mouse button on the skin calls ReleaseCapture and sends WM_SYSCOMMAND with &HF012 to the form, so the window is moved with the mouse. SetDeskBar changes the owner windows with SetWindowLongA (GWL_HWNDPARENT); the French comment describes it as the method for minimizing the application into the taskbar."
+  ],
+  "requires": [],
+  "members": {
+   "SKIN": "QImage (AutoSize, at 0, 0) that holds the skin picture; pressing the mouse on it drags the form.",
+   "OFFSWIDTH": "Extra pixels added to the skin width when the form is sized by Resize or OnResize. Default 0.",
+   "OFFSHEIGHT": "Extra pixels added to the skin height when the form is sized by Resize or OnResize. Default 0.",
+   "SETDESKBAR": "Sets the form's owner to the desktop and makes the form the owner of the Application window, so that (per the comment) the application is minimized into the taskbar.",
+   "RESIZE": "Sizes the form to the Skin size plus OffsWidth and OffsHeight and hides the title bar."
+  },
+  "example": "$INCLUDE \"QSkin.inc\"\nDIM Win AS QSkin\nWin.Skin.BMP = \"skin.bmp\"\nWin.Resize\nWin.SetDeskBar\nWin.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.2",
+  "date": "",
+  "caveats_en": [
+   "The component uses the form's OnResize event itself, so every resize is forced back to the Skin size plus the offsets.",
+   "The constructor sets BorderStyle = 1 and calls DelBorderIcons 2."
+  ]
+ }
+}

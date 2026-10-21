@@ -1,0 +1,329 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QPrinterInfo</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation composant par D.Glodt (c)2002-2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QPrinterInfo</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QPrinterInfo Composant</h1>
+
+<dd>
+QPrinterInfo est un composant d'information suppl&eacute;mentaire sur l'imprimante
+par d&eacute;faut.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QPrinterInfo Propriet&eacute;s</font></b>
+<table BORDER=0 WIDTH="100%" >
+<tr>
+<td><b>Champs</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>L/E</b></td>
+
+<td><b>D&eacute;faut</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QPrinterInfo M&eacute;thodes</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>M&eacute;thode</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr VALIGN=TOP BGCOLOR="#CCFFFF">
+<td>Scale</td>
+
+<td>FUNCTION AS DOUBLE</td>
+
+<td NOWRAP>retourne l'&eacute;chelle d'impression de l'imprimante pour
+image bitmap</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Dpi</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne le nombre de points par pouce</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Ppm</td>
+
+<td>FUNCTION AS DOUBLE</td>
+
+<td>retourne le nombre de pixels par millimetre</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>MetricToPixel</td>
+
+<td>FUNCTION(mm as double) AS INTEGER</td>
+
+<td>retourne la conversion millimetres en pixels</td>
+
+<td>1</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PixelToMetric</td>
+
+<td>FUNCTION(pixel&amp;) AS DOUBLE</td>
+
+<td>retourne la conversion pixels en millimetres</td>
+
+<td>1</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>HorzPageSize</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne la largeur de la page en millimetres</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>VertPageSize</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne la hauteur de la page en millimetres</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PageWidth</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne la largeur de la page en pixels</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PageHeight</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne la hauteur de la page en pixels</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PhWidth</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne la largeur physique de la page en pixels</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PhHeight</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne la hauteur physique de la page en pixels</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PhHorz</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne la largeur physique de la page en millimetres</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PhVert</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne la hauteur physique de la page en millimetres</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PhMarginX</td>
+
+<td>FUNCTION AS DOUBLE</td>
+
+<td>retourne la marge x physique en millimetres</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PhMarginY</td>
+
+<td>FUNCTION AS DOUBLE</td>
+
+<td>retourne la marge y physique en millimetres</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PhLeftMargin</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne la marge x physique en pixels</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PhTopMargin</td>
+
+<td>FUNCTION AS INTEGER</td>
+
+<td>retourne la marge y physique en pixels</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QPrinterInfo Evenements</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Evenement</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Declenchement</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QPrinterInfo Exemples</font></b>
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

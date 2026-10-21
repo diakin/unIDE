@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>createWind.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: createWind.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>createWind.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/createWind.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 4 functions &middot; 3 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#FORMWNDPROC">FormWndProc</a> &middot; <a href="#FREELIBRARY">FreeLibrary</a> &middot; <a href="#GETMODULEHANDLE">GetModuleHandle</a> &middot; <a href="#SETWINDOWTEXT_CREATEWIND">SetWindowText_createWind</a></p>
+<h3><a name="FORMWNDPROC"></a>FormWndProc</h3>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 11227</p>
+<pre>DECLARE SUB FormWndProc (Handle AS INTEGER, uMsg AS LONG, wParam AS LONG,lParam AS LONG)</pre>
+<p>Declaration only, no body. Window procedure the program must supply: write SUB FormWndProc(Handle, uMsg, wParam, lParam) to handle messages of the window created with the createWind routines.</p>
+<h3><a name="FREELIBRARY"></a>FreeLibrary</h3>
+<p class="rq-meta">DLL function, KERNEL32 &middot; RQProc.inc, line 11209</p>
+<pre>DECLARE FUNCTION FreeLibrary LIB &quot;KERNEL32&quot; ALIAS &quot;FreeLibrary&quot; (hInst AS LONG) AS LONG</pre>
+<p>Frees a loaded DLL module, decrementing its reference count and unloading it when the count reaches zero. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FreeLibrary">FreeLibrary</a></p>
+<h3><a name="GETMODULEHANDLE"></a>GetModuleHandle</h3>
+<p class="rq-meta">DLL function, KERNEL32 &middot; RQProc.inc, line 11221</p>
+<pre>DECLARE FUNCTION GetModuleHandle LIB &quot;KERNEL32&quot; ALIAS &quot;GetModuleHandleA&quot; (ModuleName AS STRING) AS LONG</pre>
+<p>Returns the module handle of an already loaded module by name; an empty/null name returns the handle of the calling exe.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetModuleHandleA">GetModuleHandleA</a></p>
+<h3><a name="SETWINDOWTEXT_CREATEWIND"></a>SetWindowText_createWind</h3>
+<p class="rq-meta">DLL function, USER32 &middot; RQProc.inc, line 11224</p>
+<pre>DECLARE FUNCTION SetWindowText_createWind LIB &quot;USER32&quot; ALIAS &quot;SetWindowTextA&quot; (Hwnd AS INTEGER, Text AS STRING) AS LONG</pre>
+<p>Changes the text of a window&#x27;s title bar or of a control. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetWindowTextA">SetWindowTextA</a></p>
+</body>
+</html>

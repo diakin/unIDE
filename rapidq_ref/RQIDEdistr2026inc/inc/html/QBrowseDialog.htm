@@ -1,0 +1,143 @@
+<html>
+<head>
+<title>QBrowseDialog.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'================= QBrowseDialog =======================</i></font> 
+
+<font color="007700"><i>' A little easier to use than QDirTree when all you </i></font> 
+<font color="007700"><i>' want is the name of a folder...</i></font> 
+
+<font color="007700"><i>' It has familiar properties:</i></font> 
+
+<font color="007700"><i>' Caption is the string that appears in the title bar</i></font> 
+<font color="007700"><i>' Title is the string that appears over the treeview</i></font> 
+<font color="007700"><i>' InitialDir is the folder that is hilighted on startup</i></font> 
+<font color="007700"><i>' Directory is the folder that was selected</i></font> 
+
+<font color="007700"><i>' Like QOpenDialog, QSaveDialog, and QColorDialog, you</i></font> 
+<font color="007700"><i>' DIM or CREATE it in code. To show the dialog, call</i></font> 
+<font color="007700"><i>' &lt;Name>.Execute. If the user presses "OK", the function</i></font> 
+<font color="007700"><i>' returns 1. If the user presses "Cancel" or closes the</i></font> 
+<font color="007700"><i>' Dialog, the result is 0. This Dialog also returns</i></font> 
+<font color="007700"><i>' virtual folders like the Recycle Bin and Fonts folder,</i></font> 
+<font color="007700"><i>' although in name only (you can't access these folders</i></font> 
+<font color="007700"><i>' by path). Use it in good health!</i></font> 
+
+<font color="007700"><i>' Psyclops ·)</i></font> 
+
+
+
+<font color="0000AA"><b>TYPE</b></font> BROWSEINFO                  <font color="007700"><i>' structure to pass to the API</i></font> 
+    hWndOwner      <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>       <font color="007700"><i>' remove icon from taskbar</i></font> 
+    pIDLRoot       <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>       <font color="007700"><i>' first visible folder (0 for Desktop)</i></font> 
+    pszDisplayName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>       <font color="007700"><i>' buffer for folder name (not path!)</i></font> 
+    lpszTitle      <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>       <font color="007700"><i>' buffer for Title string</i></font> 
+    ulFlags        <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>       <font color="007700"><i>' ???</i></font> 
+    lpfnCallback   <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>       <font color="007700"><i>' pointer to window proc</i></font> 
+    lParam         <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>       <font color="007700"><i>' pointer to InitialDir</i></font> 
+    iImage         <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>       <font color="007700"><i>' ???</i></font> 
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="0000AA"><b>CONST</b></font> BIF_RETURNONLYFSDIRS = 1          <font color="007700"><i>' only select folders</i></font> 
+<font color="0000AA"><b>CONST</b></font> MAX_PATH             = 260        <font color="007700"><i>' buffer length</i></font> 
+<font color="0000AA"><b>CONST</b></font> BFFM_INITIALIZED     = 1          <font color="007700"><i>' for the hook</i></font> 
+<font color="0000AA"><b>CONST</b></font> BFFM_SETSELECTIONA   = &H466      <font color="007700"><i>' sets InitialDir</i></font> 
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> CoTaskMemFree <font color="0000AA"><b>LIB</b></font> "<font color="990000">Ole32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">CoTaskMemFree</font>"<b>(</b>hMem <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>          <font color="007700"><i>' clear pidList from memory</i></font> 
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> SHBrowseForFolder <font color="0000AA"><b>LIB</b></font> "<font color="990000">Shell32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SHBrowseForFolder</font>"_        <font color="007700"><i>' the API!</i></font> 
+                 <b>(</b>lpbi <font color="0000AA"><b>AS</b></font> BROWSEINFO<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> SHGetPathFromIDList <font color="0000AA"><b>LIB</b></font> "<font color="990000">Shell32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SHGetPathFromIDList</font>"_    <font color="007700"><i>' changes result of API to string</i></font> 
+                 <b>(</b>pidList <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, lpBuffer <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> GetWindowRect <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetWindowRect</font>"_                 <font color="007700"><i>' for centering</i></font> 
+                 <b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, lpRect <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QRECT</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> MoveWindow <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">MoveWindow</font>"_                       <font color="007700"><i>' same as above</i></font> 
+                 <b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, x <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, y <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,nWidth <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,_
+                  nHeight <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, bRepaint <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> SetWindowText <font color="0000AA"><b>LIB</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SetWindowTextA</font>"_                <font color="007700"><i>' sets titlebar caption</i></font> 
+                 <b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, ByRef lpString <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+                 
+<font color="0000AA"><b>TYPE</b></font> QBROWSEDIALOG <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QOBJECT</b></font>
+    <font color="0000AA"><b>WITH</b></font> QBROWSEDIALOG
+    
+        Caption    <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+        Title      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+        InitialDir <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+        Directory  <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+        X          <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+        
+        <font color="0000AA"><b>FUNCTION</b></font> BrowseHook<b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, uMsg <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, lParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, lpData <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+            <font color="0000AA"><b>IF</b></font> uMsg = BFFM_INITIALIZED <font color="0000AA"><b>THEN</b></font>                           <font color="007700"><i>' Dialog is done drawing</i></font> 
+                <font color="0000AA"><b>DIM</b></font> R <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRECT</b></font>
+                GetWindowRect<b>(</b>hWnd, R<b>)</b>
+                MoveWindow <b>(</b>hWnd, <b>(</b>Screen.Width-<b>(</b>R.Right-R.Left<b>)</b><b>)</b>/2, <b>(</b>Screen.Height-<b>(</b>R.Bottom-R.Top<b>)</b><b>)</b>/2,_
+                           <b>(</b>R.Right-R.Left<b>)</b>, <b>(</b>R.Bottom-R.Top<b>)</b>, 0<b>)</b>     <font color="007700"><i>' center it</i></font> 
+                SendMessage<b>(</b>hWnd, BFFM_SETSELECTIONA, 1, lpData<b>)</b>      <font color="007700"><i>' set InitialDir</i></font> 
+                <font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>LEN</b></font><b>(</b>.Caption<b>)</b> <font color="0000AA"><b>THEN</b></font>                                 <font color="007700"><i>' if caption, set it  </i></font> 
+                    SetWindowText<b>(</b>hWnd, .Caption<b>)</b>                     <font color="007700"><i>' otherwise use default</i></font> 
+                <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>IF</b></font>                                                <font color="007700"><i>' ("Browse for folder")</i></font> 
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+       
+        <font color="0000AA"><b>FUNCTION</b></font> <font color="0000AA"><b>Execute</b></font> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+            <font color="0000AA"><b>DIM</b></font> BI <font color="0000AA"><b>AS</b></font> BROWSEINFO                                      <font color="007700"><i>' DIM our structure</i></font> 
+            <font color="0000AA"><b>DIM</b></font> pidl <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>                                          <font color="007700"><i>' result of API</i></font> 
+            <font color="0000AA"><b>DIM</b></font> sPath <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>*MAX_PATH                              <font color="007700"><i>' result string</i></font> 
+            <font color="0000AA"><b>DIM</b></font> xPath <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>*MAX_PATH                              <font color="007700"><i>' Virtual Folder result</i></font> 
+            .InitialDir = .InitialDir + <font color="0000AA"><b>CHR$</b></font><b>(</b>0<b>)</b>                       <font color="007700"><i>' add null terminator</i></font> 
+            BI.hWndOwner = Application.Handle
+            BI.pszDisplayName = <font color="0000AA"><b>VARPTR</b></font><b>(</b>xPath<b>)</b>
+            BI.lpszTitle = <font color="0000AA"><b>VARPTR</b></font><b>(</b>This.Title<b>)</b>
+            BI.lpfnCallback = <font color="0000AA"><b>CODEPTR</b></font><b>(</b>This.BrowseHook<b>)</b>
+            BI.lParam = <font color="0000AA"><b>VARPTR</b></font><b>(</b>This.InitialDir<b>)</b>
+            pidl = SHBrowseForFolder<b>(</b>BI<b>)</b>                                  <font color="007700"><i>' do it!</i></font> 
+            <font color="0000AA"><b>IF</b></font> pidl <font color="0000AA"><b>THEN</b></font>                                                  <font color="007700"><i>' if API succeeds,</i></font> 
+                <font color="0000AA"><b>IF</b></font> SHGetPathFromIDList<b>(</b>pidl, sPath<b>)</b> <font color="0000AA"><b>THEN</b></font>                  <font color="007700"><i>' check for path string</i></font> 
+                    .Directory = <font color="0000AA"><b>LEFT$</b></font><b>(</b>sPath, <font color="0000AA"><b>INSTR</b></font><b>(</b>sPath, <font color="0000AA"><b>CHR$</b></font><b>(</b>0<b>)</b><b>)</b>-1<b>)</b>    <font color="007700"><i>' if yes, knock off null terminator</i></font> 
+                <font color="0000AA"><b>ELSE</b></font>                                                      <font color="007700"><i>' or else</i></font> 
+                    .Directory = <font color="0000AA"><b>LEFT$</b></font><b>(</b>xPath, <font color="0000AA"><b>INSTR</b></font><b>(</b>xPath, <font color="0000AA"><b>CHR$</b></font><b>(</b>0<b>)</b><b>)</b>-1<b>)</b>    <font color="007700"><i>' get name string (Virual Folders)</i></font> 
+                <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+                CoTaskMemFree pidl                                        <font color="007700"><i>' free memory </i></font> 
+                Result = 1                                                <font color="007700"><i>' success!</i></font> 
+            <font color="000099"><b>ELSE</b></font>
+                Result = 0                                                <font color="007700"><i>' failure :(</i></font> 
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+    
+
+        
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="007700"><i>'==================================================</i></font> 
+<font color="007700"><i>'          Sample Program</i></font> 
+<font color="007700"><i>'==================================================</i></font> 
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> Click
+
+<font color="0000AA"><b>DIM</b></font> BD <font color="0000AA"><b>AS</b></font> QBrowseDialog
+BD.Title = "<font color="990000">Title</font>"
+BD.Caption = "<font color="990000">Caption</font>"
+
+<font color="0000AA"><b>CREATE</b></font> Form <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QFORM</b></font>
+    <font color="0000AA"><b>CREATE</b></font> Edit <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QEDIT</b></font>
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+    <font color="0000AA"><b>CREATE</b></font> Button <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QBUTTON</b></font>
+        Left = Edit.Width +5
+        OnClick = Click
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+Form.ShowModal
+
+<font color="0000AA"><b>Sub</b></font> Click
+    BD.InitialDir = <font color="0000AA"><b>COMMAND$</b></font><b>(</b>0<b>)</b>-Application.ExeName
+    <font color="0000AA"><b>IF</b></font> BD.Execute <font color="000099"><b>THEN</b></font>
+        Edit.Text=BD.Directory
+        Form.Caption = BD.X
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>SUB</b></font> 
+</pre>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<html>
+<head>
+<title>RQDxf.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="0000AA"><b>$typecheck</b></font> on
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> dfBegin  <b>(</b><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> dfCircle <b>(</b>Lay <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> ,EC <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,xX <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>,xY <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>,xZ <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>,xRadius <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> dfLine   <b>(</b>Lay <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> ,Lty <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,EC <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, xX1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>, xY1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>, xZ1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>, xX2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>, xY2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>, xZ2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>, xH <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> dfBeginPline <b>(</b>Lay <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,EC <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> dfPlVertex   <b>(</b>Lay <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,EC <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,X <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font>,Y <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font>,Z <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> dfEndPline   <b>(</b>Lay <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,EC <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> dfEnd    <b>(</b><b>)</b>
+<font color="0000AA"><b>declare</b></font> <font color="0000AA"><b>sub</b></font> dfText <b>(</b>FileNum <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,Lay  <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>, EC  <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,X <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font>,Y <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font>, Z <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font>,TextDXF   <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,HeightTxt <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>,Factor <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>,Angle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>,Alignh <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>,Alignv <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>,StyleTxt <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+<font color="0000AA"><b>declare</b></font> <font color="0000AA"><b>SUB</b></font> dfpoint <b>(</b>FileNum <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, Lay <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, EColor <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, X <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font>,Y <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font>, Z <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font><b>)</b>
+
+<font color="0000AA"><b>DIM</b></font> DXFOUT <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QFILESTREAM</b></font>
+<font color="0000AA"><b>DIM</b></font> DXFNAME <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+<font color="0000AA"><b>dim</b></font> layer <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>dim</b></font> EColor <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>dim</b></font> LType <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>dim</b></font> TEXTDXF <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>defdbl</b></font> x0,y0,z0,x1,x2,y1,y2,z1,z2,h,Radius,x,y,z
+<font color="0000AA"><b>defdbl</b></font> HeightTxt,Factor,Angle,Alignh,Alignv
+<font color="0000AA"><b>defstr</b></font> StyleTXT
+<font color="0000AA"><b>dim</b></font> FileNum <font color="0000AA"><b>As</b></font> <font color="000099"><b>Integer</b></font>
+
+
+<font color="0000AA"><b>SUB</b></font> dfBegin<b>(</b><b>)</b>
+<font color="007700"><i>'- Begin of header ------------------------------------------------------------</i></font> 
+
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">  0</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">SECTION</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">  2</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">HEADER</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">  999</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">http://www.ualg.pt/est/adec/dxfortran/</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">  0</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">ENDSEC</font>"<b>)</b>
+   
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">  0</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">SECTION</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">  2</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">ENTITIES</font>"<b>)</b>
+
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>SUB</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'+ End the DXF File.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>SUB</b></font> dfEnd<b>(</b><b>)</b>
+
+<font color="007700"><i>'- End of header ---------------------------------------------------------------</i></font> 
+
+   DXFOUT.WriteLine <b>(</b> "<font color="990000">  0</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b>"<font color="990000">ENDSEC</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b>"<font color="990000">  0</font>"<b>)</b>
+   DXFOUT.WriteLine <b>(</b>"<font color="990000">EOF</font>"<b>)</b>
+
+   dxfout.close
+
+
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>SUB</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'Draw a circle with a center point and a radius</i></font> 
+<font color="007700"><i>'</i></font> 
+
+<font color="0000AA"><b>SUB</b></font> dfCircle <b>(</b>Layer <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> ,EColor <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,X <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>,Y <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>,Z <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font>,Radius <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Double</b></font><b>)</b>
+
+<font color="007700"><i>'- End of header ---------------------------------------------------------------</i></font> 
+      DXFOUT.WriteLine <b>(</b> "<font color="990000">  0</font>" <b>)</b>         <font color="007700"><i>'+ Begin of Circle</i></font> 
+      DXFOUT.WriteLine <b>(</b> "<font color="990000">CIRCLE</font>"<b>)</b>       <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b> "<font color="990000">  8</font>"<b>)</b>          <font color="007700"><i>'+ Layer code</i></font> 
+      DXFOUT.WriteLine <b>(</b>Layer<b>)</b>           <font color="007700"><i>'+ Layer's name</i></font> 
+      
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>uCase$</b></font><b>(</b>EColor<b>)</b>="<font color="990000">BYLAYER</font>"  <font color="000099"><b>then</b></font>
+     
+         <font color="007700"><i>' Nothing to do if EntColr is bylayer</i></font> 
+      <font color="000099"><b>else</b></font>
+         DXFOUT.WriteLine <b>(</b>"<font color="990000"> 62</font>"<b>)</b>        <font color="007700"><i>'+ EntColr code</i></font> 
+         DXFOUT.WriteLine <b>(</b>EColor<b>)</b>  <font color="007700"><i>'</i></font> 
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 10</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>X<b>)</b><b>)</b>
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 20</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>Y<b>)</b><b>)</b>
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 30</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>Z<b>)</b><b>)</b>
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 40</font>" <b>)</b>
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>Radius<b>)</b><b>)</b>
+
+<font color="0000AA"><b>end</b></font> <font color="0000AA"><b>SUB</b></font> <font color="007700"><i>'dfCircle</i></font> 
+
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'+ Draw a line in DXF format.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>SUB</b></font> dfLine  <b>(</b>Layer <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,Ltype <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,EColor <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, X1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>, Y1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>, Z1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>, X2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>, Y2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>, Z2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>, H <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font><b>)</b>
+<font color="007700"><i>' Description:</i></font> 
+<font color="007700"><i>'   Draw a line in the in the file &lt;FileNum> in the layer &lt;Layer></i></font> 
+<font color="007700"><i>' and in the EntColr &lt;EntColr> with coordenates of 1st note (X1, Y1),</i></font> 
+<font color="007700"><i>' and the 2nd node coordenate (X2, Y2) and with the height &lt;H></i></font> 
+
+      DXFOUT.WriteLine <b>(</b> "<font color="990000">  0</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b> "<font color="990000">LINE</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b> "<font color="990000">  8</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b>Layer<b>)</b>
+      DXFOUT.WriteLine <b>(</b> "<font color="990000">  6</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b>Ltype<b>)</b>
+
+
+      <font color="0000AA"><b>if</b></font> <b>(</b><font color="0000AA"><b>Ucase$</b></font><b>(</b>EColor<b>)</b>="<font color="990000">BYLAYER</font>"<b>)</b> <font color="000099"><b>then</b></font>
+      
+      <font color="000099"><b>else</b></font>
+         DXFOUT.WriteLine <b>(</b>"<font color="990000"> 62</font>"<b>)</b>        <font color="007700"><i>'+ EntColr code</i></font> 
+         DXFOUT.WriteLine <b>(</b>EColor<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+
+      DXFOUT.WriteLine <b>(</b> "<font color="990000"> 39</font>"<b>)</b>        <font color="007700"><i>'+ THICKNESS OF THE LINE (3D)</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>H<b>)</b><b>)</b>           <font color="007700"><i>'</i></font> 
+
+
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 10</font>"<b>)</b>        <font color="007700"><i>'+ Begin of line coordenate X1</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>STR$</b></font><b>(</b> X1<b>)</b><b>)</b>          <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 20</font>"<b>)</b>        <font color="007700"><i>'+ Begin of line coordenate Y1</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>STR$</b></font><b>(</b> Y1<b>)</b><b>)</b>         <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 30</font>"<b>)</b>        <font color="007700"><i>'+ Begin of line coordenate Z1</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>STR$</b></font><b>(</b> Z1<b>)</b><b>)</b>          <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 11</font>"<b>)</b>        <font color="007700"><i>'+ End of line coordenate Y2</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>STR$</b></font><b>(</b> X2<b>)</b><b>)</b>          <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 21</font>"<b>)</b>        <font color="007700"><i>'+ End of line coordenate Y2</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>STR$</b></font><b>(</b> Y2<b>)</b><b>)</b>          <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 31</font>"<b>)</b>        <font color="007700"><i>'+ End of line coordenate Z2</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>STR$</b></font><b>(</b> Z2<b>)</b><b>)</b>          <font color="007700"><i>'</i></font> 
+
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>SUB</b></font>
+<font color="007700"><i>'+ Begin of a polyline</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>SUB</b></font> dfBeginPline <b>(</b>Layer <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,EColor <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b>
+
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">  0</font>"<b>)</b>            <font color="007700"><i>'+ Begin of polyline</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">POLYLINE</font>"<b>)</b>       <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">  8</font>"<b>)</b>            <font color="007700"><i>'+ Layer Code</i></font> 
+      DXFOUT.WriteLine <b>(</b>Layer<b>)</b>            <font color="007700"><i>'+ Layer's name</i></font> 
+      <font color="0000AA"><b>if</b></font> <b>(</b><font color="0000AA"><b>ucase$</b></font><b>(</b>EColOr<b>)</b>="<font color="990000">BYLAYER</font>"<b>)</b> <font color="000099"><b>then</b></font>
+      <font color="000099"><b>else</b></font>
+         DXFOUT.WriteLine <b>(</b>"<font color="990000"> 62</font>"<b>)</b>        <font color="007700"><i>'+ EntColr code</i></font> 
+         DXFOUT.WriteLine <b>(</b>EColor<b>)</b>         <font color="007700"><i>'</i></font> 
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      DXFOUT.WriteLine <b>(</b> "<font color="990000"> 66</font>"<b>)</b>            <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b> "<font color="990000">    1</font>"<b>)</b>          <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b> "<font color="990000">  0</font>"<b>)</b>            <font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>end</b></font> <font color="0000AA"><b>SUB</b></font> <font color="007700"><i>'dfBeginPline</i></font> 
+
+<font color="0000AA"><b>SUB</b></font> dfEndPline <b>(</b>Layer <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,  EColOr <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b>
+
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">SEQEND</font>"<b>)</b>    <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">  8</font>"<b>)</b>       <font color="007700"><i>'+ Layer's code</i></font> 
+      DXFOUT.WriteLine <b>(</b>Layer<b>)</b> <font color="007700"><i>'+ Layer's name</i></font> 
+      <font color="0000AA"><b>if</b></font> <b>(</b><font color="0000AA"><b>uCASE$</b></font><b>(</b>EColor<b>)</b>="<font color="990000">BYLAYER</font>"<b>)</b> <font color="000099"><b>then</b></font>
+      <font color="000099"><b>else</b></font>
+         DXFOUT.WriteLine <b>(</b>"<font color="990000"> 62</font>"<b>)</b>        <font color="007700"><i>'+ EntColr code</i></font> 
+         DXFOUT.WriteLine <b>(</b>EColor<b>)</b>  <font color="007700"><i>'</i></font> 
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="0000AA"><b>SUB</b></font> dfPlVertex <b>(</b>Layer <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,ECoLOr <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,X <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font>,Y <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font>,Z <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>DOUBLE</b></font><b>)</b>
+<font color="007700"><i>' Description:</i></font> 
+<font color="007700"><i>'   Vertex of the polyline in the file &lt;FileNum> in the layer &lt;Layer>,</i></font> 
+<font color="007700"><i>' with the EntColr &lt;EntColr> and coordenates (X,Y,Z).</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'- End of header ---------------------------------------------------------------</i></font> 
+
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">VERTEX</font>"<b>)</b>   <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">  8</font>"<b>)</b>      <font color="007700"><i>'+ Layer's code</i></font> 
+      DXFOUT.WriteLine <b>(</b>Layer<b>)</b><font color="007700"><i>'+ Layer's name</i></font> 
+      <font color="0000AA"><b>if</b></font> <b>(</b><font color="0000AA"><b>ucase$</b></font><b>(</b>EColOr<b>)</b>="<font color="990000">BYLAYER</font>"<b>)</b> <font color="000099"><b>then</b></font>
+      <font color="000099"><b>else</b></font>
+         DXFOUT.WriteLine <b>(</b>"<font color="990000"> 62</font>"<b>)</b>        <font color="007700"><i>'+ EntColr code</i></font> 
+         DXFOUT.WriteLine <b>(</b>EColor<b>)</b>  <font color="007700"><i>'</i></font> 
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 10</font>"<b>)</b>       <font color="007700"><i>'+ Code of the coordenate X of the polyline vertex</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>sTR$</b></font><b>(</b>X<b>)</b><b>)</b>              <font color="007700"><i>'+ Coordenate X of the vertex</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 20</font>"<b>)</b>       <font color="007700"><i>'+ Code of the coordenate Y of the polyline vertex</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>STR$</b></font><b>(</b>Y<b>)</b><b>)</b>             <font color="007700"><i>'+ Coordenate Y of the vertex</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 30</font>"<b>)</b>       <font color="007700"><i>'+ Code of the coordenate Z of the polyline vertex</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>sTR$</b></font><b>(</b>Z<b>)</b><b>)</b>              <font color="007700"><i>'+ Coordenate Z of the vertex</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">  0</font>"<b>)</b>        <font color="007700"><i>'</i></font> 
+ <font color="0000AA"><b>end</b></font> <font color="0000AA"><b>SUB</b></font> <font color="007700"><i>'dfPlVertex</i></font> 
+
+<font color="0000AA"><b>SUB</b></font> dfText <b>(</b>FileNum,Layer, EntColr,X,Y, Z,Text,Height,Factor,Angle,Alignh,Alignv,Style<b>)</b>
+<font color="007700"><i>' Description:</i></font> 
+<font color="007700"><i>'   DXFOUT.WriteLine text to the file &lt;FileNum>, EntColr &lt;EntColr> and with the</i></font> 
+<font color="007700"><i>' coordenates (X,Y). The message is stored in the variable &lt;Text>,</i></font> 
+<font color="007700"><i>' with de height &lt;Height>, angle &lt;Angle> and horizontal aligned with &lt;Alignh),</i></font> 
+<font color="007700"><i>' and vertical aligned with &lt;alignv>:</i></font> 
+<font color="007700"><i>' - Align left   : &lt;Alignh> = 0         - Align none   : &lt;Alignv> = 0</i></font> 
+<font color="007700"><i>' - Align center : &lt;Alignh> = 1         - Align bottom : &lt;Alignv> = 1</i></font> 
+<font color="007700"><i>' - Align right  : &lt;Alignh> = 2         - Align middle : &lt;Alignv> = 2</i></font> 
+
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">  0</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">TEXT</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">  8</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>RTRIM$</b></font><b>(</b>Layer<b>)</b><b>)</b>
+      <font color="0000AA"><b>if</b></font> <b>(</b>EColor="<font color="990000">BYLAYER</font>"<b>)</b> <font color="000099"><b>then</b></font>
+      <font color="000099"><b>else</b></font>
+         DXFOUT.WriteLine <b>(</b>"<font color="990000"> 62</font>"<b>)</b>        <font color="007700"><i>'+ EntColr code</i></font> 
+         DXFOUT.WriteLine <b>(</b> <font color="0000AA"><b>RTRIM$</b></font><b>(</b>EColor<b>)</b><b>)</b>  <font color="007700"><i>'</i></font> 
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 10</font>"<b>)</b>           <font color="007700"><i>'+ X code coordenate of the text.</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>x<b>)</b><b>)</b>               <font color="007700"><i>'+ X coordenate.</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 20</font>"<b>)</b>           <font color="007700"><i>'+ Y code coordenate of the text.</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>y<b>)</b><b>)</b>               <font color="007700"><i>'+ Y coordenate.</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 30</font>"<b>)</b>           <font color="007700"><i>'+ Z code coordenate of the text.</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>z<b>)</b><b>)</b>                <font color="007700"><i>'+ Z coordenate.</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 40</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>HeightTxt<b>)</b><b>)</b>
+      DXFOUT.WriteLine <b>(</b> "<font color="990000"> 41</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>STR$</b></font><b>(</b>Factor<b>)</b><b>)</b>              <font color="007700"><i>'+ Scale Factor</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">  1</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b> textDXF<b>)</b>
+      DXFOUT.WriteLine <b>(</b> "<font color="990000"> 50</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b> <font color="0000AA"><b>str$</b></font><b>(</b>Angle<b>)</b><b>)</b>
+      DXFOUT.WriteLine <b>(</b> "<font color="990000">  7</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b> <font color="0000AA"><b>RTRIM$</b></font><b>(</b>styleTxt<b>)</b><b>)</b>
+      DXFOUT.WriteLine <b>(</b> "<font color="990000"> 72</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>alignh<b>)</b><b>)</b>
+      DXFOUT.WriteLine <b>(</b> "<font color="990000"> 11</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b> X<b>)</b><b>)</b>
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 21</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b> <font color="0000AA"><b>str$</b></font><b>(</b>Y<b>)</b><b>)</b>                <font color="007700"><i>'+ Height / 2.0 (Removed in version 0.2)</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 73</font>"<b>)</b>
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b> alignv<b>)</b><b>)</b>
+ <font color="0000AA"><b>End</b></font> <font color="0000AA"><b>SUB</b></font> <font color="007700"><i>'dfText</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>SUB</b></font> dfpoint <b>(</b>FileNum, Layer, EColor, X,Y, Z<b>)</b>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' Description:</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' Draw a 2D or 3D Point in the in the file &lt;FileNum> in the layer &lt;Layer></i></font> 
+<font color="007700"><i>' and in the EntColr &lt;EntColr> with coordenates (X,Y,Z).</i></font> 
+<font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">  0</font>"<b>)</b>          <font color="007700"><i>'+ Begin of 3DFace</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">POINT</font>"<b>)</b>        <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000">  8</font>"<b>)</b>          <font color="007700"><i>'+ Layer code</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>RTRIM$</b></font><b>(</b>Layer<b>)</b><b>)</b>    <font color="007700"><i>'  Layer's name</i></font> 
+
+      <font color="0000AA"><b>if</b></font> <b>(</b><font color="0000AA"><b>UCASE$</b></font><b>(</b>EColor<b>)</b>="<font color="990000">BYLAYER</font>" <b>)</b>  <font color="000099"><b>then</b></font>
+         <font color="007700"><i>' Nothing to do if EntColr is bylayer</i></font> 
+      <font color="000099"><b>else</b></font>
+         DXFOUT.WriteLine <b>(</b>"<font color="990000"> 62</font>"<b>)</b>        <font color="007700"><i>'+ EntColr code</i></font> 
+         DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>RTRIM$</b></font><b>(</b>EColor<b>)</b><b>)</b>  <font color="007700"><i>'</i></font> 
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 10</font>"<b>)</b>           <font color="007700"><i>'+ Point codes</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>X<b>)</b><b>)</b>               <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 20</font>"<b>)</b>           <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>Y<b>)</b><b>)</b>               <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b>"<font color="990000"> 30</font>"<b>)</b>           <font color="007700"><i>'</i></font> 
+      DXFOUT.WriteLine <b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>Z<b>)</b><b>)</b>               <font color="007700"><i>'</i></font> 
+ <font color="0000AA"><b>end</b></font> <font color="0000AA"><b>SUB</b></font> <font color="007700"><i>'dfpoint</i></font> 
+
+ 
+</pre>
+</body>
+</html>

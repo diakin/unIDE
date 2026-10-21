@@ -1,0 +1,947 @@
+<html xmlns:v="urn:schemas-microsoft-com:vml"
+xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+
+<head>
+<meta http-equiv=Content-Type content="text/html; charset=windows-1252">
+<meta name=ProgId content=Word.Document>
+<meta name=Generator content="Microsoft Word 9">
+<meta name=Originator content="Microsoft Word 9">
+<link rel=File-List href="./qdigdisplay_files/filelist.xml">
+<link rel=Edit-Time-Data href="./qdigdisplay_files/editdata.mso">
+<!--[if !mso]>
+<style>
+v\:* {behavior:url(#default#VML);}
+o\:* {behavior:url(#default#VML);}
+w\:* {behavior:url(#default#VML);}
+.shape {behavior:url(#default#VML);}
+</style>
+<![endif]-->
+<title>Appendix A: QDIGDISPLAY</title>
+<!--[if gte mso 9]><xml>
+ <o:DocumentProperties>
+  <o:Author>V.Allen</o:Author>
+  <o:LastAuthor>V.Allen</o:LastAuthor>
+  <o:Revision>2</o:Revision>
+  <o:TotalTime>26</o:TotalTime>
+  <o:Created>2001-04-13T06:49:00Z</o:Created>
+  <o:LastSaved>2001-04-13T06:49:00Z</o:LastSaved>
+  <o:Pages>2</o:Pages>
+  <o:Words>268</o:Words>
+  <o:Characters>1531</o:Characters>
+  <o:Company>Home</o:Company>
+  <o:Lines>12</o:Lines>
+  <o:Paragraphs>3</o:Paragraphs>
+  <o:CharactersWithSpaces>1880</o:CharactersWithSpaces>
+  <o:Version>9.4402</o:Version>
+ </o:DocumentProperties>
+</xml><![endif]-->
+<style>
+<!--
+ /* Style Definitions */
+p.MsoNormal, li.MsoNormal, div.MsoNormal
+	{mso-style-parent:"";
+	margin:0cm;
+	margin-bottom:.0001pt;
+	mso-pagination:widow-orphan;
+	font-size:12.0pt;
+	font-family:"Times New Roman";
+	mso-fareast-font-family:"Times New Roman";}
+pre
+	{margin:0cm;
+	margin-bottom:.0001pt;
+	font-size:10.0pt;
+	font-family:"Courier New";
+	mso-fareast-font-family:"Courier New";}
+@page Section1
+	{size:595.3pt 841.9pt;
+	margin:72.0pt 90.0pt 72.0pt 90.0pt;
+	mso-header-margin:35.4pt;
+	mso-footer-margin:35.4pt;
+	mso-paper-source:0;}
+div.Section1
+	{page:Section1;}
+-->
+</style>
+<!--[if gte mso 9]><xml>
+ <o:shapedefaults v:ext="edit" spidmax="1027"/>
+</xml><![endif]--><!--[if gte mso 9]><xml>
+ <o:shapelayout v:ext="edit">
+  <o:idmap v:ext="edit" data="1"/>
+ </o:shapelayout></xml><![endif]-->
+</head>
+
+<body bgcolor=white lang=EN-AU link=blue vlink=blue style='tab-interval:36.0pt'
+FONT FACE="Arial, Helvetica">
+
+<div class=Section1>
+
+<table border=0 cellspacing=0 cellpadding=0 width="100%" style='width:100.0%;
+ mso-cellspacing:0cm;mso-padding-alt:0cm 0cm 0cm 0cm'>
+ <tr>
+  <td style='padding:0cm 0cm 0cm 0cm'>
+  <p class=MsoNormal><span style='font-family:Arial'>Rapid-Q Documentation by Peter
+  Molloy (c) 2001</span></p>
+  </td>
+  <td style='padding:0cm 0cm 0cm 0cm'>
+  <p class=MsoNormal align=right style='text-align:right'><b><span
+  style='font-family:Arial'>Appendix A: QDIGDISPLAY</span></b></p>
+  </td>
+ </tr>
+ <tr>
+  <td colspan=2 style='padding:0cm 0cm 0cm 0cm'>
+  <div class=MsoNormal align=center style='text-align:center'>
+  <hr size=1 width="100%" align=center>
+  </div>
+  <p class=MsoNormal></p>
+  </td>
+ </tr>
+</table>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+<h1>QDIGDISPLAY Component</h1>
+
+<p class=MsoNormal style='margin-left:36.0pt'>QDigDisplay simulates a seven
+segment LED display. <br style='mso-special-character:line-break'>
+<![if !supportLineBreakNewLine]><br style='mso-special-character:line-break'>
+<![endif]></p>
+
+<p class=MsoNormal style='margin-left:36.0pt'><br>
+<a name=1><b><span style='font-size:13.5pt'>QDigDisplay Properties</span></b> </a></p>
+
+<table border=0 cellpadding=0 width="99%" style='width:99.28%;mso-cellspacing:
+ 1.5pt;margin-left:36.0pt'>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'><b>Field</b></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'><b>Type</b></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'><b>R/W</b></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'><b>Default</b></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'><b>Support</b></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:1'></span>
+  <div class=MsoNormal align=center style='text-align:center'><span
+  style='mso-bookmark:1'>
+  <hr size=2 width="100%" align=center>
+  </span></div>
+  <span style='mso-bookmark:1'></span>
+  <p class=MsoNormal><span style='mso-bookmark:1'></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:1'></span>
+  <div class=MsoNormal align=center style='text-align:center'><span
+  style='mso-bookmark:1'>
+  <hr size=2 width="100%" align=center>
+  </span></div>
+  <span style='mso-bookmark:1'></span>
+  <p class=MsoNormal><span style='mso-bookmark:1'></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:1'></span>
+  <div class=MsoNormal align=center style='text-align:center'><span
+  style='mso-bookmark:1'>
+  <hr size=2 width="100%" align=center>
+  </span></div>
+  <span style='mso-bookmark:1'></span>
+  <p class=MsoNormal><span style='mso-bookmark:1'></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:1'></span>
+  <div class=MsoNormal align=center style='text-align:center'><span
+  style='mso-bookmark:1'>
+  <hr size=2 width="100%" align=center>
+  </span></div>
+  <span style='mso-bookmark:1'></span>
+  <p class=MsoNormal><span style='mso-bookmark:1'></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:1'></span>
+  <div class=MsoNormal align=center style='text-align:center'><span
+  style='mso-bookmark:1'>
+  <hr size=2 width="100%" align=center>
+  </span></div>
+  <span style='mso-bookmark:1'></span>
+  <p class=MsoNormal><span style='mso-bookmark:1'></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Align</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>alNone</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:1'></span>
+  <p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><span
+  style='mso-bookmark:1'><o:p></o:p></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td colspan=4 style='background:#FFDDDD;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Align determines how the
+  control aligns within its parent control. </span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>ClientHeight</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'><span
+  style='mso-bookmark:1'></span>
+  <p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><span
+  style='mso-bookmark:1'><o:p></o:p></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>ClientWidth</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'><span
+  style='mso-bookmark:1'></span>
+  <p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><span
+  style='mso-bookmark:1'><o:p></o:p></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Color</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'><span
+  style='mso-bookmark:1'></span>
+  <p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><span
+  style='mso-bookmark:1'><o:p></o:p></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>CopyMode</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>cmBlackness</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Cursor</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>crDefault</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Enabled</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>True</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Font</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>QFONT</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'><span
+  style='mso-bookmark:1'></span>
+  <p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><span
+  style='mso-bookmark:1'><o:p></o:p></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Height</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>24</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Hint</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>STRING</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'><span
+  style='mso-bookmark:1'></span>
+  <p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><span
+  style='mso-bookmark:1'><o:p></o:p></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Left</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>0</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Parent</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>QFORM/QPANEL/QTABCONTROL</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'><span
+  style='mso-bookmark:1'></span>
+  <p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><span
+  style='mso-bookmark:1'><o:p></o:p></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Pixel</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>2D ARRAY of INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'><span
+  style='mso-bookmark:1'></span>
+  <p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><span
+  style='mso-bookmark:1'><o:p></o:p></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>PopupMenu</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>QPOPUPMENU</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'><span
+  style='mso-bookmark:1'></span>
+  <p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><span
+  style='mso-bookmark:1'><o:p></o:p></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>ShowHint</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>False</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Tag</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'><span
+  style='mso-bookmark:1'></span>
+  <p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><span
+  style='mso-bookmark:1'><o:p></o:p></span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Top</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>0</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Width</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>12</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Visible</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>INTEGER</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>True</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+ <tr>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>Display</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>STRING</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>RW</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>“0”</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+  <td style='background:#EEEEEE;padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:1'>W</span></p>
+  </td>
+  <span style='mso-bookmark:1'></span>
+ </tr>
+</table>
+
+<span style='mso-bookmark:1'></span>
+
+<p class=MsoNormal style='margin-left:36.0pt'><a name=2><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></a></p>
+
+<p class=MsoNormal style='margin-left:36.0pt'><span style='mso-bookmark:2'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></p>
+
+<p class=MsoNormal style='margin-left:36.0pt'><span style='mso-bookmark:2'><br>
+</span><span style='mso-bookmark:2'></span><a name=3></a><span
+style='mso-bookmark:3'><b><span style='font-size:13.5pt'>QDigDisplay Events</span></b>
+</span></p>
+
+<table border=0 cellpadding=0 width="100%" style='width:100.0%;mso-cellspacing:
+ 1.5pt;margin-left:36.0pt'>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'><b>Event</b></span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'><b>Type</b></span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'><b>Occurs when...</b></span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'><b>Params</b></span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'><b>Support</b></span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+ </tr>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:3'></span>
+  <div class=MsoNormal align=center style='text-align:center'><span
+  style='mso-bookmark:3'>
+  <hr size=2 width="100%" align=center>
+  </span></div>
+  <span style='mso-bookmark:3'></span>
+  <p class=MsoNormal><span style='mso-bookmark:3'></span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:3'></span>
+  <div class=MsoNormal align=center style='text-align:center'><span
+  style='mso-bookmark:3'>
+  <hr size=2 width="100%" align=center>
+  </span></div>
+  <span style='mso-bookmark:3'></span>
+  <p class=MsoNormal><span style='mso-bookmark:3'></span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:3'></span>
+  <div class=MsoNormal align=center style='text-align:center'><span
+  style='mso-bookmark:3'>
+  <hr size=2 width="100%" align=center>
+  </span></div>
+  <span style='mso-bookmark:3'></span>
+  <p class=MsoNormal><span style='mso-bookmark:3'></span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:3'></span>
+  <div class=MsoNormal align=center style='text-align:center'><span
+  style='mso-bookmark:3'>
+  <hr size=2 width="100%" align=center>
+  </span></div>
+  <span style='mso-bookmark:3'></span>
+  <p class=MsoNormal><span style='mso-bookmark:3'></span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'><span style='mso-bookmark:3'></span>
+  <div class=MsoNormal align=center style='text-align:center'><span
+  style='mso-bookmark:3'>
+  <hr size=2 width="100%" align=center>
+  </span></div>
+  <span style='mso-bookmark:3'></span>
+  <p class=MsoNormal><span style='mso-bookmark:3'></span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+ </tr>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>OnClick</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>VOID</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>User clicked on canvas</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>0</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+ </tr>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>OnDblClick</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>VOID</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>User double clicked on canvas</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>0</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>W</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+ </tr>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>OnMouseDown</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td nowrap style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>SUB (Button%, X%, Y%, Shift%)</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td nowrap style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>Mouse button held down</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>4</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+ </tr>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>OnMouseMove</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td nowrap style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>SUB (X%, Y%, Shift%)</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td nowrap style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>Mouse moves</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>3</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+ </tr>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>OnMouseUp</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td nowrap style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>SUB (Button%, X%, Y%, Shift%)</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td nowrap style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>Mouse button is released</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>4</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+ </tr>
+ <tr>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>OnPaint</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>VOID</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>Receives WM_PAINT message</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>0</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+  <td style='padding:.75pt .75pt .75pt .75pt'>
+  <p class=MsoNormal><span style='mso-bookmark:3'>WXG</span></p>
+  </td>
+  <span style='mso-bookmark:3'></span>
+ </tr>
+</table>
+
+<p class=MsoNormal style='margin-left:36.0pt'><span style='mso-bookmark:3'><br>
+<br>
+</span><span style='mso-bookmark:3'></span><a name=4></a><span
+style='mso-bookmark:4'><b><span style='font-size:13.5pt'>QDigDisplay Example</span></b>
+</span></p>
+
+<pre style='margin-left:36.0pt'><span style='mso-bookmark:4'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></pre><pre
+style='margin-left:36.0pt'><span style='mso-bookmark:4'>'<span style="mso-spacerun: yes">  </span>Count from 0 to 100</span></pre><pre
+style='margin-left:36.0pt'><span style='mso-bookmark:4'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></pre><pre
+style='margin-left:36.0pt'><span style='mso-bookmark:4'>$INCLUDE “RAPIDQ.INC” </span></pre><pre
+style='margin-left:36.0pt'><span style='mso-bookmark:4'>$INCLUDE “QDIGDISPLAY.INC”</span></pre><pre
+style='margin-left:36.0pt'><span style='mso-bookmark:4'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></pre><pre
+style='margin-left:36.0pt'><span style='mso-bookmark:4'>DECLARE SUB CountLoop</span></pre><pre
+style='margin-left:36.0pt'><span style='mso-bookmark:4'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></pre><pre
+style='margin-left:36.0pt'><span style='mso-bookmark:4'>CREATE Form AS QFORM</span></pre><pre
+style='margin-left:36.0pt'><span style='mso-bookmark:4'>CREATE Button AS QBUTTON</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><span style='mso-tab-count:2'>        </span>Left = 100</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><span style='mso-tab-count:2'>        </span>Top = 120</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><span style='mso-tab-count:2'>        </span>Caption = “Start Count”</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><span style='mso-tab-count:2'>        </span>OnClick = CountLoop</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'>END CREATE</span></pre><pre style='margin-left:36.0pt;
+tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'>CREATE Counter AS QDIGDISPLAY</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><span style='mso-tab-count:2'>        </span>Left = 20</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><span style='mso-tab-count:2'>        </span>Top = 80</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><span style='mso-tab-count:2'>        </span>Display = “000”</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'>END CREATE</span></pre><pre style='margin-left:36.0pt;
+tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'>END CREATE</span></pre><pre style='margin-left:36.0pt;
+tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'>Form.ShowModal</span></pre><pre style='margin-left:36.0pt;
+tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'>SUB CountLoop</span></pre><pre style='margin-left:36.0pt;
+tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'>FOR Loop1 = 0 TO 100</span></pre><pre style='margin-left:
+36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><span style='mso-tab-count:2'>        </span>Counter.Display = RIGHT$ (“000”+ STR$(Loop1),3)</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><span style='mso-tab-count:2'>        </span>Form.Repaint </span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'><span style='mso-tab-count:2'>        </span>SLEEP 1</span></pre><pre
+style='margin-left:36.0pt;tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'>NEXT</span></pre><pre style='margin-left:36.0pt;
+tab-stops:45.8pt 81.0pt 137.4pt 183.2pt 229.0pt 274.8pt 320.6pt 366.4pt 412.2pt 458.0pt 503.8pt 549.6pt 595.4pt 641.2pt 687.0pt 732.8pt'><span
+style='mso-bookmark:4'>END SUB</span></pre>
+
+<div class=MsoNormal align=center style='margin-left:36.0pt;text-align:center'><span
+style='mso-bookmark:4'>
+
+<hr size=1 width="100%" align=center>
+
+</span></div>
+
+<span style='font-size:12.0pt;font-family:"Times New Roman";mso-fareast-font-family:
+"Times New Roman";mso-ansi-language:EN-AU;mso-fareast-language:EN-US;
+mso-bidi-language:AR-SA'><span style='mso-bookmark:4'></span></span>
+
+<p class=MsoNormal><![if !supportEmptyParas]>&nbsp;<![endif]><o:p></o:p></p>
+
+</div>
+
+</body>
+
+</html>

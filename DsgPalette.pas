@@ -30,6 +30,10 @@ unit DsgPalette;
 //  стороннего читается при первом показе его страницы (ShowPage): их
 //  больше сотни, а при запуске видна страница Standard. После загрузки
 //  значка - OnGlyphLoaded (тёмная тема перекрашивает его).
+//
+//  Компоненты RapidQ (Unit1, DsgAddRapidQPages) - тоже на своих страницах,
+//  выбор - строкой "RapidQ.КЛАСС", значок - сглаженный значок похожего
+//  компонента Delphi (PlaceRapidQ).
 // ---------------------------------------------------------------------------
 
 interface
@@ -60,6 +64,12 @@ type
     FBox: TScrollBox;
     FArrow: TSpeedButton;
     FPageBtns: TList;         // по странице - TList её кнопок, в порядке постановки
+    // Страницы и вкладки: вкладка - только у не спрятанной страницы
+    // (SetPageHidden). FPageNames - имена всех страниц, FPageHidden -
+    // спрятана ли, FTabPages - номер страницы по номеру вкладки.
+    FPageNames: TStringList;
+    FPageHidden: array of Boolean;
+    FTabPages: TList;
     // Раскладка по странице: где следующая кнопка первого ряда, сколько в
     // нём кнопок, где первое свободное место второго ряда (свои компоненты)
     FNextX: array of Integer;
@@ -75,7 +85,20 @@ type
     FOnSelect: TNotifyEvent;
     FGlyphInfo: TList;        // TDsgGlyphInfo по кнопкам со значком
     FButtonPopup: TPopupMenu; // меню правой кнопки у кнопок компонентов
+    // Вкладки в несколько рядов: на сколько пикселей ряды вкладок выше
+    // одного ряда; меняется - OnTabRows (владелец подгоняет высоту панели)
+    FTabRowsExtra: Integer;
+    // Высота палитры, при которой видны все ряды вкладок и все ряды кнопок
+    // (по всем страницам) - без пустого места снизу; 0 - ещё не считали
+    FNeededHeight: Integer;
+    FOnTabRows: TNotifyEvent;
+    // Пересчёт рядов уже заказан сообщением (RequestTabRows): при запуске
+    // страницы добавляются по одной и размер меняется много раз - считать
+    // по каждому разу незачем, хватит одного раза после них
+    FTabRowsPosted: Boolean;
     procedure SetButtonPopup(AValue: TPopupMenu);
+    procedure RequestTabRows;
+    procedure UMTabRows(var Message: TMessage); message WM_USER + 401;
     function HasGlyphRes(const AName: string): Boolean;
     procedure LoadLibs(const ADelphiBin: string);
     function LoadGlyph(AClass: TClass; ABmp: TBitmap): Boolean;
@@ -88,10 +111,19 @@ type
     function StdButtonFor(ACustom: TComponentClass; AList: TList;
                           AFirstRowCount: Integer): TSpeedButton;
     procedure TabChange(Sender: TObject);
+    function CurPage: Integer;
     procedure ArrowClick(Sender: TObject);
     procedure CompClick(Sender: TObject);
     procedure SetSelected(AClass: TComponentClass);
+  protected
+    procedure Resize; override;
+    procedure CreateWnd; override;
   public
+    // Пересчитать число рядов вкладок (после смены ширины или страниц)
+    procedure CheckTabRows;
+    property TabRowsExtra: Integer read FTabRowsExtra;
+    property NeededHeight: Integer read FNeededHeight;
+    property OnTabRows: TNotifyEvent read FOnTabRows write FOnTabRows;
     // AParent - куда встать (заполняет его целиком). ADelphiBin - папка
     // Bin установки Delphi со слэшем, '' - без значков.
     constructor CreatePalette(AOwner: TComponent; AParent: TWinControl;
@@ -118,6 +150,24 @@ type
                            AHint: string; APage: Integer);
     // "Модуль.Класс" кнопки стороннего компонента; '' - не сторонний
     function ForeignOf(ABtn: TControl): string;
+    // Кнопка компонента RapidQ AClass (QBUTTON) - на страницу APage, в
+    // первый ряд. Значок - сглаженный значок похожего класса Delphi
+    // AIconClass (TButton); нет его - надпись без первой буквы. Выбор -
+    // строкой "RapidQ.QBUTTON" (SelectedForeign), как у сторонних.
+    procedure PlaceRapidQ(ABtn: TSpeedButton; const AClass, AIconClass,
+                          AHint: string; APage: Integer);
+    // Открыть вкладку APage
+    procedure SetPage(APage: Integer);
+    // Страница открытой вкладки
+    function PageIndex: Integer;
+    // Сколько страниц (и спрятанных)
+    function PageCount: Integer;
+    // Спрятать (AHidden) или вернуть вкладку страницы APage. Вкладки
+    // перестраиваются в ApplyPages, после всех смен.
+    procedure SetPageHidden(APage: Integer; AHidden: Boolean);
+    // Вкладки - по видимым страницам. Открытая страница остаётся открытой,
+    // если её не спрятали; иначе - первая видимая.
+    procedure ApplyPages;
     // Значок кнопки ABtn для темы - в ABmp: значок Delphi (ADark - с
     // перекраской ARecolor в цвет AInk) или сглаженный, нарисованный цветом
     // AInk; у своих компонентов - сглаженная метка цветом AMarkInk. Края -
@@ -153,6 +203,7 @@ procedure DsgDrawSmoothScript(ABmp: TBitmap; const AScript: string;
 implementation
 
 uses
+  CommCtrl,   // TCM_ADJUSTRECT - место под кнопки внутри вкладок
   DsgClasses,
   DsgIcons;   // сглаженные значки компонентов Delphi - скриптами
 
@@ -193,6 +244,8 @@ var
 begin
   inherited Create(AOwner);
   FPageBtns := TList.Create;
+  FPageNames := TStringList.Create;
+  FTabPages := TList.Create;
   FLibs := TList.Create;
   FForeign := TStringList.Create;
   FGlyphPending := TList.Create;
@@ -209,8 +262,18 @@ begin
   FTabs.Parent := Self;
   FTabs.Align := alClient;
   FTabs.ParentFont := True;
+  // Все вкладки видны сразу, в несколько рядов; ряды на своих местах
+  // (TUiTabControl: в несколько рядов - стиль кнопок, Windows их не
+  // переставляет)
+  FTabs.MultiLine := True;
+  SetLength(FPageHidden, DsgPageCount);
   for I := 0 to DsgPageCount - 1 do
+  begin
     FTabs.Tabs.Add(DsgPageName(I));
+    FPageNames.Add(DsgPageName(I));
+    FPageHidden[I] := False;
+    FTabPages.Add(Pointer(I));
+  end;
   FTabs.OnChange := TabChange;
 
   FBox := TScrollBox.Create(Self);
@@ -271,6 +334,8 @@ begin
   for I := 0 to FPageBtns.Count - 1 do
     TObject(FPageBtns[I]).Free;
   FPageBtns.Free;
+  FPageNames.Free;
+  FTabPages.Free;
   FForeign.Free;
   FGlyphPending.Free;
   for I := 0 to FGlyphInfo.Count - 1 do
@@ -682,7 +747,7 @@ begin
   List := TList(FPageBtns[APage]);
 
   ABtn.Parent := FBox;
-  ABtn.Visible := APage = FTabs.TabIndex;
+  ABtn.Visible := APage = CurPage;
   ABtn.Flat := True;
   ABtn.GroupIndex := 1;
   ABtn.AllowAllUp := True;
@@ -796,10 +861,10 @@ begin
   // все кнопки области, и у спрятанных тоже
   FBox.HorzScrollBar.Position := 0;
   // Значки сторонних на открытой странице - при первом её показе
-  if (FGlyphPending.Count > 0) and (FTabs.TabIndex >= 0) and
-     (FTabs.TabIndex < FPageBtns.Count) then
+  if (FGlyphPending.Count > 0) and (CurPage >= 0) and
+     (CurPage < FPageBtns.Count) then
   begin
-    List := TList(FPageBtns[FTabs.TabIndex]);
+    List := TList(FPageBtns[CurPage]);
     for I := 0 to List.Count - 1 do
       if FGlyphPending.IndexOf(List[I]) >= 0 then
       begin
@@ -819,7 +884,7 @@ begin
   begin
     List := TList(FPageBtns[Page]);
     for I := 0 to List.Count - 1 do
-      TSpeedButton(List[I]).Visible := Page = FTabs.TabIndex;
+      TSpeedButton(List[I]).Visible := Page = CurPage;
   end;
   SetSelected(nil);
 end;
@@ -840,6 +905,130 @@ end;
 procedure TDsgPalette.TabChange(Sender: TObject);
 begin
   ShowPage;
+end;
+
+// Страница открытой вкладки; вкладок нет - -1
+function TDsgPalette.CurPage: Integer;
+begin
+  Result := -1;
+  if (FTabs.TabIndex >= 0) and (FTabs.TabIndex < FTabPages.Count) then
+    Result := Integer(FTabPages[FTabs.TabIndex]);
+end;
+
+procedure TDsgPalette.SetPageHidden(APage: Integer; AHidden: Boolean);
+begin
+  if (APage >= 0) and (APage < Length(FPageHidden)) then
+    FPageHidden[APage] := AHidden;
+end;
+
+procedure TDsgPalette.ApplyPages;
+var
+  OldPage, Page, TabIdx: Integer;
+begin
+  OldPage := CurPage;
+  FTabs.Tabs.BeginUpdate;
+  try
+    FTabs.Tabs.Clear;
+    FTabPages.Clear;
+    for Page := 0 to FPageNames.Count - 1 do
+      if not FPageHidden[Page] then
+      begin
+        FTabs.Tabs.Add(FPageNames[Page]);
+        FTabPages.Add(Pointer(Page));
+      end;
+  finally
+    FTabs.Tabs.EndUpdate;
+  end;
+  TabIdx := FTabPages.IndexOf(Pointer(OldPage));
+  if (TabIdx < 0) and (FTabPages.Count > 0) then
+    TabIdx := 0;
+  FTabs.TabIndex := TabIdx;
+  ShowPage;
+  RequestTabRows;
+end;
+
+procedure TDsgPalette.Resize;
+begin
+  inherited Resize;
+  RequestTabRows;
+end;
+
+// Пересчёт рядов - один раз, когда очередь сообщений дойдёт до него. Окна
+// ещё нет - пересчитает CheckTabRows владельца после показа (Unit1).
+procedure TDsgPalette.RequestTabRows;
+begin
+  if FTabRowsPosted or not HandleAllocated then
+    Exit;
+  FTabRowsPosted := True;
+  PostMessage(Handle, WM_USER + 401, 0, 0);
+end;
+
+// Окно создано заново (смена темы и т. п.): заказ к прежнему окну пропал
+procedure TDsgPalette.CreateWnd;
+begin
+  inherited CreateWnd;
+  FTabRowsPosted := False;
+  RequestTabRows;
+end;
+
+procedure TDsgPalette.UMTabRows(var Message: TMessage);
+begin
+  FTabRowsPosted := False;
+  CheckTabRows;
+end;
+
+// Ряды вкладок: от низа верхнего ряда до низа нижнего - добавка к одному.
+// И нужная высота палитры: место кнопок (TCM_ADJUSTRECT) сверху и снизу +
+// низ самой нижней кнопки по всем страницам. Изменилось одно из двух -
+// OnTabRows (владелец подгоняет высоту).
+procedure TDsgPalette.CheckTabRows;
+var
+  TabIdx, TopBottom, LowBottom, NewExtra, NewNeeded, PageIdx, BtnIdx,
+  BtnBottom: Integer;
+  TabBox, ShowArea: TRect;
+  Btn: TControl;
+begin
+  if (FTabs = nil) or not FTabs.HandleAllocated then
+    Exit;
+  TopBottom := MaxInt;
+  LowBottom := 0;
+  for TabIdx := 0 to FTabs.Tabs.Count - 1 do
+  begin
+    TabBox := FTabs.TabRect(TabIdx);
+    if TabBox.Bottom <= TabBox.Top then
+      Continue;
+    if TabBox.Bottom < TopBottom then
+      TopBottom := TabBox.Bottom;
+    if TabBox.Bottom > LowBottom then
+      LowBottom := TabBox.Bottom;
+  end;
+  if TopBottom = MaxInt then
+    NewExtra := 0
+  else
+    NewExtra := LowBottom - TopBottom;
+
+  // Место под кнопки внутри вкладок
+  ShowArea := FTabs.ClientRect;
+  SendMessage(FTabs.Handle, TCM_ADJUSTRECT, 0, Integer(@ShowArea));
+  BtnBottom := FArrow.Top + FArrow.Height;
+  for PageIdx := 0 to FPageBtns.Count - 1 do
+    for BtnIdx := 0 to TList(FPageBtns[PageIdx]).Count - 1 do
+    begin
+      Btn := TControl(TList(FPageBtns[PageIdx])[BtnIdx]);
+      if Btn.Top + Btn.Height > BtnBottom then
+        BtnBottom := Btn.Top + Btn.Height;
+    end;
+  NewNeeded := (Height - FTabs.Height) + ShowArea.Top + BtnBottom + 3 +
+               (FTabs.ClientHeight - ShowArea.Bottom);
+  if FBox.HorzScrollBar.IsScrollBarVisible then
+    Inc(NewNeeded, GetSystemMetrics(SM_CYHSCROLL));
+
+  if (NewExtra = FTabRowsExtra) and (NewNeeded = FNeededHeight) then
+    Exit;
+  FTabRowsExtra := NewExtra;
+  FNeededHeight := NewNeeded;
+  if Assigned(FOnTabRows) then
+    FOnTabRows(Self);
 end;
 
 procedure TDsgPalette.ArrowClick(Sender: TObject);
@@ -921,8 +1110,13 @@ end;
 function TDsgPalette.AddPage(const AName: string): Integer;
 begin
   FTabs.Tabs.Add(AName);
+  RequestTabRows;
   FPageBtns.Add(TList.Create);
   Result := FPageBtns.Count - 1;
+  FPageNames.Add(AName);
+  SetLength(FPageHidden, Result + 1);
+  FPageHidden[Result] := False;
+  FTabPages.Add(Pointer(Result));
   SetLength(FNextX, Result + 1);
   SetLength(FRow1Count, Result + 1);
   SetLength(FNextFree, Result + 1);
@@ -948,7 +1142,7 @@ begin
   if (ABtn = nil) or (APage < 0) or (APage >= FPageBtns.Count) then
     Exit;
   ABtn.Parent := FBox;
-  ABtn.Visible := APage = FTabs.TabIndex;
+  ABtn.Visible := APage = CurPage;
   ABtn.Flat := True;
   ABtn.GroupIndex := 1;
   ABtn.AllowAllUp := True;
@@ -992,6 +1186,72 @@ begin
       Result := True;
       Exit;
     end;
+end;
+
+procedure TDsgPalette.PlaceRapidQ(ABtn: TSpeedButton; const AClass,
+                                  AIconClass, AHint: string; APage: Integer);
+var
+  BtnWidth, PosX: Integer;
+begin
+  if (ABtn = nil) or (APage < 0) or (APage >= FPageBtns.Count) then
+    Exit;
+  ABtn.Parent := FBox;
+  ABtn.Visible := APage = CurPage;
+  ABtn.Flat := True;
+  ABtn.GroupIndex := 1;
+  ABtn.AllowAllUp := True;
+  ABtn.Tag := 0;                 // класса VCL нет - выбор по FForeign
+  ABtn.Hint := AHint;
+  ABtn.ShowHint := True;
+  ABtn.OnClick := CompClick;
+  ABtn.Caption := '';
+  BtnWidth := BtnSize;
+  if (AIconClass <> '') and (DsgIconScript(AIconClass) <> '') then
+  begin
+    DsgDrawSmoothIcon(ABtn.Glyph, AIconClass, clBlack, clBtnFace);
+    SetGlyphInfo(ABtn, ABtn.Glyph, AIconClass, False);
+    RenderGlyph(ABtn, False, clBlack, clTeal, FBox.Color, nil, ABtn.Glyph);
+  end
+  else
+  begin
+    // Значка нет - имя класса без Q (QSTRINGLIST - STRINGLIST); класс
+    // не на Q (ComPort из RQControls.inc) - как есть
+    if (AClass <> '') and (AClass[1] in ['Q', 'q']) then
+      ABtn.Caption := Copy(AClass, 2, MaxInt)
+    else
+      ABtn.Caption := AClass;
+    FMeter.Canvas.Font := Font;
+    BtnWidth := FMeter.Canvas.TextWidth(ABtn.Caption) + 10;
+    if BtnWidth < BtnSize then
+      BtnWidth := BtnSize;
+  end;
+  PosX := FNextX[APage];
+  FNextX[APage] := PosX + BtnWidth + 1;
+  Inc(FRow1Count[APage]);
+  ABtn.SetBounds(PosX, 1, BtnWidth, BtnSize);
+  TList(FPageBtns[APage]).Add(ABtn);
+  FForeign.AddObject('RapidQ.' + AClass, ABtn);
+end;
+
+procedure TDsgPalette.SetPage(APage: Integer);
+var
+  TabIdx: Integer;
+begin
+  TabIdx := FTabPages.IndexOf(Pointer(APage));
+  if (TabIdx < 0) or (TabIdx = FTabs.TabIndex) then
+    Exit;
+  FTabs.TabIndex := TabIdx;
+  ShowPage;
+end;
+
+function TDsgPalette.PageIndex: Integer;
+begin
+  Result := CurPage;
+end;
+
+function TDsgPalette.PageCount: Integer;
+begin
+  Result := FPageNames.Count;
 end;
 
 function TDsgPalette.ForeignOf(ABtn: TControl): string;

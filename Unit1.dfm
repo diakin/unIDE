@@ -1,8 +1,8 @@
 object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
-  Left = 213
-  Top = 101
-  Width = 1111
+  Left = 45
+  Top = 264
+  Width = 1407
   Height = 910
   Caption = 'Form1 current'
   Color = 10944511
@@ -57,10 +57,10 @@ object Form1: TForm1
       Left = 0
       Top = 324
       Width = 0
-      Height = 6
+      Height = 4
       Cursor = crVSplit
       Align = alBottom
-      Color = clSkyBlue
+      Color = $00CD6700
       ParentColor = False
     end
     object Panel2: TPanel
@@ -98,7 +98,8 @@ object Form1: TForm1
         Tabs.Strings = (
           'Compilation log'
           'Error log'
-          'HiLite log')
+          'HiLite log'
+          'Runtime log')
         TabIndex = 0
       end
       object pnlCompLog: TPanel
@@ -184,19 +185,50 @@ object Form1: TForm1
           WordWrap = False
         end
       end
+      object pnlRunLog: TPanel
+        Left = 0
+        Top = 22
+        Width = 0
+        Height = 105
+        Align = alClient
+        BevelOuter = bvNone
+        ParentBackground = False
+        TabOrder = 4
+        Visible = False
+        object RuntimeLog: TRichEdit
+          Left = 0
+          Top = 0
+          Width = 0
+          Height = 105
+          Align = alClient
+          BorderStyle = bsNone
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -14
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          ScrollBars = ssBoth
+          TabOrder = 0
+          WordWrap = False
+        end
+      end
     end
     object FTabs: TUiTabControl
       Top = 0
       Height = 30
+      MultiLine = True
       ParentFont = False
       Font.Name = 'Tahoma'
       Font.Size = 10
       Align = alTop
       OwnerDraw = True
+      Style = tsButtons
       OnMouseDown = TabsMouseDown
       PopupMenu = FTabsPopup
     end
     object FLeftHost: TPanel
+      BevelWidth = 0
       BevelOuter = bvNone
       Caption = ''
       Align = alClient
@@ -295,7 +327,7 @@ object Form1: TForm1
       Top = 0
       Width = 12
       Height = 457
-      Align = alClient
+      Align = alLeft
       OnClick = MarksBoxClick
       OnDblClick = MarksBoxDblClick
       OnMouseDown = MarksBoxMouseDown
@@ -325,10 +357,52 @@ object Form1: TForm1
           Hint = '.txt'
         end
         object mNewItem2: TMenuItem
-          Caption = 'Pascal Unit'
-          OnClick = NewFileClick
+          Caption = 'Pascal'
           ShortCut = 0
-          Hint = '.pas'
+          object mNewPasApp: TMenuItem
+            Caption = 'Application'
+            OnClick = NewPasAppClick
+            ShortCut = 0
+          end
+          object mNewPasForm: TMenuItem
+            Caption = 'Form'
+            OnClick = NewPasFormClick
+            ShortCut = 0
+          end
+          object mNewPasUnit: TMenuItem
+            Caption = 'Unit'
+            OnClick = NewPasUnitClick
+            ShortCut = 0
+          end
+          object mNewPasDataMod: TMenuItem
+            Caption = 'Data Module'
+            OnClick = NewPasDataModuleClick
+            ShortCut = 0
+          end
+          object mNewPasFrame: TMenuItem
+            Caption = 'Frame'
+            OnClick = NewPasFrameClick
+            ShortCut = 0
+          end
+          object mNewPasDll: TMenuItem
+            Caption = 'DLL'
+            OnClick = NewPasDllClick
+            ShortCut = 0
+          end
+          object mNewPasConsole: TMenuItem
+            Caption = 'Console Application'
+            OnClick = NewPasConsoleClick
+            ShortCut = 0
+          end
+          object mNewPasSep: TMenuItem
+            Caption = '-'
+            ShortCut = 0
+          end
+          object mNewPasOther: TMenuItem
+            Caption = 'Other...'
+            OnClick = NewPasOtherClick
+            ShortCut = 0
+          end
         end
         object mNewItem3: TMenuItem
           Caption = 'BASIC File'
@@ -487,6 +561,31 @@ object Form1: TForm1
         Caption = 'Конструктор формы'
         OnClick = DesignFormClick
       end
+      object mViewFmt: TMenuItem
+        Caption = 'Просмотр по формату'
+        Enabled = False
+        OnClick = FmtViewClick
+        ShortCut = 123
+      end
+      object mViewSplitSep: TMenuItem
+        Caption = '-'
+      end
+      object mViewSplitV: TMenuItem
+        Caption = 'Разделить по вертикали'
+        RadioItem = True
+        OnClick = SplitVClick
+      end
+      object mViewSplitH: TMenuItem
+        Caption = 'Разделить по горизонтали'
+        RadioItem = True
+        OnClick = SplitHClick
+      end
+      object mViewSplitOff: TMenuItem
+        Caption = 'Без разделения'
+        Checked = True
+        RadioItem = True
+        OnClick = SplitOffClick
+      end
       object mViewIcons: TMenuItem
         Caption = 'Palette Icons...'
       end
@@ -503,6 +602,10 @@ object Form1: TForm1
         object mPrjDeleteWrong: TMenuItem
           Caption = 'Delete wrong projects names'
           OnClick = DeleteWrongProjectsClick
+        end
+        object mPrjTidyIni: TMenuItem
+          Caption = 'Tidy editor.ini...'
+          OnClick = TidyIniClick
         end
       end
       object mProjectLine1: TMenuItem
@@ -570,7 +673,8 @@ object Form1: TForm1
         OnClick = CloseCurrentWindowClick
       end
       object mWinDeleteDisabled: TMenuItem
-        Caption = 'Delete disabled Windows'
+        Caption = 'Remove missing files from list'
+        Hint = 'Убрать из списка окна, файлов которых нет на диске (с красным крестиком)'
       end
       object mWinCheckNames: TMenuItem
         Caption = 'Check wrong file names'
@@ -641,13 +745,107 @@ object Form1: TForm1
         Enabled = False
       end
     end
+    object mArduino: TMenuItem
+      Caption = '&Arduino'
+      object mArdBoards: TMenuItem
+        Caption = 'Board Manager...'
+        OnClick = mArdBoardsClick
+        Hint = 'Платформы и платы arduino-cli (core, board)'
+      end
+      object mArdLibs: TMenuItem
+        Caption = 'Library Manager...'
+        OnClick = mArdLibsClick
+        Hint = 'Библиотеки Arduino (library_index.json, lib)'
+      end
+      object mArdSep: TMenuItem
+        Caption = '-'
+      end
+      object mArdCli: TMenuItem
+        Caption = 'Arduino CLI Help...'
+        OnClick = mArdCliClick
+        Hint = 'Команды arduino-cli и их справка'
+      end
+    end
+    object mUtils: TMenuItem
+      Caption = '&Utils'
+      object mIncManager: TMenuItem
+        Caption = 'IncManager...'
+        OnClick = IncManagerClick
+      end
+      object mFindInc: TMenuItem
+        Caption = 'Find inc file...'
+        OnClick = FindIncClick
+      end
+      object mUtilsSep1: TMenuItem
+        Caption = '-'
+      end
+      object mFar: TMenuItem
+        Caption = 'unIDE FAR'
+        OnClick = FarMenuClick
+      end
+    end
     object mOptions: TMenuItem
       Caption = '&Options'
-      OnClick = mOptionsClick
+      object mOptionsIde: TMenuItem
+        Caption = 'IDE Options...'
+        OnClick = mOptionsClick
+      end
     end
     object mHelp: TMenuItem
       Caption = '&Help'
-      OnClick = mHelpClick
+      object mHelpRq: TMenuItem
+        Caption = '&RapidQ'
+        Hint = 'Справка RapidQ: rapidq_ref\help\rapidq.chm (F1 - по слову под кареткой)'
+        object mHelpRqContents: TMenuItem
+          Tag = 1
+          Caption = '&Contents'
+          OnClick = mHelpRqClick
+        end
+        object mHelpRqComps: TMenuItem
+          Tag = 2
+          Caption = 'Components (Appendix &A)'
+          OnClick = mHelpRqClick
+        end
+        object mHelpRqCustom: TMenuItem
+          Tag = 3
+          Caption = 'Custom components (Appendix &B)'
+          OnClick = mHelpRqClick
+          Hint = 'Компоненты из rapidq_ref\inc (TYPE ... EXTENDS)'
+        end
+        object mHelpRqIndex: TMenuItem
+          Tag = 4
+          Caption = 'Keyword &index'
+          OnClick = mHelpRqClick
+        end
+        object mHelpRqFuncs: TMenuItem
+          Tag = 6
+          Caption = 'Include &functions (Appendix D)'
+          OnClick = mHelpRqClick
+          Hint = 'Функции RQProc.inc: Windows API и процедуры старых inc, по файлам'
+        end
+        object mHelpWinApi: TMenuItem
+          Tag = 7
+          Caption = '&Windows API reference (Microsoft)'
+          OnClick = mHelpRqClick
+          Hint = 'https://learn.microsoft.com/en-us/windows/win32/api/ - в браузере'
+        end
+        object mHelpRqSep: TMenuItem
+          Caption = '-'
+        end
+        object mHelpRqHtml: TMenuItem
+          Tag = 5
+          Caption = '&HTML pages in browser'
+          OnClick = mHelpRqClick
+          Hint = 'rapidq_ref\html_doc\contents.html - та же справка страницами HTML'
+        end
+      end
+      object mHelpSep: TMenuItem
+        Caption = '-'
+      end
+      object mHelpAbout: TMenuItem
+        Caption = '&About...'
+        OnClick = mHelpClick
+      end
     end
   end
   object FontDialog1: TFontDialog
@@ -702,11 +900,36 @@ object Form1: TForm1
       OnClick = CloseAllTabsClick
       ShortCut = 0
     end
+    object FTabsPopupItem5: TMenuItem
+      Caption = '-'
+      ShortCut = 0
+    end
+    object FTabsPopupItem6: TMenuItem
+      Caption = 'Во второй панели'
+      OnClick = TabToSplitClick
+      ShortCut = 0
+    end
   end
   object FPopupMenu: TUiPopupMenu
     OnPopup = PopupMenuPopup
     Left = 16
     Top = 584
+    object pmuFmtText: TMenuItem
+      Caption = 'Как текст'
+      RadioItem = True
+      Visible = False
+      OnClick = FmtModeClick
+    end
+    object pmuFmtFormat: TMenuItem
+      Caption = 'По формату'#9'F12'
+      RadioItem = True
+      Visible = False
+      OnClick = FmtModeClick
+    end
+    object pmuSepFmt: TMenuItem
+      Caption = '-'
+      Visible = False
+    end
     object pmuSearch: TMenuItem
       Caption = 'Search {}'
       OnClick = SearchSelectedClick
@@ -728,6 +951,10 @@ object Form1: TForm1
     object pmuAddWatch: TMenuItem
       Caption = 'Add watch'#9'Ctrl+F5'
       OnClick = AddWatchClick
+    end
+    object pmuBreakCond: TMenuItem
+      Caption = 'Breakpoint condition...'
+      OnClick = BreakCondClick
     end
     object pmuSepRun: TMenuItem
       Caption = '-'
@@ -780,6 +1007,11 @@ object Form1: TForm1
       Caption = 'Clear'
       OnClick = ClearAllClick
     end
+    object pmuNoGuides: TMenuItem
+      Caption = 'Очистить формат'
+      Hint = 'Не рисовать вертикальные линии отступов в этой вкладке'
+      OnClick = NoGuidesClick
+    end
     object pmuSepCase: TMenuItem
       Caption = '-'
     end
@@ -790,6 +1022,32 @@ object Form1: TForm1
     object pmuLower: TMenuItem
       Caption = 'To LowerCase {}'
       OnClick = CaseConvertClick
+    end
+  end
+  object FFmtPopup: TUiPopupMenu
+    OnPopup = FmtPopupPopup
+    Left = 16
+    Top = 616
+    object fmpText: TMenuItem
+      Caption = 'Как текст'#9'F12'
+      RadioItem = True
+      OnClick = FmtModeClick
+    end
+    object fmpFormat: TMenuItem
+      Caption = 'По формату'
+      RadioItem = True
+      OnClick = FmtModeClick
+    end
+    object fmpSep: TMenuItem
+      Caption = '-'
+    end
+    object fmpCopy: TMenuItem
+      Caption = 'Копировать'#9'Ctrl+C'
+      OnClick = FmtCopyClick
+    end
+    object fmpSelectAll: TMenuItem
+      Caption = 'Выделить всё'#9'Ctrl+A'
+      OnClick = FmtSelectAllClick
     end
   end
   object FLogPopup: TUiPopupMenu
@@ -834,6 +1092,15 @@ object Form1: TForm1
       Tag = 6
       OnClick = LogPopupClick
     end
+    object FLogPopupItem9: TMenuItem
+      Caption = '-'
+      Tag = 0
+    end
+    object FLogPopupItem10: TMenuItem
+      Caption = 'Sa&ve all logs'
+      Tag = 7
+      OnClick = LogPopupClick
+    end
   end
   object FToolbar: TPanel
     Align = alTop
@@ -841,92 +1108,23 @@ object Form1: TForm1
     BevelOuter = bvNone
     Color = 15790320
     object FLeftPanel: TPanel
-      Width = 280
+      Width = 477
       Align = alLeft
       BevelOuter = bvNone
-      object grpToolbar: TUiGroupBox
-        Align = alTop
-        Height = 54
-        Caption = ''
-        object pnlToolbarIn: TPanel
-          Align = alClient
-          BevelOuter = bvNone
-          ParentFont = True
-          object btnOpen: TUiIconButton
-            Left = 2
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Открыть файл'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnSave: TUiIconButton
-            Left = 37
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Сохранить файл'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnSavePrj: TUiIconButton
-            Left = 72
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Сохранить проект'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnUndo: TUiIconButton
-            Left = 117
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Отменить'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnCut: TUiIconButton
-            Left = 152
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Вырезать'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnCopy: TUiIconButton
-            Left = 187
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Копировать'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnPaste: TUiIconButton
-            Left = 222
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Вставить'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-        end
-      end
       object grpCompiler: TUiGroupBox
-        Align = alClient
+        Color = clPurple
+        Align = alBottom
         Caption = 'Project'
+        Height = 98
         object pnlCompilerIn: TPanel
-          Align = alClient
+          Color = clTeal
+          Align = alTop
           BevelOuter = bvNone
           ParentFont = True
+          Height = 33
           object btnCompileRun: TUiIconButton
-            Left = 128
-            Top = 8
+            Left = 122
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'Собрать проект dcc32 и запустить, если без ошибок'
@@ -934,8 +1132,8 @@ object Form1: TForm1
             OnClick = btnCompileRunClick
           end
           object btnViewUnit: TUiIconButton
-            Left = 8
-            Top = 8
+            Left = 2
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'View Unit - список модулей'
@@ -943,8 +1141,8 @@ object Form1: TForm1
             OnClick = ShowModulesClick
           end
           object btnViewForm: TUiIconButton
-            Left = 48
-            Top = 8
+            Left = 42
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'View Form - список форм'
@@ -952,8 +1150,8 @@ object Form1: TForm1
             OnClick = ShowFormsClick
           end
           object btnNewForm: TUiIconButton
-            Left = 88
-            Top = 8
+            Left = 82
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'New Form - новая форма'
@@ -961,8 +1159,8 @@ object Form1: TForm1
             OnClick = NewFormClick
           end
           object btnPause: TUiIconButton
-            Left = 165
-            Top = 8
+            Left = 159
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'Program pause - остановить программу там, где она сейчас'
@@ -970,8 +1168,8 @@ object Form1: TForm1
             OnClick = ProgramPauseClick
           end
           object btnProgReset: TUiIconButton
-            Left = 200
-            Top = 8
+            Left = 194
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'Program reset - остановить запущенную программу'
@@ -979,8 +1177,8 @@ object Form1: TForm1
             OnClick = ProgramResetClick
           end
           object btnTraceInto: TUiIconButton
-            Left = 235
-            Top = 8
+            Left = 229
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'Trace into (F7)'
@@ -988,20 +1186,177 @@ object Form1: TForm1
             OnClick = TraceIntoClick
           end
           object btnStepOver: TUiIconButton
-            Left = 270
-            Top = 8
+            Left = 264
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'Step over (F8)'
             ShowHint = True
             OnClick = StepOverClick
           end
+          object btnArdVerify: TUiIconButton
+            Left = 2
+            Top = 0
+            Width = 34
+            Height = 34
+            Hint = 'Verify - собрать скетч (arduino-cli compile)'
+            ShowHint = True
+            Visible = False
+            OnClick = ArdVerifyClick
+          end
+          object btnArdUpload: TUiIconButton
+            Left = 37
+            Top = 0
+            Width = 34
+            Height = 34
+            Hint = 'Upload - собрать скетч и загрузить в плату'
+            ShowHint = True
+            Visible = False
+            OnClick = ArdUploadClick
+          end
+        end
+        object pnlBuildKind: TPanel
+          Align = alClient
+          BevelOuter = bvNone
+          ParentFont = True
+          object cmbBuildKind: TUiComboBox
+            Left = 8
+            Top = 24
+            Width = 96
+            Style = csDropDownList
+            ShowHint = True
+            OnChange = cmbBuildKindChange
+            Height = 21
+          end
+          object lblBuildTarget: TUiLabel
+            Left = 8
+            Top = 8
+            Width = 129
+            Height = 13
+            Anchors = [akLeft, akTop, akRight]
+            AutoSize = False
+            ShowHint = True
+          end
+          object cmbArdPort: TUiComboBox
+            Left = 110
+            Top = 24
+            Width = 160
+            Height = 21
+            Style = csDropDownList
+            ShowHint = True
+            Hint = 'Плата на USB, с которой работать (порт для Upload и Serial Monitor)'
+            Visible = False
+            OnChange = cmbArdPortChange
+          end
+          object cmbFbKind: TUiComboBox
+            Left = 110
+            Top = 24
+            Width = 76
+            Height = 21
+            Style = csDropDownList
+            ShowHint = True
+            Hint = 'Вид результата FreeBASIC: GUI, Console, DLL'
+            Visible = False
+            OnChange = cmbFbBuildChange
+          end
+          object cmbRqComp: TUiComboBox
+            Left = 110
+            Top = 24
+            Width = 84
+            Height = 21
+            Style = csDropDownList
+            ShowHint = True
+            Hint = 'Чем собирать программу RapidQ: rc.exe или FreeBASIC (Smart, Compat)'
+            Visible = False
+            OnChange = cmbRqCompChange
+          end
+          object cmbFbBits: TUiComboBox
+            Left = 190
+            Top = 24
+            Width = 44
+            Height = 21
+            Style = csDropDownList
+            ShowHint = True
+            Hint = 'Разрядность FreeBASIC: 32 или 64 бит'
+            Visible = False
+            OnChange = cmbFbBuildChange
+          end
+        end
+      end
+      object pnlToolbarIn: TPanel
+        Color = clGreen
+        Align = alTop
+        BevelOuter = bvNone
+        ParentFont = True
+        Height = 32
+        object btnOpen: TUiIconButton
+          Left = 2
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Открыть файл'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnSave: TUiIconButton
+          Left = 37
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Сохранить файл'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnSavePrj: TUiIconButton
+          Left = 72
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Сохранить проект'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnUndo: TUiIconButton
+          Left = 117
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Отменить'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnCut: TUiIconButton
+          Left = 152
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Вырезать'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnCopy: TUiIconButton
+          Left = 187
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Копировать'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnPaste: TUiIconButton
+          Left = 222
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Вставить'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
         end
       end
     end
     object grpSearch: TUiGroupBox
       Align = alLeft
-      Width = 560
+      Width = 267
       Caption = 'Search and replace'
       object pnlSearchIn: TPanel
         Align = alClient
@@ -1026,36 +1381,31 @@ object Form1: TForm1
           Height = 22
           OnClick = DoFindNext
         end
-        object chkList: TUiCheckBox
-          Top = 4
-          Width = 40
-          Caption = 'List'
-        end
         object cmbReplace: TUiComboBox
           Left = 4
           Top = 26
         end
         object BtnRepl: TUiButton
           Caption = 'Replace'
-          Left = 110
-          Top = 25
+          Left = 160
+          Top = 28
           Width = 54
           Height = 22
           OnClick = DoReplace
         end
         object BtnAll: TUiButton
           Caption = 'All'
-          Left = 167
-          Top = 25
+          Left = 221
+          Top = 29
           Width = 34
           Height = 22
           OnClick = DoReplaceAll
         end
         object UndoBtn: TUiButton
           Caption = 'Undo'
-          Left = 204
-          Top = 25
-          Width = 46
+          Left = 10
+          Top = 86
+          Width = 250
           Height = 22
           OnClick = UndoReplaceAllClick
           ParentFont = False
@@ -1063,25 +1413,24 @@ object Form1: TForm1
           Hint = 'Отменить массовую замену (All)'
         end
         object cmbMode: TUiComboBox
-          Left = 4
-          Top = 50
+          Left = 8
+          Top = 56
           Style = csDropDownList
+          Width = 72
+          Height = 21
         end
         object chkCase: TUiCheckBox
-          Top = 52
+          Top = 58
           Caption = 'Case'
-        end
-        object btnFindInFiles: TUiButton
-          Top = 49
-          Height = 22
-          Caption = 'Find In Files'
-          OnClick = FindInFilesClick
+          Left = 90
+          Width = 44
+          Height = 17
         end
         object cmbScope: TUiComboBox
-          Top = 72
+          Top = 56
           Style = csDropDownList
-          Left = 0
-          Width = 145
+          Left = 224
+          Width = 80
           Height = 21
         end
       end
@@ -1100,13 +1449,17 @@ object Form1: TForm1
     Menu = MainMenu1
   end
   object FRightPanel: TPanel
+    BevelWidth = 0
+    Color = clTeal
     BevelOuter = bvNone
     Caption = ''
     Align = alRight
     object FSplitBar: TPanel
+      BevelWidth = 0
+      Color = $00D06800
       Caption = ''
       Width = 5
-      BevelOuter = bvRaised
+      BevelOuter = bvSpace
       Cursor = crHSplit
       Align = alLeft
       OnMouseDown = SplitBarMouseDown
@@ -1241,17 +1594,30 @@ object Form1: TForm1
                 Visible = False
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
+                Left = 128
+                Top = 0
+                Width = 72
+                Height = 21
               end
               object FObjCombo: TUiComboBox
                 Visible = False
                 DropDownCount = 16
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
+                Left = 264
+                Top = 0
+                Width = 41
+                Height = 21
               end
               object FObjSetList: TCheckListBox
                 Visible = False
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
+                Left = 208
+                Top = 0
+                Width = 41
+                Height = 24
+                OnClick = FObjSetListClick
               end
             end
           end

@@ -1,0 +1,26 @@
+Set_Popup 1
+Xp=3 caption=XP
+SetXp 7 caption XP
+Xp=7
+Panel 4026 color 00EEEEEE
+UsePopup=1 LineCount=42
+Delete 1
+Set_Popup 0
+UsePopup=0
+Exist=0 FileName=nofile.ini Get=main.key
+Get=def
+IniDone: done s2
+IniTick
+tabs 3 3
+tabs 2 2 Two
+tabs 2
+own SetFocus
+global caption
+AddThree 6 items 6
+QBtnX own OnClick 1
+user click, Xp=7, inherit:
+QBtnX own OnClick 2
+mouse down 057
+mouse up 68 downs 1
+Downs=1 down5
+end

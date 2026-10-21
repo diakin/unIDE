@@ -1,0 +1,28 @@
+start
+module: 1
+module: 2
+module: after second
+params: 7 txt 14 33
+params: 7 txt 15 33
+params after: 15
+func: 105
+func result: 106
+loop at 3 sum 6
+loop at 6 sum 21
+loop at 9 sum 45
+loop: 55 3
+recurse: 3 level3
+recurse: 2 level2
+recurse: 1 level1
+same: A
+same: B
+nested: outer 1
+nested: inner
+nested: outer 2
+nested: done
+inline: mark1
+inline: no
+inline: end 1
+inline: mark2
+inline: end 2
+end 2

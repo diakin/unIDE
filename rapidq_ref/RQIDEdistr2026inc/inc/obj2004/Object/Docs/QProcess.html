@@ -1,0 +1,250 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QProcess</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation composant par D.Glodt (c)2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QProcess</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QProcess Composant</h1>
+
+<dd>
+QProcess est un composant non visible charger d'ex&eacute;cuter un processus
+en arriere plan via une routine utilisateur.</dd>
+
+<br><a NAME="1"></a><b><font size=+1>QProcess Propriet&eacute;s</font></b>
+<table BORDER=0 WIDTH="100%" >
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Priority</td>
+
+<td>LONG</td>
+
+<td>L/E</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Priorit&eacute; du processus avec les valeurs suivantes:
+<br>ProcessLow=-2
+<br>ProcessBelowNormal=-1
+<br>ProcessNormal=0
+<br>ProcessHight=2
+<br>ProcessAboveNormal=1
+<br>ProcessTimeCritical=15
+<br>ProcessIdle=-15</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QProcess Methodes</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Methode</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Open</td>
+
+<td>SUB</td>
+
+<td>Lance le processus</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Close</td>
+
+<td>SUB</td>
+
+<td>Stop le processus</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QProcess Evenements</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Evenement</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Declenchement</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnProcess</td>
+
+<td></td>
+
+<td>Ex&eacute;cution du process</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QProcess Exemples</font></b>
+<pre><b><font color="#0000A0">$TYPECHECK</font></b> ON
+<b><font color="#0000A0">$INCLUDE</font></b> "<font color="#800000">RAPIDQ.INC</font>"
+<b><font color="#0000A0">$include</font></b> "<font color="#800000">Object\QProcess.inc</font>"
+<i><font color="#008000">'Subs internes</font></i>&nbsp;
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> rout1
+<b><font color="#0000A0">DECLARE</font></b> <b><font color="#0000A0">SUB</font></b> OpenClick
+<b><font color="#0000A0">DECLARE</font></b> <b><font color="#0000A0">SUB</font></b> SendClick
+<b><font color="#0000A0">DECLARE</font></b> <b><font color="#0000A0">SUB</font></b> fin
+<i><font color="#008000">'Variables globales</font></i>&nbsp;
+<b><font color="#0000A0">dim</font></b> num <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long
+dim</font></b> process <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QProcess
+</font></b>process.OnProcess=rout1 <i><font color="#008000">'routine processus</font></i></pre>
+
+<pre><b><font color="#0000A0">CREATE</font></b> Form <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QFORM
+</font></b>&nbsp; Caption = "<font color="#800000">Test process</font>"
+&nbsp; Width=200
+&nbsp; Height=200
+&nbsp; Center
+&nbsp; <b><font color="#0000A0">CREATE</font></b> OpenButton <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QBUTTON
+</font></b>&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Open</font>"
+&nbsp;&nbsp;&nbsp; Left=20
+&nbsp;&nbsp;&nbsp; Top=50
+&nbsp;&nbsp;&nbsp; height=20
+&nbsp;&nbsp;&nbsp; OnClick=OpenClick
+&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp; <b><font color="#0000A0">CREATE</font></b> butexit <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QBUTTON
+</font></b>&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Close</font>"
+&nbsp;&nbsp;&nbsp; Left=20
+&nbsp;&nbsp;&nbsp; Top=75
+&nbsp;&nbsp;&nbsp; height=20
+&nbsp;&nbsp;&nbsp; Enabled=0
+&nbsp;&nbsp;&nbsp; OnClick=fin
+&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp; <b><font color="#0000A0">CREATE</font></b> ED <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QEDIT
+</font></b>&nbsp;&nbsp;&nbsp; left=10
+&nbsp;&nbsp;&nbsp; top=10
+&nbsp;&nbsp;&nbsp; width=100
+&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+END</font></b> <b><font color="#0000A0">CREATE
+</font></b>Form.ShowModal
+
+<b><font color="#0000A0">SUB</font></b> fin
+&nbsp; process.close
+&nbsp; OpenButton.enabled=1
+<b><font color="#0000A0">end</font></b> <b><font color="#0000A0">sub
+
+SUB</font></b> OpenClick&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp; OpenButton.enabled=0
+&nbsp; butexit.enabled=1
+&nbsp; process.priority=ProcessNormal
+&nbsp; process.open
+<b><font color="#0000A0">END</font></b> <b><font color="#0000A0">SUB
+
+sub</font></b> rout1 <i><font color="#008000">'routine processus
+</font></i>&nbsp; <b><font color="#0000A0">while</font></b> true
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">sleep</font></b> 0.1&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; num++
+&nbsp;&nbsp;&nbsp; ed.text="<font color="#800000">Count</font>"+<b><font color="#0000A0">str$</font>(</b>num<b>)</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp; <b><font color="#0000A0">wend
+end</font></b> <b><font color="#0000A0">sub</font></b>
+
+</pre>
+&nbsp;
+<p>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

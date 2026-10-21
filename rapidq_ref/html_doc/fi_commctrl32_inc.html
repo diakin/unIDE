@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>commctrl32.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: commctrl32.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>commctrl32.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/commctrl32.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 56 functions &middot; 56 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#CREATESTATUSWINDOW">CreateStatusWindow</a> &middot; <a href="#CREATEUPDOWNCONTROL">CreateUpDownControl</a> &middot; <a href="#DESTROYPROPERTYSHEETPAGE">DestroyPropertySheetPage</a> &middot; <a href="#DRAWINSERT">DrawInsert</a> &middot; <a href="#DRAWSTATUSTEXT">DrawStatusText</a> &middot; <a href="#FLATSB_ENABLESCROLLBAR">FlatSB_EnableScrollBar</a> &middot; <a href="#FLATSB_GETSCROLLPOS">FlatSB_GetScrollPos</a> &middot; <a href="#FLATSB_GETSCROLLPROP">FlatSB_GetScrollProp</a> &middot; <a href="#FLATSB_GETSCROLLRANGE">FlatSB_GetScrollRange</a> &middot; <a href="#FLATSB_SETSCROLLINFO">FlatSB_SetScrollInfo</a> &middot; <a href="#FLATSB_SETSCROLLPOS">FlatSB_SetScrollPos</a> &middot; <a href="#FLATSB_SETSCROLLRANGE">FlatSB_SetScrollRange</a> &middot; <a href="#FLATSB_SHOWSCROLLBAR">FlatSB_ShowScrollBar</a> &middot; <a href="#GETEFFECTIVECLIENTRECT">GetEffectiveClientRect</a> &middot; <a href="#GETMUILANGUAGE">GetMUILanguage</a> &middot; <a href="#IMAGELIST_ADD">ImageList_Add</a> &middot; <a href="#IMAGELIST_ADDMASKED">ImageList_AddMasked</a> &middot; <a href="#IMAGELIST_BEGINDRAG">ImageList_BeginDrag</a> &middot; <a href="#IMAGELIST_COPY">ImageList_Copy</a> &middot; <a href="#IMAGELIST_CREATE">ImageList_Create</a> &middot; <a href="#IMAGELIST_DESTROY">ImageList_Destroy</a> &middot; <a href="#IMAGELIST_DRAGENTER">ImageList_DragEnter</a> &middot; <a href="#IMAGELIST_DRAGLEAVE">ImageList_DragLeave</a> &middot; <a href="#IMAGELIST_DRAGMOVE">ImageList_DragMove</a> &middot; <a href="#IMAGELIST_DRAGSHOWNOLOCK">ImageList_DragShowNolock</a> &middot; <a href="#IMAGELIST_DRAW">ImageList_Draw</a> &middot; <a href="#IMAGELIST_DRAWEX">ImageList_DrawEx</a> &middot; <a href="#IMAGELIST_DRAWINDIRECT">ImageList_DrawIndirect</a> &middot; <a href="#IMAGELIST_DUPLICATE">ImageList_Duplicate</a> &middot; <a href="#IMAGELIST_ENDDRAG">ImageList_EndDrag</a> &middot; <a href="#IMAGELIST_GETBKCOLOR">ImageList_GetBkColor</a> &middot; <a href="#IMAGELIST_GETDRAGIMAGE">ImageList_GetDragImage</a> &middot; <a href="#IMAGELIST_GETICON">ImageList_GetIcon</a> &middot; <a href="#IMAGELIST_GETICONSIZE">ImageList_GetIconSize</a> &middot; <a href="#IMAGELIST_GETIMAGECOUNT">ImageList_GetImageCount</a> &middot; <a href="#IMAGELIST_GETIMAGEINFO">ImageList_GetImageInfo</a> &middot; <a href="#IMAGELIST_LOADIMAGE">ImageList_LoadImage</a> &middot; <a href="#IMAGELIST_MERGE">ImageList_Merge</a> &middot; <a href="#IMAGELIST_READ">ImageList_Read</a> &middot; <a href="#IMAGELIST_REMOVE">ImageList_Remove</a> &middot; <a href="#IMAGELIST_REPLACE">ImageList_Replace</a> &middot; <a href="#IMAGELIST_REPLACEICON">ImageList_ReplaceIcon</a> &middot; <a href="#IMAGELIST_SETBKCOLOR">ImageList_SetBkColor</a> &middot; <a href="#IMAGELIST_SETDRAGCURSORIMAGE">ImageList_SetDragCursorImage</a> &middot; <a href="#IMAGELIST_SETICONSIZE">ImageList_SetIconSize</a> &middot; <a href="#IMAGELIST_SETIMAGECOUNT">ImageList_SetImageCount</a> &middot; <a href="#IMAGELIST_SETOVERLAYIMAGE">ImageList_SetOverlayImage</a> &middot; <a href="#IMAGELIST_WRITE">ImageList_Write</a> &middot; <a href="#INITCOMMONCONTROLSEX">InitCommonControlsEx</a> &middot; <a href="#INITIALIZEFLATSB">InitializeFlatSB</a> &middot; <a href="#INITMUILANGUAGE">InitMUILanguage</a> &middot; <a href="#LBITEMFROMPT">LBItemFromPt</a> &middot; <a href="#MAKEDRAGLIST">MakeDragList</a> &middot; <a href="#MENUHELP">MenuHelp</a> &middot; <a href="#SHOWHIDEMENUCTL">ShowHideMenuCtl</a> &middot; <a href="#UNINITIALIZEFLATSB">UninitializeFlatSB</a></p>
+<h3><a name="CREATESTATUSWINDOW"></a>CreateStatusWindow</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9957</p>
+<pre>Declare Function CreateStatusWindow LIB &quot;ComCtl32&quot; ALIAS &quot;CreateStatusWindow&quot; (ByVal style As Integer, ByVal lpszText As String, ByVal hwndParent As Integer, ByVal wID As Integer) As Integer</pre>
+<p>Creates a status window, typically displayed at the bottom of the parent window. Deprecated; use CreateWindow with STATUSCLASSNAME.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateStatusWindow">CreateStatusWindow</a></p>
+<h3><a name="CREATEUPDOWNCONTROL"></a>CreateUpDownControl</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9959</p>
+<pre>Declare Function CreateUpDownControl LIB &quot;ComCtl32&quot; ALIAS &quot;CreateUpDownControl&quot; (ByVal dwStyle As Integer, ByVal x As Integer, ByVal y As Integer, ByVal cx As Integer, ByVal cy As Integer, ByVal hParent As Integer, ByVal nID As Integer, ByVal hInst As Integer, ByVal hBuddy As Integer, ByVal nUpper As Integer, ByVal nLower As Integer, ByVal nPos As Integer) As Integer</pre>
+<p>Creates an up-down control with the given style, position, buddy window, range and position. Deprecated; use CreateWindow with UPDOWN_CLASS.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateUpDownControl">CreateUpDownControl</a></p>
+<h3><a name="DESTROYPROPERTYSHEETPAGE"></a>DestroyPropertySheetPage</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9960</p>
+<pre>Declare Function DestroyPropertySheetPage LIB &quot;ComCtl32&quot; ALIAS &quot;DestroyPropertySheetPage&quot; (ByVal hpropsheetpage As Integer) As Integer</pre>
+<p>Destroys a property sheet page created with CreatePropertySheetPage; needed only for pages not passed to PropertySheet.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DestroyPropertySheetPage">DestroyPropertySheetPage</a></p>
+<h3><a name="DRAWINSERT"></a>DrawInsert</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9961</p>
+<pre>Declare Sub DrawInsert LIB &quot;ComCtl32&quot; ALIAS &quot;DrawInsert&quot; (ByVal handParent As Integer, ByVal hLB As Integer, ByVal nItem As Integer)</pre>
+<p>Draws the insert icon in the parent window of a drag list box at the position of the specified item.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawInsert">DrawInsert</a></p>
+<h3><a name="DRAWSTATUSTEXT"></a>DrawStatusText</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9962</p>
+<pre>Declare Sub DrawStatusText LIB &quot;ComCtl32&quot; ALIAS &quot;DrawStatusText&quot; (ByVal hDC As Integer, ByRef lprc As QRECT, ByVal pszText As String, ByVal uFlags As Integer)</pre>
+<p>Draws the specified text in the style of a status window with borders, inside a rectangle of a device context.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DrawStatusText">DrawStatusText</a></p>
+<h3><a name="FLATSB_ENABLESCROLLBAR"></a>FlatSB_EnableScrollBar</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9963</p>
+<pre>Declare Function FlatSB_EnableScrollBar LIB &quot;ComCtl32&quot; ALIAS &quot;FlatSB_EnableScrollBar&quot; (ByVal hwnd As Integer, ByValt As Integer, ByVal uint As Integer) As Integer</pre>
+<p>Enables or disables one or both flat scroll bar direction buttons.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FlatSB_EnableScrollBar">FlatSB_EnableScrollBar</a></p>
+<h3><a name="FLATSB_GETSCROLLPOS"></a>FlatSB_GetScrollPos</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9965</p>
+<pre>Declare Function FlatSB_GetScrollPos LIB &quot;ComCtl32&quot; ALIAS &quot;FlatSB_GetScrollPos&quot; (ByVal hwnd As Integer, ByVal code As Integer) As Integer</pre>
+<p>Gets the thumb position in a flat scroll bar.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FlatSB_GetScrollPos">FlatSB_GetScrollPos</a></p>
+<h3><a name="FLATSB_GETSCROLLPROP"></a>FlatSB_GetScrollProp</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9966</p>
+<pre>Declare Function FlatSB_GetScrollProp LIB &quot;ComCtl32&quot; ALIAS &quot;FlatSB_GetScrollProp&quot; (ByVal hwnd As Integer, ByVal propIndex As Integer, ByRef lpint As Integer) As Integer</pre>
+<p>Retrieves a property (colors, sizes, style) of a flat scroll bar.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FlatSB_GetScrollProp">FlatSB_GetScrollProp</a></p>
+<h3><a name="FLATSB_GETSCROLLRANGE"></a>FlatSB_GetScrollRange</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9967</p>
+<pre>Declare Function FlatSB_GetScrollRange LIB &quot;ComCtl32&quot; ALIAS &quot;FlatSB_GetScrollRange&quot; (ByVal hwnd As Integer, ByVal code As Integer, ByRef lpint As Integer, ByRef lpint As Integer) As Integer</pre>
+<p>Gets the scroll range (minimum and maximum) of a flat scroll bar.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FlatSB_GetScrollRange">FlatSB_GetScrollRange</a></p>
+<h3><a name="FLATSB_SETSCROLLINFO"></a>FlatSB_SetScrollInfo</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9968</p>
+<pre>Declare Function FlatSB_SetScrollInfo LIB &quot;ComCtl32&quot; ALIAS &quot;FlatSB_SetScrollInfo&quot; (ByVal hwnd As Integer, ByVal code As Integer, ByRef lpscrollinfo As SCROLLINFO, ByVal fRedraw As Integer) As Integer</pre>
+<p>Sets the information (range, page size, position) for a flat scroll bar using a SCROLLINFO structure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FlatSB_SetScrollInfo">FlatSB_SetScrollInfo</a></p>
+<h3><a name="FLATSB_SETSCROLLPOS"></a>FlatSB_SetScrollPos</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9969</p>
+<pre>Declare Function FlatSB_SetScrollPos LIB &quot;ComCtl32&quot; ALIAS &quot;FlatSB_SetScrollPos&quot; (ByVal hwnd As Integer, ByVal code As Integer, ByVal pos As Integer, ByVal fRedraw As Integer) As Integer</pre>
+<p>Sets the current thumb position in a flat scroll bar, optionally redrawing it. Returns the previous position.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FlatSB_SetScrollPos">FlatSB_SetScrollPos</a></p>
+<h3><a name="FLATSB_SETSCROLLRANGE"></a>FlatSB_SetScrollRange</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9971</p>
+<pre>Declare Function FlatSB_SetScrollRange LIB &quot;ComCtl32&quot; ALIAS &quot;FlatSB_SetScrollRange&quot; (ByVal hwnd As Integer, ByVal code As Integer, ByVal min As Integer, ByVal max As Integer, ByVal fRedraw As Integer) As Integer</pre>
+<p>Sets the scroll range (minimum and maximum) of a flat scroll bar.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FlatSB_SetScrollRange">FlatSB_SetScrollRange</a></p>
+<h3><a name="FLATSB_SHOWSCROLLBAR"></a>FlatSB_ShowScrollBar</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9972</p>
+<pre>Declare Function FlatSB_ShowScrollBar LIB &quot;ComCtl32&quot; ALIAS &quot;FlatSB_ShowScrollBar&quot; (ByVal hwnd As Integer, ByVal code As Integer, ByVal bool As Integer) As Integer</pre>
+<p>Shows or hides a flat scroll bar.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FlatSB_ShowScrollBar">FlatSB_ShowScrollBar</a></p>
+<h3><a name="GETEFFECTIVECLIENTRECT"></a>GetEffectiveClientRect</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9973</p>
+<pre>Declare Sub GetEffectiveClientRect LIB &quot;ComCtl32&quot; ALIAS &quot;GetEffectiveClientRect&quot; (ByVal hWnd As Integer, ByRef lprc As QRECT, ByRef lpInfo As Integer)</pre>
+<p>Calculates the dimensions of a rectangle in the client area that excludes the specified visible controls (e.g. status bar, toolbar).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetEffectiveClientRect">GetEffectiveClientRect</a></p>
+<h3><a name="GETMUILANGUAGE"></a>GetMUILanguage</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9974</p>
+<pre>Declare Function GetMUILanguage LIB &quot;ComCtl32&quot; ALIAS &quot;GetMUILanguage&quot; () As Integer</pre>
+<p>Gets the language currently in use by the common controls for a particular process (set by InitMUILanguage).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetMUILanguage">GetMUILanguage</a></p>
+<h3><a name="IMAGELIST_ADD"></a>ImageList_Add</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9975</p>
+<pre>Declare Function ImageList_Add LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Add&quot; (ByVal himl As Integer, ByVal hbmImage As Integer, ByVal hbmMask As Integer) As Integer</pre>
+<p>Adds an image or images, with an optional mask bitmap, to an image list. Returns the index of the first new image, or -1.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Add">ImageList_Add</a></p>
+<h3><a name="IMAGELIST_ADDMASKED"></a>ImageList_AddMasked</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9976</p>
+<pre>Declare Function ImageList_AddMasked LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_AddMasked&quot; (ByVal himl As Integer, ByVal hbmImage As Integer, ByVal crMask As Integer) As Integer</pre>
+<p>Adds an image to an image list, generating a mask from the specified color treated as transparent. Returns the image index, or -1.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_AddMasked">ImageList_AddMasked</a></p>
+<h3><a name="IMAGELIST_BEGINDRAG"></a>ImageList_BeginDrag</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9977</p>
+<pre>Declare Function ImageList_BeginDrag LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_BeginDrag&quot; (ByVal himlTrack As Integer, ByVal iTrack As Integer, ByVal dxHotspot As Integer, ByVal dyHotspot As Integer) As Integer</pre>
+<p>Begins dragging an image from an image list, creating a temporary drag image with the given hotspot.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_BeginDrag">ImageList_BeginDrag</a></p>
+<h3><a name="IMAGELIST_COPY"></a>ImageList_Copy</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9978</p>
+<pre>Declare Function ImageList_Copy LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Copy&quot; (ByVal himlDst As Integer, ByVal iDst As Integer, ByVal himlSrc As Integer, ByVal iSrc As Integer, ByVal uFlags As Integer) As Integer</pre>
+<p>Copies or swaps images within an image list.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Copy">ImageList_Copy</a></p>
+<h3><a name="IMAGELIST_CREATE"></a>ImageList_Create</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9979</p>
+<pre>Declare Function ImageList_Create LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Create&quot; (ByVal cx As Integer, ByVal cy As Integer, ByVal flags As Integer, ByVal cInitial As Integer, ByVal cGrow As Integer) As Integer</pre>
+<p>Creates a new image list with the given image size, flags (color depth, mask), initial count and growth. Returns the image list handle.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Create">ImageList_Create</a></p>
+<h3><a name="IMAGELIST_DESTROY"></a>ImageList_Destroy</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9980</p>
+<pre>Declare Function ImageList_Destroy LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Destroy&quot; (ByVal himl As Integer) As Integer</pre>
+<p>Destroys an image list. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Destroy">ImageList_Destroy</a></p>
+<h3><a name="IMAGELIST_DRAGENTER"></a>ImageList_DragEnter</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9981</p>
+<pre>Declare Function ImageList_DragEnter LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_DragEnter&quot; (ByVal hwndLock As Integer, ByVal x As Integer, ByVal y As Integer) As Integer</pre>
+<p>Displays the drag image at the specified position within the window and locks that window against updates.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_DragEnter">ImageList_DragEnter</a></p>
+<h3><a name="IMAGELIST_DRAGLEAVE"></a>ImageList_DragLeave</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9982</p>
+<pre>Declare Function ImageList_DragLeave LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_DragLeave&quot; (ByVal hwndLock As Integer) As Integer</pre>
+<p>Unlocks the specified window and hides the drag image, allowing the window to be updated.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_DragLeave">ImageList_DragLeave</a></p>
+<h3><a name="IMAGELIST_DRAGMOVE"></a>ImageList_DragMove</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9983</p>
+<pre>Declare Function ImageList_DragMove LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_DragMove&quot; (ByVal x As Integer, ByVal y As Integer) As Integer</pre>
+<p>Moves the image that is being dragged during a drag-and-drop operation, usually in response to WM_MOUSEMOVE.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_DragMove">ImageList_DragMove</a></p>
+<h3><a name="IMAGELIST_DRAGSHOWNOLOCK"></a>ImageList_DragShowNolock</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9984</p>
+<pre>Declare Function ImageList_DragShowNolock LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_DragShowNolock&quot; (ByVal fShow As Integer) As Integer</pre>
+<p>Shows or hides the image being dragged without locking the window for updates. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_DragShowNolock">ImageList_DragShowNolock</a></p>
+<h3><a name="IMAGELIST_DRAW"></a>ImageList_Draw</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9985</p>
+<pre>Declare Function ImageList_Draw LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Draw&quot; (ByVal himl As Integer, ByVal i As Integer, ByVal hdcDst As Integer, ByVal x As Integer, ByVal y As Integer, ByVal fStyle As Integer) As Integer</pre>
+<p>Draws an image-list item in the specified device context at x, y using the given drawing style flags (ILD_*). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Draw">ImageList_Draw</a></p>
+<h3><a name="IMAGELIST_DRAWEX"></a>ImageList_DrawEx</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9986</p>
+<pre>Declare Function ImageList_DrawEx LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_DrawEx&quot; (ByVal himl As Integer, ByVal i As Integer, ByVal hdcDst As Integer, ByVal x As Integer, ByVal y As Integer, ByVal dx As Integer, ByVal dy As Integer, ByVal rgbBk As Integer, ByVal rgbFg As Integer, ByVal fStyle As Integer) As Integer</pre>
+<p>Draws an image-list item in a device context, with explicit size, background color, foreground (blend) color and style. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_DrawEx">ImageList_DrawEx</a></p>
+<h3><a name="IMAGELIST_DRAWINDIRECT"></a>ImageList_DrawIndirect</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9987</p>
+<pre>Declare Function ImageList_DrawIndirect LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_DrawIndirect&quot; (ByRef pimldp As IMAGELISTDRAWPARAMS) As Integer</pre>
+<p>Draws an image-list image using the parameters in an IMAGELISTDRAWPARAMS structure. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_DrawIndirect">ImageList_DrawIndirect</a></p>
+<h3><a name="IMAGELIST_DUPLICATE"></a>ImageList_Duplicate</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9988</p>
+<pre>Declare Function ImageList_Duplicate LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Duplicate&quot; (ByVal himl As Integer) As Integer</pre>
+<p>Creates a duplicate of an existing image list. Returns the handle of the new image list, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Duplicate">ImageList_Duplicate</a></p>
+<h3><a name="IMAGELIST_ENDDRAG"></a>ImageList_EndDrag</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9989</p>
+<pre>Declare Sub ImageList_EndDrag LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_EndDrag&quot; ()</pre>
+<p>Ends a drag operation started with ImageList_BeginDrag.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_EndDrag">ImageList_EndDrag</a></p>
+<h3><a name="IMAGELIST_GETBKCOLOR"></a>ImageList_GetBkColor</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9990</p>
+<pre>Declare Function ImageList_GetBkColor LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_GetBkColor&quot; (ByVal himl As Integer) As Integer</pre>
+<p>Returns the current background color of an image list (COLORREF, or CLR_NONE).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_GetBkColor">ImageList_GetBkColor</a></p>
+<h3><a name="IMAGELIST_GETDRAGIMAGE"></a>ImageList_GetDragImage</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9991</p>
+<pre>Declare Function ImageList_GetDragImage LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_GetDragImage&quot; (ByRef ppt As POINTAPI, ByRef pptHotspot As POINTAPI) As Integer</pre>
+<p>Retrieves the temporary image list used for the drag image, plus the current drag position and hotspot offset. Returns the image list handle.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_GetDragImage">ImageList_GetDragImage</a></p>
+<h3><a name="IMAGELIST_GETICON"></a>ImageList_GetIcon</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9992</p>
+<pre>Declare Function ImageList_GetIcon LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_GetIcon&quot; (ByVal himl As Integer, ByVal i As Integer, ByVal flags As Integer) As Integer</pre>
+<p>Creates an icon from an image and mask in an image list. Returns the icon handle; destroy it with DestroyIcon.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_GetIcon">ImageList_GetIcon</a></p>
+<h3><a name="IMAGELIST_GETICONSIZE"></a>ImageList_GetIconSize</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9993</p>
+<pre>Declare Function ImageList_GetIconSize LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_GetIconSize&quot; (ByVal himl As Integer, ByRef cx As Integer, ByRef cy As Integer) As Integer</pre>
+<p>Retrieves the width and height of the images in an image list. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_GetIconSize">ImageList_GetIconSize</a></p>
+<h3><a name="IMAGELIST_GETIMAGECOUNT"></a>ImageList_GetImageCount</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9994</p>
+<pre>Declare Function ImageList_GetImageCount LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_GetImageCount&quot; (ByVal himl As Integer) As Integer</pre>
+<p>Returns the number of images in an image list.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_GetImageCount">ImageList_GetImageCount</a></p>
+<h3><a name="IMAGELIST_GETIMAGEINFO"></a>ImageList_GetImageInfo</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9995</p>
+<pre>Declare Function ImageList_GetImageInfo LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_GetImageInfo&quot; (ByVal himl As Integer, ByVal i As Integer, ByRef pImageInfo As IMAGEINFO) As Integer</pre>
+<p>Fills an IMAGEINFO structure with information about an image (bitmap, mask, bounding rectangle). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_GetImageInfo">ImageList_GetImageInfo</a></p>
+<h3><a name="IMAGELIST_LOADIMAGE"></a>ImageList_LoadImage</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9996</p>
+<pre>Declare Function ImageList_LoadImage LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_LoadImage&quot; (ByVal hi As Integer, ByVal lpbmp As String, ByVal cx As Integer, ByVal cGrow As Integer, ByVal crMask As Integer, ByVal uType As Integer, ByVal uFlags As Integer) As Integer</pre>
+<p>Creates an image list from a bitmap, icon or cursor resource or file. Returns the image list handle, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_LoadImage">ImageList_LoadImage</a></p>
+<h3><a name="IMAGELIST_MERGE"></a>ImageList_Merge</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9997</p>
+<pre>Declare Function ImageList_Merge LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Merge&quot; (ByVal himl1 As Integer, ByVal i1 As Integer, ByVal himl2 As Integer, ByVal i2 As Integer, ByVal dx As Integer, ByVal dy As Integer) As Integer</pre>
+<p>Creates a new image by combining two existing images (second drawn transparently over the first) into a new image list. Returns its handle.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Merge">ImageList_Merge</a></p>
+<h3><a name="IMAGELIST_READ"></a>ImageList_Read</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9998</p>
+<pre>Declare Function ImageList_Read LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Read&quot; (ByRef pstm As Integer) As Integer</pre>
+<p>Reads an image list from a stream (IStream). Returns the image list handle, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Read">ImageList_Read</a></p>
+<h3><a name="IMAGELIST_REMOVE"></a>ImageList_Remove</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 9999</p>
+<pre>Declare Function ImageList_Remove LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Remove&quot; (ByVal himl As Integer, ByVal i As Integer) As Integer</pre>
+<p>Removes an image from an image list; index -1 removes all images. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Remove">ImageList_Remove</a></p>
+<h3><a name="IMAGELIST_REPLACE"></a>ImageList_Replace</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10000</p>
+<pre>Declare Function ImageList_Replace LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Replace&quot; (ByVal himl As Integer, ByVal i As Integer, ByVal hbmImage As Integer, ByVal hbmMask As Integer) As Integer</pre>
+<p>Replaces an image in an image list with a new image and mask bitmap. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Replace">ImageList_Replace</a></p>
+<h3><a name="IMAGELIST_REPLACEICON"></a>ImageList_ReplaceIcon</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10001</p>
+<pre>Declare Function ImageList_ReplaceIcon LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_ReplaceIcon&quot; (ByVal himl As Integer, ByVal i As Integer, ByVal hicon As Integer) As Integer</pre>
+<p>Replaces an image with an icon or cursor; index -1 appends it. Returns the index of the image, or -1 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_ReplaceIcon">ImageList_ReplaceIcon</a></p>
+<h3><a name="IMAGELIST_SETBKCOLOR"></a>ImageList_SetBkColor</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10002</p>
+<pre>Declare Function ImageList_SetBkColor LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_SetBkColor&quot; (ByVal himl As Integer, ByVal clrBk As Integer) As Integer</pre>
+<p>Sets the background color of an image list (CLR_NONE for transparent). Returns the previous background color.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_SetBkColor">ImageList_SetBkColor</a></p>
+<h3><a name="IMAGELIST_SETDRAGCURSORIMAGE"></a>ImageList_SetDragCursorImage</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10003</p>
+<pre>Declare Function ImageList_SetDragCursorImage LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_SetDragCursorImage&quot; (ByVal himlDrag As Integer, ByVal iDrag As Integer, ByVal dxHotspot As Integer, ByVal dyHotspot As Integer) As Integer</pre>
+<p>Creates a new drag image by combining the given image (usually a mouse cursor) with the current drag image. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_SetDragCursorImage">ImageList_SetDragCursorImage</a></p>
+<h3><a name="IMAGELIST_SETICONSIZE"></a>ImageList_SetIconSize</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10004</p>
+<pre>Declare Function ImageList_SetIconSize LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_SetIconSize&quot; (ByVal himl As Integer, ByVal cx As Integer, ByVal cy As Integer) As Integer</pre>
+<p>Sets the dimensions of images in an image list and removes all images from the list. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_SetIconSize">ImageList_SetIconSize</a></p>
+<h3><a name="IMAGELIST_SETIMAGECOUNT"></a>ImageList_SetImageCount</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10005</p>
+<pre>Declare Function ImageList_SetImageCount LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_SetImageCount&quot; (ByVal himl As Integer, ByVal uNewCount As Integer) As Integer</pre>
+<p>Resizes an image list to the specified number of images. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_SetImageCount">ImageList_SetImageCount</a></p>
+<h3><a name="IMAGELIST_SETOVERLAYIMAGE"></a>ImageList_SetOverlayImage</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10006</p>
+<pre>Declare Function ImageList_SetOverlayImage LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_SetOverlayImage&quot; (ByVal himl As Integer, ByVal iImage As Integer, ByVal iOverlay As Integer) As Integer</pre>
+<p>Adds an image to the list of images used as overlay masks (overlay index 1 to 15). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_SetOverlayImage">ImageList_SetOverlayImage</a></p>
+<h3><a name="IMAGELIST_WRITE"></a>ImageList_Write</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10007</p>
+<pre>Declare Function ImageList_Write LIB &quot;ComCtl32&quot; ALIAS &quot;ImageList_Write&quot; (ByVal himl As Integer, ByRef pstm As Integer) As Integer</pre>
+<p>Writes an image list to a stream (IStream). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ImageList_Write">ImageList_Write</a></p>
+<h3><a name="INITCOMMONCONTROLSEX"></a>InitCommonControlsEx</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10008</p>
+<pre>Declare Function InitCommonControlsEx LIB &quot;ComCtl32&quot; ALIAS &quot;InitCommonControlsEx&quot; (ByRef TLPINITCOMMONCONTROLSEX As TINITCOMMONCONTROLSEX) As Integer</pre>
+<p>Ensures comctl32.dll is loaded and registers the common control classes given in an INITCOMMONCONTROLSEX structure. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InitCommonControlsEx">InitCommonControlsEx</a></p>
+<h3><a name="INITIALIZEFLATSB"></a>InitializeFlatSB</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10010</p>
+<pre>Declare Function InitializeFlatSB LIB &quot;ComCtl32&quot; ALIAS &quot;InitializeFlatSB&quot; (ByVal hwnd As Integer) As Integer</pre>
+<p>Initializes flat scroll bars for a window. Returns nonzero (S_OK) on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InitializeFlatSB">InitializeFlatSB</a></p>
+<h3><a name="INITMUILANGUAGE"></a>InitMUILanguage</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10009</p>
+<pre>Declare Sub InitMUILanguage LIB &quot;ComCtl32&quot; ALIAS &quot;InitMUILanguage&quot; (ByVal uiLang As Integer)</pre>
+<p>Sets the user interface language (LANGID) used by the common controls in the calling process.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InitMUILanguage">InitMUILanguage</a></p>
+<h3><a name="LBITEMFROMPT"></a>LBItemFromPt</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10011</p>
+<pre>Declare Function LBItemFromPt LIB &quot;ComCtl32&quot; ALIAS &quot;LBItemFromPt&quot; (ByVal hLB As Integer, Byref pt As POINTAPI, ByVal bAutoScroll As Integer) As Integer</pre>
+<p>Returns the index of the drag list box item at the given screen point, or -1; can auto-scroll the list box.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=LBItemFromPt">LBItemFromPt</a></p>
+<h3><a name="MAKEDRAGLIST"></a>MakeDragList</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10012</p>
+<pre>Declare Function MakeDragList LIB &quot;ComCtl32&quot; ALIAS &quot;MakeDragList&quot; (ByVal hLB As Integer) As Integer</pre>
+<p>Changes a single-selection list box into a drag list box. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MakeDragList">MakeDragList</a></p>
+<h3><a name="MENUHELP"></a>MenuHelp</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10013</p>
+<pre>Declare Sub MenuHelp LIB &quot;ComCtl32&quot; ALIAS &quot;MenuHelp&quot; (ByVal uMsg As Integer, ByVal wParam As Integer, ByVal lParam As Integer, ByVal hMainMenu As Integer, ByVal hInst As Integer, ByVal hwndStatus As Integer, ByRef lpwIDs As Integer)</pre>
+<p>Processes WM_MENUSELECT and WM_COMMAND messages and shows help text about the current menu item in a status window.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MenuHelp">MenuHelp</a></p>
+<h3><a name="SHOWHIDEMENUCTL"></a>ShowHideMenuCtl</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10015</p>
+<pre>Declare Function ShowHideMenuCtl LIB &quot;ComCtl32&quot; ALIAS &quot;ShowHideMenuCtl&quot; (ByVal hWnd As Integer, ByRef uFlags As Integer, ByRef lpInfo As Integer) As Integer</pre>
+<p>Sets or removes a menu item&#x27;s check mark and shows or hides the corresponding control. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ShowHideMenuCtl">ShowHideMenuCtl</a></p>
+<h3><a name="UNINITIALIZEFLATSB"></a>UninitializeFlatSB</h3>
+<p class="rq-meta">DLL function, ComCtl32 &middot; RQProc.inc, line 10016</p>
+<pre>Declare Function UninitializeFlatSB LIB &quot;ComCtl32&quot; ALIAS &quot;UninitializeFlatSB&quot; (ByVal hwnd As Integer) As Integer</pre>
+<p>Uninitializes flat scroll bars for a window, reverting to standard scroll bars.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=UninitializeFlatSB">UninitializeFlatSB</a></p>
+</body>
+</html>

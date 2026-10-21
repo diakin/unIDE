@@ -1,0 +1,253 @@
+<html>
+<head>
+<title>func_array.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>function</b></font> ARRAverage <b>(</b>Dat!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, MinEl  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, MaxEl <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>single</b></font>
+<font color="007700"><i>' calculate average value from function Dat1!()</i></font> 
+<font color="0000AA"><b>defint</b></font>  p
+<font color="0000AA"><b>defsng</b></font> ARMid!=0
+
+<font color="0000AA"><b>FOR</b></font> p = MinEl <font color="0000AA"><b>TO</b></font> MaxEl:
+ARMid! = ARMid! + Dat!<b>(</b>p<b>)</b>:
+<font color="0000AA"><b>NEXT</b></font> p
+
+average! = ARMid! / <b>(</b>MaxEl-MinEl+1<b>)</b>
+
+result=average!
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>function</b></font>
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>sub</b></font> ARRAverageSubtract <b>(</b>Dat!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font><b>)</b> 
+<font color="007700"><i>' calculate and subtract average value from function Dat1!()</i></font> 
+<font color="0000AA"><b>defint</b></font>  p, Lmin1, Lmax1
+Lmin1 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat!<b>)</b>:Lmax1 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat!<b>)</b> 
+<font color="0000AA"><b>defsng</b></font> ARMid!=0
+
+<font color="0000AA"><b>FOR</b></font> p = Lmin1 <font color="0000AA"><b>TO</b></font> Lmax1:
+ARMid! = ARMid! + Dat!<b>(</b>p<b>)</b>:
+<font color="0000AA"><b>NEXT</b></font> p
+
+average! = ARMid! / <b>(</b>Lmax1-LMin1+1<b>)</b>
+
+<font color="0000AA"><b>FOR</b></font> p = LMin1 <font color="0000AA"><b>TO</b></font> Lmax1: Dat!<b>(</b>p<b>)</b> = Dat!<b>(</b>p<b>)</b> - average!: <font color="0000AA"><b>NEXT</b></font> p
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>FUNCTION</b></font> ARRMax <b>(</b>Dat!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, MinEl  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, MaxEl <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>single</b></font>
+<font color="007700"><i>'find max element of array</i></font> 
+<font color="0000AA"><b>defint</b></font>  p
+
+<font color="0000AA"><b>defsng</b></font> ARMax!=Dat!<b>(</b>MinEl<b>)</b>
+
+<font color="0000AA"><b>FOR</b></font> p = MinEl <font color="0000AA"><b>TO</b></font> MaxEl:
+<font color="0000AA"><b>IF</b></font> Dat!<b>(</b>p<b>)</b> > ARMax! <font color="0000AA"><b>THEN</b></font> ARMax! = Dat!<b>(</b>p<b>)</b>:
+<font color="0000AA"><b>NEXT</b></font> p
+
+result = ARMax!
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+
+<font color="0000AA"><b>FUNCTION</b></font> ARRMin <b>(</b>Dat!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, MinEl  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, MaxEl <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font> 
+<font color="007700"><i>'find min element of array</i></font> 
+<font color="0000AA"><b>defint</b></font> p
+
+<font color="0000AA"><b>defsng</b></font> ARMin!=Dat!<b>(</b>MinEl<b>)</b>
+
+<font color="0000AA"><b>FOR</b></font> p = MinEl <font color="0000AA"><b>TO</b></font> MaxEl:
+<font color="0000AA"><b>IF</b></font> Dat!<b>(</b>p<b>)</b> &lt; ARMin! <font color="0000AA"><b>THEN</b></font> ARMin! = Dat!<b>(</b>p<b>)</b>:
+<font color="0000AA"><b>NEXT</b></font> p
+
+result = ARMin!
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>FUNCTIONI</b></font> FindMax <b>(</b>...<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>DOUBLE</b></font>
+
+     <font color="0000AA"><b>DIM</b></font> Largest <font color="0000AA"><b>AS</b></font> <font color="000099"><b>DOUBLE</b></font>
+     <font color="0000AA"><b>DIM</b></font> I <font color="0000AA"><b>AS</b></font> <font color="000099"><b>BYTE</b></font>
+
+     Largest = <font color="0000AA"><b>ParamVal</b></font><b>(</b>1<b>)</b>
+
+     <font color="0000AA"><b>FOR</b></font> I = 1 <font color="0000AA"><b>TO</b></font> <font color="000099"><b>ParamValCount</b></font>
+       <font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>ParamVal</b></font><b>(</b>I<b>)</b> > Largest <font color="000099"><b>THEN</b></font>
+          Largest = <font color="0000AA"><b>ParamVal</b></font><b>(</b>I<b>)</b>
+       <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+     <font color="000099"><b>NEXT</b></font>
+
+     FindMax = Largest         <font color="007700"><i>' or Result = Largest</i></font> 
+   <font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTIONI</b></font>
+
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>sub</b></font> ArrExtr <b>(</b>Dat!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, byref DatMin!, byref DatMax!<b>)</b> <font color="007700"><i>'' as single </i></font> 
+<font color="0000AA"><b>defint</b></font>  p
+<font color="0000AA"><b>defint</b></font> MaxEl,MinEl
+
+MinEl=<font color="0000AA"><b>lbound</b></font><b>(</b>Dat!<b>)</b>
+MaxEl=<font color="0000AA"><b>ubound</b></font><b>(</b>Dat!<b>)</b>
+
+<font color="0000AA"><b>defsng</b></font> ARMax!=Dat!<b>(</b>MinEl<b>)</b>
+<font color="0000AA"><b>defsng</b></font> ARMin!=Dat!<b>(</b>MinEl<b>)</b>
+
+<font color="0000AA"><b>FOR</b></font> p = MinEl <font color="0000AA"><b>TO</b></font> MaxEl:
+<font color="0000AA"><b>IF</b></font> Dat!<b>(</b>p<b>)</b> > ARMax! <font color="0000AA"><b>THEN</b></font> ARMax! = Dat!<b>(</b>p<b>)</b>:
+<font color="0000AA"><b>IF</b></font> Dat!<b>(</b>p<b>)</b> &lt; ARMin! <font color="0000AA"><b>THEN</b></font> ARMin! = Dat!<b>(</b>p<b>)</b>:
+
+<font color="0000AA"><b>NEXT</b></font> p
+DatMax!=ARMax!
+<font color="0000AA"><b>print</b></font> "<font color="990000">DatMax=</font>" ,DatMax!
+DatMin!=ARMin!
+<font color="0000AA"><b>print</b></font> "<font color="990000">DatMin=</font>" ,DatMin!
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+<font color="007700"><i>'**********************************************************************</i></font> 
+<font color="0000AA"><b>sub</b></font> ArrAbsExtr <b>(</b>Dat!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, byref AbsDatMax!<b>)</b> 
+<font color="0000AA"><b>defint</b></font>  p
+<font color="0000AA"><b>defint</b></font> MaxEl,MinEl
+
+MinEl=<font color="0000AA"><b>lbound</b></font><b>(</b>Dat!<b>)</b>
+MaxEl=<font color="0000AA"><b>ubound</b></font><b>(</b>Dat!<b>)</b>
+
+<font color="0000AA"><b>defsng</b></font> ARMax!=Dat!<b>(</b>MinEl<b>)</b>
+<font color="0000AA"><b>defsng</b></font> ARMin!=Dat!<b>(</b>MinEl<b>)</b>
+
+<font color="0000AA"><b>FOR</b></font> p = MinEl <font color="0000AA"><b>TO</b></font> MaxEl:
+<font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>abs</b></font><b>(</b>Dat!<b>(</b>p<b>)</b><b>)</b> >  AbsDatMax! <font color="0000AA"><b>THEN</b></font>  AbsDatMax! = <font color="0000AA"><b>abs</b></font><b>(</b>Dat!<b>(</b>p<b>)</b><b>)</b>
+<font color="0000AA"><b>NEXT</b></font> p
+<font color="0000AA"><b>print</b></font> "<font color="990000">AbsDatMax!=</font>" ,AbsDatMax!
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="007700"><i>'-- **********************************************************************</i></font> 
+<font color="0000AA"><b>Sub</b></font> ArrRaznost <b>(</b>Dat1!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font> , Dat2!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, Raznost!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font><b>)</b> <font color="007700"><i>'' as single'' MinEl??, MaxEl??)</i></font> 
+Lmin1 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat1!<b>)</b>:Lmax1 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat1!<b>)</b> 
+Lmin2 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat2!<b>)</b> : Lmax2 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat2!<b>)</b>
+<font color="0000AA"><b>if</b></font> Lmin2 &lt;> Lmin1 <font color="0000AA"><b>or</b></font> Lmax1 &lt;> Lmax2 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>showMessage</b></font> <b>(</b> "<font color="990000">Arrays size mismatch</font>" <b>)</b>: <font color="0000AA"><b>exit</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>REDIM</b></font> Raznost!<b>(</b>Lmin1 <font color="0000AA"><b>to</b></font> Lmax1<b>)</b>
+
+<font color="0000AA"><b>FOR</b></font> i = Lmin1 <font color="0000AA"><b>TO</b></font> Lmax1: 
+Raznost!<b>(</b>i<b>)</b> = Dat1!<b>(</b>i<b>)</b> - Dat2!<b>(</b>i<b>)</b>: 
+<font color="007700"><i>'print "Raznost!(",i, ") =" ,Raznost!(i)</i></font> 
+<font color="0000AA"><b>NEXT</b></font> i
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+<font color="007700"><i>'-- **********************************************************************</i></font> 
+<font color="0000AA"><b>Sub</b></font> ArrRaznostR <b>(</b>Dat1!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font> , Dat2!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font><b>)</b> <font color="007700"><i>'' as single'' MinEl??, MaxEl??)</i></font> 
+Lmin1 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat1!<b>)</b>:Lmax1 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat1!<b>)</b> 
+Lmin2 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat2!<b>)</b> : Lmax2 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat2!<b>)</b>
+
+<font color="0000AA"><b>if</b></font> Lmin2 &lt;> Lmin1 <font color="0000AA"><b>or</b></font> Lmax1 &lt;> Lmax2 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>showMessage</b></font> <b>(</b> "<font color="990000">Arrays size mismatch</font>" <b>)</b>: <font color="0000AA"><b>exit</b></font> <font color="000099"><b>sub</b></font>
+<font color="0000AA"><b>FOR</b></font> i = Lmin1 <font color="0000AA"><b>TO</b></font> Lmax1: 
+Dat1!<b>(</b>i<b>)</b> = Dat1!<b>(</b>i<b>)</b> - Dat2!<b>(</b>i<b>)</b>: 
+<font color="007700"><i>'print "Raznost!(",i, ") =" ,Raznost!(i)</i></font> 
+<font color="0000AA"><b>NEXT</b></font> i
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+<font color="007700"><i>'**********************************************************************</i></font> 
+<font color="0000AA"><b>Sub</b></font> ArrSum <b>(</b>Dat1!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font> , Dat2!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, SumA!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font><b>)</b> 
+Lmin1 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat1!<b>)</b>:Lmax1 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat1!<b>)</b> 
+Lmin2 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat2!<b>)</b> : Lmax2 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat2!<b>)</b>
+<font color="0000AA"><b>if</b></font> Lmin2 &lt;> Lmin1 <font color="0000AA"><b>or</b></font> Lmax1 &lt;> Lmax2 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>showMessage</b></font> <b>(</b> "<font color="990000">Arrays size mismatch</font>" <b>)</b>: <font color="0000AA"><b>exit</b></font> <font color="000099"><b>sub</b></font>
+
+
+
+<font color="0000AA"><b>REDIM</b></font> SumA!<b>(</b>Lmin1 <font color="0000AA"><b>to</b></font> Lmax1<b>)</b>
+<font color="0000AA"><b>FOR</b></font> i = Lmin1 <font color="0000AA"><b>TO</b></font> Lmax1: SumA!<b>(</b>i<b>)</b> = Dat1!<b>(</b>i<b>)</b> + Dat2!<b>(</b>i<b>)</b>: <font color="0000AA"><b>NEXT</b></font> i
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+<font color="007700"><i>'**********************************************************************</i></font> 
+
+<font color="007700"><i>'**********************************************************************</i></font> 
+<font color="0000AA"><b>Sub</b></font> ArrSumR <b>(</b>Dat1!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font> , Dat2!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font><b>)</b> 
+Lmin1 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat1!<b>)</b>:Lmax1 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat1!<b>)</b> 
+Lmin2 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat2!<b>)</b> : Lmax2 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat2!<b>)</b>
+<font color="0000AA"><b>if</b></font> Lmin2 &lt;> Lmin1 <font color="0000AA"><b>or</b></font> Lmax1 &lt;> Lmax2 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>showMessage</b></font> <b>(</b> "<font color="990000">Arrays size mismatch</font>" <b>)</b>: <font color="0000AA"><b>exit</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>FOR</b></font> i = Lmin1 <font color="0000AA"><b>TO</b></font> Lmax1: Dat1!<b>(</b>i<b>)</b> = Dat1!<b>(</b>i<b>)</b> + Dat2!<b>(</b>i<b>)</b>: <font color="0000AA"><b>NEXT</b></font> i
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+<font color="007700"><i>'**********************************************************************</i></font> 
+
+
+<font color="007700"><i>'-- **********************************************************************</i></font> 
+<font color="0000AA"><b>SUB</b></font> kTArray <b>(</b>Dat1!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, kt! <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, Dat2!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font><b>)</b>
+<font color="007700"><i>'multiply array to const and save rusult in new array</i></font> 
+Lmin1 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat1!<b>)</b>:Lmax1 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat1!<b>)</b> 
+
+<font color="0000AA"><b>REDIM</b></font> Dat2!<b>(</b>Lmin1 <font color="0000AA"><b>to</b></font> Lmax1<b>)</b>
+<font color="0000AA"><b>FOR</b></font> i = Lmin1 <font color="0000AA"><b>to</b></font> Lmax1: Dat2!<b>(</b>i<b>)</b> = Dat1!<b>(</b>i<b>)</b> * kt!: <font color="0000AA"><b>NEXT</b></font> i
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="007700"><i>'-- **********************************************************************</i></font> 
+<font color="0000AA"><b>SUB</b></font> kTArrayR <b>(</b>Dat1!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, kt! <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font><b>)</b>
+<font color="007700"><i>'multiply array to const</i></font> 
+Lmin1 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat1!<b>)</b>:Lmax1 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat1!<b>)</b> 
+<font color="0000AA"><b>FOR</b></font> i = Lmin1 <font color="0000AA"><b>to</b></font> Lmax1: Dat1!<b>(</b>i<b>)</b> = Dat1!<b>(</b>i<b>)</b> * kt!: <font color="0000AA"><b>NEXT</b></font> i
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+
+<font color="007700"><i>'-- **********************************************************************</i></font> 
+<font color="0000AA"><b>SUB</b></font> Nakopl <b>(</b>F!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, Nakop!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, period <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Word</b></font><b>)</b>
+<font color="007700"><i>'-----------------------------</i></font> 
+<font color="007700"><i>'Calculate average on moving window (interval) of function</i></font> 
+<font color="007700"><i>''F() - function array</i></font> 
+<font color="007700"><i>'Nakop!() - moving average</i></font> 
+<font color="007700"><i>'period - number of moving window points - (max 65535) must be odd number!</i></font> 
+<font color="007700"><i>'-----------------------------</i></font> 
+Lmin1 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>F!<b>)</b>: <font color="007700"><i>' for example =0</i></font> 
+Lmax1 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>F!<b>)</b>  <font color="007700"><i>' for example =56</i></font> 
+<font color="0000AA"><b>REDIM</b></font> Nakop!<b>(</b>0 <font color="0000AA"><b>to</b></font> period-1<b>)</b> <font color="007700"><i>'!!! from 0  !!!' </i></font> 
+<font color="0000AA"><b>defsng</b></font> Summ!
+<font color="0000AA"><b>defword</b></font> ibeg,iend, NumPnt
+
+<font color="007700"><i>'0  0  0   1         2         3         4         5  5  5</i></font> 
+<font color="007700"><i>'012345678901234567890123456789012345678901234567890123456</i></font> 
+<font color="007700"><i>'|||||||||||||||||||||||||||||||||||||||||||||||||||||||||    -numbers of function points     F!() </i></font> 
+<font color="007700"><i>'|||||||                                           |||||||    - moving window  period points</i></font> 
+<font color="007700"><i>'   ^ibeg=3                                           ^iend=53</i></font> 
+<font color="007700"><i>'000+++++++++++++++++++++++++++++++++++++++++++++++++++000    - averaged function  Nakop!()</i></font> 
+<font color="007700"><i>'|||^|||</i></font> 
+<font color="007700"><i>'calculate average on 7 points  Nakop!(3)= ( f(0)+f(1)+...f(6) )/7 =f(0)/7+f(1)/7+ ...f(6)/7</i></font> 
+<font color="007700"><i>' |||^|||</i></font> 
+<font color="007700"><i>'  |||^|||</i></font> 
+<font color="007700"><i>'   |||^|||</i></font> 
+<font color="007700"><i>'then first point f(0)/7  deleted, next f(7)/7 point added. Nakop!(4)=Nakop!(3)- f(0)/7 + f(7)/7</i></font> 
+
+NumPnt=Lmax1-Lmin1+1  <font color="007700"><i>'57 elements in array (0 to 56)</i></font> 
+NumInterval=NumPnt-1  <font color="007700"><i>'56 intevals</i></font> 
+ibeg = <b>(</b>period-1<b>)</b> / 2 <font color="007700"><i>'starting point of moving window on F!()</i></font> 
+iend = NumInterval - ibeg  <font color="007700"><i>'end point point of moving window on F!()</i></font> 
+Summ! = 0:
+
+<font color="007700"><i>'calculate average in starting point  </i></font> 
+<font color="0000AA"><b>FOR</b></font> j = Lmin1 <font color="0000AA"><b>TO</b></font> Lmin1+<b>(</b>period-1<b>)</b>:     Summ! = Summ! + F!<b>(</b>j<b>)</b>: <font color="0000AA"><b>NEXT</b></font> j <font color="007700"><i>'cumulative value'</i></font> 
+Nakop!<b>(</b>ibeg<b>)</b> = Summ! / period:  <font color="007700"><i>'average in starting point</i></font> 
+
+Summ! = 0:
+
+<font color="007700"><i>''calculate average in end point  </i></font> 
+<font color="0000AA"><b>FOR</b></font> j = Lmin1+NumPnt - period  <font color="0000AA"><b>TO</b></font> Lmin1+NumPnt-1: Summ! = Summ! + F!<b>(</b>j<b>)</b>: <font color="0000AA"><b>NEXT</b></font> j
+Nakop!<b>(</b>iend<b>)</b> = Summ! / period: <font color="007700"><i>'вычисление среднего</i></font> 
+
+<font color="0000AA"><b>FOR</b></font> i = Lmin1+ibeg + 1 <font color="0000AA"><b>TO</b></font> Lmin1+iend - 1
+Nakop!<b>(</b>i<b>)</b> = Nakop!<b>(</b>i-1<b>)</b> + <b>(</b>    F!<b>(</b>i+Lmin1+ibeg<b>)</b>  -  F!<b>(</b>Lmin1+i-ibeg-1<b>)</b>   <b>)</b> / period
+<font color="007700"><i>'                              ^  4  3           4  3</i></font> 
+<font color="0000AA"><b>NEXT</b></font> i
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+<font color="007700"><i>'-- **********************************************************************</i></font> 
+<font color="0000AA"><b>sub</b></font> ARRAddConst <b>(</b>Dat!<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font>, const! <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>single</b></font><b>)</b> 
+<font color="0000AA"><b>defint</b></font>  p, Lmin1, Lmax1
+Lmin1 = <font color="0000AA"><b>LBOUND</b></font><b>(</b>Dat!<b>)</b>:Lmax1 = <font color="0000AA"><b>UBOUND</b></font><b>(</b>Dat!<b>)</b> 
+
+<font color="0000AA"><b>FOR</b></font> p = Lmin1 <font color="0000AA"><b>TO</b></font> Lmax1:
+Dat!<b>(</b>p<b>)</b> = const! + Dat!<b>(</b>p<b>)</b>:
+<font color="0000AA"><b>NEXT</b></font> p
+
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+ 
+</pre>
+</body>
+</html>

@@ -1,0 +1,794 @@
+{
+ "ImageList_DragShowNolock@commctrl32.inc": {
+  "desc": "Shows or hides the image being dragged without locking the window for updates. Returns nonzero on success.",
+  "doc": "ImageList_DragShowNolock"
+ },
+ "ImageList_Draw@commctrl32.inc": {
+  "desc": "Draws an image-list item in the specified device context at x, y using the given drawing style flags (ILD_*). Returns nonzero on success.",
+  "doc": "ImageList_Draw"
+ },
+ "ImageList_DrawEx@commctrl32.inc": {
+  "desc": "Draws an image-list item in a device context, with explicit size, background color, foreground (blend) color and style. Returns nonzero on success.",
+  "doc": "ImageList_DrawEx"
+ },
+ "ImageList_DrawIndirect@commctrl32.inc": {
+  "desc": "Draws an image-list image using the parameters in an IMAGELISTDRAWPARAMS structure. Returns nonzero on success.",
+  "doc": "ImageList_DrawIndirect"
+ },
+ "ImageList_Duplicate@commctrl32.inc": {
+  "desc": "Creates a duplicate of an existing image list. Returns the handle of the new image list, or 0 on failure.",
+  "doc": "ImageList_Duplicate"
+ },
+ "ImageList_EndDrag@commctrl32.inc": {
+  "desc": "Ends a drag operation started with ImageList_BeginDrag.",
+  "doc": "ImageList_EndDrag"
+ },
+ "ImageList_GetBkColor@commctrl32.inc": {
+  "desc": "Returns the current background color of an image list (COLORREF, or CLR_NONE).",
+  "doc": "ImageList_GetBkColor"
+ },
+ "ImageList_GetDragImage@commctrl32.inc": {
+  "desc": "Retrieves the temporary image list used for the drag image, plus the current drag position and hotspot offset. Returns the image list handle.",
+  "doc": "ImageList_GetDragImage"
+ },
+ "ImageList_GetIcon@commctrl32.inc": {
+  "desc": "Creates an icon from an image and mask in an image list. Returns the icon handle; destroy it with DestroyIcon.",
+  "doc": "ImageList_GetIcon"
+ },
+ "ImageList_GetIconSize@commctrl32.inc": {
+  "desc": "Retrieves the width and height of the images in an image list. Returns nonzero on success.",
+  "doc": "ImageList_GetIconSize"
+ },
+ "ImageList_GetImageCount@commctrl32.inc": {
+  "desc": "Returns the number of images in an image list.",
+  "doc": "ImageList_GetImageCount"
+ },
+ "ImageList_GetImageInfo@commctrl32.inc": {
+  "desc": "Fills an IMAGEINFO structure with information about an image (bitmap, mask, bounding rectangle). Returns nonzero on success.",
+  "doc": "ImageList_GetImageInfo"
+ },
+ "ImageList_LoadImage@commctrl32.inc": {
+  "desc": "Creates an image list from a bitmap, icon or cursor resource or file. Returns the image list handle, or 0 on failure.",
+  "doc": "ImageList_LoadImage"
+ },
+ "ImageList_Merge@commctrl32.inc": {
+  "desc": "Creates a new image by combining two existing images (second drawn transparently over the first) into a new image list. Returns its handle.",
+  "doc": "ImageList_Merge"
+ },
+ "ImageList_Read@commctrl32.inc": {
+  "desc": "Reads an image list from a stream (IStream). Returns the image list handle, or 0 on failure.",
+  "doc": "ImageList_Read"
+ },
+ "ImageList_Remove@commctrl32.inc": {
+  "desc": "Removes an image from an image list; index -1 removes all images. Returns nonzero on success.",
+  "doc": "ImageList_Remove"
+ },
+ "ImageList_Replace@commctrl32.inc": {
+  "desc": "Replaces an image in an image list with a new image and mask bitmap. Returns nonzero on success.",
+  "doc": "ImageList_Replace"
+ },
+ "ImageList_ReplaceIcon@commctrl32.inc": {
+  "desc": "Replaces an image with an icon or cursor; index -1 appends it. Returns the index of the image, or -1 on failure.",
+  "doc": "ImageList_ReplaceIcon"
+ },
+ "ImageList_SetBkColor@commctrl32.inc": {
+  "desc": "Sets the background color of an image list (CLR_NONE for transparent). Returns the previous background color.",
+  "doc": "ImageList_SetBkColor"
+ },
+ "ImageList_SetDragCursorImage@commctrl32.inc": {
+  "desc": "Creates a new drag image by combining the given image (usually a mouse cursor) with the current drag image. Returns nonzero on success.",
+  "doc": "ImageList_SetDragCursorImage"
+ },
+ "ImageList_SetIconSize@commctrl32.inc": {
+  "desc": "Sets the dimensions of images in an image list and removes all images from the list. Returns nonzero on success.",
+  "doc": "ImageList_SetIconSize"
+ },
+ "ImageList_SetImageCount@commctrl32.inc": {
+  "desc": "Resizes an image list to the specified number of images. Returns nonzero on success.",
+  "doc": "ImageList_SetImageCount"
+ },
+ "ImageList_SetOverlayImage@commctrl32.inc": {
+  "desc": "Adds an image to the list of images used as overlay masks (overlay index 1 to 15). Returns nonzero on success.",
+  "doc": "ImageList_SetOverlayImage"
+ },
+ "ImageList_Write@commctrl32.inc": {
+  "desc": "Writes an image list to a stream (IStream). Returns nonzero on success.",
+  "doc": "ImageList_Write"
+ },
+ "InitCommonControlsEx@commctrl32.inc": {
+  "desc": "Ensures comctl32.dll is loaded and registers the common control classes given in an INITCOMMONCONTROLSEX structure. Returns nonzero on success.",
+  "doc": "InitCommonControlsEx"
+ },
+ "InitMUILanguage@commctrl32.inc": {
+  "desc": "Sets the user interface language (LANGID) used by the common controls in the calling process.",
+  "doc": "InitMUILanguage"
+ },
+ "InitializeFlatSB@commctrl32.inc": {
+  "desc": "Initializes flat scroll bars for a window. Returns nonzero (S_OK) on success.",
+  "doc": "InitializeFlatSB"
+ },
+ "LBItemFromPt@commctrl32.inc": {
+  "desc": "Returns the index of the drag list box item at the given screen point, or -1; can auto-scroll the list box.",
+  "doc": "LBItemFromPt"
+ },
+ "MakeDragList@commctrl32.inc": {
+  "desc": "Changes a single-selection list box into a drag list box. Returns nonzero on success.",
+  "doc": "MakeDragList"
+ },
+ "MenuHelp@commctrl32.inc": {
+  "desc": "Processes WM_MENUSELECT and WM_COMMAND messages and shows help text about the current menu item in a status window.",
+  "doc": "MenuHelp"
+ },
+ "ShowHideMenuCtl@commctrl32.inc": {
+  "desc": "Sets or removes a menu item's check mark and shows or hides the corresponding control. Returns nonzero on success.",
+  "doc": "ShowHideMenuCtl"
+ },
+ "UninitializeFlatSB@commctrl32.inc": {
+  "desc": "Uninitializes flat scroll bars for a window, reverting to standard scroll bars.",
+  "doc": "UninitializeFlatSB"
+ },
+ "SendMessageA@Common.inc": {
+  "desc": "Sends a message to a window and waits until the window procedure has processed it. Returns the message-dependent result.",
+  "doc": "SendMessageA"
+ },
+ "GetSysColor1@constants.inc": {
+  "desc": "Returns the current color (RGB value) of the specified display element, given a COLOR_* index.",
+  "doc": "GetSysColor"
+ },
+ "SetSysColors1@constants.inc": {
+  "desc": "Sets the colors of one or more display elements (COLOR_* indexes) for the current session. Returns nonzero on success.",
+  "doc": "SetSysColors"
+ },
+ "MultiByteToWideChar_conversionOld@conversionOld.inc": {
+  "desc": "Maps a character string in the given code page to a UTF-16 (wide) string. Returns the number of characters written, or 0 on failure.",
+  "doc": "MultiByteToWideChar"
+ },
+ "WideCharToMultiByte_conversionOld@conversionOld.inc": {
+  "desc": "Maps a UTF-16 (wide) string to a string in the given code page. Returns the number of bytes written, or 0 on failure.",
+  "doc": "WideCharToMultiByte"
+ },
+ "MultiByteToWideChar1_conversionOld@conversionOld.inc": {
+  "desc": "Maps a character string in the given code page to a UTF-16 (wide) string. Returns the number of characters written, or 0 on failure.",
+  "doc": "MultiByteToWideChar"
+ },
+ "WideCharToMultiByte1_conversionOld@conversionOld.inc": {
+  "desc": "Maps a UTF-16 (wide) string to a string in the given code page. Returns the number of bytes written, or 0 on failure.",
+  "doc": "WideCharToMultiByte"
+ },
+ "SHGetFileInfo@ConvertToTruePath.inc": {
+  "desc": "Retrieves information about a file system object (icon, display name, type name, attributes) into a SHFILEINFO structure.",
+  "doc": "SHGetFileInfoA"
+ },
+ "ExitProcess@Copy of NOTA.inc": {
+  "desc": "Ends the calling process and all its threads, with the given exit code.",
+  "doc": "ExitProcess"
+ },
+ "GetComputerName@Copy of NOTA.inc": {
+  "desc": "Retrieves the NetBIOS name of the local computer into a buffer. Returns nonzero on success.",
+  "doc": "GetComputerNameA"
+ },
+ "GetDiskFreeSpace@Copy of NOTA.inc": {
+  "desc": "Retrieves disk geometry and free space (sectors per cluster, bytes per sector, free and total clusters) for a drive. Limited to 2 GB values on old systems; GetDiskFreeSpaceEx is preferred.",
+  "doc": "GetDiskFreeSpaceA"
+ },
+ "GetTempPath@Copy of NOTA.inc": {
+  "desc": "Retrieves the path of the directory for temporary files. Returns the length of the path, or 0 on failure.",
+  "doc": "GetTempPathA"
+ },
+ "GetWindowsDirectory@Copy of NOTA.inc": {
+  "desc": "Retrieves the path of the Windows directory. Returns the length of the path, or 0 on failure.",
+  "doc": "GetWindowsDirectoryA"
+ },
+ "FreeLibrary@createWind.inc": {
+  "desc": "Frees a loaded DLL module, decrementing its reference count and unloading it when the count reaches zero. Returns nonzero on success.",
+  "doc": "FreeLibrary"
+ },
+ "GetModuleHandle@createWind.inc": {
+  "desc": "Returns the module handle of an already loaded module by name; an empty/null name returns the handle of the calling exe.",
+  "doc": "GetModuleHandleA"
+ },
+ "SetWindowText_createWind@createWind.inc": {
+  "desc": "Changes the text of a window's title bar or of a control. Returns nonzero on success.",
+  "doc": "SetWindowTextA"
+ },
+ "MAPISendMail@eMail.Inc": {
+  "desc": "Simple MAPI: sends a mail message described by a MapiMessage structure, optionally showing the mail client dialog. Returns SUCCESS_SUCCESS (0) or an error code. Deprecated in newer Windows.",
+  "doc": "MAPISendMail"
+ },
+ "CombineRgn@GDI32.inc": {
+  "desc": "Combines two regions into a destination region using a mode (RGN_AND, RGN_OR, RGN_XOR, RGN_DIFF, RGN_COPY). Returns the region type or ERROR.",
+  "doc": "CombineRgn"
+ },
+ "CreateEllipticRgn@GDI32.inc": {
+  "desc": "Creates an elliptical region bounded by the given rectangle. Returns the region handle; free it with DeleteObject.",
+  "doc": "CreateEllipticRgn"
+ },
+ "CreateRectRgn@GDI32.inc": {
+  "desc": "Creates a rectangular region. Returns the region handle; free it with DeleteObject.",
+  "doc": "CreateRectRgn"
+ },
+ "CreateRoundRectRgn@GDI32.inc": {
+  "desc": "Creates a rectangular region with rounded corners (ellipse width/height for the corners). Returns the region handle.",
+  "doc": "CreateRoundRectRgn"
+ },
+ "HtmlHelp@htmlhelp.inc": {
+  "desc": "Opens or controls an HTML Help (.chm) window: shows a topic, table of contents, index or search depending on the uCommand value. Returns a window handle or other result.",
+  "doc": "HtmlHelpA"
+ },
+ "htmlHelpString@htmlhelp.inc": {
+  "desc": "Same as HtmlHelp, declared with dwData as a string: opens an HTML Help (.chm) window, e.g. to show a topic or keyword passed as text.",
+  "doc": "HtmlHelpA"
+ },
+ "CopyFile@Kernel32.inc": {
+  "desc": "Copies an existing file to a new file; bFailIfExists stops it from overwriting. Returns nonzero on success.",
+  "doc": "CopyFileA"
+ },
+ "DeleteFile@Kernel32.inc": {
+  "desc": "Deletes an existing file. Returns nonzero on success.",
+  "doc": "DeleteFileA"
+ },
+ "GetCommandLine@Kernel32.inc": {
+  "desc": "Returns a pointer to the command-line string for the current process.",
+  "doc": "GetCommandLineA"
+ },
+ "GetConsoleCP@Kernel32.inc": {
+  "desc": "Returns the input code page used by the console of the calling process.",
+  "doc": "GetConsoleCP"
+ },
+ "GetConsoleOutputCP@Kernel32.inc": {
+  "desc": "Returns the output code page used by the console of the calling process.",
+  "doc": "GetConsoleOutputCP"
+ },
+ "GetCurrentProcessId@Kernel32.inc": {
+  "desc": "Returns the process identifier of the calling process.",
+  "doc": "GetCurrentProcessId"
+ },
+ "GetCurrentThread@Kernel32.inc": {
+  "desc": "Returns a pseudo handle for the calling thread.",
+  "doc": "GetCurrentThread"
+ },
+ "GetCurrentThreadId@Kernel32.inc": {
+  "desc": "Returns the thread identifier of the calling thread.",
+  "doc": "GetCurrentThreadId"
+ },
+ "GetEnvironmentStrings@Kernel32.inc": {
+  "desc": "Returns a pointer to the environment block of the current process; free it with FreeEnvironmentStrings.",
+  "doc": "GetEnvironmentStringsA"
+ },
+ "GetLogicalDrives@Kernel32.inc": {
+  "desc": "Returns a bit mask of the available disk drives (bit 0 = A, bit 1 = B, ...).",
+  "doc": "GetLogicalDrives"
+ },
+ "GetOEMCP@Kernel32.inc": {
+  "desc": "Returns the current OEM code page identifier of the operating system.",
+  "doc": "GetOEMCP"
+ },
+ "GetProcessHeap@Kernel32.inc": {
+  "desc": "Returns a handle to the default heap of the calling process.",
+  "doc": "GetProcessHeap"
+ },
+ "GetSystemDefaultLangID@Kernel32.inc": {
+  "desc": "Returns the language identifier (LANGID) for the system locale.",
+  "doc": "GetSystemDefaultLangID"
+ },
+ "GetSystemDefaultLCID@Kernel32.inc": {
+  "desc": "Returns the locale identifier (LCID) of the system locale.",
+  "doc": "GetSystemDefaultLCID"
+ },
+ "GetThreadLocale@Kernel32.inc": {
+  "desc": "Returns the locale identifier (LCID) of the calling thread's current locale.",
+  "doc": "GetThreadLocale"
+ },
+ "GetTickCount@Kernel32.inc": {
+  "desc": "Returns the number of milliseconds since the system was started; wraps around after about 49.7 days.",
+  "doc": "GetTickCount"
+ },
+ "GetUserDefaultLangID@Kernel32.inc": {
+  "desc": "Returns the language identifier (LANGID) of the current user's locale.",
+  "doc": "GetUserDefaultLangID"
+ },
+ "GetUserDefaultLCID@Kernel32.inc": {
+  "desc": "Returns the locale identifier (LCID) of the current user's default locale.",
+  "doc": "GetUserDefaultLCID"
+ },
+ "GetVersion@Kernel32.inc": {
+  "desc": "Returns the major and minor OS version and build number packed in one value. Deprecated; may not report the real version after Windows 8.1.",
+  "doc": "GetVersion"
+ },
+ "GetVersionEx_Kernel32@Kernel32.inc": {
+  "desc": "Fills an OSVERSIONINFO structure with OS version information. Deprecated; may not report the real version after Windows 8.1.",
+  "doc": "GetVersionExA"
+ },
+ "ReadFile_MDI_API@MDI_API.INC": {
+  "desc": "Reads data from a file or I/O device into a buffer and returns the number of bytes read. Returns nonzero on success.",
+  "doc": "ReadFile"
+ },
+ "CreateFile_MDI_API@MDI_API.INC": {
+  "desc": "Creates or opens a file or I/O device (disk, pipe, console, COM port) with given access, sharing and creation mode. Returns a handle or INVALID_HANDLE_VALUE (-1).",
+  "doc": "CreateFileA"
+ },
+ "SetWindowLong1@MDI_API.INC": {
+  "desc": "Changes an attribute of a window (style, extended style, window procedure, user data) at the given offset. Returns the previous value.",
+  "doc": "SetWindowLongA"
+ },
+ "GetWindowText_MDI_API@MDI_API.INC": {
+  "desc": "Copies the text of a window's title bar or a control into a buffer. Returns the length of the copied text.",
+  "doc": "GetWindowTextA"
+ },
+ "HeapCreate@Memory.inc": {
+  "desc": "Creates a private heap object for the process. Returns the heap handle, or 0 on failure.",
+  "doc": "HeapCreate"
+ },
+ "HeapDestroy@Memory.inc": {
+  "desc": "Destroys a private heap created with HeapCreate, freeing all its memory. Returns nonzero on success.",
+  "doc": "HeapDestroy"
+ },
+ "HeapAlloc@Memory.inc": {
+  "desc": "Allocates a block of memory from a heap. Returns a pointer to the block, or 0 on failure.",
+  "doc": "HeapAlloc"
+ },
+ "HeapReAlloc@Memory.inc": {
+  "desc": "Reallocates (resizes) a memory block allocated from a heap. Returns a pointer to the block, or 0 on failure.",
+  "doc": "HeapReAlloc"
+ },
+ "HeapFree@Memory.inc": {
+  "desc": "Frees a memory block allocated with HeapAlloc or HeapReAlloc. Returns nonzero on success.",
+  "doc": "HeapFree"
+ },
+ "HeapSize@Memory.inc": {
+  "desc": "Returns the size in bytes of a memory block allocated from a heap.",
+  "doc": "HeapSize"
+ },
+ "QueryPerformanceCounter@microTIMER.inc": {
+  "desc": "Retrieves the current value of the high-resolution performance counter (64-bit). Returns nonzero on success.",
+  "doc": "QueryPerformanceCounter"
+ },
+ "QueryPerformanceFrequency@microTIMER.inc": {
+  "desc": "Retrieves the frequency of the performance counter in counts per second (64-bit). Returns nonzero on success.",
+  "doc": "QueryPerformanceFrequency"
+ },
+ "SetWindow@Minimize.inc": {
+  "desc": "Changes an attribute of a window (style, extended style, window procedure, user data) at the given offset. Returns the previous value.",
+  "doc": "SetWindowLongA"
+ },
+ "MDlg@msgdlg.inc": {
+  "desc": "Displays a modal message box with text, caption, icon and buttons. Returns the ID of the button pressed (IDOK, IDCANCEL, ...).",
+  "doc": "MessageBoxA"
+ },
+ "ObjectToolbox_GetClassName@objectToolbox.inc": {
+  "desc": "Retrieves the name of the window class to which a window belongs. Returns the number of characters copied, or 0 on failure.",
+  "doc": "GetClassNameA"
+ },
+ "GetTextExtentPoint32_mOD@ODMenuXP.inc": {
+  "desc": "Computes the width and height of a text string in the device context's current font. Returns nonzero on success.",
+  "doc": "GetTextExtentPoint32A"
+ },
+ "GetDC_mOD@ODMenuXP.inc": {
+  "desc": "Retrieves a device context for the client area of a window (or the screen if hWnd is 0). Release it with ReleaseDC.",
+  "doc": "GetDC"
+ },
+ "SystemParametersInfo_mOD@ODMenuXP.inc": {
+  "desc": "Retrieves or sets a system-wide parameter (SPI_* action), optionally updating the user profile. Returns nonzero on success.",
+  "doc": "SystemParametersInfoA"
+ },
+ "DrawMenuBar_mOD@ODMenuXP.inc": {
+  "desc": "Redraws the menu bar of a window; call it after changing the menu bar. Returns nonzero on success.",
+  "doc": "DrawMenuBar"
+ },
+ "EndMenu_mOD@ODMenuXP.inc": {
+  "desc": "Ends the calling thread's active menu. Returns nonzero on success.",
+  "doc": "EndMenu"
+ },
+ "MenuItemFromPoint_mOD@ODMenuXP.inc": {
+  "desc": "Returns the zero-based position of the menu item at the given screen point, or -1 if none.",
+  "doc": "MenuItemFromPoint"
+ },
+ "ScreenToClient_mOD@ODMenuXP.inc": {
+  "desc": "Converts a point from screen coordinates to client coordinates of a window. Returns nonzero on success.",
+  "doc": "ScreenToClient"
+ },
+ "WindowFromPoint_mOD@ODMenuXP.inc": {
+  "desc": "Returns the handle of the window that contains the given screen point.",
+  "doc": "WindowFromPoint"
+ },
+ "GetActiveWindow_mOD@ODMenuXP.inc": {
+  "desc": "Returns the handle of the active window attached to the calling thread's message queue.",
+  "doc": "GetActiveWindow"
+ },
+ "GetVersionEx_mOD@ODMenuXP.inc": {
+  "desc": "Fills an OSVERSIONINFO structure with OS version information. Deprecated; may not report the real version after Windows 8.1.",
+  "doc": "GetVersionExA"
+ },
+ "InvalidateRect_mOD@ODMenuXP.inc": {
+  "desc": "Adds a rectangle (or the whole client area if null) to a window's update region so it will be repainted; bErase erases the background. Returns nonzero on success.",
+  "doc": "InvalidateRect"
+ },
+ "GetSystemMenu_mOD@ODMenuXP.inc": {
+  "desc": "Returns the handle of a window's system (window) menu; bRevert=TRUE resets it to the default.",
+  "doc": "GetSystemMenu"
+ },
+ "ReleaseCapture_mOD@ODMenuXP.inc": {
+  "desc": "Releases the mouse capture from a window in the current thread. Returns nonzero on success.",
+  "doc": "ReleaseCapture"
+ },
+ "SendMessage_mOD@ODMenuXP.inc": {
+  "desc": "Sends a message to a window and waits until the window procedure has processed it. Returns the message-dependent result.",
+  "doc": "SendMessageA"
+ },
+ "IsZoomed_mOD@ODMenuXP.inc": {
+  "desc": "Returns nonzero if the window is maximized.",
+  "doc": "IsZoomed"
+ },
+ "GetSystemMetrics_mOD@ODMenuXP.inc": {
+  "desc": "Returns a system metric or configuration setting (screen size, border widths, etc.) given an SM_* index.",
+  "doc": "GetSystemMetrics"
+ },
+ "AlphaBlend_mOD@ODMenuXP.inc": {
+  "desc": "Copies a bitmap between device contexts with alpha blending (BLENDFUNCTION, packed into a long here). Returns nonzero on success.",
+  "doc": "AlphaBlend"
+ },
+ "RtlMoveMemory_mOD@ODMenuXP.inc": {
+  "desc": "Copies a block of memory from a source to a destination address; overlapping blocks are handled. Also known as CopyMemory/MoveMemory.",
+  "doc": "RtlMoveMemory"
+ },
+ "FindWindow_mOD@ODMenuXP.inc": {
+  "desc": "Returns the handle of the top-level window whose class name and/or window title match the given strings, or 0.",
+  "doc": "FindWindowA"
+ },
+ "GetWindowRect_mOD@ODMenuXP.inc": {
+  "desc": "Retrieves the bounding rectangle of a window in screen coordinates. Returns nonzero on success.",
+  "doc": "GetWindowRect"
+ },
+ "GetClientRect_mOD@ODMenuXP.inc": {
+  "desc": "Retrieves the client area rectangle of a window (left/top are 0, right/bottom are width/height). Returns nonzero on success.",
+  "doc": "GetClientRect"
+ },
+ "SetRect_mOD@ODMenuXP.inc": {
+  "desc": "Sets the coordinates of a RECT structure. Returns nonzero on success.",
+  "doc": "SetRect"
+ },
+ "GetWindowDC_mOD@ODMenuXP.inc": {
+  "desc": "Retrieves a device context for the entire window, including title bar, menus and borders. Release it with ReleaseDC.",
+  "doc": "GetWindowDC"
+ },
+ "ReleaseDC_mOD@ODMenuXP.inc": {
+  "desc": "Releases a device context obtained with GetDC or GetWindowDC. Returns 1 if released.",
+  "doc": "ReleaseDC"
+ },
+ "DrawEdge_mOD@ODMenuXP.inc": {
+  "desc": "Draws one or more edges of a rectangle in 3D style (EDGE_* type, BF_* flags). Returns nonzero on success.",
+  "doc": "DrawEdge"
+ },
+ "SetWindowsHookEx_mOD@ODMenuXP.inc": {
+  "desc": "Installs a hook procedure (WH_* type) to monitor system or thread events. Returns the hook handle, or 0 on failure.",
+  "doc": "SetWindowsHookExA"
+ },
+ "UnhookWindowsHookEx_mOD@ODMenuXP.inc": {
+  "desc": "Removes a hook procedure installed with SetWindowsHookEx. Returns nonzero on success.",
+  "doc": "UnhookWindowsHookEx"
+ },
+ "CallNextHookEx_mOD@ODMenuXP.inc": {
+  "desc": "Passes hook information to the next hook procedure in the current hook chain. Returns the value from the next hook.",
+  "doc": "CallNextHookEx"
+ },
+ "GetWindowThreadProcessId_mOD@ODMenuXP.inc": {
+  "desc": "Returns the ID of the thread that created a window and optionally the ID of its process.",
+  "doc": "GetWindowThreadProcessId"
+ },
+ "CallWindowProc_mOD@ODMenuXP.inc": {
+  "desc": "Passes message information (hWnd, msg, wParam, lParam) to a given window procedure; used when subclassing. Returns the procedure's result.",
+  "doc": "CallWindowProcA"
+ },
+ "GetWindowLong_mOD@ODMenuXP.inc": {
+  "desc": "Retrieves an attribute of a window (style, extended style, window procedure, user data) at the given offset.",
+  "doc": "GetWindowLongA"
+ },
+ "SetWindowLong_mOD@ODMenuXP.inc": {
+  "desc": "Changes an attribute of a window (style, extended style, window procedure, user data) at the given offset. Returns the previous value.",
+  "doc": "SetWindowLongA"
+ },
+ "SetProp_mOD@ODMenuXP.inc": {
+  "desc": "Adds or changes an entry in a window's property list, associating a string name with a handle/value. Returns nonzero on success.",
+  "doc": "SetPropA"
+ },
+ "GetProp_mOD@ODMenuXP.inc": {
+  "desc": "Returns the data handle associated with a string name in a window's property list, or 0 if not found.",
+  "doc": "GetPropA"
+ },
+ "RemoveProp_mOD@ODMenuXP.inc": {
+  "desc": "Removes an entry from a window's property list and returns the data handle that was stored.",
+  "doc": "RemovePropA"
+ },
+ "GetClassName_mOD@ODMenuXP.inc": {
+  "desc": "Retrieves the name of the window class to which a window belongs. Returns the number of characters copied, or 0 on failure.",
+  "doc": "GetClassNameA"
+ },
+ "TrackPopupMenuEx_mOD@ODMenuXP.inc": {
+  "desc": "Displays a shortcut (popup) menu at the given location and tracks the selection; optional TPMPARAMS excludes an area. Returns nonzero or the selected command ID.",
+  "doc": "TrackPopupMenuEx"
+ },
+ "GetMenuItemInfo_mOD@ODMenuXP.inc": {
+  "desc": "Retrieves information about a menu item into a MENUITEMINFO structure, by position or command ID. Returns nonzero on success.",
+  "doc": "GetMenuItemInfoA"
+ },
+ "GetSysColor_mOD@ODMenuXP.inc": {
+  "desc": "Returns the current color (RGB value) of the specified display element, given a COLOR_* index.",
+  "doc": "GetSysColor"
+ },
+ "ExcludeClipRect_mOD@ODMenuXP.inc": {
+  "desc": "Removes a rectangle from the clipping region of a device context. Returns the new region type.",
+  "doc": "ExcludeClipRect"
+ },
+ "GetDesktopWindow_mOD@ODMenuXP.inc": {
+  "desc": "Returns the handle of the desktop window.",
+  "doc": "GetDesktopWindow"
+ },
+ "GetPixel_mOD@ODMenuXP.inc": {
+  "desc": "Returns the RGB color of the pixel at the given coordinates in a device context, or CLR_INVALID.",
+  "doc": "GetPixel"
+ },
+ "SetPixel_mOD@ODMenuXP.inc": {
+  "desc": "Sets the pixel at the given coordinates to a color. Returns the RGB color actually set, or -1 on failure.",
+  "doc": "SetPixel"
+ },
+ "BitBlt_mOD@ODMenuXP.inc": {
+  "desc": "Copies a rectangle of pixels from a source device context to a destination one using a raster operation (SRCCOPY, ...). Returns nonzero on success.",
+  "doc": "BitBlt"
+ },
+ "SetBkMode_mOD@ODMenuXP.inc": {
+  "desc": "Sets the background mix mode of a device context (OPAQUE or TRANSPARENT). Returns the previous mode.",
+  "doc": "SetBkMode"
+ },
+ "FillRect_mOD@ODMenuXP.inc": {
+  "desc": "Fills a rectangle using the given brush (right and bottom edges excluded). Returns nonzero on success.",
+  "doc": "FillRect"
+ },
+ "GetSysColorBrush_mOD@ODMenuXP.inc": {
+  "desc": "Returns a handle to a cached brush for a system color index (COLOR_*); do not delete it.",
+  "doc": "GetSysColorBrush"
+ },
+ "GetStockObject_mOD@ODMenuXP.inc": {
+  "desc": "Returns a handle to a stock pen, brush, font or palette (WHITE_BRUSH, NULL_PEN, DEFAULT_GUI_FONT, ...).",
+  "doc": "GetStockObject"
+ },
+ "GetObject_mOD@ODMenuXP.inc": {
+  "desc": "Retrieves information about a graphics object (bitmap, pen, brush, font) into a buffer. Returns the number of bytes stored.",
+  "doc": "GetObjectA"
+ },
+ "SetTextColor_mOD@ODMenuXP.inc": {
+  "desc": "Sets the text color of a device context. Returns the previous text color.",
+  "doc": "SetTextColor"
+ },
+ "DrawText_mOD@ODMenuXP.inc": {
+  "desc": "Draws formatted text in a rectangle (alignment, word wrap, ellipsis by DT_* flags). Returns the height of the text.",
+  "doc": "DrawTextA"
+ },
+ "DrawTextEx_mOD@ODMenuXP.inc": {
+  "desc": "Draws formatted text in a rectangle with extra options such as tab size and margins (DRAWTEXTPARAMS). Returns the height of the text.",
+  "doc": "DrawTextExA"
+ },
+ "CreateFont_mOD@ODMenuXP.inc": {
+  "desc": "Creates a logical font with the given height, width, weight, style, charset and face name. Returns the font handle; free it with DeleteObject.",
+  "doc": "CreateFontA"
+ },
+ "SelectObject_mOD@ODMenuXP.inc": {
+  "desc": "Selects a GDI object (pen, brush, font, bitmap, region) into a device context. Returns the previously selected object.",
+  "doc": "SelectObject"
+ },
+ "DeleteObject_mOD@ODMenuXP.inc": {
+  "desc": "Deletes a GDI object (pen, brush, font, bitmap, region, palette) and frees its resources. Returns nonzero on success.",
+  "doc": "DeleteObject"
+ },
+ "SetMenuDefaultItem_mOD@ODMenuXP.inc": {
+  "desc": "Sets the default (bold) item of a menu, by command ID or position. Returns nonzero on success.",
+  "doc": "SetMenuDefaultItem"
+ },
+ "Rectangle_mOD@ODMenuXP.inc": {
+  "desc": "Draws a rectangle outlined with the current pen and filled with the current brush. Returns nonzero on success.",
+  "doc": "Rectangle"
+ },
+ "CreatePen_mOD@ODMenuXP.inc": {
+  "desc": "Creates a logical pen with the given style, width and color. Returns the pen handle; free it with DeleteObject.",
+  "doc": "CreatePen"
+ },
+ "CreateSolidBrush_mOD@ODMenuXP.inc": {
+  "desc": "Creates a logical brush of a solid color. Returns the brush handle; free it with DeleteObject.",
+  "doc": "CreateSolidBrush"
+ },
+ "CreateBrushIndirect_mOD@ODMenuXP.inc": {
+  "desc": "Creates a logical brush from a LOGBRUSH structure (style, color, hatch). Returns the brush handle.",
+  "doc": "CreateBrushIndirect"
+ },
+ "CreatePenIndirect_mOD@ODMenuXP.inc": {
+  "desc": "Creates a logical pen from a LOGPEN structure (style, width, color). Returns the pen handle.",
+  "doc": "CreatePenIndirect"
+ },
+ "TransparentBlt_mOD@ODMenuXP.inc": {
+  "desc": "Copies a bitmap between device contexts, treating one RGB color as transparent and stretching if needed. Returns nonzero on success.",
+  "doc": "TransparentBlt"
+ },
+ "ModifyMenu_mOD@ODMenuXP.inc": {
+  "desc": "Changes an existing menu item (text, flags, ID or bitmap). Superseded by SetMenuItemInfo. Returns nonzero on success.",
+  "doc": "ModifyMenuA"
+ },
+ "GetMenu_mOD@ODMenuXP.inc": {
+  "desc": "Returns the handle of the menu assigned to a window, or 0.",
+  "doc": "GetMenu"
+ },
+ "GetSubMenu_mOD@ODMenuXP.inc": {
+  "desc": "Returns the handle of the drop-down menu or submenu at the given position in a menu, or 0.",
+  "doc": "GetSubMenu"
+ },
+ "GetMenuItemCount_mOD@ODMenuXP.inc": {
+  "desc": "Returns the number of items in a menu, or -1 on failure.",
+  "doc": "GetMenuItemCount"
+ },
+ "StringFromGUID2@ole.inc": {
+  "desc": "Converts a GUID into a string of printable characters in braces, written to a wide-character buffer. Returns the number of characters, or 0 if the buffer is too small.",
+  "doc": "StringFromGUID2"
+ },
+ "CLSIDFromProgID@ole.inc": {
+  "desc": "Looks up a CLSID in the registry from a ProgID (e.g. \"Excel.Application\"). Returns an HRESULT.",
+  "doc": "CLSIDFromProgID"
+ },
+ "CLSIDFromProgIDEx@ole.inc": {
+  "desc": "Looks up a CLSID from a ProgID, triggering automatic installation of the class if required. Returns an HRESULT.",
+  "doc": "CLSIDFromProgIDEx"
+ },
+ "ProgIDFromCLSID@ole.inc": {
+  "desc": "Retrieves the ProgID for a CLSID; the returned string must be freed with CoTaskMemFree. Returns an HRESULT.",
+  "doc": "ProgIDFromCLSID"
+ },
+ "StringFromCLSID@ole.inc": {
+  "desc": "Converts a CLSID into a string in braces; the returned string must be freed with CoTaskMemFree. Returns an HRESULT.",
+  "doc": "StringFromCLSID"
+ },
+ "IIDFromString@ole.inc": {
+  "desc": "Converts a string in braces (as made by StringFromIID) into an interface identifier (IID). Returns an HRESULT.",
+  "doc": "IIDFromString"
+ },
+ "CoCreateGuid@ole.inc": {
+  "desc": "Creates a new unique GUID. Returns an HRESULT (S_OK on success).",
+  "doc": "CoCreateGuid"
+ },
+ "CoUninitialize@ole.inc": {
+  "desc": "Closes the COM library on the current thread; call once for each successful CoInitialize.",
+  "doc": "CoUninitialize"
+ },
+ "CoInitialize@ole.inc": {
+  "desc": "Initializes the COM library on the current thread (single-threaded apartment). Returns an HRESULT. CoInitializeEx is recommended instead.",
+  "doc": "CoInitialize"
+ },
+ "OleInitialize@ole.inc": {
+  "desc": "Initializes the COM library (STA) and OLE features such as clipboard and drag and drop on the current thread. Returns an HRESULT.",
+  "doc": "OleInitialize"
+ },
+ "OleUninitialize@ole.inc": {
+  "desc": "Closes the OLE library on the current thread, freeing its resources.",
+  "doc": "OleUninitialize"
+ },
+ "IsEqualGUID@ole.inc": {
+  "desc": "Compares two GUIDs and returns nonzero if they are equal.",
+  "doc": "IsEqualGUID"
+ },
+ "CoCreateInstance@ole.inc": {
+  "desc": "Creates and default-initializes one object of the class associated with a CLSID and returns the requested interface pointer. Returns an HRESULT.",
+  "doc": "CoCreateInstance"
+ },
+ "CallAsmProc@ole.inc": {
+  "desc": "CallWindowProc declared to call a machine-code procedure: passes four values to the procedure at address Proc and returns its result.",
+  "doc": "CallWindowProcA"
+ },
+ "FL_SHAppBarMessage@QFormLocale.inc": {
+  "desc": "Sends an appbar message (ABM_*) to the system, e.g. to get the taskbar position and state. Returns a message-dependent value.",
+  "doc": "SHAppBarMessage"
+ },
+ "FL_GetSystemMetrics@QFormLocale.inc": {
+  "desc": "Returns a system metric or configuration setting (screen size, border widths, etc.) given an SM_* index.",
+  "doc": "GetSystemMetrics"
+ },
+ "GetWindowRect_QFormSkin@QFormSkin.inc": {
+  "desc": "Retrieves the bounding rectangle of a window in screen coordinates. Returns nonzero on success.",
+  "doc": "GetWindowRect"
+ },
+ "GetClientRect_QFormSkin@QFormSkin.inc": {
+  "desc": "Retrieves the client area rectangle of a window (left/top are 0, right/bottom are width/height). Returns nonzero on success.",
+  "doc": "GetClientRect"
+ },
+ "SetRect@QFormSkin.inc": {
+  "desc": "Sets the coordinates of a RECT structure. Returns nonzero on success.",
+  "doc": "SetRect"
+ },
+ "GetRgnBox@QFormSkin.inc": {
+  "desc": "Retrieves the bounding rectangle of a region. Returns the region type.",
+  "doc": "GetRgnBox"
+ },
+ "SetRectRgn@QFormSkin.inc": {
+  "desc": "Changes an existing region into a rectangular region with the given coordinates. Returns nonzero on success.",
+  "doc": "SetRectRgn"
+ },
+ "CreateRectRgnIndirect@QFormSkin.inc": {
+  "desc": "Creates a rectangular region from a RECT structure. Returns the region handle.",
+  "doc": "CreateRectRgnIndirect"
+ },
+ "GetClipRgn@QFormSkin.inc": {
+  "desc": "Copies the application-defined clipping region of a device context into an existing region. Returns 1, 0 if none, or -1 on error.",
+  "doc": "GetClipRgn"
+ },
+ "SetWindowRgn@QFormSkin.inc": {
+  "desc": "Sets the window region (the visible area) of a window; the system takes ownership of the region. Returns nonzero on success.",
+  "doc": "SetWindowRgn"
+ },
+ "SelectClipRgn@QFormSkin.inc": {
+  "desc": "Selects a region as the clipping region of a device context (0 removes clipping). Returns the region type.",
+  "doc": "SelectClipRgn"
+ },
+ "InvalidateRect@QFormSkin.inc": {
+  "desc": "Adds a rectangle (or the whole client area if null) to a window's update region so it will be repainted; bErase erases the background. Returns nonzero on success.",
+  "doc": "InvalidateRect"
+ },
+ "ValidateRect@QFormSkin.inc": {
+  "desc": "Removes a rectangle from a window's update region, marking it as already painted. Returns nonzero on success.",
+  "doc": "ValidateRect"
+ },
+ "InvalidateRgn@QFormSkin.inc": {
+  "desc": "Adds a region to a window's update region so it will be repainted. Returns nonzero.",
+  "doc": "InvalidateRgn"
+ },
+ "ValidateRgn@QFormSkin.inc": {
+  "desc": "Removes a region from a window's update region, marking it as already painted. Returns nonzero on success.",
+  "doc": "ValidateRgn"
+ },
+ "OffsetClipRgn@QFormSkin.inc": {
+  "desc": "Moves the clipping region of a device context by the given offsets. Returns the region type.",
+  "doc": "OffsetClipRgn"
+ },
+ "ClientToScreen_QFormSkin@QFormSkin.inc": {
+  "desc": "Converts a point from client coordinates of a window to screen coordinates. Returns nonzero on success.",
+  "doc": "ClientToScreen"
+ },
+ "GetWindowDC@QFormSkin.inc": {
+  "desc": "Retrieves a device context for the entire window, including title bar, menus and borders. Release it with ReleaseDC.",
+  "doc": "GetWindowDC"
+ },
+ "ExtractIconEx@QFormSkin.inc": {
+  "desc": "Extracts large and/or small icons from an exe, dll or icon file, starting at a given index. Returns the number of icons extracted (or the total with index -1).",
+  "doc": "ExtractIconExA"
+ },
+ "DrawIcon@QFormSkin.inc": {
+  "desc": "Draws an icon or cursor in a device context at the given position. Returns nonzero on success.",
+  "doc": "DrawIcon"
+ },
+ "DestroyIcon@QFormSkin.inc": {
+  "desc": "Destroys an icon and frees its memory. Returns nonzero on success.",
+  "doc": "DestroyIcon"
+ },
+ "CopyImage@QFormSkin.inc": {
+  "desc": "Creates a new icon, cursor or bitmap and copies the attributes of the source to it, optionally resizing it. Returns the new image handle.",
+  "doc": "CopyImage"
+ },
+ "DrawText@QFormSkin.inc": {
+  "desc": "Draws formatted text in a rectangle (alignment, word wrap, ellipsis by DT_* flags). Returns the height of the text.",
+  "doc": "DrawTextA"
+ },
+ "SetTextColor@QFormSkin.inc": {
+  "desc": "Sets the text color of a device context. Returns the previous text color.",
+  "doc": "SetTextColor"
+ },
+ "CopyMemory@QFormSkin.inc": {
+  "desc": "Copies a block of memory from a source to a destination address (RtlMoveMemory, also named CopyMemory); overlapping blocks are handled.",
+  "doc": "RtlMoveMemory"
+ },
+ "ExcludeUpdateRgn@QFormSkin.inc": {
+  "desc": "Excludes a window's update region from the clipping region of a device context, so painting skips invalid areas. Returns the region type.",
+  "doc": "ExcludeUpdateRgn"
+ },
+ "ExcludeClipRect@QFormSkin.inc": {
+  "desc": "Removes a rectangle from the clipping region of a device context. Returns the new region type.",
+  "doc": "ExcludeClipRect"
+ },
+ "SetCursor@QFormSkin.inc": {
+  "desc": "Sets the mouse cursor shape. Returns the handle of the previous cursor.",
+  "doc": "SetCursor"
+ }
+}

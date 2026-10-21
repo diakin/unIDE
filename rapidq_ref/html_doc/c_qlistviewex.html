@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QLISTVIEWEX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QLISTVIEWEX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QLISTVIEWEX Component</h1>
+<p class="rq-meta">Extends <a href="qlistview.html">QLISTVIEW</a> &middot; source: <code>inc/QListviewEx.inc</code>, line 6 &middot; author: Dreadsoft&#174; Corporation</p>
+<p><b>Extended QListView in report style with clickable flat header buttons for sorting, CSV loading and saving, and filtering of rows.</b></p>
+<p>Qlistviewex places the list view inside its own panel (ParentPanel) and replaces the standard column headers with a row of QCoolBtn buttons on a header panel. Clicking a header button sorts the list by that column. Columns are added with AddCol, which takes names separated by &#x27;/&#x27;, and Draw rebuilds the header buttons.</p>
+<p>Data is loaded only from the csv string list: each line is split by Separator (default &#x27;;&#x27;) into an item and its subitems, and empty fields are shown as &#x27;-&#x27;. LoadFromCsvFile loads csvFile first. UpdateCSV writes the list contents back to csv, and SaveToCsvFile, SaveToFileAs and DirectSaveAs save to a file. Exclude and Filter remove rows by comparing a column to a string, not case sensitive.</p>
+<p>Set ParentPanel.Parent to the form (and align the panel as needed); the list view itself is placed in the panel by Draw.</p>
+<p>QLISTVIEWEX inherits the properties, methods and events of <a href="qlistview.html">QLISTVIEW</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>Qlistviewex Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">ParentPanel</td><td class="rq-type">QPANEL</td><td>RW</td><td></td><td>QPanel that holds the header panel and the list view; set its Parent to place the component on a form.</td></tr>
+<tr><td class="rq-name">Header</td><td class="rq-type">QPANEL</td><td>RW</td><td></td><td>QPanel, 20 pixels high and aligned to the top of ParentPanel, that holds the column header buttons.</td></tr>
+<tr><td class="rq-name">ColHeader</td><td class="rq-type">ARRAY(100) OF QCOOLBTN</td><td>RW</td><td></td><td>Array (0-100) of QCoolBtn buttons used as column headers; clicking one sorts by that column.</td></tr>
+<tr><td class="rq-name">csv</td><td class="rq-type">QSTRINGLIST</td><td>RW</td><td></td><td>QStringList with the data lines; Load reads from it and UpdateCSV writes to it.</td></tr>
+<tr><td class="rq-name">csvFile</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>File name used by LoadFromCsvFile and SaveToCsvFile.</td></tr>
+<tr><td class="rq-name">Separator</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;;&quot;</td><td>Field separator for CSV lines (default &quot;;&quot;).</td></tr>
+<tr><td class="rq-name">Columns_count</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Number of columns added with AddCol; used by Draw.</td></tr>
+<tr><td class="rq-name">FlatHeaders</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Flat style of the header buttons (default 1), applied by Draw.</td></tr>
+</table>
+<a name="2"></a><h2>Qlistviewex Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">FieldsCount</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Returns the number of fields in the first CSV line (separators + 1).</td></tr>
+<tr><td class="rq-name">FastClear</td><td class="rq-type">SUB</td><td>Clears all items faster than Clear by temporarily switching to another view style and font size 1; the source says Clear is very slow with many items.</td></tr>
+<tr><td class="rq-name">load</td><td class="rq-type">SUB</td><td>Clears the list and fills it from the csv string list.</td></tr>
+<tr><td class="rq-name">loadfromcsvfile</td><td class="rq-type">SUB</td><td>Loads csvFile into the csv string list and calls Load.</td></tr>
+<tr><td class="rq-name">sortby</td><td class="rq-type">SUB(Criterium as string)</td><td>SortBy(Caption) sorts the rows by the column whose caption matches, by temporarily swapping that column with the first one and using SortType.</td></tr>
+<tr><td class="rq-name">Exclude</td><td class="rq-type">SUB(Column as integer, Criterium as string)</td><td>Exclude(Column, Text) removes rows whose value in the given column (0 = first) equals Text, not case sensitive.</td></tr>
+<tr class="rq-internal"><td class="rq-name">columnclick</td><td class="rq-type">SUB(hcapt as qcoolbtn)</td><td>Internal: OnClick handler of the header buttons; calls SortBy with the button caption.</td></tr>
+<tr><td class="rq-name">draw</td><td class="rq-type">SUB</td><td>Places the list view in ParentPanel in report style with grid lines and rebuilds the header buttons from the column captions and widths; call it after changing columns.</td></tr>
+<tr><td class="rq-name">addcol</td><td class="rq-type">SUB(coltoadd as string)</td><td>AddCol(Names) adds columns from a string of names separated by &#x27;/&#x27; and calls Draw.</td></tr>
+<tr><td class="rq-name">updatecsv</td><td class="rq-type">SUB</td><td>Rewrites the csv string list from the current list contents; &#x27;-&#x27; placeholders become empty fields.</td></tr>
+<tr><td class="rq-name">filter</td><td class="rq-type">SUB(Column as integer, criterium as string)</td><td>Filter(Column, Text) keeps only rows whose value in the given column (0 = first) equals Text, not case sensitive.</td></tr>
+<tr><td class="rq-name">SaveToCsvFile</td><td class="rq-type">SUB</td><td>Calls UpdateCSV and saves the csv string list to csvFile.</td></tr>
+<tr><td class="rq-name">SaveToFileAs</td><td class="rq-type">SUB</td><td>Shows a save dialog and saves the csv string list to the chosen file.</td></tr>
+<tr><td class="rq-name">DirectSaveAs</td><td class="rq-type">SUB</td><td>Shows a save dialog and writes the list contents directly to the chosen file, one separated line per row.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The AddCol comment says &#x27;(See example)&#x27;, but the file contains no example.</li>
+<li>Methods share the global variables lx, ly, ix and iy declared with DEFINT at file level.</li>
+<li>Exclude, Filter, UpdateCSV and DirectSaveAs use DO ... LOOP UNTIL loops that run once before checking, so an empty list or a single column is not handled.</li>
+<li>SaveToFileAs saves the csv string list without calling UpdateCSV first, so edits made in the list are not included.</li>
+<li>FieldsCount is taken from the first CSV line only.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 6714) contains its own edition of QLISTVIEWEX; it has members that are not in this file: HEIGHT, IX, IY, LEFT, LX, LY, TOP, VISIBLE, WIDTH.</li>
+</ul>
+<a name="4"></a><h2>Qlistviewex Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Form AS QFORM
+DIM LV AS Qlistviewex
+LV.ParentPanel.Parent = Form
+LV.ParentPanel.Align = 5
+LV.AddCol(&quot;Name/Phone/City&quot;)
+LV.csvFile = &quot;phones.csv&quot;
+LV.LoadFromCsvFile
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qlistboxex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qmarker.html">Next component</a></div>
+</body>
+</html>

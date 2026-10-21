@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Copy of NOTA.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: Copy of NOTA.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>Copy of NOTA.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/Copy of NOTA.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 24 functions &middot; 5 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#APEDATE">ApeDate</a> &middot; <a href="#ASCIIKRYPT">AsciiKrypt</a> &middot; <a href="#CLOSENOTASYS">CloseNOTASys</a> &middot; <a href="#CLOSENOTAUSER">CloseNOTAUser</a> &middot; <a href="#DIE">Die</a> &middot; <a href="#DIVBYTES">DivBytes</a> &middot; <a href="#DIVMILISECS_">DivMiliSecs$</a> &middot; <a href="#EXITPROCESS">ExitProcess</a> &middot; <a href="#GETCOMPUTERNAME">GetComputerName</a> &middot; <a href="#GETCOMPUTERNAME_">GetComputerName$</a> &middot; <a href="#GETDISKFREESPACE">GetDiskFreeSpace</a> &middot; <a href="#GETFREEDRIVE">GetFreeDrive</a> &middot; <a href="#GETLASTERROR_">GetLastError$</a> &middot; <a href="#GETTEMPPATH">GetTempPath</a> &middot; <a href="#GETTEMPPATH_">GetTempPath$</a> &middot; <a href="#GETUSERNAME_">GetUserName$</a> &middot; <a href="#GETWINDOWSDIRECTORY">GetWindowsDirectory</a> &middot; <a href="#GETWINDOWSDIRECTORY_">GetWindowsDirectory$</a> &middot; <a href="#KILLIT">KillIt</a> &middot; <a href="#LOGEVENT">LogEvent</a> &middot; <a href="#MAKEMOTD">MakeMOTD</a> &middot; <a href="#OPENNOTASYS">OpenNOTASys</a> &middot; <a href="#OPENNOTAUSER">OpenNOTAUser</a> &middot; <a href="#PROGRAMNAME_">ProgramName$</a></p>
+<h3><a name="APEDATE"></a>ApeDate</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10776</p>
+<pre>Function ApeDate</pre>
+<p>Returns DATE$ without separators (MMDDYYYY); for the year 2000 the year is written as 2K. Part of the NOTA (Network Of The Apes) helper set.</p>
+<h3><a name="ASCIIKRYPT"></a>AsciiKrypt</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10777</p>
+<pre>Function AsciiKrypt (bpmKryptLine$ as string, bpmKryptPass$ as string, bpmKryptMode&amp; as integer)</pre>
+<p>Simple character-shift cipher: adds (mode 1) or subtracts (other mode) the ASCII codes of the password bpmKryptPass$ to each character of bpmKryptLine$ and returns the result. Characters can overflow 0..255; not secure.</p>
+<h3><a name="CLOSENOTASYS"></a>CloseNOTASys</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10778</p>
+<pre>Function CloseNOTASys</pre>
+<p>Returns the LastOpened value from the global registry object NOTASys and closes its key. Pairs with OpenNOTASys.</p>
+<h3><a name="CLOSENOTAUSER"></a>CloseNOTAUser</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10779</p>
+<pre>Function CloseNOTAUser</pre>
+<p>Returns the LastOpened value from the global registry object NOTAUser and closes its key. Pairs with OpenNOTAUser.</p>
+<h3><a name="DIE"></a>Die</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10780</p>
+<pre>Function Die</pre>
+<p>Ends the process immediately with exit code 9999 (ExitProcess).</p>
+<h3><a name="DIVBYTES"></a>DivBytes</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10781</p>
+<pre>Function DivBytes (bpmNumBytes&amp; as double, bpmBytesFormat$ as string) as long</pre>
+<p>Converts a byte count to KB, MB, GB or TB according to bpmBytesFormat$. Values below 1024 are returned unchanged; an unknown format returns 0. Declared AS LONG, so the result is truncated.</p>
+<h3><a name="DIVMILISECS_"></a>DivMiliSecs$</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10782</p>
+<pre>function DivMiliSecs$</pre>
+<p>Formats the global millisecond count bpmDivTime&amp; as days:hours:minutes:seconds.milliseconds. Note: for values below 1000 the code executes END, which stops the program.</p>
+<h3><a name="EXITPROCESS"></a>ExitProcess</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 10906</p>
+<pre>Declare Function ExitProcess Lib &quot;kernel32.dll&quot; Alias &quot;ExitProcess&quot; (uExitCode As Long) as integer</pre>
+<p>Ends the calling process and all its threads, with the given exit code.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=ExitProcess">ExitProcess</a></p>
+<h3><a name="GETCOMPUTERNAME"></a>GetComputerName</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 11019</p>
+<pre>Declare Function GetComputerName Lib &quot;kernel32.dll&quot; Alias &quot;GetComputerNameA&quot; (lpBuffer As Long, nSize As Long) As Long</pre>
+<p>Retrieves the NetBIOS name of the local computer into a buffer. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetComputerNameA">GetComputerNameA</a></p>
+<h3><a name="GETCOMPUTERNAME_"></a>GetComputerName$</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10783</p>
+<pre>Function GetComputerName$</pre>
+<p>Returns the computer name using the Windows API GetComputerName (buffer of 200 characters).</p>
+<h3><a name="GETDISKFREESPACE"></a>GetDiskFreeSpace</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 11033</p>
+<pre>Declare Function GetDiskFreeSpace Lib &quot;kernel32.dll&quot; Alias &quot;GetDiskFreeSpaceA&quot; (lpRootPathName As String, lpSectorsPerCluster As Long, lpBytesPerSector As Long, lpNumberOfFreeClusters As Long, lpTtoalNumberOfClusters As Long) As Long</pre>
+<p>Retrieves disk geometry and free space (sectors per cluster, bytes per sector, free and total clusters) for a drive. Limited to 2 GB values on old systems; GetDiskFreeSpaceEx is preferred.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDiskFreeSpaceA">GetDiskFreeSpaceA</a></p>
+<h3><a name="GETFREEDRIVE"></a>GetFreeDrive</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10784</p>
+<pre>Function GetFreeDrive (bpmDriveLetter$ as string) as long</pre>
+<p>Returns the free space in bytes on drive bpmDriveLetter$ (one letter, without colon) using GetDiskFreeSpace; returns 0 if the drive does not exist or the argument is longer than one character. Result is a LONG, so large disks overflow.</p>
+<h3><a name="GETLASTERROR_"></a>GetLastError$</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10785</p>
+<pre>Function GetLastError$</pre>
+<p>Looks up the error code in the global bpmErrorCodeNumber&amp; in a tab-separated text file named by the global bpmErrorFileName$ and returns its description and hex code. Note: on code 0 or a missing file the code executes END, which stops the program.</p>
+<h3><a name="GETTEMPPATH"></a>GetTempPath</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 11125</p>
+<pre>Declare Function GetTempPath Lib &quot;kernel32.dll&quot; Alias &quot;GetTempPathA&quot; (nBufferLength As Long, lpBuffer As long) As Long</pre>
+<p>Retrieves the path of the directory for temporary files. Returns the length of the path, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetTempPathA">GetTempPathA</a></p>
+<h3><a name="GETTEMPPATH_"></a>GetTempPath$</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10786</p>
+<pre>Function GetTempPath$</pre>
+<p>Returns the Windows temporary folder path using the API GetTempPath, with the trailing backslash removed.</p>
+<h3><a name="GETUSERNAME_"></a>GetUserName$</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10787</p>
+<pre>Function GetUserName$</pre>
+<p>Returns the name of the current Windows user using the API GetUserName.</p>
+<h3><a name="GETWINDOWSDIRECTORY"></a>GetWindowsDirectory</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 11143</p>
+<pre>Declare Function GetWindowsDirectory Lib &quot;kernel32.dll&quot; Alias &quot;GetWindowsDirectoryA&quot; (lpBuffer As long, nSize As Long) As Long</pre>
+<p>Retrieves the path of the Windows directory. Returns the length of the path, or 0 on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetWindowsDirectoryA">GetWindowsDirectoryA</a></p>
+<h3><a name="GETWINDOWSDIRECTORY_"></a>GetWindowsDirectory$</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10788</p>
+<pre>Function GetWindowsDirectory$</pre>
+<p>Returns the Windows directory path using the API GetWindowsDirectory.</p>
+<h3><a name="KILLIT"></a>KillIt</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10789</p>
+<pre>Function KillIt</pre>
+<p>Ends the program by calling Application.Terminate.</p>
+<h3><a name="LOGEVENT"></a>LogEvent</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10790</p>
+<pre>Function LogEvent (bpmSeverity$ as String, bpmCategory$ as string, bpmEventText$ as string)</pre>
+<p>Writes an event to the Windows event log by running the external LOGEVENT.EXE with severity, category and text; returns the Shell result as a string. LOGEVENT.EXE must be available.</p>
+<h3><a name="MAKEMOTD"></a>MakeMOTD</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10791</p>
+<pre>Function MakeMOTD</pre>
+<p>Creates today&#x27;s message-of-the-day file MOTD_&lt;ApeDate&gt;.txt in the folder stored in HKLM\Software\Network_Of_The_Apes\MOTDRoot (default C:, written if missing), opens it in Notepad and returns its path.</p>
+<h3><a name="OPENNOTASYS"></a>OpenNOTASys</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10792</p>
+<pre>Function OpenNOTASys</pre>
+<p>Opens the key Software\Network_Of_The_Apes in the global registry object NOTASys, writes the current date and time to LastOpened and returns that value.</p>
+<h3><a name="OPENNOTAUSER"></a>OpenNOTAUser</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10793</p>
+<pre>Function OpenNOTAUser</pre>
+<p>Opens the key Software\Network_Of_The_Apes in the global registry object NOTAUser, writes the current date and time to LastOpened and returns that value.</p>
+<h3><a name="PROGRAMNAME_"></a>ProgramName$</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 10794</p>
+<pre>Function ProgramName$</pre>
+<p>Returns the file name of the running program (COMMAND$(0) without its folder path).</p>
+</body>
+</html>

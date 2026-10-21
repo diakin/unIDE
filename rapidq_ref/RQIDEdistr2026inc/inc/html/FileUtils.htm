@@ -1,0 +1,167 @@
+<html>
+<head>
+<title>FileUtils.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="0000AA"><b>$ESCAPECHARS</b></font> ON
+
+<font color="007700"><i>'ChangeFileExt:</i></font> 
+<font color="007700"><i>'Returns: String</i></font> 
+<font color="007700"><i>'Parameters:</i></font> 
+<font color="007700"><i>'FileName (String): Name of file with old extention</i></font> 
+<font color="007700"><i>'NewExt (String): New extention. This must include the leading ".".</i></font> 
+
+<font color="007700"><i>'Information:</i></font> 
+<font color="007700"><i>'Author: Taj Morton</i></font> 
+<font color="007700"><i>'Email: tmorton at linuxmail dot org.</i></font> 
+<font color="007700"><i>'License: Public Domain</i></font> 
+
+<font color="007700"><i>'Description:</i></font> 
+<font color="007700"><i>'Changes the extention of FileName to NewExt. For example:</i></font> 
+<font color="007700"><i>'ChangeFileExt("File.bas", ".inc")</i></font> 
+<font color="007700"><i>'returns File.inc. This function does not delete the old string,</i></font> 
+<font color="007700"><i>'instead, it simply returns a new one with the extention.</i></font> 
+<font color="007700"><i>'You must include the leading "." for it to be added, as it is not</i></font> 
+<font color="007700"><i>'done by the function.</i></font> 
+
+<font color="0000AA"><b>FUNCTION</b></font> ChangeFileExt<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>String</b></font>, NewExt <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> Returns <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> CurrentExt <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+	<font color="0000AA"><b>DIM</b></font> CurrentExtLoc <font color="0000AA"><b>as</b></font> <font color="000099"><b>INTEGER</b></font>
+	<font color="0000AA"><b>DIM</b></font> FileNoExt <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	
+	CurrentExtLoc = RInStr<b>(</b>FileName, "<font color="990000">.</font>"<b>)</b>
+	CurrentExt = <font color="0000AA"><b>MID$</b></font><b>(</b>FileName, CurrentExtLoc, <font color="0000AA"><b>LEN</b></font><b>(</b>FileName<b>)</b><b>)</b>
+	FileNoExt = <font color="0000AA"><b>DELETE$</b></font><b>(</b>FileName, CurrentExtLoc, <font color="0000AA"><b>LEN</b></font><b>(</b>FileName<b>)</b><b>)</b>
+	
+	Result = <font color="0000AA"><b>INSERT$</b></font><b>(</b>NewExt, FileNoExt, <font color="0000AA"><b>LEN</b></font><b>(</b>FileName<b>)</b><b>)</b>
+	ChangeFileExt = Result
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="007700"><i>'ExtractFileName:</i></font> 
+<font color="007700"><i>'Returns: String</i></font> 
+<font color="007700"><i>'Parameters:</i></font> 
+<font color="007700"><i>'FileName (String): File with full path</i></font> 
+
+<font color="007700"><i>'Information:</i></font> 
+<font color="007700"><i>'Author: Taj Morton</i></font> 
+<font color="007700"><i>'Email: tmorton at linuxmail dot org.</i></font> 
+<font color="007700"><i>'License: Public Domain</i></font> 
+
+<font color="007700"><i>'Description:</i></font> 
+<font color="007700"><i>'ExtractFileName takes a file name with a path and returns only</i></font> 
+<font color="007700"><i>'the file name. For example:</i></font> 
+<font color="007700"><i>'ExtractFileName("C:\\Program Files\\AFile.bas")</i></font> 
+<font color="007700"><i>'returns AFile.bas. You can use either two back-slashes or a single</i></font> 
+<font color="007700"><i>'forward slash (/) for folder seperators.</i></font> 
+<font color="007700"><i>'Both forward and back-slashes are supported by Windows.</i></font> 
+<font color="007700"><i>'The back-slash takes procedure over the forward slash.</i></font> 
+<font color="007700"><i>'Note that ExtractFileName does _not_ check the validity of the path passed.</i></font> 
+<font color="007700"><i>'You must check yourself.</i></font> 
+
+<font color="0000AA"><b>FUNCTION</b></font> ExtractFileName<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> Length <font color="0000AA"><b>as</b></font> <font color="000099"><b>INTEGER</b></font>
+	<font color="0000AA"><b>DIM</b></font> Result <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	
+	Length = RInStr<b>(</b>FileName, "<font color="990000">\\</font>"<b>)</b> <font color="0000AA"><b>OR</b></font> RInStr<b>(</b>FileName, "<font color="990000">/</font>"<b>)</b>
+	Result = <font color="0000AA"><b>MID$</b></font><b>(</b>FileName, Length+1, <font color="0000AA"><b>LEN</b></font><b>(</b>FileName<b>)</b> - Length + 1<b>)</b>
+	ExtractFileName = Result
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="007700"><i>'ExtractFilePath</i></font> 
+<font color="007700"><i>'Returns: String</i></font> 
+<font color="007700"><i>'Parameters:</i></font> 
+<font color="007700"><i>'FileName (String): File with full path</i></font> 
+
+<font color="007700"><i>'Information:</i></font> 
+<font color="007700"><i>'Author: Taj Morton</i></font> 
+<font color="007700"><i>'Email: tmorton at linuxmail dot org.</i></font> 
+<font color="007700"><i>'License: Public Domain</i></font> 
+
+<font color="007700"><i>'Description:</i></font> 
+<font color="007700"><i>'ExtractFilePath takes string with full path and returns a string</i></font> 
+<font color="007700"><i>'with only the path. For example:</i></font> 
+<font color="007700"><i>'ExtractFilePath("C:\\Program Files\\AProgram.bas")</i></font> 
+<font color="007700"><i>'returns C:\Program Files (the \\'s are for RQ and back-slashes).</i></font> 
+<font color="007700"><i>'ExtractFilePath also takes forward-slashes (/). Window's supports</i></font> 
+<font color="007700"><i>'these as well. </i></font> 
+<font color="007700"><i>'The back-slash takes procedure over the forward slash.</i></font> 
+<font color="007700"><i>'Note that ExtractFilePath does _not_ test the validity</i></font> 
+<font color="007700"><i>'of the passed name. You must check it yourself. Even if the name is</i></font> 
+<font color="007700"><i>'invalid, the path will be returned. For example, if C:/ProgramErrorFiles/AFile.txt</i></font> 
+<font color="007700"><i>'is passed, C:/ProgramErrorFiles will be returned.</i></font> 
+
+<font color="0000AA"><b>FUNCTION</b></font> ExtractFilePath<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> Length <font color="0000AA"><b>as</b></font> <font color="000099"><b>INTEGER</b></font>
+	<font color="0000AA"><b>DIM</b></font> Result <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	
+	Length = RInStr<b>(</b>FileName, "<font color="990000">\\</font>"<b>)</b> <font color="0000AA"><b>OR</b></font> RInStr<b>(</b>FileName, "<font color="990000">/</font>"<b>)</b>
+	Result = <font color="0000AA"><b>MID$</b></font><b>(</b>FileName, 0, Length<b>)</b>
+	ExtractFilePath = Result
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="007700"><i>'ChangeFileName</i></font> 
+<font color="007700"><i>'Returns: String</i></font> 
+<font color="007700"><i>'Parameters:</i></font> 
+<font color="007700"><i>'FileName (String): File with full path</i></font> 
+<font color="007700"><i>'NewName (String): Text that will replace old file name</i></font> 
+
+<font color="007700"><i>'Information:</i></font> 
+<font color="007700"><i>'Author: Taj Morton</i></font> 
+<font color="007700"><i>'Email: tmorton at linuxmail dot org.</i></font> 
+<font color="007700"><i>'License: Public Domain</i></font> 
+
+<font color="007700"><i>'Description:</i></font> 
+<font color="007700"><i>'ChangeFileName takes a file name with full path and file and a new name.</i></font> 
+<font color="007700"><i>'It replaces the current filename (in FileName) and replaces it with NewName.</i></font> 
+<font color="007700"><i>'ChangeFileName does not actually change FileName, instead it returns a new</i></font> 
+<font color="007700"><i>'string which contains the new name.</i></font> 
+<font color="007700"><i>'Note that ChangeFileName does not check the validity of FileName</i></font> 
+<font color="007700"><i>'or the new result. You must do it yourself (if you want). ChangeFileName</i></font> 
+<font color="007700"><i>'takes both the back-slash and forward slash to serperate folder and file names.</i></font> 
+<font color="007700"><i>'You can use either \\ or /. Both are supported by Windows.</i></font> 
+<font color="007700"><i>'The back-slash takes procedure over the forward slash.</i></font> 
+
+<font color="0000AA"><b>FUNCTION</b></font> ChangeFileName<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font>, NewName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> FileNameLoc <font color="0000AA"><b>as</b></font> <font color="000099"><b>INTEGER</b></font>
+	<font color="0000AA"><b>DIM</b></font> Result <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> PathNoName <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	
+	PathNoName = ExtractFilePath<b>(</b>FileName<b>)</b>
+	Result = PathNoName+NewName
+	ChangeFileName = Result
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="007700"><i>'ChangeFilePath</i></font> 
+<font color="007700"><i>'Returns: String</i></font> 
+<font color="007700"><i>'Parameters:</i></font> 
+<font color="007700"><i>'FileName (String): File with full path</i></font> 
+<font color="007700"><i>'NewPath (String): New path that will replace the path in FileName</i></font> 
+
+<font color="007700"><i>'Information:</i></font> 
+<font color="007700"><i>'Author: Taj Morton</i></font> 
+<font color="007700"><i>'Email: tmorton at linuxmail dot org.</i></font> 
+<font color="007700"><i>'License: Public Domain</i></font> 
+
+<font color="007700"><i>'Description:</i></font> 
+<font color="007700"><i>'ChangeFilePath takes FileName and replaces the path with NewPath.</i></font> 
+<font color="007700"><i>'It does not change FileName to have the new path, instead, it returns</i></font> 
+<font color="007700"><i>'a string which has the new path. It's up to you to take the correct</i></font> 
+<font color="007700"><i>'action. Also, old or new path and names' are not checked for validity,</i></font> 
+<font color="007700"><i>'you must do it yourself.</i></font> 
+<font color="007700"><i>'You may use either the \\ or the / to seperate your paths. Windows supports</i></font> 
+<font color="007700"><i>'both. </i></font> 
+
+<font color="0000AA"><b>FUNCTION</b></font> ChangeFilePath<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font>, NewPath <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> Result <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> FileNoPath <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	
+	FileNoPath = ExtractFileName<b>(</b>FileName<b>)</b>
+	
+	Result = NewPath+FileNoPath
+	ChangeFilePath = Result
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>FUNCTION</b></font> 
+</pre>
+</body>
+</html>

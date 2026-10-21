@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFORMMDI</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QFORMMDI</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QFORMMDI Component</h1>
+<p class="rq-meta">Extends <a href="qform.html">QFORM</a> &middot; source: <code>inc/object/QFormMDI.inc</code>, line 107 &middot; version: 1.0</p>
+<p><b>An MDI parent form that creates MDI child windows around existing controls and offers properties, methods and events to manage the child windows.</b></p>
+<p>QFormMDI extends QFORM and sets FormStyle = 2 (MDI parent) with the application workspace color. On the first AddChild it registers a window class &quot;MDIChild&quot; whose window procedure is ChildProc and finds the MDICLIENT window. AddChild(handle, Title, index, Left, Top, Width, Height, DefaultSize) creates an MDI child window and moves the control with the given handle into it; the control is resized to fill the child&#x27;s client area, and the index number is stored with the window so events can report which control it holds.</p>
+<p>The Child* properties describe the active child window and assigning them moves, resizes, renames, minimizes, maximizes or restores it. Methods cascade, tile, arrange, minimize, maximize, restore, close and activate children, and the events OnChildClose, OnChildActive and OnChildResize receive the child handle, the control index and the title. When a child is destroyed its control is hidden and given back to the MDI form. Comments in the source are in French.</p>
+<p>QFORMMDI inherits the properties, methods and events of <a href="qform.html">QFORM</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QFormMDI Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">ChildCaption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Title of the active child window. Assigning it (when at least one child exists) changes that window&#x27;s title.</td></tr>
+<tr><td class="rq-name">ChildHandle</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Read only (the setter is empty): window handle of the active MDI child.</td></tr>
+<tr><td class="rq-name">ComponentIndex</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Read only (the setter is empty): index number, given to AddChild, of the control in the current child window.</td></tr>
+<tr><td class="rq-name">ChildTop</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Top of the active child within the MDI client area. Assigning it moves the active child.</td></tr>
+<tr><td class="rq-name">ChildLeft</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Left of the active child within the MDI client area. Assigning it moves the active child.</td></tr>
+<tr><td class="rq-name">ChildWidth</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Width of the active child window. Assigning it resizes the active child.</td></tr>
+<tr><td class="rq-name">ChildHeight</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Height of the active child window. Assigning it resizes the active child.</td></tr>
+<tr><td class="rq-name">MdiMenu</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Menu handle sent to the MDI client with WM_MDISETMENU when a child is created (the window menu). Assigning it stores the handle only if it is greater than 0.</td></tr>
+<tr><td class="rq-name">ChildMax</td><td class="rq-type">INTEGER</td><td>RW</td><td>1024</td><td>Maximum number of child windows AddChild will create; assignments above 1024 are ignored. Default 1024.</td></tr>
+<tr><td class="rq-name">ChildCount</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Read only (the setter is empty): current number of MDI child windows.</td></tr>
+<tr><td class="rq-name">ChildState</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>State of the active child: 0 = normal, 1 = minimized, 2 = maximized. Assigning it minimizes, maximizes or restores the active child and gives focus to its control.</td></tr>
+<tr><td class="rq-name">ChildIcon</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Icon for child windows. Assigning it before any child exists sets the icon of the child window class; afterwards it calls SetClassLong on the active child, which changes the class icon.</td></tr>
+<tr><td class="rq-name">ChildResult</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Set to True before OnChildClose is raised; set it to 0 in the OnChildClose handler to stop the child from closing.</td></tr>
+</table>
+<a name="2"></a><h2>QFormMDI Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">ChildProc</td><td class="rq-type">FUNCTION(hWnd as long,uMsg as long,wParam as long,lParam as long) AS LONG</td><td>Internal: window procedure of the MDI child windows; handles create, size, activate, close, destroy and move messages and raises the events.</td></tr>
+<tr><td class="rq-name">AddChild</td><td class="rq-type">SUB(handle as long,Title as string,index as integer,Left as short,Top as short,Width as short,Height as short,DefaultSize as boolean)</td><td>AddChild(handle, Title, index, Left, Top, Width, Height, DefaultSize) creates a child window titled Title holding the control handle; when DefaultSize is True Windows chooses position and size.</td></tr>
+<tr><td class="rq-name">CloseChild</td><td class="rq-type">SUB</td><td>Closes the active child window after raising OnChildClose (unless ChildResult is set to 0), then updates the Child* properties for the new active child.</td></tr>
+<tr><td class="rq-name">CloseAllChild</td><td class="rq-type">SUB</td><td>Closes all child windows, raising OnChildClose for each one.</td></tr>
+<tr><td class="rq-name">CascadeChild</td><td class="rq-type">SUB</td><td>Arranges the child windows in a cascade (WM_MDICASCADE).</td></tr>
+<tr><td class="rq-name">SetHorzChild</td><td class="rq-type">SUB</td><td>Tiles the child windows horizontally (WM_MDITILE with MDITILE_HORIZONTAL).</td></tr>
+<tr><td class="rq-name">SetVertChild</td><td class="rq-type">SUB</td><td>Tiles the child windows vertically (WM_MDITILE with MDITILE_VERTICAL).</td></tr>
+<tr><td class="rq-name">IconArrangeChild</td><td class="rq-type">SUB</td><td>Arranges minimized child windows (WM_MDIICONARRANGE).</td></tr>
+<tr><td class="rq-name">MinimizeAllChild</td><td class="rq-type">SUB</td><td>Minimizes all child windows.</td></tr>
+<tr><td class="rq-name">MaximizeAllChild</td><td class="rq-type">SUB</td><td>Sends WM_MDIMAXIMIZE for every child window.</td></tr>
+<tr><td class="rq-name">RestoreChild</td><td class="rq-type">SUB</td><td>Restores all child windows to normal size.</td></tr>
+<tr><td class="rq-name">ActiveNextChild</td><td class="rq-type">SUB</td><td>Activates the next child window (WM_MDINEXT).</td></tr>
+<tr><td class="rq-name">ActivePreviousChild</td><td class="rq-type">SUB</td><td>Activates the previous child window (WM_MDINEXT with the previous flag).</td></tr>
+<tr><td class="rq-name">GetChild</td><td class="rq-type">FUNCTION(title as string) AS INTEGER</td><td>GetChild(title) returns the index in the internal child list of the window with this title, or 0 if none matches.</td></tr>
+<tr><td class="rq-name">ChildExist</td><td class="rq-type">FUNCTION(title as string) AS BOOLEAN</td><td>ChildExist(title) returns True if a child window with this title exists.</td></tr>
+<tr><td class="rq-name">ActiveChild</td><td class="rq-type">SUB(index as integer)</td><td>ActiveChild(index) activates the child window at this position in the internal child list.</td></tr>
+<tr><td class="rq-name">FreeChild</td><td class="rq-type">FUNCTION(handle as long) AS BOOLEAN</td><td>FreeChild(handle) returns True if the control with this handle is a direct child of the MDI form, that is, not placed in an MDI child window.</td></tr>
+<tr><td class="rq-name">SetDeskBar</td><td class="rq-type">SUB</td><td>Changes window ownership (SetWindowLong GWL_HWNDPARENT) so that the form, not the hidden application window, is the owner; per the comment, this makes the application appear in the taskbar when minimized.</td></tr>
+</table>
+<a name="3"></a><h2>QFormMDI Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnChildClose</td><td class="rq-type">SUB(handleChild as long,index as integer,titleChild as string)</td><td>Event OnChildClose(handleChild, index, titleChild), raised before a child window closes; set ChildResult = 0 to cancel.</td></tr>
+<tr><td class="rq-name">OnChildActive</td><td class="rq-type">SUB(handleChild as long,index as integer,titleChild as string)</td><td>Event OnChildActive(handleChild, index, titleChild), raised when a child window is activated.</td></tr>
+<tr><td class="rq-name">OnChildResize</td><td class="rq-type">SUB(handleChild as long,index as integer,titleChild as string)</td><td>Event OnChildResize(handleChild, index, titleChild), raised when a child window is resized.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>GetChild returns 0 both for the first window and when no title matches.</li>
+<li>ActiveChild and the index returned by GetChild use the internal hChild list, which is only rebuilt by CloseAllChild, the minimize, maximize and restore methods, GetChild and ChildExist.</li>
+<li>Assigning ChildIcon after children exist uses SetClassLong, so it changes the icon of all windows of the child class.</li>
+<li>The child window class is registered with hInstance left at 0 (the line setting application.hinstance is commented out).</li>
+<li>The internal child list is fixed at hChild(1024), which is why ChildMax is limited to 1024.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 2707) contains its own edition of QFORMMDI; it has members that are not in this file: BINDINDEX.</li>
+<li><code>inc/old/QFormMDI.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QFormMDI Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>CREATE Main AS QFormMDI
+  Caption = &quot;MDI demo&quot;
+  Width = 640
+  Height = 480
+END CREATE
+
+CREATE Edit1 AS QRichEdit
+  Parent = Main
+END CREATE
+
+Main.AddChild(Edit1.Handle, &quot;Document 1&quot;, 0, 10, 10, 300, 200, 0)
+Main.ShowModal</pre>
+<div class="rq-foot"><a href="c_qformex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qftpclient.html">Next component</a></div>
+</body>
+</html>

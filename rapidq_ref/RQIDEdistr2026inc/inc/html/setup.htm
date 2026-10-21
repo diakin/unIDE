@@ -1,0 +1,15 @@
+<html>
+<head>
+<title>setup.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> SetWindowLong <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SetWindowLongA</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, nIndex <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, dwNewLong <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font> 
+
+<font color="0000AA"><b>Sub</b></font> MinSet <b>(</b>fhand <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, apphand <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    setwindowlong<b>(</b>fhand, -8, 0<b>)</b>
+    setwindowlong<b>(</b>apphand, -8, fhand<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="0000AA"><b>Sub</b></font> 
+</pre>
+</body>
+</html>

@@ -1,0 +1,386 @@
+<html>
+<head>
+<title>ftiQuery.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="0000AA"><b>$IFNDEF</b></font> FTIQUERY_INC
+<font color="0000AA"><b>$DEFINE</b></font> FTIQUERY_INC
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="007700"><i>' Warranties: None. This code is provided AS-IS.</i></font> 
+<font color="007700"><i>' Developed on the Windows 98 SE platform.</i></font> 
+<font color="007700"><i>' Version: 1.6.1!</i></font> 
+<font color="007700"><i>' </i></font> 
+<font color="007700"><i>' Dependencies: </i></font> 
+<font color="007700"><i>' ftiExtractFileName</i></font> 
+<font color="007700"><i>' ftiExtractProgNane</i></font> 
+<font color="007700"><i>' ftiExtractProgPath</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' Description:</i></font> 
+<font color="007700"><i>' A cool include file that uses the registry to retrieve information on</i></font> 
+<font color="007700"><i>'any file extension/type!</i></font> 
+
+<font color="007700"><i>'Several constants have been defined that are used to retrieve this</i></font> 
+<font color="007700"><i>'information, they are:</i></font> 
+
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' Note(s):</i></font> 
+<font color="007700"><i>' I'm going to try to put some of the code that reads the registry into</i></font> 
+<font color="007700"><i>' a function, to reduce the file size.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' ftiClassName:</i></font> 
+<font color="007700"><i>' queries the class name of the specified filetype</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' ftiDefCommand:</i></font> 
+<font color="007700"><i>' queries the value of the "shell/open/command" sub key</i></font> 
+<font color="007700"><i>' of the parent program (module), the default command</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' ftiContentType:</i></font> 
+<font color="007700"><i>' queries the content type of the specified file type</i></font> 
+<font color="007700"><i>' </i></font> 
+<font color="007700"><i>' ftiQueryDefault:</i></font> 
+<font color="007700"><i>' queries the integrity of the registered file extension </i></font> 
+<font color="007700"><i>' (helps to see if there are any errors in the registry ;) )</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' ftiProgramCommand:</i></font> 
+<font color="007700"><i>' queries the parent (module) of the specified file type</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' ftiDefaultIcon:</i></font> 
+<font color="007700"><i>' queries the icon for the specified file type</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' New updates:</i></font> 
+<font color="007700"><i>'*****************************</i></font> 
+<font color="007700"><i>' ftiProgramName:</i></font> 
+<font color="007700"><i>' gets the actual file name of the parent of the specified file type</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' ftiProgramExt:</i></font> 
+<font color="007700"><i>' Gets the extension of the parent program. Later on I want to enable</i></font> 
+<font color="007700"><i>' queries for the file extension.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' ftiProgramPath:</i></font> 
+<font color="007700"><i>' Gets the actual program path.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' ** end of description *******************************************</i></font> 
+<font color="007700"><i>' Special precautions:</i></font> 
+<font color="007700"><i>' Whatever you do, DON'T turn the $escapechars preprocessor </i></font> 
+<font color="007700"><i>' directive ON! Doing so may result in incorrect registry</i></font> 
+<font color="007700"><i>' settings, and/or may cause Windows to CRASH (not being able to boot </i></font> 
+<font color="007700"><i>' up Windows sounds about right).</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' When you enter the first string argument of the GetFileTypeInfo function,</i></font> 
+<font color="007700"><i>' make sure that you do not have 2 or more forward/backward slashes beside each other.</i></font> 
+<font color="007700"><i>' Instead, enter the first argument like this: "C:/blah/files";</i></font> 
+<font color="007700"><i>' not like this: "C:///blah//files".</i></font> 
+<font color="007700"><i>' </i></font> 
+<font color="007700"><i>' Of course, you wouldn't actually have paths like that,</i></font> 
+<font color="007700"><i>' that is, unless Windows was playing dominoes with your ASCII character set at the time :P</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' Known bugs:</i></font> 
+<font color="007700"><i>'  None actually, unless you consider the forward/backward slash problem a bug ;)</i></font> 
+<font color="007700"><i>' You should be fine if you just obey the special rule.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' Usage:</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' function:</i></font> 
+<font color="007700"><i>' GetFileTypeInfo(FileType, ftiQueryValue)</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' FileType: string</i></font> 
+<font color="007700"><i>' ftiQueryValue: integer</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' FileType can be a file extension, file name, path and file name,</i></font> 
+<font color="007700"><i>' or even a dot with a file extension; basically anything as long as</i></font> 
+<font color="007700"><i>' you obey the special rule defined in the Special precautions</i></font> 
+<font color="007700"><i>' section. I'm trying to fix this =)</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' ftiQueryValue is any of the several constants defined in the</i></font> 
+<font color="007700"><i>' Description section.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' If an error occurs in reading the registry, GetFileTypeInfo will return -1.</i></font> 
+<font color="007700"><i>' If you get a return value of one, that value is TRUE.</i></font> 
+<font color="007700"><i>' If you get a return value of zero, that value is FALSE.</i></font> 
+
+<font color="0000AA"><b>$ESCAPECHARS</b></font> OFF
+
+<font color="007700"><i>' File type info queries</i></font> 
+<font color="0000AA"><b>CONST</b></font> ftiClassName=1
+<font color="0000AA"><b>CONST</b></font> ftiDefCommand=2
+<font color="0000AA"><b>CONST</b></font> ftiContentType=3
+<font color="0000AA"><b>CONST</b></font> ftiQueryDefault=4
+<font color="0000AA"><b>CONST</b></font> ftiProgramCommand=5 <font color="007700"><i>' makes more sense</i></font> 
+<font color="0000AA"><b>CONST</b></font> ftiDefaultIcon=6
+<font color="0000AA"><b>CONST</b></font> ftiProgramName=7 <font color="007700"><i>' gets the actual program name</i></font> 
+<font color="0000AA"><b>CONST</b></font> ftiProgramExt=8 <font color="007700"><i>' gets the extenstion of the program </i></font> 
+<font color="0000AA"><b>CONST</b></font> ftiProgramPath=9 
+
+<font color="0000AA"><b>function</b></font> ftiExtractFileName<b>(</b>ptf$<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="007700"><i>' trim the path</i></font> 
+a$=<font color="0000AA"><b>ltrim$</b></font><b>(</b><font color="0000AA"><b>rtrim$</b></font><b>(</b>ptf$<b>)</b><b>)</b>
+
+<font color="007700"><i>' less coding; change all back slashes to forward slashes</i></font> 
+a$=<font color="0000AA"><b>ReplaceSubStr$</b></font><b>(</b>a$,"<font color="990000">\</font>","<font color="990000">/</font>"<b>)</b>
+<font color="0000AA"><b>For</b></font> i=1 <font color="0000AA"><b>to</b></font> <font color="0000AA"><b>len</b></font><b>(</b>a$<b>)</b>
+<font color="007700"><i>' now look for the token</i></font> 
+ <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>Mid$</b></font><b>(</b>a$,i,1<b>)</b>="<font color="990000">/</font>" <font color="000099"><b>then</b></font>
+ <font color="007700"><i>' go to the last position</i></font> 
+  i++
+   s=i
+   <font color="007700"><i>' get the file name</i></font> 
+   b$=<font color="0000AA"><b>Mid$</b></font><b>(</b>a$,s,<font color="0000AA"><b>len</b></font><b>(</b>a$<b>)</b><b>)</b>
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>Next</b></font> i
+
+<font color="0000AA"><b>Function</b></font> ftiExtractProgPath<b>(</b>rawcmd$<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+p$=rawcmd$
+p$=<font color="0000AA"><b>ReplaceSubStr$</b></font><b>(</b>p$,"<font color="990000">\</font>","<font color="990000">/</font>"<b>)</b>
+
+<font color="0000AA"><b>For</b></font> i=1 <font color="0000AA"><b>to</b></font> <font color="0000AA"><b>len</b></font><b>(</b>p$<b>)</b>
+ <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>Mid$</b></font><b>(</b>p$,i,1<b>)</b>="<font color="990000">/</font>" <font color="000099"><b>then</b></font>
+   i++
+  ends=i-1
+  mymid$=<font color="0000AA"><b>Mid$</b></font><b>(</b>p$,1,ends<b>)</b>-<font color="0000AA"><b>CHR$</b></font><b>(</b>34<b>)</b>
+  result=mymid$
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>Next</b></font> i  
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>' finally, return the file name minus the quotes (if there are any), and it's ready to go :)</i></font> 
+result=<font color="0000AA"><b>ReplaceSubStr$</b></font><b>(</b>b$,<font color="0000AA"><b>CHR$</b></font><b>(</b>34<b>)</b>,"<font color="990000"></font>"<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="0000AA"><b>function</b></font> ftiExtractProgName<b>(</b>rawcmd$<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+p$=rawcmd$
+p$=<font color="0000AA"><b>ReplaceSubStr$</b></font><b>(</b>p$,"<font color="990000">\</font>","<font color="990000">/</font>"<b>)</b>
+
+<font color="0000AA"><b>For</b></font> i=1 <font color="0000AA"><b>to</b></font> <font color="0000AA"><b>len</b></font><b>(</b>p$<b>)</b>
+ <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>Mid$</b></font><b>(</b>p$,i,1<b>)</b>="<font color="990000">/</font>" <font color="000099"><b>then</b></font>
+   i++
+  starts=i 
+  ends=<font color="0000AA"><b>InStr</b></font><b>(</b>starts,p$,"<font color="990000"> </font>"<b>)</b>
+  lenstr=ends-starts
+  mymid$=<font color="0000AA"><b>Mid$</b></font><b>(</b>p$,starts,lenstr<b>)</b>-<font color="0000AA"><b>CHR$</b></font><b>(</b>34<b>)</b>
+  result=mymid$
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>Next</b></font> i
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="0000AA"><b>function</b></font> GetFileTypeInfo<b>(</b>filetype <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, QueryValue <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>variant</b></font>
+<font color="0000AA"><b>if</b></font> QueryValue=0 <font color="0000AA"><b>then</b></font> QueryValue=1
+
+<font color="0000AA"><b>Dim</b></font> RegKey <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>QRegistry</b></font>, iTemp <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, filext <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>defstr</b></font> ContentType$, FileClassName$, AssociatedCommand$, ParentName$
+<font color="0000AA"><b>defstr</b></font> szTmpName$
+<font color="0000AA"><b>defint</b></font> iProgramLen, iTmpLen, icoNotInFileClass, icoInClass1, icoInClass2
+
+HKEY_CLASSES_ROOT=&H80000000
+filext$=<font color="0000AA"><b>ltrim$</b></font><b>(</b><font color="0000AA"><b>rtrim$</b></font><b>(</b>FileType<b>)</b><b>)</b>
+
+<font color="0000AA"><b>if</b></font> <font color="0000AA"><b>InStr</b></font><b>(</b>filext$,"<font color="990000">.</font>"<b>)</b> <font color="000099"><b>then</b></font>
+iTemp=<font color="0000AA"><b>InStr</b></font><b>(</b>filext$,"<font color="990000">.</font>"<b>)</b>+1
+filext$=<font color="0000AA"><b>Mid$</b></font><b>(</b>filext$,iTemp,<font color="0000AA"><b>len</b></font><b>(</b>filext$<b>)</b><b>)</b>
+ <font color="0000AA"><b>elseif</b></font> <font color="0000AA"><b>InStr</b></font><b>(</b>filext$,"<font color="990000">\</font>"<b>)</b> <font color="000099"><b>then</b></font>
+ iTemp=<font color="0000AA"><b>InStr</b></font><b>(</b>filext$,"<font color="990000">\</font>"<b>)</b>+1
+filext$=<font color="0000AA"><b>Mid$</b></font><b>(</b>filext$,iTemp,<font color="0000AA"><b>len</b></font><b>(</b>filext$<b>)</b><b>)</b>
+<font color="0000AA"><b>elseif</b></font> <font color="0000AA"><b>InStr</b></font><b>(</b>filext$,"<font color="990000">/</font>"<b>)</b> <font color="000099"><b>then</b></font>
+iTemp=<font color="0000AA"><b>InStr</b></font><b>(</b>filext$,"<font color="990000">/</font>"<b>)</b>+1
+filext$=<font color="0000AA"><b>Mid$</b></font><b>(</b>filext$,iTemp,<font color="0000AA"><b>len</b></font><b>(</b>filext$<b>)</b><b>)</b>
+ <font color="0000AA"><b>end</b></font> <font color="0000AA"><b>if</b></font> 
+ 
+RegKey.RootKey=HKEY_CLASSES_ROOT
+
+<font color="0000AA"><b>Select</b></font> <font color="0000AA"><b>Case</b></font> QueryValue
+
+<font color="0000AA"><b>Case</b></font> 1 <font color="007700"><i>' get file class name</i></font> 
+<font color="0000AA"><b>if</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\.</font>"+filext$,0<b>)</b>=0 <font color="000099"><b>then</b></font>
+result=-1
+<font color="000099"><b>else</b></font>
+ FileClassName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+result=FileClassName$
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+
+<font color="0000AA"><b>Case</b></font> 2 <font color="007700"><i>' get associated command</i></font> 
+RegKey.OpenKey<b>(</b>"<font color="990000">\.</font>"+filext$,0<b>)</b>
+FileClassName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+RegKey.CloseKey
+<font color="0000AA"><b>If</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\</font>"+FileClassName$+"<font color="990000">\shell\open\command</font>",0<b>)</b> <font color="000099"><b>then</b></font>
+AssociatedCommand$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+result=AssociatedCommand$
+<font color="000099"><b>else</b></font>
+result=-1
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+ 
+ <font color="0000AA"><b>Case</b></font> 3 <font color="007700"><i>' get content type</i></font> 
+ <font color="0000AA"><b>if</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\.</font>"+filext$,0<b>)</b>=0 <font color="000099"><b>then</b></font>
+ result=-1
+ <font color="0000AA"><b>elseif</b></font> RegKey.ReadString<b>(</b>"<font color="990000">Content Type</font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+ result=-1
+ <font color="000099"><b>else</b></font>
+  ContentType$=RegKey.ReadString<b>(</b>"<font color="990000">Content Type</font>"<b>)</b>
+  result=ContentType$
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  
+ <font color="0000AA"><b>Case</b></font> 4 <font color="007700"><i>' is it default?</i></font> 
+  <font color="0000AA"><b>if</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\.</font>"+filext$,0<b>)</b>=0 <font color="000099"><b>then</b></font>
+  result=-1
+  <font color="000099"><b>else</b></font>
+  <font color="0000AA"><b>if</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+  result=0
+  <font color="000099"><b>else</b></font>
+   result=1
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  
+    <font color="0000AA"><b>Case</b></font> 5 <font color="007700"><i>' get the associated program command</i></font> 
+  <font color="0000AA"><b>If</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\.</font>"+filext$,0<b>)</b>=0 <font color="000099"><b>then</b></font>
+  result=-1
+  <font color="000099"><b>else</b></font>
+   <font color="0000AA"><b>if</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="0000AA"><b>elseif</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   FileClassName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+   RegKey.CloseKey
+   <font color="0000AA"><b>if</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\</font>"+FileClassName$+"<font color="990000">\shell\open\command</font>",0<b>)</b>=0 <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="000099"><b>else</b></font>
+   <font color="0000AA"><b>if</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="000099"><b>else</b></font>
+   ProgramName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+   ProgramName$=ftiExtractFileName<b>(</b>ProgramName$<b>)</b>
+    <font color="0000AA"><b>if</b></font> ProgramName$="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+    result="<font color="990000">There is an error in your registry setttings:</font>"+<font color="0000AA"><b>CHR$</b></font><b>(</b>13<b>)</b>+ _
+    "<font color="990000">The file class name: </font>"+FileClassName$+"<font color="990000"> has been registered incorrectly.</font>"
+    <font color="000099"><b>else</b></font>
+    result=ProgramName$
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   
+   
+   <font color="007700"><i>' Gets the icon for the specified filetype! </i></font> 
+     <font color="007700"><i>'If it's not found in the first class, it searches the second class.</i></font> 
+     <font color="007700"><i>'If not found in the second class, it returns -1. </i></font> 
+   <font color="0000AA"><b>Case</b></font> 6 
+   <font color="0000AA"><b>if</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\.</font>"+filext$+"<font color="990000">\DefaultIcon</font>",0<b>)</b> <font color="000099"><b>then</b></font>
+DefaultIcon$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+IcoInClass1=1
+result=DefaultIcon$
+<font color="000099"><b>else</b></font>
+IcoInClass1=0
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+
+<font color="0000AA"><b>if</b></font> IcoInClass1=0 <font color="000099"><b>then</b></font>
+ <font color="0000AA"><b>if</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\.</font>"+filext$,0<b>)</b>=0 <font color="000099"><b>then</b></font>
+result=-1
+<font color="000099"><b>else</b></font>
+ <font color="0000AA"><b>if</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+ result=-1
+ <font color="000099"><b>else</b></font>
+ FileClassName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+ RegKey.CloseKey
+<font color="0000AA"><b>if</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\</font>"+FileClassName$+"<font color="990000">\DefaultIcon</font>",0<b>)</b>=0 <font color="000099"><b>then</b></font>
+result=-1
+<font color="000099"><b>else</b></font>
+DefaultIcon$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+ result=DefaultIcon$
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+ 
+ <font color="0000AA"><b>Case</b></font> 7
+ <font color="0000AA"><b>If</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\.</font>"+filext$,0<b>)</b>=0 <font color="000099"><b>then</b></font>
+  result=-1
+  <font color="000099"><b>else</b></font>
+   <font color="0000AA"><b>if</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="0000AA"><b>elseif</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   FileClassName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+   RegKey.CloseKey
+   <font color="0000AA"><b>if</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\</font>"+FileClassName$+"<font color="990000">\shell\open\command</font>",0<b>)</b>=0 <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="000099"><b>else</b></font>
+   <font color="0000AA"><b>if</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="000099"><b>else</b></font>
+   ProgramName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+   ProgramName$=ftiExtractProgName<b>(</b>ProgramName$<b>)</b>
+    <font color="0000AA"><b>if</b></font> ProgramName$="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+    result="<font color="990000">There is an error in your registry setttings:</font>"+<font color="0000AA"><b>CHR$</b></font><b>(</b>13<b>)</b>+ _
+    "<font color="990000">The file class name: </font>"+FileClassName$+"<font color="990000"> has been registered incorrectly.</font>"
+    <font color="000099"><b>else</b></font>
+    result=ProgramName$
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+ 
+ <font color="0000AA"><b>Case</b></font> 8
+ <font color="0000AA"><b>If</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\.</font>"+filext$,0<b>)</b>=0 <font color="000099"><b>then</b></font>
+  result=-1
+  <font color="000099"><b>else</b></font>
+   <font color="0000AA"><b>if</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="0000AA"><b>elseif</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   FileClassName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+   RegKey.CloseKey
+   <font color="0000AA"><b>if</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\</font>"+FileClassName$+"<font color="990000">\shell\open\command</font>",0<b>)</b>=0 <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="000099"><b>else</b></font>
+   <font color="0000AA"><b>if</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="000099"><b>else</b></font>
+   ProgramName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+   ProgramName$=ftiExtractProgName<b>(</b>ProgramName$<b>)</b>
+  ProgExt$=<font color="0000AA"><b>Mid$</b></font><b>(</b>ProgramName$,<font color="0000AA"><b>InStr</b></font><b>(</b>ProgramName$,"<font color="990000">.</font>"<b>)</b>+1,<font color="0000AA"><b>len</b></font><b>(</b>ProgramName$<b>)</b><b>)</b>
+    
+    <font color="0000AA"><b>if</b></font> ProgramName$="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+    result="<font color="990000">There is an error in your registry setttings:</font>"+<font color="0000AA"><b>CHR$</b></font><b>(</b>13<b>)</b>+ _
+    "<font color="990000">The file class name: </font>"+FileClassName$+"<font color="990000"> has been registered incorrectly.</font>"
+    <font color="000099"><b>else</b></font>
+    result=ProgExt$
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+ 
+ <font color="0000AA"><b>Case</b></font> 9
+ <font color="0000AA"><b>If</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\.</font>"+filext$,0<b>)</b>=0 <font color="000099"><b>then</b></font>
+  result=-1
+  <font color="000099"><b>else</b></font>
+   <font color="0000AA"><b>if</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="0000AA"><b>elseif</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   FileClassName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+   RegKey.CloseKey
+   <font color="0000AA"><b>if</b></font> RegKey.OpenKey<b>(</b>"<font color="990000">\</font>"+FileClassName$+"<font color="990000">\shell\open\command</font>",0<b>)</b>=0 <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="000099"><b>else</b></font>
+   <font color="0000AA"><b>if</b></font> RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+   result=-1
+   <font color="000099"><b>else</b></font>
+   ProgramName$=RegKey.ReadString<b>(</b>"<font color="990000"></font>"<b>)</b>
+   ProgramName$=ftiExtractProgPath<b>(</b>ProgramName$<b>)</b>
+   
+    <font color="0000AA"><b>if</b></font> ProgramName$="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+    result="<font color="990000">There is an error in your registry setttings:</font>"+<font color="0000AA"><b>CHR$</b></font><b>(</b>13<b>)</b>+ _
+    "<font color="990000">The file class name: </font>"+FileClassName$+"<font color="990000"> has been registered incorrectly.</font>"
+    <font color="000099"><b>else</b></font>
+    result=ProgramName$
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  
+   <font color="0000AA"><b>Case</b></font> <font color="000099"><b>else</b></font>
+   result="<font color="990000">Error: Query value </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>QueryValue<b>)</b>+"<font color="990000"> does not exist.</font>"
+ <font color="0000AA"><b>End</b></font> <font color="000099"><b>Select</b></font>
+<font color="0000AA"><b>end</b></font> <font color="0000AA"><b>function</b></font> 
+</pre>
+</body>
+</html>

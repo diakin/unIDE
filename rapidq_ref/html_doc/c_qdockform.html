@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDOCKFORM</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDOCKFORM</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDOCKFORM Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QDOCKFORM.inc</code>, line 57</p>
+<p><b>Dockable tool panel: a QPANEL with a title bar that can be dragged off its form into a floating borderless window and dragged back to dock again.</b></p>
+<p>QDOCKFORM extends QPANEL. It contains an inner Panel (QDFPANEL) with a Canvas that draws the title area and a Client panel where you put your own controls. When the user drags the title bar (or the grip, for grip styles) more than 30 pixels away from the docked position, the Panel is moved into UndockedForm, a borderless QFORM sized UndockedWidth x UndockedHeight, and that form follows the mouse. Dragging the floating form back within 29 pixels of the original position docks it again. With Style = 1 it can also dock into an alternative panel on the opposite side of the form (or on the side given by AltAlign).</p>
+<p>The title area is painted on each Canvas.OnPaint according to DockStyle (when docked) or UndockStyle (when floating): styles 0-2 and 10 have a caption bar 25 pixels high, styles 3-6 have a vertical grip on the left. The close button is drawn with the user32 DrawFrameControl function, style 10 uses DrawCaption, and resizing of the floating form (Sizeable = 1) is done by sending WM_SYSCOMMAND size commands to it. SetCapture, ReleaseCapture and ClientToScreen from user32 are used while dragging.</p>
+<p>Use: set Parent and Align (default 3, left), Caption and the styles, then place child controls on .Client. The public SUB Close (not in the parsed member list) closes the panel the same way as the close button. Call Dock to dock or undock from code.</p>
+<p>QDOCKFORM inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QDOCKFORM Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">TitleColor</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Color of the caption text drawn in the title area. Default 0 (black).</td></tr>
+<tr><td class="rq-name">ST1_TitleBackground</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Fill color of the title bar in style 1 (DockStyle or UndockStyle = 1); it is drawn only while Locked = 0. Default -2147483632 (a system color value).</td></tr>
+<tr><td class="rq-name">DragCursor</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Cursor shown when the mouse is over the drag area (title bar or grip) and the panel is not locked. Default -21.</td></tr>
+<tr><td class="rq-name">AltAlign</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Align value for the alternative docking panel. When 0 (default) the alternative panel is placed on the side opposite to the component&#x27;s own Align (left/right, top/bottom).</td></tr>
+<tr><td class="rq-name">Sizeable</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When 1 and the panel is floating, dragging the 4-pixel border of the canvas resizes the floating form; the new size is stored in UndockedWidth and UndockedHeight.</td></tr>
+<tr><td class="rq-name">Style</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Docking mode. 0: only the normal docking place. Greater than 0: Dock(2) docks into the alternative panel. 1: the user can also dock into the alternative panel by dragging the floating form to it.</td></tr>
+<tr><td class="rq-name">UndockedHeight</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Height of the floating form. Default 400; updated when the user resizes the floating form.</td></tr>
+<tr><td class="rq-name">UndockedWidth</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Width of the floating form. Default 170; updated when the user resizes the floating form.</td></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Title text. Assigning it also sets the Caption of UndockedForm.</td></tr>
+<tr><td class="rq-name">Docked</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Read-only (its setter does nothing): 1 while the panel is docked, 0 while it floats.</td></tr>
+<tr><td class="rq-name">UndockedForm</td><td class="rq-type">QFORM</td><td>RW</td><td></td><td>The borderless QFORM (BorderStyle 0) that holds the Panel while the component is floating.</td></tr>
+<tr><td class="rq-name">Panel</td><td class="rq-type">QDFPANEL</td><td>RW</td><td></td><td>The inner QDFPANEL that holds Canvas, Client and the close button; it is moved between the component, the alternative panel and UndockedForm.</td></tr>
+<tr><td class="rq-name">Canvas</td><td class="rq-type">QCANVAS</td><td>RW</td><td></td><td>QCANVAS filling the Panel. The frame, caption and grip are painted on it, and its mouse events implement dragging and resizing.</td></tr>
+<tr><td class="rq-name">Client</td><td class="rq-type">QPANEL</td><td>RW</td><td></td><td>QPANEL where user controls are placed. It is positioned below the caption (or right of the grip) on every repaint.</td></tr>
+<tr><td class="rq-name">DockStyle</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Appearance while docked: 0 centered caption over three lines (default), 1 caption on a colored bar, 2 caption followed by a dotted grip, 3 to 6 vertical grips on the left without caption, 10 a system caption drawn with DrawCaption. Other values are drawn like 0.</td></tr>
+<tr><td class="rq-name">UnDockStyle</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Appearance while floating, with the same values as DockStyle; the value 6 is changed to 1 when the floating panel is painted.</td></tr>
+<tr><td class="rq-name">Locked</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning a value greater than 0 sets it to 1 and repaints; 0 or less sets 0 and repaints. While locked the panel cannot be dragged and the title background or grip is not drawn.</td></tr>
+<tr><td class="rq-name">CanClose</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning a value greater than 0 sets it to 1 and shows the close button; otherwise sets 0 and hides it. While 0, the user cannot close the floating form.</td></tr>
+<tr><td class="rq-name">Closed</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Read-only (its setter does nothing): set to 1 when the panel is closed with the close button, Close, or by closing the floating form; cleared by the next Dock.</td></tr>
+<tr><td class="rq-name">AltDock</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Read-only (its setter does nothing): 1 when the panel is docked in the alternative panel, otherwise 0.</td></tr>
+</table>
+<a name="2"></a><h2>QDOCKFORM Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Dock</td><td class="rq-type">SUB(Dock AS INTEGER)</td><td>Dock(n): n = 1 docks the panel in its normal place; n = 2 docks it in the alternative panel when Style &gt; 0 (otherwise like 1); any other value undocks it into the floating form, centered on the screen with UndockedWidth x UndockedHeight.</td></tr>
+</table>
+<a name="3"></a><h2>QDOCKFORM Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnDock</td><td class="rq-type">SUB(Docked AS INTEGER, Alt AS INTEGER)</td><td>Event (Docked AS INTEGER, Alt AS INTEGER) fired when the user docks or undocks by dragging: (0, 0) when undocked, (1, 0) when docked in the normal place, (1, 1) when docked in the alternative panel. Dock does not fire it.</td></tr>
+<tr><td class="rq-name">OnPaint</td><td class="rq-type">SUB</td><td>Event without parameters fired at the end of each Canvas repaint, after the title area has been drawn.</td></tr>
+<tr><td class="rq-name">OnClose</td><td class="rq-type">SUB</td><td>Event without parameters fired when the close button is clicked, Close is called, or the user closes the floating form while CanClose = 1.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>CloseButton.OnMouseDown</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>Dock centers the floating form by computing Left and Top, because (source comment) Center loses the parent, which is hard to get back.</li>
+<li>Sizes are hard-coded: the caption area is 25 pixels high, the close button is 16 x 14 pixels, the grip area is 15 pixels wide, the resize border is 4 pixels, and docking snaps within 29-30 pixels.</li>
+<li>MinWidth and MinHeight are commented out in the constructor, so the floating form has no minimum size when resized.</li>
+<li>OnDock is fired only for docking by dragging, not by the Dock method.</li>
+<li>Several API calls (ShowWindow, ReleaseCapture, SetWindowLong) are left commented out in the code.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 3361) contains its own edition of QDOCKFORM; it has members that are not in this file: CLOSE.</li>
+</ul>
+<a name="4"></a><h2>QDOCKFORM Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QDOCKFORM.inc&quot;
+CREATE Form AS QFORM
+  Width = 600
+  Height = 400
+END CREATE
+DIM Tools AS QDOCKFORM
+Tools.Parent = Form
+Tools.Caption = &quot;Tools&quot;
+Tools.DockStyle = 1
+Tools.UndockStyle = 1
+Tools.CanClose = 1
+Tools.Sizeable = 1
+DIM Btn AS QBUTTON
+Btn.Parent = Tools.Client
+Btn.Caption = &quot;OK&quot;
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qdirlistview.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdownload.html">Next component</a></div>
+</body>
+</html>

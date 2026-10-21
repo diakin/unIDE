@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>WINDOWS.INC</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: WINDOWS.INC</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>WINDOWS.INC</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/WINDOWS.INC</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 4 functions &middot; 4 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#MCIGETERRORCDAUDIO">mciGetErrorCdaudio</a> &middot; <a href="#MCISENDCDAUDIO">mciSendCdaudio</a> &middot; <a href="#REGISTERSERVICEPROCESS">RegisterServiceProcess</a> &middot; <a href="#SENDINPUT">SendInput</a></p>
+<h3><a name="MCIGETERRORCDAUDIO"></a>mciGetErrorCdaudio</h3>
+<p class="rq-meta">DLL function, winmm.dll &middot; RQProc.inc, line 34707</p>
+<pre>Declare Function mciGetErrorCdaudio Lib &quot;winmm.dll&quot; Alias &quot;mciGetErrorStringA&quot; (dwError As Long,Byref lpstrBuffer As String,uLength As Long) As Long</pre>
+<p>Retrieves a text string describing the specified MCI error code.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=mciGetErrorStringA">mciGetErrorStringA</a></p>
+<h3><a name="MCISENDCDAUDIO"></a>mciSendCdaudio</h3>
+<p class="rq-meta">DLL function, winmm.dll &middot; RQProc.inc, line 34706</p>
+<pre>Declare Function mciSendCdaudio Lib &quot;winmm.dll&quot; Alias &quot;mciSendStringA&quot; (lpstrCommand As String, lpstrReturnString As long, uReturnLength As Long, hwndCallback As Long) As Long</pre>
+<p>Sends a command string to an MCI device (here used for CD audio); the device is named in the command string.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=mciSendStringA">mciSendStringA</a></p>
+<h3><a name="REGISTERSERVICEPROCESS"></a>RegisterServiceProcess</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 34715</p>
+<pre>Declare Function RegisterServiceProcess Lib &quot;kernel32.dll&quot; Alias &quot;RegisterServiceProcess&quot; (ByVal dwProcessID As Long, ByVal dwType As Long) As Long</pre>
+<p>Not in the Microsoft documentation: Windows 95/98/Me-only kernel32 export that registers or unregisters a process as a service (hides it from the task list).</p>
+<h3><a name="SENDINPUT"></a>SendInput</h3>
+<p class="rq-meta">DLL function, user32.dll &middot; RQProc.inc, line 34673</p>
+<pre>DECLARE FUNCTION SendInput LIB &quot;user32.dll&quot; ALIAS &quot;SendInput&quot; (nInputs AS DWORD, pInputs AS tagINPUT, cbSize AS INTEGER) AS INTEGER</pre>
+<p>Synthesizes keystrokes, mouse motions and button clicks from an array of INPUT structures; returns the number of events inserted.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SendInput">SendInput</a></p>
+</body>
+</html>

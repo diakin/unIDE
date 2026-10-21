@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFTPCLIENT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QFTPCLIENT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QFTPCLIENT Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QFTPCLIENT.INC</code>, line 139 &middot; author: Jacques Philippe &middot; date: January 2001</p>
+<p><b>An FTP client object based on wininet.dll that connects to a server, manages directories, uploads, downloads, renames and deletes files, and lists files with their size, date and attributes.</b></p>
+<p>QFtpClient extends QObject and wraps the WinINet FTP functions. Connect opens an Internet session (InternetOpenA with Agent, OpenType, ProxyName, ProxyByPass and Open_dwFlags) and connects to the server (InternetConnectA, passive mode for the FTP service). Most methods return the WinINet result (non-zero on success) and put a status text in ErrorMsg that includes the server&#x27;s last response from ReadMessage.</p>
+<p>FindFirstFile and FindNextFile enumerate remote files matching a filter; after each call the properties FileName, DosFileName, FileSize, FileTime, FileTimems, FileDate, FileDateEU, FileDateTime, FileAttributes and FileAttributesAsString describe the current file. The last-write time is converted to local time and formatted as strings. Close closes the find, FTP and Internet handles.</p>
+<p>QFTPCLIENT inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QFtpClient Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">ftpHandle</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Read only (the setter is empty): handle of the FTP connection returned by InternetConnectA, 0 if the connection failed.</td></tr>
+<tr><td class="rq-name">errorMsg</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Read only (the setter is empty): status or error text of the last operation, beginning with &quot;*** OK&quot; or &quot;*** Error&quot; and including the server response.</td></tr>
+<tr><td class="rq-name">Agent</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;FTP Object for RAPIDQ&quot;</td><td>Application name passed to InternetOpenA; default &quot;FTP Object for RAPIDQ&quot;.</td></tr>
+<tr><td class="rq-name">OpenType</td><td class="rq-type">LONG</td><td>RW</td><td>QFTP_INTERNET_OPEN_TYPE_PRECONFIG</td><td>Access type for InternetOpenA: QFTP_INTERNET_OPEN_TYPE_PRECONFIG (0, default), _DIRECT (1), _PROXY (3) or _PRECONFIG_WITH_NO_AUTOPROXY (4).</td></tr>
+<tr><td class="rq-name">ProxyName</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Proxy server name passed to InternetOpenA; default empty.</td></tr>
+<tr><td class="rq-name">ProxyByPass</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Proxy bypass list passed to InternetOpenA; default empty.</td></tr>
+<tr><td class="rq-name">Open_dwFlags</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>dwFlags argument of InternetOpenA; default 0.</td></tr>
+<tr><td class="rq-name">FtpPort</td><td class="rq-type">LONG</td><td>RW</td><td>QFTP_INTERNET_DEFAULT_FTP_PORT</td><td>Server port passed to InternetConnectA; default 21.</td></tr>
+<tr><td class="rq-name">InternetService</td><td class="rq-type">LONG</td><td>RW</td><td>QFTP_INTERNET_SERVICE_FTP</td><td>Service type passed to InternetConnectA; default QFTP_INTERNET_SERVICE_FTP (1).</td></tr>
+<tr><td class="rq-name">InternetFlag</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Connection flags for InternetConnectA; Connect overwrites it with QFTP_INTERNET_FLAG_PASSIVE for the FTP service, otherwise 0.</td></tr>
+<tr><td class="rq-name">Connect_dwContext</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Context value passed to InternetConnectA; default 0.</td></tr>
+<tr><td class="rq-name">FtpTransferType</td><td class="rq-type">LONG</td><td>RW</td><td>QFTP_TRANSFER_TYPE_UNKNOWN</td><td>Transfer type flag used by PutFile and GetFile: QFTP_TRANSFER_TYPE_UNKNOWN (0, default), _ASCII (1) or _BINARY (2).</td></tr>
+<tr><td class="rq-name">Put_dwContext</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Context value passed to FtpPutFileA; default 0.</td></tr>
+<tr><td class="rq-name">FlagsAndAttributes</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>File attributes for the local file created by GetFile (QFTP_FILE_ATTRIBUTE_* values); default 0.</td></tr>
+<tr><td class="rq-name">Get_dwContext</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Context value passed to FtpGetFileA; default 0.</td></tr>
+<tr><td class="rq-name">findfirst_dwFlags</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>dwFlags argument of FtpFindFirstFileA; default 0.</td></tr>
+<tr><td class="rq-name">findFirst_dwContext</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Context value passed to FtpFindFirstFileA; default 0.</td></tr>
+<tr><td class="rq-name">WIN32_FIND_DATA</td><td class="rq-type">QFTP_WIN32_FIND_DATA</td><td>RW</td><td></td><td>QFTP_WIN32_FIND_DATA structure filled by FindFirstFile and FindNextFile with the raw data of the current file.</td></tr>
+<tr><td class="rq-name">hFind</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Search handle returned by FtpFindFirstFileA and used by FindNextFile; the comment says it allows recursive search.</td></tr>
+<tr><td class="rq-name">fileName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Name of the file found by the last FindFirstFile or FindNextFile.</td></tr>
+<tr><td class="rq-name">dosFileName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Short (8.3) alternate name of the file found last.</td></tr>
+<tr><td class="rq-name">fileSize</td><td class="rq-type">DOUBLE</td><td>RW</td><td></td><td>Size in bytes of the file found last, as a Double (64-bit size).</td></tr>
+<tr><td class="rq-name">fileTime</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Local last-write time of the file found last, as &quot;HH:MM:SS&quot;.</td></tr>
+<tr><td class="rq-name">fileTimems</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Local last-write time of the file found last, as &quot;HH:MM:SS.mmm&quot;.</td></tr>
+<tr><td class="rq-name">fileDate</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Local last-write date of the file found last, as &quot;mm/dd/yyyy&quot;.</td></tr>
+<tr><td class="rq-name">fileDateEU</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Local last-write date of the file found last, as &quot;dd/mm/yyyy&quot;.</td></tr>
+<tr><td class="rq-name">fileDateTime</td><td class="rq-type">DOUBLE</td><td>RW</td><td></td><td>Raw 64-bit last-write FILETIME of the file found last (not converted to local time), as a Double.</td></tr>
+<tr><td class="rq-name">fileAttributes</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Attribute bits of the file found last (QFTP_FILE_ATTRIBUTE_* values).</td></tr>
+<tr><td class="rq-name">fileAttributesAsString</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Attributes of the file found last as letters: A (archive), D (directory), H (hidden), N (normal), R (read only), S (system), T (temporary), C (compressed).</td></tr>
+</table>
+<a name="2"></a><h2>QFtpClient Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">ReadMessage</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the last response text from the server (InternetGetLastResponseInfoA), or an empty string.</td></tr>
+<tr><td class="rq-name">Connect</td><td class="rq-type">FUNCTION(sRemoteServer as String, sLogin as String, sPassword As String) AS LONG</td><td>Connect(sRemoteServer, sLogin, sPassword) opens the Internet session and connects to the FTP server; returns the FTP handle, or 0 on failure.</td></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">FUNCTION AS LONG</td><td>Closes the FTP, Internet and find handles and returns the product of the two close results; ErrorMsg reports the outcome.</td></tr>
+<tr><td class="rq-name">GetDir</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the current remote directory, or an empty string on error.</td></tr>
+<tr><td class="rq-name">MakeDir</td><td class="rq-type">FUNCTION(sNewDirectory As String) AS LONG</td><td>MakeDir(sNewDirectory) creates a remote directory; returns non-zero on success.</td></tr>
+<tr><td class="rq-name">SetDir</td><td class="rq-type">FUNCTION(sNewDirectory As String) AS LONG</td><td>SetDir(sNewDirectory) changes the current remote directory; returns non-zero on success.</td></tr>
+<tr><td class="rq-name">RemoveDir</td><td class="rq-type">FUNCTION(sDelDirectory As String) AS LONG</td><td>RemoveDir(sDelDirectory) removes a remote directory; returns non-zero on success.</td></tr>
+<tr><td class="rq-name">PutFile</td><td class="rq-type">FUNCTION(sLocalFileName As String, sRemoteFileName As String) AS LONG</td><td>PutFile(sLocalFileName, sRemoteFileName) uploads a local file using FtpTransferType; if the remote name is empty the local name is used. Returns non-zero on success.</td></tr>
+<tr><td class="rq-name">GetFile</td><td class="rq-type">FUNCTION(sRemoteFileName As String, sLocalFileName As String, iflagOverwrite As Long) AS LONG</td><td>GetFile(sRemoteFileName, sLocalFileName, iflagOverwrite) downloads a file; when iflagOverwrite is non-zero an existing local file is overwritten, otherwise the download fails if it exists.</td></tr>
+<tr><td class="rq-name">Rename</td><td class="rq-type">FUNCTION(sOldName as String, sNewName as String) AS LONG</td><td>Rename(sOldName, sNewName) renames or moves a remote file (no overwrite); returns non-zero on success.</td></tr>
+<tr><td class="rq-name">Delete</td><td class="rq-type">FUNCTION(sRemoteFileName As String) AS LONG</td><td>Delete(sRemoteFileName) deletes a remote file; returns non-zero on success.</td></tr>
+<tr><td class="rq-name">FindFirstFile</td><td class="rq-type">FUNCTION(sfilter As String) AS STRING</td><td>FindFirstFile(sFilter) starts a search of the current remote directory and returns the first matching file name (empty if none), filling the File* properties.</td></tr>
+<tr><td class="rq-name">FindNextFile</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the next matching file name and fills the File* properties; returns an empty string and closes the search handle when there are no more files.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>A comment in GetFile says FtpGetFileA &quot;always returns ZERO ????&quot;, so its return value and ErrorMsg may not reflect the real result.</li>
+<li>Delete is marked &quot;(dont work)&quot; in the source.</li>
+<li>Close returns ftpHandle * hOpen with the comment &quot;???? must equal 1 ????&quot;; after Close, ftpHandle holds the InternetCloseHandle result (1 on success) instead of 0.</li>
+<li>FindNextFile closes hFind when the list ends but does not reset it to 0, so a later Close calls InternetCloseHandle on the already closed handle.</li>
+<li>FileDateTime is taken from the raw UTC FILETIME, while FileDate and FileTime use local time.</li>
+<li>The constant QFTP_PassiveConnection is declared but not used; the FILETIME fields are flattened into separate longs because of a RapidQ bug with nested types, as the source notes.</li>
+</ul>
+<a name="4"></a><h2>QFtpClient Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Ftp AS QFtpClient
+DIM f AS STRING
+IF Ftp.Connect(&quot;ftp.example.com&quot;, &quot;anonymous&quot;, &quot;me@example.com&quot;) THEN
+  Ftp.FtpTransferType = QFTP_TRANSFER_TYPE_BINARY
+  Ftp.SetDir(&quot;/pub&quot;)
+  f = Ftp.FindFirstFile(&quot;*.*&quot;)
+  WHILE f &lt;&gt; &quot;&quot;
+    PRINT f; &quot; &quot;; Ftp.FileSize; &quot; &quot;; Ftp.FileDate
+    f = Ftp.FindNextFile
+  WEND
+  Ftp.GetFile(&quot;readme.txt&quot;, &quot;readme.txt&quot;, 1)
+  Ftp.Close
+ELSE
+  ShowMessage Ftp.ErrorMsg
+END IF</pre>
+<div class="rq-foot"><a href="c_qformmdi.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qftpdirlistview.html">Next component</a></div>
+</body>
+</html>

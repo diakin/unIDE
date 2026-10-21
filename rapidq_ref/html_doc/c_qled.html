@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QLED</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QLED</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QLED Component</h1>
+<p class="rq-meta">Extends <a href="qcanvas.html">QCANVAS</a> &middot; source: <code>inc/QLed.inc</code>, line 10</p>
+<p><b>A round LED indicator drawn on a QCanvas, with six colors and on/off states.</b></p>
+<p>QLed draws a filled circle of the chosen color and a gradient highlight with QCanvas.Circle; in the off state the color is half bright. The canvas is made square with the side Size. The colors are the constants LdCyan, LdPurple, LdBlue, Ldyellow, LdGreen and LdRed (1 to 6); each bit of the value switches off one of the red, green and blue channels. LdOn (1) and LdOff (0) are the states.</p>
+<p>The LED is redrawn in OnPaint and whenever LedColor or LedState is assigned. Defaults: Size 15, LedColor LdRed.</p>
+<p>QLED inherits the properties, methods and events of <a href="qcanvas.html">QCANVAS</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QLed Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">LedColor</td><td class="rq-type">BYTE</td><td>RW</td><td>LdRed</td><td>LED color, one of LdCyan, LdPurple, LdBlue, Ldyellow, LdGreen, LdRed. Assigning it redraws the LED.</td></tr>
+<tr><td class="rq-name">LedState</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>LdOn (1) for a bright LED, LdOff (0) for a dim one. Assigning it redraws the LED.</td></tr>
+<tr><td class="rq-name">Size</td><td class="rq-type">INTEGER</td><td>RW</td><td>15</td><td>Diameter in pixels; the canvas Width and Height are set to it on each Draw (default 15).</td></tr>
+</table>
+<a name="2"></a><h2>QLed Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Draw</td><td class="rq-type">SUB</td><td>Resizes the canvas to Size and draws the LED in its current color and state.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnPaint</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The SetColor property setter ends with End Sub instead of End Property.</li>
+<li>Draw uses qled.size instead of This.Size inside the gradient loop.</li>
+</ul>
+<a name="4"></a><h2>QLed Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QLed.inc&quot;
+
+CREATE Form AS QFORM
+  CREATE Led AS QLED
+    Left = 10
+    Top = 10
+    Size = 20
+    LedColor = LdGreen
+    LedState = LdOn
+  END CREATE
+END CREATE
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qinputbox.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qledscroll.html">Next component</a></div>
+</body>
+</html>

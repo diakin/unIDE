@@ -1,0 +1,241 @@
+<html>
+<head>
+<title>QDrawFocus.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QDrawFocus</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> DrawFocusRect <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">DrawFocusRect</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,lpRect <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>QRECT</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>TYPE</b></font> QDrawFocus <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QOBJECT</b></font>
+  <font color="007700"><i>'===================================================</i></font> 
+  <font color="007700"><i>' champs objet</i></font> 
+  <font color="007700"><i>'===================================================</i></font> 
+  PUBLIC:
+    Left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetLeft
+    Top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetTop
+    Width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetWidth
+    Height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetHeight
+    Move <font color="0000AA"><b>as</b></font> boolean PROPERTY SET SetMove
+    Visible <font color="0000AA"><b>as</b></font> boolean
+    Inside <font color="0000AA"><b>as</b></font> boolean PROPERTY SET SetInside
+    NoResize <font color="0000AA"><b>as</b></font> boolean
+  PRIVATE:
+    Border <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+    Frame1 <font color="0000AA"><b>as</b></font> boolean
+    Frame2 <font color="0000AA"><b>as</b></font> boolean
+    Frame3 <font color="0000AA"><b>as</b></font> boolean
+    offsetX <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+    offsetY <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+    rect <font color="0000AA"><b>as</b></font> <font color="000099"><b>QRECT</b></font>
+    
+  PUBLIC:
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="007700"><i>' Proprieté left en lecture seule</i></font> 
+  <font color="007700"><i>'==========================================</i></font> 
+  PROPERTY SET SetLeft<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="007700"><i>' Proprieté top en lecture seule</i></font> 
+  <font color="007700"><i>'==========================================</i></font> 
+  PROPERTY SET SetTop<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="007700"><i>' Proprieté width en lecture seule</i></font> 
+  <font color="007700"><i>'==========================================</i></font> 
+  PROPERTY SET SetWidth<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="007700"><i>' Proprieté height en lecture seule</i></font> 
+  <font color="007700"><i>'==========================================</i></font> 
+  PROPERTY SET SetHeight<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="007700"><i>' Proprieté move en lecture seule</i></font> 
+  <font color="007700"><i>'==========================================</i></font> 
+  PROPERTY SET SetMove<b>(</b>value <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="007700"><i>' Proprieté inside en lecture seule</i></font> 
+  <font color="007700"><i>'==========================================</i></font> 
+  PROPERTY SET SetInside<b>(</b>value <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="007700"><i>' Méthode:supprime le focus</i></font> 
+  <font color="007700"><i>' Parametres:</i></font> 
+  <font color="007700"><i>' handle:(handle DC)</i></font> 
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Remove<b>(</b>handle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    <font color="007700"><i>' remove focus</i></font> 
+    <font color="0000AA"><b>if</b></font> QDrawFocus.Visible <font color="000099"><b>then</b></font>
+      QDrawFocus.rect.right=QDrawFocus.left+QDrawFocus.width
+      QDrawFocus.rect.bottom=QDrawFocus.top+QDrawFocus.height
+      QDrawFocus.rect.left=QDrawFocus.left
+      QDrawFocus.rect.top=QDrawFocus.top
+      DrawFocusRect<b>(</b>handle,QDrawFocus.rect<b>)</b>
+      QDrawFocus.Visible=false
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'============================================</i></font> 
+  <font color="007700"><i>' Méthode:debut du focus</i></font> 
+  <font color="007700"><i>' Parametres:</i></font> 
+  <font color="007700"><i>' handle:(handle DC)</i></font> 
+  <font color="007700"><i>' x,y:(position x,y)</i></font> 
+  <font color="007700"><i>' cursor:(changement du curseur)</i></font> 
+  <font color="007700"><i>'============================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Start<b>(</b>handle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,x <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,cursor <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+    <font color="007700"><i>' click on focus</i></font> 
+    QDrawFocus.Inside=false
+    <font color="0000AA"><b>if</b></font> x>QDrawFocus.left <font color="0000AA"><b>and</b></font> x&lt;QDrawFocus.left+QDrawFocus.width <font color="0000AA"><b>and</b></font> y>QDrawFocus.top <font color="0000AA"><b>and</b></font> y&lt;QDrawFocus.top+QDrawFocus.height <font color="0000AA"><b>and</b></font> QDrawFocus.Visible=true <font color="000099"><b>then</b></font>
+      QDrawFocus.Inside=true
+    <font color="000099"><b>else</b></font>
+      QDrawFocus.Remove<b>(</b>handle<b>)</b>
+      QDrawFocus.Inside=false
+      QDrawFocus.Move=false
+      QDrawFocus.left=x
+      QDrawFocus.top=y
+      QDrawFocus.rect.left=x
+      QDrawFocus.rect.top=y
+      <font color="0000AA"><b>if</b></font> cursor <font color="0000AA"><b>then</b></font> Screen.Cursor=-3
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>if</b></font> QDrawFocus.Inside <font color="0000AA"><b>and</b></font> QDrawFocus.Visible <font color="000099"><b>then</b></font>
+      QDrawFocus.Frame1=false
+      QDrawFocus.Frame2=false
+      QDrawFocus.Frame3=false
+      QDrawFocus.offsetX=x-QDrawFocus.left
+      QDrawFocus.offsetY=y-QDrawFocus.top
+      <font color="0000AA"><b>if</b></font> x>QDrawFocus.left+QDrawFocus.width-QDrawFocus.Border <font color="0000AA"><b>and</b></font> x&lt;QDrawFocus.left+QDrawFocus.width <font color="0000AA"><b>and</b></font> y>QDrawFocus.top+QDrawFocus.height-QDrawFocus.Border <font color="0000AA"><b>and</b></font> y&lt;QDrawFocus.top+QDrawFocus.height <font color="0000AA"><b>and</b></font> QDrawFocus.NoResize=false <font color="000099"><b>then</b></font>
+        QDrawFocus.Frame3=true
+        Screen.Cursor=-8
+      <font color="0000AA"><b>elseif</b></font> y>QDrawFocus.top+QDrawFocus.height-QDrawFocus.Border <font color="0000AA"><b>and</b></font> y&lt;QDrawFocus.top+QDrawFocus.height <font color="0000AA"><b>and</b></font> QDrawFocus.NoResize=false <font color="000099"><b>then</b></font>
+        QDrawFocus.Frame2=true
+        Screen.Cursor=-7
+      <font color="0000AA"><b>elseif</b></font> x>QDrawFocus.left+QDrawFocus.width-QDrawFocus.Border <font color="0000AA"><b>and</b></font> x&lt;QDrawFocus.left+QDrawFocus.width <font color="0000AA"><b>and</b></font> QDrawFocus.NoResize=false <font color="000099"><b>then</b></font>
+        QDrawFocus.Frame1=true
+        Screen.Cursor=-9
+      <font color="000099"><b>else</b></font>
+        Screen.Cursor=-21
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="007700"><i>' Méthode:dessine le focus</i></font> 
+  <font color="007700"><i>' Parametres:</i></font> 
+  <font color="007700"><i>' handle:(handle DC)</i></font> 
+  <font color="007700"><i>' x,y:(position x,y)</i></font> 
+  <font color="007700"><i>' flagDraw:(dessin focus si true)</i></font> 
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Draw<b>(</b>handle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,x <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,flagDraw <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+    <font color="007700"><i>' move focus</i></font> 
+    <font color="0000AA"><b>if</b></font> flagDraw <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> QDrawFocus.Visible <font color="000099"><b>then</b></font>
+        QDrawFocus.rect.right=QDrawFocus.left+QDrawFocus.width
+        QDrawFocus.rect.bottom=QDrawFocus.top+QDrawFocus.height
+        QDrawFocus.rect.left=QDrawFocus.left
+        QDrawFocus.rect.top=QDrawFocus.top
+        DrawFocusRect<b>(</b>handle,QDrawFocus.rect<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> QDrawFocus.Inside <font color="0000AA"><b>and</b></font> QDrawFocus.Visible <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> QDrawFocus.Frame1 <font color="0000AA"><b>and</b></font> QDrawFocus.NoResize=false <font color="000099"><b>then</b></font>
+          QDrawFocus.rect.right=x
+          QDrawFocus.rect.bottom=QDrawFocus.top+QDrawFocus.height
+          QDrawFocus.width=x-QDrawFocus.left
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>if</b></font> QDrawFocus.Frame2 <font color="0000AA"><b>and</b></font> QDrawFocus.NoResize=false <font color="000099"><b>then</b></font>
+          QDrawFocus.rect.bottom=y
+          QDrawFocus.rect.right=QDrawFocus.left+QDrawFocus.width
+          QDrawFocus.height=y-QDrawFocus.top
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>if</b></font> QDrawFocus.Frame3 <font color="0000AA"><b>and</b></font> QDrawFocus.NoResize=false <font color="000099"><b>then</b></font>
+          QDrawFocus.rect.right=x
+          QDrawFocus.rect.bottom=y
+          QDrawFocus.width=x-QDrawFocus.left
+          QDrawFocus.height=y-QDrawFocus.top
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>if</b></font> QDrawFocus.Frame1=false <font color="0000AA"><b>and</b></font> QDrawFocus.Frame2=false <font color="0000AA"><b>and</b></font> QDrawFocus.Frame3=false <font color="000099"><b>then</b></font>
+          QDrawFocus.left=x-QDrawFocus.offsetX
+          QDrawFocus.top=y-QDrawFocus.offsetY
+          QDrawFocus.rect.left=QDrawFocus.left
+          QDrawFocus.rect.top=QDrawFocus.top
+          QDrawFocus.rect.right=x-QDrawFocus.offsetX+QDrawFocus.width
+          QDrawFocus.rect.bottom=y-QDrawFocus.offsetY+QDrawFocus.height
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        DrawFocusRect<b>(</b>handle,QDrawFocus.rect<b>)</b>
+        QDrawFocus.Move=true
+        QDrawFocus.Visible=true
+      <font color="000099"><b>else</b></font>
+        QDrawFocus.width=x-QDrawFocus.left
+        QDrawFocus.height=y-QDrawFocus.top
+        QDrawFocus.rect.right=x
+        QDrawFocus.rect.bottom=y
+        DrawFocusRect<b>(</b>handle,QDrawFocus.rect<b>)</b>
+        QDrawFocus.Visible=true
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="000099"><b>else</b></font>
+      <font color="007700"><i>' show cursor focus</i></font> 
+      <font color="0000AA"><b>if</b></font> QDrawFocus.Visible <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> x>QDrawFocus.left+QDrawFocus.width-QDrawFocus.Border <font color="0000AA"><b>and</b></font> x&lt;QDrawFocus.left+QDrawFocus.width <font color="0000AA"><b>and</b></font> y>QDrawFocus.top+QDrawFocus.height-QDrawFocus.Border <font color="0000AA"><b>and</b></font> y&lt;QDrawFocus.top+QDrawFocus.height <font color="0000AA"><b>and</b></font> QDrawFocus.NoResize=false <font color="000099"><b>then</b></font>
+          QDrawFocus.Inside=true
+          Screen.Cursor=-8
+        <font color="0000AA"><b>elseif</b></font> x>QDrawFocus.left <font color="0000AA"><b>and</b></font> x&lt;QDrawFocus.left+QDrawFocus.width <font color="0000AA"><b>and</b></font> y>QDrawFocus.top+QDrawFocus.height-QDrawFocus.Border <font color="0000AA"><b>and</b></font> y&lt;QDrawFocus.top+QDrawFocus.height <font color="0000AA"><b>and</b></font> QDrawFocus.NoResize=false <font color="000099"><b>then</b></font>
+          QDrawFocus.Inside=true
+          Screen.Cursor=-7
+        <font color="0000AA"><b>elseif</b></font> x>QDrawFocus.left+QDrawFocus.width-QDrawFocus.Border <font color="0000AA"><b>and</b></font> x&lt;QDrawFocus.left+QDrawFocus.width <font color="0000AA"><b>and</b></font> y>QDrawFocus.top <font color="0000AA"><b>and</b></font> y&lt;QDrawFocus.top+QDrawFocus.height <font color="0000AA"><b>and</b></font> QDrawFocus.NoResize=false <font color="000099"><b>then</b></font>
+          QDrawFocus.Inside=true
+          Screen.Cursor=-9
+        <font color="0000AA"><b>elseif</b></font> x>QDrawFocus.left <font color="0000AA"><b>and</b></font> x&lt;QDrawFocus.left+QDrawFocus.width-QDrawFocus.Border <font color="0000AA"><b>and</b></font> y>QDrawFocus.top <font color="0000AA"><b>and</b></font> y&lt;QDrawFocus.top+QDrawFocus.height-QDrawFocus.Border <font color="000099"><b>then</b></font>
+          QDrawFocus.Inside=true
+          Screen.Cursor=-21
+        <font color="000099"><b>else</b></font>
+          QDrawFocus.Inside=false
+          Screen.Cursor=0
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="007700"><i>' Méthode:arrete le dessin du focus</i></font> 
+  <font color="007700"><i>' Parametres:</i></font> 
+  <font color="007700"><i>' handle:(handle DC)</i></font> 
+  <font color="007700"><i>' flagRemove:(suppression focus)</i></font> 
+  <font color="007700"><i>'==========================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Stop<b>(</b>handle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,flagRemove <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+    <font color="007700"><i>' click off focus</i></font> 
+    <font color="0000AA"><b>if</b></font> QDrawFocus.Move <font color="0000AA"><b>and</b></font> flagRemove <font color="000099"><b>then</b></font>
+      QDrawFocus.Remove<b>(</b>handle<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    Screen.Cursor=0
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="000099"><b>CONSTRUCTOR</b></font>
+    Border=10
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+ 
+</pre>
+</body>
+</html>

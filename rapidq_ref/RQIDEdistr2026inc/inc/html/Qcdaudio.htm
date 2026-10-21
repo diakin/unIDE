@@ -1,0 +1,313 @@
+<html>
+<head>
+<title>Qcdaudio.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QCdaudio</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>const</b></font> CD_CLOSE=0
+<font color="0000AA"><b>const</b></font> CD_PLAY=1
+<font color="0000AA"><b>const</b></font> CD_PAUSE=2
+<font color="0000AA"><b>const</b></font> CD_STOP=3
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> mciSendCdaudio <font color="0000AA"><b>Lib</b></font> "<font color="990000">winmm.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">mciSendStringA</font>" <b>(</b>lpstrCommand <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, lpstrReturnString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>long</b></font>, uReturnLength <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, hwndCallback <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> mciGetErrorCdaudio <font color="0000AA"><b>Lib</b></font> "<font color="990000">winmm.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">mciGetErrorStringA</font>" <b>(</b>dwError <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Byref lpstrBuffer <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,uLength <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Sub</b></font> event_change<b>(</b>track <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,time <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+
+<font color="0000AA"><b>Type</b></font> Qcdaudio <font color="0000AA"><b>extends</b></font> <font color="000099"><b>Qobject</b></font>
+  <font color="007700"><i>'================================</i></font> 
+  <font color="007700"><i>' champs et proprietés</i></font> 
+  <font color="007700"><i>'================================</i></font> 
+  <font color="0000AA"><b>Timer</b></font> <font color="0000AA"><b>as</b></font> <font color="000099"><b>QTIMER</b></font>
+  Time <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  TrackTime <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  TrackNumber <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  TimePosition <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  Position <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+  State <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  AudioOpen <font color="0000AA"><b>as</b></font> boolean
+  Present <font color="0000AA"><b>as</b></font> boolean
+  Error <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  CurrentTrack <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Integer</b></font> PROPERTY SET SetCurrentTrack
+  OnChange <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>event_change<b>)</b> 
+
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' proprieté position track</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  Property Set SetCurrentTrack<b>(</b>track <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> Qcdaudio.AudioOpen <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> track&lt;1 <font color="000099"><b>then</b></font>
+        Qcdaudio.CurrentTrack=1
+      <font color="000099"><b>else</b></font>
+        <font color="0000AA"><b>if</b></font> track>Qcdaudio.TrackNumber <font color="000099"><b>then</b></font>
+          Qcdaudio.CurrentTrack=Qcdaudio.TrackNumber
+        <font color="000099"><b>else</b></font>
+          Qcdaudio.CurrentTrack=track
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">seek cdaudio to </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>Qcdaudio.CurrentTrack<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">set cdaudio time format tmsf</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">status cdaudio length track </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>Qcdaudio.CurrentTrack<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> Qcdaudio.TrackTime=<font color="0000AA"><b>rtrim$</b></font><b>(</b>RetString<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+PRIVATE:
+
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="007700"><i>' Méthode retourne le texte de l'erreur</i></font> 
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetMciDescription<b>(</b>McierrNr <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>Long</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>200<b>)</b>
+    Retval=mciGetErrorCdaudio<b>(</b>McierrNr,RetString,200<b>)</b>
+    <font color="0000AA"><b>if</b></font> Retval <font color="000099"><b>then</b></font>
+      Qcdaudio.GetMciDescription=<font color="0000AA"><b>RTRIM$</b></font><b>(</b>RetString<b>)</b>
+    <font color="000099"><b>else</b></font>
+      Qcdaudio.GetMciDescription="<font color="990000"></font>"
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode lecture position track</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetTrack <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> Qcdaudio.AudioOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">status cdaudio current track</font>"+,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> Qcdaudio.GetTrack=<font color="0000AA"><b>val</b></font><b>(</b>RetString<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode lecture position temps cd</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetTimePosition <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> Qcdaudio.AudioOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">status cdaudio position</font>"+,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> Qcdaudio.GetTimePosition=<font color="0000AA"><b>rtrim$</b></font><b>(</b>RetString<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode lecture position ms cd</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetPosition <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> Qcdaudio.AudioOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">set cdaudio time format ms</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">status cdaudio position</font>"+,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> Qcdaudio.GetPosition=<font color="0000AA"><b>val</b></font><b>(</b>RetString<b>)</b>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">set cdaudio time format tmsf</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode lecture mode cd</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetMode <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> Qcdaudio.AudioOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">status cdaudio mode</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">stopped</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> Qcdaudio.GetMode=CD_STOP
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">playing</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> Qcdaudio.GetMode=CD_PLAY
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">paused</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> Qcdaudio.GetMode=CD_PAUSE
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+PUBLIC:
+
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="007700"><i>' méthode fermeture media cd</i></font> 
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Close
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    Qcdaudio.Timer.enabled=False
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+    Retval=mciSendCdaudio<b>(</b>"<font color="990000">stop cdaudio</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+    Retval=mciSendCdaudio<b>(</b>"<font color="990000">close cdaudio</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    Qcdaudio.AudioOpen=False
+    Qcdaudio.Time="<font color="990000"></font>"
+    Qcdaudio.TrackTime="<font color="990000"></font>"
+    Qcdaudio.TimePosition="<font color="990000"></font>"
+    Qcdaudio.Position=0
+    Qcdaudio.TrackNumber=0
+    Qcdaudio.CurrentTrack=0
+    Qcdaudio.State=CD_CLOSE
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode ouverture cd</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> Open <font color="0000AA"><b>as</b></font> boolean
+    <font color="0000AA"><b>Dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>Integer</b></font>
+    <font color="0000AA"><b>Dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+    <font color="0000AA"><b>Dim</b></font> FlagOpen <font color="0000AA"><b>as</b></font> boolean
+
+    Qcdaudio.Close
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+    Retval=mciSendCdaudio<b>(</b>"<font color="990000">open cdaudio</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>19<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">status cdaudio media present</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,19,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">true</font>"<b>)</b>>0 <font color="000099"><b>then</b></font>
+        Qcdaudio.Present=True
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendCdaudio<b>(</b>"<font color="990000">status cdaudio number of tracks</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+          Qcdaudio.TrackNumber=<font color="0000AA"><b>val</b></font><b>(</b>RetString<b>)</b>
+          RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+          Retval=mciSendCdaudio<b>(</b>"<font color="990000">set cdaudio time format tmsf</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+          RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+          Retval=mciSendCdaudio<b>(</b>"<font color="990000">status cdaudio length</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+          <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+            Qcdaudio.Time=<font color="0000AA"><b>rtrim$</b></font><b>(</b>RetString<b>)</b>
+            Qcdaudio.State=CD_STOP
+            Qcdaudio.CurrentTrack=1
+            Qcdaudio.AudioOpen=True
+            Qcdaudio.Open=True
+            FlagOpen=True
+          <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="000099"><b>else</b></font>
+      Qcdaudio.Error=Qcdaudio.GetMciDescription<b>(</b>Retval<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>if</b></font> FlagOpen=False <font color="0000AA"><b>then</b></font> Qcdaudio.Close
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode lecture cdaudio</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Play
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+
+    <font color="0000AA"><b>if</b></font> Qcdaudio.AudioOpen <font color="000099"><b>then</b></font>
+      Qcdaudio.Timer.enabled=True
+      RetString = <font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      <font color="0000AA"><b>if</b></font> Qcdaudio.State=CD_PAUSE <font color="000099"><b>then</b></font>
+        Retval=mciSendCdaudio<b>(</b>"<font color="990000">play cdaudio from </font>"+Qcdaudio.TimePosition,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="000099"><b>else</b></font>
+        Retval=mciSendCdaudio<b>(</b>"<font color="990000">play cdaudio from </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>Qcdaudio.CurrentTrack<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> Qcdaudio.State=CD_PLAY
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode arret lecture cd</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Stop
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> Qcdaudio.AudioOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">stop cdaudio</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        Qcdaudio.Timer.enabled=False
+        Qcdaudio.State=CD_STOP
+        Qcdaudio.CurrentTrack=1
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendCdaudio<b>(</b>"<font color="990000">seek cdaudio to start</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode pause lecture cd</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Pause
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> Qcdaudio.AudioOpen=true <font color="0000AA"><b>and</b></font> Qcdaudio.State=CD_PLAY <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendCdaudio<b>(</b>"<font color="990000">pause cdaudio</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        Qcdaudio.State=CD_PAUSE
+        Qcdaudio.Timer.enabled=False
+        Qcdaudio.CurrentTrack=Qcdaudio.GetTrack
+        Qcdaudio.TimePosition=Qcdaudio.GetTimePosition
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode ejection cd</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Eject
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    Qcdaudio.stop
+    Qcdaudio.close
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+    Retval=mciSendCdaudio<b>(</b>"<font color="990000">set cdaudio door open</font>"+,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    Qcdaudio.Present=False
+  <font color="0000AA"><b>End</b></font> <font color="0000AA"><b>Sub</b></font>  
+
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' évenement changementposition du cd</i></font> 
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="0000AA"><b>Event</b></font> Timer.OnTimer
+    Qcdaudio.currentTrack=Qcdaudio.GetTrack
+    Qcdaudio.TimePosition=Qcdaudio.GetTimePosition
+    Qcdaudio.State=Qcdaudio.GetMode
+    <font color="0000AA"><b>if</b></font> Qcdaudio.State=CD_STOP <font color="0000AA"><b>then</b></font> Qcdaudio.Stop
+    <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>Qcdaudio.OnChange,Qcdaudio.currentTrack,Qcdaudio.TimePosition<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Event</b></font>
+
+  <font color="000099"><b>Constructor</b></font>
+    State=CD_CLOSE
+    Timer.interval=1000
+    Timer.enabled=False
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

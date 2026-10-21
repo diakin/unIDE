@@ -1,0 +1,595 @@
+{
+ "QCoolBarXP@QCoolBarXPv1d.inc": {
+  "summary_en": "A toolbar panel that imitates the Windows XP toolbar (rebar) look, with image buttons, separators, a grip, a caption, drop-down menus, embedded edit/combo boxes and an overflow chevron menu.",
+  "summary_ru": "Панель инструментов в стиле Windows XP (rebar) с кнопками-картинками, разделителями, «ручкой», заголовком, выпадающими меню, встроенными полями ввода/списками и меню переполнения.",
+  "description_en": [
+   "QCoolBarXP extends QPanel. Buttons are added with AddItems (a \"-\" string makes a separator) and get their pictures from the imgLA image list. The whole bar is drawn off-screen into bitmaps (BMPCache, BMPCache2) and copied to internal QImage/QCanvas objects with BitBlt and TransparentBlt, which the author says reduces flicker while resizing. On Windows XP (detected with GetVersionEx as version 5.1) buttons, grip and background are drawn with the uxtheme.dll API (OpenThemeData, DrawThemeBackground with the \"Toolbar\" and \"ReBar\" classes); otherwise classic edges are drawn with DrawEdge. Disabled button images are faded with AlphaBlend from msimg32.dll.",
+   "Hover and pressed states are drawn on a separate image (ImageLH) while the mouse is captured with SetCapture. Clicking an enabled button fires OnChange with the item index. When the bar is narrower than its buttons, a 12-pixel chevron button appears on the right (bottom when vertical) and opens a popup menu listing the hidden items. Dragging the grip sends WM_NCLBUTTONDOWN/HTCAPTION to move the panel, and a timer re-applies Align when the mouse button is released.",
+   "Optional global bitmaps custBG and custGrip (declared at file level) can hold a custom background and grip image; DisableBG turns them off. The source refers to a separate documentation file, QCoolBarXP.html."
+  ],
+  "requires": [
+   "uxtheme.dll (XP theme API, called only when Windows XP is detected)",
+   "msimg32.dll (TransparentBlt and AlphaBlend)",
+   "Optional: BMPMenu and CreateMenuBitmap from another add-on when _AMIB is defined (menu icons in the overflow menu)"
+  ],
+  "members": {
+   "ITEMCOUNT": "Number of items on the bar, separators included. AddItems increases it.",
+   "ITEMSWIDTH": "Base size of a button in pixels (default 39); it is also used as the button height. If it is 0 when AddItems is first called, it is set from the inner panel height (or width when vertical) minus 2; with images, item width is computed from the image width plus padding.",
+   "ITEM": "Array Item(0..29) with the caption of each item; the value \"-\" marks a separator.",
+   "IMGLA": "QImageList with the button images, used in item order with separators skipped. Its BkColor is set to clPurple; the transparent color is taken from the top-left pixel of each image, or the top-right pixel if the top-left is not purple.",
+   "DISABLEXPTHEME": "When non-zero, buttons are drawn in the classic (non-themed) style even on Windows XP.",
+   "DISABLEXPTHEMEBG": "When non-zero, the XP rebar background is not drawn; the panel color or custBG is used instead.",
+   "DISABLEBG": "When non-zero, the custom background and grip bitmaps (custBG, custGrip) are ignored.",
+   "STYLE": "Drawing style used without XP themes: 0 draws raised/sunken 3D edges and a raised grip; non-zero draws a flat hover rectangle and a dotted grip. With XP theming active and Style >= 2, separators are drawn narrower (2 instead of 3 pixels).",
+   "HIDEGRIP": "Hides (non-zero) or shows the grip. Assigning it stores the value, recalculates item positions and repaints the bar when items exist.",
+   "HIDECAPTION": "Hides (non-zero) or shows the bar caption. Assigning it stores the value, recalculates item positions and repaints the bar when items exist.",
+   "CAPTION": "Title drawn after the grip (rotated 90 degrees when vertical). Assigning it clears the inherited QPanel caption, stores the text and its measured size, recalculates item positions and repaints.",
+   "ORIENTATION": "False for a horizontal bar, True for a vertical bar. Assigning it re-aligns the internal panels and canvases and resizes the chevron area; it does not recalculate item positions by itself.",
+   "BORDERSTYLE": "When non-zero (the default), a raised edge is drawn around the bar. Assigning it stores the value and sets the inherited QPanel BorderStyle to 0.",
+   "ONCHANGE": "Event OnChange(ItemIndex AS INTEGER, Me AS QPanel), fired when an enabled item is clicked or chosen from the overflow menu.",
+   "REPAINT": "Redraws the cached image of the grip, caption and all buttons. It does nothing until the bar has been painted once, unless a repaint is forced internally.",
+   "ADDITEMS": "AddItems(caption1, caption2, ...) adds buttons; \"-\" adds a separator. Each item is also added to the overflow popup menu, and all items start enabled, not grouped and not pressed.",
+   "ASIGNPOPUPTOITEM": "AsignPopupToItem(Popup AS QPopupMenu, Index) attaches a popup menu to a button, which then gets a drop-down arrow area on its right side; clicking the arrow shows the menu with TrackPopupMenuEx. Assigning to a separator shows a warning message.",
+   "INSERTED_CTRL": "InsertED_Ctrl(iAfter, Edit AS QEdit) places a QEdit on the bar after item iAfter (-1 puts it before the first item) and shifts the following buttons. Not supported when Orientation is True.",
+   "INSERTCB_CTRL": "InsertCB_Ctrl(iAfter, Combo AS QComboBox) places a QComboBox on the bar after item iAfter (-1 puts it before the first item). Not supported when Orientation is True.",
+   "ITEMSGROUP": "ItemsGroup(GroupIndex, item1, item2, ...) assigns items to a group; with only the group index all non-separator items are grouped. Grouped items toggle their pressed state on each click.",
+   "DEFINEGROUPALLOWALLUP": "Does nothing except repaint the bar; the group 'allow all up' setting is not implemented.",
+   "ITEMSDOWN": "ItemsDown(State, item1, item2, ...) sets the pressed state of the listed items, or of all items when only State is given. Only grouped items are changed.",
+   "ITEMSENABLED": "ItemsEnabled(State, item1, item2, ...) enables or disables the listed items, or all items when only State is given. Disabled items are drawn grayed with a faded image and do not react to clicks.",
+   "ITEMSCAPTIONVISIBLE": "ItemsCaptionVisible(State, item1, item2, ...) shows or hides the caption text next to the image of the listed items (or all items when only State is given), then recalculates positions and repaints. Captions are shown only on a horizontal bar."
+  },
+  "example": "$INCLUDE \"QCoolBarXPv1d.inc\"\nDECLARE SUB BarChange(ItemIndex AS INTEGER, Me AS QPanel)\n\nCREATE Form AS QFORM\n  Caption = \"Toolbar demo\"\n  Width = 400\n  CREATE Bar AS QCoolBarXP\n    Align = 1\n    Height = 42\n    Caption = \"Tools\"\n  END CREATE\nEND CREATE\n\nSUB BarChange(ItemIndex AS INTEGER, Me AS QPanel)\n  ShowMessage \"Clicked item \" + STR$(ItemIndex)\nEND SUB\n\nBar.AddItems \"New\", \"Open\", \"-\", \"Save\"\nBar.ItemsCaptionVisible 1\nBar.ItemsGroup 1, 3\nBar.OnChange = BarChange\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "D-evolution",
+  "version": "QCoolBarXPv1",
+  "date": "2003 - 2005",
+  "caveats_en": [
+   "XP theming is used only when GetVersionEx reports exactly version 5.1 (Windows XP); on Windows 2000, Vista, 7 and later the classic drawing is used.",
+   "The source comments say TransparentBlt (msimg32) needs Windows 98 or later, and that on Win9x the caption text can be invisible.",
+   "Item() has a fixed size of 30 entries (0..29); a comment says redimensioning it crashed the compiler.",
+   "AddItems always writes the new captions starting at index 0 and resets the per-item arrays; comments in the code say it should start at the previous ItemCount, so calling it more than once overwrites earlier items.",
+   "AddItems redimensions ItemLeft to ItemCount-1 but then writes ItemLeft(ItemCount).",
+   "InsertCB_Ctrl redimensions CB_AfterIndex with ED_Count and positions the combo box with CB_Left(ED_Count-1), copy-paste mistakes from InsertED_Ctrl.",
+   "ItemsCaptionVisible with a single argument always sets the internal ShowBtnCaptAll flag to True, even when the argument is 0, so captions stay visible.",
+   "Grouped items only toggle their own pressed state; GroupAllowAllUp is set but never used, so groups do not behave like radio buttons, and DefineGroupAllowAllUp is empty.",
+   "OnChange is called in OnMouseUp outside the separator check, so clicking a separator can also fire it.",
+   "Popup menus attached with AsignPopupToItem are shown with TrackPopupMenuEx and the TPM_RETURNCMD flag, and the returned command is discarded.",
+   "The constructor assigns OnChange to CBarOnChange_EventTemplate, a SUB that is only DECLAREd in the file; the comment calls this a temporary address.",
+   "Warning and error messages are in French (for example \"Orientation = True n'est pas supporte !\").",
+   "The file sets $Option Explicit and declares global objects (custBG, custGrip, BMPCache, mnuItemExceed) shared by all bars."
+  ]
+ },
+ "QRedEx@QRedEx.Inc": {
+  "summary_en": "An extended QRichEdit with a built-in edit popup menu, Search and Replace dialogs, scroll position save/restore, text size limit and font/color dialogs.",
+  "summary_ru": "Расширенный QRichEdit со встроенным контекстным меню правки, окнами поиска и замены, сохранением позиции прокрутки, лимитом размера текста и диалогами шрифта/цвета.",
+  "description_en": [
+   "QRedEx extends QRichEdit. Its constructor builds a popup menu with Undo, Cut, Copy, Paste, Delete, Select All, Search and Replace; when the control is ReadOnly the editing items are hidden. Undo and the Undo check use EM_UNDO/EM_CANUNDO messages, and Delete sends a WM_KEYDOWN with VK_DELETE.",
+   "Search and Replace use two QForm windows created by the component (frmSearch, frmReplace) and the rich edit EM_FINDTEXTEX message (1103) with match-case and whole-word options; Replace All locks window updates with LockWindowUpdate while it works. SavePosition/RestorePosition, TopLineIndex and BottomLineIndex use EM_GETRECT, EM_CHARFROMPOS and EM_LINEFROMCHAR. ChangeFont uses a QFontDialog, and ChangeFontColor/ChangeBgColor call ChooseColorA from comdlg32.dll with 16 preset custom colors.",
+   "After the TYPE, the file redefines QRICHEDIT as QREDEX, so code included later that creates a QRICHEDIT gets a QRedEx."
+  ],
+  "requires": [
+   "A SendMessage declaration from elsewhere (SavePosition, TopLineIndex and BottomLineIndex call SendMessage, which this file does not declare)"
+  ],
+  "members": {
+   "USEPOPUP": "Turns the built-in popup menu on or off. Assigning it sets AutoPopup of the internal popup menu.",
+   "RICHTEXTSIZELIMIT": "Text size limit used by ExtendSizeLimit; the constructor sets it to 1048576.",
+   "SAVEDTOPLEFT": "Character index at the top-left of the visible area, stored by SavePosition.",
+   "SAVEDBOTTOMRIGHT": "Character index at the bottom-right of the visible area, stored by SavePosition.",
+   "SAVEDCARETPOSITION": "Caret position stored by SavePosition; if the caret was outside the visible area, the middle of the visible range is stored instead.",
+   "PTPOINT": "Internal: 20-byte buffer that receives the EM_GETRECT rectangle and is passed to EM_CHARFROMPOS.",
+   "FRMSEARCH": "The Search form (caption \"Search in text\"), shown from the popup menu's Search item.",
+   "EDTSEARCHFOR": "Edit box on the Search form for the text to find; pressing Enter starts the search. It is filled with the selected text when the form is opened.",
+   "LBLSEARCHFOR": "Label \"Text to search for:\" on the Search form.",
+   "BTNSEARCH": "\"Find Next\" button on the Search form; searches forward from the end of the current selection and selects the match, or shows \"No matches found.\".",
+   "CHKSEARCHCASES": "\"Match case\" check box on the Search form.",
+   "CHKSEARCHWHOLEWORDSONLY": "\"Full word\" check box on the Search form (whole-word search).",
+   "FRMREPLACE": "The Replace form (caption \"Replace in text\"), shown from the popup menu's Replace item.",
+   "LBLTOBEREPLACED": "Label \"Text to be replaced:\" on the Replace form.",
+   "EDTTOBEREPLACED": "Edit box on the Replace form for the text to find; Enter or Tab moves focus to the replacement box. It is filled with the selected text when the form is opened.",
+   "LBLREPLACEDBY": "Label \"Replacement text:\" on the Replace form.",
+   "EDTREPLACEDBY": "Edit box on the Replace form for the replacement text; pressing Enter runs Find next.",
+   "BTNREPLACE": "\"Replace\" button: if the current selection equals the search text (case-sensitive or not, per the check box), replaces it, then finds the next match.",
+   "BTNFINDNEXT": "\"Find next\" button on the Replace form; searches forward, or backward when the \"Replace up\" box is checked, and selects the match.",
+   "BTNREPLACEALL": "\"Replace All\" button: replaces every match in the whole text, then restores the scroll position.",
+   "CHKREPLACECASES": "\"Match case\" check box on the Replace form.",
+   "CHKREPLACEWHOLEWORDSONLY": "\"Full word\" check box on the Replace form (whole-word search).",
+   "CHKREPLACEUP": "\"Replace up\" check box: when checked, Find next on the Replace form searches toward the start of the text.",
+   "EXTENDSIZELIMIT": "Sends message &HC5 (EM_LIMITTEXT) with RichTextSizeLimit to raise the maximum text size.",
+   "SETMAXTEXTSIZE": "SetMaxTextSize(iTextSizeMax) sends message &HC5 (EM_LIMITTEXT) with the given maximum text size.",
+   "SAVEPOSITION": "Stores the visible character range and the caret position in SavedTopLeft, SavedBottomRight and SavedCaretPosition.",
+   "RESTOREPOSITION": "Focuses the control and moves the caret to the end, to SavedTopLeft and then to SavedCaretPosition, so the saved text area scrolls back into view.",
+   "TOPLINEINDEX": "Returns the index of the first visible line.",
+   "BOTTOMLINEINDEX": "Returns the index of the last visible line.",
+   "CHANGEFONT": "Opens a font dialog preset with the current font and applies the chosen font to the control.",
+   "CHANGEFONTCOLOR": "Opens the Windows color dialog (ChooseColorA) and sets Font.Color to the chosen color.",
+   "CHANGEBGCOLOR": "Opens the Windows color dialog (ChooseColorA) and sets the background Color to the chosen color."
+  },
+  "example": "$INCLUDE \"QRedEx.Inc\"\nCREATE Form AS QFORM\n  Caption = \"Editor\"\n  Width = 500: Height = 400\n  CREATE Editor AS QRedEx\n    Align = 5\n  END CREATE\nEND CREATE\nEditor.ExtendSizeLimit\nEditor.UsePopup = 1\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Jacques (2002-2005), [W]arriant (2006)",
+  "version": "1.2.1",
+  "date": "July 2006",
+  "caveats_en": [
+   "SavePosition, TopLineIndex and BottomLineIndex call SendMessage, which this file does not declare (it declares QRDX_SendMessage).",
+   "SavePosition and BottomLineIndex pass the buffer address plus 2 to EM_CHARFROMPOS for the bottom-right point, while in a RECT the right/bottom pair starts at byte offset 8, so the bottom-right value may be wrong.",
+   "The Search and Replace menu handlers test len(.seltext) <> \"\", comparing a number with a string.",
+   "The comment on frmSearch.BorderStyle = 3 says bsNone.",
+   "The header comment lists BOTTOLINEINDEX; the method is BottomLineIndex.",
+   "Version 1.2.1 removed all sounds and beeps, cancelling the Windows-version-based sound handling added in 1.2.0.",
+   "The search/replace window opening subs are private; to open the forms from code use frmSearch.Show or frmReplace.Show.",
+   "The file redefines QRICHEDIT as QREDEX after the TYPE, which affects every later QRICHEDIT in the program."
+  ]
+ },
+ "qcalendar@qcalendar.inc": {
+  "summary_en": "A month calendar panel with a day grid, month/year navigation buttons, a month popup menu and a Today button, using Windows locale names.",
+  "summary_ru": "Панель-календарь на месяц с сеткой дней, кнопками перехода по месяцам и годам, меню выбора месяца и кнопкой «Сегодня», с названиями из локали Windows.",
+  "description_en": [
+   "qcalendar extends QPanel and builds its own child controls: a header panel (Panel1) with previous/next month and previous/next year buttons (Wingdings and Webdings arrow glyphs), a QStringGrid with the days, a Today button and a footer panel (Panel2) that shows the selected date in the long date format.",
+   "Month names, abbreviated day names (Monday first) and the long date format come from GetLocaleInfo, and dates are formatted with GetDateFormat; these, SYSTEMTIME, weekday and lastdaym come from the included apidate file. The Today caption is translated for a few country codes (Danes, Oggi, Aujourd'hui, Hoy, Heute, otherwise Today). Right-clicking the header shows a popup menu to choose the month.",
+   "Call Init after creating the control, with a date string \"MM-DD-YYYY\" or \"\" for today. Days of the previous and next month are drawn grayed and cannot be selected, today's date is circled, and Sunday is drawn in a different color. Read the selected date with QDate$ or the M, D and Y fields."
+  ],
+  "requires": [
+   "$include \"apidate.bas\" (provides SYSTEMTIME, GetDateFormat, GetLocaleInfo, weekday, lastdaym; the reference library has it as ApiDate.inc)"
+  ],
+  "members": {
+   "M": "Month currently shown (1-12).",
+   "Y": "Year currently shown.",
+   "D": "Selected day of the month.",
+   "W1%": "Internal: weekday number of the first day of the shown month, used to lay out the grid and to gray out days of the previous month.",
+   "POPUPMENU": "Popup menu with the 12 month names, attached to the header panel; choosing a month shows it.",
+   "MESI": "Array mesi(1 to 12) of menu items holding the localized month names (\"mesi\" is Italian for months).",
+   "TODAY": "Flat button showing today's date in the long locale format; clicking it shows the current month and selects today.",
+   "GRID": "QStringGrid with the day names in row 0 and the days of the month below; selecting a cell updates D and the footer, and its OnDrawCell draws the calendar.",
+   "PANEL1": "Header panel showing the month name and year; it holds the navigation buttons and the month popup menu.",
+   "BTNPREV": "Button that shows the previous month (not below January 1753).",
+   "BTNNEXT": "Button that shows the next month.",
+   "BNTUPY": "Button that shows the same month of the next year.",
+   "BNTDOWNY": "Button that shows the same month of the previous year (not below 1753).",
+   "PANEL2": "Footer panel; shows \"QCalendar by P.C.B.\" at start and then the selected date in the long locale date format.",
+   "LOADCAL": "LoadCal(datum$) fills the grid with the month of the date datum$ (\"MM-DD-YYYY\"), sets M, D and Y, updates the header and selects the day.",
+   "MNUCLICK": "Internal: OnClick handler of the month menu items; shows the chosen month of the current year.",
+   "INIT": "Init(inidatum$) must be called once: it validates the optional start date (\"MM-DD-YYYY\", or \"\" for today), fills month and day names from the locale, sets the Today caption and loads the calendar. For an invalid date it shows a message and hides the control.",
+   "QDATE$": "Returns the selected date as month-day-year built with STR$ (fields not zero-padded)."
+  },
+  "example": "$INCLUDE \"qcalendar.inc\"\nDECLARE SUB ShowDate\nCREATE Form AS QFORM\n  Caption = \"Calendar\"\n  Width = 200: Height = 240\n  CREATE Cal AS qcalendar\n    Left = 5: Top = 5\n  END CREATE\n  CREATE Btn AS QBUTTON\n    Top = 190: Left = 5\n    Caption = \"Get date\"\n    OnClick = ShowDate\n  END CREATE\nEND CREATE\nSUB ShowDate\n  ShowMessage Cal.QDate$\nEND SUB\nCal.Init \"\"\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Pasquale P.C.B.",
+  "version": "",
+  "date": "4-2001",
+  "caveats_en": [
+   "The include line names \"apidate.bas\"; the helper in this library is ApiDate.inc, so the path may need to be changed.",
+   "Init fills the header row with week(i) for i up to grid.ColCount+1 (9) while week is dimensioned 1 to 7.",
+   "Comments say ColCount and RowCount were changed from 7 to 8 because an error occurred.",
+   "There is no event for a date change; read D, M, Y or QDate$ yourself.",
+   "Years before 1753 are blocked by the navigation buttons.",
+   "Date strings must use the MM-DD-YYYY order of DATE$; the validation message even says 'MM-DD-YYYYY'.",
+   "Commented-out lines refer to absolute bitmap paths such as C:\\RapidQ\\cdx.bmp."
+  ]
+ },
+ "QDirListView@qdirlistview.inc": {
+  "summary_en": "A QListView that shows the folders and files of a directory with icons, size, type and date columns, and lets the user browse folders.",
+  "summary_ru": "QListView для показа папок и файлов каталога с иконками и колонками размера, типа и даты, с переходом по папкам.",
+  "description_en": [
+   "QDirListView extends QListView. Refresh clears the list, adds the subfolders found with Dir$(... faDirectory) and DirExists, then the files matching Mask, with sub-items for size (B or KB), type (\"EXT File\") and modification date (DD.MM.YYYY plus time) taken from FileRec. Columns are created once, on the first Refresh, from the FilenameSize, FilenameType and FilenameDate flags.",
+   "Double-clicking an item, or pressing Enter (a hidden popup menu item with the Enter shortcut), opens a folder or, for a file, fires OnFileSelect; Backspace goes up one folder. Icons come from four $RESOURCE icons: index 0 is the folder icon and index 1 the default file icon in SmallImageList and LargeImageList. To give an extension its own icon, add the lowercase extension to ExtensionsList and the icons to both image lists at the same index.",
+   "Assigning Directory, Mask or ShowRoot refreshes the list. The constructor starts in the program's own folder with Mask \"*.*\"."
+  ],
+  "requires": [
+   "$RESOURCE icons resource\\dir_XP_small.ico, resource\\dir_XP_large.ico, resource\\default_small.ico, resource\\default_large.ico",
+   "Function vidnum$ (used for file sizes; it is commented out in this file, it exists in conversion.inc)"
+  ],
+  "members": {
+   "DIRECTORY": "Folder being shown. Assigning it adds a trailing backslash if missing and refreshes the list.",
+   "FILENAME": "Full path of the selected item (Directory plus caption), updated in OnChange; empty when nothing is selected.",
+   "MASK": "File mask for listed files (default \"*.*\"). Assigning it refreshes the list.",
+   "SHOWROOT": "When TRUE the \"..\" entry is listed so the user can go up. Assigning it refreshes the list.",
+   "LARGEIMAGELIST": "QImageList (32x32) with large icons: folder at index 0, default file at index 1. Assigned to LargeImages.",
+   "SMALLIMAGELIST": "QImageList with small icons: folder at index 0, default file at index 1. Assigned to SmallImages.",
+   "EXTENSIONSLIST": "QStringList of lowercase extensions whose index matches an icon index; the first two entries are placeholders (\"<dir>\") for the folder and default icons.",
+   "DLW_POPUPMENU": "Popup menu holding the hidden Enter and Backspace items; it is assigned as the control's PopupMenu so the shortcuts work.",
+   "DLW_ENTER": "Hidden menu item with the Enter shortcut; opens the selected folder or fires OnFileSelect for a file.",
+   "DLW_BACKSPACE": "Hidden menu item with the Backspace shortcut; goes up one folder.",
+   "COLUMNSINITIALIZED": "Flag set to TRUE after Refresh creates the columns; set it to FALSE to make the next Refresh rebuild them.",
+   "FILENAMESIZE": "When 1 (default) a Size column is added. Assigning it goes through Set_FilenameProp, which only stores the value in FilenameSize.",
+   "FILENAMETYPE": "When 1 a Type column is added (default 0). Assigning it goes through the shared setter Set_FilenameProp, which stores the value in FilenameSize instead.",
+   "FILENAMEDATE": "When 1 (default) a Date Modified column is added. Assigning it goes through the shared setter Set_FilenameProp, which stores the value in FilenameSize instead.",
+   "ONFILESELECT": "Event OnFileSelect(Tag AS INTEGER), fired with 0 when the user double-clicks or presses Enter on a file (not a folder). Read FileName in the handler.",
+   "FILENAMEPROP": "Empty SUB; does nothing.",
+   "SETITEMIMAGE": "Internal: sets the image index of the last added item from its extension, using ExtensionsList (default file icon if not found).",
+   "ADDFILEPROPERTIES": "Internal: adds the size, type and date sub-items for the last added file from FileRec.",
+   "LOADDIRECTORIES": "Internal: adds the subfolders of Directory to the list.",
+   "LOADFILES": "Internal: adds the files of Directory that match Mask, with icons and properties.",
+   "REFRESH": "Reloads the folder and file list, creates the columns on the first call, and repaints and refocuses the control; the CheckBoxes setting is kept.",
+   "CHANGEDIRUP": "Moves Directory up one level and refreshes.",
+   "CHANGEDIR": "Opens the selected folder (or goes up if the selected item is \"..\") and refreshes.",
+   "TRYTOCHANGEDIRORMAKEEVENT": "Internal: called on double-click and Enter; opens FileName if it is a folder, otherwise fires OnFileSelect."
+  },
+  "example": "$INCLUDE \"qdirlistview.inc\"\nDECLARE SUB FileChosen(Tag AS INTEGER)\nCREATE Form AS QFORM\n  Caption = \"Files\"\n  Width = 420: Height = 300\n  CREATE Files AS QDirListView\n    Align = 5\n    ShowRoot = TRUE\n    OnFileSelect = FileChosen\n  END CREATE\nEND CREATE\nSUB FileChosen(Tag AS INTEGER)\n  ShowMessage Files.FileName\nEND SUB\nFiles.Directory = \"C:\\\"\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Rene Saarsoo",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "FilenameSize, FilenameType and FilenameDate share the setter Set_FilenameProp, which always writes FilenameSize, so assigning FilenameType or FilenameDate from code changes FilenameSize instead.",
+   "AddFileProperties always adds size, type and date sub-items in that order, but columns are added only for the enabled flags; with the defaults (Size=1, Type=0, Date=1) the Date Modified column shows the type text. With Type=0 the code also sets Column(3).Width when only three columns exist.",
+   "Columns are built only once; later changes to the column flags have no effect unless ColumnsInitialized is reset.",
+   "vidnum$ is used but its definition is commented out in this file.",
+   "LoadDirectories discards the first result of Dir$ (it immediately calls Dir$ again), and the check for \".\" is empty.",
+   "LoadFiles declares PontPlace but uses PointPlace; Refresh uses an undeclared variable QDirListViewcheckboxes.",
+   "The icon resources use relative paths under resource\\.",
+   "Refresh hides and shows the control to force a repaint (author comment) and changes ViewStyle back and forth to avoid truncated captions.",
+   "The author's note says the code is not well commented and needs some work."
+  ]
+ },
+ "Qdownload@qdownload.inc": {
+  "summary_en": "A non-visual object that downloads a file from an HTTP server with a QSocket and returns it in a string or saves it to a file, with progress and speed reporting.",
+  "summary_ru": "Невизуальный объект, который скачивает файл с HTTP-сервера через QSocket и возвращает его в строке или сохраняет в файл, показывая прогресс и скорость.",
+  "description_en": [
+   "Qdownload extends QObject. Set Server, Port (default 80) and File, choose the output with OutDevice (1 = OutVar string, 2 = OutFile on disk) and call LeechFile. It connects with QSocket, sends \"GET /\" + File + \" HTTP/1.0\" and an empty line, reads the header lines until an empty one, takes the size from Content-Length, then reads the body in 32000-byte blocks until nothing more is transferred.",
+   "Progress is written to State (percent) or, when StateDevice is 2, to the StateGauge QGauge and the SpeedLbl QLabel (bytes per second); you must set the Parent and other properties of these controls yourself. On failure LeechFile returns False and sets LastError and LastStringError: 1 no server, 2 no port, 3 no file, 4 no output file, 5 cannot connect to host, 6 not connected to the internet, 7 connection closed by peer, 8 unknown error, 9 size unknown or 0 bytes, 10 transmission error (received size differs), 11 file not found (404)."
+  ],
+  "requires": [],
+  "members": {
+   "FILE": "Path of the file on the server; LeechFile requests \"/\" + File.",
+   "SERVER": "Host name of the HTTP server, for example www.server.dom.",
+   "PORT": "Server port; default 80.",
+   "OUTDEVICE": "Where the data goes: 1 (default) = OutVar, 2 = the file named in OutFile.",
+   "STATEDEVICE": "How progress is reported: 1 (default) = State, 2 = StateGauge and SpeedLbl.",
+   "OUTVAR": "String that receives the downloaded data when OutDevice is 1.",
+   "OUTFILE": "Path and file name where the data is saved when OutDevice is 2.",
+   "STATE": "Download progress in percent when StateDevice is 1.",
+   "STATEGAUGE": "QGauge updated with the percentage when StateDevice is 2 (default size 200x20); set its Parent yourself.",
+   "SPEEDLBL": "QLabel that shows the speed in B/s when StateDevice is 2; set its Parent yourself.",
+   "LASTSTRINGERROR": "Text of the last error.",
+   "LASTERROR": "Number of the last error (1-11).",
+   "SIZE": "File size taken from the Content-Length header during the download.",
+   "CHECK": "Returns True if the registry value \"Remote Connection\" under HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Services\\RemoteAccess is 1, otherwise False. LeechFile uses it to choose the error message.",
+   "PERCENT": "Percent(now, complete) returns now*100/complete rounded.",
+   "SPEED": "Speed(now$, before$, complete) returns complete divided by the seconds between two TIME$ strings (hh:mm:ss), rounded.",
+   "LEECHFILE": "Downloads the file and returns True on success or False with LastError set; the call blocks until the download ends."
+  },
+  "example": "$INCLUDE \"qdownload.inc\"\nDIM Dl AS Qdownload\nDl.Server = \"www.example.com\"\nDl.File = \"index.html\"\nDl.OutDevice = 2\nDl.OutFile = \"C:\\index.html\"\nIF Dl.LeechFile THEN\n  ShowMessage \"Downloaded \" + STR$(Dl.Size) + \" bytes\"\nELSE\n  ShowMessage Dl.LastStringError\nEND IF",
+  "example_origin": "written",
+  "author": "",
+  "version": "v2",
+  "date": "",
+  "caveats_en": [
+   "The request is HTTP/1.0 without a Host header, and only 404 status lines are recognized; redirects and other errors are not handled.",
+   "The comment shows File as \"/Path/File.ext\", but the code adds its own leading slash.",
+   "The download needs a Content-Length header (matched case-sensitively); without it Size stays 0, Percent divides by zero and the size check fails.",
+   "Speed divides by the elapsed seconds, which can be 0, and does not handle midnight.",
+   "Check only reads a Remote Access (dial-up) registry value; it does not test the network.",
+   "LeechFile runs in a loop with no DoEvents, so the program does not respond during the download; LastError is not cleared on success.",
+   "The OutDevice comment mentions qdownload.filestream, but the code saves to OutFile through a local QFileStream."
+  ]
+ },
+ "QIniFile@QIniFile.inc": {
+  "summary_en": "A QStringList-based INI file reader and writer with section and key lookup and typed read/write methods.",
+  "summary_ru": "Чтение и запись INI-файлов на основе QStringList: поиск секций и ключей, методы чтения и записи чисел и строк.",
+  "description_en": [
+   "QIniFile extends QStringList and keeps the whole INI file in its items. CreateFile picks the file, loads it if it exists or creates it empty. Sections are lines starting with \"[\", keys are matched case-insensitively on the text before \"=\".",
+   "WriteInteger, WriteFloat and WriteString replace an existing key, insert a new key at the end of its section, or append a new section; every write saves the file immediately. ReadInteger, ReadFloat and ReadString return the value or the given default. ReadSection and ReadSections copy lines into another QStringList. The Windows folder is found with GetWindowsDirectory from kernel32."
+  ],
+  "requires": [
+   "$Include \"SysUtils.inc\" (ExtractFileName, ExtractFilePath, ChangeFileExt), unless __RQSYSUTILS is already defined"
+  ],
+  "members": {
+   "FILE": "Full path of the INI file, set by CreateFile and used by every write.",
+   "CREATEFILE": "CreateFile(Dir) sets File: a bare file name is placed in the Windows folder, a path is used as given. The file is loaded if it exists, otherwise an empty file is created.",
+   "SECTIONEXISTS": "SectionExists(Section$) returns the line index of the [Section] header (case-insensitive) or -1.",
+   "KEYEXISTS": "KeyExists(Section$, Key$) returns the line index of the key inside the section or -1.",
+   "WRITEINTEGER": "WriteInteger(Section$, Key$, Value&) writes Key=Value (formatted with %d) and saves the file.",
+   "WRITEFLOAT": "WriteFloat(Section$, Key$, Value#) writes Key=Value (formatted with %g) and saves the file.",
+   "WRITESTRING": "WriteString(Section$, Key$, Value$) writes Key=Value and saves the file.",
+   "READINTEGER": "ReadInteger(Section$, Key$, Default&) returns the key value as an integer, or Default if the key is missing.",
+   "READFLOAT": "ReadFloat(Section$, Key$, Default#) returns the key value as a double, or Default if the key is missing.",
+   "READSTRING": "ReadString(Section$, Key$, Default$) returns the text after \"=\", or Default if the key is missing.",
+   "READSECTION": "ReadSection(Section$, Buffer AS QStringList) clears Buffer and copies all lines of the section into it; Buffer is untouched if the section does not exist.",
+   "READSECTIONS": "ReadSections(Buffer AS QStringList) clears Buffer and adds every section header line (with brackets).",
+   "GETWINDOWSDIR": "Internal: stores the Windows folder (with a trailing backslash) in a private field; called by the constructor."
+  },
+  "example": "$INCLUDE \"QIniFile.inc\"\nDIM Ini AS QIniFile\nIni.CreateFile \"C:\\MyApp\\settings.ini\"\nIni.WriteString \"Main\", \"User\", \"Bob\"\nIni.WriteInteger \"Main\", \"Count\", 5\nShowMessage Ini.ReadString(\"Main\", \"User\", \"none\") + STR$(Ini.ReadInteger(\"Main\", \"Count\", 0))",
+  "example_origin": "written",
+  "author": "Nastase Eodor",
+  "version": "",
+  "date": "2008",
+  "caveats_en": [
+   "The constructor sets a default name (program name with .ini), but CreateFile overwrites it before use, so it is never used; passing only a folder path makes File equal to the folder.",
+   "CreateFile must be called before writing, otherwise File is empty when the file is saved.",
+   "ReadString returns only the text between the first and second \"=\", so values that contain \"=\" are cut.",
+   "SectionExists removes every \"[\" and \"]\" from the line before comparing; spaces around keys are not trimmed.",
+   "ReadInteger is declared As Integer although the default and write value are Long."
+  ]
+ },
+ "QMAXEDIT@ultraRichEd.inc": {
+  "summary_en": "A QRichEdit with a Windows-style edit popup menu (Undo, Cut, Copy, Paste, Delete, Select All) and simple keyword highlighting.",
+  "summary_ru": "QRichEdit с контекстным меню правки как в Windows (Отменить, Вырезать, Копировать, Вставить, Удалить, Выделить всё) и простой подсветкой ключевых слов.",
+  "description_en": [
+   "QMAXEDIT extends QRichEdit. Its constructor builds a popup menu like the default Windows edit menu and assigns it to PopupMenu; before the menu opens, items are enabled according to the selection, the clipboard and EM_CANUNDO. Undo sends EM_UNDO and Delete sends WM_KEYDOWN with VK_DELETE.",
+   "It also contains the keyword highlighting code of QREdit (HiLight.inc): keywords added with AddSyntaxes are drawn bold in HiLightColor by HiLight, and OnKeyUp re-highlights the word at the caret. The control is set to PlainText with the \"MS Sans Serif\" font.",
+   "After the TYPE the file redefines QRICHEDIT as QMAXEDIT, so later code that creates a QRICHEDIT gets this component. The comments say: set UsePopup = 0 to turn off the popup, or set PopupMenu to use another one."
+  ],
+  "requires": [
+   "A SendMessage declaration from elsewhere (Undo and Delete call SendMessage; the file declares only SendMessageA)"
+  ],
+  "members": {
+   "RICHFONT": "QFont used for normal text and as the base for highlighted keywords (default name \"MS Sans Serif\").",
+   "SYNTAXES": "Array Syntaxes(100) of keywords to highlight, filled from index 1 by AddSyntaxes.",
+   "MAXSYNTAX": "Number of keywords stored in Syntaxes.",
+   "HILIGHTCOLOR": "Color of highlighted keywords (default &H0000BB).",
+   "USEPOPUP": "Turns the built-in popup menu on or off. Assigning it sets AutoPopup of the internal menu; the constructor sets it to 1.",
+   "UNDO": "Undoes the last edit (sends EM_UNDO).",
+   "CUT": "Cuts the selection to the clipboard.",
+   "COPY": "Copies the selection to the clipboard.",
+   "PASTE": "Pastes from the clipboard.",
+   "DELETE": "Deletes the selection or the character at the caret by sending a Delete key-down message.",
+   "SELECTAL": "Selects all text (calls SelectAll).",
+   "HILIGHT": "Highlights all keywords: resets the whole text to RichFont, then finds every occurrence of each keyword (case-insensitive substring search) and makes it bold in HiLightColor. Call it after loading a file or inserting lines.",
+   "ADDSYNTAXES": "AddSyntaxes(word1, word2, ...) appends keywords to the Syntaxes array."
+  },
+  "example": "$INCLUDE \"ultraRichEd.inc\"\nCREATE Form AS QFORM\n  Caption = \"Editor\"\n  CREATE Editor AS QRICHEDIT  ' becomes QMAXEDIT\n    Align = 5\n  END CREATE\nEND CREATE\nEditor.AddSyntaxes \"IF\", \"THEN\", \"ELSE\", \"END\"\nEditor.Text = \"IF a THEN b ELSE c\"\nEditor.HiLight\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Psyclops",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Undo and Delete call SendMessage, which this file does not declare.",
+   "Syntaxes has a fixed size of 100 and AddSyntaxes does not check the limit.",
+   "HiLight matches substrings, not whole words, so a keyword inside a longer word is also highlighted.",
+   "The OnKeyUp comments say the event may be skipped when typing fast and that splitting a word with a space is not handled.",
+   "The file redefines QRICHEDIT as QMAXEDIT after the TYPE, which affects every later QRICHEDIT in the program."
+  ]
+ },
+ "QWebCam@WebCam.inc": {
+  "summary_en": "A non-visual wrapper around webcam.dll for showing a webcam preview in a form, capturing video, opening driver dialogs and grabbing frames.",
+  "summary_ru": "Невизуальная обёртка над webcam.dll: показ изображения веб-камеры на форме, запись видео, диалоги драйвера и захват кадров.",
+  "description_en": [
+   "QWebCam extends QObject and calls functions of webcam.dll, a DLL written by John White. When the include file is loaded it calls WEBCAM_AbortCapturing to load the library and checks it with LIBRARYINST; if the DLL is missing it shows \"webCam.DLL not found, video capture disabled\" and sets WebCamDLLPresent to 0.",
+   "CamInit opens a capture child window on a form, connects the driver and turns on hardware overlay if the camera supports it, or software preview otherwise. Other methods start and stop capturing, switch preview, open the driver dialogs, copy a frame to the clipboard or save it as a DIB file, and CleanUp closes everything in the reverse order."
+  ],
+  "requires": [
+   "webcam.dll (by John White)",
+   "Declarations from elsewhere for GetObject, TBITMAP and CF_BITMAP (used in GrabFrameToClipBoard)"
+  ],
+  "members": {
+   "IMAGEHEIGHT": "Set to 0 by the constructor; the comment says it is set by GetStatus, but no such method exists and nothing updates it.",
+   "IMAGEWIDTH": "Set to 0 by the constructor; the comment says it is set by GetStatus, but no such method exists and nothing updates it.",
+   "FRAMESDROPPED": "Set to 0 by the constructor and not used anywhere else.",
+   "PREVIEW": "Set to True by the constructor and not used anywhere else.",
+   "TAG": "Commented as being for a createWindow function; set to 0 and not used.",
+   "STS": "Status flag: 0 = nothing open, 1 = capture window open, 2 = driver connected, 3 = software preview on, 4 = overlay on. CamInit sets it and CleanUp uses it.",
+   "ONFRAME": "A LONG field; the comment says the frame event (OnFrame_EventTemplate) does not work, and it is not used.",
+   "CAMINIT": "CamInit(Form AS QFORM) opens the capture window on Form, connects the camera and starts overlay or preview; returns 1 on success. It runs only once (exits if Sts is set) and shows \"Could not connect to Camera\" on failure.",
+   "SHOWDIALOGBOX": "ShowDialogBox(n) stops capturing and opens a driver dialog: 1 = video compression, 2 = video display, 3 = video format, 4 = video source.",
+   "STARTCAPTURE": "Starts capturing if not already capturing, and turns overlay on if the camera supports it.",
+   "PREVIEWOFF": "Turns preview scaling and preview off.",
+   "PREVIEWON": "Turns preview on.",
+   "STOPCAPTURE": "If capturing, turns preview off and stops capturing.",
+   "CLEANUP": "Turns off overlay or preview, disconnects the driver and closes the capture window, depending on Sts. Call it before the program ends.",
+   "SELECTSOURCE": "Opens the video source dialog.",
+   "GRABFRAMETOCLIPBOARD": "Turns preview off, grabs a frame, copies it to the clipboard, reads the bitmap handle back and calls GetObject on it, then turns preview on again. Returns the GetObject result, not the image.",
+   "COPYFRAMETOFILE": "CopyFrameToFile(FileName) turns preview off, grabs a frame and saves it with FRAME_CopyToDIB; returns the DLL result."
+  },
+  "example": "$INCLUDE \"WebCam.inc\"\nDIM Cam AS QWebCam\nDECLARE SUB FormClose\nCREATE Form AS QFORM\n  Caption = \"Webcam\"\n  Width = 360: Height = 300\n  OnClose = FormClose\nEND CREATE\nSUB FormClose\n  Cam.CleanUp\nEND SUB\nForm.Show\nIF Cam.CamInit(Form) = 1 THEN Cam.CopyFrameToFile(\"C:\\frame.bmp\")\nDO\n  DoEvents\nLOOP UNTIL Form.Visible = 0",
+  "example_origin": "written",
+  "author": "John White (webcam.dll); wrapped as a component by JohnK",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "In CamInit the IF WebCamDLLPresent THEN block has no matching END IF in the source.",
+   "ImageHeight, ImageWidth, FramesDropped, Preview, Tag and OnFrame are never updated or used; the OnFrame comment says the event does not work.",
+   "GrabFrameToClipBoard calls GetObject first on an empty local QBITMAP and then on the clipboard bitmap into a local TBITMAP that is discarded; GetObject, TBITMAP and CF_BITMAP are not declared in this file.",
+   "CopyFrameToFile turns preview off and does not turn it back on.",
+   "CleanUp does not reset Sts, so CamInit cannot be called again afterwards.",
+   "The component never sets a capture file name (WEBCAM_SetCaptureFilename is declared but not used).",
+   "Including the file shows a message box at startup when webcam.dll is missing."
+  ]
+ },
+ "Qspintext@qspintext.inc": {
+  "summary_en": "A spin edit: a panel with a QEdit and a vertical QScrollBar for entering a number between Min and Max, with an OnChange event.",
+  "summary_ru": "Поле со стрелками (spin edit): панель с QEdit и вертикальной полосой прокрутки для ввода числа от Min до Max, с событием OnChange.",
+  "description_en": [
+   "Qspintext extends QPanel and contains an edit box (Ed) and a vertical scroll bar (Sb). The scroll bar works with negated values so that the up arrow increases the number. After setting Min, Max, Value and the colors, call Initial to apply them and place the child controls.",
+   "Clicking the scroll bar updates Value and the edit box and fires OnChange. In the edit box the Up and Down arrow keys move the value, and Enter takes the typed number. While other keys are typed the panel turns red as a sign that the value is not confirmed yet; Enter or Down restores BgColor."
+  ],
+  "requires": [],
+  "members": {
+   "MAX": "Largest value; applied by Initial.",
+   "MIN": "Smallest value; applied by Initial.",
+   "VALUE": "Current value; updated when the scroll bar changes. Assigning it directly does not update the controls until Initial is called.",
+   "BGCOLOR": "Background color of the edit box (and of the panel after confirming input); applied by Initial.",
+   "FONTCOLOR": "Text color of the edit box; applied by Initial.",
+   "ED": "The QEdit that shows and accepts the number.",
+   "SB": "The vertical QScrollBar used as the spin buttons (works with negated values).",
+   "ONCHANGE": "Event OnChange(vl AS LONG), fired with the new value when the scroll bar changes or Enter is pressed in the edit box.",
+   "INITIAL": "Applies Min, Max, Value, BgColor and FontColor to the child controls and lays them out to the panel width. Call it after setting these fields."
+  },
+  "example": "$INCLUDE \"qspintext.inc\"\nDECLARE SUB SpinChange(vl AS LONG)\nCREATE Form AS QFORM\n  Caption = \"Spin\"\n  CREATE Spin AS Qspintext\n    Left = 10: Top = 10\n    Width = 80\n    Min = 0: Max = 100: Value = 10\n    OnChange = SpinChange\n  END CREATE\nEND CREATE\nSUB SpinChange(vl AS LONG)\n  Form.Caption = STR$(vl)\nEND SUB\nSpin.Initial\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Mesut Akcan; OnChange event added by Andrew Shelkovenko",
+  "version": "1.01",
+  "date": "7 July 2000, update 7 Sept. 2000; updated 20.04.04",
+  "caveats_en": [
+   "The events use a variable vl that is not declared in the type; on Enter OnChange is called with vl as left by the last scroll-bar change.",
+   "On Enter the code sets the scroll-bar position and then calls OnChange directly, so if the scroll bar's own OnChange also runs, the handler can be called twice.",
+   "The Ed.OnChange handler is empty (its code is commented out), so typing alone does not change Value.",
+   "The Up arrow key does not restore the panel color after it was turned red.",
+   "Typed values are not checked against Min and Max."
+  ]
+ },
+ "QREdit@HiLight.inc": {
+  "summary_en": "A QRichEdit with simple automatic keyword (syntax) highlighting.",
+  "summary_ru": "QRichEdit с простой автоматической подсветкой ключевых слов (синтаксиса).",
+  "description_en": [
+   "QREdit extends QRichEdit and is William Yu's syntax highlighting example turned into a component. Add keywords with AddSyntaxes, then call HiLight after loading a file or inserting lines: it selects text ranges and sets SelAttributes to a bold RichFont in HiLightColor, instead of generating RTF.",
+   "While typing, OnKeyUp finds the word around the caret (separated by spaces or line breaks) and highlights it if it is a keyword. The control is set to PlainText with the \"Courier\" font. After the TYPE the file redefines QRICHEDIT as QREdit, so later code that creates a QRICHEDIT gets this component."
+  ],
+  "requires": [
+   "$INCLUDE \"RAPIDQ.INC\""
+  ],
+  "members": {
+   "RICHFONT": "QFont used for normal text and as the base for highlighted keywords (default name \"Courier\").",
+   "SYNTAXES": "Array Syntaxes(100) of keywords to highlight, filled from index 1 by AddSyntaxes.",
+   "MAXSYNTAX": "Number of keywords stored in Syntaxes.",
+   "HILIGHTCOLOR": "Color of highlighted keywords (default &HAA0000).",
+   "HILIGHT": "Highlights all keywords: resets the whole text to RichFont, then finds every occurrence of each keyword (case-insensitive substring search) and makes it bold in HiLightColor. Call it after loading a file or inserting lines.",
+   "ADDSYNTAXES": "AddSyntaxes(word1, word2, ...) appends keywords to the Syntaxes array."
+  },
+  "example": "$INCLUDE \"HiLight.inc\"\nCREATE Form AS QFORM\n  Caption = \"Highlight\"\n  CREATE Editor AS QREdit\n    Align = 5\n  END CREATE\nEND CREATE\nEditor.AddSyntaxes \"SUB\", \"END\", \"DIM\", \"AS\"\nEditor.Text = \"SUB Test\" + CHR$(13) + \"DIM a AS INTEGER\" + CHR$(13) + \"END SUB\"\nEditor.HiLight\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "William Yu",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The author describes it as not very complete.",
+   "The OnKeyUp comments say the event may be skipped when typing fast and that splitting a word with a space is not handled.",
+   "HiLight matches substrings, not whole words, so a keyword inside a longer word is also highlighted.",
+   "Syntaxes has a fixed size of 100 and AddSyntaxes does not check the limit.",
+   "The include file itself sets $APPTYPE GUI and $TYPECHECK ON and includes RAPIDQ.INC.",
+   "The header comment calls the color property HiLighColor; the field is HiLightColor.",
+   "The file redefines QRICHEDIT as QREdit after the TYPE, which affects every later QRICHEDIT in the program."
+  ]
+ },
+ "QTabControlEx@QtabControlEx.inc": {
+  "summary_en": "A QTabControl that keeps a count of its tabs and adds methods to delete tabs and clear all tabs.",
+  "summary_ru": "QTabControl со счётчиком вкладок и методами удаления вкладки и очистки всех вкладок.",
+  "description_en": [
+   "QTabControlEx extends QTabControl. It redefines AddTabs and InsertTab so that they also update TabCount, and adds DeleteTabs and Clear. The comments are in French and describe each method (tab count property, delete, add, redefined add, redefined insert, delete all tabs)."
+  ],
+  "requires": [],
+  "members": {
+   "TABCOUNT": "Number of tabs, maintained by AddTabs, InsertTab, DeleteTabs and Clear. Its setter is empty and marked read only, so assigning it does nothing.",
+   "DELETETABS": "DeleteTabs(index) removes the tab at index (through DelTabs) and decreases TabCount, if TabCount is greater than 0.",
+   "ADD": "Add(s) adds one tab by calling the inherited AddTabs; it does not change TabCount.",
+   "ADDTABS": "AddTabs(caption1, caption2, ...) adds one tab per argument and increases TabCount for each.",
+   "INSERTTAB": "InsertTab(index, s) inserts a tab at index with the inherited InsertTab and increases TabCount.",
+   "CLEAR": "Removes all tabs by deleting tab 0 TabCount times and sets TabCount to 0."
+  },
+  "example": "$INCLUDE \"QtabControlEx.inc\"\nCREATE Form AS QFORM\n  Caption = \"Tabs\"\n  CREATE Tabs AS QTabControlEx\n    Align = 5\n  END CREATE\nEND CREATE\nTabs.AddTabs \"One\", \"Two\", \"Three\"\nTabs.InsertTab 1, \"New\"\nTabs.DeleteTabs 0\nForm.Caption = \"Tabs: \" + STR$(Tabs.TabCount)\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "Add does not update TabCount, so adding tabs with Add leaves the count wrong; use AddTabs.",
+   "DeleteTabs does not check that index is within range.",
+   "Tabs added with the inherited methods before or outside these overrides are not counted."
+  ]
+ },
+ "QVuMeter@QVuMeter.inc": {
+  "summary_en": "A vertical bar-graph level meter (VU meter) drawn on a QCanvas.",
+  "summary_ru": "Вертикальный столбиковый индикатор уровня (VU-метр), рисуемый на QCanvas.",
+  "description_en": [
+   "QVuMeter extends QCanvas. In OnPaint it divides the height into horizontal bars of Thickness pixels separated by Interval pixels and fills them from the bottom: the bars up to the level of Value (scaled between Min and Max) in LightColor, the rest in DarkColor.",
+   "Assigning Value repaints the meter. Defaults: Min 0, Max 100, Thickness 2, Interval 1, DarkColor black, LightColor white. The file comments are in French (property interval, thickness, VU meter value, VU meter paint event)."
+  ],
+  "requires": [],
+  "members": {
+   "MAX": "Value that lights all bars (default 100).",
+   "MIN": "Value that lights no bars (default 0).",
+   "DARKCOLOR": "Color of unlit bars (default &H0, black).",
+   "LIGHTCOLOR": "Color of lit bars (default &HFFFFFF, white).",
+   "THICKNESS": "Height of each bar in pixels (default 2). Assigning it stores the value as an integer; it does not repaint.",
+   "INTERVAL": "Gap between bars in pixels (default 1). Assigning it stores the value as an integer; it does not repaint.",
+   "VALUE": "Current level between Min and Max. Assigning it stores the value and repaints the meter."
+  },
+  "example": "$INCLUDE \"QVuMeter.inc\"\nCREATE Form AS QFORM\n  Caption = \"VU\"\n  CREATE Vu AS QVuMeter\n    Left = 10: Top = 10\n    Width = 20: Height = 120\n    LightColor = &H00FF00\n  END CREATE\nEND CREATE\nVu.Value = 60\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "If Max equals Min, OnPaint divides by zero.",
+   "Changing Min, Max, DarkColor, LightColor, Thickness or Interval does not repaint; assign Value or call Repaint afterwards.",
+   "The file defines True, False and boolean with $DEFINE if they are not already defined."
+  ]
+ },
+ "QLEDSCROLL@QLedScroll.inc": {
+  "summary_en": "A scrolling text banner on a QCanvas, with an optional grid overlay that gives an LED display look.",
+  "summary_ru": "Бегущая строка на QCanvas с необязательной сеткой, имитирующей светодиодное табло.",
+  "description_en": [
+   "QLEDSCROLL extends QCanvas. Paint fills the canvas with BgColor and draws Text at position X, Y in TextColor; when Raster is non-zero it then draws vertical and horizontal lines in BgColor every RasterLen pixels, so the text looks made of dots.",
+   "The component does not move by itself: call Move from a timer to shift the text left, then Repaint, and call Rewind when the text has left the area. SetString sets new text and rewinds. Default size is 200x32 with RasterLen 2."
+  ],
+  "requires": [],
+  "members": {
+   "TEXTCOLOR": "Color of the text.",
+   "BGCOLOR": "Background color, also used for the raster lines.",
+   "X": "Current horizontal position of the text (SINGLE); Move decreases it and Rewind resets it.",
+   "Y": "Vertical position of the text.",
+   "TEXT": "Text to display.",
+   "RASTER": "When non-zero, a grid of lines in BgColor is drawn over the text.",
+   "RASTERLEN": "Spacing of the raster lines in pixels (default 2).",
+   "FONT": "A QFONT field; SetColor sets its Color, but the component code does not otherwise use it.",
+   "REWIND": "Sets X to Width + TextWidth(Text) + 1, which places the text to the right of the visible area.",
+   "PAINT": "Draws the background, the text at X, Y and, if Raster is set, the grid. Also called from OnPaint.",
+   "REPAINT": "Calls Paint.",
+   "MOVE": "Move(p) moves the text p pixels to the left (decreases X); it does not repaint.",
+   "SETSTRING": "SetString(s$) sets Text and calls Rewind.",
+   "SETCOLOR": "SetColor(c) sets TextColor and Font.Color."
+  },
+  "example": "$INCLUDE \"QLedScroll.inc\"\nDECLARE SUB TmrTimer\nCREATE Form AS QFORM\n  Caption = \"LED\"\n  CREATE Led AS QLEDSCROLL\n    Left = 10: Top = 10\n    TextColor = &H00FF00\n    BgColor = &H000000\n    Raster = 1\n  END CREATE\n  CREATE Tmr AS QTIMER\n    Interval = 30\n    OnTimer = TmrTimer\n  END CREATE\nEND CREATE\nSUB TmrTimer\n  Led.Move 2\n  IF Led.X < -Led.TextWidth(Led.Text) THEN Led.Rewind\n  Led.Repaint\nEND SUB\nLed.SetString \"Hello from RapidQ\"\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Rewind starts the text TextWidth(Text)+1 pixels beyond the right edge, so there is a delay before it appears.",
+   "Move does not repaint and nothing rewinds the text automatically when it has scrolled out.",
+   "The Font field is separate from what TextOut uses; text color comes from TextColor."
+  ]
+ },
+ "XpGroupBox@XP_MANIFEST.INC": {
+  "summary_en": "A group box drawn in the Windows XP style: a rounded thin border with a colored caption, drawn on a QCanvas inside a QPanel.",
+  "summary_ru": "Рамка группы (group box) в стиле Windows XP: тонкая скруглённая рамка с цветным заголовком, рисуемая на QCanvas внутри QPanel.",
+  "description_en": [
+   "XpGroupBox extends QPanel (BevelWidth 0) and places a client-aligned QCanvas on it. In the canvas OnPaint it draws a one-pixel border with rounded corners, starting half a text line from the top, and writes Caption at x = 7 in CaptionColor on the button face color.",
+   "When LunaDetect is on (the default), the border color is chosen from the system button face color read with GetSysColor(15): &H5C7777 for the silver theme, &HBFD0D0 for the blue or olive theme; otherwise BorderColor is used. The same file contains the XPButton helper and the $XP_MANIFEST SUB, which writes a manifest file (program path plus .manifest) for Common Controls 6 so other controls get the XP look."
+  ],
+  "requires": [
+   "A GetSysColor declaration from elsewhere (used in the paint code, not declared in this file)"
+  ],
+  "members": {
+   "CAPTION": "Text drawn in the top border; shown on the next paint.",
+   "BORDERCOLOR": "Border color used when LunaDetect is 0 (default &HBFD0D0).",
+   "CAPTIONCOLOR": "Color of the caption text (default &HD54600).",
+   "LUNADETECT": "When non-zero (default 1), the border color is picked automatically from the system button face color instead of BorderColor."
+  },
+  "example": "$INCLUDE \"XP_MANIFEST.INC\"\n$XP_MANIFEST\nCREATE Form AS QFORM\n  Caption = \"Group box\"\n  CREATE Group AS XpGroupBox\n    Left = 10: Top = 10\n    Width = 200: Height = 120\n    Caption = \"Options\"\n  END CREATE\nEND CREATE\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Paul Ludgate (xpGroupBox); file based on QXpTheme by Nicolas Tillet, additions by robin_q_master, modified for RQ2 by JohnK",
+  "version": "",
+  "date": "4/2006",
+  "caveats_en": [
+   "GetSysColor is called but not declared in this file.",
+   "Theme detection only compares the button face color with &HE3DFE0 (silver); any other color is treated as the blue or olive theme.",
+   "Caption, BorderColor, CaptionColor and LunaDetect are plain fields; changing them does not repaint the box.",
+   "The $XP_MANIFEST helper in the same file writes the manifest only when the major version is at least 5 and the minor version is above 0, so for example Windows Vista (6.0) is skipped."
+  ]
+ },
+ "TestEDIT@TstRichEd.inc": {
+  "summary_en": "A small test QRichEdit extension with one function that returns the character index of the first character of the caret line.",
+  "summary_ru": "Небольшое тестовое расширение QRichEdit с одной функцией, возвращающей позицию первого символа строки, где стоит курсор.",
+  "description_en": [
+   "TestEDIT extends QRICHEDIT and adds LINEINDEX, which sends EM_LINEINDEX (187) with WhereY (the caret line) and returns the result. The Russian comment says it returns the position of the first character in the line.",
+   "After the TYPE the file redefines QRICHEDIT as QMAXEDIT, so later code that creates a QRICHEDIT gets the QMAXEDIT component from ultraRichEd.inc."
+  ],
+  "requires": [
+   "QMAXEDIT (ultraRichEd.inc) for code after this file, because of $DEFINE QRICHEDIT QMAXEDIT"
+  ],
+  "members": {
+   "LINEINDEX": "Returns the character index of the first character of the line given by WhereY (sends EM_LINEINDEX)."
+  },
+  "example": "$INCLUDE \"TstRichEd.inc\"\nDECLARE SUB EdKeyUp(Key AS WORD, Shift AS INTEGER)\nCREATE Form AS QFORM\n  Caption = \"Line index\"\n  CREATE Ed AS TestEDIT\n    Align = 5\n    OnKeyUp = EdKeyUp\n  END CREATE\nEND CREATE\nSUB EdKeyUp(Key AS WORD, Shift AS INTEGER)\n  Form.Caption = STR$(Ed.LINEINDEX)\nEND SUB\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The file has a stray top-level line \"Declare Function LINEINDEX as long\" with no library.",
+   "The $UNDEF/$DEFINE at the end maps QRICHEDIT to QMAXEDIT, which is not defined in this file; ultraRichEd.inc must be included before any later QRICHEDIT use.",
+   "ultraRichEd.inc declares the same SendMessageA function, so including both files may give a duplicate declaration.",
+   "The base class is whatever QRICHEDIT means at the point of inclusion, which can already be redefined by another include."
+  ]
+ }
+}

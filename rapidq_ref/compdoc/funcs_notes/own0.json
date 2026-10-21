@@ -1,0 +1,410 @@
+{
+ "SetNewFwToCallBack@rapidq2.inc": {
+  "desc": "Allocates 14 bytes on the process heap and writes an x86 thunk that pushes hFunction as an extra first argument and jumps to ForwardTo. Returns the thunk address. Used to build Windows callbacks that route to a RapidQ function; the memory is never freed."
+ },
+ "MasterCallBack_4@rapidq2.inc": {
+  "desc": "Dispatcher used by 4-argument callback thunks: binds the function handle hFunction to the FuncBind_4 prototype and calls it with Arg1..Arg4 via CALLFUNC, returning its result."
+ },
+ "FuncBind_4@rapidq2.inc": {
+  "desc": "Declaration only, with no body: a function prototype (four LONG arguments, LONG result) used by MasterCallBack_4 with BIND/CALLFUNC to call a user function through a handle."
+ },
+ "SetNewCallBack_4@rapidq2.inc": {
+  "desc": "Returns a callback address for a 4-argument Windows callback that forwards to the RapidQ function hFunction (via SetNewFwToCallBack and MasterCallBack_4, whose address is in global lpCallBack_4)."
+ },
+ "OnDrag_eventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (drag and drop); file receives the dropped file name."
+ },
+ "OnTrayClick_eventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (click on the tray icon). No parameters."
+ },
+ "OnTrayDblClick_eventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (double click on the tray icon). No parameters."
+ },
+ "OnMinimise_eventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (form minimized). No parameters."
+ },
+ "OnMouseWheel_eventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (mouse wheel); receives wheel rotation, X/Y position and shift state."
+ },
+ "OnLostFocus_eventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (form lost focus). No parameters."
+ },
+ "OnGetFocus_eventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) from the QFormEx form extension; the class code is not in this file. Write a SUB with this signature in your program and assign it to the matching QFormEx event (form got focus). No parameters."
+ },
+ "gRQ2_WndProc_eventTemplate@rapidq2.inc": {
+  "desc": "Declaration only: window procedure prototype (Hnd, Msg, Wparm, Lparm, returns LONG) for the QFormEx extension. The program writes a FUNCTION with this signature to handle window messages; the class code is not in this file."
+ },
+ "OnChildClose_eventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) for the QFormMDI multiple document interface class; write a SUB with this signature in your program and assign it to the MDI form's matching event. Receives the child window handle, its index and caption when a child is closed."
+ },
+ "OnChildActive_eventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) for the QFormMDI multiple document interface class; write a SUB with this signature in your program and assign it to the MDI form's matching event. Receives the child window handle, its index and caption when a child becomes active."
+ },
+ "OnChildResize_eventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) for the QFormMDI multiple document interface class; write a SUB with this signature in your program and assign it to the MDI form's matching event. Receives the child window handle, its index and caption when a child is resized."
+ },
+ "OnComError_EventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) for the COMPORT serial port component (class code is not in this file); write a SUB with this signature in your program and assign it to the component's matching event; strErrorMessage receives the error text."
+ },
+ "OnOpen_EventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) for the COMPORT serial port component (class code is not in this file); write a SUB with this signature in your program and assign it to the component's matching event (port opened). No parameters."
+ },
+ "OnClose_EventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) for the COMPORT serial port component (class code is not in this file); write a SUB with this signature in your program and assign it to the component's matching event (port closed). No parameters."
+ },
+ "OnWriteString_EventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) for the COMPORT serial port component (class code is not in this file); write a SUB with this signature in your program and assign it to the component's matching event (string written). No parameters."
+ },
+ "OnReadString_EventTemplate@rapidq2.inc": {
+  "desc": "Event handler prototype (declaration only) for the COMPORT serial port component (class code is not in this file); write a SUB with this signature in your program and assign it to the component's matching event (string read). No parameters."
+ },
+ "Application.Path@rapidq2.inc": {
+  "desc": "Returns the folder of the running program: COMMAND$(0) with Application.ExeName removed, and the trailing backslash removed unless the path is a drive root like C:\\. (The source comment saying it returns the program name is inaccurate.)"
+ },
+ "Application.SetPriority@rapidq2.inc": {
+  "desc": "Sets the priority class of the current process with GetCurrentProcess and SetPriorityClass. Returns the API result (0 on failure)."
+ },
+ "Application.GetPriority@rapidq2.inc": {
+  "desc": "Returns the priority class of the current process (GetPriorityClass on GetCurrentProcess)."
+ },
+ "Screen.MousePresent@rapidq2.inc": {
+  "desc": "Returns nonzero if a mouse is installed (GetSystemMetrics SM_MOUSEPRESENT)."
+ },
+ "Screen.MouseSwap@rapidq2.inc": {
+  "desc": "Returns nonzero if the left and right mouse buttons are swapped (GetSystemMetrics SM_SWAPBUTTON)."
+ },
+ "Screen.MouseButtons@rapidq2.inc": {
+  "desc": "Returns the number of mouse buttons (GetSystemMetrics SM_CMOUSEBUTTONS)."
+ },
+ "Screen.SetMouseXY@rapidq2.inc": {
+  "desc": "Moves the mouse cursor to screen coordinates X, Y with SetCursorPos and returns the API result."
+ },
+ "Screen.ClientWidth@rapidq2.inc": {
+  "desc": "Returns the width of the client area of a full-screen window (GetSystemMetrics SM_CXFULLSCREEN), i.e. screen width excluding taskbar areas."
+ },
+ "Screen.ClientHeight@rapidq2.inc": {
+  "desc": "Returns the height of the client area of a full-screen window (GetSystemMetrics SM_CYFULLSCREEN)."
+ },
+ "Screen.Monitors@rapidq2.inc": {
+  "desc": "Returns the number of display monitors (GetSystemMetrics SM_CMONITORS)."
+ },
+ "Screen.SetResolution@rapidq2.inc": {
+  "desc": "Changes the display mode to X by Y with bpp bits per pixel and, if Freq is not 0, the refresh rate. Tests with ChangeDisplaySettings CDS_TEST, then applies temporarily (CDS_DYNAMIC, registry not changed). Shows a message on failure and returns the ChangeDisplaySettings result."
+ },
+ "Screen.GetPixelDepth@rapidq2.inc": {
+  "desc": "Returns the current screen color depth in bits per pixel (GetDeviceCaps BITSPIXEL on the screen DC)."
+ },
+ "Screen.EnumResolution@rapidq2.inc": {
+  "desc": "Fills the given QLISTBOX with all display modes from EnumDisplaySettings as 'W x H x BPP BPP x Hz Hz' strings. Returns 1. The loop adds an item before testing the end flag, so the last entry is repeated."
+ },
+ "Screen.CaptureToBMP@rapidq2.inc": {
+  "desc": "Copies the screen area TheRect (whole screen if the rectangle is all zeros) into the QBITMAP CapBitMap with BitBlt from a DISPLAY device context. Returns nonzero on success; shows 'Screen Capture Failed' on error. Uses a temporary QFORM as a workaround; the created DC is not deleted."
+ },
+ "Screen.CaptureToFile@rapidq2.inc": {
+  "desc": "Captures the screen area TheRect (whole screen if all zeros) with BitBlt into a temporary QBITMAP and saves it to OutFileName if the name is not empty. Returns nonzero on success, shows a message on failure. The created DC is not deleted."
+ },
+ "Screen.GetPixel@rapidq2.inc": {
+  "desc": "Returns the color of the screen pixel at x, y (GetPixel on the desktop DC)."
+ },
+ "HexToDec@rapidq2.inc": {
+  "desc": "Converts a hexadecimal string to a LONG using CONVBASE$(hex, 16, 10)."
+ },
+ "SoundEx@rapidq2.inc": {
+  "desc": "Plays a tone of Freq Hz. Duration is in 1/18 second ticks. On Windows versions below 5 it uses SOUND; otherwise it calls kernel32 Beep with Duration*55 ms (global gRQ2_SND_OS_Version)."
+ },
+ "AddClrString@rapidq.inc": {
+  "desc": "Appends AddString$ to the end of a QRICHEDIT in color Clr (sets SelStart/SelAttributes.Color, then AddStrings)."
+ },
+ "AddFontString@rapidq.inc": {
+  "desc": "Appends AddString$ to the end of a QRICHEDIT using the color and font name of the given QFONT (other font attributes are not applied)."
+ },
+ "fTally@rapidq.inc": {
+  "desc": "Counts how many characters of sSearchIn are equal to sToFind and returns the count. Compares single characters, so sToFind should be one character."
+ },
+ "Trim$@rapidq.inc": {
+  "desc": "Returns the string with leading and trailing spaces removed (LTRIM$ of RTRIM$)."
+ },
+ "GetSubjCodePage@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "GetSubjCodeMethod@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "GetMsgBodyContentType@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "GetMsgBodyCodePage@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "GetMsgBodyCodeMethod@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "GetHeaderField@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "GetMSGHeader@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "GetMSGBody@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "isKOI8@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "RQBASE64Encode@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "RQBASE64Decode@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "DecodeSubj@rapidq.inc": {
+  "desc": "Forward declaration only. Body in eml.inc."
+ },
+ "RQConvertCodePage@rapidq.inc": {
+  "desc": "Forward declaration only. Body in conversion.inc."
+ },
+ "GetRusdate@rapidq.inc": {
+  "desc": "Returns the current date (DATE$, MM-DD-YYYY) reordered as DD-MM-YY."
+ },
+ "Rusdate@rapidq.inc": {
+  "desc": "Returns the current date (DATE$, MM-DD-YYYY) reordered as DD-MM-YY. Same code as GetRusdate."
+ },
+ "Rudate@rapidq.inc": {
+  "desc": "Returns the current date (DATE$, MM-DD-YYYY) reordered as DD-MM-YY. Same code as GetRusdate."
+ },
+ "LCaseApi@conversion.inc": {
+  "desc": "Returns SrcTxt in lower case using the Windows CharLower API (locale aware, so it handles non-Latin letters such as Cyrillic)."
+ },
+ "UCaseApi@conversion.inc": {
+  "desc": "Returns SrcTxt in upper case using the Windows CharUpper API (locale aware, handles non-Latin letters)."
+ },
+ "vidnum$@conversion.inc": {
+  "desc": "Returns Num rounded to dig% digits after the decimal point, as a string (e.g. 999999.2366666666, 4 gives 999999.2367). dig% is limited to the decimals present; a negative dig% rounds to tens, hundreds etc. Uses CLNG, so very large values may overflow."
+ },
+ "Hex2Dec@conversion.inc": {
+  "desc": "Converts a hexadecimal string to its decimal value and returns it as a string. Values above 10^6 are built from two parts to avoid exponential notation."
+ },
+ "dectoHex@conversion.inc": {
+  "desc": "Converts a decimal number given as a string to a hexadecimal string, keeping a leading minus sign for negative values. A result of 0 is returned as \"00\"."
+ },
+ "AddChrBefore@conversion.inc": {
+  "desc": "Left-pads NumStr with character chr1 to length Dlina. Returns NumStr unchanged if already that long, or the text \"String too long\" if longer."
+ },
+ "AddChrAfter@conversion.inc": {
+  "desc": "Right-pads NumStr with character chr1 to length Dlina. Returns NumStr unchanged if already that long, or \"String too long\" if longer."
+ },
+ "Add0Before@conversion.inc": {
+  "desc": "Left-pads NumStr with zeros to length Dlina (e.g. \"-387.35\", 8 gives \"0-387.35\"). Returns \"String too long\" if NumStr is longer."
+ },
+ "ByteReOrder@conversion.inc": {
+  "desc": "Reorders the characters (bytes) of ByteStr$: result position i takes the byte at the position given by digit i of ReOrder$; bytes past the length of ReOrder$ are kept in place. Shows a message and exits if an index exceeds the string length."
+ },
+ "CByteNum@conversion.inc": {
+  "desc": "Converts a byte string ByteStr$ to a number of type Num_Type (Num_SHORT, Num_WORD, Num_LONG, Num_DWORD, Num_SINGLE, Num_DOUBLE; others read as DOUBLE) using a QMemoryStream. Num_BYTE is rejected with a message. Returns a variant."
+ },
+ "CNumByte@conversion.inc": {
+  "desc": "Converts the number Num to its binary byte string for type Num_Type (Num_SHORT, Num_WORD, Num_LONG, Num_DWORD, Num_SINGLE, Num_DOUBLE; others as DOUBLE) via a QMemoryStream. Num_BYTE is rejected with a message."
+ },
+ "Like@conversion.inc": {
+  "desc": "VB-style pattern match: returns 1 if ParseString matches Pattern, else 0. Supports ? (any char), # (digit), * (any sequence, recursive) and [..] character sets with ranges and negation (constant INVERT). Uses IsDigit."
+ },
+ "IsDigit@conversion.inc": {
+  "desc": "Returns 1 if S is between \"0\" and \"9\" (string comparison, intended for one character), else 0."
+ },
+ "IsDigitsOnly@conversion.inc": {
+  "desc": "Returns 1 if every character of S is a digit 0-9, else 0. An empty string returns 0."
+ },
+ "SecTime@conversion.inc": {
+  "desc": "Converts a time string \"HH:MM:SS\" to the number of seconds since midnight."
+ },
+ "DayDate@conversion.inc": {
+  "desc": "Converts a date string \"MM-DD-YYYY\" to an approximate day number 365*Year + 30*Month + Day. Only usable for rough comparisons, not exact day differences."
+ },
+ "TimeString@conversion.inc": {
+  "desc": "Converts a number of seconds to a \"HH:MM:SS\" string with two-digit fields."
+ },
+ "GetWord@conversion.inc": {
+  "desc": "Old, replaced by GetVarPos. Finds getV$ as a whole identifier in Oper$ (case-insensitive, delimited by operator characters) outside strings and comments. Returns its position, 0 if not found at all, -2 if found only inside strings/comments or as part of other words."
+ },
+ "Ob2Grad@conversion.inc": {
+  "desc": "Converts a value in revolutions (obor) to arc units and returns them in the other parameters: SecFull (total arc seconds), Grad, Mint, Sec1 (degrees, minutes, seconds), SecMnt (seconds beyond whole degrees) and Ugl$ formatted like -12<deg>30'15\". Note obor is changed to its absolute value."
+ },
+ "Grad2Sec@conversion.inc": {
+  "desc": "Parses an angle string like -12<deg>30'15\" (degree sign chr$(176), ' and \") and returns via BYREF parameters: revolutions (obor), total arc seconds, seconds beyond whole degrees, and signed degrees, minutes, seconds."
+ },
+ "Ugl2Sec@conversion.inc": {
+  "desc": "Parses an angle string like -12<deg>30'15\" (degree sign chr$(176), ' and \") and returns the total signed number of arc seconds."
+ },
+ "Sec2Ugl@conversion.inc": {
+  "desc": "Converts a signed number of arc seconds to an angle string like -12<deg>30'15\" (degree sign chr$(176))."
+ },
+ "sadd@conversion.inc": {
+  "desc": "Writes InpStr into a local QMemoryStream and returns the stream's memory pointer. The pointer refers to a temporary copy, not to the original string variable, and may be invalid after the function returns."
+ },
+ "Cutleft@conversion.inc": {
+  "desc": "Returns string a without its first n characters."
+ },
+ "CutRight@conversion.inc": {
+  "desc": "Returns string a without its last n characters."
+ },
+ "delTags@conversion.inc": {
+  "desc": "Converts HTML to plain text: collapses runs of spaces and tabs, turns <br>, </p>, </tr> into line breaks and </td> into a space, removes all <...> tags, decodes &quot; &gt; &lt; &nbsp;, and collapses repeated blank lines. Also inserts a line break after each \". \"."
+ },
+ "RQConvertCodePage1@conversion.inc": {
+  "desc": "Converts a zero-terminated string given by its pointer SourseStringPtr from code page inPage to code page outPage via MultiByteToWideChar and WideCharToMultiByte (declared as ...1 aliases). Returns the converted string."
+ },
+ "ConvertCodePage2@conversion.inc": {
+  "desc": "Converts SourseString from code page inPage to code page outPage via MultiByteToWideChar and WideCharToMultiByte (for example 1251 to 65001 UTF-8). Returns the converted string."
+ },
+ "RC4@conversion.inc": {
+  "desc": "Encrypts or decrypts str with the RC4 stream cipher using key and returns the result (same call for both directions). Returns an empty string if key is empty."
+ },
+ "BGR2HtmlColor@conversion.inc": {
+  "desc": "Converts a Windows BGR color value to an HTML color string \"#RRGGBB\"."
+ },
+ "HtmlColor2BGR@conversion.inc": {
+  "desc": "Converts an HTML color string \"#RRGGBB\" to a Windows BGR color value."
+ },
+ "STRL$@conversion.inc": {
+  "desc": "Returns the integer part of value as a string without exponent notation (formats with STRF$ ffFixed and cuts at the decimal separator, '.' or ',')."
+ },
+ "Quote@Files.inc": {
+  "desc": "Returns the string enclosed in double quotes; any doubled quotes in the result are collapsed to one, so an already quoted string is not double-quoted at the ends."
+ },
+ "StripPath@Files.inc": {
+  "desc": "Returns the path part of a full file name, up to and including the last backslash. Returns an empty string if there is no backslash."
+ },
+ "StripFileName@Files.inc": {
+  "desc": "Returns the file name part of a full path (text after the last backslash)."
+ },
+ "GetFileNameNoPath@Files.inc": {
+  "desc": "Returns the file name part of a full path (text after the last backslash). Same as StripFileName."
+ },
+ "StripFileExt@Files.inc": {
+  "desc": "Returns the file extension including the dot (e.g. \".exe\"), or an empty string if the name has no dot. A dot in a folder name with no extension in the file name gives a wrong result."
+ },
+ "FileNameNoExt@Files.inc": {
+  "desc": "Returns the file name without path and without extension."
+ },
+ "FullPathNoExt@Files.inc": {
+  "desc": "Returns the full path with the extension (from the last dot) removed."
+ },
+ "C_Style@Files.inc": {
+  "desc": "Converts a Windows path to forward slashes: double backslashes become one, then every backslash becomes '/'."
+ },
+ "bsPath@Files.inc": {
+  "desc": "Converts forward slashes in a path to backslashes."
+ },
+ "SysDir@Files.inc": {
+  "desc": "Returns a user shell folder path with a trailing backslash, read from HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Shell Folders; dir is the value name (e.g. \"Desktop\", \"Personal\")."
+ },
+ "homedir@Files.inc": {
+  "desc": "Returns the folder of the running program (from COMMAND$(0)) including the trailing backslash."
+ },
+ "BrowseForFolders@Files.inc": {
+  "desc": "Shows a modal form with a QDIRTREE so the user can pick a folder, starting in initialdir (or the current directory if it does not exist). Caption is wincapt or \"Select folder\". Returns the selected directory; there is no cancel result."
+ },
+ "BrowseForFile@Files.inc": {
+  "desc": "Shows a QOPENDIALOG with the given caption, filter and initial folder and returns the selected file name, or an empty string if cancelled."
+ },
+ "ChangeFileExt@Files.inc": {
+  "desc": "Returns FileName with the extension (from the last dot) replaced by NewExt; NewExt should include the dot. Expects the name to contain a dot."
+ },
+ "ExtractFileName@Files.inc": {
+  "desc": "Returns the file name without the path: the text after the last backslash or \"/\". Files.inc is under $ESCAPECHARS ON, so \"\\\\\" in the code is one backslash. The two positions are combined with OR (bitwise), so a path that has both \"\\\" and \"/\" can give a wrong position."
+ },
+ "ExtractFilePath@Files.inc": {
+  "desc": "Returns the path part of FileName up to and including the last backslash or \"/\" (Files.inc is under $ESCAPECHARS ON, so \"\\\\\" in the code is one backslash). The two positions are combined with OR (bitwise), so a path that has both separators can give a wrong result."
+ },
+ "ChangeFileName@Files.inc": {
+  "desc": "Returns ExtractFilePath(FileName) + NewName: replaces the file name and keeps the folder."
+ },
+ "ChangeFilePath@Files.inc": {
+  "desc": "Returns NewPath + ExtractFileName(FileName): the same file name in another folder. NewPath should end with a backslash."
+ },
+ "FileSize@Files.inc": {
+  "desc": "Returns the size of the file in bytes (opened read-only with QFileStream), or -1 if it cannot be opened."
+ },
+ "SaveString@Files.inc": {
+  "desc": "Writes string ss$ to file FileName, creating or overwriting it. Returns 1 on success, -2 if the file cannot be created, 0 (with a message) if FileName is empty."
+ },
+ "SaveStringEx@Files.inc": {
+  "desc": "Writes ss$ to FileName. mode 0 overwrites, mode 1 appends ss$, mode 2 appends CRLF+ss$ (no CRLF if the file is new). Returns 1 on success, -2 if the file cannot be opened, 0 with a message if FileName is empty."
+ },
+ "CheckFileWr@Files.inc": {
+  "desc": "Checks whether a file can be opened for writing. Returns -1 if it can, 0 otherwise."
+ },
+ "LoadString@Files.inc": {
+  "desc": "Reads the whole file as a binary string and returns it. Returns \"0\" if the file cannot be opened."
+ },
+ "LoadBinString@Files.inc": {
+  "desc": "Reads the first n bytes of the file (whole file if n is -1 or larger than the file) and returns them as a string. Returns \"0\" if the file cannot be opened."
+ },
+ "LoadString1@Files.inc": {
+  "desc": "Like LoadString but reads with ReadStr instead of ReadBinStr. Returns the file contents, or \"0\" if the file cannot be opened."
+ },
+ "MKSubDir@Files.inc": {
+  "desc": "Creates the folder DirDst$ including all missing parent folders (uses the BkSl backslash constant). Returns 1."
+ },
+ "SubDirCopy@Files.inc": {
+  "desc": "Copies folder DirSrc$ with all subfolders to DirDst$, copying only files matching mask$; empty (0-byte) files are skipped. Calls DOEVENTS and stops if global stops1 is 1. Shows a message if a target file cannot be created."
+ },
+ "fSubDirCopy@Files.inc": {
+  "desc": "Function version of SubDirCopy: copies DirSrc$ with subfolders and files matching mask$ to DirDst$, skipping 0-byte files. Returns the number of files processed, or -1 if stopped via global stops1. Shows a message if a target file cannot be created."
+ },
+ "DirCopy@Files.inc": {
+  "desc": "Copies files matching mask$ from DirSrc$ to DirDst$ (no subfolders), creating DirDst$. Asks before overwriting read-only/hidden/system files (message fMsg35$, global fdefaultChkAttr for Yes to all) and restores attributes. Updates global DiaMsg$. Returns the number of files copied."
+ },
+ "FileCopy@Files.inc": {
+  "desc": "Copies FileSrc$ to FileDst$, creating the target folder if needed. Errors are silent except a message when the folder cannot be created."
+ },
+ "fFileCopy@Files.inc": {
+  "desc": "Copies FileSrc$ to FileDst$, creating the target folder if needed. Returns 1 on success, -1 if the folder cannot be created, -2 if the source cannot be opened, -3 if the target cannot be created (with a message)."
+ },
+ "KillFiles@Files.inc": {
+  "desc": "Deletes all files matching a path with wildcard mask, e.g. \"C:\\tmp\\*.tmp\". Shows a message for any file that could not be deleted."
+ },
+ "KillSubDir@Files.inc": {
+  "desc": "Deletes files matching mask$ in DirSrc$ and all its subfolders, then removes the subfolders (RMDIR, works only on empty ones). With mask \"*.*\" removes the whole tree. Prints folder names to the console; stops if global stops1 is 1."
+ },
+ "io2Rnd@Files.inc": {
+  "desc": "Converts a text file with one number per line (fsrc$) to a binary file fdst$ of SINGLE values. The target is overwritten."
+ },
+ "Rnd2io@Files.inc": {
+  "desc": "Converts a binary file of SINGLE values (fsrc$) to a text file fdst$ with one number per line."
+ },
+ "io2RndPV@Files.inc": {
+  "desc": "Converts a text file with one number per line (fsrc$) to a binary file fdst$ of SINGLE values. Same code as io2Rnd."
+ },
+ "io2RndInter@Files.inc": {
+  "desc": "Converts a text file of \"point,value\" lines to a binary SINGLE file rndf$, filling missing points by linear interpolation. Also writes the point numbers to a companion file (name + \"Arg\" + ext). LostP returns the missed-point count (pass by reference); if LostP is -1 on entry DOEVENTS is called."
+ },
+ "io2RndInter1@Files.inc": {
+  "desc": "Like io2RndInter but supports increasing or decreasing point order and averages repeated points. Writes rndf$ (values), name+\"Arg\"+ext (point numbers) and name.io2 (text). LostP returns missed points. Prints progress to the console and shows a message on inconsistent data."
+ },
+ "ioAverage@Files.inc": {
+  "desc": "Reads a text file of \"point,value\" lines where a point may repeat, averages the values of each point and saves \"point,average\" lines to outf$. bpnt returns the first point number. Does nothing if the file is missing, empty or has fewer than 5 lines."
+ },
+ "ChDirOEM@Files.inc": {
+  "desc": "Converts the path to the OEM code page with CharToOem and changes the current directory to it. Returns 1."
+ },
+ "MkDirOEM@Files.inc": {
+  "desc": "Converts the path to the OEM code page with CharToOem and creates that directory. Returns 1."
+ },
+ "DownLoadURL@Files.inc": {
+  "desc": "Downloads sUrl with WinINet (InternetOpen, InternetOpenUrl, InternetReadFile) in 2 KB blocks and saves the data to dFileName with SaveString. Returns the number of bytes read. The comment promises -1 on error, but the code has no explicit error check."
+ },
+ "ARRAverage@func_array.inc": {
+  "desc": "Returns the average of array elements Dat!(MinEl) to Dat!(MaxEl)."
+ },
+ "ARRAverageSubtract@func_array.inc": {
+  "desc": "Computes the average of the whole array Dat!() (LBOUND to UBOUND) and subtracts it from every element, modifying the array in place."
+ },
+ "ARRMax@func_array.inc": {
+  "desc": "Returns the largest value among Dat!(MinEl) to Dat!(MaxEl)."
+ },
+ "ARRMin@func_array.inc": {
+  "desc": "Returns the smallest value among Dat!(MinEl) to Dat!(MaxEl)."
+ }
+}

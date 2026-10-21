@@ -1,0 +1,350 @@
+<html>
+<head>
+<title>QVideo.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QVideo</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>const</b></font> VD_CLOSE=0
+<font color="0000AA"><b>const</b></font> VD_PLAY=1
+<font color="0000AA"><b>const</b></font> VD_PAUSE=2
+<font color="0000AA"><b>const</b></font> VD_STOP=3
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> mciSendVideo <font color="0000AA"><b>Lib</b></font> "<font color="990000">winmm.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">mciSendStringA</font>" <b>(</b>lpstrCommand <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,lpstrReturnString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>long</b></font>,uReturnLength <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hwndCallback <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> mciGetErrorVideo <font color="0000AA"><b>Lib</b></font> "<font color="990000">winmm.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">mciGetErrorStringA</font>" <b>(</b>dwError <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Byref lpstrBuffer <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,uLength <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MoveVideo <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">MoveWindow</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,bRepaint <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Sub</b></font> event_change<b>(</b>position <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+
+<font color="0000AA"><b>Type</b></font> QVideo <font color="0000AA"><b>extends</b></font> <font color="000099"><b>Qobject</b></font>
+  <font color="007700"><i>'================================</i></font> 
+  <font color="007700"><i>' champs et proprietés</i></font> 
+  <font color="007700"><i>'================================</i></font> 
+  <font color="0000AA"><b>Timer</b></font> <font color="0000AA"><b>as</b></font> <font color="000099"><b>QTIMER</b></font>
+  Lenght <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+  State <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  Handle <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+  FileOpen <font color="0000AA"><b>as</b></font> boolean
+  Error <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  Left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetLeft
+  Top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetTop
+  Width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetWidth
+  Height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetHeight
+  CurrentFrame <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Long</b></font> PROPERTY SET SetCurrentFrame
+  AudioOff <font color="0000AA"><b>as</b></font> boolean PROPERTY SET SetAudioOff
+  OnChange <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>event_change<b>)</b> 
+
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' proprieté affichage image du media</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  Property Set SetCurrentFrame<b>(</b>frame <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> QVideo.State=VD_STOP <font color="0000AA"><b>or</b></font> QVideo.State=VD_PAUSE <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> frame&lt;0 <font color="000099"><b>then</b></font>
+          QVideo.CurrentFrame=0
+        <font color="000099"><b>else</b></font>
+          <font color="0000AA"><b>if</b></font> frame>QVideo.Lenght <font color="000099"><b>then</b></font>
+            QVideo.CurrentFrame=QVideo.Lenght
+          <font color="000099"><b>else</b></font>
+            QVideo.CurrentFrame=frame
+          <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendVideo<b>(</b>"<font color="990000">seek MEDIA to </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>QVideo.CurrentFrame<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' proprieté position x image du media</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  Property Set SetLeft<b>(</b>left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen=True <font color="0000AA"><b>and</b></font> QVideo.handle&lt;>0 <font color="000099"><b>then</b></font>
+      QVideo.Left=left
+      MoveVideo<b>(</b>QVideo.handle,QVideo.Left,QVideo.Top,QVideo.Width,QVideo.Height,true<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' proprieté position y image du media</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  Property Set SetTop<b>(</b>top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen=True <font color="0000AA"><b>and</b></font> QVideo.handle&lt;>0 <font color="000099"><b>then</b></font>
+      QVideo.Top=top
+      MoveVideo<b>(</b>QVideo.handle,QVideo.Left,QVideo.Top,QVideo.Width,QVideo.Height,true<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' proprieté largeur image du media</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  Property Set SetWidth<b>(</b>width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen=True <font color="0000AA"><b>and</b></font> QVideo.handle&lt;>0 <font color="000099"><b>then</b></font>
+      QVideo.Width=width
+      MoveVideo<b>(</b>QVideo.handle,QVideo.Left,QVideo.Top,QVideo.Width,QVideo.Height,true<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' proprieté hauteur image du media</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  Property Set SetHeight<b>(</b>height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen=True <font color="0000AA"><b>and</b></font> QVideo.handle&lt;>0 <font color="000099"><b>then</b></font>
+      QVideo.Height=height
+      MoveVideo<b>(</b>QVideo.handle,QVideo.Left,QVideo.Top,QVideo.Width,QVideo.Height,true<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' proprieté sans son du media</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  PROPERTY SET SetAudioOff<b>(</b>audio <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      <font color="0000AA"><b>if</b></font> audio <font color="000099"><b>then</b></font>
+        Retval=mciSendVideo<b>(</b>"<font color="990000">set MEDIA audio all off</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="000099"><b>else</b></font>
+        Retval=mciSendVideo<b>(</b>"<font color="990000">set MEDIA audio all on</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+PRIVATE:
+
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="007700"><i>' Méthode retourne le texte de l'erreur</i></font> 
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetMciDescription<b>(</b>McierrNr <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>Long</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>200<b>)</b>
+    Retval=mciGetErrorVideo<b>(</b>McierrNr,RetString,200<b>)</b>
+    <font color="0000AA"><b>if</b></font> Retval <font color="000099"><b>then</b></font>
+      QVideo.GetMciDescription=<font color="0000AA"><b>RTRIM$</b></font><b>(</b>RetString<b>)</b>
+    <font color="000099"><b>else</b></font>
+      QVideo.GetMciDescription="<font color="990000"></font>"
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="007700"><i>' Méthode dimension du média</i></font> 
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> GetDimension<b>(</b>mediadim <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> sPos <font color="0000AA"><b>As</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> ePos <font color="0000AA"><b>As</b></font> <font color="000099"><b>long</b></font>
+
+    ePos=<font color="0000AA"><b>instr</b></font><b>(</b>,mediadim,"<font color="990000"> </font>"<b>)</b>
+    QVideo.Left=<font color="0000AA"><b>Val</b></font><b>(</b><font color="0000AA"><b>Mid$</b></font><b>(</b>mediadim,1,ePos<b>)</b><b>)</b>
+    sPos=ePos+1
+    ePos=<font color="0000AA"><b>instr</b></font><b>(</b>sPos,mediadim,"<font color="990000"> </font>"<b>)</b>
+    QVideo.Top=<font color="0000AA"><b>Val</b></font><b>(</b><font color="0000AA"><b>Mid$</b></font><b>(</b>mediadim,sPos,ePos-sPos<b>)</b><b>)</b>
+    sPos=ePos+1
+    ePos=<font color="0000AA"><b>instr</b></font><b>(</b>sPos,mediadim,"<font color="990000"> </font>"<b>)</b>
+    QVideo.Width=<font color="0000AA"><b>Val</b></font><b>(</b><font color="0000AA"><b>Mid$</b></font><b>(</b>mediadim,sPos,ePos-sPos<b>)</b><b>)</b>
+    sPos=ePos+1
+    QVideo.Height=<font color="0000AA"><b>Val</b></font><b>(</b><font color="0000AA"><b>Mid$</b></font><b>(</b>mediadim,sPos,<font color="0000AA"><b>Len</b></font><b>(</b>mediadim<b>)</b>-sPos<b>)</b><b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode position du media</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetPosition <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendVideo<b>(</b>"<font color="990000">status MEDIA position</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QVideo.GetPosition=<font color="0000AA"><b>val</b></font><b>(</b>RetString<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode lecture mode du media</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetMode <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendVideo<b>(</b>"<font color="990000">status MEDIA mode</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">stopped</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> QVideo.GetMode=VD_STOP
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">playing</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> QVideo.GetMode=VD_PLAY
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">paused</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> QVideo.GetMode=VD_PAUSE
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+PUBLIC:
+
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="007700"><i>' méthode fermeture fichier media</i></font> 
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Close
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    QVideo.Timer.enabled=False
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+    Retval=mciSendVideo<b>(</b>"<font color="990000">stop MEDIA</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+    Retval=mciSendVideo<b>(</b>"<font color="990000">close MEDIA</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    QVideo.FileOpen=False
+    QVideo.Lenght=0
+    QVideo.Width=0
+    QVideo.Height=0
+    QVideo.CurrentFrame=0
+    QVideo.State=VD_CLOSE
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="007700"><i>' méthode ouverture fichier media</i></font> 
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> Open<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,Parent <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> boolean
+    <font color="0000AA"><b>Dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>Integer</b></font>
+    <font color="0000AA"><b>Dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+    <font color="0000AA"><b>Dim</b></font> FlagOpen <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> FileName&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      <font color="0000AA"><b>if</b></font> Parent&lt;>0 <font color="000099"><b>then</b></font>
+        Retval=mciSendVideo<b>(</b>"<font color="990000">open </font>"+FileName+"<font color="990000"> alias MEDIA parent </font>"+ <font color="0000AA"><b>Str$</b></font><b>(</b>Parent<b>)</b>+"<font color="990000"> style child</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="000099"><b>else</b></font>
+        Retval=mciSendVideo<b>(</b>"<font color="990000">open </font>"+FileName+"<font color="990000"> alias MEDIA</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendVideo<b>(</b>"<font color="990000">status MEDIA length</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+          QVideo.Lenght=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+          RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+          Retval=mciSendVideo<b>(</b>"<font color="990000">where MEDIA source</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+          <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+            QVideo.GetDimension<b>(</b>RetString<b>)</b>
+            RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+            Retval=mciSendVideo<b>(</b>"<font color="990000">status MEDIA window handle</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+            <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+              QVideo.handle=<font color="0000AA"><b>val</b></font><b>(</b>RetString<b>)</b>
+              QVideo.State=VD_STOP
+              QVideo.CurrentFrame=0
+              QVideo.FileOpen=True
+              QVideo.Open=True
+              FlagOpen=True
+            <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+          <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="000099"><b>else</b></font>
+        QVideo.Error=QVideo.GetMciDescription<b>(</b>Retval<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> FlagOpen=False <font color="0000AA"><b>then</b></font> QVideo.Close
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="007700"><i>' méthode affichage media</i></font> 
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Show
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendVideo<b>(</b>"<font color="990000">window MEDIA state show</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode lecture du media</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Play
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen <font color="000099"><b>then</b></font>
+      QVideo.Timer.enabled=True
+      RetString = <font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendVideo<b>(</b>"<font color="990000">play MEDIA from </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>QVideo.CurrentFrame<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QVideo.State=VD_PLAY
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode arret du media</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Stop
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendVideo<b>(</b>"<font color="990000">stop MEDIA</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+         QVideo.Timer.enabled=False
+         QVideo.State=VD_STOP
+        QVideo.CurrentFrame=0
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendVideo<b>(</b>"<font color="990000">seek MEDIA to start</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode pause du media</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Pause
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QVideo.FileOpen=true <font color="0000AA"><b>and</b></font> QVideo.State=VD_PLAY <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendVideo<b>(</b>"<font color="990000">pause MEDIA</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        QVideo.State=VD_PAUSE
+        QVideo.Timer.enabled=False
+        QVideo.CurrentFrame=QVideo.GetPosition
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'=======================================</i></font> 
+  <font color="007700"><i>' évenement changementposition du media</i></font> 
+  <font color="007700"><i>'=======================================</i></font> 
+  <font color="0000AA"><b>Event</b></font> Timer.OnTimer
+    QVideo.currentFrame=QVideo.GetPosition
+    QVideo.State=QVideo.GetMode
+    <font color="0000AA"><b>if</b></font> QVideo.State=VD_STOP <font color="0000AA"><b>then</b></font> QVideo.Stop
+    <font color="0000AA"><b>if</b></font> QVideo.OnChange&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QVideo.OnChange,QVideo.currentFrame<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Event</b></font>
+
+  <font color="000099"><b>Constructor</b></font>
+    State=VD_CLOSE
+    Timer.interval=1000
+    Timer.enabled=False
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

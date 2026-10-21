@@ -94,6 +94,14 @@ type
     procedure Paint; override;
   end;
 
+  // Имя невизуального компонента под его значком (Show component captions).
+  // Как уголки группы - окно формы через ParentWindow, выключенное: в
+  // раскладку формы не входит, щелчки проходят мимо.
+  TDsgIconCaption = class(TCustomControl)
+  protected
+    procedure Paint; override;
+  end;
+
   // Значок невизуального компонента (TTimer, TMainMenu, диалоги) в его точке
   // Left/Top, как в конструкторе Delphi
   TDsgIcon = class(TCustomControl)
@@ -104,6 +112,10 @@ type
     FActive, FMoved: Boolean;
     FFrom: TPoint;
     FStart: TPoint;
+    FCaption: TDsgIconCaption;   // принадлежит значку; nil - подписи нет
+    procedure PlaceCaption;
+  public
+    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
@@ -123,7 +135,31 @@ type
     FForm: TForm;
     FCarets: array[1..8] of TDsgCaret;
     FSel: TComponent;
-    FGrid: Integer;
+    // Сетка (IDE Options - Designer): шаг по X и Y, показывать ли точки,
+    // привязывать ли к ней перемещение и размер
+    FGridX: Integer;
+    FGridY: Integer;
+    FShowGrid: Boolean;
+    // Кисть-узор сетки: клетка FGridX x FGridY цвета формы с точкой в углу.
+    // Фон формы стирается одной заливкой этой кистью (PaintGrid) - Windows
+    // сама размножает клетку по области перерисовки. Пересоздаётся, когда
+    // меняется шаг или цвет формы.
+    FGridBrush: HBRUSH;
+    FGridBrushColor: TColor;
+    FGridBrushX: Integer;
+    FGridBrushY: Integer;
+    FSnapToGrid: Boolean;
+    // Имена под значками невизуальных компонентов
+    FShowCaptions: Boolean;
+    // Подсказка над компонентом под мышью: «Имя: Класс», с ExtendedHints -
+    // место, размер, TabStop и TabOrder. Своё окно подсказки: Hint самих
+    // компонентов формы - их свойство из .dfm, его не трогаем.
+    FShowHints: Boolean;
+    FExtendedHints: Boolean;
+    FHintWnd: THintWindow;
+    FHintTimer: TTimer;
+    FHintTarget: TComponent;
+    FHintShown: Boolean;
     FRootName: string;
     FClassOf: TStringList;    // имя компонента -> класс из .dfm
     FVisualUnknown: TStringList; // неизвестные классы, у которых есть Width
@@ -139,6 +175,61 @@ type
     FDragCtl: TControl;
     FDragFrom: TPoint;
     FDragRect: TRect;
+    // Пока тянут - компонент на месте, рисуется только рамка будущего
+    // места (XOR, как в Delphi): форма с сеткой перерисовывается один раз,
+    // при отпускании кнопки. FFrames - рамки на экране, FDragNew - новые
+    // места (в координатах родителя): у одного компонента - [0], у группы -
+    // по индексу в FGroup (пустой прямоугольник - не двигается).
+    FFrames: array of TRect;
+    FFramesShown: Boolean;
+    FDragNew: array of TRect;
+    // Выделение рамкой: нажали на пустом месте формы (или с Ctrl - внутри
+    // контейнера) и ведут мышь. Рамка рисуется так же, XOR (FFrames); по
+    // отпусканию в группу идут дети FBandParent, которых рамка задела.
+    FBanding: Boolean;
+    FBandMoved: Boolean;
+    FBandFrom: TPoint;          // точка нажатия, экран
+    FBandRect: TRect;           // рамка сейчас, экран
+    FBandParent: TWinControl;
+    // Журнал перетаскивания (HiLite log): что происходит, пока тянут -
+    // движения мыши, рамки, перерисовки окон формы, смены мест, маркеры.
+    // Включается на время одного переноса или рамки (TraceStart ...
+    // TraceEnd); подробных строк - не больше TraceMaxLines, в конце - итог.
+    // Маркеры и уголки группы переставляются при замороженной форме
+    // (WM_SETREDRAW): каждое окошко, спрятанное или сдвинутое по одному,
+    // заставляло Windows сразу стирать фон под ним - компонент моргал по
+    // 8-10 раз. Места, которые надо перерисовать, копятся в FFreezeRect и
+    // рисуются одним разом в ThawForm.
+    FFreezeDepth: Integer;
+    FFreezeRect: TRect;
+    FDragTrace: Boolean;         // журнал включён (editor.ini, DragTrace)
+    // Замер рамки (всегда, без DragTrace): время рисования рамки и
+    // промежутки между движениями мыши - в счётчиках, в лог одной строкой
+    // при отпускании (TimingReport). Во время переноса лог не пишется.
+    FTimFreq: Int64;             // частота QueryPerformanceCounter
+    FTimFrames: Integer;         // рисований рамки (ToggleDragFrames)
+    FTimFrameSum: Int64;         // их суммарное время, тики счётчика
+    FTimFrameMax: Int64;
+    FTimMoves: Integer;          // движений мыши
+    FTimMoveFirst: Int64;        // время первого и прошлого движения
+    FTimMoveLast: Int64;
+    FTimGapMax: Int64;           // наибольший промежуток между движениями
+    FTimMoveSum: Int64;          // суммарное время обработки движения
+    FTimMoveMax: Int64;
+    FTrace: Boolean;
+    FTraceWhat: string;          // что тянут - в заголовок журнала
+    FTraceHeader: Boolean;       // заголовок уже в журнале
+    FTraceStart: Cardinal;
+    FTraceLines: Integer;
+    FTraceMoves: Integer;
+    FTraceFrames: Integer;
+    FTracePaintRoot: Integer;
+    FTracePaintKids: Integer;
+    FTraceErase: Integer;
+    FTracePos: Integer;
+    FTraceFlush: Integer;
+    FTraceMarks: Integer;
+    FTraceCarets: Integer;
     FOnSelect: TDsgSelectEvent;
     FOnChange: TDsgChangeEvent;
     FOnKey: TDsgKeyEvent;
@@ -162,8 +253,11 @@ type
     FRuntime: TList;
     // Компоненты .dfm, у которых часть места и размера при работе задаёт
     // код (MarkCodePlaced): строки "адрес компонента=буквы" - L, T, W, H.
-    // Эти координаты не меняются ни мышью, ни маркерами.
+    // С FLockCodePlaced эти координаты не меняются ни мышью, ни маркерами;
+    // без него (по умолчанию, как в Delphi) двигаются и пишутся в .dfm, а
+    // при работе код всё равно ставит своё.
     FCodePlaced: TStringList;
+    FLockCodePlaced: Boolean;
     // Идёт установка компонентов из кода (BeginRuntime .. FinishRuntime):
     // окно не перерисовывается, выравнивание в контейнерах отложено
     FRtBatch: Boolean;
@@ -188,6 +282,15 @@ type
     // Компоненты вкладок TTabControl (SetTabMembers): строки - адрес
     // TTabControl, Objects - TStringList "Имя=номер вкладки"
     FTabMembers: TStringList;
+    procedure SetGridX(AValue: Integer);
+    procedure SetGridY(AValue: Integer);
+    procedure SetGrid(AValue: Integer);
+    procedure SetShowGrid(AValue: Boolean);
+    procedure SetShowCaptions(AValue: Boolean);
+    procedure SetShowHints(AValue: Boolean);
+    procedure HintTimerTick(Sender: TObject);
+    function  HintTarget(const AScreen: TPoint): TComponent;
+    function  HintText(AComp: TComponent): string;
     procedure ApplyTabMembers(ATabCtl: TTabControl);
     procedure LockButtonRows;
     procedure ToggleGroup(AComp: TComponent);
@@ -219,7 +322,14 @@ type
     procedure ShowForm;
     // Прежняя форма больше не нужна, а новую не показывают (спрятана)
     procedure DropOldForm;
-    function Snap(V: Integer): Integer;
+    // Значение по сетке (если привязка включена): X - по шагу X, Y - по Y
+    function SnapX(V: Integer): Integer;
+    function SnapY(V: Integer): Integer;
+    // Подписи значков - по ShowCaptions
+    procedure UpdateIconCaptions;
+    // Мышь над формой конструктора (точка экрана): подсказка компонента
+    procedure HoverAt(const AScreen: TPoint);
+    procedure HideHint;
     procedure Select(AComp: TComponent; ANotify: Boolean);
     // Щелчок по строке меню формы (точка в координатах экрана): меню не
     // раскрывается, выделяется меню формы, а в инспекторе - пункт под
@@ -230,18 +340,46 @@ type
     function SelControl: TControl;
     procedure ShowCarets;
     procedure HideCarets;
-    procedure PaintGrid(DC: HDC);
+    procedure ToggleDragFrames;
+    procedure SetDragFrames(const ANew: array of TRect);
+    procedure ClearDragFrames;
+    function  GetDragging: Boolean;
+    procedure BandSelect;
+    procedure FreezeForm;
+    procedure ThawForm;
+    procedure AddRepaint(const R: TRect);
+    procedure TimingReset;
+    procedure TimingReport(const AWhat: string);
+    procedure TraceStart(const AWhat: string);
+    procedure TraceLine(const AText: string);
+    procedure TraceEnd;
+    procedure TraceMsg(ACtl: TWinControl; const AMsg: TMessage);
+    function  PaintGrid(DC: HDC): Boolean;
     // от перехватчиков сообщений
     procedure MouseDown(ATarget: TComponent; const AScreen: TPoint);
     procedure MouseMove(const AScreen: TPoint);
+    procedure MouseMoveWork(const AScreen: TPoint);
     procedure MouseUp;
     procedure KeyDown(AKey: Word);
     procedure FormMoved;
     procedure CommitBounds(AComp: TComponent);
     property Form: TForm read FForm;
     property RootName: string read FRootName;
-    property Dragging: Boolean read FDragging;
-    property Grid: Integer read FGrid write FGrid;
+    property Dragging: Boolean read GetDragging;
+    // Журнал переноса в HiLite log: [Designer] DragTrace=1 в editor.ini
+    property DragTrace: Boolean read FDragTrace write FDragTrace;
+    // Шаг сетки по обеим осям (прежнее свойство): чтение - шаг по X
+    property Grid: Integer read FGridX write SetGrid;
+    property GridX: Integer read FGridX write SetGridX;
+    property GridY: Integer read FGridY write SetGridY;
+    property ShowGrid: Boolean read FShowGrid write SetShowGrid;
+    property SnapToGrid: Boolean read FSnapToGrid write FSnapToGrid;
+    property ShowCaptions: Boolean read FShowCaptions write SetShowCaptions;
+    property ShowHints: Boolean read FShowHints write SetShowHints;
+    property ExtendedHints: Boolean read FExtendedHints write FExtendedHints;
+    // Запирать координаты, которые задаёт код (MarkCodePlaced); False -
+    // как в Delphi
+    property LockCodePlaced: Boolean read FLockCodePlaced write FLockCodePlaced;
     property OnSelect: TDsgSelectEvent read FOnSelect write FOnSelect;
     property OnChange: TDsgChangeEvent read FOnChange write FOnChange;
     property OnKey: TDsgKeyEvent read FOnKey write FOnKey;
@@ -322,7 +460,8 @@ type
     // здесь: двигать по этой оси и тянуть эту сторону нельзя, остальное -
     // можно, и в .dfm пишется только оно.
     procedure MarkCodePlaced(AComp: TComponent; const ASides: string);
-    // Буквы координат, которые задаёт код; '' - никакие
+    // Буквы координат, которые задаёт код и которые заперты; '' - никакие
+    // (и всегда '', пока LockCodePlaced = False)
     function CodePlacedSides(AComp: TComponent): string;
     // Красная рамка у скрытых: у самого ACtl, если он скрыт, и у его
     // безоконных детей (TLabel и т. п.) - их рисует ACtl
@@ -505,7 +644,8 @@ function PasRenameIdent(const APas, AOld, ANew: string;
 implementation
 
 uses
-  TypInfo, Buttons, Menus, UiScroll;
+  TypInfo, Buttons, Menus, UiScroll,
+  Math;   // Min, Max - рамка выделения
 
 const
   CaretSize = 6;
@@ -815,6 +955,16 @@ procedure DsgLog(const S: string; AColor: TColor);
 begin
   if Assigned(DsgLogProc) then
     DsgLogProc(S, AColor);
+end;
+
+// Журнал перетаскивания: подробных строк за один перенос
+const
+  TraceMaxLines = 400;
+
+// Прямоугольник строкой - для журнала
+function DsgRectText(const R: TRect): string;
+begin
+  Result := Format('(%d,%d)-(%d,%d)', [R.Left, R.Top, R.Right, R.Bottom]);
 end;
 
 // Имя и класс компонента для журнала
@@ -1720,6 +1870,8 @@ var
   OldPage: Integer;
 begin
   IsRoot := FCtl = FDesigner.Form;
+  if FDesigner.FTrace then
+    FDesigner.TraceMsg(FCtl, Msg);
 
   case Msg.Msg of
     // Правый щелчок: выделить компонент под курсором и показать меню
@@ -1797,12 +1949,15 @@ begin
 
     WM_MOUSEMOVE:
       begin
+        Pt := Point(SmallInt(LoWord(Msg.LParam)),
+                    SmallInt(HiWord(Msg.LParam)));
         if FDesigner.Dragging then
         begin
-          Pt := Point(SmallInt(LoWord(Msg.LParam)),
-                      SmallInt(HiWord(Msg.LParam)));
+          FDesigner.HideHint;
           FDesigner.MouseMove(FCtl.ClientToScreen(Pt));
-        end;
+        end
+        else
+          FDesigner.HoverAt(FCtl.ClientToScreen(Pt));
         Exit;
       end;
 
@@ -1878,8 +2033,11 @@ begin
     WM_ERASEBKGND:
       if IsRoot then
       begin
-        FPrev(Msg);
-        FDesigner.PaintGrid(HDC(Msg.WParam));
+        // Фон с сеткой - одной заливкой; без сетки - обычное стирание
+        if FDesigner.PaintGrid(HDC(Msg.WParam)) then
+          Msg.Result := 1
+        else
+          FPrev(Msg);
         Exit;
       end;
 
@@ -2082,13 +2240,13 @@ begin
   R := FRect;
 
   if FIndex in [1, 2, 3] then
-    R.Left := FDesigner.Snap(FRect.Left + DX);
+    R.Left := FDesigner.SnapX(FRect.Left + DX);
   if FIndex in [5, 6, 7] then
-    R.Right := FDesigner.Snap(FRect.Right + DX);
+    R.Right := FDesigner.SnapX(FRect.Right + DX);
   if FIndex in [1, 7, 8] then
-    R.Top := FDesigner.Snap(FRect.Top + DY);
+    R.Top := FDesigner.SnapY(FRect.Top + DY);
   if FIndex in [3, 4, 5] then
-    R.Bottom := FDesigner.Snap(FRect.Bottom + DY);
+    R.Bottom := FDesigner.SnapY(FRect.Bottom + DY);
 
   if R.Right - R.Left < 4 then
     if FIndex in [1, 2, 3] then
@@ -2121,7 +2279,57 @@ begin
     FDesigner.CommitBounds(C);
 end;
 
+{ TDsgIconCaption }
+
+procedure TDsgIconCaption.Paint;
+var
+  R: TRect;
+  S: string;
+begin
+  R := ClientRect;
+  Canvas.Brush.Color := Color;
+  Canvas.FillRect(R);
+  S := Caption;
+  Canvas.Font.Height := -11;
+  Canvas.Font.Color := clWindowText;
+  SetBkMode(Canvas.Handle, TRANSPARENT);
+  DrawText(Canvas.Handle, PChar(S), Length(S), R,
+           DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+end;
+
 { TDsgIcon }
+
+// Подпись - под значком, по середине
+procedure TDsgIcon.PlaceCaption;
+var
+  TextWidth: Integer;
+  ScreenDC: HDC;
+  OldFont: HFONT;
+  TextSize: TSize;
+begin
+  if (FCaption = nil) or (Parent = nil) or not Parent.HandleAllocated then
+    Exit;
+  TextWidth := 40;
+  ScreenDC := GetDC(0);
+  try
+    FCaption.Canvas.Font.Height := -11;
+    OldFont := SelectObject(ScreenDC, FCaption.Canvas.Font.Handle);
+    if GetTextExtentPoint32(ScreenDC, PChar(FCaption.Caption),
+                            Length(FCaption.Caption), TextSize) then
+      TextWidth := TextSize.cx + 4;
+    SelectObject(ScreenDC, OldFont);
+  finally
+    ReleaseDC(0, ScreenDC);
+  end;
+  FCaption.SetBounds(Left + Width div 2 - TextWidth div 2, Top + Height + 1,
+                     TextWidth, 14);
+end;
+
+procedure TDsgIcon.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
+begin
+  inherited SetBounds(ALeft, ATop, AWidth, AHeight);
+  PlaceCaption;
+end;
 
 procedure TDsgIcon.Paint;
 var
@@ -2176,14 +2384,18 @@ var
   R: TRect;
 begin
   if not FActive then
+  begin
+    FDesigner.HoverAt(ClientToScreen(Point(X, Y)));
     Exit;
+  end;
+  FDesigner.HideHint;
   P := ClientToScreen(Point(X, Y));
   if not FMoved and (Abs(P.X - FFrom.X) < 3) and (Abs(P.Y - FFrom.Y) < 3) then
     Exit;
   FMoved := True;
   // Значок - в пределах формы
-  R.Left := FDesigner.Snap(FStart.X + P.X - FFrom.X);
-  R.Top := FDesigner.Snap(FStart.Y + P.Y - FFrom.Y);
+  R.Left := FDesigner.SnapX(FStart.X + P.X - FFrom.X);
+  R.Top := FDesigner.SnapY(FStart.Y + P.Y - FFrom.Y);
   R.Right := R.Left + Width;
   R.Bottom := R.Top + Height;
   ClampToParent(Parent, R, False);
@@ -2209,7 +2421,17 @@ end;
 constructor TFormDesigner.Create;
 begin
   inherited Create;
-  FGrid := 8;   // как у Delphi: формы, сделанные в ней, выровнены по 8
+  // Как у Delphi: формы, сделанные в ней, выровнены по 8. Настройки IDE
+  // Options - Designer ставит главное окно после создания.
+  FGridX := 8;
+  FGridY := 8;
+  FShowGrid := True;
+  FSnapToGrid := True;
+  FShowHints := True;
+  FExtendedHints := True;
+  FHintTimer := TTimer.Create(nil);
+  FHintTimer.Enabled := False;
+  FHintTimer.OnTimer := HintTimerTick;
   FClassOf := TStringList.Create;
   FVisualUnknown := TStringList.Create;
   FVisualUnknown.Sorted := True;
@@ -2231,6 +2453,11 @@ end;
 
 destructor TFormDesigner.Destroy;
 begin
+  if FGridBrush <> 0 then
+    DeleteObject(FGridBrush);
+  HideHint;
+  FreeAndNil(FHintTimer);
+  FreeAndNil(FHintWnd);
   DropOldForm;
   Clear;
   FTabMembers.Free;
@@ -2252,6 +2479,7 @@ procedure TFormDesigner.Clear;
 var
   I: Integer;
 begin
+  HideHint;
   FSel := nil;
   FDragging := False;
   FDragCtl := nil;
@@ -2289,12 +2517,57 @@ begin
   end;
 end;
 
-function TFormDesigner.Snap(V: Integer): Integer;
+function TFormDesigner.SnapX(V: Integer): Integer;
 begin
-  if FGrid > 1 then
-    Result := Round(V / FGrid) * FGrid
+  if FSnapToGrid and (FGridX > 1) then
+    Result := Round(V / FGridX) * FGridX
   else
     Result := V;
+end;
+
+function TFormDesigner.SnapY(V: Integer): Integer;
+begin
+  if FSnapToGrid and (FGridY > 1) then
+    Result := Round(V / FGridY) * FGridY
+  else
+    Result := V;
+end;
+
+procedure TFormDesigner.SetGridX(AValue: Integer);
+begin
+  if AValue < 2 then
+    AValue := 2;
+  if AValue = FGridX then
+    Exit;
+  FGridX := AValue;
+  if FForm <> nil then
+    FForm.Invalidate;
+end;
+
+procedure TFormDesigner.SetGridY(AValue: Integer);
+begin
+  if AValue < 2 then
+    AValue := 2;
+  if AValue = FGridY then
+    Exit;
+  FGridY := AValue;
+  if FForm <> nil then
+    FForm.Invalidate;
+end;
+
+procedure TFormDesigner.SetGrid(AValue: Integer);
+begin
+  SetGridX(AValue);
+  SetGridY(AValue);
+end;
+
+procedure TFormDesigner.SetShowGrid(AValue: Boolean);
+begin
+  if AValue = FShowGrid then
+    Exit;
+  FShowGrid := AValue;
+  if FForm <> nil then
+    FForm.Invalidate;
 end;
 
 // Текст перед чтением. Имена и классы всех объектов - в FClassOf; классы,
@@ -2354,9 +2627,15 @@ begin
         if Depth = 1 then
         begin
           Lead := LeadSpaces(SL[I]);
+          // BorderIcons и BorderStyle = bsNone - тоже правила запущенной
+          // программы: окно конструктора всегда с заголовком и крестиком,
+          // иначе его нечем закрыть (как и в конструкторе Delphi). В .dfm
+          // значения остаются
           if (Lead = 2) and ((Copy(T, 1, 12) = 'FormStyle = ') or
                              (Copy(T, 1, 10) = 'Visible = ') or
-                             (Copy(T, 1, 14) = 'WindowState = ')) then
+                             (Copy(T, 1, 14) = 'WindowState = ') or
+                             (Copy(T, 1, 14) = 'BorderIcons = ') or
+                             (CompareText(T, 'BorderStyle = bsNone') = 0)) then
           begin
             SL.Delete(I);
             Continue;
@@ -2475,8 +2754,42 @@ begin
     SelectByName(OldSel);
 end;
 
+// Анимация появления и исчезновения окна (DWM, Windows Vista и новее, с
+// включённой темой Aero): новое окно показывается с коротким увеличением
+// от чуть меньшего размера, закрытое - с уменьшением. Форма конструктора
+// при перестройке - новое окно на месте прежнего, и анимация выглядит как
+// подёргивание. Отключается для одного окна; без dwmapi.dll (Windows XP)
+// ничего не делается.
+procedure DsgNoWindowAnimation(AWnd: HWND);
+const
+  DWMWA_TRANSITIONS_FORCEDISABLED = 3;
+type
+  TDwmSetWindowAttribute = function(AHwnd: HWND; AAttribute: DWORD;
+    AValue: Pointer; ASize: DWORD): HResult; stdcall;
+var
+  DwmLib: HMODULE;
+  SetAttr: TDwmSetWindowAttribute;
+  Disabled: BOOL;
+begin
+  if AWnd = 0 then
+    Exit;
+  DwmLib := GetModuleHandle('dwmapi.dll');
+  if DwmLib = 0 then
+    DwmLib := LoadLibrary('dwmapi.dll');
+  if DwmLib = 0 then
+    Exit;
+  @SetAttr := GetProcAddress(DwmLib, 'DwmSetWindowAttribute');
+  if not Assigned(SetAttr) then
+    Exit;
+  Disabled := True;
+  SetAttr(AWnd, DWMWA_TRANSITIONS_FORCEDISABLED, @Disabled, SizeOf(Disabled));
+end;
+
 procedure TFormDesigner.DropOldForm;
 begin
+  // Прежняя форма уходит без анимации исчезновения
+  if (FOldForm <> nil) and FOldForm.HandleAllocated then
+    DsgNoWindowAnimation(FOldForm.Handle);
   FreeAndNil(FOldForm);
 end;
 
@@ -2492,6 +2805,10 @@ begin
   // но на экране его нет. Нарисовали всё сразу (FlushPaint) - прозрачность
   // снимается, и форма появляется готовой.
   FForm.HandleNeeded;
+  // Новое окно на месте прежнего - без анимации появления
+  DsgNoWindowAnimation(FForm.Handle);
+  // Подписи значков - окна формы: нужен её дескриптор
+  UpdateIconCaptions;
   FForm.AlphaBlendValue := 0;
   FForm.AlphaBlend := True;
   try
@@ -2591,10 +2908,11 @@ begin
     Icon.FComp := C;
     Icon.FClassName := Cl;
     Icon.SetBounds(LongRec(C.DesignInfo).Lo, LongRec(C.DesignInfo).Hi, 28, 28);
-    Icon.Hint := C.Name + ': ' + Cl;
-    Icon.ShowHint := True;
+    // Подсказка значка - общая подсказка конструктора (HoverAt)
+    Icon.ShowHint := False;
     Icon.Parent := FForm;
   end;
+  UpdateIconCaptions;
 
   for I := 1 to 8 do
   begin
@@ -2637,24 +2955,220 @@ begin
     FOnClose(Self);
 end;
 
-// Сетка точками поверх фона формы - как PaintFormGrid у RQ
-procedure TFormDesigner.PaintGrid(DC: HDC);
+// Подписи значков невизуальных компонентов: есть, если ShowCaptions
+procedure TFormDesigner.UpdateIconCaptions;
 var
-  X, Y: Integer;
+  CtlIdx: Integer;
+  Icon: TDsgIcon;
 begin
-  if (FForm = nil) or (FGrid < 2) then
+  if (FForm = nil) or not FForm.HandleAllocated then
     Exit;
-  Y := 0;
-  while Y < FForm.ClientHeight do
+  for CtlIdx := 0 to FForm.ControlCount - 1 do
   begin
-    X := 0;
-    while X < FForm.ClientWidth do
+    if not (FForm.Controls[CtlIdx] is TDsgIcon) then
+      Continue;
+    Icon := TDsgIcon(FForm.Controls[CtlIdx]);
+    if FShowCaptions and (Icon.FComp <> nil) then
     begin
-      SetPixel(DC, X, Y, $007F7F7F);
-      Inc(X, FGrid);
-    end;
-    Inc(Y, FGrid);
+      if Icon.FCaption = nil then
+      begin
+        Icon.FCaption := TDsgIconCaption.Create(Icon);
+        Icon.FCaption.Enabled := False;
+        Icon.FCaption.ParentWindow := FForm.Handle;
+      end;
+      Icon.FCaption.Color := FForm.Color;
+      Icon.FCaption.Caption := Icon.FComp.Name;
+      Icon.PlaceCaption;
+      Icon.FCaption.Visible := True;
+      Icon.FCaption.Invalidate;
+    end
+    else if Icon.FCaption <> nil then
+      FreeAndNil(Icon.FCaption);
   end;
+end;
+
+procedure TFormDesigner.SetShowCaptions(AValue: Boolean);
+begin
+  if AValue = FShowCaptions then
+    Exit;
+  FShowCaptions := AValue;
+  UpdateIconCaptions;
+end;
+
+procedure TFormDesigner.SetShowHints(AValue: Boolean);
+begin
+  FShowHints := AValue;
+  if not AValue then
+    HideHint;
+end;
+
+// Компонент .dfm под точкой экрана для подсказки: значок - его компонент;
+// nil - не над компонентом формы конструктора
+function TFormDesigner.HintTarget(const AScreen: TPoint): TComponent;
+var
+  UnderWnd: HWND;
+begin
+  Result := nil;
+  if (FForm = nil) or not FForm.HandleAllocated or not FForm.Visible then
+    Exit;
+  UnderWnd := WindowFromPoint(AScreen);
+  if (UnderWnd <> FForm.Handle) and not IsChild(FForm.Handle, UnderWnd) then
+    Exit;
+  Result := TargetAt(AScreen);
+  // Над самой формой (между компонентами) подсказки нет - как в Delphi
+  if Result = FForm then
+    Result := nil
+  else if Result is TDsgIcon then
+    Result := TDsgIcon(Result).FComp;
+end;
+
+function TFormDesigner.HintText(AComp: TComponent): string;
+var
+  ClassText: string;
+  Ctl: TControl;
+begin
+  if AComp = FForm then
+  begin
+    Result := FRootName;
+    ClassText := FClassOf.Values[FRootName];
+  end
+  else
+  begin
+    Result := AComp.Name;
+    ClassText := FClassOf.Values[AComp.Name];
+  end;
+  if ClassText = '' then
+    ClassText := AComp.ClassName;
+  Result := Result + ': ' + ClassText;
+  if not FExtendedHints then
+    Exit;
+  if AComp is TControl then
+  begin
+    Ctl := TControl(AComp);
+    Result := Result + #13#10 + Format('Origin: %d, %d; Size: %d x %d',
+      [Ctl.Left, Ctl.Top, Ctl.Width, Ctl.Height]);
+    if (Ctl is TWinControl) and (Ctl <> FForm) then
+      Result := Result + #13#10 + Format('Tab Stop: %s; Order: %d',
+        [BoolToStr(TWinControl(Ctl).TabStop, True),
+         TWinControl(Ctl).TabOrder]);
+  end
+  else
+    Result := Result + #13#10 + Format('Origin: %d, %d',
+      [LongRec(AComp.DesignInfo).Lo, LongRec(AComp.DesignInfo).Hi]);
+end;
+
+procedure TFormDesigner.HideHint;
+begin
+  if FHintTimer <> nil then
+    FHintTimer.Enabled := False;
+  if FHintShown and (FHintWnd <> nil) then
+    FHintWnd.ReleaseHandle;
+  FHintShown := False;
+  FHintTarget := nil;
+end;
+
+// Мышь над компонентом: подсказка - через полсекунды, если мышь на нём
+procedure TFormDesigner.HoverAt(const AScreen: TPoint);
+var
+  Target: TComponent;
+begin
+  if not FShowHints or FDragging then
+  begin
+    HideHint;
+    Exit;
+  end;
+  Target := HintTarget(AScreen);
+  if Target = FHintTarget then
+    Exit;
+  HideHint;
+  FHintTarget := Target;
+  if Target = nil then
+    Exit;
+  FHintTimer.Interval := 500;
+  FHintTimer.Enabled := True;
+end;
+
+// Подсказка показывается; пока она видна - проверка, что мышь на том же
+// компоненте
+procedure TFormDesigner.HintTimerTick(Sender: TObject);
+var
+  CursorPt: TPoint;
+  HintRect: TRect;
+  Text: string;
+begin
+  GetCursorPos(CursorPt);
+  if (FHintTarget = nil) or FDragging or
+     (HintTarget(CursorPt) <> FHintTarget) then
+  begin
+    HideHint;
+    Exit;
+  end;
+  if FHintShown then
+    Exit;
+  if FHintWnd = nil then
+  begin
+    FHintWnd := HintWindowClass.Create(nil);
+    FHintWnd.Color := Application.HintColor;
+  end;
+  Text := HintText(FHintTarget);
+  HintRect := FHintWnd.CalcHintRect(400, Text, nil);
+  OffsetRect(HintRect, CursorPt.X, CursorPt.Y + 20);
+  FHintWnd.ActivateHint(HintRect, Text);
+  FHintShown := True;
+  FHintTimer.Interval := 200;
+end;
+
+// Сетка точками поверх фона формы - как PaintFormGrid у RQ
+// Фон формы с сеткой: заливка кистью-узором (клетка сетки - маленький
+// bmp, его размножает Windows) только в области перерисовки, одним вызовом.
+// Раньше фон заливался цветом формы, а потом каждая точка сетки ставилась
+// SetPixel по всей форме - тысячи вызовов на каждое стирание фона. False -
+// сетка не показывается, фон стирает форма сама.
+function TFormDesigner.PaintGrid(DC: HDC): Boolean;
+var
+  Cell: TBitmap;
+  FormColor: TColor;
+  Area: TRect;
+  Origin: TPoint;
+begin
+  Result := False;
+  if (FForm = nil) or not FShowGrid or (FGridX < 2) or (FGridY < 2) then
+    Exit;
+  FormColor := ColorToRGB(FForm.Color);
+  if (FGridBrush = 0) or (FormColor <> FGridBrushColor) or
+     (FGridX <> FGridBrushX) or (FGridY <> FGridBrushY) then
+  begin
+    if FGridBrush <> 0 then
+      DeleteObject(FGridBrush);
+    Cell := TBitmap.Create;
+    try
+      Cell.Width := FGridX;
+      Cell.Height := FGridY;
+      Cell.Canvas.Brush.Color := FormColor;
+      Cell.Canvas.FillRect(Rect(0, 0, FGridX, FGridY));
+      Cell.Canvas.Pixels[0, 0] := $007F7F7F;
+      // Кисть копирует картинку - bmp можно освободить
+      FGridBrush := CreatePatternBrush(Cell.Handle);
+    finally
+      Cell.Free;
+    end;
+    FGridBrushColor := FormColor;
+    FGridBrushX := FGridX;
+    FGridBrushY := FGridY;
+  end;
+  if FGridBrush = 0 then
+    Exit;
+  // Узор - от угла клиентской части формы. Начало кисти задаётся в точках
+  // устройства: прозрачный дочерний контрол просит нарисовать фон формы в
+  // свой DC со сдвинутым началом координат - точки сетки должны совпасть.
+  Origin := Point(0, 0);
+  LPtoDP(DC, Origin, 1);
+  SetBrushOrgEx(DC, Origin.X, Origin.Y, nil);
+  // 0 - ошибка, NULLREGION - рисовать нечего: тогда вся клиентская часть
+  if GetClipBox(DC, Area) <= NULLREGION then
+    Area := FForm.ClientRect;
+  FillRect(DC, Area, FGridBrush);
+  Result := True;
 end;
 
 function TFormDesigner.SelControl: TControl;
@@ -2792,91 +3306,168 @@ var
   OldR: array[1..8] of TRect;
   WasVisible: array[1..8] of Boolean;
 begin
-  C := SelControl;
-  // Группа: вместо маркеров - уголки у каждого компонента
-  if GroupCount > 1 then
+  if FTrace then
   begin
-    HideCarets;
-    ShowGroupMarks;
-    Exit;
+    Inc(FTraceCarets);
+    TraceLine('ShowCarets');
   end;
-  if (C = nil) or (C.Parent = nil) then
-  begin
-    HideCarets;
-    Exit;
+  FreezeForm;
+  try
+    C := SelControl;
+    // Группа: вместо маркеров - уголки у каждого компонента
+    if GroupCount > 1 then
+    begin
+      HideCarets;
+      ShowGroupMarks;
+      Exit;
+    end;
+    if (C = nil) or (C.Parent = nil) then
+    begin
+      HideCarets;
+      Exit;
+    end;
+
+    // Где маркеры стояли - после переноса это место перерисовывается
+    for I := 1 to 8 do
+    begin
+      WasVisible[I] := FCarets[I].Visible;
+      OldR[I] := FCarets[I].BoundsRect;
+    end;
+
+    // Окно формы могли создать заново - маркеры переселяем в новое.
+    // Координаты маркеров - клиентские координаты окна формы, те же, что
+    // даёт FForm.ScreenToClient.
+    for I := 1 to 8 do
+    begin
+      if FCarets[I].ParentWindow <> FForm.Handle then
+        FCarets[I].ParentWindow := FForm.Handle;
+      if not FCarets[I].Visible then
+        FCarets[I].Visible := True;
+    end;
+
+    // Место компонента сверяется ещё раз после расстановки: если раскладка
+    // формы всё же сдвинулась, маркеры переставляются. Маркеры в
+    // выравнивании больше не участвуют (см. ParentWindow выше), обычно
+    // хватает одного прохода.
+
+    Was := Point(MaxInt, MaxInt);
+    W := -1;
+    H := -1;
+    for Pass := 1 to 3 do
+    begin
+      P := FForm.ScreenToClient(C.Parent.ClientToScreen(Point(C.Left, C.Top)));
+      if (P.X = Was.X) and (P.Y = Was.Y) and (C.Width = W) and
+         (C.Height = H) then
+        Break;
+      Was := P;
+      L := P.X;
+      T := P.Y;
+      W := C.Width;
+      H := C.Height;
+      MX := L + (W - CaretSize) div 2;
+      MY := T + (H - CaretSize) div 2;
+
+      FCarets[1].SetBounds(L, T, CaretSize, CaretSize);
+      FCarets[2].SetBounds(L, MY, CaretSize, CaretSize);
+      FCarets[3].SetBounds(L, T + H - CaretSize, CaretSize, CaretSize);
+      FCarets[4].SetBounds(MX, T + H - CaretSize, CaretSize, CaretSize);
+      FCarets[5].SetBounds(L + W - CaretSize, T + H - CaretSize, CaretSize, CaretSize);
+      FCarets[6].SetBounds(L + W - CaretSize, MY, CaretSize, CaretSize);
+      FCarets[7].SetBounds(L + W - CaretSize, T, CaretSize, CaretSize);
+      FCarets[8].SetBounds(MX, T, CaretSize, CaretSize);
+    end;
+
+    // Поверх всего на форме: компонент может лежать глубоко в панелях
+    for I := 1 to 8 do
+      FCarets[I].BringToFront;
+
+    // Маркер - дочернее окно формы, а стоит он над контролами, вложенными в
+    // панели. Место, откуда он ушёл, помечаем к перерисовке вместе со всеми
+    // вложенными окнами (RDW_ALLCHILDREN) - и перерисовываем сразу
+    // (FlushPaint): иначе при перетаскивании за маркерами оставался след.
+    for I := 1 to 8 do
+    begin
+      if WasVisible[I] and not EqualRect(OldR[I], FCarets[I].BoundsRect) then
+        AddRepaint(OldR[I]);
+      // Сами маркеры на новом месте - тоже (форма была заморожена)
+      AddRepaint(FCarets[I].BoundsRect);
+    end;
+    FlushPaint;
+  finally
+    ThawForm;
   end;
-
-  // Где маркеры стояли - после переноса это место перерисовывается
-  for I := 1 to 8 do
-  begin
-    WasVisible[I] := FCarets[I].Visible;
-    OldR[I] := FCarets[I].BoundsRect;
-  end;
-
-  // Окно формы могли создать заново - маркеры переселяем в новое.
-  // Координаты маркеров - клиентские координаты окна формы, те же, что
-  // даёт FForm.ScreenToClient.
-  for I := 1 to 8 do
-  begin
-    if FCarets[I].ParentWindow <> FForm.Handle then
-      FCarets[I].ParentWindow := FForm.Handle;
-    if not FCarets[I].Visible then
-      FCarets[I].Visible := True;
-  end;
-
-  // Место компонента сверяется ещё раз после расстановки: если раскладка
-  // формы всё же сдвинулась, маркеры переставляются. Маркеры в
-  // выравнивании больше не участвуют (см. ParentWindow выше), обычно
-  // хватает одного прохода.
-
-  Was := Point(MaxInt, MaxInt);
-  W := -1;
-  H := -1;
-  for Pass := 1 to 3 do
-  begin
-    P := FForm.ScreenToClient(C.Parent.ClientToScreen(Point(C.Left, C.Top)));
-    if (P.X = Was.X) and (P.Y = Was.Y) and (C.Width = W) and
-       (C.Height = H) then
-      Break;
-    Was := P;
-    L := P.X;
-    T := P.Y;
-    W := C.Width;
-    H := C.Height;
-    MX := L + (W - CaretSize) div 2;
-    MY := T + (H - CaretSize) div 2;
-
-    FCarets[1].SetBounds(L, T, CaretSize, CaretSize);
-    FCarets[2].SetBounds(L, MY, CaretSize, CaretSize);
-    FCarets[3].SetBounds(L, T + H - CaretSize, CaretSize, CaretSize);
-    FCarets[4].SetBounds(MX, T + H - CaretSize, CaretSize, CaretSize);
-    FCarets[5].SetBounds(L + W - CaretSize, T + H - CaretSize, CaretSize, CaretSize);
-    FCarets[6].SetBounds(L + W - CaretSize, MY, CaretSize, CaretSize);
-    FCarets[7].SetBounds(L + W - CaretSize, T, CaretSize, CaretSize);
-    FCarets[8].SetBounds(MX, T, CaretSize, CaretSize);
-  end;
-
-  // Поверх всего на форме: компонент может лежать глубоко в панелях
-  for I := 1 to 8 do
-    FCarets[I].BringToFront;
-
-  // Маркер - дочернее окно формы, а стоит он над контролами, вложенными в
-  // панели. Место, откуда он ушёл, помечаем к перерисовке вместе со всеми
-  // вложенными окнами (RDW_ALLCHILDREN) - и перерисовываем сразу
-  // (FlushPaint): иначе при перетаскивании за маркерами оставался след.
-  for I := 1 to 8 do
-    if WasVisible[I] and not EqualRect(OldR[I], FCarets[I].BoundsRect) then
-      RedrawWindow(FForm.Handle, @OldR[I], 0,
-                   RDW_INVALIDATE or RDW_ERASE or RDW_ALLCHILDREN);
-  FlushPaint;
 end;
 
 // Всё, что на форме помечено к перерисовке, - нарисовать сейчас. WM_PAINT
 // Windows присылает, только когда в очереди нет других сообщений, а пока
 // кнопка мыши нажата и мышь движется, WM_MOUSEMOVE идут непрерывно: место,
 // откуда ушёл компонент или маркер, стояло стёртым до отпускания кнопки.
+procedure TFormDesigner.FreezeForm;
+begin
+  if (FFreezeDepth = 0) and (FForm <> nil) and FForm.HandleAllocated then
+  begin
+    // Что уже помечено к перерисовке (место, откуда только что ушёл
+    // компонент, - SetBounds в MouseUp), рисуется до заморозки: пометки,
+    // сделанные до WM_SETREDRAW 0, после WM_SETREDRAW 1 Windows не
+    // рисует - родитель оставался со следом компонента, пока по нему не
+    // щёлкнут
+    if FTrace then
+      TraceLine('заморозка формы: сначала - что уже помечено');
+    RedrawWindow(FForm.Handle, nil, 0, RDW_UPDATENOW or RDW_ALLCHILDREN);
+    SendMessage(FForm.Handle, WM_SETREDRAW, 0, 0);
+    FFreezeRect := Rect(0, 0, 0, 0);
+  end;
+  Inc(FFreezeDepth);
+end;
+
+procedure TFormDesigner.ThawForm;
+var
+  R: TRect;
+begin
+  if FFreezeDepth = 0 then
+    Exit;
+  Dec(FFreezeDepth);
+  if (FFreezeDepth > 0) or (FForm = nil) or not FForm.HandleAllocated then
+    Exit;
+  SendMessage(FForm.Handle, WM_SETREDRAW, 1, 0);
+  R := FFreezeRect;
+  FFreezeRect := Rect(0, 0, 0, 0);
+  if IsRectEmpty(R) then
+    Exit;
+  if FTrace then
+    TraceLine('перерисовка после маркеров ' + DsgRectText(R));
+  RedrawWindow(FForm.Handle, @R, 0, RDW_INVALIDATE or RDW_ERASE or
+               RDW_ALLCHILDREN or RDW_UPDATENOW);
+end;
+
+// Место (клиентские координаты формы) - к перерисовке: при замороженной
+// форме - в общий прямоугольник, иначе сразу
+procedure TFormDesigner.AddRepaint(const R: TRect);
+begin
+  if IsRectEmpty(R) or (FForm = nil) or not FForm.HandleAllocated then
+    Exit;
+  if FFreezeDepth > 0 then
+  begin
+    if IsRectEmpty(FFreezeRect) then
+      FFreezeRect := R
+    else
+      UnionRect(FFreezeRect, FFreezeRect, R);
+  end
+  else
+    RedrawWindow(FForm.Handle, @R, 0,
+                 RDW_INVALIDATE or RDW_ERASE or RDW_ALLCHILDREN);
+end;
+
 procedure TFormDesigner.FlushPaint;
 begin
+  // Форма заморожена - нарисует ThawForm
+  if FFreezeDepth > 0 then
+    Exit;
+  if FTrace then
+  begin
+    Inc(FTraceFlush);
+    TraceLine('FlushPaint (RedrawWindow UPDATENOW)');
+  end;
   if (FForm <> nil) and FForm.HandleAllocated then
     RedrawWindow(FForm.Handle, nil, 0, RDW_UPDATENOW or RDW_ALLCHILDREN);
 end;
@@ -2886,24 +3477,36 @@ var
   I: Integer;
   R: TRect;
 begin
-  for I := 1 to 8 do
-    if (FCarets[I] <> nil) and FCarets[I].Visible then
-    begin
-      R := FCarets[I].BoundsRect;
-      FCarets[I].Visible := False;
-      // Место маркера - перерисовать вместе с вложенными окнами (см.
-      // ShowCarets)
-      if (FForm <> nil) and FForm.HandleAllocated then
-        RedrawWindow(FForm.Handle, @R, 0,
-                     RDW_INVALIDATE or RDW_ERASE or RDW_ALLCHILDREN);
-    end;
-  FlushPaint;
+  if FTrace then
+  begin
+    Inc(FTraceCarets);
+    TraceLine('HideCarets');
+  end;
+  FreezeForm;
+  try
+    for I := 1 to 8 do
+      if (FCarets[I] <> nil) and FCarets[I].Visible then
+      begin
+        R := FCarets[I].BoundsRect;
+        FCarets[I].Visible := False;
+        // Место маркера - перерисовать вместе с вложенными окнами (см.
+        // ShowCarets)
+        AddRepaint(R);
+      end;
+    FlushPaint;
+  finally
+    ThawForm;
+  end;
 end;
 
 procedure TFormDesigner.ContextMenu(AComp: TComponent; const AScreen: TPoint);
 begin
   FDragging := False;
-  if AComp <> nil then
+  FTrace := False;
+  // Правый щелчок по компоненту выделенной группы группу не сбрасывает -
+  // как в Delphi: Cut, Copy, Delete и выравнивание из меню - для всей
+  // группы. Щелчок мимо группы выделяет компонент под мышью.
+  if (AComp <> nil) and not ((GroupCount > 1) and InGroup(AComp)) then
     Select(AComp, True);
   if Assigned(FOnContext) then
     FOnContext(AScreen);
@@ -2912,6 +3515,7 @@ end;
 procedure TFormDesigner.DblClick;
 begin
   FDragging := False;
+  FTrace := False;
   ReleaseCapture;
   // Компонент из кода: его обработчики назначаются в коде - не трогаем
   if IsRuntime(FSel) then
@@ -2968,6 +3572,9 @@ end;
 function TFormDesigner.CodePlacedSides(AComp: TComponent): string;
 begin
   Result := '';
+  // Не запирать: как в Delphi, место и размер правятся мышью и маркерами
+  if not FLockCodePlaced then
+    Exit;
   if (AComp <> nil) and (FCodePlaced <> nil) then
     Result := FCodePlaced.Values[IntToHex(Integer(AComp), 8)];
 end;
@@ -3555,7 +4162,10 @@ begin
      ((CompareText(AProp, 'FormStyle') = 0) or
       (CompareText(AProp, 'Visible') = 0) or
       (CompareText(AProp, 'WindowState') = 0) or
-      (CompareText(AProp, 'Position') = 0)) then
+      (CompareText(AProp, 'Position') = 0) or
+      (CompareText(AProp, 'BorderIcons') = 0) or
+      ((CompareText(AProp, 'BorderStyle') = 0) and
+       (CompareText(Trim(AValue), 'bsNone') = 0))) then
     Exit;
 
   // Скрытый контрол остаётся видимым, с красной рамкой (FHidden). TTabSheet
@@ -3571,7 +4181,8 @@ begin
     end
     else
       FHidden.Remove(C);
-    if FForm.HandleAllocated then
+    // В серии (BeginRuntime) форма перерисуется один раз в FinishRuntime
+    if FForm.HandleAllocated and not FRtBatch then
       RedrawWindow(FForm.Handle, nil, 0,
                    RDW_INVALIDATE or RDW_ERASE or RDW_ALLCHILDREN);
     Exit;
@@ -3580,10 +4191,12 @@ begin
   ApplyPropText(C, AProp, AValue);
 
   // Размер, место или выравнивание могли сдвинуть и соседей - маркеры
-  // выделения ставятся заново
+  // выделения ставятся заново. В серии (живой вид ставит сотни свойств
+  // подряд) - один раз, в FinishRuntime (Select): на каждое свойство это
+  // удваивало время живого вида, когда в конструкторе что-то выделено.
   if C is TControl then
     TControl(C).Invalidate;
-  if SelControl <> nil then
+  if (SelControl <> nil) and not FRtBatch then
     ShowCarets;
 end;
 
@@ -3944,75 +4557,86 @@ var
   WasVisible: array of Boolean;
   Shown: Boolean;
 begin
+  if FTrace then
+  begin
+    Inc(FTraceMarks);
+    TraceLine('ShowGroupMarks');
+  end;
   if (FForm = nil) or not FForm.HandleAllocated then
     Exit;
-  S := GroupMarkSize;
-  if GroupCount > 1 then
-    Need := FGroup.Count * 4
-  else
-    Need := 0;
-  while FGroupMarks.Count < Need do
-  begin
-    M := TDsgGroupMark.Create(FForm);
-    M.Visible := False;
-    M.Enabled := False;
-    M.Width := S;
-    M.Height := S;
-    M.ParentWindow := FForm.Handle;
-    FGroupMarks.Add(M);
-  end;
-
-  SetLength(OldR, FGroupMarks.Count);
-  SetLength(WasVisible, FGroupMarks.Count);
-  for I := 0 to FGroupMarks.Count - 1 do
-  begin
-    M := TDsgGroupMark(FGroupMarks[I]);
-    WasVisible[I] := M.Visible;
-    OldR[I] := M.BoundsRect;
-  end;
-
-  for I := 0 to FGroupMarks.Count - 1 do
-  begin
-    M := TDsgGroupMark(FGroupMarks[I]);
-    K := I div 4;
-    Shown := False;
-    if I < Need then
+  FreezeForm;
+  try
+    S := GroupMarkSize;
+    if GroupCount > 1 then
+      Need := FGroup.Count * 4
+    else
+      Need := 0;
+    while FGroupMarks.Count < Need do
     begin
-      C := TControl(FGroup[K]);
-      Shown := (C.Parent <> nil) and C.Visible and C.Parent.Showing;
-      if Shown then
-      begin
-        if M.ParentWindow <> FForm.Handle then
-          M.ParentWindow := FForm.Handle;
-        P := FForm.ScreenToClient(C.Parent.ClientToScreen(Point(C.Left, C.Top)));
-        case I mod 4 of
-          0: M.SetBounds(P.X, P.Y, S, S);
-          1: M.SetBounds(P.X + C.Width - S, P.Y, S, S);
-          2: M.SetBounds(P.X, P.Y + C.Height - S, S, S);
-        else
-          M.SetBounds(P.X + C.Width - S, P.Y + C.Height - S, S, S);
-        end;
-        if not M.Visible then
-          M.Visible := True;
-        // Поверх всего на форме: компонент может лежать глубоко в панелях
-        M.BringToFront;
-      end;
-    end;
-    if not Shown and M.Visible then
+      M := TDsgGroupMark.Create(FForm);
       M.Visible := False;
-  end;
+      M.Enabled := False;
+      M.Width := S;
+      M.Height := S;
+      M.ParentWindow := FForm.Handle;
+      FGroupMarks.Add(M);
+    end;
 
-  // Место, откуда окошко ушло, - перерисовать вместе с вложенными окнами
-  // (как в ShowCarets)
-  for I := 0 to FGroupMarks.Count - 1 do
-  begin
-    M := TDsgGroupMark(FGroupMarks[I]);
-    if WasVisible[I] and
-       (not M.Visible or not EqualRect(OldR[I], M.BoundsRect)) then
-      RedrawWindow(FForm.Handle, @OldR[I], 0,
-                   RDW_INVALIDATE or RDW_ERASE or RDW_ALLCHILDREN);
+    SetLength(OldR, FGroupMarks.Count);
+    SetLength(WasVisible, FGroupMarks.Count);
+    for I := 0 to FGroupMarks.Count - 1 do
+    begin
+      M := TDsgGroupMark(FGroupMarks[I]);
+      WasVisible[I] := M.Visible;
+      OldR[I] := M.BoundsRect;
+    end;
+
+    for I := 0 to FGroupMarks.Count - 1 do
+    begin
+      M := TDsgGroupMark(FGroupMarks[I]);
+      K := I div 4;
+      Shown := False;
+      if I < Need then
+      begin
+        C := TControl(FGroup[K]);
+        Shown := (C.Parent <> nil) and C.Visible and C.Parent.Showing;
+        if Shown then
+        begin
+          if M.ParentWindow <> FForm.Handle then
+            M.ParentWindow := FForm.Handle;
+          P := FForm.ScreenToClient(C.Parent.ClientToScreen(Point(C.Left, C.Top)));
+          case I mod 4 of
+            0: M.SetBounds(P.X, P.Y, S, S);
+            1: M.SetBounds(P.X + C.Width - S, P.Y, S, S);
+            2: M.SetBounds(P.X, P.Y + C.Height - S, S, S);
+          else
+            M.SetBounds(P.X + C.Width - S, P.Y + C.Height - S, S, S);
+          end;
+          if not M.Visible then
+            M.Visible := True;
+          // Поверх всего на форме: компонент может лежать глубоко в панелях
+          M.BringToFront;
+        end;
+      end;
+      if not Shown and M.Visible then
+        M.Visible := False;
+    end;
+
+    // Место, откуда окошко ушло, - перерисовать вместе с вложенными окнами
+    // (как в ShowCarets); окошки на новом месте - тоже
+    for I := 0 to FGroupMarks.Count - 1 do
+    begin
+      M := TDsgGroupMark(FGroupMarks[I]);
+      if WasVisible[I] and
+         (not M.Visible or not EqualRect(OldR[I], M.BoundsRect)) then
+        AddRepaint(OldR[I]);
+      if M.Visible then
+        AddRepaint(M.BoundsRect);
+    end;
+    FlushPaint;
+  finally
+    ThawForm;
   end;
-  FlushPaint;
 end;
 
 // Новые места группы - в .dfm одной серией (OnBatch)
@@ -4213,6 +4837,296 @@ begin
   CommitGroup;
 end;
 
+// Рамки перетаскивания: XOR в клиентской части формы, поверх компонентов.
+// Второй вызов с теми же рамками стирает их.
+procedure TFormDesigner.ToggleDragFrames;
+var
+  StartCount, EndCount: Int64;
+  DC: HDC;
+  FrameIdx: Integer;
+  Origin: TPoint;
+  R: TRect;
+begin
+  if (Length(FFrames) = 0) or (FForm = nil) or not FForm.HandleAllocated then
+    Exit;
+  // DC самой формы, без отсечения дочерних окон (нет DCX_CLIPCHILDREN) -
+  // рамка ложится и поверх компонентов. Раньше рисовали в DC экрана
+  // (GetDC(0)): при включённом Aero (DWM) каждое такое рисование идёт
+  // через чтение составленной картинки рабочего стола и занимает десятки
+  // миллисекунд - рамка шла рывками.
+  QueryPerformanceCounter(StartCount);
+  DC := GetDCEx(FForm.Handle, 0, DCX_CACHE or DCX_CLIPSIBLINGS);
+  if DC = 0 then
+    Exit;
+  try
+    Origin := FForm.ClientToScreen(Point(0, 0));
+    for FrameIdx := 0 to High(FFrames) do
+    begin
+      R := FFrames[FrameIdx];
+      if IsRectEmpty(R) then
+        Continue;
+      // Рамки - в координатах экрана, рисуем в клиентских формы
+      OffsetRect(R, -Origin.X, -Origin.Y);
+      // Двойная линия - видна и на сетке
+      DrawFocusRect(DC, R);
+      InflateRect(R, -1, -1);
+      if not IsRectEmpty(R) then
+        DrawFocusRect(DC, R);
+    end;
+  finally
+    ReleaseDC(FForm.Handle, DC);
+  end;
+  FFramesShown := not FFramesShown;
+  QueryPerformanceCounter(EndCount);
+  Inc(FTimFrames);
+  Inc(FTimFrameSum, EndCount - StartCount);
+  if EndCount - StartCount > FTimFrameMax then
+    FTimFrameMax := EndCount - StartCount;
+end;
+
+// Новые рамки (в координатах экрана): прежние стираются, новые рисуются
+procedure TFormDesigner.SetDragFrames(const ANew: array of TRect);
+var
+  FrameIdx: Integer;
+  Same: Boolean;
+begin
+  Same := FFramesShown and (Length(ANew) = Length(FFrames));
+  if Same then
+    for FrameIdx := 0 to High(ANew) do
+      if not EqualRect(ANew[FrameIdx], FFrames[FrameIdx]) then
+      begin
+        Same := False;
+        Break;
+      end;
+  if Same then
+    Exit;
+  if FTrace then
+  begin
+    Inc(FTraceFrames);
+    if Length(ANew) > 0 then
+      TraceLine(Format('рамки: %d, первая %s',
+                       [Length(ANew), DsgRectText(ANew[0])]))
+    else
+      TraceLine('рамки: стереть');
+  end;
+  if FFramesShown then
+    ToggleDragFrames;
+  SetLength(FFrames, Length(ANew));
+  for FrameIdx := 0 to High(ANew) do
+    FFrames[FrameIdx] := ANew[FrameIdx];
+  if Length(FFrames) > 0 then
+    ToggleDragFrames;
+end;
+
+// Стереть рамки перетаскивания
+procedure TFormDesigner.ClearDragFrames;
+begin
+  if FFramesShown then
+    ToggleDragFrames;
+  SetLength(FFrames, 0);
+end;
+
+procedure TFormDesigner.TimingReset;
+begin
+  if FTimFreq = 0 then
+    QueryPerformanceFrequency(FTimFreq);
+  FTimFrames := 0;
+  FTimFrameSum := 0;
+  FTimFrameMax := 0;
+  FTimMoves := 0;
+  FTimMoveFirst := 0;
+  FTimMoveLast := 0;
+  FTimGapMax := 0;
+  FTimMoveSum := 0;
+  FTimMoveMax := 0;
+end;
+
+// Одна строка замера после переноса; без движений мыши - ничего
+procedure TFormDesigner.TimingReport(const AWhat: string);
+
+  // Тики счётчика - в миллисекунды с десятыми
+  function Ms(ATicks: Int64): string;
+  begin
+    if FTimFreq <= 0 then
+      Result := '?'
+    else
+      Result := FormatFloat('0.0', ATicks * 1000.0 / FTimFreq);
+  end;
+
+var
+  GapAvg, FrameAvg, MoveAvg: Int64;
+begin
+  if (FTimMoves < 2) or (FTimFreq <= 0) then
+    Exit;
+  GapAvg := (FTimMoveLast - FTimMoveFirst) div (FTimMoves - 1);
+  MoveAvg := FTimMoveSum div FTimMoves;
+  if FTimFrames > 0 then
+    FrameAvg := FTimFrameSum div FTimFrames
+  else
+    FrameAvg := 0;
+  DsgLog(Format('3804: %s - движений мыши %d за %s мс, промежуток между ' +
+                'ними: средний %s мс, наибольший %s мс; обработка ' +
+                'движения: средняя %s мс, наибольшая %s мс; рисований ' +
+                'рамки %d: среднее %s мс, наибольшее %s мс',
+                [AWhat, FTimMoves, Ms(FTimMoveLast - FTimMoveFirst),
+                 Ms(GapAvg), Ms(FTimGapMax), Ms(MoveAvg), Ms(FTimMoveMax),
+                 FTimFrames, Ms(FrameAvg), Ms(FTimFrameMax)]), clNavy);
+end;
+
+procedure TFormDesigner.TraceStart(const AWhat: string);
+begin
+  FTrace := FDragTrace;
+  if not FTrace then
+    Exit;
+  FTraceStart := GetTickCount;
+  FTraceLines := 0;
+  FTraceMoves := 0;
+  FTraceFrames := 0;
+  FTracePaintRoot := 0;
+  FTracePaintKids := 0;
+  FTraceErase := 0;
+  FTracePos := 0;
+  FTraceFlush := 0;
+  FTraceMarks := 0;
+  FTraceCarets := 0;
+  // Заголовок - с первой строкой: простой щелчок без движения журнал не
+  // засоряет
+  FTraceWhat := AWhat;
+  FTraceHeader := False;
+end;
+
+procedure TFormDesigner.TraceLine(const AText: string);
+begin
+  if not FTrace then
+    Exit;
+  if not FTraceHeader then
+  begin
+    FTraceHeader := True;
+    DsgLog('3800: перенос - начало: ' + FTraceWhat, clNavy);
+  end;
+  Inc(FTraceLines);
+  if FTraceLines > TraceMaxLines then
+    Exit;
+  if FTraceLines = TraceMaxLines then
+  begin
+    DsgLog('3801: перенос: дальше подробные строки не пишутся, итог - в ' +
+           'конце', clNavy);
+    Exit;
+  end;
+  DsgLog(Format('3802: %5d мс  %s', [GetTickCount - FTraceStart, AText]),
+         clGray);
+end;
+
+procedure TFormDesigner.TraceEnd;
+begin
+  if not FTrace then
+    Exit;
+  FTrace := False;
+  if FTraceMoves = 0 then
+    Exit;   // щелчок без движения
+  DsgLog(Format('3803: перенос - итог за %d мс: движений мыши %d, ' +
+                'перерисовок рамки %d, WM_PAINT формы %d, WM_PAINT ' +
+                'компонентов %d, WM_ERASEBKGND %d, смен места окон %d, ' +
+                'FlushPaint %d, ShowGroupMarks %d, маркеров (Show/Hide) %d',
+                [GetTickCount - FTraceStart, FTraceMoves, FTraceFrames,
+                 FTracePaintRoot, FTracePaintKids, FTraceErase, FTracePos,
+                 FTraceFlush, FTraceMarks, FTraceCarets]), clNavy);
+end;
+
+// Сообщения окон формы во время переноса: кто перерисовывается и что
+// сдвигается
+procedure TFormDesigner.TraceMsg(ACtl: TWinControl; const AMsg: TMessage);
+var
+  Upd: TRect;
+  WinPos: PWindowPos;
+begin
+  case AMsg.Msg of
+    WM_PAINT:
+      begin
+        if ACtl = FForm then
+          Inc(FTracePaintRoot)
+        else
+          Inc(FTracePaintKids);
+        if not GetUpdateRect(ACtl.Handle, Upd, False) then
+          Upd := Rect(0, 0, 0, 0);
+        TraceLine('WM_PAINT ' + ACtl.Name + ' ' + DsgRectText(Upd));
+      end;
+    WM_ERASEBKGND:
+      begin
+        Inc(FTraceErase);
+        TraceLine('WM_ERASEBKGND ' + ACtl.Name);
+      end;
+    WM_WINDOWPOSCHANGED:
+      begin
+        WinPos := PWindowPos(AMsg.LParam);
+        if (WinPos <> nil) and ((WinPos^.flags and SWP_NOMOVE) = 0) then
+        begin
+          Inc(FTracePos);
+          TraceLine(Format('WM_WINDOWPOSCHANGED %s -> %d,%d %dx%d',
+                           [ACtl.Name, WinPos^.x, WinPos^.y, WinPos^.cx,
+                            WinPos^.cy]));
+        end;
+      end;
+  end;
+end;
+
+function TFormDesigner.GetDragging: Boolean;
+begin
+  Result := FDragging or FBanding;
+end;
+
+// Рамку отпустили: дети FBandParent, которых она задела, - в группу (как в
+// Delphi, достаточно задеть). Компоненты .dfm и созданные кодом в одну
+// группу не берутся: если задеты те и другие - только из .dfm. Один
+// компонент - обычное выделение; ни одного - остаётся форма (контейнер).
+procedure TFormDesigner.BandSelect;
+var
+  Found: TList;
+  CtlIdx: Integer;
+  C: TControl;
+  Origin: TPoint;
+  CtlRect, Hit: TRect;
+  HasDfm: Boolean;
+begin
+  if (FBandParent = nil) or IsRectEmpty(FBandRect) then
+    Exit;
+  Found := TList.Create;
+  try
+    HasDfm := False;
+    for CtlIdx := 0 to FBandParent.ControlCount - 1 do
+    begin
+      C := FBandParent.Controls[CtlIdx];
+      // Только компоненты формы и значки невизуальных - не маркеры и не
+      // служебные окна конструктора
+      if not C.Visible or (C is TDsgCaret) or (C is TDsgIconCaption) or
+         not ((C is TDsgIcon) or (C.Owner = FForm)) then
+        Continue;
+      Origin := FBandParent.ClientToScreen(Point(C.Left, C.Top));
+      CtlRect := Rect(Origin.X, Origin.Y, Origin.X + C.Width,
+                      Origin.Y + C.Height);
+      if not IntersectRect(Hit, CtlRect, FBandRect) then
+        Continue;
+      Found.Add(C);
+      if not IsRuntime(C) then
+        HasDfm := True;
+    end;
+    // Не смешивать .dfm и код
+    if HasDfm then
+      for CtlIdx := Found.Count - 1 downto 0 do
+        if IsRuntime(TComponent(Found[CtlIdx])) then
+          Found.Delete(CtlIdx);
+    DsgLog('3790: рамка: задето компонентов ' + IntToStr(Found.Count),
+           clNavy);
+    if Found.Count = 0 then
+      Exit;
+    Select(TComponent(Found[0]), True);
+    for CtlIdx := 1 to Found.Count - 1 do
+      ToggleGroup(TComponent(Found[CtlIdx]));
+  finally
+    Found.Free;
+  end;
+end;
+
 procedure TFormDesigner.MouseDown(ATarget: TComponent; const AScreen: TPoint);
 var
   Par: TWinControl;
@@ -4221,6 +5135,11 @@ var
   Handled: Boolean;
   I: Integer;
 begin
+  HideHint;
+  FTrace := False;
+  TimingReset;
+  // Рамки прошлого перетаскивания, если кнопку отпустили не над формой
+  ClearDragFrames;
   // Выбран класс на палитре - щелчок ставит компонент
   if Assigned(FOnPlace) then
   begin
@@ -4232,7 +5151,7 @@ begin
     Pt := Par.ScreenToClient(AScreen);
     FPt := FForm.ScreenToClient(AScreen);
     Handled := False;
-    FOnPlace(Nm, Snap(Pt.X), Snap(Pt.Y), Snap(FPt.X), Snap(FPt.Y), Handled);
+    FOnPlace(Nm, SnapX(Pt.X), SnapY(Pt.Y), SnapX(FPt.X), SnapY(FPt.Y), Handled);
     if Handled then
     begin
       FDragging := False;
@@ -4278,6 +5197,26 @@ begin
     FGroupDrag := True;
     FDragging := True;
     FDragMoved := False;
+    TraceStart(Format('группа из %d, тянут за %s', [FGroup.Count,
+                                                   FDragCtl.Name]));
+    Exit;
+  end;
+
+  FBanding := False;
+  // Пустое место формы или, с Ctrl, контейнера - выделение рамкой, как в
+  // Delphi. Сначала выделяется сама форма (контейнер), как при щелчке.
+  if (ATarget = FForm) or
+     ((GetKeyState(VK_CONTROL) < 0) and (ATarget is TWinControl) and
+      (csAcceptsControls in TControl(ATarget).ControlStyle) and
+      not (ATarget is TDsgStub)) then
+  begin
+    Select(ATarget, True);
+    FDragging := False;
+    FBanding := True;
+    FBandMoved := False;
+    FBandFrom := AScreen;
+    FBandParent := PlaceParent(ATarget);
+    TraceStart('рамка выделения в ' + FBandParent.Name);
     Exit;
   end;
 
@@ -4302,24 +5241,80 @@ begin
   FDragRect := FDragCtl.BoundsRect;
   FDragging := True;
   FDragMoved := False;
+  TraceStart('компонент ' + FDragCtl.Name);
 end;
 
 // Перемещение - как MouseMoveObject у RQ: смещение от точки нажатия, угол
 // компонента встаёт на сетку. Первые 3 пикселя - не перемещение, а
 // дрожание руки при щелчке.
+// Движение мыши с замером: промежуток от прошлого движения и время
+// обработки (MouseMoveWork) - в счётчики
 procedure TFormDesigner.MouseMove(const AScreen: TPoint);
+var
+  StartCount, EndCount: Int64;
+begin
+  if not FDragging and not FBanding then
+    Exit;
+  QueryPerformanceCounter(StartCount);
+  if FTimMoves = 0 then
+    FTimMoveFirst := StartCount
+  else if StartCount - FTimMoveLast > FTimGapMax then
+    FTimGapMax := StartCount - FTimMoveLast;
+  FTimMoveLast := StartCount;
+  Inc(FTimMoves);
+  MouseMoveWork(AScreen);
+  QueryPerformanceCounter(EndCount);
+  Inc(FTimMoveSum, EndCount - StartCount);
+  if EndCount - StartCount > FTimMoveMax then
+    FTimMoveMax := EndCount - StartCount;
+end;
+
+procedure TFormDesigner.MouseMoveWork(const AScreen: TPoint);
 var
   DX, DY, NewX, NewY, I: Integer;
   Code: string;
   R: TRect;
   C: TControl;
+  Frames: array of TRect;
+  Origin: TPoint;
+  Clip: TRect;
 begin
+  if FTrace then
+  begin
+    Inc(FTraceMoves);
+    TraceLine(Format('мышь %d,%d', [AScreen.X, AScreen.Y]));
+  end;
+  // Рамка выделения: от точки нажатия до мыши, в пределах контейнера
+  if FBanding then
+  begin
+    if not FBandMoved and (Abs(AScreen.X - FBandFrom.X) < 3) and
+       (Abs(AScreen.Y - FBandFrom.Y) < 3) then
+      Exit;
+    FBandMoved := True;
+    R := Rect(Min(FBandFrom.X, AScreen.X), Min(FBandFrom.Y, AScreen.Y),
+              Max(FBandFrom.X, AScreen.X), Max(FBandFrom.Y, AScreen.Y));
+    if (FBandParent <> nil) and FBandParent.HandleAllocated then
+    begin
+      Origin := FBandParent.ClientToScreen(Point(0, 0));
+      Clip := Rect(Origin.X, Origin.Y, Origin.X + FBandParent.ClientWidth,
+                   Origin.Y + FBandParent.ClientHeight);
+      IntersectRect(R, R, Clip);
+    end;
+    FBandRect := R;
+    SetLength(Frames, 1);
+    Frames[0] := R;
+    SetDragFrames(Frames);
+    Exit;
+  end;
   if not FDragging or (FDragCtl = nil) then
     Exit;
   DX := AScreen.X - FDragFrom.X;
   DY := AScreen.Y - FDragFrom.Y;
   if not FDragMoved and (Abs(DX) < 3) and (Abs(DY) < 3) then
     Exit;
+  if not FDragMoved then
+    // Маркеры выделения - на старом месте; на время переноса их нет
+    HideCarets;
   FDragMoved := True;
 
   // Группа: сдвиг - по тому, за кого тянут (угол на сетку), и тот же сдвиг
@@ -4327,12 +5322,17 @@ begin
   // которой место задаёт код, остаётся, за край родителя не уходит.
   if FGroupDrag then
   begin
-    DX := Snap(FDragRect.Left + DX) - FDragRect.Left;
-    DY := Snap(FDragRect.Top + DY) - FDragRect.Top;
+    DX := SnapX(FDragRect.Left + DX) - FDragRect.Left;
+    DY := SnapY(FDragRect.Top + DY) - FDragRect.Top;
+    SetLength(FDragNew, FGroup.Count);
+    SetLength(Frames, FGroup.Count);
     for I := 0 to FGroup.Count - 1 do
     begin
+      FDragNew[I] := Rect(0, 0, 0, 0);
+      Frames[I] := Rect(0, 0, 0, 0);
       C := TControl(FGroup[I]);
-      if (I > High(FGroupFrom)) or (C.Align <> alNone) or IsRuntime(C) then
+      if (I > High(FGroupFrom)) or (C.Align <> alNone) or IsRuntime(C) or
+         (C.Parent = nil) then
         Continue;
       R := FGroupFrom[I];
       Code := CodePlacedSides(C);
@@ -4341,16 +5341,19 @@ begin
       if Pos('T', Code) = 0 then
         OffsetRect(R, 0, DY);
       ClampToParent(C.Parent, R, False);
-      C.SetBounds(R.Left, R.Top, C.Width, C.Height);
+      FDragNew[I] := R;
+      Origin := C.Parent.ClientToScreen(R.TopLeft);
+      Frames[I] := Rect(Origin.X, Origin.Y, Origin.X + C.Width,
+                        Origin.Y + C.Height);
     end;
-    ShowGroupMarks;
+    SetDragFrames(Frames);
     Exit;
   end;
 
   // Ось, по которой место задаёт код, остаётся на месте
   Code := CodePlacedSides(FDragCtl);
-  NewX := Snap(FDragRect.Left + DX);
-  NewY := Snap(FDragRect.Top + DY);
+  NewX := SnapX(FDragRect.Left + DX);
+  NewY := SnapY(FDragRect.Top + DY);
   if Pos('L', Code) > 0 then
     NewX := FDragRect.Left;
   if Pos('T', Code) > 0 then
@@ -4358,33 +5361,81 @@ begin
   // В пределах родителя
   R := Rect(NewX, NewY, NewX + FDragCtl.Width, NewY + FDragCtl.Height);
   ClampToParent(FDragCtl.Parent, R, False);
-  NewX := R.Left;
-  NewY := R.Top;
-  FDragCtl.SetBounds(NewX, NewY, FDragCtl.Width, FDragCtl.Height);
-  ShowCarets;
+  SetLength(FDragNew, 1);
+  FDragNew[0] := R;
+  SetLength(Frames, 1);
+  Origin := FDragCtl.Parent.ClientToScreen(R.TopLeft);
+  Frames[0] := Rect(Origin.X, Origin.Y, Origin.X + FDragCtl.Width,
+                    Origin.Y + FDragCtl.Height);
+  SetDragFrames(Frames);
 end;
 
+// Кнопку отпустили: рамки стираются, компоненты встают на новые места -
+// одна перерисовка формы
 procedure TFormDesigner.MouseUp;
+var
+  I: Integer;
+  C: TControl;
 begin
+  if FBanding then
+  begin
+    FBanding := False;
+    ClearDragFrames;
+    TraceLine('отпустили: выделение рамкой');
+    if FBandMoved then
+      BandSelect;
+    FBandParent := nil;
+    TraceEnd;
+    TimingReport('рамка выделения');
+    Exit;
+  end;
   if not FDragging then
     Exit;
   FDragging := False;
+  ClearDragFrames;
+  TraceLine('отпустили: компоненты - на новые места');
   if FGroupDrag then
   begin
     FGroupDrag := False;
     FDragCtl := nil;
     if FDragMoved then
+    begin
+      for I := 0 to FGroup.Count - 1 do
+        if (I <= High(FDragNew)) and not IsRectEmpty(FDragNew[I]) then
+        begin
+          C := TControl(FGroup[I]);
+          C.SetBounds(FDragNew[I].Left, FDragNew[I].Top, C.Width, C.Height);
+        end;
+      ShowGroupMarks;
+      TraceLine('запись в .dfm (CommitGroup)');
       CommitGroup;
+    end;
+    SetLength(FDragNew, 0);
+    TraceEnd;
+    TimingReport('перенос группы');
     Exit;
   end;
+  if FDragMoved and (FDragCtl <> nil) and (Length(FDragNew) > 0) then
+  begin
+    FDragCtl.SetBounds(FDragNew[0].Left, FDragNew[0].Top, FDragCtl.Width,
+                       FDragCtl.Height);
+    ShowCarets;
+  end;
+  SetLength(FDragNew, 0);
   if FDragMoved and (FDragCtl <> nil) and
      not EqualRect(FDragCtl.BoundsRect, FDragRect) then
+  begin
+    TraceLine('запись в .dfm (CommitBounds)');
     CommitBounds(FDragCtl);
+  end;
   FDragCtl := nil;
+  TraceEnd;
+  TimingReport('перенос компонента');
 end;
 
 procedure TFormDesigner.KeyDown(AKey: Word);
 begin
+  HideHint;
   if Assigned(FOnKey) then
     FOnKey(AKey, GetKeyState(VK_CONTROL) < 0, GetKeyState(VK_SHIFT) < 0);
 end;

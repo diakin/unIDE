@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QICON</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QICON</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QICON Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QICON.inc</code>, line 30 &middot; version: 1.2</p>
+<p><b>A non-visual object that extracts icons from files and saves an icon or a 32x32 bitmap as a 16- or 256-color .ico file, or converts it to a cursor.</b></p>
+<p>Assigning FileName loads an icon with ExtractIcon from shell32.dll (or, when Associated is True, the icon of the associated application with ExtractAssociatedIcon); Count receives the number of icons in the file and Handle the icon handle. Assigning Index extracts another icon from the same file.</p>
+<p>SaveToFile draws the current icon into a 32x32 QBitmap with DrawIconEx, saves it to a memory stream and writes an .ico file from a built-in 62-byte header, the bitmap palette and pixels, and a monochrome mask. With mask set, white (16 colors) or palette entry &amp;H13 (256 colors) becomes transparent; otherwise the mask is opaque. SaveBmpToFile does the same for a 32x32 QBitmap. ConvertAsCursor patches an .ico file into a .cur file with a hot spot.</p>
+<p>QICON inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QICON Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">FileName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>File to take icons from. Assigning a non-empty name destroys the previous icon, then extracts icon 0 (or the associated icon when Associated is True) and sets Count and Handle; assigning an empty string only destroys the current icon.</td></tr>
+<tr><td class="rq-name">count</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of icons found in the file (1 in Associated mode).</td></tr>
+<tr><td class="rq-name">handle</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Handle (HICON) of the current icon.</td></tr>
+<tr><td class="rq-name">Associated</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>When True, assigning FileName uses ExtractAssociatedIcon, so a document file gives the icon of its associated program. Set it before FileName.</td></tr>
+<tr><td class="rq-name">index</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Icon number in the file. Assigning it destroys the current icon and extracts the icon with that index if the value is not greater than Count.</td></tr>
+</table>
+<a name="2"></a><h2>QICON Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">SaveToFile</td><td class="rq-type">SUB(FileName as string,pixelFormat as integer,mask as integer)</td><td>Saves the current icon as a 32x32 .ico file; pixelFormat 2 gives 16 colors, any other value 256 colors; mask non-zero makes a transparency mask.</td></tr>
+<tr><td class="rq-name">SaveBmpToFile</td><td class="rq-type">SUB(bitmap as QBitmap,FileName as string,pixelFormat as integer,mask as integer)</td><td>Saves a 32x32 QBitmap as an .ico file with the same pixelFormat and mask options; does nothing for other sizes.</td></tr>
+<tr><td class="rq-name">ConvertAsCursor</td><td class="rq-type">SUB(FileName as string,XHotSpot as byte,YHotSpot as byte)</td><td>Changes an existing .ico file into a cursor: writes the cursor type and the X and Y hot spot into the header and renames the file to .cur (deleting an existing .cur of that name).</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>CreateMask16 tests characters 7 and 8 of HEX$ of a single byte, which is at most 2 characters long, so the 16-color transparency mask never marks any pixel as transparent.</li>
+<li>SetIndex accepts Index equal to Count, one past the last icon (icons are numbered from 0), and does not store the new value in Index.</li>
+<li>After DestroyIcon the Handle field is not reset, so when FileName is set to an empty string or Index is out of range Handle still holds the destroyed handle.</li>
+<li>ConvertAsCursor builds the new name from the first &#x27;.&#x27; in the path, so a directory name containing a dot gives a wrong name.</li>
+<li>Only 32x32 icons are written; the header bytes are hard-coded.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QICON.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QICON Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QICON.inc&quot;
+
+DIM Ico AS QICON
+Ico.FileName = &quot;C:\WINDOWS\NOTEPAD.EXE&quot;
+ShowMessage &quot;Icons found: &quot; + STR$(Ico.Count)
+Ico.SaveToFile(&quot;notepad.ico&quot;, 3, 1)
+Ico.ConvertAsCursor(&quot;notepad.ico&quot;, 16, 16)</pre>
+<div class="rq-foot"><a href="c_qicmp.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qid3tag.html">Next component</a></div>
+</body>
+</html>

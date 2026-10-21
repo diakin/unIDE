@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSTATUSBAREX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSTATUSBAREX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSTATUSBAREX Component</h1>
+<p class="rq-meta">Extends <a href="qstatusbar.html">QSTATUSBAR</a> &middot; source: <code>inc/object/QStatusBarEx.inc</code>, line 15 &middot; version: 1.0</p>
+<p><b>A QSTATUSBAR extension that can place a QPanel (and the controls on it) inside one of its status bar panels.</b></p>
+<p>AddOptPanel(panel, index) removes the panel&#x27;s bevels, fits its height and width into status bar panel number index, positions it horizontally after the preceding panels and centres it vertically, then makes it a child of the status bar with the Windows API SetParent and shows it.</p>
+<p>QSTATUSBAREX inherits the properties, methods and events of <a href="qstatusbar.html">QSTATUSBAR</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="2"></a><h2>QStatusBarEx Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">AddOptPanel</td><td class="rq-type">SUB(panel as qpanel,index as integer)</td><td>AddOptPanel(panel, index) places the QPanel inside status bar panel index (from 0): removes its bevels, limits its height to the bar height - 4 and its width to the panel width - 4, positions it, re-parents it to the status bar and makes it visible.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The panel is positioned once; it does not follow later changes of the status bar panel widths or of the bar height.</li>
+<li>The header comment calls the class QStatusBar rather than QStatusBarEx.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/QStatusBarEx.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QStatusBarEx Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;object/QStatusBarEx.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Status bar&quot;
+  CREATE Status AS QStatusBarEx
+    AddPanels &quot;Ready&quot;, &quot;&quot;
+  END CREATE
+  CREATE Box AS QPanel
+    Width = 100
+    Height = 14
+  END CREATE
+END CREATE
+Status.Panel(0).Width = 150
+Status.AddOptPanel(Box, 1)
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qsqltable.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qstringgridex.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Files.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: Files.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>Files.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/Files.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 49 functions &middot; 7 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#BROWSEFORFILE">BrowseForFile</a> &middot; <a href="#BROWSEFORFOLDERS">BrowseForFolders</a> &middot; <a href="#BSPATH">bsPath</a> &middot; <a href="#CHANGEFILEEXT">ChangeFileExt</a> &middot; <a href="#CHANGEFILENAME">ChangeFileName</a> &middot; <a href="#CHANGEFILEPATH">ChangeFilePath</a> &middot; <a href="#CHDIROEM">ChDirOEM</a> &middot; <a href="#CHECKFILEWR">CheckFileWr</a> &middot; <a href="#CREATEDIRECTORY">CreateDirectory</a> &middot; <a href="#C_STYLE">C_Style</a> &middot; <a href="#DIRCOPY">DirCopy</a> &middot; <a href="#DOWNLOADURL">DownLoadURL</a> &middot; <a href="#EXTRACTFILENAME">ExtractFileName</a> &middot; <a href="#EXTRACTFILEPATH">ExtractFilePath</a> &middot; <a href="#FFILECOPY">fFileCopy</a> &middot; <a href="#FILECOPY">FileCopy</a> &middot; <a href="#FILENAMENOEXT">FileNameNoExt</a> &middot; <a href="#FILESIZE">FileSize</a> &middot; <a href="#FSUBDIRCOPY">fSubDirCopy</a> &middot; <a href="#FULLPATHNOEXT">FullPathNoExt</a> &middot; <a href="#GETFILEATTRIBUTES">GetFileAttributes</a> &middot; <a href="#GETFILENAMENOPATH">GetFileNameNoPath</a> &middot; <a href="#HOMEDIR">homedir</a> &middot; <a href="#INTERNETCLOSEHANDLE">InternetCloseHandle</a> &middot; <a href="#INTERNETOPEN">InternetOpen</a> &middot; <a href="#INTERNETOPENURL">InternetOpenUrl</a> &middot; <a href="#INTERNETREADFILE">InternetReadFile</a> &middot; <a href="#IO2RND">io2Rnd</a> &middot; <a href="#IO2RNDINTER">io2RndInter</a> &middot; <a href="#IO2RNDINTER1">io2RndInter1</a> &middot; <a href="#IO2RNDPV">io2RndPV</a> &middot; <a href="#IOAVERAGE">ioAverage</a> &middot; <a href="#KILLFILES">KillFiles</a> &middot; <a href="#KILLSUBDIR">KillSubDir</a> &middot; <a href="#LOADBINSTRING">LoadBinString</a> &middot; <a href="#LOADSTRING">LoadString</a> &middot; <a href="#LOADSTRING1">LoadString1</a> &middot; <a href="#MKDIROEM">MkDirOEM</a> &middot; <a href="#MKSUBDIR">MKSubDir</a> &middot; <a href="#QUOTE">Quote</a> &middot; <a href="#RND2IO">Rnd2io</a> &middot; <a href="#SAVESTRING">SaveString</a> &middot; <a href="#SAVESTRINGEX">SaveStringEx</a> &middot; <a href="#SETFILEATTRIBUTES">SetFileAttributes</a> &middot; <a href="#STRIPFILEEXT">StripFileExt</a> &middot; <a href="#STRIPFILENAME">StripFileName</a> &middot; <a href="#STRIPPATH">StripPath</a> &middot; <a href="#SUBDIRCOPY">SubDirCopy</a> &middot; <a href="#SYSDIR">SysDir</a></p>
+<h3><a name="BROWSEFORFILE"></a>BrowseForFile</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3995</p>
+<pre>Function BrowseForFile (caption as string, filter as string, initialdir as string) as string</pre>
+<p>Shows a QOPENDIALOG with the given caption, filter and initial folder and returns the selected file name, or an empty string if cancelled.</p>
+<h3><a name="BROWSEFORFOLDERS"></a>BrowseForFolders</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3989</p>
+<pre>function BrowseForFolders (initialdir as string, wincapt as string) as string</pre>
+<p>Shows a modal form with a QDIRTREE so the user can pick a folder, starting in initialdir (or the current directory if it does not exist). Caption is wincapt or &quot;Select folder&quot;. Returns the selected directory; there is no cancel result.</p>
+<h3><a name="BSPATH"></a>bsPath</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3959</p>
+<pre>function bsPath (fullname as string) as string</pre>
+<p>Converts forward slashes in a path to backslashes.</p>
+<h3><a name="CHANGEFILEEXT"></a>ChangeFileExt</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4034</p>
+<pre>FUNCTION ChangeFileExt(FileName as String, NewExt as STRING) as STRING</pre>
+<p>Returns FileName with the extension (from the last dot) replaced by NewExt; NewExt should include the dot. Expects the name to contain a dot.</p>
+<h3><a name="CHANGEFILENAME"></a>ChangeFileName</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4134</p>
+<pre>FUNCTION ChangeFileName(FileName as STRING, NewName as STRING) AS STRING</pre>
+<p>Returns ExtractFilePath(FileName) + NewName: replaces the file name and keeps the folder.</p>
+<h3><a name="CHANGEFILEPATH"></a>ChangeFilePath</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4165</p>
+<pre>FUNCTION ChangeFilePath(FileName as STRING, NewPath as STRING) AS STRING</pre>
+<p>Returns NewPath + ExtractFileName(FileName): the same file name in another folder. NewPath should end with a backslash.</p>
+<h3><a name="CHDIROEM"></a>ChDirOEM</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4905</p>
+<pre>function ChDirOEM (PathDst$) as short</pre>
+<p>Converts the path to the OEM code page with CharToOem and changes the current directory to it. Returns 1.</p>
+<h3><a name="CHECKFILEWR"></a>CheckFileWr</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4246</p>
+<pre>FUNCTION CheckFileWr (FileName as STRING ) AS long</pre>
+<p>Checks whether a file can be opened for writing. Returns -1 if it can, 0 otherwise.</p>
+<h3><a name="CREATEDIRECTORY"></a>CreateDirectory</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 3883</p>
+<pre>Declare Function CreateDirectory Lib &quot;kernel32&quot; Alias &quot;CreateDirectoryA&quot; (ByVal lpPathName As String, lpSecurityAttributes As SECURITY_ATTRIBUTES) As Long</pre>
+<p>Creates a new directory (only the last path component). Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CreateDirectoryA">CreateDirectoryA</a></p>
+<h3><a name="C_STYLE"></a>C_Style</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3956</p>
+<pre>function C_Style (fullname as string) as string</pre>
+<p>Converts a Windows path to forward slashes: double backslashes become one, then every backslash becomes &#x27;/&#x27;.</p>
+<h3><a name="DIRCOPY"></a>DirCopy</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4478</p>
+<pre>function DirCopy (DirSrc$, DirDst$, mask$) as long</pre>
+<p>Copies files matching mask$ from DirSrc$ to DirDst$ (no subfolders), creating DirDst$. Asks before overwriting read-only/hidden/system files (message fMsg35$, global fdefaultChkAttr for Yes to all) and restores attributes. Updates global DiaMsg$. Returns the number of files copied.</p>
+<h3><a name="DOWNLOADURL"></a>DownLoadURL</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4914</p>
+<pre>function DownLoadURL (sUrl as string, dFileName as string) as long</pre>
+<p>Downloads sUrl with WinINet (InternetOpen, InternetOpenUrl, InternetReadFile) in 2 KB blocks and saves the data to dFileName with SaveString. Returns the number of bytes read. The comment promises -1 on error, but the code has no explicit error check.</p>
+<h3><a name="EXTRACTFILENAME"></a>ExtractFileName</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4069</p>
+<pre>FUNCTION ExtractFileName(FileName as STRING) AS STRING</pre>
+<p>Returns the file name without the path: the text after the last backslash or &quot;/&quot;. Files.inc is under $ESCAPECHARS ON, so &quot;\\&quot; in the code is one backslash. The two positions are combined with OR (bitwise), so a path that has both &quot;\&quot; and &quot;/&quot; can give a wrong position.</p>
+<h3><a name="EXTRACTFILEPATH"></a>ExtractFilePath</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4102</p>
+<pre>FUNCTION ExtractFilePath(FileName as STRING) AS STRING</pre>
+<p>Returns the path part of FileName up to and including the last backslash or &quot;/&quot; (Files.inc is under $ESCAPECHARS ON, so &quot;\\&quot; in the code is one backslash). The two positions are combined with OR (bitwise), so a path that has both separators can give a wrong result.</p>
+<h3><a name="FFILECOPY"></a>fFileCopy</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4485</p>
+<pre>function fFileCopy (FileSrc$, FileDst$) as long</pre>
+<p>Copies FileSrc$ to FileDst$, creating the target folder if needed. Returns 1 on success, -1 if the folder cannot be created, -2 if the source cannot be opened, -3 if the target cannot be created (with a message).</p>
+<h3><a name="FILECOPY"></a>FileCopy</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4482</p>
+<pre>sub FileCopy (FileSrc$, FileDst$)</pre>
+<p>Copies FileSrc$ to FileDst$, creating the target folder if needed. Errors are silent except a message when the folder cannot be created.</p>
+<h3><a name="FILENAMENOEXT"></a>FileNameNoExt</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3946</p>
+<pre>function FileNameNoExt(fullname as string) as string</pre>
+<p>Returns the file name without path and without extension.</p>
+<h3><a name="FILESIZE"></a>FileSize</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4170</p>
+<pre>FUNCTION FileSize(FileName as STRING) AS integer</pre>
+<p>Returns the size of the file in bytes (opened read-only with QFileStream), or -1 if it cannot be opened.</p>
+<h3><a name="FSUBDIRCOPY"></a>fSubDirCopy</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4362</p>
+<pre>function fSubDirCopy (DirSrc$, DirDst$, mask$) as long</pre>
+<p>Function version of SubDirCopy: copies DirSrc$ with subfolders and files matching mask$ to DirDst$, skipping 0-byte files. Returns the number of files processed, or -1 if stopped via global stops1. Shows a message if a target file cannot be created.</p>
+<h3><a name="FULLPATHNOEXT"></a>FullPathNoExt</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3951</p>
+<pre>function FullPathNoExt(fullname as string) as string</pre>
+<p>Returns the full path with the extension (from the last dot) removed.</p>
+<h3><a name="GETFILEATTRIBUTES"></a>GetFileAttributes</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 3878</p>
+<pre>Declare Function GetFileAttributes Lib &quot;kernel32&quot; Alias &quot;GetFileAttributesA&quot; (ByVal lpFileName As String) As Long</pre>
+<p>Retrieves file system attributes (read-only, hidden, directory, etc.) for a file or directory. Returns INVALID_FILE_ATTRIBUTES (-1) on failure.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetFileAttributesA">GetFileAttributesA</a></p>
+<h3><a name="GETFILENAMENOPATH"></a>GetFileNameNoPath</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3936</p>
+<pre>Function GetFileNameNoPath (fullname as string) as string</pre>
+<p>Returns the file name part of a full path (text after the last backslash). Same as StripFileName.</p>
+<h3><a name="HOMEDIR"></a>homedir</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3983</p>
+<pre>function homedir() as string</pre>
+<p>Returns the folder of the running program (from COMMAND$(0)) including the trailing backslash.</p>
+<h3><a name="INTERNETCLOSEHANDLE"></a>InternetCloseHandle</h3>
+<p class="rq-meta">DLL function, wininet &middot; RQProc.inc, line 3902</p>
+<pre>Declare Function InternetCloseHandle Lib &quot;wininet&quot; Alias &quot;InternetCloseHandle&quot; ( hInet As Long) As Integer</pre>
+<p>Closes a single Internet handle opened by WinINet functions.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InternetCloseHandle">InternetCloseHandle</a></p>
+<h3><a name="INTERNETOPEN"></a>InternetOpen</h3>
+<p class="rq-meta">DLL function, wininet &middot; RQProc.inc, line 3894</p>
+<pre>Declare Function InternetOpen Lib &quot;wininet&quot; Alias &quot;InternetOpenA&quot; ( sAgent As String, lAccessType As Long, sProxyName As String, sProxyBypass As String, lFlags As Long ) As Long</pre>
+<p>Initializes an application&#x27;s use of the WinINet functions and returns a root Internet handle.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InternetOpenA">InternetOpenA</a></p>
+<h3><a name="INTERNETOPENURL"></a>InternetOpenUrl</h3>
+<p class="rq-meta">DLL function, wininet &middot; RQProc.inc, line 3911</p>
+<pre>Declare Function InternetOpenUrl Lib &quot;wininet&quot; Alias &quot;InternetOpenUrlA&quot; ( hInternetSession As Long, lpszUrl As String, lpszHeaders As String, dwHeadersLength As Long, dwFlags As Long, dwContext As Long) As Long</pre>
+<p>Opens a resource specified by a complete FTP or HTTP URL and returns a handle for reading it with InternetReadFile.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InternetOpenUrlA">InternetOpenUrlA</a></p>
+<h3><a name="INTERNETREADFILE"></a>InternetReadFile</h3>
+<p class="rq-meta">DLL function, wininet &middot; RQProc.inc, line 3904</p>
+<pre>Declare Function InternetReadFile Lib &quot;wininet&quot; Alias &quot;InternetReadFile&quot; ( hFile As Long, byref sBuffer As String, lNumBytesToRead As Long, byref lNumberOfBytesRead As Long ) As Integer</pre>
+<p>Reads data from a handle opened by InternetOpenUrl, FtpOpenFile or HttpOpenRequest; bytes read of 0 means end of data.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=InternetReadFile">InternetReadFile</a></p>
+<h3><a name="IO2RND"></a>io2Rnd</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4558</p>
+<pre>SUB io2Rnd (fsrc$, fdst$)</pre>
+<p>Converts a text file with one number per line (fsrc$) to a binary file fdst$ of SINGLE values. The target is overwritten.</p>
+<h3><a name="IO2RNDINTER"></a>io2RndInter</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4596</p>
+<pre>SUB io2RndInter (io$, rndf$, LostP)</pre>
+<p>Converts a text file of &quot;point,value&quot; lines to a binary SINGLE file rndf$, filling missing points by linear interpolation. Also writes the point numbers to a companion file (name + &quot;Arg&quot; + ext). LostP returns the missed-point count (pass by reference); if LostP is -1 on entry DOEVENTS is called.</p>
+<h3><a name="IO2RNDINTER1"></a>io2RndInter1</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4672</p>
+<pre>SUB io2RndInter1 (io$, rndf$, LostP)</pre>
+<p>Like io2RndInter but supports increasing or decreasing point order and averages repeated points. Writes rndf$ (values), name+&quot;Arg&quot;+ext (point numbers) and name.io2 (text). LostP returns missed points. Prints progress to the console and shows a message on inconsistent data.</p>
+<h3><a name="IO2RNDPV"></a>io2RndPV</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4592</p>
+<pre>SUB io2RndPV (fsrc$, fdst$)</pre>
+<p>Converts a text file with one number per line (fsrc$) to a binary file fdst$ of SINGLE values. Same code as io2Rnd.</p>
+<h3><a name="IOAVERAGE"></a>ioAverage</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4853</p>
+<pre>sub ioAverage (io$, outf$, bpnt as integer)</pre>
+<p>Reads a text file of &quot;point,value&quot; lines where a point may repeat, averages the values of each point and saves &quot;point,average&quot; lines to outf$. bpnt returns the first point number. Does nothing if the file is missing, empty or has fewer than 5 lines.</p>
+<h3><a name="KILLFILES"></a>KillFiles</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4489</p>
+<pre>sub KillFiles (FileName$)</pre>
+<p>Deletes all files matching a path with wildcard mask, e.g. &quot;C:\tmp\*.tmp&quot;. Shows a message for any file that could not be deleted.</p>
+<h3><a name="KILLSUBDIR"></a>KillSubDir</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4493</p>
+<pre>sub KillSubDir (DirSrc$, mask$)</pre>
+<p>Deletes files matching mask$ in DirSrc$ and all its subfolders, then removes the subfolders (RMDIR, works only on empty ones). With mask &quot;*.*&quot; removes the whole tree. Prints folder names to the console; stops if global stops1 is 1.</p>
+<h3><a name="LOADBINSTRING"></a>LoadBinString</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4254</p>
+<pre>FUNCTION LoadBinString(FileName as STRING , n as long ) AS string</pre>
+<p>Reads the first n bytes of the file (whole file if n is -1 or larger than the file) and returns them as a string. Returns &quot;0&quot; if the file cannot be opened.</p>
+<h3><a name="LOADSTRING"></a>LoadString</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4250</p>
+<pre>FUNCTION LoadString(FileName as STRING ) AS string</pre>
+<p>Reads the whole file as a binary string and returns it. Returns &quot;0&quot; if the file cannot be opened.</p>
+<h3><a name="LOADSTRING1"></a>LoadString1</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4258</p>
+<pre>FUNCTION LoadString1(FileName as STRING ) AS string</pre>
+<p>Like LoadString but reads with ReadStr instead of ReadBinStr. Returns the file contents, or &quot;0&quot; if the file cannot be opened.</p>
+<h3><a name="MKDIROEM"></a>MkDirOEM</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4910</p>
+<pre>function MkDirOEM (PathDst$) as short</pre>
+<p>Converts the path to the OEM code page with CharToOem and creates that directory. Returns 1.</p>
+<h3><a name="MKSUBDIR"></a>MKSubDir</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4265</p>
+<pre>function MKSubDir (DirDst$) as short</pre>
+<p>Creates the folder DirDst$ including all missing parent folders (uses the BkSl backslash constant). Returns 1.</p>
+<h3><a name="QUOTE"></a>Quote</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3921</p>
+<pre>function Quote (StringToQuote as string) as string</pre>
+<p>Returns the string enclosed in double quotes; any doubled quotes in the result are collapsed to one, so an already quoted string is not double-quoted at the ends.</p>
+<h3><a name="RND2IO"></a>Rnd2io</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4562</p>
+<pre>SUB Rnd2io (fsrc$, fdst$)</pre>
+<p>Converts a binary file of SINGLE values (fsrc$) to a text file fdst$ with one number per line.</p>
+<h3><a name="SAVESTRING"></a>SaveString</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4184</p>
+<pre>FUNCTION SaveString(ss$ as STRING ,FileName as STRING ) AS integer</pre>
+<p>Writes string ss$ to file FileName, creating or overwriting it. Returns 1 on success, -2 if the file cannot be created, 0 (with a message) if FileName is empty.</p>
+<h3><a name="SAVESTRINGEX"></a>SaveStringEx</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4202</p>
+<pre>FUNCTION SaveStringEx(ss$ as STRING ,FileName as STRING, mode as integer ) AS integer</pre>
+<p>Writes ss$ to FileName. mode 0 overwrites, mode 1 appends ss$, mode 2 appends CRLF+ss$ (no CRLF if the file is new). Returns 1 on success, -2 if the file cannot be opened, 0 with a message if FileName is empty.</p>
+<h3><a name="SETFILEATTRIBUTES"></a>SetFileAttributes</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 3880</p>
+<pre>Declare Function SetFileAttributes Lib &quot;kernel32&quot; Alias &quot;SetFileAttributesA&quot; (ByVal lpFileName As String, ByVal dwFileAttributes As Long) As Long</pre>
+<p>Sets the attributes (read-only, hidden, system, archive, etc.) of a file or directory. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SetFileAttributesA">SetFileAttributesA</a></p>
+<h3><a name="STRIPFILEEXT"></a>StripFileExt</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3941</p>
+<pre>Function StripFileExt (fullname as string) as string</pre>
+<p>Returns the file extension including the dot (e.g. &quot;.exe&quot;), or an empty string if the name has no dot. A dot in a folder name with no extension in the file name gives a wrong result.</p>
+<h3><a name="STRIPFILENAME"></a>StripFileName</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3931</p>
+<pre>Function StripFileName (fullname as string) as string</pre>
+<p>Returns the file name part of a full path (text after the last backslash).</p>
+<h3><a name="STRIPPATH"></a>StripPath</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3926</p>
+<pre>Function StripPath (fullname as string) as string</pre>
+<p>Returns the path part of a full file name, up to and including the last backslash. Returns an empty string if there is no backslash.</p>
+<h3><a name="SUBDIRCOPY"></a>SubDirCopy</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4269</p>
+<pre>sub SubDirCopy (DirSrc$, DirDst$, mask$)</pre>
+<p>Copies folder DirSrc$ with all subfolders to DirDst$, copying only files matching mask$; empty (0-byte) files are skipped. Calls DOEVENTS and stops if global stops1 is 1. Shows a message if a target file cannot be created.</p>
+<h3><a name="SYSDIR"></a>SysDir</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3977</p>
+<pre>function SysDir (dir as string) as string</pre>
+<p>Returns a user shell folder path with a trailing backslash, read from HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders; dir is the value name (e.g. &quot;Desktop&quot;, &quot;Personal&quot;).</p>
+</body>
+</html>

@@ -10,31 +10,86 @@ uses
   DlgPickFolder in 'DlgPickFolder.pas' {DlgPickFolder},
   FolderDlg in 'FolderDlg.pas',
   DlgProgress in 'DlgProgress.pas' {DlgProgress},
+  DlgCompProgress in 'DlgCompProgress.pas' {DlgCompProgress},
   DlgMatchList in 'DlgMatchList.pas' {DlgMatchList},
   DlgListWnd in 'DlgListWnd.pas' {DlgListWnd},
   DlgHotFolders in 'DlgHotFolders.pas' {DlgHotFolders},
   DlgDelPrj in 'DlgDelPrj.pas' {DlgDelPrj},
+  DlgTidyIni in 'DlgTidyIni.pas' {DlgTidyIni},
+  FormPreview in 'FormPreview.pas',
   DlgWinList in 'DlgWinList.pas' {DlgWinList},
   DlgNewPrj in 'DlgNewPrj.pas' {DlgNewPrj},
   DlgRelease in 'DlgRelease.pas' {DlgRelease},
   DlgWatch in 'DlgWatch.pas' {DlgWatch},
+  DlgArdBoards in 'DlgArdBoards.pas' {DlgArdBoards},
+  DlgArdLibs in 'DlgArdLibs.pas' {DlgArdLibs},
+  DlgArdCli in 'DlgArdCli.pas' {DlgArdCli},
+  DlgArdWait in 'DlgArdWait.pas' {DlgArdWait},
+  ArduinoCli in 'ArduinoCli.pas',
+  ArduinoHw in 'ArduinoHw.pas',
+  ArduinoPorts in 'ArduinoPorts.pas',
+  EnvOptions in 'EnvOptions.pas',
+  CodeInsight in 'CodeInsight.pas',
+  DlgArdSerial in 'DlgArdSerial.pas' {DlgArdSerial},
+  DlgPathList in 'DlgPathList.pas' {DlgPathList},
+  DlgEnvVar in 'DlgEnvVar.pas' {DlgEnvVar},
   ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',
+  PciIds in 'PciIds.pas',
+  PrjStore in 'PrjStore.pas',
+  RosProj in 'RosProj.pas',
+  RosTools in 'RosTools.pas',
   RqComponents in 'RqComponents.pas',
+  RqDesign in 'RqDesign.pas',
+  RqHelp in 'RqHelp.pas',
+  IniTidy in 'IniTidy.pas',
   HangWatch in 'HangWatch.pas',
+  WndWatch in 'WndWatch.pas',
   DbgEngine in 'DbgEngine.pas',
   DbgSymbols in 'DbgSymbols.pas',
+  RqDbgInstr in 'RqDbgInstr.pas',
+  RqDeclFind in 'RqDeclFind.pas',
   TextMerge in 'TextMerge.pas',
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',
+  DelphiOpts in 'DelphiOpts.pas',
+  ResFile in 'ResFile.pas',
   ClrScheme in 'ClrScheme.pas',
-  UiScroll in 'UiScroll.pas';
+  RqToFb in 'RqLcl\tofb\RqToFb.pas',
+  UiScroll in 'UiScroll.pas',
+  Unit3 in 'Unit3.pas' {Form3},
+  IncCheck in 'IncCheck.pas',
+  IncEdit in 'IncEdit.pas',
+  DlgFindInc in 'DlgFindInc.pas' {DlgFindInc},
+  RqDeps in 'RqDeps.pas',
+  IniBuf in 'IniBuf.pas',
+  DlgRqDeps in 'DlgRqDeps.pas',
+  SchemeRtf in 'SchemeRtf.pas',
+  StrictFix in 'StrictFix.pas',
+  DlgStrictFix in 'DlgStrictFix.pas',
+  SplashLoad in 'SplashLoad.pas',
+  GitInfo in 'GitInfo.pas',
+  SearchDirs in 'SearchDirs.pas',
+  RunConsole in 'RunConsole.pas',
+  MdHtml in 'MdHtml.pas',
+  FmtView in 'FmtView.pas',
+  SplitPane in 'SplitPane.pas',
+  UnFar in 'UnFar.pas',
+  SzSetup in 'SzSetup.pas',
+  DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};
 
 {$R *.res}
 
 begin
   Application.Initialize;
+  // Окно загрузки и журнал этапов (startup.log); главное окно невидимо,
+  // пока не готово (TForm1.WMStartupFinish)
+  StartupSplashShow;
   Application.CreateForm(TForm1, Form1);
+  StartupStage('Окно настроек (Form2)');
   Application.CreateForm(TForm2, Form2);
+  StartupStage('INC Manager (Form3)');
+  Application.CreateForm(TForm3, Form3);
+  StartupStage('Показ главного окна');
   Application.Run;
 end.

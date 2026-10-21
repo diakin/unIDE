@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>ApiDate.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: ApiDate.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>ApiDate.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/ApiDate.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 4 functions &middot; 2 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#GETDATEFORMAT">GetDateFormat</a> &middot; <a href="#GETLOCALEINFO">GetLocaleInfo</a> &middot; <a href="#LASTDAYM">lastdayM</a> &middot; <a href="#WEEKDAY">weekday</a></p>
+<h3><a name="GETDATEFORMAT"></a>GetDateFormat</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 6375</p>
+<pre>Declare function GetDateFormat Lib &quot;kernel32&quot; Alias &quot;GetDateFormatA&quot; (ByVal Locale As Long, ByVal dwFlags As Long, lpDate As SYSTEMTIME, ByVal lpFormat As String, ByVal lpDateStr As long, ByVal cchDate As Long) As Long</pre>
+<p>Formats a date as a date string for a specified locale, using a format picture or locale defaults.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetDateFormatA">GetDateFormatA</a></p>
+<h3><a name="GETLOCALEINFO"></a>GetLocaleInfo</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 6382</p>
+<pre>Declare Function GetLocaleInfo Lib &quot;kernel32&quot; Alias &quot;GetLocaleInfoA&quot; (ByVal Locale As Long, ByVal LCType As Long, ByVal lpLCData As long, ByVal cchData As Long) As Long</pre>
+<p>Retrieves information about a locale (e.g. date format, decimal separator, language name) specified by an LCTYPE value.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetLocaleInfoA">GetLocaleInfoA</a></p>
+<h3><a name="LASTDAYM"></a>lastdayM</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 6387</p>
+<pre>Function lastdayM(datum$ as string)as string</pre>
+<p>Returns the last day of the month for a date given as month-day-year (separated by -), as a string &quot;m-d-y&quot;. Finds it by calling GetDateFormat for day 28 and up until the day is invalid.</p>
+<h3><a name="WEEKDAY"></a>weekday</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 6388</p>
+<pre>Function weekday(datum$ as string)as integer</pre>
+<p>Returns the day of week (1 to 7) of a date given as month-day-year (separated by -). Compares the short day name from GetDateFormat with the locale names from GetLocaleInfo (LOCALE_SABBREVDAYNAME1..7), so 1 is Monday.</p>
+</body>
+</html>

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSYSTEM</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSYSTEM</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSYSTEM Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/rapidq2.inc</code>, line 7503 &middot; author: JohnK &middot; version: 1.0c &middot; date: 8/2006</p>
+<p><b>A non-visual object that reports Windows system information (OS version, memory, disk space, power and system metrics) and can open Control Panel applets, sleep, hibernate, log off, shut down or reboot.</b></p>
+<p>QSYSTEM wraps Windows API calls declared earlier in rapidq2.inc: GetVersionEx for the OS name and version numbers, GlobalMemoryStatus for memory figures, GetDiskFreeSpaceEx for free disk space, GetSystemMetrics for screen element sizes and flags, and GetSystemPowerStatus / SetSuspendState for power status and sleep or hibernation.</p>
+<p>The constructor reads the power status and the OS version, so MajorVersion, MinorVersion, BuildNumber, ACLineStatus, PercentBattery and PowerStatus are filled when the object is created. ShowControlPanel starts rundll32.exe shell32.dll,Control_RunDLL with the .cpl file chosen from the first four letters of a panel name. ShutDown, ShutDownForce, LogOff and Reboot first enable the SeShutdownPrivilege for the process and then call ExitWindowsEx.</p>
+<p>QSYSTEM inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>API declarations and constants in rapidq2.inc (OSVERSIONINFO, SYSTEM_POWER_STATUS, MEMORYSTATUS, SM_ and EWX_ constants, token privilege functions)</li>
+<li>Powrprof.dll (SetSuspendState)</li>
+</ul>
+<a name="1"></a><h2>QSYSTEM Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">MajorVersion</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Major Windows version number, filled by OSName$ (which the constructor calls).</td></tr>
+<tr><td class="rq-name">MinorVersion</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Minor Windows version number, filled by OSName$.</td></tr>
+<tr><td class="rq-name">BuildNumber</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Windows build number, filled by OSName$.</td></tr>
+<tr><td class="rq-name">ACLineStatus</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>AC power line status from GetSystemPowerStatus (AC_LINE_OFFLINE, AC_LINE_ONLINE, AC_LINE_BACKUP_POWER or AC_LINE_UNKNOWN); refreshed when PowerStatus is assigned 0.</td></tr>
+<tr><td class="rq-name">PercentBattery</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Remaining battery charge in percent (0-100) from GetSystemPowerStatus; refreshed when PowerStatus is assigned 0.</td></tr>
+<tr><td class="rq-name">PowerStatus</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Battery flag from GetSystemPowerStatus (BATTERY_FLAG_ constants, may be combined). Assigning 0 refreshes PowerStatus, ACLineStatus and PercentBattery; assigning sysHibernateAsk (1) or sysSleepAsk (3) asks for confirmation and then calls SetSuspendState; sysHibernateForce (2) and sysSleepForce (4) call it without asking.</td></tr>
+</table>
+<a name="2"></a><h2>QSYSTEM Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">OSName$</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the Windows name (for example &quot;Windows XP&quot;, &quot;Windows Vista&quot;, &quot;Newer than Vista&quot;, &quot;Windows 98&quot;) and fills MajorVersion, MinorVersion and BuildNumber; returns &quot;ERROR&quot; if GetVersionEx fails.</td></tr>
+<tr><td class="rq-name">PercentFreeMemory</td><td class="rq-type">FUNCTION AS DWORD</td><td>Returns 100 minus the memory load reported by GlobalMemoryStatus.</td></tr>
+<tr><td class="rq-name">AvailableMemory</td><td class="rq-type">FUNCTION AS DWORD</td><td>Returns the available physical memory in bytes.</td></tr>
+<tr><td class="rq-name">TotalMemory</td><td class="rq-type">FUNCTION AS DWORD</td><td>Returns the total physical memory in bytes.</td></tr>
+<tr><td class="rq-name">UsedMemory</td><td class="rq-type">FUNCTION AS DWORD</td><td>Returns total minus available physical memory in bytes.</td></tr>
+<tr><td class="rq-name">PageFileMemory</td><td class="rq-type">FUNCTION AS DWORD</td><td>Returns the available page file size in bytes.</td></tr>
+<tr><td class="rq-name">DiskFreeSpace</td><td class="rq-type">FUNCTION(RootPathName AS STRING) AS DOUBLE</td><td>Returns the free space in megabytes available to the caller on the drive of the given path (for example &quot;C:&quot;), or 0 if GetDiskFreeSpaceEx fails.</td></tr>
+<tr><td class="rq-name">MouseWheelPresent</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns non-zero if a mouse wheel is present; always 0 on Windows 95.</td></tr>
+<tr><td class="rq-name">ScrollBarWidth</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the width of a vertical scroll bar (SM_CXVSCROLL).</td></tr>
+<tr><td class="rq-name">ScrollBarHeight</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the height of a horizontal scroll bar (SM_CYHSCROLL).</td></tr>
+<tr><td class="rq-name">CaptionBarHeight</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the height of a window caption bar (SM_CYCAPTION).</td></tr>
+<tr><td class="rq-name">WindowBorderWidth</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the width of a window border (SM_CXBORDER).</td></tr>
+<tr><td class="rq-name">WindowBorderHeight</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the height of a window border (SM_CYBORDER).</td></tr>
+<tr><td class="rq-name">IconWidth</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the default icon width (SM_CXICON).</td></tr>
+<tr><td class="rq-name">IconHeight</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the default icon height (SM_CYICON).</td></tr>
+<tr><td class="rq-name">MenuBarHeight</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the height of a menu bar (SM_CYMENU).</td></tr>
+<tr><td class="rq-name">NetworkPresent</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the SM_NETWORK system metric, non-zero when a network is present.</td></tr>
+<tr><td class="rq-name">SlowProcessor</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the SM_SLOWMACHINE system metric, non-zero for a slow processor.</td></tr>
+<tr><td class="rq-name">ShowControlPanel</td><td class="rq-type">FUNCTION(PanelName AS STRING,index AS INTEGER) AS LONG</td><td>Opens a Control Panel applet chosen by the first four letters of PanelName (for example &quot;MOUSE&quot;, &quot;KEYBOARD&quot;, &quot;DISPLAY&quot;, &quot;SOUNDS&quot;, &quot;POWER&quot;, &quot;INTERNET&quot;); index selects the tab where supported. Returns the process ID from Shell, or 0 for an unknown name.</td></tr>
+<tr><td class="rq-name">ShutDown</td><td class="rq-type">SUB</td><td>Shuts down Windows (ExitWindowsEx with EWX_SHUTDOWN) after enabling the shutdown privilege.</td></tr>
+<tr><td class="rq-name">ShutDownForce</td><td class="rq-type">SUB</td><td>Shuts down Windows forcing applications to close (EWX_FORCE or EWX_SHUTDOWN).</td></tr>
+<tr><td class="rq-name">LogOff</td><td class="rq-type">SUB</td><td>Logs off the current user (EWX_LOGOFF).</td></tr>
+<tr><td class="rq-name">Reboot</td><td class="rq-type">SUB</td><td>Restarts Windows (EWX_REBOOT).</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>OSName$ reports every NT 6.x version (including Windows 7) as &quot;Windows Vista&quot; and anything newer as &quot;Newer than Vista&quot;.</li>
+<li>SetSuspendState&#x27;s first parameter is Hibernate; the code passes 0 for sysHibernateAsk/sysHibernateForce and 1 for sysSleepAsk/sysSleepForce, which looks swapped.</li>
+<li>A comment says SetSystemPowerState must be used instead before Windows 98.</li>
+<li>The SetPowerStatus setter assigns RESULT, which has no effect in a property setter.</li>
+<li>ShowControlPanel: the &quot;SYST&quot; case has no comma before the index (&quot;sysdm.cpl @0&quot;+STR$(index)), and the &quot;ADD &quot; case puts the comparison inside UCASE$(LEFT$(PanelName, 12) = ...), so those branches may not work as intended.</li>
+<li>Memory figures come from GlobalMemoryStatus with 32-bit DWORD fields.</li>
+</ul>
+<a name="4"></a><h2>QSYSTEM Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;rapidq2.inc&quot;
+
+DIM Sys AS QSYSTEM
+ShowMessage Sys.OSName$ + &quot; build &quot; + STR$(Sys.BuildNumber)
+ShowMessage &quot;Free memory: &quot; + STR$(Sys.PercentFreeMemory) + &quot;%&quot;
+ShowMessage &quot;Free on C: &quot; + STR$(Sys.DiskFreeSpace(&quot;C:&quot;)) + &quot; MB&quot;
+Sys.PowerStatus = 0
+ShowMessage &quot;Battery: &quot; + STR$(Sys.PercentBattery) + &quot;%&quot;</pre>
+<div class="rq-foot"><a href="c_qstringgridux.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qtabcontrolex.html">Next component</a></div>
+</body>
+</html>

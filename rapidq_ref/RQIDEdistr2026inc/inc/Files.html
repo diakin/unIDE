@@ -1,0 +1,981 @@
+<html>
+<head>
+<title>Files.inc</title>
+<STYLE type='text/css'>
+#kw {font-family:Arial; font-style: normal;font-Weight :bold; font-decoration:none;FONT-SIZE: 14px;   color=blue}
+#s {font-style: normal;font-decoration:none; FONT-SIZE: 14px; color=990000}
+#op {font-style: normal;font-decoration:none; FONT-SIZE: 14px; color=red}
+#dr {font-style: normal;font-decoration:none; FONT-SIZE: 14px; color=green}
+#pr {font-style: normal;font-decoration:none; FONT-SIZE: 14px; color=green}
+#tp {font-style: normal;font-decoration:none; FONT-SIZE: 14px; color=green}
+#cm {font-style: italic;font-decoration:none; FONT-SIZE: 14px; color=green}
+#mc {font-style: italic;font-decoration:none; FONT-SIZE: 14px; color=green}
+#n {font-style: normal;font-decoration:none; FONT-SIZE: 14px; color=maroon}
+#tx {font-style: normal;font-decoration:none; FONT-SIZE: 14px; color=black}
+ </STYLE>
+</head>
+<body bgcolor=FFFFFF>
+<pre>
+<var id='kw'>Const</var> FILE_ATTRIBUTE_READONLY = &H1 
+<var id='kw'>Const</var> FILE_ATTRIBUTE_HIDDEN = &H2 
+<var id='kw'>Const</var> FILE_ATTRIBUTE_SYSTEM = &H4 
+<var id='kw'>Const</var> FILE_ATTRIBUTE_DIRECTORY = &H10 
+<var id='kw'>Const</var> FILE_ATTRIBUTE_ARCHIVE = &H20 
+<var id='kw'>Const</var> FILE_ATTRIBUTE_NORMAL = &H80 
+<var id='kw'>Const</var> FILE_ATTRIBUTE_TEMPORARY = &H100 
+<var id='kw'>Const</var> FILE_ATTRIBUTE_COMPRESSED = &H800 
+
+<var id='kw'>Type</var> SECURITY_ATTRIBUTES 
+    nLength <var id='kw'>As</var> <var id='kw'>Long</var> 
+    lpSecurityDescriptor <var id='kw'>As</var> <var id='kw'>Long</var> 
+    bInheritHandle <var id='kw'>As</var> <var id='kw'>Long</var> 
+<var id='kw'>End</var> <var id='kw'>Type</var> 
+
+
+<var id='kw'>Declare</var> <var id='kw'>Function</var> GetFileAttributes <var id='kw'>Lib</var> <var id='s'>"kernel32"</var> <var id='kw'>Alias</var> <var id='s'>"GetFileAttributesA"_</var> 
+ (ByVal lpFileName <var id='kw'>As</var> <var id='kw'>String</var>) <var id='kw'>As</var> <var id='kw'>Long</var> 
+<var id='kw'>Declare</var> <var id='kw'>Function</var> SetFileAttributes <var id='kw'>Lib</var> <var id='s'>"kernel32"</var> <var id='kw'>Alias</var> <var id='s'>"SetFileAttributesA"_</var> 
+ (ByVal lpFileName <var id='kw'>As</var> <var id='kw'>String</var>, ByVal dwFileAttributes <var id='kw'>As</var> <var id='kw'>Long</var>) <var id='kw'>As</var> <var id='kw'>Long</var> 
+
+<var id='kw'>Declare</var> <var id='kw'>Function</var> CreateDirectory <var id='kw'>Lib</var> <var id='s'>"kernel32"</var> <var id='kw'>Alias</var> <var id='s'>"CreateDirectoryA"</var> _ 
+(ByVal lpPathName <var id='kw'>As</var> <var id='kw'>String</var>, lpSecurityAttributes <var id='kw'>As</var> SECURITY_ATTRIBUTES) <var id='kw'>As</var> <var id='kw'>Long</var> 
+
+
+
+<var id='cm'>'# QUOTE : Returns a quoted string
+</var><var id='kw'>function</var> Quote (StringToQuote <var id='kw'>as</var> <var id='kw'>string</var>) <var id='kw'>as</var> <var id='kw'>string</var> 
+StringToQuote =  <var id='kw'>chr$</var>(34) + StringToQuote + <var id='kw'>chr$</var>(34) 
+result = <var id='kw'>replacesubstr$</var>(stringtoquote, <var id='kw'>chr$</var>(34) + <var id='kw'>chr$</var>(34), <var id='kw'>chr$</var>(34)) 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'===============================================================================
+'# STRIPPATH : Returns file path (without file name)
+</var><var id='kw'>Function</var> StripPath (fullname <var id='kw'>as</var> <var id='kw'>string</var>) <var id='kw'>as</var> <var id='kw'>string</var> 
+result = <var id='kw'>left$</var>(fullname, rinstr(fullname, <var id='s'>"\"</var>)) 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'===============================================================================
+'# STRIPFILENAME : Returns file name (without path)
+</var><var id='kw'>Function</var> StripFileName (fullname <var id='kw'>as</var> <var id='kw'>string</var>) <var id='kw'>as</var> <var id='kw'>string</var> 
+result = <var id='kw'>right$</var>(fullname, <var id='kw'>len</var>(fullname) - rinstr(fullname, <var id='s'>"\"</var>)) 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'===============================================================================
+'# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)
+</var><var id='kw'>Function</var> StripFileExt (fullname <var id='kw'>as</var> <var id='kw'>string</var>) <var id='kw'>as</var> <var id='kw'>string</var> 
+result = <var id='kw'>right$</var>(fullname, <var id='kw'>len</var>(fullname) - rinstr(fullname, <var id='s'>"."</var>) + 1) 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'===============================================================================
+'# FILENAMENOEXT : Returns file name without extension
+</var><var id='kw'>function</var> FileNameNoExt(fullname <var id='kw'>as</var> <var id='kw'>string</var>) <var id='kw'>as</var> <var id='kw'>string</var> 
+fullname = <var id='kw'>right$</var>(fullname, <var id='kw'>len</var>(fullname) - rinstr(fullname, <var id='s'>"\"</var>)) 
+result = <var id='kw'>left$</var>(fullname, rinstr(fullname, <var id='s'>"."</var>) - 1) 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'===============================================================================
+'# FULLPATHNOEXT : Returns full path without file extension
+</var><var id='kw'>function</var> FullPathNoExt(fullname <var id='kw'>as</var> <var id='kw'>string</var>) <var id='kw'>as</var> <var id='kw'>string</var> 
+result = <var id='kw'>left$</var>(fullname, rinstr(fullname, <var id='s'>"."</var>) - 1) 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'===============================================================================
+'# C_Style : Returns "slashed" path from a "backslashed" one
+</var><var id='kw'>function</var> C_Style (fullname <var id='kw'>as</var> <var id='kw'>string</var>) <var id='kw'>as</var> <var id='kw'>string</var> 
+fullname = <var id='kw'>replacesubstr$</var>(fullname, <var id='s'>"\\"</var>, <var id='s'>"\")</var> 
+result = <var id='kw'>replacesubstr$</var>(fullname, <var id='s'>"\"</var>, <var id='s'>"/")</var> 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'===============================================================================
+'# SYSDIR : Retrieves windows shell directories
+
+'-------------------------|
+' Allowed values for dir  |
+'-----------------------------------------------------------------------------|
+' Desktop                 | Templates               | AppData                 |
+' Start Menu              | Programs                | Startup                 |
+' Fonts                   | SendTo                  | Recent                  |
+' Favorites               | Cache                   | Cookies                 |
+' History                 | NetHood                 | Personal                |
+' PrintHood               | Local AppData           | My Pictures             |
+' Administrative Tools    |                         |                         |
+'-----------------------------------------------------------------------------|
+
+</var><var id='kw'>function</var> SysDir (dir <var id='kw'>as</var> <var id='kw'>string</var>) <var id='kw'>as</var> <var id='kw'>string</var> 
+<var id='kw'>DIM</var> fo_reg <var id='kw'>AS</var> <var id='kw'>QRegistry</var> 
+fo_reg.RootKey = &H80000001 
+fo_reg.openkey (<var id='s'>"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders"</var>, 0) 
+result = fo_reg.readstring(dir) + <var id='s'>"\"
+</var><var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'===============================================================================
+'# HOMEDIR : The folder where the application is
+
+</var><var id='kw'>function</var> homedir() <var id='kw'>as</var> <var id='kw'>string</var> 
+result = <var id='kw'>left$</var>(<var id='kw'>command$</var>(0), rinstr(<var id='kw'>command$</var>(0), <var id='s'>"\"</var>)) 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'===============================================================================
+'# BROWSEFORFOLDERS : Returns the selected folder
+
+</var><var id='kw'>function</var> BrowseForFolders (initialdir <var id='kw'>as</var> <var id='kw'>string</var>, wincapt <var id='kw'>as</var> <var id='kw'>string</var>) <var id='kw'>as</var> <var id='kw'>string</var> 
+<var id='kw'>dim</var> bff_form <var id='kw'>as</var> <var id='kw'>qform</var> 
+<var id='kw'>with</var> bff_form 
+.height = 400 
+.center 
+.caption = wincapt 
+.delbordericons 2 
+<var id='kw'>end</var> <var id='kw'>with</var> 
+<var id='kw'>dim</var> bff_tree <var id='kw'>as</var> <var id='kw'>qdirtree</var> 
+<var id='kw'>with</var> bff_tree 
+.parent = bff_form 
+.align = 5 
+<var id='kw'>end</var> <var id='kw'>with</var> 
+<var id='kw'>if</var> bff_form.caption = <var id='s'>""</var> <var id='kw'>then</var> bff_form.caption = <var id='s'>"Select folder"
+</var><var id='kw'>if</var> <var id='kw'>direxists</var>(initialdir) <var id='kw'>then</var> 
+bff_tree.directory = initialdir 
+<var id='kw'>else</var> 
+bff_tree.directory = <var id='kw'>curdir$</var> 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+bff_form.showmodal 
+result = bff_tree.directory 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'===============================================================================
+'# BROWSEFORFILE : Returns the selected folder
+
+</var><var id='kw'>Function</var> BrowseForFile (caption <var id='kw'>as</var> <var id='kw'>string</var>, filter <var id='kw'>as</var> <var id='kw'>string</var>, _ 
+initialdir <var id='kw'>as</var> <var id='kw'>string</var>) <var id='kw'>as</var> <var id='kw'>string</var> 
+
+<var id='kw'>dim</var> bff_od <var id='kw'>as</var> <var id='kw'>qopendialog</var> 
+<var id='kw'>with</var> bff_od 
+.caption = caption 
+.filter = filter 
+.initialdir = initialdir 
+
+<var id='kw'>if</var> .execute <var id='kw'>then</var> 
+    result = .filename 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+<var id='kw'>end</var> <var id='kw'>with</var> 
+
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'_=============================================================================
+
+</var><var id='kw'>$ESCAPECHARS</var> ON 
+
+<var id='cm'>'ChangeFileExt:
+'Returns: String
+'Parameters:
+'FileName (String): Name of file with old extention
+'NewExt (String): New extention. This must include the leading ".".
+
+'Information:
+'Author: Taj Morton
+'Email: tmorton at linuxmail dot org.
+'License: Public Domain
+
+'Description:
+'Changes the extention of FileName to NewExt. For example:
+'ChangeFileExt("File.bas", ".inc")
+'returns File.inc. This function does not delete the old string,
+'instead, it simply returns a new one with the extention.
+'You must include the leading "." for it to be added, as it is not
+'done by the function.
+
+</var><var id='kw'>FUNCTION</var> ChangeFileExt(FileName <var id='kw'>as</var> <var id='kw'>String</var>, NewExt <var id='kw'>as</var> <var id='kw'>STRING</var>) <var id='kw'>as</var> <var id='kw'>STRING</var> 
+	<var id='kw'>DIM</var> Returns <var id='kw'>as</var> <var id='kw'>STRING</var> 
+	<var id='kw'>DIM</var> CurrentExt <var id='kw'>as</var> <var id='kw'>String</var> 
+	<var id='kw'>DIM</var> CurrentExtLoc <var id='kw'>as</var> <var id='kw'>INTEGER</var> 
+	<var id='kw'>DIM</var> FileNoExt <var id='kw'>as</var> <var id='kw'>STRING</var> 
+	 
+	CurrentExtLoc = RInStr(FileName, <var id='s'>".")</var> 
+	CurrentExt = <var id='kw'>MID$</var>(FileName, CurrentExtLoc, <var id='kw'>LEN</var>(FileName)) 
+	FileNoExt = <var id='kw'>DELETE$</var>(FileName, CurrentExtLoc, <var id='kw'>LEN</var>(FileName)) 
+	 
+	Result = <var id='kw'>INSERT$</var>(NewExt, FileNoExt, <var id='kw'>LEN</var>(FileName)) 
+	ChangeFileExt = Result 
+<var id='kw'>END</var> <var id='kw'>FUNCTION</var> 
+
+<var id='cm'>'ExtractFileName:
+'Returns: String
+'Parameters:
+'FileName (String): File with full path
+
+'Information:
+'Author: Taj Morton
+'Email: tmorton at linuxmail dot org.
+'License: Public Domain
+
+'Description:
+'ExtractFileName takes a file name with a path and returns only
+'the file name. For example:
+'ExtractFileName("C:\\Program Files\\AFile.bas")
+'returns AFile.bas. You can use either two back-slashes or a single
+'forward slash (/) for folder seperators.
+'Both forward and back-slashes are supported by Windows.
+'The back-slash takes procedure over the forward slash.
+'Note that ExtractFileName does _not_ check the validity of the path passed.
+'You must check yourself.
+
+</var><var id='kw'>FUNCTION</var> ExtractFileName(FileName <var id='kw'>as</var> <var id='kw'>STRING</var>) <var id='kw'>AS</var> <var id='kw'>STRING</var> 
+	<var id='kw'>DIM</var> Length <var id='kw'>as</var> <var id='kw'>INTEGER</var> 
+	<var id='kw'>DIM</var> Result <var id='kw'>as</var> <var id='kw'>STRING</var> 
+	 
+	Length = RInStr(FileName, <var id='s'>"\\"</var>) <var id='kw'>OR</var> RInStr(FileName, <var id='s'>"/")</var> 
+	Result = <var id='kw'>MID$</var>(FileName, Length+1, <var id='kw'>LEN</var>(FileName) - Length + 1) 
+	ExtractFileName = Result 
+<var id='kw'>END</var> <var id='kw'>FUNCTION</var> 
+
+<var id='cm'>'ExtractFilePath
+'Returns: String
+'Parameters:
+'FileName (String): File with full path
+
+'Information:
+'Author: Taj Morton
+'Email: tmorton at linuxmail dot org.
+'License: Public Domain
+
+'Description:
+'ExtractFilePath takes string with full path and returns a string
+'with only the path. For example:
+'ExtractFilePath("C:\\Program Files\\AProgram.bas")
+'returns C:\Program Files (the \\'s are for RQ and back-slashes).
+'ExtractFilePath also takes forward-slashes (/). Window's supports
+'these as well. 
+'The back-slash takes procedure over the forward slash.
+'Note that ExtractFilePath does _not_ test the validity
+'of the passed name. You must check it yourself. Even if the name is
+'invalid, the path will be returned. For example, if C:/ProgramErrorFiles/AFile.txt
+'is passed, C:/ProgramErrorFiles will be returned.
+
+'-- *****************************************************'
+</var><var id='kw'>FUNCTION</var> ExtractFilePath(FileName <var id='kw'>as</var> <var id='kw'>STRING</var>) <var id='kw'>AS</var> <var id='kw'>STRING</var> 
+	<var id='kw'>DIM</var> Length <var id='kw'>as</var> <var id='kw'>INTEGER</var> 
+	<var id='kw'>DIM</var> Result <var id='kw'>as</var> <var id='kw'>STRING</var> 
+	 
+	Length = RInStr(FileName, <var id='s'>"\\"</var>) <var id='kw'>OR</var> RInStr(FileName, <var id='s'>"/")</var> 
+	Result = <var id='kw'>MID$</var>(FileName, 0, Length) 
+	ExtractFilePath = Result 
+<var id='kw'>END</var> <var id='kw'>FUNCTION</var> 
+
+<var id='cm'>'ChangeFileName
+'Returns: String
+'Parameters:
+'FileName (String): File with full path
+'NewName (String): Text that will replace old file name
+
+'Information:
+'Author: Taj Morton
+'Email: tmorton at linuxmail dot org.
+'License: Public Domain
+
+'Description:
+'ChangeFileName takes a file name with full path and file and a new name.
+'It replaces the current filename (in FileName) and replaces it with NewName.
+'ChangeFileName does not actually change FileName, instead it returns a new
+'string which contains the new name.
+'Note that ChangeFileName does not check the validity of FileName
+'or the new result. You must do it yourself (if you want). ChangeFileName
+'takes both the back-slash and forward slash to serperate folder and file names.
+'You can use either \\ or /. Both are supported by Windows.
+'The back-slash takes procedure over the forward slash.
+
+'-- *****************************************************'
+</var><var id='kw'>FUNCTION</var> ChangeFileName(FileName <var id='kw'>as</var> <var id='kw'>STRING</var>, NewName <var id='kw'>as</var> <var id='kw'>STRING</var>) <var id='kw'>AS</var> <var id='kw'>STRING</var> 
+	<var id='kw'>DIM</var> FileNameLoc <var id='kw'>as</var> <var id='kw'>INTEGER</var> 
+	<var id='kw'>DIM</var> Result <var id='kw'>as</var> <var id='kw'>STRING</var> 
+	<var id='kw'>DIM</var> PathNoName <var id='kw'>AS</var> <var id='kw'>STRING</var> 
+	 
+	PathNoName = ExtractFilePath(FileName) 
+	Result = PathNoName+NewName 
+	ChangeFileName = Result 
+<var id='kw'>END</var> <var id='kw'>FUNCTION</var> 
+
+<var id='cm'>'ChangeFilePath
+'Returns: String
+'Parameters:
+'FileName (String): File with full path
+'NewPath (String): New path that will replace the path in FileName
+
+'Information:
+'Author: Taj Morton
+'Email: tmorton at linuxmail dot org.
+'License: Public Domain
+
+'Description:
+'ChangeFilePath takes FileName and replaces the path with NewPath.
+'It does not change FileName to have the new path, instead, it returns
+'a string which has the new path. It's up to you to take the correct
+'action. Also, old or new path and names' are not checked for validity,
+'you must do it yourself.
+'You may use either the \\ or the / to seperate your paths. Windows supports
+'both. 
+
+'-- *****************************************************'
+</var><var id='kw'>FUNCTION</var> ChangeFilePath(FileName <var id='kw'>as</var> <var id='kw'>STRING</var>, NewPath <var id='kw'>as</var> <var id='kw'>STRING</var>) <var id='kw'>AS</var> <var id='kw'>STRING</var> 
+	<var id='kw'>DIM</var> Result <var id='kw'>AS</var> <var id='kw'>STRING</var> 
+	<var id='kw'>DIM</var> FileNoPath <var id='kw'>AS</var> <var id='kw'>STRING</var> 
+	 
+	FileNoPath = ExtractFileName(FileName) 
+	 
+	Result = NewPath+FileNoPath 
+	ChangeFilePath = Result 
+<var id='kw'>END</var> <var id='kw'>FUNCTION</var> 
+<var id='kw'>$ESCAPECHARS</var> Off 
+
+<var id='cm'>'-- *****************************************************'
+</var><var id='kw'>FUNCTION</var> FileSize(FileName <var id='kw'>as</var> <var id='kw'>STRING</var>) <var id='kw'>AS</var> <var id='kw'>integer</var> 
+<var id='kw'>DIM</var> fileStr <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+
+<var id='kw'>if</var> <var id='kw'>fileexists</var> (FileName)>0 then  
+fileStr.open (FileName,0) 
+result=	fileStr.size 
+fileStr.close 
+<var id='kw'>else</var> 
+result=-1 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+
+<var id='kw'>END</var> <var id='kw'>FUNCTION</var> 
+<var id='cm'>'-- *****************************************************'
+</var><var id='kw'>FUNCTION</var> SaveString(ss$ <var id='kw'>as</var> <var id='kw'>STRING</var> ,FileName <var id='kw'>as</var> <var id='kw'>STRING</var>  ) <var id='kw'>AS</var> <var id='kw'>integer</var> 
+
+<var id='kw'>if</var> FileName=<var id='s'>""</var> <var id='kw'>then</var> <var id='kw'>showmessage</var> (<var id='s'>"FUNCTION SaveString. Wrong FileName="</var>+FileName) 
+<var id='kw'>DIM</var> fileStr <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+result=0 
+
+fileStr.open (FileName,65535 ) <var id='cm'>'fmCreate'
+result</var>=-1 
+FileStr.WriteStr(ss$, <var id='kw'>len</var>(ss$))  
+FileStr.Close 
+
+result=1 
+
+<var id='kw'>END</var> <var id='kw'>FUNCTION</var> 
+
+<var id='cm'>'-- *****************************************************'
+</var><var id='kw'>FUNCTION</var> LoadString(FileName <var id='kw'>as</var> <var id='kw'>STRING</var>  ) <var id='kw'>AS</var> <var id='kw'>string</var> 
+<var id='kw'>DIM</var> fileStr <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+result=<var id='s'>"0"
+</var><var id='cm'>'fmOpenRead = 0
+</var><var id='kw'>if</var> fileStr.open (FileName,0 ) <var id='kw'>then</var><var id='cm'>'fmCreate'
+result</var>=<var id='s'>"-1"
+result</var>=FileStr.ReadStr( FileStr.size)  
+FileStr.Close 
+<var id='cm'>'result=1
+</var><var id='kw'>end</var> <var id='kw'>if</var> 
+
+<var id='kw'>END</var> <var id='kw'>FUNCTION</var> 
+
+<var id='cm'>'_==============================================================
+
+
+'-- *****************************************************'
+
+</var><var id='kw'>function</var> MKSubDir (DirDst$) <var id='kw'>as</var> <var id='kw'>short</var> 
+<var id='cm'>'Andrew Shelkovenko dec 2003, jul 2004
+'Create DirDst$ directory with full subdir structure
+'----------------------------------------------
+'print "MKSubDir DirDst$="; DirDst$
+result</var>=0 
+<var id='kw'>dim</var> DirDst1$ <var id='kw'>as</var> <var id='kw'>string</var> 
+DirDst1$=<var id='kw'>string$</var>(<var id='kw'>len</var>(DirDst$),<var id='s'>"a"</var>)  
+<var id='cm'>'chartooem DirDst$,DirDst1$ 
+DirDst1$</var>=DirDst$  
+
+<var id='kw'>if</var> <var id='kw'>right$</var>(DirDst1$,1)<>BkSl <var id='kw'>then</var> DirDst1$=DirDst1$+BkSl  
+z1=<var id='kw'>instr</var>(DirDst1$,BkSl) 
+z2=0 
+<var id='kw'>while</var> z1>0 
+SubDirDst$=<var id='kw'>left$</var>(DirDst1$,z1 ) 
+<var id='kw'>if</var> <var id='kw'>DIREXISTS</var>(SubDirDst$)=0 <var id='kw'>then</var> <var id='kw'>MKDIR</var> SubDirDst$ :<var id='cm'>'print "MKSubDir SubDirDst$=" ,SubDirDst$
+z2</var>=z1+1 
+z1=<var id='kw'>instr</var>(z2,DirDst1$,BkSl) 
+<var id='kw'>wend</var> 
+
+result=1 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'-- *****************************************************'
+</var><var id='kw'>sub</var> SubDirCopy (DirSrc$, DirDst$, mask$) <var id='cm'>'- -----------------------------------'
+'Andrew Shelkovenko dec 2003
+'Copy DirSrc$ directory with full subdir structure and files (by mask$) to DirDst$
+</var><var id='kw'>dim</var> FileSrc <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+<var id='kw'>dim</var> FileDst <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+
+<var id='cm'>'Index=0
+NumFiles</var>=0 
+<var id='kw'>defint</var> nsd1, nsd2 
+<var id='kw'>defstr</var> mask 
+nsd1=0:nsd2=0 
+NumDir=0 
+ArrNumDir=500 
+<var id='kw'>dim</var> SubDir(500) <var id='kw'>as</var> <var id='kw'>string</var> 
+
+ArrNumFil=500 
+<var id='kw'>dim</var> FileNames (500) <var id='kw'>as</var> <var id='kw'>string</var> 
+mask=<var id='s'>"*.*"
+</var><var id='kw'>if</var> <var id='kw'>right$</var>(DirSrc$,1)<> BkSl <var id='kw'>then</var> DirSrc$=DirSrc$+BkSl 
+<var id='kw'>if</var> <var id='kw'>right$</var>(DirDst$,1)<> BkSl <var id='kw'>then</var> DirDst$=DirDst$+BkSl 
+SubDir(0)=DirSrc$ 
+
+sss1: 
+<var id='kw'>for</var> i=NSD1 <var id='kw'>to</var> Nsd2 <var id='cm'>'current level sudirs'
+'print "374 SubDir(",i,")=",SubDir(i)
+SubDirname$</var>=<var id='kw'>dir$</var>(SubDir(i)+mask, faDirectory) 
+
+<var id='kw'>while</var>    SubDirname$ <><var id='s'>""
+</var>  <var id='kw'>if</var> FileRec.Size =0 <var id='kw'>and</var> SubDirname$<> <var id='s'>"."</var> <var id='kw'>and</var> SubDirname$<> <var id='s'>".."</var> <var id='kw'>then</var> <var id='cm'>''
+</var>    <var id='kw'>inc</var> adddir 
+    <var id='kw'>inc</var> NumDir <var id='cm'>'add subdir'
+</var><var id='kw'>if</var> NumDir=ArrNumDir <var id='kw'>then</var> ArrNumDir=ArrNumDir+300: <var id='kw'>redim</var> SubDir(ArrNumDir) <var id='kw'>as</var> <var id='kw'>string</var> 
+    SubDir(NumDir)=SubDir(i)+SubDirname$+<var id='s'>"\"
+</var>    <var id='cm'>'print "383 SubDir(", NumDir, ")=",SubDir(NumDir)
+</var><var id='kw'>else</var> 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+  SubDirname$=<var id='kw'>dir$</var> 
+ <var id='kw'>doevents</var>:<var id='kw'>if</var> stops1=1 <var id='kw'>then</var> stops1=0: <var id='kw'>exit</var> <var id='kw'>sub</var> 
+<var id='kw'>wend</var> 
+
+<var id='cm'>'search files in current subdirectory
+</var>    Fn$=<var id='kw'>dir$</var>(SubDir(i)+mask$,faAnyFile-faDirectory) <var id='cm'>':-)
+</var>     <var id='kw'>while</var> Fn$ <><var id='s'>""
+</var><var id='kw'>if</var>  Fn$<> <var id='s'>"."</var> <var id='kw'>and</var> Fn$<> <var id='s'>".."</var>  <var id='kw'>then</var> <var id='cm'>'and FileRec.Size &lt;>0'
+</var>    <var id='kw'>inc</var> NumFiles 
+<var id='kw'>if</var> NumFiles=ArrNumFil <var id='kw'>then</var> ArrNumFil=ArrNumFil+300: <var id='kw'>redim</var> FileNames(ArrNumFil) <var id='kw'>as</var> <var id='kw'>string</var>:<var id='cm'>'print "redim FileNames"
+</var> FileNames(NumFiles)=SubDir(i)+Fn$ 
+ <var id='cm'>'print "FileNames(",NumFiles,")=" ,FileNames(NumFiles)
+ </var> 
+<var id='kw'>else</var> 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+    Fn$=<var id='kw'>dir$</var> 
+     <var id='kw'>wend</var> 
+<var id='kw'>next</var> i 
+
+<var id='kw'>if</var> adddir>0 <var id='kw'>then</var> 
+NSD1=NSD2+1        
+NSD2=NSD2+adddir   
+adddir=0 
+<var id='kw'>goto</var> sss1 <var id='cm'>'repeat with new sub level 
+</var><var id='kw'>else</var> 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+
+<var id='cm'>' got subdirs list in SubDir(i) array and file list with full path in FileNames(j)
+' now create subdirs structure with new path
+
+</var><var id='kw'>for</var> i1=0 <var id='kw'>to</var> i-1 
+NewSubDir$=SubDir(i1)-DirSrc$ 
+NewSubDir$=DirDst$+NewSubDir$ 
+MKSubDir (NewSubDir$) 
+<var id='kw'>next</var> i1 
+
+<var id='kw'>for</var> j=1 <var id='kw'>to</var> NumFiles 
+FileSrc.Open(FileNames(j), fmOpenRead)  
+<var id='kw'>if</var> FileSrc.size=0 <var id='kw'>then</var> FileSrc.close: <var id='kw'>goto</var> nextj1 
+
+NewFileName$=FileNames(j)-DirSrc$ 
+NewFileName$=DirDst$+NewFileName$ 
+<var id='cm'>'print "NewFileName$=" ,NewFileName$
+FileDst.Open</var>(NewFileName$, fmCreate)  
+FileDst.CopyFrom  (FileSrc, 0)<var id='cm'>''
+</var>		FileSrc.close''
+</var>		FileDst.close 
+nextj1: 
+<var id='kw'>next</var> j 
+
+<var id='kw'>end</var> <var id='kw'>sub</var> 
+
+<var id='cm'>'-- *****************************************************'
+</var><var id='kw'>function</var> fSubDirCopy (DirSrc$, DirDst$, mask$) <var id='kw'>as</var> <var id='kw'>long</var> <var id='cm'>'- -----------------------------------'
+'Andrew Shelkovenko dec 2003
+'Copy DirSrc$ directory with full subdir structure and files (by mask$) to DirDst$
+'DiaMsg$="Начало копирования.."
+
+</var><var id='kw'>dim</var> FileSrc <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+<var id='kw'>dim</var> FileDst <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+
+result=-1 
+<var id='cm'>'Index=0
+NumFiles</var>=0 
+<var id='kw'>defint</var> nsd1, nsd2 
+<var id='kw'>defstr</var> mask 
+nsd1=0:nsd2=0 
+NumDir=0 
+ArrNumDir=500 
+<var id='kw'>dim</var> SubDir(500) <var id='kw'>as</var> <var id='kw'>string</var> 
+
+ArrNumFil=500 
+<var id='kw'>dim</var> FileNames (500) <var id='kw'>as</var> <var id='kw'>string</var> 
+mask=<var id='s'>"*.*"
+</var><var id='kw'>if</var> <var id='kw'>right$</var>(DirSrc$,1)<> BkSl <var id='kw'>then</var> DirSrc$=DirSrc$+BkSl 
+<var id='cm'>'print "DirSrc$="; DirSrc$
+</var><var id='kw'>if</var> <var id='kw'>right$</var>(DirDst$,1)<> BkSl <var id='kw'>then</var> DirDst$=DirDst$+BkSl 
+<var id='cm'>'print "DirDst$="; DirDst$
+
+SubDir</var>(0)=DirSrc$ 
+
+sss1: 
+<var id='kw'>for</var> i=NSD1 <var id='kw'>to</var> Nsd2 <var id='cm'>'current level sudirs'
+'print "374 SubDir(",i,")=",SubDir(i)
+SubDirname$</var>=<var id='kw'>dir$</var>(SubDir(i)+mask, faDirectory) 
+
+<var id='kw'>while</var>    SubDirname$ <><var id='s'>""
+</var>  <var id='kw'>if</var> FileRec.Size =0 <var id='kw'>and</var> SubDirname$<> <var id='s'>"."</var> <var id='kw'>and</var> SubDirname$<> <var id='s'>".."</var> <var id='kw'>then</var> <var id='cm'>''
+</var>    <var id='kw'>inc</var> adddir 
+    <var id='kw'>inc</var> NumDir <var id='cm'>'add subdir'
+</var><var id='kw'>if</var> NumDir=ArrNumDir <var id='kw'>then</var> ArrNumDir=ArrNumDir+300: <var id='kw'>redim</var> SubDir(ArrNumDir) <var id='kw'>as</var> <var id='kw'>string</var>:<var id='cm'>'DiaMsg$="‘Є ­ЁагҐ¬ Ї®¤¤ЁаҐЄв®аЁЁ "+SubDir(NumDir) 'SubDirname$
+</var>    SubDir(NumDir)=SubDir(i)+SubDirname$+<var id='s'>"\"
+</var>    <var id='cm'>'print "383 SubDir(", NumDir, ")=",SubDir(NumDir)
+'DiaMsg$="Сканируем поддиректории "+SubDir(NumDir) 'SubDirname$
+</var><var id='kw'>else</var> 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+  SubDirname$=<var id='kw'>dir$</var> 
+ <var id='kw'>doevents</var>:<var id='kw'>if</var> stops1=1 <var id='kw'>then</var> stops1=0: <var id='kw'>exit</var> <var id='kw'>function</var> 
+<var id='kw'>wend</var> 
+
+<var id='cm'>'DiaMsg$="Всего поддиректорий " +str$(NumDir)
+
+'search files in current subdirectory
+</var>    Fn$=<var id='kw'>dir$</var>(SubDir(i)+mask$,faAnyFile-faDirectory) <var id='cm'>':-)
+</var>     <var id='kw'>while</var> Fn$ <><var id='s'>""
+</var><var id='kw'>if</var>  Fn$<> <var id='s'>"."</var> <var id='kw'>and</var> Fn$<> <var id='s'>".."</var>  <var id='kw'>then</var> <var id='cm'>'and FileRec.Size &lt;>0'
+</var>    <var id='kw'>inc</var> NumFiles 
+<var id='kw'>if</var> NumFiles=ArrNumFil <var id='kw'>then</var> ArrNumFil=ArrNumFil+300: <var id='kw'>redim</var> FileNames(ArrNumFil) <var id='kw'>as</var> <var id='kw'>string</var>:<var id='cm'>'DiaMsg$=str$(NumFiles)
+</var> FileNames(NumFiles)=SubDir(i)+Fn$ 
+ <var id='cm'>'print "FileNames(",NumFiles,")=" ,FileNames(NumFiles)
+'DiaMsg$="Сканируем файлы "+FileNames(NumFiles)
+</var><var id='kw'>else</var> 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+    Fn$=<var id='kw'>dir$</var> 
+     <var id='kw'>wend</var> 
+<var id='kw'>next</var> i 
+result=-2 
+
+<var id='kw'>if</var> adddir>0 <var id='kw'>then</var> 
+NSD1=NSD2+1        
+NSD2=NSD2+adddir   
+adddir=0 
+<var id='kw'>goto</var> sss1 <var id='cm'>'repeat with new sub level 
+</var><var id='kw'>else</var> 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+
+<var id='cm'>' got subdirs list in SubDir(i) array and file list with full path in FileNames(j)
+' now create subdirs structure with new path
+
+'DiaMsg$="Создаем директории... "
+</var><var id='kw'>for</var> i1=0 <var id='kw'>to</var> i-1 
+NewSubDir$=SubDir(i1)-DirSrc$ 
+NewSubDir$=DirDst$+NewSubDir$ 
+MKSubDir (NewSubDir$) 
+<var id='cm'>'DiaMsg$="Создали директорию "+NewSubDir$
+</var><var id='kw'>next</var> i1 
+result=-3 
+
+<var id='cm'>'DiaMsg$="Копируем файлы..."
+
+</var><var id='kw'>for</var> j=1 <var id='kw'>to</var> NumFiles 
+<var id='cm'>'DiaMsg$="Пытаемся открыть файл "+FileNames(j)
+'DiaMsg$="Try to open file "+NewFileName$
+
+FileSrc.Open</var>(FileNames(j), fmOpenRead)  
+<var id='cm'>'DiaMsg$="Открыли "+FileNames(j) +" размер=" +str$( FileSrc.size)
+'print "opened " +FileNames(j)
+ </var> 
+<var id='cm'>'print "FileSrc.size=" ,FileSrc.size
+
+
+</var><var id='kw'>if</var> FileSrc.size=0 then  
+FileSrc.close:  
+<var id='cm'>'print "zerosize closed " +FileNames(j): 
+</var><var id='kw'>goto</var> nextj 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+
+NewFileName1$=FileNames(j)-DirSrc$ 
+NewFileName$=DirDst$+NewFileName1$ 
+
+<var id='cm'>'print "NewFileName$=" ,NewFileName$
+'DiaMsg$="Пытаемся создать файл "+NewFileName1$
+'DiaMsg$="Try to create file "+NewFileName$
+
+FileDst.Open</var>(NewFileName$, fmCreate)  
+<var id='cm'>'DiaMsg$="Пытаемся скопировать файл " +FileNames(j) +" в "+NewFileName1$
+'print "DiaMsg$=" ,DiaMsg$
+'DiaMsg$="Try to copy "
+
+FileDst.CopyFrom</var>  (FileSrc, 0)<var id='cm'>''
+</var>		FileSrc.close''
+</var>		FileDst.close 
+<var id='cm'>'DiaMsg$="Copied "+str$(j) + " from "+ str$(NumFiles)+" = "+ NewFileName$
+DiaMsg$</var>=<var id='s'>"Скопировано файлов "</var>+<var id='kw'>str$</var>(j)<var id='cm'>'FileNames(j) '+" в "+NewFileName$
+
+nextj:</var> 
+<var id='kw'>doevents</var> 
+<var id='kw'>next</var> j 
+
+result=j-1 
+<var id='cm'>'DiaMsg$="Всего скопировано файлов"+ str$(result) + " из "+ str$(NumFiles)
+
+</var><var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'-- ***********************************************************************'
+</var><var id='kw'>function</var> DirCopy (DirSrc$, DirDst$, mask$) <var id='kw'>as</var> <var id='kw'>long</var>    
+<var id='cm'>'print "DirCopy mask$=" ,mask$
+'print "DirCopy DirDst$=" ,DirDst$
+'print "DirCopy DirSrc$=" ,DirSrc$
+'Andrew Shelkovenko dec 2003
+'Copy files (by mask$) from DirSrc$ to DirDst$
+result</var>=0 
+<var id='kw'>dim</var> FileSrc <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+<var id='kw'>dim</var> FileDst <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+<var id='kw'>defint</var> NumFIles 
+NumFIles=0 
+<var id='cm'>'MKDIR DirDst$
+rz</var>=MKSubDir (DirDst$) 
+<var id='kw'>if</var> <var id='kw'>right$</var>(DirSrc$,1)<><var id='s'>"\"</var> <var id='kw'>then</var> DirSrc$=DirSrc$+<var id='s'>"\"
+
+</var><var id='kw'>if</var> <var id='kw'>direxists</var>(DirDst$) =0 then  
+<var id='kw'>showmessage</var> (<var id='s'>"DirCopy Error: Can't create folder "</var>+DirDst$) 
+<var id='kw'>exit</var> <var id='kw'>function</var> 
+<var id='kw'>end</var> if  
+<var id='cm'>'print "DirCopy DirSrc$+mask$=" ,DirSrc$+mask$
+
+FileName$</var> = <var id='kw'>DIR$</var>(DirSrc$+mask$, 0) <var id='cm'>'-- Get first file 
+'print "DirCopy FileName$=" ,FileName$
+
+</var><var id='kw'>while</var>    FileName$ <><var id='s'>""
+</var>	FileSrc.Open(DirSrc$+filename$, fmOpenRead)  
+	FileDst.Open(DirDst$ +<var id='s'>"\"</var>+filename$, fmCreate)  
+	FileDst.CopyFrom  (FileSrc, 0) 
+	FileSrc.close 
+	FileDst.close 
+	FileName$ = <var id='kw'>DIR$</var> <var id='cm'>'-- Get next file
+</var>	<var id='kw'>inc</var> NumFIles 
+<var id='kw'>wend</var> 
+<var id='cm'>'print "DirCopy copied= "+str$(NumFIles) +" files
+result</var>=NumFIles 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'-- ***********************************************************************'
+</var><var id='kw'>sub</var> FileCopy (FileSrc$, FileDst$) <var id='cm'>'- -----------------------------------'
+'Andrew Shelkovenko dec 2003
+'Copy FileSrc$ to FileDst$
+' if path dest is not exists - create it.
+
+</var><var id='kw'>dim</var> FileSrc <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+<var id='kw'>dim</var> FileDst <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+
+dr$=StripPath (FileDst$)  
+<var id='cm'>'print "dr$=" ,dr$
+
+'MKDIR dr$ 'StripPath (FileDst$)
+
+</var><var id='kw'>if</var> dr$<><var id='s'>""</var> <var id='kw'>then</var> 
+MKSubDir dr$ 
+<var id='kw'>if</var> <var id='kw'>DIREXISTS</var>(dr$ ) =0 <var id='kw'>then</var> <var id='kw'>showmessage</var> (<var id='s'>"FileCopy Can't create directory "</var>+dr$ ): <var id='cm'>'exit sub
+</var><var id='kw'>end</var> <var id='kw'>if</var> 
+
+FileSrc.Open(FileSrc$, fmOpenRead)  
+FileDst.Open(FileDst$, fmCreate)  
+
+FileDst.CopyFrom  (FileSrc, 0) 
+		FileSrc.close 
+		FileDst.close 
+<var id='cm'>'print "FileCopy (";FileSrc$, FileDst$;") done" 
+</var><var id='kw'>end</var> <var id='kw'>sub</var> 
+
+<var id='cm'>'-- ***********************************************************************'
+</var><var id='kw'>sub</var> KillFiles (FileName$)  
+<var id='cm'>'Andrew Shelkovenko  diakin@narod.ru  apr 2004
+'Kill files in FileName$
+' for example KillFiles "C:\BAS\RAPIDQ\tmp\*.tmp"
+
+FName$</var> =StripPath (FileName$)+ <var id='kw'>DIR$</var>(FileName$, 0 ) <var id='cm'>'-- Get first file
+'print " -------------------  FName$=" ,FName$
+
+</var><var id='kw'>while</var> STRIPFILENAME (FName$) <><var id='s'>""
+</var><var id='kw'>kill</var> FName$ 
+<var id='cm'>'print "killed FName$=" ,FName$
+
+</var><var id='kw'>if</var> <var id='kw'>fileexists</var> (StripPath (FileName$)+FName$)>0 <var id='kw'>then</var> <var id='kw'>ShowMessage</var> (<var id='s'>"KillFiles Can't kill file "</var>+FName$) 
+<var id='cm'>'print "Can't kill file "+FName$
+
+FName$</var> = StripPath (FileName$)+<var id='kw'>DIR$</var> <var id='cm'>'-- Get next file
+</var><var id='kw'>wend</var> 
+<var id='kw'>end</var> <var id='kw'>sub</var> 
+
+<var id='cm'>'-- *****************************************************'
+</var><var id='kw'>sub</var> KillSubDir (DirSrc$, mask$) <var id='cm'>'- -----------------------------------'
+
+'print "-- KillSubDir DirSrc$=",DirSrc$
+
+'Andrew Shelkovenko diakin@narod.ru may 2004
+'Kill files by mask$ in all subdirs in DirSrc$ directory and kill all empty subdirs and DirSrc$ (if empty)
+'So.. if mask$="*.*" then  kill DirSrc$ with all subdirs and files
+
+</var><var id='kw'>dim</var> FileSrc <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+
+<var id='cm'>'Index=0
+NumFiles</var>=0 
+<var id='kw'>defint</var> nsd1, nsd2 
+<var id='kw'>defstr</var> mask 
+nsd1=0:nsd2=0 
+NumDir=0 
+ArrNumDir=500 
+<var id='kw'>dim</var> SubDir(500) <var id='kw'>as</var> <var id='kw'>string</var> 
+
+ArrNumFil=500 
+<var id='kw'>dim</var> FileNames (500) <var id='kw'>as</var> <var id='kw'>string</var> 
+mask=<var id='s'>"*.*" </var> 
+<var id='kw'>if</var> <var id='kw'>right$</var>(DirSrc$,1)<>BkSl <var id='kw'>then</var> SubDir(0)=DirSrc$+BkSl <var id='kw'>else</var> SubDir(0)=DirSrc$ 
+
+<var id='cm'>'print "BkSl=" ,BkSl
+
+'print "SubDir(0)=" ,SubDir(0)
+
+s1:</var> 
+<var id='kw'>for</var> i=NSD1 <var id='kw'>to</var> Nsd2 <var id='cm'>'current level sudirs'
+</var>	<var id='cm'>'print "KillSubDir SubDir(",i,")=",SubDir(i)
+</var>	SubDirname$=<var id='kw'>dir$</var>(SubDir(i)+mask, faDirectory) 
+	<var id='cm'>'print "-- KillSubDir SubDirname$=",SubDirname$	
+</var>	<var id='kw'>while</var>    SubDirname$ <><var id='s'>""
+</var>		<var id='kw'>if</var> FileRec.Size =0 <var id='kw'>and</var> SubDirname$<> <var id='s'>"."</var> <var id='kw'>and</var> SubDirname$<> <var id='s'>".."</var> <var id='kw'>then</var> <var id='cm'>''
+</var>			<var id='kw'>inc</var> adddir 
+			<var id='kw'>inc</var> NumDir <var id='cm'>'add subdir'
+</var>			<var id='kw'>if</var> NumDir=ArrNumDir <var id='kw'>then</var> ArrNumDir=ArrNumDir+300: <var id='kw'>redim</var> SubDir(ArrNumDir) <var id='kw'>as</var> <var id='kw'>string</var> 
+			subDir(NumDir)=SubDir(i)+SubDirname$+<var id='s'>"\"
+</var>		    <var id='cm'>'print "--KillSubDir SubDir(", NumDir, ")=",SubDir(NumDir)
+</var>		<var id='kw'>else</var> 
+		<var id='kw'>end</var> <var id='kw'>if</var> 
+		SubDirname$=<var id='kw'>dir$</var> 
+		<var id='kw'>doevents</var>:<var id='kw'>if</var> stops1=1 <var id='kw'>then</var> stops1=0: <var id='kw'>exit</var> <var id='kw'>sub</var> 
+	<var id='kw'>wend</var> 
+	 
+	<var id='cm'>'search files in current subdirectory
+</var>	Fn$=<var id='kw'>dir$</var>(SubDir(i)+mask$,faAnyFile-faDirectory) <var id='cm'>':-)
+</var>	<var id='kw'>while</var> Fn$ <><var id='s'>""
+</var>		<var id='kw'>if</var>  Fn$<> <var id='s'>"."</var> <var id='kw'>and</var> Fn$<> <var id='s'>".."</var>  <var id='kw'>then</var> <var id='cm'>'and FileRec.Size &lt;>0'
+</var>			<var id='kw'>kill</var> SubDir(i)+Fn$ 
+			<var id='cm'>'print "-- KillSubDir kill ",SubDir(i)+Fn$
+</var>		<var id='kw'>else</var> 
+		<var id='kw'>end</var> <var id='kw'>if</var> 
+		Fn$=<var id='kw'>dir$</var> 
+	<var id='kw'>wend</var> 
+<var id='kw'>next</var> i 
+
+<var id='kw'>if</var> adddir>0 <var id='kw'>then</var> 
+	NSD1=NSD2+1        
+	NSD2=NSD2+adddir   
+	adddir=0 
+	<var id='kw'>goto</var> s1 <var id='cm'>'repeat with new sub level 
+</var><var id='kw'>else</var> 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+
+
+<var id='kw'>for</var> i1=i-1 <var id='kw'>to</var> 1 <var id='kw'>step</var> -1  
+	<var id='kw'>RMDIR</var> SubDir(i1) 
+	<var id='cm'>'print "-- KillSubDir RMDIR SubDir(",i1,")=", SubDir(i1)
+</var><var id='kw'>next</var> i1 
+
+<var id='kw'>END</var> <var id='kw'>SUB</var> 
+
+<var id='cm'>'-- ***********************************************************************'
+</var><var id='kw'>SUB</var> io2Rnd (fsrc$, fdst$) 
+<var id='cm'>'--------------------------------
+'convert text file with single value strings to binary
+' for example
+
+'17.78091
+'16.64166
+'19.87037
+'21.29429
+'15.64965
+
+'fsrc$ - source file  fdst$ - dest. file
+'data type - single
+
+'CONST fmCreate = 65535
+'CONST fmOpenRead = 0
+'CONST fmOpenWrite = 1
+'CONST fmOpenReadWrite = 2
+ </var> 
+<var id='kw'>dim</var> FileSourse <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+<var id='kw'>dim</var> FileDest <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+<var id='kw'>defsng</var> ValSrc 
+
+FileSourse.Open (fsrc$, 2 )<var id='cm'>'fmOpenReadWrite'
+FileDest.Open</var>   (fdst$, 65535 )  <var id='cm'>'fmOpenReadWrite'
+
+</var><var id='kw'>WHILE</var> <var id='kw'>NOT</var> FileSourse.EOF 
+ValSrc$=FileSourse.ReadLine : <var id='cm'>'print "ValSrc$=" ,ValSrc$
+ValSrc</var>=<var id='kw'>val</var>(ValSrc$) :         <var id='cm'>'print "ValSrc=" ,ValSrc
+FileDest.Write</var> (ValSrc) 
+<var id='kw'>wend</var> 
+
+FileSourse.CLOSE   
+FileDest.CLOSE  
+
+<var id='kw'>END</var> <var id='kw'>SUB</var> 
+
+<var id='cm'>'-- ***********************************************************************'
+</var><var id='kw'>SUB</var> Rnd2io (fsrc$, fdst$) 
+<var id='cm'>'--------------------------------
+'convert  binary file with single type value data to  text file with single type value strings
+' i.e
+'17.78091
+'16.64166
+'19.87037
+
+'CONST fmCreate = 65535
+'CONST fmOpenRead = 0
+'CONST fmOpenWrite = 1
+'CONST fmOpenReadWrite = 2
+
+'CONST Num_BYTE = 1 
+'CONST Num_SHORT = 2
+'CONST Num_WORD = 3
+'CONST Num_LONG = 4
+'CONST Num_DWORD = 5
+'CONST Num_SINGLE = 6
+'CONST Num_DOUBLE = 8
+
+</var><var id='kw'>dim</var> FileSourse <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+<var id='kw'>dim</var> FileDest <var id='kw'>as</var> <var id='kw'>QFileStream</var> 
+
+<var id='kw'>defsng</var> ValSrc 
+
+FileSourse.Open (fsrc$, 2 )        <var id='cm'>'fmOpenReadWrite'
+FileDest.Open</var>   (fdst$, 65535 )    <var id='cm'>'fmOpenCreate'
+
+ie</var> = FileSourse.size/4: <var id='cm'>'print "ie=" ,ie
+
+</var><var id='kw'>for</var> i=0 <var id='kw'>to</var> ie-1 
+ValSrc=FileSourse.ReadNum(6) :<var id='cm'>'print "ValSrc=" ,ValSrc
+ValSrc$</var>=<var id='kw'>str$</var>(ValSrc):			<var id='cm'>'print "ValSrc$=" ,ValSrc$
+FileDest.WriteLine</var> (ValSrc$) 
+<var id='kw'>next</var> i 
+
+FileSourse.CLOSE   
+FileDest.CLOSE  
+
+<var id='kw'>END</var> <var id='kw'>SUB</var> 
+
+<var id='cm'>'-- ***********************************************************************'
+</var><var id='kw'>SUB</var> io2RndInter (io$, rndf$, LostP) 
+<var id='cm'>'convert text file with two-fields strings " point,data"
+' to binary format with interpolation of loosing points
+'---- for example -----
+' 0,17.78091 
+' 1,16.64166
+' 4,19.87037  points 2,3 is loosed
+' 5,16.64123 
+'------------------------------------
+'io$   - source text file
+'rndf$ - destination binary file
+'LostP - return number of loosed points (use @LostP )
+' call io2RndInter (io$, rndf$, @LostP)
+'------------------------------------
+</var><var id='kw'>dim</var> io2RndFile2 <var id='kw'>as</var> <var id='kw'>QfileStream</var> 
+<var id='kw'>dim</var> io2Rndtmp <var id='kw'>as</var> <var id='kw'>QfileStream</var> 
+<var id='kw'>dim</var> io2RndList <var id='kw'>as</var> QSTRINGLIST  
+<var id='kw'>dim</var> ioNumPnt <var id='kw'>as</var> <var id='kw'>int</var> 
+<var id='kw'>dim</var> i0 <var id='kw'>as</var> <var id='kw'>int</var> 
+
+<var id='cm'>'print "io2RndInter File  "+io$ 
+</var><var id='kw'>if</var> <var id='kw'>fileexists</var> (io$)=0 <var id='kw'>then</var> <var id='kw'>showmessage</var> (<var id='s'>"io2RndInter File not found "</var>+io$):<var id='kw'>exit</var> <var id='kw'>sub</var> 
+
+io2Rndtmp.Open(io$, fmOpenReadWrite )    
+
+<var id='kw'>if</var> io2Rndtmp.size=0 then  
+io2Rndtmp.close 
+<var id='kw'>showmessage</var> (<var id='s'>"io2RndInter Zero size file "</var>+io$): 
+LostP=-99 
+<var id='kw'>exit</var> <var id='kw'>sub</var> 
+<var id='kw'>else</var> 
+io2Rndtmp.close 
+<var id='kw'>end</var> <var id='kw'>if</var> 
+
+
+io2RndList.LoadFromFile (io$) 
+ioNumPnt=<var id='kw'>val</var>(<var id='kw'>Field$</var>(io2RndList.Item(io2RndList.ItemCount-1),<var id='s'>","</var>, 1)) 
+<var id='kw'>if</var> ioNumPnt=0 <var id='kw'>then</var> <var id='kw'>showmessage</var> (<var id='s'>"io2RndInter No data "</var>+io$) :<var id='kw'>exit</var> <var id='kw'>sub</var> 
+<var id='cm'>'print "ioNumPnt=";ioNumPnt
+
+io2RndFile2.Open</var>(rndf$, fmCreate)    
+iotmp$=StripPath(rndf$)+<var id='s'>"iotmp.txt"
+io2Rndtmp.Open</var>(iotmp$, fmCreate)    
+
+pntOld = 0: AdatOld! = 0: LostP = 1:j=0: i0=0 
+
+<var id='kw'>for</var> k=0 <var id='kw'>to</var> io2RndList.ItemCount-1 
+<var id='cm'>'print "k=";k
+</var>	pnt=<var id='kw'>val</var>(<var id='kw'>Field$</var>(io2RndList.Item(k),<var id='s'>","</var>, 1)) 
+	Adat!=<var id='kw'>val</var>( <var id='kw'>Field$</var>(io2RndList.Item(k),<var id='s'>","</var>, 2) ) 
+	<var id='kw'>IF</var> pnt = i0 <var id='kw'>THEN</var> 
+		io2RndFile2.WriteNum(Adat!,Num_SINGLE ) 
+		io2Rndtmp.WriteLine (<var id='kw'>str$</var>(pnt)+<var id='s'>" "</var>+<var id='kw'>str$</var>(Adat!) ) 
+<var id='cm'>'		print "pnt=";pnt;"  Adat=";Adat!
+</var>		pntOld = pnt: AdatOld! = Adat! 
+	<var id='kw'>elseif</var> pnt < i0 <var id='kw'>then</var> 
+		io2RndFile2.WriteNum(Adat!,Num_SINGLE ) 
+		io2Rndtmp.WriteLine (<var id='kw'>str$</var>(i0)+<var id='s'>" "</var>+<var id='kw'>str$</var>(Adat!) ) 
+		pntOld = i0: AdatOld! = Adat! 
+
+	<var id='kw'>else</var> 
+		<var id='kw'>IF</var> pnt <> pntOld <var id='kw'>THEN</var> ki! = (Adat! - AdatOld!) / (pnt - pntOld) <var id='kw'>ELSE</var> <var id='kw'>GOTO</var> ex1 
+<var id='cm'>'	print "pnt=";pnt;"  Adat=";Adat!
+</var>		<var id='kw'>FOR</var> j = i0 <var id='kw'>TO</var> pnt - 1 
+<var id='cm'>'		PRINT LostP; " из "; pnt
+</var>		LostP = LostP + 1 
+		Adat1! = AdatOld! + ki! 
+<var id='cm'>'	print "j=";j;"  Adat1=";Adat1!
+</var>		io2RndFile2.WriteNum(Adat1!,Num_SINGLE ) 
+		io2Rndtmp.WriteLine (<var id='kw'>str$</var>(j)+<var id='s'>" "</var>+<var id='kw'>str$</var>(Adat1!) ) 
+		AdatOld! = Adat1! 
+		<var id='kw'>NEXT</var> j 
+		AdatOld! = Adat!: pntOld = pnt: 
+<var id='cm'>'	print "pnt=";pnt;"  Adat=";Adat!
+</var>		io2Rndtmp.WriteLine (<var id='kw'>str$</var>(pnt)+<var id='s'>" "</var>+<var id='kw'>str$</var>(Adat!) ) 
+		io2RndFile2.WriteNum(Adat!,Num_SINGLE ) 
+		i0 = j 
+	<var id='kw'>END</var> <var id='kw'>IF</var> 
+ex1: 
+<var id='kw'>inc</var> i0 
+<var id='kw'>next</var> k 
+io2RndFile2.close 
+io2Rndtmp.close 
+<var id='cm'>'print "io2Rnd completed"
+</var><var id='kw'>END</var> <var id='kw'>SUB</var> 
+
+<var id='cm'>'-------------------------------------------------------------------'
+'-- ***********************************************************************'
+</var><var id='kw'>function</var> ChDirOEM (PathDst$) <var id='kw'>as</var> short  
+<var id='cm'>'print "ChDirOEM PathDst$=" ,PathDst$
+result</var>=0 
+<var id='kw'>dim</var> PathDst1$ <var id='kw'>as</var> <var id='kw'>string</var> 
+PathDst1$=<var id='kw'>string$</var>(<var id='kw'>len</var>(PathDst$),<var id='s'>"a"</var>)  
+chartooem PathDst$,PathDst1$  
+<var id='cm'>'print "ChDirOEM PathDst$=" ,PathDst$
+'print "ChDirOEM PathDst1$=" ,PathDst1$
+
+</var><var id='kw'>CHDIR</var>  PathDst1$  
+result=1 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+
+<var id='cm'>'-------------------------------------------------------------------'
+'-- ***********************************************************************'
+</var><var id='kw'>function</var> MkDirOEM (PathDst$) <var id='kw'>as</var> <var id='kw'>short</var> 
+result=0 
+<var id='kw'>dim</var> PathDst1$ <var id='kw'>as</var> <var id='kw'>string</var> 
+<var id='cm'>'print "MkDirOEM PathDst$=" ,PathDst$
+PathDst1$</var>=<var id='kw'>string$</var>(<var id='kw'>len</var>(PathDst$),<var id='s'>"a"</var>)  
+chartooem PathDst$,PathDst1$  
+<var id='cm'>'print "MkDirOEM PathDst$=" ,PathDst$
+'print "MkDirOEM PathDst1$=" ,PathDst1$
+</var><var id='kw'>MkDIR</var>  PathDst1$  
+result=1 
+<var id='kw'>end</var> <var id='kw'>function</var> 
+  
+</pre>
+</body>
+</html>

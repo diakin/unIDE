@@ -3,7 +3,7 @@ object DlgWatch: TDlgWatch
   Top = 0
   Caption = 'Watch List'
   ClientHeight = 260
-  ClientWidth = 760
+  ClientWidth = 560
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -17,7 +17,7 @@ object DlgWatch: TDlgWatch
   object lblWhere: TLabel
     Left = 0
     Top = 240
-    Width = 760
+    Width = 560
     Height = 20
     Align = alBottom
     AutoSize = False
@@ -26,21 +26,25 @@ object DlgWatch: TDlgWatch
   object lvWatch: TUiListView
     Left = 0
     Top = 0
-    Width = 760
+    Width = 560
     Height = 240
     Align = alClient
     Columns = <
       item
         Caption = 'Выражение'
-        Width = 200
+        Width = 140
       end
       item
         Caption = 'Значение'
-        Width = 400
+        Width = 230
+      end
+      item
+        Caption = 'Условие'
+        Width = 80
       end
       item
         Caption = 'Тип'
-        Width = 140
+        Width = 90
       end>
     GridLines = True
     HideSelection = False
@@ -58,6 +62,9 @@ object DlgWatch: TDlgWatch
     end
     object miWatchEdit: TMenuItem
       Caption = 'Изменить...'#9'Enter'
+    end
+    object miWatchCond: TMenuItem
+      Caption = 'Условие...'
     end
     object miWatchDelete: TMenuItem
       Caption = 'Удалить'#9'Del'

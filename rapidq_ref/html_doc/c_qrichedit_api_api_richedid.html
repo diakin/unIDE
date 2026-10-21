@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QRICHEDIT_API</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QRICHEDIT_API</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QRICHEDIT_API Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/API_RichEdid.inc</code>, line 56</p>
+<p><b>An unfinished wrapper that creates a Windows RichEdit control directly with CreateWindowExA instead of using QRICHEDIT.</b></p>
+<p>Most of the TYPE block is a list of QRICHEDIT properties, methods and events copied in as DIM and SUB declarations without code, plus a few planned additions (AutoURLDetect, FindText, ReplaceSel, ScrollCaret). The working part is at the end: Left, Top, Width, Height, Visible and Parent have setters. Assigning Parent (a window handle) creates a child window of class &quot;RichEdit&quot; with WS_CHILD and WS_VISIBLE at the current position and size; the position and size setters then move it with MoveWindow and Visible shows or hides it with ShowWindow.</p>
+<p>The Russian comments (in DOS code page 866) say that ReplaceSel replaces the selected text and ScrollCaret scrolls the text until the line with the cursor becomes visible.</p>
+<p>QRICHEDIT_API inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>SW_HIDE and SW_SHOW constants, which this file uses but does not define (for example from a Win32 API include)</li>
+</ul>
+<a name="2"></a><h2>QRichEdit_api Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">AddStrings</td><td class="rq-type">SUBI</td><td>Declared as SUBI AddStrings without a body, as part of the copied list of QRICHEDIT methods; it has no implementation in this file.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Most methods and events are declarations without bodies (SUB Clear, SUB LoadFromFile, SUB FINDTEXT, SUB OnChange and others), so the file is a draft and may not compile as is.</li>
+<li>LoadLibrary and FreeLibrary are declared but never called, so nothing in this file loads the DLL that registers the &quot;RichEdit&quot; window class.</li>
+<li>SW_HIDE and SW_SHOW are used but not defined in the file.</li>
+<li>SetParent contains commented-out progress bar code (PBM_SETRANGE, PBM_SETSTEP) left over from another component.</li>
+<li>The findtextex TYPE and the FormWndProc declaration are not used.</li>
+<li>The file name is spelled API_RichEdid.inc.</li>
+</ul>
+<a name="4"></a><h2>QRichEdit_api Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;API_RichEdid.inc&quot;
+
+CREATE Form AS QFORM
+END CREATE
+
+DIM Rich AS QRichEdit_api
+Rich.Left = 10
+Rich.Top = 10
+Rich.Width = 300
+Rich.Height = 200
+Rich.Parent = Form.Handle
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qricheditux.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qrichedit_api_apire.html">Next component</a></div>
+</body>
+</html>

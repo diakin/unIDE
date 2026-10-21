@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>func_array.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: func_array.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>func_array.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/func_array.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 26 functions</p>
+<p><a href="#ARRABSEXTR">ArrAbsExtr</a> &middot; <a href="#ARRABSEXTRN">ArrAbsExtrN</a> &middot; <a href="#ARRABSMAXEX">ArrAbsMaxEx</a> &middot; <a href="#ARRABSMINEX">ArrAbsMinEx</a> &middot; <a href="#ARRADDCONST">ARRAddConst</a> &middot; <a href="#ARRAVERAGE">ARRAverage</a> &middot; <a href="#ARRAVERAGESUBTRACT">ARRAverageSubtract</a> &middot; <a href="#ARREXTR">ArrExtr</a> &middot; <a href="#ARRMAX">ARRMax</a> &middot; <a href="#ARRMAXEX">ARRMaxEx</a> &middot; <a href="#ARRMIN">ARRMin</a> &middot; <a href="#ARRMINEX">ARRMinEx</a> &middot; <a href="#ARRRAZNOST">ArrRaznost</a> &middot; <a href="#ARRRAZNOSTR">ArrRaznostR</a> &middot; <a href="#ARRRESAMPLE">ArrReSample</a> &middot; <a href="#ARRSUM">ArrSum</a> &middot; <a href="#ARRSUMR">ArrSumR</a> &middot; <a href="#CUTPOINTS">cutPoints</a> &middot; <a href="#DELINCLINE">DelIncline</a> &middot; <a href="#FINDMAX">FindMax</a> &middot; <a href="#KTARRAY">kTArray</a> &middot; <a href="#KTARRAYR">kTArrayR</a> &middot; <a href="#NAKOPL">Nakopl</a> &middot; <a href="#OGIBF">OgibF</a> &middot; <a href="#OGIBFNEW">OgibFNew</a> &middot; <a href="#REVERSX1">ReversX1</a></p>
+<h3><a name="ARRABSEXTR"></a>ArrAbsExtr</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5024</p>
+<pre>sub ArrAbsExtr (Dat!() as single, byref _AbsDatMax!)</pre>
+<p>Returns in _AbsDatMax! the largest absolute value of the whole array Dat!(). The start value is the signed first element, not its absolute value, so an all-negative first element can be compared incorrectly.</p>
+<h3><a name="ARRABSEXTRN"></a>ArrAbsExtrN</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5004</p>
+<pre>sub ArrAbsExtrN (Dat!() as single, byref _AbsDatMax!, N as integer)</pre>
+<p>Returns in _AbsDatMax! the largest absolute value of Dat!() from index LBOUND+N to UBOUND, i.e. skipping the first N elements. The start value is the signed element at LBOUND+N, not its absolute value.</p>
+<h3><a name="ARRABSMAXEX"></a>ArrAbsMaxEx</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5028</p>
+<pre>sub ArrAbsMaxEx (Dat!() as single, MinEl as integer, MaxEl as integer,byref _AbsDatMax!,byref pointX!)</pre>
+<p>Finds the largest absolute value of Dat!() between indexes MinEl and MaxEl. The value is returned in _AbsDatMax! and its index in pointX! (left unchanged if it is the first element).</p>
+<h3><a name="ARRABSMINEX"></a>ArrAbsMinEx</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5046</p>
+<pre>sub ArrAbsMinEx (Dat!() as single, MinEl as integer, MaxEl as integer,byref _AbsDatMin!,byref pointX!)</pre>
+<p>Finds the smallest absolute value of Dat!() between indexes MinEl and MaxEl. The value is returned in _AbsDatMin! and its index in pointX! (left unchanged if it is the first element).</p>
+<h3><a name="ARRADDCONST"></a>ARRAddConst</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5200</p>
+<pre>sub ARRAddConst (Dat!() as single, const! as single)</pre>
+<p>Adds the constant const! to every element of Dat!() in place.</p>
+<h3><a name="ARRAVERAGE"></a>ARRAverage</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4924</p>
+<pre>function ARRAverage (Dat!() as single, MinEl as integer, MaxEl as integer) as single</pre>
+<p>Returns the average of array elements Dat!(MinEl) to Dat!(MaxEl).</p>
+<h3><a name="ARRAVERAGESUBTRACT"></a>ARRAverageSubtract</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 4938</p>
+<pre>sub ARRAverageSubtract (Dat!() as single)</pre>
+<p>Computes the average of the whole array Dat!() (LBOUND to UBOUND) and subtracts it from every element, modifying the array in place.</p>
+<h3><a name="ARREXTR"></a>ArrExtr</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5000</p>
+<pre>sub ArrExtr (Dat!() as single, byref DatMin!, byref DatMax!)</pre>
+<p>Scans the whole array Dat!() (LBOUND to UBOUND) and returns its minimum in DatMin! and its maximum in DatMax! (both BYREF).</p>
+<h3><a name="ARRMAX"></a>ARRMax</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4942</p>
+<pre>FUNCTION ARRMax (Dat!() as single, MinEl as integer, MaxEl as integer) as single</pre>
+<p>Returns the largest value among Dat!(MinEl) to Dat!(MaxEl).</p>
+<h3><a name="ARRMAXEX"></a>ARRMaxEx</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4964</p>
+<pre>FUNCTION ARRMaxEx (Dat!() as single, MinEl as integer, MaxEl as integer,byref pointX!) as single</pre>
+<p>Returns the largest value of Dat!() between indexes MinEl and MaxEl-1 (the last index MaxEl is not checked). The index of that element is written to pointX! (left unchanged if the maximum is the first element). Despite an old comment, values are compared signed, not by absolute value.</p>
+<h3><a name="ARRMIN"></a>ARRMin</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4953</p>
+<pre>FUNCTION ARRMin (Dat!() as single, MinEl as integer, MaxEl as integer) as single</pre>
+<p>Returns the smallest value among Dat!(MinEl) to Dat!(MaxEl).</p>
+<h3><a name="ARRMINEX"></a>ARRMinEx</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 4984</p>
+<pre>FUNCTION ARRMinEx (Dat!() as single, MinEl as integer, MaxEl as integer, byref pointX!) as single</pre>
+<p>Returns the smallest value of Dat!() between indexes MinEl and MaxEl inclusive, and writes its index to pointX! (left unchanged if the minimum is the first element).</p>
+<h3><a name="ARRRAZNOST"></a>ArrRaznost</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5064</p>
+<pre>Sub ArrRaznost (Dat1!() as single , Dat2!() as single, Raznost!() as single)</pre>
+<p>Element-by-element difference: REDIMs Raznost!() to the bounds of Dat1!() and fills it with Dat1!(i) - Dat2!(i). The size mismatch check is disabled (message and exit are commented out), so arrays must have the same bounds.</p>
+<h3><a name="ARRRAZNOSTR"></a>ArrRaznostR</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5087</p>
+<pre>Sub ArrRaznostR (Dat1!() as single , Dat2!() as single)</pre>
+<p>Subtracts Dat2!() from Dat1!() in place (Dat1!(i) = Dat1!(i) - Dat2!(i)). If the array bounds differ it shows a ShowMessage error and exits.</p>
+<h3><a name="ARRRESAMPLE"></a>ArrReSample</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5204</p>
+<pre>SUB ArrReSample (Dat1() AS SINGLE, Dat2() AS SINGLE, npt)</pre>
+<p>Resamples Dat1() into Dat2() with npt points using linear interpolation (comment in source). Dat2() must already be dimensioned for the new number of points; the code indexes Dat1() from 1 and assumes a zero-based array.</p>
+<h3><a name="ARRSUM"></a>ArrSum</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5099</p>
+<pre>Sub ArrSum (Dat1!() as single , Dat2!() as single, SumA!() as single)</pre>
+<p>Element-by-element sum: REDIMs SumA!() to the bounds of Dat1!() and fills it with Dat1!(i) + Dat2!(i). If the bounds of Dat1!() and Dat2!() differ it shows a ShowMessage error and exits.</p>
+<h3><a name="ARRSUMR"></a>ArrSumR</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5110</p>
+<pre>Sub ArrSumR (Dat1!() as single , Dat2!() as single)</pre>
+<p>Adds Dat2!() to Dat1!() in place, element by element. If the array bounds differ it shows a ShowMessage error and exits.</p>
+<h3><a name="CUTPOINTS"></a>cutPoints</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5322</p>
+<pre>SUB cutPoints (Dat!() as single, cutPnt as integer)</pre>
+<p>Shifts the contents of Dat!() left by cutPnt elements, dropping the first cutPnt points; the elements from index cutPnt to UBOUND-cutPnt-1 are copied to the start. The array is not resized, the tail keeps old values.</p>
+<h3><a name="DELINCLINE"></a>DelIncline</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5346</p>
+<pre>SUB DelIncline (Dat!() as single)</pre>
+<p>Removes a linear slope from Dat!() (source comment: start and end points become equal to 0): subtracts kt!*i, where kt! is the slope between Dat!(0) and Dat!(UBOUND-1). Note the start offset Dat!(0) itself is not subtracted.</p>
+<h3><a name="FINDMAX"></a>FindMax</h3>
+<p class="rq-meta">FUNCTIONI &middot; RQProc.inc, line 4996</p>
+<pre>FUNCTIONI FindMax (...) AS DOUBLE</pre>
+<p>Returns the largest of any number of numeric arguments (FUNCTIONI with a variable parameter list, read through ParamVal/ParamValCount). The loop counter is a BYTE, so use at most 255 arguments.</p>
+<h3><a name="KTARRAY"></a>kTArray</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5120</p>
+<pre>SUB kTArray (Dat1!() as single, kt! as single, Dat2!() as single)</pre>
+<p>Multiplies every element of Dat1!() by the constant kt! and stores the result in Dat2!(), which is REDIMed to the bounds of Dat1!(). Dat1!() is not changed.</p>
+<h3><a name="KTARRAYR"></a>kTArrayR</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5129</p>
+<pre>SUB kTArrayR (Dat1!() as single, kt! as single)</pre>
+<p>Multiplies every element of Dat1!() by the constant kt! in place.</p>
+<h3><a name="NAKOPL"></a>Nakopl</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5136</p>
+<pre>SUB Nakopl (F!() as single, Nakop!() as single, period as Word)</pre>
+<p>Moving average of F!() over a window of period points (period must be odd), written to Nakop!(). Edge points that the window cannot cover are filled with the first and last averaged values. Note: Nakop!() is REDIMed to 0..period-1 but written up to the last index of F!().</p>
+<h3><a name="OGIBF"></a>OgibF</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5240</p>
+<pre>SUB OgibF (Dat1() AS SINGLE, OgibUp() AS SINGLE, OgibDn() AS SINGLE)</pre>
+<p>Builds upper and lower envelopes of Dat1(): local maxima (rise greater than 0.08) go to OgibUp() and local minima to OgibDn(), with straight-line interpolation between them. Both output arrays are REDIMed to UBOUND(Dat1).</p>
+<h3><a name="OGIBFNEW"></a>OgibFNew</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5278</p>
+<pre>SUB OgibFNew (Dat1() AS SINGLE, OgibUp() AS SINGLE, OgibDn() AS SINGLE)</pre>
+<p>Variant of OgibF: builds upper (OgibUp) and lower (OgibDn) envelopes of Dat1() by linear interpolation between local maxima and minima, and also collects up to 512 maxima in a local DatMax() array that is not returned (body longer than shown).</p>
+<h3><a name="REVERSX1"></a>ReversX1</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5333</p>
+<pre>sub ReversX1(Dat!() as single)</pre>
+<p>Intended to reverse the order of Dat!() (indexes 0 to UBOUND-1), but as written each element is assigned back to its own position, so the array is not changed (the SWAP line is commented out).</p>
+</body>
+</html>

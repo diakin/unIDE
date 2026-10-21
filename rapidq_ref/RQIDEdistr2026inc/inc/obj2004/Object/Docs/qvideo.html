@@ -1,0 +1,1154 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <title>Appendix A: QVIDEO</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation composant par D.Glodt (c)2000-2004</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QVIDEO</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QVIDEO Composant</h1>
+
+<dd>
+QVIDEO est un controle media utilis&eacute; pour la lecture des fichiers
+vid&eacute;o.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QVIDEO Propriet&eacute;s</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Champs</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>L/E</b></td>
+
+<td><b>Defaut</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Timer</td>
+
+<td>QTIMER</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFCC99">Controle la fr&eacute;quence de l'&eacute;venement
+OnChange.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Lenght</td>
+
+<td>LONG</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFCC99">Longueur du fichier video en nombre d'images</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>LenghtTime</td>
+
+<td>LONG</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Longueur du fichier video en secondes</td>
+
+<td BGCOLOR="#FFCC99"></td>
+
+<td BGCOLOR="#FFCC99"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>State</td>
+
+<td>INTEGER</td>
+
+<td>L</td>
+
+<td>VD_CLOSE</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFCC99">Etat du media video,peut etre VD_PLAY,VD_STOP,VD_PAUSE.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Handle</td>
+
+<td>LONG</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFCC99">Handle du controle.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Parent</td>
+
+<td>LONG</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Handle QFORM ou 0 pour fenetre du lecteur multim&eacute;dia</td>
+
+<td BGCOLOR="#FFCC99"></td>
+
+<td BGCOLOR="#FFCC99"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>FileOpen</td>
+
+<td>BOOLEAN</td>
+
+<td>L</td>
+
+<td>False</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFCC99">Indique si un fichier video est ouvert.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Left</td>
+
+<td>SHORT</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Top</td>
+
+<td>SHORT</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Width</td>
+
+<td>SHORT</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Height</td>
+
+<td>SHORT</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ImgWidth</td>
+
+<td>SHORT</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Largeur image du fichier vid&eacute;o</td>
+
+<td BGCOLOR="#FFCC99"></td>
+
+<td BGCOLOR="#FFCC99"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ImgHeight</td>
+
+<td>SHORT</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Hauteur image du fichier vid&eacute;o</td>
+
+<td BGCOLOR="#FFCC99"></td>
+
+<td BGCOLOR="#FFCC99"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CurrentFrame</td>
+
+<td>LONG</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFCC99">Position du fichier video.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>AudioOff</td>
+
+<td>BOOLEAN</td>
+
+<td>LE</td>
+
+<td>False</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Sans son si valeur true</td>
+
+<td BGCOLOR="#FFCC99"></td>
+
+<td BGCOLOR="#FFCC99"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Error</td>
+
+<td>STRING</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Texte d'erreur si la m&eacute;thode OPEN &eacute;choue</td>
+
+<td BGCOLOR="#FFCC99"></td>
+
+<td BGCOLOR="#FFCC99"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Caption</td>
+
+<td>STRING</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Texte fenetre du lecteur multim&eacute;dia</td>
+
+<td BGCOLOR="#FFCC99"></td>
+
+<td BGCOLOR="#FFCC99"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>BorderStyle</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td>bsSizeable</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Style fenetre du lecteur multim&eacute;dia,bsNone
+ou bsSizeable</td>
+
+<td BGCOLOR="#FFCC99"></td>
+
+<td BGCOLOR="#FFCC99"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>WindowState</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td>wsNormal</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Etat de la fenetre du lecteur multim&eacute;dia,wsNormal
+ou wsMinimized ou wsMaximized</td>
+
+<td BGCOLOR="#FFCC99"></td>
+
+<td BGCOLOR="#FFCC99"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Volume</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>Media volume 0 to 100</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>DeviceType</td>
+
+<td>STRING</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>Type de codec exemple: MpegVideo</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QVIDEO Methodes</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Methode</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Close</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Ferme le fichier video</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Open</td>
+
+<td>FUNCTION(FileName as string)</td>
+
+<td NOWRAP>Ouvre le fichier video</td>
+
+<td NOWRAP>2</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Show</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Montre le fichier video</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Play</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Lit le fichier video</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Stop</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Arrete la lecture du fichier video</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Pause</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Met le media video en mode pause</td>
+
+<td NOWRAP>0</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QVIDEO Evenements</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Evenement</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>D&eacute;clenchement</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnChange</td>
+
+<td>(position as long,timePos as long)</td>
+
+<td>Changement de position du fichier video en lecture
+<br>Le parametre position donne la position par image,
+<br>le parametre timePos donne la position en secondes.</td>
+
+<td>2</td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QVIDEO Exemples</font></b>
+<pre><i><font color="#008000">'**************************************************************************</font></i>&nbsp;
+<i><font color="#008000">'* application:player video&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *</font></i>&nbsp;
+<i><font color="#008000">'* auteur:D.Glodt&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *</font></i>&nbsp;
+<i><font color="#008000">'* date:17-1-2004&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *</font></i>&nbsp;
+<i><font color="#008000">'**************************************************************************</font></i>&nbsp;
+<b><font color="#0000A0">$OPTION</font></b> ICON "<font color="#800000">video.ico</font>"
+<b><font color="#0000A0">$TYPECHECK</font></b> ON
+<b><font color="#0000A0">$Include</font></b> "<font color="#800000">Rapidq.inc</font>"
+<b><font color="#0000A0">$include</font></b> "<font color="#800000">Object\QVideo.inc</font>"
+
+<b><font color="#0000A0">$RESOURCE</font></b> PLAYBMP <b><font color="#0000A0">as</font></b> "<font color="#800000">play.bmp</font>"
+<b><font color="#0000A0">$RESOURCE</font></b> STOPBMP <b><font color="#0000A0">as</font></b> "<font color="#800000">Stop.bmp</font>"
+<b><font color="#0000A0">$RESOURCE</font></b> PAUSEBMP <b><font color="#0000A0">as</font></b> "<font color="#800000">Pause.bmp</font>"
+<b><font color="#0000A0">$RESOURCE</font></b> SPEAKERBMP <b><font color="#0000A0">as</font></b> "<font color="#800000">Speaker.bmp</font>"
+<b><font color="#0000A0">$RESOURCE</font></b> SPEAKEROFFBMP <b><font color="#0000A0">as</font></b> "<font color="#800000">SpeakerOff.bmp</font>"
+
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> PaintForm
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> ResizeForm
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Play
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Stop
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Pause
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Open
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Close
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Quitter
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> TrackBarChange
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> PostimerOnTimer<b>(</b>Position <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font></b>,timePos <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font>)
+<font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Zoom1
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Zoom2
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Zoom3
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Zoom4
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> FullScreen
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> Speaker
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> EditSeq
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> PlaySeq
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> AddSeq
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> DelSeq
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> DelAllSeq
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> CloseSeq
+<b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b> VolumeChange
+
+<b><font color="#0000A0">const</font></b> FormWidth=288
+<b><font color="#0000A0">const</font></b> FormHeight=290
+<b><font color="#0000A0">Dim</font></b> OpenDialog <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QOpenDialog
+</font></b>OpenDialog.Filter="<font color="#800000">Fichier vid&eacute;o(tout type)|*.avi;*.mpg;*.mpeg;*.mov|Fichier avi|*.avi|Fichier MPEG|*.mpg;*.mpeg|Fichier MOV|*.mov|</font>"
+OpenDialog.Caption= "<font color="#800000">Selectionner une vid&eacute;o</font>"
+<b><font color="#0000A0">Dim</font></b> video <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QVideo
+</font></b>video.DeviceType="<font color="#800000">MpegVideo</font>"
+video.OnChange=PostimerOnTimer
+video.timer.interval=200
+<b><font color="#0000A0">Dim</font></b> Counter <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+Dim</font></b> flagSeq <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+Dim</font></b> flagSpeaker <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>flagSpeaker=false
+<b><font color="#0000A0">Dim</font></b> FileName <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">string
+
+CREATE</font></b> Form2 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QFORM
+</font></b>&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Selection s&eacute;quence</font>"
+&nbsp;&nbsp;&nbsp; Width=430
+&nbsp;&nbsp;&nbsp; Height=230
+&nbsp;&nbsp;&nbsp; Center
+&nbsp;&nbsp;&nbsp; BorderStyle=bsDialog
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> ListSeq <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QLISTBOX
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=10
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=10
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=400
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=150
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtAdd <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Ajouter</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=10
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=170&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=AddSeq
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtDel <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Supprimer</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=93
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=170
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=DelSeq
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtDelAll <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Nouveau</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=175
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=170
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=DelAllSeq
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtQuit <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QBUTTON
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Fermer</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=335
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=170
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=CloseSeq
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+END</font></b> <b><font color="#0000A0">CREATE
+
+CREATE</font></b> Form3 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QFORM
+</font></b>&nbsp; BorderStyle=bsNone
+&nbsp; left=0
+&nbsp; top=0
+&nbsp; width=Screen.width
+&nbsp; height=Screen.height
+&nbsp; <b><font color="#0000A0">color</font></b>=&amp;H0
+&nbsp; cursor=crnone
+&nbsp; OnKeyPress=Stop
+<b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+
+CREATE</font></b> Form <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QFORM
+</font></b>&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">Vid&eacute;o</font>"
+&nbsp;&nbsp;&nbsp; Width=FormWidth
+&nbsp;&nbsp;&nbsp; Height=FormHeight
+&nbsp;&nbsp;&nbsp; Center
+&nbsp;&nbsp;&nbsp; BorderStyle=bsSingle
+&nbsp;&nbsp;&nbsp; DelBorderIcons 2
+&nbsp;&nbsp;&nbsp; OnPaint=PaintForm
+&nbsp;&nbsp;&nbsp; OnResize=ResizeForm
+&nbsp;&nbsp;&nbsp; OnClose=Quitter
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> MENU <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMAINMENU
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> FileMenu <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Fichier</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item1 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Ouvrir</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Open
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item2 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Fermer</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Close
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item3 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">-</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item4 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Quitter</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Quitter
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Display <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Affichage</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item11 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Zoom</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item21 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Zoom 50%</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Zoom1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item22 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Zoom 100%</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Checked=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Zoom2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item23 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Zoom 150%</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Zoom3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item24 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Zoom 200%</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Zoom4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item25 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Plein &eacute;cran</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=FullScreen
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Sequence <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;S&eacute;quence</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item13 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Edition</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=EditSeq
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Item14 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="<font color="#800000">&amp;Lancer s&eacute;quence</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=PlaySeq
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Panel1 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QPANEL
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=171
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=281
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=80
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BevelOuter=bvNone
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtPlay <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QCOOLBTN
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=PLAYBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=8
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Play</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Play
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtStop <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QCOOLBTN
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=STOPBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=46
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Stop</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Stop
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtPause <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QCOOLBTN
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=PAUSEBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=84
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Pause</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Pause
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> BtSpeaker <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QCOOLBTN
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=SPEAKERBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=122
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=26
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Son</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Speaker
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> TrackBar1 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QTRACKBAR
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TickMarks=tmBoth
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TickStyle=tsNone
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=36
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LineSize=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=272
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=21
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Position</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnChange=TrackBarChange
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> TrackBar2 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QTRACKBAR
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TickMarks=tmTopLeft
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TickStyle=tsnone
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=173
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=10
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LineSize=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=100
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=21
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="<font color="#800000">Volume</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnChange=VolumeChange
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Min=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Max=100
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> infos <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QSTATUSBAR
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SizeGrip=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AddPanels "<font color="#800000">Format:</font>","<font color="#800000">Dur&eacute;e:</font>",""
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Panel<b>(</b>0<b>)</b>.width=100
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Panel<b>(</b>1<b>)</b>.width=100
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+END</font></b> <b><font color="#0000A0">CREATE
+</font></b>video.parent=form.handle
+Form.ShowModal
+
+<b><font color="#0000A0">Sub</font></b> PaintForm
+&nbsp; form.FillRect<b>(</b>0,0,form.clientWidth,<b>(</b>form.clientHeight-panel1.height<b>)</b>,&amp;H0<b>)
+<font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> ResizeForm
+&nbsp; Panel1.Top=form.ClientHeight-Panel1.Height
+&nbsp; Panel1.Width=form.ClientWidth
+&nbsp; TrackBar1.width=Panel1.width-10
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Function</font></b> GetMinutes<b>(</b>seconds <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font>)</b> <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">string
+</font></b>&nbsp; <b><font color="#0000A0">dim</font></b> min <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp; <b><font color="#0000A0">dim</font></b> sec <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp;&nbsp;
+&nbsp; min=seconds/60
+&nbsp; sec=seconds <b><font color="#0000A0">mod</font></b> 60
+&nbsp; <b><font color="#0000A0">if</font></b> sec&lt;10 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; result=<b><font color="#0000A0">str$</font>(</b>min<b>)</b>+"<font color="#800000">:0</font>"+<b><font color="#0000A0">str$</font>(</b>sec<b>)
+</b>&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; result=<b><font color="#0000A0">str$</font>(</b>min<b>)</b>+"<font color="#800000">:</font>"+<b><font color="#0000A0">str$</font>(</b>sec<b>)
+</b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Function
+
+Sub</font></b> Open&nbsp;&nbsp;
+&nbsp; <b><font color="#0000A0">If</font></b> OpenDialog.Execute <b><font color="#0000A0">Then
+</font></b>&nbsp;&nbsp; video.close
+&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> video.open<b>(</b>OpenDialog.FileName<b>)</b> <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp; FileName=OpenDialog.FileName
+&nbsp;&nbsp;&nbsp;&nbsp; form.Width=video.width+<b>(</b>form.width-form.clientWidth<b>)</b>+2
+&nbsp;&nbsp;&nbsp;&nbsp; form.Height=video.height+panel1.height+<b>(</b>form.height-form.clientHeight<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp; ResizeForm
+&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; TrackBar2.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Max=video.lenght
+&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Position=0
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item21.checked <b><font color="#0000A0">then</font></b> zoom1
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item23.checked <b><font color="#0000A0">then</font></b> zoom3
+&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item24.checked <b><font color="#0000A0">then</font></b> zoom4
+&nbsp;&nbsp;&nbsp;&nbsp; BtStop.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; BtPlay.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; BtPause.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; BtSpeaker.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; BtStop.Down=True
+&nbsp;&nbsp;&nbsp;&nbsp; Item11.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp; video.show
+&nbsp;&nbsp;&nbsp;&nbsp; form.caption="<font color="#800000">Vid&eacute;o - </font>"+<b><font color="#0000A0">right$</font>(</b>OpenDialog.FileName,<b><font color="#0000A0">Len</font>(</b>OpenDialog.FileName<b>)</b>-RINSTR<b>(</b>OpenDialog.FileName,"<font color="#800000">\</font>"<b>))
+</b>&nbsp;&nbsp;&nbsp;&nbsp; infos.Panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Format:</font>"+<b><font color="#0000A0">str$</font>(</b>video.ImgWidth<b>)</b>+"<font color="#800000">*</font>"+<b><font color="#0000A0">str$</font>(</b>video.ImgHeight<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp; infos.Panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Dur&eacute;e:</font>"+GetMinutes<b>(</b>video.LenghtTime<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp; infos.Panel<b>(</b>2<b>)</b>.caption=""
+&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">showmessage</font></b> video.error
+&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Close
+&nbsp; <b><font color="#0000A0">if</font></b> flagSpeaker <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; flagSpeaker=false
+&nbsp;&nbsp;&nbsp; video.AudioOff=false
+&nbsp;&nbsp;&nbsp; btSpeaker.bmpHandle=SPEAKERBMP
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; video.close
+&nbsp; TrackBar1.Position=0
+&nbsp; Item11.Enabled=false
+&nbsp; TrackBar1.Enabled=false
+&nbsp; TrackBar2.Enabled=false
+&nbsp; Form.width=FormWidth
+&nbsp; Form.Height=FormHeight
+&nbsp; BtStop.Enabled=false
+&nbsp; BtPlay.Enabled=false
+&nbsp; BtPause.Enabled=false
+&nbsp; BtSpeaker.Enabled=false
+&nbsp; form.caption="<font color="#800000">Vid&eacute;o</font>"
+&nbsp; flagSeq=false
+&nbsp; infos.Panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Format:</font>"
+&nbsp; infos.Panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Dur&eacute;e:</font>"
+&nbsp; infos.Panel<b>(</b>2<b>)</b>.caption=""
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Play
+&nbsp; <b><font color="#0000A0">if</font></b> video.FileOpen=false <b><font color="#0000A0">then</font></b> BtStop.Down=True
+&nbsp; <b><font color="#0000A0">if</font></b> item25.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; video.close
+&nbsp;&nbsp;&nbsp; video.parent=form3.handle
+&nbsp;&nbsp;&nbsp; form3.show
+&nbsp;&nbsp;&nbsp; video.open<b>(</b>Filename<b>)
+</b>&nbsp;&nbsp;&nbsp; video.width=form3.width
+&nbsp;&nbsp;&nbsp; video.height=form3.height
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; video.play
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Stop
+&nbsp; video.stop
+&nbsp; TrackBar1.Position=0
+&nbsp; <b><font color="#0000A0">if</font></b> item25.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; video.close
+&nbsp;&nbsp;&nbsp; form3.close
+&nbsp;&nbsp;&nbsp; video.parent=form.handle
+&nbsp;&nbsp;&nbsp; video.open<b>(</b>Filename<b>)
+</b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item21.checked <b><font color="#0000A0">then</font></b> zoom1
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item22.checked <b><font color="#0000A0">then</font></b> zoom2
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item23.checked <b><font color="#0000A0">then</font></b> zoom3
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item24.checked <b><font color="#0000A0">then</font></b> zoom4
+&nbsp;&nbsp;&nbsp; BtStop.Down=True
+&nbsp;&nbsp;&nbsp; video.show
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Pause
+&nbsp; <b><font color="#0000A0">if</font></b> video.FileOpen=false <b><font color="#0000A0">then</font></b> BtStop.Down=True
+&nbsp; video.pause
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> TrackBarChange
+&nbsp; video.currentFrame=TrackBar1.Position
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> PostimerOnTimer<b>(</b>Position <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font></b>,timePos <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font>)
+</b>&nbsp; TrackBar1.Position=Position
+&nbsp; infos.Panel<b>(</b>2<b>)</b>.caption=GetMinutes<b>(</b>timePos<b>)
+</b>&nbsp; <b><font color="#0000A0">If</font></b> Video.State=VD_STOP <b><font color="#0000A0">and</font></b> flagSeq=false <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; TrackBar1.Position=0
+&nbsp;&nbsp;&nbsp; BtStop.Down=True
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item25.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.close
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form3.close
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.parent=form.handle
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.open<b>(</b>Filename<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item21.checked <b><font color="#0000A0">then</font></b> zoom1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item22.checked <b><font color="#0000A0">then</font></b> zoom2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item23.checked <b><font color="#0000A0">then</font></b> zoom3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item24.checked <b><font color="#0000A0">then</font></b> zoom4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.show
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">If</font></b> Video.State=VD_STOP <b><font color="#0000A0">and</font></b> flagSeq=true <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; TrackBar1.Position=0
+&nbsp;&nbsp;&nbsp; video.close
+&nbsp;&nbsp;&nbsp; counter=counter+1
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> <b>(</b>counter+1<b>)</b>&lt;=listSeq.itemCount <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> video.open<b>(</b>listSeq.item<b>(</b>counter<b>))</b> <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FileName=listSeq.item<b>(</b>counter<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item25.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.width=form3.width
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.height=form3.height
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.Width=video.width+<b>(</b>form.width-form.clientWidth<b>)</b>+2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.Height=video.height+panel1.height+<b>(</b>form.height-form.clientHeight<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item21.checked <b><font color="#0000A0">then</font></b> zoom1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item23.checked <b><font color="#0000A0">then</font></b> zoom3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item24.checked <b><font color="#0000A0">then</font></b> zoom4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Max=video.lenght
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.play
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.caption="<font color="#800000">Vid&eacute;o - </font>"+<b><font color="#0000A0">right$</font>(</b>listSeq.item<b>(</b>counter<b>)</b>,<b><font color="#0000A0">Len</font>(</b>listSeq.item<b>(</b>counter<b>))</b>-RINSTR<b>(</b>listSeq.item<b>(</b>counter<b>)</b>,"<font color="#800000">\</font>"<b>))
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; infos.Panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Format:</font>"+<b><font color="#0000A0">str$</font>(</b>video.ImgWidth<b>)</b>+"<font color="#800000">*</font>"+<b><font color="#0000A0">str$</font>(</b>video.ImgHeight<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; infos.Panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Dur&eacute;e:</font>"+GetMinutes<b>(</b>video.LenghtTime<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">showmessage</font></b> video.error
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else</font></b>&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item25.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form3.close
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.parent=form.handle
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BtPlay.Down=False
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BtStop.Down=True
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Close
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Quitter
+&nbsp; video.close
+&nbsp; form.close
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Zoom1
+&nbsp; <b><font color="#0000A0">if</font></b> video.FileOpen <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; Item21.checked=true
+&nbsp;&nbsp;&nbsp; Item22.checked=false
+&nbsp;&nbsp;&nbsp; Item23.checked=false
+&nbsp;&nbsp;&nbsp; Item24.checked=false
+&nbsp;&nbsp;&nbsp; video.width=video.ImgWidth*<b>(</b>50/100<b>)
+</b>&nbsp;&nbsp;&nbsp; video.height=video.ImgHeight*<b>(</b>50/100<b>)
+</b>&nbsp;&nbsp;&nbsp; form.Width=video.width+<b>(</b>form.width-form.clientWidth<b>)</b>+2
+&nbsp;&nbsp;&nbsp; form.Height=video.height+panel1.height+<b>(</b>form.height-form.clientHeight<b>)
+</b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Zoom2
+&nbsp; <b><font color="#0000A0">if</font></b> video.FileOpen <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; Item21.checked=false
+&nbsp;&nbsp;&nbsp; Item22.checked=true
+&nbsp;&nbsp;&nbsp; Item23.checked=false
+&nbsp;&nbsp;&nbsp; Item24.checked=false
+&nbsp;&nbsp;&nbsp; video.width=video.ImgWidth*<b>(</b>100/100<b>)
+</b>&nbsp;&nbsp;&nbsp; video.height=video.ImgHeight*<b>(</b>100/100<b>)
+</b>&nbsp;&nbsp;&nbsp; form.Width=video.width+<b>(</b>form.width-form.clientWidth<b>)</b>+2
+&nbsp;&nbsp;&nbsp; form.Height=video.height+panel1.height+<b>(</b>form.height-form.clientHeight<b>)
+</b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Zoom3
+&nbsp; <b><font color="#0000A0">if</font></b> video.FileOpen <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; Item21.checked=false
+&nbsp;&nbsp;&nbsp; Item22.checked=false
+&nbsp;&nbsp;&nbsp; Item23.checked=true
+&nbsp;&nbsp;&nbsp; Item24.checked=false
+&nbsp;&nbsp;&nbsp; video.width=video.ImgWidth*<b>(</b>150/100<b>)
+</b>&nbsp;&nbsp;&nbsp; video.height=video.ImgHeight*<b>(</b>150/100<b>)
+</b>&nbsp;&nbsp;&nbsp; form.Width=video.width+<b>(</b>form.width-form.clientWidth<b>)</b>+2
+&nbsp;&nbsp;&nbsp; form.Height=video.height+panel1.height+<b>(</b>form.height-form.clientHeight<b>)
+</b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Zoom4
+&nbsp; <b><font color="#0000A0">if</font></b> video.FileOpen <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; Item21.checked=false
+&nbsp;&nbsp;&nbsp; Item22.checked=false
+&nbsp;&nbsp;&nbsp; Item23.checked=false
+&nbsp;&nbsp;&nbsp; Item24.checked=true
+&nbsp;&nbsp;&nbsp; video.width=video.ImgWidth*<b>(</b>200/100<b>)
+</b>&nbsp;&nbsp;&nbsp; video.height=video.ImgHeight*<b>(</b>200/100<b>)
+</b>&nbsp;&nbsp;&nbsp; form.Width=video.width+<b>(</b>form.width-form.clientWidth<b>)</b>+2
+&nbsp;&nbsp;&nbsp; form.Height=video.height+panel1.height+<b>(</b>form.height-form.clientHeight<b>)
+</b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Speaker
+&nbsp; <b><font color="#0000A0">if</font></b> flagSpeaker <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; video.AudioOff=false
+&nbsp;&nbsp;&nbsp; btSpeaker.bmpHandle=SPEAKERBMP
+&nbsp;&nbsp;&nbsp; flagSpeaker=false
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; video.AudioOff=true
+&nbsp;&nbsp;&nbsp; btSpeaker.bmpHandle=SPEAKEROFFBMP
+&nbsp;&nbsp;&nbsp; flagSpeaker=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> EditSeq
+&nbsp; Form2.showmodal
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> AddSeq
+&nbsp; <b><font color="#0000A0">If</font></b> OpenDialog.Execute <b><font color="#0000A0">Then
+</font></b>&nbsp;&nbsp;&nbsp; listSeq.additems<b>(</b>OpenDialog.fileName<b>)
+</b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> DelSeq
+&nbsp; <b><font color="#0000A0">if</font></b> listSeq.itemIndex>-1 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; listSeq.delItems<b>(</b>listSeq.itemIndex<b>)
+</b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> DelAllSeq
+&nbsp; listSeq.clear
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> CloseSeq
+&nbsp; form2.close
+&nbsp; <b><font color="#0000A0">if</font></b> listSeq.itemCount>0 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; item14.enabled=true
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; item14.enabled=false
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> PlaySeq
+&nbsp; <b><font color="#0000A0">if</font></b> listSeq.itemCount>0 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; video.close
+&nbsp;&nbsp;&nbsp; flagSeq=true
+&nbsp;&nbsp;&nbsp; counter=0
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item25.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.parent=form3.handle
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form3.show
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> video.open<b>(</b>listSeq.item<b>(</b>counter<b>))</b> <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FileName=listSeq.item<b>(</b>counter<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item25.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.width=form3.width
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.height=form3.height
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.Width=video.width+<b>(</b>form.width-form.clientWidth<b>)</b>+2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.Height=video.height+panel1.height+<b>(</b>form.height-form.clientHeight<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item21.checked <b><font color="#0000A0">then</font></b> zoom1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item23.checked <b><font color="#0000A0">then</font></b> zoom3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> item24.checked <b><font color="#0000A0">then</font></b> zoom4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TrackBar2.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Max=video.lenght
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Position=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BtStop.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BtPlay.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BtPause.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BtSpeaker.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BtPlay.Down=True
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Item11.Enabled=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.play
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.caption="<font color="#800000">Vid&eacute;o - </font>"+<b><font color="#0000A0">right$</font>(</b>listSeq.item<b>(</b>counter<b>)</b>,<b><font color="#0000A0">Len</font>(</b>listSeq.item<b>(</b>counter<b>))</b>-RINSTR<b>(</b>listSeq.item<b>(</b>counter<b>)</b>,"<font color="#800000">\</font>"<b>))
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; infos.Panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Format:</font>"+<b><font color="#0000A0">str$</font>(</b>video.ImgWidth<b>)</b>+"<font color="#800000">*</font>"+<b><font color="#0000A0">str$</font>(</b>video.ImgHeight<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; infos.Panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Dur&eacute;e:</font>"+GetMinutes<b>(</b>video.LenghtTime<b>)
+</b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">showmessage</font></b> video.error
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> FullScreen
+&nbsp; <b><font color="#0000A0">if</font></b> item25.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; item25.checked=false
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">If</font></b> Video.State=VD_PLAY <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.stop
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.close
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.parent=form3.handle
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form3.show
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.open<b>(</b>Filename<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.width=form3.width
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.height=form3.height
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.play
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp; item25.checked=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> VolumeChange
+&nbsp; video.volume=TrackBar2.position
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b></pre>
+
+<pre></pre>
+
+</body>
+</html>

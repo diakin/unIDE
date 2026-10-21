@@ -1,0 +1,278 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"><meta http-equiv="Content-Language" content="de">
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0"><title>QDir.htm</title></head><body bgcolor="#FFFFFF" leftmargin="0" topmargin="0"><pre><font face="Fixedsys"><span style="background-color: #FFFFFF"><font color="#000000" size="3">'
+' ============================================================================
+' QDIR   EXTENDED  COMPONENT            March 2004        By Jacques Philippe
+'
+' DOCUMENTATION       like      "DOS"   DIR   and   DIR /S            V 1.0.0
+' ============================================================================
+'
+'    $INCLUDE  "QDir.Inc"          cut and paste this  **ON TOP** of your code
+'
+'    RAPIDQ dont like comments on line containing "\\" or "\", compiler reports
+'    an error and there is none. Juste remove the comment and then it will works.
+'
+'    EXAMPLE 1 
+'    ---------
+'    a simple QDIR.DIR searching matching files without searching in Sub directories
+'       ' in directory c:/windows searches the "*.hlp" files, directory not wanted,
+'       ' only files with Archive attribute set are accepted
+'
+'       ' ------ CODE_1 ------
+'       Dim myDir As QDir
+'       myDir.OnFileFound = OnFileFound_ShowFileParams   '(QDir FileFound Event)        
+'       myDir.Dir ("c:/windows/*.hlp", "D", "A") ' arg2 rejected, arg3 mustAttributes
+'       Print "path    = ";myDir.path
+'       Print "EXAMPLE 1          FINISHED"
+'
+'       ' QDir OnFileFound Event
+'       ' ----------------------
+'       Sub OnFileFound_ShowFileParams  
+'           Print myDir.path &amp; myDir.FileName &amp; "   " &amp; myDir.Time &amp; "  " _
+'                                                          &amp; myDir.dateAlphaEU
+'           ' and 50+ other properties for each File Found
+'       End sub
+'       ' ------ END CODE_1 ------
+'    EXAMPLE 2 
+'    ---------
+'    a QDIR.DIRS searching matching files with search in all sub directories
+'       ' Same Search as In Example 1 but in sub directories too
+'
+'       ' ------ CODE_2 ------
+'       Dim myDir As QDir
+'       myDir.OnFileFound = OnFileFound_ShowFileParams   '( FileFound Event)
+'       myDir.Dirs ("c:/windows/*.Txt", "D", "A") ' arg2 rejected, arg3 mustAttributes
+'       Print "EXAMPLE 2          FINISHED"
+'
+'       ' QDir OnFileFound Event
+'       ' ----------------------
+'       Sub OnFileFound_ShowFileParams
+'           Print myDir.path &amp; myDir.FileName &amp; "   " &amp; myDir.Time &amp; "  " _
+'                                                           &amp; myDir.dateAlphaEU
+'           ' and ?50 other properties for each file found
+'       End sub
+'       ' ------ END CODE_2 ------
+'
+'    Attributes are refered by their first letter : "A" for archive, "D" for direct
+'        "S" for System, "H" for Hidden, "R" for Read only, ...
+'    myDir.WithDotsDirs = False  ' to reject \. and \.. directories
+'
+' ---------------------------------------------------------------------------------
+'
+'    METHODS  part 1
+'    -------
+'    - DIR   :  File Search without Scanning The Sub Directories
+'      
+'      QDir.Dir (pathfilter$, rejectedAttributes$, mustAttributes$)           a Sub    
+'
+'    - DIRS  :  File Search with Scanning the Sub Directories
+'               Dirs chosen to remember the Command Dir /s  ???
+
+'      QDir.Dirs (pathfilter$, rejectedAttributes$, mustAttributes$)          a Sub
+'
+'    - ChangeFileAttributes (sPathFileName$ , sAttributesAsString$) As Long
+'           documented further  (returns  0 or 1)
+'    - ChangeFileDateAndTime ( ... ) As Long  '   Functioni
+'      ChangeFileDateAndTime (pathFileName$, Year%, month%, day%, hour%, _
+'                       minute%, second%, optionWhichTimes$) As Long
+'           documented further  ( returns 0 or 1)
+'
+'    Comments about these four methods
+'    ---------------------------------
+'       - path may be relative or absolute 
+'          ie : dir2\myfile.Ext or c:\dir1\dir2\myfile.Ext
+'       - relative path is relative to APPLICATION directory (where the .EXE is)
+'       - in path "\" and "/" are accepted as separator
+'       - filter may be any kind of filter using wild card  "*.Txt", "*name.Txt"
+'       - attributes are passed as a String, elements of that string are :
+'           "A" for Archive
+'           "D" for Directory
+'           "H" for Hidden
+'           "N" for Normal
+'           "R" for Read Only
+'           "S" for System
+'           "T" for Temporary
+'           "C" for Compressed
+'           "0" for No Attribute Set (?=N?)
+'       - You can use multiple attributes in any order ie : "HTCA"
+'       - an unknown attribute letter will be ignored.
+'       - attributes are not case sensitive
+'       - in rejectedAttributes$, if more than one attribute is rejected, all file
+'         having one of these rejected attributes set is rejected from the search.
+'       - in mustAttributes$, if more than one attibute is present, to be accepted
+'         a file must have all these attributes set. ie : no file can match "0A"
+'       - Dir and Dirs will only return when ALL the directory job has been done.
+'         There is a DoEvents in each QDir Loop.
+'       - Once a QDir.Dir or QDir.Dirs is Started, a busy flag forbids to start
+'         another occurence of QDir.Dir or QDir.Dirs, until the first job is
+'         finished. To start more than one QDir.Dir or QDir.Dirs simultneously,
+'         you must DECLARE (DIM) two or more  Variables As QDIR.
+'
+' -----------------------------------------------------------------------------
+'    PROPERIES 
+'    ---------
+'    Once a Matching File Is Found, QDIR gathers, computes and stores a lot of
+'    datas about that File.
+'
+'    PROPERTIES GROUPE 1
+'    -------------------
+'    Note
+'    ----
+'    Each file is stored on disk with three times : the CreationTime,
+'    the lastAccessTime and the most commonly used the lasWriteTime
+'
+'    Name, Path, Size
+'    ----------------
+'    fileName As string          the name of the fileFound 
+'    dosFileName As string       the dos name of thefile found
+'    path As String              the Absolute path to the file  ie : C:\myDir\otherDir\            
+'    pathFileName As string      the Absolute path + the fileName  ie : c:\Windows\system.dat
+'    size As Double              the size as a double (use StrF$(size, ffFixed, 18, 0) to exp
+'                                (ffNumber to have thousands separators)
+'    WithDotsDirs As Long        Set to False, the "." and ".." are not returned
+'    Attributes
+'    ----------
+'    attributes As Long             the attributes af the file (sum of attributes)
+'    attributesAsString As String   the attributes transformed in a string "ADHNRSTC0"
+'                          If Instr(myDir.AttributesAsString, "A") Then   ....
+'    ' File Times
+'    ' ----------
+'    dateTime As Double          the lastWriteTime of the file as a double
+'    time As String              the lastwriteTime of the file, format HH:MM:SS
+'    timems As String            the lastWriteTime of the file + milliseconds, format HH:MM:SS,mmm
+'    date As String              the lastWriteTime date, format MM/DD/YYYY
+'    dateEU As String            the lastWriteTime date, EU foramt DD/MM/YYYY 
+'    dateAlpha As String         the lastWriteTime in alphanumeric format "mon dec 24 2001"
+'    dateAlphaEU As string       the lastWriteTime in alphanumeric EU format "mon 24 dec 2001"
+'    strDayOfWeek As string      the lastWriteTime Day Of The Week : "Mon", "Tue", "Wed", "Thu" ...
+'    days(0 To 6) As String      the 7 names of the strDayOfWeek. Source for AlphaNumeric dates
+'    strMonthOfYear As String    the lastWriteTime Month Of The Year : "Jan", "Feb", "Mar", "Apr" ...  
+'    months(1 To 12) As String   the 12 names of strMonthOfYear. Source for AlphaNumeric dates.
+
+'    PROPERTIES GROUP 2
+'    ------------------
+'    All the informations available for lastWriteTime -and more- are available for lastAccessTime
+'    and creationTime too, but not directly, you have to get them in their QDIR_SYSTEMTIME TYPE 
+'
+'    Type QDIR_SYSTEMTIME
+'        year As Short                 ' the year as a number
+'        month As Short                ' the month as a number
+'        dayOfWeek As Short            ' number of the day of the week  SUNDAY = 0, MONDAY = 1, ...
+'        day As Short                  ' the day in the month  1, 2, 3,...  12, 13, 14, ... 28/30/31
+'        hour As Short                 ' the hour as a number
+'        minute As Short               ' the minute as a number
+'        second As Short               ' the second as a number
+'        milliseconds As Short         ' the milliseconds as a number
+'        ' Extended                    ' as described in PROPERTIES GROUP 1
+'        dateTime As Double            ' The DateTime As A Number
+'        date As String * 10           ' Date as a String  mm/dd/yyyy 
+'        dateEU As String * 10         ' EU date Foramt dd/mm/yyyy
+'        dateAlpha As String * 16      ' "ddd" "mmm" DD, yyyy
+'        dateAlphaEU As String * 15    ' "ddd" DD "mmm" yyyy
+'        time As String * 8            ' without ms  HH:MM:SS
+'        timems As String * 12         ' Time As a String  HH:MM:SS.iii
+'        strDayOfWeek As String * 3    ' day of the week as in Day(0 To 6) : "Mon", "Tue", "Wed", ... "Sun"
+'        nWeekDay As String * 1        ' "0", "1", "2", ... "6"
+'        strMonthOfYear As String * 3  ' day of the week as in Months(1 To 12) : "Jan", "Feb", ... "Dec"
+'    End Type
+'
+'    creation As QDIR_SYSTEMTIME    ' the Type contaning informations about the creationTime
+'    lastAccess As QDIR_SYSTEMTIME  ' the Type contaning informations about the lastAccessTime
+'    lastWrite As QDIR_SYSTEMTIME   ' the Type contaning informations about the lastWriteTime
+'
+'    The File Time Properties decribed above for lastwriteTime may be found here for all three
+'    File Times : ie
+'    - QDir.Creation.dateAlphaEU
+'    - QDir.lastAccess.dateEU     and even 
+'    - QDir.lastWrite.timems      (which is equal to QDir.timems)
+'
+'    These three time TYPES give access to 3 x 18 porpeties (=54), not used every day :)
+'    
+'    To compare dates and times, use dateTime. The dateTimes are DOUBLE precision numbers
+'    (64 bit Integer, converted here in DOUBLE) holding a date and time associated with
+'    a file. That DOUBLE specifies the number of 100-nanosecond intervals which have
+'    passed since January 1, 1601 (10,000,000 for each elapsed second since then).
+' ---------------------------------------------------------------------------------
+'
+'    METHODS    part  2
+'    -------
+'    - ChangeFileDateAndTime As Integer    a   Functioni
+'
+'      SYNTAX :
+'      ------
+'          ChangeFileDateAndTime (pathFileName$, Year%, month%, day%, hour%, _
+'                                               minute%, second%, optionWhichTimes$)
+'      Return  0 (False) on Failure or 1 (True) on success
+'
+'      EXAMPLES :
+'      --------
+'      - ChangeFileDateAndTime ("c:\myDir\myFile", 1983, 6, 21, 17, 22, 33)
+'           the LastWriteTime Of MyFile is set to June 21 st 1983 at 17:22:23
+'
+'      - ChangeFileAndDate ("c:\myDir\myFile", 1983, 6, 21, 17, 22, 33 "Access")
+'           the LastAccessTime Of myFile is set to June 21 st 1983 at 17:22:23
+'
+'      - ChangeFileAndDate ("c:\myDir\myFile", 1983, 6, 21, 17, 22, 33 "ACCESS Write CREATION")
+'           the LastAccessTime, CreationTime and LastWriteTime Of myFile are
+'           set to June 21 st 1983 at 17:22:23
+'
+'           Used in the Event OnFileFound with Qdir.pathFilename can change the Date
+'           and Time of all matching files.
+'      DOC 
+'      ---
+'       A File is Stored on Disk with Three Different Dates and Times Named :
+'           - the creationTime
+'           - the lastAccesstime
+'           - the lastWriteTime   (the one mostly mostly used shown)
+'
+'       Six NUMERIC Parameters **MUST** be Passed to the Functioni :
+'           - the First  is the YEAR   of the new Date Time For the File
+'           - the Second is the MONTH  of the new Date Time For the File
+'           - the Third  is the DAY    of the new Date Time For the File
+'           - the Fourth is the HOUR   of the new Date Time For the File
+'           - the Fifth  is the MINUTE of the new Date Time For the File
+'           - the Sixth  is the SECOND of the new Date Time For the File'   
+'
+'       The FILENAME With or Without a Path must be Passed as a STRING !
+'
+'       The optionWhichTimes Parameter is a STRING that Indicates to the Functioni
+'           which file Times must be Changed. If that String contains :
+'           - "CREATION" the creationTime   will be Changed ("CRE" is enough)
+'           - "ACCESS"   the lastAccessTime will be changed ("ACC" is enough)
+'           - "WRITE"    the lastWriteTime  will be changed ("WRI" is enough)
+'           Not case sensitive 
+'           If that string is not Passed or is Empty, the lastWriteTime only will
+'           be changed
+'
+'       ERROR : on error a ShowMessage is POPED UP and the Functioni Returns 0 (False)
+'
+' ----------------------------------------------------------------------------
+'
+'    - ChangeFileAttributes (pathFilename$ As String, Attributes As String) As Integer
+'
+'       - attributes are passed as a String, elements of that string are :
+'           "A" for Archive
+'           "D" for Directory
+'           "H" for Hidden
+'           "N" for Normal
+'           "R" for Read Only
+'           "S" for System
+'           "T" for Temporary
+'           "C" for Compressed
+'           "0" for No Attribute Set (?=N?)
+'
+'      EXAMPLE :
+'      -------
+'        ChangeFileAttributes ("c:\myDir\myFile","AR")
+'           the attributes of myFile are set to Archive and ReadOnly
+'
+'       The function returns  1 (True)  if attributes have been changed and 0 if
+'       an error has occured.
+'
+'       Used in the Event OnFileFound with Qdir.pathFilename can change the
+'       attributes of all matching files.
+'
+' ----------------------------------------------------------------------------
+'
+</font></pre></body>
+</html>

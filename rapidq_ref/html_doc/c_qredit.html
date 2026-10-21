@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QREDIT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QREDIT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QREDIT Component</h1>
+<p class="rq-meta">Extends <a href="qrichedit.html">QRICHEDIT</a> &middot; source: <code>inc/HiLight.inc</code>, line 23 &middot; author: William Yu</p>
+<p><b>A QRichEdit with simple automatic keyword (syntax) highlighting.</b></p>
+<p>QREdit extends QRichEdit and is William Yu&#x27;s syntax highlighting example turned into a component. Add keywords with AddSyntaxes, then call HiLight after loading a file or inserting lines: it selects text ranges and sets SelAttributes to a bold RichFont in HiLightColor, instead of generating RTF.</p>
+<p>While typing, OnKeyUp finds the word around the caret (separated by spaces or line breaks) and highlights it if it is a keyword. The control is set to PlainText with the &quot;Courier&quot; font. After the TYPE the file redefines QRICHEDIT as QREdit, so later code that creates a QRICHEDIT gets this component.</p>
+<p>QREDIT inherits the properties, methods and events of <a href="qrichedit.html">QRICHEDIT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>$INCLUDE &quot;RAPIDQ.INC&quot;</li>
+</ul>
+<a name="1"></a><h2>QREdit Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">RichFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont used for normal text and as the base for highlighted keywords (default name &quot;Courier&quot;).</td></tr>
+<tr><td class="rq-name">Syntaxes</td><td class="rq-type">ARRAY(100) OF STRING</td><td>RW</td><td></td><td>Array Syntaxes(100) of keywords to highlight, filled from index 1 by AddSyntaxes.</td></tr>
+<tr><td class="rq-name">MaxSyntax</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Number of keywords stored in Syntaxes.</td></tr>
+<tr><td class="rq-name">HiLightColor</td><td class="rq-type">INTEGER</td><td>RW</td><td>&amp;HAA0000</td><td>Color of highlighted keywords (default &amp;HAA0000).</td></tr>
+</table>
+<a name="2"></a><h2>QREdit Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">HiLight</td><td class="rq-type">SUB</td><td>Highlights all keywords: resets the whole text to RichFont, then finds every occurrence of each keyword (case-insensitive substring search) and makes it bold in HiLightColor. Call it after loading a file or inserting lines.</td></tr>
+<tr><td class="rq-name">AddSyntaxes</td><td class="rq-type">SUBI(...)</td><td>AddSyntaxes(word1, word2, ...) appends keywords to the Syntaxes array.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnKeyUp</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The author describes it as not very complete.</li>
+<li>The OnKeyUp comments say the event may be skipped when typing fast and that splitting a word with a space is not handled.</li>
+<li>HiLight matches substrings, not whole words, so a keyword inside a longer word is also highlighted.</li>
+<li>Syntaxes has a fixed size of 100 and AddSyntaxes does not check the limit.</li>
+<li>The include file itself sets $APPTYPE GUI and $TYPECHECK ON and includes RAPIDQ.INC.</li>
+<li>The header comment calls the color property HiLighColor; the field is HiLightColor.</li>
+<li>The file redefines QRICHEDIT as QREdit after the TYPE, which affects every later QRICHEDIT in the program.</li>
+</ul>
+<a name="4"></a><h2>QREdit Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;HiLight.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Highlight&quot;
+  CREATE Editor AS QREdit
+    Align = 5
+  END CREATE
+END CREATE
+Editor.AddSyntaxes &quot;SUB&quot;, &quot;END&quot;, &quot;DIM&quot;, &quot;AS&quot;
+Editor.Text = &quot;SUB Test&quot; + CHR$(13) + &quot;DIM a AS INTEGER&quot; + CHR$(13) + &quot;END SUB&quot;
+Editor.HiLight
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qredex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qricheditux.html">Next component</a></div>
+</body>
+</html>

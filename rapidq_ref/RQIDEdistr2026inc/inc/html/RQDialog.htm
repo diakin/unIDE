@@ -1,0 +1,115 @@
+<html>
+<head>
+<title>RQDialog.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>' RQDIALOG.INC    BILL K  1-2003</i></font> 
+<font color="007700"><i>'    Displays Window's Open and Save Dialogs</i></font> 
+<font color="007700"><i>'    The main advantage of this INC is that the Dialog is the Sizeable Type </i></font> 
+<font color="007700"><i>'    It also  by default shows the windows overwrite warning on the Savedialog</i></font> 
+<font color="007700"><i>'       this can be optioned out if no warning is desired.</i></font> 
+<font color="007700"><i>'    All the other parameters are the same as the QDialogs      </i></font> 
+<font color="007700"><i>' USAGE:  MYFILENAME$=RQSHOWDIALOG(MyCaption$, _                ' default is "Open" or "Save"</i></font> 
+<font color="007700"><i>'                                  MyFilter$, _                 ' default is All Files</i></font> 
+<font color="007700"><i>'                                  FilterIndex%, _              ' default is 0</i></font> 
+<font color="007700"><i>'                                  MyInitialDirectory$, _       ' default is current directory</i></font> 
+<font color="007700"><i>'                                  WantSaveDialog%, _           ' 1=Save  0=Open - default is Open </i></font> 
+<font color="007700"><i>'                                  NoOverwriteWarning%, _       ' default is 0</i></font> 
+<font color="007700"><i>'                                  MyFormHandle&)               ' Form handle or 0 .. default is 0 - see below</i></font> 
+<font color="007700"><i>' </i></font> 
+<font color="007700"><i>'    WantSaveDialog%=1 for a Save Dialog   =0 for an Open Dialog</i></font> 
+<font color="007700"><i>'    NoOverwriteWarning%=1 for defeating the default warning when about to overwrite an existing file</i></font> 
+<font color="007700"><i>'    MyFormHandle& = MyForm.Handle ( so that the dialog knows which form</i></font> 
+<font color="007700"><i>'                                    to be modal to and where to locate)   =0 for nonmodal(not advised)</i></font> 
+<font color="007700"><i>' </i></font> 
+<font color="007700"><i>'  EXAMPLE: FileName$=RQShowDialog("Save File","RQ Files|*.bas;*.rqb","C:\RapidQ",1,0,Form.Handle)</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> _RQDIALOGINC
+<font color="0000AA"><b>$DEFINE</b></font> _RQDIALOGINC
+<font color="0000AA"><b>CONST</b></font> OFN_OVERWRITEPROMPT = &H2   <font color="007700"><i>'display the overwrite warning</i></font> 
+<font color="0000AA"><b>CONST</b></font> OFN_HIDEREADONLY = &H4      <font color="007700"><i>'hide the Open as Readonly checkbox</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>TYPE</b></font> OPENFILENAME
+   lStructSize <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   hwndOwner <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   hInstance <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   lpstrFilter <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   lpstrCustomFilter <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   nMaxCustFilter <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   nFilterIndex <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   lpstrFile <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   nMaxFile <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   lpstrFileTitle <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   nMaxFileTitle <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   lpstrInitialDir <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   lpstrTitle <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   flags <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   nFileOffset <font color="0000AA"><b>AS</b></font> <font color="000099"><b>SHORT</b></font>
+   nFileExtension <font color="0000AA"><b>AS</b></font> <font color="000099"><b>SHORT</b></font>
+   lpstrDefExt <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   lCustData <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   lpfnHook <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+   lpTemplateName <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+<font color="0000AA"><b>DIM</b></font> RQDlog <font color="0000AA"><b>AS</b></font> OPENFILENAME
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> GetSaveFileName <font color="0000AA"><b>LIB</b></font> "<font color="990000">COMDLG32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetSaveFileNameA</font>" <b>(</b>pOpenfilename <font color="0000AA"><b>AS</b></font> OPENFILENAME<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> GetOpenFileName <font color="0000AA"><b>LIB</b></font> "<font color="990000">COMDLG32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetOpenFileNameA</font>" <b>(</b>pOpenfilename <font color="0000AA"><b>AS</b></font> OPENFILENAME<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>FUNCTION</b></font>  RQshowdialog<b>(</b>capt$,filter$,fltrindex%,initdir$,savedlog%,nooverwriteprompt%,formhnd&<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+   <font color="0000AA"><b>DEFSTR</b></font> strcapt, strdrstr, strFile, strFileTitle, strFilter
+   <font color="0000AA"><b>DEFLNG</b></font> rv
+   <font color="0000AA"><b>IF</b></font> capt$="<font color="990000"></font>" <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> savedlog% <font color="000099"><b>then</b></font>
+         strcapt="<font color="990000">Save</font>"
+      <font color="000099"><b>else</b></font>
+         strcapt="<font color="990000">Open</font>"      
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="000099"><b>ELSE</b></font>
+      strcapt=capt$
+   <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+   <font color="0000AA"><b>IF</b></font> INITDIR$="<font color="990000"></font>" <font color="000099"><b>THEN</b></font>
+      strdrstr="<font color="990000">.</font>"     <font color="007700"><i>' will display current directory</i></font> 
+   <font color="000099"><b>ELSE</b></font>
+      strdrstr=initdir$
+   <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+   strFile=<font color="0000AA"><b>space$</b></font><b>(</b>1024<b>)</b>
+   strFileTitle=<font color="0000AA"><b>String$</b></font><b>(</b>1024,0<b>)</b>
+   <font color="0000AA"><b>IF</b></font> FILTER$="<font color="990000"></font>" <font color="000099"><b>THEN</b></font>
+      strFilter = "<font color="990000">All Files|*.*</font>" + <font color="0000AA"><b>chr$</b></font><b>(</b>0<b>)</b> + <font color="0000AA"><b>chr$</b></font><b>(</b>0<b>)</b>
+   <font color="000099"><b>ELSE</b></font>
+      strFilter = filter$ + <font color="0000AA"><b>chr$</b></font><b>(</b>0<b>)</b> + <font color="0000AA"><b>chr$</b></font><b>(</b>0<b>)</b>
+   <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+   strFilter = <font color="0000AA"><b>REPLACESUBSTR$</b></font><b>(</b>strFilter, "<font color="990000">|</font>", <font color="0000AA"><b>chr$</b></font><b>(</b>0<b>)</b><b>)</b> 
+   RQDlog.lStructSize = <font color="0000AA"><b>SIZEOF</b></font><b>(</b>RQDlog<b>)</b>
+   RQDlog.hwndOwner = formhnd&
+   RQDlog.hInstance = 0
+   RQDlog.lpstrFilter = <font color="0000AA"><b>VARPTR</b></font><b>(</b>strFilter<b>)</b>
+   RQDlog.nFilterIndex = FLTRINDEX%
+   RQDlog.lpstrFile = <font color="0000AA"><b>VARPTR</b></font><b>(</b>strFile<b>)</b>
+   RQDlog.nMaxFile = <font color="0000AA"><b>LEN</b></font><b>(</b>strFile<b>)</b>
+   RQDlog.lpstrFileTitle = <font color="0000AA"><b>VARPTR</b></font><b>(</b>strFileTitle<b>)</b>
+   RQDlog.nMaxFileTitle = <font color="0000AA"><b>LEN</b></font><b>(</b>strFileTitle<b>)</b>
+   RQDlog.lpstrInitialDir = <font color="0000AA"><b>VARPTR</b></font><b>(</b>strdrstr<b>)</b>
+   RQDlog.lpstrTitle = <font color="0000AA"><b>VARPTR</b></font><b>(</b>strcapt<b>)</b>
+   <font color="0000AA"><b>IF</b></font> nooverwriteprompt% <font color="000099"><b>THEN</b></font>
+      RQDlog.flags =OFN_HIDEREADONLY
+   <font color="000099"><b>ELSE</b></font>
+      RQDlog.flags =OFN_HIDEREADONLY <font color="0000AA"><b>OR</b></font> OFN_OVERWRITEPROMPT
+   <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+   <font color="0000AA"><b>IF</b></font> savedlog%=0 <font color="000099"><b>THEN</b></font>
+      <font color="0000AA"><b>IF</b></font> GetOpenFileName<b>(</b>RQDlog<b>)</b> <font color="000099"><b>THEN</b></font>
+          RESULT=<font color="0000AA"><b>ltrim$</b></font><b>(</b><font color="0000AA"><b>rtrim$</b></font><b>(</b>strFile<b>)</b><b>)</b>
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+   <font color="000099"><b>ELSE</b></font>
+      <font color="0000AA"><b>IF</b></font> GetSaveFileName<b>(</b>RQDlog<b>)</b> <font color="000099"><b>THEN</b></font>
+          RESULT=<font color="0000AA"><b>ltrim$</b></font><b>(</b><font color="0000AA"><b>rtrim$</b></font><b>(</b>strFile<b>)</b><b>)</b>
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+   <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+<font color="0000AA"><b>$ENDIF</b></font> <font color="007700"><i>' _RQDIALOGINC</i></font> 
+ 
+</pre>
+</body>
+</html>

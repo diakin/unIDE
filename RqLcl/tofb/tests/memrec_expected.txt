@@ -1,0 +1,5 @@
+copy 3 4
+elem 3 4
+cmp 1
+local 0
+field 0

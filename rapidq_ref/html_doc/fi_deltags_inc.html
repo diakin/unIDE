@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>delTags.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: delTags.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>delTags.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/delTags.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 5 functions</p>
+<p><a href="#HTMCODETOCHAR">HtmCodeToChar</a> &middot; <a href="#HTMDECODEENTITIES">HtmDecodeEntities</a> &middot; <a href="#HTMDECVALUE">HtmDecValue</a> &middot; <a href="#HTMHEXVALUE">HtmHexValue</a> &middot; <a href="#HTMTABLEVALUE">HtmTableValue</a></p>
+<h3><a name="HTMCODETOCHAR"></a>HtmCodeToChar</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11358</p>
+<pre>FUNCTION HtmCodeToChar(CodeNum AS LONG) AS STRING</pre>
+<p>Converts a Unicode code point to a Windows-1251 character string. Tab, CR and LF become a space, other control codes and the soft hyphen (173) become empty, Cyrillic and a table of common symbols are mapped; codes not in cp1251 return &quot;?&quot;.</p>
+<h3><a name="HTMDECODEENTITIES"></a>HtmDecodeEntities</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11393</p>
+<pre>FUNCTION HtmDecodeEntities(TextRun AS STRING) AS STRING</pre>
+<p>Replaces HTML entities in a string (named ones like &amp;amp; &amp;nbsp; &amp;mdash;, decimal &amp;#1040; and hex &amp;#x410;) with Windows-1251 characters using HtmCodeToChar. Unknown entities and a lone &amp; are left unchanged; returns the decoded string.</p>
+<h3><a name="HTMDECVALUE"></a>HtmDecValue</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11350</p>
+<pre>FUNCTION HtmDecValue(DigitText AS STRING) AS LONG</pre>
+<p>Converts a string of decimal digits (1 to 7 characters) to a number. Returns -1 if the string is empty, too long or contains a non-digit.</p>
+<h3><a name="HTMHEXVALUE"></a>HtmHexValue</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11354</p>
+<pre>FUNCTION HtmHexValue(HexText AS STRING) AS LONG</pre>
+<p>Converts a hexadecimal digit string (1 to 6 characters, case-insensitive) to a number. Returns -1 if the string is empty, too long or contains a non-hex character.</p>
+<h3><a name="HTMTABLEVALUE"></a>HtmTableValue</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11346</p>
+<pre>FUNCTION HtmTableValue(TableText AS STRING, KeyText AS STRING) AS LONG</pre>
+<p>Looks up KeyText in a table string of the form &quot;|name=number|name=number|&quot; and returns the number for that name, or -1 if the name is not found. Helper for the HTML entity decoder.</p>
+</body>
+</html>

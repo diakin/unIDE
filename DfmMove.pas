@@ -10327,7 +10327,7 @@ begin
     DfmCheckConsistency(APasText, ADfmText, AFormClass, Form.ConsistErrors,
                         Form.ConsistWarnings);
     Form.OnClose := Form.FormClose;
-    Form.FormStyle := fsStayOnTop;
+    // Окно утилиты - обычное (не поверх всех): поднимает меню Started Util
     Form.Caption := 'Перенести в .dfm - разбор: ' + ExtractFileName(APasFile);
     Form.Position := poScreenCenter;
     if Application.MainForm <> nil then

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QMD2MODEL</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QMD2MODEL</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QMD2MODEL Component</h1>
+<p class="rq-meta">Extends <a href="qmemorystream.html">QMEMORYSTREAM</a> &middot; source: <code>inc/QGL.inc</code>, line 469 &middot; author: JohnK &middot; version: alpha release 1.0</p>
+<p><b>Loader and renderer for Quake MD2 animated 3D models, drawn with OpenGL through a QGL object.</b></p>
+<p>QMD2model reads an MD2 file with LoadMD2File: the header, skin names (loaded as textures), texture coordinates, triangles and all frames with their vertices, scale and translate values. Frame names are scanned to build a KeyFrame list where the first three letters of the name change. Arrays are fixed-size at the limits defined by MD2_MAX_VERTICES (1024), MD2_MAX_TRIANGLES (2048), MD2_MAX_FRAMES (256) and MD2_MAX_TEXT_COORD (1024).</p>
+<p>DrawMD2 draws one frame interpolated between two frames with glBegin(GL_TRIANGLES). CreateAnimationSet compiles a sequence of interpolated frames into OpenGL display lists and returns the index of the first one. Animate calls the display list for CurrentFrame, and an internal QTimer advances CurrentFrame at the rate set by FPS. If hDC is set, Animate also swaps buffers.</p>
+<p>Skins are loaded with GL.CreateTextureFromFile, so the program must have a QGL instance named GL with an active rendering context before loading a model.</p>
+<p>QMD2MODEL inherits the properties, methods and events of <a href="qmemorystream.html">QMEMORYSTREAM</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>QGL component in the same file, as a global instance named GL</li>
+<li>OpenGL includes used by QGL (GL\gl.inc, GL\glu.inc)</li>
+<li>QD3DVECTOR (Position, Rotation, Scale)</li>
+</ul>
+<a name="1"></a><h2>QMD2model Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">TheModel</td><td class="rq-type">MD2HEADER</td><td>RW</td><td></td><td>MD2Header structure read from the start of the file (counts and file offsets of skins, vertices, texture coordinates, triangles and frames).</td></tr>
+<tr><td class="rq-name">vertex</td><td class="rq-type">ARRAY(MD2_MAX_FRAMES, MD2_MAX_VERTICES, 2) OF BYTE</td><td>RW</td><td></td><td>Array (frame, vertex, coordinate) of compressed vertex bytes, rescaled per frame by Frame_Scale and Frame_Translate.</td></tr>
+<tr><td class="rq-name">normal</td><td class="rq-type">ARRAY(MD2_MAX_FRAMES, MD2_MAX_VERTICES) OF BYTE</td><td>RW</td><td></td><td>Array (frame, vertex) of indexes into the MD2 normal table, as read from the file; not used for drawing.</td></tr>
+<tr><td class="rq-name">TexCoord</td><td class="rq-type">ARRAY(MD2_MAX_TEXT_COORD, 1) OF SINGLE</td><td>RW</td><td></td><td>Array of texture coordinates (s, t), divided by the size of the last loaded texture image.</td></tr>
+<tr><td class="rq-name">indexXYZ</td><td class="rq-type">ARRAY(MD2_MAX_TRIANGLES, 2) OF SHORT</td><td>RW</td><td></td><td>Array (triangle, corner) of vertex indexes for each triangle.</td></tr>
+<tr><td class="rq-name">indexST</td><td class="rq-type">ARRAY(MD2_MAX_TRIANGLES, 2) OF SHORT</td><td>RW</td><td></td><td>Array (triangle, corner) of texture-coordinate indexes for each triangle.</td></tr>
+<tr><td class="rq-name">Frame_Scale</td><td class="rq-type">ARRAY(MD2_MAX_FRAMES, 2) OF SINGLE</td><td>RW</td><td></td><td>Array (frame, axis) of per-frame scale factors.</td></tr>
+<tr><td class="rq-name">Frame_Translate</td><td class="rq-type">ARRAY(MD2_MAX_FRAMES, 2) OF SINGLE</td><td>RW</td><td></td><td>Array (frame, axis) of per-frame translation values.</td></tr>
+<tr><td class="rq-name">Frame_Name</td><td class="rq-type">ARRAY(MD2_MAX_FRAMES) OF STRING</td><td>RW</td><td></td><td>Array of frame names (16 characters, zero characters trimmed).</td></tr>
+<tr><td class="rq-name">skins</td><td class="rq-type">ARRAY(32) OF GLINT</td><td>RW</td><td></td><td>Array (0-32) of OpenGL texture IDs loaded for the model&#x27;s skins.</td></tr>
+<tr><td class="rq-name">StartFrame</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Index of the first display list of the current animation set; Animate wraps back to it.</td></tr>
+<tr><td class="rq-name">CurrentFrame</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Index of the display list that Animate draws; advanced by the FPS timer.</td></tr>
+<tr><td class="rq-name">MaxFrame</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of single frames loaded from the file (capped at MD2_MAX_FRAMES).</td></tr>
+<tr><td class="rq-name">AnimationFrame</td><td class="rq-type">ARRAY(MD2_MAX_ANIMATIONS) OF GLINT</td><td>RW</td><td></td><td>Array of OpenGL display list handles created by CreateAnimationSet.</td></tr>
+<tr><td class="rq-name">MaxAnimationFrame</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Next free index in AnimationFrame (number of display lists created).</td></tr>
+<tr><td class="rq-name">KeyFrame</td><td class="rq-type">ARRAY(MD2_MAX_FRAMES) OF SHORT</td><td>RW</td><td></td><td>Array of frame indexes where the first three letters of the frame name change, marking the start of named animations.</td></tr>
+<tr><td class="rq-name">KeyFrameIndex</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Number of entries stored in KeyFrame.</td></tr>
+<tr><td class="rq-name">Position</td><td class="rq-type">QD3DVECTOR</td><td>RW</td><td></td><td>QD3DVECTOR with the model&#x27;s translation, applied before drawing.</td></tr>
+<tr><td class="rq-name">Rotation</td><td class="rq-type">QD3DVECTOR</td><td>RW</td><td></td><td>QD3DVECTOR with rotation angles in degrees for the X, Y and Z axes, applied before drawing.</td></tr>
+<tr><td class="rq-name">Scale</td><td class="rq-type">QD3DVECTOR</td><td>RW</td><td></td><td>QD3DVECTOR with scale factors for each axis, applied before drawing (default 1, 1, 1).</td></tr>
+<tr><td class="rq-name">hDC</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Device context handle; if nonzero, Animate calls SwapBuffers on it after drawing.</td></tr>
+<tr class="rq-internal"><td class="rq-name">FPSTimer</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>Internal: QTimer that advances CurrentFrame.</td></tr>
+<tr><td class="rq-name">FPS</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Animation frames per second; assigning a value above 0 sets the timer interval to 1000/FPS ms and enables it, assigning 0 or less stops it.</td></tr>
+</table>
+<a name="2"></a><h2>QMD2model Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">LoadMD2File</td><td class="rq-type">SUB(TheFileName AS STRING)</td><td>LoadMD2File(FileName) loads an MD2 model; if FileName is empty, an open dialog for *.MD2 files is shown. Skins are looked for by their stored names, then as a .bmp and a .jpg file with the model&#x27;s name.</td></tr>
+<tr><td class="rq-name">SetPosition</td><td class="rq-type">SUB(X AS SINGLE, Y AS SINGLE, Z AS SINGLE)</td><td>SetPosition(X, Y, Z) sets the Position vector.</td></tr>
+<tr><td class="rq-name">SetRotation</td><td class="rq-type">SUB(X AS SINGLE, Y AS SINGLE, Z AS SINGLE)</td><td>SetRotation(X, Y, Z) sets the Rotation angles in degrees.</td></tr>
+<tr><td class="rq-name">SetScale</td><td class="rq-type">SUB(X AS SINGLE, Y AS SINGLE, Z AS SINGLE)</td><td>SetScale(X, Y, Z) sets the Scale vector.</td></tr>
+<tr><td class="rq-name">DrawMD2</td><td class="rq-type">SUB(theFrameNum AS INTEGER, theFrameNum2 AS INTEGER, theFrameFactor AS SINGLE, theSkin AS INTEGER)</td><td>DrawMD2(Frame1, Frame2, Factor, Skin) draws the model interpolated between two frames (Factor 0 = first frame, 1 = second frame) with the given skin index, after applying Position, Rotation and Scale.</td></tr>
+<tr><td class="rq-name">CreateAnimationSet</td><td class="rq-type">FUNCTION(FirstFrame AS INTEGER, LastFrame AS INTEGER, FrameFactor AS SINGLE) AS LONG</td><td>CreateAnimationSet(FirstFrame, LastFrame, FrameFactor) compiles interpolated frames from FirstFrame to LastFrame, in steps of FrameFactor, into display lists and returns the index of the first list.</td></tr>
+<tr><td class="rq-name">Animate</td><td class="rq-type">SUB</td><td>Draws the display list for CurrentFrame if it changed since the last call, and swaps buffers when hDC is set.</td></tr>
+<tr class="rq-internal"><td class="rq-name">MD2_Set_FPS</td><td class="rq-type">SUB(TheFramesPerSecond AS SINGLE)</td><td>Internal: setter for FPS.</td></tr>
+<tr class="rq-internal"><td class="rq-name">FPSTimerOver</td><td class="rq-type">SUB</td><td>Internal: timer handler that advances CurrentFrame and wraps it to StartFrame.</td></tr>
+<tr class="rq-internal"><td class="rq-name">New</td><td class="rq-type">SUB</td><td>Internal: resets frame counters, position, rotation and scale; called by the constructor and by Clear.</td></tr>
+<tr><td class="rq-name">Clear</td><td class="rq-type">SUB</td><td>Deletes the created display lists, resets the object and clears the model arrays.</td></tr>
+<tr><td class="rq-name">CalcMD2Normals</td><td class="rq-type">SUB</td><td>Does nothing: its whole body is commented out.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Uses a global QGL instance named GL (GL.CreateTextureFromFile); the name is hard-coded.</li>
+<li>CreateAnimationSet passes This.skins(1), a texture ID, as the skin index to DrawMD2.</li>
+<li>CalcMD2Normals is empty (fully commented out), and the stored normal indexes are not used for lighting.</li>
+<li>Array sizes are fixed at the MD2_MAX_* limits; larger models only produce a &#x27;Too many ...&#x27; message and are still read.</li>
+<li>Texture coordinates are divided by the size of QGLinternalBMP, that is, the last texture loaded.</li>
+<li>A commented line notes that REDIM of the skins array crashes.</li>
+</ul>
+<a name="4"></a><h2>QMD2model Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM GL AS QGL
+DIM Model AS QMD2model
+DIM StartIdx AS LONG
+
+&#x27; after GL.Init(Form)
+Model.LoadMD2File(&quot;tris.md2&quot;)
+StartIdx = Model.CreateAnimationSet(0, 39, 0.25)
+Model.hDC = GL.hDC
+Model.FPS = 20
+&#x27; in a timer or loop:
+Model.Animate</pre>
+<div class="rq-foot"><a href="c_qmaxsplitter.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qmenu.html">Next component</a></div>
+</body>
+</html>

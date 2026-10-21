@@ -1,0 +1,410 @@
+{
+ "dbtOpen@DBT.INC": {
+  "desc": "Opens a dBase memo (.DBT) file in the global file stream fs with the given mode, reads the block count from its first four bytes into blockCount and resets currentRecID to -1. If the file cannot be opened it prints a message and ENDs the program."
+ },
+ "MemoAppend@DBT.INC": {
+  "desc": "Appends text as a new memo record at the end of the .DBT file opened in fs, padded to 512-byte block boundaries and terminated with &H1A, then updates the block count in the file header. Returns the starting block number (the memo pointer to store in the DBF record); returns nothing for empty text."
+ },
+ "Memoget@DBT.INC": {
+  "desc": "Returns the memo text stored at block n of the open .DBT file (up to the &H1A end mark). Sets currentRecID to n and uses readRecord and the global __s buffer; returns empty if n is out of range."
+ },
+ "memoUpdate@DBT.INC": {
+  "desc": "Replaces the memo last read with Memoget (currentRecID) with newtext. Writes in place if it fits in the original blocks, otherwise appends it with MemoAppend and leaves the old record unreferenced. Returns the (possibly new) block pointer and resets currentRecID; returns -1 if no record was read."
+ },
+ "HtmTableValue@delTags.inc": {
+  "desc": "Looks up KeyText in a table string of the form \"|name=number|name=number|\" and returns the number for that name, or -1 if the name is not found. Helper for the HTML entity decoder."
+ },
+ "HtmDecValue@delTags.inc": {
+  "desc": "Converts a string of decimal digits (1 to 7 characters) to a number. Returns -1 if the string is empty, too long or contains a non-digit."
+ },
+ "HtmHexValue@delTags.inc": {
+  "desc": "Converts a hexadecimal digit string (1 to 6 characters, case-insensitive) to a number. Returns -1 if the string is empty, too long or contains a non-hex character."
+ },
+ "HtmCodeToChar@delTags.inc": {
+  "desc": "Converts a Unicode code point to a Windows-1251 character string. Tab, CR and LF become a space, other control codes and the soft hyphen (173) become empty, Cyrillic and a table of common symbols are mapped; codes not in cp1251 return \"?\"."
+ },
+ "HtmDecodeEntities@delTags.inc": {
+  "desc": "Replaces HTML entities in a string (named ones like &amp; &nbsp; &mdash;, decimal &#1040; and hex &#x410;) with Windows-1251 characters using HtmCodeToChar. Unknown entities and a lone & are left unchanged; returns the decoded string."
+ },
+ "eMail@eMail.Inc": {
+  "desc": "Sends a message through Simple MAPI (MAPISendMail in MAPI32.DLL). eRecipients and eAttachments are ';'-separated lists; a recipient prefixed with '>' is CC, '<' is BCC, and ':' separates a display name from an smtp address. Returns the MAPISendMail result code."
+ },
+ "DecodeSubjOld@emlOld.inc": {
+  "desc": "Older decoder for MIME encoded-word e-mail headers (=?charset?Q|B?text?=). Decodes quoted-printable or base64 parts (RQBASE64Decode) and converts koi8-r, utf-8 or utf-7 to Windows-1251 with RQConvertCodePage1; returns the decoded subject. Kept as an earlier version of DecodeSubj."
+ },
+ "DecodeSubjOld1@emlOld.inc": {
+  "desc": "Earlier variant of the MIME encoded-word header decoder. Decodes each =?charset?Q|B?...?= part (quoted-printable or base64), converts koi8-r, utf-8 and utf-7 to Windows-1251 with RQConvertCodePage, keeps plain text between parts, and converts the whole result from KOI8 if isKOI8 detects it. Returns the decoded string."
+ },
+ "DecodeSubj1@emlOld.inc": {
+  "desc": "Variant of the MIME encoded-word header decoder (=?charset?Q|B?...?=): decodes quoted-printable or base64 parts, converts koi8-r, utf-8 and utf-7 to Windows-1251 via RQConvertCodePage1(VARPTR(...)), and applies a KOI8 fix-up if isKOI8 detects it. Returns the decoded subject."
+ },
+ "EvaluateExpression@evaluate.inc": {
+  "desc": "Evaluates a mathematical expression string such as sin(.1)^2-3e2*ln(tan(.1*PI)). DRGMode selects angle units: 0 degrees, 1 radians, 2 grads. Returns the result, or 0 if an error occurred; check the global EvaluateErrorFlag (0 = success). Uses the globals formula$ and EvaluateAnswer."
+ },
+ "CheckSyntax@evaluate.inc": {
+  "desc": "Internal step of EvaluateExpression: normalises the global formula$ (lower case, removes spaces, replaces pi, expands exponent notation via changeE) and checks parentheses and invalid characters. On error it shows a MessageDlg and sets EvaluateErrorFlag to 1. (body longer than shown)"
+ },
+ "ExpSolver@evaluate.inc": {
+  "desc": "Declaration only; no body exists in the library. EvaluateExpression uses ExpSolverEdit instead."
+ },
+ "Functions@evaluate.inc": {
+  "desc": "Internal helper of the expression evaluator: finds the function name in formula$ before the parenthesis at par1 (one of 36 names in MathString$), computes it for the argument mathval$ using CMode/CModeN angle conversion, and substitutes the value into formula$. Sets EvaluateErrorFlag for undefined results. (body longer than shown)"
+ },
+ "ExpSolverEdit@evaluate.inc": {
+  "desc": "Internal solver of the expression evaluator: repeatedly takes the innermost parenthesised part of formula$, applies ^, *, /, + and - (calling Functions for function names) and rewrites formula$ until a single number remains, which is stored in the global EvaluateAnswer. (body longer than shown)"
+ },
+ "changeE@evaluate.inc": {
+  "desc": "Internal helper of the expression evaluator: rewrites exponent notation in formula$, turning 'e<digit>' into '*10^' and 'e-' into '*1/10^'. Any other unexpected 'e' shows \"Syntax error.\" and sets EvaluateErrorFlag to 1."
+ },
+ "CheckE@evaluate.inc": {
+  "desc": "Internal helper of the expression evaluator: converts a number string in scientific notation (with 'E' and a negative exponent) in newstring$ into plain decimal form in place. Exits unchanged if there is no 'E' or the exponent is 14 or more."
+ },
+ "DoInPrecision@evaluate.inc": {
+  "desc": "Formats value with FORMAT$(\"%g\") and returns the text in the value$ parameter."
+ },
+ "SaveFileAs@fileops.inc": {
+  "desc": "Shows a QSaveDialog with the given caption, filter and initial directory (current directory if initialdir does not exist). If the chosen file exists, asks for confirmation to overwrite. Returns the chosen file name, or an empty string if cancelled or overwrite declined."
+ },
+ "SetFormPos@Form.inc": {
+  "desc": "Sets the minimized position (SetX, SetY) and the normal position of the window hwnd with SetWindowPlacement, using the global rectangle Rectan (filled by GetFormPos) as the normal position. Note: showCmd is set to SW_MINIMIZE, so the window is minimized."
+ },
+ "GetFormPos@Form.inc": {
+  "desc": "Reads the window placement of the form Sender with GetWindowPlacement and stores the normal position in the global Rectan and the minimized position in the globals MinLeft and MinTop."
+ },
+ "ACOSH@Math.inc": {
+  "desc": "Returns the inverse hyperbolic cosine of value. Shows an error MessageBox if value is less than 1."
+ },
+ "ACOT@Math.inc": {
+  "desc": "Returns the arccotangent of value (pi/2 - ATAN(value)), using the constant rqPI."
+ },
+ "ACOTH@Math.inc": {
+  "desc": "Returns the inverse hyperbolic cotangent of value. Shows an error MessageBox if ABS(value) is not greater than 1."
+ },
+ "ACOSEC@Math.inc": {
+  "desc": "Returns the arccosecant of value (ASIN(1/value)). Shows an error MessageBox if ABS(value) is less than 1."
+ },
+ "ACOSECH@Math.inc": {
+  "desc": "Returns the inverse hyperbolic cosecant of value (ASINH(1/value)). Shows an error MessageBox if value is 0."
+ },
+ "ADDZ@Math.inc": {
+  "desc": "Complex addition: takes Z(0)+iZ(1) and Z(2)+iZ(3), writes the sum into Z(0), Z(1), clears Z(2), Z(3) and returns the array. The input array is modified."
+ },
+ "ASINH@Math.inc": {
+  "desc": "Returns the inverse hyperbolic sine of value."
+ },
+ "ASEC@Math.inc": {
+  "desc": "Returns the arcsecant of value (pi/2 - ASIN(1/value)). Shows an error MessageBox if ABS(value) is less than 1."
+ },
+ "ASECH@Math.inc": {
+  "desc": "Returns the inverse hyperbolic secant of value (ACOSH(1/value)). Shows an error MessageBox if value is not in the range 0 < x <= 1."
+ },
+ "ATANH@Math.inc": {
+  "desc": "Returns the inverse hyperbolic tangent of value. Shows an error MessageBox if ABS(value) is 1 or more."
+ },
+ "CONJZ@Math.inc": {
+  "desc": "Complex conjugate: negates the imaginary part Z(1) of the complex number Z(0)+iZ(1) and returns the array. The input array is modified."
+ },
+ "COSEC@Math.inc": {
+  "desc": "Returns the cosecant of value (1/SIN(value))."
+ },
+ "COSECH@Math.inc": {
+  "desc": "Returns the hyperbolic cosecant of value."
+ },
+ "COSH@Math.inc": {
+  "desc": "Returns the hyperbolic cosine of value."
+ },
+ "COSZ@Math.inc": {
+  "desc": "Complex cosine of Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array. Note: the imaginary part is computed as +SIN(re)*SINH(im) (the usual formula has a minus sign)."
+ },
+ "COSHZ@Math.inc": {
+  "desc": "Complex hyperbolic cosine of Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array."
+ },
+ "COT@Math.inc": {
+  "desc": "Returns the cotangent of value (1/TAN(value))."
+ },
+ "COTH@Math.inc": {
+  "desc": "Returns the hyperbolic cotangent of value. Shows an error MessageBox if value is 0."
+ },
+ "DEG2RAD@Math.inc": {
+  "desc": "Converts degrees to radians (multiplies by 0.017453, a rounded constant)."
+ },
+ "DIVZ@Math.inc": {
+  "desc": "Complex division (Z(0)+iZ(1)) / (Z(2)+iZ(3)); writes the quotient into Z(0), Z(1), clears Z(2), Z(3) and returns the array. Note: the code uses an undefined variable 'req' instead of re1 in the real part."
+ },
+ "EVEN@Math.inc": {
+  "desc": "Returns 1 if the integer value is even, otherwise 0."
+ },
+ "EXPZ@Math.inc": {
+  "desc": "Complex exponential e^z of Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array."
+ },
+ "FAC@Math.inc": {
+  "desc": "Returns the factorial of value. Only values up to 12 are accepted; larger values show an error MessageBox."
+ },
+ "GCD@Math.inc": {
+  "desc": "Returns the greatest common divisor of two whole numbers using the Euclidean algorithm. Returns 0 and shows an error MessageBox if either argument is not an integer or is zero."
+ },
+ "INVZ@Math.inc": {
+  "desc": "Reciprocal 1/z of the complex number Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array. Note: the imaginary part is not negated in the code."
+ },
+ "LOGZ@Math.inc": {
+  "desc": "Intended to return the natural logarithm of the complex number Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array. The formula used in the code (LOG(re/|z|^2), im/|z|^2) differs from the standard complex logarithm."
+ },
+ "LOG10@Math.inc": {
+  "desc": "Returns the base-10 logarithm of value."
+ },
+ "LOG10Z@Math.inc": {
+  "desc": "Intended base-10 logarithm of the complex number Z(0)+iZ(1): the LOGZ formula divided by LOG(10). Writes into Z(0), Z(1) and returns the array; inherits the nonstandard formula of LOGZ."
+ },
+ "LOGAZ@Math.inc": {
+  "desc": "Intended base-a logarithm of the complex number Z(0)+iZ(1), with the base taken from Z(3): the LOGZ formula divided by LOG(a). Writes into Z(0), Z(1) and returns the array."
+ },
+ "MAGZ@Math.inc": {
+  "desc": "Absolute value |z| of the complex number Z(0)+iZ(1); stores it in Z(0), sets Z(1) to 0 and returns the array."
+ },
+ "MULZ@Math.inc": {
+  "desc": "Complex multiplication (Z(0)+iZ(1)) * (Z(2)+iZ(3)); writes the product into Z(0), Z(1), clears Z(2), Z(3) and returns the array."
+ },
+ "NORZ@Math.inc": {
+  "desc": "Converts the complex number Z(0)+iZ(1) to polar form: Z(0) = modulus r, Z(1) = argument theta (ATAN(im/re)). Returns the array; ATAN does not handle re = 0 or quadrant."
+ },
+ "ODD_math@Math.inc": {
+  "desc": "Returns 1 if the integer value is odd, otherwise 0."
+ },
+ "POLZ@Math.inc": {
+  "desc": "Computes r*cos(phi) and r*sin(phi) from the complex number Z(0)+iZ(1) (phi = ATAN(im/re)) and writes them back into Z(0), Z(1). Returns the array."
+ },
+ "POWZ@Math.inc": {
+  "desc": "Raises the complex number Z(0)+iZ(1) to the power Z(2) using the polar form (De Moivre); writes the result into Z(0), Z(1), clears Z(2) and returns the array."
+ },
+ "RAD2DEG@Math.inc": {
+  "desc": "Converts radians to degrees (divides by 0.017453, a rounded constant)."
+ },
+ "SEC@Math.inc": {
+  "desc": "Returns the secant of value (1/COS(value))."
+ },
+ "SECH@Math.inc": {
+  "desc": "Returns the hyperbolic secant of value."
+ },
+ "SINH@Math.inc": {
+  "desc": "Returns the hyperbolic sine of value."
+ },
+ "SINZ@Math.inc": {
+  "desc": "Complex sine of Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array."
+ },
+ "SINHZ@Math.inc": {
+  "desc": "Complex hyperbolic sine of Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array."
+ },
+ "SQRZ@Math.inc": {
+  "desc": "Square root of the complex number Z(0)+iZ(1); writes the result into Z(0), Z(1) and returns the array. The sign of the imaginary part is always positive in the code."
+ },
+ "SUBZ@Math.inc": {
+  "desc": "Complex subtraction (Z(0)+iZ(1)) - (Z(2)+iZ(3)); writes the difference into Z(0), Z(1), clears Z(2), Z(3) and returns the array."
+ },
+ "TANH@Math.inc": {
+  "desc": "Returns the hyperbolic tangent of value."
+ },
+ "TANZ@Math.inc": {
+  "desc": "Intended complex tangent of Z(0)+iZ(1). Note: the code reads the input into re1, im1 but computes with re and im, so the result is not correct as written."
+ },
+ "FindMax_math@Math.inc": {
+  "desc": "Returns the largest of a variable number of numeric arguments (FUNCTIONI using ParamVal). Starts from -999999999999, so all arguments must be above that."
+ },
+ "FindMin_math@Math.inc": {
+  "desc": "Returns the smallest of a variable number of numeric arguments (FUNCTIONI using ParamVal). Starts from 999999999999, so all arguments must be below that."
+ },
+ "MinValue@Math.inc": {
+  "desc": "Returns the smallest value in a Double array. Note: the loop stops at UBound-1, so the last element is not checked."
+ },
+ "MaxValue@Math.inc": {
+  "desc": "Returns the largest value in a Double array. Note: the loop stops at UBound-1, so the last element is not checked."
+ },
+ "MinIntValue@Math.inc": {
+  "desc": "Returns the smallest value in an Integer array. Note: the loop stops at UBound-1, so the last element is not checked."
+ },
+ "MaxIntValue@Math.inc": {
+  "desc": "Returns the largest value in an Integer array. Note: the loop stops at UBound-1, so the last element is not checked."
+ },
+ "Power@Math.inc": {
+  "desc": "Returns Base raised to Exponent. Only whole-number exponents are accepted; a fractional exponent shows an error MessageBox and returns nothing. Uses the constant MaxInt."
+ },
+ "PtrSize@Memory.inc": {
+  "desc": "Returns the size in bytes of a block allocated on the process heap (HeapSize on GetProcessHeap), or 0 if P& is 0."
+ },
+ "PtrFree@Memory.inc": {
+  "desc": "Frees a process-heap block with HeapFree and sets the pointer variable P& to 0. Does nothing if P& is 0."
+ },
+ "ReAllocate@Memory.inc": {
+  "desc": "Resizes the heap block P& with HeapReAlloc to PtrSize(P&)*Count& bytes (zero-filled), updates P& and returns the new pointer. Note: the new size is the current size multiplied by Count&, not Count& bytes."
+ },
+ "Allocate@Memory.inc": {
+  "desc": "Allocates Count& zero-filled bytes on the process heap (HeapAlloc) and returns the pointer, or 0 on failure. Free it with PtrFree."
+ },
+ "Ptr@Memory.inc": {
+  "desc": "Returns the address of element Index& (element size Size&) inside the heap block P&, or 0 if P& is 0 or the index is beyond the block size."
+ },
+ "NewZStr@Memory.inc": {
+  "desc": "Copies the string S plus a terminating Chr$(0) into a new process-heap block and returns its pointer (0 on failure). Free it with PtrFree."
+ },
+ "NewStr@Memory.inc": {
+  "desc": "Copies the string S (without a terminating zero) into a new process-heap block and returns its pointer. Free it with PtrFree."
+ },
+ "StrFromPtr@Memory.inc": {
+  "desc": "Returns the contents of the heap block P& as a string whose length is the block size (HeapSize). Returns an empty string if P& is 0 or the size cannot be read."
+ },
+ "NewPtr@Memory.inc": {
+  "desc": "Allocates Size& zero-filled bytes on the process heap and, if Typ& is non-zero, copies Size& bytes from the address Typ& into it. Returns the pointer."
+ },
+ "NewDouble@Memory.inc": {
+  "desc": "Allocates 8 bytes on the process heap, stores the Double Typ# there and returns the pointer."
+ },
+ "DoubleFromPtr@Memory.inc": {
+  "desc": "Reads an 8-byte Double from the address P& via a QMemoryStream and returns it; returns 0 if P& is 0."
+ },
+ "NewSingle@Memory.inc": {
+  "desc": "Allocates 4 bytes on the process heap, stores the Single Typ! there and returns the pointer."
+ },
+ "SingleFromPtr@Memory.inc": {
+  "desc": "Reads a 4-byte Single from the address P& via a QMemoryStream (ReadNum(6), fixed in inc2026) and returns it as Double; returns 0 if P& is 0."
+ },
+ "NewInteger@Memory.inc": {
+  "desc": "Allocates 4 bytes on the process heap, stores the Integer Typ& there and returns the pointer."
+ },
+ "IntFromPtr@Memory.inc": {
+  "desc": "Reads a 4-byte Integer from the address P& via a QMemoryStream and returns it; returns 0 if P& is 0."
+ },
+ "NewShort@Memory.inc": {
+  "desc": "Allocates a heap block (sized SizeOf(Integer)), stores the 2-byte Short Typ% in it and returns the pointer."
+ },
+ "ShortFromPtr@Memory.inc": {
+  "desc": "Reads a 2-byte value from the address P& via a QMemoryStream and returns it as Short; returns 0 if P& is 0."
+ },
+ "NewByte@Memory.inc": {
+  "desc": "Allocates 1 byte on the process heap, stores the Byte Typ? there and returns the pointer."
+ },
+ "ByteFromPtr@Memory.inc": {
+  "desc": "Reads one byte from the address P& via a QMemoryStream and returns it; returns 0 if P& is 0."
+ },
+ "NewByteArray@Memory.inc": {
+  "desc": "Allocates a zero-filled process-heap block for Count& bytes and returns its pointer."
+ },
+ "NewIntArray@Memory.inc": {
+  "desc": "Allocates a zero-filled process-heap block for Count& Integers and returns its pointer."
+ },
+ "NewSngArray@Memory.inc": {
+  "desc": "Allocates a zero-filled process-heap block for Count& Singles and returns its pointer."
+ },
+ "NewDblArray@Memory.inc": {
+  "desc": "Allocates a zero-filled process-heap block for Count& Doubles and returns its pointer."
+ },
+ "NewStrArray@Memory.inc": {
+  "desc": "Allocates a zero-filled process-heap block of SizeOf(String)*Count& bytes and returns its pointer."
+ },
+ "MicroTimer_dwToDbl@microTIMER.inc": {
+  "desc": "Converts a 32-bit value held in a signed Long to an unsigned value as Double (adds 2^31 when the sign bit is set). Helper for microTIMER."
+ },
+ "microTIMER@microTIMER.inc": {
+  "desc": "Returns a high-resolution relative time in seconds as Double, using QueryPerformanceCounter divided by QueryPerformanceFrequency (read once on first call). Returns 0.0 if the counter frequency does not fit in 32 bits."
+ },
+ "SetMinimize@Minimize.inc": {
+  "desc": "Makes Form a top-level window and sets it as the owner of the Application window (SetWindow with index -8, GWL_HWNDPARENT), so that minimizing works through Form rather than the hidden application window."
+ },
+ "MsgDlg@msgdlg.inc": {
+  "desc": "Shows a message box with text, title and button flags through MDlg, owned by the global Form. Returns the button pressed: 1 OK, 2 Cancel, 3 Abort, 4 Retry, 5 Ignore, 6 Yes, 7 No."
+ },
+ "CloseAppKey@NOTA.inc": {
+  "desc": "Reads the \"LastOpened\" value from the registry object AppKey, closes the key and returns the value."
+ },
+ "CloseAppSysKey@NOTA.inc": {
+  "desc": "Reads the \"LastOpened\" value from the registry object AppSysKey, closes the key and returns the value."
+ },
+ "OpenAppKey@NOTA.inc": {
+  "desc": "Opens (creating if needed) the registry key AppKeyString$ in the registry object AppKey, writes the current date and time to \"LastOpened\" and returns it."
+ },
+ "OpenAppSysKey@NOTA.inc": {
+  "desc": "Opens (creating if needed) the registry key AppKeyString$ in the registry object AppSysKey, writes the current date and time to \"LastOpened\" and returns it."
+ },
+ "ObjectToolbox.TypeOfA@objectToolbox.inc": {
+  "desc": "Returns the native Win32 class name of the window handle Object (via ObjectToolbox_GetClassName, i.e. GetClassName), for example TButton."
+ },
+ "ObjectToolbox.TypeOf@objectToolbox.inc": {
+  "desc": "Returns the RapidQ component name for the window handle Object: gets the Win32 class name, changes a leading T to Q, drops a trailing s, and maps TBitBtn to QButton, TApplication to Application and #32768 to QMenuItem."
+ },
+ "TypeOf@objectToolbox.inc": {
+  "desc": "Returns the class name of an object handle. TypeOf(handle) gives the RapidQ name (ObjectToolbox.TypeOf); TypeOf(handle, 1) gives the native Win32 class name (ObjectToolbox.TypeOfA). Uses BIND and CALLFUNC."
+ },
+ "GetMenuCheckState@ODMenuXP.inc": {
+  "desc": "Returns True if the menu item ID in hMenu has the radio-check type (MFT_RADIOCHECK), otherwise False. Uses GetMenuItemInfo and the global MII structure."
+ },
+ "GetVersion_mOD@ODMenuXP.inc": {
+  "desc": "Detects the Windows version with GetVersionEx and sets the global isXP_mOD: 2 for Windows XP, True for Windows 2000, False for Win9x; unchanged for other versions."
+ },
+ "pHookCallWndProc_mOD@ODMenuXP.inc": {
+  "desc": "WH_CALLWNDPROC hook procedure installed by SetODMenuHookEnabled. When a popup menu window (class #32768) is created it disables menu animation and subclasses it with the owner-draw window procedure; on destroy it restores the old procedure, removes the shadow and window properties. (body longer than shown)"
+ },
+ "pSubclassWndProc_mOD@ODMenuXP.inc": {
+  "desc": "Subclassed window procedure for the form and popup menu windows of ODMenuXP. Handles WM_MEASUREITEM and WM_DRAWITEM to owner-draw menu items, popup init and close, border and shadow painting, and system menu commands; other messages go to the original procedure via CallWindowProc. (body longer than shown)"
+ },
+ "pGetClassName_mOD@ODMenuXP.inc": {
+  "desc": "Returns the Win32 class name of the window hwnd (GetClassName), or an empty string on failure."
+ },
+ "FixTaskBarMenu@ODMenuXP.inc": {
+  "desc": "Makes hWnd a top-level window (parent set to the desktop) and makes it the owner of the Application window, so the taskbar menu belongs to the form and can be owner-drawn."
+ },
+ "CheckMenuBarForItems@ODMenuXP.inc": {
+  "desc": "Gets the menu bar of the window frmTmp, stores it in the global hMainMenu, converts it to owner-drawn with MakeODMenu if it has items, and redraws it with DrawMenuBar."
+ },
+ "GetInfoFromMenu@ODMenuXP.inc": {
+  "desc": "Declaration only: a debug-output SUB taking a caption string that the program may supply. In the library all calls to it are commented out."
+ },
+ "SetODMenuHookEnabled@ODMenuXP.inc": {
+  "desc": "Turns the owner-drawn XP-style menus on or off for window hWnd. When enabled it installs a WH_CALLWNDPROC hook (unless AltHook is set), subclasses hWnd and converts its menu bar; when disabled it restores the original window procedure and removes the hook."
+ },
+ "FindFirstMenu@ODMenuXP.inc": {
+  "desc": "QTimer event handler: looks for an open popup menu window (class #32768) with FindWindow and, if found and not yet handled, forces a repaint and subclasses it with the owner-draw procedure. Keeps the timer running while no menu is found."
+ },
+ "DrawMenuShadow@ODMenuXP.inc": {
+  "desc": "Draws a 4-pixel drop shadow on the right and bottom of a menu window directly on the desktop DC, first saving the covered screen area so RemoveMenuShadow can restore it. Shading is computed per pixel with pMask and SetPixel. (body longer than shown)"
+ },
+ "RemoveMenuShadow@ODMenuXP.inc": {
+  "desc": "Restores the screen area that DrawMenuShadow saved for menu index mnuIndex, erasing the drop shadow from the desktop DC with BitBlt."
+ },
+ "pTransform@ODMenuXP.inc": {
+  "desc": "Darkens one colour component: returns lColor - INT(lColor*lScale/255). Helper for pMask."
+ },
+ "pMask@ODMenuXP.inc": {
+  "desc": "Darkens an RGB colour by lScale (0 to 255) by applying pTransform to each component; returns the new RGB value. Used for shadow drawing."
+ },
+ "mReplaceSysMenu@ODMenuXP.inc": {
+  "desc": "Sets the global mnuReplaceSysMenu from Enabled and, when True, converts the replacement system menu pNewSysMenu to owner-drawn with MakeODMenu. The header shown has no parameter list; Enabled is expected as its argument."
+ },
+ "ChangeFont_mOD@ODMenuXP.inc": {
+  "desc": "Creates a font with CreateFont (height 13, the given face name, weight and rotation in degrees) and returns its handle. nSize is not used. The caller must delete the font."
+ },
+ "DefSysItem@ODMenuXP.inc": {
+  "desc": "Sets the default (bold) item of the replacement system menu pNewSysMenu: Close when opened from the icon, otherwise Maximize or Restore depending on whether mnuSysMainForm is maximized."
+ },
+ "DrawMenuText@ODMenuXP.inc": {
+  "desc": "Draws the caption and shortcut text of the menu item described by the global DrawItem structure in color lColor, with layout depending on whether it is a menu bar item, system menu item or popup item; also draws the submenu arrow. Caption and shortcut are separated by Tab in itemData. (body longer than shown)"
+ },
+ "ChangeBrush@ODMenuXP.inc": {
+  "desc": "Creates a solid brush of color nColor and stores it in the global hSRBr. The previous brush is not deleted."
+ },
+ "ChangePen@ODMenuXP.inc": {
+  "desc": "Creates a solid pen of width nSize (limited to 2) and color nColor and stores it in the global hRPen. The previous pen is not deleted."
+ },
+ "CheckIfSYSColor@ODMenuXP.inc": {
+  "desc": "Converts a RapidQ or negative system colour constant (clBtnFace, clMenu and so on) to the real RGB value with GetSysColor; other colours are returned unchanged."
+ },
+ "UpdateColors@ODMenuXP.inc": {
+  "desc": "Redraws the main menu bar (DrawMenuBar on hMainMenu) after the menu colours change."
+ },
+ "LoadNewColors@ODMenuXP.inc": {
+  "desc": "Converts all colours in the user colour set mnuODMesCouleurs from system colour constants to RGB with CheckIfSYSColor, makes them the active menu colours (mnuODCouleurs) and calls UpdateColors."
+ },
+ "LoadDefaultColors@ODMenuXP.inc": {
+  "desc": "Replaces the active menu colours with the predefined defaults (mnuODDefCouleurs) and calls UpdateColors."
+ },
+ "pDrawBorder@ODMenuXP.inc": {
+  "desc": "Draws the border of a popup menu window hMenu in its window DC: flat rectangle style when mnuStyle is True, otherwise raised edges with DrawEdge. On systems before XP it also calls DrawMenuShadow."
+ }
+}

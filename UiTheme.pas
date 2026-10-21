@@ -155,6 +155,13 @@ procedure UiThemeSetColor(const ARole: string; AColor: TColor);
 // Разослать смену всем записанным элементам
 procedure UiThemeChanged;
 
+// Замер UiThemeChanged по классам элементов (для журнала запуска).
+// UiThemeProfileStart - следующие рассылки считают время каждого элемента
+// точным таймером; UiThemeProfileReport - итог (всего элементов и мс,
+// затем ATop самых долгих классов: число и мс) и конец замера.
+procedure UiThemeProfileStart;
+function  UiThemeProfileReport(ATop: Integer): string;
+
 procedure UiThemeAddClient(AControl: TControl);
 procedure UiThemeRemoveClient(AControl: TControl);
 
@@ -224,6 +231,12 @@ var
   ColorsReady: Boolean = False;
   Clients: TList = nil;
   ThemeComps: TList = nil;       // все TUiTheme программы
+
+  // Замер рассылки (UiThemeProfileStart): имя класса - номер в массивах
+  ProfNames: TStringList = nil;
+  ProfCount: array of Integer;
+  ProfTicks: array of Int64;     // единицы QueryPerformanceCounter
+  ProfClients: Integer = 0;
 
 type
   // Доступ к защищённым Color и Font формы
@@ -296,10 +309,29 @@ begin
     Colors[I] := AColor;
 end;
 
+procedure ProfAdd(const AClass: string; ATicks: Int64);
+var
+  Slot: Integer;
+begin
+  Slot := ProfNames.IndexOf(AClass);
+  if Slot < 0 then
+  begin
+    Slot := ProfNames.Add(AClass);
+    SetLength(ProfCount, ProfNames.Count);
+    SetLength(ProfTicks, ProfNames.Count);
+    ProfCount[Slot] := 0;
+    ProfTicks[Slot] := 0;
+  end;
+  Inc(ProfCount[Slot]);
+  Inc(ProfTicks[Slot], ATicks);
+  Inc(ProfClients);
+end;
+
 procedure UiThemeChanged;
 var
   I: Integer;
   C: TControl;
+  TickBefore, TickAfter: Int64;
 begin
   if Clients = nil then
     Exit;
@@ -307,9 +339,74 @@ begin
     if I < Clients.Count then
     begin
       C := TControl(Clients[I]);
+      if ProfNames <> nil then
+        QueryPerformanceCounter(TickBefore);
       if C.Perform(UM_UITHEMECHANGED, 0, 0) = 0 then
         C.Invalidate;
+      if ProfNames <> nil then
+      begin
+        QueryPerformanceCounter(TickAfter);
+        ProfAdd(C.ClassName, TickAfter - TickBefore);
+      end;
     end;
+end;
+
+procedure UiThemeProfileStart;
+begin
+  if ProfNames = nil then
+    ProfNames := TStringList.Create;
+  ProfNames.Clear;
+  SetLength(ProfCount, 0);
+  SetLength(ProfTicks, 0);
+  ProfClients := 0;
+end;
+
+function UiThemeProfileReport(ATop: Integer): string;
+var
+  Freq, TotalTicks: Int64;
+  Order: array of Integer;
+  I, J, Swap, Shown: Integer;
+
+  function Ms(ATicks: Int64): string;
+  begin
+    Result := FormatFloat('0.0', ATicks * 1000.0 / Freq);
+  end;
+
+begin
+  Result := '';
+  if ProfNames = nil then
+    Exit;
+  if not QueryPerformanceFrequency(Freq) or (Freq = 0) then
+    Freq := 1;
+  TotalTicks := 0;
+  SetLength(Order, ProfNames.Count);
+  for I := 0 to ProfNames.Count - 1 do
+  begin
+    Order[I] := I;
+    Inc(TotalTicks, ProfTicks[I]);
+  end;
+  // По убыванию времени; классов немного - простая сортировка
+  for I := 0 to High(Order) - 1 do
+    for J := I + 1 to High(Order) do
+      if ProfTicks[Order[J]] > ProfTicks[Order[I]] then
+      begin
+        Swap := Order[I];
+        Order[I] := Order[J];
+        Order[J] := Swap;
+      end;
+  Result := 'элементов ' + IntToStr(ProfClients) + ', ' + Ms(TotalTicks) + ' мс';
+  Shown := 0;
+  for I := 0 to High(Order) do
+  begin
+    if Shown >= ATop then
+      Break;
+    Result := Result + '; ' + ProfNames[Order[I]] + ' ' +
+      IntToStr(ProfCount[Order[I]]) + ' шт ' + Ms(ProfTicks[Order[I]]) + ' мс';
+    Inc(Shown);
+  end;
+  FreeAndNil(ProfNames);
+  SetLength(ProfCount, 0);
+  SetLength(ProfTicks, 0);
 end;
 
 procedure UiThemeAddClient(AControl: TControl);

@@ -1,0 +1,42 @@
+<h1>Файлы и папки unIDE</h1>
+
+<h2>Рядом с программой</h2>
+<table>
+<tr><th>Файл / папка</th><th>Что в нём</th></tr>
+<tr><td><code>editor.ini</code></td><td>Все настройки и проекты. Разделы, например: [Editor],
+  [Themes], [IdeFonts], [CodeInsight], [Preferences], [Designer], [EnvironmentVariables],
+  [Compiler.*], [Projects], [Project.&lt;имя&gt;], [Recent], [HotFolders], [FindInFiles],
+  [FileSchemes], [RqFbMode].</td></tr>
+<tr><td><code>editor1.ini</code>, <code>editor2.ini</code>...</td><td>Настройки для других
+  компьютеров: при запуске unIDE выбирает файл, папка которого совпадает с папкой
+  программы.</td></tr>
+<tr><td><code>IDE.clr</code></td><td>Цвета самой среды (Light, Dark, свои темы).</td></tr>
+<tr><td><code>schemes\</code></td><td>Схемы подсветки <code>&lt;ext&gt;.clr</code>, общая
+  <code>&bull;default&bull;.clr</code>, соответствия <code>alias.ini</code>.</td></tr>
+<tr><td><code>rapidq_ref\</code></td><td>Справка RapidQ (<code>help\rapidq.chm</code>,
+  <code>help\keywords.txt</code>), HTML-страницы, набор include <code>RQInc</code>, эталон
+  <code>incOld</code>, описание компонентов <code>Component*.data</code>.</td></tr>
+<tr><td><code>fb_ref\</code></td><td>Руководство FreeBASIC <code>help\freebasic.chm</code> и
+  слова для F1 <code>help\fbkeywords.txt</code>.</td></tr>
+<tr><td><code>unide_ref\</code></td><td>Это руководство: <code>help\unide.chm</code>.</td></tr>
+<tr><td><code>RqLcl\</code></td><td>Библиотека компонентов RapidQ для FreeBASIC (inc, bin).</td></tr>
+<tr><td><code>palette_icons.txt</code></td><td>Свои значки палитры.</td></tr>
+<tr><td><code>startup.log</code></td><td>Этапы последнего запуска (по ним идёт полоса окна загрузки).</td></tr>
+<tr><td><code>hang.log</code>, <code>crash.log</code></td><td>Сведения о зависании или сбое среды.</td></tr>
+</table>
+<p>Папки <code>rapidq_ref</code>, <code>fb_ref</code> и <code>unide_ref</code> ищутся рядом с
+программой, уровнем выше и в <code>projects\*\</code>.</p>
+
+<h2>Рядом с программой пользователя</h2>
+<table>
+<tr><th>Файл</th><th>Что в нём</th></tr>
+<tr><td><code>&lt;имя&gt;_compile.bat</code></td><td>Командная строка последней сборки.</td></tr>
+<tr><td><code>&lt;имя&gt;_compile.log</code></td><td>Лог сборки с ошибками.</td></tr>
+<tr><td><code>_rqfb\</code></td><td>Перевод RapidQ в FreeBASIC (FB Smart/Compat).</td></tr>
+<tr><td><code>&lt;имя&gt;_fb\</code></td><td>Отделённая копия перевода после «Перейти на FreeBASIC».</td></tr>
+<tr><td><code>&lt;имя&gt;_rqdbg.bas</code>, <code>.cmd</code>, <code>.state</code>, <code>.log</code></td><td>Копия
+  для отладчика RapidQ и файлы связи с ним.</td></tr>
+<tr><td><code>_rqprobe.bas</code>, <code>_rqprobe.txt</code></td><td>Снимок значений объектов RapidQ.</td></tr>
+<tr><td><code>&lt;программа&gt;_error.log</code></td><td>Ошибки выполнения программы, собранной через FB Smart.</td></tr>
+<tr><td><code>dsgcache\</code></td><td>Кэш разбора форм и снимков инспектора.</td></tr>
+</table>

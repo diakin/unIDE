@@ -1,0 +1,3 @@
+font Arial 12
+mem first 1234 size 11
+pointer ok

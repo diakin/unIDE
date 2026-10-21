@@ -1,0 +1,3 @@
+count 3 first -1 third -1
+spacing 32
+extracted: resource text 123

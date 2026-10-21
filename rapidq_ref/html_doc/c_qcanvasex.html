@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCANVASEX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCANVASEX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCANVASEX Component</h1>
+<p class="rq-meta">Extends <a href="qcanvas.html">QCANVAS</a> &middot; source: <code>inc/QCanvasEx.inc</code>, line 105</p>
+<p><b>Extended QCANVAS with GDI drawing that uses a pen style, pen size and raster (mix) mode, plus filled shapes, icons, flood fill, color inversion, mirroring and clipboard bitmap copy/paste.</b></p>
+<p>QCanvasEx extends QCANVAS and draws directly with gdi32 and user32 functions on the canvas Handle. Each shape method creates a pen from PenStyle, PenSize and the given color (and a solid brush for the filled versions), sets the raster operation from MixMode with SetROP2, draws, and then restores and deletes the GDI objects. Line, Rectangle, Circle, RoundRect and TextOut replace the QCANVAS methods of the same name, some with different parameters.</p>
+<p>Constants for MixMode (R2_..._CAN), PenStyle (PS_..._CAN) and raster copy modes (..._CAN) are defined in the file. Clipboard methods copy a rectangle of the canvas as a CF_BITMAP and paste a clipboard bitmap at a position. The comments in the file are in French.</p>
+<p>QCANVASEX inherits the properties, methods and events of <a href="qcanvas.html">QCANVAS</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QCanvasEx Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">MixMode</td><td class="rq-type">LONG</td><td>RW</td><td>R2_COPYPEN_CAN</td><td>Raster mode set with SetROP2 before each shape is drawn, one of the R2_..._CAN constants (for example R2_XORPEN_CAN = 7). Default R2_COPYPEN_CAN (13).</td></tr>
+<tr><td class="rq-name">PenStyle</td><td class="rq-type">LONG</td><td>RW</td><td>PS_SOLID_CAN</td><td>Pen style for the shape methods: PS_SOLID_CAN (0), PS_DASH_CAN (1), PS_DOT_CAN (2), PS_DASHDOT_CAN (3), PS_DASHDOTDOT_CAN (4), PS_NULL_CAN (5), PS_INSIDEFRAME_CAN (6). Default solid.</td></tr>
+<tr><td class="rq-name">PenSize</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Pen width in pixels for the shape methods. Default 1.</td></tr>
+</table>
+<a name="2"></a><h2>QCanvasEx Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">DrawIco</td><td class="rq-type">SUB(left as integer,top as integer,width as integer,height as integer,handle as long)</td><td>DrawIco(Left, Top, Width, Height, hIcon): draws the icon handle at the given position and size with DrawIconEx.</td></tr>
+<tr><td class="rq-name">CopyToClipboard</td><td class="rq-type">SUB(rect as QRECT)</td><td>CopyToClipboard(Rect AS QRECT): copies that area of the canvas to the clipboard as a bitmap.</td></tr>
+<tr><td class="rq-name">PasteFromClipboard</td><td class="rq-type">SUB(x as short,y as short)</td><td>PasteFromClipboard(X, Y): if the clipboard holds a bitmap, draws it on the canvas with its top-left corner at X, Y.</td></tr>
+<tr><td class="rq-name">GetWidthClipboard</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Returns the width of the bitmap on the clipboard, if there is one.</td></tr>
+<tr><td class="rq-name">GetHeightClipboard</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Returns the height of the bitmap on the clipboard, if there is one.</td></tr>
+<tr><td class="rq-name">CanPaste</td><td class="rq-type">FUNCTION AS BOOLEAN</td><td>Returns whether the clipboard holds a bitmap (CF_BITMAP).</td></tr>
+<tr><td class="rq-name">circle</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)</td><td>Circle(X1, Y1, X2, Y2, Color): draws an unfilled ellipse inside the given rectangle with the current pen settings.</td></tr>
+<tr><td class="rq-name">circleFilled</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)</td><td>CircleFilled(X1, Y1, X2, Y2, Color, Fill): draws an ellipse with outline Color, filled with Fill.</td></tr>
+<tr><td class="rq-name">rectangle</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)</td><td>Rectangle(X1, Y1, X2, Y2, Color): draws an unfilled rectangle with the current pen settings.</td></tr>
+<tr><td class="rq-name">RoundRect</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long)</td><td>RoundRect(X1, Y1, X2, Y2, X3, Y3, Color): draws an unfilled rectangle with rounded corners; X3 and Y3 are the width and height of the corner ellipse.</td></tr>
+<tr><td class="rq-name">RoundRectFilled</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long,fill as long)</td><td>RoundRectFilled(X1, Y1, X2, Y2, X3, Y3, Color, Fill): draws a filled rectangle with rounded corners.</td></tr>
+<tr><td class="rq-name">rectangleFilled</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)</td><td>RectangleFilled(X1, Y1, X2, Y2, Color, Fill): draws a rectangle with outline Color, filled with Fill.</td></tr>
+<tr><td class="rq-name">line</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)</td><td>Line(X1, Y1, X2, Y2, Color): draws a line with the current pen settings.</td></tr>
+<tr><td class="rq-name">FillSurface</td><td class="rq-type">SUB(x as integer,y as integer,c as long)</td><td>FillSurface(X, Y, Color): flood-fills the area that has the same color as the pixel at X, Y with Color (ExtFloodFill).</td></tr>
+<tr><td class="rq-name">TextOut</td><td class="rq-type">SUB(x as integer,y as integer,s as string,fc as long,bc as long)</td><td>TextOut(X, Y, Text, ForeColor, BackColor): calls the QCANVAS TextOut with the background mode set to transparent, then sets the mode back to opaque.</td></tr>
+<tr><td class="rq-name">InvertColor</td><td class="rq-type">SUB(x as integer,y as integer,width as integer,height as integer)</td><td>InvertColor(X, Y, Width, Height): inverts the colors of that area (PatBlt with DSTINVERT).</td></tr>
+<tr><td class="rq-name">mirror</td><td class="rq-type">SUB(x as integer,y as integer,width as integer,height as integer)</td><td>Mirror(X, Y, Width, Height): mirrors that area horizontally in place.</td></tr>
+<tr><td class="rq-name">flip</td><td class="rq-type">SUB(x as integer,y as integer,width as integer,height as integer)</td><td>Flip(X, Y, Width, Height): mirrors that area vertically in place.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>CopyToClipboard calls DeleteObject on the bitmap right after giving it to the clipboard with SetAsHandle.</li>
+<li>The file defines a global TBITMAP type without an $IFNDEF guard, which can clash with other include files that define TBITMAP.</li>
+<li>GetWidthClipboard and GetHeightClipboard do not set a result when the clipboard holds no bitmap.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 4884) contains its own edition of QCANVASEX.</li>
+<li><code>inc/old/object/QCanvasEx.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QCanvasEx Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QCanvasEx.inc&quot;
+CREATE Form AS QFORM
+  Width = 320
+  Height = 240
+END CREATE
+DIM Cnv AS QCanvasEx
+Cnv.Parent = Form
+Cnv.Align = 5
+SUB PaintCnv
+  Cnv.PenSize = 3
+  Cnv.RectangleFilled(10, 10, 150, 100, &amp;H000000, &amp;H00FFFF)
+  Cnv.CircleFilled(60, 30, 200, 160, &amp;HFF0000, &amp;H00FF00)
+  Cnv.TextOut(20, 180, &quot;QCanvasEx&quot;, &amp;H0000FF, 0)
+END SUB
+Cnv.OnPaint = PaintCnv
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qcalendar.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qcdaudio.html">Next component</a></div>
+</body>
+</html>

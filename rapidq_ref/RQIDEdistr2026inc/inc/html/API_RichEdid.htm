@@ -1,0 +1,225 @@
+<html>
+<head>
+<title>API_RichEdid.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> LoadLibrary <font color="0000AA"><b>LIB</b></font> "<font color="990000">KERNEL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">LoadLibraryA</font>" _
+                 <b>(</b>LibFileName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> FreeLibrary <font color="0000AA"><b>LIB</b></font> "<font color="990000">KERNEL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">FreeLibrary</font>" _
+                 <b>(</b>hInst <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> CreateWindowEx <font color="0000AA"><b>LIB</b></font> "<font color="990000">USER32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">CreateWindowExA</font>" _
+                 <b>(</b>ExStyle&, ClassName$, WindowName$, Style&, X&, Y&, _
+                  Width&, Height&, WndParent&, hMenu&, hInstance&, Param&<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>dim</b></font> hInst <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>$DEFINE</b></font> HWND <font color="000099"><b>INTEGER</b></font>
+
+<font color="0000AA"><b>CONST</b></font> WS_EX_CLIENTEDGE = &H200 <font color="007700"><i>' Just some of the many API constants</i></font> 
+<font color="0000AA"><b>CONST</b></font> WS_CHILD = &H40000000
+<font color="0000AA"><b>CONST</b></font> WS_VISIBLE = &H10000000
+<font color="0000AA"><b>CONST</b></font> WS_BORDER = &H800000
+<font color="0000AA"><b>CONST</b></font> ES_LEFT = 0
+<font color="0000AA"><b>CONST</b></font> ES_AUTOHSCROLL = &H80
+<font color="0000AA"><b>CONST</b></font> ES_MULTILINE = &H4
+
+<font color="0000AA"><b>CONST</b></font> WM_COMMAND = &H111
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> GetModuleHandle <font color="0000AA"><b>LIB</b></font> "<font color="990000">KERNEL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetModuleHandleA</font>" _
+<b>(</b>ModuleName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> SetWindowText <font color="0000AA"><b>LIB</b></font> "<font color="990000">USER32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SetWindowTextA</font>" _
+<b>(</b>Hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, Text <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> FormWndProc <b>(</b>Handle <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, uMsg <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, wParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> CreateRichEdit <font color="0000AA"><b>LIB</b></font> "<font color="990000">USER32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">CreateWindowExA</font>" <b>(</b>ExStyle&,ClassName$,WindowName$,Style&,X&,Y&,Width&,Height&,WndParent&,hMenu&,hInstance&,Param&<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MoveRichEdit <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">MoveWindow</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,bRepaint <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ShowRichEdit <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">ShowWindow</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nCmdShow <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>type</b></font> findtextex
+    CHARRANGE <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> 
+    LPCTSTR   <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    CHARRANGE1 <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>type</b></font>
+
+
+<font color="0000AA"><b>TYPE</b></font> QRichEdit_api <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QObject</b></font>
+
+<font color="007700"><i>'= aQRichedit Properties ==========================================='</i></font> 
+
+ <font color="0000AA"><b>dim</b></font> Align <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW alNone W </i></font> 
+<font color="007700"><i>'-- Align determines how the control aligns within its parent control.  </i></font> 
+
+ <font color="0000AA"><b>dim</b></font> Alignment <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW taLeftJustify W </i></font> 
+<font color="007700"><i>'-- Alignment determines how the text is aligned within the edit control.  </i></font> 
+ <font color="0000AA"><b>dim</b></font> BorderStyle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW bsSingle W </i></font> 
+ <font color="0000AA"><b>dim</b></font> <font color="0000AA"><b>Color</b></font>       <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW  W </i></font> 
+ <font color="0000AA"><b>dim</b></font> Enabled     <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW True WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> Font        <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>QFONT</b></font> <font color="007700"><i>'W  WX </i></font> 
+ <font color="0000AA"><b>dim</b></font> Handle      <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'R  W </i></font> 
+ <font color="0000AA"><b>dim</b></font> Height      <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW  WXG </i></font> 
+ 
+ <font color="0000AA"><b>dim</b></font> HideScrollBars <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'' RW True WG </i></font> 
+ <font color="0000AA"><b>dim</b></font> HideSelection  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'' RW True W </i></font> 
+
+ <font color="0000AA"><b>dim</b></font> Hint <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font> <font color="007700"><i>'' RW  WG </i></font> 
+ <font color="0000AA"><b>dim</b></font> Left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW 0 WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> Line <font color="0000AA"><b>as</b></font> ARRAY of <font color="0000AA"><b>STRING</b></font> <font color="007700"><i>'RW  WXG </i></font> 
+ 
+ <font color="0000AA"><b>dim</b></font> LineCount <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW  WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> Modified  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'R  WG </i></font> 
+
+<font color="007700"><i>'--- Parent QFORM/QPANEL/QTABCONTROL W  WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> PopupMenu  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>QPOPUPMENU</b></font> <font color="007700"><i>'W  W </i></font> 
+ <font color="0000AA"><b>dim</b></font> Plaintext  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW False W </i></font> 
+ <font color="0000AA"><b>dim</b></font> Readonly   <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW False WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> ScrollBars <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW ssNone WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> SelAttributes <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>QFONT</b></font> <font color="007700"><i>'W  W </i></font> 
+ 
+ <font color="0000AA"><b>dim</b></font> SelLength  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW  WXG </i></font> 
+<font color="007700"><i>'-- SelLength is the number of characters that are selected.  </i></font> 
+
+ <font color="0000AA"><b>dim</b></font> SelStart   <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW  WXG </i></font> 
+ <font color="007700"><i>'--SelStart is the position of the first selected character in the text. If there is no selected text, SelStart indicates the position of the cursor.  </i></font> 
+ 
+ <font color="0000AA"><b>dim</b></font> SelText    <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font> <font color="007700"><i>'RW  WXG </i></font> 
+<font color="007700"><i>'-- SelText is the selected portion of the edit control's text.  </i></font> 
+ 
+ <font color="0000AA"><b>dim</b></font> ShowHint   <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW False WG </i></font> 
+ <font color="0000AA"><b>dim</b></font> TabOrder   <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW  W </i></font> 
+ <font color="0000AA"><b>dim</b></font> Tag        <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW  WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> Text       <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font> <font color="007700"><i>'RW  WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> Top        <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW 0 WXG </i></font> 
+ 
+ <font color="0000AA"><b>dim</b></font> WantTabs   <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW False W </i></font> 
+<font color="007700"><i>'--WantTabs determines whether the user can insert tab characters into the text.  </i></font> 
+ 
+ <font color="0000AA"><b>dim</b></font> Width      <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW  WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> WhereX     <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'R  WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> WhereY     <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'R  WXG </i></font> 
+ <font color="0000AA"><b>dim</b></font> Wordwrap   <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW True W </i></font> 
+ <font color="0000AA"><b>dim</b></font> Visible    <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>INTEGER</b></font> <font color="007700"><i>'RW True WXG </i></font> 
+
+<font color="007700"><i>'!!!---- aQRichedit  Additional Properties ------------------------</i></font> 
+
+<font color="0000AA"><b>dim</b></font> AUTOURLDETECT <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+
+
+<font color="007700"><i>'!!!---------------------------------------------------------------</i></font> 
+
+<font color="007700"><i>'--- QRichedit Methods Method Type Description Params Support </i></font> 
+
+<font color="007700"><i>'-----------------------------------------------------</i></font> 
+ 
+<font color="0000AA"><b>SUBI</b></font> AddStrings <font color="007700"><i>'' Add strings STRING, Infinite WXG </i></font> 
+<font color="0000AA"><b>SUB</b></font> Clear <font color="007700"><i>'SUB Clear entire text 0 WXG </i></font> 
+<font color="0000AA"><b>SUB</b></font> CopyToClipboard <font color="007700"><i>'SUB Copy selected text to clipboard 0 W </i></font> 
+<font color="0000AA"><b>SUB</b></font> CutToClipboard <font color="007700"><i>'Cut selected text to clipboard 0 W </i></font> 
+<font color="0000AA"><b>SUB</b></font> LoadFromFile<b>(</b>FileName$<b>)</b> <font color="007700"><i>'' Load text from a file 1 WXG </i></font> 
+<font color="0000AA"><b>SUB</b></font> LoadFromStream <b>(</b>Stream <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QFILESTREAM</b></font>/<font color="0000AA"><b>QMEMORYSTREAM</b></font><b>)</b><font color="007700"><i>'' Load text from a stream 1 WX </i></font> 
+<font color="0000AA"><b>SUB</b></font> PasteFromClipboard <font color="007700"><i>'Paste text from clipboard 0 W </i></font> 
+<font color="0000AA"><b>SUB</b></font> SaveToFile <b>(</b>FileName$<b>)</b> <font color="007700"><i>'Save text to a file 1 WXG </i></font> 
+<font color="0000AA"><b>SUB</b></font> SaveToStream <b>(</b>Stream <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QFILESTREAM</b></font>/<font color="0000AA"><b>QMEMORYSTREAM</b></font><b>)</b><font color="007700"><i>'' Save text to a stream 1 W </i></font> 
+<font color="0000AA"><b>SUB</b></font> SelectAll <font color="007700"><i>'Selects all text from Richedit 0 WXG </i></font> 
+
+<font color="007700"><i>'!!!-------aQRichedit  Additional  Methods ------------------------</i></font> 
+
+<font color="0000AA"><b>sub</b></font> FINDTEXT <b>(</b>Text <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,WHOLEWORD <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, MATCHCASE <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+<font color="0000AA"><b>sub</b></font> REPLACESEL <b>(</b>Text <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="007700"><i>'Заменяет выделенный текст'</i></font> 
+<font color="0000AA"><b>sub</b></font> SCROLLCARET  <font color="007700"><i>'Прокручивает текст до тех пор, пока не станет, видна строка с курсором'</i></font> 
+
+
+<font color="007700"><i>'!!!---------------------------------------------------------------</i></font> 
+
+<font color="007700"><i>'QRichedit Events Event Type Occurs when... Params Support </i></font> 
+
+<font color="007700"><i>'-------------------------------------------------------------------</i></font> 
+<font color="0000AA"><b>SUB</b></font> OnChange <font color="007700"><i>'VOID Text changes 0 WG </i></font> 
+<font color="0000AA"><b>SUB</b></font> OnKeyDown <b>(</b>Key <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>WORD</b></font>, Shift <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font><b>)</b> <font color="007700"><i>'Key held down 2 WG </i></font> 
+<font color="0000AA"><b>SUB</b></font> OnKeyPress <b>(</b>Key <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>BYTE</b></font><b>)</b> <font color="007700"><i>'User presses a key 1 WG </i></font> 
+<font color="0000AA"><b>SUB</b></font> OnKeyUp <b>(</b>Key <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>WORD</b></font>, Shift <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font><b>)</b><font color="007700"><i>'' Key released 2 WG </i></font> 
+<font color="0000AA"><b>SUB</b></font> OnMouseDown <b>(</b>Button%, X%, Y%, Shift%<b>)</b><font color="007700"><i>'' Mouse button held down 4 WX </i></font> 
+<font color="0000AA"><b>SUB</b></font> OnMouseMove <b>(</b>X%, Y%, Shift%<b>)</b><font color="007700"><i>'' Mouse moves 2 WX </i></font> 
+<font color="0000AA"><b>SUB</b></font> OnMouseUp <b>(</b>Button%, X%, Y%, Shift%<b>)</b> <font color="007700"><i>'Mouse button is released </i></font> 
+    PUBLIC:
+      Parent  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetParent
+<font color="007700"><i>''      value as long    PROPERTY SET SetValue</i></font> 
+      left    <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>   PROPERTY SET SetLeft
+      Top     <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>   PROPERTY SET SetTop
+      Width   <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>   PROPERTY SET SetWidth
+      Height  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>   PROPERTY SET SetHeight
+      Visible <font color="0000AA"><b>as</b></font> boolean PROPERTY SET SetVisible
+      Handle  <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    
+    PROPERTY SET SetVisible<b>(</b>visible <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+      QRichedit_api.visible=visible
+      <font color="0000AA"><b>if</b></font> visible=0 <font color="000099"><b>then</b></font>
+        ShowRichedit<b>(</b>QRichEdit_api.Handle,SW_HIDE<b>)</b>
+      <font color="000099"><b>else</b></font>
+        ShowRichedit<b>(</b>QRichEdit_api.Handle,SW_SHOW<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetLeft<b>(</b>left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+      QRichEdit_api.Left=left
+      MoveRichEdit<b>(</b>QRichEdit_api.Handle,QRichEdit_api.Left,QRichEdit_api.Top,QRichEdit_api.Width,QRichEdit_api.Height,true<b>)</b>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetTop<b>(</b>top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+      QRichEdit_api.Top=top
+      MoveRichEdit<b>(</b>QRichEdit_api.Handle,QRichEdit_api.Left,QRichEdit_api.Top,QRichEdit_api.Width,QRichEdit_api.Height,true<b>)</b>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetWidth<b>(</b>width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+      QRichEdit_api.Width=width
+      MoveRichEdit<b>(</b>QRichEdit_api.Handle,QRichEdit_api.Left,QRichEdit_api.Top,QRichEdit_api.Width,QRichEdit_api.Height,true<b>)</b>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetHeight<b>(</b>height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+      QRichEdit_api.Height=height
+      MoveRichEdit<b>(</b>QRichEdit_api.Handle,QRichEdit_api.Left,QRichEdit_api.Top,QRichEdit_api.Width,QRichEdit_api.Height,true<b>)</b>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetParent<b>(</b>parent <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+       QRichEdit_api.Parent = parent
+       QRichEdit_api.Handle = CreateRichEdit<b>(</b>0,"<font color="990000">RichEdit</font>","<font color="990000">RichEdit_API</font>",WS_CHILD <font color="0000AA"><b>Or</b></font> WS_VISIBLE,QRichEdit_api.left,QRichEdit_api.top,QRichEdit_api.width,QRichEdit_api.height,QRichEdit_api.Parent,0,Application.hInstance,0<b>)</b>
+       QRichEdit_api.visible=1
+      <font color="007700"><i>'Set the range of the progress bar.</i></font> 
+      <font color="007700"><i>'(Minimum range = low word, Maximum range = high word).</i></font> 
+<font color="007700"><i>'-'      QRichEdit_api.Range = &H5014</i></font> 
+ <font color="007700"><i>'-'     SendMessage(QRichEdit_api.Handle, PBM_SETRANGE, 0, QRichEdit_api.Range * &H10000)</i></font> 
+  <font color="007700"><i>'     'Set the value of the highlight increment.</i></font> 
+   <font color="007700"><i>'-'   QRichEdit_api.Increment = QRichEdit_api.Range/100</i></font> 
+    <font color="007700"><i>'-'  SendMessage(QRichEdit_api.Handle, PBM_SETSTEP, QRichEdit_api.Increment, 0)</i></font> 
+     <font color="007700"><i>'-' QRichEdit_api.resolution=QRichEdit_api.Range/100</i></font> 
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    <font color="000099"><b>CONSTRUCTOR</b></font>
+    Left=0
+    Top=0
+    Width=100
+    Height=100
+    visible=1
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>TYPE</b></font> 
+</pre>
+</body>
+</html>

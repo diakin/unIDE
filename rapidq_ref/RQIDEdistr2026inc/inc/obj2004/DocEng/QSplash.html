@@ -1,0 +1,301 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QSplash</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QSplash</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QSplash C<font face="Arial, Helvetica">omponent</font></h1>
+
+<dd>
+QSplash is used for showing banner during a time before the opening of
+application.</dd>
+
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; A descriptive text
+of application can be added below the&nbsp; image or on the image.
+<p><a NAME="1"></a><b><font size=+1>QSplash Properties</font></b>
+<table BORDER=0 WIDTH="100%" >
+<tr>
+<td><b>Champs</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>D&eacute;fault</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Image</td>
+
+<td>QIMAGE</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Image to show</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Text</td>
+
+<td>STRING</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Text about application</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>TextFont</td>
+
+<td>QFONT</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>TextTransparent</td>
+
+<td>BOOLEAN</td>
+
+<td>R/W</td>
+
+<td>False</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Display text on image</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>TextCenter</td>
+
+<td>BOOLEAN</td>
+
+<td>R/W</td>
+
+<td>False</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Text centered horizontal</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>TextLeft</td>
+
+<td>SHORT</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>TextTop</td>
+
+<td>SHORT</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Actif if property TextTransparent at True</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QSplash Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr VALIGN=TOP BGCOLOR="#CCFFFF">
+<td>Show</td>
+
+<td>SUB(Time%)</td>
+
+<td NOWRAP>Show banner</td>
+
+<td NOWRAP>1</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QSplash Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QSplash Example</font></b>
+<br>$TYPECHECK ON
+<br>$INCLUDE "RAPIDQ.INC"
+<br>$INCLUDE "Object\QSplash.inc"
+<br>DECLARE SUB DisplaySplashForm
+<br>$resource banner as "banner.bmp"
+<p>Dim splash as QSplash
+<br>splash.image.bmphandle=banner
+<br>splash.TextCenter=True
+<br>splash.TextFont.size=10
+<br>splash.Text="Version 1.0 Copyright(c) D.Glodt"
+<p>CREATE MainForm AS QFORM
+<br>&nbsp;Caption = "MainForm"
+<br>&nbsp;Width = 520
+<br>&nbsp;Height = 340
+<br>&nbsp;Center
+<br>&nbsp;OnShow=DisplaySplashForm
+<br>END CREATE
+<p>SUB DisplaySplashForm
+<br>&nbsp;Splash.Show(3)
+<br>End Sub
+<br>MainForm.ShowModal
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

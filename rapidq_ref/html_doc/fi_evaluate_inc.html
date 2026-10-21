@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>evaluate.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: evaluate.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>evaluate.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/evaluate.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 8 functions</p>
+<p><a href="#CHANGEE">changeE</a> &middot; <a href="#CHECKE">CheckE</a> &middot; <a href="#CHECKSYNTAX">CheckSyntax</a> &middot; <a href="#DOINPRECISION">DoInPrecision</a> &middot; <a href="#EVALUATEEXPRESSION">EvaluateExpression</a> &middot; <a href="#EXPSOLVER">ExpSolver</a> &middot; <a href="#EXPSOLVEREDIT">ExpSolverEdit</a> &middot; <a href="#FUNCTIONS">Functions</a></p>
+<h3><a name="CHANGEE"></a>changeE</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 11944</p>
+<pre>SUB changeE</pre>
+<p>Internal helper of the expression evaluator: rewrites exponent notation in formula$, turning &#x27;e&lt;digit&gt;&#x27; into &#x27;*10^&#x27; and &#x27;e-&#x27; into &#x27;*1/10^&#x27;. Any other unexpected &#x27;e&#x27; shows &quot;Syntax error.&quot; and sets EvaluateErrorFlag to 1.</p>
+<h3><a name="CHECKE"></a>CheckE</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 11945</p>
+<pre>SUB CheckE(newstring$ AS STRING)</pre>
+<p>Internal helper of the expression evaluator: converts a number string in scientific notation (with &#x27;E&#x27; and a negative exponent) in newstring$ into plain decimal form in place. Exits unchanged if there is no &#x27;E&#x27; or the exponent is 14 or more.</p>
+<h3><a name="CHECKSYNTAX"></a>CheckSyntax</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 11940</p>
+<pre>SUB CheckSyntax</pre>
+<p>Internal step of EvaluateExpression: normalises the global formula$ (lower case, removes spaces, replaces pi, expands exponent notation via changeE) and checks parentheses and invalid characters. On error it shows a MessageDlg and sets EvaluateErrorFlag to 1. (body longer than shown)</p>
+<h3><a name="DOINPRECISION"></a>DoInPrecision</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 11946</p>
+<pre>SUB DoInPrecision(value AS DOUBLE, value$ AS STRING)</pre>
+<p>Formats value with FORMAT$(&quot;%g&quot;) and returns the text in the value$ parameter.</p>
+<h3><a name="EVALUATEEXPRESSION"></a>EvaluateExpression</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11939</p>
+<pre>FUNCTION EvaluateExpression (BYREF MathString$ AS STRING, DRGMode AS BYTE) AS DOUBLE</pre>
+<p>Evaluates a mathematical expression string such as sin(.1)^2-3e2*ln(tan(.1*PI)). DRGMode selects angle units: 0 degrees, 1 radians, 2 grads. Returns the result, or 0 if an error occurred; check the global EvaluateErrorFlag (0 = success). Uses the globals formula$ and EvaluateAnswer.</p>
+<h3><a name="EXPSOLVER"></a>ExpSolver</h3>
+<p class="rq-meta">declaration only &middot; RQProc.inc, line 11941</p>
+<pre>DECLARE SUB ExpSolver</pre>
+<p>Declaration only; no body exists in the library. EvaluateExpression uses ExpSolverEdit instead.</p>
+<h3><a name="EXPSOLVEREDIT"></a>ExpSolverEdit</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 11943</p>
+<pre>SUB ExpSolverEdit</pre>
+<p>Internal solver of the expression evaluator: repeatedly takes the innermost parenthesised part of formula$, applies ^, *, /, + and - (calling Functions for function names) and rewrites formula$ until a single number remains, which is stored in the global EvaluateAnswer. (body longer than shown)</p>
+<h3><a name="FUNCTIONS"></a>Functions</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 11942</p>
+<pre>SUB Functions(par1 AS INTEGER,mathval$ AS STRING)</pre>
+<p>Internal helper of the expression evaluator: finds the function name in formula$ before the parenthesis at par1 (one of 36 names in MathString$), computes it for the argument mathval$ using CMode/CModeN angle conversion, and substitutes the value into formula$. Sets EvaluateErrorFlag for undefined results. (body longer than shown)</p>
+</body>
+</html>

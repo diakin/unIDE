@@ -1,0 +1,4 @@
+createfile ok
+exists 1
+codeptr -1
+end

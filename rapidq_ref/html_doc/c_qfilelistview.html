@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFILELISTVIEW</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QFILELISTVIEW</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QFILELISTVIEW Component</h1>
+<p class="rq-meta">Extends <a href="qlistview.html">QLISTVIEW</a> &middot; source: <code>inc/QFileListView.inc</code>, line 53 &middot; version: 1.1</p>
+<p><b>QListView that lists the files of a directory with their system icons, size, type and modification date, filtered by one or more masks.</b></p>
+<p>QFileListView extends QListView. Refresh clears the list, attaches the system image lists (large and small icons, obtained with SHGetFileInfoA from shell32.dll), and adds one item per file found with Dir$ for each mask. Every item gets its icon, its size in KB, its type name from the shell and its date as &quot;dd/mm/yyyy hh:mm&quot;. The four columns are created the first time Refresh runs and the list is then sorted.</p>
+<p>Assigning Directory or Mask refreshes the list. Several masks can be given separated by &quot;;&quot;. When the selection changes, FileName is set to the full path and OnFileChange fires; double-clicking an item or pressing Enter fires OnFileSelect. Use the report view (ViewStyle) to see the columns. The comments in the file are in French.</p>
+<p>QFILELISTVIEW inherits the properties, methods and events of <a href="qlistview.html">QLISTVIEW</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QFileListView Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Filename</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Read-only (its setter does nothing): full path of the selected file (Directory plus item caption), set when the selection changes; empty when nothing is selected.</td></tr>
+<tr><td class="rq-name">ColumnCaption</td><td class="rq-type">ARRAY(4) OF STRING</td><td>RW</td><td>(1)=&quot;Name&quot;; (2)=&quot;Size&quot;; (3)=&quot;Type&quot;; (4)=&quot;Modified&quot;</td><td>Array ColumnCaption(4); elements 1 to 4 are the captions of the Name, Size, Type and Modified columns (English by default). They are used only when Refresh creates the columns the first time.</td></tr>
+<tr><td class="rq-name">Directory</td><td class="rq-type">STRING</td><td>RW</td><td>CurDir$</td><td>Directory to list. Assigning an existing directory stores it and refreshes the list; a directory that does not exist is ignored. Default CurDir$.</td></tr>
+<tr><td class="rq-name">Mask</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;*.*&quot;</td><td>File mask, for example &quot;*.bas&quot; or &quot;*.bas;*.inc&quot;. Assigning it stores it and refreshes the list. Default &quot;*.*&quot;.</td></tr>
+</table>
+<a name="2"></a><h2>QFileListView Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Refresh</td><td class="rq-type">SUB</td><td>Reloads the file list from Directory and Mask, as described above.</td></tr>
+<tr><td class="rq-name">SetFocus</td><td class="rq-type">SUB</td><td>Gives the keyboard focus to the list with the user32 SetFocus function.</td></tr>
+</table>
+<a name="3"></a><h2>QFileListView Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnFileSelect</td><td class="rq-type">SUB(File as string)</td><td>Event (File AS STRING) fired with FileName when an item is double-clicked or Enter is pressed on a selected item.</td></tr>
+<tr><td class="rq-name">OnFileChange</td><td class="rq-type">SUB(File as string)</td><td>Event (File AS STRING) fired with the new FileName when the selection moves to an item.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnChange</code>, <code>OnDblClick</code>, <code>OnKeyPress</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The system image lists are obtained by querying the hard-coded path &quot;c:\&quot;.</li>
+<li>Column widths are hard-coded (150, 80, 80 and 120 pixels).</li>
+<li>Only files are listed (Dir$ with attribute 0); subdirectories are not shown.</li>
+<li>Files whose name has no &quot;.&quot; get no icon or type name.</li>
+<li>Files smaller than 1 KB, including empty files, are shown as &quot;1 KB&quot;.</li>
+<li>The date column is built by splitting FileRec.Date at &quot;-&quot; as month-day-year and FileRec.Time at &quot;:&quot;.</li>
+<li>The SHFILEINFO type, the constants and the API declarations (SHGetFileInfoFileListView, DestroyIconFileListView, SetFocusFileListView) are inside $IFNDEF __WIN32API, so they are missing when a Windows API include defining __WIN32API is loaded first.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QFileListView.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QFileListView Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QFileListView.inc&quot;
+CREATE Form AS QFORM
+  Width = 500
+  Height = 300
+END CREATE
+DIM Files AS QFileListView
+SUB FileChosen(File AS STRING)
+  ShowMessage File
+END SUB
+Files.Parent = Form
+Files.Align = 5
+Files.ViewStyle = 3   &#x27; report view, shows the columns
+Files.OnFileSelect = FileChosen
+Files.Mask = &quot;*.bas;*.inc&quot;
+Files.Directory = &quot;C:\RapidQ&quot;
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qfiledialog.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qflashlabel.html">Next component</a></div>
+</body>
+</html>

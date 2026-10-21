@@ -1,0 +1,697 @@
+{
+ "QTButton@QTButton95.inc": {
+  "summary_en": "A skinnable push button derived from QButton that draws its face from a bitmap skin or from Windows XP visual styles, with hover effect, icon, multi-line caption and button groups.",
+  "summary_ru": "Кнопка на основе QButton с отрисовкой из растрового скина или тем Windows XP, с эффектом наведения, иконкой, многострочной надписью и группами кнопок.",
+  "description_en": [
+   "QTButton replaces the face of a QButton with a picture it builds itself. Without XP themes it stretches a skin bitmap (the global QTBtnBMP, loaded from a resource named btn_BMP) piece by piece (center, corners, edges) for up to 4 states. When XPThemeEnabled is on and the program runs on Windows XP, it draws the states with uxtheme.dll (OpenThemeData/DrawThemeBackground) using the Button, Toolbar or Tab theme class. The state images are laid out side by side in the order normal, disabled, pressed, hot; the hover image is shown with TransparentBlt from msimg32.dll while the mouse is captured.",
+   "The caption is drawn with DrawText; & underlines the next letter and chr$(10) or \\n starts a new line. An icon in ICOBMP (possibly holding NumICOBMPs images side by side) can be placed left, right, above or below the caption with Layout and Spacing. Buttons with the same GroupIndex and the same parent act as a group: clicking one sets its Down state and releases the others. Arrow keys and Tab move the focus to the next or previous control (the constructor sets OnKeyDown to QTButton_KeyDown).",
+   "The header comments say: set Left and Top first, then NumBMPs (if greater than 1), then Height and Width; call ReDraw after changing the font. Full usage is described in QTButton.html, which the header refers to."
+  ],
+  "requires": [
+   "A bitmap resource named btn_BMP declared before the include (the source has the commented line '$REsource btn_BMP As \"_RES\\Boutons.bmp\"'); alternatively assign QTBtnBMP.BMP from a bitmap object as the comments explain",
+   "msimg32.dll (TransparentBlt, Windows 98 and later)",
+   "uxtheme.dll (XP visual styles)",
+   "QTButton.html documentation (referred to in the header)"
+  ],
+  "members": {
+   "ICOBMP": "QBitmap holding the small icon drawn on the button; it may contain NumICOBMPs images side by side, one per state. On the first ReDraw of a button with Kind = 0 the current BMP is copied into it.",
+   "XPTHEMEBTNTYPE": "XP theme class used to draw the button: \"Button\", \"Toolbar\" or \"Tab\" (constants xpt_PushBtn, xpt_ToolBarBtn, xpt_TabBtn). Assigning a different value redraws the button when XPThemeEnabled is True.",
+   "XPTHEMEENABLED": "When True (default) the button is drawn with Windows XP visual styles, when the program runs on Windows XP. Assigning a value different from the previous one redraws the button.",
+   "ALIGN": "Alignment of the button; FixBtnSize does nothing when it is non-zero. Its setter SetAlign is commented out in the source and the TODO list says the Align property still needs fixing.",
+   "CAPTION": "Button text. Assigning it replaces \\n with chr$(10) for multi-line drawing, gives the inherited QButton caption the text without line breaks (so the & accelerator works), and redraws the button.",
+   "ENABLED": "Enables or disables the button. Assigning it sets the inherited Enabled and redraws the caption; disabled buttons use the disabled image and clGrayText for the caption.",
+   "DOWN": "Pressed state. Assigning it redraws the button using the pressed image (only when NumBMPs is 3 or more); used by button groups.",
+   "GROUPINDEX": "Group number; buttons with the same value greater than 0 and the same parent window behave as a radio group. Assigning it adds the button handle and index to the global lists AllQTBtnsHandle and AllQTBtnsGrouped.",
+   "KIND": "Inherited QButton Kind. Assigning a value greater than 0 sets Kind, sets NumICOBMPs to 2 and copies the button's BMP into ICOBMP as the icon, then restores NumBMPs and redraws; assigning 0 does not change Kind.",
+   "LAYOUT": "Position of the icon relative to the caption, as computed in DrawCaption: 0 left (default), 1 right, 2 above, 3 below. Assigning it redraws the caption.",
+   "SPACING": "Distance in pixels between the icon and the caption (default 4). Assigning it redraws the caption.",
+   "HEIGHT": "Button height. Assigning it sets the inherited Height as well and redraws the button.",
+   "WIDTH": "Button width. Assigning it sets the inherited Width as well and redraws the button.",
+   "NUMBMPS": "Number of state images in the skin (normal, disabled, pressed, hot), capped at 4. Assigning it sets the inherited NumBMPs and redraws; the hover effect needs 4.",
+   "NUMICOBMPS": "Number of images stored side by side in ICOBMP (default 1). Assigning it redraws the button or its caption.",
+   "FLICKERINGTRICK": "When set to a value greater than 0, clips the button window with a region 2 pixels inside its border (HideBevelTrick_QTBtn) to hide the bevel and reduce flicker.",
+   "HIDEFOCUSRECT": "When set to a value greater than 0, clips the button window with a region 5 pixels inside its border so the focus rectangle is not visible.",
+   "ONMOUSELEAVE": "Event fired from OnMouseMove when the mouse leaves the button; parameters X, Y, Shift and Sender (the QButton).",
+   "ONMOUSEENTER": "Event fired from OnMouseMove when the mouse enters the button and it captures the mouse; parameters X, Y, Shift and Sender.",
+   "TEXTWIDTH": "Returns the width in pixels of a text in the font of the internal button bitmap.",
+   "TEXTHEIGHT": "Returns the height in pixels of a text in the font of the internal button bitmap.",
+   "REDRAW": "Rebuilds the button picture (skin or theme, caption and icon). The comments say to call it after changing the font, and in some cases before the form is shown."
+  },
+  "example": "$RESOURCE btn_BMP AS \"_RES\\Boutons.bmp\"\n$INCLUDE \"QTButton95.inc\"\n\nCREATE Form AS QFORM\n  Caption = \"QTButton demo\"\n  CREATE Btn AS QTBUTTON\n    Left = 10\n    Top = 10\n    NumBMPs = 4\n    Height = 25\n    Width = 75\n    Caption = \"&OK\"\n  END CREATE\nEND CREATE\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "D-evolution",
+  "version": "",
+  "date": "2004 - 2005",
+  "caveats_en": [
+   "The skin bitmap comes from a resource named btn_BMP that the include does not declare; the $RESOURCE line is commented out.",
+   "XP theme drawing is used only when GetVersionEx reports exactly Windows NT 5.1 (Windows XP); on other Windows versions the classic skin bitmap is used.",
+   "TODO list: when Kind is not 0 and Caption is empty the button is drawn badly; the Align property needs fixing; Visible is not handled; changing the font requires ReDraw.",
+   "Known problems listed in the source: the order of property assignments matters (Left, Top, then NumBMPs, then Height, Width), otherwise the button may not be drawn; with several forms a not yet visible button can draw strangely (workaround: Dim DummyBtn As QTButton and DummyBtn.ReDraw); the button image may get lost in memory and disturb owner-drawn controls; setting Height or Width on the first button can draw it badly (workaround: call ReDraw before showing the form).",
+   "Each GroupIndex assignment appends to the global handle lists; entries are never removed, although a comment says they should be cleaned when GroupIndex is 0.",
+   "In ReDraw, the copy of BMP into ICOBMP is guarded by a STATIC variable, so it happens only for the first button that is redrawn.",
+   "CloseThemeData is called twice on the same theme handle in BMPStretch_Property."
+  ]
+ },
+ "QMenuEx@rapidq2.inc": {
+  "summary_en": "An owner-drawn menu helper, derived from QIMAGELIST, that draws bitmaps or icons next to menu items and reports a help text for the item under the mouse.",
+  "summary_ru": "Компонент на основе QIMAGELIST для owner-draw меню: рисует картинки или иконки рядом с пунктами меню и выдаёт строку подсказки для пункта под мышью.",
+  "description_en": [
+   "QMenuEx subclasses the window procedure of a form (Init) through the callback forwarder SetNewCallBack_4 and handles WM_MEASUREITEM, WM_DRAWITEM and WM_MENUSELECT. Menu items are switched to owner-draw with ModifyMenu (MF_OWNERDRAW); each item is then drawn with its picture, its caption (the & letter underlined) and the colors set in BackColor, ForeColor, HighLightColor, HighLightTextColor and DisabledColor.",
+   "Usage: call Init with the form, Parent with the menu item that holds the sub menu, then for each item call MenuModify with a QIMAGE, or add an image with AddBMPFile or ICOFile and call AddDescription. The description strings are passed to OnMouseHover while the menu is open. Call Close to restore the original window procedure.",
+   "Pictures and descriptions are stored in arrays of 1000 entries indexed by the menu item's Command number."
+  ],
+  "requires": [
+   "rapidq2.inc callback forwarder SetNewCallBack_4 and the QMenuEx API section (MEASUREITEMSTRUCT, DRAWITEMSTRUCT, ODT_/ODS_ constants, ModifyMenu)",
+   "Based on Qmenu.inc by Jordi Ramos and D. Glodt"
+  ],
+  "members": {
+   "FONT": "QFONT used to draw the menu captions.",
+   "MASKCOLOR": "Declared but not used anywhere in the component. Purpose not clear from the source.",
+   "BACKCOLOR": "Background color of normal and disabled items (default clMenu).",
+   "FORECOLOR": "Text color of normal items (default clMenuText).",
+   "DISABLEDCOLOR": "Text color of disabled items (default system COLOR_GRAYTEXT).",
+   "HIGHLIGHTCOLOR": "Background color of the selected item (default system COLOR_HIGHLIGHT).",
+   "HIGHLIGHTTEXTCOLOR": "Text color of the selected item (default clMenuText).",
+   "OUTLINE": "When non-zero, a white and gray frame is drawn around the bitmap of the selected item (default False).",
+   "FONTSIZE": "Font size of the captions. Assigning a value greater than 4 sets Font.Size and the drawing bitmap's font size, and increases the item height if the text does not fit.",
+   "TRANSPARENT": "Value copied to the Transparent property of each item picture when it is added (default True).",
+   "TRANSPARENTCOLOR": "Value copied to the TransparentColor property of each item picture when it is added (default 0).",
+   "ONMOUSEHOVER": "Event called with the screen mouse position and the description string of the item being drawn or selected (Xpos, Ypos, Descript).",
+   "INIT": "Hooks the window procedure of the given form so menu messages reach QMenuEx; must be called once before the menu is used (it replaces 'Set' of the original Qmenu).",
+   "CLOSE": "Restores the original window procedure of the form and returns the result of SetWindowLong.",
+   "PARENT": "Stores the handle of the menu item that holds the sub menu; required before AddDescription and MenuModify.",
+   "ADDBMPFILE": "Loads a bitmap file as the picture of the given menu item.",
+   "ICOFILE": "Adds an icon file to the image list and uses it as the picture of the given menu item.",
+   "ADDDESCRIPTION": "Makes the menu item owner-drawn, stores its description string, and sizes the component to the last image in the list when new images were added. Shows 'no menu Parent' if Parent was not called.",
+   "MENUMODIFY": "Makes the menu item owner-drawn, uses the picture of a QIMAGE for it, sizes the component to that picture and stores the description; returns 1, or 0 if Parent was not called.",
+   "DELBITMAP": "Turns the menu item back into a normal text item (MF_STRING), removing the owner-drawn picture."
+  },
+  "example": "$INCLUDE \"rapidq2.inc\"\n\nCREATE Form AS QFORM\n  CREATE MainMenu AS QMAINMENU\n    CREATE mFile AS QMENUITEM\n      Caption = \"&File\"\n      CREATE mOpen AS QMENUITEM\n        Caption = \"&Open\"\n      END CREATE\n    END CREATE\n  END CREATE\n  CREATE imgOpen AS QIMAGE\n    Visible = 0\n    BMP = \"open.bmp\"\n  END CREATE\nEND CREATE\n\nDIM Menu AS QMenuEx\nMenu.Init(Form)\nMenu.Parent(mFile)\nMenu.MenuModify(mOpen, imgOpen, \"Open a file\")\nForm.ShowModal\nMenu.Close",
+  "example_origin": "written",
+  "author": "John Kelly",
+  "version": "1.2",
+  "date": "",
+  "caveats_en": [
+   "Pictures and descriptions are arrays of 1000 entries indexed by MenuItem.Command; larger command numbers are out of range.",
+   "AddBMPFile and ICOFile set Transparent and TransparentColor on image(.LastMenu), which is only updated by AddDescription and MenuModify, so the transparency settings may go to the previously described item.",
+   "AddDescription always returns 0.",
+   "Close is declared as FUNCTION but ends with END SUB.",
+   "OnMouseHover is called with CALLFUNC without checking that a handler is assigned.",
+   "The item width in WM_MEASUREITEM is estimated as LEN(caption) * Font.Size * 0.6 rather than measured.",
+   "A comment notes that the MEASUREITEMSTRUCT and DRAWITEMSTRUCT variables must be global for unknown reasons."
+  ]
+ },
+ "QSYSTEM@rapidq2.inc": {
+  "summary_en": "A non-visual object that reports Windows system information (OS version, memory, disk space, power and system metrics) and can open Control Panel applets, sleep, hibernate, log off, shut down or reboot.",
+  "summary_ru": "Невизуальный объект со сведениями о Windows (версия ОС, память, диск, питание, системные метрики), умеющий открывать апплеты панели управления, усыплять, завершать сеанс, выключать и перезагружать компьютер.",
+  "description_en": [
+   "QSYSTEM wraps Windows API calls declared earlier in rapidq2.inc: GetVersionEx for the OS name and version numbers, GlobalMemoryStatus for memory figures, GetDiskFreeSpaceEx for free disk space, GetSystemMetrics for screen element sizes and flags, and GetSystemPowerStatus / SetSuspendState for power status and sleep or hibernation.",
+   "The constructor reads the power status and the OS version, so MajorVersion, MinorVersion, BuildNumber, ACLineStatus, PercentBattery and PowerStatus are filled when the object is created. ShowControlPanel starts rundll32.exe shell32.dll,Control_RunDLL with the .cpl file chosen from the first four letters of a panel name. ShutDown, ShutDownForce, LogOff and Reboot first enable the SeShutdownPrivilege for the process and then call ExitWindowsEx."
+  ],
+  "requires": [
+   "API declarations and constants in rapidq2.inc (OSVERSIONINFO, SYSTEM_POWER_STATUS, MEMORYSTATUS, SM_ and EWX_ constants, token privilege functions)",
+   "Powrprof.dll (SetSuspendState)"
+  ],
+  "members": {
+   "MAJORVERSION": "Major Windows version number, filled by OSName$ (which the constructor calls).",
+   "MINORVERSION": "Minor Windows version number, filled by OSName$.",
+   "BUILDNUMBER": "Windows build number, filled by OSName$.",
+   "ACLINESTATUS": "AC power line status from GetSystemPowerStatus (AC_LINE_OFFLINE, AC_LINE_ONLINE, AC_LINE_BACKUP_POWER or AC_LINE_UNKNOWN); refreshed when PowerStatus is assigned 0.",
+   "PERCENTBATTERY": "Remaining battery charge in percent (0-100) from GetSystemPowerStatus; refreshed when PowerStatus is assigned 0.",
+   "POWERSTATUS": "Battery flag from GetSystemPowerStatus (BATTERY_FLAG_ constants, may be combined). Assigning 0 refreshes PowerStatus, ACLineStatus and PercentBattery; assigning sysHibernateAsk (1) or sysSleepAsk (3) asks for confirmation and then calls SetSuspendState; sysHibernateForce (2) and sysSleepForce (4) call it without asking.",
+   "OSNAME$": "Returns the Windows name (for example \"Windows XP\", \"Windows Vista\", \"Newer than Vista\", \"Windows 98\") and fills MajorVersion, MinorVersion and BuildNumber; returns \"ERROR\" if GetVersionEx fails.",
+   "PERCENTFREEMEMORY": "Returns 100 minus the memory load reported by GlobalMemoryStatus.",
+   "AVAILABLEMEMORY": "Returns the available physical memory in bytes.",
+   "TOTALMEMORY": "Returns the total physical memory in bytes.",
+   "USEDMEMORY": "Returns total minus available physical memory in bytes.",
+   "PAGEFILEMEMORY": "Returns the available page file size in bytes.",
+   "DISKFREESPACE": "Returns the free space in megabytes available to the caller on the drive of the given path (for example \"C:\"), or 0 if GetDiskFreeSpaceEx fails.",
+   "MOUSEWHEELPRESENT": "Returns non-zero if a mouse wheel is present; always 0 on Windows 95.",
+   "SCROLLBARWIDTH": "Returns the width of a vertical scroll bar (SM_CXVSCROLL).",
+   "SCROLLBARHEIGHT": "Returns the height of a horizontal scroll bar (SM_CYHSCROLL).",
+   "CAPTIONBARHEIGHT": "Returns the height of a window caption bar (SM_CYCAPTION).",
+   "WINDOWBORDERWIDTH": "Returns the width of a window border (SM_CXBORDER).",
+   "WINDOWBORDERHEIGHT": "Returns the height of a window border (SM_CYBORDER).",
+   "ICONWIDTH": "Returns the default icon width (SM_CXICON).",
+   "ICONHEIGHT": "Returns the default icon height (SM_CYICON).",
+   "MENUBARHEIGHT": "Returns the height of a menu bar (SM_CYMENU).",
+   "NETWORKPRESENT": "Returns the SM_NETWORK system metric, non-zero when a network is present.",
+   "SLOWPROCESSOR": "Returns the SM_SLOWMACHINE system metric, non-zero for a slow processor.",
+   "SHOWCONTROLPANEL": "Opens a Control Panel applet chosen by the first four letters of PanelName (for example \"MOUSE\", \"KEYBOARD\", \"DISPLAY\", \"SOUNDS\", \"POWER\", \"INTERNET\"); index selects the tab where supported. Returns the process ID from Shell, or 0 for an unknown name.",
+   "SHUTDOWN": "Shuts down Windows (ExitWindowsEx with EWX_SHUTDOWN) after enabling the shutdown privilege.",
+   "SHUTDOWNFORCE": "Shuts down Windows forcing applications to close (EWX_FORCE or EWX_SHUTDOWN).",
+   "LOGOFF": "Logs off the current user (EWX_LOGOFF).",
+   "REBOOT": "Restarts Windows (EWX_REBOOT)."
+  },
+  "example": "$INCLUDE \"rapidq2.inc\"\n\nDIM Sys AS QSYSTEM\nShowMessage Sys.OSName$ + \" build \" + STR$(Sys.BuildNumber)\nShowMessage \"Free memory: \" + STR$(Sys.PercentFreeMemory) + \"%\"\nShowMessage \"Free on C: \" + STR$(Sys.DiskFreeSpace(\"C:\")) + \" MB\"\nSys.PowerStatus = 0\nShowMessage \"Battery: \" + STR$(Sys.PercentBattery) + \"%\"",
+  "example_origin": "written",
+  "author": "JohnK",
+  "version": "1.0c",
+  "date": "8/2006",
+  "caveats_en": [
+   "OSName$ reports every NT 6.x version (including Windows 7) as \"Windows Vista\" and anything newer as \"Newer than Vista\".",
+   "SetSuspendState's first parameter is Hibernate; the code passes 0 for sysHibernateAsk/sysHibernateForce and 1 for sysSleepAsk/sysSleepForce, which looks swapped.",
+   "A comment says SetSystemPowerState must be used instead before Windows 98.",
+   "The SetPowerStatus setter assigns RESULT, which has no effect in a property setter.",
+   "ShowControlPanel: the \"SYST\" case has no comma before the index (\"sysdm.cpl @0\"+STR$(index)), and the \"ADD \" case puts the comparison inside UCASE$(LEFT$(PanelName, 12) = ...), so those branches may not work as intended.",
+   "Memory figures come from GlobalMemoryStatus with 32-bit DWORD fields."
+  ]
+ },
+ "QRichEditUx@XPThemes.inc": {
+  "summary_en": "A QRICHEDIT that draws its border with the Windows XP visual style color after Subclass is called.",
+  "summary_ru": "QRICHEDIT, рамка которого после вызова Subclass рисуется цветом темы Windows XP.",
+  "description_en": [
+   "QRichEditUx extends QRICHEDIT with a window procedure hook. After Subclass is called, every WM_NCPAINT is first passed to the original procedure; then, if the EDIT theme of uxtheme.dll is active, the WS_EX_CLIENTEDGE 3D border is replaced by a single WS_BORDER line and repainted with the theme's border color (TMT_BORDERCOLOR). In classic mode it restores the client edge border instead.",
+   "Call Subclass once after the control has been created and has a parent, for example just before showing the form."
+  ],
+  "requires": [
+   "uxtheme.dll (Windows XP or later)",
+   "Callbacks.inc (included unless __RQCALLBACKS is defined) for SetNewCallBack_4",
+   "Windows API declarations from a Win32 API include when __WIN32API is defined; otherwise XPThemes.inc declares them itself"
+  ],
+  "members": {
+   "SUBCLASS": "Subclasses the control's window procedure (through SetNewCallBack_4) so its border is redrawn in XP visual style; does nothing on Windows versions older than XP (5.01) or when the control has no handle yet. The guard against subclassing twice uses a bitwise AND NOT on Subclassed, so a second call may subclass again (see Notes)."
+  },
+  "example": "$INCLUDE \"XPThemes.inc\"\n\nCREATE Form AS QFORM\n  CREATE Ctl AS QRICHEDITUX\n    Left = 10\n    Top = 10\n    Width = 200\n    Height = 120\n  END CREATE\nEND CREATE\nCtl.Subclass\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The window DC from GetWindowDC is never released with ReleaseDC.",
+   "The guard IF .Handle AND NOT .Subclassed uses bitwise AND/NOT, so a second call to Subclass may subclass the control again when the handle has bits other than bit 0 set.",
+   "The version test (GetVersion AND 255) + (GetVersion AND &HFF00) / 25600 >= 5.01 skips Windows 2000 and earlier."
+  ]
+ },
+ "QScrollBoxUx@XPThemes.inc": {
+  "summary_en": "A QSCROLLBOX that draws its border with the Windows XP visual style color after Subclass is called.",
+  "summary_ru": "QSCROLLBOX, рамка которого после вызова Subclass рисуется цветом темы Windows XP.",
+  "description_en": [
+   "QScrollBoxUx extends QSCROLLBOX with a window procedure hook. After Subclass is called, every WM_NCPAINT is first passed to the original procedure; then, if the EDIT theme of uxtheme.dll is active, the WS_EX_CLIENTEDGE 3D border is replaced by a single WS_BORDER line and repainted with the theme's border color (TMT_BORDERCOLOR). In classic mode it restores the client edge border instead.",
+   "The code is identical to QRichEditUx; it also uses the EDIT theme class for the border color. Call Subclass once after the control has a handle."
+  ],
+  "requires": [
+   "uxtheme.dll (Windows XP or later)",
+   "Callbacks.inc (included unless __RQCALLBACKS is defined) for SetNewCallBack_4",
+   "Windows API declarations from a Win32 API include when __WIN32API is defined; otherwise XPThemes.inc declares them itself"
+  ],
+  "members": {
+   "SUBCLASS": "Subclasses the control's window procedure (through SetNewCallBack_4) so its border is redrawn in XP visual style; does nothing on Windows versions older than XP (5.01), when the control has no handle yet, or when it is already subclassed."
+  },
+  "example": "$INCLUDE \"XPThemes.inc\"\n\nCREATE Form AS QFORM\n  CREATE Ctl AS QSCROLLBOXUX\n    Left = 10\n    Top = 10\n    Width = 200\n    Height = 120\n  END CREATE\nEND CREATE\nCtl.Subclass\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The window DC from GetWindowDC is never released with ReleaseDC.",
+   "The guard IF .Handle AND NOT .Subclassed uses bitwise AND/NOT, so a second call to Subclass may subclass the control again when the handle has bits other than bit 0 set.",
+   "The version test (GetVersion AND 255) + (GetVersion AND &HFF00) / 25600 >= 5.01 skips Windows 2000 and earlier."
+  ]
+ },
+ "QStringGridUx@XPThemes.inc": {
+  "summary_en": "A QStringGrid that draws its border with the Windows XP visual style color after Subclass is called.",
+  "summary_ru": "QStringGrid, рамка которого после вызова Subclass рисуется цветом темы Windows XP.",
+  "description_en": [
+   "QStringGridUx extends QStringGrid with a window procedure hook. After Subclass is called, every WM_NCPAINT is first passed to the original procedure; then, if the EDIT theme of uxtheme.dll is active, the WS_EX_CLIENTEDGE 3D border is replaced by a single WS_BORDER line and repainted with the theme's border color (TMT_BORDERCOLOR). In classic mode it restores the client edge border instead.",
+   "The code is identical to QRichEditUx; it also uses the EDIT theme class for the border color. Call Subclass once after the control has a handle."
+  ],
+  "requires": [
+   "uxtheme.dll (Windows XP or later)",
+   "Callbacks.inc (included unless __RQCALLBACKS is defined) for SetNewCallBack_4",
+   "Windows API declarations from a Win32 API include when __WIN32API is defined; otherwise XPThemes.inc declares them itself"
+  ],
+  "members": {
+   "SUBCLASS": "Subclasses the control's window procedure (through SetNewCallBack_4) so its border is redrawn in XP visual style; does nothing on Windows versions older than XP (5.01), when the control has no handle yet, or when it is already subclassed."
+  },
+  "example": "$INCLUDE \"XPThemes.inc\"\n\nCREATE Form AS QFORM\n  CREATE Ctl AS QSTRINGGRIDUX\n    Left = 10\n    Top = 10\n    Width = 200\n    Height = 120\n  END CREATE\nEND CREATE\nCtl.Subclass\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The window DC from GetWindowDC is never released with ReleaseDC.",
+   "The guard IF .Handle AND NOT .Subclassed uses bitwise AND/NOT, so a second call to Subclass may subclass the control again when the handle has bits other than bit 0 set.",
+   "The version test (GetVersion AND 255) + (GetVersion AND &HFF00) / 25600 >= 5.01 skips Windows 2000 and earlier."
+  ]
+ },
+ "QPanelUx@XPThemes.inc": {
+  "summary_en": "A QPanel that draws its border with the Windows XP visual style color after Subclass is called.",
+  "summary_ru": "QPanel, рамка которого после вызова Subclass рисуется цветом темы Windows XP.",
+  "description_en": [
+   "QPanelUx extends QPanel with a window procedure hook. After Subclass is called, every WM_NCPAINT is first passed to the original procedure; then, if the EDIT theme of uxtheme.dll is active, the WS_EX_CLIENTEDGE 3D border is replaced by a single WS_BORDER line and repainted with the theme's border color (TMT_BORDERCOLOR). In classic mode it restores the client edge border instead.",
+   "The code is identical to QRichEditUx; it also uses the EDIT theme class for the border color, so it only changes panels that have a WS_EX_CLIENTEDGE or WS_BORDER border. Call Subclass once after the control has a handle."
+  ],
+  "requires": [
+   "uxtheme.dll (Windows XP or later)",
+   "Callbacks.inc (included unless __RQCALLBACKS is defined) for SetNewCallBack_4",
+   "Windows API declarations from a Win32 API include when __WIN32API is defined; otherwise XPThemes.inc declares them itself"
+  ],
+  "members": {
+   "SUBCLASS": "Subclasses the control's window procedure (through SetNewCallBack_4) so its border is redrawn in XP visual style; does nothing on Windows versions older than XP (5.01), when the control has no handle yet, or when it is already subclassed."
+  },
+  "example": "$INCLUDE \"XPThemes.inc\"\n\nCREATE Form AS QFORM\n  CREATE Ctl AS QPANELUX\n    Left = 10\n    Top = 10\n    Width = 200\n    Height = 120\n  END CREATE\nEND CREATE\nCtl.Subclass\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The window DC from GetWindowDC is never released with ReleaseDC.",
+   "The guard IF .Handle AND NOT .Subclassed uses bitwise AND/NOT, so a second call to Subclass may subclass the control again when the handle has bits other than bit 0 set.",
+   "The version test (GetVersion AND 255) + (GetVersion AND &HFF00) / 25600 >= 5.01 skips Windows 2000 and earlier."
+  ]
+ },
+ "QGroupBoxUx@XPThemes.inc": {
+  "summary_en": "A QGROUPBOX that repaints its frame and caption with Windows XP visual styles after Subclass is called.",
+  "summary_ru": "QGROUPBOX, который после вызова Subclass перерисовывает рамку и заголовок в стиле тем Windows XP.",
+  "description_en": [
+   "QGroupBoxUx extends QGROUPBOX with a window procedure hook. After Subclass is called, on every WM_PAINT and WM_NCPAINT it lets the original procedure paint, then opens the BUTTON theme of uxtheme.dll, erases the old background with DrawThemeParentBackground, draws the BP_GROUPBOX frame with DrawThemeBackground and redraws the caption with the theme's menu font (normal weight) and group box text color on a COLOR_BTNFACE background.",
+   "Call Subclass once after the group box has been created and has a parent. When no theme is active nothing extra is drawn."
+  ],
+  "requires": [
+   "uxtheme.dll (Windows XP or later)",
+   "Callbacks.inc (included unless __RQCALLBACKS is defined) for SetNewCallBack_4",
+   "Windows API declarations from a Win32 API include when __WIN32API is defined; otherwise XPThemes.inc declares them itself"
+  ],
+  "members": {
+   "SUBCLASS": "Subclasses the group box window procedure (through SetNewCallBack_4) so its frame and caption are repainted in XP visual style; does nothing on Windows versions older than XP (5.01), when the control has no handle yet, or when it is already subclassed."
+  },
+  "example": "$INCLUDE \"XPThemes.inc\"\n\nCREATE Form AS QFORM\n  CREATE Grp AS QGROUPBOXUX\n    Caption = \"Options\"\n    Left = 10\n    Top = 10\n    Width = 200\n    Height = 120\n  END CREATE\nEND CREATE\nGrp.Subclass\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The window DC from GetWindowDC is never released with ReleaseDC, and the created font is deleted while still selected into that DC.",
+   "The guard IF .Handle AND NOT .Subclassed uses bitwise AND/NOT, so a second call to Subclass may subclass the control again.",
+   "The caption is always drawn at x = 7 with the COLOR_BTNFACE background, regardless of the group box's own color.",
+   "The version test (GetVersion AND 255) + (GetVersion AND &HFF00) / 25600 >= 5.01 skips Windows 2000 and earlier."
+  ]
+ },
+ "QWave@QWave.inc": {
+  "summary_en": "A non-visual object that plays, records, edits and saves WAV files through MCI string commands.",
+  "summary_ru": "Невизуальный объект для воспроизведения, записи, редактирования и сохранения WAV-файлов через строковые команды MCI.",
+  "description_en": [
+   "QWave sends MCI commands with mciSendStringA from winmm.dll to a waveaudio device opened under the alias \"sound\", with the time format set to milliseconds. Open loads a file and reads its length, bits per sample, sample rate and channels; New opens an empty recording buffer. Play, Pause, Stop, Record, Save and Delete map to the MCI commands of the same names.",
+   "An internal QTIMER (Timer, interval 1000 ms) runs while playing or recording: on each tick it updates CurrentPos and State, calls Stop when the device reports \"stopped\", and fires OnChange with the current position. State uses the constants WV_CLOSE, WV_PLAY, WV_PAUSE, WV_STOP and WV_RECORD. Volume is set for wave output device 0 with waveOutSetVolume."
+  ],
+  "requires": [],
+  "members": {
+   "TIMER": "Internal QTIMER (interval 1000 ms) that polls the position and state while playing or recording and fires OnChange.",
+   "LENGHT": "Length of the open sound in milliseconds (spelled Lenght in the source); read on Open, Stop and Delete.",
+   "STATE": "Current state: WV_CLOSE, WV_PLAY, WV_PAUSE, WV_STOP or WV_RECORD.",
+   "FILEOPEN": "True while a file (or a new buffer) is open.",
+   "ERROR": "MCI error text set when Open fails.",
+   "CURRENTPOS": "Current position in milliseconds. Assigning it while stopped or paused clamps the value to 0..Lenght and seeks the device there.",
+   "BITS": "Bits per sample. Assigning WV_BIT8 or WV_BIT16 while a file is open and stopped or paused sends a set command with the new format (bits, channels, sample rate, alignment, bytes per second).",
+   "FREQUENCE": "Sample rate in Hz. Assigning WV_KHZ8, WV_KHZ11 or WV_KHZ44 while a file is open and stopped or paused changes the wave format.",
+   "MODE": "Number of channels. Assigning WV_MONO or WV_STEREO while a file is open and stopped or paused changes the wave format.",
+   "VOLUME": "Output volume 0-100. Assigning it calls waveOutSetVolume for device 0 with the same value for both channels; values above 100 are ignored.",
+   "ONCHANGE": "Event fired on every timer tick with the current position in milliseconds.",
+   "CLOSE": "Stops and closes the MCI device and resets FileOpen, Lenght, CurrentPos and State.",
+   "OPEN": "Opens a WAV file, reads its length and format and returns True on success; on failure sets Error and closes the device.",
+   "PLAY": "Starts playback from CurrentPos and starts the timer.",
+   "STOP": "Stops playback or recording, re-reads the length, stops the timer and seeks to the start.",
+   "PAUSE": "Pauses playback and stores the current position.",
+   "NEW": "Opens a new empty waveaudio buffer for recording, if no file is open.",
+   "RECORD": "Starts recording (MCI 'record sound to' Lenght) when a file is open and stopped or paused, and starts the timer.",
+   "SAVE": "Saves the sound to a file when it is stopped and returns True on success.",
+   "DELETE": "Deletes the part between pos1 and pos2 (milliseconds) when stopped, then re-reads the length."
+  },
+  "example": "$INCLUDE \"QWave.inc\"\n\nDIM Wave AS QWave\n\nCREATE Form AS QFORM\nEND CREATE\n\nSUB WaveChange(position AS LONG)\n  Form.Caption = STR$(position) + \" / \" + STR$(Wave.Lenght)\nEND SUB\n\nWave.OnChange = WaveChange\nIF Wave.Open(\"test.wav\") THEN\n  Wave.Volume = 80\n  Wave.Play\nELSE\n  ShowMessage Wave.Error\nEND IF\nForm.ShowModal\nWave.Close",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.2",
+  "date": "",
+  "caveats_en": [
+   "The private GetPosition function tests Wave.FileOpen instead of QWave.FileOpen, so it only works when the instance is named Wave.",
+   "SetFrequence accepts 8000, 11025 and 44100 but not 22050, although the constant WV_KHZ22 is defined.",
+   "All instances use the same MCI alias \"sound\", so only one QWave can have a file open at a time.",
+   "File names are not quoted in the open and save commands, so names with spaces may fail.",
+   "Record records 'to' the current Lenght; for a buffer created with New, Lenght is 0.",
+   "Volume always targets wave output device 0; values from 51 to 99 are computed as negative numbers before being passed to waveOutSetVolume."
+  ]
+ },
+ "QICON@QICON.inc": {
+  "summary_en": "A non-visual object that extracts icons from files and saves an icon or a 32x32 bitmap as a 16- or 256-color .ico file, or converts it to a cursor.",
+  "summary_ru": "Невизуальный объект, извлекающий иконки из файлов и сохраняющий иконку или растр 32x32 в .ico на 16 или 256 цветов, а также превращающий его в курсор.",
+  "description_en": [
+   "Assigning FileName loads an icon with ExtractIcon from shell32.dll (or, when Associated is True, the icon of the associated application with ExtractAssociatedIcon); Count receives the number of icons in the file and Handle the icon handle. Assigning Index extracts another icon from the same file.",
+   "SaveToFile draws the current icon into a 32x32 QBitmap with DrawIconEx, saves it to a memory stream and writes an .ico file from a built-in 62-byte header, the bitmap palette and pixels, and a monochrome mask. With mask set, white (16 colors) or palette entry &H13 (256 colors) becomes transparent; otherwise the mask is opaque. SaveBmpToFile does the same for a 32x32 QBitmap. ConvertAsCursor patches an .ico file into a .cur file with a hot spot."
+  ],
+  "requires": [],
+  "members": {
+   "FILENAME": "File to take icons from. Assigning a non-empty name destroys the previous icon, then extracts icon 0 (or the associated icon when Associated is True) and sets Count and Handle; assigning an empty string only destroys the current icon.",
+   "COUNT": "Number of icons found in the file (1 in Associated mode).",
+   "HANDLE": "Handle (HICON) of the current icon.",
+   "ASSOCIATED": "When True, assigning FileName uses ExtractAssociatedIcon, so a document file gives the icon of its associated program. Set it before FileName.",
+   "INDEX": "Icon number in the file. Assigning it destroys the current icon and extracts the icon with that index if the value is not greater than Count.",
+   "SAVETOFILE": "Saves the current icon as a 32x32 .ico file; pixelFormat 2 gives 16 colors, any other value 256 colors; mask non-zero makes a transparency mask.",
+   "SAVEBMPTOFILE": "Saves a 32x32 QBitmap as an .ico file with the same pixelFormat and mask options; does nothing for other sizes.",
+   "CONVERTASCURSOR": "Changes an existing .ico file into a cursor: writes the cursor type and the X and Y hot spot into the header and renames the file to .cur (deleting an existing .cur of that name)."
+  },
+  "example": "$INCLUDE \"QICON.inc\"\n\nDIM Ico AS QICON\nIco.FileName = \"C:\\WINDOWS\\NOTEPAD.EXE\"\nShowMessage \"Icons found: \" + STR$(Ico.Count)\nIco.SaveToFile(\"notepad.ico\", 3, 1)\nIco.ConvertAsCursor(\"notepad.ico\", 16, 16)",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.2",
+  "date": "",
+  "caveats_en": [
+   "CreateMask16 tests characters 7 and 8 of HEX$ of a single byte, which is at most 2 characters long, so the 16-color transparency mask never marks any pixel as transparent.",
+   "SetIndex accepts Index equal to Count, one past the last icon (icons are numbered from 0), and does not store the new value in Index.",
+   "After DestroyIcon the Handle field is not reset, so when FileName is set to an empty string or Index is out of range Handle still holds the destroyed handle.",
+   "ConvertAsCursor builds the new name from the first '.' in the path, so a directory name containing a dot gives a wrong name.",
+   "Only 32x32 icons are written; the header bytes are hard-coded."
+  ]
+ },
+ "QProgress@QProgress.inc": {
+  "summary_en": "A progress indicator derived from QIMAGE that shows either a standard QGAUGE or an animated marquee (moving dot, rectangles, blur or barber pole) for tasks of unknown length.",
+  "summary_ru": "Индикатор прогресса на основе QIMAGE: обычный QGAUGE или анимированная «бегущая» полоса (точка, прямоугольники, размытие, «парикмахерский столб») для задач неизвестной длительности.",
+  "description_en": [
+   "For Kind 0 to 4 the component shows its embedded QGAUGE (gkText, gkHorizontalBar, gkVerticalBar, gkPie, gkNeedle) and Value and Range are passed to it. For Kind 5 to 8 (gkMovingDot, gkMovingRect, gkMovingBlur, gkBarberPole) it draws a pattern in Color on BackColor into a bitmap twice as wide as the control and scrolls it by StepSize pixels every Interval seconds.",
+   "The animation starts when Visible is set to non-zero and stops when it is set to 0. By default a QTIMER drives it; with UseThreading = True a thread created with CreateThread (kernel32) runs a drawing loop instead. The header says the original component did not work reliably and was totally redone, and that threading is needed because it will not update on one thread."
+  ],
+  "requires": [],
+  "members": {
+   "CAPTION": "Text drawn on the marquee bitmap (Kind 5 to 8 only).",
+   "GAUGE": "The embedded QGAUGE used for Kind 0 to 4.",
+   "STEPSIZE": "Number of pixels the marquee moves per update (default 50; set to half the object size if 0).",
+   "INTERVAL": "Update interval of the marquee in seconds (default 0.5).",
+   "VISIBLE": "Shows or hides the control. For Kind 5 to 8, assigning non-zero starts the timer or the drawing thread and assigning 0 stops it.",
+   "COLOR": "Foreground color of the gauge or marquee. Assigning it sets Gauge.ForeColor and redraws the marquee pattern.",
+   "BACKCOLOR": "Background color. Assigning it sets Gauge.BackColor and redraws the marquee pattern.",
+   "RANGE": "Maximum value. Assigning it sets Gauge.Max to the value and Gauge.Min to 0.",
+   "VALUE": "Current progress value. Assigning it sets Gauge.Position.",
+   "KIND": "Display style: 0 gkText, 1 gkHorizontalBar, 2 gkVerticalBar, 3 gkPie, 4 gkNeedle (QGAUGE kinds), 5 gkMovingDot, 6 gkMovingRect, 7 gkMovingBlur, 8 gkBarberPole. Assigning a value above 4 draws the marquee and hides the gauge; otherwise the gauge is shown with that Kind.",
+   "HEIGHT": "Control height. Assigning it sets the inherited Height and redraws the marquee pattern.",
+   "WIDTH": "Control width. Assigning it sets the inherited Width and redraws the marquee pattern.",
+   "USETHREADING": "When True the marquee is animated by a separate thread instead of a QTIMER (default False)."
+  },
+  "example": "$INCLUDE \"QProgress.inc\"\n\nCREATE Form AS QFORM\n  CREATE Prog AS QPROGRESS\n    Left = 10\n    Top = 10\n    Width = 200\n    Height = 20\n    Color = &HFF8000\n    Kind = gkBarberPole\n  END CREATE\nEND CREATE\nProg.Visible = 1\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Johnk",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The header warns: if you use threading you cannot use CODEPTR on any other SUB in the program, because the address is used up.",
+   "A comment in the timer routine says not to put SLEEP in it and that DoEvents does nothing there.",
+   "With UseThreading, SetVisible busy-waits with DO: LOOP UNTIL .Visible = TRUE before the inherited Visible is set, so it may never return.",
+   "Width and Height assignments do not resize the Gauge; only the threading loop copies the size to it.",
+   "The Range setter does not store the value in the Range field.",
+   "The caption is drawn at x = .Left + .Width \\ 2, which includes the control's own Left position."
+  ]
+ },
+ "QPosicL@QPosicL.inc": {
+  "summary_en": "A panel with a vertical and a horizontal scroll bar and five buttons for adjusting a two-dimensional position (X/Y values).",
+  "summary_ru": "Панель с вертикальной и горизонтальной полосами прокрутки и пятью кнопками для задания позиции по двум координатам (X/Y).",
+  "description_en": [
+   "QPosicL is a QPanel containing two QSCROLLBARs and five QBUTTONs with bitmaps (reset in the center, Undo, Redo, AllUp and AllDn in the corners). ValueH follows the horizontal scroll bar; ValueV is the vertical scroll bar position with the sign reversed, so its range is MinV..MaxV. Every change fires OnChange.",
+   "Set MinV, MaxV, ValueV, MinH, MaxH, ValueH and the size, then call Initial to apply the ranges and lay out the parts. The center button resets both values to 1; AllDn and AllUp move both scroll bars by one step in opposite directions. The header says it is based on the QSpinText component by Mesut Akcan and refers to the Rapid-Q documentation project at http://www.diakin.narod.ru/RQDP/index.html."
+  ],
+  "requires": [
+   "Bitmap files reset.bmp, Undo1.bmp, Redo1.bmp, AllUp.bmp and AllDn.bmp in the folder BmpPath (C:\\BAS\\RAPIDQ\\inc\\), and MaxFast.bmp in the current folder (used by Initial)"
+  ],
+  "members": {
+   "MAXV": "Upper limit of the vertical value; applied by Initial.",
+   "MINV": "Lower limit of the vertical value; applied by Initial.",
+   "VALUEV": "Vertical value (negated position of the vertical scroll bar); set it before Initial to choose the start position.",
+   "MAXH": "Upper limit of the horizontal value; applied by Initial.",
+   "MINH": "Lower limit of the horizontal value; applied by Initial.",
+   "VALUEH": "Horizontal value (position of the horizontal scroll bar); set it before Initial to choose the start position.",
+   "ONCHANGE": "Event fired when a scroll bar moves or a button is clicked; its single parameter is always 1, so read ValueH and ValueV in the handler.",
+   "INITIAL": "Applies the Min, Max and Value settings to the scroll bars, sets the parents of the child controls and lays them out according to the panel height."
+  },
+  "example": "$INCLUDE \"QPosicL.inc\"\n\nDECLARE SUB PosChange(a AS SINGLE)\n\nCREATE Form AS QFORM\n  CREATE PosCtl AS QPOSICL\n    Left = 10\n    Top = 10\n    MinH = 0: MaxH = 100: ValueH = 50\n    MinV = 0: MaxV = 100: ValueV = 50\n    OnChange = PosChange\n  END CREATE\nEND CREATE\n\nSUB PosChange(a AS SINGLE)\n  Form.Caption = STR$(PosCtl.ValueH) + \", \" + STR$(PosCtl.ValueV)\nEND SUB\n\nPosCtl.Initial\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.00",
+  "date": "22.02.2004",
+  "caveats_en": [
+   "Button bitmaps are loaded from the absolute path C:\\BAS\\RAPIDQ\\inc\\ (BmpPath); Initial loads MaxFast.bmp from the current folder instead of reset.bmp.",
+   "The constructor and Initial lay out the parts differently (the constructor makes the vertical scroll bar vertical with Kind = 1, Initial sets Kind = 0).",
+   "The Undo and Redo buttons only fire OnChange and do not change any value.",
+   "AllUp does its work in OnMouseDown; its OnClick handler is empty (the code there is commented out).",
+   "OnChange is called with CALLFUNC without checking that a handler is assigned."
+  ]
+ },
+ "QRichEdit_api@API_RichEdid.inc": {
+  "summary_en": "An unfinished wrapper that creates a Windows RichEdit control directly with CreateWindowExA instead of using QRICHEDIT.",
+  "summary_ru": "Незавершённая обёртка, создающая окно RichEdit напрямую через CreateWindowExA вместо QRICHEDIT.",
+  "description_en": [
+   "Most of the TYPE block is a list of QRICHEDIT properties, methods and events copied in as DIM and SUB declarations without code, plus a few planned additions (AutoURLDetect, FindText, ReplaceSel, ScrollCaret). The working part is at the end: Left, Top, Width, Height, Visible and Parent have setters. Assigning Parent (a window handle) creates a child window of class \"RichEdit\" with WS_CHILD and WS_VISIBLE at the current position and size; the position and size setters then move it with MoveWindow and Visible shows or hides it with ShowWindow.",
+   "The Russian comments (in DOS code page 866) say that ReplaceSel replaces the selected text and ScrollCaret scrolls the text until the line with the cursor becomes visible."
+  ],
+  "requires": [
+   "SW_HIDE and SW_SHOW constants, which this file uses but does not define (for example from a Win32 API include)"
+  ],
+  "members": {
+   "ADDSTRINGS": "Declared as SUBI AddStrings without a body, as part of the copied list of QRICHEDIT methods; it has no implementation in this file."
+  },
+  "example": "$INCLUDE \"API_RichEdid.inc\"\n\nCREATE Form AS QFORM\nEND CREATE\n\nDIM Rich AS QRichEdit_api\nRich.Left = 10\nRich.Top = 10\nRich.Width = 300\nRich.Height = 200\nRich.Parent = Form.Handle\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Most methods and events are declarations without bodies (SUB Clear, SUB LoadFromFile, SUB FINDTEXT, SUB OnChange and others), so the file is a draft and may not compile as is.",
+   "LoadLibrary and FreeLibrary are declared but never called, so nothing in this file loads the DLL that registers the \"RichEdit\" window class.",
+   "SW_HIDE and SW_SHOW are used but not defined in the file.",
+   "SetParent contains commented-out progress bar code (PBM_SETRANGE, PBM_SETSTEP) left over from another component.",
+   "The findtextex TYPE and the FormWndProc declaration are not used.",
+   "The file name is spelled API_RichEdid.inc."
+  ]
+ },
+ "QRun@QRun.inc": {
+  "summary_en": "A non-visual object for starting programs and documents and for finding and controlling other windows (enumerate, close, minimize, maximize, restore, focus, topmost).",
+  "summary_ru": "Невизуальный объект для запуска программ и документов, поиска окон и управления ими (перечисление, закрытие, сворачивание, разворачивание, фокус, поверх всех).",
+  "description_en": [
+   "QRun wraps shell32.dll and user32.dll calls. FindApplication returns the program associated with a file (FindExecutableA); FileRun and ExeRun start a file or a program with ShellExecuteA and a SW_ show command. EnumWindow walks all top-level windows with GetWindow and fires OnEnumWindows for each one that has a title; EnumFromPoint does the same for the window at a screen point and fires OnEnumFromPoint.",
+   "The window commands take a window handle and send messages to it: Close sends WM_CLOSE, Minimize, Maximize and Restore send WM_SYSCOMMAND, SetFocus sends WM_SETFOCUS, and SetTopMost calls SetWindowPos with HWND_TOPMOST or HWND_NOTOPMOST. The SW_ constants are defined in the file unless __WIN32API is defined."
+  ],
+  "requires": [],
+  "members": {
+   "ONENUMWINDOWS": "Event fired by EnumWindow for each window with a non-empty title; parameters handle, name (window title) and ClassName.",
+   "ONENUMFROMPOINT": "Event fired by EnumFromPoint for the window at the given point if it has a title; parameters handle, name and ClassName.",
+   "FINDAPPLICATION": "Returns the full name of the program associated with a file, or an empty string if none is found.",
+   "FILERUN": "Opens a file or program with ShellExecute ('open') using the given show command (SW_ constant).",
+   "EXERUN": "Starts a program with a parameter string and show command; the working folder is the folder part of ExeName.",
+   "ENUMWINDOW": "Enumerates top-level windows and fires OnEnumWindows for each; with All = False only visible windows are reported. Returns True if any window was found.",
+   "FINDCHILD": "Returns the handle of a child window of handle with the given class and title (FindWindowEx).",
+   "ENUMFROMPOINT": "Finds the window at screen point x, y and fires OnEnumFromPoint for it; returns True if a window was found.",
+   "CLOSE": "Sends WM_CLOSE to the window.",
+   "MINIMIZE": "Minimizes the window (WM_SYSCOMMAND, SC_MINIMIZE).",
+   "MAXIMIZE": "Maximizes the window (WM_SYSCOMMAND, SC_MAXIMIZE).",
+   "RESTORE": "Restores the window to its normal size (WM_SYSCOMMAND, SC_RESTORE).",
+   "SETFOCUS": "Sends WM_SETFOCUS to the window.",
+   "SETTOPMOST": "Makes the window stay on top of others when flag is True, or removes that state when False, without moving or resizing it."
+  },
+  "example": "$INCLUDE \"QRun.inc\"\n\nDIM Run AS QRun\n\nCREATE Form AS QFORM\n  CREATE List AS QLISTBOX\n    Align = 5\n  END CREATE\nEND CREATE\n\nSUB ListWindow(handle AS LONG, name AS STRING, ClassName AS STRING)\n  List.AddItems name + \" [\" + ClassName + \"]\"\nEND SUB\n\nRun.OnEnumWindows = ListWindow\nRun.EnumWindow(False)\nRun.FileRun(\"readme.txt\", SW_SHOWNORMAL)\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.1",
+  "date": "",
+  "caveats_en": [
+   "OnEnumFromPoint is declared with OnEnumWindows_eventTemplate instead of OnEnumFromPoint_eventTemplate (the signatures are the same).",
+   "SetFocus only sends the WM_SETFOCUS notification message; it does not call the SetFocus or SetForegroundWindow API.",
+   "ExeRun takes LEFT$(ExeName, RINSTR(ExeName, \"\\\") - 1) as the folder, which is wrong when ExeName has no backslash.",
+   "Windows without a title are skipped by both enumerations."
+  ]
+ },
+ "QPrinterInfo@QPrinterInfo.inc": {
+  "summary_en": "A non-visual object that returns printer page sizes, margins and resolution and converts between millimeters and printer pixels.",
+  "summary_ru": "Невизуальный объект, возвращающий размеры страницы, поля и разрешение принтера и переводящий миллиметры в пиксели принтера и обратно.",
+  "description_en": [
+   "All functions call GetDeviceCaps (gdi32) on the device context of the RapidQ Printer object (Printer.Handle). Ppm is the number of printer pixels per millimeter (HORZRES / HORZSIZE) and is used by the conversion and physical size functions; Scale compares the printer's horizontal DPI with the screen's.",
+   "Typical use: compute positions in millimeters and convert them with MetricToPixel before drawing on Printer, taking PhLeftMargin and PhTopMargin into account."
+  ],
+  "requires": [
+   "The RapidQ Printer object (Printer.Handle)"
+  ],
+  "members": {
+   "SCALE": "Returns the printer's horizontal logical DPI divided by the screen's horizontal logical DPI.",
+   "DPI": "Returns the printer's horizontal resolution in dots per inch (LOGPIXELSX).",
+   "PPM": "Returns the printer's horizontal pixels per millimeter (HORZRES / HORZSIZE).",
+   "METRICTOPIXEL": "Converts a length in millimeters to printer pixels, rounded.",
+   "PIXELTOMETRIC": "Converts a length in printer pixels to millimeters.",
+   "HORZPAGESIZE": "Returns the width of the printable area in millimeters (HORZSIZE).",
+   "VERTPAGESIZE": "Returns the height of the printable area in millimeters (VERTSIZE).",
+   "PAGEWIDTH": "Returns the width of the printable area in pixels (HORZRES).",
+   "PAGEHEIGHT": "Returns the height of the printable area in pixels (VERTRES).",
+   "PHWIDTH": "Returns the physical page width in device units (PHYSICALWIDTH).",
+   "PHHEIGHT": "Returns the physical page height in device units (PHYSICALHEIGHT).",
+   "PHHORZ": "Returns the physical page width in millimeters, rounded.",
+   "PHVERT": "Returns the physical page height in millimeters, rounded.",
+   "PHMARGINX": "Returns the left unprintable margin in millimeters (PHYSICALOFFSETX).",
+   "PHMARGINY": "Returns the top unprintable margin in millimeters (PHYSICALOFFSETY).",
+   "PHLEFTMARGIN": "Returns the left unprintable margin in pixels (PHYSICALOFFSETX).",
+   "PHTOPMARGIN": "Returns the top unprintable margin in pixels (PHYSICALOFFSETY)."
+  },
+  "example": "$INCLUDE \"QPrinterInfo.inc\"\n\nDIM PInfo AS QPrinterInfo\nShowMessage \"Printer DPI: \" + STR$(PInfo.Dpi)\nShowMessage \"Page: \" + STR$(PInfo.HorzPageSize) + \" x \" + STR$(PInfo.VertPageSize) + \" mm\"\nShowMessage \"20 mm = \" + STR$(PInfo.MetricToPixel(20)) + \" pixels\"",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "Vertical conversions (PhVert, PhMarginY) also use Ppm, which is computed from horizontal values only, so they are only correct when the printer has the same horizontal and vertical resolution."
+  ]
+ },
+ "QINI@QWinIni.inc": {
+  "summary_en": "A non-visual object for reading and writing Windows INI files with the GetPrivateProfileString family of API calls.",
+  "summary_ru": "Невизуальный объект для чтения и записи INI-файлов Windows через функции GetPrivateProfileString.",
+  "description_en": [
+   "According to the usage comment: first call Ini.Load([Path/FileName.ini]) (the parameter is optional), then read values with Ini.Get(Section, Key, Default) and write them with Ini.Write(Section, Key, Value). Without a parameter Load uses the program's own name with .EXE replaced by .INI.",
+   "Get and Write also fill the Section, Key and Value fields with the last values used. Get removes anything after a ';' in the returned value, treating it as a comment. The include creates a global instance named Ini."
+  ],
+  "requires": [],
+  "members": {
+   "FILE": "Full name of the INI file used by Get, Write and GetSection; set by Load.",
+   "SECTION": "Section name of the last successful Get, Write or GetSection.",
+   "KEY": "Key name of the last successful Get or Write.",
+   "VALUE": "Value returned by the last Get or GetSection, or written by the last Write.",
+   "LOAD": "Sets File to the given name, or to the program name with .EXE replaced by .INI when no parameter is given; returns 1 if the file exists, otherwise 0.",
+   "GET": "Returns the value of a key in a section, without any ';' comment, or the default value if the key is missing; returns an empty string if File is empty.",
+   "WRITE": "Writes a key value into a section and returns non-zero on success; returns 0 if File is empty.",
+   "GETSECTION": "Returns the raw contents of a whole section as returned by GetPrivateProfileSection (up to 1000 bytes), or an empty string."
+  },
+  "example": "$INCLUDE \"QWinIni.inc\"\n\nIF Ini.Load(\"settings.ini\") = 0 THEN ShowMessage \"settings.ini not found\"\nShowMessage Ini.Get(\"Window\", \"Caption\", \"My program\")\nIni.Write(\"Window\", \"Width\", \"640\")",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Load is written as 'Functioni Load (...)' in the source.",
+   "The default file name is built with a case-sensitive REPLACESUBSTR$ of \".EXE\", so a program name with a lower-case .exe is not changed.",
+   "Get reads into a 260-byte buffer but passes 250 as its size; GetSection uses a 1000-byte buffer, so longer values or sections are cut.",
+   "GetSection does not check whether File is empty.",
+   "Get cuts the value at the first ';', so values that contain a semicolon are truncated."
+  ]
+ },
+ "QFlatButton@QFlatButton.inc": {
+  "summary_en": "A flat image button derived from QImage that draws a raised border when the mouse is over it and a sunken border while it is pressed.",
+  "summary_ru": "Плоская кнопка-картинка на основе QImage: при наведении мыши рисуется выпуклая рамка, при нажатии — вдавленная.",
+  "description_en": [
+   "QFlatButton draws its 3D edges directly on the image with Line, using light (115%) and dark (30%) shades of the system button face color. The color is read from the registry key \\Control Panel\\Colors, value ButtonFace (default \"150 150 150\"), and split into the R, G and B fields.",
+   "OnMouseMove raises the button while the mouse is more than 3 pixels inside its edges and flattens it otherwise; OnMouseDown depresses it and OnMouseUp flattens it. CurrState uses the constants fbFlattened (0), fbRaised (1) and fbDepressed (2). The header refers to \"Appendix A QFLATBUTTON.htm\" for usage and thanks Erlend Rovik for the OnMouseDown/Up suggestion."
+  ],
+  "requires": [
+   "Appendix A QFLATBUTTON.htm (usage documentation referred to in the header)"
+  ],
+  "members": {
+   "B": "Blue component of the system ButtonFace color, set by GetColors.",
+   "CURRSTATE": "Current drawing state: fbFlattened (0), fbRaised (1) or fbDepressed (2).",
+   "FLATBMPHANDLE": "Internal: copy of BMPHandle saved by Depress and restored by Flatten.",
+   "G": "Green component of the system ButtonFace color, set by GetColors.",
+   "R": "Red component of the system ButtonFace color, set by GetColors.",
+   "GETCOLORS": "Reads the ButtonFace color from the registry and stores it in R, G and B.",
+   "DEPRESS": "Draws the sunken border (dark top and left, light bottom and right) and sets CurrState to 2.",
+   "FLATTEN": "Restores the saved image without border and sets CurrState to 0.",
+   "RAISE": "Draws the raised border (light top and left, dark bottom and right) and sets CurrState to 1."
+  },
+  "example": "$INCLUDE \"QFlatButton.inc\"\n\nSUB BtnClick\n  ShowMessage \"Clicked\"\nEND SUB\n\nCREATE Form AS QFORM\n  CREATE Btn AS QFLATBUTTON\n    Left = 10\n    Top = 10\n    BMP = \"open.bmp\"\n    OnClick = BtnClick\n  END CREATE\nEND CREATE\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "In Depress the light bottom line ends at x = Height - 1 instead of Width - 1, so it is too short on buttons wider than they are high.",
+   "FlatBMPHandle is only saved in Depress; Flatten after a Raise without an earlier Depress restores an empty value.",
+   "The source contains a stray comment \"Forgot to delete ling 16 :)\"."
+  ]
+ },
+ "QColorDialog@QColorDialog.inc": {
+  "summary_en": "A non-visual wrapper for the Windows color selection dialog (ChooseColor) that returns the color as an RGB value and as an HTML #RRGGBB string.",
+  "summary_ru": "Невизуальная обёртка над стандартным диалогом выбора цвета Windows (ChooseColor), возвращающая цвет в виде RGB-значения и HTML-строки #RRGGBB.",
+  "description_en": [
+   "Execute fills a CHOOSECOLOR structure and calls ChooseColorA from comdlg32. The dialog starts with DefColor selected and the 16 custom colors from Customer; with Full set it opens with the custom color panel expanded (CC_FULLOPEN). When the user presses OK, Customer receives the edited custom colors, RgbColor the chosen color and HtmlColor the same color as \"#RRGGBB\", and Execute returns True.",
+   "Init (called by the constructor) sets DefColor and all custom colors to white. The comments are in French (Properties, color dialog display method, custom color init method)."
+  ],
+  "requires": [],
+  "members": {
+   "CUSTOMER": "Array of the 16 custom colors (indexes 1 to 16) shown in the dialog and updated when the user presses OK.",
+   "RGBCOLOR": "Color chosen in the last successful Execute, as a Windows RGB value.",
+   "FULL": "When non-zero the dialog opens with the custom color panel expanded.",
+   "DEFCOLOR": "Color selected when the dialog opens (white after Init).",
+   "HTMLCOLOR": "Chosen color as an HTML string \"#RRGGBB\"; empty if the dialog was cancelled.",
+   "EXECUTE": "Shows the color dialog owned by the given form and returns True if the user pressed OK, False otherwise.",
+   "INIT": "Resets DefColor and all 16 custom colors to white (&HFFFFFF)."
+  },
+  "example": "$INCLUDE \"QColorDialog.inc\"\n\nCREATE Form AS QFORM\nEND CREATE\n\nDIM ColorDlg AS QColorDialog\nColorDlg.Full = 1\nColorDlg.DefColor = Form.Color\nIF ColorDlg.Execute(Form) THEN\n  Form.Color = ColorDlg.RgbColor\n  Form.Caption = ColorDlg.HtmlColor\nEND IF\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "HtmlColor is built from characters 3 to 8 of HEX$(RgbColor), which assumes an 8-digit hex string; if HEX$ returns fewer digits (no leading zeros) the HTML string is wrong.",
+   "DefColor is declared AS INTEGER while RGB colors are LONG values."
+  ]
+ },
+ "QLed@QLed.inc": {
+  "summary_en": "A round LED indicator drawn on a QCanvas, with six colors and on/off states.",
+  "summary_ru": "Круглый светодиодный индикатор на QCanvas с шестью цветами и состояниями «вкл/выкл».",
+  "description_en": [
+   "QLed draws a filled circle of the chosen color and a gradient highlight with QCanvas.Circle; in the off state the color is half bright. The canvas is made square with the side Size. The colors are the constants LdCyan, LdPurple, LdBlue, Ldyellow, LdGreen and LdRed (1 to 6); each bit of the value switches off one of the red, green and blue channels. LdOn (1) and LdOff (0) are the states.",
+   "The LED is redrawn in OnPaint and whenever LedColor or LedState is assigned. Defaults: Size 15, LedColor LdRed."
+  ],
+  "requires": [],
+  "members": {
+   "LEDCOLOR": "LED color, one of LdCyan, LdPurple, LdBlue, Ldyellow, LdGreen, LdRed. Assigning it redraws the LED.",
+   "LEDSTATE": "LdOn (1) for a bright LED, LdOff (0) for a dim one. Assigning it redraws the LED.",
+   "SIZE": "Diameter in pixels; the canvas Width and Height are set to it on each Draw (default 15).",
+   "DRAW": "Resizes the canvas to Size and draws the LED in its current color and state."
+  },
+  "example": "$INCLUDE \"QLed.inc\"\n\nCREATE Form AS QFORM\n  CREATE Led AS QLED\n    Left = 10\n    Top = 10\n    Size = 20\n    LedColor = LdGreen\n    LedState = LdOn\n  END CREATE\nEND CREATE\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The SetColor property setter ends with End Sub instead of End Property.",
+   "Draw uses qled.size instead of This.Size inside the gradient loop."
+  ]
+ },
+ "QButtonXP@QButtonXP.INC": {
+  "summary_en": "A QButton that resets its window style so it can be drawn with Windows XP visual styles when used together with QXPTheme.inc.",
+  "summary_ru": "QButton, который переустанавливает стиль окна, чтобы кнопка рисовалась в стиле Windows XP при использовании вместе с QXPTheme.inc.",
+  "description_en": [
+   "Assigning Xp calls SetWindowLongA with GWL_STYLE (-16) and the style &H54010010 plus the button's Default value, then hides and shows the button to repaint it. The constructor sets Xp = 3, so the style is applied when the button is created. SetFocus gives the keyboard focus to the button with the SetFocus API.",
+   "The header note says to use it together with QXPTheme.inc for the effect."
+  ],
+  "requires": [
+   "QXPTheme.inc (named in the header note as required for the effect)"
+  ],
+  "members": {
+   "XP": "Assigning any value stores it and resets the button window style to &H54010010 + Default, then repaints the button; the stored value is not used otherwise.",
+   "SETFOCUS": "Gives the keyboard focus to the button (SetFocus API)."
+  },
+  "example": "$INCLUDE \"QXPTheme.inc\"\n$INCLUDE \"QButtonXP.INC\"\n\nCREATE Form AS QFORM\n  CREATE Btn AS QBUTTONXP\n    Left = 10\n    Top = 10\n    Caption = \"OK\"\n  END CREATE\nEND CREATE\nBtn.SetFocus\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Nicolas Tillet, modified by Nastase Eodor",
+  "version": "",
+  "date": "10/2003, modified 6/2005",
+  "caveats_en": [
+   "The check that skips the update when the value has not changed is commented out, so every assignment resets the style and repaints.",
+   "The constructor contains commented-out settings (BevelWidth, BorderColor, CaptionColor, LunaDetect, Canvas) that do nothing."
+  ]
+ },
+ "QDebug@QDebug.inc": {
+  "summary_en": "A debug output object that prints strings into a resizable \"Debug\" window with a rich edit box.",
+  "summary_ru": "Объект для отладочного вывода строк в отдельное окно «Debug» с полем QRICHEDIT.",
+  "description_en": [
+   "Including the file creates the form frmDebug with a QRICHEDIT that fills it, and a global object Debug of type QDebug with Enabled = True, so the Debug window is shown at once. Debug.Print adds a line to the rich edit box, moves the cursor to the end, scrolls it into view (EM_SCROLLCARET), enables input to the Debug window with EnableWindow and calls DOEVENTS.",
+   "Set Debug.Enabled = False to close the window and make Print do nothing."
+  ],
+  "requires": [],
+  "members": {
+   "ENABLED": "Assigning True shows the Debug window and lets Print add text; assigning any other value closes the window and makes Print do nothing. Default True.",
+   "PRINT": "Adds a string to the Debug window, scrolls to it and processes pending events, when Enabled is True."
+  },
+  "example": "$INCLUDE \"QDebug.inc\"\n\nDIM I AS INTEGER\nFOR I = 1 TO 10\n  Debug.Print \"I = \" + STR$(I)\nNEXT I\nDebug.Enabled = False",
+  "example_origin": "written",
+  "author": "Pete Kleinschmidt",
+  "version": "0.9",
+  "date": "March 2, 2002",
+  "caveats_en": [
+   "The include creates the global form frmDebug and the global object Debug, so the names frmDebug, edtDebug and Debug are taken and the Debug window appears as soon as the file is included.",
+   "All QDebug instances write to the same global frmDebug window."
+  ]
+ }
+}

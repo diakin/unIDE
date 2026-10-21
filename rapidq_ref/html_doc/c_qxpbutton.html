@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QXPBUTTON</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QXPBUTTON</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QXPBUTTON Component</h1>
+<p class="rq-meta">Extends <a href="qbutton.html">QBUTTON</a> &middot; source: <code>inc/QXPButton.inc</code>, line 181 &middot; author: David Burkley (original Button_BMP_XP_Style code), edited by JohnK &middot; date: July 15th, 2010</p>
+<p><b>A QBUTTON extension that shows a bitmap on a Windows XP visual-style button by giving the button an image list with BCM_SETIMAGELIST.</b></p>
+<p>A normal QBUTTON with a bitmap is owner-drawn and therefore cannot use the XP visual style. XPStyle copies the button&#x27;s BMP into an internal QBitmap, adds it to the button&#x27;s own QImageList with ImageList_AddMasked, removes the BS_OWNERDRAW style and sends BCM_SETIMAGELIST with the image list, margins and alignment. Windows then draws the image for the button states.</p>
+<p>The best bitmap is one strip of six equal images, in order NORMAL, HOT, PRESSED, DISABLED, DEFAULTED and STYLUSHOT (the comments say all six must be present, but they may be the same picture). A bitmap whose width is more than 3 times its height is treated as such a strip of square images. The transparent colour is taken from pixel (0, 0).</p>
+<p>Each button needs its own QImageList, which this component provides. The program needs a manifest for the XP visual styles; the source says to create one after building the executable. The code is derived from Button_BMP_XP_Style by David Burkley (July 15th, 2010) and edited by JohnK.</p>
+<p>QXPBUTTON inherits the properties, methods and events of <a href="qbutton.html">QBUTTON</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>a Windows XP (comctl32 version 6) manifest for the executable</li>
+<li>a bitmap set with BMP or BMPHandle, typically a $RESOURCE (the examples use btn_states.bmp)</li>
+<li>SendMessage, which this file does not declare; the examples include Rapidq2.inc or RapidQ.inc</li>
+</ul>
+<a name="1"></a><h2>QXPBUTTON Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">ImageLeft</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Left margin around the image. Assigning it stores the value and calls UpdateBtnBmp to apply it.</td></tr>
+<tr><td class="rq-name">ImageTop</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Top margin around the image. Assigning it stores the value (also remembered as the original top margin) and calls UpdateBtnBmp.</td></tr>
+<tr><td class="rq-name">ImageRight</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Right margin around the image. Assigning it stores the value (also remembered as the original right margin) and calls UpdateBtnBmp.</td></tr>
+<tr><td class="rq-name">ImageBottom</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Bottom margin around the image. Assigning it stores the value and calls UpdateBtnBmp.</td></tr>
+<tr><td class="rq-name">ImageAlign</td><td class="rq-type">INTEGER</td><td>RW</td><td>BUTTON_IMAGELIST_ALIGN_LEFT</td><td>Image position: BUTTON_IMAGELIST_ALIGN_LEFT (0), _RIGHT (1), _TOP (2), _BOTTOM (3) or _CENTER (4). Assigning it adjusts ImageTop or ImageRight for some alignments, stores the value and calls UpdateBtnBmp.</td></tr>
+<tr><td class="rq-name">ImageList</td><td class="rq-type">QIMAGELIST</td><td>RW</td><td></td><td>QImageList that receives the button bitmap and is passed to the button; one per button.</td></tr>
+</table>
+<a name="2"></a><h2>QXPBUTTON Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">XPStyle</td><td class="rq-type">SUB</td><td>Applies the bitmap in XP style: copies BMP (or creates a 6x1 white bitmap if there is none), sizes the image list, adds the bitmap to it, removes BS_OWNERDRAW and sends BCM_SETIMAGELIST, briefly hiding and showing the button.</td></tr>
+<tr><td class="rq-name">UpdateBtnBmp</td><td class="rq-type">SUB</td><td>Calls XPStyle; used by the property setters to re-apply margins and alignment.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The header carries David Burkley&#x27;s licence terms: no redistribution of the source without his permission, free use only in non-profit programs, and credit to the author is requested.</li>
+<li>XP visual styles work only when the executable has a manifest; the source says to create it after building the executable.</li>
+<li>Every call to XPStyle (and therefore every margin or alignment assignment) adds the bitmap to ImageList again with ImageList_AddMasked; the list is never cleared.</li>
+<li>The comment says the background colour is the bottom-left pixel, but the code reads Pixel(0, 0).</li>
+<li>The alignment adjustments in Set_AlignImage are marked in comments as needing refinement, because under some conditions the bitmap is not displayed where expected; an operating-system version check there is commented out.</li>
+<li>A multi-image strip is detected only when width / height &gt; 3, and each image is then assumed to be square.</li>
+<li>Example code #3 in the file uses the type name QBtnBmpXP instead of QXPButton.</li>
+</ul>
+<a name="4"></a><h2>QXPBUTTON Examples</h2>
+<p class="rq-meta">Example from the comments in the source file.</p>
+<pre>$INCLUDE &lt;Rapidq2.inc&gt;
+$INCLUDE &lt;QXPButton.inc&gt;
+$Resource btn_states As &quot;btn_states.bmp&quot;
+
+CREATE MainForm AS QFORM
+    Center
+    CREATE Button AS QXPButton
+        Width = 90
+        Height = 30
+        Left = (MainForm.ClientWidth \ 2) - (Button.Width \ 2)
+        Top  = (MainForm.ClientHeight \ 2) - (Button.Height \ 2)
+        BMPHandle = btn_states
+        XPStyle
+        Caption = &quot;Click Me&quot;
+    END CREATE
+END CREATE
+
+MainForm.ShowModal</pre>
+<div class="rq-foot"><a href="c_qxedit.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_rqconst.html">Next component</a></div>
+</body>
+</html>

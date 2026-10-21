@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Control.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: Control.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>Control.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/Control.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 22 functions</p>
+<p><a href="#NOPENADDREMOVEPROGRAMSDLG">nOpenAddRemoveProgramsDlg</a> &middot; <a href="#NOPENDIALINGDLG">nOpenDialingDlg</a> &middot; <a href="#NOPENDISPLAYDLG">nOpenDisplayDlg</a> &middot; <a href="#NOPENGAMESDLG">nOpenGamesDlg</a> &middot; <a href="#NOPENINTERNETDLG">nOpenInternetDlg</a> &middot; <a href="#NOPENKEYBOARDDLG">nOpenKeyboardDlg</a> &middot; <a href="#NOPENMMDEVICEDLG">nOpenMMDeviceDlg</a> &middot; <a href="#NOPENMODEMDLG">nOpenModemDlg</a> &middot; <a href="#NOPENMOUSEDLG">nOpenMouseDlg</a> &middot; <a href="#NOPENPASSWORDSDLG">nOpenPasswordsDlg</a> &middot; <a href="#NOPENPOWERMGMTDLG">nOpenPowerMgmtDlg</a> &middot; <a href="#NOPENREGIONALDLG">nOpenRegionalDlg</a> &middot; <a href="#NOPENSCANNERDLG">nOpenScannerDlg</a> &middot; <a href="#NOPENSYSTEMDIALOG">nOpenSystemDialog</a> &middot; <a href="#NOPENUSERSDLG">nOpenUsersDlg</a> &middot; <a href="#OPENADDNEWHARDWAREDLG">OpenAddNewHardwareDlg</a> &middot; <a href="#OPENFONTSFOLDER">OpenFontsFolder</a> &middot; <a href="#OPENPRINTERSFOLDER">OpenPrintersFolder</a> &middot; <a href="#OPENSOUNDSDLG">OpenSoundsDlg</a> &middot; <a href="#OPENTHEMESDLG">OpenThemesDlg</a> &middot; <a href="#OPENTIMEDLG">OpenTimeDlg</a> &middot; <a href="#OPENTWEAKUIDLG">OpenTweakUIDlg</a></p>
+<h3><a name="NOPENADDREMOVEPROGRAMSDLG"></a>nOpenAddRemoveProgramsDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10356</p>
+<pre>sub nOpenAddRemoveProgramsDlg(index%)</pre>
+<p>Opens the Add/Remove Programs Control Panel applet (appwiz.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="NOPENDIALINGDLG"></a>nOpenDialingDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10339</p>
+<pre>sub nOpenDialingDlg(index%)</pre>
+<p>Opens the Control Panel Telephony / dialing properties (telephon.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="NOPENDISPLAYDLG"></a>nOpenDisplayDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10332</p>
+<pre>sub nOpenDisplayDlg(index%)</pre>
+<p>Opens the Control Panel Display properties (desk.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="NOPENGAMESDLG"></a>nOpenGamesDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10375</p>
+<pre>sub nOpenGamesDlg(index%)</pre>
+<p>Opens the Game Controllers Control Panel applet (joy.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="NOPENINTERNETDLG"></a>nOpenInternetDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10381</p>
+<pre>sub nOpenInternetDlg(index%)</pre>
+<p>Opens the Internet Options Control Panel applet (inetcpl.cpl @0) on tab index% via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="NOPENKEYBOARDDLG"></a>nOpenKeyboardDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10321</p>
+<pre>sub nOpenKeyboardDlg(index%)</pre>
+<p>Opens the Control Panel Keyboard properties (main.cpl @1) on tab index% (0 or 1; larger values become 0) via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="NOPENMMDEVICEDLG"></a>nOpenMMDeviceDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10368</p>
+<pre>sub nOpenMMDeviceDlg(index%)</pre>
+<p>Opens the Multimedia / Sounds and Audio Devices Control Panel applet (mmsys.cpl @0) on a tab via rundll32. Note: the code uses the variable index, not index%, so the tab argument may be ignored.</p>
+<h3><a name="NOPENMODEMDLG"></a>nOpenModemDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10365</p>
+<pre>sub nOpenModemDlg(index%)</pre>
+<p>Opens the Modems Control Panel applet (modem.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="NOPENMOUSEDLG"></a>nOpenMouseDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10318</p>
+<pre>sub nOpenMouseDlg(index%)</pre>
+<p>Opens the Control Panel Mouse properties (main.cpl @0) on tab index% via rundll32 shell32.dll,Control_RunDLL. Note: the code uses the variable index, not index%, so the tab argument may be ignored.</p>
+<h3><a name="NOPENPASSWORDSDLG"></a>nOpenPasswordsDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10362</p>
+<pre>sub nOpenPasswordsDlg(index%)</pre>
+<p>Opens the Passwords Control Panel applet (password.cpl, older Windows) on tab index% via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="NOPENPOWERMGMTDLG"></a>nOpenPowerMgmtDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10359</p>
+<pre>sub nOpenPowerMgmtDlg(index%)</pre>
+<p>Opens the Power Management Control Panel applet (powercfg.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="NOPENREGIONALDLG"></a>nOpenRegionalDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10378</p>
+<pre>sub nOpenRegionalDlg(index%)</pre>
+<p>Opens the Regional Settings Control Panel applet (intl.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="NOPENSCANNERDLG"></a>nOpenScannerDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10349</p>
+<pre>sub nOpenScannerDlg(index%)</pre>
+<p>Opens the Scanners and Cameras Control Panel applet (sticpl.cpl) via rundll32 shell32.dll,Control_RunDLL. The index% parameter is not used.</p>
+<h3><a name="NOPENSYSTEMDIALOG"></a>nOpenSystemDialog</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10342</p>
+<pre>sub nOpenSystemDialog(index%)</pre>
+<p>Opens the Control Panel System properties (sysdm.cpl) via rundll32 shell32.dll,Control_RunDLL. Note: the comma before index% is missing in the command string, so the tab number is appended to @0.</p>
+<h3><a name="NOPENUSERSDLG"></a>nOpenUsersDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10384</p>
+<pre>sub nOpenUsersDlg(index%)</pre>
+<p>Intended to open the Users dialog; the command runs inetcpl.cpl @1 on tab index% via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="OPENADDNEWHARDWAREDLG"></a>OpenAddNewHardwareDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10345</p>
+<pre>sub OpenAddNewHardwareDlg</pre>
+<p>Opens the Add New Hardware wizard (sysdm.cpl @1) via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="OPENFONTSFOLDER"></a>OpenFontsFolder</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10328</p>
+<pre>sub OpenFontsFolder</pre>
+<p>Opens the Fonts folder from the Control Panel (main.cpl @3) via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="OPENPRINTERSFOLDER"></a>OpenPrintersFolder</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10324</p>
+<pre>sub OpenPrintersFolder</pre>
+<p>Opens the Printers folder from the Control Panel (main.cpl @2) via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="OPENSOUNDSDLG"></a>OpenSoundsDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10371</p>
+<pre>sub OpenSoundsDlg</pre>
+<p>Opens the Sounds page of the multimedia Control Panel applet (mmsys.cpl @1) via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="OPENTHEMESDLG"></a>OpenThemesDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10352</p>
+<pre>sub OpenThemesDlg</pre>
+<p>Opens the Desktop Themes Control Panel applet (themes.cpl) via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="OPENTIMEDLG"></a>OpenTimeDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10335</p>
+<pre>sub OpenTimeDlg</pre>
+<p>Opens the Control Panel Date and Time dialog (timedate.cpl) via rundll32 shell32.dll,Control_RunDLL.</p>
+<h3><a name="OPENTWEAKUIDLG"></a>OpenTweakUIDlg</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10389</p>
+<pre>sub OpenTweakUIDlg</pre>
+<p>Opens the TweakUI Control Panel applet (tweakui.cpl) via rundll32. Works only if TweakUI is installed; it does not accept a tab index (source comment).</p>
+</body>
+</html>

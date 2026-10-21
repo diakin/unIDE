@@ -1,0 +1,20 @@
+bitmap 32320
+pset 00123456
+pixel 000000FF
+copymode 10
+copymode 14
+text -1-1
+load 32 00123456
+stream -1
+from stream 32 000000FF
+bmphandle 16 000000FF
+painted 1
+canvas draw 00123456
+canvas copyrect 000000FF
+bitmap copyrect 000000FF
+sections 3 Two
+width 100 click 01
+style 10
+caption Second align 2
+drawn 3
+cleared 0

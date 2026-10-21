@@ -1,0 +1,66 @@
+<html>
+<head>
+<title>QRun.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QRun</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> FindExecutable <font color="0000AA"><b>Lib</b></font> "<font color="990000">shell32.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">FindExecutableA</font>" <b>(</b>lpFile <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,lpDirectory <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, ByRef lpResult <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ShellExecute <font color="0000AA"><b>Lib</b></font> "<font color="990000">shell32.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">ShellExecuteA</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,lpOperation <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,lpFile <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,lpParameters <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,lpDirectory <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,nShowCmd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="007700"><i>' ShowWindow() Commands</i></font> 
+<font color="0000AA"><b>Const</b></font> SW_HIDE=0
+<font color="0000AA"><b>Const</b></font> SW_SHOWNORMAL=1
+<font color="0000AA"><b>Const</b></font> SW_NORMAL=1
+<font color="0000AA"><b>Const</b></font> SW_SHOWMINIMIZED=2
+<font color="0000AA"><b>Const</b></font> SW_SHOWMAXIMIZED=3
+<font color="0000AA"><b>Const</b></font> SW_MAXIMIZE=3
+<font color="0000AA"><b>Const</b></font> SW_SHOWNOACTIVATE=4
+<font color="0000AA"><b>Const</b></font> SW_SHOW=5
+<font color="0000AA"><b>Const</b></font> SW_MINIMIZE=6
+<font color="0000AA"><b>Const</b></font> SW_SHOWMINNOACTIVE=7
+<font color="0000AA"><b>Const</b></font> SW_SHOWNA=8
+<font color="0000AA"><b>Const</b></font> SW_RESTORE=9
+<font color="0000AA"><b>Const</b></font> SW_SHOWDEFAULT=10
+<font color="0000AA"><b>Const</b></font> SW_MAX=10
+
+<font color="0000AA"><b>Type</b></font> QRun <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QObject</b></font>
+
+  <font color="007700"><i>'=============================================================</i></font> 
+  <font color="007700"><i>' Méthode trouvant le nom et chemin de l'application associé</i></font> 
+  <font color="007700"><i>'=============================================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> FindApplication<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    <font color="0000AA"><b>dim</b></font> ExeName <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    <font color="0000AA"><b>dim</b></font> value <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    
+    ExeName=<font color="0000AA"><b>space$</b></font><b>(</b>255<b>)</b>
+    value=FindExecutable<b>(</b>FileName,"<font color="990000"></font>",ExeName<b>)</b>
+    <font color="0000AA"><b>if</b></font> value>32 <font color="000099"><b>then</b></font>
+      result=<font color="0000AA"><b>rtrim$</b></font><b>(</b>ExeName<b>)</b>
+    <font color="000099"><b>else</b></font>
+      result="<font color="990000"></font>"
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+  
+  <font color="007700"><i>'=============================================================</i></font> 
+  <font color="007700"><i>' Méthode éxecution d'un fichier associé ou application</i></font> 
+  <font color="007700"><i>'=============================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> FileRun<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,cmdShow <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    ShellExecute<b>(</b>0,"<font color="990000">open</font>",FileName,"<font color="990000"></font>","<font color="990000"></font>",cmdShow<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+  
+  <font color="007700"><i>'=============================================================</i></font> 
+  <font color="007700"><i>' Méthode éxecution application avec ouverture fichier</i></font> 
+  <font color="007700"><i>'=============================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> ExeRun<b>(</b>ExeName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,Param <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,cmdShow <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    ShellExecute<b>(</b>0,"<font color="990000">open</font>",ExeName,Param,"<font color="990000"></font>",cmdShow<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

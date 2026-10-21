@@ -1,0 +1,326 @@
+<html>
+<head>
+<title>Wad3.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'***************************************************************************</i></font> 
+<font color="007700"><i>'WAD3.INC (c)07/2003 by Christian Tandler,</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'[HMK]St@neCold</i></font> 
+<font color="007700"><i>'E-Mail: stonecold@csgui.de</i></font> 
+<font color="007700"><i>'HP    : http://www.csgui.de</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'WAD-Functions for Rapid-Q</i></font> 
+<font color="007700"><i>'This library realize a basicly WAD3-Texture support for Rapid-Q</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'I've written this code for my program CsWAD, a program to change the spraylogo in</i></font> 
+<font color="007700"><i>'Counterstrike. The program uses this functions to show a preview of textures</i></font> 
+<font color="007700"><i>'of WAD3-Files and save them as a BMP-File.</i></font> 
+<font color="007700"><i>'You can download this little nice program and other CS-Tools at: http://www.csgui.de</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'Place this file into the Include-Folder of RapidQ and</i></font> 
+<font color="007700"><i>'Insert into your code with: $INCLUDE "WAD3.INC"</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'You can use this code free of charge but at your own risk!</i></font> 
+<font color="007700"><i>'Send comments and suggestions to stonecold@csgui.de</i></font> 
+<font color="007700"><i>'Last change: 07/23/2003</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'Many thank's to DrkShadow for some code snippets, documentations and support!</i></font> 
+<font color="007700"><i>'*****************************************************************************</i></font> 
+
+
+<font color="007700"><i>'DEFINES</i></font> 
+<font color="0000AA"><b>$DEFINE</b></font> __WAD3
+
+
+<font color="007700"><i>'DECLARE FUNCTIONS</i></font> 
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>Function</b></font> GetWADInfo$<b>(</b>sFName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>Function</b></font> GetWADLump$<b>(</b>sFName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>, LIndex <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, sDFile <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+
+<font color="007700"><i>'CONSTANTS</i></font> 
+<font color="0000AA"><b>CONST</b></font> LSIZE_MAX = 15360                           <font color="007700"><i>'max. lump-size for pldecal's</i></font> 
+
+
+<font color="007700"><i>'*** FUNCTIONS *******************************************************************</i></font> 
+<font color="007700"><i>'GetWADInfo$</i></font> 
+<font color="007700"><i>'Returning infos about the  WAD3-File and the included lumps</i></font> 
+<font color="007700"><i>'Parameter: sFName: string, specify the WAD3-File</i></font> 
+<font color="007700"><i>'Return: string</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'Return string:</i></font> 
+<font color="007700"><i>'s#f#a#l1#l2#ln</i></font> 
+<font color="007700"><i>'# : field separator</i></font> 
+<font color="007700"><i>'s : sum of all lump sizes</i></font> 
+<font color="007700"><i>'f : version flag: -1: no WAD-File, 0:File-Error, 1:v1, 2:v2, 3:v3 (only v3 is readable!)</i></font> 
+<font color="007700"><i>'a : number of lumps</i></font> 
+<font color="007700"><i>'l1...ln: lump infos</i></font> 
+<font color="007700"><i>'e.g. fieldnumber for the lump with index i is i+2 (Field$()-Function)</i></font> 
+
+<font color="007700"><i>'content of l1...ln:</i></font> 
+<font color="007700"><i>'n:g:k:x:y:c</i></font> 
+<font color="007700"><i>': : field separator</i></font> 
+<font color="007700"><i>'n : name of the lump</i></font> 
+<font color="007700"><i>'g : size of lump in byte (uncompressed)</i></font> 
+<font color="007700"><i>'k : compressed (0-no, 1-yes (lz))</i></font> 
+<font color="007700"><i>'x : width in pixel</i></font> 
+<font color="007700"><i>'y : height in pixel</i></font> 
+<font color="007700"><i>'c : number of colors (in most cases 256)</i></font> 
+
+<font color="007700"><i>'Example of return string for 'bigbrother.wad': 87304#3#2#bb:43652:0:288:112:256#bb1:43652:0:288:112:256#</i></font> 
+<font color="007700"><i>'This is a WAD3-File, containing 2 lumps (bb and bb1), each with 43652bytes and 288*112pixel and 256 colors</i></font> 
+
+<font color="0000AA"><b>Function</b></font> GetWADInfo$<b>(</b>sFName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+
+  <font color="0000AA"><b>DIM</b></font> wfile <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QFILESTREAM</b></font>
+  <font color="0000AA"><b>DIM</b></font> serg <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> sbuf <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> slump <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> ibuf <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> i <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> k <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> lmpend <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> lgsum <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> ipsize <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> ncolor <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> i_type <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> pmerk <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> lloff <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> ltoff <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> lcoff <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> x <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> y <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  
+  i_type = 0
+  slump = <font color="0000AA"><b>Space$</b></font><b>(</b>64<b>)</b>                                          <font color="007700"><i>'preserve some space...</i></font> 
+  sbuf = <font color="0000AA"><b>Space$</b></font><b>(</b>16<b>)</b>
+  serg = <font color="0000AA"><b>Space$</b></font><b>(</b>4182<b>)</b>
+  <font color="0000AA"><b>IF</b></font> wfile.Open<b>(</b>sFName,fmOpenRead<b>)</b> = 0 <font color="0000AA"><b>THEN</b></font>                   <font color="007700"><i>'no file</i></font> 
+    serg = "<font color="990000">0#0#</font>"
+  <font color="000099"><b>ELSE</b></font>
+    sbuf = <font color="0000AA"><b>RTrim$</b></font><b>(</b>wfile.ReadStr<b>(</b>4<b>)</b><b>)</b>                           <font color="007700"><i>'identifier</i></font> 
+    <font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>UCase$</b></font><b>(</b><font color="0000AA"><b>Left$</b></font><b>(</b>sbuf,3<b>)</b><b>)</b> &lt;> "<font color="990000">WAD</font>" <font color="000099"><b>THEN</b></font>
+      serg = "<font color="990000">0#-1#</font>"
+    <font color="000099"><b>ELSE</b></font>
+      serg = <font color="0000AA"><b>Right$</b></font><b>(</b>sbuf,1<b>)</b> + "<font color="990000">#</font>"                             <font color="007700"><i>'version</i></font> 
+      lmpend = wfile.ReadNum<b>(</b>2<b>)</b>                               <font color="007700"><i>'number of lumps (dword!, read only 2 byte)</i></font> 
+      serg = serg + <font color="0000AA"><b>Str$</b></font><b>(</b>lmpend<b>)</b> + "<font color="990000">#</font>"
+      sbuf = wfile.ReadBinStr<b>(</b>2<b>)</b>                              <font color="007700"><i>'2 bytes rest</i></font> 
+      lloff = wfile.ReadNum<b>(</b>4<b>)</b>                                <font color="007700"><i>'offset to lumptable</i></font> 
+      lgsum = 0                                               <font color="007700"><i>'sum of lump sizes</i></font> 
+      <font color="0000AA"><b>FOR</b></font> i = 1 <font color="0000AA"><b>TO</b></font> lmpend
+        wfile.Seek<b>(</b>lloff + <b>(</b><b>(</b>i - 1<b>)</b> * 32<b>)</b>,0<b>)</b>                  <font color="007700"><i>'lumptable + index of lump (one lumptable = 32byte)</i></font> 
+        ltoff = wfile.ReadNum<b>(</b>4<b>)</b>                              <font color="007700"><i>'offset to texturtable</i></font> 
+        ibuf = wfile.ReadNum<b>(</b>4<b>)</b>                               <font color="007700"><i>'size</i></font> 
+        lgsum = lgsum + ibuf
+        slump = <font color="0000AA"><b>Str$</b></font><b>(</b>ibuf<b>)</b> + "<font color="990000">:</font>"
+        sbuf = wfile.ReadBinStr<b>(</b>4<b>)</b>                            <font color="007700"><i>'jump 4byte</i></font> 
+        i_type = wfile.ReadNum<b>(</b>1<b>)</b>                             <font color="007700"><i>'type: 66-Special, 67-Normal</i></font> 
+        ibuf = wfile.ReadNum<b>(</b>1<b>)</b>                               <font color="007700"><i>'compression type (0-no, 1-LZ)</i></font> 
+        slump = slump + <font color="0000AA"><b>Str$</b></font><b>(</b>ibuf<b>)</b> + "<font color="990000">:</font>"
+        sbuf = wfile.ReadBinStr<b>(</b>2<b>)</b>                            <font color="007700"><i>'jump 2byte</i></font> 
+        pmerk = wfile.Position                                <font color="007700"><i>'remember position</i></font> 
+        k = 0
+        <font color="0000AA"><b>WHILE</b></font> wfile.ReadNum<b>(</b>1<b>)</b> > 0                            <font color="007700"><i>'search end of string</i></font> 
+          k = k + 1
+        <font color="000099"><b>WEND</b></font>
+        wfile.Position = pmerk                                <font color="007700"><i>'return and...</i></font> 
+        sbuf = <font color="0000AA"><b>RTrim$</b></font><b>(</b>wfile.ReadStr<b>(</b>k<b>)</b><b>)</b>                       <font color="007700"><i>'read name of lump</i></font> 
+        serg = serg + sbuf + "<font color="990000">:</font>"
+        wfile.Seek<b>(</b>ltoff,0<b>)</b>                                   <font color="007700"><i>'to texturtable</i></font> 
+        <font color="0000AA"><b>IF</b></font> i_type = 67 <font color="0000AA"><b>THEN</b></font>                                   <font color="007700"><i>'normal... </i></font> 
+          sbuf = wfile.ReadBinStr<b>(</b>16<b>)</b>                         <font color="007700"><i>'jump 16byte</i></font> 
+        <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>IF</b></font>                                                <font color="007700"><i>'type 66: no name!</i></font> 
+        x = wfile.ReadNum<b>(</b>4<b>)</b>                                  <font color="007700"><i>'width(x)</i></font> 
+        slump = slump + <font color="0000AA"><b>Str$</b></font><b>(</b>x<b>)</b> + "<font color="990000">:</font>"
+        y = wfile.ReadNum<b>(</b>4<b>)</b>                                  <font color="007700"><i>'height(y)</i></font> 
+        slump = slump + <font color="0000AA"><b>Str$</b></font><b>(</b>y<b>)</b> + "<font color="990000">:</font>"
+        <font color="0000AA"><b>IF</b></font> i_type = 67 <font color="0000AA"><b>THEN</b></font>                                   <font color="007700"><i>'normal... </i></font> 
+          sbuf = wfile.ReadBinStr<b>(</b>16<b>)</b>                         <font color="007700"><i>'jump 16byte (level offsets)</i></font> 
+        <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>IF</b></font>                                                <font color="007700"><i>'type 66: no MIP-Table!</i></font> 
+        <font color="0000AA"><b>IF</b></font> i_type = 67 <font color="0000AA"><b>THEN</b></font>                                   <font color="007700"><i>'normal... </i></font> 
+          lcoff = <b>(</b>x * y<b>)</b> + <b>(</b>x * y / 4<b>)</b> + <b>(</b>x * y / 16<b>)</b> + <b>(</b>x * y / 64<b>)</b>  <font color="007700"><i>'offset to colortable</i></font> 
+        <font color="000099"><b>ELSE</b></font>
+          lcoff = <b>(</b>x * y<b>)</b>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+        wfile.Seek<b>(</b>lcoff,1<b>)</b>                                   <font color="007700"><i>'to colortable</i></font> 
+        ncolor = wfile.ReadNum<b>(</b>2<b>)</b>                             <font color="007700"><i>'palette size = colors</i></font> 
+        slump = slump + <font color="0000AA"><b>Str$</b></font><b>(</b>ncolor<b>)</b>        
+        serg = serg + slump + "<font color="990000">#</font>"
+      <font color="000099"><b>NEXT</b></font>
+      serg = <font color="0000AA"><b>Str$</b></font><b>(</b>lgsum<b>)</b> + "<font color="990000">#</font>" + serg
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+    wfile.Close
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+  GetWADInfo$ = serg                                          <font color="007700"><i>'return the string</i></font> 
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>Function</b></font>
+
+
+<font color="007700"><i>'GetWADLump$</i></font> 
+<font color="007700"><i>'Read the data of a lump from a WAD3-File given by index and write it as</i></font> 
+<font color="007700"><i>'a BMP-File, wich is given as destination (without extension!)</i></font> 
+<font color="007700"><i>'If the destination is an empty string, it will be create a file with the name of lump</i></font> 
+<font color="007700"><i>'The extension of the destination file is always .BMP</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'Parameters:  sFName: string, the name of the WAD3 sourcefile</i></font> 
+<font color="007700"><i>'             LIndex: int, the index of lump (p.e. explored with GetWADInfo$...)</i></font> 
+<font color="007700"><i>'             sDFile: string, the destination filename or an empty string</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'Return: if all OK: the filename of the bmp-file</i></font> 
+<font color="007700"><i>'               "0": the index of lump doesn't exist</i></font> 
+<font color="007700"><i>'              "-1": the WAD-file was not found</i></font> 
+<font color="007700"><i>'              "-2": the file isn't a WAD3-File</i></font> 
+<font color="007700"><i>'              "-3": can't open the WAD-File</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>Function</b></font> GetWADLump$<b>(</b>sFName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>, LIndex <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, sDFile <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+
+  <font color="0000AA"><b>DIM</b></font> wfile <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QFILESTREAM</b></font>
+  <font color="0000AA"><b>DIM</b></font> bfile <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QFILESTREAM</b></font>
+  <font color="0000AA"><b>DIM</b></font> serg <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> sbuf <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> i <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> k <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> i_type <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> pmerk <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> lloff <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> ltoff <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> lpoff <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> llidx <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> l_anz <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> l_size <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> l_psize <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> l_comp <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> l_name <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> l_width <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> l_height <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> l_data <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> l_bdata <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> l_pdata <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> sBFile <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> b_size <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> b_offs <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  <font color="0000AA"><b>DIM</b></font> bRed <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> bGrn <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  <font color="0000AA"><b>DIM</b></font> bBlu <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+  
+  i_type = 0
+  llidx = LIndex  
+  sbuf = <font color="0000AA"><b>Space$</b></font><b>(</b>1024<b>)</b>
+  <font color="0000AA"><b>IF</b></font> wfile.Open<b>(</b>sFName,fmOpenRead<b>)</b> = 0 <font color="0000AA"><b>THEN</b></font>                   <font color="007700"><i>'no file</i></font> 
+    serg = "<font color="990000">-1</font>"
+  <font color="000099"><b>ELSE</b></font>
+    sbuf = <font color="0000AA"><b>RTrim$</b></font><b>(</b>wfile.ReadStr<b>(</b>4<b>)</b><b>)</b>                           <font color="007700"><i>'identifier</i></font> 
+    <font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>UCase$</b></font><b>(</b>sbuf<b>)</b> &lt;> "<font color="990000">WAD3</font>" <font color="000099"><b>THEN</b></font>
+      serg = "<font color="990000">-2</font>"
+    <font color="000099"><b>ELSE</b></font>
+      l_anz = wfile.ReadNum<b>(</b>2<b>)</b>                                <font color="007700"><i>'no. of lumps (dword!, read only 2bytes)</i></font> 
+      <font color="0000AA"><b>IF</b></font> l_anz &lt; llidx <font color="0000AA"><b>THEN</b></font>                                   <font color="007700"><i>'index not found</i></font> 
+        serg = "<font color="990000">0</font>"
+      <font color="000099"><b>ELSE</b></font>
+        sbuf = wfile.ReadBinStr<b>(</b>2<b>)</b>                            <font color="007700"><i>'rest</i></font> 
+        lloff = wfile.ReadNum<b>(</b>4<b>)</b>                              <font color="007700"><i>'offset to lumptable</i></font> 
+        wfile.Seek<b>(</b>lloff + <b>(</b><b>(</b>llidx - 1<b>)</b> * 32<b>)</b>,0<b>)</b>              <font color="007700"><i>'lumptable + index of lump (one lumptable = 32bytes)</i></font> 
+        ltoff = wfile.ReadNum<b>(</b>4<b>)</b>                              <font color="007700"><i>'offset to texturtable</i></font> 
+        l_size = wfile.ReadNum<b>(</b>4<b>)</b>                             <font color="007700"><i>'size</i></font> 
+        sbuf = wfile.ReadBinStr<b>(</b>4<b>)</b>                            <font color="007700"><i>'jump 4bytes</i></font> 
+        i_type = wfile.ReadNum<b>(</b>1<b>)</b>                             <font color="007700"><i>'type: 66-special, 67-normal</i></font> 
+        l_comp = wfile.ReadNum<b>(</b>1<b>)</b>                             <font color="007700"><i>'compressio type (0-no, 1-LZ)</i></font> 
+        sbuf = wfile.ReadBinStr<b>(</b>2<b>)</b>                            <font color="007700"><i>'jump 2bytes</i></font> 
+        pmerk = wfile.Position                                <font color="007700"><i>'remember position</i></font> 
+        k = 0
+        <font color="0000AA"><b>WHILE</b></font> wfile.ReadNum<b>(</b>1<b>)</b> > 0                            <font color="007700"><i>'search the end of string</i></font> 
+          k = k + 1
+        <font color="000099"><b>WEND</b></font>
+        wfile.Position = pmerk                                <font color="007700"><i>'return and...</i></font> 
+        l_name = <font color="0000AA"><b>RTrim$</b></font><b>(</b>wfile.ReadStr<b>(</b>k<b>)</b><b>)</b>                     <font color="007700"><i>'read the lumpname</i></font> 
+        wfile.Seek<b>(</b>ltoff,0<b>)</b>                                   <font color="007700"><i>'to texturtable</i></font> 
+        <font color="0000AA"><b>IF</b></font> i_type = 67 <font color="0000AA"><b>THEN</b></font>                                   <font color="007700"><i>'normal... </i></font> 
+          sbuf = wfile.ReadBinStr<b>(</b>16<b>)</b>                         <font color="007700"><i>'jump 16bytes</i></font> 
+        <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>IF</b></font>                                                <font color="007700"><i>'if type 66, no name!</i></font> 
+        l_width = wfile.ReadNum<b>(</b>4<b>)</b>                            <font color="007700"><i>'width(x)</i></font> 
+        l_height = wfile.ReadNum<b>(</b>4<b>)</b>                           <font color="007700"><i>'height(y)</i></font> 
+        <font color="0000AA"><b>IF</b></font> i_type = 67 <font color="0000AA"><b>THEN</b></font>                                   <font color="007700"><i>'normal... </i></font> 
+          sbuf = wfile.ReadBinStr<b>(</b>16<b>)</b>                         <font color="007700"><i>'jump 16bytes (level-offsets)</i></font> 
+        <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>IF</b></font>                                                <font color="007700"><i>'if type 66 no MIP-Table!</i></font> 
+        l_data = <font color="0000AA"><b>Space$</b></font><b>(</b>l_width * l_height<b>)</b>                   <font color="007700"><i>'create the buffer</i></font> 
+        l_data = wfile.ReadBinStr<b>(</b>l_width * l_height<b>)</b>         <font color="007700"><i>'reading level1-data</i></font> 
+        <font color="0000AA"><b>IF</b></font> i_type = 67 <font color="0000AA"><b>THEN</b></font>                                   <font color="007700"><i>'normal... </i></font> 
+          lpoff = <b>(</b>l_width * l_height / 4<b>)</b> + <b>(</b>l_width * l_height / 16<b>)</b> + <b>(</b>l_width * l_height / 64<b>)</b>   <font color="007700"><i>'offset to palette</i></font> 
+          wfile.Seek<b>(</b>lpoff,1<b>)</b>                                 <font color="007700"><i>'to palette</i></font> 
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+        l_psize = wfile.ReadNum<b>(</b>2<b>)</b>                            <font color="007700"><i>'size of palette</i></font> 
+        l_pdata = <font color="0000AA"><b>Space$</b></font><b>(</b>l_psize * 3<b>)</b>                         <font color="007700"><i>'create buffer5 for palette</i></font> 
+        l_pdata = wfile.ReadBinStr<b>(</b>l_psize * 3<b>)</b>               <font color="007700"><i>'reading palette (RGB)</i></font> 
+        l_name = <font color="0000AA"><b>ReplaceSubstr$</b></font><b>(</b>l_name,"<font color="990000">{</font>","<font color="990000"></font>"<b>)</b>                <font color="007700"><i>'delete the special characters</i></font> 
+        l_name = <font color="0000AA"><b>ReplaceSubstr$</b></font><b>(</b>l_name,"<font color="990000">!</font>","<font color="990000"></font>"<b>)</b>
+        l_name = <font color="0000AA"><b>ReplaceSubstr$</b></font><b>(</b>l_name,"<font color="990000">+</font>","<font color="990000"></font>"<b>)</b>
+        l_name = <font color="0000AA"><b>ReplaceSubstr$</b></font><b>(</b>l_name,"<font color="990000">-</font>","<font color="990000"></font>"<b>)</b>
+        <font color="0000AA"><b>IF</b></font> sDFile = "<font color="990000"></font>" <font color="000099"><b>THEN</b></font>
+          sBFile = l_name + "<font color="990000">.bmp</font>"
+        <font color="000099"><b>ELSE</b></font>
+          sBFile = sDFile + "<font color="990000">.bmp</font>"
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+        bfile.Open<b>(</b>sBFile,fmCreate<b>)</b>                           <font color="007700"><i>'create the bmp-file</i></font> 
+        bfile.WriteBinStr<b>(</b>"<font color="990000">BM</font>",2<b>)</b>                             <font color="007700"><i>'identifier</i></font> 
+        b_size = 54 + <b>(</b>l_psize * 4<b>)</b> + <b>(</b>l_width * l_height<b>)</b>    <font color="007700"><i>'bmp-size (header+palette(colors*4)+rawsize)</i></font> 
+        bfile.WriteNum<b>(</b>b_size,4<b>)</b>
+        bfile.WriteNum<b>(</b>0,4<b>)</b>                                   <font color="007700"><i>'reserve</i></font> 
+        b_offs = 54 + <b>(</b>l_psize * 4<b>)</b>                           <font color="007700"><i>'offset to raw-data (header+palette)</i></font> 
+        bfile.WriteNum<b>(</b>b_offs,4<b>)</b>
+        bfile.WriteNum<b>(</b>40,4<b>)</b>                                  <font color="007700"><i>'headersize</i></font> 
+        bfile.WriteNum<b>(</b>l_width,4<b>)</b>                             <font color="007700"><i>'width</i></font> 
+        bfile.WriteNum<b>(</b>l_height,4<b>)</b>                            <font color="007700"><i>'height</i></font> 
+        bfile.WriteNum<b>(</b>1,2<b>)</b>                                   <font color="007700"><i>'planes</i></font> 
+        <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> l_psize                                   <font color="007700"><i>'bit/pix, palette size = colors</i></font> 
+          <font color="0000AA"><b>CASE</b></font> 32
+            bfile.WriteNum<b>(</b>1,2<b>)</b>                               <font color="007700"><i>'1bit/pix = b/w</i></font> 
+          <font color="0000AA"><b>CASE</b></font> 64
+            bfile.WriteNum<b>(</b>2,2<b>)</b>                               <font color="007700"><i>'2bit/pix = 4F</i></font> 
+          <font color="0000AA"><b>CASE</b></font> 128
+            bfile.WriteNum<b>(</b>4,2<b>)</b>                               <font color="007700"><i>'4bit/pix = 16F</i></font> 
+          <font color="0000AA"><b>CASE</b></font> 256
+            bfile.WriteNum<b>(</b>8,2<b>)</b>                               <font color="007700"><i>'8bit/pix = 256F</i></font> 
+          <font color="0000AA"><b>CASE</b></font> 65536
+            bfile.WriteNum<b>(</b>16,2<b>)</b>                              <font color="007700"><i>'16bit/pix = 65536F(HiColor) - not used in wad-files!</i></font> 
+          <font color="0000AA"><b>CASE</b></font> 16777216
+            bfile.WriteNum<b>(</b>24,2<b>)</b>                              <font color="007700"><i>'24bit/pix = 16777216(24Bit-TrueColor) - not used!</i></font> 
+          <font color="0000AA"><b>CASE</b></font> <font color="000099"><b>ELSE</b></font>
+            bfile.WriteNum<b>(</b>32,2<b>)</b>                              <font color="007700"><i>'32bit/pix = 32Bit-TrueColor - not used!</i></font> 
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+        bfile.WriteNum<b>(</b>l_comp,4<b>)</b>                              <font color="007700"><i>'compression - no</i></font> 
+        bfile.WriteNum<b>(</b>l_width * l_height,4<b>)</b>                  <font color="007700"><i>'raw-size</i></font> 
+        bfile.WriteNum<b>(</b>2846,4<b>)</b>                                <font color="007700"><i>'h-res (2846dpm = 72dpi)</i></font> 
+        bfile.WriteNum<b>(</b>2846,4<b>)</b>                                <font color="007700"><i>'v-res</i></font> 
+        bfile.WriteNum<b>(</b>l_psize,4<b>)</b>                             <font color="007700"><i>'colors</i></font> 
+        bfile.WriteNum<b>(</b>l_psize,4<b>)</b>                             <font color="007700"><i>'used colors</i></font> 
+        <font color="0000AA"><b>FOR</b></font> i = 0 <font color="0000AA"><b>to</b></font> l_psize - 1                              <font color="007700"><i>'write palette</i></font> 
+          bRed = <font color="0000AA"><b>Mid$</b></font><b>(</b>l_pdata,<b>(</b>i * 3<b>)</b> + 1,1<b>)</b>
+          bGrn = <font color="0000AA"><b>Mid$</b></font><b>(</b>l_pdata,<b>(</b>i * 3<b>)</b> + 2,1<b>)</b>
+          bBlu = <font color="0000AA"><b>Mid$</b></font><b>(</b>l_pdata,<b>(</b>i * 3<b>)</b> + 3,1<b>)</b>
+          bfile.WriteBinStr<b>(</b>bBlu,1<b>)</b>                           <font color="007700"><i>'rgb to bgr-translation!</i></font> 
+          bfile.WriteBinStr<b>(</b>bGrn,1<b>)</b>
+          bfile.WriteBinStr<b>(</b>bRed,1<b>)</b>
+          bfile.WriteNum<b>(</b>0,1<b>)</b>                                 <font color="007700"><i>'fillbyte</i></font> 
+        <font color="000099"><b>NEXT</b></font>
+        l_data = Reverse$<b>(</b>l_data<b>)</b>                             <font color="007700"><i>'flip bmp vertical! (i don't know why, but it's ok...)</i></font> 
+        l_bdata = "<font color="990000"></font>"
+        <font color="0000AA"><b>FOR</b></font> i = 0 <font color="0000AA"><b>TO</b></font> l_height - 1                             <font color="007700"><i>'and mirror!</i></font> 
+          sbuf = Reverse$<b>(</b><font color="0000AA"><b>Mid$</b></font><b>(</b>l_data,<b>(</b>i * l_width<b>)</b> + 1,l_width<b>)</b><b>)</b>   <font color="007700"><i>'row after row</i></font> 
+          l_bdata = l_bdata + sbuf
+        <font color="000099"><b>NEXT</b></font>
+        bfile.WriteBinStr<b>(</b>l_bdata,l_width * l_height<b>)</b>         <font color="007700"><i>'write raw-data</i></font> 
+        bfile.Close
+        serg = sBFile                                         <font color="007700"><i>'bmp-file is ready!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+    wfile.Close
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+  GetWADLump$ = serg                                          <font color="007700"><i>'return string</i></font> 
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>'EOF</i></font> 
+ 
+</pre>
+</body>
+</html>

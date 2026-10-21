@@ -1,0 +1,519 @@
+{
+  "QCHART@QChart.inc": {
+    "summary_en": "QChart is a QCanvas-based charting class that draws bar, histogram, line, XY scatter, pie, box, hi-lo and real-time charts into an off-screen bitmap.",
+    "summary_ru": "QChart — класс построения диаграмм на основе QCanvas: гистограммы, столбчатые, линейные, XY, круговые, box-plot, hi-lo и графики реального времени.",
+    "description_en": [
+      "QChart extends QCanvas and draws every chart into a private off-screen QBITMAP buffer with GDI calls from gdi32 (CreatePen, CreateSolidBrush, CreateHatchBrush, Rectangle, Pie, LineTo and others). PaintChart copies the buffer to the canvas, so it should be assigned to the OnPaint event; RedrawChart resizes the buffer and should be called from the form's OnResize. Each chart routine computes an axis scale automatically unless XAxis.AutoScale or YAxis.AutoScale is FALSE.",
+      "Typical use: create the instance with a parent, call Initialize, set ChartType (ctBar, ctLine, ctBarLine, ctBox, ctPie, ctHiLo, ctXY, ctReal) and ChartStyle (csHisto, csBar, csStacked, csPctStacked, csPoints, csLines, csBoth, csAntenna, csHiLoBox, csPiePct, csPieVal), set Cols and Rows, REDIM Data (or XYData for XY charts) using the instance name explicitly, fill LegendList, LabelList and the data, then call DrawChart. Box plots need 5 rows (Max, Q3, Median, Q1, Min), HiLo plots 3 rows (Hi, Close, Lo), pie charts 1 column, BarLine charts 2 columns (bars, then line).",
+      "The chart can be printed (PrintChart), copied to the clipboard as a bitmap (CopyToClipboard) or saved as a .bmp file (SaveChart, SaveToFile). The header states it is released under the LGPL (written \"LPGL\") and refers to QChartEx.rqb and an HTML document for more examples."
+    ],
+    "requires": [],
+    "members": {
+      "DATA": "Two-dimensional DOUBLE array (Cols, Rows) holding the values for all chart types except XY; each column is a series. It must be REDIMmed by the user, naming the instance explicitly, e.g. REDIM MyChart.Data(.Cols, .Rows).",
+      "XYDATA": "Three-dimensional DOUBLE array (Cols, Rows, 2) used only by XY charts; the third index is 1 for the X value and 2 for the Y value. It must be REDIMmed with the instance name, like Data.",
+      "COLS": "Number of series to plot; used as a loop counter everywhere and to dimension Data or XYData. Must be set before drawing.",
+      "ROWS": "Number of values (or XY pairs) in each series; used as a loop counter and to dimension Data or XYData. Must be set before drawing.",
+      "LEGENDLIST": "QStringList with the legend text, usually one item per series (column). Add text with LegendList.AddItems.",
+      "LABELLIST": "QStringList with the X axis labels, usually one per row (category); not used by XY charts. For ctReal charts items 0 and 1 label the start and end of the X axis.",
+      "XAXIS": "AxisType record with the X axis options: Min, Max, Div, AutoScale, COLOR, Grid, Labeled, DrawZero, ZeroColor, Tics, MnrTics, LogScale, plus internal layout fields (LEN, Ori, ScaleFactor, TicLen and others) filled while drawing.",
+      "YAXIS": "AxisType record with the Y axis options, the same fields as XAxis.",
+      "SERIES": "Array (1 to MaxSeries = 26) of SeriesType records with per-series style: AutoColor, COLOR, AutoMark, Marker (ms constants), HatchStyle (hs constants), LineStyle (ls constants) and LineWidth.",
+      "BGCOLOR": "Background color of the whole chart bitmap; also used as the text background. The constructor sets it to Colors(30) (white).",
+      "FGCOLOR": "Color of the frame around the whole chart and of the legend frame; Initialize also uses it as the default color of every series. The constructor sets it to Colors(23).",
+      "CHARTTYPE": "Chart type: ctBar, ctLine, ctBarLine, ctBox, ctPie, ctHiLo, ctXY or ctReal. DrawChart selects the drawing routine from it. Initialize resets it to ctXY.",
+      "CHARTSTYLE": "Chart style flag: csHisto, csBar, csStacked, csPctStacked for bars; csPoints, csLines, csBoth for XY and line charts; csAntenna, csHiLoBox for hi-lo charts; csPiePct, csPieVal for pie charts. Initialize resets it to csPoints.",
+      "MAINTITLE": "TitleType record for the main title; set MainTitle.Text (up to 75 characters). Left and Top are calculated when the chart is drawn.",
+      "MAINFONT": "QFont for the main title; Initialize sets Times New Roman 18, bold.",
+      "SUBTITLE": "TitleType record for the subtitle drawn under the main title; set SubTitle.Text. Left and Top are calculated when drawing.",
+      "SUBFONT": "QFont for the subtitle; Initialize sets Times New Roman 12, bold.",
+      "XTITLE": "TitleType record for the X axis title; set XTitle.Text. It is drawn centred under the axis with AxisFont.",
+      "YTITLE": "TitleType record for the Y axis title; set YTitle.Text. It is drawn vertically, one character per line, with AxisFont.",
+      "AXISLBL": "Internal: scratch TitleType record used to position axis value labels and pie wedge labels while drawing.",
+      "AXISFONT": "QFont for axis titles and axis labels; Initialize sets Times New Roman 10.",
+      "DOLEGEND": "TRUE (default after Initialize) draws a legend to the right of the plot area and reserves space for it; FALSE gives the X axis the full width.",
+      "LEGEND": "Internal: scratch TitleType record used to position each legend entry while drawing.",
+      "LEGENDFONT": "QFont for the legend text; Initialize sets Times New Roman 9.",
+      "CHARTBORDER": "TRUE draws a frame around the entire chart in FgColor; FALSE draws no frame.",
+      "AXISBORDER": "TRUE draws a frame around the plot area in GridColor and fills it with PlotAreaColor; FALSE leaves it unframed.",
+      "COLORS": "Palette array (0 to 30) of RGB colors that QChart cycles through for series when AutoColor is TRUE; the constructor fills it with named colors (0 black ... 30 white) and the comment invites the user to redefine it.",
+      "PLOTAREACOLOR": "Background color of the plot area (used when AxisBorder is TRUE and as the GDI background color for lines and markers). The constructor sets it to Colors(4).",
+      "GRIDCOLOR": "Color of the grid lines and of the plot area frame. The constructor sets it to Colors(25).",
+      "DLGSAVEQC": "QSaveDialog used by SaveChart to ask for a .bmp file name.",
+      "MARKERSIZE": "Size of the drawn point markers; Initialize sets 3. PrintChart and CopyToClipboard scale it temporarily.",
+      "BW": "TRUE draws in black and white: each series color is set to the value of its index and the zero lines to Colors(0). FALSE cycles the Colors() array.",
+      "GREYSCALE": "TRUE draws series in shades of grey instead of colors and sets the zero lines to Colors(0); FALSE cycles the Colors() array.",
+      "CHARTEXISTS": "TRUE after a chart has been drawn, FALSE after the buffer is cleared. RedrawChart only redraws and PrintChart only prints when it is TRUE.",
+      "VIEWPORT": "For ctReal charts, the number of last points shown along the X axis; the constructor sets 100. A negative value, or Rows not larger than Viewport, plots all points.",
+      "MISSING": "Value that marks missing data; points equal to it are skipped. The constructor sets -9.999E-45.",
+      "INITIALIZE": "Sets default values: buffer size from ClientWidth/ClientHeight, borders, legend, axis options, fonts, series styles; clears the titles, LegendList and LabelList; sets Cols and Rows to 1, ChartType to ctXY and ChartStyle to csPoints. Call it first, then set ChartType and the other properties.",
+      "PAINTCHART": "Draws the off-screen buffer onto the canvas. Assign it to the OnPaint event of the QChart.",
+      "CLEARALL": "Calls Initialize, erases the buffer and repaints, giving an empty chart.",
+      "DRAWCHART": "DrawChart(Overlay) draws the chart selected by ChartType from the current data and repaints the canvas. With Overlay FALSE the buffer is cleared and axes, titles, labels and legend are redrawn; with Overlay TRUE only the data is drawn over the existing chart.",
+      "REDRAWCHART": "Resizes the buffer to the current client size and redraws the chart if ChartExists is TRUE. The comment says to call it from the form's OnResize event.",
+      "PRINTCHART": "PrintChart(Prn, Orient, Margin, Copies, Colr) redraws the chart at page size (fonts and markers x3, autoscaling kept off) and prints it on printer index Prn with orientation Orient (0 = portrait), the given margin and number of copies; Colr FALSE prints in black and white. Afterwards it restores the screen settings and redraws.",
+      "COPYTOCLIPBOARD": "CopyToClipboard(Wid, Hgt) redraws the chart at Wid x Hgt pixels with fonts scaled accordingly, puts the bitmap on the clipboard and then redraws the chart at screen size.",
+      "SAVECHART": "SaveChart(SaveAs) saves the buffer as a .bmp file. If the chart was saved before and SaveAs is FALSE it overwrites the same file; otherwise it shows dlgSaveQC (\"Save Graph\" or \"Save Graph As\"), adds .bmp if missing and asks before overwriting an existing file.",
+      "SAVETOFILE": "SaveToFile(FileName) writes the buffer as a bitmap to FileName without any dialog or overwrite check."
+    },
+    "example": "$INCLUDE \"QChart.inc\"\nCREATE YourInstanceName AS QChart\n  Parent = Form\nEND CREATE\nWITH YourInstanceName\n  .Initialize\n  .ChartType = ctBar\n  .ChartStyle = csBar\n  .Cols = 2\n  .Rows = 2\n  REDIM YourInstanceName.Data(.Cols, .Rows)\n  ' load data into .LabelList, .LegendList and .Data\n  .DrawChart(FALSE)\nEND WITH",
+    "example_origin": "source",
+    "author": "Michael J. Zito",
+    "version": "Build 3.6.04",
+    "date": "2003-2004",
+    "caveats_en": [
+      "The header warns that there is little error checking: the user must format the data correctly before calling each routine.",
+      "Data and XYData must be REDIMmed with the instance name written out, even inside a WITH block; the header calls this a RapidQ quirk.",
+      "Initialize sets ChartType to ctXY and ChartStyle to csPoints, so ChartType and ChartStyle must be set after calling Initialize.",
+      "The constructor sets FgColor to Colors(23) (bright magenta), PlotAreaColor to Colors(4) (cyan) and GridColor to Colors(25) (orange), while the comments next to them still say black, light grey and dark grey; these fields are marked \"!!!\" in the declarations and the original defaults are commented out in Initialize.",
+      "Logarithmic scaling of a value <= 0 shows a message box (\"qcLog10: Log of Value <= 0 Undefined\") and the chart is cleared.",
+      "At most 26 series (MaxSeries); title texts are fixed strings of 75 characters.",
+      "PrintChart uses hard-coded buffer sizes (1920 x 2400 portrait, 2560 x 1920 landscape), and computes the page rectangle from the control's own .Left and .Top inside WITH QCHART.",
+      "Setting BW or GreyScale also overwrites XAxis.ZeroColor and YAxis.ZeroColor with Colors(0); they are not restored when the option is turned off.",
+      "SaveChart and SaveToFile only write BMP files."
+    ]
+  },
+  "QFTPDirListView@qftpdirlistview.inc": {
+    "summary_en": "QFTPDirListView is an unfinished QListView-based file list meant to browse FTP directories; the code present lists folders and files of a local directory.",
+    "summary_ru": "QFTPDirListView — незаконченный список файлов на основе QListView, задуманный для просмотра FTP-каталогов; фактически код показывает папки и файлы локального каталога.",
+    "description_en": [
+      "The header says the component is by Andrew Shelkovenko and is based on QFTPCLIENT.INC by Jacques Philippe and QDirListView.inc by Rene Saarsoo. Host, User and Password properties exist, but their setters are empty and no FTP connection is made by the component: LoadDirectories contains a pasted QFtpClient sample with a hard-coded server, followed by a local Dir$ listing.",
+      "Refresh clears the list, adds sub-folders (LoadDirectories) and files matching Mask (LoadFiles) of Directory, creates the Name, Size, Type and Date Modified columns on first use, and repaints the control. Icons for folders and unknown files come from four $RESOURCE .ico files loaded into SmallImageList and LargeImageList. Double-clicking or pressing Enter on a folder opens it; on a file it fires OnFileSelect. Backspace goes to the parent folder (hidden popup-menu items provide the shortcuts)."
+    ],
+    "requires": [
+      "$INCLUDE \"QFTPCLIENT.INC\"",
+      "$RESOURCE ICO_DIR_SMALL from C:\\bas\\RapidQ\\inc\\dir_XP_small.ico",
+      "$RESOURCE ICO_DIR_LARGE from C:\\bas\\RapidQ\\inc\\dir_XP_large.ico",
+      "$RESOURCE ICO_DEFAULTFILE_SMALL from C:\\bas\\RapidQ\\inc\\default_small.ico",
+      "$RESOURCE ICO_DEFAULTFILE_LARGE from C:\\bas\\RapidQ\\inc\\default_large.ico",
+      "FileRec record and vidnum$ function, used but not defined in this file (vidnum$ is only present as a commented-out copy)"
+    ],
+    "members": {
+      "HOST": "Intended FTP host name; its setter Set_Host is empty, so assigning it has no effect and the value is not used.",
+      "USER": "Intended FTP user name; its setter Set_User is empty, so assigning it has no effect and the value is not used.",
+      "PASSWORD": "Intended FTP password; its setter Set_Password is empty, so assigning it has no effect and the value is not used.",
+      "DIRECTORY": "Folder that is listed. Assigning it adds a trailing backslash if missing and calls Refresh. The constructor sets it to the program's folder.",
+      "FILENAME": "Full path (Directory + caption) of the selected item, updated in OnChange; empty when nothing is selected.",
+      "MASK": "File mask used by LoadFiles (default \"*.*\"). Assigning it stores the value and calls Refresh.",
+      "SHOWROOT": "Whether the \"..\" entry is shown in the folder list (default FALSE). Assigning it stores the value and calls Refresh.",
+      "LARGEIMAGELIST": "QImageList (32 x 32) with the large folder and default-file icons; assigned to LargeImages in the constructor.",
+      "SMALLIMAGELIST": "QImageList with the small folder and default-file icons; assigned to SmallImages in the constructor.",
+      "EXTENSIONSLIST": "QStringList of file extensions whose position is used as the image index; the constructor adds \"<dir>\" twice for the two built-in icons, and SetItemImage searches from index 2.",
+      "DLW_POPUPMENU": "Internal: popup menu assigned to PopupMenu that holds the hidden Enter and Backspace shortcut items.",
+      "DLW_ENTER": "Internal: hidden menu item with the Enter shortcut; its OnClick opens the selected folder or fires OnFileSelect.",
+      "DLW_BACKSPACE": "Internal: hidden menu item with the Backspace shortcut; its OnClick goes to the parent folder.",
+      "COLUMNSINITIALIZED": "Internal: flag set to TRUE once Refresh has created the columns; columns are only built while it is FALSE.",
+      "FILENAMESIZE": "When 1 at the first Refresh, a \"Size\" column is added (default 1). Assigning it through the setter just stores the value.",
+      "FILENAMETYPE": "When 1 at the first Refresh, a \"Type\" column is added (default 1).",
+      "FILENAMEDATE": "When 1 at the first Refresh, a \"Date Modified\" column is added (default 1).",
+      "ONFILESELECT": "Event FileSelect_EventTemplate(Tag AS INTEGER), fired with Tag 0 when a file (not a folder) is double-clicked or Enter is pressed on it.",
+      "FILENAMEPROP": "Empty SUB; it does nothing.",
+      "SETITEMIMAGE": "Internal: SetItemImage(Extension) sets the icon of the last added item to the ExtensionsList index matching the extension, or 1 (default file icon).",
+      "ADDFILEPROPERTIES": "Internal: AddFileProperties(Extension) adds size, type and date sub-items to the last added item from the FileRec record.",
+      "LOADDIRECTORIES": "Internal: adds the sub-folders of Directory to the list. It begins with a pasted QFtpClient demo (hard-coded host and printouts) before the Dir$ loop.",
+      "LOADFILES": "Internal: adds the files of Directory matching Mask, sets their icons and adds their properties.",
+      "REFRESH": "Clears and reloads the list, creates the columns on first call, forces a repaint by toggling ViewStyle and Visible, and restores focus and the Checkboxes setting.",
+      "CHANGEDIRUP": "Sets Directory to the parent folder and refreshes the list.",
+      "CHANGEDIR": "Opens the selected folder, or goes to the parent folder when the selected item is \"..\".",
+      "TRYTOCHANGEDIRORMAKEEVENT": "Internal: if FileName is a folder calls ChangeDir, otherwise fires OnFileSelect."
+    },
+    "example": "$INCLUDE \"qftpdirlistview.inc\"\nDECLARE SUB FileChosen(Tag AS INTEGER)\nCREATE Form AS QFORM\n  Caption = \"Files\"\n  CREATE FileList AS QFTPDirListView\n    Parent = Form\n    OnFileSelect = FileChosen\n  END CREATE\nEND CREATE\nFileList.Directory = \"C:\\\"\nForm.ShowModal\n\nSUB FileChosen(Tag AS INTEGER)\n  ShowMessage FileList.FileName\nEND SUB",
+    "example_origin": "written",
+    "author": "Andrew Shelkovenko",
+    "version": "",
+    "date": "",
+    "caveats_en": [
+      "Work in progress: LoadDirectories contains a pasted QFtpClient sample with a hard-coded host (\"www.bigftp.com\"), user and password and PRINT statements, followed by a line of exclamation marks (\"!!!!!!!!!!!!\") that is not valid code.",
+      "No FTP access is implemented: Host, User and Password have empty setters and listing uses the local Dir$ and DirExists functions.",
+      "The $RESOURCE lines use absolute paths (C:\\bas\\RapidQ\\inc\\...); the comment says the full path to the resources has to be set.",
+      "AddFileProperties uses FileRec and vidnum$, which are not defined in this file (vidnum$ is commented out).",
+      "Set_FilenameProp is defined three times with the same name; only FilenameSize is declared with a setter, the setters of FilenameType and FilenameDate are commented out.",
+      "Refresh uses an undeclared variable QFTPDirListViewcheckboxes, and LoadFiles declares PontPlace but uses PointPlace.",
+      "The file declares SetFocus from user32; the comment says to remove it if the program already declares it."
+    ]
+  },
+  "Comport@ComPort.cmp": {
+    "summary_en": "Comport is a non-visual serial (COM) port component that opens, configures, writes to and reads from a port through the Win32 file and communications API.",
+    "summary_ru": "Comport — невизуальный компонент последовательного (COM) порта: открытие, настройка, запись и чтение через Win32 API файлов и коммуникаций.",
+    "description_en": [
+      "Open calls CreateFile on Port, sets the driver buffers with SetupComm, purges them with PurgeComm, sets time-outs with SetCommTimeouts, reads the current DCB with GetCommState and writes BaudRate, DataBits, Parity and StopBits back with SetCommState. Settings that are not exposed keep their current values. All calls are synchronous (no overlapped I/O).",
+      "WriteString and ReadString use WriteFile and ReadFile, then wait the given number of milliseconds with kernel32 Sleep and update BytesNotWritten and BytesNotRead through ClearCommError. Every failure raises OnComError with a message that includes the system error text from FormatMessage. The header says the code is loosely based on VB code by David M. Hitchner (thescarms.com)."
+    ],
+    "requires": [
+      "FILE_ATTRIBUTE_NORMAL constant defined elsewhere (its CONST is commented out in this file)"
+    ],
+    "members": {
+      "HANDLE": "Win32 handle of the open port returned by CreateFile in Open; -1 when opening failed.",
+      "PORT": "Name of the device to open; default \"COM1\".",
+      "BAUDRATE": "Baud rate written to the DCB by Open; default 9600.",
+      "DATABITS": "Number of data bits (DCB ByteSize) written by Open; default 8.",
+      "PARITY": "Parity written to the DCB by Open: NOPARITY (0), ODDPARITY (1), EVENPARITY (2), MARKPARITY (3) or SPACEPARITY (4); default NOPARITY.",
+      "STOPBITS": "Value written to DCB StopBits by Open; the file's constants are ONESTOPBIT = 0, ONE5STOPBITS = 1, TWOSTOPBITS = 2. Default 1.",
+      "READBUFSIZE": "Input buffer size passed to SetupComm (default 1024); ReadString also allocates its read buffer with this size.",
+      "WRITEBUFSIZE": "Output buffer size passed to SetupComm; default 1024.",
+      "BYTESNOTREAD": "Number of received bytes not yet read (cbInQue), updated after each ReadString and WriteString.",
+      "BYTESNOTWRITTEN": "Number of bytes still waiting to be sent (cbOutQue), updated after each ReadString and WriteString.",
+      "CONNECTED": "TRUE after Open succeeds, FALSE after Close succeeds (initially FALSE).",
+      "ONCOMERROR": "Event OnComError_EventTemplate(strErrorMessage AS STRING), raised when an API call fails or not all data was sent; the message is a fixed text followed by the system error text.",
+      "ONOPEN": "Event without parameters raised when Open has applied the port settings successfully.",
+      "ONCLOSE": "Event without parameters raised when Close has closed the handle successfully.",
+      "ONWRITESTRING": "Event without parameters raised by WriteString when, after the wait, no bytes remain in the output queue.",
+      "ONREADSTRING": "Event without parameters raised by ReadString after a successful read.",
+      "OPEN": "Opens Port and applies buffer sizes, time-outs (ReadIntervalTimeout -1, ReadTotalTimeoutConstant 1000) and BaudRate, DataBits, Parity and StopBits; sets Connected and raises OnOpen, or raises OnComError and exits at the first failing step.",
+      "CLOSE": "Closes the port handle with CloseHandle, sets Connected to FALSE and raises OnClose, or raises OnComError on failure.",
+      "WRITESTRING": "WriteString(strData, intWait) writes the string to the port, sleeps intWait milliseconds, then raises OnWriteString if the output queue is empty or OnComError (\"Could not send all the data in time specified...\") if not.",
+      "READSTRING": "ReadString(dwRdSize, intWait) reads up to dwRdSize bytes and returns them as a string, then sleeps intWait milliseconds, updates BytesNotRead and raises OnReadString."
+    },
+    "example": "$INCLUDE \"ComPort.cmp\"\nDECLARE SUB PortError(Msg AS STRING)\nDIM MyPort AS Comport   ' ReadString uses the name MyPort, see caveats\nMyPort.Port = \"COM2\"\nMyPort.BaudRate = 19200\nMyPort.StopBits = ONESTOPBIT\nMyPort.OnComError = PortError\nMyPort.Open\nIF MyPort.Connected THEN\n  MyPort.WriteString(\"AT\" + CHR$(13), 100)\n  ShowMessage MyPort.ReadString(64, 200)\n  MyPort.Close\nEND IF\n\nSUB PortError(Msg AS STRING)\n  ShowMessage Msg\nEND SUB",
+    "example_origin": "written",
+    "author": "Pete Kleinschmidt",
+    "version": "0.9",
+    "date": "December 13, 2001",
+    "caveats_en": [
+      "ReadString calls ReadFile with MyPort.Handle instead of ComPort.Handle, so it only works when the instance is named MyPort.",
+      "In Open, WriteTotalTimeoutMultiplier is assigned twice (0, then 1000) and WriteTotalTimeoutConstant is never set.",
+      "StopBits defaults to 1, which by the file's own constants is ONE5STOPBITS (1.5 stop bits), not one stop bit.",
+      "ReadString allocates a buffer of ReadBufSize bytes but asks ReadFile for dwRdSize bytes; dwRdSize larger than ReadBufSize is not checked.",
+      "When ClearCommError fails, the error message uses ERROR_CHANGING_PORTSETTINGS instead of ERROR_GETTING_PORT_STATUS.",
+      "FILE_ATTRIBUTE_NORMAL is used in Open but its CONST is commented out in the file.",
+      "The file declares kernel32 Sleep (milliseconds), CreateFile, ReadFile, WriteFile, CloseHandle, GetLastError, FormatMessage and many constants and types (DCB, OVERLAPPED, CREATE_NEW, OPEN_EXISTING and others) at global level, without $IFNDEF guards."
+    ]
+  },
+  "QDrawFocus@QDrawFocus.inc": {
+    "summary_en": "QDrawFocus draws a rubber-band selection rectangle (a focus rectangle) on a device context and lets the user move it or resize it from its right and bottom edges with the mouse.",
+    "summary_ru": "QDrawFocus — рисует на контексте устройства рамку выделения (focus rectangle), которую можно перемещать и растягивать мышью за правый и нижний край.",
+    "description_en": [
+      "The rectangle is drawn with the Windows DrawFocusRect function, which draws by XOR, so drawing the same rectangle again erases it. The object does not handle mouse events itself: the program calls Start from OnMouseDown, Draw from OnMouseMove and Stop from OnMouseUp, passing a DC handle (for example from GetDC) and the mouse coordinates.",
+      "Start begins a new rectangle, or, when the click is inside the visible one, prepares to move it or to resize it from the right edge, bottom edge or bottom-right corner (a 10-pixel border zone). Left, Top, Width, Height, Move and Inside report the state and are read-only. When ShowCursor is TRUE the screen cursor changes to show the current action."
+    ],
+    "requires": [],
+    "members": {
+      "LEFT": "Read-only: left coordinate of the current rectangle; assigning it has no effect (empty setter). Updated by Start and Draw.",
+      "TOP": "Read-only: top coordinate of the current rectangle; assigning it has no effect (empty setter).",
+      "WIDTH": "Read-only: width of the current rectangle; assigning it has no effect (empty setter).",
+      "HEIGHT": "Read-only: height of the current rectangle; assigning it has no effect (empty setter).",
+      "MOVE": "Read-only: TRUE after Draw has moved or resized an existing rectangle; Stop removes the rectangle only when it is TRUE. Assigning it has no effect.",
+      "VISIBLE": "TRUE while the rectangle is drawn on the DC; set by Draw and cleared by Remove.",
+      "INSIDE": "Read-only: TRUE when the last point given to Start or Draw (without drawing) was inside the visible rectangle or on its resize border. Assigning it has no effect.",
+      "NORESIZE": "When TRUE the rectangle can only be moved, not resized from its edges.",
+      "SHOWCURSOR": "When TRUE (default) Screen.Cursor is changed to show drawing, moving or the resize direction, and reset to the default by Remove and Stop.",
+      "REMOVE": "Remove(handle) erases the rectangle from the DC by drawing it again (XOR) if it is visible, and resets the cursor when ShowCursor is TRUE.",
+      "START": "Start(handle, x, y) is called on mouse down: inside the visible rectangle it prepares a move or a resize; elsewhere it removes the old rectangle and starts a new one at x, y.",
+      "DRAW": "Draw(handle, x, y, flagDraw) is called on mouse move. With flagDraw TRUE it erases and redraws the rectangle moved, resized or stretched to x, y; with flagDraw FALSE it only updates Inside and the cursor.",
+      "STOP": "Stop(handle, flagRemove) is called on mouse up: if the rectangle was moved and flagRemove is TRUE it removes it; the cursor is reset when ShowCursor is TRUE."
+    },
+    "example": "$INCLUDE \"QDrawFocus.inc\"\nDECLARE SUB FormDown(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)\nDECLARE SUB FormMove(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)\nDECLARE SUB FormUp(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)\nDIM Focus AS QDrawFocus\nDIM hDC AS LONG\nDIM Dragging AS INTEGER\nCREATE Form AS QFORM\n  Caption = \"Select an area\"\n  OnMouseDown = FormDown\n  OnMouseMove = FormMove\n  OnMouseUp = FormUp\nEND CREATE\nhDC = GetDC(Form.Handle)\nForm.ShowModal\n\nSUB FormDown(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)\n  Dragging = 1\n  Focus.Start(hDC, X, Y)\nEND SUB\n\nSUB FormMove(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)\n  Focus.Draw(hDC, X, Y, Dragging)\nEND SUB\n\nSUB FormUp(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)\n  Dragging = 0\n  Focus.Stop(hDC, 0)\n  ShowMessage STR$(Focus.Width) + \" x \" + STR$(Focus.Height)\nEND SUB",
+    "example_origin": "written",
+    "author": "modified by JohnK",
+    "version": "1.3",
+    "date": "8/2007",
+    "caveats_en": [
+      "A comment says the internal rectangle uses the RECT type because QRect crashes on Windows XP.",
+      "The resize border width (10 pixels) is a private field with no way to change it.",
+      "RECT and GetDC are declared only when neither __WIN32API nor __RQ2WIN32API is defined, and DrawFocusRect only when __WIN32API is not defined.",
+      "When stretching a new rectangle, the upward test compares y with .Top while the leftward test compares x with .StartX."
+    ]
+  },
+  "QtreeviewEx@QTreeviewEx.inc": {
+    "summary_en": "QtreeviewEx extends QTreeView with methods to find parents, children and items by text, and to move items and whole branches up, down, in and out.",
+    "summary_ru": "QtreeviewEx — расширение QTreeView: поиск родителя, детей и узлов по тексту, перемещение узлов и целых ветвей вверх, вниз и по уровням.",
+    "description_en": [
+      "All methods work on the flat item index of the tree and on each item's Level. The search methods walk the items forward or backward comparing levels or texts.",
+      "MoveDown, IncLevel and DecLevel save the tree to a temporary text file (homedir + \"tmp_tree.tv\"), edit the lines in a QStringList (moving lines or adding or removing a leading Tab), reload the tree from the file and delete the file. homedir comes from the included fileops.inc."
+    ],
+    "requires": [
+      "$INCLUDE \"fileops.inc\" (homedir function)"
+    ],
+    "members": {
+      "GETPARENT": "GetParent(i) returns the index of the parent of item i (the nearest preceding item with a lower level), or -1 for a top-level item.",
+      "GETINDEX": "GetIndex(from, itemtext) returns the index of the first item at or after from whose text equals itemtext, or -1 if none is found.",
+      "STRGETPARENT": "StrGetParent(itemtext) returns the parent index of the first item whose text equals itemtext.",
+      "GETCHILDRENLIST": "GetChildrenList(i) returns the texts of the direct children of item i as a comma-separated string.",
+      "ADDCHILDTO": "AddChildTo(startfrom, itemtext, childtext) finds the first item with text itemtext at or after startfrom and adds a child item with text childtext to it.",
+      "BRANCHLENGTH": "BranchLength(i) returns the number of items in the branch of item i including the item itself; 1 for an item without children.",
+      "MOVEDOWN": "MoveDown(i) moves item i with its branch below its next sibling, through a temporary file, and selects the moved item.",
+      "MOVEUP": "MoveUp(i) moves item i with its branch above its previous sibling, by calling MoveDown on that sibling, and selects it.",
+      "INCLEVEL": "IncLevel(i) indents item i and its branch by one level (adds a Tab to each saved line), making it a child of the item above; does nothing for item 0.",
+      "DECLEVEL": "DecLevel(i) moves item i and its branch one level up (removes one leading Tab) and places it before its former parent; does nothing for a top-level item."
+    },
+    "example": "$INCLUDE \"QTreeviewEx.inc\"\nCREATE Form AS QFORM\n  Caption = \"Tree\"\n  CREATE Tree AS QtreeviewEx\n    Parent = Form\n  END CREATE\nEND CREATE\nTree.AddItems \"Root\"\nTree.AddChildTo(0, \"Root\", \"Child 1\")\nTree.AddChildTo(0, \"Root\", \"Child 2\")\nShowMessage Tree.GetChildrenList(0)\nForm.ShowModal",
+    "example_origin": "written",
+    "author": "",
+    "version": "",
+    "date": "",
+    "caveats_en": [
+      "MoveDown, IncLevel and DecLevel write and delete a temporary file tmp_tree.tv in the program folder, so the folder must be writable.",
+      "GetParent and GetChildrenList assign an early result (-1 or \"\") but do not exit, so they continue scanning; GetChildrenList then returns LEFT$ of an empty list with length -1.",
+      "BranchLength sets result 0 when the item is the last one but still enters its loop.",
+      "MoveDown compares i with ItemCount (not the last index) to detect the last item.",
+      "DecLevel selects the item at parentindex - 1 after the move.",
+      "The file turns on $TYPECHECK ON for the including program."
+    ]
+  },
+  "QGridColor@QGridColor.inc": {
+    "summary_en": "QGridColor is a QPanel showing the 16 standard colors as clickable cells; left click picks a foreground color and right click a background color.",
+    "summary_ru": "QGridColor — панель QPanel с 16 стандартными цветами в виде ячеек; левый щелчок выбирает цвет переднего плана, правый — цвет фона.",
+    "description_en": [
+      "The panel contains 16 child QPanel cells filled with the classic 16-color palette (Black, Navy, Green, ... White). The layout is chosen with Style: st1x16 (one row), st2x8 (two rows) or st4x4 (four rows); cell sizes are derived from the panel's Width and Height when Draw runs.",
+      "A left click stores the cell color in FGColor, a right click in BKColor, and OnCellClick is fired. With ShowCaption the selected cells are marked \"FG\" and \"BK\"; with ShowHints each cell shows its color name as a hint."
+    ],
+    "requires": [],
+    "members": {
+      "FGCOLOR": "Color of the last cell clicked with the left mouse button.",
+      "BKCOLOR": "Color of the last cell clicked with the right mouse button.",
+      "STYLE": "Cell layout: st1x16 (0), st2x8 (1) or st4x4 (2). Assigning it stores the value and calls Draw to lay out the cells again.",
+      "SHOWCAPTION": "When non-zero, the cell last clicked with the left button shows \"FG\" and the one clicked with the right button shows \"BK\".",
+      "SHOWHINTS": "Assigning a non-zero value sets each cell's hint to its color name and turns ShowHint on.",
+      "ONCELLCLICK": "Event without parameters (CellClicked), fired after a left or right click has updated FGColor or BKColor.",
+      "LOADCOLORS": "Internal: fills the 16 color values and their names; called by the constructor.",
+      "CELLCLICK": "Internal: OnMouseDown handler assigned to every cell; updates FGColor or BKColor, the captions, and fires OnCellClick.",
+      "DRAW": "Positions and sizes the 16 cells according to Style and the current Width and Height, sets their colors, hints and click handler. Call it after changing the panel size."
+    },
+    "example": "$INCLUDE \"QGridColor.inc\"\nDECLARE SUB ColorPicked\nCREATE Form AS QFORM\n  Caption = \"Colors\"\n  CREATE Grid AS QGridColor\n    Parent = Form\n    Width = 160\n    Height = 40\n    Style = st2x8\n    ShowCaption = 1\n    ShowHints = 1\n    OnCellClick = ColorPicked\n  END CREATE\nEND CREATE\nForm.ShowModal\n\nSUB ColorPicked\n  Form.Color = Grid.FGColor\nEND SUB",
+    "example_origin": "written",
+    "author": "Nastase Eodor",
+    "version": "1.0.0",
+    "date": "2004",
+    "caveats_en": [
+      "The constructor calls Draw with the panel's default size; after changing Width or Height the cells are not resized until Style is assigned or Draw is called.",
+      "Assigning 0 to ShowHints does not turn off hints that were already enabled.",
+      "Only the left (Button 0) and right (Button 1) mouse buttons are handled.",
+      "The file defines global constants st1x16, st2x8 and st4x4 and declares a global SUB CellClicked as the event template."
+    ]
+  },
+  "QAbout@object/QAbout.inc": {
+    "summary_en": "QAbout builds and shows a modal \"About\" dialog with an image, application name and version, a text, and clickable e-mail and web links.",
+    "summary_ru": "QAbout — создаёт и показывает модальное окно «О программе» с картинкой, названием и версией, текстом и кликабельными e-mail и веб-ссылкой.",
+    "description_en": [
+      "Show lays out a private form: a group box containing the image, a label with AppName and \"Version \" + AppVersion, the Text, \"Email:\" + Email and \"Web:\" + Web, and an Ok button. The dialog size is calculated from the label sizes and it is shown centred with ShowModal.",
+      "Clicking the e-mail label opens \"mailto:\" + Email, and clicking the web label opens Web (with \"http://\" added if it does not contain \"http\"), both through ShellExecute from shell32 (declared as AboutExecute). E-mail and web labels use a hand cursor and are drawn in blue when their font color is the default."
+    ],
+    "requires": [],
+    "members": {
+      "IMAGE": "QImage shown at the top-left of the dialog (auto-sized, transparent); load the picture into it before calling Show.",
+      "CAPTION": "Title bar text of the dialog.",
+      "APPNAME": "Application name shown next to the image.",
+      "APPVERSION": "Version text; shown as \"Version \" + AppVersion under the application name when not empty.",
+      "TEXT": "Free text shown under the name; omitted when empty.",
+      "EMAIL": "E-mail address shown as \"Email:\" + Email; clicking it opens \"mailto:\" + Email. Omitted when empty.",
+      "WEB": "Web address shown as \"Web:\" + Web; clicking it opens the address, adding \"http://\" if needed. Omitted when empty.",
+      "APPFONT": "QFont for the application name and version label.",
+      "TEXTFONT": "QFont for the Text label.",
+      "EMAILFONT": "QFont for the e-mail label; if its color is the default window-text color it is changed to blue.",
+      "WEBFONT": "QFont for the web label; if its color is the default window-text color it is changed to blue.",
+      "SHOW": "Builds the dialog from the current properties and shows it modally; the Ok button closes it."
+    },
+    "example": "$INCLUDE \"QAbout.inc\"\nDIM About AS QAbout\nAbout.Caption = \"About\"\nAbout.AppName = \"My Program\"\nAbout.AppVersion = \"1.0\"\nAbout.Text = \"A short description\"\nAbout.Email = \"me@example.com\"\nAbout.Web = \"www.example.com\"\nAbout.Image.BMP = \"logo.bmp\"\nAbout.Show",
+    "example_origin": "written",
+    "author": "",
+    "version": "1.2",
+    "date": "",
+    "caveats_en": []
+  },
+  "QVolumeInfo@QVolumeInfo.inc": {
+    "summary_en": "QVolumeInfo is a non-visual object that retrieves the label, serial number, file system, size, free space and drive type of a drive.",
+    "summary_ru": "QVolumeInfo — невизуальный объект, получающий метку, серийный номер, файловую систему, размер, свободное место и тип диска.",
+    "description_en": [
+      "Call SelectDrive with a drive letter first; it calls the kernel32 functions GetVolumeInformationA, GetDiskFreeSpaceA and GetDriveTypeA and fills all properties. Byte counts are computed as clusters x sectors per cluster x bytes per sector, and TotalSpace and FreeSpace are short text forms such as \"12.5 GB\" made by GetStringFormat.",
+      "The DRIVE_ constants are defined only if neither __WIN32API nor __QDRIVE_INC is defined; the file defines __QVOLUMEINFO_INC."
+    ],
+    "requires": [],
+    "members": {
+      "SERIAL": "Volume serial number as a hexadecimal string.",
+      "NAME": "Volume label (name) of the drive.",
+      "FILESYTEM": "File system name, such as NTFS or FAT32 (the member is spelled FileSytem; the header calls it FileSystem).",
+      "DRIVEROOT": "Drive letter with colon of the selected drive, e.g. \"C:\".",
+      "BYTES": "Bytes per sector.",
+      "SECTORS": "Sectors per cluster.",
+      "TOTALCLUSTERS": "Total number of clusters on the volume.",
+      "FREECLUSTERS": "Number of free clusters on the volume.",
+      "TOTALBYTES": "Total size of the volume in bytes (DOUBLE).",
+      "FREEBYTES": "Free space on the volume in bytes (DOUBLE).",
+      "TOTALSPACE": "Total size as a short string (Bytes, KB, MB, GB or TB with one decimal).",
+      "FREESPACE": "Free space as a short string (Bytes, KB, MB, GB or TB with one decimal).",
+      "DRIVETYPE": "Drive type number returned by GetDriveType.",
+      "DRIVETYPESTRING": "Drive type as text: \"Removable\", \"Drive Fixed\", \"Remote\", \"Cd-Rom\", \"Ram disk\" or \"Unknown\".",
+      "DRIVETYPEUNKNOWN": "0 if the drive type is known, 1 if it is unknown.",
+      "GETSTRINGFORMAT": "GetStringFormat(Bytes) returns a short string for a byte count: below 1024 \"n Bytes\", otherwise KB, MB, GB or TB with one decimal.",
+      "SELECTDRIVE": "SelectDrive(DriveRoot) reads the information for the drive whose letter is the first character of DriveRoot and fills all properties; call it before reading them."
+    },
+    "example": "$INCLUDE \"QVolumeInfo.inc\"\nDIM Vol AS QVolumeInfo\nVol.SelectDrive(\"C\")\nShowMessage Vol.DriveRoot + \" \" + Vol.Name + \" (\" + Vol.FileSytem + \") \" + Vol.FreeSpace + \" free of \" + Vol.TotalSpace",
+    "example_origin": "written",
+    "author": "Alain Besseleer alias Midipro2000",
+    "version": "1.0",
+    "date": "July 25, 2009",
+    "caveats_en": [
+      "The file-system property is misspelled FileSytem.",
+      "Return values of the API calls are not checked.",
+      "Drive type 1 (DRIVE_NO_ROOT_DIR) is reported as \"Unknown\"; the DRIVE_ constants are defined but SelectDrive compares with literal numbers."
+    ]
+  },
+  "QColorDlg@RapidFRM.inc": {
+    "summary_en": "QColorDlg is a color selection dialog wrapping the Windows ChooseColor dialog, with selectable style, screen position, caption and custom colors.",
+    "summary_ru": "QColorDlg — диалог выбора цвета на основе стандартного ChooseColor Windows, с выбором стиля, положения на экране, заголовка и пользовательских цветов.",
+    "description_en": [
+      "The file comments describe it as a bug-fixed version of the QCOLORDIALOG component of RapidQ2.inc, originally by D. Glodt. Execute fills a CHOOSECOLOR structure (owner Application.Handle, initial Color, the 16 custom Colors, a hook procedure) and calls ChooseColorDlg. The hook handles WM_INITDIALOG to move the dialog to Left and Top (or center it when they are negative) and set the caption.",
+      "Style chooses the dialog form: cdNormal (compact but expandable, default), cdFullOpen (custom-color part open) or cdNoFullOpen (compact, no custom-color part). The custom colors are written back to Colors on exit. RapidFRM.inc also contains other helpers of the RapidFRM program (a mouse hook, QTabControl functions, QOvalBtn code and component $DEFINEs) that are not part of this component."
+    ],
+    "requires": [
+      "Declarations from rapidq2.inc or an equivalent Windows API include: CHOOSECOLOR type, ChooseColorDlg, CC_RGBINIT, CC_SHOWHELP, CC_ENABLEHOOK, CC_FULLOPEN, CC_PREVENTFULLOPEN, WM_INITDIALOG, GetWindowRect, MoveWindow, SetWindowText"
+    ],
+    "members": {
+      "WIDTH": "Read-only (its setter is empty, assigning has no effect): the nominal dialog width, 225 for compact styles or 460 for cdFullOpen, updated when Style is set. Execute does not use it.",
+      "HEIGHT": "Read-only (its setter is empty, assigning has no effect): the nominal dialog height, 335. Execute does not use it.",
+      "STYLE": "Dialog style: cdNormal (0), cdFullOpen (1) or cdNoFullOpen (2). Assigning it stores the value and sets Width to the matching width; Execute adds CC_FULLOPEN or CC_PREVENTFULLOPEN accordingly.",
+      "LEFT": "Screen X position of the dialog; a negative value (default -1) centers it horizontally.",
+      "TOP": "Screen Y position of the dialog; a negative value (default -1) centers it vertically.",
+      "CAPTION": "Dialog title; when empty the system default caption is kept.",
+      "COLOR": "Initial color shown when Execute is called, and the selected color after the user presses OK.",
+      "COLORS": "Array (1 to 16) of custom colors passed to the dialog and updated when it closes; all set to light grey (&HC0C0C0) by the constructor.",
+      "WINDOWHANDLE": "Not used; the comment says \"Not used ATT\".",
+      "EXECUTE": "Shows the color dialog; returns True and updates Color when the user presses OK, otherwise returns False."
+    },
+    "example": "$INCLUDE \"RapidQ2.inc\"\n$INCLUDE \"RapidFRM.inc\"\nDIM ColorDlg AS QColorDlg\nCREATE Form AS QFORM\n  Caption = \"Color test\"\nEND CREATE\nColorDlg.Style = cdFullOpen\nColorDlg.Caption = \"Pick a color\"\nColorDlg.Color = Form.Color\nIF ColorDlg.Execute THEN Form.Color = ColorDlg.Color\nForm.ShowModal",
+    "example_origin": "written",
+    "author": "D. Glodt (original version)",
+    "version": "",
+    "date": "",
+    "caveats_en": [
+      "Width, Height and WindowHandle have no effect on the dialog; the comment marks WindowHandle as not used.",
+      "Execute always sets CC_SHOWHELP, so the dialog shows a Help button; the file contains no code handling it.",
+      "The hook moves the window with a width and height one pixel larger than its current rectangle (Right - Left + 1).",
+      "The comment says focus is captured until the dialog is closed and only one instance should be used."
+    ]
+  },
+  "QINI@object/QIni.inc": {
+    "summary_en": "QINI is a non-visual object for reading and writing values in an INI file section and for getting the Windows, System and Temp folders.",
+    "summary_ru": "QINI — невизуальный объект для чтения и записи значений в секции INI-файла и получения папок Windows, System и Temp.",
+    "description_en": [
+      "Set FileName and Section, then use Get(Key, Default) and Write(Key, Value); they call GetPrivateProfileStringA and WritePrivateProfileStringA from kernel32. Assigning FileName also sets Exist to show whether the file exists.",
+      "The constructor calls GetIniPath, which fills the read-only WinDir, SystemDir and TempDir properties with GetWindowsDirectoryA, GetSystemDirectoryA and GetTempPathA. The file's comments are in French."
+    ],
+    "requires": [],
+    "members": {
+      "FILENAME": "Path of the INI file. Assigning it stores the name and sets Exist to TRUE or FALSE depending on whether the file exists.",
+      "EXIST": "TRUE if the file named in FileName existed when FileName was assigned.",
+      "SECTION": "INI section used by Get and Write.",
+      "WINDIR": "Read-only: Windows folder, filled by GetIniPath; assigning it has no effect (empty setter).",
+      "SYSTEMDIR": "Read-only: Windows system folder, filled by GetIniPath; assigning it has no effect (empty setter).",
+      "TEMPDIR": "Read-only: temporary folder returned by GetTempPath, filled by GetIniPath; assigning it has no effect (empty setter).",
+      "GET": "Get(Key, Default) returns the value of Key in Section of FileName, or Default if the key is missing or empty.",
+      "WRITE": "Write(Key, Value) writes Value for Key in Section of FileName and returns the API result (non-zero on success).",
+      "GETINIPATH": "Internal: fills WinDir, SystemDir and TempDir; called by the constructor."
+    },
+    "example": "$INCLUDE \"QIni.inc\"\nDIM Ini AS QINI\nIni.FileName = CURDIR$ + \"\\settings.ini\"\nIni.Section = \"Main\"\nIni.Write(\"User\", \"Alex\")\nShowMessage Ini.Get(\"User\", \"unknown\")\nShowMessage Ini.TempDir",
+    "example_origin": "written",
+    "author": "",
+    "version": "",
+    "date": "",
+    "caveats_en": [
+      "Get returns an empty string (not Default) and Write does nothing when FileName or Section is empty.",
+      "Get reads into a fixed 260-character buffer, so longer values are truncated.",
+      "Exist is updated only when FileName is assigned, not when the file is later created by Write."
+    ]
+  },
+  "QSplash@QSplash.inc": {
+    "summary_en": "QSplash shows a borderless splash window with an image and optional text, for a given time or until the program closes it.",
+    "summary_ru": "QSplash — показывает заставку: окно без заголовка с картинкой и необязательным текстом, на заданное время или до закрытия программой.",
+    "description_en": [
+      "The object owns a private form containing Image and a label. Show sizes the form to the image width, places the text either below the image or over it (TextTransparent), hides the title bar, centers and shows the form.",
+      "If Show is given a time greater than 0 it calls SLEEP with that value and then closes the form; otherwise the form stays open. The file's comments are in French, with an addition marked \"added JK\"."
+    ],
+    "requires": [],
+    "members": {
+      "IMAGE": "QImage displayed at the top-left of the splash form (auto-sized); load the picture into it before calling Show.",
+      "TEXT": "Text shown on the splash; nothing is shown when empty.",
+      "TEXTCENTER": "When TRUE the text is centred horizontally; otherwise it is placed at TextLeft.",
+      "TEXTTOP": "Top position of the text, used only when TextTransparent is TRUE.",
+      "TEXTLEFT": "Left position of the text when TextCenter is FALSE; default 5.",
+      "TEXTFONT": "QFont used for the text.",
+      "TEXTTRANSPARENT": "When TRUE the text is drawn transparently over the image at TextTop; when FALSE it is placed 10 pixels below the image and the form is made taller.",
+      "SHOW": "Show(Time) builds and shows the splash form; with Time greater than 0 it sleeps for Time (RapidQ SLEEP) and closes the form, otherwise the form stays visible."
+    },
+    "example": "$INCLUDE \"QSplash.inc\"\nDIM Splash AS QSplash\nSplash.Image.BMP = \"splash.bmp\"\nSplash.Text = \"Loading...\"\nSplash.TextCenter = 1\nSplash.Show(2)",
+    "example_origin": "written",
+    "author": "",
+    "version": "1.2",
+    "date": "",
+    "caveats_en": [
+      "The comment says the user can close a splash shown with Time 0 using QSplash.Form.Close, but form is declared PRIVATE.",
+      "With Time greater than 0, Show blocks the program while it sleeps."
+    ]
+  },
+  "QBROWSEDIALOG@QBrowseDialog.inc": {
+    "summary_en": "QBROWSEDIALOG shows the Windows \"Browse for folder\" dialog and returns the selected folder.",
+    "summary_ru": "QBROWSEDIALOG — показывает стандартный диалог Windows «Обзор папок» и возвращает выбранную папку.",
+    "description_en": [
+      "The header describes it as easier to use than QDirTree when only a folder name is needed. Like QOpenDialog it is created with DIM or CREATE and shown with Execute, which returns 1 when the user presses OK and 0 on Cancel or close.",
+      "Execute calls SHBrowseForFolder from shell32 with a BROWSEINFO structure and converts the result with SHGetPathFromIDList, freeing it with CoTaskMemFree. The callback BrowseHook centers the dialog, selects InitialDir and sets Caption. Virtual folders such as the Recycle Bin or Fonts can be chosen too, but only their display name is returned, not a usable path."
+    ],
+    "requires": [
+      "MAX_PATH constant defined elsewhere, for example in WINDOWS.INC or WIN32API.INC (its CONST is commented out in this file)"
+    ],
+    "members": {
+      "CAPTION": "Text for the dialog's title bar; when empty the default (\"Browse for folder\") is kept.",
+      "TITLE": "Text shown above the folder tree.",
+      "INITIALDIR": "Folder highlighted when the dialog opens.",
+      "DIRECTORY": "Selected folder after Execute returns 1; for a virtual folder it holds only the folder's display name.",
+      "X": "Purpose not clear from the source; the field is never used.",
+      "BROWSEHOOK": "Internal: callback passed to SHBrowseForFolder; on initialization it centers the dialog, selects InitialDir and sets Caption.",
+      "EXECUTE": "Shows the dialog; returns 1 and sets Directory when the user presses OK, 0 when the dialog is cancelled or closed."
+    },
+    "example": "$INCLUDE \"QBrowseDialog.inc\"\nDIM Browse AS QBROWSEDIALOG\nBrowse.Caption = \"Select folder\"\nBrowse.Title = \"Choose the output folder:\"\nBrowse.InitialDir = \"C:\\\"\nIF Browse.Execute THEN ShowMessage Browse.Directory",
+    "example_origin": "written",
+    "author": "Psyclops",
+    "version": "",
+    "date": "",
+    "caveats_en": [
+      "Execute appends CHR$(0) to InitialDir every time it is called, so the property grows with repeated calls.",
+      "ulFlags of BROWSEINFO is never set, so the defined BIF_RETURNONLYFSDIRS constant is not used and virtual folders can be selected.",
+      "The MAX_PATH constant is commented out and must come from another include."
+    ]
+  },
+  "QDriveComboBox@QDriveCombobox.inc": {
+    "summary_en": "QDriveComboBox is a QComboBox meant to list the drive letters present on the computer.",
+    "summary_ru": "QDriveComboBox — выпадающий список QComboBox для показа имеющихся на компьютере дисков.",
+    "description_en": [
+      "GetDrives checks the letters A to Z with GetDriveType from kernel32 and adds every root (such as \"C:\\\") whose type is not 1 (no root directory), then selects the first item. The list is not filled automatically; call GetDrives yourself.",
+      "The whole type is inside $IFNDEF __RQINC2; the comment says the component was added to RapidQ2.inc, so this definition is skipped when that file is included. The file's comments are in French."
+    ],
+    "requires": [],
+    "members": {
+      "GETDRIVES": "Adds the root of every existing drive (A:\\ to Z:\\) to the list using AddItems and sets ItemIndex to 0.",
+      "ADDITEMS": "Declared as an empty SUB in this type; it has no code of its own.",
+      "DELITEMS": "Declared as an empty SUB in this type; it has no code of its own.",
+      "CLEAR": "Declared as an empty SUB in this type; it has no code of its own."
+    },
+    "example": "$INCLUDE \"QDriveCombobox.inc\"\nCREATE Form AS QFORM\n  Caption = \"Drives\"\n  CREATE Drives AS QDriveComboBox\n    Parent = Form\n  END CREATE\nEND CREATE\nDrives.GetDrives\nForm.ShowModal",
+    "example_origin": "written",
+    "author": "",
+    "version": "",
+    "date": "",
+    "caveats_en": [
+      "AddItems, DelItems and Clear are declared as empty SUBs, replacing the QComboBox methods of the same names, and GetDrives calls QDriveComboBox.AddItems; the source does not show whether the inherited methods are still reached.",
+      "GetDriveType is declared only when __WIN32API is not defined."
+    ]
+  },
+  "QCOLORBUTTON@QColorButton.inc": {
+    "summary_en": "QCOLORBUTTON is a small square QPanel that behaves like a push button with a pressed look.",
+    "summary_ru": "QCOLORBUTTON — маленькая квадратная панель QPanel, работающая как кнопка с эффектом нажатия.",
+    "description_en": [
+      "The constructor makes a 26 x 26 panel with BevelInner = 2, color &HEEEEEE and cursor -21. On mouse down BorderStyle is set to 1 and a space is put before the caption, so the button looks pressed; on mouse up BorderStyle goes back to 0 and the space is removed.",
+      "Code to play a click sound with SOUND using SndFreq and SndDur is present but commented out, with a comment that it is not XP compatible."
+    ],
+    "requires": [],
+    "members": {
+      "SNDFREQ": "Intended frequency of the click sound; it does nothing because the SOUND code that uses it is commented out.",
+      "SNDDUR": "Intended duration of the click sound; it does nothing because the SOUND code that uses it is commented out."
+    },
+    "example": "$INCLUDE \"QColorButton.inc\"\nDECLARE SUB BtnClick\nCREATE Form AS QFORM\n  Caption = \"Button\"\n  CREATE Btn AS QCOLORBUTTON\n    Parent = Form\n    Caption = \"A\"\n    OnClick = BtnClick\n  END CREATE\nEND CREATE\nForm.ShowModal\n\nSUB BtnClick\n  ShowMessage \"Clicked\"\nEND SUB",
+    "example_origin": "written",
+    "author": "Achilles B. Mina",
+    "version": "",
+    "date": "Uploaded 7/5/03",
+    "caveats_en": [
+      "SndFreq and SndDur have no effect: the sound code is commented out with the note \"XP compatibles ;-(\".",
+      "OnMouseUp removes the added space with Caption - \" \", which removes every space in the caption, so captions containing spaces lose them after a click.",
+      "The component assigns its own OnMouseDown and OnMouseUp handlers."
+    ]
+  }
+}

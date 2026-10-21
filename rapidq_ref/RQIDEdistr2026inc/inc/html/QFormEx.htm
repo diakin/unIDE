@@ -1,0 +1,79 @@
+<html>
+<head>
+<title>QFormEx.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QFormEx</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>CONST</b></font> WM_DROPFILES=&H233
+<font color="0000AA"><b>TYPE</b></font> TPOINT
+  X <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  Y <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> DragAcceptFiles <font color="0000AA"><b>LIB</b></font> "<font color="990000">SHELL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">DragAcceptFiles</font>" <b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,Accept <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> DragFinish <font color="0000AA"><b>LIB</b></font> "<font color="990000">SHELL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">DragFinish</font>" <b>(</b>hDrop <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> DragQueryFile <font color="0000AA"><b>LIB</b></font> "<font color="990000">SHELL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">DragQueryFileA</font>" <b>(</b>hDrop <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,iFile <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lpszFile <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,cch <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> DragQueryPoint <font color="0000AA"><b>LIB</b></font> "<font color="990000">SHELL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">DragQueryPoint</font>" <b>(</b>hDrop <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lppt <font color="0000AA"><b>AS</b></font> TPOINT<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Sub</b></font> OnDrag_eventTemplate<b>(</b>file <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+
+<font color="0000AA"><b>Type</b></font> QFormEx <font color="0000AA"><b>extends</b></font> <font color="000099"><b>QFORM</b></font>
+  DragZone <font color="0000AA"><b>as</b></font> <font color="000099"><b>QRect</b></font>
+  DragEnable <font color="0000AA"><b>as</b></font> boolean PROPERTY SET SetDragEnable
+  OnDrag <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>OnDrag_eventTemplate<b>)</b> 
+
+  <font color="007700"><i>'============================================</i></font> 
+  <font color="007700"><i>' Proprieté Acceptation de dépose fichier</i></font> 
+  <font color="007700"><i>'============================================</i></font> 
+  PROPERTY SET SetDragEnable<b>(</b>flag <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+    DragAcceptFiles<b>(</b>QFormEx.Handle,flag<b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'=============================================</i></font> 
+  <font color="007700"><i>' Méthode reception de message dépose fichier</i></font> 
+  <font color="007700"><i>'=============================================</i></font> 
+  <font color="0000AA"><b>SUB</b></font> DragMessage<b>(</b>Hwnd <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,uMsg <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,wParam <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,lParam <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> Point <font color="0000AA"><b>AS</b></font> TPOINT
+    <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> File <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>    
+    <font color="0000AA"><b>dim</b></font> Count <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> Length <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> uMsg=WM_DROPFILES <font color="000099"><b>then</b></font>
+       DragQueryPoint<b>(</b>wParam,Point<b>)</b>
+       <font color="0000AA"><b>if</b></font> Point.X >= QFormEx.DragZone.Left <font color="0000AA"><b>AND</b></font> Point.Y >= QFormEx.DragZone.Top <font color="0000AA"><b>and</b></font> _
+          Point.X &lt; QFormEx.DragZone.Right <font color="0000AA"><b>AND</b></font> Point.Y &lt; QFormEx.DragZone.Bottom <font color="000099"><b>then</b></font>
+           Count=DragQueryFile<b>(</b>wParam,&HFFFFFFFF,<font color="0000AA"><b>VARPTR</b></font><b>(</b>File<b>)</b>,0<b>)</b>
+           <font color="0000AA"><b>FOR</b></font> i=0 <font color="0000AA"><b>to</b></font> Count-1
+              Length=DragQueryFile<b>(</b>wParam,i,0,0<b>)</b>
+              File=<font color="0000AA"><b>space$</b></font><b>(</b>Length+1<b>)</b>
+              DragQueryFile<b>(</b>wParam,i,<font color="0000AA"><b>VARPTR</b></font><b>(</b>File<b>)</b>,Length+1<b>)</b>
+              <font color="0000AA"><b>if</b></font> QFormEx.OnDrag&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QFormEx.OnDrag,File<b>)</b>
+           <font color="000099"><b>next</b></font>
+       <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+       DragFinish<b>(</b>wParam<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+
+
+ 
+</pre>
+</body>
+</html>

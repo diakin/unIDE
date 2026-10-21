@@ -1,0 +1,489 @@
+{
+ "QHTML@QHTML.inc": {
+  "summary_en": "A read-only viewer for simplified HTML pages, drawn on a panel in pure RapidQ code.",
+  "summary_ru": "Панель для просмотра (только чтение) упрощённых HTML-страниц, написанная на чистом RapidQ без API и DLL.",
+  "description_en": [
+   "QHTML extends QPanel and shows HTML text without any Windows API call or DLL; the header says this was done so the class could be ported to the Linux version. It parses the markup into fixed-size element arrays (htmlMaxElements = 200000) and paints them on an internal QImage with a vertical scroll bar and a status bar that shows the URL of the hovered link.",
+   "Supported tags include A, AREA, B, BIG, BR, BLOCKQUOTE, BODY (BGCOLOR, TEXT, LINK, BACKGROUND), CENTER, EM, FONT (FACE, COLOR), H1-H6, I, IMG, MAP, P, PRE/KBD, SMALL, S/STRIKE, STRONG, TITLE and U. A page that contains FRAMESET is replaced by an error page. Named HTML colors are taken from a built-in table.",
+   "Load a page with OpenFile or by assigning HTMLText. Images and the BODY background are drawn only when an OnLoadImage handler loads the file into the QImage it receives; otherwise the image source text is shown. OnTagClick gives the HREF of a clicked link, so the program can open the next page itself. PrintPreview opens a maximized preview window with print, page navigation, save-as-bitmap and printer selection; SearchText finds and highlights text."
+  ],
+  "requires": [],
+  "members": {
+   "HTMLTEXT": "HTML source of the page. Assigning it parses the text and starts a repaint with the scroll bar recalculated; the setter does not store the value in HTMLText.",
+   "DOCUMENTTITLE": "Page title taken from the TITLE tag during parsing. Read only: assigning it does nothing.",
+   "DEFAULTFONTNAME": "Font name used for text that has no FONT FACE (default \"Arial\"). Assigning it only stores the value; it is applied the next time a page is parsed.",
+   "DEFAULTFONTSIZE": "Font size used for text that has no explicit size (default 12). Assigning it only stores the value; it is applied the next time a page is parsed.",
+   "ONHOVER": "Raised when the mouse moves over the page, with TypeObject (\"HREF\" for a link, otherwise the element type or an empty string) and URL (the link HREF or the hovered element text).",
+   "ONTAGCLICK": "Raised on mouse up over a hovered element, with HoveredTag as the only parameter: the HREF (URL or file name) for a link, the element text for other elements.",
+   "ONLOADIMAGE": "Raised when an image or background file is needed, with an invisible QImage and the file name; the handler must load the picture into that QImage (for example JPEG or GIF through an external routine). If the QImage width stays 0, the image is treated as not drawable.",
+   "OPENFILE": "OpenFile(FileName) reads the whole file with a QFileStream, parses it and repaints. FileName is a local file, not a URL.",
+   "REPAINT": "Redraws the current page and recalculates the scroll bar without parsing it again.",
+   "PRINTPREVIEW": "Opens a maximized preview window of the page split into printer pages, with buttons for print current page, print all pages, first/previous/next/last page, save current page as a bitmap, a With background check box and a printer selection combo box.",
+   "SEARCHTEXT": "SearchText(Text, Popupwindow) searches the page for Text and highlights the match; the next call continues after the previous match. With Popupwindow true, or an empty Text, it opens a modal Search dialog with Next and Cancel buttons. Returns true if a match was found."
+  },
+  "example": "$INCLUDE \"QHTML.inc\"\nDECLARE SUB LinkClick(URL AS STRING)\nDECLARE SUB LoadImg(Image AS QImage, FileName AS STRING)\n\nCREATE Form AS QFORM\n  Width = 640\n  Height = 480\n  CREATE Html AS QHTML\n    Align = alClient\n    OnTagClick = LinkClick\n    OnLoadImage = LoadImg\n  END CREATE\nEND CREATE\n\nSUB LinkClick(URL AS STRING)\n  Html.OpenFile URL\nEND SUB\n\nSUB LoadImg(Image AS QImage, FileName AS STRING)\n  IF FileExists(FileName) THEN Image.BMP = FileName\nEND SUB\n\nHtml.OpenFile \"index.htm\"\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Pascal Delcombel",
+  "version": "1.0",
+  "date": "2003-2008",
+  "caveats_en": [
+   "The header lists the limits: only a few tags are supported (tables are named as not included), no frames, no form controls, no download, and at most 200000 elements because the arrays cannot be resized inside a QObject; the limit is the constant htmlMaxElements.",
+   "The header documents OnHover and OnTagClick with extra x, y and shift parameters, but the event templates and the CALLFUNC calls pass only TypeObject and URL (OnHover) and URL (OnTagClick).",
+   "The HTMLText setter never stores the assigned text, so reading HTMLText back does not return the page source.",
+   "Without an OnLoadImage handler no image or background picture is drawn; only the image source text is shown.",
+   "The function AdjustCompletePath is defined but never called, so image and link paths are passed on exactly as written in the page.",
+   "Until a page is loaded, a built-in copyright page (QHTML v0.1 2002) is shown.",
+   "Mouse hover detection only handles anchor areas with the RECT shape."
+  ]
+ },
+ "QVideo@QVideo.inc": {
+  "summary_en": "A video player object that plays media files through MCI string commands.",
+  "summary_ru": "Объект-видеоплеер, воспроизводящий медиафайлы через строковые команды MCI.",
+  "description_en": [
+   "QVideo extends QObject and controls a media file with mciSendString from winmm.dll. The file is opened under the fixed MCI alias MEDIA, either as a child window of a given window handle (Parent) or as its own popup or overlapped window. After opening, the length is read in milliseconds and in frames, the source size is read, and the MCI window handle is stored in Handle.",
+   "Use Open to load a file, then Play, Pause, Stop and Close. An internal QTimer with a 1000 ms interval polls the position while playing and raises OnChange with the current frame and time in seconds. Volume sets the wave output volume with waveOutSetVolume."
+  ],
+  "requires": [],
+  "members": {
+   "TIMER": "Internal: QTimer (interval 1000 ms) enabled while playing; on each tick it reads the position and mode and raises OnChange.",
+   "LENGHT": "Length of the open media in frames (spelled Lenght in the source); 0 when closed.",
+   "LENGHTTIME": "Length of the open media in seconds (spelled LenghtTime in the source); 0 when closed.",
+   "STATE": "Current state: VD_CLOSE (0), VD_PLAY (1), VD_PAUSE (2) or VD_STOP (3).",
+   "HANDLE": "Window handle of the MCI video window, read after Open.",
+   "FILEOPEN": "True while a media file is open.",
+   "ERROR": "MCI error text set when Open fails to open the file.",
+   "PARENT": "Window handle to play in. If nonzero when Open is called, the video window is created as a child of this window; if 0, a separate window is used.",
+   "BORDERSTYLE": "Used by Open when Parent is 0: 0 opens a popup window, any other value an overlapped window.",
+   "IMGWIDTH": "Width of the video source, read with the MCI where source command at Open.",
+   "IMGHEIGHT": "Height of the video source, read with the MCI where source command at Open.",
+   "LEFT": "X position of the video window. Assigning it moves the window with MoveWindow (and brings a separate window to the front); it is ignored while no file is open.",
+   "TOP": "Y position of the video window. Assigning it moves the window with MoveWindow; it is ignored while no file is open.",
+   "WIDTH": "Width of the video window. Assigning it resizes the window with MoveWindow; it is ignored while no file is open.",
+   "HEIGHT": "Height of the video window. Assigning it resizes the window with MoveWindow; it is ignored while no file is open.",
+   "CURRENTFRAME": "Current frame. When stopped or paused, assigning it seeks to that frame, clamped between 0 and Lenght; otherwise the assignment is ignored. Play starts from this frame.",
+   "AUDIOOFF": "Assigning true turns the sound off and false turns it on (MCI set audio all off/on) while a file is open.",
+   "CAPTION": "Title of the separate video window. Assigning it stores the text and, when a file is open and Parent is 0, sets the window text.",
+   "WINDOWSTATE": "State of the separate video window: 0 normal, 1 minimized, 2 maximized (ShowWindow 1, 2 or 3). Only applied when a file is open and Parent is 0; other values set it to 0.",
+   "VOLUME": "Volume from 0 to 100. Assigning it sets the volume of wave output device 0 with waveOutSetVolume for both channels; values above 100 are ignored.",
+   "ONCHANGE": "Raised every timer tick while playing, with the current frame (position) and the current time in seconds (timePos).",
+   "CLOSE": "Stops and closes the media and resets the length, size, position and state fields to 0 / VD_CLOSE.",
+   "OPEN": "Open(FileName) opens the file under the alias MEDIA and fills the length, size and Handle fields. Returns true on success; on failure it sets Error (when MCI cannot open the file) and calls Close.",
+   "SHOW": "Shows the video window (MCI window state show).",
+   "PLAY": "Plays from CurrentFrame and starts the position timer.",
+   "STOP": "Stops playback, stops the timer, sets CurrentFrame to 0 and seeks to the start.",
+   "PAUSE": "Pauses playback when playing and stores the current position in CurrentFrame."
+  },
+  "example": "$INCLUDE \"QVideo.inc\"\nDIM Video AS QVideo\n\nCREATE Form AS QFORM\n  Width = 400\n  Height = 340\n  CREATE Panel AS QPANEL\n    Align = alClient\n  END CREATE\nEND CREATE\n\nVideo.Parent = Panel.Handle\nIF Video.Open(\"clip.avi\") THEN\n  Video.Play\nELSE\n  ShowMessage Video.Error\nEND IF\nForm.ShowModal\nVideo.Close",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.3",
+  "date": "",
+  "caveats_en": [
+   "All instances use the same fixed MCI alias MEDIA, so only one file can be open at a time.",
+   "The file name is inserted into the MCI open command without quotes, so names containing spaces are not handled.",
+   "The AudioOff setter does not store the assigned value, so reading AudioOff does not reflect the sound state.",
+   "Volume sets wave output device 0, not only this media; negative values are not rejected.",
+   "Left, Top, Width and Height assignments are ignored (not stored) while no file is open.",
+   "Lenght and LenghtTime are misspelled in the source and must be used with that spelling."
+  ]
+ },
+ "QAnimate@QAnimate.inc": {
+  "summary_en": "A wrapper for the Windows Animation common control (SysAnimate32) that plays silent AVI clips.",
+  "summary_ru": "Обёртка над стандартным элементом Windows Animation (SysAnimate32) для проигрывания беззвучных AVI-роликов.",
+  "description_en": [
+   "QAnimate extends QObject and creates its own window class QAnimate based on SysAnimate32. Register (called by the constructor) subclasses the control window procedure and the parent window procedure through SetNewCallBack_4 callbacks, so it can paint the background, raise OnPaint, and raise OnStart and OnStop from the ACN_START and ACN_STOP notifications.",
+   "The window is created when Parent (a QForm), Parent2 (a QPanel) or ParetWindow (a raw window handle) is assigned. The clip comes either from an AVI file (File) or from one of the standard animations in shell32.dll (CommonAvi, using the aviFindFolder, aviFindFile, aviFindComputer, aviCopyFiles, aviCopyFile, aviRecycleFile, aviEmptyRecycle and aviDeleteFile defines). GetAnimateInfo reads the frame count and frame size from the AVI header.",
+   "Style properties (BorderStyle, Transparent, Center, AutoPlay) recreate the window when assigned; the frame range and repeat count restart playback."
+  ],
+  "requires": [
+   "Win32 API declarations and constants that the file uses but does not include, such as CreateWindowEx, InvalidateRect, RedrawWindow, FindResource, MoveWindow, GetClassInfo, RegisterClass, InitCommonControls, ACM_OPEN/ACM_PLAY/ACM_STOP, ACS_* styles and ACN_START/ACN_STOP",
+   "Helper routines used but not defined in the file: SetNewCallBack_4 (defined in CallBack_4.Inc and rapidq2.inc in this library), NewZStr (Memory.inc), MemCpy, MakeLong, HiWord"
+  ],
+  "members": {
+   "HANDLE": "Window handle of the animation control; 0 until the window is created.",
+   "PARENT": "Parent form. Assigning a QForm creates the control on it (or moves an existing control there) and subclasses the form window procedure to receive start and stop notifications.",
+   "PARENT2": "Parent panel. Assigning a QPanel works like Parent but uses the panel as the parent window.",
+   "PARETWINDOW": "Parent window handle (spelled ParetWindow in the source). Assigning a handle works like Parent but takes any window handle.",
+   "LEFT": "X position. Assigning it moves the control with MoveWindow if the window exists.",
+   "TOP": "Y position. Assigning it moves the control with MoveWindow if the window exists.",
+   "WIDTH": "Width (default 221). Assigning it resizes the control with MoveWindow if the window exists.",
+   "HEIGHT": "Height (default 55). Assigning it resizes the control with MoveWindow if the window exists.",
+   "ENABLED": "Assigning it enables or disables the control window with EnableWindow.",
+   "VISIBLE": "Assigning it shows or hides the control window (default 1).",
+   "POSITION": "Declared with PROPERTY SET SetPosition, but no SetPosition setter exists in the source. Purpose not clear from the source.",
+   "BORDERSTYLE": "Nonzero gives the control a sunken client edge (WS_EX_CLIENTEDGE); default 1. Assigning it recreates the window.",
+   "AUTOPLAY": "Nonzero sets the ACS_AUTOPLAY style so the clip plays when opened. Assigning it recreates the window.",
+   "TRANSPARENT": "Nonzero sets the ACS_TRANSPARENT style; default 1. Assigning it recreates the window.",
+   "CENTER": "Nonzero sets the ACS_CENTER style to center the clip in the control. Assigning it recreates the window.",
+   "STARTFRAME": "First frame to play (0 means the start). Assigning it stops and plays again.",
+   "STOPFRAME": "Last frame to play (0 means FrameCount). Assigning it stops and plays again.",
+   "COMMONAVI": "Resource number of a standard AVI in shell32.dll (aviFindFolder 150, aviFindFile 151, aviFindComputer 152, aviCopyFiles 160, aviCopyFile 161, aviRecycleFile 162, aviEmptyRecycle 163, aviDeleteFile 164; aviNone 0). Assigning it opens that clip if the window exists.",
+   "FILE": "AVI file name to play. Assigning it sets CommonAvi to 0 and opens the clip if the window exists.",
+   "REPEAT": "Repeat count passed to ACM_PLAY (default -1). Assigning it stops and plays again.",
+   "COLOR": "Background color used to erase the control (default the system window color). Assigning it recreates the background brush.",
+   "FRAMECOUNT": "Number of frames, read from the AVI header by GetAnimateInfo.",
+   "FRAMEWIDTH": "Frame width, read from the AVI header by GetAnimateInfo.",
+   "FRAMEHEIGHT": "Frame height, read from the AVI header by GetAnimateInfo.",
+   "ONSTART": "Raised when the control reports that playback started (ACN_START), with the sender handle.",
+   "ONSTOP": "Raised when the control reports that playback stopped (ACN_STOP), with the sender handle.",
+   "ONPAINT": "Raised on WM_PAINT after the default painting, with the window handle and the device context from wParam.",
+   "INVALIDATE": "Marks the control window for repainting with InvalidateRect.",
+   "UPDATE": "Forces an immediate repaint with UpdateWindow.",
+   "REPAINT": "Erases and invalidates the window with RedrawWindow, then calls Update.",
+   "GETANIMATEINFO": "Reads the first 18 DWORDs of the AVI header (from File, or from the shell32.dll resource when File is empty) and sets FrameCount, FrameWidth and FrameHeight.",
+   "OPEN": "Opens the clip from File or CommonAvi in the control (ACM_OPEN) and reads its header information.",
+   "PLAY": "Repaints and plays from StartFrame to StopFrame (StopFrame 0 means FrameCount) with the Repeat count.",
+   "STOP": "Stops playback (ACM_STOP).",
+   "CREATEWND": "Internal: creates the control window with the current style properties if it does not exist yet.",
+   "RECREATEWND": "Internal: destroys and recreates the window, then opens and plays again if it was opened or playing before.",
+   "PARENTWNDPROC": "Internal: replacement window procedure of the parent window; it raises OnStart and OnStop from WM_COMMAND notifications.",
+   "WNDPROC": "Internal: window procedure of the QAnimate class; it handles WM_NCHITTEST, WM_PAINT (OnPaint) and WM_ERASEBKGND (fills with Color).",
+   "REGISTER": "Internal: called by the constructor; creates the callbacks, registers the QAnimate window class based on SysAnimate32, gets the shell32.dll handle and creates the background brush."
+  },
+  "example": "$INCLUDE \"QAnimate.inc\"\nCREATE Form AS QFORM\n  Width = 300\n  Height = 150\nEND CREATE\n\nDIM Anim AS QAnimate\nAnim.Parent = Form\nAnim.CommonAvi = aviCopyFiles\nAnim.Play\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Nastase Eodor",
+  "version": "1.2 (stable)",
+  "date": "",
+  "caveats_en": [
+   "Position is declared with PROPERTY SET SetPosition, but the source contains no SetPosition setter.",
+   "The file declares none of the Win32 functions and constants it uses; they must come from other include files.",
+   "When the clip resource is not found, GetAnimateInfo does nothing; the error branch contains only the comment 'Raise Error'.",
+   "In Open, both branches for File (resource in the executable or not) do the same thing, and GetAnimateInfo always opens File as a disk file.",
+   "Assigning Repeat, StartFrame or StopFrame always calls Play, so it starts playback even if the clip was stopped."
+  ]
+ },
+ "QBitmapEx@QBitmapEx.inc": {
+  "summary_en": "An extended QBITMAP with GDI drawing methods, clipboard support and JPEG/GIF loading and JPEG saving through NViewLib.dll.",
+  "summary_ru": "Расширенный QBITMAP: рисование через GDI, работа с буфером обмена, загрузка JPEG/GIF и сохранение в JPEG через NViewLib.dll.",
+  "description_en": [
+   "QBitmapEx extends QBITMAP with drawing methods that call GDI directly on the bitmap handle: outlined and filled circles, rectangles and rounded rectangles, lines, flood fill, color inversion, horizontal mirror and vertical flip. Outlines use the PenStyle (PS_SOLID_BMP ... PS_INSIDEFRAME_BMP) and PenSize fields.",
+   "It can copy the bitmap to the clipboard as CF_BITMAP, paste a clipboard bitmap at a position, and report the clipboard bitmap size. DrawIco draws an icon handle with DrawIconEx.",
+   "LoadOtherImage and SaveAsJpg use the external NViewLib.dll to load other image formats and to save the bitmap as a JPEG file."
+  ],
+  "requires": [
+   "NViewLib.dll (for LoadOtherImage and SaveAsJpg)"
+  ],
+  "members": {
+   "PENSTYLE": "Pen style for outlines and lines, one of the PS_*_BMP constants (default PS_SOLID_BMP).",
+   "PENSIZE": "Pen width in pixels for outlines and lines (default 1).",
+   "DRAWICO": "DrawIco(left, top, width, height, handle) draws the icon with the given handle at that position and size using DrawIconEx.",
+   "COPYTOCLIPBOARD": "Copies the bitmap to the clipboard in CF_BITMAP format.",
+   "PASTEFROMCLIPBOARD": "PasteFromClipboard(x, y) draws the clipboard bitmap onto this bitmap at x, y if the clipboard holds a bitmap; the bitmap is not resized.",
+   "GETWIDTHCLIPBOARD": "Returns the width of the bitmap on the clipboard (0 if there is none).",
+   "GETHEIGHTCLIPBOARD": "Returns the height of the bitmap on the clipboard (0 if there is none).",
+   "CANPASTE": "Returns true if the clipboard contains a bitmap.",
+   "CIRCLE": "Circle(x1, y1, x2, y2, c) draws an outlined ellipse in the given bounding rectangle with color c.",
+   "CIRCLEFILLED": "CircleFilled(x1, y1, x2, y2, c, fill) draws an ellipse with outline color c filled with color fill.",
+   "RECTANGLE": "Rectangle(x1, y1, x2, y2, c) draws an outlined rectangle with color c.",
+   "ROUNDRECT": "RoundRect(x1, y1, x2, y2, x3, y3, c) draws an outlined rectangle with rounded corners; x3 and y3 are the corner ellipse size.",
+   "ROUNDRECTFILLED": "RoundRectFilled(x1, y1, x2, y2, x3, y3, c, fill) draws a rounded rectangle with outline color c filled with color fill.",
+   "RECTANGLEFILLED": "RectangleFilled(x1, y1, x2, y2, c, fill) draws a rectangle with outline color c filled with color fill.",
+   "LINE": "Line(x1, y1, x2, y2, c) draws a line with color c using the current pen style and size.",
+   "FILLSURFACE": "FillSurface(x, y, c) flood-fills the area of the same color as the pixel at x, y with color c.",
+   "INVERTCOLOR": "InvertColor(x, y, width, height) inverts the colors of the given area.",
+   "MIRROR": "Mirror(x, y, width, height) mirrors the given area horizontally.",
+   "FLIP": "Flip(x, y, width, height) mirrors the given area vertically.",
+   "LOADOTHERIMAGE": "LoadOtherImage(FileName, Progress, Language) loads an image file through NViewLib.dll (with optional progress display and language), sets PixelFormat to 6 and resizes the bitmap to the image size.",
+   "SAVEASJPG": "SaveAsJpg(FileName, Quality) saves the bitmap as a JPEG file with the given quality through NViewLib.dll, using a temporary temp.bmp in the target folder."
+  },
+  "example": "$INCLUDE \"QBitmapEx.inc\"\nDIM Bmp AS QBitmapEx\nBmp.Width = 200\nBmp.Height = 100\nBmp.PenSize = 2\nBmp.RectangleFilled(10, 10, 190, 90, &H000000, &HFFFFFF)\nBmp.Circle(50, 20, 110, 80, &HFF0000)\nBmp.Line(10, 50, 190, 50, &H0000FF)\nBmp.CopyToClipboard\nBmp.SaveAsJpg(\"C:\\Temp\\picture.jpg\", 80)",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.4",
+  "date": "",
+  "caveats_en": [
+   "SaveAsJpg does nothing unless FileName contains a path to an existing folder; it writes temp.bmp into that folder and deletes it afterwards.",
+   "CopyToClipboard puts the handle of a local temporary QBitmap on the clipboard.",
+   "Load_JPGBmp and Load_GIFBmp are declared from NViewLib.dll but never used."
+  ]
+ },
+ "QFocus@qfocus.inc": {
+  "summary_en": "A canvas that can be moved and resized with the mouse and can draw a blinking dotted focus frame around itself.",
+  "summary_ru": "Холст, который можно перемещать и менять размер мышью, с мигающей пунктирной рамкой фокуса.",
+  "description_en": [
+   "QFocus extends QCanvas. An internal QTimer with a 1 ms interval drives it: when Show is 1 it draws a dotted rectangle around the canvas, alternating between color &H0000F and white, and while the mouse is held down inside it the canvas follows the cursor, positioned relative to the client area of the active window.",
+   "Pressing the mouse near the right or bottom edge (within 7 pixels) changes the cursor and lets the user resize the canvas; OnSize is called with the new width and height. CopyToClipboard copies the canvas pixels to the clipboard as a bitmap. The component uses global variables and GDI calls declared in the file and includes rapidq2.inc."
+  ],
+  "requires": [
+   "rapidq2.inc"
+  ],
+  "members": {
+   "TRANSPARENT": "Copied by the timer to the Transparent property of the global QImage focusimage (default 1); focusimage is not shown on any form in this file.",
+   "TRANSPARENTCOLOR": "Copied by the timer to the TransparentColor property of the global QBitmap focusbitmap (default &HFFFFFF).",
+   "OBJECTFOCUSTIMER": "Internal: QTimer (interval 1 ms, always enabled) that draws the blinking frame and moves the canvas while it is dragged.",
+   "SHOW": "When 1, the timer draws the blinking dotted frame around the canvas. CopyToClipboard sets it to 1.",
+   "ONSIZE": "Raised while the canvas is resized with the mouse, with the new width and height.",
+   "COPYTOCLIPBOARD": "Repaints the canvas, copies its pixels to the clipboard as a bitmap (format 2) and sets Show to 1.",
+   "PASTEFROMCLIPBOARD": "If the clipboard has a bitmap, loads it into the global focusimage and focusbitmap; it does not draw it on the canvas.",
+   "DRAGME": "Moves the canvas so that its center is at the mouse cursor, relative to the client area of the active window."
+  },
+  "example": "$INCLUDE \"qfocus.inc\"\nCREATE Form AS QFORM\n  Width = 400\n  Height = 300\n  CREATE Focus AS QFocus\n    Left = 20\n    Top = 20\n    Width = 100\n    Height = 60\n  END CREATE\nEND CREATE\nFocus.Show = 1\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "John Graves aka laddie@bellsouth.net",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "OnMouseMove contains two debug ShowMessage calls (the active window handle and \"2\"), so a message box appears on every mouse move over the canvas.",
+   "The timer handler has mismatched blocks ('with qfocus' closed by 'end if'), and the test 'x>6 or x<.width-6' is always true.",
+   "State is kept in global variables (dragenable, rectangledrag?, focusbitmap, focusimage, wrct, crct), so several QFocus objects share it; an unused global 'drag as qbutton' is also declared.",
+   "OnSize is called with CALLFUNC without checking that a handler is assigned.",
+   "CopyToClipboard deletes the bitmap handle right after passing it to the clipboard.",
+   "The timer runs every 1 ms for as long as the object exists."
+  ]
+ },
+ "QMenu@qmenu.inc": {
+  "summary_en": "A helper object that makes form menu items owner-drawn with icons and shows item descriptions in a status bar.",
+  "summary_ru": "Вспомогательный объект: рисует пункты меню формы с иконками (owner-draw) и показывает описания пунктов в строке состояния.",
+  "description_en": [
+   "QMenu extends QOBJECT. Set subclasses the window procedure of a form and handles WM_MEASUREITEM, WM_DRAWITEM and WM_MENUSELECT. OwnerDraw turns a menu item into an owner-drawn item with SetMenuItemInfo and remembers an image index from imgs and a description text for its command ID.",
+   "Owner-drawn items are drawn with the image on the left, a raised frame and a dark blue highlight when selected, and the caption with its & accelerator underlined. When Descrip is nonzero, the description of the selected item is shown in panel Panel of a status bar named StatusBar. Call Close to restore the original window procedure.",
+   "The code uses the global variables mii, DrawItem, MeasureItem and Mem and the API declarations from API.INC."
+  ],
+  "requires": [
+   "API.INC",
+   "A QStatusBar named StatusBar (used when Descrip is nonzero)"
+  ],
+  "members": {
+   "DESCRIP": "When nonzero, the description of the selected menu item is shown in the status bar (default 0).",
+   "PANEL": "Index of the StatusBar panel used for descriptions (default 0).",
+   "FONT": "Font used for item captions; the caption accelerator letter is drawn with this font plus underline.",
+   "IMGS": "Image list holding the menu item images; OwnerDraw stores an index into it for each item.",
+   "SET": "Set(form) subclasses the window procedure of the form so the menu items can be owner-drawn and described.",
+   "CLOSE": "Restores the original window procedure of the form.",
+   "OWNERDRAW": "OwnerDraw(ParentItem, MenuItem, dibu, descripcion) makes MenuItem (a child of ParentItem) owner-drawn, with image index dibu from imgs and the status bar text descripcion.",
+   "DESCRIPTION": "Description(MenuItem, descripcion) sets the status bar text of a menu item without making it owner-drawn."
+  },
+  "example": "$INCLUDE \"qmenu.inc\"\nDIM Menu AS QMenu\n\nCREATE Form AS QFORM\n  CREATE StatusBar AS QSTATUSBAR\n    AddPanels \"\"\n  END CREATE\n  CREATE MainMenu AS QMAINMENU\n    CREATE FileMenu AS QMENUITEM\n      Caption = \"&File\"\n      CREATE OpenItem AS QMENUITEM\n        Caption = \"&Open\"\n      END CREATE\n    END CREATE\n  END CREATE\nEND CREATE\n\nMenu.imgs.AddBMPFile \"open.bmp\", 0\nMenu.Set Form\nMenu.Descrip = 1\nMenu.Panel = 0\nMenu.OwnerDraw FileMenu, OpenItem, 0, \"Open a file\"\nForm.ShowModal\nMenu.Close",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "OwnerDraw contains the typo '.dwItemData = = VARPTR(S)'.",
+   "In ShowDescription the END IF and END WITH blocks cross each other.",
+   "Item size is fixed at 60 x 19 pixels in WM_MEASUREITEM; the comment says it should be big enough to fit your items.",
+   "The status bar must be a global object named StatusBar; the name is hard-coded.",
+   "The arrays bitmap() and descp() are declared without a size and indexed by menu command ID."
+  ]
+ },
+ "QSHFileOperation@QSHFileOperation.inc": {
+  "summary_en": "A wrapper for the SHFileOperation API to copy, move, rename and delete files and folders.",
+  "summary_ru": "Обёртка над функцией API SHFileOperation для копирования, перемещения, переименования и удаления файлов и папок.",
+  "description_en": [
+   "QSHFileOperation extends QObject and calls SHFileOperationA from shell32.dll. It works with wildcards and recursively and, unlike the RapidQ keywords RENAME and KILL, also works with folders; Delete can send files to the Recycle Bin.",
+   "Each operation has a simple form (Copy, Move, Rename, Delete) that uses DefaultFlags and an extended form (CopyEx, MoveEx, RenameEx, DeleteEx) that combines DefaultFlagsEx with flags you pass and takes a window handle for the progress and confirmation dialogs. The fof* flag constants are defined in the file. The methods return the SHFileOperation result."
+  ],
+  "requires": [],
+  "members": {
+   "DEFAULTFLAGSEX": "Flags combined with the flags passed to the Ex methods (default 0).",
+   "DEFAULTFLAGS": "Flags used by the simple methods (default fofRenameOnCollision).",
+   "COPYEX": "CopyEx(From, To, Flags, Handle) copies files or folders from From to To with DefaultFlagsEx OR Flags; Handle is the owner window of the dialogs.",
+   "COPY": "Copy(From, To) copies files or folders from From to To with DefaultFlags.",
+   "MOVEEX": "MoveEx(From, To, Flags, Handle) moves files or folders with DefaultFlagsEx OR Flags.",
+   "MOVE": "Move(From, To) moves files or folders with DefaultFlags.",
+   "RENAMEEX": "RenameEx(From, To, Flags, Handle) renames a file or folder with DefaultFlagsEx OR Flags.",
+   "RENAME": "Rename(From, To) renames a file or folder with DefaultFlags.",
+   "DELETEEX": "DeleteEx(Files, ToBin, Confirm, Flags, Handle) deletes files or folders; ToBin = 1 adds fofAllowUndo (Recycle Bin) and Confirm = 0 adds fofNoConfirmation, combined with DefaultFlagsEx OR Flags.",
+   "DELETE": "Delete(Files, ToBin, Confirm) deletes files or folders with DefaultFlags; ToBin = 1 sends them to the Recycle Bin and Confirm = 0 suppresses confirmation."
+  },
+  "example": "$INCLUDE \"QSHFileOperation.inc\"\nDIM FileOp AS QSHFileOperation\nFileOp.Copy(\"C:\\Temp\\*.txt\", \"C:\\Backup\")\nFileOp.MoveEx(\"C:\\Temp\\Old\", \"C:\\Archive\", fofNoConfirmation OR fofSilent, 0)\nFileOp.Delete(\"C:\\Temp\\test.txt\", 1, 1)",
+  "example_origin": "written",
+  "author": "Marcin Szafran",
+  "version": "1",
+  "date": "January 2002",
+  "caveats_en": [
+   "The header warns: be careful with delete and recurse.",
+   "The SHFILEOPSTRUCT variable and the string buffers are global, so all instances share them.",
+   "The comment on lpszProgressTitle says the progress title does not work; it is never set.",
+   "The comments say some flags need shell32.dll newer than version 4.0, and that deleting to the Recycle Bin needs a full path name (a bare file name is deleted permanently even with fofAllowUndo).",
+   "The ToBin and Confirm parameters are used in arithmetic, so only the values 0 and 1 give the documented result.",
+   "The file turns $TYPECHECK ON at the start and OFF at the end, which affects the code that includes it."
+  ]
+ },
+ "QFormEx@object/QFormEx.inc": {
+  "summary_en": "An extended QFORM with file drag-and-drop, a system tray icon and taskbar handling.",
+  "summary_ru": "Расширенная форма QFORM: приём перетаскиваемых файлов, значок в системном трее и управление кнопкой на панели задач.",
+  "description_en": [
+   "QFormEx extends QFORM and replaces the window procedure of the form (SetWindowLong with GWL_WNDPROC) the first time DragEnable is assigned or AddTrayIcon is called. The new procedure handles WM_DROPFILES, WM_SYSCOMMAND and the tray icon callback message.",
+   "For drag-and-drop, set DragZone to the client area that accepts files and assign DragEnable; OnDrag is raised once for each dropped file whose drop point is inside DragZone. AddTrayIcon puts the application icon in the tray with the application title as tip; while it is shown, minimizing the form raises OnMinimise instead of minimizing, a right click raises OnTrayClick and a left double click raises OnTrayDblClick."
+  ],
+  "requires": [],
+  "members": {
+   "DRAGZONE": "QRect in client coordinates; dropped files are accepted only when the drop point is inside it. It must be set, since the default empty rectangle accepts nothing.",
+   "DRAGENABLE": "Assigning it calls DragAcceptFiles with the value to accept or refuse dropped files, and subclasses the window procedure the first time.",
+   "DESKBAR": "Assigning true makes the desktop the owner of the form and the form the owner of the application window (SetWindowLong GWL_HWNDPARENT), described as putting the application in the desktop taskbar when minimized. Assigning false does nothing.",
+   "FORMSTYLE": "Form style. Assigning it sets the inherited FormStyle; the value 3 also sets the form Parent to a hidden internal QForm.",
+   "ONDRAG": "Raised for each file dropped inside DragZone, with the file name.",
+   "ONTRAYCLICK": "Raised when the tray icon is clicked with the right mouse button (button up).",
+   "ONTRAYDBLCLICK": "Raised when the tray icon is double-clicked with the left mouse button.",
+   "ONMINIMISE": "Raised instead of minimizing the form when the user minimizes it while the tray icon is shown.",
+   "ADDTRAYICON": "Adds a tray icon with Application.Icon and Application.Title as tip, and subclasses the window procedure if needed.",
+   "DELTRAYICON": "Removes the tray icon; minimizing works normally again."
+  },
+  "example": "$INCLUDE \"QFormEx.inc\"\nDECLARE SUB FileDropped(File AS STRING)\n\nCREATE Form AS QFormEx\n  Caption = \"Drop files here\"\n  Width = 400\n  Height = 300\nEND CREATE\n\nSUB FileDropped(File AS STRING)\n  ShowMessage File\nEND SUB\n\nForm.DragZone.Left = 0\nForm.DragZone.Top = 0\nForm.DragZone.Right = Form.ClientWidth\nForm.DragZone.Bottom = Form.ClientHeight\nForm.OnDrag = FileDropped\nForm.DragEnable = 1\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.2",
+  "date": "",
+  "caveats_en": [
+   "With the default DragZone (all zeros) no dropped file is accepted.",
+   "Assigning DragEnable false only stops accepting files; the replaced window procedure stays in place. Assigning DeskBar false does nothing.",
+   "While the tray icon is shown, the minimize command is not passed to the original window procedure, so the form is not minimized unless the OnMinimise handler does it.",
+   "WM_DROPFILES and the tray callback message are not passed on to the original window procedure."
+  ]
+ },
+ "QICMP@QICMP.INC": {
+  "summary_en": "A ping component that sends ICMP echo requests with icmp.dll.",
+  "summary_ru": "Компонент ping: отправляет эхо-запросы ICMP через icmp.dll.",
+  "description_en": [
+   "QICMP extends QObject and uses IcmpCreateFile, IcmpSendEcho and IcmpCloseHandle from icmp.dll. The request options (ReqOpts) and the reply buffer (Reply) are LONG and BYTE arrays rather than TYPE structures, because the source says RapidQ may not store type structures contiguously.",
+   "Call Ping with a dotted IP address string; it returns the round-trip time in milliseconds or -1 on failure. After a ping, ReplyAddress, ReplyStatus, ReplyData and ReplyTTL decode the reply. The IP_* status constants are defined in the file."
+  ],
+  "requires": [
+   "icmp.dll"
+  ],
+  "members": {
+   "TIMEOUT": "Timeout for the echo request in milliseconds (default 3500).",
+   "REQOPTS": "Request options as 8 bytes: TTL, TOS, Flags, OptionsSize, then a pointer to option data. The constructor sets TTL to 255 and the rest to 0.",
+   "ECHOSTRING": "Data sent in the echo request (default \"Echo This\").",
+   "REPLY": "Reply buffer of 71 LONGs: 0 replying address, 1 status, 2 round-trip time in ms, 3 data size and reserved, 4 pointer to data, 5 options, 6 pointer to option data, 7-70 data.",
+   "H": "Internal: ICMP handle from IcmpCreateFile, created on the first Ping.",
+   "PING": "Ping(RemoteIP) sends an echo request to a dotted IPv4 address (converted with inet_addr; host names are not resolved). Returns the round-trip time in ms, or -1 if the handle cannot be created, the address is invalid or no reply arrives.",
+   "REPLYADDRESS": "Returns the address that replied as a dotted string, or an empty string if there is none.",
+   "REPLYSTATUS": "Returns the reply status as text, for example \"ip success\" or \"ip req timed out\".",
+   "REPLYDATA": "Returns the data echoed back in the reply, or an empty string when the round-trip time is 0.",
+   "REPLYTTL": "Returns the TTL value of the reply, decoded from the options field.",
+   "CLOSEHANDLE": "Closes the ICMP handle and returns the IcmpCloseHandle result, or -1 if no handle was open."
+  },
+  "example": "$INCLUDE \"QICMP.INC\"\nDIM Icmp AS QICMP\nDIM Ms AS LONG\nMs = Icmp.Ping(\"192.168.0.1\")\nIF Ms >= 0 THEN\n  PRINT \"Reply from \"; Icmp.ReplyAddress; \" in \"; Ms; \" ms\"\nELSE\n  PRINT \"Failed: \"; Icmp.ReplyStatus\nEND IF\nIcmp.CloseHandle",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "CloseHandle does not reset h to 0, so a Ping after CloseHandle reuses the closed handle. There is no destructor that closes the handle.",
+   "ReplyAddress and ReplyTTL take fixed character positions from HEX$ of the value; if HEX$ returns fewer than 8 digits (no leading zeros), the decoded address or TTL is wrong.",
+   "ReplyData returns an empty string when the round-trip time is 0 ms, even if data was received.",
+   "Ping accepts only numeric IPv4 addresses."
+  ]
+ },
+ "QDrive@QDrive.inc": {
+  "summary_en": "An object that lists the drives on the computer and reports their type, size and free space.",
+  "summary_ru": "Объект, который перечисляет диски компьютера и сообщает их тип, размер и свободное место.",
+  "description_en": [
+   "QDrive extends QObject. The constructor calls GetDrives, which checks the letters A to Z with GetDriveType and stores every drive that has a root directory in Name(1) ... Name(Count) as \"X:\\\".",
+   "GetType, GetSize and GetFreeSpace take a 1-based index into Name and use GetDriveType and GetDiskFreeSpace from kernel32. The DRIVE_* constants for the result of GetType are defined in the file unless another include already defines them."
+  ],
+  "requires": [],
+  "members": {
+   "NAME": "Array of drive root paths such as \"C:\\\", filled from index 1 to Count.",
+   "COUNT": "Number of drives found. Read only: assigning it does nothing.",
+   "GETTYPE": "GetType(index) returns the drive type from GetDriveType (DRIVE_UNKNOWN, DRIVE_NO_ROOT_DIR, DRIVE_REMOVABLE, DRIVE_FIXED, DRIVE_REMOTE, DRIVE_CDROM or DRIVE_RAMDISK).",
+   "GETFREESPACE": "GetFreeSpace(index) returns the free space in bytes (sectors per cluster x bytes per sector x free clusters), or 0 if the call fails.",
+   "GETSIZE": "GetSize(index) returns the total size in bytes (sectors per cluster x bytes per sector x total clusters), or 0 if the call fails.",
+   "GETDRIVES": "Scans the drive letters A to Z and adds each existing drive to Name and Count; called by the constructor."
+  },
+  "example": "$INCLUDE \"QDrive.inc\"\nDIM Drives AS QDrive\nDIM i AS INTEGER\nFOR i = 1 TO Drives.Count\n  PRINT Drives.Name(i); \" type \"; Drives.GetType(i); \" free \"; Drives.GetFreeSpace(i)\nNEXT i",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "GetSize and GetFreeSpace compute the result in 32-bit LONG/INTEGER values, so large disks give wrong (overflowed) values.",
+   "GetDrives does not reset Count; calling it again adds the drives to Count a second time while Name is refilled from index 1.",
+   "The methods check only index <= Count, not index >= 1."
+  ]
+ },
+ "QDigDisplay@QDigDisplay.inc": {
+  "summary_en": "A canvas that shows a text string as digital display characters drawn from bitmap files.",
+  "summary_ru": "Холст, показывающий строку символами «цифрового табло» из BMP-файлов.",
+  "description_en": [
+   "QDigDisplay extends QCanvas. The constructor loads 33 bitmaps, 32.bmp to 64.bmp, into a private QImageList of 12 x 24 pixel images; each file is the image of the character with that ASCII code (space to @, including the digits and the colon).",
+   "Set Display to the text to show. On each paint, DrawDisplay sizes the canvas to the image height and to the image width times the text length, then draws one image per character."
+  ],
+  "requires": [
+   "Bitmap files 32.bmp to 64.bmp (12 x 24 pixels, one per character), loaded from the current folder"
+  ],
+  "members": {
+   "LEFT": "Declared as a LONG field of the type; DrawDisplay uses it as the X offset of the first character inside the canvas.",
+   "TOP": "Declared as a LONG field of the type; DrawDisplay uses it as the Y offset of the characters inside the canvas.",
+   "WIDTH": "Declared as a LONG field of the type; DrawDisplay sets it to the image width times the length of Display.",
+   "HEIGHT": "Declared as a LONG field of the type; DrawDisplay sets it to the image height (24).",
+   "DISPLAY": "Text to show (default \"0\"). Only characters with ASCII codes 32 to 64 have images.",
+   "DRAWDISPLAY": "Resizes the canvas to fit Display and draws its characters; called from OnPaint."
+  },
+  "example": "$INCLUDE \"QDigDisplay.inc\"\nCREATE Form AS QFORM\n  Width = 200\n  Height = 100\n  CREATE Clock AS QDigDisplay\n    Display = \"12:45\"\n  END CREATE\nEND CREATE\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Peter Molloy",
+  "version": "1.00",
+  "date": "13 April 2001",
+  "caveats_en": [
+   "The 33 bitmap files are loaded by relative file name, so they must be in the current folder at run time.",
+   "Characters outside ASCII 32 to 64 (for example letters) give an image index outside the loaded list.",
+   "Left, Top, Width and Height are redeclared as plain LONG fields in the type, which may hide the QCanvas properties of the same names."
+  ]
+ },
+ "QCursor@QCursor.inc": {
+  "summary_en": "An object that loads mouse cursors from files or resources and shows, hides or moves the mouse cursor.",
+  "summary_ru": "Объект для загрузки курсоров мыши из файлов или ресурсов, а также показа, скрытия и перемещения курсора.",
+  "description_en": [
+   "QCursor extends QObject. LoadFromFile and LoadFromResource load a .cur file with LoadCursorFromFile and put it into Screen.Cursors at the next index (1, 2, ...); Count holds the last index used, so a control can use it with Cursor = index.",
+   "LoadFromResource extracts a resource added with $RESOURCE to a temporary file temp.cur next to the executable, loads it and deletes the file. Visible calls ShowCursor and Move calls SetCursorPos."
+  ],
+  "requires": [],
+  "members": {
+   "COUNT": "Number of cursors loaded, which is also the Screen.Cursors index of the last one. Read only: assigning it does nothing.",
+   "VISIBLE": "Assigning it stores the value and calls ShowCursor with it to show or hide the mouse cursor (default true).",
+   "LOADFROMRESOURCE": "LoadFromResource(Res) loads the cursor stored in resource number Res (0 to RESOURCECOUNT()-1) into the next Screen.Cursors index; invalid numbers are ignored.",
+   "LOADFROMFILE": "LoadFromFile(FileName) loads a cursor file into the next Screen.Cursors index if the file exists.",
+   "MOVE": "Move(x, y) moves the mouse cursor to screen coordinates x, y."
+  },
+  "example": "$INCLUDE \"QCursor.inc\"\nDIM Cur AS QCursor\nCREATE Form AS QFORM\n  Caption = \"Cursor test\"\nEND CREATE\nCur.LoadFromFile(\"hand.cur\")\nForm.Cursor = Cur.Count\nCur.Move(100, 100)\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "LoadFromResource writes the temporary file temp.cur into the folder of the executable.",
+   "LoadFromFile and LoadFromResource give no error when the file or resource is missing."
+  ]
+ },
+ "QLine@QLine.inc": {
+  "summary_en": "A canvas that draws an etched (3D) horizontal or vertical separator line.",
+  "summary_ru": "Холст, рисующий объёмную (вдавленную) горизонтальную или вертикальную линию-разделитель.",
+  "description_en": [
+   "QLine extends QCanvas and has no public members of its own. On each paint it draws an etched edge with DrawEdge from user32 (declared as DrawLine).",
+   "The direction comes from Align and the size: with Align 3 or 4, or no alignment and Height greater than Width, it draws a vertical line and sets Width to 2; with Align 1 or 2, or no alignment and Width greater than Height, it draws a horizontal line and sets Height to 2. Place it like any control and set its length with Width or Height."
+  ],
+  "requires": [],
+  "members": {},
+  "example": "$INCLUDE \"QLine.inc\"\nCREATE Form AS QFORM\n  Width = 300\n  Height = 200\n  CREATE Line1 AS QLine\n    Left = 10\n    Top = 50\n    Width = 270\n  END CREATE\nEND CREATE\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "The thickness is fixed at 2 pixels: Width or Height is reset to 2 on every paint."
+  ]
+ },
+ "QListBoxEx@QListBoxEx.inc": {
+  "summary_en": "A QListBox that raises an OnEnter event when the Enter key is pressed.",
+  "summary_ru": "QListBox с событием OnEnter, которое возникает при нажатии клавиши Enter.",
+  "description_en": [
+   "QListBoxEx extends QListBox. The constructor creates a hidden popup menu with one invisible item whose ShortCut is \"Enter\" and assigns it to PopupMenu; when the shortcut fires, OnEnter is raised."
+  ],
+  "requires": [],
+  "members": {
+   "ONENTER": "Raised when the Enter key is pressed while the list box has the focus."
+  },
+  "example": "$INCLUDE \"QListBoxEx.inc\"\nDECLARE SUB ListEnter\n\nCREATE Form AS QFORM\n  CREATE List AS QListBoxEx\n    AddItems \"One\", \"Two\", \"Three\"\n    OnEnter = ListEnter\n  END CREATE\nEND CREATE\n\nSUB ListEnter\n  IF List.ItemIndex >= 0 THEN ShowMessage List.Item(List.ItemIndex)\nEND SUB\n\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "The component uses the PopupMenu property for its hidden menu, so assigning another popup menu removes the Enter handling."
+  ]
+ }
+}

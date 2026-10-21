@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Common.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: Common.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>Common.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/Common.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 2 functions &middot; 1 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#MINSET">MinSet</a> &middot; <a href="#SENDMESSAGEA">SendMessageA</a></p>
+<h3><a name="MINSET"></a>MinSet</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 10038</p>
+<pre>SUB MinSet (frmHandle as integer, appHandle as integer)</pre>
+<p>Makes a form minimize to the task bar as its own window: sets the owner (SetWindowLong index -8, GWL_HWNDPARENT) of the form to 0 and of the Application window to the form. Sample: MinSet(frmMain.Handle, Application.Handle).</p>
+<h3><a name="SENDMESSAGEA"></a>SendMessageA</h3>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 10034</p>
+<pre>DECLARE FUNCTION SendMessageA Lib &quot;user32&quot; Alias &quot;SendMessageA&quot; (hwnd As Long, wMsg As Long, wParam As Long, pf as Long) As Long</pre>
+<p>Sends a message to a window and waits until the window procedure has processed it. Returns the message-dependent result.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SendMessageA">SendMessageA</a></p>
+</body>
+</html>

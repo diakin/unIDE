@@ -1,0 +1,338 @@
+<html>
+<head>
+<title>QListviewEx.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="0000AA"><b>$typecheck</b></font> on
+<font color="0000AA"><b>$optimize</b></font> on
+
+<font color="0000AA"><b>defint</b></font> lx, ly, ix, iy
+
+<font color="0000AA"><b>type</b></font> Qlistviewex <font color="0000AA"><b>extends</b></font> <font color="000099"><b>Qlistview</b></font>
+ParentPanel <font color="0000AA"><b>as</b></font> <font color="000099"><b>qpanel</b></font>
+Header <font color="0000AA"><b>as</b></font> <font color="000099"><b>qpanel</b></font>
+ColHeader<b>(</b>100<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>Qcoolbtn</b></font>
+csv <font color="0000AA"><b>as</b></font> <font color="000099"><b>qstringlist</b></font>
+csvFile <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+Separator <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+Columns_count <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+FlatHeaders <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+<font color="000099"><b>constructor</b></font>
+   <font color="0000AA"><b>with</b></font> parentpanel
+   .borderstyle = 0
+   .bevelouter = 0
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+
+   <font color="0000AA"><b>with</b></font> header
+   .parent = Qlistviewex.parentpanel
+   .height = 20
+   .align = 1
+   .bevelouter = 0
+   .borderstyle = 0
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+
+Columns_Count = 0
+separator = "<font color="990000">;</font>"
+showcolumnheaders = 0
+FlatHeaders = 1
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>constructor</b></font>
+<font color="007700"><i>'============================================================</i></font> 
+<font color="0000AA"><b>function</b></font> FieldsCount <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+result = <font color="0000AA"><b>tally</b></font><b>(</b>Qlistviewex.csv.item<b>(</b>0<b>)</b>, Qlistviewex.Separator<b>)</b> + 1
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="007700"><i>'Clear method is very slow if you use a lot of items,        |</i></font> 
+<font color="007700"><i>'expecially if you select the last ones.                     |</i></font> 
+<font color="0000AA"><b>Sub</b></font> FastClear
+<font color="0000AA"><b>defint</b></font> oldviewstyle,oldfontsize
+oldfontsize = Qlistviewex.font.size
+oldviewstyle = Qlistviewex.viewstyle
+    <font color="0000AA"><b>with</b></font> QlistviewEx
+    .viewstyle = 1
+    .font.size = 1
+    .clear
+    .font.size = oldfontsize
+    .viewstyle = oldviewstyle
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="007700"><i>'Loading can be done ONLY from the CSV stringlist, so if you |</i></font> 
+<font color="007700"><i>'want to load data from a File o a Qfilestream or            |</i></font> 
+<font color="007700"><i>'Qmemorystream you'll have pass data to CSV and then call    |</i></font> 
+<font color="007700"><i>'the load load function                                      |</i></font> 
+
+<font color="0000AA"><b>sub</b></font> load
+QListviewEx.fastclear
+
+<font color="0000AA"><b>dim</b></font> field <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+qlistviewex.sorttype = 0
+ly = Qlistviewex.csv.itemcount
+
+
+<font color="0000AA"><b>for</b></font> lx = 0 <font color="0000AA"><b>to</b></font> <b>(</b>ly - 1<b>)</b>
+    <font color="0000AA"><b>with</b></font> qlistviewex
+    field = <font color="0000AA"><b>field$</b></font><b>(</b>.CSV.item<b>(</b>lx<b>)</b>, .separator, 1<b>)</b>
+    <font color="0000AA"><b>if</b></font> field = "<font color="990000"></font>" <font color="0000AA"><b>then</b></font> field = "<font color="990000">-</font>"
+
+    .additems field
+    iy = .fieldscount
+
+       <font color="0000AA"><b>for</b></font> ix = 2 <font color="0000AA"><b>to</b></font> iy
+       field = <font color="0000AA"><b>field$</b></font><b>(</b>.CSV.item<b>(</b>lx<b>)</b>, .separator, ix<b>)</b>
+       <font color="0000AA"><b>if</b></font> field = "<font color="990000"></font>" <font color="0000AA"><b>then</b></font> field = "<font color="990000">-</font>"
+       .addsubitem <b>(</b>lx, field<b>)</b>
+       <font color="000099"><b>next</b></font>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="000099"><b>next</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="0000AA"><b>sub</b></font> loadfromcsvfile
+QlistviewEx.csv.loadfromfile<b>(</b>QlistviewEx.csvFile<b>)</b>
+QlistviewEx.load
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="007700"><i>'Call this function passing a column header caption as       |</i></font> 
+<font color="007700"><i>'variable                                                    |</i></font> 
+
+<font color="0000AA"><b>sub</b></font> sortby <b>(</b>Criterium <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+iy = QlistviewEx.Fieldscount
+ly = QlistviewEx.Itemcount
+
+   <font color="0000AA"><b>for</b></font> ix = 0 <font color="0000AA"><b>to</b></font> <b>(</b>iy - 1<b>)</b>
+
+   <font color="0000AA"><b>if</b></font> QlistviewEx.column<b>(</b>ix<b>)</b>.caption = Criterium <font color="000099"><b>then</b></font>
+
+   <font color="0000AA"><b>if</b></font> ix = 0 <font color="000099"><b>then</b></font>
+   QlistviewEx.sorttype = 2
+   <font color="0000AA"><b>exit</b></font> <font color="000099"><b>sub</b></font>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+
+
+   <font color="0000AA"><b>with</b></font> QlistviewEx
+      .sorttype = 0
+      lx = 0
+      <font color="000099"><b>do</b></font>
+      <font color="0000AA"><b>swap</b></font> <b>(</b>.item<b>(</b>lx<b>)</b>.caption, .subitem<b>(</b>lx, ix - 1<b>)</b><b>)</b>
+      <font color="0000AA"><b>inc</b></font><b>(</b>lx<b>)</b>
+      <font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> lx = <b>(</b>ly<b>)</b>
+
+      .sorttype = 2
+      .sorttype = 0
+
+      lx = 0
+      <font color="000099"><b>do</b></font>
+      <font color="0000AA"><b>swap</b></font> <b>(</b>.item<b>(</b>lx<b>)</b>.caption, .subitem<b>(</b>lx, ix - 1<b>)</b><b>)</b>
+      <font color="0000AA"><b>inc</b></font><b>(</b>lx<b>)</b>
+      <font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> lx = <b>(</b>ly<b>)</b>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+
+   <font color="0000AA"><b>End</b></font> <font color="000099"><b>if</b></font>
+   <font color="000099"><b>next</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="007700"><i>'This sub can exclude unwanted items from list. You'll have  |</i></font> 
+<font color="007700"><i>'to pass the column number (the first column is number 0) and|</i></font> 
+<font color="007700"><i>'the string contained in the items you want to remove.       |</i></font> 
+<font color="007700"><i>' ** Note ** it's NOT case sensitive                         |</i></font> 
+
+<font color="0000AA"><b>Sub</b></font> Exclude <b>(</b>Column <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, Criterium <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+Criterium = <font color="0000AA"><b>ucase$</b></font><b>(</b>criterium<b>)</b>
+
+  <font color="0000AA"><b>if</b></font> column = 0 <font color="000099"><b>then</b></font>
+  <font color="0000AA"><b>with</b></font> QlistviewEx
+  lx = 0
+  ly = .itemcount
+  <font color="000099"><b>do</b></font>
+    <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>ucase$</b></font><b>(</b>.item<b>(</b>lx<b>)</b>.caption<b>)</b> = Criterium <font color="000099"><b>then</b></font>
+    .delitems<b>(</b>lx<b>)</b>
+    <font color="0000AA"><b>dec</b></font><b>(</b>lx<b>)</b>
+    <font color="0000AA"><b>dec</b></font><b>(</b>ly<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>inc</b></font><b>(</b>lx<b>)</b>
+  <font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> lx = ly
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+  <font color="000099"><b>else</b></font>
+  <font color="0000AA"><b>with</b></font> QlistviewEx
+  lx = 0
+  ly = .itemcount
+  <font color="000099"><b>do</b></font>
+    <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>ucase$</b></font><b>(</b>.subitem<b>(</b>lx, Column - 1<b>)</b><b>)</b> = Criterium <font color="000099"><b>then</b></font>
+    .delitems<b>(</b>lx<b>)</b>
+    <font color="0000AA"><b>dec</b></font><b>(</b>lx<b>)</b>
+    <font color="0000AA"><b>dec</b></font><b>(</b>ly<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>inc</b></font><b>(</b>lx<b>)</b>
+  <font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> lx = ly
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="007700"><i>'Called when user clicks on a column header                 |</i></font> 
+
+<font color="0000AA"><b>sub</b></font> columnclick <b>(</b>hcapt <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>qcoolbtn</b></font><b>)</b>
+Qlistviewex.sortby <b>(</b>hcapt.caption<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="007700"><i>'You'll have to call this sub every time you want to update  |</i></font> 
+<font color="007700"><i>'QlistviewEx layout (so every time you change column caption,|</i></font> 
+<font color="007700"><i>'width, etc...                                               |</i></font> 
+<font color="0000AA"><b>sub</b></font> draw
+    <font color="0000AA"><b>With</b></font> qlistviewex
+    .parent = Qlistviewex.parentpanel
+    .align = 5
+    .viewstyle = 3
+    .gridlines = 1
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+
+ix = 0
+iy = Qlistviewex.Columns_Count
+<font color="0000AA"><b>if</b></font> iy = 0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>exit</b></font> <font color="000099"><b>sub</b></font>
+<font color="000099"><b>do</b></font>
+ <font color="0000AA"><b>With</b></font> qlistviewex
+ .ColHeader<b>(</b>ix<b>)</b>.caption = .column<b>(</b>ix<b>)</b>.caption
+ .ColHeader<b>(</b>ix<b>)</b>.width = .column<b>(</b>ix<b>)</b>.width
+ <font color="0000AA"><b>if</b></font>  ix = 0 <font color="0000AA"><b>then</b></font> .ColHeader<b>(</b>ix<b>)</b>.width = .column<b>(</b>ix<b>)</b>.width + 2
+ .colheader<b>(</b>ix<b>)</b>.parent = .header
+ .colheader<b>(</b>ix<b>)</b>.align = 3
+ .colheader<b>(</b>ix<b>)</b>.flat = .Flatheaders
+ .colheader<b>(</b>ix<b>)</b>.onclick = Qlistviewex.columnclick
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>inc</b></font><b>(</b>ix<b>)</b>
+<font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> ix = iy
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="007700"><i>'Use this to add columns, istead of the addcolumns method.   |</i></font> 
+<font color="007700"><i>'Just pass columns names in a single string, separated by  a |</i></font> 
+<font color="007700"><i>'"/" (See example)                                           |</i></font> 
+
+<font color="0000AA"><b>sub</b></font> addcol <b>(</b>coltoadd <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+lx = 0
+ly = <b>(</b><font color="0000AA"><b>tally</b></font><b>(</b>coltoadd, "<font color="990000">/</font>"<b>)</b> + 1<b>)</b>
+<font color="000099"><b>do</b></font>
+ <font color="0000AA"><b>with</b></font> QlistviewEx
+ .addcolumns <font color="0000AA"><b>field$</b></font><b>(</b>coltoadd, "<font color="990000">/</font>", lx + 1<b>)</b>
+ .Columns_count = <b>(</b>.Columns_count + 1<b>)</b>
+ <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>inc</b></font><b>(</b>lx<b>)</b>
+<font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> lx = ly
+QlistviewEx.draw
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="007700"><i>' Update CSV Qstringlist with data contained in Qlistviewex. |</i></font> 
+<font color="0000AA"><b>sub</b></font> updatecsv
+<font color="0000AA"><b>dim</b></font> stringtoadd <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+lx = 0
+ly = QlistviewEx.itemcount
+iy = QlistviewEx.Fieldscount - 1
+QlistviewEx.csv.clear
+<font color="000099"><b>do</b></font>
+<font color="0000AA"><b>with</b></font> QlistviewEx
+stringtoadd = .item<b>(</b>lx<b>)</b>.caption
+
+  ix = 0
+  <font color="000099"><b>do</b></font>
+  stringtoadd = stringtoadd + .separator + .subitem<b>(</b>lx, ix<b>)</b>
+  <font color="0000AA"><b>inc</b></font><b>(</b>ix<b>)</b>
+  <font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> ix = iy
+stringtoadd = <font color="0000AA"><b>replacesubstr$</b></font><b>(</b>stringtoadd, <b>(</b>.separator + "<font color="990000">-</font>" + .separator<b>)</b>, _
+<b>(</b>.separator + .separator<b>)</b><b>)</b>
+
+.csv.additems stringtoadd
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>inc</b></font><b>(</b>lx<b>)</b>
+<font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> lx = ly
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="0000AA"><b>sub</b></font> filter <b>(</b>Column <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, criterium  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+criterium = <font color="0000AA"><b>ucase$</b></font><b>(</b>criterium<b>)</b>
+lx = 0
+ly = QlistviewEx.itemcount
+<font color="000099"><b>do</b></font>
+  <font color="0000AA"><b>with</b></font> QlistviewEx
+       <font color="0000AA"><b>select</b></font> <font color="0000AA"><b>case</b></font> column
+       <font color="0000AA"><b>case</b></font> 0
+          <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>ucase$</b></font><b>(</b>.item<b>(</b>lx<b>)</b>.caption<b>)</b> = criterium <font color="000099"><b>then</b></font>
+          <font color="000099"><b>else</b></font>
+          .delitems<b>(</b>lx<b>)</b>
+          <font color="0000AA"><b>dec</b></font><b>(</b>lx<b>)</b>
+          <font color="0000AA"><b>dec</b></font><b>(</b>ly<b>)</b>
+          <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+       <font color="0000AA"><b>case</b></font> <font color="000099"><b>else</b></font>
+          <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>ucase$</b></font><b>(</b>.subitem<b>(</b>lx, column - 1<b>)</b><b>)</b> = criterium <font color="000099"><b>then</b></font>
+          <font color="000099"><b>else</b></font>
+          .delitems<b>(</b>lx<b>)</b>
+          <font color="0000AA"><b>dec</b></font><b>(</b>lx<b>)</b>
+          <font color="0000AA"><b>dec</b></font><b>(</b>ly<b>)</b>
+          <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+       <font color="0000AA"><b>end</b></font> <font color="000099"><b>select</b></font>
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>inc</b></font><b>(</b>lx<b>)</b>
+<font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> lx = ly
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="0000AA"><b>sub</b></font> SaveToCsvFile
+    <font color="0000AA"><b>With</b></font> QlistviewEx
+    .updateCSV
+    .csv.savetofile <b>(</b>.csvfile<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="0000AA"><b>sub</b></font> SaveToFileAs
+<font color="0000AA"><b>Dim</b></font> ulvexdlg <font color="0000AA"><b>as</b></font> <font color="000099"><b>Qsavedialog</b></font>
+<font color="0000AA"><b>if</b></font> ulvexdlg.execute <font color="000099"><b>then</b></font>
+   <font color="0000AA"><b>with</b></font> QlistviewEx
+   .csv.savetofile <b>(</b>ulvexdlg.filename<b>)</b>
+   <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+<font color="0000AA"><b>sub</b></font> DirectSaveAs
+<font color="0000AA"><b>Dim</b></font> dsavedlg <font color="0000AA"><b>as</b></font> <font color="000099"><b>Qsavedialog</b></font>
+<font color="0000AA"><b>dim</b></font> tempfsstring <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>if</b></font> dsavedlg.execute <font color="000099"><b>then</b></font>
+   <font color="0000AA"><b>dim</b></font> Direct_Save_FS <font color="0000AA"><b>as</b></font> <font color="000099"><b>qfilestream</b></font>
+   Direct_Save_FS.open<b>(</b>dsavedlg.filename, 65535<b>)</b>
+      <font color="0000AA"><b>with</b></font> QlistviewEx
+      lx = 0
+      ly = .itemcount
+      <font color="000099"><b>do</b></font>
+      tempfsstring = "<font color="990000"></font>"
+      tempfsstring = .item<b>(</b>lx<b>)</b>.caption
+
+         iy = .fieldscount - 1
+         ix = 0
+         <font color="000099"><b>do</b></font>
+         tempfsstring = tempfsstring + .separator + .subitem<b>(</b>lx, ix<b>)</b>
+         <font color="0000AA"><b>inc</b></font><b>(</b>ix<b>)</b>
+         <font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> ix = iy
+
+      Direct_Save_FS.writeline<b>(</b>tempfsstring<b>)</b>
+      <font color="0000AA"><b>inc</b></font><b>(</b>lx<b>)</b>
+      <font color="0000AA"><b>loop</b></font> <font color="0000AA"><b>until</b></font> lx = ly
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+   Direct_Save_FS.close
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'============================================================|</i></font> 
+
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>type</b></font>
+
+<font color="007700"><i>' |                               |</i></font> 
+<font color="007700"><i>' |   QlistviewEx Component by    |</i></font> 
+<font color="007700"><i>' |                               |</i></font> 
+
+<font color="007700"><i>' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|</i></font> 
+<font color="007700"><i>' | Dreadsoft® Corporation        |</i></font> 
+<font color="007700"><i>' | (manco un diritto riservato)  |</i></font> 
+<font color="007700"><i>' | http://dreadsoft.too.it       |</i></font> 
+<font color="007700"><i>' | dreadsoft@yahoo.it            |</i></font> 
+<font color="007700"><i>' |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</i></font> 
+ 
+</pre>
+</body>
+</html>

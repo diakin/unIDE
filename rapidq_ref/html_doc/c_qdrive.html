@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDRIVE</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDRIVE</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDRIVE Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QDrive.inc</code>, line 26</p>
+<p><b>An object that lists the drives on the computer and reports their type, size and free space.</b></p>
+<p>QDrive extends QObject. The constructor calls GetDrives, which checks the letters A to Z with GetDriveType and stores every drive that has a root directory in Name(1) ... Name(Count) as &quot;X:\&quot;.</p>
+<p>GetType, GetSize and GetFreeSpace take a 1-based index into Name and use GetDriveType and GetDiskFreeSpace from kernel32. The DRIVE_* constants for the result of GetType are defined in the file unless another include already defines them.</p>
+<p>QDRIVE inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QDrive Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Name</td><td class="rq-type">ARRAY(26) OF STRING</td><td>RW</td><td></td><td>Array of drive root paths such as &quot;C:\&quot;, filled from index 1 to Count.</td></tr>
+<tr><td class="rq-name">Count</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Number of drives found. Read only: assigning it does nothing.</td></tr>
+</table>
+<a name="2"></a><h2>QDrive Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">GetType</td><td class="rq-type">FUNCTION(index as integer) AS LONG</td><td>GetType(index) returns the drive type from GetDriveType (DRIVE_UNKNOWN, DRIVE_NO_ROOT_DIR, DRIVE_REMOVABLE, DRIVE_FIXED, DRIVE_REMOTE, DRIVE_CDROM or DRIVE_RAMDISK).</td></tr>
+<tr><td class="rq-name">GetFreeSpace</td><td class="rq-type">FUNCTION(index as integer) AS LONG</td><td>GetFreeSpace(index) returns the free space in bytes (sectors per cluster x bytes per sector x free clusters), or 0 if the call fails.</td></tr>
+<tr><td class="rq-name">GetSize</td><td class="rq-type">FUNCTION(index as integer) AS LONG</td><td>GetSize(index) returns the total size in bytes (sectors per cluster x bytes per sector x total clusters), or 0 if the call fails.</td></tr>
+<tr><td class="rq-name">GetDrives</td><td class="rq-type">SUB</td><td>Scans the drive letters A to Z and adds each existing drive to Name and Count; called by the constructor.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>GetSize and GetFreeSpace compute the result in 32-bit LONG/INTEGER values, so large disks give wrong (overflowed) values.</li>
+<li>GetDrives does not reset Count; calling it again adds the drives to Count a second time while Name is refilled from index 1.</li>
+<li>The methods check only index &lt;= Count, not index &gt;= 1.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QDrive.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QDrive Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QDrive.inc&quot;
+DIM Drives AS QDrive
+DIM i AS INTEGER
+FOR i = 1 TO Drives.Count
+  PRINT Drives.Name(i); &quot; type &quot;; Drives.GetType(i); &quot; free &quot;; Drives.GetFreeSpace(i)
+NEXT i</pre>
+<div class="rq-foot"><a href="c_qdrawmenu.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdrivecombobox.html">Next component</a></div>
+</body>
+</html>

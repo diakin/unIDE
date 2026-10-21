@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDEBUG</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDEBUG</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDEBUG Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QDebug.inc</code>, line 28 &middot; author: Pete Kleinschmidt &middot; version: 0.9 &middot; date: March 2, 2002</p>
+<p><b>A debug output object that prints strings into a resizable &quot;Debug&quot; window with a rich edit box.</b></p>
+<p>Including the file creates the form frmDebug with a QRICHEDIT that fills it, and a global object Debug of type QDebug with Enabled = True, so the Debug window is shown at once. Debug.Print adds a line to the rich edit box, moves the cursor to the end, scrolls it into view (EM_SCROLLCARET), enables input to the Debug window with EnableWindow and calls DOEVENTS.</p>
+<p>Set Debug.Enabled = False to close the window and make Print do nothing.</p>
+<p>QDEBUG inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QDebug Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Enabled</td><td class="rq-type">SHORT</td><td>RW</td><td>True</td><td>Assigning True shows the Debug window and lets Print add text; assigning any other value closes the window and makes Print do nothing. Default True.</td></tr>
+</table>
+<a name="2"></a><h2>QDebug Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Print</td><td class="rq-type">SUB(StringToPrint AS STRING)</td><td>Adds a string to the Debug window, scrolls to it and processes pending events, when Enabled is True.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The include creates the global form frmDebug and the global object Debug, so the names frmDebug, edtDebug and Debug are taken and the Debug window appears as soon as the file is included.</li>
+<li>All QDebug instances write to the same global frmDebug window.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq.inc</code> (line 1060) contains its own edition of QDEBUG; it has members that are not in this file: BUG, ERR$, ERRNUM, FORM, PRINTSTR, PRINTWRAP, REDIT, ROWNUM, SETERROR, TESTSOCKETS, VISIBLE.</li>
+<li><code>inc/rapidq2.inc</code> (line 6372) contains its own edition of QDEBUG; it has members that are not in this file: BREAK, BREAKBUTTON, BUG, CHECKMATCH, CLEAR, CLEARWATCH, ERR$, ERRNUM, FORM, GRID, PRINTSTR, PRINTWRAP, REDIT, REORDER, ROWNUM, SETERROR, TESTSOCKETS, TIMER1, VISIBLE, WATCHCOUNT.</li>
+</ul>
+<a name="4"></a><h2>QDebug Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QDebug.inc&quot;
+
+DIM I AS INTEGER
+FOR I = 1 TO 10
+  Debug.Print &quot;I = &quot; + STR$(I)
+NEXT I
+Debug.Enabled = False</pre>
+<div class="rq-foot"><a href="c_qdatabase_qdatabasesql.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdesktop.html">Next component</a></div>
+</body>
+</html>

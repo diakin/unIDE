@@ -1,0 +1,56 @@
+<html>
+<head>
+<title>pdecl.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>' GetDecl parser version 1.0.</i></font> 
+<font color="007700"><i>' GetDecl parses function declarations and returns an array with corresponding elements.</i></font> 
+<font color="0000AA"><b>declare</b></font> <font color="0000AA"><b>function</b></font> GetDecl<b>(</b>code$<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+<font color="0000AA"><b>function</b></font> GetDecl<b>(</b>code$<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+<font color="007700"><i>' Array to return</i></font> 
+<font color="0000AA"><b>Dim</b></font> Args<b>(</b>3<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>defint</b></font> fs,fe,fl,ns,ne,nl,ls,le,ll
+
+<font color="007700"><i>'ft$=function type; fn$=function name; lib$=lib file; rt$=return type</i></font> 
+<font color="0000AA"><b>defstr</b></font> ft$, fn$, lib$, rt$
+
+fs=<font color="0000AA"><b>InStr</b></font><b>(</b><font color="0000AA"><b>UCase$</b></font><b>(</b>code$<b>)</b>,"<font color="990000">DECLARE </font>"<b>)</b>+8 <font color="007700"><i>' quicker</i></font> 
+fe=<font color="0000AA"><b>InStr</b></font><b>(</b>fs,code$,"<font color="990000"> </font>"<b>)</b>
+fl=fe-fs
+ft$=<font color="0000AA"><b>Mid$</b></font><b>(</b>code$,fs,fl<b>)</b>
+ft$=<font color="0000AA"><b>LTRIM$</b></font><b>(</b><font color="0000AA"><b>RTRIM$</b></font><b>(</b>ft$<b>)</b><b>)</b>
+Args<b>(</b>0<b>)</b>=ft$ <font color="007700"><i>' Function type</i></font> 
+
+ns=fe+1
+ne=<font color="0000AA"><b>InStr</b></font><b>(</b>ns,code$,"<font color="990000"> </font>"<b>)</b>
+nl=ne-ns
+fn$=<font color="0000AA"><b>Mid$</b></font><b>(</b>code$,ns,nl<b>)</b>
+fn$=<font color="0000AA"><b>LTRIM$</b></font><b>(</b><font color="0000AA"><b>RTRIM$</b></font><b>(</b>fn$<b>)</b><b>)</b>
+Args<b>(</b>1<b>)</b>=fn$ <font color="007700"><i>' Function name</i></font> 
+
+ls=<font color="0000AA"><b>InStr</b></font><b>(</b><font color="0000AA"><b>UCase$</b></font><b>(</b>code$<b>)</b>,"<font color="990000">LIB </font>"<b>)</b>+4
+le=<font color="0000AA"><b>InStr</b></font><b>(</b>ls,code$,"<font color="990000"> </font>"<b>)</b>
+ll=le-ls
+lib$=<font color="0000AA"><b>Mid$</b></font><b>(</b>code$,ls,ll<b>)</b>
+lib$=<font color="0000AA"><b>LTRIM$</b></font><b>(</b><font color="0000AA"><b>RTRIM$</b></font><b>(</b>lib$<b>)</b><b>)</b>
+Args<b>(</b>2<b>)</b>=lib$
+
+<font color="0000AA"><b>For</b></font> i=0 <font color="0000AA"><b>to</b></font> 3
+result=Args<b>(</b>i<b>)</b>
+<font color="0000AA"><b>Next</b></font> i
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>' Example:</i></font> 
+<font color="007700"><i>'Dim x() as string</i></font> 
+<font color="007700"><i>' fill the array full with return values that GetDecl gave</i></font> 
+<font color="007700"><i>'x(0)=GetDecl("Declare function SetFocus lib user32 ()")</i></font> 
+<font color="007700"><i>'?x(1)</i></font> 
+<font color="007700"><i>'?x(2)</i></font> 
+<font color="007700"><i>'?x(3)</i></font> 
+<font color="007700"><i>'input z </i></font> 
+</pre>
+</body>
+</html>

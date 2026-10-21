@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QMIDI</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QMIDI</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QMIDI Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QMidi.inc</code>, line 27 &middot; version: 1.2</p>
+<p><b>A non-visual MIDI file player built on the Windows MCI sequencer, with play, pause, stop, seeking, volume and a position-change event.</b></p>
+<p>QMidi sends MCI command strings with mciSendStringA (winmm.dll). Open opens the file as a &quot;sequencer&quot; device under the alias MEDIA, sets the time format to milliseconds and reads the length. Play, Pause and Stop send the matching MCI commands, and CurrentFrame lets you seek while stopped or paused.</p>
+<p>While playing, an internal QTIMER (1000 ms) reads the current position and mode, calls Stop when playback has finished, and fires OnChange with the position in milliseconds.</p>
+<p>State holds MD_CLOSE (0), MD_PLAY (1), MD_PAUSE (2) or MD_STOP (3). Volume uses waveOutSetVolume. The source comments are in French.</p>
+<p>QMIDI inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QMidi Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Timer</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>QTIMER (interval 1000 ms) that polls the position and mode during playback and fires OnChange; enabled by Play and disabled by Pause, Stop and Close.</td></tr>
+<tr><td class="rq-name">Lenght</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Length of the open file in milliseconds (the name is spelled Lenght in the source); 0 when closed.</td></tr>
+<tr><td class="rq-name">State</td><td class="rq-type">INTEGER</td><td>RW</td><td>MD_CLOSE</td><td>Current state: MD_CLOSE (0), MD_PLAY (1), MD_PAUSE (2) or MD_STOP (3).</td></tr>
+<tr><td class="rq-name">FileOpen</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>True while a file is open.</td></tr>
+<tr><td class="rq-name">Error</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Text of the MCI error when Open fails (from mciGetErrorStringA).</td></tr>
+<tr><td class="rq-name">CurrentFrame</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Current position in milliseconds. Assigning it while a file is open and stopped or paused clamps the value to 0..Lenght and seeks there; Play then starts from this position. In other states the assignment is ignored.</td></tr>
+<tr><td class="rq-name">Volume</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Volume from 0 to 100. Assigning a value up to 100 stores it and sets the left and right volume of wave output device 0 with waveOutSetVolume; values above 100 are ignored.</td></tr>
+</table>
+<a name="2"></a><h2>QMidi Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Stops the timer, sends &quot;stop&quot; and &quot;close&quot; for the MEDIA alias and resets FileOpen, Lenght, CurrentFrame and State.</td></tr>
+<tr><td class="rq-name">Open</td><td class="rq-type">FUNCTION(FileName as string) AS BOOLEAN</td><td>Open(FileName) opens a MIDI file through MCI and returns True on success; on failure it sets Error and closes the device.</td></tr>
+<tr><td class="rq-name">Play</td><td class="rq-type">SUB</td><td>Starts playback from CurrentFrame and enables the timer.</td></tr>
+<tr><td class="rq-name">Stop</td><td class="rq-type">SUB</td><td>Stops playback, disables the timer, sets State to MD_STOP and seeks back to the start.</td></tr>
+<tr><td class="rq-name">Pause</td><td class="rq-type">SUB</td><td>Pauses playback if playing, disables the timer and stores the current position in CurrentFrame.</td></tr>
+</table>
+<a name="3"></a><h2>QMidi Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnChange</td><td class="rq-type">SUB(position as long)</td><td>Event OnChange(position AS LONG) fired every timer tick during playback with the current position in milliseconds.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>Timer.OnTimer</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>Open puts the file name into the MCI command without quotes, so paths containing spaces will fail to open.</li>
+<li>All instances use the fixed MCI alias MEDIA, so only one QMidi (or any other code using that alias) can be open at a time.</li>
+<li>Volume calls waveOutSetVolume on device 0 (declared as MidiSetVolume), which sets the wave output volume rather than a MIDI device volume.</li>
+<li>The length property is spelled Lenght.</li>
+<li>Error is set only by Open; other MCI failures are not reported.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QMidi.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QMidi Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QMidi.inc&quot;
+DIM Midi AS QMidi
+
+SUB MidiChange(position AS LONG)
+  PRINT position; &quot; of &quot;; Midi.Lenght
+END SUB
+
+Midi.OnChange = MidiChange
+IF Midi.Open(&quot;C:\music\song.mid&quot;) THEN
+  Midi.Volume = 80
+  Midi.Play
+ELSE
+  ShowMessage Midi.Error
+END IF</pre>
+<div class="rq-foot"><a href="c_qmenuex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qmp3.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QICMP</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QICMP</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QICMP Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QICMP.INC</code>, line 47</p>
+<p><b>A ping component that sends ICMP echo requests with icmp.dll.</b></p>
+<p>QICMP extends QObject and uses IcmpCreateFile, IcmpSendEcho and IcmpCloseHandle from icmp.dll. The request options (ReqOpts) and the reply buffer (Reply) are LONG and BYTE arrays rather than TYPE structures, because the source says RapidQ may not store type structures contiguously.</p>
+<p>Call Ping with a dotted IP address string; it returns the round-trip time in milliseconds or -1 on failure. After a ping, ReplyAddress, ReplyStatus, ReplyData and ReplyTTL decode the reply. The IP_* status constants are defined in the file.</p>
+<p>QICMP inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>icmp.dll</li>
+</ul>
+<a name="1"></a><h2>QICMP Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">TimeOut</td><td class="rq-type">LONG</td><td>RW</td><td>3500</td><td>Timeout for the echo request in milliseconds (default 3500).</td></tr>
+<tr><td class="rq-name">ReqOpts</td><td class="rq-type">ARRAY(7) OF BYTE</td><td>RW</td><td>(0)=255; (1)=0; (2)=0; (3)=0; (4)=0; (5)=0; (6)=0; (7)=0</td><td>Request options as 8 bytes: TTL, TOS, Flags, OptionsSize, then a pointer to option data. The constructor sets TTL to 255 and the rest to 0.</td></tr>
+<tr><td class="rq-name">EchoString</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;Echo This&quot;</td><td>Data sent in the echo request (default &quot;Echo This&quot;).</td></tr>
+<tr><td class="rq-name">Reply</td><td class="rq-type">ARRAY(0 to 70) OF LONG</td><td>RW</td><td></td><td>Reply buffer of 71 LONGs: 0 replying address, 1 status, 2 round-trip time in ms, 3 data size and reserved, 4 pointer to data, 5 options, 6 pointer to option data, 7-70 data.</td></tr>
+<tr class="rq-internal"><td class="rq-name">h</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Internal: ICMP handle from IcmpCreateFile, created on the first Ping.</td></tr>
+</table>
+<a name="2"></a><h2>QICMP Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Ping</td><td class="rq-type">FUNCTION(RemoteIP As String) AS LONG</td><td>Ping(RemoteIP) sends an echo request to a dotted IPv4 address (converted with inet_addr; host names are not resolved). Returns the round-trip time in ms, or -1 if the handle cannot be created, the address is invalid or no reply arrives.</td></tr>
+<tr><td class="rq-name">ReplyAddress</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the address that replied as a dotted string, or an empty string if there is none.</td></tr>
+<tr><td class="rq-name">ReplyStatus</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the reply status as text, for example &quot;ip success&quot; or &quot;ip req timed out&quot;.</td></tr>
+<tr><td class="rq-name">ReplyData</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the data echoed back in the reply, or an empty string when the round-trip time is 0.</td></tr>
+<tr><td class="rq-name">ReplyTTL</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the TTL value of the reply, decoded from the options field.</td></tr>
+<tr><td class="rq-name">CloseHandle</td><td class="rq-type">FUNCTION AS LONG</td><td>Closes the ICMP handle and returns the IcmpCloseHandle result, or -1 if no handle was open.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>CloseHandle does not reset h to 0, so a Ping after CloseHandle reuses the closed handle. There is no destructor that closes the handle.</li>
+<li>ReplyAddress and ReplyTTL take fixed character positions from HEX$ of the value; if HEX$ returns fewer than 8 digits (no leading zeros), the decoded address or TTL is wrong.</li>
+<li>ReplyData returns an empty string when the round-trip time is 0 ms, even if data was received.</li>
+<li>Ping accepts only numeric IPv4 addresses.</li>
+</ul>
+<a name="4"></a><h2>QICMP Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QICMP.INC&quot;
+DIM Icmp AS QICMP
+DIM Ms AS LONG
+Ms = Icmp.Ping(&quot;192.168.0.1&quot;)
+IF Ms &gt;= 0 THEN
+  PRINT &quot;Reply from &quot;; Icmp.ReplyAddress; &quot; in &quot;; Ms; &quot; ms&quot;
+ELSE
+  PRINT &quot;Failed: &quot;; Icmp.ReplyStatus
+END IF
+Icmp.CloseHandle</pre>
+<div class="rq-foot"><a href="c_qhtml.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qicon.html">Next component</a></div>
+</body>
+</html>

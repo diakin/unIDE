@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCHART</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCHART</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCHART Component</h1>
+<p class="rq-meta">Extends <a href="qcanvas.html">QCANVAS</a> &middot; source: <code>inc/QChart.inc</code>, line 252 &middot; author: Michael J. Zito &middot; version: Build 3.6.04 &middot; date: 2003-2004</p>
+<p><b>QChart is a QCanvas-based charting class that draws bar, histogram, line, XY scatter, pie, box, hi-lo and real-time charts into an off-screen bitmap.</b></p>
+<p>QChart extends QCanvas and draws every chart into a private off-screen QBITMAP buffer with GDI calls from gdi32 (CreatePen, CreateSolidBrush, CreateHatchBrush, Rectangle, Pie, LineTo and others). PaintChart copies the buffer to the canvas, so it should be assigned to the OnPaint event; RedrawChart resizes the buffer and should be called from the form&#x27;s OnResize. Each chart routine computes an axis scale automatically unless XAxis.AutoScale or YAxis.AutoScale is FALSE.</p>
+<p>Typical use: create the instance with a parent, call Initialize, set ChartType (ctBar, ctLine, ctBarLine, ctBox, ctPie, ctHiLo, ctXY, ctReal) and ChartStyle (csHisto, csBar, csStacked, csPctStacked, csPoints, csLines, csBoth, csAntenna, csHiLoBox, csPiePct, csPieVal), set Cols and Rows, REDIM Data (or XYData for XY charts) using the instance name explicitly, fill LegendList, LabelList and the data, then call DrawChart. Box plots need 5 rows (Max, Q3, Median, Q1, Min), HiLo plots 3 rows (Hi, Close, Lo), pie charts 1 column, BarLine charts 2 columns (bars, then line).</p>
+<p>The chart can be printed (PrintChart), copied to the clipboard as a bitmap (CopyToClipboard) or saved as a .bmp file (SaveChart, SaveToFile). The header states it is released under the LGPL (written &quot;LPGL&quot;) and refers to QChartEx.rqb and an HTML document for more examples.</p>
+<p class="rq-note">Original documentation: <a href="qChart.html">QChart guide by Michael J. Zito (2003)</a>.</p>
+<p>QCHART inherits the properties, methods and events of <a href="qcanvas.html">QCANVAS</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QCHART Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Data</td><td class="rq-type">ARRAY(1,1) OF DOUBLE</td><td>RW</td><td></td><td>Two-dimensional DOUBLE array (Cols, Rows) holding the values for all chart types except XY; each column is a series. It must be REDIMmed by the user, naming the instance explicitly, e.g. REDIM MyChart.Data(.Cols, .Rows).</td></tr>
+<tr><td class="rq-name">XYData</td><td class="rq-type">ARRAY(1,1,2) OF DOUBLE</td><td>RW</td><td></td><td>Three-dimensional DOUBLE array (Cols, Rows, 2) used only by XY charts; the third index is 1 for the X value and 2 for the Y value. It must be REDIMmed with the instance name, like Data.</td></tr>
+<tr><td class="rq-name">Cols</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of series to plot; used as a loop counter everywhere and to dimension Data or XYData. Must be set before drawing.</td></tr>
+<tr><td class="rq-name">Rows</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of values (or XY pairs) in each series; used as a loop counter and to dimension Data or XYData. Must be set before drawing.</td></tr>
+<tr><td class="rq-name">LegendList</td><td class="rq-type">QSTRINGLIST</td><td>RW</td><td></td><td>QStringList with the legend text, usually one item per series (column). Add text with LegendList.AddItems.</td></tr>
+<tr><td class="rq-name">LabelList</td><td class="rq-type">QSTRINGLIST</td><td>RW</td><td></td><td>QStringList with the X axis labels, usually one per row (category); not used by XY charts. For ctReal charts items 0 and 1 label the start and end of the X axis.</td></tr>
+<tr><td class="rq-name">XAxis</td><td class="rq-type">AXISTYPE</td><td>RW</td><td></td><td>AxisType record with the X axis options: Min, Max, Div, AutoScale, COLOR, Grid, Labeled, DrawZero, ZeroColor, Tics, MnrTics, LogScale, plus internal layout fields (LEN, Ori, ScaleFactor, TicLen and others) filled while drawing.</td></tr>
+<tr><td class="rq-name">YAxis</td><td class="rq-type">AXISTYPE</td><td>RW</td><td></td><td>AxisType record with the Y axis options, the same fields as XAxis.</td></tr>
+<tr><td class="rq-name">Series</td><td class="rq-type">ARRAY(MaxSeries) OF SERIESTYPE</td><td>RW</td><td></td><td>Array (1 to MaxSeries = 26) of SeriesType records with per-series style: AutoColor, COLOR, AutoMark, Marker (ms constants), HatchStyle (hs constants), LineStyle (ls constants) and LineWidth.</td></tr>
+<tr><td class="rq-name">bgColor</td><td class="rq-type">LONG</td><td>RW</td><td>Colors(30)</td><td>Background color of the whole chart bitmap; also used as the text background. The constructor sets it to Colors(30) (white).</td></tr>
+<tr><td class="rq-name">fgColor</td><td class="rq-type">LONG</td><td>RW</td><td>Colors(23)</td><td>Color of the frame around the whole chart and of the legend frame; Initialize also uses it as the default color of every series. The constructor sets it to Colors(23).</td></tr>
+<tr><td class="rq-name">ChartType</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>Chart type: ctBar, ctLine, ctBarLine, ctBox, ctPie, ctHiLo, ctXY or ctReal. DrawChart selects the drawing routine from it. Initialize resets it to ctXY.</td></tr>
+<tr><td class="rq-name">ChartStyle</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>Chart style flag: csHisto, csBar, csStacked, csPctStacked for bars; csPoints, csLines, csBoth for XY and line charts; csAntenna, csHiLoBox for hi-lo charts; csPiePct, csPieVal for pie charts. Initialize resets it to csPoints.</td></tr>
+<tr><td class="rq-name">MainTitle</td><td class="rq-type">TITLETYPE</td><td>RW</td><td></td><td>TitleType record for the main title; set MainTitle.Text (up to 75 characters). Left and Top are calculated when the chart is drawn.</td></tr>
+<tr><td class="rq-name">MainFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont for the main title; Initialize sets Times New Roman 18, bold.</td></tr>
+<tr><td class="rq-name">SubTitle</td><td class="rq-type">TITLETYPE</td><td>RW</td><td></td><td>TitleType record for the subtitle drawn under the main title; set SubTitle.Text. Left and Top are calculated when drawing.</td></tr>
+<tr><td class="rq-name">SubFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont for the subtitle; Initialize sets Times New Roman 12, bold.</td></tr>
+<tr><td class="rq-name">XTitle</td><td class="rq-type">TITLETYPE</td><td>RW</td><td></td><td>TitleType record for the X axis title; set XTitle.Text. It is drawn centred under the axis with AxisFont.</td></tr>
+<tr><td class="rq-name">YTitle</td><td class="rq-type">TITLETYPE</td><td>RW</td><td></td><td>TitleType record for the Y axis title; set YTitle.Text. It is drawn vertically, one character per line, with AxisFont.</td></tr>
+<tr class="rq-internal"><td class="rq-name">AxisLbl</td><td class="rq-type">TITLETYPE</td><td>RW</td><td></td><td>Internal: scratch TitleType record used to position axis value labels and pie wedge labels while drawing.</td></tr>
+<tr><td class="rq-name">AxisFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont for axis titles and axis labels; Initialize sets Times New Roman 10.</td></tr>
+<tr><td class="rq-name">DoLegend</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>TRUE (default after Initialize) draws a legend to the right of the plot area and reserves space for it; FALSE gives the X axis the full width.</td></tr>
+<tr class="rq-internal"><td class="rq-name">Legend</td><td class="rq-type">TITLETYPE</td><td>RW</td><td></td><td>Internal: scratch TitleType record used to position each legend entry while drawing.</td></tr>
+<tr><td class="rq-name">LegendFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont for the legend text; Initialize sets Times New Roman 9.</td></tr>
+<tr><td class="rq-name">ChartBorder</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>TRUE draws a frame around the entire chart in FgColor; FALSE draws no frame.</td></tr>
+<tr><td class="rq-name">AxisBorder</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>TRUE draws a frame around the plot area in GridColor and fills it with PlotAreaColor; FALSE leaves it unframed.</td></tr>
+<tr><td class="rq-name">Colors</td><td class="rq-type">ARRAY(30) OF LONG</td><td>RW</td><td>(0)=RGB(0,0,0); (1)=RGB(0,0,175); (2)=RGB(175,0,0); (3)=RGB(0,175,0); (4)=RGB(0,175,175); (5)=RGB(175,0,175); (6)=RGB(192,192,0); (7)=RGB(75,75,225); (8)=RGB(225,75,75); (9)=RGB(75,225,75); (10)=RGB(75,215,230); (11)=RGB(215,75,215); (12)=RGB(215,230,75); (13)=RGB(128,128,255); (14)=RGB(240,128,128); (15)=RGB(192,220,192); (16)=RGB(166,202,240); (17)=RGB(199,177,255); (18)=RGB(255,226,177); (19)=RGB(0,0,255); (20)=RGB(255,0,0); (21)=RGB(0,255,0); (22)=RGB(0,255,255); (23)=RGB(255,0,255); (24)=RGB(255,255,0); (25)=RGB(255,153,51); (26)=RGB(255,51,153); (27)=RGB(80,80,80); (28)=RGB(128,128,128); (29)=RGB(208,208,208); (30)=RGB(255,255,255)</td><td>Palette array (0 to 30) of RGB colors that QChart cycles through for series when AutoColor is TRUE; the constructor fills it with named colors (0 black ... 30 white) and the comment invites the user to redefine it.</td></tr>
+<tr><td class="rq-name">PlotAreaColor</td><td class="rq-type">LONG</td><td>RW</td><td>Colors(4)</td><td>Background color of the plot area (used when AxisBorder is TRUE and as the GDI background color for lines and markers). The constructor sets it to Colors(4).</td></tr>
+<tr><td class="rq-name">GridColor</td><td class="rq-type">LONG</td><td>RW</td><td>Colors(25)</td><td>Color of the grid lines and of the plot area frame. The constructor sets it to Colors(25).</td></tr>
+<tr><td class="rq-name">dlgSaveQC</td><td class="rq-type">QSAVEDIALOG</td><td>RW</td><td></td><td>QSaveDialog used by SaveChart to ask for a .bmp file name.</td></tr>
+<tr><td class="rq-name">MarkerSize</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Size of the drawn point markers; Initialize sets 3. PrintChart and CopyToClipboard scale it temporarily.</td></tr>
+<tr><td class="rq-name">BW</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>TRUE draws in black and white: each series color is set to the value of its index and the zero lines to Colors(0). FALSE cycles the Colors() array.</td></tr>
+<tr><td class="rq-name">GreyScale</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>TRUE draws series in shades of grey instead of colors and sets the zero lines to Colors(0); FALSE cycles the Colors() array.</td></tr>
+<tr><td class="rq-name">ChartExists</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>TRUE after a chart has been drawn, FALSE after the buffer is cleared. RedrawChart only redraws and PrintChart only prints when it is TRUE.</td></tr>
+<tr><td class="rq-name">Viewport</td><td class="rq-type">INTEGER</td><td>RW</td><td>100</td><td>For ctReal charts, the number of last points shown along the X axis; the constructor sets 100. A negative value, or Rows not larger than Viewport, plots all points.</td></tr>
+<tr><td class="rq-name">Missing</td><td class="rq-type">DOUBLE</td><td>RW</td><td>-9.999E-45</td><td>Value that marks missing data; points equal to it are skipped. The constructor sets -9.999E-45.</td></tr>
+</table>
+<a name="2"></a><h2>QCHART Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Initialize</td><td class="rq-type">SUB</td><td>Sets default values: buffer size from ClientWidth/ClientHeight, borders, legend, axis options, fonts, series styles; clears the titles, LegendList and LabelList; sets Cols and Rows to 1, ChartType to ctXY and ChartStyle to csPoints. Call it first, then set ChartType and the other properties.</td></tr>
+<tr><td class="rq-name">PaintChart</td><td class="rq-type">SUB</td><td>Draws the off-screen buffer onto the canvas. Assign it to the OnPaint event of the QChart.</td></tr>
+<tr><td class="rq-name">ClearAll</td><td class="rq-type">SUB</td><td>Calls Initialize, erases the buffer and repaints, giving an empty chart.</td></tr>
+<tr><td class="rq-name">DrawChart</td><td class="rq-type">SUB(Overlay AS INTEGER)</td><td>DrawChart(Overlay) draws the chart selected by ChartType from the current data and repaints the canvas. With Overlay FALSE the buffer is cleared and axes, titles, labels and legend are redrawn; with Overlay TRUE only the data is drawn over the existing chart.</td></tr>
+<tr><td class="rq-name">RedrawChart</td><td class="rq-type">SUB</td><td>Resizes the buffer to the current client size and redraws the chart if ChartExists is TRUE. The comment says to call it from the form&#x27;s OnResize event.</td></tr>
+<tr><td class="rq-name">PrintChart</td><td class="rq-type">SUB</td><td>PrintChart(Prn, Orient, Margin, Copies, Colr) redraws the chart at page size (fonts and markers x3, autoscaling kept off) and prints it on printer index Prn with orientation Orient (0 = portrait), the given margin and number of copies; Colr FALSE prints in black and white. Afterwards it restores the screen settings and redraws.</td></tr>
+<tr><td class="rq-name">CopyToClipboard</td><td class="rq-type">SUB(Wid AS INTEGER, Hgt AS INTEGER)</td><td>CopyToClipboard(Wid, Hgt) redraws the chart at Wid x Hgt pixels with fonts scaled accordingly, puts the bitmap on the clipboard and then redraws the chart at screen size.</td></tr>
+<tr><td class="rq-name">SaveChart</td><td class="rq-type">SUB(SaveAs AS BYTE)</td><td>SaveChart(SaveAs) saves the buffer as a .bmp file. If the chart was saved before and SaveAs is FALSE it overwrites the same file; otherwise it shows dlgSaveQC (&quot;Save Graph&quot; or &quot;Save Graph As&quot;), adds .bmp if missing and asks before overwriting an existing file.</td></tr>
+<tr><td class="rq-name">SaveToFile</td><td class="rq-type">SUB(FileName AS String)</td><td>SaveToFile(FileName) writes the buffer as a bitmap to FileName without any dialog or overwrite check.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The header warns that there is little error checking: the user must format the data correctly before calling each routine.</li>
+<li>Data and XYData must be REDIMmed with the instance name written out, even inside a WITH block; the header calls this a RapidQ quirk.</li>
+<li>Initialize sets ChartType to ctXY and ChartStyle to csPoints, so ChartType and ChartStyle must be set after calling Initialize.</li>
+<li>The constructor sets FgColor to Colors(23) (bright magenta), PlotAreaColor to Colors(4) (cyan) and GridColor to Colors(25) (orange), while the comments next to them still say black, light grey and dark grey; these fields are marked &quot;!!!&quot; in the declarations and the original defaults are commented out in Initialize.</li>
+<li>Logarithmic scaling of a value &lt;= 0 shows a message box (&quot;qcLog10: Log of Value &lt;= 0 Undefined&quot;) and the chart is cleared.</li>
+<li>At most 26 series (MaxSeries); title texts are fixed strings of 75 characters.</li>
+<li>PrintChart uses hard-coded buffer sizes (1920 x 2400 portrait, 2560 x 1920 landscape), and computes the page rectangle from the control&#x27;s own .Left and .Top inside WITH QCHART.</li>
+<li>Setting BW or GreyScale also overwrites XAxis.ZeroColor and YAxis.ZeroColor with Colors(0); they are not restored when the option is turned off.</li>
+<li>SaveChart and SaveToFile only write BMP files.</li>
+</ul>
+<a name="4"></a><h2>QCHART Examples</h2>
+<p class="rq-meta">Example from the comments in the source file.</p>
+<pre>$INCLUDE &quot;QChart.inc&quot;
+CREATE YourInstanceName AS QChart
+  Parent = Form
+END CREATE
+WITH YourInstanceName
+  .Initialize
+  .ChartType = ctBar
+  .ChartStyle = csBar
+  .Cols = 2
+  .Rows = 2
+  REDIM YourInstanceName.Data(.Cols, .Rows)
+  &#x27; load data into .LabelList, .LegendList and .Data
+  .DrawChart(FALSE)
+END WITH</pre>
+<div class="rq-foot"><a href="c_qcgi.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qciccio.html">Next component</a></div>
+</body>
+</html>

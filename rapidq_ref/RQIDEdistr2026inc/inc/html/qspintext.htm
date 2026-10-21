@@ -1,0 +1,62 @@
+<html>
+<head>
+<title>qspintext.inc</title>
+</head>
+<body bgcolor="c0cccb">
+<pre>
+<font color="007700"><i>' Qspintext component for Rapid-Q by Mesut Akcan</i></font> 
+<font color="007700"><i>' ver : 1.01</i></font> 
+<font color="007700"><i>' 7 July 2000, update : 7 Sept. 2000 </i></font> 
+<font color="007700"><i>' http://kaynak.cjb.net</i></font> 
+<font color="007700"><i>' http://makcan.virtualave.net</i></font> 
+<font color="007700"><i>' makcan@softhome.net</i></font> 
+<font color="007700"><i>'$typecheck on</i></font> 
+<font color="0000AA"><b>type</b></font> Qspintext <font color="0000AA"><b>extends</b></font> <font color="000099"><b>qpanel</b></font>
+    max <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+    min <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+    value <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+    ed <font color="0000AA"><b>as</b></font> <font color="000099"><b>qedit</b></font>
+    sb <font color="0000AA"><b>as</b></font> <font color="000099"><b>qscrollbar</b></font>
+    <font color="0000AA"><b>sub</b></font> initial
+        <font color="0000AA"><b>with</b></font> Qspintext 
+            .sb.max=.min * -1
+            .sb.min=.max * -1
+            .ed.text=<font color="0000AA"><b>str$</b></font><b>(</b>.value<b>)</b>
+            .ed.parent=Qspintext
+            .sb.parent=Qspintext
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+    <font color="0000AA"><b>constructor</b></font> 
+        width=50 : height=22
+        sb.kind=1
+        sb.width=18
+        sb.top=2 : ed.top=3
+        ed.left=2 
+        ed.height=16 : sb.height=18 
+        sb.left=Qspintext.width - 20
+        ed.borderstyle=0
+        ed.width=Qspintext.width - 22
+        bevelouter=1
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>constructor</b></font>
+    <font color="0000AA"><b>event</b></font> sb.onchange
+        <font color="0000AA"><b>dim</b></font> p <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+        <font color="0000AA"><b>with</b></font> Qspintext
+            p=.sb.position * -1
+            .ed.text=<font color="0000AA"><b>str$</b></font><b>(</b>p<b>)</b>
+            .value=p
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>event</b></font>
+    <font color="0000AA"><b>event</b></font> ed.onchange
+        Qspintext.sb.position=<font color="0000AA"><b>val</b></font><b>(</b>Qspintext.ed.text<b>)</b> * -1
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>event</b></font>
+    <font color="0000AA"><b>event</b></font> ed.onkeydown <b>(</b>key <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>word</b></font>, shift <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+        <font color="0000AA"><b>dim</b></font> p <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+        p=Qspintext.sb.position
+        <font color="0000AA"><b>if</b></font> key=38 <font color="0000AA"><b>then</b></font> p--  <font color="007700"><i>' up</i></font> 
+        <font color="0000AA"><b>if</b></font> key=40 <font color="0000AA"><b>then</b></font> p++  <font color="007700"><i>' dw</i></font> 
+        Qspintext.sb.position = p
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>event</b></font>
+<font color="0000AA"><b>end</b></font> <font color="0000AA"><b>type</b></font> 
+</pre>
+</body>
+</html>

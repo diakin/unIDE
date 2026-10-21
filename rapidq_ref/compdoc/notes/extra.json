@@ -1,0 +1,25 @@
+{
+  "QStringGridEx@QStringGridEx.inc": {
+    "summary_en": "A QStringGrid with an editor style per row instead of per column: a row can show a drop-down list, an ellipsis button or a plain edit.",
+    "summary_ru": "QStringGrid со стилем редактора по строкам, а не по столбцам: в строке может быть выпадающий список, кнопка «...» или обычное поле.",
+    "description_en": [
+      "QStringGridEx is a template type: the size of its row arrays is given when the variable is declared, for example DIM Grid AS QStringGridEx<20>. RowStyle(Row) and RowList(Row) hold the style and the list text for each row.",
+      "QSTRINGGRID only has styles per column (ColumnStyle, ColumnList). When a cell is selected (OnSelectCell) or the current row is drawn (OnDrawCell), the component copies the style of that row into the column of the cell: RowStyle grsList (2) sets ColumnList(Col) = RowList(Row) and ColumnStyle(Col) = 0, grsEllipsis (1) sets ColumnStyle(Col) = 1, grsNone (0) sets ColumnStyle(Col) = 2.",
+      "The file defines the constants grsNone = 0, grsEllipsis = 1 and grsList = 2. It was added to the D. Glodt component set in June 2003 (object/lire.txt: a component inherited from QStringGrid with the row style)."
+    ],
+    "requires": [],
+    "members": {
+      "ROWSTYLE": "Array (0 to Size): editor style of each row - grsNone (0), grsEllipsis (1) or grsList (2).",
+      "ROWLIST": "Array (0 to Size): list items for rows with RowStyle grsList; copied to ColumnList of the selected column."
+    },
+    "example": "$INCLUDE \"QStringGridEx.inc\"\nDIM Form AS QFORM\nDIM Grid AS QStringGridEx<10>\nGrid.Parent = Form\nGrid.ColCount = 3\nGrid.RowCount = 5\nGrid.RowStyle(1) = grsList\nGrid.RowList(1) = \"Red\" + CHR$(13) + \"Green\" + CHR$(13) + \"Blue\"\nGrid.RowStyle(2) = grsEllipsis\nForm.ShowModal",
+    "example_origin": "written",
+    "author": "D. Glodt (per object/lire.txt)",
+    "version": "1.0",
+    "date": "June 2003 (object/lire.txt)",
+    "caveats_en": [
+      "The OnSelectCell and OnDrawCell handlers are defined inside the TYPE; assigning your own handler to these events in the program may replace them (not checked).",
+      "The format of the RowList text (separator between items) is not given in the source; it is passed to ColumnList unchanged."
+    ]
+  }
+}

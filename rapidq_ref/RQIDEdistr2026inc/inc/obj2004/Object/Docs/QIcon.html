@@ -1,0 +1,803 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <title>Appendix A: QICON</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation composant par D.Glodt (c)2000-2004</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QICON</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QICON Composant</h1>
+
+<dd>
+QICON est un composant non visuel permettant l'extraction d'icones de fichiers
+executable,dll,icl,ico ou de fichiers associ&eacute;s ainsi que la sauvegarde
+au format icone.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QICON Propriet&eacute;s</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Champs</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>L/E</b></td>
+
+<td><b>Defaut</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>FileName</td>
+
+<td>STRING</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Nom du fichier icone incluant le chemin,
+les types de fichiers sont *.ico,*.exe,*.dll,*.icl ou
+<br>autre fichiers associ&eacute;s a un ex&eacute;cutable.Une chaine vide
+supprime l'icone actuel en m&eacute;moire.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Count</td>
+
+<td>INTEGER</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Nombre d'icones dans le fichier.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Handle</td>
+
+<td>LONG</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Handle de l'icone.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Index</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td>0</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Index icone,permet la selection d'icone
+dans un fichier possedant plusieurs icones.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Associated</td>
+
+<td>BOOLEAN</td>
+
+<td>LE</td>
+
+<td>FALSE</td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Icon&nbsp; de l'ex&eacute;cutable associ&eacute; a un fichier dans
+Handle si TRUE</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QICON Methodes</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Methode</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>SaveToFile</td>
+
+<td>Sub(FileName$,pixelFormat%,mask%)</td>
+
+<td>Sauvegarde au format icone.
+<br>FileName est le nom du fichier,PixelFormat peut etre pf4bit(16 couleurs)
+ou
+<br>pf8bit(256 couleurs , mask correspond a la transparence(true ou false)</td>
+
+<td>3</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>SaveBmpToFile</td>
+
+<td>Sub(QBitmap,FileName$,pixelFormat%,mask%)</td>
+
+<td>Sauvegarde un bitmap au format icone.</td>
+
+<td>4</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ConvertAsCursor</td>
+
+<td>Sub(FileName$,XHotSpot?,YHotSpot?)</td>
+
+<td>Converti l'icone filename$ en curseur,les parametres XHotSpot et YHotSpot
+<br>sont les coordonn&eacute;es curseur.</td>
+
+<td>3</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QICON Evenements</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Evenement</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>D&eacute;clenchement</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QICON Exemples</font></b>
+<pre><b><font color="#0000A0">$TYPECHECK</font></b> ON
+<b><font color="#0000A0">$Option</font></b> ICON "<font color="#800000">IconLib.ico</font>"
+<b><font color="#0000A0">$Include</font></b> "<font color="#800000">Rapidq.inc</font>"
+<b><font color="#0000A0">$Include</font></b> "<font color="#800000">QFuncLib.inc</font>"
+<b><font color="#0000A0">$Include</font></b> "<font color="#800000">Object\QICON.inc</font>"
+<b><font color="#0000A0">$Include</font></b> "<font color="#800000">Object\QCanvasEx.inc</font>"
+<b><font color="#0000A0">$INCLUDE</font></b> "<font color="#800000">Object\QCOLORDIALOG.INC</font>"
+<b><font color="#0000A0">$INCLUDE</font></b> "<font color="#800000">Object\QDrawFocus.INC</font>"
+<b><font color="#0000A0">$INCLUDE</font></b> "<font color="#800000">Object\QFileListView.inc</font>"
+<b><font color="#0000A0">$INCLUDE</font></b> "<font color="#800000">Object\QFormEx.inc</font>"
+<b><font color="#0000A0">$include</font></b> "<font color="#800000">Object\QAbout.inc</font>"
+
+<b><font color="#0000A0">$Resource</font></b> CODE <b><font color="#0000A0">as</font></b> "<font color="#800000">IconLib.ico</font>"
+<b><font color="#0000A0">$Resource</font></b> ICO_DEFAUT <b><font color="#0000A0">as</font></b> "<font color="#800000">defaut.ico</font>"
+<b><font color="#0000A0">$Resource</font></b> ICO_EXE <b><font color="#0000A0">as</font></b> "<font color="#800000">exe.ico</font>"
+<b><font color="#0000A0">$Resource</font></b> ICO_DLL <b><font color="#0000A0">as</font></b> "<font color="#800000">dll.ico</font>"
+<b><font color="#0000A0">$Resource</font></b> ICO_IMG <b><font color="#0000A0">as</font></b> "<font color="#800000">img.ico</font>"
+
+<b><font color="#0000A0">$Resource</font></b> ICO_SMALL_DEFAUT <b><font color="#0000A0">as</font></b> "<font color="#800000">SmallDefaut.ico</font>"
+<b><font color="#0000A0">$Resource</font></b> ICO_SMALL_EXE <b><font color="#0000A0">as</font></b> "<font color="#800000">SmallExe.ico</font>"
+<b><font color="#0000A0">$Resource</font></b> ICO_SMALL_DLL <b><font color="#0000A0">as</font></b> "<font color="#800000">SmallDll.ico</font>"
+<b><font color="#0000A0">$Resource</font></b> ICO_SMALL_IMG <b><font color="#0000A0">as</font></b> "<font color="#800000">SmallImg.ico</font>"
+
+
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">Sub</font></b> open<b>(</b>file <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">string</font>)
+<font color="#0000A0">declare</font></b> <b><font color="#0000A0">Sub</font></b> draw
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> ChangeDirectory
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> ShowFiles
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> ShowIco
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> ShowIcl
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> ShowDll
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> ShowExe
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> ShowCur
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> showColor
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> SaveAs
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> MenuMask
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> SelectIco<b>(</b>button <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font></b>,x <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font></b>,y <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font></b>,shift <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font>)
+<font color="#0000A0">declare</font></b> <b><font color="#0000A0">Sub</font></b> ShowList<b>(</b>sender <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMenuItem</font>)
+<font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> ResizeImage
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> OnAbout
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> DrawCursor
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> GridCursor
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> InfoGrid<b>(</b>x <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">short</font></b>,y <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">short</font>)
+<font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> CloseGrid<b>(</b>Button <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">short</font></b>,x <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">short</font></b>,y <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">short</font>)
+<font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> OpenGrid
+<b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b> CheckIco
+
+<b><font color="#0000A0">const</font></b> Offset=38
+<b><font color="#0000A0">dim</font></b> bitmap <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QBITMAP
+</font></b>bitmap.PixelFormat=pf24bit
+bitmap.width=32
+bitmap.height=32
+<b><font color="#0000A0">dim</font></b> rect <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QRECT
+dim</font></b> dest <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QRECT
+dim</font></b> icon <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">Qicon
+dim</font></b> Dial <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QColorDialog
+dim</font></b> ImageColor <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long
+</font></b>ImageColor=&amp;HFFFFFF
+<b><font color="#0000A0">Dim</font></b> SaveDialog <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QSaveDialog
+</font></b>SaveDialog.Filter="<font color="#800000">icones 16 couleurs(*.ico)|*.ico|icones 256 couleurs(*.ico)|*.ico|bitmap 24 bits(*.bmp)|*.bmp|</font>"
+SaveDialog.Caption= "<font color="#800000">Sauver sous</font>"
+<b><font color="#0000A0">dim</font></b> popup <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QPOPUPMENU
+dim</font></b> pop1 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>pop1.caption="<font color="#800000">&amp;Sauver sous...</font>"
+pop1.OnClick=SaveAs
+popup.addItems<b>(</b>pop1<b>)
+</b>popup.autoPopup=true
+<b><font color="#0000A0">dim</font></b> IconSelect <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+dim</font></b> focus <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QDrawFocus
+</font></b>&nbsp;&nbsp;&nbsp; focus.noresize=true
+&nbsp;&nbsp;&nbsp; focus.showcursor=false
+<b><font color="#0000A0">dim</font></b> about <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QAbout
+const</font></b> AppTitle="<font color="#800000">Icon viewer</font>"
+<b><font color="#0000A0">const</font></b> AppVersion="<font color="#800000">1.2</font>"
+
+<b><font color="#0000A0">CREATE</font></b> Form <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QFormEx
+</font></b>&nbsp;&nbsp;&nbsp; Caption=AppTitle
+&nbsp;&nbsp;&nbsp; Width=640
+&nbsp;&nbsp;&nbsp; Height=500
+&nbsp;&nbsp;&nbsp; Center
+&nbsp;&nbsp;&nbsp; DeskBar=true
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Menu <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMAINMENU
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Menu1 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Fichier</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=CheckIco
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item11 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Sauver sous...</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SaveAs
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item12 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Mode transparent</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; checked=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuMask
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item13 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">-</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item14 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Conversion curseur</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=OpenGrid
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Menu2 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Affichage</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item1 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Couleur de fond</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowColor
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item2 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">-</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item3 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Fichiers ico</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; checked=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowIco
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item4 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Fichiers icl</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; checked=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowIcl
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item5 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Fichiers dll</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; checked=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowDll
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item6 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Fichiers exe</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; checked=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowExe
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item7 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Fichiers cur</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; checked=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowCur
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item8 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">-</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item21 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Grandes icones</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Tag=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowList
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item22 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Petites icones</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Tag=2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowList
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item23 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;Liste</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Tag=3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowList
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item24 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;D&eacute;tails</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Tag=4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; checked=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ShowList
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Menu3 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;?</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> item31 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QMENUITEM
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">&amp;A Propos...</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=OnAbout
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Splitter1 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QSPLITTER
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=alLeft
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=5
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> DirTree <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QDirTree
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=alLeft
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; InitialDir = <b><font color="#0000A0">CURDIR$
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width =300
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnChange=ChangeDirectory
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> EXEList <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QFileListView
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=alClient
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width = 325
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ViewStyle=vsReport
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ExtensionsList.AddItems <b>(</b>"<font color="#800000">exe</font>","<font color="#800000">dll</font>","<font color="#800000">icl</font>","<font color="#800000">ico</font>","<font color="#800000">cur</font>","<font color="#800000">ani</font>"<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SmallImageList.AddIcoHandle<b>(</b>ICO_SMALL_DEFAUT<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LargeImageList.AddIcoHandle<b>(</b>ICO_DEFAUT<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SmallImageList.AddIcoHandle<b>(</b>ICO_SMALL_EXE<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LargeImageList.AddIcoHandle<b>(</b>ICO_EXE<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SmallImageList.AddIcoHandle<b>(</b>ICO_SMALL_DLL<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LargeImageList.AddIcoHandle<b>(</b>ICO_DLL<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SmallImageList.AddIcoHandle<b>(</b>ICO_SMALL_IMG<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LargeImageList.AddIcoHandle<b>(</b>ICO_IMG<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SmallImageList.AddIcoHandle<b>(</b>ICO_SMALL_IMG<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LargeImageList.AddIcoHandle<b>(</b>ICO_IMG<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SmallImageList.AddIcoHandle<b>(</b>ICO_SMALL_IMG<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LargeImageList.AddIcoHandle<b>(</b>ICO_IMG<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SmallImageList.AddIcoHandle<b>(</b>ICO_SMALL_IMG<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LargeImageList.AddIcoHandle<b>(</b>ICO_IMG<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ColumnCaption<b>(</b>1<b>)</b>="<font color="#800000">Nom</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ColumnCaption<b>(</b>2<b>)</b>="<font color="#800000">Taille</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ColumnCaption<b>(</b>3<b>)</b>="<font color="#800000">Type</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ColumnCaption<b>(</b>4<b>)</b>="<font color="#800000">Modifi&eacute;</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Mask = "<font color="#800000">*.dll;*.exe;*.icl;*.ico;*.cur;*.ani</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnFileChange=Open
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Splitter2 <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QSPLITTER
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=alBottom
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; cursor=crVSplit
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=5
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> box <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QSCROLLBOX
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=alBottom
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height=150
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnResize=ResizeImage
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> image <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QCanvasEx
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=box.width-4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height=box.height-4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; fillrect<b>(</b>0,0,image.width,image.height,&amp;HFFFFFF<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; PopupMenu=Popup
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnPaint=Draw
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnMouseDown=SelectIco
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> Infos <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QSTATUSBAR
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SizeGrip=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AddPanels "<font color="#800000">Nombre d'icons:</font>","<font color="#800000">selection:</font>"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Panel<b>(</b>0<b>)</b>.width=200
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+END</font></b> <b><font color="#0000A0">CREATE
+
+</font></b><i><font color="#008000">'========================================================</font></i>&nbsp;
+<i><font color="#008000">' boite dialogue coordonn&eacute;es x,y curseur</font></i>&nbsp;
+<i><font color="#008000">'========================================================</font></i>&nbsp;
+<b><font color="#0000A0">CREATE</font></b> Form2 <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QFORM
+</font></b>&nbsp; width=300
+&nbsp; height=340
+&nbsp; caption="<font color="#800000">Coordonn&eacute;es curseur</font>"
+&nbsp; center
+&nbsp; borderstyle=4
+&nbsp; <b><font color="#0000A0">CREATE</font></b> SpotInfo <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QLABEL
+</font></b>&nbsp;&nbsp;&nbsp; top=10
+&nbsp;&nbsp;&nbsp; left=15
+&nbsp;&nbsp;&nbsp; autosize=true
+&nbsp;&nbsp;&nbsp; caption="<font color="#800000">X:</font>"+<b><font color="#0000A0">space$</font>(</b>3<b>)</b>+"<font color="#800000">Y:</font>"
+&nbsp;&nbsp;&nbsp; transparent=true
+&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp; <b><font color="#0000A0">CREATE</font></b> BoxIco <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QSCROLLBOX
+</font></b>&nbsp;&nbsp;&nbsp; top=40
+&nbsp;&nbsp;&nbsp; left=15
+&nbsp;&nbsp;&nbsp; width=260
+&nbsp;&nbsp;&nbsp; height=260
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">CREATE</font></b> ImgIco <b><font color="#0000A0">AS</font></b> <b><font color="#0000A0">QCANVASEX
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=256
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height=256
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnPaint=DrawCursor
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnMouseMove=InfoGrid
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnMouseDown=CloseGrid
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+</font></b>&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE
+END</font></b> <b><font color="#0000A0">CREATE
+
+</font></b>Form.ShowModal
+
+<b><font color="#0000A0">sub</font></b> OpenGrid
+&nbsp; <b><font color="#0000A0">Dim</font></b> msgButton <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp;&nbsp;
+&nbsp; msgButton=<b><font color="#0000A0">MessageBox</font>(</b>"<font color="#800000">Convertir </font>"+GetFileName<b>(</b>icon.filename<b>)</b>+"<font color="#800000"> en curseur?</font>",application.title,36<b>)
+</b>&nbsp; <b><font color="#0000A0">if</font></b> msgButton=mrYes <b><font color="#0000A0">then</font></b> form2.show
+<b><font color="#0000A0">end</font></b> <b><font color="#0000A0">sub
+
+sub</font></b> CheckIco
+&nbsp; <b><font color="#0000A0">if</font></b> <b><font color="#0000A0">instr</font>(<font color="#0000A0">lcase$</font>(</b>icon.filename<b>)</b>,"<font color="#800000">.ico</font>"<b>)</b>>0 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; item14.enabled=true
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; item14.enabled=false
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+end</font></b> <b><font color="#0000A0">sub
+
+sub</font></b> DrawCursor
+&nbsp; ImgIco.fillrect<b>(</b>0,0,256,256,&amp;hffffff<b>)
+</b>&nbsp; ImgIco.DrawIco<b>(</b>0,0,256,256,Icon.handle<b>)
+</b>&nbsp; GridCursor
+<b><font color="#0000A0">end</font></b> <b><font color="#0000A0">sub
+
+</font></b><i><font color="#008000">'============================</font></i>&nbsp;
+<i><font color="#008000">' Affichage grille zoom</font></i>&nbsp;
+<i><font color="#008000">'============================</font></i>&nbsp;
+<b><font color="#0000A0">Sub</font></b> GridCursor
+&nbsp; <b><font color="#0000A0">dim</font></b> ptHorz <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp; <b><font color="#0000A0">dim</font></b> ptVert <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp; <b><font color="#0000A0">dim</font></b> i <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp; ptHorz=0
+&nbsp; ptVert=0
+&nbsp; ImgIco.pensize=1
+&nbsp; <b><font color="#0000A0">for</font></b> i=1 <b><font color="#0000A0">to</font></b> <b><font color="#0000A0">int</font>(</b>ImgIco.height/8<b>)
+</b>&nbsp;&nbsp;&nbsp; ptHorz=ptHorz+8
+&nbsp;&nbsp;&nbsp; ImgIco.line<b>(</b>0,ptHorz,ImgIco.width,ptHorz,&amp;h0<b>)
+</b>&nbsp; <b><font color="#0000A0">next</font></b> i&nbsp;
+&nbsp; <b><font color="#0000A0">for</font></b> i=1 <b><font color="#0000A0">to</font></b> <b><font color="#0000A0">int</font>(</b>ImgIco.width/8<b>)
+</b>&nbsp;&nbsp;&nbsp; ptVert=ptVert+8
+&nbsp;&nbsp;&nbsp; ImgIco.line<b>(</b>ptVert,0,ptVert,ImgIco.height,&amp;h0<b>)
+</b>&nbsp; <b><font color="#0000A0">next</font></b> i&nbsp;
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> InfoGrid<b>(</b>x <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">short</font></b>,y <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">short</font>)
+</b>&nbsp; SpotInfo.caption="<font color="#800000">X:</font>"+<b><font color="#0000A0">str$</font>(<font color="#0000A0">int</font>(</b>x/8<b>)</b>+1<b>)</b>+"<font color="#800000"> Y:</font>"+<b><font color="#0000A0">str$</font>(<font color="#0000A0">int</font>(</b>y/8<b>)</b>+1<b>)
+<font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> CloseGrid<b>(</b>Button <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">short</font></b>,x <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">short</font></b>,y <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">short</font>)
+</b>&nbsp; Form2.close
+&nbsp; icon.ConvertAsCursor<b>(</b>icon.filename,<b>(</b>x/8<b>)</b>+1,<b>(</b>y/8<b>)</b>+1<b>)
+</b>&nbsp; icon.filename=FullPathNoExt<b>(</b>icon.filename<b>)</b>+"<font color="#800000">.cur</font>"
+&nbsp; EXEList.Refresh
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Open<b>(</b>file <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">string</font>)
+</b>&nbsp; icon.filename=file
+&nbsp; image.repaint
+&nbsp; infos.panel<b>(</b>0<b>)</b>.caption="<font color="#800000">Nombre d'icons:</font>"+<b><font color="#0000A0">str$</font>(</b>icon.count<b>)
+</b>&nbsp; infos.panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Selection:</font>"
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> ResizeImage
+&nbsp;image.width=box.width-4
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> Draw<b>()
+</b>&nbsp; <b><font color="#0000A0">dim</font></b> i <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp; <b><font color="#0000A0">dim</font></b> col <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp; <b><font color="#0000A0">dim</font></b> x <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp; <b><font color="#0000A0">dim</font></b> y <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp;&nbsp;
+&nbsp; x=0
+&nbsp; y=0
+&nbsp; focus.remove<b>(</b>image.handle<b>)
+</b>&nbsp; image.fillrect<b>(</b>0,0,image.width,image.height,ImageColor<b>)
+</b>&nbsp; <b><font color="#0000A0">if</font></b> icon.count>1 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> icon.count*Offset><b>(</b>image.width-Offset<b>)</b> <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; col=icon.count/<b>((</b>image.width-Offset<b>)</b>/Offset<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> box.height&lt;<b>(</b>Offset*col+Offset<b>)</b> <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.height=Offset*col+Offset
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.height=box.height-4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.height=box.height-4
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">for</font></b> i=0 <b><font color="#0000A0">to</font></b> icon.count
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> x+Offset>image.width <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; y=y+Offset
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon.index=i
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.DrawIco<b>(</b>x,y,0,0,Icon.handle<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; x=x+Offset
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">next</font></b> i
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; image.height=box.height-4
+&nbsp;&nbsp;&nbsp; image.DrawIco<b>(</b>0,0,0,0,Icon.handle<b>)
+</b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+SUB</font></b> ChangeDirectory
+&nbsp; EXEList.Directory =DirTree.Directory
+<b><font color="#0000A0">END</font></b> <b><font color="#0000A0">SUB
+
+Sub</font></b> ShowFiles
+&nbsp; EXElist.Mask=""
+&nbsp; <b><font color="#0000A0">if</font></b> item3.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> EXElist.Mask="" <b><font color="#0000A0">then</font></b>&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXElist.Mask=EXElist.Mask+"<font color="#800000">*.ico</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXElist.Mask=EXElist.Mask+"<font color="#800000">;*.ico</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">if</font></b> item4.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> EXElist.Mask="" <b><font color="#0000A0">then</font></b>&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXElist.Mask=EXElist.Mask+"<font color="#800000">*.icl</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXElist.Mask=EXElist.Mask+"<font color="#800000">;*.icl</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">if</font></b> item5.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> EXElist.Mask="" <b><font color="#0000A0">then</font></b>&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXElist.Mask=EXElist.Mask+"<font color="#800000">*.dll</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXElist.Mask=EXElist.Mask+"<font color="#800000">;*.dll</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">if</font></b> item6.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> EXElist.Mask="" <b><font color="#0000A0">then</font></b>&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXElist.Mask=EXElist.Mask+"<font color="#800000">*.exe</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXElist.Mask=EXElist.Mask+"<font color="#800000">;*.exe</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">if</font></b> item7.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> EXElist.Mask="" <b><font color="#0000A0">then</font></b>&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXElist.Mask=EXElist.Mask+"<font color="#800000">*.cur;*.ani</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXElist.Mask=EXElist.Mask+"<font color="#800000">;*.cur;*.ani</font>"
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> ShowIco
+&nbsp; <b><font color="#0000A0">if</font></b> item3.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; item3.checked=false
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; item3.checked=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; ShowFiles
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> ShowIcl
+&nbsp; <b><font color="#0000A0">if</font></b> item4.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; item4.checked=false
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; item4.checked=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; ShowFiles
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> ShowDll
+&nbsp; <b><font color="#0000A0">if</font></b> item5.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; item5.checked=false
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; item5.checked=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; ShowFiles
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> ShowExe
+&nbsp; <b><font color="#0000A0">if</font></b> item6.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; item6.checked=false
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; item6.checked=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; ShowFiles
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> ShowCur
+&nbsp; <b><font color="#0000A0">if</font></b> item7.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; item7.checked=false
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; item7.checked=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp; ShowFiles
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> ShowColor
+&nbsp; Dial.style=cdNormal&nbsp;
+&nbsp; <b><font color="#0000A0">if</font></b> Dial.Execute <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; ImageColor=Dial.Color
+&nbsp;&nbsp;&nbsp; image.repaint
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Function</font></b> Selection<b>(</b>x <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font></b>,y <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font>)<font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp; <b><font color="#0000A0">dim</font></b> left <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp; <b><font color="#0000A0">dim</font></b> top <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp; <b><font color="#0000A0">dim</font></b> i <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">integer
+</font></b>&nbsp;&nbsp;
+&nbsp;&nbsp;
+&nbsp; left=0
+&nbsp; top=0
+&nbsp; <b><font color="#0000A0">for</font></b> i=1 <b><font color="#0000A0">to</font></b> icon.count
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> left+Offset>image.width <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=top+Offset
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> x>left <b><font color="#0000A0">and</font></b> x&lt;<b>(</b>left+32<b>)</b> <b><font color="#0000A0">and</font></b> y>top <b><font color="#0000A0">and</font></b> y&lt;<b>(</b>top+32<b>)</b> <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Selection=i
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; IconSelect=i-1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rect.left=left
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rect.top=top
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rect.right=left+32
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; rect.bottom=top+32
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus.start<b>(</b>image.handle,left-1,top-1<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; focus.draw<b>(</b>image.handle,left+34,top+34,true<b>)
+</b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if</font></b>&nbsp;
+&nbsp;&nbsp;&nbsp; left=left+Offset
+&nbsp; <b><font color="#0000A0">next</font></b> i
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">function
+
+Sub</font></b> SelectIco<b>(</b>button <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font></b>,x <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font></b>,y <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font></b>,shift <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font>)
+</b>&nbsp; <b><font color="#0000A0">if</font></b> Selection<b>(</b>x,y<b>)</b>=0 <b><font color="#0000A0">then</font></b> focus.remove<b>(</b>image.handle<b>)</b>&nbsp;
+&nbsp; infos.panel<b>(</b>1<b>)</b>.caption="<font color="#800000">Selection:icon</font>"+<b><font color="#0000A0">str$</font>(</b>Selection<b>(</b>x,y<b>))
+<font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> MenuMask
+&nbsp; <b><font color="#0000A0">if</font></b> item12.checked <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp; item12.checked=false
+&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp; item12.checked=true
+&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> ShowList<b>(</b>sender <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">QmenuItem</font>)
+</b>&nbsp; item21.checked=false
+&nbsp; item22.checked=false
+&nbsp; item23.checked=false
+&nbsp; item24.checked=false
+&nbsp; sender.checked=true
+&nbsp; <b><font color="#0000A0">Select</font></b> <b><font color="#0000A0">Case</font></b> sender.tag
+&nbsp; <b><font color="#0000A0">Case</font></b> 1
+&nbsp;&nbsp;&nbsp; ExeList.ViewStyle=vsIcon
+&nbsp; <b><font color="#0000A0">Case</font></b> 2
+&nbsp;&nbsp;&nbsp; ExeList.ViewStyle=vsSmallIcon
+&nbsp; <b><font color="#0000A0">Case</font></b> 3
+&nbsp;&nbsp;&nbsp; ExeList.ViewStyle=vsList
+&nbsp; <b><font color="#0000A0">Case</font></b> 4
+&nbsp;&nbsp;&nbsp; ExeList.ViewStyle=vsReport
+&nbsp; <b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Select
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> SaveAs&nbsp;&nbsp;
+&nbsp; <b><font color="#0000A0">If</font></b> SaveDialog.Execute <b><font color="#0000A0">Then
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">Select</font></b> <b><font color="#0000A0">case</font></b> SaveDialog.FilterIndex
+&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">case</font></b> 1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon.index=IconSelect
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> <b><font color="#0000A0">instr</font>(<font color="#0000A0">lcase$</font>(</b>SaveDialog.filename<b>)</b>,"<font color="#800000">.ico</font>"<b>)</b>=0 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon.saveToFile<b>(</b>SaveDialog.filename+"<font color="#800000">.ico</font>",pf4bit,item12.checked<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon.saveToFile<b>(</b>SaveDialog.filename,pf4bit,item12.checked<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">case</font></b> 2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon.index=IconSelect
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> <b><font color="#0000A0">instr</font>(<font color="#0000A0">lcase$</font>(</b>SaveDialog.filename<b>)</b>,"<font color="#800000">.ico</font>"<b>)</b>=0 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon.saveToFile<b>(</b>SaveDialog.filename+"<font color="#800000">.ico</font>",pf8bit,item12.checked<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; icon.saveToFile<b>(</b>SaveDialog.filename,pf8bit,item12.checked<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">case</font></b> 3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dest.left=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dest.top=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dest.right=32
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; dest.bottom=32
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bitmap.fillrect<b>(</b>0,0,32,32,&amp;HFFFFFF<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bitmap.copyRect<b>(</b>Dest,image,rect<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> <b><font color="#0000A0">instr</font>(<font color="#0000A0">lcase$</font>(</b>SaveDialog.filename<b>)</b>,"<font color="#800000">.bmp</font>"<b>)</b>=0 <b><font color="#0000A0">then
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bitmap.saveToFile<b>(</b>SaveDialog.FileName+"<font color="#800000">.bmp</font>"<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else
+</font></b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Bitmap.saveToFile<b>(</b>SaveDialog.FileName<b>)
+</b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+</font></b>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">Select
+</font></b>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if
+End</font></b> <b><font color="#0000A0">Sub
+
+Sub</font></b> OnAbout
+&nbsp; about.AppName=AppTitle
+&nbsp; about.AppVersion=AppVersion
+&nbsp; about.Caption="<font color="#800000">A propos</font>"
+&nbsp; about.text="<font color="#800000">Auteur:Glodt dominique</font>"+<b><font color="#0000A0">chr$</font>(</b>13<b>)</b>+"<font color="#800000">License libre</font>"
+&nbsp; about.image.icohandle=Code
+&nbsp; about.EmailFont.color=&amp;hff0000
+&nbsp; about.email="<font color="#800000">dominique.glodt@libertysurf.fr</font>"
+&nbsp; about.show
+<b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+</pre>
+
+</body>
+</html>

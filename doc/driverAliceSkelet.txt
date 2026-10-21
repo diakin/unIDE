@@ -1,0 +1,221 @@
+﻿Важные оговорки перед кодом
+Это не продакшн‑код, а учебный каркас для отладки.
+Для работы нужен доступ к документации EHCI Specification 1.0, а также к заголовочным файлам ReactOS (особенно HAL и типы ядра).
+В момент bug check нельзя использовать динамическую память, блокировки, системные вызовы. Всё должно быть статическим и максимально простым.
+Тестируй только на VM (QEMU/VirtualBox) с пробросом USB. На реальном железе риск повреждения данных.
+Структуры и константы (usb_ehci_regs.h)
+c
+#ifndef USB_EHCI_REGS_H
+#define USB_EHCI_REGS_H
+
+#include <windef.h>
+#include <ntdef.h>
+
+// Регистры EHCI (упрощённо)
+typedef struct _EHCI_CAP_REGISTERS {
+    ULONG HC_CAPPARAMS;
+    ULONG HCS_PARAMS;
+    ULONG HCCAPBASE;
+} EHCI_CAP_REGISTERS, *PEHCI_CAP_REGISTERS;
+
+typedef struct _EHCI_OPERATIONAL_REGISTERS {
+    ULONG CAPLENGTH;
+    ULONG USBCMD;
+    USHORT USBSTS;
+    USHORT USBINTR;
+    ULONG FRINDEX;
+    ULONG CTRLDSSEGMENT;
+    ULONG PERIODICLISTBASE;
+    ULONG DCA;
+    ULONG CONFIGFLAG;
+} EHCI_OPERATIONAL_REGISTERS, *PEHCI_OPERATIONAL_REGISTERS;
+
+// Команды и флаги EHCI
+#define EHCI_USBCMD_RUN      0x00000001
+#define EHCI_USBCMD_RESET    0x00000004
+#define EHCI_USBSTS_HCHALTED 0x00000008
+#define EHCI_USBSTS_ERROR    0x00000010
+
+#endif
+Кольцевой буфер лога (log_ring.c)
+Никаких аллокаций, никаких спинлоков.
+
+c
+#include "usb_ehci_regs.h"
+
+#define LOG_BUFFER_SIZE (64 * 1024)
+
+static UCHAR LogBuffer[LOG_BUFFER_SIZE];
+static ULONG LogHead = 0;
+static ULONG LogTail = 0;
+
+VOID LogWrite(const UCHAR *Data, ULONG Length) {
+    ULONG i;
+    for (i = 0; i < Length; i++) {
+        LogBuffer[LogHead] = Data[i];
+        LogHead = (LogHead + 1) % LOG_BUFFER_SIZE;
+        if (LogHead == LogTail) {
+            LogTail = (LogTail + 1) % LOG_BUFFER_SIZE; // сдвиг хвоста при переполнении
+        }
+    }
+}
+
+ULONG LogGetLength(VOID) {
+    if (LogHead >= LogTail)
+        return LogHead - LogTail;
+    return (LOG_BUFFER_SIZE - LogTail) + LogHead;
+}
+
+VOID LogRead(UCHAR *Dest, ULONG *Length) {
+    ULONG count = LogGetLength();
+    if (*Length > count) *Length = count;
+
+    ULONG i = 0;
+    while (i < *Length) {
+        Dest[i] = LogBuffer[LogTail];
+        LogTail = (LogTail + 1) % LOG_BUFFER_SIZE;
+        i++;
+    }
+}
+Прямой доступ к EHCI и polling (usbd_debug.c)
+Здесь — самое важное: MMIO, ручная инициализация, polling без прерываний.
+
+c
+#include "usb_ehci_regs.h"
+#include <hal.h>
+
+static volatile PEHCI_OPERATIONAL_REGISTERS g_pEhciOps = NULL;
+static BOOLEAN g_EhciInitialized = FALSE;
+
+BOOLEAN UsbDebugFindAndInitEhci(VOID) {
+    // Упрощённо: предполагаем, что ты уже нашёл EHCI по PCI и получил MMIO-адрес.
+    // В реальном драйвере здесь будет PCI enumeration и проверка класса/вендора.
+    // Для примера считаем, что адрес уже известен и передан извне.
+    // g_pEhciOps = (volatile PEHCI_OPERATIONAL_REGISTERS)KnownEhciMmioAddress;
+
+    // Сброс контроллера
+    g_pEhciOps->USBCMD |= EHCI_USBCMD_RESET;
+    while ((g_pEhciOps->USBSTS & 0xFFFF) & EHCI_USBSTS_HCHALTED) {
+        // простой polling
+    }
+
+    // Запуск контроллера
+    g_pEhciOps->USBCMD &= ~EHCI_USBCMD_RESET;
+    g_pEhciOps->USBCMD |= EHCI_USBCMD_RUN;
+
+    g_EhciInitialized = TRUE;
+    return TRUE;
+}
+
+// Упрощённая bulk-запись через polling (псевдокод транзакций)
+// В реальности нужно формировать QH/QTD, но для каркаса показываем идею.
+BOOLEAN UsbDebugWriteSectors(ULONG StartLBA, const UCHAR *Buffer, ULONG SectorCount) {
+    if (!g_EhciInitialized || !g_pEhciOps)
+        return FALSE;
+
+    // Здесь должен быть ручной setup транзакции:
+    // 1. Формирование QH (Queue Head) в статической памяти.
+    // 2. Формирование QTD (Transfer Descriptor) в статической памяти.
+    // 3. Связывание QH -> QTD.
+    // 4. Установка указателя в регистр dQWERK.
+    // 5. Polling статуса QTD до завершения.
+
+    // Поскольку полноценная реализация QTD/QH очень объёмна,
+    // ниже — только логика polling и проверки статуса.
+
+    // Пример: ждём, пока транзакция завершится (в реальном коде — по флагу QTD)
+    ULONG timeout = 1000000;
+    while (timeout--) {
+        USHORT status = g_pEhciOps->USBSTS;
+        if (!(status & EHCI_USBSTS_HCHALTED)) {
+            // Если транзакция завершена — можно выйти
+            break;
+        }
+        // Простой delay (в реальном драйвере — лучше использовать HAL-таймеры)
+        for (volatile ULONG i = 0; i < 1000; i++);
+    }
+
+    if (timeout == 0)
+        return FALSE; // таймаут
+
+    return TRUE;
+}
+
+Минидамп и запись лога (dump_writer.c)
+c
+#include "usb_ehci_regs.h"
+#include <ke.h> // KPROCESSOR_STATE и т. п.
+#include "log_ring.h"
+
+#define DUMP_SIGNATURE 0x44554D50 // "DUMP"
+
+struct MiniDumpHeader {
+    UINT32 Signature;
+    UINT32 Version;
+    UINT64 TimeStamp;
+    ULONG LogSize;
+};
+
+VOID UsbDebugSaveMiniDump(ULONG StartLBA) {
+    struct MiniDumpHeader header;
+    ULONG logLen = 0;
+
+    header.Signature = DUMP_SIGNATURE;
+    header.Version = 1;
+    header.TimeStamp = KeQueryInterruptTime(); // или другая временная метка
+
+    logLen = LogGetLength();
+    header.LogSize = logLen;
+
+    // Сначала пишем заголовок
+    UsbDebugWriteSectors(StartLBA, (UCHAR *)&header, sizeof(header) / 512 + 1);
+
+    // Потом пишем лог
+    if (logLen > 0) {
+        UCHAR tempBuf[4096];
+        ULONG written = 0;
+        while (written < logLen) {
+            ULONG toRead = sizeof(tempBuf);
+            if (written + toRead > logLen)
+                toRead = logLen - written;
+
+            LogRead(tempBuf, &toRead);
+
+            // Вычисляем смещение в секторах
+            ULONG sectorOffset = (sizeof(header) / 512) + (written / 512);
+            UsbDebugWriteSectors(StartLBA + sectorOffset, tempBuf, (toRead + 511) / 512);
+
+            written += toRead;
+        }
+    }
+}
+Интеграция в ke/bug.c (пример вызова)
+В ke/bug.c в момент bug check можно вызвать:
+
+c
+// Пример (псевдокод)
+extern BOOLEAN UsbDebugFindAndInitEhci(VOID);
+extern VOID UsbDebugSaveMiniDump(ULONG StartLBA);
+
+VOID BugCheckSaveDump(VOID) {
+    if (!UsbDebugFindAndInitEhci())
+        return;
+
+    // Заранее известный LBA на флешке, где лежит файл фиксированного размера
+    ULONG startLBA = 0x1000; // пример
+    UsbDebugSaveMiniDump(startLBA);
+}
+
+
+Что обязательно нужно доделать
+PCI enumeration. Найти EHCI по классу/вендору, получить MMIO-адрес.
+Полные QH/QTD. В EHCI транзакции делаются через Queue Heads и Transfer Descriptors — это самая объёмная часть.
+Bulk-IN/OUT. Для записи на флешку нужен корректный setup-пакет и bulk-передача.
+IRQL и синхронизация. В момент bug check IRQL может быть HIGH_LEVEL — никаких блокировок, только polling.
+Тестирование. Проверять на VM с пробросом USB, смотреть дампы через hex-редактор.
+Учитывая твой интерес к Delphi/VCL и к подсветке синтаксиса, ты наверняка понимаешь, что такой драйвер — это не «написать и забыть», 
+а итеративная разработка с постоянным тестированием и проверкой каждого регистра.
+
+Если скажешь, на каком этапе ты сейчас (например, «уже нашёл EHCI через PCI», «не понимаю, как сформировать QTD», «хочу пример записи секторов»), 
+я дам более конкретный кусок кода и подскажу, как его адаптировать под ReactOS. 
+

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSHFILEOPERATION</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSHFILEOPERATION</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSHFILEOPERATION Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QSHFileOperation.inc</code>, line 104 &middot; author: Marcin Szafran &middot; version: 1 &middot; date: January 2002</p>
+<p><b>A wrapper for the SHFileOperation API to copy, move, rename and delete files and folders.</b></p>
+<p>QSHFileOperation extends QObject and calls SHFileOperationA from shell32.dll. It works with wildcards and recursively and, unlike the RapidQ keywords RENAME and KILL, also works with folders; Delete can send files to the Recycle Bin.</p>
+<p>Each operation has a simple form (Copy, Move, Rename, Delete) that uses DefaultFlags and an extended form (CopyEx, MoveEx, RenameEx, DeleteEx) that combines DefaultFlagsEx with flags you pass and takes a window handle for the progress and confirmation dialogs. The fof* flag constants are defined in the file. The methods return the SHFileOperation result.</p>
+<p>QSHFILEOPERATION inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QSHFileOperation Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">DefaultFlagsEx</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Flags combined with the flags passed to the Ex methods (default 0).</td></tr>
+<tr><td class="rq-name">DefaultFlags</td><td class="rq-type">INTEGER</td><td>RW</td><td>fofRenameOnCollision</td><td>Flags used by the simple methods (default fofRenameOnCollision).</td></tr>
+</table>
+<a name="2"></a><h2>QSHFileOperation Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">CopyEx</td><td class="rq-type">FUNCTION(dSHfoFrom As String, dSHfoTo As String, SHfoFlags As Integer, SHfoHandle As Long) AS LONG</td><td>CopyEx(From, To, Flags, Handle) copies files or folders from From to To with DefaultFlagsEx OR Flags; Handle is the owner window of the dialogs.</td></tr>
+<tr><td class="rq-name">Copy</td><td class="rq-type">FUNCTION(dSHfoFrom As String, dSHfoTo As String) AS LONG</td><td>Copy(From, To) copies files or folders from From to To with DefaultFlags.</td></tr>
+<tr><td class="rq-name">MoveEx</td><td class="rq-type">FUNCTION(dSHfoFrom As String, dSHfoTo As String, SHfoFlags As Integer, SHfoHandle As Long) AS LONG</td><td>MoveEx(From, To, Flags, Handle) moves files or folders with DefaultFlagsEx OR Flags.</td></tr>
+<tr><td class="rq-name">Move</td><td class="rq-type">FUNCTION(dSHfoFrom As String, dSHfoTo As String) AS LONG</td><td>Move(From, To) moves files or folders with DefaultFlags.</td></tr>
+<tr><td class="rq-name">RenameEx</td><td class="rq-type">FUNCTION(dSHfoFrom As String, dSHfoTo As String, SHfoFlags As Integer, SHfoHandle As Long) AS LONG</td><td>RenameEx(From, To, Flags, Handle) renames a file or folder with DefaultFlagsEx OR Flags.</td></tr>
+<tr><td class="rq-name">Rename</td><td class="rq-type">FUNCTION(dSHfoFrom As String, dSHfoTo As String) AS LONG</td><td>Rename(From, To) renames a file or folder with DefaultFlags.</td></tr>
+<tr><td class="rq-name">DeleteEx</td><td class="rq-type">FUNCTION(dSHfoFrom As String, SHfoToBin As Integer, SHConfirm As Integer, SHfoFlags As Integer, SHfoHandle As Long) AS LONG</td><td>DeleteEx(Files, ToBin, Confirm, Flags, Handle) deletes files or folders; ToBin = 1 adds fofAllowUndo (Recycle Bin) and Confirm = 0 adds fofNoConfirmation, combined with DefaultFlagsEx OR Flags.</td></tr>
+<tr><td class="rq-name">Delete</td><td class="rq-type">FUNCTION(dSHfoFrom As String, SHfoToBin As Integer, SHConfirm As Integer) AS LONG</td><td>Delete(Files, ToBin, Confirm) deletes files or folders with DefaultFlags; ToBin = 1 sends them to the Recycle Bin and Confirm = 0 suppresses confirmation.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The header warns: be careful with delete and recurse.</li>
+<li>The SHFILEOPSTRUCT variable and the string buffers are global, so all instances share them.</li>
+<li>The comment on lpszProgressTitle says the progress title does not work; it is never set.</li>
+<li>The comments say some flags need shell32.dll newer than version 4.0, and that deleting to the Recycle Bin needs a full path name (a bare file name is deleted permanently even with fofAllowUndo).</li>
+<li>The ToBin and Confirm parameters are used in arithmetic, so only the values 0 and 1 give the documented result.</li>
+<li>The file turns $TYPECHECK ON at the start and OFF at the end, which affects the code that includes it.</li>
+</ul>
+<a name="4"></a><h2>QSHFileOperation Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QSHFileOperation.inc&quot;
+DIM FileOp AS QSHFileOperation
+FileOp.Copy(&quot;C:\Temp\*.txt&quot;, &quot;C:\Backup&quot;)
+FileOp.MoveEx(&quot;C:\Temp\Old&quot;, &quot;C:\Archive&quot;, fofNoConfirmation OR fofSilent, 0)
+FileOp.Delete(&quot;C:\Temp\test.txt&quot;, 1, 1)</pre>
+<div class="rq-foot"><a href="c_qscrollboxux.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qshutdown.html">Next component</a></div>
+</body>
+</html>

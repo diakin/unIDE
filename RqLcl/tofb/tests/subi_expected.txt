@@ -1,0 +1,20 @@
+String Parameters: 4
+1 Hello
+2 Hmmm
+3 Yeah...
+4 LAST ONE
+Numeric Parameters: 3
+1 1234
+2 9876
+3 24
+String Parameters: 0
+Numeric Parameters: 0
+Largest number is: 602
+Largest number is: 602
+Count: 3 0
+log: a b 2 
+log: 
+log: inside 1 
+Sum: 6.500000000 lines 3
+sum ok
+tabs 5 5 Five

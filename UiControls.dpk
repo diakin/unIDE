@@ -1,0 +1,49 @@
+package UiControls;
+
+// Пакет своих элементов unIDE для IDE Delphi 7: Component - Install
+// Packages - Add, либо открыть этот файл и нажать Install. После установки
+// формы проекта SyntaxHLClaude открываются в Delphi без ошибки
+// "Class TUi... not found". Элементы - на странице палитры unIDE.
+
+{$ALIGN 8}
+{$ASSERTIONS ON}
+{$BOOLEVAL OFF}
+{$DEBUGINFO ON}
+{$EXTENDEDSYNTAX ON}
+{$IMPORTEDDATA ON}
+{$IOCHECKS ON}
+{$LOCALSYMBOLS ON}
+{$LONGSTRINGS ON}
+{$OPENSTRINGS ON}
+{$OPTIMIZATION ON}
+{$OVERFLOWCHECKS OFF}
+{$RANGECHECKS OFF}
+{$REFERENCEINFO ON}
+{$SAFEDIVIDE OFF}
+{$STACKFRAMES OFF}
+{$TYPEDADDRESS OFF}
+{$VARSTRINGCHECKS ON}
+{$WRITEABLECONST OFF}
+{$MINENUMSIZE 1}
+{$IMAGEBASE $400000}
+{$DESCRIPTION 'unIDE Ui controls'}
+{$IMPLICITBUILD OFF}
+
+requires
+  rtl,
+  vcl,
+  vclx;
+
+contains
+  UiTheme in 'UiTheme.pas',
+  UiScroll in 'UiScroll.pas',
+  UiButton in 'UiButton.pas',
+  UiGroupBox in 'UiGroupBox.pas',
+  UiStdCtrls in 'UiStdCtrls.pas',
+  UiEditCtrls in 'UiEditCtrls.pas',
+  UiComCtrls in 'UiComCtrls.pas',
+  UiMenus in 'UiMenus.pas',
+  UiStdDlgs in 'UiStdDlgs.pas',
+  UiReg in 'UiReg.pas';
+
+end.

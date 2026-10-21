@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QBEVEL</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QBEVEL</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QBEVEL Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QBevel.inc</code>, line 24</p>
+<p><b>Bevel control like the Delphi TBevel: a QPANEL that shows a raised or lowered box, frame or single line.</b></p>
+<p>QBEVEL extends QPANEL and adds only Shape and Style. For the box and frame shapes it uses the panel&#x27;s own BevelInner and BevelOuter. For the line shapes it aligns a 2-pixel Canvas to the matching side of the panel and draws a two-color line on it (gray &amp;H808080 and white &amp;HFFFFFF; the order depends on Style).</p>
+<p>Constants: Style bsLowered (0), bsRaised (1); Shape bsSpacer (0), bsBox (1), bsTopLine (2), bsBottomLine (3), bsLeftLine (4), bsRightLine (5), bsFrame (6).</p>
+<p>QBEVEL inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QBEVEL Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Style</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Assigning sets lowered (0, bsLowered) or raised (1, bsRaised): for bsBox it sets BevelOuter to Style+1, for bsFrame it sets BevelInner to 2-Style and BevelOuter to 1+Style, and for the other shapes it clears the bevels and repaints the line.</td></tr>
+<tr><td class="rq-name">Shape</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Assigning sets the shape: 0 bsSpacer (nothing drawn), 1 bsBox, 2 to 5 a line at the top, bottom, left or right (the Canvas is aligned to that side), 6 bsFrame.</td></tr>
+<tr><td class="rq-name">Canvas</td><td class="rq-type">QCANVAS</td><td>RW</td><td></td><td>QCANVAS, 2 pixels wide or high, on which the line shapes are drawn.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>Canvas.OnPaint</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>For Shape 0 (bsSpacer) the setter assigns Canvas.Align = -1.</li>
+<li>When the shape changes from a line to bsBox or bsFrame, the Canvas keeps its old alignment (nothing is drawn on it for those shapes).</li>
+<li>The line colors are fixed RGB values, not system colors.</li>
+<li>The header mentions combo boxes of a demo program that is not part of the include.</li>
+</ul>
+<a name="4"></a><h2>QBEVEL Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QBevel.inc&quot;
+CREATE Form AS QFORM
+  Width = 300
+  Height = 200
+END CREATE
+DIM Line1 AS QBEVEL
+Line1.Parent = Form
+Line1.Left = 10
+Line1.Top = 40
+Line1.Width = 270
+Line1.Height = 2
+Line1.Shape = bsTopLine
+Line1.Style = bsLowered
+DIM Frame1 AS QBEVEL
+Frame1.Parent = Form
+Frame1.Left = 10
+Frame1.Top = 60
+Frame1.Width = 270
+Frame1.Height = 100
+Frame1.Shape = bsFrame
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qavi.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qbitmapex.html">Next component</a></div>
+</body>
+</html>

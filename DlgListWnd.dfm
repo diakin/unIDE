@@ -23,10 +23,44 @@ object DlgListWnd: TDlgListWnd
     AutoSize = False
     Layout = tlCenter
   end
+  object pnlPreview: TPanel
+    Left = 580
+    Top = 0
+    Width = 420
+    Height = 500
+    Align = alRight
+    BevelOuter = bvNone
+    TabOrder = 1
+    object imgPreview: TImage
+      Left = 0
+      Top = 0
+      Width = 420
+      Height = 480
+      Align = alClient
+      Center = True
+    end
+    object lblPreview: TLabel
+      Left = 0
+      Top = 480
+      Width = 420
+      Height = 20
+      Align = alBottom
+      Alignment = taCenter
+      AutoSize = False
+      Layout = tlCenter
+    end
+  end
+  object splPreview: TSplitter
+    Left = 576
+    Top = 0
+    Width = 4
+    Height = 500
+    Align = alRight
+  end
   object lvList: TUiListView
     Left = 0
     Top = 0
-    Width = 1000
+    Width = 576
     Height = 500
     Align = alClient
     GridLines = True

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFORMEX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QFORMEX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QFORMEX Component</h1>
+<p class="rq-meta">Extends <a href="qform.html">QFORM</a> &middot; source: <code>inc/object/QFormEx.inc</code>, line 53 &middot; version: 1.2</p>
+<p><b>An extended QFORM with file drag-and-drop, a system tray icon and taskbar handling.</b></p>
+<p>QFormEx extends QFORM and replaces the window procedure of the form (SetWindowLong with GWL_WNDPROC) the first time DragEnable is assigned or AddTrayIcon is called. The new procedure handles WM_DROPFILES, WM_SYSCOMMAND and the tray icon callback message.</p>
+<p>For drag-and-drop, set DragZone to the client area that accepts files and assign DragEnable; OnDrag is raised once for each dropped file whose drop point is inside DragZone. AddTrayIcon puts the application icon in the tray with the application title as tip; while it is shown, minimizing the form raises OnMinimise instead of minimizing, a right click raises OnTrayClick and a left double click raises OnTrayDblClick.</p>
+<p>QFORMEX inherits the properties, methods and events of <a href="qform.html">QFORM</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QFormEx Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">DragZone</td><td class="rq-type">QRECT</td><td>RW</td><td></td><td>QRect in client coordinates; dropped files are accepted only when the drop point is inside it. It must be set, since the default empty rectangle accepts nothing.</td></tr>
+<tr><td class="rq-name">DragEnable</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Assigning it calls DragAcceptFiles with the value to accept or refuse dropped files, and subclasses the window procedure the first time.</td></tr>
+<tr><td class="rq-name">DeskBar</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Assigning true makes the desktop the owner of the form and the form the owner of the application window (SetWindowLong GWL_HWNDPARENT), described as putting the application in the desktop taskbar when minimized. Assigning false does nothing.</td></tr>
+<tr><td class="rq-name">FormStyle</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Form style. Assigning it sets the inherited FormStyle; the value 3 also sets the form Parent to a hidden internal QForm.</td></tr>
+</table>
+<a name="2"></a><h2>QFormEx Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">AddTrayIcon</td><td class="rq-type">SUB</td><td>Adds a tray icon with Application.Icon and Application.Title as tip, and subclasses the window procedure if needed.</td></tr>
+<tr><td class="rq-name">DelTrayIcon</td><td class="rq-type">SUB</td><td>Removes the tray icon; minimizing works normally again.</td></tr>
+</table>
+<a name="3"></a><h2>QFormEx Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnDrag</td><td class="rq-type">SUB(file as string)</td><td>Raised for each file dropped inside DragZone, with the file name.</td></tr>
+<tr><td class="rq-name">OnTrayClick</td><td class="rq-type">SUB</td><td>Raised when the tray icon is clicked with the right mouse button (button up).</td></tr>
+<tr><td class="rq-name">OnTrayDblClick</td><td class="rq-type">SUB</td><td>Raised when the tray icon is double-clicked with the left mouse button.</td></tr>
+<tr><td class="rq-name">OnMinimise</td><td class="rq-type">SUB</td><td>Raised instead of minimizing the form when the user minimizes it while the tray icon is shown.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>With the default DragZone (all zeros) no dropped file is accepted.</li>
+<li>Assigning DragEnable false only stops accepting files; the replaced window procedure stays in place. Assigning DeskBar false does nothing.</li>
+<li>While the tray icon is shown, the minimize command is not passed to the original window procedure, so the form is not minimized unless the OnMinimise handler does it.</li>
+<li>WM_DROPFILES and the tray callback message are not passed on to the original window procedure.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 2339) contains its own edition of QFORMEX; it has members that are not in this file: BINDINDEX, CENTER, DROPPOINT, FRMTIMER, GRABWINDOWPROC, ICOANIMATE, ICONANIMCOUNT, MODIFYTRAYICON, MYWNDPROC, ONGETFOCUS, ONLOSTFOCUS, ONMESSAGE, ONMOUSEWHEEL, REMOVETASKBAR, SETTRAYICONINDEX, TASKBAR, THISFUNCPTR, TRANSPARENT, TRANSPARENTCLIENT, TRAYICO.</li>
+<li><code>inc/old/QFormEx.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QFormEx Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QFormEx.inc&quot;
+DECLARE SUB FileDropped(File AS STRING)
+
+CREATE Form AS QFormEx
+  Caption = &quot;Drop files here&quot;
+  Width = 400
+  Height = 300
+END CREATE
+
+SUB FileDropped(File AS STRING)
+  ShowMessage File
+END SUB
+
+Form.DragZone.Left = 0
+Form.DragZone.Top = 0
+Form.DragZone.Right = Form.ClientWidth
+Form.DragZone.Bottom = Form.ClientHeight
+Form.OnDrag = FileDropped
+Form.DragEnable = 1
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qfocus.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qformmdi.html">Next component</a></div>
+</body>
+</html>

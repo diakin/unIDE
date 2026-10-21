@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QPANELUX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QPANELUX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QPANELUX Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/XPThemes.inc</code>, line 319</p>
+<p><b>A QPanel that draws its border with the Windows XP visual style color after Subclass is called.</b></p>
+<p>QPanelUx extends QPanel with a window procedure hook. After Subclass is called, every WM_NCPAINT is first passed to the original procedure; then, if the EDIT theme of uxtheme.dll is active, the WS_EX_CLIENTEDGE 3D border is replaced by a single WS_BORDER line and repainted with the theme&#x27;s border color (TMT_BORDERCOLOR). In classic mode it restores the client edge border instead.</p>
+<p>The code is identical to QRichEditUx; it also uses the EDIT theme class for the border color, so it only changes panels that have a WS_EX_CLIENTEDGE or WS_BORDER border. Call Subclass once after the control has a handle.</p>
+<p>QPANELUX inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>uxtheme.dll (Windows XP or later)</li>
+<li>Callbacks.inc (included unless __RQCALLBACKS is defined) for SetNewCallBack_4</li>
+<li>Windows API declarations from a Win32 API include when __WIN32API is defined; otherwise XPThemes.inc declares them itself</li>
+</ul>
+<a name="2"></a><h2>QPanelUx Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Subclass</td><td class="rq-type">SUB</td><td>Subclasses the control&#x27;s window procedure (through SetNewCallBack_4) so its border is redrawn in XP visual style; does nothing on Windows versions older than XP (5.01), when the control has no handle yet, or when it is already subclassed.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The window DC from GetWindowDC is never released with ReleaseDC.</li>
+<li>The guard IF .Handle AND NOT .Subclassed uses bitwise AND/NOT, so a second call to Subclass may subclass the control again when the handle has bits other than bit 0 set.</li>
+<li>The version test (GetVersion AND 255) + (GetVersion AND &amp;HFF00) / 25600 &gt;= 5.01 skips Windows 2000 and earlier.</li>
+</ul>
+<a name="4"></a><h2>QPanelUx Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;XPThemes.inc&quot;
+
+CREATE Form AS QFORM
+  CREATE Ctl AS QPANELUX
+    Left = 10
+    Top = 10
+    Width = 200
+    Height = 120
+  END CREATE
+END CREATE
+Ctl.Subclass
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qpagesetup.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qposic.html">Next component</a></div>
+</body>
+</html>

@@ -1,27 +1,18 @@
-<HTML>
-<HEAD><!------------------->
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-normalized -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Table of Contents</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
 
-<!------------------->
 
-<!------------------->
-<TITLE>Table of Contents</TITLE>
-</HEAD><!------------------->
+<div class="rq-head"><span class="rq-brand"><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu &copy;1999-2000</FONT></span><span class="rq-section"><FONT FACE="Arial, Helvetica"><B>Contents</B></FONT></span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
 
-<!------------------->
-
-<!------------------->
-
-<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
-
-<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
-  <TR>
-   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu &copy;1999-2000</FONT></TD>
-   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Contents</B></FONT></TD>
-  </TR>
-  <TR>
-    <TD COLSPAN=2><HR SIZE=1> </TD>
-  </TR>
-</TABLE>
 <a name="up"></a>
 
 <BR>
@@ -235,7 +226,7 @@
   <LI>15.2 <a href="chapter15.html#152">About QOLEOBJECT</a>
   <LI>15.3 <a href="chapter15.html#153">About QOLECONTAINER</a>
   </UL>
-  <B>Appendix A: Rapid-Q Component/Object Reference</B><BR>
+  <a name="appa"></a><B>Appendix A: Rapid-Q Component/Object Reference</B><BR>
   <UL>
   <LI><a href="qapplication.html">APPLICATION</a> (Windows/Linux)
      <UL>
@@ -611,7 +602,236 @@
           <a href="qd3dwrap.html#4">QD3DWrap examples</a>
      </UL>
   </UL>
-  <B>Appendix C: Rapid-Q Keywords & Statements</B><BR>
+<!-- rq-appendix-b -->
+  <a name="appb"></a><B><a href="custom.html">Appendix B: Custom Components</a></B> (rapidq_ref/inc)<BR>
+  <UL>
+  <LI><a href="c_comport.html">COMPORT</a> &mdash; Comport is a non-visual serial (COM) port component that opens, configures, writes to and reads from a port through the Win32 file and communications API.
+  <LI><a href="c_mycom_port.html">MYCOM_PORT</a> &mdash; A serial (COM) port object that opens, configures, writes to and reads from a communications port through the Win32 file API, with events for errors and completed operations.
+  <LI><a href="c_myxpskinnedform.html">MYXPSKINNEDFORM</a> &mdash; A skinned form that replaces the Windows title bar and borders with Windows XP Metallic style bitmaps, its own title buttons, a system popup menu, rounded corners and a default button.
+  <LI><a href="c_qabout.html">QABOUT</a> &mdash; QAbout builds and shows a modal &quot;About&quot; dialog with an image, application name and version, a text, and clickable e-mail and web links.
+  <LI><a href="c_qanim.html">QANIM</a> &mdash; Animated image: a QImage that shows the frames of its QImageList one after another on a timer.
+  <LI><a href="c_qanimate.html">QANIMATE</a> &mdash; A wrapper for the Windows Animation common control (SysAnimate32) that plays silent AVI clips.
+  <LI><a href="c_qavi.html">QAVI</a> &mdash; Non-visual component that reads frames from AVI video files into bitmaps and writes bitmaps as frames into new AVI files, using the Video for Windows AVIFile API.
+  <LI><a href="c_qbevel.html">QBEVEL</a> &mdash; Bevel control like the Delphi TBevel: a QPANEL that shows a raised or lowered box, frame or single line.
+  <LI><a href="c_qbitmapex.html">QBITMAPEX</a> &mdash; An extended QBITMAP with GDI drawing methods, clipboard support and JPEG/GIF loading and JPEG saving through NViewLib.dll.
+  <LI><a href="c_qbrowsedialog.html">QBROWSEDIALOG</a> &mdash; QBROWSEDIALOG shows the Windows &quot;Browse for folder&quot; dialog and returns the selected folder.
+  <LI><a href="c_qbuttonxp.html">QBUTTONXP</a> &mdash; A QButton that resets its window style so it can be drawn with Windows XP visual styles when used together with QXPTheme.inc.
+  <LI><a href="c_qcalendar.html">QCALENDAR</a> &mdash; A month calendar panel with a day grid, month/year navigation buttons, a month popup menu and a Today button, using Windows locale names.
+  <LI><a href="c_qcanvasex.html">QCANVASEX</a> &mdash; Extended QCANVAS with GDI drawing that uses a pen style, pen size and raster (mix) mode, plus filled shapes, icons, flood fill, color inversion, mirroring and clipboard bitmap copy/paste.
+  <LI><a href="c_qcdaudio.html">QCDAUDIO</a> &mdash; Non-visual audio CD player that controls the MCI &quot;cdaudio&quot; device: open, play, pause, stop, eject and track selection, with a change event while playing.
+  <LI><a href="c_qcgi.html">QCGI</a> &mdash; Non-visual CGI helper that reads the CGI environment variables and parses GET or POST form data into name/value pairs.
+  <LI><a href="c_qchart.html">QCHART</a> &mdash; QChart is a QCanvas-based charting class that draws bar, histogram, line, XY scatter, pie, box, hi-lo and real-time charts into an off-screen bitmap.
+  <LI><a href="c_qciccio.html">QCICCIO</a> &mdash; Empty test stub component with a single field of an undefined type ciccino and an empty constructor.
+  <LI><a href="c_qcolorbutton.html">QCOLORBUTTON</a> &mdash; QCOLORBUTTON is a small square QPanel that behaves like a push button with a pressed look.
+  <LI><a href="c_qcolordialog_object_qcolordialog.html">QCOLORDIALOG</a> &mdash; A color selection dialog object based on the Windows ChooseColor common dialog, with a custom caption, 16 custom colors and full-open options.
+  <LI><a href="c_qcolordialog_qcolordialog.html">QCOLORDIALOG</a> &mdash; A non-visual wrapper for the Windows color selection dialog (ChooseColor) that returns the color as an RGB value and as an HTML #RRGGBB string.
+  <LI><a href="c_qcolordlg.html">QCOLORDLG</a> &mdash; QColorDlg is a color selection dialog wrapping the Windows ChooseColor dialog, with selectable style, screen position, caption and custom colors.
+  <LI><a href="c_qcoolbarxp.html">QCOOLBARXP</a> &mdash; A toolbar panel that imitates the Windows XP toolbar (rebar) look, with image buttons, separators, a grip, a caption, drop-down menus, embedded edit/combo boxes and an overflow chevron menu.
+  <LI><a href="c_qcursor.html">QCURSOR</a> &mdash; An object that loads mouse cursors from files or resources and shows, hides or moves the mouse cursor.
+  <LI><a href="c_qd3dcamera.html">QD3DCAMERA</a> &mdash; A non-visual camera helper for RapidQ Direct3D (QDXSCREEN) programs that keeps a camera position and orientation and applies them to a QDXSCREEN.
+  <LI><a href="c_qd3dclonemesh.html">QD3DCLONEMESH</a> &mdash; A non-visual helper that shows one QD3DMESHBUILDER (loaded from an X or 3DS file) in up to 100 QD3DFRAMEs, so the same model appears many times in a RapidQ Direct3D scene.
+  <LI><a href="c_qd3dprimitive.html">QD3DPRIMITIVE</a> &mdash; A non-visual helper that builds simple polygon meshes (planes, box, pyramid, sphere, cylinder, cone) into a QD3DMESHBUILDER for RapidQ Direct3D programs.
+  <LI><a href="c_qdatabase_qdatabase.html">QDATABASE</a> &mdash; A non-visual component for a simple flat-file database of fixed-size text records, with field lookup and search functions.
+  <LI><a href="c_qdatabase_qdatabasesql.html">QDATABASE</a> &mdash; ODBC database object that connects to Access, dBase, Paradox, Excel or text files and reads the list of tables and their field definitions.
+  <LI><a href="c_qdebug.html">QDEBUG</a> &mdash; A debug output object that prints strings into a resizable &quot;Debug&quot; window with a rich edit box.
+  <LI><a href="c_qdesktop.html">QDESKTOP</a> &mdash; Object with desktop helpers: copy the screen or the wallpaper into a device context, read a screen pixel and change the wallpaper.
+  <LI><a href="c_qdfpanel.html">QDFPANEL</a> &mdash; Helper panel type used inside QDOCKFORM: a QPANEL whose appearance properties are hidden by redeclaring them as private.
+  <LI><a href="c_qdigdisplay.html">QDIGDISPLAY</a> &mdash; A canvas that shows a text string as digital display characters drawn from bitmap files.
+  <LI><a href="c_qdir.html">QDIR</a> &mdash; Non-visual file finder that scans a directory, or a directory tree, for files matching a filter and attribute rules, and fires an event for each file found.
+  <LI><a href="c_qdirlistview.html">QDIRLISTVIEW</a> &mdash; A QListView that shows the folders and files of a directory with icons, size, type and date columns, and lets the user browse folders.
+  <LI><a href="c_qdockform.html">QDOCKFORM</a> &mdash; Dockable tool panel: a QPANEL with a title bar that can be dragged off its form into a floating borderless window and dragged back to dock again.
+  <LI><a href="c_qdownload.html">QDOWNLOAD</a> &mdash; A non-visual object that downloads a file from an HTTP server with a QSocket and returns it in a string or saves it to a file, with progress and speed reporting.
+  <LI><a href="c_qdrawfocus.html">QDRAWFOCUS</a> &mdash; QDrawFocus draws a rubber-band selection rectangle (a focus rectangle) on a device context and lets the user move it or resize it from its right and bottom edges with the mouse.
+  <LI><a href="c_qdrawmenu.html">QDRAWMENU</a> &mdash; A non-visual helper that makes menu items owner-drawn so they show a bitmap next to the caption, optionally with a raised button frame.
+  <LI><a href="c_qdrive.html">QDRIVE</a> &mdash; An object that lists the drives on the computer and reports their type, size and free space.
+  <LI><a href="c_qdrivecombobox.html">QDRIVECOMBOBOX</a> &mdash; QDriveComboBox is a QComboBox meant to list the drive letters present on the computer.
+  <LI><a href="c_qfiledialog.html">QFILEDIALOG</a> &mdash; Open or Save file dialog object using the Windows common dialog (GetOpenFileName/GetSaveFileName), with overwrite warning and multiple selection.
+  <LI><a href="c_qfilelistview.html">QFILELISTVIEW</a> &mdash; QListView that lists the files of a directory with their system icons, size, type and modification date, filtered by one or more masks.
+  <LI><a href="c_qflashlabel.html">QFLASHLABEL</a> &mdash; QLabel that can flash its text by switching the font color between a dark and a light color on a timer.
+  <LI><a href="c_qflatbutton.html">QFLATBUTTON</a> &mdash; A flat image button derived from QImage that draws a raised border when the mouse is over it and a sunken border while it is pressed.
+  <LI><a href="c_qfocus.html">QFOCUS</a> &mdash; A canvas that can be moved and resized with the mouse and can draw a blinking dotted focus frame around itself.
+  <LI><a href="c_qformex.html">QFORMEX</a> &mdash; An extended QFORM with file drag-and-drop, a system tray icon and taskbar handling.
+  <LI><a href="c_qformmdi.html">QFORMMDI</a> &mdash; An MDI parent form that creates MDI child windows around existing controls and offers properties, methods and events to manage the child windows.
+  <LI><a href="c_qftpclient.html">QFTPCLIENT</a> &mdash; An FTP client object based on wininet.dll that connects to a server, manages directories, uploads, downloads, renames and deletes files, and lists files with their size, date and attributes.
+  <LI><a href="c_qftpdirlistview.html">QFTPDIRLISTVIEW</a> &mdash; QFTPDirListView is an unfinished QListView-based file list meant to browse FTP directories; the code present lists folders and files of a local directory.
+  <LI><a href="c_qgl.html">QGL</a> &mdash; OpenGL wrapper object that sets up an OpenGL rendering context on a RapidQ form (or a bitmap) and provides viewport, texture, fog, full-screen and frame-rate helpers.
+  <LI><a href="c_qgridcolor.html">QGRIDCOLOR</a> &mdash; QGridColor is a QPanel showing the 16 standard colors as clickable cells; left click picks a foreground color and right click a background color.
+  <LI><a href="c_qgroupboxux.html">QGROUPBOXUX</a> &mdash; A QGROUPBOX that repaints its frame and caption with Windows XP visual styles after Subclass is called.
+  <LI><a href="c_qhead.html">QHEAD</a> &mdash; Header bar drawn on a QCanvas, aligned to the top of its parent, with left and right caption texts, an optional icon and a color gradient line.
+  <LI><a href="c_qhtml.html">QHTML</a> &mdash; A read-only viewer for simplified HTML pages, drawn on a panel in pure RapidQ code.
+  <LI><a href="c_qicmp.html">QICMP</a> &mdash; A ping component that sends ICMP echo requests with icmp.dll.
+  <LI><a href="c_qicon.html">QICON</a> &mdash; A non-visual object that extracts icons from files and saves an icon or a 32x32 bitmap as a 16- or 256-color .ico file, or converts it to a cursor.
+  <LI><a href="c_qid3tag.html">QID3TAG</a> &mdash; Non-visual reader and writer for the ID3v1 tag at the end of MP3 files (title, artist, album, year, comment, track and genre), with a genre list and combo box.
+  <LI><a href="c_qimagebox.html">QIMAGEBOX</a> &mdash; A scroll box that displays an image file (BMP, ICO, CUR, ANI, and GIF, JPG, PCX, TGA and others through Nviewlib.dll), scaled down to fit and centered.
+  <LI><a href="c_qimagedialog.html">QIMAGEDIALOG</a> &mdash; Custom open-file dialog built from RapidQ controls that shows a scaled preview of the selected image.
+  <LI><a href="c_qimageex.html">QIMAGEEX</a> &mdash; QImage extension with clipboard copy and paste, bitmap loading at a chosen size, and loading of other image formats through NViewLib.dll.
+  <LI><a href="c_qimagelistex.html">QIMAGELISTEX</a> &mdash; A QImageList extension that fills the list from one horizontal bitmap strip, from a file or a resource, optionally stretching the images.
+  <LI><a href="c_qini_object_qini.html">QINI</a> &mdash; QINI is a non-visual object for reading and writing values in an INI file section and for getting the Windows, System and Temp folders.
+  <LI><a href="c_qini_qwinini.html">QINI</a> &mdash; A non-visual object for reading and writing Windows INI files with the GetPrivateProfileString family of API calls.
+  <LI><a href="c_qinifile_qinifile.html">QINIFILE</a> &mdash; A QStringList-based INI file reader and writer with section and key lookup and typed read/write methods.
+  <LI><a href="c_qinifile_qlibrary.html">QINIFILE</a> &mdash; A simple INI file reader and writer that reads and writes single entries or whole sections of a text INI file.
+  <LI><a href="c_qinputbox.html">QINPUTBOX</a> &mdash; A non-visual object that shows a modal input dialog and returns the text the user typed.
+  <LI><a href="c_qled.html">QLED</a> &mdash; A round LED indicator drawn on a QCanvas, with six colors and on/off states.
+  <LI><a href="c_qledscroll.html">QLEDSCROLL</a> &mdash; A scrolling text banner on a QCanvas, with an optional grid overlay that gives an LED display look.
+  <LI><a href="c_qline.html">QLINE</a> &mdash; A canvas that draws an etched (3D) horizontal or vertical separator line.
+  <LI><a href="c_qlinegraph.html">QLINEGRAPH</a> &mdash; Simple line graph object that plots X/Y points from a QStringGrid on a QCanvas, with title, axis titles, automatic scale and tick labels.
+  <LI><a href="c_qlistboxex.html">QLISTBOXEX</a> &mdash; A QListBox that raises an OnEnter event when the Enter key is pressed.
+  <LI><a href="c_qlistviewex.html">QLISTVIEWEX</a> &mdash; Extended QListView in report style with clickable flat header buttons for sorting, CSV loading and saving, and filtering of rows.
+  <LI><a href="c_qmarker.html">QMARKER</a> &mdash; A panel that shows a vertical column of colored row strips, used to mark individual rows with a color or a bitmap.
+  <LI><a href="c_qmaxedit_richedpopup.html">QMAXEDIT</a> &mdash; QRichEdit extension with a popup menu like the standard Windows edit context menu (Undo, Cut, Copy, Paste, Delete, Select All) and line-position helpers.
+  <LI><a href="c_qmaxedit_ultrariched.html">QMAXEDIT</a> &mdash; A QRichEdit with a Windows-style edit popup menu (Undo, Cut, Copy, Paste, Delete, Select All) and simple keyword highlighting.
+  <LI><a href="c_qmaxsplitter.html">QMAXSPLITTER</a> &mdash; Splitter control based on QPANEL that emulates the Delphi 6 splitter styles: dragging it resizes the neighboring aligned control.
+  <LI><a href="c_qmd2model.html">QMD2MODEL</a> &mdash; Loader and renderer for Quake MD2 animated 3D models, drawn with OpenGL through a QGL object.
+  <LI><a href="c_qmenu.html">QMENU</a> &mdash; A helper object that makes form menu items owner-drawn with icons and shows item descriptions in a status bar.
+  <LI><a href="c_qmenuex.html">QMENUEX</a> &mdash; An owner-drawn menu helper, derived from QIMAGELIST, that draws bitmaps or icons next to menu items and reports a help text for the item under the mouse.
+  <LI><a href="c_qmidi.html">QMIDI</a> &mdash; A non-visual MIDI file player built on the Windows MCI sequencer, with play, pause, stop, seeking, volume and a position-change event.
+  <LI><a href="c_qmp3.html">QMP3</a> &mdash; A non-visual component that reads MP3 frame header information, reads and writes ID3 v1.x tags, and plays or stops an MP3 file through MCI.
+  <LI><a href="c_qodbc.html">QODBC</a> &mdash; Simple ODBC client object that lists drivers, connects with a connection string, lists tables, runs SQL queries and fetches rows as text.
+  <LI><a href="c_qpagesetup.html">QPAGESETUP</a> &mdash; A page setup dialog object based on the Windows PageSetupDlg common dialog that returns paper size, orientation and margins.
+  <LI><a href="c_qpanelux.html">QPANELUX</a> &mdash; A QPanel that draws its border with the Windows XP visual style color after Subclass is called.
+  <LI><a href="c_qposic.html">QPOSIC</a> &mdash; A square two-axis position control made of a vertical and a horizontal scroll bar plus reset, undo, redo and diagonal step buttons.
+  <LI><a href="c_qposicl.html">QPOSICL</a> &mdash; A panel with a vertical and a horizontal scroll bar and five buttons for adjusting a two-dimensional position (X/Y values).
+  <LI><a href="c_qprinterinfo.html">QPRINTERINFO</a> &mdash; A non-visual object that returns printer page sizes, margins and resolution and converts between millimeters and printer pixels.
+  <LI><a href="c_qprocess.html">QPROCESS</a> &mdash; A non-visual component that runs its OnProcess event handler in a separate Windows thread, with priority, suspend, resume and terminate.
+  <LI><a href="c_qprogress_object_qprogress.html">QPROGRESS</a> &mdash; A progress bar component that creates a Windows msctls_progress32 control on a parent window given by handle.
+  <LI><a href="c_qprogress_qprogress.html">QPROGRESS</a> &mdash; A progress indicator derived from QIMAGE that shows either a standard QGAUGE or an animated marquee (moving dot, rectangles, blur or barber pole) for tasks of unknown length.
+  <LI><a href="c_qprogressbar.html">QPROGRESSBAR</a> &mdash; Progress bar component that creates a real Windows progress bar control (msctls_progress32) with colors, smooth, vertical and marquee styles and a state setting.
+  <LI><a href="c_qrc4.html">QRC4</a> &mdash; Non-visual RC4 stream cipher that encrypts and decrypts strings with a key.
+  <LI><a href="c_qredex.html">QREDEX</a> &mdash; An extended QRichEdit with a built-in edit popup menu, Search and Replace dialogs, scroll position save/restore, text size limit and font/color dialogs.
+  <LI><a href="c_qredit.html">QREDIT</a> &mdash; A QRichEdit with simple automatic keyword (syntax) highlighting.
+  <LI><a href="c_qricheditux.html">QRICHEDITUX</a> &mdash; A QRICHEDIT that draws its border with the Windows XP visual style color after Subclass is called.
+  <LI><a href="c_qrichedit_api_api_richedid.html">QRICHEDIT_API</a> &mdash; An unfinished wrapper that creates a Windows RichEdit control directly with CreateWindowExA instead of using QRICHEDIT.
+  <LI><a href="c_qrichedit_api_apire.html">QRICHEDIT_API</a> &mdash; Minimal wrapper that creates a Windows RichEdit control (RICHED32.DLL) with CreateWindowEx and lets you move, size, show and hide it.
+  <LI><a href="c_qrichedit_xt.html">QRICHEDIT_XT</a> &mdash; A QRichEdit extension that adds automatic URL detection, a text limit, a scroll position property, auto-font control and experimental keyword syntax highlighting painted over the control.
+  <LI><a href="c_qrpanel.html">QRPANEL</a> &mdash; A QPanel with rounded corners, made by applying a rounded-rectangle window region.
+  <LI><a href="c_qrun.html">QRUN</a> &mdash; A non-visual object for starting programs and documents and for finding and controlling other windows (enumerate, close, minimize, maximize, restore, focus, topmost).
+  <LI><a href="c_qsaveplus.html">QSAVEPLUS</a> &mdash; A save file dialog extended with file name checks: missing path, invalid name, missing extension and overwrite confirmation.
+  <LI><a href="c_qscrollboxux.html">QSCROLLBOXUX</a> &mdash; A QSCROLLBOX that draws its border with the Windows XP visual style color after Subclass is called.
+  <LI><a href="c_qshfileoperation.html">QSHFILEOPERATION</a> &mdash; A wrapper for the SHFileOperation API to copy, move, rename and delete files and folders.
+  <LI><a href="c_qshutdown.html">QSHUTDOWN</a> &mdash; A non-visual object that shuts down, force-shuts down, reboots Windows or logs off the current user.
+  <LI><a href="c_qskin.html">QSKIN</a> &mdash; Skinned form: a QFORM without title bar whose size follows a skin image, and which can be dragged by that image.
+  <LI><a href="c_qskinbtn.html">QSKINBTN</a> &mdash; A skinnable button based on QIMAGE that shows different bitmaps for the up, down and disabled states, with push, latch and toggle modes.
+  <LI><a href="c_qsocketex.html">QSOCKETEX</a> &mdash; A QSocket extension with Winsock helpers: corrected GetPeerName, host name and address lookup, connection check, CR LF line writing, write with error code, shutdown, blocking mode and error text.
+  <LI><a href="c_qspinbutton.html">QSPINBUTTON</a> &mdash; A spin control built from a QPanel with two QCOOLBTN buttons (+ and -) and an optional QEDIT showing the value.
+  <LI><a href="c_qspintext.html">QSPINTEXT</a> &mdash; A spin edit: a panel with a QEdit and a vertical QScrollBar for entering a number between Min and Max, with an OnChange event.
+  <LI><a href="c_qsplash.html">QSPLASH</a> &mdash; QSplash shows a borderless splash window with an image and optional text, for a given time or until the program closes it.
+  <LI><a href="c_qsqltable.html">QSQLTABLE</a> &mdash; ODBC SQL query object that runs SQL statements on an Access, dBase, Paradox, Excel or text database and moves through the result rows.
+  <LI><a href="c_qstatusbarex.html">QSTATUSBAREX</a> &mdash; A QSTATUSBAR extension that can place a QPanel (and the controls on it) inside one of its status bar panels.
+  <LI><a href="c_qstringgridex.html">QSTRINGGRIDEX</a> &mdash; A QStringGrid with an editor style per row instead of per column: a row can show a drop-down list, an ellipsis button or a plain edit.
+  <LI><a href="c_qstringgridux.html">QSTRINGGRIDUX</a> &mdash; A QStringGrid that draws its border with the Windows XP visual style color after Subclass is called.
+  <LI><a href="c_qsystem.html">QSYSTEM</a> &mdash; A non-visual object that reports Windows system information (OS version, memory, disk space, power and system metrics) and can open Control Panel applets, sleep, hibernate, log off, shut down or reboot.
+  <LI><a href="c_qtabcontrolex.html">QTABCONTROLEX</a> &mdash; A QTabControl that keeps a count of its tabs and adds methods to delete tabs and clear all tabs.
+  <LI><a href="c_qtbutton.html">QTBUTTON</a> &mdash; A skinnable push button derived from QButton that draws its face from a bitmap skin or from Windows XP visual styles, with hover effect, icon, multi-line caption and button groups.
+  <LI><a href="c_qtextbtn.html">QTEXTBTN</a> &mdash; A label that acts as a text-only button by changing its font color when pressed, with momentary, latching and toggle modes.
+  <LI><a href="c_qtextedit.html">QTEXTEDIT</a> &mdash; QRichEdit extension with a built-in Undo/Cut/Copy/Paste/Select All popup menu and extra editing methods (undo, text limit, replace selection, find).
+  <LI><a href="c_qtoolbar.html">QTOOLBAR</a> &mdash; A toolbar component that wraps the Windows common-controls toolbar (ToolBarWindow32) with image lists, check and drop-down buttons, tooltips and a context menu.
+  <LI><a href="c_qtoolbarex.html">QTOOLBAREX</a> &mdash; A toolbar built from a QPanel and an array of flat QCOOLBTN buttons whose images are cut from one horizontal bitmap strip.
+  <LI><a href="c_qtreeviewex.html">QTREEVIEWEX</a> &mdash; QtreeviewEx extends QTreeView with methods to find parents, children and items by text, and to move items and whole branches up, down, in and out.
+  <LI><a href="c_qvideo.html">QVIDEO</a> &mdash; A video player object that plays media files through MCI string commands.
+  <LI><a href="c_qvolumeinfo.html">QVOLUMEINFO</a> &mdash; QVolumeInfo is a non-visual object that retrieves the label, serial number, file system, size, free space and drive type of a drive.
+  <LI><a href="c_qvumeter.html">QVUMETER</a> &mdash; A vertical bar-graph level meter (VU meter) drawn on a QCanvas.
+  <LI><a href="c_qwave.html">QWAVE</a> &mdash; A non-visual object that plays, records, edits and saves WAV files through MCI string commands.
+  <LI><a href="c_qwebcam_vfw.html">QWEBCAM</a> &mdash; Webcam capture component that creates a Video for Windows (avicap32) capture window on a form for live preview, frame callbacks and frame grabbing.
+  <LI><a href="c_qwebcam_webcam.html">QWEBCAM</a> &mdash; A non-visual wrapper around webcam.dll for showing a webcam preview in a form, capturing video, opening driver dialogs and grabbing frames.
+  <LI><a href="c_qxedit.html">QXEDIT</a> &mdash; QEdit replacement that subclasses the edit window to add OnGetFocus and OnLoseFocus events, a WndProc event and an option to make Enter move to the next control.
+  <LI><a href="c_qxpbutton.html">QXPBUTTON</a> &mdash; A QBUTTON extension that shows a bitmap on a Windows XP visual-style button by giving the button an image list with BCM_SETIMAGELIST.
+  <LI><a href="c_rqconst.html">RQCONST</a> &mdash; A string list that loads CONST definitions from a RapidQ include file and returns the numeric value of a constant by name.
+  <LI><a href="c_rsocket.html">RSOCKET</a> &mdash; A QSocket extension that adds Winsock helpers: host name and address lookup, peer address, raw connect with timeout check, blocking mode, shutdown and readable error messages.
+  <LI><a href="c_testedit.html">TESTEDIT</a> &mdash; A small test QRichEdit extension with one function that returns the character index of the first character of the caret line.
+  <LI><a href="c_xpgroupbox.html">XPGROUPBOX</a> &mdash; A group box drawn in the Windows XP style: a rounded thin border with a colored caption, drawn on a QCanvas inside a QPanel.
+  </UL>
+<!-- /rq-appendix-b -->
+  <a name="appd"></a><B>Appendix D: Functions from include files</B> (rapidq_ref/inc)<BR>
+  <UL>
+<!-- rq-funcs -->
+  <LI><a href="funcs.html">Functions of RQProc.inc</a> &mdash; 2320 functions of the merged include file, one page per source file: Windows API declarations with descriptions and links to Microsoft, and procedures written in Rapid-Q.
+     <UL>
+      <LI><a href="fi_addmenuitembitmaps4a_inc.html">AddMenuItemBitmaps4a.inc</a> (12)
+      <LI><a href="fi_advapi32_inc.html">AdvAPI32.inc</a> (1)
+      <LI><a href="fi_api_inc.html">Api.inc</a> (1)
+      <LI><a href="fi_apidate_inc.html">ApiDate.inc</a> (4)
+      <LI><a href="fi_callback_0_inc.html">CallBack_0.Inc</a> (3)
+      <LI><a href="fi_callback_1_inc.html">CallBack_1.Inc</a> (3)
+      <LI><a href="fi_callback_2_inc.html">CallBack_2.Inc</a> (3)
+      <LI><a href="fi_callback_3_inc.html">CallBack_3.Inc</a> (3)
+      <LI><a href="fi_callback_5_inc.html">CallBack_5.Inc</a> (3)
+      <LI><a href="fi_callback_6_inc.html">CallBack_6.Inc</a> (3)
+      <LI><a href="fi_callback_7_inc.html">CallBack_7.Inc</a> (3)
+      <LI><a href="fi_callback_8_inc.html">CallBack_8.Inc</a> (3)
+      <LI><a href="fi_cmd5_inc.html">CMD5.inc</a> (16)
+      <LI><a href="fi_commctrl_inc.html">CommCtrl.inc</a> (1)
+      <LI><a href="fi_commctrl32_inc.html">commctrl32.inc</a> (56)
+      <LI><a href="fi_common_inc.html">Common.inc</a> (2)
+      <LI><a href="fi_constants_inc.html">constants.inc</a> (3)
+      <LI><a href="fi_control_inc.html">Control.inc</a> (22)
+      <LI><a href="fi_conversion_inc.html">conversion.inc</a> (41)
+      <LI><a href="fi_conversionold_inc.html">conversionOld.inc</a> (7)
+      <LI><a href="fi_converttotruepath_inc.html">ConvertToTruePath.inc</a> (2)
+      <LI><a href="fi_copy_of_nota_inc.html">Copy of NOTA.inc</a> (24)
+      <LI><a href="fi_createwind_inc.html">createWind.inc</a> (4)
+      <LI><a href="fi_dbt_inc.html">DBT.INC</a> (6)
+      <LI><a href="fi_deltags_inc.html">delTags.inc</a> (5)
+      <LI><a href="fi_email_inc.html">eMail.Inc</a> (2)
+      <LI><a href="fi_eml_inc.html">eml.inc</a> (15)
+      <LI><a href="fi_emlold_inc.html">emlOld.inc</a> (3)
+      <LI><a href="fi_evaluate_inc.html">evaluate.inc</a> (8)
+      <LI><a href="fi_fileops_inc.html">fileops.inc</a> (1)
+      <LI><a href="fi_files_inc.html">Files.inc</a> (49)
+      <LI><a href="fi_form_inc.html">Form.inc</a> (2)
+      <LI><a href="fi_func_array_inc.html">func_array.inc</a> (26)
+      <LI><a href="fi_gdi32_inc.html">GDI32.inc</a> (4)
+      <LI><a href="fi_htmlhelp_inc.html">htmlhelp.inc</a> (2)
+      <LI><a href="fi_kernel32_inc.html">Kernel32.inc</a> (20)
+      <LI><a href="fi_math_inc.html">Math.inc</a> (52)
+      <LI><a href="fi_mdi_api_inc.html">MDI_API.INC</a> (4)
+      <LI><a href="fi_memory_inc.html">Memory.inc</a> (30)
+      <LI><a href="fi_microtimer_inc.html">microTIMER.inc</a> (4)
+      <LI><a href="fi_minimize_inc.html">Minimize.inc</a> (2)
+      <LI><a href="fi_msgdlg_inc.html">msgdlg.inc</a> (2)
+      <LI><a href="fi_newwndproc_inc.html">NewWndProc.Inc</a> (4)
+      <LI><a href="fi_nota_inc.html">NOTA.inc</a> (4)
+      <LI><a href="fi_objecttoolbox_inc.html">objectToolbox.inc</a> (4)
+      <LI><a href="fi_odmenuxp_inc.html">ODMenuXP.inc</a> (100)
+      <LI><a href="fi_ole_inc.html">ole.inc</a> (17)
+      <LI><a href="fi_parse_inc.html">parse.inc</a> (8)
+      <LI><a href="fi_pdecl_inc.html">pdecl.inc</a> (1)
+      <LI><a href="fi_printrichedit_inc.html">printrichedit.inc</a> (1)
+      <LI><a href="fi_qfiles_inc.html">QFiles.inc</a> (8)
+      <LI><a href="fi_qformlocale_inc.html">QFormLocale.inc</a> (3)
+      <LI><a href="fi_qformskin_inc.html">QFormSkin.inc</a> (41)
+      <LI><a href="fi_qfunclib_inc.html">QFuncLib.inc</a> (16)
+      <LI><a href="fi_qpoint_inc.html">QPoint.inc</a> (1)
+      <LI><a href="fi_qstringgridex_inc.html">QStringGridEx.inc</a> (1)
+      <LI><a href="fi_qxls_inc.html">QXLS.INC</a> (25)
+      <LI><a href="fi_rapidq_inc.html">rapidq.inc</a> (25)
+      <LI><a href="fi_rapidq2_inc.html">rapidq2.inc</a> (178)
+      <LI><a href="fi_registryvars_inc.html">registryVars.inc</a> (6)
+      <LI><a href="fi_rqasmutils_inc.html">RqAsmUtils.Inc</a> (22)
+      <LI><a href="fi_rqdialog_inc.html">RQDialog.inc</a> (1)
+      <LI><a href="fi_rqprocess_inc.html">RQProcess.inc</a> (12)
+      <LI><a href="fi_setfiletimeattrib_inc.html">SetFileTimeAttrib.inc</a> (7)
+      <LI><a href="fi_shell32_inc.html">Shell32.inc</a> (3)
+      <LI><a href="fi_shellredir_inc.html">ShellRedir.Inc</a> (9)
+      <LI><a href="fi_sysutils_inc.html">SysUtils.inc</a> (6)
+      <LI><a href="fi_user32_inc.html">User32.inc</a> (17)
+      <LI><a href="fi_using_inc.html">using.inc</a> (1)
+      <LI><a href="fi_wfunctions_inc.html">WFunctions.inc</a> (1)
+      <LI><a href="fi_win32api_inc.html">WIN32API.INC</a> (1337)
+      <LI><a href="fi_windows_inc.html">WINDOWS.INC</a> (4)
+     </UL>
+  <LI><a href="funcs_az.html">Include functions A&ndash;Z</a>
+  <LI><a href="https://learn.microsoft.com/en-us/windows/win32/api/">Windows API reference (Microsoft, learn.microsoft.com)</a>
+<!-- /rq-funcs -->
+  <LI><a href="f_sadd.html">SADD</a> &mdash; Address of a copy of a string in a memory stream (conversion.inc); what the address is and how long it stays valid, tested with rc.exe.
+  </UL>
+  <a name="appe"></a><B>Appendix E: unIDE</B><BR>
+  <UL>
+  <LI><a href="unide_debugger.html">Debugger for Rapid-Q programs</a> &mdash; How the unIDE debugger works: instrumented copy, stop and continue through files and Windows events, modes, variables, Watch, conditions, limits.
+  <LI><a href="unide_designer.html">Form designer and live snapshots</a> &mdash; How the unIDE form designer works for Delphi and Rapid-Q forms: building the form from .dfm text, editing, classes and stubs, Objects tree and inspector, snapshot of a live form, probe runs, Rapid-Q CREATE blocks, form preview.
+  <LI><a href="unide_callbacks.html">Window procedures and callbacks</a> &mdash; The NewWndProc.Inc / CallBack_N.Inc trick of Rapid-Q, its limits, what the FreeBASIC build does instead, what is still limited, possible syntax extensions.
+  <LI><a href="unide_preprocessor.html">Preprocessor: missing include files, resources and DLLs</a> &mdash; What unIDE checks before each Rapid-Q build ($INCLUDE, $RESOURCE, DECLARE ... LIB, conditional blocks), the window of missing files: search, choice of a copy, preview, where files are copied; the include folder RQInc; Find inc file with masks; limits.
+  </UL>
+  <a name="appc"></a><B>Appendix C: Rapid-Q Keywords & Statements</B><BR>
   <UL>
   <LI><a href="operators.html">Valid Operators</a> (In order of precedence)
      <UL>

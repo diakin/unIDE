@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QLINE</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QLINE</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QLINE Component</h1>
+<p class="rq-meta">Extends <a href="qcanvas.html">QCANVAS</a> &middot; source: <code>inc/QLine.inc</code>, line 7 &middot; version: 1.0</p>
+<p><b>A canvas that draws an etched (3D) horizontal or vertical separator line.</b></p>
+<p>QLine extends QCanvas and has no public members of its own. On each paint it draws an etched edge with DrawEdge from user32 (declared as DrawLine).</p>
+<p>The direction comes from Align and the size: with Align 3 or 4, or no alignment and Height greater than Width, it draws a vertical line and sets Width to 2; with Align 1 or 2, or no alignment and Width greater than Height, it draws a horizontal line and sets Height to 2. Place it like any control and set its length with Width or Height.</p>
+<p>QLINE inherits the properties, methods and events of <a href="qcanvas.html">QCANVAS</a>; the tables below list only what the component adds or redefines (public members).</p>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnPaint</code>.</p>
+<p>The component adds no public members of its own.</p>
+<h2>Notes</h2>
+<ul>
+<li>The thickness is fixed at 2 pixels: Width or Height is reset to 2 on every paint.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QLine.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QLine Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QLine.inc&quot;
+CREATE Form AS QFORM
+  Width = 300
+  Height = 200
+  CREATE Line1 AS QLine
+    Left = 10
+    Top = 50
+    Width = 270
+  END CREATE
+END CREATE
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qledscroll.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qlinegraph.html">Next component</a></div>
+</body>
+</html>

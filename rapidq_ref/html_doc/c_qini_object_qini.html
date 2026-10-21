@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QINI</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QINI</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QINI Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/object/QIni.inc</code>, line 29</p>
+<p><b>QINI is a non-visual object for reading and writing values in an INI file section and for getting the Windows, System and Temp folders.</b></p>
+<p>Set FileName and Section, then use Get(Key, Default) and Write(Key, Value); they call GetPrivateProfileStringA and WritePrivateProfileStringA from kernel32. Assigning FileName also sets Exist to show whether the file exists.</p>
+<p>The constructor calls GetIniPath, which fills the read-only WinDir, SystemDir and TempDir properties with GetWindowsDirectoryA, GetSystemDirectoryA and GetTempPathA. The file&#x27;s comments are in French.</p>
+<p>QINI inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QINI Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">FileName</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Path of the INI file. Assigning it stores the name and sets Exist to TRUE or FALSE depending on whether the file exists.</td></tr>
+<tr><td class="rq-name">Exist</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>false</td><td>TRUE if the file named in FileName existed when FileName was assigned.</td></tr>
+<tr><td class="rq-name">Section</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>INI section used by Get and Write.</td></tr>
+<tr><td class="rq-name">WinDir</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Read-only: Windows folder, filled by GetIniPath; assigning it has no effect (empty setter).</td></tr>
+<tr><td class="rq-name">SystemDir</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Read-only: Windows system folder, filled by GetIniPath; assigning it has no effect (empty setter).</td></tr>
+<tr><td class="rq-name">TempDir</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Read-only: temporary folder returned by GetTempPath, filled by GetIniPath; assigning it has no effect (empty setter).</td></tr>
+</table>
+<a name="2"></a><h2>QINI Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Get</td><td class="rq-type">FUNCTION(Key as string,Default as string) AS STRING</td><td>Get(Key, Default) returns the value of Key in Section of FileName, or Default if the key is missing or empty.</td></tr>
+<tr><td class="rq-name">Write</td><td class="rq-type">FUNCTION(Key as string,Value as string) AS LONG</td><td>Write(Key, Value) writes Value for Key in Section of FileName and returns the API result (non-zero on success).</td></tr>
+<tr class="rq-internal"><td class="rq-name">GetIniPath</td><td class="rq-type">SUB</td><td>Internal: fills WinDir, SystemDir and TempDir; called by the constructor.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Get returns an empty string (not Default) and Write does nothing when FileName or Section is empty.</li>
+<li>Get reads into a fixed 260-character buffer, so longer values are truncated.</li>
+<li>Exist is updated only when FileName is assigned, not when the file is later created by Write.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/QIni.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QINI Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QIni.inc&quot;
+DIM Ini AS QINI
+Ini.FileName = CURDIR$ + &quot;\settings.ini&quot;
+Ini.Section = &quot;Main&quot;
+Ini.Write(&quot;User&quot;, &quot;Alex&quot;)
+ShowMessage Ini.Get(&quot;User&quot;, &quot;unknown&quot;)
+ShowMessage Ini.TempDir</pre>
+<div class="rq-foot"><a href="c_qimagelistex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qini_qwinini.html">Next component</a></div>
+</body>
+</html>

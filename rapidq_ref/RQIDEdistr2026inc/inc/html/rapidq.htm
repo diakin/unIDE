@@ -1,0 +1,759 @@
+<html>
+<head>
+<title>rapidq.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>' RAPIDQ.INC  -- Include file for RAPID-Q by William Yu</i></font> 
+<font color="007700"><i>'             -- attach a $INCLUDE "RAPIDQ.INC"</i></font> 
+<font color="007700"><i>'             -- to all your programs, or just extract what you need.</i></font> 
+
+
+<font color="0000AA"><b>$IFNDEF</b></font> __RQINC
+
+<font color="0000AA"><b>$DEFINE</b></font> __RQINC
+<font color="0000AA"><b>$DEFINE</b></font> __QBCOLOR
+<font color="0000AA"><b>$DEFINE</b></font> space <font color="000099"><b>space$</b></font>
+
+<font color="0000AA"><b>$define</b></font>  <font color="0000AA"><b>int</b></font> <font color="0000AA"><b>integer</b></font>	
+
+<font color="007700"><i>'------------------------- Useful variables -------------------------</i></font> 
+<font color="0000AA"><b>CONST</b></font> False = 0
+<font color="0000AA"><b>CONST</b></font> True = 1
+
+<font color="007700"><i>'-- Control Alignments</i></font> 
+<font color="0000AA"><b>CONST</b></font> alNone = 0
+<font color="0000AA"><b>CONST</b></font> alTop = 1
+<font color="0000AA"><b>CONST</b></font> alBottom = 2
+<font color="0000AA"><b>CONST</b></font> alLeft = 3
+<font color="0000AA"><b>CONST</b></font> alRight = 4
+<font color="0000AA"><b>CONST</b></font> alClient = 5           <font color="007700"><i>'-- Expand to fit client</i></font> 
+
+<font color="007700"><i>'-- Text Alignments</i></font> 
+<font color="0000AA"><b>CONST</b></font> taLeftJustify = 0
+<font color="0000AA"><b>CONST</b></font> taRightJustify = 1
+<font color="0000AA"><b>CONST</b></font> taCenter = 2
+
+<font color="0000AA"><b>CONST</b></font> SND_SYNC = 0           <font color="007700"><i>'-- Synchronous playback (Wait for sound to finish)</i></font> 
+<font color="0000AA"><b>CONST</b></font> SND_ASYNC = 1          <font color="007700"><i>'-- Asynchronous playback (Like background play).</i></font> 
+<font color="0000AA"><b>CONST</b></font> SND_LOOP = 8           <font color="007700"><i>'-- Loop sound</i></font> 
+
+<font color="007700"><i>'-- BASIC Colors</i></font> 
+<font color="0000AA"><b>CONST</b></font> clBlack = 0
+<font color="007700"><i>'-- BGR</i></font> 
+<font color="0000AA"><b>CONST</b></font> clBlue = &HFF0000  <font color="007700"><i>'256</i></font> 
+<font color="0000AA"><b>CONST</b></font> clLBlue = &HFFaa00  <font color="007700"><i>'256clLtBlue</i></font> 
+<font color="0000AA"><b>CONST</b></font> clLtBlue = &HFFaa00  <font color="007700"><i>'256clLtBlue</i></font> 
+<font color="0000AA"><b>CONST</b></font> clDBlue = &H800000 <font color="007700"><i>'128</i></font> 
+
+<font color="0000AA"><b>CONST</b></font> clMaroon = &H808000
+
+<font color="0000AA"><b>CONST</b></font> clGreen = &H00FF00
+<font color="0000AA"><b>CONST</b></font> clDGreen = &H008000
+
+<font color="0000AA"><b>CONST</b></font> clLRed = &H8080FF
+<font color="0000AA"><b>CONST</b></font> clRed =   &H0000FF
+<font color="0000AA"><b>CONST</b></font> clDRed = &H000080
+
+<font color="0000AA"><b>CONST</b></font> clPurple = &HFF00FF
+<font color="0000AA"><b>CONST</b></font> clDPurple =&h800080
+
+<font color="0000AA"><b>CONST</b></font> clLMagenta = &HFF00FF
+<font color="0000AA"><b>CONST</b></font> clMagenta =&h800080
+
+<font color="0000AA"><b>CONST</b></font> clSilver = &hc0c0c0
+<font color="0000AA"><b>CONST</b></font> clGrey=&h808080
+<font color="0000AA"><b>CONST</b></font> clGray=&h808080
+<font color="0000AA"><b>CONST</b></font> clDGrey=&h808080
+<font color="0000AA"><b>CONST</b></font> clWhite = &HFFFFFF
+
+<font color="0000AA"><b>CONST</b></font> clAqua=&hffff00
+<font color="0000AA"><b>CONST</b></font> clwhiteAqua=&hfffff0
+
+<font color="0000AA"><b>CONST</b></font> clyellow=&h00ffff
+<font color="0000AA"><b>CONST</b></font> clBrown=&h008080
+<font color="007700"><i>'CONST cl</i></font> 
+
+<font color="007700"><i>'-- System colors</i></font> 
+<font color="0000AA"><b>CONST</b></font> clScrollBar = -2147483648
+<font color="0000AA"><b>CONST</b></font> clBackGround = -2147483647
+<font color="0000AA"><b>CONST</b></font> clActiveCaption = -2147483646
+<font color="0000AA"><b>CONST</b></font> clInActiveCaption = -2147483645
+<font color="0000AA"><b>CONST</b></font> clMenu = -2147483644
+<font color="0000AA"><b>CONST</b></font> clWindow = -2147483643
+<font color="0000AA"><b>CONST</b></font> clWindowFrame = -2147483642
+<font color="0000AA"><b>CONST</b></font> clMenuText = -2147483641
+<font color="0000AA"><b>CONST</b></font> clWindowText = -2147483640
+<font color="0000AA"><b>CONST</b></font> clCaptionText = -2147483639
+<font color="0000AA"><b>CONST</b></font> clActiveBorder = -2147483638
+<font color="0000AA"><b>CONST</b></font> clInActiveBorder = -2147483637
+<font color="0000AA"><b>CONST</b></font> clAppWorkSpace = -2147483636
+<font color="0000AA"><b>CONST</b></font> clHilight = -2147483635
+<font color="0000AA"><b>CONST</b></font> clHilightText = -2147483634
+<font color="0000AA"><b>CONST</b></font> clBtnFace = -2147483633
+<font color="0000AA"><b>CONST</b></font> clBtnShadow = -2147483632
+<font color="0000AA"><b>CONST</b></font> clGrayText = -2147483631
+<font color="0000AA"><b>CONST</b></font> clBtnText = -2147483630
+<font color="0000AA"><b>CONST</b></font> clInActiveCaptionText = -2147483629
+<font color="0000AA"><b>CONST</b></font> clBtnHighlight = -2147483628
+<font color="0000AA"><b>CONST</b></font> cl3DDkShadow = -2147483627
+<font color="0000AA"><b>CONST</b></font> cl3DLight = -2147483626
+<font color="0000AA"><b>CONST</b></font> clInfoText = -2147483625
+<font color="0000AA"><b>CONST</b></font> clInfoBk3DDkShadow = -2147483624
+<font color="0000AA"><b>CONST</b></font> clNone = 536870911
+<font color="0000AA"><b>CONST</b></font> clDefault = 536870912
+
+<font color="007700"><i>'-- Mouse Shift States, True if Shift% AND ss&lt;State></i></font> 
+<font color="0000AA"><b>CONST</b></font> ssShift = 256
+<font color="0000AA"><b>CONST</b></font> ssCtrl = 16
+<font color="0000AA"><b>CONST</b></font> ssAlt = 1
+
+<font color="007700"><i>'-- MessageDlg Message Types</i></font> 
+<font color="0000AA"><b>CONST</b></font> mtWarning = 0
+<font color="0000AA"><b>CONST</b></font> mtError = 1
+<font color="0000AA"><b>CONST</b></font> mtInformation = 2
+<font color="0000AA"><b>CONST</b></font> mtConfirmation = 3
+<font color="0000AA"><b>CONST</b></font> mtCustom = 4
+
+<font color="007700"><i>'-- MessageDlg Message Buttons (NOT QBUTTON)</i></font> 
+<font color="0000AA"><b>CONST</b></font> mbYes = 1          <font color="007700"><i>' YES Button</i></font> 
+<font color="0000AA"><b>CONST</b></font> mbNo = 2           <font color="007700"><i>' NO Button</i></font> 
+<font color="0000AA"><b>CONST</b></font> mbOK = 4           <font color="007700"><i>' OK Button</i></font> 
+<font color="0000AA"><b>CONST</b></font> mbCancel = 8       <font color="007700"><i>' etc. etc.</i></font> 
+<font color="0000AA"><b>CONST</b></font> mbHelp = 16
+<font color="0000AA"><b>CONST</b></font> mbAbort = 32
+<font color="0000AA"><b>CONST</b></font> mbRetry = 64
+<font color="0000AA"><b>CONST</b></font> mbIgnore = 128
+<font color="0000AA"><b>CONST</b></font> mbAll = 256
+
+<font color="007700"><i>'-- MessageDlg Return Values: See ModalResult of QButton</i></font> 
+
+
+<font color="007700"><i>'------------------------- QFONT Variables --------------------------</i></font> 
+<font color="007700"><i>'-- Font Styles</i></font> 
+<font color="0000AA"><b>CONST</b></font> fsBold = 0
+<font color="0000AA"><b>CONST</b></font> fsItalic = 1
+<font color="0000AA"><b>CONST</b></font> fsUnderline = 2
+<font color="0000AA"><b>CONST</b></font> fsStrikeOut = 3
+
+<font color="007700"><i>'-- Font Pitch</i></font> 
+<font color="0000AA"><b>CONST</b></font> fpDefault = 0           <font color="007700"><i>'-- Depends on the font specified</i></font> 
+<font color="0000AA"><b>CONST</b></font> fpVariable = 1          <font color="007700"><i>'-- Characters in font have different widths</i></font> 
+<font color="0000AA"><b>CONST</b></font> fpFixed = 2             <font color="007700"><i>'-- Characters in font have same widths</i></font> 
+
+<font color="007700"><i>'-- Font Character sets</i></font> 
+<font color="0000AA"><b>CONST</b></font> ANSI_CHARSET = 0        <font color="007700"><i>'-- ANSI characters</i></font> 
+<font color="0000AA"><b>CONST</b></font> DEFAULT_CHARSET = 1
+<font color="0000AA"><b>CONST</b></font> SYMBOL_CHARSET = 2      <font color="007700"><i>'-- Standard symbol set</i></font> 
+<font color="0000AA"><b>CONST</b></font> MAC_CHARSET = 77        <font color="007700"><i>'-- Macintosh characters</i></font> 
+<font color="0000AA"><b>CONST</b></font> SHIFTJIS_CHARSET = 128  <font color="007700"><i>'-- Japanese shift-jis characters</i></font> 
+<font color="0000AA"><b>CONST</b></font> HANGEUL_CHARSET = 129
+<font color="0000AA"><b>CONST</b></font> JOHAB_CHARSET = 130
+<font color="0000AA"><b>CONST</b></font> GB2312_CHARSET = 134
+<font color="0000AA"><b>CONST</b></font> CHINESEBIG5_CHARSET = 136
+<font color="0000AA"><b>CONST</b></font> GREEK_CHARSET = 161
+<font color="0000AA"><b>CONST</b></font> TURKISH_CHARSET = 162
+<font color="0000AA"><b>CONST</b></font> VIETNAMESE_CHARSET = 163
+<font color="0000AA"><b>CONST</b></font> HEBREW_CHARSET = 177
+<font color="0000AA"><b>CONST</b></font> ARABIC_CHARSET = 178
+<font color="0000AA"><b>CONST</b></font> BALTIC_CHARSET = 186
+<font color="0000AA"><b>CONST</b></font> RUSSIAN_CHARSET = 204
+<font color="0000AA"><b>CONST</b></font> THAI_CHARSET = 222
+<font color="0000AA"><b>CONST</b></font> EASTEUROPE_CHARSET = 238
+<font color="0000AA"><b>CONST</b></font> OEM_CHARSET = 255       <font color="007700"><i>'-- Depends on the codepage of the OS</i></font> 
+
+
+<font color="007700"><i>'------------------------- QFORM Variables --------------------------</i></font> 
+<font color="007700"><i>'-- Window States</i></font> 
+<font color="0000AA"><b>CONST</b></font> wsNormal = 0
+<font color="0000AA"><b>CONST</b></font> wsMinimized = 1
+<font color="0000AA"><b>CONST</b></font> wsMaximized = 2
+
+<font color="007700"><i>'-- Form Styles</i></font> 
+<font color="0000AA"><b>CONST</b></font> fsNormal = 0
+<font color="0000AA"><b>CONST</b></font> fsMDIChild = 1
+<font color="0000AA"><b>CONST</b></font> fsMDIForm = 2
+<font color="0000AA"><b>CONST</b></font> fsStayOnTop = 3
+
+<font color="007700"><i>'-- Border Styles</i></font> 
+<font color="0000AA"><b>CONST</b></font> bsNone = 0              <font color="007700"><i>'-- No visible border line, Not resizeable</i></font> 
+<font color="0000AA"><b>CONST</b></font> bsSingle = 1            <font color="007700"><i>'-- Single-line border, Not resizeable</i></font> 
+<font color="0000AA"><b>CONST</b></font> bsSizeable = 2          <font color="007700"><i>'-- Standard resizeable border</i></font> 
+<font color="0000AA"><b>CONST</b></font> bsDialog = 3            <font color="007700"><i>'-- Dialog, not resizeable</i></font> 
+<font color="0000AA"><b>CONST</b></font> bsToolWindow = 4        <font color="007700"><i>'-- like bsSingle but with a smaller caption</i></font> 
+<font color="0000AA"><b>CONST</b></font> bsSizeToolWin = 5       <font color="007700"><i>'-- like bsSizeable with a smaller caption</i></font> 
+
+<font color="007700"><i>'-- Keyboard Shift States</i></font> 
+<font color="0000AA"><b>CONST</b></font> CtrlDown = 1
+<font color="0000AA"><b>CONST</b></font> AltDown = 16
+<font color="0000AA"><b>CONST</b></font> ShiftDown = 256
+
+<font color="007700"><i>'-- Border Icons</i></font> 
+<font color="0000AA"><b>CONST</b></font> biSystemMenu = 0
+<font color="0000AA"><b>CONST</b></font> biMinimize = 1
+<font color="0000AA"><b>CONST</b></font> biMaximize = 2
+<font color="0000AA"><b>CONST</b></font> biHelp = 3
+
+<font color="007700"><i>'-- Close Actions</i></font> 
+<font color="0000AA"><b>CONST</b></font> caNone = 0              <font color="007700"><i>'-- Don't close the form</i></font> 
+<font color="0000AA"><b>CONST</b></font> caHide = 1              <font color="007700"><i>'-- Just hide the form</i></font> 
+<font color="0000AA"><b>CONST</b></font> caFree = 2
+<font color="0000AA"><b>CONST</b></font> caClose = caFree        <font color="007700"><i>'-- Close form</i></font> 
+<font color="0000AA"><b>CONST</b></font> caMinimize = 3          <font color="007700"><i>'-- Minimize instead of closing</i></font> 
+
+
+<font color="007700"><i>'------------------------- QLABEL Variables -------------------------</i></font> 
+<font color="007700"><i>'-- Text Layout</i></font> 
+<font color="0000AA"><b>CONST</b></font> tlTop = 0
+<font color="0000AA"><b>CONST</b></font> tlCenter = 1
+<font color="0000AA"><b>CONST</b></font> tlBottom = 2
+
+<font color="007700"><i>'-- Label Style</i></font> 
+<font color="0000AA"><b>CONST</b></font> lsNone = 0
+<font color="0000AA"><b>CONST</b></font> lsRaised = 1
+<font color="0000AA"><b>CONST</b></font> lsRecessed = 2
+
+
+<font color="007700"><i>'------------------------- QPANEL Variables -------------------------</i></font> 
+<font color="007700"><i>'-- Bevel Style</i></font> 
+<font color="0000AA"><b>CONST</b></font> bvNone = 0
+<font color="0000AA"><b>CONST</b></font> bvLowered = 1
+<font color="0000AA"><b>CONST</b></font> bvRaised = 2
+
+<font color="007700"><i>'-- Bevel Border</i></font> 
+<font color="0000AA"><b>CONST</b></font> bpNone = 0         <font color="007700"><i>'-- No visible border</i></font> 
+<font color="0000AA"><b>CONST</b></font> bpSingle = 1       <font color="007700"><i>'-- Single-line border</i></font> 
+
+
+<font color="007700"><i>'------------------------- QEDIT Variables --------------------------</i></font> 
+<font color="007700"><i>'-- CharCase</i></font> 
+<font color="0000AA"><b>CONST</b></font> ecNormal = 0       <font color="007700"><i>'-- Text of the edit box displays in mixed case</i></font> 
+<font color="0000AA"><b>CONST</b></font> ecUpperCase = 1    <font color="007700"><i>'-- Text of the edit box displays in uppercase</i></font> 
+<font color="0000AA"><b>CONST</b></font> ecLowerCase = 2    <font color="007700"><i>'-- Text of the edit box displays in lowercase</i></font> 
+
+
+<font color="007700"><i>'----------------------- QCOMBOBOX Variables ------------------------</i></font> 
+<font color="007700"><i>'-- ComboBox Styles</i></font> 
+<font color="0000AA"><b>CONST</b></font> csDropDown = 0           <font color="007700"><i>'-- Drop-down list with an edit box</i></font> 
+<font color="0000AA"><b>CONST</b></font> csSimple = 1             <font color="007700"><i>'-- Edit box with no list.</i></font> 
+<font color="0000AA"><b>CONST</b></font> csDropDownList = 2       <font color="007700"><i>'-- Drop-down list without an edit box</i></font> 
+<font color="0000AA"><b>CONST</b></font> csOwnerDrawFixed = 3     <font color="007700"><i>'-- Owner draw fixed</i></font> 
+<font color="0000AA"><b>CONST</b></font> csOwnerDrawVariable = 4  <font color="007700"><i>'-- Owner draw variable</i></font> 
+
+
+<font color="007700"><i>'---------------------- QFILESTREAM Variables -----------------------</i></font> 
+<font color="007700"><i>'-- File Mode</i></font> 
+<font color="0000AA"><b>CONST</b></font> fmCreate = 65535
+<font color="0000AA"><b>CONST</b></font> fmOpenRead = 0
+<font color="0000AA"><b>CONST</b></font> fmOpenWrite = 1
+<font color="0000AA"><b>CONST</b></font> fmOpenReadWrite = 2
+
+<font color="007700"><i>'-- Offsets</i></font> 
+<font color="0000AA"><b>CONST</b></font> soFromBeginning = 0       <font color="007700"><i>'-- Seek (offset) from Beginning</i></font> 
+<font color="0000AA"><b>CONST</b></font> soFromCurrent = 1         <font color="007700"><i>'-- Seek (offset) from Current position</i></font> 
+<font color="0000AA"><b>CONST</b></font> soFromEnd = 2             <font color="007700"><i>'-- Seek (offset) from End</i></font> 
+
+<font color="007700"><i>'-- Read/Write Numbers</i></font> 
+<font color="0000AA"><b>CONST</b></font> Num_BYTE   = 1            <font color="007700"><i>'-- ie. PRINT File.ReadNum(Num_SINGLE)</i></font> 
+<font color="0000AA"><b>CONST</b></font> Num_SHORT  = 2
+<font color="0000AA"><b>CONST</b></font> Num_WORD   = 3
+<font color="0000AA"><b>CONST</b></font> Num_LONG   = 4
+<font color="0000AA"><b>CONST</b></font> Num_DWORD  = 5
+<font color="0000AA"><b>CONST</b></font> Num_SINGLE = 6
+<font color="0000AA"><b>CONST</b></font> Num_DOUBLE = 8
+
+
+<font color="007700"><i>'----------------------- QRICHEDIT Variables ------------------------</i></font> 
+<font color="007700"><i>'-- Scroll Bars</i></font> 
+<font color="0000AA"><b>CONST</b></font> ssNone = 0
+<font color="0000AA"><b>CONST</b></font> ssHorizontal = 1
+<font color="0000AA"><b>CONST</b></font> ssVertical = 2
+<font color="0000AA"><b>CONST</b></font> ssBoth = 3
+
+
+<font color="007700"><i>'---------------------- MODALRESULT Variables -----------------------</i></font> 
+<font color="007700"><i>'-- Default ModalResults</i></font> 
+<font color="0000AA"><b>CONST</b></font> mrNone = 0
+<font color="0000AA"><b>CONST</b></font> mrOK = 1
+<font color="0000AA"><b>CONST</b></font> mrCancel = 2
+<font color="0000AA"><b>CONST</b></font> mrAbort = 3
+<font color="0000AA"><b>CONST</b></font> mrRetry = 4
+<font color="0000AA"><b>CONST</b></font> mrIgnore = 5
+<font color="0000AA"><b>CONST</b></font> mrYes = 6
+<font color="0000AA"><b>CONST</b></font> mrNo = 7
+<font color="0000AA"><b>CONST</b></font> mrAll = 8
+<font color="0000AA"><b>CONST</b></font> mrNoToAll = 9
+<font color="0000AA"><b>CONST</b></font> mrYesToAll = 10
+
+
+<font color="007700"><i>'------------------------ QBUTTON Variables -------------------------</i></font> 
+<font color="007700"><i>'-- Bitmap Alignment</i></font> 
+<font color="0000AA"><b>CONST</b></font> blBMPLeft = 0
+<font color="0000AA"><b>CONST</b></font> blBMPRight = 1
+<font color="0000AA"><b>CONST</b></font> blBMPTop = 2
+<font color="0000AA"><b>CONST</b></font> blBMPBottom = 3
+
+<font color="007700"><i>'-- Button Kind</i></font> 
+<font color="0000AA"><b>CONST</b></font> bkCustom = 0              <font color="007700"><i>'-- None</i></font> 
+<font color="0000AA"><b>CONST</b></font> bkOK = 1                  <font color="007700"><i>'-- Check Bitmap</i></font> 
+<font color="0000AA"><b>CONST</b></font> bkCancel = 2              <font color="007700"><i>'-- X Bitmap</i></font> 
+<font color="0000AA"><b>CONST</b></font> bkHelp = 3                <font color="007700"><i>'-- ? Bitmap</i></font> 
+<font color="0000AA"><b>CONST</b></font> bkYes = 4
+<font color="0000AA"><b>CONST</b></font> bkNo = 5
+<font color="0000AA"><b>CONST</b></font> bkClose = 6
+<font color="0000AA"><b>CONST</b></font> bkAbort = 7
+<font color="0000AA"><b>CONST</b></font> bkRetry = 8
+<font color="0000AA"><b>CONST</b></font> bkIgnore = 9
+<font color="0000AA"><b>CONST</b></font> bkAll = 10
+
+
+<font color="007700"><i>'------------------------ CURSORS Variables -------------------------</i></font> 
+<font color="0000AA"><b>CONST</b></font> crDefault = 0        <font color="007700"><i>' Normal pointer</i></font> 
+<font color="0000AA"><b>CONST</b></font> crNone = -1
+<font color="0000AA"><b>CONST</b></font> crArrow = -2
+<font color="0000AA"><b>CONST</b></font> crCross = -3
+<font color="0000AA"><b>CONST</b></font> crIBeam = -4
+<font color="0000AA"><b>CONST</b></font> crSize = -5
+<font color="0000AA"><b>CONST</b></font> crSizeNESW = -6
+<font color="0000AA"><b>CONST</b></font> crSizeNS = -7
+<font color="0000AA"><b>CONST</b></font> crSizeNWSE = -8
+<font color="0000AA"><b>CONST</b></font> crSizeWE = -9
+<font color="0000AA"><b>CONST</b></font> crUpArrow = -10
+<font color="0000AA"><b>CONST</b></font> crHourGlass = -11
+<font color="0000AA"><b>CONST</b></font> crDrag = -12
+<font color="0000AA"><b>CONST</b></font> crNoDrop = -13
+<font color="0000AA"><b>CONST</b></font> crHSplit = -14
+<font color="0000AA"><b>CONST</b></font> crVSplit = -15
+<font color="0000AA"><b>CONST</b></font> crMultiDrag = -16
+<font color="0000AA"><b>CONST</b></font> crSQLWait = -17
+<font color="0000AA"><b>CONST</b></font> crNo = -18
+<font color="0000AA"><b>CONST</b></font> crAppStart = -19
+<font color="0000AA"><b>CONST</b></font> crHelp = -20
+<font color="0000AA"><b>CONST</b></font> crHandPoint = -21
+
+
+<font color="007700"><i>'--------------------- QFILELISTBOX Variables -----------------------</i></font> 
+<font color="007700"><i>'-- FileTypes</i></font> 
+<font color="0000AA"><b>CONST</b></font> ftReadOnly = 0     <font color="007700"><i>'-- Display files with read-only attribute</i></font> 
+<font color="0000AA"><b>CONST</b></font> ftHidden = 1       <font color="007700"><i>'--   "       "     "  hidden attribute</i></font> 
+<font color="0000AA"><b>CONST</b></font> ftSystem = 2       <font color="007700"><i>'-- Displays system files</i></font> 
+<font color="0000AA"><b>CONST</b></font> ftVolumeID = 3     <font color="007700"><i>'-- Displays the volume name</i></font> 
+<font color="0000AA"><b>CONST</b></font> ftDirectory = 4    <font color="007700"><i>'-- Displays directories</i></font> 
+<font color="0000AA"><b>CONST</b></font> ftArchive = 5      <font color="007700"><i>'-- Display files with archive attribute</i></font> 
+<font color="0000AA"><b>CONST</b></font> ftNormal = 6       <font color="007700"><i>'-- Display files with no special attributes</i></font> 
+
+
+<font color="007700"><i>'---------------------- QSCROLLBAR Variables ------------------------</i></font> 
+<font color="007700"><i>'-- Kind</i></font> 
+<font color="0000AA"><b>CONST</b></font> sbHorizontal = 0
+<font color="0000AA"><b>CONST</b></font> sbVertical = 1
+
+<font color="007700"><i>'-- ScrollCode</i></font> 
+<font color="0000AA"><b>CONST</b></font> scLineUp = 0
+<font color="0000AA"><b>CONST</b></font> scLineDown = 1
+<font color="0000AA"><b>CONST</b></font> scPageUp = 2
+<font color="0000AA"><b>CONST</b></font> scPageDown = 3
+<font color="0000AA"><b>CONST</b></font> scPosition = 4
+<font color="0000AA"><b>CONST</b></font> scTrack = 5
+<font color="0000AA"><b>CONST</b></font> scTop = 6
+<font color="0000AA"><b>CONST</b></font> scBottom = 7
+<font color="0000AA"><b>CONST</b></font> scEndScroll = 8
+
+
+<font color="007700"><i>'----------------------- QIMAGELIST Variables -----------------------</i></font> 
+<font color="007700"><i>'-- Draw styles</i></font> 
+<font color="0000AA"><b>CONST</b></font> dsFocused = 0      <font color="007700"><i>'-- Draws the image blending 25% with the system</i></font> 
+                         <font color="007700"><i>'   highlight color. This only affects imagelists</i></font> 
+                         <font color="007700"><i>'   which contain masks.</i></font> 
+<font color="0000AA"><b>CONST</b></font> dsSelected = 1     <font color="007700"><i>'-- Draws the image blending 50%</i></font> 
+<font color="0000AA"><b>CONST</b></font> dsNormal = 2       <font color="007700"><i>'-- Draws the image using the color specified in</i></font> 
+                         <font color="007700"><i>'   the BkColor property</i></font> 
+<font color="0000AA"><b>CONST</b></font> dsTransparent = 3  <font color="007700"><i>'-- Draws using the mask regardless of the BkColor</i></font> 
+                         <font color="007700"><i>'   setting</i></font> 
+
+<font color="007700"><i>'-- Image type</i></font> 
+<font color="0000AA"><b>CONST</b></font> itImage = 0        <font color="007700"><i>'-- Draw image</i></font> 
+<font color="0000AA"><b>CONST</b></font> itMask = 1         <font color="007700"><i>'-- Draw image mask</i></font> 
+
+
+<font color="007700"><i>'------------------ QLISTVIEW/QTREEVIEW Variables -------------------</i></font> 
+<font color="007700"><i>'-- Sort Type</i></font> 
+<font color="0000AA"><b>CONST</b></font> stNone = 0         <font color="007700"><i>'-- Sort Type: None</i></font> 
+<font color="007700"><i>'CONST stData = 1</i></font> 
+<font color="0000AA"><b>CONST</b></font> stText = 2
+<font color="007700"><i>'CONST stBoth = 3</i></font> 
+
+<font color="007700"><i>'-- QLISTVIEW View Style</i></font> 
+<font color="0000AA"><b>CONST</b></font> vsIcon = 0         <font color="007700"><i>'-- View Style: Full sized icon, text on bottom</i></font> 
+<font color="0000AA"><b>CONST</b></font> vsSmallIcon = 1    <font color="007700"><i>'-- Small icons, text aligned to the right</i></font> 
+<font color="0000AA"><b>CONST</b></font> vsList = 2         <font color="007700"><i>'-- Same as above (nevermind this)</i></font> 
+<font color="0000AA"><b>CONST</b></font> vsReport = 3       <font color="007700"><i>'-- Each item appears on its own line with information</i></font> 
+                         <font color="007700"><i>'-- arranged in columns</i></font> 
+
+<font color="007700"><i>'----------------------- QTRACKBAR Variables ------------------------</i></font> 
+<font color="0000AA"><b>CONST</b></font> tbHorizontal = 0   <font color="007700"><i>'-- TrackBar Orientation</i></font> 
+<font color="0000AA"><b>CONST</b></font> tbVertical = 1
+
+<font color="0000AA"><b>CONST</b></font> tmBottomRight = 0  <font color="007700"><i>'-- Tickmark placement</i></font> 
+<font color="0000AA"><b>CONST</b></font> tmTopLeft = 1
+<font color="0000AA"><b>CONST</b></font> tmBoth = 2
+
+<font color="0000AA"><b>CONST</b></font> tsNone = 0         <font color="007700"><i>'-- Track bar displays no tick marks</i></font> 
+<font color="0000AA"><b>CONST</b></font> tsAuto = 1         <font color="007700"><i>'-- Track bar displays tick marks automatically</i></font> 
+                         <font color="007700"><i>'   for each increment in its range</i></font> 
+<font color="0000AA"><b>CONST</b></font> tsManual = 2       <font color="007700"><i>'-- Track bar displays a tick mark at either end</i></font> 
+
+
+<font color="007700"><i>'---------------------- QSTRINGGRID Variables -----------------------</i></font> 
+<font color="0000AA"><b>CONST</b></font> goFixedVertLine = 0<font color="007700"><i>'-When True, horizontal lines appear between the rows</i></font> 
+                         <font color="007700"><i>'-within nonscrolling regions.</i></font> 
+
+<font color="0000AA"><b>CONST</b></font> goFixedHorzLine = 1<font color="007700"><i>'-When True, vertical lines appear between the columns</i></font> 
+                         <font color="007700"><i>'-within nonscrolling regions.</i></font> 
+
+<font color="0000AA"><b>CONST</b></font> goVertLine = 2 <font color="007700"><i>'- When True, horizontal lines appear between the rows.</i></font> 
+
+<font color="0000AA"><b>CONST</b></font> goHorzLine = 3
+<font color="0000AA"><b>CONST</b></font> goRangeSelect = 4
+<font color="0000AA"><b>CONST</b></font> goDrawFocusSelected = 5
+<font color="0000AA"><b>CONST</b></font> goRowSizing = 6
+<font color="0000AA"><b>CONST</b></font> goColSizing = 7
+<font color="0000AA"><b>CONST</b></font> goRowMoving = 8
+<font color="0000AA"><b>CONST</b></font> goColMoving = 9
+<font color="0000AA"><b>CONST</b></font> goEditing = 10
+<font color="0000AA"><b>CONST</b></font> goTabs = 11
+<font color="0000AA"><b>CONST</b></font> goRowSelect = 12
+<font color="0000AA"><b>CONST</b></font> goAlwaysShowEditor = 13
+<font color="0000AA"><b>CONST</b></font> goThumbTracking = 14
+
+<font color="007700"><i>'- goVertLine     </i></font> 
+<font color="007700"><i>' When True, vertical lines appear between the columns.</i></font> 
+<font color="007700"><i>'goRangeSelect   When True, the user can select a range of cells at one</i></font> 
+<font color="007700"><i>'time. When goEditing is True, the user can no longer select a range of</i></font> 
+<font color="007700"><i>'cells.</i></font> 
+
+<font color="007700"><i>'- goDrawFocusSelected   </i></font> 
+<font color="007700"><i>'  When True, the cell with the focus is colored</i></font> 
+<font color="007700"><i>'the same as other cells in a selected block are colored. When False, the</i></font> 
+<font color="007700"><i>'cell with the focus remains the color of all unselected cells, the color</i></font> 
+<font color="007700"><i>'specified with the grid Color property.</i></font> 
+
+<font color="007700"><i>'- goRowSizing    </i></font> 
+<font color="007700"><i>' When True, rows can be resized individually except for</i></font> 
+<font color="007700"><i>'fixed or nonscrolling rows.</i></font> 
+
+<font color="007700"><i>'- goColSizing   </i></font> 
+<font color="007700"><i>'  When True, columns can be resized individually except</i></font> 
+<font color="007700"><i>'for fixed or nonscrolling columns.</i></font> 
+
+<font color="007700"><i>'- goRowMoving   </i></font> 
+<font color="007700"><i>'  When True, the user can move a row to a new location in</i></font> 
+<font color="007700"><i>'the grid using the mouse.</i></font> 
+
+<font color="007700"><i>'-goColMoving  </i></font> 
+<font color="007700"><i>'   When True, the user can move a column to a new location</i></font> 
+<font color="007700"><i>'in the grid using the mouse.</i></font> 
+
+<font color="007700"><i>'-goEditing  </i></font> 
+<font color="007700"><i>'     When True, the user can edit the text in the grid. When</i></font> 
+<font color="007700"><i>'goEditing is True, the user cannot select a range of cells at one time.</i></font> 
+
+<font color="007700"><i>'-goAlwaysShowEditor   </i></font> 
+<font color="007700"><i>'   When True, the grid is in automatic edit mode</i></font> 
+<font color="007700"><i>'if goEditing is also True. When the grid is in automatic edit mode, the</i></font> 
+<font color="007700"><i>'user does not have to press Enter or F2 before editing the contents of a</i></font> 
+<font color="007700"><i>'cell. When goAlwaysShowEditor is False and goEditing is True, the user</i></font> 
+<font color="007700"><i>'must press Enter or F2 before editing the contents of a cell. If</i></font> 
+<font color="007700"><i>'goEditing is False, setting goAlwaysShowEditor to True has no effect.</i></font> 
+
+
+<font color="007700"><i>'-goTabs  </i></font> 
+<font color="007700"><i>'When True, the user can use the Tab and Shift-Tab keys to move</i></font> 
+<font color="007700"><i>'from column to column in the grid.</i></font> 
+
+<font color="007700"><i>'-goRowSelect</i></font> 
+<font color="007700"><i>'     When True, the user can only whole rows at a time</i></font> 
+<font color="007700"><i>'instead of individual cells.</i></font> 
+
+<font color="007700"><i>'-goThumbTracking </i></font> 
+<font color="007700"><i>'When True, the contents of the grid scrolls while the</i></font> 
+<font color="007700"><i>'user is moving the thumb tab of the grid scroll bar. When False, the</i></font> 
+<font color="007700"><i>'contents of the grid doesn't scroll until the user releases the thumb</i></font> 
+<font color="007700"><i>'tab in its new position.</i></font> 
+
+<font color="007700"><i>'-- ColumnStyles</i></font> 
+<font color="0000AA"><b>CONST</b></font> gcsList = 0
+<font color="0000AA"><b>CONST</b></font> gcsEllipsis = 1
+<font color="0000AA"><b>CONST</b></font> gcsNone = 2
+
+
+<font color="007700"><i>'----------------------- QOUTLINE Variables -------------------------</i></font> 
+<font color="007700"><i>'-- Outline Style</i></font> 
+<font color="0000AA"><b>CONST</b></font> osText = 0
+<font color="0000AA"><b>CONST</b></font> osPlusMinusText = 1
+<font color="0000AA"><b>CONST</b></font> osPictureText = 2
+<font color="0000AA"><b>CONST</b></font> osPlusMinusPictureText = 3
+<font color="0000AA"><b>CONST</b></font> osTreeText = 4
+<font color="0000AA"><b>CONST</b></font> osTreePictureText = 5
+
+<font color="007700"><i>'-- Outline options</i></font> 
+<font color="0000AA"><b>CONST</b></font> ooDrawTreeRoot = 0         <font color="007700"><i>'-- First item is connected to the root item</i></font> 
+<font color="0000AA"><b>CONST</b></font> ooDrawFocusRect = 1        <font color="007700"><i>'-- Draw focus retangle around selected item</i></font> 
+<font color="0000AA"><b>CONST</b></font> ooDrawStretchBitmaps = 2   <font color="007700"><i>'-- Stretch bitmap to fit size of item</i></font> 
+
+
+<font color="007700"><i>'------------------------ QGAUGE Variables --------------------------</i></font> 
+<font color="007700"><i>'-- Kinds</i></font> 
+<font color="0000AA"><b>CONST</b></font> gkText = 0
+<font color="0000AA"><b>CONST</b></font> gkHorizontalBar = 1
+<font color="0000AA"><b>CONST</b></font> gkVerticalBar = 2
+<font color="0000AA"><b>CONST</b></font> gkPie = 3
+<font color="0000AA"><b>CONST</b></font> gkNeedle = 4
+
+
+<font color="007700"><i>'----------------- QBITMAP/QCANVAS/QIMAGE Variables -----------------</i></font> 
+<font color="007700"><i>'-- CopyMode</i></font> 
+<font color="0000AA"><b>CONST</b></font> cmBlackness = 0     <font color="007700"><i>' Fill Destination rectange on the canvas with black</i></font> 
+<font color="0000AA"><b>CONST</b></font> cmDstInvert = 1
+<font color="0000AA"><b>CONST</b></font> cmMergeCopy = 2
+<font color="0000AA"><b>CONST</b></font> cmMergePaint = 3
+<font color="0000AA"><b>CONST</b></font> cmNotSrcCopy = 4
+<font color="0000AA"><b>CONST</b></font> cmNotSrcErase = 5
+<font color="0000AA"><b>CONST</b></font> cmPatCopy = 6
+<font color="0000AA"><b>CONST</b></font> cmPatInvert = 7
+<font color="0000AA"><b>CONST</b></font> cmPatPaint = 8
+<font color="0000AA"><b>CONST</b></font> cmSrcAnd = 9
+<font color="0000AA"><b>CONST</b></font> cmSrcCopy = 10      <font color="007700"><i>' Copies source image to the canvas</i></font> 
+<font color="0000AA"><b>CONST</b></font> cmSrcErase = 11
+<font color="0000AA"><b>CONST</b></font> cmSrcInvert = 12
+<font color="0000AA"><b>CONST</b></font> cmSrcPaint = 13
+<font color="0000AA"><b>CONST</b></font> cmWhiteness = 14    <font color="007700"><i>' Fill Destination rectange on the canvas with white</i></font> 
+
+<font color="007700"><i>'-- QBITMAP Pixel Formats</i></font> 
+<font color="0000AA"><b>CONST</b></font> pfDevice = 0
+<font color="0000AA"><b>CONST</b></font> pf1bit = 1
+<font color="0000AA"><b>CONST</b></font> pf4bit = 2
+<font color="0000AA"><b>CONST</b></font> pf8bit = 3
+<font color="0000AA"><b>CONST</b></font> pf15bit = 4
+<font color="0000AA"><b>CONST</b></font> pf16bit = 5
+<font color="0000AA"><b>CONST</b></font> pf24bit = 6
+<font color="0000AA"><b>CONST</b></font> pf32bit = 7
+
+<font color="007700"><i>'-- QBITMAP TransparentMode</i></font> 
+<font color="0000AA"><b>CONST</b></font> tmAuto  = 0
+<font color="0000AA"><b>CONST</b></font> tmFixed = 1
+
+
+<font color="007700"><i>'------------------------ QLISTBOX Variables ------------------------</i></font> 
+<font color="007700"><i>'-- ListBox Styles</i></font> 
+<font color="0000AA"><b>CONST</b></font> lbStandard = 0           <font color="007700"><i>'-- All items are strings</i></font> 
+<font color="0000AA"><b>CONST</b></font> lbOwnerDrawFixed = 1     <font color="007700"><i>'-- Owner draw fixed</i></font> 
+<font color="0000AA"><b>CONST</b></font> lbOwnerDrawVariable = 2  <font color="007700"><i>'-- Owner draw variable</i></font> 
+
+
+<font color="007700"><i>'------------------------ QCOMPORT Variables ------------------------</i></font> 
+<font color="007700"><i>'-- Baud Rates</i></font> 
+<font color="0000AA"><b>$IFDEF</b></font> __COMPORT
+<font color="0000AA"><b>CONST</b></font> br110 = 0
+<font color="0000AA"><b>CONST</b></font> br300 = 1
+<font color="0000AA"><b>CONST</b></font> br600 = 2
+<font color="0000AA"><b>CONST</b></font> br1200 = 3
+<font color="0000AA"><b>CONST</b></font> br2400 = 4
+<font color="0000AA"><b>CONST</b></font> br4800 = 5
+<font color="0000AA"><b>CONST</b></font> br9600 = 6
+<font color="0000AA"><b>CONST</b></font> br14400 = 7
+<font color="0000AA"><b>CONST</b></font> br19200 = 8
+<font color="0000AA"><b>CONST</b></font> br38400 = 9
+<font color="0000AA"><b>CONST</b></font> br56000 = 10
+<font color="0000AA"><b>CONST</b></font> br57600 = 11
+<font color="0000AA"><b>CONST</b></font> br115200 = 12
+
+<font color="007700"><i>'-- Stop bits</i></font> 
+<font color="0000AA"><b>CONST</b></font> sbOneStopBit = 0
+<font color="0000AA"><b>CONST</b></font> sbOne5StopBits = 1
+<font color="0000AA"><b>CONST</b></font> sbTwoStopBits = 2
+
+<font color="007700"><i>'-- Parity</i></font> 
+<font color="0000AA"><b>CONST</b></font> prNone = 0
+<font color="0000AA"><b>CONST</b></font> prOdd = 1
+<font color="0000AA"><b>CONST</b></font> prEven = 2
+<font color="0000AA"><b>CONST</b></font> prMark = 3
+<font color="0000AA"><b>CONST</b></font> prSpace = 4
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="007700"><i>'---------------------- QFONTDIALOG Variables -----------------------</i></font> 
+<font color="007700"><i>'-- Font Options</i></font> 
+<font color="0000AA"><b>CONST</b></font> fdAnsiOnly = 0             <font color="007700"><i>'-- No weird symbols</i></font> 
+<font color="0000AA"><b>CONST</b></font> fdTrueTypeOnly = 1
+<font color="0000AA"><b>CONST</b></font> fdEffects = 2
+<font color="0000AA"><b>CONST</b></font> fdFixedPitchOnly = 3
+<font color="0000AA"><b>CONST</b></font> fdForceFontExist = 4
+<font color="0000AA"><b>CONST</b></font> fdNoFaceSel = 5
+<font color="0000AA"><b>CONST</b></font> fdNoOEMFonts = 6
+<font color="0000AA"><b>CONST</b></font> fdNoSimulations = 7
+<font color="0000AA"><b>CONST</b></font> fdNoSizeSel = 8
+<font color="0000AA"><b>CONST</b></font> fdNoStyleSel = 9
+<font color="0000AA"><b>CONST</b></font> fdNoVectorFonts = 10
+<font color="0000AA"><b>CONST</b></font> fdShowHelp = 11
+<font color="0000AA"><b>CONST</b></font> fdWysiwyg = 12
+<font color="0000AA"><b>CONST</b></font> fdLimitSize = 13
+<font color="0000AA"><b>CONST</b></font> fdScalableOnly = 14
+<font color="0000AA"><b>CONST</b></font> fdApplyButton = 15
+
+
+<font color="007700"><i>'----------------------- QDIRTREE Variables -------------------------</i></font> 
+<font color="007700"><i>'-- DirTypes</i></font> 
+<font color="0000AA"><b>CONST</b></font> dtReadOnly = 0
+<font color="0000AA"><b>CONST</b></font> dtHidden = 1
+<font color="0000AA"><b>CONST</b></font> dtSystem = 2
+<font color="0000AA"><b>CONST</b></font> dtNormal = 3
+<font color="0000AA"><b>CONST</b></font> dtAll = 4
+
+<font color="007700"><i>'-- DriveTypes</i></font> 
+<font color="0000AA"><b>CONST</b></font> drtUnknown = 0
+<font color="0000AA"><b>CONST</b></font> drtRemovable = 1
+<font color="0000AA"><b>CONST</b></font> drtFixed = 2
+<font color="0000AA"><b>CONST</b></font> drtRemote = 3
+<font color="0000AA"><b>CONST</b></font> drtCDRom = 4
+<font color="0000AA"><b>CONST</b></font> drtRamDisk = 5
+
+
+<font color="007700"><i>'------------------------ QSOCKET Variables -------------------------</i></font> 
+<font color="007700"><i>'-- Protocols</i></font> 
+<font color="0000AA"><b>CONST</b></font> IPPROTO_IP   = 0        <font color="007700"><i>' dummy for IP</i></font> 
+<font color="0000AA"><b>CONST</b></font> IPPROTO_ICMP = 1        <font color="007700"><i>' control message protocol</i></font> 
+<font color="0000AA"><b>CONST</b></font> IPPROTO_IGMP = 2        <font color="007700"><i>' group management protocol</i></font> 
+<font color="0000AA"><b>CONST</b></font> IPPROTO_TCP  = 6
+<font color="0000AA"><b>CONST</b></font> IPPROTO_PUP  = 12
+<font color="0000AA"><b>CONST</b></font> IPPROTO_UDP  = 17       <font color="007700"><i>' user datagram protocol</i></font> 
+<font color="0000AA"><b>CONST</b></font> IPPROTO_IDP  = 22       <font color="007700"><i>' xns idp</i></font> 
+<font color="0000AA"><b>CONST</b></font> IPPROTO_RAW  = 255      <font color="007700"><i>' raw IP packet</i></font> 
+
+<font color="007700"><i>'-- Socket Types</i></font> 
+<font color="0000AA"><b>CONST</b></font> SOCK_STREAM    = 1      <font color="007700"><i>' stream socket</i></font> 
+<font color="0000AA"><b>CONST</b></font> SOCK_DGRAM     = 2      <font color="007700"><i>' datagram socket</i></font> 
+<font color="0000AA"><b>CONST</b></font> SOCK_RAW       = 3      <font color="007700"><i>' raw-protocol interface</i></font> 
+<font color="0000AA"><b>CONST</b></font> SOCK_RDM       = 4      <font color="007700"><i>' reliably-delivered message</i></font> 
+<font color="0000AA"><b>CONST</b></font> SOCK_SEQPACKET = 5      <font color="007700"><i>' sequenced packet stream</i></font> 
+
+<font color="007700"><i>'-- Address families</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_UNSPEC    = 0        <font color="007700"><i>' unspecified</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_UNIX      = 1        <font color="007700"><i>' local to host (pipes, portals)</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_INET      = 2        <font color="007700"><i>' internetwork: UDP, TCP, etc.</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_IMPLINK   = 3        <font color="007700"><i>' arpanet imp addresses</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_PUP       = 4        <font color="007700"><i>' pup protocols: e.g. BSP</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_CHAOS     = 5        <font color="007700"><i>' mit CHAOS protocols</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_IPX       = 6        <font color="007700"><i>' IPX and SPX</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_NS        = 6        <font color="007700"><i>' XEROX NS protocols</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_ISO       = 7        <font color="007700"><i>' ISO protocols</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_OSI       = AF_ISO
+<font color="0000AA"><b>CONST</b></font> AF_ECMA      = 8        <font color="007700"><i>' european computer manufacturers</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_DATAKIT   = 9        <font color="007700"><i>' datakit protocols</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_CCITT     = 10       <font color="007700"><i>' CCITT protocols, X.25 etc</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_SNA       = 11       <font color="007700"><i>' IBM SNA</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_DECnet    = 12       <font color="007700"><i>' DECnet</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_DLI       = 13       <font color="007700"><i>' Direct data link interface</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_LAT       = 14       <font color="007700"><i>' LAT</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_HYLINK    = 15       <font color="007700"><i>' NSC Hyperchannel</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_APPLETALK = 16       <font color="007700"><i>' AppleTalk</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_NETBIOS   = 17       <font color="007700"><i>' NetBios-style addresses</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_VOICEVIEW = 18       <font color="007700"><i>' VoiceView</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_FIREFOX   = 19       <font color="007700"><i>' FireFox</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_UNKNOWN1  = 20       <font color="007700"><i>' What?</i></font> 
+<font color="0000AA"><b>CONST</b></font> AF_BAN       = 21       <font color="007700"><i>' Banyan</i></font> 
+
+
+<font color="007700"><i>'----------------------- QHEADER Variables --------------------------</i></font> 
+<font color="007700"><i>'-- Header Styles</i></font> 
+<font color="0000AA"><b>CONST</b></font> hsText = 0
+<font color="0000AA"><b>CONST</b></font> hsOwnerDraw = 1
+
+
+<font color="007700"><i>'--------------------- QSTRINGLIST Variables ------------------------</i></font> 
+<font color="007700"><i>'-- Duplicates</i></font> 
+<font color="0000AA"><b>CONST</b></font> dupIgnore = 0
+<font color="0000AA"><b>CONST</b></font> dupAccept = 1
+<font color="0000AA"><b>CONST</b></font> dupError = 2
+
+
+<font color="007700"><i>'-------------------- QOLECONTAINER Variables -----------------------</i></font> 
+<font color="007700"><i>'-- Size Mode</i></font> 
+<font color="0000AA"><b>CONST</b></font> smClip = 0              <font color="007700"><i>'-- Clip parts that don't fit inside</i></font> 
+<font color="0000AA"><b>CONST</b></font> smCenter = 1            <font color="007700"><i>'-- Center object within the container</i></font> 
+<font color="0000AA"><b>CONST</b></font> smScale = 2             <font color="007700"><i>'-- Scales or shrinks object to fit inside</i></font> 
+<font color="0000AA"><b>CONST</b></font> smStretch = 3           <font color="007700"><i>'-- Stretch to fill entire container</i></font> 
+<font color="0000AA"><b>CONST</b></font> smAutoSize = 4          <font color="007700"><i>'-- Sizes container to match size of object</i></font> 
+
+<font color="007700"><i>'-- Object States</i></font> 
+<font color="0000AA"><b>CONST</b></font> osEmpty = 0
+<font color="0000AA"><b>CONST</b></font> osLoaded = 1
+<font color="0000AA"><b>CONST</b></font> osRunning = 2
+<font color="0000AA"><b>CONST</b></font> osOpen = 3
+<font color="0000AA"><b>CONST</b></font> osInPlaceActive = 4
+<font color="0000AA"><b>CONST</b></font> osUIActive = 5
+
+
+<font color="007700"><i>'--------------------- STRF$ Format Variables -----------------------</i></font> 
+<font color="0000AA"><b>CONST</b></font> ffGeneral = 0
+<font color="0000AA"><b>CONST</b></font> ffExponent = 1
+<font color="0000AA"><b>CONST</b></font> ffFixed = 2
+<font color="0000AA"><b>CONST</b></font> ffNumber = 3
+
+
+<font color="007700"><i>'------------------------- DIR$ Variables ---------------------------</i></font> 
+<font color="007700"><i>'-- File Attributes</i></font> 
+<font color="0000AA"><b>CONST</b></font> faReadOnly  = 1
+<font color="0000AA"><b>CONST</b></font> faHidden    = 2
+<font color="0000AA"><b>CONST</b></font> faSysFile   = 4
+<font color="0000AA"><b>CONST</b></font> faVolumeID  = 8
+<font color="0000AA"><b>CONST</b></font> faDirectory = 16
+<font color="0000AA"><b>CONST</b></font> faArchive   = 32
+<font color="0000AA"><b>CONST</b></font> faAnyFile   = 63
+
+
+<font color="007700"><i>'------------------------ PRINTER Variables -------------------------</i></font> 
+<font color="007700"><i>'-- Orientations</i></font> 
+<font color="0000AA"><b>CONST</b></font> poPortrait  = 0
+<font color="0000AA"><b>CONST</b></font> poLandscape = 1
+
+
+<font color="007700"><i>'---------------------------- QBColor -------------------------------</i></font> 
+
+<font color="0000AA"><b>$IFDEF</b></font> __QBCOLOR
+<font color="0000AA"><b>DIM</b></font> QBColor<b>(</b>0 <font color="0000AA"><b>TO</b></font> 15<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+    QBColor<b>(</b>0<b>)</b> = 0               <font color="007700"><i>'-- Black</i></font> 
+    QBColor<b>(</b>1<b>)</b> = &H800000        <font color="007700"><i>'-- Blue</i></font> 
+    QBColor<b>(</b>2<b>)</b> = &H8000          <font color="007700"><i>'-- Green</i></font> 
+    QBColor<b>(</b>3<b>)</b> = &H808000        <font color="007700"><i>'-- Cyan</i></font> 
+    QBColor<b>(</b>4<b>)</b> = &H80            <font color="007700"><i>'-- Red</i></font> 
+    QBColor<b>(</b>5<b>)</b> = &H800080        <font color="007700"><i>'-- Magenta</i></font> 
+    QBColor<b>(</b>6<b>)</b> = &H8080          <font color="007700"><i>'-- Brown</i></font> 
+    QBColor<b>(</b>7<b>)</b> = &HC0C0C0        <font color="007700"><i>'-- White</i></font> 
+    QBColor<b>(</b>8<b>)</b> = &H808080        <font color="007700"><i>'-- Grey</i></font> 
+    QBColor<b>(</b>9<b>)</b> = &HFF0000        <font color="007700"><i>'-- Light Blue</i></font> 
+    QBColor<b>(</b>10<b>)</b> = &HFF00         <font color="007700"><i>'-- Light Green</i></font> 
+    QBColor<b>(</b>11<b>)</b> = &HFFFF00       <font color="007700"><i>'-- Light Cyan</i></font> 
+    QBColor<b>(</b>12<b>)</b> = &HFF           <font color="007700"><i>'-- Light Red</i></font> 
+    QBColor<b>(</b>13<b>)</b> = &HFF00FF       <font color="007700"><i>'-- Light Magenta</i></font> 
+    QBColor<b>(</b>14<b>)</b> = &HFFFF         <font color="007700"><i>'-- Yellow</i></font> 
+    QBColor<b>(</b>15<b>)</b> = &HFFFFFF       <font color="007700"><i>'-- Bright White</i></font> 
+<font color="0000AA"><b>$ENDIF</b></font> <font color="007700"><i>' __QBCOLOR</i></font> 
+
+<font color="0000AA"><b>$ENDIF</b></font> <font color="007700"><i>' __RQINC</i></font> 
+
+<font color="007700"><i>'------------------------------ custom function ------------------------'</i></font> 
+<font color="007700"><i>'-- ***********************************************************************'</i></font> 
+<font color="0000AA"><b>sub</b></font> AddClrString <b>(</b>AddString$, Clr, Sender <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>QRICHEDIT</b></font><b>)</b>
+<font color="007700"><i>'Add colored string to QRICHEDIT</i></font> 
+          Sender.SelStart =<font color="0000AA"><b>len</b></font> <b>(</b>Sender.Text<b>)</b>
+          Sender.SelLength =<font color="0000AA"><b>Len</b></font><b>(</b>AddString$<b>)</b>
+          Sender.SelAttributes.Color=Clr
+          Sender.AddStrings AddString$
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+
+<font color="0000AA"><b>$include</b></font> "<font color="990000">conversion.inc</font>"
+<font color="0000AA"><b>$include</b></font> "<font color="990000">Files.inc</font>"  
+</pre>
+</body>
+</html>

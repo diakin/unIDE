@@ -1,0 +1,354 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE>Appendix A: QFormEx</TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 1.1.0  (Win32)">
+	<META NAME="CREATED" CONTENT="20040924;13233879">
+	<META NAME="CHANGED" CONTENT="20040924;13241928">
+</HEAD>
+<BODY LANG="fr-FR" BGCOLOR="#ffffff" DIR="LTR">
+<P STYLE="margin-bottom: 0cm">&nbsp; 
+</P>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+	<TR>
+		<TD>
+			<P><FONT FACE="Arial, Helvetica">Documentation composant par
+			D.Glodt (c)2000-2001</FONT></P>
+		</TD>
+		<TD>
+			<P ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A:
+			QFormEx</B></FONT></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=2>
+			<HR SIZE=1>
+		</TD>
+	</TR>
+</TABLE>
+<H1>QFormEx Composant</H1>
+<DL>
+	<DD STYLE="margin-bottom: 0.5cm">QFormEx est identique a un
+	composant QForm avec la fonctionnalit&eacute; Drag&amp;Drop de
+	fichier et la fonctionnalit&eacute; tray icon. 
+	</DD></DL>
+<P STYLE="margin-bottom: 0cm">
+<A NAME="1"></A><BR><B><FONT SIZE=4>QFormEx Propriet&eacute;s</FONT></B>
+</P>
+<TABLE WIDTH=100% CELLPADDING=2 CELLSPACING=2>
+	<TR>
+		<TD>
+			<P><B>Champs</B></P>
+		</TD>
+		<TD>
+			<P><B>Type</B></P>
+		</TD>
+		<TD>
+			<P><B>L/E</B></P>
+		</TD>
+		<TD>
+			<P><B>Defaut</B></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>DragEnable</P>
+		</TD>
+		<TD>
+			<P>BOOLEAN</P>
+		</TD>
+		<TD>
+			<P>LE</P>
+		</TD>
+		<TD>
+			<P>False</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD></TD>
+		<TD COLSPAN=3 BGCOLOR="#ffdddd">
+			<P>Acceptation de depose fichier dans la fenetre d'application&nbsp;</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>DragZone</P>
+		</TD>
+		<TD>
+			<P>QRECT</P>
+		</TD>
+		<TD>
+			<P>LE</P>
+		</TD>
+		<TD></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD></TD>
+		<TD COLSPAN=3 BGCOLOR="#ffdddd">
+			<P>Zone de d&eacute;pose fichier&nbsp;</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>DeskBar</P>
+		</TD>
+		<TD>
+			<P>BOOLEAN</P>
+		</TD>
+		<TD>
+			<P>LE</P>
+		</TD>
+		<TD>
+			<P>False</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD></TD>
+		<TD>
+			<P>Si true , l'application sera dans la barre outil du bureau
+			lorsque la fenetre sera reduite. <BR>Mettre a false si l'&eacute;venement
+			WndProc est utilis&eacute;.</P>
+		</TD>
+		<TD></TD>
+		<TD></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD BGCOLOR="#ccffff">
+			<P>FormStyle</P>
+		</TD>
+		<TD BGCOLOR="#ccffff">
+			<P>INTEGER</P>
+		</TD>
+		<TD>
+			<P>LE</P>
+		</TD>
+		<TD>
+			<P>fsNormal</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD>
+			<P><BR>
+			</P>
+		</TD>
+		<TD>
+			<P>le style fsStayOnStop est support&eacute; si la propriet&eacute;
+			DeskBar est a true</P>
+		</TD>
+		<TD></TD>
+		<TD></TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="2"></A><B><FONT SIZE=4>QFormEx
+Methodes</FONT></B> 
+</P>
+<TABLE WIDTH=100% CELLPADDING=2 CELLSPACING=2>
+	<TR>
+		<TD>
+			<P><B>Methode</B></P>
+		</TD>
+		<TD>
+			<P><B>Type</B></P>
+		</TD>
+		<TD>
+			<P><B>Description</B></P>
+		</TD>
+		<TD>
+			<P><B>Parametres</B></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>AddTrayIcon</P>
+		</TD>
+		<TD>
+			<P>SUB</P>
+		</TD>
+		<TD>
+			<P>Additionne l'icone application dans la barre outil du bureau</P>
+		</TD>
+		<TD>
+			<P>0</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>DelTrayIcon</P>
+		</TD>
+		<TD>
+			<P>SUB</P>
+		</TD>
+		<TD>
+			<P>Supprime l'icone application de la barre outil du bureau</P>
+		</TD>
+		<TD>
+			<P>0</P>
+		</TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="3"></A><B><FONT SIZE=4>QFormEx
+Evenements</FONT></B> 
+</P>
+<TABLE WIDTH=100% CELLPADDING=2 CELLSPACING=2>
+	<TR>
+		<TD>
+			<P><B>Evenement</B></P>
+		</TD>
+		<TD>
+			<P><B>Type</B></P>
+		</TD>
+		<TD>
+			<P><B>D&eacute;clenchement</B></P>
+		</TD>
+		<TD>
+			<P><B>Parametres</B></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>OnDrag</P>
+		</TD>
+		<TD>
+			<P>(File$)</P>
+		</TD>
+		<TD>
+			<P>D&eacute;pose fichier</P>
+		</TD>
+		<TD>
+			<P>1</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>OnTrayClick</P>
+		</TD>
+		<TD></TD>
+		<TD>
+			<P>Click bouton droit sur icone application de la barre outil</P>
+		</TD>
+		<TD>
+			<P>0</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>OnTrayDblClick</P>
+		</TD>
+		<TD></TD>
+		<TD>
+			<P>Double click sur bouton gauche sur icone application de la
+			barre outil</P>
+		</TD>
+		<TD>
+			<P>0</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>OnMinimise</P>
+		</TD>
+		<TD></TD>
+		<TD>
+			<P>Mise en r&eacute;duction de la fenetre</P>
+		</TD>
+		<TD>
+			<P>0</P>
+		</TD>
+	</TR>
+</TABLE>
+<P><A NAME="4"></A><B><FONT SIZE=4>QFormEx Exemple1</FONT></B> 
+</P>
+<P>$TYPECHECK ON <BR>$INCLUDE &quot;rapidq.inc&quot; <BR>$INCLUDE
+&quot;Object\QFormEx.inc&quot; 
+</P>
+<P>declare Sub depose(file as string) 
+</P>
+<P>CREATE Form AS QFormEx <BR>&nbsp; width=300 <BR>&nbsp; Height=200
+<BR>&nbsp; Caption=&quot;Drag and drop files&quot; <BR>&nbsp; center
+<BR>&nbsp; DragEnable=true <BR>&nbsp; OnDrag=Depose <BR>&nbsp; CREATE
+Listbox as QLISTBOX <BR>&nbsp;&nbsp;&nbsp; Width=150 <BR>&nbsp;&nbsp;&nbsp;
+height=100 <BR>&nbsp; END CREATE <BR>END CREATE 
+</P>
+<P>form.DragZone.Left=listbox.left <BR>form.DragZone.Top=listbox.Top
+<BR>form.DragZone.Right=listbox.Width
+<BR>form.DragZone.Bottom=listbox.Height <BR>Form.ShowModal 
+</P>
+<P>Sub Depose(file as string) <BR>&nbsp; ListBox.AddItems(file) <BR>End
+Sub 
+</P>
+<P><A NAME="41"></A><B><FONT SIZE=4>QFormEx Exemple2</FONT></B> 
+</P>
+<P>$TYPECHECK ON <BR>$INCLUDE &quot;rapidq.inc&quot; <BR>$INCLUDE
+&quot;Object\QFormEx.inc&quot; <BR>declare sub close <BR>declare sub
+show <BR>declare sub menu <BR>declare sub hide 
+</P>
+<P>CREATE Form AS QFormEx <BR>&nbsp; OnClose=Close <BR>&nbsp;
+OnTrayDblClick=Show <BR>&nbsp; OnTrayClick=Menu <BR>&nbsp;
+OnMinimise=Hide <BR>END CREATE 
+</P>
+<P>CREATE PopUpMenu AS QPOPUPMENU <BR>&nbsp;&nbsp;&nbsp; Alignment =
+1 <BR>&nbsp;&nbsp;&nbsp; CREATE Open AS QMENUITEM <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Caption = &quot;&amp;Open&quot; <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OnClick =show <BR>&nbsp;&nbsp;&nbsp; END CREATE <BR>&nbsp;&nbsp;&nbsp;
+CREATE Seperator AS QMENUITEM <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Caption = &quot;-&quot; <BR>&nbsp;&nbsp;&nbsp; END CREATE <BR>&nbsp;&nbsp;&nbsp;
+CREATE MeExit AS QMENUITEM <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Caption = &quot;&amp;Exit&quot; <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OnClick =Close <BR>&nbsp;&nbsp;&nbsp; END CREATE <BR>END CREATE
+<BR>form.addtrayicon <BR>form.showmodal 
+</P>
+<P>sub close <BR>&nbsp; form.deltrayicon <BR>&nbsp;
+Application.terminate <BR>end sub 
+</P>
+<P>sub show <BR>&nbsp; form.visible=true <BR>end sub 
+</P>
+<P>sub Hide <BR>&nbsp; form.visible=false <BR>end sub 
+</P>
+<P>sub menu <BR>&nbsp; popupmenu.popup(screen.MouseX,screen.MouseY)
+<BR>end sub <BR>&nbsp; <BR>&nbsp; 
+</P>
+</BODY>
+</HTML>

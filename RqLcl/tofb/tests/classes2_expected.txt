@@ -1,0 +1,8 @@
+gauge 40
+tabs 2 Two
+radio 01
+tree 3 Child1 level 1
+tree change 2 Root2x
+bar second
+bar0 changed
+files listed

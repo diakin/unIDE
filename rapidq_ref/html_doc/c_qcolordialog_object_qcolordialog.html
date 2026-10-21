@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCOLORDIALOG</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCOLORDIALOG</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCOLORDIALOG Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/object/QColorDialog.inc</code>, line 41 &middot; version: 1.1</p>
+<p><b>A color selection dialog object based on the Windows ChooseColor common dialog, with a custom caption, 16 custom colors and full-open options.</b></p>
+<p>QCOLORDIALOG extends QOBJECT and wraps ChooseColorA from COMDLG32. Execute fills a TCHOOSECOLOR structure with the current Color and the 16 custom Colors, shows the dialog owned by the application window and, when the user presses OK, copies the chosen color and the custom colors back and returns True.</p>
+<p>When Caption is not empty, a hook procedure is installed (CC_ENABLEHOOK) that centers the dialog on the screen and sets its title on WM_INITDIALOG. Style selects the layout: cdNormal (0), cdFullOpen (1, custom color section opened) or cdNoFullOpen (2, the Define Custom Colors button disabled). Comments in the source are in French.</p>
+<p>QCOLORDIALOG inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QCOLORDIALOG Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Dialog title. When not empty, the hook procedure is installed, sets this title and centers the dialog on the screen.</td></tr>
+<tr><td class="rq-name">Color</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Initial color shown in the dialog and, after Execute returns True, the color the user chose.</td></tr>
+<tr><td class="rq-name">Colors</td><td class="rq-type">ARRAY(1 TO 16) OF LONG</td><td>RW</td><td>(1)=&amp;H0; (2)=&amp;H808080; (3)=&amp;H000080; (4)=&amp;H008080; (5)=&amp;H008000; (6)=&amp;H808000; (7)=&amp;H800000; (8)=&amp;H800080; (9)=&amp;HFFFFFF; (10)=&amp;HC0C0C0; (11)=&amp;H0000FF; (12)=&amp;H00FFFF; (13)=&amp;H00FF00; (14)=&amp;HFFFF00; (15)=&amp;HFF0000; (16)=&amp;HFF00FF</td><td>Array Colors(1 TO 16) of custom colors passed to the dialog and updated after OK; the constructor fills it with 16 basic colors.</td></tr>
+<tr><td class="rq-name">Style</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Dialog layout: cdNormal (0), cdFullOpen (1) adds CC_FULLOPEN, cdNoFullOpen (2) adds CC_PREVENTFULLOPEN.</td></tr>
+</table>
+<a name="2"></a><h2>QCOLORDIALOG Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">HookProc</td><td class="rq-type">FUNCTION(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG</td><td>Internal: dialog hook procedure; on WM_INITDIALOG it centers the dialog on the screen and sets Caption as its title.</td></tr>
+<tr><td class="rq-name">Execute</td><td class="rq-type">FUNCTION AS LONG</td><td>Shows the color dialog; returns True and updates Color and Colors if the user pressed OK, otherwise returns False.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The dialog is centered only when Caption is not empty, because the centering code is in the hook that is installed only in that case.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 6050) contains its own edition of QCOLORDIALOG; it has members that are not in this file: HEIGHT, WIDTH, WINDOWHANDLE.</li>
+</ul>
+<a name="4"></a><h2>QCOLORDIALOG Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM ColorDlg AS QCOLORDIALOG
+ColorDlg.Caption = &quot;Pick a background color&quot;
+ColorDlg.Style = cdFullOpen
+ColorDlg.Color = Form.Color
+IF ColorDlg.Execute THEN Form.Color = ColorDlg.Color</pre>
+<div class="rq-foot"><a href="c_qcolorbutton.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qcolordialog_qcolordialog.html">Next component</a></div>
+</body>
+</html>

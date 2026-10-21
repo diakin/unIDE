@@ -1,0 +1,12 @@
+count 4 size 16x16
+count 4
+pset 00123456
+pixel 00FF0000
+line 00000000
+text -1
+list draw 0000FF00
+draw cache 000000FF
+copyrect 0000FF00 00123456
+bmphandle 000000FF
+flags 110
+cleared 0

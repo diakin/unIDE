@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>eMail.Inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: eMail.Inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>eMail.Inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/eMail.Inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 2 functions &middot; 1 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#EMAIL">eMail</a> &middot; <a href="#MAPISENDMAIL">MAPISendMail</a></p>
+<h3><a name="EMAIL"></a>eMail</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11508</p>
+<pre>Function eMail (eRecipients As String, eSubject As String, eMessage As String, eAttachments As String) As Long</pre>
+<p>Sends a message through Simple MAPI (MAPISendMail in MAPI32.DLL). eRecipients and eAttachments are &#x27;;&#x27;-separated lists; a recipient prefixed with &#x27;&gt;&#x27; is CC, &#x27;&lt;&#x27; is BCC, and &#x27;:&#x27; separates a display name from an smtp address. Returns the MAPISendMail result code.</p>
+<h3><a name="MAPISENDMAIL"></a>MAPISendMail</h3>
+<p class="rq-meta">DLL function, MAPI32.DLL &middot; RQProc.inc, line 11504</p>
+<pre>Declare Function MAPISendMail Lib &quot;MAPI32.DLL&quot; Alias &quot;MAPISendMail&quot; (iSession As Long, iParam As Long, lpMapiMessage As MapiMessage, iFlags As Long, iReserved As Long) As Long</pre>
+<p>Simple MAPI: sends a mail message described by a MapiMessage structure, optionally showing the mail client dialog. Returns SUCCESS_SUCCESS (0) or an error code. Deprecated in newer Windows.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MAPISendMail">MAPISendMail</a></p>
+</body>
+</html>

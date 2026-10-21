@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QID3TAG</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QID3TAG</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QID3TAG Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/Qid3Tag.inc</code>, line 19 &middot; author: Dreadsoft&#174; Corporation</p>
+<p><b>Non-visual reader and writer for the ID3v1 tag at the end of MP3 files (title, artist, album, year, comment, track and genre), with a genre list and combo box.</b></p>
+<p>ReadTags opens FileName with a QFileStream, goes to the last 128 bytes of the file, skips the 3-byte header and reads the fixed-size fields: title, artist and album (30 bytes each), year (4), comment (29), track (1 byte) and genre number (1 byte). The genre name is looked up in GenresList. WriteTags writes the same fields back into the same place, each padded with CHR$(0) or cut to its size by the global helper function fitlength.</p>
+<p>GenresList (QStringList) holds the standard genre names in ID3v1 order. GenresCB is a drop-down combo box that can be filled with LoadList; choosing an entry sets GenreID through SelectGenre. The header refers to a help file for details.</p>
+<p>QID3TAG inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>Qid3tag Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">filename</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Path of the MP3 file. ReadTags and WriteTags show the message &quot;Please, give me a file name&quot; when it is empty.</td></tr>
+<tr><td class="rq-name">Title</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Song title (30 bytes in the tag).</td></tr>
+<tr><td class="rq-name">Artist</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Artist name (30 bytes in the tag).</td></tr>
+<tr><td class="rq-name">Album</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Album name (30 bytes in the tag).</td></tr>
+<tr><td class="rq-name">Year</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Year as a string (4 bytes in the tag).</td></tr>
+<tr><td class="rq-name">Comment</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Comment (29 bytes in the tag).</td></tr>
+<tr><td class="rq-name">Track</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>Track number byte, read and written after the comment.</td></tr>
+<tr><td class="rq-name">Genre</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Genre name, set by ReadTags from GenreID; WriteTags does not use it.</td></tr>
+<tr><td class="rq-name">genreid</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>Genre number byte. Set by ReadTags or SelectGenre and written by WriteTags.</td></tr>
+<tr><td class="rq-name">genreslist</td><td class="rq-type">QSTRINGLIST</td><td>RW</td><td></td><td>QStringList with the genre names, filled in the constructor; the index is the ID3v1 genre number.</td></tr>
+<tr><td class="rq-name">genrescb</td><td class="rq-type">QCOMBOBOX</td><td>RW</td><td></td><td>QComboBox (drop-down list style, 20 visible items) whose OnChange calls SelectGenre. Give it a Parent and fill it with LoadList before use.</td></tr>
+</table>
+<a name="2"></a><h2>Qid3tag Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">loadlist</td><td class="rq-type">SUB</td><td>Fills GenresCB with the genre names.</td></tr>
+<tr><td class="rq-name">SelectGenre</td><td class="rq-type">SUB</td><td>Sets GenreID to GenresCB.ItemIndex; assigned as the combo box OnChange handler in the constructor.</td></tr>
+<tr><td class="rq-name">readtags</td><td class="rq-type">SUB</td><td>Reads the ID3v1 fields from the end of FileName into the properties.</td></tr>
+<tr><td class="rq-name">writetags</td><td class="rq-type">SUB</td><td>Writes the properties into the ID3v1 fields at the end of FileName.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Neither ReadTags nor WriteTags checks for the &quot;TAG&quot; signature. On a file without an ID3v1 tag, ReadTags returns garbage and WriteTags overwrites the last 125 bytes of the audio data instead of adding a tag.</li>
+<li>ReadTags removes all CHR$(0) characters from each text field and then cuts one more character, so a field that fills its whole size loses its last character.</li>
+<li>ReadTags looks up GenresList.Item(GenreID) without checking the range, for example for genre number 255.</li>
+<li>fitlength is a global function defined outside the type.</li>
+<li>The header says &quot;See help file for details&quot;, but no help file comes with the include.</li>
+</ul>
+<a name="4"></a><h2>Qid3tag Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;Qid3Tag.inc&quot;
+CREATE Form AS QFORM
+  Width = 300
+  Height = 100
+END CREATE
+DIM Tag AS Qid3tag
+Tag.FileName = &quot;song.mp3&quot;
+Tag.ReadTags
+Form.Caption = Tag.Artist &amp; &quot; - &quot; &amp; Tag.Title &amp; &quot; (&quot; &amp; Tag.Genre &amp; &quot;)&quot;
+Tag.GenresCB.Parent = Form
+Tag.LoadList
+Tag.GenresCB.ItemIndex = Tag.GenreID
+Form.ShowModal
+Tag.Comment = &quot;Edited with RapidQ&quot;
+Tag.WriteTags</pre>
+<div class="rq-foot"><a href="c_qicon.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qimagebox.html">Next component</a></div>
+</body>
+</html>

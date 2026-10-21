@@ -1,0 +1,7 @@
+images -10
+edited 1 0 one -> ONE
+editings 2 focus on tree -1
+items before 2
+dropdown 11 5 items 3
+ellipsis 22 clicked
+hint Long button hint
