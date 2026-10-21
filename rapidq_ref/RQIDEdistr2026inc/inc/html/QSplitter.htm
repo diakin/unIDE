@@ -1,0 +1,359 @@
+<html>
+<head>
+<title>QSplitter.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'================= QMAXSPLITTER ==================</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' This one's a doozy. A splitter control that </i></font> 
+<font color="007700"><i>' emulates all of Delphi 6's splitter styles.</i></font> 
+<font color="007700"><i>' It's based on a QPanel rather than QCanvas</i></font> 
+<font color="007700"><i>' like the original for two reasons:</i></font> 
+<font color="007700"><i>' 1. To get a handle</i></font> 
+<font color="007700"><i>' 2. To improve drawing and aligning</i></font> 
+<font color="007700"><i>' There are still some issues with this</i></font> 
+<font color="007700"><i>' component, and they are:</i></font> 
+<font color="007700"><i>' 1. Mouse trapping - if you move the mouse too</i></font> 
+<font color="007700"><i>' fast, you leave the splitter behind. SetCapture</i></font> 
+<font color="007700"><i>' doesn't seem to solve the problem, maybe sub-</i></font> 
+<font color="007700"><i>' classing in the next version...</i></font> 
+<font color="007700"><i>' 2. Setting MinSize to 0 sometimes causes</i></font> 
+<font color="007700"><i>' resizing problems, I'm sure this is an oversight</i></font> 
+<font color="007700"><i>' in the math, but I can live with it for now.</i></font> 
+<font color="007700"><i>' 3. There are stil problems with CREATE, most </i></font> 
+<font color="007700"><i>' notably the order in which ALIGNed components</i></font> 
+<font color="007700"><i>' are created, as well as the order in which </i></font> 
+<font color="007700"><i>' properties are assigned to sibling windows</i></font> 
+<font color="007700"><i>' (Uncomment the "Color" in Rich3 and run. See</i></font> 
+<font color="007700"><i>' what I mean? Now place the code for Rich3 AFTER</i></font> 
+<font color="007700"><i>' the code for Split3. Problem solved!)</i></font> 
+<font color="007700"><i>' Anyway, I had fun with it, I hope you will too.</i></font> 
+<font color="007700"><i>' Psyclops ·)</i></font> 
+<font color="007700"><i>' P.S. Sorry for the lack of comments, maybe in the</i></font> 
+<font color="007700"><i>' next release...</i></font> 
+
+
+<font color="0000AA"><b>TYPE</b></font> POINTAPI
+    X <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    Y <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="0000AA"><b>DIM</b></font> Moving      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DIM</b></font> SplitPos    <font color="0000AA"><b>AS</b></font> POINTAPI
+<font color="0000AA"><b>DIM</b></font> OldSplitPos <font color="0000AA"><b>AS</b></font> POINTAPI
+<font color="0000AA"><b>DIM</b></font> OldWhere    <font color="0000AA"><b>AS</b></font> POINTAPI
+<font color="0000AA"><b>DIM</b></font> Org         <font color="0000AA"><b>AS</b></font> POINTAPI
+<font color="0000AA"><b>DIM</b></font> R           <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRECT</b></font>
+<font color="0000AA"><b>DEFWORD</b></font> PatternPtn<b>(</b>7<b>)</b> = {&H00AA, &H0055, &H00AA, &H0055, &H00AA, &H0055, &H00AA, &H0055}
+<font color="0000AA"><b>DEFWORD</b></font> SolidPtn<b>(</b>7<b>)</b> = {&H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF}
+
+<font color="0000AA"><b>CONST</b></font> PATINVERT = &H5A0049
+<font color="0000AA"><b>CONST</b></font> rsNone    = 0
+<font color="0000AA"><b>CONST</b></font> rsSolid   = 1
+<font color="0000AA"><b>CONST</b></font> rsPattern = 2
+<font color="0000AA"><b>CONST</b></font> rsUpdate  = 3
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetParent <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetParent</font>" <b>(</b>ByVal hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ChildWindowFromPoint <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">ChildWindowFromPoint</font>"<b>(</b>ByVal hWndParent <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal X <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, ByVal Y <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetDC <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetDC</font>" <b>(</b>ByVal hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> CreateBitmap <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">CreateBitmap</font>"<b>(</b>ByVal nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal nPlanes <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal nBitCount <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal lpBits <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> CreatePatternBrush <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">CreatePatternBrush</font>"<b>(</b>ByVal hBitmap <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> SelectObject <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SelectObject</font>" <b>(</b>ByVal hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal hObject <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> SetBrushOrgEx <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SetBrushOrgEx</font>"<b>(</b>ByVal hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal nXOrg <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal nYOrg <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lppt <font color="0000AA"><b>As</b></font> POINTAPI<b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ClientToScreen <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">ClientToScreen</font>" <b>(</b>ByVal hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lpPoint <font color="0000AA"><b>As</b></font> POINTAPI<b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> PatBlt <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">PatBlt</font>" <b>(</b>ByVal hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal dwRop <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> DeleteObject <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">DeleteObject</font>" <b>(</b>ByVal hObject <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ReleaseDC <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">ReleaseDC</font>" <b>(</b>ByVal hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetCursorPos <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetCursorPos</font>"<b>(</b>lpPoint <font color="0000AA"><b>As</b></font> POINTAPI<b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetClientRect <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetClientRect</font>" <b>(</b>ByVal hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lpRect <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>QRECT</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ScreenToClient <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">ScreenToClient</font>"<b>(</b>ByVal hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lpPoint <font color="0000AA"><b>As</b></font> POINTAPI<b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> OffsetRect <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">OffsetRect</font>" <b>(</b>lpRect <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>QRECT</b></font>, ByVal x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MoveWindow <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">MoveWindow</font>" <b>(</b>ByVal hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal bRepaint <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>TYPE</b></font> QMAXSPLITTER <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QPANEL</b></font>
+
+    <font color="0000AA"><b>WITH</b></font> QMAXSPLITTER
+    
+        Owner      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+        Tmr        <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QTIMER</b></font>
+        MinSize    <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+        Beveled    <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font> PROPERTY SET Set_Beveled
+        Mover      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+        MoverRect  <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRECT</b></font>
+        Style      <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font> PROPERTY SET Set_Style
+        Pattern<b>(</b>7<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>WORD</b></font>
+        Canvas     <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QCANVAS</b></font>
+        
+        PROPERTY SET Set_Beveled<b>(</b>Bevel <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+            .Beveled = Bevel
+            .Canvas.Visible = Bevel
+            .Canvas.Repaint
+        <font color="0000AA"><b>END</b></font> PROPERTY        
+        
+        PROPERTY SET Set_Style<b>(</b>NewStyle <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+            <font color="0000AA"><b>DIM</b></font> X <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+            <font color="0000AA"><b>FOR</b></font> X = 0 <font color="0000AA"><b>TO</b></font> 7
+                <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> NewStyle
+                    <font color="0000AA"><b>CASE</b></font> 0, 3
+                        .Pattern<b>(</b>X<b>)</b> = 0
+                    <font color="0000AA"><b>CASE</b></font> 1
+                        .Pattern<b>(</b>X<b>)</b> = SolidPtn<b>(</b>X<b>)</b>
+                    <font color="0000AA"><b>CASE</b></font> 2
+                        .Pattern<b>(</b>X<b>)</b> = PatternPtn<b>(</b>X<b>)</b>
+                <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>SELECT</b></font><font color="007700"><i>' CASE</i></font> 
+            <font color="0000AA"><b>NEXT</b></font> X   
+            .Style = NewStyle
+        <font color="0000AA"><b>END</b></font> PROPERTY
+        
+        <font color="0000AA"><b>EVENT</b></font> Tmr.OnTimer
+            <font color="0000AA"><b>IF</b></font> .Visible <font color="000099"><b>THEN</b></font>
+                .Owner = GetParent<b>(</b>.Handle<b>)</b>
+                .Tmr.Enabled = 0
+                Org.X = .Left
+                Org.Y = .Top
+                <font color="0000AA"><b>IF</b></font> .Align = 1 <font color="000099"><b>THEN</b></font>
+                    <font color="0000AA"><b>DEC</b></font><b>(</b>Org.Y<b>)</b>
+                <font color="0000AA"><b>ELSEIF</b></font> .Align = 2 <font color="000099"><b>THEN</b></font>
+                    <font color="0000AA"><b>INC</b></font><b>(</b>Org.Y, .Height<b>)</b>
+                <font color="0000AA"><b>ELSEIF</b></font> .Align = 3 <font color="000099"><b>THEN</b></font>
+                    <font color="0000AA"><b>DEC</b></font><b>(</b>Org.X<b>)</b>
+                <font color="0000AA"><b>ELSEIF</b></font> .Align = 4 <font color="000099"><b>THEN</b></font>
+                    <font color="0000AA"><b>INC</b></font><b>(</b>Org.X, .Width<b>)</b>
+                <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+                .Mover = ChildWindowFromPoint<b>(</b>.Owner, Org.X, Org.Y<b>)</b>               
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+        
+        <font color="0000AA"><b>EVENT</b></font> Canvas.OnPaint
+            <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> .Align
+                <font color="0000AA"><b>CASE</b></font> 1, 2
+                    .Canvas.Line<b>(</b>0, 0, .Width, 0, &H808080<b>)</b>
+                    .Canvas.Line<b>(</b>0, 1, .Width, 1, &HC8D0D8<b>)</b>
+                    .Canvas.Line<b>(</b>0, 2, .Width, 2, &HFFFFFF<b>)</b>
+                    .Canvas.Line<b>(</b>0, .Height-3, .Width, .Height-3, &H808080<b>)</b>
+                    .Canvas.Line<b>(</b>0, .Height-2, .Width, .Height-2, &HC8D0D8<b>)</b>
+                    .Canvas.Line<b>(</b>0, .Height-1, .Width, .Height-1, &HFFFFFF<b>)</b>                    
+                <font color="0000AA"><b>CASE</b></font> <font color="000099"><b>ELSE</b></font>
+                    .Canvas.Line<b>(</b>0, 0, 0, .Height, &H808080<b>)</b>
+                    .Canvas.Line<b>(</b>1, 0, 1, .Height, &HC8D0D8<b>)</b>
+                    .Canvas.Line<b>(</b>2, 0, 2, .Height, &HFFFFFF<b>)</b>
+                    .Canvas.Line<b>(</b>.Width-3, 0, .Width-3, .Height, &H808080<b>)</b>
+                    .Canvas.Line<b>(</b>.Width-2, 0, .Width-2, .Height, &HC8D0D8<b>)</b>
+                    .Canvas.Line<b>(</b>.Width-1, 0, .Width-1, .Height, &HFFFFFF<b>)</b>
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+        
+        <font color="0000AA"><b>SUB</b></font> MoveChild<b>(</b>Where <font color="0000AA"><b>AS</b></font> POINTAPI<b>)</b>
+            ScreenToClient<b>(</b>.Mover, Where<b>)</b>
+            GetClientRect<b>(</b>.Mover, This.MoverRect<b>)</b>
+            OffsetRect<b>(</b>This.MoverRect, 1, 1<b>)</b>
+            <font color="0000AA"><b>IF</b></font> Where = OldWhere <font color="0000AA"><b>THEN</b></font> <font color="0000AA"><b>EXIT</b></font> <font color="000099"><b>SUB</b></font>
+            <font color="0000AA"><b>DIM</b></font> Redraw <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+            <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> .Align
+                <font color="0000AA"><b>CASE</b></font> 1
+                    MoveWindow<b>(</b>.Mover, 0, 0, 0, .MoverRect.Top+Where.Y-1, 0<b>)</b>
+                <font color="0000AA"><b>CASE</b></font> 2
+                    MoveWindow<b>(</b>.Mover, 0, R.Bottom-<b>(</b>Where.Y+.Height<b>)</b>, 0, .MoverRect.Bottom-<b>(</b>Where.Y+.Height<b>)</b>+1, 0<b>)</b>
+                <font color="0000AA"><b>CASE</b></font> 3
+                    MoveWindow<b>(</b>.Mover, 0, 0, .MoverRect.Left+Where.X+1, 0, 0<b>)</b>
+                <font color="0000AA"><b>CASE</b></font> 4
+                    MoveWindow<b>(</b>.Mover, R.Right-<b>(</b>Where.X+.Width<b>)</b>, 0, .MoverRect.Right-<b>(</b>Where.X+.Width<b>)</b>+1, 0, 0<b>)</b>
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+            SendMessage<b>(</b>.Owner, &H5, 0, 0<b>)</b>
+            <font color="000099"><b>DoEvents</b></font>
+            OldWhere = Where
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+        <font color="0000AA"><b>SUB</b></font> DrawSplitter<b>(</b>Split <font color="0000AA"><b>AS</b></font> POINTAPI<b>)</b>
+            <font color="0000AA"><b>DIM</b></font> hDC <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+            <font color="0000AA"><b>DIM</b></font> hBM <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+            <font color="0000AA"><b>DIM</b></font> hBr <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+            <font color="0000AA"><b>DIM</b></font> hOldBr <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+            
+            hDC = GetDC<b>(</b>0<b>)</b>
+            hBm = CreateBitmap<b>(</b>8, 8, 1, 1, <font color="0000AA"><b>VARPTR</b></font><b>(</b>This.Pattern<b>(</b>0<b>)</b><b>)</b><b>)</b>
+            hBr = CreatePatternBrush<b>(</b>hBm<b>)</b>
+            hOldBr = SelectObject<b>(</b>hDC, hBr<b>)</b>
+            SetBrushOrgEx<b>(</b>hDC, Split.X, Split.Y, 0<b>)</b>
+            
+            Org.X = 0
+            Org.Y = 0
+            ClientToScreen<b>(</b>.Handle, Org<b>)</b>
+            <font color="0000AA"><b>IF</b></font> .Align = 1 <font color="0000AA"><b>OR</b></font> .Align = 2 <font color="000099"><b>THEN</b></font>
+                PatBlt<b>(</b>hDC, Org.X, Split.Y, .Width, .Height, PATINVERT<b>)</b>
+            <font color="0000AA"><b>ELSEIF</b></font> .Align = 3 <font color="0000AA"><b>OR</b></font> .Align = 4 <font color="000099"><b>THEN</b></font>
+                PatBlt<b>(</b>hDC, Split.X, Org.Y, .Width, .Height, PATINVERT<b>)</b>
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+            SelectObject<b>(</b>hDC, hOldBr<b>)</b>
+            DeleteObject<b>(</b>hBr<b>)</b>
+            DeleteObject<b>(</b>hBm<b>)</b>
+            ReleaseDC<b>(</b>0, hDC<b>)</b>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+        <font color="0000AA"><b>EVENT</b></font> Canvas.OnMouseDown<b>(</b>Button <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, X <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, Y <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+            <font color="0000AA"><b>IF</b></font> Button = 0 <font color="000099"><b>THEN</b></font>
+                Moving = 1
+                SplitPos.X = 0
+                SplitPos.Y = 0
+                ClientToScreen<b>(</b>.Handle, SplitPos<b>)</b>
+                .DrawSplitter<b>(</b>SplitPos<b>)</b>
+                OldSplitPos = SplitPos
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+                
+        <font color="0000AA"><b>EVENT</b></font> Canvas.OnMouseMove<b>(</b>X <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, Y <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+            <font color="0000AA"><b>DIM</b></font> OwnerOrg <font color="0000AA"><b>AS</b></font> POINTAPI
+            <font color="0000AA"><b>IF</b></font> Moving = 1 <font color="000099"><b>THEN</b></font>
+                GetCursorPos<b>(</b>SplitPos<b>)</b>
+                
+                GetClientRect<b>(</b>.Owner, R<b>)</b>
+                OwnerOrg.X = 0
+                OwnerOrg.Y = 0
+                ClientToScreen<b>(</b>.Owner, OwnerOrg<b>)</b>
+                <font color="0000AA"><b>IF</b></font> .Align = 1 <font color="0000AA"><b>OR</b></font> .Align = 2 <font color="000099"><b>THEN</b></font>
+                    <font color="0000AA"><b>IF</b></font> SplitPos.Y &lt; <b>(</b>OwnerOrg.Y+.MinSize<b>)</b> <font color="0000AA"><b>OR</b></font> SplitPos.Y > <b>(</b>OwnerOrg.Y-.MinSize<b>)</b> + R.Bottom _
+                     <font color="0000AA"><b>OR</b></font> SplitPos.Y &lt; <b>(</b>OwnerOrg.Y+<b>(</b>.Height/2<b>)</b><b>)</b> <font color="0000AA"><b>THEN</b></font> <font color="0000AA"><b>EXIT</b></font> <font color="000099"><b>EVENT</b></font>
+                    SplitPos.Y = SplitPos.Y-<b>(</b>.Height/2<b>)</b>
+                <font color="0000AA"><b>ELSEIF</b></font> .Align = 3 <font color="0000AA"><b>OR</b></font> .Align = 4 <font color="000099"><b>THEN</b></font>
+                    <font color="0000AA"><b>IF</b></font> SplitPos.X &lt; <b>(</b>OwnerOrg.X+.MinSize<b>)</b> <font color="0000AA"><b>OR</b></font> SplitPos.X > <b>(</b>OwnerOrg.X-.MinSize<b>)</b> + R.Right _
+                     <font color="0000AA"><b>OR</b></font> SplitPos.X &lt; <b>(</b>OwnerOrg.X+<b>(</b>.Width/2<b>)</b><b>)</b> <font color="0000AA"><b>THEN</b></font> <font color="0000AA"><b>EXIT</b></font> <font color="000099"><b>EVENT</b></font>
+                    SplitPos.X = SplitPos.X-<b>(</b>.Width/2<b>)</b>
+                <font color="000099"><b>ELSE</b></font>
+                    <font color="0000AA"><b>EXIT</b></font> <font color="000099"><b>EVENT</b></font>
+                <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+                
+                .DrawSplitter<b>(</b>OldSplitPos<b>)</b>
+                .DrawSplitter<b>(</b>SplitPos<b>)</b>
+                OldSplitPos = SplitPos
+                <font color="0000AA"><b>IF</b></font> .Style = 3 <font color="000099"><b>THEN</b></font>
+                    .MoveChild<b>(</b>SplitPos<b>)</b>
+                <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+
+        <font color="0000AA"><b>EVENT</b></font> Canvas.OnMouseUp
+            <font color="0000AA"><b>IF</b></font> Moving = 1 <font color="000099"><b>THEN</b></font>
+                Moving = 0
+                .DrawSplitter<b>(</b>OldSplitPos<b>)</b>
+                .MoveChild<b>(</b>OldSplitPos<b>)</b>
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+
+        <font color="000099"><b>CONSTRUCTOR</b></font>
+            Set_Style<b>(</b>2<b>)</b>
+            Set_Beveled<b>(</b>0<b>)</b>
+            Width = 5
+            Height = 5
+            Align = 1
+            Tmr.Interval = 1
+            MinSize = 30
+            Cursor = -15
+            Canvas.Parent = This
+            Canvas.Align = 5
+            BevelOuter = 0
+            OnMouseDown = This.Canvas.InheritOnMouseDown
+            OnMouseMove = This.Canvas.InheritOnMouseMove
+            OnMouseUp = This.Canvas.InheritOnMouseUp
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+        
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="007700"><i>'====================================================</i></font> 
+<font color="007700"><i>'            Sample program</i></font> 
+<font color="007700"><i>'====================================================</i></font> 
+
+<font color="0000AA"><b>CREATE</b></font> Form <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QFORM</b></font>
+    Caption = "<font color="990000">Normal QSPLITTER - Blah!</font>"
+    Visible = 1
+    Visible = 0
+    <font color="0000AA"><b>CREATE</b></font> Splitter <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QSPLITTER</b></font>
+        Align = 3
+        Width  = 10
+        Beveled = 1
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+        <font color="0000AA"><b>CREATE</b></font> RichEd1 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRichEdit</b></font>
+        Align = 3
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+    <font color="0000AA"><b>CREATE</b></font> RichEd2 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+        Align = 5
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+<font color="0000AA"><b>CREATE</b></font> Form2 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QFORM</b></font>
+    Center
+    Caption = "<font color="990000">QMAXSPLITTER - Cool!</font>"
+    <font color="0000AA"><b>CREATE</b></font> Pnl1 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QPANEL</b></font>
+        Align = 1
+        BevelOuter = 0
+         <font color="0000AA"><b>CREATE</b></font> Rich3 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+            <font color="007700"><i>'Color = &HFF0000</i></font> 
+            Align = 3
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+        <font color="0000AA"><b>CREATE</b></font> Split3 <font color="0000AA"><b>AS</b></font> QMAXSPLITTER
+            Style = rsNone
+            Beveled = 1
+            Align = 3
+            Cursor = -14
+            Hint = "<font color="990000">Style: rsNone</font>"
+            ShowHint = 1
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+        <font color="0000AA"><b>CREATE</b></font> Rich5 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+            Align = 5
+        <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font>     
+     <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+     <font color="0000AA"><b>CREATE</b></font> Split1 <font color="0000AA"><b>AS</b></font> QMAXSPLITTER
+        Align = 1
+        Style = rsSolid
+        Hint = "<font color="990000">Style: rsSolid</font>"
+        ShowHint = 1
+        MinSize = 0
+     <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+     <font color="0000AA"><b>CREATE</b></font> Pnl5 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QPANEL</b></font>
+        Align = 5
+        BevelOuter = 0
+        <font color="0000AA"><b>CREATE</b></font> Rich4 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+            Align = 4
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+        <font color="0000AA"><b>CREATE</b></font> Split4 <font color="0000AA"><b>AS</b></font> QMAXSPLITTER
+            Align = 4
+            Cursor = -21
+            Width = 20
+            Style = rsUpdate
+            MinSize = 0
+            Hint = "<font color="990000">Style: rsUpdate</font>"
+            Beveled = 1
+            ShowHint = 1
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+        <font color="0000AA"><b>CREATE</b></font> Panel55 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QPANEL</b></font>
+            Align = 5
+            BevelOuter = 0
+            <font color="0000AA"><b>CREATE</b></font> Rich55 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+                Align = 5
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+            <font color="0000AA"><b>CREATE</b></font> Split2 <font color="0000AA"><b>AS</b></font> QMAXSPLITTER
+                Align = 2
+                Hint = "<font color="990000">Style: rsPattern</font>"
+                ShowHint = 1
+                Height = 5
+                MinSize = 0
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+            <font color="0000AA"><b>CREATE</b></font> Rich2 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+                Align = 2
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+
+
+Form.Show
+Form2.Show
+
+<font color="000099"><b>DO</b></font>
+    <font color="000099"><b>DoEvents</b></font>
+<font color="0000AA"><b>LOOP</b></font> <font color="0000AA"><b>UNTIL</b></font> Form2.Visible = 0 
+</pre>
+</body>
+</html>

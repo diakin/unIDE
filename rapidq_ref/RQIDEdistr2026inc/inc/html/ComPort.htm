@@ -1,0 +1,564 @@
+<HTML>
+<HEAD>
+<TITLE> Txt2Htm converter (c)1999 MiraSoft  ;)) </TITLE>
+<META http-equiv="Content-Type"content="text/html"> 
+</HEAD>
+<BODY BGCOLOR="silver" > 
+'ComPort.cmp <br>
+'Version 0.9<br>
+'December 13, 2001<br>
+'by Pete Kleinschmidt<br>
+'loosely based on VB code by David M. Hitchner<br>
+'http://www.thescarms.com/vbasic/CommIO.asp<br>
+<br>
+'Win32 Communications User Defined Types<br>
+<br>
+'Structure containing time-out parameters for a communications device<br>
+TYPE COMMTIMEOUTS<br>
+        ReadIntervalTimeout AS DWORD<br>
+        ReadTotalTimeoutMultiplier AS DWORD<br>
+        ReadTotalTimeoutConstant AS DWORD<br>
+        WriteTotalTimeoutMultiplier AS DWORD<br>
+        WriteTotalTimeoutConstant AS DWORD<br>
+END TYPE<br>
+<br>
+'Device Control Block<br>
+'Structure that defines the control settings for a serial communications device<br>
+TYPE DCB<br>
+        DCBlength AS DWORD        'sizeof DCB<br>
+        BaudRate AS DWORD         'current baud rate<br>
+        DCBflags AS DWORD         'fBinary            1 bit binary mode, no EOF check<br>
+                                  'fParity            1 bit enable parity checking<br>
+                                  'fOutxCtsFlow       1 bit CTS output flow control (hardware flow control setting)<br>
+                                  'fOutxDsrFlow       1 bit DSR output flow control (hardware flow control setting)<br>
+                                  'fDtrControl        2 bit DTR flow control type (hardware flow control setting)<br>
+                                  'fDsrSensitivity    1 bit DSR sensitivity (hardware flow control setting)<br>
+                                  'fTXContinueOnXoff  1 bit XOFF continues Tx (software flow control setting)<br>
+                                  'fOutX              1 bit XON/XOFF out flow control (software flow control setting)<br>
+                                  'fInX               1 bit XON/XOFF in flow control (software flow control setting)<br>
+                                  'fErrorChar         1 bit enable error replacement<br>
+                                  'fNull              1 bit enable null stripping<br>
+                                  'fRtsControl        2 bit RTS flow control (hardware flow control setting)<br>
+                                  'fAbortOnError      1 bit abort on error (hardware flow control setting)<br>
+                                  'fDummy2           17 bit reserved<br>
+        wReserved AS WORD         'reserved<br>
+        XonLim AS WORD            'transmit XON threshold (software flow control setting)<br>
+        XoffLim AS WORD           'transmit XOFF threshold (software flow control setting)<br>
+        ByteSize AS BYTE          'number of bits/byte, 4-8<br>
+        Parity AS BYTE            '0-4=no,odd,even,mark,space<br>
+        StopBits AS BYTE          '0,1,2=1,1.5,2<br>
+        XonChar AS BYTE           'Tx and Rx XON character (software flow control setting)<br>
+        XoffChar AS BYTE          'Tx and Rx XOFF character (software flow control setting)<br>
+        ErrorChar AS BYTE         'error replacement character<br>
+        EofChar AS BYTE           'end of input character<br>
+        EvtChar AS BYTE           'received event character<br>
+        wReserved1 AS WORD        'reserved; do not use<br>
+END TYPE<br>
+<br>
+'Structure containing current Comm Port State<br>
+Type COMSTAT<br>
+        COMSTATflags AS DWORD     'fCtsHold           1 bit Specifies whether waiting for CTS signal<br>
+                                  'fDsrHold           1 bit Specifies whether waiting for DSR signal<br>
+                                  'fRlsHold           1 bit Specifies whether waiting for RLSD signal<br>
+                                  'fXoffHold          1 bit Specifies whether waiting because XOFF character was received<br>
+                                  'fXoffSent          1 bit Specifies whether waiting because XOFF character was transmitted<br>
+                                  'fEof               1 bit Specifies whether EOF char has been received<br>
+                                  'fTxim              1 bit character queued for transmission because of TransmitCommChar<br>
+                                  'fReserved         25 bit Reserved<br>
+        cbInQue As DWORD          'number of bytes received but not yet read<br>
+        cbOutQue As DWORD         'number of bytes remaining to be transmitted<br>
+END TYPE<br>
+<br>
+'Win32 File Handling User Defined Types<br>
+<br>
+'Structure that contains the security descriptor for an object<br>
+'not currently used by us<br>
+TYPE SECURITYATTRIBUTES<br>
+        nLength AS DWORD <br>
+        lpSecurityDescriptor AS LONG<br>
+        bInheritHandle AS LONG<br>
+END TYPE<br>
+<br>
+'Structure containing info used in Overlapped (asynchronous) I/O<br>
+'not currently used by us<br>
+TYPE OVERLAPPED<br>
+        Internal AS LONG<br>
+        InternalHigh AS LONG<br>
+        offset AS DWORD<br>
+        OffsetHigh As DWORD<br>
+        hEvent AS LONG<br>
+END TYPE<br>
+<br>
+'DCB Constants<br>
+'Parity<br>
+CONST NOPARITY              = 0<br>
+CONST ODDPARITY             = 1<br>
+CONST EVENPARITY            = 2<br>
+CONST MARKPARITY            = 3<br>
+CONST SPACEPARITY           = 4<br>
+'StopBits<br>
+CONST ONESTOPBIT            = 0<br>
+CONST ONE5STOPBITS          = 1<br>
+CONST TWOSTOPBITS           = 2<br>
+<br>
+'PurgeCOM constants<br>
+'dwFlags<br>
+CONST PURGE_RXABORT         = &H2<br>
+CONST PURGE_RXCLEAR         = &H8<br>
+CONST PURGE_TXABORT         = &H1<br>
+CONST PURGE_TXCLEAR         = &H4<br>
+<br>
+'Win32 File Handling Constants<br>
+<br>
+'dwDesired Access Constants<br>
+Const GENERIC_READ          = &H80000000<br>
+CONST GENERIC_WRITE         = &H40000000<br>
+'dwShareMode Constants<br>
+CONST FILE_SHARE_READ       = &H1<br>
+CONST FILE_SHARE_WRITE      = &H2<br>
+'dwCreationDisposition Constants<br>
+CONST CREATE_NEW            = 1<br>
+CONST CREATE_ALWAYS         = 2<br>
+CONST OPEN_EXISTING         = 3<br>
+CONST OPEN_ALWAYS           = 4<br>
+CONST TRUNCATE_EXISTING     = 5<br>
+'dwFlagsAndAttributes<br>
+CONST FILE_ATTRIBUTE_NORMAL = &H80<br>
+<br>
+'Win32 Error Constants<br>
+CONST FORMAT_MESSAGE_ALLOCATE_BUFFER  = &H100<br>
+CONST FORMAT_MESSAGE_FROM_SYSTEM      = &H1000<br>
+CONST LANG_NEUTRAL                    = &H0<br>
+CONST SUBLANG_DEFAULT                 = &H1<br>
+CONST ERROR_BAD_USERNAME              = 2202&<br>
+<br>
+'Error Message Constants<br>
+CONST ERROR_OPEN_PORT                 = "There was an error opening the Comm Port.  "<br>
+CONST ERROR_PORT_BUFFERS              = "There was an error creating the Comm Port Buffers.  "<br>
+CONST ERROR_PURGE_BUFFERS             = "There was an error purging old data from the Comm Port Buffers.  "<br>
+CONST ERROR_TIMEOUTS                  = "There was an error setting the Comm Port timeouts.  "<br>
+CONST ERROR_RETRIEVE_PORTSETTINGS     = "There was an error retrieving the existing Comm Port settings.  "<br>
+CONST ERROR_CHANGING_PORTSETTINGS     = "There was an error changing the Comm Port settings.  "<br>
+CONST ERROR_CLOSING_PORT              = "There was an error closing the Comm Port.  "<br>
+CONST ERROR_WRITING_PORT              = "There was an error writing data to the Comm Port.  "<br>
+CONST ERROR_SENDING_DATA              = "Could not send all the data in time specified.  Try increasing your wait time."<br>
+CONST ERROR_GETTING_PORT_STATUS       = "There was an error getting the Comm Ports current status.  " <br>
+CONST ERROR_READING_PORT              = "There was an error reading data from the Comm Port.  "<br>
+<br>
+'Win32 Function Declarations<br>
+<br>
+'Suspends the execution of the current thread for the specified interval. <br>
+DECLARE SUB Sleep Lib "kernel32" ALIAS "Sleep" _<br>
+    (dwMilliseconds AS DWORD)<br>
+<br>
+'Win32 Error Messages<br>
+<br>
+'Several Win32 functions set an error code if they fail.  This retrieves them.<br>
+'Note, If a function succeeds, it may not set this code.  If you retrieve it<br>
+'after a function succeeds, it may return an error code for a previous function that failed.<br>
+DECLARE FUNCTION GetLastError Lib "kernel32" ALIAS "GetLastError" _<br>
+    () _<br>
+        AS DWORD                                    'Returns last error code value<br>
+                                                    'See http://msdn.microsoft.com/library/default.asp?url=/library/en-us/debug/errlist_7oz7.asp<br>
+                                                    'for what codes mean<br>
+<br>
+'Converts GetLastError codes to string messages.<br>
+Declare Function FormatMessage Lib "kernel32" Alias "FormatMessageA" _<br>
+    (dwFlags AS DWORD, _                            '[IN] Specifies aspects of the formatting process and how to interpret lpSource<br>
+    BYREF lpSource As LONG, _                       '[IN] Specifies the location of the message definition<br>
+    dwMessageId AS DWORD, _                         '[IN] Specifies the message identifier for the requested message<br>
+    dwLanguageId AS DWORD, _                        '[IN] Specifies the language identifier for the requested message<br>
+    BYREF lpBuffer As STRING, _                     '[OUT] Pointer to a buffer for the formatted message<br>
+    nSize AS DWORD, _                               '[IN] specifies the max number of characters that can be stored in the output buffer<br>
+    BYREF Arguments As Long) _                      '[IN] Pointer to an array of values that are used as insert values in the formatted message<br>
+      AS LONG                                       ''If function succeeds, returns non-zero. If function fails, returns 0. <br>
+<br>
+'Win32 Communication Functions<br>
+<br>
+' Initializes the communications parameters for a specified<br>
+' communications device.<br>
+DECLARE FUNCTION SetupComm Lib "kernel32" ALIAS "SetupComm"_<br>
+    (hFile AS LONG,_                                '[IN] Handle to open Comm device<br>
+     dwInQueue AS DWORD,_                           '[IN] specifies number of bytes of input buffer<br>
+     dwOutQueue AS DWORD) _                         '[IN] specifies number of bytes of output buffer<br>
+        AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. <br>
+<br>
+' Discards all characters from the output or input buffer of a<br>
+' specified communications resource. It can also terminate<br>
+' pending read or write operations on the resource.<br>
+DECLARE FUNCTION PurgeComm Lib "kernel32" ALIAS "PurgeComm"_<br>
+    (hFile AS LONG, _                               '[IN] Handle to open Comm device<br>
+     dwFlags AS DWORD) _                            '[IN] Action to perform flag<br>
+        AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. <br>
+<br>
+' Sets the time-out parameters for all read and write operations on a<br>
+' specified communications device.<br>
+DECLARE FUNCTION SetCommTimeouts Lib "kernel32" ALIAS "SetCommTimeouts"_<br>
+    (hFile AS LONG,_                                '[IN] Handle to open Comm device<br>
+     lpCommTimeouts AS COMMTIMEOUTS) _              '[IN] Structure containing timeout values<br>
+        AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. <br>
+<br>
+'Retrieves current Device Control Block (DCB)<br>
+DECLARE FUNCTION GetCommState Lib "kernel32" ALIAS "GetCommState" _<br>
+    (hFile AS LONG, _                               '[IN] Handle to open Comm device<br>
+    lpDCB AS DCB) _                                 '[OUT] Pointer to structure containing config info<br>
+        AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. <br>
+<br>
+'Sets Device Control Block (DCB)<br>
+DECLARE FUNCTION SetCommState Lib "kernel32" ALIAS "SetCommState" _<br>
+    (hFile AS LONG, _                               '[IN] Handle to open Comm device<br>
+    lpDCB AS DCB) _                                 '[IN] Pointer to structure containing config info<br>
+        AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. <br>
+<br>
+' Retrieves information about a communications error and reports<br>
+' the current status of a communications device. Clears the<br>
+' device's error flag to enable additional input and output<br>
+' (I/O) operations.<br>
+DECLARE FUNCTION ClearCommError Lib "kernel32" ALIAS "ClearCommError" _<br>
+    (hFile AS LONG,_                                '[IN] Handle to open Comm device<br>
+     BYREF lpErrors AS DWORD,_                      '[OUT] Pointer to var to be filled with a mask indicating the type of error<br>
+     lpStat AS COMSTAT) _                           '[OUT] Pointer to structure containing devices status info<br>
+        AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. <br>
+<br>
+'Win32 File Handling Functions<br>
+<br>
+'Create or open a new Comm device/file<br>
+DECLARE FUNCTION CreateFile Lib "kernel32" Alias "CreateFileA"_<br>
+    (lpFileName AS STRING, _                        '[IN] String that specifies name of object to create or open<br>
+    dwDesiredAccess AS DWORD, _                     '[IN] Specifies type of access to object<br>
+    dwShareMode AS DWORD, _                         '[IN] Specifies how object is to be shared<br>
+    lpSecurityAttributes AS SECURITYATTRIBUTES, _   '[IN] Pointer to Structure that determines whether object can be inherited by child processes<br>
+    dwCreationDisposition AS DWORD, _               '[IN] Specifies which action to take on files that exist/do not exist<br>
+    dwFlagsAndAttributes AS DWORD,_                 '[IN] Specifies the file attributes and flags<br>
+    hTemplateFile AS LONG) _                        '[IN] handle to template that supplies file attributes<br>
+        AS LONG                                     'If successful, returns handle to object/file created<br>
+<br>
+' Writes data to a file <br>
+' We are not using Overlapped (asynchronous) I/O <br>
+DECLARE FUNCTION WriteFile Lib "kernel32" ALIAS "WriteFile"_<br>
+    (hFile AS LONG, _                               '[IN] Handle to open Comm device/file<br>
+     lpBuffer AS String, _                          '[IN] Pointer to buffer containing the data to be written to Comm device/file<br>
+     nNumberOfBytesToWrite AS DWORD, _              '[IN] Specifies number of bytes to write to file<br>
+     BYREF lpNumberOfBytesWritten AS DWORD, _       '[OUT] Pointer to var containing number of bytes written<br>
+     lpOverlapped AS OVERLAPPED) _                  '[IN] Pointer to structure containing info if Comm device/file was opened in Overlapped mode.<br>
+        AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. <br>
+     <br>
+'Reads data from a file<br>
+'We are not using Overlapped (asynchronous) I/O <br>
+DECLARE FUNCTION ReadFile Lib "kernel32" ALIAS "ReadFile"_<br>
+    (hFile AS LONG, _                               '[IN] Handle to open Comm device/file<br>
+     BYREF lpBuffer AS STRING, _                    '[OUT] Pointer to buffer that receives data from Comm device/file<br>
+     nNumberOfBytesToRead AS DWORD, _               '[IN] Specifies number of bytes to be read from file<br>
+     BYREF lpNumberOfBytesRead AS DWORD, _          '[OUT] Specifies number of bytes read from file<br>
+     lpOverlapped AS OVERLAPPED) _                  '[IN] Pointer to structure containing info if Comm device/file was opened in Overlapped mode.<br>
+        AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. <br>
+<br>
+DECLARE FUNCTION CloseHandle Lib "kernel32" ALIAS "CloseHandle" _<br>
+    (hObject AS LONG) _                             '[IN/OUT] Handle to open Comm device/file<br>
+        AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. <br>
+<br>
+'Internal Declarations<br>
+DECLARE SUB OnComError_EventTemplate (strErrorMessage AS STRING)<br>
+DECLARE SUB OnOpen_EventTemplate<br>
+DECLARE SUB OnClose_EventTemplate<br>
+DECLARE SUB OnWriteString_EventTemplate<br>
+DECLARE SUB OnReadString_EventTemplate<br>
+<br>
+<br>
+TYPE Comport EXTENDS QObject<br>
+<br>
+  'EVENTS<br>
+  OnComError    AS EVENT (OnComError_EventTemplate)<br>
+  OnOpen        AS EVENT (OnOpen_EventTemplate)<br>
+  OnClose       AS EVENT (OnClose_EventTemplate)<br>
+  OnWriteString AS EVENT (OnWriteString_EventTemplate)<br>
+  OnReadString  AS EVENT (OnReadString_EventTemplate)<br>
+<br>
+  'PROPERTIES<br>
+  Handle            AS LONG<br>
+  Port              AS STRING<br>
+  BaudRate          AS DWORD<br>
+  DataBits          AS BYTE<br>
+  Parity            AS BYTE<br>
+  StopBits          AS BYTE<br>
+  ReadBufSize       AS DWORD<br>
+  WriteBufSize      AS DWORD<br>
+  BytesNotRead      AS DWORD<br>
+  BytesNotWritten   AS DWORD<br>
+  Connected         AS BYTE<br>
+<br>
+  'Default property values<br>
+  CONSTRUCTOR<br>
+    Port            = "COM1"<br>
+    BaudRate        = 9600<br>
+    DataBits        = 8<br>
+    Parity          = NOPARITY<br>
+    StopBits        = 1<br>
+    ReadBufSize     = 1024<br>
+    WriteBufSize    = 1024<br>
+    BytesNotRead    = 0<br>
+    BytesNotWritten = 0<br>
+    Connected       = FALSE<br>
+  END CONSTRUCTOR<br>
+<br>
+  'METHODS<br>
+<br>
+  'Method FormatError (Convert GetLastError codes to String messages)<br>
+  PRIVATE:<br>
+  FUNCTION FormatError AS STRING<br>
+<br>
+    DIM lngSource     AS LONG<br>
+    DIM lngArguments  AS LONG<br>
+    DIM Buffer        AS STRING<br>
+    DIM lngRet        AS LONG<br>
+<br>
+    lngSource   =0<br>
+    lngArguments=0<br>
+    Buffer=SPACE$(1024)<br>
+    <br>
+    lngRet=FormatMessage (FORMAT_MESSAGE_FROM_SYSTEM, _<br>
+                         lngSource, _<br>
+                         GetLastError, _<br>
+                         LANG_NEUTRAL, _<br>
+                         Buffer, _<br>
+                         LEN(Buffer), _<br>
+                         lngArguments)<br>
+                         <br>
+    Result=LEFT$(Buffer,lngRet)<br>
+  <br>
+  END FUNCTION<br>
+<br>
+  'Method GetStatus<br>
+  PRIVATE:<br>
+  SUB GetCommStatus<br>
+<br>
+    DIM lngStatus     AS LONG<br>
+    DIM dwErrorFlags  AS DWORD<br>
+    DIM udtCommStat   AS COMSTAT<br>
+  <br>
+  'Clear any previous errors and get current status.<br>
+    lngStatus = ClearCommError(ComPort.Handle, _<br>
+                               dwErrorFlags, _<br>
+                               udtCommStat)<br>
+                               <br>
+    IF lngStatus = 0 THEN<br>
+      IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError, ERROR_CHANGING_PORTSETTINGS & ComPort.FormatError)<br>
+      END IF <br>
+    ELSE<br>
+      'Set BytesNotWritten and BytesNotRead Property<br>
+      ComPort.BytesNotWritten = udtCommStat.cbOutQue<br>
+      ComPort.BytesNotRead    = udtCommStat.cbInQue        <br>
+    END IF<br>
+    <br>
+  END SUB      <br>
+<br>
+  '-- *********************  Method Open Port ********************************<br>
+  PUBLIC:<br>
+  SUB Open<br>
+    <br>
+    Dim udtCommTimeOuts As COMMTIMEOUTS<br>
+    DIM udtDCB          AS DCB<br>
+    DIM lngStatus       AS LONG<br>
+    <br>
+    'Open the Comm Port<br>
+    ComPort.Handle = CreateFile(COMPORT.Port, _<br>
+                                GENERIC_READ OR GENERIC_WRITE, _<br>
+                                FILE_SHARE_READ OR FILE_SHARE_WRITE, _<br>
+                                0&, _ <br>
+                                OPEN_EXISTING, _<br>
+                                FILE_ATTRIBUTE_NORMAL, _<br>
+                                0&)<br>
+<br>
+    IF ComPort.Handle = -1 THEN<br>
+      IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError,ERROR_OPEN_PORT & ComPort.FormatError)<br>
+      END IF<br>
+      EXIT SUB<br>
+    END IF<br>
+<br>
+    'Setup device buffers (1K is default).<br>
+    lngStatus = SetupComm(ComPort.Handle,_<br>
+                    ComPort.ReadBufSize,_<br>
+                    ComPort.WriteBufSize)<br>
+                    <br>
+    IF lngStatus = 0 THEN<br>
+      IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError, ERROR_PORT_BUFFERS & ComPort.FormatError)<br>
+      END IF <br>
+      EXIT SUB<br>
+    END IF<br>
+<br>
+    'Purge existing data in buffers.<br>
+    lngStatus = PurgeComm(ComPort.Handle,_<br>
+                      PURGE_TXABORT Or PURGE_RXABORT Or PURGE_TXCLEAR Or PURGE_RXCLEAR)<br>
+<br>
+    IF lngStatus = 0 THEN<br>
+      IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError, ERROR_PURGE_BUFFERS & ComPort.FormatError)<br>
+      END IF <br>
+      EXIT SUB<br>
+    END IF<br>
+<br>
+    ' Set serial port timeouts values.<br>
+    udtCommTimeOuts.ReadIntervalTimeout         = -1<br>
+    udtCommTimeOuts.ReadTotalTimeoutMultiplier  = 0<br>
+    udtCommTimeOuts.ReadTotalTimeoutConstant    = 1000<br>
+    udtCommTimeOuts.WriteTotalTimeoutMultiplier = 0<br>
+    udtCommTimeOuts.WriteTotalTimeoutMultiplier = 1000<br>
+<br>
+<br>
+    lngStatus = SetCommTimeouts(ComPort.Handle,_<br>
+                      udtCommTimeOuts)<br>
+                      <br>
+    IF lngStatus = 0 THEN<br>
+      IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError, ERROR_TIMEOUTS & ComPort.FormatError)<br>
+      END IF <br>
+      EXIT SUB<br>
+    END IF<br>
+<br>
+    'Get the current state (DCB) - we retain current values for <br>
+    'communication settings we don't explicitly set.<br>
+    lngStatus = GetCommState (ComPort.Handle, _<br>
+                              udtDCB)<br>
+<br>
+    IF lngStatus = 0 THEN<br>
+      IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError, ERROR_RETRIEVE_PORTSETTINGS & ComPort.FormatError)<br>
+      END IF <br>
+      EXIT SUB<br>
+    END IF<br>
+<br>
+    'Set our Communications State<br>
+    udtDCB.BaudRate = ComPort.BaudRate<br>
+    udtDCB.ByteSize = ComPort.DataBits<br>
+    udtDCB.Parity   = ComPort.Parity<br>
+    udtDCB.StopBits = ComPort.StopBits<br>
+<br>
+    'This changes our settings<br>
+    lngStatus = SetCommState (ComPort.Handle, _<br>
+                              udtDCB)<br>
+                              <br>
+    IF lngStatus = 0 THEN<br>
+      IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError, ERROR_CHANGING_PORTSETTINGS & ComPort.FormatError)<br>
+      END IF <br>
+    ELSE<br>
+      'Set Connected Property<br>
+      ComPort.Connected = TRUE<br>
+      'Raise OnOpen Event<br>
+      IF ComPort.OnOpen > 0 THEN<br>
+        CALLFUNC ComPort.OnOpen<br>
+      END IF <br>
+    END IF<br>
+<br>
+  END SUB<br>
+<br>
+  '-- *********************  Method Close<br>
+  PUBLIC:<br>
+  SUB Close<br>
+  <br>
+    DIM lngStatus AS LONG<br>
+    <br>
+    'Close COM Port<br>
+    lngStatus = CloseHandle (ComPort.Handle)<br>
+<br>
+    IF lngStatus = 0 THEN<br>
+      IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError, ERROR_CLOSING_PORT & ComPort.FormatError)<br>
+      END IF <br>
+    ELSE<br>
+      'Set Connected Property<br>
+      ComPort.Connected = FALSE<br>
+      'Raise OnClose Event<br>
+      IF ComPort.OnClose > 0 THEN<br>
+        CALLFUNC ComPort.OnClose<br>
+      END IF <br>
+    END IF<br>
+<br>
+  END SUB<br>
+  <br>
+    '-- *********************  Method Writestring<br>
+  PUBLIC:<br>
+  SUB WriteString (strData AS STRING, intWait AS INTEGER)<br>
+<br>
+    DIM lngStatus       AS LONG<br>
+    DIM dwBytesToWrite  AS DWORD<br>
+    DIM dwByesWritten   AS DWORD<br>
+  <br>
+    'Set number of bytes to be sent.<br>
+    dwBytesToWrite=LEN(strData)<br>
+<br>
+    'Output the data.<br>
+    lngStatus = WriteFile(ComPort.Handle, _<br>
+                          strData, _<br>
+                          dwBytesToWrite, _<br>
+                          dwByesWritten, _<br>
+                          0&)<br>
+                       <br>
+    IF lngStatus = 0 THEN<br>
+      IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError, ERROR_WRITING_PORT & ComPort.FormatError)<br>
+      END IF <br>
+    ELSE<br>
+      'Wait for data to be written<br>
+      Sleep(intWait)<br>
+      'See if there are any bytes still waiting to be written<br>
+      ComPort.GetCommStatus<br>
+      'If all data has been sent Raise OnWriteString event<br>
+      IF Comport.BytesNotWritten = 0 THEN<br>
+        IF ComPort.OnWriteString > 0 THEN<br>
+          CALLFUNC ComPort.OnWriteString<br>
+        END IF<br>
+      ELSE<br>
+        IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError, ERROR_SENDING_DATA)<br>
+      END IF<br>
+      END IF <br>
+    END IF<br>
+<br>
+  END SUB<br>
+<br>
+    '-- *********************  Method ReadString<br>
+  PUBLIC:<br>
+  FUNCTION ReadString (dwRdSize AS DWORD, intWait AS INTEGER) AS STRING<br>
+<br>
+    DIM lngStatus     AS LONG<br>
+    DIM dwBytesRead   AS DWORD<br>
+    DIM strReadBuffer AS STRING<br>
+<br>
+    'Make enough space in memory for ReadFile to put data in.<br>
+    strReadBuffer=SPACE$(ComPort.ReadBufSize)<br>
+      <br>
+    'Read data from buffer<br>
+    lngStatus = ReadFile(MyPort.Handle, _<br>
+                         strReadBuffer, _<br>
+                         dwRdSize, _<br>
+                         dwBytesRead, _<br>
+                         0&)<br>
+                         <br>
+    IF lngStatus = 0 THEN<br>
+      IF ComPort.OnComError > 0 THEN<br>
+        CALLFUNC (ComPort.OnComError, ERROR_READING_PORT & ComPort.FormatError)<br>
+      END IF <br>
+    ELSE<br>
+      'Set Return value for this Function<br>
+      Result = LEFT$(strReadBuffer, dwBytesRead)<br>
+      'Wait for more data to arrive in buffer<br>
+      Sleep(intWait)<br>
+      'Get number of bytes now waiting to be read<br>
+      ComPort.GetCommStatus<br>
+      'Raise OnReadString event<br>
+      IF ComPort.OnReadString > 0 THEN<br>
+        CALLFUNC ComPort.OnReadString<br>
+      END IF <br>
+<br>
+    END IF<br>
+<br>
+  END FUNCTION<br>
+<br>
+END TYPE<br>
+<br>
+</BODY>
+</HTML>

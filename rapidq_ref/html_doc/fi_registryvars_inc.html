@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>registryVars.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: registryVars.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>registryVars.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/registryVars.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 6 functions</p>
+<p><a href="#CLOSEIT">closeit</a> &middot; <a href="#FLOATVAL">floatVal</a> &middot; <a href="#GETME">getMe</a> &middot; <a href="#LOADFROMFILE">loadFromfile</a> &middot; <a href="#PUTME">putMe</a> &middot; <a href="#SAVETOFILE">saveTofile</a></p>
+<h3><a name="CLOSEIT"></a>closeit</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 18602</p>
+<pre>sub closeit()</pre>
+<p>Closes the variable buffer varBuf.</p>
+<h3><a name="FLOATVAL"></a>floatVal</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18539</p>
+<pre>function floatVal( number as string) as single</pre>
+<p>Converts a decimal number string to a single, handling the part after the dot separately. Returns 0 for empty or zero input.</p>
+<h3><a name="GETME"></a>getMe</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 18557</p>
+<pre>function getMe(clave as string) as variant</pre>
+<p>Looks up the variable named clave in varBuf and returns its value as a string (type 0) or as a number via floatVal (type 1). Returns an empty string if not found.</p>
+<h3><a name="LOADFROMFILE"></a>loadFromfile</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 18610</p>
+<pre>sub loadFromfile( filename )</pre>
+<p>Replaces the contents of varBuf with the contents of file filename. Prints a message if the file cannot be opened.</p>
+<h3><a name="PUTME"></a>putMe</h3>
+<p class="rq-meta">SUBI &middot; RQProc.inc, line 18553</p>
+<pre>subi putMe(...)</pre>
+<p>Stores a named variable in the in-memory buffer varBuf as a varInfo record. Call as putMe(name$, value$, type) or putMe(name$, number, type); type 0 is string, 1 is float. Wrong argument counts print a message and end the program.</p>
+<h3><a name="SAVETOFILE"></a>saveTofile</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 18606</p>
+<pre>sub saveTofile( filename )</pre>
+<p>Saves the contents of varBuf to the file filename (created or overwritten). Prints a message if the file cannot be created.</p>
+</body>
+</html>

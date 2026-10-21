@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QREDEX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QREDEX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QREDEX Component</h1>
+<p class="rq-meta">Extends <a href="qrichedit.html">QRICHEDIT</a> &middot; source: <code>inc/QRedEx.Inc</code>, line 57 &middot; author: Jacques (2002-2005), [W]arriant (2006) &middot; version: 1.2.1 &middot; date: July 2006</p>
+<p><b>An extended QRichEdit with a built-in edit popup menu, Search and Replace dialogs, scroll position save/restore, text size limit and font/color dialogs.</b></p>
+<p>QRedEx extends QRichEdit. Its constructor builds a popup menu with Undo, Cut, Copy, Paste, Delete, Select All, Search and Replace; when the control is ReadOnly the editing items are hidden. Undo and the Undo check use EM_UNDO/EM_CANUNDO messages, and Delete sends a WM_KEYDOWN with VK_DELETE.</p>
+<p>Search and Replace use two QForm windows created by the component (frmSearch, frmReplace) and the rich edit EM_FINDTEXTEX message (1103) with match-case and whole-word options; Replace All locks window updates with LockWindowUpdate while it works. SavePosition/RestorePosition, TopLineIndex and BottomLineIndex use EM_GETRECT, EM_CHARFROMPOS and EM_LINEFROMCHAR. ChangeFont uses a QFontDialog, and ChangeFontColor/ChangeBgColor call ChooseColorA from comdlg32.dll with 16 preset custom colors.</p>
+<p>After the TYPE, the file redefines QRICHEDIT as QREDEX, so code included later that creates a QRICHEDIT gets a QRedEx.</p>
+<p>QREDEX inherits the properties, methods and events of <a href="qrichedit.html">QRICHEDIT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>A SendMessage declaration from elsewhere (SavePosition, TopLineIndex and BottomLineIndex call SendMessage, which this file does not declare)</li>
+</ul>
+<a name="1"></a><h2>QRedEx Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">UsePopup</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Turns the built-in popup menu on or off. Assigning it sets AutoPopup of the internal popup menu.</td></tr>
+<tr><td class="rq-name">RichTextSizeLimit</td><td class="rq-type">LONG</td><td>RW</td><td>1048576</td><td>Text size limit used by ExtendSizeLimit; the constructor sets it to 1048576.</td></tr>
+<tr><td class="rq-name">SavedTopLeft</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Character index at the top-left of the visible area, stored by SavePosition.</td></tr>
+<tr><td class="rq-name">SavedBottomRight</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Character index at the bottom-right of the visible area, stored by SavePosition.</td></tr>
+<tr><td class="rq-name">SavedCaretPosition</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Caret position stored by SavePosition; if the caret was outside the visible area, the middle of the visible range is stored instead.</td></tr>
+<tr class="rq-internal"><td class="rq-name">ptPoint</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Internal: 20-byte buffer that receives the EM_GETRECT rectangle and is passed to EM_CHARFROMPOS.</td></tr>
+<tr><td class="rq-name">frmSearch</td><td class="rq-type">QFORM</td><td>RW</td><td></td><td>The Search form (caption &quot;Search in text&quot;), shown from the popup menu&#x27;s Search item.</td></tr>
+<tr><td class="rq-name">edtSearchFor</td><td class="rq-type">QEDIT</td><td>RW</td><td></td><td>Edit box on the Search form for the text to find; pressing Enter starts the search. It is filled with the selected text when the form is opened.</td></tr>
+<tr><td class="rq-name">lblSearchFor</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>Label &quot;Text to search for:&quot; on the Search form.</td></tr>
+<tr><td class="rq-name">btnSearch</td><td class="rq-type">QBUTTON</td><td>RW</td><td></td><td>&quot;Find Next&quot; button on the Search form; searches forward from the end of the current selection and selects the match, or shows &quot;No matches found.&quot;.</td></tr>
+<tr><td class="rq-name">chkSearchCaseS</td><td class="rq-type">QCHECKBOX</td><td>RW</td><td></td><td>&quot;Match case&quot; check box on the Search form.</td></tr>
+<tr><td class="rq-name">chkSearchWholeWordsOnly</td><td class="rq-type">QCHECKBOX</td><td>RW</td><td></td><td>&quot;Full word&quot; check box on the Search form (whole-word search).</td></tr>
+<tr><td class="rq-name">frmReplace</td><td class="rq-type">QFORM</td><td>RW</td><td></td><td>The Replace form (caption &quot;Replace in text&quot;), shown from the popup menu&#x27;s Replace item.</td></tr>
+<tr><td class="rq-name">lblToBeReplaced</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>Label &quot;Text to be replaced:&quot; on the Replace form.</td></tr>
+<tr><td class="rq-name">edtToBeReplaced</td><td class="rq-type">QEDIT</td><td>RW</td><td></td><td>Edit box on the Replace form for the text to find; Enter or Tab moves focus to the replacement box. It is filled with the selected text when the form is opened.</td></tr>
+<tr><td class="rq-name">lblReplacedBy</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>Label &quot;Replacement text:&quot; on the Replace form.</td></tr>
+<tr><td class="rq-name">edtReplacedBy</td><td class="rq-type">QEDIT</td><td>RW</td><td></td><td>Edit box on the Replace form for the replacement text; pressing Enter runs Find next.</td></tr>
+<tr><td class="rq-name">btnReplace</td><td class="rq-type">QBUTTON</td><td>RW</td><td></td><td>&quot;Replace&quot; button: if the current selection equals the search text (case-sensitive or not, per the check box), replaces it, then finds the next match.</td></tr>
+<tr><td class="rq-name">btnFindNext</td><td class="rq-type">QBUTTON</td><td>RW</td><td></td><td>&quot;Find next&quot; button on the Replace form; searches forward, or backward when the &quot;Replace up&quot; box is checked, and selects the match.</td></tr>
+<tr><td class="rq-name">btnReplaceAll</td><td class="rq-type">QBUTTON</td><td>RW</td><td></td><td>&quot;Replace All&quot; button: replaces every match in the whole text, then restores the scroll position.</td></tr>
+<tr><td class="rq-name">chkReplaceCaseS</td><td class="rq-type">QCHECKBOX</td><td>RW</td><td></td><td>&quot;Match case&quot; check box on the Replace form.</td></tr>
+<tr><td class="rq-name">chkReplaceWholeWordsOnly</td><td class="rq-type">QCHECKBOX</td><td>RW</td><td></td><td>&quot;Full word&quot; check box on the Replace form (whole-word search).</td></tr>
+<tr><td class="rq-name">chkReplaceUp</td><td class="rq-type">QCHECKBOX</td><td>RW</td><td></td><td>&quot;Replace up&quot; check box: when checked, Find next on the Replace form searches toward the start of the text.</td></tr>
+</table>
+<a name="2"></a><h2>QRedEx Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">ExtendSizeLimit</td><td class="rq-type">SUB</td><td>Sends message &amp;HC5 (EM_LIMITTEXT) with RichTextSizeLimit to raise the maximum text size.</td></tr>
+<tr><td class="rq-name">SetMaxTextSize</td><td class="rq-type">SUB(iTextSizeMax As Long)</td><td>SetMaxTextSize(iTextSizeMax) sends message &amp;HC5 (EM_LIMITTEXT) with the given maximum text size.</td></tr>
+<tr><td class="rq-name">SavePosition</td><td class="rq-type">SUB</td><td>Stores the visible character range and the caret position in SavedTopLeft, SavedBottomRight and SavedCaretPosition.</td></tr>
+<tr><td class="rq-name">RestorePosition</td><td class="rq-type">SUB</td><td>Focuses the control and moves the caret to the end, to SavedTopLeft and then to SavedCaretPosition, so the saved text area scrolls back into view.</td></tr>
+<tr><td class="rq-name">TopLineIndex</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the index of the first visible line.</td></tr>
+<tr><td class="rq-name">BottomLineIndex</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the index of the last visible line.</td></tr>
+<tr><td class="rq-name">ChangeFont</td><td class="rq-type">SUB</td><td>Opens a font dialog preset with the current font and applies the chosen font to the control.</td></tr>
+<tr><td class="rq-name">ChangeFontColor</td><td class="rq-type">SUB</td><td>Opens the Windows color dialog (ChooseColorA) and sets Font.Color to the chosen color.</td></tr>
+<tr><td class="rq-name">ChangeBgColor</td><td class="rq-type">SUB</td><td>Opens the Windows color dialog (ChooseColorA) and sets the background Color to the chosen color.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>QRED_PopUpMenu.OnPopUp</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>SavePosition, TopLineIndex and BottomLineIndex call SendMessage, which this file does not declare (it declares QRDX_SendMessage).</li>
+<li>SavePosition and BottomLineIndex pass the buffer address plus 2 to EM_CHARFROMPOS for the bottom-right point, while in a RECT the right/bottom pair starts at byte offset 8, so the bottom-right value may be wrong.</li>
+<li>The Search and Replace menu handlers test len(.seltext) &lt;&gt; &quot;&quot;, comparing a number with a string.</li>
+<li>The comment on frmSearch.BorderStyle = 3 says bsNone.</li>
+<li>The header comment lists BOTTOLINEINDEX; the method is BottomLineIndex.</li>
+<li>Version 1.2.1 removed all sounds and beeps, cancelling the Windows-version-based sound handling added in 1.2.0.</li>
+<li>The search/replace window opening subs are private; to open the forms from code use frmSearch.Show or frmReplace.Show.</li>
+<li>The file redefines QRICHEDIT as QREDEX after the TYPE, which affects every later QRICHEDIT in the program.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/QREDEXTest.INC</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/QREDEXTest2.INC</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QRedEx Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QRedEx.Inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Editor&quot;
+  Width = 500: Height = 400
+  CREATE Editor AS QRedEx
+    Align = 5
+  END CREATE
+END CREATE
+Editor.ExtendSizeLimit
+Editor.UsePopup = 1
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qrc4.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qredit.html">Next component</a></div>
+</body>
+</html>

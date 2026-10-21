@@ -1,0 +1,16 @@
+timer ticks 3 enabled 0 interval 50
+exe name ok
+title My title
+hint 100 007AFF59
+screen ok
+clipboard clip text has text -1
+after clear []
+open Pick a file Text|*.txt|All|*.* 2 C:\
+execute 0 dialog found 1
+save out.bas
+files: 2 a.txt b.bas
+with dirs: 5 sub
+a.txt size 7 date len 10 -- time len 8
+filetime ok
+none []
+terminate

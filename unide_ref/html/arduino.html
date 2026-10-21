@@ -1,0 +1,36 @@
+<h1>Arduino</h1>
+<p>Скетчи собираются и загружаются утилитой <b>arduino-cli</b>. Путь к ней и папки задаются в IDE
+Options &rarr; Compilers &rarr; Arduino; параметры сборки &mdash; на вкладке Arduino.</p>
+
+<h2>Сборка и загрузка</h2>
+<ul>
+<li>Кнопки рамки Project: <b>Verify</b> &mdash; собрать скетч (<code>arduino-cli compile</code>),
+  <b>Upload</b> &mdash; собрать и загрузить в плату. F9 на скетче выполняет Upload.</li>
+<li>Скетч &mdash; папка <code>&lt;имя&gt;\&lt;имя&gt;.ino</code>.</li>
+<li>Плата &mdash; меню Arduino &rarr; Board; порт &mdash; Arduino &rarr; Port или список плат на USB в
+  рамке Project (выбор платы ставит её порт и тип).</li>
+<li>Если платформа платы не установлена, unIDE предлагает установить её и собрать снова.</li>
+<li>Вывод arduino-cli идёт в Compilation log; ошибки компилятора &mdash; и в Error log, двойной
+  щелчок открывает строку.</li>
+<li>Program reset (Ctrl+F2) снимает arduino-cli.</li>
+</ul>
+
+<h2>Меню Arduino</h2>
+<table>
+<tr><th>Пункт</th><th>Что делает</th></tr>
+<tr><td>Sketchbook, Examples, Include Library</td><td>Скетчи, примеры, подключение библиотеки.</td></tr>
+<tr><td>Board, Port, Get Board Info</td><td>Выбор платы и порта, сведения о плате.</td></tr>
+<tr><td>Serial Monitor (Ctrl+Shift+M)</td><td>Монитор порта: Send, Autoscroll, Show timestamp,
+  Clear output; окончание строки (No line ending, Newline, Carriage return, Both NL &amp; CR).
+  На время загрузки монитор закрывает порт и потом открывает снова.</td></tr>
+<tr><td>Board Manager...</td><td>Платформы и платы: Core list и Board list, установка ядра,
+  выбор платы, Additional URLs.</td></tr>
+<tr><td>Library Manager...</td><td>Каталог библиотек с фильтрами Type, Topic и поиском, установка.</td></tr>
+<tr><td>Arduino CLI Help...</td><td>Команды arduino-cli и их справка; запуск команды.</td></tr>
+</table>
+
+<h2>Настройки</h2>
+<p>Вкладка Arduino в IDE Options: Warnings, Log level, подробный вывод при компиляции и загрузке,
+Verify code after upload, Export compiled binary, Save sketch..., Additional Boards Manager
+URLs; вкладка Network &mdash; прокси; вкладка Cli config file. Кнопка «Импорт из RQdb.ini» берёт
+пути из настроек RQdebugger.</p>

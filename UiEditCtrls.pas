@@ -268,7 +268,9 @@ type
     FApplying: Boolean;
     FReady: Boolean;
     FHot: Boolean;
+    FListOwnerDraw: Boolean;
     procedure SetThemeColors(Value: Boolean);
+    procedure SetListOwnerDraw(Value: Boolean);
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure CMColorChanged(var Message: TMessage); message CM_COLORCHANGED;
     procedure CMMouseEnter(var Message: TMessage); message CM_MOUSEENTER;
@@ -279,12 +281,18 @@ type
   protected
     procedure ApplyTheme;
     procedure Loaded; override;
+    procedure CreateParams(var Params: TCreateParams); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
     property ThemeColors: Boolean read FThemeColors write SetThemeColors
       default True;
+    // Строки раскрытого списка рисует OnDrawItem при любом Style, и у
+    // списка с полем ввода (csDropDown) тоже: CBS_OWNERDRAWFIXED и
+    // CBS_HASSTRINGS к стилю окна. Поле ввода остаётся обычным.
+    property ListOwnerDraw: Boolean read FListOwnerDraw write SetListOwnerDraw
+      default False;
     property Style;
     property Anchors;
     property BiDiMode;
@@ -718,6 +726,23 @@ begin
   begin
     FThemeColors := Value;
     ApplyTheme;
+  end;
+end;
+
+procedure TUiComboBox.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  if FListOwnerDraw then
+    Params.Style := Params.Style or CBS_OWNERDRAWFIXED or CBS_HASSTRINGS;
+end;
+
+procedure TUiComboBox.SetListOwnerDraw(Value: Boolean);
+begin
+  if FListOwnerDraw <> Value then
+  begin
+    FListOwnerDraw := Value;
+    if HandleAllocated then
+      RecreateWnd;
   end;
 end;
 

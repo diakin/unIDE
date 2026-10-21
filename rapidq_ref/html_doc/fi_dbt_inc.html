@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>DBT.INC</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: DBT.INC</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>DBT.INC</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/DBT.INC</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 6 functions</p>
+<p><a href="#DBTCLOSE">dbtClose</a> &middot; <a href="#DBTCREATE">dbtCreate</a> &middot; <a href="#DBTOPEN">dbtOpen</a> &middot; <a href="#MEMOAPPEND">MemoAppend</a> &middot; <a href="#MEMOGET">Memoget</a> &middot; <a href="#MEMOUPDATE">memoUpdate</a></p>
+<h3><a name="DBTCLOSE"></a>dbtClose</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 11244</p>
+<pre>sub dbtClose</pre>
+<p>Closes the memo (.dbt) file opened in the global stream fs and resets the globals blockCount and __s.</p>
+<h3><a name="DBTCREATE"></a>dbtCreate</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 11241</p>
+<pre>sub dbtCreate( dbtArch as string)</pre>
+<p>Creates a new dBase memo (.dbt) file dbtArch with a 512-byte header (next free block = 1), using the global QFileStream fs. If the file cannot be created it prints a message and ends the program.</p>
+<h3><a name="DBTOPEN"></a>dbtOpen</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 11251</p>
+<pre>sub dbtOpen(dbtArch as string, mode as integer)</pre>
+<p>Opens a dBase memo (.DBT) file in the global file stream fs with the given mode, reads the block count from its first four bytes into blockCount and resets currentRecID to -1. If the file cannot be opened it prints a message and ENDs the program.</p>
+<h3><a name="MEMOAPPEND"></a>MemoAppend</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11274</p>
+<pre>function MemoAppend(text as string) as integer</pre>
+<p>Appends text as a new memo record at the end of the .DBT file opened in fs, padded to 512-byte block boundaries and terminated with &amp;H1A, then updates the block count in the file header. Returns the starting block number (the memo pointer to store in the DBF record); returns nothing for empty text.</p>
+<h3><a name="MEMOGET"></a>Memoget</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11310</p>
+<pre>function Memoget(n as long) as string</pre>
+<p>Returns the memo text stored at block n of the open .DBT file (up to the &amp;H1A end mark). Sets currentRecID to n and uses readRecord and the global __s buffer; returns empty if n is out of range.</p>
+<h3><a name="MEMOUPDATE"></a>memoUpdate</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 11314</p>
+<pre>function memoUpdate(newtext as string) as long</pre>
+<p>Replaces the memo last read with Memoget (currentRecID) with newtext. Writes in place if it fits in the original blocks, otherwise appends it with MemoAppend and leaves the old record unreferenced. Returns the (possibly new) block pointer and resets currentRecID; returns -1 if no record was read.</p>
+</body>
+</html>

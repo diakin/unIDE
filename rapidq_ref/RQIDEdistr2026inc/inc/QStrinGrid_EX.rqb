@@ -1,0 +1,158 @@
+$TYPECHECK ON
+$include "Rapidq2.inc
+
+TYPE QMyStringGrid EXTENDS QSTRINGGRID
+    pOldProc AS LONG
+    BindIndex AS LONG
+    MyWndProc AS LONG
+    ThisFuncPtr AS LONG
+    flagWinProc AS boolean
+    hWnd AS INTEGER
+
+    WITH QMyStringGrid
+
+        Public :
+        'sort the list by column
+        SUB SortByColumn(iColumn AS LONG)
+            DIM slGridColumnCopy AS QSTRINGLIST
+            DEFINT N , iPlaced , iDisplaced
+            'Fill slGridColumnCopy with QStringGrid Column to Sort
+            slGridColumnCopy.Clear
+            FOR N = .FixedRows TO .RowCount - 1
+                slGridColumnCopy.AddItems(.Cell(iColumn , N) & " " & STR$(N)) 'Add Space Index to the item
+            NEXT N
+            'Sort slGridColumnCopy
+            slGridColumnCopy.Sort
+            'Swap Rows of StringGrid to sort it according to slGridColumnCopy
+            FOR N = 0 TO slGridColumnCopy.ItemCount - 2  '-2 : last is automatically sorted
+                iPlaced = VAL(MID$(slGridColumnCopy.Item(N) , RInstr(slGridColumnCopy.Item(N) , " ") + 1))
+                iDisplaced = N + .FixedRows
+                .SwapRows(iPlaced , iDisplaced)
+                'Update slGridColumnCopy for the swap ... scratch your head here
+                slGridColumnCopy.Text = REPLACESUBSTR$(slGridColumnCopy.Text , " " & STR$(iDisplaced) _
+                    & CHR$(13) & CHR$(10) , " " & STR$(iPlaced) & CHR$(13) & CHR$(10))
+            NEXT N
+            slGridColumnCopy.Text = ""  'deallocate
+        END SUB
+
+
+    END WITH
+
+    'DIM OldStringGridWndProc AS LONG
+    'OldStringGridWndProc = SetWindowLongAPI(StringGrid1.Handle , GWL_WNDPROC , CODEPTR(StringGridWndProc))
+    'FUNCTION StringGridWndProc(hWnd AS LONG , uMsg AS LONG , wParam AS LONG , lParam AS LONG) AS LONG
+
+
+    FUNCTION WindowProc(hwnd AS LONG , uMsg AS LONG , wParam AS LONG , lParam AS LONG , tmp AS LONG) AS LONG
+        SELECT CASE uMsg
+            CASE WM_MOUSEWHEEL
+                IF wParam > 0 THEN
+                    IF this.TopRow > 1 THEN
+                        this.TopRow = this.TopRow - 1
+                    END IF
+                ELSE
+                    IF this.TopRow + this.VisibleRowCount < this.RowCount THEN
+                        this.TopRow = this.TopRow + 1
+                    END IF
+                END IF
+        END SELECT
+        Result = CallWindowProc(this.pOldProc , hWnd , uMsg , wParam , lParam)
+    END FUNCTION
+
+    '========================================================
+    'take over the WndProc to dispatch windows messages
+    '========================================================
+    SUB Init(Form AS QFORM) 'this replaces 'Set'
+        IF this.flagWinProc = FALSE THEN
+            this.hWnd = form.Handle
+            BIND QMyStringGrid.BindIndex TO QMyStringGrid.WindowProc
+            this.MyWndProc = SetNewCallBack_4(QMyStringGrid.BindIndex)
+            this.pOldProc = SetWindowLong(form.Handle , GWL_WNDPROC , this.MyWndProc)
+            this.flagWinProc = TRUE
+        END IF
+    END SUB
+
+    CONSTRUCTOR
+        flagWinProc = FALSE
+    END CONSTRUCTOR
+END TYPE
+
+DECLARE SUB GridScroll(Rotation AS INTEGER , X AS INTEGER , Y AS INTEGER , Shift AS INTEGER)
+DECLARE SUB GridDrawCell(Col AS INTEGER , Row AS INTEGER , State AS INTEGER , Rect AS QRECT , Sender AS QSTRINGGRID)
+
+
+'-------------------- Test--------------------------------
+
+
+CREATE Form AS QFORMEX
+    Caption = "Grid Mouse Wheel"
+    OnMouseWheel = GridScroll
+	Height = 600
+	Width = 800
+    Center
+    CREATE StringGrid1 AS QMyStringGrid  'QSTRINGGRID
+        Left = 1
+        Top = 1
+        Align = alClient
+        ColCount = 5
+        RowCount = 2
+        FixedCols = 0
+        FixedRows = 1
+        ColWidths(0) = 350
+        ColWidths(1) = 100
+        ColWidths(2) = 100
+        ColWidths(3) = 100
+        ColWidths(4) = 100
+        Cell(0 , 0) = "Nombre"
+        Cell(1 , 0) = "Telefono"
+        Cell(2 , 0) = "Base imponible"
+        Cell(3 , 0) = "IVA"
+        Cell(4 , 0) = "Total a pagar"
+        Separator = CHR$(9)
+        DelOptions(goRangeSelect)
+        AddOptions(goColSizing , goRowSelect)
+        OnDrawCell = GridDrawCell
+        Init(Form)
+    END CREATE
+END CREATE
+
+DIM slTmp AS QSTRINGLIST
+
+IF FILEEXISTS("datos.csv") THEN
+    slTmp.LoadFromFile("datos.csv")
+    StringGrid1.LoadFromFile("datos.csv" , 0 , 0 , slTmp.ItemCount)
+    slTmp.Clear  'to free memory, if not in a procedure
+END IF
+
+Form.ShowModal
+
+
+SUB GridScroll(Rotation AS INTEGER , X AS INTEGER , Y AS INTEGER , Shift AS INTEGER)
+    DEFINT i , j
+    IF (GetFocus = StringGrid1.Handle) THEN i = StringGrid1.Row  :  j = StringGrid1.RowCount
+    IF (Rotation > 0) THEN i = i - 1 ELSE i = i + 1
+    IF i < 1 THEN i = 1
+    IF i > j THEN i = j - 1
+    IF (GetFocus = StringGrid1.Handle) THEN StringGrid1.Row = i
+END SUB
+
+
+SUB GridDrawCell(Col AS INTEGER , Row AS INTEGER , State AS INTEGER , Rect AS QRECT , Sender AS QSTRINGGRID)
+    DIM SelectClr AS LONG
+    DIM ClrTxt AS LONG
+
+    SelectClr = &HFFFF80
+    ClrTxt = clBlack
+
+    IF (Row > 0 AND Col > - 1) THEN  'row 0 is fixed row
+        'Sender.FillRect(Rect.Left , Rect.Top , Rect.Left + Sender.ColWidths(Col) , Rect.Top + Sender.RowHeights(Row) , SelectClr)
+        Sender.TextOut(Rect.Left + 2 , Rect.Top + 2 , Sender.Cell(Col , Row) , ClrTxt , - 1)
+
+        IF State = 1 THEN
+            Sender.FillRect(Rect.Left , Rect.Top , Rect.Left + Sender.ColWidths(Col) , Rect.Top + Sender.RowHeights(Row) , SelectClr)
+            Sender.TextOut(Rect.Left + 2 , Rect.Top + 2 , Sender.Cell(Col , Row) , ClrTxt , - 1)
+        END IF
+    END IF
+END SUB
+
+

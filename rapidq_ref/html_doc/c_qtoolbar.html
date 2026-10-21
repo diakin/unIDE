@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QTOOLBAR</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QTOOLBAR</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QTOOLBAR Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QToolBar.inc</code>, line 27 &middot; author: Nastase Eodor &middot; version: 1.2 (stable)</p>
+<p><b>A toolbar component that wraps the Windows common-controls toolbar (ToolBarWindow32) with image lists, check and drop-down buttons, tooltips and a context menu.</b></p>
+<p>QToolBar registers its own window class &quot;QToolBar&quot; as a subclass of the common-controls class ToolBarWindow32 and creates the window with CreateWindowEx when you assign Parent (a QForm) or Parent2 (a QPanel). It also subclasses the parent window procedure so it can handle WM_COMMAND (button clicks) and WM_NOTIFY (tooltip text and drop-down arrows).</p>
+<p>Buttons are added with AddButton, InsButton and AddSeparator; the style can be tbsButton, tbsCheck, tbsCheckGroup or tbsDropDown. Each button&#x27;s TBBUTTON structure and extra data (down, enabled, visible, hint, show hint, drop-down menu) are kept in memory blocks allocated with the Memory.inc helpers, so RecreateWnd can rebuild the toolbar when style properties change. Buttons are addressed by a 0-based index.</p>
+<p>Clicks fire OnButtonClick with the button index. A right click shows PopupMenu, and drop-down buttons show the QPopupMenu set with SetButtonDropDown; WM_COMMAND messages sent to the toolbar window, such as those from these menus, fire OnCommand.</p>
+<p>QTOOLBAR inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Memory.inc ($INCLUDE, unless __RQMEMORY is already defined): NewPtr, NewZStr, StrFromPtr, PtrFree, MemCpy</li>
+<li>Windows API declarations, structures and constants that this file does not declare, such as CreateWindowEx, SendMessage, SetWindowLong, CallWindowProc, InitCommonControls, TBBUTTON, NMHDR, TOOLTIPTEXT, TBNOTIFY, LOGFONT and the TBSTYLE_*/TB_*/TBN_* constants</li>
+<li>SetNewCallBack_4, used by Register to create callback addresses (defined for example in rapidq2.inc)</li>
+</ul>
+<a name="1"></a><h2>QToolBar Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Handle</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Window handle of the toolbar; 0 until the window is created by assigning Parent or Parent2.</td></tr>
+<tr><td class="rq-name">Parent</td><td class="rq-type">QFORM</td><td>RW</td><td></td><td>Assigning a QForm stores its handle as the parent window, creates the toolbar window if it does not exist yet (or re-parents it), and subclasses the form&#x27;s window procedure so button clicks and notifications reach the toolbar.</td></tr>
+<tr><td class="rq-name">Parent2</td><td class="rq-type">QPANEL</td><td>RW</td><td></td><td>Same as Parent but for a QPanel: creates or re-parents the toolbar on the panel and subclasses the panel&#x27;s window procedure.</td></tr>
+<tr><td class="rq-name">Left</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Left position; assigning it moves the window with MoveWindow if it exists.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Top position; assigning it moves the window with MoveWindow if it exists.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">INTEGER</td><td>RW</td><td>221</td><td>Width (default 221); assigning it resizes the window with MoveWindow if it exists.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">INTEGER</td><td>RW</td><td>26</td><td>Height (default 26); assigning it resizes the window with MoveWindow if it exists.</td></tr>
+<tr><td class="rq-name">Enabled</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning it enables or disables the toolbar window with EnableWindow.</td></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Assigning it shows or hides the toolbar window (default 1).</td></tr>
+<tr><td class="rq-name">AutoSize</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Assigning it recreates the window and sends TB_AUTOSIZE so the toolbar sizes itself to its parent (default 1).</td></tr>
+<tr><td class="rq-name">Flat</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning it switches the TBSTYLE_FLAT style and recreates the window.</td></tr>
+<tr><td class="rq-name">Transparent</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Assigning it switches the TBSTYLE_TRANSPARENT style and recreates the window (default 1).</td></tr>
+<tr><td class="rq-name">Wrapable</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning it switches the TBSTYLE_WRAPABLE style (buttons wrap to several rows) and recreates the window.</td></tr>
+<tr><td class="rq-name">Divider</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning it switches the divider line at the top of the toolbar (CCS_NODIVIDER when 0) and recreates the window.</td></tr>
+<tr><td class="rq-name">ButtonWidth</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Button width; read from the first button when the window is created. Assigning it sends TB_SETBUTTONSIZE with ButtonWidth and ButtonHeight.</td></tr>
+<tr><td class="rq-name">ButtonHeight</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Button height; read from the first button when the window is created. Assigning it sends TB_SETBUTTONSIZE with ButtonWidth and ButtonHeight.</td></tr>
+<tr><td class="rq-name">Font</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>Assigning a QFont copies its name, size, charset and bold/italic/underline/strikeout styles and sends WM_SETFONT to the toolbar.</td></tr>
+<tr><td class="rq-name">PopupMenu</td><td class="rq-type">QPOPUPMENU</td><td>RW</td><td></td><td>QPopupMenu shown at the mouse position when the toolbar is right-clicked.</td></tr>
+<tr><td class="rq-name">Images</td><td class="rq-type">QIMAGELIST</td><td>RW</td><td></td><td>QImageList with the button images, attached to the toolbar when the window is created.</td></tr>
+<tr><td class="rq-name">HotImages</td><td class="rq-type">QIMAGELIST</td><td>RW</td><td></td><td>QImageList used for buttons under the mouse; attached when the window is created or by Refresh, if it contains images.</td></tr>
+<tr><td class="rq-name">DisabledImages</td><td class="rq-type">QIMAGELIST</td><td>RW</td><td></td><td>QImageList used for disabled buttons; attached when the window is created or by Refresh, if it contains images.</td></tr>
+</table>
+<a name="2"></a><h2>QToolBar Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">Button</td><td class="rq-type">FUNCTION(Index&amp;) AS INTEGER</td><td>Internal: Button(Index&amp;) returns the pointer to the stored TBBUTTON copy of a button.</td></tr>
+<tr><td class="rq-name">ButtonCount</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Returns the number of buttons and separators added.</td></tr>
+<tr class="rq-internal"><td class="rq-name">CreateWnd</td><td class="rq-type">SUB</td><td>Internal: creates the toolbar window if it does not exist, applying the style properties, image lists, font and visibility. Called when Parent or Parent2 is assigned.</td></tr>
+<tr><td class="rq-name">RecreateWnd</td><td class="rq-type">SUB</td><td>Destroys and recreates the toolbar window and adds all stored buttons again, restoring the checked state of check buttons. Called by the style property setters.</td></tr>
+<tr><td class="rq-name">Invalidate</td><td class="rq-type">SUB</td><td>Invalidates the toolbar window so it is repainted later.</td></tr>
+<tr><td class="rq-name">Update</td><td class="rq-type">SUB</td><td>Calls UpdateWindow on the toolbar so pending painting is done immediately.</td></tr>
+<tr><td class="rq-name">Repaint</td><td class="rq-type">SUB</td><td>Erases and invalidates the toolbar with RedrawWindow and updates it immediately.</td></tr>
+<tr><td class="rq-name">Refresh</td><td class="rq-type">SUB</td><td>Re-attaches HotImages and DisabledImages to the toolbar if they contain images.</td></tr>
+<tr><td class="rq-name">GetCommandID</td><td class="rq-type">FUNCTION(Index&amp;) AS INTEGER</td><td>GetCommandID(Index&amp;) returns the command ID of the button at Index&amp;, or -1 if the index is out of range.</td></tr>
+<tr><td class="rq-name">GetIndex</td><td class="rq-type">FUNCTION(CommandID&amp;) AS INTEGER</td><td>GetIndex(CommandID&amp;) returns the index of the button with the given command ID, or -1.</td></tr>
+<tr><td class="rq-name">SetButtonImageIndex</td><td class="rq-type">SUB(Index&amp;,ImageIndex&amp;)</td><td>SetButtonImageIndex(Index&amp;, ImageIndex&amp;) changes the image of a button (TB_CHANGEBITMAP).</td></tr>
+<tr><td class="rq-name">GetButtonImageIndex</td><td class="rq-type">FUNCTION(Index&amp;) AS INTEGER</td><td>GetButtonImageIndex(Index&amp;) returns the image index of a button.</td></tr>
+<tr><td class="rq-name">SetButtonCaption</td><td class="rq-type">SUB(Index&amp;,Caption$)</td><td>SetButtonCaption(Index&amp;, Caption$) changes the caption of a button and recreates the window; it only works for buttons that already had a caption.</td></tr>
+<tr><td class="rq-name">GetButtonCaption</td><td class="rq-type">FUNCTION(Index&amp;) AS STRING</td><td>GetButtonCaption(Index&amp;) returns the caption of a button.</td></tr>
+<tr><td class="rq-name">SetButtonDropDown</td><td class="rq-type">SUB(Index&amp;,DropDown As QPopupMenu)</td><td>SetButtonDropDown(Index&amp;, DropDown) stores the QPopupMenu shown when the drop-down arrow of a tbsDropDown button is clicked.</td></tr>
+<tr><td class="rq-name">GetButtonDropDown</td><td class="rq-type">FUNCTION(Index&amp;) AS INTEGER</td><td>GetButtonDropDown(Index&amp;) returns the handle of the drop-down menu stored for a button, or 0.</td></tr>
+<tr><td class="rq-name">SetButtonHint</td><td class="rq-type">SUB(Index&amp;,Hint$)</td><td>SetButtonHint(Index&amp;, Hint$) sets the tooltip text of a button; it is shown only if SetButtonShowHint is on.</td></tr>
+<tr><td class="rq-name">GetButtonHint</td><td class="rq-type">FUNCTION(Index&amp;) AS STRING</td><td>GetButtonHint(Index&amp;) returns the tooltip text of a button.</td></tr>
+<tr><td class="rq-name">SetButtonShowHint</td><td class="rq-type">SUB(Index&amp;,ShowHint&amp;)</td><td>SetButtonShowHint(Index&amp;, ShowHint&amp;) turns the tooltip of a button on or off.</td></tr>
+<tr><td class="rq-name">GetButtonShowHint</td><td class="rq-type">FUNCTION(Index&amp;) AS INTEGER</td><td>GetButtonShowHint(Index&amp;) returns whether the tooltip of a button is on.</td></tr>
+<tr><td class="rq-name">SetButtonDown</td><td class="rq-type">SUB(Index&amp;,Down&amp;)</td><td>SetButtonDown(Index&amp;, Down&amp;) checks or unchecks a button (TB_CHECKBUTTON) and stores the state.</td></tr>
+<tr><td class="rq-name">GetButtonDown</td><td class="rq-type">FUNCTION(Index&amp;) AS INTEGER</td><td>GetButtonDown(Index&amp;) returns whether a button is checked, from the window if it exists, otherwise from the stored state.</td></tr>
+<tr><td class="rq-name">SetButtonEnabled</td><td class="rq-type">SUB(Index&amp;,Enabled&amp;)</td><td>SetButtonEnabled(Index&amp;, Enabled&amp;) enables or disables a button (TB_ENABLEBUTTON) and stores the state.</td></tr>
+<tr><td class="rq-name">GetButtonEnabled</td><td class="rq-type">FUNCTION(Index&amp;) AS INTEGER</td><td>GetButtonEnabled(Index&amp;) returns whether a button is enabled, from the window if it exists, otherwise from the stored state.</td></tr>
+<tr><td class="rq-name">SetButtonVisible</td><td class="rq-type">SUB(Index&amp;,Visible&amp;)</td><td>SetButtonVisible(Index&amp;, Visible&amp;) sends TB_HIDEBUTTON with Visible&amp; as the hide flag and stores the value.</td></tr>
+<tr><td class="rq-name">GetButtonVisible</td><td class="rq-type">FUNCTION(Index&amp;) AS INTEGER</td><td>GetButtonVisible(Index&amp;) returns TB_ISBUTTONHIDDEN from the window if it exists (non-zero means hidden), otherwise the stored value.</td></tr>
+<tr><td class="rq-name">AddButton</td><td class="rq-type">SUB(ImageIndex&amp;,Caption$,Style&amp;)</td><td>AddButton(ImageIndex&amp;, Caption$, Style&amp;) appends a button with the given image, caption (may be empty) and style (0 means tbsButton) and gives it the next command ID.</td></tr>
+<tr><td class="rq-name">AddSeparator</td><td class="rq-type">SUB</td><td>Appends a separator.</td></tr>
+<tr><td class="rq-name">InsButton</td><td class="rq-type">SUB(Index&amp;,ImageIndex&amp;,Caption$,Style&amp;)</td><td>InsButton(Index&amp;, ImageIndex&amp;, Caption$, Style&amp;) inserts a button before position Index&amp;.</td></tr>
+<tr><td class="rq-name">DelButton</td><td class="rq-type">SUB(Index&amp;)</td><td>DelButton(Index&amp;) frees the stored data of a button and removes it from the toolbar.</td></tr>
+<tr class="rq-internal"><td class="rq-name">ParentWndProc</td><td class="rq-type">FUNCTION(hWnd&amp;,Msg&amp;,wParam&amp;,lParam&amp;) AS INTEGER</td><td>Internal: replacement window procedure for the parent form or panel; handles WM_COMMAND (fires OnButtonClick), tooltip requests and drop-down menus, then calls the original procedure.</td></tr>
+<tr class="rq-internal"><td class="rq-name">WndProc</td><td class="rq-type">FUNCTION(hWnd&amp;,Msg&amp;,wParam&amp;,lParam&amp;) AS INTEGER</td><td>Internal: window procedure of the toolbar window; shows PopupMenu on right click and fires OnCommand on WM_COMMAND.</td></tr>
+<tr class="rq-internal"><td class="rq-name">Register</td><td class="rq-type">SUB</td><td>Internal: creates the callbacks, calls InitCommonControls and registers the &quot;QToolBar&quot; window class. Called by the constructor.</td></tr>
+</table>
+<a name="3"></a><h2>QToolBar Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnButtonClick</td><td class="rq-type">SUB(ButtonIndex&amp;)</td><td>Event OnButtonClick(ButtonIndex&amp;) fired when a button is clicked, with its 0-based index. For check buttons the stored down state is updated first.</td></tr>
+<tr><td class="rq-name">OnCommand</td><td class="rq-type">SUB(NotifyCode&amp;,CommandID&amp;,hwndCtrl&amp;)</td><td>Event OnCommand(NotifyCode&amp;, CommandID&amp;, hwndCtrl&amp;) fired when the toolbar window receives WM_COMMAND, for example from the context or drop-down menus it displays.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>AddButton, InsButton and AddSeparator store a button only if TB_ADDBUTTONS/TB_INSERTBUTTON succeeds, so Parent (or Parent2) must be assigned before buttons are added.</li>
+<li>Images is attached only when the window is created (CreateWnd); Refresh re-attaches only HotImages and DisabledImages.</li>
+<li>DelButton checks Index&amp; &lt; ButtonCount - 1, so the last button can never be deleted.</li>
+<li>SetButtonVisible passes Visible&amp; directly as the TB_HIDEBUTTON hide flag, so a non-zero value hides the button; GetButtonVisible likewise returns the hidden state when the window exists.</li>
+<li>SetButtonDown, SetButtonEnabled and SetButtonVisible send messages to Handle without checking that the window exists.</li>
+<li>SetButtonHint allocates a new string each time without freeing the previous one.</li>
+<li>SetButtonCaption does nothing for a button that was added without a caption.</li>
+</ul>
+<a name="4"></a><h2>QToolBar Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QToolBar.inc&quot;
+
+SUB ToolClick(ButtonIndex&amp;)
+  ShowMessage &quot;Button &quot; + STR$(ButtonIndex&amp;)
+END SUB
+
+CREATE Form AS QFORM
+  Caption = &quot;QToolBar demo&quot;
+  Width = 400
+END CREATE
+
+DIM Tool AS QToolBar
+Tool.Parent = Form
+Tool.AddButton(0, &quot;New&quot;, tbsButton)
+Tool.AddButton(1, &quot;Open&quot;, tbsButton)
+Tool.AddSeparator
+Tool.AddButton(2, &quot;Bold&quot;, tbsCheck)
+Tool.OnButtonClick = ToolClick
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qtextedit.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qtoolbarex.html">Next component</a></div>
+</body>
+</html>

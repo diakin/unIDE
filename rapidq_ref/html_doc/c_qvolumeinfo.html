@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QVOLUMEINFO</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QVOLUMEINFO</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QVOLUMEINFO Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QVolumeInfo.inc</code>, line 75 &middot; author: Alain Besseleer alias Midipro2000 &middot; version: 1.0 &middot; date: July 25, 2009</p>
+<p><b>QVolumeInfo is a non-visual object that retrieves the label, serial number, file system, size, free space and drive type of a drive.</b></p>
+<p>Call SelectDrive with a drive letter first; it calls the kernel32 functions GetVolumeInformationA, GetDiskFreeSpaceA and GetDriveTypeA and fills all properties. Byte counts are computed as clusters x sectors per cluster x bytes per sector, and TotalSpace and FreeSpace are short text forms such as &quot;12.5 GB&quot; made by GetStringFormat.</p>
+<p>The DRIVE_ constants are defined only if neither __WIN32API nor __QDRIVE_INC is defined; the file defines __QVOLUMEINFO_INC.</p>
+<p>QVOLUMEINFO inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QVolumeInfo Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Serial</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Volume serial number as a hexadecimal string.</td></tr>
+<tr><td class="rq-name">Name</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Volume label (name) of the drive.</td></tr>
+<tr><td class="rq-name">FileSytem</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>File system name, such as NTFS or FAT32 (the member is spelled FileSytem; the header calls it FileSystem).</td></tr>
+<tr><td class="rq-name">DriveRoot</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Drive letter with colon of the selected drive, e.g. &quot;C:&quot;.</td></tr>
+<tr><td class="rq-name">Bytes</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Bytes per sector.</td></tr>
+<tr><td class="rq-name">Sectors</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Sectors per cluster.</td></tr>
+<tr><td class="rq-name">TotalClusters</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Total number of clusters on the volume.</td></tr>
+<tr><td class="rq-name">FreeClusters</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Number of free clusters on the volume.</td></tr>
+<tr><td class="rq-name">TotalBytes</td><td class="rq-type">DOUBLE</td><td>RW</td><td></td><td>Total size of the volume in bytes (DOUBLE).</td></tr>
+<tr><td class="rq-name">FreeBytes</td><td class="rq-type">DOUBLE</td><td>RW</td><td></td><td>Free space on the volume in bytes (DOUBLE).</td></tr>
+<tr><td class="rq-name">TotalSpace</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Total size as a short string (Bytes, KB, MB, GB or TB with one decimal).</td></tr>
+<tr><td class="rq-name">FreeSpace</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Free space as a short string (Bytes, KB, MB, GB or TB with one decimal).</td></tr>
+<tr><td class="rq-name">DriveType</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Drive type number returned by GetDriveType.</td></tr>
+<tr><td class="rq-name">DriveTypeString</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Drive type as text: &quot;Removable&quot;, &quot;Drive Fixed&quot;, &quot;Remote&quot;, &quot;Cd-Rom&quot;, &quot;Ram disk&quot; or &quot;Unknown&quot;.</td></tr>
+<tr><td class="rq-name">DriveTypeUnknown</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>0 if the drive type is known, 1 if it is unknown.</td></tr>
+</table>
+<a name="2"></a><h2>QVolumeInfo Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">GetStringFormat</td><td class="rq-type">FUNCTION(Bytes as double) AS STRING</td><td>GetStringFormat(Bytes) returns a short string for a byte count: below 1024 &quot;n Bytes&quot;, otherwise KB, MB, GB or TB with one decimal.</td></tr>
+<tr><td class="rq-name">SelectDrive</td><td class="rq-type">SUB(DriveRoot as string)</td><td>SelectDrive(DriveRoot) reads the information for the drive whose letter is the first character of DriveRoot and fills all properties; call it before reading them.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The file-system property is misspelled FileSytem.</li>
+<li>Return values of the API calls are not checked.</li>
+<li>Drive type 1 (DRIVE_NO_ROOT_DIR) is reported as &quot;Unknown&quot;; the DRIVE_ constants are defined but SelectDrive compares with literal numbers.</li>
+</ul>
+<a name="4"></a><h2>QVolumeInfo Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QVolumeInfo.inc&quot;
+DIM Vol AS QVolumeInfo
+Vol.SelectDrive(&quot;C&quot;)
+ShowMessage Vol.DriveRoot + &quot; &quot; + Vol.Name + &quot; (&quot; + Vol.FileSytem + &quot;) &quot; + Vol.FreeSpace + &quot; free of &quot; + Vol.TotalSpace</pre>
+<div class="rq-foot"><a href="c_qvideo.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qvumeter.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,211 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <title>Appendix A: QColorDialog</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2000-2001</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QColorDialog</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QColorDialog Component</h1>
+
+<dd>
+QColorDialog is a dialogue box used to select a color.</dd>
+
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WARNING:don't
+use Caption property with an other component using a WindowProc.
+<p><a NAME="1"></a><b><font size=+1>QColorDialog Properties</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>Default</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Caption</td>
+
+<td>STRING</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Colors</td>
+
+<td>Array of LONG</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Define the value of 16 colors perso.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Color</td>
+
+<td>LONG</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Value color selected.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Style</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>cdNormal</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Style dialog box, can be cdFullOpen or
+cdNoFullOpen</td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QColorDialog Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Execute</td>
+
+<td>FUNCTION</td>
+
+<td NOWRAP>Open the dialog box , return True if color selection</td>
+
+<td NOWRAP></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QColorDialog Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QColorDialog Examples</font></b>
+<pre>' Color chooser dialog example
+$INCLUDE "RAPIDQ.INC"
+$INCLUDE "QCOLORDIALOG.INC"
+$TYPECHECK ON
+
+DECLARE SUB ButtonClick (Sender AS QBUTTON)
+
+dim Dial as QColorDialog
+&nbsp;&nbsp;&nbsp; Dial.Style=cdNoFullOpen
+&nbsp;&nbsp;&nbsp; Dial.Caption="Select Color"
+
+CREATE Form AS QFORM
+&nbsp;&nbsp;&nbsp; CREATE Button AS QBUTTON
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width = 100
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "Choose color"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick = ButtonClick
+&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; Center
+END CREATE
+form.ShowModal
+
+
+SUB ButtonClick (Sender AS BUTTON)
+&nbsp;&nbsp;&nbsp; if Dial.Execute then
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Form.Color=Dial.Color
+&nbsp;&nbsp;&nbsp; end if
+END SUB</pre>
+
+</body>
+</html>

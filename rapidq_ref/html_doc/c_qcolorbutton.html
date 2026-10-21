@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCOLORBUTTON</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCOLORBUTTON</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCOLORBUTTON Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QColorButton.inc</code>, line 5 &middot; author: Achilles B. Mina &middot; date: Uploaded 7/5/03</p>
+<p><b>QCOLORBUTTON is a small square QPanel that behaves like a push button with a pressed look.</b></p>
+<p>The constructor makes a 26 x 26 panel with BevelInner = 2, color &amp;HEEEEEE and cursor -21. On mouse down BorderStyle is set to 1 and a space is put before the caption, so the button looks pressed; on mouse up BorderStyle goes back to 0 and the space is removed.</p>
+<p>Code to play a click sound with SOUND using SndFreq and SndDur is present but commented out, with a comment that it is not XP compatible.</p>
+<p>QCOLORBUTTON inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QCOLORBUTTON Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">SndFreq</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Intended frequency of the click sound; it does nothing because the SOUND code that uses it is commented out.</td></tr>
+<tr><td class="rq-name">SndDur</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Intended duration of the click sound; it does nothing because the SOUND code that uses it is commented out.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnMouseDown</code>, <code>OnMouseUp</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>SndFreq and SndDur have no effect: the sound code is commented out with the note &quot;XP compatibles ;-(&quot;.</li>
+<li>OnMouseUp removes the added space with Caption - &quot; &quot;, which removes every space in the caption, so captions containing spaces lose them after a click.</li>
+<li>The component assigns its own OnMouseDown and OnMouseUp handlers.</li>
+</ul>
+<a name="4"></a><h2>QCOLORBUTTON Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QColorButton.inc&quot;
+DECLARE SUB BtnClick
+CREATE Form AS QFORM
+  Caption = &quot;Button&quot;
+  CREATE Btn AS QCOLORBUTTON
+    Parent = Form
+    Caption = &quot;A&quot;
+    OnClick = BtnClick
+  END CREATE
+END CREATE
+Form.ShowModal
+
+SUB BtnClick
+  ShowMessage &quot;Clicked&quot;
+END SUB</pre>
+<div class="rq-foot"><a href="c_qciccio.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qcolordialog_object_qcolordialog.html">Next component</a></div>
+</body>
+</html>

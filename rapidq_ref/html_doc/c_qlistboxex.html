@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QLISTBOXEX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QLISTBOXEX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QLISTBOXEX Component</h1>
+<p class="rq-meta">Extends <a href="qlistbox.html">QLISTBOX</a> &middot; source: <code>inc/QListBoxEx.inc</code>, line 15 &middot; version: 1.0</p>
+<p><b>A QListBox that raises an OnEnter event when the Enter key is pressed.</b></p>
+<p>QListBoxEx extends QListBox. The constructor creates a hidden popup menu with one invisible item whose ShortCut is &quot;Enter&quot; and assigns it to PopupMenu; when the shortcut fires, OnEnter is raised.</p>
+<p>QLISTBOXEX inherits the properties, methods and events of <a href="qlistbox.html">QLISTBOX</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="3"></a><h2>QListBoxEx Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnEnter</td><td class="rq-type">SUB</td><td>Raised when the Enter key is pressed while the list box has the focus.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>EnterKey.OnClick</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The component uses the PopupMenu property for its hidden menu, so assigning another popup menu removes the Enter handling.</li>
+</ul>
+<a name="4"></a><h2>QListBoxEx Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QListBoxEx.inc&quot;
+DECLARE SUB ListEnter
+
+CREATE Form AS QFORM
+  CREATE List AS QListBoxEx
+    AddItems &quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;
+    OnEnter = ListEnter
+  END CREATE
+END CREATE
+
+SUB ListEnter
+  IF List.ItemIndex &gt;= 0 THEN ShowMessage List.Item(List.ItemIndex)
+END SUB
+
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qlinegraph.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qlistviewex.html">Next component</a></div>
+</body>
+</html>

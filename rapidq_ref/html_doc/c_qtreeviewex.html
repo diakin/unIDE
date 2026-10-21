@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QTREEVIEWEX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QTREEVIEWEX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QTREEVIEWEX Component</h1>
+<p class="rq-meta">Extends <a href="qtreeview.html">QTREEVIEW</a> &middot; source: <code>inc/QTreeviewEx.inc</code>, line 4</p>
+<p><b>QtreeviewEx extends QTreeView with methods to find parents, children and items by text, and to move items and whole branches up, down, in and out.</b></p>
+<p>All methods work on the flat item index of the tree and on each item&#x27;s Level. The search methods walk the items forward or backward comparing levels or texts.</p>
+<p>MoveDown, IncLevel and DecLevel save the tree to a temporary text file (homedir + &quot;tmp_tree.tv&quot;), edit the lines in a QStringList (moving lines or adding or removing a leading Tab), reload the tree from the file and delete the file. homedir comes from the included fileops.inc.</p>
+<p>QTREEVIEWEX inherits the properties, methods and events of <a href="qtreeview.html">QTREEVIEW</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>$INCLUDE &quot;fileops.inc&quot; (homedir function)</li>
+</ul>
+<a name="2"></a><h2>QtreeviewEx Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">getparent</td><td class="rq-type">FUNCTION(i as integer) AS INTEGER</td><td>GetParent(i) returns the index of the parent of item i (the nearest preceding item with a lower level), or -1 for a top-level item.</td></tr>
+<tr><td class="rq-name">getindex</td><td class="rq-type">FUNCTION(from as integer, itemtext as string) AS INTEGER</td><td>GetIndex(from, itemtext) returns the index of the first item at or after from whose text equals itemtext, or -1 if none is found.</td></tr>
+<tr><td class="rq-name">strgetparent</td><td class="rq-type">FUNCTION(itemtext as string) AS INTEGER</td><td>StrGetParent(itemtext) returns the parent index of the first item whose text equals itemtext.</td></tr>
+<tr><td class="rq-name">getchildrenlist</td><td class="rq-type">FUNCTION(i as integer) AS STRING</td><td>GetChildrenList(i) returns the texts of the direct children of item i as a comma-separated string.</td></tr>
+<tr><td class="rq-name">addchildto</td><td class="rq-type">SUB(startfrom as integer, itemtext as string, childtext as string)</td><td>AddChildTo(startfrom, itemtext, childtext) finds the first item with text itemtext at or after startfrom and adds a child item with text childtext to it.</td></tr>
+<tr><td class="rq-name">Branchlength</td><td class="rq-type">FUNCTION(i as integer) AS INTEGER</td><td>BranchLength(i) returns the number of items in the branch of item i including the item itself; 1 for an item without children.</td></tr>
+<tr><td class="rq-name">MoveDown</td><td class="rq-type">SUB(i as integer)</td><td>MoveDown(i) moves item i with its branch below its next sibling, through a temporary file, and selects the moved item.</td></tr>
+<tr><td class="rq-name">MoveUp</td><td class="rq-type">SUB(i as integer)</td><td>MoveUp(i) moves item i with its branch above its previous sibling, by calling MoveDown on that sibling, and selects it.</td></tr>
+<tr><td class="rq-name">IncLevel</td><td class="rq-type">SUB(i as integer)</td><td>IncLevel(i) indents item i and its branch by one level (adds a Tab to each saved line), making it a child of the item above; does nothing for item 0.</td></tr>
+<tr><td class="rq-name">DecLevel</td><td class="rq-type">SUB(i as integer)</td><td>DecLevel(i) moves item i and its branch one level up (removes one leading Tab) and places it before its former parent; does nothing for a top-level item.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>MoveDown, IncLevel and DecLevel write and delete a temporary file tmp_tree.tv in the program folder, so the folder must be writable.</li>
+<li>GetParent and GetChildrenList assign an early result (-1 or &quot;&quot;) but do not exit, so they continue scanning; GetChildrenList then returns LEFT$ of an empty list with length -1.</li>
+<li>BranchLength sets result 0 when the item is the last one but still enters its loop.</li>
+<li>MoveDown compares i with ItemCount (not the last index) to detect the last item.</li>
+<li>DecLevel selects the item at parentindex - 1 after the move.</li>
+<li>The file turns on $TYPECHECK ON for the including program.</li>
+</ul>
+<a name="4"></a><h2>QtreeviewEx Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QTreeviewEx.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Tree&quot;
+  CREATE Tree AS QtreeviewEx
+    Parent = Form
+  END CREATE
+END CREATE
+Tree.AddItems &quot;Root&quot;
+Tree.AddChildTo(0, &quot;Root&quot;, &quot;Child 1&quot;)
+Tree.AddChildTo(0, &quot;Root&quot;, &quot;Child 2&quot;)
+ShowMessage Tree.GetChildrenList(0)
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qtoolbarex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qvideo.html">Next component</a></div>
+</body>
+</html>

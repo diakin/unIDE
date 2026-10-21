@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>conversion.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: conversion.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>conversion.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/conversion.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 41 functions &middot; 8 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#ADD0BEFORE">Add0Before</a> &middot; <a href="#ADDCHRAFTER">AddChrAfter</a> &middot; <a href="#ADDCHRBEFORE">AddChrBefore</a> &middot; <a href="#BGR2HTMLCOLOR">BGR2HtmlColor</a> &middot; <a href="#BYTEREORDER">ByteReOrder</a> &middot; <a href="#CBYTENUM">CByteNum</a> &middot; <a href="#CHARLOWER">CharLower</a> &middot; <a href="#CHARTOOEM">CharToOem</a> &middot; <a href="#CHARUPPER">CharUpper</a> &middot; <a href="#CNUMBYTE">CNumByte</a> &middot; <a href="#CONVERTCODEPAGE2">ConvertCodePage2</a> &middot; <a href="#CUTLEFT">Cutleft</a> &middot; <a href="#CUTRIGHT">CutRight</a> &middot; <a href="#DAYDATE">DayDate</a> &middot; <a href="#DECTOHEX">dectoHex</a> &middot; <a href="#DELTAGS">delTags</a> &middot; <a href="#GETWORD">GetWord</a> &middot; <a href="#GRAD2SEC">Grad2Sec</a> &middot; <a href="#HEX2DEC">Hex2Dec</a> &middot; <a href="#HTMLCOLOR2BGR">HtmlColor2BGR</a> &middot; <a href="#ISDIGIT">IsDigit</a> &middot; <a href="#ISDIGITSONLY">IsDigitsOnly</a> &middot; <a href="#LCASEAPI">LCaseApi</a> &middot; <a href="#LIKE">Like</a> &middot; <a href="#MULTIBYTETOWIDECHAR">MultiByteToWideChar</a> &middot; <a href="#MULTIBYTETOWIDECHAR1">MultiByteToWideChar1</a> &middot; <a href="#OB2GRAD">Ob2Grad</a> &middot; <a href="#OEMTOCHAR">OemToChar</a> &middot; <a href="#RC4">RC4</a> &middot; <a href="#RQCONVERTCODEPAGE">RQConvertCodePage</a> &middot; <a href="#RQCONVERTCODEPAGE1">RQConvertCodePage1</a> &middot; <a href="#SADD">sadd</a> &middot; <a href="#SEC2UGL">Sec2Ugl</a> &middot; <a href="#SECTIME">SecTime</a> &middot; <a href="#STRL_">STRL$</a> &middot; <a href="#TIMESTRING">TimeString</a> &middot; <a href="#UCASEAPI">UCaseApi</a> &middot; <a href="#UGL2SEC">Ugl2Sec</a> &middot; <a href="#VIDNUM_">vidnum$</a> &middot; <a href="#WIDECHARTOMULTIBYTE">WideCharToMultiByte</a> &middot; <a href="#WIDECHARTOMULTIBYTE1">WideCharToMultiByte1</a></p>
+<h3><a name="ADD0BEFORE"></a>Add0Before</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3227</p>
+<pre>function Add0Before(NumStr as string , Dlina as integer) as string</pre>
+<p>Left-pads NumStr with zeros to length Dlina (e.g. &quot;-387.35&quot;, 8 gives &quot;0-387.35&quot;). Returns &quot;String too long&quot; if NumStr is longer.</p>
+<h3><a name="ADDCHRAFTER"></a>AddChrAfter</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3213</p>
+<pre>function AddChrAfter(NumStr as string , Dlina as integer, chr1 as string) as string</pre>
+<p>Right-pads NumStr with character chr1 to length Dlina. Returns NumStr unchanged if already that long, or &quot;String too long&quot; if longer.</p>
+<h3><a name="ADDCHRBEFORE"></a>AddChrBefore</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3197</p>
+<pre>function AddChrBefore(NumStr as string , Dlina as integer, chr1 as string) as string</pre>
+<p>Left-pads NumStr with character chr1 to length Dlina. Returns NumStr unchanged if already that long, or the text &quot;String too long&quot; if longer.</p>
+<h3><a name="BGR2HTMLCOLOR"></a>BGR2HtmlColor</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3687</p>
+<pre>function BGR2HtmlColor (BGRColor as long) as string</pre>
+<p>Converts a Windows BGR color value to an HTML color string &quot;#RRGGBB&quot;.</p>
+<h3><a name="BYTEREORDER"></a>ByteReOrder</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3243</p>
+<pre>FUNCTION ByteReOrder (ByteStr$,ReOrder$ ) as string</pre>
+<p>Reorders the characters (bytes) of ByteStr$: result position i takes the byte at the position given by digit i of ReOrder$; bytes past the length of ReOrder$ are kept in place. Shows a message and exits if an index exceeds the string length.</p>
+<h3><a name="CBYTENUM"></a>CByteNum</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3277</p>
+<pre>FUNCTION CByteNum (ByteStr$,Num_Type as short ) as variant</pre>
+<p>Converts a byte string ByteStr$ to a number of type Num_Type (Num_SHORT, Num_WORD, Num_LONG, Num_DWORD, Num_SINGLE, Num_DOUBLE; others read as DOUBLE) using a QMemoryStream. Num_BYTE is rejected with a message. Returns a variant.</p>
+<h3><a name="CHARLOWER"></a>CharLower</h3>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 3106</p>
+<pre>Declare Function CharLower Lib &quot;user32&quot; Alias &quot;CharLowerA&quot; (ByVal lpsz As String) As String</pre>
+<p>Converts a character string or a single character to lowercase, in place.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CharLowerA">CharLowerA</a></p>
+<h3><a name="CHARTOOEM"></a>CharToOem</h3>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 3097</p>
+<pre>Declare Function CharToOem Lib &quot;user32&quot; Alias &quot;CharToOemA&quot; (ByVal lpszSrc As String, ByVal lpszDst As String) as Long</pre>
+<p>Translates a string from the ANSI character set into the OEM-defined character set.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CharToOemA">CharToOemA</a></p>
+<h3><a name="CHARUPPER"></a>CharUpper</h3>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 3107</p>
+<pre>Declare Function CharUpper Lib &quot;user32&quot; Alias &quot;CharUpperA&quot; (ByVal lpsz As String) As String</pre>
+<p>Converts a character string or a single character to uppercase, in place.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CharUpperA">CharUpperA</a></p>
+<h3><a name="CNUMBYTE"></a>CNumByte</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3281</p>
+<pre>FUNCTION CNumByte (Num, Num_Type as short) as string</pre>
+<p>Converts the number Num to its binary byte string for type Num_Type (Num_SHORT, Num_WORD, Num_LONG, Num_DWORD, Num_SINGLE, Num_DOUBLE; others as DOUBLE) via a QMemoryStream. Num_BYTE is rejected with a message.</p>
+<h3><a name="CONVERTCODEPAGE2"></a>ConvertCodePage2</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3679</p>
+<pre>Function ConvertCodePage2 (SourseString As String, inPage As long, outPage As long) As String</pre>
+<p>Converts SourseString from code page inPage to code page outPage via MultiByteToWideChar and WideCharToMultiByte (for example 1251 to 65001 UTF-8). Returns the converted string.</p>
+<h3><a name="CUTLEFT"></a>Cutleft</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3580</p>
+<pre>function Cutleft(a as string, n as long) as string</pre>
+<p>Returns string a without its first n characters.</p>
+<h3><a name="CUTRIGHT"></a>CutRight</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3584</p>
+<pre>function CutRight(a as string, n as long) as string</pre>
+<p>Returns string a without its last n characters.</p>
+<h3><a name="DAYDATE"></a>DayDate</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3437</p>
+<pre>function DayDate (cDate$ as string) as integer</pre>
+<p>Converts a date string &quot;MM-DD-YYYY&quot; to an approximate day number 365*Year + 30*Month + Day. Only usable for rough comparisons, not exact day differences.</p>
+<h3><a name="DECTOHEX"></a>dectoHex</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3193</p>
+<pre>function dectoHex (Dec as string) as string</pre>
+<p>Converts a decimal number given as a string to a hexadecimal string, keeping a leading minus sign for negative values. A result of 0 is returned as &quot;00&quot;.</p>
+<h3><a name="DELTAGS"></a>delTags</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3588</p>
+<pre>function delTags (HTMLtext as string) as string</pre>
+<p>Converts HTML to plain text: collapses runs of spaces and tabs, turns &lt;br&gt;, &lt;/p&gt;, &lt;/tr&gt; into line breaks and &lt;/td&gt; into a space, removes all &lt;...&gt; tags, decodes &amp;quot; &amp;gt; &amp;lt; &amp;nbsp;, and collapses repeated blank lines. Also inserts a line break after each &quot;. &quot;.</p>
+<h3><a name="GETWORD"></a>GetWord</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3463</p>
+<pre>Function GetWord (Oper$ as string, getV$ as string) as long</pre>
+<p>Old, replaced by GetVarPos. Finds getV$ as a whole identifier in Oper$ (case-insensitive, delimited by operator characters) outside strings and comments. Returns its position, 0 if not found at all, -2 if found only inside strings/comments or as part of other words.</p>
+<h3><a name="GRAD2SEC"></a>Grad2Sec</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 3508</p>
+<pre>sub Grad2Sec ( Ugl$ as string, byref obor as single, byref SecFull as integer, byref SecMnt as integer, byref Grad as integer, byref Mint as integer, byref Sec1 as integer )</pre>
+<p>Parses an angle string like -12&lt;deg&gt;30&#x27;15&quot; (degree sign chr$(176), &#x27; and &quot;) and returns via BYREF parameters: revolutions (obor), total arc seconds, seconds beyond whole degrees, and signed degrees, minutes, seconds.</p>
+<h3><a name="HEX2DEC"></a>Hex2Dec</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3146</p>
+<pre>function Hex2Dec (HexStr as string) as string</pre>
+<p>Converts a hexadecimal string to its decimal value and returns it as a string. Values above 10^6 are built from two parts to avoid exponential notation.</p>
+<h3><a name="HTMLCOLOR2BGR"></a>HtmlColor2BGR</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3691</p>
+<pre>function HtmlColor2BGR (HtmlColor as string) as long</pre>
+<p>Converts an HTML color string &quot;#RRGGBB&quot; to a Windows BGR color value.</p>
+<h3><a name="ISDIGIT"></a>IsDigit</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3312</p>
+<pre>FUNCTION IsDigit(S AS STRING) AS INTEGER</pre>
+<p>Returns 1 if S is between &quot;0&quot; and &quot;9&quot; (string comparison, intended for one character), else 0.</p>
+<h3><a name="ISDIGITSONLY"></a>IsDigitsOnly</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3326</p>
+<pre>FUNCTION IsDigitsOnly(S AS STRING) AS INTEGER</pre>
+<p>Returns 1 if every character of S is a digit 0-9, else 0. An empty string returns 0.</p>
+<h3><a name="LCASEAPI"></a>LCaseApi</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3134</p>
+<pre>function LCaseApi( SrcTxt as string ) as string</pre>
+<p>Returns SrcTxt in lower case using the Windows CharLower API (locale aware, so it handles non-Latin letters such as Cyrillic).</p>
+<h3><a name="LIKE"></a>Like</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3311</p>
+<pre>FUNCTION Like(ParseString AS STRING, Pattern AS STRING) AS INTEGER</pre>
+<p>VB-style pattern match: returns 1 if ParseString matches Pattern, else 0. Supports ? (any char), # (digit), * (any sequence, recursive) and [..] character sets with ranges and negation (constant INVERT). Uses IsDigit.</p>
+<h3><a name="MULTIBYTETOWIDECHAR"></a>MultiByteToWideChar</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 3110</p>
+<pre>Declare Function MultiByteToWideChar Lib &quot;kernel32&quot; alias &quot;MultiByteToWideChar&quot; ( CodePage As Long, dwFlags As Long, lpMultiByteStr As Long, cchMultiByte As Long, lpWideCharStr As Long, cchWideChar As Long) As Long</pre>
+<p>Maps a character string in a given code page to a UTF-16 (wide character) string. Returns the number of characters written or required.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MultiByteToWideChar">MultiByteToWideChar</a></p>
+<h3><a name="MULTIBYTETOWIDECHAR1"></a>MultiByteToWideChar1</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 3122</p>
+<pre>Declare Function MultiByteToWideChar1 Lib &quot;kernel32&quot; alias &quot;MultiByteToWideChar&quot; ( CodePage As Long, dwFlags As Long, lpMultiByteStr As long, cchMultiByte As Long, lpWideCharStr As Long, cchWideChar As Long) As Long</pre>
+<p>Maps a character string in a given code page to a UTF-16 (wide character) string. Returns the number of characters written or required.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=MultiByteToWideChar">MultiByteToWideChar</a></p>
+<h3><a name="OB2GRAD"></a>Ob2Grad</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 3471</p>
+<pre>sub Ob2Grad (obor as single, SecFull as integer, SecMnt as integer, Grad as integer, Mint as integer, Sec1 as integer, byref Ugl$ as string)</pre>
+<p>Converts a value in revolutions (obor) to arc units and returns them in the other parameters: SecFull (total arc seconds), Grad, Mint, Sec1 (degrees, minutes, seconds), SecMnt (seconds beyond whole degrees) and Ugl$ formatted like -12&lt;deg&gt;30&#x27;15&quot;. Note obor is changed to its absolute value.</p>
+<h3><a name="OEMTOCHAR"></a>OemToChar</h3>
+<p class="rq-meta">DLL function, user32 &middot; RQProc.inc, line 3102</p>
+<pre>Declare Function OemToChar Lib &quot;user32&quot; Alias &quot;OemToCharA&quot; (ByVal lpszSrc As String, ByVal lpszDst As String) As Long</pre>
+<p>Translates a string from the OEM-defined character set into an ANSI character string.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=OemToCharA">OemToCharA</a></p>
+<h3><a name="RC4"></a>RC4</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3683</p>
+<pre>FUNCTION RC4 (key AS STRING, str AS STRING) AS STRING</pre>
+<p>Encrypts or decrypts str with the RC4 stream cipher using key and returns the result (same call for both directions). Returns an empty string if key is empty.</p>
+<h3><a name="RQCONVERTCODEPAGE"></a>RQConvertCodePage</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 35158</p>
+<pre>Function RQConvertCodePage (SourseString As String, inPage As long, outPage As long) As String</pre>
+<p>Converts SourseString from code page inPage to code page outPage (e.g. 1251, 65001 for UTF-8) via MultiByteToWideChar and WideCharToMultiByte, and returns the result.</p>
+<h3><a name="RQCONVERTCODEPAGE1"></a>RQConvertCodePage1</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3675</p>
+<pre>Function RQConvertCodePage1 (SourseStringPtr As long, inPage As long, outPage As long) As String</pre>
+<p>Converts a zero-terminated string given by its pointer SourseStringPtr from code page inPage to code page outPage via MultiByteToWideChar and WideCharToMultiByte (declared as ...1 aliases). Returns the converted string.</p>
+<h3><a name="SADD"></a>sadd</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3576</p>
+<pre>function sadd(InpStr as string) as long</pre>
+<p>Writes InpStr into a local QMemoryStream and returns the stream&#x27;s memory pointer. The pointer refers to a temporary copy, not to the original string variable, and may be invalid after the function returns.</p>
+<h3><a name="SEC2UGL"></a>Sec2Ugl</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3572</p>
+<pre>function Sec2Ugl (SecFull as long) as string</pre>
+<p>Converts a signed number of arc seconds to an angle string like -12&lt;deg&gt;30&#x27;15&quot; (degree sign chr$(176)).</p>
+<h3><a name="SECTIME"></a>SecTime</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3429</p>
+<pre>function SecTime (cTime$ as string) as integer</pre>
+<p>Converts a time string &quot;HH:MM:SS&quot; to the number of seconds since midnight.</p>
+<h3><a name="STRL_"></a>STRL$</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3695</p>
+<pre>FUNCTION STRL$ (value AS long) AS STRING</pre>
+<p>Returns the integer part of value as a string without exponent notation (formats with STRF$ ffFixed and cuts at the decimal separator, &#x27;.&#x27; or &#x27;,&#x27;).</p>
+<h3><a name="TIMESTRING"></a>TimeString</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3447</p>
+<pre>function TimeString (TimSec as integer) as string</pre>
+<p>Converts a number of seconds to a &quot;HH:MM:SS&quot; string with two-digit fields.</p>
+<h3><a name="UCASEAPI"></a>UCaseApi</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3138</p>
+<pre>function UCaseApi( SrcTxt as string ) as string</pre>
+<p>Returns SrcTxt in upper case using the Windows CharUpper API (locale aware, handles non-Latin letters).</p>
+<h3><a name="UGL2SEC"></a>Ugl2Sec</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3550</p>
+<pre>function Ugl2Sec (Ugl$ as string) as integer</pre>
+<p>Parses an angle string like -12&lt;deg&gt;30&#x27;15&quot; (degree sign chr$(176), &#x27; and &quot;) and returns the total signed number of arc seconds.</p>
+<h3><a name="VIDNUM_"></a>vidnum$</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 3142</p>
+<pre>FUNCTION vidnum$ (Num, dig%) as string</pre>
+<p>Returns Num rounded to dig% digits after the decimal point, as a string (e.g. 999999.2366666666, 4 gives 999999.2367). dig% is limited to the decimals present; a negative dig% rounds to tens, hundreds etc. Uses CLNG, so very large values may overflow.</p>
+<h3><a name="WIDECHARTOMULTIBYTE"></a>WideCharToMultiByte</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 3116</p>
+<pre>Declare Function WideCharToMultiByte Lib &quot;kernel32&quot; alias &quot;WideCharToMultiByte&quot; ( CodePage As Long, dwFlags As Long, lpWideCharStr As Long, cchWideChar As Long, lpMultiByteStr As Long, cchMultiByte As Long, lpDefaultChar As long, lpUsedDefaultChar As Long) As Long</pre>
+<p>Maps a UTF-16 (wide character) string to a new character string in the specified code page. Returns the number of bytes written or required.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=WideCharToMultiByte">WideCharToMultiByte</a></p>
+<h3><a name="WIDECHARTOMULTIBYTE1"></a>WideCharToMultiByte1</h3>
+<p class="rq-meta">DLL function, kernel32 &middot; RQProc.inc, line 3128</p>
+<pre>Declare Function WideCharToMultiByte1 Lib &quot;kernel32&quot; alias &quot;WideCharToMultiByte&quot; ( CodePage As Long, dwFlags As Long, lpWideCharStr As long, cchWideChar As Long, lpMultiByteStr As Long, cchMultiByte As Long, lpDefaultChar As long, lpUsedDefaultChar As Long) As Long</pre>
+<p>Maps a UTF-16 (wide character) string to a new character string in the specified code page. Returns the number of bytes written or required.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=WideCharToMultiByte">WideCharToMultiByte</a></p>
+</body>
+</html>

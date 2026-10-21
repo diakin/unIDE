@@ -1,0 +1,93 @@
+<h1>Настройки (IDE Options)</h1>
+<p>Меню <b>Options</b> открывает окно IDE Options. Вкладки: Color Scheme, Editor Options, IDE
+colors and Fonts, Compilers, Arduino, Preferences, Designer, Environment Variables, File Types.
+Почти все значения записываются сразу при изменении.</p>
+
+<h2><a name="schemes"></a>Color Scheme &mdash; схемы подсветки</h2>
+<p>Таблица показывает разделы схемы активной вкладки: Syntax Element, Font Color, Background
+Color. Под таблицей &mdash; данные раздела (слова, маркеры). Двойной щелчок по цвету открывает
+выбор цвета.</p>
+<ul>
+<li><b>Темы редактора</b> (список сверху, Add, Delete): одна схема хранит цвета для всех тем.
+  Основную тему Classic Windows удалить нельзя.</li>
+<li><b>Режим IDE</b>: IDE Light, IDE Dark, Custom (свои темы, Add, Del).</li>
+<li><b>Add Group / Delete Group</b> &mdash; группы Keywords, Operators, Block Comment, Line Mark.</li>
+<li><b>Restore Defaults</b> &mdash; вернуть цвета к умолчаниям.</li>
+<li><b>Edit Default</b> &mdash; править общую схему <code>schemes\&bull;default&bull;.clr</code>
+  (кнопка становится Edit Current).</li>
+<li><b>Open clr file</b> &mdash; открыть файл схемы во вкладке; <b>Select scheme</b> &mdash; взять
+  другую схему как заготовку.</li>
+<li><b>Save</b> записывает схему, <b>Exit</b> закрывает окно.</li>
+</ul>
+<h3>Файл схемы .clr</h3>
+<p>Заголовок раздела &mdash; строка <code>&bull; Имя цвет_текста цвет_фона</code>, следующая
+строка &mdash; данные. Строка <code>&bull; Имя@Тема цвет цвет</code> задаёт цвета для темы.</p>
+<table>
+<tr><th>Раздел</th><th>Что задаёт</th></tr>
+<tr><td>Keywords1..N</td><td>Ключевые слова через запятую.</td></tr>
+<tr><td>Operators, Operators2...</td><td>Символы операторов.</td></tr>
+<tr><td>LineComment, BlockComment...</td><td>Маркеры комментариев.</td></tr>
+<tr><td>Strings, StrEscape</td><td>Кавычки строк, знак экранирования.</td></tr>
+<tr><td>Digits</td><td>Формы записи чисел.</td></tr>
+<tr><td>CUSTOM1..5</td><td>Цветные комментарии <code>!</code> ... <code>!!!!!</code>.</td></tr>
+<tr><td>Text</td><td>Цвет и фон основного текста.</td></tr>
+<tr><td>LineMark...</td><td>Слова, по которым строка заливается фоном.</td></tr>
+<tr><td>PairMark</td><td>Подсветка скобки под кареткой и её пары.</td></tr>
+<tr><td>SubList, SubEnd, SubOpen, SubNoBody, SubOpenFirst, SubSkip, SubScope, SubStyle</td><td>Слова
+  для списка подпрограмм и блоков.</td></tr>
+<tr><td>FmtOutdent, FmtSection, FmtClass, FmtStmtEnd, FmtHang, FmtContinue</td><td>Правила Format
+  text (в таблице скрыты).</td></tr>
+</table>
+<p>Сначала читается <code>&bull;default&bull;.clr</code>, поверх него &mdash; схема расширения.</p>
+<h3><a name="filetypes"></a>File Types &mdash; какая схема у расширения</h3>
+<p>Порядок: своя схема <code>schemes\&lt;ext&gt;.clr</code>; соответствие в
+<code>schemes\alias.ini</code> (раздел <code>[Alias]</code>, строки вида <code>pp=pas</code>);
+для .inc в проекте RapidQ &mdash; bas; встроенные соответствия (dpr, dpk, pp, p, lpr, inc &rarr;
+pas; lfm &rarr; dfm; lpi, lps, lpk, fpd &rarr; xml; toml &rarr; ini). Вкладка File Types
+показывает и правит эти соответствия (Add..., Edit..., Delete).</p>
+
+<h2><a name="editor"></a>Editor Options</h2>
+<ul>
+<li>Syntax HiLight, Show spaces, Tab (ширина табуляции), Show line numbers, Font Change (шрифт
+  редактора, один на все языки).</li>
+<li>Indent hilight: строка Indent &mdash; чем делать отступ (spaces, tab, none) и сколько; HiLight &mdash; линии отступа и их
+  бледность.</li>
+<li>Editor colors: цвета текста и полосы номеров.</li>
+<li>Margin and gutter: правое поле, полоса номеров, её ширина (Auto &mdash; по числу цифр номера последней строки, не меньше пяти), отступ текста от полосы (Text indent, в точках).</li>
+<li>Code Insight: Code completion, Code parameters, Tooltip expression evaluation, Tooltip
+  symbol insight, задержка; цвета списка.</li>
+</ul>
+
+<h2><a name="idecolors"></a>IDE colors and Fonts</h2>
+<p>Цвета элементов самой среды (вкладки, меню, выделение, деревья, кнопки, полосы прокрутки,
+полоса номеров, отладчик и т. д.) и шрифты групп: окна и панели, меню, вкладки файлов, правая
+панель, логи, строка состояния (размер 8&ndash;14). Двойной щелчок &mdash; выбор цвета или шрифта.
+Цвета хранятся в <code>IDE.clr</code> (свои для Light, Dark и своих тем), шрифты &mdash; в
+editor.ini. «Вернуть умолчания» сбрасывает всё.</p>
+
+<h2><a name="compilers"></a>Compilers</h2>
+<p>Слева тип (RapidQ Basic, Delphi, FreeBASIC, Visual Basic, Arduino, C project, CPP project,
+WebSite), сверху инструмент (можно завести несколько: Add, Delete), ниже поля путей. Кнопка
+«...» у поля выбирает файл или папку.</p>
+<table>
+<tr><th>Тип</th><th>Поля</th></tr>
+<tr><td>RapidQ Basic</td><td>Use IDE path (поля от папки RapidQ), IDE path, Compiler, Include
+  UnIde, Include User, Library, Projects, Templates, App icon, Components, RqLcl folder.</td></tr>
+<tr><td>Delphi</td><td>Delphi path, Library path, Browsing path (кнопка «Взять из Delphi» берёт оба
+  из реестра Delphi, свои пути остаются в конце), Output
+  (exe), Output (dcu), Ui components; Find installed.</td></tr>
+<tr><td>FreeBASIC</td><td>FB compiler 32, FB compiler 64, Include, Library.</td></tr>
+<tr><td>Arduino</td><td>Sketch path, Arduino CLI file, Build path, Library path, Log file, Cli
+  cfg file, Cli data path, Cli downloads path, Arduino15 path.</td></tr>
+</table>
+
+<h2><a name="prefs"></a>Preferences, Designer, Environment Variables</h2>
+<ul>
+<li><b>Preferences</b>: автосохранение файлов редактора и рабочего стола проекта; Show compiler
+  progress, Minimize on run, Hide designers on run.</li>
+<li><b>Designer</b>: Display grid, Snap to grid, Grid size, Auto create forms &amp; data modules,
+  Show component captions, Show designer hints, Show extended control hints.</li>
+<li><b>Environment Variables</b>: системные переменные и свои подмены (New..., Edit...,
+  Delete). Подмены видны в путях как <code>$(VAR)</code> и <code>%VAR%</code> и во всех
+  запускаемых программах.</li>
+</ul>

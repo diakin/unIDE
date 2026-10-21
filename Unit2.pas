@@ -14,134 +14,327 @@ uses
   UiMenus,        // всплывающее меню по теме (TUiPopupMenu)
   UiStdDlgs,      // диалоги цвета и шрифта по теме
   FolderDlg,      // выбор папки окном Проводника вместо "Обзор папок"
+  ArduinoCli,     // Compilers - Arduino: импорт путей из RQdb.ini
+  EnvOptions,     // Preferences, Designer, Environment Variables
   // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
   // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
 
 type
+  // Окно IDE Options. Постоянные элементы описаны в Unit2.dfm и правятся в
+  // конструкторе форм. В коде строится только то, что зависит от данных:
+  // поля страницы Compilers (свой набор у каждого типа), строки путей на
+  // вкладке Arduino (таблица ArdPathFields), образцы цветов Code Insight, а
+  // также раскладка рядов по ширине надписей.
   TForm2 = class(TForm)
-  protected
-    procedure WndProc(var Message: TMessage); override;
-  private
-    procedure GridDrawCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect; State: TGridDrawState);
-    procedure GridSelectCell(Sender: TObject; ACol, ARow: Integer; var CanSelect: Boolean);
-
-    procedure ButtonClick1(Sender: TObject);
-
-
-  public
-FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
+    pcOptions: TUiPageControl;
+    // --- Color Scheme ---
+    tsColorScheme: TTabSheet;
+    // Панель темы - первая строка вкладки, как в окне настроек RQdebugger:
+    // подпись, список тем (в нём же вводится имя новой), Add, Delete; под
+    // ней режим IDE - Light, Dark или своя тема (Custom) из cmbIdeCustom.
+    // Хранится в editor.ini, раздел [Themes].
+    pnlTheme: TPanel;
+    lblTheme: TPanel;
+    cmbTheme: TUiComboBox;
+    btnThemeAdd: TUiButton;
+    btnThemeDel: TUiButton;
+    pnlThemeSpacer: TPanel;
+    rbIdeLight: TUiRadioButton;
+    rbIdeDark: TUiRadioButton;
+    rbIdeCustom: TUiRadioButton;
+    cmbIdeCustom: TUiComboBox;
+    btnIdeCustomAdd: TUiButton;
+    btnIdeCustomDel: TUiButton;
+    pnlGroupActions: TPanel;
+    cmbGroupType: TUiComboBox;
+    btnAddGroup: TUiButton;
+    btnDeleteGroup: TUiButton;
+    btnRestoreDefaults: TUiButton;
+    btnEditDefault: TUiButton;
+    btnOpenClr: TUiButton;
+    btnSelectSchema: TUiButton;
+    pnlBottom: TPanel;
+    btnOK: TUiButton;
+    btnCancel: TUiButton;
+    // Поле просмотра и правки данных строки таблицы (столбец 3)
+    MemoSchemaDetails: TUiMemo;
     Grid: TStringGrid;
-    // ВКЛАДКА IDE COLORS: таблица цветов оформления самой программы -
-    // вкладки, дерево объектов и прочее, что не относится к подсветке
-    // синтаксиса. Список ролей и значения живут в Form1 (FUiColors),
-    // хранятся в IDE.clr.
-    UiGrid: TStringGrid;
-    UiKeys: TStringList;      // ключ для каждой строки таблицы
+    // Кнопка в ячейке Text таблицы: цвета текста - из настроек редактора
+    btnBaseColors: TUiButton;
+    // --- Editor Options ---
+    tsEdOptions: TTabSheet;
+    grpEditorOptions: TUiGroupBox;
+    chkUseHighlight: TUiCheckBox;
+    chkShowSpaces: TUiCheckBox; // показывать пробелы и табуляции знаками
+    lblTabWidth: TLabel;
+    cmbTabWidth: TUiComboBox;
+    chkShowLineNumbers: TUiCheckBox;
+    btnFontChange: TUiButton;
+    // ОТСТУП: чем его делает Format text (spaces, tab, none), сколько
+    // символов в уровне, подсвечивать ли полосами и насколько они бледные
+    grpIndent: TUiGroupBox;
+    lblIndent: TLabel;
+    cmbIndentKind: TUiComboBox;   // spaces / tab / none
+    cmbIndentSize: TUiComboBox;
+    chkHotTabHighlight: TUiCheckBox;
+    edtPale: TUiEdit;
+    udPale: TUiUpDown;
+    // Подсказка внизу вкладки: настройки отступа описывают будущий вид
+    // файла, а текст сам собой не меняется - его надо переформатировать
+    lblIndentHint: TLabel;
+    // Группа Editor colors: текст и фон редактора, цвета панели номеров строк
+    grpEditorColors: TUiGroupBox;
+    lblEditorColor: TLabel;
+    pnlEditorFG: TPanel;
+    pnlEditorBG: TPanel;
+    lblGutterColor: TLabel;
+    pnlGutterFG: TPanel;
+    pnlGutterBG: TPanel;
+    // Margin and gutter, Code Insight (Form1.FEdIns)
+    grpEdMargin: TUiGroupBox;
+    chkEdRightMargin: TUiCheckBox;
+    lblEdRightMargin: TLabel;
+    cmbEdRightMargin: TUiComboBox;
+    chkEdGutter: TUiCheckBox;
+    lblEdGutterWidth: TLabel;
+    cmbEdGutterWidth: TUiComboBox;
+    lblEdTextIndent: TLabel;
+    cmbEdTextIndent: TUiComboBox;
+    grpEdInsight: TUiGroupBox;
+    chkEdCompletion: TUiCheckBox;
+    chkEdParams: TUiCheckBox;
+    chkEdTipEval: TUiCheckBox;
+    chkEdTipSymbol: TUiCheckBox;
+    lblEdDelay: TLabel;
+    cmbEdDelay: TUiComboBox;
+    lblEdInsightColors: TLabel;
+    btnEdDefaultColors: TUiButton;
+    // --- IDE colors: цвета оформления самой программы (вкладки, дерево
+    // объектов и прочее, что не относится к подсветке синтаксиса). Список
+    // ролей и значения живут в Form1 (FUiColors), хранятся в IDE.clr.
+    tsIdeColors: TTabSheet;
     pnlUiBottom: TPanel;
     btnUiDefaults: TUiButton;
     lblUiHint: TLabel;
-    ColorDlg: TColorDialog;
-    btnOK: TUiButton;
-    btnCancel: TUiButton;
-    pnlBottom: TPanel; // --- ДОБАВЬТЕ ЭТУ СТРОКУ СЮДА ---
-  // НАШИ НОВЫЕ ЧЕКБОКСЫ (Добавьте эти две строки в public)
-    chkUseHighlight: TUiCheckBox;
-    chkHotTabHighlight: TUiCheckBox;
-    edtPale: TUiEdit;
-    udPale: TUpDown;
-    lblTabWidth: TLabel;
-    cmbTabWidth: TUiComboBox;
-    // ОТСТУП: своя группа Indent. Чем его делает Format text (spaces, tab,
-    // none), сколько символов в уровне, подсвечивать ли полосами и насколько
-    // они бледные.
-    // ВКЛАДКА COMPILERS: слева список типов проектов, справа поля настроек
-    // того типа, что выбран. Поля описаны таблицей CompFields и строятся
-    // одинаково: подпись, путь, кнопка выбора.
+    UiGrid: TStringGrid;
+    // --- Compilers: слева список типов проектов, справа поля настроек
+    // выбранного типа (строятся в ShowCompilerPage внутри pnlCompPage).
+    // Над страницей - инструмент сборки внутри типа: у Delphi это версия
+    // среды, у C++ - MSVC, GCC или Clang. Раздел настроек у каждого свой:
+    // [Compiler.<Тип>.<Инструмент>].
+    tsCompilers: TTabSheet;
     lstCompTypes: TUiListBox;
-    // ИНСТРУМЕНТ СБОРКИ внутри типа: у Delphi это версия среды, у C++ -
-    // MSVC, GCC или Clang. У каждого свои пути, поэтому раздел настроек
-    // свой: [Compiler.<Тип>.<Инструмент>]. Какой из них берётся по
-    // умолчанию, хранится в [Compiler.<Тип>] Default, а проект может
-    // указать свой ключом Toolchain в .prj.
-    cbTool: TUiComboBox;
-    btnToolAdd, btnToolDel, btnToolFind: TUiButton;
-    FCompType: string;
     pnlCompPage: TPanel;
-    FCompEdits: array of TUiEdit;   // поля текущей страницы
+    cbTool: TUiComboBox;
+    btnToolAdd: TUiButton;
+    btnToolDel: TUiButton;
+    btnToolFind: TUiButton;
+    btnDelphiImport: TUiButton;  // Compilers - Delphi: «Взять из Delphi»
+    btnArdImport: TUiButton;     // Compilers - Arduino: «Импорт из RQdb.ini»
+    // --- Arduino: настройки arduino-cli, как в IDE Options RQdebugger.
+    // Ключи - [Compiler.Arduino], те же, что на странице Compilers - Arduino.
+    tsArduino: TTabSheet;
+    pcArduino: TUiPageControl;
+    tsArdSettings: TTabSheet;
+    pnlArdTop: TPanel;          // строки путей (InitArduinoTab) и флажки
+    lblArdWarnings: TLabel;
+    cbArdWarnings: TUiComboBox;
+    lblArdLogLevel: TLabel;
+    cbArdLogLevel: TUiComboBox;
+    lblArdVerbose: TLabel;
+    chkArdCompileVerbose: TUiCheckBox;
+    chkArdUploadVerbose: TUiCheckBox;
+    chkArdVerifyAfterUpload: TUiCheckBox;
+    chkArdExportBinaries: TUiCheckBox;
+    chkArdSaveBeforeBuild: TUiCheckBox;
+    lblArdUrls: TLabel;
+    pnlArdBottom: TPanel;
+    btnArdImportRq: TUiButton;
+    memArdUrls: TUiMemo;            // Additional Boards Manager URLs
+    // Лист Network: прокси, как в настройках Arduino IDE
+    tsArdNetwork: TTabSheet;
+    rbArdProxyNone: TUiRadioButton;
+    rbArdProxyAuto: TUiRadioButton;
+    chkArdProxyAutoUrl: TUiCheckBox;
+    edArdProxyAutoUrl: TUiEdit;
+    rbArdProxyManual: TUiRadioButton;
+    pnlArdProxyType: TPanel;   // HTTP / SOCKS - своя группа переключателей
+    rbArdProxyHttp: TUiRadioButton;
+    rbArdProxySocks: TUiRadioButton;
+    lblArdProxyHost: TLabel;
+    edArdProxyHost: TUiEdit;
+    lblArdProxyPort: TLabel;
+    edArdProxyPort: TUiEdit;
+    lblArdProxyUser: TLabel;
+    edArdProxyUser: TUiEdit;
+    lblArdProxyPassword: TLabel;
+    edArdProxyPassword: TUiEdit;
+    lblArdNetNote: TLabel;
+    tsArdCfg: TTabSheet;
+    pnlArdCfgTop: TPanel;
+    btnArdCfgReload: TUiButton;
+    btnArdCfgWrite: TUiButton;
+    lblArdCfgState: TLabel;
+    memArdCfg: TUiMemo;             // arduino-cli.yaml
+    // --- Preferences, Designer, Environment Variables (как Environment
+    // Options Delphi 7). Значения - Form1.FEnv и Form1.FEnvOverrides.
+    tsPrefs: TTabSheet;
+    grpPrefAutosave: TUiGroupBox;
+    chkPrefAutoEditor: TUiCheckBox;
+    chkPrefAutoDesktop: TUiCheckBox;
+    grpPrefCompiling: TUiGroupBox;
+    chkPrefProgress: TUiCheckBox;
+    chkPrefMinimize: TUiCheckBox;
+    chkPrefHideDsg: TUiCheckBox;
+    grpPrefModList: TUiGroupBox;
+    lblPrefPreviewDelay: TLabel;
+    edPrefPreviewDelay: TUiEdit;
+    udPrefPreviewDelay: TUiUpDown;
+    tsDesigner: TTabSheet;
+    grpDsgGrid: TUiGroupBox;
+    chkDsgGrid: TUiCheckBox;
+    chkDsgSnap: TUiCheckBox;
+    lblDsgGridSize: TLabel;
+    lblDsgGridX: TLabel;
+    edDsgGridX: TUiEdit;
+    udDsgGridX: TUiUpDown;
+    lblDsgGridY: TLabel;
+    edDsgGridY: TUiEdit;
+    udDsgGridY: TUiUpDown;
+    grpDsgModule: TUiGroupBox;
+    chkDsgAutoCreate: TUiCheckBox;
+    grpDsgOptions: TUiGroupBox;
+    chkDsgCaptions: TUiCheckBox;
+    chkDsgHints: TUiCheckBox;
+    chkDsgExtHints: TUiCheckBox;
+    tsEnvVars: TTabSheet;
+    grpEnvSystem: TUiGroupBox;
+    lvEnvSystem: TUiListView;
+    btnEnvOverride: TUiButton;
+    grpEnvUser: TUiGroupBox;
+    lvEnvUser: TUiListView;
+    btnEnvNew: TUiButton;
+    btnEnvEdit: TUiButton;
+    btnEnvDelete: TUiButton;
+    // --- невизуальные ---
+    ColorDlg: TUiColorDialog;
+    FontDlg: TUiFontDialog;
+    FSchemaMenu: TUiPopupMenu;   // Select scheme: список файлов схем
+
+    // Обработчики, назначенные в Unit2.dfm
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure Form2Close(Sender: TObject; var Action: TCloseAction);
+    procedure Form2CloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure Form2ResizeOrShow(Sender: TObject);
+    procedure OptionsPageChange(Sender: TObject);
+    procedure GridDrawCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect;
+                           State: TGridDrawState);
+    procedure GridSelectCell(Sender: TObject; ACol, ARow: Integer;
+                             var CanSelect: Boolean);
+    procedure GridDblClick(Sender: TObject);
+    procedure GridTopLeftChanged(Sender: TObject);
+    procedure ButtonClick1(Sender: TObject);
+    procedure btnFontChangeClick(Sender: TObject);
+    procedure MemoSchemaDetailsChange(Sender: TObject);
+    procedure btnRestoreDefaultsClick(Sender: TObject);
+    procedure btnEditDefaultClick(Sender: TObject);
+    procedure btnOpenClrClick(Sender: TObject);
+    procedure btnSelectSchemaClick(Sender: TObject);
+    procedure btnBaseColorsClick(Sender: TObject);
+    procedure ColorSwatchClick(Sender: TObject);
+    procedure cmbGroupTypeChange(Sender: TObject);
+    procedure btnAddGroupClick(Sender: TObject);
+    procedure btnDeleteGroupClick(Sender: TObject);
+    procedure cmbThemeChange(Sender: TObject);
+    procedure cmbThemeKeyPress(Sender: TObject; var Key: Char);
+    procedure btnThemeAddClick(Sender: TObject);
+    procedure btnThemeDelClick(Sender: TObject);
+    procedure rbIdeModeClick(Sender: TObject);
+    procedure cmbIdeCustomChange(Sender: TObject);
+    procedure btnIdeCustomAddClick(Sender: TObject);
+    procedure btnIdeCustomDelClick(Sender: TObject);
+    procedure chkUseHighlightClick(Sender: TObject);
+    procedure chkShowLineNumbersClick(Sender: TObject);
+    procedure chkShowSpacesClick(Sender: TObject);
+    procedure chkHotTabHighlightClick(Sender: TObject);
+    procedure cmbTabWidthChange(Sender: TObject);
+    procedure cmbIndentKindChange(Sender: TObject);
+    procedure cmbIndentSizeChange(Sender: TObject);
+    procedure edtPaleChange(Sender: TObject);
+    procedure UiGridDrawCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect;
+                             State: TGridDrawState);
+    procedure UiGridDblClick(Sender: TObject);
+    procedure btnUiDefaultsClick(Sender: TObject);
+    procedure lstCompTypesClick(Sender: TObject);
+    procedure cbToolChange(Sender: TObject);
+    procedure btnToolAddClick(Sender: TObject);
+    procedure btnToolDelClick(Sender: TObject);
+    procedure btnToolFindClick(Sender: TObject);
+    procedure btnDelphiImportClick(Sender: TObject);
+    procedure btnArdImportClick(Sender: TObject);
+    procedure ArdTopResize(Sender: TObject);
+    procedure ArdOptionChange(Sender: TObject);
+    procedure ArdUrlsChange(Sender: TObject);
+    procedure ArdNetChange(Sender: TObject);
+    procedure ArdCfgLoadClick(Sender: TObject);
+    procedure ArdCfgWriteClick(Sender: TObject);
+    procedure EnvOptionClick(Sender: TObject);
+    procedure EnvGridChange(Sender: TObject);
+    procedure EnvPreviewDelayChange(Sender: TObject);
+    procedure EnvOverrideClick(Sender: TObject);
+    procedure EnvNewClick(Sender: TObject);
+    procedure EnvEditClick(Sender: TObject);
+    procedure EnvDeleteClick(Sender: TObject);
+    procedure EdOptionClick(Sender: TObject);
+    procedure EdDefaultColorsClick(Sender: TObject);
+  protected
+    procedure WndProc(var Message: TMessage); override;
+  private
+    // InitOptions прошла: окно заполнено данными. До неё элементы из .dfm
+    // уже есть, но пустые, и обработчики ничего не пишут в настройки.
+    FBuilt: Boolean;
+    // Таблица схемы получила структуру (InitGridStructure) - с ней можно
+    // работать. Ставится в InitOptions перед первой InitGridStructure.
+    FGridReady: Boolean;
+  public
+    FLockMemo: Boolean; // текст в MemoSchemaDetails пишет программа
+    UiKeys: TStringList;      // ключ роли для каждой строки UiGrid
+    FCompType: string;
+    FCompEdits: array of TUiEdit;   // поля текущей страницы Compilers
     FCompKeys: array of string;   // ключи в editor.ini, по одному на поле
     // Поле хранит СПИСОК путей (Library path, Browsing path): у него кнопка
     // открывает окно списка (EditPathList). Папки, которых нет на этом
     // компьютере, в списке остаются - сборка их пропускает.
     FCompIsList: array of Boolean;
+    FCompBtns: array of TUiButton;  // кнопки «...» полей, по номеру поля
+    // RapidQ: Use IDE path - Compiler, Include, Library, Projects,
+    // Templates, App icon берутся от IDE path (CompApplyIdePath)
+    FCompUseIde: TUiCheckBox;
     // Find installed только что записал пути в editor.ini, а на экране
     // ещё прежние значения полей. Нормализация при пересборке страницы
     // вернула бы их поверх найденных - на один раз её отключаем.
     FSkipNormalize: Boolean;
     FCompSection: string;         // раздел настроек текущего типа
-    btnDelphiImport: TUiButton;  // Compilers - Delphi: «Взять из Delphi»
-    // Окно списка путей (EditPathList): его элементы на время показа
-    FPathList: TUiListBox;
-    FPathEdit: TUiEdit;
-    FPathState: TLabel;
-
-    grpIndent: TUiGroupBox;
-    lblIndent: TLabel;
-    cmbIndentKind: TUiComboBox;   // spaces / tab / none
-    cmbIndentSize: TUiComboBox;
-    // Подсказка внизу вкладки: настройки отступа описывают будущий вид
-    // файла, а текст сам собой не меняется - его надо переформатировать
-    lblIndentHint: TLabel;
-    chkShowLineNumbers: TUiCheckBox;
-    chkShowSpaces: TUiCheckBox; // показывать пробелы и табуляции знаками
-  // НАШЕ НОВОЕ ПОЛЕ ПРОСМОТРА И РЕДАКТИРОВАНИЯ ДЕТАЛЕЙ СХЕМЫ
-    MemoSchemaDetails: TUiMemo;
-
-    // НАША НОВАЯ КНОПКА СБРОСА НАСТРОЕК
-    btnRestoreDefaults: TUiButton;
-    pnlGroupActions: TPanel;
-    cmbGroupType: TUiComboBox;
-    btnAddGroup: TUiButton;
-    btnDeleteGroup: TUiButton;
-    // ПАНЕЛЬ ТЕМЫ - первая строка вкладки Color Scheme, как в окне
-    // настроек RQdebugger: подпись, список тем (в нём же вводится имя
-    // новой), Add, Delete и оформление IDE - светлое или тёмное.
-    // Хранится в editor.ini, раздел [Themes].
-    pnlTheme: TPanel;
-    lblTheme: TPanel;
-    cmbTheme: TUiComboBox;
-    btnThemeAdd, btnThemeDel: TUiButton;
-    // Режим IDE: Light, Dark или своя тема (Custom) из списка cmbIdeCustom;
-    // Add - новая своя тема из цветов текущего режима, Del - удалить
-    rbIdeLight, rbIdeDark, rbIdeCustom: TUiRadioButton;
-    cmbIdeCustom: TUiComboBox;
-    btnIdeCustomAdd, btnIdeCustomDel: TUiButton;
+    // Вкладка Arduino (tsArduino) и панель путей на листе Settings
+    // (pnlArdTop). Присваиваются в InitArduinoTab: до неё вкладка не
+    // заполнена, ArdTabLoad и ArdTopResize ничего не делают.
+    FArdTab: TTabSheet;
+    FArdTop: TPanel;
+    FArdEdits: array of TUiEdit;    // поля путей
+    FArdEditKeys: array of string;  // их ключи в editor.ini
+    FArdPathBtns: array of TUiButton;  // кнопки выбора справа от путей
+    FArdLoading: Boolean;           // элементы заполняются из editor.ini
+    FEnvLoading: Boolean;
+    FEdLoading: Boolean;
+    FEdSwatches: array[0..9] of TPanel;   // образцы цветов CodeInsight Colors
     FThemeLock: Boolean; // идёт заполнение - события не сохраняют
-
-// НАШИ НОВЫЕ КОМПОНЕНТЫ ДЛЯ СМЕНЫ ШРИФТА
-    FontDlg: TFontDialog;
-    btnFontChange: TUiButton;
-    // Фон пустого места редактора (BGColor в editor.ini)
-    // Цвета редактора: текст (FontColor) и фон пустого места (BGColor)
-    lblEditorColor: TLabel;
-    pnlEditorFG: TPanel;
-    pnlEditorBG: TPanel;
-    // Группа Editor colors: фон редактора и цвета панели номеров строк
-    grpEditorColors: TUiGroupBox;
-    lblGutterColor: TLabel;
-    pnlGutterFG: TPanel;
-    pnlGutterBG: TPanel;
     // В редакторе показаны цвета из таблицы, ещё не сохранённые в схему
     FPreviewDirty: Boolean;
     // В таблице и в редакторе - схема •default•.clr, а не схема вкладки
     FEditDefault: Boolean;
-    btnEditDefault: TUiButton;
-    btnOpenClr: TUiButton;
-    btnSelectSchema: TUiButton;
-    FSchemaMenu: TPopupMenu;
     FSchemaFiles: TStringList; // пути схем в порядке пунктов меню
-    // Кнопка в ячейке Text таблицы: цвета текста - из настроек редактора
-    btnBaseColors: TUiButton;
     FGridOldProc: TWndMethod; // обработчик таблицы до подмены
 
     // Имя раздела схемы для каждой строки таблицы: FRowSec[номер строки].
@@ -150,25 +343,20 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     // к строке по номеру больше нельзя - только по имени раздела.
     FRowSec: array of string;
 
-procedure btnFontChangeClick(Sender: TObject);
-procedure MemoSchemaDetailsChange(Sender: TObject);
-procedure btnRestoreDefaultsClick(Sender: TObject);
+    // Вкладка File Types: расширение -> схема подсветки (InitFileTypesTab)
+    FFtTab: TTabSheet;
+    FFtList: TUiListView;
+    FFtBtnAdd, FFtBtnEdit, FFtBtnDel: TUiButton;
 
-// ВМЕСТО FormCreate делаем публичный метод ручной настройки
+    // Заполнение окна данными при первом открытии (TForm1.PrepareOptionsForm)
     procedure InitOptions;
+    function  IsBuilt: Boolean;
     procedure LayoutEditorOptions(AGroup: TUiGroupBox);
     procedure LayoutEditorColors;
-    procedure ColorSwatchClick(Sender: TObject);
-    procedure SetupSwatch(APanel: TPanel; const ACaption, AHint: string);
     procedure UpdateColorSwatches;
-    procedure Form2Close(Sender: TObject; var Action: TCloseAction);
-    procedure Form2CloseQuery(Sender: TObject; var CanClose: Boolean);
-function  ConfirmSaveSchema(AForgetOnNo: Boolean): Boolean;
+    function  ConfirmSaveSchema(AForgetOnNo: Boolean): Boolean;
     procedure BeforeTabSwitch;
     procedure AfterTabSwitch;
-    procedure btnEditDefaultClick(Sender: TObject);
-    procedure btnOpenClrClick(Sender: TObject);
-    procedure btnSelectSchemaClick(Sender: TObject);
     procedure SchemaMenuItemClick(Sender: TObject);
     procedure LoadSchemaForEdit(const APath: string);
     function  TargetSchemaFile: string;
@@ -176,9 +364,6 @@ function  ConfirmSaveSchema(AForgetOnNo: Boolean): Boolean;
     procedure AskSavePreview;
     procedure UpdateEditTargetUI;
     procedure PlaceBaseColorsButton;
-    procedure GridTopLeftChanged(Sender: TObject);
-    procedure Form2ResizeOrShow(Sender: TObject);
-    procedure btnBaseColorsClick(Sender: TObject);
     procedure GridWndProc(var Message: TMessage);
     procedure SetTextRowColors(AFg, ABg: TColor);
     procedure InitGridStructure;
@@ -195,84 +380,70 @@ function  ConfirmSaveSchema(AForgetOnNo: Boolean): Boolean;
     function  KeywordGroupIndex(const AName: string): Integer;
     procedure RefreshGridFromForm1;
     procedure ApplyGridToForm1(SaveSchema: Boolean);
-    procedure cmbGroupTypeChange(Sender: TObject);
-    procedure btnAddGroupClick(Sender: TObject);
-    procedure btnDeleteGroupClick(Sender: TObject);
-    procedure BuildThemePanel(ATab: TWinControl);
     procedure LoadThemeList;
     procedure SaveThemeList;
     function  SwitchToSelectedTheme: Boolean;
-    procedure cmbThemeChange(Sender: TObject);
-    procedure cmbThemeKeyPress(Sender: TObject; var Key: Char);
-    procedure btnThemeAddClick(Sender: TObject);
-    procedure btnThemeDelClick(Sender: TObject);
-    procedure rbIdeModeClick(Sender: TObject);
-    procedure cmbIdeCustomChange(Sender: TObject);
-    procedure btnIdeCustomAddClick(Sender: TObject);
-    procedure btnIdeCustomDelClick(Sender: TObject);
     procedure LoadIdeCustomList;
     procedure ShowIdeMode;
-
-procedure chkUseHighlightClick(Sender: TObject); // Наш мгновенный обработчик
-procedure chkShowLineNumbersClick(Sender: TObject);
-procedure chkShowSpacesClick(Sender: TObject);
-procedure HideIndentHint;
-procedure chkHotTabHighlightClick(Sender: TObject);
-procedure cmbTabWidthChange(Sender: TObject);
-procedure cmbIndentKindChange(Sender: TObject);
-procedure cmbIndentSizeChange(Sender: TObject);
-procedure SetIndentControls(AKind, ASize: Integer);
-procedure LayoutIndentGroup;
-procedure BuildUiColorsTab(ATab: TWinControl);
-procedure RefreshUiGrid;
-procedure UiGridDrawCell(Sender: TObject; ACol, ARow: Integer; Rect: TRect;
-                         State: TGridDrawState);
-procedure UiGridDblClick(Sender: TObject);
-procedure btnUiDefaultsClick(Sender: TObject);
-procedure BuildCompilersTab(ATab: TWinControl);
-procedure LoadToolList(const AType: string);
-procedure SaveToolList(const AType: string);
-procedure cbToolChange(Sender: TObject);
-procedure btnToolAddClick(Sender: TObject);
-procedure btnToolDelClick(Sender: TObject);
-procedure btnToolFindClick(Sender: TObject);
-procedure ShowCompilerPage(const AType: string);
-procedure lstCompTypesClick(Sender: TObject);
-procedure CompBrowseClick(Sender: TObject);
-procedure CompEditChange(Sender: TObject);
-procedure CompEditExit(Sender: TObject);
-procedure NormalizeCompFields;
-procedure CollectUnresolved(const S: string; AList: TStrings);
-procedure WarnUnresolved(ABad, ADropped: TStrings);
-function  IsFileKey(const AKey: string): Boolean;
-function  ExpandCompMacros(const S: string): string;
-procedure CollectDelphiVars(AList: TStrings);
-function  LookupEnvVar(const AName: string): string;
-function  NormalizePathValue(const S: string; AIsFile, AIsList: Boolean;
-                             ADropped: TStrings): string;
-procedure btnDelphiImportClick(Sender: TObject);
-function  CompFieldIdx(const AKey: string): Integer;
-function  CompIniSection(const AKey: string): string;
-function  CompIniKey(const AKey: string): string;
-function  FindDelphiRegKey(const ARoot, ATool: string;
-                           var AFoundRoot: string): string;
-function  ExpandDelphiRegVars(const S, ARoot, AKey: string): string;
-function  EditPathList(const ACaption: string; var AValue: string): Boolean;
-function  PathExists(const APath: string): Boolean;
-procedure PathUpdateState;
-procedure PathListClick(Sender: TObject);
-procedure PathBrowseClick(Sender: TObject);
-procedure PathReplaceClick(Sender: TObject);
-procedure PathAddClick(Sender: TObject);
-procedure PathDeleteClick(Sender: TObject);
-procedure PathDelInvalidClick(Sender: TObject);
-procedure PathUpClick(Sender: TObject);
-procedure PathDownClick(Sender: TObject);
-procedure edtPaleChange(Sender: TObject);
-procedure SetHotTabPale(AValue: Integer);
-procedure SetTabWidthInCombo(AChars: Integer);
-procedure GridDblClick(Sender: TObject);
-
+    procedure HideIndentHint;
+    procedure SetIndentControls(AKind, ASize: Integer);
+    procedure LayoutIndentGroup;
+    procedure LayoutGroupActions;
+    procedure RefreshUiGrid;
+    procedure InitCompilersTab;
+    procedure LoadToolList(const AType: string);
+    procedure SaveToolList(const AType: string);
+    procedure ShowCompilerPage(const AType: string);
+    procedure CompBrowseClick(Sender: TObject);
+    function  FbBrowseStart(const AKey: string): string;
+    procedure CompEditChange(Sender: TObject);
+    procedure CompEditExit(Sender: TObject);
+    procedure CompUseIdeClick(Sender: TObject);
+    procedure CompApplyIdePath;
+    procedure NormalizeCompFields;
+    procedure CollectUnresolved(const S: string; AList: TStrings);
+    procedure WarnUnresolved(ABad, ADropped: TStrings);
+    function  IsFileKey(const AKey: string): Boolean;
+    function  ExpandCompMacros(const S: string): string;
+    procedure CollectDelphiVars(AList: TStrings);
+    function  LookupEnvVar(const AName: string): string;
+    function  NormalizePathValue(const S: string; AIsFile, AIsList: Boolean;
+                                 ADropped: TStrings): string;
+    procedure InitArduinoTab;
+    procedure ArdTabLoad;
+    procedure ArdTabSetField(const AKey, AValue: string);
+    function  ArdSection: string;
+    procedure ArdWrite(const AKey, AValue: string);
+    procedure ArdEditChange(Sender: TObject);
+    procedure ArdBrowseClick(Sender: TObject);
+    procedure ArdCliIdle(var ACancel: Boolean);
+    procedure ArdNetEnable;
+    procedure EnvTabsLoad;
+    procedure EnvFillLists;
+    function  EnvEditDialog(const ATitle: string; var AName, AValue: string;
+                            ANameFixed: Boolean): Boolean;
+    procedure EnvSetOverride(const AName, AValue: string);
+    procedure InitFileTypesTab;
+    procedure FtFill;
+    procedure FtResize(Sender: TObject);
+    function  FtEditDialog(const ATitle: string; var AExt, AScheme: string;
+                           AExtFixed: Boolean): Boolean;
+    procedure FtAddClick(Sender: TObject);
+    procedure FtEditClick(Sender: TObject);
+    procedure FtDelClick(Sender: TObject);
+    procedure InitEditorInsight;
+    procedure EdTabsLoad;
+    procedure EdUpdateSwatches;
+    procedure EdColorClick(Sender: TObject);
+    function  CompFieldIdx(const AKey: string): Integer;
+    function  CompIniSection(const AKey: string): string;
+    function  CompIniKey(const AKey: string): string;
+    function  FindDelphiRegKey(const ARoot, ATool: string;
+                               var AFoundRoot: string): string;
+    function  ExpandDelphiRegVars(const S, ARoot, AKey: string): string;
+    function  EditPathList(const ACaption: string; var AValue: string): Boolean;
+    procedure SetHotTabPale(AValue: Integer);
+    procedure SetTabWidthInCombo(AChars: Integer);
   end;
 
 var
@@ -280,7 +451,9 @@ var
 
 implementation
 
-uses Unit1, ClrScheme;
+uses Unit1, ClrScheme,
+  DlgPathList,   // окно списка путей (EditPathList)
+  DlgEnvVar;     // окно имени и значения переменной (EnvEditDialog)
 
 {$R *.dfm}
 
@@ -438,6 +611,8 @@ begin
     Result := 'Sub Style (words/braces)'
   else if AName = 'SubScope' then
     Result := 'Sub Scope (search below)'
+  else if AName = 'PairMark' then
+    Result := 'Pair Mark (bracket under caret)'
   else if (Length(AName) > 6) and (Copy(AName, 1, 6) = 'CUSTOM') then
   begin
     N := StrToIntDef(Copy(AName, 7, 1), 0);
@@ -598,488 +773,143 @@ end;
 
 
 
-procedure TForm2.InitOptions;
+// Буфер отрисовки у окна настроек и у всех контейнеров в нём (листы
+// вкладок, панели, рамки), а также у таблиц и многострочных полей. Надписи
+// (TLabel) рисует их родитель: без буфера при смене размера окна фон под
+// ними стирается и рисуется заново, и надписи моргают. Так же сделано в
+// главном окне (TForm1.FormCreate) и на вкладке Arduino.
+procedure BufferPaintTree(AControl: TWinControl);
 var
-  PageControl: TPageControl;
-  TabEditor, TabEdOptions, TabColors, TabDirs, TabArduino: TTabSheet;
-  grpEditorOptions: TUiGroupBox; // Переменная для нашего нового групбокса
-  Bmp: TBitmap;                // замер ширины текста
-  W, I: Integer;
+  ChildIdx: Integer;
+  Child: TControl;
 begin
+  if (AControl is TCustomForm) or (AControl is TTabSheet) or
+     (AControl is TCustomPanel) or (AControl is TCustomGroupBox) or
+     (AControl is TCustomGrid) or (AControl is TCustomMemo) or
+     (AControl is TScrollBox) then
+    AControl.DoubleBuffered := True;
+  for ChildIdx := 0 to AControl.ControlCount - 1 do
+  begin
+    Child := AControl.Controls[ChildIdx];
+    if Child is TWinControl then
+      BufferPaintTree(TWinControl(Child));
+  end;
+end;
 
-FLockMemo := False; // Инициализация
-  // 1. Настройка базовых параметров окна настроек
-  Self.ClientWidth := 620;   // расширена под шесть контролов в Editor options
-  Self.ClientHeight := 510;  // Увеличили высоту формы на 30px, чтобы компенсировать появление GroupBox
-  Self.Position := poOwnerFormCenter;
-  Self.Caption := 'IDE Options';
-  // Окно настроек не должно уходить за редактор: цвета правятся с
-  // немедленным предпросмотром, и его надо видеть
-  Self.FormStyle := fsStayOnTop;
-  Self.Color := clBtnFace;
+// Элементы окна созданы из Unit2.dfm; здесь - списки, которым нужен свой
+// объект, а не элемент формы
+procedure TForm2.FormCreate(Sender: TObject);
+begin
+  FLockMemo := False;
+  UiKeys := TStringList.Create;
+  FSchemaFiles := TStringList.Create;
+end;
 
-  // 2. Создаем TColorDialog
-  // Закрытие (Exit, крестик): вопрос о несохранённом и отмена предпросмотра
-  OnClose := Form2Close;
-  OnCloseQuery := Form2CloseQuery;
+procedure TForm2.FormDestroy(Sender: TObject);
+begin
+  FSchemaFiles.Free;
+  UiKeys.Free;
+end;
 
-  ColorDlg := TUiColorDialog.Create(Self);
-  ColorDlg.Options := [cdFullOpen, cdAnyColor];
+// Окно заполнено (InitOptions прошла). TForm1.PrepareOptionsForm по этому
+// признаку решает, вызывать ли InitOptions.
+function TForm2.IsBuilt: Boolean;
+begin
+  Result := FBuilt;
+end;
 
-  // 3. СОЗДАЕМ КОНТЕЙНЕР ВКЛАДОК (PageControl)
-  PageControl := TUiPageControl.Create(Self);
-  PageControl.Parent := Self;
-  PageControl.Align := alClient; 
-//  PageControl.BorderWidth := 4; 
+// Заполнение окна при первом открытии (TForm1.PrepareOptionsForm). Сами
+// элементы описаны в Unit2.dfm; здесь - то, что зависит от данных и от
+// ширины текста:
+//   - выбранные пункты списков (ItemIndex в .dfm не пишем: Delphi 7 ставит
+//     его раньше, чем загружены пункты);
+//   - раскладка рядов по ширине надписей;
+//   - страница Compilers, строки путей Arduino, образцы цветов Code Insight;
+//   - таблица схемы и таблица цветов IDE.
+procedure TForm2.InitOptions;
+begin
+  if FBuilt then
+    Exit;
 
-  // 4. СОЗДАЕМ СТРАНИЦЫ (ВКЛАДКИ)
-  //
-  // Порядок вкладок задаётся порядком создания: каждая новая встаёт правее.
-  TabEditor := TTabSheet.Create(Self);
-  TabEditor.PageControl := PageControl;
-  TabEditor.Caption := 'Color Scheme';
+  cmbTabWidth.ItemIndex := 2;      // 4 символа
+  cmbIndentKind.ItemIndex := 0;    // spaces
+  cmbIndentSize.ItemIndex := 1;    // 2
+  cmbGroupType.ItemIndex := 0;
 
-  TabEdOptions := TTabSheet.Create(Self);
-  TabEdOptions.PageControl := PageControl;
-  TabEdOptions.Caption := 'Editor Options';
-
-  TabColors := TTabSheet.Create(Self);
-  TabColors.PageControl := PageControl;
-  TabColors.Caption := 'IDE colors';
-
-  TabDirs := TTabSheet.Create(Self);
-  TabDirs.PageControl := PageControl;
-  TabDirs.Caption := 'Compilers';
-
-  TabArduino := TTabSheet.Create(Self);
-  TabArduino.PageControl := PageControl;
-  TabArduino.Caption := 'Arduino';
-
-// 5. ГРУППА НАСТРОЕК РЕДАКТОРА - на своей вкладке Editor Options.
-  // На вкладке Color Scheme остались только таблица цветов и работа с группами.
-  grpEditorOptions := TUiGroupBox.Create(Self);
-  grpEditorOptions.Parent := TabEdOptions;
-  grpEditorOptions.Caption := ' Editor options '; 
-  grpEditorOptions.Align := alTop;       
-  grpEditorOptions.Height := 40;         // Высота 40 пикселей
-
-  // ЧЕКБОКС 1: подсветка синтаксиса
-  chkUseHighlight := TUiCheckBox.Create(Self);
-  chkUseHighlight.Parent := grpEditorOptions;
-  chkUseHighlight.Caption := 'Syntax HiLight';
-  chkUseHighlight.Left := 5;
-  chkUseHighlight.Top := 16;
-  chkUseHighlight.Width := 105;
-  chkUseHighlight.Checked := True;
-  chkUseHighlight.OnClick := chkUseHighlightClick;
-
-  // БЛЕДНОСТЬ НАПРАВЛЯЮЩИХ, 0..100 %. К цвету полосы подмешивается фон
-  // редактора: 0 - исходный насыщенный цвет, 100 - полное слияние с фоном.
-  edtPale := TUiEdit.Create(Self);
-  edtPale.Left := 228;
-  edtPale.Top := 14;
-  edtPale.Width := 32;
-  edtPale.ShowHint := True;
-  edtPale.Hint := 'Бледность полос отступа, %';
-
-  udPale := TUiUpDown.Create(Self);
-  // Associate - ниже, когда у поля появится родитель (группа Indent)
-  udPale.Min := 0;
-  udPale.Max := 100;
-  udPale.Increment := 5;
-  udPale.Position := 50;
-
-  // Позицию UpDown отражает в тексте поля, поэтому ловим именно OnChange поля -
-  // так один обработчик покрывает и стрелки, и ручной ввод.
-  edtPale.OnChange := edtPaleChange;
-
-  // ШИРИНА ТАБУЛЯЦИИ В СИМВОЛАХ. Отсюда считается шаг табстопов, который
-  // ApplyTabStops в Unit1 переводит в твипы и отдаёт через EM_SETPARAFORMAT.
-  lblTabWidth := TLabel.Create(Self);
-  lblTabWidth.Parent := grpEditorOptions;
-  lblTabWidth.Caption := 'Tab';
-  lblTabWidth.Left := 292;
-  lblTabWidth.Top := 18;
-
-  cmbTabWidth := TUiComboBox.Create(Self);
-  cmbTabWidth.Parent := grpEditorOptions;
-  cmbTabWidth.Left := 318;
-  cmbTabWidth.Top := 14;
-  cmbTabWidth.Width := 45;
-  cmbTabWidth.Style := csDropDownList;
-  cmbTabWidth.Items.Add('2');
-  cmbTabWidth.Items.Add('3');
-  cmbTabWidth.Items.Add('4');
-  cmbTabWidth.Items.Add('6');
-  cmbTabWidth.Items.Add('8');
-  cmbTabWidth.ItemIndex := 2; // 4 символа
-  cmbTabWidth.OnChange := cmbTabWidthChange;
-
-  // ЧЕКБОКС 3: номера строк
-  // Непечатные символы: точка вместо пробела, стрелка вместо табуляции.
-  // Рисуется поверх текста, файл не меняется.
-  chkShowSpaces := TUiCheckBox.Create(Self);
-  chkShowSpaces.Parent := grpEditorOptions;
-  chkShowSpaces.Caption := 'Show spaces';
-  chkShowSpaces.Top := 16;
-  chkShowSpaces.Checked := False;
-  chkShowSpaces.ShowHint := True;
-  chkShowSpaces.Hint := 'Показывать пробелы и табуляции знаками';
-  chkShowSpaces.OnClick := chkShowSpacesClick;
-
-  chkShowLineNumbers := TUiCheckBox.Create(Self);
-  chkShowLineNumbers.Parent := grpEditorOptions;
-  chkShowLineNumbers.Caption := 'Show line numbers';
-  chkShowLineNumbers.Left := 373;
-  chkShowLineNumbers.Top := 16;
-  chkShowLineNumbers.Width := 125;
-  chkShowLineNumbers.Checked := True;
-  chkShowLineNumbers.OnClick := chkShowLineNumbersClick;
-
-
-// 1. СОЗДАЕМ ДИАЛОГ ВЫБОРА ШРИФТА
-  FontDlg := TUiFontDialog.Create(Self);
-  // Ограничим выбор только моноширинными шрифтами (идеально для кода) и снимем лишние эффекты
-//  FontDlg.Options := [fdAnsiOnly, fdFixedPitchOnly];
- // ИСПРАВЛЕНИЕ: Добавляем флаг fdEffects. Именно он открывает скрытые поля "Цвет" и "Подчеркивание/Зачеркивание"
-  // Без fdEffects: цвет текста задаётся квадратиком FG в группе Editor colors
-  FontDlg.Options := [fdAnsiOnly, fdFixedPitchOnly];
-
-  // 2. СОЗДАЕМ КНОПКУ FONT CHANGE ВНУТРИ GROUPBOX
-  btnFontChange := TUiButton.Create(Self);
-  btnFontChange.Parent := grpEditorOptions; // Родителем выступает сам GroupBox!
-  btnFontChange.Caption := 'Font Change';
-  btnFontChange.Left := 505;                // Размещаем правее чекбоксов
-  btnFontChange.Top := 11;                  // Аккуратно выравниваем внутри 40px групбокса
-  btnFontChange.Width := 90;
-  btnFontChange.Height := 24;
-  
-  // Привязываем обработчик клика (напишем его в следующем шаге)
-  // Объявите процедуру btnFontChangeClick(Sender: TObject); в private/public секции TForm2
-  btnFontChange.OnClick := btnFontChangeClick;
-
-  // ГРУППА INDENT - под Editor options. Здесь всё про отступы: чем их
-  // делает Format text, сколько символов в уровне, подсвечивать ли их
-  // полосами и насколько бледными.
-  grpIndent := TUiGroupBox.Create(Self);
-  grpIndent.Parent := TabEdOptions;
-  grpIndent.Caption := ' Indent hilight ';
-  grpIndent.Top := grpEditorOptions.Top + grpEditorOptions.Height + 1;
-  grpIndent.Align := alTop;
-  grpIndent.Height := 40;
-
-  lblIndent := TLabel.Create(Self);
-  lblIndent.Parent := grpIndent;
-  lblIndent.Caption := 'Indent';
-  lblIndent.Top := 18;
-
-  // spaces - отступ пробелами, tab - табуляциями, none - отступов не делать
-  cmbIndentKind := TUiComboBox.Create(Self);
-  cmbIndentKind.Parent := grpIndent;
-  cmbIndentKind.Top := 14;
-  cmbIndentKind.Width := 62;
-  cmbIndentKind.Style := csDropDownList;
-  cmbIndentKind.Items.Add('spaces');
-  cmbIndentKind.Items.Add('tab');
-  cmbIndentKind.Items.Add('none');
-  cmbIndentKind.ItemIndex := 0;
-  cmbIndentKind.ShowHint := True;
-  cmbIndentKind.Hint := 'Чем Format text делает отступы; none - не делать вовсе';
-  cmbIndentKind.OnChange := cmbIndentKindChange;
-
-  // Сколько символов в одном уровне: пробелов при spaces, табуляций при tab.
-  // Полосам подсветки это число нужно всегда - в открытом файле отступы
-  // могут быть любыми.
-  cmbIndentSize := TUiComboBox.Create(Self);
-  cmbIndentSize.Parent := grpIndent;
-  cmbIndentSize.Top := 14;
-  cmbIndentSize.Width := 45;
-  cmbIndentSize.Style := csDropDownList;
-  cmbIndentSize.Items.Add('1');
-  cmbIndentSize.Items.Add('2');
-  cmbIndentSize.Items.Add('3');
-  cmbIndentSize.Items.Add('4');
-  cmbIndentSize.Items.Add('6');
-  cmbIndentSize.Items.Add('8');
-  cmbIndentSize.ItemIndex := 1;
-  cmbIndentSize.ShowHint := True;
-  cmbIndentSize.Hint := 'Символов в одном уровне отступа';
-  cmbIndentSize.OnChange := cmbIndentSizeChange;
-
-  // Подсвечивать ли уровни полосами. Прежняя галка HotTab HiLight - она же.
-  chkHotTabHighlight := TUiCheckBox.Create(Self);
-  chkHotTabHighlight.Parent := grpIndent;
-  chkHotTabHighlight.Caption := 'HiLight';
-  chkHotTabHighlight.Top := 16;
-  chkHotTabHighlight.Checked := False;
-  chkHotTabHighlight.OnClick := chkHotTabHighlightClick;
-
-  edtPale.Parent := grpIndent;
-  udPale.Parent := grpIndent;
-  udPale.Associate := edtPale;
-
-  // Подсказка о переформатировании - по низу вкладки. Появляется после
-  // смены режима или размера, гаснет при следующем открытии окна.
-  lblIndentHint := TLabel.Create(Self);
-  lblIndentHint.Parent := TabEdOptions;
-  lblIndentHint.Align := alBottom;
-  lblIndentHint.AutoSize := False;
-  lblIndentHint.Height := 30;
-  lblIndentHint.Layout := tlCenter;
-  lblIndentHint.Alignment := taCenter;
-  lblIndentHint.Caption :=
-    'Настройки отступа применятся к тексту только после Format text';
-  lblIndentHint.Font.Size := 16;
-  lblIndentHint.Font.Style := [fsBold];
-  lblIndentHint.Font.Color := clRed;
-  lblIndentHint.Visible := False;
-
-  // ГРУППА EDITOR COLORS - под Indent
-  grpEditorColors := TUiGroupBox.Create(Self);
-  grpEditorColors.Parent := TabEdOptions;
-  grpEditorColors.Caption := ' Editor colors ';
-  grpEditorColors.Top := grpIndent.Top + grpIndent.Height + 1;
-  grpEditorColors.Align := alTop; // Top выше - встаёт под Indent
-  grpEditorColors.Height := 40;
-
-  // ЦВЕТА РЕДАКТОРА: надпись и два квадратика - цвет текста (FG, FontColor)
-  // и фон пустого места (BG, BGColor). Подложка под символами - строка Text
-  // в таблице схемы.
-  lblEditorColor := TLabel.Create(Self);
-  lblEditorColor.Parent := grpEditorColors;
-  lblEditorColor.Caption := 'Editor color';
-  lblEditorColor.Top := 18;
-
-  pnlEditorFG := TPanel.Create(Self);
-  SetupSwatch(pnlEditorFG, 'FG',
-    'Цвет текста (FontColor в editor.ini); раздел Text схемы его перекрывает');
-  pnlEditorBG := TPanel.Create(Self);
-  SetupSwatch(pnlEditorBG, 'BG', 'Фон редактора (BGColor в editor.ini)');
-
-  // ПАНЕЛЬ НОМЕРОВ СТРОК: надпись и два квадратика - цвет цифр (FG) и фон
-  // (BG). Квадратик залит выбранным цветом; щелчок - выбор цвета.
-  lblGutterColor := TLabel.Create(Self);
-  lblGutterColor.Parent := grpEditorColors;
-  lblGutterColor.Caption := 'Gutter color';
-  lblGutterColor.Top := 18;
-
-  pnlGutterFG := TPanel.Create(Self);
-  SetupSwatch(pnlGutterFG, 'FG', 'Цвет номеров строк (GutterFG в editor.ini)');
-  pnlGutterBG := TPanel.Create(Self);
-  SetupSwatch(pnlGutterBG, 'BG', 'Фон панели номеров строк (GutterBG в editor.ini)');
-
-  // Все элементы групп - в ряд, вплотную по ширине надписей
+  // Элементы групп - в ряд, вплотную по ширине надписей
   LayoutEditorOptions(grpEditorOptions);
   LayoutIndentGroup;
-  BuildUiColorsTab(TabColors);
-  BuildCompilersTab(TabDirs);
+  RefreshUiGrid;
+  InitCompilersTab;
   LayoutEditorColors;
+  LayoutGroupActions;
 
-  // Панель темы - самая верхняя на вкладке Color Scheme. Окно выше на её
-  // высоту: таблице цветов место не уменьшаем.
-  BuildThemePanel(TabEditor);
-  Self.ClientHeight := Self.ClientHeight + pnlTheme.Height;
+  // Темы редактора и режим IDE - из editor.ini
+  LoadThemeList;
 
-  pnlGroupActions := TPanel.Create(Self);
-  pnlGroupActions.Parent := TabEditor;
-  // Top до Align: так alTop ставит группу под панелью темы, а не над ней
-  pnlGroupActions.Top := pnlTheme.Top + pnlTheme.Height + 1;
-  pnlGroupActions.Align := alTop;
-  pnlGroupActions.Height := 42;
-  pnlGroupActions.BevelOuter := bvNone;
-  pnlGroupActions.Caption := '';
+  // Вкладка Arduino; при переходе на неё значения перечитываются
+  InitArduinoTab;
+  // Editor Options: задержки и образцы цветов Code Insight
+  InitEditorInsight;
+  // File Types: какие расширения какой схемой подсвечиваются
+  InitFileTypesTab;
 
-  cmbGroupType := TUiComboBox.Create(Self);
-  cmbGroupType.Parent := pnlGroupActions;
-  cmbGroupType.Left := 10;
-  // Шрифт задаём ДО Top: высоту списка VCL подгоняет под шрифт, и по ней
-  // считается сдвиг, чтобы список встал по центру высоты кнопок
-  cmbGroupType.Font.Size := 10;
-  cmbGroupType.Top := 8 + (26 - cmbGroupType.Height) div 2;
-  cmbGroupType.Style := csDropDownList;
-  cmbGroupType.Items.Add('Keywords');
-  cmbGroupType.Items.Add('Operators');
-  cmbGroupType.Items.Add('Line comment');
-  cmbGroupType.Items.Add('Block comment');
-  cmbGroupType.Items.Add('String');
-  cmbGroupType.Items.Add('Brackets'); // зарезервировано
-  cmbGroupType.Items.Add('Line Mark');
-  cmbGroupType.ItemIndex := 0;
-  cmbGroupType.OnChange := cmbGroupTypeChange;
-
-  // Ширина - по самому длинному пункту: текст, стрелка, рамка
-  Bmp := TBitmap.Create;
-  try
-    Bmp.Canvas.Font.Assign(cmbGroupType.Font);
-    W := 0;
-    for I := 0 to cmbGroupType.Items.Count - 1 do
-      if Bmp.Canvas.TextWidth(cmbGroupType.Items[I]) > W then
-        W := Bmp.Canvas.TextWidth(cmbGroupType.Items[I]);
-  finally
-    Bmp.Free;
-  end;
-  cmbGroupType.Width := W + GetSystemMetrics(SM_CXVSCROLL) + 10;
-
-  btnAddGroup := TUiButton.Create(Self);
-  btnAddGroup.Parent := pnlGroupActions;
-  btnAddGroup.Left := cmbGroupType.Left + cmbGroupType.Width + 6;
-  btnAddGroup.Top := 7;
-  btnAddGroup.Width := 80;
-  btnAddGroup.Height := 26;
-  btnAddGroup.Caption := 'Add Group';
-  btnAddGroup.OnClick := btnAddGroupClick;
-
-  // Кнопки идут подряд, каждая за предыдущей: сдвинулся список - сдвинулись
-  // и они
-  btnDeleteGroup := TUiButton.Create(Self);
-  btnDeleteGroup.Parent := pnlGroupActions;
-  btnDeleteGroup.Left := btnAddGroup.Left + btnAddGroup.Width + 6;
-  btnDeleteGroup.Top := 7;
-  btnDeleteGroup.Width := 90;
-  btnDeleteGroup.Height := 26;
-  btnDeleteGroup.Caption := 'Delete Group';
-  btnDeleteGroup.OnClick := btnDeleteGroupClick;
-
-  btnRestoreDefaults := TUiButton.Create(Self);
-  btnRestoreDefaults.Parent := pnlGroupActions;
-  btnRestoreDefaults.Left := btnDeleteGroup.Left + btnDeleteGroup.Width + 6;
-  btnRestoreDefaults.Top := 7;
-  btnRestoreDefaults.Width := 105;
-  btnRestoreDefaults.Height := 26;
-  btnRestoreDefaults.Caption := 'Restore Defaults';
-  btnRestoreDefaults.OnClick := btnRestoreDefaultsClick;
-
-  // Правка схемы умолчаний •default•.clr и возврат к схеме вкладки
-  btnEditDefault := TUiButton.Create(Self);
-  btnEditDefault.Parent := pnlGroupActions;
-  btnEditDefault.Left := btnRestoreDefaults.Left +
-                         btnRestoreDefaults.Width + 6;
-  btnEditDefault.Top := 7;
-  btnEditDefault.Width := 95;
-  btnEditDefault.Height := 26;
-  btnEditDefault.Caption := 'Edit Default';
-  btnEditDefault.OnClick := btnEditDefaultClick;
-
-  // Второй ряд, под списком групп: работа с файлами схем
-  btnOpenClr := TUiButton.Create(Self);
-  btnOpenClr.Parent := pnlGroupActions;
-  btnOpenClr.Left := cmbGroupType.Left;
-  btnOpenClr.Top := 39;
-  btnOpenClr.Width := 100;
-  btnOpenClr.Height := 26;
-  btnOpenClr.Caption := 'Open clr file';
-  btnOpenClr.ShowHint := True;
-  btnOpenClr.Hint := 'Открыть файл текущей схемы в редакторе';
-  btnOpenClr.OnClick := btnOpenClrClick;
-
-  // Выбор схемы из папки schemes: её данные попадают в таблицу как
-  // заготовка, а Save пишет их в схему текущей вкладки
-  btnSelectSchema := TUiButton.Create(Self);
-  btnSelectSchema.Parent := pnlGroupActions;
-  btnSelectSchema.Left := btnOpenClr.Left + btnOpenClr.Width + 6;
-  btnSelectSchema.Top := 39;
-  btnSelectSchema.Width := 110;
-  btnSelectSchema.Height := 26;
-  btnSelectSchema.Caption := 'Select scheme';
-  btnSelectSchema.ShowHint := True;
-  btnSelectSchema.Hint := 'Взять данные другой схемы за основу; Save запишет' +
-                          ' их в схему текущего расширения';
-  btnSelectSchema.OnClick := btnSelectSchemaClick;
-
-  FSchemaFiles := TStringList.Create;
-  FSchemaMenu := TUiPopupMenu.Create(Self);
-
-  // Два ряда кнопок - панели нужна высота на оба
-  pnlGroupActions.Height := 72;
-
-  // Кнопки выстроены подряд - окно может оказаться уже верхнего ряда
-  if btnEditDefault.Left + btnEditDefault.Width + 10 > Self.ClientWidth then
-    Self.ClientWidth := btnEditDefault.Left + btnEditDefault.Width + 10;
-
-  // 6. СОЗДАЕМ НИЖНЮЮ ПАНЕЛЬ ДЛЯ КНОПОК НА СТРАНИЦЕ EDITOR
-  pnlBottom := TPanel.Create(Self);
-  pnlBottom.Parent := TabEditor;       
-  pnlBottom.Align := alBottom;         // Прижимаем к самому низу вкладки
-  pnlBottom.Height := 42;
-  pnlBottom.BevelOuter := bvNone;      
-  pnlBottom.Color := clBtnFace;
-
- // 7. НОВОЕ: СОЗДАЕМ ПОЛЕ TMEMO ДЛЯ КЛЮЧЕВЫХ СЛОВ И МАРКЕРОВ (ВСТАНЕТ НАД КНОПКАМИ)
-  MemoSchemaDetails := TUiMemo.Create(Self);
-  MemoSchemaDetails.Parent := TabEditor;
-  MemoSchemaDetails.Align := alBottom; // Прижимается к нижней части над кнопками
-  MemoSchemaDetails.Height := 100;     // Оптимальная высота в 100 пикселей для длинных списков
-  MemoSchemaDetails.ScrollBars := ssVertical; // Включаем вертикальный скроллбар
-  MemoSchemaDetails.Font.Name := 'Courier New'; // Моноширинный шрифт для удобства программиста
-  MemoSchemaDetails.Font.Size := 10;
-  
-  // Стартовый текст-подсказка для пользователя
-  MemoSchemaDetails.Lines.Text := 'Выберите элемент в первом столбце таблицы для редактирования его структуры...';  
-
-  // 7. СОЗДАЕМ ТАБЛИЦУ НА СТРАНИЦЕ EDITOR
-  // Так как GroupBox (alTop) и Panel (alBottom) уже заняли свои места,
-  // Grid с alClient идеально растянется ровно в пространстве МЕЖДУ ними!
-  Grid := TStringGrid.Create(Self);
-  Grid.Parent := TabEditor;            
-  Grid.Align := alClient;              
-  Grid.BorderStyle := bsSingle; 
-  
-  Grid.OnDrawCell := GridDrawCell;
-  Grid.OnSelectCell := GridSelectCell;
-  Grid.OnDblClick := GridDblClick; // выбор цвета - только по двойному клику
-  Grid.OnTopLeftChanged := GridTopLeftChanged; // прокрутка - кнопку следом
-  // Размер таблицы известен только на экране - кнопку ставим и там
-  OnShow := Form2ResizeOrShow;
-  OnResize := Form2ResizeOrShow;
-
-  // Маленькая кнопка в правой части ячейки Text: цвет текста и подложка -
-  // из настроек редактора (FontColor и BGColor, вкладка Editor Options)
-  btnBaseColors := TUiButton.Create(Self);
-  btnBaseColors.Parent := Grid;
-  btnBaseColors.Caption := 'Base colors';
-  btnBaseColors.Font.Size := 7;
-  btnBaseColors.TabStop := False;
-  btnBaseColors.ShowHint := True;
-  btnBaseColors.Hint := 'Цвета текста - из настроек редактора (Editor Options)';
-  btnBaseColors.OnClick := btnBaseColorsClick;
-  btnBaseColors.Visible := False; // покажет PlaceBaseColorsButton
-
-  // Нажатие кнопки приходит родителю - таблице - как WM_COMMAND, а таблица
-  // Delphi 7 передаёт дальше только сообщения своего редактора ячейки;
-  // до OnClick кнопки дело не доходило. Перехватываем сами.
+  // Нажатие кнопки Base colors приходит родителю - таблице - как
+  // WM_COMMAND, а таблица Delphi 7 передаёт дальше только сообщения своего
+  // редактора ячейки; до OnClick кнопки дело не доходило. Перехватываем сами.
   FGridOldProc := Grid.WindowProc;
   Grid.WindowProc := GridWndProc;
 
-  // 8. РАЗМЕЩАЕМ КНОПКИ ВНУТРИ НИЖНЕЙ ПАНЕЛИ (ПРИЖАТЫ СЛЕВА)
-  btnOK := TUiButton.Create(Self);
-  btnOK.Parent := pnlBottom;           
-  btnOK.Width := 80;
-  btnOK.Height := 28;
-  btnOK.Left := 10;                     
-  btnOK.Top := 7;                      
-  btnOK.Caption := 'Save';   // применить и записать схему; окно остаётся
-  btnOK.OnClick := ButtonClick1;
-
-  btnCancel := TUiButton.Create(Self);
-  btnCancel.Parent := pnlBottom;       
-  btnCancel.Width := 80;
-  btnCancel.Height := 28;
-  btnCancel.Left := 100;                
-  btnCancel.Top := 7;                      
-  btnCancel.Caption := 'Exit'; // закрыть; несохранённое - с вопросом
-  btnCancel.OnClick := ButtonClick1;
-
-  btnOK.Anchors := [akLeft, akTop];
-  btnCancel.Anchors := [akLeft, akTop];    
-
-  // Запускаем наполнение шапки и структуры нашей таблицы
+  // Шапка и строки таблицы схемы
+  FGridReady := True;
   InitGridStructure;
-// В самый конец процедуры TForm2.InitOptions добавьте привязку события:
-  MemoSchemaDetails.OnChange := MemoSchemaDetailsChange;
 
- // Имитируем выбор первой строки, чтобы скрытый кэш сразу выгрузился в TMemo при старте!
+  // Выбор первой строки: её данные - в поле под таблицей
   Grid.Row := 1;
-  MemoSchemaDetails.Lines.Text := Grid.Cells[3, 1];  
+  MemoSchemaDetails.Lines.Text := Grid.Cells[3, 1];
+
+  // Буфер отрисовки у контейнеров всех вкладок. Страница Compilers при
+  // смене типа строится заново внутри pnlCompPage, а он уже с буфером.
+  BufferPaintTree(Self);
+  FBuilt := True;
+end;
+
+// Ряд кнопок над таблицей схемы: список групп шириной по самому длинному
+// пункту, кнопки подряд за ним. Окно может оказаться уже ряда - тогда шире.
+procedure TForm2.LayoutGroupActions;
+var
+  TextBmp: TBitmap;
+  MaxWidth, ItemIdx: Integer;
+begin
+  // Высоту списка VCL подгоняет под шрифт (он в .dfm крупнее); по ней -
+  // сдвиг, чтобы список встал по центру высоты кнопок
+  cmbGroupType.Top := 8 + (26 - cmbGroupType.Height) div 2;
+
+  // Ширина - по самому длинному пункту: текст, стрелка, рамка
+  TextBmp := TBitmap.Create;
+  try
+    TextBmp.Canvas.Font.Assign(cmbGroupType.Font);
+    MaxWidth := 0;
+    for ItemIdx := 0 to cmbGroupType.Items.Count - 1 do
+      if TextBmp.Canvas.TextWidth(cmbGroupType.Items[ItemIdx]) > MaxWidth then
+        MaxWidth := TextBmp.Canvas.TextWidth(cmbGroupType.Items[ItemIdx]);
+  finally
+    TextBmp.Free;
+  end;
+  cmbGroupType.Width := MaxWidth + GetSystemMetrics(SM_CXVSCROLL) + 10;
+
+  // Кнопки идут подряд, каждая за предыдущей: сдвинулся список -
+  // сдвинулись и они
+  btnAddGroup.Left := cmbGroupType.Left + cmbGroupType.Width + 6;
+  btnDeleteGroup.Left := btnAddGroup.Left + btnAddGroup.Width + 6;
+  btnRestoreDefaults.Left := btnDeleteGroup.Left + btnDeleteGroup.Width + 6;
+  btnEditDefault.Left := btnRestoreDefaults.Left + btnRestoreDefaults.Width + 6;
+  // Второй ряд, под списком групп: работа с файлами схем
+  btnOpenClr.Left := cmbGroupType.Left;
+  btnSelectSchema.Left := btnOpenClr.Left + btnOpenClr.Width + 6;
+
+  if btnEditDefault.Left + btnEditDefault.Width + 10 > ClientWidth then
+    ClientWidth := btnEditDefault.Left + btnEditDefault.Width + 10;
 end;
 
 
@@ -1098,124 +928,6 @@ end;
 //    Mode=Dark
 //  Цвета редактора и IDE выбор темы пока не меняет.
 // ---------------------------------------------------------------------------
-
-procedure TForm2.BuildThemePanel(ATab: TWinControl);
-var
-  X: Integer;
-  Spc: TPanel;
-begin
-  pnlTheme := TPanel.Create(Self);
-  pnlTheme.Parent := ATab;
-  pnlTheme.Top := 0;
-  pnlTheme.Align := alTop;
-  // Две строки: тема редактора, под ней режим IDE (Light / Dark / Custom)
-  pnlTheme.Height := 58;
-  pnlTheme.BevelOuter := bvNone;
-  pnlTheme.Caption := '';
-
-  X := 10;
-
-  // Подпись - панель, а не метка: у неё свой фон на всю высоту строки
-  lblTheme := TPanel.Create(Self);
-  lblTheme.Parent := pnlTheme;
-  lblTheme.BevelOuter := bvNone;
-  lblTheme.ParentBackground := False;
-  lblTheme.Color := clBtnFace;
-  lblTheme.Alignment := taCenter;
-  lblTheme.Caption := 'Color Schem';
-  lblTheme.SetBounds(X, 5, 80, 21);
-  Inc(X, lblTheme.Width);
-
-  cmbTheme := TUiComboBox.Create(Self);
-  cmbTheme.Parent := pnlTheme;
-  cmbTheme.Style := csDropDown; // выбор из списка и ввод имени новой темы
-  cmbTheme.Color := clWindow;
-  cmbTheme.Left := X;
-  cmbTheme.Top := 5;
-  cmbTheme.Width := 140;
-  cmbTheme.ShowHint := True;
-  cmbTheme.Hint := 'Тема. Имя новой - ввести здесь и нажать Add или Enter';
-  cmbTheme.OnChange := cmbThemeChange;
-  cmbTheme.OnKeyPress := cmbThemeKeyPress;
-  Inc(X, cmbTheme.Width + 4);
-
-  btnThemeAdd := TUiButton.Create(Self);
-  btnThemeAdd.Parent := pnlTheme;
-  btnThemeAdd.Caption := 'Add';
-  btnThemeAdd.SetBounds(X, 4, 40, 23);
-  btnThemeAdd.OnClick := btnThemeAddClick;
-  Inc(X, btnThemeAdd.Width + 2);
-
-  btnThemeDel := TUiButton.Create(Self);
-  btnThemeDel.Parent := pnlTheme;
-  btnThemeDel.Caption := 'Delete';
-  btnThemeDel.SetBounds(X, 4, 50, 23);
-  btnThemeDel.OnClick := btnThemeDelClick;
-  Inc(X, btnThemeDel.Width);
-
-  // Промежуток перед переключателем, как PanSpc1 в RQdebugger
-  Spc := TPanel.Create(Self);
-  Spc.Parent := pnlTheme;
-  Spc.BevelOuter := bvNone;
-  Spc.Caption := '';
-  Spc.SetBounds(X, 4, 16, 23);
-  Inc(X, Spc.Width);
-
-  // Вторая строка - режим IDE. Переключатели на одной панели - одна группа.
-  X := 10;
-  rbIdeLight := TUiRadioButton.Create(Self);
-  rbIdeLight.Parent := pnlTheme;
-  rbIdeLight.Caption := 'IDE Light';
-  rbIdeLight.TextColor := clRed;   // Font.Color свои элементы не берут
-  rbIdeLight.SetBounds(X, 35, 75, 17);
-  rbIdeLight.OnClick := rbIdeModeClick;
-  Inc(X, rbIdeLight.Width + 6);
-
-  rbIdeDark := TUiRadioButton.Create(Self);
-  rbIdeDark.Parent := pnlTheme;
-  rbIdeDark.Caption := 'IDE Dark';
-  rbIdeDark.TextColor := clBlue;
-  rbIdeDark.SetBounds(X, 35, 75, 17);
-  rbIdeDark.OnClick := rbIdeModeClick;
-  Inc(X, rbIdeDark.Width + 6);
-
-  // Своя тема IDE: переключатель и список имён (в нём же вводится имя
-  // новой), Add и Del
-  rbIdeCustom := TUiRadioButton.Create(Self);
-  rbIdeCustom.Parent := pnlTheme;
-  rbIdeCustom.Caption := 'Custom';
-  rbIdeCustom.SetBounds(X, 35, 62, 17);
-  rbIdeCustom.OnClick := rbIdeModeClick;
-  Inc(X, rbIdeCustom.Width + 2);
-
-  cmbIdeCustom := TUiComboBox.Create(Self);
-  cmbIdeCustom.Parent := pnlTheme;
-  cmbIdeCustom.Style := csDropDown;
-  cmbIdeCustom.SetBounds(X, 33, 140, 21);
-  cmbIdeCustom.ShowHint := True;
-  cmbIdeCustom.Hint := 'Своя тема IDE. Имя новой - ввести здесь и нажать Add';
-  cmbIdeCustom.OnChange := cmbIdeCustomChange;
-  Inc(X, cmbIdeCustom.Width + 4);
-
-  btnIdeCustomAdd := TUiButton.Create(Self);
-  btnIdeCustomAdd.Parent := pnlTheme;
-  btnIdeCustomAdd.Caption := 'Add';
-  btnIdeCustomAdd.ShowHint := True;
-  btnIdeCustomAdd.Hint := 'Новая своя тема IDE - копия цветов текущего режима';
-  btnIdeCustomAdd.SetBounds(X, 32, 40, 23);
-  btnIdeCustomAdd.OnClick := btnIdeCustomAddClick;
-  Inc(X, btnIdeCustomAdd.Width + 2);
-
-  btnIdeCustomDel := TUiButton.Create(Self);
-  btnIdeCustomDel.Parent := pnlTheme;
-  btnIdeCustomDel.Caption := 'Del';
-  btnIdeCustomDel.ShowHint := True;
-  btnIdeCustomDel.Hint := 'Удалить выбранную свою тему IDE';
-  btnIdeCustomDel.SetBounds(X, 32, 40, 23);
-  btnIdeCustomDel.OnClick := btnIdeCustomDelClick;
-
-  LoadThemeList;
-end;
 
 procedure TForm2.LoadThemeList;
 var
@@ -1354,10 +1066,8 @@ begin
     if FEditDefault then
       Form1.LoadSchemaFileForEdit(Form1.DefaultSchemaFile);
     // Таблицы и образцы окна - по цветам новой темы
-    if Grid <> nil then
-      RefreshGridFromForm1;
-    if UiGrid <> nil then
-      RefreshUiGrid;
+    RefreshGridFromForm1;
+    RefreshUiGrid;
     UpdateColorSwatches;
   end;
   Result := True;
@@ -1463,7 +1173,7 @@ var
   Mode, I: Integer;
   CName: string;
 begin
-  if FThemeLock or (Form1 = nil) then
+  if FThemeLock or not FBuilt or (Form1 = nil) then
     Exit;
   CName := '';
   if rbIdeCustom.Checked then
@@ -1502,8 +1212,7 @@ begin
     // Своей темы не нашлось - главное окно выбрало другой режим
     ShowIdeMode;
     // Вкладка IDE colors показывает цвета выбранного режима
-    if UiGrid <> nil then
-      RefreshUiGrid;
+    RefreshUiGrid;
   end;
   SaveThemeList;
 end;
@@ -1616,8 +1325,7 @@ begin
   Form1.UiCustomDelete(CName);
   LoadIdeCustomList;
   ShowIdeMode;
-  if UiGrid <> nil then
-    RefreshUiGrid;
+  RefreshUiGrid;
   SaveThemeList;
 end;
 
@@ -1765,8 +1473,7 @@ begin
   begin
     Caption := 'IDE Options - Color scheme ' +
                ExtractFileName(Form1.DefaultSchemaFile);
-    if btnEditDefault <> nil then
-      btnEditDefault.Caption := 'Edit Current';
+    btnEditDefault.Caption := 'Edit Current';
   end
   else
   begin
@@ -1775,8 +1482,7 @@ begin
       Caption := 'IDE Options - Color scheme *.' + S
     else
       Caption := 'IDE Options';
-    if btnEditDefault <> nil then
-      btnEditDefault.Caption := 'Edit Default';
+    btnEditDefault.Caption := 'Edit Default';
   end;
 end;
 
@@ -1911,7 +1617,7 @@ var
   R, G, CIdx: Integer;
   Sec: string;
 begin
-  if (Form1 = nil) or (Grid = nil) then
+  if (Form1 = nil) or not FGridReady then
     Exit;
 
   for R := 1 to Grid.RowCount - 1 do
@@ -2067,7 +1773,7 @@ var
   R, G, CIdx: Integer;
   Sec: string;
 begin
-  if (Form1 = nil) or (Grid = nil) then
+  if (Form1 = nil) or not FGridReady then
     Exit;
 
   InitGridStructure;
@@ -2216,8 +1922,7 @@ begin
   UpdateColorSwatches;
   UpdateEditTargetUI; // вкладка могла смениться - заголовок окна тоже
 
-  if cmbGroupType <> nil then
-    cmbGroupType.ItemIndex := 0;
+  cmbGroupType.ItemIndex := 0;
   Grid.Row := 1;
   MemoSchemaDetails.Lines.Text := Grid.Cells[3, 1];
   Grid.Invalidate;
@@ -2228,7 +1933,7 @@ var
   TargetRow: Integer;
   Sec: string;
 begin
-  if (Form1 = nil) or (Grid = nil) or (cmbGroupType.ItemIndex <= 0) then
+  if (Form1 = nil) or not FGridReady or (cmbGroupType.ItemIndex <= 0) then
     Exit;
 
   case cmbGroupType.ItemIndex of
@@ -2265,7 +1970,7 @@ var
   I, N, Place, Cnt: Integer;
   Prefix, NewName: string;
 begin
-  if (Form1 = nil) or (Grid = nil) then
+  if (Form1 = nil) or not FGridReady then
     Exit;
 
   case cmbGroupType.ItemIndex of
@@ -2442,7 +2147,7 @@ end;
 procedure TForm2.chkUseHighlightClick(Sender: TObject);
 begin
   // Проверяем, существует ли главная форма в памяти
-  if Form1 <> nil then
+  if (Form1 <> nil) and FBuilt then
   begin
     // Напрямую меняем флаг в Unit1 в реальном времени!
     Form1.FUseSyntaxHighlight := chkUseHighlight.Checked;
@@ -2521,7 +2226,7 @@ end;
 // Base colors: цвет текста - FontColor, подложка - BGColor из editor.ini
 procedure TForm2.btnBaseColorsClick(Sender: TObject);
 begin
-  if (Form1 = nil) or (Grid = nil) then
+  if (Form1 = nil) or not FGridReady then
     Exit;
   SetTextRowColors(Form1.BaseFontColor, Form1.EditorBG);
 end;
@@ -2535,7 +2240,8 @@ var
   W: Integer;
   Bmp: TBitmap;
 begin
-  if (btnBaseColors = nil) or (Grid = nil) then
+  // Строк ещё нет (окно не заполнено) - и ставить кнопку некуда
+  if not FGridReady then
     Exit;
 
   // Кнопка стоит в ячейке раздела Text, где бы он ни лежал в файле
@@ -2570,8 +2276,7 @@ procedure TForm2.GridWndProc(var Message: TMessage);
 begin
   // Колесо мыши над таблицей обрабатывает Form1.AppMessage - для всех
   // таблиц программы сразу
-  if (Message.Msg = WM_COMMAND) and (btnBaseColors <> nil) and
-     btnBaseColors.HandleAllocated and
+  if (Message.Msg = WM_COMMAND) and btnBaseColors.HandleAllocated and
      (HWND(Message.LParam) = btnBaseColors.Handle) then
   begin
     Message.Result := btnBaseColors.Perform(CN_COMMAND, Message.WParam,
@@ -2639,7 +2344,7 @@ end;
 
 procedure TForm2.chkHotTabHighlightClick(Sender: TObject);
 begin
-  if Form1 = nil then
+  if (Form1 = nil) or not FBuilt then
     Exit;
   Form1.FUseHotTab := chkHotTabHighlight.Checked;
   Form1.SaveSettings;
@@ -2652,8 +2357,6 @@ procedure TForm2.SetTabWidthInCombo(AChars: Integer);
 var
   I: Integer;
 begin
-  if cmbTabWidth = nil then
-    Exit;
   for I := 0 to cmbTabWidth.Items.Count - 1 do
     if StrToIntDef(cmbTabWidth.Items[I], -1) = AChars then
     begin
@@ -2668,8 +2371,6 @@ procedure TForm2.SetHotTabPale(AValue: Integer);
 var
   Saved: TNotifyEvent;
 begin
-  if (edtPale = nil) or (udPale = nil) then
-    Exit;
   if AValue < 0 then
     AValue := 0;
   if AValue > 100 then
@@ -2689,7 +2390,8 @@ procedure TForm2.edtPaleChange(Sender: TObject);
 var
   V: Integer;
 begin
-  if Form1 = nil then
+  // До заполнения окна текст поля пишет счётчик (udPale) - это не правка
+  if (Form1 = nil) or not FBuilt then
     Exit;
 
   V := StrToIntDef(Trim(edtPale.Text), -1);
@@ -2706,7 +2408,7 @@ end;
 // Непечатные символы - только отрисовка, текст не трогается
 procedure TForm2.chkShowSpacesClick(Sender: TObject);
 begin
-  if Form1 = nil then
+  if (Form1 = nil) or not FBuilt then
     Exit;
   Form1.FShowSpaces := chkShowSpaces.Checked;
   Form1.SaveSettings;
@@ -2716,13 +2418,12 @@ end;
 // Текст привели к настройкам - подсказка о переформатировании не нужна
 procedure TForm2.HideIndentHint;
 begin
-  if lblIndentHint <> nil then
-    lblIndentHint.Visible := False;
+  lblIndentHint.Visible := False;
 end;
 
 procedure TForm2.cmbIndentKindChange(Sender: TObject);
 begin
-  if Form1 = nil then
+  if (Form1 = nil) or not FBuilt then
     Exit;
   Form1.FIndentKind := cmbIndentKind.ItemIndex;
   Form1.SaveSettings;
@@ -2735,7 +2436,7 @@ procedure TForm2.cmbIndentSizeChange(Sender: TObject);
 var
   N: Integer;
 begin
-  if Form1 = nil then
+  if (Form1 = nil) or not FBuilt then
     Exit;
   N := StrToIntDef(cmbIndentSize.Text, 0);
   if N < 1 then
@@ -2754,8 +2455,7 @@ var
   I: Integer;
 begin
   // Окно открыли заново - подсказка о переформатировании больше не к месту
-  if lblIndentHint <> nil then
-    lblIndentHint.Visible := False;
+  lblIndentHint.Visible := False;
 
   OldKind := cmbIndentKind.OnChange;
   OldSize := cmbIndentSize.OnChange;
@@ -2786,7 +2486,7 @@ procedure TForm2.cmbTabWidthChange(Sender: TObject);
 var
   Chars: Integer;
 begin
-  if Form1 = nil then
+  if (Form1 = nil) or not FBuilt then
     Exit;
   if cmbTabWidth.ItemIndex < 0 then
     Exit;
@@ -2800,15 +2500,14 @@ begin
   Form1.ApplyTabStops; // пересчёт шага и EM_SETPARAFORMAT
 end;
 
+// Номера строк в полосе слева; саму полосу (с метками) включает Visible
+// gutter (Margin and gutter)
 procedure TForm2.chkShowLineNumbersClick(Sender: TObject);
 begin
-  if Form1 = nil then
+  if (Form1 = nil) or FEdLoading or not FBuilt then
     Exit;
-  if Form1.PaintBox1 <> nil then
-    Form1.PaintBox1.Visible := chkShowLineNumbers.Checked;
-  if Form1.Panel1 <> nil then
-    Form1.Panel1.Visible := chkShowLineNumbers.Checked;
-  Form1.RichEdit1.Invalidate;
+  Form1.FEdIns.ShowLineNumbers := chkShowLineNumbers.Checked;
+  Form1.EdInsightChanged;
 end;
 
 
@@ -2817,7 +2516,8 @@ var
   S: string;
 begin
   // Если флаг взведен (текст меняет программа при переключении строк) — игнорируем событие!
-  if FLockMemo then
+  // Таблица ещё без строк (окно не заполнено) - сохранять некуда.
+  if FLockMemo or not FGridReady then
     Exit;
 
   // Если флаг False (пользователь сам печатает буквы) — сохраняем данные в кэш.
@@ -3149,53 +2849,21 @@ end;
 //  таблице появится сама.
 // ---------------------------------------------------------------------------
 
-procedure TForm2.BuildUiColorsTab(ATab: TWinControl);
+// Таблица из списка ролей Form1
+// Строка таблицы IDE colors and Fonts - шрифт группы, а не цвет
+function IsUiFontKey(const AKey: string): Boolean;
 begin
-  UiKeys := TStringList.Create;
-
-  pnlUiBottom := TPanel.Create(Self);
-  pnlUiBottom.Parent := ATab;
-  pnlUiBottom.Align := alBottom;
-  pnlUiBottom.Height := 34;
-  pnlUiBottom.BevelOuter := bvNone;
-
-  btnUiDefaults := TUiButton.Create(Self);
-  btnUiDefaults.Parent := pnlUiBottom;
-  btnUiDefaults.Caption := 'Вернуть умолчания';
-  btnUiDefaults.Left := 6;
-  btnUiDefaults.Top := 4;
-  btnUiDefaults.Width := 140;
-  btnUiDefaults.OnClick := btnUiDefaultsClick;
-
-  lblUiHint := TLabel.Create(Self);
-  lblUiHint.Parent := pnlUiBottom;
-  lblUiHint.Left := 156;
-  lblUiHint.Top := 9;
-  lblUiHint.Caption := 'Двойной щелчок по цвету - выбор. Пишется в IDE.clr сразу.';
-
-  UiGrid := TStringGrid.Create(Self);
-  UiGrid.Parent := ATab;
-  UiGrid.Align := alClient;
-  UiGrid.ColCount := 2;
-  UiGrid.FixedCols := 0;
-  UiGrid.FixedRows := 1;
-  UiGrid.DefaultRowHeight := 20;
-  UiGrid.Options := UiGrid.Options - [goRangeSelect] + [goRowSelect];
-  UiGrid.ColWidths[0] := 300;
-  UiGrid.ColWidths[1] := 200;
-  UiGrid.OnDrawCell := UiGridDrawCell;
-  UiGrid.OnDblClick := UiGridDblClick;
-
-  RefreshUiGrid;
+  Result := Copy(AKey, 1, 5) = 'Font.';
 end;
 
-// Таблица из списка ролей Form1
 procedure TForm2.RefreshUiGrid;
 var
-  I: Integer;
+  I, RowH: Integer;
   Key: string;
+  FontKeys: TStringList;
+  SampleFont: TFont;
 begin
-  if (UiGrid = nil) or (Form1 = nil) or (Form1.UiColors = nil) then
+  if (Form1 = nil) or (Form1.UiColors = nil) then
     Exit;
   UiKeys.Clear;
   for I := 0 to Form1.UiColors.Count - 1 do
@@ -3203,12 +2871,44 @@ begin
 
   UiGrid.RowCount := UiKeys.Count + 1;
   UiGrid.Cells[0, 0] := 'Элемент';
-  UiGrid.Cells[1, 0] := 'Цвет';
-  for I := 0 to UiKeys.Count - 1 do
-  begin
-    Key := UiKeys[I];
-    UiGrid.Cells[0, I + 1] := Form1.UiCaption(Key);
-    UiGrid.Cells[1, I + 1] := ColorToString(Form1.UiColor(Key));
+  UiGrid.Cells[1, 0] := 'Цвет / шрифт';
+  // Шрифты групп - строками после цветов (ключи Font.*)
+  FontKeys := TStringList.Create;
+  try
+    Form1.UiFontKeys(FontKeys);
+    UiKeys.AddStrings(FontKeys);
+  finally
+    FontKeys.Free;
+  end;
+
+  UiGrid.RowCount := UiKeys.Count + 1;
+  SampleFont := TFont.Create;
+  try
+    for I := 0 to UiKeys.Count - 1 do
+    begin
+      Key := UiKeys[I];
+      if IsUiFontKey(Key) then
+      begin
+        UiGrid.Cells[0, I + 1] := Form1.UiFontCaption(Key);
+        UiGrid.Cells[1, I + 1] := Form1.UiFontText(Key);
+        // Строка шрифта - по высоте образца
+        Form1.UiFontGet(Key, SampleFont);
+        UiGrid.Canvas.Font.Assign(SampleFont);
+        RowH := UiGrid.Canvas.TextHeight('Wg') + 6;
+        if RowH < UiGrid.DefaultRowHeight then
+          RowH := UiGrid.DefaultRowHeight;
+        UiGrid.RowHeights[I + 1] := RowH;
+        UiGrid.Canvas.Font.Assign(UiGrid.Font);
+      end
+      else
+      begin
+        UiGrid.Cells[0, I + 1] := Form1.UiCaption(Key);
+        UiGrid.Cells[1, I + 1] := ColorToString(Form1.UiColor(Key));
+        UiGrid.RowHeights[I + 1] := UiGrid.DefaultRowHeight;
+      end;
+    end;
+  finally
+    SampleFont.Free;
   end;
   UiGrid.Invalidate;
 end;
@@ -3220,6 +2920,7 @@ var
   C: TCanvas;
   R: TRect;
   S: string;
+  SampleColor: TColor;
 begin
   C := UiGrid.Canvas;
   if (ACol <> 1) or (ARow = 0) or (ARow > UiKeys.Count) then
@@ -3242,6 +2943,20 @@ begin
   C.FillRect(Rect);
 
   S := UiGrid.Cells[1, ARow];
+  // Шрифт: подпись - самим этим шрифтом
+  if IsUiFontKey(UiKeys[ARow - 1]) then
+  begin
+    SampleColor := C.Font.Color;
+    Form1.UiFontGet(UiKeys[ARow - 1], C.Font);
+    C.Font.Color := SampleColor;
+    C.Brush.Style := bsClear;
+    R := Rect;
+    R.Left := R.Left + 4;
+    DrawText(C.Handle, PChar(S), Length(S), R,
+             DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS);
+    C.Font.Assign(UiGrid.Font);
+    Exit;
+  end;
   R := Rect;
   R.Left := R.Left + 2;
   R.Top := R.Top + 3;
@@ -3271,13 +2986,33 @@ end;
 // окнам и пишется в IDE.clr: отдельной кнопки сохранения нет.
 procedure TForm2.UiGridDblClick(Sender: TObject);
 var
-  Row: Integer;
+  Row, MinSize, MaxSize: Integer;
   Key: string;
 begin
   Row := UiGrid.Row;
   if (Row < 1) or (Row > UiKeys.Count) then
     Exit;
   Key := UiKeys[Row - 1];
+  // Шрифт группы: размер - только в пределах (Form1.UiFontLimits)
+  if IsUiFontKey(Key) then
+  begin
+    Form1.UiFontGet(Key, FontDlg.Font);
+    Form1.UiFontLimits(MinSize, MaxSize);
+    FontDlg.MinFontSize := MinSize;
+    FontDlg.MaxFontSize := MaxSize;
+    FontDlg.Options := FontDlg.Options + [fdLimitSize];
+    try
+      if not FontDlg.Execute then
+        Exit;
+      Form1.UiFontSet(Key, FontDlg.Font);
+    finally
+      FontDlg.Options := FontDlg.Options - [fdLimitSize];
+      FontDlg.MinFontSize := 0;
+      FontDlg.MaxFontSize := 0;
+    end;
+    RefreshUiGrid;
+    Exit;
+  end;
   ColorDlg.Color := Form1.UiColor(Key);
   if not ColorDlg.Execute then
     Exit;
@@ -3292,66 +3027,14 @@ begin
   Form1.UiResetDefaults;
   Form1.SaveUiSchema;
   Form1.UiApply;
+  // и шрифты групп - как в .dfm
+  Form1.UiFontsReset;
   RefreshUiGrid;
 end;
 
-procedure TForm2.BuildCompilersTab(ATab: TWinControl);
+// Страница Compilers при первом открытии окна: первый тип в списке
+procedure TForm2.InitCompilersTab;
 begin
-  if ATab = nil then
-    Exit;
-  if lstCompTypes <> nil then
-    Exit;
-
-  lstCompTypes := TUiListBox.Create(Self);
-  lstCompTypes.Parent := ATab;
-  lstCompTypes.Align := alLeft;
-  lstCompTypes.Width := 130;
-  lstCompTypes.Items.Add('RapidQ Basic');
-  lstCompTypes.Items.Add('Delphi');
-  lstCompTypes.Items.Add('FreeBASIC');
-  lstCompTypes.Items.Add('Visual Basic');
-  lstCompTypes.Items.Add('Arduino');
-  lstCompTypes.Items.Add('C project');
-  lstCompTypes.Items.Add('CPP project');
-  lstCompTypes.Items.Add('WebSite');
-  lstCompTypes.OnClick := lstCompTypesClick;
-
-  pnlCompPage := TPanel.Create(Self);
-  pnlCompPage.Parent := ATab;
-  pnlCompPage.Align := alClient;
-  pnlCompPage.BevelOuter := bvNone;
-
-  // Строка выбора инструмента живёт над страницей и при переключении типа
-  // не пересоздаётся - меняется только её содержимое
-  cbTool := TUiComboBox.Create(Self);
-  cbTool.Parent := ATab;
-  cbTool.Style := csDropDownList;
-  cbTool.OnChange := cbToolChange;
-
-  btnToolAdd := TUiButton.Create(Self);
-  btnToolAdd.Parent := ATab;
-  btnToolAdd.Caption := 'Add';
-  btnToolAdd.OnClick := btnToolAddClick;
-
-  btnToolDel := TUiButton.Create(Self);
-  btnToolDel.Parent := ATab;
-  btnToolDel.Caption := 'Delete';
-  btnToolDel.OnClick := btnToolDelClick;
-
-  btnToolFind := TUiButton.Create(Self);
-  btnToolFind.Parent := ATab;
-  btnToolFind.Caption := 'Find installed';
-  btnToolFind.OnClick := btnToolFindClick;
-
-  btnDelphiImport := TUiButton.Create(Self);
-  btnDelphiImport.Parent := ATab;
-  btnDelphiImport.Caption := 'Взять из Delphi';
-  btnDelphiImport.ShowHint := True;
-  btnDelphiImport.Hint := 'Library path и Browsing path из Environment ' +
-                          'Options этой Delphi (реестр); свои пути остаются ' +
-                          'в конце';
-  btnDelphiImport.OnClick := btnDelphiImportClick;
-
   lstCompTypes.ItemIndex := 0;
   FCompType := lstCompTypes.Items[0];
   LoadToolList(FCompType);
@@ -3375,9 +3058,6 @@ var
   NoBrowse: Boolean;
   P: Integer;
 begin
-  if pnlCompPage = nil then
-    Exit;
-
   // Поля прежней страницы сейчас исчезнут вместе с их OnExit - приводим
   // значения в порядок, пока они ещё на месте. Раздел настроек тоже пока
   // прежний.
@@ -3388,6 +3068,8 @@ begin
 
   while pnlCompPage.ControlCount > 0 do
     pnlCompPage.Controls[0].Free;
+  FCompUseIde := nil;
+  SetLength(FCompBtns, 0);
   SetLength(FCompEdits, 0);
   SetLength(FCompKeys, 0);
   SetLength(FCompIsList, 0);
@@ -3395,7 +3077,7 @@ begin
   // Раздел настроек - по типу и выбранному инструменту. Инструмент без
   // имени пишется в раздел типа, как было до появления версий.
   FCompType := AType;
-  if (cbTool <> nil) and (cbTool.ItemIndex >= 0) and
+  if (cbTool.ItemIndex >= 0) and
      (cbTool.Items[cbTool.ItemIndex] <> '(default)') then
     FCompSection := 'Compiler.' + AType + '.' + cbTool.Items[cbTool.ItemIndex]
   else
@@ -3410,7 +3092,14 @@ begin
     begin
       Fields.Add('IdePath|IDE path');
       Fields.Add('CompPath|Compiler');
-      Fields.Add('IncPath|Include');
+      // Папки inc (rapidq_ref/RQInc.md): Include UnIde - набор inc,
+      // который ставится с unIDE (rapidq_ref\RQInc: RQProc.inc,
+      // RQControls.inc и проверенные отдельные inc; пусто - эта папка рядом
+      // с exe), Include User - свой общий путь пользователя (с Use IDE
+      // path - INC папки RapidQ). Какую берёт проект - Project Properties
+      // (Unit1, RapidQIncDir)
+      Fields.Add('SysIncPath|Include UnIde');
+      Fields.Add('IncPath|Include User');
       Fields.Add('LibPath|Library');
       Fields.Add('PrjPath|Projects');
       Fields.Add('TplPath|Templates');
@@ -3418,6 +3107,10 @@ begin
       // Описание компонентов для инспектора и снимка: ComponentAll.data
       // (RapidQComponentsReady в Unit1)
       Fields.Add('CompDataFile|Components');
+      // Сборка через FreeBASIC (рамка Project, FB Smart/Compat): папка
+      // RqLcl с inc\rqrt.bi, inc\rqlcl.bi и bin\rqlcl32.dll (Unit1,
+      // RqLclDir); пустая - RqLcl рядом с exe редактора
+      Fields.Add('RqLclPath|RqLcl folder');
     end
     else if AType = 'Delphi' then
     begin
@@ -3434,7 +3127,11 @@ begin
     end
     else if AType = 'FreeBASIC' then
     begin
-      Fields.Add('FBCompPath|FB compiler');
+      // Папки компилятора: 32 бит - fbc32.exe (или fbc.exe), 64 бит -
+      // fbc64.exe; папка 64 пустая - fbc64.exe ищется в папке 32
+      // (CompileFreeBasic в Unit1)
+      Fields.Add('FBCompPath|FB compiler 32');
+      Fields.Add('FBComp64Path|FB compiler 64');
       Fields.Add('IncPath|Include');
       Fields.Add('LibPath|Library');
     end
@@ -3452,6 +3149,10 @@ begin
       Fields.Add('LogFile|Log file');
       Fields.Add('CliCfgFile|Cli cfg file');
       Fields.Add('CliDataPath|Cli data path');
+      Fields.Add('DownloadsPath|Cli downloads path');
+      // Папка Arduino IDE (%LOCALAPPDATA%\Arduino15): там тоже ищутся
+      // установленные платформы и library_index.json
+      Fields.Add('Arduino15Path|Arduino15 path');
     end
     else if (AType = 'C project') or (AType = 'CPP project') then
     begin
@@ -3466,31 +3167,11 @@ begin
       Fields.Add('PublishPath|Publish folder');
     end;
 
-    // Строка выбора инструмента поверх страницы
-    if cbTool <> nil then
-    begin
-      cbTool.Left := lstCompTypes.Width + 12;
-      cbTool.Top := 8;
-      cbTool.Width := 180;
-      btnToolAdd.Left := cbTool.Left + cbTool.Width + 6;
-      btnToolAdd.Top := 7;
-      btnToolAdd.Width := 60;
-      btnToolAdd.Height := 23;
-      btnToolDel.Left := btnToolAdd.Left + 66;
-      btnToolDel.Top := 7;
-      btnToolDel.Width := 60;
-      btnToolDel.Height := 23;
-      btnToolFind.Left := btnToolDel.Left + 66;
-      btnToolFind.Top := 7;
-      btnToolFind.Width := 90;
-      btnToolFind.Height := 23;
-      btnToolFind.Enabled := AType = 'Delphi';
-      btnDelphiImport.Left := btnToolFind.Left + 96;
-      btnDelphiImport.Top := 7;
-      btnDelphiImport.Width := 110;
-      btnDelphiImport.Height := 23;
-      btnDelphiImport.Visible := AType = 'Delphi';
-    end;
+    // Строка выбора инструмента поверх страницы (Unit2.dfm): кнопки
+    // импорта - только у своего типа
+    btnToolFind.Enabled := AType = 'Delphi';
+    btnDelphiImport.Visible := AType = 'Delphi';
+    btnArdImport.Visible := AType = 'Arduino';
 
     T := TLabel.Create(Self);
     T.Parent := pnlCompPage;
@@ -3518,6 +3199,24 @@ begin
       SetLength(FCompEdits, Fields.Count);
       SetLength(FCompKeys, Fields.Count);
       SetLength(FCompIsList, Fields.Count);
+      SetLength(FCompBtns, Fields.Count);
+
+      // RapidQ: галка Use IDE path над полями, как в RQdebugger
+      if AType = 'RapidQ Basic' then
+      begin
+        FCompUseIde := TUiCheckBox.Create(Self);
+        FCompUseIde.Parent := pnlCompPage;
+        FCompUseIde.Caption := 'Use IDE path';
+        FCompUseIde.Left := 12 + LabW;
+        FCompUseIde.Top := Y;
+        FCompUseIde.Width := 200;
+        if Ini <> nil then
+          FCompUseIde.Checked := Ini.ReadBool(FCompSection, 'UseIdePath',
+                                              False);
+        // Обработчик - после чтения: OnClick бывает и при смене из кода
+        FCompUseIde.OnClick := CompUseIdeClick;
+        Inc(Y, 28);
+      end;
 
       for I := 0 to Fields.Count - 1 do
       begin
@@ -3562,6 +3261,7 @@ begin
         B.Anchors := [akTop, akRight];
         B.Tag := I;
         B.OnClick := CompBrowseClick;
+        FCompBtns[I] := B;
 
         Inc(Y, 28);
       end;
@@ -3573,6 +3273,9 @@ begin
     Bmp.Free;
     Fields.Free;
   end;
+
+  // Use IDE path: производные поля - от IDE path и только для чтения
+  CompApplyIdePath;
 
   // Порядок поиска модулей при сборке Delphi - под полями
   if AType = 'Delphi' then
@@ -3593,9 +3296,34 @@ begin
       'папки программы, папки проекта редактора или папок выше программы); ' +
       'Library path. Browsing path компилятору не передаётся, как и в самой ' +
       'Delphi.' + #13#10#13#10 +
+      'Output (exe) и Output (dcu) пустые - exe и .dcu кладутся в папку ' +
+      '.dpr проекта. Сам редактор (.dpr с именем его exe) - exe в Output ' +
+      'рядом с .dpr: оттуда его и запускать.' + #13#10#13#10 +
       'Папки, которых нет на этом компьютере, в списках остаются (они могут ' +
       'быть с другого компьютера) и при сборке пропускаются; удалить их - ' +
       'кнопка ... и Delete invalid.';
+  end;
+
+  if AType = 'FreeBASIC' then
+  begin
+    L := TLabel.Create(Self);
+    L.Parent := pnlCompPage;
+    L.Left := 12;
+    L.Top := Y + 8;
+    L.AutoSize := False;
+    L.WordWrap := True;
+    L.Width := pnlCompPage.ClientWidth - 24;
+    L.Height := 120;
+    L.Anchors := [akLeft, akTop, akRight];
+    L.Caption :=
+      'FB compiler 32 - папка с fbc32.exe (или fbc.exe), FB compiler 64 - ' +
+      'папка с fbc64.exe (или fbc.exe). Если оба компилятора в одной папке, ' +
+      'достаточно заполнить FB compiler 32.' + #13#10#13#10 +
+      'Include и Library пустые - компилятор берёт свои папки inc и lib ' +
+      '(у 32 и 64 бит они свои). Заполнять их нужно только для другой ' +
+      'папки: Include передаётся ключом -i, Library - ключом -p. ' +
+      'Вид результата (GUI, Console, DLL) и разрядность выбираются в рамке ' +
+      'Project и запоминаются для главного .bas.';
   end;
 
   // Значения из editor.ini приводим в порядок сразу, не дожидаясь, пока
@@ -3766,6 +3494,584 @@ begin
     Result := AKey;
 end;
 
+// ---------------------------------------------------------------------------
+//  Вкладка Arduino: настройки arduino-cli (как вкладка Arduino в IDE Options
+//  RQdebugger). Ключи - те же, что на странице Compilers - Arduino
+//  ([Compiler.Arduino] editor.ini); правка сразу пишется в editor.ini, поле
+//  с тем же ключом на странице Compilers обновляется.
+// ---------------------------------------------------------------------------
+
+const
+  // Поля путей: ключ | подпись кнопки | подсказка
+  ArdPathFields: array[0..9] of string = (
+    'SketchPath|Sketch path|Sketchbook (directories.user arduino-cli)',
+    'CliFile|Arduino CLI file|arduino-cli.exe',
+    'BuildPath|Build Path|Папка, куда сохраняются собранные файлы (--build-path)',
+    'LibPath|Library Path|Папки своих библиотек (--libraries)',
+    'LogFile|Log file|Файл лога сборки (--log-file)',
+    'CliCfgFile|Cli cfg file|arduino-cli.yaml (--config-file)',
+    'CliDataPath|Cli Data Path|directories.data: индексы, платформы (packages)',
+    'DownloadsPath|Cli Downloads Path|directories.downloads: скачанные архивы',
+    'Arduino15Path|Ard15 Default Path|Папка Arduino IDE (%LOCALAPPDATA%\Arduino15): ' +
+      'там тоже ищутся платформы и library_index.json',
+    'IdePath|Arduino IDE folder|Папка установленной Arduino IDE (не обязательно): ' +
+      'её examples и libraries - в меню Arduino - Examples и Include Library');
+  // Пункты Warnings и Log level - в Unit2.dfm (cbArdWarnings, cbArdLogLevel)
+
+// Поле AIndex (от нуля) строки "a|b|c"
+function ArdBarField(const AText: string; AIndex: Integer): string;
+var
+  Rest: string;
+  BarPos, FieldIdx: Integer;
+begin
+  Rest := AText;
+  for FieldIdx := 0 to AIndex - 1 do
+  begin
+    BarPos := Pos('|', Rest);
+    if BarPos = 0 then
+    begin
+      Result := '';
+      Exit;
+    end;
+    Rest := Copy(Rest, BarPos + 1, Length(Rest));
+  end;
+  BarPos := Pos('|', Rest);
+  if BarPos > 0 then
+    Result := Copy(Rest, 1, BarPos - 1)
+  else
+    Result := Rest;
+end;
+
+// Вкладка Arduino при первом открытии окна. Элементы - в Unit2.dfm; здесь
+// строки путей по таблице ArdPathFields (поле и кнопка выбора) и значения
+// из editor.ini.
+procedure TForm2.InitArduinoTab;
+var
+  FieldEdit: TUiEdit;
+  BrowseBtn: TUiButton;
+  RowIdx, RowTop: Integer;
+begin
+  FArdTab := tsArduino;
+  FArdTop := pnlArdTop;
+
+  // Ширина полей и место кнопок - в ArdTopResize, по ширине панели: при
+  // постройке она ещё не та, что будет на экране
+  SetLength(FArdEdits, Length(ArdPathFields));
+  SetLength(FArdEditKeys, Length(ArdPathFields));
+  SetLength(FArdPathBtns, Length(ArdPathFields));
+  RowTop := 10;
+  for RowIdx := 0 to High(ArdPathFields) do
+  begin
+    FArdEditKeys[RowIdx] := ArdBarField(ArdPathFields[RowIdx], 0);
+
+    FieldEdit := TUiEdit.Create(Self);
+    FieldEdit.Parent := pnlArdTop;
+    FieldEdit.Left := 8;
+    FieldEdit.Top := RowTop;
+    FieldEdit.Width := 300;
+    FieldEdit.Tag := RowIdx;
+    FieldEdit.ShowHint := True;
+    FieldEdit.Hint := ArdBarField(ArdPathFields[RowIdx], 2);
+    // Пути - первыми в порядке Tab, перед списками и флажками из .dfm
+    FieldEdit.TabOrder := RowIdx * 2;
+    FieldEdit.OnChange := ArdEditChange;
+    FArdEdits[RowIdx] := FieldEdit;
+
+    BrowseBtn := TUiButton.Create(Self);
+    BrowseBtn.Parent := pnlArdTop;
+    BrowseBtn.Left := FieldEdit.Left + FieldEdit.Width + 6;
+    BrowseBtn.Top := RowTop - 1;
+    BrowseBtn.Width := 150;
+    BrowseBtn.Height := 23;
+    BrowseBtn.Caption := ArdBarField(ArdPathFields[RowIdx], 1);
+    BrowseBtn.ShowHint := True;
+    BrowseBtn.Hint := FieldEdit.Hint;
+    BrowseBtn.Tag := RowIdx;
+    BrowseBtn.TabOrder := RowIdx * 2 + 1;
+    BrowseBtn.OnClick := ArdBrowseClick;
+    FArdPathBtns[RowIdx] := BrowseBtn;
+
+    Inc(RowTop, 26);
+  end;
+
+  ArdTabLoad;
+  ArdTopResize(nil);
+end;
+
+// Поля путей - на всю ширину панели, кнопки выбора - у правого края
+procedure TForm2.ArdTopResize(Sender: TObject);
+const
+  BtnWidth = 150;
+var
+  RowIdx, EditWidth: Integer;
+begin
+  if FArdTop = nil then
+    Exit;
+  EditWidth := FArdTop.ClientWidth - 8 - BtnWidth - 14;
+  if EditWidth < 120 then
+    EditWidth := 120;
+  for RowIdx := 0 to High(FArdEdits) do
+  begin
+    FArdEdits[RowIdx].Width := EditWidth;
+    if RowIdx <= High(FArdPathBtns) then
+      FArdPathBtns[RowIdx].Left := FArdEdits[RowIdx].Left + EditWidth + 6;
+  end;
+end;
+
+// Лист Network (tsArdNetwork в Unit2.dfm) - прокси, как вкладка Network в
+// настройках Arduino IDE: без прокси, определять автоматически (с адресом
+// файла настройки или без), вручную (HTTP или SOCKS, хост, порт, имя,
+// пароль). Значения - в [Compiler.Arduino]: ProxyMode (none, auto, manual),
+// ProxyAutoUrlOn, ProxyAutoUrl, ProxyType (http, socks), ProxyHost,
+// ProxyPort, ProxyUser, ProxyPassword. В arduino-cli пока не передаются.
+
+// Доступность полей по выбранному режиму прокси
+procedure TForm2.ArdNetEnable;
+var
+  Manual: Boolean;
+begin
+  chkArdProxyAutoUrl.Enabled := rbArdProxyAuto.Checked;
+  edArdProxyAutoUrl.Enabled := rbArdProxyAuto.Checked and
+                               chkArdProxyAutoUrl.Checked;
+  Manual := rbArdProxyManual.Checked;
+  rbArdProxyHttp.Enabled := Manual;
+  rbArdProxySocks.Enabled := Manual;
+  edArdProxyHost.Enabled := Manual;
+  edArdProxyPort.Enabled := Manual;
+  edArdProxyUser.Enabled := Manual;
+  edArdProxyPassword.Enabled := Manual;
+end;
+
+// Любая правка на листе Network - все его значения в editor.ini
+procedure TForm2.ArdNetChange(Sender: TObject);
+var
+  ModeText, TypeText, AutoUrlOn: string;
+begin
+  if FArdLoading or (FArdTab = nil) then
+    Exit;
+  if rbArdProxyAuto.Checked then
+    ModeText := 'auto'
+  else if rbArdProxyManual.Checked then
+    ModeText := 'manual'
+  else
+    ModeText := 'none';
+  if rbArdProxySocks.Checked then
+    TypeText := 'socks'
+  else
+    TypeText := 'http';
+  if chkArdProxyAutoUrl.Checked then
+    AutoUrlOn := '1'
+  else
+    AutoUrlOn := '0';
+  ArdWrite('ProxyMode', ModeText);
+  ArdWrite('ProxyAutoUrlOn', AutoUrlOn);
+  ArdWrite('ProxyAutoUrl', Trim(edArdProxyAutoUrl.Text));
+  ArdWrite('ProxyType', TypeText);
+  ArdWrite('ProxyHost', Trim(edArdProxyHost.Text));
+  ArdWrite('ProxyPort', Trim(edArdProxyPort.Text));
+  ArdWrite('ProxyUser', edArdProxyUser.Text);
+  ArdWrite('ProxyPassword', edArdProxyPassword.Text);
+  ArdNetEnable;
+end;
+
+// Раздел настроек Arduino - как его читает ArduinoCli (с инструментом по
+// умолчанию, если он выбран на странице Compilers)
+function TForm2.ArdSection: string;
+begin
+  if Form1 <> nil then
+    Result := ArdLoadSettings(Form1.SettingsFileName).Section
+  else
+    Result := ArdIniSection;
+end;
+
+procedure TForm2.ArdWrite(const AKey, AValue: string);
+begin
+  if (Form1 = nil) or FArdLoading then
+    Exit;
+  ArdSaveSetting(Form1.SettingsFileName, ArdSection, AKey, AValue);
+end;
+
+// Значения из editor.ini - в элементы вкладки (при построении, показе окна
+// настроек, переходе на вкладку и после импорта)
+procedure TForm2.ArdTabLoad;
+var
+  Ini: TIniFile;
+  Section, Value: string;
+  RowIdx: Integer;
+begin
+  if (FArdTab = nil) or (Form1 = nil) then
+    Exit;
+  Section := ArdSection;
+  FArdLoading := True;
+  Ini := TIniFile.Create(Form1.SettingsFileName);
+  try
+    for RowIdx := 0 to High(FArdEdits) do
+      FArdEdits[RowIdx].Text := Ini.ReadString(Section, FArdEditKeys[RowIdx],
+                                               '');
+
+    Value := LowerCase(Trim(Ini.ReadString(Section, 'Warnings', 'none')));
+    cbArdWarnings.ItemIndex := cbArdWarnings.Items.IndexOf(Value);
+    if cbArdWarnings.ItemIndex < 0 then
+      cbArdWarnings.ItemIndex := 0;   // none
+    Value := LowerCase(Trim(Ini.ReadString(Section, 'LogLevel', 'info')));
+    cbArdLogLevel.ItemIndex := cbArdLogLevel.Items.IndexOf(Value);
+    if cbArdLogLevel.ItemIndex < 0 then
+      cbArdLogLevel.ItemIndex := cbArdLogLevel.Items.IndexOf('info');
+
+    chkArdCompileVerbose.Checked := Ini.ReadString(Section, 'CompileVerbose',
+                                                   '0') = '1';
+    chkArdUploadVerbose.Checked := Ini.ReadString(Section, 'UploadVerbose',
+                                                  '0') = '1';
+    chkArdVerifyAfterUpload.Checked := Ini.ReadString(Section,
+                                         'VerifyAfterUpload', '0') = '1';
+    chkArdSaveBeforeBuild.Checked := Ini.ReadString(Section,
+                                       'SaveBeforeBuild', '0') = '1';
+    chkArdExportBinaries.Checked := Ini.ReadString(Section,
+                                      'ExportBinaries', '0') = '1';
+
+    memArdUrls.Lines.Text := StringReplace(
+      Ini.ReadString(Section, 'AdditionalUrls', ''), ',', #13#10,
+      [rfReplaceAll]);
+
+    Value := LowerCase(Trim(Ini.ReadString(Section, 'ProxyMode', 'none')));
+    rbArdProxyAuto.Checked := Value = 'auto';
+    rbArdProxyManual.Checked := Value = 'manual';
+    rbArdProxyNone.Checked := (Value <> 'auto') and (Value <> 'manual');
+    chkArdProxyAutoUrl.Checked := Ini.ReadString(Section, 'ProxyAutoUrlOn',
+                                                 '0') = '1';
+    edArdProxyAutoUrl.Text := Ini.ReadString(Section, 'ProxyAutoUrl', '');
+    Value := LowerCase(Trim(Ini.ReadString(Section, 'ProxyType', 'http')));
+    rbArdProxySocks.Checked := Value = 'socks';
+    rbArdProxyHttp.Checked := Value <> 'socks';
+    edArdProxyHost.Text := Ini.ReadString(Section, 'ProxyHost', '');
+    edArdProxyPort.Text := Ini.ReadString(Section, 'ProxyPort', '');
+    edArdProxyUser.Text := Ini.ReadString(Section, 'ProxyUser', '');
+    edArdProxyPassword.Text := Ini.ReadString(Section, 'ProxyPassword', '');
+    ArdNetEnable;
+  finally
+    Ini.Free;
+    FArdLoading := False;
+  end;
+  ArdCfgLoadClick(nil);
+end;
+
+// Поле пути с ключом AKey - новое значение (правка на странице Compilers)
+procedure TForm2.ArdTabSetField(const AKey, AValue: string);
+var
+  RowIdx: Integer;
+begin
+  for RowIdx := 0 to High(FArdEdits) do
+    if (CompareText(FArdEditKeys[RowIdx], AKey) = 0) and
+       (FArdEdits[RowIdx].Text <> AValue) then
+    begin
+      FArdLoading := True;
+      try
+        FArdEdits[RowIdx].Text := AValue;
+      finally
+        FArdLoading := False;
+      end;
+    end;
+end;
+
+procedure TForm2.ArdEditChange(Sender: TObject);
+var
+  RowIdx, CompIdx: Integer;
+  Value: string;
+begin
+  if FArdLoading then
+    Exit;
+  RowIdx := TUiEdit(Sender).Tag;
+  if (RowIdx < 0) or (RowIdx > High(FArdEditKeys)) then
+    Exit;
+  Value := TUiEdit(Sender).Text;
+  ArdWrite(FArdEditKeys[RowIdx], Value);
+
+  // То же поле на странице Compilers - Arduino, если она открыта: иначе
+  // при уходе с неё прежнее значение записалось бы обратно
+  if (CompareText(FCompType, 'Arduino') = 0) and
+     (CompareText(FCompSection, ArdSection) = 0) then
+  begin
+    CompIdx := CompFieldIdx(FArdEditKeys[RowIdx]);
+    if (CompIdx >= 0) and (FCompEdits[CompIdx] <> nil) and
+       (FCompEdits[CompIdx].Text <> Value) then
+      FCompEdits[CompIdx].Text := Value;
+  end;
+end;
+
+procedure TForm2.ArdBrowseClick(Sender: TObject);
+var
+  RowIdx: Integer;
+  Dir: string;
+  Dlg: TOpenDialog;
+begin
+  RowIdx := TUiButton(Sender).Tag;
+  if (RowIdx < 0) or (RowIdx > High(FArdEdits)) then
+    Exit;
+  if IsFileKey(FArdEditKeys[RowIdx]) then
+  begin
+    Dlg := TOpenDialog.Create(Self);
+    try
+      Dlg.Title := 'Выберите файл';
+      Dlg.FileName := FArdEdits[RowIdx].Text;
+      if Dlg.Execute then
+        FArdEdits[RowIdx].Text := Dlg.FileName;   // OnChange пишет в ini
+    finally
+      Dlg.Free;
+    end;
+  end
+  else
+  begin
+    Dir := FArdEdits[RowIdx].Text;
+    if BrowseFolderDialog('Выберите папку', Dir) then
+      FArdEdits[RowIdx].Text := IncludeTrailingPathDelimiter(Dir);
+  end;
+end;
+
+// Warnings, Log level и флажки
+procedure TForm2.ArdOptionChange(Sender: TObject);
+
+  function Flag(ABox: TUiCheckBox): string;
+  begin
+    if ABox.Checked then
+      Result := '1'
+    else
+      Result := '0';
+  end;
+
+begin
+  if FArdLoading or (FArdTab = nil) then
+    Exit;
+  if Sender = cbArdWarnings then
+  begin
+    if cbArdWarnings.ItemIndex >= 0 then
+      ArdWrite('Warnings', cbArdWarnings.Items[cbArdWarnings.ItemIndex]);
+  end
+  else if Sender = cbArdLogLevel then
+  begin
+    if cbArdLogLevel.ItemIndex >= 0 then
+      ArdWrite('LogLevel', cbArdLogLevel.Items[cbArdLogLevel.ItemIndex]);
+  end
+  else if Sender = chkArdCompileVerbose then
+    ArdWrite('CompileVerbose', Flag(chkArdCompileVerbose))
+  else if Sender = chkArdUploadVerbose then
+    ArdWrite('UploadVerbose', Flag(chkArdUploadVerbose))
+  else if Sender = chkArdVerifyAfterUpload then
+    ArdWrite('VerifyAfterUpload', Flag(chkArdVerifyAfterUpload))
+  else if Sender = chkArdSaveBeforeBuild then
+    ArdWrite('SaveBeforeBuild', Flag(chkArdSaveBeforeBuild))
+  else if Sender = chkArdExportBinaries then
+    ArdWrite('ExportBinaries', Flag(chkArdExportBinaries));
+end;
+
+// Список адресов - в editor.ini через запятую, все непустые строки как
+// есть (во время набора адрес ещё не похож на http); в arduino-cli уходят
+// только http(s) - отбор при запуске (ArdHttpUrls)
+procedure TForm2.ArdUrlsChange(Sender: TObject);
+var
+  LineIdx: Integer;
+  Joined, LineText: string;
+begin
+  if FArdLoading or (FArdTab = nil) then
+    Exit;
+  Joined := '';
+  for LineIdx := 0 to memArdUrls.Lines.Count - 1 do
+  begin
+    LineText := Trim(memArdUrls.Lines[LineIdx]);
+    if LineText = '' then
+      Continue;
+    if Joined <> '' then
+      Joined := Joined + ',';
+    Joined := Joined + LineText;
+  end;
+  ArdWrite('AdditionalUrls', Joined);
+end;
+
+// arduino-cli.yaml - на вкладку Cli config file (файл в UTF-8)
+procedure TForm2.ArdCfgLoadClick(Sender: TObject);
+var
+  Settings: TArdSettings;
+  CfgLines: TStringList;
+begin
+  if (FArdTab = nil) or (Form1 = nil) then
+    Exit;
+  Settings := ArdLoadSettings(Form1.SettingsFileName);
+  memArdCfg.Lines.Clear;
+  if Settings.CliCfgFile = '' then
+  begin
+    lblArdCfgState.Caption := 'Не задан Cli cfg file (вкладка Settings)';
+    Exit;
+  end;
+  if not FileExists(Settings.CliCfgFile) then
+  begin
+    lblArdCfgState.Caption := 'Нет файла ' + Settings.CliCfgFile;
+    Exit;
+  end;
+  CfgLines := TStringList.Create;
+  try
+    CfgLines.LoadFromFile(Settings.CliCfgFile);
+    memArdCfg.Lines.Text := ArdUtf8ToAnsi(CfgLines.Text);
+  finally
+    CfgLines.Free;
+  end;
+  lblArdCfgState.Caption := Settings.CliCfgFile;
+end;
+
+procedure TForm2.ArdCliIdle(var ACancel: Boolean);
+begin
+  Application.ProcessMessages;
+  ACancel := False;
+end;
+
+// «Записать пути в yaml»: каталоги arduino-cli - из полей вкладки Settings.
+// Так делал RQdebugger при каждом сохранении настроек (SaveIDEOptions),
+// здесь - по кнопке. Файла нет - config init в его папку.
+procedure TForm2.ArdCfgWriteClick(Sender: TObject);
+const
+  // Ключ arduino-cli = ключ editor.ini
+  CfgKeys: array[0..2] of string = (
+    'directories.data=CliDataPath',
+    'directories.downloads=DownloadsPath',
+    'directories.user=SketchPath');
+var
+  Settings: TArdSettings;
+  Output: TStringList;
+  ErrText, CfgKey, Value: string;
+  KeyIdx, EqPos, ExitCode: Integer;
+  Ini: TIniFile;
+begin
+  if Form1 = nil then
+    Exit;
+  Settings := ArdLoadSettings(Form1.SettingsFileName);
+  if not ArdCheckCli(Settings, ErrText) then
+  begin
+    ShowMessage(ErrText);
+    Exit;
+  end;
+  if Settings.CliCfgFile = '' then
+  begin
+    ShowMessage('Не задан Cli cfg file (вкладка Settings)');
+    Exit;
+  end;
+
+  Output := TStringList.Create;
+  Ini := TIniFile.Create(Form1.SettingsFileName);
+  Screen.Cursor := crHourGlass;
+  try
+    if not FileExists(Settings.CliCfgFile) then
+    begin
+      Output.Add('> config init');
+      ExitCode := ArdRunCli(Settings, 'config init --dest-dir ' +
+        ArdQuote(ExcludeTrailingPathDelimiter(
+          ExtractFilePath(Settings.CliCfgFile))), Output, nil, ArdCliIdle);
+      if (ExitCode <> 0) or not FileExists(Settings.CliCfgFile) then
+      begin
+        ShowMessage('Не удалось создать ' + Settings.CliCfgFile + #13#10 +
+                    Output.Text);
+        Exit;
+      end;
+    end;
+
+    for KeyIdx := Low(CfgKeys) to High(CfgKeys) do
+    begin
+      EqPos := Pos('=', CfgKeys[KeyIdx]);
+      CfgKey := Copy(CfgKeys[KeyIdx], 1, EqPos - 1);
+      Value := Trim(Ini.ReadString(Settings.Section,
+        Copy(CfgKeys[KeyIdx], EqPos + 1, Length(CfgKeys[KeyIdx])), ''));
+      if Value = '' then
+        Continue;
+      Output.Add('> config set ' + CfgKey + ' ' + Value);
+      ExitCode := ArdRunCli(Settings, 'config set ' + CfgKey + ' ' +
+                            ArdQuote(ExcludeTrailingPathDelimiter(Value)),
+                            Output, nil, ArdCliIdle);
+      if ExitCode <> 0 then
+      begin
+        ShowMessage('Ошибка arduino-cli:' + #13#10 + Output.Text);
+        Exit;
+      end;
+    end;
+  finally
+    Screen.Cursor := crDefault;
+    Ini.Free;
+    Output.Free;
+    ArdCfgLoadClick(nil);
+  end;
+end;
+
+// Переход на вкладку Arduino - значения заново: их мог поменять Board
+// Manager (Additional URLs) или страница Compilers
+procedure TForm2.OptionsPageChange(Sender: TObject);
+begin
+  if (Sender is TPageControl) and (FArdTab <> nil) and
+     (TPageControl(Sender).ActivePage = FArdTab) then
+    ArdTabLoad;
+  // Схемы и alias.ini могли поменять руками - перечитать
+  if (Sender is TPageControl) and (FFtTab <> nil) and
+     (TPageControl(Sender).ActivePage = FFtTab) then
+    FtFill;
+end;
+
+// «Импорт из RQdb.ini» (Compilers - Arduino): пути из раздела [Arduino]
+// RQdb.ini RQdebugger и Additional URLs из AdditURLEdit.txt рядом с ним -
+// в раздел страницы (ArdImportRqdbIni). Окно выбора файла начинается с
+// папки IDE path страницы RapidQ Basic.
+procedure TForm2.btnArdImportClick(Sender: TObject);
+var
+  Dlg: TOpenDialog;
+  Report: TStringList;
+  Ini: TIniFile;
+  StartDir, Section: string;
+  KeyCount: Integer;
+begin
+  if Form1 = nil then
+    Exit;
+  Dlg := TOpenDialog.Create(Self);
+  Report := TStringList.Create;
+  try
+    Dlg.Title := 'RQdb.ini RQdebugger';
+    Dlg.Filter := 'RQdb.ini|RQdb.ini|*.ini|*.ini';
+    StartDir := '';
+    if FileExists(Form1.SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(Form1.SettingsFileName);
+      try
+        StartDir := Trim(Ini.ReadString('Compiler.RapidQ Basic', 'IdePath',
+                                        ''));
+      finally
+        Ini.Free;
+      end;
+    end;
+    if (StartDir <> '') and DirectoryExists(StartDir) then
+      Dlg.InitialDir := StartDir;
+    Dlg.FileName := 'RQdb.ini';
+    if not Dlg.Execute then
+      Exit;
+
+    // Правки на открытой странице Compilers - в editor.ini до переноса;
+    // после - страница строится заново без нормализации (иначе прежние
+    // значения полей записались бы поверх перенесённых). Раздел - как его
+    // читает ArduinoCli, с какой бы вкладки ни нажали кнопку.
+    NormalizeCompFields;
+    Section := ArdSection;
+    KeyCount := ArdImportRqdbIni(Dlg.FileName, Form1.SettingsFileName,
+                                 Section, Report);
+    if CompareText(FCompType, 'Arduino') = 0 then
+    begin
+      FSkipNormalize := True;
+      ShowCompilerPage(FCompType);
+    end;
+    ArdTabLoad;
+    if KeyCount = 0 then
+      ShowMessage('В ' + Dlg.FileName + ' нет путей Arduino (раздел ' +
+                  '[Arduino])')
+    else
+      ShowMessage('Перенесено из ' + Dlg.FileName + ' в [' +
+                  Section + ']:' + #13#10#13#10 + Report.Text);
+  finally
+    Report.Free;
+    Dlg.Free;
+  end;
+end;
+
 // «Взять из Delphi»: Library path и Browsing path из Environment Options
 // выбранной Delphi (реестр, ...\Library). Пути Delphi - первыми, свои, которых
 // у неё нет, - после. Delphi path пустой - ставится найденный.
@@ -3881,223 +4187,28 @@ begin
               '.');
 end;
 
-// ---------------------------------------------------------------------------
-//  Окно списка путей - как Directories у Delphi: список по порядку поиска,
-//  поле пути, Replace / Add / Delete, удаление несуществующих, порядок.
-// ---------------------------------------------------------------------------
-
-function TForm2.PathExists(const APath: string): Boolean;
-begin
-  Result := DirectoryExists(ExpandCompMacros(Trim(APath)));
-end;
-
-procedure TForm2.PathUpdateState;
-var
-  ItemIdx, Missing: Integer;
-  Text: string;
-begin
-  if (FPathList = nil) or (FPathState = nil) then
-    Exit;
-  Missing := 0;
-  for ItemIdx := 0 to FPathList.Items.Count - 1 do
-    if not PathExists(FPathList.Items[ItemIdx]) then
-      Inc(Missing);
-  Text := 'Папок: ' + IntToStr(FPathList.Items.Count) + ', нет на диске: ' +
-          IntToStr(Missing);
-  if FPathList.ItemIndex >= 0 then
-  begin
-    if PathExists(FPathList.Items[FPathList.ItemIndex]) then
-      Text := Text + '.  Выбранная есть'
-    else
-      Text := Text + '.  Выбранной нет на диске';
-  end;
-  FPathState.Caption := Text;
-end;
-
-procedure TForm2.PathListClick(Sender: TObject);
-begin
-  if FPathList.ItemIndex >= 0 then
-    FPathEdit.Text := FPathList.Items[FPathList.ItemIndex];
-  PathUpdateState;
-end;
-
-procedure TForm2.PathBrowseClick(Sender: TObject);
-var
-  Dir: string;
-begin
-  Dir := ExpandCompMacros(Trim(FPathEdit.Text));
-  if BrowseFolderDialog('Папка', Dir) then
-    FPathEdit.Text := ExcludeTrailingPathDelimiter(Dir);
-end;
-
-procedure TForm2.PathReplaceClick(Sender: TObject);
-var
-  ItemIdx: Integer;
-begin
-  ItemIdx := FPathList.ItemIndex;
-  if (ItemIdx < 0) or (Trim(FPathEdit.Text) = '') then
-    Exit;
-  FPathList.Items[ItemIdx] := Trim(FPathEdit.Text);
-  FPathList.ItemIndex := ItemIdx;
-  PathUpdateState;
-end;
-
-procedure TForm2.PathAddClick(Sender: TObject);
-var
-  Item: string;
-begin
-  Item := Trim(FPathEdit.Text);
-  if Item = '' then
-    Exit;
-  if FPathList.Items.IndexOf(Item) < 0 then
-    FPathList.Items.Add(Item);
-  FPathList.ItemIndex := FPathList.Items.IndexOf(Item);
-  PathUpdateState;
-end;
-
-procedure TForm2.PathDeleteClick(Sender: TObject);
-var
-  ItemIdx: Integer;
-begin
-  ItemIdx := FPathList.ItemIndex;
-  if ItemIdx < 0 then
-    Exit;
-  FPathList.Items.Delete(ItemIdx);
-  if ItemIdx >= FPathList.Items.Count then
-    ItemIdx := FPathList.Items.Count - 1;
-  FPathList.ItemIndex := ItemIdx;
-  PathUpdateState;
-end;
-
-procedure TForm2.PathDelInvalidClick(Sender: TObject);
-var
-  ItemIdx: Integer;
-begin
-  for ItemIdx := FPathList.Items.Count - 1 downto 0 do
-    if not PathExists(FPathList.Items[ItemIdx]) then
-      FPathList.Items.Delete(ItemIdx);
-  PathUpdateState;
-end;
-
-procedure TForm2.PathUpClick(Sender: TObject);
-var
-  ItemIdx: Integer;
-begin
-  ItemIdx := FPathList.ItemIndex;
-  if ItemIdx <= 0 then
-    Exit;
-  FPathList.Items.Exchange(ItemIdx, ItemIdx - 1);
-  FPathList.ItemIndex := ItemIdx - 1;
-end;
-
-procedure TForm2.PathDownClick(Sender: TObject);
-var
-  ItemIdx: Integer;
-begin
-  ItemIdx := FPathList.ItemIndex;
-  if (ItemIdx < 0) or (ItemIdx >= FPathList.Items.Count - 1) then
-    Exit;
-  FPathList.Items.Exchange(ItemIdx, ItemIdx + 1);
-  FPathList.ItemIndex := ItemIdx + 1;
-end;
-
-// Список путей AValue (через ;) - в окне; True - нажали OK, AValue - новый
+// Список путей AValue (через ;) - в окне DlgPathList; True - нажали OK,
+// AValue - новый. Макросы $(DELPHI) и %VAR% для проверки папок раскрывает
+// ExpandCompMacros этой страницы.
 function TForm2.EditPathList(const ACaption: string;
                              var AValue: string): Boolean;
 var
-  Dlg: TForm;
-  DlgBtn: TUiButton;
-  Rest, Item: string;
-  SepPos, ItemIdx: Integer;
-
-  function AddBtn(const ACap: string; ALeft, ATop, AWidth: Integer;
-                  AClick: TNotifyEvent): TUiButton;
-  begin
-    Result := TUiButton.Create(Dlg);
-    Result.Parent := Dlg;
-    Result.Caption := ACap;
-    Result.SetBounds(ALeft, ATop, AWidth, 25);
-    Result.OnClick := AClick;
-  end;
-
+  Dlg: TDlgPathList;
 begin
   Result := False;
-  Dlg := TForm.CreateNew(Self);
+  Dlg := TDlgPathList.Create(Self);
   try
     Dlg.Caption := 'Пути: ' + ACaption;
-    Dlg.BorderStyle := bsDialog;
-    Dlg.Position := poOwnerFormCenter;
-    // Окно настроек - поверх всех; без этого список ушёл бы под него
-    Dlg.FormStyle := fsStayOnTop;
-    Dlg.Font := Font;
-    Dlg.Color := clBtnFace;
-    Dlg.ClientWidth := 560;
-    Dlg.ClientHeight := 356;
-
-    FPathList := TUiListBox.Create(Dlg);
-    FPathList.Parent := Dlg;
-    FPathList.SetBounds(8, 8, 544, 206);
-    FPathList.OnClick := PathListClick;
-
-    FPathState := TLabel.Create(Dlg);
-    FPathState.Parent := Dlg;
-    FPathState.AutoSize := False;
-    FPathState.SetBounds(8, 220, 544, 16);
-
-    FPathEdit := TUiEdit.Create(Dlg);
-    FPathEdit.Parent := Dlg;
-    FPathEdit.SetBounds(8, 242, 506, 22);
-    AddBtn('...', 518, 241, 34, PathBrowseClick);
-
-    AddBtn('Replace', 8, 272, 80, PathReplaceClick);
-    AddBtn('Add', 92, 272, 80, PathAddClick);
-    AddBtn('Delete', 176, 272, 80, PathDeleteClick);
-    AddBtn('Delete invalid', 260, 272, 110, PathDelInvalidClick);
-    AddBtn('Up', 412, 272, 68, PathUpClick);
-    AddBtn('Down', 484, 272, 68, PathDownClick);
-
-    DlgBtn := AddBtn('OK', 388, 318, 80, nil);
-    DlgBtn.ModalResult := mrOk;
-    DlgBtn.Default := True;
-    DlgBtn := AddBtn('Cancel', 472, 318, 80, nil);
-    DlgBtn.ModalResult := mrCancel;
-    DlgBtn.Cancel := True;
-
-    Rest := AValue;
-    while Rest <> '' do
-    begin
-      SepPos := Pos(';', Rest);
-      if SepPos = 0 then
-        SepPos := Length(Rest) + 1;
-      Item := Trim(Copy(Rest, 1, SepPos - 1));
-      Delete(Rest, 1, SepPos);
-      if Item <> '' then
-        FPathList.Items.Add(Item);
-    end;
-    if FPathList.Items.Count > 0 then
-    begin
-      FPathList.ItemIndex := 0;
-      FPathEdit.Text := FPathList.Items[0];
-    end;
-    PathUpdateState;
-
+    Dlg.OnExpand := ExpandCompMacros;
+    Dlg.SetPaths(AValue);
     if Form1 <> nil then
       Form1.UiApplyForm(Dlg);
     if Dlg.ShowModal = mrOk then
     begin
-      AValue := '';
-      for ItemIdx := 0 to FPathList.Items.Count - 1 do
-      begin
-        if AValue <> '' then
-          AValue := AValue + ';';
-        AValue := AValue + FPathList.Items[ItemIdx];
-      end;
+      AValue := Dlg.GetPaths;
       Result := True;
     end;
   finally
-    FPathList := nil;
-    FPathEdit := nil;
-    FPathState := nil;
     Dlg.Free;
   end;
 end;
@@ -4519,6 +4630,53 @@ begin
 end;
 
 // Кнопка выбора: ключ, кончающийся на File, спрашивает файл, прочие - папку
+// Стартовая папка кнопки «...» пустого поля FreeBASIC (CompBrowseClick)
+function TForm2.FbBrowseStart(const AKey: string): string;
+var
+  Comp32, Comp64, CompDir, SubDir: string;
+
+  function FieldText(const AFieldKey: string): string;
+  var
+    FieldIdx: Integer;
+  begin
+    Result := '';
+    FieldIdx := CompFieldIdx(AFieldKey);
+    if FieldIdx >= 0 then
+      Result := ExcludeTrailingPathDelimiter(Trim(FCompEdits[FieldIdx].Text));
+  end;
+
+begin
+  Result := '';
+  Comp32 := FieldText('FBCompPath');
+  Comp64 := FieldText('FBComp64Path');
+  if CompareText(AKey, 'FBComp64Path') = 0 then
+  begin
+    if Comp32 <> '' then
+      Result := ExtractFilePath(Comp32);
+    Exit;
+  end;
+  if CompareText(AKey, 'FBCompPath') = 0 then
+  begin
+    if Comp64 <> '' then
+      Result := ExtractFilePath(Comp64);
+    Exit;
+  end;
+  if CompareText(AKey, 'IncPath') = 0 then
+    SubDir := 'inc'
+  else if CompareText(AKey, 'LibPath') = 0 then
+    SubDir := 'lib'
+  else
+    Exit;
+  CompDir := Comp32;
+  if (CompDir = '') or not DirectoryExists(CompDir) then
+    CompDir := Comp64;
+  if CompDir = '' then
+    Exit;
+  Result := IncludeTrailingPathDelimiter(CompDir) + SubDir;
+  if not DirectoryExists(Result) then
+    Result := CompDir;
+end;
+
 procedure TForm2.CompBrowseClick(Sender: TObject);
 var
   I: Integer;
@@ -4554,7 +4712,12 @@ begin
   end
   else
   begin
-    Dir := FCompEdits[I].Text;
+    Dir := Trim(FCompEdits[I].Text);
+    // FreeBASIC, поле пустое: Include и Library - с inc и lib компилятора
+    // (их fbc и берёт, когда поля пустые), папка второго компилятора - с
+    // папки над первым (обе версии обычно лежат рядом)
+    if (Dir = '') and (CompareText(FCompType, 'FreeBASIC') = 0) then
+      Dir := FbBrowseStart(FCompKeys[I]);
     // Поле пустое - начинаем с папки текущего проекта, а её нет - с папки
     // самой программы: искать с корня диска неудобно
     if (Dir = '') and (Form1 <> nil) then
@@ -4585,6 +4748,74 @@ begin
   finally
     Ini.Free;
   end;
+
+  // То же поле на вкладке Arduino
+  if CompareText(FCompType, 'Arduino') = 0 then
+    ArdTabSetField(FCompKeys[I], TUiEdit(Sender).Text);
+
+  // Сменился IDE path - поля от него следом (Use IDE path)
+  if (FCompUseIde <> nil) and FCompUseIde.Checked and
+     (CompareText(FCompKeys[I], 'IdePath') = 0) then
+    CompApplyIdePath;
+end;
+
+// Галка Use IDE path (RapidQ): состояние - в editor.ini, ключ UseIdePath
+// раздела инструмента
+procedure TForm2.CompUseIdeClick(Sender: TObject);
+var
+  Ini: TIniFile;
+begin
+  if (FCompUseIde = nil) or (Form1 = nil) or (FCompSection = '') then
+    Exit;
+  Ini := TIniFile.Create(Form1.SettingsFileName);
+  try
+    Ini.WriteBool(FCompSection, 'UseIdePath', FCompUseIde.Checked);
+  finally
+    Ini.Free;
+  end;
+  CompApplyIdePath;
+end;
+
+// Use IDE path (RapidQ), как в RQdebugger: Compiler - сам IDE path,
+// Include - IDE path + INC\, Library - LIB\, Projects - PROJECTS\,
+// Templates - TEMPLATES\, App icon - DEFAULT.ICO. Поля только для чтения,
+// кнопки «...» выключены; значения пишутся в editor.ini (OnChange), так что
+// сборка читает их как раньше. Галка снята - поля снова правятся, значения
+// остаются прежними. Components от IDE path не зависит.
+procedure TForm2.CompApplyIdePath;
+const
+  DerivedKeys: array[0..5] of string = (
+    'CompPath', 'IncPath', 'LibPath', 'PrjPath', 'TplPath', 'IcoFile');
+  DerivedTails: array[0..5] of string = (
+    '', 'INC\', 'LIB\', 'PROJECTS\', 'TEMPLATES\', 'DEFAULT.ICO');
+var
+  UseIde: Boolean;
+  Root, NewValue: string;
+  KeyIdx, FieldIdx: Integer;
+begin
+  if FCompUseIde = nil then
+    Exit;
+  UseIde := FCompUseIde.Checked;
+  Root := '';
+  FieldIdx := CompFieldIdx('IdePath');
+  if FieldIdx >= 0 then
+    Root := Trim(FCompEdits[FieldIdx].Text);
+  if Root <> '' then
+    Root := IncludeTrailingPathDelimiter(Root);
+  for KeyIdx := 0 to High(DerivedKeys) do
+  begin
+    FieldIdx := CompFieldIdx(DerivedKeys[KeyIdx]);
+    if FieldIdx < 0 then
+      Continue;
+    FCompEdits[FieldIdx].ReadOnly := UseIde;
+    if (FieldIdx <= High(FCompBtns)) and (FCompBtns[FieldIdx] <> nil) then
+      FCompBtns[FieldIdx].Enabled := not UseIde;
+    if not UseIde or (Root = '') then
+      Continue;
+    NewValue := Root + DerivedTails[KeyIdx];
+    if FCompEdits[FieldIdx].Text <> NewValue then
+      FCompEdits[FieldIdx].Text := NewValue;   // OnChange пишет в editor.ini
+  end;
 end;
 
 procedure TForm2.LayoutIndentGroup;
@@ -4594,9 +4825,6 @@ var
   Bmp: TBitmap;
   X: Integer;
 begin
-  if grpIndent = nil then
-    Exit;
-
   Bmp := TBitmap.Create;
   try
     Bmp.Canvas.Font.Assign(grpIndent.Font);
@@ -4631,8 +4859,6 @@ var
   Bmp: TBitmap;
   X: Integer;
 begin
-  if grpEditorColors = nil then
-    Exit;
   Bmp := TBitmap.Create;
   try
     Bmp.Canvas.Font.Assign(grpEditorColors.Font);
@@ -4676,24 +4902,6 @@ begin
     Exit;
   APanel.Color := C;
   APanel.Font.Color := ContrastTextColor(C);
-end;
-
-// Квадратик цвета в группе Editor colors: размер, рамка, надпись, щелчок
-procedure TForm2.SetupSwatch(APanel: TPanel; const ACaption, AHint: string);
-begin
-  APanel.Parent := grpEditorColors;
-  APanel.Caption := ACaption;
-  APanel.Top := 13;
-  APanel.Width := 24;
-  APanel.Height := 20;
-  APanel.BevelOuter := bvLowered;
-  APanel.ParentBackground := False;
-  APanel.ParentFont := False;
-  APanel.Font.Style := [fsBold];
-  APanel.Cursor := crHandPoint;
-  APanel.ShowHint := True;
-  APanel.Hint := AHint;
-  APanel.OnClick := ColorSwatchClick;
 end;
 
 // Образцы цветов на вкладке Editor Options - по текущим значениям редактора
@@ -4802,7 +5010,7 @@ var
   LcMarker, BcStart, BcEnd, StrMarker, DigitForms: string;
   DefFont: TFont;
 begin
-  if (Form1 = nil) or (Grid = nil) then
+  if (Form1 = nil) or not FGridReady then
     Exit;
 
   // 1. Таблица - в редактор: данные языка берём из неё, с правками.
@@ -4968,6 +5176,721 @@ begin
   MemoSchemaDetails.Lines.Text := Grid.Cells[3, Grid.Row];
   Grid.Invalidate;
   ShowMessage('4203:Defaults restored. Press Save to write the scheme.');
+end;
+
+// ---------------------------------------------------------------------------
+//  Вкладки Preferences, Designer, Environment Variables - как Tools -
+//  Environment Options в Delphi 7. Значения - Form1.FEnv и
+//  Form1.FEnvOverrides (модуль EnvOptions), в editor.ini пишутся сразу при
+//  изменении, применяет их Form1.EnvOptionsChanged.
+//
+//  Пунктов Delphi, которым в unIDE нет соответствия (Desktop contents,
+//  Docking, Warn on package rebuild, Shared repository, New forms as
+//  text), здесь нет.
+// ---------------------------------------------------------------------------
+
+// Значения вкладок - из Form1 (PrepareOptionsForm)
+procedure TForm2.EnvTabsLoad;
+begin
+  if (Form1 = nil) or not FBuilt then
+    Exit;
+  FEnvLoading := True;
+  try
+    chkPrefAutoEditor.Checked := Form1.FEnv.AutosaveEditor;
+    chkPrefAutoDesktop.Checked := Form1.FEnv.AutosaveDesktop;
+    chkPrefProgress.Checked := Form1.FEnv.ShowCompileProgress;
+    chkPrefMinimize.Checked := Form1.FEnv.MinimizeOnRun;
+    chkPrefHideDsg.Checked := Form1.FEnv.HideDesignersOnRun;
+    udPrefPreviewDelay.Position := Form1.FEnv.FormPreviewDelay;
+    edPrefPreviewDelay.Text := IntToStr(Form1.FEnv.FormPreviewDelay);
+    chkDsgGrid.Checked := Form1.FEnv.DsgShowGrid;
+    chkDsgSnap.Checked := Form1.FEnv.DsgSnapToGrid;
+    udDsgGridX.Position := Form1.FEnv.DsgGridX;
+    udDsgGridY.Position := Form1.FEnv.DsgGridY;
+    edDsgGridX.Text := IntToStr(Form1.FEnv.DsgGridX);
+    edDsgGridY.Text := IntToStr(Form1.FEnv.DsgGridY);
+    chkDsgAutoCreate.Checked := Form1.FEnv.DsgAutoCreateForms;
+    chkDsgCaptions.Checked := Form1.FEnv.DsgShowCaptions;
+    chkDsgHints.Checked := Form1.FEnv.DsgShowHints;
+    chkDsgExtHints.Checked := Form1.FEnv.DsgExtendedHints;
+    chkDsgExtHints.Enabled := chkDsgHints.Checked;
+  finally
+    FEnvLoading := False;
+  end;
+  EnvFillLists;
+end;
+
+// Флажки Preferences и Designer - в Form1.FEnv, в editor.ini, применить
+procedure TForm2.EnvOptionClick(Sender: TObject);
+begin
+  if FEnvLoading or not FBuilt or (Form1 = nil) then
+    Exit;
+  Form1.FEnv.AutosaveEditor := chkPrefAutoEditor.Checked;
+  Form1.FEnv.AutosaveDesktop := chkPrefAutoDesktop.Checked;
+  Form1.FEnv.ShowCompileProgress := chkPrefProgress.Checked;
+  Form1.FEnv.MinimizeOnRun := chkPrefMinimize.Checked;
+  Form1.FEnv.HideDesignersOnRun := chkPrefHideDsg.Checked;
+  Form1.FEnv.DsgShowGrid := chkDsgGrid.Checked;
+  Form1.FEnv.DsgSnapToGrid := chkDsgSnap.Checked;
+  Form1.FEnv.DsgAutoCreateForms := chkDsgAutoCreate.Checked;
+  Form1.FEnv.DsgShowCaptions := chkDsgCaptions.Checked;
+  Form1.FEnv.DsgShowHints := chkDsgHints.Checked;
+  Form1.FEnv.DsgExtendedHints := chkDsgExtHints.Checked;
+  chkDsgExtHints.Enabled := chkDsgHints.Checked;
+  Form1.EnvOptionsChanged;
+end;
+
+// Шаг сетки: число в поле (стрелки счётчика пишут туда же)
+procedure TForm2.EnvGridChange(Sender: TObject);
+var
+  GridValue: Integer;
+begin
+  // До заполнения окна текст полей пишут счётчики - это не правка
+  if FEnvLoading or not FBuilt or (Form1 = nil) then
+    Exit;
+  GridValue := StrToIntDef(Trim(TUiEdit(Sender).Text), -1);
+  if (GridValue < EnvGridMin) or (GridValue > EnvGridMax) then
+    Exit;     // набирают число - ждём правильного
+  if Sender = edDsgGridX then
+    Form1.FEnv.DsgGridX := GridValue
+  else
+    Form1.FEnv.DsgGridY := GridValue;
+  Form1.EnvOptionsChanged;
+end;
+
+// Задержка превью формы в окне модулей (View Unit / View Form), мс: число
+// в поле (стрелки счётчика пишут туда же)
+procedure TForm2.EnvPreviewDelayChange(Sender: TObject);
+var
+  DelayMs: Integer;
+begin
+  // До заполнения окна текст поля пишет счётчик - это не правка
+  if FEnvLoading or not FBuilt or (Form1 = nil) then
+    Exit;
+  DelayMs := StrToIntDef(Trim(edPrefPreviewDelay.Text), -1);
+  if (DelayMs < EnvPreviewDelayMin) or (DelayMs > EnvPreviewDelayMax) then
+    Exit;     // набирают число - ждём правильного
+  Form1.FEnv.FormPreviewDelay := DelayMs;
+  Form1.EnvOptionsChanged;
+end;
+
+// Списки: системные переменные (как при запуске среды) и подмены
+procedure TForm2.EnvFillLists;
+var
+  SysVars: TStringList;
+  LineIdx: Integer;
+  Item: TListItem;
+  VarName: string;
+begin
+  if (Form1 = nil) or not FBuilt then
+    Exit;
+  SysVars := TStringList.Create;
+  lvEnvSystem.Items.BeginUpdate;
+  lvEnvUser.Items.BeginUpdate;
+  try
+    EnvSystemVars(SysVars);
+    lvEnvSystem.Items.Clear;
+    for LineIdx := 0 to SysVars.Count - 1 do
+    begin
+      VarName := SysVars.Names[LineIdx];
+      Item := lvEnvSystem.Items.Add;
+      Item.Caption := VarName;
+      Item.SubItems.Add(Copy(SysVars[LineIdx], Length(VarName) + 2, MaxInt));
+    end;
+    lvEnvUser.Items.Clear;
+    for LineIdx := 0 to Form1.FEnvOverrides.Count - 1 do
+    begin
+      VarName := Form1.FEnvOverrides.Names[LineIdx];
+      Item := lvEnvUser.Items.Add;
+      Item.Caption := VarName;
+      Item.SubItems.Add(Copy(Form1.FEnvOverrides[LineIdx],
+                             Length(VarName) + 2, MaxInt));
+    end;
+  finally
+    lvEnvUser.Items.EndUpdate;
+    lvEnvSystem.Items.EndUpdate;
+    SysVars.Free;
+  end;
+  btnEnvEdit.Enabled := lvEnvUser.Items.Count > 0;
+  btnEnvDelete.Enabled := lvEnvUser.Items.Count > 0;
+end;
+
+// Окно имени и значения переменной. ANameFixed - имя не меняется (подмена
+// системной переменной)
+// Окно имени и значения переменной (DlgEnvVar). ANameFixed - имя не
+// меняется (подмена системной переменной)
+function TForm2.EnvEditDialog(const ATitle: string; var AName,
+  AValue: string; ANameFixed: Boolean): Boolean;
+var
+  Dlg: TDlgEnvVar;
+begin
+  Result := False;
+  Dlg := TDlgEnvVar.Create(Self);
+  try
+    Dlg.Caption := ATitle;
+    Dlg.edName.Text := AName;
+    Dlg.edName.ReadOnly := ANameFixed;
+    Dlg.edValue.Text := AValue;
+    if ANameFixed then
+      Dlg.ActiveControl := Dlg.edValue
+    else
+      Dlg.ActiveControl := Dlg.edName;
+    if Form1 <> nil then
+      Form1.UiApplyForm(Dlg);
+
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+    AName := Trim(Dlg.edName.Text);
+    AValue := Dlg.edValue.Text;
+    if (AName = '') or (Pos('=', AName) > 0) then
+    begin
+      ShowMessage('Имя переменной не может быть пустым и содержать "=".');
+      Exit;
+    end;
+    Result := True;
+  finally
+    Dlg.Free;
+  end;
+end;
+
+// Подмена AName=AValue в Form1.FEnvOverrides (новая или вместо прежней)
+procedure TForm2.EnvSetOverride(const AName, AValue: string);
+var
+  LineIdx: Integer;
+begin
+  LineIdx := Form1.FEnvOverrides.IndexOfName(AName);
+  if LineIdx >= 0 then
+    Form1.FEnvOverrides[LineIdx] := AName + '=' + AValue
+  else
+    Form1.FEnvOverrides.Add(AName + '=' + AValue);
+  Form1.EnvOverridesChanged;
+  EnvFillLists;
+end;
+
+procedure TForm2.EnvOverrideClick(Sender: TObject);
+var
+  VarName, VarValue: string;
+begin
+  if (Form1 = nil) or (lvEnvSystem.Selected = nil) then
+    Exit;
+  VarName := lvEnvSystem.Selected.Caption;
+  VarValue := lvEnvSystem.Selected.SubItems[0];
+  if Form1.FEnvOverrides.IndexOfName(VarName) >= 0 then
+    VarValue := Copy(Form1.FEnvOverrides[Form1.FEnvOverrides.IndexOfName(
+      VarName)], Length(VarName) + 2, MaxInt);
+  if EnvEditDialog('Override System Variable', VarName, VarValue, True) then
+    EnvSetOverride(VarName, VarValue);
+end;
+
+procedure TForm2.EnvNewClick(Sender: TObject);
+var
+  VarName, VarValue: string;
+begin
+  if Form1 = nil then
+    Exit;
+  VarName := '';
+  VarValue := '';
+  if EnvEditDialog('New User Variable', VarName, VarValue, False) then
+    EnvSetOverride(VarName, VarValue);
+end;
+
+procedure TForm2.EnvEditClick(Sender: TObject);
+var
+  OldName, VarName, VarValue: string;
+  LineIdx: Integer;
+begin
+  if (Form1 = nil) or (lvEnvUser.Selected = nil) then
+    Exit;
+  OldName := lvEnvUser.Selected.Caption;
+  VarName := OldName;
+  VarValue := lvEnvUser.Selected.SubItems[0];
+  if not EnvEditDialog('Edit User Variable', VarName, VarValue, False) then
+    Exit;
+  // Имя сменили - прежняя подмена уходит
+  if CompareText(OldName, VarName) <> 0 then
+  begin
+    LineIdx := Form1.FEnvOverrides.IndexOfName(OldName);
+    if LineIdx >= 0 then
+      Form1.FEnvOverrides.Delete(LineIdx);
+  end;
+  EnvSetOverride(VarName, VarValue);
+end;
+
+procedure TForm2.EnvDeleteClick(Sender: TObject);
+var
+  LineIdx: Integer;
+begin
+  if (Form1 = nil) or (lvEnvUser.Selected = nil) then
+    Exit;
+  LineIdx := Form1.FEnvOverrides.IndexOfName(lvEnvUser.Selected.Caption);
+  if LineIdx < 0 then
+    Exit;
+  Form1.FEnvOverrides.Delete(LineIdx);
+  Form1.EnvOverridesChanged;
+  EnvFillLists;
+end;
+
+// ---------------------------------------------------------------------------
+//  File Types: какое расширение какой схемой подсвечивается. Схема ищется
+//  как schemes\<расширение>.clr; если её нет - по соответствию из
+//  schemes\alias.ini (раздел [Alias]) или встроенному (TForm1.SchemeExtFor).
+//  Здесь видны встроенные и записанные соответствия; правка пишет
+//  alias.ini, удаление строки alias.ini возвращает встроенное.
+// ---------------------------------------------------------------------------
+
+type
+  // OnResize у TControl - protected; доступ через наследника
+  TFtSheetAccess = class(TTabSheet);
+
+procedure TForm2.InitFileTypesTab;
+var
+  HintLbl: TLabel;
+begin
+  FFtTab := TTabSheet.Create(Self);
+  FFtTab.PageControl := pcOptions;
+  FFtTab.Caption := 'File Types';
+
+  HintLbl := TLabel.Create(Self);
+  HintLbl.Parent := FFtTab;
+  HintLbl.Left := 8;
+  HintLbl.Top := 8;
+  HintLbl.AutoSize := True;
+  HintLbl.Caption :=
+    'Схема ищется как schemes\<расширение>.clr. Если своей нет - по этому ' +
+    'списку.'#13#10 +
+    'Изменения пишутся в schemes\alias.ini; Delete у строки alias.ini ' +
+    'возвращает встроенное соответствие.';
+
+  FFtList := TUiListView.Create(Self);
+  FFtList.Parent := FFtTab;
+  FFtList.Left := 8;
+  FFtList.Top := 44;
+  FFtList.ViewStyle := vsReport;
+  FFtList.ReadOnly := True;
+  FFtList.RowSelect := True;
+  FFtList.HideSelection := False;
+  with FFtList.Columns.Add do
+  begin
+    Caption := 'Extension';
+    Width := 90;
+  end;
+  with FFtList.Columns.Add do
+  begin
+    Caption := 'Scheme';
+    Width := 90;
+  end;
+  with FFtList.Columns.Add do
+  begin
+    Caption := 'Where set';
+    Width := 360;
+  end;
+  FFtList.OnDblClick := FtEditClick;
+
+  FFtBtnAdd := TUiButton.Create(Self);
+  FFtBtnAdd.Parent := FFtTab;
+  FFtBtnAdd.Caption := 'Add...';
+  FFtBtnAdd.OnClick := FtAddClick;
+  FFtBtnEdit := TUiButton.Create(Self);
+  FFtBtnEdit.Parent := FFtTab;
+  FFtBtnEdit.Caption := 'Edit...';
+  FFtBtnEdit.OnClick := FtEditClick;
+  FFtBtnDel := TUiButton.Create(Self);
+  FFtBtnDel.Parent := FFtTab;
+  FFtBtnDel.Caption := 'Delete';
+  FFtBtnDel.OnClick := FtDelClick;
+
+  TFtSheetAccess(FFtTab).OnResize := FtResize;
+  FtResize(nil);
+end;
+
+// Список - на всю вкладку, кнопки - под ним справа
+procedure TForm2.FtResize(Sender: TObject);
+const
+  BtnW = 100;
+  BtnH = 26;
+  Gap = 6;
+var
+  BtnTop: Integer;
+begin
+  if (FFtTab = nil) or (FFtList = nil) then
+    Exit;
+  BtnTop := FFtTab.ClientHeight - BtnH - 8;
+  FFtList.Width := FFtTab.ClientWidth - 16;
+  FFtList.Height := BtnTop - Gap - FFtList.Top;
+  FFtBtnDel.SetBounds(FFtTab.ClientWidth - 8 - BtnW, BtnTop, BtnW, BtnH);
+  FFtBtnEdit.SetBounds(FFtBtnDel.Left - Gap - BtnW, BtnTop, BtnW, BtnH);
+  FFtBtnAdd.SetBounds(FFtBtnEdit.Left - Gap - BtnW, BtnTop, BtnW, BtnH);
+end;
+
+procedure TForm2.FtFill;
+var
+  Rows: TStringList;
+  RowIdx, TabPos: Integer;
+  Item: TListItem;
+  OldExt, Rest: string;
+begin
+  if (Form1 = nil) or (FFtList = nil) then
+    Exit;
+  OldExt := '';
+  if FFtList.Selected <> nil then
+    OldExt := FFtList.Selected.Caption;
+  Rows := TStringList.Create;
+  FFtList.Items.BeginUpdate;
+  try
+    Form1.SchemeAliasRows(Rows);
+    FFtList.Items.Clear;
+    for RowIdx := 0 to Rows.Count - 1 do
+    begin
+      Item := FFtList.Items.Add;
+      Item.Caption := Rows.Names[RowIdx];
+      Rest := Copy(Rows[RowIdx], Length(Item.Caption) + 2, MaxInt);
+      TabPos := Pos(#9, Rest);
+      if TabPos > 0 then
+      begin
+        Item.SubItems.Add(Copy(Rest, 1, TabPos - 1));
+        Item.SubItems.Add(Copy(Rest, TabPos + 1, MaxInt));
+      end
+      else
+      begin
+        Item.SubItems.Add(Rest);
+        Item.SubItems.Add('');
+      end;
+      if Item.Caption = OldExt then
+        Item.Selected := True;
+    end;
+  finally
+    FFtList.Items.EndUpdate;
+    Rows.Free;
+  end;
+end;
+
+// Окно: расширение и схема из списка schemes\*.clr
+function TForm2.FtEditDialog(const ATitle: string; var AExt,
+  AScheme: string; AExtFixed: Boolean): Boolean;
+var
+  Dlg: TForm;
+  ExtLbl, SchemeLbl: TLabel;
+  ExtEdit: TUiEdit;
+  SchemeBox: TUiComboBox;
+  OkBtn, CancelBtn: TUiButton;
+  Names: TStringList;
+begin
+  Result := False;
+  Dlg := TForm.Create(Self);
+  Names := TStringList.Create;
+  try
+    Dlg.Caption := ATitle;
+    Dlg.BorderStyle := bsDialog;
+    Dlg.Position := poOwnerFormCenter;
+    Dlg.ClientWidth := 300;
+    Dlg.ClientHeight := 120;
+
+    ExtLbl := TLabel.Create(Dlg);
+    ExtLbl.Parent := Dlg;
+    ExtLbl.SetBounds(12, 16, 90, 16);
+    ExtLbl.Caption := 'Extension:';
+    ExtEdit := TUiEdit.Create(Dlg);
+    ExtEdit.Parent := Dlg;
+    ExtEdit.SetBounds(110, 12, 178, 22);
+    ExtEdit.Text := AExt;
+    ExtEdit.ReadOnly := AExtFixed;
+
+    SchemeLbl := TLabel.Create(Dlg);
+    SchemeLbl.Parent := Dlg;
+    SchemeLbl.SetBounds(12, 48, 90, 16);
+    SchemeLbl.Caption := 'Scheme:';
+    SchemeBox := TUiComboBox.Create(Dlg);
+    SchemeBox.Parent := Dlg;
+    SchemeBox.SetBounds(110, 44, 178, 22);
+    SchemeBox.Style := csDropDownList;
+    Form1.SchemeNames(Names);
+    SchemeBox.Items.Assign(Names);
+    SchemeBox.ItemIndex := SchemeBox.Items.IndexOf(LowerCase(AScheme));
+    if (SchemeBox.ItemIndex < 0) and (SchemeBox.Items.Count > 0) then
+      SchemeBox.ItemIndex := 0;
+
+    OkBtn := TUiButton.Create(Dlg);
+    OkBtn.Parent := Dlg;
+    OkBtn.SetBounds(110, 84, 86, 26);
+    OkBtn.Caption := 'OK';
+    OkBtn.Default := True;
+    OkBtn.ModalResult := mrOk;
+    CancelBtn := TUiButton.Create(Dlg);
+    CancelBtn.Parent := Dlg;
+    CancelBtn.SetBounds(202, 84, 86, 26);
+    CancelBtn.Caption := 'Cancel';
+    CancelBtn.Cancel := True;
+    CancelBtn.ModalResult := mrCancel;
+
+    if AExtFixed then
+      Dlg.ActiveControl := SchemeBox
+    else
+      Dlg.ActiveControl := ExtEdit;
+    Form1.UiApplyForm(Dlg);
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+    AExt := LowerCase(Trim(ExtEdit.Text));
+    if (AExt <> '') and (AExt[1] = '.') then
+      Delete(AExt, 1, 1);
+    if (AExt = '') or (Pos('=', AExt) > 0) or (Pos('.', AExt) > 0) then
+    begin
+      ShowMessage('Расширение - без точки внутри и без "=", например: inc');
+      Exit;
+    end;
+    if SchemeBox.ItemIndex < 0 then
+      Exit;
+    AScheme := SchemeBox.Items[SchemeBox.ItemIndex];
+    Result := True;
+  finally
+    Names.Free;
+    Dlg.Free;
+  end;
+end;
+
+procedure TForm2.FtAddClick(Sender: TObject);
+var
+  ExtName, SchemeName: string;
+begin
+  if Form1 = nil then
+    Exit;
+  ExtName := '';
+  SchemeName := 'bas';
+  if FtEditDialog('New File Type', ExtName, SchemeName, False) then
+  begin
+    Form1.SchemeAliasSet(ExtName, SchemeName);
+    FtFill;
+  end;
+end;
+
+procedure TForm2.FtEditClick(Sender: TObject);
+var
+  ExtName, SchemeName: string;
+begin
+  if (Form1 = nil) or (FFtList.Selected = nil) then
+    Exit;
+  ExtName := FFtList.Selected.Caption;
+  SchemeName := FFtList.Selected.SubItems[0];
+  if Pos('своя схема', FFtList.Selected.SubItems[1]) = 1 then
+  begin
+    ShowMessage('У .' + ExtName + ' своя схема ' + ExtName + '.clr - она ' +
+      'важнее любого соответствия. Чтобы .' + ExtName + ' шёл по другой ' +
+      'схеме, файл ' + ExtName + '.clr нужно убрать из папки schemes.');
+    Exit;
+  end;
+  if FtEditDialog('Edit File Type', ExtName, SchemeName, True) then
+  begin
+    Form1.SchemeAliasSet(ExtName, SchemeName);
+    FtFill;
+  end;
+end;
+
+procedure TForm2.FtDelClick(Sender: TObject);
+begin
+  if (Form1 = nil) or (FFtList.Selected = nil) then
+    Exit;
+  if Pos('alias.ini', FFtList.Selected.SubItems[1]) <> 1 then
+  begin
+    ShowMessage('Встроенное соответствие не удаляется - его можно ' +
+      'переназначить кнопкой Edit.');
+    Exit;
+  end;
+  Form1.SchemeAliasSet(FFtList.Selected.Caption, '');
+  FtFill;
+end;
+
+// ---------------------------------------------------------------------------
+//  Editor Options: группы Margin and gutter и Code Insight (как Display и
+//  Code Insight в Editor Properties Delphi 7). Значения - Form1.FEdIns,
+//  применяет и пишет в editor.ini Form1.EdInsightChanged.
+// ---------------------------------------------------------------------------
+
+const
+  EdDelayItems: array[0..7] of Integer = (
+    100, 200, 300, 500, 750, 1000, 1250, 1500);
+  // Пункты Right margin и Gutter width - в Unit2.dfm
+
+// Подпись образца цвета: имя цвета VCL без cl, свой - $BBGGRR
+function EdColorText(AColor: Integer): string;
+begin
+  if AColor = CiWindowColor then
+  begin
+    Result := 'Window Background';
+    Exit;
+  end;
+  Result := ColorToString(TColor(AColor));
+  if Copy(Result, 1, 2) = 'cl' then
+    Delete(Result, 1, 2);
+end;
+
+// Editor Options - Code Insight при первом открытии окна: пункты задержки
+// (подпись - в секундах, с десятичным разделителем системы) и образцы
+// цветов, по одному на элемент CiColorNames
+procedure TForm2.InitEditorInsight;
+var
+  TextLbl: TLabel;
+  ItemIdx, ColIdx, RowIdx, ColorIdx: Integer;
+  Swatch: TPanel;
+begin
+  cmbEdDelay.Items.Clear;
+  for ItemIdx := Low(EdDelayItems) to High(EdDelayItems) do
+    cmbEdDelay.Items.Add(FormatFloat('0.0#', EdDelayItems[ItemIdx] / 1000) +
+                         ' sec');
+
+  for ColorIdx := 0 to 9 do
+  begin
+    ColIdx := ColorIdx div 5;
+    RowIdx := ColorIdx mod 5;
+    TextLbl := TLabel.Create(Self);
+    TextLbl.Parent := grpEdInsight;
+    TextLbl.Caption := CiColorNames[ColorIdx] + ':';
+    TextLbl.AutoSize := False;
+    TextLbl.Alignment := taRightJustify;
+    TextLbl.SetBounds(8 + ColIdx * 280, 92 + RowIdx * 26, 110, 16);
+    Swatch := TPanel.Create(Self);
+    Swatch.Parent := grpEdInsight;
+    Swatch.SetBounds(124 + ColIdx * 280, 88 + RowIdx * 26, 140, 22);
+    Swatch.BevelOuter := bvLowered;
+    Swatch.ParentBackground := False;
+    Swatch.ParentFont := False;
+    Swatch.Cursor := crHandPoint;
+    Swatch.Tag := ColorIdx;
+    Swatch.ShowHint := True;
+    Swatch.Hint := 'Щелчок - выбор цвета';
+    Swatch.OnClick := EdColorClick;
+    FEdSwatches[ColorIdx] := Swatch;
+  end;
+end;
+
+// Значения групп - из Form1.FEdIns (PrepareOptionsForm)
+procedure TForm2.EdTabsLoad;
+var
+  ItemIdx, Best: Integer;
+begin
+  if (Form1 = nil) or not FBuilt then
+    Exit;
+  FEdLoading := True;
+  try
+    chkShowLineNumbers.Checked := Form1.FEdIns.ShowLineNumbers;
+    chkEdRightMargin.Checked := Form1.FEdIns.ShowRightMargin;
+    cmbEdRightMargin.Text := IntToStr(Form1.FEdIns.RightMargin);
+    chkEdGutter.Checked := Form1.FEdIns.ShowGutter;
+    if Form1.FEdIns.GutterWidth > 0 then
+      cmbEdGutterWidth.Text := IntToStr(Form1.FEdIns.GutterWidth)
+    else
+      cmbEdGutterWidth.Text := 'Auto';
+    cmbEdTextIndent.Text := IntToStr(Form1.FEdIns.TextIndent);
+    chkEdCompletion.Checked := Form1.FEdIns.CodeCompletion;
+    chkEdParams.Checked := Form1.FEdIns.CodeParams;
+    chkEdTipEval.Checked := Form1.FEdIns.TooltipEval;
+    chkEdTipSymbol.Checked := Form1.FEdIns.TooltipSymbol;
+    // Ближайшая задержка из списка
+    Best := 0;
+    for ItemIdx := 0 to cmbEdDelay.Items.Count - 1 do
+      if Abs(EdDelayItems[ItemIdx] - Form1.FEdIns.DelayMs) <
+         Abs(EdDelayItems[Best] - Form1.FEdIns.DelayMs) then
+        Best := ItemIdx;
+    cmbEdDelay.ItemIndex := Best;
+  finally
+    FEdLoading := False;
+  end;
+  EdUpdateSwatches;
+end;
+
+procedure TForm2.EdUpdateSwatches;
+var
+  ColorIdx, ColorValue: Integer;
+  FillColor: TColor;
+begin
+  if Form1 = nil then
+    Exit;
+  for ColorIdx := 0 to 9 do
+  begin
+    if FEdSwatches[ColorIdx] = nil then
+      Continue;
+    ColorValue := Form1.FEdIns.Colors[ColorIdx];
+    if ColorValue = CiWindowColor then
+      FillColor := Form1.RichEdit1.Color
+    else
+      FillColor := TColor(ColorValue);
+    FEdSwatches[ColorIdx].Color := FillColor;
+    FEdSwatches[ColorIdx].Caption := EdColorText(ColorValue);
+    if (GetRValue(ColorToRGB(FillColor)) * 30 +
+        GetGValue(ColorToRGB(FillColor)) * 59 +
+        GetBValue(ColorToRGB(FillColor)) * 11) div 100 < 128 then
+      FEdSwatches[ColorIdx].Font.Color := clWhite
+    else
+      FEdSwatches[ColorIdx].Font.Color := clBlack;
+  end;
+end;
+
+// Флажки и списки групп - в Form1.FEdIns, применить
+procedure TForm2.EdOptionClick(Sender: TObject);
+var
+  NumValue: Integer;
+begin
+  if FEdLoading or not FBuilt or (Form1 = nil) then
+    Exit;
+  Form1.FEdIns.ShowRightMargin := chkEdRightMargin.Checked;
+  NumValue := StrToIntDef(Trim(cmbEdRightMargin.Text), -1);
+  if (NumValue >= 1) and (NumValue <= 1024) then
+    Form1.FEdIns.RightMargin := NumValue;
+  Form1.FEdIns.ShowGutter := chkEdGutter.Checked;
+  if CompareText(Trim(cmbEdGutterWidth.Text), 'Auto') = 0 then
+    Form1.FEdIns.GutterWidth := 0
+  else
+  begin
+    NumValue := StrToIntDef(Trim(cmbEdGutterWidth.Text), -1);
+    if (NumValue >= 8) and (NumValue <= 400) then
+      Form1.FEdIns.GutterWidth := NumValue;
+  end;
+  NumValue := StrToIntDef(Trim(cmbEdTextIndent.Text), -1);
+  if (NumValue >= 0) and (NumValue <= EdTextIndentMax) then
+    Form1.FEdIns.TextIndent := NumValue;
+  Form1.FEdIns.CodeCompletion := chkEdCompletion.Checked;
+  Form1.FEdIns.CodeParams := chkEdParams.Checked;
+  Form1.FEdIns.TooltipEval := chkEdTipEval.Checked;
+  Form1.FEdIns.TooltipSymbol := chkEdTipSymbol.Checked;
+  if (cmbEdDelay.ItemIndex >= 0) and
+     (cmbEdDelay.ItemIndex <= High(EdDelayItems)) then
+    Form1.FEdIns.DelayMs := EdDelayItems[cmbEdDelay.ItemIndex];
+  Form1.EdInsightChanged;
+end;
+
+procedure TForm2.EdColorClick(Sender: TObject);
+var
+  ColorIdx, ColorValue: Integer;
+begin
+  if (Form1 = nil) or not (Sender is TPanel) then
+    Exit;
+  ColorIdx := TPanel(Sender).Tag;
+  if (ColorIdx < 0) or (ColorIdx > 9) then
+    Exit;
+  ColorValue := Form1.FEdIns.Colors[ColorIdx];
+  if ColorValue = CiWindowColor then
+    ColorDlg.Color := Form1.RichEdit1.Color
+  else
+    ColorDlg.Color := TColor(ColorValue);
+  if not ColorDlg.Execute then
+    Exit;
+  Form1.FEdIns.Colors[ColorIdx] := ColorDlg.Color;
+  Form1.EdInsightChanged;
+  EdUpdateSwatches;
+end;
+
+procedure TForm2.EdDefaultColorsClick(Sender: TObject);
+var
+  Defaults: TEdInsightOptions;
+  ColorIdx: Integer;
+begin
+  if Form1 = nil then
+    Exit;
+  EdDefaultInsight(Defaults, (GetRValue(ColorToRGB(Form1.RichEdit1.Color)) *
+    30 + GetGValue(ColorToRGB(Form1.RichEdit1.Color)) * 59 +
+    GetBValue(ColorToRGB(Form1.RichEdit1.Color)) * 11) div 100 < 128);
+  for ColorIdx := 0 to 9 do
+    Form1.FEdIns.Colors[ColorIdx] := Defaults.Colors[ColorIdx];
+  Form1.EdInsightChanged;
+  EdUpdateSwatches;
 end;
 
 end.

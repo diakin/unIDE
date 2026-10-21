@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QANIMATE</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QANIMATE</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QANIMATE Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QAnimate.inc</code>, line 20 &middot; author: Nastase Eodor &middot; version: 1.2 (stable)</p>
+<p><b>A wrapper for the Windows Animation common control (SysAnimate32) that plays silent AVI clips.</b></p>
+<p>QAnimate extends QObject and creates its own window class QAnimate based on SysAnimate32. Register (called by the constructor) subclasses the control window procedure and the parent window procedure through SetNewCallBack_4 callbacks, so it can paint the background, raise OnPaint, and raise OnStart and OnStop from the ACN_START and ACN_STOP notifications.</p>
+<p>The window is created when Parent (a QForm), Parent2 (a QPanel) or ParetWindow (a raw window handle) is assigned. The clip comes either from an AVI file (File) or from one of the standard animations in shell32.dll (CommonAvi, using the aviFindFolder, aviFindFile, aviFindComputer, aviCopyFiles, aviCopyFile, aviRecycleFile, aviEmptyRecycle and aviDeleteFile defines). GetAnimateInfo reads the frame count and frame size from the AVI header.</p>
+<p>Style properties (BorderStyle, Transparent, Center, AutoPlay) recreate the window when assigned; the frame range and repeat count restart playback.</p>
+<p>QANIMATE inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Win32 API declarations and constants that the file uses but does not include, such as CreateWindowEx, InvalidateRect, RedrawWindow, FindResource, MoveWindow, GetClassInfo, RegisterClass, InitCommonControls, ACM_OPEN/ACM_PLAY/ACM_STOP, ACS_* styles and ACN_START/ACN_STOP</li>
+<li>Helper routines used but not defined in the file: SetNewCallBack_4 (defined in CallBack_4.Inc and rapidq2.inc in this library), NewZStr (Memory.inc), MemCpy, MakeLong, HiWord</li>
+</ul>
+<a name="1"></a><h2>QAnimate Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Handle</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Window handle of the animation control; 0 until the window is created.</td></tr>
+<tr><td class="rq-name">Parent</td><td class="rq-type">QFORM</td><td>RW</td><td></td><td>Parent form. Assigning a QForm creates the control on it (or moves an existing control there) and subclasses the form window procedure to receive start and stop notifications.</td></tr>
+<tr><td class="rq-name">Parent2</td><td class="rq-type">QPANEL</td><td>RW</td><td></td><td>Parent panel. Assigning a QPanel works like Parent but uses the panel as the parent window.</td></tr>
+<tr><td class="rq-name">ParetWindow</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Parent window handle (spelled ParetWindow in the source). Assigning a handle works like Parent but takes any window handle.</td></tr>
+<tr><td class="rq-name">Left</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>X position. Assigning it moves the control with MoveWindow if the window exists.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Y position. Assigning it moves the control with MoveWindow if the window exists.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">INTEGER</td><td>RW</td><td>221</td><td>Width (default 221). Assigning it resizes the control with MoveWindow if the window exists.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">INTEGER</td><td>RW</td><td>55</td><td>Height (default 55). Assigning it resizes the control with MoveWindow if the window exists.</td></tr>
+<tr><td class="rq-name">Enabled</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning it enables or disables the control window with EnableWindow.</td></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Assigning it shows or hides the control window (default 1).</td></tr>
+<tr><td class="rq-name">Position</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Declared with PROPERTY SET SetPosition, but no SetPosition setter exists in the source. Purpose not clear from the source.</td></tr>
+<tr><td class="rq-name">BorderStyle</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Nonzero gives the control a sunken client edge (WS_EX_CLIENTEDGE); default 1. Assigning it recreates the window.</td></tr>
+<tr><td class="rq-name">AutoPlay</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Nonzero sets the ACS_AUTOPLAY style so the clip plays when opened. Assigning it recreates the window.</td></tr>
+<tr><td class="rq-name">Transparent</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Nonzero sets the ACS_TRANSPARENT style; default 1. Assigning it recreates the window.</td></tr>
+<tr><td class="rq-name">Center</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Nonzero sets the ACS_CENTER style to center the clip in the control. Assigning it recreates the window.</td></tr>
+<tr><td class="rq-name">StartFrame</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>First frame to play (0 means the start). Assigning it stops and plays again.</td></tr>
+<tr><td class="rq-name">StopFrame</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Last frame to play (0 means FrameCount). Assigning it stops and plays again.</td></tr>
+<tr><td class="rq-name">CommonAvi</td><td class="rq-type">INTEGER</td><td>RW</td><td>aviNone</td><td>Resource number of a standard AVI in shell32.dll (aviFindFolder 150, aviFindFile 151, aviFindComputer 152, aviCopyFiles 160, aviCopyFile 161, aviRecycleFile 162, aviEmptyRecycle 163, aviDeleteFile 164; aviNone 0). Assigning it opens that clip if the window exists.</td></tr>
+<tr><td class="rq-name">File</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>AVI file name to play. Assigning it sets CommonAvi to 0 and opens the clip if the window exists.</td></tr>
+<tr><td class="rq-name">Repeat</td><td class="rq-type">INTEGER</td><td>RW</td><td>-1</td><td>Repeat count passed to ACM_PLAY (default -1). Assigning it stops and plays again.</td></tr>
+<tr><td class="rq-name">Color</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Background color used to erase the control (default the system window color). Assigning it recreates the background brush.</td></tr>
+<tr><td class="rq-name">FrameCount</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of frames, read from the AVI header by GetAnimateInfo.</td></tr>
+<tr><td class="rq-name">FrameWidth</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Frame width, read from the AVI header by GetAnimateInfo.</td></tr>
+<tr><td class="rq-name">FrameHeight</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Frame height, read from the AVI header by GetAnimateInfo.</td></tr>
+</table>
+<a name="2"></a><h2>QAnimate Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Invalidate</td><td class="rq-type">SUB</td><td>Marks the control window for repainting with InvalidateRect.</td></tr>
+<tr><td class="rq-name">Update</td><td class="rq-type">SUB</td><td>Forces an immediate repaint with UpdateWindow.</td></tr>
+<tr><td class="rq-name">Repaint</td><td class="rq-type">SUB</td><td>Erases and invalidates the window with RedrawWindow, then calls Update.</td></tr>
+<tr><td class="rq-name">GetAnimateInfo</td><td class="rq-type">SUB</td><td>Reads the first 18 DWORDs of the AVI header (from File, or from the shell32.dll resource when File is empty) and sets FrameCount, FrameWidth and FrameHeight.</td></tr>
+<tr><td class="rq-name">Open</td><td class="rq-type">SUB</td><td>Opens the clip from File or CommonAvi in the control (ACM_OPEN) and reads its header information.</td></tr>
+<tr><td class="rq-name">Play</td><td class="rq-type">SUB</td><td>Repaints and plays from StartFrame to StopFrame (StopFrame 0 means FrameCount) with the Repeat count.</td></tr>
+<tr><td class="rq-name">Stop</td><td class="rq-type">SUB</td><td>Stops playback (ACM_STOP).</td></tr>
+<tr class="rq-internal"><td class="rq-name">CreateWnd</td><td class="rq-type">SUB</td><td>Internal: creates the control window with the current style properties if it does not exist yet.</td></tr>
+<tr class="rq-internal"><td class="rq-name">ReCreateWnd</td><td class="rq-type">SUB</td><td>Internal: destroys and recreates the window, then opens and plays again if it was opened or playing before.</td></tr>
+<tr class="rq-internal"><td class="rq-name">ParentWndProc</td><td class="rq-type">FUNCTION(hWnd&amp;,Msg&amp;,wParam&amp;,lParam&amp;) AS INTEGER</td><td>Internal: replacement window procedure of the parent window; it raises OnStart and OnStop from WM_COMMAND notifications.</td></tr>
+<tr class="rq-internal"><td class="rq-name">WndProc</td><td class="rq-type">FUNCTION(hWnd&amp;,Msg&amp;,wParam&amp;,lParam&amp;) AS INTEGER</td><td>Internal: window procedure of the QAnimate class; it handles WM_NCHITTEST, WM_PAINT (OnPaint) and WM_ERASEBKGND (fills with Color).</td></tr>
+<tr class="rq-internal"><td class="rq-name">Register</td><td class="rq-type">SUB</td><td>Internal: called by the constructor; creates the callbacks, registers the QAnimate window class based on SysAnimate32, gets the shell32.dll handle and creates the background brush.</td></tr>
+</table>
+<a name="3"></a><h2>QAnimate Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnStart</td><td class="rq-type">SUB(Sender&amp;)</td><td>Raised when the control reports that playback started (ACN_START), with the sender handle.</td></tr>
+<tr><td class="rq-name">OnStop</td><td class="rq-type">SUB(Sender&amp;)</td><td>Raised when the control reports that playback stopped (ACN_STOP), with the sender handle.</td></tr>
+<tr><td class="rq-name">OnPaint</td><td class="rq-type">SUB(Sender&amp;,Dc&amp;)</td><td>Raised on WM_PAINT after the default painting, with the window handle and the device context from wParam.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Position is declared with PROPERTY SET SetPosition, but the source contains no SetPosition setter.</li>
+<li>The file declares none of the Win32 functions and constants it uses; they must come from other include files.</li>
+<li>When the clip resource is not found, GetAnimateInfo does nothing; the error branch contains only the comment &#x27;Raise Error&#x27;.</li>
+<li>In Open, both branches for File (resource in the executable or not) do the same thing, and GetAnimateInfo always opens File as a disk file.</li>
+<li>Assigning Repeat, StartFrame or StopFrame always calls Play, so it starts playback even if the clip was stopped.</li>
+</ul>
+<a name="4"></a><h2>QAnimate Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QAnimate.inc&quot;
+CREATE Form AS QFORM
+  Width = 300
+  Height = 150
+END CREATE
+
+DIM Anim AS QAnimate
+Anim.Parent = Form
+Anim.CommonAvi = aviCopyFiles
+Anim.Play
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qanim.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qavi.html">Next component</a></div>
+</body>
+</html>

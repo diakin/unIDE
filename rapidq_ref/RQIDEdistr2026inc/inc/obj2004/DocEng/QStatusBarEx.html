@@ -1,0 +1,165 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QStatusBarEx</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QStatusBarEx</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QStatusBarEx Component</h1>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; QStatusBarEx is identical as QStatusBar
+with addition of&nbsp; QPanel components in order to be able to post images
+or other&nbsp; components.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; It is necessary to use the AddPanel
+method before adding a QPanel&nbsp; component.
+<p><a NAME="1"></a><b><font size=+1>QStatusBarEx Property</font></b>
+<table BORDER=0 WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>D&eacute;fault</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QStatusBarEx Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr VALIGN=TOP BGCOLOR="#CCFFFF">
+<td>AddOptPanel</td>
+
+<td>SUB(QPANEL,index&amp;)</td>
+
+<td NOWRAP>Add a QPanel component in an existing panel, the parameter&nbsp;
+index&amp; determines the position&nbsp;
+<br>in the bar when several panel were added, a value 0 corresponds to
+the&nbsp; first&nbsp;
+<br>panel of the bar.&nbsp;&nbsp;
+<br>The Height property of the QPanel component must be lower at the Height&nbsp;
+property of the bar.&nbsp;&nbsp;</td>
+
+<td NOWRAP>2</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QStatusBarEx Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QStatusBarEx Examples</font></b>
+<br>$TYPECHECK ON
+<br>$resource BM_OPEN as "open.bmp"
+<br>$include "Object\QStatusBarEx.inc"
+<br>CREATE Form AS QFORM
+<br>&nbsp;&nbsp;&nbsp; Caption="Form1"
+<br>&nbsp;&nbsp;&nbsp; Width=400
+<br>&nbsp;&nbsp;&nbsp; Height=240
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; CREATE Panel as QPANEL
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE img as QIMAGE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bmpHandle=BM_OPEN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE StatusBar1 AS QSTATUSBAREX
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height=20
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AddPanels "","","",""
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Panel(0).Width=100
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Panel(1).Width=100
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Panel(2).Width=100
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AddOptPanel Panel,1
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>END CREATE
+<p>Form.ShowModal
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

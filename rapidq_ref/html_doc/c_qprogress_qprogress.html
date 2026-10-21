@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QPROGRESS</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QPROGRESS</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QPROGRESS Component</h1>
+<p class="rq-meta">Extends <a href="qimage.html">QIMAGE</a> &middot; source: <code>inc/QProgress.inc</code>, line 39 &middot; author: Johnk</p>
+<p><b>A progress indicator derived from QIMAGE that shows either a standard QGAUGE or an animated marquee (moving dot, rectangles, blur or barber pole) for tasks of unknown length.</b></p>
+<p>For Kind 0 to 4 the component shows its embedded QGAUGE (gkText, gkHorizontalBar, gkVerticalBar, gkPie, gkNeedle) and Value and Range are passed to it. For Kind 5 to 8 (gkMovingDot, gkMovingRect, gkMovingBlur, gkBarberPole) it draws a pattern in Color on BackColor into a bitmap twice as wide as the control and scrolls it by StepSize pixels every Interval seconds.</p>
+<p>The animation starts when Visible is set to non-zero and stops when it is set to 0. By default a QTIMER drives it; with UseThreading = True a thread created with CreateThread (kernel32) runs a drawing loop instead. The header says the original component did not work reliably and was totally redone, and that threading is needed because it will not update on one thread.</p>
+<p>QPROGRESS inherits the properties, methods and events of <a href="qimage.html">QIMAGE</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QProgress Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Text drawn on the marquee bitmap (Kind 5 to 8 only).</td></tr>
+<tr><td class="rq-name">Gauge</td><td class="rq-type">QGAUGE</td><td>RW</td><td></td><td>The embedded QGAUGE used for Kind 0 to 4.</td></tr>
+<tr><td class="rq-name">StepSize</td><td class="rq-type">INTEGER</td><td>RW</td><td>50</td><td>Number of pixels the marquee moves per update (default 50; set to half the object size if 0).</td></tr>
+<tr><td class="rq-name">Interval</td><td class="rq-type">SINGLE</td><td>RW</td><td>0.500</td><td>Update interval of the marquee in seconds (default 0.5).</td></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">INTEGER</td><td>RW</td><td>FALSE</td><td>Shows or hides the control. For Kind 5 to 8, assigning non-zero starts the timer or the drawing thread and assigning 0 stops it.</td></tr>
+<tr><td class="rq-name">Color</td><td class="rq-type">INTEGER</td><td>RW</td><td>RGB(128 , 128 , 128)</td><td>Foreground color of the gauge or marquee. Assigning it sets Gauge.ForeColor and redraws the marquee pattern.</td></tr>
+<tr><td class="rq-name">BackColor</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Background color. Assigning it sets Gauge.BackColor and redraws the marquee pattern.</td></tr>
+<tr><td class="rq-name">Range</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Maximum value. Assigning it sets Gauge.Max to the value and Gauge.Min to 0.</td></tr>
+<tr><td class="rq-name">value</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Current progress value. Assigning it sets Gauge.Position.</td></tr>
+<tr><td class="rq-name">Kind</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Display style: 0 gkText, 1 gkHorizontalBar, 2 gkVerticalBar, 3 gkPie, 4 gkNeedle (QGAUGE kinds), 5 gkMovingDot, 6 gkMovingRect, 7 gkMovingBlur, 8 gkBarberPole. Assigning a value above 4 draws the marquee and hides the gauge; otherwise the gauge is shown with that Kind.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">INTEGER</td><td>RW</td><td>20</td><td>Control height. Assigning it sets the inherited Height and redraws the marquee pattern.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">INTEGER</td><td>RW</td><td>200</td><td>Control width. Assigning it sets the inherited Width and redraws the marquee pattern.</td></tr>
+<tr><td class="rq-name">UseThreading</td><td class="rq-type">INTEGER</td><td>RW</td><td>FALSE</td><td>When True the marquee is animated by a separate thread instead of a QTIMER (default False).</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The header warns: if you use threading you cannot use CODEPTR on any other SUB in the program, because the address is used up.</li>
+<li>A comment in the timer routine says not to put SLEEP in it and that DoEvents does nothing there.</li>
+<li>With UseThreading, SetVisible busy-waits with DO: LOOP UNTIL .Visible = TRUE before the inherited Visible is set, so it may never return.</li>
+<li>Width and Height assignments do not resize the Gauge; only the threading loop copies the size to it.</li>
+<li>The Range setter does not store the value in the Range field.</li>
+<li>The caption is drawn at x = .Left + .Width \ 2, which includes the control&#x27;s own Left position.</li>
+</ul>
+<a name="4"></a><h2>QProgress Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QProgress.inc&quot;
+
+CREATE Form AS QFORM
+  CREATE Prog AS QPROGRESS
+    Left = 10
+    Top = 10
+    Width = 200
+    Height = 20
+    Color = &amp;HFF8000
+    Kind = gkBarberPole
+  END CREATE
+END CREATE
+Prog.Visible = 1
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qprogress_object_qprogress.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qprogressbar.html">Next component</a></div>
+</body>
+</html>

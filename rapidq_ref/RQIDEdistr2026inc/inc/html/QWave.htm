@@ -1,0 +1,416 @@
+<html>
+<head>
+<title>QWave.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QWave</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>const</b></font> WV_CLOSE=0
+<font color="0000AA"><b>const</b></font> WV_PLAY=1
+<font color="0000AA"><b>const</b></font> WV_PAUSE=2
+<font color="0000AA"><b>const</b></font> WV_STOP=3
+<font color="0000AA"><b>const</b></font> WV_RECORD=4
+<font color="0000AA"><b>const</b></font> WV_MONO=1
+<font color="0000AA"><b>const</b></font> WV_STEREO=2
+<font color="0000AA"><b>const</b></font> WV_BIT8=8
+<font color="0000AA"><b>const</b></font> WV_BIT16=16
+<font color="0000AA"><b>const</b></font> WV_KHZ8=8000
+<font color="0000AA"><b>const</b></font> WV_KHZ11=11025
+<font color="0000AA"><b>const</b></font> WV_KHZ22=22050
+<font color="0000AA"><b>const</b></font> WV_KHZ44=44100
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> mciSendWave <font color="0000AA"><b>Lib</b></font> "<font color="990000">winmm.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">mciSendStringA</font>" <b>(</b>lpstrCommand <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, lpstrReturnString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>long</b></font>, uReturnLength <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, hwndCallback <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> mciGetErrorWave <font color="0000AA"><b>Lib</b></font> "<font color="990000">winmm.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">mciGetErrorStringA</font>" <b>(</b>dwError <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Byref lpstrBuffer <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,uLength <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Sub</b></font> event_change<b>(</b>position <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+
+<font color="0000AA"><b>Type</b></font> QWave <font color="0000AA"><b>extends</b></font> <font color="000099"><b>Qobject</b></font>
+  <font color="007700"><i>'================================</i></font> 
+  <font color="007700"><i>' champs et proprietés</i></font> 
+  <font color="007700"><i>'================================</i></font> 
+  <font color="0000AA"><b>Timer</b></font> <font color="0000AA"><b>as</b></font> <font color="000099"><b>QTIMER</b></font>
+  Lenght <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+  State <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  FileOpen <font color="0000AA"><b>as</b></font> boolean
+  Error <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  CurrentPos <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Long</b></font> PROPERTY SET SetCurrentPos
+  Bits <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetBits
+  Frequence <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetFrequence
+  Mode <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetMode
+  OnChange <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>event_change<b>)</b> 
+
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' proprieté position Wave</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  Property Set SetCurrentPos<b>(</b>Position <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QWave.FileOpen <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> QWave.State=WV_STOP <font color="0000AA"><b>or</b></font> QWave.State=WV_PAUSE <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> Position&lt;0 <font color="000099"><b>then</b></font>
+          QWave.CurrentPos=0
+        <font color="000099"><b>else</b></font>
+          <font color="0000AA"><b>if</b></font> Position>QWave.Lenght <font color="000099"><b>then</b></font>
+            QWave.CurrentPos=QWave.Lenght
+          <font color="000099"><b>else</b></font>
+            QWave.CurrentPos=Position
+          <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">seek sound to </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>QWave.CurrentPos<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' proprieté nombre de bit du fichier Wave</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  Property Set SetBits<b>(</b>number <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    <font color="0000AA"><b>Dim</b></font> alignement <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>Dim</b></font> ByteRate <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+
+    <font color="0000AA"><b>if</b></font> number=WV_BIT8 <font color="0000AA"><b>or</b></font> number=WV_BIT16 <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> QWave.FileOpen <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> QWave.State=WV_STOP <font color="0000AA"><b>or</b></font> QWave.State=WV_PAUSE <font color="000099"><b>then</b></font>
+          QWave.Bits=number
+          alignement=<b>(</b><b>(</b>QWave.Bits/8<b>)</b>*QWave.Mode<b>)</b>
+          ByteRate=<b>(</b>QWave.Frequence*QWave.Mode*<b>(</b>QWave.Bits/8<b>)</b><b>)</b>
+          RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+          Retval=mciSendWave<b>(</b>"<font color="990000">set sound BitsPerSample </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>QWave.Bits<b>)</b>+"<font color="990000"> channels </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>QWave.Mode<b>)</b>+"<font color="990000"> samplespersec </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>QWave.Frequence<b>)</b>+"<font color="990000"> alignment </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>alignement<b>)</b>+"<font color="990000"> bytespersec </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>ByteRate<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+  
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' proprieté frequence du fichier Wave</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  Property Set SetFrequence<b>(</b>freq <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    <font color="0000AA"><b>Dim</b></font> alignement <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>Dim</b></font> ByteRate <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+
+    <font color="0000AA"><b>if</b></font> freq=WV_KHZ8 <font color="0000AA"><b>or</b></font> freq=WV_KHZ11 <font color="0000AA"><b>or</b></font> freq=WV_KHZ44 <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> QWave.FileOpen <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> QWave.State=WV_STOP <font color="0000AA"><b>or</b></font> QWave.State=WV_PAUSE <font color="000099"><b>then</b></font>
+          QWave.Frequence=freq
+          alignement=<b>(</b><b>(</b>QWave.Bits/8<b>)</b>*QWave.Mode<b>)</b>
+          ByteRate=<b>(</b>QWave.Frequence*QWave.Mode*<b>(</b>QWave.Bits/8<b>)</b><b>)</b>
+          RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+          Retval=mciSendWave<b>(</b>"<font color="990000">set sound BitsPerSample </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>QWave.Bits<b>)</b>+"<font color="990000"> channels </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>QWave.Mode<b>)</b>+"<font color="990000"> samplespersec </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>QWave.Frequence<b>)</b>+"<font color="990000"> alignment </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>alignement<b>)</b>+"<font color="990000"> bytespersec </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>ByteRate<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' proprieté mode de sortie du fichier Wave</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  Property Set SetMode<b>(</b>number <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    <font color="0000AA"><b>Dim</b></font> alignement <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>Dim</b></font> ByteRate <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+
+    <font color="0000AA"><b>if</b></font> number=WV_MONO <font color="0000AA"><b>or</b></font> number=WV_STEREO <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> QWave.FileOpen <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> QWave.State=WV_STOP <font color="0000AA"><b>or</b></font> QWave.State=WV_PAUSE <font color="000099"><b>then</b></font>
+          QWave.Mode=number
+          alignement=<b>(</b><b>(</b>QWave.Bits/8<b>)</b>*QWave.Mode<b>)</b>
+          ByteRate=<b>(</b>QWave.Frequence*QWave.Mode*<b>(</b>QWave.Bits/8<b>)</b><b>)</b>
+          RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+          Retval=mciSendWave<b>(</b>"<font color="990000">set sound BitsPerSample </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>QWave.Bits<b>)</b>+"<font color="990000"> channels </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>QWave.Mode<b>)</b>+"<font color="990000"> samplespersec </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>QWave.Frequence<b>)</b>+"<font color="990000"> alignment </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>alignement<b>)</b>+"<font color="990000"> bytespersec </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>ByteRate<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+PRIVATE:
+
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="007700"><i>' Méthode retourne le texte de l'erreur</i></font> 
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetMciDescription<b>(</b>McierrNr <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>Long</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>200<b>)</b>
+    Retval=mciGetErrorWave<b>(</b>McierrNr,RetString,200<b>)</b>
+    <font color="0000AA"><b>if</b></font> Retval <font color="000099"><b>then</b></font>
+      QWave.GetMciDescription=<font color="0000AA"><b>RTRIM$</b></font><b>(</b>RetString<b>)</b>
+    <font color="000099"><b>else</b></font>
+      QWave.GetMciDescription="<font color="990000"></font>"
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode lecture position Wave</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetPosition <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> Wave.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendWave<b>(</b>"<font color="990000">status sound position</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.GetPosition=<font color="0000AA"><b>val</b></font><b>(</b>RetString<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode lecture mode du media</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetState <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QWave.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendWave<b>(</b>"<font color="990000">status sound mode</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">stopped</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> QWave.GetState=WV_STOP
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">playing</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> QWave.GetState=WV_PLAY
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">paused</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> QWave.GetState=WV_PAUSE
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+PUBLIC:
+
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="007700"><i>' méthode fermeture fichier Wave</i></font> 
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Close
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    QWave.Timer.enabled=False
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+    Retval=mciSendWave<b>(</b>"<font color="990000">stop sound</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+    Retval=mciSendWave<b>(</b>"<font color="990000">close sound</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    QWave.FileOpen=False
+    QWave.Lenght=0
+    QWave.CurrentPos=0
+    QWave.State=WV_CLOSE
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode ouverture fichier Wave</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> Open<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> boolean
+    <font color="0000AA"><b>Dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>Integer</b></font>
+    <font color="0000AA"><b>Dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+    <font color="0000AA"><b>Dim</b></font> FlagOpen <font color="0000AA"><b>as</b></font> boolean
+
+    <font color="0000AA"><b>if</b></font> FileName&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendWave<b>(</b>"<font color="990000">open </font>"+FileName+"<font color="990000"> type waveaudio alias sound</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">set sound time format milliseconds</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">status sound length</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+          QWave.Lenght=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+          RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+          Retval=mciSendWave<b>(</b>"<font color="990000">status sound bitspersample</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+          <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.Bits=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+          RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+          Retval=mciSendWave<b>(</b>"<font color="990000">status sound samplespersec</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+          <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.Frequence=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+          RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+          Retval=mciSendWave<b>(</b>"<font color="990000">status sound channels</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+          <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.Mode=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+          QWave.State=WV_STOP
+          QWave.CurrentPos=0
+          QWave.FileOpen=True
+          QWave.Open=True
+          FlagOpen=True
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="000099"><b>else</b></font>
+        QWave.Error=QWave.GetMciDescription<b>(</b>Retval<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> FlagOpen=False <font color="0000AA"><b>then</b></font> QWave.Close
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode lecture fichier Wave</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Play
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+
+    <font color="0000AA"><b>if</b></font> QWave.FileOpen <font color="000099"><b>then</b></font>
+      QWave.Timer.enabled=True
+      RetString = <font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendWave<b>(</b>"<font color="990000">play sound from </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>QWave.CurrentPos<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.State=WV_PLAY
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode arret fichier Wave</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Stop
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QWave.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendWave<b>(</b>"<font color="990000">stop sound</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">status sound length</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.Lenght=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+        QWave.Timer.enabled=False
+        QWave.State=WV_STOP
+        QWave.CurrentPos=0
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">seek sound to start</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode pause </i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Pause
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QWave.FileOpen=true <font color="0000AA"><b>and</b></font> QWave.State=WV_PLAY <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendWave<b>(</b>"<font color="990000">pause sound</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        QWave.State=WV_PAUSE
+        QWave.Timer.enabled=False
+        QWave.CurrentPos=QWave.GetPosition
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode new,nouveau fichier wave</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> New
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    <font color="0000AA"><b>Dim</b></font> FlagOpen <font color="0000AA"><b>as</b></font> boolean
+
+    <font color="0000AA"><b>if</b></font> QWave.FileOpen=false <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendWave<b>(</b>"<font color="990000">open new type waveaudio alias sound</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">set sound time format milliseconds</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">status sound bitspersample</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.Bits=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">status sound samplespersec</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.Frequence=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">status sound channels</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.Mode=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+        QWave.State=WV_STOP
+        QWave.Timer.enabled=False
+        QWave.CurrentPos=0
+        QWave.FileOpen=True
+        FlagOpen=True
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> FlagOpen=False <font color="0000AA"><b>then</b></font> QWave.Close
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode record </i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Record
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QWave.FileOpen=true <font color="0000AA"><b>and</b></font> <b>(</b>QWave.State=WV_STOP <font color="0000AA"><b>or</b></font> QWave.State=WV_PAUSE<b>)</b> <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendWave<b>(</b>"<font color="990000">record sound to </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>QWave.Lenght<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        QWave.State=WV_RECORD
+        QWave.Timer.enabled=True
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode save</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> Save<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> boolean
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> FileName&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> QWave.FileOpen=true <font color="0000AA"><b>and</b></font> QWave.State=WV_STOP <font color="000099"><b>then</b></font>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">save sound </font>"+FileName,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.Save=True
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode delete </i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Delete<b>(</b>pos1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,pos2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QWave.FileOpen=true <font color="0000AA"><b>and</b></font> QWave.State=WV_STOP <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> pos2>QWave.lenght <font color="0000AA"><b>then</b></font> pos2=QWave.lenght
+      <font color="0000AA"><b>if</b></font> pos1&lt;0 <font color="0000AA"><b>then</b></font> pos1=0
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendWave<b>(</b>"<font color="990000">delete sound from </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>pos1<b>)</b>+"<font color="990000"> to </font>"+<font color="0000AA"><b>str$</b></font><b>(</b>pos2<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendWave<b>(</b>"<font color="990000">status sound length</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QWave.Lenght=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' évenement changementposition du fichier Wave</i></font> 
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="0000AA"><b>Event</b></font> Timer.OnTimer
+    QWave.CurrentPos=QWave.GetPosition
+    QWave.State=QWave.GetState
+    <font color="0000AA"><b>if</b></font> QWave.State=WV_STOP <font color="0000AA"><b>then</b></font> QWave.Stop
+    <font color="0000AA"><b>if</b></font> QWave.OnChange&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QWave.OnChange,QWave.CurrentPos<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Event</b></font>
+
+  <font color="000099"><b>Constructor</b></font>
+    State=WV_CLOSE
+    Timer.interval=1000
+    Timer.enabled=False
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

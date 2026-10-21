@@ -1,0 +1,229 @@
+'
+' || QINIOutline for RapidQ.
+'  ____________________
+'    -----------------------
+' Pre-release Version: 4.1.1a.
+' Alpha Version: 1.01.
+' Initial Release Date: 07/28/01.
+' -----------------------------
+' Description:
+' QINIOutline is an INI Configuration Settings driver that provides a visual outline
+' interface of an INI file -- it even parses comments!
+'
+' Known bugs:
+' 
+' L- Exception EStringListError occurs when parsing comments inside headers.
+' Other than that, there shouldn't be any bugs!
+'
+' Previous bugs: ALOT!
+'
+
+
+Declare sub QINIOutline_OnClickEvent
+
+Type QINIOutline<cbSize> Extends QPanel ' cbSize is the buffer size of the parser
+Private:
+INI as QFileStream ' Provides access to the INI file
+
+Public:
+OnClick as event(QINIOutline_OnClickEvent)
+
+Outline as QOutline
+' Font for QINIOutline
+Font as QFont 
+' Popup menu for QOutline
+PopupMenu as QPopupMenu 
+
+Spacing as long ' The space between brackets and headers of a section in the INI file
+ArchivingStyle as integer 
+
+' API function which allows files to be inserted into outline (not implemented)
+AcceptFiles as integer 
+
+HeaderCount as long  ' Number of headers
+ParamCount as long ' Number of parameters
+Size as integer ' Size of the INI file
+Param(1 to cbSize) as string ' Parameters within sections of the INI file -- left side of the operator
+Value(1 to cbSize) as string ' Values within sections of the INI file -- right side of the operator
+SingleCom as string ' Single comment; e.g. '//' (C/C++ style)
+Operator as string  ' Operator that will be used to parse the INI file; e.g. '='
+
+' Extended comment delimeters separated by a semicolon. Example: ExtendedCom="/*;*/" 
+' (not implemented)
+ExtendedCom as string 
+
+BorderStyle as integer
+EnabledColor as long  ' Same as the standard 'Color' property
+DisabledColor as long  ' The color to use when QINIOutline is disabled
+Cursor as integer
+
+' Idon't think that these work right now:
+Item() as string
+ItemIndex as integer
+ItemHeight as integer
+ItemSeparator as integer
+
+Hint as string
+FileName as string ' The name of the INI file
+ShowHint as string
+LineCount as integer
+OutLineStyle as integer
+Row as integer
+ScrollBars as integer
+
+' Error handling -- determines what to do if an error message is displayed. 
+' If AllowExceptions is set to true, nothing will happen to the current program;
+' but, if AllowExceptions is set to false, the current program will either terminate, or
+' QINIOutline will become invisible - based upon the situation. 
+AllowExceptions as integer  
+
+With QINIOutline
+Sub Read(INIFile$)
+Dim d$ as string, p$ as string, p as integer, c$ as variant, header$ as string
+
+.FileName=INIFile$
+
+.HeaderCount=0
+.ParamCount=0
+
+.BevelOuter=0
+.Outline.Parent=QINIOutline
+.Outline.OutLineStyle=.OutLineStyle
+.Outline.BorderStyle=.BorderStyle
+.Outline.Color=.EnabledColor
+.Outline.Row=.Row
+.Outline.Hint=.Hint
+.Outline.ShowHint=.ShowHint
+.Outline.Item()=.Item()
+.Outline.ItemHeight=.ItemHeight
+.Outline.ItemSeparator=.ItemSeparator
+.Outline.ScrollBars=.ScrollBars
+.Outline.Cursor=.Cursor
+.Outline.PopupMenu=.PopupMenu
+.Outline.Font=.Font
+.Outline.Align=5
+
+If .Enabled=0 Then .Outline.Color=.DisabledColor
+
+ If INIFile$<>"" Then
+If .INI.Open(INIFile$,0) Then
+  While Not .INI.EOF
+   
+   ' Read each line into the parser
+     d$=This.INI.ReadLine
+   d$=LTRIM$(RTRIM$(d$))
+   
+   ' Found header/key
+   If InStr(d$,"[") Then
+    header$=Mid$(d$,InStr(d$,"[")+1,InStr(d$,"]")-2)
+    header$=LTRIM$(RTRIM$(header$))
+   
+   ' Okay now... is the header NULL? Let's find out
+        If header$<>"" Then
+        ' No... keep going!
+     .HeaderCount++
+     
+     ' Add the header to the outline
+      .Outline.AddLines "["+SPACE$(.Spacing)+header$+SPACE$(.Spacing)+"]"
+     End If
+     ' This is the tricky part; re-initialize d$.
+     Do
+   d$=This.INI.ReadLine
+   d$=LTRIM$(RTRIM$(d$))
+ 
+ ' Filter out comments
+      If .SingleCom<>"" Then
+  If InStr(d$,.SingleCom) Then d$=Left$(d$,InStr(d$,.SingleCom)-1)
+  End If
+            
+   p=InStr(d$,.Operator) ' The position of the operator within d$ - very useful
+   p$=Mid$(d$,1,p-1)
+   p$=LTRIM$(RTRIM$(p$))
+
+   If p$<>"" Then
+   .ParamCount++
+    End If
+   
+   .Param(.ParamCount)=p$
+   
+   c$=Mid$(d$,p+1,Len(d$))
+   c$=LTRIM$(RTRIM$(c$))
+
+ If c$<>"" Then
+   Select Case VARTYPE(c$)
+   Case 2
+    .Value(.ParamCount)=c$
+    
+   Case Else
+  .Value(.ParamCount)=STR$(c$)
+       End Select
+ End If
+    
+    If .SingleCom<>"" Then
+  If InStr(c$,.SingleCom) Then c$=Left$(c$,InStr(c$,.SingleCom)-1)
+   End If
+   
+   If d$<>"" Then
+   .Outline.AddLines SPACE$(1)+d$
+   End If
+   Loop Until d$=""
+   End If
+  Wend
+  .LineCount=.INI.LineCount
+  .Size=.INI.Size
+  .INI.Close
+  Else
+ MessageBox("Exception EFOpenINIError in module "+Application.EXEName+"."+_
+ "Cannot find initialization file "+INIFile$+".","Error",16)
+If .AllowExceptions=0 Then Application.Terminate
+ End If
+   Else
+ MessageBox("No initialization file specified in argument 1 of property READ. "+_
+ "INIOUTLINE is uninitialized.","Warning",48)
+If .AllowExceptions=0 Then .Outline.Visible=0
+End If
+End Sub
+
+Event Outline.OnClick
+ CALLFUNC .OnClick
+End Event
+
+' Dummy event
+Event OnClick
+' Does nothing
+End Event
+ End With
+
+ Constructor
+  BorderStyle=1
+  Height=120
+  Width=150
+  SingleCom="//"
+  Operator="="
+  OutLineStyle=5
+  Spacing=0
+  EnabledColor=RGB(255,255,255)
+  DisabledColor=RGB(141,151,158)
+  AllowExceptions=0
+  ShowHint=0
+  ScrollBars=3 ' ssBoth
+  ItemHeight=13
+ End Constructor
+End Type
+
+
+' QINIOutline example:
+' ---------------------
+' Create Form as QForm
+' Center
+' Create INIOutline as QINIOutline<1000>
+'   Align=5
+'   SingleCom="//"
+'   Enabled=1
+'  Read("C:\rapidq\projects\cxb\cxisettings.ini")
+' End Create
+' Caption=INIOutline.FileName+":  "+STR$(INIOutline.LineCount)+" Lines, "+_
+' STR$(INIOutline.HeaderCount)+" headers."
+' End Create
+
+' Form.ShowModal

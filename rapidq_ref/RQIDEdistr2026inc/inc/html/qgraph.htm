@@ -1,0 +1,190 @@
+<html>
+<head>
+<title>qgraph.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>'' QLineGraph '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>' Copyright (c) Jonathan Boles 2002 '''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>' PROPERTIES ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>' Height      AS Integer    - self explanatory                          '</i></font> 
+<font color="007700"><i>' Width       AS Integer    -                                           '</i></font> 
+<font color="007700"><i>' Top         AS Integer    -                                           '</i></font> 
+<font color="007700"><i>' Left        AS Integer    -                                           '</i></font> 
+<font color="007700"><i>' ExtrapolateToZero AS Boolean - whether the graph should start at 0,0  '</i></font> 
+<font color="007700"><i>' AxisColour  AS Integer    - Colour for axes                           '</i></font> 
+<font color="007700"><i>' TextColour  AS Integer    - Colour for text                           '</i></font> 
+<font color="007700"><i>' BackColour  AS Integer    - Colour for background                     '</i></font> 
+<font color="007700"><i>' LineColour  AS Integer    - Colour for plotted line                   ' </i></font> 
+<font color="007700"><i>' XTitle      AS String     - X axis title                              '</i></font> 
+<font color="007700"><i>' YTitle      AS String     - Y axis title                              '</i></font> 
+<font color="007700"><i>' Title       AS String     - Title for graph                           '</i></font> 
+<font color="007700"><i>' Data        AS QStringGrid - Graph data, stored in form               '</i></font> 
+<font color="007700"><i>'                           - x=Data.Cell(0,i) y=Data.Cell(1,i) where   '</i></font> 
+<font color="007700"><i>'                           - i is an integer                           '</i></font> 
+<font color="007700"><i>' TextFont    AS QFont      - Font for graph text                       '</i></font> 
+<font color="007700"><i>' Visible     AS Boolean    -                                           '</i></font> 
+<font color="007700"><i>' Hint        AS String     -                                           '</i></font> 
+<font color="007700"><i>' ShowHint    AS Boolean    -                                           '</i></font> 
+<font color="007700"><i>' Cursor      AS Integer    - Cursor for the graph                      ' </i></font> 
+<font color="007700"><i>'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>' METHODS '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+<font color="007700"><i>' SUB Initialise            - Initialise graphsystem                    '</i></font> 
+<font color="007700"><i>' SUB SaveToFile            - save graph to .bmp (can't get this 2 work '</i></font> 
+<font color="007700"><i>'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''</i></font> 
+
+
+
+
+
+
+<font color="0000AA"><b>Type</b></font> QLineGraph <font color="0000AA"><b>extends</b></font> <font color="000099"><b>qobject</b></font>
+    Height <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    Width <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    Top <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    Left <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    ExtrapolateToZero <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    AxisColour <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    TextColour <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    BackColour <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    XTitle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>*50
+    YTitle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>*50
+    Title <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>*100
+    XScale <font color="0000AA"><b>as</b></font> <font color="000099"><b>single</b></font>
+    YScale <font color="0000AA"><b>as</b></font> <font color="000099"><b>single</b></font>
+    LineColour <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>Data</b></font> <font color="0000AA"><b>as</b></font> <font color="000099"><b>qstringgrid</b></font>
+    Visible <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    Hint <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>*100
+    TextFont <font color="0000AA"><b>as</b></font> <font color="000099"><b>qfont</b></font>
+    Cursor <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    ShowHint <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    image <font color="0000AA"><b>as</b></font> <font color="000099"><b>qcanvas</b></font>
+    maxX <font color="0000AA"><b>as</b></font> <font color="000099"><b>single</b></font>
+    maxY <font color="0000AA"><b>as</b></font> <font color="000099"><b>single</b></font>
+    powerX <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    powerY <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    roundedupX <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    roundedupY <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    
+    <font color="000099"><b>Constructor</b></font>
+        Left=0
+        Width=400
+        Top=0
+        Height=300
+        AxisColour=0
+        TextColour=0
+        LineColour=&HFF
+        BackColour=&HFFFFFF
+        XTitle="<font color="990000">X Axis</font>"
+        YTitle="<font color="990000">Y Axis</font>"
+        Title="<font color="990000">X Axis vs. Y Axis</font>"
+        ExtrapolateToZero=1
+        Visible=1
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+
+    <font color="0000AA"><b>Sub</b></font> Paint
+        <font color="0000AA"><b>with</b></font> QLineGraph
+        .image.visible=.visible
+        .image.hint=.hint
+        .image.font=.textfont
+        .image.cursor=.cursor
+        .image.showhint=.showhint
+        <font color="007700"><i>''''''''''' set size''''''''''''''''</i></font> 
+        .image.height=.Height
+        .image.width=.Width
+        .image.left=.Left
+        .image.top=.Top
+        <font color="007700"><i>'''''''''' Clear the canvas '''''''''</i></font> 
+        .image.fillrect<b>(</b>0,0, .image.width, .image.height, clWhite<b>)</b>
+        <font color="007700"><i>'''''''''' write title ''''''''''''''</i></font> 
+        .image.textout<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.5*.image.width<b>)</b>-<font color="0000AA"><b>int</b></font><b>(</b>.image.textwidth<b>(</b><font color="0000AA"><b>rtrim$</b></font><b>(</b>.Title<b>)</b><b>)</b>/2<b>)</b>,<font color="0000AA"><b>int</b></font><b>(</b>0.02*.image.height<b>)</b>, <font color="0000AA"><b>rtrim$</b></font><b>(</b>.Title<b>)</b>,.TextColour,.BackColour<b>)</b>
+        <font color="007700"><i>'''''''''' write axis titles ''''''''</i></font> 
+        .image.textout<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.52*.image.width<b>)</b>-<font color="0000AA"><b>int</b></font><b>(</b>.image.textwidth<b>(</b><font color="0000AA"><b>rtrim$</b></font><b>(</b>.YTitle<b>)</b><b>)</b>/2<b>)</b>,<font color="0000AA"><b>int</b></font><b>(</b>0.93*.image.height<b>)</b>,<font color="0000AA"><b>rtrim$</b></font><b>(</b>.XTitle<b>)</b>,.TextColour,.BackColour<b>)</b>
+        .image.textout<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.02*.image.width<b>)</b>,<font color="0000AA"><b>int</b></font><b>(</b>0.45*.image.height<b>)</b>,<font color="0000AA"><b>rtrim$</b></font><b>(</b>.YTitle<b>)</b>,.TextColour,.BackColour<b>)</b>
+        <font color="007700"><i>'''''''''' draw the axes ''''''''''''</i></font> 
+        .image.line<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>, <font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>, <font color="0000AA"><b>int</b></font><b>(</b>0.9*.image.width<b>)</b>, <font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>,AxisColour<b>)</b>
+        .image.line<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>, <font color="0000AA"><b>int</b></font><b>(</b>0.1*.image.height<b>)</b>, <font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>, <font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>,AxisColour<b>)</b>
+        <font color="007700"><i>'''''''''' calculate scale ''''''''''</i></font> 
+        <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> .Data.RowCount
+            <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>val</b></font><b>(</b>.Data.Cell<b>(</b>0,i<b>)</b><b>)</b>>.maxX <font color="0000AA"><b>then</b></font> .maxX=<font color="0000AA"><b>int</b></font><b>(</b><font color="0000AA"><b>val</b></font><b>(</b>.Data.Cell<b>(</b>0,i<b>)</b><b>)</b><b>)</b>+1
+        <font color="000099"><b>next</b></font>
+        <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> .Data.RowCount
+            <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>val</b></font><b>(</b>.Data.Cell<b>(</b>1,i<b>)</b><b>)</b>>.maxY <font color="0000AA"><b>then</b></font> .maxY=<font color="0000AA"><b>int</b></font><b>(</b><font color="0000AA"><b>val</b></font><b>(</b>.Data.Cell<b>(</b>1,i<b>)</b><b>)</b><b>)</b>+1
+        <font color="000099"><b>next</b></font>
+
+        <font color="007700"><i>'if int(log(.maxX)/log(10))+1=1 then</i></font> 
+        .powerX=<font color="0000AA"><b>int</b></font><b>(</b><font color="0000AA"><b>log</b></font><b>(</b>.maxX<b>)</b>/<font color="0000AA"><b>log</b></font><b>(</b>10<b>)</b><b>)</b>+1
+        <font color="0000AA"><b>for</b></font> i=10^<b>(</b>.powerX-1<b>)</b> <font color="0000AA"><b>to</b></font> 10^.powerX <font color="0000AA"><b>step</b></font> 10^<b>(</b>.powerX-1<b>)</b>
+            <font color="0000AA"><b>if</b></font> i>.maxX <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>exit</b></font> <font color="000099"><b>for</b></font>
+        <font color="000099"><b>next</b></font>
+        .roundedupX=i
+        <font color="007700"><i>'end if</i></font> 
+
+        <font color="007700"><i>'if int(log(.maxY)/log(10))+1=1 then</i></font> 
+        .powerY=<font color="0000AA"><b>int</b></font><b>(</b><font color="0000AA"><b>log</b></font><b>(</b>.maxY<b>)</b>/<font color="0000AA"><b>log</b></font><b>(</b>10<b>)</b><b>)</b>+1
+        <font color="0000AA"><b>for</b></font> i=10^<b>(</b>.powerY-1<b>)</b> <font color="0000AA"><b>to</b></font> 10^.powerY <font color="0000AA"><b>step</b></font> 10^<b>(</b>.powerY-1<b>)</b>
+            <font color="0000AA"><b>if</b></font> i>.maxY <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>exit</b></font> <font color="000099"><b>for</b></font>
+        <font color="000099"><b>next</b></font>
+        .roundedupY=i
+        <font color="007700"><i>'end if</i></font> 
+        
+        <font color="007700"><i>''''''''' Draw scale ''''''''''''''</i></font> 
+        <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> .roundedupX <font color="0000AA"><b>step</b></font> 10^<b>(</b>.powerX-1<b>)</b>   <font color="007700"><i>''''''''''' X</i></font> 
+            .image.pset<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>+<b>(</b>i/.roundedupX*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.width<b>)</b><b>)</b>,<font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>+2,AxisColour<b>)</b>
+            .image.pset<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>+<b>(</b>i/.roundedupX*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.width<b>)</b><b>)</b>,<font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>+1,AxisColour<b>)</b>
+            .image.textout<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>+<b>(</b>i/.roundedupX*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.width<b>)</b><b>)</b>-.image.textwidth<b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>i<b>)</b><b>)</b>/2,<font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>+5,<font color="0000AA"><b>str$</b></font><b>(</b>i<b>)</b>,.TextColour,.BackColour<b>)</b>
+        <font color="000099"><b>next</b></font>
+        <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> .roundedupY <font color="0000AA"><b>step</b></font> 10^<b>(</b>.powerY-1<b>)</b>   <font color="007700"><i>''''''''''' Y</i></font> 
+            .image.pset<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>-1,<font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>-<b>(</b>i/.roundedupY*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.height<b>)</b><b>)</b>,AxisColour<b>)</b>
+            .image.pset<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>-2,<font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>-<b>(</b>i/.roundedupY*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.height<b>)</b><b>)</b>,AxisColour<b>)</b>
+            .image.textout<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>-5-.image.textwidth<b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>i<b>)</b><b>)</b>,<font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>-<b>(</b>i/.roundedupY*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.height<b>)</b><b>)</b>-<font color="0000AA"><b>int</b></font><b>(</b>.image.textheight<b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>i<b>)</b><b>)</b>/2<b>)</b>,<font color="0000AA"><b>str$</b></font><b>(</b>i<b>)</b>,.TextColour,.BackColour<b>)</b>
+        <font color="000099"><b>next</b></font>
+        <font color="007700"><i>'''''''''' plot points ''''''''''''</i></font> 
+        <font color="0000AA"><b>if</b></font> ExtrapolateToZero <font color="000099"><b>then</b></font>
+            .image.line<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>,<font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>, _
+             <font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>+<b>(</b><font color="0000AA"><b>val</b></font><b>(</b>.Data.Cell<b>(</b>0,i<b>)</b><b>)</b>/.roundedupX*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.width<b>)</b><b>)</b>,<font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>-<b>(</b><font color="0000AA"><b>val</b></font><b>(</b>.Data.Cell<b>(</b>1,i<b>)</b><b>)</b>/.roundedupY*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.height<b>)</b><b>)</b>,.LineColour<b>)</b>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>for</b></font> i=1 <font color="0000AA"><b>to</b></font> .Data.RowCount-1
+            .image.line<b>(</b><font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>+<b>(</b><font color="0000AA"><b>val</b></font><b>(</b>.Data.Cell<b>(</b>0,i-1<b>)</b><b>)</b>/.roundedupX*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.width<b>)</b><b>)</b>,<font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>-<b>(</b><font color="0000AA"><b>val</b></font><b>(</b>.Data.Cell<b>(</b>1,i-1<b>)</b><b>)</b>/.roundedupY*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.height<b>)</b><b>)</b>, _
+                   <font color="0000AA"><b>int</b></font><b>(</b>0.15*.image.width<b>)</b>+<b>(</b><font color="0000AA"><b>val</b></font><b>(</b>.Data.Cell<b>(</b>0,i<b>)</b><b>)</b>/.roundedupX*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.width<b>)</b><b>)</b>,<font color="0000AA"><b>int</b></font><b>(</b>0.85*.image.height<b>)</b>-<b>(</b><font color="0000AA"><b>val</b></font><b>(</b>.Data.Cell<b>(</b>1,i<b>)</b><b>)</b>/.roundedupY*<font color="0000AA"><b>int</b></font><b>(</b>0.74*.image.height<b>)</b><b>)</b>,.LineColour<b>)</b>
+        <font color="000099"><b>next</b></font>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>End</b></font> <font color="0000AA"><b>Sub</b></font>         
+
+    <font color="0000AA"><b>Sub</b></font> Initialise
+        <font color="0000AA"><b>with</b></font> QLineGraph
+        QLineGraph.image.height=QLineGraph.Height
+        QLineGraph.image.width=QLineGraph.Width
+        QLineGraph.image.left=QLineGraph.Left
+        QLineGraph.image.top=QLineGraph.Top
+        QLineGraph.image.onpaint=QLineGraph.Paint
+        .image.visible=.visible
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+  
+    <font color="0000AA"><b>Sub</b></font> SaveToFile<b>(</b>file <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+        <font color="0000AA"><b>with</b></font> QLineGraph
+        <font color="0000AA"><b>dim</b></font> d <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>QRect</b></font>, bmp <font color="0000AA"><b>as</b></font> <font color="000099"><b>qbitmap</b></font>
+        bmp.height=.image.height
+        bmp.width=.image.width
+        d.top=0
+        d.left=0
+        d.right=.image.width
+        d.bottom=.image.height
+        .image.copyrect<b>(</b>d, bmp, d<b>)</b>
+        bmp.savetofile<b>(</b>file<b>)</b>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>End</b></font> <font color="0000AA"><b>Type</b></font> 
+</pre>
+</body>
+</html>

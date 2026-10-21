@@ -1,0 +1,259 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QSkin</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QSkin</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QSkin Component</h1>
+
+<dd>
+QSkin is component inherited from QForm used to have the shapes&nbsp; and
+skins of file bitmap.</dd>
+
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; QSkin has all
+the properties, methods and events of QForm.
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Dimensions of
+QSkin are those of the size of the affected bitmap to&nbsp; its Skin property.
+<p><a NAME="1"></a><b><font size=+1>QSkin Properties</font></b>
+<table BORDER=0 WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>D&eacute;fault</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Skin</td>
+
+<td>QIMAGE</td>
+
+<td><b>R/W</b></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Bitmap Image to the skin of window</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OffsWidth</td>
+
+<td>SHORT</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Offset width form</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OffsHeight</td>
+
+<td>SHORT</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Offset height form</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QSkin Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr VALIGN=TOP BGCOLOR="#CCFFFF">
+<td>SetDeskBar</td>
+
+<td>SUB</td>
+
+<td NOWRAP>The application will be in the task bar during its&nbsp; reduction&nbsp;</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Resize</td>
+
+<td>SUB</td>
+
+<td>Resize window after a skin change</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QSkin Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QSkin Example</font></b>
+<br>$typecheck on
+<br>$optimize on
+<br>$include "Object\QSkin.inc"
+<br>$resource img as "clock.bmp" ' skin bitmap file
+<br>declare sub showTime
+<br>dim tim as qtimer
+<br>tim.interval=1000
+<br>tim.OnTimer=ShowTime
+<p>CREATE Form AS QSkin
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; skin.bmpHandle=img ' using skin bitmap
+<br>&nbsp;&nbsp;&nbsp; skin.top=-1 ' offset position of bitmap
+<br>&nbsp;&nbsp;&nbsp; OffsWidth=-5 'offset width form
+<br>&nbsp;&nbsp;&nbsp; caption="Clock"
+<br>&nbsp;&nbsp;&nbsp; create clock as qlabel
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=60
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=80
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font.bold=true
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font.size=24
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font.color=&amp;hff0000
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption=Time$
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; labelStyle=2
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; transparent=true
+<br>&nbsp;&nbsp;&nbsp; end create
+<br>&nbsp;&nbsp;&nbsp;&nbsp; Create b1 as qbutton
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=140
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=120
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; kind=6
+<br>&nbsp;&nbsp;&nbsp;&nbsp; end create
+<br>END CREATE
+<br>form.shapeform(img,&amp;hffffff) ' define the shape with the same skin
+bitmap
+<br>form.setdeskbar
+<br>Form.ShowModal
+<p>sub showTime
+<br>&nbsp; clock.caption=Time$
+<br>end sub
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

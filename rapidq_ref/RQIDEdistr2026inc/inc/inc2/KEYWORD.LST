@@ -1,0 +1,883 @@
+; RapidQ keyword command list
+; ===========================
+;
+; Standard BASIC commands
+;
+ABS
+'ABS(Number)
+'Return absolute (positive) value of number
+ACOS
+'ACOS(Number)
+'Returns arccosine of number
+ASC
+'ASC(char$)
+'Returns the ASCII key value of char$
+ASIN
+'ASIN(Number)
+'Returns arcsine of number
+ATN
+'ATN(Number)
+'Returns arctangent of number
+'Alternative --> ATAN
+ATAN
+'ATAN(Number)
+'Returns arctangent of number
+'Alternative --> ATN
+BIN$
+'BIN$(Integer)
+'Returns the binary representation of the number
+'This must be a positive integer
+BIND
+'BIND Num TO funname
+'Binds a function pointer
+CALL
+'CALL Sub
+'Calls (jumps to) a subroutine
+CALLBACK
+'See CODEPTR
+CODEPTR
+'CODEPTR(MySub)
+'Returns the absolute address of the SUB/FUNCTION
+CALLFUNC
+'CALLFUNC(Num, param1, param2, ...)
+'Calls function pointer
+CEIL
+'CEIL(Number)
+'Rounds a numeric expression up towards positive infinity
+'EG: 1.5 becomes 2
+CHDIR
+'CHDIR path$
+'Change directory to path$
+CHDRIVE
+'CHDRIVE "a:\"
+'Change drive device (a:\ b:\ c:\ ...)
+CHR$
+'CHR$(byte)
+'Returns character corresponding to the ASCII key value
+CINT
+'CINT(Number)
+'Implemented for compatibility reasons. Use ROUND instead
+CLNG
+'CLNG(Number)
+'Implemented for compatibility reasons. Use ROUND instead
+CONST
+'CONST var = expression
+'Assigns variable a constant value
+CONVBASE$
+'CONVBASE$(Str$, FromBase, ToBase)
+'Returns the representation Str$ FromBase to ToBase representation.
+COS
+'COS(Number)
+'Returns cosine of an angle given in radians
+DATA
+'DATA constant[,constant,....]
+'Stores data for easy retrieval, use READ to read the data.
+DATE$
+'Returns the current Date in MM-DD-YYYY format.
+DEC
+'DEC(Variable [, DecVal])
+'Decrements variable by 1 unless otherwise specified
+DELETE$
+'DELETE$(String$, Index, Count)
+'Deletes Count number of characters from String$ starting at Index
+DIM
+'DIM Variable AS DataType
+'Creates variable of type DataType
+AS
+'See DIM STATIC CREATE
+IS
+' ???
+DIR$
+'DIR$[(FileSpec$, Attributes%)]
+'Returns the next file of FileSpec$
+'Use DIR$ on its own for next matching file
+DIREXISTS
+'DIREXISTS(Path$)
+'Returns 0 if directory does not exist, non-zero otherwise
+EVENT
+'EVENT event  ... END EVENT
+DOEVENTS
+'Polls events, useful when you're in a deep/big loop
+END
+'On its own, terminates program (only if running as CONSOLE)
+'Used to close off blocks of code such as:
+'  IF..END IF   SUB..END SUB    CREATE..END CREATE
+EXP
+'EXP(Number)
+'Calculates the exponential function
+'(e raised to the power of number)
+ENVIRON
+'ENVIRON StringExpression
+'Set environment string
+ENVIRON$
+'ENVIRON$(environment-string)
+'Get environment value
+EXTRACTRESOURCE
+'EXTRACTRESOURCE ResourceNumber%, FileName$
+'Extracts a resource to file
+FIELD$
+'FIELD$(StringExpresion, Deliminator, FieldNumber)
+'Returns a field/token separated by deliminators
+FILEEXISTS
+'FILEEXISTS(FileName$)
+'Returns 0 if file not found, non-zero otherwise
+FIX
+'FIX(Number)
+'Truncates fractional number, rounding down towards 0
+FLOOR
+'FLOOR(Number)
+'Rounds a numeric expression down towards negative infinity
+'EG: 1.5 becomes 1
+FORMAT$
+'FORMAT$(S$, arg1, arg2, ...)
+'Returns a formatted string assembled from a format string
+'and a series of arguments (up to 50)
+FRAC
+'FRAC(Number)
+'Returns the fractional part of the numeric expression
+HEX$
+'HEX$(Number)
+'Returns the HEXidecimal string representation of the Number
+INC
+'INC(Variable [, IncVal])
+'Increments variable by 1 unless otherwise specified
+INITARRAY
+'INITARRAY(Array, values, ...)
+'Initializes array with corresponding values
+INP
+'INP(Address)
+'Returns the byte value read from an I/O port 0..65535
+INSERT$
+'INSERT$(Source$,Dest$,Index)
+'Insert Source$ into Dest$ starting at Index
+'See REPLACE$
+INSTR
+'INSTR([Start,] Search$,Find$)
+'Returns the position in the Search$ that Find$ was found.
+'If no match then 0 is returned
+INT
+'INT(Number)
+'Convert Number to a 32-bit INTEGER, truncating decimals
+KILL
+'KILL Filename$
+'Deletes a file
+KILLMESSAGE
+'KILLMESSAGE hWnd, Message
+'Removes message from queue
+LBOUND
+'LBOUND(ArrayName[, Dimension])
+'Returns the lowerbound of an array (Dimension starts at 1)
+LCASE$
+'LCASE$(String)
+'String is converted to lowercase
+LEFT$
+'LEFT$(String,Num)
+'Returns the leftmost Num characters from String
+LEN
+'LEN(String)
+'Returns the length of String
+LIBRARYINST
+'LIBRARYINST(DLLName)
+'Returns the handle to a loaded DLL module
+LOG
+'LOG(Number)
+'Returns the natural logarithm of Number
+LPRINT
+'LPRINT [Expression][;|,][...]
+'Acts exactly like PRINT, except all output is directed to
+'the default printer. Make sure to call LFLUSH.
+'Also see the Printer component for graphical printing
+LFLUSH
+'Calling this will start printing your document
+'Make sure all your LPRINTs are executed before calling LFLUSH
+LTRIM$
+'LTRIM$(String)
+'Returns String with leftmost spaces removed
+MEMCMP
+'MEMCMP(ptr1, ptr2, count)
+'Compares 2 memory addresses, returns 0 if not equal, non-zero otherwise
+MESSAGEBOX
+'MESSAGEBOX(Msg$, Title$, MsgButtons%)
+'Displays a simple message box with prompts
+MESSAGEDLG
+'MESSAGEDLG(Msg$, MsgType, MsgButtons, HelpContext)
+'Displays a message dialog box, see RAPIDQ.INC for proper types/buttons
+MID$
+'MID$(String, Position, Num)
+'Returns characters from String starting at Position with a length fo Num
+'To get a single character you could use this method instead:
+'  char$=a$[position]
+MKDIR
+'MKDIR Dir$
+'Creates new directory
+OUT
+'OUT(Address, bytevalue)
+'Sends a byte value to a machine I/O port 0..65535
+PLAYWAV
+'PLAYWAV FileName$|Resource_Handle, SndOption
+'Plays a WAV file, see RAPIDQ.INC for sndOptions
+POSTMESSAGE
+'POSTMESSAGE(Handle, uMsg, wParam, lParam)
+'Post message to handle, and does not block.
+'Refer to your favourite WinAPI guide for the proper message numbers
+QUICKSORT
+'QUICKSORT(Array-begin, Array-end, ASCEND | DESCEND)
+'Sort any array, BYTE, WORD, SHORT, STRING, etc...
+RANDOMIZE
+'RANDOMIZE [Num]
+'Use randomize to reseed the random number generator
+READ
+'READ variable [, variable, ...]
+'Reads next DATA statement, stores it in variable
+REDIM
+'REDIM Array(Num) AS DataType
+'Use REDIM to redimension an array preserving existing data.
+'REDIM is equivalent to DIM if the array has not yet been allocated
+RENAME
+'RENAME File1$, File2$
+'Renames File1$ to File2$
+REPLACE$
+'REPLACE$(Source$, Replace$, Index)
+'Replaces characters in Source$ with those in Replace$
+'starting at Index. This overwrites characters
+'See INSERT$
+REPLACESUBSTR$
+'REPLACESUBSTR$(Source$, ReplaceStr$, Withstr$)
+'Replaces the string ReplaceStr$ in Source$ with WithStr$
+RESTORE
+'RESTORE [linelabel]
+'Jumps to specific position in DATA statement
+RESOURCE
+'RESOURCE(number%)
+'Get numeric value of Resource, mainly for use with ExtractResource, 0 based array
+RESOURCECOUNT
+'Get resource count
+REVERSE$
+'REVERSE$(S$)
+'Reverses a string
+RGB
+'RGB(Red%, Green%, Blue%)
+'Returns the BGR numeric representation of the color
+RIGHT$
+'RIGHT$(String,Num)
+'Returns the righttmost Num characters of String
+RINSTR
+'RINSTR([Start,] SearchString, FindString)
+'Reverse INSTR Function, searching starts from the end of SearchString
+RMDIR
+'RMDIR Dir$
+'Removes directory
+RND
+'RND(UpperBound)
+'Returns a random number, if no upperbound is given, it returns a decimal number.
+'Use RANDOMIZE to reseed
+ROUND
+'ROUND(Number)
+'Rounds number to nearest integer
+RTRIM$
+'RTRIM$(String)
+'Returns String with rightmost spaces removed
+RUN
+'RUN command$
+'Executes command, but does not block
+EXECUTE
+'Execute function
+SENDMESSAGE
+'SENDMESSAGE(Handle, uMsg, wParam, lParam)
+'Post message to handle, and blocks.
+'Refer to your favourite WinAPI guide for the proper message numbers
+SGN
+'SGN(Number)
+'Returns the sign of a numeric expression
+SHELL
+'SHELL command$                <<< Executes command, and blocks until finished
+'pid=SHELL(command$,option)    <<< Function version does not block
+' Options
+' 0=HIDE              6=MINIMIZE
+' 1=SHOWNORMAL        7=SHOWMINNOACTIVE
+' 2=SHOWMINIMIZED     8=SHOWNA
+' 3=SHOWMAXIMIZED     9=RESTORE
+' 4=SHOWNOACTIVATE   10=SHOWDEFAULT
+' 5=SHOW
+SHOWMESSAGE
+'SHOWMESSAGE text$
+'Pops up a message in a simple box
+SIN
+'SIN(Number)
+'Returns sine of an angle given in radians
+SOUND
+'SOUND freq, duration
+'Outputs sound through PC Speaker
+SPACE$
+'SPACE$(Num)
+'Returns string with Num spaces
+SQR
+'SQR(Number)
+'Returns the square root of Number, make sure it's non-negative
+STATIC
+'STATIC Variable AS DataType
+'Creates variable of type DataType and preserves variable between procedure calls
+STR$
+'STR$(Number)
+'Returns the string representation of Number
+STRF$
+'STRF$(Number, Format%, Precision%, Digits%)
+'Converts a floating point or number value to a string
+STRING$
+'STRING$(Num, Char) or STRING$(Num, Char$)
+'Returns a string containing CHR$(Char) or first character
+'of Char$ repeated Num times
+SWAP
+'SWAP A,B
+'Exchanges values, so A = B and B = A
+TALLY
+'TALLY(Search$, Match$)
+'Returns number of occurrences of Match$ in Search$
+TAN
+'TAN(Number)
+'Returns tangent of an angle given in radians
+TIME$
+'TIME$
+'Returns the current time in HH:MM:SS format
+TIMER
+'t! = TIMER
+'Returns the current TIMER value
+UBOUND
+'UBOUND(ArrayName[, Dimension])
+'Returns the upperbound of array (Dimension starts at 1)
+UCASE$
+'UCASE$(String)
+'Returns a string whose characters onverted to uppercase
+UNLOADLIBRARY
+'UNLOADLIBRARY(DLLName)
+'Removes DLL from memory
+VAL
+'VAL(String)
+'Returns the closest numeric representation of the string
+VARPTR
+'VARPTR(VarName)
+'Returns the address of a variable.
+VARPTR$
+'VARPTR$(address)
+'Returns the null-terminated string representation of a given address
+VARTYPE
+'VARTYPE(variant)
+'Returns the type of a variant 0 - Integer, 1 - Float, 2 - String
+SIZEOF
+'SIZEOF (Var(Index))
+'Returns the size of the variable type
+;
+; Console commands
+;
+CLS
+'Clears console screen
+COLOR
+'COLOR [Fore%][, Back%]
+'Sets current color attribute. You can ignore either one of the parameters
+CONSOLE.INPUTHANDLE
+'hnd = CONSOLE.INPUTHANDLE
+'Returns the console input handle
+CONSOLE.OUTPUTHANDLE
+'hnd = CONSOLE.OUTPUTHANDLE
+'Returns the console output handle
+CSRLIN
+'CurRow% = CSRLIN
+'Returns current row of cursor
+INKEY$
+'Returns ASCII/Extended key character typed
+GET$
+'GET$(NumChars)
+'Get NumChars from current input device
+INPUT$
+'INPUT$(NumChars)
+'Get NumChars from current input device
+INPUT
+'INPUT A$ or INPUT "Text",A$
+'Reads a line of input from user
+LOCATE
+'LOCATE [Y%][, X%][, cursor]
+'Moves cuRsor to Y%, X% (upper left starts at 1,1).
+'You can ignore either one of the parameters
+PCOPY
+'PCOPY source, dest
+'Copy page from source to dest. The visible page is 0
+'There are 7 off-screen pages
+PEEK
+'A% = PEEK([#PageNum,] address)
+'Returns the char/attribute value at address
+POKE
+'POKE [#PageNum,] address, byte
+'Poke attribute or char at address
+POS
+'CurPos% = POS(0)
+'Returns current position of cursor
+PRINT
+'PRINT [#PageNum[;|,]][stuff][;|,][...]
+'Write to standard output (console).
+'To write to the offscreen buffers, use #PageNum.
+'PageNum is 1-7. Only works under Windows
+'Use ? for shorthand (EG: ? "a" instead of PRINT "a")
+TAB
+'PRINT TAB(Number)
+'Pads out printing with tabulated positions
+SETCONSOLETITLE
+'SETCONSOLETITLE(Title$)
+'Sets the console title
+SLEEP
+'SLEEP Num
+'Delay for Num seconds. Num can be fractional
+;
+; Internal commands/functions
+;
+COMMANDCOUNT
+'INTEGER Number of command line parameters received
+COMMAND$
+'Array of commands received (commands are separated by spaces)
+'first element starting at 1. Element zero is your application path/name
+CURDIR$
+'Returns the current working directory of your application
+ISCONSOLE
+'Returns a non-zero number if application is a console, 0 otherwise
+MOUSEX
+'Returns X coordinate of mouse pointer relative to your active form
+MOUSEY
+'Returns Y coordinate of mouse pointer relative to your active form
+PARAMSTRCOUNT
+'Returns number of String parameters received
+'This variable is used only inside a SUBI or FUNCTIONI declaration.
+PARAMSTR$
+'Used only inside a SUBI or FUNCTIONI declaration
+'Returns string parameter value, first element starting at 0
+PARAMVAL
+'Used only inside a SUBI or FUNCTIONI declaration
+'Returns numeric parameter value, first element starting at 0
+PARAMVALCOUNT
+'Returns number of Numeric parameters received.
+'This variable is used only inside a SUBI or FUNCTIONI declaration.
+SCREEN.CURSOR
+'Change global mouse pointer
+SCREEN.CURSORS
+'R/W array of cursor handles
+SCREEN.HEIGHT
+'Returns Windows screen Height (not to be confused with Form.Height)
+SCREEN.WIDTH
+'Returns Windows screen Width (not to be confused with Form.Width)
+STACK.INT
+'Returns most current stack integer parameter. First element starting at 0
+STACK.STR$
+'Returns most current stack string parameter. First element starting at 0
+;
+; Operators
+;
+SHL
+'x SHL y   shift x LEFT by y units
+SHR
+'x SHR y   shift x RIGHT by y units
+MOD
+'x MOD y   returns remainder of x÷y
+INV
+'x INV y   returns inverse of number on modulus
+NOT
+'NOT x   returns complement of x (inverted)
+AND
+'x AND y   compare bits in x and y. Return 1 if both bits are set
+OR
+'x OR y   compare bits in x and y. Return 1 if either bit is set
+XOR
+'x XOR y   compare bits in x and y. Return 1 if ONLY 1 bit is set
+;
+; Directives
+;
+$MACRO
+'$MACRO name[params..] definition
+'Examples:
+' $MACRO strcat(a,b) a=a+b
+' $MACRO TwoPI (2*PI)
+' $MACRO Add(x,y) x+y
+$OPTION
+'$OPTION Name[Params]
+'Names are BYFREF,BYTECODE,DECIMAL,DIM,EXPLICIT,GTK,ICON,and INKEY$
+$INCLUDE
+'$INCLUDE filename
+'Include code directly into program
+'EG: $INCLUDE "RapidQ.inc"
+$RESOURCE
+'$RESOURCE handle AS filename
+'A way to include graphics into the program
+'EG: $RESOURCE MyBMP AS "MyPicture.BMP"
+$TYPECHECK
+'$TYPECHECK ON|OFF
+'Type-Checking ON means all variables must be declared
+$OPTIMIZE
+'$OPTIMIZE ON|OFF (Default)
+'Reduces code size. Use this as a first statement in code
+$ESCAPECHARS
+'$ESCAPECHARS ON|OFF
+'If ON, allows for escape codes to be decoded in strings
+'Here are the codes which may be used:
+' \a AlarmBell  \n NewLine  \r Carriage Return  \F Form Feed
+' \b BackSpace  \t Tab      \v Vertical Tab
+' \\ BackSlash  \" Double Quote
+' \#### Decimal 0..255      \xHH Hex 00..FF
+$IFDEF
+'$IFDEF type  ... $ENDIF
+'Compile code if type has been defined
+$IFNDEF
+'$IFNDEF type  ... $ENDIF
+'Compile code if type has NOT been defined
+$ENDIF
+'See $IFDEF $IFNDEF
+$APPTYPE
+'$APPTYPE CGI|CONSOLE|GUI (default)
+$ELSE
+'Compile code if condition was NOT met
+'See $IFDEF $IFNDEF
+$DEFINE
+'$DEFINE newdef olddef
+'Defines a type like --> $DEFINE INT16 SHORT would create an INT16 keyword
+'These types are built in --> WIN32 UNIX TYPE
+$UNDEF
+'$UNDEF def [,def...]
+'Remove/Unhook a defined type
+;
+; Subroutines/Functions
+;
+DECLARE
+'DECLARE SUB name or DECLARE FUNCTION
+'Use DECLARE SUB/FUNCTION whenever you want to provide a "forward"
+'declaration without writing the SUB/FUNCTION yet
+SUB
+'SUB name  .. END SUB
+'A subroutine in the program. You can invoke the subroutine by
+'referencing its name only or by using CALL name.
+FUNCTION
+'FUNCTION name AS type .. END FUNCTION
+'Returns a value into name.
+SUBI
+'SUBI name (...)  ... END SUBI
+'A way to use infinite parameters without type-checking. See chapter 9
+'See also -> ParamStr$(), ParamVal(), ParamValCount, ParamStrCount
+FUNCTIONI
+'FUNCTIONI (...)  ... END FUNCTIONI
+'A way to use infinite parameters without type-checking. See chapter 9
+'See also -> ParamStr$(), ParamVal(), ParamValCount, ParamStrCount
+LIB
+'DECLARE SUB Test LIB "TEST.DLL" ALIAS "MyFunc" (S AS STRING)
+'For DLL handling. See chapter 9
+ALIAS
+'DECLARE SUB Test LIB "TEST.DLL" ALIAS "MyFunc" (S AS STRING)
+'For DLL handling. See chapter 9
+;
+; Looping commands
+;
+FOR
+'FOR variable=start TO finish [STEP amount]  ... NEXT variable
+'Performs a loop, depending on values in start/finish
+TO
+'See FOR
+NEXT
+'See FOR
+STEP
+'FOR var=1 TO 10 STEP 2
+'This command is used in conjunction with the FOR command
+'The above example would make 'var' step by 2
+WHILE
+'WHILE condition=true ... WEND
+'repeats a section of code while the condition is true
+WEND
+'See WHILE
+DO
+'Start of a DO...LOOP block.
+'Used for repeating code. When a LOOP statement is found,
+'execution goes back to statement after the DO command
+LOOP
+'Used with DO command. See optional UNTIL command
+UNTIL
+'LOOP UNTIL condition=true
+'would terminate a loop when the condition is true
+EXIT
+'EXIT FOR|LOOP|WHILE|SUB|FUNCTION
+'Use this to exit prematurely from any of the above
+;
+; Methods
+;
+CREATE
+'CREATE name AS qobject  ... END CREATE
+WITH
+'WITH name ... END WITH
+'Use this to reference properties/methods/event to save typing
+CONSTRUCTOR
+'CONSTUCTOR  ... END CONSTUCTOR
+'Used inside a TYPE declaration to give default values to properties
+;
+; Conditions
+;
+IF
+'IF expression=true THEN execute
+'Executess commands after THEN if the expression is true
+THEN
+'See IF
+ELSE
+'IF expression=true THEN do this ELSE do this instead
+'Executes the part after ELSE if the expression is false
+ELSEIF
+'IF expression1=true THEN ... ELSEIF expression2=true THEN ....
+'To perform multipe checks use this method
+SELECT
+'SELECT CASE  ... END SELECT
+'Ideal when testing lots of conditions
+CASE
+'CASE expression
+'If matching result, then perform the code
+'See SELECT command
+;
+; UDT + Supported TYPES
+;
+TYPE
+'TYPE name [EXTENDS qobject] ... END TYPE
+'For creating custom types
+EXTENDS
+'TYPE name EXTENDS qobject
+'For creating custom components
+PROPERTY
+'PROPERTY SET name (param AS datatype)  ... END PROPERTY
+'Use only within an extended TYPE
+BYTE
+'8 Bits   0..255   a?=0
+WORD
+'16 Bits   0..65535   a??=0
+DWORD
+'32 Bits   LINUX-ONLY   a???=0
+SHORT
+'16 Bits   -32768..32767   a%=0
+LONG
+'32 Bits   -2147483648..2147483647   a(ampersand)=0
+INTEGER
+'32 Bits   -2147483648..2147483647   a(ampersand)=0
+SINGLE
+'32 Bits   1.5*10^45..3.4*10^38  a!=0
+DOUBLE
+'64 Bits   5.0*10^324..1.7*10^308   a#=0
+STRING
+'a$=""
+VARIANT
+'A variable which can mutate into another type.
+'Has no suffix, so use DIM to create it:
+'  DIM v AS VARIANT
+'  v=5 : v="hello"   <-- Both valid
+DEFINT
+'DEFINT var[,var,var...]
+DEFSTR
+'DEFSTR var[,var,var...]
+DEFDBL
+'DEFDBL var[,var,var...]
+DEFSNG
+'DEFSNG var[,var,var...]
+DEFBYTE
+'DEFBYTE var[,var,var...]
+DEFWORD
+'DEFWORD var[,var,var...]
+DEFDWORD
+'DEFDWORD var[,var,var...]
+DEFLNG
+'DEFLNG var[,var,var...]
+DEFSHORT
+'DEFSHORT var[,var,var...]
+;
+; Branching
+;
+GOTO
+'GOTO label
+'Jump to a position in code where label is.
+'Labels must end in a colon like this --> MyRoutine:
+GOSUB
+'GOSUB label  ... RETURN
+'GO to a SUBroutine, and when finished, RETURN back.
+RETURN
+'RETURN from a SUBROUTINE back to the next line after
+'the GOSUB statement which sent us here
+;
+; RapidQ Objects
+;
+QFORM
+'Opens a standard form which may contain components like QEDIT, QLABEL ...
+QBITMAP
+'Store/Retrieve Bitmaps
+QCANVAS
+'Empty image to paint/draw on
+QBUTTON
+'General purpose button
+QCOOLBTN
+'Extension of QBUTTON, but allows flat/toggle buttons (Via GroupIndex)
+QSTRINGGRID
+'For presenting textual data in tabular format
+QSTRINGLIST
+'For storing/manipulating strings
+QLISTBOX
+'For vertical (scrolling) list of items
+'0=First item, 1=Second item...
+QCOMBOBOX
+'Pulldown listbox. First item is 0, next is 1 etc..
+QOBJECT
+QGAUGE
+'Provides a progress gauge
+QOVALBTN
+'Like QCOOLBTN, except that the button looks round/oval
+QMENUITEM
+'Used with QMAINMENU/QPOPUPMENU for describing properties of item
+QMAINMENU
+'Container for menu items
+QTIMER
+'Implements Windows API timer functions
+QFONT
+'For specifying font, color, and size
+QIMAGE
+'Used for displaying BMP/ICON files
+QPANEL
+'Generic container for components. All components are
+'hidden if panel is set to invisible
+QLABEL
+'Displays text on form
+QRECT
+'Datatype within a form (not visible)
+QRICHEDIT
+'Fully featured multi-line text editing control
+QEDIT
+'Single-line edit control for user input
+QSTATUSBAR
+'Places statusbar at bottom of a form/window
+QCHECKBOX
+'Wrapper for Windows checkbox control
+QPOPUPMENU
+'Porvides popup menu selector
+QDIRTREE
+'Custom component to give explorer-like directory list
+QFILELISTBOX
+'For maintaining a list of files/directories
+QFILESTREAM
+'To handle files
+QFONTDIALOG
+'Displays Windows font selector dialog
+QGROUPBOX
+'Implements a Windows group box
+QIMAGELIST
+'An array of images all the same fixed size
+QSCROLLBOX
+'Scrolling window control
+QTABCONTROL
+'For creating tab dividers on a form. A good way to
+'create multiple components organized into catagories
+QLISTVIEW
+'Display items in 3 different ways on the form:
+'   1> Items with column headers
+'   2> Items with Sub-Items
+'   3> Individually with large/small icons
+QMEMORYSTREAM
+'Used to store temporary data
+QNOTIFYICONDATA
+QOPENDIALOG
+'Displays Windows file selection dialog
+QOUTLINE
+'Implements old Windows 3.1 tree view
+QRADIOBUTTON
+'Simple radio button. If several are placed inside
+'a QGROUPBOX/QPANEL, they will toggle automatically
+'so that only one will be selected
+QREGISTRY
+'For manipulating Windows registry
+QSAVEDIALOG
+'Displays Save As.. dialog box for file storage
+QSCROLLBAR
+'Windows scrollbar for scrolling contents or using
+'as a simple trackbar
+QSOCKET
+'Interface for communicating between server/client with sockets
+QTRACKBAR
+'Creates a slider with optional tickmarks
+QGLASSFRAME
+'3rd party component to make form look transparent and shaded
+QHEADER
+'A set of column headers which user can resize
+QSPLITTER
+'Used to resize controls at runtime
+QMYSQL
+'See www.mysql.com
+QTREEVIEW
+'Displays hierarchical list of items ordered by their index
+QOLEOBJECT
+'Implements an automation client
+QOLECONTAINER
+'ActiveX container whose properties/methods are
+'accessed similar to QOLEOBJECT
+QDXSCREEN
+'Allows you to create a DirectX screen for your DXComponents.
+'All operations go to the off-screen buffer.
+'For full screen mode, set FullScreen to true, and border style to bsNone
+QDXIMAGELIST
+'Maintains a list of images for use in your programs.
+'Unlike QIMAGELIST, you must create the imagelist using an Image Library
+QDXTIMER
+'A high precision timer for DirectX. It has automatic frame adjustments
+QD3DFRAME
+'Implements IDirect3DRMFrame
+QD3DLIGHT
+'Implements IDirect3DRMLight
+QD3DMESH
+'Implements IDirect3DRMMesh
+QD3DMESHBUILDER
+'Implements IDirect3DRMMeshBuilder
+QD3DVISUAL
+'Implements IDirect3DRMVisual
+QD3DTEXTURE
+'Implements IDirect3DRMTexture
+QD3DWRAP
+Implements IDirect3DRMWrap
+QD3DANIMATION
+' ???
+QD3DANIMATIONSET
+' ???
+QD3DFACE
+'Implements IDirect3DRMFace
+QD3DVECTOR
+'Implements D3DVector
+QFORMex
+'extended Qform
+QBITMAPex
+'extended Qbitamp
+QSYSTEM
+'RapidQ2 Component used to get Operating system
+' properties like OS version, hibernate, control panels
+QDEBUG
+'RapidQ2 Component used to print out variables
+' during runtime and get/set Windows Last Error
+APPLICATION.
+'RapidQ2 Component extended to get path and set priority
+SCREEN.
+'RapidQ2 Component extended to get screen capture, set
+'resolution, and screen quality
+QMenuEx
+'RapidQ2 Component to add bitmaps to your Menus
+QLISTVIEWex
+'RapidQ2 Component to extend QLISTVIEW
+QFILEDIALOG
+'File Dialog box for multiselect save/open
+QFORMmDI
+'A FORM to place your QPANEL, QUBTTON, etc, on a
+'multiple document interface
+QDOCKFORM
+'A dockable FORM
+HexToDec
+'Convert a Hex number to a long integer
+'syntax a = HexToDec(myHexNum$)
+UDTPTR
+'Address of a user defined type variable
+'syntax uPtr = UDTPTR(DataType)
+NViewLibPresent
+'CONST that signals NviewLib.DLL is loaded (handles JPG & other formats)
+QD3DCAMERA
+'3D Camera operations for DirectX 3D
+QD3DPrimitive
+'???
+QD3DCloneMesh
+'???
+

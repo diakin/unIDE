@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDRAWMENU</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDRAWMENU</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDRAWMENU Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QDrawMenu.inc</code>, line 77 &middot; version: 1.3</p>
+<p><b>A non-visual helper that makes menu items owner-drawn so they show a bitmap next to the caption, optionally with a raised button frame.</b></p>
+<p>AddBitmap changes a QMenuItem to an owner-drawn item with the Windows API ModifyMenu and stores the picture for its command number. The form&#x27;s WndProc must be set to the component&#x27;s MenuProc; it answers WM_MEASUREITEM with a size that fits the picture and caption, and on WM_DRAWITEM paints the background, the picture and the caption with system menu colours (highlighted, grayed or normal).</p>
+<p>The character after &amp; in a caption is drawn with an extra font style to mark the accelerator. When the button option is used, the selection highlight leaves the picture area out and a raised 3D frame is drawn around the picture of the selected item.</p>
+<p>DelBitmap turns the item back into a normal text item. The source comments are in French.</p>
+<p>QDRAWMENU inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>the form&#x27;s WndProc set to MenuProc</li>
+<li>when __RQINC2 is not defined, the file declares the TMEASUREITEMSTRUCT/TDRAWITEMSTRUCT types, the global MeasureItem, DrawItem and Mem variables, the menu constants, GetSysColor and ModifyMenu itself; when __RQINC2 is defined (RapidQ2.inc included) this block is skipped</li>
+<li>$RESOURCE bitmaps: the demo code in the file uses \rapidQ\icon\play.bmp</li>
+</ul>
+<a name="2"></a><h2>QdrawMenu Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">MenuProc</td><td class="rq-type">SUB(hwnd AS LONG,uMsg AS LONG,wParam AS LONG,lParam AS LONG)</td><td>Window procedure to assign to the form&#x27;s WndProc. Handles WM_MEASUREITEM and WM_DRAWITEM for owner-drawn menu items: measures the item from the picture and caption and draws the picture, caption and highlight.</td></tr>
+<tr><td class="rq-name">AddBitmap</td><td class="rq-type">SUB(SubMenu as Qmenuitem,item as Qmenuitem,picture as Qbitmap,button as boolean,backcolor as long)</td><td>AddBitmap(SubMenu, item, picture, button, backcolor) makes item (in SubMenu) owner-drawn, keeps its disabled state, stores a copy of picture for the item&#x27;s command number with backcolor as its transparent colour, and when button is True draws it with a raised frame.</td></tr>
+<tr><td class="rq-name">DelBitmap</td><td class="rq-type">SUB(SubMenu as Qmenuitem,item as Qmenuitem)</td><td>DelBitmap(SubMenu, item) changes item back to a normal string menu item (keeping its disabled state) and clears the transparent flag of its stored picture.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The demo program after END TYPE (eight $RESOURCE lines, the form and its SUBs) is not commented out, so including QDrawMenu.inc compiles and runs the demo; it must be removed before using the file as a library.</li>
+<li>The demo&#x27;s $RESOURCE lines use the absolute path \rapidQ\icon\play.bmp for all eight bitmaps.</li>
+<li>Pictures and button flags are stored in arrays image(10000) and button(10000) indexed by the menu item&#x27;s command number, so 10001 QBitmap objects are allocated and items with command numbers above 10000 cannot be used.</li>
+<li>MenuProc handles only menu messages and is meant to be the form&#x27;s WndProc; it does not call any other handler.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QDrawMenu.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QdrawMenu Examples</h2>
+<p class="rq-meta">Example from the comments in the source file.</p>
+<pre>$RESOURCE Open_bmp as &quot;\rapidQ\icon\play.bmp&quot;
+declare SUB Show
+dim menu as qdrawmenu
+dim picture as qbitmap
+
+CREATE Form AS QForm
+  Center
+  Caption = &quot;Ownerdraw Menus&quot;
+  OnShow=show
+  WndProc=menu.MenuProc
+  CREATE MainMenu AS QMainMenu
+    CREATE FileMenu AS QMenuItem
+      Caption = &quot;&amp;File&quot;
+      CREATE OpenItem AS QMenuItem
+        Caption = &quot;&amp;Open&quot;
+      END CREATE
+    END CREATE
+  END CREATE
+END CREATE
+Form.ShowModal
+
+Sub Show
+  picture.bmpHandle=Open_bmp
+  menu.AddBitmap(FileMenu,OpenItem,picture,true,&amp;hC0C0C0)
+End Sub</pre>
+<div class="rq-foot"><a href="c_qdrawfocus.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdrive.html">Next component</a></div>
+</body>
+</html>

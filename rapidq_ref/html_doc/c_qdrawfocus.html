@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDRAWFOCUS</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDRAWFOCUS</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDRAWFOCUS Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QDrawFocus.inc</code>, line 39 &middot; author: modified by JohnK &middot; version: 1.3 &middot; date: 8/2007</p>
+<p><b>QDrawFocus draws a rubber-band selection rectangle (a focus rectangle) on a device context and lets the user move it or resize it from its right and bottom edges with the mouse.</b></p>
+<p>The rectangle is drawn with the Windows DrawFocusRect function, which draws by XOR, so drawing the same rectangle again erases it. The object does not handle mouse events itself: the program calls Start from OnMouseDown, Draw from OnMouseMove and Stop from OnMouseUp, passing a DC handle (for example from GetDC) and the mouse coordinates.</p>
+<p>Start begins a new rectangle, or, when the click is inside the visible one, prepares to move it or to resize it from the right edge, bottom edge or bottom-right corner (a 10-pixel border zone). Left, Top, Width, Height, Move and Inside report the state and are read-only. When ShowCursor is TRUE the screen cursor changes to show the current action.</p>
+<p>QDRAWFOCUS inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QDrawFocus Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Left</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Read-only: left coordinate of the current rectangle; assigning it has no effect (empty setter). Updated by Start and Draw.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Read-only: top coordinate of the current rectangle; assigning it has no effect (empty setter).</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Read-only: width of the current rectangle; assigning it has no effect (empty setter).</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Read-only: height of the current rectangle; assigning it has no effect (empty setter).</td></tr>
+<tr><td class="rq-name">Move</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Read-only: TRUE after Draw has moved or resized an existing rectangle; Stop removes the rectangle only when it is TRUE. Assigning it has no effect.</td></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>TRUE while the rectangle is drawn on the DC; set by Draw and cleared by Remove.</td></tr>
+<tr><td class="rq-name">Inside</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Read-only: TRUE when the last point given to Start or Draw (without drawing) was inside the visible rectangle or on its resize border. Assigning it has no effect.</td></tr>
+<tr><td class="rq-name">NoResize</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>When TRUE the rectangle can only be moved, not resized from its edges.</td></tr>
+<tr><td class="rq-name">ShowCursor</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>true</td><td>When TRUE (default) Screen.Cursor is changed to show drawing, moving or the resize direction, and reset to the default by Remove and Stop.</td></tr>
+</table>
+<a name="2"></a><h2>QDrawFocus Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Remove</td><td class="rq-type">SUB(handle as long)</td><td>Remove(handle) erases the rectangle from the DC by drawing it again (XOR) if it is visible, and resets the cursor when ShowCursor is TRUE.</td></tr>
+<tr><td class="rq-name">Start</td><td class="rq-type">SUB(handle as long,x as integer,y as integer)</td><td>Start(handle, x, y) is called on mouse down: inside the visible rectangle it prepares a move or a resize; elsewhere it removes the old rectangle and starts a new one at x, y.</td></tr>
+<tr><td class="rq-name">Draw</td><td class="rq-type">SUB(handle as long,x as integer,y as integer,flagDraw as boolean)</td><td>Draw(handle, x, y, flagDraw) is called on mouse move. With flagDraw TRUE it erases and redraws the rectangle moved, resized or stretched to x, y; with flagDraw FALSE it only updates Inside and the cursor.</td></tr>
+<tr><td class="rq-name">Stop</td><td class="rq-type">SUB(handle as long,flagRemove as boolean)</td><td>Stop(handle, flagRemove) is called on mouse up: if the rectangle was moved and flagRemove is TRUE it removes it; the cursor is reset when ShowCursor is TRUE.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>A comment says the internal rectangle uses the RECT type because QRect crashes on Windows XP.</li>
+<li>The resize border width (10 pixels) is a private field with no way to change it.</li>
+<li>RECT and GetDC are declared only when neither __WIN32API nor __RQ2WIN32API is defined, and DrawFocusRect only when __WIN32API is not defined.</li>
+<li>When stretching a new rectangle, the upward test compares y with .Top while the leftward test compares x with .StartX.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QDrawFocus.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QDrawFocus Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QDrawFocus.inc&quot;
+DECLARE SUB FormDown(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+DECLARE SUB FormMove(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+DECLARE SUB FormUp(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+DIM Focus AS QDrawFocus
+DIM hDC AS LONG
+DIM Dragging AS INTEGER
+CREATE Form AS QFORM
+  Caption = &quot;Select an area&quot;
+  OnMouseDown = FormDown
+  OnMouseMove = FormMove
+  OnMouseUp = FormUp
+END CREATE
+hDC = GetDC(Form.Handle)
+Form.ShowModal
+
+SUB FormDown(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+  Dragging = 1
+  Focus.Start(hDC, X, Y)
+END SUB
+
+SUB FormMove(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+  Focus.Draw(hDC, X, Y, Dragging)
+END SUB
+
+SUB FormUp(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+  Dragging = 0
+  Focus.Stop(hDC, 0)
+  ShowMessage STR$(Focus.Width) + &quot; x &quot; + STR$(Focus.Height)
+END SUB</pre>
+<div class="rq-foot"><a href="c_qdownload.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdrawmenu.html">Next component</a></div>
+</body>
+</html>

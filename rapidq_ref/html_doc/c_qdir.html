@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDIR</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDIR</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDIR Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QDir.Inc</code>, line 143 &middot; author: Jacques Philippe &middot; version: 1.0.4 &middot; date: April 2004</p>
+<p><b>Non-visual file finder that scans a directory, or a directory tree, for files matching a filter and attribute rules, and fires an event for each file found.</b></p>
+<p>QDir searches with the kernel32 functions FindFirstFileA and FindNextFileA. Dir scans one directory and Dirs scans it and all its subdirectories. For every entry that passes the attribute filter it fills its properties (names, path, size, attributes, and creation, last access and last write times converted to local time) and calls OnFileFound. The date/time properties at the top level (Date, Time, DateEU and so on) are copied from the last write time.</p>
+<p>Attributes are given as letters: A archive, D directory, H hidden, N normal, R read-only, S system, T temporary, C compressed, and 0 for no attribute. An entry is rejected when it has any attribute listed in RejectedAttributes, and it must have every attribute listed in MustAttributes. While a search runs, a small black window (frmDirStop) is shown; clicking it sets FlagStop and aborts the scan. DoEvents is called in the scanning loops.</p>
+<p>Two extra functions change file times (SetFileTime) and attributes (SetFileAttributesA).</p>
+<p>QDIR inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QDir Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">fileName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Long name of the entry just found; read it inside OnFileFound.</td></tr>
+<tr><td class="rq-name">dosFileName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Short 8.3 alternate name of the entry just found (cAlternateFileName from the find data).</td></tr>
+<tr><td class="rq-name">path</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Directory of the entry just found, ending with a backslash. When the filter has no drive letter, the application path is put in front of it.</td></tr>
+<tr><td class="rq-name">pathFileName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Path and FileName joined.</td></tr>
+<tr><td class="rq-name">size</td><td class="rq-type">DOUBLE</td><td>RW</td><td></td><td>File size in bytes as a Double, built from the high and low 32-bit parts.</td></tr>
+<tr><td class="rq-name">WithDotsDirs</td><td class="rq-type">LONG</td><td>RW</td><td>1</td><td>When 1 (default) the &quot;.&quot; and &quot;..&quot; entries are passed to OnFileFound; any other value skips them.</td></tr>
+<tr><td class="rq-name">dateTime</td><td class="rq-type">DOUBLE</td><td>RW</td><td></td><td>Last write time as the raw 64-bit FILETIME value converted to a Double (not converted to local time); the source comments it with &quot;???&quot;.</td></tr>
+<tr><td class="rq-name">time</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Last write time as &quot;HH:MM:SS&quot; (local time).</td></tr>
+<tr><td class="rq-name">timems</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Last write time as &quot;HH:MM:SS.iii&quot; with milliseconds.</td></tr>
+<tr><td class="rq-name">date</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Last write date as &quot;mm/dd/yyyy&quot;.</td></tr>
+<tr><td class="rq-name">dateEU</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Last write date in European format &quot;dd/mm/yyyy&quot;.</td></tr>
+<tr><td class="rq-name">dateAlpha</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Last write date as &quot;ddd mmm DD, yyyy&quot;, using the first three letters of Days() and Months().</td></tr>
+<tr><td class="rq-name">dateAlphaEU</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Last write date as &quot;ddd DD mmm yyyy&quot;.</td></tr>
+<tr><td class="rq-name">strDayOfWeek</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>First three letters of the Days() entry for the last write date.</td></tr>
+<tr><td class="rq-name">strMonthOfYear</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>First three letters of the Months() entry for the last write date.</td></tr>
+<tr><td class="rq-name">attributes</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Win32 attribute bits of the entry just found.</td></tr>
+<tr><td class="rq-name">attributesAsString</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Attributes as letters from &quot;ADHNRSTC&quot;, or &quot;0&quot; when no attribute is set.</td></tr>
+<tr><td class="rq-name">days</td><td class="rq-type">ARRAY(0 To 6) OF STRING</td><td>RW</td><td>(0)=&quot;Sunday&quot;; (1)=&quot;Monday&quot;; (2)=&quot;Tuesday&quot;; (3)=&quot;Wednesday&quot;; (4)=&quot;Thursday&quot;; (5)=&quot;Friday&quot;; (6)=&quot;Saturday&quot;</td><td>Array Days(0 To 6) of weekday names, Sunday to Saturday by default. It can be changed (for example to another language) and is used to build the day abbreviations.</td></tr>
+<tr><td class="rq-name">months</td><td class="rq-type">ARRAY(1 To 12) OF STRING</td><td>RW</td><td>(1)=&quot;January&quot;; (2)=&quot;February&quot;; (3)=&quot;March&quot;; (4)=&quot;April&quot;; (5)=&quot;May&quot;; (6)=&quot;June&quot;; (7)=&quot;July&quot;; (8)=&quot;August&quot;; (9)=&quot;September&quot;; (10)=&quot;October&quot;; (11)=&quot;November&quot;; (12)=&quot;December&quot;</td><td>Array Months(1 To 12) of month names, January to December by default. It can be changed and is used to build the month abbreviations.</td></tr>
+<tr><td class="rq-name">creation</td><td class="rq-type">QDIR_SYSTEMTIME</td><td>RW</td><td></td><td>Creation time as a QDIR_SYSTEMTIME record: numeric year, month, dayOfWeek, day, hour, minute, second, milliseconds, plus DateTime and the same string formats as the top-level date properties.</td></tr>
+<tr><td class="rq-name">lastAccess</td><td class="rq-type">QDIR_SYSTEMTIME</td><td>RW</td><td></td><td>Last access time as a QDIR_SYSTEMTIME record (same fields as Creation).</td></tr>
+<tr><td class="rq-name">lastWrite</td><td class="rq-type">QDIR_SYSTEMTIME</td><td>RW</td><td></td><td>Last write time as a QDIR_SYSTEMTIME record (same fields as Creation).</td></tr>
+<tr><td class="rq-name">flagStop</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Set it to a non-zero value to stop a running Dir or Dirs; clicking the abort window sets it. It is reset to 0 when a search starts.</td></tr>
+<tr><td class="rq-name">flagShowFormStopDir</td><td class="rq-type">LONG</td><td>RW</td><td>1</td><td>When non-zero (default 1) the abort window frmDirStop is shown during a search.</td></tr>
+<tr><td class="rq-name">frmDirStop</td><td class="rq-type">QFORM</td><td>RW</td><td></td><td>Borderless black QForm (400 x 200 at 40, 40) shown during a search; clicking its label aborts the search.</td></tr>
+<tr><td class="rq-name">lblDirStop</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>QLabel filling frmDirStop with the text &quot;CLIC ME TO ABORT DIRECTORY SCANNING&quot;; its OnClick sets FlagStop.</td></tr>
+</table>
+<a name="2"></a><h2>QDir Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Dir</td><td class="rq-type">SUB(sPathFilter As String, sRejectedAttributes As String, sMustAttributes As string)</td><td>Dir(PathFilter, RejectedAttributes, MustAttributes): scans one directory for entries matching PathFilter (for example &quot;C:/temp/*.bas&quot;; &quot;/&quot; is accepted as separator) and calls OnFileFound for each one that passes the attribute rules.</td></tr>
+<tr><td class="rq-name">Dirs</td><td class="rq-type">SUB(sPathFilter As String, sRejectedAttributes As String, sMustAttributes As String)</td><td>Dirs(PathFilter, RejectedAttributes, MustAttributes): like Dir, but also scans all subdirectories of the starting directory.</td></tr>
+<tr><td class="rq-name">ChangeFileDateAndTime</td><td class="rq-type">FUNCTIONI(...) AS LONG</td><td>ChangeFileDateAndTime(PathFileName$, [WhichTimes$], year, month, day, hour, minute, second): sets file times; WhichTimes may contain &quot;CRE&quot;, &quot;ACC&quot; and &quot;WRI&quot; (empty means last write time only). Returns 1 on success; on error it shows a message and returns 0.</td></tr>
+<tr><td class="rq-name">ChangeFileAttributes</td><td class="rq-type">FUNCTION(sPathFileName As string, attributesAsString As String) AS LONG</td><td>ChangeFileAttributes(PathFileName, AttributesAsString): sets the file attributes from letters &quot;ADHNRSTC&quot; and returns the result of SetFileAttributesA (non-zero on success).</td></tr>
+</table>
+<a name="3"></a><h2>QDir Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnFileFound</td><td class="rq-type">SUB</td><td>Event without parameters called for each accepted entry; read FileName, Path, Size and the other properties inside the handler.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Only one search per QDir can run at a time; a second call shows &quot;QDIR ERROR : QDIR ALREADY SEARCHING&quot;.</li>
+<li>A filter that matches nothing, or a directory that does not exist, gives no error; the error messages are commented out.</li>
+<li>ChangeFileDateAndTime treats a CreateFile result of 0 as failure, but CreateFile returns -1 on failure, so a missing file is not detected at that point.</li>
+<li>ChangeFileDateAndTime passes the given time to SystemTimeToFileTime without converting from local time, while the times read by Dir and Dirs are converted to local time. It always sets the milliseconds to 333.</li>
+<li>Dir: for a relative filter, Path gets the application path in front, but FindFirstFile is called with the filter as given. Dirs searches with Path &amp; &quot;*.*&quot; and Path &amp; Filter, which already include the application path.</li>
+<li>In Dirs, FlagStop is checked only after all files of the current directory have been processed.</li>
+<li>The source notes RapidQ bugs with nested types, so the FILETIME fields of WIN32_FIND_DATA are written out as separate LONGs.</li>
+</ul>
+<a name="4"></a><h2>QDir Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QDir.Inc&quot;
+CREATE Form AS QFORM
+  Width = 500
+  Height = 300
+  CREATE List AS QLISTBOX
+    Align = 5
+  END CREATE
+END CREATE
+DIM D AS QDir
+SUB FileFound
+  List.AddItems D.PathFileName &amp; &quot;  &quot; &amp; STR$(D.Size) &amp; &quot;  &quot; &amp; D.DateEU
+END SUB
+D.OnFileFound = FileFound
+D.WithDotsDirs = 0
+D.Dirs(&quot;C:/Projects/*.bas&quot;, &quot;H&quot;, &quot;&quot;)
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qdigdisplay.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdirlistview.html">Next component</a></div>
+</body>
+</html>

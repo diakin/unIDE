@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSOCKETEX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSOCKETEX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSOCKETEX Component</h1>
+<p class="rq-meta">Extends <a href="qsocket.html">QSOCKET</a> &middot; source: <code>inc/QSocketEx.inc</code>, line 76 &middot; author: d_homans, JohnK &middot; date: 03/06/2007</p>
+<p><b>A QSocket extension with Winsock helpers: corrected GetPeerName, host name and address lookup, connection check, CR LF line writing, write with error code, shutdown, blocking mode and error text.</b></p>
+<p>QSocketEx extends QSocket and is a cleaned-up version of RSocket.inc. It overrides GetPeerName (described as a bug fix for QSocket), adds NameByAddr and AddrByName lookups, IsConnected (select() with a timeout), NonBlock and Block (ioctlsocket FIONBIO), ShutDown (shutdown with both directions) and LastError (WSAGetLastError as text, with 0 reported as Success).</p>
+<p>WriteLine overrides the QSocket method so that every line ends with CR LF, and WriteEx calls the inherited Write and returns WSAGetLastError (0 when the write succeeded). The file is guarded by $IFNDEF QSOCKET_INC; the comments explain that the lookup functions copy a 16-byte Winsock structure into a byte or long array to extract the data.</p>
+<p>QSOCKETEX inherits the properties, methods and events of <a href="qsocket.html">QSOCKET</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="2"></a><h2>QSocketEx Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">GetPeerName</td><td class="rq-type">FUNCTION(SockNum AS integer) AS STRING</td><td>GetPeerName(SockNum) returns the IP address of the remote end of the socket as a dotted string, or an empty string on error; replaces the QSocket version.</td></tr>
+<tr><td class="rq-name">NameByAddr</td><td class="rq-type">FUNCTION(strIP AS string) AS STRING</td><td>NameByAddr(strIP) returns the host name for a dotted IP address, or an empty string if the address is invalid or no name is found.</td></tr>
+<tr><td class="rq-name">AddrByName</td><td class="rq-type">FUNCTION(strName AS string) AS STRING</td><td>AddrByName(strName) resolves a host name and returns its IP address as a dotted string, or an empty string on failure.</td></tr>
+<tr><td class="rq-name">IsConnected</td><td class="rq-type">FUNCTION(SockNum As LONG, TimeOutSecs As LONG) AS LONG</td><td>IsConnected(SockNum, TimeOutSecs) returns -1 if select() reports an error on the socket within the timeout, otherwise the select() result for writability (1 when connected, 0 on timeout).</td></tr>
+<tr><td class="rq-name">WriteLine</td><td class="rq-type">SUB(SockNum AS integer, Str As STRING) AS LONG</td><td>WriteLine(SockNum, Str) writes Str followed by CR LF with the inherited Write; it replaces the QSocket method.</td></tr>
+<tr><td class="rq-name">WriteEx</td><td class="rq-type">FUNCTION(SockNum AS integer, Message AS string, NumBytes AS integer) AS LONG</td><td>WriteEx(SockNum, Message, NumBytes) writes NumBytes of Message with the inherited Write and returns WSAGetLastError (0 if OK).</td></tr>
+<tr><td class="rq-name">ShutDown</td><td class="rq-type">FUNCTION(SockNum AS integer) AS LONG</td><td>ShutDown(SockNum) calls Winsock shutdown with how = 2 (no more sends or receives) and returns its result.</td></tr>
+<tr><td class="rq-name">NonBlock</td><td class="rq-type">FUNCTION(hSocket As LONG) AS LONG</td><td>NonBlock(hSocket) sets the socket to non-blocking mode: per the comment, Read then returns an empty string when no data is waiting.</td></tr>
+<tr><td class="rq-name">Block</td><td class="rq-type">FUNCTION(hSocket As LONG) AS LONG</td><td>Block(hSocket) sets the socket to blocking mode: per the comment, Read waits until data arrives, possibly forever.</td></tr>
+<tr><td class="rq-name">LastError</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the last Winsock error as &quot;number: description&quot;; per the comment, the value may not be reliable when several connections are open.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The CONSTRUCTOR block has no END CONSTRUCTOR: the line &quot;Tag =0&quot; is followed directly by END TYPE.</li>
+<li>LastError starts with DEFSTR tstr = &quot;&#x27; which is an unterminated string literal.</li>
+<li>WriteLine is written as a SUB with an &quot;As LONG&quot; return type and returns nothing.</li>
+<li>NameByAddr passes QSocketEx.Protocol as the address-type argument of gethostbyaddr, where RSocket.inc passes 2 (AF_INET).</li>
+<li>The header mentions a new function WriteBinData&amp;(), but the function in the code is named WriteEx; IsConnected still uses EXIT FUNCTION although the notes say those calls were removed.</li>
+<li>The Winsock functions are declared under plain names (shutdown, gethostbyname, inet_addr and others), which can clash with other include files.</li>
+</ul>
+<a name="4"></a><h2>QSocketEx Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Sock AS QSocketEx
+DIM hSock AS INTEGER
+hSock = Sock.Connect(Sock.AddrByName(&quot;example.com&quot;), 80)
+IF Sock.IsConnected(hSock, 5) = 1 THEN
+  IF Sock.WriteEx(hSock, &quot;HEAD / HTTP/1.0&quot; + CHR$(13) + CHR$(10) + CHR$(13) + CHR$(10), 19) &lt;&gt; 0 THEN ShowMessage Sock.LastError
+END IF
+Sock.ShutDown(hSock)</pre>
+<div class="rq-foot"><a href="c_qskinbtn.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qspinbutton.html">Next component</a></div>
+</body>
+</html>

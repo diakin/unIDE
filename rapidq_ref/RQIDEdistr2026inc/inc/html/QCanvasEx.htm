@@ -1,0 +1,160 @@
+<html>
+<head>
+<title>QCanvasEx.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QCanvasEx</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>Type</b></font> TBITMAP
+  bmType <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+  bmWidth <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+  bmHeight <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+  bmWidthBytes <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+  bmPlanes <font color="0000AA"><b>As</b></font> <font color="000099"><b>Integer</b></font>
+  bmBitsPixel <font color="0000AA"><b>As</b></font> <font color="000099"><b>Integer</b></font>
+  bmBits <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+
+<font color="0000AA"><b>Const</b></font> SRCCOPY_CAN=&HCC0020 
+<font color="0000AA"><b>Const</b></font> CF_BITMAP_CAN=2
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetObjectCan <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetObjectA</font>" <b>(</b>hObject <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nCount <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lpObject <font color="0000AA"><b>As</b></font> TBITMAP<b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> DrawIconCan <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">DrawIcon</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hIcon <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> DeleteObjectCan <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">DeleteObject</font>" <b>(</b>hObject <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> CreateDCCan <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">CreateCompatibleDC</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> SelectObjectCan <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SelectObject</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hObject <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> BitBltCan <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">BitBlt</font>" <b>(</b>hDestDC <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hSrcDC <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,xSrc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,ySrc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,dwRop <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> DeleteDCCan <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">DeleteDC</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> CreateBitmapCan <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">CreateCompatibleBitmap</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Sub</b></font> OnClipboard_eventTemplate<b>(</b>present <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+
+<font color="0000AA"><b>Type</b></font> QCanvasEx <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QCANVAS</b></font>
+  PRIVATE:
+    <font color="0000AA"><b>Timer</b></font> <font color="0000AA"><b>as</b></font> <font color="000099"><b>QTIMER</b></font>
+    HasImage <font color="0000AA"><b>as</b></font> boolean
+    info <font color="0000AA"><b>as</b></font> TBITMAP
+  PUBLIC:
+    OnClipboard <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>OnClipboard_eventTemplate<b>)</b>
+
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="007700"><i>' méthode dessin d'icones</i></font> 
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> DrawIco<b>(</b>left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,handle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    DrawIconCan<b>(</b>QCanvasEx.handle,left,top,handle<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+ 
+  <font color="007700"><i>'================================================</i></font> 
+  <font color="007700"><i>' méthode copie le contenu dans le presse papier</i></font> 
+  <font color="007700"><i>'================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> CopyToClipboard<b>(</b>rect <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>QRECT</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> hDC <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hOldBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> width <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> height <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    width=rect.right-rect.left
+    height=rect.bottom-rect.top
+    hDC=CreateDCCan<b>(</b>QCanvasEx.handle<b>)</b>
+    hBitmap=CreateBitmapCan<b>(</b>QCanvasEx.handle,width,height<b>)</b>
+    hOldBitmap=SelectObjectCan<b>(</b>hDC,hBitmap<b>)</b>
+    BitBltCan<b>(</b>hDC,0,0,width,height,QCanvasEx.handle,rect.left,rect.top,SRCCOPY_CAN<b>)</b>
+    clipboard.open
+    clipboard.clear
+    clipboard.SetAsHandle<b>(</b>CF_BITMAP_CAN,hBitmap<b>)</b>
+    clipboard.close
+    SelectObjectCan<b>(</b>hDC,hOldBitmap<b>)</b>
+    DeleteDCCan<b>(</b>hDC<b>)</b>
+    DeleteObjectCan<b>(</b>hBitmap<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+  
+  <font color="007700"><i>'=============================================</i></font> 
+  <font color="007700"><i>' méthode colle une image du le presse papier</i></font> 
+  <font color="007700"><i>'=============================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> PasteFromClipboard<b>(</b>x <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>,y <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> hDC <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hOldBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_CAN<b>)</b> <font color="000099"><b>then</b></font>
+      clipboard.open
+      hBitmap=clipboard.GetAsHandle<b>(</b>CF_BITMAP_CAN<b>)</b>
+      clipboard.close
+      GetObjectCan<b>(</b>hBitmap,<font color="0000AA"><b>SIZEOF</b></font><b>(</b>QCanvasEx.info<b>)</b>,QCanvasEx.info<b>)</b>
+      hDC=CreateDCCan<b>(</b>QCanvasEx.handle<b>)</b>
+      hOldBitmap=SelectObjectCan<b>(</b>hDC,hBitmap<b>)</b>
+      BitBltCan<b>(</b>QCanvasEx.handle,x,y,QCanvasEx.info.bmwidth,QCanvasEx.info.bmheight,hDC,0,0,SRCCOPY_CAN<b>)</b>
+      SelectObjectCan<b>(</b>hDC,hOldBitmap<b>)</b>
+      DeleteDCCan<b>(</b>hDC<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' méthode info largeur image du presse papier</i></font> 
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetWidthClipboard <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_CAN<b>)</b> <font color="000099"><b>then</b></font>
+      clipboard.open
+      hBitmap=clipboard.GetAsHandle<b>(</b>CF_BITMAP_CAN<b>)</b>
+      clipboard.close
+      GetObjectCan<b>(</b>hBitmap,<font color="0000AA"><b>SIZEOF</b></font><b>(</b>QCanvasEx.info<b>)</b>,QCanvasEx.info<b>)</b>
+      result=QCanvasEx.info.bmwidth
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' méthode info hauteur image du presse papier</i></font> 
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetHeightClipboard <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_CAN<b>)</b> <font color="000099"><b>then</b></font>
+      clipboard.open
+      hBitmap=clipboard.GetAsHandle<b>(</b>CF_BITMAP_CAN<b>)</b>
+      clipboard.close
+      GetObjectCan<b>(</b>hBitmap,<font color="0000AA"><b>SIZEOF</b></font><b>(</b>QCanvasEx.info<b>)</b>,QCanvasEx.info<b>)</b>
+      result=QCanvasEx.info.bmheight
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+  
+  <font color="007700"><i>'========================================================================</i></font> 
+  <font color="007700"><i>' Evenement Timer pour verification image présente dans le presse papier</i></font> 
+  <font color="007700"><i>'========================================================================</i></font> 
+  <font color="0000AA"><b>Event</b></font> Timer.OnTimer
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_CAN<b>)</b>=true <font color="0000AA"><b>and</b></font> QCanvasEx.hasImage=false <font color="0000AA"><b>then</b></font> 
+      <font color="0000AA"><b>if</b></font> QCanvasEx.OnClipboard&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QCanvasEx.OnClipboard,true<b>)</b>
+      QCanvasEx.hasImage=true
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_CAN<b>)</b>=false <font color="0000AA"><b>and</b></font> QCanvasEx.hasImage=true <font color="0000AA"><b>then</b></font> 
+      <font color="0000AA"><b>if</b></font> QCanvasEx.OnClipboard&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QCanvasEx.OnClipboard,false<b>)</b>
+      QCanvasEx.hasImage=false
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Event</b></font>
+  
+  <font color="000099"><b>Constructor</b></font>
+    timer.interval=100
+    hasImage=false
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>constructor</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

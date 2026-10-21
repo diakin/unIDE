@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>CMD5.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: CMD5.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>CMD5.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/CMD5.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 16 functions</p>
+<p><a href="#ADDUNSIGNED">AddUnsigned</a> &middot; <a href="#CONVERTTOWORDARRAY">ConvertToWordArray</a> &middot; <a href="#LSHIFT">LShift</a> &middot; <a href="#MD5">MD5</a> &middot; <a href="#MD5I">MD5I</a> &middot; <a href="#MD5_F">MD5_F</a> &middot; <a href="#MD5_FF">MD5_FF</a> &middot; <a href="#MD5_G">MD5_G</a> &middot; <a href="#MD5_GG">MD5_GG</a> &middot; <a href="#MD5_H">MD5_H</a> &middot; <a href="#MD5_HH">MD5_HH</a> &middot; <a href="#MD5_II">MD5_II</a> &middot; <a href="#ROTATELEFT">RotateLeft</a> &middot; <a href="#RSHIFT">RShift</a> &middot; <a href="#RSHIFTSIGNED">RShiftSigned</a> &middot; <a href="#WORDTOHEX">WordToHex</a></p>
+<h3><a name="ADDUNSIGNED"></a>AddUnsigned</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7355</p>
+<pre>Function AddUnsigned(ByVal lX As Long, ByVal lY As Long) As Long</pre>
+<p>Adds two 32-bit values as unsigned numbers without overflow and returns the low 32 bits of the sum. Used by the MD5 routines.</p>
+<h3><a name="CONVERTTOWORDARRAY"></a>ConvertToWordArray</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7529</p>
+<pre>Function ConvertToWordArray(sMessage As String) As Long</pre>
+<p>MD5 preparation: packs sMessage into 32-bit words, adds the 1-bit terminator and the message length in bits, padded to a multiple of 512 bits. The result is stored in the global array WordArray (the function return value is not set). Fails on an empty string.</p>
+<h3><a name="LSHIFT"></a>LShift</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7143</p>
+<pre>Function LShift(ByVal lValue As Long, ByVal iShiftBits As Integer) As Long</pre>
+<p>Shifts the 32-bit value lValue left by iShiftBits bits (0 to 31), filling with zeros, like &lt;&lt; in C; handles the sign bit without overflow. Uses the global tables m_l2Power and m_lOnBits. Shifts outside 0..31 are undefined.</p>
+<h3><a name="MD5"></a>MD5</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7653</p>
+<pre>Function MD5(sMessage As String) As String</pre>
+<p>Returns the MD5 hash of sMessage as a 32-character lowercase hex string. Uses ConvertToWordArray (global WordArray), the round helpers MD5_FF..MD5_II and the global constants S11..S44, m_l2Power and m_lOnBits, which must be initialized.</p>
+<h3><a name="MD5I"></a>MD5I</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7427</p>
+<pre>Function MD5I(ByVal x As Long, ByVal y As Long, ByVal z As Long) As Long</pre>
+<p>MD5 auxiliary function I: returns y XOR (x OR NOT z). Internal helper of MD5.</p>
+<h3><a name="MD5_F"></a>MD5_F</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7391</p>
+<pre>Function MD5_F(ByVal x As Long, ByVal y As Long, ByVal z As Long) As Long</pre>
+<p>MD5 auxiliary function F: returns (x AND y) OR (NOT x AND z). Internal helper of MD5.</p>
+<h3><a name="MD5_FF"></a>MD5_FF</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 7439</p>
+<pre>Sub MD5_FF(a As Long, ByVal b As Long, ByVal c As Long, ByVal d As Long, ByVal x As Long, ByVal s As Long, ByVal ac As Long)</pre>
+<p>MD5 round 1 step: a = b + RotateLeft(a + F(b,c,d) + x + ac, s), with unsigned addition. Modifies a (by reference). Internal helper of MD5.</p>
+<h3><a name="MD5_G"></a>MD5_G</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7403</p>
+<pre>Function MD5_G(ByVal x As Long, ByVal y As Long, ByVal z As Long) As Long</pre>
+<p>MD5 auxiliary function G: returns (x AND z) OR (y AND NOT z). Internal helper of MD5.</p>
+<h3><a name="MD5_GG"></a>MD5_GG</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 7459</p>
+<pre>Sub MD5_GG(a As Long, ByVal b As Long, ByVal c As Long, ByVal d As Long, ByVal x As Long, ByVal s As Long, ByVal ac As Long)</pre>
+<p>MD5 round 2 step: a = b + RotateLeft(a + G(b,c,d) + x + ac, s), with unsigned addition. Modifies a (by reference). Internal helper of MD5.</p>
+<h3><a name="MD5_H"></a>MD5_H</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7415</p>
+<pre>Function MD5_H(ByVal x As Long, ByVal y As Long, ByVal z As Long) As Long</pre>
+<p>MD5 auxiliary function H: returns x XOR y XOR z. Internal helper of MD5.</p>
+<h3><a name="MD5_HH"></a>MD5_HH</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 7478</p>
+<pre>Sub MD5_HH(a As Long, ByVal b As Long, ByVal c As Long, ByVal d As Long, ByVal x As Long, ByVal s As Long, ByVal ac As Long)</pre>
+<p>MD5 round 3 step: a = b + RotateLeft(a + H(b,c,d) + x + ac, s), with unsigned addition. Modifies a (by reference). Internal helper of MD5.</p>
+<h3><a name="MD5_II"></a>MD5_II</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 7497</p>
+<pre>Sub MD5_II(a As Long, ByVal b As Long, ByVal c As Long, ByVal d As Long, ByVal x As Long, ByVal s As Long, ByVal ac As Long)</pre>
+<p>MD5 round 4 step: a = b + RotateLeft(a + I(b,c,d) + x + ac, s), with unsigned addition. Modifies a (by reference). Internal helper of MD5.</p>
+<h3><a name="ROTATELEFT"></a>RotateLeft</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7337</p>
+<pre>Function RotateLeft(ByVal lValue As Long, ByVal iShiftBits As Integer) As Long</pre>
+<p>Rotates the bits of lValue left by iShiftBits; bits falling off the left edge return on the right. Built from LShift and RShift.</p>
+<h3><a name="RSHIFT"></a>RShift</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7215</p>
+<pre>Function RShift(ByVal lValue As Long, ByVal iShiftBits As Integer) As Long</pre>
+<p>Logical (unsigned) right shift of lValue by iShiftBits bits (0 to 31), filling with zeros on the left. Uses the global table m_l2Power. Shifts outside 0..31 are undefined.</p>
+<h3><a name="RSHIFTSIGNED"></a>RShiftSigned</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7283</p>
+<pre>Function RShiftSigned(ByVal lValue As Long, ByVal iShiftBits As Integer) As Long</pre>
+<p>Arithmetic right shift of lValue by iShiftBits bits, filling with the sign bit, like &gt;&gt; on a signed integer in C. Uses m_l2Power; not used by the MD5 code (source comment).</p>
+<h3><a name="WORDTOHEX"></a>WordToHex</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 7610</p>
+<pre>Function WordToHex(ByVal lValue As Long) As String</pre>
+<p>Returns the 4 bytes of lValue as an 8-character hex string, least significant byte first (MD5 digest byte order).</p>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<html>
+<head>
+<title>QSHFileOperation.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>' ============================================================== '</i></font> 
+<font color="007700"><i>' QSHFileOperation component - version 1            January 2002 '</i></font> 
+<font color="007700"><i>'                                                 Marcin Szafran '</i></font> 
+<font color="007700"><i>' Implemented API SHFileOperation function.                      '</i></font> 
+<font color="007700"><i>' Allows copy, rename, delete and move files and folders         '</i></font> 
+<font color="007700"><i>' with wildcard and recursivly... and much more!                 '</i></font> 
+<font color="007700"><i>' *****   BE   CAREFULL   WITH   DELETE   AND   RECURSE!   ***** '</i></font> 
+<font color="007700"><i>' Thanks for Jacques Philippe for his help                       '</i></font> 
+<font color="007700"><i>' ============================================================== '</i></font> 
+
+<font color="007700"><i>'= QSHFileOperation methods description ==================</i></font> 
+
+<font color="007700"><i>'--- Copying ---</i></font> 
+<font color="007700"><i>'    .CopyEx: Copying with extended attributes</i></font> 
+<font color="007700"><i>'      .Copy: Simple copying</i></font> 
+<font color="007700"><i>' Usage ObjName.CopyEx("ExistingFileName(s)","SourceFileName(s)",flags,handle)</i></font> 
+<font color="007700"><i>'       ObjName.Copy("ExistingFileName(s)","SourceFileName(s)")</i></font> 
+<font color="007700"><i>' RQ keyword: - (none)</i></font> 
+
+<font color="007700"><i>'--- Moving and Renaming ---</i></font> 
+<font color="007700"><i>'    .MoveEx: Moving with extended attributes</i></font> 
+<font color="007700"><i>'      .Move: Simple moving</i></font> 
+<font color="007700"><i>'  .RenameEx: Renaming with extended attributes</i></font> 
+<font color="007700"><i>'    .Rename: Simple renaming</i></font> 
+<font color="007700"><i>' Usage ObjName.MoveEx("ExistingFileName(s)","SourceFileName(s)",flags,handle)</i></font> 
+<font color="007700"><i>'       ObjName.Move("ExistingFileName(s)","SourceFileName(s)")</i></font> 
+<font color="007700"><i>'       ObjName.RenameEx("ExistingFileName(s)","SourceFileName(s)",flags,handle)</i></font> 
+<font color="007700"><i>'       ObjName.Rename("ExistingFileName(s)","SourceFileName(s)")</i></font> 
+<font color="007700"><i>' RQ keyword: RENAME (does not work with dirs)</i></font> 
+
+<font color="007700"><i>'--- Deleting ---</i></font> 
+<font color="007700"><i>'  .DeleteEx: Deleting with deleting confirmation on/off and other extended attributes - enables delete to Recycle Bin</i></font> 
+<font color="007700"><i>'    .Delete: Simple deleting with deleting confirmation on/off - enables delete to Recycle Bin</i></font> 
+<font color="007700"><i>' Usage ObjName.DeleteEx("FileName(s)",to_Bin_on/off,confirm_on/off,flags,handle)</i></font> 
+<font color="007700"><i>'       ObjName.Delete("FileName(s)",to_Bin_on/off,confirm_on/off)</i></font> 
+<font color="007700"><i>' RQ keyword: KILL (does not work with dirs)</i></font> 
+
+<font color="007700"><i>'= QSHFileOperation properties description ===============</i></font> 
+
+<font color="007700"><i>' .DefaultFlagsEx: Setting default flags for methods with extended attributes (.MethodNameEx) - now = 0</i></font> 
+<font color="007700"><i>'   .DefaultFlags: Setting default flags for simple methods (.MethodName)</i></font> 
+
+<font color="0000AA"><b>$TYPECHECK</b></font> ON
+
+<font color="007700"><i>'= CONSTANTS =============================================</i></font> 
+
+<font color="007700"><i>'--- Operations ---</i></font> 
+
+<font color="0000AA"><b>Const</b></font> foMove = &H1   <font color="007700"><i>' Move the files specified in pFrom to the location specified in pTo</i></font> 
+<font color="0000AA"><b>Const</b></font> foCopy = &H2   <font color="007700"><i>' Copy the files specified in the pFrom member to the location specified in the pTo member </i></font> 
+<font color="0000AA"><b>Const</b></font> foDelete = &H3 <font color="007700"><i>' Delete the files specified in pFrom</i></font> 
+<font color="0000AA"><b>Const</b></font> foRename = &H4 <font color="007700"><i>' Rename the file specified in pFrom. You cannot use this flag to rename multiple files with a single function call. Use FO_MOVE instead</i></font> 
+
+<font color="007700"><i>'--- Flags - should be set with OR operator if used more than one ---</i></font> 
+<font color="007700"><i>'--- Constants names were changed to RapidQ kind --------------------</i></font> 
+
+<font color="0000AA"><b>Const</b></font> fofAllowUndo = &H40              <font color="007700"><i>' Preserve Undo information, if possible. If pFrom does not contain fully qualified path and file names, this flag is ignored</i></font> 
+<font color="0000AA"><b>Const</b></font> fofConfirmMouse = &H2            <font color="007700"><i>' Not currently used</i></font> 
+<font color="0000AA"><b>Const</b></font> fofFilesOnly = &H80              <font color="007700"><i>' Perform the operation on files only if a wildcard file name (*.*) is specified</i></font> 
+<font color="0000AA"><b>Const</b></font> fofMultiDestFiles = &H1          <font color="007700"><i>' The pTo member specifies multiple destination files (one for each source file) rather than one directory where all source files are to be depos</i></font> 
+<font color="0000AA"><b>Const</b></font> fofNoConnectedElements = &H2000  <font color="007700"><i>' Do not move connected files as a group. Only move the specified files</i></font> 
+<font color="0000AA"><b>Const</b></font> fofNoConfirmation = &H10         <font color="007700"><i>' Respond with "Yes to All" for any dialog box that is displayed</i></font> 
+<font color="0000AA"><b>Const</b></font> fofNoConfirmMkDir = &H200        <font color="007700"><i>' Do not confirm the creation of a new directory if the operation requires one to be created</i></font> 
+<font color="0000AA"><b>Const</b></font> fofNoCopySecurityAttribs = &H800 <font color="007700"><i>' Do not copy the security attributes of the file</i></font> 
+<font color="0000AA"><b>Const</b></font> fofNoErrorUI = &H400             <font color="007700"><i>' Do not display a user interface if an error occurs</i></font> 
+<font color="007700"><i>'Const fof_RecurseReparse =            ' Recurse into reparse points. The default is to not recurse</i></font> 
+<font color="007700"><i>'Const fof_NoRecurseReparse =          ' Treat reparse points as objects, not containers. You must set _WIN32_WINNT to 5.01 or later to use this flag</i></font> 
+<font color="0000AA"><b>Const</b></font> fofNoRecursion = &H1000          <font color="007700"><i>' Only operate in the local directory. Don't operate recursively into subdirectories</i></font> 
+<font color="0000AA"><b>Const</b></font> fofRenameOnCollision = &H8       <font color="007700"><i>' Give the file being operated on a new name in a move, copy, or rename operation if a file with the target name already exists</i></font> 
+<font color="0000AA"><b>Const</b></font> fofSilent = &H4                  <font color="007700"><i>' Do not display a progress dialog box</i></font> 
+<font color="0000AA"><b>Const</b></font> fofSimpleProgress = &H100        <font color="007700"><i>' Display a progress dialog box but do not show the file names</i></font> 
+<font color="007700"><i>'Const fofWantMappingHandle = &H20     ' If FOF_RENAMEONCOLLISION is specified and any files were renamed, assign a name mapping object containing their old and new names to the hNameMappings member</i></font> 
+<font color="0000AA"><b>Const</b></font> fofWantNukeWarning = &H4000      <font color="007700"><i>' Send a warning if a file is being destroyed during a delete operation rather than recycled. This flag partially overrides FOF_NOCONFIRMATION</i></font> 
+
+<font color="007700"><i>' If the pFrom or pTo members are unqualified names, the current directories are taken from the global current drive and directory settings </i></font> 
+<font color="007700"><i>' If pFrom is set to a file name, deleting the file with FO_DELETE will not move it to the Recycle Bin, even if the FOF_ALLOWUNDO flag is set. You must use a full path name</i></font> 
+
+<font color="007700"><i>'= DECLARATIONS ==========================================</i></font> 
+
+<font color="0000AA"><b>Type</b></font> SHFILEOPSTRUCT
+    hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>                       <font color="007700"><i>' Window handle to the dialog box to display information about the status of the file operation</i></font> 
+    wFunc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>                      <font color="007700"><i>' Value that indicates which operation to perform (foMove, foCopy, foDelete, foRename)</i></font> 
+    pFrom <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>                      <font color="007700"><i>' Address of a buffer to specify one or more source file names. These names must be fully qualified paths. Standard DOS wild cards, such as "*", are permitted in the file-name position</i></font> 
+    pTo <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>                        <font color="007700"><i>' Address of a buffer to contain the name of the destination file or directory. This parameter must be set to NULL if it is not used. Like pFrom, the pTo member is also a double-NULL terminated string and is handled in much the same way</i></font> 
+    fFlags <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Integer</b></font>                  <font color="007700"><i>' Flags that control the file operation</i></font> 
+    fAnyOperationsAborted <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>      <font color="007700"><i>' Value that receives TRUE if the user aborted any file operations before they were completed, or FALSE otherwise</i></font> 
+    hNameMappings <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>              <font color="007700"><i>' A handle to a name mapping object containing the old and new names of the renamed files. This member is used only if the fFlags member includes the FOF_WANTMAPPINGHANDLE flag</i></font> 
+    lpszProgressTitle <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>          <font color="007700"><i>' Address of a string to use as the title of a progress dialog box. This member is used only if fFlags includes the FOF_SIMPLEPROGRESS flag. Does not work - don't know why... Tested almost everything :-(</i></font> 
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+
+<font color="007700"><i>' Some flags need higher than 4.0 versions of shell32.dll. For more informations about SHFileOperation and SHFILEOPSTRUCT see:</i></font> 
+<font color="007700"><i>' http://msdn.microsoft.com/library/default.asp?url=/library/en-us/shellcc/platform/Shell/functions/SHFileOperation.asp</i></font> 
+<font color="007700"><i>' and http://msdn.microsoft.com/library/default.asp?url=/library/en-us/shellcc/platform/Shell/Structures/SHFILEOPSTRUCT.asp</i></font> 
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> SHFileOperation <font color="0000AA"><b>Lib</b></font> "<font color="990000">shell32.dll</font>" _
+          <font color="0000AA"><b>Alias</b></font> "<font color="990000">SHFileOperationA</font>" <b>(</b>lpFileOp <font color="0000AA"><b>As</b></font> SHFILEOPSTRUCT<b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>Dim</b></font> lpFileOp <font color="0000AA"><b>As</b></font> SHFILEOPSTRUCT
+
+<font color="0000AA"><b>DefStr</b></font> SHfoFrom, dSHfoFrom, SHfoTo, dSHfoTo
+
+<font color="007700"><i>'= QSHFILEOPERATION COMPONENT ============================</i></font> 
+
+<font color="0000AA"><b>Type</b></font> QSHFileOperation <font color="0000AA"><b>Extends</b></font> <font color="000099"><b>QObject</b></font>
+
+Private:
+<font color="007700"><i>'TempString As String</i></font> 
+
+<font color="0000AA"><b>Sub</b></font> ClearSHFileOperationStructure
+    <font color="007700"><i>'--- Clear structure</i></font> 
+    lpFileOp.hwnd = 0
+    lpFileOp.wFunc = 0
+    lpFileOp.pFrom = 0
+    lpFileOp.pTo = 0
+    lpFileOp.fFlags = 0
+    <font color="007700"><i>'lpFileOp.fAnyOperationsAborted = 0</i></font> 
+    <font color="007700"><i>'lpFileOp.hNameMappings = 0</i></font> 
+    <font color="007700"><i>'lpFileOp.lpszProgressTitle = 0</i></font> 
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+Public:
+DefaultFlagsEx <font color="0000AA"><b>As</b></font> <font color="000099"><b>Integer</b></font>
+DefaultFlags <font color="0000AA"><b>As</b></font> <font color="000099"><b>Integer</b></font>
+
+<font color="000099"><b>Constructor</b></font>
+    DefaultFlagsEx = 0
+    DefaultFlags = fofRenameOnCollision
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+
+<font color="007700"><i>' I hope that parameters names are clear</i></font> 
+
+<font color="0000AA"><b>Function</b></font> CopyEx <b>(</b>dSHfoFrom <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, dSHfoTo <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, _
+                 SHfoFlags <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Integer</b></font>, SHfoHandle <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+    SHfoFrom = dSHfoFrom & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+    SHfoTo = dSHfoTo & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+        QSHFileOperation.ClearSHFileOperationStructure
+        <font color="007700"><i>'--- Fill structure</i></font> 
+        lpFileOp.hwnd = SHfoHandle
+        lpFileOp.wFunc = foCopy
+        lpFileOp.pFrom = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoFrom<b>)</b>
+        lpFileOp.pTo = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoTo<b>)</b>
+        lpFileOp.fFlags = QSHFileOperation.DefaultFlagsEx <font color="0000AA"><b>OR</b></font> SHfoFlags
+        <font color="007700"><i>'lpFileOp.fAnyOperationsAborted =</i></font> 
+        <font color="007700"><i>'lpFileOp.hNameMappings =</i></font> 
+        <font color="007700"><i>'lpFileOp.lpszProgressTitle = VarPtr(dSHfoProgressTitle)</i></font> 
+    Result = SHFileOperation<b>(</b>lpFileOp<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="0000AA"><b>Function</b></font> Copy <b>(</b>dSHfoFrom <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, dSHfoTo <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+    SHfoFrom = dSHfoFrom & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+    SHfoTo = dSHfoTo & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+        QSHFileOperation.ClearSHFileOperationStructure
+        <font color="007700"><i>'--- Fill structure</i></font> 
+        lpFileOp.wFunc = foCopy
+        lpFileOp.pFrom = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoFrom<b>)</b>
+        lpFileOp.pTo = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoTo<b>)</b>
+        lpFileOp.fFlags = QSHFileOperation.DefaultFlags
+    Result = SHFileOperation<b>(</b>lpFileOp<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="0000AA"><b>Function</b></font> MoveEx <b>(</b>dSHfoFrom <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, dSHfoTo <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, _
+                 SHfoFlags <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Integer</b></font>, SHfoHandle <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+    SHfoFrom = dSHfoFrom & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+    SHfoTo = dSHfoTo & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+        QSHFileOperation.ClearSHFileOperationStructure
+        <font color="007700"><i>'--- Fill structure</i></font> 
+        lpFileOp.hwnd = SHfoHandle
+        lpFileOp.wFunc = foMove
+        lpFileOp.pFrom = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoFrom<b>)</b>
+        lpFileOp.pTo = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoTo<b>)</b>
+        lpFileOp.fFlags = QSHFileOperation.DefaultFlagsEx <font color="0000AA"><b>OR</b></font> SHfoFlags
+        <font color="007700"><i>'lpFileOp.fAnyOperationsAborted =</i></font> 
+        <font color="007700"><i>'lpFileOp.hNameMappings =</i></font> 
+        <font color="007700"><i>'lpFileOp.lpszProgressTitle = VarPtr(dSHfoProgressTitle)</i></font> 
+    Result = SHFileOperation<b>(</b>lpFileOp<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="0000AA"><b>Function</b></font> Move <b>(</b>dSHfoFrom <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, dSHfoTo <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+    SHfoFrom = dSHfoFrom & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+    SHfoTo = dSHfoTo & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+        QSHFileOperation.ClearSHFileOperationStructure
+        <font color="007700"><i>'--- Fill structure</i></font> 
+        lpFileOp.wFunc = foMove
+        lpFileOp.pFrom = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoFrom<b>)</b>
+        lpFileOp.pTo = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoTo<b>)</b>
+        lpFileOp.fFlags = QSHFileOperation.DefaultFlags
+    Result = SHFileOperation<b>(</b>lpFileOp<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="0000AA"><b>Function</b></font> RenameEx <b>(</b>dSHfoFrom <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, dSHfoTo <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, _
+                   SHfoFlags <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Integer</b></font>, SHfoHandle <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+    SHfoFrom = dSHfoFrom & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+    SHfoTo = dSHfoTo & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+        QSHFileOperation.ClearSHFileOperationStructure
+        <font color="007700"><i>'--- Fill structure</i></font> 
+        lpFileOp.hwnd = SHfoHandle
+        lpFileOp.wFunc = foRename
+        lpFileOp.pFrom = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoFrom<b>)</b>
+        lpFileOp.pTo = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoTo<b>)</b>
+        lpFileOp.fFlags = QSHFileOperation.DefaultFlagsEx <font color="0000AA"><b>OR</b></font> SHfoFlags
+        <font color="007700"><i>'lpFileOp.fAnyOperationsAborted =</i></font> 
+        <font color="007700"><i>'lpFileOp.hNameMappings =</i></font> 
+        <font color="007700"><i>'lpFileOp.lpszProgressTitle = VarPtr(dSHfoProgressTitle)</i></font> 
+    Result = SHFileOperation<b>(</b>lpFileOp<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="0000AA"><b>Function</b></font> <font color="0000AA"><b>Rename</b></font> <b>(</b>dSHfoFrom <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, dSHfoTo <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+    SHfoFrom = dSHfoFrom & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+    SHfoTo = dSHfoTo & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+        QSHFileOperation.ClearSHFileOperationStructure
+        <font color="007700"><i>'--- Fill structure</i></font> 
+        lpFileOp.wFunc = foRename
+        lpFileOp.pFrom = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoFrom<b>)</b>
+        lpFileOp.pTo = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoTo<b>)</b>
+        lpFileOp.fFlags = QSHFileOperation.DefaultFlags
+    Result = SHFileOperation<b>(</b>lpFileOp<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="0000AA"><b>Function</b></font> DeleteEx <b>(</b>dSHfoFrom <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, SHfoToBin <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Integer</b></font>, SHConfirm <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Integer</b></font>, _
+                   SHfoFlags <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Integer</b></font>, SHfoHandle <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+    SHfoFrom = dSHfoFrom & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+        QSHFileOperation.ClearSHFileOperationStructure
+        <font color="007700"><i>'--- Fill structure</i></font> 
+        lpFileOp.hwnd = SHfoHandle
+        lpFileOp.wFunc = foDelete
+        lpFileOp.pFrom = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoFrom<b>)</b>
+        lpFileOp.fFlags = QSHFileOperation.DefaultFlagsEx <font color="0000AA"><b>OR</b></font> SHfoFlags <font color="0000AA"><b>OR</b></font> <b>(</b>fofAllowUndo * SHfoToBin<b>)</b> <font color="0000AA"><b>OR</b></font> <b>(</b>fofNoConfirmation * <font color="0000AA"><b>ABS</b></font><b>(</b>SHConfirm - 1<b>)</b><b>)</b>
+        <font color="007700"><i>'lpFileOp.fAnyOperationsAborted =</i></font> 
+        <font color="007700"><i>'lpFileOp.hNameMappings =</i></font> 
+        <font color="007700"><i>'lpFileOp.lpszProgressTitle = VarPtr(dSHfoProgressTitle)</i></font> 
+    Result = SHFileOperation<b>(</b>lpFileOp<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="0000AA"><b>Function</b></font> Delete <b>(</b>dSHfoFrom <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, SHfoToBin <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Integer</b></font>, SHConfirm <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Integer</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+    SHfoFrom = dSHfoFrom & <font color="0000AA"><b>Chr$</b></font><b>(</b>0<b>)</b>
+        QSHFileOperation.ClearSHFileOperationStructure
+        <font color="007700"><i>'--- Fill structure</i></font> 
+        lpFileOp.wFunc = foDelete
+        lpFileOp.pFrom = <font color="0000AA"><b>VarPtr</b></font><b>(</b>SHfoFrom<b>)</b>
+        lpFileOp.fFlags = QSHFileOperation.DefaultFlags <font color="0000AA"><b>OR</b></font> <b>(</b>fofAllowUndo * SHfoToBin<b>)</b> <font color="0000AA"><b>OR</b></font> <b>(</b>fofNoConfirmation * <font color="0000AA"><b>ABS</b></font><b>(</b>SHConfirm - 1<b>)</b><b>)</b>
+    Result = SHFileOperation<b>(</b>lpFileOp<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+
+<font color="0000AA"><b>$TYPECHECK</b></font> OFF
+
+<font color="007700"><i>'= END =================================================== </i></font> 
+ 
+</pre>
+</body>
+</html>

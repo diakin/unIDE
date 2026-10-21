@@ -1,0 +1,114 @@
+<html>
+<head>
+<title>QImageEx.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QImageEx</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>Const</b></font> SRCCOPY_IMG=&HCC0020 
+<font color="0000AA"><b>Const</b></font> CF_BITMAP_IMG=2
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> DeleteObjectImg <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">DeleteObject</font>" <b>(</b>hObject <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> CreateDCImg <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">CreateCompatibleDC</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> SelectObjectImg <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SelectObject</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hObject <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> BitBltImg <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">BitBlt</font>" <b>(</b>hDestDC <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hSrcDC <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,xSrc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,ySrc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,dwRop <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> DeleteDCImg <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">DeleteDC</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> CreateBitmapImg <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">CreateCompatibleBitmap</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> LoadImageImg <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">LoadImageA</font>" <b>(</b>hInst <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lpsz <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>, dwImageType <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,dwDesiredWidth <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, dwDesiredHeight <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,dwFlags <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Sub</b></font> OnClipboard_eventTemplate<b>(</b>flag <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+
+<font color="0000AA"><b>Type</b></font> QImageEx <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QIMAGE</b></font>
+  PRIVATE:
+    <font color="0000AA"><b>Timer</b></font> <font color="0000AA"><b>as</b></font> <font color="000099"><b>QTIMER</b></font>
+    HasImage <font color="0000AA"><b>as</b></font> boolean
+    bitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>QBitmap</b></font>
+  PUBLIC:
+    OnClipboard <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>OnClipboard_eventTemplate<b>)</b>
+  
+  <font color="007700"><i>'===================================================</i></font> 
+  <font color="007700"><i>' Méthode copie image dans presse papier</i></font> 
+  <font color="007700"><i>'===================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> CopyToClipboard<b>(</b>rect <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>QRECT</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> hDC <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hOldBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> width <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> height <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    width=rect.right-rect.left
+    height=rect.bottom-rect.top
+    hDC=CreateDCImg<b>(</b>QImageEx.handle<b>)</b>
+    hBitmap=CreateBitmapImg<b>(</b>QImageEx.handle,width,height<b>)</b>
+    hOldBitmap=SelectObjectImg<b>(</b>hDC,hBitmap<b>)</b>
+    BitBltImg<b>(</b>hDC,0,0,width,height,QImageEx.handle,rect.left,rect.top,SRCCOPY_IMG<b>)</b>
+    clipboard.open
+    clipboard.clear
+    clipboard.SetAsHandle<b>(</b>CF_BITMAP_IMG,hBitmap<b>)</b>
+    clipboard.close
+    SelectObjectImg<b>(</b>hDC,hOldBitmap<b>)</b>
+    DeleteDCImg<b>(</b>hDC<b>)</b>
+    DeleteObjectImg<b>(</b>hBitmap<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+  
+  <font color="007700"><i>'===================================================</i></font> 
+  <font color="007700"><i>' Méthode colle image du presse papier</i></font> 
+  <font color="007700"><i>'===================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> PasteFromClipboard
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_IMG<b>)</b> <font color="000099"><b>then</b></font>
+      clipboard.open
+      QImageEx.handle=clipboard.GetAsHandle<b>(</b>CF_BITMAP_IMG<b>)</b>
+      clipboard.close
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'===================================================</i></font> 
+  <font color="007700"><i>' Méthode charge et affiche un fichier bitmap</i></font> 
+  <font color="007700"><i>'===================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> LoadFromFile<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>,height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>,real <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+    <font color="0000AA"><b>if</b></font> real <font color="000099"><b>then</b></font>
+      QImageEx.bitmap.bmp=FileName
+      QImageEx.handle=LoadImageImg<b>(</b>Application.hInstance,fileName,0,QImageEx.bitmap.width,QImageEx.bitmap.height,&H10<b>)</b>
+    <font color="000099"><b>else</b></font>
+      QImageEx.handle=LoadImageImg<b>(</b>Application.hInstance,fileName,0,width,height,&H10<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+  
+  <font color="007700"><i>'========================================================================</i></font> 
+  <font color="007700"><i>' Evenement Timer pour verification image présente dans le presse papier</i></font> 
+  <font color="007700"><i>'========================================================================</i></font> 
+  <font color="0000AA"><b>Event</b></font> Timer.OnTimer
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_IMG<b>)</b>=true <font color="0000AA"><b>and</b></font> QimageEx.hasImage=false <font color="0000AA"><b>then</b></font> 
+      <font color="0000AA"><b>if</b></font> QImageEx.OnClipboard&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QImageEx.OnClipboard,true<b>)</b>
+      QimageEx.hasImage=true
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_IMG<b>)</b>=false <font color="0000AA"><b>and</b></font> QimageEx.hasImage=true <font color="0000AA"><b>then</b></font> 
+      <font color="0000AA"><b>if</b></font> QImageEx.OnClipboard&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QImageEx.OnClipboard,false<b>)</b>
+      QimageEx.hasImage=false
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Event</b></font>
+  
+  <font color="000099"><b>Constructor</b></font>
+    timer.interval=100
+    hasImage=false
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>constructor</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

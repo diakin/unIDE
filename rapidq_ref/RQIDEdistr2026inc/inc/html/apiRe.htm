@@ -1,0 +1,177 @@
+<html>
+<head>
+<title>apiRe.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="007700"><i>'$IFNDEF boolean</i></font> 
+<font color="007700"><i>''  $DEFINE boolean integer</i></font> 
+<font color="007700"><i>'ENDIF</i></font> 
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> LoadLibrary <font color="0000AA"><b>LIB</b></font> "<font color="990000">KERNEL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">LoadLibraryA</font>" _
+                 <b>(</b>LibFileName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>dim</b></font> hInst <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>$DEFINE</b></font> HWND <font color="000099"><b>INTEGER</b></font>
+
+<font color="007700"><i>'CONST WS_EX_CLIENTEDGE = &H200 ' Just some of the many API constants</i></font> 
+<font color="007700"><i>'CONST WS_CHILD = &H40000000</i></font> 
+<font color="007700"><i>'CONST WS_VISIBLE = &H10000000</i></font> 
+<font color="007700"><i>'CONST WS_BORDER = &H800000</i></font> 
+
+<font color="007700"><i>' Window Styles</i></font> 
+Public <font color="0000AA"><b>Const</b></font> WS_OVERLAPPED = &H0&
+Public <font color="0000AA"><b>Const</b></font> WS_POPUP = &H80000000
+Public <font color="0000AA"><b>Const</b></font> WS_CHILD = &H40000000
+Public <font color="0000AA"><b>Const</b></font> WS_MINIMIZE = &H20000000
+Public <font color="0000AA"><b>Const</b></font> WS_VISIBLE = &H10000000
+Public <font color="0000AA"><b>Const</b></font> WS_DISABLED = &H8000000
+Public <font color="0000AA"><b>Const</b></font> WS_CLIPSIBLINGS = &H4000000
+Public <font color="0000AA"><b>Const</b></font> WS_CLIPCHILDREN = &H2000000
+Public <font color="0000AA"><b>Const</b></font> WS_MAXIMIZE = &H1000000
+Public <font color="0000AA"><b>Const</b></font> WS_CAPTION = &HC00000                  <font color="007700"><i>'  WS_BORDER Or WS_DLGFRAME</i></font> 
+Public <font color="0000AA"><b>Const</b></font> WS_BORDER = &H800000
+Public <font color="0000AA"><b>Const</b></font> WS_DLGFRAME = &H400000
+Public <font color="0000AA"><b>Const</b></font> WS_VSCROLL = &H200000
+Public <font color="0000AA"><b>Const</b></font> WS_HSCROLL = &H100000
+Public <font color="0000AA"><b>Const</b></font> WS_SYSMENU = &H80000
+Public <font color="0000AA"><b>Const</b></font> WS_THICKFRAME = &H40000
+Public <font color="0000AA"><b>Const</b></font> WS_GROUP = &H20000
+Public <font color="0000AA"><b>Const</b></font> WS_TABSTOP = &H10000
+
+Public <font color="0000AA"><b>Const</b></font> WS_MINIMIZEBOX = &H20000
+Public <font color="0000AA"><b>Const</b></font> WS_MAXIMIZEBOX = &H10000
+
+Public <font color="0000AA"><b>Const</b></font> WS_TILED = WS_OVERLAPPED
+Public <font color="0000AA"><b>Const</b></font> WS_ICONIC = WS_MINIMIZE
+Public <font color="0000AA"><b>Const</b></font> WS_SIZEBOX = WS_THICKFRAME
+Public <font color="0000AA"><b>Const</b></font> WS_OVERLAPPEDWINDOW = <b>(</b>WS_OVERLAPPED <font color="0000AA"><b>Or</b></font> WS_CAPTION <font color="0000AA"><b>Or</b></font> WS_SYSMENU <font color="0000AA"><b>Or</b></font> WS_THICKFRAME <font color="0000AA"><b>Or</b></font> WS_MINIMIZEBOX <font color="0000AA"><b>Or</b></font> WS_MAXIMIZEBOX<b>)</b>
+Public <font color="0000AA"><b>Const</b></font> WS_TILEDWINDOW = WS_OVERLAPPEDWINDOW
+
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'   Common Window Styles</i></font> 
+<font color="007700"><i>'  /</i></font> 
+
+
+Public <font color="0000AA"><b>Const</b></font> WS_POPUPWINDOW = <b>(</b>WS_POPUP <font color="0000AA"><b>Or</b></font> WS_BORDER <font color="0000AA"><b>Or</b></font> WS_SYSMENU<b>)</b>
+
+Public <font color="0000AA"><b>Const</b></font> WS_CHILDWINDOW = <b>(</b>WS_CHILD<b>)</b>
+
+<font color="007700"><i>' Extended Window Styles</i></font> 
+Public <font color="0000AA"><b>Const</b></font> WS_EX_DLGMODALFRAME = &H1&
+Public <font color="0000AA"><b>Const</b></font> WS_EX_NOPARENTNOTIFY = &H4&
+Public <font color="0000AA"><b>Const</b></font> WS_EX_TOPMOST = &H8&
+Public <font color="0000AA"><b>Const</b></font> WS_EX_ACCEPTFILES = &H10&
+Public <font color="0000AA"><b>Const</b></font> WS_EX_TRANSPARENT = &H20&
+
+
+
+
+<font color="0000AA"><b>Const</b></font> SW_HIDE = 0
+<font color="0000AA"><b>Const</b></font> SW_SHOW = 5
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> CreateRichEdit <font color="0000AA"><b>LIB</b></font> "<font color="990000">USER32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">CreateWindowExA</font>" _
+       <b>(</b>ExStyle&, ClassName$, WindowName$, Style&, X&, Y&, _
+          Width&, Height&, WndParent&, hMenu&, hInstance&, Param&<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MoveRichEdit <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">MoveWindow</font>" _
+<b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>, _
+nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,bRepaint <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ShowRichEdit <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">ShowWindow</font>" _
+ <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nCmdShow <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+
+<font color="0000AA"><b>TYPE</b></font> QRichEdit_api <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QObject</b></font>
+
+    PUBLIC:
+      Parent  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetParent
+      left    <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>   PROPERTY SET SetLeft
+      Top     <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>   PROPERTY SET SetTop
+      Width   <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>   PROPERTY SET SetWidth
+      Height  <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>   PROPERTY SET SetHeight
+      Visible <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetVisible
+      Handle  <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    
+    PROPERTY SET SetVisible<b>(</b>visible <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+      QRichedit_api.visible=visible
+      <font color="0000AA"><b>if</b></font> visible=0 <font color="000099"><b>then</b></font>
+        ShowRichedit<b>(</b>QRichEdit_api.Handle,SW_HIDE<b>)</b>
+      <font color="000099"><b>else</b></font>
+        ShowRichedit<b>(</b>QRichEdit_api.Handle,SW_SHOW<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetLeft<b>(</b>left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>with</b></font> QRichEdit_api
+      .Left=left
+       MoveRichEdit<b>(</b>.Handle,.Left,.Top,.Width,.Height,true<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetTop<b>(</b>top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>with</b></font> QRichEdit_api
+      .Top=top
+      MoveRichEdit<b>(</b>.Handle,.Left,.Top,.Width,.Height,true<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetWidth<b>(</b>width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+   <font color="0000AA"><b>with</b></font> QRichEdit_api
+      .Width=width
+    MoveRichEdit<b>(</b>.Handle,.Left,.Top,.Width,.Height,true<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetHeight<b>(</b>height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+   <font color="0000AA"><b>with</b></font> QRichEdit_api
+      .Height=height
+      MoveRichEdit<b>(</b>.Handle,.Left,.Top,.Width,.Height,true<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+    PROPERTY SET SetParent<b>(</b>parent <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+   <font color="0000AA"><b>with</b></font> QRichEdit_api
+       .Parent = parent
+hInst = LoadLibrary<b>(</b>"<font color="990000">RICHED32.DLL</font>"<b>)</b>
+
+
+.Handle = CreateRichEdit<b>(</b>WS_EX_CLIENTEDGE <font color="0000AA"><b>or</b></font> WS_EX_MDICHILD <font color="0000AA"><b>or</b></font> WS_EX_NOPARENTNOTIFY <font color="0000AA"><b>or</b></font> _
+WS_EX_OVERLAPPEDWINDOW <font color="0000AA"><b>or</b></font> WS_EX_TRANSPARENT _
+,"<font color="990000">RichEdit</font>","<font color="990000">RichEdit_API</font>", _
+WS_CHILD <font color="0000AA"><b>OR</b></font> WS_VISIBLE <font color="0000AA"><b>OR</b></font> WS_BORDER, _
+.left, .top, .width, .height, _
+.Parent, 0, Application.hInstance,0<b>)</b>
+
+<font color="007700"><i>'.Handle = CreateRichEdit(WS_EX_CLIENTEDGE _</i></font> 
+<font color="007700"><i>',"RichEdit","RichEdit_API", _</i></font> 
+<font color="007700"><i>'WS_CHILD OR WS_BORDER , _</i></font> 
+<font color="007700"><i>'.left, .top, .width, .height, _</i></font> 
+<font color="007700"><i>'.Parent, 0, Application.hInstance,0)</i></font> 
+    .visible=1
+
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    <font color="000099"><b>CONSTRUCTOR</b></font>
+   <font color="0000AA"><b>with</b></font> QRichEdit_api
+    Left=65
+    Top=5
+    Width=200
+    Height=100
+    visible=1
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+ 
+</pre>
+</body>
+</html>

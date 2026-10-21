@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Form.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: Form.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>Form.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/Form.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 2 functions</p>
+<p><a href="#GETFORMPOS">GetFormPos</a> &middot; <a href="#SETFORMPOS">SetFormPos</a></p>
+<h3><a name="GETFORMPOS"></a>GetFormPos</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 12598</p>
+<pre>Sub GetFormPos (Sender as QForm)</pre>
+<p>Reads the window placement of the form Sender with GetWindowPlacement and stores the normal position in the global Rectan and the minimized position in the globals MinLeft and MinTop.</p>
+<h3><a name="SETFORMPOS"></a>SetFormPos</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 12594</p>
+<pre>Sub SetFormPos(hwnd as long, SetX as long, SetY as long)</pre>
+<p>Sets the minimized position (SetX, SetY) and the normal position of the window hwnd with SetWindowPlacement, using the global rectangle Rectan (filled by GetFormPos) as the normal position. Note: showCmd is set to SW_MINIMIZE, so the window is minimized.</p>
+</body>
+</html>

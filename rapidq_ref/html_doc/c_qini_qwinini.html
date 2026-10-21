@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QINI</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QINI</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QINI Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QWinIni.inc</code>, line 18</p>
+<p><b>A non-visual object for reading and writing Windows INI files with the GetPrivateProfileString family of API calls.</b></p>
+<p>According to the usage comment: first call Ini.Load([Path/FileName.ini]) (the parameter is optional), then read values with Ini.Get(Section, Key, Default) and write them with Ini.Write(Section, Key, Value). Without a parameter Load uses the program&#x27;s own name with .EXE replaced by .INI.</p>
+<p>Get and Write also fill the Section, Key and Value fields with the last values used. Get removes anything after a &#x27;;&#x27; in the returned value, treating it as a comment. The include creates a global instance named Ini.</p>
+<p>QINI inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QINI Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">File</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Full name of the INI file used by Get, Write and GetSection; set by Load.</td></tr>
+<tr><td class="rq-name">Section</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Section name of the last successful Get, Write or GetSection.</td></tr>
+<tr><td class="rq-name">Key</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Key name of the last successful Get or Write.</td></tr>
+<tr><td class="rq-name">Value</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Value returned by the last Get or GetSection, or written by the last Write.</td></tr>
+</table>
+<a name="2"></a><h2>QINI Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Load</td><td class="rq-type">FUNCTIONI(...) AS INTEGER</td><td>Sets File to the given name, or to the program name with .EXE replaced by .INI when no parameter is given; returns 1 if the file exists, otherwise 0.</td></tr>
+<tr><td class="rq-name">Get</td><td class="rq-type">FUNCTION(sSection As String, sKey As String, sDefault As String) AS STRING</td><td>Returns the value of a key in a section, without any &#x27;;&#x27; comment, or the default value if the key is missing; returns an empty string if File is empty.</td></tr>
+<tr><td class="rq-name">Write</td><td class="rq-type">FUNCTION(sSection as string, sKey as string, sValue as string) AS LONG</td><td>Writes a key value into a section and returns non-zero on success; returns 0 if File is empty.</td></tr>
+<tr><td class="rq-name">GetSection</td><td class="rq-type">FUNCTION(sSection as string) AS STRING</td><td>Returns the raw contents of a whole section as returned by GetPrivateProfileSection (up to 1000 bytes), or an empty string.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Load is written as &#x27;Functioni Load (...)&#x27; in the source.</li>
+<li>The default file name is built with a case-sensitive REPLACESUBSTR$ of &quot;.EXE&quot;, so a program name with a lower-case .exe is not changed.</li>
+<li>Get reads into a 260-byte buffer but passes 250 as its size; GetSection uses a 1000-byte buffer, so longer values or sections are cut.</li>
+<li>GetSection does not check whether File is empty.</li>
+<li>Get cuts the value at the first &#x27;;&#x27;, so values that contain a semicolon are truncated.</li>
+</ul>
+<a name="4"></a><h2>QINI Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QWinIni.inc&quot;
+
+IF Ini.Load(&quot;settings.ini&quot;) = 0 THEN ShowMessage &quot;settings.ini not found&quot;
+ShowMessage Ini.Get(&quot;Window&quot;, &quot;Caption&quot;, &quot;My program&quot;)
+Ini.Write(&quot;Window&quot;, &quot;Width&quot;, &quot;640&quot;)</pre>
+<div class="rq-foot"><a href="c_qini_object_qini.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qinifile_qinifile.html">Next component</a></div>
+</body>
+</html>

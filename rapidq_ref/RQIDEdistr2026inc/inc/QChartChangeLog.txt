@@ -1,0 +1,49 @@
+Build 2.29.04
+
+Major Revision.  
+Figured out how to add a REDIMable array to QChart.  Trick is to use a
+DOUBLE Datatype and explicitly refer to the object in the REDIM statement.
+This results in a smaller, faster executable with cleaner, more efficient code in both
+the QChart object and in the calling programs.  
+See QChartEx.rqb and QChart.html for examples of the new calling syntax.
+
+CHANGED:
+------------------------------------------------------------------------------------
+*Replaced QStringGrid Data component with:
+
+Data:       2D Array of DOUBLE for all charts EXCEPT XY
+XYData:     3D Array of DOUBLE for XY Charts ONLY
+Cols:       Property that sets number of series to plot
+Rows:       Property that sets number of values per series to plot
+LabelList:  QStringList component to hold X Axis label text
+LegendList: QStringList component to hold Legend text
+Missing:    Now a DOUBLE property holding value that represents missing data
+
+*HiLo plots are now a unique ChartType with 2 styles: csAntenna and csHiLoBox
+*Complete rewrite of Appendix A Documentation
+
+Build 2.21.04
+
+CHANGED:
+------------------------------------------------------------------------------------
+SaveChart Method:
+  * Removed FileName Parameter
+  * Added SaveAs Parameter: 
+      SaveAs = 0 Will save a previously saved chart without displaying a Save Dialog
+      SaveAs = 1 Will always display Save As Dialog
+  
+PrintChart Method:
+  * Added a Colr Parameter: 
+      Colr = 0 prints in Black and White
+      Colr = 1 prints in color or greyscale
+
+  
+ADDED:
+------------------------------------------------------------------------------------
+CopyToClipboard Method: 
+  Syntax: CopyToClipboard (Wid As Integer, Hgt As Integer) 
+  Action: Copies current chart to Clipboard at specified width and height.
+  
+CurrFile Property:
+  CurrFile is a Private Property that keeps track of the current chart's filename.
+  Used by SaveChart Method

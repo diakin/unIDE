@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCOOLBARXP</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCOOLBARXP</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCOOLBARXP Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QCoolBarXPv1d.inc</code>, line 705 &middot; author: D-evolution &middot; version: QCoolBarXPv1 &middot; date: 2003 - 2005</p>
+<p><b>A toolbar panel that imitates the Windows XP toolbar (rebar) look, with image buttons, separators, a grip, a caption, drop-down menus, embedded edit/combo boxes and an overflow chevron menu.</b></p>
+<p>QCoolBarXP extends QPanel. Buttons are added with AddItems (a &quot;-&quot; string makes a separator) and get their pictures from the imgLA image list. The whole bar is drawn off-screen into bitmaps (BMPCache, BMPCache2) and copied to internal QImage/QCanvas objects with BitBlt and TransparentBlt, which the author says reduces flicker while resizing. On Windows XP (detected with GetVersionEx as version 5.1) buttons, grip and background are drawn with the uxtheme.dll API (OpenThemeData, DrawThemeBackground with the &quot;Toolbar&quot; and &quot;ReBar&quot; classes); otherwise classic edges are drawn with DrawEdge. Disabled button images are faded with AlphaBlend from msimg32.dll.</p>
+<p>Hover and pressed states are drawn on a separate image (ImageLH) while the mouse is captured with SetCapture. Clicking an enabled button fires OnChange with the item index. When the bar is narrower than its buttons, a 12-pixel chevron button appears on the right (bottom when vertical) and opens a popup menu listing the hidden items. Dragging the grip sends WM_NCLBUTTONDOWN/HTCAPTION to move the panel, and a timer re-applies Align when the mouse button is released.</p>
+<p>Optional global bitmaps custBG and custGrip (declared at file level) can hold a custom background and grip image; DisableBG turns them off. The source refers to a separate documentation file, QCoolBarXP.html.</p>
+<p>QCOOLBARXP inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>uxtheme.dll (XP theme API, called only when Windows XP is detected)</li>
+<li>msimg32.dll (TransparentBlt and AlphaBlend)</li>
+<li>Optional: BMPMenu and CreateMenuBitmap from another add-on when _AMIB is defined (menu icons in the overflow menu)</li>
+</ul>
+<a name="1"></a><h2>QCoolBarXP Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">ItemCount</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of items on the bar, separators included. AddItems increases it.</td></tr>
+<tr><td class="rq-name">ItemsWidth</td><td class="rq-type">INTEGER</td><td>RW</td><td>39</td><td>Base size of a button in pixels (default 39); it is also used as the button height. If it is 0 when AddItems is first called, it is set from the inner panel height (or width when vertical) minus 2; with images, item width is computed from the image width plus padding.</td></tr>
+<tr><td class="rq-name">Item</td><td class="rq-type">ARRAY(29) OF STRING</td><td>RW</td><td></td><td>Array Item(0..29) with the caption of each item; the value &quot;-&quot; marks a separator.</td></tr>
+<tr><td class="rq-name">imgLA</td><td class="rq-type">QIMAGELIST</td><td>RW</td><td></td><td>QImageList with the button images, used in item order with separators skipped. Its BkColor is set to clPurple; the transparent color is taken from the top-left pixel of each image, or the top-right pixel if the top-left is not purple.</td></tr>
+<tr><td class="rq-name">DisableXPTheme</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, buttons are drawn in the classic (non-themed) style even on Windows XP.</td></tr>
+<tr><td class="rq-name">DisableXPThemeBG</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, the XP rebar background is not drawn; the panel color or custBG is used instead.</td></tr>
+<tr><td class="rq-name">DisableBG</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, the custom background and grip bitmaps (custBG, custGrip) are ignored.</td></tr>
+<tr><td class="rq-name">Style</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Drawing style used without XP themes: 0 draws raised/sunken 3D edges and a raised grip; non-zero draws a flat hover rectangle and a dotted grip. With XP theming active and Style &gt;= 2, separators are drawn narrower (2 instead of 3 pixels).</td></tr>
+<tr><td class="rq-name">HideGrip</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Hides (non-zero) or shows the grip. Assigning it stores the value, recalculates item positions and repaints the bar when items exist.</td></tr>
+<tr><td class="rq-name">HideCaption</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Hides (non-zero) or shows the bar caption. Assigning it stores the value, recalculates item positions and repaints the bar when items exist.</td></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Title drawn after the grip (rotated 90 degrees when vertical). Assigning it clears the inherited QPanel caption, stores the text and its measured size, recalculates item positions and repaints.</td></tr>
+<tr><td class="rq-name">Orientation</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>False for a horizontal bar, True for a vertical bar. Assigning it re-aligns the internal panels and canvases and resizes the chevron area; it does not recalculate item positions by itself.</td></tr>
+<tr><td class="rq-name">BorderStyle</td><td class="rq-type">INTEGER</td><td>RW</td><td>True</td><td>When non-zero (the default), a raised edge is drawn around the bar. Assigning it stores the value and sets the inherited QPanel BorderStyle to 0.</td></tr>
+</table>
+<a name="2"></a><h2>QCoolBarXP Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">RePaint</td><td class="rq-type">SUB</td><td>Redraws the cached image of the grip, caption and all buttons. It does nothing until the bar has been painted once, unless a repaint is forced internally.</td></tr>
+<tr><td class="rq-name">AddItems</td><td class="rq-type">SUBI(...)</td><td>AddItems(caption1, caption2, ...) adds buttons; &quot;-&quot; adds a separator. Each item is also added to the overflow popup menu, and all items start enabled, not grouped and not pressed.</td></tr>
+<tr><td class="rq-name">AsignPopupToItem</td><td class="rq-type">SUB(Me As QPopupMenu, iIndex As Integer)</td><td>AsignPopupToItem(Popup AS QPopupMenu, Index) attaches a popup menu to a button, which then gets a drop-down arrow area on its right side; clicking the arrow shows the menu with TrackPopupMenuEx. Assigning to a separator shows a warning message.</td></tr>
+<tr><td class="rq-name">InsertED_Ctrl</td><td class="rq-type">SUB(iAfter As Integer, Me As QEdit)</td><td>InsertED_Ctrl(iAfter, Edit AS QEdit) places a QEdit on the bar after item iAfter (-1 puts it before the first item) and shifts the following buttons. Not supported when Orientation is True.</td></tr>
+<tr><td class="rq-name">InsertCB_Ctrl</td><td class="rq-type">SUB(iAfter As Integer, Me As QComboBox)</td><td>InsertCB_Ctrl(iAfter, Combo AS QComboBox) places a QComboBox on the bar after item iAfter (-1 puts it before the first item). Not supported when Orientation is True.</td></tr>
+<tr><td class="rq-name">ItemsGroup</td><td class="rq-type">SUBI(...)</td><td>ItemsGroup(GroupIndex, item1, item2, ...) assigns items to a group; with only the group index all non-separator items are grouped. Grouped items toggle their pressed state on each click.</td></tr>
+<tr><td class="rq-name">DefineGroupAllowAllUp</td><td class="rq-type">SUBI(...)</td><td>Does nothing except repaint the bar; the group &#x27;allow all up&#x27; setting is not implemented.</td></tr>
+<tr><td class="rq-name">ItemsDown</td><td class="rq-type">SUBI(...)</td><td>ItemsDown(State, item1, item2, ...) sets the pressed state of the listed items, or of all items when only State is given. Only grouped items are changed.</td></tr>
+<tr><td class="rq-name">ItemsEnabled</td><td class="rq-type">SUBI(...)</td><td>ItemsEnabled(State, item1, item2, ...) enables or disables the listed items, or all items when only State is given. Disabled items are drawn grayed with a faded image and do not react to clicks.</td></tr>
+<tr><td class="rq-name">ItemsCaptionVisible</td><td class="rq-type">SUBI(...)</td><td>ItemsCaptionVisible(State, item1, item2, ...) shows or hides the caption text next to the image of the listed items (or all items when only State is given), then recalculates positions and repaints. Captions are shown only on a horizontal bar.</td></tr>
+</table>
+<a name="3"></a><h2>QCoolBarXP Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnChange</td><td class="rq-type">SUB(ItemIndex As Integer, Me As QPanel)</td><td>Event OnChange(ItemIndex AS INTEGER, Me AS QPanel), fired when an enabled item is clicked or chosen from the overflow menu.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>CanvasL.OnPaint</code>, <code>CanvasR.OnPaint</code>, <code>DragTimer.OnTimer</code>, <code>ImageL.OnMouseMove</code>, <code>ImageLH.OnMouseMove</code>, <code>ImageR.OnMouseMove</code>, <code>ImageRH.OnMouseMove</code>, <code>mnuExceed.OnPopup</code>, <code>OnMouseDown</code>, <code>OnMouseMove</code>, <code>OnMouseUp</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>XP theming is used only when GetVersionEx reports exactly version 5.1 (Windows XP); on Windows 2000, Vista, 7 and later the classic drawing is used.</li>
+<li>The source comments say TransparentBlt (msimg32) needs Windows 98 or later, and that on Win9x the caption text can be invisible.</li>
+<li>Item() has a fixed size of 30 entries (0..29); a comment says redimensioning it crashed the compiler.</li>
+<li>AddItems always writes the new captions starting at index 0 and resets the per-item arrays; comments in the code say it should start at the previous ItemCount, so calling it more than once overwrites earlier items.</li>
+<li>AddItems redimensions ItemLeft to ItemCount-1 but then writes ItemLeft(ItemCount).</li>
+<li>InsertCB_Ctrl redimensions CB_AfterIndex with ED_Count and positions the combo box with CB_Left(ED_Count-1), copy-paste mistakes from InsertED_Ctrl.</li>
+<li>ItemsCaptionVisible with a single argument always sets the internal ShowBtnCaptAll flag to True, even when the argument is 0, so captions stay visible.</li>
+<li>Grouped items only toggle their own pressed state; GroupAllowAllUp is set but never used, so groups do not behave like radio buttons, and DefineGroupAllowAllUp is empty.</li>
+<li>OnChange is called in OnMouseUp outside the separator check, so clicking a separator can also fire it.</li>
+<li>Popup menus attached with AsignPopupToItem are shown with TrackPopupMenuEx and the TPM_RETURNCMD flag, and the returned command is discarded.</li>
+<li>The constructor assigns OnChange to CBarOnChange_EventTemplate, a SUB that is only DECLAREd in the file; the comment calls this a temporary address.</li>
+<li>Warning and error messages are in French (for example &quot;Orientation = True n&#x27;est pas supporte !&quot;).</li>
+<li>The file sets $Option Explicit and declares global objects (custBG, custGrip, BMPCache, mnuItemExceed) shared by all bars.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/QCoolBarXP90.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QCoolBarXP Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QCoolBarXPv1d.inc&quot;
+DECLARE SUB BarChange(ItemIndex AS INTEGER, Me AS QPanel)
+
+CREATE Form AS QFORM
+  Caption = &quot;Toolbar demo&quot;
+  Width = 400
+  CREATE Bar AS QCoolBarXP
+    Align = 1
+    Height = 42
+    Caption = &quot;Tools&quot;
+  END CREATE
+END CREATE
+
+SUB BarChange(ItemIndex AS INTEGER, Me AS QPanel)
+  ShowMessage &quot;Clicked item &quot; + STR$(ItemIndex)
+END SUB
+
+Bar.AddItems &quot;New&quot;, &quot;Open&quot;, &quot;-&quot;, &quot;Save&quot;
+Bar.ItemsCaptionVisible 1
+Bar.ItemsGroup 1, 3
+Bar.OnChange = BarChange
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qcolordlg.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qcursor.html">Next component</a></div>
+</body>
+</html>

@@ -37,6 +37,7 @@ type
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure CreateParams(var Params: TCreateParams); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -51,6 +52,7 @@ type
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure CreateParams(var Params: TCreateParams); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -260,6 +262,15 @@ begin
   Message.Result := 0;
 end;
 
+// Вкладки в несколько рядов (MultiLine): у ярлычков-вкладок Windows ставит
+// ряд выбранной вкладки вниз, к странице, и ряды меняются местами при
+// каждом выборе. У ярлычков-кнопок (TCS_BUTTONS) ряды стоят на месте.
+procedure UiTabsFixRows(C: TCustomTabControl; var Params: TCreateParams);
+begin
+  if Params.Style and TCS_MULTILINE <> 0 then
+    Params.Style := Params.Style or TCS_BUTTONS;
+end;
+
 // ---------------------------------------------------------------------------
 //  TUiPageControl
 // ---------------------------------------------------------------------------
@@ -275,6 +286,12 @@ destructor TUiPageControl.Destroy;
 begin
   UiThemeRemoveClient(Self);
   inherited Destroy;
+end;
+
+procedure TUiPageControl.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  UiTabsFixRows(Self, Params);
 end;
 
 procedure TUiPageControl.UMUiThemeChanged(var Message: TMessage);
@@ -336,6 +353,12 @@ destructor TUiTabControl.Destroy;
 begin
   UiThemeRemoveClient(Self);
   inherited Destroy;
+end;
+
+procedure TUiTabControl.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  UiTabsFixRows(Self, Params);
 end;
 
 procedure TUiTabControl.UMUiThemeChanged(var Message: TMessage);

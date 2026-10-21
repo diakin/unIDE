@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCALENDAR</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCALENDAR</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCALENDAR Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/qcalendar.inc</code>, line 6 &middot; author: Pasquale P.C.B. &middot; date: 4-2001</p>
+<p><b>A month calendar panel with a day grid, month/year navigation buttons, a month popup menu and a Today button, using Windows locale names.</b></p>
+<p>qcalendar extends QPanel and builds its own child controls: a header panel (Panel1) with previous/next month and previous/next year buttons (Wingdings and Webdings arrow glyphs), a QStringGrid with the days, a Today button and a footer panel (Panel2) that shows the selected date in the long date format.</p>
+<p>Month names, abbreviated day names (Monday first) and the long date format come from GetLocaleInfo, and dates are formatted with GetDateFormat; these, SYSTEMTIME, weekday and lastdaym come from the included apidate file. The Today caption is translated for a few country codes (Danes, Oggi, Aujourd&#x27;hui, Hoy, Heute, otherwise Today). Right-clicking the header shows a popup menu to choose the month.</p>
+<p>Call Init after creating the control, with a date string &quot;MM-DD-YYYY&quot; or &quot;&quot; for today. Days of the previous and next month are drawn grayed and cannot be selected, today&#x27;s date is circled, and Sunday is drawn in a different color. Read the selected date with QDate$ or the M, D and Y fields.</p>
+<p>QCALENDAR inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>$include &quot;apidate.bas&quot; (provides SYSTEMTIME, GetDateFormat, GetLocaleInfo, weekday, lastdaym; the reference library has it as ApiDate.inc)</li>
+</ul>
+<a name="1"></a><h2>qcalendar Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">M</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Month currently shown (1-12).</td></tr>
+<tr><td class="rq-name">Y</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Year currently shown.</td></tr>
+<tr><td class="rq-name">D</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Selected day of the month.</td></tr>
+<tr class="rq-internal"><td class="rq-name">w1%</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Internal: weekday number of the first day of the shown month, used to lay out the grid and to gray out days of the previous month.</td></tr>
+<tr><td class="rq-name">PopupMenu</td><td class="rq-type">QPOPUPMENU</td><td>RW</td><td></td><td>Popup menu with the 12 month names, attached to the header panel; choosing a month shows it.</td></tr>
+<tr><td class="rq-name">mesi</td><td class="rq-type">ARRAY(1 to 12) OF QMENUITEM</td><td>RW</td><td></td><td>Array mesi(1 to 12) of menu items holding the localized month names (&quot;mesi&quot; is Italian for months).</td></tr>
+<tr><td class="rq-name">Today</td><td class="rq-type">QCOOLBTN</td><td>RW</td><td></td><td>Flat button showing today&#x27;s date in the long locale format; clicking it shows the current month and selects today.</td></tr>
+<tr><td class="rq-name">Grid</td><td class="rq-type">QSTRINGGRID</td><td>RW</td><td></td><td>QStringGrid with the day names in row 0 and the days of the month below; selecting a cell updates D and the footer, and its OnDrawCell draws the calendar.</td></tr>
+<tr><td class="rq-name">Panel1</td><td class="rq-type">QPANEL</td><td>RW</td><td></td><td>Header panel showing the month name and year; it holds the navigation buttons and the month popup menu.</td></tr>
+<tr><td class="rq-name">BTNprev</td><td class="rq-type">QCOOLBTN</td><td>RW</td><td></td><td>Button that shows the previous month (not below January 1753).</td></tr>
+<tr><td class="rq-name">btnnext</td><td class="rq-type">QCOOLBTN</td><td>RW</td><td></td><td>Button that shows the next month.</td></tr>
+<tr><td class="rq-name">bntupy</td><td class="rq-type">QCOOLBTN</td><td>RW</td><td></td><td>Button that shows the same month of the next year.</td></tr>
+<tr><td class="rq-name">bntdowny</td><td class="rq-type">QCOOLBTN</td><td>RW</td><td></td><td>Button that shows the same month of the previous year (not below 1753).</td></tr>
+<tr><td class="rq-name">Panel2</td><td class="rq-type">QPANEL</td><td>RW</td><td></td><td>Footer panel; shows &quot;QCalendar by P.C.B.&quot; at start and then the selected date in the long locale date format.</td></tr>
+</table>
+<a name="2"></a><h2>qcalendar Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">LoadCal</td><td class="rq-type">SUB(datum$ as string)</td><td>LoadCal(datum$) fills the grid with the month of the date datum$ (&quot;MM-DD-YYYY&quot;), sets M, D and Y, updates the header and selects the day.</td></tr>
+<tr class="rq-internal"><td class="rq-name">mnuclick</td><td class="rq-type">SUB(s as QmenuItem)</td><td>Internal: OnClick handler of the month menu items; shows the chosen month of the current year.</td></tr>
+<tr><td class="rq-name">INIT</td><td class="rq-type">SUB(inidatum$)</td><td>Init(inidatum$) must be called once: it validates the optional start date (&quot;MM-DD-YYYY&quot;, or &quot;&quot; for today), fills month and day names from the locale, sets the Today caption and loads the calendar. For an invalid date it shows a message and hides the control.</td></tr>
+<tr><td class="rq-name">QDate$</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the selected date as month-day-year built with STR$ (fields not zero-padded).</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>bntdowny.onclick</code>, <code>bntupy.onclick</code>, <code>btnnext.onclick</code>, <code>btnprev.onclick</code>, <code>grid.onDrawcell</code>, <code>grid.onselectcell</code>, <code>Today.onclick</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The include line names &quot;apidate.bas&quot;; the helper in this library is ApiDate.inc, so the path may need to be changed.</li>
+<li>Init fills the header row with week(i) for i up to grid.ColCount+1 (9) while week is dimensioned 1 to 7.</li>
+<li>Comments say ColCount and RowCount were changed from 7 to 8 because an error occurred.</li>
+<li>There is no event for a date change; read D, M, Y or QDate$ yourself.</li>
+<li>Years before 1753 are blocked by the navigation buttons.</li>
+<li>Date strings must use the MM-DD-YYYY order of DATE$; the validation message even says &#x27;MM-DD-YYYYY&#x27;.</li>
+<li>Commented-out lines refer to absolute bitmap paths such as C:\RapidQ\cdx.bmp.</li>
+</ul>
+<a name="4"></a><h2>qcalendar Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;qcalendar.inc&quot;
+DECLARE SUB ShowDate
+CREATE Form AS QFORM
+  Caption = &quot;Calendar&quot;
+  Width = 200: Height = 240
+  CREATE Cal AS qcalendar
+    Left = 5: Top = 5
+  END CREATE
+  CREATE Btn AS QBUTTON
+    Top = 190: Left = 5
+    Caption = &quot;Get date&quot;
+    OnClick = ShowDate
+  END CREATE
+END CREATE
+SUB ShowDate
+  ShowMessage Cal.QDate$
+END SUB
+Cal.Init &quot;&quot;
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qbuttonxp.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qcanvasex.html">Next component</a></div>
+</body>
+</html>

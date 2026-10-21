@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QD3DCAMERA</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QD3DCAMERA</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QD3DCAMERA Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/RapidQ_D3D.inc</code>, line 321 &middot; author: JohnK &middot; version: 1.1 &middot; date: 10/2004</p>
+<p><b>A non-visual camera helper for RapidQ Direct3D (QDXSCREEN) programs that keeps a camera position and orientation and applies them to a QDXSCREEN.</b></p>
+<p>QD3DCamera is described in the source as a useful alternative to calling DXSCREEN.SetCameraXXXX directly. It stores the camera position (Pos) and a 6-element orientation vector (Orient: the view direction X, Y, Z plus the up vector DVX, DVY, DVZ) and offers methods to move, zoom and reset the camera.</p>
+<p>Nothing is sent to Direct3D until you call Update with your QDXSCREEN; Update calls SetCameraPosition and SetCameraOrientation on that screen. Rendering and flipping are left to the caller (the Render/Flip calls are commented out).</p>
+<p>The component also has fields for mouse-driven zooming (MouseDownButton, MouseDownX, MouseDownY, MouseZooming) and SaveMouse/RestoreMouse, which store a mouse position and later move the cursor back with the Windows API SetCursorPos.</p>
+<p>QD3DCAMERA inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>QDXSCREEN (RapidQ DirectX screen) passed to Update</li>
+<li>SetCursorPos (user32) must be declared by the program; RestoreMouse calls it but RapidQ_D3D.inc does not declare it</li>
+<li>the constant MouseNotDown, used in the constructor but not defined in RapidQ_D3D.inc</li>
+<li>QD3DVECTOR and QD3DOrientVector types (QD3DOrientVector is defined in RapidQ_D3D.inc)</li>
+<li>d3drm.dll (Direct3D Retained Mode); RapidQ_D3D.inc DECLAREs D3DRMVectorCrossProduct, D3DRMVectorDotProduct and D3DRMVectorNormalize from it, although the component itself does not call them</li>
+</ul>
+<a name="1"></a><h2>QD3DCamera Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Pos</td><td class="rq-type">QD3DVECTOR</td><td>RW</td><td></td><td>Camera position as a QD3DVECTOR (x, y, z); starts at the origin.</td></tr>
+<tr><td class="rq-name">Orient</td><td class="rq-type">QD3DORIENTVECTOR</td><td>RW</td><td></td><td>Camera orientation as a QD3DOrientVector: X, Y, Z is the view direction and DVX, DVY, DVZ the up vector; starts looking down the z-axis with up = (0, 1, 0).</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">SINGLE</td><td>RW</td><td>1.0</td><td>Offset of the camera in the up (y) direction, default 1.0. It is only stored; no method of the component uses it.</td></tr>
+<tr><td class="rq-name">ZoomFactor</td><td class="rq-type">SINGLE</td><td>RW</td><td>1.0</td><td>Zoom amount, default 1.0. It is only stored; no method of the component uses it.</td></tr>
+<tr><td class="rq-name">AngleX</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Integer angle index meant for sin/cos look-up tables (per the comment). Only stored and reset to 0 by ResetView.</td></tr>
+<tr><td class="rq-name">AngleY</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Integer angle index for sin/cos look-up tables, also used for the up/down vector (per the comment). Only stored and reset to 0 by ResetView.</td></tr>
+<tr><td class="rq-name">MouseDownButton</td><td class="rq-type">INTEGER</td><td>RW</td><td>MouseNotDown</td><td>Signals which mouse button is down for dynamic zooming; initialised to MouseNotDown. Not used by the component&#x27;s methods.</td></tr>
+<tr><td class="rq-name">MouseDownX</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>X coordinate where the mouse was pressed for dynamic zooming; SaveMouse copies it into private storage.</td></tr>
+<tr><td class="rq-name">MouseDownY</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Y coordinate where the mouse was pressed for dynamic zooming; SaveMouse copies it into private storage.</td></tr>
+<tr><td class="rq-name">MouseZooming</td><td class="rq-type">INTEGER</td><td>RW</td><td>False</td><td>Flag that the mouse was used for zooming; initialised to False. Not used by the component&#x27;s methods.</td></tr>
+</table>
+<a name="2"></a><h2>QD3DCamera Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">GetRadius</td><td class="rq-type">FUNCTION AS SINGLE</td><td>Returns the distance of the camera from the origin, SQR(x*x + y*y + z*z) of Pos.</td></tr>
+<tr><td class="rq-name">GetXZRadius</td><td class="rq-type">FUNCTION AS SINGLE</td><td>Returns the distance of the camera from the origin in the x-z plane, SQR(x*x + z*z).</td></tr>
+<tr><td class="rq-name">GetXYRadius</td><td class="rq-type">FUNCTION AS SINGLE</td><td>Returns the distance of the camera from the origin in the x-y plane, SQR(x*x + y*y).</td></tr>
+<tr><td class="rq-name">Translate</td><td class="rq-type">SUB(dx AS SINGLE, dy AS SINGLE, dz AS SINGLE)</td><td>Translate(dx, dy, dz) adds the given offsets to Pos.</td></tr>
+<tr><td class="rq-name">ZoomXZ</td><td class="rq-type">SUB(Mag AS SINGLE)</td><td>ZoomXZ(Mag) moves the camera forward or back along its orientation in the x-z plane only (Pos.x and Pos.z change by Orient.x*Mag and Orient.z*Mag).</td></tr>
+<tr><td class="rq-name">Zoom</td><td class="rq-type">SUB(Mag AS SINGLE)</td><td>Zoom(Mag) moves the camera forward or back along its full orientation vector (x, y and z).</td></tr>
+<tr><td class="rq-name">ResetView</td><td class="rq-type">SUB</td><td>Resets Orient to look straight down the z-axis with up vector (0, 1, 0) and sets AngleX and AngleY to 0; Pos is not changed.</td></tr>
+<tr><td class="rq-name">FaceCamera</td><td class="rq-type">SUB(BYREF Orient AS QD3DOrientVector, ObjPosX AS SINGLE, ObjPosY AS SINGLE, ObjPosZ AS SINGLE)</td><td>FaceCamera(Orient, ObjPosX, ObjPosY, ObjPosZ) fills the given orientation vector so that an object at that position faces along the line from the camera to the object (billboarding). The up vector is copied from the camera; if the object is closer than 0.01 the direction is left unchanged.</td></tr>
+<tr><td class="rq-name">Update</td><td class="rq-type">SUB(DxScrn AS QDXSCREEN)</td><td>Update(DxScrn) sends Pos and Orient to the QDXSCREEN with SetCameraPosition and SetCameraOrientation. It does not render or flip.</td></tr>
+<tr><td class="rq-name">SaveMouse</td><td class="rq-type">SUB</td><td>Stores the current MouseDownX and MouseDownY values in private fields.</td></tr>
+<tr><td class="rq-name">RestoreMouse</td><td class="rq-type">SUB</td><td>Moves the mouse cursor back to the position stored by SaveMouse using the Windows API SetCursorPos.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The constructor uses the constant MouseNotDown and RestoreMouse calls SetCursorPos; neither is defined or declared in RapidQ_D3D.inc, so the program must provide them.</li>
+<li>Height, ZoomFactor, MouseDownButton and MouseZooming are only stored; no method uses them.</li>
+<li>The comment on GetXYRadius says x-z plane, but the code computes the radius in the x-y plane.</li>
+<li>Update does not call Render or Flip (they are commented out with the note &#x27;may not want these&#x27;).</li>
+</ul>
+<a name="4"></a><h2>QD3DCamera Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;RapidQ_D3D.inc&quot;
+DIM Camera AS QD3DCamera
+&#x27; DXScreen is a QDXSCREEN on your form
+SUB MoveForward
+  Camera.Zoom(0.5)
+  Camera.Update(DXScreen)
+  DXScreen.Render
+  DXScreen.Flip
+END SUB
+Camera.Pos.z = -5
+Camera.ResetView</pre>
+<div class="rq-foot"><a href="c_qcursor.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qd3dclonemesh.html">Next component</a></div>
+</body>
+</html>

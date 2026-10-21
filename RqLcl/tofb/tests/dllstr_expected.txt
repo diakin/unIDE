@@ -1,0 +1,4 @@
+len literal 3
+len var 5
+len expr 7
+buf len 10 zero at 4 text xyz

@@ -1,0 +1,794 @@
+{
+ "GetNumberOfConsoleInputEvents@WIN32API.INC": {
+  "desc": "Retrieves the number of unread input records in the console input buffer. Returns nonzero on success.",
+  "doc": "GetNumberOfConsoleInputEvents"
+ },
+ "GetConsoleScreenBufferInfo@WIN32API.INC": {
+  "desc": "Retrieves information about a console screen buffer (size, cursor position, text attributes, window rectangle) into a CONSOLE_SCREEN_BUFFER_INFO structure.",
+  "doc": "GetConsoleScreenBufferInfo"
+ },
+ "GetLargestConsoleWindowSize@WIN32API.INC": {
+  "desc": "Returns the size (COORD, in character cells) of the largest possible console window, based on the current font and display size.",
+  "doc": "GetLargestConsoleWindowSize"
+ },
+ "GetConsoleCursorInfo@WIN32API.INC": {
+  "desc": "Retrieves the size and visibility of the cursor for a console screen buffer into a CONSOLE_CURSOR_INFO structure.",
+  "doc": "GetConsoleCursorInfo"
+ },
+ "GetNumberOfConsoleMouseButtons@WIN32API.INC": {
+  "desc": "Retrieves the number of buttons on the mouse used by the current console. Returns nonzero on success.",
+  "doc": "GetNumberOfConsoleMouseButtons"
+ },
+ "SetConsoleMode@WIN32API.INC": {
+  "desc": "Sets the input mode of a console input buffer or the output mode of a console screen buffer (flags such as ENABLE_ECHO_INPUT, ENABLE_PROCESSED_OUTPUT).",
+  "doc": "SetConsoleMode"
+ },
+ "SetConsoleActiveScreenBuffer@WIN32API.INC": {
+  "desc": "Makes the specified screen buffer the currently displayed console screen buffer.",
+  "doc": "SetConsoleActiveScreenBuffer"
+ },
+ "FlushConsoleInputBuffer@WIN32API.INC": {
+  "desc": "Discards all input records currently in the console input buffer.",
+  "doc": "FlushConsoleInputBuffer"
+ },
+ "SetConsoleScreenBufferSize@WIN32API.INC": {
+  "desc": "Changes the size (in character rows and columns) of the specified console screen buffer.",
+  "doc": "SetConsoleScreenBufferSize"
+ },
+ "SetConsoleCursorPosition@WIN32API.INC": {
+  "desc": "Sets the cursor position (COORD) in the specified console screen buffer.",
+  "doc": "SetConsoleCursorPosition"
+ },
+ "SetConsoleCursorInfo@WIN32API.INC": {
+  "desc": "Sets the size and visibility of the cursor for the specified console screen buffer.",
+  "doc": "SetConsoleCursorInfo"
+ },
+ "ScrollConsoleScreenBuffer@WIN32API.INC": {
+  "desc": "Moves a block of data in a console screen buffer, optionally clipped, and fills the vacated cells with a given character and attribute.",
+  "doc": "ScrollConsoleScreenBufferA"
+ },
+ "SetConsoleWindowInfo@WIN32API.INC": {
+  "desc": "Sets the current size and position of a console screen buffer's window, in absolute or relative coordinates.",
+  "doc": "SetConsoleWindowInfo"
+ },
+ "SetConsoleTextAttribute@WIN32API.INC": {
+  "desc": "Sets the foreground and background color attributes of characters written to the console screen buffer.",
+  "doc": "SetConsoleTextAttribute"
+ },
+ "SetConsoleCtrlHandler@WIN32API.INC": {
+  "desc": "Adds or removes an application-defined handler routine for console control events such as Ctrl+C, Ctrl+Break and close.",
+  "doc": "SetConsoleCtrlHandler"
+ },
+ "GenerateConsoleCtrlEvent@WIN32API.INC": {
+  "desc": "Sends a Ctrl+C or Ctrl+Break signal to a console process group that shares the console of the calling process.",
+  "doc": "GenerateConsoleCtrlEvent"
+ },
+ "AllocConsole@WIN32API.INC": {
+  "desc": "Allocates a new console for the calling process. Fails if the process already has a console.",
+  "doc": "AllocConsole"
+ },
+ "FreeConsole@WIN32API.INC": {
+  "desc": "Detaches the calling process from its console.",
+  "doc": "FreeConsole"
+ },
+ "GetConsoleTitle@WIN32API.INC": {
+  "desc": "Retrieves the title of the current console window into a buffer. Returns the length of the title in characters, or 0 on failure.",
+  "doc": "GetConsoleTitleA"
+ },
+ "ReadConsole@WIN32API.INC": {
+  "desc": "Reads character input from the console input buffer and removes it from the buffer. Returns nonzero on success; the number of characters read is returned in a parameter.",
+  "doc": "ReadConsoleA"
+ },
+ "WriteConsole@WIN32API.INC": {
+  "desc": "Writes a character string to a console screen buffer at the current cursor position. Returns nonzero on success.",
+  "doc": "WriteConsoleA"
+ },
+ "CreateConsoleScreenBuffer@WIN32API.INC": {
+  "desc": "Creates a new console screen buffer and returns its handle.",
+  "doc": "CreateConsoleScreenBuffer"
+ },
+ "SetConsoleCP@WIN32API.INC": {
+  "desc": "Sets the input code page used by the console of the calling process.",
+  "doc": "SetConsoleCP"
+ },
+ "SetConsoleOutputCP@WIN32API.INC": {
+  "desc": "Sets the output code page used by the console of the calling process.",
+  "doc": "SetConsoleOutputCP"
+ },
+ "AddFontResource@WIN32API.INC": {
+  "desc": "Adds the font resource from the specified file to the system font table. Returns the number of fonts added, or 0 on failure.",
+  "doc": "AddFontResourceA"
+ },
+ "AnimatePalette@WIN32API.INC": {
+  "desc": "Replaces entries in the specified logical palette; changes are reflected immediately for PC_RESERVED entries. The ALIAS in WIN32API.INC was wrong; the build uses \"AnimatePalette\".",
+  "doc": "AnimatePalette"
+ },
+ "Arc@WIN32API.INC": {
+  "desc": "Draws an elliptical arc, bounded by a rectangle and defined by start and end radial points, using the current pen.",
+  "doc": "Arc"
+ },
+ "CancelDC@WIN32API.INC": {
+  "desc": "Cancels any pending operation on the specified device context.",
+  "doc": "CancelDC"
+ },
+ "Chord@WIN32API.INC": {
+  "desc": "Draws a chord (region bounded by an ellipse and a line segment), outlined with the current pen and filled with the current brush.",
+  "doc": "Chord"
+ },
+ "CloseMetaFile@WIN32API.INC": {
+  "desc": "Closes a Windows-format metafile device context and returns a handle to the metafile. Provided for 16-bit compatibility; use enhanced metafiles instead.",
+  "doc": "CloseMetaFile"
+ },
+ "CopyMetaFile@WIN32API.INC": {
+  "desc": "Copies a Windows-format metafile to the specified file, or to memory if the file name is null, and returns a handle to the copy.",
+  "doc": "CopyMetaFileA"
+ },
+ "CreateBitmap@WIN32API.INC": {
+  "desc": "Creates a bitmap with the specified width, height, planes and bits per pixel, and returns its handle.",
+  "doc": "CreateBitmap"
+ },
+ "CreateBitmapIndirect@WIN32API.INC": {
+  "desc": "Creates a bitmap with the width, height and color format given in a BITMAP structure, and returns its handle.",
+  "doc": "CreateBitmapIndirect"
+ },
+ "CreateBrushIndirect@WIN32API.INC": {
+  "desc": "Creates a logical brush with the style, color and pattern given in a LOGBRUSH structure, and returns its handle.",
+  "doc": "CreateBrushIndirect"
+ },
+ "CreateDiscardableBitmap@WIN32API.INC": {
+  "desc": "Creates a discardable bitmap compatible with the given device. Obsolete, 16-bit compatibility only; use CreateCompatibleBitmap instead.",
+  "doc": "CreateDiscardableBitmap"
+ },
+ "CreateDC_WIN32API@WIN32API.INC": {
+  "desc": "Creates a device context (DC) for a device (for example a printer or display) by driver and device name. Returns the DC handle, or 0 on failure.",
+  "doc": "CreateDCA"
+ },
+ "CreateDIBitmap@WIN32API.INC": {
+  "desc": "Creates a compatible bitmap (DDB) from a device-independent bitmap (DIB) and optionally sets its bits. Returns the bitmap handle.",
+  "doc": "CreateDIBitmap"
+ },
+ "CreateDIBPatternBrush@WIN32API.INC": {
+  "desc": "Creates a logical brush with a pattern from a device-independent bitmap given as a global memory handle. Provided for 16-bit compatibility; use CreateDIBPatternBrushPt.",
+  "doc": "CreateDIBPatternBrush"
+ },
+ "CreateDIBPatternBrushPt@WIN32API.INC": {
+  "desc": "Creates a logical brush with a pattern specified by a device-independent bitmap (DIB) in memory. Returns the brush handle.",
+  "doc": "CreateDIBPatternBrushPt"
+ },
+ "CreateEllipticRgnIndirect@WIN32API.INC": {
+  "desc": "Creates an elliptical region bounded by the rectangle in a RECT structure, and returns its handle.",
+  "doc": "CreateEllipticRgnIndirect"
+ },
+ "CreateFontIndirect@WIN32API.INC": {
+  "desc": "Creates a logical font with the characteristics given in a LOGFONT structure, and returns its handle.",
+  "doc": "CreateFontIndirectA"
+ },
+ "CreateFont@WIN32API.INC": {
+  "desc": "Creates a logical font with the specified height, width, weight, face name and other characteristics, and returns its handle.",
+  "doc": "CreateFontA"
+ },
+ "CreateHatchBrush@WIN32API.INC": {
+  "desc": "Creates a logical brush with the specified hatch pattern and color, and returns its handle.",
+  "doc": "CreateHatchBrush"
+ },
+ "CreateIC@WIN32API.INC": {
+  "desc": "Creates an information context for a device: a lightweight DC used to query device information without drawing.",
+  "doc": "CreateICA"
+ },
+ "CreateMetaFile@WIN32API.INC": {
+  "desc": "Creates a device context for a Windows-format metafile. Provided for 16-bit compatibility; use CreateEnhMetaFile instead.",
+  "doc": "CreateMetaFileA"
+ },
+ "CreatePalette@WIN32API.INC": {
+  "desc": "Creates a logical palette from a LOGPALETTE structure, and returns its handle.",
+  "doc": "CreatePalette"
+ },
+ "CreatePenIndirect@WIN32API.INC": {
+  "desc": "Creates a logical cosmetic pen with the style, width and color given in a LOGPEN structure, and returns its handle.",
+  "doc": "CreatePenIndirect"
+ },
+ "CreatePolyPolygonRgn@WIN32API.INC": {
+  "desc": "Creates a region consisting of a series of polygons, which may overlap, and returns its handle.",
+  "doc": "CreatePolyPolygonRgn"
+ },
+ "CreatePatternBrush@WIN32API.INC": {
+  "desc": "Creates a logical brush with the pattern specified by a bitmap, and returns its handle.",
+  "doc": "CreatePatternBrush"
+ },
+ "CreateScalableFontResource@WIN32API.INC": {
+  "desc": "Creates a font resource file (.fot) for a scalable font, for use with AddFontResource.",
+  "doc": "CreateScalableFontResourceA"
+ },
+ "DeleteMetaFile@WIN32API.INC": {
+  "desc": "Deletes a Windows-format metafile or its handle. Provided for 16-bit compatibility; enhanced metafiles use DeleteEnhMetaFile.",
+  "doc": "DeleteMetaFile"
+ },
+ "DeviceCapabilities@WIN32API.INC": {
+  "desc": "Retrieves the capabilities of a printer device driver (paper sizes, bins, resolutions, copies, etc.). Return value depends on the requested capability.",
+  "doc": "DeviceCapabilitiesA"
+ },
+ "EqualRgn@WIN32API.INC": {
+  "desc": "Checks whether two regions are identical in size and shape. Returns nonzero if they are equal.",
+  "doc": "EqualRgn"
+ },
+ "Escape@WIN32API.INC": {
+  "desc": "Lets an application access device capabilities not available through GDI. Obsolete; mostly superseded by ExtEscape and standard GDI printing functions.",
+  "doc": "Escape"
+ },
+ "ExtEscape@WIN32API.INC": {
+  "desc": "Lets an application access device-specific capabilities of a driver that are not available through GDI, with input and output buffers.",
+  "doc": "ExtEscape"
+ },
+ "DrawEscape@WIN32API.INC": {
+  "desc": "Provides drawing capabilities of the video display that are not directly available through GDI.",
+  "doc": "DrawEscape"
+ },
+ "ExtCreateRegion@WIN32API.INC": {
+  "desc": "Creates a region from region data (RGNDATA) and an optional transformation, and returns its handle.",
+  "doc": "ExtCreateRegion"
+ },
+ "FillRgn@WIN32API.INC": {
+  "desc": "Fills a region using the specified brush.",
+  "doc": "FillRgn"
+ },
+ "FrameRgn@WIN32API.INC": {
+  "desc": "Draws a border around a region using the specified brush, with given border width and height.",
+  "doc": "FrameRgn"
+ },
+ "FloodFill@WIN32API.INC": {
+  "desc": "Fills an area of the display surface bounded by the given color, using the current brush. Provided for compatibility; use ExtFloodFill.",
+  "doc": "FloodFill"
+ },
+ "GetROP2@WIN32API.INC": {
+  "desc": "Retrieves the foreground mix (binary raster operation) mode of the device context, such as R2_COPYPEN.",
+  "doc": "GetROP2"
+ },
+ "GetAspectRatioFilterEx@WIN32API.INC": {
+  "desc": "Retrieves the setting of the current aspect-ratio filter used by the font mapper.",
+  "doc": "GetAspectRatioFilterEx"
+ },
+ "GetBkColor@WIN32API.INC": {
+  "desc": "Returns the current background color (COLORREF) of the device context.",
+  "doc": "GetBkColor"
+ },
+ "GetBkMode@WIN32API.INC": {
+  "desc": "Returns the current background mix mode of the device context (OPAQUE or TRANSPARENT).",
+  "doc": "GetBkMode"
+ },
+ "GetBitmapBits@WIN32API.INC": {
+  "desc": "Copies the bits of a device-dependent bitmap into a buffer. Provided for 16-bit compatibility; use GetDIBits instead.",
+  "doc": "GetBitmapBits"
+ },
+ "GetBitmapDimensionEx@WIN32API.INC": {
+  "desc": "Retrieves the dimensions previously set for a bitmap by SetBitmapDimensionEx, in 0.1 mm units.",
+  "doc": "GetBitmapDimensionEx"
+ },
+ "GetBoundsRect@WIN32API.INC": {
+  "desc": "Retrieves the current accumulated bounding rectangle for the device context.",
+  "doc": "GetBoundsRect"
+ },
+ "GetCharWidth@WIN32API.INC": {
+  "desc": "Retrieves the widths, in logical units, of consecutive characters from the current font. Provided for 16-bit compatibility; use GetCharWidth32.",
+  "doc": "GetCharWidthA"
+ },
+ "GetCharWidth32@WIN32API.INC": {
+  "desc": "Retrieves the widths, in logical units, of consecutive characters in a range from the current font.",
+  "doc": "GetCharWidth32A"
+ },
+ "GetCharWidthFloat@WIN32API.INC": {
+  "desc": "Retrieves the fractional widths of consecutive characters in a range from the current font.",
+  "doc": "GetCharWidthFloatA"
+ },
+ "GetCharABCWidths@WIN32API.INC": {
+  "desc": "Retrieves the ABC widths (A, B and C spacing) of consecutive characters from the current TrueType font, in logical units.",
+  "doc": "GetCharABCWidthsA"
+ },
+ "GetCharABCWidthsFloat@WIN32API.INC": {
+  "desc": "Retrieves the ABC widths of consecutive characters from the current font as floating-point values, in logical units.",
+  "doc": "GetCharABCWidthsFloatA"
+ },
+ "GetClipBox@WIN32API.INC": {
+  "desc": "Retrieves the smallest rectangle that bounds the visible area of the device context. Returns the region type (e.g. SIMPLEREGION).",
+  "doc": "GetClipBox"
+ },
+ "GetMetaRgn@WIN32API.INC": {
+  "desc": "Retrieves the current metaregion of the device context into a region handle.",
+  "doc": "GetMetaRgn"
+ },
+ "GetCurrentPositionEx@WIN32API.INC": {
+  "desc": "Retrieves the current drawing position of the device context, in logical coordinates, into a POINT.",
+  "doc": "GetCurrentPositionEx"
+ },
+ "GetDIBits@WIN32API.INC": {
+  "desc": "Retrieves the bits of a bitmap and copies them into a buffer as a device-independent bitmap using the given format (BITMAPINFO). Returns the number of scan lines copied.",
+  "doc": "GetDIBits"
+ },
+ "GetFontData@WIN32API.INC": {
+  "desc": "Retrieves font metric data for a TrueType font (a table or the whole font file). The ALIAS in WIN32API.INC was wrong; the build uses \"GetFontData\".",
+  "doc": "GetFontData"
+ },
+ "GetGlyphOutline@WIN32API.INC": {
+  "desc": "Retrieves the outline or bitmap for a character in the TrueType font selected into the device context.",
+  "doc": "GetGlyphOutlineA"
+ },
+ "GetGraphicsMode@WIN32API.INC": {
+  "desc": "Returns the current graphics mode of the device context (GM_COMPATIBLE or GM_ADVANCED).",
+  "doc": "GetGraphicsMode"
+ },
+ "GetMapMode@WIN32API.INC": {
+  "desc": "Returns the current mapping mode of the device context (e.g. MM_TEXT).",
+  "doc": "GetMapMode"
+ },
+ "GetMetaFileBitsEx@WIN32API.INC": {
+  "desc": "Retrieves the contents of a Windows-format metafile into a buffer.",
+  "doc": "GetMetaFileBitsEx"
+ },
+ "GetMetaFile@WIN32API.INC": {
+  "desc": "Creates a handle to a Windows-format metafile stored in a file. Obsolete; use GetEnhMetaFile instead.",
+  "doc": "GetMetaFileA"
+ },
+ "GetNearestColor@WIN32API.INC": {
+  "desc": "Returns the color value that most closely matches the specified color in the device's available colors.",
+  "doc": "GetNearestColor"
+ },
+ "GetNearestPaletteIndex@WIN32API.INC": {
+  "desc": "Returns the index of the logical palette entry that best matches the specified color.",
+  "doc": "GetNearestPaletteIndex"
+ },
+ "GetObjectType@WIN32API.INC": {
+  "desc": "Returns the type of the specified GDI object (e.g. OBJ_PEN, OBJ_BRUSH, OBJ_DC), or 0 on failure.",
+  "doc": "GetObjectType"
+ },
+ "GetOutlineTextMetrics@WIN32API.INC": {
+  "desc": "Retrieves text metrics for TrueType fonts into an OUTLINETEXTMETRIC structure.",
+  "doc": "GetOutlineTextMetricsA"
+ },
+ "GetPaletteEntries@WIN32API.INC": {
+  "desc": "Retrieves a range of color entries from a logical palette. Returns the number of entries retrieved.",
+  "doc": "GetPaletteEntries"
+ },
+ "GetPolyFillMode@WIN32API.INC": {
+  "desc": "Returns the current polygon fill mode of the device context (ALTERNATE or WINDING).",
+  "doc": "GetPolyFillMode"
+ },
+ "GetRasterizerCaps@WIN32API.INC": {
+  "desc": "Returns flags indicating whether TrueType fonts are installed in the system.",
+  "doc": "GetRasterizerCaps"
+ },
+ "GetRegionData@WIN32API.INC": {
+  "desc": "Fills a RGNDATA buffer with data describing a region. The ALIAS in WIN32API.INC was wrong; the build uses \"GetRegionData\".",
+  "doc": "GetRegionData"
+ },
+ "GetStretchBltMode@WIN32API.INC": {
+  "desc": "Returns the current stretching mode of the device context, used by StretchBlt.",
+  "doc": "GetStretchBltMode"
+ },
+ "GetSystemPaletteEntries@WIN32API.INC": {
+  "desc": "Retrieves a range of palette entries from the system palette of the device. Returns the number of entries retrieved.",
+  "doc": "GetSystemPaletteEntries"
+ },
+ "GetSystemPaletteUse@WIN32API.INC": {
+  "desc": "Returns the current state of the system (physical) palette for the device context, e.g. SYSPAL_STATIC.",
+  "doc": "GetSystemPaletteUse"
+ },
+ "GetTextCharacterExtra@WIN32API.INC": {
+  "desc": "Returns the current intercharacter spacing of the device context. The ALIAS in WIN32API.INC was wrong; the build uses \"GetTextCharacterExtra\".",
+  "doc": "GetTextCharacterExtra"
+ },
+ "GetTextAlign@WIN32API.INC": {
+  "desc": "Returns the text-alignment flags of the device context (e.g. TA_LEFT, TA_TOP, TA_UPDATECP).",
+  "doc": "GetTextAlign"
+ },
+ "GetTextColor@WIN32API.INC": {
+  "desc": "Returns the current text color (COLORREF) of the device context.",
+  "doc": "GetTextColor"
+ },
+ "GetTextExtentPoint@WIN32API.INC": {
+  "desc": "Computes the width and height of a string in the current font. Provided for 16-bit compatibility; use GetTextExtentPoint32.",
+  "doc": "GetTextExtentPointA"
+ },
+ "GetTextExtentPoint32@WIN32API.INC": {
+  "desc": "Computes the width and height, in logical units, of a text string in the font selected into the device context.",
+  "doc": "GetTextExtentPoint32A"
+ },
+ "GetTextExtentExPoint@WIN32API.INC": {
+  "desc": "Retrieves how many characters of a string fit in a given width, and fills an array with partial string extents.",
+  "doc": "GetTextExtentExPointA"
+ },
+ "GetViewportExtEx@WIN32API.INC": {
+  "desc": "Retrieves the x- and y-extents of the device context's current viewport into a SIZE.",
+  "doc": "GetViewportExtEx"
+ },
+ "GetViewportOrgEx@WIN32API.INC": {
+  "desc": "Retrieves the x- and y-coordinates of the viewport origin of the device context into a POINT.",
+  "doc": "GetViewportOrgEx"
+ },
+ "GetWindowExtEx@WIN32API.INC": {
+  "desc": "Retrieves the x- and y-extents of the device context's window (logical extent) into a SIZE.",
+  "doc": "GetWindowExtEx"
+ },
+ "GetWindowOrgEx@WIN32API.INC": {
+  "desc": "Retrieves the x- and y-coordinates of the window origin of the device context into a POINT.",
+  "doc": "GetWindowOrgEx"
+ },
+ "IntersectClipRect@WIN32API.INC": {
+  "desc": "Creates a new clipping region from the intersection of the current clipping region and a rectangle. Returns the region type.",
+  "doc": "IntersectClipRect"
+ },
+ "InvertRgn@WIN32API.INC": {
+  "desc": "Inverts the colors in the specified region.",
+  "doc": "InvertRgn"
+ },
+ "MaskBlt@WIN32API.INC": {
+  "desc": "Combines color data for source and destination bitmaps using a mask bitmap and the given foreground and background raster operations.",
+  "doc": "MaskBlt"
+ },
+ "PlgBlt@WIN32API.INC": {
+  "desc": "Transfers bits from a source rectangle to a parallelogram in the destination device context, with an optional mask.",
+  "doc": "PlgBlt"
+ },
+ "OffsetRgn@WIN32API.INC": {
+  "desc": "Moves a region by the specified x and y offsets. Returns the region type.",
+  "doc": "OffsetRgn"
+ },
+ "Pie@WIN32API.INC": {
+  "desc": "Draws a pie-shaped wedge bounded by an ellipse and two radials, outlined with the current pen and filled with the current brush.",
+  "doc": "Pie"
+ },
+ "PlayMetaFile@WIN32API.INC": {
+  "desc": "Displays the picture stored in a Windows-format metafile on the specified device context.",
+  "doc": "PlayMetaFile"
+ },
+ "PaintRgn@WIN32API.INC": {
+  "desc": "Paints the specified region using the brush currently selected into the device context.",
+  "doc": "PaintRgn"
+ },
+ "PolyPolygon@WIN32API.INC": {
+  "desc": "Draws a series of closed polygons, outlined with the current pen and filled using the current brush and fill mode.",
+  "doc": "PolyPolygon"
+ },
+ "PtInRegion@WIN32API.INC": {
+  "desc": "Determines whether the specified point is inside a region. Returns nonzero if it is.",
+  "doc": "PtInRegion"
+ },
+ "PtVisible@WIN32API.INC": {
+  "desc": "Determines whether the specified point is within the clipping region of the device context.",
+  "doc": "PtVisible"
+ },
+ "RectVisible@WIN32API.INC": {
+  "desc": "Determines whether any part of the specified rectangle lies within the clipping region of the device context.",
+  "doc": "RectVisible"
+ },
+ "RectInRegion@WIN32API.INC": {
+  "desc": "Determines whether any part of the specified rectangle is within the boundaries of a region.",
+  "doc": "RectInRegion"
+ },
+ "RestoreDC@WIN32API.INC": {
+  "desc": "Restores a device context to a state previously saved by SaveDC (by index, or -1 for the most recent).",
+  "doc": "RestoreDC"
+ },
+ "ResetDC@WIN32API.INC": {
+  "desc": "Updates a printer or plotter device context using the settings in a DEVMODE structure.",
+  "doc": "ResetDCA"
+ },
+ "RealizePalette@WIN32API.INC": {
+  "desc": "Maps entries from the logical palette selected into the DC to the system palette. Returns the number of entries mapped.",
+  "doc": "RealizePalette"
+ },
+ "RemoveFontResource@WIN32API.INC": {
+  "desc": "Removes the fonts in the specified file from the system font table.",
+  "doc": "RemoveFontResourceA"
+ },
+ "ResizePalette@WIN32API.INC": {
+  "desc": "Increases or decreases the size of a logical palette to the given number of entries.",
+  "doc": "ResizePalette"
+ },
+ "SaveDC@WIN32API.INC": {
+  "desc": "Saves the current state of the device context (objects, modes, etc.) on a stack. Returns a value identifying the saved state, for RestoreDC.",
+  "doc": "SaveDC"
+ },
+ "ExtSelectClipRgn@WIN32API.INC": {
+  "desc": "Combines the specified region with the current clipping region using the given mode (RGN_AND, RGN_OR, RGN_COPY, etc.).",
+  "doc": "ExtSelectClipRgn"
+ },
+ "SetMetaRgn@WIN32API.INC": {
+  "desc": "Intersects the current clipping region with the current metaregion and saves the result as the new metaregion.",
+  "doc": "SetMetaRgn"
+ },
+ "SelectPalette@WIN32API.INC": {
+  "desc": "Selects a logical palette into a device context. Returns the handle of the previous palette.",
+  "doc": "SelectPalette"
+ },
+ "SetBkColor@WIN32API.INC": {
+  "desc": "Sets the current background color of the device context. Returns the previous background color.",
+  "doc": "SetBkColor"
+ },
+ "SetBitmapBits@WIN32API.INC": {
+  "desc": "Sets the bits of a device-dependent bitmap from a buffer. Provided for 16-bit compatibility; use SetDIBits instead.",
+  "doc": "SetBitmapBits"
+ },
+ "SetBoundsRect@WIN32API.INC": {
+  "desc": "Controls the accumulation of bounding-rectangle information for the device context.",
+  "doc": "SetBoundsRect"
+ },
+ "SetDIBits@WIN32API.INC": {
+  "desc": "Sets the pixels of a compatible bitmap using color data from a device-independent bitmap (DIB). Returns the number of scan lines copied.",
+  "doc": "SetDIBits"
+ },
+ "SetDIBitsToDevice@WIN32API.INC": {
+  "desc": "Sets the pixels in a rectangle on the device directly from device-independent bitmap (DIB) color data. Returns the number of scan lines set.",
+  "doc": "SetDIBitsToDevice"
+ },
+ "SetMapperFlags@WIN32API.INC": {
+  "desc": "Changes the algorithm the font mapper uses when mapping logical fonts to physical fonts (e.g. ASPECT_FILTERING).",
+  "doc": "SetMapperFlags"
+ },
+ "SetGraphicsMode@WIN32API.INC": {
+  "desc": "Sets the graphics mode of the device context (GM_COMPATIBLE or GM_ADVANCED; advanced is needed for world transforms).",
+  "doc": "SetGraphicsMode"
+ },
+ "SetMapMode@WIN32API.INC": {
+  "desc": "Sets the mapping mode of the device context, which defines the unit of measure for logical coordinates. Returns the previous mode.",
+  "doc": "SetMapMode"
+ },
+ "SetMetaFileBitsEx@WIN32API.INC": {
+  "desc": "Creates a memory-based Windows-format metafile from the supplied data, and returns its handle.",
+  "doc": "SetMetaFileBitsEx"
+ },
+ "SetPaletteEntries@WIN32API.INC": {
+  "desc": "Sets RGB color values and flags in a range of entries in a logical palette.",
+  "doc": "SetPaletteEntries"
+ },
+ "SetPixel@WIN32API.INC": {
+  "desc": "Sets the pixel at the specified coordinates to the given color. Returns the color actually set, or -1 on failure.",
+  "doc": "SetPixel"
+ },
+ "SetPixelV@WIN32API.INC": {
+  "desc": "Sets the pixel at the specified coordinates to the closest approximation of the given color. Faster than SetPixel; returns nonzero on success.",
+  "doc": "SetPixelV"
+ },
+ "SetPolyFillMode@WIN32API.INC": {
+  "desc": "Sets the polygon fill mode (ALTERNATE or WINDING) used by functions that fill polygons.",
+  "doc": "SetPolyFillMode"
+ },
+ "StretchDIBits@WIN32API.INC": {
+  "desc": "Copies DIB color data for a rectangle of pixels to a destination rectangle, stretching or compressing it to fit and applying a raster operation.",
+  "doc": "StretchDIBits"
+ },
+ "SetStretchBltMode@WIN32API.INC": {
+  "desc": "Sets the bitmap stretching mode used by StretchBlt (e.g. COLORONCOLOR, HALFTONE). Returns the previous mode.",
+  "doc": "SetStretchBltMode"
+ },
+ "SetSystemPaletteUse@WIN32API.INC": {
+  "desc": "Lets an application specify whether the system palette contains 2 or 20 static colors.",
+  "doc": "SetSystemPaletteUse"
+ },
+ "SetTextCharacterExtra@WIN32API.INC": {
+  "desc": "Sets the intercharacter spacing used when writing text. Returns the previous spacing. The ALIAS in WIN32API.INC was wrong; the build uses \"SetTextCharacterExtra\".",
+  "doc": "SetTextCharacterExtra"
+ },
+ "SetTextAlign@WIN32API.INC": {
+  "desc": "Sets the text-alignment flags for the device context (e.g. TA_LEFT, TA_BASELINE, TA_UPDATECP).",
+  "doc": "SetTextAlign"
+ },
+ "SetTextJustification@WIN32API.INC": {
+  "desc": "Specifies extra space to add to break characters in a string so text output is justified.",
+  "doc": "SetTextJustification"
+ },
+ "GetProcAddress@WIN32API.INC": {
+  "desc": "Retrieves the address of an exported function or variable from the specified DLL module. Returns 0 if not found.",
+  "doc": "GetProcAddress"
+ },
+ "PlayMetaFileRecord@WIN32API.INC": {
+  "desc": "Plays a single Windows-format metafile record by executing the GDI function it contains.",
+  "doc": "PlayMetaFileRecord"
+ },
+ "CloseEnhMetaFile@WIN32API.INC": {
+  "desc": "Closes an enhanced-metafile device context and returns a handle to the enhanced metafile.",
+  "doc": "CloseEnhMetaFile"
+ },
+ "CopyEnhMetaFile@WIN32API.INC": {
+  "desc": "Copies an enhanced metafile to a file, or to memory if the file name is null, and returns a handle to the copy.",
+  "doc": "CopyEnhMetaFileA"
+ },
+ "CreateEnhMetaFile@WIN32API.INC": {
+  "desc": "Creates a device context for an enhanced-format metafile, optionally stored on disk. Returns the DC handle.",
+  "doc": "CreateEnhMetaFileA"
+ },
+ "DeleteEnhMetaFile@WIN32API.INC": {
+  "desc": "Deletes an enhanced metafile handle (and the metafile if it is stored in memory).",
+  "doc": "DeleteEnhMetaFile"
+ },
+ "EnumEnhMetaFile@WIN32API.INC": {
+  "desc": "Enumerates the records of an enhanced metafile, calling an application-defined callback for each record.",
+  "doc": "EnumEnhMetaFile"
+ },
+ "GetEnhMetaFile@WIN32API.INC": {
+  "desc": "Creates a handle to an enhanced-format metafile stored in the specified file.",
+  "doc": "GetEnhMetaFileA"
+ },
+ "GetEnhMetaFileBits@WIN32API.INC": {
+  "desc": "Retrieves the contents of an enhanced metafile into a buffer. Returns the number of bytes copied.",
+  "doc": "GetEnhMetaFileBits"
+ },
+ "GetEnhMetaFileDescription@WIN32API.INC": {
+  "desc": "Retrieves the optional text description of an enhanced metafile into a buffer.",
+  "doc": "GetEnhMetaFileDescriptionA"
+ },
+ "GetEnhMetaFileHeader@WIN32API.INC": {
+  "desc": "Retrieves the header record (ENHMETAHEADER) of an enhanced metafile.",
+  "doc": "GetEnhMetaFileHeader"
+ },
+ "GetEnhMetaFilePaletteEntries@WIN32API.INC": {
+  "desc": "Retrieves optional palette entries from an enhanced metafile.",
+  "doc": "GetEnhMetaFilePaletteEntries"
+ },
+ "GetWinMetaFileBits@WIN32API.INC": {
+  "desc": "Converts the records of an enhanced metafile to Windows-format metafile records and stores them in a buffer.",
+  "doc": "GetWinMetaFileBits"
+ },
+ "PlayEnhMetaFile@WIN32API.INC": {
+  "desc": "Displays the picture stored in an enhanced metafile, scaled to the given rectangle on the device context.",
+  "doc": "PlayEnhMetaFile"
+ },
+ "PlayEnhMetaFileRecord@WIN32API.INC": {
+  "desc": "Plays a single enhanced-metafile record by executing the GDI function it contains.",
+  "doc": "PlayEnhMetaFileRecord"
+ },
+ "SetEnhMetaFileBits@WIN32API.INC": {
+  "desc": "Creates a memory-based enhanced metafile from the supplied data, and returns its handle.",
+  "doc": "SetEnhMetaFileBits"
+ },
+ "SetWinMetaFileBits@WIN32API.INC": {
+  "desc": "Converts a metafile from the older Windows format to the enhanced format and stores it in memory. Returns the enhanced metafile handle.",
+  "doc": "SetWinMetaFileBits"
+ },
+ "GdiComment@WIN32API.INC": {
+  "desc": "Copies a comment from a buffer into an enhanced-format metafile being recorded.",
+  "doc": "GdiComment"
+ },
+ "GetTextMetrics@WIN32API.INC": {
+  "desc": "Fills a TEXTMETRIC structure with the metrics of the font currently selected into the device context.",
+  "doc": "GetTextMetricsA"
+ },
+ "AngleArc@WIN32API.INC": {
+  "desc": "Draws a line from the current position to the start of an arc, then the arc defined by center, radius, start angle and sweep angle.",
+  "doc": "AngleArc"
+ },
+ "PolyPolyline@WIN32API.INC": {
+  "desc": "Draws multiple series of connected line segments using the current pen.",
+  "doc": "PolyPolyline"
+ },
+ "GetWorldTransform@WIN32API.INC": {
+  "desc": "Retrieves the current world-space to page-space transformation (XFORM) of the device context.",
+  "doc": "GetWorldTransform"
+ },
+ "SetWorldTransform@WIN32API.INC": {
+  "desc": "Sets a two-dimensional linear transformation (XFORM) between world space and page space. Requires GM_ADVANCED graphics mode.",
+  "doc": "SetWorldTransform"
+ },
+ "ModifyWorldTransform@WIN32API.INC": {
+  "desc": "Changes the world transformation of the device context using the given XFORM and mode (reset, left- or right-multiply).",
+  "doc": "ModifyWorldTransform"
+ },
+ "CombineTransform@WIN32API.INC": {
+  "desc": "Concatenates two world-space to page-space transformations (XFORM) into one.",
+  "doc": "CombineTransform"
+ },
+ "SetColorAdjustment@WIN32API.INC": {
+  "desc": "Sets the color adjustment values used by StretchBlt and StretchDIBits in HALFTONE mode.",
+  "doc": "SetColorAdjustment"
+ },
+ "GetColorAdjustment@WIN32API.INC": {
+  "desc": "Retrieves the color adjustment values for the device context into a COLORADJUSTMENT structure.",
+  "doc": "GetColorAdjustment"
+ },
+ "CreateHalftonePalette@WIN32API.INC": {
+  "desc": "Creates a halftone palette for the device context, for use with HALFTONE stretch mode.",
+  "doc": "CreateHalftonePalette"
+ },
+ "StartDoc@WIN32API.INC": {
+  "desc": "Starts a print job described by a DOCINFO structure. Returns the print job identifier, or a value <= 0 on failure.",
+  "doc": "StartDocA"
+ },
+ "StartPage@WIN32API.INC": {
+  "desc": "Prepares the printer driver to accept data for a new page.",
+  "doc": "StartPage"
+ },
+ "EndPage@WIN32API.INC": {
+  "desc": "Notifies the device that the application has finished writing to a page.",
+  "doc": "EndPage"
+ },
+ "EndDoc@WIN32API.INC": {
+  "desc": "Ends a print job started with StartDoc.",
+  "doc": "EndDoc"
+ },
+ "AbortDoc@WIN32API.INC": {
+  "desc": "Stops the current print job and erases everything drawn since the last StartDoc call.",
+  "doc": "AbortDoc"
+ },
+ "AbortPath@WIN32API.INC": {
+  "desc": "Closes and discards any paths in the specified device context.",
+  "doc": "AbortPath"
+ },
+ "ArcTo@WIN32API.INC": {
+  "desc": "Draws an elliptical arc and a line from the current position to the arc start; updates the current position to the arc end.",
+  "doc": "ArcTo"
+ },
+ "BeginPath@WIN32API.INC": {
+  "desc": "Opens a path bracket in the device context; subsequent drawing calls define the path.",
+  "doc": "BeginPath"
+ },
+ "CloseFigure@WIN32API.INC": {
+  "desc": "Closes an open figure in a path by drawing a line from the current position to the figure's first point.",
+  "doc": "CloseFigure"
+ },
+ "EndPath@WIN32API.INC": {
+  "desc": "Closes a path bracket and selects the defined path into the device context.",
+  "doc": "EndPath"
+ },
+ "FillPath@WIN32API.INC": {
+  "desc": "Closes any open figures in the current path and fills the path's interior with the current brush and fill mode.",
+  "doc": "FillPath"
+ },
+ "FlattenPath@WIN32API.INC": {
+  "desc": "Converts any curves in the path selected into the device context into sequences of lines.",
+  "doc": "FlattenPath"
+ },
+ "GetPath@WIN32API.INC": {
+  "desc": "Retrieves the endpoints and control points of the lines and curves in the path selected into the device context.",
+  "doc": "GetPath"
+ },
+ "PathToRegion@WIN32API.INC": {
+  "desc": "Creates a region from the path selected into the device context, and returns its handle.",
+  "doc": "PathToRegion"
+ },
+ "PolyDraw@WIN32API.INC": {
+  "desc": "Draws a set of line segments and Bezier curves defined by arrays of points and point types.",
+  "doc": "PolyDraw"
+ },
+ "SelectClipPath@WIN32API.INC": {
+  "desc": "Selects the current path as a clipping region, combining it with any existing clipping region using the given mode.",
+  "doc": "SelectClipPath"
+ },
+ "SetArcDirection@WIN32API.INC": {
+  "desc": "Sets the drawing direction (counterclockwise or clockwise) for arc and rectangle functions.",
+  "doc": "SetArcDirection"
+ },
+ "SetMiterLimit@WIN32API.INC": {
+  "desc": "Sets the limit for the length of miter joins for the device context. Returns the previous limit in a parameter.",
+  "doc": "SetMiterLimit"
+ },
+ "StrokeAndFillPath@WIN32API.INC": {
+  "desc": "Closes open figures in the path, strokes its outline with the current pen and fills its interior with the current brush.",
+  "doc": "StrokeAndFillPath"
+ },
+ "StrokePath@WIN32API.INC": {
+  "desc": "Renders the specified path using the current pen.",
+  "doc": "StrokePath"
+ },
+ "WidenPath@WIN32API.INC": {
+  "desc": "Redefines the current path as the area that would be painted if it were stroked with the current pen.",
+  "doc": "WidenPath"
+ },
+ "ExtCreatePen@WIN32API.INC": {
+  "desc": "Creates a logical cosmetic or geometric pen with the specified style, width, brush attributes, end caps and joins.",
+  "doc": "ExtCreatePen"
+ },
+ "GetMiterLimit@WIN32API.INC": {
+  "desc": "Retrieves the miter limit for the specified device context.",
+  "doc": "GetMiterLimit"
+ },
+ "GetArcDirection@WIN32API.INC": {
+  "desc": "Returns the current arc direction of the device context (AD_COUNTERCLOCKWISE or AD_CLOCKWISE).",
+  "doc": "GetArcDirection"
+ },
+ "GetObject_WIN32API@WIN32API.INC": {
+  "desc": "Retrieves information about a GDI object (pen, brush, font, bitmap, palette) into a buffer. Returns the number of bytes stored.",
+  "doc": "GetObjectA"
+ },
+ "MoveToEx_WIN32API@WIN32API.INC": {
+  "desc": "Updates the current drawing position to the given point and optionally returns the previous position.",
+  "doc": "MoveToEx"
+ }
+}

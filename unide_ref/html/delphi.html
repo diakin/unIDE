@@ -1,0 +1,41 @@
+<h1>Delphi</h1>
+
+<h2>Цель сборки</h2>
+<p>Собирается .dpr из папки активной вкладки. Если .dpr в папке несколько, unIDE показывает
+список; невыбранные переименовываются в .dpr1, .dpr2..., чтобы вопрос больше не возникал. Если
+.dpr нет &mdash; цель проекта.</p>
+
+<h2>Перед сборкой</h2>
+<ul>
+<li>Проверяются повторы имён компонентов в .dfm; при повторах сборка останавливается.</li>
+<li>Имя в строке <code>program</code> исправляется по имени .dpr.</li>
+<li>В .res записывается информация о версии (с автоувеличением номера сборки, если оно
+  включено в Project options).</li>
+</ul>
+
+<h2>Компилятор и ключи</h2>
+<ul>
+<li>Компилятор &mdash; <code>&lt;Delphi path&gt;\Bin\dcc32.exe</code> (IDE Options &rarr; Compilers
+  &rarr; Delphi). Если по пути компилятора нет, установка Delphi ищется в реестре; кнопка Find
+  installed делает то же вручную.</li>
+<li>Ключи берутся из .dof проекта. Пути проекта, Library path и папка компонентов Ui
+  передаются ключами <code>-U -I -O -R</code>; Browsing path компилятору не передаётся.</li>
+<li>Папка exe: OutputDir проекта, иначе Output (exe) из настроек, иначе папка .dpr. Папка .dcu
+  &mdash; Output (dcu), иначе рядом с проектом.</li>
+<li>Если в программе есть точки останова или запуск идёт по F7/F8/F4, добавляются ключи
+  отладочной сборки <code>-$D+ -$L+ -$O- -$W+ -GD -V</code>.</li>
+</ul>
+
+<h2>Project options</h2>
+<p>Project Properties проекта Delphi содержат страницу Project options с вкладками, как в
+Delphi 7: Forms, Application, Compiler, Compiler Messages, Linker, Directories/Conditionals,
+Version Info, Packages. Настройки пишутся в .dof, .dpr и .res.</p>
+
+<h2>Формы</h2>
+<p>Формы .dfm открываются в инспекторе объектов и визуальном конструкторе
+(<a href="inspector.html">Инспектор и конструктор</a>). Кнопка «Перенести в .dfm» переносит
+компоненты, созданные в коде, в .dfm.</p>
+
+<h2>Отладка</h2>
+<p>Программа Delphi отлаживается отладчиком Win32 unIDE
+(<a href="debug.html#delphi">Отладка Delphi</a>).</p>

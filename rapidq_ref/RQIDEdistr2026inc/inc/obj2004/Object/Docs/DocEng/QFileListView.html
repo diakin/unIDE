@@ -1,0 +1,357 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE>Appendix A: QFileListView</TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 1.1.0  (Win32)">
+	<META NAME="AUTHOR" CONTENT="dominique glodt">
+	<META NAME="CREATED" CONTENT="20040629;21303185">
+	<META NAME="CHANGED" CONTENT="20041112;20210558">
+</HEAD>
+<BODY LANG="fr-FR" BGCOLOR="#ffffff" DIR="LTR">
+<P STYLE="margin-bottom: 0cm">&nbsp; 
+</P>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+	<TR>
+		<TD>
+			<P><FONT FACE="Arial, Helvetica">Documentation component by
+			D.Glodt (c)2003</FONT></P>
+		</TD>
+		<TD>
+			<P ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A:
+			QFileListView</B></FONT></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=2>
+			<HR SIZE=1>
+		</TD>
+	</TR>
+</TABLE>
+<H1>QFileListView Component</H1>
+<DL>
+	<DD STYLE="margin-bottom: 0.5cm">QFileListView is a component
+	inherited from component QListView. <BR>This component has columns
+	for name , size, file type and date with <BR>associated icon for
+	each file type. 
+	</DD></DL>
+<P STYLE="margin-bottom: 0cm">
+<A NAME="1"></A><FONT SIZE=4><B>QFileListView Properties</B></FONT></P>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#ffffff" CELLPADDING=2 CELLSPACING=0 FRAME=VOID>
+	<COL WIDTH=35*>
+	<COL WIDTH=190*>
+	<COL WIDTH=11*>
+	<COL WIDTH=18*>
+	<COL WIDTH=3*>
+	<TR>
+		<TD WIDTH=14%>
+			<P><B>Field</B></P>
+		</TD>
+		<TD WIDTH=74%>
+			<P><B>Type</B></P>
+		</TD>
+		<TD WIDTH=4%>
+			<P><B>R/W</B></P>
+		</TD>
+		<TD WIDTH=7%>
+			<P><B>Default</B></P>
+		</TD>
+		<TD WIDTH=1% VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD WIDTH=14%>
+			<HR>
+		</TD>
+		<TD WIDTH=74%>
+			<HR>
+		</TD>
+		<TD WIDTH=4%>
+			<HR>
+		</TD>
+		<TD WIDTH=7%>
+			<HR>
+		</TD>
+		<TD WIDTH=1%>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>Filename</P>
+		</TD>
+		<TD WIDTH=74%>
+			<P>STRING</P>
+		</TD>
+		<TD WIDTH=4%>
+			<P>R</P>
+		</TD>
+		<TD WIDTH=7%></TD>
+		<TD WIDTH=1% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD WIDTH=14%></TD>
+		<TD WIDTH=74%>
+			<P>File name selected.</P>
+		</TD>
+		<TD WIDTH=4%></TD>
+		<TD WIDTH=7%></TD>
+		<TD WIDTH=1%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>ColumnCaption</P>
+		</TD>
+		<TD WIDTH=74%>
+			<P>ARRAY(4) OF STRING</P>
+		</TD>
+		<TD WIDTH=4%>
+			<P>R/W</P>
+		</TD>
+		<TD WIDTH=7%></TD>
+		<TD WIDTH=1% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD WIDTH=14%></TD>
+		<TD WIDTH=74%>
+			<P>Column label <BR>index 1=label file name <BR>index 2=label size
+			<BR>index 3=label type <BR>index 4=label date&nbsp;</P>
+		</TD>
+		<TD WIDTH=4%></TD>
+		<TD WIDTH=7%></TD>
+		<TD WIDTH=1%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>Directory</P>
+		</TD>
+		<TD WIDTH=74%>
+			<P>STRING</P>
+		</TD>
+		<TD WIDTH=4%>
+			<P>R/W</P>
+		</TD>
+		<TD WIDTH=7%>
+			<P><BR>
+			</P>
+		</TD>
+		<TD WIDTH=1%>
+			<P><BR>
+			</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD WIDTH=14%>
+			<P><BR>
+			</P>
+		</TD>
+		<TD WIDTH=74%>
+			<P>Directory name.</P>
+		</TD>
+		<TD WIDTH=4%></TD>
+		<TD WIDTH=7%></TD>
+		<TD WIDTH=1%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>Mask</P>
+		</TD>
+		<TD WIDTH=74%>
+			<P>STRING</P>
+		</TD>
+		<TD WIDTH=4%>
+			<P>R/W</P>
+		</TD>
+		<TD WIDTH=7%>
+			<P>*.*</P>
+		</TD>
+		<TD WIDTH=1%></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD WIDTH=14%></TD>
+		<TD WIDTH=74%>
+			<P>File type to view.</P>
+		</TD>
+		<TD WIDTH=4%></TD>
+		<TD WIDTH=7%></TD>
+		<TD WIDTH=1%></TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="2"></A><B><FONT SIZE=4>QFileListView
+Methods</FONT></B> 
+</P>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#ffffff" CELLPADDING=2 CELLSPACING=0 FRAME=VOID>
+	<TR>
+		<TD>
+			<P><B>Method</B></P>
+		</TD>
+		<TD>
+			<P><B>Type</B></P>
+		</TD>
+		<TD>
+			<P><B>Description</B></P>
+		</TD>
+		<TD>
+			<P><B>Params</B></P>
+		</TD>
+		<TD VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff" VALIGN=TOP>
+		<TD>
+			<P>Refresh</P>
+		</TD>
+		<TD>
+			<P>SUB</P>
+		</TD>
+		<TD>
+			<P>Refresh file list 
+			</P>
+		</TD>
+		<TD>
+			<P>0</P>
+		</TD>
+		<TD></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>SetFocus</P>
+		</TD>
+		<TD>
+			<P>SUB</P>
+		</TD>
+		<TD>
+			<P>Set focus on file list</P>
+		</TD>
+		<TD>
+			<P>0</P>
+		</TD>
+		<TD></TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="3"></A><B><FONT SIZE=4>QFileListView
+Event</FONT></B> 
+</P>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#ffffff" CELLPADDING=2 CELLSPACING=0 FRAME=VOID>
+	<TR>
+		<TD>
+			<P><B>Event</B></P>
+		</TD>
+		<TD>
+			<P><B>Type</B></P>
+		</TD>
+		<TD>
+			<P><B>Occurs when...</B></P>
+		</TD>
+		<TD>
+			<P><B>Params</B></P>
+		</TD>
+		<TD VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>OnFileSelect</P>
+		</TD>
+		<TD>
+			<P>(FileName as string)</P>
+		</TD>
+		<TD>
+			<P>On enter keypress or double click, parameter FileName <BR>is
+			the file name selected.</P>
+		</TD>
+		<TD>
+			<P>1</P>
+		</TD>
+		<TD></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>OnFileChange</P>
+		</TD>
+		<TD>
+			<P>(FileName as string)</P>
+		</TD>
+		<TD>
+			<P>On selected change in the list, parameter FileName <BR>is the
+			file name selected.</P>
+		</TD>
+		<TD>
+			<P>1</P>
+		</TD>
+		<TD></TD>
+	</TR>
+</TABLE>
+<P><A NAME="4"></A><B><FONT SIZE=4>QFileListView Example</FONT></B>
+<BR><B><FONT COLOR="#0000a0">$TYPECHECK</FONT></B> ON<BR><B><FONT COLOR="#0000a0">$INCLUDE</FONT></B>
+&quot;<FONT COLOR="#800000">RAPIDQ.INC</FONT>&quot;<BR><B><FONT COLOR="#0000a0">$INCLUDE</FONT></B>
+&quot;<FONT COLOR="#800000">Object\QFileListView.inc</FONT>&quot;<BR><BR><B><FONT COLOR="#0000a0">declare</FONT></B>
+<B><FONT COLOR="#0000a0">sub</FONT></B> DirListFileSelect<B>(</B>file
+<B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT>)<BR><FONT COLOR="#0000a0">declare</FONT></B>
+<B><FONT COLOR="#0000a0">sub</FONT></B> ChangeDirectory<BR><BR><B><FONT COLOR="#0000a0">CREATE</FONT></B>
+Form <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QFORM<BR></FONT></B>&nbsp;&nbsp;&nbsp;
+Width=500<BR>&nbsp;&nbsp;&nbsp; Height=300<BR>&nbsp;&nbsp;&nbsp;
+Center<BR>&nbsp;&nbsp;&nbsp; Caption=&quot;<FONT COLOR="#800000">Exploreur</FONT>&quot;<BR>&nbsp;&nbsp;&nbsp;
+<B><FONT COLOR="#0000a0">CREATE</FONT></B> Splitter1 <B><FONT COLOR="#0000a0">AS</FONT></B>
+<B><FONT COLOR="#0000a0">QSPLITTER<BR></FONT></B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Align=alLeft<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=5<BR>&nbsp;&nbsp;&nbsp;
+<B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE<BR></FONT></B>&nbsp;&nbsp;&nbsp;
+<B><FONT COLOR="#0000a0">CREATE</FONT></B> DirTree <B><FONT COLOR="#0000a0">AS</FONT></B>
+<B><FONT COLOR="#0000a0">QDirTree<BR></FONT></B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+InitialDir=<B><FONT COLOR="#0000a0">CURDIR$<BR></FONT></B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Align=alLeft<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=200<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+OnChange=ChangeDirectory<BR>&nbsp;&nbsp;&nbsp; <B><FONT COLOR="#0000a0">END</FONT></B>
+<B><FONT COLOR="#0000a0">CREATE<BR></FONT></B>&nbsp;&nbsp;&nbsp;
+<B><FONT COLOR="#0000a0">create</FONT></B> DirList <B><FONT COLOR="#0000a0">as</FONT></B>
+<B><FONT COLOR="#0000a0">QFileListView<BR></FONT></B>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Align=alClient<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=200<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ViewStyle=vsReport<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnFileSelect=
+DirListFileSelect<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ColumnCaption<B>(</B>1<B>)</B>=&quot;<FONT COLOR="#800000">Name</FONT>&quot;
+<I><FONT COLOR="#009900">'Label column<BR></FONT></I>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ColumnCaption<B>(</B>2<B>)</B>=&quot;<FONT COLOR="#800000">Size</FONT>&quot;<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ColumnCaption<B>(</B>3<B>)</B>=&quot;<FONT COLOR="#800000">Type</FONT>&quot;<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+ColumnCaption<B>(</B>4<B>)</B>=&quot;<FONT COLOR="#800000">Modified</FONT>&quot;<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Mask=&quot;<FONT COLOR="#800000">*.*</FONT>&quot;<BR>&nbsp;&nbsp;&nbsp;
+<B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">create<BR>end</FONT></B>
+<B><FONT COLOR="#0000a0">create<BR><BR></FONT></B>Form.ShowModal<BR><BR><B><FONT COLOR="#0000a0">sub</FONT></B>
+DirListFileSelect<B>(</B>file <B><FONT COLOR="#0000a0">as</FONT></B>
+<B><FONT COLOR="#0000a0">string</FONT>)</B>&nbsp;&nbsp;<BR>&nbsp;
+<B><FONT COLOR="#0000a0">ShowMessage</FONT>(</B>&quot;<FONT COLOR="#800000">File</FONT>&quot;+File+&quot;<FONT COLOR="#800000">
+was selected.</FONT>&quot;<B>)<BR><FONT COLOR="#0000a0">end</FONT></B>
+<B><FONT COLOR="#0000a0">sub<BR><BR>SUB</FONT></B> ChangeDirectory<BR>&nbsp;
+DirList.Directory =DirTree.Directory<BR><B><FONT COLOR="#0000a0">END</FONT></B>
+<B><FONT COLOR="#0000a0">SUB</FONT></B></P>
+</BODY>
+</HTML>

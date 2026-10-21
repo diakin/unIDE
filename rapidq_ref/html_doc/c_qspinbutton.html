@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSPINBUTTON</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSPINBUTTON</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSPINBUTTON Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QSpinEdit.inc</code>, line 22 &middot; author: Nastase Eodor &lt;eodor@idilis.ro&gt; &middot; version: 1.0.0 &middot; date: 2004</p>
+<p><b>A spin control built from a QPanel with two QCOOLBTN buttons (+ and -) and an optional QEDIT showing the value.</b></p>
+<p>QSpinButton places a &quot;+&quot; and a &quot;-&quot; QCOOLBTN on the left of the panel and, when ShowEdit is True, a QEDIT aligned to the right that shows the value. Clicking + or - changes Value by IncrementBy within MinValue..MaxValue and updates the text; typing in the edit box sets Value to VAL of the text.</p>
+<p>The layout is built by Draw, which the constructor calls and which runs again after each click or edit. After changing Width, Height, Style, ShowEdit, Font or Text yourself, call Draw. Style can be st3d (0) or stFlat (1), which are global variables defined in the file.</p>
+<p>QSPINBUTTON inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QSpinButton Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Font</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont applied to the + and - buttons by Draw.</td></tr>
+<tr><td class="rq-name">Value</td><td class="rq-type">VARIANT</td><td>RW</td><td>0</td><td>Current value (VARIANT, default 0). Changed by the buttons and by typing in the edit box.</td></tr>
+<tr><td class="rq-name">IncrementBy</td><td class="rq-type">VARIANT</td><td>RW</td><td>0.1</td><td>Step added or subtracted by the buttons (VARIANT, default 0.1).</td></tr>
+<tr><td class="rq-name">MaxValue</td><td class="rq-type">DOUBLE</td><td>RW</td><td>10</td><td>Upper limit (default 10). If MaxValue and MinValue are both 0, the buttons do nothing.</td></tr>
+<tr><td class="rq-name">MinValue</td><td class="rq-type">DOUBLE</td><td>RW</td><td>-10</td><td>Lower limit (default -10).</td></tr>
+<tr><td class="rq-name">ShowEdit</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>True</td><td>True (default) shows the edit box and makes each button a quarter of the width; False hides it and the buttons take the full width. Applied by Draw.</td></tr>
+<tr><td class="rq-name">Style</td><td class="rq-type">INTEGER</td><td>RW</td><td>st3d</td><td>st3d (0, default) for raised buttons and a bordered edit box, or stFlat (1) for flat buttons and no border. Applied by Draw.</td></tr>
+<tr><td class="rq-name">Text</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;0&quot;</td><td>Text shown in the edit box; updated after each click or edit, and copied into the edit box by Draw.</td></tr>
+</table>
+<a name="2"></a><h2>QSpinButton Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Draw</td><td class="rq-type">SUB</td><td>Lays out and configures the buttons and the edit box from the current size, Font, ShowEdit, Style, Text and ShowHint.</td></tr>
+<tr class="rq-internal"><td class="rq-name">Click</td><td class="rq-type">SUB(Sender as QCoolBtn)</td><td>Internal: OnClick handler of the + and - buttons; clamps Value to the limits, adds or subtracts IncrementBy, formats the text and calls Draw.</td></tr>
+<tr class="rq-internal"><td class="rq-name">Change</td><td class="rq-type">SUB(Sender as QEdit)</td><td>Internal: OnChange handler of the edit box; sets Value to VAL of the text, copies the text and calls Draw.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>There is no event to tell the program that Value changed.</li>
+<li>Click clamps Value to MinValue..MaxValue before adding or subtracting IncrementBy, so Value can go one step past a limit; the next click brings it back.</li>
+<li>For negative values the text is built as &quot;-&quot; + STR$(Value) (or STRF$), although the number string already contains a minus sign.</li>
+<li>Values typed into the edit box are not checked against MinValue and MaxValue.</li>
+<li>st3d and stFlat are global DEFINT variables, not constants.</li>
+<li>Properties have no setters; Draw must be called to apply changes.</li>
+</ul>
+<a name="4"></a><h2>QSpinButton Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QSpinEdit.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Spin demo&quot;
+END CREATE
+DIM Spin AS QSpinButton
+Spin.Parent = Form
+Spin.Left = 10
+Spin.Top = 10
+Spin.Width = 80
+Spin.MinValue = 0
+Spin.MaxValue = 100
+Spin.IncrementBy = 5
+Spin.Draw
+Form.ShowModal
+PRINT Spin.Value</pre>
+<div class="rq-foot"><a href="c_qsocketex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qspintext.html">Next component</a></div>
+</body>
+</html>

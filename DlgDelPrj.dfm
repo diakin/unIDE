@@ -1,11 +1,14 @@
 object DlgDelPrj: TDlgDelPrj
   Left = 0
   Top = 0
-  BorderStyle = bsDialog
+  BorderIcons = [biSystemMenu, biMaximize]
+  BorderStyle = bsSizeable
   Caption = 'Delete Projects'
   ClientHeight = 470
   ClientWidth = 640
   Color = clBtnFace
+  Constraints.MinHeight = 360
+  Constraints.MinWidth = 480
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
   Font.Height = -13
@@ -20,6 +23,7 @@ object DlgDelPrj: TDlgDelPrj
     Top = 10
     Width = 616
     Height = 18
+    Anchors = [akLeft, akTop, akRight]
     Caption = 'Отметьте проекты для удаления'
   end
   object lblNote: TLabel
@@ -27,6 +31,7 @@ object DlgDelPrj: TDlgDelPrj
     Top = 400
     Width = 616
     Height = 20
+    Anchors = [akLeft, akRight, akBottom]
     AutoSize = False
     Caption = 'Проект без описания на диске в любом случае просто убирается из списка.'
     WordWrap = True
@@ -36,6 +41,7 @@ object DlgDelPrj: TDlgDelPrj
     Top = 32
     Width = 616
     Height = 270
+    Anchors = [akLeft, akTop, akRight, akBottom]
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clWindowText
     Font.Height = -16
@@ -50,6 +56,7 @@ object DlgDelPrj: TDlgDelPrj
     Top = 308
     Width = 120
     Height = 26
+    Anchors = [akLeft, akBottom]
     Caption = 'Отметить все'
     TabOrder = 1
   end
@@ -58,6 +65,7 @@ object DlgDelPrj: TDlgDelPrj
     Top = 308
     Width = 120
     Height = 26
+    Anchors = [akLeft, akBottom]
     Caption = 'Снять все'
     TabOrder = 2
   end
@@ -66,6 +74,7 @@ object DlgDelPrj: TDlgDelPrj
     Top = 346
     Width = 616
     Height = 21
+    Anchors = [akLeft, akRight, akBottom]
     Caption = 'Только описание проекта (.prj), файлы оставить'
     Checked = True
     TabOrder = 3
@@ -75,6 +84,7 @@ object DlgDelPrj: TDlgDelPrj
     Top = 372
     Width = 616
     Height = 21
+    Anchors = [akLeft, akRight, akBottom]
     Caption = 'Папку проекта целиком - в корзину'
     TabOrder = 4
   end
@@ -83,6 +93,7 @@ object DlgDelPrj: TDlgDelPrj
     Top = 432
     Width = 84
     Height = 26
+    Anchors = [akRight, akBottom]
     Caption = 'Удалить'
     Enabled = False
     ModalResult = 1
@@ -93,6 +104,7 @@ object DlgDelPrj: TDlgDelPrj
     Top = 432
     Width = 84
     Height = 26
+    Anchors = [akRight, akBottom]
     Cancel = True
     Caption = 'Cancel'
     ModalResult = 2

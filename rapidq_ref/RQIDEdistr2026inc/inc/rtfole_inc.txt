@@ -1,0 +1,171 @@
+' sub RichEditOleEnable(richedit2handle as long)
+'          enable a richedit2 control for OLE. Once enabled, a richedit2 accepts copy/paste of images and objects
+' function RichEditInsertObject(richedit2handle as long, objfilename as string) as long
+'          insert an image or object (from its file name) into a richedit2 at the insertion point.
+'          result=1 if OK, 0 if error
+
+
+'-----------------------------
+' OLE
+'-----------------------------
+DECLARE FUNCTION MultiByteToWideChar LIB "KERNEL32" (codePage AS DWORD, dwFlags AS DWORD, lpMultiByteStr AS string, cchMultiByte AS LONG, lpWideCharStr AS long, cchWideChar AS LONG) AS LONG
+declare function StgCreateDocfileOnILockBytes lib "OLE32" (stga as long, stgb as long, stgc as long, stgd as long) as long
+declare function GetClassFile lib "OLE32" (gcfa as string, gcfb as long) as long
+declare function OleCreateLinkToFile lib "OLE32" (ocla as long, oclb as long, oclc as long, ocld as long, ocle as long, oclf as long, oclg as long) as long
+declare function CreateILockBytesOnHGlobal lib "OLE32" (cilba as long, cilb as long, cilc as long) as long
+type REOBJECT
+    cbStruct as long   'size of structure in bytes 
+    cp as long         'character position of object 
+    clsid as string*16 'class identifier of object 
+    poleobj as long    'OLE object interface 
+    pstg as long       'associated storage interface 
+    polesite as long   'associated client site interface 
+    sizelcx as long    'size of object (may be 0,0) 
+    sizelcy as long
+    dvaspect as long   'display aspect to use 
+    dwFlags as long    'object status flags 
+    dwUser as long     'user-defined value (not used here)
+end type
+'$define E_NOTIMPL &h80004001 '=-2147467263
+$define EM_SETOLECALLBACK 1094
+$define EM_GETOLEINTERFACE 1084
+
+
+'-- implementation of IRichEditOleCallback
+' This interface is necessary for richedit controls to handle OLE
+dim REOLECallbackMethods(12) as long
+deflng IRichEditOleCallback=@REOLECallbackMethods
+
+'interface subroutines
+goto REOLEskiproutines
+pop1_return1: asm mov eax,1 : asm ret 4
+pop4_return0: asm mov eax,0 : asm ret 16
+pop2_return0: asm mov eax,0 : asm ret 8
+pop4_returnErr: asm mov eax,-2147467263 : asm ret 16
+pop5_returnErr: asm mov eax,-2147467263 : asm ret 20
+pop2_returnErr: asm mov eax,-2147467263 : asm ret 8
+pop6_return0: asm mov eax,0 : asm ret 24
+REOLEqueryinterface: asm mov EAX,IRichEditOleCallback : asm mov [esp+16],EAX : asm mov EAX,0 : asm ret 12
+REOLEskiproutines:
+
+declare sub REOLEnewstorage STD (theinterface as long, lplpstg as long) 'as long
+sub REOLEnewstorage STD (theinterface as long, lplpstg as long) 'as long
+defint lpLockBytes=0
+if CreateILockBytesOnHGlobal(0, 1, @lpLockBytes) then exit sub 'error code
+retval StgCreateDocfileOnILockBytes(lpLockBytes, &h1012, 0, lplpstg)
+end sub
+
+'sub references
+REOLECallbackMethods(0)=codeptr(REOLEqueryinterface) 'Queryinterface method
+REOLECallbackMethods(1)=codeptr(pop1_return1) 'AddRef
+REOLECallbackMethods(2)=codeptr(pop1_return1) 'Release
+REOLECallbackMethods(3)=codeptr(REOLEnewstorage)  'GetNewStorage
+REOLECallbackMethods(4)=codeptr(pop4_returnErr) 'GetInPlaceContext
+REOLECallbackMethods(5)=codeptr(pop2_returnErr) 'ShowContainerUI
+REOLECallbackMethods(6)=codeptr(pop4_return0) 'QueryInsertObject
+REOLECallbackMethods(7)=codeptr(pop2_return0) 'DeleteObject
+REOLECallbackMethods(8)=codeptr(pop6_return0) 'QueryAcceptData
+REOLECallbackMethods(9)=codeptr(pop2_returnErr) 'ContextSensitiveHelp
+REOLECallbackMethods(10)=codeptr(pop4_returnErr)'GetClipboardData
+REOLECallbackMethods(11)=codeptr(pop4_returnErr)'GetDragDropEffect
+REOLECallbackMethods(12)=codeptr(pop5_returnErr)'GetContextMenu
+
+'-----------------------------------------------------
+'  RichEditOleEnable : enable a richedit2 control for OLE.
+'  Once enabled, a richedit2 accepts copy/paste of images and objects
+'-----------------------------------------------------
+declare sub RichEditOleEnable(richedit2handle as long)
+sub RichEditOleEnable(richedit2handle as long)
+defint dummy=SendMessage(richedit2handle, EM_SETOLECALLBACK, 0, @IRichEditOleCallback)
+end sub '-(RichEditOleEnable)
+
+
+'-- interfacecall2
+'implement interface call: call method #thefunctionindex of interface theinterface,
+'passing 2 parameters : theparam, theparam2
+declare function interfacecall2(theinterface as long, thefunctionindex as long, theparam as long, theparam2 as long) as long
+function interfacecall2(theinterface as long, thefunctionindex as long, theparam as long, theparam2 as long) as long
+defint I_vtableptr=byref(theinterface) 'get address of interface's vtable
+defint I_functionptr=byref(I_vtableptr+4*thefunctionindex) 'get address of desired function
+callfunc I_functionptr, theparam2, theparam, theinterface
+result=EAX
+end function '-(interfacecall2)
+
+'-- interfacecall1
+'implement interface call: call method #thefunctionindex of interface theinterface,
+'passing 1 parameter : theparam
+declare function interfacecall1(theinterface as long, thefunctionindex as long, theparam as long) as long
+function interfacecall1(theinterface as long, thefunctionindex as long, theparam as long) as long
+defint I_vtableptr=byref(theinterface) 'get address of interface's vtable
+defint I_functionptr=byref(I_vtableptr+4*thefunctionindex) 'get address of desired function
+callfunc I_functionptr, theparam, theinterface
+result=EAX
+end function '-(interfacecall1)
+
+'-- interfacerelease: call Release method of interface (method #2, no parameters)
+declare sub interfacerelease(theinterface as long) 'as long
+sub interfacerelease(theinterface as long) 'as long
+defint I_vtableptr=byref(theinterface) 'get address of interface's vtable
+defint I_functionptr=byref(I_vtableptr+4*2) 'get address of desired function (release is #2)
+callfunc I_functionptr, theinterface
+end sub '-(interfacerelease)
+
+'---------------------------------------------------------------------------
+' RichEditInsertObject: insert an object into a richedit at the insertion point
+'---------------------------------------------------------------------------
+declare function RichEditInsertObject(richedit2handle as long, objfilename as string) as long
+function RichEditInsertObject(richedit2handle as long, objfilename as string) as long
+result=0
+'get OLE interface of this richedit:
+dim mREOLE as long, pClientSite as long, rtf_lpLockBytes as long, pStorage as long, pOleObject as long
+defint dummy=SendMessage(richedit2handle, EM_GETOLEINTERFACE, 0, @mREOLE)
+'get client site: mREOLE->GetClientSite(&pClientSite) (method #3 of IRichEditOle)
+if interfacecall1(mREOLE,3,@pClientSite) then exit function
+'get substorage
+rtf_lpLockBytes = 0
+if CreateILockBytesOnHGlobal(0, 1, @rtf_lpLockBytes) then exit function
+if StgCreateDocfileOnILockBytes(rtf_lpLockBytes, &h1012, 0, @pStorage) then
+    interfacerelease(rtf_lpLockBytes)
+    interfacerelease(pClientSite)
+    exit function
+end if
+'convert filename to widechar:
+defstr rtf_wstring=string$(261," ")
+defstr thefile=objfilename
+dummy=MultiByteToWideChar(0, 0, thefile, -1, @rtf_wstring, 260)
+'create object
+'IID_IOleObject : {00000112-0000-0000-C000-000000000046}
+dim classID(3) as long
+classID(0)=&h112: classID(1)=0 : classID(2)=&hc0 : classID(3)=&h46000000
+pOleObject = 0
+dummy=OleCreateLinkToFile(@rtf_wstring, @classID, 1, 0, 0, pStorage, @pOleObject)
+dim reObj as REOBJECT
+reObj.cbStruct = sizeof(REOBJECT)
+reObj.cp = -1
+'get CLSID: pOleObject->GetUserClassID(&classID) (method #15 of IOleObject)
+if interfacecall1(pOleObject, 15, @classID) then
+    classID(0)=0 : classID(1)=0 : classID(2)=0 : classID(3)=0 'CLSID_NULL
+end if
+memcpy(@reObj+8,@classID,16) 'reObj.clsid=classID
+reObj.poleobj = pOleObject
+reObj.pstg = pStorage
+reObj.polesite = pClientSite
+reObj.sizelcx=0 : reObj.sizelcy=0 'keep object's original dimensions
+reObj.dvaspect = 1 'DVASPECT_CONTENT
+reObj.dwFlags = 1  'REO_RESIZABLE
+'try to get a valid clsid
+if ((classID(0)=0) and (classID(1)=0) and (classID(2)=0) and (classID(3)=0)) then
+    rtf_wstring=string$(260," ")
+    defstr rtf_tstring=string$(260,chr$(0))
+    dummy=MultiByteToWideChar(0, 0, rtf_tstring, -1, @rtf_wstring, 260)
+    dummy=GetClassFile(rtf_wstring, @reObj+8) '@reObj.clsid
+end if
+'insert the object into the richedit: mREOLE->InsertObject(&reObj) (method #7 of IRichEditOle)
+if interfacecall1(mREOLE, 7, @reObj) then exit function
+interfacerelease(pClientSite)
+interfacerelease(pStorage)
+if pOleObject then interfacerelease(pOleObject)
+result=1 'success
+end function '-(RichEditInsertObject)
+
+

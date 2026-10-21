@@ -1,0 +1,794 @@
+{
+ "AdjustWindowRectEx@WIN32API.INC": {
+  "desc": "Calculates the window rectangle size needed for a desired client rectangle, given window style, menu flag and extended style. The RECT is updated in place.",
+  "doc": "AdjustWindowRectEx"
+ },
+ "MessageBoxEx@WIN32API.INC": {
+  "desc": "Displays a message box like MessageBox, with an extra language identifier for the button text. Returns the ID of the button the user clicked.",
+  "doc": "MessageBoxExA"
+ },
+ "MessageBeep@WIN32API.INC": {
+  "desc": "Plays a system waveform sound identified by the type (e.g. MB_ICONERROR, MB_OK). Returns nonzero on success.",
+  "doc": "MessageBeep"
+ },
+ "ShowCursor@WIN32API.INC": {
+  "desc": "Increments or decrements the cursor display counter; the cursor is shown when the counter is 0 or more. Returns the new counter value.",
+  "doc": "ShowCursor"
+ },
+ "GetCursorPos@WIN32API.INC": {
+  "desc": "Retrieves the position of the mouse cursor in screen coordinates into a POINT structure.",
+  "doc": "GetCursorPos"
+ },
+ "ClipCursor@WIN32API.INC": {
+  "desc": "Confines the cursor to a rectangle on the screen; pass NULL to free the cursor to move anywhere.",
+  "doc": "ClipCursor"
+ },
+ "GetClipCursor@WIN32API.INC": {
+  "desc": "Retrieves the screen coordinates of the rectangle the cursor is confined to.",
+  "doc": "GetClipCursor"
+ },
+ "CreateCaret@WIN32API.INC": {
+  "desc": "Creates a new shape for the system caret and assigns ownership to the specified window; the shape can be a bitmap or a solid/gray block.",
+  "doc": "CreateCaret"
+ },
+ "GetCaretBlinkTime@WIN32API.INC": {
+  "desc": "Returns the caret blink time in milliseconds (time between inverting the caret pixels).",
+  "doc": "GetCaretBlinkTime"
+ },
+ "SetCaretBlinkTime@WIN32API.INC": {
+  "desc": "Sets the caret blink time to the specified number of milliseconds.",
+  "doc": "SetCaretBlinkTime"
+ },
+ "DestroyCaret@WIN32API.INC": {
+  "desc": "Destroys the caret's current shape, frees it from the window and removes it from the screen.",
+  "doc": "DestroyCaret"
+ },
+ "HideCaret@WIN32API.INC": {
+  "desc": "Removes the caret from the screen without destroying its shape. Hiding is cumulative; ShowCaret must be called the same number of times.",
+  "doc": "HideCaret"
+ },
+ "ShowCaret@WIN32API.INC": {
+  "desc": "Makes the caret visible at its current position after it was created or hidden.",
+  "doc": "ShowCaret"
+ },
+ "SetCaretPos@WIN32API.INC": {
+  "desc": "Moves the caret to the specified client coordinates of the window that owns it.",
+  "doc": "SetCaretPos"
+ },
+ "GetCaretPos@WIN32API.INC": {
+  "desc": "Copies the caret's position, in client coordinates, into a POINT structure.",
+  "doc": "GetCaretPos"
+ },
+ "ClientToScreen_WIN32API@WIN32API.INC": {
+  "desc": "Converts the client-area coordinates of a POINT for the given window to screen coordinates.",
+  "doc": "ClientToScreen"
+ },
+ "ScreenToClient@WIN32API.INC": {
+  "desc": "Converts the screen coordinates of a POINT to client-area coordinates of the given window.",
+  "doc": "ScreenToClient"
+ },
+ "MapWindowPoints@WIN32API.INC": {
+  "desc": "Converts an array of points from the coordinate space of one window to another (or the screen). Returns the horizontal/vertical offsets in low/high words.",
+  "doc": "MapWindowPoints"
+ },
+ "WindowFromPoint@WIN32API.INC": {
+  "desc": "Returns a handle to the window that contains the specified screen point.",
+  "doc": "WindowFromPoint"
+ },
+ "ChildWindowFromPoint@WIN32API.INC": {
+  "desc": "Returns the child window of a parent that contains a point given in the parent's client coordinates, or the parent itself if none.",
+  "doc": "ChildWindowFromPoint"
+ },
+ "SetSysColors@WIN32API.INC": {
+  "desc": "Sets the colors of one or more display elements (COLOR_* indices) and notifies all top-level windows with WM_SYSCOLORCHANGE.",
+  "doc": "SetSysColors"
+ },
+ "DrawFocusRect@WIN32API.INC": {
+  "desc": "Draws a rectangle in the style used to indicate focus, using XOR so calling it again removes it.",
+  "doc": "DrawFocusRect"
+ },
+ "FillRect@WIN32API.INC": {
+  "desc": "Fills a rectangle with the specified brush, including the left and top borders but excluding the right and bottom.",
+  "doc": "FillRect"
+ },
+ "FrameRect@WIN32API.INC": {
+  "desc": "Draws a one-unit-wide border around a rectangle using the specified brush.",
+  "doc": "FrameRect"
+ },
+ "InvertRect@WIN32API.INC": {
+  "desc": "Inverts the colors of a rectangle on a device context using a logical NOT operation.",
+  "doc": "InvertRect"
+ },
+ "SetRectEmpty@WIN32API.INC": {
+  "desc": "Sets all coordinates of a RECT to zero, creating an empty rectangle.",
+  "doc": "SetRectEmpty"
+ },
+ "CopyRect@WIN32API.INC": {
+  "desc": "Copies the coordinates of one RECT structure to another.",
+  "doc": "CopyRect"
+ },
+ "InflateRect@WIN32API.INC": {
+  "desc": "Increases or decreases the width and height of a rectangle by dx and dy on each side (negative values shrink it).",
+  "doc": "InflateRect"
+ },
+ "IntersectRect@WIN32API.INC": {
+  "desc": "Calculates the intersection of two rectangles into a destination RECT. Returns zero if they do not intersect.",
+  "doc": "IntersectRect"
+ },
+ "UnionRect@WIN32API.INC": {
+  "desc": "Creates the smallest rectangle that contains both source rectangles.",
+  "doc": "UnionRect"
+ },
+ "SubtractRect@WIN32API.INC": {
+  "desc": "Determines the rectangle formed by subtracting one rectangle from another; works only when the result is a rectangle.",
+  "doc": "SubtractRect"
+ },
+ "OffsetRect@WIN32API.INC": {
+  "desc": "Moves a rectangle by the specified horizontal and vertical amounts.",
+  "doc": "OffsetRect"
+ },
+ "IsRectEmpty@WIN32API.INC": {
+  "desc": "Returns nonzero if the rectangle is empty (zero or negative width or height).",
+  "doc": "IsRectEmpty"
+ },
+ "EqualRect@WIN32API.INC": {
+  "desc": "Returns nonzero if two rectangles have identical coordinates.",
+  "doc": "EqualRect"
+ },
+ "PtInRect@WIN32API.INC": {
+  "desc": "Returns nonzero if the point lies within the rectangle (right and bottom edges excluded).",
+  "doc": "PtInRect"
+ },
+ "GetWindowWord@WIN32API.INC": {
+  "desc": "Retrieves a 16-bit value at the given offset in the window's extra memory. Obsolete for most uses; use GetWindowLong.",
+  "doc": "GetWindowWord"
+ },
+ "SetWindowWord@WIN32API.INC": {
+  "desc": "Sets a 16-bit value at the given offset in the window's extra memory. Obsolete for most uses; use SetWindowLong.",
+  "doc": "SetWindowWord"
+ },
+ "GetClassWord@WIN32API.INC": {
+  "desc": "Retrieves a 16-bit value at the given offset in the window class extra memory, or GCW_ATOM. Mostly obsolete; use GetClassLong.",
+  "doc": "GetClassWord"
+ },
+ "SetClassWord@WIN32API.INC": {
+  "desc": "Sets a 16-bit value at the given offset in the window class extra memory. Mostly obsolete; use SetClassLong.",
+  "doc": "SetClassWord"
+ },
+ "GetClassLong@WIN32API.INC": {
+  "desc": "Retrieves a 32-bit value from the window class associated with a window, e.g. GCL_HICON or GCL_STYLE.",
+  "doc": "GetClassLongA"
+ },
+ "GetTopWindow@WIN32API.INC": {
+  "desc": "Returns the child window at the top of the Z order among the children of the specified window.",
+  "doc": "GetTopWindow"
+ },
+ "GetNextWindow@WIN32API.INC": {
+  "desc": "Returns a window related to the specified window by Z order or ownership (GW_CHILD, GW_HWNDNEXT, GW_OWNER, etc.).",
+  "doc": "GetWindow"
+ },
+ "GetWindowThreadProcessId@WIN32API.INC": {
+  "desc": "Returns the ID of the thread that created a window and optionally stores the owning process ID.",
+  "doc": "GetWindowThreadProcessId"
+ },
+ "GetLastActivePopup@WIN32API.INC": {
+  "desc": "Returns the most recently active pop-up window owned by the specified window.",
+  "doc": "GetLastActivePopup"
+ },
+ "GetWindow@WIN32API.INC": {
+  "desc": "Returns a window related to the specified window by Z order or ownership (GW_CHILD, GW_HWNDNEXT, GW_OWNER, etc.).",
+  "doc": "GetWindow"
+ },
+ "UnhookWindowsHookEx@WIN32API.INC": {
+  "desc": "Removes a hook procedure installed by SetWindowsHookEx. Returns nonzero on success.",
+  "doc": "UnhookWindowsHookEx"
+ },
+ "CallNextHookEx@WIN32API.INC": {
+  "desc": "Passes hook information to the next hook procedure in the current hook chain; returns that procedure's result.",
+  "doc": "CallNextHookEx"
+ },
+ "LoadBitmap@WIN32API.INC": {
+  "desc": "Loads a bitmap resource from a module. Superseded by LoadImage.",
+  "doc": "LoadBitmapA"
+ },
+ "CreateCursor@WIN32API.INC": {
+  "desc": "Creates a monochrome cursor of given size and hotspot from AND and XOR bit masks. Returns the cursor handle.",
+  "doc": "CreateCursor"
+ },
+ "DestroyCursor@WIN32API.INC": {
+  "desc": "Destroys a cursor created with CreateCursor or similar and frees its memory. Do not use on shared cursors.",
+  "doc": "DestroyCursor"
+ },
+ "CopyCursor@WIN32API.INC": {
+  "desc": "Copies the specified cursor and returns a handle to the copy.",
+  "doc": "CopyCursor"
+ },
+ "LoadIcon@WIN32API.INC": {
+  "desc": "Loads an icon resource from a module, or a predefined system icon when hInstance is NULL. Superseded by LoadImage.",
+  "doc": "LoadIconA"
+ },
+ "CreateIcon@WIN32API.INC": {
+  "desc": "Creates an icon of given size and color format from AND and XOR bit arrays. Returns the icon handle.",
+  "doc": "CreateIcon"
+ },
+ "LookupIconIdFromDirectory@WIN32API.INC": {
+  "desc": "Searches icon or cursor directory resource data for the image that best fits the current display; returns its resource ID.",
+  "doc": "LookupIconIdFromDirectory"
+ },
+ "CreateIconFromResource@WIN32API.INC": {
+  "desc": "Creates an icon or cursor from resource bits describing the image. Returns the icon or cursor handle.",
+  "doc": "CreateIconFromResource"
+ },
+ "CreateIconIndirect@WIN32API.INC": {
+  "desc": "Creates an icon or cursor from an ICONINFO structure (mask and color bitmaps, hotspot).",
+  "doc": "CreateIconIndirect"
+ },
+ "CopyIcon@WIN32API.INC": {
+  "desc": "Copies the specified icon from another module to the current module and returns a handle to the copy.",
+  "doc": "CopyIcon"
+ },
+ "GetIconInfo@WIN32API.INC": {
+  "desc": "Retrieves information about an icon or cursor into an ICONINFO structure; the caller must delete the returned bitmaps.",
+  "doc": "GetIconInfo"
+ },
+ "IsDialogMessage@WIN32API.INC": {
+  "desc": "Determines whether a message is meant for the given dialog box and processes it (keyboard navigation) if so. Returns nonzero if processed.",
+  "doc": "IsDialogMessageA"
+ },
+ "MapDialogRect@WIN32API.INC": {
+  "desc": "Converts dialog box units in a RECT to screen units (pixels) for the specified dialog box.",
+  "doc": "MapDialogRect"
+ },
+ "DlgDirList@WIN32API.INC": {
+  "desc": "Fills a list box in a dialog with names of files, directories and drives matching a path or file name pattern.",
+  "doc": "DlgDirListA"
+ },
+ "DlgDirSelectEx@WIN32API.INC": {
+  "desc": "Retrieves the current selection from a list box filled by DlgDirList; returns nonzero if it is a drive or directory.",
+  "doc": "DlgDirSelectExA"
+ },
+ "DlgDirListComboBox@WIN32API.INC": {
+  "desc": "Fills a combo box in a dialog with names of files, directories and drives matching a path or file name pattern.",
+  "doc": "DlgDirListComboBoxA"
+ },
+ "DlgDirSelectComboBoxEx@WIN32API.INC": {
+  "desc": "Retrieves the current selection from a combo box filled by DlgDirListComboBox; returns nonzero if it is a drive or directory.",
+  "doc": "DlgDirSelectComboBoxExA"
+ },
+ "DefFrameProc@WIN32API.INC": {
+  "desc": "Provides default processing for window messages not handled by an MDI frame window procedure.",
+  "doc": "DefFrameProcA"
+ },
+ "TranslateMDISysAccel@WIN32API.INC": {
+  "desc": "Processes accelerator keystrokes for window menu commands of MDI child windows. Returns nonzero if the message was translated.",
+  "doc": "TranslateMDISysAccel"
+ },
+ "ArrangeIconicWindows@WIN32API.INC": {
+  "desc": "Arranges all minimized (iconic) child windows of a parent window. Returns the height of one row of icons.",
+  "doc": "ArrangeIconicWindows"
+ },
+ "CreateMDIWindow@WIN32API.INC": {
+  "desc": "Creates a multiple-document interface (MDI) child window. Returns the handle of the new window.",
+  "doc": "CreateMDIWindowA"
+ },
+ "WinHelp@WIN32API.INC": {
+  "desc": "Starts Windows Help (WinHelp.exe) and passes a help command. Obsolete; WinHelp is not supported on current Windows, use HTML Help.",
+  "doc": "WinHelpA"
+ },
+ "DdeSetQualityOfService@WIN32API.INC": {
+  "desc": "Specifies the security quality of service a DDE client wants for future DDE conversations with servers.",
+  "doc": "DdeSetQualityOfService"
+ },
+ "ImpersonateDdeClientWindow@WIN32API.INC": {
+  "desc": "Enables a DDE server to impersonate the security context of a DDE client application.",
+  "doc": "ImpersonateDdeClientWindow"
+ },
+ "PackDDElParam@WIN32API.INC": {
+  "desc": "Packs DDE lParam values into a handle for posting a DDE message; the result must be freed with FreeDDElParam.",
+  "doc": "PackDDElParam"
+ },
+ "UnpackDDElParam@WIN32API.INC": {
+  "desc": "Unpacks a DDE lParam value received from a posted DDE message into its low and high components.",
+  "doc": "UnpackDDElParam"
+ },
+ "FreeDDElParam@WIN32API.INC": {
+  "desc": "Frees the memory associated with a DDE lParam created by PackDDElParam.",
+  "doc": "FreeDDElParam"
+ },
+ "ReuseDDElParam@WIN32API.INC": {
+  "desc": "Allows a received DDE lParam to be reused in a posted DDE response message, repacking it as needed.",
+  "doc": "ReuseDDElParam"
+ },
+ "DdeUninitialize@WIN32API.INC": {
+  "desc": "Frees all DDEML resources used by an application and terminates its conversations.",
+  "doc": "DdeUninitialize"
+ },
+ "DdeConnectList@WIN32API.INC": {
+  "desc": "Establishes conversations with all servers that support the specified service and topic; returns a conversation list handle.",
+  "doc": "DdeConnectList"
+ },
+ "DdeQueryNextServer@WIN32API.INC": {
+  "desc": "Returns the next conversation handle in a conversation list created by DdeConnectList.",
+  "doc": "DdeQueryNextServer"
+ },
+ "DdeDisconnectList@WIN32API.INC": {
+  "desc": "Destroys a conversation list and terminates all conversations associated with it.",
+  "doc": "DdeDisconnectList"
+ },
+ "DdeConnect@WIN32API.INC": {
+  "desc": "Establishes a DDE conversation with a server that supports the specified service and topic. Returns a conversation handle.",
+  "doc": "DdeConnect"
+ },
+ "DdeDisconnect@WIN32API.INC": {
+  "desc": "Terminates a DDE conversation and invalidates its conversation handle.",
+  "doc": "DdeDisconnect"
+ },
+ "DdeReconnect@WIN32API.INC": {
+  "desc": "Re-establishes a DDE conversation with a service that has terminated it.",
+  "doc": "DdeReconnect"
+ },
+ "DdeQueryConvInfo@WIN32API.INC": {
+  "desc": "Retrieves information about a DDE transaction and its conversation into a CONVINFO structure.",
+  "doc": "DdeQueryConvInfo"
+ },
+ "DdeSetUserHandle@WIN32API.INC": {
+  "desc": "Associates an application-defined value with a conversation handle or transaction ID.",
+  "doc": "DdeSetUserHandle"
+ },
+ "DdeAbandonTransaction@WIN32API.INC": {
+  "desc": "Abandons the specified asynchronous transaction and releases its resources.",
+  "doc": "DdeAbandonTransaction"
+ },
+ "DdePostAdvise@WIN32API.INC": {
+  "desc": "Causes a DDE server to send an XTYP_ADVREQ transaction to its callback for each client with an active advise loop on the topic and item.",
+  "doc": "DdePostAdvise"
+ },
+ "DdeEnableCallback@WIN32API.INC": {
+  "desc": "Enables or disables transactions for a specific conversation or all conversations of the calling application.",
+  "doc": "DdeEnableCallback"
+ },
+ "DdeImpersonateClient@WIN32API.INC": {
+  "desc": "Impersonates a DDE client application in a DDE client conversation.",
+  "doc": "DdeImpersonateClient"
+ },
+ "DdeNameService@WIN32API.INC": {
+  "desc": "Registers or unregisters the service names a DDE server supports, and can turn service name filtering on or off.",
+  "doc": "DdeNameService"
+ },
+ "DdeClientTransaction@WIN32API.INC": {
+  "desc": "Begins a DDE data transaction between a client and server (request, poke, execute, advise). Synchronous or asynchronous.",
+  "doc": "DdeClientTransaction"
+ },
+ "DdeCreateDataHandle@WIN32API.INC": {
+  "desc": "Creates a DDE object and fills it with data from a buffer; returns a data handle for passing in transactions.",
+  "doc": "DdeCreateDataHandle"
+ },
+ "DdeAddData@WIN32API.INC": {
+  "desc": "Adds data to a DDE object, starting at the given offset; the object is enlarged if needed.",
+  "doc": "DdeAddDataA"
+ },
+ "DdeGetData@WIN32API.INC": {
+  "desc": "Copies data from a DDE object to a local buffer. Returns the number of bytes copied (or the object size if buffer is NULL).",
+  "doc": "DdeGetDataA"
+ },
+ "DdeAccessData@WIN32API.INC": {
+  "desc": "Provides access to the data in a DDE object; returns a pointer to the first byte and its size.",
+  "doc": "DdeAccessDataA"
+ },
+ "DdeUnaccessData@WIN32API.INC": {
+  "desc": "Unaccesses a DDE object previously accessed with DdeAccessData.",
+  "doc": "DdeUnaccessDataA"
+ },
+ "DdeFreeDataHandle@WIN32API.INC": {
+  "desc": "Frees a DDE object and deletes the data handle associated with it.",
+  "doc": "DdeFreeDataHandle"
+ },
+ "DdeGetLastError@WIN32API.INC": {
+  "desc": "Retrieves the most recent error code set by a DDEML function and resets it.",
+  "doc": "DdeGetLastError"
+ },
+ "DdeCreateStringHandle@WIN32API.INC": {
+  "desc": "Creates a DDE string handle for the specified string, used by DDEML functions. Free with DdeFreeStringHandle.",
+  "doc": "DdeCreateStringHandleA"
+ },
+ "DdeQueryString@WIN32API.INC": {
+  "desc": "Copies the text associated with a DDE string handle into a buffer; returns the string length.",
+  "doc": "DdeQueryStringA"
+ },
+ "DdeFreeStringHandle@WIN32API.INC": {
+  "desc": "Frees a DDE string handle created by DdeCreateStringHandle.",
+  "doc": "DdeFreeStringHandle"
+ },
+ "DdeKeepStringHandle@WIN32API.INC": {
+  "desc": "Increments the usage count of a DDE string handle so it remains valid after the callback returns.",
+  "doc": "DdeKeepStringHandle"
+ },
+ "DdeCmpStringHandles@WIN32API.INC": {
+  "desc": "Compares the values of two DDE string handles (case-insensitive). Returns -1, 0 or 1.",
+  "doc": "DdeCmpStringHandles"
+ },
+ "mixerGetNumDevs@WIN32API.INC": {
+  "desc": "Returns the number of mixer devices present in the system.",
+  "doc": "mixerGetNumDevs"
+ },
+ "mixerGetDevCaps@WIN32API.INC": {
+  "desc": "Queries a mixer device for its capabilities into a MIXERCAPS structure.",
+  "doc": "mixerGetDevCapsA"
+ },
+ "mixerOpen@WIN32API.INC": {
+  "desc": "Opens a mixer device and returns a handle; can register a callback window or function for change notifications.",
+  "doc": "mixerOpen"
+ },
+ "mixerClose@WIN32API.INC": {
+  "desc": "Closes the specified mixer device.",
+  "doc": "mixerClose"
+ },
+ "mixerMessage@WIN32API.INC": {
+  "desc": "Sends a custom mixer driver message directly to a mixer driver.",
+  "doc": "mixerMessage"
+ },
+ "mixerGetLineInfo@WIN32API.INC": {
+  "desc": "Retrieves information about a specific line of a mixer device into a MIXERLINE structure.",
+  "doc": "mixerGetLineInfoA"
+ },
+ "mixerGetID@WIN32API.INC": {
+  "desc": "Retrieves the device identifier for a mixer device associated with a device handle.",
+  "doc": "mixerGetID"
+ },
+ "mixerGetLineControls@WIN32API.INC": {
+  "desc": "Retrieves one or more controls associated with an audio line into a MIXERLINECONTROLS structure.",
+  "doc": "mixerGetLineControlsA"
+ },
+ "mixerGetControlDetails@WIN32API.INC": {
+  "desc": "Retrieves details about a single control associated with an audio line (e.g. current volume value).",
+  "doc": "mixerGetControlDetailsA"
+ },
+ "mixerSetControlDetails@WIN32API.INC": {
+  "desc": "Sets properties of a single control associated with an audio line (e.g. volume or mute).",
+  "doc": "mixerSetControlDetails"
+ },
+ "joyGetPos@WIN32API.INC": {
+  "desc": "Queries a joystick for its position and button status into a JOYINFO structure. Superseded by joyGetPosEx.",
+  "doc": "joyGetPos"
+ },
+ "joyGetPosEx@WIN32API.INC": {
+  "desc": "Queries a joystick for its position and button status into a JOYINFOEX structure (up to six axes, 32 buttons, POV).",
+  "doc": "joyGetPosEx"
+ },
+ "midiStreamOpen@WIN32API.INC": {
+  "desc": "Opens a MIDI stream for output; the stream starts paused. Returns MMSYSERR_NOERROR on success.",
+  "doc": "midiStreamOpen"
+ },
+ "midiStreamClose@WIN32API.INC": {
+  "desc": "Closes an open MIDI stream.",
+  "doc": "midiStreamClose"
+ },
+ "midiStreamProperty@WIN32API.INC": {
+  "desc": "Sets or retrieves properties of a MIDI stream, such as time division or tempo.",
+  "doc": "midiStreamProperty"
+ },
+ "midiStreamPosition@WIN32API.INC": {
+  "desc": "Retrieves the current position in a MIDI stream into an MMTIME structure.",
+  "doc": "midiStreamPosition"
+ },
+ "midiStreamOut@WIN32API.INC": {
+  "desc": "Plays or queues a buffer of MIDI data (prepared MIDIHDR) on a MIDI output stream.",
+  "doc": "midiStreamOut"
+ },
+ "midiStreamPause@WIN32API.INC": {
+  "desc": "Pauses playback of a MIDI stream.",
+  "doc": "midiStreamPause"
+ },
+ "midiStreamRestart@WIN32API.INC": {
+  "desc": "Restarts a paused MIDI stream.",
+  "doc": "midiStreamRestart"
+ },
+ "midiStreamStop@WIN32API.INC": {
+  "desc": "Turns off all notes on all MIDI channels and stops the stream, returning queued buffers.",
+  "doc": "midiStreamStop"
+ },
+ "midiConnect@WIN32API.INC": {
+  "desc": "Connects a MIDI input device to a MIDI thru or output device, or a thru device to an output device.",
+  "doc": "midiConnect"
+ },
+ "midiDisconnect@WIN32API.INC": {
+  "desc": "Disconnects a MIDI input device from a MIDI thru or output device.",
+  "doc": "midiDisconnect"
+ },
+ "CloseDriver@WIN32API.INC": {
+  "desc": "Closes an installable driver opened with OpenDriver.",
+  "doc": "CloseDriver"
+ },
+ "OpenDriver@WIN32API.INC": {
+  "desc": "Opens an instance of an installable driver and initializes it. Returns a driver handle.",
+  "doc": "OpenDriver"
+ },
+ "SendDriverMessage@WIN32API.INC": {
+  "desc": "Sends a message to the specified installable driver and returns the driver's result.",
+  "doc": "SendDriverMessage"
+ },
+ "DrvGetModuleHandle@WIN32API.INC": {
+  "desc": "Retrieves the module instance handle of an installable driver. Obsolete; use GetDriverModuleHandle.",
+  "doc": "DrvGetModuleHandle"
+ },
+ "GetDriverModuleHandle@WIN32API.INC": {
+  "desc": "Retrieves the instance handle of the module that contains the specified installable driver.",
+  "doc": "GetDriverModuleHandle"
+ },
+ "DefDriverProc@WIN32API.INC": {
+  "desc": "Provides default processing for messages not handled by an installable driver.",
+  "doc": "DefDriverProc"
+ },
+ "mmsystemGetVersion@WIN32API.INC": {
+  "desc": "Returns the version number of the Windows multimedia system (WinMM).",
+  "doc": "mmsystemGetVersion"
+ },
+ "OutputDebugStr@WIN32API.INC": {
+  "desc": "Not in the Microsoft documentation: winmm export that sends a string to the debugger, like kernel32 OutputDebugString (16-bit compatibility).",
+  "doc": ""
+ },
+ "sndPlaySound@WIN32API.INC": {
+  "desc": "Plays a waveform sound given by a file name or system event name. Superseded by PlaySound.",
+  "doc": "sndPlaySoundA"
+ },
+ "PlaySound@WIN32API.INC": {
+  "desc": "Plays a sound specified by file name, resource or system event alias (SND_FILENAME, SND_ASYNC, SND_LOOP, etc.).",
+  "doc": "PlaySoundA"
+ },
+ "waveOutGetNumDevs@WIN32API.INC": {
+  "desc": "Returns the number of waveform-audio output devices present in the system.",
+  "doc": "waveOutGetNumDevs"
+ },
+ "waveOutGetDevCaps@WIN32API.INC": {
+  "desc": "Retrieves the capabilities of a waveform-audio output device into a WAVEOUTCAPS structure.",
+  "doc": "waveOutGetDevCapsA"
+ },
+ "waveOutGetVolume@WIN32API.INC": {
+  "desc": "Retrieves the current volume of a waveform-audio output device (low word left, high word right).",
+  "doc": "waveOutGetVolume"
+ },
+ "waveOutSetVolume@WIN32API.INC": {
+  "desc": "Sets the volume of a waveform-audio output device (low word left, high word right, 0-0xFFFF).",
+  "doc": "waveOutSetVolume"
+ },
+ "waveOutGetErrorText@WIN32API.INC": {
+  "desc": "Retrieves a text description of an MMSYSERR/WAVERR error code into a buffer.",
+  "doc": "waveOutGetErrorTextA"
+ },
+ "waveOutOpen@WIN32API.INC": {
+  "desc": "Opens a waveform-audio output device for playback in a given WAVEFORMATEX format; returns a device handle.",
+  "doc": "waveOutOpen"
+ },
+ "waveOutClose@WIN32API.INC": {
+  "desc": "Closes a waveform-audio output device. Fails if buffers are still queued; call waveOutReset first.",
+  "doc": "waveOutClose"
+ },
+ "waveOutPrepareHeader@WIN32API.INC": {
+  "desc": "Prepares a WAVEHDR data block for waveform-audio output; required before waveOutWrite.",
+  "doc": "waveOutPrepareHeader"
+ },
+ "waveOutUnprepareHeader@WIN32API.INC": {
+  "desc": "Cleans up the preparation done by waveOutPrepareHeader after the device has finished with the block.",
+  "doc": "waveOutUnprepareHeader"
+ },
+ "waveOutWrite@WIN32API.INC": {
+  "desc": "Sends a prepared data block (WAVEHDR) to a waveform-audio output device for playback.",
+  "doc": "waveOutWrite"
+ },
+ "waveOutPause@WIN32API.INC": {
+  "desc": "Pauses playback on a waveform-audio output device, saving the current position.",
+  "doc": "waveOutPause"
+ },
+ "waveOutRestart@WIN32API.INC": {
+  "desc": "Resumes playback on a paused waveform-audio output device.",
+  "doc": "waveOutRestart"
+ },
+ "waveOutReset@WIN32API.INC": {
+  "desc": "Stops playback on a waveform-audio output device, resets position to zero and marks pending buffers done.",
+  "doc": "waveOutReset"
+ },
+ "waveOutBreakLoop@WIN32API.INC": {
+  "desc": "Breaks a loop on a waveform-audio output device and allows playback to continue with the next block.",
+  "doc": "waveOutBreakLoop"
+ },
+ "waveOutGetPosition@WIN32API.INC": {
+  "desc": "Retrieves the current playback position of a waveform-audio output device into an MMTIME structure.",
+  "doc": "waveOutGetPosition"
+ },
+ "waveOutGetPitch@WIN32API.INC": {
+  "desc": "Retrieves the current pitch setting of a waveform-audio output device (fixed-point multiplier).",
+  "doc": "waveOutGetPitch"
+ },
+ "waveOutSetPitch@WIN32API.INC": {
+  "desc": "Sets the pitch for a waveform-audio output device, if supported (fixed-point multiplier).",
+  "doc": "waveOutSetPitch"
+ },
+ "waveOutGetPlaybackRate@WIN32API.INC": {
+  "desc": "Retrieves the current playback rate of a waveform-audio output device (fixed-point multiplier).",
+  "doc": "waveOutGetPlaybackRate"
+ },
+ "waveOutSetPlaybackRate@WIN32API.INC": {
+  "desc": "Sets the playback rate of a waveform-audio output device, if supported (fixed-point multiplier).",
+  "doc": "waveOutSetPlaybackRate"
+ },
+ "waveOutGetID@WIN32API.INC": {
+  "desc": "Retrieves the device identifier for the given waveform-audio output device handle.",
+  "doc": "waveOutGetID"
+ },
+ "waveOutMessage@WIN32API.INC": {
+  "desc": "Sends a custom message to a waveform-audio output device driver.",
+  "doc": "waveOutMessage"
+ },
+ "waveInGetNumDevs@WIN32API.INC": {
+  "desc": "Returns the number of waveform-audio input devices present in the system.",
+  "doc": "waveInGetNumDevs"
+ },
+ "waveInGetDevCaps@WIN32API.INC": {
+  "desc": "Retrieves the capabilities of a waveform-audio input device into a WAVEINCAPS structure.",
+  "doc": "waveInGetDevCapsA"
+ },
+ "waveInGetErrorText@WIN32API.INC": {
+  "desc": "Retrieves a text description of an MMSYSERR/WAVERR error code into a buffer.",
+  "doc": "waveInGetErrorTextA"
+ },
+ "waveInOpen@WIN32API.INC": {
+  "desc": "Opens a waveform-audio input device for recording in a given WAVEFORMATEX format; returns a device handle.",
+  "doc": "waveInOpen"
+ },
+ "waveInClose@WIN32API.INC": {
+  "desc": "Closes a waveform-audio input device. Fails if buffers are still queued; call waveInReset first.",
+  "doc": "waveInClose"
+ },
+ "waveInPrepareHeader@WIN32API.INC": {
+  "desc": "Prepares a WAVEHDR buffer for waveform-audio input; required before waveInAddBuffer.",
+  "doc": "waveInPrepareHeader"
+ },
+ "waveInUnprepareHeader@WIN32API.INC": {
+  "desc": "Cleans up the preparation done by waveInPrepareHeader after the device has finished with the buffer.",
+  "doc": "waveInUnprepareHeader"
+ },
+ "waveInAddBuffer@WIN32API.INC": {
+  "desc": "Sends a prepared input buffer to a waveform-audio input device; the application is notified when it is filled.",
+  "doc": "waveInAddBuffer"
+ },
+ "waveInStart@WIN32API.INC": {
+  "desc": "Starts input (recording) on a waveform-audio input device.",
+  "doc": "waveInStart"
+ },
+ "waveInStop@WIN32API.INC": {
+  "desc": "Stops input on a waveform-audio input device; the current buffer is marked done and returned.",
+  "doc": "waveInStop"
+ },
+ "waveInReset@WIN32API.INC": {
+  "desc": "Stops input on a waveform-audio input device, resets position to zero and returns all pending buffers.",
+  "doc": "waveInReset"
+ },
+ "waveInGetPosition@WIN32API.INC": {
+  "desc": "Retrieves the current input position of a waveform-audio input device into an MMTIME structure.",
+  "doc": "waveInGetPosition"
+ },
+ "waveInGetID@WIN32API.INC": {
+  "desc": "Retrieves the device identifier for the given waveform-audio input device handle.",
+  "doc": "waveInGetID"
+ },
+ "waveInMessage@WIN32API.INC": {
+  "desc": "Sends a custom message to a waveform-audio input device driver.",
+  "doc": "waveInMessage"
+ },
+ "midiOutGetDevCaps@WIN32API.INC": {
+  "desc": "Queries a MIDI output device for its capabilities into a MIDIOUTCAPS structure.",
+  "doc": "midiOutGetDevCapsA"
+ },
+ "midiOutGetVolume@WIN32API.INC": {
+  "desc": "Retrieves the current volume of a MIDI output device (low word left, high word right).",
+  "doc": "midiOutGetVolume"
+ },
+ "midiOutSetVolume@WIN32API.INC": {
+  "desc": "Sets the volume of a MIDI output device (low word left, high word right, 0-0xFFFF).",
+  "doc": "midiOutSetVolume"
+ },
+ "midiOutGetErrorText@WIN32API.INC": {
+  "desc": "Retrieves a text description of a MIDI/MMSYSERR error code into a buffer.",
+  "doc": "midiOutGetErrorTextA"
+ },
+ "midiOutOpen@WIN32API.INC": {
+  "desc": "Opens a MIDI output device for playback; returns a device handle and can register a callback.",
+  "doc": "midiOutOpen"
+ },
+ "midiOutClose@WIN32API.INC": {
+  "desc": "Closes a MIDI output device. Fails if buffers are still pending; call midiOutReset first.",
+  "doc": "midiOutClose"
+ },
+ "midiOutPrepareHeader@WIN32API.INC": {
+  "desc": "Prepares a MIDIHDR system-exclusive or stream buffer for output.",
+  "doc": "midiOutPrepareHeader"
+ },
+ "midiOutUnprepareHeader@WIN32API.INC": {
+  "desc": "Cleans up the preparation done by midiOutPrepareHeader after the device has finished with the buffer.",
+  "doc": "midiOutUnprepareHeader"
+ },
+ "midiOutShortMsg@WIN32API.INC": {
+  "desc": "Sends a short MIDI message (status and up to two data bytes packed in a DWORD) to a MIDI output device.",
+  "doc": "midiOutShortMsg"
+ },
+ "midiOutLongMsg@WIN32API.INC": {
+  "desc": "Sends a system-exclusive MIDI message in a prepared MIDIHDR buffer to a MIDI output device.",
+  "doc": "midiOutLongMsg"
+ },
+ "midiOutReset@WIN32API.INC": {
+  "desc": "Turns off all notes on all MIDI channels of an output device and returns pending output buffers.",
+  "doc": "midiOutReset"
+ },
+ "midiOutCachePatches@WIN32API.INC": {
+  "desc": "Requests an internal MIDI synthesizer to preload and cache specified patches.",
+  "doc": "midiOutCachePatches"
+ },
+ "midiOutCacheDrumPatches@WIN32API.INC": {
+  "desc": "Requests an internal MIDI synthesizer to preload and cache specified key-based percussion patches.",
+  "doc": "midiOutCacheDrumPatches"
+ },
+ "midiOutGetID@WIN32API.INC": {
+  "desc": "Retrieves the device identifier for the given MIDI output device handle.",
+  "doc": "midiOutGetID"
+ },
+ "midiOutMessage@WIN32API.INC": {
+  "desc": "Sends a custom message to a MIDI output device driver.",
+  "doc": "midiOutMessage"
+ },
+ "midiInGetNumDevs@WIN32API.INC": {
+  "desc": "Returns the number of MIDI input devices in the system.",
+  "doc": "midiInGetNumDevs"
+ },
+ "midiInGetDevCaps@WIN32API.INC": {
+  "desc": "Queries a MIDI input device for its capabilities into a MIDIINCAPS structure.",
+  "doc": "midiInGetDevCapsA"
+ },
+ "midiInGetErrorText@WIN32API.INC": {
+  "desc": "Retrieves a text description of a MIDI/MMSYSERR error code into a buffer.",
+  "doc": "midiInGetErrorTextA"
+ },
+ "midiInOpen@WIN32API.INC": {
+  "desc": "Opens a MIDI input device; returns a device handle and registers a callback for incoming messages.",
+  "doc": "midiInOpen"
+ },
+ "midiInClose@WIN32API.INC": {
+  "desc": "Closes a MIDI input device. Fails if buffers are still pending; call midiInReset first.",
+  "doc": "midiInClose"
+ },
+ "midiInPrepareHeader@WIN32API.INC": {
+  "desc": "Prepares a MIDIHDR buffer for MIDI input.",
+  "doc": "midiInPrepareHeader"
+ },
+ "midiInUnprepareHeader@WIN32API.INC": {
+  "desc": "Cleans up the preparation done by midiInPrepareHeader.",
+  "doc": "midiInUnprepareHeader"
+ },
+ "midiInAddBuffer@WIN32API.INC": {
+  "desc": "Sends a prepared input buffer to an open MIDI input device for system-exclusive messages.",
+  "doc": "midiInAddBuffer"
+ },
+ "midiInStart@WIN32API.INC": {
+  "desc": "Starts MIDI input on the specified device; timestamps are reset to zero.",
+  "doc": "midiInStart"
+ },
+ "midiInStop@WIN32API.INC": {
+  "desc": "Stops MIDI input on the specified device.",
+  "doc": "midiInStop"
+ },
+ "midiInReset@WIN32API.INC": {
+  "desc": "Stops input on a MIDI input device and returns all pending input buffers marked done.",
+  "doc": "midiInReset"
+ },
+ "midiInGetID@WIN32API.INC": {
+  "desc": "Retrieves the device identifier for the given MIDI input device handle.",
+  "doc": "midiInGetID"
+ },
+ "midiInMessage@WIN32API.INC": {
+  "desc": "Sends a custom message to a MIDI input device driver.",
+  "doc": "midiInMessage"
+ },
+ "auxGetNumDevs@WIN32API.INC": {
+  "desc": "Returns the number of auxiliary audio output devices present in the system.",
+  "doc": "auxGetNumDevs"
+ }
+}

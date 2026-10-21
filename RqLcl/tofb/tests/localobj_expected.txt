@@ -1,0 +1,13 @@
+call 1 AAAA
+  enter: Mem.Size=0 Mem.Position=0 Lst.ItemCount=0
+  text AAAA
+call 2 BBBBBBBB
+  enter: Mem.Size=4 Mem.Position=0 Lst.ItemCount=1
+  same address -1 text BBBBBBBB
+call 3 CC
+  enter: Mem.Size=8 Mem.Position=0 Lst.ItemCount=2
+  same address -1 text CCBBBBBB
+sadd = VARPTR 0 text FIRST-STRING-1234
+second sadd same address -1 text at 1st SECOND-TEXT-ABCDE
+after other strings SECOND-TEXT-ABCDE
+end

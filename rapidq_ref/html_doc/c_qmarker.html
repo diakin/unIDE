@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QMARKER</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QMARKER</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QMARKER Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QMarker.inc</code>, line 3</p>
+<p><b>A panel that shows a vertical column of colored row strips, used to mark individual rows with a color or a bitmap.</b></p>
+<p>QMarker extends QPanel and owns an array of 201 child QPanel objects (Row(0) to Row(200)). Draw lays them out one under another, each RowHeight pixels high and as wide as the marker, and paints them with RowColor (default &amp;HC0C0C0).</p>
+<p>SetMark changes the color of one row. SetImage places the Mark QImage inside a row and shows the bitmap compiled in from the resource Bit_Res (file Mark.bmp), aligned to fill the row, stretched and transparent. A typical use is a margin next to a list or editor that highlights the current or marked lines.</p>
+<p>QMARKER inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>$RESOURCE Bit_Res AS &quot;Mark.bmp&quot; (the file Mark.bmp must exist at compile time)</li>
+</ul>
+<a name="1"></a><h2>QMarker Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">MarkColor</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Integer field declared for a mark color, but no code in the component reads or writes it.</td></tr>
+<tr><td class="rq-name">RowHeight</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Height of each row strip in pixels, used by Draw. It has no default value (the default assignment in the constructor is commented out).</td></tr>
+<tr><td class="rq-name">Row</td><td class="rq-type">ARRAY(200) OF QPANEL</td><td>RW</td><td></td><td>Array Row(0 TO 200) of QPanel objects that form the row strips; Draw sets their parent, color, size and position.</td></tr>
+<tr><td class="rq-name">RowColor</td><td class="rq-type">INTEGER</td><td>RW</td><td>&amp;hc0c0c0</td><td>Background color given to every row by Draw; the constructor sets it to &amp;HC0C0C0 (light gray).</td></tr>
+<tr><td class="rq-name">Mark</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage used by SetImage to show the Mark.bmp resource bitmap inside a row.</td></tr>
+</table>
+<a name="2"></a><h2>QMarker Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Draw</td><td class="rq-type">SUB</td><td>Creates the layout: for each row index it sets Parent, Color (RowColor), Width (the marker width), Height (RowHeight) and Top (index * RowHeight). Call it again after changing Height or RowHeight.</td></tr>
+<tr><td class="rq-name">SetMark</td><td class="rq-type">SUB(ARow as integer,AColor as integer)</td><td>SetMark(ARow, AColor) sets the background color of row ARow to AColor.</td></tr>
+<tr><td class="rq-name">SetImage</td><td class="rq-type">SUB(ARow as integer)</td><td>SetImage(ARow) moves the Mark image into row ARow and shows the Bit_Res bitmap there, transparent, stretched and aligned to fill the row (Align = 5).</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Draw loops FOR i = 0 TO .Height instead of using the computed row count NoRow (which is calculated but never used), so it touches one Row per pixel of height; a marker taller than 200 pixels indexes past the end of the Row(200) array.</li>
+<li>The constructor calls Draw while RowHeight is still 0 (its default assignment is commented out), so the first Draw divides by zero and stacks all rows at Top = 0.</li>
+<li>MarkColor is declared but never used.</li>
+<li>The bitmap is fixed at compile time by $RESOURCE Bit_Res AS &quot;Mark.bmp&quot;; there is no property to change it.</li>
+</ul>
+<a name="4"></a><h2>QMarker Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Marker AS QMarker
+Marker.Parent = Form
+Marker.Width = 20
+Marker.Height = 180
+Marker.RowHeight = 18
+Marker.Draw
+Marker.SetMark(2, &amp;H0000FF)
+Marker.SetImage(4)</pre>
+<div class="rq-foot"><a href="c_qlistviewex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qmaxedit_richedpopup.html">Next component</a></div>
+</body>
+</html>

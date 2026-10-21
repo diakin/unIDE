@@ -1,0 +1,129 @@
+<html>
+<head>
+<title>Fileops.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'# QUOTE : Returns a quoted string</i></font> 
+<font color="0000AA"><b>function</b></font> Quote <b>(</b>StringToQuote <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+StringToQuote =  <font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b> + StringToQuote + <font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b>
+result = <font color="0000AA"><b>replacesubstr$</b></font><b>(</b>stringtoquote, <font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b> + <font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b>, <font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b><b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# STRIPPATH : Returns file path (without file name)</i></font> 
+<font color="0000AA"><b>Function</b></font> StripPath <b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+result = <font color="0000AA"><b>left$</b></font><b>(</b>fullname, rinstr<b>(</b>fullname, "<font color="990000">\</font>"<b>)</b><b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# STRIPFILENAME : Returns file name (without path)</i></font> 
+<font color="0000AA"><b>Function</b></font> StripFileName <b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+result = <font color="0000AA"><b>right$</b></font><b>(</b>fullname, <font color="0000AA"><b>len</b></font><b>(</b>fullname<b>)</b> - rinstr<b>(</b>fullname, "<font color="990000">\</font>"<b>)</b><b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)</i></font> 
+<font color="0000AA"><b>Function</b></font> StripFileExt <b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+result = <font color="0000AA"><b>right$</b></font><b>(</b>fullname, <font color="0000AA"><b>len</b></font><b>(</b>fullname<b>)</b> - rinstr<b>(</b>fullname, "<font color="990000">.</font>"<b>)</b> + 1<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# FILENAMENOEXT : Returns file name without extension</i></font> 
+<font color="0000AA"><b>function</b></font> FileNameNoExt<b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+fullname = <font color="0000AA"><b>right$</b></font><b>(</b>fullname, <font color="0000AA"><b>len</b></font><b>(</b>fullname<b>)</b> - rinstr<b>(</b>fullname, "<font color="990000">\</font>"<b>)</b><b>)</b>
+result = <font color="0000AA"><b>left$</b></font><b>(</b>fullname, rinstr<b>(</b>fullname, "<font color="990000">.</font>"<b>)</b> - 1<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# FULLPATHNOEXT : Returns full path without file extension</i></font> 
+<font color="0000AA"><b>function</b></font> FullPathNoExt<b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+result = <font color="0000AA"><b>left$</b></font><b>(</b>fullname, rinstr<b>(</b>fullname, "<font color="990000">.</font>"<b>)</b> - 1<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# C_Style : Returns "slashed" path from a "backslashed" one</i></font> 
+<font color="0000AA"><b>function</b></font> C_Style <b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+fullname = <font color="0000AA"><b>replacesubstr$</b></font><b>(</b>fullname, "<font color="990000">\\</font>", "<font color="990000">\</font>"<b>)</b>
+result = <font color="0000AA"><b>replacesubstr$</b></font><b>(</b>fullname, "<font color="990000">\</font>", "<font color="990000">/</font>"<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# SYSDIR : Retrieves windows shell directories</i></font> 
+
+<font color="007700"><i>'-------------------------|</i></font> 
+<font color="007700"><i>' Allowed values for dir  |</i></font> 
+<font color="007700"><i>'-----------------------------------------------------------------------------|</i></font> 
+<font color="007700"><i>' Desktop                 | Templates               | AppData                 |</i></font> 
+<font color="007700"><i>' Start Menu              | Programs                | Startup                 |</i></font> 
+<font color="007700"><i>' Fonts                   | SendTo                  | Recent                  |</i></font> 
+<font color="007700"><i>' Favorites               | Cache                   | Cookies                 |</i></font> 
+<font color="007700"><i>' History                 | NetHood                 | Personal                |</i></font> 
+<font color="007700"><i>' PrintHood               | Local AppData           | My Pictures             |</i></font> 
+<font color="007700"><i>' Administrative Tools    |                         |                         |</i></font> 
+<font color="007700"><i>'-----------------------------------------------------------------------------|</i></font> 
+
+<font color="0000AA"><b>function</b></font> SysDir <b>(</b>dir <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>DIM</b></font> fo_reg <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRegistry</b></font>
+fo_reg.RootKey = &H80000001
+fo_reg.openkey <b>(</b>"<font color="990000">Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders</font>", 0<b>)</b>
+result = fo_reg.readstring<b>(</b>dir<b>)</b> + "<font color="990000">\</font>"
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# HOMEDIR : The folder where the application is</i></font> 
+
+<font color="0000AA"><b>function</b></font> homedir<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+result = <font color="0000AA"><b>left$</b></font><b>(</b><font color="0000AA"><b>command$</b></font><b>(</b>0<b>)</b>, rinstr<b>(</b><font color="0000AA"><b>command$</b></font><b>(</b>0<b>)</b>, "<font color="990000">\</font>"<b>)</b><b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# BROWSEFORFOLDERS : Returns the selected folder</i></font> 
+
+<font color="0000AA"><b>function</b></font> BrowseForFolders <b>(</b>initialdir <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, wincapt <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>dim</b></font> bff_form <font color="0000AA"><b>as</b></font> <font color="000099"><b>qform</b></font>
+<font color="0000AA"><b>with</b></font> bff_form
+.height = 400
+.center
+.caption = wincapt
+.delbordericons 2
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>dim</b></font> bff_tree <font color="0000AA"><b>as</b></font> <font color="000099"><b>qdirtree</b></font>
+<font color="0000AA"><b>with</b></font> bff_tree
+.parent = bff_form
+.align = 5
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>if</b></font> bff_form.caption = "<font color="990000"></font>" <font color="0000AA"><b>then</b></font> bff_form.caption = "<font color="990000">Select folder</font>"
+<font color="0000AA"><b>if</b></font> <font color="0000AA"><b>direxists</b></font><b>(</b>initialdir<b>)</b> <font color="000099"><b>then</b></font>
+bff_tree.directory = initialdir
+<font color="000099"><b>else</b></font>
+bff_tree.directory = <font color="000099"><b>curdir$</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+bff_form.showmodal
+result = bff_tree.directory
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# BROWSEFORFILE : Returns the selected folder</i></font> 
+
+<font color="0000AA"><b>Function</b></font> BrowseForFile <b>(</b>caption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, filter <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, _
+initialdir <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+<font color="0000AA"><b>dim</b></font> bff_od <font color="0000AA"><b>as</b></font> <font color="000099"><b>qopendialog</b></font>
+<font color="0000AA"><b>with</b></font> bff_od
+.caption = caption
+.filter = filter
+.initialdir = initialdir
+
+<font color="0000AA"><b>if</b></font> .execute <font color="000099"><b>then</b></font>
+    result = .filename
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+
+ 
+</pre>
+</body>
+</html>

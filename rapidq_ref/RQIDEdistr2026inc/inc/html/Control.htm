@@ -1,0 +1,147 @@
+<html>
+<head>
+<title>Control.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>' Control panel library for Rapid-Q!!!</i></font> 
+<font color="007700"><i>' Version 1.0</i></font> 
+<font color="007700"><i>' 3/25/01</i></font> 
+<font color="007700"><i>' The name goes with the shell program name: control.exe</i></font> 
+<font color="007700"><i>' I found out the arguments required to run the control panel applets!!!</i></font> 
+<font color="007700"><i>' use: rundll32 &lt;library (Shell32)>,Control_RunDLL &lt;cplfile> </i></font> 
+<font color="007700"><i>' (@)&lt;which dialog></i></font> 
+<font color="007700"><i>' optional comma and index to display the desired tab on the dialog!</i></font> 
+ 
+<font color="007700"><i>' NOTE: if you have a cpl file that dosen't take any arguments and you would like</i></font> 
+<font color="007700"><i>' to display it's tabbed index, use @0, comma, &lt;index> </i></font> 
+<font color="007700"><i>' else, just use the above usage on lines 4-5.</i></font> 
+<font color="007700"><i>' Not all dialogs of the Control Panel have arguments.</i></font> 
+
+<font color="007700"><i>' If you see a sub/function that is prefixed with an 'n', it indicates that</i></font> 
+<font color="007700"><i>' that dialog (applet) of the Control Panel has tabs, and the argument of the sub/function</i></font> 
+<font color="007700"><i>' is the index of the tab (I think that indexing of any tab starts at 1). </i></font> 
+
+<font color="007700"><i>' Thanks to Rudy Elyn (email: Rudy@vt4.net) for his Config program (and source); </i></font> 
+<font color="007700"><i>' it served as a base to help me out in "cracking the command line".</i></font> 
+
+<font color="007700"><i>' If you have any questions, comments, or just want to say hello, please email me at b_j0@yahoo.com :)</i></font> 
+
+<font color="007700"><i>' It would be nice to email me if you like the library ;)</i></font> 
+
+<font color="007700"><i>' It may not be all of them, but I did my best ;)</i></font> 
+
+<font color="007700"><i>' The Control_RunDLL code in the shell command points out to me that there is an undocumented API</i></font> 
+<font color="007700"><i>' sub/function called Control_RunDLL hiding in Shell32.dll and that it's argument(s) is/are:</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' 1: the cpl file (located in the Windows System directory)</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' 2: the number (tag) of the applet located in the cpl file that you wish to run (prefixed with an "@" (at) sign); </i></font> 
+<font color="007700"><i>'     the "tags" of each applet start at zero (I think!)</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' 3:  the tab to display when the applet is shown (if the applet has one)</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' </i></font> 
+<font color="007700"><i>' Oh yeah: </i></font> 
+<font color="007700"><i>' - not all of the subs load applets, they can load folders too.</i></font> 
+<font color="007700"><i>' - you need Windows in order for this library to work</i></font> 
+<font color="007700"><i>' - I will refer to all of the applets that have tabs, as dialogs, </i></font> 
+<font color="007700"><i>'   so all of them will be suffixed with Dlg</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' - more libraries are coming soon :)</i></font> 
+
+<font color="0000AA"><b>sub</b></font> nOpenMouseDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL main.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenKeyboardDlg<b>(</b>index%<b>)</b> 
+<font color="0000AA"><b>if</b></font> index%>1 <font color="0000AA"><b>then</b></font> index%=0
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL _</font>_
+            main.cpl @1,"<font color="990000">+str$(index%), 5)</font><b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> OpenPrintersFolder
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL main.cpl @2</font>", 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> OpenFontsFolder
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL main.cpl @3</font>", 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenDisplayDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL desk.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> OpenTimeDlg
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL timedate.cpl @0</font>", 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenDialingDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL telephon.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenSystemDialog<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @0</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> OpenAddNewHardwareDlg
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @1</font>", 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenScannerDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL sticpl.cpl @0</font>", 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> OpenThemesDlg
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL themes.cpl @0</font>", 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenAddRemoveProgramsDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL appwiz.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenPowerMgmtDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL powercfg.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenPasswordsDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL password.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenModemDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL modem.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenMMDeviceDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL mmsys.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> OpenSoundsDlg
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL mmsys.cpl @1</font>", 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenGamesDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL joy.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenRegionalDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL intl.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenInternetDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL inetcpl.cpl @0,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="0000AA"><b>sub</b></font> nOpenUsersDlg<b>(</b>index%<b>)</b>
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL inetcpl.cpl @1,</font>"+<font color="0000AA"><b>str$</b></font><b>(</b>index%<b>)</b>, 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="007700"><i>' Only if one has TweakUI98 (or greater?) installed</i></font> 
+<font color="007700"><i>' this one is not configured to accept arguments to display tabs at index%</i></font> 
+<font color="0000AA"><b>sub</b></font> OpenTweakUIDlg
+PID = <font color="0000AA"><b>Shell</b></font><b>(</b>"<font color="990000">rundll32.exe shell32.dll,Control_RunDLL tweakui.cpl @0</font>", 5<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+ 
+</pre>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSHUTDOWN</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSHUTDOWN</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSHUTDOWN Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QShutdown.inc</code>, line 63 &middot; date: Feb, 2006</p>
+<p><b>A non-visual object that shuts down, force-shuts down, reboots Windows or logs off the current user.</b></p>
+<p>QShutDown extends QOBJECT. Each public method sets an ExitWindowsEx flag and calls the private DoShutDown, which first enables the SeShutdownPrivilege for the current process (OpenProcessToken, LookupPrivilegeValueA, AdjustTokenPrivileges from advapi32) and then calls ExitWindowsEx from user32. The privilege step is needed, per the source comment, or the reboot fails.</p>
+<p>The LUID, LUID_AND_ATTRIBUTES and TOKEN_PRIVILEGES types and the advapi32 declarations are defined only when __WIN32API is not defined; ExitWindowsEx, GetCurrentProcess and the EWX_ constants are defined only when __RQINC2 is not defined, so with those include files the declarations come from them instead.</p>
+<p>QSHUTDOWN inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="2"></a><h2>QShutDown Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">ShutDown</td><td class="rq-type">SUB</td><td>Shuts Windows down (ExitWindowsEx with EWX_SHUTDOWN) after enabling the shutdown privilege.</td></tr>
+<tr><td class="rq-name">ShutDownForce</td><td class="rq-type">SUB</td><td>Shuts Windows down with EWX_FORCE OR EWX_SHUTDOWN, which forces applications to close.</td></tr>
+<tr><td class="rq-name">LogOff</td><td class="rq-type">SUB</td><td>Logs off the current user (EWX_LOGOFF).</td></tr>
+<tr><td class="rq-name">Reboot</td><td class="rq-type">SUB</td><td>Restarts Windows (EWX_REBOOT) after enabling the shutdown privilege.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The source says it comes from a RapidQ Yahoo Groups posting; no author is named.</li>
+<li>Return values of OpenProcessToken, LookupPrivilegeValue, AdjustTokenPrivileges and ExitWindowsEx are ignored, so the methods give no indication of failure.</li>
+<li>TOKEN_PRIVILEGES is flattened (the LUID_AND_ATTRIBUTES array is replaced by LowPart, HighPart and Attributes fields) and only supports one privilege.</li>
+</ul>
+<a name="4"></a><h2>QShutDown Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Sd AS QShutDown
+IF MessageDlg(&quot;Restart the computer now?&quot;, mtConfirmation, mbYes OR mbNo, 0) = mrYes THEN
+  Sd.Reboot
+END IF</pre>
+<div class="rq-foot"><a href="c_qshfileoperation.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qskin.html">Next component</a></div>
+</body>
+</html>

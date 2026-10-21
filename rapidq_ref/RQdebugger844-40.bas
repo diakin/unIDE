@@ -800,7 +800,7 @@ Declare Sub FBDllOnClick
 Declare Sub FBEXEOnClick
 Declare Sub FBCompileOnClick
 Declare Sub SavePrjAsOnClick
-declare sub GoToLine (LineNumber as int)
+declare sub GoToLine (LineNumber as integer)
 declare sub ReplCheckClick              
 'declare sub ProjectsChoose
 declare sub clearWin_bm
@@ -7028,11 +7028,11 @@ lastPrj=1
 'declare sub WindChoose
 WindowsItemCount=48 '32
 dim CmdParam(WindowsItemCount) as string
-dim CursWin(WindowsItemCount-1) as int
-dim Modif(WindowsItemCount-1) as int ' признаки изменения файла
+dim CursWin(WindowsItemCount-1) as integer
+dim Modif(WindowsItemCount-1) as integer ' признаки изменения файла
 dim Window(WindowsItemCount-1) as string ' массив текстовых окон
-dim WindowsIndex as int ' номер текущего окна
-dim WindowsFreeIndex as int ' номер свободного окна
+dim WindowsIndex as integer ' номер текущего окна
+dim WindowsFreeIndex as integer ' номер свободного окна
 
 defint PrevWind, NextWind, Lastwind, VisibleWindows
 
@@ -7063,8 +7063,8 @@ BMarkItemCount=48 '32
 BMarkCtl=6
 dim BMark(BMarkItemCount-1,WindowsItemCount-1) as string ' массив строк закладок
 dim BMarkPos(BMarkItemCount-1,WindowsItemCount-1) as integer ' массив положений курсора
-dim BMarkIndex(WindowsItemCount-1) as int ' номер текущей закладки для текущего окна
-dim BMarkFreeIndex (WindowsItemCount-1) as int ' номер свободной закладки для текущего окна
+dim BMarkIndex(WindowsItemCount-1) as integer ' номер текущей закладки для текущего окна
+dim BMarkFreeIndex (WindowsItemCount-1) as integer ' номер свободной закладки для текущего окна
 defint LastBMarkIdx(WindowsItemCount-1) ' индекс предыдущей закладка в данном окне
 defint VisibleBMarkCnt(WindowsItemCount-1) ' всего определено закладок в данном окне
 'defint PrevBMark, NextBMark, 
@@ -8844,7 +8844,7 @@ case 305
 case 306
 	
 case 307
-	if CreateDirIfNotExists (IcoPathEdit.text)>0 then  DirBox.text=IcoPathEdit.text
+	if CreateDirIfNotExists (IcoFileEdit.text)>0 then  DirBox.text=IcoFileEdit.text
 	
 	
 case 308 
@@ -8857,7 +8857,7 @@ case 310
 case 311
 	if CreateDirIfNotExists (FBIcoFileEdit.text)>0 then  DirBox.text=FBIcoFileEdit.text
 case 312
-	if CreateDirIfNotExists (ArdCmpPathEdit.text)>0 then  DirBox.text=ArdCmpPathEdit.text
+'	if CreateDirIfNotExists (ArdCmpPathEdit.text)>0 then  DirBox.text=ArdCmpPathEdit.text
 case 313
 	'DirBox.text=FBLibPathEdit.text
 case 314
@@ -12378,7 +12378,7 @@ sub SortBMark
 'QUICKSORT(A(10), A(500), ASCEND) '-- sorts elements 10..500
 'dim BMark(BMarkItemCount-1,WindowsItemCount-1) as string ' массив строк закладок
 'dim BMarkPos(BMarkItemCount-1,WindowsItemCount-1) as integer ' массив положений курсора
-'dim BMarkIndex(WindowsItemCount-1) as int ' номер текущей закладки
+'dim BMarkIndex(WindowsItemCount-1) as integer ' номер текущей закладки
 'BMarkMnu(BMarkItemCount-1)
 dim CurWinBMark(BMarkItemCount-1) as string
 dim CurWinBMarkPos(BMarkItemCount-1) as  integer
@@ -12996,7 +12996,7 @@ end if
 END SUB
 
 '!***********************************************************************
-sub GoToLine (LineNumber as int)
+sub GoToLine (LineNumber as integer)
 'call  AddClrString ("12897:LineNumber="+str$(LineNumber), clred, LogEdit)
 
 'if LineNumber=0 then LineNumber=val(SearchCBox.text)

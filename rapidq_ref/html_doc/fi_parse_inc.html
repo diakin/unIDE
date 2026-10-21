@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>parse.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: parse.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>parse.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/parse.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 8 functions</p>
+<p><a href="#DELCOMMENTS">DelComments</a> &middot; <a href="#DELCOMMENTSF">DelCommentsF</a> &middot; <a href="#GETCHARNUM">GetCharNum</a> &middot; <a href="#GETOPERATORS">GetOperators</a> &middot; <a href="#GETVARPOS">GetVarPos</a> &middot; <a href="#PARSEDEF">ParseDef</a> &middot; <a href="#PARSEDIM">ParseDim</a> &middot; <a href="#REPLACECOMMENTS">ReplaceComments</a></p>
+<h3><a name="DELCOMMENTS"></a>DelComments</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5496</p>
+<pre>sub DelComments (STxt$ as string)</pre>
+<p>Removes a trailing &#x27; comment from the source line STxt$ in place, ignoring apostrophes inside double-quoted strings. Uses the global constant qt.</p>
+<h3><a name="DELCOMMENTSF"></a>DelCommentsF</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 5523</p>
+<pre>function DelCommentsF (STxt$ as string) as string</pre>
+<p>Function form of DelComments: returns the line STxt$ with its trailing &#x27; comment removed (STxt$ itself is also modified).</p>
+<h3><a name="GETCHARNUM"></a>GetCharNum</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 5384</p>
+<pre>function GetCharNum (Oper$ as string, getC as string) as long</pre>
+<p>Counts how many times the character getC occurs in the source line Oper$ outside quoted strings. If a &#x27; comment comes before the first quote, the line is cut at the comment and TALLY is used. Uses the global constant qt (double quote); may modify Oper$.</p>
+<h3><a name="GETOPERATORS"></a>GetOperators</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5556</p>
+<pre>sub GetOperators (Oper$() as string,OperPos() as integer, SrcTxt$ as string,NumOpers as long)</pre>
+<p>Splits source text SrcTxt$ into statements separated by &#x27;:&#x27; outside strings, after blanking comments and joining &#x27;_&#x27; continuation lines. Fills Oper$() with the statements and OperPos() with their start positions; NumOpers receives the count. Arrays must be large enough.</p>
+<h3><a name="GETVARPOS"></a>GetVarPos</h3>
+<p class="rq-meta">FUNCTION &middot; RQProc.inc, line 5429</p>
+<pre>Function GetVarPos (Oper$ as string, getV$ as string) as long</pre>
+<p>Returns the position of the identifier getV$ in Oper$ (case-insensitive, whole word, bounded by separator characters), ignoring matches inside strings or after a &#x27; comment. Returns 0 if the text is absent and -2 if it is present but not as a variable. Lowercases Oper$ and getV$ in place.</p>
+<h3><a name="PARSEDEF"></a>ParseDef</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5458</p>
+<pre>sub ParseDef (Var$() as string,VarType$ as string, SrcTxt$ as string, VarCount as long)</pre>
+<p>Parses a DEFxxx statement (DEFSTR, DEFINT, DEFLNG, DEFSNG, DEFDBL) in SrcTxt$: VarType$ receives the full type name and Var$() the comma separated variable names, VarCount the count (0 if no DEF found). Uppercases SrcTxt$.</p>
+<h3><a name="PARSEDIM"></a>ParseDim</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5433</p>
+<pre>sub ParseDim (Var$() as string,VarType$() as string, SrcTxt$ as string, VarCount as long)</pre>
+<p>Parses a DIM statement in SrcTxt$ (e.g. DIM a AS INTEGER, b AS STRING) into variable names Var$() and types VarType$(); VarCount gets the number found (0 if there is no DIM). Uses GetVarPos and uppercases SrcTxt$.</p>
+<h3><a name="REPLACECOMMENTS"></a>ReplaceComments</h3>
+<p class="rq-meta">SUB &middot; RQProc.inc, line 5527</p>
+<pre>sub ReplaceComments (STxt$ as string)</pre>
+<p>Replaces a trailing &#x27; comment in STxt$ with spaces, ignoring apostrophes inside strings, so the line length and character positions stay the same. Modifies STxt$ in place.</p>
+</body>
+</html>

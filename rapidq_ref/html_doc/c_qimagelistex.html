@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QIMAGELISTEX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QIMAGELISTEX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QIMAGELISTEX Component</h1>
+<p class="rq-meta">Extends <a href="qimagelist.html">QIMAGELIST</a> &middot; source: <code>inc/QImageListEx.inc</code>, line 11</p>
+<p><b>A QImageList extension that fills the list from one horizontal bitmap strip, from a file or a resource, optionally stretching the images.</b></p>
+<p>ExtractFile loads a bitmap, divides its width by NumImages to get the image size (or uses FixWidth and FixHeight when they are greater than 0, stretching the strip), and adds each image to the list with AddBMPFile and the given transparent colour.</p>
+<p>Each image is copied into a temporary QBitmap, saved as __tmp.bmp in the current directory, added to the list and the file is deleted. ExtractRes first writes a $RESOURCE bitmap to __tmp.bmp and then calls ExtractFile. The strip must be laid out horizontally.</p>
+<p>QToolBarEX uses this component to build its button images.</p>
+<p>QIMAGELISTEX inherits the properties, methods and events of <a href="qimagelist.html">QIMAGELIST</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>a $RESOURCE bitmap for ExtractRes</li>
+<li>write access to the current directory for the temporary file __tmp.bmp</li>
+</ul>
+<a name="1"></a><h2>QImageListEX Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">FixWidth</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>If greater than 0, the width of each image; the strip is stretched to fit. 0 (default) uses the bitmap width divided by the number of images.</td></tr>
+<tr><td class="rq-name">FixHeight</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>If greater than 0, the height of each image; the strip is stretched to fit. 0 (default) uses the bitmap height.</td></tr>
+</table>
+<a name="2"></a><h2>QImageListEX Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">ExtractFile</td><td class="rq-type">SUB(filename AS string, NumImages AS integer, ColorMask AS integer)</td><td>ExtractFile(filename, NumImages, ColorMask) clears the list and fills it with NumImages images cut from the horizontal strip in the bitmap file, using ColorMask as the transparent colour. Does nothing if the file does not exist or NumImages &lt;= 0.</td></tr>
+<tr><td class="rq-name">ExtractRes</td><td class="rq-type">SUB(ResIndex AS integer, NumImages AS integer, ColorMask AS integer)</td><td>ExtractRes(ResIndex, NumImages, ColorMask) writes the resource RESOURCE(ResIndex) to __tmp.bmp and calls ExtractFile on it.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>A temporary file named __tmp.bmp is written to and deleted from the current directory; an existing file with that name is overwritten and deleted.</li>
+<li>LoadImageList deletes __tmp.bmp after each image and then calls KILL &quot;__tmp.bmp&quot; once more after the loop, when the file no longer exists.</li>
+<li>Only horizontal strips are supported.</li>
+</ul>
+<a name="4"></a><h2>QImageListEX Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QImageListEx.inc&quot;
+$RESOURCE Strip AS &quot;buttons.bmp&quot;
+DIM Images AS QImageListEX
+Images.ExtractRes(Strip, 6, &amp;HFF00FF)
+PRINT Images.Count</pre>
+<div class="rq-foot"><a href="c_qimageex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qini_object_qini.html">Next component</a></div>
+</body>
+</html>

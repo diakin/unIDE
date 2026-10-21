@@ -1,0 +1,295 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE>Appendix A: QImageBox</TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 1.1.0  (Win32)">
+	<META NAME="AUTHOR" CONTENT="dominique glodt">
+	<META NAME="CREATED" CONTENT="20041013;12034721">
+	<META NAME="CHANGED" CONTENT="20041013;12155273">
+</HEAD>
+<BODY LANG="fr-FR" BGCOLOR="#ffffff" DIR="LTR">
+<P STYLE="margin-bottom: 0cm">&nbsp; 
+</P>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+	<TR>
+		<TD>
+			<P><FONT FACE="Arial, Helvetica">Documentation component by
+			D.Glodt (c)2004</FONT></P>
+		</TD>
+		<TD>
+			<P ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A:
+			QImageBox</B></FONT></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=2>
+			<HR SIZE=1>
+		</TD>
+	</TR>
+</TABLE>
+<H1>QImageBox Component</H1>
+<DL>
+	<DD>QImageBox is a component used to view image file. 
+	</DD><DD>
+	This component use the dll NVIEWLIB to view the files type
+	jig,gif,jpg,pcx,tga,dib,rle ,if this dll is not 
+	</DD><DD>
+	present in system or in your application directory , only  types
+	bmp,ico,cur,ani will be 
+	</DD><DD>
+	view. 
+	</DD><DD>
+	<BR>
+	</DD><DD>
+	<A NAME="1"></A><FONT SIZE=4><B>QImageBox Properties</B></FONT></DD></DL>
+<TABLE WIDTH=100% BORDER=0 CELLPADDING=2 CELLSPACING=2>
+	<TR>
+		<TD>
+			<P STYLE="border-top: none; border-bottom: 1.10pt double #808080; border-left: none; border-right: none; padding: 0cm">
+			<FONT SIZE=3><B>Field</B></FONT></P>
+		</TD>
+		<TD>
+			<P STYLE="border-top: none; border-bottom: 1.10pt double #808080; border-left: none; border-right: none; padding: 0cm">
+			<FONT SIZE=3><B>Type </B></FONT>
+			</P>
+		</TD>
+		<TD>
+			<P STYLE="border-top: none; border-bottom: 1.10pt double #808080; border-left: none; border-right: none; padding: 0cm">
+			<FONT SIZE=3><B>R/W</B></FONT></P>
+		</TD>
+		<TD>
+			<P STYLE="border-top: none; border-bottom: 1.10pt double #808080; border-left: none; border-right: none; padding: 0cm">
+			<FONT SIZE=3><B>Default</B></FONT></P>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>Progress</P>
+		</TD>
+		<TD>
+			<P>BOOLEAN</P>
+		</TD>
+		<TD>
+			<P>R/W</P>
+		</TD>
+		<TD>
+			<P>FALSE</P>
+		</TD>
+		<TD VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD></TD>
+		<TD>
+			<P>Show progress bar for image type  from dll NVIEWLIB</P>
+		</TD>
+		<TD></TD>
+		<TD></TD>
+		<TD></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>FileName</P>
+		</TD>
+		<TD>
+			<P>STRING</P>
+		</TD>
+		<TD>
+			<P>R/W</P>
+		</TD>
+		<TD></TD>
+		<TD VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD></TD>
+		<TD>
+			<P>File name selected with full path</P>
+		</TD>
+		<TD></TD>
+		<TD></TD>
+		<TD></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>ImgWidth</P>
+		</TD>
+		<TD>
+			<P>INTEGER</P>
+		</TD>
+		<TD>
+			<P>R</P>
+		</TD>
+		<TD></TD>
+		<TD VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD></TD>
+		<TD>
+			<P>Image width</P>
+		</TD>
+		<TD></TD>
+		<TD></TD>
+		<TD></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>ImgHeight</P>
+		</TD>
+		<TD>
+			<P>INTEGER</P>
+		</TD>
+		<TD>
+			<P>R</P>
+		</TD>
+		<TD></TD>
+		<TD VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD></TD>
+		<TD>
+			<P>Image height</P>
+		</TD>
+		<TD></TD>
+		<TD></TD>
+		<TD></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD>
+			<P>Language</P>
+		</TD>
+		<TD>
+			<P>STRING</P>
+		</TD>
+		<TD>
+			<P>R/W</P>
+		</TD>
+		<TD></TD>
+		<TD></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD></TD>
+		<TD>
+			<P>Langage for dll.
+			<BR>(French,English,German,Dutch,Portuguese,Spanish,Japanese,Italian)</P>
+		</TD>
+		<TD></TD>
+		<TD></TD>
+		<TD></TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="2"></A><B><FONT SIZE=4>QImageBox
+Methods</FONT></B> 
+</P>
+<TABLE WIDTH=100% CELLPADDING=2 CELLSPACING=2>
+	<TR>
+		<TD>
+			<P><B>Method</B></P>
+		</TD>
+		<TD>
+			<P><B>Type</B></P>
+		</TD>
+		<TD>
+			<P><B>Description</B></P>
+		</TD>
+		<TD>
+			<P><B>Params</B></P>
+		</TD>
+		<TD VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="3"></A><B><FONT SIZE=4>QImageBox
+Events</FONT></B> 
+</P>
+<TABLE WIDTH=100% CELLPADDING=2 CELLSPACING=2>
+	<TR>
+		<TD>
+			<P><B>Event</B></P>
+		</TD>
+		<TD>
+			<P><B>Type</B></P>
+		</TD>
+		<TD>
+			<P><B>Occurs when...</B></P>
+		</TD>
+		<TD>
+			<P><B>Params</B></P>
+		</TD>
+		<TD VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+</TABLE>
+<P><A NAME="4"></A><B><FONT SIZE=4>QImageBox Example</FONT></B>
+<BR><B><FONT COLOR="#0000a0">$TypeCheck</FONT></B> On <BR><B><FONT COLOR="#0000a0">$Include</FONT></B>
+&quot;<FONT COLOR="#800000">rapidq.inc</FONT>&quot; <BR><B><FONT COLOR="#0000a0">$Include</FONT></B>
+&quot;<FONT COLOR="#800000">Object\QImageBox.inc</FONT>&quot; 
+</P>
+<P><B><FONT COLOR="#0000a0">declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+FileSelect 
+</P>
+<P><B><FONT COLOR="#0000a0">CREATE</FONT></B> Form <B><FONT COLOR="#0000a0">ASQFORM</FONT></B>
+<BR>&nbsp;&nbsp;&nbsp; Caption = &quot;<FONT COLOR="#800000">Image
+Viewer</FONT>&quot; <BR>&nbsp;&nbsp;&nbsp; Width=300 <BR>&nbsp;&nbsp;&nbsp;
+Height=300 <BR>&nbsp;&nbsp;&nbsp; Center <BR>&nbsp;&nbsp;&nbsp;
+<B><FONT COLOR="#0000a0">CREATE</FONT></B> image <B><FONT COLOR="#0000a0">AS</FONT><FONT COLOR="#000099">QImageBox</FONT></B>
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Language=&quot;<FONT COLOR="#800000">french</FONT>&quot;
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <B><FONT COLOR="#0000a0">color</FONT></B>=clAppWorkSpace
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Progress=true <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Align=AlClient <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=200 <BR>&nbsp;&nbsp;&nbsp;
+<B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+<BR>&nbsp;&nbsp;&nbsp; <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+btSelect <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QBUTTON</FONT></B>
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=AlBottom <BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Caption=&quot;<FONT COLOR="#800000">&amp;Select image</FONT>&quot;
+<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=FileSelect <BR>&nbsp;&nbsp;&nbsp;
+<B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+<BR><B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+<BR>Form.ShowModal 
+</P>
+<P><B><FONT COLOR="#0000a0">Sub</FONT></B> FileSelect <BR>&nbsp; <B><FONT COLOR="#0000a0">dim</FONT></B>
+OpenDlg <B><FONT COLOR="#0000a0">asQOpenDialog</FONT></B> 
+</P>
+<P>&nbsp;
+OpenDlg.filter=&quot;<FONT COLOR="#800000">Image(*.bmp;*.ico;*.ani;*.cur*.gif;*.jpg)|*.bmp;*.ico;*.ani;*.cur*.gif;*.jpg</FONT>&quot;
+<BR>&nbsp; <B><FONT COLOR="#0000a0">if</FONT></B>
+OpenDlg.execute<B>()<FONT COLOR="#0000a0">then</FONT></B>
+image.Filename=OpenDlg.Filename <BR><B><FONT COLOR="#0000a0">End</FONT></B>
+<B><FONT COLOR="#0000a0">Sub</FONT></B> 
+</P>
+</BODY>
+</HTML>

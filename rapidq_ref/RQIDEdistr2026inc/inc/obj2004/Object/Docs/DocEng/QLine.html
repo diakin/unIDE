@@ -1,0 +1,281 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QLine</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by Glodt dominique
+(c)2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QLINE</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QLINE Component</h1>
+
+<dd>
+QLine is a line for separator of toolbar.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QLine Properties</font></b>
+<table WIDTH="100%" >
+<tr BGCOLOR="#CCFFFF">
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>Default</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td><b>Align</b></td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>alNone</td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td COLSPAN="4" BGCOLOR="#FFDDDD">Align determines how the control aligns
+within its parent control.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Color</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Cursor</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>crDefault</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Enabled</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>True</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Height</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Hint</td>
+
+<td>STRING</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Left</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Parent</td>
+
+<td>QFORM/QPANEL/QTABCONTROL</td>
+
+<td>W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ShowHint</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>False</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Top</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Width</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Visible</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>True</td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QLine Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QLine Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnClick</td>
+
+<td>VOID</td>
+
+<td>User clicked on line</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnDblClick</td>
+
+<td>VOID</td>
+
+<td>User double clicked on line</td>
+
+<td>0</td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QLine Example</font></b>
+<p>$TypeCheck on
+<br>$Include "Object\QLine.inc"
+<p>CREATE Form AS QFORM
+<br>&nbsp;&nbsp;&nbsp; Caption = "Line"
+<br>&nbsp;&nbsp;&nbsp; Width = 320
+<br>&nbsp;&nbsp;&nbsp; Height = 240
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; CREATE Menu as QMainMenu
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Menu1 as QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="Fichier"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; Create Line as QLine
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left = 10
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top = 10
+<br>&nbsp;&nbsp;&nbsp; End Create
+<br>END CREATE
+<p>Form.ShowModal
+<br>&nbsp;
+</body>
+</html>

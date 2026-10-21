@@ -147,6 +147,9 @@ type
     OwnerWnd: HWND;
     ShowAccel: Boolean;
     RowTop, RowBottom: array of Integer;
+    // Левый край столбца строки: меню выше экрана - в несколько столбцов
+    RowLeft: array of Integer;
+    ColWidth: Integer;        // ширина одного столбца
     ItemHeight: Integer;
     CaptionWidth, ShortCutWidth: Integer;
     Gutter: Integer;              // левая колонка: отметка или значок
@@ -155,7 +158,7 @@ type
     procedure Paint; override;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
     procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
-    procedure Layout(var AWidth, AHeight: Integer);
+    procedure Layout(var AWidth, AHeight: Integer; AMaxHeight: Integer);
     function  RowAt(const AScreen: TPoint): Integer;
     function  Selectable(AIndex: Integer): Boolean;
     function  NextSelectable(AFrom, AStep: Integer): Integer;
@@ -248,9 +251,13 @@ begin
 end;
 
 // Размер окна и места строк
-procedure TUiMenuWindow.Layout(var AWidth, AHeight: Integer);
+// AMaxHeight > 0 - высота, в которую окно должно уложиться: строки, не
+// влезающие в столбец, переносятся в следующий (меню Windows с полным
+// списком открытых файлов выше экрана).
+procedure TUiMenuWindow.Layout(var AWidth, AHeight: Integer;
+  AMaxHeight: Integer);
 var
-  Index, Y, W: Integer;
+  Index, Y, W, ColLeft, ColCount, RowH, MaxY: Integer;
   Item: TMenuItem;
   Measure: TRect;
 begin
@@ -311,8 +318,39 @@ begin
     RowBottom[Index] := Y;
   end;
   Canvas.Font.Style := [];
-  AWidth := Gutter + CaptionWidth + 24 + ShortCutWidth + ArrowWidth + 2;
+  ColWidth := Gutter + CaptionWidth + 24 + ShortCutWidth + ArrowWidth + 2;
+  SetLength(RowLeft, Items.Count);
+  for Index := 0 to Items.Count - 1 do
+    RowLeft[Index] := 0;
+  AWidth := ColWidth;
   AHeight := Y + 2 + 2;       // + рамка
+  if (AMaxHeight <= 0) or (AHeight <= AMaxHeight) then
+    Exit;
+
+  // Выше разрешённого - столбцами: высоты строк те же, строка, которая не
+  // влезает в столбец, начинает следующий
+  ColLeft := 0;
+  ColCount := 1;
+  MaxY := 0;
+  Y := 2;
+  for Index := 0 to Items.Count - 1 do
+  begin
+    RowH := RowBottom[Index] - RowTop[Index];
+    if (RowH > 0) and (Y + RowH + 2 + 2 > AMaxHeight) and (Y > 2) then
+    begin
+      Inc(ColLeft, ColWidth);
+      Inc(ColCount);
+      Y := 2;
+    end;
+    RowTop[Index] := Y;
+    RowLeft[Index] := ColLeft;
+    Inc(Y, RowH);
+    RowBottom[Index] := Y;
+    if Y > MaxY then
+      MaxY := Y;
+  end;
+  AWidth := ColWidth * ColCount;
+  AHeight := MaxY + 2 + 2;
 end;
 
 function TUiMenuWindow.Selectable(AIndex: Integer): Boolean;
@@ -356,7 +394,9 @@ begin
   if (Local.X < 0) or (Local.X >= ClientWidth) then
     Exit;
   for Index := 0 to Items.Count - 1 do
-    if (Local.Y >= RowTop[Index]) and (Local.Y < RowBottom[Index]) then
+    if (Local.Y >= RowTop[Index]) and (Local.Y < RowBottom[Index]) and
+       (Local.X >= RowLeft[Index]) and
+       (Local.X < RowLeft[Index] + ColWidth) then
     begin
       if Selectable(Index) then
         Result := Index;
@@ -385,7 +425,8 @@ begin
     Item := Items[Index];
     if not Item.Visible or (RowBottom[Index] <= RowTop[Index]) then
       Continue;
-    Row := Rect(2, RowTop[Index], ClientWidth - 2, RowBottom[Index]);
+    Row := Rect(RowLeft[Index] + 2, RowTop[Index],
+                RowLeft[Index] + ColWidth - 2, RowBottom[Index]);
     if IsSeparator(Item) then
     begin
       Canvas.Pen.Color := UiThemeColor('Menu.Border');
@@ -507,6 +548,11 @@ type
     ShowAccel: Boolean;
     Chosen: TMenuItem;
     Done: Boolean;
+    // Точка мыши при открытии. Отпускание выбирает пункт, только если
+    // после открытия мышь сдвинулась или кнопку нажали над меню: иначе
+    // отпускание кнопки, открывшей меню, выбрало бы пункт под мышью.
+    StartPt: TPoint;
+    Armed: Boolean;
     constructor Create;
     destructor Destroy; override;
     function  Deepest: TUiMenuWindow;
@@ -552,7 +598,7 @@ procedure TUiMenuTracker.OpenLevel(AItems: TMenuItem; X, Y: Integer;
   AFromRight: Integer; ASelectFirst: Boolean);
 var
   Win: TUiMenuWindow;
-  W, H, DefIdx: Integer;
+  W, H, DefIdx, MaxH: Integer;
   Work: TRect;
 begin
   // Меню, которые строятся на лету, заполняются в OnClick пункта с
@@ -569,9 +615,16 @@ begin
   Win.Selected := -1;
   Win.Font := Screen.MenuFont;
   Win.HandleNeeded;
-  Win.Layout(W, H);
-
   Work := Screen.WorkAreaRect;
+  // Высота - не больше места под точкой открытия: иначе окно сдвигалось
+  // вверх и накрывало строку меню вместе с мышью, и отпускание кнопки,
+  // открывшей меню, выбирало пункт под ней. Места меньше половины экрана -
+  // весь экран.
+  MaxH := Work.Bottom - Y;
+  if MaxH < (Work.Bottom - Work.Top) div 2 then
+    MaxH := Work.Bottom - Work.Top;
+  Win.Layout(W, H, MaxH);
+
   if X + W > Work.Right then
   begin
     if AFromRight >= 0 then
@@ -629,8 +682,10 @@ begin
   if not Item.Enabled or (Item.Count = 0) then
     Exit;
   CloseAfter(ALevel);
-  Origin := Win.ClientToScreen(Point(Win.ClientWidth, Win.RowTop[Win.Selected]));
-  OpenLevel(Item, Origin.X, Origin.Y - 3, Win.Left, ASelectFirst);
+  Origin := Win.ClientToScreen(Point(Win.RowLeft[Win.Selected] + Win.ColWidth,
+                                     Win.RowTop[Win.Selected]));
+  OpenLevel(Item, Origin.X, Origin.Y - 3,
+            Win.Left + Win.RowLeft[Win.Selected], ASelectFirst);
 end;
 
 // Меню другого пункта строки меню
@@ -701,6 +756,9 @@ var
   Win: TUiMenuWindow;
   Local: TPoint;
 begin
+  if not Armed and ((Abs(AScreen.X - StartPt.X) > 3) or
+                    (Abs(AScreen.Y - StartPt.Y) > 3)) then
+    Armed := True;
   Level := LevelAt(AScreen);
   if Level >= 0 then
   begin
@@ -731,7 +789,10 @@ var
   BarItem: Integer;
 begin
   if LevelAt(AScreen) >= 0 then
+  begin
+    Armed := True;
     Exit;                     // выбор - по отпусканию
+  end;
   if Bar <> nil then
   begin
     Local := Bar.ScreenToClient(AScreen);
@@ -755,6 +816,8 @@ var
   Level, Row: Integer;
   Win: TUiMenuWindow;
 begin
+  if not Armed then
+    Exit;
   Level := LevelAt(AScreen);
   if Level < 0 then
     Exit;
@@ -864,6 +927,7 @@ begin
     Tracker.Bar := ABar;
     Tracker.BarIndex := ABarIndex;
     Tracker.ShowAccel := AByKeyboard;
+    GetCursorPos(Tracker.StartPt);
     Tracker.OwnerWnd := GetActiveWindow;
     if Tracker.OwnerWnd = 0 then
       Tracker.OwnerWnd := Application.Handle;

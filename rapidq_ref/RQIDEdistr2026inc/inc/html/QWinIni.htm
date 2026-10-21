@@ -1,0 +1,123 @@
+<html>
+<head>
+<title>QWinIni.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'Usage:</i></font> 
+<font color="007700"><i>'       first call to Ini.load([Path/FileName.ini]) Function. Parameter optional</i></font> 
+<font color="007700"><i>'       to get Values call to ini.Get(Section, Key, default-value) Fuction</i></font> 
+<font color="007700"><i>'       to write Values call to Ini.Write(Section, Key,Value) Function</i></font> 
+
+<font color="007700"><i>'$TypeCheck on</i></font> 
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetPrivateProfileString <font color="0000AA"><b>Lib</b></font> "<font color="990000">Kernel32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetPrivateProfileStringA</font>" _ 
+<b>(</b>lpApplicationName <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, lpKeyName <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, _ 
+lpDefault <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, lpReturnedString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>long</b></font>, nSize <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lpFileName <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font> 
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> WritePrivateProfileString <font color="0000AA"><b>Lib</b></font> "<font color="990000">Kernel32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">WritePrivateProfileStringA</font>" _ 
+<b>(</b>ByVal lpApplicationName$, ByVal lpKeyName <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, lpString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, ByVal lpFileName$<b>)</b> <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font> 
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetPrivateProfileSection <font color="0000AA"><b>Lib</b></font> "<font color="990000">kernel32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetPrivateProfileSectionA</font>" _
+<b>(</b>lpAppName <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, lpReturnedString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, nSize <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lpFileName <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>TYPE</b></font> QINI <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QObject</b></font>
+
+    File <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+    Section <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+    Key <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+    Value <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+
+    <font color="007700"><i>'Find for application.ini Retorn 1 if success </i></font> 
+    <font color="007700"><i>'Opcional parameter path of ini file</i></font> 
+    <font color="007700"><i>'Ini.File content the ini file </i></font> 
+
+    <font color="0000AA"><b>Functioni</b></font> Load <b>(</b>...<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+        Result  = 0
+        <font color="0000AA"><b>With</b></font> QINI
+           <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>ParamStr$</b></font><b>(</b>1<b>)</b>  =  "<font color="990000"></font>"  <font color="000099"><b>then</b></font>
+              .File = <font color="0000AA"><b>REPLACESUBSTR$</b></font><b>(</b><font color="0000AA"><b>Command$</b></font><b>(</b>0<b>)</b>, "<font color="990000">.EXE</font>", "<font color="990000">.INI</font>"<b>)</b>
+           <font color="000099"><b>else</b></font>
+             .File = <font color="0000AA"><b>ParamStr$</b></font><b>(</b>1<b>)</b>
+           <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+           <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>FileExists</b></font><b>(</b>.File<b>)</b> <font color="000099"><b>then</b></font>
+              Result = 1 
+           <font color="0000AA"><b>end</b></font> <font color="000099"><b>IF</b></font>
+       <font color="0000AA"><b>end</b></font> <font color="000099"><b>With</b></font>
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+   <font color="007700"><i>'Function to GET information from an INI File</i></font> 
+   <font color="007700"><i>'Parameter Seccion, Key and default value </i></font> 
+   <font color="007700"><i>'Return the value of key</i></font> 
+   <font color="007700"><i>'Fill Ini.Secttion, ini.key and ini.value</i></font> 
+
+    <font color="0000AA"><b>Function</b></font> Get<b>(</b>sSection <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, sKey <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, sDefault <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+      <font color="0000AA"><b>Dim</b></font> LpBuffer <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, iLenght <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>, a <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+      lpBuffer = <font color="0000AA"><b>Space$</b></font><b>(</b>260<b>)</b>
+      <font color="0000AA"><b>With</b></font> QINI
+         <font color="0000AA"><b>if</b></font> .File = "<font color="990000"></font>" <font color="0000AA"><b>then</b></font> result = "<font color="990000"></font>": <font color="0000AA"><b>exit</b></font> <font color="000099"><b>Function</b></font>
+         iLenght = GetPrivateProfileString<b>(</b>sSection, sKey, sDefault, <font color="0000AA"><b>varPTR</b></font><b>(</b>lpBuffer<b>)</b>, 250, .File<b>)</b>
+         <font color="0000AA"><b>if</b></font> Ilenght <font color="000099"><b>then</b></font>
+            .Section = sSection
+            .Key = sKey
+            .Value = <font color="0000AA"><b>Left$</b></font><b>(</b>lpBuffer, ilenght<b>)</b>
+            a = <font color="0000AA"><b>instr</b></font><b>(</b>.Value,"<font color="990000">;</font>"<b>)</b>
+            <font color="0000AA"><b>if</b></font> a <font color="0000AA"><b>then</b></font> .Value = <font color="0000AA"><b>ltrim$</b></font><b>(</b><font color="0000AA"><b>rtrim$</b></font><b>(</b><font color="0000AA"><b>left$</b></font><b>(</b>.Value,a-1<b>)</b><b>)</b><b>)</b>
+            Result = .Value
+          <font color="000099"><b>Else</b></font>
+            .Value = sDefault
+            Result = .Value
+         <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>With</b></font>
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+    
+    <font color="007700"><i>'Sub  to WRITE information to an INI File</i></font> 
+    <font color="007700"><i>'Parameters Seccion,Key and value</i></font> 
+    <font color="007700"><i>'Fill Ini.Section, ini.Key and ini.Value</i></font> 
+    <font color="007700"><i>'Return no zero if sucess</i></font> 
+ 
+    <font color="0000AA"><b>Function</b></font> Write<b>(</b>sSection <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, sKey <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, sValue <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+      <font color="0000AA"><b>Dim</b></font> a <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+      <font color="0000AA"><b>With</b></font> QINI
+         <font color="0000AA"><b>if</b></font> .File = "<font color="990000"></font>" <font color="0000AA"><b>then</b></font> result = 0: <font color="0000AA"><b>exit</b></font> <font color="000099"><b>Function</b></font>
+         a = WritePrivateProfileString <b>(</b>sSection, sKey, sValue, .File<b>)</b>
+         <font color="0000AA"><b>if</b></font> a &lt;> 0 <font color="000099"><b>then</b></font>
+            .Section = sSection
+            .Key = sKey
+            .Value = sValue
+         <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+         Result = a
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>With</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>Function</b></font>
+
+    <font color="0000AA"><b>Function</b></font> GetSection <b>(</b>sSection <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+      <font color="0000AA"><b>Dim</b></font> LpBuffer <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, iLenght <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, a <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+      lpBuffer = <font color="0000AA"><b>Space$</b></font><b>(</b>1000<b>)</b>
+      <font color="0000AA"><b>With</b></font> QIni
+        iLenght = GetPrivateProfileSection <b>(</b>sSection, <font color="0000AA"><b>varPTR</b></font><b>(</b>lpBuffer<b>)</b>, 1000, .File<b>)</b>
+        <font color="007700"><i>'showmessage str$(iLenght)</i></font> 
+        <font color="0000AA"><b>if</b></font> Ilenght <font color="000099"><b>then</b></font>
+            .Section = sSection
+            .Key = "<font color="990000"></font>"
+            .Value = <font color="0000AA"><b>Left$</b></font><b>(</b>lpBuffer, ilenght<b>)</b>
+            Result = .Value
+         <font color="000099"><b>Else</b></font>
+            .Value = "<font color="990000"></font>"
+            Result = .Value
+         <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>End</b></font> <font color="000099"><b>With</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="000099"><b>CONSTRUCTOR</b></font>
+    File = "<font color="990000"></font>"
+    Section = "<font color="990000"></font>"
+    Key = "<font color="990000"></font>"
+    Value = "<font color="990000"></font>"
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>TYPE</b></font>
+<font color="0000AA"><b>Dim</b></font> Ini <font color="0000AA"><b>as</b></font> QIni
+ 
+</pre>
+</body>
+</html>

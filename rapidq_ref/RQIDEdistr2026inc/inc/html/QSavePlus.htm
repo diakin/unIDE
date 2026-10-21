@@ -1,0 +1,291 @@
+<html>
+<head>
+<title>QSavePlus.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>' ======================================= '</i></font> 
+<font color="007700"><i>'		About QSavePlus</i></font> 
+<font color="007700"><i>' ======================================= '</i></font> 
+	<font color="007700"><i>'-- QSavePlus is extends from QSaveDialog ,</i></font> 
+	<font color="007700"><i>'-- 1) If don't found any extension or found unusual extension in FileName,</i></font> 
+	<font color="007700"><i>'-- will show Add Extension Confirm Dialog.</i></font> 
+	<font color="007700"><i>'-- 2) Plus directory and FileName Checking.</i></font> 
+	<font color="007700"><i>'-- 3) show Confirm Dialog before save exist file.</i></font> 
+	<font color="007700"><i>'-- This code only test on Win98.</i></font> 
+
+<font color="007700"><i>' Author : Suchart Chokphichitchai</i></font> 
+<font color="007700"><i>' E-mail  : dragon_html@yahoo.com</i></font> 
+<font color="007700"><i>' My skillfull about English Language is very weak.</i></font> 
+<font color="007700"><i>' If you don't understand the description,</i></font> 
+<font color="007700"><i>' or you found bug of this code.</i></font> 
+<font color="007700"><i>' Please contact me to modify it.</i></font> 
+
+<font color="0000AA"><b>$TYPECHECK</b></font> ON
+<font color="0000AA"><b>$ESCAPECHARS</b></font> ON
+
+<font color="007700"><i>' ======================================= '</i></font> 
+<font color="007700"><i>'		CONST</i></font> 
+<font color="007700"><i>' ======================================= '</i></font> 
+<font color="0000AA"><b>CONST</b></font> dot = "<font color="990000">.</font>"		:<font color="0000AA"><b>CONST</b></font> Quo$ = <font color="0000AA"><b>chr$</b></font><b>(</b>39<b>)</b>
+
+<font color="0000AA"><b>CONST</b></font> false = 0		:<font color="0000AA"><b>CONST</b></font> true = 1
+
+<font color="0000AA"><b>CONST</b></font> mtWarning = 0	:<font color="0000AA"><b>CONST</b></font> mtConfirmation = 3
+
+<font color="0000AA"><b>CONST</b></font> mbYes = 1		:<font color="0000AA"><b>CONST</b></font> mbNo = 2
+<font color="0000AA"><b>CONST</b></font> mbOK = 4		:<font color="0000AA"><b>CONST</b></font> mbCancel = 8
+
+<font color="0000AA"><b>CONST</b></font> mrYes = 6		:<font color="0000AA"><b>CONST</b></font> mrNo = 7
+<font color="0000AA"><b>CONST</b></font> mrCancel = 2	:<font color="0000AA"><b>CONST</b></font> mrOK = 1
+
+<font color="0000AA"><b>Function</b></font> delMark$<b>(</b> s <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> <b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+	s=<font color="0000AA"><b>replaceSubstr$</b></font><b>(</b>s,"<font color="990000"> </font>","<font color="990000"></font>"<b>)</b>
+	s=<font color="0000AA"><b>replaceSubstr$</b></font><b>(</b>s,"<font color="990000">\t</font>","<font color="990000"></font>"<b>)</b>
+	delMark$=<font color="0000AA"><b>replaceSubstr$</b></font><b>(</b>s,"<font color="990000">*.</font>","<font color="990000"></font>"<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>' ======================================= '</i></font> 
+<font color="007700"><i>'		OBJECT Extends</i></font> 
+<font color="007700"><i>' ======================================= '</i></font> 
+
+<font color="0000AA"><b>TYPE</b></font> QSaveplus <font color="0000AA"><b>Extends</b></font> <font color="000099"><b>QSaveDialog</b></font>
+	Private:
+		saveDialogRet <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+		goOut <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+
+		<font color="0000AA"><b>Function</b></font> item<b>(</b> i <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> <b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+		<font color="007700"><i>' Result example '</i></font> 
+		<font color="007700"><i>'-- item(1)="*.*"</i></font> 
+		<font color="007700"><i>'-- item(2)="*.js"</i></font> 
+		<font color="007700"><i>'-- item(3)="*.php3;*.php"</i></font> 
+			Result = <font color="0000AA"><b>Field$</b></font><b>(</b> QSaveplus.Filter, "<font color="990000">|</font>", i*2 <b>)</b>
+		<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+		<font color="0000AA"><b>Function</b></font> itemCount <font color="0000AA"><b>As</b></font> <font color="000099"><b>Integer</b></font>
+		<font color="007700"><i>' Result example ' ( value of number of all item )</i></font> 
+		<font color="007700"><i>'-- itemCount = 7</i></font> 
+			Result = <font color="0000AA"><b>Tally</b></font><b>(</b>QSaveplus.Filter,"<font color="990000">|</font>"<b>)</b>\2
+		<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+			<font color="0000AA"><b>Function</b></font> extCount<b>(</b> i <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> <b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Integer</b></font>
+			<font color="007700"><i>' Result example ' ( value of number of extension in one item)</i></font> 
+			<font color="007700"><i>'-- extCount(1) = 1 [ *.* ]</i></font> 
+			<font color="007700"><i>'-- extCount(2) = 1 [ *.js ]</i></font> 
+			<font color="007700"><i>'-- extCount(3) = 2 [ *.php3;*.php ]</i></font> 
+				Result = <font color="0000AA"><b>Tally</b></font><b>(</b> QSaveplus.item<b>(</b> i <b>)</b>, "<font color="990000">*.</font>" <b>)</b>
+			<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+			<font color="0000AA"><b>Function</b></font> ext<b>(</b> t <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Integer</b></font>, i <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> <b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+			<font color="0000AA"><b>dim</b></font> e <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+			<font color="007700"><i>' Result example '</i></font> 
+			<font color="007700"><i>'-- ext(3,1) = "php3"</i></font> 
+			<font color="007700"><i>'-- ext(3,2) = "php"</i></font> 
+				e = <font color="0000AA"><b>Field$</b></font><b>(</b> QSaveplus.item<b>(</b> t <b>)</b>, "<font color="990000">;</font>", i <b>)</b>
+				Result = delMark$<b>(</b> e <b>)</b>
+			<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+				<font color="0000AA"><b>Function</b></font> Exten$ <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+				<font color="007700"><i>' Result example '</i></font> 
+				<font color="007700"><i>'-- if FilterIndex = 4</i></font> 
+				<font color="007700"><i>'--   Exten$ = "pl"</i></font> 
+				<font color="007700"><i>'-- if FilterIndex = 2</i></font> 
+				<font color="007700"><i>'--   Exten$ = "js"</i></font> 
+					Result = QSaveplus.ext<b>(</b> QSaveplus.FilterIndex, 1 <b>)</b>
+				<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+				<font color="0000AA"><b>Function</b></font> DirExist <font color="0000AA"><b>As</b></font> <font color="000099"><b>Integer</b></font>
+				<font color="0000AA"><b>dim</b></font> fileDir$ <font color="0000AA"><b>AS</b></font> <font color="000099"><b>string</b></font>
+				<font color="0000AA"><b>dim</b></font> BslPos <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+				<font color="007700"><i>' Result example '</i></font> 
+				<font color="007700"><i>'-- if dir of FileName is exist.</i></font> 
+				<font color="007700"><i>'-- DirExist=1</i></font> 
+				<font color="007700"><i>'-- if dir of FileName is not exist.</i></font> 
+				<font color="007700"><i>'-- DirExist=0</i></font> 
+					BslPos = RINSTR<b>(</b>QSaveplus.Filename,"<font color="990000">\\</font>"<b>)</b>
+					fileDir$ = <font color="0000AA"><b>Delete$</b></font><b>(</b>QSaveplus.Filename, BslPos+1, <font color="0000AA"><b>len</b></font><b>(</b>QSaveplus.Filename<b>)</b>-BslPos<b>)</b>
+						<font color="007700"><i>'ShowMessage "DirName="+fileDir$</i></font> 
+					Result = <font color="0000AA"><b>DirExists</b></font><b>(</b>fileDir$<b>)</b>
+				<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+					<font color="0000AA"><b>Function</b></font> NoExten <font color="0000AA"><b>As</b></font> <font color="000099"><b>INTEGER</b></font>
+					<font color="0000AA"><b>dim</b></font> FileLC$ <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+					<font color="0000AA"><b>dim</b></font> EachExt$ <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+					<font color="0000AA"><b>dim</b></font> FoundExt <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+					<font color="0000AA"><b>dim</b></font> cou <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+					<font color="007700"><i>' Result example '</i></font> 
+					<font color="007700"><i>'-- if FilterIndex = 2</i></font> 
+					<font color="007700"><i>'--   if not found extension (Ex. c:\abc )</i></font> 
+					<font color="007700"><i>'--   or if found unusual extension. (Ex. c:\abc.ss)</i></font> 
+					<font color="007700"><i>'--     NoExten=1</i></font> 
+					<font color="007700"><i>'--   but if found usual extension. (Ex c:\abc.js)</i></font> 
+					<font color="007700"><i>'--     NoExten=0</i></font> 
+						FoundExt=False
+						FileLC$ = <font color="0000AA"><b>LCASE$</b></font><b>(</b>QSaveplus.FileName<b>)</b>
+							<font color="0000AA"><b>FOR</b></font> cou = 1 <font color="0000AA"><b>TO</b></font> QSaveplus.ExtCount<b>(</b> QSaveplus.FilterIndex <b>)</b> <font color="007700"><i>'-- EXTCOUNT</i></font> 
+								EachExt$ = dot+<font color="0000AA"><b>LCASE$</b></font><b>(</b> QSaveplus.Ext<b>(</b> QSaveplus.FilterIndex, cou <b>)</b> <b>)</b> <font color="007700"><i>'-- EXT</i></font> 
+									<font color="007700"><i>'  ShowMessage "right str= "+Right$(FileLC$,LEN(EachExt$))+_</i></font> 
+									<font color="007700"><i>'  "\r\extension"+str$(cou)+"= "+EachExt$</i></font> 
+								<font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>Right$</b></font><b>(</b>FileLC$,<font color="0000AA"><b>LEN</b></font><b>(</b>EachExt$<b>)</b><b>)</b> = EachExt$ <font color="000099"><b>THEN</b></font>
+									FoundExt = True
+									<font color="0000AA"><b>exit</b></font> <font color="000099"><b>for</b></font>
+								<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+							<font color="000099"><b>NEXT</b></font>
+						<font color="0000AA"><b>IF</b></font> FoundExt = False <font color="000099"><b>THEN</b></font>
+							Result = True
+						<font color="000099"><b>ELSE</b></font>
+							Result = False
+						<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+					<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+					<font color="0000AA"><b>Function</b></font> PlusExt <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+					<font color="007700"><i>' Result example '</i></font> 
+					<font color="007700"><i>'-- if FilterIndex=2</i></font> 
+					<font color="007700"><i>'--   if FileName="c:\abc."</i></font> 
+					<font color="007700"><i>'--     add only "js"</i></font> 
+					<font color="007700"><i>'--   if FileName="c:\abc"</i></font> 
+					<font color="007700"><i>'--     add ".js"</i></font> 
+						<font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>right$</b></font><b>(</b>QSaveplus.Filename,1<b>)</b> = dot <font color="000099"><b>THEN</b></font>
+							Result = QSaveplus.Filename+QSavePlus.Exten$
+						<font color="000099"><b>ELSE</b></font>
+							Result = QSaveplus.Filename+dot+QSavePlus.Exten$
+						<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+					<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+				<font color="0000AA"><b>Function</b></font> Validname <font color="0000AA"><b>As</b></font> <font color="000099"><b>INTEGER</b></font>
+				<font color="007700"><i>' Result example '</i></font> 
+				<font color="007700"><i>'-- if found ">" in FileName</i></font> 
+				<font color="007700"><i>'--  Validname=0</i></font> 
+					<font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>QSaveplus.Filename,"<font color="990000">></font>"<b>)</b> &lt;> 0 <font color="000099"><b>THEN</b></font>
+						Result = False
+					<font color="000099"><b>ELSE</b></font>
+						Result = True
+					<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+				<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+				<font color="0000AA"><b>Sub</b></font> goOutTrue
+				<font color="007700"><i>'-- go out the loop. by set goOut=1</i></font> 
+					QSavePlus.goOut = True
+				<font color="0000AA"><b>END</b></font> <font color="000099"><b>Sub</b></font>
+			<font color="0000AA"><b>Sub</b></font> FileExistDlg
+			<font color="007700"><i>'-- if FileName is exist, show Confirm Dialog.</i></font> 
+				<font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>fileExists</b></font><b>(</b>QSaveplus.Filename<b>)</b> <font color="000099"><b>THEN</b></font>
+				<font color="007700"><i>'-- FileName is exist.</i></font> 
+					<font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>MESSAGEDLG</b></font><b>(</b>Quo$+QSaveplus.FileName+Quo$+_
+					"<font color="990000"> already exists.\r\nDo you want to replace it?</font>",_
+					mtConfirmation, mbYes <font color="0000AA"><b>OR</b></font> mbNo, 0<b>)</b> = mrYes <font color="000099"><b>THEN</b></font>
+					<font color="007700"><i>'-- if select Yes</i></font> 
+						QSavePlus.goOutTrue
+					<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+				<font color="000099"><b>ELSE</b></font>
+				<font color="007700"><i>'-- FileName is not exist.</i></font> 
+					QSavePlus.goOutTrue
+				<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>IF</b></font> <font color="007700"><i>'-- if not cancel</i></font> 
+			<font color="0000AA"><b>END</b></font> <font color="000099"><b>Sub</b></font>
+	Public:
+	<font color="0000AA"><b>Function</b></font> Execute2 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>Integer</b></font>
+	<font color="0000AA"><b>dim</b></font> mrValue <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+		QSavePlus.goOut = False
+		<font color="000099"><b>Do</b></font>
+			<font color="007700"><i>'-- Execute and keep value in saveDialogRet.</i></font> 
+			QSavePlus.saveDialogRet = QSaveplus.Execute
+
+			<font color="0000AA"><b>IF</b></font> QSavePlus.saveDialogRet = False <font color="0000AA"><b>THEN</b></font> <font color="007700"><i>'-- Click Cancel button.</i></font> 
+				QSavePlus.goOutTrue
+			<font color="0000AA"><b>ELSE</b></font> <font color="007700"><i>'-- Click Save button.</i></font> 
+				<font color="0000AA"><b>IF</b></font> QSavePlus.Validname = True <font color="0000AA"><b>THEN</b></font> <font color="007700"><i>'-- FileName is valid.</i></font> 
+					<font color="0000AA"><b>IF</b></font> QSavePlus.dirExist = False <font color="0000AA"><b>THEN</b></font> <font color="007700"><i>' === Directory of FileName is not exist. === '</i></font> 
+						<font color="0000AA"><b>MESSAGEDLG</b></font><b>(</b>QSaveplus.Filename+_
+						"<font color="990000">\r\nPath does not exist.</font>"+_
+						"<font color="990000">\r\nPlease verify the correct path was given.</font>",_
+						mtWarning, mbOK, 0<b>)</b>
+						QSaveplus.Filename=<font color="0000AA"><b>CurDir$</b></font>+"<font color="990000">\\*.</font>"+QSavePlus.Exten$
+					<font color="0000AA"><b>ELSEIF</b></font> QSavePlus.NoExten = True <font color="0000AA"><b>THEN</b></font> <font color="007700"><i>' === No extension or False extension. === '</i></font> 
+						<font color="0000AA"><b>IF</b></font> QSaveplus.FilterIndex = 1 <font color="0000AA"><b>THEN</b></font> <font color="007700"><i>'-- FilterIndex is "All Files"</i></font> 
+							QSavePlus.FileExistDlg
+						<font color="0000AA"><b>ELSE</b></font> <font color="007700"><i>'-- FilterIndex is not "All Files", Select add extension or not.</i></font> 
+							mrValue=<font color="0000AA"><b>MESSAGEDLG</b></font><b>(</b>QSaveplus.FileName+_
+							"<font color="990000">\r\nThere is no file extension in the file name.</font>"+_
+							"<font color="990000">\r\nDo you want to add '</font>"+QSavePlus.Exten$+"<font color="990000">' extension automatically?</font>",_
+							mtConfirmation, mbYes <font color="0000AA"><b>OR</b></font> mbNo <font color="0000AA"><b>OR</b></font> mbCancel, 0<b>)</b>
+							<font color="0000AA"><b>IF</b></font> <b>(</b>mrValue = mrYes<b>)</b> <font color="0000AA"><b>OR</b></font> <b>(</b>mrValue = mrNo<b>)</b> <font color="000099"><b>THEN</b></font>
+								<font color="0000AA"><b>IF</b></font> mrValue = mrYes <font color="000099"><b>THEN</b></font>
+									QSaveplus.Filename = QSavePlus.PlusExt
+								<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+								QSavePlus.FileExistDlg
+							<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+						<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+					<font color="0000AA"><b>ELSE</b></font> <font color="007700"><i>' === Found usual extension of Filter. === '</i></font> 
+						QSavePlus.FileExistDlg
+					<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+				<font color="0000AA"><b>ELSE</b></font> <font color="007700"><i>'-- FileName is invalid.</i></font> 
+					<font color="0000AA"><b>MESSAGEDLG</b></font><b>(</b>QSaveplus.Filename+_
+					"<font color="990000">\r\nThe above file name is invalid.</font>",_
+					mtWarning, mbOK, 0<b>)</b>
+				<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+			<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>IF</b></font> <font color="007700"><i>'-- saveDialogRet</i></font> 
+		<font color="0000AA"><b>Loop</b></font> <font color="0000AA"><b>Until</b></font> QSavePlus.goOut = True
+		Result = QSavePlus.saveDialogRet
+	<font color="0000AA"><b>END</b></font> <font color="000099"><b>Function</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+<font color="007700"><i>' - - - - - - - - - - - - - - - - - - - - End QSavePlus - - - - - - - - - - - - - - - - - - - - '</i></font> 
+
+
+<font color="007700"><i>' ======================================= '</i></font> 
+<font color="007700"><i>'		EXAMPLE</i></font> 
+<font color="007700"><i>' ======================================= '</i></font> 
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> formClick
+<font color="0000AA"><b>CREATE</b></font> form <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QFORM</b></font>
+	<font color="0000AA"><b>CREATE</b></font> R <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRichEdit</b></font>
+	Text="<font color="990000">abc\r\n123</font>"
+	<font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+	Center
+	OnClick = formClick
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+	<font color="0000AA"><b>CREATE</b></font> saveDlg <font color="0000AA"><b>AS</b></font> QSaveplus
+	Filter =	_
+		"<font color="990000">All Files (*.*)</font>"					+	"<font color="990000">|*.*|</font>"+_
+		"<font color="990000">JavaScript (*.js)</font>"				+	"<font color="990000">|*.js|</font>"+_
+		"<font color="990000">PHP (*.php3,*.php)</font>"			+	"<font color="990000">|*.php3;*.php|</font>"+_
+		"<font color="990000">Perl (*.pl,*.pm,*.cgi)</font>"			+	"<font color="990000">|*.pl;*.pm;*.cgi|</font>"+_
+		"<font color="990000">Rapid-Q BASIC (*.rq,*.bas)</font>"	+	"<font color="990000">|*.rq;*.bas|</font>"+_
+		"<font color="990000">Html (*.html,*.htm)</font>"				+	"<font color="990000">|*.html;*.htm|</font>"+_
+		"<font color="990000">Text (*.txt)</font>"						+	"<font color="990000">|*.txt|</font>"
+		<font color="007700"><i>'-- it can change to other extension.</i></font> 
+
+<font color="007700"><i>'  Compatible Filter. '</i></font> 
+<font color="007700"><i>' 1)  [ Filter 1 ]  must be only [ All Files |*.*| ]</i></font> 
+<font color="007700"><i>' Ex:</i></font> 
+<font color="007700"><i>'		" Javascript |*.js|" ...Not OK</i></font> 
+<font color="007700"><i>'		" All Files |*.*|"  ...OK</i></font> 
+<font color="007700"><i>'		" All Files |*.*| Javascript |*.js|"  ...OK</i></font> 
+<font color="007700"><i>' 2) It must not have blank-ascii or tab-ascii at end of extension.</i></font> 
+<font color="007700"><i>' Ex:</i></font> 
+<font color="007700"><i>'		" All Files |*.* |	" ...Not OK</i></font> 
+<font color="007700"><i>'		" All Files |*.*	|	" ...Not OK</i></font> 
+<font color="007700"><i>'		" All Files |	 *.*|"  ...OK</i></font> 
+<font color="007700"><i>'		" All Files |*.*|"  ...OK</i></font> 
+<font color="007700"><i>'		" All Files |*.*| PHP |*.php3;*.php   |"  ...Not OK</i></font> 
+<font color="007700"><i>'		" All Files |*.*| PHP |*.php3   ;*.php|"  ...Not OK</i></font> 
+<font color="007700"><i>'		" All Files |*.*| PHP |   *.php3;   *.php|"  ...OK</i></font> 
+<font color="007700"><i>' 3) Positions of |-ascii only must be last of each text.</i></font> 
+<font color="007700"><i>' Ex:</i></font> 
+<font color="007700"><i>'		" All Files |*.*"  ...Not OK ( Don't have |-ascii at end of *.* )</i></font> 
+<font color="007700"><i>'		"| All Files |*.*|"  ...Not OK ( Have |-ascii at begin of " All Files" )</i></font> 
+<font color="007700"><i>'		"| All Files |*.*"  ...Not OK ( Don't have |-ascii at end of *.* , and Have |-ascii at begin of " All Files" )</i></font> 
+<font color="007700"><i>'		" All Files |*.*|"  ...OK</i></font> 
+<font color="007700"><i>'		" All Files |*.*| JavaScript |*.js"  ...Not OK ( Don't have |-ascii at end of *.js )</i></font> 
+<font color="007700"><i>'		"| All Files |*.*| JavaScript |*.js|"  ...Not OK ( Have |-ascii at begin of " All Files" )</i></font> 
+<font color="007700"><i>'		"| All Files |*.*| JavaScript |*.js"  ...Not OK ( Don't have |-ascii at end of *.js , and Have |-ascii at begin of " All Files" )</i></font> 
+<font color="007700"><i>'		" All Files |*.*| JavaScript |*.js|"  ...OK</i></font> 
+	<font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+
+<font color="0000AA"><b>SUB</b></font> formClick
+	<font color="0000AA"><b>IF</b></font> saveDlg.Execute2 = 1 <font color="000099"><b>THEN</b></font>
+		<font color="0000AA"><b>ShowMessage</b></font> "<font color="990000">Save File.. </font>"+saveDlg.FileName
+		<font color="007700"><i>'-- when you sure that all code is not dangerous.</i></font> 
+		<font color="007700"><i>'-- and you want to save file really, delete ' of below line</i></font> 
+		<font color="007700"><i>' r.savetofile( saveDlg.FileName )</i></font> 
+	<font color="000099"><b>ELSE</b></font>
+		<font color="0000AA"><b>ShowMessage</b></font> "<font color="990000">No Save</font>"
+	<font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+	form.ShowModal 
+</pre>
+</body>
+</html>

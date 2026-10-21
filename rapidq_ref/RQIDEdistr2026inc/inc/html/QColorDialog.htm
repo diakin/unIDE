@@ -1,0 +1,99 @@
+<html>
+<head>
+<title>QColorDialog.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QColorDialog</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>CONST</b></font> CC_RGBINIT = &H1
+<font color="0000AA"><b>CONST</b></font> CC_FULLOPEN = &H2
+<font color="0000AA"><b>CONST</b></font> CC_PREVENTFULLOPEN = &H4
+<font color="0000AA"><b>CONST</b></font> CC_SHOWHELP = &H8
+<font color="0000AA"><b>CONST</b></font> CC_ENABLEHOOK = &H10
+<font color="0000AA"><b>CONST</b></font> CC_ENABLETEMPLATE = &H20
+<font color="0000AA"><b>CONST</b></font> CC_ENABLETEMPLATEHANDLE = &H40
+<font color="0000AA"><b>CONST</b></font> CC_SOLIDCOLOR = &H80
+<font color="0000AA"><b>CONST</b></font> CC_ANYCOLOR = &H100
+
+<font color="0000AA"><b>TYPE</b></font> TCHOOSECOLOR
+    lStructSize <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    hWndOwner <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    hInstance <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    rgbResult <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    CustColors<b>(</b>1 <font color="0000AA"><b>TO</b></font> 16<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    Flags <font color="0000AA"><b>AS</b></font> <font color="000099"><b>DWORD</b></font>
+    lCustData <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    lpfnHook <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    lpTemplateName <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> ChooseColorDlg <font color="0000AA"><b>LIB</b></font> "<font color="990000">COMDLG32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">ChooseColorA</font>" <b>(</b>CC <font color="0000AA"><b>AS</b></font> TCHOOSECOLOR<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>TYPE</b></font> QColorDialog <font color="0000AA"><b>extends</b></font> <font color="000099"><b>QOBJECT</b></font>
+
+  Private:
+    CC <font color="0000AA"><b>as</b></font> TCHOOSECOLOR
+  Public:
+    <font color="007700"><i>'==============================</i></font> 
+    <font color="007700"><i>' Proprietés</i></font> 
+    <font color="007700"><i>'==============================</i></font> 
+    Customer<b>(</b>16<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    RgbColor <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    full <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="007700"><i>'==========================================</i></font> 
+    <font color="007700"><i>' Méthode affichage boite dialogue couleur</i></font> 
+    <font color="007700"><i>'==========================================</i></font> 
+    <font color="0000AA"><b>Function</b></font> <font color="0000AA"><b>Execute</b></font><b>(</b>form <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>QFORM</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+      <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+      QColorDialog.CC.lStructSize=<font color="0000AA"><b>SIZEOF</b></font><b>(</b>QColorDialog.CC<b>)</b>
+      QColorDialog.CC.hWndOwner=form.handle
+      QColorDialog.CC.Flags=CC_RGBINIT
+      <font color="0000AA"><b>if</b></font> QColorDialog.full <font color="0000AA"><b>then</b></font> QColorDialog.CC.Flags=QColorDialog.CC.Flags+CC_FULLOPEN
+      QColorDialog.CC.rgbResult=form.Color
+      <font color="0000AA"><b>for</b></font> i=1 <font color="0000AA"><b>to</b></font> 16
+        QColorDialog.CC.CustColors<b>(</b>i<b>)</b>=QColorDialog.Customer<b>(</b>i<b>)</b>
+      <font color="0000AA"><b>next</b></font> i
+      <font color="0000AA"><b>if</b></font> ChooseColorDlg<b>(</b>QColorDialog.CC<b>)</b>&lt;>0 <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>for</b></font> i=1 <font color="0000AA"><b>to</b></font> 16
+          QColorDialog.Customer<b>(</b>i<b>)</b>=QColorDialog.CC.CustColors<b>(</b>i<b>)</b>
+        <font color="0000AA"><b>next</b></font> i
+        QColorDialog.RgbColor=QColorDialog.CC.rgbResult
+        QColorDialog.Execute=true
+      <font color="000099"><b>else</b></font>
+        QColorDialog.Execute=false
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>function</b></font>
+
+    <font color="007700"><i>'==========================================</i></font> 
+    <font color="007700"><i>' Méthode init couleur perso</i></font> 
+    <font color="007700"><i>'==========================================</i></font> 
+    <font color="0000AA"><b>Sub</b></font> Init
+      <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+            
+      <font color="0000AA"><b>for</b></font> i=1 <font color="0000AA"><b>to</b></font> 16
+        QColorDialog.CC.CustColors<b>(</b>i<b>)</b>=&HFFFFFF
+        QColorDialog.Customer<b>(</b>i<b>)</b>=&HFFFFFF
+      <font color="0000AA"><b>next</b></font> i
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+    <font color="000099"><b>Constructor</b></font>
+      Init 
+    <font color="0000AA"><b>End</b></font> <font color="0000AA"><b>Constructor</b></font>    
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>TYPE</b></font> 
+ 
+</pre>
+</body>
+</html>

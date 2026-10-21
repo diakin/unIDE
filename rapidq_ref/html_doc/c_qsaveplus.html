@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSAVEPLUS</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSAVEPLUS</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSAVEPLUS Component</h1>
+<p class="rq-meta">Extends <a href="qsavedialog.html">QSAVEDIALOG</a> &middot; source: <code>inc/QSavePlus.inc</code>, line 46 &middot; author: Suchart Chokphichitchai</p>
+<p><b>A save file dialog extended with file name checks: missing path, invalid name, missing extension and overwrite confirmation.</b></p>
+<p>QSaveplus extends QSaveDialog and adds the method Execute2, which runs the normal Execute in a loop until the user cancels or picks an acceptable name. If the directory of FileName does not exist, a warning is shown and the dialog reopens. If the name contains &quot;&gt;&quot;, it is reported as invalid. If the name has no extension, or an extension that is not in the selected filter, the user is asked whether to add the first extension of the selected filter. If the file already exists, the user must confirm replacing it.</p>
+<p>The extension logic reads the Filter string: item i is field i*2 of the &quot;|&quot;-separated filter and its extensions are separated by &quot;;&quot;. Per the comments, filter 1 must be &quot;All Files |*.*|&quot; (no extension check is done for it), each entry must end with &quot;|&quot; and no blanks or tabs may follow an extension. The file also defines a helper function delMark$ and the constants dot, Quo$, false and true.</p>
+<p>QSAVEPLUS inherits the properties, methods and events of <a href="qsavedialog.html">QSAVEDIALOG</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="2"></a><h2>QSaveplus Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Execute2</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Shows the save dialog repeatedly until the user cancels or gives a valid, confirmed file name; returns the result of the last Execute (1 when a file was accepted, 0 on Cancel). The final name is in FileName.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The source says it was tested only on Windows 98.</li>
+<li>The file contains a complete demo program after the TYPE (a form, a QRichEdit, a QSaveplus instance and form.ShowModal at the end); it runs if the file is included as is.</li>
+<li>It defines global constants false = 0 and true = 1 and turns $ESCAPECHARS ON, which can conflict with other code.</li>
+<li>The name check only rejects &quot;&gt;&quot;; other invalid file name characters are not checked.</li>
+<li>Filter index 1 is always treated as &quot;All Files&quot;, so the first filter entry must be *.* for the extension logic to work.</li>
+</ul>
+<a name="4"></a><h2>QSaveplus Examples</h2>
+<p class="rq-meta">Example from the comments in the source file.</p>
+<pre>CREATE saveDlg AS QSaveplus
+  Filter = &quot;All Files (*.*)|*.*|JavaScript (*.js)|*.js|Text (*.txt)|*.txt|&quot;
+END CREATE
+
+IF saveDlg.Execute2 = 1 THEN
+  ShowMessage &quot;Save File.. &quot; + saveDlg.FileName
+ELSE
+  ShowMessage &quot;No Save&quot;
+END IF</pre>
+<div class="rq-foot"><a href="c_qrun.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qscrollboxux.html">Next component</a></div>
+</body>
+</html>

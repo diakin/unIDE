@@ -1,0 +1,238 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QDrive</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation composant par D.Glodt (c)2000-2001</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QDrive</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QDrive Composant</h1>
+
+<dd>
+QDrive est un composant non visible d'infos lecteurs.</dd>
+
+<dd>
+</dd>
+
+<br><a NAME="1"></a><b><font size=+1>QDrive Propriet&eacute;s</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Champs</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>L/E</b></td>
+
+<td><b>Defaut</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Name</td>
+
+<td>ARRAY OF STRING</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCCCC">Nom des lecteurs pr&eacute;sent</td>
+
+<td BGCOLOR="#FFCCCC"></td>
+
+<td BGCOLOR="#FFCCCC"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Count</td>
+
+<td>INTEGER</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCCCC">Nombre de lecteurs pr&eacute;sent</td>
+
+<td BGCOLOR="#FFCCCC"></td>
+
+<td BGCOLOR="#FFCCCC"></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QDrive Methodes</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Methode</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>GetType</td>
+
+<td>FUNCTION(index&amp;) as long</td>
+
+<td NOWRAP>retourne le type de lecteur.</td>
+
+<td NOWRAP>1</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCCCC"></td>
+
+<td BGCOLOR="#FFCCCC">Valeurs possible:DRIVE_REMOVABLE (2)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DRIVE_FIXED(3)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DRIVE_REMOTE(4)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DRIVE_CDROM(5)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+DRIVE_RAMDISK(6)</td>
+
+<td BGCOLOR="#FFCCCC"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>GetFreeSpace</td>
+
+<td>FUNCTION(index&amp;) as long</td>
+
+<td>retourne l'espace libre en octet du lecteur</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>GetSize</td>
+
+<td>FUNCTION(index&amp;) as long</td>
+
+<td>retourne la taille en octet du lecteur</td>
+
+<td>1</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QDrive Evenements</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Evenement</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>D&eacute;clenchement</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QDrive Exemples</font></b>
+<p>&nbsp; $INCLUDE "Object\QDrive.inc"
+<p>&nbsp; dim drive as QDrive
+<br>&nbsp; declare sub show
+<p>&nbsp; CREATE Form AS QFORM
+<br>&nbsp;&nbsp;&nbsp; Caption = "Propriet&eacute;s disque dur"
+<br>&nbsp;&nbsp;&nbsp; Width = 320
+<br>&nbsp;&nbsp;&nbsp; Height = 240
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; OnShow=show
+<br>&nbsp;&nbsp;&nbsp; CREATE Label1 AS QLABEL
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = ""
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left = 22
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top = 22
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp; END CREATE
+<br>&nbsp;
+<p>&nbsp; Form.ShowModal
+<p>&nbsp; sub show
+<br>&nbsp;&nbsp;&nbsp; dim i as integer
+<br>&nbsp;&nbsp;&nbsp; dim number as integer
+<p>&nbsp;&nbsp;&nbsp; For i=1 to drive.Count
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if drive.GetType(i)=DRIVE_FIXED then
+number=i
+<br>&nbsp;&nbsp;&nbsp; next i
+<br>&nbsp;&nbsp;&nbsp; label1.caption="Nom lecteur: "+drive.name(number)+chr$(13)+
+_
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+"Capacit&eacute;: "+str$(drive.GetSize(number))+" octets"+chr$(13)+ _
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+"Espace libre: "+str$(drive.GetFreeSpace(number))+" octets"
+<br>&nbsp; end sub
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

@@ -1,0 +1,10 @@
+9:s$[0]=
+11:s$[1]=1
+11:s$[8]=
+digit at 4
+asc 98 last x
+jeo
+Folder abc! xb
+num 5 1
+tally 3
+count 7

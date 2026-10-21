@@ -1,0 +1,20 @@
+items 2 columns 3 tag 1 visible 1
+Main 10 main.bas | Init 20
+width 300 caption File view 3 grid 1
+padded '' init.inc
+itemindex 1 selected 1 1 selcount 1
+0 Init index 0
+1 Middle index 1
+2 Start index 2
+subitems of 2: 5 main.bas
+after del 2 first Middle
+onchange 3 2
+checked 01
+columns 7 last c7
+columns 2
+dialog name FixedSys
+from font Courier New 12
+to font Courier New 14 color 255 bold 1 italic 1
+sizes 630
+fonts listed
+execute 0 closed 1

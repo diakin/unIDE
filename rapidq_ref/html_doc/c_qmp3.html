@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QMP3</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QMP3</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QMP3 Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/Qmp3.inc</code>, line 34 &middot; author: Dreadsoft Corporation (dreadsoft@yahoo.it)</p>
+<p><b>A non-visual component that reads MP3 frame header information, reads and writes ID3 v1.x tags, and plays or stops an MP3 file through MCI.</b></p>
+<p>Qmp3 works on the file named in FileName. ReadHeader looks for the MPEG frame header, decodes its bits and fills Version, Layer, Protection, Bitrate, Frequency, Padding, Channels, IntensityStereo, MS_Stereo, Copyright, Original and Emphasis as text or numbers.</p>
+<p>ReadTags and WriteTags handle the 128-byte ID3 v1.x tag at the end of the file (Title, Artist, Album, Year, Comment, Track and the genre number). GenresList holds the standard genre names; LoadList copies them into the GenresCB combo box, and picking a genre there sets GenreID.</p>
+<p>Play opens the file with the Windows MCI function mciSendString (winmm.dll) under an alias made from the file name and starts playback; Stop stops and closes it. The source credits the info.bas file by grog and an MP3 example by sm0oth2003, and thanks Tamas Szekeres for a binary-header bug fix; it also says to see the help file for details.</p>
+<p>QMP3 inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>a global Qmp3 variable named mp3: HeaderStart and ReadHeader open mp3.filename instead of the component&#x27;s own FileName</li>
+</ul>
+<a name="1"></a><h2>Qmp3 Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">filename</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Full path of the MP3 file to read, tag or play.</td></tr>
+<tr><td class="rq-name">Title</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>ID3 title (up to 30 characters), filled by ReadTags and written by WriteTags.</td></tr>
+<tr><td class="rq-name">Artist</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>ID3 artist (up to 30 characters), filled by ReadTags and written by WriteTags.</td></tr>
+<tr><td class="rq-name">Album</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>ID3 album (up to 30 characters), filled by ReadTags and written by WriteTags.</td></tr>
+<tr><td class="rq-name">Year</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>ID3 year (4 characters), filled by ReadTags and written by WriteTags.</td></tr>
+<tr><td class="rq-name">Comment</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>ID3 comment (up to 29 characters), filled by ReadTags and written by WriteTags.</td></tr>
+<tr><td class="rq-name">Track</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>ID3 v1.1 track number (byte), filled by ReadTags and written by WriteTags.</td></tr>
+<tr><td class="rq-name">Genre</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Genre name looked up in GenresList from the genre number by ReadTags. WriteTags writes GenreID, not this text.</td></tr>
+<tr><td class="rq-name">genreid</td><td class="rq-type">BYTE</td><td>RW</td><td></td><td>ID3 genre number (byte); filled by ReadTags, set by SelectGenre from the combo box, and written by WriteTags.</td></tr>
+<tr><td class="rq-name">Version</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>MPEG version from ReadHeader: &quot;Mpeg 1&quot;, &quot;Mpeg 2&quot;, &quot;Mpeg 2.5&quot; or &quot;???&quot;.</td></tr>
+<tr><td class="rq-name">Layer</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>MPEG layer from ReadHeader: &quot;I&quot;, &quot;II&quot;, &quot;III&quot; or &quot;???&quot;.</td></tr>
+<tr><td class="rq-name">Protection</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>&quot;Yes&quot; or &quot;No&quot; from the protection bit, set by ReadHeader.</td></tr>
+<tr><td class="rq-name">Bitrate</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Bitrate in kbit/s from ReadHeader; 0 for the free format and 999 for an invalid value or unknown layer.</td></tr>
+<tr><td class="rq-name">Frequency</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Sampling frequency in Hz from ReadHeader (for example 44100); 0 if reserved.</td></tr>
+<tr><td class="rq-name">Padding</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>&quot;Yes&quot; or &quot;No&quot; from the padding bit, set by ReadHeader.</td></tr>
+<tr><td class="rq-name">Channels</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Channel mode from ReadHeader: &quot;Stereo&quot;, &quot;Joint Stereo&quot;, &quot;Dual Channel&quot; or &quot;Mono&quot;.</td></tr>
+<tr><td class="rq-name">IntensityStereo</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>&quot;On&quot; or &quot;Off&quot; from the mode extension bits, set by ReadHeader.</td></tr>
+<tr><td class="rq-name">MS_Stereo</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>&quot;On&quot; or &quot;Off&quot; (mid/side stereo) from the mode extension bits, set by ReadHeader.</td></tr>
+<tr><td class="rq-name">Copyright</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>&quot;Yes&quot; or &quot;No&quot; from the copyright bit, set by ReadHeader.</td></tr>
+<tr><td class="rq-name">Original</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>&quot;Yes&quot; or &quot;No&quot; from the original bit, set by ReadHeader.</td></tr>
+<tr><td class="rq-name">Emphasis</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Emphasis from ReadHeader: &quot;None&quot;, &quot;50/15 ms&quot;, &quot;???&quot; or &quot;CCIT J.17&quot;.</td></tr>
+<tr><td class="rq-name">alias</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>MCI alias used by Play and Stop; Play sets it to the file name without path and extension.</td></tr>
+<tr><td class="rq-name">genreslist</td><td class="rq-type">QSTRINGLIST</td><td>RW</td><td></td><td>QStringList filled by the constructor with the ID3 genre names, indexed by genre number.</td></tr>
+<tr><td class="rq-name">genrescb</td><td class="rq-type">QCOMBOBOX</td><td>RW</td><td></td><td>QComboBox (drop-down list style, 20 visible items) for choosing a genre; fill it with LoadList and give it a Parent to show it. Changing the selection calls SelectGenre.</td></tr>
+</table>
+<a name="2"></a><h2>Qmp3 Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">HeaderStart</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Internal: searches the first 3071 bytes of the file for the frame sync and returns its offset; used by ReadHeader.</td></tr>
+<tr><td class="rq-name">ReadHeader</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Reads the 4-byte MPEG frame header and fills the header properties. Shows a message if FileName is empty.</td></tr>
+<tr><td class="rq-name">IsTagged</td><td class="rq-type">FUNCTION(itfs as Qfilestream) AS INTEGER</td><td>IsTagged(stream) returns 1 if the last 128 bytes of the open QFileStream start with &quot;TAG&quot;, otherwise 0.</td></tr>
+<tr class="rq-internal"><td class="rq-name">SelectGenre</td><td class="rq-type">SUB</td><td>Internal: OnChange handler of GenresCB; sets GenreID to the selected item index.</td></tr>
+<tr><td class="rq-name">loadlist</td><td class="rq-type">SUB</td><td>Copies all names from GenresList into the GenresCB combo box.</td></tr>
+<tr><td class="rq-name">readtags</td><td class="rq-type">SUB</td><td>Reads the ID3 v1 tag into Title, Artist, Album, Year, Comment, Track, GenreID and Genre. Shows a message if FileName is empty or the file has no tag.</td></tr>
+<tr><td class="rq-name">writetags</td><td class="rq-type">SUB</td><td>Writes Title, Artist, Album, Year, Comment, Track and GenreID into the ID3 v1 tag, padding or cutting each text to its field size.</td></tr>
+<tr><td class="rq-name">Stop</td><td class="rq-type">SUB</td><td>Sends the MCI commands &quot;Stop&quot; and &quot;Close&quot; for Alias.</td></tr>
+<tr><td class="rq-name">Play</td><td class="rq-type">SUB</td><td>Stops any current playback, opens FileName through MCI with an alias derived from the file name and plays it.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>HeaderStart and ReadHeader open mp3.filename, a global variable named mp3, instead of the component&#x27;s own FileName; they only work when the instance is named mp3.</li>
+<li>HeaderStart compares a BYTE with 256, which a byte can never equal, so the frame-sync search never matches and the function&#x27;s result is never assigned.</li>
+<li>WriteTags refers to tagstream, a variable that belongs to ReadTags, when it checks for an existing tag and computes the tag position.</li>
+<li>ReadTags removes CHR$(0) characters from each text field and then also cuts off its last character.</li>
+<li>Play builds the MCI alias from the file name without quoting it, so file names containing spaces will not form a valid alias.</li>
+<li>Play, Stop and ReadTags/ReadHeader report errors only through ShowMessage; MCI return codes are ignored.</li>
+</ul>
+<a name="4"></a><h2>Qmp3 Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;Qmp3.inc&quot;
+DIM mp3 AS Qmp3
+mp3.FileName = &quot;C:\Music\song.mp3&quot;
+mp3.ReadHeader
+mp3.ReadTags
+PRINT mp3.Artist, mp3.Title, mp3.Bitrate, mp3.Frequency
+mp3.Play</pre>
+<div class="rq-foot"><a href="c_qmidi.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qodbc.html">Next component</a></div>
+</body>
+</html>

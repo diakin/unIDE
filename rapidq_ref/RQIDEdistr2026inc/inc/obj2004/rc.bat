@@ -1,0 +1,1 @@
+"C:\BAS\RAPIDQ\rc.exe" -r  -I"C:/bas/RapidQ/inc/" -L"C:/bas/RapidQ/lib/" -G"C:/BAS/RAPIDQ/RQIDE/ico/stop.ico" "C:\bas\RapidQ\inc\obj2004\QThread.bas" "C:\bas\RapidQ\inc\obj2004\QThread.exe"

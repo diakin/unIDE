@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCDAUDIO</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCDAUDIO</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCDAUDIO Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/Qcdaudio.inc</code>, line 27</p>
+<p><b>Non-visual audio CD player that controls the MCI &quot;cdaudio&quot; device: open, play, pause, stop, eject and track selection, with a change event while playing.</b></p>
+<p>Qcdaudio sends MCI command strings (&quot;open cdaudio&quot;, &quot;play cdaudio from ...&quot;, &quot;status cdaudio position&quot; and so on) with mciSendStringA from winmm.dll. Times are kept in the MCI tmsf (track:minute:second:frame) format as strings.</p>
+<p>Call Open to open the device; it checks that a disc is present and reads the number of tracks and the total length. Set CurrentTrack to choose a track and call Play. While playing, an internal timer polls the current track, position and mode once per second and fires OnChange. The states are given by the constants CD_CLOSE (0), CD_PLAY (1), CD_PAUSE (2) and CD_STOP (3).</p>
+<p>The comments in the file are in French.</p>
+<p>QCDAUDIO inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>Qcdaudio Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">Timer</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>Internal: QTIMER with a 1000 ms interval that runs while playing, updates CurrentTrack, TimePosition and State, and fires OnChange.</td></tr>
+<tr><td class="rq-name">Time</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Total length of the disc (tmsf format) as returned by MCI, set by Open.</td></tr>
+<tr><td class="rq-name">TrackTime</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Length of the current track, read when CurrentTrack is assigned while the device is open.</td></tr>
+<tr><td class="rq-name">TrackNumber</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of tracks on the disc, set by Open.</td></tr>
+<tr><td class="rq-name">TimePosition</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Current position as returned by &quot;status cdaudio position&quot; (tmsf format); updated by the timer and by Pause, and used by Play to resume after a pause.</td></tr>
+<tr><td class="rq-name">Position</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Meant for the position in milliseconds (the private GetPosition reads it), but no code assigns it except Close, which sets 0.</td></tr>
+<tr><td class="rq-name">State</td><td class="rq-type">INTEGER</td><td>RW</td><td>CD_CLOSE</td><td>Player state: CD_CLOSE (0), CD_PLAY (1), CD_PAUSE (2) or CD_STOP (3).</td></tr>
+<tr><td class="rq-name">AudioOpen</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>True after a successful Open, False after Close.</td></tr>
+<tr><td class="rq-name">Present</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>True when Open found a disc in the drive; set to False by Eject.</td></tr>
+<tr><td class="rq-name">Error</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>MCI error text, set when &quot;open cdaudio&quot; fails.</td></tr>
+<tr><td class="rq-name">CurrentTrack</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Current track number. Assigning it while the device is open limits the value to 1..TrackNumber, seeks to that track and reads its length into TrackTime; it does not start playback. While the device is closed, assigning does nothing.</td></tr>
+</table>
+<a name="2"></a><h2>Qcdaudio Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Stops the timer, stops and closes the cdaudio device and resets the properties; State becomes CD_CLOSE.</td></tr>
+<tr><td class="rq-name">Open</td><td class="rq-type">FUNCTION AS BOOLEAN</td><td>Closes the device first, then opens cdaudio, checks that a disc is present and reads TrackNumber and Time. Returns True on success; on failure it closes the device again.</td></tr>
+<tr><td class="rq-name">Play</td><td class="rq-type">SUB</td><td>Starts playback from TimePosition when paused, otherwise from CurrentTrack, and starts the timer.</td></tr>
+<tr><td class="rq-name">Stop</td><td class="rq-type">SUB</td><td>Stops playback, stops the timer, sets CurrentTrack to 1 and seeks to the start of the disc.</td></tr>
+<tr><td class="rq-name">Pause</td><td class="rq-type">SUB</td><td>Pauses when playing and stores the current track and position for Play to resume.</td></tr>
+<tr><td class="rq-name">Eject</td><td class="rq-type">SUB</td><td>Calls Stop and Close, opens the drive door and sets Present to False.</td></tr>
+</table>
+<a name="3"></a><h2>Qcdaudio Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnChange</td><td class="rq-type">SUB(track as integer,time as string)</td><td>Event (Track AS INTEGER, Time AS STRING) fired by the timer every second while playing, with the current track and position.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>Timer.OnTimer</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The MCI declarations and the event template event_change are inside $IFNDEF __WIN32API, so they are skipped when a Windows API include defining __WIN32API is loaded first, and the component then misses mciSendCdaudio, mciGetErrorCdaudio and event_change.</li>
+<li>The timer calls OnChange with CALLFUNC without checking that a handler has been assigned.</li>
+<li>Position is never updated.</li>
+<li>Close assigns CurrentTrack = 0 after setting AudioOpen to False, so the setter ignores it and CurrentTrack keeps its old value.</li>
+<li>Several MCI calls are written with a stray &quot;+&quot; before the comma, for example mciSendCdaudio(&quot;status cdaudio current track&quot;+,...).</li>
+<li>The MCI device name &quot;cdaudio&quot; is fixed, so there is no way to choose a drive.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/Qcdaudio.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>Qcdaudio Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;Qcdaudio.inc&quot;
+CREATE Form AS QFORM
+  Width = 300
+  Height = 100
+END CREATE
+DIM CD AS Qcdaudio
+SUB CDChange(Track AS INTEGER, Time AS STRING)
+  Form.Caption = &quot;Track &quot; &amp; STR$(Track) &amp; &quot;  &quot; &amp; Time
+END SUB
+CD.OnChange = CDChange
+IF CD.Open THEN
+  CD.CurrentTrack = 2
+  CD.Play
+ELSE
+  ShowMessage CD.Error
+END IF
+Form.ShowModal
+CD.Close</pre>
+<div class="rq-foot"><a href="c_qcanvasex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qcgi.html">Next component</a></div>
+</body>
+</html>

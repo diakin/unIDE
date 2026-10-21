@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Shell32.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: Shell32.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>Shell32.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/Shell32.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 3 functions &middot; 3 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#FINDEXECUTABLE">FindExecutable</a> &middot; <a href="#SHEMPTYRECYCLEBIN">SHEmptyRecycleBin</a> &middot; <a href="#SHQUERYRECYCLEBIN">SHQueryRecycleBin</a></p>
+<h3><a name="FINDEXECUTABLE"></a>FindExecutable</h3>
+<p class="rq-meta">DLL function, shell32.dll &middot; RQProc.inc, line 19626</p>
+<pre>Declare Function FindExecutable Lib &quot;shell32.dll&quot; Alias &quot;FindExecutableA&quot; (lpFile As String, lpDirectory As String, lpResult As String) As Long</pre>
+<p>Retrieves the name of the executable associated with the specified document file. Returns a value greater than 32 on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=FindExecutableA">FindExecutableA</a></p>
+<h3><a name="SHEMPTYRECYCLEBIN"></a>SHEmptyRecycleBin</h3>
+<p class="rq-meta">DLL function, shell32.dll &middot; RQProc.inc, line 19632</p>
+<pre>Declare Function SHEmptyRecycleBin Lib &quot;shell32.dll&quot; Alias &quot;SHEmptyRecycleBinA&quot; (hwnd As Long, pszRootPath As String, dwFlags As Long) As Long</pre>
+<p>Empties the Recycle Bin on the specified drive (or all drives if the root path is empty); flags suppress confirmation, progress UI or sound. Returns S_OK on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SHEmptyRecycleBinA">SHEmptyRecycleBinA</a></p>
+<h3><a name="SHQUERYRECYCLEBIN"></a>SHQueryRecycleBin</h3>
+<p class="rq-meta">DLL function, shell32.dll &middot; RQProc.inc, line 19649</p>
+<pre>Declare Function SHQueryRecycleBin Lib &quot;shell32.dll&quot; Alias &quot;SHQueryRecycleBinA&quot; (pszRootPath As Long, pSHQueryRBInfo As SHQUERYRBINFO) As Long</pre>
+<p>Retrieves the total size and number of items in the Recycle Bin for the specified drive into an SHQUERYRBINFO structure. Returns S_OK on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=SHQueryRecycleBinA">SHQueryRecycleBinA</a></p>
+</body>
+</html>

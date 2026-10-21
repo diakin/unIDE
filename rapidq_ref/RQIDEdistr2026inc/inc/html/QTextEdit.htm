@@ -1,0 +1,232 @@
+<html>
+<head>
+<title>QTextEdit.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QTextEdit</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> SendMessageA <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SendMessageA</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, wMsg <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, wParam <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lParam <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>TYPE</b></font> QTEXTEDIT <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+  PRIVATE:
+    MaxMenu <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QPOPUPMENU</b></font>
+    mnuUndo <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+    mnuSep1 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+    mnuCut  <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+    mnuCopy <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+    mnuPaste <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+    mnuSep2 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+    mnuSelectAll <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+    
+    <font color="0000AA"><b>EVENT</b></font> MaxMenu.OnPopup
+      QTEXTEDIT.mnuUndo.Enabled=SendMessageA<b>(</b>QTEXTEDIT.Handle,&HC6,0,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> QTEXTEDIT.SelLength>0 <font color="000099"><b>then</b></font>
+        QTEXTEDIT.mnuCut.Enabled =true
+        QTEXTEDIT.mnuCopy.Enabled=true
+      <font color="000099"><b>else</b></font>
+        QTEXTEDIT.mnuCut.Enabled=false
+        QTEXTEDIT.mnuCopy.Enabled=false
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>LEN</b></font><b>(</b>ClipBoard.Text<b>)</b>>0 <font color="0000AA"><b>then</b></font> 
+        QTEXTEDIT.mnuPaste.Enabled=true
+      <font color="0000AA"><b>else</b></font> 
+        QTEXTEDIT.mnuPaste.Enabled=false
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>LEN</b></font><b>(</b>QTEXTEDIT.Text<b>)</b>>0 <font color="0000AA"><b>then</b></font> 
+        QTEXTEDIT.mnuSelectAll.Enabled=true
+      <font color="000099"><b>else</b></font>
+        QTEXTEDIT.mnuSelectAll.Enabled=false
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+        
+  PUBLIC:
+    UsePopup <font color="0000AA"><b>AS</b></font> boolean PROPERTY SET Set_Popup
+    UndoCaption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> PROPERTY SET SetUndoCaption
+    CutCaption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> PROPERTY SET SetCutCaption
+    CopyCaption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> PROPERTY SET SetCopyCaption
+    PasteCaption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> PROPERTY SET SetPasteCaption
+    SelectAllCaption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> PROPERTY SET SetSelectAllCaption
+    
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Proprieté utilisation du menu popup</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    PROPERTY SET Set_Popup<b>(</b>Use <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+      QTEXTEDIT.MaxMenu.AutoPopup=Use
+    <font color="0000AA"><b>END</b></font> PROPERTY
+    
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Proprieté libellé du menu annuler</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    PROPERTY SET SetUndoCaption<b>(</b>caption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+      QTEXTEDIT.mnuUndo.Caption=caption
+    <font color="0000AA"><b>END</b></font> PROPERTY
+     
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Proprieté libellé du menu couper</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    PROPERTY SET SetCutCaption<b>(</b>caption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+      QTEXTEDIT.mnuCut.Caption=caption
+    <font color="0000AA"><b>END</b></font> PROPERTY
+    
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Proprieté libellé du menu copier</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    PROPERTY SET SetCopyCaption<b>(</b>caption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+      QTEXTEDIT.mnuCopy.Caption=caption
+    <font color="0000AA"><b>END</b></font> PROPERTY
+    
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Proprieté libellé du menu coller</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    PROPERTY SET SetPasteCaption<b>(</b>caption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+      QTEXTEDIT.mnuPaste.Caption=caption
+    <font color="0000AA"><b>END</b></font> PROPERTY
+    
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Proprieté libellé du menu selectionner</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    PROPERTY SET SetSelectAllCaption<b>(</b>caption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+      QTEXTEDIT.mnuSelectAll.Caption=caption
+    <font color="0000AA"><b>END</b></font> PROPERTY
+        
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Méthode annuler derniere modification</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    <font color="0000AA"><b>SUB</b></font> Undo
+      SendMessage<b>(</b>QTEXTEDIT.Handle,&HC7,0,0<b>)</b>
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>SUB</b></font> 
+        
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Méthode couper</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    <font color="0000AA"><b>SUB</b></font> Cut
+      QTEXTEDIT.CutToClipBoard
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Méthode copier</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    <font color="0000AA"><b>SUB</b></font> Copy
+      QTEXTEDIT.CopyToClipboard
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Méthode coller</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    <font color="0000AA"><b>SUB</b></font> Paste
+      QTEXTEDIT.PasteFromClipboard
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+                
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Méthode selectionner tout</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    <font color="0000AA"><b>SUB</b></font> SelectAl
+      QTEXTEDIT.SelectAll
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Méthode limitation nombre de caractere</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    <font color="0000AA"><b>SUB</b></font> Limit<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+      SendMessage<b>(</b>QTEXTEDIT.handle,&hc5,value,0<b>)</b>
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+    <font color="007700"><i>'========================================</i></font> 
+    <font color="007700"><i>' Méthode remplace le texte selectionner</i></font> 
+    <font color="007700"><i>'========================================          </i></font> 
+    <font color="0000AA"><b>SUB</b></font> ReplaceSel<b>(</b>text <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+      <font color="0000AA"><b>dim</b></font> replace <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+      
+      <font color="0000AA"><b>if</b></font> QTEXTEDIT.SelLength>0 <font color="000099"><b>then</b></font>
+        replace=text
+        SendMessage<b>(</b>QTEXTEDIT.handle,&hc2,0,<font color="0000AA"><b>varptr</b></font><b>(</b>replace<b>)</b><b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+    
+    <font color="007700"><i>'========================================================================</i></font> 
+    <font color="007700"><i>' Méthode recherche de chaine,retourne la position de la chaine trouvée</i></font> 
+    <font color="007700"><i>'========================================================================</i></font> 
+    <font color="0000AA"><b>Function</b></font> Find<b>(</b>start <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,text <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,<font color="0000AA"><b>case</b></font> <font color="0000AA"><b>as</b></font> boolean<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>case</b></font> <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>Instr</b></font><b>(</b>start,QTEXTEDIT.Text,text<b>)</b>>0 <font color="0000AA"><b>then</b></font> 
+          QTEXTEDIT.SelStart = <font color="0000AA"><b>Instr</b></font><b>(</b>start,QTEXTEDIT.Text,text<b>)</b>-1
+          QTEXTEDIT.SelLength = <font color="0000AA"><b>Len</b></font><b>(</b>text<b>)</b>
+          result=QTEXTEDIT.SelStart+1
+        <font color="000099"><b>else</b></font>
+          result=0
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="000099"><b>else</b></font>
+        <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>Instr</b></font><b>(</b>start,<font color="0000AA"><b>Ucase$</b></font><b>(</b>QTEXTEDIT.Text<b>)</b>,<font color="0000AA"><b>Ucase$</b></font><b>(</b>text<b>)</b><b>)</b>>0 <font color="0000AA"><b>then</b></font> 
+          QTEXTEDIT.SelStart = <font color="0000AA"><b>Instr</b></font><b>(</b>start,<font color="0000AA"><b>Ucase$</b></font><b>(</b>QTEXTEDIT.Text<b>)</b>,<font color="0000AA"><b>Ucase$</b></font><b>(</b>text<b>)</b><b>)</b>-1
+          QTEXTEDIT.SelLength = <font color="0000AA"><b>Len</b></font><b>(</b>text<b>)</b>
+          result=QTEXTEDIT.SelStart+1
+        <font color="000099"><b>else</b></font>
+          result=0
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+    
+    <font color="007700"><i>'=================================================</i></font> 
+    <font color="007700"><i>' Méthode deplace le curseur a la ligne demandée</i></font> 
+    <font color="007700"><i>'=================================================          </i></font> 
+    <font color="0000AA"><b>Sub</b></font> LinesScroll<b>(</b>number <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+      <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+      <font color="0000AA"><b>dim</b></font> count <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+      
+      <font color="0000AA"><b>if</b></font> number&lt;=QTEXTEDIT.LineCount <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> number-2
+          count=count+<font color="0000AA"><b>len</b></font><b>(</b>QTEXTEDIT.line<b>(</b>i<b>)</b><b>)</b>+2
+        <font color="0000AA"><b>next</b></font> i
+        QTEXTEDIT.SelStart=count
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+    <font color="007700"><i>'=================================================</i></font> 
+    <font color="007700"><i>' Méthode retourne la possibilité d'annulation</i></font> 
+    <font color="007700"><i>'=================================================</i></font> 
+    <font color="0000AA"><b>Function</b></font> CanUndo <font color="0000AA"><b>as</b></font> boolean
+      result=SendMessageA<b>(</b>QTEXTEDIT.Handle,&HC6,0,0<b>)</b>
+    <font color="0000AA"><b>End</b></font> <font color="0000AA"><b>Function</b></font>          
+                        
+    <font color="000099"><b>CONSTRUCTOR</b></font>
+      mnuUndo.Caption="<font color="990000">&Undo</font>"
+      mnuUndo.OnClick=QTEXTEDIT.Undo
+      mnuUndo.ShortCut="<font color="990000">CTRL+Z</font>"
+      mnuSep1.Caption="<font color="990000">-</font>"
+      mnuCut.Caption="<font color="990000">Cu&t</font>"
+      mnuCut.OnClick=QTEXTEDIT.Cut
+      mnuCut.ShortCut="<font color="990000">CTRL+X</font>"
+      mnuCopy.Caption="<font color="990000">&Copy</font>"
+      mnuCopy.OnClick=QTEXTEDIT.Copy
+      mnuCopy.ShortCut="<font color="990000">CTRL+C</font>"
+      mnuPaste.Caption="<font color="990000">&Paste</font>"
+      mnuPaste.OnClick=QTEXTEDIT.Paste
+      mnuPaste.ShortCut="<font color="990000">CTRL+V</font>"
+      mnuSep2.Caption="<font color="990000">-</font>"
+      mnuSelectAll.Caption="<font color="990000">Select &All</font>"
+      mnuSelectAll.OnClick=QTEXTEDIT.SelectAl
+      mnuSelectAll.ShortCut="<font color="990000">CTRL+A</font>"
+      MaxMenu.AddItems QTEXTEDIT.mnuUndo,QTEXTEDIT.mnuSep1,QTEXTEDIT.mnuCut,QTEXTEDIT.mnuCopy,QTEXTEDIT.mnuPaste,QTEXTEDIT.mnuSep2,QTEXTEDIT.mnuSelectAll
+      PopupMenu=QTEXTEDIT.MaxMenu
+      UsePopup=1
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+ 
+</pre>
+</body>
+</html>

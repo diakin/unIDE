@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QGL</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QGL</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QGL Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QGL.inc</code>, line 76 &middot; author: JohnK &middot; version: alpha release 1.0</p>
+<p><b>OpenGL wrapper object that sets up an OpenGL rendering context on a RapidQ form (or a bitmap) and provides viewport, texture, fog, full-screen and frame-rate helpers.</b></p>
+<p>QGL connects OpenGL to a RapidQ window. Init gets the form&#x27;s device context with GetDC, chooses and sets a double-buffered RGBA pixel format (ChoosePixelFormat/SetPixelFormat from gdi32) and creates and activates a rendering context with wglCreateContext/wglMakeCurrent from opengl32. ReSize sets the glViewport and a gluPerspective projection from FOV, AspectRatio, Front and Back. Flip calls SwapBuffers and counts frames; an internal one-second QTimer copies the count into FrameRate.</p>
+<p>Textures are created with CreateTextureFromFile or CreateTextureFromBitmap. The image is copied into a global QBITMAPEX (QGLinternalBMP), then uploaded with glTexImage2D, or with gluBuild2DMipmaps when MipMap is set. JPG, TGA, GIF and PCX files are loaded through QBITMAPEX.LoadOtherImage. Fog is controlled by FogEnabled, FogMode, FogColor and SetFogParams. RenderToBitmap switches rendering to a separate context on the Bitmap property, and FullScreen changes the screen resolution.</p>
+<p>Per the source comment, run Init in the form&#x27;s OnShow event and pass the form to draw on; call Close at program end to free the rendering context and DC.</p>
+<p>QGL inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>$INCLUDE &lt;\GL\gl.inc&gt;</li>
+<li>$INCLUDE &lt;GL\glu.inc&gt;</li>
+<li>QBITMAPEX component (QBitmapEx.inc), used for the global QGLinternalBMP but not included by this file</li>
+</ul>
+<a name="1"></a><h2>QGL Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">RenderToBitMap</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When set to True, sizes the Bitmap property to Width x Height (24 or 32 bit) if the bitmap has no width yet, sets a GDI/bitmap pixel format on its handle and makes a new OpenGL context on it current; when set to False, makes the window context current again, deletes the bitmap context and frees the bitmap.</td></tr>
+<tr><td class="rq-name">Bitmap</td><td class="rq-type">QBITMAP</td><td>RW</td><td></td><td>QBITMAP used as the drawing target when RenderToBitmap is True.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Width of the OpenGL drawing area; set from the form&#x27;s ClientWidth by Init if it is 0, and updated by ReSize.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Height of the OpenGL drawing area; set from the form&#x27;s ClientHeight by Init if it is 0, and updated by ReSize.</td></tr>
+<tr><td class="rq-name">Front</td><td class="rq-type">GLDOUBLE</td><td>RW</td><td>0.1</td><td>Distance to the near clipping plane passed to gluPerspective (default 0.1).</td></tr>
+<tr><td class="rq-name">Back</td><td class="rq-type">GLDOUBLE</td><td>RW</td><td>500.0</td><td>Distance to the far clipping plane passed to gluPerspective (default 500.0).</td></tr>
+<tr><td class="rq-name">MipMap</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When nonzero, textures are built with gluBuild2DMipmaps and this value is used as the GL_TEXTURE_MIN_FILTER parameter; when 0, glTexImage2D with GL_NEAREST filtering is used.</td></tr>
+<tr><td class="rq-name">FullScreen</td><td class="rq-type">INTEGER</td><td>RW</td><td>False</td><td>Only when Width &gt; 319 and Height &gt; 239: True changes the screen resolution to Width x Height, falling back to 640x480, 800x600 or 1024x768 if that fails; False restores the resolution saved at creation. With a smaller Width or Height assigning either value does nothing.</td></tr>
+<tr><td class="rq-name">hDC</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Device context handle of the parent form, obtained with GetDC in Init.</td></tr>
+<tr><td class="rq-name">hBMP</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Device context handle of the Bitmap property, used when rendering to a bitmap.</td></tr>
+<tr><td class="rq-name">hglRC</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>OpenGL rendering context created for the form in Init.</td></tr>
+<tr><td class="rq-name">hGLRC_bmp</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>OpenGL rendering context created for the bitmap when RenderToBitmap is True.</td></tr>
+<tr><td class="rq-name">bpp</td><td class="rq-type">INTEGER</td><td>RW</td><td>24</td><td>Bits per pixel used for the pixel format (default 24; values below 32 are treated as 24 in Init).</td></tr>
+<tr><td class="rq-name">DepthBits</td><td class="rq-type">INTEGER</td><td>RW</td><td>8</td><td>Depth buffer bits requested in the pixel format (default 8).</td></tr>
+<tr><td class="rq-name">StencilBits</td><td class="rq-type">INTEGER</td><td>RW</td><td>16</td><td>Stencil buffer bits requested in the pixel format (default 16).</td></tr>
+<tr><td class="rq-name">AccumBits</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Accumulation buffer bits requested in the pixel format (default 0).</td></tr>
+<tr><td class="rq-name">FrameRate</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Frames per second, updated once per second from the number of Flip calls.</td></tr>
+<tr><td class="rq-name">FOV</td><td class="rq-type">DOUBLE</td><td>RW</td><td>60.0</td><td>Vertical field of view in degrees used by ReSize (default 60).</td></tr>
+<tr><td class="rq-name">AspectRatio</td><td class="rq-type">DOUBLE</td><td>RW</td><td>1.0</td><td>Multiplier applied to width/height when ReSize computes the perspective aspect ratio (default 1.0).</td></tr>
+<tr><td class="rq-name">FogEnabled</td><td class="rq-type">INTEGER</td><td>RW</td><td>False</td><td>Assigning True calls glEnable(GL_FOG); assigning False calls glDisable(GL_FOG).</td></tr>
+<tr><td class="rq-name">FogMode</td><td class="rq-type">INTEGER</td><td>RW</td><td>GL_EXP</td><td>Assigning a value calls glFogi(GL_FOG_MODE, value); the source comment lists GL_LINEAR, GL_EXP and GL_EXP2 (default GL_EXP).</td></tr>
+</table>
+<a name="2"></a><h2>QGL Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">ReSize</td><td class="rq-type">SUB(width AS INTEGER, height AS INTEGER)</td><td>ReSize(width, height) sets the glViewport and resets the projection matrix with gluPerspective using FOV, AspectRatio, Front and Back; call it from the form&#x27;s OnResize.</td></tr>
+<tr><td class="rq-name">Init</td><td class="rq-type">FUNCTION(MainForm AS QFORM) AS INTEGER</td><td>Init(MainForm) sets up the pixel format and OpenGL rendering context on the form; returns the form&#x27;s DC on success or 0 on failure.</td></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Restores the screen resolution if FullScreen is on, deletes the rendering contexts and releases the form&#x27;s DC; the source says it must run at program end.</td></tr>
+<tr><td class="rq-name">Flip</td><td class="rq-type">SUB</td><td>Swaps the front and back buffers (SwapBuffers) and increments the internal frame counter.</td></tr>
+<tr><td class="rq-name">CreateTextureFromFile</td><td class="rq-type">FUNCTION(ImgFileName as string) AS LONG</td><td>CreateTextureFromFile(FileName) loads an image file and returns an OpenGL texture ID, or 0 if the file does not exist or the image is too small.</td></tr>
+<tr><td class="rq-name">CreateTextureFromBitMap</td><td class="rq-type">FUNCTION(ImgBMP as QBITMAP) AS LONG</td><td>CreateTextureFromBitmap(Bmp) copies a QBITMAP (at least 2x2 pixels) and returns an OpenGL texture ID, or 0.</td></tr>
+<tr><td class="rq-name">FogColor</td><td class="rq-type">SUB(R#, G#, B#)</td><td>FogColor(R#, G#, B#) sets the fog color with glFogfv; alpha is always 1.0.</td></tr>
+<tr><td class="rq-name">SetFogParams</td><td class="rq-type">SUB(Start#, End#, Density#)</td><td>SetFogParams(Start#, End#, Density#) sets fog density, start and end depth and the GL_FOG_HINT.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Flip calls SwapBuffers on GL.hDC, not QGL.hDC, so it only works if the QGL instance is named GL.</li>
+<li>The source comment says the PFD_GENERIC_ACCELERATED flag &#x27;probably won&#x27;t work&#x27;.</li>
+<li>CreateTextureFromFile uses NViewLibPresent, which is not defined in this file. Because AND binds tighter than OR, that check only applies to the .PCX case.</li>
+<li>Only 24-bit and 32-bit textures are supported; 8-bit and 16-bit images are converted to 24 bit. The power-of-two size check is commented out.</li>
+<li>Full-screen fallback resolutions are hard-coded (640x480, 800x600, 1024x768).</li>
+</ul>
+<a name="4"></a><h2>QGL Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QBitmapEx.inc&quot;
+$INCLUDE &quot;QGL.inc&quot;
+DIM Form AS QFORM
+DIM GL AS QGL
+
+SUB FormShow
+  IF GL.Init(Form) = 0 THEN ShowMessage &quot;OpenGL init failed&quot;
+  GL.ReSize(Form.ClientWidth, Form.ClientHeight)
+END SUB
+
+SUB FormClose
+  GL.Close
+END SUB
+
+Form.OnShow = FormShow
+Form.OnClose = FormClose
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qftpdirlistview.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qgridcolor.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<html>
+<head>
+<title>DxfONE!h.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>' DxfONE!h.inc for DxfONE! WIN RapidQ - Jan.2003</i></font> 
+
+<font color="0000AA"><b>declare</b></font> <font color="0000AA"><b>sub</b></font> About
+<font color="0000AA"><b>declare</b></font> <font color="0000AA"><b>sub</b></font> EditAbout
+<font color="0000AA"><b>declare</b></font> <font color="0000AA"><b>sub</b></font> ParseAbout
+<font color="0000AA"><b>declare</b></font> <font color="0000AA"><b>sub</b></font> OptionsAbout
+<font color="0000AA"><b>declare</b></font> <font color="0000AA"><b>sub</b></font> OtherAbout
+
+<font color="0000AA"><b>SUB</b></font> About
+ <font color="0000AA"><b>CREATE</b></font> AboutForm <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QForm</b></font>
+  BorderStyle = 6
+  Caption = "<font color="990000">DxfONE! </font>" + Ver$
+  IcoHandle = ICO
+  ClientHeight = 120
+  ClientWidth = 600
+  Visible = 0
+  Enabled = 1
+  Center
+  <font color="0000AA"><b>CREATE</b></font> About0Label <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">(c)2002~2003 arch. Giovanni M. Seregni - Milan, Italy - Email gmseregni@hotmail.com</font>"
+   Left = 25
+   Top = 10
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About1Label <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">Questo programma, compilato con RapidQ, appartiene al software freeware e non può essere venduto.</font>"
+   Left = 55
+   Top = 36
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About2Label <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">Dell'uso del programmma e di ogni conseguenza è responsabile esclusivamente l'utilizzatore.</font>"
+   Left = 55
+   Top = 50
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About3Label <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">This program compiled on Windows (RapidQ) is copyrighted freeware, it may not be sold.</font>"
+   Left = 55
+   Top = 68
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+   <font color="0000AA"><b>CREATE</b></font> About4Label <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">Use this program at your own risk, no warranties for correct function can be given.</font>"
+   Left = 55
+   Top = 82
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+ <font color="0000AA"><b>End</b></font> <font color="000099"><b>CREATE</b></font>
+ AboutForm.ShowModal
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="0000AA"><b>SUB</b></font> EditAbout
+ <font color="0000AA"><b>CREATE</b></font> AboutEditForm <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QForm</b></font>
+  BorderStyle = 6
+  Caption = "<font color="990000">Edit Menu Tutorial</font>"
+  IcoHandle = ICO
+  ClientHeight = 152
+  ClientWidth = 600
+  Visible = 0
+  Enabled = 1
+  Center
+  <font color="0000AA"><b>CREATE</b></font> About0EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">DxfONE! allows you to modify the loaded image of your bitmap:</font>"
+   Left = 25
+   Top = 10
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About1EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">The Halftone command creates a B/W reduction, usefull for colored bitmap DXF exporting.</font>"
+   Left = 55
+   Top = 36
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About2EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">The medium mode is default and creates a B&&W DXF file easy to edit in your favorite CAD system.</font>"
+   Left = 55
+   Top = 50
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About3EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">Checking mode by Options -> SetHalftone menu allows you to brighten or darken drawing.</font>"
+   Left = 55
+   Top = 68
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+   <font color="0000AA"><b>CREATE</b></font> About4EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">The mode you had setting is saved in config. file (DxfONE!.cf), created the 1st day of use.</font>"
+   Left = 55
+   Top = 82
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About5EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">The Outline command creates a new look of your bitmap, drawing a border around the black areas.</font>"
+   Left = 55
+   Top = 100
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About6EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">This feature, useful to generate smaller DXF files, works in B/W mode: try Halftone command before.</font>"
+   Left = 55
+   Top = 114
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+ <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+ AboutEditForm.ShowModal
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="0000AA"><b>SUB</b></font> ParseAbout
+ <font color="0000AA"><b>CREATE</b></font> AboutParseForm <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QForm</b></font>
+  BorderStyle = 6
+  Caption = "<font color="990000">Parse Menu Tutorial</font>"
+  IcoHandle = ICO
+  ClientHeight = 134
+  ClientWidth = 600
+  Visible = 0
+  Enabled = 1
+  Center
+  <font color="0000AA"><b>CREATE</b></font> About0ParseLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">DxfONE! allows you to save DXF files by the loaded image of your bitmaps:</font>"
+   Left = 25
+   Top = 10
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About1ParseLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">The first command advailable is B&&W, usefull for almost architectural drawings.</font>"
+   Left = 55
+   Top = 36
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About2ParseLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">B&&W creates the DXF (points and lines) resulting by the black bitmap's pixels.</font>"
+   Left = 55
+   Top = 50
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About3ParseLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">The Colored command is created to import the image file as similar as possible to bitmap,</font>"
+   Left = 55
+   Top = 68
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> About4ParseLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">the original colors become Solid objects colored from the CAD standard palette.</font>"
+   Left = 55
+   Top = 82
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+   <font color="0000AA"><b>CREATE</b></font> About5ParseLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">The colored entities are now editable, contrary to what is possible importing a raster image.</font>"
+   Left = 55
+   Top = 96
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+ <font color="0000AA"><b>End</b></font> <font color="000099"><b>CREATE</b></font>
+ AboutParseForm.ShowModal
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="0000AA"><b>SUB</b></font> OptionsAbout
+ <font color="0000AA"><b>CREATE</b></font> AboutOptionsForm <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QForm</b></font>
+  BorderStyle = 6
+  Caption = "<font color="990000">Options Menu Tutorial</font>"
+  IcoHandle = ICO
+  ClientHeight = 120
+  ClientWidth = 600
+  Visible = 0
+  Enabled = 1
+  Center
+  <font color="0000AA"><b>CREATE</b></font> Options0EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">DxfONE! allows you to modify the loaded image of your bitmap:</font>"
+   Left = 25
+   Top = 10
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> Options1EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">Checking mode by Options -> SetHalftone menu allows you to brighten or darken drawing, before</font>"
+   Left = 55
+   Top = 36
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> Options2EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">your execution of the Halftone command from Edit menu (for B/W reduction).</font>"
+   Left = 55
+   Top = 50
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> Options3EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">The medium mode is default and creates a B&&W DXF file easy to edit in your favorite CAD system.</font>"
+   Left = 55
+   Top = 68
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> Options4EditLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">Your setting is saved in config. file (DxfONE!.cf), created the 1st day of use.</font>"
+   Left = 55
+   Top = 82
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+ <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+ AboutOptionsForm.ShowModal
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="0000AA"><b>SUB</b></font> OtherAbout
+ <font color="0000AA"><b>CREATE</b></font> AboutOtherForm <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QForm</b></font>
+  BorderStyle = 6
+  Caption = "<font color="990000"> May the source be with you</font>"
+  IcoHandle = ICO
+  ClientHeight = 40
+  ClientWidth = 400
+  Visible = 0
+  Enabled = 1
+  Center
+  <font color="0000AA"><b>CREATE</b></font> Options0OtherLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">Other FREE software, drawings and clip of the same author:</font>"
+   Left = 5
+   Top = 4
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+  <font color="0000AA"><b>CREATE</b></font> Options1OtherLabel <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QLabel</b></font>
+   Caption = "<font color="990000">Gallery Download at http://digilander.libero.it/missoririsorgimento</font>"
+   Left = 50
+   Top = 24
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+ <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+ AboutOtherForm.ShowModal
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+ 
+</pre>
+</body>
+</html>

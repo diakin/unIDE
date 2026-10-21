@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QABOUT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QABOUT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QABOUT Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/object/QAbout.inc</code>, line 15 &middot; version: 1.2</p>
+<p><b>QAbout builds and shows a modal &quot;About&quot; dialog with an image, application name and version, a text, and clickable e-mail and web links.</b></p>
+<p>Show lays out a private form: a group box containing the image, a label with AppName and &quot;Version &quot; + AppVersion, the Text, &quot;Email:&quot; + Email and &quot;Web:&quot; + Web, and an Ok button. The dialog size is calculated from the label sizes and it is shown centred with ShowModal.</p>
+<p>Clicking the e-mail label opens &quot;mailto:&quot; + Email, and clicking the web label opens Web (with &quot;http://&quot; added if it does not contain &quot;http&quot;), both through ShellExecute from shell32 (declared as AboutExecute). E-mail and web labels use a hand cursor and are drawn in blue when their font color is the default.</p>
+<p>QABOUT inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QAbout Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">image</td><td class="rq-type">QIMAGE</td><td>RW</td><td></td><td>QImage shown at the top-left of the dialog (auto-sized, transparent); load the picture into it before calling Show.</td></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Title bar text of the dialog.</td></tr>
+<tr><td class="rq-name">AppName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Application name shown next to the image.</td></tr>
+<tr><td class="rq-name">AppVersion</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Version text; shown as &quot;Version &quot; + AppVersion under the application name when not empty.</td></tr>
+<tr><td class="rq-name">text</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Free text shown under the name; omitted when empty.</td></tr>
+<tr><td class="rq-name">Email</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>E-mail address shown as &quot;Email:&quot; + Email; clicking it opens &quot;mailto:&quot; + Email. Omitted when empty.</td></tr>
+<tr><td class="rq-name">Web</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Web address shown as &quot;Web:&quot; + Web; clicking it opens the address, adding &quot;http://&quot; if needed. Omitted when empty.</td></tr>
+<tr><td class="rq-name">AppFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont for the application name and version label.</td></tr>
+<tr><td class="rq-name">TextFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont for the Text label.</td></tr>
+<tr><td class="rq-name">EmailFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont for the e-mail label; if its color is the default window-text color it is changed to blue.</td></tr>
+<tr><td class="rq-name">WebFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont for the web label; if its color is the default window-text color it is changed to blue.</td></tr>
+</table>
+<a name="2"></a><h2>QAbout Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Show</td><td class="rq-type">SUB</td><td>Builds the dialog from the current properties and shows it modally; the Ok button closes it.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>BtOk.OnClick</code>, <code>label3.OnClick</code>, <code>label4.OnClick</code>.</p>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 6214) contains its own edition of QABOUT.</li>
+<li><code>inc/old/QAbout.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QAbout Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QAbout.inc&quot;
+DIM About AS QAbout
+About.Caption = &quot;About&quot;
+About.AppName = &quot;My Program&quot;
+About.AppVersion = &quot;1.0&quot;
+About.Text = &quot;A short description&quot;
+About.Email = &quot;me@example.com&quot;
+About.Web = &quot;www.example.com&quot;
+About.Image.BMP = &quot;logo.bmp&quot;
+About.Show</pre>
+<div class="rq-foot"><a href="c_myxpskinnedform.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qanim.html">Next component</a></div>
+</body>
+</html>

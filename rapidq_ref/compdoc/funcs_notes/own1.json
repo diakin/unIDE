@@ -1,0 +1,410 @@
+{
+ "ARRMaxEx@func_array.inc": {
+  "desc": "Returns the largest value of Dat!() between indexes MinEl and MaxEl-1 (the last index MaxEl is not checked). The index of that element is written to pointX! (left unchanged if the maximum is the first element). Despite an old comment, values are compared signed, not by absolute value."
+ },
+ "ARRMinEx@func_array.inc": {
+  "desc": "Returns the smallest value of Dat!() between indexes MinEl and MaxEl inclusive, and writes its index to pointX! (left unchanged if the minimum is the first element)."
+ },
+ "FindMax@func_array.inc": {
+  "desc": "Returns the largest of any number of numeric arguments (FUNCTIONI with a variable parameter list, read through ParamVal/ParamValCount). The loop counter is a BYTE, so use at most 255 arguments."
+ },
+ "ArrExtr@func_array.inc": {
+  "desc": "Scans the whole array Dat!() (LBOUND to UBOUND) and returns its minimum in DatMin! and its maximum in DatMax! (both BYREF)."
+ },
+ "ArrAbsExtrN@func_array.inc": {
+  "desc": "Returns in _AbsDatMax! the largest absolute value of Dat!() from index LBOUND+N to UBOUND, i.e. skipping the first N elements. The start value is the signed element at LBOUND+N, not its absolute value."
+ },
+ "ArrAbsExtr@func_array.inc": {
+  "desc": "Returns in _AbsDatMax! the largest absolute value of the whole array Dat!(). The start value is the signed first element, not its absolute value, so an all-negative first element can be compared incorrectly."
+ },
+ "ArrAbsMaxEx@func_array.inc": {
+  "desc": "Finds the largest absolute value of Dat!() between indexes MinEl and MaxEl. The value is returned in _AbsDatMax! and its index in pointX! (left unchanged if it is the first element)."
+ },
+ "ArrAbsMinEx@func_array.inc": {
+  "desc": "Finds the smallest absolute value of Dat!() between indexes MinEl and MaxEl. The value is returned in _AbsDatMin! and its index in pointX! (left unchanged if it is the first element)."
+ },
+ "ArrRaznost@func_array.inc": {
+  "desc": "Element-by-element difference: REDIMs Raznost!() to the bounds of Dat1!() and fills it with Dat1!(i) - Dat2!(i). The size mismatch check is disabled (message and exit are commented out), so arrays must have the same bounds."
+ },
+ "ArrRaznostR@func_array.inc": {
+  "desc": "Subtracts Dat2!() from Dat1!() in place (Dat1!(i) = Dat1!(i) - Dat2!(i)). If the array bounds differ it shows a ShowMessage error and exits."
+ },
+ "ArrSum@func_array.inc": {
+  "desc": "Element-by-element sum: REDIMs SumA!() to the bounds of Dat1!() and fills it with Dat1!(i) + Dat2!(i). If the bounds of Dat1!() and Dat2!() differ it shows a ShowMessage error and exits."
+ },
+ "ArrSumR@func_array.inc": {
+  "desc": "Adds Dat2!() to Dat1!() in place, element by element. If the array bounds differ it shows a ShowMessage error and exits."
+ },
+ "kTArray@func_array.inc": {
+  "desc": "Multiplies every element of Dat1!() by the constant kt! and stores the result in Dat2!(), which is REDIMed to the bounds of Dat1!(). Dat1!() is not changed."
+ },
+ "kTArrayR@func_array.inc": {
+  "desc": "Multiplies every element of Dat1!() by the constant kt! in place."
+ },
+ "Nakopl@func_array.inc": {
+  "desc": "Moving average of F!() over a window of period points (period must be odd), written to Nakop!(). Edge points that the window cannot cover are filled with the first and last averaged values. Note: Nakop!() is REDIMed to 0..period-1 but written up to the last index of F!()."
+ },
+ "ARRAddConst@func_array.inc": {
+  "desc": "Adds the constant const! to every element of Dat!() in place."
+ },
+ "ArrReSample@func_array.inc": {
+  "desc": "Resamples Dat1() into Dat2() with npt points using linear interpolation (comment in source). Dat2() must already be dimensioned for the new number of points; the code indexes Dat1() from 1 and assumes a zero-based array."
+ },
+ "OgibF@func_array.inc": {
+  "desc": "Builds upper and lower envelopes of Dat1(): local maxima (rise greater than 0.08) go to OgibUp() and local minima to OgibDn(), with straight-line interpolation between them. Both output arrays are REDIMed to UBOUND(Dat1)."
+ },
+ "OgibFNew@func_array.inc": {
+  "desc": "Variant of OgibF: builds upper (OgibUp) and lower (OgibDn) envelopes of Dat1() by linear interpolation between local maxima and minima, and also collects up to 512 maxima in a local DatMax() array that is not returned (body longer than shown)."
+ },
+ "cutPoints@func_array.inc": {
+  "desc": "Shifts the contents of Dat!() left by cutPnt elements, dropping the first cutPnt points; the elements from index cutPnt to UBOUND-cutPnt-1 are copied to the start. The array is not resized, the tail keeps old values."
+ },
+ "ReversX1@func_array.inc": {
+  "desc": "Intended to reverse the order of Dat!() (indexes 0 to UBOUND-1), but as written each element is assigned back to its own position, so the array is not changed (the SWAP line is commented out)."
+ },
+ "DelIncline@func_array.inc": {
+  "desc": "Removes a linear slope from Dat!() (source comment: start and end points become equal to 0): subtracts kt!*i, where kt! is the slope between Dat!(0) and Dat!(UBOUND-1). Note the start offset Dat!(0) itself is not subtracted."
+ },
+ "GetCharNum@parse.inc": {
+  "desc": "Counts how many times the character getC occurs in the source line Oper$ outside quoted strings. If a ' comment comes before the first quote, the line is cut at the comment and TALLY is used. Uses the global constant qt (double quote); may modify Oper$."
+ },
+ "GetVarPos@parse.inc": {
+  "desc": "Returns the position of the identifier getV$ in Oper$ (case-insensitive, whole word, bounded by separator characters), ignoring matches inside strings or after a ' comment. Returns 0 if the text is absent and -2 if it is present but not as a variable. Lowercases Oper$ and getV$ in place."
+ },
+ "ParseDim@parse.inc": {
+  "desc": "Parses a DIM statement in SrcTxt$ (e.g. DIM a AS INTEGER, b AS STRING) into variable names Var$() and types VarType$(); VarCount gets the number found (0 if there is no DIM). Uses GetVarPos and uppercases SrcTxt$."
+ },
+ "ParseDef@parse.inc": {
+  "desc": "Parses a DEFxxx statement (DEFSTR, DEFINT, DEFLNG, DEFSNG, DEFDBL) in SrcTxt$: VarType$ receives the full type name and Var$() the comma separated variable names, VarCount the count (0 if no DEF found). Uppercases SrcTxt$."
+ },
+ "DelComments@parse.inc": {
+  "desc": "Removes a trailing ' comment from the source line STxt$ in place, ignoring apostrophes inside double-quoted strings. Uses the global constant qt."
+ },
+ "DelCommentsF@parse.inc": {
+  "desc": "Function form of DelComments: returns the line STxt$ with its trailing ' comment removed (STxt$ itself is also modified)."
+ },
+ "ReplaceComments@parse.inc": {
+  "desc": "Replaces a trailing ' comment in STxt$ with spaces, ignoring apostrophes inside strings, so the line length and character positions stay the same. Modifies STxt$ in place."
+ },
+ "GetOperators@parse.inc": {
+  "desc": "Splits source text SrcTxt$ into statements separated by ':' outside strings, after blanking comments and joining '_' continuation lines. Fills Oper$() with the statements and OperPos() with their start positions; NumOpers receives the count. Arrays must be large enough."
+ },
+ "GetMSGHeader@eml.inc": {
+  "desc": "Returns the header part of a raw e-mail message: all lines before the first empty line. Tabs are replaced by spaces and folded header lines are unfolded first."
+ },
+ "GetMSGBody@eml.inc": {
+  "desc": "Returns the body of a raw e-mail message: all lines from the first empty line to the end (from line 1 if there is no empty line). Tabs and folded lines are normalized as in GetMSGHeader."
+ },
+ "RQBASE64Encode@eml.inc": {
+  "desc": "Encodes the string s in Base64 and returns the result, with = padding. Uses the global constant Base64Table."
+ },
+ "RQBASE64Decode@eml.inc": {
+  "desc": "Decodes the Base64 string stxt and returns the original bytes as a string. Uses the global constant Base64Table; trailing = padding is handled, other invalid characters are not checked."
+ },
+ "DecodeSubj@eml.inc": {
+  "desc": "Decodes an e-mail header such as Subject that contains MIME encoded-words (=?charset?Q|B?text?=), using quoted-printable or RQBASE64Decode, and converts koi8-r, utf-8 and utf-7 text to windows-1251 with RQConvertCodePage. Plain text that looks like KOI8 (isKOI8) is also converted. (body longer than shown)"
+ },
+ "IsEmail@eml.inc": {
+  "desc": "Returns True if wabMail looks like an e-mail address: it matches *@*.* and the last domain part is 2 or 3 latin letters; otherwise False. A stricter per-character check is commented out."
+ },
+ "ExtractEMailFromWab@eml.inc": {
+  "desc": "Loads a Windows Address Book (.wab) file and extracts e-mail addresses from the zero-separated data around each @ character. Valid addresses (IsEmail, no control characters) not already present are added to EmailList; calls DoEvents. (body longer than shown)"
+ },
+ "cprint@rapidq.inc": {
+  "desc": "Declaration only. Body in eml.inc."
+ },
+ "ODD@rapidq.inc": {
+  "desc": "Returns 1 if value is odd and 0 if it is even."
+ },
+ "ClearGrid@rapidq.inc": {
+  "desc": "Clears a QStringGrid by deleting all non-first rows and columns and then restoring the original RowCount, ColCount, FixedRows and FixedCols, so cells come back empty. Selection and scroll position are reset to cell 1,1."
+ },
+ "CreateMenuBitmap@AddMenuItemBitmaps4a.inc": {
+  "desc": "Puts a bitmap (Me) on item mItem of popup menu mPopup, scaled to the menu check-mark size with transparency taken from pixel 0,0. flag_mItem selects by position (MF_BYPOSITION_AMIB) or by command. Uses CreateCompatibleDC, TransparentBlt and SetMenuItemBitmaps; shows a message on failure."
+ },
+ "ClearMenuBitmap@AddMenuItemBitmaps4a.inc": {
+  "desc": "Removes the bitmap from item mItem of popup menu mPopup by calling SetMenuItemBitmaps with zero handles. flag_mItem selects by position (MF_BYPOSITION_AMIB) or by command."
+ },
+ "WindowProc@Api.inc": {
+  "desc": "Declaration only. Body in QFormSkin.inc."
+ },
+ "lastdayM@ApiDate.inc": {
+  "desc": "Returns the last day of the month for a date given as month-day-year (separated by -), as a string \"m-d-y\". Finds it by calling GetDateFormat for day 28 and up until the day is invalid."
+ },
+ "weekday@ApiDate.inc": {
+  "desc": "Returns the day of week (1 to 7) of a date given as month-day-year (separated by -). Compares the short day name from GetDateFormat with the locale names from GetLocaleInfo (LOCALE_SABBREVDAYNAME1..7), so 1 is Monday."
+ },
+ "MasterCallBack_0@CallBack_0.Inc": {
+  "desc": "Internal callback dispatcher for callbacks with no arguments: calls the RapidQ function whose address is hFunction via BIND/CALLFUNC and returns its result. Its address (lpCallBack_0) is used by SetNewCallBack_0; not normally called directly."
+ },
+ "FuncBind_0@CallBack_0.Inc": {
+  "desc": "Declaration only, no body. Prototype used by BIND inside MasterCallBack_0 to describe the function type being called (source comment: BIND does not work with a no-argument function, so it has one Long parameter)."
+ },
+ "SetNewCallBack_0@CallBack_0.Inc": {
+  "desc": "Creates a callback pointer for a RapidQ function without arguments: pass CODEPTR of your function in hFunction and get back an address to give to a Windows API. Uses SetNewFwToCallBack, which allocates a small code thunk on the process heap (not freed)."
+ },
+ "MasterCallBack_1@CallBack_1.Inc": {
+  "desc": "Internal callback dispatcher for one-argument callbacks: calls the function at hFunction with Arg1 via BIND/CALLFUNC and returns its result. Used through SetNewCallBack_1."
+ },
+ "FuncBind_1@CallBack_1.Inc": {
+  "desc": "Declaration only, no body. Prototype used by BIND inside MasterCallBack_1 for one-argument callback functions."
+ },
+ "SetNewCallBack_1@CallBack_1.Inc": {
+  "desc": "Creates a callback pointer for a RapidQ function taking one Long argument: pass CODEPTR of your function and get back an address for a Windows API. Uses SetNewFwToCallBack, which allocates a code thunk on the process heap (not freed)."
+ },
+ "MasterCallBack_2@CallBack_2.Inc": {
+  "desc": "Internal callback dispatcher for two-argument callbacks: calls the function at hFunction with Arg1, Arg2 via BIND/CALLFUNC and returns its result. Used through SetNewCallBack_2."
+ },
+ "FuncBind_2@CallBack_2.Inc": {
+  "desc": "Declaration only, no body. Prototype used by BIND inside MasterCallBack_2 for two-argument callback functions."
+ },
+ "SetNewCallBack_2@CallBack_2.Inc": {
+  "desc": "Creates a callback pointer for a RapidQ function taking two Long arguments: pass CODEPTR of your function and get back an address for a Windows API. Uses SetNewFwToCallBack, which allocates a code thunk on the process heap (not freed)."
+ },
+ "MasterCallBack_3@CallBack_3.Inc": {
+  "desc": "Internal callback dispatcher for three-argument callbacks: calls the function at hFunction with Arg1..Arg3 via BIND/CALLFUNC and returns its result. Used through SetNewCallBack_3."
+ },
+ "FuncBind_3@CallBack_3.Inc": {
+  "desc": "Declaration only, no body. Prototype used by BIND inside MasterCallBack_3 for three-argument callback functions."
+ },
+ "SetNewCallBack_3@CallBack_3.Inc": {
+  "desc": "Creates a callback pointer for a RapidQ function taking three Long arguments: pass CODEPTR of your function and get back an address for a Windows API. Uses SetNewFwToCallBack, which allocates a code thunk on the process heap (not freed)."
+ },
+ "MasterCallBack_5@CallBack_5.Inc": {
+  "desc": "Internal callback dispatcher for five-argument callbacks: calls the function at hFunction with Arg1..Arg5 via BIND/CALLFUNC and returns its result. Used through SetNewCallBack_5."
+ },
+ "FuncBind_5@CallBack_5.Inc": {
+  "desc": "Declaration only, no body. Prototype used by BIND inside MasterCallBack_5 for five-argument callback functions."
+ },
+ "SetNewCallBack_5@CallBack_5.Inc": {
+  "desc": "Creates a callback pointer for a RapidQ function taking five Long arguments: pass CODEPTR of your function and get back an address for a Windows API. Uses SetNewFwToCallBack, which allocates a code thunk on the process heap (not freed)."
+ },
+ "MasterCallBack_6@CallBack_6.Inc": {
+  "desc": "Internal callback dispatcher for six-argument callbacks: calls the function at hFunction with Arg1..Arg6 via BIND/CALLFUNC and returns its result. Used through SetNewCallBack_6."
+ },
+ "FuncBind_6@CallBack_6.Inc": {
+  "desc": "Declaration only, no body. Prototype used by BIND inside MasterCallBack_6 for six-argument callback functions."
+ },
+ "SetNewCallBack_6@CallBack_6.Inc": {
+  "desc": "Creates a callback pointer for a RapidQ function taking six Long arguments: pass CODEPTR of your function and get back an address for a Windows API. Uses SetNewFwToCallBack, which allocates a code thunk on the process heap (not freed)."
+ },
+ "MasterCallBack_7@CallBack_7.Inc": {
+  "desc": "Internal callback dispatcher for seven-argument callbacks: calls the function at hFunction with Arg1..Arg7 via BIND/CALLFUNC and returns its result. Used through SetNewCallBack_7."
+ },
+ "FuncBind_7@CallBack_7.Inc": {
+  "desc": "Declaration only, no body. Prototype used by BIND inside MasterCallBack_7 for seven-argument callback functions."
+ },
+ "SetNewCallBack_7@CallBack_7.Inc": {
+  "desc": "Creates a callback pointer for a RapidQ function taking seven Long arguments: pass CODEPTR of your function and get back an address for a Windows API. Uses SetNewFwToCallBack, which allocates a code thunk on the process heap (not freed)."
+ },
+ "MasterCallBack_8@CallBack_8.Inc": {
+  "desc": "Internal callback dispatcher for eight-argument callbacks: calls the function at hFunction with Arg1..Arg8 via BIND/CALLFUNC and returns its result. Used through SetNewCallBack_8."
+ },
+ "FuncBind_8@CallBack_8.Inc": {
+  "desc": "Declaration only, no body. Prototype used by BIND inside MasterCallBack_8 for eight-argument callback functions."
+ },
+ "SetNewCallBack_8@CallBack_8.Inc": {
+  "desc": "Creates a callback pointer for a RapidQ function taking eight Long arguments: pass CODEPTR of your function and get back an address for a Windows API. Uses SetNewFwToCallBack, which allocates a code thunk on the process heap (not freed)."
+ },
+ "SetNewWndProc@NewWndProc.Inc": {
+  "desc": "Subclasses a window: builds a 14-byte code thunk on the process heap that forwards messages to the RapidQ function hFunction (via lpCallBack_4, four-argument dispatcher) and installs it with SetWindowLong(GWL_WNDPROC). Returns the previous window procedure; the thunk is never freed."
+ },
+ "LShift@CMD5.inc": {
+  "desc": "Shifts the 32-bit value lValue left by iShiftBits bits (0 to 31), filling with zeros, like << in C; handles the sign bit without overflow. Uses the global tables m_l2Power and m_lOnBits. Shifts outside 0..31 are undefined."
+ },
+ "RShift@CMD5.inc": {
+  "desc": "Logical (unsigned) right shift of lValue by iShiftBits bits (0 to 31), filling with zeros on the left. Uses the global table m_l2Power. Shifts outside 0..31 are undefined."
+ },
+ "RShiftSigned@CMD5.inc": {
+  "desc": "Arithmetic right shift of lValue by iShiftBits bits, filling with the sign bit, like >> on a signed integer in C. Uses m_l2Power; not used by the MD5 code (source comment)."
+ },
+ "RotateLeft@CMD5.inc": {
+  "desc": "Rotates the bits of lValue left by iShiftBits; bits falling off the left edge return on the right. Built from LShift and RShift."
+ },
+ "AddUnsigned@CMD5.inc": {
+  "desc": "Adds two 32-bit values as unsigned numbers without overflow and returns the low 32 bits of the sum. Used by the MD5 routines."
+ },
+ "MD5_F@CMD5.inc": {
+  "desc": "MD5 auxiliary function F: returns (x AND y) OR (NOT x AND z). Internal helper of MD5."
+ },
+ "MD5_G@CMD5.inc": {
+  "desc": "MD5 auxiliary function G: returns (x AND z) OR (y AND NOT z). Internal helper of MD5."
+ },
+ "MD5_H@CMD5.inc": {
+  "desc": "MD5 auxiliary function H: returns x XOR y XOR z. Internal helper of MD5."
+ },
+ "MD5I@CMD5.inc": {
+  "desc": "MD5 auxiliary function I: returns y XOR (x OR NOT z). Internal helper of MD5."
+ },
+ "MD5_FF@CMD5.inc": {
+  "desc": "MD5 round 1 step: a = b + RotateLeft(a + F(b,c,d) + x + ac, s), with unsigned addition. Modifies a (by reference). Internal helper of MD5."
+ },
+ "MD5_GG@CMD5.inc": {
+  "desc": "MD5 round 2 step: a = b + RotateLeft(a + G(b,c,d) + x + ac, s), with unsigned addition. Modifies a (by reference). Internal helper of MD5."
+ },
+ "MD5_HH@CMD5.inc": {
+  "desc": "MD5 round 3 step: a = b + RotateLeft(a + H(b,c,d) + x + ac, s), with unsigned addition. Modifies a (by reference). Internal helper of MD5."
+ },
+ "MD5_II@CMD5.inc": {
+  "desc": "MD5 round 4 step: a = b + RotateLeft(a + I(b,c,d) + x + ac, s), with unsigned addition. Modifies a (by reference). Internal helper of MD5."
+ },
+ "ConvertToWordArray@CMD5.inc": {
+  "desc": "MD5 preparation: packs sMessage into 32-bit words, adds the 1-bit terminator and the message length in bits, padded to a multiple of 512 bits. The result is stored in the global array WordArray (the function return value is not set). Fails on an empty string."
+ },
+ "WordToHex@CMD5.inc": {
+  "desc": "Returns the 4 bytes of lValue as an 8-character hex string, least significant byte first (MD5 digest byte order)."
+ },
+ "MD5@CMD5.inc": {
+  "desc": "Returns the MD5 hash of sMessage as a 32-character lowercase hex string. Uses ConvertToWordArray (global WordArray), the round helpers MD5_FF..MD5_II and the global constants S11..S44, m_l2Power and m_lOnBits, which must be initialized."
+ },
+ "MinSet@Common.inc": {
+  "desc": "Makes a form minimize to the task bar as its own window: sets the owner (SetWindowLong index -8, GWL_HWNDPARENT) of the form to 0 and of the Application window to the form. Sample: MinSet(frmMain.Handle, Application.Handle)."
+ },
+ "SetPARAFORMAT@constants.inc": {
+  "desc": "Sets tab stops in a QRichEdit: sends EM_SETPARAFORMAT with a PARAFORMAT structure giving 8 tab stops spaced 0.2 inch (288 twips) apart. Other paragraph options in the code are commented out."
+ },
+ "nOpenMouseDlg@Control.inc": {
+  "desc": "Opens the Control Panel Mouse properties (main.cpl @0) on tab index% via rundll32 shell32.dll,Control_RunDLL. Note: the code uses the variable index, not index%, so the tab argument may be ignored."
+ },
+ "nOpenKeyboardDlg@Control.inc": {
+  "desc": "Opens the Control Panel Keyboard properties (main.cpl @1) on tab index% (0 or 1; larger values become 0) via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "OpenPrintersFolder@Control.inc": {
+  "desc": "Opens the Printers folder from the Control Panel (main.cpl @2) via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "OpenFontsFolder@Control.inc": {
+  "desc": "Opens the Fonts folder from the Control Panel (main.cpl @3) via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenDisplayDlg@Control.inc": {
+  "desc": "Opens the Control Panel Display properties (desk.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "OpenTimeDlg@Control.inc": {
+  "desc": "Opens the Control Panel Date and Time dialog (timedate.cpl) via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenDialingDlg@Control.inc": {
+  "desc": "Opens the Control Panel Telephony / dialing properties (telephon.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenSystemDialog@Control.inc": {
+  "desc": "Opens the Control Panel System properties (sysdm.cpl) via rundll32 shell32.dll,Control_RunDLL. Note: the comma before index% is missing in the command string, so the tab number is appended to @0."
+ },
+ "OpenAddNewHardwareDlg@Control.inc": {
+  "desc": "Opens the Add New Hardware wizard (sysdm.cpl @1) via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenScannerDlg@Control.inc": {
+  "desc": "Opens the Scanners and Cameras Control Panel applet (sticpl.cpl) via rundll32 shell32.dll,Control_RunDLL. The index% parameter is not used."
+ },
+ "OpenThemesDlg@Control.inc": {
+  "desc": "Opens the Desktop Themes Control Panel applet (themes.cpl) via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenAddRemoveProgramsDlg@Control.inc": {
+  "desc": "Opens the Add/Remove Programs Control Panel applet (appwiz.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenPowerMgmtDlg@Control.inc": {
+  "desc": "Opens the Power Management Control Panel applet (powercfg.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenPasswordsDlg@Control.inc": {
+  "desc": "Opens the Passwords Control Panel applet (password.cpl, older Windows) on tab index% via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenModemDlg@Control.inc": {
+  "desc": "Opens the Modems Control Panel applet (modem.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenMMDeviceDlg@Control.inc": {
+  "desc": "Opens the Multimedia / Sounds and Audio Devices Control Panel applet (mmsys.cpl @0) on a tab via rundll32. Note: the code uses the variable index, not index%, so the tab argument may be ignored."
+ },
+ "OpenSoundsDlg@Control.inc": {
+  "desc": "Opens the Sounds page of the multimedia Control Panel applet (mmsys.cpl @1) via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenGamesDlg@Control.inc": {
+  "desc": "Opens the Game Controllers Control Panel applet (joy.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenRegionalDlg@Control.inc": {
+  "desc": "Opens the Regional Settings Control Panel applet (intl.cpl) on tab index% via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenInternetDlg@Control.inc": {
+  "desc": "Opens the Internet Options Control Panel applet (inetcpl.cpl @0) on tab index% via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "nOpenUsersDlg@Control.inc": {
+  "desc": "Intended to open the Users dialog; the command runs inetcpl.cpl @1 on tab index% via rundll32 shell32.dll,Control_RunDLL."
+ },
+ "OpenTweakUIDlg@Control.inc": {
+  "desc": "Opens the TweakUI Control Panel applet (tweakui.cpl) via rundll32. Works only if TweakUI is installed; it does not accept a tab index (source comment)."
+ },
+ "QPDecodeOld@conversionOld.inc": {
+  "desc": "Old decoder for MIME quoted-printable encoded-words (=?charset?Q?text?=) in a mail header; returns the decoded text, or Source unchanged if there is no =? or the encoding is not Q. Prints debug output with PRINT. Superseded by DecodeSubj."
+ },
+ "QPDecode@conversionOld.inc": {
+  "desc": "Decodes a quoted-printable string: removes soft line breaks (= at line end) and replaces each =XX hex code with its character. Returns the decoded text. Assumes every = is followed by two hex digits."
+ },
+ "QPMSGHeaderDecode@conversionOld.inc": {
+  "desc": "Decodes quoted-printable MIME encoded-words (=?charset?Q?text?=) in a mail header and returns the text; returns Source unchanged if there is no =? or the encoding is not Q. Prints debug output with PRINT. Same logic as QPDecodeOld."
+ },
+ "ConvertToTruePath@ConvertToTruePath.inc": {
+  "desc": "Converts a path to the form shown by the Windows shell (e.g. long names instead of 8.3 short names) by calling SHGetFileInfo with SHGFI_DISPLAYNAME for each folder level. Uses the global structure SFI; result ends with a backslash."
+ },
+ "ApeDate@Copy of NOTA.inc": {
+  "desc": "Returns DATE$ without separators (MMDDYYYY); for the year 2000 the year is written as 2K. Part of the NOTA (Network Of The Apes) helper set."
+ },
+ "AsciiKrypt@Copy of NOTA.inc": {
+  "desc": "Simple character-shift cipher: adds (mode 1) or subtracts (other mode) the ASCII codes of the password bpmKryptPass$ to each character of bpmKryptLine$ and returns the result. Characters can overflow 0..255; not secure."
+ },
+ "CloseNOTASys@Copy of NOTA.inc": {
+  "desc": "Returns the LastOpened value from the global registry object NOTASys and closes its key. Pairs with OpenNOTASys."
+ },
+ "CloseNOTAUser@Copy of NOTA.inc": {
+  "desc": "Returns the LastOpened value from the global registry object NOTAUser and closes its key. Pairs with OpenNOTAUser."
+ },
+ "Die@Copy of NOTA.inc": {
+  "desc": "Ends the process immediately with exit code 9999 (ExitProcess)."
+ },
+ "DivBytes@Copy of NOTA.inc": {
+  "desc": "Converts a byte count to KB, MB, GB or TB according to bpmBytesFormat$. Values below 1024 are returned unchanged; an unknown format returns 0. Declared AS LONG, so the result is truncated."
+ },
+ "DivMiliSecs$@Copy of NOTA.inc": {
+  "desc": "Formats the global millisecond count bpmDivTime& as days:hours:minutes:seconds.milliseconds. Note: for values below 1000 the code executes END, which stops the program."
+ },
+ "GetComputerName$@Copy of NOTA.inc": {
+  "desc": "Returns the computer name using the Windows API GetComputerName (buffer of 200 characters)."
+ },
+ "GetFreeDrive@Copy of NOTA.inc": {
+  "desc": "Returns the free space in bytes on drive bpmDriveLetter$ (one letter, without colon) using GetDiskFreeSpace; returns 0 if the drive does not exist or the argument is longer than one character. Result is a LONG, so large disks overflow."
+ },
+ "GetLastError$@Copy of NOTA.inc": {
+  "desc": "Looks up the error code in the global bpmErrorCodeNumber& in a tab-separated text file named by the global bpmErrorFileName$ and returns its description and hex code. Note: on code 0 or a missing file the code executes END, which stops the program."
+ },
+ "GetTempPath$@Copy of NOTA.inc": {
+  "desc": "Returns the Windows temporary folder path using the API GetTempPath, with the trailing backslash removed."
+ },
+ "GetUserName$@Copy of NOTA.inc": {
+  "desc": "Returns the name of the current Windows user using the API GetUserName."
+ },
+ "GetWindowsDirectory$@Copy of NOTA.inc": {
+  "desc": "Returns the Windows directory path using the API GetWindowsDirectory."
+ },
+ "KillIt@Copy of NOTA.inc": {
+  "desc": "Ends the program by calling Application.Terminate."
+ },
+ "LogEvent@Copy of NOTA.inc": {
+  "desc": "Writes an event to the Windows event log by running the external LOGEVENT.EXE with severity, category and text; returns the Shell result as a string. LOGEVENT.EXE must be available."
+ },
+ "MakeMOTD@Copy of NOTA.inc": {
+  "desc": "Creates today's message-of-the-day file MOTD_<ApeDate>.txt in the folder stored in HKLM\\Software\\Network_Of_The_Apes\\MOTDRoot (default C:, written if missing), opens it in Notepad and returns its path."
+ },
+ "OpenNOTASys@Copy of NOTA.inc": {
+  "desc": "Opens the key Software\\Network_Of_The_Apes in the global registry object NOTASys, writes the current date and time to LastOpened and returns that value."
+ },
+ "OpenNOTAUser@Copy of NOTA.inc": {
+  "desc": "Opens the key Software\\Network_Of_The_Apes in the global registry object NOTAUser, writes the current date and time to LastOpened and returns that value."
+ },
+ "ProgramName$@Copy of NOTA.inc": {
+  "desc": "Returns the file name of the running program (COMMAND$(0) without its folder path)."
+ },
+ "FormWndProc@createWind.inc": {
+  "desc": "Declaration only, no body. Window procedure the program must supply: write SUB FormWndProc(Handle, uMsg, wParam, lParam) to handle messages of the window created with the createWind routines."
+ },
+ "dbtCreate@DBT.INC": {
+  "desc": "Creates a new dBase memo (.dbt) file dbtArch with a 512-byte header (next free block = 1), using the global QFileStream fs. If the file cannot be created it prints a message and ends the program."
+ },
+ "dbtClose@DBT.INC": {
+  "desc": "Closes the memo (.dbt) file opened in the global stream fs and resets the globals blockCount and __s."
+ }
+}

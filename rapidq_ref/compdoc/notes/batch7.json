@@ -1,0 +1,722 @@
+{
+ "QGL@QGL.inc": {
+  "summary_en": "OpenGL wrapper object that sets up an OpenGL rendering context on a RapidQ form (or a bitmap) and provides viewport, texture, fog, full-screen and frame-rate helpers.",
+  "summary_ru": "Обёртка OpenGL: создаёт контекст рендеринга OpenGL на форме RapidQ (или в битмапе) и даёт функции для области вывода, текстур, тумана, полноэкранного режима и подсчёта FPS.",
+  "description_en": [
+   "QGL connects OpenGL to a RapidQ window. Init gets the form's device context with GetDC, chooses and sets a double-buffered RGBA pixel format (ChoosePixelFormat/SetPixelFormat from gdi32) and creates and activates a rendering context with wglCreateContext/wglMakeCurrent from opengl32. ReSize sets the glViewport and a gluPerspective projection from FOV, AspectRatio, Front and Back. Flip calls SwapBuffers and counts frames; an internal one-second QTimer copies the count into FrameRate.",
+   "Textures are created with CreateTextureFromFile or CreateTextureFromBitmap. The image is copied into a global QBITMAPEX (QGLinternalBMP), then uploaded with glTexImage2D, or with gluBuild2DMipmaps when MipMap is set. JPG, TGA, GIF and PCX files are loaded through QBITMAPEX.LoadOtherImage. Fog is controlled by FogEnabled, FogMode, FogColor and SetFogParams. RenderToBitmap switches rendering to a separate context on the Bitmap property, and FullScreen changes the screen resolution.",
+   "Per the source comment, run Init in the form's OnShow event and pass the form to draw on; call Close at program end to free the rendering context and DC."
+  ],
+  "requires": [
+   "$INCLUDE <\\GL\\gl.inc>",
+   "$INCLUDE <GL\\glu.inc>",
+   "QBITMAPEX component (QBitmapEx.inc), used for the global QGLinternalBMP but not included by this file"
+  ],
+  "members": {
+   "RENDERTOBITMAP": "When set to True, sizes the Bitmap property to Width x Height (24 or 32 bit) if the bitmap has no width yet, sets a GDI/bitmap pixel format on its handle and makes a new OpenGL context on it current; when set to False, makes the window context current again, deletes the bitmap context and frees the bitmap.",
+   "BITMAP": "QBITMAP used as the drawing target when RenderToBitmap is True.",
+   "WIDTH": "Width of the OpenGL drawing area; set from the form's ClientWidth by Init if it is 0, and updated by ReSize.",
+   "HEIGHT": "Height of the OpenGL drawing area; set from the form's ClientHeight by Init if it is 0, and updated by ReSize.",
+   "FRONT": "Distance to the near clipping plane passed to gluPerspective (default 0.1).",
+   "BACK": "Distance to the far clipping plane passed to gluPerspective (default 500.0).",
+   "MIPMAP": "When nonzero, textures are built with gluBuild2DMipmaps and this value is used as the GL_TEXTURE_MIN_FILTER parameter; when 0, glTexImage2D with GL_NEAREST filtering is used.",
+   "FULLSCREEN": "Only when Width > 319 and Height > 239: True changes the screen resolution to Width x Height, falling back to 640x480, 800x600 or 1024x768 if that fails; False restores the resolution saved at creation. With a smaller Width or Height assigning either value does nothing.",
+   "HDC": "Device context handle of the parent form, obtained with GetDC in Init.",
+   "HBMP": "Device context handle of the Bitmap property, used when rendering to a bitmap.",
+   "HGLRC": "OpenGL rendering context created for the form in Init.",
+   "HGLRC_BMP": "OpenGL rendering context created for the bitmap when RenderToBitmap is True.",
+   "BPP": "Bits per pixel used for the pixel format (default 24; values below 32 are treated as 24 in Init).",
+   "DEPTHBITS": "Depth buffer bits requested in the pixel format (default 8).",
+   "STENCILBITS": "Stencil buffer bits requested in the pixel format (default 16).",
+   "ACCUMBITS": "Accumulation buffer bits requested in the pixel format (default 0).",
+   "FRAMERATE": "Frames per second, updated once per second from the number of Flip calls.",
+   "FOV": "Vertical field of view in degrees used by ReSize (default 60).",
+   "ASPECTRATIO": "Multiplier applied to width/height when ReSize computes the perspective aspect ratio (default 1.0).",
+   "FOGENABLED": "Assigning True calls glEnable(GL_FOG); assigning False calls glDisable(GL_FOG).",
+   "FOGMODE": "Assigning a value calls glFogi(GL_FOG_MODE, value); the source comment lists GL_LINEAR, GL_EXP and GL_EXP2 (default GL_EXP).",
+   "RESIZE": "ReSize(width, height) sets the glViewport and resets the projection matrix with gluPerspective using FOV, AspectRatio, Front and Back; call it from the form's OnResize.",
+   "INIT": "Init(MainForm) sets up the pixel format and OpenGL rendering context on the form; returns the form's DC on success or 0 on failure.",
+   "CLOSE": "Restores the screen resolution if FullScreen is on, deletes the rendering contexts and releases the form's DC; the source says it must run at program end.",
+   "FLIP": "Swaps the front and back buffers (SwapBuffers) and increments the internal frame counter.",
+   "CREATETEXTUREFROMFILE": "CreateTextureFromFile(FileName) loads an image file and returns an OpenGL texture ID, or 0 if the file does not exist or the image is too small.",
+   "CREATETEXTUREFROMBITMAP": "CreateTextureFromBitmap(Bmp) copies a QBITMAP (at least 2x2 pixels) and returns an OpenGL texture ID, or 0.",
+   "FOGCOLOR": "FogColor(R#, G#, B#) sets the fog color with glFogfv; alpha is always 1.0.",
+   "SETFOGPARAMS": "SetFogParams(Start#, End#, Density#) sets fog density, start and end depth and the GL_FOG_HINT."
+  },
+  "example": "$INCLUDE \"QBitmapEx.inc\"\n$INCLUDE \"QGL.inc\"\nDIM Form AS QFORM\nDIM GL AS QGL\n\nSUB FormShow\n  IF GL.Init(Form) = 0 THEN ShowMessage \"OpenGL init failed\"\n  GL.ReSize(Form.ClientWidth, Form.ClientHeight)\nEND SUB\n\nSUB FormClose\n  GL.Close\nEND SUB\n\nForm.OnShow = FormShow\nForm.OnClose = FormClose\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "JohnK",
+  "version": "alpha release 1.0",
+  "date": "",
+  "caveats_en": [
+   "Flip calls SwapBuffers on GL.hDC, not QGL.hDC, so it only works if the QGL instance is named GL.",
+   "The source comment says the PFD_GENERIC_ACCELERATED flag 'probably won't work'.",
+   "CreateTextureFromFile uses NViewLibPresent, which is not defined in this file. Because AND binds tighter than OR, that check only applies to the .PCX case.",
+   "Only 24-bit and 32-bit textures are supported; 8-bit and 16-bit images are converted to 24 bit. The power-of-two size check is commented out.",
+   "Full-screen fallback resolutions are hard-coded (640x480, 800x600, 1024x768)."
+  ]
+ },
+ "QMD2model@QGL.inc": {
+  "summary_en": "Loader and renderer for Quake MD2 animated 3D models, drawn with OpenGL through a QGL object.",
+  "summary_ru": "Загрузчик и отрисовщик анимированных 3D-моделей Quake MD2 через OpenGL (с помощью объекта QGL).",
+  "description_en": [
+   "QMD2model reads an MD2 file with LoadMD2File: the header, skin names (loaded as textures), texture coordinates, triangles and all frames with their vertices, scale and translate values. Frame names are scanned to build a KeyFrame list where the first three letters of the name change. Arrays are fixed-size at the limits defined by MD2_MAX_VERTICES (1024), MD2_MAX_TRIANGLES (2048), MD2_MAX_FRAMES (256) and MD2_MAX_TEXT_COORD (1024).",
+   "DrawMD2 draws one frame interpolated between two frames with glBegin(GL_TRIANGLES). CreateAnimationSet compiles a sequence of interpolated frames into OpenGL display lists and returns the index of the first one. Animate calls the display list for CurrentFrame, and an internal QTimer advances CurrentFrame at the rate set by FPS. If hDC is set, Animate also swaps buffers.",
+   "Skins are loaded with GL.CreateTextureFromFile, so the program must have a QGL instance named GL with an active rendering context before loading a model."
+  ],
+  "requires": [
+   "QGL component in the same file, as a global instance named GL",
+   "OpenGL includes used by QGL (GL\\gl.inc, GL\\glu.inc)",
+   "QD3DVECTOR (Position, Rotation, Scale)"
+  ],
+  "members": {
+   "THEMODEL": "MD2Header structure read from the start of the file (counts and file offsets of skins, vertices, texture coordinates, triangles and frames).",
+   "VERTEX": "Array (frame, vertex, coordinate) of compressed vertex bytes, rescaled per frame by Frame_Scale and Frame_Translate.",
+   "NORMAL": "Array (frame, vertex) of indexes into the MD2 normal table, as read from the file; not used for drawing.",
+   "TEXCOORD": "Array of texture coordinates (s, t), divided by the size of the last loaded texture image.",
+   "INDEXXYZ": "Array (triangle, corner) of vertex indexes for each triangle.",
+   "INDEXST": "Array (triangle, corner) of texture-coordinate indexes for each triangle.",
+   "FRAME_SCALE": "Array (frame, axis) of per-frame scale factors.",
+   "FRAME_TRANSLATE": "Array (frame, axis) of per-frame translation values.",
+   "FRAME_NAME": "Array of frame names (16 characters, zero characters trimmed).",
+   "SKINS": "Array (0-32) of OpenGL texture IDs loaded for the model's skins.",
+   "STARTFRAME": "Index of the first display list of the current animation set; Animate wraps back to it.",
+   "CURRENTFRAME": "Index of the display list that Animate draws; advanced by the FPS timer.",
+   "MAXFRAME": "Number of single frames loaded from the file (capped at MD2_MAX_FRAMES).",
+   "ANIMATIONFRAME": "Array of OpenGL display list handles created by CreateAnimationSet.",
+   "MAXANIMATIONFRAME": "Next free index in AnimationFrame (number of display lists created).",
+   "KEYFRAME": "Array of frame indexes where the first three letters of the frame name change, marking the start of named animations.",
+   "KEYFRAMEINDEX": "Number of entries stored in KeyFrame.",
+   "POSITION": "QD3DVECTOR with the model's translation, applied before drawing.",
+   "ROTATION": "QD3DVECTOR with rotation angles in degrees for the X, Y and Z axes, applied before drawing.",
+   "SCALE": "QD3DVECTOR with scale factors for each axis, applied before drawing (default 1, 1, 1).",
+   "HDC": "Device context handle; if nonzero, Animate calls SwapBuffers on it after drawing.",
+   "FPSTIMER": "Internal: QTimer that advances CurrentFrame.",
+   "FPS": "Animation frames per second; assigning a value above 0 sets the timer interval to 1000/FPS ms and enables it, assigning 0 or less stops it.",
+   "LOADMD2FILE": "LoadMD2File(FileName) loads an MD2 model; if FileName is empty, an open dialog for *.MD2 files is shown. Skins are looked for by their stored names, then as a .bmp and a .jpg file with the model's name.",
+   "SETPOSITION": "SetPosition(X, Y, Z) sets the Position vector.",
+   "SETROTATION": "SetRotation(X, Y, Z) sets the Rotation angles in degrees.",
+   "SETSCALE": "SetScale(X, Y, Z) sets the Scale vector.",
+   "DRAWMD2": "DrawMD2(Frame1, Frame2, Factor, Skin) draws the model interpolated between two frames (Factor 0 = first frame, 1 = second frame) with the given skin index, after applying Position, Rotation and Scale.",
+   "CREATEANIMATIONSET": "CreateAnimationSet(FirstFrame, LastFrame, FrameFactor) compiles interpolated frames from FirstFrame to LastFrame, in steps of FrameFactor, into display lists and returns the index of the first list.",
+   "ANIMATE": "Draws the display list for CurrentFrame if it changed since the last call, and swaps buffers when hDC is set.",
+   "MD2_SET_FPS": "Internal: setter for FPS.",
+   "FPSTIMEROVER": "Internal: timer handler that advances CurrentFrame and wraps it to StartFrame.",
+   "NEW": "Internal: resets frame counters, position, rotation and scale; called by the constructor and by Clear.",
+   "CLEAR": "Deletes the created display lists, resets the object and clears the model arrays.",
+   "CALCMD2NORMALS": "Does nothing: its whole body is commented out."
+  },
+  "example": "DIM GL AS QGL\nDIM Model AS QMD2model\nDIM StartIdx AS LONG\n\n' after GL.Init(Form)\nModel.LoadMD2File(\"tris.md2\")\nStartIdx = Model.CreateAnimationSet(0, 39, 0.25)\nModel.hDC = GL.hDC\nModel.FPS = 20\n' in a timer or loop:\nModel.Animate",
+  "example_origin": "written",
+  "author": "JohnK",
+  "version": "alpha release 1.0",
+  "date": "",
+  "caveats_en": [
+   "Uses a global QGL instance named GL (GL.CreateTextureFromFile); the name is hard-coded.",
+   "CreateAnimationSet passes This.skins(1), a texture ID, as the skin index to DrawMD2.",
+   "CalcMD2Normals is empty (fully commented out), and the stored normal indexes are not used for lighting.",
+   "Array sizes are fixed at the MD2_MAX_* limits; larger models only produce a 'Too many ...' message and are still read.",
+   "Texture coordinates are divided by the size of QGLinternalBMP, that is, the last texture loaded.",
+   "A commented line notes that REDIM of the skins array crashes."
+  ]
+ },
+ "qDATABASE@qdataBaseSQL.inc": {
+  "summary_en": "ODBC database object that connects to Access, dBase, Paradox, Excel or text files and reads the list of tables and their field definitions.",
+  "summary_ru": "Объект базы данных ODBC: подключается к файлам Access, dBase, Paradox, Excel или текстовым и читает список таблиц и описания их полей.",
+  "description_en": [
+   "qDATABASE uses the ODBC API in odbc32.dll. The driver is chosen by a number (dbMSACCESS=0, dbDBASE=1, dbPARADOX=2, dbEXCEL=3, dbTEXT=4), and the helper UseDriver builds a connection string with DRIVER=...;DBQ=<path>. It allocates the ODBC environment and connection, connects with SQLDriverConnect, lists tables and views with SQLTables, then runs SELECT * on each table to count records and describe columns.",
+   "The results are stored in the arrays Table.Name, Table.TYPE, Table.RecCount, Table.FieldCount, Table.FieldName, Table.FieldType, Table.FieldSize, Table.DecDigits and Table.NullAV (up to 150 tables and 255 fields). All methods return the string \"0\" on success or an error message.",
+   "GetDataBaseInfo reads the structure and closes the connection. OpenDataBase reads it and keeps the connection open, so GetSTMT can hand a statement handle to a qSQLTABLE object through its DataBaseExtends method."
+  ],
+  "requires": [
+   "ODBC drivers for the chosen file type"
+  ],
+  "members": {
+   "DRIVERSTR": "ODBC connection string built by UseDriver for the last connection.",
+   "DATABASENAME": "Path of the database file passed to the last connection.",
+   "TABLECOUNT": "Number of tables and views found.",
+   "GETDATABASEINFO": "GetDataBaseInfo(DatabasePath, DriverNum) connects, fills the table and field arrays, then disconnects; returns \"0\" on success or an error message.",
+   "OPENDATABASE": "OpenDataBase(DatabasePath, DriverNum) connects and fills the table and field arrays, leaving the connection open; returns \"0\" on success or an error message.",
+   "CLOSEDATABASE": "Disconnects and frees the ODBC connection and environment handles.",
+   "GETSTMT": "Allocates a new ODBC statement handle on the open connection (keyset cursor) and returns it, or -1 on failure; pass it to qSQLTABLE.DataBaseExtends."
+  },
+  "example": "DIM DB AS qDATABASE\nDIM Res AS STRING\nRes = DB.OpenDataBase(\"C:\\data\\test.mdb\", dbMSACCESS)\nIF Res = \"0\" THEN\n  FOR i = 0 TO DB.TableCount - 1\n    PRINT DB.Table.Name(i); \" \"; DB.Table.TYPE(i); \" \"; DB.Table.RecCount(i)\n  NEXT\nEND IF\nDB.CloseDataBase",
+  "example_origin": "written",
+  "author": "Alberto (from Brasil) (netmask@ig.com.br)",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The Excel driver name is in Portuguese (\"Driver para o Microsoft Excel(*.xls)\"), so it only matches a Portuguese ODBC installation.",
+   "Arrays are fixed at 150 tables and 255 fields per table.",
+   "Field indexes in Table.FieldName and related arrays start at 1, while table indexes start at 0.",
+   "Record counts are found by fetching every row of every table, which can be slow on large databases."
+  ]
+ },
+ "qSQLTABLE@qdataBaseSQL.inc": {
+  "summary_en": "ODBC SQL query object that runs SQL statements on an Access, dBase, Paradox, Excel or text database and moves through the result rows.",
+  "summary_ru": "Объект SQL-запросов через ODBC: выполняет SQL-команды над базой Access, dBase, Paradox, Excel или текстовой и перемещается по строкам результата.",
+  "description_en": [
+   "qSQLTABLE opens its own ODBC connection with DataBaseConnect (same driver numbers as qDATABASE), or uses a statement handle from qDATABASE.GetSTMT through DataBaseExtends. The statement uses a keyset-driven cursor so the result can be scrolled with SQLFetchScroll.",
+   "OpenSQL runs a SELECT, stores the column names in FieldName, counts the rows into RecCount and loads the first row as text into strData. MoveFirst, MoveLast, MoveNext and MovePreview scroll the cursor and reload strData. ExecSQL runs a statement that returns no rows. All functions return \"0\" on success or an error message."
+  ],
+  "requires": [
+   "ODBC drivers for the chosen file type",
+   "qDATABASE (optional, for DataBaseExtends)"
+  ],
+  "members": {
+   "STRCONNECT": "ODBC connection string built by DataBaseConnect.",
+   "STRSQL": "The last SQL string passed to ExecSQL or OpenSQL.",
+   "RECCOUNT": "Number of rows returned by the last OpenSQL.",
+   "FIELDCOUNT": "Number of columns returned by the last OpenSQL.",
+   "FIELDNAME": "Array of column names of the last OpenSQL result, indexed from 1.",
+   "STRDATA": "Array with the current row's values as text, indexed from 1.",
+   "POINTERPOSITION": "Zero-based index of the current row; -1 after a failed OpenSQL.",
+   "DATABASECONNECT": "DataBaseConnect(DatabasePath, DriverNum) opens an ODBC connection and statement handle; returns \"0\" or an error message.",
+   "DATABASEEXTENDS": "DataBaseExtends(DBSTMT) uses a statement handle from qDATABASE.GetSTMT instead of opening a connection; returns \"0\", or an error if the handle is -1.",
+   "EXECSQL": "ExecSQL(SQL) executes a statement (for example INSERT, UPDATE, DELETE) and closes the cursor; returns \"0\" or an error message.",
+   "OPENSQL": "OpenSQL(SQL) executes a query, reads column names, counts rows and loads the first row; returns \"0\" or an error message.",
+   "MOVEFIRST": "Moves to the first row and reloads strData.",
+   "MOVELAST": "Moves to the last row and reloads strData.",
+   "MOVENEXT": "Moves to the next row, if any, and reloads strData.",
+   "MOVEPREVIEW": "Moves to the previous row, if any, and reloads strData (the name means 'previous').",
+   "CLOSESQL": "Closes the cursor of the last OpenSQL and clears strSQL, FieldName, strData and FieldCount.",
+   "CLOSEDATABASE": "Frees the statement handle; if the object owns its connection (not DataBaseExtends), also disconnects and frees the connection and environment."
+  },
+  "example": "DIM T AS qSQLTABLE\nIF T.DataBaseConnect(\"C:\\data\\test.mdb\", dbMSACCESS) = \"0\" THEN\n  IF T.OpenSQL(\"SELECT * FROM Customers\") = \"0\" THEN\n    FOR i = 1 TO T.RecCount\n      PRINT T.strData(1); \" \"; T.strData(2)\n      T.MoveNext\n    NEXT\n    T.CloseSQL\n  END IF\n  T.CloseDataBase\nEND IF",
+  "example_origin": "written",
+  "author": "Alberto (from Brasil) (netmask@ig.com.br)",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The header comment lists SeekRec(RecNumber) as 'Not Implemented'; there is no such method.",
+   "If SQLDriverConnect or SQLAllocStmt fails, Connect shows a message box but still returns \"0\".",
+   "Values are read as text into a 255-byte buffer, so longer field values are cut off. FieldName and strData hold at most 255 columns.",
+   "The Excel driver name in UseDriver is in Portuguese (\"Driver para o Microsoft Excel(*.xls)\")."
+  ]
+ },
+ "QImageDialog@QImageDialog.inc": {
+  "summary_en": "Custom open-file dialog built from RapidQ controls that shows a scaled preview of the selected image.",
+  "summary_ru": "Собственный диалог открытия файла из контролов RapidQ с уменьшенным предпросмотром выбранного изображения.",
+  "description_en": [
+   "QImageDialog builds its own modal QForm with a drive combo box, folder and file lists, a file-name edit, a file-type combo box, Open and Cancel buttons and a scroll box with a QImage preview. Clicking a file shows it scaled to fit a 220x220 box.",
+   "BMP files are loaded directly. ICO files are loaded with LoadImage, and CUR and ANI files have their first icon extracted with ExtractIcon. GIF, JPG, JIF, DIB, RLE, TGA and PCX files are loaded with NViewLib.dll, which must be in the program folder or the Windows system folder; otherwise no preview is shown.",
+   "Set Filter (pairs of 'description|mask' separated by '|'), FilterIndex and InitialDir, then call Execute. It returns True when the user clicks Open with a file name, and the full path is in FileName. With MultiSelect on, the selected paths are in Selected."
+  ],
+  "requires": [
+   "NViewLib.dll (optional, for GIF, JPG, JIF, DIB, RLE, TGA and PCX previews)"
+  ],
+  "members": {
+   "FILENAME": "Full path of the chosen file after Execute. Assigning a value puts its file-name part into the name box and, if its folder exists, switches the folder and file lists to that folder.",
+   "CAPTION": "Assigning it sets the dialog window's caption.",
+   "FILTER": "File type filter as 'description|mask|description|mask...'; assigning it fills the file-type combo box with the descriptions.",
+   "FILTERINDEX": "1-based index of the selected filter; assigning it selects that entry in the file-type combo box if it has items.",
+   "INITIALDIR": "Folder shown when Execute opens the dialog; if empty, the current directory is used.",
+   "DLGCAPTION": "Array (1-4) of the texts for the 'File name:' label, 'File type:' label, Open button and Cancel button; applied by Execute.",
+   "ERRORLANGUAGE": "If not empty, passed to NViewLibSetLanguage before NViewLib loads an image.",
+   "MULTISELECT": "Assigning it turns multiple selection in the file list on or off.",
+   "SELCOUNT": "Number of selected files after Open, set only when more than one file is selected; assigning it does nothing (read only).",
+   "SELECTED": "QStringList filled with the full paths of the selected files when more than one file is selected.",
+   "EXECUTE": "Shows the dialog modally; returns True if the user clicked Open with a file name, False otherwise."
+  },
+  "example": "DIM Dlg AS QImageDialog\nDlg.Caption = \"Choose a picture\"\nDlg.Filter = \"Bitmaps|*.bmp|Icons|*.ico|All files|*.*\"\nDlg.FilterIndex = 1\nIF Dlg.Execute THEN ShowMessage Dlg.FileName",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.1",
+  "date": "",
+  "caveats_en": [
+   "The dialog layout uses hard-coded positions and sizes (form 422x325, preview box 220x220).",
+   "SelCount and Selected are only filled when more than one file is selected, and SelCount cannot be assigned.",
+   "Cancel also closes the form with ModalResult 1; Execute returns False because the internal Open flag stays False.",
+   "Drives are listed by trying A: to Z: with GetDriveType."
+  ]
+ },
+ "QWebCam@VFW.inc": {
+  "summary_en": "Webcam capture component that creates a Video for Windows (avicap32) capture window on a form for live preview, frame callbacks and frame grabbing.",
+  "summary_ru": "Компонент захвата с веб-камеры: создаёт окно захвата Video for Windows (avicap32) на форме для предпросмотра, обработки кадров и сохранения кадров.",
+  "description_en": [
+   "QWebCam wraps the Video for Windows capture API. CamInit creates a child capture window with capCreateCaptureWindow on the given form, sets the capture parameters (frame interval, yield, number of video buffers, no audio), connects to driver CamNum and turns on overlay and preview if available. The other cap* helpers in VFW.inc send WM_CAP_* messages to that window.",
+   "A frame callback can be set through OnFrame by passing the address of a function (CODEPTR). The source gives the template FUNCTION capVideoStreamCallback(hCapWnd AS LONG, lpVHdr AS VIDEOHDR) AS LONG. Image size and bit depth are changed through the video format (capGetVideoFormat/capSetVideoFormat). Capture starts streaming with no file. SaveFrameToFile writes the current frame as a DIB file. ShowDialogBox opens the driver's format, source, display or compression dialog.",
+   "Call CleanUp before closing to stop preview and capture, disconnect the driver and destroy the capture window."
+  ],
+  "requires": [
+   "SetWindowPos declaration from a Windows API include (used by ReSize, not declared in this file)",
+   "A Video for Windows capture driver"
+  ],
+  "members": {
+   "CAPSTATS": "CAPSTATUS structure filled by GetStatus and ReSize.",
+   "CAPPARMS": "CAPTUREPARMS structure with the capture settings used by CamInit and SetYield.",
+   "HCAPWND": "Handle of the capture window created by CamInit.",
+   "CAMNUM": "Capture driver index (0-9) to connect to; after connecting it is set to the driver's device index.",
+   "LEFT": "Left position of the capture window in the parent form, used by CamInit.",
+   "TOP": "Top position of the capture window in the parent form, used by CamInit.",
+   "WIDTH": "Width of the capture window, used by CamInit (default 240).",
+   "HEIGHT": "Height of the capture window, used by CamInit (default 200).",
+   "INIT": "Nonzero after CamInit connected to an initialized driver; CamInit does nothing if it is already set, and CleanUp resets it.",
+   "IMAGEHEIGHT": "Captured image height; when the camera is initialized, assigning it changes the height in the video format.",
+   "IMAGEWIDTH": "Captured image width; when the camera is initialized, assigning it changes the width in the video format.",
+   "BITCOUNT": "Bits per pixel of the captured image; when the camera is initialized, assigning it changes the bit count in the video format, otherwise just stores the value (default 24).",
+   "PREVIEW": "Assigning True or False turns live preview on or off when the camera is initialized; if True before CamInit, preview starts on connect (default True).",
+   "CAPTURE": "Assigning True starts streaming capture without a file (capCaptureSequenceNoFile); assigning False stops it. Overlay is switched along with it.",
+   "YIELD": "Assigning it sets fYield (capture as a background task) in the capture parameters and stores the value if the driver accepts it.",
+   "ONFRAME": "Address of a frame callback function (from CODEPTR); assigning it installs the callback with capSetCallbackOnFrame when initialized, and 0 turns it off.",
+   "FRAMENUM": "Number of the current captured video frame, updated by GetStatus.",
+   "FRAMEINTERVAL": "Frame interval: used as dwRequestMicroSecPerFrame in the capture parameters and as the preview rate in ms (default 16).",
+   "FRAMESDROPPED": "Number of dropped frames, updated by GetStatus.",
+   "SHOWERRORS": "When nonzero, errors are shown with ShowMessage.",
+   "ERROR": "Error value after the last operation (dwReturn), updated by GetStatus.",
+   "CAPTION": "Window name passed to capCreateCaptureWindow (default \"video\").",
+   "TAG": "Window ID passed to capCreateCaptureWindow (default 0).",
+   "FORMSTYLE": "Window style for the capture window (default WS_CHILD OR WS_VISIBLE).",
+   "OVERLAY": "Nonzero when video overlay is on; set from the driver capabilities and turned on automatically if supported.",
+   "FRAMEBUFFERS": "Number of video buffers requested in CamInit (default 4); GetStatus sets it to the number actually allocated.",
+   "AUDIOHARDWARE": "Nonzero if audio hardware is present, updated by GetStatus.",
+   "AUDIOBUFFERS": "Actual number of audio buffers, updated by GetStatus.",
+   "TIMEELAPSEDMS": "Elapsed capture time in milliseconds, updated by GetStatus.",
+   "WAVESAMPLES": "Number of wave samples captured, updated by GetStatus.",
+   "GETSTATUS": "Reads the capture status into CapStats and copies it into ImageWidth, ImageHeight, FramesDropped, Overlay, Preview, FrameNum, Error and the audio fields; returns True on success.",
+   "GETPARAMETERS": "GetParameters(Params) reads the current capture parameters into a CAPTUREPARMS structure.",
+   "SETPARAMETERS": "SetParameters(Params) sends a CAPTUREPARMS structure to the driver; returns 0 on failure.",
+   "CAMINIT": "CamInit(Form) creates the capture window on the form and connects to the camera; returns nonzero on success.",
+   "SETONFRAME": "Internal: setter for OnFrame.",
+   "SETIMAGESIZE": "SetImageSize(Width, Height) changes both image dimensions in the video format; returns True on success.",
+   "SETIMAGEHEIGHT": "Internal: setter for ImageHeight; returns the new height on success.",
+   "SETIMAGEWIDTH": "Internal: setter for ImageWidth.",
+   "SETBITCOUNT": "Internal: setter for BitCount.",
+   "SHOWDIALOGBOX": "ShowDialogBox(n) shows a driver dialog: 1 = video format, 2 = video source, 3 = video display, other values = video compression. Capture is paused while it is open.",
+   "SETCAPTURE": "Internal: setter for Capture.",
+   "SETYIELD": "Internal: setter for Yield.",
+   "SETPREVIEW": "Internal: setter for Preview.",
+   "CLEANUP": "Stops preview, the frame callback and capture, disconnects the driver and destroys the capture window.",
+   "GRABFRAMETOCLIPBOARD": "Copies the current frame to the clipboard (WM_CAP_EDIT_COPY) and reads the bitmap handle from it; returns the GetObject result, or 0 if the clipboard has no bitmap.",
+   "SAVEFRAMETOFILE": "SaveFrameToFile(FileName) grabs a frame and saves it as a DIB (.bmp) file; returns nonzero on success.",
+   "RESIZE": "ReSize(Form) resizes the form and the capture window to ImageWidth x ImageHeight and turns on preview scaling."
+  },
+  "example": "$INCLUDE \"VFW.inc\"\nDIM Form AS QFORM\nDIM Cam AS QWebCam\nCam.ShowErrors = 1\nIF Cam.CamInit(Form) THEN\n  Cam.ReSize(Form)\nEND IF\nForm.ShowModal\nCam.SaveFrameToFile(\"frame.bmp\")\nCam.CleanUp",
+  "example_origin": "written",
+  "author": "John Kelly",
+  "version": "",
+  "date": "2/2005",
+  "caveats_en": [
+   "The source comment says OnFrame cannot be a real EVENT because function pointers do not give an absolute address; pass a CODEPTR address instead.",
+   "FrameInterval is used both as microseconds per frame (capture parameters) and as milliseconds (preview rate); a comment says 3333 = 30 frames per second.",
+   "GrabFrameToClipBoard does not return the bitmap; a local QBITMAP is declared but unused. The error text reads 'Cliboard'.",
+   "SetImageWidth is declared as SUB ... AS LONG, and ShowDialogBox is a FUNCTION that ends with END SUB.",
+   "ReSize calls SetWindowPos, which this file does not declare.",
+   "SetYield sends the capture setup even before CamInit has created the window.",
+   "In the constructor, ImageHeight and ImageWidth are assigned from SetImageHeight/SetImageWidth, which return no value while the camera is not initialized."
+  ]
+ },
+ "Qlistviewex@QListviewEx.inc": {
+  "summary_en": "Extended QListView in report style with clickable flat header buttons for sorting, CSV loading and saving, and filtering of rows.",
+  "summary_ru": "Расширенный QListView в табличном виде: плоские кнопки заголовков с сортировкой по клику, загрузка и сохранение CSV, фильтрация строк.",
+  "description_en": [
+   "Qlistviewex places the list view inside its own panel (ParentPanel) and replaces the standard column headers with a row of QCoolBtn buttons on a header panel. Clicking a header button sorts the list by that column. Columns are added with AddCol, which takes names separated by '/', and Draw rebuilds the header buttons.",
+   "Data is loaded only from the csv string list: each line is split by Separator (default ';') into an item and its subitems, and empty fields are shown as '-'. LoadFromCsvFile loads csvFile first. UpdateCSV writes the list contents back to csv, and SaveToCsvFile, SaveToFileAs and DirectSaveAs save to a file. Exclude and Filter remove rows by comparing a column to a string, not case sensitive.",
+   "Set ParentPanel.Parent to the form (and align the panel as needed); the list view itself is placed in the panel by Draw."
+  ],
+  "requires": [],
+  "members": {
+   "PARENTPANEL": "QPanel that holds the header panel and the list view; set its Parent to place the component on a form.",
+   "HEADER": "QPanel, 20 pixels high and aligned to the top of ParentPanel, that holds the column header buttons.",
+   "COLHEADER": "Array (0-100) of QCoolBtn buttons used as column headers; clicking one sorts by that column.",
+   "CSV": "QStringList with the data lines; Load reads from it and UpdateCSV writes to it.",
+   "CSVFILE": "File name used by LoadFromCsvFile and SaveToCsvFile.",
+   "SEPARATOR": "Field separator for CSV lines (default \";\").",
+   "COLUMNS_COUNT": "Number of columns added with AddCol; used by Draw.",
+   "FLATHEADERS": "Flat style of the header buttons (default 1), applied by Draw.",
+   "FIELDSCOUNT": "Returns the number of fields in the first CSV line (separators + 1).",
+   "FASTCLEAR": "Clears all items faster than Clear by temporarily switching to another view style and font size 1; the source says Clear is very slow with many items.",
+   "LOAD": "Clears the list and fills it from the csv string list.",
+   "LOADFROMCSVFILE": "Loads csvFile into the csv string list and calls Load.",
+   "SORTBY": "SortBy(Caption) sorts the rows by the column whose caption matches, by temporarily swapping that column with the first one and using SortType.",
+   "EXCLUDE": "Exclude(Column, Text) removes rows whose value in the given column (0 = first) equals Text, not case sensitive.",
+   "COLUMNCLICK": "Internal: OnClick handler of the header buttons; calls SortBy with the button caption.",
+   "DRAW": "Places the list view in ParentPanel in report style with grid lines and rebuilds the header buttons from the column captions and widths; call it after changing columns.",
+   "ADDCOL": "AddCol(Names) adds columns from a string of names separated by '/' and calls Draw.",
+   "UPDATECSV": "Rewrites the csv string list from the current list contents; '-' placeholders become empty fields.",
+   "FILTER": "Filter(Column, Text) keeps only rows whose value in the given column (0 = first) equals Text, not case sensitive.",
+   "SAVETOCSVFILE": "Calls UpdateCSV and saves the csv string list to csvFile.",
+   "SAVETOFILEAS": "Shows a save dialog and saves the csv string list to the chosen file.",
+   "DIRECTSAVEAS": "Shows a save dialog and writes the list contents directly to the chosen file, one separated line per row."
+  },
+  "example": "DIM Form AS QFORM\nDIM LV AS Qlistviewex\nLV.ParentPanel.Parent = Form\nLV.ParentPanel.Align = 5\nLV.AddCol(\"Name/Phone/City\")\nLV.csvFile = \"phones.csv\"\nLV.LoadFromCsvFile\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Dreadsoft® Corporation",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The AddCol comment says '(See example)', but the file contains no example.",
+   "Methods share the global variables lx, ly, ix and iy declared with DEFINT at file level.",
+   "Exclude, Filter, UpdateCSV and DirectSaveAs use DO ... LOOP UNTIL loops that run once before checking, so an empty list or a single column is not handled.",
+   "SaveToFileAs saves the csv string list without calling UpdateCSV first, so edits made in the list are not included.",
+   "FieldsCount is taken from the first CSV line only."
+  ]
+ },
+ "qODBC@odbc.inc": {
+  "summary_en": "Simple ODBC client object that lists drivers, connects with a connection string, lists tables, runs SQL queries and fetches rows as text.",
+  "summary_ru": "Простой ODBC-клиент: список драйверов, подключение по строке соединения, список таблиц, выполнение SQL-запросов и чтение строк в текстовом виде.",
+  "description_en": [
+   "qODBC calls the ODBC API in odbc32.dll directly. ODBCInit allocates the environment and connection handles and fills Driver with the installed driver names. Connect(sConn) connects with SQLDriverConnect, allocates a statement handle and fills Table with the table names.",
+   "Query runs an SQL statement with SQLExecDirect and fills Field.Name, Field.TypeNum, Field.TypeStr, Field.Size, Field.DecDigits and Field.Nullav for each result column. GetRecord fetches the next row into Field.Data (as text) and returns 1, or 0 when there are no more rows. Errors are shown with MESSAGEBOX. The file comments follow the numbered steps of an ODBC session (allocate, connect, execute, fetch, free, disconnect).",
+   "Including the file also creates a global object myDB AS qODBC and calls myDB.ODBCInit."
+  ],
+  "requires": [
+   "ODBC driver for the target database"
+  ],
+  "members": {
+   "GLENV": "ODBC environment handle allocated by ODBCInit.",
+   "GLDBC": "ODBC connection handle allocated by ODBCInit.",
+   "GLSTMT": "ODBC statement handle allocated by Connect.",
+   "SSQL": "The last SQL string passed to Query.",
+   "SQLRET": "Return code of the last ODBC call.",
+   "SCONNECT": "Connection string passed to Connect.",
+   "DRIVERCOUNT": "Counter of driver entries filled by ODBCInit.",
+   "DRIVER": "Array (1-100) of ODBC driver descriptions filled by ODBCInit.",
+   "TABLECOUNT": "Number of tables found by Connect.",
+   "TABLE": "Array (1-100) of table names filled by Connect.",
+   "FIELDCOUNT": "Number of columns in the last Query result.",
+   "ODBCINIT": "Allocates the ODBC environment and connection handles and lists the installed drivers into Driver.",
+   "CONNECT": "Connect(sConn) connects using an ODBC connection string, allocates a statement handle and lists the tables (type TABLE) into Table.",
+   "QUERY": "Query(SQL) executes an SQL statement and reads the column descriptions into the Field arrays (indexed from 1).",
+   "CLOSEQUERY": "Closes the cursor of the last query.",
+   "GETRECORD": "Fetches the next row into Field.Data (indexed from 1); returns 1 if a row was read, 0 otherwise.",
+   "CLOSEDB": "Frees the statement handle and disconnects from the database.",
+   "CLOSEODBC": "Frees the connection and environment handles."
+  },
+  "example": "$INCLUDE \"odbc.inc\"\n' myDB is created and initialized by the include\nmyDB.Connect(\"DRIVER={Microsoft Access Driver (*.mdb)};DBQ=C:\\data\\test.mdb;\")\nmyDB.Query(\"SELECT * FROM Customers\")\nWHILE myDB.GetRecord\n  PRINT myDB.Field.Data(1)\nWEND\nmyDB.CloseQuery\nmyDB.CloseDB\nmyDB.CloseODBC",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The include creates the global variables myDB and sSQL and calls myDB.ODBCInit, so the file cannot be included without that side effect.",
+   "DriverCount is incremented before each SQLDrivers call, including the last one that fails, so it counts one more than the number of drivers and the last entry holds stale text.",
+   "Query's error message shows the ODBC state and error text, but SQLError is never called, so those parts are empty.",
+   "Arrays are fixed at 100 drivers, tables and fields, and values are read into a 255-byte buffer."
+  ]
+ },
+ "QTEXTEDIT@QTextEdit.inc": {
+  "summary_en": "QRichEdit extension with a built-in Undo/Cut/Copy/Paste/Select All popup menu and extra editing methods (undo, text limit, replace selection, find).",
+  "summary_ru": "Расширение QRichEdit со встроенным контекстным меню Отменить/Вырезать/Копировать/Вставить/Выделить всё и дополнительными методами (отмена, ограничение длины, замена выделения, поиск).",
+  "description_en": [
+   "QTEXTEDIT adds a QPopupMenu with Undo, Cut, Copy, Paste and Select All items and shortcuts. Before the menu pops up, each item is enabled or disabled from the editor state: undo availability (EM_CANUNDO), current selection, clipboard text and editor text.",
+   "The extra methods send edit-control messages to the window: Undo (EM_UNDO, &HC7), Limit (EM_LIMITTEXT, &HC5) and ReplaceSel (EM_REPLACESEL, &HC2). Find searches the text with INSTR and selects the match. The menu captions can be changed for translation.",
+   "At the end of the file, QRICHEDIT is redefined as QTEXTEDIT ($UNDEF/$DEFINE), so every QRICHEDIT declared after the include becomes a QTEXTEDIT."
+  ],
+  "requires": [],
+  "members": {
+   "USEPOPUP": "Assigning it sets AutoPopup of the built-in menu (1 = show on right click, 0 = do not show); default 1.",
+   "UNDOCAPTION": "Assigning it changes the caption of the Undo menu item.",
+   "CUTCAPTION": "Assigning it changes the caption of the Cut menu item.",
+   "COPYCAPTION": "Assigning it changes the caption of the Copy menu item.",
+   "PASTECAPTION": "Assigning it changes the caption of the Paste menu item.",
+   "SELECTALLCAPTION": "Assigning it changes the caption of the Select All menu item.",
+   "UNDO": "Undoes the last change (EM_UNDO).",
+   "CUT": "Cuts the selection to the clipboard.",
+   "COPY": "Copies the selection to the clipboard.",
+   "PASTE": "Pastes from the clipboard.",
+   "SELECTAL": "Selects all text (named SelectAl to avoid clashing with SelectAll).",
+   "LIMIT": "Limit(value) sets the maximum number of characters the user can enter (EM_LIMITTEXT).",
+   "REPLACESEL": "ReplaceSel(text) replaces the current selection with text; does nothing if nothing is selected.",
+   "FIND": "Find(start, text, case) searches from the 1-based position start, case sensitive if case is True; selects the match and returns its 1-based position, or 0 if not found.",
+   "LINESSCROLL": "LinesScroll(number) moves the cursor to the start of the given 1-based line, counting 2 characters for each line break.",
+   "CANUNDO": "Returns nonzero if the last change can be undone (EM_CANUNDO)."
+  },
+  "example": "$INCLUDE \"QTextEdit.inc\"\nDIM Form AS QFORM\nDIM Edit AS QTEXTEDIT\nEdit.Parent = Form\nEdit.Align = 5\nEdit.UndoCaption = \"&Annuler\"\nEdit.Limit(10000)\nIF Edit.Find(1, \"hello\", 0) THEN Edit.ReplaceSel(\"world\")\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The include redefines QRICHEDIT as QTEXTEDIT for all code that follows it.",
+   "The caption and UsePopup setters do not store the assigned value in the property field, so reading these properties does not return what was assigned.",
+   "LinesScroll assumes every line ends with a 2-character CR+LF."
+  ]
+ },
+ "QProgressBar@QProgressBar.inc": {
+  "summary_en": "Progress bar component that creates a real Windows progress bar control (msctls_progress32) with colors, smooth, vertical and marquee styles and a state setting.",
+  "summary_ru": "Компонент индикатора выполнения: создаёт настоящий Windows-контрол msctls_progress32 с цветами, плавным, вертикальным и бегущим (marquee) стилями и состоянием.",
+  "description_en": [
+   "QProgressBar creates a msctls_progress32 window with CreateWindowEx as a child of the window whose handle is assigned to Parent. Most property setters store the value and call ReDraw, which creates the window if needed, sets the range (PBM_SETRANGE), step, bar and background colors and position, or starts the marquee animation with the update Interval for the marquee style.",
+   "Kind selects the style: PBS_OLD (0), PBS_SMOOTH (1), PBS_VERTICAL (4) or PBS_MARQUEE (8). Changing it destroys the window and creates a new one. Setting Visible to False destroys the window, and setting it to True creates it again. The header says it replaces QProgress.inc and uses the real Windows progress bar from comctl32.dll.",
+   "Assign Parent (for example Form.Handle), then set Min, Max and Position."
+  ],
+  "requires": [],
+  "members": {
+   "PARENT": "Handle of the parent window; assigning it creates the progress bar window (or moves it to the new parent) and redraws it.",
+   "HANDLE": "Window handle of the progress bar control, 0 if not created.",
+   "INTERVAL": "Marquee animation update interval in milliseconds (default 40).",
+   "INCREMENT": "Step value sent with PBM_SETSTEP (default 1).",
+   "VISIBLE": "Assigning False destroys the control window; assigning True creates it again and redraws it.",
+   "MAX": "Maximum of the range; assigning it redraws the bar (values above 65535 are cut to 65535).",
+   "MIN": "Minimum of the range; assigning it redraws the bar.",
+   "COLOR": "Bar color; assigning it sends PBM_SETBARCOLOR on redraw (default grey).",
+   "BACKCOLOR": "Background color; assigning it sends PBM_SETBKCOLOR on redraw (default 0).",
+   "POSITION": "Current position; assigning it sends PBM_SETPOS on redraw.",
+   "KIND": "Style of the bar: PBS_OLD, PBS_SMOOTH, PBS_VERTICAL or PBS_MARQUEE; assigning a new value destroys and recreates the control, and for PBS_VERTICAL swaps Width and Height if the bar is wider than tall.",
+   "TOP": "Top position; assigning it redraws the bar.",
+   "LEFT": "Left position; assigning it redraws the bar.",
+   "HEIGHT": "Height of the bar; assigning it redraws the bar (default 18).",
+   "WIDTH": "Width of the bar; assigning it redraws the bar (default 100).",
+   "STATE": "Assigning 0 or 1 sets the normal state, 2 the error state and 3 the paused state (PBM_SETSTATE).",
+   "CREATE": "Creates the progress bar window with the current Kind, position and size.",
+   "CLOSE": "Stops the marquee, destroys the control window and sets Visible to False.",
+   "SETRANGE": "Sends Min and Max to the control (PBM_SETRANGE) if Max is greater than Min.",
+   "REDRAW": "Creates the window if needed and applies the range, step, colors and position (or marquee), then moves the window to Left, Top.",
+   "SETPARENT": "Internal: setter for Parent.",
+   "SETMAX": "Internal: setter for Max.",
+   "SETMIN": "Internal: setter for Min.",
+   "SETPOSITION": "Internal: setter for Position."
+  },
+  "example": "$INCLUDE \"QProgressBar.inc\"\nDIM Form AS QFORM\nDIM PB AS QProgressBar\nPB.Left = 10\nPB.Top = 10\nPB.Width = 200\nPB.Kind = PBS_SMOOTH\nPB.Parent = Form.Handle\nPB.Max = 100\nPB.Position = 50\nForm.ShowModal\nPB.Close",
+  "example_origin": "written",
+  "author": "Johnk (derived from code by Benjamin Maggi and David Burkley)",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Create passes Top and Left to CreateWindowEx in the x, y order swapped (x = Top, y = Left).",
+   "ReDraw calls SetWindowPos with SWP_NOSIZE, so Width and Height changes are not applied to an existing control.",
+   "The range is limited to 16 bits (Max is cut to 65535).",
+   "A source comment says the PBM_* messages are available only with comctl32.dll newer than 4.70 (IE3 and later)."
+  ]
+ },
+ "QFILEDIALOG@QFileDialog.inc": {
+  "summary_en": "Open or Save file dialog object using the Windows common dialog (GetOpenFileName/GetSaveFileName), with overwrite warning and multiple selection.",
+  "summary_ru": "Объект диалога открытия или сохранения файла на основе стандартного диалога Windows (GetOpenFileName/GetSaveFileName) с предупреждением о перезаписи и множественным выбором.",
+  "description_en": [
+   "QFILEDIALOG fills an OPENFILENAME structure from its properties and calls GetOpenFileName or GetSaveFileName from comdlg32, depending on Mode (fdOpen = 0, fdSave = 1). Filter uses '|' between descriptions and masks; it is converted to the null-separated form the API expects. The read-only check box is always hidden, and the overwrite prompt is added when WarnIfOverWrite is set.",
+   "After Execute returns nonzero, FileName holds the selected path and FileTitle the name without the path. With MultiSelect, Files(0) holds the folder and Files(1) to Files(SelCount) the selected file names.",
+   "The source says the code was adapted from RQDIALOG.INC by Bill K (1-2003)."
+  ],
+  "requires": [],
+  "members": {
+   "PARENT": "Handle of the owner form, or 0 for no owner.",
+   "CAPTION": "Dialog title (default \"Open\").",
+   "FILTER": "File filter as 'description|mask|...' (default \"All Files|*.*\").",
+   "FILTERINDEX": "Index of the initially selected filter, passed as nFilterIndex (the source comment says 0 based).",
+   "INITIALDIR": "Folder shown first; if empty, the system default is used.",
+   "MODE": "fdOpen (0) for an Open dialog or fdSave (1) for a Save dialog.",
+   "WARNIFOVERWRITE": "When nonzero (default), the dialog asks before overwriting an existing file.",
+   "FILENAME": "Initial file name before Execute; the selected full path after Execute.",
+   "FILETITLE": "File name and extension without the path, set by Execute.",
+   "DEFAULTEXT": "Extension appended when the user types a name without one.",
+   "MULTISELECT": "When nonzero, allows selecting several files (explorer-style dialog).",
+   "SELCOUNT": "Number of files selected in multiselect mode.",
+   "NOCHANGEDIR": "When nonzero, the current directory is restored after the dialog closes.",
+   "FILES": "Array filled in multiselect mode: Files(0) is the folder (ending with '\\'), Files(1) to Files(SelCount) are the file names.",
+   "EXECUTE": "Shows the dialog; returns nonzero if the user chose a file, 0 on Cancel."
+  },
+  "example": "$INCLUDE \"QFileDialog.inc\"\nDIM Form AS QFORM\nDIM Dlg AS QFILEDIALOG\nDlg.Parent = Form.Handle\nDlg.Mode = fdSave\nDlg.Caption = \"Save File\"\nDlg.Filter = \"RQ Files|*.bas;*.rqb\"\nDlg.InitialDir = \"C:\\RapidQ\"\nIF Dlg.Execute THEN ShowMessage Dlg.FileName",
+  "example_origin": "written",
+  "author": "JohnK",
+  "version": "1.0",
+  "date": "11/2004",
+  "caveats_en": [
+   "Execute checks and appends pdfStrTerm$, which is not defined (the constant is fdStrTerm$), so the filter terminator check has no effect.",
+   "The USAGE and EXAMPLE comments in the header describe the older RQShowDialog function, not this object.",
+   "Buffers are fixed: 1024 characters for the file name and at most fdMaxFiles (256) selected files."
+  ]
+ },
+ "QHead@QHead.inc": {
+  "summary_en": "Header bar drawn on a QCanvas, aligned to the top of its parent, with left and right caption texts, an optional icon and a color gradient line.",
+  "summary_ru": "Заголовочная панель на основе QCanvas, выровненная по верху родителя: левый и правый текст, необязательная иконка и градиентная линия.",
+  "description_en": [
+   "QHead paints itself in OnPaint with DrawComponent. It fills the background with Color, draws a 2-pixel line under the caption whose color changes by Increment from StartColor toward EndColor every 3 pixels, and draws LeftText and RightText with a grey shadow and white text. If ShowIcon is set, the Icon bitmap is drawn (transparent) at IconX, IconY, or under the caption line when AutoCenter is set.",
+   "DrawComponent always sets Align to 1 (top) and gives CaptionSize, CaptionX and CaptionY default values when they are 0. Most property setters store the value and redraw."
+  ],
+  "requires": [],
+  "members": {
+   "ICON": "QBitmap drawn as the icon when ShowIcon is set.",
+   "AUTOCENTER": "When nonzero, the icon is drawn just below the caption line instead of at IconY.",
+   "ICONX": "X position of the icon.",
+   "ICONY": "Y position of the icon (when AutoCenter is 0).",
+   "CAPTIONX": "Horizontal margin of the texts (12 if 0).",
+   "CAPTIONY": "Vertical position of the texts (4 if 0).",
+   "STARTCOLOR": "Start color of the gradient line; assigning it redraws the header (default &H000044).",
+   "ENDCOLOR": "Target color of the gradient line; assigning it redraws the header (default &H0000FF).",
+   "INCREMENT": "Color step added every 3 pixels of the gradient line; assigning it redraws the header (default 1).",
+   "LEFTTEXT": "Text drawn on the left; assigning it redraws the header (default \"QHead\").",
+   "RIGHTTEXT": "Text drawn on the right; assigning it redraws the header (default \"Test Component\").",
+   "CAPTIONSIZE": "Font size of the texts (12 if 0); assigning it redraws the header.",
+   "SHOWLEFTTEXT": "When nonzero, LeftText is drawn; assigning it redraws the header.",
+   "SHOWRIGHTTEXT": "When nonzero, RightText is drawn; assigning it redraws the header.",
+   "SHOWICON": "When nonzero, the icon is drawn and LeftText is moved right of it; assigning it redraws the header.",
+   "DRAWCOMPONENT": "Paints the whole header; called from OnPaint and from the property setters."
+  },
+  "example": "DIM Form AS QFORM\nDIM Head AS QHead\nHead.Parent = Form\nHead.Height = 40\nHead.LeftText = \"Settings\"\nHead.RightText = \"v1.0\"\nHead.ShowLeftText = 1\nHead.ShowRightText = 1\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The setter names are swapped: ShowLeftText uses SetShowRightText and ShowRightText uses SetShowLeftText, but each setter writes the matching field, so the result is correct.",
+   "With ShowIcon on, the white LeftText is offset by IconY instead of IconX, so the text and its shadow can be misaligned.",
+   "Align is forced to 1 (top) on every redraw.",
+   "Once the gradient color reaches EndColor it moves back and forth around it by Increment."
+  ]
+ },
+ "QMAXEDIT@RichEdPopUp.inc": {
+  "summary_en": "QRichEdit extension with a popup menu like the standard Windows edit context menu (Undo, Cut, Copy, Paste, Delete, Select All) and line-position helpers.",
+  "summary_ru": "Расширение QRichEdit с контекстным меню как у стандартного поля Windows (Отменить, Вырезать, Копировать, Вставить, Удалить, Выделить всё) и функциями для позиций строк.",
+  "description_en": [
+   "QMAXEDIT assigns its own QPopupMenu to PopupMenu. When it pops up, items are enabled from the editor state: undo availability (message &HC6), selection length, clipboard text and whether all text is already selected.",
+   "Line helpers send rich edit messages: LINEINDEX and GetLINEIdx use EM_LINEINDEX (187) to get the position of the first character of a line, and LINEFROMCHAR and LINEFROMPos use EM_LINEFROMCHAR (201) to get the line containing a character. GoToLineBegin and GoToLineEnd move the cursor within the current line.",
+   "At the end of the file, QRICHEDIT is redefined as QMAXEDIT, so a QRICHEDIT declared after the include becomes a QMAXEDIT. The comments say: set UsePopup = 0 to turn the popup off, or assign another menu to PopupMenu."
+  ],
+  "requires": [],
+  "members": {
+   "RICHFONT": "Purpose not clear from the source.",
+   "USEPOPUP": "Assigning it sets AutoPopup of the built-in menu; 0 turns the popup off.",
+   "LINEINDEX": "Returns the character position of the first character of the current line (WhereY).",
+   "GETLINEIDX": "GetLINEIdx(line) returns the character position of the first character of the given line.",
+   "LINEFROMCHAR": "Returns the number of the line that contains the start of the selection (SelStart).",
+   "LINEFROMPOS": "LINEFROMPos(chrpos) returns the number of the line that contains the character at the given position.",
+   "GOTOLINEEND": "Moves the cursor to the end of the current line.",
+   "GOTOLINEBEGIN": "Moves the cursor to the beginning of the current line.",
+   "UNDO": "Undoes the last change (message &HC7).",
+   "CUT": "Cuts the selection to the clipboard.",
+   "COPY": "Copies the selection to the clipboard.",
+   "PASTE": "Pastes from the clipboard.",
+   "DELETE": "Deletes the selection by sending a Delete key-down message (&H100 with &H2E) to the control.",
+   "SELECTAL": "Selects all text."
+  },
+  "example": "$INCLUDE \"RichEdPopUp.inc\"\nDIM Form AS QFORM\nDIM Edit AS QRICHEDIT   ' becomes QMAXEDIT\nEdit.Parent = Form\nEdit.Align = 5\nEdit.UsePopup = 0       ' turn the popup off",
+  "example_origin": "written",
+  "author": "Psyclops",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The include redefines QRICHEDIT as QMAXEDIT for all code that follows it.",
+   "RichFont is declared but never used.",
+   "GoToLineEnd and GoToLineBegin are declared as functions returning LONG but return no value.",
+   "The Set_Popup setter does not store the value in UsePopup."
+  ]
+ },
+ "QFlashLabel@QFlashLabel.inc": {
+  "summary_en": "QLabel that can flash its text by switching the font color between a dark and a light color on a timer.",
+  "summary_ru": "Метка QLabel, которая умеет мигать текстом, переключая цвет шрифта между тёмным и светлым по таймеру.",
+  "description_en": [
+   "QFlashLabel uses an internal QTimer. While Flash is True, each timer tick toggles State and sets the font color to LightColor or DarkColor. Speed sets the timer interval in milliseconds. The label is transparent and auto-sized by default.",
+   "Set LightColor and DarkColor (both default to black, &h0), then set Flash = True."
+  ],
+  "requires": [],
+  "members": {
+   "LIGHTCOLOR": "Font color used in the 'on' state (default &h0).",
+   "DARKCOLOR": "Font color used in the 'off' state; assigning it also sets the current font color (default &h0).",
+   "FLASH": "Assigning True starts flashing; assigning False stops it, sets State to 0 and restores DarkColor.",
+   "STATE": "Current color state; assigning 1 shows LightColor, any other value shows DarkColor.",
+   "SPEED": "Flash interval in milliseconds; assigning it sets the timer interval (default 1000)."
+  },
+  "example": "DIM Form AS QFORM\nDIM Lbl AS QFlashLabel\nLbl.Parent = Form\nLbl.Caption = \"Alarm!\"\nLbl.LightColor = &HFF\nLbl.DarkColor = &H0\nLbl.Speed = 500\nLbl.Flash = True\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "LightColor and DarkColor both default to black, so flashing is not visible until LightColor is changed."
+  ]
+ },
+ "QImageEx@object/QImageEx.inc": {
+  "summary_en": "QImage extension with clipboard copy and paste, bitmap loading at a chosen size, and loading of other image formats through NViewLib.dll.",
+  "summary_ru": "Расширение QImage: копирование и вставка через буфер обмена, загрузка битмапа нужного размера и загрузка других форматов изображений через NViewLib.dll.",
+  "description_en": [
+   "QImageEx adds GDI and clipboard helpers to QImage. CopyToClipboard copies a rectangle of the image into a new compatible bitmap with BitBlt and puts it on the clipboard as CF_BITMAP. PasteFromClipboard takes a CF_BITMAP handle from the clipboard and assigns it to the image's Handle.",
+   "LoadFromFile loads a .bmp file with LoadImage (LR_LOADFROMFILE), either at its real size or at a given width and height. LoadOtherImage loads formats supported by NViewLib.dll (NViewLibLoad) and sets the image size from the loaded picture."
+  ],
+  "requires": [
+   "NViewLib.dll (for LoadOtherImage)"
+  ],
+  "members": {
+   "COPYTOCLIPBOARD": "CopyToClipboard(rect AS QRECT) copies the given rectangle of the image to the clipboard as a bitmap.",
+   "PASTEFROMCLIPBOARD": "If the clipboard holds a bitmap, assigns its handle to the image.",
+   "LOADFROMFILE": "LoadFromFile(FileName, width, height, real) loads a bitmap file; if real is True it keeps the file's own size, otherwise it is loaded at width x height.",
+   "CANPASTE": "Returns True if the clipboard holds a bitmap.",
+   "LOADOTHERIMAGE": "LoadOtherImage(FileName, Progress, Language) loads an image with NViewLib.dll (passing Language to NViewLibSetLanguage and Progress to the loader) and sets Width and Height from it."
+  },
+  "example": "DIM Form AS QFORM\nDIM Img AS QImageEx\nImg.Parent = Form\nImg.LoadOtherImage(\"photo.jpg\", False, \"English\")\nIF Img.CanPaste THEN Img.PasteFromClipboard\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.1",
+  "date": "",
+  "caveats_en": [
+   "CanPaste is declared as a Function but ends with End Sub.",
+   "CopyToClipboard deletes the bitmap handle right after placing it on the clipboard.",
+   "Load_JPG, Load_GIF and NViewLibSaveAsJPG are declared but not used."
+  ]
+ },
+ "QDesktop@QDesktop.inc": {
+  "summary_en": "Object with desktop helpers: copy the screen or the wallpaper into a device context, read a screen pixel and change the wallpaper.",
+  "summary_ru": "Объект для работы с рабочим столом: копирование экрана или обоев в контекст устройства, чтение цвета пикселя экрана и смена обоев.",
+  "description_en": [
+   "QDesktop wraps a few Windows API calls. Copy gets the screen DC with GetDC(0) and copies an area starting at the screen's top-left corner into another device context with BitBlt. CopyWallPaper draws the desktop pattern or wallpaper into a DC with PaintDesktop. GetPixel reads the color of a screen pixel. ChangeWallPaper sets a new wallpaper with SystemParametersInfo(SPI_SETDESKWALLPAPER), saving it to the user profile and notifying other programs.",
+   "The handle arguments are device context handles, for example the Handle of a QCanvas or QBitmap."
+  ],
+  "requires": [],
+  "members": {
+   "COPY": "Copy(handle, x, y, width, height) copies the screen area from the top-left corner, limited to the screen size, into the DC handle at position x, y.",
+   "COPYWALLPAPER": "CopyWallPaper(handle) draws the desktop wallpaper into the DC handle.",
+   "GETPIXEL": "GetPixel(x, y) returns the color of the screen pixel at x, y.",
+   "CHANGEWALLPAPER": "ChangeWallPaper(FileName) sets the given image file as the desktop wallpaper."
+  },
+  "example": "DIM Form AS QFORM\nDIM Canvas AS QCANVAS\nDIM Desk AS QDesktop\nCanvas.Parent = Form\nCanvas.Align = 5\nSUB CanvasPaint\n  Desk.Copy(Canvas.Handle, 0, 0, Canvas.Width, Canvas.Height)\nEND SUB\nCanvas.OnPaint = CanvasPaint\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "SetActiveDesktop is declared (as an alias of SetActiveWindow) but its only use is commented out.",
+   "Copy always reads from the screen's top-left corner (0, 0)."
+  ]
+ },
+ "QxEDIT@QxEdit.inc": {
+  "summary_en": "QEdit replacement that subclasses the edit window to add OnGetFocus and OnLoseFocus events, a WndProc event and an option to make Enter move to the next control.",
+  "summary_ru": "Замена QEdit с подменой оконной процедуры: события OnGetFocus и OnLoseFocus, событие WndProc и опция перехода к следующему контролу по Enter.",
+  "description_en": [
+   "Shortly after creation, an internal timer (Interval 1) replaces the edit's window procedure with Proc using SetWindowLong(GWL_WNDPROC) and CODEPTR. Proc passes each message to the original procedure with CallWindowProc, then fires OnGetFocus on WM_SETFOCUS (&H7), OnLoseFocus on WM_KILLFOCUS (&H8), and the WndProc event for every message.",
+   "When EnterKey is nonzero, pressing Enter removes the WM_CHAR message for the parent with KillMessage and sends WM_NEXTDLGCTL (&H28) to the parent, moving focus as Tab does. The constants ekNormal (0) and ekTab (1) are defined for it.",
+   "At the end of the file, QEDIT is redefined as QxEDIT, so every QEDIT declared after the include becomes a QxEDIT. The comments say focus event handlers must take the Sender parameter."
+  ],
+  "requires": [],
+  "members": {
+   "TMR": "Internal: one-shot timer that installs the window procedure after the control is created.",
+   "OLDWNDPROC": "Internal: address of the original window procedure, used by Proc.",
+   "ENTERKEY": "When nonzero (ekTab), Enter moves focus to the next control; ekNormal (0) keeps normal behavior.",
+   "ONGETFOCUS": "Event fired when the edit receives focus; handler: SUB (Sender AS QEDIT).",
+   "ONLOSEFOCUS": "Event fired when the edit loses focus; handler: SUB (Sender AS QEDIT).",
+   "WNDPROC": "Event fired for every window message after the original procedure handled it; handler: SUB (hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG).",
+   "PROC": "Internal: the replacement window procedure installed by the timer."
+  },
+  "example": "$INCLUDE \"QxEdit.inc\"\nDIM Form AS QFORM\nDIM Edit1 AS QEDIT   ' becomes QxEDIT\nDIM Edit2 AS QEDIT\nSUB EditFocus(Sender AS QEDIT)\n  Form.Caption = \"Editing \" + Sender.Text\nEND SUB\nEdit1.Parent = Form\nEdit2.Parent = Form\nEdit2.Top = 30\nEdit1.EnterKey = ekTab\nEdit1.OnGetFocus = EditFocus\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "psyclops420 <psyclops420@yahoo.com>",
+  "version": "1.1",
+  "date": "",
+  "caveats_en": [
+   "The include redefines QEDIT as QxEDIT for all code that follows it.",
+   "The comments say custom events must have at least one parameter, and the author had not found a way around this.",
+   "The window procedure is installed by a 1 ms timer after creation, so messages sent before the timer fires do not reach the new events."
+  ]
+ },
+ "Qciccio@qciccio.inc": {
+  "summary_en": "Empty test stub component with a single field of an undefined type ciccino and an empty constructor.",
+  "summary_ru": "Пустая заготовка компонента: одно поле неопределённого типа ciccino и пустой конструктор.",
+  "description_en": [
+   "Qciccio extends QOBJECT and declares one field, cacchio AS ciccino, and a constructor that contains only the comment 'Initialization code here ...'. The type ciccino is not defined in this file or elsewhere in the include folder, so the component has no functionality."
+  ],
+  "requires": [
+   "Type ciccino (not defined in the file)"
+  ],
+  "members": {
+   "CACCHIO": "Purpose not clear from the source."
+  },
+  "example": "DIM C AS Qciccio",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The field type ciccino is not defined, so the file does not compile on its own.",
+   "The constructor is empty; the component does nothing."
+  ]
+ }
+}

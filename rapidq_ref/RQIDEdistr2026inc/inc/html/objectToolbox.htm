@@ -1,0 +1,119 @@
+<html>
+<head>
+<title>objectToolbox.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>' ObjectToolbox API for Rapid-Q! Version 1.1.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' About</i></font> 
+<font color="007700"><i>' ---------------</i></font> 
+<font color="007700"><i>' ObjectToolbox is a library that provides useful functions and subs for manipulating objects and</i></font> 
+<font color="007700"><i>' retrieving information about them.</i></font> 
+<font color="007700"><i>' </i></font> 
+<font color="007700"><i>' Release Notes</i></font> 
+<font color="007700"><i>' --------------</i></font> 
+<font color="007700"><i>' o Code is provided as-is.</i></font> 
+<font color="007700"><i>' o ObjectToolbox is designed for Windows, not Linux/Unix.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' This package includes:</i></font> 
+<font color="007700"><i>' ===============================================================================</i></font> 
+<font color="007700"><i>' - TypeOf, a function which returns a string representation of the type</i></font> 
+<font color="007700"><i>' of object the given handle identifies.</i></font> 
+
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' Usage Notes:</i></font> 
+<font color="007700"><i>' --------------</i></font> 
+<font color="007700"><i>' You can't pass objects by name (by reference) to TypeOf, only their handles. I hope to provide a</i></font> 
+<font color="007700"><i>' workaround for this, though.</i></font> 
+<font color="007700"><i>' </i></font> 
+<font color="007700"><i>' GDI object handles may be implemented for the next version of TypeOf().</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' Updates:</i></font> 
+<font color="007700"><i>' --------------</i></font> 
+<font color="007700"><i>' TypeOf now recognizes QMenuItems</i></font> 
+
+
+<font color="0000AA"><b>$IfNDef</b></font> __OBJECT_TOOLBOX_USED
+ <font color="0000AA"><b>$Define</b></font> __OBJECT_TOOLBOX_USED
+
+REM [This section contains the TypeOf <font color="0000AA"><b>function</b></font> <font color="0000AA"><b>and</b></font> all other code related <font color="0000AA"><b>to</b></font> it]
+REM ------------------------------------------------------------------------------------------------------
+<font color="007700"><i>' Not a local function (See below). The underscore denotes this as an API call.</i></font> 
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ObjectToolbox_GetClassName <font color="0000AA"><b>lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>alias</b></font> "<font color="990000">GetClassNameA</font>" _
+<b>(</b>ByVal hWnd <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>, ByRef lpClassName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, ByVal nMaxCount <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+
+<font color="007700"><i>' Returns the win32 class name for an object, as opposed to Rapid-Q's predetermined component name</i></font> 
+<font color="0000AA"><b>Function</b></font> ObjectToolbox.TypeOfA<b>(</b>Object <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="007700"><i>'ShowMessage "Called ObjectToolbox.TypeOfA"</i></font> 
+<font color="0000AA"><b>Dim</b></font> StrBuf <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, StrPtr <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, StrLen <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+StrBuf=<font color="0000AA"><b>Space$</b></font><b>(</b>256<b>)</b>: StrLen=<font color="0000AA"><b>Len</b></font><b>(</b>StrBuf<b>)</b>
+StrLen=ObjectToolbox_GetClassName<b>(</b>Object, StrBuf, StrLen<b>)</b>
+StrPtr=<font color="0000AA"><b>Left$</b></font><b>(</b>StrBuf, StrLen<b>)</b>
+ Result=StrPtr
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>' Returns Rapid-Q's definition of the class name Object identifies</i></font> 
+<font color="0000AA"><b>Function</b></font> ObjectToolbox.TypeOf<b>(</b>Object <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="007700"><i>'ShowMessage "Called ObjectToolbox.TypeOf"</i></font> 
+<font color="0000AA"><b>Dim</b></font> StrBuf <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, StrPtr <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, StrLen <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+StrBuf=<font color="0000AA"><b>Space$</b></font><b>(</b>256<b>)</b>: StrLen=<font color="0000AA"><b>Len</b></font><b>(</b>StrBuf<b>)</b>
+StrLen=ObjectToolbox_GetClassName<b>(</b>Object, StrBuf, StrLen<b>)</b>
+StrPtr=<font color="0000AA"><b>Left$</b></font><b>(</b>StrBuf, StrLen<b>)</b>
+ 
+ <font color="0000AA"><b>If</b></font> <font color="0000AA"><b>Left$</b></font><b>(</b>StrPtr, 1<b>)</b>="<font color="990000">T</font>" <font color="000099"><b>Then</b></font>
+  <font color="007700"><i>' Let's convert the first character from 'T' to 'Q'</i></font> 
+  StrPtr=<font color="0000AA"><b>Replace$</b></font><b>(</b>StrPtr, "<font color="990000">Q</font>", 1<b>)</b>
+
+ <font color="007700"><i>' Now get rid of the 's' at the end (we don't need it)</i></font> 
+   <font color="0000AA"><b>If</b></font> <font color="0000AA"><b>Right$</b></font><b>(</b>StrPtr, 1<b>)</b>="<font color="990000">s</font>" <font color="000099"><b>Then</b></font>
+    StrPtr=<font color="0000AA"><b>Left$</b></font><b>(</b>StrPtr, <font color="0000AA"><b>Len</b></font><b>(</b>StrPtr<b>)</b>-1<b>)</b>
+   <font color="0000AA"><b>End</b></font> <font color="000099"><b>If</b></font>
+ <font color="0000AA"><b>End</b></font> <font color="000099"><b>If</b></font>
+ 
+ <font color="007700"><i>' Now let's analyze the class name and convert, if necessary</i></font> 
+ <font color="0000AA"><b>If</b></font> StrPtr="<font color="990000">QBitBtn</font>" <font color="000099"><b>Then</b></font>
+  StrPtr="<font color="990000">QButton</font>"
+ <font color="0000AA"><b>ElseIf</b></font> StrPtr="<font color="990000">QApplication</font>" <font color="000099"><b>Then</b></font>
+  StrPtr="<font color="990000">Application</font>"
+ <font color="0000AA"><b>ElseIf</b></font> StrPtr="<font color="990000">#32768</font>" <font color="000099"><b>Then</b></font>
+  StrPtr="<font color="990000">QMenuItem</font>"
+ <font color="0000AA"><b>End</b></font> <font color="000099"><b>If</b></font>
+ 
+ Result=StrPtr
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>' A new way of doing things :)</i></font> 
+<font color="0000AA"><b>Functioni</b></font> TypeOf<b>(</b>...<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>Dim</b></font> ptr1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, lpfn1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>, lpfn2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>, bGetNative <font color="0000AA"><b>as</b></font> <font color="000099"><b>byte</b></font>
+ptr1=<font color="0000AA"><b>ParamVal</b></font><b>(</b>1<b>)</b>: bGetNative=<font color="0000AA"><b>ParamVal</b></font><b>(</b>2<b>)</b>
+
+ <font color="0000AA"><b>Bind</b></font> lpfn1 <font color="0000AA"><b>to</b></font> ObjectToolbox.TypeOf
+ <font color="0000AA"><b>Bind</b></font> lpfn2 <font color="0000AA"><b>to</b></font> ObjectToolbox.TypeOfA
+
+ <font color="0000AA"><b>If</b></font> <font color="0000AA"><b>ParamValCount</b></font>=1 <font color="000099"><b>Then</b></font>
+  <font color="0000AA"><b>CallFunc</b></font> lpfn1, ptr1
+ <font color="0000AA"><b>ElseIf</b></font> <font color="0000AA"><b>ParamValCount</b></font>=2 <font color="0000AA"><b>and</b></font> bGetNative=1 <font color="000099"><b>Then</b></font>
+  <font color="0000AA"><b>CallFunc</b></font> lpfn2, ptr1
+ <font color="0000AA"><b>End</b></font> <font color="000099"><b>If</b></font>
+
+<font color="007700"><i>' Frees the pointers, I think </i></font> 
+ lpfn1=0: lpfn2=0
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Functioni</b></font>
+
+<font color="007700"><i>' Overview</i></font> 
+<font color="007700"><i>' ---------</i></font> 
+<font color="007700"><i>' TypeOf() only works on GUI components, not virtual ones (interfaces) like GDI objects</i></font> 
+<font color="007700"><i>' such as QBitMap, QCanvas, QFont, and Printer.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' QCoolBtn is a canvas-type object, so the above rules apply to it as well.</i></font> 
+<font color="007700"><i>' QDirTree dosen't have a GUI handle; oddly, it's a GDI object :p</i></font> 
+<font color="007700"><i>' If you test a QFont, TypeOf may return a current class running in Windows, or nothing at all.</i></font> 
+REM ----------------------------------------------------------------------------------------------------
+REM [<font color="0000AA"><b>End</b></font> TypeOf<b>(</b><b>)</b> code section]
+
+<font color="0000AA"><b>$EndIf</b></font> 
+</pre>
+</body>
+</html>

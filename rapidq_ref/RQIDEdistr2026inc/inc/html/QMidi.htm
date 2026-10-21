@@ -1,0 +1,240 @@
+<html>
+<head>
+<title>QMidi.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QMidi</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>const</b></font> MD_CLOSE=0
+<font color="0000AA"><b>const</b></font> MD_PLAY=1
+<font color="0000AA"><b>const</b></font> MD_PAUSE=2
+<font color="0000AA"><b>const</b></font> MD_STOP=3
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> mciSendMidi <font color="0000AA"><b>Lib</b></font> "<font color="990000">winmm.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">mciSendStringA</font>" <b>(</b>lpstrCommand <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, lpstrReturnString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>long</b></font>, uReturnLength <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, hwndCallback <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> mciGetErrorMidi <font color="0000AA"><b>Lib</b></font> "<font color="990000">winmm.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">mciGetErrorStringA</font>" <b>(</b>dwError <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Byref lpstrBuffer <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,uLength <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Sub</b></font> event_change<b>(</b>position <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+
+<font color="0000AA"><b>Type</b></font> QMidi <font color="0000AA"><b>extends</b></font> <font color="000099"><b>Qobject</b></font>
+  <font color="007700"><i>'================================</i></font> 
+  <font color="007700"><i>' champs et proprietés</i></font> 
+  <font color="007700"><i>'================================</i></font> 
+  <font color="0000AA"><b>Timer</b></font> <font color="0000AA"><b>as</b></font> <font color="000099"><b>QTIMER</b></font>
+  Lenght <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+  State <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  FileOpen <font color="0000AA"><b>as</b></font> boolean
+  Error <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  CurrentFrame <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>Long</b></font> PROPERTY SET SetCurrentFrame
+  OnChange <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>event_change<b>)</b> 
+
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' proprieté position séquence</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  Property Set SetCurrentFrame<b>(</b>frame <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QMidi.FileOpen <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> QMidi.State=MD_STOP <font color="0000AA"><b>or</b></font> QMidi.State=MD_PAUSE <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> frame&lt;0 <font color="000099"><b>then</b></font>
+          QMidi.CurrentFrame=0
+        <font color="000099"><b>else</b></font>
+          <font color="0000AA"><b>if</b></font> frame>QMidi.Lenght <font color="000099"><b>then</b></font>
+            QMidi.CurrentFrame=QMidi.Lenght
+          <font color="000099"><b>else</b></font>
+            QMidi.CurrentFrame=frame
+          <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendMidi<b>(</b>"<font color="990000">seek MEDIA to </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>QMidi.CurrentFrame<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+PRIVATE:
+
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="007700"><i>' Méthode retourne le texte de l'erreur</i></font> 
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetMciDescription<b>(</b>McierrNr <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>Long</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>200<b>)</b>
+    Retval=mciGetErrorMidi<b>(</b>McierrNr,RetString,200<b>)</b>
+    <font color="0000AA"><b>if</b></font> Retval <font color="000099"><b>then</b></font>
+      QMidi.GetMciDescription=<font color="0000AA"><b>RTRIM$</b></font><b>(</b>RetString<b>)</b>
+    <font color="000099"><b>else</b></font>
+      QMidi.GetMciDescription="<font color="990000"></font>"
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode lecture position séquence</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetPosition <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QMidi.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendMidi<b>(</b>"<font color="990000">status MEDIA position</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QMidi.GetPosition=<font color="0000AA"><b>val</b></font><b>(</b>RetString<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode lecture mode du media</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetMode <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QMidi.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendMidi<b>(</b>"<font color="990000">status MEDIA mode</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">stopped</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> QMidi.GetMode=MD_STOP
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">playing</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> QMidi.GetMode=MD_PLAY
+      <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>RetString,"<font color="990000">paused</font>"<b>)</b>>0 <font color="0000AA"><b>then</b></font> QMidi.GetMode=MD_PAUSE
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+PUBLIC:
+
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="007700"><i>' méthode fermeture fichier midi</i></font> 
+  <font color="007700"><i>'=================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Close
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    QMidi.Timer.enabled=False
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+    Retval=mciSendMidi<b>(</b>"<font color="990000">stop MEDIA</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+    Retval=mciSendMidi<b>(</b>"<font color="990000">close MEDIA</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+    QMidi.FileOpen=False
+    QMidi.Lenght=0
+    QMidi.CurrentFrame=0
+    QMidi.State=MD_CLOSE
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="007700"><i>' méthode ouverture fichier midi</i></font> 
+  <font color="007700"><i>'====================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> Open<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> boolean
+    <font color="0000AA"><b>Dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>Integer</b></font>
+    <font color="0000AA"><b>Dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+    <font color="0000AA"><b>Dim</b></font> FlagOpen <font color="0000AA"><b>as</b></font> boolean
+
+    <font color="0000AA"><b>if</b></font> FileName&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendMidi<b>(</b>"<font color="990000">open </font>"+FileName+"<font color="990000"> type sequencer alias MEDIA</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendMidi<b>(</b>"<font color="990000">set MEDIA time format milliseconds</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendMidi<b>(</b>"<font color="990000">status MEDIA length</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+        <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+          QMidi.Lenght=<font color="0000AA"><b>Val</b></font><b>(</b>RetString<b>)</b>
+          QMidi.State=MD_STOP
+          QMidi.CurrentFrame=0
+          QMidi.FileOpen=True
+          QMidi.Open=True
+          FlagOpen=True
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="000099"><b>else</b></font>
+        QMidi.Error=QMidi.GetMciDescription<b>(</b>Retval<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> FlagOpen=False <font color="0000AA"><b>then</b></font> QMidi.Close
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode lecture fichier midi</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Play
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+
+    <font color="0000AA"><b>if</b></font> QMidi.FileOpen <font color="000099"><b>then</b></font>
+      QMidi.Timer.enabled=True
+      RetString = <font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendMidi<b>(</b>"<font color="990000">play MEDIA from </font>"+<font color="0000AA"><b>Str$</b></font><b>(</b>QMidi.CurrentFrame<b>)</b>,<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="0000AA"><b>then</b></font> QMidi.State=MD_PLAY
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode arret fichier midi</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Stop
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QMidi.FileOpen <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendMidi<b>(</b>"<font color="990000">stop MEDIA</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        QMidi.Timer.enabled=False
+        QMidi.State=MD_STOP
+        QMidi.CurrentFrame=0
+        RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+        Retval=mciSendMidi<b>(</b>"<font color="990000">seek MEDIA to start</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' méthode pause </i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Pause
+    <font color="0000AA"><b>dim</b></font> Retval <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> RetString <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    <font color="0000AA"><b>if</b></font> QMidi.FileOpen=true <font color="0000AA"><b>and</b></font> QMidi.State=MD_PLAY <font color="000099"><b>then</b></font>
+      RetString=<font color="0000AA"><b>Space$</b></font><b>(</b>128<b>)</b>
+      Retval=mciSendMidi<b>(</b>"<font color="990000">pause MEDIA</font>",<font color="0000AA"><b>varptr</b></font><b>(</b>RetString<b>)</b>,128,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> Retval=False <font color="000099"><b>then</b></font>
+        QMidi.State=MD_PAUSE
+        QMidi.Timer.enabled=False
+        QMidi.CurrentFrame=QMidi.GetPosition
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' évenement changementposition du fichier midi</i></font> 
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="0000AA"><b>Event</b></font> Timer.OnTimer
+    QMidi.currentFrame=QMidi.GetPosition
+    QMidi.State=QMidi.GetMode
+    <font color="0000AA"><b>if</b></font> QMidi.State=MD_STOP <font color="0000AA"><b>then</b></font> QMidi.Stop
+    <font color="0000AA"><b>if</b></font> QMidi.OnChange&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QMidi.OnChange,QMidi.currentFrame<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Event</b></font>
+
+  <font color="000099"><b>Constructor</b></font>
+    State=MD_CLOSE
+    Timer.interval=1000
+    Timer.enabled=False
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

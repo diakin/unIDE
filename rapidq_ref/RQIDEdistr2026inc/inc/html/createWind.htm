@@ -1,0 +1,43 @@
+<html>
+<head>
+<title>createWind.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> LoadLibrary <font color="0000AA"><b>LIB</b></font> "<font color="990000">KERNEL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">LoadLibraryA</font>" _
+                 <b>(</b>LibFileName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> FreeLibrary <font color="0000AA"><b>LIB</b></font> "<font color="990000">KERNEL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">FreeLibrary</font>" _
+                 <b>(</b>hInst <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> CreateWindowEx <font color="0000AA"><b>LIB</b></font> "<font color="990000">USER32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">CreateWindowExA</font>" _
+                 <b>(</b>ExStyle&, ClassName$, WindowName$, Style&, X&, Y&, _
+                  Width&, Height&, WndParent&, hMenu&, hInstance&, Param&<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>dim</b></font> hInst <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>$DEFINE</b></font> HWND <font color="000099"><b>INTEGER</b></font>
+
+<font color="0000AA"><b>CONST</b></font> WS_EX_CLIENTEDGE = &H200 <font color="007700"><i>' Just some of the many API constants</i></font> 
+<font color="0000AA"><b>CONST</b></font> WS_CHILD = &H40000000
+<font color="0000AA"><b>CONST</b></font> WS_VISIBLE = &H10000000
+<font color="0000AA"><b>CONST</b></font> WS_BORDER = &H800000
+<font color="0000AA"><b>CONST</b></font> ES_LEFT = 0
+<font color="0000AA"><b>CONST</b></font> ES_AUTOHSCROLL = &H80
+<font color="0000AA"><b>CONST</b></font> ES_MULTILINE = &H4
+
+<font color="0000AA"><b>CONST</b></font> WM_COMMAND = &H111
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> GetModuleHandle <font color="0000AA"><b>LIB</b></font> "<font color="990000">KERNEL32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetModuleHandleA</font>" _
+<b>(</b>ModuleName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> SetWindowText <font color="0000AA"><b>LIB</b></font> "<font color="990000">USER32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SetWindowTextA</font>" _
+<b>(</b>Hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, Text <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> FormWndProc <b>(</b>Handle <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, uMsg <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, wParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+
+ 
+</pre>
+</body>
+</html>

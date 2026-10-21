@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QLINEGRAPH</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QLINEGRAPH</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QLINEGRAPH Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/qgraph.inc</code>, line 41 &middot; author: Jonathan Boles &middot; date: 2002</p>
+<p><b>Simple line graph object that plots X/Y points from a QStringGrid on a QCanvas, with title, axis titles, automatic scale and tick labels.</b></p>
+<p>QLineGraph extends QObject and draws on its Image field (a QCanvas). The data points are stored in the Data grid: X in Data.Cell(0, i) and Y in Data.Cell(1, i). Paint clears the canvas, writes the title and axis titles, draws the axes at fixed fractions of the canvas size, rounds the largest X and Y values up to a power-of-ten based scale, draws the tick marks with labels and joins the points with lines in LineColour.</p>
+<p>Set the properties and fill Data, then call Initialise: it copies the position and size to Image and sets Image.OnPaint to Paint, so the graph is redrawn on every repaint. The component does not set Image.Parent; the program has to do that. SaveToFile copies the canvas into a QBitmap and saves it as a .bmp file.</p>
+<p>QLINEGRAPH inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>clWhite color constant (not defined in this file; defined for example in rapidq.inc)</li>
+</ul>
+<a name="1"></a><h2>QLineGraph Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">INTEGER</td><td>RW</td><td>300</td><td>Height of the graph canvas; default 300. Applied by Initialise and Paint.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">INTEGER</td><td>RW</td><td>400</td><td>Width of the graph canvas; default 400. Applied by Initialise and Paint.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Top position of the graph canvas; default 0. Applied by Initialise and Paint.</td></tr>
+<tr><td class="rq-name">Left</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Left position of the graph canvas; default 0. Applied by Initialise and Paint.</td></tr>
+<tr><td class="rq-name">ExtrapolateToZero</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>When non-zero (default 1), a line is drawn from the origin, so that (according to the header) the graph starts at 0,0.</td></tr>
+<tr><td class="rq-name">AxisColour</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Color of the axes and tick marks; default 0 (black).</td></tr>
+<tr><td class="rq-name">TextColour</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Color of the title, axis titles and tick labels; default 0 (black).</td></tr>
+<tr><td class="rq-name">BackColour</td><td class="rq-type">INTEGER</td><td>RW</td><td>&amp;HFFFFFF</td><td>Background color used behind the text; default &amp;HFFFFFF. The canvas itself is always cleared to white.</td></tr>
+<tr><td class="rq-name">XTitle</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;X Axis&quot;</td><td>X axis title (fixed-length string of 50 characters); default &quot;X Axis&quot;.</td></tr>
+<tr><td class="rq-name">YTitle</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;Y Axis&quot;</td><td>Y axis title (fixed-length string of 50 characters); default &quot;Y Axis&quot;.</td></tr>
+<tr><td class="rq-name">Title</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;X Axis vs. Y Axis&quot;</td><td>Graph title (fixed-length string of 100 characters); default &quot;X Axis vs. Y Axis&quot;.</td></tr>
+<tr><td class="rq-name">XScale</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Declared but not used by any code in the file.</td></tr>
+<tr><td class="rq-name">YScale</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Declared but not used by any code in the file.</td></tr>
+<tr><td class="rq-name">LineColour</td><td class="rq-type">INTEGER</td><td>RW</td><td>&amp;HFF</td><td>Color of the plotted line; default &amp;HFF (red).</td></tr>
+<tr><td class="rq-name">Data</td><td class="rq-type">QSTRINGGRID</td><td>RW</td><td></td><td>QStringGrid that holds the points: X in Cell(0, i) and Y in Cell(1, i).</td></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Visibility copied to Image by Initialise and Paint; default 1.</td></tr>
+<tr><td class="rq-name">Hint</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Hint text copied to Image by Paint.</td></tr>
+<tr><td class="rq-name">TextFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont copied to Image.Font by Paint.</td></tr>
+<tr><td class="rq-name">Cursor</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Cursor copied to Image by Paint.</td></tr>
+<tr><td class="rq-name">ShowHint</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>ShowHint value copied to Image by Paint.</td></tr>
+<tr><td class="rq-name">image</td><td class="rq-type">QCANVAS</td><td>RW</td><td></td><td>QCanvas on which the graph is drawn; Initialise sets its OnPaint to Paint.</td></tr>
+<tr class="rq-internal"><td class="rq-name">maxX</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Internal: largest X value rounded up (integer part plus 1), computed by Paint.</td></tr>
+<tr class="rq-internal"><td class="rq-name">maxY</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Internal: largest Y value rounded up (integer part plus 1), computed by Paint.</td></tr>
+<tr class="rq-internal"><td class="rq-name">powerX</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Internal: number of decimal digits of MaxX; the X tick step is 10^(PowerX-1).</td></tr>
+<tr class="rq-internal"><td class="rq-name">powerY</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Internal: number of decimal digits of MaxY; the Y tick step is 10^(PowerY-1).</td></tr>
+<tr class="rq-internal"><td class="rq-name">roundedupX</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Internal: end value of the X axis, the first multiple of the tick step above MaxX.</td></tr>
+<tr class="rq-internal"><td class="rq-name">roundedupY</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Internal: end value of the Y axis, the first multiple of the tick step above MaxY.</td></tr>
+</table>
+<a name="2"></a><h2>QLineGraph Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Paint</td><td class="rq-type">SUB</td><td>Draws the whole graph on Image; called by Image.OnPaint after Initialise.</td></tr>
+<tr><td class="rq-name">Initialise</td><td class="rq-type">SUB</td><td>Copies Left, Top, Width, Height and Visible to Image and sets Image.OnPaint to Paint. Call it after setting the properties.</td></tr>
+<tr><td class="rq-name">SaveToFile</td><td class="rq-type">SUB(file as string)</td><td>SaveToFile(File): copies the canvas into a QBitmap and saves it as a .bmp file.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>SaveToFile: the header says the author could not get it to work.</li>
+<li>XScale and YScale are never used.</li>
+<li>The canvas is always cleared with clWhite; BackColour is only the text background.</li>
+<li>The X axis title is centered using the width of YTitle instead of XTitle.</li>
+<li>With ExtrapolateToZero, the line from the origin goes to the row given by the loop variable i left over from the Y tick loop, not to the first data row.</li>
+<li>MaxX and MaxY are never reset, so they can only grow between repaints.</li>
+<li>The loops that find the maximum values run from row 0 to RowCount, one row past the last row.</li>
+<li>The scale is computed with log(MaxX) and log(MaxY); without positive values these stay 0.</li>
+</ul>
+<a name="4"></a><h2>QLineGraph Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;rapidq.inc&quot;
+$INCLUDE &quot;qgraph.inc&quot;
+CREATE Form AS QFORM
+  Width = 420
+  Height = 340
+END CREATE
+DIM Graph AS QLineGraph
+DIM i AS INTEGER
+Graph.Data.ColCount = 2
+Graph.Data.RowCount = 5
+FOR i = 0 TO 4
+  Graph.Data.Cell(0, i) = STR$(i * 10)
+  Graph.Data.Cell(1, i) = STR$(i * i)
+NEXT
+Graph.Title = &quot;Squares&quot;
+Graph.XTitle = &quot;x&quot;
+Graph.YTitle = &quot;y&quot;
+Graph.Image.Parent = Form
+Graph.Initialise
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qline.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qlistboxex.html">Next component</a></div>
+</body>
+</html>

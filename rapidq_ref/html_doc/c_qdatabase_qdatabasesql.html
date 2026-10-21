@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDATABASE</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDATABASE</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDATABASE Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/qdataBaseSQL.inc</code>, line 130 &middot; author: Alberto (from Brasil) (netmask@ig.com.br)</p>
+<p><b>ODBC database object that connects to Access, dBase, Paradox, Excel or text files and reads the list of tables and their field definitions.</b></p>
+<p>qDATABASE uses the ODBC API in odbc32.dll. The driver is chosen by a number (dbMSACCESS=0, dbDBASE=1, dbPARADOX=2, dbEXCEL=3, dbTEXT=4), and the helper UseDriver builds a connection string with DRIVER=...;DBQ=&lt;path&gt;. It allocates the ODBC environment and connection, connects with SQLDriverConnect, lists tables and views with SQLTables, then runs SELECT * on each table to count records and describe columns.</p>
+<p>The results are stored in the arrays Table.Name, Table.TYPE, Table.RecCount, Table.FieldCount, Table.FieldName, Table.FieldType, Table.FieldSize, Table.DecDigits and Table.NullAV (up to 150 tables and 255 fields). All methods return the string &quot;0&quot; on success or an error message.</p>
+<p>GetDataBaseInfo reads the structure and closes the connection. OpenDataBase reads it and keeps the connection open, so GetSTMT can hand a statement handle to a qSQLTABLE object through its DataBaseExtends method.</p>
+<p>QDATABASE inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>ODBC drivers for the chosen file type</li>
+</ul>
+<a name="1"></a><h2>qDATABASE Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">DriverStr</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>ODBC connection string built by UseDriver for the last connection.</td></tr>
+<tr><td class="rq-name">DataBaseName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Path of the database file passed to the last connection.</td></tr>
+<tr><td class="rq-name">TableCount</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of tables and views found.</td></tr>
+</table>
+<a name="2"></a><h2>qDATABASE Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">GetDataBaseInfo</td><td class="rq-type">FUNCTION(DatabasePath AS STRING, DriverNum AS INTEGER) AS STRING</td><td>GetDataBaseInfo(DatabasePath, DriverNum) connects, fills the table and field arrays, then disconnects; returns &quot;0&quot; on success or an error message.</td></tr>
+<tr><td class="rq-name">OpenDataBase</td><td class="rq-type">FUNCTION(DatabasePath AS STRING, DriverNum AS INTEGER) AS STRING</td><td>OpenDataBase(DatabasePath, DriverNum) connects and fills the table and field arrays, leaving the connection open; returns &quot;0&quot; on success or an error message.</td></tr>
+<tr><td class="rq-name">CloseDataBase</td><td class="rq-type">SUB</td><td>Disconnects and frees the ODBC connection and environment handles.</td></tr>
+<tr><td class="rq-name">GetSTMT</td><td class="rq-type">FUNCTION AS LONG</td><td>Allocates a new ODBC statement handle on the open connection (keyset cursor) and returns it, or -1 on failure; pass it to qSQLTABLE.DataBaseExtends.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The Excel driver name is in Portuguese (&quot;Driver para o Microsoft Excel(*.xls)&quot;), so it only matches a Portuguese ODBC installation.</li>
+<li>Arrays are fixed at 150 tables and 255 fields per table.</li>
+<li>Field indexes in Table.FieldName and related arrays start at 1, while table indexes start at 0.</li>
+<li>Record counts are found by fetching every row of every table, which can be slow on large databases.</li>
+</ul>
+<a name="4"></a><h2>qDATABASE Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM DB AS qDATABASE
+DIM Res AS STRING
+Res = DB.OpenDataBase(&quot;C:\data\test.mdb&quot;, dbMSACCESS)
+IF Res = &quot;0&quot; THEN
+  FOR i = 0 TO DB.TableCount - 1
+    PRINT DB.Table.Name(i); &quot; &quot;; DB.Table.TYPE(i); &quot; &quot;; DB.Table.RecCount(i)
+  NEXT
+END IF
+DB.CloseDataBase</pre>
+<div class="rq-foot"><a href="c_qdatabase_qdatabase.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdebug.html">Next component</a></div>
+</body>
+</html>

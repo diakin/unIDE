@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QINPUTBOX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QINPUTBOX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QINPUTBOX Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QInputBox.inc</code>, line 5</p>
+<p><b>A non-visual object that shows a modal input dialog and returns the text the user typed.</b></p>
+<p>QInputBox extends QObject and builds a small dialog (QForm with a prompt QLabel, a QEdit and OK and Cancel buttons) inside the object. Show(Prompt, Title, Default) takes up to three optional string arguments: the prompt text (shown followed by &quot; :&quot;, or &quot;Prompt :&quot; when empty), the window title (Application.Title when empty) and the initial text of the edit box.</p>
+<p>The dialog is centered, uses the dialog border style and is shown with ShowModal. OK returns the edited text; Cancel, closing the window, or OK with an empty edit box returns the Default text.</p>
+<p>QINPUTBOX inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>A DECLARE for SetFocus (user32) must exist elsewhere: Show calls SetFocus, but its declaration in this file is commented out.</li>
+</ul>
+<a name="2"></a><h2>QInputBox Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Show</td><td class="rq-type">FUNCTIONI(...) AS STRING</td><td>Show([Prompt], [Title], [Default]) displays the modal input dialog and returns the entered string; on Cancel or close it returns the Default text.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>btnCancel.Onclick</code>, <code>btnOk.Onclick</code>, <code>form.Onclose</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>SetFocus is called but its DECLARE at the top of the file is commented out.</li>
+<li>An empty answer cannot be returned: if the user clears the box and presses OK, the OnClose handler replaces the empty result with the Default text.</li>
+<li>Dialog size and control positions are hard-coded (form 249 x 117 pixels, edit box 209 pixels wide).</li>
+</ul>
+<a name="4"></a><h2>QInputBox Examples</h2>
+<p class="rq-meta">Example from the comments in the source file.</p>
+<pre>DIM Name AS QInputBox
+DIM retStr AS STRING
+retStr = Name.Show(&quot;Your name&quot;, &quot;Input&quot;, &quot;John&quot;)</pre>
+<div class="rq-foot"><a href="c_qinifile_qlibrary.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qled.html">Next component</a></div>
+</body>
+</html>

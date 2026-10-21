@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSQLTABLE</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSQLTABLE</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSQLTABLE Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/qdataBaseSQL.inc</code>, line 476 &middot; author: Alberto (from Brasil) (netmask@ig.com.br)</p>
+<p><b>ODBC SQL query object that runs SQL statements on an Access, dBase, Paradox, Excel or text database and moves through the result rows.</b></p>
+<p>qSQLTABLE opens its own ODBC connection with DataBaseConnect (same driver numbers as qDATABASE), or uses a statement handle from qDATABASE.GetSTMT through DataBaseExtends. The statement uses a keyset-driven cursor so the result can be scrolled with SQLFetchScroll.</p>
+<p>OpenSQL runs a SELECT, stores the column names in FieldName, counts the rows into RecCount and loads the first row as text into strData. MoveFirst, MoveLast, MoveNext and MovePreview scroll the cursor and reload strData. ExecSQL runs a statement that returns no rows. All functions return &quot;0&quot; on success or an error message.</p>
+<p>QSQLTABLE inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>ODBC drivers for the chosen file type</li>
+<li>qDATABASE (optional, for DataBaseExtends)</li>
+</ul>
+<a name="1"></a><h2>qSQLTABLE Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">strConnect</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>ODBC connection string built by DataBaseConnect.</td></tr>
+<tr><td class="rq-name">strSQL</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>The last SQL string passed to ExecSQL or OpenSQL.</td></tr>
+<tr><td class="rq-name">RecCount</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of rows returned by the last OpenSQL.</td></tr>
+<tr><td class="rq-name">FieldCount</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of columns returned by the last OpenSQL.</td></tr>
+<tr><td class="rq-name">FieldName</td><td class="rq-type">ARRAY(255) OF STRING</td><td>RW</td><td></td><td>Array of column names of the last OpenSQL result, indexed from 1.</td></tr>
+<tr><td class="rq-name">strData</td><td class="rq-type">ARRAY(255) OF STRING</td><td>RW</td><td></td><td>Array with the current row&#x27;s values as text, indexed from 1.</td></tr>
+<tr><td class="rq-name">PointerPosition</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Zero-based index of the current row; -1 after a failed OpenSQL.</td></tr>
+</table>
+<a name="2"></a><h2>qSQLTABLE Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">DataBaseConnect</td><td class="rq-type">FUNCTION(DatabasePath AS STRING, DriverNum AS INTEGER) AS STRING</td><td>DataBaseConnect(DatabasePath, DriverNum) opens an ODBC connection and statement handle; returns &quot;0&quot; or an error message.</td></tr>
+<tr><td class="rq-name">DataBaseExtends</td><td class="rq-type">FUNCTION(DBSTMT AS LONG) AS STRING</td><td>DataBaseExtends(DBSTMT) uses a statement handle from qDATABASE.GetSTMT instead of opening a connection; returns &quot;0&quot;, or an error if the handle is -1.</td></tr>
+<tr><td class="rq-name">ExecSQL</td><td class="rq-type">FUNCTION(xSQL AS STRING) AS STRING</td><td>ExecSQL(SQL) executes a statement (for example INSERT, UPDATE, DELETE) and closes the cursor; returns &quot;0&quot; or an error message.</td></tr>
+<tr><td class="rq-name">OpenSQL</td><td class="rq-type">FUNCTION(sSQL AS STRING) AS STRING</td><td>OpenSQL(SQL) executes a query, reads column names, counts rows and loads the first row; returns &quot;0&quot; or an error message.</td></tr>
+<tr><td class="rq-name">MoveFirst</td><td class="rq-type">FUNCTION AS STRING</td><td>Moves to the first row and reloads strData.</td></tr>
+<tr><td class="rq-name">MoveLast</td><td class="rq-type">FUNCTION AS STRING</td><td>Moves to the last row and reloads strData.</td></tr>
+<tr><td class="rq-name">MoveNext</td><td class="rq-type">FUNCTION AS STRING</td><td>Moves to the next row, if any, and reloads strData.</td></tr>
+<tr><td class="rq-name">MovePreview</td><td class="rq-type">FUNCTION AS STRING</td><td>Moves to the previous row, if any, and reloads strData (the name means &#x27;previous&#x27;).</td></tr>
+<tr><td class="rq-name">CloseSQL</td><td class="rq-type">SUB</td><td>Closes the cursor of the last OpenSQL and clears strSQL, FieldName, strData and FieldCount.</td></tr>
+<tr><td class="rq-name">CloseDataBase</td><td class="rq-type">SUB</td><td>Frees the statement handle; if the object owns its connection (not DataBaseExtends), also disconnects and frees the connection and environment.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The header comment lists SeekRec(RecNumber) as &#x27;Not Implemented&#x27;; there is no such method.</li>
+<li>If SQLDriverConnect or SQLAllocStmt fails, Connect shows a message box but still returns &quot;0&quot;.</li>
+<li>Values are read as text into a 255-byte buffer, so longer field values are cut off. FieldName and strData hold at most 255 columns.</li>
+<li>The Excel driver name in UseDriver is in Portuguese (&quot;Driver para o Microsoft Excel(*.xls)&quot;).</li>
+</ul>
+<a name="4"></a><h2>qSQLTABLE Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM T AS qSQLTABLE
+IF T.DataBaseConnect(&quot;C:\data\test.mdb&quot;, dbMSACCESS) = &quot;0&quot; THEN
+  IF T.OpenSQL(&quot;SELECT * FROM Customers&quot;) = &quot;0&quot; THEN
+    FOR i = 1 TO T.RecCount
+      PRINT T.strData(1); &quot; &quot;; T.strData(2)
+      T.MoveNext
+    NEXT
+    T.CloseSQL
+  END IF
+  T.CloseDataBase
+END IF</pre>
+<div class="rq-foot"><a href="c_qsplash.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qstatusbarex.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,847 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QTextEdit</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2000-2001</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QTextEdit</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QTextEdit Component</h1>
+
+<dd>
+QTextEdit is an extension of QRichEdit component with more functions.</dd>
+
+<br>&nbsp;
+<p>&nbsp;
+<p><a NAME="1"></a><b><font size=+1>QTextEdit Properties</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>Default</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>UsePopup</td>
+
+<td>BOOLEAN</td>
+
+<td>RW</td>
+
+<td>True</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">To use a popup menu with the right mouse button.</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>UndoCaption</td>
+
+<td>STRING</td>
+
+<td>RW</td>
+
+<td>Undo</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFCC99">Label of item Undo of popup menu.</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CutCaption</td>
+
+<td>STRING</td>
+
+<td>RW</td>
+
+<td>Cut</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFCC99">Label of item Cut of popup menu.</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CopyCaption</td>
+
+<td>STRING</td>
+
+<td>RW</td>
+
+<td>Copy</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFCC99">Label of item Copy of popup menu.</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PasteCaption</td>
+
+<td>STRING</td>
+
+<td>RW</td>
+
+<td>Paste</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Label of item Paste of popup menu.</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>SelectAllCaption</td>
+
+<td>STRING</td>
+
+<td>RW</td>
+
+<td>SelectAll</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCC99">Label of item SelectAll of popup menu.</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QTextEdit Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Undo</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Undo command.</td>
+
+<td NOWRAP></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Cut</td>
+
+<td>SUB</td>
+
+<td>Cut command</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Copy</td>
+
+<td>SUB</td>
+
+<td>Copy to clipboard.</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Paste</td>
+
+<td>SUB</td>
+
+<td>Paste from clipboard.</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Limit</td>
+
+<td>SUB(Value%)</td>
+
+<td>Limit the size text (number of char)</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ReplaceSell</td>
+
+<td>SUB(Text$)</td>
+
+<td>Replace the selection by the Text$ parameter.</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Find</td>
+
+<td>FUNCTION(start%,text$,case%) AS BOOLEAN</td>
+
+<td>Search the string into the text,start is the start
+<br>of search,case is to respect the format of char (upper,lower)</td>
+
+<td>3</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>LinesScroll</td>
+
+<td>SUB(Number)</td>
+
+<td>Place the cursor to the line number</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CanUndo</td>
+
+<td>FUNCTION AS BOOLEAN</td>
+
+<td>Return if undo is possible</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QTextEdit Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QTextEdit Examples</font></b>
+<p>$OPTION ICON "edit.ico"
+<br>$TYPECHECK ON
+<br>$INCLUDE "Rapidq.inc"
+<br>$INCLUDE "Object/QTextEdit.inc"
+<br>$INCLUDE "Object/QColorDialog.inc"
+<br>$INCLUDE "Object/QFormEx.inc"
+<p>declare sub menuEdit
+<br>declare sub menuAnnul
+<br>declare sub menuCouper
+<br>declare sub menuCopier
+<br>declare sub menuColler
+<br>declare sub menuSelection
+<br>declare sub menuNouveau
+<br>declare sub menuOuvrir
+<br>declare sub menuSauver
+<br>declare sub menuSauverSous
+<br>declare sub menuQuitter
+<br>declare sub menuRecherche
+<br>declare sub menuPoursuivre
+<br>declare sub menuRemplacer
+<br>declare sub ShowLC
+<br>declare sub ChangePolice
+<br>declare sub ChangeFond
+<br>declare sub ChangeTextRecherche
+<br>declare sub ChangeTextRemplacer
+<br>declare sub AnnulerRecherche
+<br>declare sub AnnulerRemplacer
+<br>declare sub PoursuivreRecherche
+<br>declare sub PoursuivreRemplacer
+<br>declare sub Remplacer
+<br>declare sub RemplacerTout
+<br>declare sub Show
+<p>dim FontDialog as QFONTDIALOG
+<br>dim cd as QcolorDialog
+<br>cd.caption="Couleur de fond"
+<br>dim FileName as string
+<br>FileName="Sans Titre"
+<br>dim start as long
+<p>CREATE Form AS QFORMEX
+<br>&nbsp;&nbsp;&nbsp; Caption=Application.title+" - "+FileName
+<br>&nbsp;&nbsp;&nbsp; Width=715
+<br>&nbsp;&nbsp;&nbsp; Height=508
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; OnClose=MenuQuitter
+<br>&nbsp;&nbsp;&nbsp; OnShow=Show
+<br>&nbsp;&nbsp;&nbsp; CREATE Menu as QMAINMENU
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Fichier as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Fichier"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Nouveau as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Nouveau"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuNouveau
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Ouvrir as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Ouvrir"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuOuvrir
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Sauver as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Sauver"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuSauver
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE SauverSous as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Sauver
+Sous..."
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuSauverSous
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Sep3 as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="-"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Quitter as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Quitter"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuQuitter
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Edition as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Edition"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=menuEdit
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Annul as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Annuler"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+Z"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuAnnul
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Sep1 as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="-"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Couper as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Couper"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+X"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuCouper
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Copier as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Copier"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+C"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuCopier
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Coller as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Coller"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+V"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuColler
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Sep2 as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="-"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Selection as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Selectionner
+tout"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+A"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuSelection
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Recherche as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Recherche"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Rechercher as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Rechercher"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuRecherche
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Poursuivre as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Poursuivre
+la recherche"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuPoursuivre
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Remplace as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Remplacer"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuRemplacer
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Format as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Format"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Police as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Police"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ChangePolice
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE CouleurFond as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Couleur
+fond"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=ChangeFond
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE infos AS QSTATUSBAR
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AddPanels "Li:","Col:","Taille:"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Panel(0).width=80
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Panel(1).width=80
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Edit AS QTEXTEDIT
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=5
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; PlainText=1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ScrollBars=3
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; WordWrap=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; UndoCaption="&amp;Annuler"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CutCaption="&amp;Couper"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CopyCaption="&amp;Copier"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; PasteCaption="&amp;Coller"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; SelectAllCaption="&amp;Selectionner
+tout"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnMouseDown=ShowLC
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnKeyUp=ShowLC
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>END CREATE
+<p>CREATE Form2 AS QFORM
+<br>&nbsp;&nbsp;&nbsp; Caption="Rechercher"
+<br>&nbsp;&nbsp;&nbsp; Width=326
+<br>&nbsp;&nbsp;&nbsp; Height=119
+<br>&nbsp;&nbsp;&nbsp; borderStyle=bsDialog
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; CREATE LabRech AS QLABEL
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Rechercher:"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=8
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=12
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=64
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=21
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE EditRech AS QEDIT
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=74
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=9
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=145
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Mot recherch&eacute;"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnChange=ChangeTextRecherche
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=1
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE BtRech1 AS QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Poursuivre"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=229
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=9
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=80
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=2
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=PoursuivreRecherche
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE BtRech2 AS QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Annuler"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=229
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=41
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=80
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=3
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=AnnulerRecherche
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE CheckRech AS QCHECKBOX
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Respecter la casse"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=8
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=57
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=113
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Respect majuscule
+et minuscule si coch&eacute;"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=4
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>END CREATE
+<p>CREATE Form3 AS QFORM
+<br>&nbsp;&nbsp;&nbsp; Caption="Remplacer"
+<br>&nbsp;&nbsp;&nbsp; Width=362
+<br>&nbsp;&nbsp;&nbsp; Height=177
+<br>&nbsp;&nbsp;&nbsp; borderStyle=bsDialog
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; CREATE Lab1Repl AS QLABEL
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Rechercher:"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=8
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=11
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=64
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Lab2Repl AS QLABEL
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Remplacer par:"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=8
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=43
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=75
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Edit1Repl AS QEDIT
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=82
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=8
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=145
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnChange=ChangeTextRemplacer
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Edit2Repl AS QEDIT
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=82
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=40
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=145
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=2
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Bt1Repl AS QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Poursuivre"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=237
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=8
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=107
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=3
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=PoursuivreRemplacer
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Bt2Repl AS QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Remplacer"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=237
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=40
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=107
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=4
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Remplacer
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Bt3Repl AS QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Remplacer tout"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=237
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=72
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=107
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=5
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=RemplacerTout
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Bt4Repl AS QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Annuler"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=237
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=104
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=107
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=6
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=AnnulerRemplacer
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE CheckRepl AS QCHECKBOX
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Respecter la casse"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=8
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=114
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=121
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TabOrder=7
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>END CREATE
+<p>form.DeskBar=true
+<p>Form.ShowModal
+<p>sub Show
+<br>&nbsp; dim font as Qfont
+<p>&nbsp; edit.limit(100000)
+<br>&nbsp; font.Name="Courier New"
+<br>&nbsp; font.size=10
+<br>&nbsp; edit.font=font
+<br>&nbsp; FontDialog.GetFont(font)
+<br>end sub
+<p>sub menuEdit
+<br>&nbsp; Annul.Enabled=Edit.CanUndo
+<br>&nbsp; if LEN(ClipBoard.Text)>0 then
+<br>&nbsp;&nbsp;&nbsp; Coller.Enabled=true
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; Coller.Enabled=false
+<br>&nbsp; end if
+<br>&nbsp; if len(edit.text)>0 then
+<br>&nbsp;&nbsp;&nbsp; selection.enabled=true
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; selection.enabled=false
+<br>&nbsp; end if
+<br>&nbsp; if len(edit.seltext)>0 then
+<br>&nbsp;&nbsp;&nbsp; couper.enabled=true
+<br>&nbsp;&nbsp;&nbsp; copier.enabled=true
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; couper.enabled=false
+<br>&nbsp;&nbsp;&nbsp; copier.enabled=false
+<br>&nbsp; end if
+<br>end sub
+<p>sub menuAnnul
+<br>&nbsp; edit.undo
+<br>&nbsp; ShowLC
+<br>end sub
+<p>sub menuCouper
+<br>&nbsp; edit.cut
+<br>&nbsp; ShowLC
+<br>end sub
+<p>sub menuCopier
+<br>&nbsp; edit.copy
+<br>end sub
+<p>sub menuColler
+<br>&nbsp; edit.paste
+<br>&nbsp; ShowLC
+<br>end sub
+<p>sub menuSelection
+<br>&nbsp; edit.selectAll
+<br>end sub
+<p>sub ShowLC
+<br>&nbsp; infos.panel(0).caption="Li:"+str$(edit.wherey+1)
+<br>&nbsp; infos.panel(1).caption="Col:"+str$(edit.wherex+1)
+<br>&nbsp; infos.panel(2).caption="Taille:"+str$(len(edit.text))
+<br>end sub
+<p>sub ChangePolice
+<br>&nbsp; dim font as qfont
+<p>&nbsp; if FontDialog.execute then
+<br>&nbsp;&nbsp;&nbsp; FontDialog.SetFont(font)
+<br>&nbsp;&nbsp;&nbsp; edit.font=font
+<br>&nbsp; end if
+<br>end sub
+<p>sub changeFond
+<br>&nbsp; if cd.execute then
+<br>&nbsp;&nbsp;&nbsp; edit.color=cd.color
+<br>&nbsp; end if
+<br>end sub
+<p>sub menuNouveau
+<br>&nbsp; Dim msgButton as integer
+<p>&nbsp; if edit.modified then
+<br>&nbsp;&nbsp;&nbsp; msgButton=MessageBox("Sauver fichier?",application.title,35)
+<br>&nbsp;&nbsp;&nbsp; if msgButton&lt;>mrCancel then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if msgButton=mrYes then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; menuSauver
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit.Modified=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit.clear
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; filename="Sans Titre"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.caption=application.title+" - "+filename
+<br>&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; edit.clear
+<br>&nbsp;&nbsp;&nbsp; filename="Sans Titre"
+<br>&nbsp;&nbsp;&nbsp; form.caption=application.title+" - "+filename
+<br>&nbsp; end if
+<br>&nbsp; ShowLC
+<br>end sub
+<p>sub menuOuvrir
+<br>&nbsp; Dim OpenDialog as QOpenDialog
+<br>&nbsp; Dim msgButton as integer
+<p>&nbsp; OpenDialog.Filter="Fichier texte|*.txt|"
+<br>&nbsp; OpenDialog.Caption= "Ouvrir fichier"
+<br>&nbsp; if edit.modified then
+<br>&nbsp;&nbsp;&nbsp; msgButton=MessageBox("Sauver fichier?",application.title,35)
+<br>&nbsp;&nbsp;&nbsp; if msgButton&lt;>mrCancel then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if msgButton=mrYes then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; menuSauver
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OpenDialog.InitialDir=CurDir$
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if openDialog.execute then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FileName=OpenDialog.fileName
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen.cursor=crHourGlass
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit.loadfromfile(filename)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen.cursor=crDefault
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit.modified=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.caption=application.title+"
+- "+right$(FileName,Len(FileName)-RINSTR(FileName,"\"))
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; OpenDialog.InitialDir=CurDir$
+<br>&nbsp;&nbsp;&nbsp; if openDialog.execute then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FileName=OpenDialog.fileName
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen.cursor=crHourGlass
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit.loadfromfile(filename)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; screen.cursor=crDefault
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit.modified=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.caption=application.title+" - "+right$(FileName,Len(FileName)-RINSTR(FileName,"\"))
+<br>&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp; end if
+<br>&nbsp; ShowLC
+<br>end sub
+<p>sub menuSauver
+<br>&nbsp; if FileName="Sans Titre" then
+<br>&nbsp;&nbsp;&nbsp; menuSauverSous
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; screen.cursor=crHourGlass
+<br>&nbsp;&nbsp;&nbsp; edit.SaveToFile(filename)
+<br>&nbsp;&nbsp;&nbsp; screen.cursor=crDefault
+<br>&nbsp; end if
+<br>end sub
+<p>sub menuSauverSous
+<br>&nbsp; Dim SaveDialog as QSaveDialog
+<p>&nbsp; SaveDialog.Filter="Fichier texte|*.txt|"
+<br>&nbsp; SaveDialog.Caption= "Sauver fichier"
+<br>&nbsp; SaveDialog.InitialDir=CurDir$
+<br>&nbsp; if saveDialog.execute then
+<br>&nbsp;&nbsp;&nbsp; FileName=SaveDialog.FileName
+<br>&nbsp;&nbsp;&nbsp; if instr(LCASE$(FileName),".txt")=0 then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FileName=FileName+".txt"
+<br>&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp;&nbsp;&nbsp; form.caption=application.title+" - "+right$(FileName,Len(FileName)-RINSTR(FileName,"\"))
+<br>&nbsp;&nbsp;&nbsp; screen.cursor=crHourGlass
+<br>&nbsp;&nbsp;&nbsp; edit.SaveToFile(filename)
+<br>&nbsp;&nbsp;&nbsp; screen.cursor=crDefault
+<br>&nbsp; end if
+<br>end sub
+<p>sub menuQuitter
+<br>&nbsp; Dim msgButton as integer
+<p>&nbsp; if edit.modified then
+<br>&nbsp;&nbsp;&nbsp; msgButton=MessageBox("Sauver fichier?",application.title,35)
+<br>&nbsp;&nbsp;&nbsp; if msgButton&lt;>mrCancel then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; if msgButton=mrYes then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; menuSauver
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit.clear
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; application.terminate
+<br>&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; edit.clear
+<br>&nbsp;&nbsp;&nbsp; application.terminate
+<br>&nbsp; end if
+<br>end sub
+<p>sub ChangeTextRecherche
+<br>&nbsp; if len(editRech.text)>0 then
+<br>&nbsp;&nbsp;&nbsp; BtRech1.enabled=true
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; BtRech1.enabled=false
+<br>&nbsp; end if
+<br>end sub
+<p>sub menuRecherche
+<br>&nbsp; form2.show
+<br>end sub
+<p>sub menuRemplacer
+<br>&nbsp; form3.show
+<br>end sub
+<p>sub AnnulerRecherche
+<br>&nbsp; form2.close
+<br>end sub
+<p>sub PoursuivreRecherche
+<br>&nbsp; dim flag as integer
+<p>&nbsp; flag=checkRech.checked
+<br>&nbsp; if edit.seltext="" then start=edit.selstart
+<br>&nbsp; if edit.find(start,editRech.text,flag)>0 then
+<br>&nbsp;&nbsp;&nbsp; form.show
+<br>&nbsp;&nbsp;&nbsp; start=edit.find(start,editRech.text,flag)
+<br>&nbsp;&nbsp;&nbsp; start=start+len(editRech.text)
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; messageDlg("Impossible de trouver "+chr$(34)+editRech.text+chr$(34),mtInformation,mbOk,0)
+<br>&nbsp; end if
+<br>end sub
+<p>sub MenuPoursuivre
+<br>&nbsp; dim flag as integer
+<p>&nbsp; flag=checkRech.checked
+<br>&nbsp; if edit.seltext="" then start=edit.selstart
+<br>&nbsp; if edit.find(start,editRech.text,flag)>0 then
+<br>&nbsp;&nbsp;&nbsp; start=edit.find(start,editRech.text,flag)
+<br>&nbsp;&nbsp;&nbsp; start=start+len(editRech.text)
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; messageDlg("Impossible de trouver "+chr$(34)+editRech.text+chr$(34),mtInformation,mbOk,0)
+<br>&nbsp; end if
+<br>end sub
+<p>sub ChangeTextRemplacer
+<br>&nbsp; if len(edit1Repl.text)>0 then
+<br>&nbsp;&nbsp;&nbsp; Bt1Repl.enabled=true
+<br>&nbsp;&nbsp;&nbsp; Bt2Repl.enabled=true
+<br>&nbsp;&nbsp;&nbsp; Bt3Repl.enabled=true
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; Bt1Repl.enabled=false
+<br>&nbsp;&nbsp;&nbsp; Bt2Repl.enabled=false
+<br>&nbsp;&nbsp;&nbsp; Bt3Repl.enabled=false
+<br>&nbsp; end if
+<br>end sub
+<p>sub AnnulerRemplacer
+<br>&nbsp; form3.close
+<br>end sub
+<p>sub PoursuivreRemplacer
+<br>&nbsp; dim flag as integer
+<p>&nbsp; flag=checkRepl.checked
+<br>&nbsp; if edit.seltext="" then start=edit.selstart
+<br>&nbsp; if edit.find(start,edit1Repl.text,flag)>0 then
+<br>&nbsp;&nbsp;&nbsp; form.show
+<br>&nbsp;&nbsp;&nbsp; start=edit.find(start,edit1Repl.text,flag)
+<br>&nbsp;&nbsp;&nbsp; start=start+len(edit1Repl.text)
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; messageDlg("Impossible de trouver "+chr$(34)+edit1Repl.text+chr$(34),mtInformation,mbOk,0)
+<br>&nbsp; end if
+<br>end sub
+<p>sub Remplacer
+<br>&nbsp; if edit.sellength>0 then
+<br>&nbsp;&nbsp;&nbsp; edit.seltext=edit2repl.text
+<br>&nbsp; end if
+<br>&nbsp; PoursuivreRemplacer
+<br>end sub
+<p>sub RemplacerTout
+<br>&nbsp; dim flag as integer
+<p>&nbsp; form3.close
+<br>&nbsp; flag=checkRepl.checked
+<br>&nbsp; if edit.seltext="" then start=edit.selstart
+<br>&nbsp; while edit.find(start,edit1Repl.text,flag)>0
+<br>&nbsp;&nbsp;&nbsp; start=edit.find(start,edit1Repl.text,flag)
+<br>&nbsp;&nbsp;&nbsp; start=start+len(edit1Repl.text)
+<br>&nbsp;&nbsp;&nbsp; edit.seltext=edit2repl.text
+<br>&nbsp; wend
+<br>end sub
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

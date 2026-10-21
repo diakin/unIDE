@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QTOOLBAREX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QTOOLBAREX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QTOOLBAREX Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QToolBarEX.inc</code>, line 36 &middot; author: d_homans@yahoo.com.au &middot; version: 1.1 &middot; date: 1 Mar 2011</p>
+<p><b>A toolbar built from a QPanel and an array of flat QCOOLBTN buttons whose images are cut from one horizontal bitmap strip.</b></p>
+<p>QToolBarEX is a QPanel aligned to an edge of its parent (alTop by default). It owns an array tbButtons(0 to MAXTOOLBTNS) of QCOOLBTN (MAXTOOLBTNS is 64 unless you $DEFINE it before the $INCLUDE). The buttons are public so that other code, such as the RapidFRM application mentioned in the header, can copy their bitmaps.</p>
+<p>Set BtnCount (and optionally NumBMPs, Align, Width or Height, Cursor, GroupIndex, BtnSpacer, BtnMask) first, then assign BMP (a bitmap file) or BMPHandle (a resource). The bitmap strip is split into BtnCount images by the global QImageListEX ButtonImages; the toolbar then sizes, places and shows BtnCount buttons and hides the rest.</p>
+<p>A click on a button fires OnSelect with the button index (from 0). Hint takes a comma-separated list with one hint per button.</p>
+<p>QTOOLBAREX inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>QImageListEX.inc ($INCLUDE) for the QImageListEX component</li>
+<li>the global QImageListEX variable ButtonImages declared by this file (comment: MUST be global)</li>
+<li>a $RESOURCE bitmap when BMPHandle is used</li>
+</ul>
+<a name="1"></a><h2>QToolBarEX Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">BMP</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Assigning a bitmap file name loads the button strip and creates the buttons. Shows a message and does nothing if the file does not exist or BtnCount is 0; Align alClient or alNone is changed to alTop.</td></tr>
+<tr><td class="rq-name">BMPHandle</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning a resource index loads the button strip from that resource (through ButtonImages.ExtractRes) and creates the buttons. Shows a message if BtnCount is 0.</td></tr>
+<tr><td class="rq-name">BtnCount</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Number of button images in the bitmap strip. Assigning a value from 1 to MAXTOOLBTNS stores it; other values are ignored. Must be set before BMP or BMPHandle.</td></tr>
+<tr><td class="rq-name">BtnSpacer</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Gap in pixels between buttons (default 1). Assigning a negative value is ignored. Used when the buttons are created.</td></tr>
+<tr><td class="rq-name">BtnMask</td><td class="rq-type">INTEGER</td><td>RW</td><td>&amp;hffffff</td><td>Transparent colour passed to the image list when the strip is loaded (default &amp;hFFFFFF). Assigning it only stores the value.</td></tr>
+<tr><td class="rq-name">Cursor</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Cursor for all buttons. Assigning a value from -21 to 0 stores it; others are ignored. Applied when the buttons are created.</td></tr>
+<tr><td class="rq-name">Enabled</td><td class="rq-type">INTEGER</td><td>RW</td><td>True</td><td>Assigning it enables or disables all buttons and turns their hints on or off accordingly.</td></tr>
+<tr><td class="rq-name">GroupIndex</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Assigning a value stores it and sets it on all buttons when it is 0 or when NumBMPs is 4, so a button in the group can stay down.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Toolbar height; assigning a positive value sets the panel height and the button height (value - 2), but only when Align is alTop or alBottom.</td></tr>
+<tr><td class="rq-name">Hint</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Comma-separated hints, one per button. Assigning it sets each button&#x27;s Hint and turns ShowHint on for buttons that get a hint; an empty string clears all hints.</td></tr>
+<tr><td class="rq-name">NumBMPs</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Number of images per button in the strip (1 to 4, as for a QCOOLBTN). Assigning other values is ignored. Set it before BMP or BMPHandle.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Toolbar width; assigning a positive value sets the panel width and the button width (value - 2), but only when Align is alLeft or alRight.</td></tr>
+<tr><td class="rq-name">tbButtons</td><td class="rq-type">ARRAY(MAXTOOLBTNS) OF QCOOLBTN</td><td>RW</td><td></td><td>Array tbButtons(0 to MAXTOOLBTNS) of QCOOLBTN holding the toolbar buttons; it cannot be resized at run time.</td></tr>
+</table>
+<a name="3"></a><h2>QToolBarEX Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnSelect</td><td class="rq-type">SUB(Index AS integer)</td><td>Event OnSelect(Index AS INTEGER) fired when a button is clicked, with the button&#x27;s index (its Tag, from 0).</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnClick</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The button images are held in the single global ButtonImages, so several QToolBarEX instances share and overwrite the same image list.</li>
+<li>The BtnMask comment says it defaults to the bottom-left pixel of each image, but the constructor sets &amp;hFFFFFF and the setter has a &#x27;FIXME: Override default?&#x27; comment.</li>
+<li>The button array has a fixed size (MAXTOOLBTNS, default 64); the comment notes it cannot be changed with REDIM at run time.</li>
+<li>Width is only applied for alLeft/alRight and Height only for alTop/alBottom; otherwise assignments are ignored.</li>
+<li>Loading from a resource goes through a temporary file __tmp.bmp in the current directory (see QImageListEX).</li>
+<li>Errors are reported with ShowMessage (&quot;File error! Cannot load bitmap&quot;, &quot;Button count not set! Cannot load bitmap&quot;, &quot;Unknown error! Failed to load bitmap&quot;).</li>
+</ul>
+<a name="4"></a><h2>QToolBarEX Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QToolBarEX.inc&quot;
+
+SUB ToolClick(Index AS INTEGER)
+  ShowMessage &quot;Button &quot; + STR$(Index)
+END SUB
+
+CREATE Form AS QFORM
+  Caption = &quot;QToolBarEX demo&quot;
+  Width = 400
+END CREATE
+
+DIM Tool AS QToolBarEX
+Tool.Parent = Form
+Tool.BtnCount = 4
+Tool.Hint = &quot;New,Open,Save,Print&quot;
+Tool.OnSelect = ToolClick
+Tool.BMP = &quot;toolbar.bmp&quot;
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qtoolbar.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qtreeviewex.html">Next component</a></div>
+</body>
+</html>

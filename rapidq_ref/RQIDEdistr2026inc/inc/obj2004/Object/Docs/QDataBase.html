@@ -1,0 +1,1055 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE>Appendix A: QDataBase</TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 1.1.0  (Win32)">
+	<META NAME="AUTHOR" CONTENT="dominique glodt">
+	<META NAME="CREATED" CONTENT="20041112;18073053">
+	<META NAME="CHANGED" CONTENT="20041114;16015734">
+</HEAD>
+<BODY LANG="fr-FR" BGCOLOR="#ffffff" DIR="LTR">
+<P STYLE="margin-bottom: 0cm">&nbsp; 
+</P>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+	<TR>
+		<TD>
+			<P><FONT FACE="Arial, Helvetica">Documentation composant par
+			D.Glodt (c)2004</FONT></P>
+		</TD>
+		<TD>
+			<P ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A:
+			QDataBase</B></FONT></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=2>
+			<HR SIZE=1>
+		</TD>
+	</TR>
+</TABLE>
+<H1>QDataBase Composant</H1>
+<P STYLE="margin-bottom: 0cm">QdataBase est un composant pour cr&eacute;er
+et manipuler des fichiers base de donn&eacute;e.</P>
+<P STYLE="margin-bottom: 0cm">Les bases de donn&eacute;es manipul&eacute;es
+par ce composant ne sont pas standart avec celles connus.</P>
+<P STYLE="margin-bottom: 0cm">La limite du nombre de champs et
+d'enregistrements est limit&eacute; a la valeur maxi d'un mot de 24
+bits. 
+</P>
+<P STYLE="margin-bottom: 0cm"><A NAME="1"></A><BR><B><FONT SIZE=4>QDataBase
+Propriet&eacute;s</FONT></B> 
+</P>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#ffffff" CELLPADDING=0 CELLSPACING=0 FRAME=VOID>
+	<COL WIDTH=37*>
+	<COL WIDTH=176*>
+	<COL WIDTH=14*>
+	<COL WIDTH=24*>
+	<COL WIDTH=4*>
+	<TR>
+		<TD WIDTH=14%>
+			<P><B>Champs</B></P>
+		</TD>
+		<TD WIDTH=69%>
+			<P><B>Type</B></P>
+		</TD>
+		<TD WIDTH=6%>
+			<P><B>L/E</B></P>
+		</TD>
+		<TD WIDTH=9%>
+			<P><B>D&eacute;faut</B></P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD WIDTH=14%>
+			<HR>
+		</TD>
+		<TD WIDTH=69%>
+			<HR>
+		</TD>
+		<TD WIDTH=6%>
+			<HR>
+		</TD>
+		<TD WIDTH=9%>
+			<HR>
+		</TD>
+		<TD WIDTH=2%>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>FileName</P>
+		</TD>
+		<TD WIDTH=69%>
+			<P>STRING</P>
+		</TD>
+		<TD WIDTH=6%>
+			<P>L</P>
+		</TD>
+		<TD WIDTH=9%></TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD WIDTH=14%></TD>
+		<TD WIDTH=69%>
+			<P>Nom du fichier de la base de donn&eacute;e incluant le chemin
+			complet.</P>
+		</TD>
+		<TD WIDTH=6%></TD>
+		<TD WIDTH=9%></TD>
+		<TD WIDTH=2%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>RecordSize</P>
+		</TD>
+		<TD WIDTH=69%>
+			<P>LONG</P>
+		</TD>
+		<TD WIDTH=6%>
+			<P>L</P>
+		</TD>
+		<TD WIDTH=9%></TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD WIDTH=14%></TD>
+		<TD WIDTH=69%>
+			<P>Taille en octet d'un enregistrement de la base de donn&eacute;e.</P>
+		</TD>
+		<TD WIDTH=6%></TD>
+		<TD WIDTH=9%></TD>
+		<TD WIDTH=2%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>RecordCount</P>
+		</TD>
+		<TD WIDTH=69%>
+			<P>LONG</P>
+		</TD>
+		<TD WIDTH=6%>
+			<P>L</P>
+		</TD>
+		<TD WIDTH=9%></TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD WIDTH=14%></TD>
+		<TD WIDTH=69%>
+			<P>Nombre d'enregistrement de la base de donn&eacute;e.</P>
+		</TD>
+		<TD WIDTH=6%></TD>
+		<TD WIDTH=9%></TD>
+		<TD WIDTH=2%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>FieldCount</P>
+		</TD>
+		<TD WIDTH=69%>
+			<P>LONG</P>
+		</TD>
+		<TD WIDTH=6%>
+			<P>L</P>
+		</TD>
+		<TD WIDTH=9%></TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD WIDTH=14%></TD>
+		<TD WIDTH=69%>
+			<P>Nombre de champs d'un enregistrement de la base de donn&eacute;e.</P>
+		</TD>
+		<TD WIDTH=6%></TD>
+		<TD WIDTH=9%></TD>
+		<TD WIDTH=2%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>Error</P>
+		</TD>
+		<TD WIDTH=69%>
+			<P>INTEGER</P>
+		</TD>
+		<TD WIDTH=6%>
+			<P>L</P>
+		</TD>
+		<TD WIDTH=9%></TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD WIDTH=14%></TD>
+		<TD WIDTH=69%>
+			<P STYLE="margin-bottom: 0cm">Erreur base de donn&eacute;e , son
+			num&eacute;ro doit etre compar&eacute; avec les constantes
+			suivantes pour identifier l'erreur en cas d'&eacute;chec des
+			m&eacute;thodes.</P>
+			<P STYLE="margin-bottom: 0cm"><B>ErrDbCreate</B>: Pb de cr&eacute;ation
+			fichier.</P>
+			<P STYLE="margin-bottom: 0cm"><B>ErrDbOpen</B>: Pb d'ouverture
+			fichier</P>
+			<P STYLE="margin-bottom: 0cm"><B>ErrDbFile</B>: Fichier inexistant</P>
+			<P STYLE="margin-bottom: 0cm"><B>ErrDbIndex</B>: Index
+			d'enregistrement hors limite</P>
+			<P STYLE="margin-bottom: 0cm"><B>ErrDbRecordEmpty</B>:
+			Enregistrement vide ou format enregistrement vide.</P>
+			<P><B>ErrDbRecordSize</B>: Taille d'enregistrement non conforme au
+			format de la base.</P>
+		</TD>
+		<TD WIDTH=6%></TD>
+		<TD WIDTH=9%></TD>
+		<TD WIDTH=2%></TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="2"></A><B><FONT SIZE=4>QDataBase
+Methodes</FONT></B> 
+</P>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#ffffff" CELLPADDING=2 CELLSPACING=0 FRAME=VOID>
+	<COL WIDTH=47*>
+	<COL WIDTH=57*>
+	<COL WIDTH=124*>
+	<COL WIDTH=24*>
+	<COL WIDTH=4*>
+	<TR>
+		<TD WIDTH=18%>
+			<P><B>Methode</B></P>
+		</TD>
+		<TD WIDTH=22%>
+			<P><B>Type</B></P>
+		</TD>
+		<TD WIDTH=48%>
+			<P><B>Description</B></P>
+		</TD>
+		<TD WIDTH=9%>
+			<P><B>Parametres</B></P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD WIDTH=18%>
+			<HR>
+		</TD>
+		<TD WIDTH=22%>
+			<HR>
+		</TD>
+		<TD WIDTH=48%>
+			<HR>
+		</TD>
+		<TD WIDTH=9%>
+			<HR>
+		</TD>
+		<TD WIDTH=2%>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>GetFieldName</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(index&amp;) as string</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P>retourne le nom d'un champ par son index</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="1" SDNUM="1036;">
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>GetFieldIndex</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(name$) as long</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P>retourne l'index champ par son nom</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="1" SDNUM="1036;">
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>GetFieldSize</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(index&amp;) as long</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P>retourne la taille d'un champ en octet par son index.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="1" SDNUM="1036;">
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>IsOpen</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P>retourne l'&eacute;tat ouvert d'une base de donn&eacute;e.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="0" SDNUM="1036;">
+			<P ALIGN=CENTER>0</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>Create</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(FileName$,RecordFormat$) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P STYLE="margin-bottom: 0cm">Cr&eacute;&eacute; un fichier base
+			de donn&eacute;e et retourne true si le fichier est cr&eacute;&eacute;.</P>
+			<P>FileName est le nom fichier a cr&eacute;er, RecordFormat est le
+			format des enregistrements de la base contenant le nom et la
+			taille en caractere de chaque champs.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="2" SDNUM="1036;">
+			<P ALIGN=CENTER>2</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP BGCOLOR="#ffffcc">
+			<P><BR>
+			</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP BGCOLOR="#ffffcc">
+			<P><BR>
+			</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP BGCOLOR="#ffffcc">
+			<P STYLE="margin-bottom: 0cm">Format:
+			&lt;FieldName:FieldSize&gt;,&lt;FieldName:FieldSize &gt;,...........</P>
+			<P STYLE="margin-bottom: 0cm"><BR>
+			</P>
+			<P STYLE="margin-bottom: 0cm">Exemple:</P>
+			<P>text=&nbsp;&raquo;NAME:10,CITY:20&nbsp;&raquo;</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM BGCOLOR="#ffffcc">
+			<P ALIGN=CENTER><BR>
+			</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP BGCOLOR="#ffffcc"></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>Open</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(FileName$) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P STYLE="margin-bottom: 0cm">Ouvre un fichier base de donn&eacute;e
+			et retourne True.</P>
+			<P>FileName est le nom fichier a ouvrir.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="1" SDNUM="1036;">
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>Close</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>SUB</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P>Ferme la base de donn&eacute;e ouverte ou cr&eacute;&eacute;.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="0" SDNUM="1036;">
+			<P ALIGN=CENTER>0</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>AddRecord</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(record$) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P STYLE="margin-bottom: 0cm">Ajoute un enregistrement a la base
+			et retourne True.</P>
+			<P>Record est l'ensemble des champs de l'enregistrement avec le
+			nombre de caractere conforme au format de la base.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="1" SDNUM="1036;">
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>AddRecordUdt</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(record&amp;) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P STYLE="margin-bottom: 0cm">Ajoute un enregistrement a la base
+			sous forme udt et retourne True.</P>
+			<P>Record correspond a un type UDT de taille variable mais
+			conforme au format de la base et compos&eacute; de champs string
+			uniquement.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="1" SDNUM="1036;">
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP BGCOLOR="#ffffcc">
+			<P><BR>
+			</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP BGCOLOR="#ffffcc">
+			<P><BR>
+			</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP BGCOLOR="#ffffcc">
+			<P STYLE="margin-bottom: 0cm">Exemple:</P>
+			<P STYLE="margin-bottom: 0cm">Type Customer</P>
+			<P STYLE="margin-bottom: 0cm">name as string*10</P>
+			<P STYLE="margin-bottom: 0cm">city as string*20</P>
+			<P STYLE="margin-bottom: 0cm">End Type</P>
+			<P STYLE="margin-bottom: 0cm"><BR>
+			</P>
+			<P STYLE="margin-bottom: 0cm">Dim myCustomer as Customer</P>
+			<P STYLE="margin-bottom: 0cm">myCustomer.name=&nbsp;&raquo;Peter&nbsp;&raquo;</P>
+			<P STYLE="margin-bottom: 0cm">myCustomer.city=&nbsp;&raquo;Paris&nbsp;&raquo;</P>
+			<P STYLE="margin-bottom: 0cm"><BR>
+			</P>
+			<P>dbase.AddRecordUdt( myCustomer)</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM BGCOLOR="#ffffcc">
+			<P ALIGN=CENTER><BR>
+			</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP BGCOLOR="#ffffcc"></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>SaveRecord</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(index&amp;,record$) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P STYLE="margin-bottom: 0cm">Sauvegarde un enregistrement
+			identifi&eacute; par son index dans la base et retourne True.</P>
+			<P>Record est l'ensemble des champs de l'enregistrement avec le
+			nombre de caractere conforme au format de la base.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="2" SDNUM="1036;">
+			<P ALIGN=CENTER>2</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>SaveRecordUdt</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(index&amp;,record&amp;) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P STYLE="margin-bottom: 0cm">Sauvegarde un enregistrement de type
+			udt identifi&eacute; par son index dans la base et retourne True.</P>
+			<P>Record correspond a un type UDT de taille variable mais
+			conforme au format de la base et compos&eacute; de champs string
+			uniquement.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="2" SDNUM="1036;">
+			<P ALIGN=CENTER>2</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>GetRecord</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(index&amp;,byref record$) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P>Stocke dans le parametre record l'enregistrement identifi&eacute;
+			par son index.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="2" SDNUM="1036;">
+			<P ALIGN=CENTER>2</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>GetRecordUdt</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(index&amp;,record&amp;) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P STYLE="margin-bottom: 0cm">Stocke dans le parametre record de
+			type udt l'enregistrement identifi&eacute; par son index.</P>
+			<P>La variable udt pass&eacute; en parametre doit etre conforme au
+			format de la base.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="2" SDNUM="1036;">
+			<P ALIGN=CENTER>2</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>DelRecord</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(index&amp;) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P>Supprime un enregistrement de la base par son index</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="1" SDNUM="1036;">
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>SearchByRecord</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(name$) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P STYLE="margin-bottom: 0cm">Retourne True si la chaine du
+			parametre name a &eacute;t&eacute; trouv&eacute; dans tout les
+			enregistrement de la base.</P>
+			<P>Les index des enregistrements possedant la chaine seront list&eacute;s
+			par l'&eacute;venement OnSearch.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="1" SDNUM="1036;">
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>SearchByField</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(name$,fieldIndex&amp;) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P STYLE="margin-bottom: 0cm">Retourne True si la chaine du
+			parametre name a &eacute;t&eacute; trouv&eacute; dans le champ
+			identifi&eacute; par son index de tout les enregistrement de la
+			base.</P>
+			<P>Les index des enregistrements dont le champ possede la chaine
+			seront list&eacute;s par l'&eacute;venement OnSearch.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="2" SDNUM="1036;">
+			<P ALIGN=CENTER>2</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			<P>SearchByRequest</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP>
+			<P>Function(operator$,value$,bNum&amp;,fieldIndex&amp;) as boolean</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP>
+			<P STYLE="margin-bottom: 0cm">Retourne True si il y a des
+			enregistrments r&eacute;pondant a une demande formul&eacute;.</P>
+			<P>La demande s'effectue par un op&eacute;rateur et une valeur sur
+			un champ identifi&eacute; par son index.</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM SDVAL="4" SDNUM="1036;">
+			<P ALIGN=CENTER>4</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP BGCOLOR="#ffffcc">
+			<P><BR>
+			</P>
+		</TD>
+		<TD WIDTH=22% VALIGN=TOP BGCOLOR="#ffffcc">
+			<P><BR>
+			</P>
+		</TD>
+		<TD WIDTH=48% VALIGN=TOP BGCOLOR="#ffffcc">
+			<P STYLE="margin-bottom: 0cm">La liste des op&eacute;rateurs est
+			la suivante:</P>
+			<P STYLE="margin-bottom: 0cm">&lt; , &gt; ,&lt;= , &gt;= , = , &lt;&gt;</P>
+			<P STYLE="margin-bottom: 0cm">Le parametre value est la chaine a
+			tester ou la valeur num&eacute;rique sous forme de chaine si le
+			parametre bNum est a True. 
+			</P>
+			<P STYLE="margin-bottom: 0cm">Les index des enregistrements
+			r&eacute;pondant a la demande seront list&eacute;s par l'&eacute;venement
+			OnSearch.</P>
+			<P STYLE="margin-bottom: 0cm">Exemple:</P>
+			<P STYLE="margin-bottom: 0cm">dbase.SearchByRequest(
+			&laquo;&nbsp;&gt;&nbsp;&raquo;,&nbsp;&raquo;2000&nbsp;&raquo;,1)</P>
+			<P><BR>
+			</P>
+		</TD>
+		<TD WIDTH=9% VALIGN=BOTTOM BGCOLOR="#ffffcc">
+			<P ALIGN=CENTER><BR>
+			</P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP BGCOLOR="#ffffcc"></TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><B><FONT SIZE=4>QDataBase Evenements</FONT></B>
+</P>
+<TABLE WIDTH=100% BORDER=0 CELLPADDING=2 CELLSPACING=0>
+	<COL WIDTH=47*>
+	<COL WIDTH=57*>
+	<COL WIDTH=123*>
+	<COL WIDTH=24*>
+	<COL WIDTH=5*>
+	<TR>
+		<TD WIDTH=18%>
+			<P><B>Evenement</B></P>
+		</TD>
+		<TD WIDTH=22%>
+			<P><B>Type</B></P>
+		</TD>
+		<TD WIDTH=48%>
+			<P><B>Declenchement</B></P>
+		</TD>
+		<TD WIDTH=9%>
+			<P><B>Parametres</B></P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD WIDTH=18%>
+			<HR>
+		</TD>
+		<TD WIDTH=22%>
+			<HR>
+		</TD>
+		<TD WIDTH=48%>
+			<HR>
+		</TD>
+		<TD WIDTH=9%>
+			<HR>
+		</TD>
+		<TD WIDTH=2%>
+			<HR>
+		</TD>
+	</TR>
+	<TR>
+		<TD WIDTH=18% BGCOLOR="#ccffff">
+			<P>OnSearch</P>
+		</TD>
+		<TD WIDTH=22% BGCOLOR="#ccffff">
+			<P>(index&amp;)</P>
+		</TD>
+		<TD WIDTH=48% BGCOLOR="#ccffff">
+			<P>Sur utilisation des m&eacute;thodes Search</P>
+		</TD>
+		<TD WIDTH=9% BGCOLOR="#ccffff" SDVAL="1" SDNUM="1036;">
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2% BGCOLOR="#ccffff">
+			<P><BR>
+			</P>
+		</TD>
+	</TR>
+</TABLE>
+<P><A NAME="4"></A><B><FONT SIZE=4>QDataBase Exemples</FONT></B> <BR>&nbsp;
+<BR><B><FONT COLOR="#0000a0">$typecheck</FONT></B> on</P>
+<PRE><B><FONT COLOR="#0000a0">$include</FONT></B> &quot;<FONT COLOR="#800000">rapidq.inc</FONT>&quot;
+<B><FONT COLOR="#0000a0">$include</FONT></B> &quot;<FONT COLOR="#800000">Object\QDataBase.inc</FONT>&quot;
+
+<B><FONT COLOR="#0000a0">declare</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B> show
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> mnFileClick
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> mnOpenClick
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> mnSaveClick
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> mnCloseClick
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> mnCreateClick
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> mnRequestClick
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> mnExitClick
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> BtOkClick
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> ShowError
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> ClearCell
+<B><FONT COLOR="#0000a0">Declare</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B> Search<B>(</B>index <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">long</FONT>)</B>
+
+<B><FONT COLOR="#0000a0">Type</FONT></B> TClient
+  Name <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>*15
+  Compagny <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>*20
+  City <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>*20
+  Postal <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>*10
+  Country <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>*20
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Type</FONT></B>
+
+<B><FONT COLOR="#0000a0">dim</FONT></B> dbase <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">QDataBase</FONT></B>
+    dbase.OnSearch=Search
+<B><FONT COLOR="#0000a0">const</FONT></B> maxSeq=50
+<B><FONT COLOR="#0000a0">dim</FONT></B> indexsearch <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">integer</FONT></B>
+<B><FONT COLOR="#0000a0">dim</FONT></B> client <B><FONT COLOR="#0000a0">as</FONT></B> TClient
+<B><FONT COLOR="#0000a0">dim</FONT></B> OpenDial <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">QOpenDialog</FONT></B>
+    OpenDial.Filter=&quot;<FONT COLOR="#800000">Db file(*.db)|*.db</FONT>&quot;
+    OpenDial.caption=&quot;<FONT COLOR="#800000">Open database</FONT>&quot;
+<B><FONT COLOR="#0000a0">dim</FONT></B> CreateDial <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">QSaveDialog</FONT></B>
+    CreateDial.Filter=&quot;<FONT COLOR="#800000">Db file(*.db)|*.db</FONT>&quot;
+    CreateDial.caption=&quot;<FONT COLOR="#800000">Create database</FONT>&quot;
+
+
+<B><FONT COLOR="#0000a0">CREATE</FONT></B> Form2 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QFORM</FONT></B>
+  BorderStyle=bsDialog
+  Caption=&quot;<FONT COLOR="#800000">Request</FONT>&quot;
+  Width=316
+  Height=153
+  Center
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> Label1 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QLABEL</FONT></B>
+    Caption=&quot;<FONT COLOR="#800000">Value:</FONT>&quot;
+    Left=26
+    Top=16
+  <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> Label2 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QLABEL</FONT></B>
+    Caption=&quot;<FONT COLOR="#800000">Operator:</FONT>&quot;
+    Left=10
+    Top=48
+    Width=46
+  <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> Label3 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QLABEL</FONT></B>
+    Caption=&quot;<FONT COLOR="#800000">Field:</FONT>&quot;
+    Left=115
+    Top=48
+    Width=46
+  <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> EdValue <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QEDIT</FONT></B>
+    Left=63
+    Top=12
+    Width=233
+  <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> CbOp <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QCOMBOBOX</FONT></B>
+    Left=64
+    Top=45
+    Width=40
+    AddItems &quot;<FONT COLOR="#800000">=</FONT>&quot;,&quot;<FONT COLOR="#800000">&lt;</FONT>&quot;,&quot;<FONT COLOR="#800000">&gt;</FONT>&quot;,&quot;<FONT COLOR="#800000">&lt;=</FONT>&quot;,&quot;<FONT COLOR="#800000">&gt;=</FONT>&quot;,&quot;<FONT COLOR="#800000">&lt;&gt;</FONT>&quot;
+    ItemIndex=0
+  <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> CbField <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QCOMBOBOX</FONT></B>
+    Left=145
+    Top=45
+    Width=80
+    AddItems &quot;<FONT COLOR="#800000">Name</FONT>&quot;,&quot;<FONT COLOR="#800000">Compagny</FONT>&quot;,&quot;<FONT COLOR="#800000">City</FONT>&quot;,&quot;<FONT COLOR="#800000">Postal</FONT>&quot;,&quot;<FONT COLOR="#800000">Country</FONT>&quot;
+    ItemIndex=0
+  <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> CheckNum <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QCHECKBOX</FONT></B>
+    Caption=&quot;<FONT COLOR="#800000">Numeric</FONT>&quot;
+    Left=240
+    Top=48
+    Width=81
+  <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> BtOk <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QBUTTON</FONT></B>
+    Caption=&quot;<FONT COLOR="#800000">&amp;Ok</FONT>&quot;
+    Kind=bkOK  
+    Left=136
+    Top=90
+    Default=true
+    OnClick=BtOkClick
+  <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> BtCancel <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QBUTTON</FONT></B>
+    Caption=&quot;<FONT COLOR="#800000">&amp;Cancel</FONT>&quot;
+    Kind=bkCancel  
+    Left=224
+    Top=90
+  <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+<B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+    
+<B><FONT COLOR="#0000a0">CREATE</FONT></B> Form <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QFORM</FONT></B>
+  Caption=&quot;<FONT COLOR="#800000">DataBase</FONT>&quot;
+  Width=730
+  Height=454
+  Center
+  OnShow=Show
+  <B><FONT COLOR="#0000a0">Create</FONT></B> MainMenu <B><FONT COLOR="#0000a0">As</FONT></B> <B><FONT COLOR="#0000a0">QMAINMENU</FONT></B>
+    <B><FONT COLOR="#0000a0">Create</FONT></B> File <B><FONT COLOR="#0000a0">As</FONT></B> <B><FONT COLOR="#0000a0">QMenuItem</FONT></B>
+      Caption=&quot;<FONT COLOR="#800000">&amp;File</FONT>&quot;
+      OnClick=mnFileClick
+      <B><FONT COLOR="#0000a0">Create</FONT></B> mnOpen <B><FONT COLOR="#0000a0">As</FONT></B> <B><FONT COLOR="#0000a0">QMenuItem</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">&amp;Open</FONT>&quot;
+        OnClick=mnOpenClick
+      <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Create</FONT></B>
+      <B><FONT COLOR="#0000a0">Create</FONT></B> mnSave <B><FONT COLOR="#0000a0">As</FONT></B> <B><FONT COLOR="#0000a0">QMenuItem</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">&amp;Save</FONT>&quot;
+        OnClick=mnSaveClick
+      <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Create</FONT></B>
+      <B><FONT COLOR="#0000a0">Create</FONT></B> mnClose <B><FONT COLOR="#0000a0">As</FONT></B> <B><FONT COLOR="#0000a0">QMenuItem</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">&amp;Close</FONT>&quot;
+        OnClick=mnCloseClick
+      <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Create</FONT></B>
+      <B><FONT COLOR="#0000a0">Create</FONT></B> mnCreate <B><FONT COLOR="#0000a0">As</FONT></B> <B><FONT COLOR="#0000a0">QMenuItem</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">C&amp;reate</FONT>&quot;
+        OnClick=mnCreateClick
+      <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Create</FONT></B>
+      <B><FONT COLOR="#0000a0">Create</FONT></B> sep1 <B><FONT COLOR="#0000a0">As</FONT></B> <B><FONT COLOR="#0000a0">QMenuItem</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">-</FONT>&quot;
+      <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Create</FONT></B>
+      <B><FONT COLOR="#0000a0">Create</FONT></B> mnRequest <B><FONT COLOR="#0000a0">As</FONT></B> <B><FONT COLOR="#0000a0">QMenuItem</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">&amp;Request</FONT>&quot;
+        OnClick=mnRequestClick
+      <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Create</FONT></B>
+      <B><FONT COLOR="#0000a0">Create</FONT></B> sep2 <B><FONT COLOR="#0000a0">As</FONT></B> <B><FONT COLOR="#0000a0">QMenuItem</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">-</FONT>&quot;
+      <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Create</FONT></B>
+      <B><FONT COLOR="#0000a0">Create</FONT></B> mnExit <B><FONT COLOR="#0000a0">As</FONT></B> <B><FONT COLOR="#0000a0">QMenuItem</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">&amp;Exit</FONT>&quot;
+        OnClick=mnExitClick
+      <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Create</FONT></B>
+    <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Create</FONT></B>
+  <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Create</FONT></B>
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> StringGrid1 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QSTRINGGRID</FONT></B>
+    Align=AlClient
+    RowCount=maxSeq    
+    ColCount=6
+    <B><FONT COLOR="#0000a0">Color</FONT></B>=&amp;HAAFFFF
+    DefaultColWidth=100
+    DefaultRowHeight=20
+    ColWidths<B>(</B>0<B>)</B>=50
+    Cell<B>(</B>0,0<B>)</B>=&quot;<FONT COLOR="#800000">Record</FONT>&quot;
+    Cell<B>(</B>1,0<B>)</B>=<B><FONT COLOR="#0000a0">space$</FONT>(</B>8<B>)</B>+&quot;<FONT COLOR="#800000">Name</FONT>&quot;
+    Cell<B>(</B>2,0<B>)</B>=<B><FONT COLOR="#0000a0">space$</FONT>(</B>8<B>)</B>+&quot;<FONT COLOR="#800000">Company</FONT>&quot;
+    Cell<B>(</B>3,0<B>)</B>=<B><FONT COLOR="#0000a0">space$</FONT>(</B>12<B>)</B>+&quot;<FONT COLOR="#800000">City</FONT>&quot;
+    Cell<B>(</B>4,0<B>)</B>=<B><FONT COLOR="#0000a0">space$</FONT>(</B>8<B>)</B>+&quot;<FONT COLOR="#800000">Postal code</FONT>&quot;
+    Cell<B>(</B>5,0<B>)</B>=<B><FONT COLOR="#0000a0">space$</FONT>(</B>8<B>)</B>+&quot;<FONT COLOR="#800000">Country</FONT>&quot;
+    AddOptions goEditing,goColSizing
+  <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+<B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+
+Form.ShowModal
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Evenement apparition fenetre</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> Show
+  <B><FONT COLOR="#0000a0">dim</FONT></B> i <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">integer</FONT></B>
+  <B><FONT COLOR="#0000a0">for</FONT></B> i=1 <B><FONT COLOR="#0000a0">to</FONT></B> maxSeq
+    StringGrid1.Cell<B>(</B>0,i<B>)</B>=<B><FONT COLOR="#0000a0">str$</FONT>(</B>i<B>)</B>
+  <B><FONT COLOR="#0000a0">next</FONT></B> i
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Evenement menu ouvrir</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> mnOpenClick
+  <B><FONT COLOR="#0000a0">dim</FONT></B> i <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">integer</FONT></B>
+  <B><FONT COLOR="#0000a0">dim</FONT></B> filename <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>
+  <B><FONT COLOR="#0000a0">dim</FONT></B> Error <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">integer</FONT></B>
+
+  <B><FONT COLOR="#0000a0">if</FONT></B> OpenDial.Execute<B>()</B> <B><FONT COLOR="#0000a0">then</FONT></B>
+    <B><FONT COLOR="#0000a0">if</FONT></B> dbase.open<B>(</B>OpenDial.filename<B>)</B> <B><FONT COLOR="#0000a0">then</FONT></B>
+      <B><FONT COLOR="#0000a0">for</FONT></B> i=1 <B><FONT COLOR="#0000a0">to</FONT></B> dbase.RecordCount
+        <B><FONT COLOR="#0000a0">if</FONT></B> dbase.GetRecordUdt<B>(</B>i,client<B>)</B>=true <B><FONT COLOR="#0000a0">then</FONT></B>
+          StringGrid1.Cell<B>(</B>1,i<B>)</B>=client.name
+          StringGrid1.Cell<B>(</B>2,i<B>)</B>=client.Compagny
+          StringGrid1.Cell<B>(</B>3,i<B>)</B>=client.City
+          StringGrid1.Cell<B>(</B>4,i<B>)</B>=client.Postal
+          StringGrid1.Cell<B>(</B>5,i<B>)</B>=client.Country
+        <B><FONT COLOR="#0000a0">else</FONT></B>
+          Error=True
+          <B><FONT COLOR="#0000a0">Exit</FONT></B> <B><FONT COLOR="#0000a0">For</FONT></B>
+        <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+      <B><FONT COLOR="#0000a0">next</FONT></B> i
+      <B><FONT COLOR="#0000a0">if</FONT></B> Error=true <B><FONT COLOR="#0000a0">then</FONT></B> ShowError 
+    <B><FONT COLOR="#0000a0">else</FONT></B>
+      ShowError
+    <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+  <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Effacement contenu cellule</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> ClearCell
+  <B><FONT COLOR="#0000a0">dim</FONT></B> i <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">integer</FONT></B>
+  <B><FONT COLOR="#0000a0">dim</FONT></B> j <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">integer</FONT></B>
+  
+  <B><FONT COLOR="#0000a0">for</FONT></B> i=1 <B><FONT COLOR="#0000a0">to</FONT></B> StringGrid1.RowCount-1
+    <B><FONT COLOR="#0000a0">for</FONT></B> j=1 <B><FONT COLOR="#0000a0">to</FONT></B> StringGrid1.ColCount-1
+      StringGrid1.Cell<B>(</B>j,i<B>)</B>=&quot;&quot;
+    <B><FONT COLOR="#0000a0">next</FONT></B> j
+  <B><FONT COLOR="#0000a0">next</FONT></B> i
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Evenement menu fermer</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> mnCloseClick
+  ClearCell
+  dbase.close
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Evenement menu cr&eacute;er</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> mnCreateClick
+  <B><FONT COLOR="#0000a0">dim</FONT></B> format <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>
+  <B><FONT COLOR="#0000a0">dim</FONT></B> i <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">integer</FONT></B>
+  <B><FONT COLOR="#0000a0">dim</FONT></B> filename <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>
+  <B><FONT COLOR="#0000a0">dim</FONT></B> Error <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">integer</FONT></B>
+
+  format=&quot;<FONT COLOR="#800000">NAME:15,COMPAGNY:20,CITY:20,POSTAL:10,COUNTRY:20</FONT>&quot;
+  <B><FONT COLOR="#0000a0">if</FONT></B> CreateDial.Execute<B>()</B> <B><FONT COLOR="#0000a0">then</FONT></B>
+    filename=CreateDial.filename
+    <B><FONT COLOR="#0000a0">if</FONT></B> <B><FONT COLOR="#0000a0">instr</FONT>(<FONT COLOR="#0000a0">LCASE$</FONT>(</B>FileName<B>)</B>,&quot;<FONT COLOR="#800000">.db</FONT>&quot;<B>)</B>=0 <B><FONT COLOR="#0000a0">then</FONT></B> FileName=FileName+&quot;<FONT COLOR="#800000">.db</FONT>&quot;
+    <B><FONT COLOR="#0000a0">if</FONT></B> dbase.create<B>(</B>CreateDial.filename,format<B>)</B>=true <B><FONT COLOR="#0000a0">then</FONT></B>
+      <B><FONT COLOR="#0000a0">for</FONT></B> i=1 <B><FONT COLOR="#0000a0">to</FONT></B> StringGrid1.RowCount-1
+        client.name=StringGrid1.Cell<B>(</B>1,i<B>)</B>
+        client.Compagny=StringGrid1.Cell<B>(</B>2,i<B>)</B>
+        client.City=StringGrid1.Cell<B>(</B>3,i<B>)</B>
+        client.Postal=StringGrid1.Cell<B>(</B>4,i<B>)</B>
+        client.Country=StringGrid1.Cell<B>(</B>5,i<B>)</B>
+        <B><FONT COLOR="#0000a0">if</FONT></B> dbase.AddRecordUdt<B>(</B>client<B>)</B>=False <B><FONT COLOR="#0000a0">then</FONT></B>
+          Error=True
+          <B><FONT COLOR="#0000a0">Exit</FONT></B> <B><FONT COLOR="#0000a0">For</FONT></B>
+        <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+      <B><FONT COLOR="#0000a0">next</FONT></B> i
+      <B><FONT COLOR="#0000a0">if</FONT></B> Error=True <B><FONT COLOR="#0000a0">then</FONT></B> ShowError 
+    <B><FONT COLOR="#0000a0">else</FONT></B>
+      ShowError
+    <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+  <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Evenement menu sauver</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> mnSaveClick
+  <B><FONT COLOR="#0000a0">dim</FONT></B> i <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">integer</FONT></B>
+  <B><FONT COLOR="#0000a0">dim</FONT></B> filename <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>
+  <B><FONT COLOR="#0000a0">dim</FONT></B> Error <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">integer</FONT></B>
+
+  <B><FONT COLOR="#0000a0">if</FONT></B> CreateDial.Execute<B>()</B> <B><FONT COLOR="#0000a0">then</FONT></B>
+    filename=CreateDial.filename
+    <B><FONT COLOR="#0000a0">if</FONT></B> <B><FONT COLOR="#0000a0">instr</FONT>(<FONT COLOR="#0000a0">LCASE$</FONT>(</B>FileName<B>)</B>,&quot;<FONT COLOR="#800000">.db</FONT>&quot;<B>)</B>=0 <B><FONT COLOR="#0000a0">then</FONT></B> FileName=FileName+&quot;<FONT COLOR="#800000">.db</FONT>&quot;
+    <B><FONT COLOR="#0000a0">if</FONT></B> dbase.IsOpen <B><FONT COLOR="#0000a0">then</FONT></B>
+      <B><FONT COLOR="#0000a0">for</FONT></B> i=1 <B><FONT COLOR="#0000a0">to</FONT></B> StringGrid1.RowCount-1
+        client.name=StringGrid1.Cell<B>(</B>1,i<B>)</B>
+        client.Compagny=StringGrid1.Cell<B>(</B>2,i<B>)</B>
+        client.City=StringGrid1.Cell<B>(</B>3,i<B>)</B>
+        client.Postal=StringGrid1.Cell<B>(</B>4,i<B>)</B>
+        client.Country=StringGrid1.Cell<B>(</B>5,i<B>)</B>
+        <B><FONT COLOR="#0000a0">if</FONT></B> dbase.SaveRecordUdt<B>(</B>i,client<B>)</B>=False <B><FONT COLOR="#0000a0">then</FONT></B>
+          Error=True
+          <B><FONT COLOR="#0000a0">Exit</FONT></B> <B><FONT COLOR="#0000a0">For</FONT></B>
+        <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+      <B><FONT COLOR="#0000a0">next</FONT></B> i
+      <B><FONT COLOR="#0000a0">if</FONT></B> Error=True <B><FONT COLOR="#0000a0">then</FONT></B> ShowError 
+    <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+  <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Affichage erreur</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> ShowError
+  <B><FONT COLOR="#0000a0">defstr</FONT></B> text=&quot;&quot;
+
+  <B><FONT COLOR="#0000a0">Select</FONT></B> <B><FONT COLOR="#0000a0">case</FONT></B> dbase.error
+  <B><FONT COLOR="#0000a0">case</FONT></B> ErrDbCreate
+    text=&quot;<FONT COLOR="#800000">Error file create</FONT>&quot;
+  <B><FONT COLOR="#0000a0">case</FONT></B> ErrDbOpen
+    text=&quot;<FONT COLOR="#800000">Error file open</FONT>&quot;
+  <B><FONT COLOR="#0000a0">case</FONT></B> ErrDbFile
+    text=&quot;<FONT COLOR="#800000">Error file not exist</FONT>&quot;
+  <B><FONT COLOR="#0000a0">case</FONT></B> ErrDbIndex
+    text=&quot;<FONT COLOR="#800000">Error index out of bound</FONT>&quot;
+  <B><FONT COLOR="#0000a0">case</FONT></B> ErrDbRecordEmpty
+    text=&quot;<FONT COLOR="#800000">Error record empty</FONT>&quot;
+  <B><FONT COLOR="#0000a0">case</FONT></B> ErrDbRecordSize
+    text=&quot;<FONT COLOR="#800000">Error record size</FONT>&quot;
+  <B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Select</FONT></B>
+  <B><FONT COLOR="#0000a0">MessageBox</FONT>(</B>text,&quot;<FONT COLOR="#800000">Error</FONT>&quot;,16<B>)</B>
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Evenement menu fichier</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> mnFileClick
+  <B><FONT COLOR="#0000a0">if</FONT></B> dbase.IsOpen <B><FONT COLOR="#0000a0">then</FONT></B>
+    mnSave.enabled=true
+    mnRequest.enabled=true
+  <B><FONT COLOR="#0000a0">else</FONT></B>
+    mnSave.enabled=false
+    mnRequest.enabled=false
+  <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Evenement menu request</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> mnRequestClick
+  form2.showmodal
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Evenement bouton ok</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> BtOkClick
+  <B><FONT COLOR="#0000a0">dim</FONT></B> operator <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>
+  <B><FONT COLOR="#0000a0">dim</FONT></B> index <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">long</FONT></B>
+  
+  <B><FONT COLOR="#0000a0">if</FONT></B> EdValue.text=&quot;&quot; <B><FONT COLOR="#0000a0">then</FONT></B> <B><FONT COLOR="#0000a0">exit</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B>
+  ClearCell
+  indexsearch=0
+  operator=CbOp.Item<B>(</B>CbOp.ItemIndex<B>)</B>
+  index=dbase.GetFieldIndex<B>(</B>CbField.Item<B>(</B>CbField.ItemIndex<B>))</B>
+  dbase.SearchByRequest<B>(</B>operator,EdValue.text,CheckNum.checked,index<B>)</B>
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Evenement OnSearch</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> Search<B>(</B>index <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">long</FONT>)</B>
+  <B><FONT COLOR="#0000a0">if</FONT></B> dbase.IsOpen<B>()</B>=true <B><FONT COLOR="#0000a0">then</FONT></B>
+    <B><FONT COLOR="#0000a0">if</FONT></B> dbase.GetRecordUdt<B>(</B>index,client<B>)</B>=true <B><FONT COLOR="#0000a0">then</FONT></B>
+      indexsearch++
+      StringGrid1.Cell<B>(</B>1,indexsearch<B>)</B>=client.name
+      StringGrid1.Cell<B>(</B>2,indexsearch<B>)</B>=client.Compagny
+      StringGrid1.Cell<B>(</B>3,indexsearch<B>)</B>=client.City
+      StringGrid1.Cell<B>(</B>4,indexsearch<B>)</B>=client.Postal
+      StringGrid1.Cell<B>(</B>5,indexsearch<B>)</B>=client.Country
+    <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+  <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<I><FONT COLOR="#008000">' Evenement menu quitter</FONT></I> 
+<I><FONT COLOR="#008000">'============================================</FONT></I> 
+<B><FONT COLOR="#0000a0">Sub</FONT></B> mnExitClick
+  application.terminate
+<B><FONT COLOR="#0000a0">End</FONT></B> <B><FONT COLOR="#0000a0">Sub</FONT></B>
+
+ </PRE><P>
+<BR>&nbsp; 
+</P>
+</BODY>
+</HTML>

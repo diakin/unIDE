@@ -1,0 +1,106 @@
+<html>
+<head>
+<title>QDrive.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QDrive</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' GetDriveType return values</i></font> 
+<font color="0000AA"><b>Const</b></font> DRIVE_REMOVABLE=2
+<font color="0000AA"><b>Const</b></font> DRIVE_FIXED=3
+<font color="0000AA"><b>Const</b></font> DRIVE_REMOTE=4
+<font color="0000AA"><b>Const</b></font> DRIVE_CDROM=5
+<font color="0000AA"><b>Const</b></font> DRIVE_RAMDISK=6
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetDriveType <font color="0000AA"><b>Lib</b></font> "<font color="990000">kernel32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetDriveTypeA</font>" <b>(</b>nDrive <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetDiskFreeSpace <font color="0000AA"><b>Lib</b></font> "<font color="990000">kernel32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetDiskFreeSpaceA</font>" <b>(</b>root <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,BYREF sectors <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,BYREF bytes <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,BYREF clusters <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,BYREF total <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+<font color="0000AA"><b>TYPE</b></font> QDrive <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QObject</b></font>
+  Name<b>(</b>26<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  Count <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetCount
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' proprieté nombre de lecteur(read only)</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  PROPERTY SET SetCount<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' méthode type de lecteur</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetType<b>(</b>index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>if</b></font> index&lt;=QDrive.Count <font color="000099"><b>then</b></font>
+      QDrive.GetType=GetDriveType<b>(</b>QDrive.Name<b>(</b>index<b>)</b><b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' méthode espace libre d'un lecteur</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetFreeSpace<b>(</b>index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> SectorsPerCluster <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> BytesPerSector <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> NumberOfFreeClusters <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> TotalClusters <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> value <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> index&lt;=QDrive.Count <font color="000099"><b>then</b></font>
+      value=GetDiskFreeSpace<b>(</b>QDrive.Name<b>(</b>index<b>)</b>,SectorsPerCluster,BytesPerSector,NumberOfFreeClusters,TotalClusters<b>)</b>
+      <font color="0000AA"><b>if</b></font> value&lt;>0 <font color="000099"><b>Then</b></font>
+        QDrive.GetFreeSpace=SectorsPerCluster*BytesPerSector*NumberOfFreeClusters
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' méthode taille d'un lecteur</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetSize<b>(</b>index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> SectorsPerCluster <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> BytesPerSector <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> NumberOfFreeClusters <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> TotalClusters <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> value <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> index&lt;=QDrive.Count <font color="000099"><b>then</b></font>
+      value=GetDiskFreeSpace<b>(</b>QDrive.Name<b>(</b>index<b>)</b>,SectorsPerCluster,BytesPerSector,NumberOfFreeClusters,TotalClusters<b>)</b>
+      <font color="0000AA"><b>if</b></font> value&lt;>0 <font color="000099"><b>Then</b></font>
+        QDrive.GetSize=SectorsPerCluster*BytesPerSector*TotalClusters
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' méthode reception des lecteurs présents</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="0000AA"><b>SUB</b></font> GetDrives
+   <font color="0000AA"><b>dim</b></font> ASC_A <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+   <font color="0000AA"><b>dim</b></font> ASC_Z <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+   <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+   <font color="0000AA"><b>dim</b></font> index <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+   
+   index=0
+   ASC_A=65
+   ASC_Z=ASC_A+25
+   <font color="0000AA"><b>for</b></font> i=ASC_A <font color="0000AA"><b>to</b></font> ASC_Z
+     <font color="0000AA"><b>if</b></font> GetDriveType<b>(</b><font color="0000AA"><b>Chr$</b></font><b>(</b>i<b>)</b>&"<font color="990000">:\</font>"<b>)</b>&lt;>1 <font color="000099"><b>then</b></font>
+       index=index+1
+       QDrive.Count=QDrive.Count+1
+       QDrive.Name<b>(</b>index<b>)</b>=<font color="0000AA"><b>chr$</b></font><b>(</b>i<b>)</b>+"<font color="990000">:\</font>"
+     <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="0000AA"><b>next</b></font> i
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+  <font color="007700"><i>'-- Default values</i></font> 
+  <font color="000099"><b>CONSTRUCTOR</b></font>
+    Count=0
+    GetDrives
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>TYPE</b></font>  
+ 
+</pre>
+</body>
+</html>

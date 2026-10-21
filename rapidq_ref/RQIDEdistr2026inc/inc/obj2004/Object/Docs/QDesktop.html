@@ -1,0 +1,255 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE>Appendix A: QDesktop</TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 1.1.0  (Win32)">
+	<META NAME="AUTHOR" CONTENT="dominique glodt">
+	<META NAME="CREATED" CONTENT="20041019;20412884">
+	<META NAME="CHANGED" CONTENT="20041112;20132969">
+	<STYLE>
+	<!--
+		@page { size: 29.7cm 21cm }
+	-->
+	</STYLE>
+</HEAD>
+<BODY LANG="fr-FR" BGCOLOR="#ffffff" DIR="LTR">
+<P STYLE="margin-bottom: 0cm">&nbsp; 
+</P>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+	<TR>
+		<TD>
+			<P><FONT FACE="Arial, Helvetica">Documentation composant par
+			D.Glodt (c)2004</FONT></P>
+		</TD>
+		<TD>
+			<P ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A:
+			QDesktop</B></FONT></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=2>
+			<HR SIZE=1>
+		</TD>
+	</TR>
+</TABLE>
+<H1>QDesktop Composant</H1>
+<DL>
+	<DD STYLE="margin-bottom: 0.5cm">Qdesktop est un conposant non
+	visible li&eacute; au bureau de window.</DD></DL>
+<P STYLE="margin-bottom: 0cm">
+<A NAME="1"></A><BR><B><FONT SIZE=4>QDesktop Propriet&eacute;s</FONT></B>
+</P>
+<TABLE WIDTH=100% CELLPADDING=2 CELLSPACING=2>
+	<TR>
+		<TD>
+			<P><B>Champs</B></P>
+		</TD>
+		<TD>
+			<P><B>Type</B></P>
+		</TD>
+		<TD>
+			<P><B>L/E</B></P>
+		</TD>
+		<TD>
+			<P><B>Defaut</B></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="2"></A><B><FONT SIZE=4>QDesktop
+Methodes</FONT></B> 
+</P>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#ffffff" CELLPADDING=2 CELLSPACING=0 FRAME=VOID>
+	<COL WIDTH=35*>
+	<COL WIDTH=85*>
+	<COL WIDTH=106*>
+	<COL WIDTH=30*>
+	<TR>
+		<TD WIDTH=14%>
+			<P><B>Methode</B></P>
+		</TD>
+		<TD WIDTH=33%>
+			<P><B>Type</B></P>
+		</TD>
+		<TD WIDTH=41%>
+			<P><B>Description</B></P>
+		</TD>
+		<TD WIDTH=12%>
+			<P><B>Parametres</B></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD WIDTH=14%>
+			<HR>
+		</TD>
+		<TD WIDTH=33%>
+			<HR>
+		</TD>
+		<TD WIDTH=41%>
+			<HR>
+		</TD>
+		<TD WIDTH=12%>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>Copy</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>Sub Copy(handle&amp;,x&amp;,y&amp;,width&amp;,height&amp;)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Copy dans un handle de composant Qcanvas,QBitmap,QImage l'image
+			du bureau.</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="5" SDNUM="1036;">
+			<P ALIGN=LEFT>5</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>CopyWallPaper</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB(handle&amp;)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Copy dans un handle de composant Qcanvas,QBitmap,QImage l'image
+			du papier peint du bureau.</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="1" SDNUM="1036;">
+			<P ALIGN=LEFT>1</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>GetPixel</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>FUNCTION(X&amp;,Y&amp;) As Long</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Retourne la couleur du pixel a la position x,y dansle bureau</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="2" SDNUM="1036;">
+			<P ALIGN=LEFT>2</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>ChangeWallPaper</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB (FileName$)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Change l'image du papier peint du bureau par l'image identifi&eacute;
+			par le parametre FileName$.</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="1" SDNUM="1036;">
+			<P ALIGN=LEFT>1</P>
+		</TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><B><FONT SIZE=4>QDesktop Evenements</FONT></B>
+</P>
+<TABLE WIDTH=100% BORDER=0 CELLPADDING=2 CELLSPACING=0>
+	<COL WIDTH=66*>
+	<COL WIDTH=54*>
+	<COL WIDTH=106*>
+	<COL WIDTH=30*>
+	<TR>
+		<TD WIDTH=26%>
+			<P><B>Evenement</B></P>
+		</TD>
+		<TD WIDTH=21%>
+			<P><B>Type</B></P>
+		</TD>
+		<TD WIDTH=41%>
+			<P><B>D&eacute;clenchement</B></P>
+		</TD>
+		<TD WIDTH=12%>
+			<P><B>Parametres</B></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD WIDTH=26%>
+			<HR>
+		</TD>
+		<TD WIDTH=21%>
+			<HR>
+		</TD>
+		<TD WIDTH=41%>
+			<HR>
+		</TD>
+		<TD WIDTH=12%>
+			<HR>
+		</TD>
+	</TR>
+</TABLE>
+<P><B><FONT SIZE=4>QDesktop Exemples</FONT></B> 
+</P>
+<PRE><B><FONT COLOR="#0000a0">$typecheck</FONT></B> on
+<B><FONT COLOR="#0000a0">$INCLUDE</FONT></B> &quot;<FONT COLOR="#800000">Rapidq.inc</FONT>&quot;
+<B><FONT COLOR="#0000a0">$INCLUDE</FONT></B> &quot;<FONT COLOR="#800000">Object\QDesktop.inc</FONT>&quot;
+
+<B><FONT COLOR="#0000a0">declare</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B> OuvrirClick
+<B><FONT COLOR="#0000a0">declare</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B> QuitterClick
+
+<B><FONT COLOR="#0000a0">dim</FONT></B> Desktop <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">QDesktop</FONT></B>
+
+<B><FONT COLOR="#0000a0">CREATE</FONT></B> Form <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QFORM</FONT></B>
+  Caption =&quot;<FONT COLOR="#800000">Change WallPaper</FONT>&quot;
+  Width = 200
+  Height = 200
+  Center
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> Menu <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QMAINMENU</FONT></B>
+   <B><FONT COLOR="#0000a0">CREATE</FONT></B> item1 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QMENUITEM</FONT></B>
+     Caption=&quot;<FONT COLOR="#800000">&amp;Fichier</FONT>&quot;
+     <B><FONT COLOR="#0000a0">CREATE</FONT></B> item2 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QMENUITEM</FONT></B>
+       Caption=&quot;<FONT COLOR="#800000">&amp;Ouvrir</FONT>&quot;
+       OnClick=OuvrirClick
+     <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+     <B><FONT COLOR="#0000a0">CREATE</FONT></B> item5 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QMENUITEM</FONT></B>
+       Caption=&quot;<FONT COLOR="#800000">-</FONT>&quot;
+     <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+     <B><FONT COLOR="#0000a0">CREATE</FONT></B> item6 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QMENUITEM</FONT></B>
+       Caption=&quot;<FONT COLOR="#800000">&amp;Quitter</FONT>&quot;
+       OnClick=QuitterClick
+     <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+   <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+ <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+<B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+
+Form.ShowModal
+
+<B><FONT COLOR="#0000a0">sub</FONT></B> OuvrirClick
+ <B><FONT COLOR="#0000a0">dim</FONT></B> file <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">QOPENDIALOG</FONT></B>
+
+ file.Filter=&quot;<FONT COLOR="#800000">Fichiers bitmap(*.bmp)|*.bmp</FONT>&quot;
+ file.InitialDir=<B><FONT COLOR="#0000a0">CurDir$</FONT></B>
+ <B><FONT COLOR="#0000a0">if</FONT></B> file.Execute <B><FONT COLOR="#0000a0">then</FONT></B>
+   Desktop.ChangeWallPaper<B>(</B>file.fileName<B>)</B>
+ <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+<B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B>
+
+<B><FONT COLOR="#0000a0">sub</FONT></B> QuitterClick
+ Form.Close
+<B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B></PRE>
+</BODY>
+</HTML>

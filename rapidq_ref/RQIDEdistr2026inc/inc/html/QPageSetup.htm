@@ -1,0 +1,177 @@
+<html>
+<head>
+<title>QPageSetup.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QPageSetup</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>CONST</b></font> PSD_DEFAULTMINMARGINS = 0
+<font color="0000AA"><b>CONST</b></font> PSD_MINMARGINS = &H1
+<font color="0000AA"><b>CONST</b></font> PSD_MARGINS = &H2
+<font color="0000AA"><b>CONST</b></font> PSD_INTHOUSANDTHSOFINCHES = &H4
+<font color="0000AA"><b>CONST</b></font> PSD_INHUNDREDTHSOFMILLIMETERS = &H8
+<font color="0000AA"><b>CONST</b></font> PSD_DISABLEMARGINS = &H10
+<font color="0000AA"><b>CONST</b></font> PSD_DISABLEPRINTER = &H20
+<font color="0000AA"><b>CONST</b></font> PSD_NOWARNING = &H80
+<font color="0000AA"><b>CONST</b></font> PSD_DISABLEORIENTATION = &H100
+<font color="0000AA"><b>CONST</b></font> PSD_DISABLEPAPER = &H200
+<font color="0000AA"><b>CONST</b></font> PSD_RETURNDEFAULT = &H400
+<font color="0000AA"><b>CONST</b></font> PSD_SHOWHELP = &H800
+<font color="0000AA"><b>CONST</b></font> PSD_ENABLEPAGESETUPHOOK = &H2000
+<font color="0000AA"><b>CONST</b></font> PSD_ENABLEPAGESETUPTEMPLATE = &H8000
+<font color="0000AA"><b>CONST</b></font> PSD_ENABLEPAGESETUPTEMPLATEHANDLE = &H20000
+<font color="0000AA"><b>CONST</b></font> PSD_ENABLEPAGEPAINTHOOK = &H40000
+<font color="0000AA"><b>CONST</b></font> PSD_DISABLEPAGEPAINTING = &H80000
+<font color="0000AA"><b>CONST</b></font> PSD_NONETWORKBUTTON = &H200000
+
+<font color="0000AA"><b>TYPE</b></font> TPSD
+  lStructSize <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  hWndOwner <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  hDevMode <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  hDevNames <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  Flags <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  ptPaperSizeX <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  ptPaperSizeY <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  rtMinMarginLeft <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  rtMinMarginTop <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  rtMinMarginRight <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  rtMinMarginBottom <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  rtMarginLeft <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  rtMarginTop <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  rtMarginRight <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  rtMarginBottom <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  hInstance <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  lParam <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  lpfnPageSetupHook <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  lpfnPagePaintHook <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  lpPageSetupTemplate <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+  hPageSetupTemplate <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> PageSetupDlg <font color="0000AA"><b>LIB</b></font> "<font color="990000">COMDLG32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">PageSetupDlgA</font>" <b>(</b>Ptr <font color="0000AA"><b>AS</b></font> TPSD<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>Type</b></font> QPageSetup <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QOBJECT</b></font>
+  private:
+    PSD <font color="0000AA"><b>AS</b></font> TPSD
+  public:
+    DisablePrinter <font color="0000AA"><b>as</b></font> boolean
+    DisablePaper <font color="0000AA"><b>as</b></font> boolean
+    DisableOrient <font color="0000AA"><b>as</b></font> boolean
+    DisableMargins <font color="0000AA"><b>as</b></font> boolean
+    Orientation <font color="0000AA"><b>as</b></font> boolean PROPERTY SET SetOrientation
+    MarginLeft <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font> PROPERTY SET SetMarginLeft
+    MarginTop <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font> PROPERTY SET SetMarginTop
+    MarginRight <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font> PROPERTY SET SetMarginRight
+    MarginBottom <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font> PROPERTY SET SetMarginBottom
+    PageWidth <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font> PROPERTY SET SetPageWidth
+    PageHeight <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font> PROPERTY SET SetPageHeight
+  
+  <font color="007700"><i>'=============================================</i></font> 
+  <font color="007700"><i>' Proprieté orientation page en lecture seule </i></font> 
+  <font color="007700"><i>'============================================= </i></font> 
+  PROPERTY SET SetOrientation<b>(</b>value <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+    
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' Proprieté valeur marge gauche </i></font> 
+  <font color="007700"><i>'=============================================== </i></font> 
+  PROPERTY SET SetMarginLeft<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QPageSetup.PSD.rtMarginLeft=value*100
+  <font color="0000AA"><b>END</b></font> PROPERTY
+    
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' Proprieté valeur marge haute </i></font> 
+  <font color="007700"><i>'=============================================== </i></font> 
+  PROPERTY SET SetMarginTop<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QPageSetup.PSD.rtMarginTop=value*100
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' Proprieté valeur marge droite </i></font> 
+  <font color="007700"><i>'=============================================== </i></font> 
+  PROPERTY SET SetMarginRight<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QPageSetup.PSD.rtMarginRight=value*100
+  <font color="0000AA"><b>END</b></font> PROPERTY
+   
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' Proprieté valeur marge basse </i></font> 
+  <font color="007700"><i>'=============================================== </i></font> 
+  PROPERTY SET SetMarginBottom<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QPageSetup.PSD.rtMarginBottom=value*100
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' Proprieté largeur page en lecture seule </i></font> 
+  <font color="007700"><i>'=============================================== </i></font> 
+  PROPERTY SET SetPageWidth<b>(</b>value <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+            
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' Proprieté hauteur page en lecture seule </i></font> 
+  <font color="007700"><i>'=============================================== </i></font> 
+  PROPERTY SET SetPageHeight<b>(</b>value <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+    
+  <font color="007700"><i>'===========================================</i></font> 
+  <font color="007700"><i>' Méthode affichage mise en page imprimante</i></font> 
+  <font color="007700"><i>'===========================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> <font color="0000AA"><b>Execute</b></font><b>(</b>form <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>QFORM</b></font><b>)</b> <font color="0000AA"><b>as</b></font> boolean
+    QPageSetup.PSD.lStructSize = <font color="0000AA"><b>SIZEOF</b></font><b>(</b>QPageSetup.PSD<b>)</b>
+    QPageSetup.PSD.hWndOwner=form.handle
+    QPageSetup.PSD.Flags=PSD_MARGINS+PSD_MINMARGINS
+    <font color="0000AA"><b>if</b></font> QPageSetup.DisablePrinter <font color="000099"><b>then</b></font>
+      QPageSetup.PSD.Flags=QPageSetup.PSD.Flags+PSD_DISABLEPRINTER
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>if</b></font> QPageSetup.DisablePaper <font color="000099"><b>then</b></font>
+      QPageSetup.PSD.Flags=QPageSetup.PSD.Flags+PSD_DISABLEPAPER
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>if</b></font> QPageSetup.DisableOrient <font color="000099"><b>then</b></font>
+      QPageSetup.PSD.Flags=QPageSetup.PSD.Flags+PSD_DISABLEORIENTATION
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>if</b></font> QPageSetup.DisableMargins <font color="000099"><b>then</b></font>
+      QPageSetup.PSD.Flags=QPageSetup.PSD.Flags+PSD_DISABLEMARGINS
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>if</b></font> PageSetupDlg<b>(</b>QPageSetup.PSD<b>)</b> <font color="000099"><b>then</b></font>
+      QPageSetup.Execute=true
+      QPageSetup.PageWidth=QPageSetup.PSD.ptPaperSizeX/100
+      QPageSetup.PageHeight=QPageSetup.PSD.ptPaperSizeY/100
+      <font color="0000AA"><b>if</b></font> QPageSetup.PageWidth>QPageSetup.PageHeight <font color="000099"><b>then</b></font>
+        QPageSetup.Orientation=true
+      <font color="000099"><b>else</b></font>
+        QPageSetup.Orientation=false
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      QPageSetup.MarginLeft=QPageSetup.PSD.rtMarginLeft/100
+      QPageSetup.MarginTop=QPageSetup.PSD.rtMarginTop/100
+      QPageSetup.MarginRight=QPageSetup.PSD.rtMarginRight/100
+      QPageSetup.MarginBottom=QPageSetup.PSD.rtMarginBottom/100
+    <font color="000099"><b>else</b></font>
+      QPageSetup.Execute=false
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+    
+  <font color="000099"><b>Constructor</b></font>
+    DisablePrinter=false
+    DisablePaper=false
+    DisableOrient=false
+    DisableMargins=false
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

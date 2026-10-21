@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QD3DPRIMITIVE</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QD3DPRIMITIVE</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QD3DPRIMITIVE Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/RapidQ_D3D.inc</code>, line 455 &middot; author: JohnK &middot; version: 1.1 &middot; date: 9/2005</p>
+<p><b>A non-visual helper that builds simple polygon meshes (planes, box, pyramid, sphere, cylinder, cone) into a QD3DMESHBUILDER for RapidQ Direct3D programs.</b></p>
+<p>QD3DPrimitive holds a QD3DMESHBUILDER (Mesh) and a QD3DFRAME (Frame) and has Make... methods that add faces to the mesh. The source says it is meant for floors, sky boxes, clouds, boxes, pyramids and similar objects, and that it exists because a QD3DMeshbuilder cannot be extended.</p>
+<p>Each Make method takes the QDXSCREEN (needed to create QD3DFace objects with CreateFace), adds the faces with Face.AddVertex and Mesh.AddFace, and sets Visible to True. DrawCenter shifts the shape, and ViewFromOutside chooses the vertex order so faces are seen from outside (True) or from inside (False), for example for a sky box.</p>
+<p>You must create Mesh and Frame yourself with the QDXSCREEN (CreateMeshBuilder, CreateFrame) and attach the mesh to a frame. LoadTextureFile loads a .bmp texture into the mesh, asking for a file with a QOPENDIALOG when TextureFile is empty.</p>
+<p>QD3DPRIMITIVE inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>QDXSCREEN (RapidQ DirectX screen) passed to the Make methods</li>
+<li>QD3DMESHBUILDER, QD3DFRAME and QD3DFace (RapidQ Direct3D objects)</li>
+<li>QD3DRGBA type and D3DRMRENDER_* / D3DRMWRAP_* constants defined in RapidQ_D3D.inc</li>
+<li>a definition of null: New assigns null to TextureFile, but RapidQ_D3D.inc only $UNDEFs null at the end and never defines it</li>
+<li>d3drm.dll (Direct3D Retained Mode); RapidQ_D3D.inc DECLAREs D3DRMVectorCrossProduct, D3DRMVectorDotProduct and D3DRMVectorNormalize from it, although the component itself does not call them</li>
+</ul>
+<a name="1"></a><h2>QD3DPrimitive Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Mesh</td><td class="rq-type">QD3DMESHBUILDER</td><td>RW</td><td></td><td>QD3DMESHBUILDER that receives all generated faces; it must be created by the program with the QDXSCREEN before calling the Make methods.</td></tr>
+<tr><td class="rq-name">Frame</td><td class="rq-type">QD3DFRAME</td><td>RW</td><td></td><td>QD3DFRAME for independent orientation and position of the object. The component does not create it or attach the mesh to it.</td></tr>
+<tr><td class="rq-name">RenderQuality</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Rendering quality code for the mesh (for example D3DRMRENDER_GOURAUD); New sets D3DRMRENDER_FLAT. No method applies it to the mesh.</td></tr>
+<tr><td class="rq-name">TextureFile</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Path of the bitmap used by LoadTextureFile; if empty, LoadTextureFile asks for a file.</td></tr>
+<tr><td class="rq-name">TexOriginX</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>X of the texture origin in model space (first argument of the D3D wrap function, per the comment). Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexOriginY</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Y of the texture origin in model space. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexOriginZ</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Z of the texture origin in model space. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexOriginU</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>U coordinate on the bitmap for the texture origin. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexOriginV</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>V coordinate on the bitmap for the texture origin. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexScaleU</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>U texture scale (1/size of the mesh to cover the whole mesh, per the comment); default 1.0. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexScaleV</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>V texture scale; default 1.0. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexWrapType</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Texture wrap type code (D3DRMWRAP_FLAT, D3DRMWRAP_CYLINDER, D3DRMWRAP_SPHERE ...); default D3DRMWRAP_SPHERE. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">Color</td><td class="rq-type">QD3DRGBA</td><td>RW</td><td></td><td>QD3DRGBA colour and alpha (R, G, B, A from 0 to 1), default white and opaque. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">DrawCenter</td><td class="rq-type">QD3DVECTOR</td><td>RW</td><td></td><td>QD3DVector offset added to the vertices of the next primitive; it can be changed before each Make call.</td></tr>
+<tr><td class="rq-name">BoxSides</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of sides MakeBox draws: 4 walls always, the ceiling when greater than 4 and the floor when greater than 5. Default 5 (no bottom).</td></tr>
+<tr><td class="rq-name">ViewFromOutside</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>True (default) orders vertices so faces are visible from outside the shape; False makes them visible from inside, as for a sky box.</td></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Flag set to True by every Make method once faces have been added; New sets it to False. It does not show or hide anything by itself.</td></tr>
+</table>
+<a name="2"></a><h2>QD3DPrimitive Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">New</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Resets all public settings to their defaults (flat render quality, sphere wrap, white colour, DrawCenter at the origin, BoxSides 5, ViewFromOutside True, Visible False). Called by the constructor; it does not clear the mesh.</td></tr>
+<tr><td class="rq-name">LoadTextureFile</td><td class="rq-type">SUB</td><td>Loads TextureFile into the mesh with Mesh.LoadTexture. If TextureFile is empty it first shows a QOPENDIALOG filtered to *.bmp and shows the message &#x27;Texture file does not exist&#x27; if the chosen file is missing.</td></tr>
+<tr><td class="rq-name">MakeHorizPlane</td><td class="rq-type">SUB(DXScreen AS QDXSCREEN)</td><td>MakeHorizPlane(DXScreen) adds one horizontal square face 2 units wide at height DrawCenter.y, shifted by DrawCenter.x.</td></tr>
+<tr><td class="rq-name">MakeVertZPlane</td><td class="rq-type">SUB(DXScreen AS QDXSCREEN)</td><td>MakeVertZPlane(DXScreen) adds one vertical face along the z-axis (x = DrawCenter.x), 1 unit high and 2 units long.</td></tr>
+<tr><td class="rq-name">MakeVertXPlane</td><td class="rq-type">SUB(DXScreen AS QDXSCREEN)</td><td>MakeVertXPlane(DXScreen) adds one vertical face along the x-axis (z = DrawCenter.z), 1 unit high and 2 units wide.</td></tr>
+<tr><td class="rq-name">MakeBox</td><td class="rq-type">SUB(DXScreen AS QDXSCREEN)</td><td>MakeBox(DXScreen) builds a box from the plane methods: back, front, left and right walls, then the ceiling and floor depending on BoxSides. DrawCenter and ViewFromOutside are restored afterwards.</td></tr>
+<tr><td class="rq-name">MakePyramid</td><td class="rq-type">SUB(DXScreen AS QDXSCREEN)</td><td>MakePyramid(DXScreen) adds four triangular faces from the apex (0, 0, 0) to the corners (+-1, +-1, 1). When ViewFromOutside is False an extra vertex is added to each face to avoid culling, per the comment.</td></tr>
+<tr><td class="rq-name">MakeSphere</td><td class="rq-type">SUB(DXScreen AS QDXSCREEN, NumFaces AS INTEGER)</td><td>MakeSphere(DXScreen, NumFaces) adds a sphere of radius 1 around DrawCenter built from quads; the step angle is pi/SQR(NumFaces).</td></tr>
+<tr><td class="rq-name">MakeCylinder</td><td class="rq-type">SUB(DXScreen AS QDXSCREEN, NumFaces AS INTEGER)</td><td>MakeCylinder(DXScreen, NumFaces) adds the side wall of a cylinder of radius 1 from y = -1 to y = 1 around DrawCenter, using NumFaces quads; no end caps are made.</td></tr>
+<tr><td class="rq-name">MakeCone</td><td class="rq-type">SUB(DXScreen AS QDXSCREEN, NumFaces AS INTEGER)</td><td>MakeCone(DXScreen, NumFaces) adds a cone of radius 1 with its base at y = -1 and apex at y = 1 around DrawCenter, using NumFaces triangles; no base cap is made.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>New assigns null to TextureFile, but null is not defined in RapidQ_D3D.inc (the file only $UNDEFs it at the end).</li>
+<li>RenderQuality, the TexOrigin/TexScale/TexWrapType fields and Color are only stored; no method applies them to the mesh.</li>
+<li>MakeHorizPlane ignores DrawCenter.z (the z coordinates are fixed at -1 and 1).</li>
+<li>MakePyramid ignores DrawCenter and calls CreateFace only once, then adds the vertices of all four faces to the same Face object.</li>
+<li>MakeBox declares a Face variable that it never uses.</li>
+<li>The comments of MakeCylinder and MakeCone say &#x27;simple sphere from center&#x27; (copied comment).</li>
+</ul>
+<a name="4"></a><h2>QD3DPrimitive Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;RapidQ_D3D.inc&quot;
+DIM Room AS QD3DPrimitive
+&#x27; DXScreen is a QDXSCREEN on your form; call this after it is initialised
+SUB BuildRoom
+  DXScreen.CreateMeshBuilder(Room.Mesh)
+  DXScreen.CreateFrame(Room.Frame)
+  Room.ViewFromOutside = False
+  Room.BoxSides = 6
+  Room.MakeBox(DXScreen)
+  Room.TextureFile = &quot;wall.bmp&quot;
+  Room.LoadTextureFile
+  Room.Frame.AddVisual(Room.Mesh)
+END SUB</pre>
+<div class="rq-foot"><a href="c_qd3dclonemesh.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdatabase_qdatabase.html">Next component</a></div>
+</body>
+</html>

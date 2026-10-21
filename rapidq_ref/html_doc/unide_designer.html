@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>unIDE form designer</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; unIDE</span><span class="rq-section">Appendix E: form designer and live snapshots</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>How the unIDE form designer works</h1>
+<p class="rq-meta">Code: <code>FormDesigner.pas</code> (the designer window), <code>RqDesign.pas</code> and <code>RqComponents.pas</code> (Rapid-Q forms), <code>DsgClasses.pas</code>, <code>DsgPalette.pas</code>, <code>DsgForeign.pas</code>, <code>DsgIcons.pas</code> (classes, palette, icons), <code>ObjParse.pas</code> (Objects tree, cache), <code>FormSnapshot.pas</code> (snapshot of a live form), <code>FormPreview.pas</code> (preview in View Form), <code>MenuWizard.pas</code>, <code>DfmMove.pas</code>, and the <code>Dsg...</code>, <code>RqDsg...</code>, <code>RapidQProbe...</code> methods of <code>Unit1.pas</code>.</p>
+
+<a name="1"></a><h2>1. One designer for Delphi and Rapid-Q forms</h2>
+<p>The designer builds the form from text in the .dfm format with real VCL controls and shows it in a separate window, as the Delphi 7 designer does. Over the form it draws a dot grid, selects a component with a click, moves it with the mouse and resizes it with 8 handles. The handle numbering and the rule which side a handle pulls are taken from RQFormDsg (ShowCarets, MouseResizeObject):</p>
+<pre>    1   8   7
+    2       6
+    3   4   5</pre>
+<p>The handles are drawn inside the frame of the component, not outside: outside they could not be caught at the edge of the form or next to another component.</p>
+<p>The designer does not keep the text. It reports a change as the name of the component and lines <code>Name=value</code>; whoever owns the text writes it:</p>
+<ul>
+<li>for a Delphi form the main window writes the change into the text of the editor tab with the .dfm (only the lines of that object are changed), not to disk: the tab shows the form as modified and nothing reaches the file without Save;</li>
+<li>for a Rapid-Q form the change goes into the CREATE block of the program (section 6).</li>
+</ul>
+<p>The designer has its own undo (Ctrl+Z in its window, or Edit &rarr; Undo in its menu). One step covers both files that a change touches (.dfm and .pas). The undo history lives while the form stays open.</p>
+
+<a name="2"></a><h2>2. Editing</h2>
+<ul>
+<li><b>Grid.</b> Step X and Y, show dots, snap moves and sizes (IDE Options &rarr; Designer).</li>
+<li><b>Group.</b> Shift+click adds components to a group, as in Delphi. The first one is the main one; alignment and spacing go by it. A group has corner marks instead of handles. A group move or alignment is one undo step.</li>
+<li><b>Palette.</b> Click a component on the palette, then click the form: the component is placed into the container under the mouse at the grid point. The name is the first free one (Button1, Button2, ...: free in the .dfm and in the .pas). For a Delphi form the object goes into the .dfm as the last child of its parent, written as Delphi would write it (an instance is created, named, positioned and streamed with WriteComponent, so only non-default values appear), and a field goes into the form class in the .pas. Non-visual components lie on the root of the form and are shown as icons.</li>
+<li><b>Double click</b> on a component opens (or creates) its default event handler in the .pas, as in Delphi.</li>
+<li><b>Hidden controls</b> (Visible = False in the .dfm or in code) are shown with a red frame.</li>
+<li><b>Pages.</b> The designer opens the TPageControl page from ActivePage. When a page is opened (by a click or at load), the OnChange handler of the TPageControl in the .pas is parsed, and what it shows and hides for that page is applied in the designer.</li>
+<li><b>Own form of the editor.</b> When the editor shows its own form, its menus are the real working ones: choosing an item selects it in the tree and, after its handler has run, puts the caret on that handler in the unit.</li>
+<li><b>Menus.</b> A click on the menu bar of the form does not open the menu; it selects the menu and the item in the Objects tree.</li>
+<li><b>Hint</b> over a component: &laquo;Name: Class&raquo;, with extended hints also place, size, TabStop and TabOrder.</li>
+<li><b>Menu wizard</b> (right click &rarr; Menu): ready menus (text editor, IDE, browser, ...) and templates <code>*.mnu</code> in the folder MenuTemplates next to the program; items are named by caption (New1, Open1, N1), handlers are created by double click.</li>
+</ul>
+
+<a name="3"></a><h2>3. Which classes are real</h2>
+<ul>
+<li><b>Delphi components</b> of the pages Standard, Additional, Win32, System, Dialogs, Win 3.1 and Samples are created as real classes (<code>DsgClasses.pas</code>).</li>
+<li><b>Stubs.</b> Data Access, BDE, ADO, dbExpress, Internet and a few others (TMediaPlayer, TOleContainer, DDE, TXPManifest, TChart) are read as stubs: a real class with Active/Connected = True in the .dfm would open a connection or a device while the form loads. A visual stub is a grey rectangle with its name, a non-visual one an icon.</li>
+<li><b>Third-party components</b> are found in the installed Delphi 7: the known design packages in the registry, the PACKAGEINFO resource of each package (which unit is in which package) and the palette layout of Delphi. Their classes are read from the runtime packages without running their code (<code>BplRtti</code>): ancestors, properties, events. A third-party class can be shown by a similar class of the editor (TComComboBox as TComboBox); such components get a frame of their own colour.</li>
+<li><b>Icons</b> of the palette are drawn by code from short scripts (<code>DsgIcons.pas</code>) and smoothed; own icons can be put into <code>palette_icons.txt</code> next to the program.</li>
+</ul>
+
+<a name="4"></a><h2>4. Objects tree and inspector</h2>
+<p>The tree and the property list come from three sources:</p>
+<ol>
+<li><b>The .dfm</b> of the form. It holds only values that differ from the defaults; full property lists and defaults of VCL classes come from RTTI.</li>
+<li><b>The code of the unit.</b> Components that the code creates (<code>TPanel.Create</code> in FormCreate, helper procedures, creation in a loop, creators through a var parameter) are found by parsing the .pas (<code>BuildCodeRuntime</code> in ObjParse) and shown in the tree and in the designer. They are view only: the designer does not move them and does not write them to the .dfm. <i>Move to .dfm</i> (<code>DfmMove.pas</code>) analyses each of them and moves to the .dfm the ones for which the analysis is sure.</li>
+<li><b>A snapshot of the live form</b> (section 5): what really exists after the code ran, with current values. It is merged over the .dfm data (<code>MergeSnapNode</code>), it does not replace it.</li>
+</ol>
+<p>A parsed form is cached in <code>dsgcache\&lt;form&gt;_&lt;crc of the path&gt;.objcache</code>. The key is the checksums and lengths of the form text, the unit text and the snapshot, plus the date of the exe; if it matches, the tree is read from the file without parsing.</p>
+
+<a name="5"></a><h2>5. Snapshot of a live Delphi form</h2>
+<p><code>FormSnapshot.pas</code> writes a form that exists at run time as text in the .dfm format, so the inspector reads it with the same parser as a real .dfm. It contains what the .dfm does not: components created in code and the values they have now. It walks the components through RTTI itself instead of WriteComponent: the standard writer reads every published property, including Lines of a TRichEdit line by line through EM_GETLINE, and with RichEdit 4.1 this writes UTF-16 into a one-byte buffer and spoils memory. The unit is self-contained and can be added to any program.</p>
+<ul>
+<li><b>Own forms of the editor</b> (the editor edits itself): the snapshot is taken from the live window, when the Objects page is opened and no snapshot exists yet, again when the set of components changed, or by the button.</li>
+<li><b>Another project: probe run.</b> unIDE builds a copy of the project, <code>_dsgprobe.dpr</code> next to the real .dpr, with the probe unit DsgProbe. The copy differs in three places: DsgProbe is first in uses; after the last <code>Application.CreateForm</code> it calls <code>DsgProbeDump</code> (snapshot of all created forms to a file, then ExitProcess); <code>Application.Run</code> is not called. So the form constructors and their OnCreate run, but not OnShow, timers, the message loop or OnDestroy. Code that should not run in a probe (looking for a device, long loading) can be put into <code>{$IFNDEF DSGPROBE} ... {$ENDIF}</code>: the copy is built with -DDSGPROBE. The exe and .dcu of the probe go to a temporary folder; the temporary .dpr is deleted after the build. The probe runs once per session with the project; later the button updates it. FormSnapshot.pas is stored in the editor as a resource and written out for the probe.</li>
+</ul>
+<p><b>Live look and .dfm look.</b> The designer can show a form in two ways: with the values of the snapshot (live look) or only with the .dfm values. Two designer forms exist, the visible one and a hidden one of the other look; a property change is copied to the hidden one at once, a larger change (insert, delete, undo) rebuilds it in the background 1.5 s after the edit. For an own form of the editor unIDE compares two texts of the same form: the .dfm compiled into the running exe (the resource TFORM1, TFORM2, ...) and the snapshot. A property where they differ was set by code; in the live look it comes from the snapshot, and the inspector marks it as set by code. Place and size set by code are marked per coordinate (letters L, T, W, H) and can be locked against moving.</p>
+
+<a name="6"></a><h2>6. Rapid-Q forms</h2>
+<p>A Rapid-Q form exists only as code: CREATE ... END CREATE blocks. The Objects tree shows these blocks as a tree, as the Objects page of RQdebugger does (a CREATE inside another CREATE is its child; one-line <code>CREATE ... : END CREATE</code> is understood; a CREATE without END CREATE is marked).</p>
+<ul>
+<li><b>Building the form.</b> From the CREATE nodes unIDE writes a text in the .dfm format (<code>RqDsgBuildDfm</code>) and opens it with its own instance of the same designer. The components in this text are stubs <code>TRqShape</code> that draw themselves by the kind of their Rapid-Q class (button, edit, panel, ...); the kind is the first built-in class in the EXTENDS chain, so <code>QToolBarEX EXTENDS QPANEL</code> is drawn as a panel. Non-visual components (QTIMER, QFILESTREAM, dialogs) are icons; QMAINMENU, QPOPUPMENU and QMENUITEM become VCL menus, so the menu bar looks as in the running program.</li>
+<li><b>Classes and properties</b> come from <code>ComponentAll.data</code>: per class its properties (type, access, default, choices such as <code>bsSizeable=2</code>), methods, events and defaults from CONSTRUCTOR. Own components of the program (<code>TYPE ... EXTENDS</code> in the source and its include files) are parsed by <code>RqParseTypes</code> and get the properties of their whole chain. CONST values of the program (RAPIDQ.INC: <code>bsSizeable = 2</code>) turn numbers back into names in the inspector.</li>
+<li><b>Value shown</b> (<code>RqDsgValue</code>): a number or a string in quotes from the CREATE block; if the block has an expression or no line for the property, the value from the snapshot (section 7); if there is no snapshot either, the default from the class description.</li>
+<li><b>Moving and resizing</b> are written into the CREATE block: the value in the assignment line, or a new assignment in the block. A place or size given by an expression is changed as a number: the line with the expression becomes a comment and the number is written under it (<code>RqReplaceExprLine</code>). The place of the form itself is not changed.</li>
+<li><b>Inspector.</b> A property set in the block is changed in the same line (indent, other statements after <code>:</code> and the comment stay); a property not set gets a new line <code>Property = value</code> after the last assignment of the object. Enumerations offer the choices of the class description, colours the cl... constants. Read-only properties, arrays and resources are not edited.</li>
+<li><b>Palette.</b> The pages RQ Standard, RQ Additional, RQ System, RQ Dialogs. A click on the form inserts a CREATE block: a visual component into the block of the container under the mouse, before its END CREATE, with Left/Top of the click and the default size of the class; a non-visual one with Parent (QMAINMENU) into the block of the form; other non-visual ones (QTIMER, dialogs) as a separate block before the form.</li>
+<li><b>Links.</b> A click on a component selects its node in the tree; a node in the tree selects the component, a node of another form opens that form. After any edit of the text the form is built again, if its .dfm text changed (<code>RqDsgSync</code>).</li>
+</ul>
+
+<a name="7"></a><h2>7. Snapshot of a Rapid-Q program</h2>
+<p>A value such as <code>Width = MenuPanel.ClientWidth*2\3</code> cannot be known without running the program. unIDE writes a copy <code>_rqprobe.bas</code> next to the main .bas, builds it into <code>_rqprobe.exe</code> with rc.exe and runs it. The copy has two additions:</p>
+<ul>
+<li>before the first CREATE of the main part, a timer (<code>DIM ... AS QTIMER</code>, Interval = 1). Windows delivers its message only when the program takes messages from the queue (ShowModal, DoEvents), so by then the main part has run: the objects exist and the expressions are computed;</li>
+<li>at the end of the file, <code>SUB RqProbeDump</code>: one line <code>Object.Property=value</code> for every readable property of a simple type (by the class description and the TYPE ... EXTENDS chain), then END. The lines are split into <code>SUB RqProbePart1</code>, 2, ...</li>
+</ul>
+<p>The values go to <code>_rqprobe.txt</code>: <code>#start</code> right after the timer, <code>#obj Name</code> before each object, <code>#end</code> at the end. From what is in the file unIDE tells how far the program got: no file &mdash; it did not reach the timer; only <code>#start</code> &mdash; it ended before taking messages; no <code>#end</code> &mdash; the last <code>#obj</code> shows where it stopped. The dump waits until the last END CREATE of the main part (<code>RqProbeReady</code>), every 200 ms up to 8 s, then runs as is with <code>#notready</code>. A property that rc.exe refuses to read (&laquo;Member X not part of class&raquo;) is left out for all objects of that class, the copy is built again, and the exclusion is kept in <code>dsgprobe\rqprobe_skip.txt</code>. The exe runs in the folder of the .bas, as the real one would (programs take their folder from COMMAND$(0)); QXpTheme.INC restarts the exe once to write its manifest, which is why the exe stays there. Copy, exe and value file stay next to the .bas; <code>_rqprobe_run.bat</code> runs the copy by hand, <code>_rqprobe.trace</code> logs start and dump.</p>
+
+<a name="8"></a><h2>8. Preview in View Form</h2>
+<p>In the View Unit / View Form window the right panel shows a picture of the form under the mouse. The form is created from its .dfm (properties that would act at load time, such as Active, Connected, Visible, FormStyle, WindowState, Position and ActiveControl, are removed), placed into a hidden host window and painted control by control into a bitmap (VCL controls get WM_ERASEBKGND and WM_PAINT with the bitmap DC, native ones WM_PRINT). The picture is scaled and saved as JPEG in the disk cache with a key from the size and time of the .dfm; a preview from the cache is shown at once, a new one is built 150 ms after the mouse stops.</p>
+
+<a name="9"></a><h2>9. Limits</h2>
+<ul>
+<li>Components created in code are shown, but not moved or written to the .dfm until <i>Move to .dfm</i> moves them.</li>
+<li>A Delphi snapshot of another project needs a probe build and run (several seconds); OnShow, timers and the message loop do not run in it.</li>
+<li>A Rapid-Q snapshot needs rc.exe and a program that reaches its message loop; values computed later (in OnShow-like code, timers) are not in it.</li>
+<li>Rapid-Q components are drawn by stubs, not by the real Rapid-Q controls; objects from $INCLUDE files are not shown in the Objects tree yet.</li>
+</ul>
+
+<div class="rq-foot"><a href="contents.html#appe">Appendix E</a><a href="unide_debugger.html">Debugger</a><a href="contents.html">Contents</a><a href="indexa.html">Alphabetic index</a></div>
+</body>
+</html>

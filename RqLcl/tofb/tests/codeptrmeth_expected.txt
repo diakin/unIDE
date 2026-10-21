@@ -1,0 +1,6 @@
+same addr again -1
+A call 4321
+B call 8765
+A call 1
+A count 2
+B count 1

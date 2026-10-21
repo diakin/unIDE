@@ -20,8 +20,14 @@ const
   FifMaxHits = 50000;   // дальше грид результатов становится бесполезен
 
 type
-  // Ход обхода: сколько файлов найдено; ACancel := True - прервать
-  TFifProgress = procedure(ACount: Integer; var ACancel: Boolean) of object;
+  // Ход обхода: папка, которую сейчас просматривают, и сколько файлов
+  // найдено; ACancel := True - прервать
+  TFifProgress = procedure(const ADir: string; ACount: Integer;
+                           var ACancel: Boolean) of object;
+  // Найден файл по маскам - сразу, во время обхода (поиск в нём, пока
+  // обход идёт дальше); ACancel := True - прервать обход
+  TFifFileFound = procedure(const AFile: string;
+                            var ACancel: Boolean) of object;
 
 // Подходит ли имя под одну из масок через ';' (*.pas;*.dpr)
 function FifMatchMasks(const AName, AMasks: string): Boolean;
@@ -30,9 +36,11 @@ function FifMatchMasks(const AName, AMasks: string): Boolean;
 function FifReadFile(const AFile: string; var AText: string): Boolean;
 // Файлы папки ADir (с '\' на конце) по маскам, с вложенными папками при
 // ASubDirs. Служебные папки (.git, __history, __recovery) пропускаются.
+// AOnFile - каждый подошедший файл сразу, как только найден.
 procedure FifCollectFiles(const ADir, AMasks: string; ASubDirs: Boolean;
                           AList: TStrings; var ACancel: Boolean;
-                          AProgress: TFifProgress);
+                          AProgress: TFifProgress;
+                          AOnFile: TFifFileFound = nil);
 
 implementation
 
@@ -106,7 +114,8 @@ end;
 // пропускаются. ADir - с разделителем в конце.
 procedure FifCollectFiles(const ADir, AMasks: string; ASubDirs: Boolean;
                           AList: TStrings; var ACancel: Boolean;
-                          AProgress: TFifProgress);
+                          AProgress: TFifProgress;
+                          AOnFile: TFifFileFound);
 var
   SR: TSearchRec;
   Subs: TStringList;
@@ -116,7 +125,7 @@ begin
     Exit;
   // Перед папкой - спросить, не прервали ли (Esc)
   if Assigned(AProgress) then
-    AProgress(AList.Count, ACancel);
+    AProgress(ADir, AList.Count, ACancel);
   if ACancel then
     Exit;
 
@@ -135,21 +144,32 @@ begin
             Subs.Add(ADir + SR.Name + '\');
         end
         else if FifMatchMasks(SR.Name, AMasks) then
+        begin
           AList.Add(ADir + SR.Name);
+          if Assigned(AOnFile) then
+          begin
+            AOnFile(ADir + SR.Name, ACancel);
+            if ACancel then
+              Break;
+          end;
+        end;
       until FindNext(SR) <> 0;
     finally
       FindClose(SR);
     end;
 
+    if ACancel then
+      Exit;
     // После папки - сколько найдено (строка состояния у вызывающего)
     if Assigned(AProgress) then
-      AProgress(AList.Count, ACancel);
+      AProgress(ADir, AList.Count, ACancel);
     if ACancel then
       Exit;
 
     for I := 0 to Subs.Count - 1 do
     begin
-      FifCollectFiles(Subs[I], AMasks, ASubDirs, AList, ACancel, AProgress);
+      FifCollectFiles(Subs[I], AMasks, ASubDirs, AList, ACancel, AProgress,
+                      AOnFile);
       if ACancel then
         Exit;
     end;

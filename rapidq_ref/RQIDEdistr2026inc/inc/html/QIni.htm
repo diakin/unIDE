@@ -1,0 +1,132 @@
+<html>
+<head>
+<title>QIni.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QINI</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetPrivateProfileString <font color="0000AA"><b>Lib</b></font> "<font color="990000">Kernel32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetPrivateProfileStringA</font>" _ 
+<b>(</b>lpApplicationName <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,lpKeyName <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, _ 
+lpDefault <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,lpReturnedString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>long</b></font>,nSize <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,lpFileName <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font> 
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> WritePrivateProfileString <font color="0000AA"><b>Lib</b></font> "<font color="990000">Kernel32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">WritePrivateProfileStringA</font>" _ 
+<b>(</b>lpApplicationName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,lpKeyName <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,lpString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>,lpFileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font> 
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetWindowsDirectory <font color="0000AA"><b>Lib</b></font> "<font color="990000">kernel32.dll</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetWindowsDirectoryA</font>" <b>(</b>lpBuffer <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>long</b></font>,nSize <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetSystemDirectory <font color="0000AA"><b>Lib</b></font> "<font color="990000">kernel32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetSystemDirectoryA</font>" <b>(</b>lpBuffer <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>long</b></font>,nSize <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetTempPath <font color="0000AA"><b>Lib</b></font> "<font color="990000">kernel32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetTempPathA</font>" <b>(</b>nBufferLength <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,lpBuffer <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+
+<font color="0000AA"><b>TYPE</b></font> QINI <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QObject</b></font>
+  <font color="007700"><i>'===========================================</i></font> 
+  <font color="007700"><i>' champs et proprietés</i></font> 
+  <font color="007700"><i>'===========================================</i></font> 
+  FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>String</b></font> PROPERTY SET SetFileName
+  Exist <font color="0000AA"><b>as</b></font> boolean
+  Section <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+  WinDir <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> PROPERTY SET SetWinDir
+  SystemDir <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> PROPERTY SET SetSystemDir
+  TempDir <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> PROPERTY SET SetTempDir
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' Proprieté WinDir en lecture seule</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  PROPERTY SET SetWinDir<b>(</b>name <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' Proprieté SystemDir en lecture seule</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  PROPERTY SET SetSystemDir<b>(</b>name <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' Proprieté TempDir en lecture seule</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  PROPERTY SET SetTempDir<b>(</b>name <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' Proprieté nom du fichier init</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  PROPERTY SET SetFileName<b>(</b>name <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+    QINI.FileName=name
+    <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>FileExists</b></font><b>(</b>QINI.FileName<b>)</b> <font color="000099"><b>then</b></font>
+      QINI.Exist=true
+    <font color="000099"><b>else</b></font>
+      QINI.Exist=false
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>END</b></font> PROPERTY
+
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' Méthode recevoir valeur du fichier init</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> Get<b>(</b>Key <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,Default <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+    <font color="0000AA"><b>dim</b></font> LpBuffer <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    <font color="0000AA"><b>dim</b></font> size <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+
+    lpBuffer=<font color="0000AA"><b>Space$</b></font><b>(</b>260<b>)</b>
+    <font color="0000AA"><b>if</b></font> QINI.FileName&lt;>"<font color="990000"></font>" <font color="0000AA"><b>and</b></font> QINI.Section&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+      size=GetPrivateProfileString<b>(</b>QINI.Section,Key,Default,<font color="0000AA"><b>varPTR</b></font><b>(</b>lpBuffer<b>)</b>,260,QINI.FileName<b>)</b>
+      <font color="0000AA"><b>if</b></font> size>0 <font color="000099"><b>then</b></font>
+        QINI.Get=<font color="0000AA"><b>Left$</b></font><b>(</b>lpBuffer,size<b>)</b>
+      <font color="000099"><b>else</b></font>
+        QINI.Get=Default
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+ 
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' Méthode écrire valeur dans fichier init</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> Write<b>(</b>Key <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,Value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>if</b></font> QINI.FileName&lt;>"<font color="990000"></font>" <font color="0000AA"><b>and</b></font> QINI.Section&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+      QINI.Write=WritePrivateProfileString<b>(</b>QINI.Section,Key,Value,QINI.FileName<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'====================================================</i></font> 
+  <font color="007700"><i>' Méthode trouve les repertoires window+systeme+temp</i></font> 
+  <font color="007700"><i>'====================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> GetIniPath<b>(</b><b>)</b>
+    <font color="0000AA"><b>dim</b></font> lpBuffer <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    <font color="0000AA"><b>dim</b></font> size <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+ 
+    lpBuffer=<font color="0000AA"><b>Space$</b></font><b>(</b>260<b>)</b>
+    size=GetWindowsDirectory<b>(</b><font color="0000AA"><b>Varptr</b></font><b>(</b>lpBuffer<b>)</b>,260<b>)</b>
+    QINI.WinDir=<font color="0000AA"><b>Left$</b></font><b>(</b>lpBuffer,size<b>)</b>
+    lpBuffer=<font color="0000AA"><b>Space$</b></font><b>(</b>260<b>)</b>
+    size=GetSystemDirectory<b>(</b><font color="0000AA"><b>Varptr</b></font><b>(</b>lpBuffer<b>)</b>,260<b>)</b>
+    QINI.SystemDir=<font color="0000AA"><b>Left$</b></font><b>(</b>lpBuffer,size<b>)</b>
+    lpBuffer=<font color="0000AA"><b>Space$</b></font><b>(</b>260<b>)</b>
+    size=GetTempPath<b>(</b>260,<font color="0000AA"><b>Varptr</b></font><b>(</b>lpBuffer<b>)</b><b>)</b>
+    QINI.TempDir=<font color="0000AA"><b>Left$</b></font><b>(</b>lpBuffer,size<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="000099"><b>CONSTRUCTOR</b></font>
+    FileName = "<font color="990000"></font>"
+    Section = "<font color="990000"></font>"
+    Exist=false
+    GetIniPath
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>TYPE</b></font>
+
+ 
+</pre>
+</body>
+</html>

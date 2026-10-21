@@ -1,0 +1,157 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<meta http-equiv="Content-Language" content="de">
+<meta name="GENERATOR" content="Jens File Editor 3.6">
+<title>QREDEX.htm</title>
+</head>
+<body bgcolor="#FFFFFF" leftmargin="0" topmargin="0">
+<pre>
+<font face="Courier New" size="+2"><font color="#000000"><span style="background-color: #FFFFFF">'
+' --------------------------------------------------------------------
+' QREDEX OBJECT               2002-2005            By Jacques Philippe
+'
+' EXTENDS QRICHEDIT with  COPY, CUT, PASTE, DELETE, SELECT ALL, UNDO,
+'        SEARCH,  REPLACE,  SAVEPOSITION,  RESTOREPOSITION,
+'        SETMAXTEXTSIZE(Size), EXTENDSIZELIMIT, CHANGEFONT,
+'        CHANGEFONTCOLOR, CHANGEBGCOLOR, TOPLINEINDEX, BOTTOLINEINDEX
+'
+' DOCUMENTATION : TEXT FORMAT
+'
+' V 0.0.3  2002 : major modification nearly a copy of Psyclops420 work.
+'          See Yahoo RapidQ Group message #9414
+' V 1.0.0  April 2005 added Search, Replace, SavePosition,
+'          RestorePosition, ChangeFont, ChangeFontColor, ChangeBgColor,
+'          SetMaxTextSize, ExtendSizeLimit
+' V 1.1.0  June 2005 added TopLineIndex, BottomLineIndex
+' --------------------------------------------------------------------
+'
+'  $INCLUDE "QREDEX.INC"     ' Will be the new QRichEdit
+'
+'  Example :
+'       Create QRED As QRICHEDIT
+'           Align = alClient
+'           Font.Name = "courier"
+'           Font.Size = 8
+'           Font.Color = &amp;H80FFFF
+'           Color = &amp;H800000
+'           ReadOnly =  False
+'           WordWrap = False
+'           ScrollBars = ssBoth
+'           HideSelection = False
+'           PlainText = True
+'           ExtendSizeLimit
+'           SetMaxTextSize (4E6)
+'       End Create
+'
+'       Create mnuChangeFontAndColor AS QMENUITEM
+'           Caption = "&amp;FONT and COLORS    "        
+'           Create mnuChangeFont AS QMENUITEM
+'               Caption = "&amp;CHANGE FONT    "
+'               OnClick = OnClic_AnyMenu
+'           End Create
+'           Create mnuChangeFontColor AS QMENUITEM
+'               Caption = "&amp;CHANGE FONT COLOR    "
+'               OnClick = OnClic_AnyMenu
+'           End Create
+'           Create mnuChangeBgColor AS QMENUITEM
+'               Caption = "&amp;CHANGE BG_COLOR    "
+'               OnClick = OnClic_AnyMenu
+'           End Create
+'       End Create
+'
+'       Case mnuChangeFont.Handle
+'           .ChangeFont
+'       Case mnuChangeBgColor.Handle
+'           .ChangeBgcolor
+'       Case mnuChangeFontColor.Handle
+'           .ChangeFontcolor
+'       Case mnuGetTopBottomLinesIndex.Handle
+'           ShowMessage ("   TOP VISIBLE LINE INDEX = " &amp; Str$(.TopLineIndex) _
+'                  &amp; "\n\nBOTTOM VISIBLE LINE INDEX = " &amp; Str$(.BottomLineIndex))
+'
+' --------------------------------------------------------------------
+'  DOCUMENTATION
+'  =============
+'      - This Extends QRichEdit so See Component QRichEdit of RapidQ.
+'        Only Property PopUpMenu Is Involved/Changed
+'      - After Including the QREDEX.INC file, your QRichEdit will have
+'        Undo, Copy, Cut, Paste, Delete, Select All, Search, Replace
+'        in it's Popupmenu. New methods opening DialogBox: ChangeFont,
+'        ChangeBgColor, ChangeFontColor and SavePosition, RestorePosition,
+'        TopLineIndex, BottomLineIndex, SetMaxTextSize, ExtendSizeLimit.
+'   
+'   IN POPUPMENU :  COPY , CUT , PASTE , DELETE , SELECT ALL, UNDO,
+'        SEARCH,  REPLACE .
+'        Due to RapidQ CodePtr limitation, it was not possible to use
+'        the  Windows Search and Replace tool.
+'
+'   NEW PROPERITIES and METHODS
+'   ---------------------------
+'   USEPOPUP   allows menu to PopUp when Right Clicking   R/W  Default = True
+'
+'   TOPLINEINDEX returns the index of the top visible line
+'
+'   BOTTOMLINEINDEX returns the index of the bottom visible line
+'
+'   SAVEPOSITION, RESTOREPOSITION save the index of top_left character
+'        in the RichEdit and restore it. The Caret position if set,
+'        is saved and restored too.
+'
+'        If you want to save the position and restore the position by
+'        your own mean, save the two Public properties
+'        QRedEx.SavedTopLeft As long and QRedEx.SavedCaretPosition As Long 
+'        somewhere, then restore them before to call the
+'        QRedEx.RestorePosition method.
+'
+'        Ex : DefInt mySavedTopLeft = QRedEx.SavedTopLeft
+'             DefInt mySavedCaretPosition = QRedEx.SavedCaretPosition
+'             ' ...
+'             QRedEx.SavedTopLeft = mySavedTopLeft
+'             QRedEx.SavedCaretPosition = mySavedCaretPosition
+'             QRedEx.RestorePosition
+'
+'   SETMAXTEXTSIZE(Size)  method that set the maximum RichEdit text size
+'
+'   EXTENDSIZELIMIT       method that sets the maximum RichEdit text size
+'             to the value of the public property QRedEx.RichTextSizeLimit. 
+'             QRedEx.RichTextLimitSize is initialised at 1 MegaByte.
+'
+'   CHANGEFONT, CHANGEFONTCOLOR, CHANGEBGCOLOR
+'             Method that will call a DialogBox that will set the 
+'             QRedEx.Font, QRedEx.Font.color and QRedEx BackGroundColor
+'
+'   OTHER PUBLIC PROPERTIES OF QREDEX 
+'        UsePopup AS LONG PROPERTY SET Set_Popup
+'        RichTextSizeLimit As Long
+'        SavedTopLeft As Long
+'        SavedBottomRight As Long
+'        SavedCaretPosition As Long
+'        ptPoint As String * 20         ' Used with Window Message EM_GETRECT, EM_CHARFROMPOS
+'     ' Search Form
+'        frmSearch As QForm
+'        edtSearchFor As QEdit
+'        lblSearchFor AS QLabel
+'        btnSearch As QButton
+'        chkSearchCaseS As QCheckBox
+'        chkSearchWholeWordsOnly As QCheckBox
+'     ' Replace Form
+'        frmReplace As QForm
+'        lblToBeReplaced AS QLabel
+'        edtToBeReplaced As QEdit
+'        lblReplacedBy AS QLabel
+'        edtReplacedBy As QEdit
+'        btnReplace As QButton
+'        btnFindNext As QButton
+'        btnReplaceAll As QButton
+'        chkReplaceCaseS As QCheckBox
+'        chkReplaceWholeWordsOnly As QCheckBox
+'        chkReplaceUp As QCheckBox
+'
+'    The search and replace forms are public so you can modify any of
+'    their components properties or call any of their Methods.
+' --------------------------------------------------------------------
+'
+</font></pre></body>
+</html>

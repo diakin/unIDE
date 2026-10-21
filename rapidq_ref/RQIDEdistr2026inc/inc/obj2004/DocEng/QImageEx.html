@@ -1,0 +1,293 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QImageEx</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2000-2004</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QImageEx</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QImageEx Component</h1>
+
+<dd>
+QImageEx is a component as QImage with clipboard functions.</dd>
+
+<dd>
+Image copy to clipboard is possible if image has loading with the&nbsp;
+m&eacute;thod LoadFromFile.</dd>
+
+<dd>
+The loading of other graphic formats is possible if the DLL Nviewlib is
+present in the system window</dd>
+
+<dd>
+or the directory of application.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QImageEx Properties</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>Default</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QImageEx Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CopyToClipboard</td>
+
+<td>SUB(rect as QRECT)</td>
+
+<td>Copy image to clipboard</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PasteFromClipboard</td>
+
+<td>SUB</td>
+
+<td>Paste image from clipboard</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>LoadFromFile</td>
+
+<td>SUB(FileName$,Width%,Height%,Real%)</td>
+
+<td>Load a bitmap file</td>
+
+<td>4</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCCCC">If the parameter Real is at true, the image will
+load with
+<br>his dimensions.</td>
+
+<td BGCOLOR="#FFCCCC"></td>
+
+<td BGCOLOR="#FFCCCC"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CanPaste</td>
+
+<td>FUNCTION</td>
+
+<td>Return TRUE if image pr&eacute;sent in the clipboard.</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>LoadOtherImage</td>
+
+<td>SUB(FileName$,Progress&amp;,Language$)</td>
+
+<td>Load image from dll Nviewlib format</td>
+
+<td>3</td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>The parameter progress is use to display a bar of&nbsp; progression&nbsp;
+<br>during the loading of file.(true or false)&nbsp;
+<br>The Language parameter corresponds to the language supported by
+<br>DLL</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QImageEx Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QImageEx Examples</font></b>
+<pre>&nbsp; $typecheck on
+&nbsp; $INCLUDE "Rapidq.inc"&nbsp;
+&nbsp; $INCLUDE "Object\QImageEx.inc"&nbsp;
+&nbsp;&nbsp;
+&nbsp; declare sub OuvrirClick&nbsp;
+&nbsp; declare sub QuitterClick&nbsp;
+&nbsp; declare sub Copier&nbsp;
+&nbsp; declare sub Coller&nbsp;
+&nbsp; declare sub Present&nbsp;
+&nbsp;&nbsp;
+&nbsp; const title="Viewer picture"&nbsp;
+&nbsp; dim source as QRECT&nbsp;
+&nbsp;&nbsp;
+&nbsp; CREATE Form AS QFORM&nbsp;
+&nbsp;&nbsp;&nbsp; Caption =title&nbsp;
+&nbsp;&nbsp;&nbsp; Width = 600&nbsp;
+&nbsp;&nbsp;&nbsp; Height = 600&nbsp;
+&nbsp;&nbsp;&nbsp; Center&nbsp;
+&nbsp;&nbsp;&nbsp; CREATE Menu AS QMAINMENU&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item1 AS QMENUITEM&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Fichier"&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item2 AS QMENUITEM&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Ouvrir"&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=OuvrirClick&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item5 AS QMENUITEM&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="-"&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item6 AS QMENUITEM&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Quitter"&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=QuitterClick&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item11 as QMENUITEM&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Edition"&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Present
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item12 as QMENUITEM&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Copier"&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Copier&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item13 as QMENUITEM&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Coller"&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Coller&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; END CREATE&nbsp;
+&nbsp;&nbsp;&nbsp; CREATE ScrollBox1 AS QSCROLLBOX&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AutoScroll = 1&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=5&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Color = &amp;HFFFFFF&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE image AS QImageEx&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Autosize=1&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE&nbsp;
+&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp; END CREATE&nbsp;
+&nbsp;&nbsp;
+&nbsp; Form.ShowModal&nbsp;
+&nbsp;&nbsp;
+&nbsp; sub OuvrirClick&nbsp;
+&nbsp;&nbsp;&nbsp; dim file as QOPENDIALOG&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; file.Filter="Fichiers bitmap(*.bmp)|*.bmp"&nbsp;
+&nbsp;&nbsp;&nbsp; file.InitialDir=CurDir$&nbsp;
+&nbsp;&nbsp;&nbsp; if file.Execute then&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.loadFromFile(file.fileName,0,0,true)&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Form.Caption=title+"-"+file.FileName&nbsp;
+&nbsp;&nbsp;&nbsp; end if&nbsp;
+&nbsp; end sub&nbsp;
+&nbsp;&nbsp;
+&nbsp; sub QuitterClick&nbsp;
+&nbsp;&nbsp;&nbsp; Form.Close&nbsp;
+&nbsp; end sub&nbsp;
+&nbsp;&nbsp;
+&nbsp; sub Copier&nbsp;
+&nbsp;&nbsp;&nbsp; source.left=0&nbsp;
+&nbsp;&nbsp;&nbsp; source.top=0&nbsp;
+&nbsp;&nbsp;&nbsp; source.right=image.width&nbsp;
+&nbsp;&nbsp;&nbsp; source.bottom=image.height&nbsp;
+&nbsp;&nbsp;&nbsp; image.copyToClipboard(source)&nbsp;
+&nbsp; end sub&nbsp;
+&nbsp;&nbsp;
+&nbsp; sub coller&nbsp;
+&nbsp;&nbsp;&nbsp; image.pasteFromClipboard&nbsp;
+&nbsp; end sub&nbsp;
+&nbsp;&nbsp;
+&nbsp; Sub Present
+&nbsp;&nbsp;&nbsp; if image.canpaste then
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; item13.enabled=true
+&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; item13.enabled=false
+&nbsp;&nbsp;&nbsp; end if
+&nbsp; End Sub</pre>
+
+</body>
+</html>

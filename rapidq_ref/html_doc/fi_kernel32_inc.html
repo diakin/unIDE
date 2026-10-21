@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<!-- rq-generated: rapidq_ref/compdoc/gen_funcs.py -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Kernel32.inc</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: Kernel32.inc</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="funcs.html">Include functions (D)</a><a href="indexa.html">Alphabetic index</a></div>
+
+<h1>Kernel32.inc</h1>
+<p class="rq-meta">Source: <code>rapidq_ref/incOld/Kernel32.inc</code>, merged into <code>rapidq_ref/inc_sys/RQProc.inc</code> &middot; 20 functions &middot; 20 DLL functions</p>
+<p>DLL functions are declared with <code>DECLARE ... LIB</code>; the name after ALIAS is the exported name. The description follows the Microsoft documentation; the link opens the search for that name on learn.microsoft.com. Windows API reference: <a href="https://learn.microsoft.com/en-us/windows/win32/api/">https://learn.microsoft.com/en-us/windows/win32/api/</a>.</p>
+<p><a href="#COPYFILE">CopyFile</a> &middot; <a href="#DELETEFILE">DeleteFile</a> &middot; <a href="#GETCOMMANDLINE">GetCommandLine</a> &middot; <a href="#GETCONSOLECP">GetConsoleCP</a> &middot; <a href="#GETCONSOLEOUTPUTCP">GetConsoleOutputCP</a> &middot; <a href="#GETCURRENTPROCESSID">GetCurrentProcessId</a> &middot; <a href="#GETCURRENTTHREAD">GetCurrentThread</a> &middot; <a href="#GETCURRENTTHREADID">GetCurrentThreadId</a> &middot; <a href="#GETENVIRONMENTSTRINGS">GetEnvironmentStrings</a> &middot; <a href="#GETLOGICALDRIVES">GetLogicalDrives</a> &middot; <a href="#GETOEMCP">GetOEMCP</a> &middot; <a href="#GETPROCESSHEAP">GetProcessHeap</a> &middot; <a href="#GETSYSTEMDEFAULTLANGID">GetSystemDefaultLangID</a> &middot; <a href="#GETSYSTEMDEFAULTLCID">GetSystemDefaultLCID</a> &middot; <a href="#GETTHREADLOCALE">GetThreadLocale</a> &middot; <a href="#GETTICKCOUNT">GetTickCount</a> &middot; <a href="#GETUSERDEFAULTLANGID">GetUserDefaultLangID</a> &middot; <a href="#GETUSERDEFAULTLCID">GetUserDefaultLCID</a> &middot; <a href="#GETVERSION">GetVersion</a> &middot; <a href="#GETVERSIONEX_KERNEL32">GetVersionEx_Kernel32</a></p>
+<h3><a name="COPYFILE"></a>CopyFile</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13093</p>
+<pre>Declare Function CopyFile Lib &quot;kernel32.dll&quot; Alias &quot;CopyFileA&quot; (lpExistingFileName As String,lpNewFileName As String, bFailIfExists As Long) As Long</pre>
+<p>Copies an existing file to a new file; bFailIfExists stops it from overwriting. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=CopyFileA">CopyFileA</a></p>
+<h3><a name="DELETEFILE"></a>DeleteFile</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13102</p>
+<pre>Declare Function DeleteFile Lib &quot;kernel32.dll&quot; Alias &quot;DeleteFileA&quot; (lpFileName As String) As Long</pre>
+<p>Deletes an existing file. Returns nonzero on success.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=DeleteFileA">DeleteFileA</a></p>
+<h3><a name="GETCOMMANDLINE"></a>GetCommandLine</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13107</p>
+<pre>Declare Function GetCommandLine Lib &quot;kernel32.dll&quot; Alias &quot;GetCommandLineA&quot; As String</pre>
+<p>Returns a pointer to the command-line string for the current process.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCommandLineA">GetCommandLineA</a></p>
+<h3><a name="GETCONSOLECP"></a>GetConsoleCP</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13112</p>
+<pre>Declare Function GetConsoleCP Lib &quot;kernel32.dll&quot; Alias &quot;GetConsoleCP&quot; As Long</pre>
+<p>Returns the input code page used by the console of the calling process.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetConsoleCP">GetConsoleCP</a></p>
+<h3><a name="GETCONSOLEOUTPUTCP"></a>GetConsoleOutputCP</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13117</p>
+<pre>Declare Function GetConsoleOutputCP Lib &quot;kernel32.dll&quot; Alias &quot;GetConsoleOutputCP&quot; As Long</pre>
+<p>Returns the output code page used by the console of the calling process.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetConsoleOutputCP">GetConsoleOutputCP</a></p>
+<h3><a name="GETCURRENTPROCESSID"></a>GetCurrentProcessId</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13122</p>
+<pre>Declare Function GetCurrentProcessId Lib &quot;kernel32.dll&quot; Alias &quot;GetCurrentProcessId&quot; As Long</pre>
+<p>Returns the process identifier of the calling process.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCurrentProcessId">GetCurrentProcessId</a></p>
+<h3><a name="GETCURRENTTHREAD"></a>GetCurrentThread</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13127</p>
+<pre>Declare Function GetCurrentThread Lib &quot;kernel32.dll&quot; Alias &quot;GetCurrentThread&quot; As Long</pre>
+<p>Returns a pseudo handle for the calling thread.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCurrentThread">GetCurrentThread</a></p>
+<h3><a name="GETCURRENTTHREADID"></a>GetCurrentThreadId</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13132</p>
+<pre>Declare Function GetCurrentThreadId Lib &quot;kernel32.dll&quot; Alias &quot;GetCurrentThreadId&quot; As Long</pre>
+<p>Returns the thread identifier of the calling thread.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetCurrentThreadId">GetCurrentThreadId</a></p>
+<h3><a name="GETENVIRONMENTSTRINGS"></a>GetEnvironmentStrings</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13137</p>
+<pre>Declare Function GetEnvironmentStrings Lib &quot;kernel32.dll&quot; Alias &quot;GetEnvironmentStringsA&quot; As String</pre>
+<p>Returns a pointer to the environment block of the current process; free it with FreeEnvironmentStrings.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetEnvironmentStringsA">GetEnvironmentStringsA</a></p>
+<h3><a name="GETLOGICALDRIVES"></a>GetLogicalDrives</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13142</p>
+<pre>Declare Function GetLogicalDrives Lib &quot;kernel32.dll&quot; Alias &quot;GetLogicalDrives&quot; As Long</pre>
+<p>Returns a bit mask of the available disk drives (bit 0 = A, bit 1 = B, ...).</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetLogicalDrives">GetLogicalDrives</a></p>
+<h3><a name="GETOEMCP"></a>GetOEMCP</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13147</p>
+<pre>Declare Function GetOEMCP Lib &quot;kernel32.dll&quot; Alias &quot;GetOEMCP&quot; As Long</pre>
+<p>Returns the current OEM code page identifier of the operating system.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetOEMCP">GetOEMCP</a></p>
+<h3><a name="GETPROCESSHEAP"></a>GetProcessHeap</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13152</p>
+<pre>Declare Function GetProcessHeap Lib &quot;kernel32.dll&quot; Alias &quot;GetProcessHeap&quot; As Long</pre>
+<p>Returns a handle to the default heap of the calling process.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetProcessHeap">GetProcessHeap</a></p>
+<h3><a name="GETSYSTEMDEFAULTLANGID"></a>GetSystemDefaultLangID</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13157</p>
+<pre>Declare Function GetSystemDefaultLangID Lib &quot;kernel32.dll&quot; Alias &quot;GetSystemDefaultLangID&quot; As Integer</pre>
+<p>Returns the language identifier (LANGID) for the system locale.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSystemDefaultLangID">GetSystemDefaultLangID</a></p>
+<h3><a name="GETSYSTEMDEFAULTLCID"></a>GetSystemDefaultLCID</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13162</p>
+<pre>Declare Function GetSystemDefaultLCID Lib &quot;kernel32.dll&quot; Alias &quot;GetSystemDefaultLCID&quot; As Long</pre>
+<p>Returns the locale identifier (LCID) of the system locale.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetSystemDefaultLCID">GetSystemDefaultLCID</a></p>
+<h3><a name="GETTHREADLOCALE"></a>GetThreadLocale</h3>
+<p class="rq-meta">DLL function, KERNEL32.dll &middot; RQProc.inc, line 13167</p>
+<pre>Declare Function GetThreadLocale Lib &quot;KERNEL32.dll&quot; Alias &quot;GetThreadLocale&quot; As Long</pre>
+<p>Returns the locale identifier (LCID) of the calling thread&#x27;s current locale.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetThreadLocale">GetThreadLocale</a></p>
+<h3><a name="GETTICKCOUNT"></a>GetTickCount</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13172</p>
+<pre>Declare Function GetTickCount Lib &quot;kernel32.dll&quot; Alias &quot;GetTickCount&quot; As Long</pre>
+<p>Returns the number of milliseconds since the system was started; wraps around after about 49.7 days.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetTickCount">GetTickCount</a></p>
+<h3><a name="GETUSERDEFAULTLANGID"></a>GetUserDefaultLangID</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13177</p>
+<pre>Declare Function GetUserDefaultLangID Lib &quot;kernel32.dll&quot; Alias &quot;GetUserDefaultLangID&quot; As Integer</pre>
+<p>Returns the language identifier (LANGID) of the current user&#x27;s locale.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetUserDefaultLangID">GetUserDefaultLangID</a></p>
+<h3><a name="GETUSERDEFAULTLCID"></a>GetUserDefaultLCID</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13182</p>
+<pre>Declare Function GetUserDefaultLCID Lib &quot;kernel32.dll&quot; Alias &quot;GetUserDefaultLCID&quot; As Long</pre>
+<p>Returns the locale identifier (LCID) of the current user&#x27;s default locale.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetUserDefaultLCID">GetUserDefaultLCID</a></p>
+<h3><a name="GETVERSION"></a>GetVersion</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13187</p>
+<pre>Declare Function GetVersion Lib &quot;kernel32.dll&quot; Alias &quot;GetVersion&quot; As DWord</pre>
+<p>Returns the major and minor OS version and build number packed in one value. Deprecated; may not report the real version after Windows 8.1.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetVersion">GetVersion</a></p>
+<h3><a name="GETVERSIONEX_KERNEL32"></a>GetVersionEx_Kernel32</h3>
+<p class="rq-meta">DLL function, kernel32.dll &middot; RQProc.inc, line 13212</p>
+<pre>Declare Function GetVersionEx_Kernel32 Lib &quot;kernel32.dll&quot; Alias &quot;GetVersionExA&quot; (lpVersionInformation As long) As Long</pre>
+<p>Fills an OSVERSIONINFO structure with OS version information. Deprecated; may not report the real version after Windows 8.1.</p>
+<p>Microsoft: <a href="https://learn.microsoft.com/en-us/search/?terms=GetVersionExA">GetVersionExA</a></p>
+</body>
+</html>

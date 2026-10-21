@@ -1,0 +1,145 @@
+<html>
+<head>
+<title>QREDEX.INC</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' --------------------------------------------------------------------</i></font> 
+<font color="007700"><i>' QREDEX OBJECT           January 2002             By Jacques Philippe</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' EXTENDS  QRICHEDIT   with   COPY , CUT , PASTE , DELETE , SELECT ALL</i></font> 
+<font color="007700"><i>'                             and  UNDO</i></font> 
+<font color="007700"><i>' COMPONENT CODE</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' V 0.0.3  no major modification nearly a copy of Psyclops420 work.</i></font> 
+<font color="007700"><i>'          See Yahoo RapidQ Group message #9414</i></font> 
+<font color="007700"><i>' --------------------------------------------------------------------</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> QRED_SendMessage <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SendMessageA</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, _
+                                        wMsg <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, wParam <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lParam <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>Type</b></font> QREDEX <font color="0000AA"><b>Extends</b></font> <font color="000099"><b>QRichEdit</b></font>
+    <font color="0000AA"><b>With</b></font> QREDEX
+      PUBLIC:
+        UsePopup <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font> PROPERTY SET Set_Popup
+      PRIVATE:
+        QRED_PopUpMenu <font color="0000AA"><b>As</b></font> <font color="000099"><b>QPopUpMenu</b></font>
+        mnuUndo <font color="0000AA"><b>As</b></font> <font color="000099"><b>QMenuItem</b></font>
+        mnuSep_1 <font color="0000AA"><b>As</b></font> <font color="000099"><b>QMenuItem</b></font>
+        mnuCut <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMenuItem</b></font>
+        mnuCopy <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMenuItem</b></font>
+        mnuPaste <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMenuItem</b></font>
+        mnuDelete <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMenuItem</b></font>
+        mnuSep_2 <font color="0000AA"><b>As</b></font> <font color="000099"><b>QMenuItem</b></font>
+        mnuSelectAll <font color="0000AA"><b>As</b></font> <font color="000099"><b>QMenuItem</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'       ON POP UP</i></font> 
+<font color="007700"><i>'       ---------</i></font> 
+        <font color="0000AA"><b>Event</b></font> QRED_PopUpMenu.OnPopUp
+            <font color="0000AA"><b>DefInt</b></font> boolSelLength, boolReadOnly, boolLenClip
+            <font color="0000AA"><b>If</b></font> .selLength <font color="0000AA"><b>Then</b></font> boolSelLength = 1
+            <font color="0000AA"><b>If</b></font> .readOnly <font color="000099"><b>Then</b></font>
+                boolReadOnly = 0
+            <font color="000099"><b>Else</b></font>
+                boolReadOnly = 1
+            <font color="0000AA"><b>End</b></font> <font color="000099"><b>If</b></font>
+            ClipBoard.Open
+                <font color="0000AA"><b>If</b></font> <font color="0000AA"><b>Len</b></font><b>(</b>ClipBoard.Text<b>)</b> <font color="0000AA"><b>Then</b></font> boolLenClip = 1
+            ClipBoard.Close
+            .mnuCut.Enabled = boolSelLength <font color="0000AA"><b>And</b></font> boolReadOnly <font color="0000AA"><b>And</b></font> boolLenClip
+            .mnuPaste.Enabled = boolReadOnly <font color="0000AA"><b>And</b></font> boolLenClip
+            .mnuDelete.Enabled = boolSelLength <font color="0000AA"><b>And</b></font> boolReadOnly
+            .mnuCopy.Enabled = boolSelLength
+            .mnuSelectAll.Enabled = 1 <font color="007700"><i>' True</i></font> 
+            .mnuUndo.Enabled = QRED_SendMessage<b>(</b>.Handle, &HC6, 0, 0<b>)</b>
+            <font color="0000AA"><b>If</b></font> .ReadOnly <font color="000099"><b>Then</b></font>
+                .mnuCut.Visible = 0 <font color="007700"><i>' False</i></font> 
+                .mnuPaste.Visible = 0 <font color="007700"><i>' False</i></font> 
+                .mnuDelete.Visible = 0 <font color="007700"><i>' False</i></font> 
+                .mnuUndo.Visible = 0 <font color="007700"><i>' False</i></font> 
+            <font color="000099"><b>Else</b></font>
+                .mnuCut.Visible = 1 <font color="007700"><i>' True</i></font> 
+                .mnuPaste.Visible = 1 <font color="007700"><i>' True</i></font> 
+                .mnuDelete.Visible = 1 <font color="007700"><i>' True</i></font> 
+                .mnuUndo.Visible = 1 <font color="007700"><i>' True</i></font> 
+            <font color="0000AA"><b>End</b></font> <font color="000099"><b>If</b></font>
+        <font color="0000AA"><b>End</b></font> <font color="000099"><b>Event</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'       mnu UNDO</i></font> 
+<font color="007700"><i>'       --------</i></font> 
+        <font color="0000AA"><b>SUB</b></font> OnClic_mnuUndo
+            SendMessage<b>(</b>.Handle, &HC7, 0, 0<b>)</b>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'       mnu CUT</i></font> 
+<font color="007700"><i>'       -------</i></font> 
+        <font color="0000AA"><b>Sub</b></font> OnClic_mnuCut
+            .CutToClipBoard
+        <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'       mnu PASTE</i></font> 
+<font color="007700"><i>'       ---------</i></font> 
+        <font color="0000AA"><b>Sub</b></font> OnClic_mnuPaste
+            .PasteFromClipBoard
+        <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'       mnu COPY</i></font> 
+<font color="007700"><i>'       --------</i></font> 
+        <font color="0000AA"><b>Sub</b></font> OnClic_mnuCopy
+            .CopyToClipBoard
+        <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'       mnu DELETE</i></font> 
+<font color="007700"><i>'       ----------</i></font> 
+        <font color="0000AA"><b>Sub</b></font> OnClic_mnuDelete
+            SendMessage <b>(</b>.Handle, &H100, &H2E, 0<b>)</b>
+        <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'       mnu SELECTALL</i></font> 
+<font color="007700"><i>'       -------------</i></font> 
+        <font color="0000AA"><b>Sub</b></font> OnClic_mnuSelectAll
+             .SelectAll
+        <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'       PROPERTY  UsePopUp</i></font> 
+<font color="007700"><i>'       ------------------</i></font> 
+        PUBLIC:
+        PROPERTY SET Set_Popup<b>(</b>Use <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+             .QRED_PopUpMenu.AutoPopup = Use
+        <font color="0000AA"><b>END</b></font> PROPERTY
+        PRIVATE:
+<font color="007700"><i>'</i></font> 
+        <font color="000099"><b>CONSTRUCTOR</b></font>
+            PopUpMenu = QREDEX.QRED_PopUpMenu
+            mnuUnDo.Caption = "<font color="990000">&Undo</font>"
+            mnuUndo.OnClick = QREDEX.OnClic_mnuUndo
+            mnuSep_1.Caption = "<font color="990000">-</font>"
+            mnuCut.Caption = "<font color="990000">Cu&t</font>"
+            mnuCut.OnClick = QREDEX.OnClic_mnuCut
+            mnuCopy.Caption = "<font color="990000">&Copy</font>"
+            mnuCopy.OnClick = QREDEX.OnClic_mnuCopy
+            mnuPaste.Caption = "<font color="990000">&Paste</font>"
+            mnuPaste.OnClick = QREDEX.OnClic_mnuPaste
+            mnuDelete.Caption = "<font color="990000">&Delete</font>"
+            mnuDelete.OnClick = QREDEX.OnClic_mnuDelete
+            mnuSep_2.Caption = "<font color="990000">-</font>"
+            mnuSelectAll.Caption = "<font color="990000">Select &All</font>"
+            mnuSelectAll.OnClick = QREDEX.OnClic_mnuSelectAll
+            QRED_PopUpMenu.AddItems QREDEX.mnuUndo,QREDEX.mnuSep_1,QREDEX.mnuCopy, _
+                        QREDEX.mnuCut, QREDEX.mnuDelete, QREDEX.mnuPaste, _
+                        QREDEX.mnuSep_2, QREDEX.mnuSelectAll
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>With</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>$UNDEF</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+<font color="0000AA"><b>$DEFINE</b></font> <font color="0000AA"><b>QRICHEDIT</b></font> QREDEX
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' --------------------------------------------------------------------</i></font> 
+<font color="007700"><i>'</i></font> 
+ 
+</pre>
+</body>
+</html>
