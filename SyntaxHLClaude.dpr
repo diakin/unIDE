@@ -76,6 +76,7 @@ uses
   SplitPane in 'SplitPane.pas',
   UnFar in 'UnFar.pas',
   SzSetup in 'SzSetup.pas',
+  QemuTool in 'QemuTool.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};
 
 {$R *.res}

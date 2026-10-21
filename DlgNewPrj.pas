@@ -247,6 +247,7 @@ type
     edRosEnv: TUiEdit;
     btnRosEnv: TUiButton;
     edRosPciVendors: TUiEdit;
+    edRosRun: TUiEdit;
     FDpr: string;               // .dpr проекта; '' - вкладки Delphi нет
     FDof: TMemIniFile;          // <проект>.dof в памяти
     FDofBefore: string;         // текст .dof после загрузки - для сравнения
@@ -335,7 +336,7 @@ const
   // (проект RapidQ) - выше на её высоту
   CompactClientHeight = 224;
   CompactRqClientHeight = 352;
-  CompactRosClientHeight = 428;
+  CompactRosClientHeight = 456;
   FullClientHeight = 560;
   // Design-пакеты Delphi 7
   KnownPackagesKey = 'Software\Borland\Delphi\7.0\Known Packages';
@@ -405,6 +406,7 @@ end;
 //   configure     [параметры        ]
 //   Скрипт RosBE  [путь        ] [...]
 //   Производители PCI [8086 1022 ...  ]
+//   Запуск (Run)  [команда эмулятора; пусто - свой QEMU unIDE]
 //   пояснение
 procedure TDlgNewPrj.BuildRosControls;
 const
@@ -428,7 +430,7 @@ begin
     Exit;
   grpRos := TUiGroupBox.Create(Self);
   grpRos.Parent := tsProject;
-  grpRos.SetBounds(grpRqInc.Left, grpRqInc.Top, grpRqInc.Width, 194);
+  grpRos.SetBounds(grpRqInc.Left, grpRqInc.Top, grpRqInc.Width, 222);
   grpRos.Caption := 'ReactOS / LiberNT: CMake + Ninja';
   grpRos.Visible := False;
 
@@ -497,11 +499,21 @@ begin
     'pciids.inf. Мосты PCI берутся от всех производителей';
   edRosPciVendors.ShowHint := True;
 
+  AddLabel(162, 'Запуск (Run)');
+  edRosRun := TUiEdit.Create(Self);
+  edRosRun.Parent := grpRos;
+  edRosRun.SetBounds(FieldLeft, 162, 566, 21);
+  edRosRun.Hint := 'Пусто - собранный образ (<цель>.iso) запускается в ' +
+    'своём QEMU unIDE (tools\qemu, скачивается при первом Run). Своя ' +
+    'команда эмулятора: %ISO% - образ, %BUILDDIR%, %SOURCEDIR%, %SERIAL% ' +
+    '- файл для COM1, %QEMU% - свой QEMU unIDE';
+  edRosRun.ShowHint := True;
+
   NoteLabel := TLabel.Create(Self);
   NoteLabel.Parent := grpRos;
   NoteLabel.AutoSize := False;
   NoteLabel.WordWrap := True;
-  NoteLabel.SetBounds(LabelLeft, 162, 690, 28);
+  NoteLabel.SetBounds(LabelLeft, 190, 690, 28);
   NoteLabel.Caption := 'Папка проекта - корень исходников (configure.cmd, ' +
                        'CMakeLists.txt, PreLoad.cmake). Compile: configure, ' +
                        'если в папке сборки нет build.ninja, затем ninja.';
@@ -567,6 +579,7 @@ begin
     edRosPciVendors.Text := ASettings.PciVendors
   else
     edRosPciVendors.Text := PciDefaultVendors;
+  edRosRun.Text := ASettings.RunCommand;
   UpdateRqIncVisible;
 end;
 
@@ -581,6 +594,7 @@ begin
   ASettings.ConfigureArgs := Trim(edRosArgs.Text);
   ASettings.EnvScript := Trim(edRosEnv.Text);
   ASettings.PciVendors := Trim(edRosPciVendors.Text);
+  ASettings.RunCommand := Trim(edRosRun.Text);
 end;
 
 procedure TDlgNewPrj.cbTypeChange(Sender: TObject);

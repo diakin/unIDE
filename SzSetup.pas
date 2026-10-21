@@ -70,15 +70,38 @@ type
   // Ход долгого шага (как TRosStepEvent): ADone из ATotal; False - стоп
   TSzStepEvent = function(ADone, ATotal: Cardinal): Boolean of object;
 
-  // Установка 7-Zip в ATargetDir в своём потоке. Ход - Stage, FileIndex,
+  // Что и как ставить (7-Zip - Sz7ZipPlan, QEMU - QemuTool):
+  //   Files        - что скачать (FileName - только имя; папка - загрузки);
+  //   Extractor    - чем распаковывать: '' - первым скачанным (7zr.exe),
+  //                  иначе полный путь (свой 7z.exe);
+  //   Archive      - номер скачанного файла, который распаковывать;
+  //   ExtractNames - что достать: имена и маски через #13#10 (список 7-Zip);
+  //   MoveNames    - что перенести в папку по одному, через ';' (последний
+  //                  - признак полной установки); '' - папка заменяется
+  //                  целиком распакованным;
+  //   CheckFile    - файл, который должен быть после установки;
+  //   InfoFile, InfoText - откуда установлено (текст рядом)
+  TSzPlan = record
+    Title: string;
+    Files: TSzFiles;
+    Extractor: WideString;
+    Archive: Integer;
+    ExtractNames: string;
+    MoveNames: string;
+    CheckFile: string;
+    InfoFile: string;
+    InfoText: string;
+  end;
+
+  // Установка по плану в ATargetDir в своём потоке. Ход - Stage, FileIndex,
   // Done, Total (читает главный поток); конец - Finished, ошибка -
-  // ErrorText ('' - установлен)
+  // ErrorText ('' - установлено)
   TSzInstall = class(TThread)
   private
     FFiles: TSzFiles;
     FTargetDir: WideString;
-    FPackage: TSzPackage;
-    FOsName: string;
+    FDownloadDir: WideString;
+    FPlan: TSzPlan;
     FStage: TSzStage;
     FProcess: THandle;
     FSession: Pointer;
@@ -100,8 +123,7 @@ type
   protected
     procedure Execute; override;
   public
-    constructor Create(const ATargetDir: WideString;
-      const APackage: TSzPackage; const AOsName: string);
+    constructor Create(const ATargetDir: WideString; const APlan: TSzPlan);
     destructor Destroy; override;
     procedure Cancel;
     property Stage: TSzStage read FStage;
@@ -119,6 +141,13 @@ const
   SzDownloadPage = 'https://www.7-zip.org/download.html';
   SzInfoFile = 'unide_7zip.txt';
 
+// <папка exe>\tools\ и %LOCALAPPDATA%\unIDE\tools\ ('' - папки профиля
+// нет): свои инструменты unIDE (7zip, qemu)
+function SzToolsAppDir: WideString;
+function SzToolsUserDir: WideString;
+// Путь с '\' в конце / без него (кроме корня диска)
+function SzWithSlash(const APath: WideString): WideString;
+function SzNoSlash(const APath: WideString): WideString;
 // <папка exe>\tools\7zip\
 function SzAppDir: WideString;
 // %LOCALAPPDATA%\unIDE\tools\7zip\ ('' - папки профиля нет)
@@ -139,6 +168,17 @@ function SzInstallRunning: Boolean;
 // из него - остановить. APackage - что ставилось; ошибка - False и AError
 function SzInstallSync(AOnStep: TSzStepEvent; var APackage: TSzPackage;
   var AError: string): Boolean;
+// План установки 7-Zip сборки APackage
+function Sz7ZipPlan(const APackage: TSzPackage; const AOsName: string): TSzPlan;
+// Установить по плану в ATargetDir синхронно (ход - AOnStep)
+function SzInstallPlanSync(const ATargetDir: WideString; const APlan: TSzPlan;
+  AOnStep: TSzStepEvent; var AError: string): Boolean;
+// Папка существует / создать со всеми выше / можно ли в неё писать
+// (создаётся) / файл существует
+function SzDirExists(const APath: WideString): Boolean;
+function SzForceDirs(const APath: WideString): Boolean;
+function SzCanWrite(const ADir: WideString): Boolean;
+function SzFileExists(const APath: WideString): Boolean;
 
 procedure SzGetOsInfo(var AInfo: TSzOsInfo);
 // Сборка для этой Windows; False - 7-Zip для неё нет
@@ -777,7 +817,7 @@ begin
   SzRemoveDirectory(PWideChar(SzNoSlash(Dir)));
 end;
 
-function SzAppDir: WideString;
+function SzToolsAppDir: WideString;
 var
   Buffer: array[0..1023] of WideChar;
   Len: DWORD;
@@ -786,17 +826,17 @@ begin
   Len := SzGetModuleFileName(0, Buffer, Length(Buffer));
   if (Len = 0) or (Len >= DWORD(Length(Buffer))) then
   begin
-    Result := ExtractFilePath(ParamStr(0)) + 'tools\7zip\';
+    Result := ExtractFilePath(ParamStr(0)) + 'tools\';
     Exit;
   end;
   Result := PWideChar(@Buffer[0]);
   SlashPos := Length(Result);
   while (SlashPos > 0) and (Result[SlashPos] <> '\') do
     Dec(SlashPos);
-  Result := Copy(Result, 1, SlashPos) + 'tools\7zip\';
+  Result := Copy(Result, 1, SlashPos) + 'tools\';
 end;
 
-function SzUserDir: WideString;
+function SzToolsUserDir: WideString;
 var
   Buffer: array[0..MAX_PATH] of WideChar;
 begin
@@ -806,8 +846,20 @@ begin
   begin
     Result := PWideChar(@Buffer[0]);
     if Result <> '' then
-      Result := SzWithSlash(Result) + 'unIDE\tools\7zip\';
+      Result := SzWithSlash(Result) + 'unIDE\tools\';
   end;
+end;
+
+function SzAppDir: WideString;
+begin
+  Result := SzToolsAppDir + '7zip\';
+end;
+
+function SzUserDir: WideString;
+begin
+  Result := SzToolsUserDir;
+  if Result <> '' then
+    Result := Result + '7zip\';
 end;
 
 function SzLocalExe: WideString;
@@ -922,28 +974,27 @@ end;
 // ---------------------------------------------------------------------------
 
 constructor TSzInstall.Create(const ATargetDir: WideString;
-  const APackage: TSzPackage; const AOsName: string);
+  const APlan: TSzPlan);
 var
   FileIndex: Integer;
-  DownloadDir: WideString;
 begin
   FTargetDir := SzWithSlash(ATargetDir);
-  FPackage := APackage;
-  FOsName := AOsName;
+  FPlan := APlan;
   FStage := ssDownload;
   FProcess := 0;
-  DownloadDir := FTargetDir + '~download\';
-  SetLength(FFiles, 2);
-  SzToolFile(FFiles[0]);
-  FFiles[0].FileName := DownloadDir + SzToolName;
-  FFiles[1].Url1 := APackage.Url1;
-  FFiles[1].Url2 := APackage.Url2;
-  FFiles[1].FileName := DownloadDir + WideString(APackage.FileName);
-  FFiles[1].Size := APackage.Size;
-  FFiles[1].Sha256 := APackage.Sha256;
+  // Файлы по одному - загрузка внутри папки; папка целиком - рядом с ней
+  if FPlan.MoveNames <> '' then
+    FDownloadDir := FTargetDir + '~download\'
+  else
+    FDownloadDir := SzNoSlash(FTargetDir) + '.~download\';
+  SetLength(FFiles, Length(APlan.Files));
   FTotal := 0;
   for FileIndex := 0 to High(FFiles) do
+  begin
+    FFiles[FileIndex] := APlan.Files[FileIndex];
+    FFiles[FileIndex].FileName := FDownloadDir + APlan.Files[FileIndex].FileName;
     Inc(FTotal, FFiles[FileIndex].Size);
+  end;
   InterlockedIncrement(SzRunning);
   FFileIndex := 0;
   FDone := 0;
@@ -1168,22 +1219,40 @@ begin
 end;
 
 
-// 7zr.exe x установщик -> ~download\x\ (вывод 7zr.exe - в 7zr.log)
+// Распаковка (7zr.exe или свой 7z.exe): архив -> <загрузки>\x\, что
+// достать - списком в файле; вывод - в extract.log
 function TSzInstall.Extract: string;
 var
-  DownloadDir, Command, LogFile: WideString;
+  DownloadDir, Command, LogFile, ListFile, Extractor: WideString;
   Security: TSzSecurityAttributes;
   Startup: TSzStartupInfo;
   ProcInfo: TSzProcessInfo;
-  LogHandle: THandle;
-  ExitCode, ReadCount: DWORD;
-  LogText: string;
+  LogHandle, ListHandle: THandle;
+  ExitCode, ReadCount, Written: DWORD;
+  LogText, ListText: string;
   LogWide, Line: WideString;
   LineStart, LineEnd: Integer;
 begin
   Result := '';
-  DownloadDir := FTargetDir + '~download\';
-  LogFile := DownloadDir + '7zr.log';
+  DownloadDir := FDownloadDir;
+  LogFile := DownloadDir + 'extract.log';
+  ListFile := DownloadDir + 'extract.lst';
+  // Список имён - UTF-8 (-scsUTF-8)
+  ListText := UTF8Encode(WideString(FPlan.ExtractNames)) + #13#10;
+  ListHandle := SzCreateFile(PWideChar(ListFile), SzGenericWrite, 0, nil,
+    SzCreateAlways, SzFileAttrNormal, 0);
+  if ListHandle = INVALID_HANDLE_VALUE then
+  begin
+    Result := 'список для распаковки не создать: ' + SzErrorText(GetLastError);
+    Exit;
+  end;
+  Written := 0;
+  SzWriteFile(ListHandle, ListText[1], Length(ListText), Written, nil);
+  CloseHandle(ListHandle);
+  if FPlan.Extractor <> '' then
+    Extractor := FPlan.Extractor
+  else
+    Extractor := FFiles[0].FileName;
   FillChar(Security, SizeOf(Security), 0);
   Security.nLength := SizeOf(Security);
   Security.bInheritHandle := True;
@@ -1194,10 +1263,10 @@ begin
     Result := 'файл журнала не создать: ' + SzErrorText(GetLastError);
     Exit;
   end;
-  Command := WideString('"') + DownloadDir + SzToolName +
-    WideString('" x -y -sccUTF-8 -bso0 -bsp0 "-o') + DownloadDir +
-    WideString('x" "') + DownloadDir + WideString(FPackage.FileName) +
-    WideString('" 7z.exe 7z.dll License.txt');
+  Command := WideString('"') + Extractor +
+    WideString('" x -y -sccUTF-8 -scsUTF-8 -bso0 -bsp0 "-o') + DownloadDir +
+    WideString('x" "') + FFiles[FPlan.Archive].FileName + WideString('" "@') +
+    ListFile + WideString('"');
   FillChar(Startup, SizeOf(Startup), 0);
   Startup.cb := SizeOf(Startup);
   Startup.dwFlags := SzStartfUseShowWindow or SzStartfUseStdHandles;
@@ -1209,7 +1278,8 @@ begin
   if not SzCreateProcess(nil, PWideChar(Command), nil, nil, True,
      SzCreateNoWindow, nil, PWideChar(DownloadDir), Startup, ProcInfo) then
   begin
-    Result := '7zr.exe не запустить: ' + SzErrorText(GetLastError);
+    Result := ExtractFileName(string(Extractor)) + ' не запустить: ' +
+      SzErrorText(GetLastError);
     CloseHandle(LogHandle);
     Exit;
   end;
@@ -1258,56 +1328,83 @@ begin
     LineStart := LineEnd + 1;
     if Pos('ERROR', string(Line)) > 0 then
     begin
-      Result := '7zr.exe: ' + string(Line);
+      Result := ExtractFileName(string(Extractor)) + ': ' + string(Line);
       Exit;
     end;
   end;
-  Result := '7zr.exe завершился с кодом ' + IntToStr(ExitCode);
+  Result := ExtractFileName(string(Extractor)) + ' завершился с кодом ' +
+    IntToStr(ExitCode);
 end;
 
-// Из ~download\x\ - на место; 7z.exe последним: есть 7z.exe - есть и
-// остальное
+// Из <загрузки>\x\ - на место: по одному (последний - признак полной
+// установки) или вся папка вместо прежней
 function TSzInstall.MoveInPlace: string;
-const
-  MoveNames: array[0..2] of string = ('7z.dll', 'License.txt', '7z.exe');
 var
-  NameIndex: Integer;
+  Names: TStringList;
+  NameIndex, SemiPos: Integer;
+  Rest: string;
   Source, Target: WideString;
 begin
   Result := '';
-  for NameIndex := 0 to High(MoveNames) do
+  if FPlan.MoveNames = '' then
   begin
-    Source := FTargetDir + '~download\x\' + WideString(MoveNames[NameIndex]);
-    Target := FTargetDir + WideString(MoveNames[NameIndex]);
-    if not SzMoveFileEx(PWideChar(Source), PWideChar(Target),
-       SzMoveReplace or SzMoveCopyAllowed) then
+    // Прежняя папка - своя (ставилась так же); её место - распакованной
+    SzDeleteTree(FTargetDir);
+    if SzDirExists(FTargetDir) then
     begin
-      Result := MoveNames[NameIndex] + ': ' + SzErrorText(GetLastError);
+      Result := 'прежнюю папку ' + string(FTargetDir) + ' не удалить ' +
+        '(файл занят - закройте программу)';
       Exit;
     end;
+    if not SzMoveFileEx(PWideChar(FDownloadDir + 'x'),
+       PWideChar(SzNoSlash(FTargetDir)), 0) then
+      Result := 'папку не перенести: ' + SzErrorText(GetLastError);
+    Exit;
+  end;
+  Names := TStringList.Create;
+  try
+    // ';' - разделитель (DelimitedText в Delphi 7 режет и по пробелам)
+    Rest := FPlan.MoveNames;
+    while Rest <> '' do
+    begin
+      SemiPos := Pos(';', Rest);
+      if SemiPos = 0 then
+        SemiPos := Length(Rest) + 1;
+      if Trim(Copy(Rest, 1, SemiPos - 1)) <> '' then
+        Names.Add(Trim(Copy(Rest, 1, SemiPos - 1)));
+      Delete(Rest, 1, SemiPos);
+    end;
+    for NameIndex := 0 to Names.Count - 1 do
+    begin
+      Source := FDownloadDir + 'x\' + WideString(Names[NameIndex]);
+      Target := FTargetDir + WideString(Names[NameIndex]);
+      if not SzMoveFileEx(PWideChar(Source), PWideChar(Target),
+         SzMoveReplace or SzMoveCopyAllowed) then
+      begin
+        Result := Names[NameIndex] + ': ' + SzErrorText(GetLastError);
+        Exit;
+      end;
+    end;
+  finally
+    Names.Free;
   end;
 end;
 
-// Откуда этот 7-Zip - рядом, текстом
+// Откуда установлено - рядом, текстом
 procedure TSzInstall.WriteInfo;
 var
-  InfoText: string;
   InfoHandle: THandle;
   Written: DWORD;
 begin
-  InfoText := '7-Zip ' + FPackage.Version + ' (' + FPackage.Arch +
-    '), установлен unIDE ' + FormatDateTime('yyyy-mm-dd hh:nn', Now) +
-    ' для ' + FOsName + #13#10 + FPackage.Url1 + #13#10 + 'SHA-256 ' +
-    FPackage.FileName + ': ' + FPackage.Sha256 + #13#10 +
-    'Из установщика взяты 7z.exe, 7z.dll, License.txt (лицензия 7-Zip).' +
-    #13#10 + 'Свой 7-Zip unIDE: установленный в системе 7-Zip не ' +
-    'используется и не меняется.' + #13#10;
-  InfoHandle := SzCreateFile(PWideChar(FTargetDir + SzInfoFile),
+  if (FPlan.InfoFile = '') or (FPlan.InfoText = '') then
+    Exit;
+  InfoHandle := SzCreateFile(PWideChar(FTargetDir + FPlan.InfoFile),
     SzGenericWrite, 0, nil, SzCreateAlways, SzFileAttrNormal, 0);
   if InfoHandle <> INVALID_HANDLE_VALUE then
   begin
     Written := 0;
-    SzWriteFile(InfoHandle, InfoText[1], Length(InfoText), Written, nil);
+    SzWriteFile(InfoHandle, FPlan.InfoText[1], Length(FPlan.InfoText),
+      Written, nil);
     CloseHandle(InfoHandle);
   end;
 end;
@@ -1318,8 +1415,8 @@ var
 begin
   ErrorText := '';
   try
-    if not SzForceDirs(FTargetDir + '~download\') then
-      ErrorText := 'папку ' + string(FTargetDir) + ' не создать: ' +
+    if not SzForceDirs(FDownloadDir) then
+      ErrorText := 'папку ' + string(FDownloadDir) + ' не создать: ' +
         SzErrorText(GetLastError)
     else
     begin
@@ -1332,6 +1429,9 @@ begin
       end;
       if ErrorText = '' then
         ErrorText := MoveInPlace;
+      if (ErrorText = '') and (FPlan.CheckFile <> '') and
+         not SzFileExists(FTargetDir + FPlan.CheckFile) then
+        ErrorText := FPlan.CheckFile + ' после установки не найден';
       if ErrorText = '' then
         WriteInfo;
     end;
@@ -1339,7 +1439,7 @@ begin
     on Error: Exception do
       ErrorText := Error.Message;
   end;
-  SzDeleteTree(FTargetDir + '~download\');
+  SzDeleteTree(FDownloadDir);
   if FCancelled then
     ErrorText := 'отменено';
   FErrorText := ErrorText;
@@ -1374,7 +1474,28 @@ begin
       string(SzUserDir) + ' не записать';
     Exit;
   end;
-  Install := TSzInstall.Create(TargetDir, APackage, OsInfo.Name);
+  Result := SzInstallPlanSync(TargetDir, Sz7ZipPlan(APackage, OsInfo.Name),
+    AOnStep, AError);
+  if Result and (SzLocalExe = '') then
+  begin
+    Result := False;
+    AError := '7z.exe после установки не найден';
+  end;
+end;
+
+function SzInstallPlanSync(const ATargetDir: WideString; const APlan: TSzPlan;
+  AOnStep: TSzStepEvent; var AError: string): Boolean;
+var
+  Install: TSzInstall;
+begin
+  Result := False;
+  AError := '';
+  if SzInstallRunning then
+  begin
+    AError := 'уже идёт другая установка (7-Zip или QEMU)';
+    Exit;
+  end;
+  Install := TSzInstall.Create(ATargetDir, APlan);
   try
     while not Install.Finished do
     begin
@@ -1385,12 +1506,37 @@ begin
     end;
     Install.WaitFor;
     AError := Install.ErrorText;
-    Result := (AError = '') and (SzLocalExe <> '');
-    if (AError = '') and not Result then
-      AError := '7z.exe после установки не найден';
+    Result := AError = '';
   finally
     Install.Free;
   end;
+end;
+
+function Sz7ZipPlan(const APackage: TSzPackage; const AOsName: string): TSzPlan;
+begin
+  Result.Title := '7-Zip ' + APackage.Version + ' (' + APackage.Arch + ')';
+  SetLength(Result.Files, 2);
+  SzToolFile(Result.Files[0]);
+  Result.Files[0].FileName := SzToolName;
+  Result.Files[1].Url1 := APackage.Url1;
+  Result.Files[1].Url2 := APackage.Url2;
+  Result.Files[1].FileName := APackage.FileName;
+  Result.Files[1].Size := APackage.Size;
+  Result.Files[1].Sha256 := APackage.Sha256;
+  Result.Extractor := '';      // 7zr.exe - первый скачанный
+  Result.Archive := 1;
+  Result.ExtractNames := '7z.exe'#13#10'7z.dll'#13#10'License.txt';
+  // 7z.exe - последним: есть 7z.exe - есть и остальное
+  Result.MoveNames := '7z.dll;License.txt;7z.exe';
+  Result.CheckFile := '7z.exe';
+  Result.InfoFile := SzInfoFile;
+  Result.InfoText := '7-Zip ' + APackage.Version + ' (' + APackage.Arch +
+    '), установлен unIDE ' + FormatDateTime('yyyy-mm-dd hh:nn', Now) +
+    ' для ' + AOsName + #13#10 + APackage.Url1 + #13#10 + 'SHA-256 ' +
+    APackage.FileName + ': ' + APackage.Sha256 + #13#10 +
+    'Из установщика взяты 7z.exe, 7z.dll, License.txt (лицензия 7-Zip).' +
+    #13#10 + 'Свой 7-Zip unIDE: установленный в системе 7-Zip не ' +
+    'используется и не меняется.' + #13#10;
 end;
 
 end.

@@ -28,6 +28,11 @@ unit RosProj;
 //                                         служебных устройств (NO_DRV) в
 //                                         media\inf\pciids.inf (PciIds);
 //                                         пусто - список по умолчанию
+//    ReactOS_RunCommand=                  Run: команда эмулятора с %ISO%
+//                                         (%IMAGE%), %BUILDDIR%,
+//                                         %SOURCEDIR%, %SERIAL%, %QEMU%;
+//                                         пусто - свой QEMU unIDE
+//                                         (QemuTool, Unit1.RosRunImage)
 //
 //  Сборка (Unit1, CompileReactOS) - два шага, каждый своим .cmd во
 //  временной папке (RosBuildScript), вывод - в лог:
@@ -56,6 +61,7 @@ type
     ConfigureArgs: string;
     EnvScript: string;      // полный путь или пусто
     PciVendors: string;     // коды производителей через пробел (PciIds)
+    RunCommand: string;     // Run: своя команда эмулятора; пусто - свой QEMU
   end;
 
 // В папке - дерево исходников ReactOS / LiberNT
@@ -237,6 +243,7 @@ begin
                                                ''));
   if ASettings.PciVendors = '' then
     ASettings.PciVendors := PciDefaultVendors;
+  ASettings.RunCommand := Trim(APrj.ReadString(RosSection, 'RunCommand', ''));
 end;
 
 procedure RosSaveSettings(APrj: TProjectIni; const ASettings: TRosSettings);
@@ -248,6 +255,7 @@ begin
   // Скрипт RosBE обычно вне дерева исходников - полный путь
   APrj.WriteString(RosSection, 'EnvScript', Trim(ASettings.EnvScript));
   APrj.WriteString(RosSection, 'PciVendors', Trim(ASettings.PciVendors));
+  APrj.WriteString(RosSection, 'RunCommand', Trim(ASettings.RunCommand));
 end;
 
 function RosCacheSourceDir(const ABuildDir: string): string;

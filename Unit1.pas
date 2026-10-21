@@ -47,6 +47,7 @@ uses
   PciIds,         // pci.ids и media\inf\pciids.inf (меню ReactOS)
   RosTools,       // скачивание и установка RosBE
   SzSetup,        // свой 7-Zip unIDE (tools\7zip): поиск и установка
+  QemuTool,       // свой QEMU unIDE (tools\qemu): запуск образов ReactOS
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -2830,6 +2831,12 @@ type
     procedure RosInstall7ZipClick(Sender: TObject);
     function  RosSetup7Zip(AStage: Integer): string;
     function  RosInstallProgress(ADone, ATotal: Cardinal): Boolean;
+    procedure RosInstallQemuClick(Sender: TObject);
+    function  RosSetupQemu(AStage: Integer; const APackage: TSzPackage;
+                           const AOsName, ASevenZip, ATarget: string): string;
+    function  RosEnsureQemu: string;
+    procedure RosStartEmulator(const ACmdLine, AWorkDir, ALogFile: string);
+    procedure RosRunImage;
     function  RosKnownEnvScript: string;
     function  RosPciSourceDir(var ASettings: TRosSettings): Boolean;
     function  RosDownloadPciIds(const ASourceDir, AVendors: string;
@@ -3445,6 +3452,7 @@ type
     FRosNinjaStage: Integer;
     FRosNinjaLogged: Integer;
     FRosInstallStage: Integer;  // этап окна хода в RosInstallRosBEClick
+    FRosQemuProcess: THandle;   // QEMU, запущенный Run проекта ReactOS
     // Ход перевода RqToFb (RqFbConvProgress): строк в прошлой сборке, время
     // последнего обновления окна
     FRqFbPrevLines: Integer;
@@ -59067,6 +59075,13 @@ begin
   AutoSaveEditorFiles;
 
   Kind := CurBuildKind;
+  // ReactOS / LiberNT: собранный образ - в эмуляторе (свой QEMU unIDE или
+  // команда из свойств проекта)
+  if Kind = bkCMakeNinja then
+  begin
+    RosRunImage;
+    Exit;
+  end;
   if (Kind <> bkDelphi) and (Kind <> bkRapidQ) and (Kind <> bkFreeBasic) then
   begin
     LogComp('Запуск: сборщик ' + BuildKindName(Kind) + ' (' + FBuildReason +
@@ -62029,6 +62044,12 @@ begin
   LinkItem.OnClick := RosInstall7ZipClick;
   RosMenu.Add(LinkItem);
   LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Install QEMU ' + QemuVersion + ' (tools\qemu)...';
+  LinkItem.Hint := 'Скачать свой QEMU unIDE в tools\qemu - для Run проекта ' +
+                   'ReactOS (образ в эмуляторе); в системе ничего не ставится';
+  LinkItem.OnClick := RosInstallQemuClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
   LinkItem.Caption := '-';
   RosMenu.Add(LinkItem);
 
@@ -62366,6 +62387,323 @@ begin
       FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
                            'Compilation log');
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Свой QEMU unIDE (QemuTool, tools\qemu) и Run проекта ReactOS
+// ---------------------------------------------------------------------------
+
+// Скачать и распаковать свой QEMU (план QemuPlan, распаковывает свой
+// 7-Zip ASevenZip) в ATarget. Ход - на этапе AStage окна хода. Результат -
+// qemu-system-i386w.exe; не вышло - пусто, причина в журнале.
+function TForm1.RosSetupQemu(AStage: Integer; const APackage: TSzPackage;
+                             const AOsName, ASevenZip, ATarget: string): string;
+var
+  ErrText: string;
+begin
+  Result := '';
+  FCompDlg.StartStage(AStage, 0, 'скачивание');
+  FRosInstallStage := AStage;
+  LogComp('QEMU: скачивание ' + APackage.Url1 + ' (' +
+          IntToStr(APackage.Size div 1048576) + ' МБ), затем распаковка в ' +
+          ATarget);
+  if not SzInstallPlanSync(ATarget, QemuPlan(APackage, AOsName, ASevenZip),
+                           RosInstallProgress, ErrText) then
+  begin
+    FCompDlg.EndStage(AStage, False, ErrText);
+    LogComp('QEMU: не установлен - ' + ErrText);
+    Exit;
+  end;
+  Result := string(QemuLocalExe);
+  FCompDlg.EndStage(AStage, Result <> '', 'QEMU ' + APackage.Version + ' (' +
+                    APackage.Arch + ')');
+  if Result = '' then
+    LogComp('QEMU: ' + QemuExeName + ' после установки не найден')
+  else
+    LogComp('QEMU ' + APackage.Version + ' (' + APackage.Arch + '): ' + Result);
+end;
+
+// Свой QEMU unIDE: есть - его qemu-system-i386w.exe; нет - вопрос и
+// установка (и своего 7-Zip, если его нет: им распаковывается установщик
+// QEMU). Отказ или не вышло - пусто
+function TForm1.RosEnsureQemu: string;
+var
+  OsInfo: TSzOsInfo;
+  Package: TSzPackage;
+  Target, SevenZip, Note: string;
+  Need7Zip: Boolean;
+  Stage7Zip, StageQemu: Integer;
+begin
+  Result := string(QemuLocalExe);
+  if Result <> '' then
+    Exit;
+  ShowCompLog;
+  SzGetOsInfo(OsInfo);
+  if not QemuChoosePackage(OsInfo, Package) then
+  begin
+    LogComp('QEMU ' + QemuVersion + ' работает в Windows 7 и новее, здесь ' +
+            OsInfo.Name);
+    Exit;
+  end;
+  Target := string(QemuChooseTargetDir);
+  if Target = '' then
+  begin
+    LogComp('QEMU: нет папки для установки - в ' + string(QemuAppDir) +
+            ' и ' + string(QemuUserDir) + ' не записать');
+    Exit;
+  end;
+  SevenZip := string(SzLocalExe);
+  Need7Zip := SevenZip = '';
+  Note := '';
+  if Need7Zip then
+    Note := #13#10'Сначала будет скачан свой 7-Zip unIDE (около 2 МБ): ' +
+            'им распаковывается установщик QEMU.';
+  if MessageDlg('9813:Для запуска образа ReactOS нужен свой QEMU unIDE, ' +
+                'его нет.'#13#10#13#10'Скачать QEMU ' + Package.Version +
+                ' (' + Package.Arch + ', ' +
+                IntToStr(Package.Size div 1048576) + ' МБ) с ' +
+                'qemu.weilnetz.de и распаковать в ' + Target + '?' + Note +
+                #13#10#13#10'В системе ничего не ставится: ни драйверов, ни ' +
+                'записей в реестре, права администратора не нужны. ' +
+                'Установщик QEMU не запускается - из него берутся только ' +
+                'нужные файлы.', mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  CompDlgOpen('QEMU ' + Package.Version);
+  FCompDlg.Caption := 'Установка QEMU';
+  Stage7Zip := -1;
+  if Need7Zip then
+    Stage7Zip := FCompDlg.AddStage('7-Zip ' + SzVersion, 5);
+  StageQemu := FCompDlg.AddStage('QEMU ' + Package.Version + ' (' +
+                                 Package.Arch + ')', 95);
+  BusyBegin('Установка QEMU');
+  try
+    if Need7Zip then
+    begin
+      SevenZip := RosSetup7Zip(Stage7Zip);
+      if SevenZip = '' then
+        Exit;
+    end;
+    Result := RosSetupQemu(StageQemu, Package, OsInfo.Name, SevenZip, Target);
+  finally
+    BusyEnd('Установка QEMU', Result <> '');
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result <> '' then
+      FCompDlg.FinishBuild(True, 'Установлено')
+    else
+      FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
+                           'Compilation log');
+  end;
+end;
+
+// ReactOS - Install QEMU: свой QEMU unIDE в tools\qemu; уже есть - только
+// путь в журнале
+procedure TForm1.RosInstallQemuClick(Sender: TObject);
+var
+  QemuExe: string;
+begin
+  ShowCompLog;
+  QemuExe := string(QemuLocalExe);
+  if QemuExe <> '' then
+  begin
+    LogComp('QEMU: уже есть - ' + QemuExe);
+    Exit;
+  end;
+  RosEnsureQemu;
+end;
+
+// Запустить эмулятор командой ACmdLine в папке AWorkDir, не дожидаясь его.
+// ALogFile - куда писать его stdout и stderr ('' - никуда). Если он
+// завершился в первые 3 секунды (ошибка параметров, занят диск) - код и
+// начало журнала в лог
+procedure TForm1.RosStartEmulator(const ACmdLine, AWorkDir, ALogFile: string);
+var
+  SI: TStartupInfo;
+  PI: TProcessInformation;
+  SecAttr: TSecurityAttributes;
+  LogHandle: THandle;
+  CmdBuf: string;
+  ExitCode: DWORD;
+  WaitStep: Integer;
+  LogLines: TStringList;
+  LineIdx: Integer;
+begin
+  LogHandle := INVALID_HANDLE_VALUE;
+  FillChar(SI, SizeOf(SI), 0);
+  SI.cb := SizeOf(SI);
+  if ALogFile <> '' then
+  begin
+    FillChar(SecAttr, SizeOf(SecAttr), 0);
+    SecAttr.nLength := SizeOf(SecAttr);
+    SecAttr.bInheritHandle := True;
+    LogHandle := CreateFile(PChar(ALogFile), GENERIC_WRITE, FILE_SHARE_READ,
+                            @SecAttr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if LogHandle <> INVALID_HANDLE_VALUE then
+    begin
+      SI.dwFlags := STARTF_USESTDHANDLES;
+      SI.hStdInput := 0;
+      SI.hStdOutput := LogHandle;
+      SI.hStdError := LogHandle;
+    end;
+  end;
+  CmdBuf := ACmdLine;
+  UniqueString(CmdBuf);
+  FillChar(PI, SizeOf(PI), 0);
+  if not CreateProcess(nil, PChar(CmdBuf), nil, nil,
+                       LogHandle <> INVALID_HANDLE_VALUE, 0, nil,
+                       PChar(AWorkDir), SI, PI) then
+  begin
+    LogComp('Запуск: не запустить - ' + SysErrorMessage(GetLastError));
+    if LogHandle <> INVALID_HANDLE_VALUE then
+      CloseHandle(LogHandle);
+    Exit;
+  end;
+  if LogHandle <> INVALID_HANDLE_VALUE then
+    CloseHandle(LogHandle);
+  CloseHandle(PI.hThread);
+  FRosQemuProcess := PI.hProcess;
+  // Первые 3 секунды: не закрылся ли сразу (ошибка)
+  for WaitStep := 1 to 30 do
+  begin
+    if WaitForSingleObject(FRosQemuProcess, 100) <> WAIT_TIMEOUT then
+      Break;
+    Application.ProcessMessages;
+  end;
+  if WaitForSingleObject(FRosQemuProcess, 0) = WAIT_TIMEOUT then
+  begin
+    LogComp('Запуск: эмулятор работает (своё окно)');
+    Exit;
+  end;
+  ExitCode := 0;
+  GetExitCodeProcess(FRosQemuProcess, ExitCode);
+  CloseHandle(FRosQemuProcess);
+  FRosQemuProcess := 0;
+  LogComp('Запуск: эмулятор сразу завершился, код ' + IntToStr(ExitCode));
+  if (ALogFile <> '') and FileExists(ALogFile) then
+  begin
+    LogLines := TStringList.Create;
+    try
+      LogLines.LoadFromFile(ALogFile);
+      for LineIdx := 0 to LogLines.Count - 1 do
+        if LineIdx < 20 then
+          LogComp('  ' + LogLines[LineIdx]);
+    finally
+      LogLines.Free;
+    end;
+  end;
+end;
+
+// Run проекта ReactOS: собранный образ (<папка сборки>\<цель>.iso, .img или
+// .vhd) - в эмуляторе. Своя команда из свойств проекта (Запуск) - она, с
+// подстановкой %ISO%, %IMAGE%, %BUILDDIR%, %SOURCEDIR%, %SERIAL%, %QEMU%;
+// пусто - свой QEMU unIDE. Диск qcow2 для установки с bootcd, журнал COM1
+// (serial.log) и вывод QEMU (qemu.log) - в <папка сборки>\unide-qemu\
+procedure TForm1.RosRunImage;
+const
+  ImageExts: array[0..2] of string = ('.iso', '.img', '.vhd');
+var
+  RosCfg: TRosSettings;
+  Image, WorkDir, Disk, SerialLog, QemuExe, QemuImg, CmdLine: string;
+  ExtIdx, ImgCode: Integer;
+begin
+  if not RosSettingsOf(FCurrentProject, RosCfg) then
+  begin
+    LogComp('Запуск: проект ReactOS не открыт');
+    Exit;
+  end;
+  Image := '';
+  for ExtIdx := 0 to High(ImageExts) do
+    if FileExists(IncludeTrailingPathDelimiter(RosCfg.BuildDir) +
+                  RosCfg.NinjaTarget + ImageExts[ExtIdx]) then
+    begin
+      Image := IncludeTrailingPathDelimiter(RosCfg.BuildDir) +
+               RosCfg.NinjaTarget + ImageExts[ExtIdx];
+      Break;
+    end;
+  if Image = '' then
+  begin
+    LogComp('Запуск: нет образа ' + IncludeTrailingPathDelimiter(
+            RosCfg.BuildDir) + RosCfg.NinjaTarget + '.iso (.img, .vhd) - ' +
+            'соберите проект (Compile); у цели-модуля образа нет');
+    Exit;
+  end;
+  // Прежний эмулятор ещё работает - второй на тот же диск не запускаем
+  if FRosQemuProcess <> 0 then
+  begin
+    if WaitForSingleObject(FRosQemuProcess, 0) = WAIT_TIMEOUT then
+    begin
+      LogComp('Запуск: эмулятор уже работает - закройте его окно, затем ' +
+              'Run снова');
+      Exit;
+    end;
+    CloseHandle(FRosQemuProcess);
+    FRosQemuProcess := 0;
+  end;
+  WorkDir := IncludeTrailingPathDelimiter(RosCfg.BuildDir) + 'unide-qemu\';
+  ForceDirectories(WorkDir);
+  SerialLog := WorkDir + 'serial.log';
+
+  if Trim(RosCfg.RunCommand) <> '' then
+  begin
+    CmdLine := Trim(RosCfg.RunCommand);
+    if Pos('%QEMU%', UpperCase(CmdLine)) > 0 then
+    begin
+      QemuExe := RosEnsureQemu;
+      if QemuExe = '' then
+        Exit;
+      CmdLine := StringReplace(CmdLine, '%QEMU%', QemuExe,
+                               [rfReplaceAll, rfIgnoreCase]);
+    end;
+    CmdLine := StringReplace(CmdLine, '%ISO%', Image,
+                             [rfReplaceAll, rfIgnoreCase]);
+    CmdLine := StringReplace(CmdLine, '%IMAGE%', Image,
+                             [rfReplaceAll, rfIgnoreCase]);
+    CmdLine := StringReplace(CmdLine, '%BUILDDIR%',
+                             ExcludeTrailingPathDelimiter(RosCfg.BuildDir),
+                             [rfReplaceAll, rfIgnoreCase]);
+    CmdLine := StringReplace(CmdLine, '%SOURCEDIR%',
+                             ExcludeTrailingPathDelimiter(RosCfg.SourceDir),
+                             [rfReplaceAll, rfIgnoreCase]);
+    CmdLine := StringReplace(CmdLine, '%SERIAL%', SerialLog,
+                             [rfReplaceAll, rfIgnoreCase]);
+    LogComp('Запуск (команда проекта): ' + CmdLine);
+    RosStartEmulator(CmdLine, RosCfg.BuildDir, '');
+    Exit;
+  end;
+
+  QemuExe := RosEnsureQemu;
+  if QemuExe = '' then
+    Exit;
+  // bootcd - установка ReactOS: нужен жёсткий диск; создаётся один раз
+  Disk := '';
+  if SameText(ExtractFileExt(Image), '.iso') then
+  begin
+    Disk := WorkDir + 'hdd.qcow2';
+    if not FileExists(Disk) then
+    begin
+      QemuImg := ExtractFilePath(QemuExe) + QemuImgName;
+      LogComp('Запуск: диск для установки ReactOS - ' + Disk + ' (8 ГБ, ' +
+              'qcow2: файл растёт по мере записи)');
+      FRosBuilding := True;
+      try
+        ImgCode := RunCompiler(QemuImg, string(QemuImgCreateArgs(Disk, 8)),
+                               WorkDir);
+      finally
+        FRosBuilding := False;
+      end;
+      if (ImgCode <> 0) or not FileExists(Disk) then
+      begin
+        LogComp('Запуск: диск не создан, qemu-img код ' + IntToStr(ImgCode));
+        Exit;
+      end;
+    end;
+  end;
+  CmdLine := '"' + QemuExe + '" ' + string(QemuRunArgs(Image, Disk, SerialLog,
+             'ReactOS (' + RosCfg.NinjaTarget + ')', QemuDefaultMemory));
+  LogComp('Запуск: ' + CmdLine);
+  RosStartEmulator(CmdLine, WorkDir, WorkDir + 'qemu.log');
+  LogComp('Запуск: отладочный вывод ReactOS (COM1) - ' + SerialLog +
+          '; мышь освобождает Ctrl+Alt+G');
 end;
 
 // Папка исходников открытого проекта ReactOS (настройки - в ASettings).

@@ -95,7 +95,7 @@ uses
   Clipbrd, IniBuf, SzSetup;
 
 const
-  FarBuild = 'b.23';
+  FarBuild = 'b.24';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -5975,7 +5975,8 @@ begin
     FArcAction := aaNone;
     Exit;
   end;
-  FSzThread := TSzInstall.Create(FSzTarget, FSzPackage, FSzOsName);
+  FSzThread := TSzInstall.Create(FSzTarget,
+    Sz7ZipPlan(FSzPackage, FSzOsName));
   FSzTimer.Enabled := True;
   SzProgress;
 end;
