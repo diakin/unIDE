@@ -43,8 +43,8 @@ unit UnFar;
 //      цвета; правила - editor.ini [FarColors], окно - DlgFarColors);
 //      F9 - меню Options (Files highlighting - окно правил, Save setup -
 //      записать настройки, Shift+F9 - то же);
-//    - b.16: Ctrl+Down - панели ниже на строку, Ctrl+Up - выше (как в FAR:
-//      под панелями - пустое место, кейбар внизу); в editor.ini
+//    - b.16: Ctrl+Up - нижняя граница панелей вверх (панели короче),
+//      Ctrl+Down - вниз (длиннее); под панелями - вывод команд; в editor.ini
 //      ([Far] PanelCut - на сколько строк панели короче окна);
 //    - b.17: командная строка над кейбаром, как в FAR. Буквы - в неё,
 //      Enter - выполнить (cmd.exe /C в папке активной панели, вывод - в
@@ -83,7 +83,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.17';
+  FarBuild = 'b.18';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -1687,7 +1687,7 @@ end;
 
 // Строк у панели: всё окно без нижней строки (кейбар)
 // Строк у панелей: окно без кейбара и без строк, на которые панели
-// укоротили (Ctrl+Down); под панелями - пустое место, как в FAR
+// укоротили (Ctrl+Up); под панелями - вывод команд, как в FAR
 function TFarView.PanelHeight: Integer;
 begin
   if FPanelCut > MaxPanelCut then
@@ -1708,7 +1708,7 @@ begin
     Result := 0;
 end;
 
-// Ctrl+Down - панели короче на строку (ADelta = 1), Ctrl+Up - длиннее
+// Ctrl+Up - панели короче на строку (ADelta = 1), Ctrl+Down - длиннее
 procedure TFarView.ChangePanelCut(ADelta: Integer);
 var
   NewCut: Integer;
@@ -2623,10 +2623,10 @@ begin
         GoUp;
       VK_NEXT:
         EnterItem;
-      VK_DOWN:              // панели ниже на строку (короче)
-        ChangePanelCut(1);
-      VK_UP:                // панели выше на строку (длиннее)
+      VK_DOWN:              // граница панелей вниз - панели длиннее
         ChangePanelCut(-1);
+      VK_UP:                // граница панелей вверх - панели короче
+        ChangePanelCut(1);
       FarVkBackslash, FarVkBackslash2:
         GoRoot;
       Ord('R'):
@@ -4482,7 +4482,7 @@ begin
     CmdRun(Command);
   // Вывода не видно (панели во всё окно) - подсказка
   if not FPanelsHidden and (PanelHeight >= CmdRow) then
-    Status('unIDE FAR: вывод команды - Ctrl+O');
+    Status('unIDE FAR: вывод команды - Ctrl+O или Ctrl+Up');
   Invalidate;
 end;
 
