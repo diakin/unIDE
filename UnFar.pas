@@ -95,7 +95,7 @@ uses
   Clipbrd, IniBuf, SzSetup;
 
 const
-  FarBuild = 'b.21';
+  FarBuild = 'b.22';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -120,7 +120,22 @@ type
 
   // Открытый диалог: копирование, перенос, папка, удаление
   TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew,
-    fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail);
+    fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd);
+
+  // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
+  // нескольких значений
+  TFarDlgRow = record
+    Caption: WideString;
+    IsChoice: Boolean;
+    Masked: Boolean;         // поле ввода звёздочками (пароль)
+    Text: WideString;
+    Pos: Integer;            // каретка: 0..Length(Text)
+    Scroll: Integer;
+    Fresh: Boolean;          // текст не трогали: ввод заменяет его
+    Values: TFarNames;
+    Index: Integer;          // выбранное значение
+  end;
+  TFarDlgRows = array of TFarDlgRow;
 
   // Запись архива (из списка 7z l -slt): путь в архиве через ''
   TFarArcEntry = record
@@ -142,7 +157,7 @@ type
   TFarArcLevels = array of TFarArcLevel;
 
   // Что делает запущенный 7z.exe
-  TFarArcAction = (aaNone, aaList, aaExtract, aaOpenFile);
+  TFarArcAction = (aaNone, aaList, aaExtract, aaOpenFile, aaAdd);
 
   // Загрузка 7-Zip в tools\7zip (SzSetup): нет, загрузка, распаковка
   TFarSzStage = (szNone, szDownload, szExtract);
@@ -294,6 +309,13 @@ type
     FSzTimer: TTimer;
     FSzPackage: TSzPackage;
     FSzOsName: string;
+    // Shift+F1: последние формат (0 - ZIP, 1 - 7z) и уровень (0..5); работа
+    FArcAddFormat: Integer;
+    FArcAddLevel: Integer;
+    FArcJobFormat: Integer;
+    FArcJobLevel: Integer;
+    FArcJobExists: Boolean;       // архив был до упаковки (дополняется)
+    FArcAddPercent: Integer;
     // Вывод процесса не в окно, а в буфер (7z.exe: список архива, ошибки)
     FProcCapture: Boolean;
     FProcRaw: string;
@@ -329,6 +351,10 @@ type
     FDlgNames: TFarNames;         // с чем работает операция
     FDlgPermanent: Boolean;       // удаление мимо корзины
     FDlgMasked: Boolean;          // поле ввода звёздочками (пароль)
+    FDlgRows: TFarDlgRows;        // поля окна Shift+F1 (под строками текста)
+    FDlgRow: Integer;             // строка с фокусом; -1 - фокус на кнопках
+    FDlgRowsTop: Integer;         // где нарисована первая (для мыши)
+    FDlgRowsLeft: Integer;        // колонка начала полей
     // Слежение за папками панелей
     FWatch: array[0..1] of THandle;
     FWatchPath: array[0..1] of WideString;
@@ -416,6 +442,8 @@ type
     procedure DlgClose;
     function DlgKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure DlgInsertText(const AText: WideString);
+    procedure DrawDialogRow(ARowIndex, ARow, AInnerLeft, AInnerW: Integer;
+      AFore, ABack: TColor);
     procedure DlgActivate(AButton: Integer);
     procedure DrawBox(ALeft, ATop, ARight, ABottom: Integer; AColor: TColor);
     procedure DrawDialog;
@@ -451,6 +479,19 @@ type
     procedure ArcUp(APanel: TFarPanel);
     procedure ArcOpenItem(ASeparate, AForceArchive: Boolean);
     procedure StartArcExtract;
+    procedure StartArcAdd;
+    procedure ArcAddConfirm;
+    procedure ArcAddFormatChanged(AOldFormat: Integer);
+    procedure ArcAddProgress;
+    procedure ArcAddDone(AExitCode: DWORD; const AOutput: WideString);
+    procedure DlgAddRow(const ACaption: WideString; AIsChoice, AMasked: Boolean;
+      const AText: WideString; const AValues: array of WideString;
+      AIndex: Integer);
+    function DlgRowsKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    function DlgRowIsEdit: Boolean;
+    procedure DlgRowInsert(const AText: WideString);
+    procedure DlgRowsMouse(AX, AY: Integer);
+    function DlgChoiceCol(const ARow: TFarDlgRow; AValueIndex: Integer): Integer;
     procedure DoArcExtract(const ATarget: WideString);
     procedure ArcError(const AOutput: WideString);
     procedure DoDelete;
@@ -630,6 +671,11 @@ const
   FarFofSilent = $4;
   FarFofNoErrorUI = $400;
   FarArcTempDir = 'unIDE_far';
+  // Окно Shift+F1: ширина подписей полей; форматы и уровни сжатия (-mx)
+  FarDlgCaptionW = 11;
+  FarArcAddExts: array[0..1] of string = ('.zip', '.7z');
+  FarArcAddTypes: array[0..1] of string = ('zip', '7z');
+  FarArcAddLevels: array[0..5] of Integer = (0, 1, 3, 5, 7, 9);
   FarMoveReplace = 1;      // MOVEFILE_REPLACE_EXISTING
   FarMoveCopyAllowed = 2;  // MOVEFILE_COPY_ALLOWED
   FarInvalidAttr = $FFFFFFFF;
@@ -638,7 +684,7 @@ const
   // будет в unIDE FAR. Пустые - клавиша в unIDE FAR не используется.
   FarKeysNormal: array[0..11] of string = ('Help', 'UserMn', 'View', 'Edit',
     'Copy', 'RenMov', 'MkFold', 'Delete', 'ConfMn', 'Quit', '', 'Screen');
-  FarKeysShift: array[0..11] of string = ('', '', '', 'Edit..', 'Copy',
+  FarKeysShift: array[0..11] of string = ('Add', '', '', 'Edit..', 'Copy',
     'Rename', '', 'Delete', 'Save', '', '', 'SelUp');
   FarKeysAlt: array[0..11] of string = ('Left', 'Right', '', '', '', '', '',
     '', '', '', '', 'FoldHs');
@@ -787,6 +833,8 @@ function FarCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
   external 'kernel32.dll' name 'CreateFileW';
 function FarMoveFileEx(AExisting, ANew: PWideChar; AFlags: DWORD): BOOL;
   stdcall; external 'kernel32.dll' name 'MoveFileExW';
+function FarDeleteFile(AFileName: PWideChar): BOOL; stdcall;
+  external 'kernel32.dll' name 'DeleteFileW';
 
 var
   FarFontTried: Boolean = False;
@@ -1920,6 +1968,9 @@ begin
   FProcTimer.Enabled := False;
   FSzStage := szNone;
   FSzThread := nil;
+  FArcAddFormat := 0;
+  FArcAddLevel := 3;
+  FDlgRow := -1;
   FSzTimer := TTimer.Create(Self);
   FSzTimer.Interval := 200;
   FSzTimer.OnTimer := SzTick;
@@ -2609,7 +2660,11 @@ begin
   // Открыт диалог: щелчок по его кнопке нажимает её, панели не трогаем
   if FDlgKind <> fdNone then
   begin
-    if (Button = mbLeft) and (Y div FCellH = FDlgButtonRow) then
+    if (Button = mbLeft) and (Length(FDlgRows) > 0) and
+       (Y div FCellH >= FDlgRowsTop) and
+       (Y div FCellH < FDlgRowsTop + Length(FDlgRows)) then
+      DlgRowsMouse(X, Y)
+    else if (Button = mbLeft) and (Y div FCellH = FDlgButtonRow) then
       for ItemIndex := 0 to High(FDlgButtonCol) do
         if (X div FCellW >= FDlgButtonCol[ItemIndex]) and
            (X div FCellW < FDlgButtonCol[ItemIndex] +
@@ -2730,13 +2785,15 @@ begin
   // приходит в кодировке Windows
   if AMsg.message = WM_CHAR then
   begin
-    if (FDlgKind <> fdNone) and FDlgHasEdit and (FDlgFocus < 0) and
-       (KeyCode >= 32) then
+    if (FDlgKind <> fdNone) and (KeyCode >= 32) and
+       ((FDlgHasEdit and (FDlgFocus < 0)) or DlgRowIsEdit) then
     begin
       AnsiCh := AnsiChar(KeyCode and $FF);
       WideCh := #0;
       FarMultiToWide(CP_ACP, 0, @AnsiCh, 1, @WideCh, 1);
-      if WideCh <> #0 then
+      if (WideCh <> #0) and DlgRowIsEdit then
+        DlgRowInsert(WideCh)
+      else if WideCh <> #0 then
         DlgInsertText(WideCh);
       Invalidate;
       Result := True;
@@ -2872,6 +2929,12 @@ begin
       end;
     if Plain then
       case AKey of
+        VK_F1:              // Shift+F1 - упаковать в архив
+          if AShift then
+          begin
+            StartArcAdd;
+            Exit;
+          end;
         VK_F12:             // Shift+F12 - выделенные первыми
           if AShift then
           begin
@@ -3300,6 +3363,8 @@ begin
   FDlgEditScroll := 0;
   FDlgEditFresh := AEdit <> '';
   FDlgMasked := False;
+  FDlgRows := nil;
+  FDlgRow := -1;
   if AHasEdit then
     FDlgFocus := -1
   else
@@ -3325,6 +3390,8 @@ begin
   end;
   FDlgKind := fdNone;
   FDlgLines := nil;
+  FDlgRows := nil;
+  FDlgRow := -1;
   FDlgButtons := nil;
   FDlgButtonCol := nil;
   Invalidate;
@@ -3348,6 +3415,12 @@ var
   ButtonCount: Integer;
 begin
   Result := True;
+  // Окно с несколькими полями (Shift+F1) - свои клавиши
+  if Length(FDlgRows) > 0 then
+  begin
+    Result := DlgRowsKey(AKey, AShift, ACtrl, AAlt);
+    Exit;
+  end;
   InEdit := FDlgHasEdit and (FDlgFocus < 0);
   ButtonCount := Length(FDlgButtons);
   case AKey of
@@ -3451,6 +3524,13 @@ var
   EditText, SavedTemp: WideString;
   SavedAction: TFarArcAction;
 begin
+  // Shift+F1, Add: сначала проверка полей - окно закрывается, только если
+  // всё верно
+  if (FDlgKind = fdArcAdd) and (AButton = 0) then
+  begin
+    ArcAddConfirm;
+    Exit;
+  end;
   Kind := FDlgKind;
   EditText := FDlgEdit;
   SavedAction := FArcAction;
@@ -3531,7 +3611,7 @@ begin
     BoxW := FCols - 2;
   if BoxW < 20 then
     Exit;
-  BoxH := Length(FDlgLines) + 6;
+  BoxH := Length(FDlgLines) + 6 + Length(FDlgRows);
   if FDlgHasEdit then
     Inc(BoxH);
   BoxLeft := (FCols - BoxW) div 2;
@@ -3601,6 +3681,16 @@ begin
       FBuffer.Canvas.FillRect(Rect(CaretX, Row * FCellH + 1, CaretX + 2,
         (Row + 1) * FCellH - 1));
     end;
+    Inc(Row);
+  end;
+
+  // Поля окна Shift+F1: подпись, справа - поле ввода (бирюзовое) или
+  // значения выбора (выбранное - бирюзовым, с фокусом - белым по чёрному)
+  FDlgRowsTop := Row;
+  FDlgRowsLeft := InnerLeft + FarDlgCaptionW;
+  for LineIndex := 0 to High(FDlgRows) do
+  begin
+    DrawDialogRow(LineIndex, Row, InnerLeft, InnerW, Fore, Back);
     Inc(Row);
   end;
 
@@ -5228,6 +5318,8 @@ begin
       OldLen := Length(FProcRaw);
       SetLength(FProcRaw, OldLen + Integer(BytesRead));
       Move(Buffer[0], FProcRaw[OldLen + 1], BytesRead);
+      if FArcAction = aaAdd then
+        ArcAddProgress;
       Continue;
     end;
     WideLen := FarMultiToWide(FarCpOem, 0, @Buffer[0], BytesRead,
@@ -5293,6 +5385,9 @@ begin
     if AKill then
     begin
       ArcCleanupTemp;
+      // Упаковку в новый архив прервали - недописанный архив удалить
+      if (FArcAction = aaAdd) and not FArcJobExists then
+        FarDeleteFile(PWideChar(FArcJobFile));
       FArcAction := aaNone;
       Status('unIDE FAR: работа с архивом прервана');
     end
@@ -5724,15 +5819,39 @@ begin
       FArcAction := aaNone;
       Exit;
     end;
-    Command := Command + ' x -y -sccUTF-8 -scsUTF-8 -bso0 -bsp0';
-    // Без пароля -p не ставим: '-p' без значения - вопрос пароля
-    if FArcJobPassword <> '' then
-      Command := Command + WideString(' "-p') + FArcJobPassword +
-        WideString('"');
-    Command := Command + WideString(' "-o') +
-      Copy(FArcJobTemp, 1, Length(FArcJobTemp) - 1) + WideString('" "') +
-      FArcJobFile + WideString('" "@') + ListFile + WideString('"');
-    Status('unIDE FAR: распаковка...');
+    if FArcAction = aaAdd then
+    begin
+      // Упаковка: имена из списка - относительно папки панели (рабочая
+      // папка процесса); папки - со всем содержимым. -bsp1 - ход (проценты)
+      Command := Command + ' a -t' + FarArcAddTypes[FArcJobFormat] +
+        ' -mx=' + IntToStr(FArcJobLevel) +
+        ' -sccUTF-8 -scsUTF-8 -bso0 -bsp1';
+      if FArcJobPassword <> '' then
+      begin
+        Command := Command + WideString(' "-p') + FArcJobPassword +
+          WideString('"');
+        // 7z - шифровать и имена файлов; ZIP - AES-256 (не ZipCrypto)
+        if FArcJobFormat = 1 then
+          Command := Command + ' -mhe=on'
+        else
+          Command := Command + ' -mem=AES256';
+      end;
+      Command := Command + WideString(' "') + FArcJobFile +
+        WideString('" "@') + ListFile + WideString('"');
+      Status('unIDE FAR: упаковка... (Ctrl+Break - прервать)');
+    end
+    else
+    begin
+      Command := Command + ' x -y -sccUTF-8 -scsUTF-8 -bso0 -bsp0';
+      // Без пароля -p не ставим: '-p' без значения - вопрос пароля
+      if FArcJobPassword <> '' then
+        Command := Command + WideString(' "-p') + FArcJobPassword +
+          WideString('"');
+      Command := Command + WideString(' "-o') +
+        Copy(FArcJobTemp, 1, Length(FArcJobTemp) - 1) + WideString('" "') +
+        FArcJobFile + WideString('" "@') + ListFile + WideString('"');
+      Status('unIDE FAR: распаковка...');
+    end;
   end;
   if not StartProcess(Command, FPanels[FArcJobPanel].Path, True) then
   begin
@@ -6211,7 +6330,77 @@ begin
           Status('unIDE FAR: распаковано: ' + IntToStr(Length(FArcJobNames)));
         Invalidate;
       end;
+    aaAdd:
+      ArcAddDone(AExitCode, Output);
   end;
+end;
+
+// Упаковка закончилась: ошибки - в строку состояния и вывод; панели с
+// папкой архива - перечитать, в панели, откуда паковали, - снять выделение
+// с упакованного и курсор на архив
+procedure TFarView.ArcAddDone(AExitCode: DWORD; const AOutput: WideString);
+var
+  PanelIndex, NameIndex, ItemIndex: Integer;
+  ArcDir, ArcName: WideString;
+  Panel: TFarPanel;
+  SizeText: string;
+  FindHandle: THandle;
+  FindData: TFarFindData;
+begin
+  ArcCleanupTemp;
+  if AExitCode >= 2 then
+  begin
+    ArcError(AOutput);
+    // 7-Zip не дописал новый архив - убрать то, что осталось
+    if not FArcJobExists then
+      FarDeleteFile(PWideChar(FArcJobFile));
+    Invalidate;
+    Exit;
+  end;
+  // 1 - предупреждения (файл занят, нет доступа): архив есть, но не полный
+  if AExitCode = 1 then
+    ArcError(AOutput);
+  FarSplitPath(FArcJobFile, ArcDir, ArcName);
+  for PanelIndex := 0 to 1 do
+  begin
+    Panel := FPanels[PanelIndex];
+    if Panel.IsArchive then
+      Continue;
+    if (PanelIndex = FArcJobPanel) and FarSameName(Panel.Path, FArcJobDest) then
+      for NameIndex := 0 to High(FArcJobNames) do
+      begin
+        ItemIndex := Panel.IndexOfName(FArcJobNames[NameIndex]);
+        if ItemIndex >= 0 then
+          Panel.SetSelected(ItemIndex, False);
+      end;
+    if FarSameName(Panel.Path, FarWithSlash(ArcDir)) then
+    begin
+      Panel.Reread;
+      if PanelIndex = FArcJobPanel then
+      begin
+        ItemIndex := Panel.IndexOfName(ArcName);
+        if ItemIndex >= 0 then
+          Panel.Cursor := ItemIndex;
+      end;
+      EnsureVisible(Panel);
+    end;
+  end;
+  if AExitCode = 0 then
+  begin
+    SizeText := '';
+    FindHandle := FarFindFirst(PWideChar(FArcJobFile), FindData);
+    if FindHandle <> INVALID_HANDLE_VALUE then
+    begin
+      SizeText := ', ' + FarGroupDigits(Int64(FindData.nFileSizeHigh) shl 32 +
+        FindData.nFileSizeLow) + ' байт';
+      Windows.FindClose(FindHandle);
+    end;
+    if FArcJobExists then
+      Status('unIDE FAR: добавлено в архив ' + string(ArcName) + SizeText)
+    else
+      Status('unIDE FAR: архив создан: ' + string(ArcName) + SizeText);
+  end;
+  Invalidate;
 end;
 
 // Список архива готов: панель - в архив (вложенный - поверх текущего)
@@ -6420,6 +6609,546 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+//  Окно с несколькими полями (Shift+F1): строки FDlgRows под текстом окна.
+//  Фокус: FDlgRow >= 0 - строка, иначе - кнопка FDlgFocus
+// ---------------------------------------------------------------------------
+
+procedure TFarView.DlgAddRow(const ACaption: WideString; AIsChoice,
+  AMasked: Boolean; const AText: WideString; const AValues: array of WideString;
+  AIndex: Integer);
+var
+  RowIndex, ValueIndex: Integer;
+begin
+  RowIndex := Length(FDlgRows);
+  SetLength(FDlgRows, RowIndex + 1);
+  with FDlgRows[RowIndex] do
+  begin
+    Caption := ACaption;
+    IsChoice := AIsChoice;
+    Masked := AMasked;
+    Text := AText;
+    Pos := Length(AText);
+    Scroll := 0;
+    Fresh := AText <> '';
+    SetLength(Values, Length(AValues));
+    for ValueIndex := 0 to High(AValues) do
+      Values[ValueIndex] := AValues[ValueIndex];
+    Index := AIndex;
+    if (Index < 0) or (Index > High(Values)) then
+      Index := 0;
+  end;
+  // Фокус - на первой строке
+  FDlgRow := 0;
+  FDlgFocus := -1;
+  Invalidate;
+end;
+
+function TFarView.DlgRowIsEdit: Boolean;
+begin
+  Result := (FDlgRow >= 0) and (FDlgRow < Length(FDlgRows)) and
+    not FDlgRows[FDlgRow].IsChoice;
+end;
+
+// Колонка значения AValueIndex строки выбора: значения - ' значение ',
+// между ними пробел
+function TFarView.DlgChoiceCol(const ARow: TFarDlgRow;
+  AValueIndex: Integer): Integer;
+var
+  ValueIndex: Integer;
+begin
+  Result := FDlgRowsLeft;
+  for ValueIndex := 0 to AValueIndex - 1 do
+    Inc(Result, Length(ARow.Values[ValueIndex]) + 3);
+end;
+
+procedure TFarView.DrawDialogRow(ARowIndex, ARow, AInnerLeft,
+  AInnerW: Integer; AFore, ABack: TColor);
+var
+  FieldLeft, FieldW, ValueIndex, CharIndex, CaretX, ValueCol: Integer;
+  ShownText, ValueText: WideString;
+  Focused: Boolean;
+begin
+  FieldLeft := AInnerLeft + FarDlgCaptionW;
+  FieldW := AInnerW - FarDlgCaptionW;
+  Focused := ARowIndex = FDlgRow;
+  with FDlgRows[ARowIndex] do
+  begin
+    PutText(AInnerLeft, ARow, FarDlgCaptionW, Caption, AFore, ABack);
+    if IsChoice then
+    begin
+      for ValueIndex := 0 to High(Values) do
+      begin
+        ValueText := ' ' + Values[ValueIndex] + ' ';
+        ValueCol := DlgChoiceCol(FDlgRows[ARowIndex], ValueIndex);
+        if ValueCol + Length(ValueText) > FieldLeft + FieldW then
+          Break;
+        if ValueIndex <> Index then
+          PutText(ValueCol, ARow, Length(ValueText), ValueText, AFore, ABack)
+        else if Focused then
+          PutText(ValueCol, ARow, Length(ValueText), ValueText, FarWhite,
+            FarBlack)
+        else
+          PutText(ValueCol, ARow, Length(ValueText), ValueText, FarBlack,
+            FarCyan);
+      end;
+    end
+    else
+    begin
+      if Pos < Scroll then
+        Scroll := Pos;
+      if Pos > Scroll + FieldW - 1 then
+        Scroll := Pos - FieldW + 1;
+      ShownText := Copy(Text, Scroll + 1, FieldW);
+      if Masked then
+        for CharIndex := 1 to Length(ShownText) do
+          ShownText[CharIndex] := '*';
+      FillCells(FieldLeft, ARow, FieldW, FarCyan);
+      if Fresh and Focused then
+        PutText(FieldLeft, ARow, Length(ShownText), ShownText, FarWhite,
+          FarBlack)
+      else
+        PutText(FieldLeft, ARow, Length(ShownText), ShownText, FarBlack,
+          FarCyan);
+      if Focused then
+      begin
+        CaretX := (FieldLeft + Pos - Scroll) * FCellW;
+        FBuffer.Canvas.Brush.Style := bsSolid;
+        FBuffer.Canvas.Brush.Color := FarBlack;
+        FBuffer.Canvas.FillRect(Rect(CaretX, ARow * FCellH + 1, CaretX + 2,
+          (ARow + 1) * FCellH - 1));
+      end;
+    end;
+  end;
+end;
+
+procedure TFarView.DlgRowInsert(const AText: WideString);
+begin
+  if not DlgRowIsEdit then
+    Exit;
+  with FDlgRows[FDlgRow] do
+  begin
+    if Fresh then
+    begin
+      Text := '';
+      Pos := 0;
+      Fresh := False;
+    end;
+    Insert(AText, Text, Pos + 1);
+    Inc(Pos, Length(AText));
+  end;
+  Invalidate;
+end;
+
+// Смена значения строки выбора (строка формата - ещё и расширение имени)
+procedure FarDlgChoose(var ARow: TFarDlgRow; ANewIndex: Integer);
+begin
+  if ANewIndex < 0 then
+    ANewIndex := 0;
+  if ANewIndex > High(ARow.Values) then
+    ANewIndex := High(ARow.Values);
+  ARow.Index := ANewIndex;
+end;
+
+function TFarView.DlgRowsKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+var
+  ButtonCount, RowCount, OldIndex: Integer;
+  InEdit, InChoice: Boolean;
+begin
+  Result := True;
+  ButtonCount := Length(FDlgButtons);
+  RowCount := Length(FDlgRows);
+  InEdit := DlgRowIsEdit;
+  InChoice := (FDlgRow >= 0) and not InEdit;
+  OldIndex := -1;
+  if InChoice then
+    OldIndex := FDlgRows[FDlgRow].Index;
+  case AKey of
+    VK_ESCAPE, VK_F10:
+      DlgClose;
+    VK_RETURN:
+      if FDlgRow >= 0 then
+        DlgActivate(0)
+      else
+        DlgActivate(FDlgFocus);
+    VK_SPACE:
+      if InChoice then
+        // Пробел - следующее значение по кругу
+        with FDlgRows[FDlgRow] do
+          Index := (Index + 1) mod Length(Values)
+      else if FDlgRow < 0 then
+        DlgActivate(FDlgFocus)
+      else
+        Result := False;  // пробел - символ поля ввода (WM_CHAR)
+    VK_TAB, VK_UP, VK_DOWN:
+      if (AKey = VK_UP) or ((AKey = VK_TAB) and AShift) then
+      begin
+        if FDlgRow > 0 then
+          Dec(FDlgRow)
+        else if FDlgRow = 0 then
+        begin
+          FDlgRow := -1;
+          FDlgFocus := ButtonCount - 1;
+        end
+        else if FDlgFocus > 0 then
+          Dec(FDlgFocus)
+        else
+        begin
+          FDlgRow := RowCount - 1;
+          FDlgFocus := -1;
+        end;
+      end
+      else
+      begin
+        if (FDlgRow >= 0) and (FDlgRow < RowCount - 1) then
+          Inc(FDlgRow)
+        else if FDlgRow >= 0 then
+        begin
+          FDlgRow := -1;
+          FDlgFocus := 0;
+        end
+        else if FDlgFocus < ButtonCount - 1 then
+          Inc(FDlgFocus)
+        else
+        begin
+          FDlgRow := 0;
+          FDlgFocus := -1;
+        end;
+      end;
+    VK_LEFT, VK_RIGHT:
+      if InEdit then
+        with FDlgRows[FDlgRow] do
+        begin
+          Fresh := False;
+          if (AKey = VK_LEFT) and (Pos > 0) then
+            Dec(Pos)
+          else if (AKey = VK_RIGHT) and (Pos < Length(Text)) then
+            Inc(Pos);
+        end
+      else if InChoice then
+      begin
+        if AKey = VK_LEFT then
+          FarDlgChoose(FDlgRows[FDlgRow], FDlgRows[FDlgRow].Index - 1)
+        else
+          FarDlgChoose(FDlgRows[FDlgRow], FDlgRows[FDlgRow].Index + 1);
+      end
+      else if ButtonCount > 0 then
+      begin
+        if AKey = VK_LEFT then
+          FDlgFocus := (FDlgFocus + ButtonCount - 1) mod ButtonCount
+        else
+          FDlgFocus := (FDlgFocus + 1) mod ButtonCount;
+      end;
+    VK_HOME, VK_END:
+      if InEdit then
+        with FDlgRows[FDlgRow] do
+        begin
+          Fresh := False;
+          if AKey = VK_HOME then
+            Pos := 0
+          else
+            Pos := Length(Text);
+        end
+      else if InChoice then
+      begin
+        if AKey = VK_HOME then
+          FarDlgChoose(FDlgRows[FDlgRow], 0)
+        else
+          FarDlgChoose(FDlgRows[FDlgRow], MaxInt);
+      end;
+    VK_BACK:
+      if InEdit then
+        with FDlgRows[FDlgRow] do
+          if Fresh then
+          begin
+            Text := '';
+            Pos := 0;
+            Fresh := False;
+          end
+          else if Pos > 0 then
+          begin
+            Delete(Text, Pos, 1);
+            Dec(Pos);
+          end;
+    VK_DELETE:
+      if InEdit then
+        with FDlgRows[FDlgRow] do
+          if Fresh then
+          begin
+            Text := '';
+            Pos := 0;
+            Fresh := False;
+          end
+          else if Pos < Length(Text) then
+            Delete(Text, Pos + 1, 1);
+    VK_INSERT:
+      if InEdit and AShift and Clipboard.HasFormat(CF_TEXT) then
+        DlgRowInsert(Clipboard.AsText);
+  else
+    if InEdit and ACtrl and not AAlt and (AKey = Ord('V')) then
+    begin
+      if Clipboard.HasFormat(CF_TEXT) then
+        DlgRowInsert(Clipboard.AsText);
+    end
+    else if InEdit and ACtrl and not AAlt and (AKey = Ord('Y')) then
+      with FDlgRows[FDlgRow] do
+      begin
+        Text := '';
+        Pos := 0;
+        Fresh := False;
+      end
+    else if ACtrl or AAlt then
+      Result := True   // сочетания в окне никуда не отдаём (ярлыки меню)
+    else
+      Result := False; // буквы, цифры - символы поля ввода (WM_CHAR)
+  end;
+  // Сменился формат архива - расширение в имени
+  if InChoice and (FDlgKind = fdArcAdd) and (FDlgRow = 1) and
+     (FDlgRows[FDlgRow].Index <> OldIndex) then
+    ArcAddFormatChanged(OldIndex);
+  Invalidate;
+end;
+
+// Щелчок по строке полей: фокус на неё; по значению выбора - выбрать его,
+// по полю ввода - каретку туда
+procedure TFarView.DlgRowsMouse(AX, AY: Integer);
+var
+  RowIndex, ValueIndex, ClickCol, OldIndex, ValueCol: Integer;
+begin
+  RowIndex := AY div FCellH - FDlgRowsTop;
+  if (RowIndex < 0) or (RowIndex > High(FDlgRows)) then
+    Exit;
+  FDlgRow := RowIndex;
+  FDlgFocus := -1;
+  ClickCol := AX div FCellW;
+  with FDlgRows[RowIndex] do
+    if IsChoice then
+    begin
+      OldIndex := Index;
+      for ValueIndex := 0 to High(Values) do
+      begin
+        ValueCol := DlgChoiceCol(FDlgRows[RowIndex], ValueIndex);
+        if (ClickCol >= ValueCol) and
+           (ClickCol < ValueCol + Length(Values[ValueIndex]) + 2) then
+          Index := ValueIndex;
+      end;
+      if (FDlgKind = fdArcAdd) and (RowIndex = 1) and (Index <> OldIndex) then
+        ArcAddFormatChanged(OldIndex);
+    end
+    else if ClickCol >= FDlgRowsLeft then
+    begin
+      Fresh := False;
+      Pos := Scroll + ClickCol - FDlgRowsLeft;
+      if Pos > Length(Text) then
+        Pos := Length(Text);
+    end;
+  Invalidate;
+end;
+
+// ---------------------------------------------------------------------------
+//  Shift+F1: упаковка выделенного (или файла под курсором) в ZIP / 7z
+//  (7z.exe a). Архив - в папку панели, если в имени нет своего пути
+// ---------------------------------------------------------------------------
+
+procedure TFarView.StartArcAdd;
+var
+  Panel: TFarPanel;
+  Names: TFarNames;
+  BaseName, Subject, ParentDir: WideString;
+  ItemIndex: Integer;
+begin
+  if ArcBlocked then
+    Exit;
+  Panel := ActivePanel;
+  if Panel.Path = '' then
+    Exit;
+  Names := CollectNames(False);
+  if Length(Names) = 0 then
+    Exit;
+  FDlgNames := Names;
+  // Имя архива: один элемент - его имя (у файла - без расширения), иначе -
+  // имя папки панели
+  BaseName := '';
+  if Length(Names) = 1 then
+  begin
+    BaseName := Names[0];
+    ItemIndex := Panel.IndexOfName(Names[0]);
+    if (ItemIndex >= 0) and not Panel.FItems[ItemIndex].IsDir and
+       (FarNameExt(BaseName) <> '') then
+      SetLength(BaseName, Length(BaseName) - Length(FarNameExt(BaseName)) - 1);
+  end;
+  if BaseName = '' then
+  begin
+    ParentDir := FarParentOf(Panel.Path, BaseName);
+    if ParentDir = '' then
+      BaseName := '';   // корень диска
+  end;
+  if BaseName = '' then
+    BaseName := 'archive';
+  if (FArcAddFormat < 0) or (FArcAddFormat > High(FarArcAddExts)) then
+    FArcAddFormat := 0;
+  if (FArcAddLevel < 0) or (FArcAddLevel > High(FarArcAddLevels)) then
+    FArcAddLevel := 3;
+  if Length(Names) = 1 then
+    Subject := '"' + FarFitName(Names[0], 40) + '"'
+  else
+    Subject := IntToStr(Length(Names)) + ' items';
+  DlgOpen(fdArcAdd, 'Add to archive', ['Add ' + Subject + ' to archive:'],
+    False, False, False, '', ['Add', 'Cancel']);
+  DlgAddRow('Archive:', False, False,
+    BaseName + WideString(FarArcAddExts[FArcAddFormat]), [], 0);
+  DlgAddRow('Format:', True, False, '', ['ZIP', '7z'], FArcAddFormat);
+  DlgAddRow('Level:', True, False, '', ['Store', 'Fastest', 'Fast', 'Normal',
+    'Maximum', 'Ultra'], FArcAddLevel);
+  DlgAddRow('Password:', False, True, '', [], 0);
+  DlgAddRow('Confirm:', False, True, '', [], 0);
+  FDlgRow := 0;
+end;
+
+// Формат сменился: имя кончается на прежнее расширение - заменить
+procedure TFarView.ArcAddFormatChanged(AOldFormat: Integer);
+var
+  OldExt, NewExt: WideString;
+  NewFormat: Integer;
+begin
+  if (Length(FDlgRows) < 2) or (AOldFormat < 0) or
+     (AOldFormat > High(FarArcAddExts)) then
+    Exit;
+  NewFormat := FDlgRows[1].Index;
+  OldExt := FarArcAddExts[AOldFormat];
+  NewExt := FarArcAddExts[NewFormat];
+  with FDlgRows[0] do
+    if (Length(Text) > Length(OldExt)) and FarSameName(Copy(Text,
+       Length(Text) - Length(OldExt) + 1, MaxInt), OldExt) then
+    begin
+      Text := Copy(Text, 1, Length(Text) - Length(OldExt)) + NewExt;
+      Pos := Length(Text);
+      Fresh := False;
+    end;
+end;
+
+// [ Add ]: проверить поля, закрыть окно, запустить 7z.exe a
+procedure TFarView.ArcAddConfirm;
+var
+  Panel: TFarPanel;
+  Name, Password, Confirm, Target, TempDir: WideString;
+  FormatIndex, LevelIndex, CharIndex: Integer;
+  TempBuffer: array[0..MAX_PATH] of WideChar;
+  TempLen: DWORD;
+  Attr: DWORD;
+
+  procedure FocusRow(ARow: Integer; const AMessage: string);
+  begin
+    FDlgRow := ARow;
+    FDlgFocus := -1;
+    Status('unIDE FAR: ' + AMessage);
+    Invalidate;
+  end;
+
+begin
+  Name := FarTrimW(FDlgRows[0].Text);
+  FormatIndex := FDlgRows[1].Index;
+  LevelIndex := FDlgRows[2].Index;
+  Password := FDlgRows[3].Text;
+  Confirm := FDlgRows[4].Text;
+  if Name = '' then
+  begin
+    FocusRow(0, 'нет имени архива');
+    Exit;
+  end;
+  if Password <> Confirm then
+  begin
+    FocusRow(4, 'пароль и повтор не совпадают');
+    Exit;
+  end;
+  for CharIndex := 1 to Length(Password) do
+  begin
+    // В командной строке 7-Zip кавычку в пароль не передать
+    if Password[CharIndex] = '"' then
+    begin
+      FocusRow(3, 'кавычка " в пароле не допускается');
+      Exit;
+    end;
+    // ZIP (AES-256): 7-Zip берёт пароль только из символов ASCII
+    if (FormatIndex = 0) and (Ord(Password[CharIndex]) > 126) then
+    begin
+      FocusRow(3, 'пароль ZIP - только латиница, цифры и знаки ASCII ' +
+        '(с кириллицей - формат 7z)');
+      Exit;
+    end;
+  end;
+  Panel := ActivePanel;
+  Target := FarFullPath(Panel.Path, Name);
+  if FarNameExt(Target) = '' then
+    Target := Target + WideString(FarArcAddExts[FormatIndex]);
+  Attr := FarGetAttributes(PWideChar(Target));
+  if (Attr <> FarInvalidAttr) and (Attr and FILE_ATTRIBUTE_DIRECTORY <> 0) then
+  begin
+    FocusRow(0, 'это имя папки');
+    Exit;
+  end;
+  if FProcHandle <> 0 then
+  begin
+    FocusRow(0, 'выполняется команда - подождите');
+    Exit;
+  end;
+  TempLen := FarGetTempPath(MAX_PATH + 1, TempBuffer);
+  if (TempLen = 0) or (TempLen > MAX_PATH) then
+  begin
+    FocusRow(0, 'нет временной папки Windows');
+    Exit;
+  end;
+  TempDir := FarWithSlash(PWideChar(@TempBuffer[0])) + FarArcTempDir +
+    '\add_' + IntToHex(GetTickCount, 8) + '\';
+  // Всё верно: выбор формата и уровня - на следующий раз
+  FArcAddFormat := FormatIndex;
+  FArcAddLevel := LevelIndex;
+  DlgClose;
+  FArcAction := aaAdd;
+  FArcJobPanel := FActive;
+  FArcJobFile := Target;
+  FArcJobTitle := '';
+  FArcJobStart := Panel.Path;
+  FArcJobPrefix := '';
+  FArcJobNames := FDlgNames;
+  FArcJobDest := Panel.Path;
+  FArcJobPassword := Password;
+  FArcJobFormat := FormatIndex;
+  FArcJobLevel := FarArcAddLevels[LevelIndex];
+  FArcJobExists := Attr <> FarInvalidAttr;
+  FArcJobTemp := TempDir;
+  FArcAddPercent := -1;
+  FDlgNames := nil;
+  ArcRun;
+end;
+
+// Ход упаковки - из вывода 7z.exe -bsp1 ('  42% 3 + имя'): последнее
+// 'NN%' - в строку состояния
+procedure TFarView.ArcAddProgress;
+var
+  CharIndex, StopIndex, DigitIndex, Percent: Integer;
+begin
+  CharIndex := Length(FProcRaw);
+  StopIndex := CharIndex - 200;
+  if StopIndex < 1 then
+    StopIndex := 1;
+  while (CharIndex > StopIndex) and (FProcRaw[CharIndex] <> '%') do
+    Dec(CharIndex);
+  if (CharIndex <= 1) or (FProcRaw[CharIndex] <> '%') then
+    Exit;
+  DigitIndex := CharIndex - 1;
+  while (DigitIndex >= 1) and (FProcRaw[DigitIndex] in ['0'..'9']) do
+    Dec(DigitIndex);
+  Percent := StrToIntDef(Copy(FProcRaw, DigitIndex + 1,
+    CharIndex - DigitIndex - 1), -1);
+  if (Percent >= 0) and (Percent <> FArcAddPercent) then
+  begin
+    FArcAddPercent := Percent;
+    Status('unIDE FAR: упаковка ' + IntToStr(Percent) + '% (Ctrl+Break - ' +
+      'прервать)');
+  end;
+end;
+
+// ---------------------------------------------------------------------------
 //  Раскраска файлов и меню Options (F9)
 // ---------------------------------------------------------------------------
 
@@ -6572,6 +7301,9 @@ begin
     FHalfWidth := Ini.ReadInteger(FarIniSection, 'HalfWidth', 0);
     FIniName := AIniName;
     FPanelCut := Ini.ReadInteger(FarIniSection, 'PanelCut', 0);
+    // Shift+F1: формат (0 - ZIP, 1 - 7z) и уровень сжатия (0..5, 3 - Normal)
+    FArcAddFormat := Ini.ReadInteger(FarIniSection, 'ArcFormat', 0);
+    FArcAddLevel := Ini.ReadInteger(FarIniSection, 'ArcLevel', 3);
     // История командной строки
     HistoryCount := Ini.ReadInteger(FarCmdHistorySection, 'Count', 0);
     if HistoryCount > FarCmdHistoryMax then
@@ -6656,6 +7388,8 @@ begin
     end;
     Ini.WriteInteger(FarIniSection, 'Active', FActive);
     Ini.WriteInteger(FarIniSection, 'PanelCut', FPanelCut);
+    Ini.WriteInteger(FarIniSection, 'ArcFormat', FArcAddFormat);
+    Ini.WriteInteger(FarIniSection, 'ArcLevel', FArcAddLevel);
     Ini.EraseSection(FarCmdHistorySection);
     Ini.WriteInteger(FarCmdHistorySection, 'Count', Length(FCmdHistory));
     for HistoryIndex := 0 to High(FCmdHistory) do
