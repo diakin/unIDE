@@ -72,6 +72,7 @@ uses
   FmtView in 'FmtView.pas',
   SplitPane in 'SplitPane.pas',
   UnFar in 'UnFar.pas',
+  SzSetup in 'SzSetup.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};
 
 {$R *.res}

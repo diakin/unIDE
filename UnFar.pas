@@ -92,10 +92,10 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
-  Clipbrd, IniBuf;
+  Clipbrd, IniBuf, SzSetup;
 
 const
-  FarBuild = 'b.20';
+  FarBuild = 'b.21';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -120,7 +120,7 @@ type
 
   // Открытый диалог: копирование, перенос, папка, удаление
   TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew,
-    fdArcExtract, fdPassword);
+    fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail);
 
   // Запись архива (из списка 7z l -slt): путь в архиве через ''
   TFarArcEntry = record
@@ -143,6 +143,9 @@ type
 
   // Что делает запущенный 7z.exe
   TFarArcAction = (aaNone, aaList, aaExtract, aaOpenFile);
+
+  // Загрузка 7-Zip в tools\7zip (SzSetup): нет, загрузка, распаковка
+  TFarSzStage = (szNone, szDownload, szExtract);
 
   // Сортировка панели (порядок - как в меню Ctrl+F12 и клавиши Ctrl+F3 ..
   // Ctrl+F9)
@@ -285,6 +288,12 @@ type
     FProcHandle: THandle;
     FProcPipe: THandle;
     FProcTimer: TTimer;
+    // Загрузка 7-Zip (нет tools\7zip\7z.exe)
+    FSzStage: TFarSzStage;
+    FSzThread: TSzDownload;
+    FSzTimer: TTimer;
+    FSzPackage: TSzPackage;
+    FSzOsName: string;
     // Вывод процесса не в окно, а в буфер (7z.exe: список архива, ошибки)
     FProcCapture: Boolean;
     FProcRaw: string;
@@ -429,6 +438,16 @@ type
     procedure ArcDone(AExitCode: DWORD);
     procedure ArcApplyList(const AOutput: WideString);
     procedure ArcCleanupTemp;
+    function SzDir: WideString;
+    function SzDownloadDir: WideString;
+    procedure SzOffer;
+    procedure SzStartDownload;
+    procedure SzTick(Sender: TObject);
+    procedure SzProgress;
+    procedure SzStartExtract;
+    procedure SzExtractDone(AKill: Boolean; AExitCode: DWORD);
+    procedure SzCancel;
+    procedure SzFail(const AText: WideString);
     procedure ArcUp(APanel: TFarPanel);
     procedure ArcOpenItem(ASeparate, AForceArchive: Boolean);
     procedure StartArcExtract;
@@ -611,6 +630,8 @@ const
   FarFofSilent = $4;
   FarFofNoErrorUI = $400;
   FarArcTempDir = 'unIDE_far';
+  FarMoveReplace = 1;      // MOVEFILE_REPLACE_EXISTING
+  FarMoveCopyAllowed = 2;  // MOVEFILE_COPY_ALLOWED
   FarInvalidAttr = $FFFFFFFF;
 
   // Кейбар: подписи FAR (far\farlang.templ.m4) для того, что есть или
@@ -764,6 +785,8 @@ function FarCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
   ASecurity: Pointer; ADisposition, AFlags: DWORD;
   ATemplate: THandle): THandle; stdcall;
   external 'kernel32.dll' name 'CreateFileW';
+function FarMoveFileEx(AExisting, ANew: PWideChar; AFlags: DWORD): BOOL;
+  stdcall; external 'kernel32.dll' name 'MoveFileExW';
 
 var
   FarFontTried: Boolean = False;
@@ -1895,6 +1918,12 @@ begin
   FProcTimer.Interval := 100;
   FProcTimer.OnTimer := ProcTick;
   FProcTimer.Enabled := False;
+  FSzStage := szNone;
+  FSzThread := nil;
+  FSzTimer := TTimer.Create(Self);
+  FSzTimer.Interval := 200;
+  FSzTimer.OnTimer := SzTick;
+  FSzTimer.Enabled := False;
 end;
 
 destructor TFarView.Destroy;
@@ -1903,6 +1932,15 @@ var
   TempLen: DWORD;
 begin
   FOnStatus := nil;
+  FSzTimer.Enabled := False;
+  if FSzThread <> nil then
+  begin
+    FSzThread.Cancel;
+    FSzThread.WaitFor;
+    FSzThread.Free;
+    FSzThread := nil;
+    FarDeleteTree(SzDownloadDir);
+  end;
   FProcTimer.Enabled := False;
   if FProcHandle <> 0 then
     ProcFinish(True);
@@ -3274,10 +3312,16 @@ procedure TFarView.DlgClose;
 begin
   // Окно пароля закрыто (Esc, Cancel) - работа с архивом отменена; OK
   // возвращает её сам (DlgActivate)
-  if FDlgKind = fdPassword then
+  if FDlgKind in [fdPassword, fdSzOffer] then
   begin
     FArcAction := aaNone;
     FArcJobTemp := '';
+  end;
+  // Окно хода загрузки 7-Zip закрыто (Esc, Cancel) - отмена загрузки
+  if (FDlgKind = fdSzProgress) and (FSzStage <> szNone) then
+  begin
+    FDlgKind := fdNone;
+    SzCancel;
   end;
   FDlgKind := fdNone;
   FDlgLines := nil;
@@ -3412,6 +3456,12 @@ begin
   SavedAction := FArcAction;
   SavedTemp := FArcJobTemp;
   DlgClose;
+  // Окно «нет 7-Zip»: вторая кнопка - страница загрузки 7-Zip в браузере
+  if (Kind = fdSzFail) and (AButton = 1) then
+  begin
+    ShellOpen(SzDownloadPage, '');
+    Exit;
+  end;
   // Первая кнопка - действие, остальные (Cancel) - отмена
   if AButton <> 0 then
     Exit;
@@ -3436,6 +3486,12 @@ begin
         FArcJobTemp := SavedTemp;
         FArcJobPassword := EditText;
         ArcRun;
+      end;
+    fdSzOffer:
+      begin
+        FArcAction := SavedAction;
+        FArcJobTemp := SavedTemp;
+        SzStartDownload;
       end;
   end;
 end;
@@ -5225,6 +5281,12 @@ begin
   FProcPipe := 0;
   FProcCapture := False;
   FOutOpen := False;
+  // 7zr.exe достал 7-Zip из установщика - дальше загрузка 7-Zip
+  if FSzStage = szExtract then
+  begin
+    SzExtractDone(AKill, ProcExitCode);
+    Exit;
+  end;
   // 7z.exe: что дальше - по работе с архивом
   if FArcAction <> aaNone then
   begin
@@ -5608,9 +5670,9 @@ begin
   SevenZip := SevenZipPath;
   if FarGetAttributes(PWideChar(SevenZip)) = FarInvalidAttr then
   begin
-    Status('unIDE FAR: нет 7-Zip: ' + string(SevenZip) + ' (папка tools\7zip ' +
-      'должна лежать рядом с exe)');
-    FArcAction := aaNone;
+    // Нет 7-Zip - предложить скачать; работа с архивом (FArcAction и
+    // остальное) ждёт и продолжится после установки
+    SzOffer;
     Exit;
   end;
   Command := WideString('"') + SevenZip + WideString('"');
@@ -5714,6 +5776,349 @@ begin
     Exit;
   FarDeleteTree(FArcJobTemp);
   FArcJobTemp := '';
+end;
+
+// ---------------------------------------------------------------------------
+//  Нет 7-Zip в tools\7zip - скачать (SzSetup): сборка по Windows, 7zr.exe и
+//  установщик - во tools\7zip\~download\, 7zr.exe достаёт из установщика
+//  7z.exe, 7z.dll и License.txt, они переносятся в tools\7zip\; потом -
+//  работа с архивом, ради которой 7-Zip понадобился
+// ---------------------------------------------------------------------------
+
+function TFarView.SzDir: WideString;
+begin
+  Result := ExtractFilePath(Application.ExeName) + 'tools\7zip\';
+end;
+
+function TFarView.SzDownloadDir: WideString;
+begin
+  Result := SzDir + '~download\';
+end;
+
+// Текст по словам в строки шириной AWidth (для окон)
+function FarWrapText(const AText: WideString; AWidth: Integer): TFarNames;
+var
+  Rest: WideString;
+  Cut, Count: Integer;
+begin
+  Result := nil;
+  Count := 0;
+  Rest := FarTrimW(AText);
+  while Rest <> '' do
+  begin
+    if Length(Rest) <= AWidth then
+      Cut := Length(Rest)
+    else
+    begin
+      Cut := AWidth;
+      while (Cut > AWidth div 2) and (Rest[Cut + 1] <> ' ') do
+        Dec(Cut);
+      if Rest[Cut + 1] <> ' ' then
+        Cut := AWidth;
+    end;
+    SetLength(Result, Count + 1);
+    Result[Count] := FarTrimW(Copy(Rest, 1, Cut));
+    Inc(Count);
+    Rest := FarTrimW(Copy(Rest, Cut + 1, MaxInt));
+  end;
+end;
+
+procedure TFarView.SzOffer;
+var
+  OsInfo: TSzOsInfo;
+  ToolFile: TSzFile;
+  SizeText: string;
+begin
+  if FSzStage <> szNone then
+  begin
+    FArcAction := aaNone;
+    Status('unIDE FAR: 7-Zip уже загружается');
+    Exit;
+  end;
+  SzGetOsInfo(OsInfo);
+  FSzOsName := OsInfo.Name;
+  if not SzChoosePackage(OsInfo, FSzPackage) then
+  begin
+    FArcAction := aaNone;
+    DlgOpen(fdSzFail, '7-Zip', ['Для архивов нужен 7-Zip, его нет в папке',
+      FarFitPath(SzDir, 62), '', '7-Zip работает в Windows 2000 и новее,',
+      'а здесь ' + WideString(OsInfo.Name) + '.'], True, True, False, '',
+      ['OK', 'Сайт 7-Zip']);
+    Exit;
+  end;
+  SzToolFile(ToolFile);
+  SizeText := FormatFloat('0.0', (ToolFile.Size + FSzPackage.Size) /
+    (1024 * 1024));
+  DlgOpen(fdSzOffer, '7-Zip', ['Для архивов нужен 7-Zip, его нет в папке',
+    FarFitPath(SzDir, 62), '', 'Система: ' + WideString(OsInfo.Name),
+    'Скачать 7-Zip ' + WideString(FSzPackage.Version) + ' (' +
+    WideString(FSzPackage.Arch) + ') с github.com/ip7z/7zip (' +
+    WideString(SizeText) + ' МБ)', 'и распаковать туда?'], True, False,
+    False, '', ['Скачать', 'Отмена']);
+end;
+
+procedure TFarView.SzStartDownload;
+var
+  Files: TSzFiles;
+  DownloadDir: WideString;
+begin
+  if (FSzStage <> szNone) or (FProcHandle <> 0) then
+  begin
+    FArcAction := aaNone;
+    Status('unIDE FAR: выполняется команда - 7-Zip не скачать сейчас');
+    Exit;
+  end;
+  DownloadDir := SzDownloadDir;
+  FarDeleteTree(DownloadDir);
+  if not FarForceDirs(DownloadDir) then
+  begin
+    FArcAction := aaNone;
+    SzFail('Папку не создать: ' + SysErrorMessage(GetLastError) + '.');
+    Exit;
+  end;
+  SetLength(Files, 2);
+  SzToolFile(Files[0]);
+  Files[0].FileName := DownloadDir + SzToolName;
+  Files[1].Url1 := FSzPackage.Url1;
+  Files[1].Url2 := FSzPackage.Url2;
+  Files[1].FileName := DownloadDir + FSzPackage.FileName;
+  Files[1].Size := FSzPackage.Size;
+  Files[1].Sha256 := FSzPackage.Sha256;
+  FSzStage := szDownload;
+  FSzThread := TSzDownload.Create(Files);
+  FSzTimer.Enabled := True;
+  SzProgress;
+end;
+
+// Окно хода: файл, полоса, килобайты
+procedure TFarView.SzProgress;
+const
+  BarWidth = 50;
+var
+  FileLine, BarLine, BytesLine: WideString;
+  Filled, CellIndex, DoneBytes, TotalBytes: Integer;
+begin
+  if FSzStage = szExtract then
+  begin
+    FileLine := 'Распаковка 7z.exe и 7z.dll из ' +
+      WideString(FSzPackage.FileName);
+    BarLine := '';
+    BytesLine := '';
+  end
+  else
+  begin
+    DoneBytes := 0;
+    TotalBytes := 1;
+    if FSzThread <> nil then
+    begin
+      DoneBytes := FSzThread.Done;
+      TotalBytes := FSzThread.Total;
+      if FSzThread.FileIndex = 0 then
+        FileLine := SzToolName
+      else
+        FileLine := FSzPackage.FileName;
+      FileLine := 'Файл ' + IntToStr(FSzThread.FileIndex + 1) + ' из 2: ' +
+        FileLine;
+    end;
+    if TotalBytes <= 0 then
+      TotalBytes := 1;
+    Filled := Int64(DoneBytes) * BarWidth div TotalBytes;
+    if Filled > BarWidth then
+      Filled := BarWidth;
+    BarLine := '';
+    for CellIndex := 1 to BarWidth do
+      if CellIndex <= Filled then
+        BarLine := BarLine + WideChar($2588)
+      else
+        BarLine := BarLine + WideChar($2591);
+    BytesLine := WideString(FarGroupDigits(DoneBytes div 1024)) + ' / ' +
+      WideString(FarGroupDigits(TotalBytes div 1024)) + ' КБ';
+  end;
+  DlgOpen(fdSzProgress, 'Загрузка 7-Zip ' + WideString(FSzPackage.Version) +
+    ' (' + WideString(FSzPackage.Arch) + ')', [FileLine, BarLine, BytesLine],
+    True, False, False, '', ['Отмена']);
+end;
+
+procedure TFarView.SzTick(Sender: TObject);
+var
+  ErrorText: string;
+  WasCancelled: Boolean;
+begin
+  if (FSzStage <> szDownload) or (FSzThread = nil) then
+  begin
+    FSzTimer.Enabled := False;
+    Exit;
+  end;
+  if not FSzThread.Finished then
+  begin
+    if FDlgKind = fdSzProgress then
+      SzProgress;
+    Exit;
+  end;
+  FSzTimer.Enabled := False;
+  FSzThread.WaitFor;
+  ErrorText := FSzThread.ErrorText;
+  WasCancelled := FSzThread.Cancelled;
+  FSzThread.Free;
+  FSzThread := nil;
+  if WasCancelled or (ErrorText <> '') then
+  begin
+    FSzStage := szNone;
+    FArcAction := aaNone;
+    FarDeleteTree(SzDownloadDir);
+    if FDlgKind = fdSzProgress then
+      DlgClose;
+    if WasCancelled then
+      Status('unIDE FAR: загрузка 7-Zip отменена')
+    else
+      SzFail('7-Zip не скачать: ' + WideString(ErrorText));
+    Exit;
+  end;
+  SzStartExtract;
+end;
+
+// 7zr.exe x установщик -> ~download\x\ (процессом, как 7z.exe)
+procedure TFarView.SzStartExtract;
+var
+  DownloadDir, Command: WideString;
+begin
+  DownloadDir := SzDownloadDir;
+  FSzStage := szExtract;
+  if FDlgKind = fdSzProgress then
+    SzProgress;
+  Command := WideString('"') + DownloadDir + SzToolName +
+    WideString('" x -y -sccUTF-8 -bso0 -bsp0 "-o') + DownloadDir +
+    WideString('x" "') + DownloadDir + WideString(FSzPackage.FileName) +
+    WideString('" 7z.exe 7z.dll License.txt');
+  if not StartProcess(Command, DownloadDir, True) then
+  begin
+    FSzStage := szNone;
+    FArcAction := aaNone;
+    FarDeleteTree(DownloadDir);
+    if FDlgKind = fdSzProgress then
+      DlgClose;
+    SzFail('7zr.exe не запустить: ' + SysErrorMessage(GetLastError) + '.');
+  end;
+end;
+
+procedure TFarView.SzExtractDone(AKill: Boolean; AExitCode: DWORD);
+const
+  // 7z.exe - последним: есть 7z.exe - есть и остальное
+  SzMoveNames: array[0..2] of string = ('7z.dll', 'License.txt', '7z.exe');
+var
+  DownloadDir, Target, Source, Output, Found, Line: WideString;
+  NameIndex, LineStart, LineEnd: Integer;
+  Moved: Boolean;
+  InfoText: string;
+  InfoHandle: THandle;
+  Written: DWORD;
+begin
+  FSzStage := szNone;
+  DownloadDir := SzDownloadDir;
+  Target := SzDir;
+  if AKill then
+  begin
+    FArcAction := aaNone;
+    FarDeleteTree(DownloadDir);
+    Status('unIDE FAR: установка 7-Zip прервана');
+    Exit;
+  end;
+  if FDlgKind = fdSzProgress then
+    DlgClose;
+  Moved := AExitCode <= 1;
+  if Moved then
+    for NameIndex := 0 to High(SzMoveNames) do
+    begin
+      Source := DownloadDir + 'x\' + WideString(SzMoveNames[NameIndex]);
+      if not FarMoveFileEx(PWideChar(Source),
+         PWideChar(Target + WideString(SzMoveNames[NameIndex])),
+         FarMoveReplace or FarMoveCopyAllowed) then
+      begin
+        Moved := False;
+        Found := WideString(SzMoveNames[NameIndex]) + ': ' +
+          WideString(SysErrorMessage(GetLastError));
+        Break;
+      end;
+    end
+  else
+  begin
+    // Первая строка с ошибкой из ответа 7zr.exe
+    Output := UTF8Decode(FProcRaw);
+    Found := '';
+    LineStart := 1;
+    while (LineStart <= Length(Output)) and (Found = '') do
+    begin
+      LineEnd := LineStart;
+      while (LineEnd <= Length(Output)) and (Output[LineEnd] <> #10) do
+        Inc(LineEnd);
+      Line := FarTrimW(Copy(Output, LineStart, LineEnd - LineStart));
+      LineStart := LineEnd + 1;
+      if FarPosText('ERROR', Line) > 0 then
+        Found := Line;
+    end;
+    if Found = '' then
+      Found := 'код ' + WideString(IntToStr(AExitCode));
+  end;
+  FarDeleteTree(DownloadDir);
+  if not Moved or (FarGetAttributes(PWideChar(SevenZipPath)) =
+     FarInvalidAttr) then
+  begin
+    FArcAction := aaNone;
+    SzFail('7-Zip не установить: ' + Found + '.');
+    Exit;
+  end;
+  // Откуда этот 7-Zip - рядом, текстом
+  InfoText := '7-Zip ' + FSzPackage.Version + ' (' + FSzPackage.Arch +
+    '), скачан unIDE FAR ' + FormatDateTime('yyyy-mm-dd hh:nn', Now) +
+    ' для ' + FSzOsName + #13#10 + FSzPackage.Url1 + #13#10 + 'SHA-256 ' +
+    FSzPackage.FileName + ': ' + FSzPackage.Sha256 + #13#10 +
+    'Из установщика взяты 7z.exe, 7z.dll, License.txt (лицензия 7-Zip).' +
+    #13#10;
+  InfoHandle := FarCreateFile(PWideChar(Target + 'unide_7zip.txt'),
+    GENERIC_WRITE, 0, nil, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+  if InfoHandle <> INVALID_HANDLE_VALUE then
+  begin
+    WriteFile(InfoHandle, InfoText[1], Length(InfoText), Written, nil);
+    CloseHandle(InfoHandle);
+  end;
+  Status('unIDE FAR: 7-Zip ' + FSzPackage.Version + ' (' + FSzPackage.Arch +
+    ') установлен в ' + string(Target));
+  // Работа с архивом, ради которой 7-Zip качали
+  if FArcAction <> aaNone then
+    ArcRun;
+end;
+
+// Отмена загрузки (окно хода закрыто): поток - прервать (конец - в SzTick),
+// 7zr.exe - завершить
+procedure TFarView.SzCancel;
+begin
+  case FSzStage of
+    szDownload:
+      if FSzThread <> nil then
+        FSzThread.Cancel;
+    szExtract:
+      if FProcHandle <> 0 then
+        ProcFinish(True);
+  end;
+end;
+
+// Не вышло: причина и как поставить 7-Zip руками
+procedure TFarView.SzFail(const AText: WideString);
+var
+  Lines, Wrapped: TFarNames;
+  LineIndex, Count: Integer;
+begin
+  Wrapped := FarWrapText(AText, 62);
+  Count := Length(Wrapped);
+  SetLength(Lines, Count + 4);
+  for LineIndex := 0 to Count - 1 do
+    Lines[LineIndex] := Wrapped[LineIndex];
+  Lines[Count] := '';
+  Lines[Count + 1] := 'Вручную: поставить 7-Zip с www.7-zip.org и скопировать';
+  Lines[Count + 2] := '7z.exe и 7z.dll из его папки в';
+  Lines[Count + 3] := FarFitPath(SzDir, 62);
+  DlgOpen(fdSzFail, '7-Zip', Lines, False, True, False, '',
+    ['OK', 'Сайт 7-Zip']);
 end;
 
 // 7z.exe закончил: по FArcAction - список в панель, перенос распакованного
