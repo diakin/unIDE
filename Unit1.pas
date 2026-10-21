@@ -839,6 +839,7 @@ type
     procedure ShiftDepthForEdit;
     procedure ClearAllClick(Sender: TObject);
     procedure NoGuidesClick(Sender: TObject);
+    function SchemeHasBlocks: Boolean;
     procedure CaseConvertClick(Sender: TObject);
     procedure LogPopupPopup(Sender: TObject);
     procedure ReloadFileClick(Sender: TObject);
@@ -19972,7 +19973,8 @@ begin
   // только когда направляющие включены в настройках
   if pmuNoGuides <> nil then
   begin
-    pmuNoGuides.Visible := FUseHotTab and (FWindowsIndex >= 0);
+    pmuNoGuides.Visible := FUseHotTab and (FWindowsIndex >= 0) and
+                           SchemeHasBlocks;
     if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].NoGuides then
       pmuNoGuides.Caption := 'Вернуть формат'
     else
@@ -25600,6 +25602,15 @@ end;
 // как под then без begin. Строка, начатая закрывающим
 // словом, показывается на уровень левее - её end стоит вровень со своим
 // begin. Результат - FLineDepth по номерам строк от нуля.
+// В языке схемы есть блоки: слова, открывающие блок, или теги. Нет - нет и
+// направляющих отступов (их рисуют только по блокам)
+function TForm1.SchemeHasBlocks: Boolean;
+begin
+  Result := FScheme.FSubTags or
+    ((FScheme.FSubOpenWords <> nil) and (FScheme.FSubOpenWords.Count > 0)) or
+    ((FScheme.FSubOpenFirst <> nil) and (FScheme.FSubOpenFirst.Count > 0));
+end;
+
 procedure TForm1.RebuildLineDepths(const AText: string);
 var
   I, Len, LineStart, LineNo, Lv, Cap, K, J, V: Integer;
@@ -25614,10 +25625,8 @@ var
 begin
   SetLength(FLineDepth, 0);
   SetLength(FLineTick, 0);
-  if not FScheme.FSubTags and
-     ((FScheme.FSubOpenWords = nil) or (FScheme.FSubOpenWords.Count = 0)) and
-     ((FScheme.FSubOpenFirst = nil) or (FScheme.FSubOpenFirst.Count = 0)) then
-    Exit; // язык без слов блоков и без тегов - полосы по пробелам
+  if not SchemeHasBlocks then
+    Exit; // язык без слов блоков и без тегов - полос нет (HighlightVisibleText)
 
   Len := Length(AText);
   if Len = 0 then
@@ -67636,7 +67645,8 @@ var
 // (begin/end, class, record, try, оператор без begin под then/do/else).
 // Поэтому раздел var или type полосы не даёт, хотя отступ там есть, а
 // пустая строка внутри блока полосы получает - столбик не рвётся.
-// Список пуст (язык без слов блоков) - как раньше, по ведущим пробелам.
+// Язык без слов блоков и без тегов полос не получает вовсе (SchemeHasBlocks);
+// список пуст у языка с блоками (ещё не построен) - по ведущим пробелам.
 //
 // ГДЕ полосы - по ведущим пробельным символам самой строки: табуляция это
 // уровень, группа из FIndentSize пробелов тоже. Уровням, которым в строке
@@ -67863,9 +67873,12 @@ begin
     if CharW < 1 then
       CharW := 1;
 
-    // «Очистить формат» у вкладки - её направляющие отступов не рисуются
-    GuidesOff := (FWindowsIndex >= 0) and (FWindowsIndex < WindowsItemCount) and
-                 FWindows[FWindowsIndex].NoGuides;
+    // Направляющие выделяют блоки: в языке без слов блоков и без тегов
+    // (журналы, текст - схемы .log, .txt) их нет и рисовать нечего. И
+    // «Очистить формат» у вкладки - направляющие тоже не рисуются
+    GuidesOff := not SchemeHasBlocks or
+                 ((FWindowsIndex >= 0) and (FWindowsIndex < WindowsItemCount) and
+                  FWindows[FWindowsIndex].NoGuides);
 
     // Кисти направляющих создаём ОДИН раз на кадр, а не на каждую строку
     for HB := 0 to HotTabLevels - 1 do
