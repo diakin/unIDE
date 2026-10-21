@@ -43,6 +43,9 @@ uses
   FileSearch,     // Find In Files: маски, чтение файлов, обход папок (TFifFileFound)
   UnFar,          // unIDE FAR: двухпанельный файловый менеджер (Utils)
   DlgFarColors,   // unIDE FAR: окно раскраски файлов по расширению
+  RosProj,        // проект ReactOS / LiberNT: CMake + Ninja (TRosSettings)
+  PciIds,         // pci.ids и media\inf\pciids.inf (меню ReactOS)
+  RosTools,       // скачивание и установка RosBE
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -1434,7 +1437,8 @@ type
     FRqPalLast: Integer;     // последняя (с RQ Comp, RQ Comp System)
     FRqCompClasses: TStringList; // классы страниц RQ Comp (верхний регистр)
     // Режим среды (ApplyLangMode): -1 - ещё не применён, иначе сборщик
-    // активной вкладки (bkDelphi, bkRapidQ, bkFreeBasic, bkArduino); для
+    // активной вкладки (bkDelphi, bkRapidQ, bkFreeBasic, bkArduino,
+    // bkCMakeNinja); для
     // какого файла и проекта считан; места кнопок ряда Project из .dfm
     FLangMode: Integer;
     FBuildReason: string;       // почему CurBuildKind выбрал этот сборщик
@@ -2819,6 +2823,18 @@ type
     procedure ArdFolderMenuClick(Sender: TObject);
     procedure ArdSketchItemClick(Sender: TObject);
     procedure ArdBuildMenu;
+    procedure RosBuildMenu;
+    procedure RosToolLinkClick(Sender: TObject);
+    procedure RosInstallRosBEClick(Sender: TObject);
+    procedure RosInstall7ZipClick(Sender: TObject);
+    function  RosSetup7Zip(AStage: Integer): string;
+    function  RosInstallProgress(ADone, ATotal: Cardinal): Boolean;
+    function  RosKnownEnvScript: string;
+    function  RosPciSourceDir(var ASettings: TRosSettings): Boolean;
+    function  RosDownloadPciIds(const ASourceDir, AVendors: string;
+                                AStage: Integer): Boolean;
+    procedure RosUpdatePciIdsClick(Sender: TObject);
+    procedure RosGenPciInfClick(Sender: TObject);
     procedure ArdFreeAll;
     procedure mArduinoClick(Sender: TObject);
     procedure mArdSketchbookClick(Sender: TObject);
@@ -3168,10 +3184,16 @@ type
     function  BuildTargetOf(AKind: Integer): string;
     procedure UpdateBuildBar;
     function  ProjectBuildKind(const APrj: string): Integer;
+    function  RosSettingsOf(const APrj: string;
+                            var ASettings: TRosSettings): Boolean;
     function  BasDialectOf(const AFile: string): Integer;
     function  DelphiDprInFolder(const ADir: string; AAsk: Boolean): string;
     procedure DelphiRenameOtherDprs(ADprs: TStrings; const AKeep: string);
     function  CompileProject: Boolean;
+    function  CompileReactOS: Boolean;
+    function  RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
+                         const AWorkDir: string): Integer;
+    procedure RosNinjaLine(const ALine: string);
     function  RapidQTargetBas(ARemember: Boolean): string;
     function  FbTargetBas(ARemember: Boolean): string;
     procedure FbBuildOf(const AMain: string; var AOutKind, ABits: Integer);
@@ -3413,6 +3435,15 @@ type
     FCompProgHints: Integer;
     FCompProgWarns: Integer;
     FCompProgErrors: Integer;
+    // Сборка ReactOS (CompileReactOS) идёт: окно хода ведёт она сама, Стоп
+    // снимает всё дерево процессов (cmd -> ninja -> gcc). FRosNinjaRun -
+    // шаг ninja: строки хода "[n/N]" - в долю этапа FRosNinjaStage, в лог
+    // не все (RosNinjaLine).
+    FRosBuilding: Boolean;
+    FRosNinjaRun: Boolean;
+    FRosNinjaStage: Integer;
+    FRosNinjaLogged: Integer;
+    FRosInstallStage: Integer;  // этап окна хода в RosInstallRosBEClick
     // Ход перевода RqToFb (RqFbConvProgress): строк в прошлой сборке, время
     // последнего обновления окна
     FRqFbPrevLines: Integer;
@@ -3859,6 +3890,7 @@ const
   bkRapidQ = 1;
   bkFreeBasic = 2;
   bkArduino = 3;
+  bkCMakeNinja = 4;  // ReactOS / LiberNT: configure.cmd + ninja (RosProj)
   // FreeBASIC: вид результата (cmbFbKind, FbBuildOf)
   fbOutGui = 0;       // -s gui
   fbOutConsole = 1;   // -s console
@@ -10669,6 +10701,7 @@ var
   IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList: string;
   K, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
   DirChanged, OptionsChanged: Boolean;
+  RosCfg: TRosSettings;
 begin
   if FCurrentProject = '' then
   begin
@@ -10716,6 +10749,14 @@ begin
       Prj.Free;
     end;
     Dlg.SetRqInc(IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList);
+    // Проект ReactOS: папка сборки, цель ninja, configure, скрипт RosBE
+    if (CompareText(OldType, RosProjectType) = 0) and
+       RosSettingsOf(OldName, RosCfg) then
+    begin
+      if RosCfg.EnvScript = '' then
+        RosCfg.EnvScript := RosKnownEnvScript;
+      Dlg.SetRosSettings(RosCfg);
+    end;
 
     // Проект Delphi с главным .dpr - вкладка Project options
     if (CompareText(OldType, 'Delphi') = 0) and
@@ -10755,6 +10796,20 @@ begin
         Prj.WriteString('Project', 'IncMode', Dlg.RqIncMode);
         Prj.WriteString('Project', 'IncPath', Dlg.RqIncOwnDir);
         Prj.WriteString('Project', 'IncPaths', Dlg.RqIncOwnList);
+      finally
+        Prj.Free;
+      end;
+    end;
+    // Настройки ReactOS - туда же. Папка сборки не задана - output-*
+    // папки исходников (RosDefaultBuildDir)
+    if CompareText(NewType, RosProjectType) = 0 then
+    begin
+      Dlg.GetRosSettings(RosCfg);
+      if RosCfg.BuildDir = '' then
+        RosCfg.BuildDir := RosDefaultBuildDir(RosCfg.SourceDir);
+      Prj := TProjectIni.Create(SettingsFileName, OldName);
+      try
+        RosSaveSettings(Prj, RosCfg);
       finally
         Prj.Free;
       end;
@@ -10815,6 +10870,8 @@ begin
     begin
       if OptionsChanged then
         LoadProject(OldName);
+      // Папка сборки и цель ReactOS - в подписи рамки Project
+      UpdateBuildBar;
       Exit;
     end;
 
@@ -10956,6 +11013,7 @@ var
   ExMain: string;     // его главный файл, '' - не найден
   SL: TStringList;
   DelphiKind: Integer; // FNewDelphiKind этого вызова
+  RosCfg: TRosSettings; // настройки проекта ReactOS из окна
 
   // Есть ли в папке хоть один .pas. Расширение сверяется ещё раз: маска
   // *.pas по коротким именам находит и file.pas~ (FILE~1.PAS).
@@ -11069,6 +11127,8 @@ begin
     IncMode := Dlg.RqIncMode;
     IncOwnDir := Dlg.RqIncOwnDir;
     IncOwnList := Dlg.RqIncOwnList;
+    if Dlg.IsRosType then
+      Dlg.GetRosSettings(RosCfg);
 
     if (Nm = '') or (Dir = '') then
     begin
@@ -11088,6 +11148,17 @@ begin
     end;
 
     Dir := IncludeTrailingPathDelimiter(Dir);
+
+    // ReactOS / LiberNT - только на готовом дереве исходников: заготовки
+    // нет, и пустую папку собирать нечем
+    if (CompareText(Tp, RosProjectType) = 0) and not RosIsSourceDir(Dir) then
+    begin
+      ShowMessage('9801:Проект ReactOS создаётся на базе дерева исходников. ' +
+      'В папке нет configure.cmd, CMakeLists.txt или PreLoad.cmake:'#13#10 +
+      Dir + #13#10#13#10'Отметьте "На базе существующего проекта" и ' +
+      'выберите корень исходников (reactos, LiberNT).');
+      Exit;
+    end;
 
     if OnBase then
     begin
@@ -11147,6 +11218,14 @@ begin
         else
           LogDiag('New Project: в ' + Dir + ' есть .pas без файла проекта ' +
           '- заготовка не создаётся, Target пустой');
+    end;
+
+    // ReactOS, папка задана руками (без галки): дерево проверено выше,
+    // главный файл - его configure.cmd
+    if (CompareText(Tp, RosProjectType) = 0) and not OnBase then
+    begin
+      Existing := True;
+      ExMain := Dir + RosMainFile;
     end;
 
     // Проект с этим именем уже есть в списке (editor.ini, [Projects])
@@ -11506,6 +11585,24 @@ begin
         Prj.WriteString('Project', 'IncPath', IncOwnDir);
         Prj.WriteString('Project', 'IncPaths', IncOwnList);
       end;
+      // ReactOS: папка сборки не задана - output-* дерева исходников
+      // (одна - она, несколько - первая с build.ninja)
+      if CompareText(Tp, RosProjectType) = 0 then
+      begin
+        RosCfg.SourceDir := ExtractFilePath(TargetFile);
+        if RosCfg.BuildDir = '' then
+          RosCfg.BuildDir := RosDefaultBuildDir(RosCfg.SourceDir);
+        // RosBE, установленный из меню ReactOS
+        if RosCfg.EnvScript = '' then
+          RosCfg.EnvScript := RosKnownEnvScript;
+        RosSaveSettings(Prj, RosCfg);
+        if RosCfg.BuildDir = '' then
+          LogDiag('New Project: папки сборки output-* в ' +
+          RosCfg.SourceDir + ' нет - задайте её в Project Properties ' +
+          'после configure.cmd')
+        else
+          LogDiag('New Project: папка сборки ' + RosCfg.BuildDir);
+      end;
     finally
       Prj.Free;
     end;
@@ -11757,6 +11854,9 @@ begin
     Result := 'src\main.rs;src\lib.rs;*.rs'
   else if CompareText(AType, 'WebSite') = 0 then
     Result := '*.html;*.htm'
+    // Дерево исходников ReactOS / LiberNT: в корне configure.cmd (RosProj)
+  else if CompareText(AType, RosProjectType) = 0 then
+    Result := RosMainFile
   else
     Result := '';
 end;
@@ -11955,10 +12055,12 @@ begin
 end;
 
 // Имя готового проекта - по главному файлу (Balanset4A.dpr -> Balanset4A).
-// У сайта главный файл - index.html, у Rust - main.rs: имя по папке.
+// У сайта главный файл - index.html, у Rust - main.rs, у ReactOS -
+// configure.cmd: имя по папке.
 function TForm1.NewPrjNameFor(const ADir, AType, AMain: string): string;
 begin
-  if (CompareText(AType, 'WebSite') = 0) or (CompareText(AType, 'Rust') = 0) then
+  if (CompareText(AType, 'WebSite') = 0) or (CompareText(AType, 'Rust') = 0) or
+     (CompareText(AType, RosProjectType) = 0) then
     Result := ExtractFileName(ExcludeTrailingPathDelimiter(ADir))
   else
     Result := ChangeFileExt(ExtractFileName(AMain), '');
@@ -11987,6 +12089,7 @@ begin
     bkRapidQ: Result := 'RapidQ';
     bkFreeBasic: Result := 'FreeBASIC';
     bkArduino: Result := 'Arduino';
+    bkCMakeNinja: Result := 'CMake+Ninja';
   else
     Result := '(не определён)';
   end;
@@ -12326,7 +12429,34 @@ begin
   else if CompareText(PrjType, 'FreeBASIC') = 0 then
     Result := bkFreeBasic
   else if CompareText(PrjType, 'Arduino') = 0 then
-    Result := bkArduino;
+    Result := bkArduino
+  else if CompareText(PrjType, RosProjectType) = 0 then
+    Result := bkCMakeNinja;
+end;
+
+// Настройки проекта ReactOS APrj (RosProj). Папка исходников - папка
+// Target (configure.cmd), без него - папка проекта. Проекта нет - False.
+function TForm1.RosSettingsOf(const APrj: string;
+                              var ASettings: TRosSettings): Boolean;
+var
+  Prj: TProjectIni;
+  SourceDir, Target: string;
+begin
+  Result := False;
+  if (APrj = '') or not ProjectExists(APrj) then
+    Exit;
+  Target := ProjectTargetOf(APrj);
+  if Target <> '' then
+    SourceDir := ExtractFilePath(Target)
+  else
+    SourceDir := ProjectDir(APrj);
+  Prj := TProjectIni.Create(SettingsFileName, APrj);
+  try
+    RosLoadSettings(Prj, SourceDir, ASettings);
+  finally
+    Prj.Free;
+  end;
+  Result := True;
 end;
 
 // Диалект .bas по файлу на диске (BasDialectOfText по первым 64 КБ).
@@ -12655,7 +12785,7 @@ begin
   KindName := FBuildKindManual.Values[LowerCase(ExpandFileName(AFile))];
   if KindName = '' then
     Exit;
-  for KindIdx := bkDelphi to bkArduino do
+  for KindIdx := bkDelphi to bkCMakeNinja do
     if CompareText(BuildKindName(KindIdx), KindName) = 0 then
     begin
       Result := KindIdx;
@@ -12701,6 +12831,7 @@ end;
 function TForm1.BuildTargetOf(AKind: Integer): string;
 var
   Ext, Dir, Folder: string;
+  RosCfg: TRosSettings;
 begin
   Result := '';
   if FCurrentFileName = '' then
@@ -12725,6 +12856,10 @@ begin
       else if (Ext = '.ino') or (Ext = '.pde') then
         Result := FCurrentFileName;
     end;
+    // ReactOS / LiberNT: папка сборки проекта (output-*)
+    bkCMakeNinja:
+      if RosSettingsOf(BuildProject, RosCfg) then
+        Result := RosCfg.BuildDir;
   end;
 end;
 
@@ -12736,6 +12871,7 @@ var
   Kind, OutKind, Bits, RqComp, IncLeft: Integer;
   RqViaFb: Boolean;
   Target, Why, Fqbn, BoardName, BoardText, PortText, ManualMark: string;
+  RosCfg: TRosSettings;
 begin
   if (cmbBuildKind = nil) or (lblBuildTarget = nil) then
     Exit;
@@ -12772,6 +12908,14 @@ Target := '';
   else
     lblBuildTarget.Caption := '» ' + ManualMark + ExtractFileName(Target);
   lblBuildTarget.Hint := Target;
+  // ReactOS: за папкой сборки - цель ninja
+  if (Kind = bkCMakeNinja) and (Target <> '') and
+     RosSettingsOf(BuildProject, RosCfg) then
+  begin
+    lblBuildTarget.Caption := lblBuildTarget.Caption + '  ' +
+                              RosCfg.NinjaTarget;
+    lblBuildTarget.Hint := Target + #13#10 + RosNinjaCommand(RosCfg);
+  end;
 
   // Arduino: список плат на USB; у скетча ещё порт в подписи, плата и
   // порт в подсказке
@@ -13450,7 +13594,7 @@ begin
     Exit;
   end;
   NewKind := cmbBuildKind.ItemIndex;
-  if (NewKind < bkDelphi) or (NewKind > bkArduino) then
+  if (NewKind < bkDelphi) or (NewKind > bkCMakeNinja) then
     NewKind := bkNone;
   SetManualBuildKind(FCurrentFileName, NewKind);
   // Запись в editor.ini [BuildKind] - строкой в лог: по ней видно, когда
@@ -21790,6 +21934,11 @@ begin
     Masks := '*.rs;*.toml'
   else if CompareText(Tp, 'WebSite') = 0 then
     Masks := '*.html;*.htm;*.css;*.js;*.php'
+    // ReactOS / LiberNT: исходники и описания сборки. Папки output-* пока
+    // не исключаются (этап 6 plan.md)
+  else if CompareText(Tp, RosProjectType) = 0 then
+    Masks := '*.c;*.h;*.cpp;*.hpp;*.s;*.asm;*.inc;*.spec;*.rc;*.inf;' +
+             '*.idl;*.cmake;CMakeLists.txt'
   else
     Masks := MainMasksFor(Tp);
   if Masks = '' then
@@ -23221,13 +23370,14 @@ begin
   DsgClipMenuExtra;
   DsgLayoutMenuExtra;
 
-  // Переключатель сборщика: номер пункта - bkDelphi..bkArduino, последний
+  // Переключатель сборщика: номер пункта - bkDelphi..bkCMakeNinja, последний
   // пункт Auto - снова выбор по файлу (UpdateBuildBar, cmbBuildKindChange)
   cmbBuildKind.Items.Clear;
   cmbBuildKind.Items.Add('Delphi');
   cmbBuildKind.Items.Add('RapidQ');
   cmbBuildKind.Items.Add('FreeBASIC');
   cmbBuildKind.Items.Add('Arduino');
+  cmbBuildKind.Items.Add('CMake+Ninja');
   cmbBuildKind.Items.Add('Auto');
   // FreeBASIC: номер пункта - fbOutGui..fbOutDll; 32 и 64 бит
   if cmbFbKind <> nil then
@@ -23683,6 +23833,8 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
 
   // Меню Arduino: Sketchbook, Examples, Include Library, Board, Port ...
   ArdBuildMenu;
+  // Меню ReactOS: где скачать инструменты сборки
+  RosBuildMenu;
 
   // Журнал окна wnd.log рядом с exe: поиск давней ошибки - белые полосы на
   // полосе вкладок и строке состояния, когда поверх окна двигают другое
@@ -48160,6 +48312,27 @@ begin
   end;
 end;
 
+// Снять процесс со всеми дочерними: taskkill /T есть в Windows с XP
+// Professional. Ждём его не дольше 10 с.
+procedure KillProcessTree(APid: DWORD);
+var
+  KillSI: TStartupInfo;
+  KillPI: TProcessInformation;
+  KillCmd: string;
+begin
+  FillChar(KillSI, SizeOf(KillSI), 0);
+  KillSI.cb := SizeOf(KillSI);
+  KillSI.dwFlags := STARTF_USESHOWWINDOW;
+  KillSI.wShowWindow := SW_HIDE;
+  KillCmd := 'taskkill /T /F /PID ' + IntToStr(APid);
+  if not CreateProcess(nil, PChar(KillCmd), nil, nil, False, CREATE_NO_WINDOW,
+                       nil, nil, KillSI, KillPI) then
+    Exit;
+  WaitForSingleObject(KillPI.hProcess, 10000);
+  CloseHandle(KillPI.hThread);
+  CloseHandle(KillPI.hProcess);
+end;
+
 function TForm1.RunCompiler(const AExe, AParams, AWorkDir: string): Integer;
 var
   SecAttr: TSecurityAttributes;
@@ -48175,6 +48348,7 @@ var
   Ini: TIniFile;
   Oem, Ended, Killed: Boolean;
   Avail, Want: DWORD;
+  CreateFlags: DWORD;
 begin
   Result := -1;
   Killed := False;
@@ -48216,7 +48390,15 @@ begin
     SI.hStdInput := 0;
 
     Cmd := '"' + AExe + '" ' + AParams;
-    if not CreateProcess(nil, PChar(Cmd), nil, nil, True, CREATE_NO_WINDOW,
+    // ReactOS: RosBE.cmd вызывает doskey; в процессе без консоли
+    // (CREATE_NO_WINDOW) он завершался аварийно - окно Windows "Прекращена
+    // работа программы" (Windows 7, 15.10.2026). Поэтому - своя консоль,
+    // скрытая (SW_HIDE); вывод всё равно идёт в канал
+    if FRosBuilding then
+      CreateFlags := CREATE_NEW_CONSOLE
+    else
+      CreateFlags := CREATE_NO_WINDOW;
+    if not CreateProcess(nil, PChar(Cmd), nil, nil, True, CreateFlags,
                          nil, PChar(AWorkDir), SI, PI) then
     begin
       LogComp('Не удалось запустить: ' + AExe);
@@ -48240,6 +48422,10 @@ begin
       if not Killed and CompAbortWanted then
       begin
         Killed := True;
+        // ReactOS: под cmd идут ninja и gcc - снимается всё дерево, иначе
+        // они держат канал и работают дальше
+        if FRosBuilding then
+          KillProcessTree(PI.dwProcessId);
         TerminateProcess(PI.hProcess, 1);
         LogComp('Сборка остановлена: компилятор снят кнопкой Стоп');
       end;
@@ -48278,7 +48464,10 @@ begin
           SetLength(Line, Length(Line) - 1);
         if Trim(Line) <> '' then
         begin
-          LogComp(Line);
+          if FRosNinjaRun then
+            RosNinjaLine(Line)
+          else
+            LogComp(Line);
           CompProgressLine(Line);
         end;
         NL := Pos(#10, Acc);
@@ -49795,6 +49984,11 @@ begin
     end;
     bkArduino:
       Result := CompileArduino(False);   // Verify
+    bkCMakeNinja:
+    begin
+      Result := CompileReactOS;
+      UpdateBuildBar;   // папка сборки могла записаться в проект
+    end;
   else
     ShowCompLog;
     if CompLogEdit <> nil then
@@ -49831,6 +50025,238 @@ begin
         LogComp('  Сборки не требуется: python main.py');
     end;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Сборка ReactOS / LiberNT (CMake + Ninja, RosProj). Шаги:
+//    1. configure - если в папке сборки нет build.ninja (или папка не
+//       задана): скрипт окружения и configure.cmd в папке исходников.
+//       Папка сборки не задана - после configure берётся созданная им
+//       output-* и записывается в проект;
+//    2. ninja <цель> в папке сборки.
+//  Каждый шаг - свой .cmd во временной папке (RosBuildScript), запуск -
+//  RunCompiler через cmd.exe: вывод в лог, ошибки gcc - красным и в Error
+//  log. Окно хода сборки открывается всегда: доля шага ninja - по его
+//  строкам "[n/N]", Стоп снимает дерево процессов.
+// ---------------------------------------------------------------------------
+
+const
+  RosStageConfigure = 0;
+  RosStageNinja = 1;
+  // Строки хода ninja в лог - каждая RosNinjaLogEvery-я: их десятки тысяч,
+  // а ход и так виден в окне хода сборки
+  RosNinjaLogEvery = 200;
+
+function TForm1.CompileReactOS: Boolean;
+var
+  BuildPrj, NinjaFile, ImageFile: string;
+  RosCfg: TRosSettings;
+  RosLines: TStringList;
+  Prj: TProjectIni;
+  LineIdx, StepCode: Integer;
+  NeedConfigure: Boolean;
+begin
+  Result := False;
+  ShowCompLog;
+  if CompLogEdit <> nil then
+    CompLogEdit.Lines.Clear;
+  if ErrLogEdit <> nil then
+    ErrLogEdit.Lines.Clear;
+  LogComp('Сборщик: ' + BuildKindName(bkCMakeNinja) + ' (' + FBuildReason +
+  ')');
+  BuildPrj := BuildProject;
+  if not RosSettingsOf(BuildPrj, RosCfg) then
+  begin
+    LogComp('Сборка CMake+Ninja: нет открытого проекта ReactOS - папка ' +
+    'исходников и папка сборки берутся из него');
+    Exit;
+  end;
+  LogComp('Проект: ' + BuildPrj);
+  RosLines := TStringList.Create;
+  try
+    RosDescribeBuild(RosCfg, RosLines);
+    for LineIdx := 0 to RosLines.Count - 1 do
+      LogComp(RosLines[LineIdx]);
+  finally
+    RosLines.Free;
+  end;
+  LogComp('');
+
+  if not RosIsSourceDir(RosCfg.SourceDir) then
+  begin
+    LogComp('Сборка остановлена: ' + RosCfg.SourceDir + ' - не корень ' +
+    'исходников ReactOS');
+    Exit;
+  end;
+  if (RosCfg.EnvScript <> '') and not FileExists(RosCfg.EnvScript) then
+  begin
+    LogComp('Сборка остановлена: нет скрипта окружения ' + RosCfg.EnvScript +
+    ' (Project - Properties, поле "Скрипт RosBE")');
+    Exit;
+  end;
+
+  NeedConfigure := (RosCfg.BuildDir = '') or
+    not FileExists(IncludeTrailingPathDelimiter(RosCfg.BuildDir) +
+                   'build.ninja');
+
+  CompDlgOpen(BuildPrj + '   ' + RosCfg.NinjaTarget);
+  FCompDlg.Caption := 'Сборка ReactOS';
+  FCompDlg.AddStage('configure.cmd', 5);
+  FCompDlg.AddStage('ninja ' + RosCfg.NinjaTarget, 95);
+  FCompDlgOwned := True;
+  FRosBuilding := True;
+  BusyBegin('Сборка ' + BuildPrj);
+  try
+    // 1. configure
+    if NeedConfigure then
+    begin
+      LogComp('--- configure.cmd');
+      FCompDlg.StartStage(RosStageConfigure, 0, '');
+      StepCode := RosRunStep(RosCfg, rsConfigure, RosCfg.SourceDir);
+      if FCompDlg.AbortRequested then
+        Exit;
+      if StepCode <> 0 then
+      begin
+        FCompDlg.EndStage(RosStageConfigure, False,
+                          'код завершения ' + IntToStr(StepCode));
+        LogComp('configure.cmd: код завершения ' + IntToStr(StepCode));
+        Exit;
+      end;
+      // Папка сборки не задана - та, что создал configure; запоминается
+      // в проекте
+      if RosCfg.BuildDir = '' then
+      begin
+        RosCfg.BuildDir := RosDefaultBuildDir(RosCfg.SourceDir);
+        if RosCfg.BuildDir <> '' then
+        begin
+          Prj := TProjectIni.Create(SettingsFileName, BuildPrj);
+          try
+            RosSaveSettings(Prj, RosCfg);
+          finally
+            Prj.Free;
+          end;
+          LogComp('Папка сборки записана в проект: ' + RosCfg.BuildDir);
+        end;
+      end;
+      NinjaFile := IncludeTrailingPathDelimiter(RosCfg.BuildDir) +
+                   'build.ninja';
+      if (RosCfg.BuildDir = '') or not FileExists(NinjaFile) then
+      begin
+        FCompDlg.EndStage(RosStageConfigure, False, 'build.ninja нет');
+        if RosCfg.BuildDir = '' then
+          LogComp('После configure.cmd папки output-* в ' +
+          RosCfg.SourceDir + ' нет')
+        else
+          LogComp('После configure.cmd нет ' + NinjaFile);
+        Exit;
+      end;
+      FCompDlg.EndStage(RosStageConfigure, True, '');
+    end
+    else
+      FCompDlg.SkipStage(RosStageConfigure, 'build.ninja уже есть');
+
+    // 2. ninja
+    LogComp('--- ' + RosNinjaCommand(RosCfg));
+    FCompDlg.StartStage(RosStageNinja, 0, '');
+    FRosNinjaStage := RosStageNinja;
+    FRosNinjaLogged := 0;
+    FRosNinjaRun := True;
+    try
+      StepCode := RosRunStep(RosCfg, rsNinja, RosCfg.BuildDir);
+    finally
+      FRosNinjaRun := False;
+    end;
+    if FCompDlg.AbortRequested then
+      Exit;
+    FCompDlg.EndStage(RosStageNinja, StepCode = 0,
+                      'код завершения ' + IntToStr(StepCode));
+    if StepCode <> 0 then
+    begin
+      LogComp('ninja: код завершения ' + IntToStr(StepCode) +
+      ' - ошибки выше и в Error log');
+      Exit;
+    end;
+    Result := True;
+    ImageFile := IncludeTrailingPathDelimiter(RosCfg.BuildDir) +
+                 RosCfg.NinjaTarget + '.iso';
+    if FileExists(ImageFile) then
+      LogComp('Готово: ' + ImageFile)
+    else
+      LogComp('Готово: ' + RosCfg.NinjaTarget + ' в ' + RosCfg.BuildDir);
+  finally
+    FRosBuilding := False;
+    FCompDlgOwned := False;
+    if Result then
+      BusyEnd('Сборка: готово', True)
+    else
+      BusyEnd('Сборка: не собрано', False);
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result then
+      FCompDlg.FinishBuild(True, 'Готово')
+    else
+      FCompDlg.FinishBuild(False, 'Не собрано, подробности - Compilation log');
+  end;
+end;
+
+// Шаг сборки ReactOS: .cmd во временной папке и запуск через cmd.exe.
+// Результат - код завершения (-1 - не запустился).
+function TForm1.RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
+                           const AWorkDir: string): Integer;
+var
+  Script: TStringList;
+  TempBuf, ComBuf: array[0..MAX_PATH] of Char;
+  ScriptFile, ComSpec: string;
+begin
+  Result := -1;
+  TempBuf[0] := #0;
+  GetTempPath(MAX_PATH, TempBuf);
+  if AStep = rsConfigure then
+    ScriptFile := IncludeTrailingPathDelimiter(TempBuf) + 'unide_ros_configure.cmd'
+  else
+    ScriptFile := IncludeTrailingPathDelimiter(TempBuf) + 'unide_ros_ninja.cmd';
+  Script := TStringList.Create;
+  try
+    RosBuildScript(ASettings, AStep, Script);
+    try
+      Script.SaveToFile(ScriptFile);
+    except
+      LogComp('Не удалось записать ' + ScriptFile);
+      Exit;
+    end;
+  finally
+    Script.Free;
+  end;
+  // Тот же вызов, что в подменах переменных окружения: Windows-вариант
+  ComSpec := 'cmd.exe';
+  if GetEnvironmentVariable(PChar('ComSpec'), ComBuf, SizeOf(ComBuf)) > 0 then
+    ComSpec := ComBuf;
+  // /s /c ""файл"": внешние кавычки снимает cmd, путь с пробелами цел
+  Result := RunCompiler(ComSpec, '/s /c ""' + ScriptFile + '""',
+                        ExcludeTrailingPathDelimiter(AWorkDir));
+end;
+
+// Строка вывода шага ninja. "[n/N] ..." - доля этапа в окне хода и в лог
+// каждая RosNinjaLogEvery-я и последняя; остальные строки (ошибки gcc,
+// предупреждения, вывод команд) - в лог все.
+procedure TForm1.RosNinjaLine(const ALine: string);
+var
+  Done, Total: Integer;
+begin
+  if not RosParseNinjaStatus(ALine, Done, Total) then
+  begin
+    LogComp(ALine);
+    Exit;
+  end;
+  if (FCompDlg <> nil) and FCompDlg.Building then
+  begin
+    FCompDlg.StageFraction(FRosNinjaStage, Done / Total, True,
+                           IntToStr(Done) + ' / ' + IntToStr(Total));
+    FCompDlg.ShowLine(Trim(ALine));
+  end;
+  Inc(FRosNinjaLogged);
+  if (FRosNinjaLogged mod RosNinjaLogEvery = 1) or (Done = Total) then
+    LogComp(ALine);
 end;
 
 // ---------------------------------------------------------------------------
@@ -55936,6 +56362,9 @@ bkArduino:
 btnCompileRun.Hint := 'Собрать скетч (arduino-cli compile) и ' +
     'загрузить в плату (Upload). Плата и порт - ' +
     'меню Arduino - Board и Port';
+bkCMakeNinja:
+btnCompileRun.Hint := 'ReactOS / LiberNT: собрать цель ninja (если ' +
+    'build.ninja нет - сначала configure.cmd). Запуска нет';
   else
     btnCompileRun.Hint := 'Сборка ' + BuildKindName(Kind) +
     ' здесь пока не подключена';
@@ -61500,6 +61929,587 @@ begin
   NewItem('-', nil, False);
 end;
 
+// Меню ReactOS - после Arduino. Download Build Tools: страницы загрузки
+// инструментов (RosToolLinks); адрес - в Hint пункта, его же видно в
+// строке состояния.
+procedure TForm1.RosBuildMenu;
+var
+  RosMenu, ToolsMenu, LinkItem: TMenuItem;
+  Links: TStringList;
+  LinkIdx: Integer;
+begin
+  RosMenu := TMenuItem.Create(Self);
+  RosMenu.Caption := 'ReactOS';
+  RosMenu.AutoHotkeys := maManual;
+  MainMenu1.Items.Insert(mArduino.MenuIndex + 1, RosMenu);
+
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Install RosBE 2.2.1 (reactosVG14)...';
+  LinkItem.Hint := 'Скачать установщик RosBE 2.2.1 и установить; путь к ' +
+                   'RosBE.cmd - в проект ReactOS';
+  LinkItem.OnClick := RosInstallRosBEClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Install 7-Zip ' + SevenZipVersion + '...';
+  LinkItem.Hint := 'Скачать 7-Zip с GitHub и установить - нужен для ' +
+                   'Install RosBE';
+  LinkItem.OnClick := RosInstall7ZipClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := '-';
+  RosMenu.Add(LinkItem);
+
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Update pci.ids...';
+  LinkItem.Hint := 'Скачать базу pci.ids в ' + PciIdsRelFile + ' открытого ' +
+                   'проекта ReactOS';
+  LinkItem.OnClick := RosUpdatePciIdsClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Generate System Devices INF...';
+  LinkItem.Hint := 'Создать ' + PciInfRelFile + ' из pci.ids: имена мостов ' +
+                   'и служебных устройств чипсетов';
+  LinkItem.OnClick := RosGenPciInfClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := '-';
+  RosMenu.Add(LinkItem);
+
+  ToolsMenu := TMenuItem.Create(Self);
+  ToolsMenu.Caption := 'Download Build Tools';
+  ToolsMenu.AutoHotkeys := maManual;
+  RosMenu.Add(ToolsMenu);
+
+  Links := TStringList.Create;
+  try
+    RosToolLinks(Links);
+    for LinkIdx := 0 to Links.Count - 1 do
+    begin
+      LinkItem := TMenuItem.Create(Self);
+      if Links[LinkIdx] = '-' then
+        LinkItem.Caption := '-'
+      else
+      begin
+        LinkItem.Caption := Links.Names[LinkIdx];
+        LinkItem.Hint := Links.Values[Links.Names[LinkIdx]];
+        LinkItem.OnClick := RosToolLinkClick;
+      end;
+      ToolsMenu.Add(LinkItem);
+    end;
+  finally
+    Links.Free;
+  end;
+end;
+
+// Страница загрузки - в браузере по умолчанию
+procedure TForm1.RosToolLinkClick(Sender: TObject);
+var
+  LinkUrl: string;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  LinkUrl := TMenuItem(Sender).Hint;
+  if LinkUrl = '' then
+    Exit;
+  if ShellExecute(Handle, 'open', PChar(LinkUrl), nil, nil,
+                  SW_SHOWNORMAL) <= 32 then
+    ShowMessage('9802:Не удалось открыть в браузере:'#13#10 + LinkUrl);
+end;
+
+// RosBE.cmd, установленный из меню ReactOS (editor.ini [ReactOS]
+// RosBE221Dir), иначе - из записи установщика RosBE; нет - пусто
+function TForm1.RosKnownEnvScript: string;
+var
+  Ini: TIniFile;
+  RosDir: string;
+begin
+  RosDir := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      RosDir := Ini.ReadString('ReactOS', 'RosBE221Dir', '');
+    finally
+      Ini.Free;
+    end;
+  end;
+  if RosBEInstalledIn(RosDir) then
+    Result := IncludeTrailingPathDelimiter(RosDir) + RosBEScript
+  else
+    // Установлен не из меню - запись установщика RosBE
+    Result := RosBERegisteredScript;
+end;
+
+// Ход скачивания и ожидания установщика - в окне хода сборки; Стоп -
+// остановить
+function TForm1.RosInstallProgress(ADone, ATotal: Cardinal): Boolean;
+begin
+  Result := not ((FCompDlg <> nil) and FCompDlg.AbortRequested);
+  if (FCompDlg <> nil) and (ATotal > 0) then
+    FCompDlg.StageFraction(FRosInstallStage, ADone / ATotal, True,
+                           Format('%d из %d МБ', [ADone div 1048576,
+                                                  ATotal div 1048576]));
+  BusyTick;
+  Application.ProcessMessages;
+end;
+
+// ReactOS - Install RosBE 2.2.1. Уже есть (запись App Paths или
+// C:\RosBE\RosBE.cmd) - только запоминается путь. Иначе установщик с
+// SourceForge во временную папку и распаковка 7-Zip в C:\RosBE: сам
+// установщик не проходит свою проверку целостности (RosTools). Путь
+// RosBE.cmd - в editor.ini и в скрипт окружения открытого проекта ReactOS,
+// если он там не задан.
+procedure TForm1.RosInstallRosBEClick(Sender: TObject);
+var
+  EnvScript, InstallDir, Installer, ErrText, FileHash, SevenZip: string;
+  TempBuf: array[0..MAX_PATH] of Char;
+  StageDownload, StageExtract, Stage7Zip, ExtractCode: Integer;
+  Ini: TIniFile;
+  Prj: TProjectIni;
+  RosCfg: TRosSettings;
+  Done, Need7Zip: Boolean;
+begin
+  ShowCompLog;
+  InstallDir := RosBE221DefaultDir;
+  EnvScript := RosBERegisteredScript;
+  if (EnvScript = '') and RosBEInstalledIn(InstallDir) then
+    EnvScript := IncludeTrailingPathDelimiter(InstallDir) + RosBEScript;
+  if EnvScript <> '' then
+    LogComp('RosBE: уже установлен - ' + EnvScript)
+  else
+  begin
+    SevenZip := RosFind7Zip;
+    Need7Zip := SevenZip = '';
+    if Need7Zip then
+    begin
+      if MessageDlg('9805:Для установки RosBE 2.2.1 нужен 7-Zip: ' +
+                    'установщик с SourceForge не проходит собственную ' +
+                    'проверку целостности, и файлы RosBE берутся из него ' +
+                    'распаковкой. 7-Zip не найден.'#13#10#13#10'Скачать ' +
+                    '7-Zip ' + SevenZipVersion + ' с GitHub и установить? ' +
+                    'Windows спросит разрешение (права администратора).',
+                    mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+      begin
+        LogComp('RosBE: 7-Zip не найден, установка отменена');
+        Exit;
+      end;
+    end;
+    if MessageDlg('9803:RosBE 2.2.1 будет скачан с SourceForge (74 МБ) и ' +
+                  'распакован 7-Zip в ' + InstallDir + ' (около 300 МБ).' +
+                  #13#10#13#10'Установщик с SourceForge не проходит ' +
+                  'собственную проверку целостности и не запускается, ' +
+                  'поэтому файлы берутся из него распаковкой - без ' +
+                  'ярлыков и записей в реестре; RosBE.cmd они не нужны.',
+                  mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+      Exit;
+
+    GetTempPath(MAX_PATH, TempBuf);
+    Installer := IncludeTrailingPathDelimiter(TempBuf) + RosBE221File;
+    CompDlgOpen('RosBE 2.2.1');
+    FCompDlg.Caption := 'Установка RosBE';
+    Stage7Zip := -1;
+    if Need7Zip then
+      Stage7Zip := FCompDlg.AddStage('7-Zip ' + SevenZipVersion, 10);
+    StageDownload := FCompDlg.AddStage('Скачивание ' + RosBE221File, 55);
+    StageExtract := FCompDlg.AddStage('Распаковка в ' + InstallDir, 35);
+    Done := False;
+    BusyBegin('Установка RosBE 2.2.1');
+    try
+      if Need7Zip then
+      begin
+        SevenZip := RosSetup7Zip(Stage7Zip);
+        if SevenZip = '' then
+          Exit;
+      end;
+      // Скачанный раньше файл с той же SHA-256 - не качаем заново;
+      // другой - удаляется и скачивается снова
+      if FileExists(Installer) and (FileSizeOf(Installer) = RosBE221Size) and
+         (RosFileSha256(Installer) = RosBE221Sha256) then
+        FCompDlg.SkipStage(StageDownload, 'уже скачан, SHA-256 совпадает')
+      else
+      begin
+        LogComp('RosBE: скачивание ' + RosBE221Url);
+        FCompDlg.StartStage(StageDownload, 0, '');
+        FRosInstallStage := StageDownload;
+        if not RosDownload(RosBE221Url, Installer, RosInstallProgress,
+                           ErrText) then
+        begin
+          FCompDlg.EndStage(StageDownload, False, ErrText);
+          LogComp('RosBE: не скачан - ' + ErrText);
+          Exit;
+        end;
+        FileHash := RosFileSha256(Installer);
+        if FileHash <> RosBE221Sha256 then
+        begin
+          FCompDlg.EndStage(StageDownload, False, 'SHA-256 не совпадает');
+          if FileHash = '' then
+            FileHash := 'не вычислена';
+          LogComp('RosBE: SHA-256 скачанного файла ' + FileHash +
+          ', ожидалась ' + RosBE221Sha256 + ' - файл удалён, установка ' +
+          'не запускается');
+          DeleteFile(Installer);
+          Exit;
+        end;
+        FCompDlg.EndStage(StageDownload, True, 'SHA-256 совпадает');
+      end;
+
+      LogComp('RosBE: распаковка в ' + InstallDir + ' - ' + SevenZip);
+      FCompDlg.StartStage(StageExtract, 0, '7-Zip');
+      FRosInstallStage := StageExtract;
+      // Как при сборке ReactOS: строки 7-Zip не разбираются как вывод fbc,
+      // Стоп снимает 7z.exe
+      FRosBuilding := True;
+      try
+        ExtractCode := RunCompiler(SevenZip,
+                                   RosExtractArgs(Installer, InstallDir),
+                                   ExtractFileDir(Installer));
+      finally
+        FRosBuilding := False;
+      end;
+      Done := (ExtractCode = 0) and RosBEInstalledIn(InstallDir);
+      FCompDlg.EndStage(StageExtract, Done,
+                        'код 7-Zip ' + IntToStr(ExtractCode));
+      if not Done then
+      begin
+        LogComp('RosBE: 7-Zip завершился с кодом ' + IntToStr(ExtractCode) +
+        ', ' + InstallDir + '\' + RosBEScript + ' нет. Старые версии ' +
+        '7-Zip могут не открывать установщики NSIS 3 - тогда нужен ' +
+        'новый 7-Zip');
+        Exit;
+      end;
+      EnvScript := IncludeTrailingPathDelimiter(InstallDir) + RosBEScript;
+    finally
+      BusyEnd('Установка RosBE', Done);
+      if FCompDlg.AbortRequested then
+        FCompDlg.FinishBuild(False, 'Остановлено')
+      else if Done then
+        FCompDlg.FinishBuild(True, 'Установлено')
+      else
+        FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
+                             'Compilation log');
+    end;
+  end;
+
+  // Путь - в editor.ini и в открытый проект ReactOS без скрипта окружения
+  InstallDir := ExtractFileDir(EnvScript);
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Ini.WriteString('ReactOS', 'RosBE221Dir', InstallDir);
+  finally
+    Ini.Free;
+  end;
+  LogComp('RosBE: ' + EnvScript);
+  if (ProjectBuildKind(FCurrentProject) = bkCMakeNinja) and
+     RosSettingsOf(FCurrentProject, RosCfg) and (RosCfg.EnvScript = '') then
+  begin
+    RosCfg.EnvScript := EnvScript;
+    Prj := TProjectIni.Create(SettingsFileName, FCurrentProject);
+    try
+      RosSaveSettings(Prj, RosCfg);
+    finally
+      Prj.Free;
+    end;
+    LogComp('RosBE: скрипт окружения записан в проект ' + FCurrentProject);
+  end;
+end;
+
+// Скачать 7-Zip 24.09 (x64 или x86 - по Windows) во временную папку и
+// установить без окон. Ход - на этапе AStage окна хода. Результат - 7z.exe
+// после установки; не вышло - пусто, причина в журнале.
+function TForm1.RosSetup7Zip(AStage: Integer): string;
+var
+  Url, Hash, Setup, ErrText: string;
+  TempBuf: array[0..MAX_PATH] of Char;
+  SetupCode: DWORD;
+begin
+  Result := '';
+  if RosIs64BitWindows then
+  begin
+    Url := SevenZipUrl64;
+    Hash := SevenZipSha64;
+  end
+  else
+  begin
+    Url := SevenZipUrl32;
+    Hash := SevenZipSha32;
+  end;
+  GetTempPath(MAX_PATH, TempBuf);
+  Setup := IncludeTrailingPathDelimiter(TempBuf) +
+           Copy(Url, LastDelimiter('/', Url) + 1, MaxInt);
+  FCompDlg.StartStage(AStage, 0, 'скачивание');
+  FRosInstallStage := AStage;
+  if RosFileSha256(Setup) <> Hash then
+  begin
+    LogComp('7-Zip: скачивание ' + Url);
+    if not RosDownload(Url, Setup, RosInstallProgress, ErrText) then
+    begin
+      FCompDlg.EndStage(AStage, False, ErrText);
+      LogComp('7-Zip: не скачан - ' + ErrText);
+      Exit;
+    end;
+    if RosFileSha256(Setup) <> Hash then
+    begin
+      FCompDlg.EndStage(AStage, False, 'SHA-256 не совпадает');
+      LogComp('7-Zip: SHA-256 скачанного файла не совпадает с ' + Hash +
+      ' - файл удалён, установка не запускается');
+      DeleteFile(Setup);
+      Exit;
+    end;
+  end;
+  LogComp('7-Zip: установка без окон - ' + Setup);
+  FCompDlg.StageFraction(AStage, 0.5, False, 'ответьте на запрос Windows');
+  if not RosRunInstaller(Setup, '/S', RosInstallProgress, SetupCode,
+                         ErrText) then
+  begin
+    FCompDlg.EndStage(AStage, False, ErrText);
+    LogComp('7-Zip: ' + ErrText);
+    Exit;
+  end;
+  Result := RosFind7Zip;
+  FCompDlg.EndStage(AStage, Result <> '',
+                    'код завершения ' + IntToStr(SetupCode));
+  if Result = '' then
+    LogComp('7-Zip: установщик завершился с кодом ' + IntToStr(SetupCode) +
+    ', 7z.exe не найден')
+  else
+    LogComp('7-Zip: ' + Result);
+end;
+
+// ReactOS - Install 7-Zip: уже есть - только сообщение в журнале
+procedure TForm1.RosInstall7ZipClick(Sender: TObject);
+var
+  SevenZip: string;
+  Stage7Zip: Integer;
+begin
+  ShowCompLog;
+  SevenZip := RosFind7Zip;
+  if SevenZip <> '' then
+  begin
+    LogComp('7-Zip: уже установлен - ' + SevenZip);
+    Exit;
+  end;
+  if MessageDlg('9806:7-Zip ' + SevenZipVersion + ' будет скачан с GitHub ' +
+                '(1,6 МБ) и установлен в Program Files\7-Zip.'#13#10 +
+                'Windows спросит разрешение (права администратора).',
+                mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  CompDlgOpen('7-Zip ' + SevenZipVersion);
+  FCompDlg.Caption := 'Установка 7-Zip';
+  Stage7Zip := FCompDlg.AddStage('7-Zip ' + SevenZipVersion, 100);
+  BusyBegin('Установка 7-Zip');
+  try
+    SevenZip := RosSetup7Zip(Stage7Zip);
+  finally
+    BusyEnd('Установка 7-Zip', SevenZip <> '');
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if SevenZip <> '' then
+      FCompDlg.FinishBuild(True, 'Установлено')
+    else
+      FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
+                           'Compilation log');
+  end;
+end;
+
+// Папка исходников открытого проекта ReactOS (настройки - в ASettings).
+// Проект не открыт или не ReactOS - сообщение и False.
+function TForm1.RosPciSourceDir(var ASettings: TRosSettings): Boolean;
+begin
+  Result := (ProjectBuildKind(FCurrentProject) = bkCMakeNinja) and
+            RosSettingsOf(FCurrentProject, ASettings) and
+            RosIsSourceDir(ASettings.SourceDir);
+  if not Result then
+    ShowMessage('9807:Откройте проект ReactOS / LiberNT: pci.ids и ' +
+                'pciids.inf лежат в его дереве исходников.');
+end;
+
+// Скачать pci.ids в sdk\tools\pciids дерева ASourceDir. Скачивается в
+// pci.ids.new; файл без заголовка Version или без устройств удаляется, и
+// прежний остаётся. В журнал - версии прежней и новой базы и разница для
+// производителей AVendors. Окно хода открыто вызывающим, этап - AStage.
+function TForm1.RosDownloadPciIds(const ASourceDir, AVendors: string;
+                                  AStage: Integer): Boolean;
+var
+  DbFile, NewFile, ErrText, Invalid, NewVersion: string;
+  OldDb, NewDb: TPciDb;
+  VendorList: TStringList;
+  Compare: TPciCompare;
+begin
+  Result := False;
+  DbFile := PciPath(ASourceDir, PciIdsRelFile);
+  NewFile := DbFile + '.new';
+  ForceDirectories(ExtractFileDir(DbFile));
+  LogComp('pci.ids: скачивание ' + PciIdsUrl);
+  FCompDlg.StartStage(AStage, 0, '');
+  FRosInstallStage := AStage;
+  if not RosDownload(PciIdsUrl, NewFile, RosInstallProgress, ErrText) then
+  begin
+    FCompDlg.EndStage(AStage, False, ErrText);
+    LogComp('pci.ids: не скачан - ' + ErrText);
+    Exit;
+  end;
+  OldDb := TPciDb.Create;
+  NewDb := TPciDb.Create;
+  VendorList := TStringList.Create;
+  try
+    if not NewDb.LoadFromFile(NewFile) then
+    begin
+      FCompDlg.EndStage(AStage, False, 'это не pci.ids');
+      LogComp('pci.ids: в скачанном файле нет заголовка Version или ' +
+      'устройств - файл удалён, прежний не тронут');
+      DeleteFile(NewFile);
+      Exit;
+    end;
+    NewVersion := NewDb.Version;
+    if OldDb.LoadFromFile(DbFile) then
+    begin
+      PciParseVendors(AVendors, VendorList, Invalid);
+      PciCompareDb(OldDb, NewDb, VendorList, Compare);
+      LogComp('pci.ids: было ' + OldDb.Version + ' (' + OldDb.Date +
+      '), стало ' + NewDb.Version + ' (' + NewDb.Date + ')');
+      LogComp(Format('pci.ids: у производителей из списка проекта новых ' +
+      'устройств %d, с другим именем %d, удалено %d', [Compare.Added,
+      Compare.Changed, Compare.Removed]));
+    end
+    else
+      LogComp('pci.ids: ' + NewDb.Version + ' (' + NewDb.Date + '), ' +
+      'прежнего файла не было');
+  finally
+    OldDb.Free;
+    NewDb.Free;
+    VendorList.Free;
+  end;
+  if (FileExists(DbFile) and not DeleteFile(DbFile)) or
+     not RenameFile(NewFile, DbFile) then
+  begin
+    FCompDlg.EndStage(AStage, False, 'не заменён');
+    LogComp('pci.ids: не удалось заменить ' + DbFile + ' файлом ' + NewFile);
+    Exit;
+  end;
+  FCompDlg.EndStage(AStage, True, 'версия ' + NewVersion);
+  LogComp('pci.ids: ' + DbFile + ' (в git не добавлен)');
+  Result := True;
+end;
+
+// ReactOS - Update pci.ids: база в дерево исходников открытого проекта
+procedure TForm1.RosUpdatePciIdsClick(Sender: TObject);
+var
+  RosCfg: TRosSettings;
+  StageDownload: Integer;
+  Done: Boolean;
+begin
+  if not RosPciSourceDir(RosCfg) then
+    Exit;
+  ShowCompLog;
+  CompDlgOpen('pci.ids');
+  FCompDlg.Caption := 'Обновление pci.ids';
+  StageDownload := FCompDlg.AddStage('Скачивание pci.ids', 100);
+  Done := False;
+  BusyBegin('Обновление pci.ids');
+  try
+    Done := RosDownloadPciIds(RosCfg.SourceDir, RosCfg.PciVendors,
+                              StageDownload);
+  finally
+    BusyEnd('Обновление pci.ids', Done);
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Done then
+      FCompDlg.FinishBuild(True, 'Обновлено')
+    else
+      FCompDlg.FinishBuild(False, 'Не обновлено, подробности - ' +
+                           'Compilation log');
+  end;
+end;
+
+// ReactOS - Generate System Devices INF: media\inf\pciids.inf из pci.ids
+// (PciIds). Отчёт - sdk\tools\pciids\pciids-report.txt, сводка - в
+// журнал; файла нет в INF_FILES - предложение вписать.
+procedure TForm1.RosGenPciInfClick(Sender: TObject);
+var
+  RosCfg: TRosSettings;
+  Report: TStringList;
+  Stats: TPciGenStats;
+  ErrText, ReportFile, Line: string;
+  LineIdx: Integer;
+  Generated: Boolean;
+begin
+  if not RosPciSourceDir(RosCfg) then
+    Exit;
+  ShowCompLog;
+  if not FileExists(PciPath(RosCfg.SourceDir, PciIdsRelFile)) then
+  begin
+    if MessageDlg('9808:В дереве исходников нет ' + PciIdsRelFile +
+                  '.'#13#10#13#10'Скачать pci.ids с ' + PciIdsUrl + '?',
+                  mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+      Exit;
+    RosUpdatePciIdsClick(nil);
+    if not FileExists(PciPath(RosCfg.SourceDir, PciIdsRelFile)) then
+      Exit;
+  end;
+
+  Report := TStringList.Create;
+  try
+    LogComp('pciids.inf: генерация, производители для NO_DRV - ' +
+            RosCfg.PciVendors);
+    Screen.Cursor := crHourGlass;
+    try
+      Generated := PciGenerateInf(RosCfg.SourceDir, RosCfg.PciVendors,
+                                  Report, Stats, ErrText);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+    if not Generated then
+    begin
+      LogComp('pciids.inf: не создан - ' + ErrText);
+      ShowMessage('9809:pciids.inf не создан: ' + ErrText);
+      Exit;
+    end;
+
+    ReportFile := PciPath(RosCfg.SourceDir, PciReportRelFile);
+    try
+      Report.SaveToFile(ReportFile);
+    except
+      on E: Exception do
+        LogComp('pciids.inf: отчёт не записан - ' + E.Message);
+    end;
+    // В журнал - сводка без числа записей по производителям и без
+    // списков изменений и проверки (они в отчёте)
+    for LineIdx := 0 to Report.Count - 1 do
+    begin
+      Line := Report[LineIdx];
+      if (Line = '') or (Copy(Line, 1, 2) = '  ') or
+         (Copy(Line, 1, 4) = 'PCI\') or (Copy(Line, 2, 1) = ' ') then
+        Continue;
+      LogComp('pciids.inf: ' + Line);
+    end;
+    LogComp('pciids.inf: отчёт - ' + ReportFile);
+
+    if not PciCMakeHasInf(RosCfg.SourceDir) and
+       (MessageDlg('9810:' + PciInfName + ' нет в списке INF_FILES в ' +
+                   PciCMakeRelFile + ', и на образ диска он не ' +
+                   'попадёт.'#13#10#13#10'Вписать его после machine.inf?',
+                   mtConfirmation, [mbOK, mbCancel], 0) = mrOk) then
+    begin
+      if PciCMakeAddInf(RosCfg.SourceDir) then
+        LogComp('pciids.inf: вписан в ' + PciCMakeRelFile + '; ninja ' +
+        'перезапустит cmake при следующей сборке')
+      else
+        LogComp('pciids.inf: не вписан - в ' + PciCMakeRelFile + ' нет ' +
+        'строки machine.inf в list(APPEND INF_FILES ...)');
+    end;
+
+    if MessageDlg(Format('9811:Создан %s: записей %d (PCI_ISA_Inst %d, ' +
+                  'PCI_Inst %d, NO_DRV %d), на ручную проверку ' +
+                  '%d.'#13#10#13#10'Открыть отчёт (изменения и список на ' +
+                  'проверку)?', [PciInfRelFile, Stats.PciIsa + Stats.Pci +
+                  Stats.NoDrv, Stats.PciIsa, Stats.Pci, Stats.NoDrv,
+                  Stats.Review]), mtInformation, [mbYes, mbNo], 0) = mrYes then
+      OpenNamedFile(ReportFile);
+  finally
+    Report.Free;
+  end;
+end;
+
 procedure TForm1.ArdFreeAll;
 begin
   // Слежение за портами - первым: окно и подписка на события Windows
@@ -62454,7 +63464,7 @@ begin
   else if HasTag('hint:') then
     Inc(FCompProgHints);
   FCompDlg.SetCounts(FCompProgErrors, FCompProgWarns, FCompProgHints);
-  if FCompDlgOwned then
+  if FCompDlgOwned and not FRosBuilding then
     RqFbFbcLine(ALine);
 end;
 
