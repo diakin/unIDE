@@ -46,6 +46,7 @@ uses
   RosProj,        // проект ReactOS / LiberNT: CMake + Ninja (TRosSettings)
   PciIds,         // pci.ids и media\inf\pciids.inf (меню ReactOS)
   RosTools,       // скачивание и установка RosBE
+  SzSetup,        // свой 7-Zip unIDE (tools\7zip): поиск и установка
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -61950,9 +61951,9 @@ begin
   LinkItem.OnClick := RosInstallRosBEClick;
   RosMenu.Add(LinkItem);
   LinkItem := TMenuItem.Create(Self);
-  LinkItem.Caption := 'Install 7-Zip ' + SevenZipVersion + '...';
-  LinkItem.Hint := 'Скачать 7-Zip с GitHub и установить - нужен для ' +
-                   'Install RosBE';
+  LinkItem.Caption := 'Install 7-Zip ' + SzVersion + ' (tools\7zip)...';
+  LinkItem.Hint := 'Скачать свой 7-Zip unIDE в tools\7zip - для Install ' +
+                   'RosBE и архивов unIDE FAR; системный 7-Zip не меняется';
   LinkItem.OnClick := RosInstall7ZipClick;
   RosMenu.Add(LinkItem);
   LinkItem := TMenuItem.Create(Self);
@@ -62045,7 +62046,12 @@ end;
 function TForm1.RosInstallProgress(ADone, ATotal: Cardinal): Boolean;
 begin
   Result := not ((FCompDlg <> nil) and FCompDlg.AbortRequested);
-  if (FCompDlg <> nil) and (ATotal > 0) then
+  // Маленькие файлы (7-Zip, около 2 МБ) - в КБ
+  if (FCompDlg <> nil) and (ATotal > 0) and (ATotal < 10 * 1048576) then
+    FCompDlg.StageFraction(FRosInstallStage, ADone / ATotal, True,
+                           Format('%d из %d КБ', [ADone div 1024,
+                                                  ATotal div 1024]))
+  else if (FCompDlg <> nil) and (ATotal > 0) then
     FCompDlg.StageFraction(FRosInstallStage, ADone / ATotal, True,
                            Format('%d из %d МБ', [ADone div 1048576,
                                                   ATotal div 1048576]));
@@ -62078,16 +62084,19 @@ begin
     LogComp('RosBE: уже установлен - ' + EnvScript)
   else
   begin
-    SevenZip := RosFind7Zip;
+    // Свой 7-Zip unIDE (tools\7zip, SzSetup); системный не используется
+    SevenZip := string(SzLocalExe);
     Need7Zip := SevenZip = '';
     if Need7Zip then
     begin
       if MessageDlg('9805:Для установки RosBE 2.2.1 нужен 7-Zip: ' +
                     'установщик с SourceForge не проходит собственную ' +
                     'проверку целостности, и файлы RosBE берутся из него ' +
-                    'распаковкой. 7-Zip не найден.'#13#10#13#10'Скачать ' +
-                    '7-Zip ' + SevenZipVersion + ' с GitHub и установить? ' +
-                    'Windows спросит разрешение (права администратора).',
+                    'распаковкой. Своего 7-Zip у unIDE ещё нет.'#13#10#13#10 +
+                    'Скачать 7-Zip ' + SzVersion + ' с GitHub (около 2 МБ) ' +
+                    'в папку unIDE tools\7zip? Установленный в системе ' +
+                    '7-Zip не используется и не меняется, права ' +
+                    'администратора не нужны.',
                     mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
       begin
         LogComp('RosBE: 7-Zip не найден, установка отменена');
@@ -62109,7 +62118,7 @@ begin
     FCompDlg.Caption := 'Установка RosBE';
     Stage7Zip := -1;
     if Need7Zip then
-      Stage7Zip := FCompDlg.AddStage('7-Zip ' + SevenZipVersion, 10);
+      Stage7Zip := FCompDlg.AddStage('7-Zip ' + SzVersion, 10);
     StageDownload := FCompDlg.AddStage('Скачивание ' + RosBE221File, 55);
     StageExtract := FCompDlg.AddStage('Распаковка в ' + InstallDir, 35);
     Done := False;
@@ -62213,89 +62222,65 @@ begin
   end;
 end;
 
-// Скачать 7-Zip 24.09 (x64 или x86 - по Windows) во временную папку и
-// установить без окон. Ход - на этапе AStage окна хода. Результат - 7z.exe
-// после установки; не вышло - пусто, причина в журнале.
+// Скачать свой 7-Zip unIDE (SzSetup: сборка по Windows, tools\7zip у exe
+// или в профиле) - без установщика и прав администратора, системный 7-Zip
+// не меняется. Ход - на этапе AStage окна хода. Результат - 7z.exe; не
+// вышло - пусто, причина в журнале.
 function TForm1.RosSetup7Zip(AStage: Integer): string;
 var
-  Url, Hash, Setup, ErrText: string;
-  TempBuf: array[0..MAX_PATH] of Char;
-  SetupCode: DWORD;
+  Package: TSzPackage;
+  ErrText: string;
 begin
   Result := '';
-  if RosIs64BitWindows then
-  begin
-    Url := SevenZipUrl64;
-    Hash := SevenZipSha64;
-  end
-  else
-  begin
-    Url := SevenZipUrl32;
-    Hash := SevenZipSha32;
-  end;
-  GetTempPath(MAX_PATH, TempBuf);
-  Setup := IncludeTrailingPathDelimiter(TempBuf) +
-           Copy(Url, LastDelimiter('/', Url) + 1, MaxInt);
   FCompDlg.StartStage(AStage, 0, 'скачивание');
   FRosInstallStage := AStage;
-  if RosFileSha256(Setup) <> Hash then
-  begin
-    LogComp('7-Zip: скачивание ' + Url);
-    if not RosDownload(Url, Setup, RosInstallProgress, ErrText) then
-    begin
-      FCompDlg.EndStage(AStage, False, ErrText);
-      LogComp('7-Zip: не скачан - ' + ErrText);
-      Exit;
-    end;
-    if RosFileSha256(Setup) <> Hash then
-    begin
-      FCompDlg.EndStage(AStage, False, 'SHA-256 не совпадает');
-      LogComp('7-Zip: SHA-256 скачанного файла не совпадает с ' + Hash +
-      ' - файл удалён, установка не запускается');
-      DeleteFile(Setup);
-      Exit;
-    end;
-  end;
-  LogComp('7-Zip: установка без окон - ' + Setup);
-  FCompDlg.StageFraction(AStage, 0.5, False, 'ответьте на запрос Windows');
-  if not RosRunInstaller(Setup, '/S', RosInstallProgress, SetupCode,
-                         ErrText) then
+  LogComp('7-Zip: скачивание в ' + string(SzChooseTargetDir));
+  if not SzInstallSync(RosInstallProgress, Package, ErrText) then
   begin
     FCompDlg.EndStage(AStage, False, ErrText);
-    LogComp('7-Zip: ' + ErrText);
+    LogComp('7-Zip: не установлен - ' + ErrText);
     Exit;
   end;
-  Result := RosFind7Zip;
-  FCompDlg.EndStage(AStage, Result <> '',
-                    'код завершения ' + IntToStr(SetupCode));
-  if Result = '' then
-    LogComp('7-Zip: установщик завершился с кодом ' + IntToStr(SetupCode) +
-    ', 7z.exe не найден')
-  else
-    LogComp('7-Zip: ' + Result);
+  Result := string(SzLocalExe);
+  FCompDlg.EndStage(AStage, Result <> '', '7-Zip ' + Package.Version + ' (' +
+                    Package.Arch + ')');
+  LogComp('7-Zip ' + Package.Version + ' (' + Package.Arch + '): ' + Result);
 end;
 
-// ReactOS - Install 7-Zip: уже есть - только сообщение в журнале
+// ReactOS - Install 7-Zip: свой 7-Zip unIDE в tools\7zip. Уже есть той же
+// версии или новее - только сообщение в журнале; старее - предложить
+// обновить
 procedure TForm1.RosInstall7ZipClick(Sender: TObject);
 var
-  SevenZip: string;
+  SevenZip, Installed: string;
   Stage7Zip: Integer;
 begin
   ShowCompLog;
-  SevenZip := RosFind7Zip;
+  SevenZip := string(SzLocalExe);
   if SevenZip <> '' then
   begin
-    LogComp('7-Zip: уже установлен - ' + SevenZip);
+    Installed := SzFileVersion(SevenZip);
+    if not SzVersionOlder(Installed, SzVersion) then
+    begin
+      LogComp('7-Zip: уже есть - ' + SevenZip + ' (версия ' + Installed + ')');
+      Exit;
+    end;
+    if MessageDlg('9812:Свой 7-Zip unIDE - версия ' + Installed + ' (' +
+                  SevenZip + ').'#13#10'Скачать и поставить вместо него ' +
+                  '7-Zip ' + SzVersion + '?', mtConfirmation,
+                  [mbOK, mbCancel], 0) <> mrOk then
+      Exit;
+  end
+  else if MessageDlg('9806:7-Zip ' + SzVersion + ' будет скачан с GitHub ' +
+                     '(около 2 МБ) в папку unIDE tools\7zip - свой 7-Zip ' +
+                     'unIDE для установки RosBE и архивов unIDE FAR.'#13#10 +
+                     'Установленный в системе 7-Zip не используется и не ' +
+                     'меняется, права администратора не нужны.',
+                     mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
     Exit;
-  end;
-  if MessageDlg('9806:7-Zip ' + SevenZipVersion + ' будет скачан с GitHub ' +
-                '(1,6 МБ) и установлен в Program Files\7-Zip.'#13#10 +
-                'Windows спросит разрешение (права администратора).',
-                mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
-    Exit;
-  CompDlgOpen('7-Zip ' + SevenZipVersion);
+  CompDlgOpen('7-Zip ' + SzVersion);
   FCompDlg.Caption := 'Установка 7-Zip';
-  Stage7Zip := FCompDlg.AddStage('7-Zip ' + SevenZipVersion, 100);
+  Stage7Zip := FCompDlg.AddStage('7-Zip ' + SzVersion, 100);
   BusyBegin('Установка 7-Zip');
   try
     SevenZip := RosSetup7Zip(Stage7Zip);

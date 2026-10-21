@@ -1,19 +1,27 @@
 unit SzSetup;
 
 // ---------------------------------------------------------------------------
-//  unIDE FAR: загрузка 7-Zip в tools\7zip, когда его там нет
+//  Свой 7-Zip unIDE: tools\7zip рядом с exe (unIDE FAR - архивы, ReactOS -
+//  распаковка RosBE). Установленный в системе 7-Zip не используется и не
+//  меняется: unIDE работает со своей копией.
 //
+//  - где: <папка exe>\tools\7zip\; если туда не записать (unIDE в
+//    Program Files без прав) - %LOCALAPPDATA%\unIDE\tools\7zip\
+//    (SzLocalExe ищет в обеих, SzChooseTargetDir выбирает, куда ставить);
 //  - какую сборку брать - по Windows: x64 на 64-битной Windows (XP x64 и
 //    новее), x86 - на 32-битной (2000 и новее) и на ARM64; 9x и NT 4 -
 //    7-Zip 26.04 не поддерживает (заявлено: Windows 2000 - 11);
-//  - качается 7zr.exe (маленький 7-Zip только для формата 7z) и установщик
-//    7-Zip; установщик - архив 7z, из него 7zr.exe достаёт 7z.exe и 7z.dll
-//    (это делает UnFar, процессом). Сам установщик не запускается: ничего
-//    не регистрируется в системе;
-//  - загрузка - WinINet (настройки прокси и TLS - как у Internet Explorer)
-//    в своём потоке, с ходом и отменой; каждый файл проверяется по размеру
-//    и SHA-256, записанным здесь (версия закреплена; новая - новые размеры
-//    и суммы в SzPackages / SzTool).
+//  - установка (TSzInstall, свой поток): качаются 7zr.exe (маленький 7-Zip
+//    только для формата 7z) и установщик 7-Zip; установщик - архив 7z, из
+//    него 7zr.exe достаёт 7z.exe, 7z.dll и License.txt. Сам установщик не
+//    запускается: ничего не регистрируется в системе, права администратора
+//    не нужны;
+//  - загрузка - WinINet (настройки прокси и TLS - как у Internet Explorer),
+//    с ходом и отменой; каждый файл проверяется по размеру и SHA-256,
+//    записанным здесь (версия закреплена; новая - новые размеры и суммы в
+//    SzPackages / SzTool);
+//  - асинхронно (unIDE FAR: таймер читает ход потока) или синхронно
+//    (SzInstallSync: ход - через событие, как у окна хода ReactOS).
 // ---------------------------------------------------------------------------
 
 {$Q-}
@@ -56,11 +64,23 @@ type
     Url1, Url2: string;
   end;
 
-  // Загрузка списка файлов в своём потоке. Ход - FileIndex, Done, Total
-  // (читает главный поток по таймеру); конец - Finished, ошибка - ErrorText
-  TSzDownload = class(TThread)
+  // Шаг установки: загрузка, распаковка 7zr.exe
+  TSzStage = (ssDownload, ssExtract);
+
+  // Ход долгого шага (как TRosStepEvent): ADone из ATotal; False - стоп
+  TSzStepEvent = function(ADone, ATotal: Cardinal): Boolean of object;
+
+  // Установка 7-Zip в ATargetDir в своём потоке. Ход - Stage, FileIndex,
+  // Done, Total (читает главный поток); конец - Finished, ошибка -
+  // ErrorText ('' - установлен)
+  TSzInstall = class(TThread)
   private
     FFiles: TSzFiles;
+    FTargetDir: WideString;
+    FPackage: TSzPackage;
+    FOsName: string;
+    FStage: TSzStage;
+    FProcess: THandle;
     FSession: Pointer;
     FLock: TRTLCriticalSection;
     FCancelled: Boolean;
@@ -73,12 +93,18 @@ type
       var AError: string): Boolean;
     function GetFinished: Boolean;
     function TakeSession: Pointer;
+    function Download: string;
+    function Extract: string;
+    function MoveInPlace: string;
+    procedure WriteInfo;
   protected
     procedure Execute; override;
   public
-    constructor Create(const AFiles: TSzFiles);
+    constructor Create(const ATargetDir: WideString;
+      const APackage: TSzPackage; const AOsName: string);
     destructor Destroy; override;
     procedure Cancel;
+    property Stage: TSzStage read FStage;
     property FileIndex: Integer read FFileIndex;
     property Done: Integer read FDone;
     property Total: Integer read FTotal;
@@ -88,8 +114,31 @@ type
   end;
 
 const
+  SzVersion = '26.04';
   SzToolName = '7zr.exe';
   SzDownloadPage = 'https://www.7-zip.org/download.html';
+  SzInfoFile = 'unide_7zip.txt';
+
+// <папка exe>\tools\7zip\
+function SzAppDir: WideString;
+// %LOCALAPPDATA%\unIDE\tools\7zip\ ('' - папки профиля нет)
+function SzUserDir: WideString;
+// 7z.exe своего 7-Zip (есть и 7z.dll): сначала у exe, потом в профиле;
+// нет - ''
+function SzLocalExe: WideString;
+// Куда ставить: где уже есть свой 7-Zip, иначе у exe, если туда можно
+// писать, иначе в профиль; '' - никуда
+function SzChooseTargetDir: WideString;
+// Версия файла ('26.04'); '' - не прочитать
+function SzFileVersion(const AFileName: WideString): string;
+// Версия AOld ('24.09') старше ANew ('26.04')
+function SzVersionOlder(const AOld, ANew: string): Boolean;
+// Идёт установка (поток TSzInstall есть)
+function SzInstallRunning: Boolean;
+// Установить синхронно: AOnStep - ход (и обработка сообщений окна), False
+// из него - остановить. APackage - что ставилось; ошибка - False и AError
+function SzInstallSync(AOnStep: TSzStepEvent; var APackage: TSzPackage;
+  var AError: string): Boolean;
 
 procedure SzGetOsInfo(var AInfo: TSzOsInfo);
 // Сборка для этой Windows; False - 7-Zip для неё нет
@@ -156,6 +205,15 @@ const
   SzFileAttrNormal = $80;
   SzMachineAmd64 = $8664;
   SzMachineArm64 = $AA64;
+  SzInvalidAttr = $FFFFFFFF;
+  SzAttrDirectory = $10;
+  SzMoveReplace = 1;          // MOVEFILE_REPLACE_EXISTING
+  SzMoveCopyAllowed = 2;      // MOVEFILE_COPY_ALLOWED
+  SzStartfUseShowWindow = 1;
+  SzStartfUseStdHandles = $100;
+  SzCreateNoWindow = $08000000;
+  SzCsidlLocalAppData = $1C;
+  SzWaitTimeout = $102;
 
 type
   TSzOsVersionW = record
@@ -171,6 +229,48 @@ type
     var AWow64: BOOL): BOOL; stdcall;
   TSzIsWow64Process2 = function(AProcess: THandle; var AProcessMachine,
     ANativeMachine: Word): BOOL; stdcall;
+
+  TSzFindData = record
+    dwFileAttributes: DWORD;
+    ftCreationTime, ftLastAccessTime, ftLastWriteTime: TFileTime;
+    nFileSizeHigh, nFileSizeLow: DWORD;
+    dwReserved0, dwReserved1: DWORD;
+    cFileName: array[0..MAX_PATH - 1] of WideChar;
+    cAlternateFileName: array[0..13] of WideChar;
+  end;
+
+  TSzStartupInfo = record
+    cb: DWORD;
+    lpReserved, lpDesktop, lpTitle: PWideChar;
+    dwX, dwY, dwXSize, dwYSize: DWORD;
+    dwXCountChars, dwYCountChars, dwFillAttribute: DWORD;
+    dwFlags: DWORD;
+    wShowWindow: Word;
+    cbReserved2: Word;
+    lpReserved2: Pointer;
+    hStdInput, hStdOutput, hStdError: THandle;
+  end;
+
+  TSzProcessInfo = record
+    hProcess, hThread: THandle;
+    dwProcessId, dwThreadId: DWORD;
+  end;
+
+  TSzSecurityAttributes = record
+    nLength: DWORD;
+    lpSecurityDescriptor: Pointer;
+    bInheritHandle: BOOL;
+  end;
+
+  // VS_FIXEDFILEINFO
+  TSzFixedFileInfo = record
+    dwSignature, dwStrucVersion: DWORD;
+    dwFileVersionMS, dwFileVersionLS: DWORD;
+    dwProductVersionMS, dwProductVersionLS: DWORD;
+    dwFileFlagsMask, dwFileFlags, dwFileOS, dwFileType, dwFileSubtype: DWORD;
+    dwFileDateMS, dwFileDateLS: DWORD;
+  end;
+  PSzFixedFileInfo = ^TSzFixedFileInfo;
 
 function SzInternetOpen(AAgent: PWideChar; AAccessType: DWORD;
   AProxy, AProxyBypass: PWideChar; AFlags: DWORD): Pointer; stdcall;
@@ -202,6 +302,46 @@ function SzReadFile(AFile: THandle; var ABuffer; ACount: DWORD;
   external 'kernel32.dll' name 'ReadFile';
 function SzDeleteFile(AFileName: PWideChar): BOOL; stdcall;
   external 'kernel32.dll' name 'DeleteFileW';
+function SzMoveFileEx(AExisting, ANew: PWideChar; AFlags: DWORD): BOOL;
+  stdcall; external 'kernel32.dll' name 'MoveFileExW';
+function SzCreateDirectory(APath: PWideChar; ASecurity: Pointer): BOOL;
+  stdcall; external 'kernel32.dll' name 'CreateDirectoryW';
+function SzRemoveDirectory(APath: PWideChar): BOOL; stdcall;
+  external 'kernel32.dll' name 'RemoveDirectoryW';
+function SzGetFileAttributes(APath: PWideChar): DWORD; stdcall;
+  external 'kernel32.dll' name 'GetFileAttributesW';
+function SzGetModuleFileName(AModule: HMODULE; ABuffer: PWideChar;
+  ASize: DWORD): DWORD; stdcall;
+  external 'kernel32.dll' name 'GetModuleFileNameW';
+function SzFindFirstFile(APath: PWideChar;
+  var AData: TSzFindData): THandle; stdcall;
+  external 'kernel32.dll' name 'FindFirstFileW';
+function SzFindNextFile(AHandle: THandle;
+  var AData: TSzFindData): BOOL; stdcall;
+  external 'kernel32.dll' name 'FindNextFileW';
+function SzCreateProcess(AAppName, ACommandLine: PWideChar;
+  AProcessAttr, AThreadAttr: Pointer; AInheritHandles: BOOL;
+  ACreationFlags: DWORD; AEnvironment: Pointer; ACurrentDir: PWideChar;
+  var AStartupInfo: TSzStartupInfo;
+  var AProcessInfo: TSzProcessInfo): BOOL; stdcall;
+  external 'kernel32.dll' name 'CreateProcessW';
+function SzGetExitCodeProcess(AProcess: THandle;
+  var AExitCode: DWORD): BOOL; stdcall;
+  external 'kernel32.dll' name 'GetExitCodeProcess';
+function SzTerminateProcess(AProcess: THandle; AExitCode: UINT): BOOL;
+  stdcall; external 'kernel32.dll' name 'TerminateProcess';
+function SzShGetFolderPath(AOwner: HWND; AFolder: Integer; AToken: THandle;
+  AFlags: DWORD; APath: PWideChar): HRESULT; stdcall;
+  external 'shell32.dll' name 'SHGetFolderPathW';
+function SzGetFileVersionInfoSize(AFileName: PWideChar;
+  var AHandle: DWORD): DWORD; stdcall;
+  external 'version.dll' name 'GetFileVersionInfoSizeW';
+function SzGetFileVersionInfo(AFileName: PWideChar; AHandle, ASize: DWORD;
+  AData: Pointer): BOOL; stdcall;
+  external 'version.dll' name 'GetFileVersionInfoW';
+function SzVerQueryValue(ABlock: Pointer; ASubBlock: PWideChar;
+  var ABuffer: Pointer; var ALength: UINT): BOOL; stdcall;
+  external 'version.dll' name 'VerQueryValueW';
 function SzFormatMessage(AFlags: DWORD; ASource: Pointer; AMessageId: DWORD;
   ALanguageId: DWORD; ABuffer: PChar; ASize: DWORD;
   AArguments: Pointer): DWORD; stdcall;
@@ -549,17 +689,262 @@ begin
   end;
 end;
 
-constructor TSzDownload.Create(const AFiles: TSzFiles);
+var
+  SzRunning: Integer = 0;
+
+function SzInstallRunning: Boolean;
+begin
+  Result := SzRunning > 0;
+end;
+
+// ---------------------------------------------------------------------------
+//  Папки и файлы
+// ---------------------------------------------------------------------------
+
+function SzWithSlash(const APath: WideString): WideString;
+begin
+  Result := APath;
+  if (Result <> '') and (Result[Length(Result)] <> '\') then
+    Result := Result + '\';
+end;
+
+function SzNoSlash(const APath: WideString): WideString;
+begin
+  Result := APath;
+  if (Length(Result) > 3) and (Result[Length(Result)] = '\') then
+    SetLength(Result, Length(Result) - 1);
+end;
+
+function SzFileExists(const APath: WideString): Boolean;
+var
+  Attr: DWORD;
+begin
+  Attr := SzGetFileAttributes(PWideChar(APath));
+  Result := (Attr <> SzInvalidAttr) and (Attr and SzAttrDirectory = 0);
+end;
+
+function SzDirExists(const APath: WideString): Boolean;
+var
+  Attr: DWORD;
+begin
+  Attr := SzGetFileAttributes(PWideChar(SzNoSlash(APath)));
+  Result := (Attr <> SzInvalidAttr) and (Attr and SzAttrDirectory <> 0);
+end;
+
+// Создать папку со всеми недостающими выше
+function SzForceDirs(const APath: WideString): Boolean;
+var
+  Dir: WideString;
+  SlashPos: Integer;
+begin
+  Dir := SzNoSlash(APath);
+  Result := SzDirExists(Dir);
+  if Result or (Length(Dir) <= 3) then
+    Exit;
+  SlashPos := Length(Dir);
+  while (SlashPos > 0) and (Dir[SlashPos] <> '\') do
+    Dec(SlashPos);
+  if SlashPos > 0 then
+    SzForceDirs(Copy(Dir, 1, SlashPos - 1));
+  Result := SzCreateDirectory(PWideChar(Dir), nil) or SzDirExists(Dir);
+end;
+
+// Удалить папку со всем содержимым (без оболочки Windows - работает и из
+// потока)
+procedure SzDeleteTree(const APath: WideString);
+var
+  Dir, Name: WideString;
+  FindHandle: THandle;
+  FindData: TSzFindData;
+begin
+  Dir := SzWithSlash(APath);
+  if not SzDirExists(Dir) then
+    Exit;
+  FindHandle := SzFindFirstFile(PWideChar(Dir + '*'), FindData);
+  if FindHandle <> INVALID_HANDLE_VALUE then
+  begin
+    repeat
+      Name := PWideChar(@FindData.cFileName[0]);
+      if (Name = '.') or (Name = '..') then
+        Continue;
+      if FindData.dwFileAttributes and SzAttrDirectory <> 0 then
+        SzDeleteTree(Dir + Name)
+      else
+        SzDeleteFile(PWideChar(Dir + Name));
+    until not SzFindNextFile(FindHandle, FindData);
+    Windows.FindClose(FindHandle);
+  end;
+  SzRemoveDirectory(PWideChar(SzNoSlash(Dir)));
+end;
+
+function SzAppDir: WideString;
+var
+  Buffer: array[0..1023] of WideChar;
+  Len: DWORD;
+  SlashPos: Integer;
+begin
+  Len := SzGetModuleFileName(0, Buffer, Length(Buffer));
+  if (Len = 0) or (Len >= DWORD(Length(Buffer))) then
+  begin
+    Result := ExtractFilePath(ParamStr(0)) + 'tools\7zip\';
+    Exit;
+  end;
+  Result := PWideChar(@Buffer[0]);
+  SlashPos := Length(Result);
+  while (SlashPos > 0) and (Result[SlashPos] <> '\') do
+    Dec(SlashPos);
+  Result := Copy(Result, 1, SlashPos) + 'tools\7zip\';
+end;
+
+function SzUserDir: WideString;
+var
+  Buffer: array[0..MAX_PATH] of WideChar;
+begin
+  Result := '';
+  FillChar(Buffer, SizeOf(Buffer), 0);
+  if SzShGetFolderPath(0, SzCsidlLocalAppData, 0, 0, Buffer) = 0 then
+  begin
+    Result := PWideChar(@Buffer[0]);
+    if Result <> '' then
+      Result := SzWithSlash(Result) + 'unIDE\tools\7zip\';
+  end;
+end;
+
+function SzLocalExe: WideString;
+var
+  Dirs: array[0..1] of WideString;
+  DirIndex: Integer;
+begin
+  Result := '';
+  Dirs[0] := SzAppDir;
+  Dirs[1] := SzUserDir;
+  for DirIndex := 0 to 1 do
+    if (Dirs[DirIndex] <> '') and SzFileExists(Dirs[DirIndex] + '7z.exe') and
+       SzFileExists(Dirs[DirIndex] + '7z.dll') then
+    begin
+      Result := Dirs[DirIndex] + '7z.exe';
+      Exit;
+    end;
+end;
+
+// Можно ли писать в папку ADir (создаётся, если нет): пробный файл
+function SzCanWrite(const ADir: WideString): Boolean;
+var
+  TestFile: WideString;
+  TestHandle: THandle;
+begin
+  Result := False;
+  if (ADir = '') or not SzForceDirs(ADir) then
+    Exit;
+  TestFile := ADir + '~unide_write_test.tmp';
+  TestHandle := SzCreateFile(PWideChar(TestFile), SzGenericWrite, 0, nil,
+    SzCreateAlways, SzFileAttrNormal, 0);
+  if TestHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  CloseHandle(TestHandle);
+  SzDeleteFile(PWideChar(TestFile));
+  Result := True;
+end;
+
+function SzChooseTargetDir: WideString;
+var
+  Existing: WideString;
+begin
+  Existing := SzLocalExe;
+  if Existing <> '' then
+  begin
+    Result := ExtractFilePath(Existing);
+    if SzCanWrite(Result) then
+      Exit;
+  end;
+  Result := SzAppDir;
+  if SzCanWrite(Result) then
+    Exit;
+  Result := SzUserDir;
+  if SzCanWrite(Result) then
+    Exit;
+  Result := '';
+end;
+
+function SzFileVersion(const AFileName: WideString): string;
+var
+  InfoSize, Dummy: DWORD;
+  InfoData: Pointer;
+  FixedInfo: PSzFixedFileInfo;
+  FixedLen: UINT;
+  RootBlock: WideString;
+begin
+  Result := '';
+  Dummy := 0;
+  InfoSize := SzGetFileVersionInfoSize(PWideChar(AFileName), Dummy);
+  if InfoSize = 0 then
+    Exit;
+  GetMem(InfoData, InfoSize);
+  try
+    if not SzGetFileVersionInfo(PWideChar(AFileName), 0, InfoSize,
+       InfoData) then
+      Exit;
+    RootBlock := '\';
+    FixedInfo := nil;
+    FixedLen := 0;
+    if SzVerQueryValue(InfoData, PWideChar(RootBlock), Pointer(FixedInfo),
+       FixedLen) and (FixedInfo <> nil) and (FixedLen > 0) then
+      Result := IntToStr(FixedInfo^.dwFileVersionMS shr 16) + '.' +
+        Format('%.2d', [FixedInfo^.dwFileVersionMS and $FFFF]);
+  finally
+    FreeMem(InfoData);
+  end;
+end;
+
+// '26.04' -> 2604; не разобрать - -1
+function SzVersionNumber(const AVersion: string): Integer;
+var
+  DotPos: Integer;
+begin
+  DotPos := Pos('.', AVersion);
+  if DotPos = 0 then
+    Result := StrToIntDef(AVersion, -1) * 100
+  else
+    Result := StrToIntDef(Copy(AVersion, 1, DotPos - 1), -1) * 100 +
+      StrToIntDef(Copy(AVersion, DotPos + 1, MaxInt), 0);
+end;
+
+function SzVersionOlder(const AOld, ANew: string): Boolean;
+var
+  OldNumber: Integer;
+begin
+  OldNumber := SzVersionNumber(AOld);
+  Result := (OldNumber >= 0) and (OldNumber < SzVersionNumber(ANew));
+end;
+
+// ---------------------------------------------------------------------------
+//  Установка
+// ---------------------------------------------------------------------------
+
+constructor TSzInstall.Create(const ATargetDir: WideString;
+  const APackage: TSzPackage; const AOsName: string);
 var
   FileIndex: Integer;
+  DownloadDir: WideString;
 begin
-  SetLength(FFiles, Length(AFiles));
+  FTargetDir := SzWithSlash(ATargetDir);
+  FPackage := APackage;
+  FOsName := AOsName;
+  FStage := ssDownload;
+  FProcess := 0;
+  DownloadDir := FTargetDir + '~download\';
+  SetLength(FFiles, 2);
+  SzToolFile(FFiles[0]);
+  FFiles[0].FileName := DownloadDir + SzToolName;
+  FFiles[1].Url1 := APackage.Url1;
+  FFiles[1].Url2 := APackage.Url2;
+  FFiles[1].FileName := DownloadDir + WideString(APackage.FileName);
+  FFiles[1].Size := APackage.Size;
+  FFiles[1].Sha256 := APackage.Sha256;
   FTotal := 0;
-  for FileIndex := 0 to High(AFiles) do
-  begin
-    FFiles[FileIndex] := AFiles[FileIndex];
-    Inc(FTotal, AFiles[FileIndex].Size);
-  end;
+  for FileIndex := 0 to High(FFiles) do
+    Inc(FTotal, FFiles[FileIndex].Size);
+  InterlockedIncrement(SzRunning);
   FFileIndex := 0;
   FDone := 0;
   FFinished := 0;
@@ -569,14 +954,15 @@ begin
   inherited Create(False);
 end;
 
-destructor TSzDownload.Destroy;
+destructor TSzInstall.Destroy;
 begin
   inherited Destroy;
   DeleteCriticalSection(FLock);
+  InterlockedDecrement(SzRunning);
 end;
 
 // Сеанс WinINet - тому, кто первым его заберёт (поток в конце или Cancel)
-function TSzDownload.TakeSession: Pointer;
+function TSzInstall.TakeSession: Pointer;
 begin
   EnterCriticalSection(FLock);
   try
@@ -587,14 +973,14 @@ begin
   end;
 end;
 
-function TSzDownload.GetFinished: Boolean;
+function TSzInstall.GetFinished: Boolean;
 begin
   Result := FFinished <> 0;
 end;
 
 // Отмена из главного потока: закрытие сеанса WinINet прерывает и
 // подключение, и чтение, которые ждут сеть
-procedure TSzDownload.Cancel;
+procedure TSzInstall.Cancel;
 var
   Session: Pointer;
 begin
@@ -602,9 +988,10 @@ begin
   Session := TakeSession;
   if Session <> nil then
     SzInternetCloseHandle(Session);
+  // Распаковку (7zr.exe) поток прервёт сам: он ждёт процесс по 100 мс
 end;
 
-function TSzDownload.GetFile(const AFile: TSzFile; const AUrl: string;
+function TSzInstall.GetFile(const AFile: TSzFile; const AUrl: string;
   var AError: string): Boolean;
 var
   UrlHandle: Pointer;
@@ -706,7 +1093,7 @@ begin
   end;
 end;
 
-procedure TSzDownload.Execute;
+function TSzInstall.Download: string;
 var
   Agent: WideString;
   Timeout: DWORD;
@@ -777,8 +1164,233 @@ begin
     SzInternetCloseHandle(Session);
   if FCancelled and (ErrorText = '') then
     ErrorText := 'отменено';
+  Result := ErrorText;
+end;
+
+
+// 7zr.exe x установщик -> ~download\x\ (вывод 7zr.exe - в 7zr.log)
+function TSzInstall.Extract: string;
+var
+  DownloadDir, Command, LogFile: WideString;
+  Security: TSzSecurityAttributes;
+  Startup: TSzStartupInfo;
+  ProcInfo: TSzProcessInfo;
+  LogHandle: THandle;
+  ExitCode, ReadCount: DWORD;
+  LogText: string;
+  LogWide, Line: WideString;
+  LineStart, LineEnd: Integer;
+begin
+  Result := '';
+  DownloadDir := FTargetDir + '~download\';
+  LogFile := DownloadDir + '7zr.log';
+  FillChar(Security, SizeOf(Security), 0);
+  Security.nLength := SizeOf(Security);
+  Security.bInheritHandle := True;
+  LogHandle := SzCreateFile(PWideChar(LogFile), SzGenericWrite,
+    SzFileShareRead, @Security, SzCreateAlways, SzFileAttrNormal, 0);
+  if LogHandle = INVALID_HANDLE_VALUE then
+  begin
+    Result := 'файл журнала не создать: ' + SzErrorText(GetLastError);
+    Exit;
+  end;
+  Command := WideString('"') + DownloadDir + SzToolName +
+    WideString('" x -y -sccUTF-8 -bso0 -bsp0 "-o') + DownloadDir +
+    WideString('x" "') + DownloadDir + WideString(FPackage.FileName) +
+    WideString('" 7z.exe 7z.dll License.txt');
+  FillChar(Startup, SizeOf(Startup), 0);
+  Startup.cb := SizeOf(Startup);
+  Startup.dwFlags := SzStartfUseShowWindow or SzStartfUseStdHandles;
+  Startup.wShowWindow := SW_HIDE;
+  Startup.hStdInput := 0;
+  Startup.hStdOutput := LogHandle;
+  Startup.hStdError := LogHandle;
+  FillChar(ProcInfo, SizeOf(ProcInfo), 0);
+  if not SzCreateProcess(nil, PWideChar(Command), nil, nil, True,
+     SzCreateNoWindow, nil, PWideChar(DownloadDir), Startup, ProcInfo) then
+  begin
+    Result := '7zr.exe не запустить: ' + SzErrorText(GetLastError);
+    CloseHandle(LogHandle);
+    Exit;
+  end;
+  CloseHandle(ProcInfo.hThread);
+  FProcess := ProcInfo.hProcess;
+  try
+    while WaitForSingleObject(ProcInfo.hProcess, 100) = SzWaitTimeout do
+      if FCancelled then
+      begin
+        SzTerminateProcess(ProcInfo.hProcess, 1);
+        WaitForSingleObject(ProcInfo.hProcess, 5000);
+        Result := 'отменено';
+        Break;
+      end;
+    ExitCode := 0;
+    SzGetExitCodeProcess(ProcInfo.hProcess, ExitCode);
+  finally
+    FProcess := 0;
+    CloseHandle(ProcInfo.hProcess);
+    CloseHandle(LogHandle);
+  end;
+  if (Result <> '') or (ExitCode <= 1) then
+    Exit;
+  // Ошибка: первая строка с ERROR из журнала 7zr.exe (UTF-8)
+  LogText := '';
+  LogHandle := SzCreateFile(PWideChar(LogFile), SzGenericRead,
+    SzFileShareRead, nil, SzOpenExisting, SzFileAttrNormal, 0);
+  if LogHandle <> INVALID_HANDLE_VALUE then
+  begin
+    SetLength(LogText, 16384);
+    ReadCount := 0;
+    if SzReadFile(LogHandle, LogText[1], Length(LogText), ReadCount, nil) then
+      SetLength(LogText, ReadCount)
+    else
+      LogText := '';
+    CloseHandle(LogHandle);
+  end;
+  LogWide := UTF8Decode(LogText);
+  LineStart := 1;
+  while LineStart <= Length(LogWide) do
+  begin
+    LineEnd := LineStart;
+    while (LineEnd <= Length(LogWide)) and (LogWide[LineEnd] <> #10) do
+      Inc(LineEnd);
+    Line := Trim(Copy(LogWide, LineStart, LineEnd - LineStart));
+    LineStart := LineEnd + 1;
+    if Pos('ERROR', string(Line)) > 0 then
+    begin
+      Result := '7zr.exe: ' + string(Line);
+      Exit;
+    end;
+  end;
+  Result := '7zr.exe завершился с кодом ' + IntToStr(ExitCode);
+end;
+
+// Из ~download\x\ - на место; 7z.exe последним: есть 7z.exe - есть и
+// остальное
+function TSzInstall.MoveInPlace: string;
+const
+  MoveNames: array[0..2] of string = ('7z.dll', 'License.txt', '7z.exe');
+var
+  NameIndex: Integer;
+  Source, Target: WideString;
+begin
+  Result := '';
+  for NameIndex := 0 to High(MoveNames) do
+  begin
+    Source := FTargetDir + '~download\x\' + WideString(MoveNames[NameIndex]);
+    Target := FTargetDir + WideString(MoveNames[NameIndex]);
+    if not SzMoveFileEx(PWideChar(Source), PWideChar(Target),
+       SzMoveReplace or SzMoveCopyAllowed) then
+    begin
+      Result := MoveNames[NameIndex] + ': ' + SzErrorText(GetLastError);
+      Exit;
+    end;
+  end;
+end;
+
+// Откуда этот 7-Zip - рядом, текстом
+procedure TSzInstall.WriteInfo;
+var
+  InfoText: string;
+  InfoHandle: THandle;
+  Written: DWORD;
+begin
+  InfoText := '7-Zip ' + FPackage.Version + ' (' + FPackage.Arch +
+    '), установлен unIDE ' + FormatDateTime('yyyy-mm-dd hh:nn', Now) +
+    ' для ' + FOsName + #13#10 + FPackage.Url1 + #13#10 + 'SHA-256 ' +
+    FPackage.FileName + ': ' + FPackage.Sha256 + #13#10 +
+    'Из установщика взяты 7z.exe, 7z.dll, License.txt (лицензия 7-Zip).' +
+    #13#10 + 'Свой 7-Zip unIDE: установленный в системе 7-Zip не ' +
+    'используется и не меняется.' + #13#10;
+  InfoHandle := SzCreateFile(PWideChar(FTargetDir + SzInfoFile),
+    SzGenericWrite, 0, nil, SzCreateAlways, SzFileAttrNormal, 0);
+  if InfoHandle <> INVALID_HANDLE_VALUE then
+  begin
+    Written := 0;
+    SzWriteFile(InfoHandle, InfoText[1], Length(InfoText), Written, nil);
+    CloseHandle(InfoHandle);
+  end;
+end;
+
+procedure TSzInstall.Execute;
+var
+  ErrorText: string;
+begin
+  ErrorText := '';
+  try
+    if not SzForceDirs(FTargetDir + '~download\') then
+      ErrorText := 'папку ' + string(FTargetDir) + ' не создать: ' +
+        SzErrorText(GetLastError)
+    else
+    begin
+      ErrorText := Download;
+      if ErrorText = '' then
+      begin
+        FStage := ssExtract;
+        FDone := FTotal;
+        ErrorText := Extract;
+      end;
+      if ErrorText = '' then
+        ErrorText := MoveInPlace;
+      if ErrorText = '' then
+        WriteInfo;
+    end;
+  except
+    on Error: Exception do
+      ErrorText := Error.Message;
+  end;
+  SzDeleteTree(FTargetDir + '~download\');
+  if FCancelled then
+    ErrorText := 'отменено';
   FErrorText := ErrorText;
   InterlockedExchange(FFinished, 1);
+end;
+
+function SzInstallSync(AOnStep: TSzStepEvent; var APackage: TSzPackage;
+  var AError: string): Boolean;
+var
+  OsInfo: TSzOsInfo;
+  TargetDir: WideString;
+  Install: TSzInstall;
+begin
+  Result := False;
+  AError := '';
+  if SzInstallRunning then
+  begin
+    AError := '7-Zip уже устанавливается';
+    Exit;
+  end;
+  SzGetOsInfo(OsInfo);
+  if not SzChoosePackage(OsInfo, APackage) then
+  begin
+    AError := '7-Zip ' + SzVersion + ' работает в Windows 2000 и новее, ' +
+      'здесь ' + OsInfo.Name;
+    Exit;
+  end;
+  TargetDir := SzChooseTargetDir;
+  if TargetDir = '' then
+  begin
+    AError := 'нет папки для 7-Zip: в ' + string(SzAppDir) + ' и ' +
+      string(SzUserDir) + ' не записать';
+    Exit;
+  end;
+  Install := TSzInstall.Create(TargetDir, APackage, OsInfo.Name);
+  try
+    while not Install.Finished do
+    begin
+      if Assigned(AOnStep) and
+         not AOnStep(Cardinal(Install.Done), Cardinal(Install.Total)) then
+        Install.Cancel;
+      Sleep(50);
+    end;
+    Install.WaitFor;
+    AError := Install.ErrorText;
+    Result := (AError = '') and (SzLocalExe <> '');
+    if (AError = '') and not Result then
+      AError := '7z.exe после установки не найден';
+  finally
+    Install.Free;
+  end;
 end;
 
 end.

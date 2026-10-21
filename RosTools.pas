@@ -52,23 +52,8 @@ const
     'a72b220a1b21927629cb7bc5606baf64fd7c30666b9bdc4ba21aabcbe00b3649';
   RosBEScript = 'RosBE.cmd';
 
-  // 7-Zip 24.09 - выпуски ip7z/7zip на GitHub (официальные с 23.01);
-  // MD5/SHA1 совпадают с указанными на SourceForge (sevenzip), манифест
-  // объявляет Windows 7, 7z.exe x64 импортирует только системные DLL
-  // Windows 7 (проверено 15.10.2026). Установщик: /S - без окон, права
-  // администратора; ставит в Program Files\7-Zip, путь - HKLM\SOFTWARE\
-  // 7-Zip, Path (RosFind7Zip)
-  SevenZipVersion = '24.09';
-  SevenZipUrl64 = 'https://github.com/ip7z/7zip/releases/download/24.09/' +
-                  '7z2409-x64.exe';
-  SevenZipSize64 = 1637343;
-  SevenZipSha64 =
-    'bdd1a33de78618d16ee4ce148b849932c05d0015491c34887846d431d29f308e';
-  SevenZipUrl32 = 'https://github.com/ip7z/7zip/releases/download/24.09/' +
-                  '7z2409.exe';
-  SevenZipSize32 = 1348869;
-  SevenZipSha32 =
-    'e35e4374100b52e697e002859aefdd5533bcbf4118e5d2210fae6de318947c41';
+  // 7-Zip для распаковки RosBE - свой 7-Zip unIDE (SzSetup, tools\7zip):
+  // поиск, версия и установка там; системный 7-Zip не используется
 
 type
   // Ход долгого шага: ADone из ATotal (ATotal = 0 - размер не известен).
@@ -89,9 +74,6 @@ function RosFileSha256(const AFile: string): string;
 function RosBE221InstallerRunning: Boolean;
 // 64-битная Windows (unIDE 32-битный и работает под WOW64)
 function RosIs64BitWindows: Boolean;
-// 7z.exe установленного 7-Zip (запись в реестре или Program Files); нет -
-// пусто
-function RosFind7Zip: string;
 // Параметры 7z.exe: распаковать установщик AInstaller в ADestDir так, как
 // ставит установщик по умолчанию - без своих служебных папок ($PLUGINSDIR,
 // $DESKTOP), деинсталлятора и компилятора AMD64 (он в установщике выключен)
@@ -279,68 +261,6 @@ begin
                                  'IsWow64Process');
   if Assigned(IsWow64Proc) and IsWow64Proc(GetCurrentProcess, Wow64) then
     Result := Wow64;
-end;
-
-function RosFind7Zip: string;
-const
-  KEY_WOW64_64KEY = $0100;
-  SevenZipKey = 'Software\7-Zip';
-var
-  Reg: TRegistry;
-  Dirs: TStringList;
-  Idx, Pass: Integer;
-  Value: string;
-  EnvBuf: array[0..MAX_PATH] of Char;
-begin
-  Result := '';
-  Dirs := TStringList.Create;
-  try
-    // Ключ Path пишет установщик 7-Zip; 64-битный 7-Zip - в 64-битную
-    // ветвь реестра, которую 32-битный unIDE без KEY_WOW64_64KEY не видит
-    for Pass := 0 to 1 do
-    begin
-      Reg := TRegistry.Create;
-      try
-        Reg.RootKey := HKEY_LOCAL_MACHINE;
-        if Pass = 0 then
-          Reg.Access := KEY_READ or KEY_WOW64_64KEY
-        else
-          Reg.Access := KEY_READ;
-        if Reg.OpenKey(SevenZipKey, False) then
-        try
-          if Reg.ValueExists('Path') then
-            Dirs.Add(Reg.ReadString('Path'));
-          if Reg.ValueExists('Path64') then
-            Dirs.Add(Reg.ReadString('Path64'));
-        finally
-          Reg.CloseKey;
-        end;
-      finally
-        Reg.Free;
-      end;
-    end;
-    // ProgramW6432 - 64-битный Program Files, виден и 32-битным процессам
-    if Windows.GetEnvironmentVariable('ProgramW6432', EnvBuf,
-                                      MAX_PATH) > 0 then
-      Dirs.Add(IncludeTrailingPathDelimiter(EnvBuf) + '7-Zip');
-    if Windows.GetEnvironmentVariable('ProgramFiles', EnvBuf,
-                                      MAX_PATH) > 0 then
-      Dirs.Add(IncludeTrailingPathDelimiter(EnvBuf) + '7-Zip');
-    for Idx := 0 to Dirs.Count - 1 do
-    begin
-      Value := Trim(Dirs[Idx]);
-      if Value = '' then
-        Continue;
-      Value := IncludeTrailingPathDelimiter(Value) + '7z.exe';
-      if FileExists(Value) then
-      begin
-        Result := Value;
-        Exit;
-      end;
-    end;
-  finally
-    Dirs.Free;
-  end;
 end;
 
 function RosExtractArgs(const AInstaller, ADestDir: string): string;
