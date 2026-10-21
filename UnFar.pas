@@ -38,7 +38,11 @@ unit UnFar;
 //      панелью - в редактор (OnLeave); ShowFile - курсор на файл вкладки;
 //    - b.8: узкое окно (меньше 8 клеток на клавишу) - кейбар в две строки:
 //      F1..F6 и F7..F12; HalfWidth - ширина окна FAR в режиме F4 (её
-//      меняет сплиттер в Unit1), хранится в editor.ini.
+//      меняет сплиттер в Unit1), хранится в editor.ini;
+//    - b.15: раскраска файлов по расширению (цвет текста и фона, любые
+//      цвета; правила - editor.ini [FarColors], окно - DlgFarColors);
+//      F9 - меню Options (Files highlighting - окно правил, Save setup -
+//      записать настройки, Shift+F9 - то же).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -68,7 +72,10 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.14';
+  FarBuild = 'b.15';
+
+  // Фон панели - для образца раскраски в окне DlgFarColors
+  FarPanelColor = $800000;
 
 type
   TFarItem = record
@@ -98,13 +105,14 @@ type
 
   // Открытое меню: смена диска (Alt+F1 / Alt+F2), сортировка (Ctrl+F12),
   // история папок (Alt+F12)
-  TFarMenuKind = (fmNone, fmDrive, fmSort, fmHistory);
+  TFarMenuKind = (fmNone, fmDrive, fmSort, fmHistory, fmOptions);
 
   TFarMenuItem = record
     Text: WideString;       // '&' перед буквой быстрого выбора
     RightText: WideString;  // справа: клавиша и т.п.
     Mark: WideChar;         // слева: ' ', '+', '-', отметка
     Separator: Boolean;
+    Disabled: Boolean;      // недоступен: виден серым, выбрать нельзя
     Data: WideString;       // что выбрано: путь, буква диска
     Tag: Integer;
   end;
@@ -151,6 +159,16 @@ type
     property TopIndex: Integer read FTopIndex write FTopIndex;
   end;
 
+  // Раскраска файлов: расширение (без точки, строчными), включено ли,
+  // цвет текста и фона (clNone - фон панели). Цвета - любые RGB.
+  TFarColorRule = record
+    Ext: string;
+    Enabled: Boolean;
+    Fore: TColor;
+    Back: TColor;
+  end;
+  TFarColorRules = array of TFarColorRule;
+
   TFarStatusEvent = procedure(const AText: string) of object;
   // F4 / Shift+F4: файл - в редактор. ACreated - файла не было, его создал
   // Shift+F4 (пустой)
@@ -178,6 +196,12 @@ type
     FOnStatus: TFarStatusEvent;
     FOnEditFile: TFarEditEvent;
     FOnLeave: TNotifyEvent;
+    FOnColorsDialog: TNotifyEvent;
+    FIniName: string;             // editor.ini (LoadState) - для Save setup
+    // Раскраска файлов: правила и их расширения как WideString (сравнение
+    // с именами файлов)
+    FColorRules: TFarColorRules;
+    FColorExt: array of WideString;
     FSingle: Integer;             // -1 - две панели; 0 / 1 - только эта (F4)
     FHalfWidth: Integer;          // ширина окна в режиме F4, пикселей (0 - нет)
     // Диалог (F5 - F8): рисуется поверх панелей, клавиши - ему
@@ -298,6 +322,11 @@ type
     procedure ToggleSelFirst(APanel: TFarPanel);
     procedure SelectDrive(APanelIndex: Integer; ALetter: WideChar);
     procedure HistoryAdd(const APath: WideString);
+    function MenuSkip(AIndex: Integer): Boolean;
+    procedure ShowOptionsMenu;
+    procedure SaveSetup;
+    function RuleColors(const AName: WideString;
+      var AFore, ABack: TColor): Boolean;
   protected
     procedure Paint; override;
     procedure Resize; override;
@@ -316,6 +345,9 @@ type
     // Одна панель на всё окно (APanel 0 / 1, она же активная) или обе (-1).
     // Режим F4: окно FAR - половина области, вторая половина - редактор.
     procedure SetSingle(APanel: Integer);
+    // Правила раскраски (копируются); ColorRules - копия текущих
+    procedure SetColorRules(const ARules: TFarColorRules);
+    function ColorRules: TFarColorRules;
     function ActiveIndex: Integer;
     // Курсор активной панели - на файл AFileName (папка другая - перейти
     // в неё). Щелчок по вкладке редактора, когда FAR открыт.
@@ -327,6 +359,9 @@ type
     property OnEditFile: TFarEditEvent read FOnEditFile write FOnEditFile;
     // Tab, когда видна одна панель: фокус - редактору
     property OnLeave: TNotifyEvent read FOnLeave write FOnLeave;
+    // F9 - Options - Files highlighting: окно правил раскраски (Unit1)
+    property OnColorsDialog: TNotifyEvent read FOnColorsDialog
+      write FOnColorsDialog;
     property SinglePanel: Integer read FSingle;
     // Ширина окна FAR в режиме F4 (пикселей, 0 - не задана): ставит и
     // читает Unit1 (сплиттер), хранится в editor.ini ([Far] HalfWidth)
@@ -336,6 +371,19 @@ type
 // Путь для ANSI-кода IDE (Delphi 7): в кодировке Windows, если она вмещает
 // все символы, иначе - короткое имя 8.3; нельзя ни так, ни так - ''
 function FarToAnsiPath(const APath: WideString): string;
+
+// Раскраска файлов: стандартный набор, чтение и запись editor.ini
+// ([FarColors]: '_Set=1' и строки 'ext=1,#RRGGBB,#RRGGBB'; '-' вместо фона
+// - фон панели). Раздела нет (или в нём нет _Set) - стандартный набор.
+procedure FarColorsDefault(var ARules: TFarColorRules);
+procedure FarColorsLoad(const AIniName: string; var ARules: TFarColorRules);
+procedure FarColorsSave(const AIniName: string; const ARules: TFarColorRules);
+function FarColorToText(AColor: TColor): string;
+function FarTextToColor(const AText: string; ADefault: TColor): TColor;
+// Расширение для правила: без '*.' и '.', строчными; '' - нельзя
+function FarNormalizeExt(const AText: string): string;
+procedure FarCopyRules(const ASource: TFarColorRules;
+  var ADest: TFarColorRules);
 
 implementation
 
@@ -350,6 +398,7 @@ const
   FarWhite = $FFFFFF;         // F_WHITE
   FarBlack = $000000;
   FarLightGray = $C0C0C0;     // F_LIGHTGRAY
+  FarDarkGray = $808080;      // F_DARKGRAY
 
   FarFontRes = 'FAR_TER_C18B';
   FarFontFile = 'ter-c18b.fnt';
@@ -817,6 +866,208 @@ begin
   ShortPath := PWideChar(@ShortBuffer[0]);
   if not FarWideToAnsi(ShortPath, Result) then
     Result := '';
+end;
+
+// ---------------------------------------------------------------------------
+//  Раскраска файлов
+// ---------------------------------------------------------------------------
+
+const
+  FarColorsSection = 'FarColors';
+
+// #RRGGBB <-> TColor ($00BBGGRR)
+function FarColorToText(AColor: TColor): string;
+var
+  RgbValue: Longint;
+begin
+  if AColor = clNone then
+  begin
+    Result := '-';
+    Exit;
+  end;
+  RgbValue := ColorToRGB(AColor);
+  Result := '#' + IntToHex(GetRValue(RgbValue), 2) +
+    IntToHex(GetGValue(RgbValue), 2) + IntToHex(GetBValue(RgbValue), 2);
+end;
+
+function FarTextToColor(const AText: string; ADefault: TColor): TColor;
+var
+  Text: string;
+  Value: Integer;
+begin
+  Result := ADefault;
+  Text := Trim(AText);
+  if Text = '-' then
+  begin
+    Result := clNone;
+    Exit;
+  end;
+  if (Length(Text) <> 7) or (Text[1] <> '#') then
+    Exit;
+  Value := StrToIntDef('$' + Copy(Text, 2, 6), -1);
+  if Value < 0 then
+    Exit;
+  Result := RGB((Value shr 16) and $FF, (Value shr 8) and $FF, Value and $FF);
+end;
+
+function FarNormalizeExt(const AText: string): string;
+var
+  CharIndex: Integer;
+begin
+  Result := LowerCase(Trim(AText));
+  if Copy(Result, 1, 2) = '*.' then
+    Delete(Result, 1, 2);
+  while (Result <> '') and (Result[1] = '.') do
+    Delete(Result, 1, 1);
+  for CharIndex := 1 to Length(Result) do
+    if Result[CharIndex] in ['\', '/', ':', '*', '?', '"', '<', '>', '|',
+       ' ', ',', '=', '[', ']', ';'] then
+    begin
+      Result := '';
+      Exit;
+    end;
+end;
+
+procedure FarCopyRules(const ASource: TFarColorRules;
+  var ADest: TFarColorRules);
+var
+  RuleIndex: Integer;
+begin
+  SetLength(ADest, Length(ASource));
+  for RuleIndex := 0 to High(ASource) do
+    ADest[RuleIndex] := ASource[RuleIndex];
+end;
+
+// Стандартный набор: группы расширений с цветом текста и фона (#RRGGBB,
+// '-' - фон панели). Цвета подобраны под синий фон панелей FAR.
+procedure FarColorsDefault(var ARules: TFarColorRules);
+const
+  GroupCount = 17;
+  GroupExts: array[0..GroupCount - 1] of string = (
+    'exe com bat cmd msi',                     // программы
+    'dll ocx sys bpl drv',                     // библиотеки
+    'zip rar 7z arj cab gz tar bz2 xz lzh iso',// архивы
+    'doc docx rtf odt',                        // документы
+    'pdf djvu',                                // PDF
+    'xls xlsx ods csv',                        // таблицы
+    'pas dpr dpk inc',                         // Delphi
+    'dfm lfm',                                 // формы
+    'bas bi frm',                              // Basic (RapidQ, FreeBASIC)
+    'c cpp h hpp ino',                         // C / C++ / Arduino
+    'htm html css js xml json',                // веб
+    'txt log md ini cfg',                      // текст
+    'png jpg jpeg bmp gif ico tif svg',        // картинки
+    'mp3 wav mp4 avi mkv',                     // звук и видео
+    'res rc',                                  // ресурсы
+    'dcu obj o bak tmp dsk ddp map drc',       // промежуточные
+    'mnb spl7 spl');                           // схемы и прочие проекты
+  GroupFore: array[0..GroupCount - 1] of string = (
+    '#55FF55', '#40C040', '#FF66FF', '#FFA0A0', '#FFFFFF', '#80FFC0',
+    '#FFFF80', '#FFD080', '#FF9A40', '#C0A0FF', '#60E0FF', '#E0E0E0',
+    '#FFD700', '#FF80C0', '#A0C8FF', '#8080A0', '#FFFFFF');
+  GroupBack: array[0..GroupCount - 1] of string = (
+    '-', '-', '-', '-', '#A01010', '-',
+    '-', '-', '-', '-', '-', '-',
+    '-', '-', '-', '-', '#207020');
+var
+  GroupIndex, RuleCount, SpacePos: Integer;
+  Exts, OneExt: string;
+begin
+  SetLength(ARules, 0);
+  RuleCount := 0;
+  for GroupIndex := 0 to GroupCount - 1 do
+  begin
+    Exts := GroupExts[GroupIndex] + ' ';
+    while Exts <> '' do
+    begin
+      SpacePos := Pos(' ', Exts);
+      OneExt := Copy(Exts, 1, SpacePos - 1);
+      Delete(Exts, 1, SpacePos);
+      if OneExt = '' then
+        Continue;
+      SetLength(ARules, RuleCount + 1);
+      ARules[RuleCount].Ext := OneExt;
+      ARules[RuleCount].Enabled := True;
+      ARules[RuleCount].Fore := FarTextToColor(GroupFore[GroupIndex], clWhite);
+      ARules[RuleCount].Back := FarTextToColor(GroupBack[GroupIndex], clNone);
+      Inc(RuleCount);
+    end;
+  end;
+end;
+
+procedure FarColorsLoad(const AIniName: string; var ARules: TFarColorRules);
+var
+  Ini: TBufIniFile;
+  Keys: TStringList;
+  KeyIndex, RuleCount, CommaPos: Integer;
+  Value, Part, Ext: string;
+begin
+  Ini := TBufIniFile.Create(AIniName);
+  Keys := TStringList.Create;
+  try
+    if Ini.ReadString(FarColorsSection, '_Set', '') <> '1' then
+    begin
+      FarColorsDefault(ARules);
+      Exit;
+    end;
+    Ini.ReadSection(FarColorsSection, Keys);
+    SetLength(ARules, 0);
+    RuleCount := 0;
+    for KeyIndex := 0 to Keys.Count - 1 do
+    begin
+      if (Keys[KeyIndex] = '') or (Keys[KeyIndex][1] = '_') then
+        Continue;
+      Ext := FarNormalizeExt(Keys[KeyIndex]);
+      if Ext = '' then
+        Continue;
+      Value := Ini.ReadString(FarColorsSection, Keys[KeyIndex], '') + ',';
+      SetLength(ARules, RuleCount + 1);
+      ARules[RuleCount].Ext := Ext;
+      // вкл
+      CommaPos := Pos(',', Value);
+      Part := Trim(Copy(Value, 1, CommaPos - 1));
+      Delete(Value, 1, CommaPos);
+      ARules[RuleCount].Enabled := Part <> '0';
+      // текст
+      CommaPos := Pos(',', Value);
+      Part := Copy(Value, 1, CommaPos - 1);
+      Delete(Value, 1, CommaPos);
+      ARules[RuleCount].Fore := FarTextToColor(Part, clWhite);
+      if ARules[RuleCount].Fore = clNone then
+        ARules[RuleCount].Fore := clWhite;
+      // фон
+      CommaPos := Pos(',', Value);
+      if CommaPos > 0 then
+        Part := Copy(Value, 1, CommaPos - 1)
+      else
+        Part := '-';
+      ARules[RuleCount].Back := FarTextToColor(Part, clNone);
+      Inc(RuleCount);
+    end;
+  finally
+    Keys.Free;
+    Ini.Free;
+  end;
+end;
+
+procedure FarColorsSave(const AIniName: string; const ARules: TFarColorRules);
+var
+  Ini: TBufIniFile;
+  RuleIndex: Integer;
+begin
+  Ini := TBufIniFile.Create(AIniName);
+  try
+    Ini.EraseSection(FarColorsSection);
+    Ini.WriteString(FarColorsSection, '_Set', '1');
+    for RuleIndex := 0 to High(ARules) do
+      if ARules[RuleIndex].Ext <> '' then
+        Ini.WriteString(FarColorsSection, ARules[RuleIndex].Ext,
+          IntToStr(Ord(ARules[RuleIndex].Enabled)) + ',' +
+          FarColorToText(ARules[RuleIndex].Fore) + ',' +
+          FarColorToText(ARules[RuleIndex].Back));
+  finally
+    Ini.Free;
+  end;
 end;
 
 function FarEncodePath(const APath: WideString): string;
@@ -1523,6 +1774,8 @@ var
   Title, ItemName, RightText, Totals, FreeText, SelText: WideString;
   TotalsLen, StartCol: Integer;
   SortLetter: string;
+  HasRule: Boolean;
+  RuleFore, RuleBack: TColor;
 begin
   Panel := FPanels[AIndex];
   PanelBounds(AIndex, PanelX, PanelW);
@@ -1562,13 +1815,19 @@ begin
         Break;
       with Panel.FItems[ItemIndex] do
       begin
+        // Раскраска по расширению - только у файлов
+        Back := FarBlue;
+        HasRule := not IsDir and RuleColors(Name, RuleFore, RuleBack);
+        if HasRule and (RuleBack <> clNone) then
+          Back := RuleBack;
         if Selected then
           Fore := FarYellow
         else if IsDir then
           Fore := FarWhite
+        else if HasRule then
+          Fore := RuleFore
         else
           Fore := FarLightCyan;
-        Back := FarBlue;
         if IsActive and (ItemIndex = Panel.Cursor) then
         begin
           Back := FarCyan;
@@ -2035,6 +2294,14 @@ begin
           begin
             if Assigned(FOnClose) then
               FOnClose(Self);
+            Exit;
+          end;
+        VK_F9:              // F9 - меню Options, Shift+F9 - Save setup
+          begin
+            if AShift then
+              SaveSetup
+            else
+              ShowOptionsMenu;
             Exit;
           end;
         VK_F4:              // F4 - файл в редактор, Shift+F4 - по имени
@@ -3232,7 +3499,7 @@ begin
     Target := FMenuCursor;
     repeat
       Target := (Target + ADelta + ItemCount) mod ItemCount;
-    until not FMenuItems[Target].Separator or (Target = FMenuCursor);
+    until not MenuSkip(Target) or (Target = FMenuCursor);
   end
   else
   begin
@@ -3245,7 +3512,7 @@ begin
       Step := 1
     else
       Step := -1;
-    while FMenuItems[Target].Separator and (Target + Step >= 0) and
+    while MenuSkip(Target) and (Target + Step >= 0) and
           (Target + Step < ItemCount) do
       Inc(Target, Step);
   end;
@@ -3311,7 +3578,7 @@ begin
         ((AKey >= Ord('0')) and (AKey <= Ord('9')))) then
       for ItemIndex := 0 to High(FMenuItems) do
       begin
-        if FMenuItems[ItemIndex].Separator then
+        if MenuSkip(ItemIndex) then
           Continue;
         ItemText := FarStripAmp(FMenuItems[ItemIndex].Text, HotPos);
         if HotPos = 0 then
@@ -3339,7 +3606,7 @@ begin
   if (AIndex < 0) or (AIndex > High(FMenuItems)) then
     Exit;
   Item := FMenuItems[AIndex];
-  if Item.Separator then
+  if Item.Separator or Item.Disabled then
     Exit;
   Kind := FMenuKind;
   PanelIndex := FMenuPanel;
@@ -3367,8 +3634,22 @@ begin
         ChangeDir(ActivePanel, Item.Data, '')
       else
         Status('unIDE FAR: папки нет: ' + Item.Data);
+    fmOptions:
+      case Item.Tag of
+        1:
+          if Assigned(FOnColorsDialog) then
+            FOnColorsDialog(Self);
+        2:
+          SaveSetup;
+      end;
   end;
   Invalidate;
+end;
+
+function TFarView.MenuSkip(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex < 0) or (AIndex > High(FMenuItems)) or
+            FMenuItems[AIndex].Separator or FMenuItems[AIndex].Disabled;
 end;
 
 // Номер пункта меню под точкой (клиентские координаты); -1 - не пункт
@@ -3386,7 +3667,7 @@ begin
   if (Row <= FMenuTopRow) or (Row > FMenuTopRow + FMenuRows) then
     Exit;
   Result := FMenuTop + Row - FMenuTopRow - 1;
-  if (Result > High(FMenuItems)) or FMenuItems[Result].Separator then
+  if MenuSkip(Result) then
     Result := -1;
 end;
 
@@ -3479,6 +3760,11 @@ begin
     end;
     Fore := FarWhite;
     HotFore := FarYellow;
+    if Item.Disabled then
+    begin
+      Fore := FarDarkGray;   // Menu.Text.Disabled в палитре FAR
+      HotFore := FarDarkGray;
+    end;
     if ItemIndex = FMenuCursor then
       Back := FarBlack
     else
@@ -3742,6 +4028,85 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+//  Раскраска файлов и меню Options (F9)
+// ---------------------------------------------------------------------------
+
+procedure TFarView.SetColorRules(const ARules: TFarColorRules);
+var
+  RuleIndex: Integer;
+begin
+  FarCopyRules(ARules, FColorRules);
+  SetLength(FColorExt, Length(FColorRules));
+  for RuleIndex := 0 to High(FColorRules) do
+    FColorExt[RuleIndex] := FColorRules[RuleIndex].Ext;
+  Invalidate;
+end;
+
+function TFarView.ColorRules: TFarColorRules;
+begin
+  FarCopyRules(FColorRules, Result);
+end;
+
+// Цвета файла AName по его расширению; False - правила нет (или выключено)
+function TFarView.RuleColors(const AName: WideString;
+  var AFore, ABack: TColor): Boolean;
+var
+  Ext: WideString;
+  RuleIndex: Integer;
+begin
+  Result := False;
+  if Length(FColorRules) = 0 then
+    Exit;
+  Ext := FarNameExt(AName);
+  if Ext = '' then
+    Exit;
+  for RuleIndex := 0 to High(FColorRules) do
+    if FColorRules[RuleIndex].Enabled and
+       FarSameName(Ext, FColorExt[RuleIndex]) then
+    begin
+      AFore := FColorRules[RuleIndex].Fore;
+      ABack := FColorRules[RuleIndex].Back;
+      Result := True;
+      Exit;
+    end;
+end;
+
+// F9: меню Options (только оно - решено). Что ещё не сделано - серым
+procedure TFarView.ShowOptionsMenu;
+const
+  ItemTexts: array[0..7] of string = ('&Panel settings', 'Con&firmations',
+    '', '&Colors', 'Files &highlighting', '', '&Save setup', '');
+  ItemTags: array[0..7] of Integer = (0, 0, 0, 0, 1, 0, 2, 0);
+var
+  Items: TFarMenuItems;
+  ItemIndex: Integer;
+begin
+  SetLength(Items, 7);
+  for ItemIndex := 0 to 6 do
+  begin
+    Items[ItemIndex].Text := ItemTexts[ItemIndex];
+    Items[ItemIndex].RightText := '';
+    Items[ItemIndex].Mark := ' ';
+    Items[ItemIndex].Separator := ItemTexts[ItemIndex] = '';
+    Items[ItemIndex].Disabled := (ItemTags[ItemIndex] = 0) and
+      not Items[ItemIndex].Separator;
+    Items[ItemIndex].Data := '';
+    Items[ItemIndex].Tag := ItemTags[ItemIndex];
+  end;
+  Items[6].RightText := 'Shift+F9';
+  MenuOpen(fmOptions, 'Options', Items, 4, FActive);
+end;
+
+// Save setup (Shift+F9): папки панелей, сортировка, история - в editor.ini
+procedure TFarView.SaveSetup;
+begin
+  if FIniName = '' then
+    Exit;
+  SaveState(FIniName);
+  Status('unIDE FAR: настройки записаны в ' + ExtractFileName(FIniName));
+end;
+
+// ---------------------------------------------------------------------------
 //  Состояние в editor.ini, раздел [Far]
 // ---------------------------------------------------------------------------
 
@@ -3756,6 +4121,7 @@ var
   PanelIndex, DriveIndex, HistoryCount, HistoryIndex, SortIndex: Integer;
   SavedPath, SavedFile, ChildName: WideString;
   ErrorText: string;
+  Rules: TFarColorRules;
 begin
   Ini := TBufIniFile.Create(AIniName);
   try
@@ -3812,12 +4178,15 @@ begin
         FPanels[PanelIndex].ReadDir(ADefaultDir, '', ErrorText);
     end;
     FHalfWidth := Ini.ReadInteger(FarIniSection, 'HalfWidth', 0);
+    FIniName := AIniName;
     FActive := Ini.ReadInteger(FarIniSection, 'Active', 0);
     if (FActive < 0) or (FActive > 1) then
       FActive := 0;
   finally
     Ini.Free;
   end;
+  FarColorsLoad(AIniName, Rules);
+  SetColorRules(Rules);
   UpdateGrid;
   Invalidate;
 end;

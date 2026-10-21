@@ -42,6 +42,7 @@ uses
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   FileSearch,     // Find In Files: маски, чтение файлов, обход папок (TFifFileFound)
   UnFar,          // unIDE FAR: двухпанельный файловый менеджер (Utils)
+  DlgFarColors,   // unIDE FAR: окно раскраски файлов по расширению
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -1015,6 +1016,7 @@ type
     procedure FarHalfOffLayout;
     procedure FarEditorEsc;
     procedure FarSplitterMoved(Sender: TObject);
+    procedure FarColorsClick(Sender: TObject);
     procedure FarBtnClick(Sender: TObject);
     procedure FarCollapse(ACollapse: Boolean);
     procedure FarPlaceSplitter;
@@ -1253,6 +1255,8 @@ type
     FIncGuess: TStringList;
     // Пункты меню Подсветка (вкладка и View) и схемы их подпунктов по Tag
     FHlTabItem, FHlViewItem: TMenuItem;
+    // Options - unIDE FAR: Files highlighting (окно раскраски файлов)
+    FFarColorsItem: TMenuItem;
     FHlNames: TStringList;
     // Поле фильтра в шапке SubList (справа от Name): в списке - только
     // подпрограммы, в имени которых есть этот текст; пусто - все
@@ -23507,6 +23511,12 @@ begin
   FHlViewItem.OnClick := HighlightMenuFill;
   FHlViewItem.Add(NewItem('-', 0, False, False, nil, 0, ''));
   mOptions.Add(FHlViewItem);
+  // Раскраска файлов в unIDE FAR - то же окно, что F9 - Options - Files
+  // highlighting в самом FAR
+  FFarColorsItem := TMenuItem.Create(Self);
+  FFarColorsItem.Caption := 'unIDE FAR - Files highlighting...';
+  FFarColorsItem.OnClick := FarColorsClick;
+  mOptions.Add(FFarColorsItem);
   // Utils: пункты inc-файлов RapidQ - только в проектах Basic (по простою,
   // когда сменился проект, - UtilsMenuOpen)
   UtilsMenuOpen(nil);
@@ -37200,6 +37210,7 @@ begin
     FFar.OnStatus := FarStatus;
     FFar.OnEditFile := FarEditFile;
     FFar.OnLeave := FarLeave;
+    FFar.OnColorsDialog := FarColorsClick;
     FFarOwnWin := -1;
     FFarLastTabIdx := -1;
     FFar.LoadState(SettingsFileName, StartDir);
@@ -37469,6 +37480,37 @@ begin
     NewWidth := pnlMain.ClientWidth div 2;
   if FFarSpacer.Width <> NewWidth then
     FFarSpacer.Width := NewWidth;
+end;
+
+// Раскраска файлов в unIDE FAR (F9 - Options - Files highlighting в FAR,
+// Options - unIDE FAR - Files highlighting в меню IDE): окно DlgFarColors.
+// OK - правила в editor.ini ([FarColors]) и в открытое окно FAR. FAR ещё не
+// открывали - правила читаются из editor.ini
+procedure TForm1.FarColorsClick(Sender: TObject);
+var
+  Dlg: TDlgFarColors;
+  Rules: TFarColorRules;
+begin
+  if FFar <> nil then
+    Rules := FFar.ColorRules
+  else
+    FarColorsLoad(SettingsFileName, Rules);
+  Dlg := TDlgFarColors.Create(Self);
+  try
+    Dlg.SetRules(Rules);
+    UiApplyForm(Dlg);
+    if Dlg.ShowModal = mrOk then
+    begin
+      Rules := Dlg.GetRules;
+      FarColorsSave(SettingsFileName, Rules);
+      if FFar <> nil then
+        FFar.SetColorRules(Rules);
+    end;
+  finally
+    Dlg.Free;
+  end;
+  if (FFar <> nil) and FFar.Visible and FFar.CanFocus then
+    FFar.SetFocus;
 end;
 
 // Сплиттер - сразу за распоркой, со стороны редактора

@@ -71,7 +71,8 @@ uses
   MdHtml in 'MdHtml.pas',
   FmtView in 'FmtView.pas',
   SplitPane in 'SplitPane.pas',
-  UnFar in 'UnFar.pas';
+  UnFar in 'UnFar.pas',
+  DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};
 
 {$R *.res}
 
