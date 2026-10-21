@@ -45,7 +45,15 @@ unit UnFar;
 //      записать настройки, Shift+F9 - то же);
 //    - b.16: Ctrl+Down - панели ниже на строку, Ctrl+Up - выше (как в FAR:
 //      под панелями - пустое место, кейбар внизу); в editor.ini
-//      ([Far] PanelCut - на сколько строк панели короче окна).
+//      ([Far] PanelCut - на сколько строк панели короче окна);
+//    - b.17: командная строка над кейбаром, как в FAR. Буквы - в неё,
+//      Enter - выполнить (cmd.exe /C в папке активной панели, вывод - в
+//      область под панелями, кодировка OEM), Esc - очистить, Ctrl+E /
+//      Ctrl+X - история, Ctrl+Enter - имя файла под курсором, Ctrl+[ /
+//      Ctrl+] - путь левой / правой панели, Ctrl+S / Ctrl+D - каретка,
+//      Ctrl+O - спрятать / показать панели (виден весь вывод), Ctrl+Break -
+//      прервать команду. Свои команды: cd, X:, cls. Пока строка не пуста,
+//      Del и Backspace правят её, файлы не удаляются.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -75,7 +83,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.16';
+  FarBuild = 'b.17';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -209,6 +217,22 @@ type
     FHalfWidth: Integer;          // ширина окна в режиме F4, пикселей (0 - нет)
     FPanelCut: Integer;           // на сколько строк панели короче окна
                                   // (Ctrl+Up / Ctrl+Down)
+    // Командная строка: текст, каретка (0..Length), история (старые
+    // сверху) и место в ней при Ctrl+E / Ctrl+X
+    FCmdText: WideString;
+    FCmdPos: Integer;
+    FCmdHistory: TFarNames;
+    FCmdHistPos: Integer;
+    // Вывод команд: строки (последняя может быть не закончена -
+    // FOutOpen), прокрутка колесом (строк экрана от низа)
+    FOutLines: TFarNames;
+    FOutOpen: Boolean;
+    FOutScroll: Integer;
+    FPanelsHidden: Boolean;       // Ctrl+O: панели спрятаны, виден вывод
+    // Выполняемая команда: процесс cmd.exe и его вывод (труба)
+    FProcHandle: THandle;
+    FProcPipe: THandle;
+    FProcTimer: TTimer;
     // Диалог (F5 - F8): рисуется поверх панелей, клавиши - ему
     FDlgKind: TFarDlgKind;
     FDlgTitle: WideString;
@@ -257,6 +281,23 @@ type
     procedure PanelBounds(AIndex: Integer; var AX0, AWidth: Integer);
     function PanelHeight: Integer;
     function MaxPanelCut: Integer;
+    // Командная строка и вывод
+    function CmdRow: Integer;
+    function CmdKey(AKey: Word; AShift, ACtrl, AAlt: Boolean;
+      var AHandled: Boolean): Boolean;
+    procedure CmdInsert(const AText: WideString);
+    procedure CmdSetText(const AText: WideString);
+    procedure CmdExecute;
+    function CmdBuiltin(const ACommand: WideString): Boolean;
+    procedure CmdRun(const ACommand: WideString);
+    procedure CmdHistoryAdd(const ACommand: WideString);
+    procedure DrawCmdLine;
+    procedure DrawOutput(ATopRow, ABottomRow: Integer);
+    procedure OutAppend(const AText: WideString);
+    procedure OutLine(const AText: WideString);
+    procedure ProcTick(Sender: TObject);
+    procedure ProcFinish(AKill: Boolean);
+    function PromptText: WideString;
     procedure ChangePanelCut(ADelta: Integer);
     function KeyBarRows: Integer;
     function FileRows: Integer;
@@ -456,6 +497,18 @@ const
   FarDriveRemote = 4;
   FarDriveCdRom = 5;
   FarDriveRamDisk = 6;
+
+  // Командная строка
+  FarCpOem = 1;                    // CP_OEMCP: вывод консольных программ
+  FarHandleInherit = 1;            // HANDLE_FLAG_INHERIT
+  FarStartfUseShowWindow = 1;
+  FarStartfUseStdHandles = $100;
+  FarCreateNoWindow = $08000000;
+  FarOutMaxLines = 2000;           // столько строк вывода держим
+  FarCmdHistoryMax = 50;
+  FarCmdHistorySection = 'FarCmdHistory';
+  FarVkLeftBracket = $DB;          // VK_OEM_4: '['
+  FarVkRightBracket = $DD;         // VK_OEM_6: ']'
   FarInvalidAttr = $FFFFFFFF;
 
   // Кейбар: подписи FAR (far\farlang.templ.m4) для того, что есть или
@@ -484,6 +537,31 @@ type
   end;
 
   TFarInt64Ptr = ^Int64;
+
+  TFarSecurityAttributes = record
+    nLength: DWORD;
+    lpSecurityDescriptor: Pointer;
+    bInheritHandle: BOOL;
+  end;
+
+  TFarStartupInfo = record
+    cb: DWORD;
+    lpReserved: PWideChar;
+    lpDesktop: PWideChar;
+    lpTitle: PWideChar;
+    dwX, dwY, dwXSize, dwYSize: DWORD;
+    dwXCountChars, dwYCountChars, dwFillAttribute: DWORD;
+    dwFlags: DWORD;
+    wShowWindow: Word;
+    cbReserved2: Word;
+    lpReserved2: Pointer;
+    hStdInput, hStdOutput, hStdError: THandle;
+  end;
+
+  TFarProcessInfo = record
+    hProcess, hThread: THandle;
+    dwProcessId, dwThreadId: DWORD;
+  end;
 
   // SHFILEOPSTRUCTW - в 32-битной Windows без выравнивания (packed)
   TFarShFileOp = packed record
@@ -548,6 +626,33 @@ function FarSetErrorMode(AMode: UINT): UINT; stdcall;
 function FarGetShortPath(ALongPath, AShortPath: PWideChar;
   ABufferLen: DWORD): DWORD; stdcall;
   external 'kernel32.dll' name 'GetShortPathNameW';
+// Командная строка: процесс cmd.exe с выводом в трубу
+function FarCreatePipe(var AReadPipe, AWritePipe: THandle;
+  AAttributes: Pointer; ASize: DWORD): BOOL; stdcall;
+  external 'kernel32.dll' name 'CreatePipe';
+function FarSetHandleInfo(AHandle: THandle; AMask, AFlags: DWORD): BOOL;
+  stdcall; external 'kernel32.dll' name 'SetHandleInformation';
+function FarPeekPipe(APipe: THandle; ABuffer: Pointer; ABufferSize: DWORD;
+  ABytesRead, ATotalAvail, ABytesLeft: Pointer): BOOL; stdcall;
+  external 'kernel32.dll' name 'PeekNamedPipe';
+function FarReadFile(AFile: THandle; ABuffer: Pointer; AToRead: DWORD;
+  ABytesRead: Pointer; AOverlapped: Pointer): BOOL; stdcall;
+  external 'kernel32.dll' name 'ReadFile';
+function FarGetExitCode(AProcess: THandle; var AExitCode: DWORD): BOOL;
+  stdcall; external 'kernel32.dll' name 'GetExitCodeProcess';
+function FarTerminate(AProcess: THandle; AExitCode: UINT): BOOL; stdcall;
+  external 'kernel32.dll' name 'TerminateProcess';
+function FarGetEnvVar(AName, ABuffer: PWideChar; ASize: DWORD): DWORD;
+  stdcall; external 'kernel32.dll' name 'GetEnvironmentVariableW';
+function FarGetFullPath(AFileName: PWideChar; ABufferLen: DWORD;
+  ABuffer: PWideChar; AFilePart: Pointer): DWORD; stdcall;
+  external 'kernel32.dll' name 'GetFullPathNameW';
+function FarCreateProcess(AAppName, ACommandLine: PWideChar;
+  AProcessAttr, AThreadAttr: Pointer; AInherit: BOOL; AFlags: DWORD;
+  AEnvironment: Pointer; ACurrentDir: PWideChar;
+  var AStartupInfo: TFarStartupInfo;
+  var AProcessInfo: TFarProcessInfo): BOOL; stdcall;
+  external 'kernel32.dll' name 'CreateProcessW';
 function FarCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
   ASecurity: Pointer; ADisposition, AFlags: DWORD;
   ATemplate: THandle): THandle; stdcall;
@@ -1461,10 +1566,17 @@ begin
   FWatchTimer.Interval := FarWatchInterval;
   FWatchTimer.OnTimer := WatchTick;
   FWatchTimer.Enabled := True;
+  FProcTimer := TTimer.Create(Self);
+  FProcTimer.Interval := 100;
+  FProcTimer.OnTimer := ProcTick;
+  FProcTimer.Enabled := False;
 end;
 
 destructor TFarView.Destroy;
 begin
+  FProcTimer.Enabled := False;
+  if FProcHandle <> 0 then
+    ProcFinish(True);
   FWatchTimer.Enabled := False;
   WatchStop;
   FreeFonts;
@@ -1582,7 +1694,7 @@ begin
     FPanelCut := MaxPanelCut;
   if FPanelCut < 0 then
     FPanelCut := 0;
-  Result := FRows - KeyBarRows - FPanelCut;
+  Result := FRows - KeyBarRows - 1 - FPanelCut;   // 1 - командная строка
 end;
 
 // Короче не укоротить: у панели должно остаться место под рамку,
@@ -1591,7 +1703,7 @@ function TFarView.MaxPanelCut: Integer;
 const
   MinPanelRows = 8;
 begin
-  Result := FRows - KeyBarRows - MinPanelRows;
+  Result := FRows - KeyBarRows - 1 - MinPanelRows;
   if Result < 0 then
     Result := 0;
 end;
@@ -2015,8 +2127,17 @@ begin
     FBuffer.Canvas.FillRect(Rect(0, 0, ClientWidth, ClientHeight));
     if (FCols >= 20) and (FRows >= 8) then
     begin
-      DrawPanel(0);
-      DrawPanel(1);
+      // Вывод команд: под панелями, а спрятаны панели (Ctrl+O) - всё окно
+      if FPanelsHidden then
+        DrawOutput(0, CmdRow - 1)
+      else
+      begin
+        DrawPanel(0);
+        DrawPanel(1);
+        if PanelHeight <= CmdRow - 1 then
+          DrawOutput(PanelHeight, CmdRow - 1);
+      end;
+      DrawCmdLine;
       DrawKeyBar;
       if FMenuKind <> fmNone then
         DrawMenu;
@@ -2128,6 +2249,12 @@ begin
     Invalidate;
     Exit;
   end;
+  // Панели спрятаны или щелчок ниже панелей (вывод, командная строка)
+  if FPanelsHidden or (Y div FCellH >= PanelHeight) then
+  begin
+    Invalidate;
+    Exit;
+  end;
   HasItem := ItemAt(X, Y, PanelIndex, ItemIndex);
   FActive := PanelIndex;
   if HasItem then
@@ -2155,6 +2282,8 @@ begin
 end;
 
 procedure TFarView.WMMouseWheel(var Message: TWMMouseWheel);
+var
+  WheelPoint: TPoint;
 begin
   Message.Result := 1;
   if FMenuKind <> fmNone then
@@ -2168,6 +2297,19 @@ begin
   end;
   if FDlgKind <> fdNone then
     Exit;
+  // Колесо над выводом (или панели спрятаны) - прокрутка вывода
+  WheelPoint := ScreenToClient(Point(Message.XPos, Message.YPos));
+  if FPanelsHidden or (WheelPoint.Y div FCellH >= PanelHeight) then
+  begin
+    if Message.WheelDelta > 0 then
+      Inc(FOutScroll, 3)
+    else if Message.WheelDelta < 0 then
+      Dec(FOutScroll, 3);
+    if FOutScroll < 0 then
+      FOutScroll := 0;
+    Invalidate;
+    Exit;
+  end;
   if Message.WheelDelta > 0 then
     MoveCursor(-1, False)
   else if Message.WheelDelta < 0 then
@@ -2223,6 +2365,17 @@ begin
       if WideCh <> #0 then
         DlgInsertText(WideCh);
       Invalidate;
+      Result := True;
+    end
+    // Символ без диалога и меню - в командную строку
+    else if (FDlgKind = fdNone) and (FMenuKind = fmNone) and
+            (KeyCode >= 32) then
+    begin
+      AnsiCh := AnsiChar(KeyCode and $FF);
+      WideCh := #0;
+      FarMultiToWide(CP_ACP, 0, @AnsiCh, 1, @WideCh, 1);
+      if WideCh <> #0 then
+        CmdInsert(WideCh);
       Result := True;
     end;
     Exit;
@@ -2280,10 +2433,30 @@ end;
 
 function TFarView.DoKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
 var
-  Plain: Boolean;
+  Plain, CmdHandled: Boolean;
 begin
   Result := True;
   Plain := not ACtrl and not AAlt;
+
+  // Командная строка: её клавиши - первыми
+  if CmdKey(AKey, AShift, ACtrl, AAlt, CmdHandled) then
+  begin
+    Result := CmdHandled;
+    Exit;
+  end;
+
+  // Панели спрятаны (Ctrl+O): работают только F10 и командная строка
+  if FPanelsHidden and not ((AKey = VK_F10) and Plain and not AShift) then
+  begin
+    if (AKey >= VK_F1) and (AKey <= VK_F12) then
+      Status('unIDE FAR: панели спрятаны - Ctrl+O');
+    Result := (AKey >= VK_F1) and (AKey <= VK_F12) or (AKey = VK_UP) or
+      (AKey = VK_DOWN) or (AKey = VK_LEFT) or (AKey = VK_RIGHT) or
+      (AKey = VK_PRIOR) or (AKey = VK_NEXT) or (AKey = VK_HOME) or
+      (AKey = VK_END) or (AKey = VK_INSERT) or (AKey = VK_DELETE) or
+      (AKey = VK_TAB) or (AKey = VK_RETURN);
+    Exit;
+  end;
 
   // F-клавиши
   if (AKey >= VK_F1) and (AKey <= VK_F12) then
@@ -4074,6 +4247,619 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+//  Командная строка (над кейбаром) и вывод команд (под панелями)
+// ---------------------------------------------------------------------------
+
+function TFarView.CmdRow: Integer;
+begin
+  Result := FRows - KeyBarRows - 1;
+end;
+
+// Приглашение: путь активной панели и '>' (как у cmd.exe)
+function TFarView.PromptText: WideString;
+begin
+  Result := ActivePanel.Path;
+  if (Length(Result) > 3) and (Result[Length(Result)] = '\') then
+    SetLength(Result, Length(Result) - 1);
+  Result := Result + '>';
+end;
+
+procedure TFarView.CmdSetText(const AText: WideString);
+begin
+  FCmdText := AText;
+  FCmdPos := Length(FCmdText);
+  Invalidate;
+end;
+
+procedure TFarView.CmdInsert(const AText: WideString);
+var
+  Clean: WideString;
+  CharIndex: Integer;
+begin
+  // Переводы строк из буфера обмена - пробелами: строка одна
+  Clean := AText;
+  for CharIndex := 1 to Length(Clean) do
+    if (Clean[CharIndex] = #13) or (Clean[CharIndex] = #10) or
+       (Clean[CharIndex] = #9) then
+      Clean[CharIndex] := ' ';
+  if FCmdPos > Length(FCmdText) then
+    FCmdPos := Length(FCmdText);
+  Insert(Clean, FCmdText, FCmdPos + 1);
+  Inc(FCmdPos, Length(Clean));
+  FCmdHistPos := Length(FCmdHistory);
+  Invalidate;
+end;
+
+// Имя для вставки в строку: с пробелом - в кавычках
+function FarQuoteName(const AName: WideString): WideString;
+var
+  CharIndex: Integer;
+begin
+  Result := AName;
+  for CharIndex := 1 to Length(AName) do
+    if AName[CharIndex] = ' ' then
+    begin
+      Result := WideString('"') + AName + WideString('"');
+      Exit;
+    end;
+end;
+
+// Клавиши командной строки. True - клавиша её (AHandled - забрать ли
+// нажатие: False - пусть придёт символом WM_CHAR); False - не её, дальше
+// панелям. Пока строка не пуста, Enter, Esc, Backspace и Del - её: Del
+// не удаляет файлы
+function TFarView.CmdKey(AKey: Word; AShift, ACtrl, AAlt: Boolean;
+  var AHandled: Boolean): Boolean;
+var
+  Panel: TFarPanel;
+  Insertion: WideString;
+begin
+  Result := True;
+  AHandled := True;
+  if AAlt then
+  begin
+    Result := False;
+    Exit;
+  end;
+  if ACtrl then
+  begin
+    case AKey of
+      Ord('O'):                       // спрятать / показать панели
+        begin
+          FPanelsHidden := not FPanelsHidden;
+          FOutScroll := 0;
+          Invalidate;
+        end;
+      Ord('E'), Ord('X'):             // история: старше / новее
+        begin
+          if Length(FCmdHistory) = 0 then
+            Exit;
+          if AKey = Ord('E') then
+          begin
+            if FCmdHistPos > 0 then
+              Dec(FCmdHistPos);
+          end
+          else if FCmdHistPos < Length(FCmdHistory) then
+            Inc(FCmdHistPos);
+          if FCmdHistPos < Length(FCmdHistory) then
+            CmdSetText(FCmdHistory[FCmdHistPos])
+          else
+            CmdSetText('');
+        end;
+      Ord('Y'):                       // очистить
+        CmdSetText('');
+      Ord('S'):                       // каретка влево
+        begin
+          if FCmdPos > 0 then
+            Dec(FCmdPos);
+          Invalidate;
+        end;
+      Ord('D'):                       // каретка вправо
+        begin
+          if FCmdPos < Length(FCmdText) then
+            Inc(FCmdPos);
+          Invalidate;
+        end;
+      Ord('V'):                       // вставить
+        if Clipboard.HasFormat(CF_TEXT) then
+          CmdInsert(Clipboard.AsText);
+      VK_RETURN:                      // имя файла под курсором
+        begin
+          Panel := ActivePanel;
+          if (Panel.Cursor >= 0) and (Panel.Cursor < Panel.Count) then
+            CmdInsert(FarQuoteName(Panel.FItems[Panel.Cursor].Name) + ' ');
+        end;
+      FarVkLeftBracket, FarVkRightBracket:  // путь левой / правой панели
+        begin
+          if AKey = FarVkLeftBracket then
+            Insertion := FPanels[0].Path
+          else
+            Insertion := FPanels[1].Path;
+          CmdInsert(FarQuoteName(Insertion) + ' ');
+        end;
+      VK_CANCEL:                      // Ctrl+Break - прервать команду
+        if FProcHandle <> 0 then
+        begin
+          ProcFinish(True);
+          OutLine('^C');
+          Invalidate;
+        end;
+    else
+      Result := False;
+    end;
+    Exit;
+  end;
+
+  // Без Ctrl и Alt
+  case AKey of
+    VK_RETURN:
+      if (FCmdText <> '') and not AShift then
+        CmdExecute
+      else
+        Result := False;
+    VK_ESCAPE:
+      if FCmdText <> '' then
+        CmdSetText('')
+      else
+        Result := False;
+    VK_BACK:
+      if FCmdText <> '' then
+      begin
+        if FCmdPos > 0 then
+        begin
+          Delete(FCmdText, FCmdPos, 1);
+          Dec(FCmdPos);
+        end;
+        Invalidate;
+      end
+      else
+        Result := False;
+    VK_DELETE:
+      if FCmdText <> '' then
+      begin
+        if FCmdPos < Length(FCmdText) then
+          Delete(FCmdText, FCmdPos + 1, 1);
+        Invalidate;
+      end
+      else
+        Result := False;
+    VK_INSERT:
+      if AShift then
+      begin
+        if Clipboard.HasFormat(CF_TEXT) then
+          CmdInsert(Clipboard.AsText);
+      end
+      else
+        Result := False;
+  else
+    Result := False;
+  end;
+end;
+
+procedure TFarView.CmdHistoryAdd(const ACommand: WideString);
+var
+  HistoryIndex, MoveIndex: Integer;
+begin
+  for HistoryIndex := High(FCmdHistory) downto 0 do
+    if FCmdHistory[HistoryIndex] = ACommand then
+    begin
+      for MoveIndex := HistoryIndex to High(FCmdHistory) - 1 do
+        FCmdHistory[MoveIndex] := FCmdHistory[MoveIndex + 1];
+      SetLength(FCmdHistory, Length(FCmdHistory) - 1);
+    end;
+  SetLength(FCmdHistory, Length(FCmdHistory) + 1);
+  FCmdHistory[High(FCmdHistory)] := ACommand;
+  if Length(FCmdHistory) > FarCmdHistoryMax then
+  begin
+    for MoveIndex := 0 to FarCmdHistoryMax - 1 do
+      FCmdHistory[MoveIndex] := FCmdHistory[MoveIndex + Length(FCmdHistory) -
+        FarCmdHistoryMax];
+    SetLength(FCmdHistory, FarCmdHistoryMax);
+  end;
+  FCmdHistPos := Length(FCmdHistory);
+end;
+
+// Enter: команда - в вывод (с приглашением) и в историю; своя (cd, X:,
+// cls) - выполняется здесь, остальные - cmd.exe
+procedure TFarView.CmdExecute;
+var
+  Command: WideString;
+begin
+  Command := FarTrimW(FCmdText);
+  if Command = '' then
+    Exit;
+  if FProcHandle <> 0 then
+  begin
+    Status('unIDE FAR: прежняя команда ещё выполняется (Ctrl+Break - ' +
+      'прервать)');
+    Exit;
+  end;
+  CmdHistoryAdd(Command);
+  CmdSetText('');
+  FOutScroll := 0;
+  OutLine(PromptText + Command);
+  if not CmdBuiltin(Command) then
+    CmdRun(Command);
+  // Вывода не видно (панели во всё окно) - подсказка
+  if not FPanelsHidden and (PanelHeight >= CmdRow) then
+    Status('unIDE FAR: вывод команды - Ctrl+O');
+  Invalidate;
+end;
+
+// Свои команды: смена папки и диска панели, очистка вывода. True -
+// выполнена здесь
+function TFarView.CmdBuiltin(const ACommand: WideString): Boolean;
+var
+  Lower, Arg, Target: WideString;
+  FullBuffer: array[0..MAX_PATH] of WideChar;
+  FullLen: DWORD;
+  Code: Integer;
+begin
+  Result := False;
+  Lower := WideLowerCase(ACommand);
+
+  // X: - диск
+  if (Length(ACommand) = 2) and (ACommand[2] = ':') then
+  begin
+    Code := Ord(Lower[1]);
+    if (Code >= Ord('a')) and (Code <= Ord('z')) then
+    begin
+      SelectDrive(FActive, WideChar(Code - 32));
+      Result := True;
+    end;
+    Exit;
+  end;
+
+  if Lower = 'cls' then
+  begin
+    FOutLines := nil;
+    FOutOpen := False;
+    Result := True;
+    Exit;
+  end;
+
+  // cd путь, cd.., cd\, chdir путь, cd /d путь
+  Arg := '';
+  if Copy(Lower, 1, 5) = 'chdir' then
+  begin
+    if (Length(Lower) > 5) and not ((Lower[6] = ' ') or (Lower[6] = '.') or
+       (Lower[6] = '\')) then
+      Exit;
+    Arg := Copy(ACommand, 6, MaxInt);
+  end
+  else if Copy(Lower, 1, 2) = 'cd' then
+  begin
+    if (Length(Lower) > 2) and not ((Lower[3] = ' ') or (Lower[3] = '.') or
+       (Lower[3] = '\')) then
+      Exit;
+    Arg := Copy(ACommand, 3, MaxInt);
+  end
+  else
+    Exit;
+  Result := True;
+  Arg := FarTrimW(Arg);
+  if WideLowerCase(Copy(Arg, 1, 3)) = '/d ' then
+    Arg := FarTrimW(Copy(Arg, 4, MaxInt));
+  if (Length(Arg) >= 2) and (Arg[1] = '"') and (Arg[Length(Arg)] = '"') then
+    Arg := Copy(Arg, 2, Length(Arg) - 2);
+  if Arg = '' then
+  begin
+    OutLine(Copy(PromptText, 1, Length(PromptText) - 1));
+    Exit;
+  end;
+  Target := FarFullPath(ActivePanel.Path, Arg);
+  // '..' и '.' в пути - полным путём Windows
+  FullLen := FarGetFullPath(PWideChar(Target), MAX_PATH + 1, FullBuffer, nil);
+  if (FullLen > 0) and (FullLen <= MAX_PATH) then
+    Target := PWideChar(@FullBuffer[0]);
+  if FarDirExists(Target) then
+    ChangeDir(ActivePanel, Target, '')
+  else
+    OutLine('Системе не удается найти указанный путь.');
+end;
+
+// Внешняя команда: cmd.exe /C в папке активной панели, вывод (stdout и
+// stderr) - в трубу, ввода нет (программа, ждущая ввода, получит конец
+// файла). Окна консоли нет. Вывод читает ProcTick.
+procedure TFarView.CmdRun(const ACommand: WideString);
+var
+  Security: TFarSecurityAttributes;
+  OutRead, OutWrite, InRead, InWrite: THandle;
+  Startup: TFarStartupInfo;
+  ProcInfo: TFarProcessInfo;
+  ComSpec, CommandLine, WorkDir: WideString;
+  EnvBuffer: array[0..MAX_PATH] of WideChar;
+  EnvLen: DWORD;
+begin
+  Security.nLength := SizeOf(Security);
+  Security.lpSecurityDescriptor := nil;
+  Security.bInheritHandle := True;
+  if not FarCreatePipe(OutRead, OutWrite, @Security, 0) then
+  begin
+    OutLine('unIDE FAR: трубу вывода не создать: ' +
+      SysErrorMessage(GetLastError));
+    Exit;
+  end;
+  if not FarCreatePipe(InRead, InWrite, @Security, 0) then
+  begin
+    CloseHandle(OutRead);
+    CloseHandle(OutWrite);
+    OutLine('unIDE FAR: трубу ввода не создать: ' +
+      SysErrorMessage(GetLastError));
+    Exit;
+  end;
+  // Наши концы труб процессу не нужны
+  FarSetHandleInfo(OutRead, FarHandleInherit, 0);
+  FarSetHandleInfo(InWrite, FarHandleInherit, 0);
+
+  EnvLen := FarGetEnvVar('ComSpec', EnvBuffer, MAX_PATH + 1);
+  if (EnvLen > 0) and (EnvLen <= MAX_PATH) then
+    ComSpec := PWideChar(@EnvBuffer[0])
+  else
+    ComSpec := 'cmd.exe';
+  CommandLine := WideString('"') + ComSpec + WideString('" /C ') + ACommand;
+  WorkDir := ActivePanel.Path;
+
+  FillChar(Startup, SizeOf(Startup), 0);
+  Startup.cb := SizeOf(Startup);
+  Startup.dwFlags := FarStartfUseStdHandles or FarStartfUseShowWindow;
+  Startup.wShowWindow := SW_HIDE;
+  Startup.hStdInput := InRead;
+  Startup.hStdOutput := OutWrite;
+  Startup.hStdError := OutWrite;
+  FillChar(ProcInfo, SizeOf(ProcInfo), 0);
+  // Строка команды CreateProcessW может менять - у WideString она и так
+  // своя (не общая с другими строками)
+  if not FarCreateProcess(nil, PWideChar(CommandLine), nil, nil, True,
+       FarCreateNoWindow, nil, PWideChar(WorkDir), Startup, ProcInfo) then
+  begin
+    OutLine('unIDE FAR: команду не запустить: ' +
+      SysErrorMessage(GetLastError));
+    CloseHandle(OutRead);
+    CloseHandle(OutWrite);
+    CloseHandle(InRead);
+    CloseHandle(InWrite);
+    Exit;
+  end;
+  // Концы процесса закрываем у себя: иначе труба не кончится вместе с ним
+  CloseHandle(OutWrite);
+  CloseHandle(InRead);
+  CloseHandle(InWrite);
+  CloseHandle(ProcInfo.hThread);
+  FProcHandle := ProcInfo.hProcess;
+  FProcPipe := OutRead;
+  FProcTimer.Enabled := True;
+end;
+
+// Вывод процесса: что есть в трубе - прочитать (OEM -> Unicode); процесс
+// закончился и труба пуста - закрыть
+procedure TFarView.ProcTick(Sender: TObject);
+var
+  Available, BytesRead: DWORD;
+  Buffer: array[0..8191] of AnsiChar;
+  WideBuffer: array[0..8192] of WideChar;
+  WideLen, Rounds: Integer;
+  Text: WideString;
+  Changed: Boolean;
+begin
+  if FProcHandle = 0 then
+  begin
+    FProcTimer.Enabled := False;
+    Exit;
+  end;
+  Changed := False;
+  Rounds := 0;
+  while Rounds < 16 do
+  begin
+    Inc(Rounds);
+    Available := 0;
+    if not FarPeekPipe(FProcPipe, nil, 0, nil, @Available, nil) then
+      Break;   // процесс закрыл свой конец - конец вывода
+    if Available = 0 then
+      Break;
+    if Available > SizeOf(Buffer) then
+      Available := SizeOf(Buffer);
+    BytesRead := 0;
+    if not FarReadFile(FProcPipe, @Buffer[0], Available, @BytesRead, nil) or
+       (BytesRead = 0) then
+      Break;
+    WideLen := FarMultiToWide(FarCpOem, 0, @Buffer[0], BytesRead,
+      @WideBuffer[0], Length(WideBuffer) - 1);
+    if WideLen > 0 then
+    begin
+      WideBuffer[WideLen] := #0;
+      Text := PWideChar(@WideBuffer[0]);
+      OutAppend(Text);
+      Changed := True;
+    end;
+  end;
+  if WaitForSingleObject(FProcHandle, 0) = WAIT_OBJECT_0 then
+  begin
+    Available := 0;
+    if not FarPeekPipe(FProcPipe, nil, 0, nil, @Available, nil) or
+       (Available = 0) then
+    begin
+      ProcFinish(False);
+      Changed := True;
+    end;
+  end;
+  if Changed then
+    Invalidate;
+end;
+
+// Конец команды (AKill - прервать): закрыть процесс и трубу; ненулевой
+// код выхода - в строку состояния
+procedure TFarView.ProcFinish(AKill: Boolean);
+var
+  ProcExitCode: DWORD;
+begin
+  FProcTimer.Enabled := False;
+  if FProcHandle <> 0 then
+  begin
+    if AKill then
+      FarTerminate(FProcHandle, 1)
+    else if FarGetExitCode(FProcHandle, ProcExitCode) and
+            (ProcExitCode <> 0) then
+      Status('unIDE FAR: команда завершилась с кодом ' +
+        IntToStr(ProcExitCode));
+    CloseHandle(FProcHandle);
+  end;
+  if FProcPipe <> 0 then
+    CloseHandle(FProcPipe);
+  FProcHandle := 0;
+  FProcPipe := 0;
+  FOutOpen := False;
+end;
+
+// Текст вывода: переводы строк - новые строки, табуляция - пробелами до
+// 8, прочие управляющие символы пропускаются
+procedure TFarView.OutAppend(const AText: WideString);
+var
+  CharIndex, DropCount, MoveIndex: Integer;
+  Current: WideString;
+  Ch: WideChar;
+begin
+  if FOutOpen and (Length(FOutLines) > 0) then
+    Current := FOutLines[High(FOutLines)]
+  else
+    Current := '';
+  for CharIndex := 1 to Length(AText) do
+  begin
+    Ch := AText[CharIndex];
+    if Ch = #10 then
+    begin
+      if FOutOpen and (Length(FOutLines) > 0) then
+        FOutLines[High(FOutLines)] := Current
+      else
+      begin
+        SetLength(FOutLines, Length(FOutLines) + 1);
+        FOutLines[High(FOutLines)] := Current;
+      end;
+      FOutOpen := False;
+      Current := '';
+      Continue;
+    end;
+    if Ch = #13 then
+      Continue;
+    if not FOutOpen then
+    begin
+      SetLength(FOutLines, Length(FOutLines) + 1);
+      FOutOpen := True;
+      Current := '';
+    end;
+    if Ch = #9 then
+      repeat
+        Current := Current + ' ';
+      until Length(Current) mod 8 = 0
+    else if Ord(Ch) >= 32 then
+      Current := Current + Ch;
+  end;
+  if FOutOpen and (Length(FOutLines) > 0) then
+    FOutLines[High(FOutLines)] := Current;
+  // Старые строки - прочь
+  if Length(FOutLines) > FarOutMaxLines then
+  begin
+    DropCount := Length(FOutLines) - FarOutMaxLines + FarOutMaxLines div 4;
+    for MoveIndex := 0 to Length(FOutLines) - DropCount - 1 do
+      FOutLines[MoveIndex] := FOutLines[MoveIndex + DropCount];
+    SetLength(FOutLines, Length(FOutLines) - DropCount);
+  end;
+end;
+
+// Целая строка вывода (приглашение с командой, сообщение)
+procedure TFarView.OutLine(const AText: WideString);
+begin
+  FOutOpen := False;
+  OutAppend(AText + #10);
+end;
+
+// Вывод в строках ATopRow..ABottomRow: последние строки внизу (как в
+// консоли), длинные переносятся, FOutScroll - сдвиг вверх
+procedure TFarView.DrawOutput(ATopRow, ABottomRow: Integer);
+var
+  Rows, Need, LineIndex, ChunkCount, ChunkIndex, RowIndex, VisIndex: Integer;
+  Visual: TFarNames;
+  VisCount: Integer;
+  Line: WideString;
+begin
+  Rows := ABottomRow - ATopRow + 1;
+  if (Rows <= 0) or (FCols <= 0) then
+    Exit;
+  for RowIndex := ATopRow to ABottomRow do
+    FillCells(0, RowIndex, FCols, FarBlack);
+  Need := Rows + FOutScroll;
+  SetLength(Visual, Need);
+  VisCount := 0;
+  // Экранные строки с конца: Visual[0] - самая нижняя
+  LineIndex := High(FOutLines);
+  while (LineIndex >= 0) and (VisCount < Need) do
+  begin
+    Line := FOutLines[LineIndex];
+    ChunkCount := (Length(Line) + FCols - 1) div FCols;
+    if ChunkCount < 1 then
+      ChunkCount := 1;
+    ChunkIndex := ChunkCount - 1;
+    while (ChunkIndex >= 0) and (VisCount < Need) do
+    begin
+      Visual[VisCount] := Copy(Line, ChunkIndex * FCols + 1, FCols);
+      Inc(VisCount);
+      Dec(ChunkIndex);
+    end;
+    Dec(LineIndex);
+  end;
+  // Прокрутили дальше начала - к началу
+  if (LineIndex < 0) and (FOutScroll > VisCount - Rows) then
+  begin
+    FOutScroll := VisCount - Rows;
+    if FOutScroll < 0 then
+      FOutScroll := 0;
+  end;
+  for RowIndex := 0 to Rows - 1 do
+  begin
+    VisIndex := FOutScroll + RowIndex;
+    if VisIndex >= VisCount then
+      Break;
+    PutText(0, ABottomRow - RowIndex, FCols, Visual[VisIndex], FarLightGray,
+      FarBlack);
+  end;
+end;
+
+// Командная строка: приглашение и текст, каретка - подчёркиванием (когда
+// у окна фокус и нет диалога и меню)
+procedure TFarView.DrawCmdLine;
+var
+  Row, PromptW, TextW, ScrollPos, CaretCol: Integer;
+  Prompt, Shown: WideString;
+begin
+  Row := CmdRow;
+  if Row < 0 then
+    Exit;
+  FillCells(0, Row, FCols, FarBlack);
+  Prompt := PromptText;
+  // Длинный путь - его конец, на текст остаётся не меньше трети строки
+  if Length(Prompt) > FCols * 2 div 3 then
+    Prompt := FarFitPath(Prompt, FCols * 2 div 3);
+  PromptW := Length(Prompt);
+  TextW := FCols - PromptW - 1;
+  if TextW < 1 then
+    Exit;
+  ScrollPos := 0;
+  if FCmdPos > TextW then
+    ScrollPos := FCmdPos - TextW;
+  Shown := Copy(FCmdText, ScrollPos + 1, TextW);
+  PutText(0, Row, PromptW, Prompt, FarLightGray, FarBlack);
+  PutText(PromptW, Row, Length(Shown), Shown, FarWhite, FarBlack);
+  if Focused and (FDlgKind = fdNone) and (FMenuKind = fmNone) then
+  begin
+    CaretCol := PromptW + FCmdPos - ScrollPos;
+    FBuffer.Canvas.Brush.Style := bsSolid;
+    FBuffer.Canvas.Brush.Color := FarLightGray;
+    FBuffer.Canvas.FillRect(Rect(CaretCol * FCellW, (Row + 1) * FCellH - 3,
+      (CaretCol + 1) * FCellW, (Row + 1) * FCellH - 1));
+  end;
+end;
+
+// ---------------------------------------------------------------------------
 //  Раскраска файлов и меню Options (F9)
 // ---------------------------------------------------------------------------
 
@@ -4226,6 +5012,22 @@ begin
     FHalfWidth := Ini.ReadInteger(FarIniSection, 'HalfWidth', 0);
     FIniName := AIniName;
     FPanelCut := Ini.ReadInteger(FarIniSection, 'PanelCut', 0);
+    // История командной строки
+    HistoryCount := Ini.ReadInteger(FarCmdHistorySection, 'Count', 0);
+    if HistoryCount > FarCmdHistoryMax then
+      HistoryCount := FarCmdHistoryMax;
+    SetLength(FCmdHistory, 0);
+    for HistoryIndex := 1 to HistoryCount do
+    begin
+      SavedPath := FarDecodePath(Ini.ReadString(FarCmdHistorySection,
+        'Cmd' + IntToStr(HistoryIndex), ''));
+      if SavedPath <> '' then
+      begin
+        SetLength(FCmdHistory, Length(FCmdHistory) + 1);
+        FCmdHistory[High(FCmdHistory)] := SavedPath;
+      end;
+    end;
+    FCmdHistPos := Length(FCmdHistory);
     FActive := Ini.ReadInteger(FarIniSection, 'Active', 0);
     if (FActive < 0) or (FActive > 1) then
       FActive := 0;
@@ -4294,6 +5096,11 @@ begin
     end;
     Ini.WriteInteger(FarIniSection, 'Active', FActive);
     Ini.WriteInteger(FarIniSection, 'PanelCut', FPanelCut);
+    Ini.EraseSection(FarCmdHistorySection);
+    Ini.WriteInteger(FarCmdHistorySection, 'Count', Length(FCmdHistory));
+    for HistoryIndex := 0 to High(FCmdHistory) do
+      Ini.WriteString(FarCmdHistorySection, 'Cmd' + IntToStr(HistoryIndex + 1),
+        FarEncodePath(FCmdHistory[HistoryIndex]));
     if FHalfWidth > 0 then
       Ini.WriteInteger(FarIniSection, 'HalfWidth', FHalfWidth);
   finally
