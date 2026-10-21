@@ -42,7 +42,10 @@ unit UnFar;
 //    - b.15: раскраска файлов по расширению (цвет текста и фона, любые
 //      цвета; правила - editor.ini [FarColors], окно - DlgFarColors);
 //      F9 - меню Options (Files highlighting - окно правил, Save setup -
-//      записать настройки, Shift+F9 - то же).
+//      записать настройки, Shift+F9 - то же);
+//    - b.16: Ctrl+Down - панели ниже на строку, Ctrl+Up - выше (как в FAR:
+//      под панелями - пустое место, кейбар внизу); в editor.ini
+//      ([Far] PanelCut - на сколько строк панели короче окна).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -72,7 +75,7 @@ uses
   Clipbrd, IniBuf;
 
 const
-  FarBuild = 'b.15';
+  FarBuild = 'b.16';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -204,6 +207,8 @@ type
     FColorExt: array of WideString;
     FSingle: Integer;             // -1 - две панели; 0 / 1 - только эта (F4)
     FHalfWidth: Integer;          // ширина окна в режиме F4, пикселей (0 - нет)
+    FPanelCut: Integer;           // на сколько строк панели короче окна
+                                  // (Ctrl+Up / Ctrl+Down)
     // Диалог (F5 - F8): рисуется поверх панелей, клавиши - ему
     FDlgKind: TFarDlgKind;
     FDlgTitle: WideString;
@@ -251,6 +256,8 @@ type
     function ActivePanel: TFarPanel;
     procedure PanelBounds(AIndex: Integer; var AX0, AWidth: Integer);
     function PanelHeight: Integer;
+    function MaxPanelCut: Integer;
+    procedure ChangePanelCut(ADelta: Integer);
     function KeyBarRows: Integer;
     function FileRows: Integer;
     procedure ColumnWidths(AWidth: Integer; var AFirst, ASecond: Integer);
@@ -1567,9 +1574,44 @@ begin
 end;
 
 // Строк у панели: всё окно без нижней строки (кейбар)
+// Строк у панелей: окно без кейбара и без строк, на которые панели
+// укоротили (Ctrl+Down); под панелями - пустое место, как в FAR
 function TFarView.PanelHeight: Integer;
 begin
-  Result := FRows - KeyBarRows;
+  if FPanelCut > MaxPanelCut then
+    FPanelCut := MaxPanelCut;
+  if FPanelCut < 0 then
+    FPanelCut := 0;
+  Result := FRows - KeyBarRows - FPanelCut;
+end;
+
+// Короче не укоротить: у панели должно остаться место под рамку,
+// заголовок колонок, две строки имён, строку о файле и итог
+function TFarView.MaxPanelCut: Integer;
+const
+  MinPanelRows = 8;
+begin
+  Result := FRows - KeyBarRows - MinPanelRows;
+  if Result < 0 then
+    Result := 0;
+end;
+
+// Ctrl+Down - панели короче на строку (ADelta = 1), Ctrl+Up - длиннее
+procedure TFarView.ChangePanelCut(ADelta: Integer);
+var
+  NewCut: Integer;
+begin
+  NewCut := FPanelCut + ADelta;
+  if NewCut > MaxPanelCut then
+    NewCut := MaxPanelCut;
+  if NewCut < 0 then
+    NewCut := 0;
+  if NewCut = FPanelCut then
+    Exit;
+  FPanelCut := NewCut;
+  EnsureVisible(FPanels[0]);
+  EnsureVisible(FPanels[1]);
+  Invalidate;
 end;
 
 // Кейбар: на клавишу нужно 8 клеток (номер до 2 и подпись до 6). Не
@@ -2408,6 +2450,10 @@ begin
         GoUp;
       VK_NEXT:
         EnterItem;
+      VK_DOWN:              // панели ниже на строку (короче)
+        ChangePanelCut(1);
+      VK_UP:                // панели выше на строку (длиннее)
+        ChangePanelCut(-1);
       FarVkBackslash, FarVkBackslash2:
         GoRoot;
       Ord('R'):
@@ -4179,6 +4225,7 @@ begin
     end;
     FHalfWidth := Ini.ReadInteger(FarIniSection, 'HalfWidth', 0);
     FIniName := AIniName;
+    FPanelCut := Ini.ReadInteger(FarIniSection, 'PanelCut', 0);
     FActive := Ini.ReadInteger(FarIniSection, 'Active', 0);
     if (FActive < 0) or (FActive > 1) then
       FActive := 0;
@@ -4246,6 +4293,7 @@ begin
         FarEncodePath(CurrentName));
     end;
     Ini.WriteInteger(FarIniSection, 'Active', FActive);
+    Ini.WriteInteger(FarIniSection, 'PanelCut', FPanelCut);
     if FHalfWidth > 0 then
       Ini.WriteInteger(FarIniSection, 'HalfWidth', FHalfWidth);
   finally
