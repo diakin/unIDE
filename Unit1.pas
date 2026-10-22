@@ -885,6 +885,7 @@ type
     procedure mHelpFbClick(Sender: TObject);
     procedure mHelpUnideClick(Sender: TObject);
     procedure mHelpGitClick(Sender: TObject);
+    procedure mHelpQemuClick(Sender: TObject);
     procedure FbHelpMenuBuild;
     function  FbHelpFile(AAsk: Boolean): string;
     function  FbHelpPick: string;
@@ -58998,6 +58999,8 @@ begin
   CopyIfNewer('unide_ref\help\unide.chm');
   // Справка по Git (Help - Git)
   CopyIfNewer('git_ref\help\git.chm');
+  // Справка по QEMU (Help - QEMU)
+  CopyIfNewer('qemu_ref\help\qemu.chm');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
     'schemes, rapidq_ref\Component*.data - которых там не было или ' +
@@ -73309,6 +73312,13 @@ begin
                      'терминал - ReactOS - Git Terminal';
   ManualItem.OnClick := mHelpGitClick;
   mHelp.Insert(1, ManualItem);
+  // Справка по QEMU - после Git
+  ManualItem := TMenuItem.Create(Self);
+  ManualItem.Caption := '&QEMU';
+  ManualItem.Hint := 'Справка по QEMU (qemu_ref\help\qemu.chm): запуск ' +
+                     'ReactOS, окно, монитор, диски, параметры';
+  ManualItem.OnClick := mHelpQemuClick;
+  mHelp.Insert(2, ManualItem);
   AddItem('&Contents', '', 1);
   AddItem('Keyword &index', '', 2);
   AddItem('-', '', 0);
@@ -73450,6 +73460,16 @@ begin
   ChmFile := GitRefChm;
   if (ChmFile = '') or not ChmShowTopic(ChmFile, '') then
     ShowMessage('Справка по Git: ' + RqHelpLastError);
+end;
+
+// Help - QEMU: справка по QEMU (qemu_ref\help\qemu.chm)
+procedure TForm1.mHelpQemuClick(Sender: TObject);
+var
+  ChmFile: string;
+begin
+  ChmFile := QemuRefChm;
+  if (ChmFile = '') or not ChmShowTopic(ChmFile, '') then
+    ShowMessage('Справка по QEMU: ' + RqHelpLastError);
 end;
 
 procedure TForm1.mHelpFbClick(Sender: TObject);

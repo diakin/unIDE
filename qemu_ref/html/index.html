@@ -1,0 +1,74 @@
+<h1>QEMU: справка</h1>
+<p>QEMU &mdash; эмулятор компьютера: внутри своего окна он изображает целый ПК (процессор,
+память, диски, видео, сеть), и на нём можно запустить другую операционную систему. В unIDE
+QEMU нужен, чтобы запускать собранную ReactOS (<code>bootcd.iso</code>, <code>livecd.iso</code>)
+без отдельного компьютера.</p>
+
+<h2><a name="unide"></a>QEMU в unIDE</h2>
+<table>
+<tr><th>Где</th><th>Что делает</th></tr>
+<tr><td>Кнопка Compile &amp; Run (проект ReactOS)</td><td>Собирает цель ninja и запускает
+  образ <code>&lt;папка сборки&gt;\&lt;цель&gt;.iso</code> (или <code>.img</code>, <code>.vhd</code>)
+  в QEMU.</td></tr>
+<tr><td>ReactOS &rarr; Run Image (QEMU)</td><td>Запускает уже собранный образ, без
+  сборки.</td></tr>
+<tr><td>ReactOS &rarr; Install QEMU 7.0.0 (tools\qemu)...</td><td>Скачивает свой QEMU заранее
+  (при первом запуске он предлагается сам).</td></tr>
+<tr><td>Project Properties &rarr; Запуск (Run)</td><td>Своя команда эмулятора вместо
+  встроенной (см. <a href="options.html#custom">Своя команда запуска</a>).</td></tr>
+<tr><td>Help &rarr; QEMU</td><td>Эта справка (<code>qemu_ref\help\qemu.chm</code>).</td></tr>
+</table>
+
+<h2><a name="own"></a>Свой QEMU unIDE</h2>
+<ul>
+<li>Папка &mdash; <code>tools\qemu</code> рядом с unIDE; если туда не записать &mdash;
+  <code>%LOCALAPPDATA%\unIDE\tools\qemu</code>. В системе ничего не ставится: ни драйверов, ни
+  записей в реестре, права администратора не нужны.</li>
+<li>Версия &mdash; QEMU 7.0.0 (сборка qemu.weilnetz.de): 64-битная на 64-битной Windows,
+  32-битная на 32-битной. Более новые сборки для Windows (7.1 и дальше) требуют функцию,
+  которой нет в Windows 7, и там не запускаются.</li>
+<li>Из установщика (около 130 МБ) берутся только эмулятор ПК x86
+  (<code>qemu-system-i386w.exe</code>), <code>qemu-img.exe</code>, библиотеки и прошивки &mdash;
+  около 120 МБ. Распаковывает свой 7-Zip unIDE; установщик не запускается.</li>
+<li>Ускорителей (HAXM, WHPX) нет: они ставят драйвер в систему. Процессор эмулируется
+  программно, поэтому гостевая система работает заметно медленнее, чем на настоящем
+  компьютере.</li>
+</ul>
+
+<h2><a name="files"></a>Файлы запуска</h2>
+<p>Всё, что создаёт запуск, лежит в папке сборки проекта, в подпапке
+<code>unide-qemu</code>:</p>
+<table>
+<tr><th>Файл</th><th>Что это</th></tr>
+<tr><td><code>hdd.qcow2</code></td><td>Жёсткий диск виртуальной машины, 8 ГБ (файл растёт по
+  мере записи). Создаётся при первом запуске ISO; на него ставится ReactOS с bootcd.</td></tr>
+<tr><td><code>serial.log</code></td><td>Всё, что гостевая система пишет в порт COM1: у
+  отладочных сборок ReactOS &mdash; журнал загрузки ядра и драйверов (см.
+  <a href="debug.html">Отладочный вывод</a>). Перезаписывается при каждом запуске.</td></tr>
+<tr><td><code>qemu.log</code></td><td>Сообщения самого QEMU. Если QEMU закрылся в первые
+  3 секунды, его начало выводится в Compilation log.</td></tr>
+</table>
+
+<h2><a name="cmd"></a>Как unIDE запускает QEMU</h2>
+<pre><code>qemu-system-i386w.exe -name "ReactOS (bootcd)" -m 1024 -rtc base=localtime -vga std
+  -netdev user,id=net0 -device ne2k_pci,netdev=net0
+  -drive "file=...\unide-qemu\hdd.qcow2,if=ide,index=0,media=disk,format=qcow2"
+  -drive "file=...\bootcd.iso,if=ide,index=2,media=cdrom" -boot d
+  -serial "file:...\unide-qemu\serial.log"</code></pre>
+<p>Память &mdash; 1024 МБ на 64-битной Windows, 512 МБ на 32-битной. Образ <code>.img</code>
+или <code>.vhd</code> подключается как жёсткий диск, загрузка с него (<code>-boot c</code>),
+отдельного диска нет. Что значат параметры &mdash; <a href="options.html">Параметры запуска</a>.
+Пока запущенный QEMU работает, второй не запускается: оба писали бы в один
+<code>hdd.qcow2</code>.</p>
+
+<h2><a name="pages"></a>Разделы</h2>
+<ul>
+<li><a href="window.html">Окно QEMU</a> &mdash; меню, клавиши, мышь.</li>
+<li><a href="reactos.html">Установка ReactOS в QEMU</a> &mdash; bootcd, перезагрузка, livecd.</li>
+<li><a href="monitor.html">Монитор QEMU</a> &mdash; извлечь CD, сброс, снимки состояния.</li>
+<li><a href="disks.html">Диски и qemu-img</a> &mdash; создание, снимки, преобразование.</li>
+<li><a href="options.html">Параметры запуска</a> &mdash; и своя команда в свойствах проекта.</li>
+<li><a href="debug.html">Отладочный вывод</a> &mdash; serial.log.</li>
+<li><a href="problems.html">Если не работает</a>.</li>
+</ul>
+<p>Полная документация QEMU (на английском): <code>https://www.qemu.org/docs/master/</code>.</p>

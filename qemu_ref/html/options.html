@@ -1,0 +1,75 @@
+<h1>Параметры запуска</h1>
+<p>Параметры командной строки <code>qemu-system-i386</code>, которые пригодятся для своей
+команды запуска. Значения с пробелами берутся в кавычки целиком:
+<code>"file=D:\My Iso\bootcd.iso,media=cdrom"</code>; запятая внутри пути удваивается
+(<code>,,</code>).</p>
+
+<h2>Машина</h2>
+<table>
+<tr><th>Параметр</th><th>Что задаёт</th></tr>
+<tr><td><code>-m 1024</code></td><td>Память в МБ.</td></tr>
+<tr><td><code>-smp 2</code></td><td>Число процессоров (по умолчанию 1).</td></tr>
+<tr><td><code>-cpu pentium3</code></td><td>Модель процессора (<code>-cpu help</code> &mdash; список).</td></tr>
+<tr><td><code>-rtc base=localtime</code></td><td>Часы машины &mdash; по местному времени, как
+  у Windows.</td></tr>
+<tr><td><code>-name "ReactOS"</code></td><td>Заголовок окна.</td></tr>
+<tr><td><code>-vga std</code></td><td>Видеокарта: <code>std</code> (VESA), <code>cirrus</code>,
+  <code>vmware</code>, <code>none</code>.</td></tr>
+</table>
+
+<h2>Диски и загрузка</h2>
+<table>
+<tr><th>Параметр</th><th>Что задаёт</th></tr>
+<tr><td><code>-cdrom bootcd.iso</code></td><td>CD-ROM (короткая запись).</td></tr>
+<tr><td><code>-hda disk.qcow2</code></td><td>Первый жёсткий диск (короткая запись).</td></tr>
+<tr><td><code>-drive file=...,if=ide,index=0,media=disk,format=qcow2</code></td><td>Диск
+  подробно: интерфейс, место на шине IDE (0, 1 &mdash; первый канал, 2, 3 &mdash; второй),
+  тип, формат.</td></tr>
+<tr><td><code>-boot d</code>, <code>-boot c</code></td><td>Загрузка с CD или с жёсткого
+  диска.</td></tr>
+<tr><td><code>-boot once=d</code></td><td>С CD только первый раз; после перезагрузки внутри
+  машины &mdash; с жёсткого диска.</td></tr>
+<tr><td><code>-snapshot</code></td><td>Ничего не записывать в файлы дисков: все изменения
+  пропадут при закрытии QEMU.</td></tr>
+</table>
+
+<h2>Сеть</h2>
+<table>
+<tr><th>Параметр</th><th>Что задаёт</th></tr>
+<tr><td><code>-netdev user,id=net0</code></td><td>Сеть через QEMU (NAT): из машины есть
+  интернет, драйвер в системе не нужен.</td></tr>
+<tr><td><code>-device ne2k_pci,netdev=net0</code></td><td>Сетевая карта NE2000 PCI (её
+  подключает unIDE). Другие модели: <code>pcnet</code>, <code>rtl8139</code>,
+  <code>e1000</code> &mdash; подойдут, если в гостевой системе есть их драйвер.</td></tr>
+<tr><td><code>-nic none</code></td><td>Без сети.</td></tr>
+</table>
+
+<h2>Порты и окно</h2>
+<table>
+<tr><th>Параметр</th><th>Что задаёт</th></tr>
+<tr><td><code>-serial "file:D:\log\serial.log"</code></td><td>COM1 &mdash; в файл (перезаписывается
+  при запуске).</td></tr>
+<tr><td><code>-serial vc</code></td><td>COM1 &mdash; вкладкой serial0 в окне QEMU.</td></tr>
+<tr><td><code>-display gtk</code>, <code>-display sdl</code></td><td>Вид окна.</td></tr>
+<tr><td><code>-full-screen</code></td><td>Сразу во весь экран.</td></tr>
+</table>
+
+<h2><a name="custom"></a>Своя команда запуска</h2>
+<p>Project Properties &rarr; поле <b>Запуск (Run)</b>. Пусто &mdash; unIDE запускает свой QEMU с
+параметрами из <a href="index.html#cmd">раздела о запуске</a>. Иначе выполняется ваша
+команда; перед запуском в ней заменяются:</p>
+<table>
+<tr><th>Подстановка</th><th>Чем заменяется</th></tr>
+<tr><td><code>%ISO%</code>, <code>%IMAGE%</code></td><td>Полный путь собранного образа</td></tr>
+<tr><td><code>%BUILDDIR%</code></td><td>Папка сборки</td></tr>
+<tr><td><code>%SOURCEDIR%</code></td><td>Папка исходников</td></tr>
+<tr><td><code>%SERIAL%</code></td><td><code>&lt;папка сборки&gt;\unide-qemu\serial.log</code></td></tr>
+<tr><td><code>%QEMU%</code></td><td><code>qemu-system-i386w.exe</code> своего QEMU (при
+  надобности он предлагается к установке)</td></tr>
+</table>
+<p>Пути с пробелами берите в кавычки. Примеры:</p>
+<pre><code>"%QEMU%" -m 512 -cdrom "%ISO%" -boot d -serial "file:%SERIAL%"
+"%QEMU%" -m 1024 -smp 2 -hda "%BUILDDIR%\unide-qemu\hdd.qcow2" -cdrom "%ISO%" -boot once=d
+"%QEMU%" -m 1024 -cdrom "%ISO%" -boot d -snapshot -serial vc</code></pre>
+<p>Рабочая папка команды &mdash; папка сборки. Окно QEMU не ждётся: unIDE запускает команду и
+продолжает работать.</p>

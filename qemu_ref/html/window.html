@@ -1,0 +1,47 @@
+<h1>Окно QEMU</h1>
+<p>QEMU в unIDE показывает экран виртуальной машины в окне с меню Machine и View
+(интерфейс GTK).</p>
+
+<h2>Меню Machine</h2>
+<table>
+<tr><th>Пункт</th><th>Что делает</th></tr>
+<tr><td>Pause</td><td>Остановить машину (и продолжить).</td></tr>
+<tr><td>Reset</td><td>Сброс &mdash; как кнопка Reset на корпусе: перезагрузка без завершения
+  работы системы.</td></tr>
+<tr><td>Power Down</td><td>Сигнал выключения (как короткое нажатие кнопки питания): система
+  завершает работу сама, если умеет.</td></tr>
+<tr><td>Quit</td><td>Закрыть QEMU сразу &mdash; как выдернуть шнур питания.</td></tr>
+</table>
+
+<h2>Меню View</h2>
+<ul>
+<li><b>Fullscreen</b> &mdash; во весь экран.</li>
+<li><b>Zoom In / Zoom Out / Best Fit / Zoom To Fit</b> &mdash; масштаб изображения.</li>
+<li><b>Grab Input</b> &mdash; захватить клавиатуру и мышь; <b>Grab On Hover</b> &mdash;
+  захватывать, когда указатель над окном.</li>
+<li><b>VGA</b> &mdash; экран машины; <b>compatmonitor0</b> &mdash; <a href="monitor.html">монитор
+  QEMU</a> (командная строка управления машиной); <b>parallel0</b> &mdash; параллельный порт.</li>
+<li><b>Show Tabs</b>, <b>Detach Tab</b> &mdash; экраны вкладками или отдельными окнами;
+  <b>Show Menubar</b> &mdash; спрятать или показать меню.</li>
+</ul>
+
+<h2><a name="keys"></a>Клавиши</h2>
+<p>Все сочетания QEMU начинаются с Ctrl+Alt:</p>
+<table>
+<tr><th>Клавиши</th><th>Что делают</th></tr>
+<tr><td>Ctrl+Alt+G</td><td>Освободить (или захватить) мышь и клавиатуру</td></tr>
+<tr><td>Ctrl+Alt+F</td><td>Во весь экран / обратно</td></tr>
+<tr><td>Ctrl+Alt++, Ctrl+Alt+-</td><td>Крупнее, мельче</td></tr>
+<tr><td>Ctrl+Alt+0</td><td>Масштаб 1:1</td></tr>
+<tr><td>Ctrl+Alt+1, Ctrl+Alt+2, ...</td><td>Консоли по порядку пунктов меню View (первая
+  &mdash; экран VGA)</td></tr>
+<tr><td>Ctrl+Alt+M</td><td>Спрятать / показать меню</td></tr>
+<tr><td>Ctrl+Alt+Q</td><td>Закрыть QEMU</td></tr>
+</table>
+<p><b>Ctrl+Alt+Del</b> перехватывает Windows и в машину не передаёт. Послать его гостевой
+системе: монитор QEMU, команда <code>sendkey ctrl-alt-delete</code>.</p>
+
+<h2>Мышь</h2>
+<p>Щелчок в окне захватывает мышь: указатель остаётся внутри машины, и вывести его наружу
+можно только через Ctrl+Alt+G (подсказка &mdash; в заголовке окна). Пока мышь захвачена,
+все нажатия клавиш тоже идут в машину.</p>

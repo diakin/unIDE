@@ -1,0 +1,32 @@
+<h1>Диски и qemu-img</h1>
+<p><code>qemu-img.exe</code> лежит рядом с QEMU (<code>tools\qemu</code>) и работает с файлами
+дисков. Запускать его надо при закрытом QEMU, когда диск не занят. Пример запуска из
+командной строки Windows:</p>
+<pre><code>"D:\...\tools\qemu\qemu-img.exe" info D:\...\output-MinGW-i386\unide-qemu\hdd.qcow2</code></pre>
+
+<h2>Форматы</h2>
+<table>
+<tr><th>Формат</th><th>Особенности</th></tr>
+<tr><td>qcow2</td><td>Родной формат QEMU: файл растёт по мере записи, поддерживает снимки.
+  unIDE создаёт диск в нём.</td></tr>
+<tr><td>raw (.img)</td><td>Байт в байт как настоящий диск; занимает полный размер.</td></tr>
+<tr><td>vpc (.vhd)</td><td>Virtual PC / Hyper-V.</td></tr>
+<tr><td>vdi</td><td>VirtualBox.</td></tr>
+<tr><td>vmdk</td><td>VMware.</td></tr>
+</table>
+
+<h2>Команды</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>qemu-img create -f qcow2 disk.qcow2 8G</code></td><td>Новый диск 8 ГБ.</td></tr>
+<tr><td><code>qemu-img info disk.qcow2</code></td><td>Формат, размер, занято на самом деле, снимки.</td></tr>
+<tr><td><code>qemu-img resize disk.qcow2 +4G</code></td><td>Увеличить на 4 ГБ (раздел внутри
+  гостевой системы потом расширяется её средствами).</td></tr>
+<tr><td><code>qemu-img convert -O vdi disk.qcow2 disk.vdi</code></td><td>Преобразовать в
+  другой формат (vdi, vpc, vmdk, raw) &mdash; например, чтобы открыть систему в VirtualBox.</td></tr>
+<tr><td><code>qemu-img snapshot -l disk.qcow2</code></td><td>Список снимков.</td></tr>
+<tr><td><code>qemu-img snapshot -c имя disk.qcow2</code></td><td>Снимок диска (при закрытом
+  QEMU &mdash; только диска, без памяти).</td></tr>
+<tr><td><code>qemu-img snapshot -a имя disk.qcow2</code></td><td>Вернуть диск к снимку.</td></tr>
+<tr><td><code>qemu-img snapshot -d имя disk.qcow2</code></td><td>Удалить снимок.</td></tr>
+</table>

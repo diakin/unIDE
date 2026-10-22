@@ -1,0 +1,22 @@
+<h1>Отладочный вывод</h1>
+<p>Отладочные сборки ReactOS пишут журнал загрузки в последовательный порт COM1 (параметры
+загрузки <code>DEBUG KDSERIAL DEBUGPORT=COM1</code>). unIDE направляет COM1 машины в файл
+<code>&lt;папка сборки&gt;\unide-qemu\serial.log</code>.</p>
+
+<h2>Что в нём</h2>
+<pre><code>(ntoskrnl/kd64/kdinit.c:75) ReactOS 0.4.15-x86 (Build ...)
+(ntoskrnl/kd64/kdinit.c:76) 1 System Processor [1024 MB Memory]
+(ntoskrnl/kd64/kdinit.c:80) Command Line: DEBUG KDSERIAL DEBUGPORT=COM1 ...</code></pre>
+<p>Каждая строка &mdash; файл исходников и номер строки, откуда вызван вывод (DPRINT,
+DPRINT1), и само сообщение: так видно, до какого места дошла загрузка и какой драйвер
+сообщил об ошибке.</p>
+
+<h2>Как смотреть</h2>
+<ul>
+<li>Открыть <code>serial.log</code> в unIDE (File &rarr; Open). Файл дописывается, пока машина
+  работает; перечитать &mdash; открыть заново.</li>
+<li>Видеть вывод сразу в окне QEMU: своя команда запуска с <code>-serial vc</code> (см.
+  <a href="options.html#custom">Своя команда</a>) &mdash; вывод во вкладке serial0 меню View.</li>
+<li>Файл перезаписывается при каждом запуске: нужный журнал сохраните под другим именем
+  до следующего Run.</li>
+</ul>

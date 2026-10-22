@@ -54,6 +54,9 @@ function UnideRefChm: string;
 // Справка по Git (git_ref\gen_git_chm.py): git_ref\help\git.chm, '' - нет
 // (папка git_ref ищется там же, где rapidq_ref)
 function GitRefChm: string;
+// Справка по QEMU (qemu_ref\gen_qemu_chm.py): qemu_ref\help\qemu.chm, ''
+// - нет (папка qemu_ref ищется там же, где rapidq_ref)
+function QemuRefChm: string;
 // F1: страница слова по fbkeywords.txt рядом с CHM (слово с суффиксом типа
 // и без него), иначе переход по указателю CHM (ChmKeyword)
 function FbHelpKeyword(const AChm, AWord: string): Boolean;
@@ -360,6 +363,28 @@ begin
         Exit;
       end;
     HelpError := 'не найден git_ref\help\git.chm (проверено: ' +
+                 StringReplace(Trim(Dirs.Text), #13#10, '; ', [rfReplaceAll]) + ')';
+  finally
+    Dirs.Free;
+  end;
+end;
+
+function QemuRefChm: string;
+var
+  Dirs: TStringList;
+  DirIdx: Integer;
+begin
+  Result := '';
+  Dirs := TStringList.Create;
+  try
+    CandidateDirs(Dirs, 'qemu_ref');
+    for DirIdx := 0 to Dirs.Count - 1 do
+      if FileExists(Dirs[DirIdx] + 'help\qemu.chm') then
+      begin
+        Result := ExpandFileName(Dirs[DirIdx] + 'help\qemu.chm');
+        Exit;
+      end;
+    HelpError := 'не найден qemu_ref\help\qemu.chm (проверено: ' +
                  StringReplace(Trim(Dirs.Text), #13#10, '; ', [rfReplaceAll]) + ')';
   finally
     Dirs.Free;

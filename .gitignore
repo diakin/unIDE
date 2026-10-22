@@ -97,6 +97,7 @@ RqLcl/dll/out/
 unide_ref/chm_work/
 fb_ref/chm_work/
 git_ref/chm_work/
+qemu_ref/chm_work/
 
 # unIDE FAR: 7-Zip для архивов (tools\7zip, см. readme.txt там)
 !tools/7zip/7z.exe

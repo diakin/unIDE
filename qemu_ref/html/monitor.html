@@ -1,0 +1,47 @@
+<h1>Монитор QEMU</h1>
+<p>Монитор &mdash; командная строка управления виртуальной машиной: подключить или извлечь
+диск, перезагрузить, сохранить состояние. Открывается в окне QEMU: <b>View &rarr;
+compatmonitor0</b>. Вернуться к экрану машины &mdash; <b>View &rarr; VGA</b>. Команда вводится после <code>(qemu)</code>, Enter &mdash; выполнить;
+<code>help</code> &mdash; список всех команд.</p>
+
+<h2>Диски</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>info block</code></td><td>Подключённые диски и их имена (в unIDE: жёсткий диск
+  <code>ide0-hd0</code>, CD &mdash; <code>ide1-cd0</code>).</td></tr>
+<tr><td><code>eject ide1-cd0</code></td><td>Извлечь CD.</td></tr>
+<tr><td><code>change ide1-cd0 D:\iso\other.iso</code></td><td>Вставить другой ISO.</td></tr>
+</table>
+
+<h2>Питание и клавиши</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>system_reset</code></td><td>Сброс (Reset).</td></tr>
+<tr><td><code>system_powerdown</code></td><td>Сигнал выключения гостевой системе.</td></tr>
+<tr><td><code>stop</code>, <code>cont</code></td><td>Остановить и продолжить.</td></tr>
+<tr><td><code>sendkey ctrl-alt-delete</code></td><td>Послать Ctrl+Alt+Del.</td></tr>
+<tr><td><code>quit</code></td><td>Закрыть QEMU сразу.</td></tr>
+</table>
+
+<h2><a name="snapshots"></a>Снимки состояния</h2>
+<p>Снимок запоминает всю машину &mdash; память, процессор, устройства &mdash; внутри файла
+диска <code>hdd.qcow2</code>; после <code>loadvm</code> система продолжает работу ровно с того
+места.</p>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>savevm имя</code></td><td>Сделать снимок.</td></tr>
+<tr><td><code>loadvm имя</code></td><td>Вернуться к снимку.</td></tr>
+<tr><td><code>info snapshots</code></td><td>Список снимков.</td></tr>
+<tr><td><code>delvm имя</code></td><td>Удалить снимок.</td></tr>
+</table>
+<p>Снимки возможны только на диске формата qcow2 (unIDE создаёт именно такой). Снимок,
+сделанный с одним <code>bootcd.iso</code>, после пересборки ISO лучше не загружать: CD в
+машине будет уже другим.</p>
+
+<h2>Прочее</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>info status</code></td><td>Работает машина или остановлена.</td></tr>
+<tr><td><code>screendump D:\shot.ppm</code></td><td>Снимок экрана машины в файл (формат PPM).</td></tr>
+<tr><td><code>info network</code></td><td>Сетевые устройства.</td></tr>
+</table>
