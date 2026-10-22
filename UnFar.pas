@@ -66,6 +66,11 @@ unit UnFar;
 //      выбранное в папку другой панели; Enter на файле в архиве -
 //      распаковать во временную папку и открыть. Пароль - спрашивается.
 //      Остальные операции в архиве пока не делаются (сообщение).
+//    - b.25: буфер обмена. Ctrl+[ / Ctrl+] - путь левой / правой панели в
+//      командную строку и в буфер; Ctrl+F - полный путь файла под
+//      курсором в командную строку и в буфер; Ctrl+Insert - имя файла под
+//      курсором в буфер. В буфер - без кавычек, текстом Unicode
+//      (CF_UNICODETEXT; имена вне cp1251 не теряются).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -95,7 +100,7 @@ uses
   Clipbrd, IniBuf, SzSetup;
 
 const
-  FarBuild = 'b.24';
+  FarBuild = 'b.25';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -386,6 +391,11 @@ type
     function MaxPanelCut: Integer;
     // Командная строка и вывод
     function CmdRow: Integer;
+    // Текст в буфер обмена, в строке состояния - что скопировано
+    procedure CopyToClipboard(const AText: WideString);
+    // Полный путь файла под курсором активной панели ('..' - путь панели;
+    // в архиве - путь для показа: архив\папка\имя); пусто - панель пуста
+    function CursorFullName: WideString;
     function CmdKey(AKey: Word; AShift, ACtrl, AAlt: Boolean;
       var AHandled: Boolean): Boolean;
     procedure CmdInsert(const AText: WideString);
@@ -1065,6 +1075,37 @@ begin
       Result := WideString('"') + AName + WideString('"');
       Exit;
     end;
+end;
+
+// Текст в буфер обмена (CF_UNICODETEXT; CF_TEXT Windows сделает сама)
+function FarCopyToClipboard(const AText: WideString): Boolean;
+var
+  MemHandle: HGLOBAL;
+  MemData: PWideChar;
+  ByteLen: Integer;
+begin
+  Result := False;
+  ByteLen := (Length(AText) + 1) * SizeOf(WideChar);
+  MemHandle := GlobalAlloc(GMEM_MOVEABLE or GMEM_DDESHARE, ByteLen);
+  if MemHandle = 0 then
+    Exit;
+  MemData := GlobalLock(MemHandle);
+  if MemData = nil then
+  begin
+    GlobalFree(MemHandle);
+    Exit;
+  end;
+  if AText <> '' then
+    Move(AText[1], MemData^, ByteLen - SizeOf(WideChar));
+  MemData[Length(AText)] := #0;
+  GlobalUnlock(MemHandle);
+  try
+    // Память после SetClipboardData - буфера обмена
+    Clipboard.SetAsHandle(CF_UNICODETEXT, MemHandle);
+    Result := True;
+  except
+    GlobalFree(MemHandle);
+  end;
 end;
 
 function FarSameName(const ANameA, ANameB: WideString): Boolean;
@@ -4920,6 +4961,38 @@ begin
   Invalidate;
 end;
 
+procedure TFarView.CopyToClipboard(const AText: WideString);
+begin
+  if FarCopyToClipboard(AText) then
+    Status('В буфере: ' + string(AText))
+  else
+    Status('unIDE FAR: буфер обмена занят - не скопировано');
+end;
+
+function TFarView.CursorFullName: WideString;
+var
+  Panel: TFarPanel;
+  BaseDir: WideString;
+begin
+  Result := '';
+  Panel := ActivePanel;
+  if (Panel.Cursor < 0) or (Panel.Cursor >= Panel.Count) then
+    Exit;
+  if Panel.IsArchive then
+    BaseDir := Panel.DisplayPath + '\'
+  else
+    BaseDir := Panel.Path;
+  if Panel.FItems[Panel.Cursor].IsUp then
+  begin
+    Result := BaseDir;
+    // 'D:\a\' -> 'D:\a' (корень диска 'D:\' - как есть)
+    if (Length(Result) > 3) and (Result[Length(Result)] = '\') then
+      SetLength(Result, Length(Result) - 1);
+  end
+  else
+    Result := BaseDir + Panel.FItems[Panel.Cursor].Name;
+end;
+
 // Клавиши командной строки. True - клавиша её (AHandled - забрать ли
 // нажатие: False - пусть придёт символом WM_CHAR); False - не её, дальше
 // панелям. Пока строка не пуста, Enter, Esc, Backspace и Del - её: Del
@@ -4992,6 +5065,25 @@ begin
           else
             Insertion := FPanels[1].Path;
           CmdInsert(FarQuoteName(Insertion) + ' ');
+          CopyToClipboard(Insertion);
+        end;
+      Ord('F'):                       // полный путь файла под курсором
+        begin
+          Insertion := CursorFullName;
+          if Insertion <> '' then
+          begin
+            CmdInsert(FarQuoteName(Insertion) + ' ');
+            CopyToClipboard(Insertion);
+          end;
+        end;
+      VK_INSERT:                      // имя файла под курсором - в буфер
+        begin
+          Panel := ActivePanel;
+          if (Panel.Cursor >= 0) and (Panel.Cursor < Panel.Count) and
+             not Panel.FItems[Panel.Cursor].IsUp then
+            CopyToClipboard(Panel.FItems[Panel.Cursor].Name)
+          else
+            Status('unIDE FAR: курсор на "..", имени для буфера нет');
         end;
       VK_CANCEL:                      // Ctrl+Break - прервать команду
         if FProcHandle <> 0 then
