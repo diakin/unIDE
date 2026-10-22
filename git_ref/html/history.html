@@ -1,0 +1,43 @@
+<h1>История и поиск</h1>
+
+<h2>log</h2>
+<table>
+<tr><th>Команда</th><th>Что показывает</th></tr>
+<tr><td><code>git log --oneline -20</code></td><td>Последние 20 коммитов, по строке.</td></tr>
+<tr><td><code>git log --oneline --graph --all</code></td><td>Все ветки деревом.</td></tr>
+<tr><td><code>git log --stat -5</code></td><td>С изменёнными файлами.</td></tr>
+<tr><td><code>git log -p Unit1.pas</code></td><td>История одного файла с изменениями.</td></tr>
+<tr><td><code>git log --follow -- UnFar.pas</code></td><td>Файла и до переименования.</td></tr>
+<tr><td><code>git log --since=2026-10-01 --until=2026-10-15</code></td><td>За период.</td></tr>
+<tr><td><code>git log --author="Имя"</code></td><td>Коммиты автора.</td></tr>
+<tr><td><code>git log --grep="QEMU"</code></td><td>По тексту сообщения.</td></tr>
+<tr><td><code>git log -S"RosRunImage"</code></td><td>Коммиты, где строка появилась или исчезла в коде.</td></tr>
+<tr><td><code>git log main..mainTest --oneline</code></td><td>Что есть в mainTest и нет в main.</td></tr>
+</table>
+
+<h2>show</h2>
+<pre><code>git show c0fbd74                 # коммит: сообщение и изменения
+git show c0fbd74 --stat          # только список файлов
+git show c0fbd74:Unit1.pas       # файл целиком, как в том коммите</code></pre>
+<p><code>git show коммит:файл</code> выводит файл так, как он хранится в репозитории: для
+<code>*.pas</code> и других файлов с правилом <code>working-tree-encoding</code> это UTF-8 с
+концами строк LF (см. <a href="files.html#attributes">.gitattributes</a>). Чтобы получить файл
+из другой ветки или коммита на диск в рабочей кодировке (Windows-1251, CRLF), используйте
+<code>git restore --source=main GitTool.pas</code> &mdash; файл в рабочей копии будет
+заменён.</p>
+
+<h2>Кто изменил строку: blame</h2>
+<pre><code>git blame Unit1.pas              # для каждой строки - коммит, автор, дата
+git blame -L 100,140 Unit1.pas   # только строки 100-140</code></pre>
+
+<h2>Поиск по файлам: grep</h2>
+<pre><code>git grep "SzLocalExe"            # в файлах рабочей копии, которые знает Git
+git grep -n "SzLocalExe" main    # в ветке main, с номерами строк</code></pre>
+
+<h2>Теги</h2>
+<p>Тег &mdash; постоянное имя коммита, например номер версии.</p>
+<pre><code>git tag                          # список
+git tag -a v0.2 -m "unIDE 0.2"   # тег на текущем коммите
+git tag -a v0.2 c0fbd74 -m "..." # на указанном коммите
+git push origin v0.2             # отправить тег на сервер
+git switch --detach v0.2         # посмотреть версию (не на ветке)</code></pre>

@@ -884,6 +884,7 @@ type
     procedure mHelpRqClick(Sender: TObject);
     procedure mHelpFbClick(Sender: TObject);
     procedure mHelpUnideClick(Sender: TObject);
+    procedure mHelpGitClick(Sender: TObject);
     procedure FbHelpMenuBuild;
     function  FbHelpFile(AAsk: Boolean): string;
     function  FbHelpPick: string;
@@ -58995,6 +58996,8 @@ begin
   CopyIfNewer('fb_ref\help\fbkeywords.txt');
   // Руководство unIDE (Help - unIDE manual)
   CopyIfNewer('unide_ref\help\unide.chm');
+  // Справка по Git (Help - Git)
+  CopyIfNewer('git_ref\help\git.chm');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
     'schemes, rapidq_ref\Component*.data - которых там не было или ' +
@@ -73299,6 +73302,13 @@ begin
   ManualItem.Hint := 'Руководство пользователя unIDE (unide_ref\help\unide.chm)';
   ManualItem.OnClick := mHelpUnideClick;
   mHelp.Insert(0, ManualItem);
+  // Справка по Git - после руководства unIDE
+  ManualItem := TMenuItem.Create(Self);
+  ManualItem.Caption := '&Git';
+  ManualItem.Hint := 'Справка по Git и его командам (git_ref\help\git.chm); ' +
+                     'терминал - ReactOS - Git Terminal';
+  ManualItem.OnClick := mHelpGitClick;
+  mHelp.Insert(1, ManualItem);
   AddItem('&Contents', '', 1);
   AddItem('Keyword &index', '', 2);
   AddItem('-', '', 0);
@@ -73430,6 +73440,16 @@ begin
   ChmFile := UnideRefChm;
   if (ChmFile = '') or not ChmShowTopic(ChmFile, '') then
     ShowMessage('Руководство unIDE: ' + RqHelpLastError);
+end;
+
+// Help - Git: справка по Git (git_ref\help\git.chm)
+procedure TForm1.mHelpGitClick(Sender: TObject);
+var
+  ChmFile: string;
+begin
+  ChmFile := GitRefChm;
+  if (ChmFile = '') or not ChmShowTopic(ChmFile, '') then
+    ShowMessage('Справка по Git: ' + RqHelpLastError);
 end;
 
 procedure TForm1.mHelpFbClick(Sender: TObject);

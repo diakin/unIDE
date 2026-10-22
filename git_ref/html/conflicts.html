@@ -1,0 +1,33 @@
+<h1>Конфликты слияния</h1>
+<p>Конфликт &mdash; когда при merge, pull, rebase или stash pop одни и те же строки файла
+изменены по-разному. Git сливает всё, что может, а в спорных местах оставляет обе версии и
+ждёт решения.</p>
+
+<h2>Как выглядит</h2>
+<pre><code>CONFLICT (content): Merge conflict in Unit1.pas
+Automatic merge failed; fix conflicts and then commit the result.</code></pre>
+<p>В файле спорное место размечено:</p>
+<pre><code>&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+  Caption := 'Install QEMU';        // ваша версия (текущая ветка)
+=======
+  Caption := 'Install QEMU 7.0.0';  // версия из сливаемой ветки
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; mainTest</code></pre>
+
+<h2>Как решить</h2>
+<ol>
+<li><code>git status</code> &mdash; файлы с конфликтами в списке «both modified».</li>
+<li>Открыть файл (в unIDE), найти <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, оставить нужное,
+  удалить строки-разметки <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code>,
+  <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code>.</li>
+<li><code>git add Unit1.pas</code> &mdash; отметить, что конфликт решён.</li>
+<li>Когда решены все: <code>git commit</code> (для merge и pull; сообщение уже
+  подготовлено) или <code>git rebase --continue</code> (для rebase).</li>
+</ol>
+<p>Целиком взять одну сторону: <code>git checkout --ours Unit1.pas</code> (ваша) или
+<code>git checkout --theirs Unit1.pas</code> (сливаемая), затем <code>git add</code>. При
+rebase стороны наоборот: <code>--ours</code> &mdash; ветка, на которую переносятся коммиты,
+<code>--theirs</code> &mdash; ваши переносимые коммиты.</p>
+
+<h2>Передумать</h2>
+<pre><code>git merge --abort        # отменить слияние, вернуть всё как было до него
+git rebase --abort       # отменить rebase</code></pre>

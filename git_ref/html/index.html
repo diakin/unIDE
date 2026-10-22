@@ -1,0 +1,54 @@
+<h1>Git: справка</h1>
+<p>Git &mdash; система контроля версий: она хранит историю всех изменений файлов проекта,
+позволяет вернуться к любой прежней версии, вести работу в нескольких ветках и обмениваться
+изменениями с репозиторием на GitHub. Здесь &mdash; как работать с Git из unIDE и основные
+команды с примерами.</p>
+
+<h2><a name="unide"></a>Git в unIDE</h2>
+<table>
+<tr><th>Пункт</th><th>Что делает</th></tr>
+<tr><td>ReactOS &rarr; Git Terminal (Git Bash)</td><td>Открывает терминал Git Bash в папке
+  открытого проекта (нет проекта &mdash; в папке файла активной вкладки, нет и его &mdash; в
+  папке unIDE). Git нигде не найден &mdash; предлагает скачать свой.</td></tr>
+<tr><td>ReactOS &rarr; Find or Install Git 2.46.2 (tools\git)...</td><td>Ищет Git for Windows,
+  установленный в системе (реестр, PATH, Program Files\Git, %LOCALAPPDATA%\Programs\Git), и
+  пишет в Compilation log, где нашёл. Не нашёл &mdash; скачивает свой PortableGit 2.46.2 в
+  <code>tools\git</code> (около 59 МБ, распакованный &mdash; около 400 МБ).</td></tr>
+<tr><td>Help &rarr; Git</td><td>Эта справка (<code>git_ref\help\git.chm</code>).</td></tr>
+</table>
+<p>Свой Git unIDE &mdash; переносная версия Git for Windows: в реестр и PATH ничего не пишется,
+права администратора не нужны. 2.46.2 &mdash; последняя версия Git for Windows для Windows 7.
+Поэтому <code>git</code> из обычной командной строки Windows (cmd.exe) свой Git не
+видит &mdash; команды вводятся в Git Bash.</p>
+
+<h2><a name="desktop"></a>Git и GitHub Desktop</h2>
+<p>GitHub Desktop и терминал работают с одной и той же папкой репозитория: то, что сделано
+в терминале, сразу видно в GitHub Desktop, и наоборот. Кнопки GitHub Desktop соответствуют
+командам:</p>
+<table>
+<tr><th>GitHub Desktop</th><th>Команда</th></tr>
+<tr><td>Fetch origin</td><td><code>git fetch</code></td></tr>
+<tr><td>Pull origin</td><td><code>git pull</code></td></tr>
+<tr><td>Push origin</td><td><code>git push</code></td></tr>
+<tr><td>Current branch &rarr; выбрать ветку</td><td><code>git switch &lt;ветка&gt;</code></td></tr>
+<tr><td>Commit to &lt;ветка&gt;</td><td><code>git add</code> отмеченных файлов + <code>git commit -m "..."</code></td></tr>
+<tr><td>History</td><td><code>git log</code></td></tr>
+</table>
+
+<h2><a name="pages"></a>Разделы</h2>
+<ul>
+<li><a href="bash.html">Терминал Git Bash</a> &mdash; как вводить команды, пути, копирование.</li>
+<li><a href="concepts.html">Основные понятия</a> &mdash; репозиторий, индекс, коммит, ветка.</li>
+<li><a href="setup.html">Первая настройка</a> &mdash; имя, почта, редактор, клонирование.</li>
+<li><a href="daily.html">Каждый день</a> &mdash; status, add, commit, diff, log.</li>
+<li><a href="branches.html">Ветки</a> &mdash; создание, переключение, слияние; схема main / mainTest.</li>
+<li><a href="remote.html">GitHub и удалённый репозиторий</a> &mdash; fetch, pull, push.</li>
+<li><a href="undo.html">Отмена изменений</a> &mdash; restore, revert, reset, stash.</li>
+<li><a href="conflicts.html">Конфликты слияния</a>.</li>
+<li><a href="history.html">История и поиск</a> &mdash; log, show, blame, теги.</li>
+<li><a href="files.html">.gitignore и .gitattributes</a> &mdash; что не хранить, кодировки.</li>
+<li><a href="cheatsheet.html">Шпаргалка</a> &mdash; все команды таблицей.</li>
+</ul>
+<p>Полная документация Git (на английском): команда <code>git help &lt;команда&gt;</code>
+(например <code>git help commit</code>) открывает страницу справки в браузере; сайт
+<code>https://git-scm.com/docs</code>.</p>

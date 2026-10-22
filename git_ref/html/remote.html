@@ -1,0 +1,35 @@
+<h1>GitHub и удалённый репозиторий</h1>
+
+<h2>Какие серверы подключены</h2>
+<pre><code>git remote -v</code></pre>
+<p>Показывает адреса <code>origin</code> для получения (fetch) и отправки (push).
+Сменить адрес: <code>git remote set-url origin https://github.com/diakin/unIDE.git</code>.</p>
+
+<h2>fetch &mdash; узнать новое</h2>
+<pre><code>git fetch             # все ветки origin
+git status            # "Your branch is behind 'origin/mainTest' by 3 commits"
+git log --oneline HEAD..origin/mainTest    # что пришло с сервера</code></pre>
+<p>fetch не трогает ваши файлы и ветки: он только обновляет <code>origin/...</code>.</p>
+
+<h2>pull &mdash; получить и влить</h2>
+<pre><code>git pull              # fetch + merge в текущую ветку
+git pull --ff-only    # влить, только если у вас нет своих новых коммитов</code></pre>
+<p>Если и у вас, и на сервере есть новые коммиты, а настройка <code>pull.rebase</code> не
+задана, git pull останавливается и просит выбрать способ (см.
+<a href="setup.html">Первая настройка</a>): <code>git pull --no-rebase</code> &mdash;
+слияние, <code>git pull --rebase</code> &mdash; ваши коммиты переносятся поверх полученных.</p>
+
+<h2>push &mdash; отправить</h2>
+<pre><code>git push                          # текущую ветку в связанную ветку сервера
+git push -u origin try-feature    # новую ветку: отправить и связать
+git push origin --tags            # отправить теги</code></pre>
+<p>Сервер отказал (<code>rejected ... fetch first</code>) &mdash; на сервере есть коммиты,
+которых у вас нет: сначала <code>git pull</code>, потом снова <code>git push</code>.</p>
+<p><b>Осторожно:</b> <code>git push --force</code> заменяет историю ветки на сервере вашей;
+чужие коммиты, которых у вас нет, пропадут с сервера. Если без него не обойтись,
+<code>git push --force-with-lease</code> откажет, если на сервере появилось что-то, чего вы
+ещё не видели.</p>
+
+<h2>Ветка сервера появилась, а у вас её нет</h2>
+<pre><code>git fetch
+git switch mainTest    # создаётся своя mainTest, связанная с origin/mainTest</code></pre>

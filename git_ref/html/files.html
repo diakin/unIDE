@@ -1,0 +1,37 @@
+<h1>.gitignore и .gitattributes</h1>
+
+<h2><a name="ignore"></a>.gitignore &mdash; что не хранить</h2>
+<p>Файл <code>.gitignore</code> в корне репозитория (можно и в подпапках) перечисляет
+шаблоны файлов, которые Git не должен замечать: результаты сборки, временные файлы.</p>
+<table>
+<tr><th>Шаблон</th><th>Значит</th></tr>
+<tr><td><code>*.exe</code></td><td>все файлы .exe в любой папке</td></tr>
+<tr><td><code>Output/</code></td><td>папка Output в любом месте</td></tr>
+<tr><td><code>/build.log</code></td><td>только в корне</td></tr>
+<tr><td><code>!tools/7zip/7z.exe</code></td><td>исключение: этот файл хранить, хотя *.exe не
+  хранятся</td></tr>
+<tr><td><code># текст</code></td><td>комментарий</td></tr>
+</table>
+<p>В репозитории unIDE так и сделано: <code>*.exe</code> и <code>*.dll</code> не хранятся,
+кроме <code>tools/7zip/7z.exe</code> и <code>tools/7zip/7z.dll</code>.</p>
+<p>.gitignore действует только на файлы, которые Git ещё не хранит. Уже записанный файл
+перестаёт храниться так: <code>git rm --cached файл</code>, затем коммит.</p>
+<p>Почему файл не попадает в репозиторий: <code>git check-ignore -v путь</code> показывает
+правило и файл, где оно записано.</p>
+
+<h2><a name="attributes"></a>.gitattributes &mdash; концы строк и кодировки</h2>
+<p>Правила для типов файлов: текст или двоичный, концы строк, кодировка. В репозитории
+unIDE для исходников Delphi и Basic записано, например:</p>
+<pre><code>*.pas  text eol=crlf working-tree-encoding=windows-1251
+*.exe  binary</code></pre>
+<ul>
+<li><code>eol=crlf</code> &mdash; в рабочей копии строки кончаются CRLF (как нужно Delphi 7),
+  в репозитории хранятся с LF.</li>
+<li><code>working-tree-encoding=windows-1251</code> &mdash; на диске файл в кодировке
+  Windows-1251, а в репозитории хранится в UTF-8. Поэтому <code>git diff</code>,
+  <code>git log -p</code> и страницы GitHub показывают русский текст исходников
+  правильно.</li>
+<li><code>binary</code> &mdash; файл не сравнивается построчно и не преобразуется.</li>
+</ul>
+<p>Эти правила действуют одинаково в Windows и Linux и важнее настройки
+<code>core.autocrlf</code>.</p>

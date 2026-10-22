@@ -1,0 +1,44 @@
+<h1>Первая настройка</h1>
+
+<h2>Имя и почта</h2>
+<p>Каждый коммит подписывается именем и почтой. Задаётся один раз для всех репозиториев:</p>
+<pre><code>git config --global user.name "Ваше Имя"
+git config --global user.email "you@example.com"</code></pre>
+<p>Для GitHub почта должна совпадать с почтой учётной записи (или с её адресом вида
+<code>...@users.noreply.github.com</code>), чтобы коммиты связывались с вашим профилем.</p>
+
+<h2>Полезные настройки</h2>
+<table>
+<tr><th>Команда</th><th>Что даёт</th></tr>
+<tr><td><code>git config --global core.editor notepad</code></td><td>Редактор сообщений коммитов
+  &mdash; Блокнот вместо vim.</td></tr>
+<tr><td><code>git config --global core.quotepath off</code></td><td>Русские имена файлов в
+  <code>git status</code> выводятся буквами, а не кодами <code>\320\220...</code>.</td></tr>
+<tr><td><code>git config --global pull.rebase false</code></td><td>Если и у вас, и на сервере
+  есть новые коммиты, <code>git pull</code> делает слияние (merge), а не останавливается с
+  вопросом, как их совместить.</td></tr>
+<tr><td><code>git config --global init.defaultBranch main</code></td><td>Первая ветка новых
+  репозиториев называется main.</td></tr>
+</table>
+<p>Посмотреть все настройки и откуда они взяты: <code>git config --list --show-origin</code>.</p>
+
+<h2>Концы строк (core.autocrlf)</h2>
+<p>В Windows строки кончаются CRLF, в Linux &mdash; LF. Настройка <code>core.autocrlf</code>:
+<code>true</code> &mdash; в репозиторий LF, в рабочую копию CRLF; <code>false</code> &mdash;
+как есть. В PortableGit она по умолчанию <code>true</code>. Правила в файле
+<code>.gitattributes</code> репозитория важнее этой настройки (см.
+<a href="files.html#attributes">.gitattributes</a>).</p>
+
+<h2><a name="clone"></a>Получить репозиторий</h2>
+<pre><code>cd /d/_F/balan
+git clone https://github.com/diakin/unIDE.git
+cd unIDE</code></pre>
+<p>Создаётся папка <code>unIDE</code> с рабочей копией ветки по умолчанию. Начать новый
+репозиторий в существующей папке: <code>git init</code>.</p>
+
+<h2><a name="auth"></a>Вход на GitHub</h2>
+<p>При первом <code>git push</code> (или pull закрытого репозитория) Git спрашивает учётные
+данные. Пароль от GitHub для этого не подходит: нужен вход через окно Git Credential Manager
+(он есть в Git for Windows) или токен (GitHub &rarr; Settings &rarr; Developer settings
+&rarr; Personal access tokens), который вводится вместо пароля. Данные запоминаются, и
+спрашиваться они больше не будут.</p>

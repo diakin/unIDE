@@ -1,0 +1,57 @@
+<h1>Ветки</h1>
+
+<h2>Посмотреть</h2>
+<pre><code>git branch            # свои ветки, текущая отмечена *
+git branch -a         # и ветки сервера (remotes/origin/...)
+git branch -vv        # с последним коммитом и связью с веткой сервера</code></pre>
+
+<h2>Переключиться</h2>
+<pre><code>git switch mainTest           # перейти на ветку
+git switch -                  # вернуться на предыдущую
+git switch -c try-qemu        # создать ветку от текущего места и перейти на неё
+git switch -c try-qemu main   # создать от ветки main</code></pre>
+<p>Ветки только сервера (есть <code>origin/имя</code>, своей нет) &mdash;
+<code>git switch имя</code> создаёт свою и связывает её с серверной. Старое написание тех же
+команд &mdash; <code>git checkout имя</code>, <code>git checkout -b новая</code>.</p>
+<p>Переключение с незаписанными правками: если правки не мешают, они переходят на новую
+ветку вместе с вами; если мешают, Git откажется переключаться &mdash; запишите их коммитом
+или отложите (<a href="undo.html#stash">git stash</a>).</p>
+
+<h2>Слить: merge</h2>
+<pre><code>git switch main
+git merge mainTest      # влить mainTest в main</code></pre>
+<p>Если в main не было своих новых коммитов, main просто передвигается вперёд
+(fast-forward). Иначе создаётся коммит слияния. Если одни и те же строки изменены в обеих
+ветках &mdash; <a href="conflicts.html">конфликт</a>.</p>
+
+<h2>Удалить и переименовать</h2>
+<pre><code>git branch -d try-qemu            # удалить слитую ветку
+git branch -D try-qemu            # удалить, даже если не слита (коммиты пропадут из веток)
+git push origin --delete try-qemu # удалить ветку на сервере
+git branch -m старое новое        # переименовать</code></pre>
+
+<h2><a name="scheme"></a>Схема веток unIDE: main и mainTest</h2>
+<p>Изменения накапливаются в <b>mainTest</b>; проверенное переносится в <b>main</b>; для
+пробных изменений создаются отдельные ветки.</p>
+<pre><code># работа - в mainTest
+git switch mainTest
+git pull
+...правки, git add, git commit...
+git push
+
+# проверенное - в main
+git switch main
+git pull
+git merge mainTest
+git push
+git switch mainTest
+
+# пробная ветка от mainTest
+git switch -c try-feature mainTest
+...коммиты...
+git push -u origin try-feature    # на сервер (первый раз - с -u)
+# удалась - влить в mainTest:
+git switch mainTest
+git merge try-feature
+git push
+git branch -d try-feature</code></pre>

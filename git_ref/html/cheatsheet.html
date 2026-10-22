@@ -1,0 +1,66 @@
+<h1>Шпаргалка</h1>
+
+<h2>Настройка и начало</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>git config --global user.name "Имя"</code></td><td>Имя автора коммитов</td></tr>
+<tr><td><code>git config --global user.email "почта"</code></td><td>Почта автора</td></tr>
+<tr><td><code>git clone &lt;адрес&gt;</code></td><td>Скачать репозиторий</td></tr>
+<tr><td><code>git init</code></td><td>Новый репозиторий в текущей папке</td></tr>
+</table>
+
+<h2>Изменения</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>git status</code></td><td>Что изменено, текущая ветка</td></tr>
+<tr><td><code>git diff</code> / <code>git diff --staged</code></td><td>Изменения не в индексе / в индексе</td></tr>
+<tr><td><code>git add &lt;файлы&gt;</code>, <code>git add -A</code></td><td>В индекс</td></tr>
+<tr><td><code>git commit -m "текст"</code></td><td>Записать коммит</td></tr>
+<tr><td><code>git commit --amend</code></td><td>Исправить последний коммит</td></tr>
+<tr><td><code>git rm</code>, <code>git mv</code></td><td>Удалить, переименовать</td></tr>
+</table>
+
+<h2>Ветки</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>git branch</code>, <code>git branch -a</code></td><td>Список веток</td></tr>
+<tr><td><code>git switch &lt;ветка&gt;</code></td><td>Перейти</td></tr>
+<tr><td><code>git switch -c &lt;новая&gt;</code></td><td>Создать и перейти</td></tr>
+<tr><td><code>git merge &lt;ветка&gt;</code></td><td>Влить ветку в текущую</td></tr>
+<tr><td><code>git branch -d &lt;ветка&gt;</code></td><td>Удалить слитую</td></tr>
+</table>
+
+<h2>Сервер</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>git fetch</code></td><td>Узнать новое на сервере</td></tr>
+<tr><td><code>git pull</code></td><td>Получить и влить в текущую ветку</td></tr>
+<tr><td><code>git push</code></td><td>Отправить коммиты</td></tr>
+<tr><td><code>git push -u origin &lt;ветка&gt;</code></td><td>Отправить новую ветку</td></tr>
+<tr><td><code>git remote -v</code></td><td>Адреса серверов</td></tr>
+</table>
+
+<h2>Отмена</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>git restore &lt;файл&gt;</code></td><td>Выбросить незаписанные правки файла</td></tr>
+<tr><td><code>git restore --staged &lt;файл&gt;</code></td><td>Убрать из индекса</td></tr>
+<tr><td><code>git revert &lt;коммит&gt;</code></td><td>Обратный коммит (безопасно)</td></tr>
+<tr><td><code>git reset --hard &lt;коммит&gt;</code></td><td>Вернуть ветку и файлы (правки пропадут)</td></tr>
+<tr><td><code>git stash</code> / <code>git stash pop</code></td><td>Отложить правки / вернуть</td></tr>
+<tr><td><code>git reflog</code></td><td>Найти потерянное</td></tr>
+<tr><td><code>git merge --abort</code></td><td>Отменить слияние с конфликтами</td></tr>
+</table>
+
+<h2>История</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>git log --oneline --graph --all</code></td><td>История деревом</td></tr>
+<tr><td><code>git log -p &lt;файл&gt;</code></td><td>История файла</td></tr>
+<tr><td><code>git show &lt;коммит&gt;</code></td><td>Что в коммите</td></tr>
+<tr><td><code>git blame &lt;файл&gt;</code></td><td>Кто менял строки</td></tr>
+<tr><td><code>git grep "текст"</code></td><td>Поиск по файлам</td></tr>
+<tr><td><code>git tag -a v1 -m "..."</code></td><td>Тег версии</td></tr>
+</table>
+<p>Справка по любой команде: <code>git help &lt;команда&gt;</code> или
+<code>git &lt;команда&gt; -h</code> (кратко, прямо в терминале).</p>

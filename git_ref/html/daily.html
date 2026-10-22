@@ -1,0 +1,47 @@
+<h1>Каждый день</h1>
+
+<h2>Что изменилось: status</h2>
+<pre><code>git status</code></pre>
+<p>Показывает текущую ветку, отстаёт ли она от сервера или опережает его, изменённые файлы
+(красным &mdash; не в индексе, зелёным &mdash; в индексе) и новые файлы, которых Git ещё
+не знает (Untracked).</p>
+
+<h2>Чем отличаются: diff</h2>
+<table>
+<tr><th>Команда</th><th>Что показывает</th></tr>
+<tr><td><code>git diff</code></td><td>Изменения рабочей копии, ещё не добавленные в индекс.</td></tr>
+<tr><td><code>git diff --staged</code></td><td>Что уйдёт в следующий коммит.</td></tr>
+<tr><td><code>git diff Unit1.pas</code></td><td>Только один файл.</td></tr>
+<tr><td><code>git diff --stat</code></td><td>Только список файлов и число строк.</td></tr>
+<tr><td><code>git diff main mainTest</code></td><td>Разница между ветками.</td></tr>
+</table>
+
+<h2>Записать: add и commit</h2>
+<pre><code>git add Unit1.pas UnFar.pas      # отобрать файлы
+git add -A                       # отобрать всё: изменённые, новые, удалённые
+git commit -m "Что сделано"      # записать отобранное
+git commit -am "Что сделано"     # add всех уже известных Git файлов + commit</code></pre>
+<p>Сообщение коммита &mdash; первая строка кратко (до 70 знаков), что сделано; подробности
+&mdash; после пустой строки. Несколько <code>-m</code> дают несколько абзацев:
+<code>git commit -m "Заголовок" -m "Подробности"</code>.</p>
+<p>Убрать файл из индекса, оставив правки в файле: <code>git restore --staged Unit1.pas</code>.</p>
+
+<h2>Удалить и переименовать</h2>
+<pre><code>git rm Old.pas                   # удалить файл и записать удаление в индекс
+git rm --cached big.log          # перестать хранить файл, оставив его на диске
+git mv Old.pas New.pas           # переименовать</code></pre>
+
+<h2>Посмотреть историю: log</h2>
+<pre><code>git log --oneline -10            # последние 10 коммитов одной строкой
+git log --oneline --graph --all  # все ветки деревом
+git show c0fbd74                 # что изменено в коммите</code></pre>
+<p>Подробнее &mdash; <a href="history.html">История и поиск</a>.</p>
+
+<h2>Обычный порядок работы</h2>
+<ol>
+<li><code>git pull</code> &mdash; взять новое с сервера.</li>
+<li>Правки в unIDE.</li>
+<li><code>git status</code>, <code>git diff</code> &mdash; проверить, что изменено.</li>
+<li><code>git add ...</code> и <code>git commit -m "..."</code>.</li>
+<li><code>git push</code> &mdash; отправить на сервер.</li>
+</ol>

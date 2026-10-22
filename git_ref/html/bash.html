@@ -1,0 +1,50 @@
+<h1>Терминал Git Bash</h1>
+<p>Git Bash &mdash; окно терминала (mintty) с оболочкой bash и набором программ Unix из
+состава Git for Windows. Команды Git вводятся в строке после <code>$</code>, Enter &mdash;
+выполнить.</p>
+
+<h2>Строка приглашения</h2>
+<p>Пример: <code>user@PC MINGW64 /d/_F/balan/_SyntaxHLClaude (mainTest)</code> &mdash;
+пользователь и компьютер, текущая папка, в скобках &mdash; текущая ветка Git. Знак
+<code>|MERGING</code> или <code>|REBASE</code> после ветки значит, что слияние или перебазирование
+не закончено (см. <a href="conflicts.html">Конфликты</a>).</p>
+
+<h2>Пути</h2>
+<ul>
+<li>Диск пишется как папка: <code>D:\_F\balan</code> &rarr; <code>/d/_F/balan</code>.</li>
+<li>Разделитель &mdash; <code>/</code>. Путь с пробелами &mdash; в кавычках:
+  <code>cd "/d/My Projects"</code>.</li>
+<li><code>~</code> &mdash; домашняя папка пользователя (C:\Users\&lt;имя&gt;).</li>
+</ul>
+
+<h2>Полезные команды оболочки</h2>
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>pwd</code></td><td>Показать текущую папку.</td></tr>
+<tr><td><code>cd &lt;папка&gt;</code>, <code>cd ..</code></td><td>Перейти в папку, на уровень выше.</td></tr>
+<tr><td><code>ls</code>, <code>ls -la</code></td><td>Список файлов (с <code>-la</code> &mdash; со скрытыми и подробно).</td></tr>
+<tr><td><code>clear</code></td><td>Очистить экран (или Ctrl+L).</td></tr>
+<tr><td><code>start .</code></td><td>Открыть текущую папку в Проводнике.</td></tr>
+<tr><td><code>exit</code></td><td>Закрыть терминал.</td></tr>
+</table>
+
+<h2>Клавиши</h2>
+<ul>
+<li><b>Tab</b> &mdash; дописать имя файла, ветки или команды Git.</li>
+<li><b>&uarr; / &darr;</b> &mdash; прежние команды.</li>
+<li><b>Ctrl+C</b> &mdash; прервать выполняющуюся команду.</li>
+<li><b>Копировать</b> &mdash; выделить мышью (текст копируется сам); <b>вставить</b> &mdash;
+  Shift+Ins или правая кнопка мыши &rarr; Paste.</li>
+</ul>
+
+<h2><a name="pager"></a>Длинный вывод и редактор</h2>
+<ul>
+<li>Длинный вывод (<code>git log</code>, <code>git diff</code>) показывается постранично
+  программой less: Пробел &mdash; дальше, b &mdash; назад, / &mdash; поиск, <b>q &mdash;
+  выход</b>.</li>
+<li>Если сообщение коммита не указано через <code>-m</code>, Git открывает текстовый
+  редактор (по умолчанию в Git Bash &mdash; vim). Выйти из vim с сохранением: Esc, затем
+  <code>:wq</code> и Enter; без сохранения &mdash; Esc, <code>:q!</code>. Проще всегда писать
+  <code>git commit -m "текст"</code> или назначить Блокнот:
+  <code>git config --global core.editor notepad</code>.</li>
+</ul>
