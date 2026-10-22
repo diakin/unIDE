@@ -77,6 +77,7 @@ uses
   UnFar in 'UnFar.pas',
   SzSetup in 'SzSetup.pas',
   QemuTool in 'QemuTool.pas',
+  GitTool in 'GitTool.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};
 
 {$R *.res}

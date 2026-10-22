@@ -48,6 +48,7 @@ uses
   RosTools,       // скачивание и установка RosBE
   SzSetup,        // свой 7-Zip unIDE (tools\7zip): поиск и установка
   QemuTool,       // свой QEMU unIDE (tools\qemu): запуск образов ReactOS
+  GitTool,        // Git: найти в системе или свой (tools\git), Git Bash
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -2838,6 +2839,10 @@ type
     procedure RosStartEmulator(const ACmdLine, AWorkDir, ALogFile: string);
     procedure RosRunImage;
     procedure RosRunImageClick(Sender: TObject);
+    procedure GitTerminalClick(Sender: TObject);
+    procedure GitInstallClick(Sender: TObject);
+    function  GitEnsure: string;
+    function  GitRunPostInstall(const ARoot: string): Boolean;
     function  RosKnownEnvScript: string;
     function  RosPciSourceDir(var ASettings: TRosSettings): Boolean;
     function  RosDownloadPciIds(const ASourceDir, AVendors: string;
@@ -62065,6 +62070,22 @@ begin
   LinkItem := TMenuItem.Create(Self);
   LinkItem.Caption := '-';
   RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Git Terminal (Git Bash)';
+  LinkItem.Hint := 'Терминал Git Bash в папке проекта: Git, установленный ' +
+                   'в системе, иначе свой Git unIDE (tools\git)';
+  LinkItem.OnClick := GitTerminalClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Find or Install Git ' + GitVersion + ' (tools\git)...';
+  LinkItem.Hint := 'Найти Git for Windows в системе; нет - скачать свой ' +
+                   'PortableGit ' + GitVersion + ' в tools\git (последний ' +
+                   'для Windows 7), в реестр и PATH ничего не пишется';
+  LinkItem.OnClick := GitInstallClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := '-';
+  RosMenu.Add(LinkItem);
 
   LinkItem := TMenuItem.Create(Self);
   LinkItem.Caption := 'Update pci.ids...';
@@ -62604,6 +62625,231 @@ begin
       LogLines.Free;
     end;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Git (GitTool): Git for Windows из системы или свой PortableGit в
+//  tools\git; терминал Git Bash в папке проекта
+// ---------------------------------------------------------------------------
+
+// post-install.bat своего PortableGit (README.portable: без него Git
+// работает неправильно) - без окна, с ожиданием до 2 минут. Скрипт сам
+// себя удаляет; нет его - уже выполнен
+function TForm1.GitRunPostInstall(const ARoot: string): Boolean;
+var
+  CmdLine, CmdBuf: string;
+  SI: TStartupInfo;
+  PI: TProcessInformation;
+  WaitStep: Integer;
+  ExitCode: DWORD;
+begin
+  Result := True;
+  CmdLine := string(GitPostInstallCommand(ARoot));
+  if CmdLine = '' then
+    Exit;
+  LogComp('Git: post-install.bat - настройка распакованного PortableGit');
+  FillChar(SI, SizeOf(SI), 0);
+  SI.cb := SizeOf(SI);
+  SI.dwFlags := STARTF_USESHOWWINDOW;
+  SI.wShowWindow := SW_HIDE;
+  FillChar(PI, SizeOf(PI), 0);
+  CmdBuf := CmdLine;
+  UniqueString(CmdBuf);
+  if not CreateProcess(nil, PChar(CmdBuf), nil, nil, False, 0, nil,
+                       PChar(ARoot), SI, PI) then
+  begin
+    LogComp('Git: post-install.bat не запустить - ' +
+            SysErrorMessage(GetLastError));
+    Result := False;
+    Exit;
+  end;
+  CloseHandle(PI.hThread);
+  try
+    for WaitStep := 1 to 1200 do
+    begin
+      if WaitForSingleObject(PI.hProcess, 100) <> WAIT_TIMEOUT then
+        Break;
+      BusyTick;
+      Application.ProcessMessages;
+    end;
+    ExitCode := 0;
+    if WaitForSingleObject(PI.hProcess, 0) = WAIT_TIMEOUT then
+    begin
+      LogComp('Git: post-install.bat не закончился за 2 минуты - терминал ' +
+              'открывается без ожидания');
+      Exit;
+    end;
+    GetExitCodeProcess(PI.hProcess, ExitCode);
+  finally
+    CloseHandle(PI.hProcess);
+  end;
+  Result := not FileExists(IncludeTrailingPathDelimiter(ARoot) +
+                           GitPostInstallName);
+  if Result then
+    LogComp('Git: post-install.bat выполнен')
+  else
+    LogComp('Git: post-install.bat завершился с кодом ' + IntToStr(ExitCode) +
+            ' и остался на месте - запустится ещё раз при следующем ' +
+            'открытии терминала');
+end;
+
+// Корень Git: в системе, иначе свой; нет никакого - вопрос и установка
+// своего PortableGit (и своего 7-Zip, если его нет: им распаковывается
+// архив). Отказ или не вышло - пусто
+function TForm1.GitEnsure: string;
+var
+  How, Target, SevenZip, Note, ErrText: string;
+  OsInfo: TSzOsInfo;
+  Package: TSzPackage;
+  Need7Zip: Boolean;
+  Stage7Zip, StageGit: Integer;
+begin
+  Result := string(GitFindRoot(How));
+  if Result <> '' then
+    Exit;
+  ShowCompLog;
+  SzGetOsInfo(OsInfo);
+  if not GitChoosePackage(OsInfo, Package) then
+  begin
+    LogComp('Git: PortableGit ' + GitVersion + ' работает в Windows 7 и ' +
+            'новее, здесь ' + OsInfo.Name);
+    Exit;
+  end;
+  Target := string(GitChooseTargetDir);
+  if Target = '' then
+  begin
+    LogComp('Git: нет папки для установки - в ' + string(GitAppDir) + ' и ' +
+            string(GitUserDir) + ' не записать');
+    Exit;
+  end;
+  SevenZip := string(SzLocalExe);
+  Need7Zip := SevenZip = '';
+  Note := '';
+  if Need7Zip then
+    Note := #13#10'Сначала будет скачан свой 7-Zip unIDE (около 2 МБ): им ' +
+            'распаковывается архив Git.';
+  if MessageDlg('9814:Git for Windows в системе не найден.'#13#10#13#10 +
+                'Скачать свой PortableGit ' + Package.Version + ' (' +
+                Package.Arch + ', ' + IntToStr(Package.Size div 1048576) +
+                ' МБ, распакованный - около 400 МБ) с GitHub и распаковать ' +
+                'в ' + Target + '?' + Note + #13#10#13#10'Это последняя ' +
+                'версия Git for Windows для Windows 7. В реестр и PATH ' +
+                'ничего не пишется, права администратора не нужны.',
+                mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  CompDlgOpen('Git ' + Package.Version);
+  FCompDlg.Caption := 'Установка Git';
+  Stage7Zip := -1;
+  if Need7Zip then
+    Stage7Zip := FCompDlg.AddStage('7-Zip ' + SzVersion, 5);
+  StageGit := FCompDlg.AddStage('Git ' + Package.Version + ' (' +
+                                Package.Arch + ')', 95);
+  BusyBegin('Установка Git');
+  try
+    if Need7Zip then
+    begin
+      SevenZip := RosSetup7Zip(Stage7Zip);
+      if SevenZip = '' then
+        Exit;
+    end;
+    FCompDlg.StartStage(StageGit, 0, 'скачивание');
+    FRosInstallStage := StageGit;
+    LogComp('Git: скачивание ' + Package.Url1 + ', затем распаковка в ' +
+            Target);
+    if not SzInstallPlanSync(Target, GitPlan(Package, OsInfo.Name, SevenZip),
+                             RosInstallProgress, ErrText) then
+    begin
+      FCompDlg.EndStage(StageGit, False, ErrText);
+      LogComp('Git: не установлен - ' + ErrText);
+      Exit;
+    end;
+    Result := string(GitLocalRoot);
+    if Result <> '' then
+      GitRunPostInstall(Result);
+    FCompDlg.EndStage(StageGit, Result <> '', 'Git ' + Package.Version +
+                      ' (' + Package.Arch + ')');
+    if Result = '' then
+      LogComp('Git: ' + GitBashName + ' после установки не найден')
+    else
+      LogComp('Git ' + Package.Version + ' (' + Package.Arch + '): ' + Result);
+  finally
+    BusyEnd('Установка Git', Result <> '');
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result <> '' then
+      FCompDlg.FinishBuild(True, 'Установлено')
+    else
+      FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
+                           'Compilation log');
+  end;
+end;
+
+// Git Terminal: Git Bash в папке проекта (нет проекта - в папке файла
+// активной вкладки, нет и его - в папке unIDE)
+procedure TForm1.GitTerminalClick(Sender: TObject);
+var
+  Root, Dir, CmdLine, CmdBuf, How: string;
+  SI: TStartupInfo;
+  PI: TProcessInformation;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  Root := GitEnsure;
+  if Root = '' then
+    Exit;
+  // Свой PortableGit: post-install.bat не выполнился (прервали) - сейчас
+  if (string(GitLocalRoot) <> '') and
+     SameText(IncludeTrailingPathDelimiter(Root), string(GitLocalRoot)) then
+    GitRunPostInstall(Root);
+  Dir := '';
+  if (FCurrentProject <> '') and ProjectExists(FCurrentProject) then
+    Dir := ProjectDir(FCurrentProject);
+  if ((Dir = '') or not DirectoryExists(Dir)) and
+     (FCurrentFileName <> '') then
+    Dir := ExtractFilePath(FCurrentFileName);
+  if (Dir = '') or not DirectoryExists(Dir) then
+    Dir := ExtractFilePath(Application.ExeName);
+  CmdLine := string(GitTerminalCommand(Root, Dir));
+  GitFindRoot(How);
+  LogComp('Git Terminal (' + How + '): ' + CmdLine);
+  FillChar(SI, SizeOf(SI), 0);
+  SI.cb := SizeOf(SI);
+  FillChar(PI, SizeOf(PI), 0);
+  CmdBuf := CmdLine;
+  UniqueString(CmdBuf);
+  if not CreateProcess(nil, PChar(CmdBuf), nil, nil, False, 0, nil,
+                       PChar(Dir), SI, PI) then
+  begin
+    LogComp('Git Terminal: не запустить - ' + SysErrorMessage(GetLastError));
+    Exit;
+  end;
+  CloseHandle(PI.hThread);
+  CloseHandle(PI.hProcess);
+end;
+
+// Find or Install Git: в системе есть - путь в журнал; свой есть - тоже;
+// нет никакого - установка своего
+procedure TForm1.GitInstallClick(Sender: TObject);
+var
+  Root, How: string;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  ShowCompLog;
+  Root := string(GitFindInstalled(How));
+  if Root <> '' then
+  begin
+    LogComp('Git: установлен в системе - ' + Root + ' (' + How + '); свой ' +
+            'не нужен');
+    Exit;
+  end;
+  Root := string(GitLocalRoot);
+  if Root <> '' then
+  begin
+    LogComp('Git: свой Git unIDE - ' + Root);
+    Exit;
+  end;
+  GitEnsure;
 end;
 
 // ReactOS - Run Image: образ последней сборки - в эмуляторе, без сборки
