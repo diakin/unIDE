@@ -327,6 +327,7 @@ begin
   Result.Extractor := ASevenZip;
   Result.Archive := 0;
   Result.ExtractNames := '*';       // всё содержимое (около 400 МБ)
+  Result.ExtractSubDir := '';
   Result.MoveNames := '';           // папка tools\git - целиком
   Result.CheckFile := GitBashName;
   Result.InfoFile := GitInfoFile;

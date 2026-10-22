@@ -198,6 +198,7 @@ begin
   Result.Extractor := ASevenZip;
   Result.Archive := 0;
   Result.ExtractNames := QemuExtractNames;
+  Result.ExtractSubDir := '';
   Result.MoveNames := '';           // папка tools\qemu - целиком
   Result.CheckFile := QemuExeName;
   Result.InfoFile := QemuInfoFile;

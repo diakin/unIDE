@@ -49,6 +49,7 @@ uses
   SzSetup,        // свой 7-Zip unIDE (tools\7zip): поиск и установка
   QemuTool,       // свой QEMU unIDE (tools\qemu): запуск образов ReactOS
   GitTool,        // Git: найти в системе или свой (tools\git), Git Bash
+  RufusTool,      // свой Rufus unIDE (tools\rufus): образ на флешку
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -2846,6 +2847,9 @@ type
     procedure GitInstallClick(Sender: TObject);
     function  GitEnsure: string;
     function  GitRunPostInstall(const ARoot: string): Boolean;
+    procedure RufusWriteClick(Sender: TObject);
+    procedure RufusInstallClick(Sender: TObject);
+    function  RufusEnsure: string;
     function  RosKnownEnvScript: string;
     function  RosPciSourceDir(var ASettings: TRosSettings): Boolean;
     function  RosDownloadPciIds(const ASourceDir, AVendors: string;
@@ -62055,6 +62059,12 @@ begin
   LinkItem.OnClick := RosRunImageClick;
   RosMenu.Add(LinkItem);
   LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Write Image to USB (Rufus)...';
+  LinkItem.Hint := 'Записать образ (собранный <цель>.iso или другой) на ' +
+                   'флешку - своим Rufus unIDE (tools\rufus)';
+  LinkItem.OnClick := RufusWriteClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
   LinkItem.Caption := '-';
   RosMenu.Add(LinkItem);
 
@@ -62075,6 +62085,13 @@ begin
   LinkItem.Hint := 'Скачать свой QEMU unIDE в tools\qemu - для Run проекта ' +
                    'ReactOS (образ в эмуляторе); в системе ничего не ставится';
   LinkItem.OnClick := RosInstallQemuClick;
+  RosMenu.Add(LinkItem);
+  LinkItem := TMenuItem.Create(Self);
+  LinkItem.Caption := 'Install Rufus (tools\rufus)...';
+  LinkItem.Hint := 'Скачать свой Rufus unIDE в tools\rufus - запись образа ' +
+                   'на флешку; сборка - по Windows, в системе ничего не ' +
+                   'ставится';
+  LinkItem.OnClick := RufusInstallClick;
   RosMenu.Add(LinkItem);
   LinkItem := TMenuItem.Create(Self);
   LinkItem.Caption := '-';
@@ -62859,6 +62876,204 @@ begin
     Exit;
   end;
   GitEnsure;
+end;
+
+// ---------------------------------------------------------------------------
+//  Rufus (RufusTool): свой Rufus unIDE в tools\rufus - запись образа на
+//  флешку. Сборка - по Windows (Windows 8+ - официальный 4.15, Windows 7 -
+//  4.6.2208 из форка rufus-win7 или официальный 3.22 без KB2533623)
+// ---------------------------------------------------------------------------
+
+// rufusp.exe своего Rufus; нет - вопрос и установка (zip форка распаковывает
+// свой 7-Zip - и его поставить, если нет). Отказ или не вышло - пусто
+function TForm1.RufusEnsure: string;
+var
+  Target, SevenZip, Note, Reason, ErrText, SizeText: string;
+  OsInfo: TSzOsInfo;
+  Package: TRufusPackage;
+  Need7Zip: Boolean;
+  Stage7Zip, StageRufus: Integer;
+begin
+  Result := string(RufusLocalExe);
+  if Result <> '' then
+    Exit;
+  ShowCompLog;
+  SzGetOsInfo(OsInfo);
+  if not RufusChoosePackage(OsInfo, Package, Reason) then
+  begin
+    LogComp('Rufus: ' + Reason);
+    Exit;
+  end;
+  if Reason <> '' then
+    LogComp('Rufus: ' + Reason);
+  Target := string(RufusChooseTargetDir);
+  if Target = '' then
+  begin
+    LogComp('Rufus: нет папки для установки - в ' + string(RufusAppDir) +
+            ' и ' + string(RufusUserDir) + ' не записать');
+    Exit;
+  end;
+  SevenZip := '';
+  Need7Zip := False;
+  if RufusNeeds7Zip(Package) then
+  begin
+    SevenZip := string(SzLocalExe);
+    Need7Zip := SevenZip = '';
+  end;
+  Note := '';
+  if Need7Zip then
+    Note := #13#10'Сначала будет скачан свой 7-Zip unIDE (около 2 МБ): им ' +
+            'распаковывается архив Rufus.';
+  if Package.ZipSubDir <> '' then
+    Note := Note + #13#10#13#10'Это сборка автора форка для Windows 7, без ' +
+            'цифровой подписи (официальный Rufus 4.x в Windows 7 не ' +
+            'запускается).'
+  else if Reason <> '' then
+    Note := Note + #13#10#13#10 + Reason + '.';
+  SizeText := FormatFloat('0.0', Package.Size / 1048576) + ' МБ';
+  if MessageDlg('9815:Своего Rufus unIDE нет.'#13#10#13#10 +
+                'Скачать Rufus ' + Package.Version + ' (' + Package.Arch +
+                ', ' + Package.Origin + ', ' + SizeText + ') с GitHub в ' +
+                Target + '?' + Note + #13#10#13#10'В системе ничего не ' +
+                'ставится: Rufus работает переносимо (rufusp.exe, настройки ' +
+                'в rufus.ini рядом). Для записи на флешку Rufus попросит ' +
+                'права администратора.',
+                mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  CompDlgOpen('Rufus ' + Package.Version);
+  FCompDlg.Caption := 'Установка Rufus';
+  Stage7Zip := -1;
+  if Need7Zip then
+    Stage7Zip := FCompDlg.AddStage('7-Zip ' + SzVersion, 40);
+  StageRufus := FCompDlg.AddStage('Rufus ' + Package.Version + ' (' +
+                                  Package.Arch + ')', 60);
+  BusyBegin('Установка Rufus');
+  try
+    if Need7Zip then
+    begin
+      SevenZip := RosSetup7Zip(Stage7Zip);
+      if SevenZip = '' then
+        Exit;
+    end;
+    FCompDlg.StartStage(StageRufus, 0, 'скачивание');
+    FRosInstallStage := StageRufus;
+    LogComp('Rufus: скачивание ' + Package.Url1 + ' в ' + Target);
+    if not SzInstallPlanSync(Target, RufusPlan(Package, OsInfo.Name,
+                             SevenZip), RosInstallProgress, ErrText) then
+    begin
+      FCompDlg.EndStage(StageRufus, False, ErrText);
+      LogComp('Rufus: не установлен - ' + ErrText);
+      Exit;
+    end;
+    Result := string(RufusLocalExe);
+    FCompDlg.EndStage(StageRufus, Result <> '', 'Rufus ' + Package.Version +
+                      ' (' + Package.Arch + ')');
+    if Result = '' then
+      LogComp('Rufus: ' + RufusExeName + ' после установки не найден')
+    else
+      LogComp('Rufus ' + Package.Version + ' (' + Package.Arch + ', ' +
+              Package.Origin + '): ' + Result);
+  finally
+    BusyEnd('Установка Rufus', Result <> '');
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result <> '' then
+      FCompDlg.FinishBuild(True, 'Установлено')
+    else
+      FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
+                           'Compilation log');
+  end;
+end;
+
+// Write Image to USB: выбрать образ (предлагается собранный образ проекта
+// ReactOS) и открыть его в Rufus; флешку и запись выбирают в окне Rufus
+procedure TForm1.RufusWriteClick(Sender: TObject);
+const
+  ImageExts: array[0..2] of string = ('.iso', '.img', '.vhd');
+var
+  RosCfg: TRosSettings;
+  Dlg: TOpenDialog;
+  Image, BuildDir, Exe: string;
+  ExtIdx, ExecCode: Integer;
+  ExeWide, ParamsWide, DirWide, VerbWide: WideString;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  Image := '';
+  BuildDir := '';
+  if (ProjectBuildKind(FCurrentProject) = bkCMakeNinja) and
+     RosSettingsOf(FCurrentProject, RosCfg) then
+  begin
+    BuildDir := IncludeTrailingPathDelimiter(RosCfg.BuildDir);
+    for ExtIdx := 0 to High(ImageExts) do
+      if FileExists(BuildDir + RosCfg.NinjaTarget + ImageExts[ExtIdx]) then
+      begin
+        Image := BuildDir + RosCfg.NinjaTarget + ImageExts[ExtIdx];
+        Break;
+      end;
+  end;
+  Dlg := TOpenDialog.Create(nil);
+  try
+    Dlg.Title := 'Образ для записи на флешку (Rufus)';
+    Dlg.Filter := 'Образы (*.iso;*.img;*.vhd;*.vhdx)|*.iso;*.img;*.vhd;' +
+                  '*.vhdx|Все файлы (*.*)|*.*';
+    Dlg.Options := Dlg.Options + [ofFileMustExist];
+    if Image <> '' then
+    begin
+      Dlg.InitialDir := ExtractFilePath(Image);
+      Dlg.FileName := ExtractFileName(Image);
+    end
+    else if (BuildDir <> '') and DirectoryExists(BuildDir) then
+      Dlg.InitialDir := BuildDir;
+    if not Dlg.Execute then
+      Exit;
+    Image := Dlg.FileName;
+  finally
+    Dlg.Free;
+  end;
+  Exe := RufusEnsure;
+  if Exe = '' then
+    Exit;
+  ShowCompLog;
+  ExeWide := Exe;
+  ParamsWide := RufusRunParams(Image);
+  DirWide := ExtractFilePath(Exe);
+  VerbWide := 'open';
+  LogComp('Rufus: ' + Exe + ' ' + string(ParamsWide) + ' - ' +
+          RufusInstalledInfo(ExeWide));
+  LogComp('Rufus: флешку выбрать в окне Rufus (поле Device); все данные на ' +
+          'ней будут удалены');
+  // Rufus требует прав администратора: ShellExecute покажет запрос UAC
+  ExecCode := ShellExecuteW(Handle, PWideChar(VerbWide), PWideChar(ExeWide),
+                            PWideChar(ParamsWide), PWideChar(DirWide),
+                            SW_SHOWNORMAL);
+  if ExecCode <= 32 then
+  begin
+    if ExecCode = SE_ERR_ACCESSDENIED then
+      LogComp('Rufus: не запущен - запрос прав администратора отклонён')
+    else
+      LogComp('Rufus: не запустить - ' + SysErrorMessage(ExecCode) + ' (код ' +
+              IntToStr(ExecCode) + ')');
+  end;
+end;
+
+// Install Rufus: свой уже есть - путь и версия в журнал; нет - установка
+procedure TForm1.RufusInstallClick(Sender: TObject);
+var
+  Exe: string;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  ShowCompLog;
+  Exe := string(RufusLocalExe);
+  if Exe <> '' then
+  begin
+    LogComp('Rufus: свой Rufus unIDE - ' + Exe + ' (' +
+            RufusInstalledInfo(Exe) + '). Поставить заново - удалить ' +
+            'папку ' + ExtractFilePath(Exe) + ', затем Install Rufus');
+    Exit;
+  end;
+  RufusEnsure;
 end;
 
 // ReactOS - Run Image: образ последней сборки - в эмуляторе, без сборки

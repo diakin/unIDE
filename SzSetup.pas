@@ -74,8 +74,12 @@ type
   //   Files        - что скачать (FileName - только имя; папка - загрузки);
   //   Extractor    - чем распаковывать: '' - первым скачанным (7zr.exe),
   //                  иначе полный путь (свой 7z.exe);
-  //   Archive      - номер скачанного файла, который распаковывать;
+  //   Archive      - номер скачанного файла, который распаковывать; -1 -
+  //                  не распаковывать: MoveNames переносятся из загрузок
+  //                  как есть (одиночный exe);
   //   ExtractNames - что достать: имена и маски через #13#10 (список 7-Zip);
+  //   ExtractSubDir - папка внутри архива, из которой переносить ('' -
+  //                  корень архива);
   //   MoveNames    - что перенести в папку по одному, через ';' (последний
   //                  - признак полной установки); '' - папка заменяется
   //                  целиком распакованным;
@@ -87,6 +91,7 @@ type
     Extractor: WideString;
     Archive: Integer;
     ExtractNames: string;
+    ExtractSubDir: string;
     MoveNames: string;
     CheckFile: string;
     InfoFile: string;
@@ -1336,16 +1341,27 @@ begin
     IntToStr(ExitCode);
 end;
 
-// Из <загрузки>\x\ - на место: по одному (последний - признак полной
-// установки) или вся папка вместо прежней
+// Из <загрузки>\x\ (без распаковки - из <загрузки>\) - на место: по
+// одному (последний - признак полной установки) или вся папка вместо
+// прежней
 function TSzInstall.MoveInPlace: string;
 var
   Names: TStringList;
   NameIndex, SemiPos: Integer;
   Rest: string;
-  Source, Target: WideString;
+  Source, Target, SourceBase: WideString;
 begin
   Result := '';
+  // Откуда переносить: без распаковки - из загрузок, иначе из x\ (или его
+  // подпапки ExtractSubDir)
+  if FPlan.Archive < 0 then
+    SourceBase := FDownloadDir
+  else
+  begin
+    SourceBase := FDownloadDir + 'x\';
+    if FPlan.ExtractSubDir <> '' then
+      SourceBase := SzWithSlash(SourceBase + WideString(FPlan.ExtractSubDir));
+  end;
   if FPlan.MoveNames = '' then
   begin
     // Прежняя папка - своя (ставилась так же); её место - распакованной
@@ -1356,7 +1372,7 @@ begin
         '(файл занят - закройте программу)';
       Exit;
     end;
-    if not SzMoveFileEx(PWideChar(FDownloadDir + 'x'),
+    if not SzMoveFileEx(PWideChar(SzNoSlash(SourceBase)),
        PWideChar(SzNoSlash(FTargetDir)), 0) then
       Result := 'папку не перенести: ' + SzErrorText(GetLastError);
     Exit;
@@ -1376,7 +1392,7 @@ begin
     end;
     for NameIndex := 0 to Names.Count - 1 do
     begin
-      Source := FDownloadDir + 'x\' + WideString(Names[NameIndex]);
+      Source := SourceBase + WideString(Names[NameIndex]);
       Target := FTargetDir + WideString(Names[NameIndex]);
       if not SzMoveFileEx(PWideChar(Source), PWideChar(Target),
          SzMoveReplace or SzMoveCopyAllowed) then
@@ -1421,7 +1437,7 @@ begin
     else
     begin
       ErrorText := Download;
-      if ErrorText = '' then
+      if (ErrorText = '') and (FPlan.Archive >= 0) then
       begin
         FStage := ssExtract;
         FDone := FTotal;
@@ -1492,7 +1508,7 @@ begin
   AError := '';
   if SzInstallRunning then
   begin
-    AError := 'уже идёт другая установка (7-Zip или QEMU)';
+    AError := 'уже идёт другая установка (7-Zip, QEMU, Git или Rufus)';
     Exit;
   end;
   Install := TSzInstall.Create(ATargetDir, APlan);
@@ -1526,6 +1542,7 @@ begin
   Result.Extractor := '';      // 7zr.exe - первый скачанный
   Result.Archive := 1;
   Result.ExtractNames := '7z.exe'#13#10'7z.dll'#13#10'License.txt';
+  Result.ExtractSubDir := '';
   // 7z.exe - последним: есть 7z.exe - есть и остальное
   Result.MoveNames := '7z.dll;License.txt;7z.exe';
   Result.CheckFile := '7z.exe';

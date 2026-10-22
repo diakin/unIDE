@@ -78,6 +78,7 @@ uses
   SzSetup in 'SzSetup.pas',
   QemuTool in 'QemuTool.pas',
   GitTool in 'GitTool.pas',
+  RufusTool in 'RufusTool.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};
 
 {$R *.res}
