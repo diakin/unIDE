@@ -1,0 +1,38 @@
+<h1>Состав RosBE 2.2.1</h1>
+<p>RosBE 2.2.1 выпущен 5 июня 2020 года. По его ChangeLog:</p>
+<table>
+<tr><th>Инструмент</th><th>Версия</th></tr>
+<tr><td>GCC (i686-w64-mingw32; x86_64 &mdash; по выбору при установке)</td><td>8.4.0</td></tr>
+<tr><td>binutils</td><td>2.34</td></tr>
+<tr><td>mingw-w64</td><td>6.0.0</td></tr>
+<tr><td>CMake</td><td>3.17.2-ReactOS</td></tr>
+<tr><td>Ninja</td><td>1.10</td></tr>
+<tr><td>Flex</td><td>2.6.4</td></tr>
+<tr><td>Bison</td><td>3.5.4</td></tr>
+<tr><td>Make</td><td>4.2</td></tr>
+<tr><td>ccache</td><td>3.7.9</td></tr>
+<tr><td>diffutils, patch</td><td>3.7, 2.7.6</td></tr>
+</table>
+
+<h2>Папки</h2>
+<table>
+<tr><th>Путь</th><th>Что там</th></tr>
+<tr><td><code>C:\RosBE\RosBE.cmd</code></td><td>Настройка окружения (PATH, переменные сборки)</td></tr>
+<tr><td><code>C:\RosBE\*.cmd</code></td><td>Команды RosBE: make, clean, basedir... (см.
+  <a href="commands.html">Команды</a>)</td></tr>
+<tr><td><code>C:\RosBE\bin</code></td><td>cmake, ninja, flex, bison, вспомогательные программы</td></tr>
+<tr><td><code>C:\RosBE\i386</code></td><td>GCC и binutils для i386 (он же компилятор для
+  программ сборки, работающих на самом компьютере)</td></tr>
+</table>
+
+<h2>Что ставит RosBE.cmd</h2>
+<ul>
+<li><code>ROS_ARCH=i386</code> (или архитектуру из параметра: <code>RosBE.cmd amd64</code>);</li>
+<li>PATH: папка RosBE, <code>bin</code>, <code>samples</code>, компиляторы
+  (<code>i386\bin</code>) &mdash; перед системным PATH;</li>
+<li><code>_ROSBE_ROSSOURCEDIR</code> &mdash; текущая папка при запуске (её считает
+  папкой исходников команда <code>basedir</code>);</li>
+<li>журналы сборки команд make &mdash; в <code>RosBE-Logs</code>;</li>
+<li>свои настройки пользователя, если есть, из
+  <code>%APPDATA%\RosBE\rosbe-options-2.2.1.cmd</code> (их пишет команда <code>options</code>).</li>
+</ul>

@@ -1,0 +1,55 @@
+<h1>configure.cmd и ninja</h1>
+
+<h2>configure.cmd</h2>
+<p>Скрипт в корне исходников ReactOS: создаёт папку сборки и настраивает её CMake для
+сборщика Ninja. В reactosVG14 (ReactOS 0.4.14):</p>
+<pre><code>configure.cmd [параметры скрипта] [параметры CMake]</code></pre>
+<ul>
+<li>Запущенный в папке исходников, создаёт <code>output-MinGW-i386</code> (MinGW из RosBE,
+  архитектура из <code>ROS_ARCH</code>) и работает в ней; запущенный в другой папке &mdash;
+  настраивает её.</li>
+<li>Перед настройкой удаляет <code>CMakeCache.txt</code> в папке сборки.</li>
+<li><b>Путь к исходникам не должен содержать пробелов</b> &mdash; иначе configure.cmd
+  останавливается с сообщением «Your source path contains at least one space».</li>
+<li>Папку, настроенную для Ninja, нельзя перенастроить для VSSolution и наоборот.</li>
+</ul>
+<table>
+<tr><th>Параметр</th><th>Что даёт</th></tr>
+<tr><td><code>help</code>, <code>/?</code></td><td>Подсказка по параметрам.</td></tr>
+<tr><td><code>Codeblocks</code>, <code>Eclipse</code></td><td>Файлы проекта для этих сред
+  (вместо Ninja).</td></tr>
+<tr><td><code>Makefiles</code></td><td>MinGW Makefiles вместо Ninja.</td></tr>
+<tr><td><code>VSSolution</code>, <code>clang</code></td><td>Для сборки средствами Visual Studio
+  (не RosBE MinGW).</td></tr>
+<tr><td><code>-DИМЯ:ТИП=ЗНАЧЕНИЕ</code></td><td>Переменная CMake, например
+  <code>-DENABLE_ROSTESTS:BOOL=1</code>.</td></tr>
+</table>
+<p>В unIDE параметры configure задаются в Project Properties (поле «Параметры configure») и
+применяются при следующем configure: он запускается, когда в папке сборки нет
+<code>build.ninja</code>.</p>
+
+<h2><a name="targets"></a>Цели ninja</h2>
+<table>
+<tr><th>Цель</th><th>Что собирает</th></tr>
+<tr><td>(без цели), <code>all</code></td><td>Все модули, без образов дисков.</td></tr>
+<tr><td><code>bootcd</code></td><td>Установочный CD &mdash; <code>bootcd.iso</code>.</td></tr>
+<tr><td><code>livecd</code></td><td>CD, работающий без установки, &mdash; <code>livecd.iso</code>.</td></tr>
+<tr><td><code>&lt;модуль&gt;</code></td><td>Один модуль с зависимостями: <code>ntoskrnl</code>,
+  <code>hal</code>, <code>usbport</code>...</td></tr>
+</table>
+<p>Список всех целей: <code>ninja -t targets all</code> (длинный; удобно с <code>| findstr
+usb</code>).</p>
+
+<h2>Параметры ninja</h2>
+<table>
+<tr><th>Параметр</th><th>Что даёт</th></tr>
+<tr><td><code>-C папка</code></td><td>Собрать в указанной папке, не переходя в неё.</td></tr>
+<tr><td><code>-j N</code></td><td>Число одновременных заданий (без него ninja выбирает сам по
+  числу ядер процессора).</td></tr>
+<tr><td><code>-k 0</code></td><td>Не останавливаться на ошибках, собрать всё, что
+  можно.</td></tr>
+<tr><td><code>-v</code></td><td>Показывать полные команды компилятора.</td></tr>
+<tr><td><code>-t clean</code></td><td>Удалить собранные файлы (настройка CMake остаётся).</td></tr>
+<tr><td><code>-n</code></td><td>Показать, что было бы собрано, ничего не делая.</td></tr>
+</table>
+<p>ninja сам перезапускает CMake, если изменились файлы <code>CMakeLists.txt</code>.</p>

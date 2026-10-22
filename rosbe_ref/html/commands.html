@@ -1,0 +1,43 @@
+<h1>Команды RosBE</h1>
+<p>Команды RosBE &mdash; командные файлы из папки RosBE (она в PATH после
+<code>RosBE.cmd</code>). Здесь &mdash; как они устроены в RosBE 2.2.1.</p>
+
+<table>
+<tr><th>Команда</th><th>Что делает</th></tr>
+<tr><td><code>help [команда]</code></td><td>Список команд или справка по одной.</td></tr>
+<tr><td><code>make [цели]</code></td><td>Если в текущей папке есть <code>*.ninja</code> &mdash;
+  запускает <code>ninja -j 1 [цели]</code> (иначе mingw32-make). Показывает время сборки и
+  пишет журнал в <code>RosBE-Logs\BuildLog-*.txt</code> текущей папки. Запускать в папке
+  сборки.</td></tr>
+<tr><td><code>makex [цели]</code></td><td>То же, но с числом заданий по числу ядер
+  процессора.</td></tr>
+<tr><td><code>basedir</code></td><td>Перейти в папку исходников (папку, из которой была
+  открыта командная строка RosBE).</td></tr>
+<tr><td><code>clean</code></td><td>В папке исходников: удалить папку сборки
+  <code>output-MinGW-&lt;архитектура&gt;</code> целиком.</td></tr>
+<tr><td><code>clean logs</code></td><td>Удалить журналы сборки в
+  <code>output-...\RosBE-Logs</code>.</td></tr>
+<tr><td><code>clean &lt;модуль&gt;</code></td><td>Выполнить <code>make &lt;модуль&gt;_clean</code>.</td></tr>
+<tr><td><code>remake &lt;модули&gt;</code>, <code>remakex</code></td><td>Очистить модули и
+  собрать заново (remakex &mdash; на всех ядрах).</td></tr>
+<tr><td><code>charch &lt;архитектура&gt;</code></td><td>Сменить архитектуру сборки для этой
+  консоли (i386, amd64...).</td></tr>
+<tr><td><code>chdefdir</code>, <code>chdefgcc</code></td><td>Сменить папку исходников / папку
+  компилятора для этой консоли.</td></tr>
+<tr><td><code>raddr2line &lt;файл&gt; &lt;адрес&gt;</code></td><td>Перевести адрес из отладочного
+  вывода (например, из стека при сбое) в файл и строку исходников. Запускать в папке
+  исходников: файлы ищутся в <code>output-MinGW-i386</code>; имя можно указать частично
+  (<code>ntoskrnl*</code>).</td></tr>
+<tr><td><code>kdbg</code></td><td>Вывод отладчика KDBG и ввод его команд (через именованный
+  канал виртуальной машины).</td></tr>
+<tr><td><code>scut</code></td><td>Список сохранённых папок исходников и переключение между
+  ними.</td></tr>
+<tr><td><code>options</code></td><td>Окно настроек RosBE (журнал, ccache, звук, PATH...);
+  сохраняются в <code>%APPDATA%\RosBE</code>.</td></tr>
+<tr><td><code>version</code></td><td>Версии инструментов.</td></tr>
+<tr><td><code>update</code></td><td>Обновления RosBE: файлы берутся с
+  <code>svn.reactos.org/downloads/rosbe</code> (её же <code>RosBE.cmd</code> проверяет при
+  запуске).</td></tr>
+</table>
+<p>Цели <code>make</code> и <code>ninja</code> &mdash; цели сборки ReactOS (см.
+<a href="configure.html#targets">Цели ninja</a>).</p>

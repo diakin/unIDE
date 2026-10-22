@@ -886,6 +886,7 @@ type
     procedure mHelpUnideClick(Sender: TObject);
     procedure mHelpGitClick(Sender: TObject);
     procedure mHelpQemuClick(Sender: TObject);
+    procedure mHelpRosbeClick(Sender: TObject);
     procedure FbHelpMenuBuild;
     function  FbHelpFile(AAsk: Boolean): string;
     function  FbHelpPick: string;
@@ -59001,6 +59002,8 @@ begin
   CopyIfNewer('git_ref\help\git.chm');
   // Справка по QEMU (Help - QEMU)
   CopyIfNewer('qemu_ref\help\qemu.chm');
+  // Справка по RosBE (Help - RosBE)
+  CopyIfNewer('rosbe_ref\help\rosbe.chm');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
     'schemes, rapidq_ref\Component*.data - которых там не было или ' +
@@ -73319,6 +73322,13 @@ begin
                      'ReactOS, окно, монитор, диски, параметры';
   ManualItem.OnClick := mHelpQemuClick;
   mHelp.Insert(2, ManualItem);
+  // Справка по RosBE - после QEMU
+  ManualItem := TMenuItem.Create(Self);
+  ManualItem.Caption := 'Ros&BE';
+  ManualItem.Hint := 'Справка по RosBE (rosbe_ref\help\rosbe.chm): установка, ' +
+                     'сборка ReactOS в unIDE и вручную, команды RosBE';
+  ManualItem.OnClick := mHelpRosbeClick;
+  mHelp.Insert(3, ManualItem);
   AddItem('&Contents', '', 1);
   AddItem('Keyword &index', '', 2);
   AddItem('-', '', 0);
@@ -73470,6 +73480,16 @@ begin
   ChmFile := QemuRefChm;
   if (ChmFile = '') or not ChmShowTopic(ChmFile, '') then
     ShowMessage('Справка по QEMU: ' + RqHelpLastError);
+end;
+
+// Help - RosBE: справка по RosBE (rosbe_ref\help\rosbe.chm)
+procedure TForm1.mHelpRosbeClick(Sender: TObject);
+var
+  ChmFile: string;
+begin
+  ChmFile := RosbeRefChm;
+  if (ChmFile = '') or not ChmShowTopic(ChmFile, '') then
+    ShowMessage('Справка по RosBE: ' + RqHelpLastError);
 end;
 
 procedure TForm1.mHelpFbClick(Sender: TObject);

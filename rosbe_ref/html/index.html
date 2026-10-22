@@ -1,0 +1,34 @@
+<h1>RosBE: справка</h1>
+<p><b>RosBE</b> (ReactOS Build Environment) &mdash; набор инструментов для сборки ReactOS в
+Windows: компиляторы GCC (MinGW), binutils, CMake, Ninja, Flex, Bison и командные файлы,
+которые настраивают окружение. Для проекта reactosVG14 (ReactOS 0.4.14) нужен RosBE 2.2.1.</p>
+
+<h2><a name="unide"></a>RosBE в unIDE</h2>
+<table>
+<tr><th>Где</th><th>Что делает</th></tr>
+<tr><td>ReactOS &rarr; Install RosBE 2.2.1 (reactosVG14)...</td><td>Находит уже установленный
+  RosBE или скачивает и распаковывает его (см. <a href="install.html">Установка</a>). Путь к
+  <code>RosBE.cmd</code> записывается в настройки и в скрипт окружения открытого проекта
+  ReactOS, если он там не задан.</td></tr>
+<tr><td>Compile, Compile &amp; Run (проект ReactOS)</td><td>Сборка через RosBE: configure и
+  ninja (см. <a href="build.html">Сборка в unIDE</a>).</td></tr>
+<tr><td>Project Properties &rarr; рамка ReactOS / LiberNT</td><td>Папка сборки, цель ninja,
+  параметры configure, скрипт RosBE, производители PCI, команда запуска.</td></tr>
+<tr><td>ReactOS &rarr; Download Build Tools</td><td>Страницы загрузки RosBE и других
+  инструментов в браузере.</td></tr>
+<tr><td>Help &rarr; RosBE</td><td>Эта справка (<code>rosbe_ref\help\rosbe.chm</code>).</td></tr>
+</table>
+
+<h2><a name="pages"></a>Разделы</h2>
+<ul>
+<li><a href="install.html">Установка RosBE 2.2.1</a> &mdash; как это делает unIDE и почему распаковкой.</li>
+<li><a href="contents.html">Состав RosBE 2.2.1</a> &mdash; версии инструментов, папки.</li>
+<li><a href="build.html">Сборка в unIDE</a> &mdash; настройки проекта, шаги, проверка CMakeCache.txt.</li>
+<li><a href="console.html">Командная строка RosBE</a> &mdash; сборка вручную.</li>
+<li><a href="commands.html">Команды RosBE</a> &mdash; make, clean, basedir, raddr2line и другие.</li>
+<li><a href="configure.html">configure.cmd и ninja</a> &mdash; параметры, цели.</li>
+<li><a href="problems.html">Если не собирается</a>.</li>
+<li><a href="libernt.html">LiberNT</a> &mdash; другие инструменты для LiberNT на Windows 7.</li>
+</ul>
+<p>Исходники и документация RosBE: <code>https://github.com/reactos/RosBE</code>; сборка
+ReactOS &mdash; <code>https://reactos.org/wiki/Building_ReactOS</code>.</p>

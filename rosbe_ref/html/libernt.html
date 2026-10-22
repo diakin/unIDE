@@ -1,0 +1,24 @@
+<h1>LiberNT</h1>
+<p>Проект ReactOS / LiberNT в unIDE собирается так же (configure.cmd + ninja), но с другими
+инструментами: RosBE 2.2.1 для него не нужен, его configure.cmd находит RosBE сам, поле
+«Скрипт RosBE» остаётся пустым.</p>
+
+<h2>Инструменты (ReactOS &rarr; Download Build Tools)</h2>
+<table>
+<tr><th>Пункт</th><th>Зачем</th></tr>
+<tr><td>RosBE для LiberNT &mdash; выпуски winget-rosbe</td><td>Архивы компонентов RosBE. Их
+  установщик <code>rosbe.exe</code> на Windows 7 не запускается, поэтому архивы распаковываются
+  вручную в <code>%LOCALAPPDATA%\RosBE\pkgs\&lt;версия&gt;</code>.</td></tr>
+<tr><td>Universal C Runtime (KB2999226)</td><td>Нужен GCC 16 и Clang из этих архивов на
+  Windows 7.</td></tr>
+<tr><td>Python 3.8.10</td><td>Последний Python для Windows 7; нужен для сборки LiberNT с
+  <code>/clang</code>.</td></tr>
+<tr><td>Git for Windows 2.46.2</td><td>Последний для Windows 7 (в unIDE есть свой &mdash;
+  ReactOS &rarr; Find or Install Git).</td></tr>
+</table>
+
+<h2>Параметры configure LiberNT</h2>
+<p>По подсказке поля «Параметры configure»: <code>/gcc</code> (по умолчанию),
+<code>/clang</code>, <code>/arch=amd64</code>, <code>/r</code> &mdash; release. Папка сборки
+LiberNT &mdash; <code>output-&lt;метка&gt;-&lt;arch&gt;-&lt;debug|release&gt;</code>; цели образов
+&mdash; ещё <code>liberntimg</code>, <code>liberntvhd</code>.</p>

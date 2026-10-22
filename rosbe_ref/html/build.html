@@ -1,0 +1,54 @@
+<h1>Сборка в unIDE</h1>
+
+<h2>Настройки проекта</h2>
+<p>Project Properties, рамка «ReactOS / LiberNT: CMake + Ninja» (хранится в editor.ini, в
+разделе проекта, ключи <code>ReactOS_*</code>):</p>
+<table>
+<tr><th>Поле</th><th>Что задаёт</th></tr>
+<tr><td>Папка сборки</td><td>Папка, которую создаёт configure.cmd: для reactosVG14 с RosBE
+  2.2.1 &mdash; <code>output-MinGW-i386</code> (путь внутри папки исходников хранится от неё).
+  Список &mdash; найденные папки <code>output-*</code>.</td></tr>
+<tr><td>Цель ninja</td><td><code>bootcd</code>, <code>livecd</code> или имя модуля
+  (<code>ntoskrnl</code> и т. п.).</td></tr>
+<tr><td>Параметры configure</td><td>Что дописать к <code>configure.cmd</code> (см.
+  <a href="configure.html">configure.cmd</a>).</td></tr>
+<tr><td>Скрипт RosBE</td><td>Полный путь к <code>RosBE.cmd</code>: он выполняется перед каждым
+  шагом. Для LiberNT &mdash; пусто: его configure.cmd находит RosBE сам.</td></tr>
+<tr><td>Производители PCI</td><td>Для ReactOS &rarr; Generate System Devices INF.</td></tr>
+<tr><td>Запуск (Run)</td><td>Команда эмулятора; пусто &mdash; свой QEMU unIDE (Help &rarr; QEMU).</td></tr>
+</table>
+<p>Папка проекта &mdash; корень исходников: в нём должны быть <code>configure.cmd</code>,
+<code>CMakeLists.txt</code> и <code>PreLoad.cmake</code>.</p>
+
+<h2>Шаги сборки</h2>
+<ol>
+<li><b>Проверки:</b> папка проекта &mdash; корень исходников ReactOS; файл скрипта RosBE
+  существует.</li>
+<li><b>Проверка CMakeCache.txt</b> (если папка сборки уже есть): какой папке исходников она
+  настроена (ниже).</li>
+<li><b>configure</b> &mdash; только если в папке сборки нет <code>build.ninja</code>:
+  <code>call RosBE.cmd</code>, затем <code>configure.cmd &lt;параметры&gt;</code> в папке
+  исходников.</li>
+<li><b>ninja</b> &mdash; <code>call RosBE.cmd</code>, затем <code>ninja &lt;цель&gt;</code> в папке
+  сборки.</li>
+<li>Готово &mdash; путь к <code>&lt;цель&gt;.iso</code> в Compilation log; у Compile &amp; Run
+  &mdash; запуск образа.</li>
+</ol>
+<p>Каждый шаг &mdash; свой <code>.cmd</code> во временной папке, вывод &mdash; в Compilation
+log, ход ninja (<code>[12/3456]</code>) &mdash; в окне хода; кнопка Стоп снимает ninja со всеми
+компиляторами. Ошибки компилятора попадают в Error log.</p>
+
+<h2><a name="cache"></a>Проверка CMakeCache.txt</h2>
+<p>В <code>CMakeCache.txt</code> папки сборки записан путь исходников, для которых она
+настроена (<code>CMAKE_HOME_DIRECTORY</code>), отдельно &mdash; в кэше
+<code>host-tools</code>. Если дерево перенесли или скопировали, путь там старый: ninja
+перезапустит CMake со старым путём и остановится; configure.cmd свой кэш удаляет сам, а кэш
+host-tools &mdash; нет.</p>
+<p>unIDE сравнивает путь из кэшей с папкой проекта и пишет результат в Compilation log. Не
+совпадает &mdash; спрашивает: удалить <code>CMakeCache.txt</code> (и в host-tools) и
+запустить configure заново, всё равно запустить ninja или остановиться.</p>
+
+<h2>Чистая сборка</h2>
+<p>Закройте QEMU, удалите папку сборки (<code>output-MinGW-i386</code>) &mdash; при следующем
+Compile configure создаст её заново. То же делает команда <code>clean</code> в командной
+строке RosBE (см. <a href="commands.html">Команды</a>).</p>

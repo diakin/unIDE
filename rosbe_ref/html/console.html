@@ -1,0 +1,26 @@
+<h1>Командная строка RosBE</h1>
+<p>unIDE выполняет шаги сборки сам, но собирать можно и вручную &mdash; в командной строке
+RosBE.</p>
+
+<h2>Как открыть</h2>
+<p>Распакованный unIDE RosBE ярлыков не имеет. Командная строка RosBE открывается так
+(Win+R или cmd.exe), находясь в папке исходников:</p>
+<pre><code>cd /d D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\reactosVG14
+cmd /k "C:\RosBE\RosBE.cmd"</code></pre>
+<p>Окно очищается, появляется заголовок «ReactOS Build Environment 2.2.1» и подсказка
+<code>help</code>. Папка, из которой открыта консоль, становится папкой исходников для
+команды <code>basedir</code>. Сборка для amd64 &mdash; <code>cmd /k "C:\RosBE\RosBE.cmd"
+amd64</code> (нужен компилятор x86_64).</p>
+
+<h2>Сборка вручную</h2>
+<pre><code>configure.cmd
+cd output-MinGW-i386
+ninja bootcd</code></pre>
+<p><code>configure.cmd</code> создаёт папку <code>output-MinGW-i386</code> и в ней
+<code>build.ninja</code>; <code>ninja bootcd</code> собирает образ <code>bootcd.iso</code> в той же
+папке.</p>
+<p>Собрать только один модуль: <code>ninja ntoskrnl</code>. Вместо <code>ninja</code> можно
+писать <code>make</code> / <code>makex</code> &mdash; команды RosBE, которые запускают тот же
+ninja и пишут журнал (см. <a href="commands.html">Команды</a>).</p>
+<p>Вернуться в папку исходников &mdash; <code>basedir</code>; список команд RosBE &mdash;
+<code>help</code>, справка по команде &mdash; <code>help clean</code>.</p>
