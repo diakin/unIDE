@@ -10,15 +10,17 @@ unit DlgGitCommit;
 //  отмеченные файлы (CheckedChanges) и текст (MessageText) забирает после
 //  ShowModal = mrOk; PushAfter - нажата Commit and Push.
 //
-//  Discard Selected - отменить изменения выделенных строк (OnDiscard -
-//  Unit1 спрашивает и выполняет; вышло - строки убираются из списка).
+//  Discard Selected (и правый щелчок по строке - Discard Changes) -
+//  отменить изменения выделенных строк (OnDiscard - Unit1 спрашивает и
+//  выполняет; вышло - строки убираются из списка).
 // ---------------------------------------------------------------------------
 
 interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
-  StdCtrls, ExtCtrls, ComCtrls,
+  StdCtrls, ExtCtrls, ComCtrls, Menus,
+  UiMenus,       // TUiPopupMenu
   UiButton,      // TUiButton
   UiEditCtrls,   // TUiEdit, TUiMemo
   UiStdCtrls,    // TUiCheckBox, TUiLabel, TUiPanel
@@ -38,6 +40,7 @@ type
     FOnDiscard: TGitDiscardEvent;
     FTopPanel: TUiPanel;
     FBtnDiscard: TUiButton;
+    FListMenu: TUiPopupMenu;
     FPushAfter: Boolean;
     FLeft: TUiPanel;
     FMsgPanel: TUiPanel;
@@ -62,6 +65,8 @@ type
     procedure BtnCommitClick(Sender: TObject);
     procedure BtnPushClick(Sender: TObject);
     procedure LayoutButtons(Sender: TObject);
+    procedure LayoutTop(Sender: TObject);
+    procedure LayoutMsg(Sender: TObject);
     procedure UpdateCount;
     function TryClose: Boolean;
     // $0128 - WM_UPDATEUISTATE (кнопки не пропадают по Alt, как в других окнах)
@@ -86,6 +91,7 @@ var
   ChangeIdx: Integer;
   Item: TListItem;
   Column: TListColumn;
+  MenuItem: TMenuItem;
 begin
   inherited CreateNew(AOwner);
   FChanges := AChanges;
@@ -142,14 +148,16 @@ begin
 
   FBtnDiscard := TUiButton.Create(Self);
   FBtnDiscard.Parent := FTopPanel;
-  FBtnDiscard.SetBounds(FLeft.Width - 122, 2, 118, 23);
-  FBtnDiscard.Anchors := [akTop, akRight];
+  // Место - в LayoutTop: до первого показа окна выравнивание (Align) ещё
+  // не прошло, ширина панели - не та, и якоря дали бы кнопку за краем
+  FTopPanel.OnResize := LayoutTop;
   FBtnDiscard.Caption := 'Discard Selected...';
   FBtnDiscard.Hint := 'Отменить изменения выделенных строк (не флажков): ' +
     'файлы - как в последнем коммите, новые файлы - в корзину';
   FBtnDiscard.ShowHint := True;
   FBtnDiscard.OnClick := BtnDiscardClick;
   FBtnDiscard.Visible := Assigned(AOnDiscard);
+  LayoutTop(nil);
 
   // Низ левой части: заголовок, описание, кнопки
   FMsgPanel := TUiPanel.Create(Self);
@@ -168,8 +176,7 @@ begin
 
   FSummary := TUiEdit.Create(Self);
   FSummary.Parent := FMsgPanel;
-  FSummary.SetBounds(2, 22, FLeft.Width - 4, 22);
-  FSummary.Anchors := [akLeft, akTop, akRight];
+  FSummary.SetBounds(2, 22, 200, 22);
 
   FLblDescr := TUiLabel.Create(Self);
   FLblDescr.Parent := FMsgPanel;
@@ -186,9 +193,9 @@ begin
 
   FDescr := TUiMemo.Create(Self);
   FDescr.Parent := FMsgPanel;
-  FDescr.SetBounds(2, 68, FLeft.Width - 4,
-    FMsgPanel.Height - 68 - FBtnPanel.Height - 4);
-  FDescr.Anchors := [akLeft, akTop, akRight, akBottom];
+  FDescr.SetBounds(2, 68, 200, 60);
+  // Ширина поля заголовка и размер описания - в LayoutMsg (по панели)
+  FMsgPanel.OnResize := LayoutMsg;
   FDescr.ScrollBars := ssVertical;
 
   FBtnCommit := TUiButton.Create(Self);
@@ -244,6 +251,13 @@ begin
   finally
     FFilling := False;
   end;
+  // Правый щелчок по строке - меню (Discard Changes)
+  FListMenu := TUiPopupMenu.Create(Self);
+  MenuItem := TMenuItem.Create(Self);
+  MenuItem.Caption := 'Discard Changes...';
+  MenuItem.OnClick := BtnDiscardClick;
+  FListMenu.Items.Add(MenuItem);
+  FList.PopupMenu := FListMenu;
   FList.OnSelectItem := ListSelect;
   FList.OnChange := ListChange;
   UpdateCount;
@@ -268,6 +282,22 @@ begin
   Inc(BtnLeft, 80 + BtnGap);
   FBtnPush.SetBounds(BtnLeft, BtnTop, 120, BtnH);
   FBtnCancel.SetBounds(FBtnPanel.ClientWidth - 70, BtnTop, 70, BtnH);
+end;
+
+procedure TDlgGitCommit.LayoutTop(Sender: TObject);
+begin
+  FBtnDiscard.SetBounds(FTopPanel.ClientWidth - 122, 2, 118, 23);
+end;
+
+procedure TDlgGitCommit.LayoutMsg(Sender: TObject);
+var
+  DescrHeight: Integer;
+begin
+  FSummary.SetBounds(2, 22, FMsgPanel.ClientWidth - 4, 22);
+  DescrHeight := FMsgPanel.ClientHeight - 68 - FBtnPanel.Height - 4;
+  if DescrHeight < 20 then
+    DescrHeight := 20;
+  FDescr.SetBounds(2, 68, FMsgPanel.ClientWidth - 4, DescrHeight);
 end;
 
 procedure TDlgGitCommit.UpdateCount;
