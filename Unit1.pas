@@ -51,6 +51,7 @@ uses
   GitTool,        // Git: найти в системе или свой (tools\git), Git Bash
   RufusTool,      // свой Rufus unIDE (tools\rufus): образ на флешку
   GitRun,         // запуск консольного git: панель Git, меню Repository, Branch
+  UiCaptionTabs,  // вкладки Components | Git на месте подписи рамки палитры
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -1081,6 +1082,8 @@ type
     FGitDlgRepo: string;
     FGitDlgHasHead: Boolean;
     FGitTimer: TTimer;            // обновить панель чуть позже (GitShowBar)
+    // Вкладки Components | Git на верхней линии рамки палитры
+    FPalTabs: TUiCaptionTabs;
     // Режим F4 unIDE FAR: окно FAR - половина области редактора (одна
     // панель), другая половина - редактор; место FAR держит FFarSpacer
     // (alLeft / alRight в pnlMain). FFarOwnWin - окно, которое открыл F4
@@ -2891,6 +2894,8 @@ type
     procedure GitRefreshBar;
     procedure GitRefreshClick(Sender: TObject);
     procedure GitTimerTick(Sender: TObject);
+    procedure PalTabsChange(Sender: TObject);
+    procedure PalSetCaption(const AText: string);
     procedure GitBranchComboChange(Sender: TObject);
     procedure GitFetchClick(Sender: TObject);
     procedure GitPullClick(Sender: TObject);
@@ -23814,6 +23819,18 @@ begin
   FToolbarBaseHeight := FToolbar.Height;
   FDsgPalette.OnTabRows := PaletteTabRows;
   FDsgPalette.OnSelect := DsgPaletteSelect;
+  // Вкладки Components | Git - на месте подписи рамки палитры: место не
+  // занимают. Git - панель Git (GitShowBar) для любого проекта
+  grpPalette.Caption := '';
+  FPalTabs := TUiCaptionTabs.Create(Self);
+  FPalTabs.Parent := grpPalette;
+  FPalTabs.Tabs.Add('Components');
+  FPalTabs.Tabs.Add('Git');
+  FPalTabs.Left := 8;
+  FPalTabs.Top := 0;
+  FPalTabs.AutoWidth;
+  FPalTabs.OnChange := PalTabsChange;
+  FPalTabs.BringToFront;
   FDsgPalette.OnGlyphLoaded := DsgPaletteGlyph;
   BuildPaletteButtons;
   FLangMode := -1;
@@ -36179,22 +36196,35 @@ procedure TForm1.DsgPaletteSelect(Sender: TObject);
 begin
   if grpPalette = nil then
     Exit;
-  // На месте палитры - панель Git (проект ReactOS)
-  if (FGitBar <> nil) and FGitBar.Visible then
-  begin
-    grpPalette.Caption := 'Git';
-    Exit;
-  end;
   if RqPalSelected <> '' then
-    grpPalette.Caption := 'Components - ' + RqPalSelected + ' (RapidQ)'
+    PalSetCaption('Components - ' + RqPalSelected + ' (RapidQ)')
   else if FDsgPalette.SelectedForeign <> '' then
-    grpPalette.Caption := 'Components - ' +
+    PalSetCaption('Components - ' +
       Copy(FDsgPalette.SelectedForeign,
-           Pos('.', FDsgPalette.SelectedForeign) + 1, MaxInt) + ' (сторонний)'
+           Pos('.', FDsgPalette.SelectedForeign) + 1, MaxInt) + ' (сторонний)')
   else if FDsgPalette.SelectedClass = nil then
-    grpPalette.Caption := 'Components'
+    PalSetCaption('Components')
   else
-    grpPalette.Caption := 'Components - ' + FDsgPalette.SelectedClass.ClassName;
+    PalSetCaption('Components - ' + FDsgPalette.SelectedClass.ClassName);
+end;
+
+// Текст вкладки Components (выбранный класс палитры); вкладок ещё нет -
+// подпись рамки
+procedure TForm1.PalSetCaption(const AText: string);
+begin
+  if FPalTabs <> nil then
+  begin
+    if FPalTabs.Tabs[0] <> AText then
+      FPalTabs.Tabs[0] := AText;
+  end
+  else
+    grpPalette.Caption := AText;
+end;
+
+// Щелчок по вкладке Components / Git
+procedure TForm1.PalTabsChange(Sender: TObject);
+begin
+  GitShowBar(FPalTabs.TabIndex = 1);
 end;
 
 // Узел лежит в отдельном дереве снимка (под узлом «снимок ...»)
@@ -56515,7 +56545,7 @@ const
 var
   ModeKey: string;
   Basic, RqMode, CanStep, ArdRow: Boolean;
-  Kind: Integer;
+  Kind, OldKind: Integer;
   RunRow: array[0..RunRowCount - 1] of TControl;
   RowIdx, SlotIdx, PageIdx: Integer;
 
@@ -56545,6 +56575,7 @@ begin
     Kind := bkDelphi;
   if FLangMode = Kind then
     Exit;
+  OldKind := FLangMode;
   FLangMode := Kind;
   // Basic - всё, что не Delphi: только-Delphi спрятано. RqMode - то, что
   // есть только у RapidQ (Includes, палитра RQ, условия точек останова).
@@ -56649,8 +56680,13 @@ btnCompileRun.Hint := 'ReactOS / LiberNT: собрать цель ninja (есл�
                                 RqMode <> ((PageIdx >= FRqPalPage) and (PageIdx <= FRqPalLast)));
     FDsgPalette.ApplyPages;
   end;
-  // Проект ReactOS: палитра не нужна - на её месте панель Git
-  GitShowBar(Kind = bkCMakeNinja);
+  // Проект ReactOS: палитра не нужна - сразу вкладка Git; из ReactOS в
+  // другой режим - снова Components. В остальных случаях вкладку выбирает
+  // пользователь (Components | Git на рамке палитры)
+  if Kind = bkCMakeNinja then
+    GitShowBar(True)
+  else if OldKind = bkCMakeNinja then
+    GitShowBar(False);
   Dbg('Режим среды: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')',
       clGray);
 end;
@@ -63579,7 +63615,8 @@ begin
     if FDsgPalette <> nil then
       FDsgPalette.Visible := False;
     FGitBar.Visible := True;
-    grpPalette.Caption := 'Git';
+    if FPalTabs <> nil then
+      FPalTabs.TabIndex := 1;
     // Сведения - чуть позже: git status в большом дереве (ReactOS) идёт
     // секунды, смена вкладки не должна их ждать
     FGitLblBuild.Caption := 'Build: обновляется...';
@@ -63597,6 +63634,8 @@ begin
   begin
     if FGitBar <> nil then
       FGitBar.Visible := False;
+    if FPalTabs <> nil then
+      FPalTabs.TabIndex := 0;
     if FDsgPalette <> nil then
     begin
       FDsgPalette.Visible := True;
