@@ -1085,6 +1085,14 @@ type
     FGitLblSync: TUiLabel;
     FGitLblBuild: TUiLabel;
     FGitCmbBranch: TUiComboBox;
+    // Панель Git: кнопки, которые подсвечиваются (Pull - на сервере новое,
+    // Push - не отправлено), подсказка после команды (что произошло),
+    // ahead / behind по последнему обновлению (-1 - не известно)
+    FGitBtnPull: TUiButton;
+    FGitBtnPush: TUiButton;
+    FGitLblHint: TUiLabel;
+    FGitAhead: Integer;
+    FGitBehind: Integer;
     FGitBusy: Boolean;
     FGitCancel: Boolean;
     FGitBranchFill: Boolean;
@@ -2921,6 +2929,10 @@ type
     procedure GitBranchList(const AGit, ARepo: string; AWithRemote: Boolean;
                             AList: TStrings);
     function  GitLongOp(const AGit, ARepo, AArgs: string): Integer;
+    function  GitExplain(const AArgs: string; const AOutput: WideString;
+                         AExitCode: Integer; var AIsError: Boolean): string;
+    procedure GitSetHint(const AText: string; AIsError: Boolean);
+    procedure GitPlaceHint;
     procedure GitBuildBar;
     procedure GitShowBar(AShow: Boolean);
     procedure GitRefreshBar;
@@ -64220,6 +64232,8 @@ end;
 function TForm1.GitLongOp(const AGit, ARepo, AArgs: string): Integer;
 var
   Output: WideString;
+  HintText: string;
+  HintIsError: Boolean;
 begin
   ShowCompLog;
   FGitBusy := True;
@@ -64235,6 +64249,178 @@ begin
     UpdateStatusBarInfo;
   end;
   GitRefreshBar;
+  // Что произошло - словами: в журнал и на панель Git (справа от Build)
+  HintText := GitExplain(AArgs, Output, Result, HintIsError);
+  if HintText <> '' then
+  begin
+    LogComp('Подсказка: ' + HintText);
+    GitSetHint(HintText, HintIsError);
+  end;
+end;
+
+// Подсказка на панели Git (справа от строки Build): красная - ошибка,
+// зелёная - удалось; полный текст - во всплывающей подсказке
+procedure TForm1.GitSetHint(const AText: string; AIsError: Boolean);
+begin
+  if FGitLblHint = nil then
+    Exit;
+  FGitLblHint.Caption := AText;
+  FGitLblHint.Hint := AText;
+  if AText = '' then
+    FGitLblHint.ThemeColors := True
+  else
+  begin
+    FGitLblHint.ThemeColors := False;
+    if AIsError then
+      FGitLblHint.Font.Color := $3C3CFF
+    else
+      FGitLblHint.Font.Color := $30C030;
+  end;
+  GitPlaceHint;
+end;
+
+// Подсказка - сразу за строкой Build (её длина меняется)
+procedure TForm1.GitPlaceHint;
+begin
+  if (FGitLblHint = nil) or (FGitLblBuild = nil) then
+    Exit;
+  FGitLblHint.Left := FGitLblBuild.Left + FGitLblBuild.Width + 24;
+  FGitLblHint.Top := FGitLblBuild.Top;
+end;
+
+// Вывод команды git словами: что произошло и что делать. AIsError - это
+// ошибка (подсказка красная). '' - сказать нечего
+function TForm1.GitExplain(const AArgs: string; const AOutput: WideString;
+  AExitCode: Integer; var AIsError: Boolean): string;
+var
+  OutText, OutLower, Cmd, Busy: string;
+  QuoteAt, QuoteEnd: Integer;
+begin
+  Result := '';
+  AIsError := AExitCode <> 0;
+  OutText := string(AOutput);
+  OutLower := AnsiLowerCase(OutText);
+  Cmd := Trim(AArgs);
+  // '-c pull.rebase=false pull ...' - команда после ключей -c
+  while Copy(Cmd, 1, 3) = '-c ' do
+  begin
+    Delete(Cmd, 1, 3);
+    Cmd := Trim(Cmd);
+    if Pos(' ', Cmd) > 0 then
+      Delete(Cmd, 1, Pos(' ', Cmd))
+    else
+      Cmd := '';
+    Cmd := Trim(Cmd);
+  end;
+  if Pos(' ', Cmd) > 0 then
+    Cmd := Copy(Cmd, 1, Pos(' ', Cmd) - 1);
+
+  // Файл занят: его держит запущенная программа
+  QuoteAt := Pos('unable to unlink old ''', OutLower);
+  if QuoteAt > 0 then
+  begin
+    Busy := Copy(OutText, QuoteAt + Length('unable to unlink old '''), MaxInt);
+    QuoteEnd := Pos('''', Busy);
+    if QuoteEnd > 0 then
+      Busy := Copy(Busy, 1, QuoteEnd - 1);
+    AIsError := True;
+    Result := 'файл ' + Busy + ' занят - его держит запущенная программа ' +
+      '(unIDE с открытым окном WebView2, собранный exe и т.п.). Закройте её ' +
+      'и повторите ' + Cmd + '. Команда остановилась на середине: часть ' +
+      'файлов уже новая; если повтор пишет "local changes would be ' +
+      'overwritten" - отмените эти изменения (Commit... - Discard Selected) ' +
+      'и повторите';
+    Exit;
+  end;
+  if Pos('would be overwritten by', OutLower) > 0 then
+  begin
+    AIsError := True;
+    if Pos('untracked working tree files', OutLower) > 0 then
+      Result := 'есть файлы не в git с теми же именами, что приходят с ' +
+        'сервера (список в журнале) - удалите или переименуйте их и ' +
+        'повторите ' + Cmd
+    else
+      Result := 'в файлах из списка (в журнале) есть незакоммиченные ' +
+        'изменения, ' + Cmd + ' их не перезаписывает: закоммитьте ' +
+        '(Commit...), отложите (Stash) или отмените (Commit... - Discard ' +
+        'Selected). Следы прерванного Pull - отменить';
+    Exit;
+  end;
+  if (Pos('conflict (', OutLower) > 0) or
+     (Pos('automatic merge failed', OutLower) > 0) then
+  begin
+    AIsError := True;
+    Result := 'конфликт слияния: в файлах с CONFLICT (журнал) обе версии - ' +
+      'исправьте их и сделайте Commit...; отменить слияние - git merge ' +
+      '--abort в Git Bash';
+    Exit;
+  end;
+  if (Pos('[rejected]', OutLower) > 0) and
+     ((Pos('fetch first', OutLower) > 0) or
+      (Pos('non-fast-forward', OutLower) > 0)) then
+  begin
+    AIsError := True;
+    Result := 'на сервере есть коммиты, которых нет здесь: сначала Pull, ' +
+      'потом Push';
+    Exit;
+  end;
+  if (Pos('could not resolve host', OutLower) > 0) or
+     (Pos('failed to connect', OutLower) > 0) or
+     (Pos('unable to access', OutLower) > 0) and
+     (Pos('terminal prompts disabled', OutLower) = 0) then
+  begin
+    AIsError := True;
+    Result := 'нет связи с сервером (сеть, прокси или адрес origin)';
+    Exit;
+  end;
+  if (Pos('authentication failed', OutLower) > 0) or
+     (Pos('terminal prompts disabled', OutLower) > 0) then
+  begin
+    AIsError := True;
+    Result := 'вход на сервер не выполнен - подсказка выше в журнале';
+    Exit;
+  end;
+  if AExitCode <> 0 then
+  begin
+    Result := 'git ' + Cmd + ' завершился с ошибкой (код ' +
+      IntToStr(AExitCode) + ') - подробности выше в журнале';
+    Exit;
+  end;
+
+  // Удалось
+  if Cmd = 'fetch' then
+  begin
+    if FGitBehind > 0 then
+      Result := 'на сервере ' + IntToStr(FGitBehind) + ' новых коммитов ' +
+        'текущей ветки - нажмите Pull'
+    else if FGitAhead > 0 then
+      Result := 'с сервера забирать нечего; ' + IntToStr(FGitAhead) +
+        ' коммитов не отправлено - Push'
+    else
+      Result := 'на сервере для текущей ветки нового нет';
+  end
+  else if Cmd = 'pull' then
+  begin
+    if Pos('already up to date', OutLower) > 0 then
+      Result := 'уже всё забрано - на сервере нового нет'
+    else
+      Result := 'изменения с сервера влиты в текущую ветку';
+  end
+  else if Cmd = 'push' then
+  begin
+    if Pos('everything up-to-date', OutLower) > 0 then
+      Result := 'отправлять нечего - сервер уже совпадает'
+    else
+      Result := 'коммиты отправлены на сервер';
+  end
+  else if Cmd = 'commit' then
+  begin
+    if FGitAhead > 0 then
+      Result := 'коммит сделан; не отправлено ' + IntToStr(FGitAhead) +
+        ' - Push'
+    else
+      Result := 'коммит сделан';
+  end;
 end;
 
 // ---------------------------------------------------------------------------
@@ -64255,6 +64441,7 @@ procedure TForm1.GitBuildBar;
     Result.OnClick := AClick;
   end;
 
+  // Подписи панели - крупнее (10 пт), чем у остального окна
   function NewLabel(ALeft, ATop: Integer; const ACaption: string): TUiLabel;
   begin
     Result := TUiLabel.Create(Self);
@@ -64264,6 +64451,7 @@ procedure TForm1.GitBuildBar;
     Result.Top := ATop;
     Result.Caption := ACaption;
     Result.ShowHint := True;
+    Result.Font.Size := 10;
   end;
 
 begin
@@ -64277,10 +64465,14 @@ begin
   FGitBar.ParentFont := True;
   NewButton('Fetch', 'git fetch: узнать, что нового на сервере (ветки и ' +
     'коммиты), рабочие файлы не меняются', 4, 56, GitFetchClick);
-  NewButton('Pull', 'git pull: забрать изменения ветки с сервера и влить в ' +
-    'текущую (merge)', 64, 56, GitPullClick);
-  NewButton('Push', 'git push: отправить коммиты текущей ветки на сервер ' +
-    '(ветки там ещё нет - опубликовать)', 124, 56, GitPushClick);
+  FGitAhead := -1;
+  FGitBehind := -1;
+  FGitBtnPull := NewButton('Pull', 'git pull: забрать изменения ветки с ' +
+    'сервера и влить в текущую (merge). Красная - на сервере есть новые ' +
+    'коммиты (после Fetch)', 64, 56, GitPullClick);
+  FGitBtnPush := NewButton('Push', 'git push: отправить коммиты текущей ' +
+    'ветки на сервер (ветки там ещё нет - опубликовать). Красная - есть ' +
+    'неотправленные коммиты', 124, 56, GitPushClick);
   NewButton('Commit...', 'Окно Commit: изменённые файлы, разница, ' +
     'заголовок и описание коммита', 184, 72, GitCommitClick);
   NewButton('History...', 'История коммитов ветки: файлы и разница, Revert, ' +
@@ -64293,13 +64485,16 @@ begin
   FGitCmbBranch := TUiComboBox.Create(Self);
   FGitCmbBranch.Parent := FGitBar;
   FGitCmbBranch.Style := csDropDownList;
-  FGitCmbBranch.SetBounds(56, 48, 220, 21);
+  FGitCmbBranch.Font.Size := 10;
+  FGitCmbBranch.SetBounds(64, 47, 220, 21);
   FGitCmbBranch.Hint := 'Текущая ветка; выбор другой - переключиться на неё ' +
     '(git checkout)';
   FGitCmbBranch.ShowHint := True;
   FGitCmbBranch.OnChange := GitBranchComboChange;
-  FGitLblSync := NewLabel(284, 51, '');
+  FGitLblSync := NewLabel(292, 51, '');
   FGitLblBuild := NewLabel(4, 75, '');
+  // Что сделала последняя команда - словами (GitSetHint)
+  FGitLblHint := NewLabel(300, 75, '');
 end;
 
 // Палитра или панель Git (AShow - режим проекта ReactOS)
@@ -64358,6 +64553,13 @@ begin
   Repo := '';
   if Git <> '' then
     Repo := GitRepoTop(Git, BaseDir);
+  // Подсветка - заново по этому обновлению
+  FGitAhead := -1;
+  FGitBehind := -1;
+  FGitBtnPull.TextColor := clNone;
+  FGitBtnPush.TextColor := clNone;
+  FGitLblSync.ThemeColors := True;
+  FGitLblBuild.ThemeColors := True;
   FGitBranchFill := True;
   try
     FGitCmbBranch.Items.Clear;
@@ -64415,13 +64617,35 @@ begin
     if Branch = '' then
       FGitLblSync.Caption := ''
     else if Upstream = '' then
-      FGitLblSync.Caption := 'нет ветки на сервере - Push опубликует её'
+    begin
+      FGitLblSync.Caption := 'нет ветки на сервере - Push опубликует её';
+      FGitBtnPush.TextColor := clRed;
+    end
     else
     begin
       Counts := GitQuery(Git, Repo, 'rev-list --left-right --count HEAD...@{u}');
       if GitParseCounts(WideString(Counts), Ahead, Behind) then
+      begin
+        FGitAhead := Ahead;
+        FGitBehind := Behind;
         FGitLblSync.Caption := Upstream + ':  ahead ' + IntToStr(Ahead) +
-          ' (не отправлено),  behind ' + IntToStr(Behind) + ' (не забрано)'
+          ' (не отправлено),  behind ' + IntToStr(Behind) + ' (не забрано)';
+        // Красная кнопка - что нужно сделать; строка - тем же цветом
+        // (не забрано - красный, не отправлено - оранжевый, всё совпадает
+        // - зелёный)
+        FGitLblSync.ThemeColors := False;
+        if Behind > 0 then
+        begin
+          FGitBtnPull.TextColor := clRed;
+          FGitLblSync.Font.Color := $3C3CFF;
+        end
+        else if Ahead > 0 then
+          FGitLblSync.Font.Color := $0090FF
+        else
+          FGitLblSync.Font.Color := $30C030;
+        if Ahead > 0 then
+          FGitBtnPush.TextColor := clRed;
+      end
       else
         FGitLblSync.Caption := Upstream;
     end;
@@ -64433,6 +64657,12 @@ begin
       GitParseStatus(Output, Changes);
     FGitLblBuild.Caption := 'Build: ' + Describe + '   Changes: ' +
       IntToStr(Length(Changes));
+    // Есть незакоммиченные изменения - строка оранжевая
+    if Length(Changes) > 0 then
+    begin
+      FGitLblBuild.ThemeColors := False;
+      FGitLblBuild.Font.Color := $0090FF;
+    end;
     if GitRunIn(Git, Repo, 'stash list', False, Output) = 0 then
     begin
       StashCount := 0;
@@ -64448,6 +64678,7 @@ begin
       'файлов изменено (Commit... - список)';
   finally
     FGitBranchFill := False;
+    GitPlaceHint;
   end;
 end;
 
