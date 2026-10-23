@@ -21,7 +21,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
-  StdCtrls,
+  StdCtrls, Registry,
   uWVTypes, uWVTypeLibrary, uWVLoader, uWVBrowserBase, uWVBrowser,
   uWVWinControl, uWVWindowParent, uWVCoreWebView2Args;
 
@@ -132,15 +132,48 @@ begin
   end;
 end;
 
+// Версия WebView2 Runtime по реестру - так проверять её советует
+// Microsoft: ключ клиента EdgeUpdate {F3017226-...}, значение pv
+// (HKLM 32/64 и HKCU); '' или 0.0.0.0 - Runtime не установлен. Сам
+// Microsoft Edge (браузер) - не Runtime
 function Wv2RuntimeVersion: string;
+const
+  ClientKey = 'Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}';
+var
+  Reg: TRegistry;
+  KeyIdx: Integer;
+  KeyPath: string;
 begin
   Result := '';
-  if GlobalWebView2Loader <> nil then
+  for KeyIdx := 0 to 3 do
+  begin
+    Reg := TRegistry.Create(KEY_READ);
     try
-      Result := GlobalWebView2Loader.InstalledRuntimeVersion;
-    except
-      Result := '';
+      if KeyIdx < 2 then
+        Reg.RootKey := HKEY_LOCAL_MACHINE
+      else
+        Reg.RootKey := HKEY_CURRENT_USER;
+      if Odd(KeyIdx) then
+        KeyPath := 'SOFTWARE\WOW6432Node\' + ClientKey
+      else
+        KeyPath := 'SOFTWARE\' + ClientKey;
+      try
+        if Reg.OpenKeyReadOnly(KeyPath) then
+        begin
+          if Reg.ValueExists('pv') then
+            Result := Trim(Reg.ReadString('pv'));
+          Reg.CloseKey;
+        end;
+      except
+        Result := '';
+      end;
+    finally
+      Reg.Free;
     end;
+    if (Result <> '') and (Result <> '0.0.0.0') then
+      Exit;
+    Result := '';
+  end;
 end;
 
 // Какой загрузчик сейчас: для строки окна и журнала
@@ -156,6 +189,16 @@ function Wv2Start(out AError: string; out ARuntimeMissing: Boolean): Boolean;
 begin
   AError := '';
   ARuntimeMissing := False;
+  // Runtime не установлен - не запускать: загрузчик мог взять что-то
+  // другое (сбой процесса, вид 0, код $FFFFFFFF на Windows 7 без Runtime)
+  if Wv2RuntimeVersion = '' then
+  begin
+    AError := 'Microsoft Edge WebView2 Runtime не найден в реестре ' +
+              '(EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5})';
+    ARuntimeMissing := True;
+    Result := False;
+    Exit;
+  end;
   // Прежняя попытка не удалась (Runtime не было) - загрузчик заново
   if (GlobalWebView2Loader <> nil) and
      GlobalWebView2Loader.InitializationError then
