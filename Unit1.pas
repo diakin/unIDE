@@ -2878,8 +2878,11 @@ type
     // Git: панель на месте палитры (режим ReactOS), меню Repository и Branch
     function  GitExePath(AOffer: Boolean): string;
     procedure GitOnLine(const ALine: WideString);
-    procedure GitLoginHint(const AGit, ADir: string;
-      const AOutput: WideString);
+    function  GitLoginHint(const AGit, ADir: string;
+      const AOutput: WideString; var AWincred: Boolean): Boolean;
+    function  GitConsoleLogin(const AGit, ADir, AArgs: string;
+      AWincred: Boolean): Integer;
+    function  GitRunConsole(const AGit, ADir, AArgs: string): Integer;
     function  GitOnIdle: Boolean;
     function  GitRunIn(const AGit, ADir, AArgs: string; ALog: Boolean;
                        var AOutput: WideString): Integer;
@@ -63410,6 +63413,8 @@ end;
 
 const
   GitIniSection = 'Git';
+  // GitRunConsole / GitConsoleLogin: консоль не запускалась
+  GitConsoleNotRun = -1000;
 
 // git.exe: в системе или свой; AOffer - нет никакого - предложить
 // установить (GitEnsure). Нет - ''
@@ -63451,7 +63456,8 @@ function TForm1.GitRunIn(const AGit, ADir, AArgs: string; ALog: Boolean;
   var AOutput: WideString): Integer;
 var
   ErrText: string;
-  ExitCode: Integer;
+  ExitCode, ConsoleCode: Integer;
+  Wincred: Boolean;
 begin
   AOutput := '';
   ExitCode := -1;
@@ -63475,22 +63481,33 @@ begin
   else if ALog and (ExitCode <> 0) then
   begin
     LogComp('git: код выхода ' + IntToStr(ExitCode));
-    GitLoginHint(AGit, ADir, AOutput);
+    // Логина нет - предложить повторить в консоли, где git его спросит
+    if GitLoginHint(AGit, ADir, AOutput, Wincred) and not FGitCancel then
+    begin
+      ConsoleCode := GitConsoleLogin(AGit, ADir, AArgs, Wincred);
+      if ConsoleCode <> GitConsoleNotRun then
+        Result := ConsoleCode;
+    end;
   end;
 end;
 
 // Вывод git с ошибкой входа по https (terminal prompts disabled; строка
 // про SSL/TLS от credential helper) - подсказка в Compilation log: какие
-// credential.helper настроены и как задать логин один раз
-procedure TForm1.GitLoginHint(const AGit, ADir: string;
-  const AOutput: WideString);
+// credential.helper настроены и как задать логин один раз. True - git
+// хотел спросить логин в консоли (её предложит GitConsoleLogin); AWincred
+// - wincred в действующем списке helper'ов (после последнего пустого
+// значения, которое список сбрасывает)
+function TForm1.GitLoginHint(const AGit, ADir: string;
+  const AOutput: WideString; var AWincred: Boolean): Boolean;
 var
-  OutLower, HelperLine: string;
+  OutLower, HelperLine, HelperValue: string;
   HelperOut: WideString;
   HelperLines: TStringList;
   NoPrompt, TlsError: Boolean;
-  LineIndex: Integer;
+  LineIndex, TabPos: Integer;
 begin
+  Result := False;
+  AWincred := False;
   OutLower := AnsiLowerCase(string(AOutput));
   NoPrompt := Pos('terminal prompts disabled', OutLower) > 0;
   TlsError := (Pos('ssl/tls', OutLower) > 0) or
@@ -63515,6 +63532,17 @@ begin
       LogComp('git: credential.helper (по порядку вызова):');
       for LineIndex := 0 to HelperLines.Count - 1 do
       begin
+        // file:<путь><Tab><значение>
+        TabPos := Pos(#9, HelperLines[LineIndex]);
+        if TabPos > 0 then
+          HelperValue := Trim(Copy(HelperLines[LineIndex], TabPos + 1,
+                                   MaxInt))
+        else
+          HelperValue := Trim(HelperLines[LineIndex]);
+        if HelperValue = '' then
+          AWincred := False
+        else if SameText(HelperValue, 'wincred') then
+          AWincred := True;
         HelperLine := StringReplace(HelperLines[LineIndex], #9, '   ',
                                     [rfReplaceAll]);
         if Trim(HelperLine) <> '' then
@@ -63538,7 +63566,7 @@ begin
   end;
   LogComp('git: задать логин один раз - кнопка Git Bash на панели Git, в ' +
           'открывшемся окне:');
-  LogComp('    git config --global credential.helper ""');
+  LogComp('    git config --global --replace-all credential.helper ""');
   LogComp('    git config --global --add credential.helper wincred');
   LogComp('    git fetch');
   LogComp('  Username - логин GitHub, Password - personal access token ' +
@@ -63547,6 +63575,196 @@ begin
           'дальше unIDE возьмёт его оттуда. Пустое значение в первой ' +
           'команде сбрасывает прежний список helper''ов (manager из ' +
           'системного gitconfig иначе вызывался бы первым).');
+  Result := NoPrompt;
+end;
+
+// Повтор команды git в окне консоли, где git спросит логин. AWincred -
+// wincred уже в списке helper'ов: только вопрос «повторить?». Иначе выбор:
+// настроить wincred (git config --global) и повторить / только повторить
+// / отмена. Результат - код выхода git в консоли, GitConsoleNotRun - не
+// запускали
+function TForm1.GitConsoleLogin(const AGit, ADir, AArgs: string;
+  AWincred: Boolean): Integer;
+var
+  Dlg: TForm;
+  Answer, BtnIndex: Integer;
+  Btn: TButton;
+  SetWincred: Boolean;
+  ConfigOut: WideString;
+  PromptText: string;
+begin
+  Result := GitConsoleNotRun;
+  PromptText := 'git ' + AArgs + #13#10#13#10'Git не получил логин для ' +
+    'входа по https. В окне консоли git спросит:'#13#10 +
+    '  Username - логин GitHub,'#13#10 +
+    '  Password - personal access token (пароль от аккаунта GitHub для ' +
+    'git по https не принимается).';
+  if AWincred then
+  begin
+    if MessageDlg('9826:' + PromptText + #13#10#13#10'Helper wincred уже ' +
+                  'настроен и сохранит логин в диспетчере учётных данных ' +
+                  'Windows.'#13#10#13#10'Повторить команду в консоли?',
+                  mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+      Exit;
+    SetWincred := False;
+  end
+  else
+  begin
+    Dlg := CreateMessageDialog('9827:' + PromptText + #13#10#13#10 +
+      'Сохранять логин через wincred - unIDE выполнит:'#13#10 +
+      '  git config --global --replace-all credential.helper ""'#13#10 +
+      '  git config --global --add credential.helper wincred'#13#10 +
+      'Пустое значение сбрасывает прежний список helper''ов. Логин ' +
+      'сохранится в диспетчере учётных данных Windows, дальше команды ' +
+      'git из unIDE пройдут без консоли.'#13#10#13#10 +
+      'Только консоль - логин нужно будет вводить при каждой команде, ' +
+      'которой нужен вход.',
+      mtConfirmation, [mbYes, mbNo, mbCancel]);
+    try
+      Dlg.Caption := 'Вход git по https';
+      Dlg.Width := Dlg.Width + 160;
+      for BtnIndex := 0 to Dlg.ComponentCount - 1 do
+        if Dlg.Components[BtnIndex] is TButton then
+        begin
+          Btn := TButton(Dlg.Components[BtnIndex]);
+          if Btn.ModalResult = mrYes then
+          begin
+            Btn.Caption := 'wincred и консоль';
+            Btn.Width := 140;
+            Btn.Left := Dlg.ClientWidth - 3 * 150 - 10;
+          end
+          else if Btn.ModalResult = mrNo then
+          begin
+            Btn.Caption := 'Только консоль';
+            Btn.Width := 140;
+            Btn.Left := Dlg.ClientWidth - 2 * 150 - 10;
+          end
+          else if Btn.ModalResult = mrCancel then
+          begin
+            Btn.Width := 140;
+            Btn.Left := Dlg.ClientWidth - 150 - 10;
+          end;
+        end;
+      Answer := Dlg.ShowModal;
+    finally
+      Dlg.Free;
+    end;
+    if Answer = mrYes then
+      SetWincred := True
+    else if Answer = mrNo then
+      SetWincred := False
+    else
+    begin
+      LogComp('git: повтор в консоли отменён');
+      Exit;
+    end;
+  end;
+  if SetWincred then
+  begin
+    LogComp('git config --global --replace-all credential.helper ""');
+    if GitRunIn(AGit, ADir, 'config --global --replace-all ' +
+                'credential.helper ""', False, ConfigOut) <> 0 then
+    begin
+      LogComp('git: не выполнено - ' + string(GitTrimOut(ConfigOut)));
+      Exit;
+    end;
+    LogComp('git config --global --add credential.helper wincred');
+    if GitRunIn(AGit, ADir, 'config --global --add credential.helper ' +
+                'wincred', False, ConfigOut) <> 0 then
+    begin
+      LogComp('git: не выполнено - ' + string(GitTrimOut(ConfigOut)));
+      Exit;
+    end;
+    LogComp('git: credential.helper = wincred (глобальный конфиг git)');
+  end;
+  Result := GitRunConsole(AGit, ADir, AArgs);
+end;
+
+// git AArgs в новом окне консоли (cmd, временный .cmd в кодировке OEM):
+// без GIT_TERMINAL_PROMPT=0, git может спрашивать логин. Окно ждёт
+// клавишу в конце; unIDE ждёт закрытия окна. Результат - код выхода git,
+// GitConsoleNotRun - не запустилось
+function TForm1.GitRunConsole(const AGit, ADir, AArgs: string): Integer;
+var
+  TempBuf: array[0..MAX_PATH] of Char;
+  ScriptName, ScriptText, OemText, CmdLine: string;
+  ScriptStream: TFileStream;
+  SI: TStartupInfo;
+  PI: TProcessInformation;
+  ExitCode: DWORD;
+begin
+  Result := GitConsoleNotRun;
+  if GetTempPath(MAX_PATH, TempBuf) = 0 then
+    Exit;
+  ScriptName := IncludeTrailingPathDelimiter(string(TempBuf)) +
+                'unide_git_login.cmd';
+  // % в .cmd - удвоить, иначе cmd примет за переменную
+  ScriptText :=
+    '@echo off'#13#10 +
+    'title unIDE - вход git'#13#10 +
+    'set GIT_TERMINAL_PROMPT='#13#10 +
+    'cd /d "' + ADir + '"'#13#10 +
+    'echo git ' + StringReplace(AArgs, '%', '%%', [rfReplaceAll]) + #13#10 +
+    'echo.'#13#10 +
+    '"' + AGit + '" ' + StringReplace(AArgs, '%', '%%', [rfReplaceAll]) +
+    #13#10 +
+    'set UNIDE_RC=%ERRORLEVEL%'#13#10 +
+    'echo.'#13#10 +
+    'if "%UNIDE_RC%"=="0" (echo git: готово) else (echo git: код ' +
+    'выхода %UNIDE_RC%)'#13#10 +
+    'echo Окно закроется после нажатия любой клавиши.'#13#10 +
+    'pause >nul'#13#10 +
+    'exit /b %UNIDE_RC%'#13#10;
+  // cmd читает .cmd в кодировке OEM (866)
+  OemText := ScriptText;
+  UniqueString(OemText);
+  CharToOemBuff(PChar(ScriptText), PChar(OemText), Length(ScriptText));
+  try
+    ScriptStream := TFileStream.Create(ScriptName, fmCreate);
+    try
+      ScriptStream.WriteBuffer(PChar(OemText)^, Length(OemText));
+    finally
+      ScriptStream.Free;
+    end;
+  except
+    on E: Exception do
+    begin
+      LogComp('git: ' + ScriptName + ' не записать - ' + E.Message);
+      Exit;
+    end;
+  end;
+  CmdLine := 'cmd.exe /C ""' + ScriptName + '""';
+  LogComp('git ' + AArgs + '   (' + ADir + ') - в окне консоли, unIDE ждёт ' +
+          'его закрытия');
+  FillChar(SI, SizeOf(SI), 0);
+  SI.cb := SizeOf(SI);
+  FillChar(PI, SizeOf(PI), 0);
+  UniqueString(CmdLine);
+  if not CreateProcess(nil, PChar(CmdLine), nil, nil, False,
+                       CREATE_NEW_CONSOLE, nil, PChar(ADir), SI, PI) then
+  begin
+    LogComp('git: консоль не запустить - ' + SysErrorMessage(GetLastError));
+    DeleteFile(ScriptName);
+    Exit;
+  end;
+  CloseHandle(PI.hThread);
+  try
+    while WaitForSingleObject(PI.hProcess, 100) = WAIT_TIMEOUT do
+    begin
+      BusyTick;
+      Application.ProcessMessages;
+    end;
+    ExitCode := 0;
+    GetExitCodeProcess(PI.hProcess, ExitCode);
+  finally
+    CloseHandle(PI.hProcess);
+  end;
+  DeleteFile(ScriptName);
+  Result := Integer(ExitCode);
+  if Result = 0 then
+    LogComp('git: в консоли выполнено')
+  else
+    LogComp('git: в консоли код выхода ' + IntToStr(Result));
 end;
 
 // Тихий запрос: первая строка вывода, код выхода не 0 - ''
