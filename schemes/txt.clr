@@ -19,3 +19,7 @@
 • CUSTOM5 clRed clWhite
 !!!!!
 • Text $FFFFFFFF clWhite
+• LineMark clNone $00FFFF80
+
+• LineMark@Dark clNone $002E5201
+
