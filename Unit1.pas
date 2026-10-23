@@ -1035,6 +1035,7 @@ type
     procedure FarHalfOff;
     procedure FarHalfOffLayout;
     procedure FarEditorEsc;
+    procedure FarEditToSplit(const AFileName: string);
     procedure FarSplitterMoved(Sender: TObject);
     procedure FarHalfResize(ADelta, ACellWidth: Integer);
     procedure FarShowPanels(Sender: TObject);
@@ -1092,6 +1093,9 @@ type
     FFarHalf: Boolean;
     FFarSpacer: TPanel;
     FFarOwnWin: Integer;
+    // Окно, которое F4 открыл во второй панели редактора (окно разделено,
+    // работали во второй панели); -1 - нет
+    FFarSplitOwn: Integer;
     FFarCreatedFile: string;
     FFarEditSaved: Boolean;
     // Режим F4: сплиттер между FAR и редактором, кнопки _ и [] в правом
@@ -23298,6 +23302,20 @@ begin
   // Режим F4 unIDE FAR, клавиши редактора: Esc - закрыть редактор (если не
   // открыта подсказка Code Insight - её Esc закрывает, как раньше), F2 /
   // Shift+F2 - Save / Save As
+  // Esc и в просмотре по формату панели редактора, и во второй панели
+  if FFarHalf and (FFar <> nil) and (Msg.message = WM_KEYDOWN) and
+     (Msg.wParam = VK_ESCAPE) and (GetKeyState(VK_SHIFT) >= 0) and
+     (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) and
+     (((FSplit <> nil) and FSplit.Shown and FSplit.OwnsWindow(Msg.hwnd)) or
+      ((FWebView <> nil) and FWebView.IsShown and
+       FWebView.OwnsWindow(Msg.hwnd)) or
+      ((FRtfView <> nil) and FRtfView.IsShown and
+       FRtfView.OwnsWindow(Msg.hwnd))) then
+  begin
+    FarEditorEsc;
+    Handled := True;
+    Exit;
+  end;
   if FFarHalf and (FFar <> nil) and (Msg.message = WM_KEYDOWN) and
      RichEdit1.HandleAllocated and (Msg.hwnd = RichEdit1.Handle) and
      (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) then
@@ -37594,6 +37612,7 @@ begin
     FFar.OnClose := FarClose;
     FFar.OnStatus := FarStatus;
     FFar.OnEditFile := FarEditFile;
+    FFarSplitOwn := -1;
     FFar.OnLeave := FarLeave;
     FFar.OnHalfResize := FarHalfResize;
     FFar.OnShowPanels := FarShowPanels;
@@ -37717,6 +37736,7 @@ begin
       FFarHalf := False;
       FFarCollapsed := False;
       FFarOwnWin := -1;
+      FFarSplitOwn := -1;
       FFarCreatedFile := '';
       if FFarSplitter <> nil then
         FFarSplitter.Visible := False;
@@ -38033,6 +38053,7 @@ procedure TForm1.FarHalfOffLayout;
 begin
   FFarHalf := False;
   FFarOwnWin := -1;
+  FFarSplitOwn := -1;
   FFarCreatedFile := '';
   FFarEditSaved := False;
   if FFarSplitter <> nil then
@@ -38054,11 +38075,15 @@ begin
 end;
 
 // F4 / Shift+F4 в unIDE FAR: файл - в редактор во второй половине. Путь
-// редактору - в кодировке Windows или коротким именем 8.3 (FarToAnsiPath)
+// редактору - в кодировке Windows или коротким именем 8.3 (FarToAnsiPath).
+// Вид - как у панели, куда попадает файл: в ней показан просмотр по
+// формату - и новый файл по формату (если у его типа просмотр есть).
+// Окно разделено и работали во второй панели - F4 (не Shift+F4) кладёт
+// файл в неё, в её виде (FarEditToSplit)
 procedure TForm1.FarEditFile(const AFileName: WideString; ACreated: Boolean);
 var
   FN: string;
-  WasOpen: Boolean;
+  WasOpen, PaneFmt: Boolean;
   WinIdx: Integer;
 begin
   FN := FarToAnsiPath(AFileName);
@@ -38068,6 +38093,14 @@ begin
       'короткого имени нет - редактор его не откроет');
     Exit;
   end;
+  if not ACreated and (FSplit <> nil) and FSplit.Shown and FSplitActive and
+     SplitWinValid(FWindowsIndex) then
+  begin
+    FarEditToSplit(FN);
+    Exit;
+  end;
+  // Вид панели редактора - по её вкладке до F4
+  PaneFmt := SplitWinValid(FWindowsIndex) and FWindows[FWindowsIndex].FmtShown;
   // F4 ещё раз, другой файл: прежний файл F4, если в нём ничего не
   // меняли, закрывается; изменённый остаётся вкладкой
   if FFarHalf and (FFarOwnWin >= 0) and (FFarOwnWin = FWindowsIndex) and
@@ -38088,11 +38121,65 @@ begin
   else
     FFarCreatedFile := '';
   FFarEditSaved := False;
+  // Панель была по формату - и этот файл по формату
+  if (WinIdx >= 0) and (WinIdx = FWindowsIndex) and
+     (FmtKindOf(FN) <> fkNone) and
+     (FWindows[WinIdx].FmtShown <> PaneFmt) then
+  begin
+    FWindows[WinIdx].FmtShown := PaneFmt;
+    FmtApplyTab;
+  end;
   StatusBar1.SimpleText := 'unIDE FAR: Esc - закрыть редактор, ' +
     'F2 / Shift+F2 - сохранить / сохранить как';
   StatusBar1.SimplePanel := True;
-  if RichEdit1.CanFocus then
+  if (WinIdx >= 0) and (WinIdx = FWindowsIndex) and FWindows[WinIdx].FmtShown then
+    FmtFocusView
+  else if RichEdit1.CanFocus then
     RichEdit1.SetFocus;
+end;
+
+// F4 при разделённом окне, работали во второй панели: файл - вкладкой во
+// вторую панель, её вид (текст / по формату) остаётся. В панели редактора
+// остаётся прежняя вкладка. Прежний файл F4 этой панели, если его не
+// правили, закрывается
+procedure TForm1.FarEditToSplit(const AFileName: string);
+var
+  OldWin, WinIdx: Integer;
+  WasOpen: Boolean;
+begin
+  OldWin := FWindowsIndex;
+  if (FFarSplitOwn >= 0) and (FFarSplitOwn = FSplitWin) and
+     (FFarSplitOwn <> OldWin) and SplitWinValid(FFarSplitOwn) and
+     not SplitWinModified(FFarSplitOwn) and
+     (IndexOfWindowByFile(AFileName) <> FFarSplitOwn) then
+    CloseWindow(FFarSplitOwn);
+  WasOpen := IndexOfWindowByFile(AFileName) >= 0;
+  if not FFarHalf then
+    FarHalfOn;
+  OpenNamedFile(AFileName);
+  WinIdx := IndexOfWindowByFile(AFileName);
+  if WinIdx < 0 then
+    Exit;
+  // Панель редактора - снова прежняя вкладка
+  if (WinIdx <> OldWin) and SplitWinValid(OldWin) then
+    ActivateWindow(OldWin);
+  if not WasOpen then
+    FFarSplitOwn := WinIdx
+  else
+    FFarSplitOwn := -1;
+  FFarOwnWin := -1;
+  FFarCreatedFile := '';
+  FFarEditSaved := False;
+  FSplitWin := WinIdx;
+  FSplitActive := True;
+  SplitRefresh(0);
+  StatusBar1.SimpleText := 'unIDE FAR: файл во второй панели - Esc: ' +
+    'закрыть, щелчок по тексту - править';
+  StatusBar1.SimplePanel := True;
+  if FSplit.View = svWeb then
+    FSplit.Web.FocusView
+  else if FSplit.View = svFmt then
+    FSplit.Fmt.FocusView;
 end;
 
 // Tab в FAR с одной панелью - в редактор
@@ -38112,6 +38199,18 @@ var
   SearchRec: TSearchRec;
   IsEmpty: Boolean;
 begin
+  // Esc во второй панели: файл, который туда положил F4, - закрыть (если
+  // его не правили), FAR - снова на всю область
+  if (FSplit <> nil) and FSplit.Shown and FSplit.OwnsWindow(GetFocus) then
+  begin
+    if (FFarSplitOwn >= 0) and (FFarSplitOwn = FSplitWin) and
+       (FFarSplitOwn <> FWindowsIndex) and SplitWinValid(FFarSplitOwn) and
+       not SplitWinModified(FFarSplitOwn) then
+      CloseWindow(FFarSplitOwn);
+    FFarSplitOwn := -1;
+    FarHalfOff;
+    Exit;
+  end;
   WinIdx := FWindowsIndex;
   if (FFarOwnWin >= 0) and (WinIdx = FFarOwnWin) and
      (WinIdx <= WindowsItemCount - 1) then
