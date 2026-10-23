@@ -2870,6 +2870,7 @@ type
     procedure GitTerminalClick(Sender: TObject);
     procedure GitInstallClick(Sender: TObject);
     function  GitEnsure: string;
+    function  GitInstallOwn(const AIntro: string; AAsk: Boolean): string;
     function  GitRunPostInstall(const ARoot: string): Boolean;
     procedure RufusWriteClick(Sender: TObject);
     procedure RufusInstallClick(Sender: TObject);
@@ -62935,22 +62936,52 @@ begin
             'открытии терминала');
 end;
 
-// Корень Git: в системе, иначе свой; нет никакого - вопрос и установка
-// своего PortableGit (и своего 7-Zip, если его нет: им распаковывается
-// архив). Отказ или не вышло - пусто
+// Версия Git в папке для сообщений: '2.46.2' или '(версия не определена)'
+function GitVersionText(const ARoot: string): string;
+begin
+  Result := GitRootVersion(WideString(ARoot));
+  if Result = '' then
+    Result := '(версия не определена)';
+end;
+
+// Корень Git: в системе (если работает в этой Windows), иначе свой; нет
+// подходящего - вопрос и установка своего PortableGit. Отказ или не вышло
+// - пусто
 function TForm1.GitEnsure: string;
 var
-  How, Target, SevenZip, Note, ErrText: string;
+  How, Installed, InstalledHow, Intro: string;
   OsInfo: TSzOsInfo;
-  Package: TSzPackage;
-  Need7Zip: Boolean;
-  Stage7Zip, StageGit: Integer;
 begin
   // GitTool.GitFindRoot: в GitInfo (uses реализации) есть одноимённая
   // функция - корень репозитория по пути; без имени модуля вызывалась она
   Result := string(GitTool.GitFindRoot(How));
   if Result <> '' then
     Exit;
+  Installed := string(GitFindInstalled(InstalledHow));
+  if Installed <> '' then
+  begin
+    SzGetOsInfo(OsInfo);
+    Intro := 'Git for Windows ' + GitVersionText(Installed) + ' в системе (' +
+             Installed + ') в ' + OsInfo.Name + ' не работает: начиная с ' +
+             '2.47 нужна Windows 8.1 или новее.';
+  end
+  else
+    Intro := 'Git for Windows в системе не найден.';
+  Result := GitInstallOwn(Intro, True);
+end;
+
+// Установка своего PortableGit (и своего 7-Zip, если его нет: им
+// распаковывается архив); прежний свой заменяется целиком. AAsk - сначала
+// вопрос с AIntro в начале. Отказ или не вышло - пусто
+function TForm1.GitInstallOwn(const AIntro: string; AAsk: Boolean): string;
+var
+  Target, SevenZip, Note, ErrText: string;
+  OsInfo: TSzOsInfo;
+  Package: TSzPackage;
+  Need7Zip: Boolean;
+  Stage7Zip, StageGit: Integer;
+begin
+  Result := '';
   ShowCompLog;
   SzGetOsInfo(OsInfo);
   if not GitChoosePackage(OsInfo, Package) then
@@ -62972,15 +63003,18 @@ begin
   if Need7Zip then
     Note := #13#10'Сначала будет скачан свой 7-Zip unIDE (около 2 МБ): им ' +
             'распаковывается архив Git.';
-  if MessageDlg('9814:Git for Windows в системе не найден.'#13#10#13#10 +
-                'Скачать свой PortableGit ' + Package.Version + ' (' +
-                Package.Arch + ', ' + IntToStr(Package.Size div 1048576) +
-                ' МБ, распакованный - около 400 МБ) с GitHub и распаковать ' +
-                'в ' + Target + '?' + Note + #13#10#13#10'Это последняя ' +
-                'версия Git for Windows для Windows 7. В реестр и PATH ' +
-                'ничего не пишется, права администратора не нужны.',
-                mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+  if AAsk and
+     (MessageDlg('9814:' + AIntro + #13#10#13#10 +
+                 'Скачать свой PortableGit ' + Package.Version + ' (' +
+                 Package.Arch + ', ' + IntToStr(Package.Size div 1048576) +
+                 ' МБ, распакованный - около 400 МБ) с GitHub и распаковать ' +
+                 'в ' + Target + '?' + Note + #13#10#13#10'Это последняя ' +
+                 'версия Git for Windows для Windows 7. В реестр и PATH ' +
+                 'ничего не пишется, права администратора не нужны.',
+                 mtConfirmation, [mbOK, mbCancel], 0) <> mrOk) then
     Exit;
+  LogComp('Git: установка своего PortableGit ' + Package.Version + ' в ' +
+          Target);
   CompDlgOpen('Git ' + Package.Version);
   FCompDlg.Caption := 'Установка Git';
   Stage7Zip := -1;
@@ -63071,29 +63105,87 @@ begin
   CloseHandle(PI.hProcess);
 end;
 
-// Find or Install Git: в системе есть - путь в журнал; свой есть - тоже;
-// нет никакого - установка своего
+// Find or Install Git: что есть (в системе, свой) - с версиями в журнал и
+// в окно с вопросом «Всё равно переустановить?»; нет никакого - установка
+// своего (вопрос GitEnsure)
 procedure TForm1.GitInstallClick(Sender: TObject);
 var
-  Root, How: string;
+  Installed, InstalledHow, InstalledVersion, Local, Used, UsedHow, Target,
+    Text, Line: string;
+  OsInfo: TSzOsInfo;
+  InstalledFits: Boolean;
 begin
   if FBusyDepth > 0 then
     Exit;
   ShowCompLog;
-  Root := string(GitFindInstalled(How));
-  if Root <> '' then
+  if FGitBusy then
   begin
-    LogComp('Git: установлен в системе - ' + Root + ' (' + How + '); свой ' +
-            'не нужен');
+    LogComp('Git: прежняя команда ещё работает (Esc - прервать)');
     Exit;
   end;
-  Root := string(GitLocalRoot);
-  if Root <> '' then
+  SzGetOsInfo(OsInfo);
+  Installed := string(GitFindInstalled(InstalledHow));
+  Local := string(GitLocalRoot);
+  if (Installed = '') and (Local = '') then
   begin
-    LogComp('Git: свой Git unIDE - ' + Root);
+    GitEnsure;
     Exit;
   end;
-  GitEnsure;
+  Text := '';
+  if Installed <> '' then
+  begin
+    InstalledVersion := GitRootVersion(WideString(Installed));
+    InstalledFits := GitVersionFitsOs(InstalledVersion, OsInfo);
+    Line := 'Git for Windows в системе: ' + Installed + ', версия ' +
+            GitVersionText(Installed) + ' (' + InstalledHow + ')';
+    LogComp('Git: ' + Line);
+    Text := Line;
+    if not InstalledFits then
+    begin
+      Line := 'Git ' + InstalledVersion + ' в ' + OsInfo.Name + ' не ' +
+              'работает: начиная с 2.47 Git for Windows требует Windows ' +
+              '8.1 или новее (git.exe и sh.exe не запускаются).';
+      LogComp('Git: ' + Line);
+      Text := Text + #13#10#13#10 + Line;
+    end;
+  end;
+  if Local <> '' then
+  begin
+    Line := 'Свой Git unIDE: ' + Local + ', версия ' + GitVersionText(Local);
+    LogComp('Git: ' + Line);
+    if Text <> '' then
+      Text := Text + #13#10#13#10;
+    Text := Text + Line;
+  end;
+  Used := string(GitTool.GitFindRoot(UsedHow));
+  if Used <> '' then
+    Line := 'Сейчас unIDE использует: ' + Used + ' (' + UsedHow + ')'
+  else
+    Line := 'Сейчас unIDE подходящего Git не находит.';
+  LogComp('Git: ' + Line);
+  Text := Text + #13#10#13#10 + Line;
+  Target := string(GitChooseTargetDir);
+  if Target = '' then
+  begin
+    LogComp('Git: нет папки для установки своего - в ' + string(GitAppDir) +
+            ' и ' + string(GitUserDir) + ' не записать');
+    Exit;
+  end;
+  Text := Text + #13#10#13#10'Всё равно переустановить?'#13#10 +
+          'Будет скачан свой PortableGit ' + GitVersion + ' (последняя ' +
+          'версия для Windows 7) в ' + Target;
+  if Local <> '' then
+    Text := Text + ', прежняя папка заменяется целиком';
+  Text := Text + '.';
+  if (Installed <> '') and GitRootFitsOs(WideString(Installed)) then
+    Text := Text + #13#10'Git из системы работает в этой Windows, поэтому ' +
+            'unIDE и дальше будет использовать его; свой - запасной.';
+  if MessageDlg('9825:' + Text, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  begin
+    LogComp('Git: переустановка отменена');
+    Exit;
+  end;
+  GitInstallOwn('', False);
 end;
 
 // ---------------------------------------------------------------------------
@@ -63652,6 +63744,7 @@ end;
 procedure TForm1.GitRefreshBar;
 var
   Git, BaseDir, Repo, Branch, Remote, Upstream, Describe, Counts: string;
+  Installed, InstalledHow: string;
   Output: WideString;
   Changes: TGitChanges;
   Ahead, Behind, BranchIdx, StashCount, StashIdx: Integer;
@@ -63668,7 +63761,13 @@ begin
     FGitCmbBranch.Items.Clear;
     if Git = '' then
     begin
-      FGitLblRepo.Caption := 'Git не найден - ReactOS - Find or Install Git';
+      Installed := string(GitFindInstalled(InstalledHow));
+      if Installed <> '' then
+        FGitLblRepo.Caption := 'Git ' + GitRootVersion(WideString(Installed)) +
+          ' в системе в этой Windows не работает - ReactOS - Find or ' +
+          'Install Git'
+      else
+        FGitLblRepo.Caption := 'Git не найден - ReactOS - Find or Install Git';
       FGitLblRepo.Hint := '';
       FGitLblSync.Caption := '';
       FGitLblBuild.Caption := '';

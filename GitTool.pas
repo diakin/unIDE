@@ -19,6 +19,12 @@ unit GitTool;
 //    (GitPostInstallCommand). В реестр и PATH ничего не пишется;
 //  - сборка: 64-bit на 64-битной Windows x64, 32-bit - на 32-битной и
 //    ARM64; Windows 7 и новее.
+//  - версия Git (GitRootVersion) - из ресурса версии git.exe, без запуска:
+//    Git 2.47 и новее в Windows 7 / 8.0 не стартует (sh.exe: нет
+//    GetSystemTimePreciseAsFileTime в KERNEL32.dll). Нет ресурса - значение
+//    CurrentVersion установщика в реестре. Такой системный Git
+//    GitFindRoot пропускает: берётся свой, нет своего - '' (GitEnsure
+//    предложит установить).
 // ---------------------------------------------------------------------------
 
 interface
@@ -31,6 +37,8 @@ const
   GitBashName = 'git-bash.exe';
   GitPostInstallName = 'post-install.bat';
   GitInfoFile = 'unide_git.txt';
+  // Первая версия Git for Windows, которой нужна Windows 8.1 (6.3)
+  GitFirstWin81Only = '2.47.0';
 
 // <папка exe>\tools\git\ и %LOCALAPPDATA%\unIDE\tools\git\
 function GitAppDir: WideString;
@@ -40,7 +48,18 @@ function GitUserDir: WideString;
 function GitFindInstalled(var AHow: string): WideString;
 // Корень своего Git unIDE (есть git-bash.exe и cmd\git.exe); '' - нет
 function GitLocalRoot: WideString;
-// Корень Git: системный, иначе свой; '' - нет никакого
+// Версия Git в папке ARoot ('2.46.2'): ресурс версии git.exe, иначе
+// CurrentVersion установщика в реестре (если InstallPath - эта папка);
+// '' - не узнать. Git не запускается
+function GitRootVersion(const ARoot: WideString): string;
+// Git версии AVersion работает в этой Windows: с 2.47 нужна Windows 8.1
+// и новее. Версия неизвестна - True (проверить нечем)
+function GitVersionFitsOs(const AVersion: string;
+  const AOs: TSzOsInfo): Boolean;
+// Git в папке ARoot работает в этой Windows
+function GitRootFitsOs(const ARoot: WideString): Boolean;
+// Корень Git: системный (если работает в этой Windows), иначе свой; ''
+// - нет подходящего
 function GitFindRoot(var AHow: string): WideString;
 // Куда ставить свой: где уже есть, иначе у exe, если туда пишется, иначе
 // в профиль; '' - никуда
@@ -93,6 +112,26 @@ function GitRegQueryValueEx(AKey: HKEY; AValueName: PWideChar;
   external 'advapi32.dll' name 'RegQueryValueExW';
 function GitRegCloseKey(AKey: HKEY): LongInt; stdcall;
   external 'advapi32.dll' name 'RegCloseKey';
+function GitGetFileVersionInfoSize(AFileName: PWideChar;
+  var AHandle: DWORD): DWORD; stdcall;
+  external 'version.dll' name 'GetFileVersionInfoSizeW';
+function GitGetFileVersionInfo(AFileName: PWideChar; AHandle, ASize: DWORD;
+  AData: Pointer): BOOL; stdcall;
+  external 'version.dll' name 'GetFileVersionInfoW';
+function GitVerQueryValue(ABlock: Pointer; ASubBlock: PWideChar;
+  var ABuffer: Pointer; var ALength: UINT): BOOL; stdcall;
+  external 'version.dll' name 'VerQueryValueW';
+
+type
+  // VS_FIXEDFILEINFO
+  TGitFixedFileInfo = record
+    dwSignature, dwStrucVersion: DWORD;
+    dwFileVersionMS, dwFileVersionLS: DWORD;
+    dwProductVersionMS, dwProductVersionLS: DWORD;
+    dwFileFlagsMask, dwFileFlags, dwFileOS, dwFileType, dwFileSubtype: DWORD;
+    dwFileDateMS, dwFileDateLS: DWORD;
+  end;
+  PGitFixedFileInfo = ^TGitFixedFileInfo;
 function GitGetEnv(AName: PWideChar; ABuffer: PWideChar;
   ASize: DWORD): DWORD; stdcall;
   external 'kernel32.dll' name 'GetEnvironmentVariableW';
@@ -127,9 +166,10 @@ begin
     Result := PWideChar(@Buffer[0]);
 end;
 
-// InstallPath из HKLM / HKCU\SOFTWARE\GitForWindows (AWow64 - 64-битная
-// ветвь)
-function GitRegInstallPath(ARoot: HKEY; AWow64: Boolean): WideString;
+// Строковое значение AName из HKLM / HKCU\SOFTWARE\GitForWindows
+// (AWow64 - 64-битная ветвь)
+function GitRegValue(ARoot: HKEY; AWow64: Boolean;
+  const AName: WideString): WideString;
 var
   KeyHandle: HKEY;
   Access, ValueType, DataSize: DWORD;
@@ -143,7 +183,7 @@ begin
   if GitRegOpenKeyEx(ARoot, GitRegKey, 0, Access, KeyHandle) <> 0 then
     Exit;
   try
-    ValueName := 'InstallPath';
+    ValueName := AName;
     FillChar(Buffer, SizeOf(Buffer), 0);
     DataSize := SizeOf(Buffer) - SizeOf(WideChar);
     ValueType := 0;
@@ -154,6 +194,12 @@ begin
   finally
     GitRegCloseKey(KeyHandle);
   end;
+end;
+
+// InstallPath из HKLM / HKCU\SOFTWARE\GitForWindows
+function GitRegInstallPath(ARoot: HKEY; AWow64: Boolean): WideString;
+begin
+  Result := GitRegValue(ARoot, AWow64, 'InstallPath');
 end;
 
 // Позиция символа AChar в AText (0 - нет); Pos для WideString в Delphi 7
@@ -264,14 +310,161 @@ begin
     end;
 end;
 
-function GitFindRoot(var AHow: string): WideString;
+// Версия из ресурса файла: '2.46.2' (третье число - сборка Git); ''
+// - ресурса нет
+function GitFileVersion(const AFileName: WideString): string;
+var
+  InfoSize, Dummy: DWORD;
+  InfoData: Pointer;
+  FixedInfo: PGitFixedFileInfo;
+  FixedLen: UINT;
+  RootBlock: WideString;
 begin
-  Result := GitFindInstalled(AHow);
-  if Result <> '' then
+  Result := '';
+  if not SzFileExists(AFileName) then
     Exit;
+  Dummy := 0;
+  InfoSize := GitGetFileVersionInfoSize(PWideChar(AFileName), Dummy);
+  if InfoSize = 0 then
+    Exit;
+  GetMem(InfoData, InfoSize);
+  try
+    if not GitGetFileVersionInfo(PWideChar(AFileName), 0, InfoSize,
+       InfoData) then
+      Exit;
+    RootBlock := '\';
+    FixedInfo := nil;
+    FixedLen := 0;
+    if GitVerQueryValue(InfoData, PWideChar(RootBlock), Pointer(FixedInfo),
+       FixedLen) and (FixedInfo <> nil) and (FixedLen > 0) and
+       (FixedInfo^.dwFileVersionMS <> 0) then
+      Result := IntToStr(FixedInfo^.dwFileVersionMS shr 16) + '.' +
+        IntToStr(FixedInfo^.dwFileVersionMS and $FFFF) + '.' +
+        IntToStr(FixedInfo^.dwFileVersionLS shr 16);
+  finally
+    FreeMem(InfoData);
+  end;
+end;
+
+function GitRootVersion(const ARoot: WideString): string;
+const
+  ExeCount = 4;
+  ExeNames: array[0..ExeCount - 1] of string = (
+    'mingw64\bin\git.exe', 'mingw32\bin\git.exe', 'clangarm64\bin\git.exe',
+    'cmd\git.exe');
+var
+  Root, RootLower: WideString;
+  ExeIndex, RegIndex: Integer;
+  RegRoots: array[0..2] of HKEY;
+  RegWow64: array[0..2] of Boolean;
+begin
+  Result := '';
+  if ARoot = '' then
+    Exit;
+  Root := SzWithSlash(ARoot);
+  for ExeIndex := 0 to ExeCount - 1 do
+  begin
+    Result := GitFileVersion(Root + WideString(ExeNames[ExeIndex]));
+    if Result <> '' then
+      Exit;
+  end;
+  // Запись установщика - только если она про эту папку
+  RegRoots[0] := HKEY_LOCAL_MACHINE;
+  RegWow64[0] := True;
+  RegRoots[1] := HKEY_LOCAL_MACHINE;
+  RegWow64[1] := False;
+  RegRoots[2] := HKEY_CURRENT_USER;
+  RegWow64[2] := False;
+  RootLower := WideLowerCase(Root);
+  for RegIndex := 0 to 2 do
+    if WideLowerCase(SzWithSlash(GitRegInstallPath(RegRoots[RegIndex],
+       RegWow64[RegIndex]))) = RootLower then
+    begin
+      Result := Trim(string(GitRegValue(RegRoots[RegIndex], RegWow64[RegIndex],
+        'CurrentVersion')));
+      if Result <> '' then
+        Exit;
+    end;
+end;
+
+// '2.46.2' -> 2046002; '2.46' -> 2046000; не число - -1
+function GitVersionNumber(const AVersion: string): Integer;
+var
+  Rest, Part: string;
+  PartIndex, DotPos, PartValue: Integer;
+begin
+  Result := 0;
+  Rest := Trim(AVersion);
+  if Rest = '' then
+  begin
+    Result := -1;
+    Exit;
+  end;
+  for PartIndex := 0 to 2 do
+  begin
+    DotPos := Pos('.', Rest);
+    if DotPos = 0 then
+      DotPos := Length(Rest) + 1;
+    Part := Copy(Rest, 1, DotPos - 1);
+    Delete(Rest, 1, DotPos);
+    if (Part = '') and (PartIndex > 0) then
+      PartValue := 0
+    else
+      PartValue := StrToIntDef(Part, -1);
+    if (PartValue < 0) or (PartValue > 999) then
+    begin
+      Result := -1;
+      Exit;
+    end;
+    Result := Result * 1000 + PartValue;
+  end;
+end;
+
+function GitVersionFitsOs(const AVersion: string;
+  const AOs: TSzOsInfo): Boolean;
+var
+  VersionNumber: Integer;
+begin
+  Result := True;
+  VersionNumber := GitVersionNumber(AVersion);
+  if VersionNumber < 0 then
+    Exit;
+  // Windows 8.1 - 6.3; Windows 10 и новее - 10.0
+  if (AOs.Major > 6) or ((AOs.Major = 6) and (AOs.Minor >= 3)) then
+    Exit;
+  Result := VersionNumber < GitVersionNumber(GitFirstWin81Only);
+end;
+
+function GitRootFitsOs(const ARoot: WideString): Boolean;
+var
+  OsInfo: TSzOsInfo;
+begin
+  SzGetOsInfo(OsInfo);
+  Result := GitVersionFitsOs(GitRootVersion(ARoot), OsInfo);
+end;
+
+function GitFindRoot(var AHow: string): WideString;
+var
+  Installed: WideString;
+  InstalledHow: string;
+begin
+  Installed := GitFindInstalled(InstalledHow);
+  if (Installed <> '') and GitRootFitsOs(Installed) then
+  begin
+    Result := Installed;
+    AHow := InstalledHow;
+    Exit;
+  end;
   Result := GitLocalRoot;
   if Result <> '' then
+  begin
     AHow := 'свой Git unIDE';
+    if Installed <> '' then
+      AHow := AHow + '; Git ' + GitRootVersion(Installed) + ' в системе ' +
+        'в этой Windows не работает';
+    Exit;
+  end;
+  AHow := '';
 end;
 
 function GitCanPlace(const ADir: WideString): Boolean;
