@@ -6069,6 +6069,10 @@ begin
     Exit;
   if (FDesigner <> nil) and (AForm = FDesigner.Form) then
     Exit;
+  // Окно WebView2 - без тем: перекраска элементов (ParentBackground и
+  // т.п.) может пересоздать окно-хозяина браузера Chromium
+  if AForm is TWv2Form then
+    Exit;
   UiPaintTree(AForm);
 end;
 

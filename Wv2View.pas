@@ -430,12 +430,17 @@ var
 begin
   Args := TCoreWebView2ProcessFailedEventArgs.Create(aArgs);
   try
-    // 0 - процесс браузера завершился, 1 - процесс страницы завершился,
-    // 2 - страница не отвечает, 3+ - фреймы, GPU, служебные процессы
+    // Вид: 0 - процесс браузера завершился, 1 - процесс страницы
+    // завершился, 2 - страница не отвечает, 3+ - фреймы, GPU, служебные.
+    // Причина: 0 неожиданно, 1 не отвечает, 2 завершён извне, 3 упал,
+    // 4 не запустился, 5 нехватка памяти, 7 обычный выход, 8 аварийный
+    // выход, 9 проверка целостности (модуль не дали загрузить)
     SetStatus('WebView2: сбой процесса, вид ' +
-              IntToStr(Integer(Args.ProcessFailedKind)) + ' (' +
-              Wv2LoaderName + '); отчёты - ' + Wv2DataFolder +
-              '\EBWebView\Crashpad\reports');
+              IntToStr(Integer(Args.ProcessFailedKind)) + ', причина ' +
+              IntToStr(Integer(Args.Reason)) + ', код выхода $' +
+              IntToHex(Args.ExtiCode, 8) + ' ' +
+              string(Args.ProcessDescription) + ' (' + Wv2LoaderName +
+              '); отчёты - ' + Wv2DataFolder + '\EBWebView\Crashpad\reports');
   finally
     Args.Free;
   end;
