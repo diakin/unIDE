@@ -2939,6 +2939,9 @@ type
                              APrompt: string): string;
     procedure GitStashRestoreClick(Sender: TObject);
     procedure GitStashDropClick(Sender: TObject);
+    function  GitDlgStatus(var AChanges: TGitChanges): Boolean;
+    function  GitDlgIgnore(const AChanges: TGitChanges): Boolean;
+    procedure GitHiddenClick(Sender: TObject);
     function  RosKnownEnvScript: string;
     function  RosPciSourceDir(var ASettings: TRosSettings): Boolean;
     function  RosDownloadPciIds(const ASourceDir, AVendors: string;
@@ -63922,7 +63925,7 @@ begin
   FGitDlgHasHead := GitQuery(AGit, ARepo, 'rev-parse -q --verify HEAD') <> '';
   Dlg := TDlgGitCommit.CreateDlg(Self, 'Commit to ' + Branch + ' - ' +
     ExtractFileName(ExcludeTrailingPathDelimiter(ARepo)), AllChanges,
-    GitDiffOf, GitDlgDiscard);
+    GitDiffOf, GitDlgDiscard, GitDlgIgnore, GitDlgStatus);
   try
     if Dlg.ShowModal <> mrOk then
       Exit;
@@ -64108,6 +64111,9 @@ begin
     '(git stash pop)', GitStashRestoreClick);
   AddItem(BranchMenu, 'Drop Stash...', 'Удалить запись stash (git stash ' +
     'drop)', GitStashDropClick);
+  AddItem(BranchMenu, 'Hidden Local Changes...', 'Файлы, чьи изменения ' +
+    'скрыты (Ignore - скрыть свои изменения, skip-worktree): вернуть в ' +
+    'список изменений', GitHiddenClick);
   AddItem(BranchMenu, '-', '', nil);
   AddItem(BranchMenu, 'Update from Default Branch', 'Влить в текущую ' +
     'ветку основную ветку сервера (git merge origin/<основная>)',
@@ -64846,6 +64852,402 @@ begin
      'записи пропадут.', mtWarning, [mbOK, mbCancel], 0) <> mrOk then
     Exit;
   GitLongOp(Git, Repo, 'stash drop ' + Ref);
+end;
+
+// ---------------------------------------------------------------------------
+//  Git: Ignore (окно Commit) и скрытые локальные изменения (skip-worktree)
+// ---------------------------------------------------------------------------
+
+// Строка шаблона .gitignore для пути от корня репозитория: '/' в начале
+// (только этот путь, не одноимённые в подпапках), спецсимволы - через '\'
+function GitIgnorePattern(const APath: WideString): WideString;
+var
+  CharIdx: Integer;
+begin
+  Result := '/';
+  for CharIdx := 1 to Length(APath) do
+  begin
+    if (APath[CharIdx] = '*') or (APath[CharIdx] = '?') or
+       (APath[CharIdx] = '[') or (APath[CharIdx] = ']') or
+       (APath[CharIdx] = '\') or (APath[CharIdx] = '!') or
+       (APath[CharIdx] = '#') then
+      Result := Result + '\';
+    Result := Result + APath[CharIdx];
+  end;
+  // Пробел в конце git отбрасывает - экранировать
+  if (Result <> '') and (Result[Length(Result)] = ' ') then
+    Result := Copy(Result, 1, Length(Result) - 1) + '\ ';
+end;
+
+// Расширение пути ('.stackdump'); нет - ''
+function GitPathExt(const APath: WideString): WideString;
+var
+  CharIdx: Integer;
+begin
+  Result := '';
+  for CharIdx := Length(APath) downto 1 do
+  begin
+    if APath[CharIdx] = '/' then
+      Exit;
+    if APath[CharIdx] = '.' then
+    begin
+      if CharIdx > 1 then
+        Result := Copy(APath, CharIdx, MaxInt);
+      Exit;
+    end;
+  end;
+end;
+
+// Папка пути с '/' в конце ('a/b/c.txt' -> 'a/b/'); в корне - ''
+function GitPathDir(const APath: WideString): WideString;
+var
+  CharIdx: Integer;
+begin
+  Result := '';
+  for CharIdx := Length(APath) downto 1 do
+    if APath[CharIdx] = '/' then
+    begin
+      Result := Copy(APath, 1, CharIdx);
+      Exit;
+    end;
+end;
+
+// Дописать шаблоны (UTF-8, по строке) в файл AFileName (.gitignore или
+// info/exclude); уже записанные не повторяются. False - не записать
+function GitAppendIgnore(const AFileName: string;
+  const APatterns: TGitPaths): Boolean;
+var
+  Stream: TFileStream;
+  OldText, AddText, Line: string;
+  Existing: TStringList;
+  PatIdx: Integer;
+begin
+  Result := False;
+  OldText := '';
+  if FileExists(AFileName) then
+  try
+    Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+    try
+      SetLength(OldText, Stream.Size);
+      if OldText <> '' then
+        Stream.ReadBuffer(OldText[1], Length(OldText));
+    finally
+      Stream.Free;
+    end;
+  except
+    Exit;
+  end;
+  Existing := TStringList.Create;
+  try
+    Existing.Text := OldText;
+    AddText := '';
+    for PatIdx := 0 to High(APatterns) do
+    begin
+      Line := GitToUtf8(APatterns[PatIdx]);
+      if (Line <> '') and (Existing.IndexOf(Line) < 0) then
+      begin
+        AddText := AddText + Line + #10;
+        Existing.Add(Line);
+      end;
+    end;
+  finally
+    Existing.Free;
+  end;
+  if AddText = '' then
+  begin
+    Result := True;
+    Exit;
+  end;
+  // Последняя строка без перевода - сначала перевод
+  if (OldText <> '') and (OldText[Length(OldText)] <> #10) then
+    AddText := #10 + AddText;
+  try
+    if FileExists(AFileName) then
+    begin
+      Stream := TFileStream.Create(AFileName, fmOpenWrite or fmShareDenyWrite);
+      Stream.Seek(0, soFromEnd);
+    end
+    else
+    begin
+      ForceDirectories(ExtractFilePath(AFileName));
+      Stream := TFileStream.Create(AFileName, fmCreate);
+    end;
+    try
+      Stream.WriteBuffer(AddText[1], Length(AddText));
+    finally
+      Stream.Free;
+    end;
+    Result := True;
+  except
+    Result := False;
+  end;
+end;
+
+// Перечитать изменения для окна Commit (после Discard / Ignore)
+function TForm1.GitDlgStatus(var AChanges: TGitChanges): Boolean;
+begin
+  Result := GitAllChanges(FGitDlgGit, FGitDlgRepo, AChanges);
+end;
+
+// Ignore в окне Commit: выделенные файлы больше не предлагать к коммиту.
+// Новые (не отслеживаются) - шаблон в .gitignore (общий, коммитится) или
+// в .git/info/exclude (только у себя): файл, все с таким расширением,
+// папка. Отслеживаемые git не игнорирует - для них: перестать
+// отслеживать (git rm --cached + .gitignore; файл остаётся на диске, из
+// репозитория уходит следующим коммитом) или скрыть свои изменения
+// (git update-index --skip-worktree; файл в репозитории остаётся как
+// есть). True - сделано
+function TForm1.GitDlgIgnore(const AChanges: TGitChanges): Boolean;
+const
+  ChFileShared = 0;
+  ChExtShared = 1;
+  ChDirShared = 2;
+  ChFileLocal = 3;
+  ChExtLocal = 4;
+  ChDirLocal = 5;
+  ChUntrack = 6;
+  ChSkip = 7;
+var
+  Items: TStringList;
+  Patterns, Exts, Dirs: TGitPaths;
+  ChangeIdx, PatIdx, Choice, NewCount, TrackedCount: Integer;
+  Picked, IgnoreFile, ExcludeFile, ExtList, DirList, Names, Args: string;
+  Output: WideString;
+  Choices: array of Integer;
+  Found: Boolean;
+
+  procedure AddChoice(ACode: Integer; const AText: string);
+  begin
+    Items.Add(AText);
+    SetLength(Choices, Length(Choices) + 1);
+    Choices[High(Choices)] := ACode;
+  end;
+
+  procedure AddUnique(var AList: TGitPaths; const AValue: WideString);
+  var
+    ListIdx: Integer;
+  begin
+    if AValue = '' then
+      Exit;
+    for ListIdx := 0 to High(AList) do
+      if AList[ListIdx] = AValue then
+        Exit;
+    SetLength(AList, Length(AList) + 1);
+    AList[High(AList)] := AValue;
+  end;
+
+begin
+  Result := False;
+  NewCount := 0;
+  TrackedCount := 0;
+  SetLength(Exts, 0);
+  SetLength(Dirs, 0);
+  Names := '';
+  for ChangeIdx := 0 to High(AChanges) do
+  begin
+    if AChanges[ChangeIdx].Code = '??' then
+      Inc(NewCount)
+    else
+      Inc(TrackedCount);
+    AddUnique(Exts, GitPathExt(AChanges[ChangeIdx].Path));
+    AddUnique(Dirs, GitPathDir(AChanges[ChangeIdx].Path));
+    if Length(Names) < 200 then
+    begin
+      if Names <> '' then
+        Names := Names + ', ';
+      Names := Names + string(AChanges[ChangeIdx].Path);
+    end;
+  end;
+  if (NewCount > 0) and (TrackedCount > 0) then
+  begin
+    ShowMessage('9824:Выделены и новые файлы, и отслеживаемые (уже в ' +
+      'репозитории) - для них разные способы. Выделите их по отдельности.');
+    Exit;
+  end;
+  ExtList := '';
+  for PatIdx := 0 to High(Exts) do
+  begin
+    if ExtList <> '' then
+      ExtList := ExtList + ' ';
+    ExtList := ExtList + '*' + string(Exts[PatIdx]);
+  end;
+  DirList := '';
+  for PatIdx := 0 to High(Dirs) do
+  begin
+    if DirList <> '' then
+      DirList := DirList + ' ';
+    DirList := DirList + '/' + string(Dirs[PatIdx]);
+  end;
+  Items := TStringList.Create;
+  try
+    SetLength(Choices, 0);
+    if NewCount > 0 then
+    begin
+      AddChoice(ChFileShared, 'Игнорировать файл(ы) - в .gitignore (для ' +
+        'всех, .gitignore попадёт в коммит)');
+      if ExtList <> '' then
+        AddChoice(ChExtShared, 'Игнорировать все ' + ExtList +
+          ' - в .gitignore');
+      if DirList <> '' then
+        AddChoice(ChDirShared, 'Игнорировать папку ' + DirList +
+          ' - в .gitignore');
+      AddChoice(ChFileLocal, 'Игнорировать файл(ы) только у себя ' +
+        '(.git/info/exclude, в репозиторий не попадает)');
+      if ExtList <> '' then
+        AddChoice(ChExtLocal, 'Игнорировать все ' + ExtList +
+          ' только у себя (.git/info/exclude)');
+      if DirList <> '' then
+        AddChoice(ChDirLocal, 'Игнорировать папку ' + DirList +
+          ' только у себя (.git/info/exclude)');
+    end
+    else
+    begin
+      AddChoice(ChUntrack, 'Перестать отслеживать и игнорировать (git rm ' +
+        '--cached + .gitignore): файл остаётся на диске, из репозитория ' +
+        'удалится следующим коммитом');
+      AddChoice(ChSkip, 'Скрыть свои изменения (git update-index ' +
+        '--skip-worktree): файл в репозитории остаётся как есть, ваши ' +
+        'правки не предлагаются к коммиту');
+    end;
+    Picked := ChooseFromList('Ignore', 'Файлы: ' + Names, Items);
+    Choice := -1;
+    if (Picked <> '') and (Items.IndexOf(Picked) >= 0) then
+      Choice := Choices[Items.IndexOf(Picked)];
+  finally
+    Items.Free;
+  end;
+  if Choice < 0 then
+    Exit;
+  IgnoreFile := IncludeTrailingPathDelimiter(FGitDlgRepo) + '.gitignore';
+  SetLength(Patterns, 0);
+  case Choice of
+    ChFileShared, ChFileLocal, ChUntrack:
+      for ChangeIdx := 0 to High(AChanges) do
+        AddUnique(Patterns, GitIgnorePattern(AChanges[ChangeIdx].Path));
+    ChExtShared, ChExtLocal:
+      for PatIdx := 0 to High(Exts) do
+        AddUnique(Patterns, '*' + Exts[PatIdx]);
+    ChDirShared, ChDirLocal:
+      for PatIdx := 0 to High(Dirs) do
+        AddUnique(Patterns, GitIgnorePattern(Dirs[PatIdx]));
+  end;
+  ShowCompLog;
+  case Choice of
+    ChFileShared, ChExtShared, ChDirShared:
+      begin
+        Result := GitAppendIgnore(IgnoreFile, Patterns);
+        if Result then
+          LogComp('Git: в ' + IgnoreFile + ' добавлено: ' + Names)
+        else
+          LogComp('Git: ' + IgnoreFile + ' не записать');
+      end;
+    ChFileLocal, ChExtLocal, ChDirLocal:
+      begin
+        // Папка .git может быть и файлом-ссылкой (worktree) - путь у git
+        ExcludeFile := GitQuery(FGitDlgGit, FGitDlgRepo,
+          'rev-parse --git-path info/exclude');
+        if ExcludeFile = '' then
+        begin
+          LogComp('Git: путь к info/exclude не узнать');
+          Exit;
+        end;
+        ExcludeFile := string(GitWinPath(WideString(ExcludeFile)));
+        if ExtractFileDrive(ExcludeFile) = '' then
+          ExcludeFile := IncludeTrailingPathDelimiter(FGitDlgRepo) + ExcludeFile;
+        Result := GitAppendIgnore(ExcludeFile, Patterns);
+        if Result then
+          LogComp('Git: в ' + ExcludeFile + ' добавлено (только у себя)')
+        else
+          LogComp('Git: ' + ExcludeFile + ' не записать');
+      end;
+    ChUntrack:
+      begin
+        Args := 'rm --cached -q --';
+        for ChangeIdx := 0 to High(AChanges) do
+          Args := Args + ' ' + string(GitQuote(AChanges[ChangeIdx].Path));
+        if GitRunIn(FGitDlgGit, FGitDlgRepo, Args, True, Output) <> 0 then
+          Exit;
+        Result := GitAppendIgnore(IgnoreFile, Patterns);
+        if Result then
+          LogComp('Git: файлы больше не отслеживаются (удаление из ' +
+                  'репозитория - в следующем коммите), добавлены в ' +
+                  '.gitignore')
+        else
+          LogComp('Git: ' + IgnoreFile + ' не записать');
+      end;
+    ChSkip:
+      begin
+        // Уже добавленное в индекс - сначала убрать оттуда
+        Args := 'reset -q --';
+        for ChangeIdx := 0 to High(AChanges) do
+          Args := Args + ' ' + string(GitQuote(AChanges[ChangeIdx].Path));
+        GitRunIn(FGitDlgGit, FGitDlgRepo, Args, True, Output);
+        Args := 'update-index --skip-worktree --';
+        Found := False;
+        for ChangeIdx := 0 to High(AChanges) do
+          if Pos('D', AChanges[ChangeIdx].Code) = 0 then
+          begin
+            Args := Args + ' ' + string(GitQuote(AChanges[ChangeIdx].Path));
+            Found := True;
+          end;
+        if not Found then
+        begin
+          LogComp('Git: удалённый файл скрыть нельзя - верните его ' +
+                  '(Discard) или закоммитьте удаление');
+          Exit;
+        end;
+        Result := GitRunIn(FGitDlgGit, FGitDlgRepo, Args, True, Output) = 0;
+        if Result then
+          LogComp('Git: изменения скрыты (вернуть - Repository - Hidden ' +
+                  'Local Changes)');
+      end;
+  end;
+  GitRefreshBar;
+end;
+
+// Repository - Hidden Local Changes: файлы со skip-worktree - вернуть их
+// изменения в список (git update-index --no-skip-worktree)
+procedure TForm1.GitHiddenClick(Sender: TObject);
+var
+  Git, Repo, Picked: string;
+  Output: WideString;
+  Items: TStringList;
+  Pos0, EntryEnd: Integer;
+  Entry: WideString;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Items := TStringList.Create;
+  try
+    if GitRunIn(Git, Repo, 'ls-files -v -z', False, Output) = 0 then
+    begin
+      // 'S путь' - skip-worktree
+      Pos0 := 1;
+      while Pos0 <= Length(Output) do
+      begin
+        EntryEnd := Pos0;
+        while (EntryEnd <= Length(Output)) and (Output[EntryEnd] <> #0) do
+          Inc(EntryEnd);
+        Entry := Copy(Output, Pos0, EntryEnd - Pos0);
+        Pos0 := EntryEnd + 1;
+        if (Length(Entry) > 2) and ((Entry[1] = 'S') or (Entry[1] = 's')) then
+          Items.Add(string(Copy(Entry, 3, MaxInt)));
+      end;
+    end;
+    if Items.Count = 0 then
+    begin
+      ShowCompLog;
+      LogComp('Git: скрытых изменений (skip-worktree) нет');
+      Exit;
+    end;
+    Picked := ChooseFromList('Hidden Local Changes', 'Вернуть в список ' +
+      'изменений (снять skip-worktree):', Items);
+  finally
+    Items.Free;
+  end;
+  if Picked <> '' then
+    GitLongOp(Git, Repo, 'update-index --no-skip-worktree -- ' +
+      string(GitQuote(WideString(Picked))));
 end;
 
 // ReactOS - Run Image: образ последней сборки - в эмуляторе, без сборки
