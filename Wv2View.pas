@@ -103,6 +103,31 @@ begin
   Result := Result + 'unIDE\WebView2';
 end;
 
+// WebView2Loader.dll Microsoft (32-битная): рядом с exe, в
+// WebView4Delphi\bin32 у exe или уровнем выше; '' - нет
+function Wv2LoaderDll: string;
+var
+  ExeDir, Cand: string;
+  CandIdx: Integer;
+begin
+  Result := '';
+  ExeDir := ExtractFilePath(ParamStr(0));
+  for CandIdx := 0 to 2 do
+  begin
+    case CandIdx of
+      0: Cand := ExeDir + 'WebView2Loader.dll';
+      1: Cand := ExeDir + 'WebView4Delphi\bin32\WebView2Loader.dll';
+    else
+      Cand := ExpandFileName(ExeDir + '..\WebView4Delphi\bin32\WebView2Loader.dll');
+    end;
+    if FileExists(Cand) then
+    begin
+      Result := Cand;
+      Exit;
+    end;
+  end;
+end;
+
 function Wv2RuntimeVersion: string;
 begin
   Result := '';
@@ -112,6 +137,15 @@ begin
     except
       Result := '';
     end;
+end;
+
+// Какой загрузчик сейчас: для строки окна и журнала
+function Wv2LoaderName: string;
+begin
+  if (GlobalWebView2Loader <> nil) and not GlobalWebView2Loader.UseInternalLoader then
+    Result := 'WebView2Loader.dll'
+  else
+    Result := 'встроенный загрузчик';
 end;
 
 function Wv2Start(out AError: string; out ARuntimeMissing: Boolean): Boolean;
@@ -127,7 +161,17 @@ begin
     GlobalWebView2Loader := TWVLoader.Create(nil);
     // COM главного потока уже поднят (встроенный IE, ComObj)
     GlobalWebView2Loader.InitCOMLibrary := False;
-    GlobalWebView2Loader.UseInternalLoader := True;
+    // Загрузчик Microsoft (WebView2Loader.dll), если он есть: со встроенным
+    // загрузчиком процесс WebView2 на Windows 7 завершался сразу после
+    // показа страницы (сбой процесса, вид 0 - BROWSER_PROCESS_EXITED).
+    // Нет dll - встроенный
+    if Wv2LoaderDll <> '' then
+    begin
+      GlobalWebView2Loader.UseInternalLoader := False;
+      GlobalWebView2Loader.LoaderDllPath := Wv2LoaderDll;
+    end
+    else
+      GlobalWebView2Loader.UseInternalLoader := True;
     GlobalWebView2Loader.ShowMessageDlg := False;
     // Runtime 109 (Windows 7) старше той версии, под которую собрана
     // обёртка: часть её возможностей не работает, страница - да
@@ -317,7 +361,8 @@ procedure TWv2Form.NavigateFile;
 begin
   if FFileName = '' then
     Exit;
-  SetStatus(FFileName + '   (WebView2 ' + Wv2RuntimeVersion + ')');
+  SetStatus(FFileName + '   (WebView2 ' + Wv2RuntimeVersion + ', ' +
+            Wv2LoaderName + ')');
   if not FBrowser.Navigate(Wv2FileUrl(FFileName)) then
     SetStatus('WebView2: не открылся ' + FFileName);
 end;
@@ -362,7 +407,8 @@ begin
   Args := TCoreWebView2NavigationCompletedEventArgs.Create(aArgs);
   try
     if Args.IsSuccess then
-      SetStatus(FFileName + '   (загружено, WebView2 ' + Wv2RuntimeVersion + ')')
+      SetStatus(FFileName + '   (загружено, WebView2 ' + Wv2RuntimeVersion +
+                ', ' + Wv2LoaderName + ')')
     else
       SetStatus('WebView2: страница не загрузилась, код ошибки ' +
                 IntToStr(Integer(Args.WebErrorStatus)) + ' - ' + FFileName);
@@ -380,8 +426,12 @@ var
 begin
   Args := TCoreWebView2ProcessFailedEventArgs.Create(aArgs);
   try
+    // 0 - процесс браузера завершился, 1 - процесс страницы завершился,
+    // 2 - страница не отвечает, 3+ - фреймы, GPU, служебные процессы
     SetStatus('WebView2: сбой процесса, вид ' +
-              IntToStr(Integer(Args.ProcessFailedKind)));
+              IntToStr(Integer(Args.ProcessFailedKind)) + ' (' +
+              Wv2LoaderName + '); отчёты - ' + Wv2DataFolder +
+              '\EBWebView\Crashpad\reports');
   finally
     Args.Free;
   end;

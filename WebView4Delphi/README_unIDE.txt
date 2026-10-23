@@ -9,8 +9,9 @@ unIDE использует её в модуле Wv2View.pas: просмотр .html / .mht через
 Microsoft Edge WebView2 (Chromium). Путь к модулям - SearchPath в
 SyntaxHLClaude.dof (WebView4Delphi\source).
 
-Загрузчик - встроенный (TWVLoader.UseInternalLoader = True), поэтому
-WebView2Loader.dll рядом с exe не нужна.
+Загрузчик - WebView2Loader.dll Microsoft (bin32\WebView2Loader.dll, 32-битная, из
+репозитория WebView4Delphi); unIDE ищет её рядом с exe, в WebView4Delphi\bin32 у exe
+и уровнем выше. Нет dll - встроенный загрузчик (TWVLoader.UseInternalLoader).
 
 Нужен установленный Microsoft Edge WebView2 Runtime. На Windows 7 последняя
 версия - 109: страница https://developer.microsoft.com/microsoft-edge/webview2/consumer/,
