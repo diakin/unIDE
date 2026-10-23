@@ -16,10 +16,6 @@ uses
 
 type
   {$IFNDEF FPC}{$IFDEF DELPHI16_UP}[ComponentPlatformsAttribute(pidWin32 or pidWin64)]{$ENDIF}{$ENDIF}
-  /// <summary>
-  ///  VCL and LCL version of TWVBrowserBase that puts together all browser procedures, functions, properties and events in one place.
-  ///  It has all you need to create, modify and destroy a web browser.
-  /// </summary>
   TWVBrowser = class(TWVBrowserBase)
     protected
       function  GetParentForm : TCustomForm;
@@ -122,44 +118,6 @@ type
       property OnFaviconChanged;
       property OnGetFaviconCompleted;
       property OnPrintToPdfStreamCompleted;
-      property OnGetCustomSchemes;
-      property OnGetNonDefaultPermissionSettingsCompleted;
-      property OnSetPermissionStateCompleted;
-      property OnLaunchingExternalUriScheme;
-      property OnGetProcessExtendedInfosCompleted;
-      property OnBrowserExtensionRemoveCompleted;
-      property OnBrowserExtensionEnableCompleted;
-      property OnProfileAddBrowserExtensionCompleted;
-      property OnProfileGetBrowserExtensionsCompleted;
-      property OnProfileDeleted;
-      property OnExecuteScriptWithResultCompleted;
-      property OnNonClientRegionChanged;
-      property OnNotificationReceived;
-      property OnNotificationCloseRequested;
-      property OnSaveAsUIShowing;
-      property OnShowSaveAsUICompleted;
-      property OnSaveFileSecurityCheckStarting;
-      property OnScreenCaptureStarting;
-      property OnFrameScreenCaptureStarting;
-      property OnFrameChildFrameCreated;
-      property OnFindActiveMatchIndexChanged;
-      property OnFindMatchCountChanged;
-      property OnFindStartCompleted;
-      property OnDragStarting;
-      property OnDedicatedWorkerCreated;
-      property OnDedicatedWorkerCreated2;
-      property OnDedicatedWorkerDestroying;
-      property OnDedicatedWorkerWebMessageReceived;
-      property OnFrameDedicatedWorkerCreated;
-      property OnServiceWorkerDestroying;
-      property OnServiceWorkerWebMessageReceived;
-      property OnServiceWorkerRegistered;
-      property OnGetServiceWorkerRegistrationsCompleted;
-      property OnServiceWorkerActivated;
-      property OnServiceWorkerRegistrationUnregistering;
-      property OnSharedWorkerCreated;
-      property OnGetSharedWorkersCompleted;
-      property OnSharedWorkerDestroying;
   end;
 
 {$IFDEF FPC}

@@ -5,7 +5,18 @@ unit uWVConstants;
 interface
 
 const
-  {$I uWVVersion.inc}
+  WEBVIEW2LOADERLIB_VERSION_MAJOR   = 1;
+  WEBVIEW2LOADERLIB_VERSION_MINOR   = 0;
+  WEBVIEW2LOADERLIB_VERSION_RELEASE = 1518;
+  WEBVIEW2LOADERLIB_VERSION_BUILD   = 46;
+
+  // For full API compatibility, WebView4Delphi requires the same
+  // WebView2 Runtime version mentioned in the release notes :
+  // https://docs.microsoft.com/en-us/microsoft-edge/webview2/release-notes
+  CHROMIUM_VERSION_MAJOR   = 109;
+  CHROMIUM_VERSION_MINOR   = 0;
+  CHROMIUM_VERSION_RELEASE = WEBVIEW2LOADERLIB_VERSION_RELEASE;
+  CHROMIUM_VERSION_BUILD   = WEBVIEW2LOADERLIB_VERSION_BUILD;
 
   CRLF = #13 + #10;
 
@@ -13,11 +24,9 @@ const
   USER_DEFAULT_SCREEN_DPI = 96;
   {$IFEND}
 
-  {*
-   These constants are declared in the "Windows" unit but
-   some old Delphi versions don't have them.
-   We have to add "WV2_" to be compatible with C++ Builder.
-  *}
+  // These constants are declared in the "Windows" unit but
+  // some old Delphi versions don't have them.
+  // We have to add "WV2_" to be compatible with C++ Builder.
   WV2_IMAGE_FILE_MACHINE_I386  = $014C;
   WV2_IMAGE_FILE_MACHINE_AMD64 = $8664;
 
@@ -48,13 +57,14 @@ const
 
   URI_ABOUTBLANK = 'about:blank';
 
-  {* Reserved IDs used in some JavaScript functions *}
+  // Reserved IDs used in some JavaScript functions
   WEBVIEW4DELPHI_JS_FIRST_ID              = 10000;
-  WEBVIEW4DELPHI_JS_RETRIEVEHTMLJOB_ID    = WEBVIEW4DELPHI_JS_FIRST_ID;
-  WEBVIEW4DELPHI_JS_RETRIEVETEXTJOB_ID    = WEBVIEW4DELPHI_JS_FIRST_ID + 1;
+  WEBVIEW4DELPHI_JS_REFRESH_ID            = WEBVIEW4DELPHI_JS_FIRST_ID;
+  WEBVIEW4DELPHI_JS_RETRIEVEHTMLJOB_ID    = WEBVIEW4DELPHI_JS_FIRST_ID + 1;
+  WEBVIEW4DELPHI_JS_RETRIEVETEXTJOB_ID    = WEBVIEW4DELPHI_JS_FIRST_ID + 2;
   WEBVIEW4DELPHI_JS_LAST_ID               = WEBVIEW4DELPHI_JS_FIRST_ID + 100;
 
-  {* Reserved IDs used in some DevTools functions *}
+  // Reserved IDs used in some DevTools functions
   WEBVIEW4DELPHI_DEVTOOLS_FIRST_ID                       = 10000;
   WEBVIEW4DELPHI_DEVTOOLS_RETRIEVEMHTML_ID               = WEBVIEW4DELPHI_DEVTOOLS_FIRST_ID;
   WEBVIEW4DELPHI_DEVTOOLS_CLEARBROWSERCACHE_ID           = WEBVIEW4DELPHI_DEVTOOLS_FIRST_ID + 1;
@@ -62,7 +72,6 @@ const
   WEBVIEW4DELPHI_DEVTOOLS_EMULATENETWORKCONDITIONS_ID    = WEBVIEW4DELPHI_DEVTOOLS_FIRST_ID + 3;
   WEBVIEW4DELPHI_DEVTOOLS_SETIGNORECERTIFICATEERRORS_ID  = WEBVIEW4DELPHI_DEVTOOLS_FIRST_ID + 4;
   WEBVIEW4DELPHI_DEVTOOLS_SIMULATEKEYEVENT_ID            = WEBVIEW4DELPHI_DEVTOOLS_FIRST_ID + 5;
-  WEBVIEW4DELPHI_DEVTOOLS_REFRESH_ID                     = WEBVIEW4DELPHI_DEVTOOLS_FIRST_ID + 6;
   WEBVIEW4DELPHI_DEVTOOLS_LAST_ID                        = WEBVIEW4DELPHI_DEVTOOLS_FIRST_ID + 100;
 
   WEBVIEW4DELPHI_PRINT_PAGESPERSIDE_1       = 1;
@@ -80,18 +89,6 @@ const
                                                WEBVIEW4DELPHI_PRINT_PAGESPERSIDE_16];
 
   WEBVIEW4DELPHI_PRINT_COPIES_DEFAULT = 1;
-
-  WEBVIEW4DELPHI_INVALID_FRAMEID = 0;
-
-  {$IF NOT DECLARED(HWND_MESSAGE)}
-  HWND_MESSAGE = System.THandle(-3);
-  {$IFEND}
-
-  WV_URLS_URL       = 'edge://edge-urls';
-  WV_FLAGS_URL      = 'edge://flags';
-  WV_DOWNLOADS_URL  = 'edge://downloads';
-  WV_EXTENSIONS_URL = 'edge://extensions';
-  WV_CRASHES_URL    = 'edge://crashes';
 
 implementation
 

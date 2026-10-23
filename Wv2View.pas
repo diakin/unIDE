@@ -220,9 +220,6 @@ begin
     else
       GlobalWebView2Loader.UseInternalLoader := True;
     GlobalWebView2Loader.ShowMessageDlg := False;
-    // Runtime 109 (Windows 7) старше той версии, под которую собрана
-    // обёртка: часть её возможностей не работает, страница - да
-    GlobalWebView2Loader.AllowOldRuntime := True;
     // Без GPU: на Windows 7 окно WebView2 с ускорением бывает чёрным
     // (--disable-gpu --disable-gpu-compositing)
     GlobalWebView2Loader.EnableGPU := False;

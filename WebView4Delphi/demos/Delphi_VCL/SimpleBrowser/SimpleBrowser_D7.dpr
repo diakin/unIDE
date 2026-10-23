@@ -1,6 +1,6 @@
 program SimpleBrowser_D7;
 
-{$I ..\..\..\source\webview2.inc}
+{$I webview2.inc}
 
 uses
   {$IFDEF DELPHI16_UP}

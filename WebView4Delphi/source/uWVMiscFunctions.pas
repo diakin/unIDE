@@ -8,9 +8,9 @@ interface
 
 uses
   {$IFDEF DELPHI16_UP}
-  Winapi.Windows, System.Classes, System.UITypes, Winapi.ActiveX, System.SysUtils, System.StrUtils,
+  Winapi.Windows, System.Classes, System.UITypes, Winapi.ActiveX, System.SysUtils, System.Math, System.StrUtils,
   {$ELSE}
-  Windows, Classes, ActiveX, SysUtils, Graphics, Controls, StrUtils,
+  Windows, Classes, ActiveX, SysUtils, Graphics, Math, Controls, StrUtils,
   {$ENDIF}
   uWVConstants, uWVTypeLibrary, uWVTypes;
 
@@ -22,7 +22,6 @@ function LowestChromiumVersion : wvstring;
 function LowestLoaderDLLVersion : wvstring;
 function EnvironmentCreationErrorToString(aErrorCode : HRESULT) : wvstring;
 function ControllerCreationErrorToString(aErrorCode : HRESULT) : wvstring;
-function ControllerOptionsCreationErrorToString(aErrorCode : HRESULT) : wvstring;
 function CompositionControllerCreationErrorToString(aErrorCode : HRESULT) : wvstring;
 function GetScreenDPI : integer;
 function GetDeviceScaleFactor : single;
@@ -70,10 +69,6 @@ const
     function SetWindowLongPtr(hWnd: HWND; nIndex: Integer; dwNewLong: LongInt): LongInt; stdcall; external user32 name 'SetWindowLongW';
   {$ENDIF}
 {$ENDIF}
-
-{$IFNDEF FPC}{$IFNDEF DELPHI7_UP}
-function PosEx(const SubStr, S: string; Offset: Cardinal = 1): Integer;
-{$ENDIF}{$ENDIF}
 
 implementation
 
@@ -152,39 +147,15 @@ end;
 function ControllerCreationErrorToString(aErrorCode : HRESULT) : wvstring;
 const
   // Undefined GetLastError error values
-  ERROR_INVALID_STATE = 5023;
-  ERROR_CORRUPTED_CBS = $0490;
+  ERROR_INVALID_STATE       = 5023;
 begin
   case aErrorCode of
-    E_ABORT      : Result := 'The parent window was destroyed before the controller creation was finished.';
-    E_UNEXPECTED : Result := 'The runtime does not have permissions to the user data folder.';
-
+    E_ABORT : Result := 'The parent window was destroyed before the controller creation was finished.';
     else
-     if (aErrorCode = HResultFromWin32(ERROR_INVALID_STATE)) then
+      if (aErrorCode = HResultFromWin32(ERROR_INVALID_STATE)) then
         Result := 'Another browser is using the same user data folder.'
        else
-        if (aErrorCode = HResultFromWin32(ERROR_NOT_SUPPORTED)) then
-          Result := 'The request is not supported.'
-         else
-          if (aErrorCode = HResultFromWin32(ERROR_FILE_NOT_FOUND)) then
-            Result := 'The system cannot find the file specified.'
-           else
-            if (aErrorCode = HResultFromWin32(ERROR_CORRUPTED_CBS)) then
-              Result := 'Not found. A corrupted Component-Based Servicing (CBS) manifest or corrupted system files that prevent Windows from locating necessary update components.'
-             else
-              Result := 'Unexpected error result.';
-  end;
-end;
-
-function ControllerOptionsCreationErrorToString(aErrorCode : HRESULT) : wvstring;
-const
-  UI_E_WRONG_THREAD = HRESULT($802A000C);
-begin
-  case aErrorCode of
-    E_INVALIDARG      : Result := 'Invalid profile name.';
-    E_NOTIMPL         : Result := 'Not implemented.';  // This error code is not documented. It's caused by an outdated WebView2 Runtime installation.
-    UI_E_WRONG_THREAD : Result := 'This method can only be called from the thread that created the object.';
-    else                Result := 'Unexpected error result.';
+        Result := 'Unexpected error result.';
   end;
 end;
 
@@ -194,9 +165,7 @@ const
   ERROR_INVALID_STATE       = 5023;
 begin
   case aErrorCode of
-    E_ABORT      : Result := 'The parent window was destroyed before the composition controller creation was finished.';
-    E_UNEXPECTED : Result := 'The runtime does not have permissions to the user data folder.';
-
+    E_ABORT : Result := 'The parent window was destroyed before the composition controller creation was finished.';
     else
       if (aErrorCode = HResultFromWin32(ERROR_INVALID_STATE)) then
         Result := 'Another browser is using the same user data folder.'
@@ -235,7 +204,7 @@ end;
 procedure OutputDebugMessage(const aMessage : string);
 begin
   {$IFDEF DEBUG}
-  OutputDebugString({$IFDEF DELPHI12_UP}PWideChar{$ELSE}PAnsiChar{$ENDIF}(aMessage + #0));
+  OutputDebugString({$IFNDEF DELPHI16_UP}PAnsiChar{$ELSE}PWideChar{$ENDIF}(aMessage + #0));
   {$ENDIF}
 end;
 
@@ -351,7 +320,7 @@ begin
 
         else
           if (ord(Source[i]) < 32) or (ord(Source[i]) > 126) then
-            Result := Result + '\u' + {$IFDEF FPC}UTF8Decode({$ENDIF}IntToHex(ord(Source[i]), 4){$IFDEF FPC}){$ENDIF}
+            Result := Result + '\u' + IntToHex(ord(Source[i]), 4)
            else
             Result := Result + Source[i];
       end;
@@ -584,10 +553,9 @@ begin
   TempResult := aBaseIntf.QueryInterface(aGUID, Obj);
   Result     := succeeded(TempResult);
 
-  if not(Result) and assigned(GlobalWebView2Loader) then
+  if not(Result) then
     begin
-      TempMessage := 'The QueryInterface call for ' + {$IFDEF FPC}UTF8Decode({$ENDIF}GUIDToString(aGUID){$IFDEF FPC}){$ENDIF} +
-                     ' failed. ' +
+      TempMessage := 'The QueryInterface call for ' + GUIDToString(aGUID) + ' failed. ' +
                      'Error code : 0x' + {$IFDEF FPC}UTF8Decode({$ENDIF}inttohex(cardinal(TempResult), 8){$IFDEF FPC}){$ENDIF};
       GlobalWebView2Loader.AppendErrorLog(TempMessage);
     end;
@@ -667,8 +635,7 @@ const
 var
   i : integer;
 begin
-  i      := 1;
-  Result := '';
+  i := 1;
 
   while (i <= length(aParameter)) do
     begin
@@ -720,21 +687,5 @@ begin
           inc(i);
         end;
 end;
-
-{$IFNDEF FPC}{$IFNDEF DELPHI7_UP}
-function PosEx(const SubStr, S: string; Offset: Cardinal = 1): Integer;
-var
-  TempString : string;
-begin
-  if Offset <= 1 then
-    Result := Pos(SubStr, S)
-   else
-    begin
-      TempString := copy(S, Offset, length(S));
-      Result     := Pos(SubStr, TempString);
-      if (Result > 0) then inc(Result, Offset - 1);
-    end;
-end;
-{$ENDIF}{$ENDIF}
 
 end.

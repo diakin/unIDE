@@ -10,14 +10,6 @@ uses
   uWVTypeLibrary, uWVTypes;
 
 type
-  /// <summary>
-  /// HTTP request headers.  Used to inspect the HTTP request on
-  /// WebResourceRequested event and NavigationStarting event.
-  /// </summary>
-  /// <remarks>
-  /// <para>It is possible to modify the HTTP request from a WebResourceRequested event, but not from a NavigationStarting event.</para>
-  /// <para><see href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2httprequestheaders">See the ICoreWebView2HttpRequestHeaders article.</see></para>
-  /// </remarks>
   TCoreWebView2HttpRequestHeaders = class
     protected
       FBaseIntf : ICoreWebView2HttpRequestHeaders;
@@ -28,56 +20,14 @@ type
     public
       constructor Create(const aBaseIntf : ICoreWebView2HttpRequestHeaders); reintroduce;
       destructor  Destroy; override;
-      /// <summary>
-      /// Adds or updates header that matches the name.
-      /// </summary>
-      /// <remarks>
-      /// <para><see href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2httprequestheaders#setheader">See the ICoreWebView2HttpRequestHeaders article.</see></para>
-      /// </remarks>
       function    SetHeader(const aName, aValue : wvstring): boolean;
-      /// <summary>
-      /// Gets the header value matching the name.
-      /// </summary>
-      /// <remarks>
-      /// <para><see href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2httprequestheaders#getheader">See the ICoreWebView2HttpRequestHeaders article.</see></para>
-      /// </remarks>
       function    GetHeader(const aName: wvstring) : wvstring;
-      /// <summary>
-      /// Gets the header value matching the name using an iterator.
-      /// </summary>
-      /// <remarks>
-      /// <para><see href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2httprequestheaders#getheaders">See the ICoreWebView2HttpRequestHeaders article.</see></para>
-      /// </remarks>
-      function    GetHeaders(const aName: wvstring; var aValue: ICoreWebView2HttpHeadersCollectionIterator): boolean;
-      /// <summary>
-      /// Checks whether the headers contain an entry that matches the header name.
-      /// </summary>
-      /// <remarks>
-      /// <para><see href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2httprequestheaders#contains">See the ICoreWebView2HttpRequestHeaders article.</see></para>
-      /// </remarks>
-      function    Contains(const aValue: wvstring) : boolean;
-      /// <summary>
-      /// Removes header that matches the name.
-      /// </summary>
-      /// <remarks>
-      /// <para><see href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2httprequestheaders#removeheader">See the ICoreWebView2HttpRequestHeaders article.</see></para>
-      /// </remarks>
+      function    GetHeaders(const aName: wvstring; var aIterator: ICoreWebView2HttpHeadersCollectionIterator): boolean;
+      function    Contains(const aName: wvstring) : boolean;
       function    RemoveHeader(const aName: wvstring) : boolean;
 
-      /// <summary>
-      /// Returns true when the interface implemented by this class is fully initialized.
-      /// </summary>
       property Initialized : boolean                                    read GetInitialized;
-      /// <summary>
-      /// Returns the interface implemented by this class.
-      /// </summary>
       property BaseIntf    : ICoreWebView2HttpRequestHeaders            read FBaseIntf;
-      /// <summary>
-      /// Gets an iterator over the collection of request headers.
-      /// </summary>
-      /// <remarks>
-      /// <para><see href="https://learn.microsoft.com/en-us/microsoft-edge/webview2/reference/win32/icorewebview2httprequestheaders#getiterator">See the ICoreWebView2HttpRequestHeaders article.</see></para>
-      /// </remarks>
       property Iterator    : ICoreWebView2HttpHeadersCollectionIterator read GetIterator;
   end;
 
@@ -131,30 +81,30 @@ begin
     end;
 end;
 
-function TCoreWebView2HttpRequestHeaders.GetHeaders(const aName: wvstring; var aValue: ICoreWebView2HttpHeadersCollectionIterator): boolean;
+function TCoreWebView2HttpRequestHeaders.GetHeaders(const aName: wvstring; var aIterator: ICoreWebView2HttpHeadersCollectionIterator): boolean;
 var
   TempIterator : ICoreWebView2HttpHeadersCollectionIterator;
 begin
   Result       := False;
   TempIterator := nil;
-  aValue       := nil;
+  aIterator    := nil;
 
   if Initialized and
      succeeded(FBaseIntf.GetHeaders(PWideChar(aName), TempIterator)) and
      assigned(TempIterator) then
     begin
-      aValue := TempIterator;
-      Result := True;
+      aIterator := TempIterator;
+      Result    := True;
     end;
 end;
 
-function TCoreWebView2HttpRequestHeaders.Contains(const aValue: wvstring) : boolean;
+function TCoreWebView2HttpRequestHeaders.Contains(const aName: wvstring) : boolean;
 var
   TempContains : integer;
 begin
   TempContains := 0;
   Result       := Initialized and
-                  succeeded(FBaseIntf.Contains(PWideChar(aValue), TempContains)) and
+                  succeeded(FBaseIntf.Contains(PWideChar(aName), TempContains)) and
                   (TempContains <> 0);
 end;
 

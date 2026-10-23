@@ -19,8 +19,7 @@ object MainForm: TMainForm
     Width = 995
     Height = 676
     Align = alClient
-    TabStop = True
-    TabOrder = 0
+    TabOrder = 1
     Browser = WVBrowser1
   end
   object AddressPnl: TPanel
@@ -31,7 +30,7 @@ object MainForm: TMainForm
     Align = alTop
     BevelOuter = bvNone
     Enabled = False
-    TabOrder = 1
+    TabOrder = 0
     DesignSize = (
       995
       24)

@@ -10,15 +10,12 @@ uses
   {$IFDEF DELPHI16_UP}
   WinApi.Windows, System.Classes, Vcl.Controls, WinApi.Messages,
   {$ELSE}
-  Windows, Classes, Controls, {$IFDEF FPC}LResources,{$ELSE} Messages,{$ENDIF}
+  Windows, Classes, Controls, {$IFDEF FPC}LMessages, LResources,{$ELSE} Messages,{$ENDIF}
   {$ENDIF}
   uWVWinControl, uWVBrowserBase;
 
 type
   {$IFNDEF FPC}{$IFDEF DELPHI16_UP}[ComponentPlatformsAttribute(pidWin32 or pidWin64)]{$ENDIF}{$ENDIF}
-  /// <summary>
-  /// Parent control used by VCL and LCL applications to show the web contents.
-  /// </summary>
   TWVWindowParent = class(TWVWinControl)
     protected
       FBrowser : TWVBrowserBase;
@@ -34,15 +31,9 @@ type
     public
       constructor Create(AOwner : TComponent); override;
       procedure   UpdateSize; override;
-      /// <summary>
-      /// Moves focus into WebView.
-      /// </summary>
       procedure   SetFocus; override;
 
     published
-      /// <summary>
-      /// Browser associated to this control to show web contents.
-      /// </summary>
       property Browser     : TWVBrowserBase   read GetBrowser     write SetBrowser;
   end;
 
@@ -104,48 +95,10 @@ begin
 end;
 
 procedure TWVWindowParent.WndProc(var aMessage: TMessage);
-{$IFNDEF FPC}
-var
-  tmpVisible: boolean;
-{$ENDIF}
 begin
   case aMessage.Msg of
-    WM_SETFOCUS:
-      begin
-        if (FBrowser <> nil) then
-          FBrowser.SetFocus;
-
-        inherited WndProc(aMessage);
-      end;
-
     WM_ERASEBKGND:
-      if (ChildWindowHandle = 0) then
-        inherited WndProc(aMessage);
-
-    {$IFNDEF FPC}
-    //CM_RECREATEWND is not implemented in Lazarus/FPC
-    CM_RECREATEWND:  // #75: this VCL quirk kills CEF/WebView2 instantly
-      begin
-        if (FBrowser <> nil) then
-          begin
-            tmpVisible := FBrowser.IsVisible;
-            if tmpVisible then
-              FBrowser.IsVisible := False; // avoid flicker, 0 is GetDesktopHWND
-            FBrowser.ParentWindow := 0;
-          end
-        else
-          tmpVisible := False;  // avoid compiler warning
-        try
-          inherited WndProc(aMessage);
-        finally
-          if (FBrowser <> nil) then
-            begin
-              FBrowser.ParentWindow := Self.Handle;
-              FBrowser.IsVisible := tmpVisible;
-            end;
-        end;
-      end;
-    {$ENDIF}
+      if (ChildWindowHandle = 0) then inherited WndProc(aMessage);
 
     else inherited WndProc(aMessage);
   end;

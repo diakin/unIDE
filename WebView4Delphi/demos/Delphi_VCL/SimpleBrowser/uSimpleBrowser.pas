@@ -2,7 +2,7 @@ unit uSimpleBrowser;
 
 interface
 
-{$I ..\..\..\source\webview2.inc}
+{$I webview2.inc}
 
 uses
   {$IFDEF DELPHI16_UP}
@@ -14,7 +14,7 @@ uses
   {$ENDIF}
   uWVBrowser, uWVWinControl, uWVWindowParent, uWVTypes, uWVConstants, uWVTypeLibrary,
   uWVLibFunctions, uWVLoader, uWVInterfaces, uWVCoreWebView2Args,
-  uWVBrowserBase, Menus;
+  uWVBrowserBase;
 
 type
   TMainForm = class(TForm)
@@ -90,7 +90,6 @@ end;
 procedure TMainForm.WVBrowser1AfterCreated(Sender: TObject);
 begin
   WVWindowParent1.UpdateSize;
-  WVWindowParent1.SetFocus;
   Caption := 'SimpleBrowser';
   AddressPnl.Enabled := True;
 end;

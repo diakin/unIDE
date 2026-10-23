@@ -12,9 +12,6 @@ uses
   uWVWinControl, uWVBrowserBase, uWVConstants;
 
 type
-  /// <summary>
-  /// Parent control used by FMX applications to show the web contents.
-  /// </summary>
   TWVFMXWindowParent = class(TCommonCustomForm)
     protected
       FBrowser : TWVBrowserBase;
@@ -35,24 +32,13 @@ type
       {$ENDIF}
     public
       constructor CreateNew(AOwner: TComponent; Dummy: {$IFDEF DELPHI19_UP}NativeInt{$ELSE}Integer{$ENDIF} = 0); override;
-      /// <summary>
-      /// Sets another control as the parent this control.
-      /// </summary>
       procedure   Reparent(const aNewParentHandle : {$IFDEF DELPHI18_UP}TWindowHandle{$ELSE}TFmxHandle{$ENDIF});
-      /// <summary>
-      /// Updates the size of the child controls created by the browser.
-      /// </summary>
       procedure   UpdateSize; virtual;
       {$IFNDEF DELPHI17_UP}
       procedure   SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
       {$ENDIF}
-      /// <summary>
-      /// Handle of the first child control created by the browser.
-      /// </summary>
+
       property  ChildWindowHandle : HWND             read GetChildWindowHandle;
-      /// <summary>
-      /// Browser associated to this control to show web contents.
-      /// </summary>
       property  Browser           : TWVBrowserBase   read GetBrowser            write SetBrowser;
 
     published
@@ -157,10 +143,7 @@ begin
   if (FBrowser <> nil) then
     TempScale := FBrowser.ScreenScale
    else
-    if (GlobalWebView2Loader <> nil) then
-      TempScale := GlobalWebView2Loader.DeviceScaleFactor
-     else
-      TempScale := 1;
+    TempScale := GlobalWebView2Loader.DeviceScaleFactor;
 
   TempClientRect  := ClientRect;
   TempRect.Left   := round(TempClientRect.Left);
@@ -204,7 +187,7 @@ begin
 
       if (TempChildHandle <> 0) and (TempParentHandle <> 0) then
         begin
-          SetWindowLongPtr(TempChildHandle, GWL_STYLE, WS_CHILDWINDOW);
+          SetWindowLong(TempChildHandle, GWL_STYLE, WS_CHILDWINDOW);
           WinApi.Windows.SetParent(TempChildHandle, TempParentHandle);
         end;
     end;
