@@ -760,28 +760,6 @@ begin
   end;
 end;
 
-// Файл с диска как есть (байты)
-function ReadFileBytes(const AFileName: string; out ABytes: string): Boolean;
-var
-  Stream: TFileStream;
-begin
-  Result := False;
-  ABytes := '';
-  try
-    Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
-    try
-      SetLength(ABytes, Stream.Size);
-      if Stream.Size > 0 then
-        Stream.ReadBuffer(ABytes[1], Stream.Size);
-      Result := True;
-    finally
-      Stream.Free;
-    end;
-  except
-    ABytes := '';
-  end;
-end;
-
 // Вариант - пустая ссылка на объект (getElementById ничего не нашёл)
 function VarIsNoObject(const AValue: OleVariant): Boolean;
 begin
@@ -1815,6 +1793,8 @@ begin
   if IsShown then
     FEdit.SelectAll;
 end;
+
+initialization
 
 finalization
   GIeEdgeFiles.Free;
