@@ -1952,11 +1952,10 @@ begin
   else
     TargetRow := SectionRow(Sec);
 
+  // Раздела этого типа в схеме нет - без окна сообщения: тип в списке
+  // выбирают и для того, чтобы добавить первую группу (Add Group)
   if TargetRow <= 0 then
-  begin
-    ShowMessage('1999:Section "' + Sec + '" is not defined in this scheme file.');
     Exit;
-  end;
 
   Grid.Row := TargetRow;
   MemoSchemaDetails.Lines.Text := Grid.Cells[3, TargetRow];
