@@ -183,6 +183,10 @@ begin
     // Без GPU: на Windows 7 окно WebView2 с ускорением бывает чёрным
     // (--disable-gpu --disable-gpu-compositing)
     GlobalWebView2Loader.EnableGPU := False;
+    // Журнал Chromium: EBWebView\chrome_debug.log в папке данных - причина,
+    // по которой процесс браузера завершается (сбой процесса, вид 0)
+    GlobalWebView2Loader.AdditionalBrowserArguments :=
+      '--enable-logging --v=1';
     GlobalWebView2Loader.TargetCompatibleBrowserVersion := '86.0.616.0';
     GlobalWebView2Loader.UserDataFolder := Wv2DataFolder;
     try
@@ -440,7 +444,7 @@ begin
               IntToStr(Integer(Args.Reason)) + ', код выхода $' +
               IntToHex(Args.ExtiCode, 8) + ' ' +
               string(Args.ProcessDescription) + ' (' + Wv2LoaderName +
-              '); отчёты - ' + Wv2DataFolder + '\EBWebView\Crashpad\reports');
+              '); журнал - ' + Wv2DataFolder + '\EBWebView\chrome_debug.log');
   finally
     Args.Free;
   end;
