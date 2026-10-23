@@ -9,6 +9,9 @@ unit DlgGitCommit;
 //  Окно строится в коде (CreateDlg), .dfm нет. Коммит делает Unit1:
 //  отмеченные файлы (CheckedChanges) и текст (MessageText) забирает после
 //  ShowModal = mrOk; PushAfter - нажата Commit and Push.
+//
+//  Discard Selected - отменить изменения выделенных строк (OnDiscard -
+//  Unit1 спрашивает и выполняет; вышло - строки убираются из списка).
 // ---------------------------------------------------------------------------
 
 interface
@@ -25,11 +28,16 @@ uses
 type
   // Разница для файла (текст для показа)
   TGitDiffEvent = function(const AChange: TGitChange): WideString of object;
+  // Отменить изменения файлов; True - отменены
+  TGitDiscardEvent = function(const AChanges: TGitChanges): Boolean of object;
 
   TDlgGitCommit = class(TForm)
   private
     FChanges: TGitChanges;
     FOnDiff: TGitDiffEvent;
+    FOnDiscard: TGitDiscardEvent;
+    FTopPanel: TUiPanel;
+    FBtnDiscard: TUiButton;
     FPushAfter: Boolean;
     FLeft: TUiPanel;
     FMsgPanel: TUiPanel;
@@ -50,6 +58,7 @@ type
     procedure ListChange(Sender: TObject; Item: TListItem;
       Change: TItemChange);
     procedure ChkAllClick(Sender: TObject);
+    procedure BtnDiscardClick(Sender: TObject);
     procedure BtnCommitClick(Sender: TObject);
     procedure BtnPushClick(Sender: TObject);
     procedure LayoutButtons(Sender: TObject);
@@ -59,7 +68,8 @@ type
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
   public
     constructor CreateDlg(AOwner: TComponent; const ATitle: string;
-      const AChanges: TGitChanges; AOnDiff: TGitDiffEvent);
+      const AChanges: TGitChanges; AOnDiff: TGitDiffEvent;
+      AOnDiscard: TGitDiscardEvent);
     // Отмеченные файлы
     procedure CheckedChanges(var AList: TGitChanges);
     // Заголовок, пустая строка, описание - как пишет GitHub Desktop
@@ -70,7 +80,8 @@ type
 implementation
 
 constructor TDlgGitCommit.CreateDlg(AOwner: TComponent; const ATitle: string;
-  const AChanges: TGitChanges; AOnDiff: TGitDiffEvent);
+  const AChanges: TGitChanges; AOnDiff: TGitDiffEvent;
+  AOnDiscard: TGitDiscardEvent);
 var
   ChangeIdx: Integer;
   Item: TListItem;
@@ -79,6 +90,7 @@ begin
   inherited CreateNew(AOwner);
   FChanges := AChanges;
   FOnDiff := AOnDiff;
+  FOnDiscard := AOnDiscard;
   FPushAfter := False;
   Caption := ATitle;
   Position := poMainFormCenter;
@@ -114,12 +126,30 @@ begin
   FDiff.Lines.Text := 'Выберите файл слева - здесь будет его разница ' +
     '(git diff).';
 
+  // Сверху слева: флажок «все» и Discard Selected
+  FTopPanel := TUiPanel.Create(Self);
+  FTopPanel.Parent := FLeft;
+  FTopPanel.Align := alTop;
+  FTopPanel.Height := 28;
+  FTopPanel.BevelOuter := bvNone;
+  FTopPanel.Caption := '';
+
   FChkAll := TUiCheckBox.Create(Self);
-  FChkAll.Parent := FLeft;
-  FChkAll.Align := alTop;
-  FChkAll.Height := 22;
+  FChkAll.Parent := FTopPanel;
+  FChkAll.SetBounds(2, 4, 200, 20);
   FChkAll.Checked := True;
   FChkAll.OnClick := ChkAllClick;
+
+  FBtnDiscard := TUiButton.Create(Self);
+  FBtnDiscard.Parent := FTopPanel;
+  FBtnDiscard.SetBounds(FLeft.Width - 122, 2, 118, 23);
+  FBtnDiscard.Anchors := [akTop, akRight];
+  FBtnDiscard.Caption := 'Discard Selected...';
+  FBtnDiscard.Hint := 'Отменить изменения выделенных строк (не флажков): ' +
+    'файлы - как в последнем коммите, новые файлы - в корзину';
+  FBtnDiscard.ShowHint := True;
+  FBtnDiscard.OnClick := BtnDiscardClick;
+  FBtnDiscard.Visible := Assigned(AOnDiscard);
 
   // Низ левой части: заголовок, описание, кнопки
   FMsgPanel := TUiPanel.Create(Self);
@@ -189,6 +219,7 @@ begin
   FList.Checkboxes := True;
   FList.ReadOnly := True;
   FList.RowSelect := True;
+  FList.MultiSelect := True;
   FList.HideSelection := False;
   Column := FList.Columns.Add;
   Column.Caption := 'Файл';
@@ -289,6 +320,49 @@ begin
     FFilling := False;
   end;
   UpdateCount;
+end;
+
+// Discard Selected: выделенные строки - в OnDiscard; вышло - убрать их
+procedure TDlgGitCommit.BtnDiscardClick(Sender: TObject);
+var
+  ItemIdx, ChangeIdx, Count: Integer;
+  Picked: TGitChanges;
+begin
+  if not Assigned(FOnDiscard) then
+    Exit;
+  SetLength(Picked, 0);
+  Count := 0;
+  for ItemIdx := 0 to FList.Items.Count - 1 do
+    if FList.Items[ItemIdx].Selected then
+    begin
+      ChangeIdx := Integer(FList.Items[ItemIdx].Data);
+      if (ChangeIdx < 0) or (ChangeIdx > High(FChanges)) then
+        Continue;
+      SetLength(Picked, Count + 1);
+      Picked[Count] := FChanges[ChangeIdx];
+      Inc(Count);
+    end;
+  if Count = 0 then
+  begin
+    MessageBox(Handle, 'Выделите строки (щелчок, Ctrl+щелчок, Shift+щелчок) ' +
+      '- изменения каких файлов отменить.', 'Discard', MB_OK or
+      MB_ICONINFORMATION);
+    Exit;
+  end;
+  if not FOnDiscard(Picked) then
+    Exit;
+  FFilling := True;
+  try
+    for ItemIdx := FList.Items.Count - 1 downto 0 do
+      if FList.Items[ItemIdx].Selected then
+        FList.Items[ItemIdx].Delete;
+  finally
+    FFilling := False;
+  end;
+  FDiff.Lines.Text := '';
+  UpdateCount;
+  if FList.Items.Count = 0 then
+    ModalResult := mrCancel;
 end;
 
 function TDlgGitCommit.TryClose: Boolean;

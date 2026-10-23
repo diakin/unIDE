@@ -13,7 +13,11 @@ unit GitRun;
 //  - ключи для всех команд (GitBaseArgs): core.quotepath=false (имена не
 //    в восьмеричных кодах), color.ui=false;
 //  - разбор вывода: git status --porcelain=v1 -z (GitParseStatus), ветки,
-//    счётчики ahead / behind; адрес GitHub из адреса remote.
+//    счётчики ahead / behind; адрес GitHub из адреса remote; история
+//    (git log, GitParseLog) и файлы коммита (--name-status -z,
+//    GitParseNameStatus);
+//  - GitRecycleFiles - файлы в корзину Windows (Discard новых файлов, как
+//    в GitHub Desktop: их можно вернуть из корзины).
 // ---------------------------------------------------------------------------
 
 interface
@@ -35,8 +39,22 @@ type
   end;
   TGitChanges = array of TGitChange;
 
+  // Коммит из истории (GitLogFormat)
+  TGitCommit = record
+    Hash: string;          // полный SHA
+    Short: string;         // короткий
+    Author: WideString;
+    Date: string;          // 'yyyy-mm-dd hh:nn'
+    Subject: WideString;
+  end;
+  TGitCommits = array of TGitCommit;
+
+  TGitPaths = array of WideString;
+
 const
   GitBaseArgs = '-c core.quotepath=false -c color.ui=false ';
+  // git log: поля через #$1F, записи через #$1E (GitParseLog)
+  GitLogFormat = '--format=%H%x1f%h%x1f%an%x1f%ad%x1f%s%x1e --date=iso';
 
 // Запустить AGitExe с аргументами AArgs (GitBaseArgs добавляются) в папке
 // AWorkDir. AOutput - весь вывод, AExitCode - код выхода. Результат: '' -
@@ -60,6 +78,14 @@ function GitParseCounts(const AOutput: WideString;
 // Адрес remote -> страница на GitHub: git@github.com:o/r.git,
 // https://github.com/o/r.git -> https://github.com/o/r; не GitHub - ''
 function GitHubWebUrl(const ARemoteUrl: WideString): WideString;
+// Вывод git log с GitLogFormat -> список коммитов
+procedure GitParseLog(const AOutput: WideString; var ACommits: TGitCommits);
+// git diff --name-status -z -> список (Code - буква: M, A, D, R, C, T;
+// переименование - OrigPath)
+procedure GitParseNameStatus(const AOutput: WideString;
+  var AChanges: TGitChanges);
+// Файлы (полные пути) - в корзину Windows; False - не вышло или отменено
+function GitRecycleFiles(AWnd: HWND; const AFiles: TGitPaths): Boolean;
 // Пояснение к коду XY для списка изменений ('изменён', 'новый' ...)
 function GitChangeText(const ACode: string): string;
 // Имя ветки допустимо для git (упрощённая проверка check-ref-format)
@@ -348,6 +374,136 @@ begin
   AOutput := GitFromUtf8(AllRaw);
   if Cancelled then
     Result := 'прервано';
+end;
+
+type
+  TGitShFileOp = packed record
+    Wnd: HWND;
+    Func: UINT;
+    From: PWideChar;
+    Dest: PWideChar;
+    Flags: Word;
+    AnyAborted: BOOL;
+    NameMappings: Pointer;
+    ProgressTitle: PWideChar;
+  end;
+
+function GitShFileOperation(var AOp: TGitShFileOp): Integer; stdcall;
+  external 'shell32.dll' name 'SHFileOperationW';
+function GitGetFileAttributes(AName: PWideChar): DWORD; stdcall;
+  external 'kernel32.dll' name 'GetFileAttributesW';
+
+const
+  GitFoDelete = 3;
+  GitFofSilent = $4;
+  GitFofNoConfirmation = $10;
+  GitFofAllowUndo = $40;
+  GitFofNoErrorUI = $400;
+
+function GitRecycleFiles(AWnd: HWND; const AFiles: TGitPaths): Boolean;
+var
+  FromList: WideString;
+  FileIdx: Integer;
+  ShellOp: TGitShFileOp;
+begin
+  Result := True;
+  FromList := '';
+  // Только то, что есть: отсутствующий файл SHFileOperation считает
+  // ошибкой и не трогает остальные
+  for FileIdx := 0 to High(AFiles) do
+    if (AFiles[FileIdx] <> '') and
+       (GitGetFileAttributes(PWideChar(AFiles[FileIdx])) <> $FFFFFFFF) then
+      FromList := FromList + AFiles[FileIdx] + WideChar(#0);
+  if FromList = '' then
+    Exit;
+  FromList := FromList + WideChar(#0);
+  FillChar(ShellOp, SizeOf(ShellOp), 0);
+  ShellOp.Wnd := AWnd;
+  ShellOp.Func := GitFoDelete;
+  ShellOp.From := PWideChar(FromList);
+  ShellOp.Flags := GitFofAllowUndo or GitFofNoConfirmation or GitFofSilent or
+    GitFofNoErrorUI;
+  Result := (GitShFileOperation(ShellOp) = 0) and not ShellOp.AnyAborted;
+end;
+
+// Следующее поле до разделителя ASep (или до конца); APos - после него
+function GitNextField(const AText: WideString; var APos: Integer;
+  ASep: WideChar): WideString;
+var
+  FieldEnd: Integer;
+begin
+  FieldEnd := APos;
+  while (FieldEnd <= Length(AText)) and (AText[FieldEnd] <> ASep) do
+    Inc(FieldEnd);
+  Result := Copy(AText, APos, FieldEnd - APos);
+  APos := FieldEnd + 1;
+end;
+
+procedure GitParseLog(const AOutput: WideString; var ACommits: TGitCommits);
+var
+  RecPos, FieldPos, Count: Integer;
+  Rec: WideString;
+  Commit: TGitCommit;
+begin
+  SetLength(ACommits, 0);
+  Count := 0;
+  RecPos := 1;
+  while RecPos <= Length(AOutput) do
+  begin
+    Rec := GitNextField(AOutput, RecPos, WideChar($1E));
+    // Между записями git ставит перевод строки
+    while (Rec <> '') and ((Rec[1] = #10) or (Rec[1] = #13)) do
+      Delete(Rec, 1, 1);
+    if Rec = '' then
+      Continue;
+    FieldPos := 1;
+    Commit.Hash := string(GitNextField(Rec, FieldPos, WideChar($1F)));
+    Commit.Short := string(GitNextField(Rec, FieldPos, WideChar($1F)));
+    Commit.Author := GitNextField(Rec, FieldPos, WideChar($1F));
+    // --date=iso: '2026-10-23 12:34:56 +0300' -> без секунд и пояса
+    Commit.Date := Copy(string(GitNextField(Rec, FieldPos, WideChar($1F))), 1, 16);
+    Commit.Subject := GitNextField(Rec, FieldPos, WideChar($1F));
+    if Length(Commit.Hash) < 7 then
+      Continue;
+    SetLength(ACommits, Count + 1);
+    ACommits[Count] := Commit;
+    Inc(Count);
+  end;
+end;
+
+procedure GitParseNameStatus(const AOutput: WideString;
+  var AChanges: TGitChanges);
+var
+  FieldPos, Count: Integer;
+  Status: WideString;
+  Change: TGitChange;
+begin
+  SetLength(AChanges, 0);
+  Count := 0;
+  FieldPos := 1;
+  while FieldPos <= Length(AOutput) do
+  begin
+    Status := GitNextField(AOutput, FieldPos, WideChar(#0));
+    while (Status <> '') and ((Status[1] = #10) or (Status[1] = #13)) do
+      Delete(Status, 1, 1);
+    if Status = '' then
+      Continue;
+    Change.Code := string(Copy(Status, 1, 1));
+    Change.OrigPath := '';
+    if (Change.Code = 'R') or (Change.Code = 'C') then
+    begin
+      // R100 старое новое
+      Change.OrigPath := GitNextField(AOutput, FieldPos, WideChar(#0));
+      Change.Path := GitNextField(AOutput, FieldPos, WideChar(#0));
+    end
+    else
+      Change.Path := GitNextField(AOutput, FieldPos, WideChar(#0));
+    // Код - как в status (буква и пробел), для GitChangeText
+    Change.Code := Change.Code + ' ';
+    SetLength(AChanges, Count + 1);
+    AChanges[Count] := Change;
+    Inc(Count);
+  end;
 end;
 
 procedure GitParseStatus(const AOutput: WideString; var AChanges: TGitChanges);

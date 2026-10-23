@@ -2919,6 +2919,21 @@ type
     procedure GitMergeClick(Sender: TObject);
     procedure GitViewBranchClick(Sender: TObject);
     procedure GitPullRequestClick(Sender: TObject);
+    function  GitHistQuery(const AArgs: string; var AOutput: WideString): Integer;
+    procedure GitHistoryClick(Sender: TObject);
+    function  GitDiscardIn(const AGit, ARepo: string;
+                           const AChanges: TGitChanges; AAsk: Boolean): Boolean;
+    function  GitDlgDiscard(const AChanges: TGitChanges): Boolean;
+    function  GitAllChanges(const AGit, ARepo: string;
+                            var AChanges: TGitChanges): Boolean;
+    procedure GitDiscardAllClick(Sender: TObject);
+    procedure GitStashClick(Sender: TObject);
+    function  GitStashList(const AGit, ARepo: string;
+                           AList, ARefs: TStrings): Boolean;
+    function  GitChooseStash(const AGit, ARepo, ACaption,
+                             APrompt: string): string;
+    procedure GitStashRestoreClick(Sender: TObject);
+    procedure GitStashDropClick(Sender: TObject);
     function  RosKnownEnvScript: string;
     function  RosPciSourceDir(var ASettings: TRosSettings): Boolean;
     function  RosDownloadPciIds(const ASourceDir, AVendors: string;
@@ -3872,6 +3887,7 @@ var
     SplashLoad,   // окно загрузки и журнал этапов запуска (startup.log)
     GitInfo,      // ветка и коммит исходников сборки (<exe>.build.txt)
     DlgGitCommit, // окно Commit (меню Repository, панель Git)
+    DlgGitHistory, // окно History (меню Repository, панель Git)
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     FormPreview,  // превью формы по .dfm - список модулей и форм
@@ -63534,8 +63550,10 @@ begin
     '(ветки там ещё нет - опубликовать)', 124, 56, GitPushClick);
   NewButton('Commit...', 'Окно Commit: изменённые файлы, разница, ' +
     'заголовок и описание коммита', 184, 72, GitCommitClick);
-  NewButton('Refresh', 'Обновить сведения панели', 260, 60, GitRefreshClick);
-  NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 324, 66,
+  NewButton('History...', 'История коммитов ветки: файлы и разница, Revert, ' +
+    'ветка от коммита', 260, 72, GitHistoryClick);
+  NewButton('Refresh', 'Обновить сведения панели', 336, 60, GitRefreshClick);
+  NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 400, 66,
     GitBashClick);
   FGitLblRepo := NewLabel(4, 27, 'Repository: -');
   NewLabel(4, 51, 'Branch:');
@@ -63594,7 +63612,7 @@ var
   Git, BaseDir, Repo, Branch, Remote, Upstream, Describe, Counts: string;
   Output: WideString;
   Changes: TGitChanges;
-  Ahead, Behind, BranchIdx: Integer;
+  Ahead, Behind, BranchIdx, StashCount, StashIdx: Integer;
 begin
   if (FGitBar = nil) or not FGitBar.Visible or FGitBusy then
     Exit;
@@ -63672,6 +63690,16 @@ begin
       GitParseStatus(Output, Changes);
     FGitLblBuild.Caption := 'Build: ' + Describe + '   Changes: ' +
       IntToStr(Length(Changes));
+    if GitRunIn(Git, Repo, 'stash list', False, Output) = 0 then
+    begin
+      StashCount := 0;
+      for StashIdx := 1 to Length(Output) do
+        if Output[StashIdx] = #10 then
+          Inc(StashCount);
+      if StashCount > 0 then
+        FGitLblBuild.Caption := FGitLblBuild.Caption + '   Stash: ' +
+          IntToStr(StashCount);
+    end;
     FGitLblBuild.Hint := 'Build - git describe --tags --always (ближайшая ' +
       'метка, число коммитов после неё и короткий хеш); Changes - сколько ' +
       'файлов изменено (Commit... - список)';
@@ -63855,7 +63883,7 @@ begin
   FGitDlgHasHead := GitQuery(AGit, ARepo, 'rev-parse -q --verify HEAD') <> '';
   Dlg := TDlgGitCommit.CreateDlg(Self, 'Commit to ' + Branch + ' - ' +
     ExtractFileName(ExcludeTrailingPathDelimiter(ARepo)), AllChanges,
-    GitDiffOf);
+    GitDiffOf, GitDlgDiscard);
   try
     if Dlg.ShowModal <> mrOk then
       Exit;
@@ -64011,6 +64039,8 @@ begin
     GitPushClick);
   AddItem(RepoMenu, 'Commit...', 'Окно Commit: изменения, разница, ' +
     'заголовок и описание', GitCommitClick);
+  AddItem(RepoMenu, 'History...', 'История коммитов текущей ветки',
+    GitHistoryClick);
   AddItem(RepoMenu, '-', '', nil);
   AddItem(RepoMenu, 'View on GitHub', 'Страница репозитория в браузере',
     GitViewOnGitHubClick);
@@ -64030,6 +64060,15 @@ begin
     '(git branch -m)', GitRenameBranchClick);
   AddItem(BranchMenu, 'Delete Branch...', 'Удалить локальную ветку (git ' +
     'branch -d)', GitDeleteBranchClick);
+  AddItem(BranchMenu, '-', '', nil);
+  AddItem(BranchMenu, 'Discard All Changes...', 'Отменить все изменения: ' +
+    'файлы - как в последнем коммите, новые - в корзину', GitDiscardAllClick);
+  AddItem(BranchMenu, 'Stash All Changes', 'Убрать все изменения (и новые ' +
+    'файлы) в stash (git stash push -u)', GitStashClick);
+  AddItem(BranchMenu, 'Restore Stash...', 'Вернуть изменения из stash ' +
+    '(git stash pop)', GitStashRestoreClick);
+  AddItem(BranchMenu, 'Drop Stash...', 'Удалить запись stash (git stash ' +
+    'drop)', GitStashDropClick);
   AddItem(BranchMenu, '-', '', nil);
   AddItem(BranchMenu, 'Update from Default Branch', 'Влить в текущую ' +
     'ветку основную ветку сервера (git merge origin/<основная>)',
@@ -64424,6 +64463,350 @@ begin
   Branch := GitCurrentBranch(Git, Repo);
   if (Url <> '') and (Branch <> '') then
     GitOpenUrl(Url + '/compare/' + Branch + '?expand=1');
+end;
+
+// ---------------------------------------------------------------------------
+//  Git: история (DlgGitHistory), Discard (отмена изменений), Stash
+// ---------------------------------------------------------------------------
+
+// Для окон Commit и History: тихий git в папке их репозитория
+function TForm1.GitHistQuery(const AArgs: string;
+  var AOutput: WideString): Integer;
+begin
+  Result := GitRunIn(FGitDlgGit, FGitDlgRepo, AArgs, False, AOutput);
+end;
+
+// History: коммиты текущей ветки; New Branch from Commit и Revert Commit
+// - здесь, после закрытия окна (с журналом)
+procedure TForm1.GitHistoryClick(Sender: TObject);
+var
+  Git, Repo, Branch, WebUrl, Hash, Name, Remote: string;
+  Dlg: TDlgGitHistory;
+  HistAction: TGitHistAction;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  FGitDlgGit := Git;
+  FGitDlgRepo := Repo;
+  Branch := GitCurrentBranch(Git, Repo);
+  if Branch = '' then
+    Branch := 'HEAD';
+  // Адрес GitHub - для View on GitHub; не GitHub - кнопка недоступна
+  Remote := GitQuery(Git, Repo, 'config --get remote.origin.url');
+  WebUrl := string(GitHubWebUrl(WideString(Remote)));
+  Dlg := TDlgGitHistory.CreateDlg(Self, 'History - ' + Branch + ' - ' +
+    ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), WebUrl, GitHistQuery);
+  try
+    Dlg.ShowModal;
+    HistAction := Dlg.Action;
+    Hash := Dlg.SelectedHash;
+  finally
+    Dlg.Free;
+  end;
+  if (HistAction = ghaNone) or (Hash = '') then
+    Exit;
+  if HistAction = ghaBranch then
+  begin
+    Name := '';
+    if not InputQuery('New Branch from Commit', 'Имя новой ветки (от ' +
+       Copy(Hash, 1, 7) + '):', Name) then
+      Exit;
+    Name := Trim(Name);
+    if Name = '' then
+      Exit;
+    if not GitValidBranchName(Name) then
+    begin
+      ShowMessage('9820:Имя ветки не годится для git');
+      Exit;
+    end;
+    GitLongOp(Git, Repo, 'checkout -b ' + string(GitQuote(WideString(Name))) +
+      ' ' + Hash);
+  end
+  else if HistAction = ghaRevert then
+  begin
+    if MessageDlg('9821:Отменить коммит ' + Copy(Hash, 1, 7) + '?'#13#10#13#10 +
+       'Будет создан новый коммит с обратными изменениями (git revert); ' +
+       'история не переписывается. Отправить его на сервер - Push.',
+       mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+      Exit;
+    if GitLongOp(Git, Repo, 'revert --no-edit ' + Hash) <> 0 then
+      LogComp('Git: при конфликте - исправить файлы и Commit, или отменить ' +
+              'в Git Bash: git revert --abort');
+  end;
+end;
+
+// Отменить изменения файлов AChanges, как Discard в GitHub Desktop:
+// изменённые и удалённые - как в последнем коммите (checkout HEAD),
+// новые (не в последнем коммите) - убрать из индекса и в корзину Windows
+// (оттуда можно вернуть). AAsk - сначала спросить. True - отменено
+function TForm1.GitDiscardIn(const AGit, ARepo: string;
+  const AChanges: TGitChanges; AAsk: Boolean): Boolean;
+var
+  HasHead, IsNew: Boolean;
+  ChangeIdx, RecycleCount: Integer;
+  TrackedList, NewList, TrackedFile, NewFile: string;
+  Recycle: TGitPaths;
+  Output: WideString;
+  Code: string;
+
+  procedure AddRecycle(const APath: WideString);
+  begin
+    SetLength(Recycle, RecycleCount + 1);
+    Recycle[RecycleCount] := WideString(IncludeTrailingPathDelimiter(ARepo)) +
+      GitWinPath(APath);
+    Inc(RecycleCount);
+  end;
+
+begin
+  Result := False;
+  if Length(AChanges) = 0 then
+    Exit;
+  if AAsk and (MessageDlg('9822:Отменить изменения в ' +
+     IntToStr(Length(AChanges)) + ' файл(ах)?'#13#10#13#10 +
+     'Изменённые и удалённые файлы станут такими, как в последнем коммите; ' +
+     'новые файлы уйдут в корзину Windows. Несохранённые в коммит правки ' +
+     'этих файлов пропадут (кроме новых файлов - они в корзине).',
+     mtWarning, [mbOK, mbCancel], 0) <> mrOk) then
+    Exit;
+  HasHead := GitQuery(AGit, ARepo, 'rev-parse -q --verify HEAD') <> '';
+  TrackedList := '';
+  NewList := '';
+  RecycleCount := 0;
+  SetLength(Recycle, 0);
+  for ChangeIdx := 0 to High(AChanges) do
+  begin
+    Code := AChanges[ChangeIdx].Code;
+    if Code = '??' then
+    begin
+      AddRecycle(AChanges[ChangeIdx].Path);
+      Continue;
+    end;
+    // Новый в индексе (A), новое имя переименования, или коммитов нет
+    IsNew := not HasHead or (Pos('A', Code) > 0) or
+      (AChanges[ChangeIdx].OrigPath <> '');
+    if IsNew then
+    begin
+      NewList := NewList + GitToUtf8(AChanges[ChangeIdx].Path) + #0;
+      AddRecycle(AChanges[ChangeIdx].Path);
+      // Прежнее имя переименования - вернуть из последнего коммита
+      if HasHead and (AChanges[ChangeIdx].OrigPath <> '') then
+        TrackedList := TrackedList + GitToUtf8(AChanges[ChangeIdx].OrigPath) +
+          #0;
+    end
+    else
+      TrackedList := TrackedList + GitToUtf8(AChanges[ChangeIdx].Path) + #0;
+  end;
+  ShowCompLog;
+  LogComp('Git: Discard - файлов: ' + IntToStr(Length(AChanges)));
+  TrackedFile := '';
+  NewFile := '';
+  FGitBusy := True;
+  try
+    // Новые - из индекса (файлы остаются, потом - в корзину)
+    if NewList <> '' then
+    begin
+      NewFile := GitWriteTempFile('discardnew', NewList);
+      if NewFile = '' then
+      begin
+        LogComp('Git: временный файл не создать - Discard не выполнен');
+        Exit;
+      end;
+      if HasHead then
+      begin
+        if GitRunIn(AGit, ARepo, 'reset -q --pathspec-from-file=' +
+           string(GitQuote(WideString(NewFile))) + ' --pathspec-file-nul',
+           True, Output) <> 0 then
+          Exit;
+      end
+      else if GitRunIn(AGit, ARepo, 'rm --cached -q -f --pathspec-from-file=' +
+              string(GitQuote(WideString(NewFile))) + ' --pathspec-file-nul',
+              True, Output) <> 0 then
+        Exit;
+    end;
+    // Изменённые и удалённые - из последнего коммита (и индекс, и файл)
+    if TrackedList <> '' then
+    begin
+      TrackedFile := GitWriteTempFile('discardtracked', TrackedList);
+      if TrackedFile = '' then
+      begin
+        LogComp('Git: временный файл не создать - Discard не выполнен');
+        Exit;
+      end;
+      if GitRunIn(AGit, ARepo, 'checkout HEAD --pathspec-from-file=' +
+         string(GitQuote(WideString(TrackedFile))) + ' --pathspec-file-nul',
+         True, Output) <> 0 then
+        Exit;
+    end;
+    if (RecycleCount > 0) and not GitRecycleFiles(Handle, Recycle) then
+    begin
+      LogComp('Git: новые файлы в корзину не перенести (заняты или ' +
+              'отменено) - они остались на месте');
+      Exit;
+    end;
+    if RecycleCount > 0 then
+      LogComp('Git: новых файлов в корзине: ' + IntToStr(RecycleCount));
+    LogComp('git: изменения отменены');
+    Result := True;
+  finally
+    FGitBusy := False;
+    if TrackedFile <> '' then
+      DeleteFile(TrackedFile);
+    if NewFile <> '' then
+      DeleteFile(NewFile);
+    GitRefreshBar;
+  end;
+end;
+
+// Discard Selected в окне Commit
+function TForm1.GitDlgDiscard(const AChanges: TGitChanges): Boolean;
+begin
+  Result := GitDiscardIn(FGitDlgGit, FGitDlgRepo, AChanges, True);
+end;
+
+// Изменённые файлы (status -uall) - в AChanges; False - git status не вышел
+function TForm1.GitAllChanges(const AGit, ARepo: string;
+  var AChanges: TGitChanges): Boolean;
+var
+  Output: WideString;
+begin
+  SetLength(AChanges, 0);
+  Result := GitRunIn(AGit, ARepo, 'status --porcelain=v1 -z -uall', False,
+    Output) = 0;
+  if Result then
+    GitParseStatus(Output, AChanges);
+end;
+
+procedure TForm1.GitDiscardAllClick(Sender: TObject);
+var
+  Git, Repo: string;
+  Changes: TGitChanges;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  if not GitAllChanges(Git, Repo, Changes) or (Length(Changes) = 0) then
+  begin
+    ShowCompLog;
+    LogComp('Git: изменений нет - отменять нечего');
+    Exit;
+  end;
+  GitDiscardIn(Git, Repo, Changes, True);
+end;
+
+// Stash All Changes: все изменения, и новые файлы, - в stash
+procedure TForm1.GitStashClick(Sender: TObject);
+var
+  Git, Repo, Branch: string;
+  Changes: TGitChanges;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  if not GitAllChanges(Git, Repo, Changes) or (Length(Changes) = 0) then
+  begin
+    ShowCompLog;
+    LogComp('Git: изменений нет - в stash класть нечего');
+    Exit;
+  end;
+  Branch := GitCurrentBranch(Git, Repo);
+  GitLongOp(Git, Repo, 'stash push --include-untracked -m ' +
+    string(GitQuote(WideString('unIDE ' + Branch + ' ' +
+    FormatDateTime('yyyy-mm-dd hh:nn', Now)))));
+end;
+
+// Записи stash: AList - строки для выбора, ARefs - stash@{N} (тот же
+// порядок). False - stash пуст
+function TForm1.GitStashList(const AGit, ARepo: string;
+  AList, ARefs: TStrings): Boolean;
+var
+  Output: WideString;
+  Lines: TStringList;
+  LineIdx, SepPos: Integer;
+  Line, Ref, Rest: string;
+begin
+  AList.Clear;
+  ARefs.Clear;
+  Lines := TStringList.Create;
+  try
+    if GitRunIn(AGit, ARepo, 'stash list --format=%gd%x1f%gs%x1f%cr', False,
+       Output) = 0 then
+      GitSplitLines(Output, Lines);
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      Line := Lines[LineIdx];
+      SepPos := Pos(#$1F, Line);
+      if SepPos = 0 then
+        Continue;
+      Ref := Copy(Line, 1, SepPos - 1);
+      Rest := Copy(Line, SepPos + 1, MaxInt);
+      SepPos := Pos(#$1F, Rest);
+      if SepPos > 0 then
+        Rest := Copy(Rest, 1, SepPos - 1) + '  (' +
+          Copy(Rest, SepPos + 1, MaxInt) + ')';
+      AList.Add(Ref + '  ' + Rest);
+      ARefs.Add(Ref);
+    end;
+  finally
+    Lines.Free;
+  end;
+  Result := ARefs.Count > 0;
+end;
+
+// Выбор записи stash; '' - отказались или stash пуст
+function TForm1.GitChooseStash(const AGit, ARepo, ACaption,
+  APrompt: string): string;
+var
+  Items, Refs: TStringList;
+  Picked: string;
+begin
+  Result := '';
+  Items := TStringList.Create;
+  Refs := TStringList.Create;
+  try
+    if not GitStashList(AGit, ARepo, Items, Refs) then
+    begin
+      ShowCompLog;
+      LogComp('Git: stash пуст');
+      Exit;
+    end;
+    Picked := ChooseFromList(ACaption, APrompt, Items);
+    if (Picked <> '') and (Items.IndexOf(Picked) >= 0) then
+      Result := Refs[Items.IndexOf(Picked)];
+  finally
+    Refs.Free;
+    Items.Free;
+  end;
+end;
+
+// Restore Stash: изменения из записи - обратно в рабочие файлы, запись
+// убирается (stash pop; при конфликте остаётся)
+procedure TForm1.GitStashRestoreClick(Sender: TObject);
+var
+  Git, Repo, Ref: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Ref := GitChooseStash(Git, Repo, 'Restore Stash', 'Вернуть изменения ' +
+    'из stash в рабочие файлы:');
+  if Ref = '' then
+    Exit;
+  if GitLongOp(Git, Repo, 'stash pop ' + Ref) <> 0 then
+    LogComp('Git: запись stash осталась (конфликт или файлы заняты) - ' +
+            'подробности выше');
+end;
+
+procedure TForm1.GitStashDropClick(Sender: TObject);
+var
+  Git, Repo, Ref: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Ref := GitChooseStash(Git, Repo, 'Drop Stash', 'Удалить запись stash ' +
+    '(изменения из неё пропадут):');
+  if Ref = '' then
+    Exit;
+  if MessageDlg('9823:Удалить ' + Ref + '?'#13#10#13#10'Изменения из этой ' +
+     'записи пропадут.', mtWarning, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  GitLongOp(Git, Repo, 'stash drop ' + Ref);
 end;
 
 // ReactOS - Run Image: образ последней сборки - в эмуляторе, без сборки

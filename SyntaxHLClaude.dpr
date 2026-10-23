@@ -81,6 +81,7 @@ uses
   RufusTool in 'RufusTool.pas',
   GitRun in 'GitRun.pas',
   DlgGitCommit in 'DlgGitCommit.pas',
+  DlgGitHistory in 'DlgGitHistory.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};
 
 {$R *.res}
