@@ -2878,6 +2878,8 @@ type
     // Git: панель на месте палитры (режим ReactOS), меню Repository и Branch
     function  GitExePath(AOffer: Boolean): string;
     procedure GitOnLine(const ALine: WideString);
+    procedure GitLoginHint(const AGit, ADir: string;
+      const AOutput: WideString);
     function  GitOnIdle: Boolean;
     function  GitRunIn(const AGit, ADir, AArgs: string; ALog: Boolean;
                        var AOutput: WideString): Integer;
@@ -63471,7 +63473,80 @@ begin
     Result := -1;
   end
   else if ALog and (ExitCode <> 0) then
+  begin
     LogComp('git: код выхода ' + IntToStr(ExitCode));
+    GitLoginHint(AGit, ADir, AOutput);
+  end;
+end;
+
+// Вывод git с ошибкой входа по https (terminal prompts disabled; строка
+// про SSL/TLS от credential helper) - подсказка в Compilation log: какие
+// credential.helper настроены и как задать логин один раз
+procedure TForm1.GitLoginHint(const AGit, ADir: string;
+  const AOutput: WideString);
+var
+  OutLower, HelperLine: string;
+  HelperOut: WideString;
+  HelperLines: TStringList;
+  NoPrompt, TlsError: Boolean;
+  LineIndex: Integer;
+begin
+  OutLower := AnsiLowerCase(string(AOutput));
+  NoPrompt := Pos('terminal prompts disabled', OutLower) > 0;
+  TlsError := (Pos('ssl/tls', OutLower) > 0) or
+              (Pos('secure channel', OutLower) > 0) or
+              (Pos('защищенный канал', OutLower) > 0) or
+              (Pos('защищённый канал', OutLower) > 0);
+  if not NoPrompt and not TlsError then
+    Exit;
+  LogComp('git: вход на сервер по https не выполнен - git не получил имя ' +
+          'пользователя и пароль. unIDE запускает git без консоли ' +
+          '(GIT_TERMINAL_PROMPT=0), поэтому логин может дать только ' +
+          'credential helper.');
+  HelperLines := TStringList.Create;
+  try
+    if GitRunIn(AGit, ADir, 'config --show-origin --get-all ' +
+                'credential.helper', False, HelperOut) = 0 then
+      HelperLines.Text := string(GitTrimOut(HelperOut));
+    if HelperLines.Count = 0 then
+      LogComp('git: credential.helper не задан')
+    else
+    begin
+      LogComp('git: credential.helper (по порядку вызова):');
+      for LineIndex := 0 to HelperLines.Count - 1 do
+      begin
+        HelperLine := StringReplace(HelperLines[LineIndex], #9, '   ',
+                                    [rfReplaceAll]);
+        if Trim(HelperLine) <> '' then
+          LogComp('    ' + HelperLine);
+      end;
+    end;
+  finally
+    HelperLines.Free;
+  end;
+  if TlsError then
+  begin
+    LogComp('git: строка про SSL/TLS - текст ошибки .NET Framework. Из ' +
+            'helper''ов Git for Windows на .NET работает manager (Git ' +
+            'Credential Manager). Если это он - .NET можно разрешить TLS ' +
+            '1.2 (нужны права администратора и перезагрузка):');
+    LogComp('    reg add "HKLM\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" ' +
+            '/v SchUseStrongCrypto /t REG_DWORD /d 1 /f');
+    LogComp('    reg add "HKLM\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\' +
+            'v4.0.30319" /v SchUseStrongCrypto /t REG_DWORD /d 1 /f');
+    LogComp('  либо обойтись без .NET - helper wincred, как ниже.');
+  end;
+  LogComp('git: задать логин один раз - кнопка Git Bash на панели Git, в ' +
+          'открывшемся окне:');
+  LogComp('    git config --global credential.helper ""');
+  LogComp('    git config --global --add credential.helper wincred');
+  LogComp('    git fetch');
+  LogComp('  Username - логин GitHub, Password - personal access token ' +
+          '(пароль от аккаунта GitHub для git по https не принимается). ' +
+          'wincred сохранит его в диспетчере учётных данных Windows, ' +
+          'дальше unIDE возьмёт его оттуда. Пустое значение в первой ' +
+          'команде сбрасывает прежний список helper''ов (manager из ' +
+          'системного gitconfig иначе вызывался бы первым).');
 end;
 
 // Тихий запрос: первая строка вывода, код выхода не 0 - ''
