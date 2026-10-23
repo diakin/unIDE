@@ -1050,6 +1050,13 @@ object Form1: TForm1
       Caption = 'Выделить всё'#9'Ctrl+A'
       OnClick = FmtSelectAllClick
     end
+    object fmpIeSep: TMenuItem
+      Caption = '-'
+    end
+    object fmpIeEdge: TMenuItem
+      Caption = 'Режим IE 11 для этого файла'
+      OnClick = FmtIeEdgeClick
+    end
   end
   object FLogPopup: TUiPopupMenu
     OnPopup = LogPopupPopup

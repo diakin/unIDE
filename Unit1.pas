@@ -553,6 +553,8 @@ type
     fmpSep: TMenuItem;
     fmpCopy: TMenuItem;
     fmpSelectAll: TMenuItem;
+    fmpIeSep: TMenuItem;
+    fmpIeEdge: TMenuItem;
     pmuSepSearch: TMenuItem;
     pmuDebug: TMenuItem;
     pmuSepDebug: TMenuItem;
@@ -844,6 +846,7 @@ type
     procedure FmtPopupPopup(Sender: TObject);
     procedure FmtCopyClick(Sender: TObject);
     procedure FmtSelectAllClick(Sender: TObject);
+    procedure FmtIeEdgeClick(Sender: TObject);
     procedure SearchSelectedClick(Sender: TObject);
     procedure DebugLineClick(Sender: TObject);
     procedure EditClickEvent(Sender: TObject);
@@ -76860,6 +76863,8 @@ procedure TForm1.FmtEnsureViews;
 begin
   if FWebView = nil then
   begin
+    // Файлы с режимом IE 11 (меню просмотра) - из editor.ini
+    FmtIeEdgeSetIni(SettingsFileName);
     FWebView := TWebPreview.Create(FLeftHost);
     FWebView.OnOpenFile := FmtOpenFromView;
     FWebView.OnLog := FmtLog;
@@ -77086,10 +77091,38 @@ begin
 end;
 
 procedure TForm1.FmtPopupPopup(Sender: TObject);
+var
+  IsHtml: Boolean;
 begin
   // Меню просмотра открыто - вид "по формату"
   fmpText.Checked := False;
   fmpFormat.Checked := True;
+  // Режим IE 11 - только у HTML в просмотре редактора
+  IsHtml := (FWebView <> nil) and FWebView.IsShown and
+            (FmtKindOf(FCurrentFileName) = fkHtml);
+  fmpIeSep.Visible := IsHtml;
+  fmpIeEdge.Visible := IsHtml;
+  fmpIeEdge.Checked := IsHtml and FmtIsIeEdge(FCurrentFileName);
+end;
+
+// Режим IE 11 для файла вкладки: вкл / выкл, страница - заново (во второй
+// панели тоже, если в ней тот же файл по формату)
+procedure TForm1.FmtIeEdgeClick(Sender: TObject);
+begin
+  if (FCurrentFileName = '') or (FmtKindOf(FCurrentFileName) <> fkHtml) then
+    Exit;
+  FmtSetIeEdge(FCurrentFileName, not FmtIsIeEdge(FCurrentFileName));
+  FmtApplyTab;
+  if (FSplit <> nil) and FSplit.Shown and FSplitFmt and
+     SplitWinValid(FSplitWin) and
+     (CompareText(FWindows[FSplitWin].FileName, FCurrentFileName) = 0) then
+    SplitRefresh(-1);
+  if FmtIsIeEdge(FCurrentFileName) then
+    Dbg('Просмотр по формату: ' + ExtractFileName(FCurrentFileName) +
+        ' - режим IE 11 (X-UA-Compatible: IE=edge)', clGray)
+  else
+    Dbg('Просмотр по формату: ' + ExtractFileName(FCurrentFileName) +
+        ' - режим IE по <!DOCTYPE>', clGray);
 end;
 
 procedure TForm1.FmtCopyClick(Sender: TObject);
@@ -77194,6 +77227,10 @@ begin
   if FSplit <> nil then
     Exit;
   FSplitWin := -1;
+  // Файлы с режимом IE 11 - из editor.ini (если просмотр редактора ещё
+  // не открывали)
+  if FWebView = nil then
+    FmtIeEdgeSetIni(SettingsFileName);
   FSplit := TSplitPane.Create(FLeftHost.Parent, FLeftHost);
   FSplit.OnTextClick := SplitTextClick;
   FSplit.OnTitleClick := SplitTitleClick;

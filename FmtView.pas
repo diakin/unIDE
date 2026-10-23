@@ -51,7 +51,7 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls,
   ComCtrls, Menus, Forms, ShellAPI, Variants, ComObj, Registry, SHDocVw,
-  MdHtml;
+  IniFiles, MdHtml;
 
 type
   TFmtKind = (fkNone, fkMarkdown, fkHtml, fkMht, fkRtf, fkRvf);
@@ -217,6 +217,14 @@ function FmtPlainToRtf(const AText: string): string;
 // Путь к rvf2rtf.exe ('' - не найден): рядом с exe unIDE, в его tools\ и
 // tools\rvf2rtf\, то же на уровень выше
 function FmtRvfHelperPath: string;
+// Режим IE 11 для отдельных .html (меню просмотра "Режим IE 11"): страница
+// показывается копией с <meta http-equiv="X-UA-Compatible" content="IE=edge">,
+// и IE рисует её в режиме IE 11, какой бы <!DOCTYPE> ни был. Список файлов -
+// в editor.ini, [FmtIeEdge]; AIniFile - его путь (FmtIeEdgeSetIni - один
+// раз, до первого показа)
+procedure FmtIeEdgeSetIni(const AIniFile: string);
+function FmtIsIeEdge(const AFileName: string): Boolean;
+procedure FmtSetIeEdge(const AFileName: string; AOn: Boolean);
 
 implementation
 
@@ -618,14 +626,13 @@ begin
     Result := ExtractFilePath(ParamStr(0));
 end;
 
-// <base href="AUrl"> в <head> страницы (после <head ...>); нет <head> -
-// после <html ...>; нет и его - в начало (после BOM)
-function InsertBaseHref(const AHtml, AUrl: string): string;
+// Тег ATag в <head> страницы (сразу после <head ...>); нет <head> - после
+// <html ...>; нет и его - в начало (после BOM)
+function InsertHeadTag(const AHtml, ATag: string): string;
 var
-  Lower, BaseTag: string;
+  Lower: string;
   TagAt, CloseAt, InsertAt: Integer;
 begin
-  BaseTag := '<base href="' + AUrl + '">';
   Lower := LowerCase(AHtml);
   InsertAt := 0;
   TagAt := Pos('<head', Lower);
@@ -655,8 +662,124 @@ begin
     else
       InsertAt := 1;
   end;
-  Result := Copy(AHtml, 1, InsertAt - 1) + BaseTag +
+  Result := Copy(AHtml, 1, InsertAt - 1) + ATag +
             Copy(AHtml, InsertAt, MaxInt);
+end;
+
+// <base href="AUrl"> в <head> страницы
+function InsertBaseHref(const AHtml, AUrl: string): string;
+begin
+  Result := InsertHeadTag(AHtml, '<base href="' + AUrl + '">');
+end;
+
+const
+  IeEdgeMeta = '<meta http-equiv="X-UA-Compatible" content="IE=edge">';
+  IeEdgeSection = 'FmtIeEdge';
+
+var
+  GIeEdgeIni: string;
+  GIeEdgeFiles: TStringList;   // полные пути, без учёта регистра
+
+procedure FmtIeEdgeSetIni(const AIniFile: string);
+var
+  Ini: TIniFile;
+  Keys: TStringList;
+  KeyIdx: Integer;
+  FileName: string;
+begin
+  GIeEdgeIni := AIniFile;
+  if GIeEdgeFiles = nil then
+  begin
+    GIeEdgeFiles := TStringList.Create;
+    GIeEdgeFiles.Sorted := True;
+    GIeEdgeFiles.Duplicates := dupIgnore;
+    GIeEdgeFiles.CaseSensitive := False;
+  end;
+  GIeEdgeFiles.Clear;
+  if (AIniFile = '') or not FileExists(AIniFile) then
+    Exit;
+  Keys := TStringList.Create;
+  try
+    Ini := TIniFile.Create(AIniFile);
+    try
+      Ini.ReadSection(IeEdgeSection, Keys);
+      for KeyIdx := 0 to Keys.Count - 1 do
+      begin
+        FileName := Trim(Ini.ReadString(IeEdgeSection, Keys[KeyIdx], ''));
+        if FileName <> '' then
+          GIeEdgeFiles.Add(FileName);
+      end;
+    finally
+      Ini.Free;
+    end;
+  except
+    // editor.ini не прочитался - список пуст
+  end;
+  Keys.Free;
+end;
+
+function FmtIsIeEdge(const AFileName: string): Boolean;
+var
+  Found: Integer;
+begin
+  Result := (GIeEdgeFiles <> nil) and (AFileName <> '') and
+            GIeEdgeFiles.Find(ExpandFileName(AFileName), Found);
+end;
+
+procedure FmtSetIeEdge(const AFileName: string; AOn: Boolean);
+var
+  Ini: TIniFile;
+  Found, ItemIdx: Integer;
+  FullName: string;
+begin
+  if AFileName = '' then
+    Exit;
+  if GIeEdgeFiles = nil then
+    FmtIeEdgeSetIni(GIeEdgeIni);
+  FullName := ExpandFileName(AFileName);
+  if AOn then
+    GIeEdgeFiles.Add(FullName)
+  else if GIeEdgeFiles.Find(FullName, Found) then
+    GIeEdgeFiles.Delete(Found);
+  if GIeEdgeIni = '' then
+    Exit;
+  // Раздел целиком заново: File1..FileN (в путях бывает '=', ключом путь
+  // быть не может)
+  try
+    Ini := TIniFile.Create(GIeEdgeIni);
+    try
+      Ini.EraseSection(IeEdgeSection);
+      for ItemIdx := 0 to GIeEdgeFiles.Count - 1 do
+        Ini.WriteString(IeEdgeSection, 'File' + IntToStr(ItemIdx + 1),
+                        GIeEdgeFiles[ItemIdx]);
+    finally
+      Ini.Free;
+    end;
+  except
+    // папка только для чтения - список держится до выхода
+  end;
+end;
+
+// Файл с диска как есть (байты)
+function ReadFileBytes(const AFileName: string; out ABytes: string): Boolean;
+var
+  Stream: TFileStream;
+begin
+  Result := False;
+  ABytes := '';
+  try
+    Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+    try
+      SetLength(ABytes, Stream.Size);
+      if Stream.Size > 0 then
+        Stream.ReadBuffer(ABytes[1], Stream.Size);
+      Result := True;
+    finally
+      Stream.Free;
+    end;
+  except
+    ABytes := '';
+  end;
 end;
 
 // Вариант - пустая ссылка на объект (getElementById ничего не нашёл)
@@ -894,12 +1017,29 @@ begin
 end;
 
 function TWebPreview.ShowFile(const AFileName: string): Boolean;
+var
+  Page: string;
 begin
   Result := False;
   FLastError := '';
   if not EnsureBrowser then
     Exit;
   RememberScroll;
+  // Режим IE 11 для этого файла: копия страницы с X-UA-Compatible и
+  // <base> на его папку (картинки и ссылки - оттуда)
+  if (FmtKindOf(AFileName) = fkHtml) and FmtIsIeEdge(AFileName) then
+  begin
+    if not ReadFileBytes(AFileName, Page) then
+    begin
+      FLastError := 'Файл не прочитался: ' + AFileName;
+      Exit;
+    end;
+    Page := InsertBaseHref(Page,
+      PathToFileUrl(ExtractFilePath(AFileName), True));
+    Page := InsertHeadTag(Page, IeEdgeMeta);
+    Result := WriteTemp(Page, '.html') and OpenPage(FTempPage, AFileName);
+    Exit;
+  end;
   Result := OpenPage(AFileName, AFileName);
 end;
 
@@ -923,6 +1063,8 @@ begin
     if ASourceFile <> '' then
       Page := InsertBaseHref(Page,
         PathToFileUrl(ExtractFilePath(ASourceFile), True));
+    if FmtIsIeEdge(ASourceFile) then
+      Page := InsertHeadTag(Page, IeEdgeMeta);
     Result := WriteTemp(Page, '.html');
   end;
   if Result then
@@ -1673,5 +1815,8 @@ begin
   if IsShown then
     FEdit.SelectAll;
 end;
+
+finalization
+  GIeEdgeFiles.Free;
 
 end.
