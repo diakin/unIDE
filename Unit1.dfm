@@ -1057,6 +1057,10 @@ object Form1: TForm1
       Caption = 'Режим IE 11 для этого файла'
       OnClick = FmtIeEdgeClick
     end
+    object fmpWv2: TMenuItem
+      Caption = 'Открыть в WebView2 (Chromium)'
+      OnClick = Wv2ViewClick
+    end
   end
   object FLogPopup: TUiPopupMenu
     OnPopup = LogPopupPopup

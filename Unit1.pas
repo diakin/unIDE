@@ -40,6 +40,7 @@ uses
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
+  Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
   FileSearch,     // Find In Files: маски, чтение файлов, обход папок (TFifFileFound)
   UnFar,          // unIDE FAR: двухпанельный файловый менеджер (Utils)
   DlgFarColors,   // unIDE FAR: окно раскраски файлов по расширению
@@ -555,6 +556,7 @@ type
     fmpSelectAll: TMenuItem;
     fmpIeSep: TMenuItem;
     fmpIeEdge: TMenuItem;
+    fmpWv2: TMenuItem;
     pmuSepSearch: TMenuItem;
     pmuDebug: TMenuItem;
     pmuSepDebug: TMenuItem;
@@ -847,6 +849,7 @@ type
     procedure FmtCopyClick(Sender: TObject);
     procedure FmtSelectAllClick(Sender: TObject);
     procedure FmtIeEdgeClick(Sender: TObject);
+    procedure Wv2ViewClick(Sender: TObject);
     procedure SearchSelectedClick(Sender: TObject);
     procedure DebugLineClick(Sender: TObject);
     procedure EditClickEvent(Sender: TObject);
@@ -1309,6 +1312,7 @@ type
     FIncGuess: TStringList;
     // Пункты меню Подсветка (вкладка и View) и схемы их подпунктов по Tag
     FHlTabItem, FHlViewItem: TMenuItem;
+    FWv2ViewItem: TMenuItem;  // View - Просмотр в WebView2
     // Options - unIDE FAR: Files highlighting (окно раскраски файлов)
     FFarColorsItem: TMenuItem;
     FHlNames: TStringList;
@@ -23982,6 +23986,13 @@ begin
   FHlViewItem.OnClick := HighlightMenuFill;
   FHlViewItem.Add(NewItem('-', 0, False, False, nil, 0, ''));
   mOptions.Add(FHlViewItem);
+  // View - Просмотр в WebView2 (Chromium), под "Просмотр по формату"
+  FWv2ViewItem := TMenuItem.Create(Self);
+  FWv2ViewItem.Caption := 'Просмотр в WebView2 (Chromium)';
+  FWv2ViewItem.Hint := 'Файл вкладки .html / .mht - в окне Microsoft Edge ' +
+                       'WebView2';
+  FWv2ViewItem.OnClick := Wv2ViewClick;
+  mView.Insert(mViewFmt.MenuIndex + 1, FWv2ViewItem);
   // Раскраска файлов в unIDE FAR - то же окно, что F9 - Options - Files
   // highlighting в самом FAR
   FFarColorsItem := TMenuItem.Create(Self);
@@ -77103,6 +77114,62 @@ begin
   fmpIeSep.Visible := IsHtml;
   fmpIeEdge.Visible := IsHtml;
   fmpIeEdge.Checked := IsHtml and FmtIsIeEdge(FCurrentFileName);
+  // WebView2 - для HTML и MHT
+  fmpWv2.Visible := (FWebView <> nil) and FWebView.IsShown and
+                    (FmtKindOf(FCurrentFileName) in [fkHtml, fkMht]);
+  fmpIeSep.Visible := fmpIeSep.Visible or fmpWv2.Visible;
+end;
+
+// View - Просмотр в WebView2 (и меню просмотра по формату): файл вкладки
+// (.html, .mht) - в окне WebView2. Файл берётся с диска: несохранённые
+// правки не видны. Нет WebView2 Runtime - предложить страницу загрузки
+procedure TForm1.Wv2ViewClick(Sender: TObject);
+var
+  ErrText: string;
+  RuntimeMissing: Boolean;
+  ViewForm: TWv2Form;
+begin
+  if (FCurrentFileName = '') or not FileExists(FCurrentFileName) or
+     not (FmtKindOf(FCurrentFileName) in [fkHtml, fkMht]) then
+  begin
+    StatusBar1.SimpleText := 'WebView2: откройте вкладку .html или .mht ' +
+                             '(сохранённый файл)';
+    StatusBar1.SimplePanel := True;
+    Exit;
+  end;
+  if RichEdit1.Modified then
+  begin
+    StatusBar1.SimpleText := 'WebView2: показан файл с диска, ' +
+                             'без несохранённых правок';
+    StatusBar1.SimplePanel := True;
+  end;
+  Screen.Cursor := crHourGlass;
+  try
+    ViewForm := Wv2ShowFile(FCurrentFileName, ErrText, RuntimeMissing);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  if ViewForm <> nil then
+  begin
+    Dbg('WebView2: ' + FCurrentFileName + ' (Runtime ' + Wv2RuntimeVersion +
+        ')', clGray);
+    Exit;
+  end;
+  Dbg('WebView2 не запустился: ' + ErrText, clRed);
+  if RuntimeMissing then
+  begin
+    if MessageDlg('Microsoft Edge WebView2 Runtime не установлен.' + #13#10#13#10 +
+                  'Открыть страницу загрузки? Там - "Evergreen Bootstrapper" ' +
+                  '(установка через интернет; на Windows 7 ставится ' +
+                  'последняя для неё версия 109).' + #13#10 +
+                  'После установки снова выберите "Просмотр в WebView2".',
+                  mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+      ShellExecute(Handle, 'open', PChar(Wv2DownloadUrl), nil, nil,
+                   SW_SHOWNORMAL);
+  end
+  else
+    MessageDlg('WebView2 не запустился.' + #13#10#13#10 + ErrText,
+               mtWarning, [mbOK], 0);
 end;
 
 // Режим IE 11 для файла вкладки: вкл / выкл, страница - заново (во второй

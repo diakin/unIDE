@@ -1,0 +1,371 @@
+unit Wv2View;
+
+// ---------------------------------------------------------------------------
+//  Просмотр страницы через Microsoft Edge WebView2 (Chromium) - отдельное
+//  окно (проба замены встроенного IE). Обёртка - WebView4Delphi
+//  (папка WebView4Delphi\source, см. README_unIDE.txt там же).
+//
+//  Загрузчик (GlobalWebView2Loader) создаётся при первом показе, а не при
+//  запуске программы: без WebView2 Runtime unIDE работает как раньше.
+//  Загрузчик встроенный (UseInternalLoader) - WebView2Loader.dll не нужна.
+//  Runtime не установлен - Wv2Start возвращает False и причину; повторная
+//  попытка (после установки Runtime) создаёт загрузчик заново.
+//
+//  Окно одно на программу (Wv2ShowFile): следующий файл открывается в нём
+//  же. Закрытие окна его прячет; уничтожается окно в finalization этого
+//  модуля - раньше, чем загрузчик (finalization uWVLoader): браузер должен
+//  уйти до загрузчика.
+// ---------------------------------------------------------------------------
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
+  StdCtrls,
+  uWVTypes, uWVLoader, uWVBrowserBase, uWVBrowser, uWVWinControl,
+  uWVWindowParent;
+
+const
+  // Страница загрузки WebView2 Runtime (Evergreen Bootstrapper; на
+  // Windows 7 ставит последнюю для неё версию 109)
+  Wv2DownloadUrl =
+    'https://developer.microsoft.com/microsoft-edge/webview2/consumer/';
+
+type
+  TWv2Form = class(TForm)
+  private
+    FTopPanel: TPanel;
+    FPathLabel: TLabel;
+    FReloadBtn: TButton;
+    FWindowParent: TWVWindowParent;
+    FBrowser: TWVBrowser;
+    FWaitTimer: TTimer;
+    FFileName: string;
+    FBrowserReady: Boolean;
+    FCreateAsked: Boolean;
+    procedure WaitTimerTick(Sender: TObject);
+    procedure ReloadClick(Sender: TObject);
+    procedure BrowserAfterCreated(Sender: TObject);
+    procedure BrowserInitError(Sender: TObject; aErrorCode: HRESULT;
+      const aErrorMessage: wvstring);
+    procedure BrowserTitleChanged(Sender: TObject);
+    procedure FormCloseEvent(Sender: TObject; var Action: TCloseAction);
+    procedure StartBrowser;
+    procedure NavigateFile;
+    procedure SetStatus(const AText: string);
+  protected
+    procedure WMMove(var Message: TWMMove); message WM_MOVE;
+    procedure WMMoving(var Message: TMessage); message WM_MOVING;
+  public
+    constructor CreateView(AOwner: TComponent);
+    procedure ShowFile(const AFileName: string);
+  end;
+
+// Загрузчик WebView2: создать и запустить (асинхронно). False - не вышло,
+// причина в AError; ARuntimeMissing - не установлен WebView2 Runtime
+function Wv2Start(out AError: string; out ARuntimeMissing: Boolean): Boolean;
+// Версия установленного WebView2 Runtime ('' - нет или загрузчика ещё нет)
+function Wv2RuntimeVersion: string;
+// Окно просмотра (создаётся при первом вызове) с файлом AFileName; nil -
+// окна нет (Wv2Start не прошёл - причина в AError)
+function Wv2ShowFile(const AFileName: string; out AError: string;
+  out ARuntimeMissing: Boolean): TWv2Form;
+// file:///D:/папка/файл.html: '\' -> '/', спецсимволы адреса - %XX
+function Wv2FileUrl(const AFileName: string): WideString;
+
+implementation
+
+var
+  GWv2Form: TWv2Form;
+
+// Папка данных WebView2 (кэш, профиль): %LOCALAPPDATA%\unIDE\WebView2;
+// нет LOCALAPPDATA - папка Temp
+function Wv2DataFolder: string;
+var
+  Buf: array[0..MAX_PATH] of Char;
+  Len: DWORD;
+begin
+  Len := GetEnvironmentVariable('LOCALAPPDATA', Buf, MAX_PATH);
+  if (Len > 0) and (Len < MAX_PATH) then
+    Result := IncludeTrailingPathDelimiter(Buf)
+  else
+  begin
+    Len := GetTempPath(MAX_PATH, Buf);
+    if Len > 0 then
+      Result := IncludeTrailingPathDelimiter(Buf)
+    else
+      Result := ExtractFilePath(ParamStr(0));
+  end;
+  Result := Result + 'unIDE\WebView2';
+end;
+
+function Wv2RuntimeVersion: string;
+begin
+  Result := '';
+  if GlobalWebView2Loader <> nil then
+    try
+      Result := GlobalWebView2Loader.InstalledRuntimeVersion;
+    except
+      Result := '';
+    end;
+end;
+
+function Wv2Start(out AError: string; out ARuntimeMissing: Boolean): Boolean;
+begin
+  AError := '';
+  ARuntimeMissing := False;
+  // Прежняя попытка не удалась (Runtime не было) - загрузчик заново
+  if (GlobalWebView2Loader <> nil) and
+     GlobalWebView2Loader.InitializationError then
+    FreeAndNil(GlobalWebView2Loader);
+  if GlobalWebView2Loader = nil then
+  begin
+    GlobalWebView2Loader := TWVLoader.Create(nil);
+    // COM главного потока уже поднят (встроенный IE, ComObj)
+    GlobalWebView2Loader.InitCOMLibrary := False;
+    GlobalWebView2Loader.UseInternalLoader := True;
+    GlobalWebView2Loader.ShowMessageDlg := False;
+    // Runtime 109 (Windows 7) старше той версии, под которую собрана
+    // обёртка: часть её возможностей не работает, страница - да
+    GlobalWebView2Loader.AllowOldRuntime := True;
+    GlobalWebView2Loader.TargetCompatibleBrowserVersion := '86.0.616.0';
+    GlobalWebView2Loader.UserDataFolder := Wv2DataFolder;
+    try
+      ForceDirectories(Wv2DataFolder);
+    except
+      // не создалась - WebView2 скажет сам
+    end;
+    if not GlobalWebView2Loader.StartWebView2 then
+    begin
+      AError := GlobalWebView2Loader.ErrorMessage;
+      ARuntimeMissing := Wv2RuntimeVersion = '';
+      FreeAndNil(GlobalWebView2Loader);
+      Result := False;
+      Exit;
+    end;
+  end;
+  Result := not GlobalWebView2Loader.InitializationError;
+  if not Result then
+  begin
+    AError := GlobalWebView2Loader.ErrorMessage;
+    ARuntimeMissing := Wv2RuntimeVersion = '';
+  end;
+end;
+
+function Wv2FileUrl(const AFileName: string): WideString;
+var
+  Wide: WideString;
+  CharIdx: Integer;
+  Ch: WideChar;
+begin
+  Wide := WideString(ExpandFileName(AFileName));
+  Result := 'file:///';
+  for CharIdx := 1 to Length(Wide) do
+  begin
+    Ch := Wide[CharIdx];
+    case Ch of
+      '\': Result := Result + '/';
+      '%': Result := Result + '%25';
+      '#': Result := Result + '%23';
+      '?': Result := Result + '%3F';
+      ' ': Result := Result + '%20';
+    else
+      Result := Result + Ch;
+    end;
+  end;
+end;
+
+function Wv2ShowFile(const AFileName: string; out AError: string;
+  out ARuntimeMissing: Boolean): TWv2Form;
+begin
+  Result := nil;
+  if not Wv2Start(AError, ARuntimeMissing) then
+    Exit;
+  if GWv2Form = nil then
+    GWv2Form := TWv2Form.CreateView(Application);
+  GWv2Form.ShowFile(AFileName);
+  Result := GWv2Form;
+end;
+
+{ TWv2Form }
+
+constructor TWv2Form.CreateView(AOwner: TComponent);
+begin
+  inherited CreateNew(AOwner);
+  Caption := 'WebView2';
+  Width := 1000;
+  Height := 750;
+  Position := poScreenCenter;
+  OnClose := FormCloseEvent;
+
+  FTopPanel := TPanel.Create(Self);
+  FTopPanel.Parent := Self;
+  FTopPanel.Align := alTop;
+  FTopPanel.Height := 30;
+  FTopPanel.BevelOuter := bvNone;
+  FTopPanel.Caption := '';
+
+  FReloadBtn := TButton.Create(Self);
+  FReloadBtn.Parent := FTopPanel;
+  FReloadBtn.SetBounds(6, 3, 90, 24);
+  FReloadBtn.Caption := 'Обновить';
+  FReloadBtn.Hint := 'Открыть файл заново (с диска)';
+  FReloadBtn.ShowHint := True;
+  FReloadBtn.OnClick := ReloadClick;
+
+  FPathLabel := TLabel.Create(Self);
+  FPathLabel.Parent := FTopPanel;
+  FPathLabel.SetBounds(104, 8, 880, 16);
+  FPathLabel.Anchors := [akLeft, akTop, akRight];
+  FPathLabel.AutoSize := False;
+  FPathLabel.ShowAccelChar := False;
+  FPathLabel.Caption := '';
+
+  FWindowParent := TWVWindowParent.Create(Self);
+  FWindowParent.Parent := Self;
+  FWindowParent.Align := alClient;
+
+  FBrowser := TWVBrowser.Create(Self);
+  FBrowser.TargetCompatibleBrowserVersion := '86.0.616.0';
+  FBrowser.OnAfterCreated := BrowserAfterCreated;
+  FBrowser.OnInitializationError := BrowserInitError;
+  FBrowser.OnDocumentTitleChanged := BrowserTitleChanged;
+  FWindowParent.Browser := FBrowser;
+
+  // Окружение WebView2 создаётся асинхронно - браузер ждёт его по таймеру
+  FWaitTimer := TTimer.Create(Self);
+  FWaitTimer.Enabled := False;
+  FWaitTimer.Interval := 100;
+  FWaitTimer.OnTimer := WaitTimerTick;
+end;
+
+procedure TWv2Form.SetStatus(const AText: string);
+begin
+  FPathLabel.Caption := AText;
+  FPathLabel.Hint := AText;
+end;
+
+procedure TWv2Form.ShowFile(const AFileName: string);
+begin
+  FFileName := AFileName;
+  Caption := 'WebView2 - ' + ExtractFileName(AFileName);
+  SetStatus(AFileName);
+  Show;
+  if WindowState = wsMinimized then
+    WindowState := wsNormal;
+  BringToFront;
+  if FBrowserReady then
+    NavigateFile
+  else
+    StartBrowser;
+end;
+
+// Окружение готово - браузер в окне; нет - ждать по таймеру
+procedure TWv2Form.StartBrowser;
+begin
+  if FCreateAsked then
+    Exit;
+  if (GlobalWebView2Loader = nil) or GlobalWebView2Loader.InitializationError then
+  begin
+    SetStatus('WebView2 не запустился');
+    Exit;
+  end;
+  if GlobalWebView2Loader.Initialized then
+  begin
+    FCreateAsked := True;
+    SetStatus('Запуск WebView2...');
+    if not FBrowser.CreateBrowser(FWindowParent.Handle) then
+    begin
+      FCreateAsked := False;
+      SetStatus('WebView2: браузер не создался');
+    end;
+  end
+  else
+  begin
+    SetStatus('Ожидание WebView2...');
+    FWaitTimer.Enabled := True;
+  end;
+end;
+
+procedure TWv2Form.WaitTimerTick(Sender: TObject);
+begin
+  FWaitTimer.Enabled := False;
+  if (GlobalWebView2Loader = nil) or GlobalWebView2Loader.InitializationError then
+  begin
+    if GlobalWebView2Loader <> nil then
+      SetStatus('WebView2 не запустился: ' + GlobalWebView2Loader.ErrorMessage)
+    else
+      SetStatus('WebView2 не запустился');
+    Exit;
+  end;
+  if GlobalWebView2Loader.Initialized then
+    StartBrowser
+  else
+    FWaitTimer.Enabled := True;
+end;
+
+procedure TWv2Form.NavigateFile;
+begin
+  if FFileName = '' then
+    Exit;
+  SetStatus(FFileName + '   (WebView2 ' + Wv2RuntimeVersion + ')');
+  if not FBrowser.Navigate(Wv2FileUrl(FFileName)) then
+    SetStatus('WebView2: не открылся ' + FFileName);
+end;
+
+procedure TWv2Form.ReloadClick(Sender: TObject);
+begin
+  if FBrowserReady then
+    NavigateFile;
+end;
+
+procedure TWv2Form.BrowserAfterCreated(Sender: TObject);
+begin
+  FBrowserReady := True;
+  FWindowParent.UpdateSize;
+  NavigateFile;
+end;
+
+procedure TWv2Form.BrowserInitError(Sender: TObject; aErrorCode: HRESULT;
+  const aErrorMessage: wvstring);
+begin
+  FCreateAsked := False;
+  SetStatus('WebView2: ошибка ' + IntToHex(aErrorCode, 8) + ' - ' +
+            string(aErrorMessage));
+end;
+
+procedure TWv2Form.BrowserTitleChanged(Sender: TObject);
+begin
+  if FBrowser.DocumentTitle <> '' then
+    Caption := 'WebView2 - ' + string(FBrowser.DocumentTitle)
+  else
+    Caption := 'WebView2 - ' + ExtractFileName(FFileName);
+end;
+
+procedure TWv2Form.FormCloseEvent(Sender: TObject; var Action: TCloseAction);
+begin
+  Action := caHide;
+end;
+
+// Без этого часть элементов страницы (выпадающие списки) встаёт не на место
+procedure TWv2Form.WMMove(var Message: TWMMove);
+begin
+  inherited;
+  if FBrowser <> nil then
+    FBrowser.NotifyParentWindowPositionChanged;
+end;
+
+procedure TWv2Form.WMMoving(var Message: TMessage);
+begin
+  inherited;
+  if FBrowser <> nil then
+    FBrowser.NotifyParentWindowPositionChanged;
+end;
+
+initialization
+
+finalization
+  // Браузер - раньше загрузчика (его освобождает finalization uWVLoader)
+  FreeAndNil(GWv2Form);
+
+end.

@@ -134,6 +134,13 @@ F12, кнопка <b>Txt</b>/<b>Fmt</b> у левого края вкладки,
 показать в режиме IE 11: меню правой кнопки на просмотре &rarr; «Режим IE 11 для этого файла».
 Страница тогда открывается копией с <code>&lt;meta http-equiv="X-UA-Compatible" content="IE=edge"&gt;</code>
 (сам файл не меняется); список таких файлов &mdash; в editor.ini, раздел <code>[FmtIeEdge]</code>.</p>
+<p><b>Просмотр в WebView2 (Chromium)</b> (меню View или меню правой кнопки на просмотре): файл вкладки
+.html или .mht открывается в отдельном окне Microsoft Edge WebView2 &mdash; HTML5, CSS3 и JavaScript, как в
+современном браузере. Показывается файл с диска (несохранённые правки не видны), кнопка «Обновить» открывает
+его заново. Нужен установленный Microsoft Edge WebView2 Runtime; если его нет, unIDE предлагает открыть
+страницу загрузки (там &laquo;Evergreen Bootstrapper&raquo;; на Windows&nbsp;7 он ставит последнюю для неё
+версию 109). Данные WebView2 (кэш) &mdash; в <code>%LOCALAPPDATA%\unIDE\WebView2</code>. Обёртка &mdash;
+WebView4Delphi (папка <code>WebView4Delphi</code>, лицензия MIT).</p>
 <p>Меню правой кнопки на просмотре: «Как текст» / «По формату», «Копировать» (Ctrl+C),
 «Выделить всё» (Ctrl+A), для .html &mdash; «Режим IE 11 для этого файла».</p>
 
