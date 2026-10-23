@@ -1027,6 +1027,7 @@ type
     // View - IncManager (OnClick в .dfm - поэтому до private)
     procedure IncManagerClick(Sender: TObject);
     procedure UtilsMenuOpen(Sender: TObject);
+    procedure LostFilesAsk;
     procedure FindIncClick(Sender: TObject);
     // Utils - unIDE FAR
     procedure FarMenuClick(Sender: TObject);
@@ -2073,6 +2074,11 @@ type
     FRelocateUpEnd: Cardinal;
     // То же для поиска по имени в горячих папках при загрузке проекта
     FRelocateHotEnd: Cardinal;
+    // Загрузка проекта: потерянные файлы не ищутся (ResolveFileName - путь
+    // как есть), окна помечаются Broken; когда среда загрузилась (первый
+    // простой, FLostAskPending), - вопрос "Не найдены ... Искать?"
+    FLoadNoRelocate: Boolean;
+    FLostAskPending: Boolean;
     FRelocateDeadline: Cardinal;
     FRelocateCut: Boolean;
 
@@ -14964,6 +14970,9 @@ begin
   Result := AFile;
   if (AFile = '') or FileExists(AFile) then
     Exit;
+  // Загрузка проекта: искать - потом, по вопросу (LostFilesAsk)
+  if FLoadNoRelocate then
+    Exit;
 
   Found := RelocateFile(AFile);
   if Found = '' then
@@ -15122,12 +15131,22 @@ begin
   // "Да для всех" действует только на этот прогон
   FRelocateAll := False;
 
+  // Запас времени на обход дерева - общий на весь прогон, а не на каждый
+  // файл: потерянных бывают десятки
+  FRelocateUpEnd := GetTickCount + 2 * RelocateSearchMs;
+  FRelocateHotEnd := GetTickCount + 3 * RelocateHotMs;
+  try
   for I := 0 to WindowsItemCount - 1 do
   begin
     if (not FWindows[I].Used) or (not FWindows[I].Broken) then
       Continue;
 
-    NewName := RelocateFile(FWindows[I].FileName);
+    Screen.Cursor := crHourGlass;
+    try
+      NewName := RelocateFile(FWindows[I].FileName);
+    finally
+      Screen.Cursor := crDefault;
+    end;
     if NewName = '' then
       Continue;
 
@@ -15158,6 +15177,10 @@ begin
 
     if I = FWindowsIndex then
       CurFixed := True;
+  end;
+  finally
+    FRelocateUpEnd := 0;
+    FRelocateHotEnd := 0;
   end;
 
   Result := Found;
@@ -15257,6 +15280,12 @@ begin
   // на всю загрузку (RelocateFile)
   FRelocateUpEnd := GetTickCount + RelocateSearchMs;
   FRelocateHotEnd := GetTickCount + 2 * RelocateSearchMs;
+
+  // Потерянные файлы при загрузке не ищутся: среда сначала открывается,
+  // потом вопрос (LostFilesAsk). Поиск по диску здесь держал запуск
+  // минутами (hang.log), окно стояло недорисованным
+  FLoadNoRelocate := True;
+  FLostAskPending := False;
 
   // Раздел проекта в editor.ini: [Project.<имя>], ключи бывших разделов .prj
   // с приставкой (Windows_win0, Tabs_0, Bookmarks_...) - см. PrjStore
@@ -15409,6 +15438,7 @@ begin
     Ini.Free;
     FRelocateUpEnd := 0;   // дальше - свой запас на каждый поиск
     FRelocateHotEnd := 0;
+    FLoadNoRelocate := False;
   end;
 
   TFiles := GetTickCount - StageTick;
@@ -15456,6 +15486,44 @@ begin
   // Слепок берём ПОСЛЕ AskSaveRelocated: она могла сама записать проект
   // с новыми путями, и тогда состав уже совпадает с файлом
   FProjectSig := ProjectSignature;
+
+  // Не найденные файлы - вопрос, когда окно уже на экране (простой)
+  FLostAskPending := BrokenWindowsCount > 0;
+end;
+
+// После загрузки проекта (первый простой): файлов проекта нет на месте -
+// список и вопрос, искать ли. Да - тот же поиск, что Windows - Find lost
+// files... (рядом с программой, в горячих папках; не нашлось - окно папок)
+procedure TForm1.LostFilesAsk;
+var
+  WinIdx, Count, Shown: Integer;
+  ListText: string;
+begin
+  FLostAskPending := False;
+  Count := 0;
+  Shown := 0;
+  ListText := '';
+  for WinIdx := 0 to WindowsItemCount - 1 do
+    if FWindows[WinIdx].Used and FWindows[WinIdx].Broken then
+    begin
+      Inc(Count);
+      if Shown < 15 then
+      begin
+        ListText := ListText + FWindows[WinIdx].FileName + #13#10;
+        Inc(Shown);
+      end;
+    end;
+  if Count = 0 then
+    Exit;
+  if Count > Shown then
+    ListText := ListText + '... и ещё ' + IntToStr(Count - Shown) + #13#10;
+  if MessageDlg('Не найдены файлы проекта (' + IntToStr(Count) + '):' +
+                #13#10#13#10 + ListText + #13#10 + 'Искать их?' + #13#10 +
+                '(Нет - они останутся в меню Windows с красным крестиком; ' +
+                'искать потом - Windows - Find lost files...)',
+                mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+  TryFindDisabledClick(nil);
 end;
 
 // Слепок того, что реально попадает в .prj и при этом меняется по воле
@@ -56533,6 +56601,9 @@ begin
   UtilMenuUpdate;
   if not FUtilsPrjDone or (FUtilsPrjKey <> FCurrentProject) then
     UtilsMenuOpen(nil);
+  // Проект загружен, файлов нет на месте - вопрос, искать ли
+  if FLostAskPending then
+    LostFilesAsk;
   // Долгий простой - в HiLite log (не чаще раза в 2 с): он тормозит всё,
   // что идёт сообщениями, - мышь, клавиатуру, перерисовку
   Spent := GetTickCount - StartTick;
