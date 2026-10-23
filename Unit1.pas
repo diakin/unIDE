@@ -63706,6 +63706,11 @@ begin
     'cd /d "' + ADir + '"'#13#10 +
     'echo git ' + StringReplace(AArgs, '%', '%%', [rfReplaceAll]) + #13#10 +
     'echo.'#13#10 +
+    'echo Password: personal access token GitHub. Символы при вводе не ' +
+    'показываются - это нормально, после ввода нажмите Enter.'#13#10 +
+    'echo Вставить токен: правой кнопкой по заголовку окна - Изменить - ' +
+    'Вставить (Ctrl+V в консоли Windows 7 не работает).'#13#10 +
+    'echo.'#13#10 +
     '"' + AGit + '" ' + StringReplace(AArgs, '%', '%%', [rfReplaceAll]) +
     #13#10 +
     'set UNIDE_RC=%ERRORLEVEL%'#13#10 +
