@@ -2254,6 +2254,7 @@ type
     procedure BusyStage(const AStage: string);
     procedure BusyTick;
     procedure BusyEnd(const AResult: string; AOk: Boolean);
+    procedure BusyNote(const AText: string; AOk: Boolean; AShowMs: Cardinal);
     procedure AppActivate(Sender: TObject);
     procedure WMCheckDisk(var Msg: TMessage); message WM_USER + 315;
     procedure WMObjRefresh(var Msg: TMessage); message WM_USER + 316;
@@ -48293,6 +48294,42 @@ begin
   FBusyHide.Enabled := True;
 end;
 
+// Сообщение на той же панели (вне долгой работы): AText - зелёным (AOk)
+// или красным, AShowMs мс; панель шире обычной - по длине текста, не шире
+// панели объявления; полный текст - во всплывающей подсказке
+procedure TForm1.BusyNote(const AText: string; AOk: Boolean;
+  AShowMs: Cardinal);
+var
+  NoteWidth: Integer;
+begin
+  if (FBusyPanel = nil) or (FDeclPanel = nil) or (FBusyDepth > 0) or
+     (AText = '') then
+    Exit;
+  FBusyHide.Enabled := False;
+  FBusyPanel.Caption := '  ' + AText;
+  FBusyPanel.Hint := AText;
+  FBusyPanel.ShowHint := True;
+  // Canvas панели защищён - ширина текста по холсту формы её шрифтом
+  Canvas.Font := FBusyPanel.Font;
+  NoteWidth := Canvas.TextWidth(FBusyPanel.Caption) + 24;
+  if NoteWidth < 320 then
+    NoteWidth := 320;
+  if NoteWidth > FDeclPanel.ClientWidth - 20 then
+    NoteWidth := FDeclPanel.ClientWidth - 20;
+  FBusyPanel.SetBounds(FDeclPanel.ClientWidth - NoteWidth - 20, 1, NoteWidth,
+                       FDeclPanel.ClientHeight - 2);
+  FBusyPanel.Anchors := [akTop, akRight];
+  if AOk then
+    FBusyPanel.Color := $00A0FFA0
+  else
+    FBusyPanel.Color := $00A0A0FF;
+  FBusyPanel.Visible := True;
+  FBusyPanel.BringToFront;
+  FBusyPanel.Update;
+  FBusyHide.Interval := AShowMs;
+  FBusyHide.Enabled := True;
+end;
+
 procedure TForm1.BusyHideTick(Sender: TObject);
 begin
   FBusyHide.Enabled := False;
@@ -64255,6 +64292,11 @@ begin
   begin
     LogComp('Подсказка: ' + HintText);
     GitSetHint(HintText, HintIsError);
+    // И на панели над редактором (где был ход команды): ошибка - дольше
+    if HintIsError then
+      BusyNote('git: ' + HintText, False, 20000)
+    else
+      BusyNote('git: ' + HintText, True, 8000);
   end;
 end;
 
