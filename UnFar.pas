@@ -78,6 +78,10 @@ unit UnFar;
 //    - b.27: Ctrl+Left / Ctrl+Right в режиме F4 (одна панель) - граница
 //      окна FAR и редактора на клетку (OnHalfResize, ширину меняет Unit1,
 //      как сплиттер).
+//    - b.28: режим F4, Alt+F1 / Alt+F2 на скрытую панель (на её месте
+//      редактор) - снова обе панели (OnShowPanels, Unit1 - как кнопка []:
+//      файл остаётся вкладкой); на видимую - меню дисков, как раньше. Из
+//      редактора - так же (Unit1, AltPanelKey).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -107,7 +111,7 @@ uses
   Clipbrd, IniBuf, SzSetup;
 
 const
-  FarBuild = 'b.27';
+  FarBuild = 'b.28';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -291,6 +295,7 @@ type
     FOnEditFile: TFarEditEvent;
     FOnLeave: TNotifyEvent;
     FOnHalfResize: TFarHalfResizeEvent;
+    FOnShowPanels: TNotifyEvent;
     FOnColorsDialog: TNotifyEvent;
     FIniName: string;             // editor.ini (LoadState) - для Save setup
     // Раскраска файлов: правила и их расширения как WideString (сравнение
@@ -556,6 +561,11 @@ type
     // WM_SYSKEYUP) из TForm1.AppMessage. True - разобрано, дальше не
     // отдавать. F1..F12 FAR забирает всегда.
     function KeyMessage(const AMsg: TMsg): Boolean;
+    // Alt+F1 (APanelIndex = 0) / Alt+F2 (1): панель скрыта (режим F4) -
+    // снова обе панели (OnShowPanels), видна - меню дисков. Отпускание Alt
+    // после этого гасится (полоса меню IDE не открывается). Зовёт и Unit1,
+    // когда Alt+F1 / Alt+F2 нажаты в редакторе
+    procedure AltPanelKey(APanelIndex: Integer);
     // Перечитать обе панели (окно открыли снова - файлы могли измениться)
     procedure RereadAll;
     // Одна панель на всё окно (APanel 0 / 1, она же активная) или обе (-1).
@@ -578,6 +588,8 @@ type
     // Ctrl+Left / Ctrl+Right, когда видна одна панель: ширина окна FAR
     property OnHalfResize: TFarHalfResizeEvent read FOnHalfResize
       write FOnHalfResize;
+    // Alt+F1 / Alt+F2 на скрытую панель (режим F4): снова обе панели (Unit1)
+    property OnShowPanels: TNotifyEvent read FOnShowPanels write FOnShowPanels;
     // F9 - Options - Files highlighting: окно правил раскраски (Unit1)
     property OnColorsDialog: TNotifyEvent read FOnColorsDialog
       write FOnColorsDialog;
@@ -3003,12 +3015,12 @@ begin
       case AKey of
         VK_F1:
           begin
-            ShowDriveMenu(0);
+            AltPanelKey(0);
             Exit;
           end;
         VK_F2:
           begin
-            ShowDriveMenu(1);
+            AltPanelKey(1);
             Exit;
           end;
         VK_F12:
@@ -4824,6 +4836,23 @@ end;
 // ---------------------------------------------------------------------------
 //  Смена диска (Alt+F1 - левая панель, Alt+F2 - правая)
 // ---------------------------------------------------------------------------
+
+procedure TFarView.AltPanelKey(APanelIndex: Integer);
+begin
+  FEatAltUp := True;
+  if (FSingle >= 0) and (APanelIndex <> FSingle) then
+  begin
+    if Assigned(FOnShowPanels) then
+      FOnShowPanels(Self)
+    else
+    begin
+      SetSingle(-1);
+      Invalidate;
+    end;
+    Exit;
+  end;
+  ShowDriveMenu(APanelIndex);
+end;
 
 procedure TFarView.ShowDriveMenu(APanelIndex: Integer);
 var

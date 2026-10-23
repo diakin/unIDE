@@ -1035,6 +1035,7 @@ type
     procedure FarEditorEsc;
     procedure FarSplitterMoved(Sender: TObject);
     procedure FarHalfResize(ADelta, ACellWidth: Integer);
+    procedure FarShowPanels(Sender: TObject);
     procedure FarColorsClick(Sender: TObject);
     procedure FarBtnClick(Sender: TObject);
     procedure FarCollapse(ACollapse: Boolean);
@@ -23111,6 +23112,7 @@ procedure TForm1.AppMessage(var Msg: TMsg; var Handled: Boolean);
 var
   C: TWinControl;
   CursorPt: TPoint;
+  PanelIdx: Integer;
 begin
   // Отпускание F10 после того, как F10 открыл или закрыл unIDE FAR: иначе
   // Windows откроет полосу меню IDE (в каком бы окне ни был фокус)
@@ -23147,6 +23149,34 @@ begin
     if (Msg.lParam and $40000000) = 0 then
       FarMenuClick(nil);
     FFarEatF10Up := True;
+    Handled := True;
+    Exit;
+  end;
+  // Режим F4 unIDE FAR, фокус не в FAR (редактор): Alt+F1 / Alt+F2 на
+  // скрытую панель (на её месте редактор) - снова обе панели; на видимую -
+  // фокус в FAR (свёрнут - развернуть) и меню дисков. Отпускание Alt
+  // гасит FAR: фокус к тому времени у него
+  if FFarHalf and (FFar <> nil) and (Msg.message = WM_SYSKEYDOWN) and
+     ((Msg.wParam = VK_F1) or (Msg.wParam = VK_F2)) and
+     (GetKeyState(VK_MENU) < 0) and (GetKeyState(VK_CONTROL) >= 0) and
+     (GetKeyState(VK_SHIFT) >= 0) and (Screen.ActiveForm = Self) and
+     ((Msg.hwnd = Handle) or IsChild(Handle, Msg.hwnd)) then
+  begin
+    if (Msg.lParam and $40000000) = 0 then
+    begin
+      if Msg.wParam = VK_F1 then
+        PanelIdx := 0
+      else
+        PanelIdx := 1;
+      if PanelIdx = FFar.SinglePanel then
+      begin
+        if FFarCollapsed then
+          FarCollapse(False);
+        if FFar.CanFocus then
+          FFar.SetFocus;
+      end;
+      FFar.AltPanelKey(PanelIdx);
+    end;
     Handled := True;
     Exit;
   end;
@@ -37435,6 +37465,7 @@ begin
     FFar.OnEditFile := FarEditFile;
     FFar.OnLeave := FarLeave;
     FFar.OnHalfResize := FarHalfResize;
+    FFar.OnShowPanels := FarShowPanels;
     FFar.OnColorsDialog := FarColorsClick;
     FFarOwnWin := -1;
     FFarLastTabIdx := -1;
@@ -37770,6 +37801,14 @@ begin
   finally
     FarEndUpdate;
   end;
+end;
+
+// Режим F4, Alt+F1 / Alt+F2 на скрытую панель FAR: снова обе панели (как
+// кнопка [] у развёрнутого FAR - файл остаётся вкладкой)
+procedure TForm1.FarShowPanels(Sender: TObject);
+begin
+  if FFarHalf then
+    FarHalfOff;
 end;
 
 // Режим F4, Ctrl+Left / Ctrl+Right в FAR: граница окна FAR и редактора
