@@ -2376,6 +2376,9 @@ type
     procedure FifScanFile(const AFile: string; var ACancel: Boolean);
     // Файл найден обходом папок (на диске) - сразу поиск в нём
     procedure FifFileFound(const AFile: string; var ACancel: Boolean);
+    // Искать файл на диске: найденный файл - сразу строкой Match list
+    procedure FifFileFoundName(const AFile: string; var ACancel: Boolean);
+    procedure FifAddFileRow(const AFile: string);
     function  FifProjectFiles(AList: TStrings; var ANote: string): Boolean;
     procedure FifScanList(AList: TStrings; const APattern: string;
                           var ATotal, AFiles: Integer; var ACancel: Boolean);
@@ -21903,7 +21906,18 @@ begin
         Masks := Masks + OtherMasks;
       end;
       if FFifFileMode then
-        FifCollectDirs(DirText, Masks, Dlg.chkSub.Checked, List, Cancel)
+      begin
+        // Искать файл: найденный файл - сразу строкой Match list
+        // (FifFileFoundName), обход идёт дальше
+        FFifSeen := TStringList.Create;
+        try
+          FFifSeen.Sorted := True;
+          FifCollectDirs(DirText, Masks, Dlg.chkSub.Checked, List, Cancel,
+                         FifFileFoundName);
+        finally
+          FreeAndNil(FFifSeen);
+        end;
+      end
       else
       begin
         // Файл найден - сразу поиск в нём, его вхождения - в Match list,
@@ -21924,7 +21938,14 @@ begin
         Files := FFifFiles;
       end;
     end;
-    if FFifFileMode then
+    if FFifFileMode and not FFifProject then
+    begin
+      // Строки уже добавлены по ходу обхода
+      FifGridGrow;
+      Files := FFifFiles;
+      Total := FFifFiles;
+    end
+    else if FFifFileMode then
     begin
       // Только имена файлов, без содержимого
       if not Cancel and not FFifAbort then
@@ -22193,22 +22214,59 @@ end;
 // файл (MatchGridDrawCell, MatchGridMouseDown)
 procedure TForm1.FifListFilesOnly(AList: TStrings);
 var
-  FileIdx, RowIdx: Integer;
-  Found: TSearchRec;
+  FileIdx: Integer;
 begin
   for FileIdx := 0 to AList.Count - 1 do
-  begin
-    RowIdx := AddMatchGroup(AList[FileIdx], IndexOfWindowByFile(AList[FileIdx]));
-    FMatchRows[RowIdx].HitCount := -1;
-    if FindFirst(AList[FileIdx], faAnyFile, Found) = 0 then
-    try
-      FMatchRows[RowIdx].Text := FormatFloat('#,##0', Found.Size) + ' байт, ' +
-        FormatDateTime('dd.mm.yyyy hh:nn', FileDateToDateTime(Found.Time));
-    finally
-      FindClose(Found);
-    end;
-  end;
+    FifAddFileRow(AList[FileIdx]);
   FillMatchGrid;
+end;
+
+// Строка-файл Match list (HitCount = -1): справа размер и время
+procedure TForm1.FifAddFileRow(const AFile: string);
+var
+  RowIdx: Integer;
+  Found: TSearchRec;
+begin
+  RowIdx := AddMatchGroup(AFile, IndexOfWindowByFile(AFile));
+  FMatchRows[RowIdx].HitCount := -1;
+  if FindFirst(AFile, faAnyFile, Found) = 0 then
+  try
+    FMatchRows[RowIdx].Text := FormatFloat('#,##0', Found.Size) + ' байт, ' +
+      FormatDateTime('dd.mm.yyyy hh:nn', FileDateToDateTime(Found.Time));
+  finally
+    FindClose(Found);
+  end;
+end;
+
+// Искать файл на диске: обход нашёл файл - сразу строкой в Match list
+// (новые строки показывает FifStep не реже раза в 100 мс); тот же файл
+// второй раз (папка внутри другой отмеченной) - мимо
+procedure TForm1.FifFileFoundName(const AFile: string; var ACancel: Boolean);
+var
+  FileKey: string;
+  Found: Integer;
+begin
+  if FFifAbort then
+  begin
+    ACancel := True;
+    Exit;
+  end;
+  if FFifSeen <> nil then
+  begin
+    FileKey := AnsiLowerCase(AFile);
+    if FFifSeen.Find(FileKey, Found) then
+      Exit;
+    FFifSeen.Add(FileKey);
+  end;
+  FifAddFileRow(AFile);
+  Inc(FFifFiles);
+  FFifTotal := FFifFiles;
+  if GetTickCount - FFifLastTick >= 100 then
+    if not FifStep(FifPathLine('Файл: ', AFile) + #13#10'Найдено файлов: ' +
+                   IntToStr(FFifFiles)) then
+      ACancel := True;
+  if FFifFiles >= FifMaxHits then
+    ACancel := True;
 end;
 
 procedure TForm1.FifScanList(AList: TStrings; const APattern: string;
@@ -63662,6 +63720,7 @@ end;
 // Пока git работает: окно живёт, Esc - прервать
 function TForm1.GitOnIdle: Boolean;
 begin
+  BusyTick;   // жёлтая панель: команда, секунды, бегущие точки
   Application.ProcessMessages;
   if Application.Active and (GetAsyncKeyState(VK_ESCAPE) < 0) then
     FGitCancel := True;
@@ -63674,7 +63733,7 @@ end;
 function TForm1.GitRunIn(const AGit, ADir, AArgs: string; ALog: Boolean;
   var AOutput: WideString): Integer;
 var
-  ErrText: string;
+  ErrText, GitCmd: string;
   ExitCode, ConsoleCode: Integer;
   Wincred: Boolean;
 begin
@@ -63684,8 +63743,27 @@ begin
   begin
     LogComp('git ' + AArgs + '   (' + ADir + ')');
     FGitCancel := False;
-    ErrText := GitExec(WideString(AGit), WideString(AArgs), WideString(ADir),
-      GitOnLine, GitOnIdle, AOutput, ExitCode);
+    // Ход команды - на жёлтой панели над редактором (BusyBegin): fetch,
+    // pull, push и прочие команды с выводом в журнал
+    GitCmd := Trim(AArgs);
+    if Pos(' ', GitCmd) > 0 then
+      GitCmd := Copy(GitCmd, 1, Pos(' ', GitCmd) - 1);
+    GitCmd := 'git ' + GitCmd;
+    BusyBegin(GitCmd + ' (Esc - прервать)');
+    try
+      ErrText := GitExec(WideString(AGit), WideString(AArgs),
+        WideString(ADir), GitOnLine, GitOnIdle, AOutput, ExitCode);
+    finally
+      if FGitCancel then
+        BusyEnd(GitCmd + ': прервано', False)
+      else if ErrText <> '' then
+        BusyEnd(GitCmd + ': не запустился', False)
+      else if ExitCode = 0 then
+        BusyEnd(GitCmd + ': готово', True)
+      else
+        BusyEnd(GitCmd + ': ошибка, код ' + IntToStr(ExitCode) +
+                ' - см. Compilation log', False);
+    end;
   end
   else
     ErrText := GitExec(WideString(AGit), WideString(AArgs), WideString(ADir),
