@@ -22,8 +22,8 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
   StdCtrls,
-  uWVTypes, uWVLoader, uWVBrowserBase, uWVBrowser, uWVWinControl,
-  uWVWindowParent;
+  uWVTypes, uWVTypeLibrary, uWVLoader, uWVBrowserBase, uWVBrowser,
+  uWVWinControl, uWVWindowParent, uWVCoreWebView2Args;
 
 const
   // Страница загрузки WebView2 Runtime (Evergreen Bootstrapper; на
@@ -49,6 +49,10 @@ type
     procedure BrowserInitError(Sender: TObject; aErrorCode: HRESULT;
       const aErrorMessage: wvstring);
     procedure BrowserTitleChanged(Sender: TObject);
+    procedure BrowserNavCompleted(Sender: TObject; const aWebView: ICoreWebView2;
+      const aArgs: ICoreWebView2NavigationCompletedEventArgs);
+    procedure BrowserProcessFailed(Sender: TObject; const aWebView: ICoreWebView2;
+      const aArgs: ICoreWebView2ProcessFailedEventArgs);
     procedure FormCloseEvent(Sender: TObject; var Action: TCloseAction);
     procedure StartBrowser;
     procedure NavigateFile;
@@ -128,6 +132,9 @@ begin
     // Runtime 109 (Windows 7) старше той версии, под которую собрана
     // обёртка: часть её возможностей не работает, страница - да
     GlobalWebView2Loader.AllowOldRuntime := True;
+    // Без GPU: на Windows 7 окно WebView2 с ускорением бывает чёрным
+    // (--disable-gpu --disable-gpu-compositing)
+    GlobalWebView2Loader.EnableGPU := False;
     GlobalWebView2Loader.TargetCompatibleBrowserVersion := '86.0.616.0';
     GlobalWebView2Loader.UserDataFolder := Wv2DataFolder;
     try
@@ -230,6 +237,8 @@ begin
   FBrowser.OnAfterCreated := BrowserAfterCreated;
   FBrowser.OnInitializationError := BrowserInitError;
   FBrowser.OnDocumentTitleChanged := BrowserTitleChanged;
+  FBrowser.OnNavigationCompleted := BrowserNavCompleted;
+  FBrowser.OnProcessFailed := BrowserProcessFailed;
   FWindowParent.Browser := FBrowser;
 
   // Окружение WebView2 создаётся асинхронно - браузер ждёт его по таймеру
@@ -340,6 +349,42 @@ begin
     Caption := 'WebView2 - ' + string(FBrowser.DocumentTitle)
   else
     Caption := 'WebView2 - ' + ExtractFileName(FFileName);
+end;
+
+// Загрузка закончилась: успех - путь и версия Runtime, ошибка - её код
+// (COREWEBVIEW2_WEB_ERROR_STATUS)
+procedure TWv2Form.BrowserNavCompleted(Sender: TObject;
+  const aWebView: ICoreWebView2;
+  const aArgs: ICoreWebView2NavigationCompletedEventArgs);
+var
+  Args: TCoreWebView2NavigationCompletedEventArgs;
+begin
+  Args := TCoreWebView2NavigationCompletedEventArgs.Create(aArgs);
+  try
+    if Args.IsSuccess then
+      SetStatus(FFileName + '   (загружено, WebView2 ' + Wv2RuntimeVersion + ')')
+    else
+      SetStatus('WebView2: страница не загрузилась, код ошибки ' +
+                IntToStr(Integer(Args.WebErrorStatus)) + ' - ' + FFileName);
+  finally
+    Args.Free;
+  end;
+end;
+
+// Процесс WebView2 (браузер, страница, GPU) упал или завис
+procedure TWv2Form.BrowserProcessFailed(Sender: TObject;
+  const aWebView: ICoreWebView2;
+  const aArgs: ICoreWebView2ProcessFailedEventArgs);
+var
+  Args: TCoreWebView2ProcessFailedEventArgs;
+begin
+  Args := TCoreWebView2ProcessFailedEventArgs.Create(aArgs);
+  try
+    SetStatus('WebView2: сбой процесса, вид ' +
+              IntToStr(Integer(Args.ProcessFailedKind)));
+  finally
+    Args.Free;
+  end;
 end;
 
 procedure TWv2Form.FormCloseEvent(Sender: TObject; var Action: TCloseAction);
