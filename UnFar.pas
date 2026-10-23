@@ -75,6 +75,9 @@ unit UnFar;
 //      вправо (левая панель уже / шире; при пустой командной строке, как в
 //      FAR; в строке с текстом - каретка на слово). Сдвиг от середины -
 //      editor.ini [Far] PanelShift.
+//    - b.27: Ctrl+Left / Ctrl+Right в режиме F4 (одна панель) - граница
+//      окна FAR и редактора на клетку (OnHalfResize, ширину меняет Unit1,
+//      как сплиттер).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -104,7 +107,7 @@ uses
   Clipbrd, IniBuf, SzSetup;
 
 const
-  FarBuild = 'b.26';
+  FarBuild = 'b.27';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -262,6 +265,9 @@ type
   // Shift+F4 (пустой)
   TFarEditEvent = procedure(const AFileName: WideString;
     ACreated: Boolean) of object;
+  // Режим F4, Ctrl+Left / Ctrl+Right: граница окна FAR влево (ADelta = -1)
+  // или вправо (1) на ACellWidth пикселей
+  TFarHalfResizeEvent = procedure(ADelta, ACellWidth: Integer) of object;
 
   TFarView = class(TCustomControl)
   private
@@ -284,6 +290,7 @@ type
     FOnStatus: TFarStatusEvent;
     FOnEditFile: TFarEditEvent;
     FOnLeave: TNotifyEvent;
+    FOnHalfResize: TFarHalfResizeEvent;
     FOnColorsDialog: TNotifyEvent;
     FIniName: string;             // editor.ini (LoadState) - для Save setup
     // Раскраска файлов: правила и их расширения как WideString (сравнение
@@ -568,6 +575,9 @@ type
     property OnEditFile: TFarEditEvent read FOnEditFile write FOnEditFile;
     // Tab, когда видна одна панель: фокус - редактору
     property OnLeave: TNotifyEvent read FOnLeave write FOnLeave;
+    // Ctrl+Left / Ctrl+Right, когда видна одна панель: ширина окна FAR
+    property OnHalfResize: TFarHalfResizeEvent read FOnHalfResize
+      write FOnHalfResize;
     // F9 - Options - Files highlighting: окно правил раскраски (Unit1)
     property OnColorsDialog: TNotifyEvent read FOnColorsDialog
       write FOnColorsDialog;
@@ -2170,10 +2180,11 @@ procedure TFarView.ChangePanelShift(ADelta: Integer);
 var
   OldWidth: Integer;
 begin
+  // Одна панель (F4): двигается граница окна FAR и редактора (Unit1)
   if FSingle >= 0 then
   begin
-    Status('unIDE FAR: видна одна панель (F4) - ширину окна меняет ' +
-      'сплиттер');
+    if Assigned(FOnHalfResize) then
+      FOnHalfResize(ADelta, FCellW);
     Exit;
   end;
   OldWidth := LeftPanelWidth;

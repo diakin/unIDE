@@ -1034,6 +1034,7 @@ type
     procedure FarHalfOffLayout;
     procedure FarEditorEsc;
     procedure FarSplitterMoved(Sender: TObject);
+    procedure FarHalfResize(ADelta, ACellWidth: Integer);
     procedure FarColorsClick(Sender: TObject);
     procedure FarBtnClick(Sender: TObject);
     procedure FarCollapse(ACollapse: Boolean);
@@ -37433,6 +37434,7 @@ begin
     FFar.OnStatus := FarStatus;
     FFar.OnEditFile := FarEditFile;
     FFar.OnLeave := FarLeave;
+    FFar.OnHalfResize := FarHalfResize;
     FFar.OnColorsDialog := FarColorsClick;
     FFarOwnWin := -1;
     FFarLastTabIdx := -1;
@@ -37763,6 +37765,30 @@ begin
     Exit;
   FarBeginUpdate;
   try
+    FarLayout;   // в пределах ширины
+    FFar.HalfWidth := FFarSpacer.Width;
+  finally
+    FarEndUpdate;
+  end;
+end;
+
+// Режим F4, Ctrl+Left / Ctrl+Right в FAR: граница окна FAR и редактора
+// влево / вправо на клетку FAR (ACellWidth). FAR слева - вправо значит
+// шире, FAR справа - уже. Пределы - как у сплиттера (FarLayout), новая
+// ширина - в HalfWidth
+procedure TForm1.FarHalfResize(ADelta, ACellWidth: Integer);
+var
+  NewWidth: Integer;
+begin
+  if not FFarHalf or FFarCollapsed or (FFar = nil) or (FFarSpacer = nil) or
+     not FFarSpacer.Visible or (ACellWidth <= 0) then
+    Exit;
+  if FFarSpacer.Align = alRight then
+    ADelta := -ADelta;
+  NewWidth := FFarSpacer.Width + ADelta * ACellWidth;
+  FarBeginUpdate;
+  try
+    FFarSpacer.Width := NewWidth;
     FarLayout;   // в пределах ширины
     FFar.HalfWidth := FFarSpacer.Width;
   finally
