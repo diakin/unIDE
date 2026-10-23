@@ -3,9 +3,10 @@ WebView4Delphi в unIDE
 
 Источник: https://github.com/salvadordf/WebView4Delphi (лицензия MIT, файл LICENSE)
 Версия: коммит 4009217 от 17.01.2023 ("Update to WebView2 NuGet 1.0.1518.46") -
-под WebView2 Runtime 109, последний для Windows 7 (с версией 1.0.4314 от
-23.10.2026 процесс браузера на Windows 7 завершался, пример SimpleBrowser_D7
-не создавал окно браузера, ошибка 0x80070578).
+под WebView2 Runtime 109, последний для Windows 7.
+Процесс msedgewebview2.exe на машине разработчика завершал AnVir Task Manager
+(процесс был у него в заблокированных) - не версия обёртки; если WebView2
+пропадает без ошибки, проверить такие программы.
 Взяты папки source, bin32 (WebView2Loader.dll x86) и пример
 demos\Delphi_VCL\SimpleBrowser (файлы для Delphi 7); файлы не менялись.
 
