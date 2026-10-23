@@ -164,9 +164,13 @@ const
   // Без ограничения один отмеченный корень диска подвесил бы программу.
   HotSearchDepth = 6;
   // Сколько миллисекунд искать потерянный файл в дереве над папкой
-  // программы (RelocateFile). Горячие папки - без предела: их выбрал сам
-  // пользователь.
+  // программы (RelocateFile).
   RelocateSearchMs = 3000;
+  // Поиск по имени в горячих папках (RelocateFile): при загрузке проекта -
+  // общий запас RelocateSearchMs на все потерянные файлы (hang.log: запуск
+  // висел минутами - каждый потерянный файл обходил горячие папки целиком),
+  // в остальных случаях - RelocateHotMs на файл
+  RelocateHotMs = 10000;
 
 type
 
@@ -2067,6 +2071,8 @@ type
     // предел для идущего обхода (0 - без предела), FRelocateCut - обход
     // остановлен по времени.
     FRelocateUpEnd: Cardinal;
+    // То же для поиска по имени в горячих папках при загрузке проекта
+    FRelocateHotEnd: Cardinal;
     FRelocateDeadline: Cardinal;
     FRelocateCut: Boolean;
 
@@ -14829,6 +14835,7 @@ var
   Hot: TStringList;
   Parent, Up: string;
   I: Integer;
+  HotTimeLeft: Boolean;
 
   // Годится ли кандидат: непустой и лежит в папке с тем же именем
   function Accept(const ACand: string): Boolean;
@@ -14914,13 +14921,32 @@ begin
     // другим именем - ровно это и предлагает сделать сообщение о
     // ненайденных файлах. Для автоматического поиска рядом с программой
     // проверка остаётся: там легко подхватить чужой одноимённый файл.
-    for I := 0 to Hot.Count - 1 do
-    begin
-      Result := FindFileInTree(Hot[I], ExtractFileName(AFile), '',
-                               HotSearchDepth);
-      if Result <> '' then
-        Exit;
+    // Обход - тоже не бесконечный: горячая папка бывает корнем диска, а
+    // потерянных файлов в проекте - десятки (каждый обходил бы её заново)
+    if FRelocateHotEnd <> 0 then
+      FRelocateDeadline := FRelocateHotEnd
+    else
+      FRelocateDeadline := GetTickCount + RelocateHotMs;
+    // Запас уже истрачен прежними файлами - в журнал не писать про каждый
+    HotTimeLeft := Longint(FRelocateDeadline - GetTickCount) > 0;
+    FRelocateCut := False;
+    try
+      for I := 0 to Hot.Count - 1 do
+      begin
+        Result := FindFileInTree(Hot[I], ExtractFileName(AFile), '',
+                                 HotSearchDepth);
+        if (Result <> '') or FRelocateCut then
+          Break;
+      end;
+    finally
+      FRelocateDeadline := 0;
     end;
+    if Result <> '' then
+      Exit;
+    if FRelocateCut and HotTimeLeft then
+      Dbg(ExtractFileName(AFile) + ': поиск по горячим папкам остановлен ' +
+          'по времени - не найден: ' + AFile + '. Найти можно вручную: ' +
+          'Windows - Find lost files...', clRed);
   finally
     Hot.Free;
   end;
@@ -15230,6 +15256,7 @@ begin
   // Автопоиск потерянных файлов над папкой программы - общий запас времени
   // на всю загрузку (RelocateFile)
   FRelocateUpEnd := GetTickCount + RelocateSearchMs;
+  FRelocateHotEnd := GetTickCount + 2 * RelocateSearchMs;
 
   // Раздел проекта в editor.ini: [Project.<имя>], ключи бывших разделов .prj
   // с приставкой (Windows_win0, Tabs_0, Bookmarks_...) - см. PrjStore
@@ -15381,6 +15408,7 @@ begin
   finally
     Ini.Free;
     FRelocateUpEnd := 0;   // дальше - свой запас на каждый поиск
+    FRelocateHotEnd := 0;
   end;
 
   TFiles := GetTickCount - StageTick;
