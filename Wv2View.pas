@@ -76,6 +76,10 @@ function Wv2ShowFile(const AFileName: string; out AError: string;
   out ARuntimeMissing: Boolean): TWv2Form;
 // file:///D:/папка/файл.html: '\' -> '/', спецсимволы адреса - %XX
 function Wv2FileUrl(const AFileName: string): WideString;
+// Закрытие программы (FormDestroy главного окна): окно WebView2 и
+// загрузчик - пока программа ещё целая. В finalization модулей (после
+// конца Application.Run) их уничтожение давало Runtime error 216
+procedure Wv2Shutdown;
 
 implementation
 
@@ -457,10 +461,30 @@ begin
     FBrowser.NotifyParentWindowPositionChanged;
 end;
 
+procedure Wv2Shutdown;
+begin
+  // Браузер - раньше загрузчика
+  try
+    if GWv2Form <> nil then
+    begin
+      GWv2Form.Hide;
+      FreeAndNil(GWv2Form);
+    end;
+  except
+    GWv2Form := nil;
+  end;
+  try
+    if GlobalWebView2Loader <> nil then
+      FreeAndNil(GlobalWebView2Loader);
+  except
+    GlobalWebView2Loader := nil;
+  end;
+end;
+
 initialization
 
 finalization
-  // Браузер - раньше загрузчика (его освобождает finalization uWVLoader)
-  FreeAndNil(GWv2Form);
+  // На случай, если Wv2Shutdown не звали
+  Wv2Shutdown;
 
 end.

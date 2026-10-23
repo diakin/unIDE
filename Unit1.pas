@@ -24234,6 +24234,9 @@ begin
   IniBufOnWritten := nil;
   HangWatchStop;
   WndWatchStop;
+  // Окно WebView2 и его загрузчик - пока программа целая (Runtime error
+  // 216 при уничтожении в finalization)
+  Wv2Shutdown;
   // unIDE FAR открыт - его папки в editor.ini (при F10 - в FarClose)
   if (FFar <> nil) and FFar.Visible then
     FFar.SaveState(SettingsFileName);
