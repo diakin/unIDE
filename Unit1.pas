@@ -50,6 +50,7 @@ uses
   QemuTool,       // свой QEMU unIDE (tools\qemu): запуск образов ReactOS
   GitTool,        // Git: найти в системе или свой (tools\git), Git Bash
   RufusTool,      // свой Rufus unIDE (tools\rufus): образ на флешку
+  GitRun,         // запуск консольного git: панель Git, меню Repository, Branch
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -1062,6 +1063,24 @@ type
     // приходит уже другому окну и не должно открыть меню IDE
     FFar: TFarView;
     FFarEatF10Up: Boolean;
+    // Git (GitRun): панель на месте палитры в режиме проекта ReactOS, её
+    // элементы; FGitBusy - идёт команда git с журналом, FGitCancel - Esc;
+    // FGitRepoChosen - репозиторий, выбранный вручную (editor.ini [Git]);
+    // FGitDlg... - для разницы файлов в окне Commit
+    FGitBar: TPanel;
+    FGitLblRepo: TUiLabel;
+    FGitLblSync: TUiLabel;
+    FGitLblBuild: TUiLabel;
+    FGitCmbBranch: TUiComboBox;
+    FGitBusy: Boolean;
+    FGitCancel: Boolean;
+    FGitBranchFill: Boolean;
+    FGitIniLoaded: Boolean;
+    FGitRepoChosen: string;
+    FGitDlgGit: string;
+    FGitDlgRepo: string;
+    FGitDlgHasHead: Boolean;
+    FGitTimer: TTimer;            // обновить панель чуть позже (GitShowBar)
     // Режим F4 unIDE FAR: окно FAR - половина области редактора (одна
     // панель), другая половина - редактор; место FAR держит FFarSpacer
     // (alLeft / alRight в pnlMain). FFarOwnWin - окно, которое открыл F4
@@ -2852,6 +2871,54 @@ type
     procedure RufusWriteClick(Sender: TObject);
     procedure RufusInstallClick(Sender: TObject);
     function  RufusEnsure: string;
+    // Git: панель на месте палитры (режим ReactOS), меню Repository и Branch
+    function  GitExePath(AOffer: Boolean): string;
+    procedure GitOnLine(const ALine: WideString);
+    function  GitOnIdle: Boolean;
+    function  GitRunIn(const AGit, ADir, AArgs: string; ALog: Boolean;
+                       var AOutput: WideString): Integer;
+    function  GitQuery(const AGit, ADir, AArgs: string): string;
+    function  GitBaseDir: string;
+    procedure GitSetChosenRepo(const ADir: string);
+    function  GitRepoTop(const AGit, ADir: string): string;
+    function  GitPrepare(var AGit, ARepo: string): Boolean;
+    function  GitCurrentBranch(const AGit, ARepo: string): string;
+    procedure GitBranchList(const AGit, ARepo: string; AWithRemote: Boolean;
+                            AList: TStrings);
+    function  GitLongOp(const AGit, ARepo, AArgs: string): Integer;
+    procedure GitBuildBar;
+    procedure GitShowBar(AShow: Boolean);
+    procedure GitRefreshBar;
+    procedure GitRefreshClick(Sender: TObject);
+    procedure GitTimerTick(Sender: TObject);
+    procedure GitBranchComboChange(Sender: TObject);
+    procedure GitFetchClick(Sender: TObject);
+    procedure GitPullClick(Sender: TObject);
+    procedure GitPushIn(const AGit, ARepo: string);
+    procedure GitPushClick(Sender: TObject);
+    function  GitDiffOf(const AChange: TGitChange): WideString;
+    procedure GitCommitIn(const AGit, ARepo: string);
+    procedure GitCommitClick(Sender: TObject);
+    procedure GitBashClick(Sender: TObject);
+    procedure GitBuildMenus;
+    procedure GitNewRepoClick(Sender: TObject);
+    procedure GitAddRepoClick(Sender: TObject);
+    procedure GitCloneClick(Sender: TObject);
+    procedure GitUseProjectRepoClick(Sender: TObject);
+    procedure GitOpenUrl(const AUrl: string);
+    function  GitWebUrl(const AGit, ARepo: string): string;
+    procedure GitViewOnGitHubClick(Sender: TObject);
+    procedure GitExplorerClick(Sender: TObject);
+    procedure GitRepoSettingsClick(Sender: TObject);
+    procedure GitNewBranchClick(Sender: TObject);
+    procedure GitSwitchBranchClick(Sender: TObject);
+    procedure GitRenameBranchClick(Sender: TObject);
+    procedure GitDeleteBranchClick(Sender: TObject);
+    function  GitDefaultRemoteBranch(const AGit, ARepo: string): string;
+    procedure GitUpdateFromDefaultClick(Sender: TObject);
+    procedure GitMergeClick(Sender: TObject);
+    procedure GitViewBranchClick(Sender: TObject);
+    procedure GitPullRequestClick(Sender: TObject);
     function  RosKnownEnvScript: string;
     function  RosPciSourceDir(var ASettings: TRosSettings): Boolean;
     function  RosDownloadPciIds(const ASourceDir, AVendors: string;
@@ -3804,6 +3871,7 @@ var
     StrictFix,    // разбор лога строгой проверки
     SplashLoad,   // окно загрузки и журнал этапов запуска (startup.log)
     GitInfo,      // ветка и коммит исходников сборки (<exe>.build.txt)
+    DlgGitCommit, // окно Commit (меню Repository, панель Git)
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     FormPreview,  // превью формы по .dfm - список модулей и форм
@@ -23905,6 +23973,8 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
   ArdBuildMenu;
   // Меню ReactOS: где скачать инструменты сборки
   RosBuildMenu;
+  // Меню Repository и Branch (Git, как в GitHub Desktop)
+  GitBuildMenus;
 
   // Журнал окна wnd.log рядом с exe: поиск давней ошибки - белые полосы на
   // полосе вкладок и строке состояния, когда поверх окна двигают другое
@@ -36093,6 +36163,12 @@ procedure TForm1.DsgPaletteSelect(Sender: TObject);
 begin
   if grpPalette = nil then
     Exit;
+  // На месте палитры - панель Git (проект ReactOS)
+  if (FGitBar <> nil) and FGitBar.Visible then
+  begin
+    grpPalette.Caption := 'Git';
+    Exit;
+  end;
   if RqPalSelected <> '' then
     grpPalette.Caption := 'Components - ' + RqPalSelected + ' (RapidQ)'
   else if FDsgPalette.SelectedForeign <> '' then
@@ -56557,6 +56633,8 @@ btnCompileRun.Hint := 'ReactOS / LiberNT: собрать цель ninja (есл�
                                 RqMode <> ((PageIdx >= FRqPalPage) and (PageIdx <= FRqPalLast)));
     FDsgPalette.ApplyPages;
   end;
+  // Проект ReactOS: палитра не нужна - на её месте панель Git
+  GitShowBar(Kind = bkCMakeNinja);
   Dbg('Режим среды: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')',
       clGray);
 end;
@@ -62813,7 +62891,9 @@ var
   Need7Zip: Boolean;
   Stage7Zip, StageGit: Integer;
 begin
-  Result := string(GitFindRoot(How));
+  // GitTool.GitFindRoot: в GitInfo (uses реализации) есть одноимённая
+  // функция - корень репозитория по пути; без имени модуля вызывалась она
+  Result := string(GitTool.GitFindRoot(How));
   if Result <> '' then
     Exit;
   ShowCompLog;
@@ -62919,7 +62999,7 @@ begin
   if (Dir = '') or not DirectoryExists(Dir) then
     Dir := ExtractFilePath(Application.ExeName);
   CmdLine := string(GitTerminalCommand(Root, Dir));
-  GitFindRoot(How);
+  GitTool.GitFindRoot(How);
   LogComp('Git Terminal (' + How + '): ' + CmdLine);
   FillChar(SI, SizeOf(SI), 0);
   SI.cb := SizeOf(SI);
@@ -63157,6 +63237,1193 @@ begin
     Exit;
   end;
   RufusEnsure;
+end;
+
+// ---------------------------------------------------------------------------
+//  Git в окне unIDE (GitRun - запуск консольного git): панель Git на месте
+//  палитры компонентов в режиме проекта ReactOS, меню Repository и Branch
+//  (как меню File / Repository и Branch в GitHub Desktop), окно Commit
+//  (DlgGitCommit). git - найденный в системе или свой (GitTool).
+//
+//  Репозиторий: выбранный вручную (Repository - Add Local Repository,
+//  Clone, New; editor.ini [Git] Repository), иначе - тот, где лежат
+//  исходники открытого проекта ReactOS, папка проекта или файл вкладки.
+//  Команды, которые ходят в сеть (fetch, pull, push, clone), и commit
+//  пишут вывод в Compilation log; Esc - прервать.
+// ---------------------------------------------------------------------------
+
+const
+  GitIniSection = 'Git';
+
+// git.exe: в системе или свой; AOffer - нет никакого - предложить
+// установить (GitEnsure). Нет - ''
+function TForm1.GitExePath(AOffer: Boolean): string;
+var
+  How: string;
+begin
+  // GitTool.GitFindRoot: в GitInfo есть одноимённая функция (корень
+  // репозитория по пути) - без имени модуля вызвалась бы она
+  Result := string(GitTool.GitFindRoot(How));
+  if (Result = '') and AOffer then
+    Result := GitEnsure;
+  if Result = '' then
+    Exit;
+  Result := IncludeTrailingPathDelimiter(Result) + 'cmd\git.exe';
+  if not FileExists(Result) then
+    Result := '';
+end;
+
+// Строка вывода git - в Compilation log
+procedure TForm1.GitOnLine(const ALine: WideString);
+begin
+  LogComp('  ' + string(ALine));
+end;
+
+// Пока git работает: окно живёт, Esc - прервать
+function TForm1.GitOnIdle: Boolean;
+begin
+  Application.ProcessMessages;
+  if Application.Active and (GetAsyncKeyState(VK_ESCAPE) < 0) then
+    FGitCancel := True;
+  Result := not FGitCancel;
+end;
+
+// git AArgs в папке ADir. ALog - команда и вывод в Compilation log, окно
+// не замирает, Esc прерывает; иначе - тихо (быстрые запросы для панели).
+// Результат - код выхода git, -1 - не запустился или прерван
+function TForm1.GitRunIn(const AGit, ADir, AArgs: string; ALog: Boolean;
+  var AOutput: WideString): Integer;
+var
+  ErrText: string;
+  ExitCode: Integer;
+begin
+  AOutput := '';
+  ExitCode := -1;
+  if ALog then
+  begin
+    LogComp('git ' + AArgs + '   (' + ADir + ')');
+    FGitCancel := False;
+    ErrText := GitExec(WideString(AGit), WideString(AArgs), WideString(ADir),
+      GitOnLine, GitOnIdle, AOutput, ExitCode);
+  end
+  else
+    ErrText := GitExec(WideString(AGit), WideString(AArgs), WideString(ADir),
+      nil, nil, AOutput, ExitCode);
+  Result := ExitCode;
+  if ErrText <> '' then
+  begin
+    if ALog then
+      LogComp('git: ' + ErrText);
+    Result := -1;
+  end
+  else if ALog and (ExitCode <> 0) then
+    LogComp('git: код выхода ' + IntToStr(ExitCode));
+end;
+
+// Тихий запрос: первая строка вывода, код выхода не 0 - ''
+function TForm1.GitQuery(const AGit, ADir, AArgs: string): string;
+var
+  Output: WideString;
+begin
+  Result := '';
+  if GitRunIn(AGit, ADir, AArgs, False, Output) = 0 then
+  begin
+    Result := string(GitTrimOut(Output));
+    if Pos(#10, Result) > 0 then
+      Result := Copy(Result, 1, Pos(#10, Result) - 1);
+    Result := Trim(Result);
+  end;
+end;
+
+// Откуда искать репозиторий: выбранный вручную, иначе исходники проекта
+// ReactOS, папка проекта, папка файла вкладки
+function TForm1.GitBaseDir: string;
+var
+  RosCfg: TRosSettings;
+  Ini: TIniFile;
+begin
+  if not FGitIniLoaded then
+  begin
+    FGitIniLoaded := True;
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      FGitRepoChosen := Ini.ReadString(GitIniSection, 'Repository', '');
+    finally
+      Ini.Free;
+    end;
+  end;
+  Result := FGitRepoChosen;
+  if (Result <> '') and DirectoryExists(Result) then
+    Exit;
+  Result := '';
+  if (FCurrentProject <> '') and
+     (ProjectBuildKind(FCurrentProject) = bkCMakeNinja) and
+     RosSettingsOf(FCurrentProject, RosCfg) and
+     DirectoryExists(RosCfg.SourceDir) then
+    Result := RosCfg.SourceDir
+  else if (FCurrentProject <> '') and ProjectExists(FCurrentProject) then
+    Result := ProjectDir(FCurrentProject);
+  if ((Result = '') or not DirectoryExists(Result)) and
+     (FCurrentFileName <> '') then
+    Result := ExtractFilePath(FCurrentFileName);
+  if (Result <> '') and not DirectoryExists(Result) then
+    Result := '';
+end;
+
+// Выбор репозитория вручную ('' - снова по проекту) - в editor.ini
+procedure TForm1.GitSetChosenRepo(const ADir: string);
+var
+  Ini: TIniFile;
+begin
+  FGitRepoChosen := ADir;
+  FGitIniLoaded := True;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    if ADir = '' then
+      Ini.DeleteKey(GitIniSection, 'Repository')
+    else
+      Ini.WriteString(GitIniSection, 'Repository', ADir);
+  finally
+    Ini.Free;
+  end;
+end;
+
+// Корень репозитория, в котором лежит ADir; не репозиторий - ''
+function TForm1.GitRepoTop(const AGit, ADir: string): string;
+begin
+  Result := '';
+  if (AGit = '') or (ADir = '') or not DirectoryExists(ADir) then
+    Exit;
+  Result := GitQuery(AGit, ADir, 'rev-parse --show-toplevel');
+  if Result <> '' then
+    Result := string(GitWinPath(WideString(Result)));
+end;
+
+// Для команд меню: git есть (нет - предложить), репозиторий найден, git
+// сейчас ничего не делает. Нет - сообщение в Compilation log и False
+function TForm1.GitPrepare(var AGit, ARepo: string): Boolean;
+var
+  BaseDir: string;
+begin
+  Result := False;
+  if FGitBusy then
+  begin
+    ShowCompLog;
+    LogComp('Git: прежняя команда ещё работает (Esc - прервать)');
+    Exit;
+  end;
+  AGit := GitExePath(True);
+  if AGit = '' then
+    Exit;
+  BaseDir := GitBaseDir;
+  ARepo := GitRepoTop(AGit, BaseDir);
+  if ARepo = '' then
+  begin
+    ShowCompLog;
+    if BaseDir = '' then
+      LogComp('Git: репозиторий не выбран - Repository - Add Local ' +
+              'Repository, Clone Repository или New Repository')
+    else
+      LogComp('Git: ' + BaseDir + ' - не в репозитории git. Repository - ' +
+              'Add Local Repository, Clone Repository или New Repository');
+    Exit;
+  end;
+  Result := True;
+end;
+
+// Текущая ветка ('' - отсоединённый HEAD)
+function TForm1.GitCurrentBranch(const AGit, ARepo: string): string;
+begin
+  Result := GitQuery(AGit, ARepo, 'symbolic-ref --short -q HEAD');
+end;
+
+// Локальные ветки (AWithRemote - и origin/...) в AList
+procedure TForm1.GitBranchList(const AGit, ARepo: string; AWithRemote: Boolean;
+  AList: TStrings);
+var
+  Output: WideString;
+  Refs: string;
+  Lines: TStringList;
+  LineIdx: Integer;
+begin
+  AList.Clear;
+  Lines := TStringList.Create;
+  try
+    if AWithRemote then
+      Refs := 'refs/heads/ refs/remotes/'
+    else
+      Refs := 'refs/heads/';
+    if GitRunIn(AGit, ARepo, 'for-each-ref --format=%(refname:short) ' +
+       Refs, False, Output) <> 0 then
+      Exit;
+    GitSplitLines(Output, Lines);
+    for LineIdx := 0 to Lines.Count - 1 do
+      // origin/HEAD - ссылка, не ветка
+      if (Copy(Lines[LineIdx], Length(Lines[LineIdx]) - 4, 5) <> '/HEAD') and
+         (Lines[LineIdx] <> 'origin') then
+        AList.Add(Lines[LineIdx]);
+  finally
+    Lines.Free;
+  end;
+end;
+
+// Длинная команда (сеть, commit): вывод в Compilation log, панель - после
+function TForm1.GitLongOp(const AGit, ARepo, AArgs: string): Integer;
+var
+  Output: WideString;
+begin
+  ShowCompLog;
+  FGitBusy := True;
+  try
+    StatusBar1.SimpleText := 'git ' + AArgs + ' ... (Esc - прервать)';
+    StatusBar1.SimplePanel := True;
+    Result := GitRunIn(AGit, ARepo, AArgs, True, Output);
+    if Result = 0 then
+      LogComp('git: готово');
+  finally
+    FGitBusy := False;
+    StatusBar1.SimplePanel := False;
+    UpdateStatusBarInfo;
+  end;
+  GitRefreshBar;
+end;
+
+// ---------------------------------------------------------------------------
+//  Панель Git (на месте палитры компонентов, режим проекта ReactOS)
+// ---------------------------------------------------------------------------
+
+procedure TForm1.GitBuildBar;
+
+  function NewButton(const ACaption, AHint: string; ALeft, AWidth: Integer;
+    AClick: TNotifyEvent): TUiButton;
+  begin
+    Result := TUiButton.Create(Self);
+    Result.Parent := FGitBar;
+    Result.Caption := ACaption;
+    Result.Hint := AHint;
+    Result.ShowHint := True;
+    Result.SetBounds(ALeft, 1, AWidth, 22);
+    Result.OnClick := AClick;
+  end;
+
+  function NewLabel(ALeft, ATop: Integer; const ACaption: string): TUiLabel;
+  begin
+    Result := TUiLabel.Create(Self);
+    Result.Parent := FGitBar;
+    Result.AutoSize := True;
+    Result.Left := ALeft;
+    Result.Top := ATop;
+    Result.Caption := ACaption;
+    Result.ShowHint := True;
+  end;
+
+begin
+  FGitBar := TPanel.Create(Self);
+  FGitBar.Visible := False;
+  FGitBar.Parent := pnlPaletteIn;
+  FGitBar.Align := alClient;
+  FGitBar.BevelOuter := bvNone;
+  FGitBar.Caption := '';
+  FGitBar.ParentColor := True;
+  FGitBar.ParentFont := True;
+  NewButton('Fetch', 'git fetch: узнать, что нового на сервере (ветки и ' +
+    'коммиты), рабочие файлы не меняются', 4, 56, GitFetchClick);
+  NewButton('Pull', 'git pull: забрать изменения ветки с сервера и влить в ' +
+    'текущую (merge)', 64, 56, GitPullClick);
+  NewButton('Push', 'git push: отправить коммиты текущей ветки на сервер ' +
+    '(ветки там ещё нет - опубликовать)', 124, 56, GitPushClick);
+  NewButton('Commit...', 'Окно Commit: изменённые файлы, разница, ' +
+    'заголовок и описание коммита', 184, 72, GitCommitClick);
+  NewButton('Refresh', 'Обновить сведения панели', 260, 60, GitRefreshClick);
+  NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 324, 66,
+    GitBashClick);
+  FGitLblRepo := NewLabel(4, 27, 'Repository: -');
+  NewLabel(4, 51, 'Branch:');
+  FGitCmbBranch := TUiComboBox.Create(Self);
+  FGitCmbBranch.Parent := FGitBar;
+  FGitCmbBranch.Style := csDropDownList;
+  FGitCmbBranch.SetBounds(56, 48, 220, 21);
+  FGitCmbBranch.Hint := 'Текущая ветка; выбор другой - переключиться на неё ' +
+    '(git checkout)';
+  FGitCmbBranch.ShowHint := True;
+  FGitCmbBranch.OnChange := GitBranchComboChange;
+  FGitLblSync := NewLabel(284, 51, '');
+  FGitLblBuild := NewLabel(4, 75, '');
+end;
+
+// Палитра или панель Git (AShow - режим проекта ReactOS)
+procedure TForm1.GitShowBar(AShow: Boolean);
+begin
+  if AShow then
+  begin
+    if FGitBar = nil then
+      GitBuildBar;
+    if FDsgPalette <> nil then
+      FDsgPalette.Visible := False;
+    FGitBar.Visible := True;
+    grpPalette.Caption := 'Git';
+    // Сведения - чуть позже: git status в большом дереве (ReactOS) идёт
+    // секунды, смена вкладки не должна их ждать
+    FGitLblBuild.Caption := 'Build: обновляется...';
+    if FGitTimer = nil then
+    begin
+      FGitTimer := TTimer.Create(Self);
+      FGitTimer.Enabled := False;
+      FGitTimer.Interval := 300;
+      FGitTimer.OnTimer := GitTimerTick;
+    end;
+    FGitTimer.Enabled := False;
+    FGitTimer.Enabled := True;
+  end
+  else
+  begin
+    if FGitBar <> nil then
+      FGitBar.Visible := False;
+    if FDsgPalette <> nil then
+    begin
+      FDsgPalette.Visible := True;
+      DsgPaletteSelect(nil);
+    end;
+  end;
+end;
+
+// Сведения панели: репозиторий, remote, ветки, сборка (git describe),
+// ahead / behind, сколько файлов изменено. Тихо, без журнала
+procedure TForm1.GitRefreshBar;
+var
+  Git, BaseDir, Repo, Branch, Remote, Upstream, Describe, Counts: string;
+  Output: WideString;
+  Changes: TGitChanges;
+  Ahead, Behind, BranchIdx: Integer;
+begin
+  if (FGitBar = nil) or not FGitBar.Visible or FGitBusy then
+    Exit;
+  Git := GitExePath(False);
+  BaseDir := GitBaseDir;
+  Repo := '';
+  if Git <> '' then
+    Repo := GitRepoTop(Git, BaseDir);
+  FGitBranchFill := True;
+  try
+    FGitCmbBranch.Items.Clear;
+    if Git = '' then
+    begin
+      FGitLblRepo.Caption := 'Git не найден - ReactOS - Find or Install Git';
+      FGitLblRepo.Hint := '';
+      FGitLblSync.Caption := '';
+      FGitLblBuild.Caption := '';
+      Exit;
+    end;
+    if Repo = '' then
+    begin
+      FGitLblRepo.Caption := 'Repository: нет (' + BaseDir + ' - не в ' +
+        'репозитории git)';
+      FGitLblRepo.Hint := 'Repository - Add Local Repository / Clone ' +
+        'Repository / New Repository';
+      FGitLblSync.Caption := '';
+      FGitLblBuild.Caption := '';
+      Exit;
+    end;
+    Remote := GitQuery(Git, Repo, 'config --get remote.origin.url');
+    FGitLblRepo.Caption := 'Repository: ' + ExtractFileName(
+      ExcludeTrailingPathDelimiter(Repo)) + '   ' + Repo;
+    if Remote <> '' then
+      FGitLblRepo.Caption := FGitLblRepo.Caption + '   origin: ' + Remote;
+    if FGitRepoChosen <> '' then
+      FGitLblRepo.Hint := 'Выбран вручную (Repository - Use Repository of ' +
+        'Current Project - снова по проекту)'
+    else
+      FGitLblRepo.Hint := 'Репозиторий открытого проекта';
+    Branch := GitCurrentBranch(Git, Repo);
+    GitBranchList(Git, Repo, False, FGitCmbBranch.Items);
+    if Branch = '' then
+    begin
+      FGitCmbBranch.Items.Insert(0, '(HEAD отсоединён)');
+      FGitCmbBranch.ItemIndex := 0;
+    end
+    else
+    begin
+      BranchIdx := FGitCmbBranch.Items.IndexOf(Branch);
+      // Ветка без коммитов (новый репозиторий) в for-each-ref не видна
+      if BranchIdx < 0 then
+        BranchIdx := FGitCmbBranch.Items.Add(Branch);
+      FGitCmbBranch.ItemIndex := BranchIdx;
+    end;
+    Upstream := GitQuery(Git, Repo,
+      'rev-parse --abbrev-ref --symbolic-full-name @{u}');
+    if Branch = '' then
+      FGitLblSync.Caption := ''
+    else if Upstream = '' then
+      FGitLblSync.Caption := 'нет ветки на сервере - Push опубликует её'
+    else
+    begin
+      Counts := GitQuery(Git, Repo, 'rev-list --left-right --count HEAD...@{u}');
+      if GitParseCounts(WideString(Counts), Ahead, Behind) then
+        FGitLblSync.Caption := Upstream + ':  ahead ' + IntToStr(Ahead) +
+          ' (не отправлено),  behind ' + IntToStr(Behind) + ' (не забрано)'
+      else
+        FGitLblSync.Caption := Upstream;
+    end;
+    Describe := GitQuery(Git, Repo, 'describe --tags --always');
+    if Describe = '' then
+      Describe := 'коммитов ещё нет';
+    SetLength(Changes, 0);
+    if GitRunIn(Git, Repo, 'status --porcelain=v1 -z', False, Output) = 0 then
+      GitParseStatus(Output, Changes);
+    FGitLblBuild.Caption := 'Build: ' + Describe + '   Changes: ' +
+      IntToStr(Length(Changes));
+    FGitLblBuild.Hint := 'Build - git describe --tags --always (ближайшая ' +
+      'метка, число коммитов после неё и короткий хеш); Changes - сколько ' +
+      'файлов изменено (Commit... - список)';
+  finally
+    FGitBranchFill := False;
+  end;
+end;
+
+procedure TForm1.GitRefreshClick(Sender: TObject);
+begin
+  GitRefreshBar;
+end;
+
+procedure TForm1.GitTimerTick(Sender: TObject);
+begin
+  FGitTimer.Enabled := False;
+  GitRefreshBar;
+end;
+
+// Выбор ветки в панели - переключиться (git checkout)
+procedure TForm1.GitBranchComboChange(Sender: TObject);
+var
+  Git, Repo, Target: string;
+begin
+  if FGitBranchFill or (FGitCmbBranch.ItemIndex < 0) then
+    Exit;
+  Target := FGitCmbBranch.Items[FGitCmbBranch.ItemIndex];
+  if (Target = '') or (Target[1] = '(') then
+    Exit;
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  if Target = GitCurrentBranch(Git, Repo) then
+    Exit;
+  GitLongOp(Git, Repo, 'checkout ' + string(GitQuote(WideString(Target))));
+end;
+
+// ---------------------------------------------------------------------------
+//  Fetch, Pull, Push, Commit
+// ---------------------------------------------------------------------------
+
+procedure TForm1.GitFetchClick(Sender: TObject);
+var
+  Git, Repo: string;
+begin
+  if GitPrepare(Git, Repo) then
+    GitLongOp(Git, Repo, 'fetch --all --prune');
+end;
+
+// Pull - слиянием (как GitHub Desktop по умолчанию), без окна редактора
+procedure TForm1.GitPullClick(Sender: TObject);
+var
+  Git, Repo: string;
+begin
+  if GitPrepare(Git, Repo) then
+    GitLongOp(Git, Repo, '-c pull.rebase=false pull --no-edit');
+end;
+
+// Push; ветки на сервере нет - опубликовать (push -u origin <ветка>)
+procedure TForm1.GitPushIn(const AGit, ARepo: string);
+var
+  Branch, Upstream: string;
+begin
+  Branch := GitCurrentBranch(AGit, ARepo);
+  if Branch = '' then
+  begin
+    ShowCompLog;
+    LogComp('Git: HEAD отсоединён (не на ветке) - Push не выполнен. ' +
+            'Branch - New Branch создаст ветку здесь');
+    Exit;
+  end;
+  Upstream := GitQuery(AGit, ARepo,
+    'rev-parse --abbrev-ref --symbolic-full-name @{u}');
+  if Upstream <> '' then
+    GitLongOp(AGit, ARepo, 'push')
+  else if GitQuery(AGit, ARepo, 'config --get remote.origin.url') = '' then
+  begin
+    ShowCompLog;
+    LogComp('Git: у репозитория нет remote origin - Repository - Repository ' +
+            'Settings (адрес на GitHub)');
+  end
+  else
+    GitLongOp(AGit, ARepo, 'push -u origin ' +
+      string(GitQuote(WideString(Branch))));
+end;
+
+procedure TForm1.GitPushClick(Sender: TObject);
+var
+  Git, Repo: string;
+begin
+  if GitPrepare(Git, Repo) then
+    GitPushIn(Git, Repo);
+end;
+
+// Разница файла для окна Commit (тихо). Новый файл - всё содержимое
+// (diff --no-index с пустым), остальные - против HEAD (без коммитов -
+// против индекса). Длинная - обрезается
+function TForm1.GitDiffOf(const AChange: TGitChange): WideString;
+const
+  DiffMax = 300000;
+var
+  Args: string;
+  ExitCode: Integer;
+begin
+  if AChange.Code = '??' then
+    Args := 'diff --no-color --no-index -- /dev/null ' +
+      string(GitQuote(AChange.Path))
+  else if FGitDlgHasHead then
+  begin
+    Args := 'diff --no-color HEAD -- ' + string(GitQuote(AChange.Path));
+    if AChange.OrigPath <> '' then
+      Args := Args + ' ' + string(GitQuote(AChange.OrigPath));
+  end
+  else
+    Args := 'diff --no-color --cached -- ' + string(GitQuote(AChange.Path));
+  ExitCode := GitRunIn(FGitDlgGit, FGitDlgRepo, Args, False, Result);
+  if (ExitCode < 0) or ((ExitCode > 1) and (Result = '')) then
+    Result := 'git diff не вышел (код ' + IntToStr(ExitCode) + ')';
+  if Trim(string(Result)) = '' then
+    Result := 'Разницы в тексте нет (изменились права файла, ' +
+      'переименование без правок или двоичный файл).';
+  if Length(Result) > DiffMax then
+    Result := Copy(Result, 1, DiffMax) + #13#10'... (обрезано)';
+  // Memo ждёт #13#10
+  Result := WideString(AdjustLineBreaks(string(Result)));
+end;
+
+// Файл во временной папке: текст UTF-8 (без BOM). Имя - '' не вышло
+function GitWriteTempFile(const APrefix, AText: string): string;
+var
+  TempDir: array[0..MAX_PATH] of Char;
+  Stream: TFileStream;
+begin
+  Result := '';
+  if GetTempPath(SizeOf(TempDir), TempDir) = 0 then
+    Exit;
+  Result := IncludeTrailingPathDelimiter(string(TempDir)) + 'unide_' + APrefix +
+    '_' + IntToStr(GetCurrentProcessId) + '_' + IntToStr(GetTickCount) +
+    '.txt';
+  try
+    Stream := TFileStream.Create(Result, fmCreate);
+    try
+      if AText <> '' then
+        Stream.WriteBuffer(AText[1], Length(AText));
+    finally
+      Stream.Free;
+    end;
+  except
+    Result := '';
+  end;
+end;
+
+// Commit: окно со списком изменений; отмеченное - в коммит. Не отмеченное,
+// но уже добавленное в индекс, из индекса убирается (git reset -- пути):
+// в коммит идёт ровно то, что отмечено, как в GitHub Desktop
+procedure TForm1.GitCommitIn(const AGit, ARepo: string);
+var
+  Output: WideString;
+  AllChanges, Selected: TGitChanges;
+  Dlg: TDlgGitCommit;
+  Branch, MsgText, MsgFile, SelFile, UnselFile, SelList, UnselList: string;
+  PushAfter: Boolean;
+  ChangeIdx, SelIdx: Integer;
+  IsSelected: Boolean;
+begin
+  ShowCompLog;
+  if GitRunIn(AGit, ARepo, 'status --porcelain=v1 -z -uall', False,
+     Output) <> 0 then
+  begin
+    LogComp('Git: git status не вышел');
+    Exit;
+  end;
+  GitParseStatus(Output, AllChanges);
+  if Length(AllChanges) = 0 then
+  begin
+    LogComp('Git: изменений нет - коммитить нечего');
+    Exit;
+  end;
+  Branch := GitCurrentBranch(AGit, ARepo);
+  FGitDlgGit := AGit;
+  FGitDlgRepo := ARepo;
+  FGitDlgHasHead := GitQuery(AGit, ARepo, 'rev-parse -q --verify HEAD') <> '';
+  Dlg := TDlgGitCommit.CreateDlg(Self, 'Commit to ' + Branch + ' - ' +
+    ExtractFileName(ExcludeTrailingPathDelimiter(ARepo)), AllChanges,
+    GitDiffOf);
+  try
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+    Dlg.CheckedChanges(Selected);
+    MsgText := Dlg.MessageText;
+    PushAfter := Dlg.PushAfter;
+  finally
+    Dlg.Free;
+  end;
+  // Пути - UTF-8 через #0 (--pathspec-from-file --pathspec-file-nul)
+  SelList := '';
+  for SelIdx := 0 to High(Selected) do
+  begin
+    SelList := SelList + GitToUtf8(Selected[SelIdx].Path) + #0;
+    if Selected[SelIdx].OrigPath <> '' then
+      SelList := SelList + GitToUtf8(Selected[SelIdx].OrigPath) + #0;
+  end;
+  UnselList := '';
+  for ChangeIdx := 0 to High(AllChanges) do
+  begin
+    IsSelected := False;
+    for SelIdx := 0 to High(Selected) do
+      if Selected[SelIdx].Path = AllChanges[ChangeIdx].Path then
+        IsSelected := True;
+    // Новые (??) в индексе нет - убирать нечего
+    if not IsSelected and (AllChanges[ChangeIdx].Code <> '??') and
+       (AllChanges[ChangeIdx].Code[1] <> ' ') then
+    begin
+      UnselList := UnselList + GitToUtf8(AllChanges[ChangeIdx].Path) + #0;
+      if AllChanges[ChangeIdx].OrigPath <> '' then
+        UnselList := UnselList + GitToUtf8(AllChanges[ChangeIdx].OrigPath) +
+          #0;
+    end;
+  end;
+  MsgFile := GitWriteTempFile('commitmsg', GitToUtf8(WideString(MsgText)) + #10);
+  SelFile := GitWriteTempFile('commitsel', SelList);
+  UnselFile := '';
+  if UnselList <> '' then
+    UnselFile := GitWriteTempFile('commitunsel', UnselList);
+  if (MsgFile = '') or (SelFile = '') or ((UnselList <> '') and
+     (UnselFile = '')) then
+  begin
+    LogComp('Git: временный файл не создать - коммит не выполнен');
+    Exit;
+  end;
+  FGitBusy := True;
+  try
+    LogComp('Git: коммит в ' + Branch + ' - файлов: ' +
+            IntToStr(Length(Selected)));
+    if (UnselFile <> '') and FGitDlgHasHead and
+       (GitRunIn(AGit, ARepo, 'reset -q --pathspec-from-file=' +
+        string(GitQuote(WideString(UnselFile))) + ' --pathspec-file-nul',
+        True, Output) <> 0) then
+      Exit;
+    if GitRunIn(AGit, ARepo, 'add -A --pathspec-from-file=' +
+       string(GitQuote(WideString(SelFile))) + ' --pathspec-file-nul', True,
+       Output) <> 0 then
+      Exit;
+    if GitRunIn(AGit, ARepo, 'commit -F ' +
+       string(GitQuote(WideString(MsgFile))), True, Output) <> 0 then
+    begin
+      LogComp('Git: коммит не выполнен (нет имени автора - git config ' +
+              '--global user.name и user.email; подробности выше)');
+      Exit;
+    end;
+    LogComp('git: коммит выполнен');
+  finally
+    FGitBusy := False;
+    DeleteFile(MsgFile);
+    DeleteFile(SelFile);
+    if UnselFile <> '' then
+      DeleteFile(UnselFile);
+    GitRefreshBar;
+  end;
+  if PushAfter then
+    GitPushIn(AGit, ARepo);
+end;
+
+procedure TForm1.GitCommitClick(Sender: TObject);
+var
+  Git, Repo: string;
+begin
+  if GitPrepare(Git, Repo) then
+    GitCommitIn(Git, Repo);
+end;
+
+procedure TForm1.GitBashClick(Sender: TObject);
+var
+  Git, Repo, Root, How, CmdLine: string;
+  SI: TStartupInfo;
+  PI: TProcessInformation;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Root := string(GitTool.GitFindRoot(How));
+  CmdLine := string(GitTerminalCommand(Root, Repo));
+  LogComp('Git Bash: ' + CmdLine);
+  FillChar(SI, SizeOf(SI), 0);
+  SI.cb := SizeOf(SI);
+  FillChar(PI, SizeOf(PI), 0);
+  UniqueString(CmdLine);
+  if not CreateProcess(nil, PChar(CmdLine), nil, nil, False, 0, nil,
+                       PChar(Repo), SI, PI) then
+  begin
+    LogComp('Git Bash: не запустить - ' + SysErrorMessage(GetLastError));
+    Exit;
+  end;
+  CloseHandle(PI.hThread);
+  CloseHandle(PI.hProcess);
+end;
+
+// ---------------------------------------------------------------------------
+//  Меню Repository (File + Repository GitHub Desktop) и Branch
+// ---------------------------------------------------------------------------
+
+procedure TForm1.GitBuildMenus;
+
+  function AddItem(AMenu: TMenuItem; const ACaption, AHint: string;
+    AClick: TNotifyEvent): TMenuItem;
+  begin
+    Result := TMenuItem.Create(Self);
+    Result.Caption := ACaption;
+    Result.Hint := AHint;
+    Result.OnClick := AClick;
+    AMenu.Add(Result);
+  end;
+
+var
+  RepoMenu, BranchMenu: TMenuItem;
+begin
+  RepoMenu := TMenuItem.Create(Self);
+  RepoMenu.Caption := 'Repository';
+  RepoMenu.AutoHotkeys := maManual;
+  MainMenu1.Items.Insert(mArduino.MenuIndex + 2, RepoMenu);
+  BranchMenu := TMenuItem.Create(Self);
+  BranchMenu.Caption := 'Branch';
+  BranchMenu.AutoHotkeys := maManual;
+  MainMenu1.Items.Insert(RepoMenu.MenuIndex + 1, BranchMenu);
+
+  AddItem(RepoMenu, 'New Repository...', 'Создать репозиторий git в папке ' +
+    '(git init)', GitNewRepoClick);
+  AddItem(RepoMenu, 'Add Local Repository...', 'Выбрать папку с ' +
+    'репозиторием - с ним работают панель Git и это меню', GitAddRepoClick);
+  AddItem(RepoMenu, 'Clone Repository...', 'Скачать репозиторий с GitHub ' +
+    '(git clone)', GitCloneClick);
+  AddItem(RepoMenu, 'Use Repository of Current Project', 'Снова ' +
+    'репозиторий открытого проекта (выбор вручную снимается)',
+    GitUseProjectRepoClick);
+  AddItem(RepoMenu, '-', '', nil);
+  AddItem(RepoMenu, 'Fetch', 'git fetch --all --prune', GitFetchClick);
+  AddItem(RepoMenu, 'Pull', 'git pull (merge)', GitPullClick);
+  AddItem(RepoMenu, 'Push', 'git push (ветки на сервере нет - опубликовать)',
+    GitPushClick);
+  AddItem(RepoMenu, 'Commit...', 'Окно Commit: изменения, разница, ' +
+    'заголовок и описание', GitCommitClick);
+  AddItem(RepoMenu, '-', '', nil);
+  AddItem(RepoMenu, 'View on GitHub', 'Страница репозитория в браузере',
+    GitViewOnGitHubClick);
+  AddItem(RepoMenu, 'Open in Git Bash', 'Терминал Git Bash в папке ' +
+    'репозитория', GitBashClick);
+  AddItem(RepoMenu, 'Show in Explorer', 'Папка репозитория в Проводнике',
+    GitExplorerClick);
+  AddItem(RepoMenu, '-', '', nil);
+  AddItem(RepoMenu, 'Repository Settings...', 'Адрес remote origin ' +
+    '(git remote set-url)', GitRepoSettingsClick);
+
+  AddItem(BranchMenu, 'New Branch...', 'Новая ветка от текущего коммита и ' +
+    'переход на неё (git checkout -b)', GitNewBranchClick);
+  AddItem(BranchMenu, 'Switch Branch...', 'Перейти на другую ветку (git ' +
+    'checkout)', GitSwitchBranchClick);
+  AddItem(BranchMenu, 'Rename Branch...', 'Переименовать текущую ветку ' +
+    '(git branch -m)', GitRenameBranchClick);
+  AddItem(BranchMenu, 'Delete Branch...', 'Удалить локальную ветку (git ' +
+    'branch -d)', GitDeleteBranchClick);
+  AddItem(BranchMenu, '-', '', nil);
+  AddItem(BranchMenu, 'Update from Default Branch', 'Влить в текущую ' +
+    'ветку основную ветку сервера (git merge origin/<основная>)',
+    GitUpdateFromDefaultClick);
+  AddItem(BranchMenu, 'Merge into Current Branch...', 'Влить выбранную ' +
+    'ветку в текущую (git merge)', GitMergeClick);
+  AddItem(BranchMenu, '-', '', nil);
+  AddItem(BranchMenu, 'View Branch on GitHub', 'Ветка на GitHub в браузере',
+    GitViewBranchClick);
+  AddItem(BranchMenu, 'Create Pull Request', 'Страница нового pull request ' +
+    'для текущей ветки на GitHub', GitPullRequestClick);
+end;
+
+procedure TForm1.GitNewRepoClick(Sender: TObject);
+var
+  Git, Dir, StartDir: string;
+begin
+  if FGitBusy then
+    Exit;
+  Git := GitExePath(True);
+  if Git = '' then
+    Exit;
+  StartDir := GitBaseDir;
+  Dir := StartDir;
+  if not PickFolderDialog('New Repository - папка (git init)', StartDir,
+     Dir) then
+    Exit;
+  if GitRepoTop(Git, Dir) <> '' then
+  begin
+    ShowCompLog;
+    LogComp('Git: ' + Dir + ' уже в репозитории ' + GitRepoTop(Git, Dir));
+    Exit;
+  end;
+  if GitLongOp(Git, Dir, 'init') = 0 then
+  begin
+    GitSetChosenRepo(ExcludeTrailingPathDelimiter(Dir));
+    GitRefreshBar;
+  end;
+end;
+
+procedure TForm1.GitAddRepoClick(Sender: TObject);
+var
+  Git, Dir, Repo, StartDir: string;
+begin
+  if FGitBusy then
+    Exit;
+  Git := GitExePath(True);
+  if Git = '' then
+    Exit;
+  StartDir := GitBaseDir;
+  Dir := StartDir;
+  if not PickFolderDialog('Add Local Repository - папка репозитория',
+     StartDir, Dir) then
+    Exit;
+  Repo := GitRepoTop(Git, Dir);
+  ShowCompLog;
+  if Repo = '' then
+  begin
+    LogComp('Git: ' + Dir + ' - не репозиторий git (New Repository - ' +
+            'создать)');
+    Exit;
+  end;
+  GitSetChosenRepo(Repo);
+  LogComp('Git: репозиторий - ' + Repo);
+  GitRefreshBar;
+end;
+
+procedure TForm1.GitCloneClick(Sender: TObject);
+var
+  Git, Url, Parent, Name, Target, StartDir: string;
+  SlashPos: Integer;
+begin
+  if FGitBusy then
+    Exit;
+  Git := GitExePath(True);
+  if Git = '' then
+    Exit;
+  Url := '';
+  if not InputQuery('Clone Repository', 'Адрес репозитория (https://github.' +
+     'com/владелец/имя):', Url) then
+    Exit;
+  Url := Trim(Url);
+  if Url = '' then
+    Exit;
+  // Имя папки - последняя часть адреса без .git
+  Name := Url;
+  while (Name <> '') and (Name[Length(Name)] = '/') do
+    SetLength(Name, Length(Name) - 1);
+  SlashPos := LastDelimiter('/:\', Name);
+  Name := Copy(Name, SlashPos + 1, MaxInt);
+  if LowerCase(Copy(Name, Length(Name) - 3, 4)) = '.git' then
+    SetLength(Name, Length(Name) - 4);
+  if Name = '' then
+    Name := 'repository';
+  StartDir := ExtractFilePath(ExcludeTrailingPathDelimiter(GitBaseDir));
+  Parent := StartDir;
+  if not PickFolderDialog('Clone Repository - куда (будет создана папка ' +
+     Name + ')', StartDir, Parent) then
+    Exit;
+  Target := IncludeTrailingPathDelimiter(Parent) + Name;
+  if DirectoryExists(Target) then
+  begin
+    ShowCompLog;
+    LogComp('Git: папка ' + Target + ' уже есть - выберите другое место');
+    Exit;
+  end;
+  if GitLongOp(Git, Parent, 'clone ' + string(GitQuote(WideString(Url))) +
+     ' ' + string(GitQuote(WideString(Target)))) = 0 then
+  begin
+    GitSetChosenRepo(Target);
+    GitRefreshBar;
+  end;
+end;
+
+procedure TForm1.GitUseProjectRepoClick(Sender: TObject);
+begin
+  GitSetChosenRepo('');
+  ShowCompLog;
+  LogComp('Git: репозиторий - по открытому проекту (' + GitBaseDir + ')');
+  GitRefreshBar;
+end;
+
+procedure TForm1.GitOpenUrl(const AUrl: string);
+begin
+  LogComp('Git: ' + AUrl);
+  ShellExecute(Handle, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
+end;
+
+// Страница репозитория на GitHub ('' - remote не на GitHub, сообщение)
+function TForm1.GitWebUrl(const AGit, ARepo: string): string;
+var
+  Remote: string;
+begin
+  Remote := GitQuery(AGit, ARepo, 'config --get remote.origin.url');
+  Result := string(GitHubWebUrl(WideString(Remote)));
+  if Result = '' then
+  begin
+    ShowCompLog;
+    if Remote = '' then
+      LogComp('Git: у репозитория нет remote origin - Repository - ' +
+              'Repository Settings')
+    else
+      LogComp('Git: remote origin не на GitHub - ' + Remote);
+  end;
+end;
+
+procedure TForm1.GitViewOnGitHubClick(Sender: TObject);
+var
+  Git, Repo, Url: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Url := GitWebUrl(Git, Repo);
+  if Url <> '' then
+    GitOpenUrl(Url);
+end;
+
+procedure TForm1.GitExplorerClick(Sender: TObject);
+var
+  Git, Repo: string;
+begin
+  if GitPrepare(Git, Repo) then
+    ShellExecute(Handle, 'open', PChar(Repo), nil, nil, SW_SHOWNORMAL);
+end;
+
+// Адрес remote origin: показать, поменять (set-url) или добавить
+procedure TForm1.GitRepoSettingsClick(Sender: TObject);
+var
+  Git, Repo, Remote, NewUrl: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Remote := GitQuery(Git, Repo, 'config --get remote.origin.url');
+  NewUrl := Remote;
+  if not InputQuery('Repository Settings', 'Адрес remote origin (например ' +
+     'https://github.com/владелец/имя.git):', NewUrl) then
+    Exit;
+  NewUrl := Trim(NewUrl);
+  if (NewUrl = '') or (NewUrl = Remote) then
+    Exit;
+  if Remote = '' then
+    GitLongOp(Git, Repo, 'remote add origin ' +
+      string(GitQuote(WideString(NewUrl))))
+  else
+    GitLongOp(Git, Repo, 'remote set-url origin ' +
+      string(GitQuote(WideString(NewUrl))));
+end;
+
+procedure TForm1.GitNewBranchClick(Sender: TObject);
+var
+  Git, Repo, Name: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Name := '';
+  if not InputQuery('New Branch', 'Имя новой ветки (от текущего коммита):',
+     Name) then
+    Exit;
+  Name := Trim(Name);
+  if Name = '' then
+    Exit;
+  if not GitValidBranchName(Name) then
+  begin
+    ShowMessage('9816:Имя ветки не годится для git: без пробелов, ~ ^ : ? * [ \, ' +
+      'не начинается с - и не кончается на / или .lock');
+    Exit;
+  end;
+  GitLongOp(Git, Repo, 'checkout -b ' + string(GitQuote(WideString(Name))));
+end;
+
+procedure TForm1.GitSwitchBranchClick(Sender: TObject);
+var
+  Git, Repo, Current, Target: string;
+  Branches: TStringList;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Current := GitCurrentBranch(Git, Repo);
+  Branches := TStringList.Create;
+  try
+    GitBranchList(Git, Repo, False, Branches);
+    if Branches.IndexOf(Current) >= 0 then
+      Branches.Delete(Branches.IndexOf(Current));
+    if Branches.Count = 0 then
+    begin
+      ShowCompLog;
+      LogComp('Git: других веток нет (Branch - New Branch)');
+      Exit;
+    end;
+    Target := ChooseFromList('Switch Branch', 'Перейти на ветку (сейчас - ' +
+      Current + '):', Branches);
+  finally
+    Branches.Free;
+  end;
+  if Target <> '' then
+    GitLongOp(Git, Repo, 'checkout ' + string(GitQuote(WideString(Target))));
+end;
+
+procedure TForm1.GitRenameBranchClick(Sender: TObject);
+var
+  Git, Repo, Current, Name: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Current := GitCurrentBranch(Git, Repo);
+  if Current = '' then
+  begin
+    ShowCompLog;
+    LogComp('Git: HEAD отсоединён - переименовывать нечего');
+    Exit;
+  end;
+  Name := Current;
+  if not InputQuery('Rename Branch', 'Новое имя ветки ' + Current + ':',
+     Name) then
+    Exit;
+  Name := Trim(Name);
+  if (Name = '') or (Name = Current) then
+    Exit;
+  if not GitValidBranchName(Name) then
+  begin
+    ShowMessage('9817:Имя ветки не годится для git');
+    Exit;
+  end;
+  if GitLongOp(Git, Repo, 'branch -m ' + string(GitQuote(WideString(Name)))) = 0 then
+    LogComp('Git: ветка на сервере (если была) осталась со старым именем; ' +
+            'Push опубликует ' + Name);
+end;
+
+procedure TForm1.GitDeleteBranchClick(Sender: TObject);
+var
+  Git, Repo, Current, Target: string;
+  Branches: TStringList;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Current := GitCurrentBranch(Git, Repo);
+  Branches := TStringList.Create;
+  try
+    GitBranchList(Git, Repo, False, Branches);
+    if Branches.IndexOf(Current) >= 0 then
+      Branches.Delete(Branches.IndexOf(Current));
+    if Branches.Count = 0 then
+    begin
+      ShowCompLog;
+      LogComp('Git: удалять нечего - кроме текущей (' + Current + ') веток нет');
+      Exit;
+    end;
+    Target := ChooseFromList('Delete Branch', 'Удалить локальную ветку ' +
+      '(текущую удалить нельзя):', Branches);
+  finally
+    Branches.Free;
+  end;
+  if Target = '' then
+    Exit;
+  if MessageDlg('9818:Удалить локальную ветку ' + Target + '?'#13#10#13#10 +
+     'На сервере (GitHub) она останется.', mtConfirmation,
+     [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  if GitLongOp(Git, Repo, 'branch -d ' +
+     string(GitQuote(WideString(Target)))) = 0 then
+    Exit;
+  // -d отказывается, если коммиты ветки никуда не влиты
+  if MessageDlg('9819:В ветке ' + Target + ' есть коммиты, которых нет в других ' +
+     'ветках (подробности - Compilation log).'#13#10#13#10'Удалить всё ' +
+     'равно (git branch -D)? Эти коммиты останутся только на сервере, ' +
+     'если ветка туда отправлялась.', mtWarning, [mbOK, mbCancel], 0) = mrOk then
+    GitLongOp(Git, Repo, 'branch -D ' + string(GitQuote(WideString(Target))));
+end;
+
+// Основная ветка сервера: origin/HEAD, иначе origin/main или origin/master
+function TForm1.GitDefaultRemoteBranch(const AGit, ARepo: string): string;
+begin
+  Result := GitQuery(AGit, ARepo,
+    'symbolic-ref --short -q refs/remotes/origin/HEAD');
+  if Result <> '' then
+    Exit;
+  if GitQuery(AGit, ARepo, 'rev-parse -q --verify refs/remotes/origin/main') <> '' then
+    Result := 'origin/main'
+  else if GitQuery(AGit, ARepo,
+          'rev-parse -q --verify refs/remotes/origin/master') <> '' then
+    Result := 'origin/master';
+end;
+
+procedure TForm1.GitUpdateFromDefaultClick(Sender: TObject);
+var
+  Git, Repo, DefaultBranch: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  DefaultBranch := GitDefaultRemoteBranch(Git, Repo);
+  if DefaultBranch = '' then
+  begin
+    ShowCompLog;
+    LogComp('Git: основная ветка сервера не найдена (сначала Fetch)');
+    Exit;
+  end;
+  GitLongOp(Git, Repo, 'merge --no-edit ' +
+    string(GitQuote(WideString(DefaultBranch))));
+end;
+
+procedure TForm1.GitMergeClick(Sender: TObject);
+var
+  Git, Repo, Current, Target: string;
+  Branches: TStringList;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Current := GitCurrentBranch(Git, Repo);
+  Branches := TStringList.Create;
+  try
+    GitBranchList(Git, Repo, True, Branches);
+    if Branches.IndexOf(Current) >= 0 then
+      Branches.Delete(Branches.IndexOf(Current));
+    if Branches.Count = 0 then
+    begin
+      ShowCompLog;
+      LogComp('Git: вливать нечего - других веток нет');
+      Exit;
+    end;
+    Target := ChooseFromList('Merge into Current Branch', 'Влить в ' +
+      Current + ' ветку:', Branches);
+  finally
+    Branches.Free;
+  end;
+  if Target = '' then
+    Exit;
+  if GitLongOp(Git, Repo, 'merge --no-edit ' +
+     string(GitQuote(WideString(Target)))) <> 0 then
+    LogComp('Git: при конфликте - исправить файлы и Commit, или отменить ' +
+            'слияние в Git Bash: git merge --abort');
+end;
+
+procedure TForm1.GitViewBranchClick(Sender: TObject);
+var
+  Git, Repo, Url, Branch: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Url := GitWebUrl(Git, Repo);
+  Branch := GitCurrentBranch(Git, Repo);
+  if (Url <> '') and (Branch <> '') then
+    GitOpenUrl(Url + '/tree/' + Branch);
+end;
+
+procedure TForm1.GitPullRequestClick(Sender: TObject);
+var
+  Git, Repo, Url, Branch: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Url := GitWebUrl(Git, Repo);
+  Branch := GitCurrentBranch(Git, Repo);
+  if (Url <> '') and (Branch <> '') then
+    GitOpenUrl(Url + '/compare/' + Branch + '?expand=1');
 end;
 
 // ReactOS - Run Image: образ последней сборки - в эмуляторе, без сборки

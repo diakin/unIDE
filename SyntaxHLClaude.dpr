@@ -79,6 +79,8 @@ uses
   QemuTool in 'QemuTool.pas',
   GitTool in 'GitTool.pas',
   RufusTool in 'RufusTool.pas',
+  GitRun in 'GitRun.pas',
+  DlgGitCommit in 'DlgGitCommit.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};
 
 {$R *.res}
