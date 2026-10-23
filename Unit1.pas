@@ -23111,6 +23111,15 @@ var
   C: TWinControl;
   CursorPt: TPoint;
 begin
+  // Отпускание F10 после того, как F10 открыл или закрыл unIDE FAR: иначе
+  // Windows откроет полосу меню IDE (в каком бы окне ни был фокус)
+  if FFarEatF10Up and (Msg.wParam = VK_F10) and
+     ((Msg.message = WM_SYSKEYUP) or (Msg.message = WM_KEYUP)) then
+  begin
+    FFarEatF10Up := False;
+    Handled := True;
+    Exit;
+  end;
   // unIDE FAR: клавиши его окна - ему первым. Что он разобрал, и все его
   // F-клавиши дальше не идут: ни к отладчику (F4..F9), ни к ярлыкам меню,
   // ни к полосе меню (F10, Alt+F1 ... приходят как WM_SYSKEYDOWN).
@@ -23125,10 +23134,18 @@ begin
       Handled := True;
     Exit;
   end;
-  if FFarEatF10Up and (Msg.wParam = VK_F10) and
-     ((Msg.message = WM_SYSKEYUP) or (Msg.message = WM_KEYUP)) then
+  // F10 в главном окне (без Shift, Ctrl, Alt) - открыть unIDE FAR (в
+  // режиме F4 - фокус в него); закрывает его F10 в самом FAR (FarClose).
+  // Повтор нажатия (клавишу держат) - пропускается: иначе FAR, только что
+  // закрытый по F10, открылся бы снова
+  if (Msg.message = WM_SYSKEYDOWN) and (Msg.wParam = VK_F10) and
+     (GetKeyState(VK_SHIFT) >= 0) and (GetKeyState(VK_CONTROL) >= 0) and
+     (GetKeyState(VK_MENU) >= 0) and (Screen.ActiveForm = Self) and
+     ((Msg.hwnd = Handle) or IsChild(Handle, Msg.hwnd)) then
   begin
-    FFarEatF10Up := False;
+    if (Msg.lParam and $40000000) = 0 then
+      FarMenuClick(nil);
+    FFarEatF10Up := True;
     Handled := True;
     Exit;
   end;
@@ -37393,8 +37410,9 @@ const
   FarBtnW = 22;
   FarBtnH = 18;
 
-// Utils - unIDE FAR: двухпанельный файловый менеджер поверх области
-// редактора (вкладки, тулбар, лог и остальное остаются видны). Окно
+// Utils - unIDE FAR (и F10 в главном окне, AppMessage): двухпанельный
+// файловый менеджер поверх области редактора (вкладки, тулбар, лог и
+// остальное остаются видны). Окно
 // создаётся при первом открытии и дальше только прячется (F10) - пути
 // панелей держит само; при новом открытии папки перечитываются.
 procedure TForm1.FarMenuClick(Sender: TObject);

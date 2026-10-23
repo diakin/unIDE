@@ -781,6 +781,7 @@ object Form1: TForm1
       end
       object mFar: TMenuItem
         Caption = 'unIDE FAR'
+        ShortCut = 121
         OnClick = FarMenuClick
       end
     end

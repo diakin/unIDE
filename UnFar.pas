@@ -71,6 +71,10 @@ unit UnFar;
 //      курсором в командную строку и в буфер; Ctrl+Insert - имя файла под
 //      курсором в буфер. В буфер - без кавычек, текстом Unicode
 //      (CF_UNICODETEXT; имена вне cp1251 не теряются).
+//    - b.26: Ctrl+Left / Ctrl+Right - граница между панелями влево /
+//      вправо (левая панель уже / шире; при пустой командной строке, как в
+//      FAR; в строке с текстом - каретка на слово). Сдвиг от середины -
+//      editor.ini [Far] PanelShift.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -100,7 +104,7 @@ uses
   Clipbrd, IniBuf, SzSetup;
 
 const
-  FarBuild = 'b.25';
+  FarBuild = 'b.26';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -290,6 +294,8 @@ type
     FHalfWidth: Integer;          // ширина окна в режиме F4, пикселей (0 - нет)
     FPanelCut: Integer;           // на сколько строк панели короче окна
                                   // (Ctrl+Up / Ctrl+Down)
+    FPanelShift: Integer;         // граница панелей: сдвиг от середины, клеток
+                                  // (Ctrl+Left / Ctrl+Right)
     // Командная строка: текст, каретка (0..Length), история (старые
     // сверху) и место в ней при Ctrl+E / Ctrl+X
     FCmdText: WideString;
@@ -412,6 +418,8 @@ type
     procedure ProcFinish(AKill: Boolean);
     function PromptText: WideString;
     procedure ChangePanelCut(ADelta: Integer);
+    procedure ChangePanelShift(ADelta: Integer);
+    function LeftPanelWidth: Integer;
     function KeyBarRows: Integer;
     function FileRows: Integer;
     procedure ColumnWidths(AWidth: Integer; var AFirst, ASecond: Integer);
@@ -2131,13 +2139,52 @@ begin
   if AIndex = 0 then
   begin
     AX0 := 0;
-    AWidth := FCols div 2;
+    AWidth := LeftPanelWidth;
   end
   else
   begin
-    AX0 := FCols div 2;
-    AWidth := FCols - FCols div 2;
+    AX0 := LeftPanelWidth;
+    AWidth := FCols - AX0;
   end;
+end;
+
+// Ширина левой панели (две панели): половина окна со сдвигом PanelShift;
+// у каждой панели - не меньше FarMinPanelCols клеток
+const
+  FarMinPanelCols = 16;
+
+function TFarView.LeftPanelWidth: Integer;
+begin
+  Result := FCols div 2;
+  if FCols < 2 * FarMinPanelCols then
+    Exit;
+  Result := Result + FPanelShift;
+  if Result < FarMinPanelCols then
+    Result := FarMinPanelCols;
+  if Result > FCols - FarMinPanelCols then
+    Result := FCols - FarMinPanelCols;
+end;
+
+// Ctrl+Left - граница панелей влево (ADelta = -1), Ctrl+Right - вправо
+procedure TFarView.ChangePanelShift(ADelta: Integer);
+var
+  OldWidth: Integer;
+begin
+  if FSingle >= 0 then
+  begin
+    Status('unIDE FAR: видна одна панель (F4) - ширину окна меняет ' +
+      'сплиттер');
+    Exit;
+  end;
+  OldWidth := LeftPanelWidth;
+  // Сдвиг - от той ширины, что видна (упёрлись в край - дальше не копится)
+  FPanelShift := OldWidth - FCols div 2 + ADelta;
+  if LeftPanelWidth = OldWidth then
+  begin
+    FPanelShift := OldWidth - FCols div 2;
+    Exit;
+  end;
+  Invalidate;
 end;
 
 // Строк у панели: всё окно без нижней строки (кейбар)
@@ -2651,7 +2698,7 @@ begin
   Row := AY div FCellH;
   if FSingle >= 0 then
     APanelIndex := FSingle
-  else if Col < FCols div 2 then
+  else if Col < LeftPanelWidth then
     APanelIndex := 0
   else
     APanelIndex := 1;
@@ -3089,6 +3136,10 @@ begin
         GoUp;
       VK_NEXT:
         EnterItem;
+      VK_LEFT:              // граница между панелями влево
+        ChangePanelShift(-1);
+      VK_RIGHT:             // граница между панелями вправо
+        ChangePanelShift(1);
       VK_DOWN:              // граница панелей вниз - панели длиннее
         ChangePanelCut(-1);
       VK_UP:                // граница панелей вверх - панели короче
@@ -5047,6 +5098,29 @@ begin
         begin
           if FCmdPos < Length(FCmdText) then
             Inc(FCmdPos);
+          Invalidate;
+        end;
+      VK_LEFT, VK_RIGHT:              // каретка на слово; строка пуста -
+        if FCmdText = '' then         // ширина панелей (дальше, панелям)
+          Result := False
+        else
+        begin
+          if AKey = VK_LEFT then
+          begin
+            while (FCmdPos > 0) and (FCmdText[FCmdPos] = ' ') do
+              Dec(FCmdPos);
+            while (FCmdPos > 0) and (FCmdText[FCmdPos] <> ' ') do
+              Dec(FCmdPos);
+          end
+          else
+          begin
+            while (FCmdPos < Length(FCmdText)) and
+                  (FCmdText[FCmdPos + 1] <> ' ') do
+              Inc(FCmdPos);
+            while (FCmdPos < Length(FCmdText)) and
+                  (FCmdText[FCmdPos + 1] = ' ') do
+              Inc(FCmdPos);
+          end;
           Invalidate;
         end;
       Ord('V'):                       // вставить
@@ -7249,6 +7323,7 @@ begin
     FHalfWidth := Ini.ReadInteger(FarIniSection, 'HalfWidth', 0);
     FIniName := AIniName;
     FPanelCut := Ini.ReadInteger(FarIniSection, 'PanelCut', 0);
+    FPanelShift := Ini.ReadInteger(FarIniSection, 'PanelShift', 0);
     // Shift+F1: формат (0 - ZIP, 1 - 7z) и уровень сжатия (0..5, 3 - Normal)
     FArcAddFormat := Ini.ReadInteger(FarIniSection, 'ArcFormat', 0);
     FArcAddLevel := Ini.ReadInteger(FarIniSection, 'ArcLevel', 3);
@@ -7336,6 +7411,7 @@ begin
     end;
     Ini.WriteInteger(FarIniSection, 'Active', FActive);
     Ini.WriteInteger(FarIniSection, 'PanelCut', FPanelCut);
+    Ini.WriteInteger(FarIniSection, 'PanelShift', FPanelShift);
     Ini.WriteInteger(FarIniSection, 'ArcFormat', FArcAddFormat);
     Ini.WriteInteger(FarIniSection, 'ArcLevel', FArcAddLevel);
     Ini.EraseSection(FarCmdHistorySection);
