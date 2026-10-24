@@ -12,8 +12,11 @@ unit GitDiffView;
 //      куска (@@ -881,6 +881,10 @@) - синий; колонка номеров у них темнее;
 //    - заголовки файла (diff --git, index, ---, +++) и «\ No newline» -
 //      приглушённым цветом.
-//  Фон всего окна и цвет текста - из темы (Edit.BG, Edit.Text); цвета
-//  строк - свои для тёмного и светлого фона. RichEdit красит фон только
+//    - сам код подсвечен по цветовой схеме unIDE для этого файла (схему
+//      даёт OnScheme - Unit1.SchemeCopyFor по имени из заголовка разницы;
+//      RTF строит SchemeRowsToRtf из SchemeRtf, как просмотр «по схеме»).
+//  Фон окна и цвет текста - из схемы (без схемы - из темы: Edit.BG,
+//  Edit.Text); цвета полос - свои для тёмного и светлого фона. RichEdit красит фон только
 //  под символами, поэтому строки дополняются пробелами до самой длинной
 //  (не длиннее DiffPadMax) - полосы идут во всю ширину.
 //  Не разница (сообщение «выберите файл» и т. п.) - простым текстом.
@@ -24,12 +27,17 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls, Forms,
-  ComCtrls, UiTheme;
+  ComCtrls, UiTheme, ClrScheme, SchemeRtf;
 
 type
+  // Схема подсветки для файла (свой объект - его освобождает окно); nil -
+  // без подсветки
+  TGitSchemeEvent = function(const AFileName: string): TClrScheme of object;
+
   TGitDiffView = class(TRichEdit)
   private
     FLastText: string;
+    FOnScheme: TGitSchemeEvent;
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure ApplyLook;
     procedure Render;
@@ -41,6 +49,8 @@ type
     destructor Destroy; override;
     // Разница git или простой текст (определяется по содержимому)
     procedure ShowDiff(const AText: string);
+    // Схема подсветки по имени файла из разницы
+    property OnScheme: TGitSchemeEvent read FOnScheme write FOnScheme;
   end;
 
 implementation
@@ -53,17 +63,6 @@ const
   EmHideSelection = WM_USER + 63;
   SfRtf = $0002;
 
-  // Цвета таблицы RTF (\cfN, \highlightN)
-  ciText = 1;
-  ciDim = 2;
-  ciNumber = 3;
-  ciHunkText = 4;
-  ciAddBack = 5;
-  ciAddGutter = 6;
-  ciDelBack = 7;
-  ciDelGutter = 8;
-  ciHunkBack = 9;
-  ciCount = 9;
 
 var
   DiffEditLib: HMODULE = 0;
@@ -103,11 +102,16 @@ begin
 end;
 
 // Табуляции - пробелами до следующей позиции, кратной DiffTabSize
-function ExpandTabs(const ALine: WideString): WideString;
+function ExpandTabs(const ALine: string): string;
 var
   CharIdx: Integer;
 begin
   Result := '';
+  if Pos(#9, ALine) = 0 then
+  begin
+    Result := ALine;
+    Exit;
+  end;
   for CharIdx := 1 to Length(ALine) do
     if ALine[CharIdx] = #9 then
       repeat
@@ -115,41 +119,6 @@ begin
       until Length(Result) mod DiffTabSize = 0
     else
       Result := Result + ALine[CharIdx];
-end;
-
-// Текст для RTF: \ { } - с обратной косой, не ASCII - \uN?
-function RtfEscape(const AText: WideString): string;
-var
-  CharIdx, Code: Integer;
-begin
-  Result := '';
-  for CharIdx := 1 to Length(AText) do
-  begin
-    Code := Ord(AText[CharIdx]);
-    case Code of
-      Ord('\'), Ord('{'), Ord('}'):
-        Result := Result + '\' + Char(Code);
-      32..91, 93..122, 124, 126:
-        Result := Result + Char(Code);
-    else
-      if Code < 32 then
-        Result := Result + ' '
-      else if Code > 32767 then
-        Result := Result + '\u' + IntToStr(Code - 65536) + '?'
-      else
-        Result := Result + '\u' + IntToStr(Code) + '?';
-    end;
-  end;
-end;
-
-function RtfColor(AColor: TColor): string;
-var
-  ColorRgb: Longint;
-begin
-  ColorRgb := ColorToRGB(AColor);
-  Result := '\red' + IntToStr(GetRValue(ColorRgb)) + '\green' +
-    IntToStr(GetGValue(ColorRgb)) + '\blue' + IntToStr(GetBValue(ColorRgb)) +
-    ';';
 end;
 
 function IsDarkColor(AColor: TColor): Boolean;
@@ -293,140 +262,192 @@ begin
     Render;
 end;
 
+// Имя файла из заголовка разницы: +++ b/путь (новый файл - тоже), у
+// удалённого - --- a/путь, иначе diff --git a/... b/путь. '' - нет
+function DiffFileName(ALines: TStrings): string;
+var
+  LineIdx, SpacePos: Integer;
+  Line: string;
+begin
+  Result := '';
+  for LineIdx := 0 to ALines.Count - 1 do
+  begin
+    Line := ALines[LineIdx];
+    if Copy(Line, 1, 3) = '@@ ' then
+      Break;
+    if (Copy(Line, 1, 6) = '+++ b/') then
+    begin
+      Result := Copy(Line, 7, MaxInt);
+      Break;
+    end;
+    if (Copy(Line, 1, 6) = '--- a/') then
+      Result := Copy(Line, 7, MaxInt)
+    else if (Result = '') and (Copy(Line, 1, 11) = 'diff --git ') then
+    begin
+      SpacePos := Pos(' b/', Line);
+      if SpacePos > 0 then
+        Result := Copy(Line, SpacePos + 3, MaxInt);
+    end;
+  end;
+  Result := Trim(Result);
+  if (Result <> '') and (Result[1] = '"') then
+    Result := Copy(Result, 2, Length(Result) - 2);
+  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+end;
+
 procedure TGitDiffView.Render;
 var
   Lines: TStringList;
-  Rtf, Line, Gutter, Content: string;
-  WideLine: WideString;
-  Colors: array[1..ciCount] of TColor;
-  LineIdx, MaxWidth, OldNum, NewNum, ColorIdx: Integer;
+  Rows: TSchemeRows;
+  Scheme: TClrScheme;
+  Rtf, Line, Gutter, FileName: string;
+  LineIdx, RowCount, MaxWidth, OldNum, NewNum: Integer;
   InDiff, InHunk: Boolean;
+  PageBg, TextFg, DimFg, NumberFg, HunkFg: TColor;
+  AddBg, AddGutterBg, DelBg, DelGutterBg, HunkBg: TColor;
   Source: TDiffStreamSource;
   Stream: TDiffEditStream;
 
-  // Строка: колонка номеров (фон AGutterBack, 0 - без фона) и текст
-  // (цвет ATextColor, фон ABack); фон - во всю ширину
-  procedure AddRow(const AGutter: string; AGutterBack: Integer;
-    const AText: WideString; ATextColor, ABack: Integer);
-  var
-    Shown: WideString;
+  // Строка: колонка номеров (AGutter на AGutterBg), вводный кусок, текст
+  procedure AddRow(const AGutter: string; AGutterBg: TColor;
+    const ALead, AText: string; AHighlight: Boolean; ATextFg, ARowBg: TColor;
+    AReset: Boolean);
   begin
-    Shown := ExpandTabs(AText);
-    if (ABack <> 0) and (Length(Shown) < MaxWidth) then
-      Shown := Shown + StringOfChar(' ', MaxWidth - Length(Shown));
-    Rtf := Rtf + '\highlight' + IntToStr(AGutterBack) + '\cf' +
-      IntToStr(ciNumber) + ' ' + RtfEscape(AGutter) + '\highlight' +
-      IntToStr(ABack) + '\cf' + IntToStr(ATextColor) + ' ' +
-      RtfEscape(Shown) + '\highlight0\par'#13#10;
+    if RowCount >= Length(Rows) then
+      SetLength(Rows, RowCount * 2 + 16);
+    Rows[RowCount].Prefix := AGutter;
+    Rows[RowCount].PrefixFg := NumberFg;
+    Rows[RowCount].PrefixBg := AGutterBg;
+    Rows[RowCount].Lead := ALead;
+    Rows[RowCount].Text := ExpandTabs(AText);
+    Rows[RowCount].Highlight := AHighlight;
+    Rows[RowCount].TextFg := ATextFg;
+    Rows[RowCount].RowBg := ARowBg;
+    if ARowBg <> clNone then
+      Rows[RowCount].PadTo := MaxWidth
+    else
+      Rows[RowCount].PadTo := 0;
+    Rows[RowCount].ResetBlock := AReset;
+    Inc(RowCount);
   end;
 
 begin
   if not HandleAllocated then
     Exit;
-  // Цвета: фон и текст - из темы, строки - для тёмного / светлого фона
-  Colors[ciText] := Font.Color;
-  if IsDarkColor(Color) then
-  begin
-    Colors[ciDim] := $00909090;
-    Colors[ciNumber] := $00808080;
-    Colors[ciHunkText] := $00FFB48C;
-    Colors[ciAddBack] := $00243D1A;
-    Colors[ciAddGutter] := $002F551F;
-    Colors[ciDelBack] := $00221E4B;
-    Colors[ciDelGutter] := $002B266B;
-    Colors[ciHunkBack] := $004A2E1C;
-  end
-  else
-  begin
-    Colors[ciDim] := $00808080;
-    Colors[ciNumber] := $0081776E;
-    Colors[ciHunkText] := $006A6057;
-    Colors[ciAddBack] := $00ECFFE6;
-    Colors[ciAddGutter] := $00D8FFCC;
-    Colors[ciDelBack] := $00E9EBFF;
-    Colors[ciDelGutter] := $00D5D7FF;
-    Colors[ciHunkBack] := $00FFF4DD;
-  end;
-
+  Scheme := nil;
   Lines := TStringList.Create;
   try
     Lines.Text := FLastText;
     InDiff := LooksLikeDiff(Lines);
+    // Схема - по имени файла в заголовке разницы
+    if InDiff and Assigned(FOnScheme) then
+    begin
+      FileName := DiffFileName(Lines);
+      if FileName <> '' then
+        Scheme := FOnScheme(FileName);
+    end;
+    // Фон и текст - из схемы, без неё - из темы
+    if Scheme <> nil then
+    begin
+      PageBg := SchemePageColor(Scheme);
+      TextFg := Scheme.FTextFG;
+      if (TextFg = clNone) or (TextFg = clDefault) then
+        TextFg := clWindowText;
+    end
+    else
+    begin
+      PageBg := UiThemeColor('Edit.BG');
+      TextFg := UiThemeColor('Edit.Text');
+    end;
+    if IsDarkColor(PageBg) then
+    begin
+      DimFg := $00909090;
+      NumberFg := $00808080;
+      HunkFg := $00FFB48C;
+      AddBg := $00243D1A;
+      AddGutterBg := $002F551F;
+      DelBg := $00221E4B;
+      DelGutterBg := $002B266B;
+      HunkBg := $004A2E1C;
+    end
+    else
+    begin
+      DimFg := $00808080;
+      NumberFg := $0081776E;
+      HunkFg := $006A6057;
+      AddBg := $00ECFFE6;
+      AddGutterBg := $00D8FFCC;
+      DelBg := $00E9EBFF;
+      DelGutterBg := $00D5D7FF;
+      HunkBg := $00FFF4DD;
+    end;
+
     // Ширина полос - по самой длинной строке
     MaxWidth := 0;
     if InDiff then
       for LineIdx := 0 to Lines.Count - 1 do
-      begin
-        WideLine := ExpandTabs(WideString(Lines[LineIdx]));
-        if (Length(WideLine) > MaxWidth) and
-           (Length(WideLine) <= DiffPadMax) then
-          MaxWidth := Length(WideLine);
-      end;
+        if (Length(Lines[LineIdx]) <= DiffPadMax) and
+           (Length(ExpandTabs(Lines[LineIdx])) > MaxWidth) then
+          MaxWidth := Length(ExpandTabs(Lines[LineIdx]));
     Inc(MaxWidth, 2);
 
-    Rtf := '{\rtf1\ansi\ansicpg1251\deff0{\fonttbl{\f0\fmodern\fcharset204 ' +
-      Font.Name + ';}}{\colortbl ;';
-    for ColorIdx := 1 to ciCount do
-      Rtf := Rtf + RtfColor(Colors[ColorIdx]);
-    Rtf := Rtf + '}\f0\fs' + IntToStr(Font.Size * 2) + ' ';
-
+    SetLength(Rows, Lines.Count + 1);
+    RowCount := 0;
     OldNum := 0;
     NewNum := 0;
     InHunk := False;
+    Gutter := '            ';      // две колонки по 5 и пробелы
     for LineIdx := 0 to Lines.Count - 1 do
     begin
       Line := Lines[LineIdx];
-      WideLine := WideString(Line);
       if not InDiff then
-      begin
-        Rtf := Rtf + '\cf' + IntToStr(ciText) + ' ' +
-          RtfEscape(ExpandTabs(WideLine)) + '\par'#13#10;
-        Continue;
-      end;
-      Gutter := '            ';    // две колонки по 5 и пробелы
-      if Copy(Line, 1, 3) = '@@ ' then
+        AddRow('', clNone, '', Line, False, TextFg, clNone, False)
+      else if Copy(Line, 1, 3) = '@@ ' then
       begin
         ParseHunk(Line, OldNum, NewNum);
         InHunk := True;
-        AddRow('  ...  ...  ', ciHunkBack, WideLine, ciHunkText, ciHunkBack);
+        AddRow('  ...  ...  ', HunkBg, '', Line, False, HunkFg, HunkBg, True);
       end
       else if Copy(Line, 1, 11) = 'diff --git ' then
       begin
         InHunk := False;
-        AddRow(Gutter, 0, WideLine, ciDim, 0);
+        AddRow(Gutter, clNone, '', Line, False, DimFg, clNone, True);
       end
       else if not InHunk then
-        AddRow(Gutter, 0, WideLine, ciDim, 0)   // index, ---, +++, mode
+        // index, ---, +++, new file mode ...
+        AddRow(Gutter, clNone, '', Line, False, DimFg, clNone, True)
       else if Copy(Line, 1, 1) = '+' then
       begin
-        Content := '+ ' + Copy(Line, 2, MaxInt);
-        AddRow(GutterNum(0) + ' ' + GutterNum(NewNum) + ' ', ciAddGutter,
-          WideString(Content), ciText, ciAddBack);
+        AddRow(GutterNum(0) + ' ' + GutterNum(NewNum) + ' ', AddGutterBg,
+          '+ ', Copy(Line, 2, MaxInt), True, TextFg, AddBg, False);
         Inc(NewNum);
       end
       else if Copy(Line, 1, 1) = '-' then
       begin
-        Content := '- ' + Copy(Line, 2, MaxInt);
-        AddRow(GutterNum(OldNum) + ' ' + GutterNum(0) + ' ', ciDelGutter,
-          WideString(Content), ciText, ciDelBack);
+        AddRow(GutterNum(OldNum) + ' ' + GutterNum(0) + ' ', DelGutterBg,
+          '- ', Copy(Line, 2, MaxInt), True, TextFg, DelBg, False);
         Inc(OldNum);
       end
       else if Copy(Line, 1, 1) = '\' then
-        AddRow(Gutter, 0, WideLine, ciDim, 0)   // \ No newline at end of file
+        // \ No newline at end of file
+        AddRow(Gutter, clNone, '', Line, False, DimFg, clNone, False)
       else
       begin
-        Content := '  ' + Copy(Line, 2, MaxInt);
-        AddRow(GutterNum(OldNum) + ' ' + GutterNum(NewNum) + ' ', 0,
-          WideString(Content), ciText, 0);
+        AddRow(GutterNum(OldNum) + ' ' + GutterNum(NewNum) + ' ', clNone,
+          '  ', Copy(Line, 2, MaxInt), True, TextFg, clNone, False);
         Inc(OldNum);
         Inc(NewNum);
       end;
     end;
-    Rtf := Rtf + '}';
+    SetLength(Rows, RowCount);
+    Rtf := SchemeRowsToRtf(Rows, Scheme, Font.Name, Font.Size, TextFg,
+      PageBg);
   finally
     Lines.Free;
+    Scheme.Free;
   end;
 
+  Color := PageBg;
   Source.Data := Rtf;
   Source.ReadPos := 1;
   Stream.Cookie := Longint(@Source);

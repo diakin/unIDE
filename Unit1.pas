@@ -65355,6 +65355,7 @@ begin
   Dlg := TDlgGitCommit.CreateDlg(Self, 'Commit to ' + Branch + ' - ' +
     ExtractFileName(ExcludeTrailingPathDelimiter(ARepo)), AllChanges,
     GitDiffOf, GitDlgDiscard, GitDlgIgnore, GitDlgStatus);
+  Dlg.SetSchemeProvider(SchemeCopyFor);
   try
     if Dlg.ShowModal <> mrOk then
       Exit;
@@ -66251,6 +66252,7 @@ begin
   WebUrl := string(GitHubWebUrl(WideString(Remote)));
   Dlg := TDlgGitHistory.CreateDlg(Self, 'History - ' + Branch + ' - ' +
     ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), WebUrl, GitHistQuery);
+  Dlg.SetSchemeProvider(SchemeCopyFor);
   try
     Dlg.ShowModal;
     HistAction := Dlg.Action;

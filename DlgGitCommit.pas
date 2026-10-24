@@ -106,6 +106,8 @@ type
     // Заголовок, пустая строка, описание - как пишет GitHub Desktop
     function MessageText: string;
     property PushAfter: Boolean read FPushAfter;
+    // Схема подсветки кода в разнице (Unit1.SchemeCopyFor)
+    procedure SetSchemeProvider(AProvider: TGitSchemeEvent);
   end;
 
 implementation
@@ -364,6 +366,11 @@ begin
   FList.OnChange := ListChange;
   UpdateCount;
   ActiveControl := FSummary;
+end;
+
+procedure TDlgGitCommit.SetSchemeProvider(AProvider: TGitSchemeEvent);
+begin
+  FDiff.OnScheme := AProvider;
 end;
 
 procedure TDlgGitCommit.WMUpdateUIState(var Message: TMessage);

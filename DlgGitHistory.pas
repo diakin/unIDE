@@ -80,6 +80,8 @@ type
       AOnQuery: TGitQueryEvent);
     property Action: TGitHistAction read FAction;
     property SelectedHash: string read FCurHash;
+    // Схема подсветки кода в разнице (Unit1.SchemeCopyFor)
+    procedure SetSchemeProvider(AProvider: TGitSchemeEvent);
   end;
 
 const
@@ -474,6 +476,11 @@ begin
     Exit;
   FAction := ghaRevert;
   ModalResult := mrOk;
+end;
+
+procedure TDlgGitHistory.SetSchemeProvider(AProvider: TGitSchemeEvent);
+begin
+  FDiff.OnScheme := AProvider;
 end;
 
 end.

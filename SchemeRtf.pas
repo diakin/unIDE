@@ -14,12 +14,33 @@ unit SchemeRtf;
 //  и пары скобок - нет: это подсветка редактора, а не текста.
 //
 //  Номера строк RTF совпадают со строками текста: каждая строка - свой \par.
+//
+//  SchemeRowsToRtf - то же для строк с обрамлением (разница git, окно
+//  GitDiffView): у строки бывает колонка слева без подсветки (номера),
+//  вводный кусок (+ / -), подложка всей строки и дополнение пробелами до
+//  ширины; строку можно не подсвечивать (заголовки) и с неё начинать
+//  разбор заново (новый кусок разницы - блочный комментарий не тянется).
 // ---------------------------------------------------------------------------
 
 interface
 
 uses
   SysUtils, Classes, Graphics, ClrScheme;
+
+type
+  // Строка для SchemeRowsToRtf. Цвета clNone - текст / фон схемы
+  TSchemeRow = record
+    Prefix: string;          // слева, без подсветки (номера строк)
+    PrefixFg, PrefixBg: TColor;
+    Lead: string;            // после Prefix, на подложке строки (+ / -)
+    Text: string;            // сама строка (табуляции лучше заменить)
+    Highlight: Boolean;      // True - по схеме, False - целиком TextFg
+    TextFg: TColor;          // цвет строки без подсветки
+    RowBg: TColor;           // подложка Lead, Text и дополнения
+    PadTo: Integer;          // дополнить Text пробелами до этой длины
+    ResetBlock: Boolean;     // разбор с этой строки - заново
+  end;
+  TSchemeRows = array of TSchemeRow;
 
 // AText - текст файла; AFontName, AFontPt - шрифт. Цвет фона окна просмотра
 // - SchemePageColor: подложка символов с ним совпадает, и \highlight
@@ -37,6 +58,11 @@ function SchemeTextToRtf(const AText: string; AScheme: TClrScheme;
                          AMarkLines: TList = nil;
                          ACurLine: Integer = 0): string;
 function SchemePageColor(AScheme: TClrScheme): TColor;
+// Строки ARows с подсветкой по схеме AScheme. AScheme = nil - без
+// подсветки, цвета текста и фона - ADefFg / ADefBg
+function SchemeRowsToRtf(const ARows: TSchemeRows; AScheme: TClrScheme;
+                         const AFontName: string; AFontPt: Integer;
+                         ADefFg, ADefBg: TColor): string;
 
 implementation
 
@@ -88,14 +114,16 @@ begin
     Result := AScheme.FTextBG;
 end;
 
-function SchemeTextToRtf(const AText: string; AScheme: TClrScheme;
-                         const AFontName: string; AFontPt: Integer;
-                         AMarkLines: TList; ACurLine: Integer): string;
+// Общее для SchemeTextToRtf и SchemeRowsToRtf
+function RowsToRtfCore(const ARows: TSchemeRows; AScheme: TClrScheme;
+                       const AFontName: string; AFontPt: Integer;
+                       AMarkLines: TList; ACurLine: Integer;
+                       ADefFg, ADefBg: TColor): string;
 var
   Body: TRtfBuf;
   Colors: TList;          // RGB цветов таблицы; индекс в \cf = позиция + 1
   Keywords: TStringList;  // слово -> группа (Objects)
-  Lines: TStringList;
+  RowBg: TColor;          // подложка текущей строки (TSchemeRow.RowBg)
   TextFg, PageBg: TColor;
   CurFg, CurBg: TColor;   // цвета, которые сейчас действуют в RTF
   InBlock: Integer;       // пара маркеров открытого блочного комментария, -1
@@ -117,21 +145,14 @@ var
     Inc(Result);
   end;
 
-  // Кусок текста цветами AFg / ABg (clNone - цвет текста / фона схемы)
-  procedure Emit(const AChunk: string; AFg, ABg: TColor);
+  // Кусок текста ровно этими цветами (clNone - цвет текста / фона схемы)
+  procedure EmitRaw(const AChunk: string; AFg, ABg: TColor);
   var
     CharIdx: Integer;
     Ch: Char;
   begin
     if AChunk = '' then
       Exit;
-    if LineMarked then
-    begin
-      AFg := MarkFg;
-      ABg := MarkBg;
-    end;
-    if LineCurrent then
-      ABg := CurLineBg;
     if (AFg = clNone) or (AFg = clDefault) then
       AFg := TextFg;
     if (ABg = clNone) or (ABg = clDefault) then
@@ -165,6 +186,22 @@ var
         Body.Add(Ch);
       end;
     end;
+  end;
+
+  // Кусок текста строки: ошибочная / текущая строка и подложка строки -
+  // поверх цветов AFg / ABg
+  procedure Emit(const AChunk: string; AFg, ABg: TColor);
+  begin
+    if LineMarked then
+    begin
+      AFg := MarkFg;
+      ABg := MarkBg;
+    end;
+    if LineCurrent then
+      ABg := CurLineBg
+    else if (RowBg <> clNone) and not LineMarked then
+      ABg := RowBg;
+    EmitRaw(AChunk, AFg, ABg);
   end;
 
   // Маркер AMark в Line с позиции APos (без учёта регистра: REM, //, /')
@@ -403,12 +440,22 @@ begin
   Body := TRtfBuf.Create;
   Colors := TList.Create;
   Keywords := TStringList.Create;
-  Lines := TStringList.Create;
   try
-    TextFg := AScheme.FTextFG;
+    RowBg := clNone;
+    if AScheme <> nil then
+    begin
+      TextFg := AScheme.FTextFG;
+      PageBg := SchemePageColor(AScheme);
+    end
+    else
+    begin
+      TextFg := ADefFg;
+      PageBg := ADefBg;
+    end;
     if (TextFg = clNone) or (TextFg = clDefault) then
       TextFg := clWindowText;
-    PageBg := SchemePageColor(AScheme);
+    if (PageBg = clNone) or (PageBg = clDefault) then
+      PageBg := clWindow;
     CurFg := TextFg;
     CurBg := PageBg;
     ColorIndex(TextFg);   // \cf1 - цвет текста
@@ -435,6 +482,7 @@ begin
     Keywords.CaseSensitive := False;
     Keywords.Sorted := True;
     Keywords.Duplicates := dupIgnore;   // слово в двух группах - первая
+    if AScheme <> nil then
     for GroupIdx := 0 to High(AScheme.KeywordGroups) do
       if AScheme.KeywordGroups[GroupIdx].Words <> nil then
         for WordIdx := 0 to AScheme.KeywordGroups[GroupIdx].Words.Count - 1 do
@@ -442,22 +490,35 @@ begin
             Keywords.AddObject(Trim(AScheme.KeywordGroups[GroupIdx].Words[WordIdx]),
                                TObject(GroupIdx));
 
-    Lines.Text := AText;
     InBlock := -1;
-    for LineIdx := 0 to Lines.Count - 1 do
+    for LineIdx := 0 to High(ARows) do
     begin
-      Line := Lines[LineIdx];
+      Line := ARows[LineIdx].Text;
       LineLen := Length(Line);
       CharPos := 1;
       LineMarked := (AMarkLines <> nil) and
                     (AMarkLines.IndexOf(Pointer(LineIdx + 1)) >= 0);
       LineCurrent := LineIdx + 1 = ACurLine;
+      if ARows[LineIdx].ResetBlock then
+        InBlock := -1;
+      // Колонка слева - своими цветами, без подложки строки
+      RowBg := clNone;
+      EmitRaw(ARows[LineIdx].Prefix, ARows[LineIdx].PrefixFg,
+              ARows[LineIdx].PrefixBg);
+      RowBg := ARows[LineIdx].RowBg;
+      Emit(ARows[LineIdx].Lead, TextFg, PageBg);
       if LineMarked then
         Body.Add('\b ');
       // Пустая выделенная строка - пробел, чтобы подложка была видна
       if (LineMarked or LineCurrent) and (LineLen = 0) then
         Emit(' ', TextFg, PageBg);
-      if InBlock >= 0 then
+      if (AScheme = nil) or not ARows[LineIdx].Highlight then
+      begin
+        // Без подсветки - целиком цветом строки
+        Emit(Line, ARows[LineIdx].TextFg, PageBg);
+        CharPos := LineLen + 1;
+      end
+      else if InBlock >= 0 then
         EmitBlockTail;
       while CharPos <= LineLen do
       begin
@@ -467,8 +528,12 @@ begin
         Emit(Line[CharPos], TextFg, PageBg);
         Inc(CharPos);
       end;
+      if ARows[LineIdx].PadTo > LineLen then
+        Emit(StringOfChar(' ', ARows[LineIdx].PadTo - LineLen), TextFg,
+             PageBg);
       if LineMarked then
         Body.Add('\b0 ');
+      RowBg := clNone;
       Body.Add('\par'#13#10);
     end;
 
@@ -484,11 +549,50 @@ begin
     Header := Header + '}\f0\fs' + IntToStr(AFontPt * 2) + '\cf1 ';
     Result := Header + Body.Text + '}';
   finally
-    Lines.Free;
     Keywords.Free;
     Colors.Free;
     Body.Free;
   end;
+end;
+
+function SchemeTextToRtf(const AText: string; AScheme: TClrScheme;
+                         const AFontName: string; AFontPt: Integer;
+                         AMarkLines: TList; ACurLine: Integer): string;
+var
+  Lines: TStringList;
+  Rows: TSchemeRows;
+  LineIdx: Integer;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Text := AText;
+    SetLength(Rows, Lines.Count);
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      Rows[LineIdx].Prefix := '';
+      Rows[LineIdx].PrefixFg := clNone;
+      Rows[LineIdx].PrefixBg := clNone;
+      Rows[LineIdx].Lead := '';
+      Rows[LineIdx].Text := Lines[LineIdx];
+      Rows[LineIdx].Highlight := True;
+      Rows[LineIdx].TextFg := clNone;
+      Rows[LineIdx].RowBg := clNone;
+      Rows[LineIdx].PadTo := 0;
+      Rows[LineIdx].ResetBlock := False;
+    end;
+  finally
+    Lines.Free;
+  end;
+  Result := RowsToRtfCore(Rows, AScheme, AFontName, AFontPt, AMarkLines,
+                          ACurLine, clNone, clNone);
+end;
+
+function SchemeRowsToRtf(const ARows: TSchemeRows; AScheme: TClrScheme;
+                         const AFontName: string; AFontPt: Integer;
+                         ADefFg, ADefBg: TColor): string;
+begin
+  Result := RowsToRtfCore(ARows, AScheme, AFontName, AFontPt, nil, 0,
+                          ADefFg, ADefBg);
 end;
 
 end.
