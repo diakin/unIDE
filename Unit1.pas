@@ -31196,11 +31196,24 @@ begin
     Val(NumText, BaseNum, Code);
     if Code <> 0 then
       Exit;
-    // Номер без файла - файл прежней директивы выше
+    // Номер без файла (RqToFb пишет файл только при его смене) - файл
+    // ближайшей директивы выше, где он указан
+    PrevLine := LineIdx - 1;
+    while (AFile = '') and (PrevLine >= 0) do
+    begin
+      LineText := Trim(ALines[PrevLine]);
+      Dec(PrevLine);
+      if CompareText(Copy(LineText, 1, 6), '#line ') <> 0 then
+        Continue;
+      QuotePos := Pos('"', LineText);
+      if QuotePos = 0 then
+        Continue;
+      AFile := Copy(LineText, QuotePos + 1, MaxInt);
+      if Pos('"', AFile) > 0 then
+        AFile := Copy(AFile, 1, Pos('"', AFile) - 1);
+    end;
     if AFile = '' then
-      if not RqFbMapLine(ALines, LineIdx, AFile, PrevLine) or
-         (AFile = '') then
-        Exit;
+      Exit;
     ASrcLine := BaseNum + (ALine - LineIdx - 1);
     Result := True;
     Exit;

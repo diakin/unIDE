@@ -983,6 +983,107 @@ begin
   end;
 end;
 
+// Сжатие директив #line в готовом тексте перевода. fbc после "#line N"
+// считает следующую строку строкой N (от нуля) и дальше прибавляет по
+// единице на каждую строку; имя файла в директиве необязательно - без него
+// остаётся прежнее (в пределах файла: #include сохраняет и восстанавливает
+// имя). Поэтому:
+//  - директива с тем же файлом и тем номером, который строка получила бы
+//    и без неё, удаляется;
+//  - у директивы с тем же файлом имя файла не пишется.
+// Номера строк, которые видит fbc, не меняются.
+function CompactLineDirectives(const AText: string): string;
+var
+  OutText: TStringList;
+  LineText, NumText, DirFile, CurFile: string;
+  TextPos, BreakPos, QuotePos, DirNum, NextNum, Code: Integer;
+  IsDirective: Boolean;
+begin
+  OutText := TStringList.Create;
+  try
+    CurFile := '';
+    NextNum := -1;
+    TextPos := 1;
+    while TextPos <= Length(AText) do
+    begin
+      // Строка до #10; #13 перед ним убирается, одиночный #13 остаётся
+      BreakPos := TextPos;
+      while (BreakPos <= Length(AText)) and (AText[BreakPos] <> #10) do
+        Inc(BreakPos);
+      LineText := Copy(AText, TextPos, BreakPos - TextPos);
+      if (LineText <> '') and (LineText[Length(LineText)] = #13) then
+        SetLength(LineText, Length(LineText) - 1);
+      TextPos := BreakPos + 1;
+
+      IsDirective := False;
+      if Copy(LineText, 1, 6) = '#line ' then
+      begin
+        QuotePos := Pos('"', LineText);
+        if QuotePos > 0 then
+        begin
+          NumText := Trim(Copy(LineText, 7, QuotePos - 7));
+          DirFile := Copy(LineText, QuotePos + 1, MaxInt);
+          if (DirFile <> '') and (DirFile[Length(DirFile)] = '"') and
+             (Pos('"', Copy(DirFile, 1, Length(DirFile) - 1)) = 0) then
+          begin
+            SetLength(DirFile, Length(DirFile) - 1);
+            IsDirective := True;
+          end;
+        end
+        else if CurFile <> '' then
+        begin
+          NumText := Trim(Copy(LineText, 7, MaxInt));
+          DirFile := CurFile;
+          IsDirective := True;
+        end;
+        if IsDirective then
+        begin
+          Val(NumText, DirNum, Code);
+          IsDirective := (Code = 0) and (DirNum >= 0) and (DirFile <> '');
+        end;
+      end;
+
+      if IsDirective then
+      begin
+        if DirFile = CurFile then
+        begin
+          if DirNum = NextNum then
+            Continue;      // строка и так получит этот номер
+          OutText.Add('#line ' + IntToStr(DirNum));
+        end
+        else
+          OutText.Add('#line ' + IntToStr(DirNum) + ' "' + DirFile + '"');
+        CurFile := DirFile;
+        NextNum := DirNum;
+      end
+      else
+      begin
+        OutText.Add(LineText);
+        if NextNum >= 0 then
+          Inc(NextNum);
+      end;
+    end;
+    Result := OutText.Text;
+  finally
+    OutText.Free;
+  end;
+end;
+
+// Текст в файл как есть (одиночный #13 внутри строки не становится
+// переводом строки, как было бы через TStringList.Text)
+procedure WriteTextFile(const AFile, AText: string);
+var
+  OutStream: TFileStream;
+begin
+  OutStream := TFileStream.Create(AFile, fmCreate);
+  try
+    if AText <> '' then
+      OutStream.WriteBuffer(AText[1], Length(AText));
+  finally
+    OutStream.Free;
+  end;
+end;
+
 // Строка оканчивается продолжением " _" (вне строки в кавычках и
 // комментария)
 // Продолжение строки, приклеенное к слову: "lFlags As Long_" (Files.inc,
@@ -9014,7 +9115,7 @@ begin
         OutLines.Insert(0, '#line 0 "' + AFileName + '"');
       try
         ForceDirectories(FOpt.OutDir);
-        OutLines.SaveToFile(Result);
+        WriteTextFile(Result, CompactLineDirectives(OutLines.Text));
       except
         on E: Exception do
           Error('не удалось записать ' + Result + ': ' + E.Message);
