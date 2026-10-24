@@ -19,9 +19,12 @@ unit DlgGitCommit;
 //
 //  Строки раскрашены по виду файла (GitFileKind) и отсортированы по нему:
 //  сверху красные - то, что обычно не коммитят (exe, old, log, $$$, dcu,
-//  obj, tmp, bak, ~*), затем жёлтые - библиотеки и архивы (dll, bpl, ocx,
-//  lib, res, zip, 7z), фиолетовые - картинки, зелёные - исходники, голубые
-//  - текст и настройки, остальные - цветом темы. Цвета - для светлого и
+//  obj, tmp, bak, ~*, архивы zip / 7z / rar ...), затем жёлтые -
+//  библиотеки (dll, bpl, ocx, lib, res), фиолетовые - картинки, зелёные -
+//  исходники, голубые - текст и настройки, остальные - цветом темы.
+//  Красные при первом показе - без флажка (остальные - с флажком).
+//  Над списком - флажок на каждый вид, что есть в списке: отметить / снять
+//  сразу все его строки (часть отмечена - флажок серый). Цвета - для светлого и
 //  тёмного фона списка свои.
 // ---------------------------------------------------------------------------
 
@@ -74,6 +77,14 @@ type
     FBtnPush: TUiButton;
     FBtnCancel: TUiButton;
     FFilling: Boolean;
+    // Флажки видов файлов (индекс - вид gfk*, 0..5) и их панель;
+    // FKindUpdating - флажки ставит код (их OnClick не трогает строки)
+    FKindPanel: TUiPanel;
+    FKindChecks: array[0..5] of TUiCheckBox;
+    FKindUpdating: Boolean;
+    FKindLaying: Boolean;
+    procedure KindCheckClick(Sender: TObject);
+    procedure LayoutKinds(Sender: TObject);
     procedure ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure ListChange(Sender: TObject; Item: TListItem;
       Change: TItemChange);
@@ -124,12 +135,17 @@ const
 
   GitKindNames: array[0..gfkCount - 1] of string = (
     'не коммитить?', 'библиотека', 'картинка', 'исходник', 'текст', '');
+  // Подписи флажков видов над списком
+  GitKindGroupNames: array[0..gfkCount - 1] of string = (
+    'не коммитить', 'библиотеки', 'картинки', 'исходники', 'текст', 'прочее');
 
   // Расширения через ';' с ';' по краям - поиск по ';.ext;'
   GitJunkExts = ';.exe;.com;.old;.log;.$$$;.tmp;.temp;.bak;.dcu;.obj;.o;' +
-    '.map;.tds;.ilk;.pdb;.dsk;.ddp;.local;.identcache;.stat;.cbk;.drc;';
+    '.map;.tds;.ilk;.pdb;.dsk;.ddp;.local;.identcache;.stat;.cbk;.drc;' +
+    '.zip;.rar;.7z;.cab;.msi;.jar;.tar;.gz;.tgz;.bz2;.xz;.arj;.lzh;.lha;' +
+    '.iso;.ace;.zst;';
   GitBinaryExts = ';.dll;.ocx;.bpl;.dpl;.dcp;.so;.lib;.a;.sys;.drv;.cpl;' +
-    '.res;.zip;.rar;.7z;.cab;.msi;.jar;.chm;.pdf;.db;';
+    '.res;.chm;.pdf;.db;';
   GitImageExts = ';.png;.jpg;.jpeg;.gif;.bmp;.ico;.cur;.ani;.svg;.tif;' +
     '.tiff;.webp;.psd;.emf;.wmf;';
   GitSourceExts = ';.pas;.pp;.dpr;.dpk;.dfm;.lfm;.lpr;.lpi;.lpk;.inc;.bas;' +
@@ -196,6 +212,7 @@ constructor TDlgGitCommit.CreateDlg(AOwner: TComponent; const ATitle: string;
 var
   Column: TListColumn;
   MenuItem: TMenuItem;
+  KindIdx: Integer;
 begin
   inherited CreateNew(AOwner);
   FChanges := AChanges;
@@ -269,6 +286,26 @@ begin
   FBtnIgnore.OnClick := BtnIgnoreClick;
   FBtnIgnore.Visible := Assigned(AOnIgnore);
   LayoutTop(nil);
+
+  // Под ним: флажки видов файлов (видны только те виды, что есть в списке)
+  FKindPanel := TUiPanel.Create(Self);
+  FKindPanel.Parent := FLeft;
+  FKindPanel.Align := alTop;
+  FKindPanel.Top := FTopPanel.Top + FTopPanel.Height;
+  FKindPanel.Height := 24;
+  FKindPanel.BevelOuter := bvNone;
+  FKindPanel.Caption := '';
+  for KindIdx := 0 to gfkCount - 1 do
+  begin
+    FKindChecks[KindIdx] := TUiCheckBox.Create(Self);
+    FKindChecks[KindIdx].Parent := FKindPanel;
+    FKindChecks[KindIdx].Tag := KindIdx;
+    FKindChecks[KindIdx].Visible := False;
+    FKindChecks[KindIdx].Hint := 'Отметить / снять все строки этого вида';
+    FKindChecks[KindIdx].ShowHint := True;
+    FKindChecks[KindIdx].OnClick := KindCheckClick;
+  end;
+  FKindPanel.OnResize := LayoutKinds;
 
   // Низ левой части: заголовок, описание, кнопки
   FMsgPanel := TUiPanel.Create(Self);
@@ -401,11 +438,11 @@ begin
 end;
 
 // Строки списка из FChanges - по виду файла (красные сверху), внутри
-// вида - в порядке git status. Флажок снят только у тех путей, у которых
-// он был снят до перечитывания (новые - отмечены)
+// вида - в порядке git status. Строка, что была до перечитывания, -
+// с прежним флажком; новая - с флажком, кроме красных (не коммитить)
 procedure TDlgGitCommit.FillList;
 var
-  Unchecked: TStringList;
+  Unchecked, Checked: TStringList;
   ChangeIdx, ItemIdx, KindIdx, OrderIdx: Integer;
   Order: array of Integer;
   Item: TListItem;
@@ -421,10 +458,13 @@ begin
         Inc(OrderIdx);
       end;
   Unchecked := TStringList.Create;
+  Checked := TStringList.Create;
   FFilling := True;
   try
     for ItemIdx := 0 to FList.Items.Count - 1 do
-      if not FList.Items[ItemIdx].Checked then
+      if FList.Items[ItemIdx].Checked then
+        Checked.Add(FList.Items[ItemIdx].Caption)
+      else
         Unchecked.Add(FList.Items[ItemIdx].Caption);
     FList.Items.BeginUpdate;
     try
@@ -440,7 +480,12 @@ begin
           Item.Caption := string(GitWinPath(FChanges[ChangeIdx].Path));
         Item.SubItems.Add(GitChangeText(FChanges[ChangeIdx].Code));
         Item.SubItems.Add(GitKindNames[GitFileKind(FChanges[ChangeIdx].Path)]);
-        Item.Checked := Unchecked.IndexOf(Item.Caption) < 0;
+        if Checked.IndexOf(Item.Caption) >= 0 then
+          Item.Checked := True
+        else if Unchecked.IndexOf(Item.Caption) >= 0 then
+          Item.Checked := False
+        else
+          Item.Checked := GitFileKind(FChanges[ChangeIdx].Path) <> gfkJunk;
         Item.Data := Pointer(ChangeIdx);
       end;
     finally
@@ -449,6 +494,7 @@ begin
   finally
     FFilling := False;
     Unchecked.Free;
+    Checked.Free;
   end;
   UpdateCount;
 end;
@@ -548,16 +594,131 @@ begin
   FDescr.SetBounds(2, 68, FMsgPanel.ClientWidth - 4, DescrHeight);
 end;
 
+// Счётчик отмеченных; флажок «все» и флажки видов: все строки отмечены -
+// с флажком, часть - серый, ни одной - без флажка
 procedure TDlgGitCommit.UpdateCount;
 var
-  ItemIdx, CheckedCount: Integer;
+  ItemIdx, CheckedCount, KindIdx, ChangeIdx: Integer;
+  KindTotal, KindChecked: array[0..gfkCount - 1] of Integer;
+  KindColor: TColor;
+  KindsChanged: Boolean;
+
+  function StateOf(AChecked, ATotal: Integer): TCheckBoxState;
+  begin
+    if (ATotal > 0) and (AChecked = ATotal) then
+      Result := cbChecked
+    else if AChecked > 0 then
+      Result := cbGrayed
+    else
+      Result := cbUnchecked;
+  end;
+
 begin
   CheckedCount := 0;
+  for KindIdx := 0 to gfkCount - 1 do
+  begin
+    KindTotal[KindIdx] := 0;
+    KindChecked[KindIdx] := 0;
+  end;
   for ItemIdx := 0 to FList.Items.Count - 1 do
+  begin
+    ChangeIdx := Integer(FList.Items[ItemIdx].Data);
+    KindIdx := gfkOther;
+    if (ChangeIdx >= 0) and (ChangeIdx <= High(FChanges)) then
+      KindIdx := GitFileKind(FChanges[ChangeIdx].Path);
+    Inc(KindTotal[KindIdx]);
     if FList.Items[ItemIdx].Checked then
+    begin
       Inc(CheckedCount);
+      Inc(KindChecked[KindIdx]);
+    end;
+  end;
   FChkAll.Caption := 'Изменения: ' + IntToStr(CheckedCount) + ' из ' +
     IntToStr(FList.Items.Count) + ' отмечено';
+  KindsChanged := False;
+  FKindUpdating := True;
+  try
+    FChkAll.State := StateOf(CheckedCount, FList.Items.Count);
+    if FKindPanel = nil then
+      Exit;
+    for KindIdx := 0 to gfkCount - 1 do
+    begin
+      if FKindChecks[KindIdx].Visible <> (KindTotal[KindIdx] > 0) then
+        KindsChanged := True;
+      FKindChecks[KindIdx].Visible := KindTotal[KindIdx] > 0;
+      FKindChecks[KindIdx].Caption := GitKindGroupNames[KindIdx] + ' (' +
+        IntToStr(KindChecked[KindIdx]) + '/' + IntToStr(KindTotal[KindIdx]) +
+        ')';
+      KindColor := GitKindColor(KindIdx, FList.Color);
+      if KindColor <> clNone then
+        FKindChecks[KindIdx].TextColor := KindColor;
+      FKindChecks[KindIdx].State := StateOf(KindChecked[KindIdx],
+        KindTotal[KindIdx]);
+    end;
+  finally
+    FKindUpdating := False;
+  end;
+  if KindsChanged then
+    LayoutKinds(nil);
+end;
+
+// Флажок вида: отметить (или снять) все строки этого вида
+procedure TDlgGitCommit.KindCheckClick(Sender: TObject);
+var
+  ItemIdx, ChangeIdx, KindIdx: Integer;
+  NewState: Boolean;
+begin
+  if FKindUpdating or not (Sender is TUiCheckBox) then
+    Exit;
+  KindIdx := TUiCheckBox(Sender).Tag;
+  NewState := TUiCheckBox(Sender).State = cbChecked;
+  FFilling := True;
+  try
+    for ItemIdx := 0 to FList.Items.Count - 1 do
+    begin
+      ChangeIdx := Integer(FList.Items[ItemIdx].Data);
+      if (ChangeIdx >= 0) and (ChangeIdx <= High(FChanges)) and
+         (GitFileKind(FChanges[ChangeIdx].Path) = KindIdx) then
+        FList.Items[ItemIdx].Checked := NewState;
+    end;
+  finally
+    FFilling := False;
+  end;
+  UpdateCount;
+end;
+
+// Флажки видов - в строку, не влезают - со следующей строки; высота
+// панели - по числу строк
+procedure TDlgGitCommit.LayoutKinds(Sender: TObject);
+const
+  RowHeight = 22;
+var
+  KindIdx, NextLeft, NextTop, CheckWidth: Integer;
+begin
+  if FKindLaying or (FKindPanel = nil) then
+    Exit;
+  FKindLaying := True;
+  try
+    NextLeft := 2;
+    NextTop := 2;
+    for KindIdx := 0 to gfkCount - 1 do
+    begin
+      if not FKindChecks[KindIdx].Visible then
+        Continue;
+      Canvas.Font.Assign(FKindChecks[KindIdx].Font);
+      CheckWidth := Canvas.TextWidth(FKindChecks[KindIdx].Caption) + 26;
+      if (NextLeft > 2) and (NextLeft + CheckWidth > FKindPanel.ClientWidth) then
+      begin
+        NextLeft := 2;
+        Inc(NextTop, RowHeight);
+      end;
+      FKindChecks[KindIdx].SetBounds(NextLeft, NextTop, CheckWidth, 20);
+      Inc(NextLeft, CheckWidth + 6);
+    end;
+    FKindPanel.Height := NextTop + RowHeight + 2;
+  finally
+    FKindLaying := False;
+  end;
 end;
 
 procedure TDlgGitCommit.ListSelect(Sender: TObject; Item: TListItem;
@@ -590,6 +751,8 @@ procedure TDlgGitCommit.ChkAllClick(Sender: TObject);
 var
   ItemIdx: Integer;
 begin
+  if FKindUpdating then
+    Exit;
   FFilling := True;
   try
     for ItemIdx := 0 to FList.Items.Count - 1 do

@@ -2493,7 +2493,8 @@ type
     function  PickExistingMain(const ADir, AType: string;
                                var AFile: string): Boolean;
     function  ChooseFromList(const ACaption, APrompt: string;
-                             AItems: TStrings): string;
+                             AItems: TStrings;
+                             const AHelp: string = ''): string;
     function  ProjectDir(const AName: string): string;
     function  ProjectExists(const AName: string): Boolean;
     procedure MigratePrjProjects(ANotes: TStrings);
@@ -13889,7 +13890,7 @@ end;
 
 // Выбор одной строки из списка. Пустая строка - отказались.
 function TForm1.ChooseFromList(const ACaption, APrompt: string;
-                               AItems: TStrings): string;
+                               AItems: TStrings; const AHelp: string): string;
 const
   DlgMargin = 12;
   DlgMinWidth = 380;
@@ -13949,6 +13950,8 @@ begin
     Dlg.btnOk.SetBounds(Dlg.btnCancel.Left - 8 - 84, Dlg.btnCancel.Top, 84,
                         26);
     Dlg.ClientHeight := Dlg.btnOk.Top + 26 + DlgMargin;
+    // Справка - кнопка Help слева от OK / Cancel
+    Dlg.SetHelp(AHelp);
 
     if (Dlg.ShowModal = mrOk) and (Dlg.lstItems.ItemIndex >= 0) then
       Result := Dlg.lstItems.Items[Dlg.lstItems.ItemIndex];
@@ -66775,6 +66778,54 @@ end;
 // репозитория уходит следующим коммитом) или скрыть свои изменения
 // (git update-index --skip-worktree; файл в репозитории остаётся как
 // есть). True - сделано
+// Справка окна Ignore (кнопка Help): что значит каждый способ и как
+// снять игнор
+const
+  GitIgnoreHelp =
+    'Ignore - чтобы выделенные файлы больше не предлагались к коммиту.'#13#10 +
+    #13#10 +
+    'НОВЫЕ ФАЙЛЫ (ещё не в репозитории)'#13#10 +
+    #13#10 +
+    '«в .gitignore» - строка с именем файла, маской (*.exe) или папкой ' +
+    '(/images/) дописывается в файл .gitignore в корне репозитория. ' +
+    '.gitignore сам попадает в коммит, и правило действует у всех, кто ' +
+    'берёт репозиторий.'#13#10 +
+    #13#10 +
+    '«только у себя» - то же, но в файл .git\info\exclude. Он не ' +
+    'коммитится: правило действует только в этой папке на этом ' +
+    'компьютере.'#13#10 +
+    #13#10 +
+    'ФАЙЛЫ, КОТОРЫЕ УЖЕ В РЕПОЗИТОРИИ'#13#10 +
+    #13#10 +
+    '«Перестать отслеживать» - git rm --cached: файл остаётся на диске, из ' +
+    'репозитория удаляется следующим коммитом, его имя дописывается в ' +
+    '.gitignore.'#13#10 +
+    #13#10 +
+    '«Скрыть свои изменения» - git update-index --skip-worktree: файл в ' +
+    'репозитории остаётся как есть, ваши правки в нём git не ' +
+    'показывает.'#13#10 +
+    #13#10 +
+    'КАК СНЯТЬ ИГНОР'#13#10 +
+    #13#10 +
+    '- .gitignore и .git\info\exclude - обычные текстовые файлы. Откройте ' +
+    'нужный в unIDE, удалите строку с именем, маской или папкой и ' +
+    'сохраните: файлы снова появятся в окне Commit. Правку .gitignore ' +
+    'нужно закоммитить, чтобы она дошла до остальных.'#13#10 +
+    #13#10 +
+    '- Правило - маска (*.zip), а вернуть нужно один файл: маску можно ' +
+    'оставить и добавить ниже строку-исключение с ! в начале, например ' +
+    '!release/setup.zip.'#13#10 +
+    #13#10 +
+    '- Перестали отслеживать: удалите строку из .gitignore - файл снова ' +
+    'станет новым в окне Commit; закоммитьте его.'#13#10 +
+    #13#10 +
+    '- Скрытые изменения: Branch - Hidden Local Changes... - выбрать файл, ' +
+    'и его правки снова видны (git update-index ' +
+    '--no-skip-worktree).'#13#10 +
+    #13#10 +
+    '- Какое правило игнорирует файл: в Git Bash ' +
+    'git check-ignore -v <путь к файлу>.';
+
 function TForm1.GitDlgIgnore(const AChanges: TGitChanges): Boolean;
 const
   ChFileShared = 0;
@@ -66887,7 +66938,8 @@ begin
         '--skip-worktree): файл в репозитории остаётся как есть, ваши ' +
         'правки не предлагаются к коммиту');
     end;
-    Picked := ChooseFromList('Ignore', 'Файлы: ' + Names, Items);
+    Picked := ChooseFromList('Ignore', 'Файлы: ' + Names, Items,
+      GitIgnoreHelp);
     Choice := -1;
     if (Picked <> '') and (Items.IndexOf(Picked) >= 0) then
       Choice := Choices[Items.IndexOf(Picked)];
