@@ -490,7 +490,8 @@ type
     FDefines: TRqNameMap;         // NAME -> замена
     FResources: TStringList;      // $RESOURCE: ИМЯ=полный путь ('' - не найден)
     // Файлы исходника по номерам для RqRtAt (место ошибки RqLcl/rqrt):
-    // перед оператором строки - "RqRtAt = номер*1000000 + __LINE__ :"
+    // перед оператором строки - "RqAtN :", макрос файла вывода
+    // "#define RqAtN RqRtAt = N*1000000 + __LINE__" (RqAtDefine)
     FAtFiles: TStringList;
     // $OPTION ICON "файл.ico": значок exe (полный путь; '' - не задан)
     FAppIcon: string;
@@ -639,6 +640,7 @@ type
     // Операторы
     procedure ProcessLine(const AText: string; var AOut: string);
     function  AtTrackable(const AToks: TToks; AFirstIdx: Integer): Boolean;
+    function  RqAtDefine(const AFile: string): string;
     procedure ProcessStatement(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessExpr(var AToks: TToks; AFrom, ATo: Integer);
     procedure WrapLibArgs(var AToks: TToks; AFrom, ATo: Integer; AProc: TRqProc);
@@ -3113,13 +3115,29 @@ begin
       Depth := FAtFiles.IndexOf(FCurFile);
       if Depth < 0 then
         Depth := FAtFiles.Add(FCurFile);
-      if Depth = 0 then
-        Insert('RqRtAt = __LINE__ : ', AOut, TokIdx)
-      else
-        Insert('RqRtAt = ' + IntToStr(Depth) + '000000 + __LINE__ : ', AOut,
-               TokIdx);
+      // Короткая запись - макрос RqAtN (RqAtDefine в начале файла
+      // вывода); __LINE__ в теле макроса fbc раскрывает по строке, где
+      // макрос стоит
+      Insert('RqAt' + IntToStr(Depth) + ' : ', AOut, TokIdx);
     end;
   end;
+end;
+
+// Макрос места строки для файла AFile ("RqAtN :" перед операторами), с
+// переводом строки; у файла нет таких операторов - ''
+function TRqFbConv.RqAtDefine(const AFile: string): string;
+var
+  FileIdx: Integer;
+begin
+  Result := '';
+  FileIdx := FAtFiles.IndexOf(AFile);
+  if FileIdx < 0 then
+    Exit;
+  if FileIdx = 0 then
+    Result := '#define RqAt0 RqRtAt = __LINE__' + CrLf
+  else
+    Result := '#define RqAt' + IntToStr(FileIdx) + ' RqRtAt = ' +
+              IntToStr(FileIdx) + '000000 + __LINE__' + CrLf;
 end;
 
 // Строка начинается обычным оператором, перед которым можно поставить
@@ -9108,11 +9126,13 @@ begin
     begin
       if AIsMain then
       begin
-        OutLines.Insert(0, MainHeader + '#line 0 "' + AFileName + '"');
+        OutLines.Insert(0, MainHeader + RqAtDefine(AFileName) +
+                           '#line 0 "' + AFileName + '"');
         OutLines.Add(MissingBodies);
       end
       else
-        OutLines.Insert(0, '#line 0 "' + AFileName + '"');
+        OutLines.Insert(0, RqAtDefine(AFileName) +
+                           '#line 0 "' + AFileName + '"');
       try
         ForceDirectories(FOpt.OutDir);
         WriteTextFile(Result, CompactLineDirectives(OutLines.Text));
