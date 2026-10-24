@@ -75,6 +75,7 @@ uses
   FmtView in 'FmtView.pas',
   SplitPane in 'SplitPane.pas',
   Wv2View in 'Wv2View.pas',
+  FarFind in 'FarFind.pas',
   UnFar in 'UnFar.pas',
   SzSetup in 'SzSetup.pas',
   QemuTool in 'QemuTool.pas',

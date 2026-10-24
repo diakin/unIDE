@@ -82,6 +82,11 @@ unit UnFar;
 //      редактор) - снова обе панели (OnShowPanels, Unit1 - как кнопка []:
 //      файл остаётся вкладкой); на видимую - меню дисков, как раньше. Из
 //      редактора - так же (Unit1, AltPanelKey).
+//    - b.29: Alt+F7 - поиск файлов, как Find file в FAR (FarFind: маски,
+//      текст в cp1251 / cp866 / UTF-8 / UTF-16LE, регистр, слово целиком,
+//      папки, где искать). Найденное - окном поверх панелей: Enter / Go to
+//      - панель на файл, F4 - файл в редактор (окно остаётся), Esc - стоп,
+//      потом закрыть.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -108,10 +113,10 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
-  Clipbrd, IniBuf, SzSetup;
+  Clipbrd, IniBuf, SzSetup, FarFind;
 
 const
-  FarBuild = 'b.28';
+  FarBuild = 'b.29';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -136,7 +141,8 @@ type
 
   // Открытый диалог: копирование, перенос, папка, удаление
   TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew,
-    fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd);
+    fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd,
+    fdFind);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -150,8 +156,17 @@ type
     Fresh: Boolean;          // текст не трогали: ввод заменяет его
     Values: TFarNames;
     Index: Integer;          // выбранное значение
+    IsCheck: Boolean;        // флажок [x] (выбор из двух: 0 - снят)
   end;
   TFarDlgRows = array of TFarDlgRow;
+
+  // Строка окна найденного (Alt+F7): заголовок папки или файл (номер в
+  // списке найденного)
+  TFarFindRow = record
+    IsHeader: Boolean;
+    Item: Integer;
+  end;
+  TFarFindRows = array of TFarFindRow;
 
   // Запись архива (из списка 7z l -slt): путь в архиве через ''
   TFarArcEntry = record
@@ -397,6 +412,29 @@ type
     FMenuRows: Integer;
     // История папок (Alt+F12): старые сверху, новые снизу
     FHistory: TFarNames;
+    // Поиск файлов (Alt+F7): окно Find file - что искать (запоминается),
+    // окно найденного - поверх панелей
+    FFindMask: WideString;
+    FFindText: WideString;
+    FFindCodePage: Integer;
+    FFindCase: Boolean;
+    FFindWhole: Boolean;
+    FFindFolders: Boolean;
+    FFindArea: Integer;            // 0 - с подпапками, 1 - только папка, 2 - диск
+    FFindOpen: Boolean;
+    FFindThread: TFarFindThread;
+    FFindTimer: TTimer;
+    FFindOptions: TFarFindOptions;
+    FFindItems: TFarFindItems;
+    FFindRows: TFarFindRows;
+    FFindCursor: Integer;
+    FFindTop: Integer;
+    FFindFocus: Integer;           // -1 - список, 0..3 - кнопка
+    FFindDone: Boolean;
+    FFindListTop: Integer;         // где нарисовано (для мыши)
+    FFindButtonRow: Integer;
+    FFindButtonCol: array[0..3] of Integer;
+    FFindButtonLen: array[0..3] of Integer;
     // Последняя папка на каждом диске A..Z (любой из панелей) - куда
     // вести при смене диска, если другая панель не на этом диске
     FDriveLast: array[0..25] of WideString;
@@ -468,6 +506,27 @@ type
       const ALines: array of WideString; ACentered, AWarn, AHasEdit: Boolean;
       const AEdit: WideString; const AButtons: array of WideString);
     procedure DlgClose;
+    procedure DlgAddCheck(const ACaption: WideString; AChecked: Boolean);
+    // Поиск файлов (Alt+F7)
+    procedure StartFind;
+    procedure FindConfirm;
+    procedure FindBegin(const AOptions: TFarFindOptions);
+    procedure FindStopThread;
+    procedure FindQuit;
+    procedure FindTakeFound;
+    procedure FindTick(Sender: TObject);
+    function FindListRows: Integer;
+    procedure FindMove(ADelta: Integer);
+    function FindCurrent(var AItem: TFarFindItem): Boolean;
+    procedure FindGoTo;
+    procedure FindEdit;
+    procedure FindButton(AIndex: Integer);
+    function FindKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    function FindRowText(ARowIdx, AWidth: Integer): WideString;
+    procedure DrawFind;
+    function FileCountOf: Integer;
+    function DirCountOf: Integer;
+    procedure FindMouse(AX, AY: Integer);
     function DlgKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure DlgInsertText(const AText: WideString);
     procedure DrawDialogRow(ARowIndex, ARow, AInnerLeft, AInnerW: Integer;
@@ -719,8 +778,8 @@ const
     'Copy', 'RenMov', 'MkFold', 'Delete', 'ConfMn', 'Quit', '', 'Screen');
   FarKeysShift: array[0..11] of string = ('Add', '', '', 'Edit..', 'Copy',
     'Rename', '', 'Delete', 'Save', '', '', 'SelUp');
-  FarKeysAlt: array[0..11] of string = ('Left', 'Right', '', '', '', '', '',
-    '', '', '', '', 'FoldHs');
+  FarKeysAlt: array[0..11] of string = ('Left', 'Right', '', '', '', '',
+    'Find', '', '', '', '', 'FoldHs');
   FarKeysCtrl: array[0..11] of string = ('', '', 'Name', 'Extens', 'Write',
     'Size', 'Unsort', 'Creatn', 'Access', '', '', 'Sort');
 
@@ -2038,6 +2097,9 @@ begin
   FSzTimer.Interval := 200;
   FSzTimer.OnTimer := SzTick;
   FSzTimer.Enabled := False;
+  FFindMask := '*.*';
+  FFindFolders := True;
+  FFindDone := True;
 end;
 
 destructor TFarView.Destroy;
@@ -2047,6 +2109,15 @@ var
 begin
   FOnStatus := nil;
   FSzTimer.Enabled := False;
+  if FFindTimer <> nil then
+    FFindTimer.Enabled := False;
+  if FFindThread <> nil then
+  begin
+    FFindThread.Cancel;
+    FFindThread.WaitFor;
+    FFindThread.Free;
+    FFindThread := nil;
+  end;
   if FSzThread <> nil then
   begin
     FSzThread.Cancel;
@@ -2664,6 +2735,8 @@ begin
       end;
       DrawCmdLine;
       DrawKeyBar;
+      if FFindOpen then
+        DrawFind;
       if FMenuKind <> fmNone then
         DrawMenu;
       if FDlgKind <> fdNone then
@@ -2778,6 +2851,14 @@ begin
     Invalidate;
     Exit;
   end;
+  // Окно найденного (Alt+F7)
+  if FFindOpen then
+  begin
+    if Button = mbLeft then
+      FindMouse(X, Y);
+    Invalidate;
+    Exit;
+  end;
   // Панели спрятаны или щелчок ниже панелей (вывод, командная строка)
   if FPanelsHidden or (Y div FCellH >= PanelHeight) then
   begin
@@ -2805,6 +2886,15 @@ begin
   inherited DblClick;
   if (FDlgKind <> fdNone) or (FMenuKind <> fmNone) then
     Exit;
+  // Окно найденного: двойной щелчок по файлу - Go to
+  if FFindOpen then
+  begin
+    CursorPos := ScreenToClient(Mouse.CursorPos);
+    if (CursorPos.Y div FCellH >= FFindListTop) and
+       (CursorPos.Y div FCellH < FFindListTop + FindListRows) then
+      FindGoTo;
+    Exit;
+  end;
   CursorPos := ScreenToClient(Mouse.CursorPos);
   if FPanelsHidden or (CursorPos.Y div FCellH >= PanelHeight) then
     Exit;
@@ -2828,6 +2918,15 @@ begin
   end;
   if FDlgKind <> fdNone then
     Exit;
+  if FFindOpen then
+  begin
+    if Message.WheelDelta > 0 then
+      FindMove(-3)
+    else if Message.WheelDelta < 0 then
+      FindMove(3);
+    Invalidate;
+    Exit;
+  end;
   // Колесо над выводом (или панели спрятаны) - прокрутка вывода
   WheelPoint := ScreenToClient(Point(Message.XPos, Message.YPos));
   if FPanelsHidden or (WheelPoint.Y div FCellH >= PanelHeight) then
@@ -2902,7 +3001,7 @@ begin
     end
     // Символ без диалога и меню - в командную строку
     else if (FDlgKind = fdNone) and (FMenuKind = fmNone) and
-            (KeyCode >= 32) then
+            not FFindOpen and (KeyCode >= 32) then
     begin
       AnsiCh := AnsiChar(KeyCode and $FF);
       WideCh := #0;
@@ -2955,6 +3054,8 @@ begin
     Result := DlgKey(KeyCode, ShiftDown, CtrlDown, AltDown);
     Invalidate;
   end
+  else if FFindOpen then
+    Result := FindKey(KeyCode, ShiftDown, CtrlDown, AltDown)
   else
     Result := DoKey(KeyCode, ShiftDown, CtrlDown, AltDown);
   // F-клавиши FAR не отдаёт никому: ни отладчику, ни ярлыкам меню
@@ -3026,6 +3127,11 @@ begin
         VK_F12:
           begin
             ShowHistoryMenu;
+            Exit;
+          end;
+        VK_F7:
+          begin
+            StartFind;
             Exit;
           end;
       end;
@@ -3635,6 +3741,12 @@ begin
   if (FDlgKind = fdArcAdd) and (AButton = 0) then
   begin
     ArcAddConfirm;
+    Exit;
+  end;
+  // Alt+F7, Find: поиск
+  if (FDlgKind = fdFind) and (AButton = 0) then
+  begin
+    FindConfirm;
     Exit;
   end;
   Kind := FDlgKind;
@@ -6698,6 +6810,7 @@ begin
     Index := AIndex;
     if (Index < 0) or (Index > High(Values)) then
       Index := 0;
+    IsCheck := False;
   end;
   // Фокус - на первой строке
   FDlgRow := 0;
@@ -6735,6 +6848,20 @@ begin
   Focused := ARowIndex = FDlgRow;
   with FDlgRows[ARowIndex] do
   begin
+    // Флажок: [x] подпись (с фокусом - [x] белым по чёрному)
+    if IsCheck then
+    begin
+      if Index = 1 then
+        ValueText := '[x]'
+      else
+        ValueText := '[ ]';
+      if Focused then
+        PutText(AInnerLeft, ARow, 3, ValueText, FarWhite, FarBlack)
+      else
+        PutText(AInnerLeft, ARow, 3, ValueText, AFore, ABack);
+      PutText(AInnerLeft + 4, ARow, AInnerW - 4, Caption, AFore, ABack);
+      Exit;
+    end;
     PutText(AInnerLeft, ARow, FarDlgCaptionW, Caption, AFore, ABack);
     if IsChoice then
     begin
@@ -6983,7 +7110,9 @@ begin
   FDlgFocus := -1;
   ClickCol := AX div FCellW;
   with FDlgRows[RowIndex] do
-    if IsChoice then
+    if IsCheck then
+      Index := 1 - Index
+    else if IsChoice then
     begin
       OldIndex := Index;
       for ValueIndex := 0 to High(Values) do
@@ -7214,6 +7343,524 @@ end;
 //  Раскраска файлов и меню Options (F9)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+//  Alt+F7: поиск файлов (FarFind - обход в своём потоке). Окно Find file
+//  (маски, текст, кодировка, флажки, где искать), затем окно найденного
+//  поверх панелей: папка - строкой, под ней файлы (дата, размер, имя).
+//  Enter / Go to - панель на найденный файл; F4 - файл в редактор (FAR -
+//  одной панелью, редактор рядом), окно найденного остаётся; Esc - стоп,
+//  потом закрыть; New search / Alt+F7 - снова окно Find file
+// ---------------------------------------------------------------------------
+
+procedure TFarView.DlgAddCheck(const ACaption: WideString; AChecked: Boolean);
+var
+  RowIndex: Integer;
+begin
+  // Флажок - выбор из двух значений (0 - снят, 1 - стоит), рисуется [x]
+  if AChecked then
+    DlgAddRow(ACaption, True, False, '', ['off', 'on'], 1)
+  else
+    DlgAddRow(ACaption, True, False, '', ['off', 'on'], 0);
+  RowIndex := High(FDlgRows);
+  FDlgRows[RowIndex].IsCheck := True;
+end;
+
+procedure TFarView.StartFind;
+var
+  Panel: TFarPanel;
+begin
+  Panel := ActivePanel;
+  if Panel.IsArchive then
+  begin
+    Status('unIDE FAR: поиск в архиве пока не делается - выйдите из архива');
+    Exit;
+  end;
+  if Panel.Path = '' then
+    Exit;
+  if FFindMask = '' then
+    FFindMask := '*.*';
+  DlgOpen(fdFind, 'Find file', ['Search in ' + FarFitPath(Panel.Path, 50)],
+    False, False, False, '', ['Find', 'Cancel']);
+  DlgAddRow('Masks:', False, False, FFindMask, [], 0);
+  DlgAddRow('Text:', False, False, FFindText, [], 0);
+  DlgAddRow('Code page:', True, False, '', ['All', 'ANSI', 'OEM', 'UTF-8',
+    'UTF-16'], FFindCodePage);
+  DlgAddCheck('Case sensitive', FFindCase);
+  DlgAddCheck('Whole words', FFindWhole);
+  DlgAddCheck('Search for folders', FFindFolders);
+  DlgAddRow('Area:', True, False, '', ['With subfolders', 'This folder',
+    'Whole drive'], FFindArea);
+  FDlgRow := 0;
+end;
+
+// [ Find ]: поля - в память (и в editor.ini при закрытии FAR), окно -
+// закрыть, начать поиск
+procedure TFarView.FindConfirm;
+var
+  Options: TFarFindOptions;
+  Panel: TFarPanel;
+begin
+  if Length(FDlgRows) < 7 then
+    Exit;
+  FFindMask := FarTrimW(FDlgRows[0].Text);
+  if FFindMask = '' then
+    FFindMask := '*.*';
+  FFindText := FDlgRows[1].Text;
+  FFindCodePage := FDlgRows[2].Index;
+  FFindCase := FDlgRows[3].Index = 1;
+  FFindWhole := FDlgRows[4].Index = 1;
+  FFindFolders := FDlgRows[5].Index = 1;
+  FFindArea := FDlgRows[6].Index;
+  DlgClose;
+  Panel := ActivePanel;
+  Options.Root := Panel.Path;
+  if FFindArea = 2 then
+    Options.Root := FarRootOf(Panel.Path);
+  Options.Masks := FFindMask;
+  Options.Text := FFindText;
+  Options.CodePage := TFarFindCodePage(FFindCodePage);
+  Options.CaseSensitive := FFindCase;
+  Options.WholeWords := FFindWhole;
+  Options.Folders := FFindFolders;
+  Options.Recursive := FFindArea <> 1;
+  FindBegin(Options);
+end;
+
+procedure TFarView.FindBegin(const AOptions: TFarFindOptions);
+begin
+  FindStopThread;
+  FFindOptions := AOptions;
+  SetLength(FFindItems, 0);
+  SetLength(FFindRows, 0);
+  FFindCursor := -1;
+  FFindTop := 0;
+  FFindFocus := -1;
+  FFindDone := False;
+  FFindOpen := True;
+  FFindThread := TFarFindThread.Create(AOptions);
+  if FFindTimer = nil then
+  begin
+    FFindTimer := TTimer.Create(Self);
+    FFindTimer.Interval := 150;
+    FFindTimer.OnTimer := FindTick;
+  end;
+  FFindTimer.Enabled := True;
+  Invalidate;
+end;
+
+// Остановить поток и освободить (ждёт его конца)
+procedure TFarView.FindStopThread;
+begin
+  if FFindTimer <> nil then
+    FFindTimer.Enabled := False;
+  if FFindThread <> nil then
+  begin
+    FFindThread.Cancel;
+    FFindThread.WaitFor;
+    FindTakeFound;
+    FFindThread.Free;
+    FFindThread := nil;
+  end;
+  FFindDone := True;
+end;
+
+procedure TFarView.FindQuit;
+begin
+  FindStopThread;
+  FFindOpen := False;
+  SetLength(FFindItems, 0);
+  SetLength(FFindRows, 0);
+  Invalidate;
+end;
+
+// Найденное потоком - в список: новая папка - строкой-заголовком
+procedure TFarView.FindTakeFound;
+var
+  OldCount, ItemIdx, RowCount: Integer;
+  LastDir: WideString;
+begin
+  if FFindThread = nil then
+    Exit;
+  OldCount := Length(FFindItems);
+  if FFindThread.TakeFound(FFindItems) = 0 then
+    Exit;
+  LastDir := '';
+  if OldCount > 0 then
+    LastDir := FFindItems[OldCount - 1].Dir;
+  RowCount := Length(FFindRows);
+  SetLength(FFindRows, RowCount + 2 * (Length(FFindItems) - OldCount));
+  for ItemIdx := OldCount to High(FFindItems) do
+  begin
+    if FFindItems[ItemIdx].Dir <> LastDir then
+    begin
+      LastDir := FFindItems[ItemIdx].Dir;
+      FFindRows[RowCount].IsHeader := True;
+      FFindRows[RowCount].Item := ItemIdx;
+      Inc(RowCount);
+    end;
+    FFindRows[RowCount].IsHeader := False;
+    FFindRows[RowCount].Item := ItemIdx;
+    Inc(RowCount);
+  end;
+  SetLength(FFindRows, RowCount);
+  // Первый найденный - под курсор
+  if FFindCursor < 0 then
+    FindMove(1);
+end;
+
+procedure TFarView.FindTick(Sender: TObject);
+begin
+  if FFindThread = nil then
+  begin
+    FFindTimer.Enabled := False;
+    Exit;
+  end;
+  FindTakeFound;
+  if FFindThread.Finished then
+  begin
+    FindTakeFound;
+    FFindTimer.Enabled := False;
+    FFindDone := True;
+  end;
+  Invalidate;
+end;
+
+// Строк списка в окне
+function TFarView.FindListRows: Integer;
+begin
+  Result := PanelHeight - 6;
+  if Result < 1 then
+    Result := 1;
+end;
+
+// Курсор на ADelta строк (заголовки папок пропускаются)
+procedure TFarView.FindMove(ADelta: Integer);
+var
+  Target, Step: Integer;
+begin
+  if Length(FFindRows) = 0 then
+    Exit;
+  Target := FFindCursor + ADelta;
+  if Target < 0 then
+    Target := 0;
+  if Target > High(FFindRows) then
+    Target := High(FFindRows);
+  if ADelta >= 0 then
+    Step := 1
+  else
+    Step := -1;
+  while (Target >= 0) and (Target <= High(FFindRows)) and
+        FFindRows[Target].IsHeader do
+    Inc(Target, Step);
+  // У края - в другую сторону
+  if (Target < 0) or (Target > High(FFindRows)) then
+  begin
+    Target := FFindCursor;
+    if (Target < 0) or (Target > High(FFindRows)) or
+       FFindRows[Target].IsHeader then
+    begin
+      Target := 0;
+      while (Target <= High(FFindRows)) and FFindRows[Target].IsHeader do
+        Inc(Target);
+      if Target > High(FFindRows) then
+        Exit;
+    end;
+  end;
+  FFindCursor := Target;
+  // Видимость; заголовок папки над первым файлом - тоже
+  if FFindCursor < FFindTop then
+    FFindTop := FFindCursor;
+  if (FFindTop > 0) and (FFindCursor = FFindTop) and
+     FFindRows[FFindTop - 1].IsHeader then
+    Dec(FFindTop);
+  if FFindCursor >= FFindTop + FindListRows then
+    FFindTop := FFindCursor - FindListRows + 1;
+end;
+
+// Файл под курсором; нет - False
+function TFarView.FindCurrent(var AItem: TFarFindItem): Boolean;
+begin
+  Result := (FFindCursor >= 0) and (FFindCursor <= High(FFindRows)) and
+    not FFindRows[FFindCursor].IsHeader;
+  if Result then
+    AItem := FFindItems[FFindRows[FFindCursor].Item];
+end;
+
+// Go to: панель - в папку найденного, курсор на него; окно закрывается
+procedure TFarView.FindGoTo;
+var
+  Item: TFarFindItem;
+begin
+  if not FindCurrent(Item) then
+    Exit;
+  FindQuit;
+  ChangeDir(ActivePanel, Item.Dir, Item.Name);
+end;
+
+// F4: файл в редактор (как F4 в панели), окно найденного остаётся
+procedure TFarView.FindEdit;
+var
+  Item: TFarFindItem;
+begin
+  if not FindCurrent(Item) then
+    Exit;
+  if Item.IsDir then
+  begin
+    Status('unIDE FAR: это папка - Enter перейдёт в неё');
+    Exit;
+  end;
+  if Assigned(FOnEditFile) then
+    FOnEditFile(Item.Dir + Item.Name, False);
+end;
+
+// Кнопки окна найденного: New search, Go to, Edit, Stop / Cancel
+procedure TFarView.FindButton(AIndex: Integer);
+begin
+  case AIndex of
+    0: StartFind;
+    1: FindGoTo;
+    2: FindEdit;
+    3: if not FFindDone then
+         FindStopThread
+       else
+         FindQuit;
+  end;
+  Invalidate;
+end;
+
+function TFarView.FindKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+begin
+  Result := True;
+  if AAlt and (AKey = VK_F7) then
+  begin
+    StartFind;
+    Exit;
+  end;
+  case AKey of
+    VK_ESCAPE, VK_F10:
+      if not FFindDone then
+        FindStopThread
+      else
+        FindQuit;
+    VK_CANCEL:                      // Ctrl+Break - остановить
+      FindStopThread;
+    VK_UP:
+      FindMove(-1);
+    VK_DOWN:
+      FindMove(1);
+    VK_PRIOR:
+      FindMove(-(FindListRows - 1));
+    VK_NEXT:
+      FindMove(FindListRows - 1);
+    VK_HOME:
+      begin
+        FFindCursor := -1;
+        FFindTop := 0;
+        FindMove(1);
+      end;
+    VK_END:
+      FindMove(Length(FFindRows));
+    VK_TAB, VK_LEFT, VK_RIGHT:
+      begin
+        // Фокус: список -> кнопки по кругу
+        if (AKey = VK_LEFT) or ((AKey = VK_TAB) and AShift) then
+          Dec(FFindFocus)
+        else
+          Inc(FFindFocus);
+        if FFindFocus > 3 then
+          FFindFocus := -1;
+        if FFindFocus < -1 then
+          FFindFocus := 3;
+      end;
+    VK_RETURN:
+      if FFindFocus < 0 then
+        FindGoTo
+      else
+        FindButton(FFindFocus);
+    VK_F4:
+      FindEdit;
+  else
+    // Остальное не отдаём панелям и меню IDE
+    Result := True;
+  end;
+  Invalidate;
+end;
+
+// Строка списка ARowIdx в клетках AWidth: заголовок - путь папки, файл -
+// дата, размер (папка - <Folder>), имя
+function TFarView.FindRowText(ARowIdx, AWidth: Integer): WideString;
+var
+  Item: TFarFindItem;
+  SizeText: string;
+  NameW: Integer;
+begin
+  Item := FFindItems[FFindRows[ARowIdx].Item];
+  if FFindRows[ARowIdx].IsHeader then
+  begin
+    Result := FarFitPath(Item.Dir, AWidth);
+    Exit;
+  end;
+  if Item.IsDir then
+    SizeText := '<Folder>'
+  else
+    SizeText := FarGroupDigits(Item.Size);
+  while Length(SizeText) < 14 do
+    SizeText := ' ' + SizeText;
+  NameW := AWidth - 2 - 14 - 1 - 14 - 2;
+  Result := '  ' + WideString(FarFileDate(Item.Time)) + ' ' +
+    WideString(SizeText) + '  ' + FarFitName(Item.Name, NameW);
+end;
+
+procedure TFarView.DrawFind;
+const
+  ButtonTexts: array[0..2] of string = ('New search', 'Go to', 'Edit');
+var
+  BoxW, BoxH, InnerLeft, InnerW, ListRows, Row, RowIdx, SepY: Integer;
+  ButtonIdx, ButtonsW, ButtonCol: Integer;
+  Title, StatusText, ButtonText, LastText: WideString;
+  Fore, Back: TColor;
+begin
+  BoxW := FCols;
+  BoxH := PanelHeight;
+  if (BoxW < 30) or (BoxH < 10) then
+    Exit;
+  Fore := FarBlack;
+  Back := FarLightGray;
+  for Row := 0 to BoxH - 1 do
+    FillCells(0, Row, BoxW, Back);
+  DrawBox(1, 0, BoxW - 2, BoxH - 1, Fore);
+  Title := ' Find file: ' + FFindOptions.Masks;
+  if FFindOptions.Text <> '' then
+    Title := Title + ' containing "' + FFindOptions.Text + '"';
+  Title := FarFitName(Title, BoxW - 8) + ' ';
+  PutCentered(0, 0, BoxW, Title, Fore, Back);
+  InnerLeft := 3;
+  InnerW := BoxW - 6;
+  ListRows := FindListRows;
+  FFindListTop := 1;
+  // Список
+  for Row := 0 to ListRows - 1 do
+  begin
+    RowIdx := FFindTop + Row;
+    if RowIdx > High(FFindRows) then
+      Break;
+    if RowIdx = FFindCursor then
+    begin
+      if FFindFocus < 0 then
+      begin
+        FillCells(InnerLeft - 1, 1 + Row, InnerW + 2, FarBlack);
+        PutText(InnerLeft, 1 + Row, InnerW, FindRowText(RowIdx, InnerW),
+          FarWhite, FarBlack);
+      end
+      else
+      begin
+        FillCells(InnerLeft - 1, 1 + Row, InnerW + 2, FarCyan);
+        PutText(InnerLeft, 1 + Row, InnerW, FindRowText(RowIdx, InnerW),
+          FarBlack, FarCyan);
+      end;
+    end
+    else
+      PutText(InnerLeft, 1 + Row, InnerW, FindRowText(RowIdx, InnerW), Fore,
+        Back);
+  end;
+  // Разделитель, строка хода, разделитель, кнопки
+  Row := BoxH - 5;
+  SepY := Row * FCellH + FCellH div 2;
+  with FBuffer.Canvas do
+  begin
+    Pen.Color := Fore;
+    MoveTo(1 * FCellW + FCellW div 2 + 1, SepY);
+    LineTo((BoxW - 2) * FCellW + FCellW div 2, SepY);
+  end;
+  if FFindDone then
+    StatusText := 'Search done. Found files: ' + IntToStr(FileCountOf) +
+      ', folders: ' + IntToStr(DirCountOf)
+  else if FFindThread <> nil then
+    StatusText := 'Found files: ' + IntToStr(FileCountOf) + ', folders: ' +
+      IntToStr(DirCountOf) + '. Searching in: ' + FFindThread.CurrentDir
+  else
+    StatusText := '';
+  PutText(InnerLeft, BoxH - 4, InnerW, FarFitPath(StatusText, InnerW), Fore,
+    Back);
+  Row := BoxH - 3;
+  SepY := Row * FCellH + FCellH div 2;
+  with FBuffer.Canvas do
+  begin
+    MoveTo(1 * FCellW + FCellW div 2 + 1, SepY);
+    LineTo((BoxW - 2) * FCellW + FCellW div 2, SepY);
+  end;
+  if FFindDone then
+    LastText := 'Cancel'
+  else
+    LastText := 'Stop';
+  ButtonsW := 0;
+  for ButtonIdx := 0 to 2 do
+    Inc(ButtonsW, Length(ButtonTexts[ButtonIdx]) + 5);
+  Inc(ButtonsW, Length(LastText) + 4);
+  ButtonCol := (BoxW - ButtonsW) div 2;
+  FFindButtonRow := BoxH - 2;
+  for ButtonIdx := 0 to 3 do
+  begin
+    if ButtonIdx < 3 then
+      ButtonText := '[ ' + ButtonTexts[ButtonIdx] + ' ]'
+    else
+      ButtonText := '[ ' + LastText + ' ]';
+    FFindButtonCol[ButtonIdx] := ButtonCol;
+    FFindButtonLen[ButtonIdx] := Length(ButtonText);
+    if ButtonIdx = FFindFocus then
+      PutText(ButtonCol, BoxH - 2, Length(ButtonText), ButtonText, FarBlack,
+        FarCyan)
+    else
+      PutText(ButtonCol, BoxH - 2, Length(ButtonText), ButtonText, Fore, Back);
+    Inc(ButtonCol, Length(ButtonText) + 1);
+  end;
+end;
+
+function TFarView.FileCountOf: Integer;
+var
+  ItemIdx: Integer;
+begin
+  Result := 0;
+  for ItemIdx := 0 to High(FFindItems) do
+    if not FFindItems[ItemIdx].IsDir then
+      Inc(Result);
+end;
+
+function TFarView.DirCountOf: Integer;
+begin
+  Result := Length(FFindItems) - FileCountOf;
+end;
+
+// Мышь в окне найденного: строка - курсор, кнопка - нажать
+procedure TFarView.FindMouse(AX, AY: Integer);
+var
+  Row, Col, RowIdx, ButtonIdx: Integer;
+begin
+  Row := AY div FCellH;
+  Col := AX div FCellW;
+  if Row = FFindButtonRow then
+  begin
+    for ButtonIdx := 0 to 3 do
+      if (Col >= FFindButtonCol[ButtonIdx]) and
+         (Col < FFindButtonCol[ButtonIdx] + FFindButtonLen[ButtonIdx]) then
+      begin
+        FFindFocus := ButtonIdx;
+        FindButton(ButtonIdx);
+        Exit;
+      end;
+    Exit;
+  end;
+  RowIdx := FFindTop + Row - FFindListTop;
+  if (Row >= FFindListTop) and (Row < FFindListTop + FindListRows) and
+     (RowIdx >= 0) and (RowIdx <= High(FFindRows)) and
+     not FFindRows[RowIdx].IsHeader then
+  begin
+    FFindCursor := RowIdx;
+    FFindFocus := -1;
+  end;
+  Invalidate;
+end;
+
 procedure TFarView.SetColorRules(const ARules: TFarColorRules);
 var
   RuleIndex: Integer;
@@ -7367,6 +8014,19 @@ begin
     // Shift+F1: формат (0 - ZIP, 1 - 7z) и уровень сжатия (0..5, 3 - Normal)
     FArcAddFormat := Ini.ReadInteger(FarIniSection, 'ArcFormat', 0);
     FArcAddLevel := Ini.ReadInteger(FarIniSection, 'ArcLevel', 3);
+    // Alt+F7: что искали
+    FFindMask := FarDecodePath(Ini.ReadString(FarIniSection, 'FindMask',
+      '*.*'));
+    FFindText := FarDecodePath(Ini.ReadString(FarIniSection, 'FindText', ''));
+    FFindCodePage := Ini.ReadInteger(FarIniSection, 'FindCodePage', 0);
+    if (FFindCodePage < 0) or (FFindCodePage > 4) then
+      FFindCodePage := 0;
+    FFindCase := Ini.ReadInteger(FarIniSection, 'FindCase', 0) = 1;
+    FFindWhole := Ini.ReadInteger(FarIniSection, 'FindWhole', 0) = 1;
+    FFindFolders := Ini.ReadInteger(FarIniSection, 'FindFolders', 1) = 1;
+    FFindArea := Ini.ReadInteger(FarIniSection, 'FindArea', 0);
+    if (FFindArea < 0) or (FFindArea > 2) then
+      FFindArea := 0;
     // История командной строки
     HistoryCount := Ini.ReadInteger(FarCmdHistorySection, 'Count', 0);
     if HistoryCount > FarCmdHistoryMax then
@@ -7454,6 +8114,13 @@ begin
     Ini.WriteInteger(FarIniSection, 'PanelShift', FPanelShift);
     Ini.WriteInteger(FarIniSection, 'ArcFormat', FArcAddFormat);
     Ini.WriteInteger(FarIniSection, 'ArcLevel', FArcAddLevel);
+    Ini.WriteString(FarIniSection, 'FindMask', FarEncodePath(FFindMask));
+    Ini.WriteString(FarIniSection, 'FindText', FarEncodePath(FFindText));
+    Ini.WriteInteger(FarIniSection, 'FindCodePage', FFindCodePage);
+    Ini.WriteInteger(FarIniSection, 'FindCase', Ord(FFindCase));
+    Ini.WriteInteger(FarIniSection, 'FindWhole', Ord(FFindWhole));
+    Ini.WriteInteger(FarIniSection, 'FindFolders', Ord(FFindFolders));
+    Ini.WriteInteger(FarIniSection, 'FindArea', FFindArea);
     Ini.EraseSection(FarCmdHistorySection);
     Ini.WriteInteger(FarCmdHistorySection, 'Count', Length(FCmdHistory));
     for HistoryIndex := 0 to High(FCmdHistory) do
