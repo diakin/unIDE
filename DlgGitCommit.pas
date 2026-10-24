@@ -35,6 +35,7 @@ uses
   UiEditCtrls,   // TUiEdit, TUiMemo
   UiStdCtrls,    // TUiCheckBox, TUiLabel, TUiPanel
   UiComCtrls,    // TUiListView
+  GitDiffView,   // TGitDiffView - разница с подсветкой
   GitRun;        // TGitChange
 
 type
@@ -67,7 +68,7 @@ type
     FSummary: TUiEdit;
     FLblDescr: TUiLabel;
     FDescr: TUiMemo;
-    FDiff: TUiMemo;
+    FDiff: TGitDiffView;
     FSplitter: TSplitter;
     FBtnCommit: TUiButton;
     FBtnPush: TUiButton;
@@ -224,16 +225,11 @@ begin
   FSplitter.Left := FLeft.Width + 1;
   FSplitter.Width := 5;
 
-  FDiff := TUiMemo.Create(Self);
+  FDiff := TGitDiffView.Create(Self);
   FDiff.Parent := Self;
   FDiff.Align := alClient;
-  FDiff.ReadOnly := True;
-  FDiff.WordWrap := False;
-  FDiff.ScrollBars := ssBoth;
-  FDiff.Font.Name := 'Courier New';
-  FDiff.Font.Size := 9;
-  FDiff.Lines.Text := 'Выберите файл слева - здесь будет его разница ' +
-    '(git diff).';
+  FDiff.ShowDiff('Выберите файл слева - здесь будет его разница ' +
+    '(git diff).');
 
   // Сверху слева: флажок «все» и Discard Selected
   FTopPanel := TUiPanel.Create(Self);
@@ -494,7 +490,7 @@ begin
     Exit;
   FChanges := Fresh;
   FillList;
-  FDiff.Lines.Text := '';
+  FDiff.ShowDiff('');
   if FList.Items.Count = 0 then
     ModalResult := mrCancel;
 end;
@@ -569,7 +565,7 @@ begin
     Exit;
   Screen.Cursor := crHourGlass;
   try
-    FDiff.Lines.Text := string(FOnDiff(FChanges[ChangeIdx]));
+    FDiff.ShowDiff(string(FOnDiff(FChanges[ChangeIdx])));
   finally
     Screen.Cursor := crDefault;
   end;
@@ -627,7 +623,7 @@ begin
   finally
     FFilling := False;
   end;
-  FDiff.Lines.Text := '';
+  FDiff.ShowDiff('');
   UpdateCount;
   if FList.Items.Count = 0 then
     ModalResult := mrCancel;

@@ -85,6 +85,7 @@ uses
   DlgGitCommit in 'DlgGitCommit.pas',
   DlgGitHistory in 'DlgGitHistory.pas',
   GitHubApi in 'GitHubApi.pas',
+  GitDiffView in 'GitDiffView.pas',
   DlgGitClone in 'DlgGitClone.pas',
   UiCaptionTabs in 'UiCaptionTabs.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};

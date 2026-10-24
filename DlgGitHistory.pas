@@ -23,6 +23,7 @@ uses
   UiEditCtrls,   // TUiMemo
   UiStdCtrls,    // TUiLabel, TUiPanel
   UiComCtrls,    // TUiListView
+  GitDiffView,   // TGitDiffView - разница с подсветкой
   GitRun;        // TGitCommit, разбор вывода
 
 type
@@ -50,7 +51,7 @@ type
     FCommitList: TUiListView;
     FDetails: TUiMemo;
     FFileList: TUiListView;
-    FDiff: TUiMemo;
+    FDiff: TGitDiffView;
     FSplitLeft: TSplitter;
     FSplitTop: TSplitter;
     FSplitFiles: TSplitter;
@@ -195,14 +196,9 @@ begin
   FSplitFiles.Top := FFileList.Top + FFileList.Height + 1;
   FSplitFiles.Height := 5;
 
-  FDiff := TUiMemo.Create(Self);
+  FDiff := TGitDiffView.Create(Self);
   FDiff.Parent := FRight;
   FDiff.Align := alClient;
-  FDiff.ReadOnly := True;
-  FDiff.WordWrap := False;
-  FDiff.ScrollBars := ssBoth;
-  FDiff.Font.Name := 'Courier New';
-  FDiff.Font.Size := 9;
 
   FBtnMore := TUiButton.Create(Self);
   FBtnMore.Parent := FBtnPanel;
@@ -392,8 +388,8 @@ begin
     finally
       FFileList.Items.EndUpdate;
     end;
-    FDiff.Lines.Text := 'Файлов: ' + IntToStr(Length(FFiles)) +
-      '. Выберите файл - здесь будет его разница.';
+    FDiff.ShowDiff('Файлов: ' + IntToStr(Length(FFiles)) +
+      '. Выберите файл - здесь будет его разница.');
   finally
     Screen.Cursor := crDefault;
   end;
@@ -425,7 +421,7 @@ begin
         'переименование без правок).';
     if Length(Output) > GitHistDiffMax then
       Output := Copy(Output, 1, GitHistDiffMax) + #10'... (обрезано)';
-    FDiff.Lines.Text := AdjustLineBreaks(string(Output));
+    FDiff.ShowDiff(AdjustLineBreaks(string(Output)));
   finally
     Screen.Cursor := crDefault;
   end;
