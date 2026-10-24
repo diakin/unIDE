@@ -787,6 +787,14 @@ type
     mNewPasConsole: TMenuItem;
     mNewPasSep: TMenuItem;
     mNewPasOther: TMenuItem;
+    mNewRq: TMenuItem;
+    mNewRqApp: TMenuItem;
+    mNewRqForm: TMenuItem;
+    mNewRqInc: TMenuItem;
+    mNewRqConsole: TMenuItem;
+    mNewRqCgi: TMenuItem;
+    mNewRqSep: TMenuItem;
+    mNewRqOther: TMenuItem;
     FDsgMenu: TUiPopupMenu; // меню конструктора по правому щелчку
     FDsgMenuGrp1: TMenuItem;
     FDsgMiUndo: TMenuItem;
@@ -1008,6 +1016,12 @@ type
     procedure NewPasDllClick(Sender: TObject);
     procedure NewPasConsoleClick(Sender: TObject);
     procedure NewPasOtherClick(Sender: TObject);
+    procedure NewRqAppClick(Sender: TObject);
+    procedure NewRqFormClick(Sender: TObject);
+    procedure NewRqIncClick(Sender: TObject);
+    procedure NewRqConsoleClick(Sender: TObject);
+    procedure NewRqCgiClick(Sender: TObject);
+    procedure NewRqOtherClick(Sender: TObject);
     procedure ProgramResetClick(Sender: TObject);
     procedure ArdVerifyClick(Sender: TObject);
     procedure ArdUploadClick(Sender: TObject);
@@ -2253,6 +2267,9 @@ type
     // Папка для следующего New Project (Clone Repository с флажком
     // «Создать проект»): «На базе существующего», тип - по файлам; '' - нет
     FNewPrjPresetDir: string;
+    // Заготовка RapidQ для следующего New Project из File - New - RapidQ:
+    // 0 - обычный вызов, иначе rqkApp, rqkConsole, rqkCgi (DlgNewPrj)
+    FNewRqKind: Integer;
     // Ряд кнопок как в Delphi, справа от Compile & Run
 
     // Единый обработчик кликов для кнопок тулбара
@@ -2683,6 +2700,12 @@ type
     procedure WMRqDsgPlace(var Msg: TMessage); message WM_USER + 323;
     procedure RqDsgInsert(const AClass, AParent: string; X, Y: Integer);
     procedure RqNewWindowFile(const AFile: string);
+    function  RqNewTargetMain(const AWhat: string): Boolean;
+    procedure RqNewInclude;
+    procedure RqNewSeparateForm;
+    function  RqNewIncName(AKind: Integer; const AMode, ASysDir: string): string;
+    procedure RqNewProgramText(AText: TStrings; AKind: Integer;
+                               const ATitle, AInc: string);
     procedure RqOpenFormOfFile(const AFile, AFormName: string);
     function  RapidQProbeSource(const AMainBas, AOutFile: string;
                                 AOut, AObjClasses: TStringList;
@@ -11292,6 +11315,10 @@ var
   DelphiKind: Integer; // FNewDelphiKind этого вызова
   RosCfg: TRosSettings; // настройки проекта ReactOS из окна
   PresetDir: string;    // папка клона (Clone Repository), '' - нет
+  // Новый проект RapidQ: вид заготовки (FNewRqKind этого вызова, потом -
+  // выбранный в окне), компилятор и разрядность; главный файл
+  NewRqKind, NewRqComp, NewRqBits: Integer;
+  RqMain: string;
 
   // Есть ли в папке хоть один .pas. Расширение сверяется ещё раз: маска
   // *.pas по коротким именам находит и file.pas~ (FILE~1.PAS).
@@ -11323,6 +11350,9 @@ begin
   FNewDelphiKind := 0;
   PresetDir := FNewPrjPresetDir;
   FNewPrjPresetDir := '';
+  // Пункт File - New - RapidQ: тип RapidQ Basic и вид заготовки
+  NewRqKind := FNewRqKind;
+  FNewRqKind := 0;
 
   if not ConfirmSaveAll then
     Exit;
@@ -11373,6 +11403,22 @@ begin
       end;
       Dlg.cbTypeChange(cbType);
     end;
+    // Новый проект RapidQ: списки вида заготовки и компилятора у типа
+    // RapidQ Basic; из File - New - RapidQ тип и вид уже выбраны
+    if NewRqKind > 0 then
+    begin
+      if cbType.Items.IndexOf('RapidQ Basic') >= 0 then
+        cbType.ItemIndex := cbType.Items.IndexOf('RapidQ Basic');
+      case NewRqKind of
+        rqkConsole: Dlg.Caption := 'New Project - RapidQ Console Application';
+        rqkCgi: Dlg.Caption := 'New Project - RapidQ CGI Application';
+      else
+        Dlg.Caption := 'New Project - RapidQ Application';
+      end;
+      Dlg.ShowRqKind(NewRqKind);
+    end
+    else
+      Dlg.ShowRqKind(rqkApp);
 
     // После Clone Repository: папка клона, «На базе существующего», тип -
     // по файлам в папке. Главный файл ищется по OK (PickExistingMain)
@@ -11427,6 +11473,9 @@ begin
     IncMode := Dlg.RqIncMode;
     IncOwnDir := Dlg.RqIncOwnDir;
     IncOwnList := Dlg.RqIncOwnList;
+    NewRqKind := Dlg.RqKind;
+    NewRqComp := Dlg.RqComp;
+    NewRqBits := Dlg.RqBits;
     if Dlg.IsRosType then
       Dlg.GetRosSettings(RosCfg);
 
@@ -11499,7 +11548,8 @@ begin
        ((CompareText(Tp, 'Delphi') = 0) or (CompareText(Tp, 'Lazarus') = 0) or
         (CompareText(Tp, 'Go') = 0) or (CompareText(Tp, 'Python') = 0) or
         (CompareText(Tp, 'Rust') = 0) or
-        (CompareText(Tp, 'AutoHotkey') = 0)) then
+        (CompareText(Tp, 'AutoHotkey') = 0) or
+        (CompareText(Tp, 'RapidQ Basic') = 0)) then
     begin
       Existing := MainFilesIn(Dir, Tp, SL) > 0;
       if Existing then
@@ -11867,6 +11917,27 @@ begin
       end;
     end;
 
+    // ЗАГОТОВКА ДЛЯ RAPIDQ: один главный <Имя>.bas. Все формы программы -
+    // в нём, блоками CREATE (File - New - RapidQ - Form), свои процедуры -
+    // в нём или в .inc (File - New - RapidQ - Include). Подключаемый файл -
+    // по папке inc проекта (RqNewIncName). Компилятор и разрядность из
+    // окна - настройки сборки главного файла, как в рамке Project.
+    RqMain := '';
+    if (CompareText(Tp, 'RapidQ Basic') = 0) and not OnBase and
+       not Existing then
+    begin
+      RqMain := Dir + Nm + '.bas';
+      RqNewProgramText(SL, NewRqKind, Nm,
+                       RqNewIncName(NewRqKind, IncMode, IncSysDir));
+      SL.SaveToFile(RqMain);
+      SetRqComp(RqMain, NewRqComp);
+      if NewRqComp <> rqcRc then
+        if NewRqKind = rqkApp then
+          SetFbBuild(RqMain, fbOutGui, NewRqBits)
+        else
+          SetFbBuild(RqMain, fbOutConsole, NewRqBits);
+    end;
+
     // Проект: запись в [Projects] (имя = папка) и раздел [Project.<имя>] -
     // тип и цель сборки
     TargetFile := '';
@@ -11885,7 +11956,9 @@ begin
     else if CompareText(Tp, 'Rust') = 0 then
       TargetFile := Dir + 'src\main.rs'
     else if CompareText(Tp, 'AutoHotkey') = 0 then
-      TargetFile := Dir + Nm + '.ahk';
+      TargetFile := Dir + Nm + '.ahk'
+    else if RqMain <> '' then
+      TargetFile := RqMain;
 
     RegisterProject(Nm, Dir);
     Prj := TProjectIni.Create(SettingsFileName, Nm);
@@ -11951,12 +12024,19 @@ begin
       OpenNamedFile(Dir + 'src\main.rs')
     else if (CompareText(Tp, 'AutoHotkey') = 0) and
             FileExists(Dir + Nm + '.ahk') then
-      OpenNamedFile(Dir + Nm + '.ahk');
+      OpenNamedFile(Dir + Nm + '.ahk')
+    else if (RqMain <> '') and FileExists(RqMain) then
+      OpenNamedFile(RqMain);
 
     // Список окон и вкладок пишем в описание сразу. Иначе открытый файл
     // живёт только до закрытия среды: в .prj разделов [Windows] и [Tabs]
     // ещё нет, и при следующем открытии проект будет пустым.
     SaveProjectTo(Nm);
+
+    // Программа RapidQ с формой - форма сразу в конструкторе
+    if (RqMain <> '') and (NewRqKind = rqkApp) and FileExists(RqMain) and
+       RapidQComponentsReady(False) then
+      RqOpenFormOfFile(RqMain, 'Form');
   finally
     FNewPrjName := nil;   // окно сейчас исчезнет, ссылки на его поля тоже
     FNewPrjDir := nil;
@@ -58791,18 +58871,17 @@ begin
   end;
 end;
 
-// New Form у файла RapidQ. Вопрос - куда:
-//   - в этот файл: блок CREATE новой формы FormN прямо в тексте (N -
-//     первый номер с 2, которого нет словом в тексте);
-//   - отдельной программой: NewWindowN.bas в папке этого файла (N - первый
-//     номер с 1, которого там нет) - $INCLUDE "RAPIDQ.INC", форма Form,
-//     Form.ShowModal. Этот файл не меняется.
-// Место блока в этом файле:
+// New Form у программы RapidQ: блок CREATE новой формы FormN (N - первый
+// номер с 2, которого нет словом в тексте) в главном файле программы -
+// все формы программы в одном файле (RqNewTargetMain: вкладка .inc
+// уступает место главному .bas). Отдельная программа с формой -
+// File - New - RapidQ - Other (RqNewSeparateForm).
+// Место блока в главном файле:
 //   - после END CREATE последней формы главной части;
 //   - форм нет - перед первым ShowModal главной части;
 //   - нет и его - перед первой SUB или FUNCTION, иначе в конец файла.
 // Вставка - правкой текста во вкладке, откатывается как обычная. Новая
-// форма открывается в конструкторе (отдельный файл - в своей вкладке).
+// форма открывается в конструкторе.
 procedure TForm1.RqNewForm;
 var
   Lines, Block: TStringList;
@@ -58810,7 +58889,7 @@ var
   Mask: TBits;
   Node: TDfmNode;
   NodeIdx, LineIdx, InsAt, Num, LineStart, LastLine: Integer;
-  TextLow, FormNm, Where, BlockText, SrcDir, NewName, NewFile: string;
+  TextLow, FormNm, Where, BlockText: string;
   AtEnd: Boolean;
 begin
   if not RapidQComponentsReady(True) then
@@ -58819,34 +58898,8 @@ begin
     'конструктору не по чему строить форму. Где искали - в логе.');
                 Exit;
   end;
-  SrcDir := '';
-  if not IsUntitledName(FCurrentFileName) then
-    SrcDir := ExtractFilePath(FCurrentFileName);
-  // Куда. У файла без имени папки нет - только в этот файл.
-  if SrcDir <> '' then
-  begin
-    Num := 1;
-    while FileExists(SrcDir + 'NewWindow' + IntToStr(Num) + '.bas') do
-      Inc(Num);
-    NewName := 'NewWindow' + IntToStr(Num) + '.bas';
-    NewFile := SrcDir + NewName;
-    case MessageDlg('New Form: куда поставить новую форму?'#13#10#13#10 +
-      'Да - в этот файл (' + ExtractFileName(FCurrentFileName) +
-      '), блоком CREATE.'#13#10 +
-      'Нет - отдельной программой ' + NewName + ' в той же ' +
-      'папке: своя форма и ShowModal.',
-                    mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
-      mrYes:
-        ;
-      mrNo:
-      begin
-        RqNewWindowFile(NewFile);
-        Exit;
-      end;
-    else
-      Exit;
-    end;
-  end;
+  if not RqNewTargetMain('New Form') then
+    Exit;
 
   Lines := TStringList.Create;
   Block := TStringList.Create;
@@ -58970,20 +59023,14 @@ end;
 procedure TForm1.RqNewWindowFile(const AFile: string);
 var
   NewText: TStringList;
+  SysDir, UserDir, Mode, OwnDir: string;
 begin
+  RapidQIncSettings(FCurrentProject, SysDir, UserDir, Mode, OwnDir);
   NewText := TStringList.Create;
   try
-    NewText.Add('$INCLUDE "RAPIDQ.INC"');
-    NewText.Add('');
-    NewText.Add('CREATE Form AS QFORM');
-    NewText.Add('  Caption = "' + ChangeFileExt(ExtractFileName(AFile), '') +
-    '"');
-                NewText.Add('  Width = 320');
-                NewText.Add('  Height = 240');
-                NewText.Add('  Center');
-                NewText.Add('END CREATE');
-                NewText.Add('');
-                NewText.Add('Form.ShowModal');
+    RqNewProgramText(NewText, rqkApp,
+                     ChangeFileExt(ExtractFileName(AFile), ''),
+                     RqNewIncName(rqkApp, Mode, SysDir));
     try
       NewText.SaveToFile(AFile);
     except
@@ -59005,6 +59052,252 @@ begin
   RefreshObjectInspector(True);
   ObjSelectAnyName('Form');
   RqDsgOpen;
+end;
+
+// Главный файл программы RapidQ для New Form и New Include - активной
+// вкладкой. Это RapidQTargetBas: .bas вкладки; .bas, в который файл
+// вкладки подключён через $INCLUDE; цель проекта RapidQ (у вкладки .inc,
+// .prj ...). Нет такого файла или он не разбирается как RapidQ -
+// сообщение, False.
+function TForm1.RqNewTargetMain(const AWhat: string): Boolean;
+var
+  MainFile: string;
+begin
+  Result := False;
+  MainFile := RapidQTargetBas(False);
+  if MainFile = '' then
+  begin
+    ShowMessage(AWhat + ': не найден главный файл программы RapidQ. ' +
+    'Откройте её .bas или создайте проект: File - New - RapidQ - ' +
+    'Application.');
+                Exit;
+  end;
+  if CompareText(ExpandFileName(FCurrentFileName),
+                 ExpandFileName(MainFile)) <> 0 then
+  begin
+    OpenNamedFile(MainFile);
+    if CompareText(ExpandFileName(FCurrentFileName),
+                   ExpandFileName(MainFile)) <> 0 then
+      Exit;
+    LogComp(AWhat + ': главный файл программы - ' +
+            ExtractFileName(MainFile));
+  end;
+  if not IncludesApply then
+  begin
+    ShowMessage(AWhat + ': ' + ExtractFileName(MainFile) + ' не ' +
+    'разбирается как файл RapidQ.');
+                Exit;
+  end;
+  Result := True;
+end;
+
+// New Include у программы RapidQ - вместо Unit: пустой IncN.inc в папке
+// главного файла (N - первый номер с 1: нет такого файла и слова IncN в
+// тексте главного) и строка $INCLUDE "IncN.inc" в главном файле - правкой
+// во вкладке (откатывается; на диск - при сохранении главного). Место
+// строки - после последней $INCLUDE главной части; нет их - после
+// директив ($APPTYPE, $TYPECHECK ...) в начале файла, иначе первой
+// строкой. Новый файл открывается вкладкой с главным в IncOwner: Compile
+// с неё собирает главный файл.
+procedure TForm1.RqNewInclude;
+var
+  Lines, NewText: TStringList;
+  Mask: TBits;
+  MainFile, IncName, IncFile, TextLow, LineText, InsText: string;
+  Num, LineIdx, InsAt, LineStart, LastLine: Integer;
+begin
+  if not RqNewTargetMain('New Include') then
+    Exit;
+  MainFile := FCurrentFileName;
+  Lines := TStringList.Create;
+  Mask := TBits.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    RapidQTopLevelMask(Lines, Mask);
+    TextLow := LowerCase(Lines.Text);
+    Num := 1;
+    while FileExists(ExtractFilePath(MainFile) + 'Inc' + IntToStr(Num) +
+                     '.inc') or
+          HasWordLow(TextLow, 'inc' + IntToStr(Num)) do
+      Inc(Num);
+    IncName := 'Inc' + IntToStr(Num) + '.inc';
+    IncFile := ExtractFilePath(MainFile) + IncName;
+
+    // Место строки $INCLUDE
+    InsAt := -1;
+    for LineIdx := 0 to Lines.Count - 1 do
+      if (LineIdx < Mask.Size) and Mask[LineIdx] and
+         (Copy(LowerCase(TrimLeft(Lines[LineIdx])), 1, 8) = '$include') then
+        InsAt := LineIdx + 1;
+    if InsAt < 0 then
+    begin
+      InsAt := 0;
+      for LineIdx := 0 to Lines.Count - 1 do
+      begin
+        LineText := TrimLeft(Lines[LineIdx]);
+        if Copy(LineText, 1, 1) = '$' then
+          InsAt := LineIdx + 1
+        else if (LineText <> '') and (Copy(LineText, 1, 1) <> '''') then
+          Break;
+      end;
+    end;
+
+    // Сначала файл: не записался - главный не меняется
+    NewText := TStringList.Create;
+    try
+      NewText.Add(''' ' + IncName + ' - подключён в ' +
+                  ExtractFileName(MainFile) + ': $INCLUDE "' + IncName + '"');
+      NewText.Add('');
+      try
+        NewText.SaveToFile(IncFile);
+      except
+        on E: Exception do
+        begin
+          ShowMessage('New Include: файл ' + IncFile + ' не записан: ' +
+                      E.Message);
+          Exit;
+        end;
+      end;
+    finally
+      NewText.Free;
+    end;
+
+    // Строка в главном файле. После последней строки текста - с переводом
+    // строки перед ней.
+    InsText := '$INCLUDE "' + IncName + '"' + #13#10;
+    LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+    if LineStart < 0 then
+    begin
+      LastLine := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0) - 1;
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LastLine, 0);
+      if LineStart < 0 then
+        Exit;
+      LineStart := LineStart +
+                   SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      InsText := #13#10 + '$INCLUDE "' + IncName + '"';
+    end;
+    Inc(FObjOwnWrite);
+    try
+      EditorFreeze;
+      try
+        RichEdit1.SelStart := LineStart;
+        RichEdit1.SelLength := 0;
+        RichEdit1.SelText := InsText;
+      finally
+        EditorThaw;
+      end;
+    finally
+      Dec(FObjOwnWrite);
+    end;
+    RichEdit1.Modified := True;
+  finally
+    Mask.Free;
+    Lines.Free;
+  end;
+
+  LogComp('New Include: ' + IncName + ' создан; $INCLUDE "' + IncName +
+          '" - в ' + ExtractFileName(MainFile) + ', строка ' +
+          IntToStr(InsAt + 1) + ' (на диск - при сохранении ' +
+          ExtractFileName(MainFile) + ')');
+  OpenNamedFile(IncFile);
+  if CompareText(ExpandFileName(FCurrentFileName),
+                 ExpandFileName(IncFile)) = 0 then
+    SetIncOwner(FWindowsIndex, MainFile);
+end;
+
+// Other - Form in separate program: NewWindowN.bas (N - первый номер с 1,
+// которого нет) со своей формой и ShowModal - в папке главного файла
+// программы, иначе файла вкладки, иначе проекта
+procedure TForm1.RqNewSeparateForm;
+var
+  Dir: string;
+  Num: Integer;
+begin
+  if not RapidQComponentsReady(True) then
+  begin
+    ShowMessage('Нет описания компонентов RapidQ (ComponentAll.data) - ' +
+    'конструктору не по чему строить форму. Где искали - в логе.');
+                Exit;
+  end;
+  Dir := RapidQTargetBas(False);
+  if Dir <> '' then
+    Dir := ExtractFilePath(Dir)
+  else if FCurrentFileName <> '' then
+    Dir := ExtractFilePath(FCurrentFileName)
+  else if BuildProject <> '' then
+    Dir := ProjectDir(BuildProject);
+  if Dir = '' then
+  begin
+    ShowMessage('New Form: нет папки для новой программы - откройте файл ' +
+    'или проект.');
+                Exit;
+  end;
+  Num := 1;
+  while FileExists(Dir + 'NewWindow' + IntToStr(Num) + '.bas') do
+    Inc(Num);
+  RqNewWindowFile(Dir + 'NewWindow' + IntToStr(Num) + '.bas');
+end;
+
+// Подключаемый файл новой программы RapidQ. Папка inc проекта - Include
+// UnIde (AMode 'sys') и в ней есть RQControls.inc - общие файлы новых inc:
+// RQControls.inc у программы с формой (он подключает RQProc.inc),
+// RQProc.inc у консольной и CGI. Иначе (старые или свои inc) - RAPIDQ.INC.
+function TForm1.RqNewIncName(AKind: Integer;
+                             const AMode, ASysDir: string): string;
+begin
+  if (AMode = 'sys') and (ASysDir <> '') and
+     FileExists(IncludeTrailingPathDelimiter(ASysDir) + 'RQControls.inc') then
+  begin
+    if AKind = rqkApp then
+      Result := 'RQControls.inc'
+    else
+      Result := 'RQProc.inc';
+  end
+  else
+    Result := 'RAPIDQ.INC';
+end;
+
+// Текст новой программы RapidQ вида AKind (rqkApp, rqkConsole, rqkCgi):
+// $APPTYPE, $INCLUDE AInc, $TYPECHECK ON и начало программы. $TYPECHECK -
+// после $INCLUDE: проверка объявлений касается кода программы, а не
+// подключённых inc (в RQProc.inc есть части без объявлений). У программы
+// с формой - форма Form с заголовком ATitle и Form.ShowModal.
+procedure TForm1.RqNewProgramText(AText: TStrings; AKind: Integer;
+                                  const ATitle, AInc: string);
+begin
+  AText.Clear;
+  case AKind of
+    rqkConsole: AText.Add('$APPTYPE CONSOLE');
+    rqkCgi: AText.Add('$APPTYPE CGI');
+  end;
+  AText.Add('$INCLUDE "' + AInc + '"');
+  AText.Add('$TYPECHECK ON');
+  AText.Add('');
+  case AKind of
+    rqkConsole:
+    begin
+      AText.Add('PRINT "Hello, world!"');
+      AText.Add('PRINT "Press any key"');
+      AText.Add('DO');
+      AText.Add('  SLEEP 0.05');
+      AText.Add('LOOP UNTIL INKEY$ <> ""');
+    end;
+    rqkCgi:
+    begin
+      AText.Add('PRINT "Content-Type: text/html"');
+      AText.Add('PRINT ""');
+      AText.Add('PRINT "<html><body>Hello, world!</body></html>"');
+    end;
+  else
+    AText.Add('CREATE Form AS QFORM');
+    AText.Add('  Caption = "' + ATitle + '"');
+    AText.Add('  Width = 320');
+    AText.Add('  Height = 240');
+    AText.Add('  Center');
+    AText.Add('END CREATE');
+    AText.Add('');
+    AText.Add('Form.ShowModal');
+  end;
 end;
 
 // Форма AFormName файла RapidQ AFile (View Form): файл - активной вкладкой,
@@ -59479,6 +59772,68 @@ begin
     NewPasDllClick(Sender)
   else if Choice = 'Console Application' then
     NewPasConsoleClick(Sender);
+end;
+
+// File - New - RapidQ: новый проект с заготовкой нужного вида (окно New
+// Project с типом RapidQ Basic), форма и .inc - в текущую программу
+procedure TForm1.NewRqAppClick(Sender: TObject);
+begin
+  FNewRqKind := rqkApp;
+  NewProjectClick(Sender);
+end;
+
+procedure TForm1.NewRqFormClick(Sender: TObject);
+begin
+  RqNewForm;
+end;
+
+procedure TForm1.NewRqIncClick(Sender: TObject);
+begin
+  RqNewInclude;
+end;
+
+procedure TForm1.NewRqConsoleClick(Sender: TObject);
+begin
+  FNewRqKind := rqkConsole;
+  NewProjectClick(Sender);
+end;
+
+procedure TForm1.NewRqCgiClick(Sender: TObject);
+begin
+  FNewRqKind := rqkCgi;
+  NewProjectClick(Sender);
+end;
+
+// Other... - список всех заготовок RapidQ и форма отдельной программой
+procedure TForm1.NewRqOtherClick(Sender: TObject);
+var
+  Items: TStringList;
+  Choice: string;
+begin
+  Items := TStringList.Create;
+  try
+    Items.Add('Application');
+    Items.Add('Form');
+    Items.Add('Include (.inc)');
+    Items.Add('Console Application');
+    Items.Add('CGI Application');
+    Items.Add('Form in separate program');
+    Choice := ChooseFromList('New Items', 'Новый элемент RapidQ:', Items);
+  finally
+    Items.Free;
+  end;
+  if Choice = 'Application' then
+    NewRqAppClick(Sender)
+  else if Choice = 'Form' then
+    NewRqFormClick(Sender)
+  else if Choice = 'Include (.inc)' then
+    NewRqIncClick(Sender)
+  else if Choice = 'Console Application' then
+    NewRqConsoleClick(Sender)
+  else if Choice = 'CGI Application' then
+    NewRqCgiClick(Sender)
+  else if Choice = 'Form in separate program' then
+    RqNewSeparateForm;
 end;
 
 // New Form, когда текущий проект - сам редактор, и выбран отдельный

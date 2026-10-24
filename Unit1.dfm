@@ -404,6 +404,44 @@ object Form1: TForm1
             ShortCut = 0
           end
         end
+        object mNewRq: TMenuItem
+          Caption = 'RapidQ'
+          ShortCut = 0
+          object mNewRqApp: TMenuItem
+            Caption = 'Application'
+            OnClick = NewRqAppClick
+            ShortCut = 0
+          end
+          object mNewRqForm: TMenuItem
+            Caption = 'Form'
+            OnClick = NewRqFormClick
+            ShortCut = 0
+          end
+          object mNewRqInc: TMenuItem
+            Caption = 'Include (.inc)'
+            OnClick = NewRqIncClick
+            ShortCut = 0
+          end
+          object mNewRqConsole: TMenuItem
+            Caption = 'Console Application'
+            OnClick = NewRqConsoleClick
+            ShortCut = 0
+          end
+          object mNewRqCgi: TMenuItem
+            Caption = 'CGI Application'
+            OnClick = NewRqCgiClick
+            ShortCut = 0
+          end
+          object mNewRqSep: TMenuItem
+            Caption = '-'
+            ShortCut = 0
+          end
+          object mNewRqOther: TMenuItem
+            Caption = 'Other...'
+            OnClick = NewRqOtherClick
+            ShortCut = 0
+          end
+        end
         object mNewItem3: TMenuItem
           Caption = 'BASIC File'
           OnClick = NewFileClick

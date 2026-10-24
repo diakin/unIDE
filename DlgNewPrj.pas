@@ -23,6 +23,12 @@ unit DlgNewPrj;
 // размера. Где что хранится - см. DelphiOpts: .dof, .dpr и .res проекта.
 // Записывает настройки SaveDelphiOptions - его вызывает Unit1 после OK.
 //
+// Новый проект RapidQ (только New Project, ShowRqKind): справа от типа -
+// список "Вид" (Application, Console Application, CGI Application) и
+// компилятор (rc.exe, FB Smart / FB Compat 32 или 64 бит). Списки строятся
+// кодом (BuildRqKindControls), видны только у типа RapidQ Basic. Заготовку
+// пишет TForm1.NewProjectClick.
+//
 // Форма создаётся по месту, в .dpr её автосоздания нет.
 
 interface
@@ -43,6 +49,12 @@ uses
   Dialogs,      // TOpenDialog
   // Окна сообщений по теме - последним, поверх Dialogs
   UiDialogs;
+
+const
+  // Вид заготовки нового проекта RapidQ (список "Вид" в New Project)
+  rqkApp = 1;       // программа с формой
+  rqkConsole = 2;   // $APPTYPE CONSOLE
+  rqkCgi = 3;       // $APPTYPE CGI
 
 type
   TDlgNewPrj = class(TForm)
@@ -248,6 +260,11 @@ type
     btnRosEnv: TUiButton;
     edRosPciVendors: TUiEdit;
     edRosRun: TUiEdit;
+    // Новый проект RapidQ: вид заготовки и компилятор (BuildRqKindControls)
+    lblRqKind: TLabel;
+    cbRqKind: TUiComboBox;
+    cbRqComp: TUiComboBox;
+    FRqKindShown: Boolean;      // списки нужны (New Project, ShowRqKind)
     FDpr: string;               // .dpr проекта; '' - вкладки Delphi нет
     FDof: TMemIniFile;          // <проект>.dof в памяти
     FDofBefore: string;         // текст .dof после загрузки - для сравнения
@@ -272,6 +289,7 @@ type
     procedure btnIncDelClick(Sender: TObject);
     procedure btnIncDelAllClick(Sender: TObject);
     procedure BuildRosControls;
+    procedure BuildRqKindControls;
     function RosSourceDir: string;
     procedure cbRosBuildDirDropDown(Sender: TObject);
     procedure btnRosBuildDirClick(Sender: TObject);
@@ -317,6 +335,16 @@ type
     function RqIncOwnList: string;
     // Выбран тип ReactOS
     function IsRosType: Boolean;
+    // New Project: показать у типа RapidQ Basic списки вида заготовки и
+    // компилятора; AKind - выбранный вид (rqkApp, rqkConsole, rqkCgi)
+    procedure ShowRqKind(AKind: Integer);
+    // Выбранный вид заготовки RapidQ (rqkApp ...)
+    function RqKind: Integer;
+    // Компилятор RapidQ: 0 - rc.exe, 1 - FB Smart, 2 - FB Compat (номера -
+    // как rqcRc, rqcFbSmart, rqcFbCompat в Unit1)
+    function RqComp: Integer;
+    // Разрядность сборки через FreeBASIC: 32 или 64
+    function RqBits: Integer;
     // Рамка ReactOS: заполнить по настройкам проекта и прочитать. Пути в
     // поле папки сборки - от папки проекта (edDir), если они внутри неё.
     procedure SetRosSettings(const ASettings: TRosSettings);
@@ -360,6 +388,7 @@ begin
   FFormClasses := TStringList.Create;
   FPkgPaths := TStringList.Create;
   BuildRosControls;
+  BuildRqKindControls;
   SetOptionsVisible(False);
 end;
 
@@ -385,6 +414,12 @@ begin
   grpRqInc.Visible := CompareText(cbType.Text, 'RapidQ Basic') = 0;
   if grpRos <> nil then
     grpRos.Visible := IsRosType;
+  if cbRqKind <> nil then
+  begin
+    cbRqKind.Visible := FRqKindShown and grpRqInc.Visible;
+    lblRqKind.Visible := cbRqKind.Visible;
+    cbRqComp.Visible := cbRqKind.Visible;
+  end;
   if tsOptions.TabVisible then
     ClientHeight := FullClientHeight
   else if grpRqInc.Visible then
@@ -517,6 +552,94 @@ begin
   NoteLabel.Caption := 'Папка проекта - корень исходников (configure.cmd, ' +
                        'CMakeLists.txt, PreLoad.cmake). Compile: configure, ' +
                        'если в папке сборки нет build.ninja, затем ninja.';
+end;
+
+// Списки нового проекта RapidQ - справа от типа, в той же строке:
+//   Тип проекта [RapidQ Basic v]  Вид [Application v] [rc.exe v]
+procedure TDlgNewPrj.BuildRqKindControls;
+begin
+  if cbRqKind <> nil then
+    Exit;
+  lblRqKind := TLabel.Create(Self);
+  lblRqKind.Parent := tsProject;
+  lblRqKind.SetBounds(432, 108, 24, 13);
+  lblRqKind.Caption := 'Вид';
+  lblRqKind.Visible := False;
+
+  cbRqKind := TUiComboBox.Create(Self);
+  cbRqKind.Parent := tsProject;
+  cbRqKind.Style := csDropDownList;
+  cbRqKind.SetBounds(460, 104, 132, 21);
+  cbRqKind.Items.Add('Application');
+  cbRqKind.Items.Add('Console Application');
+  cbRqKind.Items.Add('CGI Application');
+  cbRqKind.ItemIndex := 0;
+  cbRqKind.Hint := 'Заготовка главного файла: программа с формой, ' +
+                   'консольная ($APPTYPE CONSOLE) или CGI ($APPTYPE CGI). ' +
+                   'Только для новой папки - в готовый проект ничего не пишется';
+  cbRqKind.ShowHint := True;
+  cbRqKind.Visible := False;
+  cbRqKind.TabOrder := cbType.TabOrder + 1;
+
+  cbRqComp := TUiComboBox.Create(Self);
+  cbRqComp.Parent := tsProject;
+  cbRqComp.Style := csDropDownList;
+  cbRqComp.SetBounds(598, 104, 124, 21);
+  cbRqComp.Items.Add('rc.exe');
+  cbRqComp.Items.Add('FB Smart 32');
+  cbRqComp.Items.Add('FB Smart 64');
+  cbRqComp.Items.Add('FB Compat 32');
+  cbRqComp.Items.Add('FB Compat 64');
+  cbRqComp.ItemIndex := 0;
+  cbRqComp.Hint := 'Чем собирать главный файл: rc.exe RapidQ или ' +
+                   'FreeBASIC через перевод RqToFb (Smart / Compat, 32 или ' +
+                   '64 бит). Потом меняется в рамке Project';
+  cbRqComp.ShowHint := True;
+  cbRqComp.Visible := False;
+  cbRqComp.TabOrder := cbRqKind.TabOrder + 1;
+end;
+
+procedure TDlgNewPrj.ShowRqKind(AKind: Integer);
+begin
+  BuildRqKindControls;
+  FRqKindShown := True;
+  case AKind of
+    rqkConsole: cbRqKind.ItemIndex := 1;
+    rqkCgi: cbRqKind.ItemIndex := 2;
+  else
+    cbRqKind.ItemIndex := 0;
+  end;
+  UpdateRqIncVisible;
+end;
+
+function TDlgNewPrj.RqKind: Integer;
+begin
+  Result := rqkApp;
+  if cbRqKind = nil then
+    Exit;
+  case cbRqKind.ItemIndex of
+    1: Result := rqkConsole;
+    2: Result := rqkCgi;
+  end;
+end;
+
+function TDlgNewPrj.RqComp: Integer;
+begin
+  Result := 0;
+  if cbRqComp = nil then
+    Exit;
+  case cbRqComp.ItemIndex of
+    1, 2: Result := 1;
+    3, 4: Result := 2;
+  end;
+end;
+
+function TDlgNewPrj.RqBits: Integer;
+begin
+  Result := 32;
+  if (cbRqComp <> nil) and
+     ((cbRqComp.ItemIndex = 2) or (cbRqComp.ItemIndex = 4)) then
+    Result := 64;
 end;
 
 function TDlgNewPrj.RosSourceDir: string;
