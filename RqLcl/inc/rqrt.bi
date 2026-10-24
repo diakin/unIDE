@@ -929,6 +929,49 @@ Sub RqSleep(ByVal Seconds As Double)
     If Seconds > 0 Then Sleep CLng(Seconds * 1000), 1
 End Sub
 
+' CHDIR, MKDIR, RMDIR, KILL. Функции FreeBASIC при неудаче только
+' возвращают код (ошибки выполнения нет даже с -exx), программа молча идёт
+' дальше. Smart - окно с путём, файлом и строкой исходника RapidQ, программа
+' продолжает работу; Compat - без сообщения (что делает RapidQ - не
+' проверено).
+Sub RqRtFileOpFail(ByRef OpName As String, ByRef PathText As String, _
+                   ByRef FileName As String, ByVal LineNum As Long)
+    RqRtReport("Error", OpName & " """ & PathText & """: не выполнено", _
+               FileName, LineNum, 1)
+End Sub
+
+Sub RqChDir(ByRef PathText As String, ByRef FileName As String, _
+            ByVal LineNum As Long)
+    Dim OpResult As Long = ChDir(PathText)
+#ifndef RQ_COMPAT
+    If OpResult <> 0 Then RqRtFileOpFail("CHDIR", PathText, FileName, LineNum)
+#endif
+End Sub
+
+Sub RqMkDir(ByRef PathText As String, ByRef FileName As String, _
+            ByVal LineNum As Long)
+    Dim OpResult As Long = MkDir(PathText)
+#ifndef RQ_COMPAT
+    If OpResult <> 0 Then RqRtFileOpFail("MKDIR", PathText, FileName, LineNum)
+#endif
+End Sub
+
+Sub RqRmDir(ByRef PathText As String, ByRef FileName As String, _
+            ByVal LineNum As Long)
+    Dim OpResult As Long = RmDir(PathText)
+#ifndef RQ_COMPAT
+    If OpResult <> 0 Then RqRtFileOpFail("RMDIR", PathText, FileName, LineNum)
+#endif
+End Sub
+
+Sub RqKill(ByRef PathText As String, ByRef FileName As String, _
+           ByVal LineNum As Long)
+    Dim OpResult As Long = Kill(PathText)
+#ifndef RQ_COMPAT
+    If OpResult <> 0 Then RqRtFileOpFail("KILL", PathText, FileName, LineNum)
+#endif
+End Sub
+
 ' s$[N] RapidQ - символ строки с 1; вне строки (0, за концом) - ""
 ' (тест в RapidQ 2026-10-08). Только чтение: s$[N] = x RapidQ не компилирует.
 Function RqStrIdx(ByRef Source As String, ByVal CharNum As Long) As String

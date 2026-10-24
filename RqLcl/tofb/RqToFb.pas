@@ -691,6 +691,7 @@ type
     procedure ProcessReturn(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessIncDec(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessQuickSort(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessFileOp(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessInitArray(var AToks: TToks; AFrom, ATo: Integer);
     function ArgIsRecord(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     function TopComma(const AToks: TToks; AFrom, ATo: Integer): Integer;
@@ -3159,7 +3160,7 @@ begin
     Exit;
   Up := AToks[AFirstIdx].Up;
   if Pos(' ' + Up + ' ', ' IF SELECT PRINT WHILE DO FOR CALL LET SWAP INC ' +
-         'DEC ') > 0 then
+         'DEC CHDIR MKDIR RMDIR KILL ') > 0 then
   begin
     Result := True;
     Exit;
@@ -3991,6 +3992,9 @@ begin
     ProcessQuickSort(AToks, FirstIdx, ATo)
   else if (Up = 'INITARRAY') and (FindProc(Up) = nil) then
     ProcessInitArray(AToks, FirstIdx, ATo)
+  else if ((Up = 'CHDIR') or (Up = 'MKDIR') or (Up = 'RMDIR') or
+           (Up = 'KILL')) and (FindProc(Up) = nil) then
+    ProcessFileOp(AToks, FirstIdx, ATo)
   else if (Up = 'SLEEP') and (FindProc(Up) = nil) then
   begin
     // SLEEP секунды (RapidQ, можно дробь) -> RqSleep; Sleep FreeBASIC - в
@@ -6942,6 +6946,38 @@ begin
   end;
   AToks[AFrom].OutText := 'On RqGosubPop(' + StkName + '(), ' + SpName +
                           ', __FILE__, __LINE__) Goto ' + Targets;
+end;
+
+// CHDIR путь, MKDIR путь, RMDIR путь, KILL файл -> RqChDir(путь,
+// __FILE__, __LINE__) и т. д. (rqrt.bi): в Smart неудача видна окном с
+// местом в исходнике RapidQ; встроенные функции FreeBASIC только
+// возвращают код. Без аргумента - как есть (fbc сообщит об ошибке).
+procedure TRqFbConv.ProcessFileOp(var AToks: TToks; AFrom, ATo: Integer);
+var
+  LastIdx, ArgIdx: Integer;
+  RtName: string;
+begin
+  LastIdx := ATo;
+  if LastIdx > High(AToks) then
+    LastIdx := High(AToks);
+  while (LastIdx > AFrom) and (AToks[LastIdx].Kind in [tkSpace, tkComment]) do
+    Dec(LastIdx);
+  ArgIdx := NextSig(AToks, AFrom + 1, LastIdx);
+  if ArgIdx < 0 then
+    Exit;
+  ProcessExpr(AToks, ArgIdx, LastIdx);
+  if AToks[AFrom].Up = 'CHDIR' then
+    RtName := 'RqChDir'
+  else if AToks[AFrom].Up = 'MKDIR' then
+    RtName := 'RqMkDir'
+  else if AToks[AFrom].Up = 'RMDIR' then
+    RtName := 'RqRmDir'
+  else
+    RtName := 'RqKill';
+  AToks[AFrom].OutText := RtName + '(';
+  if (AFrom + 1 < ArgIdx) and (AToks[AFrom + 1].Kind = tkSpace) then
+    AToks[AFrom + 1].OutText := '';
+  AToks[LastIdx].Post := AToks[LastIdx].Post + ', __FILE__, __LINE__)';
 end;
 
 // Параметры вызова SUBI / FUNCTIONI AFrom..ATo -> RqPList().Arg(a).Arg(b)...
