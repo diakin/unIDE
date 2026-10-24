@@ -1114,6 +1114,10 @@ type
     FGitRemoteUrl: string;
     FGitBranchName: string;
     FGitAhead: Integer;
+    // Незакоммиченных изменений по последнему обновлению (-1 - не известно);
+    // кнопка Commit... - красная, когда они есть
+    FGitChanges: Integer;
+    FGitBtnCommit: TUiButton;
     FGitBehind: Integer;
     FGitBusy: Boolean;
     FGitCancel: Boolean;
@@ -64737,6 +64741,10 @@ begin
     else if FGitAhead > 0 then
       Result := 'с сервера забирать нечего; ' + IntToStr(FGitAhead) +
         ' коммитов не отправлено - Push'
+    else if FGitChanges > 0 then
+      Result := 'на сервере нового нет. Здесь ' + IntToStr(FGitChanges) +
+        ' незакоммиченных изменений: чтобы они попали на сервер - ' +
+        'Commit..., затем Push (Fetch только смотрит, что нового на сервере)'
     else
       Result := 'на сервере для текущей ветки нового нет';
   end
@@ -64749,7 +64757,11 @@ begin
   end
   else if Cmd = 'push' then
   begin
-    if Pos('everything up-to-date', OutLower) > 0 then
+    if (Pos('everything up-to-date', OutLower) > 0) and
+       (FGitChanges > 0) then
+      Result := 'отправлять нечего: ' + IntToStr(FGitChanges) +
+        ' изменений ещё не закоммичено - сначала Commit..., затем Push'
+    else if Pos('everything up-to-date', OutLower) > 0 then
       Result := 'отправлять нечего - сервер уже совпадает'
     else
       Result := 'коммиты отправлены на сервер';
@@ -64816,8 +64828,11 @@ begin
   FGitBtnPush := NewButton('Push', 'git push: отправить коммиты текущей ' +
     'ветки на сервер (ветки там ещё нет - опубликовать). Красная - есть ' +
     'неотправленные коммиты', 124, 56, GitPushClick);
-  NewButton('Commit...', 'Окно Commit: изменённые файлы, разница, ' +
-    'заголовок и описание коммита', 184, 72, GitCommitClick);
+  FGitChanges := -1;
+  FGitBtnCommit := NewButton('Commit...', 'Окно Commit: изменённые файлы, ' +
+    'разница, заголовок и описание коммита. Красная - есть ' +
+    'незакоммиченные изменения: их нужно закоммитить, тогда Push отправит ' +
+    'их на сервер', 184, 72, GitCommitClick);
   NewButton('History...', 'История коммитов ветки: файлы и разница, Revert, ' +
     'ветка от коммита', 260, 72, GitHistoryClick);
   NewButton('Refresh', 'Обновить сведения панели', 336, 60, GitRefreshClick);
@@ -64947,6 +64962,8 @@ begin
   FGitBehind := -1;
   FGitBtnPull.TextColor := clNone;
   FGitBtnPush.TextColor := clNone;
+  FGitBtnCommit.TextColor := clNone;
+  FGitChanges := -1;
   FGitLblSync.ThemeColors := True;
   FGitLblBuild.ThemeColors := True;
   FGitBranchFill := True;
@@ -65064,11 +65081,13 @@ begin
       GitParseStatus(Output, Changes);
     FGitLblBuild.Caption := 'Build: ' + Describe + '   Changes: ' +
       IntToStr(Length(Changes));
-    // Есть незакоммиченные изменения - строка оранжевая
+    FGitChanges := Length(Changes);
+    // Есть незакоммиченные изменения - строка оранжевая, Commit... красная
     if Length(Changes) > 0 then
     begin
       FGitLblBuild.ThemeColors := False;
       FGitLblBuild.Font.Color := $0090FF;
+      FGitBtnCommit.TextColor := clRed;
     end;
     if GitRunIn(Git, Repo, 'stash list', False, Output) = 0 then
     begin
