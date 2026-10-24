@@ -23,7 +23,7 @@ uses
   UiButton,     // TUiButton
   UiEditCtrls,  // TUiEdit
   UiStdDlgs,    // TUiColorDialog - выбор цвета в цветах темы
-  UnFar;        // TFarColorRules, FarNormalizeExt, FarPanelColor
+  UnFar;        // TFarColorRules, FarNormalizeExt, FarPanelBackColor
 
 type
   TDlgFarColors = class(TForm)
@@ -181,7 +181,7 @@ begin
         if Rule.Back <> clNone then
           GridCanvas.Brush.Color := Rule.Back
         else
-          GridCanvas.Brush.Color := FarPanelColor;
+          GridCanvas.Brush.Color := FarPanelBackColor;
         GridCanvas.FillRect(SwatchRect);
         if Rule.Enabled then
           GridCanvas.Font.Color := Rule.Fore
@@ -195,7 +195,7 @@ begin
           Rect.Left + 4 + SwatchWidth, Rect.Bottom - 3);
         if (ACol = ColBack) and (Rule.Back = clNone) then
         begin
-          GridCanvas.Brush.Color := FarPanelColor;
+          GridCanvas.Brush.Color := FarPanelBackColor;
           CellText := 'фон панели';
         end
         else if ACol = ColBack then
@@ -239,7 +239,7 @@ begin
       if FRules[ARuleIndex].Back <> clNone then
         ColorDlg.Color := FRules[ARuleIndex].Back
       else
-        ColorDlg.Color := FarPanelColor;
+        ColorDlg.Color := FarPanelBackColor;
     end
     else
       ColorDlg.Color := FRules[ARuleIndex].Fore;

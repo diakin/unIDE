@@ -94,6 +94,10 @@ unit UnFar;
 //    - b.31: меню дисков без diskpart: вместо Том # - диск и раздел
 //      ('0:2'), колонка 'Модель'; в конце - физические диски (модель, шина,
 //      размер, буквы). Запросы к устройствам без прав на чтение (FarVolumes).
+//    - b.32: F9 - Options - Colors: палитра окна FAR - цвет каждого
+//      элемента панелей, меню, диалогов, кейбара и командной строки
+//      (editor.ini [FarPalette], окно - DlgFarPalette). Недоступные пункты
+//      меню по умолчанию чёрные (тёмно-серый на бирюзовом не виден).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -123,7 +127,7 @@ uses
   Clipbrd, IniBuf, SzSetup, FarFind, FarVolumes;
 
 const
-  FarBuild = 'b.31';
+  FarBuild = 'b.32';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -286,6 +290,20 @@ type
   end;
   TFarColorRules = array of TFarColorRule;
 
+  // Палитра окна FAR (F9 - Options - Colors): цвет каждого элемента.
+  // Порядок - как в окне DlgFarPalette (по группам)
+  TFarPalItem = (
+    fpPanelBack, fpPanelText, fpPanelDir, fpPanelSelected, fpPanelHeader,
+    fpPanelFrame, fpPanelCursorBack, fpPanelCursorText,
+    fpMenuBack, fpMenuText, fpMenuHotkey, fpMenuDisabled, fpMenuFrame,
+    fpMenuCursorBack,
+    fpDlgBack, fpDlgText, fpDlgFocusBack, fpDlgFocusText, fpDlgEditBack,
+    fpDlgEditText, fpDlgSelBack, fpDlgSelText,
+    fpWarnBack, fpWarnText, fpWarnFocusBack, fpWarnFocusText,
+    fpKeyNum, fpKeyNumBack, fpKeyText, fpKeyBack,
+    fpCmdBack, fpCmdPrompt, fpCmdText, fpOutText);
+  TFarPalette = array[TFarPalItem] of TColor;
+
   TFarStatusEvent = procedure(const AText: string) of object;
   // F4 / Shift+F4: файл - в редактор. ACreated - файла не было, его создал
   // Shift+F4 (пустой)
@@ -319,6 +337,8 @@ type
     FOnHalfResize: TFarHalfResizeEvent;
     FOnShowPanels: TNotifyEvent;
     FOnColorsDialog: TNotifyEvent;
+    FOnPaletteDialog: TNotifyEvent;
+    FPal: TFarPalette;            // цвета элементов (F9 - Options - Colors)
     FIniName: string;             // editor.ini (LoadState) - для Save setup
     // Раскраска файлов: правила и их расширения как WideString (сравнение
     // с именами файлов)
@@ -640,6 +660,9 @@ type
     // Правила раскраски (копируются); ColorRules - копия текущих
     procedure SetColorRules(const ARules: TFarColorRules);
     function ColorRules: TFarColorRules;
+    // Палитра (копируется, окно перерисовывается); Palette - копия текущей
+    procedure SetPalette(const APalette: TFarPalette);
+    function Palette: TFarPalette;
     function ActiveIndex: Integer;
     // Курсор активной панели - на файл AFileName (папка другая - перейти
     // в неё). Щелчок по вкладке редактора, когда FAR открыт.
@@ -659,6 +682,9 @@ type
     // F9 - Options - Files highlighting: окно правил раскраски (Unit1)
     property OnColorsDialog: TNotifyEvent read FOnColorsDialog
       write FOnColorsDialog;
+    // F9 - Options - Colors: окно палитры (Unit1)
+    property OnPaletteDialog: TNotifyEvent read FOnPaletteDialog
+      write FOnPaletteDialog;
     property SinglePanel: Integer read FSingle;
     // Ширина окна FAR в режиме F4 (пикселей, 0 - не задана): ставит и
     // читает Unit1 (сплиттер), хранится в editor.ini ([Far] HalfWidth)
@@ -681,6 +707,23 @@ function FarTextToColor(const AText: string; ADefault: TColor): TColor;
 function FarNormalizeExt(const AText: string): string;
 procedure FarCopyRules(const ASource: TFarColorRules;
   var ADest: TFarColorRules);
+
+// Палитра окна FAR: стандартная, чтение и запись editor.ini ([FarPalette]:
+// 'PanelBack=#000080' и т.д.; нет ключа - стандартный цвет)
+procedure FarPaletteDefault(var APalette: TFarPalette);
+procedure FarPaletteLoad(const AIniName: string; var APalette: TFarPalette);
+procedure FarPaletteSave(const AIniName: string; const APalette: TFarPalette);
+// Сведения об элементе палитры: ключ в editor.ini, группа, подпись,
+// стандартный цвет, фон ли это, парный элемент (фон для цвета текста и
+// наоборот - для образца)
+function FarPalKey(AItem: TFarPalItem): string;
+function FarPalGroup(AItem: TFarPalItem): string;
+function FarPalCaption(AItem: TFarPalItem): string;
+function FarPalDefault(AItem: TFarPalItem): TColor;
+function FarPalIsBack(AItem: TFarPalItem): Boolean;
+function FarPalPair(AItem: TFarPalItem): TFarPalItem;
+// Фон панели текущей палитры (образцы в окне DlgFarColors)
+function FarPanelBackColor: TColor;
 
 implementation
 
@@ -1394,6 +1437,194 @@ begin
     ADest[RuleIndex] := ASource[RuleIndex];
 end;
 
+// ---------------------------------------------------------------------------
+//  Палитра окна FAR (F9 - Options - Colors)
+// ---------------------------------------------------------------------------
+
+const
+  FarPaletteSection = 'FarPalette';
+  // Недоступные пункты меню: в палитре FAR - тёмно-серый, на бирюзовом
+  // фоне его не видно; по умолчанию - чёрный
+  FarMenuDisabledColor = $000000;
+
+  FarPalKeys: array[TFarPalItem] of string = (
+    'PanelBack', 'PanelText', 'PanelDir', 'PanelSelected', 'PanelHeader',
+    'PanelFrame', 'PanelCursorBack', 'PanelCursorText',
+    'MenuBack', 'MenuText', 'MenuHotkey', 'MenuDisabled', 'MenuFrame',
+    'MenuCursorBack',
+    'DialogBack', 'DialogText', 'DialogFocusBack', 'DialogFocusText',
+    'DialogEditBack', 'DialogEditText', 'DialogSelBack', 'DialogSelText',
+    'WarnBack', 'WarnText', 'WarnFocusBack', 'WarnFocusText',
+    'KeyNum', 'KeyNumBack', 'KeyText', 'KeyBack',
+    'CmdBack', 'CmdPrompt', 'CmdText', 'OutText');
+
+  FarPalGroups: array[TFarPalItem] of string = (
+    'Панели', 'Панели', 'Панели', 'Панели', 'Панели',
+    'Панели', 'Панели', 'Панели',
+    'Меню', 'Меню', 'Меню', 'Меню', 'Меню',
+    'Меню',
+    'Диалоги', 'Диалоги', 'Диалоги', 'Диалоги',
+    'Диалоги', 'Диалоги', 'Диалоги', 'Диалоги',
+    'Предупреждения', 'Предупреждения', 'Предупреждения', 'Предупреждения',
+    'Кейбар', 'Кейбар', 'Кейбар', 'Кейбар',
+    'Командная строка', 'Командная строка', 'Командная строка',
+    'Командная строка');
+
+  FarPalCaptions: array[TFarPalItem] of string = (
+    'Фон панели',
+    'Файлы, строка о файле, итоги',
+    'Папки',
+    'Выделенные файлы',
+    'Заголовки колонок',
+    'Рамка',
+    'Курсор, заголовок активной панели: фон',
+    'Курсор, заголовок активной панели: текст',
+    'Фон меню',
+    'Пункты',
+    'Буква-клавиша, стрелки прокрутки',
+    'Недоступные пункты, сведения',
+    'Рамка и заголовок',
+    'Курсор: фон',
+    'Фон окна',
+    'Текст и рамка',
+    'Кнопка с фокусом, курсор списка: фон',
+    'Кнопка с фокусом, курсор списка: текст',
+    'Поле ввода: фон',
+    'Поле ввода: текст, каретка',
+    'Выделенный текст, флажок с фокусом: фон',
+    'Выделенный текст, флажок с фокусом: текст',
+    'Фон окна',
+    'Текст и рамка',
+    'Кнопка с фокусом: фон',
+    'Кнопка с фокусом: текст',
+    'Номер клавиши',
+    'Номер клавиши: фон',
+    'Подпись клавиши',
+    'Подпись клавиши: фон',
+    'Фон (и вывод команд)',
+    'Путь (приглашение), каретка',
+    'Текст команды',
+    'Вывод команд');
+
+  FarPalDefaults: array[TFarPalItem] of TColor = (
+    FarBlue, FarLightCyan, FarWhite, FarYellow, FarYellow,
+    FarLightCyan, FarCyan, FarBlack,
+    FarCyan, FarWhite, FarYellow, FarMenuDisabledColor, FarWhite,
+    FarBlack,
+    FarLightGray, FarBlack, FarCyan, FarBlack,
+    FarCyan, FarBlack, FarBlack, FarWhite,
+    FarRed, FarWhite, FarLightGray, FarBlack,
+    FarLightGray, FarBlack, FarBlack, FarCyan,
+    FarBlack, FarLightGray, FarWhite, FarLightGray);
+
+  FarPalBacks: array[TFarPalItem] of Boolean = (
+    True, False, False, False, False,
+    False, True, False,
+    True, False, False, False, False,
+    True,
+    True, False, True, False,
+    True, False, True, False,
+    True, False, True, False,
+    False, True, False, True,
+    True, False, False, False);
+
+  FarPalPairs: array[TFarPalItem] of TFarPalItem = (
+    fpPanelText, fpPanelBack, fpPanelBack, fpPanelBack, fpPanelBack,
+    fpPanelBack, fpPanelCursorText, fpPanelCursorBack,
+    fpMenuText, fpMenuBack, fpMenuBack, fpMenuBack, fpMenuBack,
+    fpMenuText,
+    fpDlgText, fpDlgBack, fpDlgFocusText, fpDlgFocusBack,
+    fpDlgEditText, fpDlgEditBack, fpDlgSelText, fpDlgSelBack,
+    fpWarnText, fpWarnBack, fpWarnFocusText, fpWarnFocusBack,
+    fpKeyNumBack, fpKeyNum, fpKeyBack, fpKeyText,
+    fpCmdText, fpCmdBack, fpCmdBack, fpCmdBack);
+
+var
+  FarCurPanelBack: TColor = FarBlue;
+
+function FarPalKey(AItem: TFarPalItem): string;
+begin
+  Result := FarPalKeys[AItem];
+end;
+
+function FarPalGroup(AItem: TFarPalItem): string;
+begin
+  Result := FarPalGroups[AItem];
+end;
+
+function FarPalCaption(AItem: TFarPalItem): string;
+begin
+  Result := FarPalCaptions[AItem];
+end;
+
+function FarPalDefault(AItem: TFarPalItem): TColor;
+begin
+  Result := FarPalDefaults[AItem];
+end;
+
+function FarPalIsBack(AItem: TFarPalItem): Boolean;
+begin
+  Result := FarPalBacks[AItem];
+end;
+
+function FarPalPair(AItem: TFarPalItem): TFarPalItem;
+begin
+  Result := FarPalPairs[AItem];
+end;
+
+function FarPanelBackColor: TColor;
+begin
+  Result := FarCurPanelBack;
+end;
+
+procedure FarPaletteDefault(var APalette: TFarPalette);
+var
+  Item: TFarPalItem;
+begin
+  for Item := Low(TFarPalItem) to High(TFarPalItem) do
+    APalette[Item] := FarPalDefaults[Item];
+end;
+
+procedure FarPaletteLoad(const AIniName: string; var APalette: TFarPalette);
+var
+  Ini: TBufIniFile;
+  Item: TFarPalItem;
+  Color: TColor;
+begin
+  FarPaletteDefault(APalette);
+  if (AIniName = '') or not FileExists(AIniName) then
+    Exit;
+  Ini := TBufIniFile.Create(AIniName);
+  try
+    for Item := Low(TFarPalItem) to High(TFarPalItem) do
+    begin
+      // '-' (clNone) в палитре не бывает - стандартный цвет
+      Color := FarTextToColor(Ini.ReadString(FarPaletteSection,
+        FarPalKeys[Item], ''), FarPalDefaults[Item]);
+      if Color <> clNone then
+        APalette[Item] := Color;
+    end;
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure FarPaletteSave(const AIniName: string; const APalette: TFarPalette);
+var
+  Ini: TBufIniFile;
+  Item: TFarPalItem;
+begin
+  Ini := TBufIniFile.Create(AIniName);
+  try
+    Ini.EraseSection(FarPaletteSection);
+    for Item := Low(TFarPalItem) to High(TFarPalItem) do
+      Ini.WriteString(FarPaletteSection, FarPalKeys[Item],
+        FarColorToText(APalette[Item]));
+  finally
+    Ini.Free;
+  end;
+end;
+
 // Стандартный набор: группы расширений с цветом текста и фона (#RRGGBB,
 // '-' - фон панели). Цвета подобраны под синий фон панелей FAR.
 procedure FarColorsDefault(var ARules: TFarColorRules);
@@ -2077,10 +2308,11 @@ begin
   inherited Create(AOwner);
   ControlStyle := ControlStyle + [csOpaque];
   TabStop := True;
-  Color := FarBlue;
+  Color := FPal[fpPanelBack];
   FPanels[0] := TFarPanel.Create;
   FPanels[1] := TFarPanel.Create;
   FActive := 0;
+  FarPaletteDefault(FPal);
   FBuffer := TBitmap.Create;
   CreateFonts;
   FDlgKind := fdNone;
@@ -2509,7 +2741,7 @@ begin
   begin
     Pen.Style := psSolid;
     Pen.Width := 1;
-    Pen.Color := FarLightCyan;
+    Pen.Color := FPal[fpPanelFrame];
     Brush.Style := bsClear;
     Rectangle(LeftX - 1, TopY - 1, RightX + 2, BottomY + 2);
     Rectangle(LeftX + 1, TopY + 1, RightX, BottomY);
@@ -2537,9 +2769,9 @@ begin
   Panel := FPanels[AIndex];
   PanelBounds(AIndex, PanelX, PanelW);
   PanelH := PanelHeight;
-  FillCells(PanelX, 0, PanelW, FarBlue);
+  FillCells(PanelX, 0, PanelW, FPal[fpPanelBack]);
   for RowIndex := 1 to PanelH - 1 do
-    FillCells(PanelX, RowIndex, PanelW, FarBlue);
+    FillCells(PanelX, RowIndex, PanelW, FPal[fpPanelBack]);
   if (PanelW < 8) or (PanelH < 7) then
     Exit;
 
@@ -2549,8 +2781,10 @@ begin
   InnerW := PanelW - 2;
 
   // Заголовки колонок
-  PutCentered(PanelX + 1, 1, FirstW, 'Name', FarYellow, FarBlue);
-  PutCentered(PanelX + 2 + FirstW, 1, SecondW, 'Name', FarYellow, FarBlue);
+  PutCentered(PanelX + 1, 1, FirstW, 'Name', FPal[fpPanelHeader],
+    FPal[fpPanelBack]);
+  PutCentered(PanelX + 2 + FirstW, 1, SecondW, 'Name', FPal[fpPanelHeader],
+    FPal[fpPanelBack]);
 
   // Имена: колонка за колонкой, сверху вниз
   for ColumnIndex := 0 to 1 do
@@ -2573,23 +2807,23 @@ begin
       with Panel.FItems[ItemIndex] do
       begin
         // Раскраска по расширению - только у файлов
-        Back := FarBlue;
+        Back := FPal[fpPanelBack];
         HasRule := not IsDir and RuleColors(Name, RuleFore, RuleBack);
         if HasRule and (RuleBack <> clNone) then
           Back := RuleBack;
         if Selected then
-          Fore := FarYellow
+          Fore := FPal[fpPanelSelected]
         else if IsDir then
-          Fore := FarWhite
+          Fore := FPal[fpPanelDir]
         else if HasRule then
           Fore := RuleFore
         else
-          Fore := FarLightCyan;
+          Fore := FPal[fpPanelText];
         if IsActive and (ItemIndex = Panel.Cursor) then
         begin
-          Back := FarCyan;
+          Back := FPal[fpPanelCursorBack];
           if not Selected then
-            Fore := FarBlack;
+            Fore := FPal[fpPanelCursorText];
         end;
         PutText(ColX, 2 + RowIndex, ColW, FarFitName(Name, ColW), Fore, Back);
       end;
@@ -2614,9 +2848,10 @@ begin
       else
         ItemName := Name;
       PutText(PanelX + 1, PanelH - 2, NameW, FarFitName(ItemName, NameW),
-        FarLightCyan, FarBlue);
+        FPal[fpPanelText], FPal[fpPanelBack]);
       PutText(PanelX + 1 + InnerW - Length(RightText), PanelH - 2,
-        Length(RightText), RightText, FarLightCyan, FarBlue);
+        Length(RightText), RightText, FPal[fpPanelText],
+        FPal[fpPanelBack]);
     end;
 
   DrawFrame(PanelX, PanelW, PanelH, FirstW);
@@ -2625,7 +2860,8 @@ begin
   SortLetter := Copy(FarSortLetters, Ord(Panel.FSortMode) + 1, 1);
   if Panel.FSortReverse then
     SortLetter := UpperCase(SortLetter);
-  PutText(PanelX + 1, 0, 1, SortLetter, FarLightCyan, FarBlue);
+  PutText(PanelX + 1, 0, 1, SortLetter, FPal[fpPanelText],
+    FPal[fpPanelBack]);
 
   // Заголовок - путь; у активной панели - цветом курсора
   Title := Panel.DisplayPath;
@@ -2633,16 +2869,19 @@ begin
     SetLength(Title, Length(Title) - 1);
   Title := ' ' + FarFitPath(Title, PanelW - 6) + ' ';
   if IsActive then
-    PutCentered(PanelX, 0, PanelW, Title, FarBlack, FarCyan)
+    PutCentered(PanelX, 0, PanelW, Title, FPal[fpPanelCursorText],
+      FPal[fpPanelCursorBack])
   else
-    PutCentered(PanelX, 0, PanelW, Title, FarLightCyan, FarBlue);
+    PutCentered(PanelX, 0, PanelW, Title, FPal[fpPanelText],
+      FPal[fpPanelBack]);
 
   // Выделенные - на разделителе
   if Panel.SelCount > 0 then
   begin
     SelText := ' ' + FarGroupDigits(Panel.SelBytes) + ' bytes in ' +
       IntToStr(Panel.SelCount) + ' files ';
-    PutCentered(PanelX + 1, PanelH - 3, InnerW, SelText, FarYellow, FarCyan);
+    PutCentered(PanelX + 1, PanelH - 3, InnerW, SelText, FPal[fpPanelSelected],
+      FPal[fpPanelCursorBack]);
   end;
 
   // Внизу: байты в файлах (число файлов) и свободно на диске
@@ -2664,10 +2903,10 @@ begin
   begin
     StartCol := PanelX + (PanelW - TotalsLen) div 2;
     PutText(StartCol, PanelH - 1, Length(Totals), Totals,
-      FarLightCyan, FarBlue);
+      FPal[fpPanelText], FPal[fpPanelBack]);
     if FreeText <> '' then
       PutText(StartCol + Length(Totals) + 2, PanelH - 1, Length(FreeText),
-        FreeText, FarLightCyan, FarBlue);
+        FreeText, FPal[fpPanelText], FPal[fpPanelBack]);
   end;
 end;
 
@@ -2685,7 +2924,7 @@ begin
   ShiftDown := GetKeyState(VK_SHIFT) < 0;
   PerRow := 12 div RowCount;
   for KeyRow := FRows - RowCount to FRows - 1 do
-    FillCells(0, KeyRow, FCols, FarBlack);
+    FillCells(0, KeyRow, FCols, FPal[fpKeyNumBack]);
   SlotW := FCols div PerRow;
   if SlotW < 3 then
     Exit;
@@ -2706,9 +2945,10 @@ begin
     LabelW := SlotW - Length(Number);
     if SlotIndex = PerRow - 1 then
       LabelW := FCols - SlotCol - Length(Number);  // последняя - до края
-    PutText(SlotCol, KeyRow, Length(Number), Number, FarLightGray, FarBlack);
-    PutText(SlotCol + Length(Number), KeyRow, LabelW, KeyLabel, FarBlack,
-      FarCyan);
+    PutText(SlotCol, KeyRow, Length(Number), Number, FPal[fpKeyNum],
+      FPal[fpKeyNumBack]);
+    PutText(SlotCol + Length(Number), KeyRow, LabelW, KeyLabel, FPal[fpKeyText],
+      FPal[fpKeyBack]);
   end;
 end;
 
@@ -2726,7 +2966,7 @@ begin
   OldFont := SelectObject(FBuffer.Canvas.Handle, FFontMain);
   try
     FBuffer.Canvas.Brush.Style := bsSolid;
-    FBuffer.Canvas.Brush.Color := FarBlack;
+    FBuffer.Canvas.Brush.Color := FPal[fpCmdBack];
     FBuffer.Canvas.FillRect(Rect(0, 0, ClientWidth, ClientHeight));
     if (FCols >= 20) and (FRows >= 8) then
     begin
@@ -3848,21 +4088,21 @@ begin
 
   if FDlgWarn then
   begin
-    Back := FarRed;
-    Fore := FarWhite;
-    ButtonBack := FarRed;
-    ButtonFore := FarWhite;
-    FocusBack := FarLightGray;
-    FocusFore := FarBlack;
+    Back := FPal[fpWarnBack];
+    Fore := FPal[fpWarnText];
+    ButtonBack := FPal[fpWarnBack];
+    ButtonFore := FPal[fpWarnText];
+    FocusBack := FPal[fpWarnFocusBack];
+    FocusFore := FPal[fpWarnFocusText];
   end
   else
   begin
-    Back := FarLightGray;
-    Fore := FarBlack;
-    ButtonBack := FarLightGray;
-    ButtonFore := FarBlack;
-    FocusBack := FarCyan;
-    FocusFore := FarBlack;
+    Back := FPal[fpDlgBack];
+    Fore := FPal[fpDlgText];
+    ButtonBack := FPal[fpDlgBack];
+    ButtonFore := FPal[fpDlgText];
+    FocusBack := FPal[fpDlgFocusBack];
+    FocusFore := FPal[fpDlgFocusText];
   end;
 
   for Row := BoxTop to BoxTop + BoxH - 1 do
@@ -3893,16 +4133,18 @@ begin
     if FDlgMasked then
       for LineIndex := 1 to Length(ShownText) do
         ShownText[LineIndex] := '*';
-    FillCells(InnerLeft, Row, InnerW, FarCyan);
+    FillCells(InnerLeft, Row, InnerW, FPal[fpDlgEditBack]);
     if FDlgEditFresh then
-      PutText(InnerLeft, Row, Length(ShownText), ShownText, FarWhite, FarBlack)
+      PutText(InnerLeft, Row, Length(ShownText), ShownText, FPal[fpDlgSelText],
+        FPal[fpDlgSelBack])
     else
-      PutText(InnerLeft, Row, Length(ShownText), ShownText, FarBlack, FarCyan);
+      PutText(InnerLeft, Row, Length(ShownText), ShownText, FPal[fpDlgEditText],
+        FPal[fpDlgEditBack]);
     if FDlgFocus < 0 then
     begin
       CaretX := (InnerLeft + FDlgEditPos - FDlgEditScroll) * FCellW;
       FBuffer.Canvas.Brush.Style := bsSolid;
-      FBuffer.Canvas.Brush.Color := FarBlack;
+      FBuffer.Canvas.Brush.Color := FPal[fpDlgEditText];
       FBuffer.Canvas.FillRect(Rect(CaretX, Row * FCellH + 1, CaretX + 2,
         (Row + 1) * FCellH - 1));
     end;
@@ -4728,6 +4970,9 @@ begin
             FOnColorsDialog(Self);
         2:
           SaveSetup;
+        3:
+          if Assigned(FOnPaletteDialog) then
+            FOnPaletteDialog(Self);
       end;
   end;
   Invalidate;
@@ -4815,17 +5060,18 @@ begin
     FMenuTop := 0;
 
   for RowIndex := FMenuTopRow to FMenuTopRow + BoxH - 1 do
-    FillCells(FMenuLeft, RowIndex, BoxW, FarCyan);
+    FillCells(FMenuLeft, RowIndex, BoxW, FPal[fpMenuBack]);
   DrawBox(FMenuLeft, FMenuTopRow, FMenuLeft + BoxW - 1,
-    FMenuTopRow + BoxH - 1, FarWhite);
-  PutCentered(FMenuLeft, FMenuTopRow, BoxW, ' ' + FMenuTitle + ' ', FarWhite,
-    FarCyan);
+    FMenuTopRow + BoxH - 1, FPal[fpMenuFrame]);
+  PutCentered(FMenuLeft, FMenuTopRow, BoxW, ' ' + FMenuTitle + ' ',
+    FPal[fpMenuFrame], FPal[fpMenuBack]);
   // Пункты выше / ниже видимых - стрелки на рамке
   if FMenuTop > 0 then
-    PutText(FMenuLeft + BoxW - 2, FMenuTopRow, 1, '^', FarYellow, FarCyan);
+    PutText(FMenuLeft + BoxW - 2, FMenuTopRow, 1, '^', FPal[fpMenuHotkey],
+      FPal[fpMenuBack]);
   if FMenuTop + FMenuRows < Length(FMenuItems) then
-    PutText(FMenuLeft + BoxW - 2, FMenuTopRow + BoxH - 1, 1, 'v', FarYellow,
-      FarCyan);
+    PutText(FMenuLeft + BoxW - 2, FMenuTopRow + BoxH - 1, 1, 'v',
+      FPal[fpMenuHotkey], FPal[fpMenuBack]);
 
   for RowIndex := 0 to FMenuRows - 1 do
   begin
@@ -4839,23 +5085,23 @@ begin
       SepY := RowY * FCellH + FCellH div 2;
       with FBuffer.Canvas do
       begin
-        Pen.Color := FarWhite;
+        Pen.Color := FPal[fpMenuFrame];
         MoveTo(FMenuLeft * FCellW + FCellW div 2 + 2, SepY);
         LineTo((FMenuLeft + BoxW - 1) * FCellW + FCellW div 2 - 1, SepY);
       end;
       Continue;
     end;
-    Fore := FarWhite;
-    HotFore := FarYellow;
+    Fore := FPal[fpMenuText];
+    HotFore := FPal[fpMenuHotkey];
     if Item.Disabled then
     begin
-      Fore := FarDarkGray;   // Menu.Text.Disabled в палитре FAR
-      HotFore := FarDarkGray;
+      Fore := FPal[fpMenuDisabled];
+      HotFore := FPal[fpMenuDisabled];
     end;
     if ItemIndex = FMenuCursor then
-      Back := FarBlack
+      Back := FPal[fpMenuCursorBack]
     else
-      Back := FarCyan;
+      Back := FPal[fpMenuBack];
     FillCells(FMenuLeft + 1, RowY, BoxW - 2, Back);
     PutText(FMenuLeft + 2, RowY, 1, Item.Mark, Fore, Back);
     ItemText := FarStripAmp(Item.Text, HotPos);
@@ -5975,7 +6221,7 @@ begin
   if (Rows <= 0) or (FCols <= 0) then
     Exit;
   for RowIndex := ATopRow to ABottomRow do
-    FillCells(0, RowIndex, FCols, FarBlack);
+    FillCells(0, RowIndex, FCols, FPal[fpCmdBack]);
   Need := Rows + FOutScroll;
   SetLength(Visual, Need);
   VisCount := 0;
@@ -6008,8 +6254,8 @@ begin
     VisIndex := FOutScroll + RowIndex;
     if VisIndex >= VisCount then
       Break;
-    PutText(0, ABottomRow - RowIndex, FCols, Visual[VisIndex], FarLightGray,
-      FarBlack);
+    PutText(0, ABottomRow - RowIndex, FCols, Visual[VisIndex], FPal[fpOutText],
+      FPal[fpCmdBack]);
   end;
 end;
 
@@ -6023,7 +6269,7 @@ begin
   Row := CmdRow;
   if Row < 0 then
     Exit;
-  FillCells(0, Row, FCols, FarBlack);
+  FillCells(0, Row, FCols, FPal[fpCmdBack]);
   Prompt := PromptText;
   // Длинный путь - его конец, на текст остаётся не меньше трети строки
   if Length(Prompt) > FCols * 2 div 3 then
@@ -6036,13 +6282,15 @@ begin
   if FCmdPos > TextW then
     ScrollPos := FCmdPos - TextW;
   Shown := Copy(FCmdText, ScrollPos + 1, TextW);
-  PutText(0, Row, PromptW, Prompt, FarLightGray, FarBlack);
-  PutText(PromptW, Row, Length(Shown), Shown, FarWhite, FarBlack);
+  PutText(0, Row, PromptW, Prompt, FPal[fpCmdPrompt],
+    FPal[fpCmdBack]);
+  PutText(PromptW, Row, Length(Shown), Shown, FPal[fpCmdText],
+    FPal[fpCmdBack]);
   if Focused and (FDlgKind = fdNone) and (FMenuKind = fmNone) then
   begin
     CaretCol := PromptW + FCmdPos - ScrollPos;
     FBuffer.Canvas.Brush.Style := bsSolid;
-    FBuffer.Canvas.Brush.Color := FarLightGray;
+    FBuffer.Canvas.Brush.Color := FPal[fpCmdPrompt];
     FBuffer.Canvas.FillRect(Rect(CaretCol * FCellW, (Row + 1) * FCellH - 3,
       (CaretCol + 1) * FCellW, (Row + 1) * FCellH - 1));
   end;
@@ -7057,7 +7305,8 @@ begin
       else
         ValueText := '[ ]';
       if Focused then
-        PutText(AInnerLeft, ARow, 3, ValueText, FarWhite, FarBlack)
+        PutText(AInnerLeft, ARow, 3, ValueText, FPal[fpDlgSelText],
+          FPal[fpDlgSelBack])
       else
         PutText(AInnerLeft, ARow, 3, ValueText, AFore, ABack);
       PutText(AInnerLeft + 4, ARow, AInnerW - 4, Caption, AFore, ABack);
@@ -7075,11 +7324,11 @@ begin
         if ValueIndex <> Index then
           PutText(ValueCol, ARow, Length(ValueText), ValueText, AFore, ABack)
         else if Focused then
-          PutText(ValueCol, ARow, Length(ValueText), ValueText, FarWhite,
-            FarBlack)
+          PutText(ValueCol, ARow, Length(ValueText), ValueText,
+            FPal[fpDlgSelText], FPal[fpDlgSelBack])
         else
-          PutText(ValueCol, ARow, Length(ValueText), ValueText, FarBlack,
-            FarCyan);
+          PutText(ValueCol, ARow, Length(ValueText), ValueText,
+            FPal[fpDlgEditText], FPal[fpDlgEditBack]);
       end;
     end
     else
@@ -7092,18 +7341,18 @@ begin
       if Masked then
         for CharIndex := 1 to Length(ShownText) do
           ShownText[CharIndex] := '*';
-      FillCells(FieldLeft, ARow, FieldW, FarCyan);
+      FillCells(FieldLeft, ARow, FieldW, FPal[fpDlgEditBack]);
       if Fresh and Focused then
-        PutText(FieldLeft, ARow, Length(ShownText), ShownText, FarWhite,
-          FarBlack)
+        PutText(FieldLeft, ARow, Length(ShownText), ShownText,
+          FPal[fpDlgSelText], FPal[fpDlgSelBack])
       else
-        PutText(FieldLeft, ARow, Length(ShownText), ShownText, FarBlack,
-          FarCyan);
+        PutText(FieldLeft, ARow, Length(ShownText), ShownText,
+          FPal[fpDlgEditText], FPal[fpDlgEditBack]);
       if Focused then
       begin
         CaretX := (FieldLeft + Pos - Scroll) * FCellW;
         FBuffer.Canvas.Brush.Style := bsSolid;
-        FBuffer.Canvas.Brush.Color := FarBlack;
+        FBuffer.Canvas.Brush.Color := FPal[fpDlgEditText];
         FBuffer.Canvas.FillRect(Rect(CaretX, ARow * FCellH + 1, CaretX + 2,
           (ARow + 1) * FCellH - 1));
       end;
@@ -7925,8 +8174,8 @@ begin
   BoxH := PanelHeight;
   if (BoxW < 30) or (BoxH < 10) then
     Exit;
-  Fore := FarBlack;
-  Back := FarLightGray;
+  Fore := FPal[fpDlgText];
+  Back := FPal[fpDlgBack];
   for Row := 0 to BoxH - 1 do
     FillCells(0, Row, BoxW, Back);
   DrawBox(1, 0, BoxW - 2, BoxH - 1, Fore);
@@ -7949,15 +8198,15 @@ begin
     begin
       if FFindFocus < 0 then
       begin
-        FillCells(InnerLeft - 1, 1 + Row, InnerW + 2, FarBlack);
+        FillCells(InnerLeft - 1, 1 + Row, InnerW + 2, FPal[fpDlgSelBack]);
         PutText(InnerLeft, 1 + Row, InnerW, FindRowText(RowIdx, InnerW),
-          FarWhite, FarBlack);
+          FPal[fpDlgSelText], FPal[fpDlgSelBack]);
       end
       else
       begin
-        FillCells(InnerLeft - 1, 1 + Row, InnerW + 2, FarCyan);
+        FillCells(InnerLeft - 1, 1 + Row, InnerW + 2, FPal[fpDlgFocusBack]);
         PutText(InnerLeft, 1 + Row, InnerW, FindRowText(RowIdx, InnerW),
-          FarBlack, FarCyan);
+          FPal[fpDlgFocusText], FPal[fpDlgFocusBack]);
       end;
     end
     else
@@ -8009,8 +8258,8 @@ begin
     FFindButtonCol[ButtonIdx] := ButtonCol;
     FFindButtonLen[ButtonIdx] := Length(ButtonText);
     if ButtonIdx = FFindFocus then
-      PutText(ButtonCol, BoxH - 2, Length(ButtonText), ButtonText, FarBlack,
-        FarCyan)
+      PutText(ButtonCol, BoxH - 2, Length(ButtonText), ButtonText,
+        FPal[fpDlgFocusText], FPal[fpDlgFocusBack])
     else
       PutText(ButtonCol, BoxH - 2, Length(ButtonText), ButtonText, Fore, Back);
     Inc(ButtonCol, Length(ButtonText) + 1);
@@ -8073,6 +8322,19 @@ begin
   Invalidate;
 end;
 
+procedure TFarView.SetPalette(const APalette: TFarPalette);
+begin
+  FPal := APalette;
+  FarCurPanelBack := FPal[fpPanelBack];
+  Color := FPal[fpPanelBack];
+  Invalidate;
+end;
+
+function TFarView.Palette: TFarPalette;
+begin
+  Result := FPal;
+end;
+
 function TFarView.ColorRules: TFarColorRules;
 begin
   FarCopyRules(FColorRules, Result);
@@ -8107,7 +8369,7 @@ procedure TFarView.ShowOptionsMenu;
 const
   ItemTexts: array[0..7] of string = ('&Panel settings', 'Con&firmations',
     '', '&Colors', 'Files &highlighting', '', '&Save setup', '');
-  ItemTags: array[0..7] of Integer = (0, 0, 0, 0, 1, 0, 2, 0);
+  ItemTags: array[0..7] of Integer = (0, 0, 0, 3, 1, 0, 2, 0);
 var
   Items: TFarMenuItems;
   ItemIndex: Integer;
@@ -8153,6 +8415,7 @@ var
   SavedPath, SavedFile, ChildName: WideString;
   ErrorText: string;
   Rules: TFarColorRules;
+  Pal: TFarPalette;
 begin
   Ini := TBufIniFile.Create(AIniName);
   try
@@ -8252,6 +8515,8 @@ begin
   end;
   FarColorsLoad(AIniName, Rules);
   SetColorRules(Rules);
+  FarPaletteLoad(AIniName, Pal);
+  SetPalette(Pal);
   UpdateGrid;
   Invalidate;
 end;

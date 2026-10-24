@@ -89,7 +89,8 @@ uses
   GitDiffView in 'GitDiffView.pas',
   DlgGitClone in 'DlgGitClone.pas',
   UiCaptionTabs in 'UiCaptionTabs.pas',
-  DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};
+  DlgFarColors in 'DlgFarColors.pas' {DlgFarColors},
+  DlgFarPalette in 'DlgFarPalette.pas';
 
 {$R *.res}
 

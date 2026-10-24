@@ -44,6 +44,7 @@ uses
   FileSearch,     // Find In Files: маски, чтение файлов, обход папок (TFifFileFound)
   UnFar,          // unIDE FAR: двухпанельный файловый менеджер (Utils)
   DlgFarColors,   // unIDE FAR: окно раскраски файлов по расширению
+  DlgFarPalette,  // unIDE FAR: палитра окна (F9 - Options - Colors)
   RosProj,        // проект ReactOS / LiberNT: CMake + Ninja (TRosSettings)
   PciIds,         // pci.ids и media\inf\pciids.inf (меню ReactOS)
   RosTools,       // скачивание и установка RosBE
@@ -1051,6 +1052,8 @@ type
     procedure FarHalfResize(ADelta, ACellWidth: Integer);
     procedure FarShowPanels(Sender: TObject);
     procedure FarColorsClick(Sender: TObject);
+    procedure FarPaletteClick(Sender: TObject);
+    procedure FarPaletteChange(Sender: TObject);
     procedure FarBtnClick(Sender: TObject);
     procedure FarCollapse(ACollapse: Boolean);
     procedure FarPlaceSplitter;
@@ -1349,6 +1352,8 @@ type
     FWv2ViewItem: TMenuItem;  // View - Просмотр в WebView2
     // Options - unIDE FAR: Files highlighting (окно раскраски файлов)
     FFarColorsItem: TMenuItem;
+    // Options - unIDE FAR: Colors (палитра окна FAR)
+    FFarPaletteItem: TMenuItem;
     FHlNames: TStringList;
     // Поле фильтра в шапке SubList (справа от Name): в списке - только
     // подпрограммы, в имени которых есть этот текст; пусто - все
@@ -24176,6 +24181,11 @@ begin
   FFarColorsItem.Caption := 'unIDE FAR - Files highlighting...';
   FFarColorsItem.OnClick := FarColorsClick;
   mOptions.Add(FFarColorsItem);
+  // Палитра окна FAR - то же окно, что F9 - Options - Colors в самом FAR
+  FFarPaletteItem := TMenuItem.Create(Self);
+  FFarPaletteItem.Caption := 'unIDE FAR - Colors...';
+  FFarPaletteItem.OnClick := FarPaletteClick;
+  mOptions.Add(FFarPaletteItem);
   // Utils: пункты inc-файлов RapidQ - только в проектах Basic (по простою,
   // когда сменился проект, - UtilsMenuOpen)
   UtilsMenuOpen(nil);
@@ -37921,6 +37931,7 @@ begin
     FFar.OnHalfResize := FarHalfResize;
     FFar.OnShowPanels := FarShowPanels;
     FFar.OnColorsDialog := FarColorsClick;
+    FFar.OnPaletteDialog := FarPaletteClick;
     FFarOwnWin := -1;
     FFarLastTabIdx := -1;
     FFar.LoadState(SettingsFileName, StartDir);
@@ -38222,6 +38233,48 @@ begin
   end;
   if (FFar <> nil) and FFar.Visible and FFar.CanFocus then
     FFar.SetFocus;
+end;
+
+// Палитра окна unIDE FAR (F9 - Options - Colors в FAR, Options - unIDE FAR
+// - Colors в меню IDE): окно DlgFarPalette. Изменения сразу видны в окне
+// FAR (FarPaletteChange); OK - палитра в editor.ini ([FarPalette]), Отмена
+// - прежняя палитра в окно FAR. FAR ещё не открывали - палитра читается из
+// editor.ini
+procedure TForm1.FarPaletteClick(Sender: TObject);
+var
+  Dlg: TDlgFarPalette;
+  OldPalette: TFarPalette;
+begin
+  if FFar <> nil then
+    OldPalette := FFar.Palette
+  else
+    FarPaletteLoad(SettingsFileName, OldPalette);
+  Dlg := TDlgFarPalette.CreateDlg(Self, OldPalette, FarPaletteChange);
+  try
+    UiApplyForm(Dlg);
+    if Dlg.ShowModal = mrOk then
+    begin
+      FarPaletteSave(SettingsFileName, Dlg.Palette);
+      if FFar <> nil then
+        FFar.SetPalette(Dlg.Palette);
+    end
+    else if FFar <> nil then
+      FFar.SetPalette(OldPalette);
+  finally
+    Dlg.Free;
+  end;
+  if (FFar <> nil) and FFar.Visible and FFar.CanFocus then
+    FFar.SetFocus;
+end;
+
+// Палитру поменяли в окне DlgFarPalette - сразу в окно FAR
+procedure TForm1.FarPaletteChange(Sender: TObject);
+begin
+  if (FFar <> nil) and (Sender is TDlgFarPalette) then
+  begin
+    FFar.SetPalette(TDlgFarPalette(Sender).Palette);
+    FFar.Update;
+  end;
 end;
 
 // Сплиттер - сразу за распоркой, со стороны редактора
