@@ -87,6 +87,10 @@ unit UnFar;
 //      папки, где искать). Найденное - окном поверх панелей: Enter / Go to
 //      - панель на файл, F4 - файл в редактор (окно остаётся), Esc - стоп,
 //      потом закрыть.
+//    - b.30: меню дисков (Alt+F1 / Alt+F2), как в FAR: номер тома (Том #,
+//      состояние и сведения - из diskpart, в своём потоке; без прав
+//      администратора - пояснение), тип, ФС, метка, размер, свободно;
+//      ниже - тома без буквы (FarVolumes).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -113,10 +117,10 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
-  Clipbrd, IniBuf, SzSetup, FarFind;
+  Clipbrd, IniBuf, SzSetup, FarFind, FarVolumes;
 
 const
-  FarBuild = 'b.29';
+  FarBuild = 'b.30';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -435,6 +439,12 @@ type
     FFindButtonRow: Integer;
     FFindButtonCol: array[0..3] of Integer;
     FFindButtonLen: array[0..3] of Integer;
+    // Меню дисков: номера томов из diskpart (поток, один раз за открытие
+    // FAR); FVolState: 0 - не запрашивали, 1 - идёт, 2 - есть, 3 - нет
+    FVolThread: TFarDiskpartThread;
+    FVolDp: TFarVolumes;
+    FVolState: Integer;
+    FVolError: DWORD;
     // Последняя папка на каждом диске A..Z (любой из панелей) - куда
     // вести при смене диска, если другая панель не на этом диске
     FDriveLast: array[0..25] of WideString;
@@ -527,6 +537,8 @@ type
     function FileCountOf: Integer;
     function DirCountOf: Integer;
     procedure FindMouse(AX, AY: Integer);
+    procedure StartDiskpart;
+    procedure DiskpartCheck;
     function DlgKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure DlgInsertText(const AText: WideString);
     procedure DrawDialogRow(ARowIndex, ARow, AInnerLeft, AInnerW: Integer;
@@ -2117,6 +2129,13 @@ begin
     FFindThread.WaitFor;
     FFindThread.Free;
     FFindThread := nil;
+  end;
+  // diskpart отвечает за секунды (сам поток прервёт его через минуту)
+  if FVolThread <> nil then
+  begin
+    FVolThread.WaitFor;
+    FVolThread.Free;
+    FVolThread := nil;
   end;
   if FSzThread <> nil then
   begin
@@ -4419,6 +4438,9 @@ var
   UpperPath, ChildName: WideString;
   AnyDirty: Boolean;
 begin
+  // Ответ diskpart (номера томов для меню дисков)
+  if FVolThread <> nil then
+    DiskpartCheck;
   if not Visible or not HandleAllocated then
   begin
     if (FWatch[0] <> 0) or (FWatch[1] <> 0) then
@@ -4689,8 +4711,12 @@ begin
   MenuClose;
   case Kind of
     fmDrive:
-      if Item.Data <> '' then
-        SelectDrive(PanelIndex, Item.Data[1]);
+      // Буква - смена диска; путь (том без буквы, подключённый в папку) -
+      // в эту папку
+      if Length(Item.Data) = 1 then
+        SelectDrive(PanelIndex, Item.Data[1])
+      else if (Item.Data <> '') and FarDirExists(Item.Data) then
+        ChangeDir(FPanels[PanelIndex], Item.Data, '');
     fmSort:
       begin
         Panel := FPanels[PanelIndex];
@@ -4966,19 +4992,86 @@ begin
   ShowDriveMenu(APanelIndex);
 end;
 
+function FarPadLeft(const AText: WideString; AWidth: Integer): WideString;
+begin
+  Result := AText;
+  while Length(Result) < AWidth do
+    Result := ' ' + Result;
+end;
+
+// Меню дисков (Alt+F1 / Alt+F2), как в FAR: буква, номер тома (Том #,
+// из diskpart), тип, файловая система, метка, размер, свободно; справа -
+// состояние и сведения diskpart (загрузочный, системный, скрытый). Ниже -
+// тома без буквы (системные, скрытые разделы): только для сведений, том,
+// подключённый в папку, - выбирается (переход в папку).
+// Метка, ФС и размер - у жёстких, RAM-дисков и сменных (кроме A: и B:):
+// у дисководов, CD и сетевых чтение может ждать устройство или сеть
 procedure TFarView.ShowDriveMenu(APanelIndex: Integer);
 var
   Items: TFarMenuItems;
   DriveMask: DWORD;
-  DriveIndex, CurrentDrive, CursorIndex: Integer;
-  Root, TypeText, VolumeLabel, Letter: WideString;
-  LabelBuffer: array[0..MAX_PATH] of WideChar;
+  DriveIndex, CurrentDrive, CursorIndex, VolIdx, DpIndex: Integer;
+  Root, TypeText, VolumeLabel, FileSys, Letter, SizeText, FreeText: WideString;
+  RightText, NumText: WideString;
+  LabelBuffer, FsBuffer: array[0..MAX_PATH] of WideChar;
   DriveType: UINT;
   OldMode: UINT;
+  FreeAvail, TotalBytes, TotalFree: Int64;
+  NoLetter: TFarVolumes;
+  AnyNoLetter: Boolean;
+
+  procedure AddItem(const AText, ARight, AData: WideString;
+    ADisabled: Boolean; ATag: Integer);
+  begin
+    SetLength(Items, Length(Items) + 1);
+    Items[High(Items)].Text := AText;
+    Items[High(Items)].RightText := ARight;
+    Items[High(Items)].Mark := ' ';
+    Items[High(Items)].Separator := False;
+    Items[High(Items)].Disabled := ADisabled;
+    Items[High(Items)].Data := AData;
+    Items[High(Items)].Tag := ATag;
+  end;
+
+  procedure AddSeparator;
+  begin
+    SetLength(Items, Length(Items) + 1);
+    Items[High(Items)].Text := '';
+    Items[High(Items)].RightText := '';
+    Items[High(Items)].Mark := ' ';
+    Items[High(Items)].Separator := True;
+    Items[High(Items)].Disabled := True;
+    Items[High(Items)].Data := '';
+    Items[High(Items)].Tag := -1;
+  end;
+
+  // Строка тома: колонки одной ширины у всех строк и у заголовка
+  function Columns(const ANum, AType, AFs, ALabel, ASize,
+    AFree: WideString): WideString;
+  begin
+    Result := FarPadLeft(ANum, 3) + '  ' + FarPadRight(AType, 10) + ' ' +
+      FarPadRight(AFs, 6) + ' ' + FarPadRight(FarFitName(ALabel, 12), 12) +
+      ' ' + FarPadLeft(ASize, 9) + ' ' + FarPadLeft(AFree, 9);
+  end;
+
+  // Состояние и сведения diskpart - одной строкой
+  function DpRight(AIndex: Integer): WideString;
+  begin
+    Result := '';
+    if (AIndex < 0) or (AIndex > High(FVolDp)) then
+      Exit;
+    Result := FarTrimW(FVolDp[AIndex].Status + ' ' + FVolDp[AIndex].Info);
+  end;
+
 begin
+  // Номера томов - из diskpart, в своём потоке; придут - меню обновится
+  if FVolState = 0 then
+    StartDiskpart;
   CurrentDrive := FarDriveIndex(FPanels[APanelIndex].Path);
-  CursorIndex := 0;
+  CursorIndex := -1;
   SetLength(Items, 0);
+  AddItem('    ' + Columns('Том', 'Тип', 'ФС', 'Метка', 'Размер', 'Свободно'),
+    'Сведения', '', True, -1);
   DriveMask := GetLogicalDrives;
   // Нет диска в дисководе - без окна Windows с ошибкой
   OldMode := FarSetErrorMode(FarSemFailCritical);
@@ -4998,34 +5091,147 @@ begin
       else
         TypeText := '';
       end;
-      // Метка - только у жёстких и RAM-дисков: у сменных, CD и сетевых
-      // чтение может ждать устройство или сеть
       VolumeLabel := '';
-      if (DriveType = FarDriveFixed) or (DriveType = FarDriveRamDisk) then
+      FileSys := '';
+      SizeText := '';
+      FreeText := '';
+      if (DriveType = FarDriveFixed) or (DriveType = FarDriveRamDisk) or
+         ((DriveType = FarDriveRemovable) and (DriveIndex >= 2)) then
       begin
         LabelBuffer[0] := #0;
+        FsBuffer[0] := #0;
         if FarGetVolumeInfo(PWideChar(Root), LabelBuffer, MAX_PATH, nil, nil,
-             nil, nil, 0) then
+             nil, FsBuffer, MAX_PATH) then
+        begin
           VolumeLabel := PWideChar(@LabelBuffer[0]);
+          FileSys := PWideChar(@FsBuffer[0]);
+        end;
+        if FarDiskFree(PWideChar(Root), @FreeAvail, @TotalBytes,
+           @TotalFree) then
+        begin
+          SizeText := FarSizeShort(TotalBytes);
+          FreeText := FarSizeShort(TotalFree);
+        end;
       end;
       // Delphi 7 не складывает символ-литерал с WideChar - буква отдельной
       // строкой
       Letter := WideChar(Ord('A') + DriveIndex);
-      SetLength(Items, Length(Items) + 1);
-      Items[High(Items)].Text := WideString('&') + Letter + ':  ' +
-        FarPadRight(TypeText, 10) + '  ' + FarEscapeAmp(VolumeLabel);
-      Items[High(Items)].RightText := '';
-      Items[High(Items)].Mark := ' ';
-      Items[High(Items)].Separator := False;
-      Items[High(Items)].Data := Letter;
-      Items[High(Items)].Tag := DriveIndex;
-      if DriveIndex = CurrentDrive then
+      DpIndex := -1;
+      for VolIdx := 0 to High(FVolDp) do
+        if FVolDp[VolIdx].Letter = Letter[1] then
+          DpIndex := VolIdx;
+      NumText := '';
+      RightText := '';
+      if DpIndex >= 0 then
+      begin
+        NumText := IntToStr(FVolDp[DpIndex].Number);
+        RightText := DpRight(DpIndex);
+      end;
+      AddItem(WideString('&') + Letter + ':  ' + FarEscapeAmp(Columns(NumText,
+        TypeText, FileSys, VolumeLabel, SizeText, FreeText)), RightText,
+        Letter, False, DriveIndex);
+      if (DriveIndex = CurrentDrive) or (CursorIndex < 0) then
         CursorIndex := High(Items);
+    end;
+    // Тома без буквы: из diskpart (с номерами), а нет его - через Windows
+    AnyNoLetter := False;
+    if FVolState = 2 then
+    begin
+      for VolIdx := 0 to High(FVolDp) do
+        if FVolDp[VolIdx].Letter = #0 then
+        begin
+          if not AnyNoLetter then
+            AddSeparator;
+          AnyNoLetter := True;
+          AddItem('    ' + FarEscapeAmp(Columns(IntToStr(FVolDp[VolIdx].Number),
+            FVolDp[VolIdx].TypeText, FVolDp[VolIdx].FileSys,
+            FVolDp[VolIdx].VolLabel, FVolDp[VolIdx].SizeText, '')),
+            DpRight(VolIdx), '', True, -1);
+        end;
+    end
+    else
+    begin
+      FarNoLetterVolumes(NoLetter);
+      for VolIdx := 0 to High(NoLetter) do
+      begin
+        if not AnyNoLetter then
+          AddSeparator;
+        AnyNoLetter := True;
+        AddItem('    ' + FarEscapeAmp(Columns('', 'no letter',
+          NoLetter[VolIdx].FileSys, NoLetter[VolIdx].VolLabel,
+          NoLetter[VolIdx].SizeText, FarSizeShort(NoLetter[VolIdx].Free))),
+          NoLetter[VolIdx].MountPath, NoLetter[VolIdx].MountPath,
+          NoLetter[VolIdx].MountPath = '', -1);
+      end;
     end;
   finally
     FarSetErrorMode(OldMode);
   end;
+  // Откуда номера томов
+  case FVolState of
+    1: AddItem('    Том # - запрос к diskpart...', '', '', True, -1);
+    3:
+      if FVolError = 0 then
+        AddItem('    Том # - diskpart не вернул список томов', '', '', True, -1)
+      else if FVolError = FarErrorElevation then
+        AddItem('    Том # - из diskpart: нужен запуск unIDE от имени ' +
+          'администратора', '', '', True, -1)
+      else
+        AddItem('    Том # - diskpart: ' + WideString(SysErrorMessage(FVolError)),
+          '', '', True, -1);
+  end;
   MenuOpen(fmDrive, 'Change drive', Items, CursorIndex, APanelIndex);
+end;
+
+// diskpart list volume - в своём потоке (WatchTick заберёт результат)
+procedure TFarView.StartDiskpart;
+begin
+  if FVolThread <> nil then
+    Exit;
+  FVolState := 1;
+  FVolThread := TFarDiskpartThread.Create;
+end;
+
+// Поток diskpart закончил: номера томов - в меню дисков, если оно открыто
+procedure TFarView.DiskpartCheck;
+var
+  CursorData: WideString;
+  PanelIndex, ItemIdx: Integer;
+begin
+  if (FVolThread = nil) or not FVolThread.Finished then
+    Exit;
+  FVolThread.WaitFor;
+  if FVolThread.ErrorCode <> 0 then
+  begin
+    FVolState := 3;
+    FVolError := FVolThread.ErrorCode;
+  end
+  else
+  begin
+    FarParseDiskpart(FVolThread.Output, FVolDp);
+    if Length(FVolDp) > 0 then
+      FVolState := 2
+    else
+    begin
+      FVolState := 3;
+      FVolError := 0;
+    end;
+  end;
+  FVolThread.Free;
+  FVolThread := nil;
+  if FMenuKind = fmDrive then
+  begin
+    CursorData := '';
+    if (FMenuCursor >= 0) and (FMenuCursor <= High(FMenuItems)) then
+      CursorData := FMenuItems[FMenuCursor].Data;
+    PanelIndex := FMenuPanel;
+    ShowDriveMenu(PanelIndex);
+    if CursorData <> '' then
+      for ItemIdx := 0 to High(FMenuItems) do
+        if FMenuItems[ItemIdx].Data = CursorData then
+          FMenuCursor := ItemIdx;
+    Invalidate;
+  end;
 end;
 
 procedure TFarView.SelectDrive(APanelIndex: Integer; ALetter: WideChar);
