@@ -15611,7 +15611,8 @@ begin
   FLostAskPending := BrokenWindowsCount > 0;
 end;
 
-// После загрузки проекта (первый простой): файлов проекта нет на месте -
+// После загрузки проекта (первый простой): файлов окон из списка Windows
+// (открывавшихся в проекте) нет на месте -
 // список и вопрос, искать ли. Да - тот же поиск, что Windows - Find lost
 // files... (рядом с программой, в горячих папках; не нашлось - окно папок)
 procedure TForm1.LostFilesAsk;
@@ -15637,7 +15638,7 @@ begin
     Exit;
   if Count > Shown then
     ListText := ListText + '... и ещё ' + IntToStr(Count - Shown) + #13#10;
-  if MessageDlg('Не найдены файлы проекта (' + IntToStr(Count) + '):' +
+  if MessageDlg('Не найдены файлы из списка Windows (' + IntToStr(Count) + '):' +
                 #13#10#13#10 + ListText + #13#10 + 'Искать их?' + #13#10 +
                 '(Нет - они останутся в меню Windows с красным крестиком; ' +
                 'искать потом - Windows - Find lost files...)',
