@@ -2937,6 +2937,7 @@ type
     procedure GitBuildBar;
     procedure GitShowBar(AShow: Boolean);
     procedure GitRefreshBar;
+    procedure GitRefreshLater;
     procedure GitRefreshClick(Sender: TObject);
     procedure GitTimerTick(Sender: TObject);
     procedure PalTabsChange(Sender: TObject);
@@ -11115,6 +11116,7 @@ begin
   // LoadProject сочтёт его другим проектом и сбросит снимки форм и
   // конструктор (ProjectSwitchReset)
          FCurrentProject := NewName;
+         GitRefreshLater;
          RebuildProjectsMenu;
          LoadProject(NewName);
   // Папка inc могла смениться - список в рамке Project
@@ -15470,6 +15472,7 @@ begin
 
   TFiles := GetTickCount - StageTick;
   FCurrentProject := AName;
+  GitRefreshLater;
   UpdateCompilerCaption;
 
   // Восстанавливаем активное окно. Если указанного в файле нет - берём первое.
@@ -15787,6 +15790,7 @@ begin
   end;
 
   FCurrentProject := AName;
+  GitRefreshLater;
   FProjectSig := ProjectSignature; // то, что сейчас лежит в файле
   RebuildProjectsMenu;
   Caption := AppTitle + ' - [' + AName + '] ' +
@@ -15994,6 +15998,7 @@ begin
   CloseAllWindows;
 
   FCurrentProject := '';
+  GitRefreshLater;
   FProjectSig := '';
   SnapReset;          // снимки были от закрытого проекта
   ProjectSwitchReset;
@@ -64553,16 +64558,7 @@ begin
       FPalTabs.TabIndex := 1;
     // Сведения - чуть позже: git status в большом дереве (ReactOS) идёт
     // секунды, смена вкладки не должна их ждать
-    FGitLblBuild.Caption := 'Build: обновляется...';
-    if FGitTimer = nil then
-    begin
-      FGitTimer := TTimer.Create(Self);
-      FGitTimer.Enabled := False;
-      FGitTimer.Interval := 300;
-      FGitTimer.OnTimer := GitTimerTick;
-    end;
-    FGitTimer.Enabled := False;
-    FGitTimer.Enabled := True;
+    GitRefreshLater;
   end
   else
   begin
@@ -64625,6 +64621,12 @@ begin
         'репозитории git)';
       FGitLblRepo.Hint := 'Repository - Add Local Repository / Clone ' +
         'Repository / New Repository';
+      if FGitRepoChosen <> '' then
+      begin
+        FGitLblRepo.Caption := FGitLblRepo.Caption + '   (выбран вручную)';
+        FGitLblRepo.Hint := 'Папка выбрана вручную; Repository - Use ' +
+          'Repository of Current Project - снова по проекту';
+      end;
       FGitLblSync.Caption := '';
       FGitLblBuild.Caption := '';
       Exit;
@@ -64634,6 +64636,8 @@ begin
       ExcludeTrailingPathDelimiter(Repo)) + '   ' + Repo;
     if Remote <> '' then
       FGitLblRepo.Caption := FGitLblRepo.Caption + '   origin: ' + Remote;
+    if FGitRepoChosen <> '' then
+      FGitLblRepo.Caption := FGitLblRepo.Caption + '   (выбран вручную)';
     if FGitRepoChosen <> '' then
       FGitLblRepo.Hint := 'Выбран вручную (Repository - Use Repository of ' +
         'Current Project - снова по проекту)'
@@ -64722,6 +64726,24 @@ begin
     FGitBranchFill := False;
     GitPlaceHint;
   end;
+end;
+
+// Обновить панель Git чуть позже (панель видна): смена вкладки или проекта
+// не ждёт git status
+procedure TForm1.GitRefreshLater;
+begin
+  if (FGitBar = nil) or not FGitBar.Visible then
+    Exit;
+  FGitLblBuild.Caption := 'Build: обновляется...';
+  if FGitTimer = nil then
+  begin
+    FGitTimer := TTimer.Create(Self);
+    FGitTimer.Enabled := False;
+    FGitTimer.Interval := 300;
+    FGitTimer.OnTimer := GitTimerTick;
+  end;
+  FGitTimer.Enabled := False;
+  FGitTimer.Enabled := True;
 end;
 
 procedure TForm1.GitRefreshClick(Sender: TObject);
