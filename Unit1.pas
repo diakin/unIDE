@@ -1091,6 +1091,16 @@ type
     FGitBtnPull: TUiButton;
     FGitBtnPush: TUiButton;
     FGitLblHint: TUiLabel;
+    // Кнопка Repository... и её меню: недавние репозитории (FGitRecent,
+    // editor.ini [Git] Recent1..), выбор, Add / Clone / New. FGitRepoTop -
+    // репозиторий на панели по последнему обновлению ('' - нет)
+    FGitBtnRepo: TUiButton;
+    FGitRepoMenu: TUiPopupMenu;
+    FGitRecent: TStringList;
+    FGitRepoTop: string;
+    // Убран из списка кнопкой Remove ... from List: панель не добавляет его
+    // снова, пока его не выберут явно
+    FGitRecentSkip: string;
     FGitAhead: Integer;
     FGitBehind: Integer;
     FGitBusy: Boolean;
@@ -2933,6 +2943,12 @@ type
     function  GitQuery(const AGit, ADir, AArgs: string): string;
     function  GitBaseDir: string;
     procedure GitSetChosenRepo(const ADir: string);
+    procedure GitRecentLoad;
+    procedure GitRecentAdd(const ADir: string; AFromBar: Boolean);
+    procedure GitRecentSave;
+    procedure GitRepoBtnClick(Sender: TObject);
+    procedure GitRecentRepoClick(Sender: TObject);
+    procedure GitRecentRemoveClick(Sender: TObject);
     function  GitRepoTop(const AGit, ADir: string): string;
     function  GitPrepare(var AGit, ARepo: string): Boolean;
     function  GitCurrentBranch(const AGit, ARepo: string): string;
@@ -24388,6 +24404,7 @@ begin
   FreeAndNil(FDiskAges);
   FreeAndNil(FProjectReg);
   FreeAndNil(FBasDialects);
+  FreeAndNil(FGitRecent);
   FreeAndNil(FBuildKindManual);
   FreeAndNil(FFbBuild);
   FreeAndNil(FRqBuild);
@@ -63790,6 +63807,8 @@ end;
 
 const
   GitIniSection = 'Git';
+  // Сколько недавних репозиториев помнит кнопка Repository...
+  GitRecentMax = 20;
   // GitRunConsole / GitConsoleLogin: консоль не запускалась
   GitConsoleNotRun = -1000;
 
@@ -64407,6 +64426,8 @@ var
 begin
   FGitRepoChosen := ADir;
   FGitIniLoaded := True;
+  if ADir <> '' then
+    GitRecentAdd(ADir, False);
   Ini := TIniFile.Create(SettingsFileName);
   try
     if ADir = '' then
@@ -64754,7 +64775,11 @@ begin
   NewButton('Refresh', 'Обновить сведения панели', 336, 60, GitRefreshClick);
   NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 400, 66,
     GitBashClick);
-  FGitLblRepo := NewLabel(4, 27, 'Repository: -');
+  FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
+    'недавние, по открытому проекту, Add Local / Clone / New', 4, 92,
+    GitRepoBtnClick);
+  FGitBtnRepo.Top := 25;
+  FGitLblRepo := NewLabel(102, 27, '-');
   NewLabel(4, 51, 'Branch:');
   FGitCmbBranch := TUiComboBox.Create(Self);
   FGitCmbBranch.Parent := FGitBar;
@@ -64842,10 +64867,10 @@ begin
       FGitLblBuild.Caption := '';
       Exit;
     end;
+    FGitRepoTop := '';
     if Repo = '' then
     begin
-      FGitLblRepo.Caption := 'Repository: нет (' + BaseDir + ' - не в ' +
-        'репозитории git)';
+      FGitLblRepo.Caption := 'нет (' + BaseDir + ' - не в репозитории git)';
       FGitLblRepo.Hint := 'Repository - Add Local Repository / Clone ' +
         'Repository / New Repository';
       if FGitRepoChosen <> '' then
@@ -64859,8 +64884,10 @@ begin
       Exit;
     end;
     Remote := GitQuery(Git, Repo, 'config --get remote.origin.url');
-    FGitLblRepo.Caption := 'Repository: ' + ExtractFileName(
+    FGitLblRepo.Caption := ExtractFileName(
       ExcludeTrailingPathDelimiter(Repo)) + '   ' + Repo;
+    FGitRepoTop := Repo;
+    GitRecentAdd(Repo, True);
     if Remote <> '' then
       FGitLblRepo.Caption := FGitLblRepo.Caption + '   origin: ' + Remote;
     if FGitRepoChosen <> '' then
@@ -65467,6 +65494,183 @@ begin
     FNewPrjPresetDir := Target;
     NewProjectClick(nil);
   end;
+end;
+
+// Недавние репозитории - из editor.ini [Git] Recent1.. (один раз)
+procedure TForm1.GitRecentLoad;
+var
+  Ini: TIniFile;
+  RecentIndex: Integer;
+  Dir: string;
+begin
+  if FGitRecent <> nil then
+    Exit;
+  FGitRecent := TStringList.Create;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    for RecentIndex := 1 to GitRecentMax do
+    begin
+      Dir := Ini.ReadString(GitIniSection, 'Recent' + IntToStr(RecentIndex),
+        '');
+      if Dir <> '' then
+        FGitRecent.Add(ExcludeTrailingPathDelimiter(Dir));
+    end;
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure TForm1.GitRecentSave;
+var
+  Ini: TIniFile;
+  RecentIndex: Integer;
+begin
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    for RecentIndex := 1 to GitRecentMax do
+      if RecentIndex <= FGitRecent.Count then
+        Ini.WriteString(GitIniSection, 'Recent' + IntToStr(RecentIndex),
+          FGitRecent[RecentIndex - 1])
+      else
+        Ini.DeleteKey(GitIniSection, 'Recent' + IntToStr(RecentIndex));
+  finally
+    Ini.Free;
+  end;
+end;
+
+// Репозиторий - в начало списка недавних (уже первый - ничего не пишется:
+// панель обновляется часто). AFromBar - из обновления панели: убранный из
+// списка (FGitRecentSkip) не возвращается; явный выбор - возвращает
+procedure TForm1.GitRecentAdd(const ADir: string; AFromBar: Boolean);
+var
+  Dir: string;
+  RecentIndex: Integer;
+begin
+  Dir := ExcludeTrailingPathDelimiter(ADir);
+  if Dir = '' then
+    Exit;
+  if AFromBar then
+  begin
+    if SameText(Dir, FGitRecentSkip) then
+      Exit;
+  end
+  else if SameText(Dir, FGitRecentSkip) then
+    FGitRecentSkip := '';
+  GitRecentLoad;
+  if (FGitRecent.Count > 0) and SameText(FGitRecent[0], Dir) then
+    Exit;
+  for RecentIndex := FGitRecent.Count - 1 downto 0 do
+    if SameText(FGitRecent[RecentIndex], Dir) then
+      FGitRecent.Delete(RecentIndex);
+  FGitRecent.Insert(0, Dir);
+  while FGitRecent.Count > GitRecentMax do
+    FGitRecent.Delete(FGitRecent.Count - 1);
+  GitRecentSave;
+end;
+
+// Кнопка Repository...: меню - недавние (текущий отмечен; папки, которых
+// нет, из списка убираются), по проекту, Add Local / Clone / New, убрать
+// текущий из списка
+procedure TForm1.GitRepoBtnClick(Sender: TObject);
+var
+  MenuItem: TMenuItem;
+  RecentIndex: Integer;
+  Changed: Boolean;
+  ScreenPos: TPoint;
+
+  procedure AddMenuItem(const ACaption: string; AClick: TNotifyEvent;
+    AChecked: Boolean; ATag: Integer);
+  begin
+    MenuItem := TMenuItem.Create(FGitRepoMenu);
+    MenuItem.Caption := ACaption;
+    MenuItem.OnClick := AClick;
+    MenuItem.Checked := AChecked;
+    MenuItem.Tag := ATag;
+    FGitRepoMenu.Items.Add(MenuItem);
+  end;
+
+begin
+  if FGitBusy then
+    Exit;
+  if FGitRepoMenu = nil then
+    FGitRepoMenu := TUiPopupMenu.Create(Self);
+  FGitRepoMenu.Items.Clear;
+  GitRecentLoad;
+  Changed := False;
+  for RecentIndex := FGitRecent.Count - 1 downto 0 do
+    if not DirectoryExists(FGitRecent[RecentIndex]) then
+    begin
+      FGitRecent.Delete(RecentIndex);
+      Changed := True;
+    end;
+  if Changed then
+    GitRecentSave;
+  for RecentIndex := 0 to FGitRecent.Count - 1 do
+    AddMenuItem(StringReplace(ExtractFileName(FGitRecent[RecentIndex]), '&',
+      '&&', [rfReplaceAll]) + #9 + FGitRecent[RecentIndex],
+      GitRecentRepoClick, SameText(FGitRecent[RecentIndex],
+      ExcludeTrailingPathDelimiter(FGitRepoTop)), RecentIndex);
+  if FGitRecent.Count = 0 then
+  begin
+    AddMenuItem('(недавних репозиториев нет)', nil, False, 0);
+    MenuItem.Enabled := False;
+  end;
+  AddMenuItem('-', nil, False, 0);
+  AddMenuItem('Use Repository of Current Project', GitUseProjectRepoClick,
+    FGitRepoChosen = '', 0);
+  AddMenuItem('Add Local Repository...', GitAddRepoClick, False, 0);
+  AddMenuItem('Clone Repository...', GitCloneClick, False, 0);
+  AddMenuItem('New Repository...', GitNewRepoClick, False, 0);
+  if FGitRepoTop <> '' then
+  begin
+    AddMenuItem('-', nil, False, 0);
+    AddMenuItem('Remove ' + StringReplace(ExtractFileName(
+      ExcludeTrailingPathDelimiter(FGitRepoTop)), '&', '&&', [rfReplaceAll]) +
+      ' from List', GitRecentRemoveClick, False, 0);
+  end;
+  ScreenPos := FGitBtnRepo.ClientToScreen(Point(0, FGitBtnRepo.Height));
+  FGitRepoMenu.Popup(ScreenPos.X, ScreenPos.Y);
+end;
+
+procedure TForm1.GitRecentRepoClick(Sender: TObject);
+var
+  RecentIndex: Integer;
+  Dir: string;
+begin
+  if not (Sender is TMenuItem) or (FGitRecent = nil) then
+    Exit;
+  RecentIndex := TMenuItem(Sender).Tag;
+  if (RecentIndex < 0) or (RecentIndex >= FGitRecent.Count) then
+    Exit;
+  Dir := FGitRecent[RecentIndex];
+  ShowCompLog;
+  if not DirectoryExists(Dir) then
+  begin
+    LogComp('Git: папки ' + Dir + ' нет - убрана из списка');
+    FGitRecent.Delete(RecentIndex);
+    GitRecentSave;
+    Exit;
+  end;
+  GitSetChosenRepo(Dir);
+  LogComp('Git: репозиторий - ' + Dir);
+  GitRefreshBar;
+end;
+
+// Убрать текущий репозиторий из списка недавних (папка не трогается);
+// он снова попадёт в список, когда будет выбран или открыт с проектом
+procedure TForm1.GitRecentRemoveClick(Sender: TObject);
+var
+  RecentIndex: Integer;
+begin
+  GitRecentLoad;
+  for RecentIndex := FGitRecent.Count - 1 downto 0 do
+    if SameText(FGitRecent[RecentIndex],
+       ExcludeTrailingPathDelimiter(FGitRepoTop)) then
+      FGitRecent.Delete(RecentIndex);
+  GitRecentSave;
+  FGitRecentSkip := ExcludeTrailingPathDelimiter(FGitRepoTop);
+  ShowCompLog;
+  LogComp('Git: ' + FGitRepoTop + ' убран из списка недавних');
 end;
 
 procedure TForm1.GitUseProjectRepoClick(Sender: TObject);
