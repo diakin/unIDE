@@ -83,6 +83,8 @@ uses
   GitRun in 'GitRun.pas',
   DlgGitCommit in 'DlgGitCommit.pas',
   DlgGitHistory in 'DlgGitHistory.pas',
+  GitHubApi in 'GitHubApi.pas',
+  DlgGitClone in 'DlgGitClone.pas',
   UiCaptionTabs in 'UiCaptionTabs.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors};
 

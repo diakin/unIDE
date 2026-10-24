@@ -2195,6 +2195,9 @@ type
     // Заготовка Delphi для следующего New Project из File - New - Pascal:
     // 0 - обычный вызов, 1 - Application, 2 - DLL, 3 - Console Application
     FNewDelphiKind: Integer;
+    // Папка для следующего New Project (Clone Repository с флажком
+    // «Создать проект»): «На базе существующего», тип - по файлам; '' - нет
+    FNewPrjPresetDir: string;
     // Ряд кнопок как в Delphi, справа от Compile & Run
 
     // Единый обработчик кликов для кнопок тулбара
@@ -2918,6 +2921,12 @@ type
     function  GitConsoleLogin(const AGit, ADir, AArgs: string;
       AWincred: Boolean): Integer;
     function  GitRunConsole(const AGit, ADir, AArgs: string): Integer;
+    function  GitSetWincred(const AGit, ADir: string): Boolean;
+    function  GitEffectiveHelpers(const AGit, ADir: string): string;
+    function  GitCredentialGet(var AUser, AToken: string): Boolean;
+    function  GitCredentialStore(const AUser, AToken: string;
+      var AError: string): Boolean;
+    function  GuessProjectType(const ADir: string): string;
     function  GitOnIdle: Boolean;
     function  GitRunIn(const AGit, ADir, AArgs: string; ALog: Boolean;
                        var AOutput: WideString): Integer;
@@ -3942,6 +3951,7 @@ var
     GitInfo,      // ветка и коммит исходников сборки (<exe>.build.txt)
     DlgGitCommit, // окно Commit (меню Repository, панель Git)
     DlgGitHistory, // окно History (меню Repository, панель Git)
+    DlgGitClone,  // окно Clone Repository (список GitHub, URL, путь)
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     FormPreview,  // превью формы по .dfm - список модулей и форм
@@ -11181,6 +11191,7 @@ var
   SL: TStringList;
   DelphiKind: Integer; // FNewDelphiKind этого вызова
   RosCfg: TRosSettings; // настройки проекта ReactOS из окна
+  PresetDir: string;    // папка клона (Clone Repository), '' - нет
 
   // Есть ли в папке хоть один .pas. Расширение сверяется ещё раз: маска
   // *.pas по коротким именам находит и file.pas~ (FILE~1.PAS).
@@ -11210,6 +11221,8 @@ begin
   // сбрасывается сразу - ни один выход ниже не оставит его следующему вызову.
   DelphiKind := FNewDelphiKind;
   FNewDelphiKind := 0;
+  PresetDir := FNewPrjPresetDir;
+  FNewPrjPresetDir := '';
 
   if not ConfirmSaveAll then
     Exit;
@@ -11259,6 +11272,26 @@ begin
         Dlg.Caption := 'New Project - Application';
       end;
       Dlg.cbTypeChange(cbType);
+    end;
+
+    // После Clone Repository: папка клона, «На базе существующего», тип -
+    // по файлам в папке. Главный файл ищется по OK (PickExistingMain)
+    if PresetDir <> '' then
+    begin
+      PresetDir := IncludeTrailingPathDelimiter(PresetDir);
+      Tp := GuessProjectType(PresetDir);
+      if (Tp <> '') and (cbType.Items.IndexOf(Tp) >= 0) then
+      begin
+        cbType.ItemIndex := cbType.Items.IndexOf(Tp);
+        Dlg.cbTypeChange(cbType);
+      end;
+      FNewPrjAutoDir := False;
+      chkBase.OnClick := nil;
+      chkBase.Checked := True;
+      chkBase.OnClick := NewPrjOnBaseClick;
+      edName.Text := ExtractFileName(ExcludeTrailingPathDelimiter(PresetDir));
+      edDir.Text := PresetDir;
+      Dlg.Caption := 'New Project - на основе репозитория';
     end;
 
     // Кнопка выбора папки закрывает окно с mrRetry, папка выбирается
@@ -63954,7 +63987,6 @@ var
   Answer, BtnIndex: Integer;
   Btn: TButton;
   SetWincred: Boolean;
-  ConfigOut: WideString;
   PromptText: string;
 begin
   Result := GitConsoleNotRun;
@@ -64023,25 +64055,207 @@ begin
       Exit;
     end;
   end;
-  if SetWincred then
-  begin
-    LogComp('git config --global --replace-all credential.helper ""');
-    if GitRunIn(AGit, ADir, 'config --global --replace-all ' +
-                'credential.helper ""', False, ConfigOut) <> 0 then
-    begin
-      LogComp('git: не выполнено - ' + string(GitTrimOut(ConfigOut)));
-      Exit;
-    end;
-    LogComp('git config --global --add credential.helper wincred');
-    if GitRunIn(AGit, ADir, 'config --global --add credential.helper ' +
-                'wincred', False, ConfigOut) <> 0 then
-    begin
-      LogComp('git: не выполнено - ' + string(GitTrimOut(ConfigOut)));
-      Exit;
-    end;
-    LogComp('git: credential.helper = wincred (глобальный конфиг git)');
-  end;
+  if SetWincred and not GitSetWincred(AGit, ADir) then
+    Exit;
   Result := GitRunConsole(AGit, ADir, AArgs);
+end;
+
+// credential.helper = wincred в глобальном конфиге git: прежний список
+// сбрасывается пустым значением, затем wincred. Команды и итог - в
+// Compilation log
+function TForm1.GitSetWincred(const AGit, ADir: string): Boolean;
+var
+  ConfigOut: WideString;
+begin
+  Result := False;
+  LogComp('git config --global --replace-all credential.helper ""');
+  if GitRunIn(AGit, ADir, 'config --global --replace-all ' +
+              'credential.helper ""', False, ConfigOut) <> 0 then
+  begin
+    LogComp('git: не выполнено - ' + string(GitTrimOut(ConfigOut)));
+    Exit;
+  end;
+  LogComp('git config --global --add credential.helper wincred');
+  if GitRunIn(AGit, ADir, 'config --global --add credential.helper ' +
+              'wincred', False, ConfigOut) <> 0 then
+  begin
+    LogComp('git: не выполнено - ' + string(GitTrimOut(ConfigOut)));
+    Exit;
+  end;
+  LogComp('git: credential.helper = wincred (глобальный конфиг git)');
+  Result := True;
+end;
+
+// Действующие credential.helper через ', ' (после последнего пустого
+// значения - оно сбрасывает список); '' - ни одного
+function TForm1.GitEffectiveHelpers(const AGit, ADir: string): string;
+var
+  HelperOut: WideString;
+  HelperLines: TStringList;
+  LineIndex: Integer;
+begin
+  Result := '';
+  HelperLines := TStringList.Create;
+  try
+    if GitRunIn(AGit, ADir, 'config --get-all credential.helper', False,
+                HelperOut) <> 0 then
+      Exit;
+    HelperLines.Text := string(HelperOut);
+    for LineIndex := 0 to HelperLines.Count - 1 do
+      if Trim(HelperLines[LineIndex]) = '' then
+        Result := ''
+      else if Result = '' then
+        Result := Trim(HelperLines[LineIndex])
+      else
+        Result := Result + ', ' + Trim(HelperLines[LineIndex]);
+  finally
+    HelperLines.Free;
+  end;
+end;
+
+// Сохранённый логин git для https://github.com (git credential fill:
+// спрашивает credential.helper; GIT_TERMINAL_PROMPT=0 - консоль не
+// спрашивает). False - логина нет
+function TForm1.GitCredentialGet(var AUser, AToken: string): Boolean;
+var
+  Git, ErrText: string;
+  FillOut: WideString;
+  ExitCode: Integer;
+  FillLines: TStringList;
+begin
+  Result := False;
+  AUser := '';
+  AToken := '';
+  Git := GitExePath(False);
+  if Git = '' then
+    Exit;
+  FGitCancel := False;
+  ErrText := GitExec(WideString(Git), 'credential fill',
+    WideString(ExtractFilePath(Application.ExeName)), nil, GitOnIdle,
+    FillOut, ExitCode, 'protocol=https'#10'host=github.com'#10#10);
+  if (ErrText <> '') or (ExitCode <> 0) then
+    Exit;
+  FillLines := TStringList.Create;
+  try
+    FillLines.Text := string(FillOut);
+    AUser := FillLines.Values['username'];
+    AToken := FillLines.Values['password'];
+  finally
+    FillLines.Free;
+  end;
+  Result := AToken <> '';
+end;
+
+// Сохранить логин git для https://github.com (git credential approve -
+// во все credential.helper). Helper'а нет - вопрос: настроить wincred
+function TForm1.GitCredentialStore(const AUser, AToken: string;
+  var AError: string): Boolean;
+var
+  Git, Dir, Helpers, ErrText: string;
+  ApproveOut: WideString;
+  ExitCode: Integer;
+begin
+  Result := False;
+  AError := '';
+  Git := GitExePath(False);
+  if Git = '' then
+  begin
+    AError := 'git не найден';
+    Exit;
+  end;
+  Dir := ExtractFilePath(Application.ExeName);
+  Helpers := GitEffectiveHelpers(Git, Dir);
+  if Helpers = '' then
+  begin
+    if MessageDlg('9828:Для git не задан credential.helper - логин ' +
+                  'сохранить негде.'#13#10#13#10'Сохранять через wincred ' +
+                  '(диспетчер учётных данных Windows)? unIDE выполнит:'#13#10 +
+                  '  git config --global --replace-all credential.helper ""' +
+                  #13#10'  git config --global --add credential.helper ' +
+                  'wincred', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    begin
+      AError := 'credential.helper не задан';
+      Exit;
+    end;
+    if not GitSetWincred(Git, Dir) then
+    begin
+      AError := 'wincred не настроен (подробности - Compilation log)';
+      Exit;
+    end;
+    Helpers := 'wincred';
+  end;
+  FGitCancel := False;
+  ErrText := GitExec(WideString(Git), 'credential approve', WideString(Dir),
+    nil, GitOnIdle, ApproveOut, ExitCode, 'protocol=https'#10 +
+    'host=github.com'#10'username=' + AUser + #10'password=' + AToken +
+    #10#10);
+  if ErrText <> '' then
+  begin
+    AError := ErrText;
+    Exit;
+  end;
+  if ExitCode <> 0 then
+  begin
+    AError := 'git credential approve: код выхода ' + IntToStr(ExitCode) +
+      ' ' + string(GitTrimOut(ApproveOut));
+    Exit;
+  end;
+  LogComp('Git: логин ' + AUser + ' для github.com сохранён ' +
+          '(credential.helper: ' + Helpers + ')');
+  Result := True;
+end;
+
+// Тип проекта по файлам в папке (для New Project после Clone): ReactOS,
+// Delphi, Lazarus, Arduino, .bas (RapidQ / FreeBASIC по тексту), Visual
+// Basic, Rust, Go, C++, C, Python, сайт. '' - не понять
+function TForm1.GuessProjectType(const ADir: string): string;
+const
+  TypeCount = 9;
+  TypeOrder: array[0..TypeCount - 1] of string = (
+    'Delphi', 'Lazarus', 'Arduino', 'Visual Basic', 'Go', 'CPP project',
+    'C project', 'Python', 'WebSite');
+var
+  Dir: string;
+  Found: TStringList;
+  TypeIndex: Integer;
+begin
+  Result := '';
+  Dir := IncludeTrailingPathDelimiter(ADir);
+  if RosIsSourceDir(Dir) then
+  begin
+    Result := RosProjectType;
+    Exit;
+  end;
+  Found := TStringList.Create;
+  try
+    for TypeIndex := 0 to 3 do
+      if MainFilesIn(Dir, TypeOrder[TypeIndex], Found) > 0 then
+      begin
+        Result := TypeOrder[TypeIndex];
+        Exit;
+      end;
+    if MainFilesIn(Dir, 'RapidQ Basic', Found) > 0 then
+    begin
+      if BasDialectOf(Dir + Found[0]) = bkFreeBasic then
+        Result := 'FreeBASIC'
+      else
+        Result := 'RapidQ Basic';
+      Exit;
+    end;
+    if FileExists(Dir + 'Cargo.toml') then
+    begin
+      Result := 'Rust';
+      Exit;
+    end;
+    for TypeIndex := 4 to TypeCount - 1 do
+      if MainFilesIn(Dir, TypeOrder[TypeIndex], Found) > 0 then
+      begin
+        Result := TypeOrder[TypeIndex];
+        Exit;
+      end;
+  finally
+    Found.Free;
+  end;
 end;
 
 // git AArgs в новом окне консоли (cmd, временный .cmd в кодировке OEM):
@@ -65190,50 +65404,68 @@ begin
   GitRefreshBar;
 end;
 
+// Clone Repository: окно как в GitHub Desktop (DlgGitClone) - список
+// репозиториев GitHub или адрес, локальный путь; клон - git clone (логина
+// нет - повтор в консоли, GitRunIn). Флажок «Создать проект» - затем New
+// Project с папкой клона. Папка и флажок запоминаются (editor.ini [Git]
+// CloneDir, CloneCreateProject)
 procedure TForm1.GitCloneClick(Sender: TObject);
 var
-  Git, Url, Parent, Name, Target, StartDir: string;
-  SlashPos: Integer;
+  Git, Url, Parent, Target, BaseDir: string;
+  CreatePrj: Boolean;
+  Dlg: TDlgGitClone;
+  Ini: TIniFile;
 begin
   if FGitBusy then
     Exit;
   Git := GitExePath(True);
   if Git = '' then
     Exit;
-  Url := '';
-  if not InputQuery('Clone Repository', 'Адрес репозитория (https://github.' +
-     'com/владелец/имя):', Url) then
-    Exit;
-  Url := Trim(Url);
-  if Url = '' then
-    Exit;
-  // Имя папки - последняя часть адреса без .git
-  Name := Url;
-  while (Name <> '') and (Name[Length(Name)] = '/') do
-    SetLength(Name, Length(Name) - 1);
-  SlashPos := LastDelimiter('/:\', Name);
-  Name := Copy(Name, SlashPos + 1, MaxInt);
-  if LowerCase(Copy(Name, Length(Name) - 3, 4)) = '.git' then
-    SetLength(Name, Length(Name) - 4);
-  if Name = '' then
-    Name := 'repository';
-  StartDir := ExtractFilePath(ExcludeTrailingPathDelimiter(GitBaseDir));
-  Parent := StartDir;
-  if not PickFolderDialog('Clone Repository - куда (будет создана папка ' +
-     Name + ')', StartDir, Parent) then
-    Exit;
-  Target := IncludeTrailingPathDelimiter(Parent) + Name;
-  if DirectoryExists(Target) then
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    BaseDir := Ini.ReadString(GitIniSection, 'CloneDir', '');
+    CreatePrj := Ini.ReadBool(GitIniSection, 'CloneCreateProject', False);
+  finally
+    Ini.Free;
+  end;
+  if (BaseDir = '') or not DirectoryExists(BaseDir) then
+    BaseDir := ExcludeTrailingPathDelimiter(ProjectsDir);
+  Dlg := TDlgGitClone.CreateDlg(Self, BaseDir, CreatePrj, GitCredentialGet,
+                                GitCredentialStore);
+  try
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+    Url := Dlg.CloneUrl;
+    Target := Dlg.TargetDir;
+    BaseDir := Dlg.BaseDir;
+    CreatePrj := Dlg.CreateProject;
+  finally
+    Dlg.Free;
+  end;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Ini.WriteString(GitIniSection, 'CloneDir', BaseDir);
+    Ini.WriteBool(GitIniSection, 'CloneCreateProject', CreatePrj);
+  finally
+    Ini.Free;
+  end;
+  ShowCompLog;
+  Parent := ExtractFilePath(Target);
+  if not DirectoryExists(Parent) and not ForceDirectories(Parent) then
   begin
-    ShowCompLog;
-    LogComp('Git: папка ' + Target + ' уже есть - выберите другое место');
+    LogComp('Git: папку ' + Parent + ' не создать');
     Exit;
   end;
   if GitLongOp(Git, Parent, 'clone ' + string(GitQuote(WideString(Url))) +
-     ' ' + string(GitQuote(WideString(Target)))) = 0 then
+     ' ' + string(GitQuote(WideString(Target)))) <> 0 then
+    Exit;
+  GitSetChosenRepo(Target);
+  LogComp('Git: репозиторий - ' + Target);
+  GitRefreshBar;
+  if CreatePrj then
   begin
-    GitSetChosenRepo(Target);
-    GitRefreshBar;
+    FNewPrjPresetDir := Target;
+    NewProjectClick(nil);
   end;
 end;
 

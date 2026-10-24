@@ -57,12 +57,13 @@ const
   GitLogFormat = '--format=%H%x1f%h%x1f%an%x1f%ad%x1f%s%x1e --date=iso';
 
 // Запустить AGitExe с аргументами AArgs (GitBaseArgs добавляются) в папке
-// AWorkDir. AOutput - весь вывод, AExitCode - код выхода. Результат: '' -
-// git отработал (код смотреть в AExitCode), иначе - почему не вышло (не
-// запустился, прерван)
+// AWorkDir. AOutput - весь вывод, AExitCode - код выхода. AInput - что
+// подать git на вход (git credential fill / approve), '' - вход не нужен.
+// Результат: '' - git отработал (код смотреть в AExitCode), иначе - почему
+// не вышло (не запустился, прерван)
 function GitExec(const AGitExe, AArgs, AWorkDir: WideString;
   AOnLine: TGitLineEvent; AOnIdle: TGitIdleEvent; var AOutput: WideString;
-  var AExitCode: Integer): string;
+  var AExitCode: Integer; const AInput: string = ''): string;
 // Аргумент в кавычках, если в нём пробел или его нет (кавычки внутри -
 // \", как ждёт разбор командной строки git)
 function GitQuote(const AArg: WideString): WideString;
@@ -256,12 +257,14 @@ end;
 
 function GitExec(const AGitExe, AArgs, AWorkDir: WideString;
   AOnLine: TGitLineEvent; AOnIdle: TGitIdleEvent; var AOutput: WideString;
-  var AExitCode: Integer): string;
+  var AExitCode: Integer; const AInput: string = ''): string;
 var
   Security: TGitSecurity;
   Startup: TGitStartupInfoW;
   ProcInfo: TGitProcessInfo;
   ReadPipe, WritePipe: THandle;
+  InputRead, InputWrite: THandle;
+  InputWritten: DWORD;
   CmdLine, EnvBlock: WideString;
   Buffer: array[0..8191] of AnsiChar;
   AllRaw, LineBuf, Piece: string;
@@ -322,13 +325,29 @@ begin
   end;
   // Свой конец трубы git не наследует (HANDLE_FLAG_INHERIT = 1)
   GitSetHandleInfo(ReadPipe, 1, 0);
+  // Вход git: своя труба; текст короткий - пишется целиком сразу после
+  // запуска (буфер трубы его вмещает), затем труба закрывается (конец
+  // ввода)
+  InputRead := 0;
+  InputWrite := 0;
+  if AInput <> '' then
+  begin
+    if not GitCreatePipe(InputRead, InputWrite, @Security, 0) then
+    begin
+      Result := 'труба входа не создана: ' + SysErrorMessage(GetLastError);
+      CloseHandle(ReadPipe);
+      CloseHandle(WritePipe);
+      Exit;
+    end;
+    GitSetHandleInfo(InputWrite, 1, 0);
+  end;
   CmdLine := GitQuote(AGitExe) + ' ' + GitBaseArgs + AArgs;
   EnvBlock := GitEnvBlock;
   FillChar(Startup, SizeOf(Startup), 0);
   Startup.cb := SizeOf(Startup);
   Startup.dwFlags := GitStartfUseStdHandles or GitStartfUseShowWindow;
   Startup.wShowWindow := SW_HIDE;
-  Startup.hStdInput := 0;
+  Startup.hStdInput := InputRead;
   Startup.hStdOutput := WritePipe;
   Startup.hStdError := WritePipe;
   FillChar(ProcInfo, SizeOf(ProcInfo), 0);
@@ -339,10 +358,22 @@ begin
     Result := 'git не запустить: ' + SysErrorMessage(GetLastError);
     CloseHandle(ReadPipe);
     CloseHandle(WritePipe);
+    if InputRead <> 0 then
+    begin
+      CloseHandle(InputRead);
+      CloseHandle(InputWrite);
+    end;
     Exit;
   end;
   CloseHandle(WritePipe);
   CloseHandle(ProcInfo.hThread);
+  if InputRead <> 0 then
+  begin
+    CloseHandle(InputRead);
+    InputWritten := 0;
+    WriteFile(InputWrite, PChar(AInput)^, Length(AInput), InputWritten, nil);
+    CloseHandle(InputWrite);
+  end;
   AllRaw := '';
   LineBuf := '';
   Cancelled := False;
