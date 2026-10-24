@@ -1127,6 +1127,10 @@ type
     FGitBranchFill: Boolean;
     FGitIniLoaded: Boolean;
     FGitRepoChosen: string;
+    // Проект, для которого прочитан FGitRepoChosen: выбор вручную - свой у
+    // каждого проекта (editor.ini [Git] Repository@<проект>), без проекта -
+    // [Git] Repository
+    FGitChosenFor: string;
     FGitDlgGit: string;
     FGitDlgRepo: string;
     FGitDlgHasHead: Boolean;
@@ -64487,19 +64491,32 @@ begin
   end;
 end;
 
-// Откуда искать репозиторий: выбранный вручную, иначе исходники проекта
-// ReactOS, папка проекта, папка файла вкладки
+// Ключ editor.ini [Git] для репозитория, выбранного вручную: у каждого
+// проекта свой (Repository@<проект>), без проекта - Repository
+function GitChosenKey(const AProject: string): string;
+begin
+  if AProject = '' then
+    Result := 'Repository'
+  else
+    Result := 'Repository@' + AProject;
+end;
+
+// Откуда искать репозиторий: выбранный вручную для этого проекта, иначе
+// исходники проекта ReactOS, папка проекта, папка файла вкладки. Сменился
+// проект - выбор вручную читается заново (у другого проекта он свой)
 function TForm1.GitBaseDir: string;
 var
   RosCfg: TRosSettings;
   Ini: TIniFile;
 begin
-  if not FGitIniLoaded then
+  if not FGitIniLoaded or (FGitChosenFor <> FCurrentProject) then
   begin
     FGitIniLoaded := True;
+    FGitChosenFor := FCurrentProject;
     Ini := TIniFile.Create(SettingsFileName);
     try
-      FGitRepoChosen := Ini.ReadString(GitIniSection, 'Repository', '');
+      FGitRepoChosen := Ini.ReadString(GitIniSection,
+        GitChosenKey(FCurrentProject), '');
     finally
       Ini.Free;
     end;
@@ -64522,21 +64539,23 @@ begin
     Result := '';
 end;
 
-// Выбор репозитория вручную ('' - снова по проекту) - в editor.ini
+// Выбор репозитория вручную ('' - снова по проекту) - в editor.ini, для
+// открытого проекта (у другого проекта - свой выбор)
 procedure TForm1.GitSetChosenRepo(const ADir: string);
 var
   Ini: TIniFile;
 begin
   FGitRepoChosen := ADir;
   FGitIniLoaded := True;
+  FGitChosenFor := FCurrentProject;
   if ADir <> '' then
     GitRecentAdd(ADir, False);
   Ini := TIniFile.Create(SettingsFileName);
   try
     if ADir = '' then
-      Ini.DeleteKey(GitIniSection, 'Repository')
+      Ini.DeleteKey(GitIniSection, GitChosenKey(FCurrentProject))
     else
-      Ini.WriteString(GitIniSection, 'Repository', ADir);
+      Ini.WriteString(GitIniSection, GitChosenKey(FCurrentProject), ADir);
   finally
     Ini.Free;
   end;
