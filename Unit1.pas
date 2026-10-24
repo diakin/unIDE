@@ -2493,8 +2493,10 @@ type
     function  PickExistingMain(const ADir, AType: string;
                                var AFile: string): Boolean;
     function  ChooseFromList(const ACaption, APrompt: string;
-                             AItems: TStrings;
-                             const AHelp: string = ''): string;
+                             AItems: TStrings): string;
+    function  ChooseFromListHelp(const ACaption, APrompt: string;
+                                 AItems: TStrings;
+                                 const AHelp: string): string;
     function  ProjectDir(const AName: string): string;
     function  ProjectExists(const AName: string): Boolean;
     procedure MigratePrjProjects(ANotes: TStrings);
@@ -13889,8 +13891,18 @@ begin
 end;
 
 // Выбор одной строки из списка. Пустая строка - отказались.
+// Без справки. Сигнатура - как у событий выбора (Form3.OnChoose и др.):
+// ChooseFromList передаётся как метод, справка - в ChooseFromListHelp
 function TForm1.ChooseFromList(const ACaption, APrompt: string;
-                               AItems: TStrings; const AHelp: string): string;
+                               AItems: TStrings): string;
+begin
+  Result := ChooseFromListHelp(ACaption, APrompt, AItems, '');
+end;
+
+// AHelp не пуст - кнопка Help со справкой
+function TForm1.ChooseFromListHelp(const ACaption, APrompt: string;
+                                   AItems: TStrings;
+                                   const AHelp: string): string;
 const
   DlgMargin = 12;
   DlgMinWidth = 380;
@@ -66938,7 +66950,7 @@ begin
         '--skip-worktree): файл в репозитории остаётся как есть, ваши ' +
         'правки не предлагаются к коммиту');
     end;
-    Picked := ChooseFromList('Ignore', 'Файлы: ' + Names, Items,
+    Picked := ChooseFromListHelp('Ignore', 'Файлы: ' + Names, Items,
       GitIgnoreHelp);
     Choice := -1;
     if (Picked <> '') and (Items.IndexOf(Picked) >= 0) then
