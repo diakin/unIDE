@@ -1087,6 +1087,33 @@ begin
   end;
 end;
 
+// Строка перевода без метки места AMark ("RqAt9 : ") - сдвиг вправо на её
+// ширину, чтобы отступы строк с меткой и без неё совпадали (IF / END IF
+// в одном столбце). Сдвигается только первая строка вывода (дальше могут
+// быть #line и пустые строки продолжения); пустые строки и директивы # -
+// как есть.
+function PadUnmarkedLine(const AOut, AMark: string): string;
+var
+  BreakPos, CharIdx: Integer;
+  FirstLine, Code: string;
+begin
+  Result := AOut;
+  if AMark = '' then
+    Exit;
+  BreakPos := 1;
+  while (BreakPos <= Length(AOut)) and not (AOut[BreakPos] in [#13, #10]) do
+    Inc(BreakPos);
+  FirstLine := Copy(AOut, 1, BreakPos - 1);
+  CharIdx := 1;
+  while (CharIdx <= Length(FirstLine)) and (FirstLine[CharIdx] in [' ', #9]) do
+    Inc(CharIdx);
+  Code := Copy(FirstLine, CharIdx, MaxInt);
+  if (Code = '') or (Code[1] = '#') or
+     (Copy(Code, 1, Length(AMark)) = AMark) then
+    Exit;
+  Result := StringOfChar(' ', Length(AMark)) + AOut;
+end;
+
 // Строка оканчивается продолжением " _" (вне строки в кавычках и
 // комментария)
 // Продолжение строки, приклеенное к слову: "lFlags As Long_" (Files.inc,
@@ -9045,7 +9072,8 @@ var
   Text, OutText, OutName, SavedFile: string;
   SavedLine, SavedBlocks: Integer;
   SavedProc: TRqProc;
-  StrJoins, CutPos, JoinIdx: Integer;
+  StrJoins, CutPos, JoinIdx, AtIdx: Integer;
+  AtMark: string;
 begin
   DoneIdx := FDoneFiles.IndexOfName(UpperCase(AFileName));
   if DoneIdx >= 0 then
@@ -9126,6 +9154,16 @@ begin
       FCurLine := StartIdx + 1;
       FLostLines := 0;
       ProcessLine(Text, OutText);
+      // Метки RqAtN известны с первого прохода: строки без метки -
+      // сдвиг на её ширину (отступы не ломаются)
+      if FPass = 2 then
+      begin
+        AtIdx := FAtFiles.IndexOf(AFileName);
+        AtMark := '';
+        if AtIdx >= 0 then
+          AtMark := 'RqAt' + IntToStr(AtIdx) + ' : ';
+        OutText := PadUnmarkedLine(OutText, AtMark);
+      end;
       for JoinIdx := 1 to StrJoins do
         OutText := OutText + CrLf;
       OutLines.Add(OutText);
