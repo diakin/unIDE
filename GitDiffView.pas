@@ -50,6 +50,7 @@ const
   DiffTabSize = 4;
   EmStreamIn = WM_USER + 73;
   EmSetTargetDevice = WM_USER + 72;
+  EmHideSelection = WM_USER + 63;
   SfRtf = $0002;
 
   // Цвета таблицы RTF (\cfN, \highlightN)
@@ -216,11 +217,10 @@ begin
   PlainText := False;
   WordWrap := False;
   ScrollBars := ssBoth;
-  HideSelection := False;
   BorderStyle := bsNone;
-  // Шрифт и цвета - в CreateWnd (ApplyLook): смена шрифта у RichEdit в
-  // Delphi 7 (CMFontChanged - DefAttributes) требует окна, а до Parent его
-  // нет - 'Control '' has no parent window'
+  // HideSelection, шрифт и цвета - в CreateWnd: у TRichEdit их установка
+  // может обращаться к окну (Handle) и создавать его, а до Parent окна быть
+  // не может - 'Control '' has no parent window'
   UiThemeAddClient(Self);
 end;
 
@@ -267,6 +267,8 @@ end;
 procedure TGitDiffView.CreateWnd;
 begin
   inherited CreateWnd;
+  // Выделение видно и без фокуса
+  SendMessage(Handle, EmHideSelection, 0, 0);
   ApplyLook;
   // Строки не переносятся (ширина «устройства» 1)
   SendMessage(Handle, EmSetTargetDevice, 0, 1);
