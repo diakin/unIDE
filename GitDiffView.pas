@@ -31,6 +31,7 @@ type
   private
     FLastText: string;
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
+    procedure ApplyLook;
     procedure Render;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
@@ -217,11 +218,21 @@ begin
   ScrollBars := ssBoth;
   HideSelection := False;
   BorderStyle := bsNone;
+  // Шрифт и цвета - в CreateWnd (ApplyLook): смена шрифта у RichEdit в
+  // Delphi 7 (CMFontChanged - DefAttributes) требует окна, а до Parent его
+  // нет - 'Control '' has no parent window'
+  UiThemeAddClient(Self);
+end;
+
+// Шрифт и цвета темы - только когда окно есть
+procedure TGitDiffView.ApplyLook;
+begin
+  if not HandleAllocated then
+    Exit;
   Font.Name := 'Courier New';
   Font.Size := 9;
   Color := UiThemeColor('Edit.BG');
   Font.Color := UiThemeColor('Edit.Text');
-  UiThemeAddClient(Self);
 end;
 
 destructor TGitDiffView.Destroy;
@@ -256,6 +267,7 @@ end;
 procedure TGitDiffView.CreateWnd;
 begin
   inherited CreateWnd;
+  ApplyLook;
   // Строки не переносятся (ширина «устройства» 1)
   SendMessage(Handle, EmSetTargetDevice, 0, 1);
   if FLastText <> '' then
@@ -264,10 +276,11 @@ end;
 
 procedure TGitDiffView.UMUiThemeChanged(var Message: TMessage);
 begin
-  Color := UiThemeColor('Edit.BG');
-  Font.Color := UiThemeColor('Edit.Text');
   if HandleAllocated then
+  begin
+    ApplyLook;
     Render;
+  end;
   Message.Result := 1;
 end;
 
