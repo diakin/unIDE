@@ -8,7 +8,7 @@
 - `RqToFbConvertEx(..., AProgress)` — то же с сообщениями о ходе: проход 1/2, файл, строк пройдено и строк всего (известно во втором проходе); получатель возвращает False — перевод останавливается с ошибкой «перевод остановлен». unIDE по нему двигает полосу этапа «Перевод» в окне хода сборки и обрабатывает кнопку Стоп.
 - `rqtofbcli.dpr` — консольная утилита: `rqtofbcli <главный.bas> <папка вывода> [smart|compat] [папки include через ;]`. Пишет сообщения, затем `APPTYPE=`, `MODE=`, `OUT=`, `ERRORS=`/`WARNINGS=`; код 1 — были ошибки.
 - Строка `'$RQFB SMART` или `'$RQFB COMPAT` в исходнике (комментарий — rc.exe её пропускает) задаёт режим сильнее настройки.
-- `../inc/rqrt.bi` — функции, которые вставляет перевод: `RqNum`/`RqLong`/`RqShort`/`RqByte`/`RqWord`/`RqDword`/`RqSng`/`RqStr` (присваивание), `RqFmt` (PRINT), сообщения об ошибках (окно, stderr, `<программа>_error.log`), режимы `RQ_SMART`/`RQ_COMPAT`.
+- `../inc/rqrt.bi` — функции, которые вставляет перевод: `RqNum`/`RqLong`/`RqShort`/`RqByte`/`RqWord`/`RqDword`/`RqSng`/`RqStr` (присваивание), `RqFmt` (PRINT), `RqChDir`/`RqMkDir`/`RqRmDir`/`RqKill` (CHDIR, MKDIR, RMDIR, KILL: в Smart неудача - окно с путём и строкой исходника RapidQ, программа идёт дальше; в Compat - молча), сообщения об ошибках (окно, stderr, `<программа>_error.log`), режимы `RQ_SMART`/`RQ_COMPAT`.
 - `tests/` — проверочные программы и ожидаемый вывод (`*_expected.txt`; для `types16` — вывод самого RapidQ).
 
 ## В unIDE
