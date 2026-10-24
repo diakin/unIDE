@@ -89,6 +89,7 @@ object DlgNewPrj: TDlgNewPrj
           'Go'
           'Python'
           'Rust'
+          'AutoHotkey'
           'WebSite'
           'ReactOS')
         OnChange = cbTypeChange

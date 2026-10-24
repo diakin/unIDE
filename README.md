@@ -33,6 +33,7 @@ and searched in the same environment.
 | Go | yes | yes | not yet | – | – |
 | Python | yes | yes | not yet | – | – |
 | Rust | yes | yes | not yet | – | – |
+| AutoHotkey v1.1 | yes | yes | not yet | – | – |
 | Web site (HTML, JS, TS) | yes | yes | – | – | – |
 
 Highlighting schemes also exist for INI, BAT, PowerShell, SQL, XML, Java, C#,
@@ -130,6 +131,7 @@ unIDE — универсальная среда разработки для не
 | Go | да | да | пока нет | – | – |
 | Python | да | да | пока нет | – | – |
 | Rust | да | да | пока нет | – | – |
+| AutoHotkey v1.1 | да | да | пока нет | – | – |
 | Сайт (HTML, JS, TS) | да | да | – | – | – |
 
 Схемы подсветки есть также для INI, BAT, PowerShell, SQL, XML, Java, C#, R,

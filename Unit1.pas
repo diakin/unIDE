@@ -11198,7 +11198,8 @@ begin
     if not OnBase and
        ((CompareText(Tp, 'Delphi') = 0) or (CompareText(Tp, 'Lazarus') = 0) or
         (CompareText(Tp, 'Go') = 0) or (CompareText(Tp, 'Python') = 0) or
-        (CompareText(Tp, 'Rust') = 0)) then
+        (CompareText(Tp, 'Rust') = 0) or
+        (CompareText(Tp, 'AutoHotkey') = 0)) then
     begin
       Existing := MainFilesIn(Dir, Tp, SL) > 0;
       if Existing then
@@ -11498,8 +11499,8 @@ begin
         ShowMessage('6441:Не удалось создать ' + Nm + '.res');
     end;
 
-    // ЗАГОТОВКИ ДЛЯ GO, PYTHON И RUST: точка входа и, где язык её требует,
-    // описание модуля или пакета - то, что создают go mod init и cargo new.
+    // ЗАГОТОВКИ ДЛЯ GO, PYTHON, RUST И AUTOHOTKEY: точка входа и, где язык
+    // её требует, описание модуля или пакета - то, что создают go mod init и cargo new.
     // Текст латиницей: исходники этих языков читаются как UTF-8.
     if not OnBase and not Existing then
     begin
@@ -11551,6 +11552,18 @@ begin
         SL.Add('    println!("Hello, world!");');
         SL.Add('}');
         SL.SaveToFile(Dir + 'src\main.rs');
+      end
+      else if CompareText(Tp, 'AutoHotkey') = 0 then
+      begin
+        // Скрипт AutoHotkey v1.1: имя по проекту, как у .dpr
+        SL.Clear;
+        SL.Add('#NoEnv');
+        SL.Add('#SingleInstance Force');
+        SL.Add('SendMode Input');
+        SL.Add('SetWorkingDir %A_ScriptDir%');
+        SL.Add('');
+        SL.Add('MsgBox Hello, world!');
+        SL.SaveToFile(Dir + Nm + '.ahk');
       end;
     end;
 
@@ -11570,7 +11583,9 @@ begin
     else if CompareText(Tp, 'Python') = 0 then
       TargetFile := Dir + 'main.py'
     else if CompareText(Tp, 'Rust') = 0 then
-      TargetFile := Dir + 'src\main.rs';
+      TargetFile := Dir + 'src\main.rs'
+    else if CompareText(Tp, 'AutoHotkey') = 0 then
+      TargetFile := Dir + Nm + '.ahk';
 
     RegisterProject(Nm, Dir);
     Prj := TProjectIni.Create(SettingsFileName, Nm);
@@ -11633,7 +11648,10 @@ begin
       OpenNamedFile(Dir + 'main.py')
     else if (CompareText(Tp, 'Rust') = 0) and
             FileExists(Dir + 'src\main.rs') then
-      OpenNamedFile(Dir + 'src\main.rs');
+      OpenNamedFile(Dir + 'src\main.rs')
+    else if (CompareText(Tp, 'AutoHotkey') = 0) and
+            FileExists(Dir + Nm + '.ahk') then
+      OpenNamedFile(Dir + Nm + '.ahk');
 
     // Список окон и вкладок пишем в описание сразу. Иначе открытый файл
     // живёт только до закрытия среды: в .prj разделов [Windows] и [Tabs]
@@ -11849,6 +11867,8 @@ begin
     Result := '*.go'
   else if CompareText(AType, 'Python') = 0 then
     Result := '*.py'
+  else if CompareText(AType, 'AutoHotkey') = 0 then
+    Result := '*.ahk'
     // У Rust исходники в src, а в корне - Cargo.toml
   else if CompareText(AType, 'Rust') = 0 then
     Result := 'src\main.rs;src\lib.rs;*.rs'
@@ -21930,6 +21950,8 @@ begin
     Masks := '*.go'
   else if CompareText(Tp, 'Python') = 0 then
     Masks := '*.py'
+  else if CompareText(Tp, 'AutoHotkey') = 0 then
+    Masks := '*.ahk;*.ini'
   else if CompareText(Tp, 'Rust') = 0 then
     Masks := '*.rs;*.toml'
   else if CompareText(Tp, 'WebSite') = 0 then
@@ -23793,7 +23815,7 @@ begin
   'Source Code *.pas;*.dpr;*.cpp;*.c;*.h;*.cs;*.java|*.pas;*.dpr;*.cpp;*.c;*.h;*.cs;*.java|' +
   'Bas Files *.bas;*.rqb;*.vbs|*.bas;*.rqb;*.vbs|' +
   'Arduino Files *.ino;*.pde;*.h;*.c;*.cpp|*.ino;*.pde;*.h;*.c;*.cpp|' +
-  'Script Files *.js;*.ts;*.py;*.r;*.rs;*.go;*.ps1;*.bat;*.cmd|*.js;*.ts;*.py;*.r;*.rs;*.go;*.ps1;*.bat;*.cmd|' +
+  'Script Files *.js;*.ts;*.py;*.r;*.rs;*.go;*.ps1;*.bat;*.cmd;*.ahk|*.js;*.ts;*.py;*.r;*.rs;*.go;*.ps1;*.bat;*.cmd;*.ahk|' +
   'Config Files *.yml;*.yaml;*.json|*.yml;*.yaml;*.json|' +
   'Ini Files *.ini;*.prj;*.iss;*.cfg|*.ini;*.prj;*.iss;*.cfg|' +
   'Inc Files *.inc;*.tpl|*.inc;*.tpl|' +
@@ -50035,7 +50057,9 @@ begin
       else if CompareText(PrjType, 'Rust') = 0 then
         LogComp('  В папке проекта: cargo build')
       else if CompareText(PrjType, 'Python') = 0 then
-        LogComp('  Сборки не требуется: python main.py');
+        LogComp('  Сборки не требуется: python main.py')
+      else if CompareText(PrjType, 'AutoHotkey') = 0 then
+        LogComp('  Запуск: AutoHotkey.exe <скрипт>.ahk, сборка exe - Ahk2Exe');
     end;
   end;
 end;

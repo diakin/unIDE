@@ -1,0 +1,30 @@
+• Keywords1 clBlue $00F9F9F9
+if,else,loop,while,until,for,in,break,continue,return,goto,gosub,exit,exitapp,try,catch,finally,throw,global,local,static,class,extends,new,not,and,or,is,contains,between,switch,case,default
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+msgbox,inputbox,tooltip,traytip,send,sendinput,sendraw,sendevent,sendplay,sendmode,sendtext,sleep,run,runwait,reload,suspend,pause,critical,settimer,hotkey,hotstring,inputhook,menu,gui,guicontrol,guicontrolget,iniread,iniwrite,inidelete,fileread,fileappend,filedelete,filecopy,filemove,filecreatedir,fileremovedir,fileexist,fileselectfile,fileselectfolder,regread,regwrite,regdelete,winactivate,winactive,winexist,winclose,winwait,winget,winset,wingettitle,wingetclass,wingetpos,winmove,winhide,winshow,controlclick,controlsend,controlgettext,controlsettext,controlgetfocus,controlfocus,mousegetpos,mousemove,click,keywait,getkeystate,setcapslockstate,setnumlockstate,setscrolllockstate,clipwait,stringreplace,stringsplit,strsplit,strreplace,strlen,substr,instr,regexmatch,regexreplace,format,dllcall,numget,numput,varsetcapacity,strget,strput,objrelease,comobjcreate,func,isobject,setformat,setbatchlines,setkeydelay,setwindelay,settitlematchmode,setworkingdir,coordmode,process,listvars,listlines,outputdebug,soundplay,true,false
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
+()[]{}*+,-./:<=>!&|^~?%
+• LineComment clGreen $00F9F9F9
+;
+• BlockComment $00008000 $00F9F9F9
+/* */
+• BlockComment@Dark $00009B00 $001A1A1A
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+0x
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• LineMark clNone clYellow
+
