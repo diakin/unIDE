@@ -1101,6 +1101,18 @@ type
     // Убран из списка кнопкой Remove ... from List: панель не добавляет его
     // снова, пока его не выберут явно
     FGitRecentSkip: string;
+    // Строка репозитория: путь и origin - поля только для чтения (выделить
+    // мышью и скопировать), подписи origin: и (выбран вручную); меню
+    // копирования (правый щелчок по строкам панели, Ctrl+C в списке веток)
+    FGitEdPath: TUiEdit;
+    FGitLblOrigin: TUiLabel;
+    FGitEdRemote: TUiEdit;
+    FGitLblManual: TUiLabel;
+    FGitCopyMenu: TUiPopupMenu;
+    FGitMiCopyRemote: TMenuItem;
+    FGitMiCopyBranch: TMenuItem;
+    FGitRemoteUrl: string;
+    FGitBranchName: string;
     FGitAhead: Integer;
     FGitBehind: Integer;
     FGitBusy: Boolean;
@@ -2949,6 +2961,15 @@ type
     procedure GitRepoBtnClick(Sender: TObject);
     procedure GitRecentRepoClick(Sender: TObject);
     procedure GitRecentRemoveClick(Sender: TObject);
+    procedure GitShowRepoFields(AShow: Boolean);
+    procedure GitLayoutRepoRow;
+    procedure GitCopyMenuPopup(Sender: TObject);
+    procedure GitCopyPathClick(Sender: TObject);
+    procedure GitCopyRemoteClick(Sender: TObject);
+    procedure GitCopyBranchClick(Sender: TObject);
+    procedure GitFieldDblClick(Sender: TObject);
+    procedure GitBranchKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
     function  GitRepoTop(const AGit, ADir: string): string;
     function  GitPrepare(var AGit, ARepo: string): Boolean;
     function  GitCurrentBranch(const AGit, ARepo: string): string;
@@ -64723,6 +64744,8 @@ end;
 // ---------------------------------------------------------------------------
 
 procedure TForm1.GitBuildBar;
+var
+  MenuItem: TMenuItem;
 
   function NewButton(const ACaption, AHint: string; ALeft, AWidth: Integer;
     AClick: TNotifyEvent): TUiButton;
@@ -64780,6 +64803,53 @@ begin
     GitRepoBtnClick);
   FGitBtnRepo.Top := 25;
   FGitLblRepo := NewLabel(102, 27, '-');
+  // Путь и origin - поля только для чтения без рамки: выделить мышью,
+  // Ctrl+C или правый щелчок - Копировать; двойной щелчок - выделить всё
+  FGitEdPath := TUiEdit.Create(Self);
+  FGitEdPath.Parent := FGitBar;
+  FGitEdPath.BorderStyle := bsNone;
+  FGitEdPath.ReadOnly := True;
+  FGitEdPath.AutoSize := False;
+  FGitEdPath.Font.Size := 10;
+  FGitEdPath.SetBounds(200, 27, 100, 18);
+  FGitEdPath.Hint := 'Локальная папка репозитория: выделите мышью и Ctrl+C ' +
+    '(двойной щелчок - всё)';
+  FGitEdPath.ShowHint := True;
+  FGitEdPath.OnDblClick := GitFieldDblClick;
+  FGitLblOrigin := NewLabel(310, 27, 'origin:');
+  FGitEdRemote := TUiEdit.Create(Self);
+  FGitEdRemote.Parent := FGitBar;
+  FGitEdRemote.BorderStyle := bsNone;
+  FGitEdRemote.ReadOnly := True;
+  FGitEdRemote.AutoSize := False;
+  FGitEdRemote.Font.Size := 10;
+  FGitEdRemote.SetBounds(360, 27, 100, 18);
+  FGitEdRemote.Hint := 'Адрес remote origin: выделите мышью и Ctrl+C ' +
+    '(двойной щелчок - всё)';
+  FGitEdRemote.ShowHint := True;
+  FGitEdRemote.OnDblClick := GitFieldDblClick;
+  FGitLblManual := NewLabel(470, 27, '(выбран вручную)');
+  GitShowRepoFields(False);
+  // Меню копирования: правый щелчок по строкам панели (у полей пути и
+  // origin - своё меню Windows с Копировать)
+  FGitCopyMenu := TUiPopupMenu.Create(Self);
+  FGitCopyMenu.OnPopup := GitCopyMenuPopup;
+  MenuItem := TMenuItem.Create(FGitCopyMenu);
+  MenuItem.Caption := 'Copy Local Path';
+  MenuItem.OnClick := GitCopyPathClick;
+  FGitCopyMenu.Items.Add(MenuItem);
+  FGitMiCopyRemote := TMenuItem.Create(FGitCopyMenu);
+  FGitMiCopyRemote.Caption := 'Copy origin URL';
+  FGitMiCopyRemote.OnClick := GitCopyRemoteClick;
+  FGitCopyMenu.Items.Add(FGitMiCopyRemote);
+  FGitMiCopyBranch := TMenuItem.Create(FGitCopyMenu);
+  FGitMiCopyBranch.Caption := 'Copy Branch Name';
+  FGitMiCopyBranch.OnClick := GitCopyBranchClick;
+  FGitCopyMenu.Items.Add(FGitMiCopyBranch);
+  FGitBar.PopupMenu := FGitCopyMenu;
+  FGitLblRepo.PopupMenu := FGitCopyMenu;
+  FGitLblOrigin.PopupMenu := FGitCopyMenu;
+  FGitLblManual.PopupMenu := FGitCopyMenu;
   NewLabel(4, 51, 'Branch:');
   FGitCmbBranch := TUiComboBox.Create(Self);
   FGitCmbBranch.Parent := FGitBar;
@@ -64790,6 +64860,10 @@ begin
     '(git checkout)';
   FGitCmbBranch.ShowHint := True;
   FGitCmbBranch.OnChange := GitBranchComboChange;
+  FGitCmbBranch.OnKeyDown := GitBranchKeyDown;
+  FGitCmbBranch.PopupMenu := FGitCopyMenu;
+  FGitCmbBranch.Hint := FGitCmbBranch.Hint + '. Ctrl+C или правый щелчок - ' +
+    'скопировать имя ветки';
   FGitLblSync := NewLabel(292, 51, '');
   FGitLblBuild := NewLabel(4, 75, '');
   // Что сделала последняя команда - словами (GitSetHint)
@@ -64853,6 +64927,9 @@ begin
   FGitBranchFill := True;
   try
     FGitCmbBranch.Items.Clear;
+    FGitRemoteUrl := '';
+    FGitBranchName := '';
+    GitShowRepoFields(False);
     if Git = '' then
     begin
       Installed := string(GitFindInstalled(InstalledHow));
@@ -64885,19 +64962,24 @@ begin
     end;
     Remote := GitQuery(Git, Repo, 'config --get remote.origin.url');
     FGitLblRepo.Caption := ExtractFileName(
-      ExcludeTrailingPathDelimiter(Repo)) + '   ' + Repo;
+      ExcludeTrailingPathDelimiter(Repo));
     FGitRepoTop := Repo;
+    FGitRemoteUrl := Remote;
     GitRecentAdd(Repo, True);
-    if Remote <> '' then
-      FGitLblRepo.Caption := FGitLblRepo.Caption + '   origin: ' + Remote;
-    if FGitRepoChosen <> '' then
-      FGitLblRepo.Caption := FGitLblRepo.Caption + '   (выбран вручную)';
+    FGitEdPath.Text := ExcludeTrailingPathDelimiter(Repo);
+    FGitEdRemote.Text := Remote;
+    GitShowRepoFields(True);
+    FGitLblOrigin.Visible := Remote <> '';
+    FGitEdRemote.Visible := Remote <> '';
+    FGitLblManual.Visible := FGitRepoChosen <> '';
+    GitLayoutRepoRow;
     if FGitRepoChosen <> '' then
       FGitLblRepo.Hint := 'Выбран вручную (Repository - Use Repository of ' +
         'Current Project - снова по проекту)'
     else
       FGitLblRepo.Hint := 'Репозиторий открытого проекта';
     Branch := GitCurrentBranch(Git, Repo);
+    FGitBranchName := Branch;
     GitBranchList(Git, Repo, False, FGitCmbBranch.Items);
     if Branch = '' then
     begin
@@ -65493,6 +65575,92 @@ begin
   begin
     FNewPrjPresetDir := Target;
     NewProjectClick(nil);
+  end;
+end;
+
+// Поля строки репозитория (путь, origin, выбран вручную) - видны / нет
+procedure TForm1.GitShowRepoFields(AShow: Boolean);
+begin
+  if FGitEdPath = nil then
+    Exit;
+  FGitEdPath.Visible := AShow;
+  FGitLblOrigin.Visible := AShow;
+  FGitEdRemote.Visible := AShow;
+  FGitLblManual.Visible := AShow;
+end;
+
+// Строка репозитория слева направо: имя, путь, origin:, адрес, (выбран
+// вручную). Ширина полей - по тексту (шрифт полей)
+procedure TForm1.GitLayoutRepoRow;
+const
+  FieldGap = 10;
+  FieldPad = 8;
+var
+  NextLeft: Integer;
+
+  function FieldWidth(AEdit: TUiEdit): Integer;
+  begin
+    Canvas.Font.Assign(AEdit.Font);
+    Result := Canvas.TextWidth(AEdit.Text) + FieldPad;
+  end;
+
+begin
+  NextLeft := FGitLblRepo.Left + FGitLblRepo.Width + FieldGap;
+  FGitEdPath.SetBounds(NextLeft, FGitLblRepo.Top, FieldWidth(FGitEdPath),
+    FGitEdPath.Height);
+  NextLeft := FGitEdPath.Left + FGitEdPath.Width + FieldGap;
+  if FGitEdRemote.Visible then
+  begin
+    FGitLblOrigin.Left := NextLeft;
+    NextLeft := FGitLblOrigin.Left + FGitLblOrigin.Width + 4;
+    FGitEdRemote.SetBounds(NextLeft, FGitLblRepo.Top,
+      FieldWidth(FGitEdRemote), FGitEdRemote.Height);
+    NextLeft := FGitEdRemote.Left + FGitEdRemote.Width + FieldGap;
+  end;
+  FGitLblManual.Left := NextLeft;
+end;
+
+procedure TForm1.GitCopyMenuPopup(Sender: TObject);
+begin
+  FGitMiCopyRemote.Enabled := FGitRemoteUrl <> '';
+  FGitMiCopyBranch.Enabled := FGitBranchName <> '';
+end;
+
+procedure TForm1.GitCopyPathClick(Sender: TObject);
+begin
+  if FGitRepoTop <> '' then
+    Clipboard.AsText := ExcludeTrailingPathDelimiter(FGitRepoTop)
+  else
+    Clipboard.AsText := GitBaseDir;
+end;
+
+procedure TForm1.GitCopyRemoteClick(Sender: TObject);
+begin
+  if FGitRemoteUrl <> '' then
+    Clipboard.AsText := FGitRemoteUrl;
+end;
+
+procedure TForm1.GitCopyBranchClick(Sender: TObject);
+begin
+  if FGitBranchName <> '' then
+    Clipboard.AsText := FGitBranchName;
+end;
+
+// Двойной щелчок по полю пути / origin - выделить весь текст
+procedure TForm1.GitFieldDblClick(Sender: TObject);
+begin
+  if Sender is TUiEdit then
+    TUiEdit(Sender).SelectAll;
+end;
+
+// Ctrl+C в списке веток - имя текущей ветки в буфер
+procedure TForm1.GitBranchKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (Key = Ord('C')) and (ssCtrl in Shift) then
+  begin
+    GitCopyBranchClick(Sender);
+    Key := 0;
   end;
 end;
 
