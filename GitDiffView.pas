@@ -23,8 +23,8 @@ unit GitDiffView;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, ComCtrls,
-  UiTheme;
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls, Forms,
+  ComCtrls, UiTheme;
 
 type
   TGitDiffView = class(TRichEdit)
