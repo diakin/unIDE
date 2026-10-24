@@ -1,98 +1,142 @@
 unit FarVolumes;
 
 // ---------------------------------------------------------------------------
-//  Сведения о томах для меню дисков unIDE FAR (Alt+F1 / Alt+F2):
+//  Сведения о дисках и томах для меню дисков unIDE FAR (Alt+F1 / Alt+F2),
+//  без diskpart:
 //
-//  - номер тома (Том #), состояние и сведения (загрузочный, системный,
-//    скрытый) - из diskpart (list volume), как их показывает diskpart.
-//    diskpart требует прав администратора: unIDE запущен без них -
-//    CreateProcess отвечает ERROR_ELEVATION_REQUIRED (740), номеров нет.
-//    Запрос - в своём потоке (diskpart отвечает секунду-две), один раз за
-//    открытие FAR; вывод - в кодировке OEM;
+//  - номер физического диска и раздела тома ('0:2' - диск 0, раздел 2):
+//    IOCTL_STORAGE_GET_DEVICE_NUMBER к '\\.\C:' или '\\?\Volume{...}'.
+//    Номер диска - тот же, что в 'Управлении дисками' и в diskpart
+//    (list disk). Номер тома diskpart (Том #) - внутренняя нумерация
+//    службы VDS, ей нужны права администратора; здесь его нет;
+//  - физические диски '\\.\PhysicalDriveN': модель (производитель +
+//    изделие), шина (SATA, USB, ...), сменный ли -
+//    IOCTL_STORAGE_QUERY_PROPERTY; размер - IOCTL_DISK_GET_DRIVE_GEOMETRY_EX
+//    (нет носителя в картридере - размера нет);
+//  - устройство открывается без прав на чтение и запись (dwDesiredAccess
+//    = 0): так Windows разрешает запрашивать свойства устройства, обычно и
+//    без прав администратора. SMART, температура, паспорт ATA требуют
+//    полного доступа - их здесь нет;
 //  - тома без буквы (системные, скрытые разделы, папки-точки
 //    подключения) - FindFirstVolumeW / GetVolumePathNamesForVolumeNameW:
-//    метка, файловая система, размер; работает и без прав администратора;
+//    метка, файловая система, размер, диск и раздел;
 //  - размер в виде FAR: '476,14 G', '1,82 T' (FarSizeShort).
-//
-//  Разбор вывода diskpart не зависит от языка: колонки - по строке из
-//  дефисов под заголовком, номер тома - число в конце первой колонки.
 // ---------------------------------------------------------------------------
 
 interface
 
 uses
-  Windows, SysUtils, Classes;
+  Windows, SysUtils;
 
 type
+  // Где лежит том: устройство, номер диска, номер раздела
+  TFarDeviceNumber = record
+    Valid: Boolean;
+    DeviceType: DWORD;        // FILE_DEVICE_DISK (7), FILE_DEVICE_CD_ROM (2)...
+    DiskNumber: Integer;
+    PartNumber: Integer;      // 0 - диск без таблицы разделов; -1 - нет
+  end;
+
+  // Физический диск (или CD-привод - для модели)
+  TFarDisk = record
+    Number: Integer;          // N из \\.\PhysicalDriveN
+    Model: WideString;        // производитель + изделие
+    BusText: WideString;      // SATA, USB, SCSI, ...
+    Removable: Boolean;       // сменный носитель
+    HasSize: Boolean;         // размер известен (носитель есть)
+    Size: Int64;
+    ErrorCode: DWORD;         // не открылось - код ошибки Windows, иначе 0
+  end;
+  TFarDisks = array of TFarDisk;
+
   TFarVolume = record
-    Number: Integer;          // Том # (diskpart); -1 - неизвестен
-    Letter: WideChar;         // #0 - без буквы
     MountPath: WideString;    // папка подключения (тома без буквы) или ''
     VolLabel: WideString;
     FileSys: WideString;
-    TypeText: WideString;     // тип из diskpart (Раздел, Сменный, ...)
-    SizeText: WideString;     // размер строкой (diskpart или FarSizeShort)
-    Status: WideString;       // состояние (diskpart)
-    Info: WideString;         // сведения (diskpart)
+    SizeText: WideString;     // размер строкой (FarSizeShort)
     Total: Int64;
     Free: Int64;
     HasSize: Boolean;
+    Device: TFarDeviceNumber;
   end;
   TFarVolumes = array of TFarVolume;
 
-  // diskpart list volume в своём потоке
-  TFarDiskpartThread = class(TThread)
-  private
-    FOutput: WideString;
-    FErrorCode: DWORD;        // 0 - отработал; 740 - нужны права администратора
-    FFinished: Integer;
-    function GetFinished: Boolean;
-  protected
-    procedure Execute; override;
-  public
-    constructor Create;
-    property Output: WideString read FOutput;
-    property ErrorCode: DWORD read FErrorCode;
-    property Finished: Boolean read GetFinished;
-  end;
-
-// Вывод diskpart (list volume) -> тома с номерами
-procedure FarParseDiskpart(const AText: WideString; var AVolumes: TFarVolumes);
+// Номер диска и раздела устройства: '\\.\C:', '\\?\Volume{...}' (без '\'
+// в конце). Не открылось / не ответило - False, ANumber.Valid = False
+function FarDeviceNumber(const ADevicePath: WideString;
+  var ANumber: TFarDeviceNumber): Boolean;
+// '0:2' - диск 0, раздел 2; 'CD0' - CD-привод 0; '' - неизвестно
+function FarDeviceText(const ANumber: TFarDeviceNumber): WideString;
+// Модель, шина, сменный устройства (диска, CD-привода); AWithSize - и
+// размер (у CD не спрашиваем: привод с диском может раскручиваться)
+function FarDeviceInfo(const ADevicePath: WideString; AWithSize: Boolean;
+  var ADisk: TFarDisk): Boolean;
+// Физические диски \\.\PhysicalDrive0..31. Результат: 0, или (дисков нет)
+// код ошибки Windows первого отказа, кроме 'нет такого диска'
+function FarPhysicalDisks(var ADisks: TFarDisks): DWORD;
+// Индекс диска с номером ANumber в ADisks; -1 - нет
+function FarFindDisk(const ADisks: TFarDisks; ANumber: Integer): Integer;
 // Тома без буквы диска (через API Windows)
 procedure FarNoLetterVolumes(var AVolumes: TFarVolumes);
 // Размер как в FAR: '476,14 G'
 function FarSizeShort(ABytes: Int64): WideString;
 
 const
-  FarErrorElevation = 740;    // ERROR_ELEVATION_REQUIRED
+  FarDeviceDisk = 7;          // FILE_DEVICE_DISK
+  FarDeviceCdRom = 2;         // FILE_DEVICE_CD_ROM
+  FarDeviceDvd = $33;         // FILE_DEVICE_DVD
+  FarMaxPhysicalDisks = 32;
 
 implementation
 
 const
-  FvCreateNoWindow = $08000000;
-  FvStartfUseStdHandles = $00000100;
-  FvStartfUseShowWindow = $00000001;
-  FvCpOem = 1;                // CP_OEMCP
+  FvShareReadWrite = 3;       // FILE_SHARE_READ or FILE_SHARE_WRITE
+  FvCpAnsi = 0;               // CP_ACP
+  // CTL_CODE(тип, функция, METHOD_BUFFERED, FILE_ANY_ACCESS)
+  FvIoctlStorageGetDeviceNumber = $002D1080;
+  FvIoctlStorageQueryProperty = $002D1400;
+  FvIoctlDiskGetDriveGeometryEx = $000700A0;
+  FvErrorFileNotFound = 2;
+  FvErrorPathNotFound = 3;
 
 type
-  TFvStartupInfoW = record
-    cb: DWORD;
-    lpReserved, lpDesktop, lpTitle: PWideChar;
-    dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars,
-    dwFillAttribute, dwFlags: DWORD;
-    wShowWindow, cbReserved2: Word;
-    lpReserved2: Pointer;
-    hStdInput, hStdOutput, hStdError: THandle;
+  TFvStorageDeviceNumber = packed record
+    DeviceType: DWORD;
+    DeviceNumber: DWORD;
+    PartitionNumber: DWORD;
   end;
-  TFvProcessInfo = record
-    hProcess, hThread: THandle;
-    dwProcessId, dwThreadId: DWORD;
+  TFvStoragePropertyQuery = packed record
+    PropertyId: DWORD;        // StorageDeviceProperty = 0
+    QueryType: DWORD;         // PropertyStandardQuery = 0
+    Additional: array[0..3] of Byte;
   end;
-  TFvSecurity = record
-    nLength: DWORD;
-    lpSecurityDescriptor: Pointer;
-    bInheritHandle: BOOL;
+  // STORAGE_DEVICE_DESCRIPTOR (начало); строки - по смещениям от начала
+  TFvStorageDeviceDescriptor = packed record
+    Version: DWORD;
+    Size: DWORD;
+    DeviceType: Byte;
+    DeviceTypeModifier: Byte;
+    RemovableMedia: Byte;
+    CommandQueueing: Byte;
+    VendorIdOffset: DWORD;
+    ProductIdOffset: DWORD;
+    ProductRevisionOffset: DWORD;
+    SerialNumberOffset: DWORD;
+    BusType: DWORD;
+    RawPropertiesLength: DWORD;
   end;
+  PFvStorageDeviceDescriptor = ^TFvStorageDeviceDescriptor;
+  // DISK_GEOMETRY_EX (начало): DISK_GEOMETRY (24 байта), DiskSize
+  TFvDiskGeometryEx = packed record
+    Cylinders: Int64;
+    MediaType: DWORD;
+    TracksPerCylinder: DWORD;
+    SectorsPerTrack: DWORD;
+    BytesPerSector: DWORD;
+    DiskSize: Int64;
+  end;
+  PFvDiskGeometryEx = ^TFvDiskGeometryEx;
+
   TFvGetPathNames = function(AVolumeName, APathNames: PWideChar;
     ABufferLength: DWORD; var AReturnLength: DWORD): BOOL; stdcall;
   TFvFindFirstVolume = function(AVolumeName: PWideChar;
@@ -101,37 +145,17 @@ type
     ABufferLength: DWORD): BOOL; stdcall;
   TFvFindVolumeClose = function(AFindHandle: THandle): BOOL; stdcall;
 
-function FvCreateProcess(AAppName, ACmdLine: PWideChar;
-  AProcAttr, AThreadAttr: Pointer; AInherit: BOOL; AFlags: DWORD;
-  AEnv: Pointer; ACurDir: PWideChar; var AStartup: TFvStartupInfoW;
-  var AProcInfo: TFvProcessInfo): BOOL; stdcall;
-  external 'kernel32.dll' name 'CreateProcessW';
-function FvCreatePipe(var ARead, AWrite: THandle; AAttr: Pointer;
-  ASize: DWORD): BOOL; stdcall; external 'kernel32.dll' name 'CreatePipe';
-function FvPeekPipe(APipe: THandle; ABuffer: Pointer; ASize: DWORD;
-  ARead, AAvail, ALeft: PDWORD): BOOL; stdcall;
-  external 'kernel32.dll' name 'PeekNamedPipe';
-function FvReadFile(AFile: THandle; ABuffer: Pointer; ACount: DWORD;
-  var ARead: DWORD; AOverlapped: Pointer): BOOL; stdcall;
-  external 'kernel32.dll' name 'ReadFile';
-function FvSetHandleInfo(AHandle: THandle; AMask, AFlags: DWORD): BOOL;
-  stdcall; external 'kernel32.dll' name 'SetHandleInformation';
-function FvTerminate(AProcess: THandle; ACode: UINT): BOOL; stdcall;
-  external 'kernel32.dll' name 'TerminateProcess';
 function FvMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
   AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
   external 'kernel32.dll' name 'MultiByteToWideChar';
-function FvGetTempPath(ABufferLen: DWORD; ABuffer: PWideChar): DWORD; stdcall;
-  external 'kernel32.dll' name 'GetTempPathW';
 function FvCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
   ASecurity: Pointer; ACreation, AFlags: DWORD;
   ATemplate: THandle): THandle; stdcall;
   external 'kernel32.dll' name 'CreateFileW';
-function FvWriteFile(AFile: THandle; ABuffer: Pointer; ACount: DWORD;
-  var AWritten: DWORD; AOverlapped: Pointer): BOOL; stdcall;
-  external 'kernel32.dll' name 'WriteFile';
-function FvDeleteFile(AFileName: PWideChar): BOOL; stdcall;
-  external 'kernel32.dll' name 'DeleteFileW';
+function FvDeviceIoControl(ADevice: THandle; ACode: DWORD; AInBuffer: Pointer;
+  AInSize: DWORD; AOutBuffer: Pointer; AOutSize: DWORD; var AReturned: DWORD;
+  AOverlapped: Pointer): BOOL; stdcall;
+  external 'kernel32.dll' name 'DeviceIoControl';
 function FvGetVolumeInfo(ARoot, AVolumeName: PWideChar; AVolumeNameSize: DWORD;
   ASerial, AMaxComponent, AFlags: PDWORD; AFileSystem: PWideChar;
   AFileSystemSize: DWORD): BOOL; stdcall;
@@ -179,123 +203,219 @@ begin
   Result := Copy(AText, StartPos, EndPos - StartPos + 1);
 end;
 
-procedure FarParseDiskpart(const AText: WideString; var AVolumes: TFarVolumes);
-var
-  Lines: array of WideString;
-  ColStart, ColEnd: array of Integer;
-  LinePos, LineEnd, LineIdx, DashLine, CharIdx, ColCount, Count: Integer;
-  Line, NumText, Field: WideString;
-  Volume: TFarVolume;
-  NumPos: Integer;
-
-  function Column(const ALine: WideString; AIndex: Integer): WideString;
-  begin
-    if AIndex >= ColCount then
-      Result := ''
-    else if AIndex = ColCount - 1 then
-      // Последняя колонка - до конца строки (сведения бывают длиннее)
-      Result := FvTrim(Copy(ALine, ColStart[AIndex], MaxInt))
-    else
-      Result := FvTrim(Copy(ALine, ColStart[AIndex],
-        ColEnd[AIndex] - ColStart[AIndex] + 1));
-  end;
-
+// Открыть устройство только для запроса свойств (без чтения и записи)
+function FvOpenDevice(const ADevicePath: WideString): THandle;
 begin
-  SetLength(AVolumes, 0);
-  // Строки
-  SetLength(Lines, 0);
-  LinePos := 1;
-  while LinePos <= Length(AText) do
-  begin
-    LineEnd := LinePos;
-    while (LineEnd <= Length(AText)) and (AText[LineEnd] <> #10) do
-      Inc(LineEnd);
-    SetLength(Lines, Length(Lines) + 1);
-    Lines[High(Lines)] := Copy(AText, LinePos, LineEnd - LinePos);
-    if (Lines[High(Lines)] <> '') and
-       (Lines[High(Lines)][Length(Lines[High(Lines)])] = #13) then
-      SetLength(Lines[High(Lines)], Length(Lines[High(Lines)]) - 1);
-    LinePos := LineEnd + 1;
+  Result := FvCreateFile(PWideChar(ADevicePath), 0, FvShareReadWrite, nil,
+    OPEN_EXISTING, 0, 0);
+end;
+
+// Строка ANSI по смещению в ответе (смещение 0 или за пределами - '')
+function FvDescString(ABuffer: PAnsiChar; ABufferLen, AOffset: DWORD): WideString;
+var
+  EndPos, WideLen: Integer;
+  Raw: string;
+begin
+  Result := '';
+  if (AOffset = 0) or (AOffset >= ABufferLen) then
+    Exit;
+  EndPos := AOffset;
+  while (DWORD(EndPos) < ABufferLen) and (ABuffer[EndPos] <> #0) do
+    Inc(EndPos);
+  SetString(Raw, ABuffer + AOffset, EndPos - Integer(AOffset));
+  if Raw = '' then
+    Exit;
+  WideLen := FvMultiToWide(FvCpAnsi, 0, PAnsiChar(Raw), Length(Raw), nil, 0);
+  if WideLen <= 0 then
+    Exit;
+  SetLength(Result, WideLen);
+  FvMultiToWide(FvCpAnsi, 0, PAnsiChar(Raw), Length(Raw), PWideChar(Result),
+    WideLen);
+  Result := FvTrim(Result);
+end;
+
+// STORAGE_BUS_TYPE -> название шины
+function FvBusText(ABusType: DWORD): WideString;
+begin
+  case ABusType of
+    1: Result := 'SCSI';
+    2: Result := 'ATAPI';
+    3: Result := 'ATA';
+    4: Result := '1394';
+    5: Result := 'SSA';
+    6: Result := 'Fibre';
+    7: Result := 'USB';
+    8: Result := 'RAID';
+    9: Result := 'iSCSI';
+    10: Result := 'SAS';
+    11: Result := 'SATA';
+    12: Result := 'SD';
+    13: Result := 'MMC';
+    14: Result := 'Virtual';
+    15: Result := 'VHD';
+    16: Result := 'Spaces';
+    17: Result := 'NVMe';
+    18: Result := 'SCM';
+    19: Result := 'UFS';
+  else
+    Result := '';
   end;
-  // Строка из дефисов и пробелов (не меньше трёх групп) - под заголовком
-  DashLine := -1;
-  for LineIdx := 0 to High(Lines) do
-  begin
-    Line := FvTrim(Lines[LineIdx]);
-    if (Length(Line) >= 10) and (Line[1] = '-') then
+end;
+
+function FarDeviceNumber(const ADevicePath: WideString;
+  var ANumber: TFarDeviceNumber): Boolean;
+var
+  DevHandle: THandle;
+  DevNumber: TFvStorageDeviceNumber;
+  Returned: DWORD;
+begin
+  ANumber.Valid := False;
+  ANumber.DeviceType := 0;
+  ANumber.DiskNumber := -1;
+  ANumber.PartNumber := -1;
+  Result := False;
+  DevHandle := FvOpenDevice(ADevicePath);
+  if DevHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  try
+    FillChar(DevNumber, SizeOf(DevNumber), 0);
+    Returned := 0;
+    // Том на нескольких дисках (динамический, составной) - отказ
+    if FvDeviceIoControl(DevHandle, FvIoctlStorageGetDeviceNumber, nil, 0,
+       @DevNumber, SizeOf(DevNumber), Returned, nil) and
+       (Returned >= SizeOf(DevNumber)) then
     begin
-      ColCount := 0;
-      for CharIdx := 1 to Length(Line) do
-        if (Line[CharIdx] <> '-') and (Line[CharIdx] <> ' ') then
-        begin
-          ColCount := -1;
-          Break;
-        end;
-      if ColCount = 0 then
-      begin
-        DashLine := LineIdx;
-        Break;
-      end;
+      ANumber.Valid := True;
+      ANumber.DeviceType := DevNumber.DeviceType;
+      ANumber.DiskNumber := Integer(DevNumber.DeviceNumber);
+      if DevNumber.PartitionNumber = $FFFFFFFF then
+        ANumber.PartNumber := -1
+      else
+        ANumber.PartNumber := Integer(DevNumber.PartitionNumber);
+      Result := True;
     end;
+  finally
+    CloseHandle(DevHandle);
   end;
-  if DashLine < 0 then
+end;
+
+function FarDeviceText(const ANumber: TFarDeviceNumber): WideString;
+begin
+  Result := '';
+  if not ANumber.Valid then
     Exit;
-  Line := Lines[DashLine];
-  ColCount := 0;
-  SetLength(ColStart, 0);
-  SetLength(ColEnd, 0);
-  CharIdx := 1;
-  while CharIdx <= Length(Line) do
+  case ANumber.DeviceType of
+    FarDeviceDisk:
+      if ANumber.PartNumber >= 0 then
+        Result := IntToStr(ANumber.DiskNumber) + ':' +
+          IntToStr(ANumber.PartNumber)
+      else
+        Result := IntToStr(ANumber.DiskNumber);
+    FarDeviceCdRom, FarDeviceDvd:
+      Result := 'CD' + IntToStr(ANumber.DiskNumber);
+  end;
+end;
+
+function FarDeviceInfo(const ADevicePath: WideString; AWithSize: Boolean;
+  var ADisk: TFarDisk): Boolean;
+var
+  DevHandle: THandle;
+  Query: TFvStoragePropertyQuery;
+  Buffer: array[0..1023] of AnsiChar;
+  Descriptor: PFvStorageDeviceDescriptor;
+  Geometry: array[0..255] of Byte;
+  Returned, DataLen: DWORD;
+  Vendor, Product: WideString;
+begin
+  ADisk.Model := '';
+  ADisk.BusText := '';
+  ADisk.Removable := False;
+  ADisk.HasSize := False;
+  ADisk.Size := 0;
+  ADisk.ErrorCode := 0;
+  Result := False;
+  DevHandle := FvOpenDevice(ADevicePath);
+  if DevHandle = INVALID_HANDLE_VALUE then
   begin
-    if Line[CharIdx] = '-' then
+    ADisk.ErrorCode := GetLastError;
+    Exit;
+  end;
+  try
+    Result := True;
+    FillChar(Query, SizeOf(Query), 0);
+    FillChar(Buffer, SizeOf(Buffer), 0);
+    Returned := 0;
+    if FvDeviceIoControl(DevHandle, FvIoctlStorageQueryProperty, @Query,
+       SizeOf(Query), @Buffer[0], SizeOf(Buffer), Returned, nil) and
+       (Returned >= SizeOf(TFvStorageDeviceDescriptor)) then
     begin
-      SetLength(ColStart, ColCount + 1);
-      SetLength(ColEnd, ColCount + 1);
-      ColStart[ColCount] := CharIdx;
-      while (CharIdx <= Length(Line)) and (Line[CharIdx] = '-') do
-        Inc(CharIdx);
-      ColEnd[ColCount] := CharIdx - 1;
-      Inc(ColCount);
-    end
-    else
-      Inc(CharIdx);
+      Descriptor := PFvStorageDeviceDescriptor(@Buffer[0]);
+      DataLen := Returned;
+      if (Descriptor^.Size > 0) and (Descriptor^.Size < DataLen) then
+        DataLen := Descriptor^.Size;
+      Vendor := FvDescString(@Buffer[0], DataLen, Descriptor^.VendorIdOffset);
+      Product := FvDescString(@Buffer[0], DataLen, Descriptor^.ProductIdOffset);
+      // SATA-диски за SCSI-драйвером: производитель 'ATA' - не показываем
+      if (Vendor <> '') and (UpperCase(string(Vendor)) <> 'ATA') then
+        ADisk.Model := FvTrim(Vendor + ' ' + Product)
+      else
+        ADisk.Model := Product;
+      ADisk.BusText := FvBusText(Descriptor^.BusType);
+      ADisk.Removable := Descriptor^.RemovableMedia <> 0;
+    end;
+    // Размер: нет носителя (картридер, пустой привод) - отказ
+    FillChar(Geometry, SizeOf(Geometry), 0);
+    Returned := 0;
+    if AWithSize and FvDeviceIoControl(DevHandle, FvIoctlDiskGetDriveGeometryEx, nil, 0,
+       @Geometry[0], SizeOf(Geometry), Returned, nil) and
+       (Returned >= SizeOf(TFvDiskGeometryEx)) then
+    begin
+      ADisk.Size := PFvDiskGeometryEx(@Geometry[0])^.DiskSize;
+      ADisk.HasSize := ADisk.Size > 0;
+    end;
+  finally
+    CloseHandle(DevHandle);
   end;
-  if ColCount < 4 then
-    Exit;
+end;
+
+function FarPhysicalDisks(var ADisks: TFarDisks): DWORD;
+var
+  DiskIdx, Count: Integer;
+  Disk: TFarDisk;
+begin
+  SetLength(ADisks, 0);
+  Result := 0;
   Count := 0;
-  for LineIdx := DashLine + 1 to High(Lines) do
+  // Номера бывают с пропусками (диск отключили) - проверяем все
+  for DiskIdx := 0 to FarMaxPhysicalDisks - 1 do
   begin
-    Line := Lines[LineIdx];
-    if FvTrim(Line) = '' then
-      Continue;
-    Field := Column(Line, 0);
-    // Номер - число в конце первой колонки ('Том 0', 'Volume 12')
-    NumPos := Length(Field);
-    while (NumPos >= 1) and (Field[NumPos] >= '0') and (Field[NumPos] <= '9') do
-      Dec(NumPos);
-    NumText := Copy(Field, NumPos + 1, MaxInt);
-    if NumText = '' then
-      Continue;
-    Volume.Number := StrToIntDef(string(NumText), -1);
-    Field := Column(Line, 1);
-    if (Length(Field) = 1) and (UpCase(Char(Field[1])) in ['A'..'Z']) then
-      Volume.Letter := WideChar(Ord(UpCase(Char(Field[1]))))
-    else
-      Volume.Letter := #0;
-    Volume.MountPath := '';
-    Volume.VolLabel := Column(Line, 2);
-    Volume.FileSys := Column(Line, 3);
-    Volume.TypeText := Column(Line, 4);
-    Volume.SizeText := Column(Line, 5);
-    Volume.Status := Column(Line, 6);
-    Volume.Info := Column(Line, 7);
-    Volume.Total := 0;
-    Volume.Free := 0;
-    Volume.HasSize := False;
-    SetLength(AVolumes, Count + 1);
-    AVolumes[Count] := Volume;
-    Inc(Count);
+    if FarDeviceInfo('\\.\PhysicalDrive' + WideString(IntToStr(DiskIdx)),
+       True, Disk) then
+    begin
+      Disk.Number := DiskIdx;
+      SetLength(ADisks, Count + 1);
+      ADisks[Count] := Disk;
+      Inc(Count);
+    end
+    else if (Result = 0) and (Disk.ErrorCode <> FvErrorFileNotFound) and
+       (Disk.ErrorCode <> FvErrorPathNotFound) then
+      Result := Disk.ErrorCode;
   end;
+  if Count > 0 then
+    Result := 0;
+end;
+
+function FarFindDisk(const ADisks: TFarDisks; ANumber: Integer): Integer;
+var
+  DiskIdx: Integer;
+begin
+  Result := -1;
+  for DiskIdx := 0 to High(ADisks) do
+    if ADisks[DiskIdx].Number = ANumber then
+    begin
+      Result := DiskIdx;
+      Exit;
+    end;
 end;
 
 procedure FarNoLetterVolumes(var AVolumes: TFarVolumes);
@@ -311,7 +431,7 @@ var
   LabelBuf, FsBuf: array[0..MAX_PATH] of WideChar;
   ReturnLen: DWORD;
   PathPos: PWideChar;
-  OnePath, FirstPath: WideString;
+  OnePath, FirstPath, DevicePath: WideString;
   HasLetter: Boolean;
   Volume: TFarVolume;
   FreeAvail, TotalBytes, TotalFree: Int64;
@@ -360,14 +480,9 @@ begin
         if FvGetVolumeInfo(VolName, LabelBuf, MAX_PATH, nil, nil, nil, FsBuf,
            MAX_PATH) then
         begin
-          Volume.Number := -1;
-          Volume.Letter := #0;
           Volume.MountPath := FirstPath;
           Volume.VolLabel := PWideChar(@LabelBuf[0]);
           Volume.FileSys := PWideChar(@FsBuf[0]);
-          Volume.TypeText := '';
-          Volume.Status := '';
-          Volume.Info := '';
           Volume.HasSize := FvDiskFree(VolName, @FreeAvail, @TotalBytes,
             @TotalFree);
           Volume.Total := 0;
@@ -379,6 +494,11 @@ begin
             Volume.Free := TotalFree;
             Volume.SizeText := FarSizeShort(TotalBytes);
           end;
+          // '\\?\Volume{...}\' -> устройство: без '\' в конце
+          DevicePath := PWideChar(@VolName[0]);
+          if (DevicePath <> '') and (DevicePath[Length(DevicePath)] = '\') then
+            SetLength(DevicePath, Length(DevicePath) - 1);
+          FarDeviceNumber(DevicePath, Volume.Device);
           SetLength(AVolumes, Count + 1);
           AVolumes[Count] := Volume;
           Inc(Count);
@@ -387,133 +507,6 @@ begin
     until not FindNextVol(FindHandle, VolName, MAX_PATH);
   finally
     FindVolClose(FindHandle);
-  end;
-end;
-
-// ---------------------------------------------------------------------------
-
-constructor TFarDiskpartThread.Create;
-begin
-  FOutput := '';
-  FErrorCode := 0;
-  FFinished := 0;
-  FreeOnTerminate := False;
-  inherited Create(False);
-end;
-
-function TFarDiskpartThread.GetFinished: Boolean;
-begin
-  Result := FFinished <> 0;
-end;
-
-procedure TFarDiskpartThread.Execute;
-const
-  ScriptText: string = 'list volume'#13#10'exit'#13#10;
-var
-  TempBuf: array[0..MAX_PATH] of WideChar;
-  ScriptName, CmdLine: WideString;
-  FileHandle, ReadPipe, WritePipe: THandle;
-  Written, Avail, ReadCount: DWORD;
-  Security: TFvSecurity;
-  Startup: TFvStartupInfoW;
-  ProcInfo: TFvProcessInfo;
-  Buffer: array[0..4095] of AnsiChar;
-  RawText, Piece: string;
-  WideLen, Waited: Integer;
-  Finished: Boolean;
-begin
-  try
-    if FvGetTempPath(MAX_PATH, TempBuf) = 0 then
-    begin
-      FErrorCode := GetLastError;
-      Exit;
-    end;
-    ScriptName := WideString(PWideChar(@TempBuf[0])) + 'unide_diskpart_' +
-      WideString(IntToStr(GetCurrentProcessId)) + '.txt';
-    FileHandle := FvCreateFile(PWideChar(ScriptName), GENERIC_WRITE, 0, nil,
-      CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-    if FileHandle = INVALID_HANDLE_VALUE then
-    begin
-      FErrorCode := GetLastError;
-      Exit;
-    end;
-    Written := 0;
-    FvWriteFile(FileHandle, PAnsiChar(ScriptText), Length(ScriptText), Written,
-      nil);
-    CloseHandle(FileHandle);
-    try
-      FillChar(Security, SizeOf(Security), 0);
-      Security.nLength := SizeOf(Security);
-      Security.bInheritHandle := True;
-      if not FvCreatePipe(ReadPipe, WritePipe, @Security, 0) then
-      begin
-        FErrorCode := GetLastError;
-        Exit;
-      end;
-      FvSetHandleInfo(ReadPipe, 1, 0);
-      CmdLine := 'diskpart.exe /s "' + ScriptName + '"';
-      FillChar(Startup, SizeOf(Startup), 0);
-      Startup.cb := SizeOf(Startup);
-      Startup.dwFlags := FvStartfUseStdHandles or FvStartfUseShowWindow;
-      Startup.wShowWindow := SW_HIDE;
-      Startup.hStdInput := 0;
-      Startup.hStdOutput := WritePipe;
-      Startup.hStdError := WritePipe;
-      FillChar(ProcInfo, SizeOf(ProcInfo), 0);
-      if not FvCreateProcess(nil, PWideChar(CmdLine), nil, nil, True,
-         FvCreateNoWindow, nil, nil, Startup, ProcInfo) then
-      begin
-        // 740 - unIDE запущен без прав администратора
-        FErrorCode := GetLastError;
-        CloseHandle(ReadPipe);
-        CloseHandle(WritePipe);
-        Exit;
-      end;
-      CloseHandle(WritePipe);
-      CloseHandle(ProcInfo.hThread);
-      RawText := '';
-      Waited := 0;
-      try
-        repeat
-          Finished := WaitForSingleObject(ProcInfo.hProcess, 50) = WAIT_OBJECT_0;
-          Inc(Waited, 50);
-          while FvPeekPipe(ReadPipe, nil, 0, nil, @Avail, nil) and
-                (Avail > 0) do
-          begin
-            if Avail > SizeOf(Buffer) then
-              Avail := SizeOf(Buffer);
-            ReadCount := 0;
-            if not FvReadFile(ReadPipe, @Buffer[0], Avail, ReadCount, nil) or
-               (ReadCount = 0) then
-              Break;
-            SetString(Piece, PAnsiChar(@Buffer[0]), ReadCount);
-            RawText := RawText + Piece;
-          end;
-          // Больше минуты - что-то не так: прервать
-          if not Finished and (Waited > 60000) then
-          begin
-            FvTerminate(ProcInfo.hProcess, 1);
-            Break;
-          end;
-        until Finished;
-      finally
-        CloseHandle(ProcInfo.hProcess);
-        CloseHandle(ReadPipe);
-      end;
-      if RawText <> '' then
-      begin
-        WideLen := FvMultiToWide(FvCpOem, 0, PAnsiChar(RawText),
-          Length(RawText), nil, 0);
-        SetLength(FOutput, WideLen);
-        if WideLen > 0 then
-          FvMultiToWide(FvCpOem, 0, PAnsiChar(RawText), Length(RawText),
-            PWideChar(FOutput), WideLen);
-      end;
-    finally
-      FvDeleteFile(PWideChar(ScriptName));
-    end;
-  finally
-    InterlockedExchange(FFinished, 1);
   end;
 end;
 
