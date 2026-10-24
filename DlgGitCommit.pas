@@ -16,6 +16,13 @@ unit DlgGitCommit;
 //  файлы больше не предлагались к коммиту (OnIgnore - Unit1: .gitignore,
 //  .git/info/exclude, git rm --cached, skip-worktree). После обоих список
 //  перечитывается (OnStatus), флажки сохраняются.
+//
+//  Строки раскрашены по виду файла (GitFileKind) и отсортированы по нему:
+//  сверху красные - то, что обычно не коммитят (exe, old, log, $$$, dcu,
+//  obj, tmp, bak, ~*), затем жёлтые - библиотеки и архивы (dll, bpl, ocx,
+//  lib, res, zip, 7z), фиолетовые - картинки, зелёные - исходники, голубые
+//  - текст и настройки, остальные - цветом темы. Цвета - для светлого и
+//  тёмного фона списка свои.
 // ---------------------------------------------------------------------------
 
 interface
@@ -74,6 +81,11 @@ type
     procedure BtnIgnoreClick(Sender: TObject);
     function SelectedChanges(var APicked: TGitChanges): Integer;
     procedure FillList;
+    procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
+    procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
+      SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
+    function ItemKindColor(Item: TListItem): TColor;
     procedure Reload;
     procedure BtnCommitClick(Sender: TObject);
     procedure BtnPushClick(Sender: TObject);
@@ -96,6 +108,84 @@ type
   end;
 
 implementation
+
+const
+  // Вид файла в окне Commit (порядок - порядок строк)
+  gfkJunk = 0;      // красный: сборка, журналы, резервные копии
+  gfkBinary = 1;    // жёлтый: библиотеки, архивы, ресурсы
+  gfkImage = 2;     // фиолетовый: картинки
+  gfkSource = 3;    // зелёный: исходники
+  gfkText = 4;      // голубой: текст, настройки, скрипты
+  gfkOther = 5;     // цвет темы
+  gfkCount = 6;
+
+  GitKindNames: array[0..gfkCount - 1] of string = (
+    'не коммитить?', 'библиотека', 'картинка', 'исходник', 'текст', '');
+
+  // Расширения через ';' с ';' по краям - поиск по ';.ext;'
+  GitJunkExts = ';.exe;.com;.old;.log;.$$$;.tmp;.temp;.bak;.dcu;.obj;.o;' +
+    '.map;.tds;.ilk;.pdb;.dsk;.ddp;.local;.identcache;.stat;.cbk;.drc;';
+  GitBinaryExts = ';.dll;.ocx;.bpl;.dpl;.dcp;.so;.lib;.a;.sys;.drv;.cpl;' +
+    '.res;.zip;.rar;.7z;.cab;.msi;.jar;.chm;.pdf;.db;';
+  GitImageExts = ';.png;.jpg;.jpeg;.gif;.bmp;.ico;.cur;.ani;.svg;.tif;' +
+    '.tiff;.webp;.psd;.emf;.wmf;';
+  GitSourceExts = ';.pas;.pp;.dpr;.dpk;.dfm;.lfm;.lpr;.lpi;.lpk;.inc;.bas;' +
+    '.bi;.rqb;.rq;.c;.cpp;.cc;.cxx;.h;.hpp;.ino;.py;.go;.rs;.js;.ts;.java;' +
+    '.cs;.vb;.vbp;.frm;.asm;.ahk;.rc;.cmake;.lua;';
+  GitTextExts = ';.txt;.md;.ini;.cfg;.conf;.json;.xml;.html;.htm;.css;' +
+    '.bat;.cmd;.sh;.ps1;.lst;.csv;.yml;.yaml;.toml;.dof;.clr;.manifest;' +
+    '.gitignore;.gitattributes;';
+
+// Вид файла по имени и расширению
+function GitFileKind(const APath: WideString): Integer;
+var
+  FileName, Ext: string;
+begin
+  FileName := LowerCase(ExtractFileName(StringReplace(string(APath), '/',
+    '\', [rfReplaceAll])));
+  Ext := ExtractFileExt(FileName);
+  if Ext = '' then
+    Ext := FileName;               // .gitignore и т. п. без имени
+  if (FileName = 'thumbs.db') or (FileName = 'desktop.ini') or
+     (Copy(Ext, 1, 2) = '.~') or (Pos(';' + Ext + ';', GitJunkExts) > 0) then
+    Result := gfkJunk
+  else if Pos(';' + Ext + ';', GitBinaryExts) > 0 then
+    Result := gfkBinary
+  else if Pos(';' + Ext + ';', GitImageExts) > 0 then
+    Result := gfkImage
+  else if Pos(';' + Ext + ';', GitSourceExts) > 0 then
+    Result := gfkSource
+  else if (Pos(';' + Ext + ';', GitTextExts) > 0) or
+          (Pos(';.' + FileName + ';', GitTextExts) > 0) then
+    Result := gfkText
+  else
+    Result := gfkOther;
+end;
+
+// Цвет текста вида AKind на фоне ABack (светлый / тёмный - свои цвета);
+// clNone - цвет темы
+function GitKindColor(AKind: Integer; ABack: TColor): TColor;
+const
+  // $00BBGGRR
+  DarkColors: array[0..gfkCount - 1] of TColor = (
+    $005A5AFF, $0040E0F0, $00FF80D0, $0070D070, $00E0D060, clNone);
+  LightColors: array[0..gfkCount - 1] of TColor = (
+    $000000C8, $000088A8, $00A00080, $00008000, $00A06000, clNone);
+var
+  BackRgb: Longint;
+  Brightness: Integer;
+begin
+  Result := clNone;
+  if (AKind < 0) or (AKind >= gfkCount) then
+    Exit;
+  BackRgb := ColorToRGB(ABack);
+  Brightness := (GetRValue(BackRgb) * 299 + GetGValue(BackRgb) * 587 +
+    GetBValue(BackRgb) * 114) div 1000;
+  if Brightness < 128 then
+    Result := DarkColors[AKind]
+  else
+    Result := LightColors[AKind];
+end;
 
 constructor TDlgGitCommit.CreateDlg(AOwner: TComponent; const ATitle: string;
   const AChanges: TGitChanges; AOnDiff: TGitDiffEvent;
@@ -256,7 +346,12 @@ begin
   Column.Width := 230;
   Column := FList.Columns.Add;
   Column.Caption := 'Что';
+  Column.Width := 80;
+  Column := FList.Columns.Add;
+  Column.Caption := 'Вид';
   Column.Width := 90;
+  FList.OnCustomDrawItem := ListCustomDrawItem;
+  FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
   FillList;
   // Правый щелчок по строке - меню (Discard Changes, Ignore)
   FListMenu := TUiPopupMenu.Create(Self);
@@ -302,14 +397,26 @@ begin
     FBtnIgnore.SetBounds(FTopPanel.ClientWidth - 122 - 6 - 70, 2, 70, 23);
 end;
 
-// Строки списка из FChanges. Флажок снят только у тех путей, у которых он
-// был снят до перечитывания (новые - отмечены)
+// Строки списка из FChanges - по виду файла (красные сверху), внутри
+// вида - в порядке git status. Флажок снят только у тех путей, у которых
+// он был снят до перечитывания (новые - отмечены)
 procedure TDlgGitCommit.FillList;
 var
   Unchecked: TStringList;
-  ChangeIdx, ItemIdx: Integer;
+  ChangeIdx, ItemIdx, KindIdx, OrderIdx: Integer;
+  Order: array of Integer;
   Item: TListItem;
 begin
+  // Порядок строк: сначала все красные, затем жёлтые и т. д.
+  SetLength(Order, Length(FChanges));
+  OrderIdx := 0;
+  for KindIdx := 0 to gfkCount - 1 do
+    for ChangeIdx := 0 to High(FChanges) do
+      if GitFileKind(FChanges[ChangeIdx].Path) = KindIdx then
+      begin
+        Order[OrderIdx] := ChangeIdx;
+        Inc(OrderIdx);
+      end;
   Unchecked := TStringList.Create;
   FFilling := True;
   try
@@ -319,8 +426,9 @@ begin
     FList.Items.BeginUpdate;
     try
       FList.Items.Clear;
-      for ChangeIdx := 0 to High(FChanges) do
+      for OrderIdx := 0 to High(Order) do
       begin
+        ChangeIdx := Order[OrderIdx];
         Item := FList.Items.Add;
         if FChanges[ChangeIdx].OrigPath <> '' then
           Item.Caption := string(GitWinPath(FChanges[ChangeIdx].Path)) +
@@ -328,6 +436,7 @@ begin
         else
           Item.Caption := string(GitWinPath(FChanges[ChangeIdx].Path));
         Item.SubItems.Add(GitChangeText(FChanges[ChangeIdx].Code));
+        Item.SubItems.Add(GitKindNames[GitFileKind(FChanges[ChangeIdx].Path)]);
         Item.Checked := Unchecked.IndexOf(Item.Caption) < 0;
         Item.Data := Pointer(ChangeIdx);
       end;
@@ -339,6 +448,40 @@ begin
     Unchecked.Free;
   end;
   UpdateCount;
+end;
+
+// Цвет строки - по виду файла (clNone - цвет темы)
+function TDlgGitCommit.ItemKindColor(Item: TListItem): TColor;
+var
+  ChangeIdx: Integer;
+begin
+  Result := clNone;
+  if Item = nil then
+    Exit;
+  ChangeIdx := Integer(Item.Data);
+  if (ChangeIdx < 0) or (ChangeIdx > High(FChanges)) then
+    Exit;
+  Result := GitKindColor(GitFileKind(FChanges[ChangeIdx].Path), FList.Color);
+end;
+
+procedure TDlgGitCommit.ListCustomDrawItem(Sender: TCustomListView;
+  Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  KindColor: TColor;
+begin
+  KindColor := ItemKindColor(Item);
+  if KindColor <> clNone then
+    Sender.Canvas.Font.Color := KindColor
+  else
+    Sender.Canvas.Font.Color := FList.Font.Color;
+  DefaultDraw := True;
+end;
+
+procedure TDlgGitCommit.ListCustomDrawSubItem(Sender: TCustomListView;
+  Item: TListItem; SubItem: Integer; State: TCustomDrawState;
+  var DefaultDraw: Boolean);
+begin
+  ListCustomDrawItem(Sender, Item, State, DefaultDraw);
 end;
 
 // После Discard / Ignore: изменения - заново (git status); пусто - окно
