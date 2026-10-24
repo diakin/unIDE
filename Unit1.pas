@@ -13890,8 +13890,14 @@ end;
 // Выбор одной строки из списка. Пустая строка - отказались.
 function TForm1.ChooseFromList(const ACaption, APrompt: string;
                                AItems: TStrings): string;
+const
+  DlgMargin = 12;
+  DlgMinWidth = 380;
+  PromptMaxHeight = 160;   // длинная подпись (список файлов) - не выше
 var
   Dlg: TDlgChooseList;
+  ItemIdx, TextW, ClientW, PromptH, ListH, ItemH, MaxW, MaxH: Integer;
+  PromptRect: TRect;
 begin
   Result := '';
 
@@ -13902,6 +13908,47 @@ begin
     Dlg.lblPrompt.Caption := APrompt;
     Dlg.lstItems.Items.Assign(AItems);
     Dlg.lstItems.ItemIndex := 0;
+
+    // Размер окна - по тексту: ширина - по самой длинной строке списка (не
+    // шире рабочей области экрана), подпись переносится по словам,
+    // высота списка - по числу строк
+    MaxW := Screen.WorkAreaWidth - 80;
+    MaxH := Screen.WorkAreaHeight - 80;
+    Dlg.Canvas.Font.Assign(Dlg.lstItems.Font);
+    TextW := 0;
+    for ItemIdx := 0 to AItems.Count - 1 do
+      if Dlg.Canvas.TextWidth(AItems[ItemIdx]) > TextW then
+        TextW := Dlg.Canvas.TextWidth(AItems[ItemIdx]);
+    ItemH := Dlg.Canvas.TextHeight('Wg') + 3;
+    ClientW := TextW + 2 * DlgMargin + 32;   // рамка и полоса прокрутки
+    if ClientW < DlgMinWidth then
+      ClientW := DlgMinWidth;
+    if ClientW > MaxW then
+      ClientW := MaxW;
+    Dlg.Canvas.Font.Assign(Dlg.lblPrompt.Font);
+    PromptRect := Rect(0, 0, ClientW - 2 * DlgMargin, 0);
+    DrawText(Dlg.Canvas.Handle, PChar(APrompt), -1, PromptRect,
+             DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+    PromptH := PromptRect.Bottom + 4;
+    if PromptH < 20 then
+      PromptH := 20;
+    if PromptH > PromptMaxHeight then
+      PromptH := PromptMaxHeight;
+    ListH := ItemH * AItems.Count + 8;
+    if ListH < 100 then
+      ListH := 100;
+    if ListH > MaxH - PromptH - 100 then
+      ListH := MaxH - PromptH - 100;
+    Dlg.ClientWidth := ClientW;
+    Dlg.lblPrompt.SetBounds(DlgMargin, DlgMargin, ClientW - 2 * DlgMargin,
+                            PromptH);
+    Dlg.lstItems.SetBounds(DlgMargin, DlgMargin + PromptH + 6,
+                           ClientW - 2 * DlgMargin, ListH);
+    Dlg.btnCancel.SetBounds(ClientW - DlgMargin - 84,
+                            Dlg.lstItems.Top + ListH + 10, 84, 26);
+    Dlg.btnOk.SetBounds(Dlg.btnCancel.Left - 8 - 84, Dlg.btnCancel.Top, 84,
+                        26);
+    Dlg.ClientHeight := Dlg.btnOk.Top + 26 + DlgMargin;
 
     if (Dlg.ShowModal = mrOk) and (Dlg.lstItems.ItemIndex >= 0) then
       Result := Dlg.lstItems.Items[Dlg.lstItems.ItemIndex];
