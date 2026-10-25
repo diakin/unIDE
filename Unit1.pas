@@ -1121,6 +1121,14 @@ type
     // кнопка Commit... - красная, когда они есть
     FGitChanges: Integer;
     FGitBtnCommit: TUiButton;
+    // Незаконченная операция: 'merge', 'cherry-pick', 'revert' или '' (по
+    // последнему обновлению); пока она есть - кнопки Conflicts...,
+    // Continue, Skip (у cherry-pick и revert), Abort в начале строки Build
+    FGitOp: string;
+    FGitBtnConflicts: TUiButton;
+    FGitBtnContinue: TUiButton;
+    FGitBtnSkip: TUiButton;
+    FGitBtnAbort: TUiButton;
     FGitBehind: Integer;
     FGitBusy: Boolean;
     FGitCancel: Boolean;
@@ -2996,6 +3004,15 @@ type
                          AExitCode: Integer; var AIsError: Boolean): string;
     procedure GitSetHint(const AText: string; AIsError: Boolean);
     procedure GitPlaceHint;
+    function  GitCurrentOp(const AGit, ARepo: string): string;
+    function  GitConflictFiles(const AGit, ARepo: string;
+                               AList: TStrings): Integer;
+    function  GitMarkerCount(const AFile: string;
+                             var AFirstLine: Integer): Integer;
+    procedure GitConflictsClick(Sender: TObject);
+    procedure GitContinueClick(Sender: TObject);
+    procedure GitSkipClick(Sender: TObject);
+    procedure GitAbortClick(Sender: TObject);
     procedure GitBuildBar;
     procedure GitShowBar(AShow: Boolean);
     procedure GitRefreshBar;
@@ -64876,9 +64893,41 @@ end;
 
 // Подсказка - сразу за строкой Build (её длина меняется)
 procedure TForm1.GitPlaceHint;
+var
+  OpLeft: Integer;
+
+  procedure PlaceOpButton(ABtn: TUiButton; AShow: Boolean);
+  begin
+    ABtn.Visible := AShow;
+    if not AShow then
+      Exit;
+    ABtn.Left := OpLeft;
+    Inc(OpLeft, ABtn.Width + 4);
+  end;
+
 begin
   if (FGitLblHint = nil) or (FGitLblBuild = nil) then
     Exit;
+  // Незаконченное слияние / cherry-pick / revert: кнопки - в начале строки
+  // Build (ниже на панели места нет), строка Build и подсказка - за ними
+  OpLeft := 4;
+  if FGitBtnAbort <> nil then
+  begin
+    PlaceOpButton(FGitBtnConflicts, FGitOp <> '');
+    PlaceOpButton(FGitBtnContinue, FGitOp <> '');
+    PlaceOpButton(FGitBtnSkip, (FGitOp = 'cherry-pick') or
+                  (FGitOp = 'revert'));
+    PlaceOpButton(FGitBtnAbort, FGitOp <> '');
+    if FGitOp <> '' then
+    begin
+      Inc(OpLeft, 6);
+      FGitBtnAbort.Hint := 'Отменить ' + FGitOp + ': файлы - как до него ' +
+        '(git ' + FGitOp + ' --abort)';
+      FGitBtnSkip.Hint := 'Пропустить этот коммит, перейти к следующему ' +
+        '(git ' + FGitOp + ' --skip)';
+    end;
+  end;
+  FGitLblBuild.Left := OpLeft;
   FGitLblHint.Left := FGitLblBuild.Left + FGitLblBuild.Width + 24;
   FGitLblHint.Top := FGitLblBuild.Top;
 end;
@@ -64945,9 +64994,9 @@ begin
      (Pos('automatic merge failed', OutLower) > 0) then
   begin
     AIsError := True;
-    Result := 'конфликт слияния: в файлах с CONFLICT (журнал) обе версии - ' +
-      'исправьте их и сделайте Commit...; отменить слияние - git merge ' +
-      '--abort в Git Bash';
+    Result := 'конфликт: в файлах с CONFLICT обе версии. Conflicts... - ' +
+      'открыть файл на конфликте; исправить, сохранить, затем Continue. ' +
+      'Отменить - Abort';
     Exit;
   end;
   if (Pos('[rejected]', OutLower) > 0) and
@@ -65168,6 +65217,24 @@ begin
   FGitLblBuild := NewLabel(4, 75, '');
   // Что сделала последняя команда - словами (GitSetHint)
   FGitLblHint := NewLabel(300, 75, '');
+  // Незаконченное слияние / cherry-pick / revert (GitPlaceHint)
+  FGitBtnConflicts := NewButton('Conflicts...', 'Файлы с конфликтом: список ' +
+    'в Compilation log, выбранный - в редактор на первый конфликт ' +
+    '(<<<<<<<)', 4, 84, GitConflictsClick);
+  FGitBtnContinue := NewButton('Continue', 'Конфликты исправлены и ' +
+    'сохранены: отметить файлы (git add) и закончить - коммит слияния или ' +
+    'git cherry-pick / revert --continue', 4, 70, GitContinueClick);
+  FGitBtnSkip := NewButton('Skip', '', 4, 46, GitSkipClick);
+  FGitBtnAbort := NewButton('Abort', '', 4, 56, GitAbortClick);
+  FGitBtnConflicts.Top := 73;
+  FGitBtnContinue.Top := 73;
+  FGitBtnSkip.Top := 73;
+  FGitBtnAbort.Top := 73;
+  FGitBtnConflicts.TextColor := clRed;
+  FGitBtnConflicts.Visible := False;
+  FGitBtnContinue.Visible := False;
+  FGitBtnSkip.Visible := False;
+  FGitBtnAbort.Visible := False;
 end;
 
 // Палитра или панель Git (AShow - режим проекта ReactOS)
@@ -65224,6 +65291,7 @@ begin
   FGitBtnPush.TextColor := clNone;
   FGitBtnCommit.TextColor := clNone;
   FGitChanges := -1;
+  FGitOp := '';
   FGitLblSync.ThemeColors := True;
   FGitLblBuild.ThemeColors := True;
   FGitBranchFill := True;
@@ -65362,6 +65430,13 @@ begin
     FGitLblBuild.Hint := 'Build - git describe --tags --always (ближайшая ' +
       'метка, число коммитов после неё и короткий хеш); Changes - сколько ' +
       'файлов изменено (Commit... - список)';
+    FGitOp := GitCurrentOp(Git, Repo);
+    if FGitOp <> '' then
+    begin
+      FGitLblBuild.Caption := FGitLblBuild.Caption + '   не закончен ' + FGitOp;
+      FGitLblBuild.ThemeColors := False;
+      FGitLblBuild.Font.Color := $3C3CFF;
+    end;
   finally
     FGitBranchFill := False;
     GitPlaceHint;
@@ -65412,6 +65487,210 @@ begin
   if Target = GitCurrentBranch(Git, Repo) then
     Exit;
   GitLongOp(Git, Repo, 'checkout ' + string(GitQuote(WideString(Target))));
+end;
+
+// ---------------------------------------------------------------------------
+//  Незаконченное слияние / cherry-pick / revert: Conflicts..., Continue,
+//  Skip, Abort на панели Git
+// ---------------------------------------------------------------------------
+
+// Что не закончено: 'merge', 'cherry-pick', 'revert' или ''
+function TForm1.GitCurrentOp(const AGit, ARepo: string): string;
+begin
+  Result := '';
+  if GitQuery(AGit, ARepo, 'rev-parse -q --verify MERGE_HEAD') <> '' then
+    Result := 'merge'
+  else if GitQuery(AGit, ARepo, 'rev-parse -q --verify CHERRY_PICK_HEAD') <> '' then
+    Result := 'cherry-pick'
+  else if GitQuery(AGit, ARepo, 'rev-parse -q --verify REVERT_HEAD') <> '' then
+    Result := 'revert';
+end;
+
+// Файлы с неразрешённым конфликтом (пути git, через /); результат - сколько
+function TForm1.GitConflictFiles(const AGit, ARepo: string;
+  AList: TStrings): Integer;
+var
+  Output: WideString;
+begin
+  AList.Clear;
+  if GitRunIn(AGit, ARepo, 'diff --name-only --diff-filter=U', False,
+     Output) = 0 then
+    GitSplitLines(Output, AList);
+  Result := AList.Count;
+end;
+
+// Сколько в файле AFile конфликтов (строк, начинающихся с <<<<<<<);
+// AFirstLine - строка первого (с 1), 0 - нет
+function TForm1.GitMarkerCount(const AFile: string;
+  var AFirstLine: Integer): Integer;
+var
+  Lines: TStringList;
+  LineIdx: Integer;
+begin
+  Result := 0;
+  AFirstLine := 0;
+  if not FileExists(AFile) then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(AFile);
+    except
+      Exit;
+    end;
+    for LineIdx := 0 to Lines.Count - 1 do
+      if Copy(Lines[LineIdx], 1, 7) = '<<<<<<<' then
+      begin
+        Inc(Result);
+        if AFirstLine = 0 then
+          AFirstLine := LineIdx + 1;
+      end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure TForm1.GitConflictsClick(Sender: TObject);
+var
+  Git, Repo, Choice, FullPath: string;
+  Files, Choices: TStringList;
+  FileIdx, MarkCount, MarkLine: Integer;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  FGitOp := GitCurrentOp(Git, Repo);
+  Files := TStringList.Create;
+  Choices := TStringList.Create;
+  try
+    ShowCompLog;
+    if GitConflictFiles(Git, Repo, Files) = 0 then
+    begin
+      LogComp('Git: файлов с конфликтом нет - Continue закончит ' + FGitOp);
+      GitPlaceHint;
+      Exit;
+    end;
+    LogComp('Git: файлы с конфликтом (' + FGitOp + '):');
+    for FileIdx := 0 to Files.Count - 1 do
+    begin
+      FullPath := IncludeTrailingPathDelimiter(Repo) +
+        string(GitWinPath(WideString(Files[FileIdx])));
+      MarkCount := GitMarkerCount(FullPath, MarkLine);
+      if MarkCount > 0 then
+        Choice := Files[FileIdx] + '  (конфликтов: ' + IntToStr(MarkCount) +
+          ')'
+      else
+        Choice := Files[FileIdx] + '  (маркеров нет - уже исправлен)';
+      Choices.Add(Choice);
+      LogComp('  ' + Choice);
+    end;
+    LogComp('  В файле: от <<<<<<< до ======= - текущая ветка, от ======= ' +
+            'до >>>>>>> - вливаемое (коммит или ветка). Оставить нужное, ' +
+            'строки-маркеры удалить, сохранить; когда все файлы готовы - ' +
+            'Continue');
+    if Choices.Count = 1 then
+      Choice := Choices[0]
+    else
+      Choice := ChooseFromList('Conflicts', 'Открыть файл (на первом ' +
+        'конфликте):', Choices);
+    if Choice = '' then
+      Exit;
+    FileIdx := Choices.IndexOf(Choice);
+    FullPath := IncludeTrailingPathDelimiter(Repo) +
+      string(GitWinPath(WideString(Files[FileIdx])));
+    GitMarkerCount(FullPath, MarkLine);
+    StrictOpenLine(FullPath, MarkLine);
+  finally
+    Choices.Free;
+    Files.Free;
+  end;
+end;
+
+procedure TForm1.GitContinueClick(Sender: TObject);
+var
+  Git, Repo, FullPath, Remaining, AddList: string;
+  Files: TStringList;
+  FileIdx, MarkLine: Integer;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  // Правки конфликтов в редакторе - на диск
+  AutoSaveEditorFiles;
+  FGitOp := GitCurrentOp(Git, Repo);
+  if FGitOp = '' then
+  begin
+    ShowCompLog;
+    LogComp('Git: незаконченного слияния, cherry-pick или revert нет');
+    GitRefreshBar;
+    Exit;
+  end;
+  Files := TStringList.Create;
+  try
+    GitConflictFiles(Git, Repo, Files);
+    Remaining := '';
+    AddList := '';
+    for FileIdx := 0 to Files.Count - 1 do
+    begin
+      FullPath := IncludeTrailingPathDelimiter(Repo) +
+        string(GitWinPath(WideString(Files[FileIdx])));
+      if GitMarkerCount(FullPath, MarkLine) > 0 then
+        Remaining := Remaining + #13#10 + Files[FileIdx]
+      else
+        AddList := AddList + ' ' + string(GitQuote(WideString(Files[FileIdx])));
+    end;
+  finally
+    Files.Free;
+  end;
+  if Remaining <> '' then
+  begin
+    ShowMessage('В файлах ещё есть конфликты (строки <<<<<<<):' + Remaining +
+      #13#10#13#10'Исправьте их (Conflicts...), сохраните и снова Continue.');
+    Exit;
+  end;
+  if (AddList <> '') and (GitLongOp(Git, Repo, 'add --' + AddList) <> 0) then
+    Exit;
+  // Текст коммита - заготовленный git (core.editor=true: редактор не ждём)
+  if FGitOp = 'merge' then
+    GitLongOp(Git, Repo, '-c core.editor=true commit --no-edit')
+  else
+    GitLongOp(Git, Repo, '-c core.editor=true ' + FGitOp + ' --continue');
+end;
+
+procedure TForm1.GitSkipClick(Sender: TObject);
+var
+  Git, Repo: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  FGitOp := GitCurrentOp(Git, Repo);
+  if (FGitOp <> 'cherry-pick') and (FGitOp <> 'revert') then
+  begin
+    GitRefreshBar;
+    Exit;
+  end;
+  if MessageDlg('Пропустить этот коммит (git ' + FGitOp + ' --skip)?' +
+     #13#10#13#10'Его изменения не попадут в ветку; следующие коммиты ' +
+     'списка - дальше.', mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  GitLongOp(Git, Repo, FGitOp + ' --skip');
+end;
+
+procedure TForm1.GitAbortClick(Sender: TObject);
+var
+  Git, Repo: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  FGitOp := GitCurrentOp(Git, Repo);
+  if FGitOp = '' then
+  begin
+    GitRefreshBar;
+    Exit;
+  end;
+  if MessageDlg('Отменить ' + FGitOp + ' (git ' + FGitOp + ' --abort)?' +
+     #13#10#13#10'Файлы и ветка станут такими, как до него; исправления ' +
+     'конфликтов пропадут.', mtWarning, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  GitLongOp(Git, Repo, FGitOp + ' --abort');
 end;
 
 // ---------------------------------------------------------------------------
