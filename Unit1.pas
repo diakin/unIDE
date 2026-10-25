@@ -3073,6 +3073,8 @@ type
     procedure GitViewBranchClick(Sender: TObject);
     procedure GitPullRequestClick(Sender: TObject);
     function  GitHistQuery(const AArgs: string; var AOutput: WideString): Integer;
+    function  GitTickIdle: Boolean;
+    procedure GitUnmergedProgress(const AText: string);
     procedure GitHistoryClick(Sender: TObject);
     function  GitDiscardIn(const AGit, ARepo: string;
                            const AChanges: TGitChanges; AAsk: Boolean): Boolean;
@@ -67524,9 +67526,21 @@ begin
         Exit;
       end;
 
-      Dlg := TDlgGitHistory.CreateUnmerged(Self, 'Коммиты не в ' + Base +
-        ' - ' + ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), WebUrl,
-        GitHistQuery, Base, BranchRefs);
+      // Загрузка - git log по каждой ветке: ход на жёлтой панели
+      FGitCancel := False;
+      FGitBusy := True;
+      BusyBegin('Unmerged: коммиты не в ' + Base);
+      try
+        Dlg := TDlgGitHistory.CreateUnmerged(Self, 'Коммиты не в ' + Base +
+          ' - ' + ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), WebUrl,
+          GitHistQuery, Base, BranchRefs, GitUnmergedProgress);
+      finally
+        FGitBusy := False;
+        if FGitCancel then
+          BusyEnd('Unmerged: прервано - список неполный', False)
+        else
+          BusyEnd('', True);
+      end;
       Dlg.SetSchemeProvider(SchemeCopyFor);
       try
         Dlg.ShowModal;
@@ -67706,8 +67720,38 @@ end;
 // Для окон Commit и History: тихий git в папке их репозитория
 function TForm1.GitHistQuery(const AArgs: string;
   var AOutput: WideString): Integer;
+var
+  ExitCode: Integer;
 begin
-  Result := GitRunIn(FGitDlgGit, FGitDlgRepo, AArgs, False, AOutput);
+  // Идёт долгая загрузка (жёлтая панель, Unmerged): точки бегут и во
+  // время самой команды; Esc - прервать
+  if FBusyDepth > 0 then
+  begin
+    AOutput := '';
+    ExitCode := -1;
+    if GitExec(WideString(FGitDlgGit), WideString(AArgs),
+       WideString(FGitDlgRepo), nil, GitTickIdle, AOutput, ExitCode) <> '' then
+      Result := -1
+    else
+      Result := ExitCode;
+  end
+  else
+    Result := GitRunIn(FGitDlgGit, FGitDlgRepo, AArgs, False, AOutput);
+end;
+
+// Ожидание команды при загрузке окна: только жёлтая панель, без
+// ProcessMessages (окно ещё строится, щелчки по главному не нужны)
+function TForm1.GitTickIdle: Boolean;
+begin
+  BusyTick;
+  if Application.Active and (GetAsyncKeyState(VK_ESCAPE) < 0) then
+    FGitCancel := True;
+  Result := not FGitCancel;
+end;
+
+procedure TForm1.GitUnmergedProgress(const AText: string);
+begin
+  BusyStage(AText + ' (Esc - прервать)');
 end;
 
 // History: коммиты текущей ветки; New Branch from Commit и Revert Commit

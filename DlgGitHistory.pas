@@ -44,6 +44,9 @@ uses
 
 type
   // Тихий запуск git с аргументами AArgs; результат - код выхода
+  // Ход долгой загрузки (Unmerged): текст для жёлтой панели Unit1
+  TGitProgressEvent = procedure(const AText: string) of object;
+
   TGitQueryEvent = function(const AArgs: string;
     var AOutput: WideString): Integer of object;
 
@@ -76,6 +79,7 @@ type
     FBtnPick: TUiButton;
     FBtnMergeBranch: TUiButton;
     FBtnDelBranch: TUiButton;
+    FOnProgress: TGitProgressEvent;
     FLeft: TUiPanel;
     FRight: TUiPanel;
     FBtnPanel: TUiPanel;
@@ -126,7 +130,7 @@ type
       AOnQuery: TGitQueryEvent; const ARevs: string = 'HEAD');
     constructor CreateUnmerged(AOwner: TComponent; const ATitle,
       AWebUrl: string; AOnQuery: TGitQueryEvent; const ABase: string;
-      ABranchRefs: TStrings);
+      ABranchRefs: TStrings; AOnProgress: TGitProgressEvent = nil);
     destructor Destroy; override;
     property Action: TGitHistAction read FAction;
     property SelectedHash: string read FCurHash;
@@ -160,10 +164,11 @@ end;
 
 constructor TDlgGitHistory.CreateUnmerged(AOwner: TComponent; const ATitle,
   AWebUrl: string; AOnQuery: TGitQueryEvent; const ABase: string;
-  ABranchRefs: TStrings);
+  ABranchRefs: TStrings; AOnProgress: TGitProgressEvent);
 begin
   inherited CreateNew(AOwner);
   FOnQuery := AOnQuery;
+  FOnProgress := AOnProgress;
   FUnmerged := True;
   FBase := ABase;
   FBranchRefs := ABranchRefs;
@@ -574,6 +579,9 @@ begin
       begin
         if Refs[RefIdx] = '' then
           Continue;
+        if Assigned(FOnProgress) then
+          FOnProgress('Unmerged: ветка ' + IntToStr(BranchIdx + 1) + ' из ' +
+            IntToStr(FBranchRefs.Count) + ' - ' + Refs[RefIdx]);
         if Query('log --right-only --cherry-pick --no-merges ' +
            GitLogFormat + ' -n ' + IntToStr(FLimit) + ' ' + FBase + '...' +
            Refs[RefIdx], Output) <> 0 then
