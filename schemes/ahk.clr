@@ -26,5 +26,14 @@ msgbox,inputbox,tooltip,traytip,send,sendinput,sendraw,sendevent,sendplay,sendmo
 • CUSTOM5 clWhite clMaroon
 !!!!!
 • Text clBlack $00F9F9F9
+• SubStyle
+braces
 • LineMark clNone clYellow
+
+• SubOpen
+{
+• SubEnd
+}
+• FmtOutdent
+}
 
