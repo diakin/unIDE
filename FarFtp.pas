@@ -65,6 +65,9 @@ type
     FConn: TFarFtpConn;
     FHost: TFarFtpHost;
     FDir: string;            // куда перейти (байтами); '' - начальная папка
+    FIsHome: Boolean;        // FDir - папка Home адреса (вход на сервер)
+    FLoginDir: string;       // папка сервера сразу после входа
+    FWarning: string;        // Home нет - открыта другая папка: почему
     FEntries: TFarFtpEntries;
     FCurDir: string;         // папка сервера после перехода (байтами)
     FErrorText: string;
@@ -77,14 +80,17 @@ type
   protected
     procedure Execute; override;
   public
+    // AIsHome - ADir это Home адреса: нет такой папки - она же без '/' в
+    // начале (от папки входа), нет и её - папка входа (Warning)
     constructor Create(AConn: TFarFtpConn; const AHost: TFarFtpHost;
-      const ADir: string);
+      const ADir: string; AIsHome: Boolean = False);
     // Прервать: закрыть соединение (WinInet вернётся с ошибкой)
     procedure Cancel;
     property Conn: TFarFtpConn read FConn;
     property Entries: TFarFtpEntries read FEntries;
     property CurDir: string read FCurDir;
     property ErrorText: string read FErrorText;
+    property Warning: string read FWarning;
     property Finished: Boolean read GetFinished;
   end;
 
@@ -676,11 +682,14 @@ begin
 end;
 
 constructor TFarFtpThread.Create(AConn: TFarFtpConn; const AHost: TFarFtpHost;
-  const ADir: string);
+  const ADir: string; AIsHome: Boolean);
 begin
   FConn := AConn;
   FHost := AHost;
   FDir := ADir;
+  FIsHome := AIsHome;
+  FLoginDir := '';
+  FWarning := '';
   FEntries := nil;
   FCurDir := '';
   FErrorText := '';
@@ -700,6 +709,19 @@ procedure TFarFtpThread.Cancel;
 begin
   InterlockedExchange(FCancelled, 1);
   FConn.Close;
+end;
+
+// Папка сервера (PWD); '' - не ответил
+function FtpCurrentDir(AConnect: Pointer): string;
+var
+  DirBuffer: array[0..1023] of AnsiChar;
+  DirLen: DWORD;
+begin
+  Result := '';
+  DirLen := SizeOf(DirBuffer) - 1;
+  FillChar(DirBuffer, SizeOf(DirBuffer), 0);
+  if FtpGetCurrentDir(AConnect, @DirBuffer[0], DirLen) then
+    Result := PAnsiChar(@DirBuffer[0]);
 end;
 
 function TFarFtpThread.DoConnect: Boolean;
@@ -750,6 +772,7 @@ begin
     FConn.Close;
     Exit;
   end;
+  FLoginDir := FtpCurrentDir(FConn.FConnect);
   Result := True;
 end;
 
@@ -757,26 +780,45 @@ function TFarFtpThread.DoList: Boolean;
 var
   FindHandle: Pointer;
   FindData: TFtpFindData;
-  DirBuffer: array[0..1023] of AnsiChar;
-  DirLen, ErrorCode: DWORD;
+  ErrorCode: DWORD;
+  RelDir: string;
   Entry: TFarFtpEntry;
   Count: Integer;
 begin
   Result := False;
   FEntries := nil;
   FErrorCode := 0;
-  if FDir <> '' then
-    if not FtpSetCurrentDir(FConn.FConnect, PAnsiChar(FDir)) then
-    begin
-      FErrorCode := GetLastError;
-      FErrorText := FtpErrorText(FErrorCode);
+  if (FDir <> '') and not FtpSetCurrentDir(FConn.FConnect, PAnsiChar(FDir)) then
+  begin
+    FErrorCode := GetLastError;
+    FErrorText := FtpErrorText(FErrorCode);
+    // Home адреса: сервер ответил отказом (550 и т.п.) - путь, возможно,
+    // указан от папки входа ('/u1/site' при входе в '/' другого вида):
+    // без '/' в начале; нет и такой - остаться в папке входа
+    if not FIsHome or (FErrorCode <> FtpErrorExtended) then
       Exit;
+    RelDir := FDir;
+    while (RelDir <> '') and (RelDir[1] = '/') do
+      Delete(RelDir, 1, 1);
+    if (RelDir <> '') and (RelDir <> FDir) and
+       FtpSetCurrentDir(FConn.FConnect, PAnsiChar(RelDir)) then
+    begin
+      FErrorCode := 0;
+      FErrorText := '';
+    end
+    else
+    begin
+      FWarning := 'папки ' + FDir + ' нет (' + FErrorText + ') - открыта ' +
+        'папка входа';
+      FErrorCode := 0;
+      FErrorText := '';
+      // Отказ CWD папку не меняет, но после попытки без '/' - вернуться
+      if FLoginDir <> '' then
+        FtpSetCurrentDir(FConn.FConnect, PAnsiChar(FLoginDir));
     end;
-  DirLen := SizeOf(DirBuffer) - 1;
-  FillChar(DirBuffer, SizeOf(DirBuffer), 0);
-  if FtpGetCurrentDir(FConn.FConnect, @DirBuffer[0], DirLen) then
-    FCurDir := PAnsiChar(@DirBuffer[0])
-  else
+  end;
+  FCurDir := FtpCurrentDir(FConn.FConnect);
+  if FCurDir = '' then
     FCurDir := FDir;
   FillChar(FindData, SizeOf(FindData), 0);
   FindHandle := FtpFindFirst(FConn.FConnect, nil, FindData,

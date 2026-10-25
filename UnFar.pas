@@ -103,6 +103,9 @@ unit UnFar;
 //      F8 / Del - удалить; editor.ini [FarFtp], пароль - DPAPI), вход
 //      на сервер и папки сервера (Enter, '..', Ctrl+R) - WinInet в своём
 //      потоке (FarFtp). Копирование и прочее на сервере - следующим шагом.
+//    - b.34: FTP: Home адреса не открылся (550) - тот же путь без '/' в
+//      начале (от папки входа), нет и его - папка входа, причина - в строке
+//      состояния.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -132,7 +135,7 @@ uses
   Clipbrd, IniBuf, SzSetup, FarFind, FarVolumes, FarFtp;
 
 const
-  FarBuild = 'b.33';
+  FarBuild = 'b.34';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -583,7 +586,8 @@ type
     procedure FtpExit(APanel: TFarPanel);
     procedure FtpError(const ATitle, AText: WideString);
     procedure FtpStartList(APanelIndex: Integer; const AHost: TFarFtpHost;
-      AHostIdx: Integer; const ADir, AFocusRaw: string);
+      AHostIdx: Integer; const ADir, AFocusRaw: string;
+      AIsHome: Boolean = False);
     procedure FtpConnect(APanelIndex, AHostIdx: Integer);
     procedure FtpPasswordEntered(const APassword: WideString);
     procedure FtpCheck;
@@ -5916,7 +5920,7 @@ end;
 // Запрос к серверу: перейти в ADir (байтами; '' - начальная папка адреса)
 // и прочитать её; курсор - на AFocusRaw
 procedure TFarView.FtpStartList(APanelIndex: Integer; const AHost: TFarFtpHost;
-  AHostIdx: Integer; const ADir, AFocusRaw: string);
+  AHostIdx: Integer; const ADir, AFocusRaw: string; AIsHome: Boolean);
 var
   Panel: TFarPanel;
   Conn: TFarFtpConn;
@@ -5941,7 +5945,8 @@ begin
   else
     Status('unIDE FAR: FTP - соединение с ' + string(FarFtpHostUrl(AHost)) +
       '... (Esc - прервать)');
-  FFtpThread[APanelIndex] := TFarFtpThread.Create(Conn, AHost, ADir);
+  FFtpThread[APanelIndex] := TFarFtpThread.Create(Conn, AHost, ADir,
+    AIsHome);
   Invalidate;
 end;
 
@@ -5963,7 +5968,8 @@ begin
     FDlgMasked := True;
     Exit;
   end;
-  FtpStartList(APanelIndex, Host, AHostIdx, FarFtpEncode(Host.Home), '');
+  FtpStartList(APanelIndex, Host, AHostIdx, FarFtpEncode(Host.Home), '',
+    True);
 end;
 
 procedure TFarView.FtpPasswordEntered(const APassword: WideString);
@@ -5978,7 +5984,7 @@ begin
   Host := FFtpHosts[FFtpPassHostIdx];
   Host.Password := APassword;
   FtpStartList(FFtpPassPanel, Host, FFtpPassHostIdx, FarFtpEncode(Host.Home),
-    '');
+    '', True);
 end;
 
 // Ответ потока FTP (WatchTick)
@@ -6019,7 +6025,10 @@ begin
         Panel.FFtpHostIdx := FFtpJobHostIdx[PanelIndex];
         Panel.FFtpDir := Thread.CurDir;
         FtpFillEntries(Panel, Thread.Entries, FFtpJobFocus[PanelIndex]);
-        Status('unIDE FAR: FTP - ' + string(Panel.DisplayPath));
+        if Thread.Warning <> '' then
+          Status('unIDE FAR: FTP - ' + FarFtpDecode(Thread.Warning))
+        else
+          Status('unIDE FAR: FTP - ' + string(Panel.DisplayPath));
       end;
     finally
       Thread.Free;
