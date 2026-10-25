@@ -247,7 +247,7 @@ object Form2: TForm2
           TabOrder = 6
           ParentShowHint = False
           ShowHint = True
-          Hint = 'Взять данные другой схемы за основу; Save запишет их в схему текущего расширения'
+          Hint = 'Перенести из другой схемы цвета одинаковых элементов и недостающие элементы; Save запишет результат в схему текущего расширения'
           OnClick = btnSelectSchemaClick
         end
       end

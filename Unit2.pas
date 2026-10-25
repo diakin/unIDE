@@ -359,6 +359,9 @@ type
     procedure AfterTabSwitch;
     procedure SchemaMenuItemClick(Sender: TObject);
     procedure LoadSchemaForEdit(const APath: string);
+    procedure MergeSchemaForEdit(const ASrcPath: string);
+    function  AskSchemaMerge(const ASrcName, ADstName: string;
+                             var AReplace, AAdd: Boolean): Boolean;
     function  TargetSchemaFile: string;
     procedure SaveToTarget;
     procedure AskSavePreview;
@@ -1479,7 +1482,7 @@ begin
   begin
     S := ChangeFileExt(ExtractFileName(TargetSchemaFile), '');
     if S <> '' then
-      Caption := 'IDE Options - Color scheme *.' + S
+      Caption := 'IDE Options - Color scheme for files *.' + S
     else
       Caption := 'IDE Options';
     btnEditDefault.Caption := 'Edit Default';
@@ -1581,7 +1584,200 @@ begin
   I := (Sender as TMenuItem).Tag;
   if (I < 0) or (I >= FSchemaFiles.Count) then
     Exit;
-  LoadSchemaForEdit(FSchemaFiles[I]);
+  MergeSchemaForEdit(FSchemaFiles[I]);
+end;
+
+// Имя раздела из строки-заголовка схемы: первое слово после метки
+function SchemaHeadName(const ALine: string): string;
+var
+  SpacePos: Integer;
+begin
+  Result := Trim(Copy(ALine, Length(SchemaHeadMark) + 1, MaxInt));
+  SpacePos := Pos(' ', Result);
+  if SpacePos > 0 then
+    Result := Copy(Result, 1, SpacePos - 1);
+end;
+
+// Строка-заголовок раздела AName в ALines; -1 - нет
+function SchemaHeadIndex(ALines: TStrings; const AName: string): Integer;
+var
+  LineIdx: Integer;
+begin
+  Result := -1;
+  for LineIdx := 0 to ALines.Count - 1 do
+    if IsSchemaHead(ALines[LineIdx]) and
+       (SchemaHeadName(ALines[LineIdx]) = AName) then
+    begin
+      Result := LineIdx;
+      Exit;
+    end;
+end;
+
+// Схема ADstPath с переносом из ASrcPath - текстом в AOut. Раздел - строка-
+// заголовок (имя и цвета) и строка данных под ней. AReplace - у разделов,
+// которые есть в обеих, заголовок (цвета) - из ASrcPath, данные остаются
+// свои; AAdd - разделы, которых в ADstPath нет, дописываются в конец
+// целиком. AReplaced, AAdded - сколько разделов изменено и добавлено
+procedure MergeSchemaText(const ASrcPath, ADstPath: string;
+  AReplace, AAdd: Boolean; AOut: TStrings; var AReplaced, AAdded: Integer);
+var
+  SrcLines, DstNames: TStringList;
+  LineIdx, SrcIdx: Integer;
+  Name: string;
+begin
+  AOut.Clear;
+  AReplaced := 0;
+  AAdded := 0;
+  SrcLines := TStringList.Create;
+  DstNames := TStringList.Create;
+  try
+    if FileExists(ASrcPath) then
+      SrcLines.LoadFromFile(ASrcPath);
+    if FileExists(ADstPath) then
+      AOut.LoadFromFile(ADstPath);
+    DstNames.CaseSensitive := True;
+    for LineIdx := 0 to AOut.Count - 1 do
+      if IsSchemaHead(AOut[LineIdx]) then
+      begin
+        Name := SchemaHeadName(AOut[LineIdx]);
+        DstNames.Add(Name);
+        if not AReplace then
+          Continue;
+        SrcIdx := SchemaHeadIndex(SrcLines, Name);
+        if (SrcIdx >= 0) and (SrcLines[SrcIdx] <> AOut[LineIdx]) then
+        begin
+          AOut[LineIdx] := SrcLines[SrcIdx];
+          Inc(AReplaced);
+        end;
+      end;
+    if not AAdd then
+      Exit;
+    for LineIdx := 0 to SrcLines.Count - 1 do
+      if IsSchemaHead(SrcLines[LineIdx]) and
+         (DstNames.IndexOf(SchemaHeadName(SrcLines[LineIdx])) < 0) then
+      begin
+        AOut.Add(SrcLines[LineIdx]);
+        if (LineIdx + 1 < SrcLines.Count) and
+           not IsSchemaHead(SrcLines[LineIdx + 1]) then
+          AOut.Add(SrcLines[LineIdx + 1]);
+        Inc(AAdded);
+      end;
+  finally
+    DstNames.Free;
+    SrcLines.Free;
+  end;
+end;
+
+// Окно "Перенести настройки цветовой схемы из ... в ...?" с двумя флажками
+function TForm2.AskSchemaMerge(const ASrcName, ADstName: string;
+  var AReplace, AAdd: Boolean): Boolean;
+var
+  AskForm: TForm;
+  LblQuestion: TUiLabel;
+  ChkReplace, ChkAdd: TUiCheckBox;
+  BtnOk, BtnCancel: TUiButton;
+begin
+  AskForm := TForm.CreateNew(Self);
+  try
+    AskForm.Caption := 'Select scheme';
+    AskForm.Position := poOwnerFormCenter;
+    AskForm.BorderStyle := bsDialog;
+    AskForm.Font.Assign(Font);
+    AskForm.ClientWidth := 460;
+    AskForm.ClientHeight := 150;
+
+    LblQuestion := TUiLabel.Create(AskForm);
+    LblQuestion.Parent := AskForm;
+    LblQuestion.SetBounds(16, 14, 428, 20);
+    LblQuestion.Caption := 'Перенести настройки цветовой схемы из ' +
+      ASrcName + ' в ' + ADstName + '?';
+
+    ChkReplace := TUiCheckBox.Create(AskForm);
+    ChkReplace.Parent := AskForm;
+    ChkReplace.SetBounds(16, 44, 428, 22);
+    ChkReplace.Caption := 'Заменить цвета в одинаковых элементах';
+    ChkReplace.Checked := AReplace;
+
+    ChkAdd := TUiCheckBox.Create(AskForm);
+    ChkAdd.Parent := AskForm;
+    ChkAdd.SetBounds(16, 70, 428, 22);
+    ChkAdd.Caption := 'Добавить недостающие элементы';
+    ChkAdd.Checked := AAdd;
+
+    BtnCancel := TUiButton.Create(AskForm);
+    BtnCancel.Parent := AskForm;
+    BtnCancel.Caption := 'Cancel';
+    BtnCancel.Cancel := True;
+    BtnCancel.ModalResult := mrCancel;
+    BtnCancel.SetBounds(AskForm.ClientWidth - 100, 108, 84, 26);
+
+    BtnOk := TUiButton.Create(AskForm);
+    BtnOk.Parent := AskForm;
+    BtnOk.Caption := 'OK';
+    BtnOk.Default := True;
+    BtnOk.ModalResult := mrOk;
+    BtnOk.SetBounds(BtnCancel.Left - 92, 108, 84, 26);
+
+    AskForm.ActiveControl := BtnOk;
+    Result := AskForm.ShowModal = mrOk;
+    if Result then
+    begin
+      AReplace := ChkReplace.Checked;
+      AAdd := ChkAdd.Checked;
+    end;
+  finally
+    AskForm.Free;
+  end;
+end;
+
+// Select scheme - выбранная схема ASrcPath: цвета и недостающие разделы
+// переносятся в схему-цель (MergeSchemaText), результат - в таблицу и в
+// редактор. В файл цели он попадёт по Save
+procedure TForm2.MergeSchemaForEdit(const ASrcPath: string);
+var
+  Target, TempDir, TempPath: string;
+  DoReplace, DoAdd: Boolean;
+  Merged: TStringList;
+  ReplacedCount, AddedCount: Integer;
+begin
+  if Form1 = nil then
+    Exit;
+  Target := TargetSchemaFile;
+  if CompareText(ExpandFileName(ASrcPath), ExpandFileName(Target)) = 0 then
+  begin
+    ShowMessage(ExtractFileName(Target) + ' - это и есть схема, которую ' +
+                'вы редактируете: переносить нечего.');
+    Exit;
+  end;
+  DoReplace := True;
+  DoAdd := True;
+  if not AskSchemaMerge(ExtractFileName(ASrcPath), ExtractFileName(Target),
+     DoReplace, DoAdd) then
+    Exit;
+  if not DoReplace and not DoAdd then
+    Exit;
+  // Несохранённые правки цели - сначала в файл (или отказаться от них):
+  // перенос идёт в схему из файла
+  AskSavePreview;
+  SetLength(TempDir, MAX_PATH);
+  SetLength(TempDir, GetTempPath(MAX_PATH, PChar(TempDir)));
+  TempPath := IncludeTrailingPathDelimiter(TempDir) + 'unide_scheme_merge.clr';
+  Merged := TStringList.Create;
+  try
+    MergeSchemaText(ASrcPath, Target, DoReplace, DoAdd, Merged,
+      ReplacedCount, AddedCount);
+    Merged.SaveToFile(TempPath);
+    Form1.LoadSchemaFileForEdit(TempPath);
+    DeleteFile(TempPath);
+  finally
+    Merged.Free;
+  end;
+  FPreviewDirty := (ReplacedCount > 0) or (AddedCount > 0);
+  UpdateEditTargetUI;
+  RefreshGridFromForm1;
+  if not FPreviewDirty then
+    ShowMessage('Переносить нечего: в ' + ExtractFileName(Target) + ' те же ' +
+      'цвета и все элементы ' + ExtractFileName(ASrcPath) + ' уже есть.');
 end;
 
 // Edit Default: в таблицу и в редактор - схема •default•.clr, Save будет
