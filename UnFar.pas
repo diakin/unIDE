@@ -110,6 +110,9 @@ unit UnFar;
 //      (IProgressDialog, FarProgress): проценты и имя файла из 7z.exe
 //      -bsp1, «Отмена» - прервать. Перенос распакованного на место и
 //      копирование - SHFileOperation (окно хода - от Windows).
+//    - b.36: cd в командной строке: папки нет - папка выше (без последней
+//      папки пути); нет и её - 'Папка ... не существует', команда остаётся
+//      в строке ввода для правки.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -139,7 +142,7 @@ uses
   Clipbrd, IniBuf, SzSetup, FarFind, FarVolumes, FarFtp, FarProgress;
 
 const
-  FarBuild = 'b.35';
+  FarBuild = 'b.36';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -1218,6 +1221,14 @@ end;
 
 // Папка выше: 'D:\a\b\' -> 'D:\a\', AChildName = 'b'. У корня ('D:\',
 // '\\server\share\') - ''.
+// 'D:\a\' -> 'D:\a' (корень 'D:\' - как есть) - для сообщений
+function FarStripSlash(const APath: WideString): WideString;
+begin
+  Result := APath;
+  if (Length(Result) > 3) and (Result[Length(Result)] = '\') then
+    SetLength(Result, Length(Result) - 1);
+end;
+
 function FarParentOf(const APath: WideString;
   var AChildName: WideString): WideString;
 var
@@ -6759,7 +6770,7 @@ end;
 // выполнена здесь
 function TFarView.CmdBuiltin(const ACommand: WideString): Boolean;
 var
-  Lower, Arg, Target: WideString;
+  Lower, Arg, Target, ParentDir, ChildName: WideString;
   FullBuffer: array[0..MAX_PATH] of WideChar;
   FullLen: DWORD;
   Code: Integer;
@@ -6822,9 +6833,27 @@ begin
   if (FullLen > 0) and (FullLen <= MAX_PATH) then
     Target := PWideChar(@FullBuffer[0]);
   if FarDirExists(Target) then
-    ChangeDir(ActivePanel, Target, '')
-  else
-    OutLine('Системе не удается найти указанный путь.');
+  begin
+    ChangeDir(ActivePanel, Target, '');
+    Exit;
+  end;
+  // Нет папки - папка на уровень выше (без последней папки пути)
+  ParentDir := FarParentOf(FarWithSlash(Target), ChildName);
+  if (ParentDir <> '') and FarDirExists(ParentDir) then
+  begin
+    OutLine('Папка ' + FarStripSlash(Target) + ' не существует - открыта ' +
+      FarStripSlash(ParentDir));
+    Status('unIDE FAR: папка ' + string(FarStripSlash(Target)) +
+      ' не существует - открыта папка выше');
+    ChangeDir(ActivePanel, ParentDir, '');
+    Exit;
+  end;
+  // Нет и её - сообщение, команда - снова в строке ввода: поправить и
+  // повторить
+  OutLine('Папка ' + FarStripSlash(Target) + ' не существует');
+  Status('unIDE FAR: папка ' + string(FarStripSlash(Target)) +
+    ' не существует - поправьте путь и нажмите Enter');
+  CmdSetText(FarTrimW(ACommand));
 end;
 
 // Внешняя команда: cmd.exe /C в папке активной панели, вывод (stdout и
