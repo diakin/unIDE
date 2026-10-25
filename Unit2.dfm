@@ -250,6 +250,108 @@ object Form2: TForm2
           Hint = 'Перенести из другой схемы цвета одинаковых элементов и недостающие элементы; Save запишет результат в схему текущего расширения'
           OnClick = btnSelectSchemaClick
         end
+        object grpEditorColors: TUiGroupBox
+          Left = 240
+          Top = 33
+          Width = 300
+          Height = 38
+          Caption = ' Editor colors '
+          TabOrder = 7
+          object lblEditorColor: TLabel
+            Left = 6
+            Top = 18
+            Caption = 'Editor color'
+          end
+          object pnlEditorFG: TPanel
+            Left = 0
+            Top = 13
+            Width = 24
+            Height = 20
+            Cursor = crHandPoint
+            ParentShowHint = False
+            ShowHint = True
+            Hint = 'Цвет текста (FontColor в editor.ini); раздел Text схемы его перекрывает'
+            BevelOuter = bvLowered
+            Caption = 'FG'
+            ParentBackground = False
+            Font.Charset = DEFAULT_CHARSET
+            Font.Color = clWindowText
+            Font.Height = -11
+            Font.Name = 'Tahoma'
+            Font.Style = [fsBold]
+            ParentFont = False
+            TabOrder = 0
+            OnClick = ColorSwatchClick
+          end
+          object pnlEditorBG: TPanel
+            Left = 0
+            Top = 13
+            Width = 24
+            Height = 20
+            Cursor = crHandPoint
+            ParentShowHint = False
+            ShowHint = True
+            Hint = 'Фон редактора (BGColor в editor.ini)'
+            BevelOuter = bvLowered
+            Caption = 'BG'
+            ParentBackground = False
+            Font.Charset = DEFAULT_CHARSET
+            Font.Color = clWindowText
+            Font.Height = -11
+            Font.Name = 'Tahoma'
+            Font.Style = [fsBold]
+            ParentFont = False
+            TabOrder = 1
+            OnClick = ColorSwatchClick
+          end
+          object lblGutterColor: TLabel
+            Left = 140
+            Top = 18
+            Caption = 'Gutter color'
+          end
+          object pnlGutterFG: TPanel
+            Left = 0
+            Top = 13
+            Width = 24
+            Height = 20
+            Cursor = crHandPoint
+            ParentShowHint = False
+            ShowHint = True
+            Hint = 'Цвет номеров строк (GutterFG в editor.ini)'
+            BevelOuter = bvLowered
+            Caption = 'FG'
+            ParentBackground = False
+            Font.Charset = DEFAULT_CHARSET
+            Font.Color = clWindowText
+            Font.Height = -11
+            Font.Name = 'Tahoma'
+            Font.Style = [fsBold]
+            ParentFont = False
+            TabOrder = 2
+            OnClick = ColorSwatchClick
+          end
+          object pnlGutterBG: TPanel
+            Left = 0
+            Top = 13
+            Width = 24
+            Height = 20
+            Cursor = crHandPoint
+            ParentShowHint = False
+            ShowHint = True
+            Hint = 'Фон панели номеров строк (GutterBG в editor.ini)'
+            BevelOuter = bvLowered
+            Caption = 'BG'
+            ParentBackground = False
+            Font.Charset = DEFAULT_CHARSET
+            Font.Color = clWindowText
+            Font.Height = -11
+            Font.Name = 'Tahoma'
+            Font.Style = [fsBold]
+            ParentFont = False
+            TabOrder = 3
+            OnClick = ColorSwatchClick
+          end
+        end
       end
       object pnlBottom: TPanel
         Left = 0
@@ -276,6 +378,18 @@ object Form2: TForm2
           Caption = 'Exit'
           TabOrder = 1
           OnClick = ButtonClick1
+        end
+        object btnDeleteRow: TUiButton
+          Left = 190
+          Top = 7
+          Width = 90
+          Height = 28
+          Caption = 'Delete Row'
+          TabOrder = 2
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Убрать из схемы раздел выбранной строки; в файл - по Save'
+          OnClick = btnDeleteRowClick
         end
       end
       object MemoSchemaDetails: TUiMemo
@@ -505,109 +619,6 @@ object Form2: TForm2
         ParentFont = False
         Layout = tlCenter
         Visible = False
-      end
-      object grpEditorColors: TUiGroupBox
-        Left = 0
-        Top = 80
-        Width = 612
-        Height = 40
-        Caption = ' Editor colors '
-        TabOrder = 2
-        Align = alTop
-        object lblEditorColor: TLabel
-          Left = 6
-          Top = 18
-          Caption = 'Editor color'
-        end
-        object pnlEditorFG: TPanel
-          Left = 0
-          Top = 13
-          Width = 24
-          Height = 20
-          Cursor = crHandPoint
-          ParentShowHint = False
-          ShowHint = True
-          Hint = 'Цвет текста (FontColor в editor.ini); раздел Text схемы его перекрывает'
-          BevelOuter = bvLowered
-          Caption = 'FG'
-          ParentBackground = False
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'Tahoma'
-          Font.Style = [fsBold]
-          ParentFont = False
-          TabOrder = 0
-          OnClick = ColorSwatchClick
-        end
-        object pnlEditorBG: TPanel
-          Left = 0
-          Top = 13
-          Width = 24
-          Height = 20
-          Cursor = crHandPoint
-          ParentShowHint = False
-          ShowHint = True
-          Hint = 'Фон редактора (BGColor в editor.ini)'
-          BevelOuter = bvLowered
-          Caption = 'BG'
-          ParentBackground = False
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'Tahoma'
-          Font.Style = [fsBold]
-          ParentFont = False
-          TabOrder = 1
-          OnClick = ColorSwatchClick
-        end
-        object lblGutterColor: TLabel
-          Left = 140
-          Top = 18
-          Caption = 'Gutter color'
-        end
-        object pnlGutterFG: TPanel
-          Left = 0
-          Top = 13
-          Width = 24
-          Height = 20
-          Cursor = crHandPoint
-          ParentShowHint = False
-          ShowHint = True
-          Hint = 'Цвет номеров строк (GutterFG в editor.ini)'
-          BevelOuter = bvLowered
-          Caption = 'FG'
-          ParentBackground = False
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'Tahoma'
-          Font.Style = [fsBold]
-          ParentFont = False
-          TabOrder = 2
-          OnClick = ColorSwatchClick
-        end
-        object pnlGutterBG: TPanel
-          Left = 0
-          Top = 13
-          Width = 24
-          Height = 20
-          Cursor = crHandPoint
-          ParentShowHint = False
-          ShowHint = True
-          Hint = 'Фон панели номеров строк (GutterBG в editor.ini)'
-          BevelOuter = bvLowered
-          Caption = 'BG'
-          ParentBackground = False
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -11
-          Font.Name = 'Tahoma'
-          Font.Style = [fsBold]
-          ParentFont = False
-          TabOrder = 3
-          OnClick = ColorSwatchClick
-        end
       end
       object grpEdMargin: TUiGroupBox
         Left = 0

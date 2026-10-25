@@ -57,6 +57,7 @@ type
     pnlBottom: TPanel;
     btnOK: TUiButton;
     btnCancel: TUiButton;
+    btnDeleteRow: TUiButton;
     // Поле просмотра и правки данных строки таблицы (столбец 3)
     MemoSchemaDetails: TUiMemo;
     Grid: TStringGrid;
@@ -247,6 +248,7 @@ type
     procedure cmbGroupTypeChange(Sender: TObject);
     procedure btnAddGroupClick(Sender: TObject);
     procedure btnDeleteGroupClick(Sender: TObject);
+    procedure btnDeleteRowClick(Sender: TObject);
     procedure cmbThemeChange(Sender: TObject);
     procedure cmbThemeKeyPress(Sender: TObject; var Key: Char);
     procedure btnThemeAddClick(Sender: TObject);
@@ -927,7 +929,7 @@ begin
   FLblSectionHelp.AutoSize := False;
   FLblSectionHelp.WordWrap := True;
   FLblSectionHelp.ShowAccelChar := False;
-  FLblSectionHelp.SetBounds(192, 4, pnlBottom.ClientWidth - 200,
+  FLblSectionHelp.SetBounds(290, 4, pnlBottom.ClientWidth - 298,
     pnlBottom.ClientHeight - 6);
   FLblSectionHelp.Anchors := [akLeft, akTop, akRight, akBottom];
   FLblSectionHelp.Font.Size := 8;
@@ -1036,6 +1038,9 @@ begin
   // Второй ряд, под списком групп: работа с файлами схем
   btnOpenClr.Left := cmbGroupType.Left;
   btnSelectSchema.Left := btnOpenClr.Left + btnOpenClr.Width + 6;
+  // За ними - цвета редактора и полосы номеров (рамка Editor colors)
+  grpEditorColors.Left := btnSelectSchema.Left + btnSelectSchema.Width + 12;
+  grpEditorColors.Top := btnSelectSchema.Top - 6;
 
   if btnEditDefault.Left + btnEditDefault.Width + 10 > ClientWidth then
     ClientWidth := btnEditDefault.Left + btnEditDefault.Width + 10;
@@ -2390,6 +2395,44 @@ begin
   Grid.Row := SectionRow(NewName);
   MemoSchemaDetails.Lines.Text := Grid.Cells[3, Grid.Row];
   FPreviewDirty := True; // группа добавлена, в файл ещё не записана
+end;
+
+// Delete Row: раздел выбранной строки уходит из схемы (и из файла - по
+// Save). Группы ключевых слов, операторов, комментариев и отметки -
+// как Delete Group; остальные разделы просто не пишутся в файл
+procedure TForm2.btnDeleteRowClick(Sender: TObject);
+var
+  Sec: string;
+  SecIdx, KeepRow: Integer;
+begin
+  if (Form1 = nil) or (Grid = nil) or not FGridReady then
+    Exit;
+  Sec := RowSection(Grid.Row);
+  if Sec = '' then
+    Exit;
+  KeepRow := Grid.Row;
+  if IsKeywordSection(Sec) or IsOpSection(Sec) or IsMarkSection(Sec) or
+     IsBcSection(Sec) then
+    btnDeleteGroupClick(Sender)
+  else
+  begin
+    ApplyGridToForm1(False);
+    SecIdx := Form1.FScheme.SchemaSections.IndexOf(Sec);
+    if SecIdx < 0 then
+      Exit;
+    Form1.FScheme.SchemaSections.Delete(SecIdx);
+    RefreshGridFromForm1;
+    FPreviewDirty := True; // раздел убран, в файл ещё не записано
+  end;
+  // Выбор - на строке, что встала на место удалённой
+  if KeepRow > Grid.RowCount - 1 then
+    KeepRow := Grid.RowCount - 1;
+  if KeepRow >= 1 then
+  begin
+    Grid.Row := KeepRow;
+    MemoSchemaDetails.Lines.Text := Grid.Cells[3, KeepRow];
+    ShowSectionHelp(KeepRow);
+  end;
 end;
 
 // Удаляется группа ВЫБРАННОЙ строки - ключевых слов, операторов или отметки
@@ -5199,6 +5242,7 @@ begin
     pnlGutterFG.Left := X;
     Inc(X, pnlGutterFG.Width + 3);
     pnlGutterBG.Left := X;
+    grpEditorColors.Width := X + pnlGutterBG.Width + 8;
   finally
     Bmp.Free;
   end;
@@ -5226,7 +5270,8 @@ begin
   APanel.Font.Color := ContrastTextColor(C);
 end;
 
-// Образцы цветов на вкладке Editor Options - по текущим значениям редактора
+// Образцы цветов (рамка Editor colors на вкладке Color Scheme) - по текущим
+// значениям редактора
 procedure TForm2.UpdateColorSwatches;
 begin
   if Form1 = nil then
