@@ -339,6 +339,8 @@ type
     FSchemaFiles: TStringList; // пути схем в порядке пунктов меню
     // Что значит раздел выбранной строки таблицы схемы - справа от Save/Exit
     FLblSectionHelp: TUiLabel;
+    // Reset Scheme: файл схемы - из папки исходников, из которых собран exe
+    FBtnResetScheme: TUiButton;
     FGridOldProc: TWndMethod; // обработчик таблицы до подмены
 
     // Имя раздела схемы для каждой строки таблицы: FRowSec[номер строки].
@@ -376,6 +378,7 @@ type
     procedure InitGridStructure;
     function  RowSection(ARow: Integer): string;
     procedure ShowSectionHelp(ARow: Integer);
+    procedure BtnResetSchemeClick(Sender: TObject);
     function  SectionRow(const AName: string): Integer;
     function  SectionCaption(const AName: string): string;
     function  SectionHasColors(const AName: string): Boolean;
@@ -460,6 +463,7 @@ var
 implementation
 
 uses Unit1, ClrScheme,
+  GitInfo,       // <exe>.build.txt: папка исходников сборки (Reset Scheme)
   DlgPathList,   // окно списка путей (EditPathList)
   DlgEnvVar;     // окно имени и значения переменной (EnvEditDialog)
 
@@ -954,6 +958,15 @@ begin
   FLblSectionHelp.Anchors := [akLeft, akTop, akRight, akBottom];
   FLblSectionHelp.Font.Size := 8;
   FLblSectionHelp.Caption := '';
+
+  FBtnResetScheme := TUiButton.Create(Self);
+  FBtnResetScheme.Parent := pnlGroupActions;
+  FBtnResetScheme.Caption := 'Reset Scheme';
+  FBtnResetScheme.Hint := 'Заменить файл схемы копией из папки исходников, ' +
+    'из которых собран unIDE (schemes\ рядом с .dpr); прежний файл - в .bak';
+  FBtnResetScheme.ShowHint := True;
+  FBtnResetScheme.SetBounds(232, 39, 100, 26);
+  FBtnResetScheme.OnClick := BtnResetSchemeClick;
 end;
 
 procedure TForm2.FormDestroy(Sender: TObject);
@@ -1058,8 +1071,10 @@ begin
   // Второй ряд, под списком групп: работа с файлами схем
   btnOpenClr.Left := cmbGroupType.Left;
   btnSelectSchema.Left := btnOpenClr.Left + btnOpenClr.Width + 6;
+  FBtnResetScheme.Left := btnSelectSchema.Left + btnSelectSchema.Width + 6;
+  FBtnResetScheme.Top := btnSelectSchema.Top;
   // За ними - цвета редактора и полосы номеров (рамка Editor colors)
-  grpEditorColors.Left := btnSelectSchema.Left + btnSelectSchema.Width + 12;
+  grpEditorColors.Left := FBtnResetScheme.Left + FBtnResetScheme.Width + 12;
   grpEditorColors.Top := btnSelectSchema.Top - 6;
 
   if btnEditDefault.Left + btnEditDefault.Width + 10 > ClientWidth then
@@ -1661,6 +1676,77 @@ begin
   end;
 
   Form1.OpenNamedFile(Path);
+end;
+
+// Reset Scheme: файл схемы-цели заменяется копией из папки schemes
+// исходников, из которых собран exe (строка source= в <exe>.build.txt).
+// При сборке схемы копируются только те, которых рядом с exe ещё нет, -
+// исправленная в репозитории схема сама в Output не попадает
+procedure TForm2.BtnResetSchemeClick(Sender: TObject);
+var
+  Target, SrcFile, SrcDpr: string;
+  Info: TStringList;
+begin
+  if Form1 = nil then
+    Exit;
+  Target := TargetSchemaFile;
+  SrcDpr := '';
+  if FileExists(GitBuildInfoFile(Application.ExeName)) then
+  begin
+    Info := TStringList.Create;
+    try
+      try
+        Info.LoadFromFile(GitBuildInfoFile(Application.ExeName));
+        SrcDpr := Info.Values['source'];
+      except
+        SrcDpr := '';
+      end;
+    finally
+      Info.Free;
+    end;
+  end;
+  if SrcDpr = '' then
+  begin
+    ShowMessage('Не известно, из какой папки собран unIDE (нет строки ' +
+      'source= в ' + ExtractFileName(GitBuildInfoFile(Application.ExeName)) +
+      ') - взять схему неоткуда.');
+    Exit;
+  end;
+  SrcFile := ExtractFilePath(SrcDpr) + 'schemes\' + ExtractFileName(Target);
+  if not FileExists(SrcFile) then
+  begin
+    ShowMessage('В исходниках такой схемы нет: ' + SrcFile);
+    Exit;
+  end;
+  if CompareText(ExpandFileName(SrcFile), ExpandFileName(Target)) = 0 then
+  begin
+    ShowMessage('unIDE запущен из папки исходников - ' +
+      ExtractFileName(Target) + ' и есть схема исходников.');
+    Exit;
+  end;
+  if MessageDlg('Заменить ' + Target + #13#10'схемой из исходников:'#13#10 +
+     SrcFile + '?'#13#10#13#10'Прежний файл сохранится как ' +
+     ExtractFileName(Target) + '.bak, несохранённые правки в окне пропадут.',
+     mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  if FileExists(Target) and
+     not CopyFile(PChar(Target), PChar(Target + '.bak'), False) then
+  begin
+    ShowMessage('Не удалось сохранить ' + Target + '.bak - схема не заменена.');
+    Exit;
+  end;
+  if not CopyFile(PChar(SrcFile), PChar(Target), False) then
+  begin
+    ShowMessage('Не удалось записать ' + Target);
+    Exit;
+  end;
+  FPreviewDirty := False;
+  if FEditDefault then
+    Form1.LoadSchemaFileForEdit(Target)
+  else
+    Form1.ReloadActiveClrSchema;
+  UpdateEditTargetUI;
+  RefreshGridFromForm1;
 end;
 
 // Данные схемы из файла APath - в таблицу и в редактор, как заготовка.
