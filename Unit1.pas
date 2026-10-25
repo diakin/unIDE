@@ -27108,8 +27108,24 @@ end;
 procedure TForm1.RebuildSubListBraces(const AText: string);
 var
   I, Len, LineNo, Depth, J, K, NameEnd, NameStart, ParDepth, BegLine: Integer;
-  Open: Integer;
-  Nm, LineStr: string;
+  Open, WordStart, WordEnd: Integer;
+  Nm, LineStr, FirstWord: string;
+
+  // Слово оператора: перед '(' или первым в строке оно значит, что это не
+  // объявление, а if (...) {, while (...) { и т.п.
+  function IsStmtWord(const AWord: string): Boolean;
+  begin
+    Result := (CompareText(AWord, 'if') = 0) or
+              (CompareText(AWord, 'for') = 0) or
+              (CompareText(AWord, 'while') = 0) or
+              (CompareText(AWord, 'switch') = 0) or
+              (CompareText(AWord, 'do') = 0) or
+              (CompareText(AWord, 'else') = 0) or
+              (CompareText(AWord, 'catch') = 0) or
+              (CompareText(AWord, 'loop') = 0) or
+              (CompareText(AWord, 'until') = 0) or
+              (CompareText(AWord, 'return') = 0);
+  end;
 
   // Символ в комментарии или строке?
   function Skip(APos: Integer): Boolean;
@@ -27202,19 +27218,26 @@ begin
               if NameEnd >= NameStart then
               begin
                 Nm := Copy(AText, NameStart, NameEnd - NameStart + 1);
-                if (CompareText(Nm, 'if') <> 0) and
-                   (CompareText(Nm, 'for') <> 0) and
-                   (CompareText(Nm, 'while') <> 0) and
-                   (CompareText(Nm, 'switch') <> 0) and
-                   (CompareText(Nm, 'do') <> 0) and
-                   (CompareText(Nm, 'else') <> 0) and
-                   (CompareText(Nm, 'catch') <> 0) then
+                // Начало строки с именем
+                K := NameStart;
+                while (K > 1) and (AText[K - 1] <> #13) and
+                      (AText[K - 1] <> #10) do
+                  Dec(K);
+                // Первое слово строки ('}' и пробелы пропускаются): у
+                // AutoHotkey 'If WinExist("x") {' - перед '(' имя функции
+                // WinExist, а строка - оператор if, не объявление
+                WordStart := K;
+                while (WordStart < NameStart) and
+                      (AText[WordStart] in [' ', #9, '}']) do
+                  Inc(WordStart);
+                WordEnd := WordStart;
+                while (WordEnd <= NameEnd) and
+                      (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+                  Inc(WordEnd);
+                FirstWord := Copy(AText, WordStart, WordEnd - WordStart);
+                if not IsStmtWord(Nm) and not IsStmtWord(FirstWord) then
                 begin
                   // Строка объявления: от начала строки с именем до ')'
-                  K := NameStart;
-                  while (K > 1) and (AText[K - 1] <> #13) and
-                        (AText[K - 1] <> #10) do
-                    Dec(K);
                   LineStr := Trim(Copy(AText, K, J - K + 1));
                   if Length(LineStr) > 300 then
                     SetLength(LineStr, 300);
