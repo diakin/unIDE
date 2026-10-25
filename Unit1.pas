@@ -48373,10 +48373,12 @@ begin
   if FCompilerBox = nil then
     Exit;
 
+  // Имя и тип - как в меню Projects (RebuildProjectsMenu)
   if FCurrentProject = '' then
     FCompilerBox.Caption := 'Project'
   else
-    FCompilerBox.Caption := 'Project - ' + FCurrentProject;
+    FCompilerBox.Caption := 'Project - ' + FCurrentProject + '  ' + #149 +
+      '  ' + ProjectTypeOf(FCurrentProject);
 end;
 
 // Строка диагностики - в LogEdit.
