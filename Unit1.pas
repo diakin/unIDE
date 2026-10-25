@@ -3032,6 +3032,9 @@ type
     procedure GitMergeClick(Sender: TObject);
     procedure GitCompareClick(Sender: TObject);
     procedure GitMergeIntoClick(Sender: TObject);
+    procedure GitUnmergedClick(Sender: TObject);
+    function  GitDeleteBranchAll(const AGit, ARepo, ABranch, ARefs: string;
+                                 AUnmerged: Integer): Boolean;
     procedure GitViewBranchClick(Sender: TObject);
     procedure GitPullRequestClick(Sender: TObject);
     function  GitHistQuery(const AArgs: string; var AOutput: WideString): Integer;
@@ -65091,6 +65094,10 @@ begin
   NewButton('Merge Into...', 'Влить текущую ветку в другую (например ' +
     'mainTest в main) и отправить ту на сервер (git push)', 550, 92,
     GitMergeIntoClick);
+  NewButton('Unmerged...', 'Коммиты всех веток, которых нет в текущей ' +
+    '(например в mainTest), в одной таблице, цвет - по ветке. Перенести ' +
+    'коммиты (cherry-pick), влить ветку целиком, удалить ветку', 646, 88,
+    GitUnmergedClick);
   FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
     'недавние, по открытому проекту, Add Local / Clone / New', 4, 92,
     GitRepoBtnClick);
@@ -65755,6 +65762,9 @@ begin
     GitMergeIntoClick);
   AddItem(BranchMenu, 'Compare Branches...', 'Сравнить две ветки: коммиты, ' +
     'которые есть только в одной из них, и разные файлы', GitCompareClick);
+  AddItem(BranchMenu, 'Commits Not in Current Branch...', 'Коммиты всех ' +
+    'веток, которых нет в текущей: перенести (cherry-pick), влить ветку, ' +
+    'удалить ветку', GitUnmergedClick);
   AddItem(BranchMenu, '-', '', nil);
   AddItem(BranchMenu, 'View Branch on GitHub', 'Ветка на GitHub в браузере',
     GitViewBranchClick);
@@ -66618,6 +66628,216 @@ begin
     LogComp('Git: слияние сделано локально, push не прошёл - отправить ' +
             Target + ' можно позже (Push на ветке ' + Target + ')');
   GitLongOp(Git, Repo, 'checkout ' + QuoteArg(Source));
+end;
+
+// Unmerged...: коммиты всех веток (локальных и origin/), которых нет в
+// текущей (основной для тестов - mainTest). Окно History в режиме
+// Unmerged; после Cherry-pick, Merge Branch, Delete Branch окно
+// открывается снова с новым списком - пока не закроют (Close)
+procedure TForm1.GitUnmergedClick(Sender: TObject);
+var
+  Git, Repo, Base, Remote, WebUrl, RefName, BranchName, Hash, Hashes,
+  Target, Choice, Refs: string;
+  BranchRefs, AllBranches, Choices: TStringList;
+  RefIdx, BranchIdx, Unmerged, PickCount: Integer;
+  Dlg: TDlgGitHistory;
+  HistAction: TGitHistAction;
+  ActionBranch: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Base := GitCurrentBranch(Git, Repo);
+  if Base = '' then
+  begin
+    ShowCompLog;
+    LogComp('Git: HEAD отсоединён - сначала перейдите на основную ветку ' +
+            '(например mainTest)');
+    Exit;
+  end;
+  // Свежий список веток сервера; удалённые там - убрать (--prune)
+  GitLongOp(Git, Repo, 'fetch origin --prune');
+  Remote := GitQuery(Git, Repo, 'config --get remote.origin.url');
+  WebUrl := string(GitHubWebUrl(WideString(Remote)));
+  FGitDlgGit := Git;
+  FGitDlgRepo := Repo;
+  BranchRefs := TStringList.Create;
+  AllBranches := TStringList.Create;
+  try
+    repeat
+      // Ветка (без origin/) = её ссылки: локальная и / или origin/<ветка>
+      BranchRefs.Clear;
+      GitBranchList(Git, Repo, True, AllBranches);
+      for RefIdx := 0 to AllBranches.Count - 1 do
+      begin
+        RefName := AllBranches[RefIdx];
+        BranchName := RefName;
+        if Copy(BranchName, 1, 7) = 'origin/' then
+          Delete(BranchName, 1, 7);
+        if (BranchName = '') or (BranchName = Base) then
+          Continue;
+        BranchIdx := BranchRefs.IndexOfName(BranchName);
+        if BranchIdx < 0 then
+          BranchRefs.Add(BranchName + '=' + RefName)
+        else
+          BranchRefs[BranchIdx] := BranchName + '=' +
+            BranchRefs.ValueFromIndex[BranchIdx] + ' ' + RefName;
+      end;
+      if BranchRefs.Count = 0 then
+      begin
+        ShowCompLog;
+        LogComp('Git: кроме ' + Base + ' веток нет');
+        Exit;
+      end;
+
+      Dlg := TDlgGitHistory.CreateUnmerged(Self, 'Коммиты не в ' + Base +
+        ' - ' + ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), WebUrl,
+        GitHistQuery, Base, BranchRefs);
+      Dlg.SetSchemeProvider(SchemeCopyFor);
+      try
+        Dlg.ShowModal;
+        HistAction := Dlg.Action;
+        Hash := Dlg.SelectedHash;
+        Hashes := '';
+        PickCount := Dlg.SelectedHashes.Count;
+        for RefIdx := 0 to Dlg.SelectedHashes.Count - 1 do
+          Hashes := Hashes + ' ' + Dlg.SelectedHashes[RefIdx];
+        ActionBranch := Dlg.ActionBranch;
+      finally
+        Dlg.Free;
+      end;
+
+      case HistAction of
+        ghaCherryPick:
+          begin
+            if GitLongOp(Git, Repo, 'cherry-pick -x' + Hashes) <> 0 then
+            begin
+              LogComp('Git: при конфликте - исправить файлы и Commit (или в ' +
+                      'Git Bash: git cherry-pick --continue), отменить - ' +
+                      'git cherry-pick --abort');
+              Exit;
+            end;
+            LogComp('Git: перенесено в ' + Base + ' коммитов: ' +
+                    IntToStr(PickCount) +
+                    '; отправить на сервер - Push');
+          end;
+        ghaMergeBranch:
+          begin
+            Refs := BranchRefs.Values[ActionBranch];
+            // Локальная ветка, если есть, иначе origin/<ветка>
+            Target := Refs;
+            if Pos(' ', Target) > 0 then
+              Target := Copy(Target, 1, Pos(' ', Target) - 1);
+            if MessageDlg('Влить ветку ' + Target + ' в ' + Base +
+               ' целиком (git merge)?', mtConfirmation, [mbOK, mbCancel],
+               0) <> mrOk then
+              Continue;
+            if GitLongOp(Git, Repo, 'merge --no-edit ' +
+               string(GitQuote(WideString(Target)))) <> 0 then
+            begin
+              LogComp('Git: при конфликте - исправить файлы и Commit, или ' +
+                      'отменить слияние в Git Bash: git merge --abort');
+              Exit;
+            end;
+            LogComp('Git: ' + Target + ' влита в ' + Base +
+                    '; отправить на сервер - Push');
+          end;
+        ghaDeleteBranch:
+          begin
+            // Выбор из всех веток: сколько у каждой коммитов не в Base;
+            // ветка выделенного коммита - первой
+            Choices := TStringList.Create;
+            try
+              for BranchIdx := 0 to BranchRefs.Count - 1 do
+              begin
+                BranchName := BranchRefs.Names[BranchIdx];
+                if (BranchName = 'main') or (BranchName = 'master') then
+                  Continue;   // основные ветки отсюда не удаляются
+                Unmerged := Integer(BranchRefs.Objects[BranchIdx]);
+                if Unmerged = 0 then
+                  Choice := BranchName + '  (всё уже в ' + Base + ')'
+                else
+                  Choice := BranchName + '  (' + IntToStr(Unmerged) +
+                    ' не в ' + Base + ')';
+                if BranchName = ActionBranch then
+                  Choices.Insert(0, Choice)
+                else
+                  Choices.Add(Choice);
+              end;
+              if Choices.Count = 0 then
+                Continue;
+              Choice := ChooseFromList('Delete Branch', 'Удалить ветку ' +
+                '(локальную и на сервере):', Choices);
+            finally
+              Choices.Free;
+            end;
+            if Choice = '' then
+              Continue;
+            BranchName := Copy(Choice, 1, Pos('  (', Choice) - 1);
+            BranchIdx := BranchRefs.IndexOfName(BranchName);
+            if BranchIdx < 0 then
+              Continue;
+            GitDeleteBranchAll(Git, Repo, BranchName,
+              BranchRefs.ValueFromIndex[BranchIdx],
+              Integer(BranchRefs.Objects[BranchIdx]));
+          end;
+        ghaBranch:
+          begin
+            BranchName := '';
+            if not InputQuery('New Branch from Commit', 'Имя новой ветки (от ' +
+               Copy(Hash, 1, 7) + '):', BranchName) then
+              Continue;
+            BranchName := Trim(BranchName);
+            if not GitValidBranchName(BranchName) then
+            begin
+              ShowMessage('Имя ветки не годится для git');
+              Continue;
+            end;
+            GitLongOp(Git, Repo, 'checkout -b ' +
+              string(GitQuote(WideString(BranchName))) + ' ' + Hash);
+            Exit;   // текущая ветка сменилась - список был против Base
+          end;
+      else
+        Exit;   // Close
+      end;
+    until False;
+  finally
+    AllBranches.Free;
+    BranchRefs.Free;
+  end;
+end;
+
+// Удалить ветку ABranch: локальную (git branch -D) и на сервере (git push
+// origin --delete) - по тому, какие из ссылок ARefs есть. AUnmerged -
+// сколько в ней коммитов не в текущей: не 0 - предупредить. True - удалено
+function TForm1.GitDeleteBranchAll(const AGit, ARepo, ABranch, ARefs: string;
+  AUnmerged: Integer): Boolean;
+var
+  HasLocal, HasRemote: Boolean;
+  Question, Where: string;
+begin
+  Result := False;
+  HasLocal := Pos(' ' + ABranch + ' ', ' ' + ARefs + ' ') > 0;
+  HasRemote := Pos(' origin/' + ABranch + ' ', ' ' + ARefs + ' ') > 0;
+  if HasLocal and HasRemote then
+    Where := 'локальную и на сервере'
+  else if HasLocal then
+    Where := 'локальную (на сервере её нет)'
+  else
+    Where := 'на сервере (локальной нет)';
+  Question := 'Удалить ветку ' + ABranch + ' - ' + Where + '?';
+  if AUnmerged > 0 then
+    Question := Question + #13#10#13#10'В ней ' + IntToStr(AUnmerged) +
+      ' коммит(ов), которых нет в текущей ветке - они пропадут (останутся ' +
+      'только в истории reflog этого компьютера).';
+  if MessageDlg(Question, mtWarning, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  if HasLocal and (GitLongOp(AGit, ARepo, 'branch -D ' +
+     string(GitQuote(WideString(ABranch)))) <> 0) then
+    Exit;
+  if HasRemote and (GitLongOp(AGit, ARepo, 'push origin --delete ' +
+     string(GitQuote(WideString(ABranch)))) <> 0) then
+    Exit;
+  Result := True;
 end;
 
 procedure TForm1.GitViewBranchClick(Sender: TObject);

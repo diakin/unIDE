@@ -12,9 +12,20 @@ unit DlgGitHistory;
 //  закрытия окна (Action, SelectedHash).
 //
 //  Сравнение веток (панель Git - Compare...): ARevs = 'A...B' - коммиты,
-//  которые есть только в одной из веток (git log --left-right), в начале
-//  заголовка коммита - '<' (только в A) или '>' (только в B). Revert в
-//  этом режиме нет: коммит может быть не из текущей ветки.
+//  которые есть только в одной из веток (git log --left-right). Первый
+//  столбец - ветка, строки - цветом своей ветки. Revert в этом режиме нет:
+//  коммит может быть не из текущей ветки.
+//
+//  Коммиты не в основной ветке (панель Git - Unmerged..., CreateUnmerged):
+//  у каждой ветки из списка - коммиты, которых нет в ABase (git log
+//  --right-only --cherry-pick: перенесённые cherry-pick'ом с тем же
+//  содержимым не в счёт), в одной таблице, цвет - свой у каждой ветки.
+//  Коммит в нескольких ветках - одна строка, ветки через запятую. Кнопки
+//  Cherry-pick (выделенные коммиты - в текущую ветку), Merge Branch
+//  (ветку выделенного коммита - целиком), Delete Branch... - выполняет
+//  Unit1 после закрытия окна (Action, SelectedHashes, ActionBranch) и
+//  открывает окно снова. Сколько коммитов у каждой ветки не в ABase -
+//  в Objects списка ABranchRefs.
 //
 //  Окно строится в коде (CreateDlg), .dfm нет.
 // ---------------------------------------------------------------------------
@@ -37,7 +48,8 @@ type
     var AOutput: WideString): Integer of object;
 
   // Что сделать после закрытия окна
-  TGitHistAction = (ghaNone, ghaBranch, ghaRevert);
+  TGitHistAction = (ghaNone, ghaBranch, ghaRevert, ghaCherryPick,
+    ghaMergeBranch, ghaDeleteBranch);
 
   TDlgGitHistory = class(TForm)
   private
@@ -51,6 +63,19 @@ type
     FLimit: Integer;
     FRevs: string;          // что показывать: 'HEAD' или 'A...B'
     FCompare: Boolean;      // сравнение веток (FRevs с '...')
+    FUnmerged: Boolean;     // коммиты веток, которых нет в FBase
+    FBase: string;
+    // Ветки (Names) и их ссылки через пробел (Values: 'x origin/x');
+    // Objects - сколько коммитов ветки не в FBase. Список - Unit1
+    FBranchRefs: TStrings;
+    // У каждого коммита FCommits: ветки (через ', ') и номер цвета
+    FCommitBranch: array of string;
+    FCommitColor: array of Integer;
+    FSelHashes: TStringList;
+    FActionBranch: string;
+    FBtnPick: TUiButton;
+    FBtnMergeBranch: TUiButton;
+    FBtnDelBranch: TUiButton;
     FLeft: TUiPanel;
     FRight: TUiPanel;
     FBtnPanel: TUiPanel;
@@ -68,7 +93,19 @@ type
     FBtnBranch: TUiButton;
     FBtnRevert: TUiButton;
     FBtnClose: TUiButton;
+    procedure Build(const ATitle: string);
     procedure LoadCommits;
+    procedure LoadUnmerged;
+    procedure FillList;
+    function BranchColor(AIndex: Integer): TColor;
+    procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
+    procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
+      SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
+    procedure BtnPickClick(Sender: TObject);
+    procedure BtnMergeBranchClick(Sender: TObject);
+    procedure BtnDelBranchClick(Sender: TObject);
+    function FirstBranchOf(AIndex: Integer): string;
     procedure ShowCommit(AIndex: Integer);
     procedure ShowFileDiff(AIndex: Integer);
     procedure CommitSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -85,8 +122,16 @@ type
   public
     constructor CreateDlg(AOwner: TComponent; const ATitle, AWebUrl: string;
       AOnQuery: TGitQueryEvent; const ARevs: string = 'HEAD');
+    constructor CreateUnmerged(AOwner: TComponent; const ATitle,
+      AWebUrl: string; AOnQuery: TGitQueryEvent; const ABase: string;
+      ABranchRefs: TStrings);
+    destructor Destroy; override;
     property Action: TGitHistAction read FAction;
     property SelectedHash: string read FCurHash;
+    // Cherry-pick: выделенные коммиты, от старых к новым
+    property SelectedHashes: TStringList read FSelHashes;
+    // Merge Branch, Delete Branch: ветка выделенного коммита ('' - нет)
+    property ActionBranch: string read FActionBranch;
     // Схема подсветки кода в разнице (Unit1.SchemeCopyFor)
     procedure SetSchemeProvider(AProvider: TGitSchemeEvent);
   end;
@@ -94,13 +139,12 @@ type
 const
   GitHistPage = 500;        // столько коммитов за раз (Load More - ещё)
   GitHistDiffMax = 300000;  // разница длиннее - обрезается
+  GitBranchColorCount = 8;  // цветов веток; дальше - по кругу
 
 implementation
 
 constructor TDlgGitHistory.CreateDlg(AOwner: TComponent; const ATitle,
   AWebUrl: string; AOnQuery: TGitQueryEvent; const ARevs: string);
-var
-  Column: TListColumn;
 begin
   inherited CreateNew(AOwner);
   FOnQuery := AOnQuery;
@@ -109,6 +153,35 @@ begin
     FRevs := 'HEAD';
   FCompare := Pos('...', FRevs) > 0;
   FWebUrl := AWebUrl;
+  Build(ATitle);
+end;
+
+constructor TDlgGitHistory.CreateUnmerged(AOwner: TComponent; const ATitle,
+  AWebUrl: string; AOnQuery: TGitQueryEvent; const ABase: string;
+  ABranchRefs: TStrings);
+begin
+  inherited CreateNew(AOwner);
+  FOnQuery := AOnQuery;
+  FUnmerged := True;
+  FBase := ABase;
+  FBranchRefs := ABranchRefs;
+  FRevs := ABase;
+  FWebUrl := AWebUrl;
+  Build(ATitle);
+end;
+
+destructor TDlgGitHistory.Destroy;
+begin
+  FSelHashes.Free;
+  inherited Destroy;
+end;
+
+// Окно - общее для History, Compare и Unmerged
+procedure TDlgGitHistory.Build(const ATitle: string);
+var
+  Column: TListColumn;
+begin
+  FSelHashes := TStringList.Create;
   FAction := ghaNone;
   FCurHash := '';
   FLimit := GitHistPage;
@@ -160,6 +233,16 @@ begin
   FCommitList.ReadOnly := True;
   FCommitList.RowSelect := True;
   FCommitList.HideSelection := False;
+  if FCompare or FUnmerged then
+  begin
+    Column := FCommitList.Columns.Add;
+    Column.Caption := 'Ветка';
+    Column.Width := 130;
+    FCommitList.OnCustomDrawItem := ListCustomDrawItem;
+    FCommitList.OnCustomDrawSubItem := ListCustomDrawSubItem;
+  end;
+  // Cherry-pick - сразу несколько коммитов
+  FCommitList.MultiSelect := FUnmerged;
   Column := FCommitList.Columns.Add;
   Column.Caption := 'Коммит';
   Column.Width := 250;
@@ -248,7 +331,34 @@ begin
     '(git revert); история не переписывается';
   FBtnRevert.ShowHint := True;
   FBtnRevert.OnClick := BtnRevertClick;
-  FBtnRevert.Visible := not FCompare;
+  FBtnRevert.Visible := not FCompare and not FUnmerged;
+
+  FBtnPick := TUiButton.Create(Self);
+  FBtnPick.Parent := FBtnPanel;
+  FBtnPick.Caption := 'Cherry-pick';
+  FBtnPick.Hint := 'Перенести выделенные коммиты в ' + FBase +
+    ' (git cherry-pick -x, от старых к новым)';
+  FBtnPick.ShowHint := True;
+  FBtnPick.OnClick := BtnPickClick;
+  FBtnPick.Visible := FUnmerged;
+
+  FBtnMergeBranch := TUiButton.Create(Self);
+  FBtnMergeBranch.Parent := FBtnPanel;
+  FBtnMergeBranch.Caption := 'Merge Branch';
+  FBtnMergeBranch.Hint := 'Влить в ' + FBase + ' ветку выделенного коммита ' +
+    'целиком (git merge)';
+  FBtnMergeBranch.ShowHint := True;
+  FBtnMergeBranch.OnClick := BtnMergeBranchClick;
+  FBtnMergeBranch.Visible := FUnmerged;
+
+  FBtnDelBranch := TUiButton.Create(Self);
+  FBtnDelBranch.Parent := FBtnPanel;
+  FBtnDelBranch.Caption := 'Delete Branch...';
+  FBtnDelBranch.Hint := 'Удалить ветку - локальную и на сервере (выбор из ' +
+    'списка; ветка выделенного коммита - первой)';
+  FBtnDelBranch.ShowHint := True;
+  FBtnDelBranch.OnClick := BtnDelBranchClick;
+  FBtnDelBranch.Visible := FUnmerged;
 
   FBtnClose := TUiButton.Create(Self);
   FBtnClose.Parent := FBtnPanel;
@@ -288,7 +398,14 @@ begin
   Place(FBtnCopy, 76);
   Place(FBtnWeb, 104);
   Place(FBtnBranch, 170);
-  Place(FBtnRevert, 100);
+  if FBtnRevert.Visible then
+    Place(FBtnRevert, 100);
+  if FUnmerged then
+  begin
+    Place(FBtnPick, 84);
+    Place(FBtnMergeBranch, 100);
+    Place(FBtnDelBranch, 110);
+  end;
   FBtnClose.SetBounds(FBtnPanel.ClientWidth - 74, BtnTop, 70, BtnH);
 end;
 
@@ -310,16 +427,22 @@ begin
   FBtnWeb.Enabled := HasCommit and (FWebUrl <> '');
   FBtnBranch.Enabled := HasCommit;
   FBtnRevert.Enabled := HasCommit;
+  FBtnPick.Enabled := FCommitList.SelCount > 0;
+  FBtnMergeBranch.Enabled := HasCommit;
 end;
 
 // Коммиты текущей ветки: первые FLimit
 procedure TDlgGitHistory.LoadCommits;
 var
   Output: WideString;
-  CommitIdx, KeepIdx: Integer;
-  Item: TListItem;
-  LogArgs: string;
+  CommitIdx: Integer;
+  LogArgs, LeftName, RightName: string;
 begin
+  if FUnmerged then
+  begin
+    LoadUnmerged;
+    Exit;
+  end;
   Screen.Cursor := crHourGlass;
   try
     // Сравнение: %m - '<' или '>' (с какой стороны коммит) перед заголовком;
@@ -338,41 +461,257 @@ begin
     end
     else
       GitParseLog(Output, FCommits);
-    KeepIdx := -1;
-    if FCommitList.Selected <> nil then
-      KeepIdx := FCommitList.Selected.Index;
-    FCommitList.Items.BeginUpdate;
-    try
-      FCommitList.Items.Clear;
-      for CommitIdx := 0 to High(FCommits) do
-      begin
-        Item := FCommitList.Items.Add;
-        Item.Caption := string(FCommits[CommitIdx].Subject);
-        Item.SubItems.Add(string(FCommits[CommitIdx].Author));
-        Item.SubItems.Add(FCommits[CommitIdx].Date);
-        Item.SubItems.Add(FCommits[CommitIdx].Short);
-      end;
-    finally
-      FCommitList.Items.EndUpdate;
-    end;
-    if Length(FCommits) > 0 then
-      FLblInfo.Caption := 'Коммитов показано: ' + IntToStr(Length(FCommits));
+    SetLength(FCommitBranch, Length(FCommits));
+    SetLength(FCommitColor, Length(FCommits));
     if FCompare then
     begin
-      if Length(FCommits) > 0 then
-        FLblInfo.Caption := FLblInfo.Caption + '. < - только в ' +
-          Copy(FRevs, 1, Pos('...', FRevs) - 1) + ', > - только в ' +
-          Copy(FRevs, Pos('...', FRevs) + 3, MaxInt)
-      else if Output = '' then
-        FLblInfo.Caption := 'Различающихся коммитов нет: ветки на одном ' +
-          'коммите';
+      LeftName := Copy(FRevs, 1, Pos('...', FRevs) - 1);
+      RightName := Copy(FRevs, Pos('...', FRevs) + 3, MaxInt);
+      // '<' / '>' в начале заголовка - сторона: ветка и цвет вместо стрелки
+      for CommitIdx := 0 to High(FCommits) do
+      begin
+        if Copy(FCommits[CommitIdx].Subject, 1, 1) = '<' then
+        begin
+          FCommitBranch[CommitIdx] := LeftName;
+          FCommitColor[CommitIdx] := 0;
+        end
+        else
+        begin
+          FCommitBranch[CommitIdx] := RightName;
+          FCommitColor[CommitIdx] := 1;
+        end;
+        FCommits[CommitIdx].Subject := Copy(FCommits[CommitIdx].Subject, 3,
+          MaxInt);
+      end;
     end;
+    FillList;
+    if Length(FCommits) > 0 then
+      FLblInfo.Caption := 'Коммитов показано: ' + IntToStr(Length(FCommits));
+    if FCompare and (Length(FCommits) = 0) and (Output = '') then
+      FLblInfo.Caption := 'Различающихся коммитов нет: ветки на одном ' +
+        'коммите';
     FBtnMore.Enabled := Length(FCommits) >= FLimit;
-    if (KeepIdx >= 0) and (KeepIdx < FCommitList.Items.Count) then
-      FCommitList.Items[KeepIdx].Selected := True;
   finally
     Screen.Cursor := crDefault;
   end;
+end;
+
+// Список - по FCommits (и FCommitBranch в сравнении и Unmerged)
+procedure TDlgGitHistory.FillList;
+var
+  CommitIdx, KeepIdx: Integer;
+  Item: TListItem;
+begin
+  KeepIdx := -1;
+  if FCommitList.Selected <> nil then
+    KeepIdx := FCommitList.Selected.Index;
+  FCommitList.Items.BeginUpdate;
+  try
+    FCommitList.Items.Clear;
+    for CommitIdx := 0 to High(FCommits) do
+    begin
+      Item := FCommitList.Items.Add;
+      if FCompare or FUnmerged then
+      begin
+        Item.Caption := FCommitBranch[CommitIdx];
+        Item.SubItems.Add(string(FCommits[CommitIdx].Subject));
+      end
+      else
+        Item.Caption := string(FCommits[CommitIdx].Subject);
+      Item.SubItems.Add(string(FCommits[CommitIdx].Author));
+      Item.SubItems.Add(FCommits[CommitIdx].Date);
+      Item.SubItems.Add(FCommits[CommitIdx].Short);
+    end;
+  finally
+    FCommitList.Items.EndUpdate;
+  end;
+  if (KeepIdx >= 0) and (KeepIdx < FCommitList.Items.Count) then
+    FCommitList.Items[KeepIdx].Selected := True;
+end;
+
+// Коммиты веток FBranchRefs, которых нет в FBase: по веткам подряд, у
+// каждой - от новых к старым. --cherry-pick: коммит с тем же изменением,
+// что уже есть в FBase (перенесён cherry-pick'ом), не показывается
+procedure TDlgGitHistory.LoadUnmerged;
+var
+  Output: WideString;
+  Part: TGitCommits;
+  Refs, Seen, BranchHashes: TStringList;
+  BranchIdx, RefIdx, PartIdx, Found, Count, BranchesWith: Integer;
+  Name: string;
+begin
+  Screen.Cursor := crHourGlass;
+  Refs := TStringList.Create;
+  Seen := TStringList.Create;
+  BranchHashes := TStringList.Create;
+  try
+    Seen.Sorted := True;
+    BranchHashes.Sorted := True;
+    SetLength(FCommits, 0);
+    SetLength(FCommitBranch, 0);
+    SetLength(FCommitColor, 0);
+    Count := 0;
+    BranchesWith := 0;
+    for BranchIdx := 0 to FBranchRefs.Count - 1 do
+    begin
+      Name := FBranchRefs.Names[BranchIdx];
+      Refs.Delimiter := ' ';
+      Refs.DelimitedText := FBranchRefs.ValueFromIndex[BranchIdx];
+      BranchHashes.Clear;
+      for RefIdx := 0 to Refs.Count - 1 do
+      begin
+        if Refs[RefIdx] = '' then
+          Continue;
+        if Query('log --right-only --cherry-pick --no-merges ' +
+           GitLogFormat + ' -n ' + IntToStr(FLimit) + ' ' + FBase + '...' +
+           Refs[RefIdx], Output) <> 0 then
+          Continue;
+        GitParseLog(Output, Part);
+        for PartIdx := 0 to High(Part) do
+        begin
+          if BranchHashes.IndexOf(Part[PartIdx].Hash) >= 0 then
+            Continue;   // тот же коммит в локальной и в origin/<ветка>
+          BranchHashes.Add(Part[PartIdx].Hash);
+          Found := Seen.IndexOf(Part[PartIdx].Hash);
+          if Found >= 0 then
+          begin
+            // Уже показан у другой ветки - дописать эту
+            Found := Integer(Seen.Objects[Found]);
+            FCommitBranch[Found] := FCommitBranch[Found] + ', ' + Name;
+            Continue;
+          end;
+          SetLength(FCommits, Count + 1);
+          SetLength(FCommitBranch, Count + 1);
+          SetLength(FCommitColor, Count + 1);
+          FCommits[Count] := Part[PartIdx];
+          FCommitBranch[Count] := Name;
+          FCommitColor[Count] := BranchIdx mod GitBranchColorCount;
+          Seen.AddObject(Part[PartIdx].Hash, TObject(Count));
+          Inc(Count);
+        end;
+      end;
+      FBranchRefs.Objects[BranchIdx] := TObject(BranchHashes.Count);
+      if BranchHashes.Count > 0 then
+        Inc(BranchesWith);
+    end;
+    FillList;
+    if Count = 0 then
+      FLblInfo.Caption := 'Во всех ' + IntToStr(FBranchRefs.Count) +
+        ' ветках нет коммитов, которых нет в ' + FBase + ' - ветки можно ' +
+        'удалять (Delete Branch...)'
+    else
+      FLblInfo.Caption := 'Не в ' + FBase + ': ' + IntToStr(Count) +
+        ' коммит(ов) из ' + IntToStr(BranchesWith) + ' веток; у ' +
+        IntToStr(FBranchRefs.Count - BranchesWith) + ' веток всё уже в ' +
+        FBase + '. Ctrl / Shift - выделить несколько';
+    FBtnMore.Enabled := False;
+    for BranchIdx := 0 to FBranchRefs.Count - 1 do
+      if Integer(FBranchRefs.Objects[BranchIdx]) >= FLimit then
+        FBtnMore.Enabled := True;
+  finally
+    BranchHashes.Free;
+    Seen.Free;
+    Refs.Free;
+    Screen.Cursor := crDefault;
+  end;
+end;
+
+// Цвет ветки AIndex на фоне списка: для тёмного и светлого фона свои
+function TDlgGitHistory.BranchColor(AIndex: Integer): TColor;
+const
+  // $00BBGGRR
+  DarkColors: array[0..GitBranchColorCount - 1] of TColor = (
+    $005A5AFF, $0070D070, $00FFA050, $0040E0F0, $00FF80D0, $00E0D060,
+    $0060A0FF, $00C0C0C0);
+  LightColors: array[0..GitBranchColorCount - 1] of TColor = (
+    $000000C8, $00008000, $00C04000, $000088A8, $00A00080, $00A06000,
+    $000060D0, $00606060);
+var
+  BackRgb: Longint;
+  Brightness: Integer;
+begin
+  AIndex := AIndex mod GitBranchColorCount;
+  BackRgb := ColorToRGB(FCommitList.Color);
+  Brightness := (GetRValue(BackRgb) * 299 + GetGValue(BackRgb) * 587 +
+    GetBValue(BackRgb) * 114) div 1000;
+  if Brightness < 128 then
+    Result := DarkColors[AIndex]
+  else
+    Result := LightColors[AIndex];
+end;
+
+procedure TDlgGitHistory.ListCustomDrawItem(Sender: TCustomListView;
+  Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
+begin
+  if (Item <> nil) and (Item.Index <= High(FCommitColor)) then
+    Sender.Canvas.Font.Color := BranchColor(FCommitColor[Item.Index])
+  else
+    Sender.Canvas.Font.Color := FCommitList.Font.Color;
+  DefaultDraw := True;
+end;
+
+procedure TDlgGitHistory.ListCustomDrawSubItem(Sender: TCustomListView;
+  Item: TListItem; SubItem: Integer; State: TCustomDrawState;
+  var DefaultDraw: Boolean);
+begin
+  ListCustomDrawItem(Sender, Item, State, DefaultDraw);
+end;
+
+// Первая ветка коммита AIndex (у коммита их может быть несколько)
+function TDlgGitHistory.FirstBranchOf(AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex < 0) or (AIndex > High(FCommitBranch)) then
+    Exit;
+  Result := FCommitBranch[AIndex];
+  if Pos(',', Result) > 0 then
+    Result := Copy(Result, 1, Pos(',', Result) - 1);
+end;
+
+procedure TDlgGitHistory.BtnPickClick(Sender: TObject);
+var
+  Order: TStringList;
+  ItemIdx, OrderIdx: Integer;
+begin
+  FSelHashes.Clear;
+  // От старых к новым: по дате; в одну минуту - ниже в списке раньше
+  Order := TStringList.Create;
+  try
+    Order.Sorted := True;
+    for ItemIdx := 0 to FCommitList.Items.Count - 1 do
+      if FCommitList.Items[ItemIdx].Selected and
+         (ItemIdx <= High(FCommits)) then
+        Order.AddObject(FCommits[ItemIdx].Date +
+          Format('%.6d', [999999 - ItemIdx]), TObject(ItemIdx));
+    for OrderIdx := 0 to Order.Count - 1 do
+      FSelHashes.Add(FCommits[Integer(Order.Objects[OrderIdx])].Hash);
+  finally
+    Order.Free;
+  end;
+  if FSelHashes.Count = 0 then
+    Exit;
+  FAction := ghaCherryPick;
+  ModalResult := mrOk;
+end;
+
+procedure TDlgGitHistory.BtnMergeBranchClick(Sender: TObject);
+begin
+  if FCommitList.Selected = nil then
+    Exit;
+  FActionBranch := FirstBranchOf(FCommitList.Selected.Index);
+  if FActionBranch = '' then
+    Exit;
+  FAction := ghaMergeBranch;
+  ModalResult := mrOk;
+end;
+
+procedure TDlgGitHistory.BtnDelBranchClick(Sender: TObject);
+begin
+  FActionBranch := '';
+  if FCommitList.Selected <> nil then
+    FActionBranch := FirstBranchOf(FCommitList.Selected.Index);
+  FAction := ghaDeleteBranch;
+  ModalResult := mrOk;
 end;
 
 procedure TDlgGitHistory.ShowCommit(AIndex: Integer);
