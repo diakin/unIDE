@@ -37,24 +37,24 @@ object Form2: TForm2
         Left = 0
         Top = 0
         Width = 612
-        Height = 58
+        Height = 90
         BevelOuter = bvNone
         TabOrder = 0
         Align = alTop
         object lblTheme: TPanel
           Left = 10
-          Top = 5
-          Width = 80
+          Top = 61
+          Width = 50
           Height = 21
           BevelOuter = bvNone
-          Caption = 'Color Schem'
+          Caption = 'Theme'
           Color = clBtnFace
           ParentBackground = False
           TabOrder = 0
         end
         object cmbTheme: TUiComboBox
-          Left = 90
-          Top = 5
+          Left = 64
+          Top = 61
           Width = 140
           Height = 21
           ItemHeight = 13
@@ -67,8 +67,8 @@ object Form2: TForm2
           OnKeyPress = cmbThemeKeyPress
         end
         object btnThemeAdd: TUiButton
-          Left = 234
-          Top = 4
+          Left = 208
+          Top = 60
           Width = 40
           Height = 23
           Caption = 'Add'
@@ -76,8 +76,8 @@ object Form2: TForm2
           OnClick = btnThemeAddClick
         end
         object btnThemeDel: TUiButton
-          Left = 276
-          Top = 4
+          Left = 250
+          Top = 60
           Width = 50
           Height = 23
           Caption = 'Delete'
@@ -85,16 +85,16 @@ object Form2: TForm2
           OnClick = btnThemeDelClick
         end
         object pnlThemeSpacer: TPanel
-          Left = 326
-          Top = 4
+          Left = 300
+          Top = 60
           Width = 16
           Height = 23
           BevelOuter = bvNone
           TabOrder = 4
         end
         object rbIdeLight: TUiRadioButton
-          Left = 10
-          Top = 35
+          Left = 124
+          Top = 7
           Width = 75
           Height = 17
           Caption = 'IDE Light'
@@ -103,8 +103,8 @@ object Form2: TForm2
           OnClick = rbIdeModeClick
         end
         object rbIdeDark: TUiRadioButton
-          Left = 91
-          Top = 35
+          Left = 205
+          Top = 7
           Width = 75
           Height = 17
           Caption = 'IDE Dark'
@@ -113,8 +113,8 @@ object Form2: TForm2
           OnClick = rbIdeModeClick
         end
         object rbIdeCustom: TUiRadioButton
-          Left = 172
-          Top = 35
+          Left = 286
+          Top = 7
           Width = 62
           Height = 17
           Caption = 'Custom'
@@ -122,8 +122,8 @@ object Form2: TForm2
           OnClick = rbIdeModeClick
         end
         object cmbIdeCustom: TUiComboBox
-          Left = 236
-          Top = 33
+          Left = 350
+          Top = 5
           Width = 140
           Height = 21
           ItemHeight = 13
@@ -134,8 +134,8 @@ object Form2: TForm2
           OnChange = cmbIdeCustomChange
         end
         object btnIdeCustomAdd: TUiButton
-          Left = 380
-          Top = 32
+          Left = 494
+          Top = 4
           Width = 40
           Height = 23
           Caption = 'Add'
@@ -146,8 +146,8 @@ object Form2: TForm2
           OnClick = btnIdeCustomAddClick
         end
         object btnIdeCustomDel: TUiButton
-          Left = 422
-          Top = 32
+          Left = 536
+          Top = 4
           Width = 40
           Height = 23
           Caption = 'Del'
@@ -157,10 +157,28 @@ object Form2: TForm2
           Hint = 'Удалить выбранную свою тему IDE'
           OnClick = btnIdeCustomDelClick
         end
+        object lblIdeScheme: TLabel
+          Left = 10
+          Top = 8
+          Caption = 'IDE Color scheme'
+        end
+        object lblHighlight: TLabel
+          Left = 10
+          Top = 36
+          Caption = 'Source code highlighting'
+        end
+        object bvlHighlight: TBevel
+          Left = 180
+          Top = 43
+          Width = 424
+          Height = 2
+          Anchors = [akLeft, akTop, akRight]
+          Shape = bsTopLine
+        end
       end
       object pnlGroupActions: TPanel
         Left = 0
-        Top = 58
+        Top = 90
         Width = 612
         Height = 72
         BevelOuter = bvNone

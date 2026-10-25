@@ -35,6 +35,11 @@ type
     // ней режим IDE - Light, Dark или своя тема (Custom) из cmbIdeCustom.
     // Хранится в editor.ini, раздел [Themes].
     pnlTheme: TPanel;
+    // Первый ряд - режим IDE (IDE Color scheme), ниже заголовок Source code
+    // highlighting и тема подсветки (lblTheme, cmbTheme)
+    lblIdeScheme: TLabel;
+    lblHighlight: TLabel;
+    bvlHighlight: TBevel;
     lblTheme: TPanel;
     cmbTheme: TUiComboBox;
     btnThemeAdd: TUiButton;
@@ -1071,6 +1076,19 @@ begin
   // Второй ряд, под списком групп: работа с файлами схем
   btnOpenClr.Left := cmbGroupType.Left;
   btnSelectSchema.Left := btnOpenClr.Left + btnOpenClr.Width + 6;
+  // Ряд режима IDE - за подписью; линия заголовка подсветки - за ним
+  lblHighlight.Font.Style := [fsBold];
+  bvlHighlight.Left := lblHighlight.Left + lblHighlight.Width + 8;
+  bvlHighlight.Width := pnlTheme.ClientWidth - bvlHighlight.Left - 8;
+  rbIdeLight.Left := lblIdeScheme.Left + lblIdeScheme.Width + 12;
+  rbIdeDark.Left := rbIdeLight.Left + rbIdeLight.Width + 6;
+  rbIdeCustom.Left := rbIdeDark.Left + rbIdeDark.Width + 6;
+  cmbIdeCustom.Left := rbIdeCustom.Left + rbIdeCustom.Width + 2;
+  btnIdeCustomAdd.Left := cmbIdeCustom.Left + cmbIdeCustom.Width + 4;
+  btnIdeCustomDel.Left := btnIdeCustomAdd.Left + btnIdeCustomAdd.Width + 2;
+  if btnIdeCustomDel.Left + btnIdeCustomDel.Width + 10 > ClientWidth then
+    ClientWidth := btnIdeCustomDel.Left + btnIdeCustomDel.Width + 10;
+
   FBtnResetScheme.Left := btnSelectSchema.Left + btnSelectSchema.Width + 6;
   FBtnResetScheme.Top := btnSelectSchema.Top;
   // За ними - цвета редактора и полосы номеров (рамка Editor colors)
@@ -1085,7 +1103,8 @@ end;
 // ---------------------------------------------------------------------------
 //  Панель темы
 //
-//  Контролы - как в окне настроек RQdebugger: подпись Color Schem, список
+//  Контролы - как в окне настроек RQdebugger: подпись Theme (была Color
+//  Schem; ряд - под заголовком Source code highlighting), список
 //  тем, Add, Delete, IDE Light и IDE Dark. Отдельное поле для имени новой
 //  темы не нужно: список допускает ввод, Enter в нём - то же, что Add.
 //
