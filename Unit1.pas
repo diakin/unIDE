@@ -2262,6 +2262,9 @@ type
     // в нём только главные файлы типа, и выбранный становится главным
     FPickFiles: TFileListBox;
     FPickLock: Boolean;
+    // OK в окне выбора папки - и с папкой, которой ещё нет (её создаст
+    // вызвавший: New Repository)
+    FPickAllowNew: Boolean;
     // Главный файл выбранного готового проекта (.dpr, .lpr, .ino ...) -
     // цель сборки нового описания
     FNewPrjMain: string;
@@ -12223,6 +12226,13 @@ begin
   if FPickEdit = nil then
     Exit;
   S := ExcludeTrailingPathDelimiter(Trim(FPickEdit.Text));
+  // Новая папка (FPickAllowNew) - нужен полный путь с существующим диском
+  if FPickAllowNew and (S <> '') and (ExtractFileDrive(S) <> '') and
+     DirectoryExists(IncludeTrailingPathDelimiter(ExtractFileDrive(S))) then
+  begin
+    (TUiButton(Sender).Owner as TForm).ModalResult := mrOk;
+    Exit;
+  end;
   if (S = '') or not DirectoryExists(S) then
   begin
     ShowMessage('6769:Такой папки нет:'#13#10 + S);
@@ -67397,9 +67407,13 @@ begin
     'для текущей ветки на GitHub', GitPullRequestClick);
 end;
 
+// New Repository: папка (можно новую - в поле пути дописать её имя),
+// затем имя репозитория - по умолчанию имя последней папки пути; другое
+// имя - папка с этим именем рядом. Папки нет - создаётся; затем git init
 procedure TForm1.GitNewRepoClick(Sender: TObject);
 var
-  Git, Dir, StartDir: string;
+  Git, Dir, StartDir, RepoName, Parent: string;
+  Picked: Boolean;
 begin
   if FGitBusy then
     Exit;
@@ -67408,9 +67422,40 @@ begin
     Exit;
   StartDir := GitBaseDir;
   Dir := StartDir;
-  if not PickFolderDialog('New Repository - папка (git init)', StartDir,
-     Dir) then
+  FPickAllowNew := True;
+  try
+    Picked := PickFolderDialog('New Repository - папка (новую можно ' +
+      'дописать в поле пути)', StartDir, Dir);
+  finally
+    FPickAllowNew := False;
+  end;
+  if not Picked then
     Exit;
+  Dir := ExcludeTrailingPathDelimiter(Dir);
+  RepoName := ExtractFileName(Dir);
+  Parent := ExtractFilePath(Dir);
+  if not InputQuery('New Repository', 'Имя нового репозитория (папка в ' +
+     Parent + '):', RepoName) then
+    Exit;
+  RepoName := Trim(RepoName);
+  if (RepoName = '') or (LastDelimiter('\/:*?"<>|', RepoName) > 0) then
+  begin
+    ShowMessage('9829:Имя репозитория не годится для имени папки: «' +
+      RepoName + '» (нельзя пустое и знаки \ / : * ? " < > |).');
+    Exit;
+  end;
+  Dir := IncludeTrailingPathDelimiter(Parent) + RepoName;
+  ShowCompLog;
+  if not DirectoryExists(Dir) then
+  begin
+    if not ForceDirectories(Dir) then
+    begin
+      LogComp('Git: папку ' + Dir + ' не создать');
+      Exit;
+    end;
+    LogComp('Git: создана папка ' + Dir);
+  end;
+  Dir := IncludeTrailingPathDelimiter(Dir);
   if GitRepoTop(Git, Dir) <> '' then
   begin
     ShowCompLog;
