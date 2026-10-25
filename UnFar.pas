@@ -98,6 +98,11 @@ unit UnFar;
 //      элемента панелей, меню, диалогов, кейбара и командной строки
 //      (editor.ini [FarPalette], окно - DlgFarPalette). Недоступные пункты
 //      меню по умолчанию чёрные (тёмно-серый на бирюзовом не виден).
+//    - b.33: FTP (пункт FTP в меню дисков, как плагин FTP в FAR): список
+//      адресов (Host | Home | User; Shift+F4 - новый, F4 - изменить,
+//      F8 / Del - удалить; editor.ini [FarFtp], пароль - DPAPI), вход
+//      на сервер и папки сервера (Enter, '..', Ctrl+R) - WinInet в своём
+//      потоке (FarFtp). Копирование и прочее на сервере - следующим шагом.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -124,10 +129,10 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
-  Clipbrd, IniBuf, SzSetup, FarFind, FarVolumes;
+  Clipbrd, IniBuf, SzSetup, FarFind, FarVolumes, FarFtp;
 
 const
-  FarBuild = 'b.32';
+  FarBuild = 'b.33';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -135,6 +140,7 @@ const
 type
   TFarItem = record
     Name: WideString;
+    FtpRaw: string;      // FTP: имя байтами сервера (для команд серверу)
     Size: Int64;
     Attr: DWORD;
     WriteTime: TFileTime;
@@ -153,7 +159,7 @@ type
   // Открытый диалог: копирование, перенос, папка, удаление
   TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew,
     fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd,
-    fdFind);
+    fdFind, fdFtpEdit, fdFtpPassword, fdFtpDelete, fdFtpError);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -248,6 +254,17 @@ type
     FArcEntries: TFarArcEntries;
     FArcPassword: WideString;
     FArcLevels: TFarArcLevels;
+    // FTP: 0 - нет, 1 - список адресов, 2 - папка сервера (FFtpDir -
+    // байтами сервера). FPath - папка, где панель была до FTP (туда '..'
+    // из списка адресов). FFtpConn - соединение (nil, пока его держит
+    // поток); FFtpSession растёт при каждом уходе с FTP - ответ потока для
+    // прежнего захода отбрасывается
+    FFtpMode: Integer;
+    FFtpHost: TFarFtpHost;
+    FFtpHostIdx: Integer;
+    FFtpDir: string;
+    FFtpConn: TFarFtpConn;
+    FFtpSession: Integer;
     procedure SortItems;
     function ItemLess(const ItemA, ItemB: TFarItem): Boolean;
   public
@@ -264,6 +281,9 @@ type
     // Архив: содержимое папки FArcDir из FArcEntries, курсор - на AFocus
     procedure BuildArcView(const AFocusName: WideString);
     function IsArchive: Boolean;
+    function IsFtp: Boolean;
+    // Уйти с FTP: соединение закрыть, режим - обычная папка
+    procedure FtpLeave;
     // Путь для заголовка: в архиве - архив и папка в нём
     function DisplayPath: WideString;
     // Путь элемента панели в архиве
@@ -465,6 +485,20 @@ type
     // Последняя папка на каждом диске A..Z (любой из панелей) - куда
     // вести при смене диска, если другая панель не на этом диске
     FDriveLast: array[0..25] of WideString;
+    // FTP: адреса (editor.ini [FarFtp]), поток запроса каждой панели и что
+    // он делает (заход FFtpSession панели, курсор после чтения, адрес)
+    FFtpHosts: TFarFtpHosts;
+    FFtpThread: array[0..1] of TFarFtpThread;
+    FFtpJobSession: array[0..1] of Integer;
+    FFtpJobFocus: array[0..1] of string;
+    FFtpJobHost: array[0..1] of TFarFtpHost;
+    FFtpJobHostIdx: array[0..1] of Integer;
+    FFtpEditIdx: Integer;          // окно адреса: какой адрес (-1 - новый)
+    FFtpEditPanel: Integer;
+    FFtpPassPanel: Integer;        // окно пароля: панель и адрес
+    FFtpPassHostIdx: Integer;
+    FFtpDelIdx: Integer;           // удалить адрес: какой
+    FFtpDelPanel: Integer;
     procedure CreateFonts;
     procedure FreeFonts;
     procedure UpdateGrid;
@@ -500,7 +534,7 @@ type
     function KeyBarRows: Integer;
     function FileRows: Integer;
     procedure ColumnWidths(AWidth: Integer; var AFirst, ASecond: Integer);
-    function PageSize: Integer;
+    function PageSize(APanel: TFarPanel): Integer;
     procedure EnsureVisible(APanel: TFarPanel);
     function FitsMainFont(AText: PWideChar; ACount: Integer): Boolean;
     procedure FillCells(ACol, ARow, AWidth: Integer; ABack: TColor);
@@ -509,7 +543,9 @@ type
     procedure PutCentered(ACol, ARow, AWidth: Integer;
       const AText: WideString; AFore, ABack: TColor);
     procedure DrawPanel(AIndex: Integer);
-    procedure DrawFrame(AX0, AWidth, AHeight, AFirstCol: Integer);
+    // ASecondCol - вторая граница колонок (-1 - нет)
+    procedure DrawFrame(AX0, AWidth, AHeight, AFirstCol: Integer;
+      ASecondCol: Integer = -1);
     procedure DrawKeyBar;
     procedure Status(const AText: string);
     function KeyName(AKey: Word; AShift, ACtrl, AAlt: Boolean): string;
@@ -536,6 +572,30 @@ type
     procedure DlgAddCheck(const ACaption: WideString; AChecked: Boolean);
     // Поиск файлов (Alt+F7)
     procedure StartFind;
+    // FTP
+    procedure FtpHostColumns(AWidth: Integer; var AHostW, AHomeW,
+      AUserW: Integer);
+    function PanelColumns(APanel: TFarPanel): Integer;
+    procedure FtpFillHosts(APanel: TFarPanel; AFocusIdx: Integer);
+    procedure FtpFillEntries(APanel: TFarPanel;
+      const AEntries: TFarFtpEntries; const AFocusRaw: string);
+    procedure OpenFtpHosts(APanelIndex: Integer);
+    procedure FtpExit(APanel: TFarPanel);
+    procedure FtpError(const ATitle, AText: WideString);
+    procedure FtpStartList(APanelIndex: Integer; const AHost: TFarFtpHost;
+      AHostIdx: Integer; const ADir, AFocusRaw: string);
+    procedure FtpConnect(APanelIndex, AHostIdx: Integer);
+    procedure FtpPasswordEntered(const APassword: WideString);
+    procedure FtpCheck;
+    procedure FtpUp(APanelIndex: Integer);
+    procedure FtpEnter(APanelIndex: Integer);
+    procedure FtpEditHost(APanelIndex, AHostIdx: Integer);
+    procedure FtpEditConfirm(AConnect: Boolean);
+    procedure FtpDeleteHost(APanelIndex: Integer);
+    procedure FtpDeleteConfirmed;
+    function FtpKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    procedure DrawFtpHosts(APanel: TFarPanel; APanelX, APanelW: Integer;
+      AIsActive: Boolean);
     procedure FindConfirm;
     procedure FindBegin(const AOptions: TFarFindOptions);
     procedure FindStopThread;
@@ -813,6 +873,8 @@ const
   FarFofSilent = $4;
   FarFofNoErrorUI = $400;
   FarArcTempDir = 'unIDE_far';
+  // Пункт FTP в меню дисков (Data пункта)
+  FarFtpMenuData = 'ftp:';
   // Окно Shift+F1: ширина подписей полей; форматы и уровни сжатия (-mx)
   FarDlgCaptionW = 11;
   FarArcAddExts: array[0..1] of string = ('.zip', '.7z');
@@ -1795,6 +1857,10 @@ begin
   FSortReverse := False;
   FDirsFirst := True;
   FSelFirst := False;
+  FFtpMode := 0;
+  FFtpHostIdx := -1;
+  FFtpConn := nil;
+  FFtpSession := 0;
 end;
 
 // Расширение имени: после последней точки ('' - нет точки)
@@ -1993,7 +2059,9 @@ begin
   FItems := NewItems;
   FCount := NewCount;
   SortItems;
-  // Обычная папка - архив (если был) закрыт
+  // Обычная папка - архив и FTP (если были) закрыты
+  if FFtpMode <> 0 then
+    FtpLeave;
   FArcFile := '';
   FArcTitle := '';
   FArcDir := '';
@@ -2033,7 +2101,16 @@ end;
 
 function TFarPanel.DisplayPath: WideString;
 begin
-  if FArcFile = '' then
+  if FFtpMode = 1 then
+    Result := 'FTP:'
+  else if FFtpMode = 2 then
+  begin
+    Result := FarFtpHostUrl(FFtpHost);
+    if (FFtpDir = '') or (FFtpDir[1] <> '/') then
+      Result := Result + '/';
+    Result := Result + FarFtpDecode(FFtpDir);
+  end
+  else if FArcFile = '' then
     Result := FPath
   else if FArcDir = '' then
     Result := FArcTitle
@@ -2205,7 +2282,8 @@ var
   SelectedCount, ItemIndex, NameIndex, OldTop, OldCursor: Integer;
   ErrorText: string;
 begin
-  if FPath = '' then
+  // FTP перечитывает TFarView (Ctrl+R - запрос к серверу)
+  if (FPath = '') or (FFtpMode <> 0) then
     Exit;
   FocusName := '';
   OldCursor := FCursor;
@@ -2318,6 +2396,11 @@ begin
   FDlgKind := fdNone;
   FDlgFocus := -1;
   FSingle := -1;
+  FFtpThread[0] := nil;
+  FFtpThread[1] := nil;
+  FFtpEditIdx := -1;
+  FFtpPassPanel := -1;
+  FFtpDelIdx := -1;
   FWatch[0] := 0;
   FWatch[1] := 0;
   FWatchTimer := TTimer.Create(Self);
@@ -2345,6 +2428,7 @@ destructor TFarView.Destroy;
 var
   TempBuffer: array[0..MAX_PATH] of WideChar;
   TempLen: DWORD;
+  FtpIdx: Integer;
 begin
   FOnStatus := nil;
   FSzTimer.Enabled := False;
@@ -2363,6 +2447,19 @@ begin
     FSzThread.WaitFor;
     FSzThread.Free;
     FSzThread := nil;
+  end;
+  // FTP: запрос прервать (закрыть соединение), соединения панелей закрыть
+  for FtpIdx := 0 to 1 do
+  begin
+    if FFtpThread[FtpIdx] <> nil then
+    begin
+      FFtpThread[FtpIdx].Cancel;
+      FFtpThread[FtpIdx].WaitFor;
+      FFtpThread[FtpIdx].Conn.Free;
+      FFtpThread[FtpIdx].Free;
+      FFtpThread[FtpIdx] := nil;
+    end;
+    FPanels[FtpIdx].FtpLeave;
   end;
   FProcTimer.Enabled := False;
   if FProcHandle <> 0 then
@@ -2593,10 +2690,10 @@ begin
     ASecond := 0;
 end;
 
-// Имён на экране панели (две колонки)
-function TFarView.PageSize: Integer;
+// Имён на экране панели (две колонки; список адресов FTP - одна)
+function TFarView.PageSize(APanel: TFarPanel): Integer;
 begin
-  Result := FileRows * 2;
+  Result := FileRows * PanelColumns(APanel);
 end;
 
 procedure TFarView.EnsureVisible(APanel: TFarPanel);
@@ -2613,7 +2710,7 @@ begin
     APanel.Cursor := APanel.Count - 1;
   if APanel.Cursor < 0 then
     APanel.Cursor := 0;
-  Capacity := PageSize;
+  Capacity := PageSize(APanel);
   if APanel.Cursor < APanel.TopIndex then
     APanel.TopIndex := APanel.Cursor;
   if APanel.Cursor >= APanel.TopIndex + Capacity then
@@ -2726,7 +2823,8 @@ end;
 
 // Двойная рамка панели, разделитель над строкой о файле и линия между
 // колонками - линиями (в cp1251 нет псевдографики)
-procedure TFarView.DrawFrame(AX0, AWidth, AHeight, AFirstCol: Integer);
+procedure TFarView.DrawFrame(AX0, AWidth, AHeight, AFirstCol,
+  ASecondCol: Integer);
 var
   LeftX, RightX, TopY, BottomY, SepY, ColX: Integer;
 begin
@@ -2750,6 +2848,13 @@ begin
     LineTo(RightX, SepY);
     MoveTo(ColX, TopY + 1);
     LineTo(ColX, SepY);
+    // Вторая граница колонок (список адресов FTP)
+    if ASecondCol >= 0 then
+    begin
+      ColX := (AX0 + 1 + ASecondCol) * FCellW + FCellW div 2;
+      MoveTo(ColX, TopY + 1);
+      LineTo(ColX, SepY);
+    end;
   end;
 end;
 
@@ -2765,6 +2870,7 @@ var
   SortLetter: string;
   HasRule: Boolean;
   RuleFore, RuleBack: TColor;
+  HostW, HomeW, UserW: Integer;
 begin
   Panel := FPanels[AIndex];
   PanelBounds(AIndex, PanelX, PanelW);
@@ -2780,52 +2886,58 @@ begin
   Rows := FileRows;
   InnerW := PanelW - 2;
 
-  // Заголовки колонок
-  PutCentered(PanelX + 1, 1, FirstW, 'Name', FPal[fpPanelHeader],
-    FPal[fpPanelBack]);
-  PutCentered(PanelX + 2 + FirstW, 1, SecondW, 'Name', FPal[fpPanelHeader],
-    FPal[fpPanelBack]);
-
-  // Имена: колонка за колонкой, сверху вниз
-  for ColumnIndex := 0 to 1 do
+  // Список адресов FTP: Host | Home | User, строка на адрес
+  if Panel.FFtpMode = 1 then
+    DrawFtpHosts(Panel, PanelX, PanelW, IsActive)
+  else
   begin
-    if ColumnIndex = 0 then
+    // Заголовки колонок
+    PutCentered(PanelX + 1, 1, FirstW, 'Name', FPal[fpPanelHeader],
+      FPal[fpPanelBack]);
+    PutCentered(PanelX + 2 + FirstW, 1, SecondW, 'Name', FPal[fpPanelHeader],
+      FPal[fpPanelBack]);
+
+    // Имена: колонка за колонкой, сверху вниз
+    for ColumnIndex := 0 to 1 do
     begin
-      ColX := PanelX + 1;
-      ColW := FirstW;
-    end
-    else
-    begin
-      ColX := PanelX + 2 + FirstW;
-      ColW := SecondW;
-    end;
-    for RowIndex := 0 to Rows - 1 do
-    begin
-      ItemIndex := Panel.TopIndex + ColumnIndex * Rows + RowIndex;
-      if ItemIndex >= Panel.Count then
-        Break;
-      with Panel.FItems[ItemIndex] do
+      if ColumnIndex = 0 then
       begin
-        // Раскраска по расширению - только у файлов
-        Back := FPal[fpPanelBack];
-        HasRule := not IsDir and RuleColors(Name, RuleFore, RuleBack);
-        if HasRule and (RuleBack <> clNone) then
-          Back := RuleBack;
-        if Selected then
-          Fore := FPal[fpPanelSelected]
-        else if IsDir then
-          Fore := FPal[fpPanelDir]
-        else if HasRule then
-          Fore := RuleFore
-        else
-          Fore := FPal[fpPanelText];
-        if IsActive and (ItemIndex = Panel.Cursor) then
+        ColX := PanelX + 1;
+        ColW := FirstW;
+      end
+      else
+      begin
+        ColX := PanelX + 2 + FirstW;
+        ColW := SecondW;
+      end;
+      for RowIndex := 0 to Rows - 1 do
+      begin
+        ItemIndex := Panel.TopIndex + ColumnIndex * Rows + RowIndex;
+        if ItemIndex >= Panel.Count then
+          Break;
+        with Panel.FItems[ItemIndex] do
         begin
-          Back := FPal[fpPanelCursorBack];
-          if not Selected then
-            Fore := FPal[fpPanelCursorText];
+          // Раскраска по расширению - только у файлов
+          Back := FPal[fpPanelBack];
+          HasRule := not IsDir and RuleColors(Name, RuleFore, RuleBack);
+          if HasRule and (RuleBack <> clNone) then
+            Back := RuleBack;
+          if Selected then
+            Fore := FPal[fpPanelSelected]
+          else if IsDir then
+            Fore := FPal[fpPanelDir]
+          else if HasRule then
+            Fore := RuleFore
+          else
+            Fore := FPal[fpPanelText];
+          if IsActive and (ItemIndex = Panel.Cursor) then
+          begin
+            Back := FPal[fpPanelCursorBack];
+            if not Selected then
+              Fore := FPal[fpPanelCursorText];
+          end;
+          PutText(ColX, 2 + RowIndex, ColW, FarFitName(Name, ColW), Fore, Back);
         end;
-        PutText(ColX, 2 + RowIndex, ColW, FarFitName(Name, ColW), Fore, Back);
       end;
     end;
   end;
@@ -2836,6 +2948,8 @@ begin
     begin
       if IsUp then
         RightText := 'Up'
+      else if Panel.FFtpMode = 1 then
+        RightText := ''
       else if IsDir then
         RightText := 'Folder'
       else
@@ -2845,6 +2959,15 @@ begin
       NameW := InnerW - Length(RightText) - 1;
       if IsUp then
         ItemName := '..'
+      else if (Panel.FFtpMode = 1) and (OrigIndex >= 0) and
+              (OrigIndex <= High(FFtpHosts)) then
+      begin
+        // Адрес: описание, нет его - адрес целиком
+        ItemName := FFtpHosts[OrigIndex].Description;
+        if ItemName = '' then
+          ItemName := FarFtpHostUrl(FFtpHosts[OrigIndex]) +
+            FFtpHosts[OrigIndex].Home;
+      end
       else
         ItemName := Name;
       PutText(PanelX + 1, PanelH - 2, NameW, FarFitName(ItemName, NameW),
@@ -2854,7 +2977,13 @@ begin
         FPal[fpPanelBack]);
     end;
 
-  DrawFrame(PanelX, PanelW, PanelH, FirstW);
+  if Panel.FFtpMode = 1 then
+  begin
+    FtpHostColumns(PanelW, HostW, HomeW, UserW);
+    DrawFrame(PanelX, PanelW, PanelH, HostW, HostW + 1 + HomeW);
+  end
+  else
+    DrawFrame(PanelX, PanelW, PanelH, FirstW);
 
   // Буква сортировки в левом верхнем углу
   SortLetter := Copy(FarSortLetters, Ord(Panel.FSortMode) + 1, 1);
@@ -3049,6 +3178,15 @@ begin
   ColumnWidths(PanelW, FirstW, SecondW);
   if (Row < 2) or (Row >= 2 + FileRows) then
     Exit;
+  // Список адресов FTP: строка на адрес во всю ширину
+  if FPanels[APanelIndex].FFtpMode = 1 then
+  begin
+    if (Col <= PanelX) or (Col >= PanelX + PanelW - 1) then
+      Exit;
+    AItemIndex := FPanels[APanelIndex].TopIndex + Row - 2;
+    Result := AItemIndex < FPanels[APanelIndex].Count;
+    Exit;
+  end;
   if (Col > PanelX) and (Col <= PanelX + FirstW) then
     Column := 0
   else if (Col > PanelX + 1 + FirstW) and (Col < PanelX + PanelW - 1) then
@@ -3339,6 +3477,10 @@ begin
     Exit;
   end;
 
+  // Панель на FTP: свои Enter, Ctrl+R, F4, F8 и т.д.
+  if ActivePanel.IsFtp and FtpKey(AKey, AShift, ACtrl, AAlt) then
+    Exit;
+
   // F-клавиши
   if (AKey >= VK_F1) and (AKey <= VK_F12) then
   begin
@@ -3588,7 +3730,7 @@ begin
   Panel := ActivePanel;
   if Panel.Count = 0 then
     Exit;
-  Step := PageSize - 1;
+  Step := PageSize(Panel) - 1;
   if Step < 1 then
     Step := 1;
   if not ASelect then
@@ -3638,6 +3780,11 @@ begin
   Panel := ActivePanel;
   if (Panel.Count = 0) or (Panel.Cursor >= Panel.Count) then
     Exit;
+  if Panel.IsFtp then
+  begin
+    FtpEnter(FActive);
+    Exit;
+  end;
   // Ctrl+PgDn: в архиве - как Enter, файл - открыть как архив
   if Panel.IsArchive then
   begin
@@ -3668,6 +3815,12 @@ begin
   if (Panel.Count = 0) or (Panel.Cursor < 0) or
      (Panel.Cursor >= Panel.Count) then
     Exit;
+  // FTP: двойной щелчок - как Enter
+  if Panel.IsFtp then
+  begin
+    FtpEnter(FActive);
+    Exit;
+  end;
   if Panel.IsArchive then
   begin
     ArcOpenItem(ASeparate, False);
@@ -3753,6 +3906,16 @@ var
   ParentDir, ChildName: WideString;
 begin
   Panel := ActivePanel;
+  if Panel.FFtpMode = 2 then
+  begin
+    FtpUp(FActive);
+    Exit;
+  end;
+  if Panel.FFtpMode = 1 then
+  begin
+    FtpExit(Panel);
+    Exit;
+  end;
   if Panel.IsArchive then
   begin
     ArcUp(Panel);
@@ -3996,6 +4159,12 @@ begin
     FindConfirm;
     Exit;
   end;
+  // Адрес FTP: Save / Connect - проверка, окно закрывает FtpEditConfirm
+  if (FDlgKind = fdFtpEdit) and (AButton <= 1) then
+  begin
+    FtpEditConfirm(AButton = 1);
+    Exit;
+  end;
   Kind := FDlgKind;
   EditText := FDlgEdit;
   SavedAction := FArcAction;
@@ -4038,6 +4207,10 @@ begin
         FArcJobTemp := SavedTemp;
         SzStartDownload;
       end;
+    fdFtpPassword:
+      FtpPasswordEntered(EditText);
+    fdFtpDelete:
+      FtpDeleteConfirmed;
   end;
 end;
 
@@ -4246,6 +4419,11 @@ begin
     Status('unIDE FAR: упаковка в архив - позже (Shift+F1)');
     Exit;
   end;
+  if not ACurrentOnly and FPanels[1 - FActive].IsFtp then
+  begin
+    Status('unIDE FAR: копирование на FTP - следующим шагом');
+    Exit;
+  end;
   Names := CollectNames(ACurrentOnly);
   if Length(Names) = 0 then
     Exit;
@@ -4380,6 +4558,9 @@ begin
   if (FileDir = '') or (FileName = '') then
     Exit;
   Panel := ActivePanel;
+  // Панель на FTP - остаётся на нём
+  if Panel.IsFtp then
+    Exit;
   if not Panel.IsArchive and
      FarSameName(FarWithSlash(FileDir), Panel.Path) then
   begin
@@ -4668,6 +4849,8 @@ var
   UpperPath, ChildName: WideString;
   AnyDirty: Boolean;
 begin
+  // Ответ сервера FTP
+  FtpCheck;
   if not Visible or not HandleAllocated then
   begin
     if (FWatch[0] <> 0) or (FWatch[1] <> 0) then
@@ -4940,7 +5123,9 @@ begin
     fmDrive:
       // Буква - смена диска; путь (том без буквы, подключённый в папку) -
       // в эту папку
-      if Length(Item.Data) = 1 then
+      if Item.Data = FarFtpMenuData then
+        OpenFtpHosts(PanelIndex)
+      else if Length(Item.Data) = 1 then
         SelectDrive(PanelIndex, Item.Data[1])
       else if (Item.Data <> '') and FarDirExists(Item.Data) then
         ChangeDir(FPanels[PanelIndex], Item.Data, '');
@@ -5439,6 +5624,13 @@ begin
       NoLetterModels[VolIdx])), NoLetter[VolIdx].MountPath,
       NoLetter[VolIdx].MountPath, NoLetter[VolIdx].MountPath = '', -1);
   end;
+  // FTP - как плагин FTP в FAR
+  AddSeparator;
+  if Length(FFtpHosts) > 0 then
+    AddItem('    FTP', 'адресов: ' + WideString(IntToStr(Length(FFtpHosts))),
+      FarFtpMenuData, False, -1)
+  else
+    AddItem('    FTP', '', FarFtpMenuData, False, -1);
   // Физические диски: номер, модель, шина, размер, буквы томов на нём
   if Length(Disks) > 0 then
   begin
@@ -5473,6 +5665,675 @@ begin
     AddItem('    Физические диски: ' + WideString(SysErrorMessage(DisksError)),
       '', '', True, -1);
   MenuOpen(fmDrive, 'Change drive', Items, CursorIndex, APanelIndex);
+end;
+
+// ---------------------------------------------------------------------------
+//  FTP (пункт FTP в меню дисков). Панель на FTP - два режима:
+//  FFtpMode = 1 - список адресов (Host | Home | User): Enter - войти,
+//  Shift+F4 - новый адрес, F4 - изменить, F8 / Del - удалить, '..' -
+//  обратно в папку панели; FFtpMode = 2 - папка сервера: Enter на папке -
+//  войти, '..' - выше, из корня - к списку адресов, Ctrl+R - перечитать.
+//  Сеть - в потоке TFarFtpThread (FarFtp), ответ забирает WatchTick
+//  (FtpCheck). Пока поток идёт, соединение у него (панель - без него);
+//  панель ушла с FTP за это время (FFtpSession другой) - ответ
+//  отбрасывается, соединение закрывается.
+//  Копирование, папки, удаление на сервере - следующим шагом.
+// ---------------------------------------------------------------------------
+
+procedure FarEmptyItem(var AItem: TFarItem);
+begin
+  AItem.Name := '';
+  AItem.FtpRaw := '';
+  AItem.Size := 0;
+  AItem.Attr := 0;
+  FillChar(AItem.WriteTime, SizeOf(TFileTime), 0);
+  FillChar(AItem.CreateTime, SizeOf(TFileTime), 0);
+  FillChar(AItem.AccessTime, SizeOf(TFileTime), 0);
+  AItem.OrigIndex := -1;
+  AItem.IsDir := False;
+  AItem.IsUp := False;
+  AItem.Selected := False;
+end;
+
+// Текст по словам в строки шириной AWidth (для окон)
+function FarWrapText(const AText: WideString; AWidth: Integer): TFarNames;
+var
+  Rest: WideString;
+  Cut, Count: Integer;
+begin
+  Result := nil;
+  Count := 0;
+  Rest := FarTrimW(AText);
+  while Rest <> '' do
+  begin
+    if Length(Rest) <= AWidth then
+      Cut := Length(Rest)
+    else
+    begin
+      Cut := AWidth;
+      while (Cut > AWidth div 2) and (Rest[Cut + 1] <> ' ') do
+        Dec(Cut);
+      if Rest[Cut + 1] <> ' ' then
+        Cut := AWidth;
+    end;
+    SetLength(Result, Count + 1);
+    Result[Count] := FarTrimW(Copy(Rest, 1, Cut));
+    Inc(Count);
+    Rest := FarTrimW(Copy(Rest, Cut + 1, MaxInt));
+  end;
+end;
+
+function TFarPanel.IsFtp: Boolean;
+begin
+  Result := FFtpMode <> 0;
+end;
+
+// Панель уходит с FTP (или в список адресов): соединение закрыть, ответ
+// идущего потока - отбросить (FFtpSession)
+procedure TFarPanel.FtpLeave;
+begin
+  Inc(FFtpSession);
+  FFtpConn.Free;
+  FFtpConn := nil;
+  FFtpMode := 0;
+  FFtpDir := '';
+end;
+
+// Адрес для колонки Host: 'host' или 'host:port'
+function FarFtpHostText(const AHost: TFarFtpHost): WideString;
+begin
+  Result := WideString(AHost.Host);
+  if (AHost.Port > 0) and (AHost.Port <> FarFtpDefaultPort) then
+    Result := Result + ':' + WideString(IntToStr(AHost.Port));
+end;
+
+// Ширина колонок списка адресов: Host | Home | User
+procedure TFarView.FtpHostColumns(AWidth: Integer; var AHostW, AHomeW,
+  AUserW: Integer);
+var
+  Inner: Integer;
+begin
+  Inner := AWidth - 2;
+  AHostW := Inner * 30 div 100;
+  AUserW := Inner * 22 div 100;
+  AHomeW := Inner - AHostW - AUserW - 2;
+  if AHomeW < 0 then
+    AHomeW := 0;
+end;
+
+// Колонок имён у панели: в списке адресов - одна строка на адрес
+function TFarView.PanelColumns(APanel: TFarPanel): Integer;
+begin
+  if APanel.FFtpMode = 1 then
+    Result := 1
+  else
+    Result := 2;
+end;
+
+// Список адресов в панели; курсор - на адрес AFocusIdx (-1 - на '..')
+procedure TFarView.FtpFillHosts(APanel: TFarPanel; AFocusIdx: Integer);
+var
+  NewItems: TFarItems;
+  HostIdx, ItemIdx: Integer;
+begin
+  if APanel.FFtpMode <> 1 then
+  begin
+    APanel.FtpLeave;
+    APanel.FFtpMode := 1;
+  end;
+  SetLength(NewItems, Length(FFtpHosts) + 1);
+  FarEmptyItem(NewItems[0]);
+  NewItems[0].Name := '..';
+  NewItems[0].IsUp := True;
+  NewItems[0].IsDir := True;
+  NewItems[0].Attr := FILE_ATTRIBUTE_DIRECTORY;
+  for HostIdx := 0 to High(FFtpHosts) do
+  begin
+    FarEmptyItem(NewItems[HostIdx + 1]);
+    NewItems[HostIdx + 1].Name := FarFtpHostText(FFtpHosts[HostIdx]);
+    NewItems[HostIdx + 1].OrigIndex := HostIdx;
+  end;
+  APanel.FItems := NewItems;
+  APanel.FCount := Length(NewItems);
+  APanel.SortItems;
+  APanel.FFileCount := Length(FFtpHosts);
+  APanel.FFileBytes := 0;
+  APanel.FFreeKnown := False;
+  APanel.FCursor := 0;
+  APanel.FTopIndex := 0;
+  for ItemIdx := 0 to APanel.FCount - 1 do
+    if (AFocusIdx >= 0) and (APanel.FItems[ItemIdx].OrigIndex = AFocusIdx) and
+       not APanel.FItems[ItemIdx].IsUp then
+      APanel.FCursor := ItemIdx;
+  EnsureVisible(APanel);
+  Invalidate;
+end;
+
+// Папка сервера в панели; курсор - на имя AFocusRaw (байтами сервера)
+procedure TFarView.FtpFillEntries(APanel: TFarPanel;
+  const AEntries: TFarFtpEntries; const AFocusRaw: string);
+var
+  NewItems: TFarItems;
+  EntryIdx, ItemIdx: Integer;
+begin
+  SetLength(NewItems, Length(AEntries) + 1);
+  FarEmptyItem(NewItems[0]);
+  NewItems[0].Name := '..';
+  NewItems[0].IsUp := True;
+  NewItems[0].IsDir := True;
+  NewItems[0].Attr := FILE_ATTRIBUTE_DIRECTORY;
+  for EntryIdx := 0 to High(AEntries) do
+    with NewItems[EntryIdx + 1] do
+    begin
+      FarEmptyItem(NewItems[EntryIdx + 1]);
+      Name := AEntries[EntryIdx].Name;
+      FtpRaw := AEntries[EntryIdx].Raw;
+      IsDir := AEntries[EntryIdx].IsDir;
+      if IsDir then
+        Attr := FILE_ATTRIBUTE_DIRECTORY
+      else
+        Attr := FILE_ATTRIBUTE_NORMAL;
+      Size := AEntries[EntryIdx].Size;
+      WriteTime := AEntries[EntryIdx].Time;
+      CreateTime := AEntries[EntryIdx].Time;
+      AccessTime := AEntries[EntryIdx].Time;
+      OrigIndex := EntryIdx;
+    end;
+  APanel.FItems := NewItems;
+  APanel.FCount := Length(NewItems);
+  APanel.FFtpMode := 2;
+  APanel.SortItems;
+  APanel.FFileCount := 0;
+  APanel.FFileBytes := 0;
+  for ItemIdx := 0 to APanel.FCount - 1 do
+    if not APanel.FItems[ItemIdx].IsDir then
+    begin
+      Inc(APanel.FFileCount);
+      Inc(APanel.FFileBytes, APanel.FItems[ItemIdx].Size);
+    end;
+  APanel.FFreeKnown := False;
+  APanel.FCursor := 0;
+  APanel.FTopIndex := 0;
+  if AFocusRaw <> '' then
+    for ItemIdx := 0 to APanel.FCount - 1 do
+      if not APanel.FItems[ItemIdx].IsUp and
+         (APanel.FItems[ItemIdx].FtpRaw = AFocusRaw) then
+        APanel.FCursor := ItemIdx;
+  EnsureVisible(APanel);
+  Invalidate;
+end;
+
+// Пункт FTP в меню дисков: список адресов в панели
+procedure TFarView.OpenFtpHosts(APanelIndex: Integer);
+var
+  Panel: TFarPanel;
+begin
+  Panel := FPanels[APanelIndex];
+  // Из архива - сначала в папку архива: обычный режим панели
+  if Panel.IsArchive then
+    ChangeDir(Panel, Panel.Path, '');
+  if Panel.IsArchive then
+    Exit;
+  Panel.FtpLeave;
+  FtpFillHosts(Panel, -1);
+  if Length(FFtpHosts) = 0 then
+    Status('unIDE FAR: FTP - адресов нет: Shift+F4 - новый адрес')
+  else
+    Status('unIDE FAR: FTP - Enter - войти, Shift+F4 - новый адрес, F4 - ' +
+      'изменить, F8 - удалить');
+end;
+
+// Выйти с FTP - в папку, где панель была до него
+procedure TFarView.FtpExit(APanel: TFarPanel);
+var
+  ErrorText: string;
+begin
+  APanel.FtpLeave;
+  if not APanel.ReadDir(APanel.Path, '', ErrorText) then
+    APanel.ReadDir(FarRootOf(APanel.Path), '', ErrorText);
+  EnsureVisible(APanel);
+  Invalidate;
+end;
+
+// Окно с ошибкой FTP
+procedure TFarView.FtpError(const ATitle, AText: WideString);
+var
+  Lines, Wrapped: TFarNames;
+  LineIdx: Integer;
+begin
+  SetLength(Lines, 1);
+  Lines[0] := ATitle;
+  Wrapped := FarWrapText(AText, 58);
+  for LineIdx := 0 to High(Wrapped) do
+  begin
+    SetLength(Lines, Length(Lines) + 1);
+    Lines[High(Lines)] := Wrapped[LineIdx];
+  end;
+  DlgOpen(fdFtpError, 'FTP', Lines, True, True, False, '', ['OK']);
+  Status('unIDE FAR: FTP - ' + string(AText));
+end;
+
+// Запрос к серверу: перейти в ADir (байтами; '' - начальная папка адреса)
+// и прочитать её; курсор - на AFocusRaw
+procedure TFarView.FtpStartList(APanelIndex: Integer; const AHost: TFarFtpHost;
+  AHostIdx: Integer; const ADir, AFocusRaw: string);
+var
+  Panel: TFarPanel;
+  Conn: TFarFtpConn;
+begin
+  Panel := FPanels[APanelIndex];
+  if FFtpThread[APanelIndex] <> nil then
+  begin
+    Status('unIDE FAR: FTP - ждём ответа сервера (Esc - прервать)');
+    Exit;
+  end;
+  Conn := Panel.FFtpConn;
+  Panel.FFtpConn := nil;
+  if Conn = nil then
+    Conn := TFarFtpConn.Create;
+  FFtpJobSession[APanelIndex] := Panel.FFtpSession;
+  FFtpJobFocus[APanelIndex] := AFocusRaw;
+  FFtpJobHost[APanelIndex] := AHost;
+  FFtpJobHostIdx[APanelIndex] := AHostIdx;
+  if Conn.Connected then
+    Status('unIDE FAR: FTP - ' + string(FarFtpHostUrl(AHost)) +
+      ': чтение папки...')
+  else
+    Status('unIDE FAR: FTP - соединение с ' + string(FarFtpHostUrl(AHost)) +
+      '... (Esc - прервать)');
+  FFtpThread[APanelIndex] := TFarFtpThread.Create(Conn, AHost, ADir);
+  Invalidate;
+end;
+
+// Войти на адрес AHostIdx: «спрашивать пароль» - сначала окно пароля
+procedure TFarView.FtpConnect(APanelIndex, AHostIdx: Integer);
+var
+  Host: TFarFtpHost;
+begin
+  if (AHostIdx < 0) or (AHostIdx > High(FFtpHosts)) then
+    Exit;
+  Host := FFtpHosts[AHostIdx];
+  if Host.AskPassword and (Host.User <> '') then
+  begin
+    FFtpPassPanel := APanelIndex;
+    FFtpPassHostIdx := AHostIdx;
+    DlgOpen(fdFtpPassword, 'Password', ['Password for',
+      FarFitName(FarFtpHostUrl(Host), 60)], True, False, True, '',
+      ['OK', 'Cancel']);
+    FDlgMasked := True;
+    Exit;
+  end;
+  FtpStartList(APanelIndex, Host, AHostIdx, FarFtpEncode(Host.Home), '');
+end;
+
+procedure TFarView.FtpPasswordEntered(const APassword: WideString);
+var
+  Host: TFarFtpHost;
+begin
+  if (FFtpPassHostIdx < 0) or (FFtpPassHostIdx > High(FFtpHosts)) or
+     (FFtpPassPanel < 0) or (FFtpPassPanel > 1) then
+    Exit;
+  if not FPanels[FFtpPassPanel].IsFtp then
+    Exit;
+  Host := FFtpHosts[FFtpPassHostIdx];
+  Host.Password := APassword;
+  FtpStartList(FFtpPassPanel, Host, FFtpPassHostIdx, FarFtpEncode(Host.Home),
+    '');
+end;
+
+// Ответ потока FTP (WatchTick)
+procedure TFarView.FtpCheck;
+var
+  PanelIndex: Integer;
+  Thread: TFarFtpThread;
+  Panel: TFarPanel;
+begin
+  for PanelIndex := 0 to 1 do
+  begin
+    Thread := FFtpThread[PanelIndex];
+    if (Thread = nil) or not Thread.Finished then
+      Continue;
+    Thread.WaitFor;
+    FFtpThread[PanelIndex] := nil;
+    Panel := FPanels[PanelIndex];
+    try
+      if (Panel.FFtpSession <> FFtpJobSession[PanelIndex]) or
+         not Panel.IsFtp then
+        // Панель ушла с FTP, пока ждали ответа
+        Thread.Conn.Free
+      else if Thread.ErrorText <> '' then
+      begin
+        // На сервере - соединение остаётся (следующий запрос соединится
+        // заново, если оно разорвано); из списка адресов - закрыть
+        if Panel.FFtpMode = 2 then
+          Panel.FFtpConn := Thread.Conn
+        else
+          Thread.Conn.Free;
+        FtpError(FarFtpHostUrl(FFtpJobHost[PanelIndex]),
+          WideString(Thread.ErrorText));
+      end
+      else
+      begin
+        Panel.FFtpConn := Thread.Conn;
+        Panel.FFtpHost := FFtpJobHost[PanelIndex];
+        Panel.FFtpHostIdx := FFtpJobHostIdx[PanelIndex];
+        Panel.FFtpDir := Thread.CurDir;
+        FtpFillEntries(Panel, Thread.Entries, FFtpJobFocus[PanelIndex]);
+        Status('unIDE FAR: FTP - ' + string(Panel.DisplayPath));
+      end;
+    finally
+      Thread.Free;
+    end;
+    Invalidate;
+  end;
+end;
+
+// '..' на сервере: папка выше; из корня - к списку адресов
+procedure TFarView.FtpUp(APanelIndex: Integer);
+var
+  Panel: TFarPanel;
+  ParentDir, ChildRaw: string;
+  HostIdx: Integer;
+begin
+  Panel := FPanels[APanelIndex];
+  ParentDir := FarFtpParent(Panel.FFtpDir, ChildRaw);
+  if ParentDir = '' then
+  begin
+    HostIdx := Panel.FFtpHostIdx;
+    Panel.FtpLeave;
+    FtpFillHosts(Panel, HostIdx);
+    Exit;
+  end;
+  FtpStartList(APanelIndex, Panel.FFtpHost, Panel.FFtpHostIdx, ParentDir,
+    ChildRaw);
+end;
+
+// Enter в панели FTP
+procedure TFarView.FtpEnter(APanelIndex: Integer);
+var
+  Panel: TFarPanel;
+  Item: TFarItem;
+begin
+  Panel := FPanels[APanelIndex];
+  if (Panel.Cursor < 0) or (Panel.Cursor >= Panel.Count) then
+    Exit;
+  Item := Panel.FItems[Panel.Cursor];
+  if Panel.FFtpMode = 1 then
+  begin
+    if Item.IsUp then
+      FtpExit(Panel)
+    else
+      FtpConnect(APanelIndex, Item.OrigIndex);
+    Exit;
+  end;
+  if Item.IsUp then
+    FtpUp(APanelIndex)
+  else if Item.IsDir then
+    FtpStartList(APanelIndex, Panel.FFtpHost, Panel.FFtpHostIdx,
+      FarFtpJoin(Panel.FFtpDir, Item.FtpRaw), '')
+  else
+    Status('unIDE FAR: FTP - просмотр и копирование файлов - следующим ' +
+      'шагом');
+end;
+
+// Окно адреса: AHostIdx - изменить, -1 - новый
+procedure TFarView.FtpEditHost(APanelIndex, AHostIdx: Integer);
+var
+  Host: TFarFtpHost;
+  Title: WideString;
+begin
+  if (AHostIdx >= 0) and (AHostIdx <= High(FFtpHosts)) then
+  begin
+    Host := FFtpHosts[AHostIdx];
+    Title := 'Edit FTP address';
+  end
+  else
+  begin
+    AHostIdx := -1;
+    FarFtpHostClear(Host);
+    Title := 'New FTP address';
+  end;
+  FFtpEditIdx := AHostIdx;
+  FFtpEditPanel := APanelIndex;
+  DlgOpen(fdFtpEdit, Title, ['Address: host, host:port or',
+    'ftp://user:password@host:port/dir'], False, False, False, '',
+    ['Save', 'Connect', 'Cancel']);
+  DlgAddRow('Address:', False, False, FarFtpHostText(Host), [], 0);
+  DlgAddRow('Home:', False, False, Host.Home, [], 0);
+  DlgAddRow('User:', False, False, Host.User, [], 0);
+  DlgAddRow('Password:', False, True, Host.Password, [], 0);
+  DlgAddRow('Comment:', False, False, Host.Description, [], 0);
+  DlgAddCheck('Ask for password every time', Host.AskPassword);
+  DlgAddCheck('Passive mode', Host.Passive);
+  FDlgRow := 0;
+end;
+
+// [ Save ] / [ Connect ] в окне адреса
+procedure TFarView.FtpEditConfirm(AConnect: Boolean);
+var
+  Host: TFarFtpHost;
+  HostIdx, PanelIndex: Integer;
+begin
+  if Length(FDlgRows) < 7 then
+    Exit;
+  FarFtpHostClear(Host);
+  Host.Home := FarTrimW(FDlgRows[1].Text);
+  Host.User := FarTrimW(FDlgRows[2].Text);
+  Host.Password := FDlgRows[3].Text;
+  Host.Description := FarTrimW(FDlgRows[4].Text);
+  Host.AskPassword := FDlgRows[5].Index = 1;
+  Host.Passive := FDlgRows[6].Index = 1;
+  // В адресе может быть всё сразу (ftp://user:password@host:port/dir) -
+  // его части заменяют поля
+  if not FarFtpParseUrl(FDlgRows[0].Text, Host) then
+  begin
+    Status('unIDE FAR: FTP - не задан адрес сервера');
+    FDlgRow := 0;
+    Invalidate;
+    Exit;
+  end;
+  HostIdx := FFtpEditIdx;
+  if (HostIdx < 0) or (HostIdx > High(FFtpHosts)) then
+  begin
+    HostIdx := Length(FFtpHosts);
+    SetLength(FFtpHosts, HostIdx + 1);
+  end;
+  FFtpHosts[HostIdx] := Host;
+  if FIniName <> '' then
+    FarFtpHostsSave(FIniName, FFtpHosts);
+  PanelIndex := FFtpEditPanel;
+  DlgClose;
+  if (PanelIndex < 0) or (PanelIndex > 1) then
+    Exit;
+  if FPanels[PanelIndex].FFtpMode = 1 then
+    FtpFillHosts(FPanels[PanelIndex], HostIdx);
+  if FPanels[1 - PanelIndex].FFtpMode = 1 then
+    FtpFillHosts(FPanels[1 - PanelIndex], -1);
+  if AConnect then
+    FtpConnect(PanelIndex, HostIdx);
+end;
+
+// F8 / Del на адресе - спросить
+procedure TFarView.FtpDeleteHost(APanelIndex: Integer);
+var
+  Panel: TFarPanel;
+  HostIdx: Integer;
+begin
+  Panel := FPanels[APanelIndex];
+  if (Panel.Cursor < 0) or (Panel.Cursor >= Panel.Count) or
+     Panel.FItems[Panel.Cursor].IsUp then
+    Exit;
+  HostIdx := Panel.FItems[Panel.Cursor].OrigIndex;
+  if (HostIdx < 0) or (HostIdx > High(FFtpHosts)) then
+    Exit;
+  FFtpDelIdx := HostIdx;
+  FFtpDelPanel := APanelIndex;
+  DlgOpen(fdFtpDelete, 'Delete', ['Delete FTP address',
+    FarFitName(FarFtpHostUrl(FFtpHosts[HostIdx]), 60)], True, True, False,
+    '', ['Delete', 'Cancel']);
+end;
+
+procedure TFarView.FtpDeleteConfirmed;
+var
+  HostIdx, PanelIndex: Integer;
+begin
+  HostIdx := FFtpDelIdx;
+  if (HostIdx < 0) or (HostIdx > High(FFtpHosts)) then
+    Exit;
+  for PanelIndex := HostIdx to High(FFtpHosts) - 1 do
+    FFtpHosts[PanelIndex] := FFtpHosts[PanelIndex + 1];
+  SetLength(FFtpHosts, Length(FFtpHosts) - 1);
+  if FIniName <> '' then
+    FarFtpHostsSave(FIniName, FFtpHosts);
+  for PanelIndex := 0 to 1 do
+    if FPanels[PanelIndex].FFtpMode = 1 then
+      FtpFillHosts(FPanels[PanelIndex], HostIdx);
+end;
+
+// Клавиши панели на FTP. True - клавиша обработана; False - обычная
+// (стрелки, Insert, Tab, сортировка, Alt+F1 / Alt+F2 и т.п.)
+function TFarView.FtpKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+var
+  Panel: TFarPanel;
+  Plain: Boolean;
+begin
+  Result := True;
+  Panel := ActivePanel;
+  Plain := not ACtrl and not AAlt;
+  // Esc - прервать запрос к серверу
+  if (AKey = VK_ESCAPE) and (FFtpThread[FActive] <> nil) then
+  begin
+    FFtpThread[FActive].Cancel;
+    Status('unIDE FAR: FTP - прерываю...');
+    Exit;
+  end;
+  if Plain and (AKey = VK_RETURN) then
+  begin
+    FtpEnter(FActive);
+    Exit;
+  end;
+  if ACtrl and not AAlt and not AShift then
+    case AKey of
+      VK_NEXT:
+        begin
+          FtpEnter(FActive);
+          Exit;
+        end;
+      VK_PRIOR:
+        begin
+          if Panel.FFtpMode = 2 then
+            FtpUp(FActive)
+          else
+            FtpExit(Panel);
+          Exit;
+        end;
+      Ord('R'):
+        begin
+          if Panel.FFtpMode = 2 then
+            FtpStartList(FActive, Panel.FFtpHost, Panel.FFtpHostIdx,
+              Panel.FFtpDir, Panel.FItems[Panel.Cursor].FtpRaw)
+          else
+            FtpFillHosts(Panel, Panel.FItems[Panel.Cursor].OrigIndex);
+          Exit;
+        end;
+      FarVkBackslash, FarVkBackslash2:
+        begin
+          if Panel.FFtpMode = 2 then
+            FtpStartList(FActive, Panel.FFtpHost, Panel.FFtpHostIdx, '/', '');
+          Exit;
+        end;
+    end;
+  // Список адресов: Shift+F4 - новый, F4 - изменить, F8 / Del - удалить
+  if (Panel.FFtpMode = 1) and Plain then
+    case AKey of
+      VK_F4:
+        begin
+          if AShift or (Panel.Cursor < 0) or (Panel.Cursor >= Panel.Count) or
+             Panel.FItems[Panel.Cursor].IsUp then
+            FtpEditHost(FActive, -1)
+          else
+            FtpEditHost(FActive, Panel.FItems[Panel.Cursor].OrigIndex);
+          Exit;
+        end;
+      VK_F8, VK_DELETE:
+        begin
+          FtpDeleteHost(FActive);
+          Exit;
+        end;
+    end;
+  // Остальные операции с файлами на FTP - позже
+  if (Plain and ((AKey = VK_F3) or (AKey = VK_F4) or (AKey = VK_F5) or
+     (AKey = VK_F6) or (AKey = VK_F7) or (AKey = VK_F8) or
+     (AKey = VK_DELETE))) or (Plain and AShift and (AKey = VK_F1)) or
+     (AAlt and not ACtrl and (AKey = VK_F7)) then
+  begin
+    Status('unIDE FAR: FTP - просмотр, копирование, папки и удаление на ' +
+      'сервере - следующим шагом');
+    Exit;
+  end;
+  Result := False;
+end;
+// Список адресов FTP: заголовки и строки Host | Home | User
+procedure TFarView.DrawFtpHosts(APanel: TFarPanel; APanelX, APanelW: Integer;
+  AIsActive: Boolean);
+var
+  HostW, HomeW, UserW, RowIndex, ItemIndex, HostIdx, RowY: Integer;
+  Fore, Back: TColor;
+  HostText, HomeText, UserText: WideString;
+begin
+  FtpHostColumns(APanelW, HostW, HomeW, UserW);
+  PutCentered(APanelX + 1, 1, HostW, 'Host', FPal[fpPanelHeader],
+    FPal[fpPanelBack]);
+  PutCentered(APanelX + 2 + HostW, 1, HomeW, 'Home', FPal[fpPanelHeader],
+    FPal[fpPanelBack]);
+  PutCentered(APanelX + 3 + HostW + HomeW, 1, UserW, 'User',
+    FPal[fpPanelHeader], FPal[fpPanelBack]);
+  for RowIndex := 0 to FileRows - 1 do
+  begin
+    ItemIndex := APanel.TopIndex + RowIndex;
+    if ItemIndex >= APanel.Count then
+      Break;
+    RowY := 2 + RowIndex;
+    with APanel.FItems[ItemIndex] do
+    begin
+      Back := FPal[fpPanelBack];
+      if Selected then
+        Fore := FPal[fpPanelSelected]
+      else if IsUp then
+        Fore := FPal[fpPanelDir]
+      else
+        Fore := FPal[fpPanelText];
+      if AIsActive and (ItemIndex = APanel.Cursor) then
+      begin
+        Back := FPal[fpPanelCursorBack];
+        if not Selected then
+          Fore := FPal[fpPanelCursorText];
+        // Курсор - во всю строку (и под границами колонок)
+        FillCells(APanelX + 1, RowY, APanelW - 2, Back);
+      end;
+      HostIdx := OrigIndex;
+      if IsUp or (HostIdx < 0) or (HostIdx > High(FFtpHosts)) then
+      begin
+        HostText := '..';
+        HomeText := '..';
+        UserText := '..';
+      end
+      else
+      begin
+        HostText := Name;
+        HomeText := FFtpHosts[HostIdx].Home;
+        UserText := FFtpHosts[HostIdx].User;
+        if UserText = '' then
+          UserText := 'anonymous';
+      end;
+      PutText(APanelX + 1, RowY, HostW, FarFitName(HostText, HostW), Fore,
+        Back);
+      PutText(APanelX + 2 + HostW, RowY, HomeW, FarFitName(HomeText, HomeW),
+        Fore, Back);
+      PutText(APanelX + 3 + HostW + HomeW, RowY, UserW,
+        FarFitName(UserText, UserW), Fore, Back);
+    end;
+  end;
 end;
 
 procedure TFarView.SelectDrive(APanelIndex: Integer; ALetter: WideChar);
@@ -5628,7 +6489,16 @@ begin
   Panel := ActivePanel;
   if (Panel.Cursor < 0) or (Panel.Cursor >= Panel.Count) then
     Exit;
-  if Panel.IsArchive then
+  if Panel.FFtpMode = 2 then
+  begin
+    // 'ftp://user@host/dir/' + имя
+    BaseDir := Panel.DisplayPath;
+    if (BaseDir <> '') and (BaseDir[Length(BaseDir)] <> '/') then
+      BaseDir := BaseDir + '/';
+  end
+  else if Panel.FFtpMode = 1 then
+    BaseDir := ''
+  else if Panel.IsArchive then
     BaseDir := Panel.DisplayPath + '\'
   else
     BaseDir := Panel.Path;
@@ -6658,34 +7528,6 @@ end;
 //  используется и не меняется
 // ---------------------------------------------------------------------------
 
-// Текст по словам в строки шириной AWidth (для окон)
-function FarWrapText(const AText: WideString; AWidth: Integer): TFarNames;
-var
-  Rest: WideString;
-  Cut, Count: Integer;
-begin
-  Result := nil;
-  Count := 0;
-  Rest := FarTrimW(AText);
-  while Rest <> '' do
-  begin
-    if Length(Rest) <= AWidth then
-      Cut := Length(Rest)
-    else
-    begin
-      Cut := AWidth;
-      while (Cut > AWidth div 2) and (Rest[Cut + 1] <> ' ') do
-        Dec(Cut);
-      if Rest[Cut + 1] <> ' ' then
-        Cut := AWidth;
-    end;
-    SetLength(Result, Count + 1);
-    Result[Count] := FarTrimW(Copy(Rest, 1, Cut));
-    Inc(Count);
-    Rest := FarTrimW(Copy(Rest, Cut + 1, MaxInt));
-  end;
-end;
-
 procedure TFarView.SzOffer;
 var
   OsInfo: TSzOsInfo;
@@ -7180,7 +8022,7 @@ var
   Names: TFarNames;
   Subject: WideString;
 begin
-  if FPanels[1 - FActive].IsArchive then
+  if FPanels[1 - FActive].IsArchive or FPanels[1 - FActive].IsFtp then
   begin
     Status('unIDE FAR: из архива - только в обычную папку');
     Exit;
@@ -8515,6 +9357,7 @@ begin
   end;
   FarColorsLoad(AIniName, Rules);
   SetColorRules(Rules);
+  FarFtpHostsLoad(AIniName, FFtpHosts);
   FarPaletteLoad(AIniName, Pal);
   SetPalette(Pal);
   UpdateGrid;

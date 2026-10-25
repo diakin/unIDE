@@ -77,6 +77,7 @@ uses
   Wv2View in 'Wv2View.pas',
   FarFind in 'FarFind.pas',
   FarVolumes in 'FarVolumes.pas',
+  FarFtp in 'FarFtp.pas',
   UnFar in 'UnFar.pas',
   SzSetup in 'SzSetup.pas',
   QemuTool in 'QemuTool.pas',
