@@ -42,6 +42,7 @@ object Form2: TForm2
         TabOrder = 0
         Align = alTop
         object rbIdeLight: TUiRadioButton
+          Color = clGradientInactiveCaption
           Left = 124
           Top = 7
           Width = 75
@@ -52,6 +53,7 @@ object Form2: TForm2
           OnClick = rbIdeModeClick
         end
         object rbIdeDark: TUiRadioButton
+          Color = clBtnShadow
           Left = 205
           Top = 7
           Width = 75
@@ -113,6 +115,7 @@ object Form2: TForm2
         end
       end
       object grpHighlight: TUiGroupBox
+        Color = $00800040
         Left = 0
         Top = 32
         Width = 612
@@ -182,6 +185,7 @@ object Form2: TForm2
           end
         end
         object pnlGroupActions: TPanel
+          Color = $00800040
           Left = 0
           Top = 47
           Width = 612
@@ -427,6 +431,7 @@ object Form2: TForm2
             OnClick = btnDeleteRowClick
           end
           object lblSectionHelp: TUiLabel
+            Color = $00800040
             Left = 290
             Top = 4
             Width = 310
