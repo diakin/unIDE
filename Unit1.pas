@@ -431,6 +431,9 @@ type
     // Заполняет BlockInit - чтобы на каждую запятую и точку не лазить
     // в три списка.
     Chars: TSysCharSet;
+    // Открыт уровень метки (раздел FmtLabel): 'Name:' или '^a::' на
+    // верхнем уровне - до return, следующей метки или функции
+    InLabel: Boolean;
     ClosedCount: Integer;
     Closed: TIntArray;
     ClosedAtBegin: array of Boolean;
@@ -3343,6 +3346,10 @@ type
     procedure BlockBeforeLine(const L: TLineScan; var B: TBlockState);
     procedure BlockPushHeader(ATag: Integer; var B: TBlockState);
     function  OpensAtLineStart(const W: string; const L: TLineScan): Boolean;
+    function  HangsAtLineStart(const L: TLineScan): Boolean;
+    function  ContinuesAtLineStart(const L: TLineScan): Boolean;
+    function  IsLabelLine(const ACode: string): Boolean;
+    function  ClosesLabel(const ACode: string): Boolean;
     function  TagCloseLevel(const AText: string; const L: TLineScan;
                             const B: TBlockState; var ALevel: Integer): Boolean;
     procedure UpdatePairMatch;
@@ -25787,6 +25794,132 @@ begin
   end;
 end;
 
+// FmtHangFirst: строка начата словом, после которого один оператор идёт
+// правее (if x, loop без '{'). Слово с $ в схеме (else$, try$) переносит,
+// только когда оно в строке одно; иначе решает следующее слово (else if x),
+// а 'try Gui ...' и 'else return' не переносят. '}' в начале пропускается:
+// '} else' - то же, что 'else'
+function TForm1.HangsAtLineStart(const L: TLineScan): Boolean;
+var
+  CodeLen, StartPos, WordEnd, WordNo: Integer;
+  Wd: string;
+begin
+  Result := False;
+  CodeLen := Length(L.Code);
+  if (FScheme.FFmtHangFirst = nil) or (FScheme.FFmtHangFirst.Count = 0) or
+     (CodeLen = 0) or (L.Code[CodeLen] = '{') then
+    Exit;
+  StartPos := 1;
+  while (StartPos <= CodeLen) and (L.Code[StartPos] in ['}', ' ', #9]) do
+    Inc(StartPos);
+  for WordNo := 1 to 2 do
+  begin
+    WordEnd := StartPos;
+    while (WordEnd <= CodeLen) and
+          (L.Code[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+      Inc(WordEnd);
+    Wd := Copy(L.Code, StartPos, WordEnd - StartPos);
+    if Wd = '' then
+      Exit;
+    if FScheme.FFmtHangFirst.IndexOf(Wd) >= 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+    if FScheme.FFmtHangFirst.IndexOf(Wd + '$') < 0 then
+      Exit;
+    StartPos := WordEnd;
+    while (StartPos <= CodeLen) and (L.Code[StartPos] in [' ', #9]) do
+      Inc(StartPos);
+    if StartPos > CodeLen then
+    begin
+      Result := True;   // слово одно в строке
+      Exit;
+    end;
+  end;
+end;
+
+// FmtContinueFirst: строка начата образцом продолжения (',' '||' 'and').
+// Буквенный образец - целым словом. Строка с '::' - горячая клавиша или
+// hotstring, не продолжение
+function TForm1.ContinuesAtLineStart(const L: TLineScan): Boolean;
+var
+  ItemIdx: Integer;
+  Item: string;
+begin
+  Result := False;
+  if (FScheme.FFmtContinueFirst = nil) or
+     (FScheme.FFmtContinueFirst.Count = 0) or (L.Code = '') or
+     (Pos('::', L.Code) > 0) then
+    Exit;
+  for ItemIdx := 0 to FScheme.FFmtContinueFirst.Count - 1 do
+  begin
+    Item := FScheme.FFmtContinueFirst[ItemIdx];
+    if Item = '' then
+      Continue;
+    if Item[1] in ['a'..'z', 'A'..'Z', '_'] then
+      Result := CompareText(L.First, Item) = 0
+    else
+      Result := Copy(L.Code, 1, Length(Item)) = Item;
+    if Result then
+      Exit;
+  end;
+end;
+
+// Метка: 'Name:' (одно слово, без пробелов, запятых и '=') или горячая
+// клавиша, кончающаяся '::' ('^a::', 'LCtrl & RShift::')
+function TForm1.IsLabelLine(const ACode: string): Boolean;
+var
+  CodeLen, CharIdx: Integer;
+begin
+  Result := False;
+  CodeLen := Length(ACode);
+  if CodeLen < 2 then
+    Exit;
+  if Copy(ACode, CodeLen - 1, 2) = '::' then
+  begin
+    Result := CodeLen > 2;
+    Exit;
+  end;
+  if ACode[CodeLen] <> ':' then
+    Exit;
+  for CharIdx := 1 to CodeLen - 1 do
+    if ACode[CharIdx] in [' ', #9, ',', '=', '(', '"'] then
+      Exit;
+  Result := True;
+end;
+
+// Строка, перед которой уровень метки закрывается сам: следующая метка,
+// директива '#If', однострочная горячая клавиша ('~Right::x := 1') и
+// определение функции 'Name(...) {'
+function TForm1.ClosesLabel(const ACode: string): Boolean;
+var
+  CodeLen, WordEnd, ParenEnd: Integer;
+  Wd: string;
+begin
+  Result := IsLabelLine(ACode) or ((ACode <> '') and (ACode[1] = '#')) or
+            (Pos('::', ACode) > 0);
+  if Result then
+    Exit;
+  CodeLen := Length(ACode);
+  if (CodeLen = 0) or (ACode[CodeLen] <> '{') then
+    Exit;
+  WordEnd := 1;
+  while (WordEnd <= CodeLen) and
+        (ACode[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+    Inc(WordEnd);
+  Wd := Copy(ACode, 1, WordEnd - 1);
+  if (Wd = '') or (WordEnd > CodeLen) or (ACode[WordEnd] <> '(') or
+     (FScheme.FFmtHangFirst.IndexOf(Wd) >= 0) or
+     (FScheme.FFmtLabel.IndexOf(Wd) >= 0) then
+    Exit;
+  // Между ')' и '{' - только пробелы
+  ParenEnd := CodeLen - 1;
+  while (ParenEnd > WordEnd) and (ACode[ParenEnd] in [' ', #9]) do
+    Dec(ParenEnd);
+  Result := ACode[ParenEnd] = ')';
+end;
+
 procedure TForm1.BlockInit(var B: TBlockState);
 
 // Односимвольные образцы списка - в набор символов
@@ -25806,6 +25939,7 @@ begin
   B.Hang := 0;
   B.Paren := 0;
   B.InSection := False;
+  B.InLabel := False;
   B.BeforeScope := False;   // включают те, кто разбирает текст с начала
   B.Top := -1;
   B.ClosedCount := 0;
@@ -25835,6 +25969,13 @@ procedure TForm1.BlockBeforeLine(const L: TLineScan; var B: TBlockState);
 begin
   if L.Code = '' then
     Exit;
+
+  // Уровень метки кончается перед следующей меткой, директивой, функцией
+  if B.InLabel and (B.Depth = 1) and (B.Hang = 0) and ClosesLabel(L.Code) then
+  begin
+    B.InLabel := False;
+    B.Depth := 0;
+  end;
 
   // Раздел var или type кончается на заголовке, на begin и на словах уровня
   // модуля (implementation). Внутри класса private раздел не закрывает:
@@ -26348,7 +26489,7 @@ end;
 procedure TForm1.BlockAfterLine(const AText: string; const L: TLineScan;
                                 var B: TBlockState);
 var
-  K, WordEnd, TokStart: Integer;
+  K, WordEnd, TokStart, HangBefore: Integer;
   W: string;
   EqSeen, Masked: Boolean;
 
@@ -26466,6 +26607,39 @@ begin
         end;
       end;
     end;
+  end;
+
+  // Язык без знака конца оператора (FmtHangFirst): оператор - строка.
+  // if x / loop без '{' - следующая строка правее; иначе перенос того
+  // блока, в котором стоим. Строка-продолжение переноса не меняет.
+  if (FScheme.FFmtHangFirst.Count > 0) and (L.Code <> '') and
+     not ContinuesAtLineStart(L) then
+  begin
+    HangBefore := B.Hang;
+    if HangsAtLineStart(L) then
+      Inc(B.Hang)
+    else
+      B.Hang := BlockHangBase(B, B.Depth);
+    // Метки: return на уровне метки её закрывает, метка на верхнем уровне
+    // открывает
+    if FScheme.FFmtLabel.Count > 0 then
+      if B.InLabel and (B.Depth = 1) and (HangBefore = 0) and
+         (FScheme.FFmtLabel.IndexOf(L.First) >= 0) then
+      begin
+        B.InLabel := False;
+        B.Depth := 0;
+        B.Hang := 0;
+      end
+      else if not B.InLabel and (B.Depth = 0) and (HangBefore = 0) and
+              IsLabelLine(L.Code) then
+      begin
+        B.InLabel := True;
+        B.Depth := 1;
+        if Length(B.HangBase) <= 1 then
+          SetLength(B.HangBase, 2);
+        B.HangBase[1] := 0;
+        B.Hang := 0;
+      end;
   end;
 
   // Чем кончилась кодовая часть: слово из FmtHang - следующий оператор идёт
@@ -79114,7 +79288,11 @@ begin
           // Язык с явным знаком переноса (Бейсик): продолжение - только
           // строка, кончившаяся этим знаком. Иначе по незаконченному
           // оператору, как в Паскале и C.
-          if FScheme.FFmtContinue.Count > 0 then
+          // Без знака конца оператора (AutoHotkey) продолжение - строка,
+          // начатая образцом из FmtContinueFirst: ', x' '|| y'
+          if FScheme.FFmtHangFirst.Count > 0 then
+            Cont := ContinuesAtLineStart(L)
+          else if FScheme.FFmtContinue.Count > 0 then
             Cont := FScheme.FFmtContinue.IndexOf(LastToken(PrevCode)) >= 0
           else
             Cont := (B.Paren > 0) or not EndsStatement(PrevCode);
@@ -79200,7 +79378,8 @@ begin
 
           // Язык без знака переноса (Паскаль, C): строка не должна
           // кончаться точкой
-          if (FScheme.FFmtContinue.Count = 0) and not FScheme.FSubTags and
+          if (FScheme.FFmtContinue.Count = 0) and
+             (FScheme.FFmtHangFirst.Count = 0) and not FScheme.FSubTags and
              EndsWithDot(L.Code) then
           begin
             SetLength(SusLines, Length(SusLines) + 1);

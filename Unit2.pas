@@ -568,6 +568,15 @@ begin
   else if AName = 'FmtContinue' then
     Result := 'Format text: знак переноса строки (_ в Бейсике). Пусто - ' +
       'продолжение по незаконченному оператору.'
+  else if AName = 'FmtHangFirst' then
+    Result := 'Format text, язык без ; (AutoHotkey): слова в начале строки, ' +
+      'после которых один оператор правее (if, loop без {). else$ - только одно в строке.'
+  else if AName = 'FmtContinueFirst' then
+    Result := 'Format text: начала строк-продолжений через пробел (, . || && ' +
+      'and or): строка сохраняет сдвиг от начала оператора.'
+  else if AName = 'FmtLabel' then
+    Result := 'Format text: слова конца метки (return). Метка Name: и ^a:: ' +
+      'сдвигают строки под собой до return, следующей метки или функции.'
   else
     Result := '';
 end;
@@ -727,6 +736,14 @@ begin
     Result := 'Fmt Hang (then, do, else)'
   else if AName = 'FmtStmtEnd' then
     Result := 'Fmt Stmt End (statement done)'
+  else if AName = 'FmtContinue' then
+    Result := 'Fmt Continue (line wrap mark)'
+  else if AName = 'FmtHangFirst' then
+    Result := 'Fmt Hang First (if, loop at line start)'
+  else if AName = 'FmtContinueFirst' then
+    Result := 'Fmt Continue First (, || at line start)'
+  else if AName = 'FmtLabel' then
+    Result := 'Fmt Label (label end words)'
   else if AName = 'SubStyle' then
     Result := 'Sub Style (words/braces)'
   else if AName = 'SubScope' then
@@ -757,7 +774,10 @@ begin
             (AName <> 'SubOpenFirst') and (AName <> 'SubSkip') and
             (AName <> 'FmtOutdent') and (AName <> 'FmtSection') and
             (AName <> 'FmtClass') and (AName <> 'FmtHang') and
-            (AName <> 'FmtStmtEnd');
+            (AName <> 'FmtStmtEnd') and (AName <> 'FmtContinue') and
+            (AName <> 'FmtHangFirst') and (AName <> 'FmtContinueFirst') and
+            (AName <> 'FmtLabel') and (AName <> 'TagVoid') and
+            (AName <> 'StrEscape');
 end;
 
 // Строки таблицы - разделы файла схемы, по одной на раздел, в порядке файла.
@@ -2073,6 +2093,23 @@ begin
       SetWordsByComma(Form1.FScheme.FFmtHang, Grid.Cells[3, R], True)
     else if Sec = 'FmtStmtEnd' then
       SetWordsByComma(Form1.FScheme.FFmtStmtEnd, Grid.Cells[3, R], True)
+    else if Sec = 'FmtContinue' then
+      SetWordsByComma(Form1.FScheme.FFmtContinue, Grid.Cells[3, R], True)
+    else if Sec = 'FmtHangFirst' then
+      SetWordsByComma(Form1.FScheme.FFmtHangFirst, Grid.Cells[3, R], True)
+    else if Sec = 'FmtContinueFirst' then
+      SetWordsBySpace(Form1.FScheme.FFmtContinueFirst, Grid.Cells[3, R])
+    else if Sec = 'FmtLabel' then
+      SetWordsByComma(Form1.FScheme.FFmtLabel, Grid.Cells[3, R], True)
+    else if Sec = 'TagVoid' then
+      SetWordsByComma(Form1.FScheme.FTagVoid, Grid.Cells[3, R], True)
+    else if Sec = 'StrEscape' then
+    begin
+      if Trim(Grid.Cells[3, R]) = '' then
+        Form1.FScheme.FStrEscape := #0
+      else
+        Form1.FScheme.FStrEscape := Trim(Grid.Cells[3, R])[1];
+    end
     else if Sec = 'SubStyle' then
       Form1.FScheme.FSubBraces := CompareText(Trim(Grid.Cells[3, R]), 'braces') = 0
     else if Sec = 'SubScope' then
@@ -2235,6 +2272,23 @@ begin
       Grid.Cells[3, R] := WordsByComma(Form1.FScheme.FFmtHang)
     else if Sec = 'FmtStmtEnd' then
       Grid.Cells[3, R] := WordsByComma(Form1.FScheme.FFmtStmtEnd)
+    else if Sec = 'FmtContinue' then
+      Grid.Cells[3, R] := WordsByComma(Form1.FScheme.FFmtContinue)
+    else if Sec = 'FmtHangFirst' then
+      Grid.Cells[3, R] := WordsByComma(Form1.FScheme.FFmtHangFirst)
+    else if Sec = 'FmtContinueFirst' then
+      Grid.Cells[3, R] := WordsBySpace(Form1.FScheme.FFmtContinueFirst)
+    else if Sec = 'FmtLabel' then
+      Grid.Cells[3, R] := WordsByComma(Form1.FScheme.FFmtLabel)
+    else if Sec = 'TagVoid' then
+      Grid.Cells[3, R] := WordsByComma(Form1.FScheme.FTagVoid)
+    else if Sec = 'StrEscape' then
+    begin
+      if Form1.FScheme.FStrEscape = #0 then
+        Grid.Cells[3, R] := ''
+      else
+        Grid.Cells[3, R] := Form1.FScheme.FStrEscape;
+    end
     else if Sec = 'SubStyle' then
     begin
       if Form1.FScheme.FSubBraces then

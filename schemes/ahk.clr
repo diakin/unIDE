@@ -36,4 +36,10 @@ braces
 }
 • FmtOutdent
 }
+• FmtHangFirst
+if,ifequal,ifnotequal,ifgreater,ifgreaterorequal,ifless,iflessorequal,ifexist,ifnotexist,ifinstring,ifnotinstring,ifmsgbox,ifwinactive,ifwinnotactive,ifwinexist,ifwinnotexist,loop,while,for,catch,else$,try$,finally$
+• FmtContinueFirst
+, . || && and or ? :
+• FmtLabel
+return,exitapp,exit
 

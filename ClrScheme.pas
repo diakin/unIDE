@@ -194,6 +194,21 @@ type
     // знаком; пуст - продолжение определяется по незаконченному оператору,
     // как в Паскале и C, где оператор кончается точкой с запятой.
     FFmtContinue: TStringList;
+    // ЯЗЫКИ БЕЗ ЗНАКА КОНЦА ОПЕРАТОРА (AutoHotkey): оператор - строка.
+    // FFmtHangFirst (раздел FmtHangFirst) - слова в начале строки, после
+    //   которых один оператор идёт на уровень правее (if, loop, while без
+    //   фигурной скобки). Слово с $ на конце (else$, try$) переносит, только
+    //   когда оно в строке одно; иначе решает следующее слово: else if.
+    // FFmtContinueFirst - начала строк-продолжений (',' '.' '||' 'and'):
+    //   такая строка сохраняет свой сдвиг от начала оператора. В файле -
+    //   через пробел: запятая здесь сама образец.
+    // FFmtLabel - слова конца метки (return, exitapp). Раздел есть -
+    //   метка 'Name:' и горячая клавиша '^a::' на верхнем уровне открывают
+    //   уровень до такого слова, до следующей метки, директивы '#' или
+    //   определения функции.
+    FFmtHangFirst: TStringList;
+    FFmtContinueFirst: TStringList;
+    FFmtLabel: TStringList;
     // Способ разбора: по словам (procedure, sub) или по фигурным скобкам,
     // как в C и .ino - раздел SubStyle схемы
     FSubBraces: Boolean;
@@ -284,6 +299,8 @@ function  SplitMarkers(const S: string; var AStart, AEnd: string): Boolean;
 procedure SetWordsByComma(List: TStringList; const S: string;
                           ATrimEdges: Boolean = False);
 function  WordsByComma(List: TStringList): string;
+procedure SetWordsBySpace(List: TStringList; const S: string);
+function  WordsBySpace(List: TStringList): string;
 
 implementation
 
@@ -353,6 +370,18 @@ begin
   FFmtContinue.Sorted := True;
   FFmtContinue.Duplicates := dupIgnore;
   FFmtContinue.CaseSensitive := False;
+  FFmtHangFirst := TStringList.Create;
+  FFmtHangFirst.Sorted := True;
+  FFmtHangFirst.Duplicates := dupIgnore;
+  FFmtHangFirst.CaseSensitive := False;
+  FFmtContinueFirst := TStringList.Create;
+  FFmtContinueFirst.Sorted := True;
+  FFmtContinueFirst.Duplicates := dupIgnore;
+  FFmtContinueFirst.CaseSensitive := False;
+  FFmtLabel := TStringList.Create;
+  FFmtLabel.Sorted := True;
+  FFmtLabel.Duplicates := dupIgnore;
+  FFmtLabel.CaseSensitive := False;
 
   FSubBodyFG := clNone;
   FSubBodyBG := clYellow;
@@ -383,6 +412,9 @@ begin
   FFmtStmtEnd.Free;
   FFmtHang.Free;
   FFmtContinue.Free;
+  FFmtHangFirst.Free;
+  FFmtContinueFirst.Free;
+  FFmtLabel.Free;
   SchemaSections.Free;
   FFileSections.Free;
   FThemeColors.Free;
@@ -701,6 +733,40 @@ end;
 
 // Обратно: образцы через запятую. Образец с пробелом по краю берётся в
 // кавычки - иначе в файле схемы этот край не отличить от отступа
+// Образцы через пробел - для списков, где запятая сама образец
+// (FmtContinueFirst)
+procedure SetWordsBySpace(List: TStringList; const S: string);
+var
+  P, Start: Integer;
+begin
+  if List = nil then
+    Exit;
+  List.Clear;
+  Start := 1;
+  for P := 1 to Length(S) + 1 do
+    if (P > Length(S)) or (S[P] = ' ') or (S[P] = #9) then
+    begin
+      if P > Start then
+        List.Add(Copy(S, Start, P - Start));
+      Start := P + 1;
+    end;
+end;
+
+function WordsBySpace(List: TStringList): string;
+var
+  I: Integer;
+begin
+  Result := '';
+  if List = nil then
+    Exit;
+  for I := 0 to List.Count - 1 do
+  begin
+    if I > 0 then
+      Result := Result + ' ';
+    Result := Result + List[I];
+  end;
+end;
+
 function WordsByComma(List: TStringList): string;
 var
   I: Integer;
@@ -879,7 +945,9 @@ begin
           (ParamSL[0] = 'TagVoid') or (ParamSL[0] = 'StrEscape') or
           (ParamSL[0] = 'FmtOutdent') or (ParamSL[0] = 'FmtSection') or
           (ParamSL[0] = 'FmtClass') or (ParamSL[0] = 'FmtStmtEnd') or
-          (ParamSL[0] = 'FmtHang') or (ParamSL[0] = 'FmtContinue')) then
+          (ParamSL[0] = 'FmtHang') or (ParamSL[0] = 'FmtContinue') or
+          (ParamSL[0] = 'FmtHangFirst') or (ParamSL[0] = 'FmtContinueFirst') or
+          (ParamSL[0] = 'FmtLabel')) then
       begin
         Handled := True;
         if ParamSL[0] = 'SubList' then
@@ -932,6 +1000,12 @@ begin
           SetWordsByComma(FFmtHang, DataStr, True)
         else if ParamSL[0] = 'FmtContinue' then
           SetWordsByComma(FFmtContinue, DataStr, True)
+        else if ParamSL[0] = 'FmtHangFirst' then
+          SetWordsByComma(FFmtHangFirst, DataStr, True)
+        else if ParamSL[0] = 'FmtContinueFirst' then
+          SetWordsBySpace(FFmtContinueFirst, DataStr)
+        else if ParamSL[0] = 'FmtLabel' then
+          SetWordsByComma(FFmtLabel, DataStr, True)
         else
           SetWordsByComma(FSubEndWords, DataStr, True);
         if FFileSections.IndexOf(SecName) < 0 then
@@ -1227,6 +1301,12 @@ begin
     FFmtHang.Clear;
   if FFmtContinue <> nil then
     FFmtContinue.Clear;
+  if FFmtHangFirst <> nil then
+    FFmtHangFirst.Clear;
+  if FFmtContinueFirst <> nil then
+    FFmtContinueFirst.Clear;
+  if FFmtLabel <> nil then
+    FFmtLabel.Clear;
   FSubBraces := False;
   FSubTags := False;
   if FTagVoid <> nil then
@@ -1475,6 +1555,21 @@ begin
     SL.Add(SchemaHeadMark + 'FmtContinue');
     SL.Add(WordsByComma(FFmtContinue));
   end
+  else if AName = 'FmtHangFirst' then
+  begin
+    SL.Add(SchemaHeadMark + 'FmtHangFirst');
+    SL.Add(WordsByComma(FFmtHangFirst));
+  end
+  else if AName = 'FmtContinueFirst' then
+  begin
+    SL.Add(SchemaHeadMark + 'FmtContinueFirst');
+    SL.Add(WordsBySpace(FFmtContinueFirst));
+  end
+  else if AName = 'FmtLabel' then
+  begin
+    SL.Add(SchemaHeadMark + 'FmtLabel');
+    SL.Add(WordsByComma(FFmtLabel));
+  end
   else if AName = 'SubStyle' then
   begin
     SL.Add(SchemaHeadMark + 'SubStyle');
@@ -1653,6 +1748,12 @@ begin
     Result.Add('FmtHang');
   if FFmtContinue.Count > 0 then
     Result.Add('FmtContinue');
+  if FFmtHangFirst.Count > 0 then
+    Result.Add('FmtHangFirst');
+  if FFmtContinueFirst.Count > 0 then
+    Result.Add('FmtContinueFirst');
+  if FFmtLabel.Count > 0 then
+    Result.Add('FmtLabel');
   if FSubBraces or FSubTags then
     Result.Add('SubStyle');
   if FTagVoid.Count > 0 then
