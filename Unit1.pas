@@ -68251,8 +68251,13 @@ begin
                 else
                   Choices.Add(Choice);
               end;
+              // Остались только main / master (или веток нет) - выйти из
+              // Unmerged: в таблице делать нечего
               if Choices.Count = 0 then
-                Continue;
+              begin
+                ShowMessage('Удалять нечего.');
+                Exit;
+              end;
               if not ChooseManyFromList('Delete Branch', 'Выделите ветки ' +
                  '(щелчком) и нажмите OK - они будут удалены (локальные и на ' +
                  'сервере):', Choices, Chosen) then

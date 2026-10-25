@@ -687,9 +687,9 @@ begin
     end;
     FillList;
     if Count = 0 then
-      FLblInfo.Caption := 'Во всех ' + IntToStr(FBranchRefs.Count) +
-        ' ветках нет коммитов, которых нет в ' + FBase + ' - ветки можно ' +
-        'удалять (Delete Branch)'
+      FLblInfo.Caption := 'Коммитов, которых нет в ' + FBase + ', нет ни ' +
+        'в одной ветке (веток: ' + IntToStr(FBranchRefs.Count) + ') - ' +
+        'ветки можно удалять (Delete Branch)'
     else
       FLblInfo.Caption := 'Не в ' + FBase + ': ' + IntToStr(Count) +
         ' коммит(ов) из ' + IntToStr(BranchesWith) + ' веток; у ' +
