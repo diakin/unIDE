@@ -1147,6 +1147,13 @@ type
     FGitDlgRepo: string;
     FGitDlgHasHead: Boolean;
     FGitTimer: TTimer;            // обновить панель чуть позже (GitShowBar)
+    // Слежение за репозиторием, пока панель видна: раз в 5 с, пока открыт
+    // Git Bash, запущенный кнопкой (FGitBashProc), - раз в секунду. Панель
+    // обновляется, когда меняются служебные файлы .git (FGitStateSig - их
+    // время и размер при последнем обновлении)
+    FGitPollTimer: TTimer;
+    FGitBashProc: THandle;
+    FGitStateSig: string;
     // Вкладки Components | Git на верхней линии рамки палитры
     FPalTabs: TUiCaptionTabs;
     // Режим F4 unIDE FAR: окно FAR - половина области редактора (одна
@@ -3023,6 +3030,9 @@ type
     procedure GitRefreshLater;
     procedure GitRefreshClick(Sender: TObject);
     procedure GitTimerTick(Sender: TObject);
+    procedure GitPollStart;
+    procedure GitPollTick(Sender: TObject);
+    function  GitStateSig: string;
     procedure PalTabsChange(Sender: TObject);
     procedure PalSetCaption(const AText: string);
     procedure GitBranchComboChange(Sender: TObject);
@@ -65259,11 +65269,14 @@ begin
     // Сведения - чуть позже: git status в большом дереве (ReactOS) идёт
     // секунды, смена вкладки не должна их ждать
     GitRefreshLater;
+    GitPollStart;
   end
   else
   begin
     if FGitBar <> nil then
       FGitBar.Visible := False;
+    if FGitPollTimer <> nil then
+      FGitPollTimer.Enabled := False;
     if FPalTabs <> nil then
       FPalTabs.TabIndex := 0;
     if FDsgPalette <> nil then
@@ -65492,6 +65505,8 @@ begin
   finally
     FGitBranchFill := False;
     GitPlaceHint;
+    // Состояние .git после обновления: дальше GitPollTick сравнивает с ним
+    FGitStateSig := GitStateSig;
   end;
 end;
 
@@ -65516,6 +65531,114 @@ end;
 procedure TForm1.GitRefreshClick(Sender: TObject);
 begin
   GitRefreshBar;
+end;
+
+// Слежение за репозиторием: открыт Git Bash, запущенный кнопкой, - раз в
+// секунду, иначе раз в 5 с
+procedure TForm1.GitPollStart;
+begin
+  if FGitPollTimer = nil then
+  begin
+    FGitPollTimer := TTimer.Create(Self);
+    FGitPollTimer.Enabled := False;
+    FGitPollTimer.OnTimer := GitPollTick;
+  end;
+  if (FGitBashProc <> 0) and
+     (WaitForSingleObject(FGitBashProc, 0) = WAIT_TIMEOUT) then
+    FGitPollTimer.Interval := 1000
+  else
+    FGitPollTimer.Interval := 5000;
+  FGitPollTimer.Enabled := True;
+end;
+
+// Обновить панель, если служебные файлы .git изменились (git status
+// каждую секунду в большом репозитории занимал бы секунды). Не
+// обновляется, пока идёт команда, открыт список веток или диалог
+procedure TForm1.GitPollTick(Sender: TObject);
+begin
+  if (FGitBar = nil) or not FGitBar.Visible then
+  begin
+    FGitPollTimer.Enabled := False;
+    Exit;
+  end;
+  // Git Bash закрыли - дальше раз в 5 с
+  if (FGitBashProc <> 0) and
+     (WaitForSingleObject(FGitBashProc, 0) <> WAIT_TIMEOUT) then
+  begin
+    CloseHandle(FGitBashProc);
+    FGitBashProc := 0;
+    FGitPollTimer.Interval := 5000;
+  end;
+  if FGitBusy or (FBusyDepth > 0) or FGitCmbBranch.DroppedDown then
+    Exit;
+  if Application.Active and (Screen.ActiveForm <> Self) then
+    Exit;
+  if GitStateSig <> FGitStateSig then
+    GitRefreshBar;
+end;
+
+// Время и размер служебных файлов .git репозитория панели: HEAD, index,
+// ссылка текущей ветки (и её копия origin/), журнал HEAD, следы merge /
+// cherry-pick / revert, stash. .git - не папка (worktree, подмодуль) -
+// подпись меняется раз в 5 с, панель обновляется по времени
+function TForm1.GitStateSig: string;
+const
+  SigFiles: array[0..10] of string = ('HEAD', 'index', 'ORIG_HEAD',
+    'FETCH_HEAD', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD',
+    'packed-refs', 'logs\HEAD', 'refs\stash', 'sequencer\todo');
+var
+  GitDir, HeadRef, BranchPath: string;
+  HeadLines: TStringList;
+  FileIdx: Integer;
+
+  function FileSig(const AFile: string): string;
+  var
+    SR: TSearchRec;
+  begin
+    if FindFirst(AFile, faAnyFile, SR) = 0 then
+    begin
+      Result := IntToHex(SR.FindData.ftLastWriteTime.dwHighDateTime, 8) +
+        IntToHex(SR.FindData.ftLastWriteTime.dwLowDateTime, 8) + ':' +
+        IntToStr(SR.Size);
+      FindClose(SR);
+    end
+    else
+      Result := '-';
+  end;
+
+begin
+  Result := FGitRepoTop;
+  if FGitRepoTop = '' then
+    Exit;
+  GitDir := IncludeTrailingPathDelimiter(FGitRepoTop) + '.git\';
+  if not DirectoryExists(GitDir) then
+  begin
+    Result := Result + '|' + IntToStr(GetTickCount div 5000);
+    Exit;
+  end;
+  for FileIdx := Low(SigFiles) to High(SigFiles) do
+    Result := Result + '|' + FileSig(GitDir + SigFiles[FileIdx]);
+  // HEAD: 'ref: refs/heads/<ветка>' - файл ветки и origin/<ветка>
+  HeadRef := '';
+  HeadLines := TStringList.Create;
+  try
+    try
+      HeadLines.LoadFromFile(GitDir + 'HEAD');
+      if HeadLines.Count > 0 then
+        HeadRef := Trim(HeadLines[0]);
+    except
+      HeadRef := '';
+    end;
+  finally
+    HeadLines.Free;
+  end;
+  if Copy(HeadRef, 1, 16) = 'ref: refs/heads/' then
+  begin
+    BranchPath := StringReplace(Copy(HeadRef, 17, MaxInt), '/', '\',
+      [rfReplaceAll]);
+    Result := Result + '|' + FileSig(GitDir + 'refs\heads\' + BranchPath) +
+      '|' + FileSig(GitDir + 'refs\remotes\origin\' + BranchPath);
+  end;
 end;
 
 procedure TForm1.GitTimerTick(Sender: TObject);
@@ -66002,7 +66125,11 @@ begin
     Exit;
   end;
   CloseHandle(PI.hThread);
-  CloseHandle(PI.hProcess);
+  // Пока Git Bash открыт - панель проверяется раз в секунду (GitPollTick)
+  if FGitBashProc <> 0 then
+    CloseHandle(FGitBashProc);
+  FGitBashProc := PI.hProcess;
+  GitPollStart;
 end;
 
 // ---------------------------------------------------------------------------
