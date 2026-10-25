@@ -66146,6 +66146,71 @@ begin
   end;
 end;
 
+// Обе ветки дописали своё в конец одной цепочки: последнюю строку общей
+// версии обе изменили одинаково (убрали ';' или ')) then', поставили
+// ' or' ...) и добавили за ней разные строки. Тогда: изменённая строка,
+// строки текущей ветки (их последняя строка - с тем же изменением конца,
+// что у общей) и строки вливаемой. Пример - else if ... / or (...) в
+// конце списка. True - AResult собран
+function GitChainResolve(const ABase, AOurs, ATheirs: string;
+  var AResult: string): Boolean;
+var
+  BaseLines, OursLines, TheirsLines: TStringList;
+  LineIdx, BaseCount, SameLen: Integer;
+  OldLast, NewLast, OldEnd, NewEnd, OursLast: string;
+begin
+  Result := False;
+  AResult := '';
+  BaseLines := TStringList.Create;
+  OursLines := TStringList.Create;
+  TheirsLines := TStringList.Create;
+  try
+    BaseLines.Text := StringReplace(ABase, #10, #13#10, [rfReplaceAll]);
+    OursLines.Text := StringReplace(AOurs, #10, #13#10, [rfReplaceAll]);
+    TheirsLines.Text := StringReplace(ATheirs, #10, #13#10, [rfReplaceAll]);
+    BaseCount := BaseLines.Count;
+    if (BaseCount = 0) or (OursLines.Count <= BaseCount) or
+       (TheirsLines.Count <= BaseCount) then
+      Exit;
+    // Первые строки общей версии - без изменений у обеих, последняя -
+    // изменена одинаково
+    for LineIdx := 0 to BaseCount - 1 do
+    begin
+      if OursLines[LineIdx] <> TheirsLines[LineIdx] then
+        Exit;
+      if (LineIdx < BaseCount - 1) and
+         (OursLines[LineIdx] <> BaseLines[LineIdx]) then
+        Exit;
+    end;
+    OldLast := BaseLines[BaseCount - 1];
+    NewLast := OursLines[BaseCount - 1];
+    if OldLast = NewLast then
+      Exit;
+    SameLen := 0;
+    while (SameLen < Length(OldLast)) and (SameLen < Length(NewLast)) and
+          (OldLast[SameLen + 1] = NewLast[SameLen + 1]) do
+      Inc(SameLen);
+    OldEnd := Copy(OldLast, SameLen + 1, MaxInt);
+    NewEnd := Copy(NewLast, SameLen + 1, MaxInt);
+    OursLast := OursLines[OursLines.Count - 1];
+    if (OldEnd = '') or (Length(OursLast) < Length(OldEnd)) or
+       (Copy(OursLast, Length(OursLast) - Length(OldEnd) + 1, MaxInt) <>
+        OldEnd) then
+      Exit;
+    OursLines[OursLines.Count - 1] :=
+      Copy(OursLast, 1, Length(OursLast) - Length(OldEnd)) + NewEnd;
+    for LineIdx := 0 to OursLines.Count - 1 do
+      AResult := AResult + OursLines[LineIdx] + #10;
+    for LineIdx := BaseCount to TheirsLines.Count - 1 do
+      AResult := AResult + TheirsLines[LineIdx] + #10;
+    Result := True;
+  finally
+    TheirsLines.Free;
+    OursLines.Free;
+    BaseLines.Free;
+  end;
+end;
+
 // Auto-resolve одного файла APath (путь git от корня репозитория).
 // Общая версия - из индекса: git checkout-index --stage=all --temp (base,
 // ours, theirs во временные файлы), git merge-file --diff3 - тот же
@@ -66161,8 +66226,9 @@ var
   TempNames, FileLines, MergedLines, NewLines: TStringList;
   FileBlocks, MergedBlocks: TGitConflictBlocks;
   BlockIdx, MergedIdx, MergedStart, LineIdx, NextBlock, TabPos,
-  CopyIdx: Integer;
+  CopyIdx, FoundIdx: Integer;
   Resolve: array of Boolean;
+  ChainText: array of string;   // собранный GitChainResolve текст блока
   Known: Boolean;
   BaseText: string;
 
@@ -66185,6 +66251,90 @@ var
   function LinesInside(const APart, AWhole: string): Boolean;
   begin
     Result := (APart = '') or (Pos(#10 + APart, #10 + AWhole) > 0);
+  end;
+
+  // Строки текста (через #10) - списком
+  procedure SplitText(const AText: string; AList: TStrings);
+  begin
+    AList.Text := StringReplace(AText, #10, #13#10, [rfReplaceAll]);
+  end;
+
+  // Сколько строк APart стоит после начала AWhole; -1 - не внутри
+  function LinesBefore(const APart, AWhole: string): Integer;
+  var
+    CharPos, CharIdx: Integer;
+  begin
+    Result := -1;
+    if APart = '' then
+      Exit;
+    CharPos := Pos(#10 + APart, #10 + AWhole);
+    if CharPos = 0 then
+      Exit;
+    Result := 0;
+    for CharIdx := 1 to CharPos - 1 do
+      if AWhole[CharIdx] = #10 then
+        Inc(Result);
+  end;
+
+  function LinesIn(const AText: string): Integer;
+  var
+    CharIdx: Integer;
+  begin
+    Result := 0;
+    for CharIdx := 1 to Length(AText) do
+      if AText[CharIdx] = #10 then
+        Inc(Result);
+  end;
+
+  // Цепочка разрешена по блоку diff3 AMerged, а в файле блок уже: git
+  // вынес общие строки сторон за маркеры. Они должны стоять в файле над
+  // и под блоком - тогда замена захватывает и их (границы блока ABlock
+  // расширяются). False - не сходится, блок остаётся вручную
+  function ChainFits(ABlock, AMerged: Integer): Boolean;
+  var
+    PreCount, PreTheirs, PostCount, PostTheirs, FitIdx: Integer;
+    MergedOurs: TStringList;
+  begin
+    Result := False;
+    PreCount := LinesBefore(FileBlocks[ABlock].Ours,
+      MergedBlocks[AMerged].Ours);
+    PreTheirs := LinesBefore(FileBlocks[ABlock].Theirs,
+      MergedBlocks[AMerged].Theirs);
+    if (PreCount < 0) or (PreCount <> PreTheirs) then
+      Exit;
+    PostCount := LinesIn(MergedBlocks[AMerged].Ours) - PreCount -
+      LinesIn(FileBlocks[ABlock].Ours);
+    PostTheirs := LinesIn(MergedBlocks[AMerged].Theirs) - PreTheirs -
+      LinesIn(FileBlocks[ABlock].Theirs);
+    if (PostCount < 0) or (PostCount <> PostTheirs) then
+      Exit;
+    if FileBlocks[ABlock].StartLine - PreCount < 0 then
+      Exit;
+    if (ABlock > 0) and (FileBlocks[ABlock].StartLine - PreCount <=
+       FileBlocks[ABlock - 1].EndLine) then
+      Exit;
+    if FileBlocks[ABlock].EndLine + PostCount >= FileLines.Count then
+      Exit;
+    if (ABlock < High(FileBlocks)) and (FileBlocks[ABlock].EndLine +
+       PostCount >= FileBlocks[ABlock + 1].StartLine) then
+      Exit;
+    MergedOurs := TStringList.Create;
+    try
+      SplitText(MergedBlocks[AMerged].Ours, MergedOurs);
+      for FitIdx := 0 to PreCount - 1 do
+        if FileLines[FileBlocks[ABlock].StartLine - PreCount + FitIdx] <>
+           MergedOurs[FitIdx] then
+          Exit;
+      for FitIdx := 0 to PostCount - 1 do
+        if FileLines[FileBlocks[ABlock].EndLine + 1 + FitIdx] <>
+           MergedOurs[MergedOurs.Count - PostCount + FitIdx] then
+          Exit;
+    finally
+      MergedOurs.Free;
+    end;
+    FileBlocks[ABlock].StartLine := FileBlocks[ABlock].StartLine - PreCount;
+    FileBlocks[ABlock].EndLine := FileBlocks[ABlock].EndLine + PostCount;
+    Result := True;
   end;
 
   function TempPath(const AName: string): string;
@@ -66266,10 +66416,13 @@ begin
     GitParseConflicts(MergedLines, MergedBlocks);
 
     SetLength(Resolve, Length(FileBlocks));
+    SetLength(ChainText, Length(FileBlocks));
     MergedStart := 0;
     for BlockIdx := 0 to High(FileBlocks) do
     begin
       Resolve[BlockIdx] := False;
+      ChainText[BlockIdx] := '';
+      FoundIdx := -1;
       Known := FileBlocks[BlockIdx].HasBase;
       BaseText := FileBlocks[BlockIdx].Base;
       // Блок diff3 шире: при конфликте без base git выносит за маркеры
@@ -66283,6 +66436,7 @@ begin
                          MergedBlocks[MergedIdx].Theirs) then
           begin
             MergedStart := MergedIdx;
+            FoundIdx := MergedIdx;
             Known := True;
             BaseText := MergedBlocks[MergedIdx].Base;
             Break;
@@ -66291,10 +66445,27 @@ begin
         LogComp('  ' + APath + ', строка ' +
           IntToStr(FileBlocks[BlockIdx].StartLine + 1) + ': общая версия ' +
           'не найдена (блок правили вручную?) - оставлен')
-      else if Trim(BaseText) <> '' then
+      else if (Trim(BaseText) <> '') and
+              (((FoundIdx < 0) and
+                GitChainResolve(BaseText, FileBlocks[BlockIdx].Ours,
+                  FileBlocks[BlockIdx].Theirs, ChainText[BlockIdx])) or
+               ((FoundIdx >= 0) and
+                GitChainResolve(BaseText, MergedBlocks[FoundIdx].Ours,
+                  MergedBlocks[FoundIdx].Theirs, ChainText[BlockIdx]) and
+                ChainFits(BlockIdx, FoundIdx))) then
+      begin
+        Resolve[BlockIdx] := True;
         LogComp('  ' + APath + ', строка ' +
           IntToStr(FileBlocks[BlockIdx].StartLine + 1) + ': обе ветки ' +
-          'меняли одни и те же строки - вручную')
+          'дописали конец одной цепочки - оставлены обе (проверьте)');
+      end
+      else if Trim(BaseText) <> '' then
+      begin
+        ChainText[BlockIdx] := '';
+        LogComp('  ' + APath + ', строка ' +
+          IntToStr(FileBlocks[BlockIdx].StartLine + 1) + ': обе ветки ' +
+          'меняли одни и те же строки - вручную');
+      end
       else if GitInsertsOverlap(FileBlocks[BlockIdx].Ours,
               FileBlocks[BlockIdx].Theirs, SameLine) then
         LogComp('  ' + APath + ', строка ' +
@@ -66317,7 +66488,9 @@ begin
         if (NextBlock <= High(FileBlocks)) and
            (LineIdx = FileBlocks[NextBlock].StartLine) then
         begin
-          if Resolve[NextBlock] then
+          if Resolve[NextBlock] and (ChainText[NextBlock] <> '') then
+            AddText(ChainText[NextBlock])
+          else if Resolve[NextBlock] then
           begin
             AddText(FileBlocks[NextBlock].Ours);
             AddText(FileBlocks[NextBlock].Theirs);
