@@ -346,6 +346,10 @@ type
     FLblSectionHelp: TUiLabel;
     // Reset Scheme: файл схемы - из папки исходников, из которых собран exe
     FBtnResetScheme: TUiButton;
+    // Рамка Source code highlighting: тема подсветки (FPnlHlTheme), группы,
+    // таблица схемы, поле данных и Save / Exit / Delete Row
+    FGrpHighlight: TUiGroupBox;
+    FPnlHlTheme: TPanel;
     FGridOldProc: TWndMethod; // обработчик таблицы до подмены
 
     // Имя раздела схемы для каждой строки таблицы: FRowSec[номер строки].
@@ -972,6 +976,43 @@ begin
   FBtnResetScheme.ShowHint := True;
   FBtnResetScheme.SetBounds(232, 39, 100, 26);
   FBtnResetScheme.OnClick := BtnResetSchemeClick;
+
+  // Всё, что относится к подсветке, - в рамку Source code highlighting под
+  // рядом IDE Color scheme. В .dfm эти элементы лежат прямо на вкладке;
+  // переносятся здесь, порядок выравнивания задают Top
+  FGrpHighlight := TUiGroupBox.Create(Self);
+  FGrpHighlight.Parent := tsColorScheme;
+  FGrpHighlight.Caption := ' Source code highlighting ';
+  FGrpHighlight.Align := alClient;
+  FPnlHlTheme := TPanel.Create(Self);
+  FPnlHlTheme.Parent := FGrpHighlight;
+  FPnlHlTheme.BevelOuter := bvNone;
+  FPnlHlTheme.Caption := '';
+  FPnlHlTheme.ParentColor := True;
+  FPnlHlTheme.Height := 32;
+  FPnlHlTheme.Align := alTop;
+  FPnlHlTheme.Top := 0;
+  lblTheme.Parent := FPnlHlTheme;
+  cmbTheme.Parent := FPnlHlTheme;
+  btnThemeAdd.Parent := FPnlHlTheme;
+  btnThemeDel.Parent := FPnlHlTheme;
+  pnlThemeSpacer.Parent := FPnlHlTheme;
+  lblTheme.Top := 5;
+  cmbTheme.Top := 5;
+  btnThemeAdd.Top := 4;
+  btnThemeDel.Top := 4;
+  pnlThemeSpacer.Top := 4;
+  pnlGroupActions.Parent := FGrpHighlight;
+  pnlGroupActions.Top := FPnlHlTheme.Height + 1;
+  MemoSchemaDetails.Parent := FGrpHighlight;
+  MemoSchemaDetails.Top := 10000;
+  pnlBottom.Parent := FGrpHighlight;
+  pnlBottom.Top := 20000;
+  Grid.Parent := FGrpHighlight;
+  // Заголовок с линией больше не нужен - его роль у рамки
+  lblHighlight.Visible := False;
+  bvlHighlight.Visible := False;
+  pnlTheme.Height := 32;
 end;
 
 procedure TForm2.FormDestroy(Sender: TObject);
