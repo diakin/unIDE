@@ -3355,6 +3355,7 @@ type
     function  IdeBasicMode: Boolean;
     function  ShownDesigner: TFormDesigner;
     procedure ApplyLangMode;
+    procedure UpdateRunHint(AKind: Integer);
     procedure DsgHideForRun;
     procedure DsgShowAfterRun;
     function  RunTargetExe: string;
@@ -3411,6 +3412,7 @@ type
     function  DelphiDprInFolder(const ADir: string; AAsk: Boolean): string;
     procedure DelphiRenameOtherDprs(ADprs: TStrings; const AKeep: string);
     function  CompileProject: Boolean;
+    function  AhkFindCompiler: string;
     function  CompileReactOS: Boolean;
     function  RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
                          const AWorkDir: string): Integer;
@@ -50745,13 +50747,63 @@ begin
   FLangModeKey := ''; // режим Basic/Delphi у .inc - по главному файлу
 end;
 
+// Компилятор AutoHotkey Ahk2Exe.exe: PATH, папка установки из реестра
+// (HKCU/HKLM SOFTWARE\AutoHotkey, InstallDir), затем обычные папки
+// установщика v1 и v2. Не найден - ''.
+function TForm1.AhkFindCompiler: string;
+var
+  Buf: array[0..MAX_PATH] of Char;
+  FilePart: PChar;
+  Dirs: TStringList;
+  DirIdx: Integer;
+  InstallDir, Candidate: string;
+
+  procedure AddEnvDir(const AEnvName, ASubDir: string);
+  var
+    EnvLen: DWORD;
+  begin
+    EnvLen := GetEnvironmentVariable(PChar(AEnvName), Buf, SizeOf(Buf));
+    if (EnvLen > 0) and (EnvLen < SizeOf(Buf)) then
+      Dirs.Add(IncludeTrailingPathDelimiter(Buf) + ASubDir);
+  end;
+
+begin
+  Result := '';
+  if SearchPath(nil, 'Ahk2Exe.exe', nil, MAX_PATH, Buf, FilePart) > 0 then
+  begin
+    Result := Buf;
+    Exit;
+  end;
+  Dirs := TStringList.Create;
+  try
+    InstallDir := RegReadAny('SOFTWARE\AutoHotkey', 'InstallDir');
+    if InstallDir <> '' then
+      Dirs.Add(IncludeTrailingPathDelimiter(InstallDir) + 'Compiler');
+    AddEnvDir('ProgramFiles', 'AutoHotkey\Compiler');
+    AddEnvDir('ProgramFiles(x86)', 'AutoHotkey\Compiler');
+    AddEnvDir('ProgramW6432', 'AutoHotkey\Compiler');
+    AddEnvDir('LOCALAPPDATA', 'Programs\AutoHotkey\Compiler');
+    for DirIdx := 0 to Dirs.Count - 1 do
+    begin
+      Candidate := IncludeTrailingPathDelimiter(Dirs[DirIdx]) + 'Ahk2Exe.exe';
+      if FileExists(Candidate) then
+      begin
+        Result := Candidate;
+        Exit;
+      end;
+    end;
+  finally
+    Dirs.Free;
+  end;
+end;
+
 // Кнопки Compile и Compile & Run. Остальные места (пробный запуск
 // конструктора, Build Release) по-прежнему зовут CompileDelphi: они
 // работают только с проектами Delphi.
 function TForm1.CompileProject: Boolean;
 var
   Kind: Integer;
-  BuildPrj, PrjType: string;
+  BuildPrj, PrjType, AhkExe: string;
 begin
   Result := False;
   AutoSaveEditorFiles;
@@ -50818,7 +50870,21 @@ begin
       else if CompareText(PrjType, 'Python') = 0 then
         LogComp('  Сборки не требуется: python main.py')
       else if CompareText(PrjType, 'AutoHotkey') = 0 then
+      begin
         LogComp('  Запуск: AutoHotkey.exe <скрипт>.ahk, сборка exe - Ahk2Exe');
+        AhkExe := AhkFindCompiler;
+        if AhkExe <> '' then
+          LogComp('  Компилятор: ' + AhkExe)
+        else
+        begin
+          LogComp('  Компилятор Ahk2Exe.exe не найден');
+          ShowMessage('Компилятор AutoHotkey (Ahk2Exe.exe) не найден.' +
+          #13#10 + 'Искали: PATH, папку установки AutoHotkey из реестра, ' +
+          '%ProgramFiles%\AutoHotkey\Compiler, ' +
+          '%ProgramFiles(x86)%\AutoHotkey\Compiler, ' +
+          '%LOCALAPPDATA%\Programs\AutoHotkey\Compiler');
+        end;
+      end;
     end;
   end;
 end;
@@ -57108,6 +57174,72 @@ begin
     Result := FDesigner;
 end;
 
+// Подсказка кнопки запуска: по сборщику активной вкладки (CurBuildKind).
+// Сборщик не определён - по типу проекта: прежде здесь стояла подсказка
+// Delphi (dcc32), т.к. режим среды для bkNone - Delphi.
+procedure TForm1.UpdateRunHint(AKind: Integer);
+var
+  PrjName, PrjType: string;
+begin
+  if btnCompileRun = nil then
+    Exit;
+  case AKind of
+    bkRapidQ:
+      btnCompileRun.Hint := 'Собрать программу RapidQ и запустить, если без ' +
+      'ошибок';
+    bkDelphi:
+      btnCompileRun.Hint := 'Собрать проект dcc32 и запустить, если без ' +
+      'ошибок';
+    bkFreeBasic:
+      btnCompileRun.Hint := 'Собрать программу FreeBASIC (fbc) и ' +
+      'запустить, если без ошибок. DLL только ' +
+      'собирается';
+    bkArduino:
+      btnCompileRun.Hint := 'Собрать скетч (arduino-cli compile) и ' +
+      'загрузить в плату (Upload). Плата и порт - ' +
+      'меню Arduino - Board и Port';
+    bkCMakeNinja:
+      btnCompileRun.Hint := 'ReactOS / LiberNT: собрать цель ninja (если ' +
+      'build.ninja нет - сначала configure.cmd) и запустить образ ' +
+      '(<цель>.iso) в своём QEMU unIDE или командой из свойств ' +
+      'проекта. Без сборки - меню ReactOS - Run Image';
+    bkNone:
+    begin
+      PrjName := BuildProject;
+      PrjType := '';
+      if PrjName <> '' then
+        PrjType := ProjectTypeOf(PrjName);
+      if FCurrentFileName = '' then
+        btnCompileRun.Hint := 'Нет открытого файла - собирать нечего'
+      else if PrjType = '' then
+        btnCompileRun.Hint := 'Сборщик не определён: по расширению файла ' +
+        'его не узнать, а проекта нет'
+      else if CompareText(PrjType, 'AutoHotkey') = 0 then
+        btnCompileRun.Hint := 'Проект AutoHotkey: сборка exe - компилятор ' +
+        'Ahk2Exe (здесь пока не подключена), запуск - AutoHotkey.exe ' +
+        '<скрипт>.ahk'
+      else if CompareText(PrjType, 'Lazarus') = 0 then
+        btnCompileRun.Hint := 'Проект Lazarus: сборка здесь пока не ' +
+        'подключена (lazbuild <проект>.lpi)'
+      else if CompareText(PrjType, 'Go') = 0 then
+        btnCompileRun.Hint := 'Проект Go: сборка здесь пока не подключена ' +
+        '(go build)'
+      else if CompareText(PrjType, 'Rust') = 0 then
+        btnCompileRun.Hint := 'Проект Rust: сборка здесь пока не подключена ' +
+        '(cargo build)'
+      else if CompareText(PrjType, 'Python') = 0 then
+        btnCompileRun.Hint := 'Проект Python: сборки не требуется ' +
+        '(python main.py)'
+      else
+        btnCompileRun.Hint := 'Сборка проектов ' + PrjType +
+        ' здесь пока не поддерживается';
+    end;
+  else
+    btnCompileRun.Hint := 'Сборка ' + BuildKindName(AKind) +
+    ' здесь пока не подключена';
+  end;
+end;
+
 // Режим сменился (или ещё не применялся) - показать то, что есть в нём,
 // и спрятать остальное. Зовётся из UpdateToolbarState (простой программы):
 // режим считается заново, только когда сменились файл или проект.
@@ -57141,8 +57273,10 @@ begin
   FLangModeKey := ModeKey;
   // Переключатель и цель - при каждой смене вкладки, и когда режим тот же
   UpdateBuildBar;
-  // Сборщик вкладки; не определён - как Delphi
+  // Сборщик вкладки; не определён - как Delphi. Подсказка кнопки запуска -
+  // по настоящему сборщику (и типу проекта), до этой замены
   Kind := CurBuildKind;
+  UpdateRunHint(Kind);
   if Kind = bkNone then
     Kind := bkDelphi;
   if FLangMode = Kind then
@@ -57219,31 +57353,6 @@ begin
         Inc(SlotIdx);
       end;
   end;
-  case Kind of
-    bkRapidQ:
-      btnCompileRun.Hint := 'Собрать программу RapidQ и запустить, если без ' +
-    'ошибок';
-bkDelphi:
-btnCompileRun.Hint := 'Собрать проект dcc32 и запустить, если без ' +
-    'ошибок';
-bkFreeBasic:
-btnCompileRun.Hint := 'Собрать программу FreeBASIC (fbc) и ' +
-    'запустить, если без ошибок. DLL только ' +
-    'собирается';
-bkArduino:
-btnCompileRun.Hint := 'Собрать скетч (arduino-cli compile) и ' +
-    'загрузить в плату (Upload). Плата и порт - ' +
-    'меню Arduino - Board и Port';
-bkCMakeNinja:
-btnCompileRun.Hint := 'ReactOS / LiberNT: собрать цель ninja (если ' +
-    'build.ninja нет - сначала configure.cmd) и запустить образ ' +
-    '(<цель>.iso) в своём QEMU unIDE или командой из свойств ' +
-    'проекта. Без сборки - меню ReactOS - Run Image';
-  else
-    btnCompileRun.Hint := 'Сборка ' + BuildKindName(Kind) +
-    ' здесь пока не подключена';
-  end;
-
   // Палитра: в Basic - страницы RQ, в Delphi - все, кроме них
   if FDsgPalette <> nil then
   begin
