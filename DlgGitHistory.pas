@@ -25,7 +25,7 @@ unit DlgGitHistory;
 //  содержимым не в счёт), в одной таблице, цвет - свой у каждой ветки.
 //  Коммит в нескольких ветках - одна строка, ветки через запятую. Кнопки
 //  Cherry-pick (выделенные коммиты - в текущую ветку), Merge Branch
-//  (ветку выделенного коммита - целиком), Delete Branch... - выполняет
+//  (ветку выделенного коммита - целиком), Delete Branch - выполняет
 //  Unit1 после закрытия окна (Action, SelectedHashes, ActionBranch) и
 //  открывает окно снова. Сколько коммитов у каждой ветки не в ABase -
 //  в Objects списка ABranchRefs.
@@ -140,7 +140,8 @@ type
     property SelectedHash: string read FCurHash;
     // Cherry-pick: выделенные коммиты, от старых к новым
     property SelectedHashes: TStringList read FSelHashes;
-    // Merge Branch, Delete Branch: ветка выделенного коммита ('' - нет)
+    // Merge Branch: ветка выделенного коммита ('' - нет); Delete Branch:
+    // все его ветки через ', '
     property ActionBranch: string read FActionBranch;
     // Схема подсветки кода в разнице (Unit1.SchemeCopyFor)
     procedure SetSchemeProvider(AProvider: TGitSchemeEvent);
@@ -365,9 +366,10 @@ begin
 
   FBtnDelBranch := TUiButton.Create(Self);
   FBtnDelBranch.Parent := FBtnPanel;
-  FBtnDelBranch.Caption := 'Delete Branch...';
-  FBtnDelBranch.Hint := 'Удалить ветку - локальную и на сервере (выбор из ' +
-    'списка; ветка выделенного коммита - первой)';
+  FBtnDelBranch.Caption := 'Delete Branch';
+  FBtnDelBranch.Hint := 'Удалить ветку выделенного коммита - локальную и ' +
+    'на сервере. Коммит в нескольких ветках или ничего не выделено (Ctrl+' +
+    'щелчок снимает выделение) - выбор из списка всех веток';
   FBtnDelBranch.ShowHint := True;
   FBtnDelBranch.OnClick := BtnDelBranchClick;
   FBtnDelBranch.Visible := FUnmerged;
@@ -687,7 +689,7 @@ begin
     if Count = 0 then
       FLblInfo.Caption := 'Во всех ' + IntToStr(FBranchRefs.Count) +
         ' ветках нет коммитов, которых нет в ' + FBase + ' - ветки можно ' +
-        'удалять (Delete Branch...)'
+        'удалять (Delete Branch)'
     else
       FLblInfo.Caption := 'Не в ' + FBase + ': ' + IntToStr(Count) +
         ' коммит(ов) из ' + IntToStr(BranchesWith) + ' веток; у ' +
@@ -800,11 +802,13 @@ begin
   ModalResult := mrOk;
 end;
 
+// Delete Branch: все ветки выделенного коммита (через ', ')
 procedure TDlgGitHistory.BtnDelBranchClick(Sender: TObject);
 begin
   FActionBranch := '';
-  if FCommitList.Selected <> nil then
-    FActionBranch := FirstBranchOf(FCommitList.Selected.Index);
+  if (FCommitList.Selected <> nil) and
+     (FCommitList.Selected.Index <= High(FCommitBranch)) then
+    FActionBranch := FCommitBranch[FCommitList.Selected.Index];
   FAction := ghaDeleteBranch;
   ModalResult := mrOk;
 end;

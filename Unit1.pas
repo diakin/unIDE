@@ -68165,8 +68165,21 @@ begin
           end;
         ghaDeleteBranch:
           begin
-            // Выбор из всех веток: сколько у каждой коммитов не в Base;
-            // ветка выделенного коммита - первой
+            // Выделен коммит одной ветки - её и удалить (с подтверждением);
+            // main / master отсюда не удаляются
+            BranchIdx := -1;
+            if (ActionBranch <> '') and (Pos(',', ActionBranch) = 0) and
+               (ActionBranch <> 'main') and (ActionBranch <> 'master') then
+              BranchIdx := BranchRefs.IndexOfName(ActionBranch);
+            if BranchIdx >= 0 then
+            begin
+              GitDeleteBranchAll(Git, Repo, ActionBranch,
+                BranchRefs.ValueFromIndex[BranchIdx],
+                Integer(BranchRefs.Objects[BranchIdx]));
+              Continue;
+            end;
+            // Иначе выбор из всех веток: сколько у каждой коммитов не в
+            // Base; ветки выделенного коммита - первыми
             Choices := TStringList.Create;
             try
               for BranchIdx := 0 to BranchRefs.Count - 1 do
@@ -68180,7 +68193,8 @@ begin
                 else
                   Choice := BranchName + '  (' + IntToStr(Unmerged) +
                     ' не в ' + Base + ')';
-                if BranchName = ActionBranch then
+                if Pos(', ' + BranchName + ', ', ', ' + ActionBranch +
+                   ', ') > 0 then
                   Choices.Insert(0, Choice)
                 else
                   Choices.Add(Choice);
