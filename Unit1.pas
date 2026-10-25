@@ -1148,6 +1148,7 @@ type
     FGitBtnContinue: TUiButton;
     FGitBtnSkip: TUiButton;
     FGitBtnAbort: TUiButton;
+    FGitBtnView: TUiButton;
     FGitBehind: Integer;
     FGitBusy: Boolean;
     FGitCancel: Boolean;
@@ -3089,6 +3090,8 @@ type
     procedure GitUpdateFromDefaultClick(Sender: TObject);
     procedure GitMergeClick(Sender: TObject);
     procedure GitCompareClick(Sender: TObject);
+    procedure GitCompareShow(const Git, Repo, LeftBranch, RightBranch: string);
+    procedure GitViewSyncClick(Sender: TObject);
     procedure GitMergeIntoClick(Sender: TObject);
     procedure GitUnmergedClick(Sender: TObject);
     function  GitDeleteBranchAll(const AGit, ARepo, ABranch, ARefs: string;
@@ -65309,6 +65312,14 @@ begin
   FGitLblBuild.Left := OpLeft;
   FGitLblHint.Left := FGitLblBuild.Left + FGitLblBuild.Width + 24;
   FGitLblHint.Top := FGitLblBuild.Top;
+  if FGitBtnView <> nil then
+  begin
+    FGitBtnView.Visible := (FGitAhead > 0) or (FGitBehind > 0);
+    if FGitLblHint.Caption <> '' then
+      FGitBtnView.Left := FGitLblHint.Left + FGitLblHint.Width + 12
+    else
+      FGitBtnView.Left := FGitLblHint.Left;
+  end;
 end;
 
 // Вывод команды git словами: что произошло и что делать. AIsError - это
@@ -65629,6 +65640,12 @@ begin
   FGitBtnAbort.Top := 73;
   FGitBtnConflicts.TextColor := clRed;
   FGitBtnConflicts.Visible := False;
+  // За подсказкой: есть неотправленные или незабранные коммиты (GitPlaceHint)
+  FGitBtnView := NewButton('View', 'Коммиты, которые не отправлены на ' +
+    'сервер или не забраны с него: сравнение ветки с её веткой на сервере ' +
+    '(файлы и разница)', 4, 50, GitViewSyncClick);
+  FGitBtnView.Top := 73;
+  FGitBtnView.Visible := False;
   FGitBtnContinue.Visible := False;
   FGitBtnSkip.Visible := False;
   FGitBtnAbort.Visible := False;
@@ -67782,13 +67799,8 @@ end;
 // файлы разные (diff --stat); коммиты - окно History в режиме сравнения
 procedure TForm1.GitCompareClick(Sender: TObject);
 var
-  Git, Repo, Current, LeftBranch, RightBranch, Remote, WebUrl, Counts,
-  Hash, Name: string;
+  Git, Repo, Current, LeftBranch, RightBranch: string;
   Branches: TStringList;
-  Output: WideString;
-  TabPos: Integer;
-  Dlg: TDlgGitHistory;
-  HistAction: TGitHistAction;
 begin
   if not GitPrepare(Git, Repo) then
     Exit;
@@ -67818,7 +67830,19 @@ begin
   end;
   if RightBranch = '' then
     Exit;
+  GitCompareShow(Git, Repo, LeftBranch, RightBranch);
+end;
 
+// Сравнение двух веток: сводка в Compilation log и окно сравнения
+procedure TForm1.GitCompareShow(const Git, Repo, LeftBranch,
+  RightBranch: string);
+var
+  WebUrl, Counts, Hash, Name, Remote: string;
+  Output: WideString;
+  TabPos: Integer;
+  Dlg: TDlgGitHistory;
+  HistAction: TGitHistAction;
+begin
   ShowCompLog;
   LogComp('Git: сравнение ' + LeftBranch + ' и ' + RightBranch);
   // Вывод: "<только в первой><Tab><только во второй>"
@@ -67867,6 +67891,27 @@ begin
   end;
   GitLongOp(Git, Repo, 'checkout -b ' + string(GitQuote(WideString(Name))) +
     ' ' + Hash);
+end;
+
+// View (за подсказкой панели): текущая ветка и её ветка на сервере -
+// неотправленные и незабранные коммиты в окне сравнения
+procedure TForm1.GitViewSyncClick(Sender: TObject);
+var
+  Git, Repo, Branch, Upstream: string;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Branch := GitCurrentBranch(Git, Repo);
+  Upstream := GitQuery(Git, Repo,
+    'rev-parse --abbrev-ref --symbolic-full-name @{u}');
+  if (Branch = '') or (Upstream = '') then
+  begin
+    ShowCompLog;
+    LogComp('Git: у текущей ветки нет ветки на сервере - сравнивать не с ' +
+            'чем');
+    Exit;
+  end;
+  GitCompareShow(Git, Repo, Upstream, Branch);
 end;
 
 // Merge Into...: влить текущую ветку в другую (например mainTest в main) и

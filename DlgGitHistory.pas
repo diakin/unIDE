@@ -11,6 +11,9 @@ unit DlgGitHistory;
 //  Branch from Commit и Revert Commit - их выполняет Unit1 после
 //  закрытия окна (Action, SelectedHash).
 //
+//  В History коммиты, которых нет на сервере (не отправлены: git rev-list
+//  @{u}..HEAD; ветки на сервере нет - --not --remotes), - оранжевым.
+//
 //  Сравнение веток (панель Git - Compare...): ARevs = 'A...B' - коммиты,
 //  которые есть только в одной из веток (git log --left-right). Первый
 //  столбец - ветка, строки - цветом своей ветки. Revert в этом режиме нет:
@@ -72,6 +75,7 @@ type
     // Objects - сколько коммитов ветки не в FBase. Список - Unit1
     FBranchRefs: TStrings;
     // У каждого коммита FCommits: ветки (через ', ') и номер цвета
+    // (-1 - цвет списка; History: неотправленный - GitUnpushedColor)
     FCommitBranch: array of string;
     FCommitColor: array of Integer;
     FSelHashes: TStringList;
@@ -146,6 +150,7 @@ const
   GitHistPage = 500;        // столько коммитов за раз (Load More - ещё)
   GitHistDiffMax = 300000;  // разница длиннее - обрезается
   GitBranchColorCount = 8;  // цветов веток; дальше - по кругу
+  GitUnpushedColor = 6;     // History: неотправленный коммит - оранжевый
 
 implementation
 
@@ -245,9 +250,9 @@ begin
     Column := FCommitList.Columns.Add;
     Column.Caption := 'Ветка';
     Column.Width := 130;
-    FCommitList.OnCustomDrawItem := ListCustomDrawItem;
-    FCommitList.OnCustomDrawSubItem := ListCustomDrawSubItem;
   end;
+  FCommitList.OnCustomDrawItem := ListCustomDrawItem;
+  FCommitList.OnCustomDrawSubItem := ListCustomDrawSubItem;
   // Cherry-pick - сразу несколько коммитов
   FCommitList.MultiSelect := FUnmerged;
   Column := FCommitList.Columns.Add;
@@ -452,8 +457,9 @@ end;
 procedure TDlgGitHistory.LoadCommits;
 var
   Output: WideString;
-  CommitIdx: Integer;
+  CommitIdx, UnpushedCount: Integer;
   LogArgs, LeftName, RightName: string;
+  Unpushed: TStringList;
 begin
   if FUnmerged then
   begin
@@ -480,6 +486,30 @@ begin
       GitParseLog(Output, FCommits);
     SetLength(FCommitBranch, Length(FCommits));
     SetLength(FCommitColor, Length(FCommits));
+    for CommitIdx := 0 to High(FCommits) do
+      FCommitColor[CommitIdx] := -1;
+    UnpushedCount := 0;
+    if not FCompare and (Length(FCommits) > 0) then
+    begin
+      // Неотправленные: нет в ветке на сервере (@{u}); ветки там нет -
+      // нет ни в одной ветке с сервера
+      Unpushed := TStringList.Create;
+      try
+        if Query('rev-list @{u}..' + FRevs, Output) <> 0 then
+          if Query('rev-list ' + FRevs + ' --not --remotes', Output) <> 0 then
+            Output := '';
+        Unpushed.Text := string(Output);
+        Unpushed.Sorted := True;
+        for CommitIdx := 0 to High(FCommits) do
+          if Unpushed.IndexOf(FCommits[CommitIdx].Hash) >= 0 then
+          begin
+            FCommitColor[CommitIdx] := GitUnpushedColor;
+            Inc(UnpushedCount);
+          end;
+      finally
+        Unpushed.Free;
+      end;
+    end;
     if FCompare then
     begin
       LeftName := Copy(FRevs, 1, Pos('...', FRevs) - 1);
@@ -504,6 +534,9 @@ begin
     FillList;
     if Length(FCommits) > 0 then
       FLblInfo.Caption := 'Коммитов показано: ' + IntToStr(Length(FCommits));
+    if UnpushedCount > 0 then
+      FLblInfo.Caption := FLblInfo.Caption + ';  не отправлено на сервер: ' +
+        IntToStr(UnpushedCount) + ' (оранжевые)';
     if FCompare and (Length(FCommits) = 0) and (Output = '') then
       FLblInfo.Caption := 'Различающихся коммитов нет: ветки на одном ' +
         'коммите';
@@ -704,7 +737,8 @@ end;
 procedure TDlgGitHistory.ListCustomDrawItem(Sender: TCustomListView;
   Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
-  if (Item <> nil) and (Item.Index <= High(FCommitColor)) then
+  if (Item <> nil) and (Item.Index <= High(FCommitColor)) and
+     (FCommitColor[Item.Index] >= 0) then
     Sender.Canvas.Font.Color := BranchColor(FCommitColor[Item.Index])
   else
     Sender.Canvas.Font.Color := FCommitList.Font.Color;
