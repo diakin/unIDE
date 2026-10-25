@@ -1,9 +1,9 @@
 object Form2: TForm2
-  Left = 499
-  Top = 269
+  Left = 444
+  Top = 247
   Caption = 'IDE Options'
-  ClientHeight = 568
-  ClientWidth = 620
+  ClientHeight = 598
+  ClientWidth = 713
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -461,6 +461,19 @@ object Form2: TForm2
           TabStop = False
           Visible = False
           OnClick = btnBaseColorsClick
+        end
+      end
+      object FGrpHighlight: TUiGroupBox
+        Color = clBackground
+        Caption = ' Source code highlighting '
+        Align = alClient
+        object FPnlHlTheme: TPanel
+          BevelOuter = bvNone
+          Caption = ''
+          ParentColor = True
+          Height = 32
+          Align = alTop
+          Top = 0
         end
       end
     end

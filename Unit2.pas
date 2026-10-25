@@ -229,6 +229,8 @@ type
     FSchemaMenu: TUiPopupMenu;   // Select scheme: список файлов схем
 
     // Обработчики, назначенные в Unit2.dfm
+    FGrpHighlight: TUiGroupBox;
+    FPnlHlTheme: TPanel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure Form2Close(Sender: TObject; var Action: TCloseAction);
@@ -348,8 +350,6 @@ type
     FBtnResetScheme: TUiButton;
     // Рамка Source code highlighting: тема подсветки (FPnlHlTheme), группы,
     // таблица схемы, поле данных и Save / Exit / Delete Row
-    FGrpHighlight: TUiGroupBox;
-    FPnlHlTheme: TPanel;
     FGridOldProc: TWndMethod; // обработчик таблицы до подмены
 
     // Имя раздела схемы для каждой строки таблицы: FRowSec[номер строки].
@@ -980,18 +980,18 @@ begin
   // Всё, что относится к подсветке, - в рамку Source code highlighting под
   // рядом IDE Color scheme. В .dfm эти элементы лежат прямо на вкладке;
   // переносятся здесь, порядок выравнивания задают Top
-  FGrpHighlight := TUiGroupBox.Create(Self);
-  FGrpHighlight.Parent := tsColorScheme;
-  FGrpHighlight.Caption := ' Source code highlighting ';
-  FGrpHighlight.Align := alClient;
-  FPnlHlTheme := TPanel.Create(Self);
-  FPnlHlTheme.Parent := FGrpHighlight;
-  FPnlHlTheme.BevelOuter := bvNone;
-  FPnlHlTheme.Caption := '';
-  FPnlHlTheme.ParentColor := True;
-  FPnlHlTheme.Height := 32;
-  FPnlHlTheme.Align := alTop;
-  FPnlHlTheme.Top := 0;
+  // .dfm: FGrpHighlight := TUiGroupBox.Create(Self);
+  // .dfm: FGrpHighlight.Parent := tsColorScheme;
+  // .dfm: FGrpHighlight.Caption := ' Source code highlighting ';
+  // .dfm: FGrpHighlight.Align := alClient;
+  // .dfm: FPnlHlTheme := TPanel.Create(Self);
+  // .dfm: FPnlHlTheme.Parent := FGrpHighlight;
+  // .dfm: FPnlHlTheme.BevelOuter := bvNone;
+  // .dfm: FPnlHlTheme.Caption := '';
+  // .dfm: FPnlHlTheme.ParentColor := True;
+  // .dfm: FPnlHlTheme.Height := 32;
+  // .dfm: FPnlHlTheme.Align := alTop;
+  // .dfm: FPnlHlTheme.Top := 0;
   lblTheme.Parent := FPnlHlTheme;
   cmbTheme.Parent := FPnlHlTheme;
   btnThemeAdd.Parent := FPnlHlTheme;
