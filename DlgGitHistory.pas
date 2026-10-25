@@ -141,7 +141,7 @@ type
     // Cherry-pick: выделенные коммиты, от старых к новым
     property SelectedHashes: TStringList read FSelHashes;
     // Merge Branch: ветка выделенного коммита ('' - нет); Delete Branch:
-    // все его ветки через ', '
+    // ветки всех выделенных коммитов через ', '
     property ActionBranch: string read FActionBranch;
     // Схема подсветки кода в разнице (Unit1.SchemeCopyFor)
     procedure SetSchemeProvider(AProvider: TGitSchemeEvent);
@@ -368,8 +368,8 @@ begin
   FBtnDelBranch.Parent := FBtnPanel;
   FBtnDelBranch.Caption := 'Delete Branch';
   FBtnDelBranch.Hint := 'Удалить ветку выделенного коммита - локальную и ' +
-    'на сервере. Коммит в нескольких ветках или ничего не выделено (Ctrl+' +
-    'щелчок снимает выделение) - выбор из списка всех веток';
+    'на сервере. Выделенные коммиты из нескольких веток или ничего не ' +
+    'выделено (Ctrl+щелчок снимает выделение) - выбор веток из списка';
   FBtnDelBranch.ShowHint := True;
   FBtnDelBranch.OnClick := BtnDelBranchClick;
   FBtnDelBranch.Visible := FUnmerged;
@@ -802,13 +802,31 @@ begin
   ModalResult := mrOk;
 end;
 
-// Delete Branch: все ветки выделенного коммита (через ', ')
+// Delete Branch: все ветки выделенных коммитов, без повторов (через ', ')
 procedure TDlgGitHistory.BtnDelBranchClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+  Rest, Name: string;
 begin
   FActionBranch := '';
-  if (FCommitList.Selected <> nil) and
-     (FCommitList.Selected.Index <= High(FCommitBranch)) then
-    FActionBranch := FCommitBranch[FCommitList.Selected.Index];
+  for ItemIdx := 0 to FCommitList.Items.Count - 1 do
+    if FCommitList.Items[ItemIdx].Selected and
+       (ItemIdx <= High(FCommitBranch)) then
+    begin
+      Rest := FCommitBranch[ItemIdx] + ', ';
+      while Pos(', ', Rest) > 0 do
+      begin
+        Name := Copy(Rest, 1, Pos(', ', Rest) - 1);
+        Delete(Rest, 1, Pos(', ', Rest) + 1);
+        if (Name <> '') and (Pos(', ' + Name + ', ', ', ' + FActionBranch +
+           ', ') = 0) then
+        begin
+          if FActionBranch <> '' then
+            FActionBranch := FActionBranch + ', ';
+          FActionBranch := FActionBranch + Name;
+        end;
+      end;
+    end;
   FAction := ghaDeleteBranch;
   ModalResult := mrOk;
 end;

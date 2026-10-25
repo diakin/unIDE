@@ -2535,6 +2535,11 @@ type
     function  ChooseFromListHelp(const ACaption, APrompt: string;
                                  AItems: TStrings;
                                  const AHelp: string): string;
+    function  ChooseManyFromList(const ACaption, APrompt: string;
+                                 AItems, ASelected: TStrings): Boolean;
+    function  ChooseListDlg(const ACaption, APrompt: string;
+                            AItems: TStrings; const AHelp: string;
+                            ASelected: TStrings): string;
     function  ProjectDir(const AName: string): string;
     function  ProjectExists(const AName: string): Boolean;
     procedure MigratePrjProjects(ANotes: TStrings);
@@ -3095,7 +3100,8 @@ type
     procedure GitMergeIntoClick(Sender: TObject);
     procedure GitUnmergedClick(Sender: TObject);
     function  GitDeleteBranchAll(const AGit, ARepo, ABranch, ARefs: string;
-                                 AUnmerged: Integer): Boolean;
+                                 AUnmerged: Integer;
+                                 AAsk: Boolean = True): Boolean;
     procedure GitViewBranchClick(Sender: TObject);
     procedure GitPullRequestClick(Sender: TObject);
     function  GitHistQuery(const AArgs: string; var AOutput: WideString): Integer;
@@ -14033,6 +14039,24 @@ end;
 function TForm1.ChooseFromListHelp(const ACaption, APrompt: string;
                                    AItems: TStrings;
                                    const AHelp: string): string;
+begin
+  Result := ChooseListDlg(ACaption, APrompt, AItems, AHelp, nil);
+end;
+
+// Выбор нескольких строк: щелчок выделяет строку или снимает выделение.
+// ASelected - на входе выделенные заранее, на выходе выбранные. False -
+// отказались или ничего не выделили
+function TForm1.ChooseManyFromList(const ACaption, APrompt: string;
+                                   AItems, ASelected: TStrings): Boolean;
+begin
+  Result := ChooseListDlg(ACaption, APrompt, AItems, '', ASelected) <> '';
+end;
+
+// Окно выбора: ASelected = nil - одна строка, иначе несколько (выбранные -
+// в ASelected); результат - первая выбранная строка ('' - отказались)
+function TForm1.ChooseListDlg(const ACaption, APrompt: string;
+                              AItems: TStrings; const AHelp: string;
+                              ASelected: TStrings): string;
 const
   DlgMargin = 12;
   DlgMinWidth = 380;
@@ -14050,7 +14074,17 @@ begin
     Dlg.Caption := ACaption;
     Dlg.lblPrompt.Caption := APrompt;
     Dlg.lstItems.Items.Assign(AItems);
-    Dlg.lstItems.ItemIndex := 0;
+    if ASelected <> nil then
+    begin
+      // Без Ctrl / Shift: щелчок переключает выделение строки
+      Dlg.lstItems.MultiSelect := True;
+      Dlg.lstItems.ExtendedSelect := False;
+      for ItemIdx := 0 to AItems.Count - 1 do
+        Dlg.lstItems.Selected[ItemIdx] :=
+          ASelected.IndexOf(AItems[ItemIdx]) >= 0;
+    end
+    else
+      Dlg.lstItems.ItemIndex := 0;
 
     // Размер окна - по тексту: ширина - по самой длинной строке списка (не
     // шире рабочей области экрана), подпись переносится по словам,
@@ -14095,7 +14129,19 @@ begin
     // Справка - кнопка Help слева от OK / Cancel
     Dlg.SetHelp(AHelp);
 
-    if (Dlg.ShowModal = mrOk) and (Dlg.lstItems.ItemIndex >= 0) then
+    if ASelected <> nil then
+    begin
+      if Dlg.ShowModal = mrOk then
+      begin
+        ASelected.Clear;
+        for ItemIdx := 0 to Dlg.lstItems.Items.Count - 1 do
+          if Dlg.lstItems.Selected[ItemIdx] then
+            ASelected.Add(Dlg.lstItems.Items[ItemIdx]);
+        if ASelected.Count > 0 then
+          Result := ASelected[0];
+      end;
+    end
+    else if (Dlg.ShowModal = mrOk) and (Dlg.lstItems.ItemIndex >= 0) then
       Result := Dlg.lstItems.Items[Dlg.lstItems.ItemIndex];
   finally
     Dlg.Free;
@@ -68048,8 +68094,9 @@ procedure TForm1.GitUnmergedClick(Sender: TObject);
 var
   Git, Repo, Base, Remote, WebUrl, RefName, BranchName, Hash, Hashes,
   Target, Choice, Refs: string;
-  BranchRefs, AllBranches, Choices: TStringList;
-  RefIdx, BranchIdx, Unmerged, PickCount: Integer;
+  BranchRefs, AllBranches, Choices, Chosen: TStringList;
+  RefIdx, BranchIdx, Unmerged, PickCount, ChosenIdx, LostCount: Integer;
+  Question: string;
   Dlg: TDlgGitHistory;
   HistAction: TGitHistAction;
   ActionBranch: string;
@@ -68178,9 +68225,11 @@ begin
                 Integer(BranchRefs.Objects[BranchIdx]));
               Continue;
             end;
-            // Иначе выбор из всех веток: сколько у каждой коммитов не в
-            // Base; ветки выделенного коммита - первыми
+            // Иначе выбор нескольких из всех веток: сколько у каждой
+            // коммитов не в Base; ветки выделенных коммитов - первыми и уже
+            // выделены
             Choices := TStringList.Create;
+            Chosen := TStringList.Create;
             try
               for BranchIdx := 0 to BranchRefs.Count - 1 do
               begin
@@ -68195,26 +68244,67 @@ begin
                     ' не в ' + Base + ')';
                 if Pos(', ' + BranchName + ', ', ', ' + ActionBranch +
                    ', ') > 0 then
-                  Choices.Insert(0, Choice)
+                begin
+                  Choices.Insert(0, Choice);
+                  Chosen.Add(Choice);
+                end
                 else
                   Choices.Add(Choice);
               end;
               if Choices.Count = 0 then
                 Continue;
-              Choice := ChooseFromList('Delete Branch', 'Удалить ветку ' +
-                '(локальную и на сервере):', Choices);
+              if not ChooseManyFromList('Delete Branch', 'Выделите ветки ' +
+                 '(щелчком) и нажмите OK - они будут удалены (локальные и на ' +
+                 'сервере):', Choices, Chosen) then
+                Continue;
+              // Одно подтверждение на все: имена и сколько коммитов пропадёт
+              LostCount := 0;
+              Question := '';
+              for ChosenIdx := Chosen.Count - 1 downto 0 do
+              begin
+                Choice := Chosen[ChosenIdx];
+                BranchName := Copy(Choice, 1, Pos('  (', Choice) - 1);
+                BranchIdx := BranchRefs.IndexOfName(BranchName);
+                if BranchIdx < 0 then
+                begin
+                  Chosen.Delete(ChosenIdx);
+                  Continue;
+                end;
+                Chosen[ChosenIdx] := BranchName;
+                Inc(LostCount, Integer(BranchRefs.Objects[BranchIdx]));
+                Question := '  ' + Choice + #13#10 + Question;
+              end;
+              if Chosen.Count = 0 then
+                Continue;
+              if Chosen.Count = 1 then
+              begin
+                BranchIdx := BranchRefs.IndexOfName(Chosen[0]);
+                GitDeleteBranchAll(Git, Repo, Chosen[0],
+                  BranchRefs.ValueFromIndex[BranchIdx],
+                  Integer(BranchRefs.Objects[BranchIdx]));
+                Continue;
+              end;
+              Question := 'Удалить ветки (' + IntToStr(Chosen.Count) +
+                ') - локальные и на сервере:'#13#10#13#10 + Question;
+              if LostCount > 0 then
+                Question := Question + #13#10'В них ' + IntToStr(LostCount) +
+                  ' коммит(ов), которых нет в ' + Base + ' - они пропадут ' +
+                  '(останутся только в истории reflog этого компьютера).';
+              if MessageDlg(Question, mtWarning, [mbOK, mbCancel], 0) <>
+                 mrOk then
+                Continue;
+              for ChosenIdx := 0 to Chosen.Count - 1 do
+              begin
+                BranchIdx := BranchRefs.IndexOfName(Chosen[ChosenIdx]);
+                if not GitDeleteBranchAll(Git, Repo, Chosen[ChosenIdx],
+                   BranchRefs.ValueFromIndex[BranchIdx],
+                   Integer(BranchRefs.Objects[BranchIdx]), False) then
+                  Break;   // ошибка git - в журнале, остальные не трогаем
+              end;
             finally
+              Chosen.Free;
               Choices.Free;
             end;
-            if Choice = '' then
-              Continue;
-            BranchName := Copy(Choice, 1, Pos('  (', Choice) - 1);
-            BranchIdx := BranchRefs.IndexOfName(BranchName);
-            if BranchIdx < 0 then
-              Continue;
-            GitDeleteBranchAll(Git, Repo, BranchName,
-              BranchRefs.ValueFromIndex[BranchIdx],
-              Integer(BranchRefs.Objects[BranchIdx]));
           end;
         ghaBranch:
           begin
@@ -68244,9 +68334,10 @@ end;
 
 // Удалить ветку ABranch: локальную (git branch -D) и на сервере (git push
 // origin --delete) - по тому, какие из ссылок ARefs есть. AUnmerged -
-// сколько в ней коммитов не в текущей: не 0 - предупредить. True - удалено
+// сколько в ней коммитов не в текущей: не 0 - предупредить. AAsk = False -
+// без вопроса (уже подтверждено списком). True - удалено
 function TForm1.GitDeleteBranchAll(const AGit, ARepo, ABranch, ARefs: string;
-  AUnmerged: Integer): Boolean;
+  AUnmerged: Integer; AAsk: Boolean): Boolean;
 var
   HasLocal, HasRemote: Boolean;
   Question, Where: string;
@@ -68265,7 +68356,8 @@ begin
     Question := Question + #13#10#13#10'В ней ' + IntToStr(AUnmerged) +
       ' коммит(ов), которых нет в текущей ветке - они пропадут (останутся ' +
       'только в истории reflog этого компьютера).';
-  if MessageDlg(Question, mtWarning, [mbOK, mbCancel], 0) <> mrOk then
+  if AAsk and (MessageDlg(Question, mtWarning, [mbOK, mbCancel], 0) <>
+     mrOk) then
     Exit;
   if HasLocal and (GitLongOp(AGit, ARepo, 'branch -D ' +
      string(GitQuote(WideString(ABranch)))) <> 0) then
