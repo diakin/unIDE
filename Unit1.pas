@@ -65012,6 +65012,17 @@ begin
         'Selected). Следы прерванного Pull - отменить';
     Exit;
   end;
+  // Pull, checkout и пр. при незаконченном слиянии / cherry-pick / revert
+  // (в том числе начатом в GitHub Desktop или Git Bash)
+  if (Pos('you have unmerged files', OutLower) > 0) or
+     (Pos('unresolved conflict', OutLower) > 0) then
+  begin
+    AIsError := True;
+    Result := 'не закончено слияние или cherry-pick (файлы с конфликтом) - ' +
+      Cmd + ' невозможен. Закончить - Conflicts..., Continue; отменить - ' +
+      'Abort на панели Git (git cherry-pick --abort / git merge --abort)';
+    Exit;
+  end;
   if (Pos('conflict (', OutLower) > 0) or
      (Pos('automatic merge failed', OutLower) > 0) then
   begin
