@@ -553,17 +553,42 @@ procedure TDlgGitHistory.LoadUnmerged;
 var
   Output: WideString;
   Part: TGitCommits;
-  Refs, Seen, BranchHashes: TStringList;
-  BranchIdx, RefIdx, PartIdx, Found, Count, BranchesWith: Integer;
-  Name: string;
+  Refs, Seen, BranchHashes, Picked, BodyLines: TStringList;
+  BranchIdx, RefIdx, PartIdx, Found, Count, BranchesWith, LineIdx,
+  MarkPos, PickedCount: Integer;
+  Name, Line: string;
+const
+  PickMark = 'cherry picked from commit ';
 begin
   Screen.Cursor := crHourGlass;
   Refs := TStringList.Create;
   Seen := TStringList.Create;
   BranchHashes := TStringList.Create;
+  Picked := TStringList.Create;
+  BodyLines := TStringList.Create;
   try
     Seen.Sorted := True;
     BranchHashes.Sorted := True;
+    Picked.Sorted := True;
+    PickedCount := 0;
+    // Уже перенесённые в FBase cherry-pick -x: их SHA - в строке
+    // "(cherry picked from commit <SHA>)" коммита FBase. Если при переносе
+    // разрешали конфликт, изменение отличается от исходного, и --cherry-pick
+    // его не узнаёт - такие коммиты пропускаются по этой строке
+    if Assigned(FOnProgress) then
+      FOnProgress('Unmerged: что уже перенесено в ' + FBase);
+    if Query('log --grep=cherry.picked.from.commit --format=%b ' + FBase,
+       Output) = 0 then
+    begin
+      BodyLines.Text := string(Output);
+      for LineIdx := 0 to BodyLines.Count - 1 do
+      begin
+        Line := BodyLines[LineIdx];
+        MarkPos := Pos(PickMark, Line);
+        if MarkPos > 0 then
+          Picked.Add(LowerCase(Copy(Line, MarkPos + Length(PickMark), 40)));
+      end;
+    end;
     SetLength(FCommits, 0);
     SetLength(FCommitBranch, 0);
     SetLength(FCommitColor, 0);
@@ -589,6 +614,17 @@ begin
         GitParseLog(Output, Part);
         for PartIdx := 0 to High(Part) do
         begin
+          Found := Picked.IndexOf(LowerCase(Part[PartIdx].Hash));
+          if Found >= 0 then
+          begin
+            // Уже перенесён в FBase (cherry-pick -x); считается один раз
+            if Picked.Objects[Found] = nil then
+            begin
+              Picked.Objects[Found] := TObject(1);
+              Inc(PickedCount);
+            end;
+            Continue;
+          end;
           if BranchHashes.IndexOf(Part[PartIdx].Hash) >= 0 then
             Continue;   // тот же коммит в локальной и в origin/<ветка>
           BranchHashes.Add(Part[PartIdx].Hash);
@@ -624,11 +660,16 @@ begin
         ' коммит(ов) из ' + IntToStr(BranchesWith) + ' веток; у ' +
         IntToStr(FBranchRefs.Count - BranchesWith) + ' веток всё уже в ' +
         FBase + '. Ctrl / Shift - выделить несколько';
+    if PickedCount > 0 then
+      FLblInfo.Caption := FLblInfo.Caption + '. Не показаны уже ' +
+        'перенесённые (cherry-pick -x): ' + IntToStr(PickedCount);
     FBtnMore.Enabled := False;
     for BranchIdx := 0 to FBranchRefs.Count - 1 do
       if Integer(FBranchRefs.Objects[BranchIdx]) >= FLimit then
         FBtnMore.Enabled := True;
   finally
+    BodyLines.Free;
+    Picked.Free;
     BranchHashes.Free;
     Seen.Free;
     Refs.Free;
