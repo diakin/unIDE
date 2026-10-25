@@ -253,9 +253,9 @@ object Form2: TForm2
       end
       object pnlBottom: TPanel
         Left = 0
-        Top = 472
+        Top = 468
         Width = 612
-        Height = 42
+        Height = 46
         BevelOuter = bvNone
         TabOrder = 2
         Align = alBottom

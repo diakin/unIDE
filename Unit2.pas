@@ -335,6 +335,8 @@ type
     // В таблице и в редакторе - схема •default•.clr, а не схема вкладки
     FEditDefault: Boolean;
     FSchemaFiles: TStringList; // пути схем в порядке пунктов меню
+    // Что значит раздел выбранной строки таблицы схемы - справа от Save/Exit
+    FLblSectionHelp: TUiLabel;
     FGridOldProc: TWndMethod; // обработчик таблицы до подмены
 
     // Имя раздела схемы для каждой строки таблицы: FRowSec[номер строки].
@@ -371,6 +373,7 @@ type
     procedure SetTextRowColors(AFg, ABg: TColor);
     procedure InitGridStructure;
     function  RowSection(ARow: Integer): string;
+    procedure ShowSectionHelp(ARow: Integer);
     function  SectionRow(const AName: string): Integer;
     function  SectionCaption(const AName: string): string;
     function  SectionHasColors(const AName: string): Boolean;
@@ -467,6 +470,118 @@ begin
     Result := FRowSec[ARow]
   else
     Result := '';
+end;
+
+// Подсказка к разделу схемы AName: что он задаёт и что писать в поле
+// данных. Номер в имени (Keywords2, Strings3) смысла не меняет
+function SectionHelpText(const AName: string): string;
+
+  function Starts(const APrefix: string): Boolean;
+  begin
+    Result := Copy(AName, 1, Length(APrefix)) = APrefix;
+  end;
+
+begin
+  if Starts('Keywords') then
+    Result := 'Группа ключевых слов: слова через запятую красятся цветами ' +
+      'строки. Групп может быть несколько (Add Group), у каждой свои цвета.'
+  else if Starts('Operators') then
+    Result := 'Операторы: набор символов подряд, без разделителей. Символ ' +
+      'из двух групп рисуется цветом той, что ниже в файле.'
+  else if AName = 'LineComment' then
+    Result := 'Строчный комментарий: маркер начала (// ; '' #). Пусто или ' +
+      'none - строчных комментариев в языке нет.'
+  else if Starts('BlockComment') then
+    Result := 'Блочный комментарий: маркеры начала и конца через пробел ' +
+      '(/* */). Пусто или none - нет. BlockComment2 и дальше - ещё пары.'
+  else if Starts('Strings') then
+    Result := 'Строковый литерал: знак кавычки, литерал закрывается тем же ' +
+      'знаком. Strings2, Strings3 - другие кавычки со своими цветами.'
+  else if AName = 'StrEscape' then
+    Result := 'Знак экранирования внутри строки: \ в C и JavaScript (\" не ' +
+      'закрывает строку). Пусто - кавычка удваивается, как в Паскале.'
+  else if AName = 'Digits' then
+    Result := 'Числа. Формы записи через пробел: 0x (0x1F), &h (&H1F в ' +
+      'Бейсике), exp (1.5E-3), suffix=FLU (100L, 3.14f). dec - только десятичные.'
+  else if Starts('CUSTOM') then
+    Result := 'Выделенный комментарий: после маркера комментария идут ' +
+      'восклицательные знаки (//! //!! ...), их число - номер цвета.'
+  else if AName = 'Text' then
+    Result := 'Обычный текст: цвет символов и подложка под ними. Фон пустого ' +
+      'места редактора задаётся в IDE colors and Fonts.'
+  else if Starts('LineMark') then
+    Result := 'Отметка строк: строка со словом из списка (через запятую) ' +
+      'красится этими цветами. clNone в цвете текста - текст не меняется.'
+  else if AName = 'PairMark' then
+    Result := 'Парная скобка или тег под кареткой: цвета, которыми ' +
+      'выделяются обе половины пары.'
+  else if AName = 'SubBody' then
+    Result := 'Строка начала тела подпрограммы (переход из списка справа). ' +
+      'Нет раздела - цвета LineMark.'
+  else if AName = 'Components' then
+    Result := 'Имена компонентов формы (из .dfm и X := TClass.Create): ' +
+      'цвета. Список собирается сам, данных нет.'
+  else if AName = 'SubList' then
+    Result := 'Слова, с которых начинается подпрограмма (procedure, sub, ' +
+      'def): по ним строится список подпрограмм справа.'
+  else if AName = 'SubEnd' then
+    Result := 'Слова конца блока или подпрограммы (end, }, end sub). Слова ' +
+      'с пробелом - в кавычках: "end sub".'
+  else if AName = 'SubOpen' then
+    Result := 'Слова открытия блока (begin, case, try, {): форматирование ' +
+      'сдвигает строки под ними вправо, SubEnd - обратно.'
+  else if AName = 'SubOpenFirst' then
+    Result := 'Открывают блок только в начале строки (while, if в Бейсике). ' +
+      'if=then - только когда строка кончается на then.'
+  else if AName = 'SubNoBody' then
+    Result := 'Слова, после которых тела у подпрограммы не будет (forward, ' +
+      'external): объявление кончается своей строкой.'
+  else if AName = 'SubSkip' then
+    Result := 'Модификаторы в начале строки, которые пропускаются при ' +
+      'поиске первого слова (Public, Private, Static).'
+  else if AName = 'SubScope' then
+    Result := 'Слово, ниже которого искать подпрограммы (implementation в ' +
+      'Паскале). Пусто - искать во всём файле.'
+  else if AName = 'SubStyle' then
+    Result := 'Способ разбора блоков: braces - по фигурным скобкам (C, JS, ' +
+      'AHK), tags - по парным тегам (HTML). Пусто - по словам.'
+  else if AName = 'TagVoid' then
+    Result := 'Теги без закрывающей пары (br, img, meta): уровня ' +
+      'вложенности не дают.'
+  else if AName = 'FmtOutdent' then
+    Result := 'Format text: слова, которые пишутся на уровень левее своего ' +
+      'блока (end, else, until, }).'
+  else if AName = 'FmtSection' then
+    Result := 'Format text: разделы объявлений (var, type, const): строки ' +
+      'под ними - на уровень правее.'
+  else if AName = 'FmtClass' then
+    Result := 'Format text: class, object, interface - открывают блок, ' +
+      'только если строка не кончается точкой с запятой.'
+  else if AName = 'FmtStmtEnd' then
+    Result := 'Format text: слова, на которых оператор закончен (then, do, ' +
+      'of): следующая строка - не продолжение.'
+  else if AName = 'FmtHang' then
+    Result := 'Format text: слова, после которых идёт один оператор без ' +
+      'блока (then, do, else): следующая строка - правее.'
+  else if AName = 'FmtContinue' then
+    Result := 'Format text: знак переноса строки (_ в Бейсике). Пусто - ' +
+      'продолжение по незаконченному оператору.'
+  else
+    Result := '';
+end;
+
+// Подсказка к строке ARow таблицы схемы
+procedure TForm2.ShowSectionHelp(ARow: Integer);
+var
+  Sec: string;
+begin
+  if FLblSectionHelp = nil then
+    Exit;
+  Sec := RowSection(ARow);
+  if Sec = '' then
+    FLblSectionHelp.Caption := ''
+  else
+    FLblSectionHelp.Caption := Sec + ': ' + SectionHelpText(Sec);
 end;
 
 // Строка таблицы, где показан раздел AName; 0 - такого раздела в схеме нет
@@ -806,6 +921,17 @@ begin
   FLockMemo := False;
   UiKeys := TStringList.Create;
   FSchemaFiles := TStringList.Create;
+
+  FLblSectionHelp := TUiLabel.Create(Self);
+  FLblSectionHelp.Parent := pnlBottom;
+  FLblSectionHelp.AutoSize := False;
+  FLblSectionHelp.WordWrap := True;
+  FLblSectionHelp.ShowAccelChar := False;
+  FLblSectionHelp.SetBounds(192, 4, pnlBottom.ClientWidth - 200,
+    pnlBottom.ClientHeight - 6);
+  FLblSectionHelp.Anchors := [akLeft, akTop, akRight, akBottom];
+  FLblSectionHelp.Font.Size := 8;
+  FLblSectionHelp.Caption := '';
 end;
 
 procedure TForm2.FormDestroy(Sender: TObject);
@@ -2372,6 +2498,7 @@ begin
     // ОБЯЗАТЕЛЬНО ВЫКЛЮЧАЕМ БЛОКИРОВКУ, чтобы пользователь снова мог редактировать текст
     FLockMemo := False;
   end;
+  ShowSectionHelp(ARow);
 
   // Палитру здесь НЕ открываем: OnSelectCell срабатывает и на стрелки
   // клавиатуры, и на программное присваивание Grid.Row, из-за чего диалог
