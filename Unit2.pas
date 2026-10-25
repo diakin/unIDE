@@ -23,9 +23,8 @@ uses
 type
   // Окно IDE Options. Постоянные элементы описаны в Unit2.dfm и правятся в
   // конструкторе форм. В коде строится только то, что зависит от данных:
-  // поля страницы Compilers (свой набор у каждого типа), строки путей на
-  // вкладке Arduino (таблица ArdPathFields), образцы цветов Code Insight, а
-  // также раскладка рядов по ширине надписей.
+  // поля страницы Compilers (свой набор у каждого типа) и раскладка рядов по
+  // ширине надписей.
   TForm2 = class(TForm)
     pcOptions: TUiPageControl;
     // --- Color Scheme ---
@@ -117,6 +116,11 @@ type
     cmbEdDelay: TUiComboBox;
     lblEdInsightColors: TLabel;
     btnEdDefaultColors: TUiButton;
+    // Образцы цветов CodeInsight Colors (Tag - номер цвета в FEdIns.Colors)
+    lblEdCi0, lblEdCi1, lblEdCi2, lblEdCi3, lblEdCi4,
+    lblEdCi5, lblEdCi6, lblEdCi7, lblEdCi8, lblEdCi9: TLabel;
+    pnlEdCi0, pnlEdCi1, pnlEdCi2, pnlEdCi3, pnlEdCi4,
+    pnlEdCi5, pnlEdCi6, pnlEdCi7, pnlEdCi8, pnlEdCi9: TPanel;
     // --- IDE colors: цвета оформления самой программы (вкладки, дерево
     // объектов и прочее, что не относится к подсветке синтаксиса). Список
     // ролей и значения живут в Form1 (FUiColors), хранятся в IDE.clr.
@@ -144,7 +148,12 @@ type
     tsArduino: TTabSheet;
     pcArduino: TUiPageControl;
     tsArdSettings: TTabSheet;
-    pnlArdTop: TPanel;          // строки путей (InitArduinoTab) и флажки
+    pnlArdTop: TPanel;          // строки путей и флажки
+    // Строки путей: поле и кнопка выбора (Tag - номер в ArdPathKeys)
+    edtArdPath0, edtArdPath1, edtArdPath2, edtArdPath3, edtArdPath4,
+    edtArdPath5, edtArdPath6, edtArdPath7, edtArdPath8, edtArdPath9: TUiEdit;
+    btnArdPath0, btnArdPath1, btnArdPath2, btnArdPath3, btnArdPath4,
+    btnArdPath5, btnArdPath6, btnArdPath7, btnArdPath8, btnArdPath9: TUiButton;
     lblArdWarnings: TLabel;
     cbArdWarnings: TUiComboBox;
     lblArdLogLevel: TLabel;
@@ -224,6 +233,14 @@ type
     btnEnvNew: TUiButton;
     btnEnvEdit: TUiButton;
     btnEnvDelete: TUiButton;
+    // --- File Types: расширение -> схема подсветки ---
+    tsFileTypes: TTabSheet;
+    lblFtHint: TLabel;
+    lblFtHint2: TLabel;
+    lvFileTypes: TUiListView;
+    btnFtAdd: TUiButton;
+    btnFtEdit: TUiButton;
+    btnFtDel: TUiButton;
     // --- невизуальные ---
     ColorDlg: TUiColorDialog;
     FontDlg: TUiFontDialog;
@@ -288,7 +305,12 @@ type
     procedure btnToolFindClick(Sender: TObject);
     procedure btnDelphiImportClick(Sender: TObject);
     procedure btnArdImportClick(Sender: TObject);
-    procedure ArdTopResize(Sender: TObject);
+    procedure ArdEditChange(Sender: TObject);
+    procedure ArdBrowseClick(Sender: TObject);
+    procedure EdColorClick(Sender: TObject);
+    procedure FtAddClick(Sender: TObject);
+    procedure FtEditClick(Sender: TObject);
+    procedure FtDelClick(Sender: TObject);
     procedure ArdOptionChange(Sender: TObject);
     procedure ArdUrlsChange(Sender: TObject);
     procedure ArdNetChange(Sender: TObject);
@@ -331,11 +353,9 @@ type
     // вернула бы их поверх найденных - на один раз её отключаем.
     FSkipNormalize: Boolean;
     FCompSection: string;         // раздел настроек текущего типа
-    // Вкладка Arduino (tsArduino) и панель путей на листе Settings
-    // (pnlArdTop). Присваиваются в InitArduinoTab: до неё вкладка не
-    // заполнена, ArdTabLoad и ArdTopResize ничего не делают.
+    // Вкладка Arduino (tsArduino). Присваивается в InitArduinoTab: до неё
+    // вкладка не заполнена, ArdTabLoad ничего не делает.
     FArdTab: TTabSheet;
-    FArdTop: TPanel;
     FArdEdits: array of TUiEdit;    // поля путей
     FArdEditKeys: array of string;  // их ключи в editor.ini
     FArdPathBtns: array of TUiButton;  // кнопки выбора справа от путей
@@ -357,10 +377,6 @@ type
     // к строке по номеру больше нельзя - только по имени раздела.
     FRowSec: array of string;
 
-    // Вкладка File Types: расширение -> схема подсветки (InitFileTypesTab)
-    FFtTab: TTabSheet;
-    FFtList: TUiListView;
-    FFtBtnAdd, FFtBtnEdit, FFtBtnDel: TUiButton;
 
     // Заполнение окна данными при первом открытии (TForm1.PrepareOptionsForm)
     procedure InitOptions;
@@ -432,8 +448,6 @@ type
     procedure ArdTabSetField(const AKey, AValue: string);
     function  ArdSection: string;
     procedure ArdWrite(const AKey, AValue: string);
-    procedure ArdEditChange(Sender: TObject);
-    procedure ArdBrowseClick(Sender: TObject);
     procedure ArdCliIdle(var ACancel: Boolean);
     procedure ArdNetEnable;
     procedure EnvTabsLoad;
@@ -441,18 +455,12 @@ type
     function  EnvEditDialog(const ATitle: string; var AName, AValue: string;
                             ANameFixed: Boolean): Boolean;
     procedure EnvSetOverride(const AName, AValue: string);
-    procedure InitFileTypesTab;
     procedure FtFill;
-    procedure FtResize(Sender: TObject);
     function  FtEditDialog(const ATitle: string; var AExt, AScheme: string;
                            AExtFixed: Boolean): Boolean;
-    procedure FtAddClick(Sender: TObject);
-    procedure FtEditClick(Sender: TObject);
-    procedure FtDelClick(Sender: TObject);
     procedure InitEditorInsight;
     procedure EdTabsLoad;
     procedure EdUpdateSwatches;
-    procedure EdColorClick(Sender: TObject);
     function  CompFieldIdx(const AKey: string): Integer;
     function  CompIniSection(const AKey: string): string;
     function  CompIniKey(const AKey: string): string;
@@ -1000,8 +1008,6 @@ begin
   InitArduinoTab;
   // Editor Options: задержки и образцы цветов Code Insight
   InitEditorInsight;
-  // File Types: какие расширения какой схемой подсвечиваются
-  InitFileTypesTab;
 
   // Нажатие кнопки Base colors приходит родителю - таблице - как
   // WM_COMMAND, а таблица Delphi 7 передаёт дальше только сообщения своего
@@ -4003,120 +4009,29 @@ end;
 // ---------------------------------------------------------------------------
 
 const
-  // Поля путей: ключ | подпись кнопки | подсказка
-  ArdPathFields: array[0..9] of string = (
-    'SketchPath|Sketch path|Sketchbook (directories.user arduino-cli)',
-    'CliFile|Arduino CLI file|arduino-cli.exe',
-    'BuildPath|Build Path|Папка, куда сохраняются собранные файлы (--build-path)',
-    'LibPath|Library Path|Папки своих библиотек (--libraries)',
-    'LogFile|Log file|Файл лога сборки (--log-file)',
-    'CliCfgFile|Cli cfg file|arduino-cli.yaml (--config-file)',
-    'CliDataPath|Cli Data Path|directories.data: индексы, платформы (packages)',
-    'DownloadsPath|Cli Downloads Path|directories.downloads: скачанные архивы',
-    'Arduino15Path|Ard15 Default Path|Папка Arduino IDE (%LOCALAPPDATA%\Arduino15): ' +
-      'там тоже ищутся платформы и library_index.json',
-    'IdePath|Arduino IDE folder|Папка установленной Arduino IDE (не обязательно): ' +
-      'её examples и libraries - в меню Arduino - Examples и Include Library');
-  // Пункты Warnings и Log level - в Unit2.dfm (cbArdWarnings, cbArdLogLevel)
-
-// Поле AIndex (от нуля) строки "a|b|c"
-function ArdBarField(const AText: string; AIndex: Integer): string;
-var
-  Rest: string;
-  BarPos, FieldIdx: Integer;
-begin
-  Rest := AText;
-  for FieldIdx := 0 to AIndex - 1 do
-  begin
-    BarPos := Pos('|', Rest);
-    if BarPos = 0 then
-    begin
-      Result := '';
-      Exit;
-    end;
-    Rest := Copy(Rest, BarPos + 1, Length(Rest));
-  end;
-  BarPos := Pos('|', Rest);
-  if BarPos > 0 then
-    Result := Copy(Rest, 1, BarPos - 1)
-  else
-    Result := Rest;
-end;
+  // Ключи полей путей в editor.ini, по порядку строк edtArdPath0..9
+  ArdPathKeys: array[0..9] of string = (
+    'SketchPath', 'CliFile', 'BuildPath', 'LibPath', 'LogFile', 'CliCfgFile',
+    'CliDataPath', 'DownloadsPath', 'Arduino15Path', 'IdePath');
 
 // Вкладка Arduino при первом открытии окна. Элементы - в Unit2.dfm; здесь
-// строки путей по таблице ArdPathFields (поле и кнопка выбора) и значения
-// из editor.ini.
+// списки полей путей и кнопок по номеру строки и значения из editor.ini.
 procedure TForm2.InitArduinoTab;
 var
-  FieldEdit: TUiEdit;
-  BrowseBtn: TUiButton;
-  RowIdx, RowTop: Integer;
+  RowIdx: Integer;
 begin
   FArdTab := tsArduino;
-  FArdTop := pnlArdTop;
-
-  // Ширина полей и место кнопок - в ArdTopResize, по ширине панели: при
-  // постройке она ещё не та, что будет на экране
-  SetLength(FArdEdits, Length(ArdPathFields));
-  SetLength(FArdEditKeys, Length(ArdPathFields));
-  SetLength(FArdPathBtns, Length(ArdPathFields));
-  RowTop := 10;
-  for RowIdx := 0 to High(ArdPathFields) do
+  SetLength(FArdEdits, Length(ArdPathKeys));
+  SetLength(FArdEditKeys, Length(ArdPathKeys));
+  SetLength(FArdPathBtns, Length(ArdPathKeys));
+  for RowIdx := 0 to High(ArdPathKeys) do
   begin
-    FArdEditKeys[RowIdx] := ArdBarField(ArdPathFields[RowIdx], 0);
-
-    FieldEdit := TUiEdit.Create(Self);
-    FieldEdit.Parent := pnlArdTop;
-    FieldEdit.Left := 8;
-    FieldEdit.Top := RowTop;
-    FieldEdit.Width := 300;
-    FieldEdit.Tag := RowIdx;
-    FieldEdit.ShowHint := True;
-    FieldEdit.Hint := ArdBarField(ArdPathFields[RowIdx], 2);
-    // Пути - первыми в порядке Tab, перед списками и флажками из .dfm
-    FieldEdit.TabOrder := RowIdx * 2;
-    FieldEdit.OnChange := ArdEditChange;
-    FArdEdits[RowIdx] := FieldEdit;
-
-    BrowseBtn := TUiButton.Create(Self);
-    BrowseBtn.Parent := pnlArdTop;
-    BrowseBtn.Left := FieldEdit.Left + FieldEdit.Width + 6;
-    BrowseBtn.Top := RowTop - 1;
-    BrowseBtn.Width := 150;
-    BrowseBtn.Height := 23;
-    BrowseBtn.Caption := ArdBarField(ArdPathFields[RowIdx], 1);
-    BrowseBtn.ShowHint := True;
-    BrowseBtn.Hint := FieldEdit.Hint;
-    BrowseBtn.Tag := RowIdx;
-    BrowseBtn.TabOrder := RowIdx * 2 + 1;
-    BrowseBtn.OnClick := ArdBrowseClick;
-    FArdPathBtns[RowIdx] := BrowseBtn;
-
-    Inc(RowTop, 26);
+    FArdEditKeys[RowIdx] := ArdPathKeys[RowIdx];
+    FArdEdits[RowIdx] := FindComponent('edtArdPath' + IntToStr(RowIdx)) as TUiEdit;
+    FArdPathBtns[RowIdx] :=
+      FindComponent('btnArdPath' + IntToStr(RowIdx)) as TUiButton;
   end;
-
   ArdTabLoad;
-  ArdTopResize(nil);
-end;
-
-// Поля путей - на всю ширину панели, кнопки выбора - у правого края
-procedure TForm2.ArdTopResize(Sender: TObject);
-const
-  BtnWidth = 150;
-var
-  RowIdx, EditWidth: Integer;
-begin
-  if FArdTop = nil then
-    Exit;
-  EditWidth := FArdTop.ClientWidth - 8 - BtnWidth - 14;
-  if EditWidth < 120 then
-    EditWidth := 120;
-  for RowIdx := 0 to High(FArdEdits) do
-  begin
-    FArdEdits[RowIdx].Width := EditWidth;
-    if RowIdx <= High(FArdPathBtns) then
-      FArdPathBtns[RowIdx].Left := FArdEdits[RowIdx].Left + EditWidth + 6;
-  end;
 end;
 
 // Лист Network (tsArdNetwork в Unit2.dfm) - прокси, как вкладка Network в
@@ -4506,8 +4421,8 @@ begin
      (TPageControl(Sender).ActivePage = FArdTab) then
     ArdTabLoad;
   // Схемы и alias.ini могли поменять руками - перечитать
-  if (Sender is TPageControl) and (FFtTab <> nil) and
-     (TPageControl(Sender).ActivePage = FFtTab) then
+  if (Sender is TPageControl) and (tsFileTypes <> nil) and
+     (TPageControl(Sender).ActivePage = tsFileTypes) then
     FtFill;
 end;
 
@@ -5941,90 +5856,6 @@ end;
 //  alias.ini, удаление строки alias.ini возвращает встроенное.
 // ---------------------------------------------------------------------------
 
-type
-  // OnResize у TControl - protected; доступ через наследника
-  TFtSheetAccess = class(TTabSheet);
-
-procedure TForm2.InitFileTypesTab;
-var
-  HintLbl: TLabel;
-begin
-  FFtTab := TTabSheet.Create(Self);
-  FFtTab.PageControl := pcOptions;
-  FFtTab.Caption := 'File Types';
-
-  HintLbl := TLabel.Create(Self);
-  HintLbl.Parent := FFtTab;
-  HintLbl.Left := 8;
-  HintLbl.Top := 8;
-  HintLbl.AutoSize := True;
-  HintLbl.Caption :=
-    'Схема ищется как schemes\<расширение>.clr. Если своей нет - по этому ' +
-    'списку.'#13#10 +
-    'Изменения пишутся в schemes\alias.ini; Delete у строки alias.ini ' +
-    'возвращает встроенное соответствие.';
-
-  FFtList := TUiListView.Create(Self);
-  FFtList.Parent := FFtTab;
-  FFtList.Left := 8;
-  FFtList.Top := 44;
-  FFtList.ViewStyle := vsReport;
-  FFtList.ReadOnly := True;
-  FFtList.RowSelect := True;
-  FFtList.HideSelection := False;
-  with FFtList.Columns.Add do
-  begin
-    Caption := 'Extension';
-    Width := 90;
-  end;
-  with FFtList.Columns.Add do
-  begin
-    Caption := 'Scheme';
-    Width := 90;
-  end;
-  with FFtList.Columns.Add do
-  begin
-    Caption := 'Where set';
-    Width := 360;
-  end;
-  FFtList.OnDblClick := FtEditClick;
-
-  FFtBtnAdd := TUiButton.Create(Self);
-  FFtBtnAdd.Parent := FFtTab;
-  FFtBtnAdd.Caption := 'Add...';
-  FFtBtnAdd.OnClick := FtAddClick;
-  FFtBtnEdit := TUiButton.Create(Self);
-  FFtBtnEdit.Parent := FFtTab;
-  FFtBtnEdit.Caption := 'Edit...';
-  FFtBtnEdit.OnClick := FtEditClick;
-  FFtBtnDel := TUiButton.Create(Self);
-  FFtBtnDel.Parent := FFtTab;
-  FFtBtnDel.Caption := 'Delete';
-  FFtBtnDel.OnClick := FtDelClick;
-
-  TFtSheetAccess(FFtTab).OnResize := FtResize;
-  FtResize(nil);
-end;
-
-// Список - на всю вкладку, кнопки - под ним справа
-procedure TForm2.FtResize(Sender: TObject);
-const
-  BtnW = 100;
-  BtnH = 26;
-  Gap = 6;
-var
-  BtnTop: Integer;
-begin
-  if (FFtTab = nil) or (FFtList = nil) then
-    Exit;
-  BtnTop := FFtTab.ClientHeight - BtnH - 8;
-  FFtList.Width := FFtTab.ClientWidth - 16;
-  FFtList.Height := BtnTop - Gap - FFtList.Top;
-  FFtBtnDel.SetBounds(FFtTab.ClientWidth - 8 - BtnW, BtnTop, BtnW, BtnH);
-  FFtBtnEdit.SetBounds(FFtBtnDel.Left - Gap - BtnW, BtnTop, BtnW, BtnH);
-  FFtBtnAdd.SetBounds(FFtBtnEdit.Left - Gap - BtnW, BtnTop, BtnW, BtnH);
-end;
-
 procedure TForm2.FtFill;
 var
   Rows: TStringList;
@@ -6032,19 +5863,19 @@ var
   Item: TListItem;
   OldExt, Rest: string;
 begin
-  if (Form1 = nil) or (FFtList = nil) then
+  if (Form1 = nil) or (lvFileTypes = nil) then
     Exit;
   OldExt := '';
-  if FFtList.Selected <> nil then
-    OldExt := FFtList.Selected.Caption;
+  if lvFileTypes.Selected <> nil then
+    OldExt := lvFileTypes.Selected.Caption;
   Rows := TStringList.Create;
-  FFtList.Items.BeginUpdate;
+  lvFileTypes.Items.BeginUpdate;
   try
     Form1.SchemeAliasRows(Rows);
-    FFtList.Items.Clear;
+    lvFileTypes.Items.Clear;
     for RowIdx := 0 to Rows.Count - 1 do
     begin
-      Item := FFtList.Items.Add;
+      Item := lvFileTypes.Items.Add;
       Item.Caption := Rows.Names[RowIdx];
       Rest := Copy(Rows[RowIdx], Length(Item.Caption) + 2, MaxInt);
       TabPos := Pos(#9, Rest);
@@ -6062,7 +5893,7 @@ begin
         Item.Selected := True;
     end;
   finally
-    FFtList.Items.EndUpdate;
+    lvFileTypes.Items.EndUpdate;
     Rows.Free;
   end;
 end;
@@ -6169,11 +6000,11 @@ procedure TForm2.FtEditClick(Sender: TObject);
 var
   ExtName, SchemeName: string;
 begin
-  if (Form1 = nil) or (FFtList.Selected = nil) then
+  if (Form1 = nil) or (lvFileTypes.Selected = nil) then
     Exit;
-  ExtName := FFtList.Selected.Caption;
-  SchemeName := FFtList.Selected.SubItems[0];
-  if Pos('своя схема', FFtList.Selected.SubItems[1]) = 1 then
+  ExtName := lvFileTypes.Selected.Caption;
+  SchemeName := lvFileTypes.Selected.SubItems[0];
+  if Pos('своя схема', lvFileTypes.Selected.SubItems[1]) = 1 then
   begin
     ShowMessage('У .' + ExtName + ' своя схема ' + ExtName + '.clr - она ' +
       'важнее любого соответствия. Чтобы .' + ExtName + ' шёл по другой ' +
@@ -6189,15 +6020,15 @@ end;
 
 procedure TForm2.FtDelClick(Sender: TObject);
 begin
-  if (Form1 = nil) or (FFtList.Selected = nil) then
+  if (Form1 = nil) or (lvFileTypes.Selected = nil) then
     Exit;
-  if Pos('alias.ini', FFtList.Selected.SubItems[1]) <> 1 then
+  if Pos('alias.ini', lvFileTypes.Selected.SubItems[1]) <> 1 then
   begin
     ShowMessage('Встроенное соответствие не удаляется - его можно ' +
       'переназначить кнопкой Edit.');
     Exit;
   end;
-  Form1.SchemeAliasSet(FFtList.Selected.Caption, '');
+  Form1.SchemeAliasSet(lvFileTypes.Selected.Caption, '');
   FtFill;
 end;
 
@@ -6226,13 +6057,11 @@ begin
 end;
 
 // Editor Options - Code Insight при первом открытии окна: пункты задержки
-// (подпись - в секундах, с десятичным разделителем системы) и образцы
-// цветов, по одному на элемент CiColorNames
+// (подпись - в секундах, с десятичным разделителем системы) и список
+// образцов цветов pnlEdCi0..9 (из Unit2.dfm) по номеру цвета
 procedure TForm2.InitEditorInsight;
 var
-  TextLbl: TLabel;
-  ItemIdx, ColIdx, RowIdx, ColorIdx: Integer;
-  Swatch: TPanel;
+  ItemIdx, ColorIdx: Integer;
 begin
   cmbEdDelay.Items.Clear;
   for ItemIdx := Low(EdDelayItems) to High(EdDelayItems) do
@@ -6240,28 +6069,8 @@ begin
                          ' sec');
 
   for ColorIdx := 0 to 9 do
-  begin
-    ColIdx := ColorIdx div 5;
-    RowIdx := ColorIdx mod 5;
-    TextLbl := TLabel.Create(Self);
-    TextLbl.Parent := grpEdInsight;
-    TextLbl.Caption := CiColorNames[ColorIdx] + ':';
-    TextLbl.AutoSize := False;
-    TextLbl.Alignment := taRightJustify;
-    TextLbl.SetBounds(8 + ColIdx * 280, 92 + RowIdx * 26, 110, 16);
-    Swatch := TPanel.Create(Self);
-    Swatch.Parent := grpEdInsight;
-    Swatch.SetBounds(124 + ColIdx * 280, 88 + RowIdx * 26, 140, 22);
-    Swatch.BevelOuter := bvLowered;
-    Swatch.ParentBackground := False;
-    Swatch.ParentFont := False;
-    Swatch.Cursor := crHandPoint;
-    Swatch.Tag := ColorIdx;
-    Swatch.ShowHint := True;
-    Swatch.Hint := 'Щелчок - выбор цвета';
-    Swatch.OnClick := EdColorClick;
-    FEdSwatches[ColorIdx] := Swatch;
-  end;
+    FEdSwatches[ColorIdx] :=
+      FindComponent('pnlEdCi' + IntToStr(ColorIdx)) as TPanel;
 end;
 
 // Значения групп - из Form1.FEdIns (PrepareOptionsForm)

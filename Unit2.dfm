@@ -860,6 +860,306 @@ object Form2: TForm2
           Font.Style = [fsBold]
           ParentFont = False
         end
+        object lblEdCi0: TLabel
+          Left = 8
+          Top = 92
+          Width = 110
+          Height = 16
+          Alignment = taRightJustify
+          AutoSize = False
+          Caption = 'Abstract Symbol:'
+        end
+        object pnlEdCi0: TPanel
+          Left = 124
+          Top = 88
+          Width = 140
+          Height = 22
+          Cursor = crHandPoint
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Щелчок - выбор цвета'
+          BevelOuter = bvLowered
+          ParentBackground = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 6
+          Tag = 0
+          OnClick = EdColorClick
+        end
+        object lblEdCi1: TLabel
+          Left = 8
+          Top = 118
+          Width = 110
+          Height = 16
+          Alignment = taRightJustify
+          AutoSize = False
+          Caption = 'Constant Symbol:'
+        end
+        object pnlEdCi1: TPanel
+          Left = 124
+          Top = 114
+          Width = 140
+          Height = 22
+          Cursor = crHandPoint
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Щелчок - выбор цвета'
+          BevelOuter = bvLowered
+          ParentBackground = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 7
+          Tag = 1
+          OnClick = EdColorClick
+        end
+        object lblEdCi2: TLabel
+          Left = 8
+          Top = 144
+          Width = 110
+          Height = 16
+          Alignment = taRightJustify
+          AutoSize = False
+          Caption = 'Function Symbol:'
+        end
+        object pnlEdCi2: TPanel
+          Left = 124
+          Top = 140
+          Width = 140
+          Height = 22
+          Cursor = crHandPoint
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Щелчок - выбор цвета'
+          BevelOuter = bvLowered
+          ParentBackground = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 8
+          Tag = 2
+          OnClick = EdColorClick
+        end
+        object lblEdCi3: TLabel
+          Left = 8
+          Top = 170
+          Width = 110
+          Height = 16
+          Alignment = taRightJustify
+          AutoSize = False
+          Caption = 'Label Symbol:'
+        end
+        object pnlEdCi3: TPanel
+          Left = 124
+          Top = 166
+          Width = 140
+          Height = 22
+          Cursor = crHandPoint
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Щелчок - выбор цвета'
+          BevelOuter = bvLowered
+          ParentBackground = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 9
+          Tag = 3
+          OnClick = EdColorClick
+        end
+        object lblEdCi4: TLabel
+          Left = 8
+          Top = 196
+          Width = 110
+          Height = 16
+          Alignment = taRightJustify
+          AutoSize = False
+          Caption = 'Procedure Symbol:'
+        end
+        object pnlEdCi4: TPanel
+          Left = 124
+          Top = 192
+          Width = 140
+          Height = 22
+          Cursor = crHandPoint
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Щелчок - выбор цвета'
+          BevelOuter = bvLowered
+          ParentBackground = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 10
+          Tag = 4
+          OnClick = EdColorClick
+        end
+        object lblEdCi5: TLabel
+          Left = 288
+          Top = 92
+          Width = 110
+          Height = 16
+          Alignment = taRightJustify
+          AutoSize = False
+          Caption = 'Property Symbol:'
+        end
+        object pnlEdCi5: TPanel
+          Left = 404
+          Top = 88
+          Width = 140
+          Height = 22
+          Cursor = crHandPoint
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Щелчок - выбор цвета'
+          BevelOuter = bvLowered
+          ParentBackground = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 11
+          Tag = 5
+          OnClick = EdColorClick
+        end
+        object lblEdCi6: TLabel
+          Left = 288
+          Top = 118
+          Width = 110
+          Height = 16
+          Alignment = taRightJustify
+          AutoSize = False
+          Caption = 'Type Symbol:'
+        end
+        object pnlEdCi6: TPanel
+          Left = 404
+          Top = 114
+          Width = 140
+          Height = 22
+          Cursor = crHandPoint
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Щелчок - выбор цвета'
+          BevelOuter = bvLowered
+          ParentBackground = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 12
+          Tag = 6
+          OnClick = EdColorClick
+        end
+        object lblEdCi7: TLabel
+          Left = 288
+          Top = 144
+          Width = 110
+          Height = 16
+          Alignment = taRightJustify
+          AutoSize = False
+          Caption = 'Unit Symbol:'
+        end
+        object pnlEdCi7: TPanel
+          Left = 404
+          Top = 140
+          Width = 140
+          Height = 22
+          Cursor = crHandPoint
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Щелчок - выбор цвета'
+          BevelOuter = bvLowered
+          ParentBackground = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 13
+          Tag = 7
+          OnClick = EdColorClick
+        end
+        object lblEdCi8: TLabel
+          Left = 288
+          Top = 170
+          Width = 110
+          Height = 16
+          Alignment = taRightJustify
+          AutoSize = False
+          Caption = 'Variable Symbol:'
+        end
+        object pnlEdCi8: TPanel
+          Left = 404
+          Top = 166
+          Width = 140
+          Height = 22
+          Cursor = crHandPoint
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Щелчок - выбор цвета'
+          BevelOuter = bvLowered
+          ParentBackground = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 14
+          Tag = 8
+          OnClick = EdColorClick
+        end
+        object lblEdCi9: TLabel
+          Left = 288
+          Top = 196
+          Width = 110
+          Height = 16
+          Alignment = taRightJustify
+          AutoSize = False
+          Caption = 'Background:'
+        end
+        object pnlEdCi9: TPanel
+          Left = 404
+          Top = 192
+          Width = 140
+          Height = 22
+          Cursor = crHandPoint
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Щелчок - выбор цвета'
+          BevelOuter = bvLowered
+          ParentBackground = False
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -11
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          TabOrder = 15
+          Tag = 9
+          OnClick = EdColorClick
+        end
         object btnEdDefaultColors: TUiButton
           Left = 446
           Top = 194
@@ -1032,7 +1332,276 @@ object Form2: TForm2
             BevelOuter = bvNone
             TabOrder = 0
             Align = alTop
-            OnResize = ArdTopResize
+            object edtArdPath0: TUiEdit
+              Left = 8
+              Top = 10
+              Width = 432
+              Height = 21
+              Anchors = [akLeft, akTop, akRight]
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Sketchbook (directories.user arduino-cli)'
+              TabOrder = 0
+              Tag = 0
+              OnChange = ArdEditChange
+            end
+            object btnArdPath0: TUiButton
+              Left = 446
+              Top = 9
+              Width = 150
+              Height = 23
+              Anchors = [akTop, akRight]
+              Caption = 'Sketch path'
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Sketchbook (directories.user arduino-cli)'
+              TabOrder = 1
+              Tag = 0
+              OnClick = ArdBrowseClick
+            end
+            object edtArdPath1: TUiEdit
+              Left = 8
+              Top = 36
+              Width = 432
+              Height = 21
+              Anchors = [akLeft, akTop, akRight]
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'arduino-cli.exe'
+              TabOrder = 2
+              Tag = 1
+              OnChange = ArdEditChange
+            end
+            object btnArdPath1: TUiButton
+              Left = 446
+              Top = 35
+              Width = 150
+              Height = 23
+              Anchors = [akTop, akRight]
+              Caption = 'Arduino CLI file'
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'arduino-cli.exe'
+              TabOrder = 3
+              Tag = 1
+              OnClick = ArdBrowseClick
+            end
+            object edtArdPath2: TUiEdit
+              Left = 8
+              Top = 62
+              Width = 432
+              Height = 21
+              Anchors = [akLeft, akTop, akRight]
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Папка, куда сохраняются собранные файлы (--build-path)'
+              TabOrder = 4
+              Tag = 2
+              OnChange = ArdEditChange
+            end
+            object btnArdPath2: TUiButton
+              Left = 446
+              Top = 61
+              Width = 150
+              Height = 23
+              Anchors = [akTop, akRight]
+              Caption = 'Build Path'
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Папка, куда сохраняются собранные файлы (--build-path)'
+              TabOrder = 5
+              Tag = 2
+              OnClick = ArdBrowseClick
+            end
+            object edtArdPath3: TUiEdit
+              Left = 8
+              Top = 88
+              Width = 432
+              Height = 21
+              Anchors = [akLeft, akTop, akRight]
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Папки своих библиотек (--libraries)'
+              TabOrder = 6
+              Tag = 3
+              OnChange = ArdEditChange
+            end
+            object btnArdPath3: TUiButton
+              Left = 446
+              Top = 87
+              Width = 150
+              Height = 23
+              Anchors = [akTop, akRight]
+              Caption = 'Library Path'
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Папки своих библиотек (--libraries)'
+              TabOrder = 7
+              Tag = 3
+              OnClick = ArdBrowseClick
+            end
+            object edtArdPath4: TUiEdit
+              Left = 8
+              Top = 114
+              Width = 432
+              Height = 21
+              Anchors = [akLeft, akTop, akRight]
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Файл лога сборки (--log-file)'
+              TabOrder = 8
+              Tag = 4
+              OnChange = ArdEditChange
+            end
+            object btnArdPath4: TUiButton
+              Left = 446
+              Top = 113
+              Width = 150
+              Height = 23
+              Anchors = [akTop, akRight]
+              Caption = 'Log file'
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Файл лога сборки (--log-file)'
+              TabOrder = 9
+              Tag = 4
+              OnClick = ArdBrowseClick
+            end
+            object edtArdPath5: TUiEdit
+              Left = 8
+              Top = 140
+              Width = 432
+              Height = 21
+              Anchors = [akLeft, akTop, akRight]
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'arduino-cli.yaml (--config-file)'
+              TabOrder = 10
+              Tag = 5
+              OnChange = ArdEditChange
+            end
+            object btnArdPath5: TUiButton
+              Left = 446
+              Top = 139
+              Width = 150
+              Height = 23
+              Anchors = [akTop, akRight]
+              Caption = 'Cli cfg file'
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'arduino-cli.yaml (--config-file)'
+              TabOrder = 11
+              Tag = 5
+              OnClick = ArdBrowseClick
+            end
+            object edtArdPath6: TUiEdit
+              Left = 8
+              Top = 166
+              Width = 432
+              Height = 21
+              Anchors = [akLeft, akTop, akRight]
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'directories.data: индексы, платформы (packages)'
+              TabOrder = 12
+              Tag = 6
+              OnChange = ArdEditChange
+            end
+            object btnArdPath6: TUiButton
+              Left = 446
+              Top = 165
+              Width = 150
+              Height = 23
+              Anchors = [akTop, akRight]
+              Caption = 'Cli Data Path'
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'directories.data: индексы, платформы (packages)'
+              TabOrder = 13
+              Tag = 6
+              OnClick = ArdBrowseClick
+            end
+            object edtArdPath7: TUiEdit
+              Left = 8
+              Top = 192
+              Width = 432
+              Height = 21
+              Anchors = [akLeft, akTop, akRight]
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'directories.downloads: скачанные архивы'
+              TabOrder = 14
+              Tag = 7
+              OnChange = ArdEditChange
+            end
+            object btnArdPath7: TUiButton
+              Left = 446
+              Top = 191
+              Width = 150
+              Height = 23
+              Anchors = [akTop, akRight]
+              Caption = 'Cli Downloads Path'
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'directories.downloads: скачанные архивы'
+              TabOrder = 15
+              Tag = 7
+              OnClick = ArdBrowseClick
+            end
+            object edtArdPath8: TUiEdit
+              Left = 8
+              Top = 218
+              Width = 432
+              Height = 21
+              Anchors = [akLeft, akTop, akRight]
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Папка Arduino IDE (%LOCALAPPDATA%\Arduino15): там тоже ищутся платформы и library_index.json'
+              TabOrder = 16
+              Tag = 8
+              OnChange = ArdEditChange
+            end
+            object btnArdPath8: TUiButton
+              Left = 446
+              Top = 217
+              Width = 150
+              Height = 23
+              Anchors = [akTop, akRight]
+              Caption = 'Ard15 Default Path'
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Папка Arduino IDE (%LOCALAPPDATA%\Arduino15): там тоже ищутся платформы и library_index.json'
+              TabOrder = 17
+              Tag = 8
+              OnClick = ArdBrowseClick
+            end
+            object edtArdPath9: TUiEdit
+              Left = 8
+              Top = 244
+              Width = 432
+              Height = 21
+              Anchors = [akLeft, akTop, akRight]
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Папка установленной Arduino IDE (не обязательно): её examples и libraries - в меню Arduino - Examples и Include Library'
+              TabOrder = 18
+              Tag = 9
+              OnChange = ArdEditChange
+            end
+            object btnArdPath9: TUiButton
+              Left = 446
+              Top = 243
+              Width = 150
+              Height = 23
+              Anchors = [akTop, akRight]
+              Caption = 'Arduino IDE folder'
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Папка установленной Arduino IDE (не обязательно): её examples и libraries - в меню Arduino - Examples и Include Library'
+              TabOrder = 19
+              Tag = 9
+              OnClick = ArdBrowseClick
+            end
             object lblArdWarnings: TLabel
               Left = 8
               Top = 282
@@ -1045,7 +1614,7 @@ object Form2: TForm2
               Height = 21
               Style = csDropDownList
               ItemHeight = 13
-              TabOrder = 0
+              TabOrder = 20
               ParentShowHint = False
               ShowHint = True
               Hint = 'Уровень предупреждений gcc (--warnings)'
@@ -1068,7 +1637,7 @@ object Form2: TForm2
               Height = 21
               Style = csDropDownList
               ItemHeight = 13
-              TabOrder = 1
+              TabOrder = 21
               ParentShowHint = False
               ShowHint = True
               Hint = 'Сообщения этого уровня и выше пишутся в лог (--log-level)'
@@ -1093,7 +1662,7 @@ object Form2: TForm2
               Width = 110
               Height = 17
               Caption = 'Compilation'
-              TabOrder = 2
+              TabOrder = 22
               OnClick = ArdOptionChange
             end
             object chkArdUploadVerbose: TUiCheckBox
@@ -1102,7 +1671,7 @@ object Form2: TForm2
               Width = 90
               Height = 17
               Caption = 'Upload'
-              TabOrder = 3
+              TabOrder = 23
               OnClick = ArdOptionChange
             end
             object chkArdVerifyAfterUpload: TUiCheckBox
@@ -1111,7 +1680,7 @@ object Form2: TForm2
               Width = 200
               Height = 17
               Caption = 'Verify code after upload'
-              TabOrder = 4
+              TabOrder = 24
               OnClick = ArdOptionChange
             end
             object chkArdExportBinaries: TUiCheckBox
@@ -1120,7 +1689,7 @@ object Form2: TForm2
               Width = 190
               Height = 17
               Caption = 'Export compiled binary'
-              TabOrder = 5
+              TabOrder = 25
               ParentShowHint = False
               ShowHint = True
               Hint = 'compile -e: .hex / .bin - в папку скетча'
@@ -1132,7 +1701,7 @@ object Form2: TForm2
               Width = 340
               Height = 17
               Caption = 'Save sketch when verifying or uploading'
-              TabOrder = 6
+              TabOrder = 26
               OnClick = ArdOptionChange
             end
             object lblArdUrls: TLabel
@@ -1731,6 +2300,75 @@ object Form2: TForm2
           TabOrder = 3
           OnClick = EnvDeleteClick
         end
+      end
+    end
+    object tsFileTypes: TTabSheet
+      Caption = 'File Types'
+      object lblFtHint: TLabel
+        Left = 8
+        Top = 8
+        Caption = 'Схема ищется как schemes\<расширение>.clr. Если своей нет - по этому списку.'
+      end
+      object lblFtHint2: TLabel
+        Left = 8
+        Top = 24
+        Caption = 'Изменения пишутся в schemes\alias.ini; Delete у строки alias.ini возвращает встроенное соответствие.'
+      end
+      object lvFileTypes: TUiListView
+        Left = 8
+        Top = 44
+        Width = 596
+        Height = 430
+        Anchors = [akLeft, akTop, akRight, akBottom]
+        Columns = <
+          item
+            Caption = 'Extension'
+            Width = 90
+          end
+          item
+            Caption = 'Scheme'
+            Width = 90
+          end
+          item
+            Caption = 'Where set'
+            Width = 360
+          end>
+        HideSelection = False
+        ReadOnly = True
+        RowSelect = True
+        TabOrder = 0
+        ViewStyle = vsReport
+        OnDblClick = FtEditClick
+      end
+      object btnFtAdd: TUiButton
+        Left = 292
+        Top = 480
+        Width = 100
+        Height = 26
+        Anchors = [akRight, akBottom]
+        Caption = 'Add...'
+        TabOrder = 1
+        OnClick = FtAddClick
+      end
+      object btnFtEdit: TUiButton
+        Left = 398
+        Top = 480
+        Width = 100
+        Height = 26
+        Anchors = [akRight, akBottom]
+        Caption = 'Edit...'
+        TabOrder = 2
+        OnClick = FtEditClick
+      end
+      object btnFtDel: TUiButton
+        Left = 504
+        Top = 480
+        Width = 100
+        Height = 26
+        Anchors = [akRight, akBottom]
+        Caption = 'Delete'
+        TabOrder = 3
+        OnClick = FtDelClick
       end
     end
   end
