@@ -431,7 +431,6 @@ object Form2: TForm2
             OnClick = btnDeleteRowClick
           end
           object lblSectionHelp: TUiLabel
-            Color = $00800040
             Left = 290
             Top = 4
             Width = 310
@@ -445,6 +444,7 @@ object Form2: TForm2
             Font.Style = []
             ParentFont = False
             ShowAccelChar = False
+            Transparent = True
             WordWrap = True
           end
         end
