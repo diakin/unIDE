@@ -35,11 +35,12 @@ type
     // ней режим IDE - Light, Dark или своя тема (Custom) из cmbIdeCustom.
     // Хранится в editor.ini, раздел [Themes].
     pnlTheme: TPanel;
-    // Первый ряд - режим IDE (IDE Color scheme), ниже заголовок Source code
-    // highlighting и тема подсветки (lblTheme, cmbTheme)
+    // Верхний ряд - режим IDE (IDE Color scheme). Всё, что относится к
+    // подсветке, - в рамке grpHighlight: тема подсветки (pnlHlTheme: lblTheme,
+    // cmbTheme), группы и кнопки, таблица, поле данных и Save / Exit / Delete Row
     lblIdeScheme: TLabel;
-    lblHighlight: TLabel;
-    bvlHighlight: TBevel;
+    grpHighlight: TUiGroupBox;
+    pnlHlTheme: TPanel;
     lblTheme: TPanel;
     cmbTheme: TUiComboBox;
     btnThemeAdd: TUiButton;
@@ -228,9 +229,12 @@ type
     FontDlg: TUiFontDialog;
     FSchemaMenu: TUiPopupMenu;   // Select scheme: список файлов схем
 
+    // Reset Scheme: файл схемы - из папки исходников, из которых собран exe
+    btnResetScheme: TUiButton;
+    // Что значит раздел выбранной строки таблицы схемы - справа от Save/Exit
+    lblSectionHelp: TUiLabel;
+
     // Обработчики, назначенные в Unit2.dfm
-    FGrpHighlight: TUiGroupBox;
-    FPnlHlTheme: TPanel;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure Form2Close(Sender: TObject; var Action: TCloseAction);
@@ -256,6 +260,7 @@ type
     procedure btnAddGroupClick(Sender: TObject);
     procedure btnDeleteGroupClick(Sender: TObject);
     procedure btnDeleteRowClick(Sender: TObject);
+    procedure btnResetSchemeClick(Sender: TObject);
     procedure cmbThemeChange(Sender: TObject);
     procedure cmbThemeKeyPress(Sender: TObject; var Key: Char);
     procedure btnThemeAddClick(Sender: TObject);
@@ -344,12 +349,6 @@ type
     // В таблице и в редакторе - схема •default•.clr, а не схема вкладки
     FEditDefault: Boolean;
     FSchemaFiles: TStringList; // пути схем в порядке пунктов меню
-    // Что значит раздел выбранной строки таблицы схемы - справа от Save/Exit
-    FLblSectionHelp: TUiLabel;
-    // Reset Scheme: файл схемы - из папки исходников, из которых собран exe
-    FBtnResetScheme: TUiButton;
-    // Рамка Source code highlighting: тема подсветки (FPnlHlTheme), группы,
-    // таблица схемы, поле данных и Save / Exit / Delete Row
     FGridOldProc: TWndMethod; // обработчик таблицы до подмены
 
     // Имя раздела схемы для каждой строки таблицы: FRowSec[номер строки].
@@ -387,7 +386,6 @@ type
     procedure InitGridStructure;
     function  RowSection(ARow: Integer): string;
     procedure ShowSectionHelp(ARow: Integer);
-    procedure BtnResetSchemeClick(Sender: TObject);
     function  SectionRow(const AName: string): Integer;
     function  SectionCaption(const AName: string): string;
     function  SectionHasColors(const AName: string): Boolean;
@@ -599,13 +597,11 @@ procedure TForm2.ShowSectionHelp(ARow: Integer);
 var
   Sec: string;
 begin
-  if FLblSectionHelp = nil then
-    Exit;
   Sec := RowSection(ARow);
   if Sec = '' then
-    FLblSectionHelp.Caption := ''
+    lblSectionHelp.Caption := ''
   else
-    FLblSectionHelp.Caption := Sec + ': ' + SectionHelpText(Sec);
+    lblSectionHelp.Caption := Sec + ': ' + SectionHelpText(Sec);
 end;
 
 // Строка таблицы, где показан раздел AName; 0 - такого раздела в схеме нет
@@ -956,63 +952,6 @@ begin
   FLockMemo := False;
   UiKeys := TStringList.Create;
   FSchemaFiles := TStringList.Create;
-
-  FLblSectionHelp := TUiLabel.Create(Self);
-  FLblSectionHelp.Parent := pnlBottom;
-  FLblSectionHelp.AutoSize := False;
-  FLblSectionHelp.WordWrap := True;
-  FLblSectionHelp.ShowAccelChar := False;
-  FLblSectionHelp.SetBounds(290, 4, pnlBottom.ClientWidth - 298,
-    pnlBottom.ClientHeight - 6);
-  FLblSectionHelp.Anchors := [akLeft, akTop, akRight, akBottom];
-  FLblSectionHelp.Font.Size := 8;
-  FLblSectionHelp.Caption := '';
-
-  FBtnResetScheme := TUiButton.Create(Self);
-  FBtnResetScheme.Parent := pnlGroupActions;
-  FBtnResetScheme.Caption := 'Reset Scheme';
-  FBtnResetScheme.Hint := 'Заменить файл схемы копией из папки исходников, ' +
-    'из которых собран unIDE (schemes\ рядом с .dpr); прежний файл - в .bak';
-  FBtnResetScheme.ShowHint := True;
-  FBtnResetScheme.SetBounds(232, 39, 100, 26);
-  FBtnResetScheme.OnClick := BtnResetSchemeClick;
-
-  // Всё, что относится к подсветке, - в рамку Source code highlighting под
-  // рядом IDE Color scheme. В .dfm эти элементы лежат прямо на вкладке;
-  // переносятся здесь, порядок выравнивания задают Top
-  // .dfm: FGrpHighlight := TUiGroupBox.Create(Self);
-  // .dfm: FGrpHighlight.Parent := tsColorScheme;
-  // .dfm: FGrpHighlight.Caption := ' Source code highlighting ';
-  // .dfm: FGrpHighlight.Align := alClient;
-  // .dfm: FPnlHlTheme := TPanel.Create(Self);
-  // .dfm: FPnlHlTheme.Parent := FGrpHighlight;
-  // .dfm: FPnlHlTheme.BevelOuter := bvNone;
-  // .dfm: FPnlHlTheme.Caption := '';
-  // .dfm: FPnlHlTheme.ParentColor := True;
-  // .dfm: FPnlHlTheme.Height := 32;
-  // .dfm: FPnlHlTheme.Align := alTop;
-  // .dfm: FPnlHlTheme.Top := 0;
-  lblTheme.Parent := FPnlHlTheme;
-  cmbTheme.Parent := FPnlHlTheme;
-  btnThemeAdd.Parent := FPnlHlTheme;
-  btnThemeDel.Parent := FPnlHlTheme;
-  pnlThemeSpacer.Parent := FPnlHlTheme;
-  lblTheme.Top := 5;
-  cmbTheme.Top := 5;
-  btnThemeAdd.Top := 4;
-  btnThemeDel.Top := 4;
-  pnlThemeSpacer.Top := 4;
-  pnlGroupActions.Parent := FGrpHighlight;
-  pnlGroupActions.Top := FPnlHlTheme.Height + 1;
-  MemoSchemaDetails.Parent := FGrpHighlight;
-  MemoSchemaDetails.Top := 10000;
-  pnlBottom.Parent := FGrpHighlight;
-  pnlBottom.Top := 20000;
-  Grid.Parent := FGrpHighlight;
-  // Заголовок с линией больше не нужен - его роль у рамки
-  lblHighlight.Visible := False;
-  bvlHighlight.Visible := False;
-  pnlTheme.Height := 32;
 end;
 
 procedure TForm2.FormDestroy(Sender: TObject);
@@ -1117,10 +1056,7 @@ begin
   // Второй ряд, под списком групп: работа с файлами схем
   btnOpenClr.Left := cmbGroupType.Left;
   btnSelectSchema.Left := btnOpenClr.Left + btnOpenClr.Width + 6;
-  // Ряд режима IDE - за подписью; линия заголовка подсветки - за ним
-  lblHighlight.Font.Style := [fsBold];
-  bvlHighlight.Left := lblHighlight.Left + lblHighlight.Width + 8;
-  bvlHighlight.Width := pnlTheme.ClientWidth - bvlHighlight.Left - 8;
+  // Ряд режима IDE - за подписью
   rbIdeLight.Left := lblIdeScheme.Left + lblIdeScheme.Width + 12;
   rbIdeDark.Left := rbIdeLight.Left + rbIdeLight.Width + 6;
   rbIdeCustom.Left := rbIdeDark.Left + rbIdeDark.Width + 6;
@@ -1130,10 +1066,10 @@ begin
   if btnIdeCustomDel.Left + btnIdeCustomDel.Width + 10 > ClientWidth then
     ClientWidth := btnIdeCustomDel.Left + btnIdeCustomDel.Width + 10;
 
-  FBtnResetScheme.Left := btnSelectSchema.Left + btnSelectSchema.Width + 6;
-  FBtnResetScheme.Top := btnSelectSchema.Top;
+  btnResetScheme.Left := btnSelectSchema.Left + btnSelectSchema.Width + 6;
+  btnResetScheme.Top := btnSelectSchema.Top;
   // За ними - цвета редактора и полосы номеров (рамка Editor colors)
-  grpEditorColors.Left := FBtnResetScheme.Left + FBtnResetScheme.Width + 12;
+  grpEditorColors.Left := btnResetScheme.Left + btnResetScheme.Width + 12;
   grpEditorColors.Top := btnSelectSchema.Top - 6;
 
   if btnEditDefault.Left + btnEditDefault.Width + 10 > ClientWidth then
@@ -1742,7 +1678,7 @@ end;
 // исходников, из которых собран exe (строка source= в <exe>.build.txt).
 // При сборке схемы копируются только те, которых рядом с exe ещё нет, -
 // исправленная в репозитории схема сама в Output не попадает
-procedure TForm2.BtnResetSchemeClick(Sender: TObject);
+procedure TForm2.btnResetSchemeClick(Sender: TObject);
 var
   Target, SrcFile, SrcDpr: string;
   Info: TStringList;

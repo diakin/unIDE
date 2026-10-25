@@ -37,68 +37,17 @@ object Form2: TForm2
         Left = 0
         Top = 0
         Width = 612
-        Height = 90
+        Height = 32
         BevelOuter = bvNone
         TabOrder = 0
         Align = alTop
-        object lblTheme: TPanel
-          Left = 10
-          Top = 61
-          Width = 50
-          Height = 21
-          BevelOuter = bvNone
-          Caption = 'Theme'
-          Color = clBtnFace
-          ParentBackground = False
-          TabOrder = 0
-        end
-        object cmbTheme: TUiComboBox
-          Left = 64
-          Top = 61
-          Width = 140
-          Height = 21
-          ItemHeight = 13
-          TabOrder = 1
-          Color = clWindow
-          ParentShowHint = False
-          ShowHint = True
-          Hint = 'Тема. Имя новой - ввести здесь и нажать Add или Enter'
-          OnChange = cmbThemeChange
-          OnKeyPress = cmbThemeKeyPress
-        end
-        object btnThemeAdd: TUiButton
-          Left = 208
-          Top = 60
-          Width = 40
-          Height = 23
-          Caption = 'Add'
-          TabOrder = 2
-          OnClick = btnThemeAddClick
-        end
-        object btnThemeDel: TUiButton
-          Left = 250
-          Top = 60
-          Width = 50
-          Height = 23
-          Caption = 'Delete'
-          TabOrder = 3
-          OnClick = btnThemeDelClick
-        end
-        object pnlThemeSpacer: TPanel
-          Left = 300
-          Top = 60
-          Width = 16
-          Height = 23
-          BevelOuter = bvNone
-          TabOrder = 4
-        end
         object rbIdeLight: TUiRadioButton
           Left = 124
           Top = 7
           Width = 75
           Height = 17
           Caption = 'IDE Light'
-          TabOrder = 5
+          TabOrder = 0
           TextColor = clRed
           OnClick = rbIdeModeClick
         end
@@ -108,7 +57,7 @@ object Form2: TForm2
           Width = 75
           Height = 17
           Caption = 'IDE Dark'
-          TabOrder = 6
+          TabOrder = 1
           TextColor = clBlue
           OnClick = rbIdeModeClick
         end
@@ -118,7 +67,7 @@ object Form2: TForm2
           Width = 62
           Height = 17
           Caption = 'Custom'
-          TabOrder = 7
+          TabOrder = 2
           OnClick = rbIdeModeClick
         end
         object cmbIdeCustom: TUiComboBox
@@ -127,7 +76,7 @@ object Form2: TForm2
           Width = 140
           Height = 21
           ItemHeight = 13
-          TabOrder = 8
+          TabOrder = 3
           ParentShowHint = False
           ShowHint = True
           Hint = 'Своя тема IDE. Имя новой - ввести здесь и нажать Add'
@@ -139,7 +88,7 @@ object Form2: TForm2
           Width = 40
           Height = 23
           Caption = 'Add'
-          TabOrder = 9
+          TabOrder = 4
           ParentShowHint = False
           ShowHint = True
           Hint = 'Новая своя тема IDE - копия цветов текущего режима'
@@ -151,7 +100,7 @@ object Form2: TForm2
           Width = 40
           Height = 23
           Caption = 'Del'
-          TabOrder = 10
+          TabOrder = 5
           ParentShowHint = False
           ShowHint = True
           Hint = 'Удалить выбранную свою тему IDE'
@@ -162,318 +111,390 @@ object Form2: TForm2
           Top = 8
           Caption = 'IDE Color scheme'
         end
-        object lblHighlight: TLabel
-          Left = 10
-          Top = 36
-          Caption = 'Source code highlighting'
-        end
-        object bvlHighlight: TBevel
-          Left = 180
-          Top = 43
-          Width = 424
-          Height = 2
-          Anchors = [akLeft, akTop, akRight]
-          Shape = bsTopLine
-        end
       end
-      object pnlGroupActions: TPanel
+      object grpHighlight: TUiGroupBox
         Left = 0
-        Top = 90
+        Top = 32
         Width = 612
-        Height = 72
-        BevelOuter = bvNone
+        Height = 482
+        Align = alClient
+        Caption = ' Source code highlighting '
         TabOrder = 1
-        Align = alTop
-        object cmbGroupType: TUiComboBox
-          Left = 10
-          Top = 8
-          Width = 110
-          Height = 24
-          Style = csDropDownList
+        object pnlHlTheme: TPanel
+          Left = 2
+          Top = 15
+          Width = 608
+          Height = 32
+          Align = alTop
+          BevelOuter = bvNone
+          ParentColor = True
+          TabOrder = 0
+          object lblTheme: TPanel
+            Left = 10
+            Top = 5
+            Width = 50
+            Height = 21
+            BevelOuter = bvNone
+            Caption = 'Theme'
+            Color = clBtnFace
+            ParentBackground = False
+            TabOrder = 0
+          end
+          object cmbTheme: TUiComboBox
+            Left = 64
+            Top = 5
+            Width = 140
+            Height = 21
+            ItemHeight = 13
+            TabOrder = 1
+            Color = clWindow
+            ParentShowHint = False
+            ShowHint = True
+            Hint = 'Тема. Имя новой - ввести здесь и нажать Add или Enter'
+            OnChange = cmbThemeChange
+            OnKeyPress = cmbThemeKeyPress
+          end
+          object btnThemeAdd: TUiButton
+            Left = 208
+            Top = 4
+            Width = 40
+            Height = 23
+            Caption = 'Add'
+            TabOrder = 2
+            OnClick = btnThemeAddClick
+          end
+          object btnThemeDel: TUiButton
+            Left = 250
+            Top = 4
+            Width = 50
+            Height = 23
+            Caption = 'Delete'
+            TabOrder = 3
+            OnClick = btnThemeDelClick
+          end
+          object pnlThemeSpacer: TPanel
+            Left = 300
+            Top = 4
+            Width = 16
+            Height = 23
+            BevelOuter = bvNone
+            TabOrder = 4
+          end
+        end
+        object pnlGroupActions: TPanel
+          Left = 0
+          Top = 47
+          Width = 612
+          Height = 72
+          BevelOuter = bvNone
+          TabOrder = 1
+          Align = alTop
+          object cmbGroupType: TUiComboBox
+            Left = 10
+            Top = 8
+            Width = 110
+            Height = 24
+            Style = csDropDownList
+            Font.Charset = DEFAULT_CHARSET
+            Font.Color = clWindowText
+            Font.Height = -13
+            Font.Name = 'Tahoma'
+            Font.Style = []
+            ParentFont = False
+            ItemHeight = 16
+            TabOrder = 0
+            OnChange = cmbGroupTypeChange
+            Items.Strings = (
+              'Keywords'
+              'Operators'
+              'Line comment'
+              'Block comment'
+              'String'
+              'Brackets'
+              'Line Mark')
+          end
+          object btnAddGroup: TUiButton
+            Left = 126
+            Top = 7
+            Width = 80
+            Height = 26
+            Caption = 'Add Group'
+            TabOrder = 1
+            OnClick = btnAddGroupClick
+          end
+          object btnDeleteGroup: TUiButton
+            Left = 212
+            Top = 7
+            Width = 90
+            Height = 26
+            Caption = 'Delete Group'
+            TabOrder = 2
+            OnClick = btnDeleteGroupClick
+          end
+          object btnRestoreDefaults: TUiButton
+            Left = 308
+            Top = 7
+            Width = 105
+            Height = 26
+            Caption = 'Restore Defaults'
+            TabOrder = 3
+            OnClick = btnRestoreDefaultsClick
+          end
+          object btnEditDefault: TUiButton
+            Left = 419
+            Top = 7
+            Width = 95
+            Height = 26
+            Caption = 'Edit Default'
+            TabOrder = 4
+            OnClick = btnEditDefaultClick
+          end
+          object btnOpenClr: TUiButton
+            Left = 10
+            Top = 39
+            Width = 100
+            Height = 26
+            Caption = 'Open clr file'
+            TabOrder = 5
+            ParentShowHint = False
+            ShowHint = True
+            Hint = 'Открыть файл текущей схемы в редакторе'
+            OnClick = btnOpenClrClick
+          end
+          object btnSelectSchema: TUiButton
+            Left = 116
+            Top = 39
+            Width = 110
+            Height = 26
+            Caption = 'Select scheme'
+            TabOrder = 6
+            ParentShowHint = False
+            ShowHint = True
+            Hint = 'Перенести из другой схемы цвета одинаковых элементов и недостающие элементы; Save запишет результат в схему текущего расширения'
+            OnClick = btnSelectSchemaClick
+          end
+          object btnResetScheme: TUiButton
+            Left = 232
+            Top = 39
+            Width = 100
+            Height = 26
+            Caption = 'Reset Scheme'
+            TabOrder = 7
+            ParentShowHint = False
+            ShowHint = True
+            Hint = 'Заменить файл схемы копией из папки исходников, из которых собран unIDE (schemes\ рядом с .dpr); прежний файл - в .bak'
+            OnClick = BtnResetSchemeClick
+          end
+          object grpEditorColors: TUiGroupBox
+            Left = 240
+            Top = 33
+            Width = 300
+            Height = 38
+            Caption = ' Editor colors '
+            TabOrder = 8
+            object lblEditorColor: TLabel
+              Left = 6
+              Top = 18
+              Caption = 'Editor color'
+            end
+            object pnlEditorFG: TPanel
+              Left = 0
+              Top = 13
+              Width = 24
+              Height = 20
+              Cursor = crHandPoint
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Цвет текста (FontColor в editor.ini); раздел Text схемы его перекрывает'
+              BevelOuter = bvLowered
+              Caption = 'FG'
+              ParentBackground = False
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -11
+              Font.Name = 'Tahoma'
+              Font.Style = [fsBold]
+              ParentFont = False
+              TabOrder = 0
+              OnClick = ColorSwatchClick
+            end
+            object pnlEditorBG: TPanel
+              Left = 0
+              Top = 13
+              Width = 24
+              Height = 20
+              Cursor = crHandPoint
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Фон редактора (BGColor в editor.ini)'
+              BevelOuter = bvLowered
+              Caption = 'BG'
+              ParentBackground = False
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -11
+              Font.Name = 'Tahoma'
+              Font.Style = [fsBold]
+              ParentFont = False
+              TabOrder = 1
+              OnClick = ColorSwatchClick
+            end
+            object lblGutterColor: TLabel
+              Left = 140
+              Top = 18
+              Caption = 'Gutter color'
+            end
+            object pnlGutterFG: TPanel
+              Left = 0
+              Top = 13
+              Width = 24
+              Height = 20
+              Cursor = crHandPoint
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Цвет номеров строк (GutterFG в editor.ini)'
+              BevelOuter = bvLowered
+              Caption = 'FG'
+              ParentBackground = False
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -11
+              Font.Name = 'Tahoma'
+              Font.Style = [fsBold]
+              ParentFont = False
+              TabOrder = 2
+              OnClick = ColorSwatchClick
+            end
+            object pnlGutterBG: TPanel
+              Left = 0
+              Top = 13
+              Width = 24
+              Height = 20
+              Cursor = crHandPoint
+              ParentShowHint = False
+              ShowHint = True
+              Hint = 'Фон панели номеров строк (GutterBG в editor.ini)'
+              BevelOuter = bvLowered
+              Caption = 'BG'
+              ParentBackground = False
+              Font.Charset = DEFAULT_CHARSET
+              Font.Color = clWindowText
+              Font.Height = -11
+              Font.Name = 'Tahoma'
+              Font.Style = [fsBold]
+              ParentFont = False
+              TabOrder = 3
+              OnClick = ColorSwatchClick
+            end
+          end
+        end
+        object pnlBottom: TPanel
+          Left = 0
+          Top = 468
+          Width = 612
+          Height = 46
+          BevelOuter = bvNone
+          TabOrder = 2
+          Align = alBottom
+          object btnOK: TUiButton
+            Left = 10
+            Top = 7
+            Width = 80
+            Height = 28
+            Caption = 'Save'
+            TabOrder = 0
+            OnClick = ButtonClick1
+          end
+          object btnCancel: TUiButton
+            Left = 100
+            Top = 7
+            Width = 80
+            Height = 28
+            Caption = 'Exit'
+            TabOrder = 1
+            OnClick = ButtonClick1
+          end
+          object btnDeleteRow: TUiButton
+            Left = 190
+            Top = 7
+            Width = 90
+            Height = 28
+            Caption = 'Delete Row'
+            TabOrder = 2
+            ParentShowHint = False
+            ShowHint = True
+            Hint = 'Убрать из схемы раздел выбранной строки; в файл - по Save'
+            OnClick = btnDeleteRowClick
+          end
+          object lblSectionHelp: TUiLabel
+            Left = 290
+            Top = 4
+            Width = 310
+            Height = 40
+            Anchors = [akLeft, akTop, akRight, akBottom]
+            AutoSize = False
+            Font.Charset = DEFAULT_CHARSET
+            Font.Color = clWindowText
+            Font.Height = -11
+            Font.Name = 'Tahoma'
+            Font.Style = []
+            ParentFont = False
+            ShowAccelChar = False
+            WordWrap = True
+          end
+        end
+        object MemoSchemaDetails: TUiMemo
+          Left = 0
+          Top = 372
+          Width = 612
+          Height = 100
+          Align = alBottom
           Font.Charset = DEFAULT_CHARSET
           Font.Color = clWindowText
           Font.Height = -13
-          Font.Name = 'Tahoma'
+          Font.Name = 'Courier New'
           Font.Style = []
           ParentFont = False
-          ItemHeight = 16
-          TabOrder = 0
-          OnChange = cmbGroupTypeChange
-          Items.Strings = (
-            'Keywords'
-            'Operators'
-            'Line comment'
-            'Block comment'
-            'String'
-            'Brackets'
-            'Line Mark')
-        end
-        object btnAddGroup: TUiButton
-          Left = 126
-          Top = 7
-          Width = 80
-          Height = 26
-          Caption = 'Add Group'
-          TabOrder = 1
-          OnClick = btnAddGroupClick
-        end
-        object btnDeleteGroup: TUiButton
-          Left = 212
-          Top = 7
-          Width = 90
-          Height = 26
-          Caption = 'Delete Group'
-          TabOrder = 2
-          OnClick = btnDeleteGroupClick
-        end
-        object btnRestoreDefaults: TUiButton
-          Left = 308
-          Top = 7
-          Width = 105
-          Height = 26
-          Caption = 'Restore Defaults'
+          ScrollBars = ssVertical
           TabOrder = 3
-          OnClick = btnRestoreDefaultsClick
+          OnChange = MemoSchemaDetailsChange
         end
-        object btnEditDefault: TUiButton
-          Left = 419
-          Top = 7
-          Width = 95
-          Height = 26
-          Caption = 'Edit Default'
+        object Grid: TStringGrid
+          Left = 0
+          Top = 130
+          Width = 612
+          Height = 242
+          Align = alClient
+          ColCount = 4
+          DefaultRowHeight = 22
+          FixedCols = 0
+          RowCount = 2
+          Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected]
           TabOrder = 4
-          OnClick = btnEditDefaultClick
-        end
-        object btnOpenClr: TUiButton
-          Left = 10
-          Top = 39
-          Width = 100
-          Height = 26
-          Caption = 'Open clr file'
-          TabOrder = 5
-          ParentShowHint = False
-          ShowHint = True
-          Hint = 'Открыть файл текущей схемы в редакторе'
-          OnClick = btnOpenClrClick
-        end
-        object btnSelectSchema: TUiButton
-          Left = 116
-          Top = 39
-          Width = 110
-          Height = 26
-          Caption = 'Select scheme'
-          TabOrder = 6
-          ParentShowHint = False
-          ShowHint = True
-          Hint = 'Перенести из другой схемы цвета одинаковых элементов и недостающие элементы; Save запишет результат в схему текущего расширения'
-          OnClick = btnSelectSchemaClick
-        end
-        object grpEditorColors: TUiGroupBox
-          Left = 240
-          Top = 33
-          Width = 300
-          Height = 38
-          Caption = ' Editor colors '
-          TabOrder = 7
-          object lblEditorColor: TLabel
-            Left = 6
-            Top = 18
-            Caption = 'Editor color'
-          end
-          object pnlEditorFG: TPanel
-            Left = 0
-            Top = 13
-            Width = 24
-            Height = 20
-            Cursor = crHandPoint
-            ParentShowHint = False
-            ShowHint = True
-            Hint = 'Цвет текста (FontColor в editor.ini); раздел Text схемы его перекрывает'
-            BevelOuter = bvLowered
-            Caption = 'FG'
-            ParentBackground = False
+          OnDblClick = GridDblClick
+          OnDrawCell = GridDrawCell
+          OnSelectCell = GridSelectCell
+          OnTopLeftChanged = GridTopLeftChanged
+          object btnBaseColors: TUiButton
+            Left = 4
+            Top = 4
+            Width = 70
+            Height = 18
+            Caption = 'Base colors'
             Font.Charset = DEFAULT_CHARSET
             Font.Color = clWindowText
-            Font.Height = -11
+            Font.Height = -9
             Font.Name = 'Tahoma'
-            Font.Style = [fsBold]
+            Font.Style = []
             ParentFont = False
+            ParentShowHint = False
+            ShowHint = True
+            Hint = 'Цвета текста - из настроек редактора (Editor Options)'
             TabOrder = 0
-            OnClick = ColorSwatchClick
+            TabStop = False
+            Visible = False
+            OnClick = btnBaseColorsClick
           end
-          object pnlEditorBG: TPanel
-            Left = 0
-            Top = 13
-            Width = 24
-            Height = 20
-            Cursor = crHandPoint
-            ParentShowHint = False
-            ShowHint = True
-            Hint = 'Фон редактора (BGColor в editor.ini)'
-            BevelOuter = bvLowered
-            Caption = 'BG'
-            ParentBackground = False
-            Font.Charset = DEFAULT_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -11
-            Font.Name = 'Tahoma'
-            Font.Style = [fsBold]
-            ParentFont = False
-            TabOrder = 1
-            OnClick = ColorSwatchClick
-          end
-          object lblGutterColor: TLabel
-            Left = 140
-            Top = 18
-            Caption = 'Gutter color'
-          end
-          object pnlGutterFG: TPanel
-            Left = 0
-            Top = 13
-            Width = 24
-            Height = 20
-            Cursor = crHandPoint
-            ParentShowHint = False
-            ShowHint = True
-            Hint = 'Цвет номеров строк (GutterFG в editor.ini)'
-            BevelOuter = bvLowered
-            Caption = 'FG'
-            ParentBackground = False
-            Font.Charset = DEFAULT_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -11
-            Font.Name = 'Tahoma'
-            Font.Style = [fsBold]
-            ParentFont = False
-            TabOrder = 2
-            OnClick = ColorSwatchClick
-          end
-          object pnlGutterBG: TPanel
-            Left = 0
-            Top = 13
-            Width = 24
-            Height = 20
-            Cursor = crHandPoint
-            ParentShowHint = False
-            ShowHint = True
-            Hint = 'Фон панели номеров строк (GutterBG в editor.ini)'
-            BevelOuter = bvLowered
-            Caption = 'BG'
-            ParentBackground = False
-            Font.Charset = DEFAULT_CHARSET
-            Font.Color = clWindowText
-            Font.Height = -11
-            Font.Name = 'Tahoma'
-            Font.Style = [fsBold]
-            ParentFont = False
-            TabOrder = 3
-            OnClick = ColorSwatchClick
-          end
-        end
-      end
-      object pnlBottom: TPanel
-        Left = 0
-        Top = 468
-        Width = 612
-        Height = 46
-        BevelOuter = bvNone
-        TabOrder = 2
-        Align = alBottom
-        object btnOK: TUiButton
-          Left = 10
-          Top = 7
-          Width = 80
-          Height = 28
-          Caption = 'Save'
-          TabOrder = 0
-          OnClick = ButtonClick1
-        end
-        object btnCancel: TUiButton
-          Left = 100
-          Top = 7
-          Width = 80
-          Height = 28
-          Caption = 'Exit'
-          TabOrder = 1
-          OnClick = ButtonClick1
-        end
-        object btnDeleteRow: TUiButton
-          Left = 190
-          Top = 7
-          Width = 90
-          Height = 28
-          Caption = 'Delete Row'
-          TabOrder = 2
-          ParentShowHint = False
-          ShowHint = True
-          Hint = 'Убрать из схемы раздел выбранной строки; в файл - по Save'
-          OnClick = btnDeleteRowClick
-        end
-      end
-      object MemoSchemaDetails: TUiMemo
-        Left = 0
-        Top = 372
-        Width = 612
-        Height = 100
-        Align = alBottom
-        Font.Charset = DEFAULT_CHARSET
-        Font.Color = clWindowText
-        Font.Height = -13
-        Font.Name = 'Courier New'
-        Font.Style = []
-        ParentFont = False
-        ScrollBars = ssVertical
-        TabOrder = 3
-        OnChange = MemoSchemaDetailsChange
-      end
-      object Grid: TStringGrid
-        Left = 0
-        Top = 130
-        Width = 612
-        Height = 242
-        Align = alClient
-        ColCount = 4
-        DefaultRowHeight = 22
-        FixedCols = 0
-        RowCount = 2
-        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goDrawFocusSelected]
-        TabOrder = 4
-        OnDblClick = GridDblClick
-        OnDrawCell = GridDrawCell
-        OnSelectCell = GridSelectCell
-        OnTopLeftChanged = GridTopLeftChanged
-        object btnBaseColors: TUiButton
-          Left = 4
-          Top = 4
-          Width = 70
-          Height = 18
-          Caption = 'Base colors'
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -9
-          Font.Name = 'Tahoma'
-          Font.Style = []
-          ParentFont = False
-          ParentShowHint = False
-          ShowHint = True
-          Hint = 'Цвета текста - из настроек редактора (Editor Options)'
-          TabOrder = 0
-          TabStop = False
-          Visible = False
-          OnClick = btnBaseColorsClick
-        end
-      end
-      object FGrpHighlight: TUiGroupBox
-        Color = clBackground
-        Caption = ' Source code highlighting '
-        Align = alClient
-        object FPnlHlTheme: TPanel
-          BevelOuter = bvNone
-          Caption = ''
-          ParentColor = True
-          Height = 32
-          Align = alTop
-          Top = 0
         end
       end
     end
