@@ -119,6 +119,8 @@ type
     function Query(const AArgs: string; var AOutput: WideString): Integer;
     procedure UpdateButtons;
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
   public
     constructor CreateDlg(AOwner: TComponent; const ATitle, AWebUrl: string;
       AOnQuery: TGitQueryEvent; const ARevs: string = 'HEAD');
@@ -371,6 +373,16 @@ begin
   FFileList.OnSelectItem := FileSelect;
   UpdateButtons;
   ActiveControl := FCommitList;
+end;
+
+// Владелец окна - главное окно (а не скрытое окно Application, как по
+// умолчанию в Delphi 7): модальное окно всегда над ним, не уходит под
+// него, когда фокус в момент открытия у другой программы (git, Git Bash)
+procedure TDlgGitHistory.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  if (Owner is TWinControl) and TWinControl(Owner).HandleAllocated then
+    Params.WndParent := TWinControl(Owner).Handle;
 end;
 
 procedure TDlgGitHistory.WMUpdateUIState(var Message: TMessage);
