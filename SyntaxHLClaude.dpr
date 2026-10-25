@@ -78,6 +78,7 @@ uses
   FarFind in 'FarFind.pas',
   FarVolumes in 'FarVolumes.pas',
   FarFtp in 'FarFtp.pas',
+  FarProgress in 'FarProgress.pas',
   UnFar in 'UnFar.pas',
   SzSetup in 'SzSetup.pas',
   QemuTool in 'QemuTool.pas',

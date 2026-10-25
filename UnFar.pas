@@ -106,6 +106,10 @@ unit UnFar;
 //    - b.34: FTP: Home адреса не открылся (550) - тот же путь без '/' в
 //      начале (от папки входа), нет и его - папка входа, причина - в строке
 //      состояния.
+//    - b.35: распаковка и упаковка - стандартное окно хода Windows
+//      (IProgressDialog, FarProgress): проценты и имя файла из 7z.exe
+//      -bsp1, «Отмена» - прервать. Перенос распакованного на место и
+//      копирование - SHFileOperation (окно хода - от Windows).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -132,10 +136,10 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
-  Clipbrd, IniBuf, SzSetup, FarFind, FarVolumes, FarFtp;
+  Clipbrd, IniBuf, SzSetup, FarFind, FarVolumes, FarFtp, FarProgress;
 
 const
-  FarBuild = 'b.34';
+  FarBuild = 'b.35';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -402,6 +406,8 @@ type
     FArcJobLevel: Integer;
     FArcJobExists: Boolean;       // архив был до упаковки (дополняется)
     FArcAddPercent: Integer;
+    // Окно хода распаковки / упаковки (IProgressDialog Windows)
+    FArcProgress: TFarProgress;
     // Вывод процесса не в окно, а в буфер (7z.exe: список архива, ошибки)
     FProcCapture: Boolean;
     FProcRaw: string;
@@ -657,6 +663,7 @@ type
     procedure ArcAddConfirm;
     procedure ArcAddFormatChanged(AOldFormat: Integer);
     procedure ArcAddProgress;
+    procedure ArcProgressStart;
     procedure ArcAddDone(AExitCode: DWORD; const AOutput: WideString);
     procedure DlgAddRow(const ACaption: WideString; AIsChoice, AMasked: Boolean;
       const AText: WideString; const AValues: array of WideString;
@@ -2468,6 +2475,8 @@ begin
   FProcTimer.Enabled := False;
   if FProcHandle <> 0 then
     ProcFinish(True);
+  FArcProgress.Free;
+  FArcProgress := nil;
   // Файлы, открытые из архивов (Enter), - %TEMP%\unIDE_far; FAR закрыт -
   // удалить
   TempLen := FarGetTempPath(MAX_PATH + 1, TempBuffer);
@@ -6953,7 +6962,7 @@ begin
       OldLen := Length(FProcRaw);
       SetLength(FProcRaw, OldLen + Integer(BytesRead));
       Move(Buffer[0], FProcRaw[OldLen + 1], BytesRead);
-      if FArcAction = aaAdd then
+      if FArcAction in [aaAdd, aaExtract, aaOpenFile] then
         ArcAddProgress;
       Continue;
     end;
@@ -6966,6 +6975,14 @@ begin
       OutAppend(Text);
       Changed := True;
     end;
+  end;
+  // «Отмена» в окне хода распаковки / упаковки - прервать 7z.exe
+  if (FArcProgress <> nil) and FArcProgress.Active and
+     FArcProgress.Cancelled then
+  begin
+    ProcFinish(True);
+    Invalidate;
+    Exit;
   end;
   if WaitForSingleObject(FProcHandle, 0) = WAIT_OBJECT_0 then
   begin
@@ -6989,6 +7006,9 @@ var
   WasCapture: Boolean;
 begin
   FProcTimer.Enabled := False;
+  // Окно хода - закрыть до переноса файлов на место (у него своё окно)
+  if FArcProgress <> nil then
+    FArcProgress.Stop;
   ProcExitCode := 0;
   WasCapture := FProcCapture;
   if FProcHandle <> 0 then
@@ -7475,7 +7495,8 @@ begin
     end
     else
     begin
-      Command := Command + ' x -y -sccUTF-8 -scsUTF-8 -bso0 -bsp0';
+      // -bsp1 - ход (проценты и имя файла) - в окно хода
+      Command := Command + ' x -y -sccUTF-8 -scsUTF-8 -bso0 -bsp1';
       // Без пароля -p не ставим: '-p' без значения - вопрос пароля
       if FArcJobPassword <> '' then
         Command := Command + WideString(' "-p') + FArcJobPassword +
@@ -7490,7 +7511,38 @@ begin
   begin
     ArcCleanupTemp;
     FArcAction := aaNone;
+  end
+  else if FArcAction in [aaExtract, aaOpenFile, aaAdd] then
+    ArcProgressStart;
+end;
+
+// Окно хода Windows для распаковки / упаковки: оболочка покажет его, если
+// работа затянется; «Отмена» в нём - как Ctrl+Break (ProcTick)
+procedure TFarView.ArcProgressStart;
+var
+  ParentForm: TCustomForm;
+  ParentWnd: HWND;
+  Title, Line1: WideString;
+begin
+  if FArcProgress = nil then
+    FArcProgress := TFarProgress.Create;
+  ParentForm := GetParentForm(Self);
+  if ParentForm <> nil then
+    ParentWnd := ParentForm.Handle
+  else
+    ParentWnd := Handle;
+  if FArcAction = aaAdd then
+  begin
+    Title := 'unIDE FAR - упаковка';
+    Line1 := 'В архив ' + FArcJobFile;
+  end
+  else
+  begin
+    Title := 'unIDE FAR - распаковка';
+    Line1 := 'Из архива ' + FArcJobFile;
   end;
+  FArcAddPercent := -1;
+  FArcProgress.Start(ParentWnd, Title, Line1);
 end;
 
 // Сообщение об ошибке 7-Zip: первая строка с ERROR / Error / Wrong
@@ -8613,31 +8665,29 @@ begin
   ArcRun;
 end;
 
-// Ход упаковки - из вывода 7z.exe -bsp1 ('  42% 3 + имя'): последнее
-// 'NN%' - в строку состояния
+// Ход распаковки / упаковки - из вывода 7z.exe -bsp1 ('  42% 3 - имя'):
+// последний процент и имя файла - в окно хода и в строку состояния
 procedure TFarView.ArcAddProgress;
 var
-  CharIndex, StopIndex, DigitIndex, Percent: Integer;
+  Percent: Integer;
+  FileName: string;
+  Verb: string;
 begin
-  CharIndex := Length(FProcRaw);
-  StopIndex := CharIndex - 200;
-  if StopIndex < 1 then
-    StopIndex := 1;
-  while (CharIndex > StopIndex) and (FProcRaw[CharIndex] <> '%') do
-    Dec(CharIndex);
-  if (CharIndex <= 1) or (FProcRaw[CharIndex] <> '%') then
+  if not FarParse7zProgress(FProcRaw, Percent, FileName) then
     Exit;
-  DigitIndex := CharIndex - 1;
-  while (DigitIndex >= 1) and (FProcRaw[DigitIndex] in ['0'..'9']) do
-    Dec(DigitIndex);
-  Percent := StrToIntDef(Copy(FProcRaw, DigitIndex + 1,
-    CharIndex - DigitIndex - 1), -1);
-  if (Percent >= 0) and (Percent <> FArcAddPercent) then
-  begin
-    FArcAddPercent := Percent;
-    Status('unIDE FAR: упаковка ' + IntToStr(Percent) + '% (Ctrl+Break - ' +
-      'прервать)');
-  end;
+  if (FileName <> '') and (FArcProgress <> nil) then
+    FArcProgress.SetLine2(UTF8Decode(FileName));
+  if Percent = FArcAddPercent then
+    Exit;
+  FArcAddPercent := Percent;
+  if FArcProgress <> nil then
+    FArcProgress.SetPercent(Percent);
+  if FArcAction = aaAdd then
+    Verb := 'упаковка'
+  else
+    Verb := 'распаковка';
+  Status('unIDE FAR: ' + Verb + ' ' + IntToStr(Percent) + '% (Ctrl+Break - ' +
+    'прервать)');
 end;
 
 // ---------------------------------------------------------------------------
