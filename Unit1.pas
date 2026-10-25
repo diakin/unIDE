@@ -3030,6 +3030,8 @@ type
     function  GitDefaultRemoteBranch(const AGit, ARepo: string): string;
     procedure GitUpdateFromDefaultClick(Sender: TObject);
     procedure GitMergeClick(Sender: TObject);
+    procedure GitCompareClick(Sender: TObject);
+    procedure GitMergeIntoClick(Sender: TObject);
     procedure GitViewBranchClick(Sender: TObject);
     procedure GitPullRequestClick(Sender: TObject);
     function  GitHistQuery(const AArgs: string; var AOutput: WideString): Integer;
@@ -65083,6 +65085,12 @@ begin
   NewButton('Refresh', 'Обновить сведения панели', 336, 60, GitRefreshClick);
   NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 400, 66,
     GitBashClick);
+  NewButton('Compare...', 'Сравнить две ветки: коммиты, которые есть только ' +
+    'в одной из них (с файлами и разницей), сводка - в Compilation log',
+    470, 76, GitCompareClick);
+  NewButton('Merge Into...', 'Влить текущую ветку в другую (например ' +
+    'mainTest в main) и отправить ту на сервер (git push)', 550, 92,
+    GitMergeIntoClick);
   FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
     'недавние, по открытому проекту, Add Local / Clone / New', 4, 92,
     GitRepoBtnClick);
@@ -65742,6 +65750,11 @@ begin
     GitUpdateFromDefaultClick);
   AddItem(BranchMenu, 'Merge into Current Branch...', 'Влить выбранную ' +
     'ветку в текущую (git merge)', GitMergeClick);
+  AddItem(BranchMenu, 'Merge Current Branch Into...', 'Влить текущую ветку ' +
+    'в другую (например mainTest в main) и отправить ту на сервер',
+    GitMergeIntoClick);
+  AddItem(BranchMenu, 'Compare Branches...', 'Сравнить две ветки: коммиты, ' +
+    'которые есть только в одной из них, и разные файлы', GitCompareClick);
   AddItem(BranchMenu, '-', '', nil);
   AddItem(BranchMenu, 'View Branch on GitHub', 'Ветка на GitHub в браузере',
     GitViewBranchClick);
@@ -66387,6 +66400,224 @@ begin
      string(GitQuote(WideString(Target)))) <> 0 then
     LogComp('Git: при конфликте - исправить файлы и Commit, или отменить ' +
             'слияние в Git Bash: git merge --abort');
+end;
+
+// Compare...: две ветки (локальные и с сервера). Сводка в Compilation log:
+// сколько коммитов только в каждой (rev-list --left-right --count) и какие
+// файлы разные (diff --stat); коммиты - окно History в режиме сравнения
+procedure TForm1.GitCompareClick(Sender: TObject);
+var
+  Git, Repo, Current, LeftBranch, RightBranch, Remote, WebUrl, Counts,
+  Hash, Name: string;
+  Branches: TStringList;
+  Output: WideString;
+  TabPos: Integer;
+  Dlg: TDlgGitHistory;
+  HistAction: TGitHistAction;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Current := GitCurrentBranch(Git, Repo);
+  Branches := TStringList.Create;
+  try
+    GitBranchList(Git, Repo, True, Branches);
+    if Branches.Count < 2 then
+    begin
+      ShowCompLog;
+      LogComp('Git: сравнивать не с чем - веток меньше двух (с сервера - ' +
+              'после Fetch)');
+      Exit;
+    end;
+    LeftBranch := ChooseFromList('Compare Branches', 'Первая ветка (с чем ' +
+      'сравнивать):', Branches);
+    if LeftBranch = '' then
+      Exit;
+    Branches.Delete(Branches.IndexOf(LeftBranch));
+    // Текущая - первой: обычно сравнивают с ней
+    if (Current <> '') and (Branches.IndexOf(Current) > 0) then
+      Branches.Move(Branches.IndexOf(Current), 0);
+    RightBranch := ChooseFromList('Compare Branches', 'Сравнить ' +
+      LeftBranch + ' с веткой:', Branches);
+  finally
+    Branches.Free;
+  end;
+  if RightBranch = '' then
+    Exit;
+
+  ShowCompLog;
+  LogComp('Git: сравнение ' + LeftBranch + ' и ' + RightBranch);
+  // Вывод: "<только в первой><Tab><только во второй>"
+  Counts := GitQuery(Git, Repo, 'rev-list --left-right --count ' +
+    string(GitQuote(WideString(LeftBranch + '...' + RightBranch))));
+  TabPos := Pos(#9, Counts);
+  if TabPos > 0 then
+    LogComp('  коммитов только в ' + LeftBranch + ': ' +
+            Copy(Counts, 1, TabPos - 1) + ', только в ' + RightBranch + ': ' +
+            Trim(Copy(Counts, TabPos + 1, MaxInt)));
+  LogComp('  разные файлы (git diff --stat ' + LeftBranch + ' ' +
+          RightBranch + '):');
+  GitRunIn(Git, Repo, 'diff --stat --no-color ' +
+    string(GitQuote(WideString(LeftBranch))) + ' ' +
+    string(GitQuote(WideString(RightBranch))), True, Output);
+
+  FGitDlgGit := Git;
+  FGitDlgRepo := Repo;
+  Remote := GitQuery(Git, Repo, 'config --get remote.origin.url');
+  WebUrl := string(GitHubWebUrl(WideString(Remote)));
+  Dlg := TDlgGitHistory.CreateDlg(Self, 'Compare - ' + LeftBranch + ' и ' +
+    RightBranch + ' - ' + ExtractFileName(ExcludeTrailingPathDelimiter(Repo)),
+    WebUrl, GitHistQuery, LeftBranch + '...' + RightBranch);
+  Dlg.SetSchemeProvider(SchemeCopyFor);
+  try
+    Dlg.ShowModal;
+    HistAction := Dlg.Action;
+    Hash := Dlg.SelectedHash;
+  finally
+    Dlg.Free;
+  end;
+  // Из сравнения - только New Branch from Commit (Revert там спрятан)
+  if (HistAction <> ghaBranch) or (Hash = '') then
+    Exit;
+  Name := '';
+  if not InputQuery('New Branch from Commit', 'Имя новой ветки (от ' +
+     Copy(Hash, 1, 7) + '):', Name) then
+    Exit;
+  Name := Trim(Name);
+  if Name = '' then
+    Exit;
+  if not GitValidBranchName(Name) then
+  begin
+    ShowMessage('Имя ветки не годится для git');
+    Exit;
+  end;
+  GitLongOp(Git, Repo, 'checkout -b ' + string(GitQuote(WideString(Name))) +
+    ' ' + Hash);
+end;
+
+// Merge Into...: влить текущую ветку в другую (например mainTest в main) и
+// отправить ту на сервер. У другой ветки нет своих коммитов (она предок
+// текущей, и на сервере, и локально) - переключаться не нужно: push
+// origin текущая:другая, локальная другая - на тот же коммит (перемотка).
+// Иначе - checkout другой, догнать сервер (--ff-only), merge, push и
+// обратно на текущую; при конфликте остаёмся на другой ветке.
+procedure TForm1.GitMergeIntoClick(Sender: TObject);
+var
+  Git, Repo, Source, Target, DefaultBranch, Status: string;
+  Branches: TStringList;
+  Output: WideString;
+  HasRemote, HasLocal, CanFastForward: Boolean;
+
+  function QuoteArg(const AText: string): string;
+  begin
+    Result := string(GitQuote(WideString(AText)));
+  end;
+
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Source := GitCurrentBranch(Git, Repo);
+  if Source = '' then
+  begin
+    ShowCompLog;
+    LogComp('Git: HEAD отсоединён - сначала перейдите на ветку, которую ' +
+            'нужно влить');
+    Exit;
+  end;
+  Branches := TStringList.Create;
+  try
+    GitBranchList(Git, Repo, False, Branches);
+    if Branches.IndexOf(Source) >= 0 then
+      Branches.Delete(Branches.IndexOf(Source));
+    // Основная ветка сервера - первой, даже если локальной копии нет
+    DefaultBranch := GitDefaultRemoteBranch(Git, Repo);
+    if Copy(DefaultBranch, 1, 7) = 'origin/' then
+      Delete(DefaultBranch, 1, 7);
+    if (DefaultBranch <> '') and (DefaultBranch <> Source) then
+    begin
+      if Branches.IndexOf(DefaultBranch) < 0 then
+        Branches.Insert(0, DefaultBranch)
+      else
+        Branches.Move(Branches.IndexOf(DefaultBranch), 0);
+    end;
+    if Branches.Count = 0 then
+    begin
+      ShowCompLog;
+      LogComp('Git: вливать некуда - кроме ' + Source + ' веток нет');
+      Exit;
+    end;
+    Target := ChooseFromList('Merge Into', 'Влить ' + Source + ' в ветку:',
+      Branches);
+  finally
+    Branches.Free;
+  end;
+  if Target = '' then
+    Exit;
+  // Незакоммиченные изменения в слияние не попадут, а checkout им мешает
+  Status := '';
+  if GitRunIn(Git, Repo, 'status --porcelain --untracked-files=no', False,
+     Output) = 0 then
+    Status := Trim(string(GitTrimOut(Output)));
+  if Status <> '' then
+  begin
+    ShowMessage('В ' + Source + ' есть незакоммиченные изменения - в ' +
+      Target + ' они не попадут.'#13#10'Сначала Commit... (или Stash), ' +
+      'затем Merge Into.');
+    Exit;
+  end;
+  if MessageDlg('Влить ' + Source + ' в ' + Target + ' и отправить ' + Target +
+     ' на сервер (git push origin ' + Target + ')?', mtConfirmation,
+     [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  if GitLongOp(Git, Repo, 'fetch origin') <> 0 then
+    Exit;
+  HasRemote := GitQuery(Git, Repo, 'rev-parse -q --verify ' +
+    QuoteArg('refs/remotes/origin/' + Target)) <> '';
+  HasLocal := GitQuery(Git, Repo, 'rev-parse -q --verify ' +
+    QuoteArg('refs/heads/' + Target)) <> '';
+  CanFastForward := True;
+  if HasRemote and (GitRunIn(Git, Repo, 'merge-base --is-ancestor ' +
+     QuoteArg('origin/' + Target) + ' ' + QuoteArg(Source), False,
+     Output) <> 0) then
+    CanFastForward := False;
+  if HasLocal and (GitRunIn(Git, Repo, 'merge-base --is-ancestor ' +
+     QuoteArg(Target) + ' ' + QuoteArg(Source), False, Output) <> 0) then
+    CanFastForward := False;
+
+  if CanFastForward then
+  begin
+    if GitLongOp(Git, Repo, 'push origin ' +
+       QuoteArg(Source + ':refs/heads/' + Target)) <> 0 then
+      Exit;
+    if HasLocal then
+      GitLongOp(Git, Repo, 'branch -f ' + QuoteArg(Target) + ' ' +
+        QuoteArg(Source));
+    LogComp('Git: ' + Source + ' влита в ' + Target + ' (перемотка, без ' +
+            'коммита слияния), ' + Target + ' отправлена на сервер');
+    Exit;
+  end;
+
+  // В Target есть свои коммиты - обычное слияние на ней
+  if GitLongOp(Git, Repo, 'checkout ' + QuoteArg(Target)) <> 0 then
+    Exit;
+  if HasRemote and HasLocal and (GitLongOp(Git, Repo, 'merge --ff-only ' +
+     QuoteArg('origin/' + Target)) <> 0) then
+  begin
+    LogComp('Git: локальная ' + Target + ' разошлась с сервером - слияние ' +
+            'не делалось, обратно на ' + Source);
+    GitLongOp(Git, Repo, 'checkout ' + QuoteArg(Source));
+    Exit;
+  end;
+  if GitLongOp(Git, Repo, 'merge --no-edit ' + QuoteArg(Source)) <> 0 then
+  begin
+    LogComp('Git: конфликт - сейчас ветка ' + Target + '. Исправить файлы ' +
+            'и Commit, затем Push и обратно на ' + Source + '; или отменить ' +
+            'в Git Bash: git merge --abort');
+    Exit;
+  end;
+  if GitLongOp(Git, Repo, 'push origin ' + QuoteArg(Target)) <> 0 then
+    LogComp('Git: слияние сделано локально, push не прошёл - отправить ' +
+            Target + ' можно позже (Push на ветке ' + Target + ')');
+  GitLongOp(Git, Repo, 'checkout ' + QuoteArg(Source));
 end;
 
 procedure TForm1.GitViewBranchClick(Sender: TObject);

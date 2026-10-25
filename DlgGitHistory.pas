@@ -11,6 +11,11 @@ unit DlgGitHistory;
 //  Branch from Commit и Revert Commit - их выполняет Unit1 после
 //  закрытия окна (Action, SelectedHash).
 //
+//  Сравнение веток (панель Git - Compare...): ARevs = 'A...B' - коммиты,
+//  которые есть только в одной из веток (git log --left-right), в начале
+//  заголовка коммита - '<' (только в A) или '>' (только в B). Revert в
+//  этом режиме нет: коммит может быть не из текущей ветки.
+//
 //  Окно строится в коде (CreateDlg), .dfm нет.
 // ---------------------------------------------------------------------------
 
@@ -44,6 +49,8 @@ type
     FCurHasParent: Boolean;
     FAction: TGitHistAction;
     FLimit: Integer;
+    FRevs: string;          // что показывать: 'HEAD' или 'A...B'
+    FCompare: Boolean;      // сравнение веток (FRevs с '...')
     FLeft: TUiPanel;
     FRight: TUiPanel;
     FBtnPanel: TUiPanel;
@@ -77,7 +84,7 @@ type
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
   public
     constructor CreateDlg(AOwner: TComponent; const ATitle, AWebUrl: string;
-      AOnQuery: TGitQueryEvent);
+      AOnQuery: TGitQueryEvent; const ARevs: string = 'HEAD');
     property Action: TGitHistAction read FAction;
     property SelectedHash: string read FCurHash;
     // Схема подсветки кода в разнице (Unit1.SchemeCopyFor)
@@ -91,12 +98,16 @@ const
 implementation
 
 constructor TDlgGitHistory.CreateDlg(AOwner: TComponent; const ATitle,
-  AWebUrl: string; AOnQuery: TGitQueryEvent);
+  AWebUrl: string; AOnQuery: TGitQueryEvent; const ARevs: string);
 var
   Column: TListColumn;
 begin
   inherited CreateNew(AOwner);
   FOnQuery := AOnQuery;
+  FRevs := ARevs;
+  if FRevs = '' then
+    FRevs := 'HEAD';
+  FCompare := Pos('...', FRevs) > 0;
   FWebUrl := AWebUrl;
   FAction := ghaNone;
   FCurHash := '';
@@ -237,6 +248,7 @@ begin
     '(git revert); история не переписывается';
   FBtnRevert.ShowHint := True;
   FBtnRevert.OnClick := BtnRevertClick;
+  FBtnRevert.Visible := not FCompare;
 
   FBtnClose := TUiButton.Create(Self);
   FBtnClose.Parent := FBtnPanel;
@@ -306,10 +318,18 @@ var
   Output: WideString;
   CommitIdx, KeepIdx: Integer;
   Item: TListItem;
+  LogArgs: string;
 begin
   Screen.Cursor := crHourGlass;
   try
-    if Query('log ' + GitLogFormat + ' -n ' + IntToStr(FLimit) + ' HEAD',
+    // Сравнение: %m - '<' или '>' (с какой стороны коммит) перед заголовком;
+    // пробел - %x20: аргумент без кавычек
+    if FCompare then
+      LogArgs := 'log --left-right --format=%H%x1f%h%x1f%an%x1f%ad%x1f' +
+        '%m%x20%s%x1e --date=iso'
+    else
+      LogArgs := 'log ' + GitLogFormat;
+    if Query(LogArgs + ' -n ' + IntToStr(FLimit) + ' ' + FRevs,
        Output) <> 0 then
     begin
       SetLength(FCommits, 0);
@@ -337,6 +357,16 @@ begin
     end;
     if Length(FCommits) > 0 then
       FLblInfo.Caption := 'Коммитов показано: ' + IntToStr(Length(FCommits));
+    if FCompare then
+    begin
+      if Length(FCommits) > 0 then
+        FLblInfo.Caption := FLblInfo.Caption + '. < - только в ' +
+          Copy(FRevs, 1, Pos('...', FRevs) - 1) + ', > - только в ' +
+          Copy(FRevs, Pos('...', FRevs) + 3, MaxInt)
+      else if Output = '' then
+        FLblInfo.Caption := 'Различающихся коммитов нет: ветки на одном ' +
+          'коммите';
+    end;
     FBtnMore.Enabled := Length(FCommits) >= FLimit;
     if (KeepIdx >= 0) and (KeepIdx < FCommitList.Items.Count) then
       FCommitList.Items[KeepIdx].Selected := True;
