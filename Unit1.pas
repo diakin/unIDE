@@ -1130,6 +1130,7 @@ type
     // закончена (GitRefreshBar пишет это на панель и в журнал)
     FGitOpStart: string;
     FGitBtnConflicts: TUiButton;
+    FGitBtnAutoResolve: TUiButton;
     FGitBtnContinue: TUiButton;
     FGitBtnSkip: TUiButton;
     FGitBtnAbort: TUiButton;
@@ -3021,6 +3022,9 @@ type
     function  GitMarkerCount(const AFile: string;
                              var AFirstLine: Integer): Integer;
     procedure GitConflictsClick(Sender: TObject);
+    procedure GitAutoResolveClick(Sender: TObject);
+    function  GitAutoResolveFile(const AGit, ARepo, APath: string;
+                                 var AResolved, ALeft: Integer): Boolean;
     procedure GitContinueClick(Sender: TObject);
     procedure GitSkipClick(Sender: TObject);
     procedure GitAbortClick(Sender: TObject);
@@ -64931,6 +64935,7 @@ begin
   if FGitBtnAbort <> nil then
   begin
     PlaceOpButton(FGitBtnConflicts, FGitOp <> '');
+    PlaceOpButton(FGitBtnAutoResolve, FGitOp <> '');
     PlaceOpButton(FGitBtnContinue, FGitOp <> '');
     PlaceOpButton(FGitBtnSkip, (FGitOp = 'cherry-pick') or
                   (FGitOp = 'revert'));
@@ -65238,6 +65243,13 @@ begin
   FGitBtnConflicts := NewButton('Conflicts...', 'Файлы с конфликтом: список ' +
     'в Compilation log, выбранный - в редактор на первый конфликт ' +
     '(<<<<<<<)', 4, 84, GitConflictsClick);
+  FGitBtnAutoResolve := NewButton('Auto-resolve', 'Разрешить конфликты, ' +
+    'где обе стороны только добавили строки в одно место (в общей версии ' +
+    'там ничего не было): оставить обе вставки - сначала текущей ветки, ' +
+    'потом вливаемую. Остальные - с маркерами, вручную', 4, 84,
+    GitAutoResolveClick);
+  FGitBtnAutoResolve.Top := 73;
+  FGitBtnAutoResolve.Visible := False;
   FGitBtnContinue := NewButton('Continue', 'Конфликты исправлены и ' +
     'сохранены: отметить файлы (git add) и закончить - коммит слияния или ' +
     'git cherry-pick / revert --continue', 4, 70, GitContinueClick);
@@ -65668,6 +65680,360 @@ end;
 //  Незаконченное слияние / cherry-pick / revert: Conflicts..., Continue,
 //  Skip, Abort на панели Git
 // ---------------------------------------------------------------------------
+
+// Блок конфликта в тексте: строки маркеров (с 0) и три части, строки
+// через #10. Base - общая версия (между ||||||| и =======, стиль diff3)
+type
+  TGitConflictBlock = record
+    StartLine: Integer;   // строка <<<<<<<
+    EndLine: Integer;     // строка >>>>>>>
+    Ours: string;         // текущая ветка (от <<<<<<< до ||||||| / =======)
+    Base: string;
+    Theirs: string;       // вливаемое (от ======= до >>>>>>>)
+    HasBase: Boolean;
+  end;
+  TGitConflictBlocks = array of TGitConflictBlock;
+
+function GitParseConflicts(ALines: TStrings;
+  var ABlocks: TGitConflictBlocks): Integer;
+var
+  LineIdx, Part: Integer;
+  Line: string;
+  Block: TGitConflictBlock;
+begin
+  SetLength(ABlocks, 0);
+  Result := 0;
+  Part := 0;   // 0 - вне блока, 1 - Ours, 2 - Base, 3 - Theirs
+  for LineIdx := 0 to ALines.Count - 1 do
+  begin
+    Line := ALines[LineIdx];
+    if (Part = 0) and (Copy(Line, 1, 7) = '<<<<<<<') then
+    begin
+      Block.StartLine := LineIdx;
+      Block.Ours := '';
+      Block.Base := '';
+      Block.Theirs := '';
+      Block.HasBase := False;
+      Part := 1;
+    end
+    else if (Part = 1) and (Copy(Line, 1, 7) = '|||||||') then
+    begin
+      Block.HasBase := True;
+      Part := 2;
+    end
+    else if (Part in [1, 2]) and (TrimRight(Line) = '=======') then
+      Part := 3
+    else if (Part = 3) and (Copy(Line, 1, 7) = '>>>>>>>') then
+    begin
+      Block.EndLine := LineIdx;
+      SetLength(ABlocks, Result + 1);
+      ABlocks[Result] := Block;
+      Inc(Result);
+      Part := 0;
+    end
+    else if Part = 1 then
+      Block.Ours := Block.Ours + Line + #10
+    else if Part = 2 then
+      Block.Base := Block.Base + Line + #10
+    else if Part = 3 then
+      Block.Theirs := Block.Theirs + Line + #10;
+  end;
+end;
+
+// Есть ли в двух вставках одна и та же содержательная строка (одно и то
+// же объявление, добавленное обеими ветками): тогда "оставить обе" дало бы
+// повтор. Короткие строки (begin, end;, скобки) и комментарии не в счёт
+function GitInsertsOverlap(const AOurs, ATheirs: string;
+  var ALine: string): Boolean;
+var
+  OursLines, TheirsLines: TStringList;
+  LineIdx: Integer;
+  Line: string;
+begin
+  Result := False;
+  ALine := '';
+  OursLines := TStringList.Create;
+  TheirsLines := TStringList.Create;
+  try
+    OursLines.Text := StringReplace(AOurs, #10, #13#10, [rfReplaceAll]);
+    TheirsLines.Text := StringReplace(ATheirs, #10, #13#10, [rfReplaceAll]);
+    for LineIdx := 0 to TheirsLines.Count - 1 do
+      TheirsLines[LineIdx] := Trim(TheirsLines[LineIdx]);
+    TheirsLines.Sorted := True;
+    for LineIdx := 0 to OursLines.Count - 1 do
+    begin
+      Line := Trim(OursLines[LineIdx]);
+      if (Length(Line) < 12) or (Copy(Line, 1, 2) = '//') then
+        Continue;
+      if TheirsLines.IndexOf(Line) >= 0 then
+      begin
+        ALine := Line;
+        Result := True;
+        Exit;
+      end;
+    end;
+  finally
+    TheirsLines.Free;
+    OursLines.Free;
+  end;
+end;
+
+// Auto-resolve одного файла APath (путь git от корня репозитория).
+// Общая версия - из индекса: git checkout-index --stage=all --temp (base,
+// ours, theirs во временные файлы), git merge-file --diff3 - тот же
+// конфликт с частью base. Блоки файла на диске сопоставляются с ними по
+// тексту ours и theirs (уже исправленное вручную не трогается). Base пуст
+// и вставки не повторяют друг друга - обе остаются, маркеры убираются.
+// AResolved - разрешено блоков, ALeft - осталось. False - не вышло
+function TForm1.GitAutoResolveFile(const AGit, ARepo, APath: string;
+  var AResolved, ALeft: Integer): Boolean;
+var
+  Output: WideString;
+  TempLine, TempBase, TempOurs, TempTheirs, FullPath, SameLine: string;
+  TempNames, FileLines, MergedLines, NewLines: TStringList;
+  FileBlocks, MergedBlocks: TGitConflictBlocks;
+  BlockIdx, MergedIdx, MergedStart, LineIdx, NextBlock, TabPos,
+  CopyIdx: Integer;
+  Resolve: array of Boolean;
+  Known: Boolean;
+  BaseText: string;
+
+  procedure AddText(const AText: string);
+  var
+    TextLines: TStringList;
+  begin
+    if AText = '' then
+      Exit;
+    TextLines := TStringList.Create;
+    try
+      TextLines.Text := StringReplace(AText, #10, #13#10, [rfReplaceAll]);
+      NewLines.AddStrings(TextLines);
+    finally
+      TextLines.Free;
+    end;
+  end;
+
+  // Строки APart (через #10) - подряд внутри AWhole
+  function LinesInside(const APart, AWhole: string): Boolean;
+  begin
+    Result := (APart = '') or (Pos(#10 + APart, #10 + AWhole) > 0);
+  end;
+
+  function TempPath(const AName: string): string;
+  begin
+    Result := '';
+    if (AName <> '') and (AName <> '.') then
+      Result := IncludeTrailingPathDelimiter(ARepo) +
+        StringReplace(AName, '/', '\', [rfReplaceAll]);
+  end;
+
+begin
+  Result := False;
+  AResolved := 0;
+  ALeft := 0;
+  FullPath := IncludeTrailingPathDelimiter(ARepo) +
+    string(GitWinPath(WideString(APath)));
+  TempBase := '';
+  TempOurs := '';
+  TempTheirs := '';
+  FileLines := TStringList.Create;
+  MergedLines := TStringList.Create;
+  NewLines := TStringList.Create;
+  TempNames := TStringList.Create;
+  try
+    try
+      FileLines.LoadFromFile(FullPath);
+    except
+      LogComp('  ' + APath + ': не прочитать');
+      Exit;
+    end;
+    if GitParseConflicts(FileLines, FileBlocks) = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+    // Вывод: "<base> <ours> <theirs><Tab><путь>", '.' - такой версии нет
+    if GitRunIn(AGit, ARepo, 'checkout-index --stage=all --temp -- ' +
+       string(GitQuote(WideString(APath))), False, Output) <> 0 then
+    begin
+      LogComp('  ' + APath + ': версий конфликта в индексе нет');
+      ALeft := Length(FileBlocks);
+      Exit;
+    end;
+    TempLine := Trim(string(GitTrimOut(Output)));
+    TabPos := Pos(#9, TempLine);
+    if TabPos > 0 then
+      TempLine := Copy(TempLine, 1, TabPos - 1);
+    TempNames.Delimiter := ' ';
+    TempNames.DelimitedText := TempLine;
+    if TempNames.Count < 3 then
+    begin
+      LogComp('  ' + APath + ': git checkout-index - ' + TempLine);
+      ALeft := Length(FileBlocks);
+      Exit;
+    end;
+    TempBase := TempPath(TempNames[0]);
+    TempOurs := TempPath(TempNames[1]);
+    TempTheirs := TempPath(TempNames[2]);
+    if (TempOurs = '') or (TempTheirs = '') then
+    begin
+      LogComp('  ' + APath + ': файл удалён в одной из веток - вручную');
+      ALeft := Length(FileBlocks);
+      Exit;
+    end;
+    // Общей версии нет (файл добавлен в обеих ветках) - пустая
+    if TempBase = '' then
+    begin
+      TempBase := TempOurs + '.base';
+      MergedLines.Clear;
+      MergedLines.SaveToFile(TempBase);
+    end;
+    // Результат слияния с частью base пишется в TempOurs; код выхода -
+    // число конфликтов, не ошибка
+    GitRunIn(AGit, ARepo, 'merge-file --diff3 -L ours -L base -L theirs ' +
+      string(GitQuote(WideString(TempOurs))) + ' ' +
+      string(GitQuote(WideString(TempBase))) + ' ' +
+      string(GitQuote(WideString(TempTheirs))), False, Output);
+    MergedLines.LoadFromFile(TempOurs);
+    GitParseConflicts(MergedLines, MergedBlocks);
+
+    SetLength(Resolve, Length(FileBlocks));
+    MergedStart := 0;
+    for BlockIdx := 0 to High(FileBlocks) do
+    begin
+      Resolve[BlockIdx] := False;
+      Known := FileBlocks[BlockIdx].HasBase;
+      BaseText := FileBlocks[BlockIdx].Base;
+      // Блок diff3 шире: при конфликте без base git выносит за маркеры
+      // строки, общие для обеих сторон. Блок файла - часть блока diff3;
+      // блоки идут по порядку, один блок diff3 может дать несколько
+      if not Known then
+        for MergedIdx := MergedStart to High(MergedBlocks) do
+          if LinesInside(FileBlocks[BlockIdx].Ours,
+                         MergedBlocks[MergedIdx].Ours) and
+             LinesInside(FileBlocks[BlockIdx].Theirs,
+                         MergedBlocks[MergedIdx].Theirs) then
+          begin
+            MergedStart := MergedIdx;
+            Known := True;
+            BaseText := MergedBlocks[MergedIdx].Base;
+            Break;
+          end;
+      if not Known then
+        LogComp('  ' + APath + ', строка ' +
+          IntToStr(FileBlocks[BlockIdx].StartLine + 1) + ': общая версия ' +
+          'не найдена (блок правили вручную?) - оставлен')
+      else if Trim(BaseText) <> '' then
+        LogComp('  ' + APath + ', строка ' +
+          IntToStr(FileBlocks[BlockIdx].StartLine + 1) + ': обе ветки ' +
+          'меняли одни и те же строки - вручную')
+      else if GitInsertsOverlap(FileBlocks[BlockIdx].Ours,
+              FileBlocks[BlockIdx].Theirs, SameLine) then
+        LogComp('  ' + APath + ', строка ' +
+          IntToStr(FileBlocks[BlockIdx].StartLine + 1) + ': в обеих ' +
+          'вставках есть "' + SameLine + '" - вручную')
+      else
+        Resolve[BlockIdx] := True;
+      if Resolve[BlockIdx] then
+        Inc(AResolved)
+      else
+        Inc(ALeft);
+    end;
+
+    if AResolved > 0 then
+    begin
+      NextBlock := 0;
+      LineIdx := 0;
+      while LineIdx < FileLines.Count do
+      begin
+        if (NextBlock <= High(FileBlocks)) and
+           (LineIdx = FileBlocks[NextBlock].StartLine) then
+        begin
+          if Resolve[NextBlock] then
+          begin
+            AddText(FileBlocks[NextBlock].Ours);
+            AddText(FileBlocks[NextBlock].Theirs);
+          end
+          else
+            for CopyIdx := FileBlocks[NextBlock].StartLine to
+                FileBlocks[NextBlock].EndLine do
+              NewLines.Add(FileLines[CopyIdx]);
+          LineIdx := FileBlocks[NextBlock].EndLine + 1;
+          Inc(NextBlock);
+        end
+        else
+        begin
+          NewLines.Add(FileLines[LineIdx]);
+          Inc(LineIdx);
+        end;
+      end;
+      NewLines.SaveToFile(FullPath);
+    end;
+    Result := True;
+  finally
+    if TempBase <> '' then
+      DeleteFile(TempBase);
+    if TempOurs <> '' then
+      DeleteFile(TempOurs);
+    if TempTheirs <> '' then
+      DeleteFile(TempTheirs);
+    TempNames.Free;
+    NewLines.Free;
+    MergedLines.Free;
+    FileLines.Free;
+  end;
+end;
+
+procedure TForm1.GitAutoResolveClick(Sender: TObject);
+var
+  Git, Repo: string;
+  Files: TStringList;
+  FileIdx, Resolved, LeftCount, TotalResolved, TotalLeft: Integer;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  // Правки в редакторе - на диск, иначе перечитанный файл их потеряет
+  AutoSaveEditorFiles;
+  Files := TStringList.Create;
+  try
+    ShowCompLog;
+    if GitConflictFiles(Git, Repo, Files) = 0 then
+    begin
+      LogComp('Git: файлов с конфликтом нет');
+      Exit;
+    end;
+    LogComp('Git: Auto-resolve - обе вставки остаются там, где в общей ' +
+            'версии было пусто:');
+    TotalResolved := 0;
+    TotalLeft := 0;
+    for FileIdx := 0 to Files.Count - 1 do
+    begin
+      if not GitAutoResolveFile(Git, Repo, Files[FileIdx], Resolved, LeftCount) then
+      begin
+        Inc(TotalLeft, LeftCount);
+        Continue;
+      end;
+      Inc(TotalResolved, Resolved);
+      Inc(TotalLeft, LeftCount);
+      LogComp('  ' + Files[FileIdx] + ': разрешено ' + IntToStr(Resolved) +
+              ', осталось ' + IntToStr(LeftCount));
+    end;
+  finally
+    Files.Free;
+  end;
+  if TotalLeft = 0 then
+    GitSetHint('Auto-resolve: разрешено ' + IntToStr(TotalResolved) +
+      ', конфликтов не осталось - проверьте разницу (Commit...) и Continue',
+      False)
+  else
+    GitSetHint('Auto-resolve: разрешено ' + IntToStr(TotalResolved) +
+      ', осталось ' + IntToStr(TotalLeft) + ' - Conflicts..., исправить ' +
+      'вручную', True);
+  LogComp('Git: разрешено ' + IntToStr(TotalResolved) + ', осталось ' +
+          IntToStr(TotalLeft));
+  // Открытые в редакторе файлы - перечитать с диска
+  CheckDiskChanges(-1);
+end;
 
 // Что не закончено: 'merge', 'cherry-pick', 'revert' или ''
 function TForm1.GitCurrentOp(const AGit, ARepo: string): string;
