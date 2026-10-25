@@ -1125,6 +1125,10 @@ type
     // последнему обновлению); пока она есть - кнопки Conflicts...,
     // Continue, Skip (у cherry-pick и revert), Abort в начале строки Build
     FGitOp: string;
+    // HEAD до операции FGitOp (у cherry-pick / revert списком - из
+    // sequencer/head): операция пропала, HEAD тот же - отменена, другой -
+    // закончена (GitRefreshBar пишет это на панель и в журнал)
+    FGitOpStart: string;
     FGitBtnConflicts: TUiButton;
     FGitBtnContinue: TUiButton;
     FGitBtnSkip: TUiButton;
@@ -7683,6 +7687,9 @@ procedure TForm1.AppActivate(Sender: TObject);
 begin
   if not FDiskCheckBusy then
     PostMessage(Handle, WM_USER + 315, 0, 0);
+  // Панель Git - заново: в Git Bash могли закончить или отменить слияние
+  // и cherry-pick, переключить ветку
+  GitRefreshLater;
 end;
 
 procedure TForm1.WMCheckDisk(var Msg: TMessage);
@@ -65272,7 +65279,8 @@ end;
 procedure TForm1.GitRefreshBar;
 var
   Git, BaseDir, Repo, Branch, Remote, Upstream, Describe, Counts: string;
-  Installed, InstalledHow: string;
+  Installed, InstalledHow, OldOp, OldStart, HeadNow, SeqHead, OpNote: string;
+  SeqLines: TStringList;
   Output: WideString;
   Changes: TGitChanges;
   Ahead, Behind, BranchIdx, StashCount, StashIdx: Integer;
@@ -65291,7 +65299,10 @@ begin
   FGitBtnPush.TextColor := clNone;
   FGitBtnCommit.TextColor := clNone;
   FGitChanges := -1;
+  OldOp := FGitOp;
+  OldStart := FGitOpStart;
   FGitOp := '';
+  FGitOpStart := '';
   FGitLblSync.ThemeColors := True;
   FGitLblBuild.ThemeColors := True;
   FGitBranchFill := True;
@@ -65431,11 +65442,52 @@ begin
       'метка, число коммитов после неё и короткий хеш); Changes - сколько ' +
       'файлов изменено (Commit... - список)';
     FGitOp := GitCurrentOp(Git, Repo);
+    HeadNow := GitQuery(Git, Repo, 'rev-parse -q --verify HEAD');
     if FGitOp <> '' then
     begin
       FGitLblBuild.Caption := FGitLblBuild.Caption + '   не закончен ' + FGitOp;
       FGitLblBuild.ThemeColors := False;
       FGitLblBuild.Font.Color := $3C3CFF;
+      // Начало операции: то же, что при прошлом обновлении; впервые - HEAD
+      // до списка cherry-pick / revert (sequencer/head) или текущий
+      if (OldOp = FGitOp) and (OldStart <> '') then
+        FGitOpStart := OldStart
+      else
+      begin
+        FGitOpStart := HeadNow;
+        SeqHead := GitQuery(Git, Repo, 'rev-parse --git-path sequencer/head');
+        if SeqHead <> '' then
+        begin
+          if ExtractFileDrive(SeqHead) = '' then
+            SeqHead := IncludeTrailingPathDelimiter(Repo) + SeqHead;
+          SeqHead := StringReplace(SeqHead, '/', '\', [rfReplaceAll]);
+          if FileExists(SeqHead) then
+          begin
+            SeqLines := TStringList.Create;
+            try
+              try
+                SeqLines.LoadFromFile(SeqHead);
+                if (SeqLines.Count > 0) and (Trim(SeqLines[0]) <> '') then
+                  FGitOpStart := Trim(SeqLines[0]);
+              except
+                // не прочитать - остаётся текущий HEAD
+              end;
+            finally
+              SeqLines.Free;
+            end;
+          end;
+        end;
+      end;
+    end
+    else if OldOp <> '' then
+    begin
+      // Операция пропала (Abort, Continue, или сделано в Git Bash)
+      if (OldStart <> '') and (HeadNow = OldStart) then
+        OpNote := OldOp + ' отменён - файлы и ветка как до него'
+      else
+        OpNote := OldOp + ' закончен';
+      LogComp('Git: ' + OpNote);
+      GitSetHint(OpNote, False);
     end;
   finally
     FGitBranchFill := False;
