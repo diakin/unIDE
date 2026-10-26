@@ -53659,12 +53659,18 @@ begin
   if UsesLcl then
     Params := Params + ' -i "' + LclDir + 'inc"';
   Params := Params + ' -x "' + OutFile + '" "' + MainBas + '"';
-  // $RESOURCE: .rc от перевода рядом с файлом
+  // $RESOURCE: .rc от перевода рядом с файлом. У обычной программы -
+  // одноимённый .rc рядом с главным .bas (значок FB_PROGRAM_ICON, версия):
+  // в исходнике FreeBASIC ресурсы не подключаются, fbc берёт .rc в
+  // командной строке
   if IsConverted then
+    ResFile := ChangeFileExt(MainBas, '') + '_res.rc'
+  else
+    ResFile := ChangeFileExt(MainBas, '.rc');
+  if FileExists(ResFile) then
   begin
-    ResFile := ChangeFileExt(MainBas, '') + '_res.rc';
-    if FileExists(ResFile) then
-      Params := Params + ' "' + ResFile + '"';
+    Params := Params + ' "' + ResFile + '"';
+    LogComp('Ресурсы: ' + ResFile);
   end;
 
   // Запущенный exe переименовывается в .old (как у Delphi и RapidQ),
