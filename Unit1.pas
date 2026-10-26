@@ -74450,7 +74450,7 @@ end;
 procedure TForm1.SyncCaretX;
 var
   Sel: TCharRange;
-  Pt: TPoint;
+  Pt, GutterPt: TPoint;
 begin
   // Каретка принадлежит окну с фокусом ввода - иначе ставить нечего
   if not RichEdit1.HandleAllocated or not RichEdit1.Focused then
@@ -74461,9 +74461,16 @@ begin
 
   // Каретку рисуем всегда сами. Системной управляет контрол, и правее своей
   // ширины (EditorFixedWidth) он её прячет - по его мнению, она вне окна.
-  // Системная уводится за край: её прячет и HideCaret при получении фокуса,
-  // но контрол может создать каретку заново.
-  SetCaretPos(-100, -100);
+  // Системная ставится на левый край поля номеров строк, на высоту текущей
+  // строки. Её прячет HideCaret при получении фокуса (контрол может создать
+  // каретку заново - тогда она видна на поле), а по её положению место ввода
+  // находят внешние программы (индикатор раскладки и т.п.).
+  // Поле левее RichEdit1, поэтому X отрицательный.
+  if Panel1.Visible and Panel1.HandleAllocated then
+    GutterPt := RichEdit1.ScreenToClient(Panel1.ClientToScreen(Point(0, 0)))
+  else
+    GutterPt := Point(0, 0);
+  SetCaretPos(GutterPt.X, Pt.Y);
   MoveOwnCaret(Point(Pt.X - FScrollX, Pt.Y), True);
 end;
 
