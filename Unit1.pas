@@ -57536,6 +57536,75 @@ begin
     LogComp('--- Пауза: программа останавливается...');
 end;
 
+type
+  TCloseScan = record
+    Pid: DWORD;
+    Posted: Integer;
+  end;
+  PCloseScan = ^TCloseScan;
+
+function CloseWinTopProc(AWnd: HWND; AParam: LPARAM): BOOL; stdcall;
+var
+  Scan: PCloseScan;
+  WinPid: DWORD;
+  ClassBuf: array[0..255] of Char;
+begin
+  Result := True;
+  Scan := PCloseScan(AParam);
+  WinPid := 0;
+  GetWindowThreadProcessId(AWnd, @WinPid);
+  if WinPid <> Scan^.Pid then
+    Exit;
+  // Окна IME создаёт система, программа их не закрывает
+  ClassBuf[0] := #0;
+  GetClassName(AWnd, ClassBuf, SizeOf(ClassBuf));
+  if (StrPas(ClassBuf) = 'IME') or (StrPas(ClassBuf) = 'MSCTFIME UI') then
+    Exit;
+  PostMessage(AWnd, WM_CLOSE, 0, 0);
+  Inc(Scan^.Posted);
+end;
+
+// GetProcessId есть с XP SP1 - берётся по имени
+function ProcessIdOf(AProcess: THandle): DWORD;
+type
+  TGetProcessId = function(Process: THandle): DWORD; stdcall;
+var
+  GetPid: TGetProcessId;
+begin
+  Result := 0;
+  @GetPid := GetProcAddress(GetModuleHandle('kernel32.dll'), 'GetProcessId');
+  if Assigned(GetPid) then
+    Result := GetPid(AProcess);
+end;
+
+// Просит программу закрыться самой: WM_CLOSE всем её окнам верхнего уровня,
+// и видимым, и скрытым (программа в трее окон не показывает). Ждёт до
+// AWaitMs. True - процесс завершился. Так программа успевает убрать за собой
+// то, что TerminateProcess оставляет: значок в трее, временные файлы.
+function CloseProcessGently(AProcess: THandle; AWaitMs: DWORD): Boolean;
+var
+  Scan: TCloseScan;
+  StartTick: DWORD;
+begin
+  Result := False;
+  Scan.Pid := ProcessIdOf(AProcess);
+  Scan.Posted := 0;
+  if Scan.Pid = 0 then
+    Exit;
+  EnumWindows(@CloseWinTopProc, LPARAM(@Scan));
+  if Scan.Posted = 0 then
+    Exit;
+  StartTick := GetTickCount;
+  repeat
+    if WaitForSingleObject(AProcess, 50) <> WAIT_TIMEOUT then
+    begin
+      Result := True;
+      Exit;
+    end;
+    Application.ProcessMessages;
+  until GetTickCount - StartTick >= AWaitMs;
+end;
+
 // Program reset: остановить программу, запущенную из среды
 procedure TForm1.ProgramResetClick(Sender: TObject);
 var
@@ -57564,9 +57633,11 @@ begin
   if Process = 0 then
     Exit;
   // Консольная: cmd с паузой и сама программа - вместе
+  // Оконная: сначала просьба закрыться (WM_CLOSE), не закрылась за 1,5 с -
+  // снимается
   if RunConOf(CurRunExe) <> nil then
     TRunConsole(RunConOf(CurRunExe)).Kill
-  else
+  else if not CloseProcessGently(Process, 1500) then
     TerminateProcess(Process, 1);
   LogComp('--- Программа остановлена (Program reset): ' + CurRunExe);
   RunTimerTick(nil);   // дескриптор закрыть, форму конструктора вернуть
