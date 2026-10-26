@@ -69153,7 +69153,7 @@ var
   TrackedList, NewList, TrackedFile, NewFile: string;
   Recycle: TGitPaths;
   Output: WideString;
-  Code: string;
+  Code, NameList: string;
 
   procedure AddRecycle(const APath: WideString);
   begin
@@ -69167,8 +69167,18 @@ begin
   Result := False;
   if Length(AChanges) = 0 then
     Exit;
+  // Какие файлы - в вопросе (до 15, дальше - сколько ещё)
+  NameList := '';
+  for ChangeIdx := 0 to High(AChanges) do
+    if ChangeIdx < 15 then
+      NameList := NameList + '  ' + string(GitWinPath(AChanges[ChangeIdx].Path)) +
+        #13#10;
+  if Length(AChanges) > 15 then
+    NameList := NameList + '  ... и ещё ' + IntToStr(Length(AChanges) - 15) +
+      #13#10;
   if AAsk and (MessageDlg('9822:Отменить изменения в ' +
-     IntToStr(Length(AChanges)) + ' файл(ах)?'#13#10#13#10 +
+     IntToStr(Length(AChanges)) + ' файл(ах)?'#13#10#13#10 + NameList +
+     #13#10 +
      'Изменённые и удалённые файлы станут такими, как в последнем коммите; ' +
      'новые файлы уйдут в корзину Windows. Несохранённые в коммит правки ' +
      'этих файлов пропадут (кроме новых файлов - они в корзине).',
