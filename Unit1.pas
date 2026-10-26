@@ -3099,6 +3099,7 @@ type
     procedure GitBashClick(Sender: TObject);
     procedure GitBuildMenus;
     procedure GitNewRepoClick(Sender: TObject);
+    procedure GitCreateProjectClick(Sender: TObject);
     procedure GitAddRepoClick(Sender: TObject);
     procedure GitCloneClick(Sender: TObject);
     procedure GitUseProjectRepoClick(Sender: TObject);
@@ -67585,6 +67586,9 @@ begin
   AddItem(RepoMenu, 'Use Repository of Current Project', 'Снова ' +
     'репозиторий открытого проекта (выбор вручную снимается)',
     GitUseProjectRepoClick);
+  AddItem(RepoMenu, 'Create Project from Repository...', 'Проект unIDE ' +
+    'на основе текущего репозитория: окно New Project с его папкой',
+    GitCreateProjectClick);
   AddItem(RepoMenu, '-', '', nil);
   AddItem(RepoMenu, 'Fetch', 'git fetch --all --prune', GitFetchClick);
   AddItem(RepoMenu, 'Pull', 'git pull (merge)', GitPullClick);
@@ -67732,6 +67736,44 @@ begin
     FNewPrjPresetDir := Dir;
     NewProjectClick(nil);
   end;
+end;
+
+// Create Project from Repository: проект unIDE на основе репозитория на
+// панели Git - окно New Project с его папкой, «На базе существующего», тип
+// по файлам (нет главного файла - заготовка). Проект для папки уже есть -
+// вопрос, открыть ли его
+procedure TForm1.GitCreateProjectClick(Sender: TObject);
+var
+  Dir, PrjName: string;
+  PrjIdx: Integer;
+begin
+  Dir := FGitRepoTop;
+  if Dir = '' then
+    Dir := GitBaseDir;
+  if (Dir = '') or not DirectoryExists(Dir) then
+  begin
+    ShowCompLog;
+    LogComp('Git: репозиторий не выбран - Repository... или Clone ' +
+            'Repository');
+    Exit;
+  end;
+  Dir := IncludeTrailingPathDelimiter(Dir);
+  if FProjectReg = nil then
+    LoadProjectReg;
+  PrjName := '';
+  for PrjIdx := 0 to FProjectReg.Count - 1 do
+    if CompareText(IncludeTrailingPathDelimiter(
+       FProjectReg.ValueFromIndex[PrjIdx]), Dir) = 0 then
+      PrjName := FProjectReg.Names[PrjIdx];
+  if PrjName <> '' then
+  begin
+    if MessageDlg('9832:Для папки ' + Dir + ' уже есть проект ' + PrjName +
+                  '. Открыть его?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+      LoadProject(PrjName);
+    Exit;
+  end;
+  FNewPrjPresetDir := Dir;
+  NewProjectClick(nil);
 end;
 
 // Репозиторий на GitHub для нового локального: origin уже есть - ничего;
@@ -68124,6 +68166,13 @@ begin
   AddMenuItem('Add Local Repository...', GitAddRepoClick, False, 0);
   AddMenuItem('Clone Repository...', GitCloneClick, False, 0);
   AddMenuItem('New Repository...', GitNewRepoClick, False, 0);
+  if FGitRepoTop <> '' then
+  begin
+    AddMenuItem('-', nil, False, 0);
+    AddMenuItem('Create Project from ' + StringReplace(ExtractFileName(
+      ExcludeTrailingPathDelimiter(FGitRepoTop)), '&', '&&', [rfReplaceAll]) +
+      '...', GitCreateProjectClick, False, 0);
+  end;
   if FGitRepoTop <> '' then
   begin
     AddMenuItem('-', nil, False, 0);
