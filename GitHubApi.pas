@@ -47,6 +47,10 @@ function GitHubTokenLogin(const AToken: string; var ALogin: string;
 // AHtmlUrl - страница. False - AError (422 - такое имя уже есть и т. п.)
 function GitHubCreateRepo(const AToken, AName: string; APrivate: Boolean;
   var ACloneUrl, AHtmlUrl, AError: string): Boolean;
+// Есть ли на GitHub репозиторий AOwner/AName (GET /repos/...): 1 - есть
+// (ACloneUrl - его адрес), 0 - нет (404), -1 - не узнать (AError)
+function GitHubRepoExists(const AToken, AOwner, AName: string;
+  var ACloneUrl, AError: string): Integer;
 // 'владелец/имя', 'github.com/владелец/имя', адрес https или git@ ->
 // адрес для git clone; имя репозитория - в AName. '' - не разобрать
 function GitHubNormalizeUrl(const AText: string; var AName: string): string;
@@ -726,6 +730,39 @@ begin
   Result := ACloneUrl <> '';
   if not Result then
     AError := 'GitHub: в ответе нет адреса репозитория';
+end;
+
+function GitHubRepoExists(const AToken, AOwner, AName: string;
+  var ACloneUrl, AError: string): Integer;
+var
+  Body: string;
+  Status: Integer;
+  Reader: TGhJson;
+  Pairs: TGhPairs;
+begin
+  Result := -1;
+  ACloneUrl := '';
+  if not GhGet(AToken, '/repos/' + AOwner + '/' + AName, Body, Status,
+     AError) then
+    Exit;
+  if Status = 404 then
+  begin
+    Result := 0;
+    Exit;
+  end;
+  if Status <> 200 then
+  begin
+    AError := GhStatusError(Status, Body);
+    Exit;
+  end;
+  Reader := TGhJson.Create(GhFromUtf8(Body));
+  try
+    if Reader.ReadObject(Pairs) then
+      ACloneUrl := string(GhPair(Pairs, 'clone_url'));
+  finally
+    Reader.Free;
+  end;
+  Result := 1;
 end;
 
 function GitHubNormalizeUrl(const AText: string; var AName: string): string;

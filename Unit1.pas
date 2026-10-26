@@ -67411,11 +67411,16 @@ end;
 
 // New Repository: папка (можно новую - в поле пути дописать её имя),
 // затем имя репозитория - по умолчанию имя последней папки пути; другое
-// имя - папка с этим именем рядом. Папки нет - создаётся; затем git init
+// имя - папка с этим именем рядом. Папки нет - создаётся; не репозиторий -
+// git init (уже репозиторий - дальше с ним). Затем GitHub (GitPublishNewRepo:
+// есть там такой - прописать origin, нет - создать) и, если для папки нет
+// проекта unIDE, окно New Project на её основе
 procedure TForm1.GitNewRepoClick(Sender: TObject);
 var
-  Git, Dir, StartDir, RepoName, Parent: string;
+  Git, Dir, StartDir, RepoName, Parent, Top: string;
   Picked: Boolean;
+  PrjIdx: Integer;
+  HasProject: Boolean;
 begin
   if FGitBusy then
     Exit;
@@ -67458,34 +67463,98 @@ begin
     LogComp('Git: создана папка ' + Dir);
   end;
   Dir := IncludeTrailingPathDelimiter(Dir);
-  if GitRepoTop(Git, Dir) <> '' then
+  Top := GitRepoTop(Git, Dir);
+  if Top <> '' then
   begin
-    ShowCompLog;
-    LogComp('Git: ' + Dir + ' уже в репозитории ' + GitRepoTop(Git, Dir));
+    if CompareText(IncludeTrailingPathDelimiter(Top), Dir) <> 0 then
+    begin
+      // Папка внутри другого репозитория - вложенный git init не делаем
+      LogComp('Git: ' + Dir + ' лежит внутри репозитория ' + Top +
+              ' - новый репозиторий в ней не создаётся');
+      Exit;
+    end;
+    LogComp('Git: ' + Dir + ' - уже репозиторий git, git init не нужен');
+  end
+  else if GitLongOp(Git, Dir, 'init') <> 0 then
     Exit;
-  end;
-  if GitLongOp(Git, Dir, 'init') = 0 then
+  GitSetChosenRepo(ExcludeTrailingPathDelimiter(Dir));
+  GitPublishNewRepo(Git, Dir, RepoName);
+  GitRefreshBar;
+  // Проект unIDE для этой папки: нет - окно New Project на её основе
+  if FProjectReg = nil then
+    LoadProjectReg;
+  HasProject := False;
+  for PrjIdx := 0 to FProjectReg.Count - 1 do
+    if CompareText(IncludeTrailingPathDelimiter(
+       FProjectReg.ValueFromIndex[PrjIdx]), Dir) = 0 then
+      HasProject := True;
+  if HasProject then
+    LogComp('Git: для папки уже есть проект unIDE')
+  else
   begin
-    GitSetChosenRepo(ExcludeTrailingPathDelimiter(Dir));
-    GitPublishNewRepo(Git, Dir, RepoName);
-    GitRefreshBar;
+    FNewPrjPresetDir := Dir;
+    NewProjectClick(nil);
   end;
 end;
 
-// После git init: вопрос - создать репозиторий с тем же именем на GitHub
-// (Private / Public) и прописать его как origin. Токен - сохранённый логин
+// Репозиторий на GitHub для нового локального: origin уже есть - ничего;
+// есть на GitHub <логин>/<имя> - вопрос, прописать ли его как origin; нет -
+// вопрос: создать (Private / Public) и прописать. Токен - сохранённый логин
 // git (git credential fill); нет - подсказка: Clone Repository - Войти...
 procedure TForm1.GitPublishNewRepo(const AGit, ADir, AName: string);
 var
   Dlg: TForm;
-  BtnIndex, Answer: Integer;
+  BtnIndex, Answer, Exists: Integer;
   Btn: TButton;
-  User, Token, CloneUrl, HtmlUrl, ErrText: string;
+  User, Token, Login, Origin, CloneUrl, HtmlUrl, ErrText: string;
   Output: WideString;
   Created: Boolean;
 begin
-  Dlg := CreateMessageDialog('9830:Локальный репозиторий ' + AName +
-    ' создан.'#13#10#13#10'Создать репозиторий ' + AName + ' на GitHub и ' +
+  ShowCompLog;
+  Origin := GitQuery(AGit, ADir, 'config --get remote.origin.url');
+  if Origin <> '' then
+  begin
+    LogComp('Git: origin уже прописан - ' + Origin);
+    Exit;
+  end;
+  if not GitCredentialGet(User, Token) then
+  begin
+    LogComp('Git: логин GitHub не сохранён - репозиторий на GitHub не ' +
+            'проверен и не создан. Войдите: Repository - Clone Repository ' +
+            '- Войти... (логин и personal access token) и повторите New ' +
+            'Repository для этой папки');
+    Exit;
+  end;
+  Screen.Cursor := crHourGlass;
+  try
+    Exists := -1;
+    if GitHubTokenLogin(Token, Login, ErrText) then
+      Exists := GitHubRepoExists(Token, Login, AName, CloneUrl, ErrText);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  if Exists < 0 then
+  begin
+    LogComp('GitHub: не узнать, есть ли репозиторий ' + AName + ' - ' +
+            ErrText);
+    Exit;
+  end;
+  if Exists = 1 then
+  begin
+    LogComp('GitHub: репозиторий ' + Login + '/' + AName + ' уже есть');
+    if MessageDlg('9831:На GitHub уже есть репозиторий ' + Login + '/' +
+                  AName + '.'#13#10#13#10'Прописать его как origin этой ' +
+                  'папки?'#13#10 + CloneUrl, mtConfirmation, [mbYes, mbNo],
+                  0) <> mrYes then
+      Exit;
+    if GitRunIn(AGit, ADir, 'remote add origin ' +
+       string(GitQuote(WideString(CloneUrl))), True, Output) = 0 then
+      LogComp('Git: origin = ' + CloneUrl + '. Если там уже есть ' +
+              'коммиты - сначала Fetch и Pull, потом Push');
+    Exit;
+  end;
+  Dlg := CreateMessageDialog('9830:На GitHub репозитория ' + Login + '/' +
+    AName + ' нет.'#13#10#13#10'Создать репозиторий ' + AName + ' на GitHub и ' +
     'прописать его как origin? Он будет пустым (без README), первый Push ' +
     'отправит туда ваши коммиты.'#13#10#13#10'Private - виден только вам ' +
     '(и тем, кого добавите), Public - всем.',
@@ -67513,15 +67582,6 @@ begin
   end;
   if (Answer <> mrYes) and (Answer <> mrNo) then
     Exit;
-  ShowCompLog;
-  if not GitCredentialGet(User, Token) then
-  begin
-    LogComp('Git: логин GitHub не сохранён - репозиторий на GitHub не ' +
-            'создан. Войдите: Repository - Clone Repository - Войти... ' +
-            '(логин и personal access token), затем создайте его там или ' +
-            'на github.com и пропишите в Repository Settings');
-    Exit;
-  end;
   LogComp('GitHub: создание репозитория ' + AName + '...');
   Screen.Cursor := crHourGlass;
   try
