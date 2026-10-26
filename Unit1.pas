@@ -11481,6 +11481,7 @@ var
   DelphiKind: Integer; // FNewDelphiKind этого вызова
   RosCfg: TRosSettings; // настройки проекта ReactOS из окна
   PresetDir: string;    // папка клона (Clone Repository), '' - нет
+  FbIconPath: string;   // значок exe проекта FreeBASIC из окна, '' - нет
   // Новый проект RapidQ: вид заготовки (FNewRqKind этого вызова, потом -
   // выбранный в окне), компилятор и разрядность; главный файл
   NewRqKind, NewRqComp, NewRqBits: Integer;
@@ -11664,6 +11665,7 @@ begin
     NewRqBits := Dlg.RqBits;
     if Dlg.IsRosType then
       Dlg.GetRosSettings(RosCfg);
+    FbIconPath := Dlg.FbIcon;
 
     if (Nm = '') or (Dir = '') then
     begin
@@ -12191,6 +12193,16 @@ begin
         Prj.WriteString('Project', 'IncMode', IncMode);
         Prj.WriteString('Project', 'IncPath', IncOwnDir);
         Prj.WriteString('Project', 'IncPaths', IncOwnList);
+      end;
+      // Значок exe FreeBASIC: в окне папки проекта ещё не было, путь
+      // полный - внутри папки проекта записывается от неё
+      if (CompareText(Tp, 'FreeBASIC') = 0) and (FbIconPath <> '') then
+      begin
+        if CompareText(Copy(FbIconPath, 1, Length(IncludeTrailingPathDelimiter(Dir))),
+                       IncludeTrailingPathDelimiter(Dir)) = 0 then
+          FbIconPath := Copy(FbIconPath,
+                             Length(IncludeTrailingPathDelimiter(Dir)) + 1, MaxInt);
+        Prj.WriteString('Project', 'FbIcon', FbIconPath);
       end;
       // ReactOS: папка сборки не задана - output-* дерева исходников
       // (одна - она, несколько - первая с build.ninja)
