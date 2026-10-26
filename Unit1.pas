@@ -65775,6 +65775,14 @@ begin
       'Отменить - Abort';
     Exit;
   end;
+  // Push в репозитории без коммитов: ветки ещё нет
+  if Pos('src refspec', OutLower) > 0 then
+  begin
+    AIsError := True;
+    Result := 'в репозитории ещё нет коммитов - отправлять нечего: ' +
+      'сначала Commit... (отметьте файлы, заголовок), затем Push';
+    Exit;
+  end;
   if (Pos('[rejected]', OutLower) > 0) and
      ((Pos('fetch first', OutLower) > 0) or
       (Pos('non-fast-forward', OutLower) > 0)) then
@@ -66206,13 +66214,18 @@ begin
     FGitLblBuild.Caption := 'Build: ' + Describe + '   Changes: ' +
       IntToStr(Length(Changes));
     FGitChanges := Length(Changes);
-    // Есть незакоммиченные изменения - строка оранжевая, Commit... красная
+    // Есть незакоммиченные изменения - строка оранжевая, Commit... красная.
+    // Красная - одна кнопка, следующий шаг: сначала Commit, после него -
+    // Push (и Push не красный, пока коммитов ещё нет совсем)
     if Length(Changes) > 0 then
     begin
       FGitLblBuild.ThemeColors := False;
       FGitLblBuild.Font.Color := $0090FF;
       FGitBtnCommit.TextColor := clRed;
-    end;
+      FGitBtnPush.TextColor := clNone;
+    end
+    else if Describe = 'коммитов ещё нет' then
+      FGitBtnPush.TextColor := clNone;
     if GitRunIn(Git, Repo, 'stash list', False, Output) = 0 then
     begin
       StashCount := 0;
