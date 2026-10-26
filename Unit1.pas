@@ -31533,9 +31533,7 @@ end;
 function TForm1.RqFbAskMode: Boolean;
 var
   SrcMain, Mode, FbFile: string;
-  Dlg: TForm;
-  BtnIdx, Answer: Integer;
-  Btn: TButton;
+  Answer: Integer;
 begin
   Result := False;
   SrcMain := RqFbSourceMain(FCurrentFileName);
@@ -31557,8 +31555,8 @@ begin
     Exit;
   end;
 
-  Dlg := CreateMessageDialog(
-    'Файл ' + ExtractFileName(FCurrentFileName) + ' - перевод исходника ' +
+  // 0 - связь с RapidQ, 1 - перейти на FreeBASIC, 2 - отмена
+  Answer := MessageDlgButtons('Файл ' + ExtractFileName(FCurrentFileName) + ' - перевод исходника ' +
     'RapidQ ' + ExtractFileName(SrcMain) + ' во FreeBASIC. Сборка FB Smart ' +
     'пересоздаёт его каждый раз, правки в нём пропадут.'#13#10#13#10 +
     'Связь с RapidQ - исходником остаётся RapidQ. Перевод только для ' +
@@ -31570,44 +31568,16 @@ begin
     'остаётся как есть и с ним больше не связан.'#13#10#13#10 +
     'Выбор запоминается для ' + ExtractFileName(SrcMain) +
     ' (editor.ini, раздел [RqFbMode]).',
-    mtConfirmation, [mbYes, mbNo, mbCancel]);
-  try
-    Dlg.Caption := 'Перевод RapidQ -> FreeBASIC';
-    Dlg.Width := Dlg.Width + 160;
-    for BtnIdx := 0 to Dlg.ComponentCount - 1 do
-      if Dlg.Components[BtnIdx] is TButton then
-      begin
-        Btn := TButton(Dlg.Components[BtnIdx]);
-        if Btn.ModalResult = mrYes then
-        begin
-          Btn.Caption := 'Связь с RapidQ';
-          Btn.Width := 140;
-          Btn.Left := Dlg.ClientWidth - 3 * 150 - 10;
-        end
-        else if Btn.ModalResult = mrNo then
-        begin
-          Btn.Caption := 'Перейти на FreeBASIC';
-          Btn.Width := 140;
-          Btn.Left := Dlg.ClientWidth - 2 * 150 - 10;
-        end
-        else if Btn.ModalResult = mrCancel then
-        begin
-          Btn.Width := 140;
-          Btn.Left := Dlg.ClientWidth - 150 - 10;
-        end;
-      end;
-    Answer := Dlg.ShowModal;
-  finally
-    Dlg.Free;
-  end;
-  if Answer = mrYes then
+    mtConfirmation, 'Перевод RapidQ -> FreeBASIC',
+    ['Связь с RapidQ', 'Перейти на FreeBASIC', 'Cancel'], 0, 2);
+  if Answer = 0 then
   begin
     RqFbModeSet(SrcMain, 'linked');
     LogComp('Перевод ' + ExtractFileName(FCurrentFileName) + ': связь с ' +
             'исходником RapidQ ' + SrcMain);
     Result := True;
   end
-  else if Answer = mrNo then
+  else if Answer = 1 then
     RqFbDetach;
 end;
 
@@ -64940,9 +64910,7 @@ end;
 function TForm1.GitConsoleLogin(const AGit, ADir, AArgs: string;
   AWincred: Boolean): Integer;
 var
-  Dlg: TForm;
-  Answer, BtnIndex: Integer;
-  Btn: TButton;
+  Answer: Integer;
   SetWincred: Boolean;
   PromptText: string;
 begin
@@ -64963,7 +64931,8 @@ begin
   end
   else
   begin
-    Dlg := CreateMessageDialog('9827:' + PromptText + #13#10#13#10 +
+    // 0 - wincred и консоль, 1 - только консоль, 2 - отмена
+    Answer := MessageDlgButtons('9827:' + PromptText + #13#10#13#10 +
       'Сохранять логин через wincred - unIDE выполнит:'#13#10 +
       '  git config --global --replace-all credential.helper ""'#13#10 +
       '  git config --global --add credential.helper wincred'#13#10 +
@@ -64972,39 +64941,11 @@ begin
       'git из unIDE пройдут без консоли.'#13#10#13#10 +
       'Только консоль - логин нужно будет вводить при каждой команде, ' +
       'которой нужен вход.',
-      mtConfirmation, [mbYes, mbNo, mbCancel]);
-    try
-      Dlg.Caption := 'Вход git по https';
-      Dlg.Width := Dlg.Width + 160;
-      for BtnIndex := 0 to Dlg.ComponentCount - 1 do
-        if Dlg.Components[BtnIndex] is TButton then
-        begin
-          Btn := TButton(Dlg.Components[BtnIndex]);
-          if Btn.ModalResult = mrYes then
-          begin
-            Btn.Caption := 'wincred и консоль';
-            Btn.Width := 140;
-            Btn.Left := Dlg.ClientWidth - 3 * 150 - 10;
-          end
-          else if Btn.ModalResult = mrNo then
-          begin
-            Btn.Caption := 'Только консоль';
-            Btn.Width := 140;
-            Btn.Left := Dlg.ClientWidth - 2 * 150 - 10;
-          end
-          else if Btn.ModalResult = mrCancel then
-          begin
-            Btn.Width := 140;
-            Btn.Left := Dlg.ClientWidth - 150 - 10;
-          end;
-        end;
-      Answer := Dlg.ShowModal;
-    finally
-      Dlg.Free;
-    end;
-    if Answer = mrYes then
+      mtConfirmation, 'Вход git по https',
+      ['wincred и консоль', 'Только консоль', 'Cancel'], 0, 2);
+    if Answer = 0 then
       SetWincred := True
-    else if Answer = mrNo then
+    else if Answer = 1 then
       SetWincred := False
     else
     begin
@@ -67503,9 +67444,7 @@ end;
 // git (git credential fill); нет - подсказка: Clone Repository - Войти...
 procedure TForm1.GitPublishNewRepo(const AGit, ADir, AName: string);
 var
-  Dlg: TForm;
-  BtnIndex, Answer, Exists: Integer;
-  Btn: TButton;
+  Answer, Exists: Integer;
   User, Token, Login, Origin, CloneUrl, HtmlUrl, ErrText: string;
   Output: WideString;
   Created: Boolean;
@@ -67553,39 +67492,20 @@ begin
               'коммиты - сначала Fetch и Pull, потом Push');
     Exit;
   end;
-  Dlg := CreateMessageDialog('9830:На GitHub репозитория ' + Login + '/' +
+  // 0 - Private, 1 - Public, 2 - не создавать
+  Answer := MessageDlgButtons('9830:На GitHub репозитория ' + Login + '/' +
     AName + ' нет.'#13#10#13#10'Создать репозиторий ' + AName + ' на GitHub и ' +
     'прописать его как origin? Он будет пустым (без README), первый Push ' +
     'отправит туда ваши коммиты.'#13#10#13#10'Private - виден только вам ' +
     '(и тем, кого добавите), Public - всем.',
-    mtConfirmation, [mbYes, mbNo, mbCancel]);
-  try
-    Dlg.Caption := 'New Repository на GitHub';
-    for BtnIndex := 0 to Dlg.ComponentCount - 1 do
-      if Dlg.Components[BtnIndex] is TButton then
-      begin
-        Btn := TButton(Dlg.Components[BtnIndex]);
-        if Btn.ModalResult = mrYes then
-          Btn.Caption := 'Private'
-        else if Btn.ModalResult = mrNo then
-          Btn.Caption := 'Public'
-        else if Btn.ModalResult = mrCancel then
-        begin
-          Btn.Caption := 'Не создавать';
-          Btn.Width := Btn.Width + 30;
-          Btn.Left := Btn.Left - 30;
-        end;
-      end;
-    Answer := Dlg.ShowModal;
-  finally
-    Dlg.Free;
-  end;
-  if (Answer <> mrYes) and (Answer <> mrNo) then
+    mtConfirmation, 'New Repository на GitHub',
+    ['Private', 'Public', 'Не создавать'], 0, 2);
+  if Answer > 1 then
     Exit;
   LogComp('GitHub: создание репозитория ' + AName + '...');
   Screen.Cursor := crHourGlass;
   try
-    Created := GitHubCreateRepo(Token, AName, Answer = mrYes, CloneUrl,
+    Created := GitHubCreateRepo(Token, AName, Answer = 0, CloneUrl,
                                 HtmlUrl, ErrText);
   finally
     Screen.Cursor := crDefault;

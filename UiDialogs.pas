@@ -34,6 +34,14 @@ function InputQuery(const ACaption, APrompt: string;
   var Value: string): Boolean;
 function InputBox(const ACaption, APrompt, ADefault: string): string;
 
+// Окно с вопросом и своими подписями кнопок (вместо CreateMessageDialog
+// VCL: у его TButton подписи пропадают по Alt, кнопки после правки
+// подписей налезают друг на друга). Ответ - номер кнопки в AButtons (с 0),
+// Esc и крестик - ACancelIndex. ADefaultIndex - кнопка Enter
+function MessageDlgButtons(const Msg: string; DlgType: TMsgDlgType;
+  const ACaption: string; const AButtons: array of string;
+  ADefaultIndex, ACancelIndex: Integer): Integer;
+
 // Как Application.MessageBox: флаги MB_OK, MB_YESNO, MB_ICONQUESTION,
 // MB_DEFBUTTON2 и т. д.; ответ - IDOK, IDYES, IDNO...
 function UiMessageBox(Text, Caption: PChar; Flags: Longint): Integer;
@@ -245,6 +253,102 @@ begin
     end;
 
     Result := Form.ShowModal;
+  finally
+    Measure.Free;
+    Form.Free;
+  end;
+end;
+
+function MessageDlgButtons(const Msg: string; DlgType: TMsgDlgType;
+  const ACaption: string; const AButtons: array of string;
+  ADefaultIndex, ACancelIndex: Integer): Integer;
+const
+  ResultBase = 100;     // ответ кнопки N - ResultBase + N
+var
+  Form: TForm;
+  TextLabel: TUiLabel;
+  IconImage: TImage;
+  Btn: TUiButton;
+  TextRect: TRect;
+  Measure: TBitmap;
+  Icon: HICON;
+  BtnIdx, TextLeft, ButtonsWidth, X, Y, W, H, Answer: Integer;
+  Widths: array of Integer;
+  Title: string;
+begin
+  Title := ACaption;
+  if Title = '' then
+    Title := DlgCaption(DlgType);
+  Form := NewDialogForm(Title);
+  Measure := TBitmap.Create;
+  try
+    Measure.Canvas.Font := Form.Font;
+    TextLeft := Margin;
+    Icon := DlgIcon(DlgType);
+    if Icon <> 0 then
+    begin
+      IconImage := TImage.Create(Form);
+      IconImage.Parent := Form;
+      IconImage.SetBounds(Margin, Margin, IconSize, IconSize);
+      IconImage.Transparent := True;
+      IconImage.Picture.Icon.Handle := Icon;
+      TextLeft := Margin + IconSize + Gap + 4;
+    end;
+    TextRect := Rect(0, 0, Screen.Width div 2, 0);
+    DrawText(Measure.Canvas.Handle, PChar(Msg), Length(Msg), TextRect,
+             DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX or DT_EXPANDTABS);
+    TextLabel := TUiLabel.Create(Form);
+    TextLabel.Parent := Form;
+    TextLabel.ShowAccelChar := False;
+    TextLabel.WordWrap := True;
+    TextLabel.AutoSize := False;
+    TextLabel.Caption := Msg;
+    TextLabel.SetBounds(TextLeft, Margin, TextRect.Right + 4, TextRect.Bottom);
+
+    // Ширина каждой кнопки - по своей подписи
+    SetLength(Widths, Length(AButtons));
+    ButtonsWidth := 0;
+    for BtnIdx := 0 to High(AButtons) do
+    begin
+      Widths[BtnIdx] := Measure.Canvas.TextWidth(StringReplace(AButtons[BtnIdx],
+        '&', '', [])) + 24;
+      if Widths[BtnIdx] < MinButtonWidth then
+        Widths[BtnIdx] := MinButtonWidth;
+      Inc(ButtonsWidth, Widths[BtnIdx]);
+      if BtnIdx > 0 then
+        Inc(ButtonsWidth, Gap);
+    end;
+
+    W := TextLeft + TextRect.Right + 4 + Margin;
+    if W < ButtonsWidth + 2 * Margin then
+      W := ButtonsWidth + 2 * Margin;
+    H := TextRect.Bottom;
+    if (Icon <> 0) and (H < IconSize) then
+      H := IconSize;
+    Y := Margin + H + Margin + 4;
+    Form.ClientWidth := W;
+    Form.ClientHeight := Y + ButtonHeight + Margin;
+
+    X := (W - ButtonsWidth) div 2;
+    for BtnIdx := 0 to High(AButtons) do
+    begin
+      Btn := TUiButton.Create(Form);
+      Btn.Parent := Form;
+      Btn.Caption := AButtons[BtnIdx];
+      Btn.ModalResult := ResultBase + BtnIdx;
+      Btn.SetBounds(X, Y, Widths[BtnIdx], ButtonHeight);
+      Btn.Default := BtnIdx = ADefaultIndex;
+      Btn.Cancel := BtnIdx = ACancelIndex;
+      if BtnIdx = ADefaultIndex then
+        Form.ActiveControl := Btn;
+      Inc(X, Widths[BtnIdx] + Gap);
+    end;
+
+    Answer := Form.ShowModal;
+    if (Answer >= ResultBase) and (Answer <= ResultBase + High(AButtons)) then
+      Result := Answer - ResultBase
+    else
+      Result := ACancelIndex;
   finally
     Measure.Free;
     Form.Free;
