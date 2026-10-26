@@ -53453,18 +53453,30 @@ begin
   end;
 end;
 
+// Результат сборки FreeBASIC - в папке bin: папки открытого проекта, если
+// главный файл внутри неё, иначе рядом с главным файлом. Перевод RapidQ
+// (RqFbConvertedExe) кладётся по-своему.
 function TForm1.FbOutFileOf(const AMain: string): string;
 var
   OutKind, Bits: Integer;
+  BaseDir: string;
 begin
   Result := '';
   if AMain = '' then
     Exit;
   FbBuildOf(AMain, OutKind, Bits);
+  BaseDir := ExtractFilePath(AMain);
+  if FCurrentProject <> '' then
+  begin
+    BaseDir := IncludeTrailingPathDelimiter(ProjectDir(FCurrentProject));
+    if CompareText(Copy(AMain, 1, Length(BaseDir)), BaseDir) <> 0 then
+      BaseDir := ExtractFilePath(AMain);
+  end;
+  Result := BaseDir + 'bin\' + ExtractFileName(AMain);
   if OutKind = fbOutDll then
-    Result := ChangeFileExt(AMain, '.dll')
+    Result := ChangeFileExt(Result, '.dll')
   else
-    Result := ChangeFileExt(AMain, '.exe');
+    Result := ChangeFileExt(Result, '.exe');
 end;
 
 // Папки поиска #include для вкладки Includes: Include из настроек, а он
@@ -53736,6 +53748,11 @@ begin
   if UsesLcl then
     Params := Params + ' -i "' + LclDir + 'inc"';
   Params := Params + ' -x "' + OutFile + '" "' + MainBas + '"';
+  // fbc папку результата не создаёт
+  if not DirectoryExists(ExtractFilePath(OutFile)) and
+     not ForceDirectories(ExtractFilePath(OutFile)) then
+    LogComp('Сборка FreeBASIC: не удалось создать папку ' +
+            ExtractFilePath(OutFile));
   // Ресурсы. В исходнике FreeBASIC они не подключаются - fbc берёт .rc в
   // командной строке. $RESOURCE перевода RapidQ - его _res.rc. У обычной
   // программы - значок из свойств проекта (FbResFile пишет _res.rc с
@@ -57591,7 +57608,13 @@ begin
     TargetSrc := FbTargetBas(False);
     if (TargetSrc <> '') and
        (LowerCase(ExtractFileExt(FbOutFileOf(TargetSrc))) = '.exe') then
-      Result := RqFbConvertedExe(TargetSrc);
+    begin
+      // Перевод RapidQ - рядом с исходником RapidQ, обычная программа - bin
+      if RqFbConvertedExe(TargetSrc) <> ChangeFileExt(TargetSrc, '.exe') then
+        Result := RqFbConvertedExe(TargetSrc)
+      else
+        Result := FbOutFileOf(TargetSrc);
+    end;
   end;
   if Result <> '' then
     Result := ExpandFileName(Result);
