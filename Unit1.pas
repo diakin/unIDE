@@ -53419,6 +53419,40 @@ begin
   Result := DefInc;
 end;
 
+// Главный .bas подключает RqLcl (строка #include с rqlcl.bi): такой
+// программе нужны -i <RqLcl>\inc и rqlcl32.dll / rqlcl64.dll рядом с exe,
+// как переводу RapidQ. Закомментированная строка (' #include) не считается
+function FbSourceUsesRqLcl(const AFileName: string): Boolean;
+var
+  Lines: TStringList;
+  LineIdx: Integer;
+  LineText: string;
+begin
+  Result := False;
+  if not FileExists(AFileName) then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(AFileName);
+    except
+      Exit;
+    end;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      LineText := LowerCase(Trim(Lines[LineIdx]));
+      if (Copy(LineText, 1, 8) = '#include') and
+         (Pos('rqlcl.bi', LineText) > 0) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
 // Сборка главного .bas компилятором fbc. True - собрано, результат на месте.
 function TForm1.CompileFreeBasic: Boolean;
 var
@@ -53430,7 +53464,7 @@ var
   ErrCount, WarnCount: Integer;
   StartTick: Cardinal;
   Built, IsError: Boolean;
-  IsConverted, ConvSmart, ConvConsole: Boolean;
+  IsConverted, ConvSmart, ConvConsole, UsesLcl: Boolean;
 begin
   Result := False;
   ShowCompLog;
@@ -53492,6 +53526,19 @@ begin
     end;
     LogComp('Файл - перевод RapidQ (RqToFb): ключи сборки FB Smart, ' +
             'папка RqLcl ' + LclDir);
+  end;
+  // Обычная программа FreeBASIC с окнами RqLcl (#include "rqlcl.bi")
+  UsesLcl := (not IsConverted) and FbSourceUsesRqLcl(MainBas);
+  if UsesLcl then
+  begin
+    LclDir := RqLclDir(Problem);
+    if LclDir = '' then
+    begin
+      SettingsAlert('Сборка FreeBASIC с RqLcl: ' + Problem);
+      Exit;
+    end;
+    LogComp('Файл подключает rqlcl.bi: -i ' + LclDir + 'inc, ' +
+            'DLL RqLcl - рядом с exe');
   end;
 
   Sect := CompilerSection('FreeBASIC');
@@ -53561,6 +53608,8 @@ begin
     Params := Params + ' -i "' + LclDir + 'inc"';
     OutFile := RqFbConvertedExe(MainBas);
   end;
+  if UsesLcl then
+    Params := Params + ' -i "' + LclDir + 'inc"';
   Params := Params + ' -x "' + OutFile + '" "' + MainBas + '"';
   // $RESOURCE: .rc от перевода рядом с файлом
   if IsConverted then
@@ -53643,7 +53692,7 @@ begin
 
   if Built then
   begin
-    if IsConverted then
+    if IsConverted or UsesLcl then
       RqFbCopyDll(LclDir, ExtractFilePath(OutFile), Bits);
     if WarnCount > 0 then
       LogComp(Format('--- Готово, %d мс, предупреждений: %d: %s',
