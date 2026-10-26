@@ -3020,6 +3020,7 @@ type
     function  GitCredentialStore(const AUser, AToken: string;
       var AError: string): Boolean;
     function  GuessProjectType(const ADir: string): string;
+    procedure GitPublishNewRepo(const AGit, ADir, AName: string);
     function  GitOnIdle: Boolean;
     function  GitRunIn(const AGit, ADir, AArgs: string; ALog: Boolean;
                        var AOutput: WideString): Integer;
@@ -4091,6 +4092,7 @@ var
     DlgGitCommit, // окно Commit (меню Repository, панель Git)
     DlgGitHistory, // окно History (меню Repository, панель Git)
     DlgGitClone,  // окно Clone Repository (список GitHub, URL, путь)
+    GitHubApi,    // GitHubCreateRepo - New Repository на GitHub
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     FormPreview,  // превью формы по .dfm - список модулей и форм
@@ -67465,8 +67467,82 @@ begin
   if GitLongOp(Git, Dir, 'init') = 0 then
   begin
     GitSetChosenRepo(ExcludeTrailingPathDelimiter(Dir));
+    GitPublishNewRepo(Git, Dir, RepoName);
     GitRefreshBar;
   end;
+end;
+
+// После git init: вопрос - создать репозиторий с тем же именем на GitHub
+// (Private / Public) и прописать его как origin. Токен - сохранённый логин
+// git (git credential fill); нет - подсказка: Clone Repository - Войти...
+procedure TForm1.GitPublishNewRepo(const AGit, ADir, AName: string);
+var
+  Dlg: TForm;
+  BtnIndex, Answer: Integer;
+  Btn: TButton;
+  User, Token, CloneUrl, HtmlUrl, ErrText: string;
+  Output: WideString;
+  Created: Boolean;
+begin
+  Dlg := CreateMessageDialog('9830:Локальный репозиторий ' + AName +
+    ' создан.'#13#10#13#10'Создать репозиторий ' + AName + ' на GitHub и ' +
+    'прописать его как origin? Он будет пустым (без README), первый Push ' +
+    'отправит туда ваши коммиты.'#13#10#13#10'Private - виден только вам ' +
+    '(и тем, кого добавите), Public - всем.',
+    mtConfirmation, [mbYes, mbNo, mbCancel]);
+  try
+    Dlg.Caption := 'New Repository на GitHub';
+    for BtnIndex := 0 to Dlg.ComponentCount - 1 do
+      if Dlg.Components[BtnIndex] is TButton then
+      begin
+        Btn := TButton(Dlg.Components[BtnIndex]);
+        if Btn.ModalResult = mrYes then
+          Btn.Caption := 'Private'
+        else if Btn.ModalResult = mrNo then
+          Btn.Caption := 'Public'
+        else if Btn.ModalResult = mrCancel then
+        begin
+          Btn.Caption := 'Не создавать';
+          Btn.Width := Btn.Width + 30;
+          Btn.Left := Btn.Left - 30;
+        end;
+      end;
+    Answer := Dlg.ShowModal;
+  finally
+    Dlg.Free;
+  end;
+  if (Answer <> mrYes) and (Answer <> mrNo) then
+    Exit;
+  ShowCompLog;
+  if not GitCredentialGet(User, Token) then
+  begin
+    LogComp('Git: логин GitHub не сохранён - репозиторий на GitHub не ' +
+            'создан. Войдите: Repository - Clone Repository - Войти... ' +
+            '(логин и personal access token), затем создайте его там или ' +
+            'на github.com и пропишите в Repository Settings');
+    Exit;
+  end;
+  LogComp('GitHub: создание репозитория ' + AName + '...');
+  Screen.Cursor := crHourGlass;
+  try
+    Created := GitHubCreateRepo(Token, AName, Answer = mrYes, CloneUrl,
+                                HtmlUrl, ErrText);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  if not Created then
+  begin
+    LogComp('GitHub: репозиторий не создан - ' + ErrText);
+    Exit;
+  end;
+  LogComp('GitHub: создан ' + HtmlUrl);
+  if GitRunIn(AGit, ADir, 'remote add origin ' +
+     string(GitQuote(WideString(CloneUrl))), True, Output) = 0 then
+    LogComp('Git: origin = ' + CloneUrl + '. Дальше: Commit..., затем ' +
+            'Push - ветка опубликуется на GitHub')
+  else
+    LogComp('Git: origin не прописан - Repository Settings, адрес ' +
+            CloneUrl);
 end;
 
 procedure TForm1.GitAddRepoClick(Sender: TObject);

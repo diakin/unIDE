@@ -12,6 +12,8 @@ unit GitHubApi;
 //    collaborator,organization_member&sort=full_name - страницы, пока
 //    приходит по 100;
 //  - токен: GET /user - логин владельца токена;
+//  - новый репозиторий: POST /user/repos {"name", "private"}
+//    (GitHubCreateRepo, для New Repository);
 //  - ответ (UTF-8) разбирается своим маленьким разбором JSON: из массива
 //    объектов берутся строки и логические значения верхнего уровня
 //    объекта, вложенные объекты (owner, permissions) пропускаются.
@@ -40,6 +42,11 @@ function GitHubListRepos(const AToken: string; var ARepos: TGitHubRepos;
 // Логин владельца токена (GET /user). False - AError
 function GitHubTokenLogin(const AToken: string; var ALogin: string;
   var AError: string): Boolean;
+// Создать репозиторий AName у владельца токена (APrivate - закрытый,
+// пустой, без README). ACloneUrl - адрес для git (https://...git),
+// AHtmlUrl - страница. False - AError (422 - такое имя уже есть и т. п.)
+function GitHubCreateRepo(const AToken, AName: string; APrivate: Boolean;
+  var ACloneUrl, AHtmlUrl, AError: string): Boolean;
 // 'владелец/имя', 'github.com/владелец/имя', адрес https или git@ ->
 // адрес для git clone; имя репозитория - в AName. '' - не разобрать
 function GitHubNormalizeUrl(const AText: string; var AName: string): string;
@@ -82,6 +89,18 @@ function GhInternetSetOption(AHandle: Pointer; AOption: DWORD;
 function GhHttpQueryInfo(ARequest: Pointer; AInfoLevel: DWORD;
   ABuffer: Pointer; var ABufferLength: DWORD; var AIndex: DWORD): BOOL;
   stdcall; external 'wininet.dll' name 'HttpQueryInfoW';
+function GhInternetConnect(ASession: Pointer; AServer: PWideChar;
+  APort: Word; AUser, APassword: PWideChar; AService, AFlags: DWORD;
+  AContext: DWORD): Pointer; stdcall;
+  external 'wininet.dll' name 'InternetConnectW';
+function GhHttpOpenRequest(AConnect: Pointer; AVerb, AObject,
+  AVersion, AReferrer: PWideChar; AAcceptTypes: Pointer; AFlags: DWORD;
+  AContext: DWORD): Pointer; stdcall;
+  external 'wininet.dll' name 'HttpOpenRequestW';
+function GhHttpSendRequest(ARequest: Pointer; AHeaders: PWideChar;
+  AHeadersLength: DWORD; AOptional: Pointer; AOptionalLength: DWORD): BOOL;
+  stdcall; external 'wininet.dll' name 'HttpSendRequestW';
+
 function GhMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
   AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
   external 'kernel32.dll' name 'MultiByteToWideChar';
@@ -187,6 +206,96 @@ begin
       Result := True;
     finally
       GhInternetCloseHandle(Request);
+    end;
+  finally
+    GhInternetCloseHandle(Session);
+  end;
+end;
+
+// POST APath (от api.github.com) с телом ABody (JSON, UTF-8) и токеном.
+// AResponse - ответ, AStatus - код HTTP. False - запрос не прошёл
+function GhPost(const AToken, APath, ABody: string; var AResponse: string;
+  var AStatus: Integer; var AError: string): Boolean;
+const
+  GhServiceHttp = 3;
+  GhHttpsPort = 443;
+var
+  Session, Connect, Request: Pointer;
+  Agent, Server, Verb, PathW, Headers: WideString;
+  Buffer: array[0..16383] of AnsiChar;
+  ReadCount, StatusCode, StatusLen, StatusIndex, Timeout: DWORD;
+  Piece: string;
+begin
+  Result := False;
+  AResponse := '';
+  AStatus := 0;
+  AError := '';
+  Agent := 'unIDE';
+  Session := GhInternetOpen(PWideChar(Agent), GhOpenPreconfig, nil, nil, 0);
+  if Session = nil then
+  begin
+    AError := 'WinINet: ' + GhErrorText(GetLastError);
+    Exit;
+  end;
+  try
+    Timeout := 20000;
+    GhInternetSetOption(Session, GhOptionConnectTimeout, @Timeout,
+      SizeOf(Timeout));
+    GhInternetSetOption(Session, GhOptionReceiveTimeout, @Timeout,
+      SizeOf(Timeout));
+    Server := 'api.github.com';
+    Connect := GhInternetConnect(Session, PWideChar(Server), GhHttpsPort,
+      nil, nil, GhServiceHttp, 0, 0);
+    if Connect = nil then
+    begin
+      AError := 'api.github.com: ' + GhErrorText(GetLastError);
+      Exit;
+    end;
+    try
+      Verb := 'POST';
+      PathW := WideString(APath);
+      Request := GhHttpOpenRequest(Connect, PWideChar(Verb), PWideChar(PathW),
+        nil, nil, nil, GhFlagReload or GhFlagNoCacheWrite or
+        GhFlagPragmaNoCache or GhFlagNoUi or GhFlagNoCookies or GhFlagSecure,
+        0);
+      if Request = nil then
+      begin
+        AError := 'api.github.com: ' + GhErrorText(GetLastError);
+        Exit;
+      end;
+      try
+        Headers := 'Accept: application/vnd.github+json'#13#10 +
+          'Content-Type: application/json; charset=utf-8'#13#10 +
+          'Authorization: token ' + WideString(AToken) + #13#10;
+        if not GhHttpSendRequest(Request, PWideChar(Headers),
+           DWORD(Length(Headers)), PChar(ABody), DWORD(Length(ABody))) then
+        begin
+          AError := 'api.github.com: ' + GhErrorText(GetLastError);
+          Exit;
+        end;
+        StatusCode := 0;
+        StatusLen := SizeOf(StatusCode);
+        StatusIndex := 0;
+        if GhHttpQueryInfo(Request, GhQueryStatusCode or GhQueryFlagNumber,
+           @StatusCode, StatusLen, StatusIndex) then
+          AStatus := Integer(StatusCode);
+        repeat
+          ReadCount := 0;
+          if not GhInternetReadFile(Request, @Buffer[0], SizeOf(Buffer),
+             ReadCount) then
+            Break;
+          if ReadCount > 0 then
+          begin
+            SetString(Piece, PAnsiChar(@Buffer[0]), ReadCount);
+            AResponse := AResponse + Piece;
+          end;
+        until ReadCount = 0;
+        Result := True;
+      finally
+        GhInternetCloseHandle(Request);
+      end;
+    finally
+      GhInternetCloseHandle(Connect);
     end;
   finally
     GhInternetCloseHandle(Session);
@@ -559,6 +668,64 @@ begin
   Result := ALogin <> '';
   if not Result then
     AError := 'GitHub: в ответе нет логина';
+end;
+
+// Строка для JSON: кавычки и \ - с обратной косой, управляющие - \uXXXX
+function GhJsonString(const AText: string): string;
+var
+  CharIdx: Integer;
+begin
+  Result := '"';
+  for CharIdx := 1 to Length(AText) do
+    case AText[CharIdx] of
+      '"', '\': Result := Result + '\' + AText[CharIdx];
+      #0..#31: Result := Result + '\u' + IntToHex(Ord(AText[CharIdx]), 4);
+    else
+      Result := Result + AText[CharIdx];
+    end;
+  Result := Result + '"';
+end;
+
+function GitHubCreateRepo(const AToken, AName: string; APrivate: Boolean;
+  var ACloneUrl, AHtmlUrl, AError: string): Boolean;
+var
+  Body, Response, PrivateText: string;
+  Status: Integer;
+  Reader: TGhJson;
+  Pairs: TGhPairs;
+begin
+  Result := False;
+  ACloneUrl := '';
+  AHtmlUrl := '';
+  if APrivate then
+    PrivateText := 'true'
+  else
+    PrivateText := 'false';
+  // Имя - в UTF-8 (ANSI unIDE -> Unicode -> UTF-8)
+  Body := '{"name":' + GhJsonString(Utf8Encode(WideString(AName))) +
+    ',"private":' + PrivateText + ',"auto_init":false}';
+  if not GhPost(AToken, '/user/repos', Body, Response, Status, AError) then
+    Exit;
+  if Status <> 201 then
+  begin
+    AError := GhStatusError(Status, Response);
+    if Status = 422 then
+      AError := AError + ' (репозиторий с таким именем, вероятно, уже есть)';
+    Exit;
+  end;
+  Reader := TGhJson.Create(GhFromUtf8(Response));
+  try
+    if Reader.ReadObject(Pairs) then
+    begin
+      ACloneUrl := string(GhPair(Pairs, 'clone_url'));
+      AHtmlUrl := string(GhPair(Pairs, 'html_url'));
+    end;
+  finally
+    Reader.Free;
+  end;
+  Result := ACloneUrl <> '';
+  if not Result then
+    AError := 'GitHub: в ответе нет адреса репозитория';
 end;
 
 function GitHubNormalizeUrl(const AText: string; var AName: string): string;
