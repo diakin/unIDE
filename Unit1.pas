@@ -798,6 +798,10 @@ type
     mNewRqCgi: TMenuItem;
     mNewRqSep: TMenuItem;
     mNewRqOther: TMenuItem;
+    mNewFb: TMenuItem;
+    mNewFbConsole: TMenuItem;
+    mNewFbGui: TMenuItem;
+    mNewFbDll: TMenuItem;
     FDsgMenu: TUiPopupMenu; // меню конструктора по правому щелчку
     FDsgMenuGrp1: TMenuItem;
     FDsgMiUndo: TMenuItem;
@@ -1025,6 +1029,9 @@ type
     procedure NewRqConsoleClick(Sender: TObject);
     procedure NewRqCgiClick(Sender: TObject);
     procedure NewRqOtherClick(Sender: TObject);
+    procedure NewFbConsoleClick(Sender: TObject);
+    procedure NewFbGuiClick(Sender: TObject);
+    procedure NewFbDllClick(Sender: TObject);
     procedure ProgramResetClick(Sender: TObject);
     procedure ArdVerifyClick(Sender: TObject);
     procedure ArdUploadClick(Sender: TObject);
@@ -2274,6 +2281,10 @@ type
     // Папка для следующего New Project (Clone Repository с флажком
     // «Создать проект»): «На базе существующего», тип - по файлам; '' - нет
     FNewPrjPresetDir: string;
+    // Заготовка FreeBASIC для следующего New Project из File - New -
+    // FreeBASIC: 0 - обычный вызов, иначе fbOutConsole + 1, fbOutGui + 1,
+    // fbOutDll + 1 (вид результата + 1)
+    FNewFbKind: Integer;
     // Заготовка RapidQ для следующего New Project из File - New - RapidQ:
     // 0 - обычный вызов, иначе rqkApp, rqkConsole, rqkCgi (DlgNewPrj)
     FNewRqKind: Integer;
@@ -11320,6 +11331,98 @@ begin
   end;
 end;
 
+// У типа проекта есть заготовка (New Project пишет главный файл сам)
+function NewPrjHasTemplate(const AType: string): Boolean;
+begin
+  Result := (CompareText(AType, 'Delphi') = 0) or
+            (CompareText(AType, 'Lazarus') = 0) or
+            (CompareText(AType, 'Go') = 0) or
+            (CompareText(AType, 'Python') = 0) or
+            (CompareText(AType, 'Rust') = 0) or
+            (CompareText(AType, 'AutoHotkey') = 0) or
+            (CompareText(AType, 'RapidQ Basic') = 0) or
+            (CompareText(AType, 'FreeBASIC') = 0);
+end;
+
+// Текст новой программы FreeBASIC вида AKind (fbOutConsole, fbOutGui,
+// fbOutDll) с именем AName
+procedure FbNewProgramText(AText: TStrings; AKind: Integer;
+  const AName: string);
+begin
+  AText.Clear;
+  case AKind of
+    fbOutGui:
+      begin
+        AText.Add('''' + AName + ' - программа FreeBASIC с окном Windows');
+        AText.Add('#include once "windows.bi"');
+        AText.Add('');
+        AText.Add('Function WndProc(ByVal hWin As HWND, ByVal uMsg As UINT, _');
+        AText.Add('    ByVal wPar As WPARAM, ByVal lPar As LPARAM) As LRESULT');
+        AText.Add('    Select Case uMsg');
+        AText.Add('    Case WM_PAINT');
+        AText.Add('        Dim As PAINTSTRUCT paintInfo');
+        AText.Add('        Dim As HDC dcPaint = BeginPaint(hWin, @paintInfo)');
+        AText.Add('        TextOut(dcPaint, 20, 20, "Hello, world!", 13)');
+        AText.Add('        EndPaint(hWin, @paintInfo)');
+        AText.Add('        Return 0');
+        AText.Add('    Case WM_DESTROY');
+        AText.Add('        PostQuitMessage(0)');
+        AText.Add('        Return 0');
+        AText.Add('    End Select');
+        AText.Add('    Return DefWindowProc(hWin, uMsg, wPar, lPar)');
+        AText.Add('End Function');
+        AText.Add('');
+        AText.Add('Dim As HINSTANCE hInst = GetModuleHandle(NULL)');
+        AText.Add('Dim As String className = "' + AName + 'Window"');
+        AText.Add('Dim As WNDCLASS winClass');
+        AText.Add('With winClass');
+        AText.Add('    .style = CS_HREDRAW Or CS_VREDRAW');
+        AText.Add('    .lpfnWndProc = @WndProc');
+        AText.Add('    .hInstance = hInst');
+        AText.Add('    .hIcon = LoadIcon(NULL, IDI_APPLICATION)');
+        AText.Add('    .hCursor = LoadCursor(NULL, IDC_ARROW)');
+        AText.Add('    .hbrBackground = Cast(HBRUSH, COLOR_WINDOW + 1)');
+        AText.Add('    .lpszClassName = StrPtr(className)');
+        AText.Add('End With');
+        AText.Add('If RegisterClass(@winClass) = 0 Then End 1');
+        AText.Add('');
+        AText.Add('Dim As HWND mainWin = CreateWindowEx(0, StrPtr(className), _');
+        AText.Add('    "' + AName + '", WS_OVERLAPPEDWINDOW Or WS_VISIBLE, _');
+        AText.Add('    CW_USEDEFAULT, CW_USEDEFAULT, 400, 300, NULL, NULL, hInst, NULL)');
+        AText.Add('');
+        AText.Add('Dim As MSG winMsg');
+        AText.Add('While GetMessage(@winMsg, NULL, 0, 0)');
+        AText.Add('    TranslateMessage(@winMsg)');
+        AText.Add('    DispatchMessage(@winMsg)');
+        AText.Add('Wend');
+        AText.Add('End Cast(Integer, winMsg.wParam)');
+      end;
+    fbOutDll:
+      begin
+        AText.Add('''' + AName + ' - библиотека DLL FreeBASIC (fbc -dll)');
+        AText.Add('''Extern "Windows-MS" - вызов stdcall, имена без ' +
+                  'украшений (@N)');
+        AText.Add('');
+        AText.Add('Extern "Windows-MS"');
+        AText.Add('');
+        AText.Add('Function AddNumbers(ByVal valueA As Long, _');
+        AText.Add('    ByVal valueB As Long) As Long Export');
+        AText.Add('    Return valueA + valueB');
+        AText.Add('End Function');
+        AText.Add('');
+        AText.Add('End Extern');
+      end;
+  else
+    begin
+      AText.Add('''' + AName + ' - консольная программа FreeBASIC');
+      AText.Add('');
+      AText.Add('Print "Hello, world!"');
+      AText.Add('Print "Press any key..."');
+      AText.Add('Sleep');
+    end;
+  end;
+end;
+
 procedure TForm1.NewProjectClick(Sender: TObject);
 var
   Dlg: TDlgNewPrj;
@@ -11340,6 +11443,9 @@ var
   // выбранный в окне), компилятор и разрядность; главный файл
   NewRqKind, NewRqComp, NewRqBits: Integer;
   RqMain: string;
+  // Новый проект FreeBASIC: вид результата (fbOut*), главный файл
+  NewFbKind: Integer;
+  FbMain: string;
 
   // Есть ли в папке хоть один .pas. Расширение сверяется ещё раз: маска
   // *.pas по коротким именам находит и file.pas~ (FILE~1.PAS).
@@ -11374,6 +11480,9 @@ begin
   // Пункт File - New - RapidQ: тип RapidQ Basic и вид заготовки
   NewRqKind := FNewRqKind;
   FNewRqKind := 0;
+  // Пункт File - New - FreeBASIC: тип FreeBASIC и вид результата
+  NewFbKind := FNewFbKind - 1;
+  FNewFbKind := 0;
 
   if not ConfirmSaveAll then
     Exit;
@@ -11440,6 +11549,20 @@ begin
     end
     else
       Dlg.ShowRqKind(rqkApp);
+    if NewFbKind >= 0 then
+    begin
+      if cbType.Items.IndexOf('FreeBASIC') >= 0 then
+      begin
+        cbType.ItemIndex := cbType.Items.IndexOf('FreeBASIC');
+        Dlg.cbTypeChange(cbType);
+      end;
+      case NewFbKind of
+        fbOutGui: Dlg.Caption := 'New Project - FreeBASIC GUI Application';
+        fbOutDll: Dlg.Caption := 'New Project - FreeBASIC DLL';
+      else
+        Dlg.Caption := 'New Project - FreeBASIC Console Application';
+      end;
+    end;
 
     // После Clone Repository: папка клона, «На базе существующего», тип -
     // по файлам в папке. Главный файл ищется по OK (PickExistingMain)
@@ -11530,6 +11653,20 @@ begin
       Exit;
     end;
 
+    // «На базе существующего», а главного файла этого типа в папке нет
+    // (папка нового репозитория, пустая папка) - создаётся заготовка, как
+    // у нового проекта; файлы в папке не трогаются
+    if OnBase and DirectoryExists(Dir) and NewPrjHasTemplate(Tp) and
+       (MainFilesIn(Dir, Tp, SL) = 0) and
+       not (((CompareText(Tp, 'Delphi') = 0) or
+             (CompareText(Tp, 'Lazarus') = 0)) and DirHasPas(Dir)) then
+    begin
+      LogDiag('New Project: в ' + Dir + ' нет главного файла ' + Tp + ' (' +
+        MainMasksFor(Tp) + ') - создаётся заготовка');
+      OnBase := False;
+      FNewPrjMain := '';
+    end;
+
     if OnBase then
     begin
       // Папку не создаём: проект уже лежит в ней
@@ -11570,7 +11707,8 @@ begin
         (CompareText(Tp, 'Go') = 0) or (CompareText(Tp, 'Python') = 0) or
         (CompareText(Tp, 'Rust') = 0) or
         (CompareText(Tp, 'AutoHotkey') = 0) or
-        (CompareText(Tp, 'RapidQ Basic') = 0)) then
+        (CompareText(Tp, 'RapidQ Basic') = 0) or
+        (CompareText(Tp, 'FreeBASIC') = 0)) then
     begin
       Existing := MainFilesIn(Dir, Tp, SL) > 0;
       if Existing then
@@ -11959,6 +12097,22 @@ begin
           SetFbBuild(RqMain, fbOutConsole, NewRqBits);
     end;
 
+    // ЗАГОТОВКА ДЛЯ FREEBASIC: <Имя>.bas - консольная программа, окно
+    // Windows (windows.bi) или DLL; вид результата - настройка сборки
+    // главного файла (как в рамке Project). Из окна без пункта меню -
+    // консольная
+    FbMain := '';
+    if (CompareText(Tp, 'FreeBASIC') = 0) and not OnBase and
+       not Existing then
+    begin
+      if NewFbKind < 0 then
+        NewFbKind := fbOutConsole;
+      FbMain := Dir + Nm + '.bas';
+      FbNewProgramText(SL, NewFbKind, Nm);
+      SL.SaveToFile(FbMain);
+      SetFbBuild(FbMain, NewFbKind, 32);
+    end;
+
     // Проект: запись в [Projects] (имя = папка) и раздел [Project.<имя>] -
     // тип и цель сборки
     TargetFile := '';
@@ -11979,7 +12133,9 @@ begin
     else if CompareText(Tp, 'AutoHotkey') = 0 then
       TargetFile := Dir + Nm + '.ahk'
     else if RqMain <> '' then
-      TargetFile := RqMain;
+      TargetFile := RqMain
+    else if FbMain <> '' then
+      TargetFile := FbMain;
 
     RegisterProject(Nm, Dir);
     Prj := TProjectIni.Create(SettingsFileName, Nm);
@@ -12047,7 +12203,9 @@ begin
             FileExists(Dir + Nm + '.ahk') then
       OpenNamedFile(Dir + Nm + '.ahk')
     else if (RqMain <> '') and FileExists(RqMain) then
-      OpenNamedFile(RqMain);
+      OpenNamedFile(RqMain)
+    else if (FbMain <> '') and FileExists(FbMain) then
+      OpenNamedFile(FbMain);
 
     // Список окон и вкладок пишем в описание сразу. Иначе открытый файл
     // живёт только до закрытия среды: в .prj разделов [Windows] и [Tabs]
@@ -60031,6 +60189,27 @@ begin
   FNewRqKind := rqkCgi;
   NewProjectClick(Sender);
 end;
+
+// File - New - FreeBASIC: новый проект с заготовкой нужного вида (окно
+// New Project с типом FreeBASIC)
+procedure TForm1.NewFbConsoleClick(Sender: TObject);
+begin
+  FNewFbKind := fbOutConsole + 1;
+  NewProjectClick(Sender);
+end;
+
+procedure TForm1.NewFbGuiClick(Sender: TObject);
+begin
+  FNewFbKind := fbOutGui + 1;
+  NewProjectClick(Sender);
+end;
+
+procedure TForm1.NewFbDllClick(Sender: TObject);
+begin
+  FNewFbKind := fbOutDll + 1;
+  NewProjectClick(Sender);
+end;
+
 
 // Other... - список всех заготовок RapidQ и форма отдельной программой
 procedure TForm1.NewRqOtherClick(Sender: TObject);

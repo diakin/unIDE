@@ -442,6 +442,25 @@ object Form1: TForm1
             ShortCut = 0
           end
         end
+        object mNewFb: TMenuItem
+          Caption = 'FreeBASIC'
+          ShortCut = 0
+          object mNewFbConsole: TMenuItem
+            Caption = 'Console Application'
+            OnClick = NewFbConsoleClick
+            ShortCut = 0
+          end
+          object mNewFbGui: TMenuItem
+            Caption = 'GUI Application'
+            OnClick = NewFbGuiClick
+            ShortCut = 0
+          end
+          object mNewFbDll: TMenuItem
+            Caption = 'DLL'
+            OnClick = NewFbDllClick
+            ShortCut = 0
+          end
+        end
         object mNewItem3: TMenuItem
           Caption = 'BASIC File'
           OnClick = NewFileClick
