@@ -270,9 +270,8 @@ begin
   // не прошло, ширина панели - не та, и якоря дали бы кнопку за краем
   FTopPanel.OnResize := LayoutTop;
   FBtnDiscard.Caption := 'Discard Selected...';
-  FBtnDiscard.Hint := 'Отменить изменения выделенных строк, без выделения ' +
-    '- отмеченных флажками: файлы - как в последнем коммите, новые файлы - ' +
-    'в корзину (перед этим - вопрос со списком файлов)';
+  FBtnDiscard.Hint := 'Отменить изменения выделенных строк (не флажков): ' +
+    'файлы - как в последнем коммите, новые файлы - в корзину';
   FBtnDiscard.ShowHint := True;
   FBtnDiscard.OnClick := BtnDiscardClick;
   FBtnDiscard.Visible := Assigned(AOnDiscard);
@@ -574,13 +573,12 @@ var
 begin
   if not Assigned(FOnIgnore) then
     Exit;
-  // Выделенные строки, а без выделения - отмеченные флажками
   if SelectedChanges(Picked) = 0 then
-    CheckedChanges(Picked);
-  if Length(Picked) = 0 then
   begin
-    MessageBox(Handle, 'Отметьте флажками (или выделите) строки - какие ' +
-      'файлы игнорировать.', 'Ignore', MB_OK or MB_ICONINFORMATION);
+    MessageBox(Handle, 'Выделите строки (щелчок, Ctrl+щелчок, Shift+щелчок) ' +
+      '- какие файлы игнорировать.'#13#10#13#10'Флажки - это что войдёт в ' +
+      'коммит; Ignore работает только с выделенными строками.', 'Ignore',
+      MB_OK or MB_ICONINFORMATION);
     Exit;
   end;
   if FOnIgnore(Picked) then
@@ -775,14 +773,12 @@ var
 begin
   if not Assigned(FOnDiscard) then
     Exit;
-  // Выделенные строки, а без выделения - отмеченные флажками (перед
-  // отменой Unit1 спрашивает и перечисляет файлы)
   if SelectedChanges(Picked) = 0 then
-    CheckedChanges(Picked);
-  if Length(Picked) = 0 then
   begin
-    MessageBox(Handle, 'Отметьте флажками (или выделите) строки - ' +
-      'изменения каких файлов отменить.', 'Discard', MB_OK or
+    MessageBox(Handle, 'Выделите строки (щелчок, Ctrl+щелчок, Shift+щелчок) ' +
+      '- изменения каких файлов отменить.'#13#10#13#10'Флажки - это что ' +
+      'войдёт в коммит; Discard работает только с выделенными строками, ' +
+      'чтобы не отменить лишнего.', 'Discard', MB_OK or
       MB_ICONINFORMATION);
     Exit;
   end;
