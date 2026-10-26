@@ -140,6 +140,47 @@ object DlgNewPrj: TDlgNewPrj
           Caption = 'Пути - из настроек компилятора RapidQ; свой путь в поле - только для этого проекта'
         end
       end
+      object grpFbRes: TUiGroupBox
+        Left = 12
+        Top = 140
+        Width = 710
+        Height = 72
+        Caption = 'Ресурсы FreeBASIC'
+        TabOrder = 6
+        object lblFbIcon: TLabel
+          Left = 12
+          Top = 24
+          Caption = 'Значок exe (.ico)'
+        end
+        object edFbIcon: TUiEdit
+          Left = 120
+          Top = 20
+          Width = 490
+          TabOrder = 0
+          OnChange = edFbIconChange
+        end
+        object btnFbIcon: TUiButton
+          Left = 616
+          Top = 19
+          Width = 30
+          Height = 23
+          Caption = '...'
+          TabOrder = 1
+          OnClick = btnFbIconClick
+        end
+        object imgFbIcon: TImage
+          Left = 660
+          Top = 16
+          Width = 32
+          Height = 32
+          Center = True
+        end
+        object lblFbIconNote: TLabel
+          Left = 12
+          Top = 48
+          Caption = 'При сборке пишется <главный файл>_res.rc с FB_PROGRAM_ICON и передаётся fbc; путь - от папки проекта'
+        end
+      end
     end
     object tsOptions: TTabSheet
       Caption = 'Project options'

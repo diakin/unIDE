@@ -3525,6 +3525,7 @@ type
     function  RqFbConvertedInfo(const ABas: string;
                                 var ASmart, AConsole: Boolean): Boolean;
     function  RqFbConvertedExe(const ABas: string): string;
+    function  FbResFile(const AMainBas: string): string;
     procedure RqFbCopyDll(const ALclDir, AExeDir: string; ABits: Integer);
     function  FbIncDirs(ABits: Integer; var AUserInc: string): string;
     function  RapidQFindSourceLine(const AFile, AText,
@@ -11057,6 +11058,7 @@ var
   OldName, OldDir, OldType, OldTarget: string;
   NewName, NewDir, NewType, NewTarget, Dir, Val, SectName: string;
   IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList: string;
+  FbIconPath: string;
   K, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
   DirChanged, OptionsChanged: Boolean;
   RosCfg: TRosSettings;
@@ -11103,10 +11105,13 @@ begin
     Prj := TProjectIni.Create(SettingsFileName, OldName);
     try
       IncOwnList := Prj.ReadString('Project', 'IncPaths', '');
+      FbIconPath := Prj.ReadString('Project', 'FbIcon', '');
     finally
       Prj.Free;
     end;
     Dlg.SetRqInc(IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList);
+    // Значок exe проекта FreeBASIC
+    Dlg.SetFbIcon(FbIconPath, OldDir);
     // Проект ReactOS: папка сборки, цель ninja, configure, скрипт RosBE
     if (CompareText(OldType, RosProjectType) = 0) and
        RosSettingsOf(OldName, RosCfg) then
@@ -11154,6 +11159,16 @@ begin
         Prj.WriteString('Project', 'IncMode', Dlg.RqIncMode);
         Prj.WriteString('Project', 'IncPath', Dlg.RqIncOwnDir);
         Prj.WriteString('Project', 'IncPaths', Dlg.RqIncOwnList);
+      finally
+        Prj.Free;
+      end;
+    end;
+    // Значок exe FreeBASIC - туда же
+    if CompareText(NewType, 'FreeBASIC') = 0 then
+    begin
+      Prj := TProjectIni.Create(SettingsFileName, OldName);
+      try
+        Prj.WriteString('Project', 'FbIcon', Dlg.FbIcon);
       finally
         Prj.Free;
       end;
@@ -53501,6 +53516,56 @@ begin
   end;
 end;
 
+// Значок exe из свойств проекта FreeBASIC (Project, FbIcon; путь от папки
+// проекта или полный): пишет рядом с главным .bas <имя>_res.rc с
+// FB_PROGRAM_ICON и возвращает его имя. Значок не задан, проект не открыт,
+// файла значка нет или .rc не записался - '' (последние два - с записью в
+// лог).
+function TForm1.FbResFile(const AMainBas: string): string;
+var
+  Prj: TProjectIni;
+  IconPath: string;
+  RcLines: TStringList;
+begin
+  Result := '';
+  if FCurrentProject = '' then
+    Exit;
+  Prj := TProjectIni.Create(SettingsFileName, FCurrentProject);
+  try
+    IconPath := Trim(Prj.ReadString('Project', 'FbIcon', ''));
+  finally
+    Prj.Free;
+  end;
+  if IconPath = '' then
+    Exit;
+  if ExtractFileDrive(IconPath) = '' then
+    IconPath := IncludeTrailingPathDelimiter(ProjectDir(FCurrentProject)) +
+                IconPath;
+  if not FileExists(IconPath) then
+  begin
+    LogComp('Значок из свойств проекта не найден: ' + IconPath);
+    Exit;
+  end;
+  Result := ChangeFileExt(AMainBas, '') + '_res.rc';
+  RcLines := TStringList.Create;
+  try
+    // Путь в .rc - с удвоенной обратной косой чертой
+    RcLines.Add('FB_PROGRAM_ICON ICON "' +
+                StringReplace(IconPath, '\', '\\', [rfReplaceAll]) + '"');
+    try
+      RcLines.SaveToFile(Result);
+    except
+      on E: Exception do
+      begin
+        LogComp('Не записан ' + Result + ': ' + E.Message);
+        Result := '';
+      end;
+    end;
+  finally
+    RcLines.Free;
+  end;
+end;
+
 // Сборка главного .bas компилятором fbc. True - собрано, результат на месте.
 function TForm1.CompileFreeBasic: Boolean;
 var
@@ -53659,14 +53724,18 @@ begin
   if UsesLcl then
     Params := Params + ' -i "' + LclDir + 'inc"';
   Params := Params + ' -x "' + OutFile + '" "' + MainBas + '"';
-  // $RESOURCE: .rc от перевода рядом с файлом. У обычной программы -
-  // одноимённый .rc рядом с главным .bas (значок FB_PROGRAM_ICON, версия):
-  // в исходнике FreeBASIC ресурсы не подключаются, fbc берёт .rc в
-  // командной строке
+  // Ресурсы. В исходнике FreeBASIC они не подключаются - fbc берёт .rc в
+  // командной строке. $RESOURCE перевода RapidQ - его _res.rc. У обычной
+  // программы - значок из свойств проекта (FbResFile пишет _res.rc с
+  // FB_PROGRAM_ICON), а без него - одноимённый .rc рядом с главным .bas
   if IsConverted then
     ResFile := ChangeFileExt(MainBas, '') + '_res.rc'
   else
-    ResFile := ChangeFileExt(MainBas, '.rc');
+  begin
+    ResFile := FbResFile(MainBas);
+    if ResFile = '' then
+      ResFile := ChangeFileExt(MainBas, '.rc');
+  end;
   if FileExists(ResFile) then
   begin
     Params := Params + ' "' + ResFile + '"';

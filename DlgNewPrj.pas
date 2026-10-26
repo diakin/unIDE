@@ -10,6 +10,9 @@ unit DlgNewPrj;
 // сборки output-*, цель ninja, параметры configure.cmd, скрипт окружения
 // RosBE. Рамка строится кодом (BuildRosControls); хранение - RosProj.
 //
+// Проект FreeBASIC - рамка grpFbRes: значок exe (.ico). Хранится в
+// разделе проекта (Project, FbIcon); при сборке Unit1 пишет по нему .rc.
+//
 // Окно описано в DlgNewPrj.dfm и правится в конструкторе форм.
 // Обработчики полей вкладки Project (NewPrjNameChange, NewPrjDirChange,
 // NewPrjOnBaseClick), подсказку папки и само создание проекта ведёт
@@ -74,6 +77,12 @@ type
     edIncPath: TUiEdit;
     btnIncBrowse: TUiButton;
     lblIncNote: TLabel;
+    grpFbRes: TUiGroupBox;
+    lblFbIcon: TLabel;
+    edFbIcon: TUiEdit;
+    btnFbIcon: TUiButton;
+    imgFbIcon: TImage;
+    lblFbIconNote: TLabel;
     tsOptions: TTabSheet;
     pcOptions: TUiPageControl;
     tsForms: TTabSheet;
@@ -239,7 +248,10 @@ type
     procedure cbTypeChange(Sender: TObject);
     procedure rbIncClick(Sender: TObject);
     procedure btnIncBrowseClick(Sender: TObject);
+    procedure edFbIconChange(Sender: TObject);
+    procedure btnFbIconClick(Sender: TObject);
   private
+    FFbProjectDir: string;      // папка проекта FreeBASIC - от неё путь значка
     // Папки inc RapidQ из настроек компилятора: системные (новые) и
     // пользовательские (старые) - см. SetRqInc
     FIncSysDir: string;
@@ -335,6 +347,11 @@ type
     function RqIncOwnList: string;
     // Выбран тип ReactOS
     function IsRosType: Boolean;
+    // Значок exe проекта FreeBASIC (рамка grpFbRes): AIcon - путь из
+    // настроек проекта, абсолютный или от AProjectDir
+    procedure SetFbIcon(const AIcon, AProjectDir: string);
+    // Путь значка, как его записать в настройки проекта ('' - нет)
+    function FbIcon: string;
     // New Project: показать у типа RapidQ Basic списки вида заготовки и
     // компилятора; AKind - выбранный вид (rqkApp, rqkConsole, rqkCgi)
     procedure ShowRqKind(AKind: Integer);
@@ -365,6 +382,7 @@ const
   CompactClientHeight = 224;
   CompactRqClientHeight = 352;
   CompactRosClientHeight = 456;
+  CompactFbClientHeight = 306;
   FullClientHeight = 560;
   // Design-пакеты Delphi 7
   KnownPackagesKey = 'Software\Borland\Delphi\7.0\Known Packages';
@@ -408,10 +426,11 @@ begin
 end;
 
 // Рамка папки inc - только у проекта RapidQ, рамка ReactOS - у проекта
-// ReactOS; высота окна - по ним
+// ReactOS, рамка ресурсов - у проекта FreeBASIC; высота окна - по ним
 procedure TDlgNewPrj.UpdateRqIncVisible;
 begin
   grpRqInc.Visible := CompareText(cbType.Text, 'RapidQ Basic') = 0;
+  grpFbRes.Visible := CompareText(cbType.Text, 'FreeBASIC') = 0;
   if grpRos <> nil then
     grpRos.Visible := IsRosType;
   if cbRqKind <> nil then
@@ -426,6 +445,8 @@ begin
     ClientHeight := CompactRqClientHeight
   else if (grpRos <> nil) and grpRos.Visible then
     ClientHeight := CompactRosClientHeight
+  else if grpFbRes.Visible then
+    ClientHeight := CompactFbClientHeight
   else
     ClientHeight := CompactClientHeight;
 end;
@@ -723,6 +744,62 @@ end;
 procedure TDlgNewPrj.cbTypeChange(Sender: TObject);
 begin
   UpdateRqIncVisible;
+end;
+
+procedure TDlgNewPrj.SetFbIcon(const AIcon, AProjectDir: string);
+begin
+  FFbProjectDir := AProjectDir;
+  edFbIcon.Text := AIcon;
+  edFbIconChange(nil);
+end;
+
+function TDlgNewPrj.FbIcon: string;
+begin
+  Result := Trim(edFbIcon.Text);
+end;
+
+// Предпросмотр значка: файл есть и читается - картинка, иначе пусто
+procedure TDlgNewPrj.edFbIconChange(Sender: TObject);
+var
+  IconPath: string;
+begin
+  imgFbIcon.Picture := nil;
+  IconPath := Trim(edFbIcon.Text);
+  if IconPath = '' then
+    Exit;
+  if (ExtractFileDrive(IconPath) = '') and (FFbProjectDir <> '') then
+    IconPath := IncludeTrailingPathDelimiter(FFbProjectDir) + IconPath;
+  if not FileExists(IconPath) then
+    Exit;
+  try
+    imgFbIcon.Picture.LoadFromFile(IconPath);
+  except
+    imgFbIcon.Picture := nil;
+  end;
+end;
+
+// Выбор .ico; внутри папки проекта путь пишется от неё
+procedure TDlgNewPrj.btnFbIconClick(Sender: TObject);
+var
+  OpenDlg: TOpenDialog;
+  DirPrefix: string;
+begin
+  OpenDlg := TOpenDialog.Create(Self);
+  try
+    OpenDlg.Filter := 'Icon (*.ico)|*.ico';
+    if FFbProjectDir <> '' then
+      OpenDlg.InitialDir := FFbProjectDir;
+    if not OpenDlg.Execute then
+      Exit;
+    DirPrefix := IncludeTrailingPathDelimiter(FFbProjectDir);
+    if (FFbProjectDir <> '') and
+       (CompareText(Copy(OpenDlg.FileName, 1, Length(DirPrefix)), DirPrefix) = 0) then
+      edFbIcon.Text := Copy(OpenDlg.FileName, Length(DirPrefix) + 1, MaxInt)
+    else
+      edFbIcon.Text := OpenDlg.FileName;
+  finally
+    OpenDlg.Free;
+  end;
 end;
 
 const
