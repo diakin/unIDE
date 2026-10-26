@@ -510,8 +510,8 @@ begin
     Result := 'Операторы: набор символов подряд, без разделителей. Символ ' +
       'из двух групп рисуется цветом той, что ниже в файле.'
   else if AName = 'LineComment' then
-    Result := 'Строчный комментарий: маркер начала (// ; '' #). Пусто или ' +
-      'none - строчных комментариев в языке нет.'
+    Result := 'Строчный комментарий: маркер начала (// ; '' #). ^; - только ' +
+      'в начале строки, после пробелов (Inno Setup). Пусто или none - нет.'
   else if Starts('BlockComment') then
     Result := 'Блочный комментарий: маркеры начала и конца через пробел ' +
       '(/* */). Пусто или none - нет. BlockComment2 и дальше - ещё пары.'
@@ -2088,7 +2088,8 @@ begin
     begin
       Form1.FScheme.FLcFG := TColor(Grid.Objects[1, R]);
       Form1.FScheme.FLcBG := TColor(Grid.Objects[2, R]);
-      Form1.FScheme.FLineCommentMarker := Grid.Cells[3, R];
+      // ^ перед маркером (^;) - комментарий только в начале строки
+      Form1.FScheme.SetLineCommentSchemeText(Grid.Cells[3, R]);
     end
     else if Sec = 'BlockComment' then
     begin
@@ -2265,7 +2266,7 @@ begin
     begin
       Grid.Objects[1, R] := TObject(Form1.FScheme.FLcFG);
       Grid.Objects[2, R] := TObject(Form1.FScheme.FLcBG);
-      Grid.Cells[3, R] := Form1.FScheme.FLineCommentMarker;
+      Grid.Cells[3, R] := Form1.FScheme.LineCommentSchemeText;
     end
     else if Sec = 'BlockComment' then
     begin
@@ -5447,7 +5448,7 @@ begin
     else
       SavedWords[I] := '';
   end;
-  LcMarker := Form1.FScheme.FLineCommentMarker;
+  LcMarker := Form1.FScheme.LineCommentSchemeText;
   BcStart := Form1.FScheme.FBlockCommentStart;
   BcEnd := Form1.FScheme.FBlockCommentEnd;
   StrMarker := Form1.FScheme.FStringMarker;
@@ -5518,7 +5519,7 @@ begin
     end;
   end;
 
-  Form1.FScheme.FLineCommentMarker := LcMarker;
+  Form1.FScheme.SetLineCommentSchemeText(LcMarker);
   Form1.FScheme.FBlockCommentStart := BcStart;
   Form1.FScheme.FBlockCommentEnd := BcEnd;
   Form1.FScheme.FStringMarker := StrMarker;

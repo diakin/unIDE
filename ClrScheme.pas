@@ -116,6 +116,11 @@ type
     MarkGroups: array of TMarkGroup;
     // Динамические настройки активного языка
     FLineCommentMarker: string;
+    // Строчный комментарий только в начале строки (до маркера - одни
+    // пробелы и табуляции). В файле схемы - знак ^ перед маркером: ^;
+    // Так устроен Inno Setup: ; в начале строки - комментарий, в середине -
+    // разделитель параметров.
+    FLineCommentAtStart: Boolean;
     FBlockCommentStart: string;
     FBlockCommentEnd: string;
     FStringMarker: string;
@@ -260,6 +265,17 @@ type
     // файлов схемы. Результат - сколько разделов получили цвета темы.
     function  ApplyTheme: Integer;
     function  IsCommentLine(const S: string): Boolean;
+    // Строка данных раздела LineComment: маркер, с ^ впереди при
+    // FLineCommentAtStart. Set разбирает её обратно (none не трогает -
+    // это делает SchemaMarkerValue при чтении файла).
+    function  LineCommentSchemeText: string;
+    procedure SetLineCommentSchemeText(const S: string);
+    // Маркер строчного комментария, найденный в AText на позиции MarkPos,
+    // действительно открывает комментарий: без FLineCommentAtStart - всегда,
+    // с ним - если левее, до начала строки (#13, #10 или начало AText),
+    // стоят только пробелы и табуляции. Символ AText[MarkPos] не читается,
+    // так что можно передать один префикс строки и MarkPos = Length + 1.
+    function  LineCommentPosOk(const AText: string; MarkPos: Integer): Boolean;
     function  MarkersSig: string;
     function  BcStartMark(AKind: Integer): string;
     function  BcEndMark(AKind: Integer): string;
@@ -1072,7 +1088,9 @@ begin
           FLcBG := StringToColor(ParamSL[2]);
           // Маркер - строка целиком, как есть. Пустая или none - строчных
           // комментариев в языке нет; RebuildCommentRangeMap их не ищет.
-          FLineCommentMarker := SchemaMarkerValue(DataStr);
+          // ^ перед маркером - комментарий только в начале строки (^; у
+          // Inno Setup), см. FLineCommentAtStart
+          SetLineCommentSchemeText(SchemaMarkerValue(DataStr));
         end
         // -----------------------------------------------------------------
         // БЛОЧНЫЙ КОММЕНТАРИЙ: два маркера через пробел
@@ -1355,6 +1373,7 @@ begin
 
   // Безопасные дефолты синтаксиса
   FLineCommentMarker := '//';
+  FLineCommentAtStart := False;
   FBlockCommentStart := '/*';
   FBlockCommentEnd := '*/';
   SetLength(FBcExtra, 0);
@@ -1422,7 +1441,7 @@ begin
   begin
     SL.Add(SchemaHeadMark + 'LineComment ' + ColorToString(FLcFG) + ' ' +
            ColorToString(FLcBG));
-    SL.Add(FLineCommentMarker);
+    SL.Add(LineCommentSchemeText);
   end
   else if AName = 'BlockComment' then
   begin
@@ -1825,7 +1844,7 @@ function TClrScheme.MarkersSig: string;
 var
   I: Integer;
 begin
-  Result := FLineCommentMarker + #0 + FBlockCommentStart + #0 +
+  Result := LineCommentSchemeText + #0 + FBlockCommentStart + #0 +
             FBlockCommentEnd + #0 + FStringMarker;
   for I := 0 to High(FBcExtra) do
     Result := Result + #0 + FBcExtra[I].StartMark + #0 + FBcExtra[I].EndMark;
@@ -2094,6 +2113,55 @@ begin
   Result := (T <> '') and
             (AnsiCompareText(Copy(T, 1, Length(FLineCommentMarker)),
                              FLineCommentMarker) = 0);
+end;
+
+function TClrScheme.LineCommentSchemeText: string;
+begin
+  if FLineCommentAtStart and (FLineCommentMarker <> '') then
+    Result := '^' + FLineCommentMarker
+  else
+    Result := FLineCommentMarker;
+end;
+
+// ^ только как приставка к непустому маркеру: одиночный ^ остаётся
+// маркером как есть
+procedure TClrScheme.SetLineCommentSchemeText(const S: string);
+begin
+  if (Length(S) > 1) and (S[1] = '^') then
+  begin
+    FLineCommentAtStart := True;
+    FLineCommentMarker := Copy(S, 2, MaxInt);
+  end
+  else
+  begin
+    FLineCommentAtStart := False;
+    FLineCommentMarker := S;
+  end;
+end;
+
+function TClrScheme.LineCommentPosOk(const AText: string;
+  MarkPos: Integer): Boolean;
+var
+  CharIdx: Integer;
+begin
+  Result := True;
+  if not FLineCommentAtStart then
+    Exit;
+  CharIdx := MarkPos - 1;
+  if CharIdx > Length(AText) then
+    CharIdx := Length(AText);
+  while CharIdx >= 1 do
+  begin
+    case AText[CharIdx] of
+      #13, #10:
+        Exit;
+      ' ', #9:
+        Dec(CharIdx);
+    else
+      Result := False;
+      Exit;
+    end;
+  end;
 end;
 
 end.

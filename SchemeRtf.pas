@@ -281,7 +281,9 @@ var
   var
     Level, BangPos: Integer;
   begin
-    Result := MarkAt(AScheme.FLineCommentMarker, CharPos);
+    // ^; в схеме - комментарий только в начале строки, после пробелов
+    Result := MarkAt(AScheme.FLineCommentMarker, CharPos) and
+              AScheme.LineCommentPosOk(Line, CharPos);
     if not Result then
       Exit;
     // Уровень CUSTOM - число "!" сразу за маркером, не больше 5

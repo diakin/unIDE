@@ -4330,6 +4330,12 @@ end;
 procedure TForm1.ScanCommentRanges(const FullText: string; ABase: Integer);
 var
   TextLen, I: Integer;
+  // Маркер только в начале строки (^;): FullText начат с середины строки
+  // (доразбор с конца литерала или комментария) - до первого перевода
+  // строки комментарий не открывается
+  LcMidStart: Boolean;
+  LcFirstBreak: Integer;
+  PrevStr: string;
   InBlock: Boolean;
   InSingleLine: Boolean;
   InString: Boolean;
@@ -4367,6 +4373,21 @@ var
 
 begin
   TextLen := Length(FullText);
+
+  LcMidStart := False;
+  LcFirstBreak := 0;
+  if FScheme.FLineCommentAtStart and (ABase > 0) then
+  begin
+    PrevStr := TextRange(ABase - 1, 1);
+    LcMidStart := (PrevStr <> '') and not (PrevStr[1] in [#13, #10]);
+    if LcMidStart then
+    begin
+      LcFirstBreak := Pos(#13, FullText);
+      if (Pos(#10, FullText) > 0) and
+         ((LcFirstBreak = 0) or (Pos(#10, FullText) < LcFirstBreak)) then
+        LcFirstBreak := Pos(#10, FullText);
+    end;
+  end;
 
   // Длины динамических маркеров текущей языковой схемы
   LcLen  := Length(FScheme.FLineCommentMarker);
@@ -4472,7 +4493,10 @@ begin
     // строки. Побеждает самый длинный совпавший маркер; при равной длине
     // комментарий важнее литерала.
     HitStr   := StrStartAt(FullText, I, StrHitKind);
-    HitLine  := MatchesAt(FScheme.FLineCommentMarker, I);
+    // У маркера ^; (Inno Setup) комментарий - только в начале строки
+    HitLine  := MatchesAt(FScheme.FLineCommentMarker, I) and
+                FScheme.LineCommentPosOk(FullText, I) and
+                (not LcMidStart or ((LcFirstBreak > 0) and (I > LcFirstBreak)));
     HitBlock := BcStartAt(FullText, I, HitKind);
 
     SLen := 0;
@@ -23561,6 +23585,7 @@ var
   Sel: TCharRange;
   NewLen, D, EditPos, I: Integer;
   PostWin: string;
+  EditLineIdx, EditLineBeg, EditLineLen: Integer;
 
   function HasMarker(const S: string): Boolean;
   var
@@ -23649,6 +23674,19 @@ begin
 
     if HasMarker(FPreWin) or HasMarker(PostWin) then
       Exit; // задело маркер - ещё и полный разбор
+
+    // Маркер только в начале строки (^; у Inno Setup): символ, вписанный
+    // или стёртый левее маркера, сам маркерным не является, но решает,
+    // комментарий ли строка. Строку, где маркер есть, - в полный разбор.
+    if FScheme.FLineCommentAtStart and (FScheme.FLineCommentMarker <> '') then
+    begin
+      EditLineIdx := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, EditPos);
+      EditLineBeg := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, EditLineIdx, 0);
+      EditLineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, EditLineBeg, 0);
+      if Pos(FScheme.FLineCommentMarker,
+             TextRange(EditLineBeg, EditLineLen)) > 0 then
+        Exit;
+    end;
 
     Result := True;
   finally
@@ -25798,6 +25836,7 @@ begin
     begin
       if (AText[K] = FScheme.FLineCommentMarker[1]) and
          (Copy(AText, K, MarkLen) = FScheme.FLineCommentMarker) and
+         FScheme.LineCommentPosOk(AText, K) and
          not InRanges(StringRanges, K - 1) and
          not InRanges(CommentRanges, K - 1) then
       begin
@@ -45434,9 +45473,11 @@ begin
 
   // Строчный комментарий правее правки уезжает вместе с текстом; если
   // правка задела его маркер или была левее - пусть ищется заново
+  // Маркер только в начале строки (^;): правка левее него может сделать
+  // строку не комментарием - тогда тоже искать заново
   if L^.CCommentKnown and (L^.CLineComment > 0) then
   begin
-    if L^.CLineComment - 1 > QOld then
+    if (L^.CLineComment - 1 > QOld) and not FScheme.FLineCommentAtStart then
       Inc(L^.CLineComment, D)
     else if L^.CLineComment - 1 + Length(FScheme.FLineCommentMarker) >= POld then
       L^.CCommentKnown := False;
@@ -45539,6 +45580,12 @@ begin
   begin
     Pos0 := FindTextEd(FScheme.FLineCommentMarker, Pos0, EndPos - Pos0, [stMatchCase]);
     if (Pos0 < 0) or (Pos0 >= EndPos) then
+      Exit;
+    // Маркер только в начале строки (^; в схеме): левее не пробел -
+    // этот и все следующие маркеры строки комментария не открывают
+    if FScheme.FLineCommentAtStart and
+       not FScheme.LineCommentPosOk(TextRange(L^.CStart, Pos0 - L^.CStart),
+                                    Pos0 - L^.CStart + 1) then
       Exit;
     if not InRanges(StringRanges, Pos0) and
        not InRanges(CommentRanges, Pos0) then
@@ -76126,7 +76173,8 @@ var
     while FI <= LineLen - Length(FScheme.FLineCommentMarker) + 1 do
     begin
       if (LineStr[FI] = FScheme.FLineCommentMarker[1]) and
-         (Copy(LineStr, FI, Length(FScheme.FLineCommentMarker)) = FScheme.FLineCommentMarker) then
+         (Copy(LineStr, FI, Length(FScheme.FLineCommentMarker)) = FScheme.FLineCommentMarker) and
+         FScheme.LineCommentPosOk(LineStr, FI) then
         if not IsCharInString(LineStartCharIdx + FI - 1) and
            not IsCharInBlockComment(LineStartCharIdx + FI - 1) then
         begin

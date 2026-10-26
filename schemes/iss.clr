@@ -7,7 +7,7 @@ AppId,AppMutex,AppName,AppPublisher,AppPublisherURL,AppVersion,ArchitecturesAllo
 • Operators $00D81CDD clWhite
 ()*+,-./:;<=>[]
 • LineComment clGreen clWhite
-;
+^;
 • BlockComment clGreen clWhite
 /* */
 • Strings $00008CFF clWhite
