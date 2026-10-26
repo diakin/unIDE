@@ -3058,6 +3058,8 @@ type
     function  GitCurrentBranch(const AGit, ARepo: string): string;
     procedure GitBranchList(const AGit, ARepo: string; AWithRemote: Boolean;
                             AList: TStrings);
+    procedure GitAddRemoteOnlyBranches(const AGit, ARepo: string;
+                            AList: TStrings);
     function  GitLongOp(const AGit, ARepo, AArgs: string): Integer;
     function  GitExplain(const AArgs: string; const AOutput: WideString;
                          AExitCode: Integer; var AIsError: Boolean): string;
@@ -65591,6 +65593,41 @@ begin
   end;
 end;
 
+// Ветки сервера (origin/...), у которых нет локальной ветки с тем же
+// именем, - в конец AList. Список Branch на панели Git показывает их,
+// чтобы на ветку с сервера можно было перейти без Git Bash
+procedure TForm1.GitAddRemoteOnlyBranches(const AGit, ARepo: string;
+  AList: TStrings);
+var
+  Output: WideString;
+  Lines: TStringList;
+  LineIdx, SlashPos: Integer;
+  RemoteRef, LocalName: string;
+begin
+  Lines := TStringList.Create;
+  try
+    if GitRunIn(AGit, ARepo, 'for-each-ref --format=%(refname:short) ' +
+       'refs/remotes/', False, Output) <> 0 then
+      Exit;
+    GitSplitLines(Output, Lines);
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      RemoteRef := Lines[LineIdx];
+      SlashPos := Pos('/', RemoteRef);
+      // origin/HEAD - ссылка, не ветка; без '/' - имя самого сервера
+      if (SlashPos = 0) or
+         (Copy(RemoteRef, Length(RemoteRef) - 4, 5) = '/HEAD') then
+        Continue;
+      LocalName := Copy(RemoteRef, SlashPos + 1, MaxInt);
+      if (AList.IndexOf(LocalName) < 0) and
+         (AList.IndexOf(RemoteRef) < 0) then
+        AList.Add(RemoteRef);
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
 // Длинная команда (сеть, commit): вывод в Compilation log, панель - после
 function TForm1.GitLongOp(const AGit, ARepo, AArgs: string): Integer;
 var
@@ -65990,7 +66027,8 @@ begin
   FGitCmbBranch.Font.Size := 10;
   FGitCmbBranch.SetBounds(64, 47, 220, 21);
   FGitCmbBranch.Hint := 'Текущая ветка; выбор другой - переключиться на неё ' +
-    '(git checkout)';
+    '(git checkout). origin/имя - ветка только на сервере: выбор создаст ' +
+    'локальную ветку, следящую за ней';
   FGitCmbBranch.ShowHint := True;
   FGitCmbBranch.OnChange := GitBranchComboChange;
   FGitCmbBranch.OnKeyDown := GitBranchKeyDown;
@@ -66155,6 +66193,7 @@ begin
     Branch := GitCurrentBranch(Git, Repo);
     FGitBranchName := Branch;
     GitBranchList(Git, Repo, False, FGitCmbBranch.Items);
+    GitAddRemoteOnlyBranches(Git, Repo, FGitCmbBranch.Items);
     if Branch = '' then
     begin
       FGitCmbBranch.Items.Insert(0, '(HEAD отсоединён)');
@@ -66435,7 +66474,7 @@ end;
 // Выбор ветки в панели - переключиться (git checkout)
 procedure TForm1.GitBranchComboChange(Sender: TObject);
 var
-  Git, Repo, Target: string;
+  Git, Repo, Target, LocalName: string;
 begin
   if FGitBranchFill or (FGitCmbBranch.ItemIndex < 0) then
     Exit;
@@ -66446,6 +66485,22 @@ begin
     Exit;
   if Target = GitCurrentBranch(Git, Repo) then
     Exit;
+  // Ветка только на сервере (origin/имя): локальная ветка с тем же
+  // именем, следящая за серверной (как git switch имя)
+  if (GitQuery(Git, Repo, 'rev-parse -q --verify ' +
+      string(GitQuote(WideString('refs/heads/' + Target)))) = '') and
+     (GitQuery(Git, Repo, 'rev-parse -q --verify ' +
+      string(GitQuote(WideString('refs/remotes/' + Target)))) <> '') then
+  begin
+    LocalName := Copy(Target, Pos('/', Target) + 1, MaxInt);
+    if GitQuery(Git, Repo, 'rev-parse -q --verify ' +
+       string(GitQuote(WideString('refs/heads/' + LocalName)))) <> '' then
+      GitLongOp(Git, Repo, 'checkout ' + string(GitQuote(WideString(LocalName))))
+    else
+      GitLongOp(Git, Repo, 'checkout -b ' + string(GitQuote(WideString(LocalName))) +
+        ' --track ' + string(GitQuote(WideString(Target))));
+    Exit;
+  end;
   GitLongOp(Git, Repo, 'checkout ' + string(GitQuote(WideString(Target))));
 end;
 
