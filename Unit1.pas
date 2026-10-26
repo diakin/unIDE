@@ -61096,7 +61096,8 @@ begin
   RapidQ := Kind = bkRapidQ;
   if Kind = bkFreeBasic then
   begin
-    // FreeBASIC: exe рядом с главным .bas; отладчика пока нет
+    // FreeBASIC: перевод RapidQ - exe рядом с исходником RapidQ, обычная
+    // программа - в bin (FbOutFileOf); отладчика пока нет
     Dpr := FbTargetBas(False);
     if Dpr = '' then
     begin
@@ -61111,7 +61112,10 @@ begin
       'запускать нечего. Вид результата - в рамке Project');
               Exit;
     end;
-    Exe := RqFbConvertedExe(Dpr);   // перевод из _rqfb - exe выше
+    if RqFbConvertedExe(Dpr) <> ChangeFileExt(Dpr, '.exe') then
+      Exe := RqFbConvertedExe(Dpr)   // перевод из _rqfb - exe выше
+    else
+      Exe := FbOutFileOf(Dpr);
   end
   else if RapidQ then
   begin
