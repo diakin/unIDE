@@ -1236,6 +1236,7 @@ object Form2: TForm2
           'RapidQ Basic'
           'Delphi'
           'FreeBASIC'
+          'Lazarus'
           'Visual Basic'
           'Arduino'
           'C project'

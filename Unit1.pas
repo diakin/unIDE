@@ -1590,6 +1590,8 @@ type
     FRqBuild: TStringList;
     // RunCompiler без перевода вывода из OEM (fbc пишет пути в ANSI)
     FCompNoOem: Boolean;
+    // RunCompiler: строки вывода в UTF-8 - в ANSI (lazbuild)
+    FCompUtf8: Boolean;
     FBuildBarBusy: Boolean;     // UpdateBuildBar ставит пункт списка сам
     FLangModeKey: string;
     FRunRowLefts: array of Integer;
@@ -3514,6 +3516,13 @@ type
     function  CompileProject: Boolean;
     function  AhkFindCompiler: string;
     function  CompileReactOS: Boolean;
+    function  LazCompilerOptions(const ALpi: string): string;
+    function  LazTargetLpi: string;
+    function  LazFolder(const ADir: string): Boolean;
+    function  LazbuildExe(var AProblem: string): string;
+    function  LazExeOf(const ALpi: string): string;
+    function  LazUnitPathOf(const ALpi: string): string;
+    function  CompileLazarus: Boolean;
     function  RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
                          const AWorkDir: string): Integer;
     procedure RosNinjaLine(const ALine: string);
@@ -4221,6 +4230,7 @@ const
   bkFreeBasic = 2;
   bkArduino = 3;
   bkCMakeNinja = 4;  // ReactOS / LiberNT: configure.cmd + ninja (RosProj)
+  bkLazarus = 5;     // lazbuild <проект>.lpi (CompileLazarus)
   // FreeBASIC: вид результата (cmbFbKind, FbBuildOf)
   fbOutGui = 0;       // -s gui
   fbOutConsole = 1;   // -s console
@@ -12732,6 +12742,7 @@ begin
     bkFreeBasic: Result := 'FreeBASIC';
     bkArduino: Result := 'Arduino';
     bkCMakeNinja: Result := 'CMake+Ninja';
+    bkLazarus: Result := 'Lazarus';
   else
     Result := '(не определён)';
   end;
@@ -13054,8 +13065,8 @@ begin
   Result := AList.Count;
 end;
 
-// Тип проекта -> сборщик. Lazarus, Go и прочие, которых здесь не собрать,
-// и пустое имя - bkNone. Проект без типа - RapidQ (ProjectTypeOf).
+// Тип проекта -> сборщик. Go и прочие, которых здесь не собрать, и пустое
+// имя - bkNone. Проект без типа - RapidQ (ProjectTypeOf).
 function TForm1.ProjectBuildKind(const APrj: string): Integer;
 var
   PrjType: string;
@@ -13073,7 +13084,9 @@ begin
   else if CompareText(PrjType, 'Arduino') = 0 then
     Result := bkArduino
   else if CompareText(PrjType, RosProjectType) = 0 then
-    Result := bkCMakeNinja;
+    Result := bkCMakeNinja
+  else if CompareText(PrjType, 'Lazarus') = 0 then
+    Result := bkLazarus;
 end;
 
 // Настройки проекта ReactOS APrj (RosProj). Папка исходников - папка
@@ -13176,6 +13189,24 @@ begin
   begin
     Result := PrjKind;
     FBuildReason := PrjNote;
+  end
+  // Lazarus: свои расширения; .pas и .inc - в проекте Lazarus или в папке
+  // с .lpi без .dpr
+  else if (Ext = '.lpi') or (Ext = '.lpr') or (Ext = '.lpk') or
+          (Ext = '.lfm') or (Ext = '.pp') then
+  begin
+    Result := bkLazarus;
+    FBuildReason := 'по расширению ' + Ext;
+  end
+  else if ((Ext = '.pas') or (Ext = '.inc')) and (PrjKind = bkLazarus) then
+  begin
+    Result := bkLazarus;
+    FBuildReason := PrjNote;
+  end
+  else if (Ext = '.pas') and LazFolder(ExtractFilePath(FileNm)) then
+  begin
+    Result := bkLazarus;
+    FBuildReason := 'в папке есть .lpi, .dpr нет';
   end
   else if (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dfm') or
           (Ext = '.dpk') then
@@ -13427,7 +13458,7 @@ begin
   KindName := FBuildKindManual.Values[LowerCase(ExpandFileName(AFile))];
   if KindName = '' then
     Exit;
-  for KindIdx := bkDelphi to bkCMakeNinja do
+  for KindIdx := bkDelphi to bkLazarus do
     if CompareText(BuildKindName(KindIdx), KindName) = 0 then
     begin
       Result := KindIdx;
@@ -13502,6 +13533,9 @@ begin
     bkCMakeNinja:
       if RosSettingsOf(BuildProject, RosCfg) then
         Result := RosCfg.BuildDir;
+    // Lazarus: .lpi проекта (или .lpk)
+    bkLazarus:
+      Result := LazTargetLpi;
   end;
 end;
 
@@ -14236,7 +14270,7 @@ begin
     Exit;
   end;
   NewKind := cmbBuildKind.ItemIndex;
-  if (NewKind < bkDelphi) or (NewKind > bkCMakeNinja) then
+  if (NewKind < bkDelphi) or (NewKind > bkLazarus) then
     NewKind := bkNone;
   SetManualBuildKind(FCurrentFileName, NewKind);
   // Запись в editor.ini [BuildKind] - строкой в лог: по ней видно, когда
@@ -18238,8 +18272,10 @@ begin
          (Ext <> '.inc') and (Ext <> '.bi') then
         Continue;
     end
+    // Delphi и Lazarus
     else if (Ext <> '.pas') and (Ext <> '.dfm') and (Ext <> '.dpr') and
-            (Ext <> '.inc') then
+            (Ext <> '.inc') and (Ext <> '.lpr') and (Ext <> '.lfm') and
+            (Ext <> '.pp') then
       Continue;
     FileLabel := ExtractFileName(FWindows[Index].FileName);
     ActivateWindow(Index);    // сохраняем через обычный путь
@@ -24330,7 +24366,7 @@ begin
   DsgClipMenuExtra;
   DsgLayoutMenuExtra;
 
-  // Переключатель сборщика: номер пункта - bkDelphi..bkCMakeNinja, последний
+  // Переключатель сборщика: номер пункта - bkDelphi..bkLazarus, последний
   // пункт Auto - снова выбор по файлу (UpdateBuildBar, cmbBuildKindChange)
   cmbBuildKind.Items.Clear;
   cmbBuildKind.Items.Add('Delphi');
@@ -24338,6 +24374,7 @@ begin
   cmbBuildKind.Items.Add('FreeBASIC');
   cmbBuildKind.Items.Add('Arduino');
   cmbBuildKind.Items.Add('CMake+Ninja');
+  cmbBuildKind.Items.Add('Lazarus');
   cmbBuildKind.Items.Add('Auto');
   // FreeBASIC: номер пункта - fbOutGui..fbOutDll; 32 и 64 бит
   if cmbFbKind <> nil then
@@ -49002,34 +49039,44 @@ var
   ColNo: Integer;
   FbError: Boolean;
 
+  // "файл(строка)" (dcc32) или "файл(строка,колонка)" (fpc). Скобки в
+  // пути ("Program Files (x86)") пропускаются: берётся первая скобка с
+  // числом
   function ParseBorland: Boolean;
   var
     P1, P2, I: Integer;
     Num: string;
+    IsNum: Boolean;
   begin
     Result := False;
     AFile := '';
     ALine := 0;
 
     P1 := Pos('(', S);
-    if P1 < 2 then
-      Exit;
-    P2 := P1;
-    while (P2 <= Length(S)) and (S[P2] <> ')') do
-      Inc(P2);
-    if P2 > Length(S) then
-      Exit;
-
-    Num := Copy(S, P1 + 1, P2 - P1 - 1);
-    if Num = '' then
-      Exit;
-    for I := 1 to Length(Num) do
-      if not (Num[I] in ['0'..'9']) then
+    while P1 > 0 do
+    begin
+      P2 := P1;
+      while (P2 <= Length(S)) and (S[P2] <> ')') do
+        Inc(P2);
+      if P2 > Length(S) then
         Exit;
-
-    AFile := Trim(Copy(S, 1, P1 - 1));
-    ALine := StrToIntDef(Num, 0);
-    Result := (AFile <> '') and (ALine > 0);
+      Num := Copy(S, P1 + 1, P2 - P1 - 1);
+      if Pos(',', Num) > 0 then
+        Num := Copy(Num, 1, Pos(',', Num) - 1);
+      // "Hint: (11030) ..." (номер сообщения fpc) - не место в файле
+      IsNum := (Num <> '') and (P1 >= 2) and (S[P1 - 1] <> ' ');
+      for I := 1 to Length(Num) do
+        if not (Num[I] in ['0'..'9']) then
+          IsNum := False;
+      if IsNum then
+      begin
+        AFile := Trim(Copy(S, 1, P1 - 1));
+        ALine := StrToIntDef(Num, 0);
+        Result := (AFile <> '') and (ALine > 0);
+        Exit;
+      end;
+      P1 := PosEx('(', S, P2 + 1);
+    end;
   end;
 
 begin
@@ -49858,6 +49905,9 @@ begin
         Acc := Copy(Acc, NL + 1, Length(Acc));
         while (Line <> '') and (Line[Length(Line)] = #13) do
           SetLength(Line, Length(Line) - 1);
+        // lazbuild: UTF-8 - в ANSI (строка целиком: символ не режется)
+        if FCompUtf8 and LooksLikeUtf8(Line) then
+          Line := Utf8ToAnsiFull(Line);
         if Trim(Line) <> '' then
         begin
           if FRosNinjaRun then
@@ -49873,6 +49923,8 @@ begin
       Application.ProcessMessages; // окно не должно застывать
     until False;
 
+    if FCompUtf8 and LooksLikeUtf8(Acc) then
+      Acc := Utf8ToAnsiFull(Acc);
     if Trim(Acc) <> '' then
     begin
       LogComp(Acc);
@@ -51435,6 +51487,8 @@ begin
       Result := CompileReactOS;
       UpdateBuildBar;   // папка сборки могла записаться в проект
     end;
+    bkLazarus:
+      Result := CompileLazarus;
   else
     ShowCompLog;
     if CompLogEdit <> nil then
@@ -51461,9 +51515,7 @@ begin
     begin
       // Проект типа, которого здесь не собрать
       LogComp('Сборка проектов ' + PrjType + ' здесь пока не поддерживается');
-      if CompareText(PrjType, 'Lazarus') = 0 then
-        LogComp('  Соберите проект в самой Lazarus или lazbuild <проект>.lpi')
-      else if CompareText(PrjType, 'Go') = 0 then
+      if CompareText(PrjType, 'Go') = 0 then
         LogComp('  В папке проекта: go build')
       else if CompareText(PrjType, 'Rust') = 0 then
         LogComp('  В папке проекта: cargo build')
@@ -51486,6 +51538,516 @@ begin
         end;
       end;
     end;
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Сборка Lazarus: lazbuild <проект>.lpi
+//
+//  Цель - описание проекта .lpi (без него lazbuild не собирает) или пакета
+//  .lpk (LazTargetLpi):
+//    - вкладка .lpi или .lpk - она; вкладка .lpr - .lpi с тем же именем;
+//    - проект unIDE типа Lazarus - .lpi его цели (.lpr), иначе
+//      единственный .lpi в папке проекта;
+//    - иначе - .lpi в папке вкладки (один - он, несколько - с именем
+//      файла вкладки).
+//  lazbuild.exe (LazbuildExe): поле Lazarus path (IDE Options - Compilers -
+//  Lazarus: папка Lazarus или сам lazbuild.exe), PATH, папка установки из
+//  реестра, <диск>:\lazarus, Program Files\Lazarus.
+//  Сообщения fpc "файл(строка,колонка) Error: ..." - красным и в Error
+//  log, двойной щелчок ведёт к строке; папки поиска файлов - папка .lpi и
+//  пути модулей и include из .lpi (LazUnitPathOf). Вывод lazbuild в UTF-8
+//  переводится в ANSI (FCompUtf8).
+//  Exe - <Target><Filename> из .lpi (LazExeOf); без него - имя .lpi.
+// ---------------------------------------------------------------------------
+
+// .lpi в папке ADir: один - он; несколько - с именем APreferName (без
+// расширения), иначе пусто
+function LazLpiInFolder(const ADir, APreferName: string): string;
+var
+  SR: TSearchRec;
+  Found: TStringList;
+  FoundIdx: Integer;
+  Dir: string;
+begin
+  Result := '';
+  if ADir = '' then
+    Exit;
+  Dir := IncludeTrailingPathDelimiter(ADir);
+  Found := TStringList.Create;
+  try
+    if FindFirst(Dir + '*.lpi', faAnyFile and not faDirectory, SR) = 0 then
+    try
+      repeat
+        // Маска *.lpi находит и x.lpi1 (короткое имя) - расширение ещё раз
+        if CompareText(ExtractFileExt(SR.Name), '.lpi') = 0 then
+          Found.Add(Dir + SR.Name);
+      until FindNext(SR) <> 0;
+    finally
+      FindClose(SR);
+    end;
+    if Found.Count = 1 then
+      Result := Found[0]
+    else
+      for FoundIdx := 0 to Found.Count - 1 do
+        if CompareText(ChangeFileExt(ExtractFileName(Found[FoundIdx]), ''),
+                       APreferName) = 0 then
+          Result := Found[FoundIdx];
+  finally
+    Found.Free;
+  end;
+end;
+
+// Последнее вхождение ASub в AText (0 - нет)
+function LazLastPos(const ASub, AText: string): Integer;
+var
+  FoundPos, StartPos: Integer;
+begin
+  Result := 0;
+  StartPos := 1;
+  repeat
+    FoundPos := PosEx(ASub, AText, StartPos);
+    if FoundPos > 0 then
+    begin
+      Result := FoundPos;
+      StartPos := FoundPos + 1;
+    end;
+  until FoundPos = 0;
+end;
+
+// Атрибут Value тега ATag ('<Filename') внутри раздела ASection
+// ('<Target>') текста AText; нет - пусто. XML-замены &amp; и т.п.
+// раскрываются
+function LazXmlValue(const AText, ASection, ATag: string): string;
+var
+  SectPos, EndPos, TagPos, ValPos: Integer;
+  Rest: string;
+begin
+  Result := '';
+  SectPos := Pos(ASection, AText);
+  if SectPos = 0 then
+    Exit;
+  Rest := Copy(AText, SectPos, MaxInt);
+  EndPos := Pos('</' + Copy(ASection, 2, MaxInt), Rest);
+  if EndPos > 0 then
+    Rest := Copy(Rest, 1, EndPos - 1);
+  TagPos := Pos(ATag + ' ', Rest);
+  if TagPos = 0 then
+    Exit;
+  Rest := Copy(Rest, TagPos, MaxInt);
+  EndPos := Pos('>', Rest);
+  ValPos := Pos('Value="', Rest);
+  if (ValPos = 0) or ((EndPos > 0) and (ValPos > EndPos)) then
+    Exit;
+  Rest := Copy(Rest, ValPos + 7, MaxInt);
+  EndPos := Pos('"', Rest);
+  if EndPos = 0 then
+    Exit;
+  Result := Copy(Rest, 1, EndPos - 1);
+  Result := StringReplace(Result, '&quot;', '"', [rfReplaceAll]);
+  Result := StringReplace(Result, '&apos;', '''', [rfReplaceAll]);
+  Result := StringReplace(Result, '&lt;', '<', [rfReplaceAll]);
+  Result := StringReplace(Result, '&gt;', '>', [rfReplaceAll]);
+  Result := StringReplace(Result, '&amp;', '&', [rfReplaceAll]);
+end;
+
+// Раздел <CompilerOptions> верхнего уровня .lpi ALpi (режим сборки
+// Default). Режимы сборки со своими <CompilerOptions> идут раньше, внутри
+// <ProjectOptions>, - поэтому последнее вхождение. Значения - в ANSI
+function TForm1.LazCompilerOptions(const ALpi: string): string;
+var
+  Lines: TStringList;
+  Text: string;
+  StartPos: Integer;
+begin
+  Result := '';
+  if not FileExists(ALpi) then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(ALpi);
+    except
+      Exit;
+    end;
+    Text := Lines.Text;
+  finally
+    Lines.Free;
+  end;
+  // .lpi пишется в UTF-8: пути с кириллицей - в ANSI
+  if LooksLikeUtf8(Text) then
+    Text := Utf8ToAnsiFull(Text);
+  StartPos := LazLastPos('<CompilerOptions>', Text);
+  if StartPos = 0 then
+    Exit;
+  Result := Copy(Text, StartPos, MaxInt);
+end;
+
+function TForm1.LazTargetLpi: string;
+var
+  Ext, BuildPrj, Stored, Candidate: string;
+begin
+  Result := '';
+  if FCurrentFileName = '' then
+    Exit;
+  Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  if ((Ext = '.lpi') or (Ext = '.lpk')) and FileExists(FCurrentFileName) then
+  begin
+    Result := FCurrentFileName;
+    Exit;
+  end;
+  if Ext = '.lpr' then
+  begin
+    Candidate := ChangeFileExt(FCurrentFileName, '.lpi');
+    if FileExists(Candidate) then
+    begin
+      Result := Candidate;
+      Exit;
+    end;
+  end;
+  BuildPrj := BuildProject;
+  if ProjectBuildKind(BuildPrj) = bkLazarus then
+  begin
+    Stored := ProjectTargetFind(BuildPrj);
+    if Stored <> '' then
+    begin
+      Ext := LowerCase(ExtractFileExt(Stored));
+      if (Ext = '.lpi') or (Ext = '.lpk') then
+        Candidate := Stored
+      else
+        Candidate := ChangeFileExt(Stored, '.lpi');
+      if FileExists(Candidate) then
+      begin
+        Result := Candidate;
+        Exit;
+      end;
+    end;
+    Result := LazLpiInFolder(ProjectDir(BuildPrj), '');
+    if Result <> '' then
+      Exit;
+  end;
+  Result := LazLpiInFolder(ExtractFilePath(FCurrentFileName),
+    ChangeFileExt(ExtractFileName(FCurrentFileName), ''));
+end;
+
+// В папке ADir есть .lpi, а .dpr нет: .pas там - модуль Lazarus
+function TForm1.LazFolder(const ADir: string): Boolean;
+var
+  SR: TSearchRec;
+  Dprs: TStringList;
+begin
+  Result := False;
+  if ADir = '' then
+    Exit;
+  if FindFirst(IncludeTrailingPathDelimiter(ADir) + '*.lpi',
+               faAnyFile and not faDirectory, SR) = 0 then
+  try
+    repeat
+      if CompareText(ExtractFileExt(SR.Name), '.lpi') = 0 then
+        Result := True;
+    until Result or (FindNext(SR) <> 0);
+  finally
+    FindClose(SR);
+  end;
+  if not Result then
+    Exit;
+  Dprs := TStringList.Create;
+  try
+    Result := DelphiDprList(ADir, Dprs) = 0;
+  finally
+    Dprs.Free;
+  end;
+end;
+
+function TForm1.LazbuildExe(var AProblem: string): string;
+var
+  Ini: TIniFile;
+  Setting, Tried, InstallDir, LazFound: string;
+  Buf: array[0..MAX_PATH] of Char;
+  FilePart: PChar;
+  DriveCh: Char;
+  EnvLen: DWORD;
+
+  // Папка ADir: lazbuild.exe в ней есть - он в Result
+  function Probe(const ADir: string): Boolean;
+  var
+    Candidate: string;
+  begin
+    Result := False;
+    if ADir = '' then
+      Exit;
+    Candidate := IncludeTrailingPathDelimiter(ADir) + 'lazbuild.exe';
+    if FileExists(Candidate) then
+    begin
+      LazFound := Candidate;
+      Result := True;
+      Exit;
+    end;
+    if Tried <> '' then
+      Tried := Tried + ', ';
+    Tried := Tried + ExcludeTrailingPathDelimiter(ADir);
+  end;
+
+  function ProbeEnv(const AEnvName: string): Boolean;
+  begin
+    Result := False;
+    EnvLen := GetEnvironmentVariable(PChar(AEnvName), Buf, SizeOf(Buf));
+    if (EnvLen > 0) and (EnvLen < SizeOf(Buf)) then
+      Result := Probe(IncludeTrailingPathDelimiter(Buf) + 'Lazarus');
+  end;
+
+begin
+  Result := '';
+  AProblem := '';
+  Tried := '';
+  LazFound := '';
+  // 1. Поле Lazarus path: файл - он, папка - lazbuild.exe в ней
+  Setting := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Setting := Trim(Ini.ReadString(CompilerSection('Lazarus'),
+                                     'LazarusPath', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+  if Setting <> '' then
+  begin
+    if FileExists(Setting) and not DirectoryExists(Setting) then
+    begin
+      Result := Setting;
+      Exit;
+    end;
+    if Probe(Setting) then
+    begin
+      Result := LazFound;
+      Exit;
+    end;
+  end;
+  // 2. PATH
+  if SearchPath(nil, 'lazbuild.exe', nil, MAX_PATH, Buf, FilePart) > 0 then
+  begin
+    Result := Buf;
+    Exit;
+  end;
+  // 3. Папка установки из реестра (установщик Lazarus)
+  InstallDir := RegReadAny(
+    'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\lazarus_is1',
+    'InstallLocation');
+  if (InstallDir <> '') and Probe(InstallDir) then
+  begin
+    Result := LazFound;
+    Exit;
+  end;
+  // 4. <диск>:\lazarus на локальных дисках, Program Files
+  for DriveCh := 'C' to 'Z' do
+    if GetDriveType(PChar(DriveCh + ':\')) = DRIVE_FIXED then
+      if Probe(DriveCh + ':\lazarus') then
+      begin
+        Result := LazFound;
+        Exit;
+      end;
+  if ProbeEnv('ProgramFiles') or ProbeEnv('ProgramFiles(x86)') or
+     ProbeEnv('ProgramW6432') then
+  begin
+    Result := LazFound;
+    Exit;
+  end;
+  AProblem := 'lazbuild.exe не найден. Искали: ';
+  if Setting <> '' then
+    AProblem := AProblem + 'поле Lazarus path (' + Setting + '), ';
+  AProblem := AProblem + 'PATH, ' + Tried + '. Папку Lazarus можно ' +
+    'указать: IDE Options - Compilers - Lazarus, поле Lazarus path';
+end;
+
+// Exe проекта ALpi: <Target><Filename> (относительно папки .lpi, без
+// расширения - .exe); не задано - имя .lpi. Пакет (.lpk) или имя с
+// макросами $(...) - пусто
+function TForm1.LazExeOf(const ALpi: string): string;
+var
+  Name: string;
+begin
+  Result := '';
+  if CompareText(ExtractFileExt(ALpi), '.lpi') <> 0 then
+    Exit;
+  Name := LazXmlValue(LazCompilerOptions(ALpi), '<Target>', '<Filename');
+  if Name = '' then
+    Name := ChangeFileExt(ExtractFileName(ALpi), '');
+  if Pos('$(', Name) > 0 then
+    Exit;
+  Name := StringReplace(Name, '/', '\', [rfReplaceAll]);
+  if ExtractFileExt(Name) = '' then
+    Name := Name + '.exe';
+  if (ExtractFileDrive(Name) = '') and (Copy(Name, 1, 1) <> '\') then
+    Name := ExtractFilePath(ALpi) + Name;
+  Result := ExpandFileName(Name);
+end;
+
+// Папки поиска файлов из сообщений fpc: пути модулей и include из .lpi,
+// полными путями через ';' (для ResolveErrorFile)
+function TForm1.LazUnitPathOf(const ALpi: string): string;
+var
+  Options, Paths, Item, Dir: string;
+  SepPos: Integer;
+begin
+  Result := '';
+  Options := LazCompilerOptions(ALpi);
+  Paths := LazXmlValue(Options, '<SearchPaths>', '<OtherUnitFiles') + ';' +
+           LazXmlValue(Options, '<SearchPaths>', '<IncludeFiles');
+  Dir := ExtractFilePath(ALpi);
+  while Paths <> '' do
+  begin
+    SepPos := Pos(';', Paths);
+    if SepPos > 0 then
+    begin
+      Item := Trim(Copy(Paths, 1, SepPos - 1));
+      Paths := Copy(Paths, SepPos + 1, MaxInt);
+    end
+    else
+    begin
+      Item := Trim(Paths);
+      Paths := '';
+    end;
+    if (Item = '') or (Pos('$(', Item) > 0) then
+      Continue;
+    Item := StringReplace(Item, '/', '\', [rfReplaceAll]);
+    if (ExtractFileDrive(Item) = '') and (Copy(Item, 1, 1) <> '\') then
+      Item := Dir + Item;
+    Item := ExcludeTrailingPathDelimiter(ExpandFileName(Item));
+    if Result <> '' then
+      Result := Result + ';';
+    Result := Result + Item;
+  end;
+end;
+
+function TForm1.CompileLazarus: Boolean;
+var
+  Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName: string;
+  LogLine, ErrFile, FirstFile, Where: string;
+  Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount: Integer;
+  StartTick: Cardinal;
+  Built: Boolean;
+begin
+  Result := False;
+  ShowCompLog;
+  if CompLogEdit <> nil then
+    CompLogEdit.Lines.Clear;
+  if ErrLogEdit <> nil then
+    ErrLogEdit.Lines.Clear;
+  LogComp('Сборщик: Lazarus (' + FBuildReason + ')');
+
+  if not CheckDiskChanges(-1) then
+  begin
+    LogComp('Компиляция отменена: файлы на диске изменены снаружи, ' +
+    'разберитесь с ними и соберите снова');
+    Exit;
+  end;
+  // lazbuild читает файлы с диска: несохранённые правки он не увидит
+  if RichEdit1.Modified then
+    if not SaveCurrentFile then
+      Exit;
+  FBuildRapidQ := False;
+  if not SaveSourcesBeforeBuild then
+    Exit;
+
+  Lpi := LazTargetLpi;
+  if Lpi = '' then
+  begin
+    LogComp('Сборка Lazarus: не найдено описание проекта .lpi - lazbuild ' +
+    'собирает только по нему. Откройте .lpi или .lpr проекта или задайте ' +
+    'цель проекта unIDE (Project Properties)');
+    Exit;
+  end;
+  Lazbuild := LazbuildExe(Problem);
+  if Lazbuild = '' then
+  begin
+    LogComp('Сборка Lazarus: ' + Problem);
+    Exit;
+  end;
+  Dir := ExtractFilePath(Lpi);
+  ShortName := ExtractFileName(Lpi);
+  Exe := LazExeOf(Lpi);
+  // Запущенный exe переименовывается в .old (как у Delphi и FreeBASIC)
+  if (Exe <> '') and not FreeBusyExe(Exe) then
+    Exit;
+  FLastBuildDir := Dir;
+  FLastUnitPath := LazUnitPathOf(Lpi);
+  Params := '"' + Lpi + '"';
+  LogComp('--- Компиляция: ' + ShortName);
+  LogComp('"' + Lazbuild + '" ' + Params);
+  WriteCompileBat(Lazbuild, Params, Dir, Lpi);
+
+  if CompLogEdit <> nil then
+    LogStart := CompLogEdit.Lines.Count
+  else
+    LogStart := -1;
+  StartTick := GetTickCount;
+  Code := -1;
+  Built := False;
+  ErrCount := 0;
+  FirstFile := '';
+  FirstLine := 0;
+  BusyBegin('Компиляция ' + ShortName);
+  try
+    // lazbuild пишет в UTF-8 (сообщения fpc с путями - как получил): не
+    // OEM; UTF-8 - в ANSI
+    FCompNoOem := True;
+    FCompUtf8 := True;
+    try
+      Code := RunCompiler(Lazbuild, Params, Dir);
+    finally
+      FCompNoOem := False;
+      FCompUtf8 := False;
+    end;
+    if Code = -1 then
+      Exit;   // не запустился - причина уже в логе
+    if LogStart >= 0 then
+      for LineIdx := LogStart to CompLogEdit.Lines.Count - 1 do
+      begin
+        LogLine := StripLogTime(CompLogEdit.Lines[LineIdx]);
+        if not IsCompilerError(LogLine) then
+          Continue;
+        Inc(ErrCount);
+        if (FirstFile = '') and ParseCompilerLine(LogLine, ErrFile,
+           ErrLine) then
+        begin
+          ErrFile := ResolveErrorFile(ErrFile, Where);
+          if ErrFile <> '' then
+          begin
+            FirstFile := ErrFile;
+            FirstLine := ErrLine;
+          end;
+        end;
+      end;
+    Built := Code = 0;
+  finally
+    if Built then
+      BusyEnd('Компиляция: готово', True)
+    else
+      BusyEnd('Компиляция: ошибки', False);
+  end;
+  Result := Built;
+
+  if Built then
+  begin
+    if Exe <> '' then
+      LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - StartTick, Exe]))
+    else
+      LogComp(Format('--- Готово, %d мс', [GetTickCount - StartTick]));
+    Exit;
+  end;
+  LogComp(Format('--- Сборка не прошла: код завершения lazbuild %d, ' +
+  'ошибок: %d. Двойной щелчок по строке с ошибкой открывает файл на ' +
+  'нужной строке', [Code, ErrCount]));
+  SaveCompileLog(ChangeFileExt(Lpi, '') + '_compile.log');
+  if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+    ShowErrLog;
+  if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
+  begin
+    OpenNamedFile(FirstFile);
+    GotoLine(FirstLine - 1);
   end;
 end;
 
@@ -57612,6 +58174,12 @@ begin
     if TargetSrc <> '' then
       Result := DelphiRunExeOf(TargetSrc);
   end
+  else if Kind = bkLazarus then
+  begin
+    TargetSrc := LazTargetLpi;
+    if TargetSrc <> '' then
+      Result := LazExeOf(TargetSrc);
+  end
   else if Kind = bkFreeBasic then
   begin
     // У DLL запускать нечего
@@ -58001,6 +58569,9 @@ begin
       btnCompileRun.Hint := 'Собрать скетч (arduino-cli compile) и ' +
       'загрузить в плату (Upload). Плата и порт - ' +
       'меню Arduino - Board и Port';
+    bkLazarus:
+      btnCompileRun.Hint := 'Собрать проект Lazarus (lazbuild <проект>.lpi) ' +
+      'и запустить, если без ошибок';
     bkCMakeNinja:
       btnCompileRun.Hint := 'ReactOS / LiberNT: собрать цель ninja (если ' +
       'build.ninja нет - сначала configure.cmd) и запустить образ ' +
@@ -58021,9 +58592,6 @@ begin
         btnCompileRun.Hint := 'Проект AutoHotkey: сборка exe - компилятор ' +
         'Ahk2Exe (здесь пока не подключена), запуск - AutoHotkey.exe ' +
         '<скрипт>.ahk'
-      else if CompareText(PrjType, 'Lazarus') = 0 then
-        btnCompileRun.Hint := 'Проект Lazarus: сборка здесь пока не ' +
-        'подключена (lazbuild <проект>.lpi)'
       else if CompareText(PrjType, 'Go') = 0 then
         btnCompileRun.Hint := 'Проект Go: сборка здесь пока не подключена ' +
         '(go build)'
@@ -58099,7 +58667,8 @@ begin
   mViewSnap.Visible := not Basic;
   mPrjRelease.Visible := not Basic;
   mPrjReleaseFiles.Visible := not Basic;
-  ShowTab(FTabCode, not Basic);
+  // Code (разбор модулей Паскаля) - и у Lazarus
+  ShowTab(FTabCode, not Basic or (Kind = bkLazarus));
   // RapidQ ($INCLUDE) и FreeBASIC (#include)
   ShowTab(FTabIncludes, RqMode or (Kind = bkFreeBasic));
 
@@ -61096,7 +61665,8 @@ begin
     RosRunImage;
     Exit;
   end;
-  if (Kind <> bkDelphi) and (Kind <> bkRapidQ) and (Kind <> bkFreeBasic) then
+  if (Kind <> bkDelphi) and (Kind <> bkRapidQ) and (Kind <> bkFreeBasic) and
+     (Kind <> bkLazarus) then
   begin
     LogComp('Запуск: сборщик ' + BuildKindName(Kind) + ' (' + FBuildReason +
     ') здесь пока не подключён');
@@ -61104,7 +61674,25 @@ begin
   end;
   // RapidQ: exe рядом с главным .bas, отладчика Delphi для него нет
   RapidQ := Kind = bkRapidQ;
-  if Kind = bkFreeBasic then
+  if Kind = bkLazarus then
+  begin
+    // Lazarus: exe - по <Target><Filename> в .lpi; отладчика пока нет
+    Dpr := LazTargetLpi;
+    if Dpr = '' then
+    begin
+      LogComp('Запуск: .lpi проекта Lazarus не найден. Откройте .lpi или ' +
+      '.lpr проекта');
+      Exit;
+    end;
+    Exe := LazExeOf(Dpr);
+    if Exe = '' then
+    begin
+      LogComp('Запуск: имя exe по ' + ExtractFileName(Dpr) + ' не ' +
+      'определить (пакет .lpk или Target - Filename с макросами $(...))');
+      Exit;
+    end;
+  end
+  else if Kind = bkFreeBasic then
   begin
     // FreeBASIC: перевод RapidQ - exe рядом с исходником RapidQ, обычная
     // программа - в bin (FbOutFileOf); отладчика пока нет
@@ -74033,11 +74621,19 @@ begin
   if AName = '' then
     Exit;
 
-  // Путь в имени уже есть - искать нечего
+  // Путь в имени уже есть - искать нечего. Относительный ("..\x.pas",
+  // fpc) - от папки сборки
   if ExtractFilePath(AName) <> '' then
   begin
-    if FileExists(AName) then
+    if FileExists(AName) and (ExtractFileDrive(AName) <> '') then
       Result := AName
+    else if (ExtractFileDrive(AName) = '') and (Copy(AName, 1, 1) <> '\') and
+            (FLastBuildDir <> '') and
+            FileExists(IncludeTrailingPathDelimiter(FLastBuildDir) + AName) then
+      Result := ExpandFileName(IncludeTrailingPathDelimiter(FLastBuildDir) +
+                               AName)
+    else if FileExists(AName) then
+      Result := ExpandFileName(AName)
     else
       AWhere := AName;
     Exit;

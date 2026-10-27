@@ -3643,6 +3643,13 @@ begin
       Fields.Add('IncPath|Include');
       Fields.Add('LibPath|Library');
     end
+    else if AType = 'Lazarus' then
+    begin
+      // Папка Lazarus (с lazbuild.exe) или сам lazbuild.exe; пусто - поиск
+      // в PATH, реестре, <диск>:\lazarus и Program Files (Unit1,
+      // LazbuildExe)
+      Fields.Add('LazarusPath|Lazarus path');
+    end
     else if AType = 'Visual Basic' then
     begin
       Fields.Add('VbCompFile|VB6.exe');
