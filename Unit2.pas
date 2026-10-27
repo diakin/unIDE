@@ -5391,8 +5391,16 @@ begin
   // Загружаем текущий шрифт редактора в диалог как стартовый
   FontDlg.Font.Assign(Form1.RichEdit1.Font);
 
-  if not FontDlg.Execute then
-    Exit;
+  // Редактор - для исходников: только моноширинные шрифты. Тот же FontDlg
+  // выбирает и шрифты интерфейса (UiGridDblClick) - ограничение только на
+  // время этого вызова
+  FontDlg.Options := FontDlg.Options + [fdFixedPitchOnly];
+  try
+    if not FontDlg.Execute then
+      Exit;
+  finally
+    FontDlg.Options := FontDlg.Options - [fdFixedPitchOnly];
+  end;
 
   // Всё остальное - пересчёт высоты строки, шага табуляции и перерисовку -
   // делает сам редактор. И, что важно, он при этом НЕ помечает файл
