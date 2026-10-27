@@ -1078,6 +1078,7 @@ type
     procedure FarColorsClick(Sender: TObject);
     procedure FarPaletteClick(Sender: TObject);
     procedure FarPaletteChange(Sender: TObject);
+    function FarGetScheme(const AFileName: WideString): TClrScheme;
     procedure FarBtnClick(Sender: TObject);
     procedure FarCollapse(ACollapse: Boolean);
     procedure FarPlaceSplitter;
@@ -38580,6 +38581,7 @@ begin
     FFar.OnShowPanels := FarShowPanels;
     FFar.OnColorsDialog := FarColorsClick;
     FFar.OnPaletteDialog := FarPaletteClick;
+    FFar.OnGetScheme := FarGetScheme;
     FFarOwnWin := -1;
     FFarLastTabIdx := -1;
     FFar.LoadState(SettingsFileName, StartDir);
@@ -38913,6 +38915,13 @@ begin
   end;
   if (FFar <> nil) and FFar.Visible and FFar.CanFocus then
     FFar.SetFocus;
+end;
+
+// Редактор unIDE FAR (F4): схема подсветки файла - своей копией, как для
+// второй панели редактора (SchemeCopyFor). Объект забирает редактор FAR
+function TForm1.FarGetScheme(const AFileName: WideString): TClrScheme;
+begin
+  Result := SchemeCopyFor(string(AFileName));
 end;
 
 // Палитру поменяли в окне DlgFarPalette - сразу в окно FAR
@@ -78990,6 +78999,12 @@ begin
   begin
     FFifAbort := True;
     FFifCloseAfter := True;
+    CanClose := False;
+    Exit;
+  end;
+  // Редактор unIDE FAR (F4): изменённый текст - спросить первым
+  if (FFar <> nil) and not FFar.EditorCanClose then
+  begin
     CanClose := False;
     Exit;
   end;
