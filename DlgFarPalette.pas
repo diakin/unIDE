@@ -109,9 +109,9 @@ begin
   FHintLabel.WordWrap := True;
   FHintLabel.SetBounds(8, 466, 624, 44);
   FHintLabel.Caption := 'Щелчок по образцу или цвету, Enter - выбрать цвет. ' +
-    'Правый щелчок, Del - стандартный цвет элемента. Изменения сразу ' +
-    'видны в окне FAR; OK - записать в editor.ini, Отмена - вернуть ' +
-    'прежние цвета.';
+    'Правый щелчок, Del - стандартный цвет элемента (у текста и фона ' +
+    'редактора - «из схемы»). Изменения сразу видны в окне FAR; OK - ' +
+    'записать в editor.ini, Отмена - вернуть прежние цвета.';
 
   FBtnDefault := TUiButton.Create(Self);
   FBtnDefault.Parent := Self;
@@ -216,24 +216,38 @@ begin
           SampleBack := FPalette[FarPalPair(Item)];
           SampleFore := FPalette[Item];
         end;
+        // Нет цвета (цвета редактора - из схемы): цветами таблицы
+        if SampleBack = clNone then
+          SampleBack := Back;
+        if SampleFore = clNone then
+          SampleFore := Fore;
         SwatchRect := Rect;
         InflateRect(SwatchRect, -2, -2);
         GridCanvas.Brush.Color := SampleBack;
         GridCanvas.FillRect(SwatchRect);
         GridCanvas.Font.Color := SampleFore;
-        GridCanvas.TextOut(SwatchRect.Left + 4, TextY, 'Образец');
+        if FPalette[Item] = clNone then
+          GridCanvas.TextOut(SwatchRect.Left + 4, TextY, 'из схемы')
+        else
+          GridCanvas.TextOut(SwatchRect.Left + 4, TextY, 'Образец');
       end;
     ColColor:
       begin
         SwatchRect := Classes.Rect(Rect.Left + 4, Rect.Top + 3,
           Rect.Left + 4 + SwatchWidth, Rect.Bottom - 3);
-        GridCanvas.Brush.Color := FPalette[Item];
-        GridCanvas.FillRect(SwatchRect);
+        if FPalette[Item] <> clNone then
+        begin
+          GridCanvas.Brush.Color := FPalette[Item];
+          GridCanvas.FillRect(SwatchRect);
+        end;
         GridCanvas.Brush.Color := Fore;
         GridCanvas.FrameRect(SwatchRect);
         GridCanvas.Brush.Color := Back;
-        GridCanvas.TextOut(SwatchRect.Right + 6, TextY,
-          FarColorToText(FPalette[Item]));
+        if FPalette[Item] = clNone then
+          GridCanvas.TextOut(SwatchRect.Right + 6, TextY, 'из схемы')
+        else
+          GridCanvas.TextOut(SwatchRect.Right + 6, TextY,
+            FarColorToText(FPalette[Item]));
       end;
   end;
 end;
@@ -252,7 +266,16 @@ begin
   ColorDlg := TUiColorDialog.Create(Self);
   try
     ColorDlg.Options := [cdFullOpen, cdAnyColor];
-    ColorDlg.Color := FPalette[AItem];
+    if FPalette[AItem] = clNone then
+    begin
+      // Цвет редактора «из схемы» - начать с белого фона / чёрного текста
+      if FarPalIsBack(AItem) then
+        ColorDlg.Color := clWhite
+      else
+        ColorDlg.Color := clBlack;
+    end
+    else
+      ColorDlg.Color := FPalette[AItem];
     if not ColorDlg.Execute then
       Exit;
     FPalette[AItem] := ColorToRGB(ColorDlg.Color);

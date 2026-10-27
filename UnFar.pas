@@ -116,6 +116,7 @@ unit UnFar;
 //    - b.37: F4 - свой редактор с подсветкой по схеме .clr (FarEdit,
 //      SchemeLine): в панели рядом с файлами или на всю ширину (F5);
 //      основной редактор unIDE по F4 больше не открывается.
+//    - b.38: палитра: цвет текста и фона редактора (нет - из схемы).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -146,7 +147,7 @@ uses
   ClrScheme, SchemeLine, FarEdit;
 
 const
-  FarBuild = 'b.37';
+  FarBuild = 'b.38';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -337,7 +338,8 @@ type
     fpWarnBack, fpWarnText, fpWarnFocusBack, fpWarnFocusText,
     fpKeyNum, fpKeyNumBack, fpKeyText, fpKeyBack,
     fpCmdBack, fpCmdPrompt, fpCmdText, fpOutText,
-    fpEditTitleBack, fpEditTitleText, fpEditSelBack, fpEditSelText);
+    fpEditBack, fpEditText, fpEditTitleBack, fpEditTitleText, fpEditSelBack,
+    fpEditSelText);
   TFarPalette = array[TFarPalItem] of TColor;
 
   TFarStatusEvent = procedure(const AText: string) of object;
@@ -1598,7 +1600,8 @@ const
     'WarnBack', 'WarnText', 'WarnFocusBack', 'WarnFocusText',
     'KeyNum', 'KeyNumBack', 'KeyText', 'KeyBack',
     'CmdBack', 'CmdPrompt', 'CmdText', 'OutText',
-    'EditTitleBack', 'EditTitleText', 'EditSelBack', 'EditSelText');
+    'EditBack', 'EditText', 'EditTitleBack', 'EditTitleText', 'EditSelBack',
+    'EditSelText');
 
   FarPalGroups: array[TFarPalItem] of string = (
     'Панели', 'Панели', 'Панели', 'Панели', 'Панели',
@@ -1611,7 +1614,7 @@ const
     'Кейбар', 'Кейбар', 'Кейбар', 'Кейбар',
     'Командная строка', 'Командная строка', 'Командная строка',
     'Командная строка',
-    'Редактор', 'Редактор', 'Редактор', 'Редактор');
+    'Редактор', 'Редактор', 'Редактор', 'Редактор', 'Редактор', 'Редактор');
 
   FarPalCaptions: array[TFarPalItem] of string = (
     'Фон панели',
@@ -1648,6 +1651,8 @@ const
     'Путь (приглашение), каретка',
     'Текст команды',
     'Вывод команд',
+    'Фон текста (нет - из схемы)',
+    'Текст (нет - из схемы)',
     'Строка заголовка: фон',
     'Строка заголовка: текст',
     'Выделенный текст: фон',
@@ -1663,7 +1668,7 @@ const
     FarRed, FarWhite, FarLightGray, FarBlack,
     FarLightGray, FarBlack, FarBlack, FarCyan,
     FarBlack, FarLightGray, FarWhite, FarLightGray,
-    FarCyan, FarBlack, FarCyan, FarBlack);
+    clNone, clNone, FarCyan, FarBlack, FarCyan, FarBlack);
 
   FarPalBacks: array[TFarPalItem] of Boolean = (
     True, False, False, False, False,
@@ -1675,7 +1680,7 @@ const
     True, False, True, False,
     False, True, False, True,
     True, False, False, False,
-    True, False, True, False);
+    True, False, True, False, True, False);
 
   FarPalPairs: array[TFarPalItem] of TFarPalItem = (
     fpPanelText, fpPanelBack, fpPanelBack, fpPanelBack, fpPanelBack,
@@ -1687,7 +1692,8 @@ const
     fpWarnText, fpWarnBack, fpWarnFocusText, fpWarnFocusBack,
     fpKeyNumBack, fpKeyNum, fpKeyBack, fpKeyText,
     fpCmdText, fpCmdBack, fpCmdBack, fpCmdBack,
-    fpEditTitleText, fpEditTitleBack, fpEditSelText, fpEditSelBack);
+    fpEditText, fpEditBack, fpEditTitleText, fpEditTitleBack, fpEditSelText,
+    fpEditSelBack);
 
 var
   FarCurPanelBack: TColor = FarBlue;
@@ -1748,10 +1754,11 @@ begin
   try
     for Item := Low(TFarPalItem) to High(TFarPalItem) do
     begin
-      // '-' (clNone) в палитре не бывает - стандартный цвет
+      // '-' (clNone) - только у элементов, где «нет» - стандартное значение
+      // (цвета редактора: нет - из схемы); у остальных - стандартный цвет
       Color := FarTextToColor(Ini.ReadString(FarPaletteSection,
         FarPalKeys[Item], ''), FarPalDefaults[Item]);
-      if Color <> clNone then
+      if (Color <> clNone) or (FarPalDefaults[Item] = clNone) then
         APalette[Item] := Color;
     end;
   finally
@@ -7042,6 +7049,7 @@ var
   CellFg, CellBg: array of TColor;
   Runs: TSchemeRuns;
   TextFg, PageBg, SelFg, SelBg, RunFg, RunBg: TColor;
+  SchemeFg, SchemeBg: TColor;
   CaretX, CaretRow: Integer;
   ShownCh: WideChar;
 begin
@@ -7069,8 +7077,16 @@ begin
     PutText(EditX + EditW - Length(RightText), 0, Length(RightText), RightText,
       FPal[fpEditTitleText], FPal[fpEditTitleBack]);
 
-  TextFg := ColorToRGB(Ed.Colorizer.TextFg);
-  PageBg := ColorToRGB(Ed.Colorizer.PageBg);
+  // Цвета текста и фона: заданы в палитре (F9 - Colors - Редактор) - они,
+  // нет - схемы. Куски схемы цветом её текста / фона - тоже цветом палитры
+  SchemeFg := ColorToRGB(Ed.Colorizer.TextFg);
+  SchemeBg := ColorToRGB(Ed.Colorizer.PageBg);
+  TextFg := SchemeFg;
+  PageBg := SchemeBg;
+  if FPal[fpEditText] <> clNone then
+    TextFg := ColorToRGB(FPal[fpEditText]);
+  if FPal[fpEditBack] <> clNone then
+    PageBg := ColorToRGB(FPal[fpEditBack]);
   SelFg := FPal[fpEditSelText];
   SelBg := FPal[fpEditSelBack];
   HasSel := Ed.SelRange(Row1, Col1, Row2, Col2);
@@ -7100,11 +7116,13 @@ begin
     begin
       RunFg := Runs[RunIdx].Fg;
       RunBg := Runs[RunIdx].Bg;
-      if (RunFg = clNone) or (RunFg = clDefault) then
+      if (RunFg = clNone) or (RunFg = clDefault) or
+         (ColorToRGB(RunFg) = SchemeFg) then
         RunFg := TextFg
       else
         RunFg := ColorToRGB(RunFg);
-      if (RunBg = clNone) or (RunBg = clDefault) then
+      if (RunBg = clNone) or (RunBg = clDefault) or
+         (ColorToRGB(RunBg) = SchemeBg) then
         RunBg := PageBg
       else
         RunBg := ColorToRGB(RunBg);
