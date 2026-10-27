@@ -109,3 +109,5 @@ rosbe_ref/chm_work/
 uniFAR/lib/
 uniFAR/*.lps
 uniFAR/backup/
+uniFAR/uniFAR.ini
+uniFAR/*_compile.bat
