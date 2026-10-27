@@ -105,3 +105,7 @@ rosbe_ref/chm_work/
 !tools/7zip/7z.dll
 # WebView2Loader.dll (Microsoft, 32-bit) - loader for WebView2 view (Wv2View.pas)
 !WebView4Delphi/bin32/WebView2Loader.dll
+# uniFAR (Free Pascal / Lazarus): units, session, backups
+uniFAR/lib/
+uniFAR/*.lps
+uniFAR/backup/

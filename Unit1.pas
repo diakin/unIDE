@@ -4135,6 +4135,7 @@ var
     RqDeps,       // перед сборкой RapidQ: есть ли все $INCLUDE, $RESOURCE, DLL
     IniBuf,       // TBufIniFile - editor.ini одной записью (SaveSettings)
     SchemeRtf,    // текст с подсветкой -> RTF (вторая панель редактора)
+    SchemeFiles,  // схема по расширению, чтение схемы (общее с uniFAR)
     UiStdDlgs,    // TUiColorDialog - диалог цвета в цветах темы (инспектор)
     DlgRqDeps,    // окно недостающих файлов - RqDepsBeforeBuild
     DlgDelPrj,    // Delete Projects - DeleteProjectClick
@@ -77703,8 +77704,8 @@ end;
 // они свои у каждого языка.
 function TForm1.DefaultSchemaFile: string;
 begin
-  Result := ExtractFilePath(Application.ExeName) + 'schemes\' +
-            #149 + 'default' + #149 + '.clr';
+  Result := SchemeDefaultPath(ExtractFilePath(Application.ExeName) +
+    'schemes\');
 end;
 
 // Отдельная схема подсветки для файла AFile - та же, что выбрал бы
@@ -77712,26 +77713,11 @@ end;
 // объектом: схема редактора остаётся как есть. Для окон с просмотром
 // текста (недостающие файлы). Освобождает вызвавший; nil - не прочиталась.
 function TForm1.SchemeCopyFor(const AFile: string): TClrScheme;
-var
-  ClrPath: string;
 begin
-  Result := TClrScheme.Create;
-  try
-    Result.FTheme := FScheme.FTheme;
-    Result.ResetSchemaState(FIniFontColor, FIniBGColor);
-    if FileExists(DefaultSchemaFile) then
-    begin
-      Result.ParseClrFile(DefaultSchemaFile);
-      Result.ClearKeywordGroups; // ключевые слова - свои у каждого языка
-    end;
-    ClrPath := ExtractFilePath(Application.ExeName) + 'schemes\' +
-               SchemeKeyFor(AFile, ExtractFileExt(AFile)) + '.clr';
-    if FileExists(ClrPath) then
-      Result.ParseClrFile(ClrPath);
-    Result.ApplyTheme;
-  except
-    FreeAndNil(Result);
-  end;
+  // Чтение - SchemeFiles.SchemeLoadFromDir (общее с uniFAR)
+  Result := SchemeLoadFromDir(ExtractFilePath(Application.ExeName) +
+    'schemes\', SchemeKeyFor(AFile, ExtractFileExt(AFile)), FScheme.FTheme,
+    FIniFontColor, FIniBGColor);
 end;
 
 
@@ -77765,60 +77751,18 @@ end;
 //  Копии схем не годятся: правка в окне настроек попала бы только в одну.
 // ---------------------------------------------------------------------------
 
-const
-  // Встроенные соответствия. Паскаль: Delphi, Free Pascal, Lazarus
-  SchemeBuiltin: array[0..11] of string = (
-  'dpr=pas', 'dpk=pas', 'pp=pas', 'p=pas', 'lpr=pas', 'inc=pas',
-  'lfm=dfm',                         // форма Lazarus - текст того же вида
-  'lpi=xml', 'lps=xml', 'lpk=xml',   // проект, сеанс и пакет Lazarus - XML
-  'fpd=xml',
-  'toml=ini');                       // Cargo.toml - те же [разделы]
+// Встроенные соответствия SchemeBuiltin - в SchemeFiles
 
 function TForm1.SchemeExtFor(const AExt: string): string;
 var
-  E, Dir, V: string;
-  I: Integer;
-  Ini: TIniFile;
+  IncIsBasic: Boolean;
 begin
-  E := LowerCase(AExt);
-  if (E <> '') and (E[1] = '.') then
-    Delete(E, 1, 1);
-  Result := E;
-  if E = '' then
-    Exit;
-
-  Dir := ExtractFilePath(Application.ExeName) + 'schemes\';
-  // Своя схема - важнее любых соответствий
-  if FileExists(Dir + E + '.clr') then
-    Exit;
-
-  V := '';
-  if FileExists(Dir + 'alias.ini') then
-  begin
-    Ini := TIniFile.Create(Dir + 'alias.ini');
-    try
-      V := LowerCase(Trim(Ini.ReadString('Alias', E, '')));
-    finally
-      Ini.Free;
-    end;
-  end;
-
-  // .inc в проекте RapidQ Basic - схема Basic
-  if (V = '') and (E = 'inc') and (FCurrentProject <> '') and
-     FileExists(Dir + 'bas.clr') and
-     (CompareText(ProjectTypeOf(FCurrentProject), 'RapidQ Basic') = 0) then
-    V := 'bas';
-
-  if V = '' then
-    for I := Low(SchemeBuiltin) to High(SchemeBuiltin) do
-      if Copy(SchemeBuiltin[I], 1, Length(E) + 1) = E + '=' then
-      begin
-        V := Copy(SchemeBuiltin[I], Length(E) + 2, MaxInt);
-        Break;
-      end;
-
-  if (V <> '') and FileExists(Dir + V + '.clr') then
-    Result := V;
+  // Правило выбора - SchemeFiles.SchemeKeyByExt (общее с uniFAR); здесь -
+  // только тип проекта: .inc в проекте RapidQ Basic - схема Basic
+  IncIsBasic := (FCurrentProject <> '') and
+    (CompareText(ProjectTypeOf(FCurrentProject), 'RapidQ Basic') = 0);
+  Result := SchemeKeyByExt(ExtractFilePath(Application.ExeName) + 'schemes\',
+    AExt, IncIsBasic);
 end;
 
 procedure TForm1.SchemeAliasRows(ARows: TStrings);
@@ -78032,15 +77976,8 @@ const
 var
   Stream: TFileStream;
   Buf: string;
-  Lines: TStringList;
-  LineIdx, BasScore, PasScore, Age: Integer;
-  LineText, FileKey, Cached: string;
-
-  function Starts(const APrefix: string): Boolean;
-  begin
-    Result := Copy(LineText, 1, Length(APrefix)) = APrefix;
-  end;
-
+  Age: Integer;
+  FileKey, Cached: string;
 begin
   Result := '';
   if (AFile = '') or not FileExists(AFile) then
@@ -78055,57 +77992,23 @@ begin
     Result := Copy(Cached, Pos('|', Cached) + 1, MaxInt);
     Exit;
   end;
-
-  BasScore := 0;
-  PasScore := 0;
-  Lines := TStringList.Create;
   try
+    Stream := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
     try
-      Stream := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
-      try
-        if Stream.Size > ReadMax then
-          SetLength(Buf, ReadMax)
-        else
-          SetLength(Buf, Stream.Size);
-        if Length(Buf) > 0 then
-          Stream.ReadBuffer(Buf[1], Length(Buf));
-      finally
-        Stream.Free;
-      end;
-    except
-      Exit;
+      if Stream.Size > ReadMax then
+        SetLength(Buf, ReadMax)
+      else
+        SetLength(Buf, Stream.Size);
+      if Length(Buf) > 0 then
+        Stream.ReadBuffer(Buf[1], Length(Buf));
+    finally
+      Stream.Free;
     end;
-    Lines.Text := Buf;
-    for LineIdx := 0 to Lines.Count - 1 do
-    begin
-      LineText := LowerCase(Trim(Lines[LineIdx]));
-      if LineText = '' then
-        Continue;
-      // Basic: комментарий ', REM, концы блоков, DECLARE, директивы $
-      if Starts('''') or Starts('rem ') or Starts('end sub') or
-         Starts('end function') or Starts('end type') or Starts('end with') or
-         Starts('end select') or Starts('end create') or
-         Starts('declare sub') or Starts('declare function') or
-         Starts('$include') or Starts('$define') or Starts('$ifdef') or
-         Starts('$ifndef') or Starts('$typecheck') or Starts('$apptype') or
-         Starts('$resource') or Starts('dim ') or Starts('subi ') or
-         Starts('functioni ') or Starts('wend') or Starts('next') then
-        Inc(BasScore)
-      // Паскаль: {$...}, begin / end;, :=, procedure, разделы модуля
-      else if Starts('{$') or (LineText = 'begin') or Starts('end;') or
-              Starts('end.') or Starts('procedure ') or Starts('unit ') or
-              (LineText = 'interface') or (LineText = 'implementation') or
-              Starts('//') or Starts('(*') or Starts('uses ') or
-              (Pos(':=', LineText) > 0) then
-        Inc(PasScore);
-    end;
-  finally
-    Lines.Free;
+  except
+    Exit;
   end;
-  if BasScore > PasScore then
-    Result := 'bas'
-  else if PasScore > BasScore then
-    Result := 'pas';
+  // Разбор текста (Basic или Паскаль) - SchemeFiles, общий с uniFAR
+  Result := SchemeGuessIncText(Buf);
   FIncGuess.Values[FileKey] := IntToStr(Age) + '|' + Result;
 end;
 

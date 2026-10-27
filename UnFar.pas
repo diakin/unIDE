@@ -142,12 +142,12 @@ unit UnFar;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
-  Clipbrd, IniBuf, SzSetup, FarFind, FarVolumes, FarFtp, FarProgress,
-  ClrScheme, SchemeLine, FarEdit;
+  Windows, Messages, SysUtils, Classes, Graphics, Controls, ExtCtrls,
+  IniBuf, SzSetup, FarFind, FarVolumes, FarFtp, FarProgress,
+  ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.38';
+  FarBuild = 'b.39';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -175,7 +175,8 @@ type
   TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew,
     fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd,
     fdFind, fdFtpEdit, fdFtpPassword, fdFtpDelete, fdFtpError,
-    fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError);
+    fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
+    fdViewFind, fdViewGoto);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -380,6 +381,13 @@ type
     FOnColorsDialog: TNotifyEvent;
     FOnPaletteDialog: TNotifyEvent;
     FOnGetScheme: TFarSchemeEvent;
+    // Своя строка сообщений над командной строкой (uniFAR; в unIDE
+    // сообщения - в строку состояния IDE через OnStatus)
+    FMessageLine: Boolean;
+    FMessageText: WideString;
+    // WM_CHAR приходит в UTF-16 (окно Unicode, uniFAR); иначе - байт
+    // кодировки Windows (окно VCL Delphi 7)
+    FUnicodeChars: Boolean;
     // Редактор (F4): текст; в какой панели (или обе - FEditWide); поиск;
     // куда записать после вопроса о кодировке; закрыть после записи
     FEditor: TFarEditor;
@@ -391,6 +399,11 @@ type
     FEditQuitAfterSave: Boolean;
     FEditDragging: Boolean;
     FEditTabSize: Integer;        // editor.ini [Editor] TabChars
+    // Просмотр (F3): на месте редактора (FEditPanel / FEditWide), вместе с
+    // редактором не бывает
+    FViewer: TFarViewer;
+    FViewFind: WideString;
+    FViewFindCase: Boolean;
     FPal: TFarPalette;            // цвета элементов (F9 - Options - Colors)
     FIniName: string;             // editor.ini (LoadState) - для Save setup
     // Раскраска файлов: правила и их расширения как WideString (сравнение
@@ -543,6 +556,10 @@ type
     function MaxPanelCut: Integer;
     // Командная строка и вывод
     function CmdRow: Integer;
+    function OutBottom: Integer;
+    procedure SetMessageLine(AValue: Boolean);
+    procedure DrawMessageLine;
+    function KeyChar(ACode: WPARAM): WideChar;
     // Текст в буфер обмена, в строке состояния - что скопировано
     procedure CopyToClipboard(const AText: WideString);
     // Полный путь файла под курсором активной панели ('..' - путь панели;
@@ -650,6 +667,19 @@ type
     function EditKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure EditMouse(AX, AY: Integer; AShiftDown, ADrag: Boolean);
     procedure DrawEditor;
+    function DocOpen: Boolean;
+    function ViewerActive: Boolean;
+    function ViewTextRows: Integer;
+    procedure ViewCurrent;
+    procedure OpenViewer(const AFileName: WideString);
+    procedure CloseViewer;
+    procedure ViewFindConfirm;
+    procedure ViewFindNext;
+    procedure ViewGoto(const AText: WideString);
+    function ViewKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    function ViewKeyLabel(AKeyIndex: Integer; AShift, ACtrl,
+      AAlt: Boolean): string;
+    procedure DrawViewer;
     function GetParentFormHandle: HWND;
     procedure FindConfirm;
     procedure FindBegin(const AOptions: TFarFindOptions);
@@ -809,11 +839,20 @@ type
       write FOnPaletteDialog;
     // Редактор F4: схема подсветки файла (Unit1)
     property OnGetScheme: TFarSchemeEvent read FOnGetScheme write FOnGetScheme;
+    // Строка сообщений над командной строкой: туда же Status, если
+    // OnStatus не задан
+    property MessageLine: Boolean read FMessageLine write SetMessageLine;
+    property UnicodeChars: Boolean read FUnicodeChars write FUnicodeChars;
     property SinglePanel: Integer read FSingle;
     // Ширина окна FAR в режиме F4 (пикселей, 0 - не задана): ставит и
     // читает Unit1 (сплиттер), хранится в editor.ini ([Far] HalfWidth)
     property HalfWidth: Integer read FHalfWidth write FHalfWidth;
   end;
+
+var
+  // Имя программы в сообщениях и заголовках окон: 'unIDE FAR' - FAR внутри
+  // unIDE; uniFAR ставит своё до создания TFarView
+  FarProduct: string = 'unIDE FAR';
 
 // Путь для ANSI-кода IDE (Delphi 7): в кодировке Windows, если она вмещает
 // все символы, иначе - короткое имя 8.3; нельзя ни так, ни так - ''
@@ -866,6 +905,7 @@ const
 
   FarFontRes = 'FAR_TER_C18B';
   FarFontFile = 'ter-c18b.fnt';
+  FarGaRoot = 2;                  // GA_ROOT
   FarFontFace = 'Terminus';
   FarFallbackFace = 'Lucida Console';
   FarCellHeight = 18;
@@ -1054,6 +1094,19 @@ function FarShFileOperation(var AOp: TFarShFileOp): Integer; stdcall;
   external 'shell32.dll' name 'SHFileOperationW';
 function FarMessageBox(AWnd: HWND; AText, ACaption: PWideChar;
   AType: UINT): Integer; stdcall; external 'user32.dll' name 'MessageBoxW';
+function FarGetAncestor(AWnd: HWND; AFlags: UINT): HWND; stdcall;
+  external 'user32.dll' name 'GetAncestor';
+// Указатели, а не const: так одинаково в Delphi 7 и Free Pascal
+function FarCompareFileTime(AFirst, ASecond: PFileTime): Longint; stdcall;
+  external 'kernel32.dll' name 'CompareFileTime';
+
+// Сравнение времён файлов (-1, 0, 1); параметры - копии, их адреса - для
+// CompareFileTime
+function FarFileTimeCmp(ATimeA, ATimeB: TFileTime): Integer;
+begin
+  Result := FarCompareFileTime(@ATimeA, @ATimeB);
+end;
+
 function FarFindFirstChange(APath: PWideChar; AWatchSubtree: BOOL;
   AFilter: DWORD): THandle; stdcall;
   external 'kernel32.dll' name 'FindFirstChangeNotificationW';
@@ -1134,7 +1187,7 @@ begin
     Exit;
   FarFontTried := True;
 
-  FontPath := ExtractFilePath(Application.ExeName) + FarFontFile;
+  FontPath := ExtractFilePath(ParamStr(0)) + FarFontFile;
   if not FileExists(FontPath) then
   begin
     FontPath := '';
@@ -1360,7 +1413,7 @@ begin
 end;
 
 // Текст в буфер обмена (CF_UNICODETEXT; CF_TEXT Windows сделает сама)
-function FarCopyToClipboard(const AText: WideString): Boolean;
+function FarCopyToClipboard(AOwnerWnd: HWND; const AText: WideString): Boolean;
 var
   MemHandle: HGLOBAL;
   MemData: PWideChar;
@@ -1381,13 +1434,23 @@ begin
     Move(AText[1], MemData^, ByteLen - SizeOf(WideChar));
   MemData[Length(AText)] := #0;
   GlobalUnlock(MemHandle);
-  try
-    // Память после SetClipboardData - буфера обмена
-    Clipboard.SetAsHandle(CF_UNICODETEXT, MemHandle);
-    Result := True;
-  except
-    GlobalFree(MemHandle);
+  // Память после SetClipboardData - буфера обмена. Окно-владелец нужно:
+  // при OpenClipboard(0) SetClipboardData может не сработать
+  if OpenClipboard(AOwnerWnd) then
+  begin
+    EmptyClipboard;
+    Result := SetClipboardData(CF_UNICODETEXT, MemHandle) <> 0;
+    CloseClipboard;
   end;
+  if not Result then
+    GlobalFree(MemHandle);
+end;
+
+// В буфере обмена есть текст
+function FarClipboardHasText: Boolean;
+begin
+  Result := IsClipboardFormatAvailable(CF_UNICODETEXT) or
+    IsClipboardFormatAvailable(CF_TEXT);
 end;
 
 function FarSameName(const ANameA, ANameB: WideString): Boolean;
@@ -2010,15 +2073,15 @@ begin
     fsExt:
       Cmp := FarCompareNames(FarNameExt(ItemA.Name), FarNameExt(ItemB.Name));
     fsWrite:
-      Cmp := -CompareFileTime(ItemA.WriteTime, ItemB.WriteTime);
+      Cmp := -FarFileTimeCmp(ItemA.WriteTime, ItemB.WriteTime);
     fsSize:
       Cmp := -FarCompareInt64(ItemA.Size, ItemB.Size);
     fsUnsorted:
       Cmp := ItemA.OrigIndex - ItemB.OrigIndex;
     fsCreation:
-      Cmp := -CompareFileTime(ItemA.CreateTime, ItemB.CreateTime);
+      Cmp := -FarFileTimeCmp(ItemA.CreateTime, ItemB.CreateTime);
     fsAccess:
-      Cmp := -CompareFileTime(ItemA.AccessTime, ItemB.AccessTime);
+      Cmp := -FarFileTimeCmp(ItemA.AccessTime, ItemB.AccessTime);
   else
     Cmp := 0;
   end;
@@ -2565,6 +2628,7 @@ begin
   FArcProgress.Free;
   FArcProgress := nil;
   FreeAndNil(FEditor);
+  FreeAndNil(FViewer);
   // Файлы, открытые из архивов (Enter), - %TEMP%\unIDE_far; FAR закрыт -
   // удалить
   TempLen := FarGetTempPath(MAX_PATH + 1, TempBuffer);
@@ -2727,7 +2791,7 @@ begin
     FPanelCut := MaxPanelCut;
   if FPanelCut < 0 then
     FPanelCut := 0;
-  Result := FRows - KeyBarRows - 1 - FPanelCut;   // 1 - командная строка
+  Result := OutBottom + 1 - FPanelCut;
 end;
 
 // Короче не укоротить: у панели должно остаться место под рамку,
@@ -2736,7 +2800,7 @@ function TFarView.MaxPanelCut: Integer;
 const
   MinPanelRows = 8;
 begin
-  Result := FRows - KeyBarRows - 1 - MinPanelRows;
+  Result := OutBottom + 1 - MinPanelRows;
   if Result < 0 then
     Result := 0;
 end;
@@ -3163,7 +3227,9 @@ begin
     KeyRow := FRows - RowCount + KeyIndex div PerRow;
     SlotIndex := KeyIndex mod PerRow;
     SlotCol := SlotIndex * SlotW;
-    if EditorActive then
+    if ViewerActive then
+      KeyLabel := ViewKeyLabel(KeyIndex, ShiftDown, CtrlDown, AltDown)
+    else if EditorActive then
     begin
       // Редактор: свои подписи
       if AltDown then
@@ -3214,7 +3280,7 @@ begin
     begin
       // Вывод команд: под панелями, а спрятаны панели (Ctrl+O) - всё окно
       if FPanelsHidden then
-        DrawOutput(0, CmdRow - 1)
+        DrawOutput(0, OutBottom)
       else
       begin
         // Редактор (F4) - вместо своей панели или обеих
@@ -3224,9 +3290,13 @@ begin
           DrawPanel(1);
         if FEditor <> nil then
           DrawEditor;
-        if PanelHeight <= CmdRow - 1 then
-          DrawOutput(PanelHeight, CmdRow - 1);
+        if FViewer <> nil then
+          DrawViewer;
+        if PanelHeight <= OutBottom then
+          DrawOutput(PanelHeight, OutBottom);
       end;
+      if FMessageLine then
+        DrawMessageLine;
       DrawCmdLine;
       DrawKeyBar;
       if FFindOpen then
@@ -3325,7 +3395,7 @@ begin
   inherited MouseDown(Button, Shift, X, Y);
   EditX0 := 0;
   EditW0 := 0;
-  if FEditor <> nil then
+  if DocOpen then
     EditBounds(EditX0, EditW0);
   if CanFocus and not Focused then
     SetFocus;
@@ -3370,6 +3440,14 @@ begin
   // Панели спрятаны или щелчок ниже панелей (вывод, командная строка)
   if FPanelsHidden or (Y div FCellH >= PanelHeight) then
   begin
+    Invalidate;
+    Exit;
+  end;
+  // Просмотр (F3): щелчок - перейти в него
+  if (FViewer <> nil) and (FEditWide or
+     ((X div FCellW >= EditX0) and (X div FCellW < EditX0 + EditW0))) then
+  begin
+    FActive := FEditPanel;
     Invalidate;
     Exit;
   end;
@@ -3419,8 +3497,8 @@ begin
   CursorPos := ScreenToClient(Mouse.CursorPos);
   if FPanelsHidden or (CursorPos.Y div FCellH >= PanelHeight) then
     Exit;
-  // В редакторе двойной щелчок файлы не открывает
-  if (FEditor <> nil) and EditorShown(FActive) then
+  // В редакторе и просмотре двойной щелчок файлы не открывает
+  if EditorShown(FActive) then
     Exit;
   if ItemAt(CursorPos.X, CursorPos.Y, PanelIndex, ItemIndex) then
     OpenItem(False);   // как Enter: папка - войти, файл - выполнить / открыть
@@ -3429,6 +3507,7 @@ end;
 procedure TFarView.WMMouseWheel(var Message: TWMMouseWheel);
 var
   WheelPoint: TPoint;
+  WheelX, WheelW, WheelStep: Integer;
 begin
   Message.Result := 1;
   if FMenuKind <> fmNone then
@@ -3461,6 +3540,18 @@ begin
       Dec(FOutScroll, 3);
     if FOutScroll < 0 then
       FOutScroll := 0;
+    Invalidate;
+    Exit;
+  end;
+  // Колесо над просмотром - на три строки
+  if (FViewer <> nil) and EditorShown(FActive) then
+  begin
+    EditBounds(WheelX, WheelW);
+    for WheelStep := 1 to 3 do
+      if Message.WheelDelta > 0 then
+        FViewer.LineUp(WheelW)
+      else if Message.WheelDelta < 0 then
+        FViewer.LineDown(WheelW, ViewTextRows);
     Invalidate;
     Exit;
   end;
@@ -3506,9 +3597,36 @@ end;
 // ---------------------------------------------------------------------------
 
 procedure TFarView.Status(const AText: string);
+var
+  Prefix: string;
 begin
   if Assigned(FOnStatus) then
-    FOnStatus(AText);
+    FOnStatus(AText)
+  else if FMessageLine then
+  begin
+    // Своя строка: имя программы в начале не нужно
+    Prefix := FarProduct + ': ';
+    if Copy(AText, 1, Length(Prefix)) = Prefix then
+      FMessageText := WideString(Copy(AText, Length(Prefix) + 1, MaxInt))
+    else
+      FMessageText := WideString(AText);
+    Invalidate;
+  end;
+end;
+
+// Символ из WM_CHAR
+function TFarView.KeyChar(ACode: WPARAM): WideChar;
+var
+  AnsiCh: AnsiChar;
+begin
+  if FUnicodeChars then
+  begin
+    Result := WideChar(ACode and $FFFF);
+    Exit;
+  end;
+  AnsiCh := AnsiChar(ACode and $FF);
+  Result := #0;
+  FarMultiToWide(CP_ACP, 0, @AnsiCh, 1, @Result, 1);
 end;
 
 function TFarView.KeyName(AKey: Word; AShift, ACtrl, AAlt: Boolean): string;
@@ -3530,22 +3648,19 @@ function TFarView.KeyMessage(const AMsg: TMsg): Boolean;
 var
   KeyCode: Word;
   ShiftDown, CtrlDown, AltDown: Boolean;
-  AnsiCh: AnsiChar;
   WideCh: WideChar;
 begin
   Result := False;
   KeyCode := Word(AMsg.wParam);
 
   // Символ для поля ввода диалога. Окно VCL в Delphi 7 - ANSI: символ
-  // приходит в кодировке Windows
+  // приходит в кодировке Windows; окно uniFAR - Unicode (KeyChar)
   if AMsg.message = WM_CHAR then
   begin
     if (FDlgKind <> fdNone) and (KeyCode >= 32) and
        ((FDlgHasEdit and (FDlgFocus < 0)) or DlgRowIsEdit) then
     begin
-      AnsiCh := AnsiChar(KeyCode and $FF);
-      WideCh := #0;
-      FarMultiToWide(CP_ACP, 0, @AnsiCh, 1, @WideCh, 1);
+      WideCh := KeyChar(AMsg.wParam);
       if (WideCh <> #0) and DlgRowIsEdit then
         DlgRowInsert(WideCh)
       else if WideCh <> #0 then
@@ -3557,20 +3672,20 @@ begin
     else if (FDlgKind = fdNone) and (FMenuKind = fmNone) and
             not FFindOpen and (KeyCode >= 32) and EditorActive then
     begin
-      AnsiCh := AnsiChar(KeyCode and $FF);
-      WideCh := #0;
-      FarMultiToWide(CP_ACP, 0, @AnsiCh, 1, @WideCh, 1);
+      WideCh := KeyChar(AMsg.wParam);
       if WideCh <> #0 then
         EditChar(WideCh);
       Result := True;
     end
+    // В просмотре символы не нужны (и не в командную строку)
+    else if (FDlgKind = fdNone) and (FMenuKind = fmNone) and
+            not FFindOpen and (KeyCode >= 32) and ViewerActive then
+      Result := True
     // Символ без диалога и меню - в командную строку
     else if (FDlgKind = fdNone) and (FMenuKind = fmNone) and
             not FFindOpen and (KeyCode >= 32) then
     begin
-      AnsiCh := AnsiChar(KeyCode and $FF);
-      WideCh := #0;
-      FarMultiToWide(CP_ACP, 0, @AnsiCh, 1, @WideCh, 1);
+      WideCh := KeyChar(AMsg.wParam);
       if WideCh <> #0 then
         CmdInsert(WideCh);
       Result := True;
@@ -3609,6 +3724,13 @@ begin
   CtrlDown := GetKeyState(VK_CONTROL) < 0;
   AltDown := GetKeyState(VK_MENU) < 0;
 
+  // Сообщение в своей строке - до следующей клавиши
+  if FMessageText <> '' then
+  begin
+    FMessageText := '';
+    Invalidate;
+  end;
+
   if FMenuKind <> fmNone then
   begin
     Result := MenuKey(KeyCode, ShiftDown, CtrlDown, AltDown);
@@ -3621,6 +3743,8 @@ begin
   end
   else if FFindOpen then
     Result := FindKey(KeyCode, ShiftDown, CtrlDown, AltDown)
+  else if ViewerActive then
+    Result := ViewKey(KeyCode, ShiftDown, CtrlDown, AltDown)
   else if EditorActive then
     Result := EditKey(KeyCode, ShiftDown, CtrlDown, AltDown)
   else
@@ -3650,7 +3774,7 @@ begin
   if FPanelsHidden and not ((AKey = VK_F10) and Plain and not AShift) then
   begin
     if (AKey >= VK_F1) and (AKey <= VK_F12) then
-      Status('unIDE FAR: панели спрятаны - Ctrl+O');
+      Status(FarProduct + ': панели спрятаны - Ctrl+O');
     Result := (AKey >= VK_F1) and (AKey <= VK_F12) or (AKey = VK_UP) or
       (AKey = VK_DOWN) or (AKey = VK_LEFT) or (AKey = VK_RIGHT) or
       (AKey = VK_PRIOR) or (AKey = VK_NEXT) or (AKey = VK_HOME) or
@@ -3735,6 +3859,12 @@ begin
               ShowOptionsMenu;
             Exit;
           end;
+        VK_F3:              // F3 - просмотр файла
+          if not AShift then
+          begin
+            ViewCurrent;
+            Exit;
+          end;
         VK_F4:              // F4 - файл в редактор, Shift+F4 - по имени
           begin
             if AShift then
@@ -3766,11 +3896,11 @@ begin
           end;
       end;
     if Plain and not AShift and ((AKey = VK_F1) or (AKey = VK_F2) or
-       (AKey = VK_F3) or (AKey = VK_F12)) then
-      Status('unIDE FAR: ' + KeyName(AKey, AShift, ACtrl, AAlt) +
+       (AKey = VK_F12)) then
+      Status(FarProduct + ': ' + KeyName(AKey, AShift, ACtrl, AAlt) +
         ' - заглушка')
     else
-      Status('unIDE FAR ' + FarBuild + ': ' +
+      Status(FarProduct + ' ' + FarBuild + ': ' +
         KeyName(AKey, AShift, ACtrl, AAlt) + ' - ещё не сделано');
     Exit;
   end;
@@ -3945,7 +4075,7 @@ var
 begin
   if not APanel.ReadDir(APath, AFocus, ErrorText) then
   begin
-    Status('unIDE FAR: папку не открыть: ' + ErrorText);
+    Status(FarProduct + ': папку не открыть: ' + ErrorText);
     Exit;
   end;
   HistoryAdd(APanel.Path);
@@ -4039,7 +4169,7 @@ begin
   begin
     if FProcHandle <> 0 then
     begin
-      Status('unIDE FAR: прежняя команда ещё выполняется (Ctrl+Break - ' +
+      Status(FarProduct + ': прежняя команда ещё выполняется (Ctrl+Break - ' +
         'прервать; Shift+Enter - запустить в своём окне)');
       Exit;
     end;
@@ -4049,8 +4179,8 @@ begin
     // Имя - в двойных кавычках: cmd.exe /C снимает внешнюю пару, и имя с
     // пробелами и знаками & ( ) остаётся в кавычках
     CmdRun(WideString('""') + Name + WideString('""'));
-    if not FPanelsHidden and (PanelHeight >= CmdRow) then
-      Status('unIDE FAR: вывод команды - Ctrl+O или Ctrl+Up');
+    if not FPanelsHidden and (PanelHeight > OutBottom) then
+      Status(FarProduct + ': вывод команды - Ctrl+O или Ctrl+Up');
     Invalidate;
     Exit;
   end;
@@ -4061,16 +4191,11 @@ end;
 // файла нет - окно «Открыть с помощью»
 procedure TFarView.ShellOpen(const AFile, ADir: WideString);
 var
-  ParentForm: TCustomForm;
   OwnerWnd: HWND;
   ResultCode: Integer;
   Verb: WideString;
 begin
-  ParentForm := GetParentForm(Self);
-  if ParentForm <> nil then
-    OwnerWnd := ParentForm.Handle
-  else
-    OwnerWnd := Handle;
+  OwnerWnd := GetParentFormHandle;
   ResultCode := Integer(FarShellExecute(OwnerWnd, nil, PWideChar(AFile), nil,
     PWideChar(ADir), SW_SHOWNORMAL));
   if ResultCode = FarSeErrNoAssoc then
@@ -4080,7 +4205,7 @@ begin
       PWideChar(AFile), nil, PWideChar(ADir), SW_SHOWNORMAL));
   end;
   if (ResultCode >= 0) and (ResultCode <= 32) then
-    Status('unIDE FAR: файл не открыть: ' + SysErrorMessage(ResultCode));
+    Status(FarProduct + ': файл не открыть: ' + SysErrorMessage(ResultCode));
 end;
 
 procedure TFarView.GoUp;
@@ -4302,13 +4427,13 @@ begin
           Delete(FDlgEdit, FDlgEditPos + 1, 1);
       end;
     VK_INSERT:
-      if InEdit and AShift and Clipboard.HasFormat(CF_TEXT) then
-        DlgInsertText(Clipboard.AsText);
+      if InEdit and AShift and FarClipboardHasText then
+        DlgInsertText(FarClipboardText);
   else
     if InEdit and ACtrl and not AAlt and (AKey = Ord('V')) then
     begin
-      if Clipboard.HasFormat(CF_TEXT) then
-        DlgInsertText(Clipboard.AsText);
+      if FarClipboardHasText then
+        DlgInsertText(FarClipboardText);
     end
     else if InEdit and ACtrl and not AAlt and (AKey = Ord('Y')) then
     begin
@@ -4352,6 +4477,12 @@ begin
   if (FDlgKind = fdEditFind) and (AButton = 0) then
   begin
     EditFindConfirm;
+    Exit;
+  end;
+  // Просмотр: поиск
+  if (FDlgKind = fdViewFind) and (AButton = 0) then
+  begin
+    ViewFindConfirm;
     Exit;
   end;
   // Редактор: изменён - Save / Don't save / Cancel
@@ -4432,6 +4563,8 @@ begin
           False);
     fdEditGoto:
       EditGoto(EditText);
+    fdViewGoto:
+      ViewGoto(EditText);
   end;
 end;
 
@@ -4637,12 +4770,12 @@ begin
   end;
   if not ACurrentOnly and FPanels[1 - FActive].IsArchive then
   begin
-    Status('unIDE FAR: упаковка в архив - позже (Shift+F1)');
+    Status(FarProduct + ': упаковка в архив - позже (Shift+F1)');
     Exit;
   end;
   if not ACurrentOnly and FPanels[1 - FActive].IsFtp then
   begin
-    Status('unIDE FAR: копирование на FTP - следующим шагом');
+    Status(FarProduct + ': копирование на FTP - следующим шагом');
     Exit;
   end;
   Names := CollectNames(ACurrentOnly);
@@ -4716,7 +4849,7 @@ begin
   FullPath := FarFullPath(ActivePanel.Path, Name);
   if FarDirExists(FullPath) then
   begin
-    Status('unIDE FAR: это папка: ' + FullPath);
+    Status(FarProduct + ': это папка: ' + FullPath);
     Exit;
   end;
   Created := False;
@@ -4725,14 +4858,14 @@ begin
     FarSplitPath(FullPath, FileDir, FileName);
     if (FileDir <> '') and not FarForceDirs(FileDir) then
     begin
-      Status('unIDE FAR: папку не создать: ' + SysErrorMessage(GetLastError));
+      Status(FarProduct + ': папку не создать: ' + SysErrorMessage(GetLastError));
       Exit;
     end;
     FileHandle := FarCreateFile(PWideChar(FullPath), GENERIC_WRITE, 0, nil,
       CREATE_NEW, FILE_ATTRIBUTE_NORMAL, 0);
     if FileHandle = INVALID_HANDLE_VALUE then
     begin
-      Status('unIDE FAR: файл не создать: ' + SysErrorMessage(GetLastError));
+      Status(FarProduct + ': файл не создать: ' + SysErrorMessage(GetLastError));
       Exit;
     end;
     CloseHandle(FileHandle);
@@ -4851,15 +4984,10 @@ function TFarView.RunShellOp(AFunc: UINT; const AFrom, ATo: WideString;
   AFlags: Word; var AAborted: Boolean): Boolean;
 var
   ShellOp: TFarShFileOp;
-  ParentForm: TCustomForm;
   ResultCode: Integer;
 begin
   FillChar(ShellOp, SizeOf(ShellOp), 0);
-  ParentForm := GetParentForm(Self);
-  if ParentForm <> nil then
-    ShellOp.Wnd := ParentForm.Handle
-  else
-    ShellOp.Wnd := Handle;
+  ShellOp.Wnd := GetParentFormHandle;
   ShellOp.Func := AFunc;
   ShellOp.From := PWideChar(AFrom);
   if ATo <> '' then
@@ -4876,7 +5004,7 @@ begin
   AAborted := ShellOp.AnyAborted;
   Result := ResultCode = 0;
   if not Result and not AAborted then
-    Status('unIDE FAR: операция не выполнена (код ' +
+    Status(FarProduct + ': операция не выполнена (код ' +
       IntToStr(ResultCode) + ')');
 end;
 
@@ -4917,7 +5045,7 @@ begin
     if FarSameName(TargetDir, Source.Path) then
     begin
       if not AMove then
-        Status('unIDE FAR: нельзя копировать файл сам в себя');
+        Status(FarProduct + ': нельзя копировать файл сам в себя');
       Exit;
     end;
     // Папку нельзя копировать или переносить внутрь неё самой
@@ -4926,12 +5054,12 @@ begin
            Length(Source.Path + FDlgNames[NameIndex]) + 1),
            Source.Path + FDlgNames[NameIndex] + '\') then
       begin
-        Status('unIDE FAR: нельзя копировать или переносить папку в саму себя');
+        Status(FarProduct + ': нельзя копировать или переносить папку в саму себя');
         Exit;
       end;
     if not FarForceDirs(TargetDir) then
     begin
-      Status('unIDE FAR: папку не создать: ' + SysErrorMessage(GetLastError));
+      Status(FarProduct + ': папку не создать: ' + SysErrorMessage(GetLastError));
       Exit;
     end;
     if Length(TargetDir) > 3 then
@@ -4944,13 +5072,13 @@ begin
     if FarSameName(Target, Source.Path + FDlgNames[0]) then
     begin
       if not AMove then
-        Status('unIDE FAR: нельзя копировать файл сам в себя');
+        Status(FarProduct + ': нельзя копировать файл сам в себя');
       Exit;
     end;
     FarSplitPath(Target, SourceDir, TargetName);
     if (SourceDir <> '') and not FarForceDirs(SourceDir) then
     begin
-      Status('unIDE FAR: папку не создать: ' + SysErrorMessage(GetLastError));
+      Status(FarProduct + ': папку не создать: ' + SysErrorMessage(GetLastError));
       Exit;
     end;
     if FarSameName(SourceDir, Source.Path) then
@@ -4988,7 +5116,7 @@ begin
   FullPath := FarFullPath(ActivePanel.Path, Name);
   if not FarForceDirs(FullPath) then
   begin
-    Status('unIDE FAR: папку не создать: ' + SysErrorMessage(GetLastError));
+    Status(FarProduct + ': папку не создать: ' + SysErrorMessage(GetLastError));
     Exit;
   end;
   // 'a\b\c' - курсор на 'a'
@@ -5366,17 +5494,23 @@ begin
       if FarDirExists(Item.Data) then
         ChangeDir(ActivePanel, Item.Data, '')
       else
-        Status('unIDE FAR: папки нет: ' + Item.Data);
+        Status(FarProduct + ': папки нет: ' + Item.Data);
     fmOptions:
       case Item.Tag of
         1:
           if Assigned(FOnColorsDialog) then
-            FOnColorsDialog(Self);
+            FOnColorsDialog(Self)
+          else
+            Status(FarProduct + ': Files highlighting - пока только в unIDE ' +
+              '(или правкой [FarColors] в ' + ExtractFileName(FIniName) + ')');
         2:
           SaveSetup;
         3:
           if Assigned(FOnPaletteDialog) then
-            FOnPaletteDialog(Self);
+            FOnPaletteDialog(Self)
+          else
+            Status(FarProduct + ': Colors - пока только в unIDE (или ' +
+              'правкой [FarPalette] в ' + ExtractFileName(FIniName) + ')');
       end;
   end;
   Invalidate;
@@ -5616,7 +5750,7 @@ begin
   // В этой панели редактор - смены диска нет
   if EditorShown(APanelIndex) then
   begin
-    Status('unIDE FAR: в этой панели редактор - сначала закройте его (Esc)');
+    Status(FarProduct + ': в этой панели редактор - сначала закройте его (Esc)');
     Exit;
   end;
   if (FSingle >= 0) and (APanelIndex <> FSingle) then
@@ -6102,9 +6236,9 @@ begin
   Panel.FtpLeave;
   FtpFillHosts(Panel, -1);
   if Length(FFtpHosts) = 0 then
-    Status('unIDE FAR: FTP - адресов нет: Shift+F4 - новый адрес')
+    Status(FarProduct + ': FTP - адресов нет: Shift+F4 - новый адрес')
   else
-    Status('unIDE FAR: FTP - Enter - войти, Shift+F4 - новый адрес, F4 - ' +
+    Status(FarProduct + ': FTP - Enter - войти, Shift+F4 - новый адрес, F4 - ' +
       'изменить, F8 - удалить');
 end;
 
@@ -6135,7 +6269,7 @@ begin
     Lines[High(Lines)] := Wrapped[LineIdx];
   end;
   DlgOpen(fdFtpError, 'FTP', Lines, True, True, False, '', ['OK']);
-  Status('unIDE FAR: FTP - ' + string(AText));
+  Status(FarProduct + ': FTP - ' + string(AText));
 end;
 
 // Запрос к серверу: перейти в ADir (байтами; '' - начальная папка адреса)
@@ -6149,7 +6283,7 @@ begin
   Panel := FPanels[APanelIndex];
   if FFtpThread[APanelIndex] <> nil then
   begin
-    Status('unIDE FAR: FTP - ждём ответа сервера (Esc - прервать)');
+    Status(FarProduct + ': FTP - ждём ответа сервера (Esc - прервать)');
     Exit;
   end;
   Conn := Panel.FFtpConn;
@@ -6161,10 +6295,10 @@ begin
   FFtpJobHost[APanelIndex] := AHost;
   FFtpJobHostIdx[APanelIndex] := AHostIdx;
   if Conn.Connected then
-    Status('unIDE FAR: FTP - ' + string(FarFtpHostUrl(AHost)) +
+    Status(FarProduct + ': FTP - ' + string(FarFtpHostUrl(AHost)) +
       ': чтение папки...')
   else
-    Status('unIDE FAR: FTP - соединение с ' + string(FarFtpHostUrl(AHost)) +
+    Status(FarProduct + ': FTP - соединение с ' + string(FarFtpHostUrl(AHost)) +
       '... (Esc - прервать)');
   FFtpThread[APanelIndex] := TFarFtpThread.Create(Conn, AHost, ADir,
     AIsHome);
@@ -6247,9 +6381,9 @@ begin
         Panel.FFtpDir := Thread.CurDir;
         FtpFillEntries(Panel, Thread.Entries, FFtpJobFocus[PanelIndex]);
         if Thread.Warning <> '' then
-          Status('unIDE FAR: FTP - ' + FarFtpDecode(Thread.Warning))
+          Status(FarProduct + ': FTP - ' + FarFtpDecode(Thread.Warning))
         else
-          Status('unIDE FAR: FTP - ' + string(Panel.DisplayPath));
+          Status(FarProduct + ': FTP - ' + string(Panel.DisplayPath));
       end;
     finally
       Thread.Free;
@@ -6302,7 +6436,7 @@ begin
     FtpStartList(APanelIndex, Panel.FFtpHost, Panel.FFtpHostIdx,
       FarFtpJoin(Panel.FFtpDir, Item.FtpRaw), '')
   else
-    Status('unIDE FAR: FTP - просмотр и копирование файлов - следующим ' +
+    Status(FarProduct + ': FTP - просмотр и копирование файлов - следующим ' +
       'шагом');
 end;
 
@@ -6357,7 +6491,7 @@ begin
   // его части заменяют поля
   if not FarFtpParseUrl(FDlgRows[0].Text, Host) then
   begin
-    Status('unIDE FAR: FTP - не задан адрес сервера');
+    Status(FarProduct + ': FTP - не задан адрес сервера');
     FDlgRow := 0;
     Invalidate;
     Exit;
@@ -6434,7 +6568,7 @@ begin
   if (AKey = VK_ESCAPE) and (FFtpThread[FActive] <> nil) then
   begin
     FFtpThread[FActive].Cancel;
-    Status('unIDE FAR: FTP - прерываю...');
+    Status(FarProduct + ': FTP - прерываю...');
     Exit;
   end;
   if Plain and (AKey = VK_RETURN) then
@@ -6497,7 +6631,7 @@ begin
      (AKey = VK_DELETE))) or (Plain and AShift and (AKey = VK_F1)) or
      (AAlt and not ACtrl and (AKey = VK_F7)) then
   begin
-    Status('unIDE FAR: FTP - просмотр, копирование, папки и удаление на ' +
+    Status(FarProduct + ': FTP - просмотр, копирование, папки и удаление на ' +
       'сервере - следующим шагом');
     Exit;
   end;
@@ -6587,9 +6721,10 @@ end;
 //  Alt+F8 - к строке; F5 - на всю ширину / в панель; Esc / F10 - закрыть.
 // ---------------------------------------------------------------------------
 
+// Панель занята редактором (F4) или просмотром (F3)
 function TFarView.EditorShown(APanelIndex: Integer): Boolean;
 begin
-  Result := (FEditor <> nil) and (FEditWide or (APanelIndex = FEditPanel));
+  Result := DocOpen and (FEditWide or (APanelIndex = FEditPanel));
 end;
 
 function TFarView.EditorActive: Boolean;
@@ -6647,7 +6782,12 @@ var
   Editor: TFarEditor;
   ErrorText: string;
   Scheme: TClrScheme;
+  FromViewer, SlotWide: Boolean;
+  SlotPanel: Integer;
 begin
+  FromViewer := False;
+  SlotWide := False;
+  SlotPanel := FEditPanel;
   if FEditor <> nil then
   begin
     if FarSameName(FEditor.FileName, AFileName) then
@@ -6659,7 +6799,7 @@ begin
     if FEditor.Modified then
     begin
       FActive := FEditPanel;
-      Status('unIDE FAR: в редакторе изменён ' +
+      Status(FarProduct + ': в редакторе изменён ' +
         string(ExtractFileName(string(FEditor.FileName))) +
         ' - сначала запишите (F2) или закройте (Esc)');
       Invalidate;
@@ -6671,8 +6811,16 @@ begin
   if not Editor.LoadFromFile(AFileName, ErrorText) then
   begin
     Editor.Free;
-    Status('unIDE FAR: файл не открыть: ' + ErrorText);
+    Status(FarProduct + ': файл не открыть: ' + ErrorText);
     Exit;
+  end;
+  // Открыт просмотр (F6 в нём или F4 в панели) - редактор на его место
+  FromViewer := FViewer <> nil;
+  if FromViewer then
+  begin
+    SlotPanel := FEditPanel;
+    SlotWide := FEditWide;
+    FreeAndNil(FViewer);
   end;
   Editor.TabSize := FEditTabSize;
   Scheme := nil;
@@ -6685,14 +6833,22 @@ begin
   if (FSingle >= 0) and Assigned(FOnShowPanels) then
     FOnShowPanels(Self);
   // Редактор - в другой панели: файл, откуда открыли, остаётся виден
-  if FSingle >= 0 then
-    FEditPanel := FSingle
+  if FromViewer then
+  begin
+    FEditPanel := SlotPanel;
+    FEditWide := SlotWide;
+  end
   else
-    FEditPanel := 1 - FActive;
-  FEditWide := False;
+  begin
+    if FSingle >= 0 then
+      FEditPanel := FSingle
+    else
+      FEditPanel := 1 - FActive;
+    FEditWide := False;
+  end;
   FActive := FEditPanel;
   FEditQuitAfterSave := False;
-  Status('unIDE FAR: редактор - ' + string(AFileName) + ' (F2 - записать, ' +
+  Status(FarProduct + ': редактор - ' + string(AFileName) + ' (F2 - записать, ' +
     'Esc - закрыть, F5 - на всю ширину)');
   Invalidate;
 end;
@@ -6714,7 +6870,7 @@ begin
     FPanels[PanelIndex].Reread;
     EnsureVisible(FPanels[PanelIndex]);
   end;
-  Status('unIDE FAR: редактор закрыт');
+  Status(FarProduct + ': редактор закрыт');
   Invalidate;
 end;
 
@@ -6758,10 +6914,10 @@ begin
     DlgOpen(fdEditError, 'Editor', ['Cannot save the file',
       FarFitPath(AFileName, 60), WideString(ErrorText)], True, True, False,
       '', ['OK']);
-    Status('unIDE FAR: файл не записан: ' + ErrorText);
+    Status(FarProduct + ': файл не записан: ' + ErrorText);
     Exit;
   end;
-  Status('unIDE FAR: записан ' + string(AFileName) + ' (' +
+  Status(FarProduct + ': записан ' + string(AFileName) + ' (' +
     FarEditEncodingName(FEditor.Encoding) + ')');
   // Панели, где этот файл, - перечитать (кроме той, где редактор)
   for PanelIndex := 0 to 1 do
@@ -6793,11 +6949,11 @@ begin
   if FEditor.FindNext(FEditFind, FEditFindCase) then
   begin
     EditEnsureVisible;
-    Status('unIDE FAR: найдено - строка ' + IntToStr(FEditor.Row + 1) +
+    Status(FarProduct + ': найдено - строка ' + IntToStr(FEditor.Row + 1) +
       ' (Shift+F7 - дальше)');
   end
   else
-    Status('unIDE FAR: не найдено: ' + string(FEditFind));
+    Status(FarProduct + ': не найдено: ' + string(FEditFind));
   Invalidate;
 end;
 
@@ -6810,7 +6966,7 @@ begin
   LineNo := StrToIntDef(Trim(string(AText)), 0);
   if (LineNo < 1) or (LineNo > FEditor.Count) then
   begin
-    Status('unIDE FAR: строки ' + string(AText) + ' нет (1..' +
+    Status(FarProduct + ': строки ' + string(AText) + ' нет (1..' +
       IntToStr(FEditor.Count) + ')');
     Exit;
   end;
@@ -6866,7 +7022,7 @@ begin
         VK_F10:
           EditQuit;
       else
-        Status('unIDE FAR: в редакторе ' + KeyName(AKey, AShift, ACtrl, AAlt) +
+        Status(FarProduct + ': в редакторе ' + KeyName(AKey, AShift, ACtrl, AAlt) +
           ' не используется');
       end
     else if Plain and AShift and (AKey = VK_F2) then
@@ -6878,7 +7034,7 @@ begin
       DlgOpen(fdEditGoto, 'Go to', ['Line number (1..' + IntToStr(Ed.Count) +
         '):'], False, False, True, IntToStr(Ed.Row + 1), ['Go', 'Cancel'])
     else
-      Status('unIDE FAR: в редакторе ' + KeyName(AKey, AShift, ACtrl, AAlt) +
+      Status(FarProduct + ': в редакторе ' + KeyName(AKey, AShift, ACtrl, AAlt) +
         ' не используется');
     Invalidate;
     Exit;
@@ -6936,7 +7092,7 @@ begin
           // Shift+Del - вырезать
           if Ed.HasSelection then
           begin
-            FarCopyToClipboard(Ed.SelectedText);
+            FarCopyToClipboard(Handle, Ed.SelectedText);
             Ed.DeleteSelection;
           end;
         end
@@ -6976,11 +7132,11 @@ begin
         Ed.DeleteWordRight;
       VK_INSERT, Ord('C'):
         if Ed.HasSelection then
-          FarCopyToClipboard(Ed.SelectedText);
+          FarCopyToClipboard(Handle, Ed.SelectedText);
       Ord('X'):
         if Ed.HasSelection then
         begin
-          FarCopyToClipboard(Ed.SelectedText);
+          FarCopyToClipboard(Handle, Ed.SelectedText);
           Ed.DeleteSelection;
         end;
       Ord('V'):
@@ -7217,6 +7373,421 @@ begin
   end;
 end;
 
+// ---------------------------------------------------------------------------
+//  Просмотр (F3) - модель TFarViewer (FarViewer.pas), здесь клавиши и
+//  отрисовка. Место - то же, что у редактора: другая панель, F5 - вся
+//  ширина. Файл не читается целиком: годится и для больших файлов.
+//
+//  Клавиши (как в просмотре FAR): стрелки, PgUp / PgDn, Home / End (и
+//  Ctrl+Home / End) - начало / конец, Left / Right (без переноса) - сдвиг,
+//  Ctrl+Left / Right - на 20 колонок; F2 - перенос строк, F4 - hex / текст,
+//  F8 - кодировка (ANSI, OEM, UTF-8, UTF-16); F7 - поиск, Shift+F7 -
+//  дальше; Alt+F8 - к позиции (смещение или процент); F6 - редактор;
+//  Ctrl+R - перечитать; Esc / F10 / F3 - закрыть.
+// ---------------------------------------------------------------------------
+
+function TFarView.DocOpen: Boolean;
+begin
+  Result := (FEditor <> nil) or (FViewer <> nil);
+end;
+
+function TFarView.ViewerActive: Boolean;
+begin
+  Result := (FViewer <> nil) and not FPanelsHidden and
+    (FEditWide or (FActive = FEditPanel));
+end;
+
+function TFarView.ViewTextRows: Integer;
+begin
+  Result := PanelHeight - 1;
+  if Result < 1 then
+    Result := 1;
+end;
+
+procedure TFarView.ViewCurrent;
+var
+  Panel: TFarPanel;
+begin
+  Panel := ActivePanel;
+  if (Panel.Count = 0) or (Panel.Cursor < 0) or
+     (Panel.Cursor >= Panel.Count) then
+    Exit;
+  if ArcBlocked then
+    Exit;
+  if Panel.FItems[Panel.Cursor].IsDir then
+  begin
+    Status(FarProduct + ': F3 - просмотр файла; это папка');
+    Exit;
+  end;
+  OpenViewer(Panel.Path + Panel.FItems[Panel.Cursor].Name);
+end;
+
+procedure TFarView.OpenViewer(const AFileName: WideString);
+var
+  Viewer: TFarViewer;
+  ErrorText: string;
+  FromEditor: Boolean;
+begin
+  FromEditor := False;
+  if FViewer <> nil then
+  begin
+    if FarSameName(FViewer.FileName, AFileName) then
+    begin
+      FActive := FEditPanel;
+      Invalidate;
+      Exit;
+    end;
+  end;
+  // Редактор: изменённый не трогаем; нет - просмотр на его место
+  if FEditor <> nil then
+  begin
+    if FEditor.Modified then
+    begin
+      FActive := FEditPanel;
+      Status(FarProduct + ': в редакторе изменён ' +
+        string(ExtractFileName(string(FEditor.FileName))) +
+        ' - сначала запишите (F2) или закройте (Esc)');
+      Invalidate;
+      Exit;
+    end;
+    FromEditor := True;
+  end;
+  Viewer := TFarViewer.Create;
+  if not Viewer.Open(AFileName, ErrorText) then
+  begin
+    Viewer.Free;
+    Status(FarProduct + ': файл не открыть: ' + ErrorText);
+    Exit;
+  end;
+  Viewer.TabSize := FEditTabSize;
+  if FromEditor then
+    FreeAndNil(FEditor)
+  else if FViewer = nil then
+  begin
+    // Режим F4 основного редактора (одна панель) - снова обе панели
+    if (FSingle >= 0) and Assigned(FOnShowPanels) then
+      FOnShowPanels(Self);
+    if FSingle >= 0 then
+      FEditPanel := FSingle
+    else
+      FEditPanel := 1 - FActive;
+    FEditWide := False;
+  end;
+  FreeAndNil(FViewer);
+  FViewer := Viewer;
+  FActive := FEditPanel;
+  Status(FarProduct + ': просмотр - ' + string(AFileName) + ' (' +
+    FarViewEncodingName(Viewer.Encoding) + '; F8 - кодировка, F4 - hex, ' +
+    'Esc - закрыть)');
+  Invalidate;
+end;
+
+procedure TFarView.CloseViewer;
+begin
+  if FViewer = nil then
+    Exit;
+  FreeAndNil(FViewer);
+  FEditWide := False;
+  if FSingle < 0 then
+    FActive := 1 - FEditPanel;
+  Status('');
+  Invalidate;
+end;
+
+procedure TFarView.ViewFindConfirm;
+begin
+  if Length(FDlgRows) < 2 then
+    Exit;
+  FViewFind := FDlgRows[0].Text;
+  FViewFindCase := FDlgRows[1].Index = 1;
+  DlgClose;
+  // Новый поиск - от верха экрана
+  ViewFindNext;
+end;
+
+// Поиск: после найденного в прошлый раз, если оно на экране или ниже;
+// иначе - от верха экрана
+procedure TFarView.ViewFindNext;
+var
+  ViewX, ViewW: Integer;
+  FromPos: Int64;
+begin
+  if (FViewer = nil) or (FViewFind = '') then
+    Exit;
+  EditBounds(ViewX, ViewW);
+  FromPos := FViewer.Top;
+  if FViewer.FoundPos >= FViewer.Top then
+    FromPos := FViewer.FoundPos + 1;
+  if FViewer.FindNext(FViewFind, FViewFindCase, FromPos, ViewW,
+     ViewTextRows) then
+    Status(FarProduct + ': найдено - позиция ' + IntToStr(FViewer.FoundPos) +
+      ' (Shift+F7 - дальше)')
+  else
+    Status(FarProduct + ': не найдено: ' + string(FViewFind));
+  Invalidate;
+end;
+
+procedure TFarView.ViewGoto(const AText: WideString);
+var
+  ViewX, ViewW: Integer;
+  Target: Int64;
+begin
+  if FViewer = nil then
+    Exit;
+  if not FarViewParsePos(string(AText), FViewer.Size, Target) then
+  begin
+    Status(FarProduct + ': позиция не понята: ' + string(AText) +
+      ' (число, 0x1F00 или 50%)');
+    Exit;
+  end;
+  EditBounds(ViewX, ViewW);
+  FViewer.GoToPos(Target, ViewW);
+  Invalidate;
+end;
+
+function TFarView.ViewKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+var
+  Viewer: TFarViewer;
+  ViewX, ViewW, Rows: Integer;
+  Plain: Boolean;
+begin
+  Result := True;
+  Viewer := FViewer;
+  EditBounds(ViewX, ViewW);
+  Rows := ViewTextRows;
+  Plain := not ACtrl and not AAlt;
+  if (AKey >= VK_F1) and (AKey <= VK_F12) then
+  begin
+    if Plain and not AShift then
+      case AKey of
+        VK_F2:
+          Viewer.Wrap := not Viewer.Wrap;
+        VK_F3, VK_F10:
+          begin
+            CloseViewer;
+            Exit;
+          end;
+        VK_F4:
+          Viewer.Hex := not Viewer.Hex;
+        VK_F5:
+          begin
+            FEditWide := not FEditWide;
+            if FEditWide then
+              FActive := FEditPanel;
+          end;
+        VK_F6:
+          begin
+            OpenEditor(Viewer.FileName);
+            Exit;
+          end;
+        VK_F7:
+          begin
+            DlgOpen(fdViewFind, 'Search', ['Search in the file'], False,
+              False, False, '', ['Find', 'Cancel']);
+            DlgAddRow('Search for:', False, False, FViewFind, [], 0);
+            DlgAddCheck('Case sensitive', FViewFindCase);
+            FDlgRow := 0;
+          end;
+        VK_F8:
+          begin
+            Viewer.Encoding := Viewer.NextEncoding;
+            Status(FarProduct + ': кодировка ' +
+              FarViewEncodingName(Viewer.Encoding));
+          end;
+      else
+        Status(FarProduct + ': в просмотре ' +
+          KeyName(AKey, AShift, ACtrl, AAlt) + ' не используется');
+      end
+    else if Plain and AShift and (AKey = VK_F7) then
+      ViewFindNext
+    else if AAlt and not ACtrl and not AShift and (AKey = VK_F8) then
+      DlgOpen(fdViewGoto, 'Go to', ['Position: offset (12345, 0x3039) ' +
+        'or percent (50%)'], False, False, True, '', ['Go', 'Cancel'])
+    else
+      Status(FarProduct + ': в просмотре ' +
+        KeyName(AKey, AShift, ACtrl, AAlt) + ' не используется');
+    Invalidate;
+    Exit;
+  end;
+  if AAlt then
+  begin
+    Result := False;
+    Exit;
+  end;
+  if not ACtrl then
+    case AKey of
+      VK_UP:
+        Viewer.LineUp(ViewW);
+      VK_DOWN:
+        Viewer.LineDown(ViewW, Rows);
+      VK_PRIOR:
+        Viewer.PageUp(ViewW, Rows);
+      VK_NEXT:
+        Viewer.PageDown(ViewW, Rows);
+      VK_HOME:
+        Viewer.GoHome;
+      VK_END:
+        Viewer.GoEnd(ViewW, Rows);
+      VK_LEFT:
+        if not Viewer.Wrap and not Viewer.Hex then
+          Viewer.LeftCol := Viewer.LeftCol - 1;
+      VK_RIGHT:
+        if not Viewer.Wrap and not Viewer.Hex then
+          Viewer.LeftCol := Viewer.LeftCol + 1;
+      VK_ESCAPE:
+        begin
+          CloseViewer;
+          Exit;
+        end;
+      VK_TAB:
+        if not FEditWide and (FSingle < 0) then
+          FActive := 1 - FEditPanel;
+    else
+      Result := False;
+    end
+  else
+    case AKey of
+      VK_HOME, VK_PRIOR:
+        Viewer.GoHome;
+      VK_END, VK_NEXT:
+        Viewer.GoEnd(ViewW, Rows);
+      VK_LEFT:
+        if not Viewer.Wrap and not Viewer.Hex then
+          Viewer.LeftCol := Viewer.LeftCol - 20;
+      VK_RIGHT:
+        if not Viewer.Wrap and not Viewer.Hex then
+          Viewer.LeftCol := Viewer.LeftCol + 20;
+      Ord('R'):
+        begin
+          Viewer.Reread;
+          Status(FarProduct + ': перечитан, ' + IntToStr(Viewer.Size) +
+            ' байт');
+        end;
+      VK_TAB:
+        if not FEditWide and (FSingle < 0) then
+          FActive := 1 - FEditPanel;
+    else
+      // Прочие Ctrl+клавиши в просмотре - ничего
+      Result := True;
+    end;
+  Invalidate;
+end;
+
+function TFarView.ViewKeyLabel(AKeyIndex: Integer; AShift, ACtrl,
+  AAlt: Boolean): string;
+begin
+  Result := '';
+  if AAlt then
+  begin
+    if AKeyIndex = 7 then
+      Result := 'Goto';
+    Exit;
+  end;
+  if ACtrl then
+    Exit;
+  if AShift then
+  begin
+    if AKeyIndex = 6 then
+      Result := 'Next';
+    Exit;
+  end;
+  case AKeyIndex of
+    1:
+      if FViewer.Wrap then
+        Result := 'Unwrap'
+      else
+        Result := 'Wrap';
+    2, 9:
+      Result := 'Quit';
+    3:
+      if FViewer.Hex then
+        Result := 'Text'
+      else
+        Result := 'Hex';
+    4:
+      Result := 'Wide';
+    5:
+      Result := 'Edit';
+    6:
+      Result := 'Search';
+    7:
+      case FViewer.NextEncoding of
+        fvAnsi: Result := 'ANSI';
+        fvOem: Result := 'OEM';
+        fvUtf8: Result := 'UTF-8';
+      else
+        Result := 'UTF-16';
+      end;
+  end;
+end;
+
+procedure TFarView.DrawViewer;
+var
+  ViewX, ViewW, PanelH, TextRows, RowIdx, Row, HlStart, HlLen: Integer;
+  Shown: TFarViewRows;
+  TextFg, PageBg, HlFg, HlBg: TColor;
+  Title, RightText, LineText: WideString;
+  Pct: Integer;
+begin
+  EditBounds(ViewX, ViewW);
+  PanelH := PanelHeight;
+  if (ViewW < 4) or (PanelH < 2) then
+    Exit;
+  TextRows := PanelH - 1;
+  Shown := FViewer.Rows(FViewer.Top, ViewW, TextRows);
+  // Заголовок: имя файла; справа - процент (до конца экрана), кодировка,
+  // режим
+  if Length(Shown) > 0 then
+    Pct := FViewer.Percent(Shown[High(Shown)].Stop)
+  else
+    Pct := 100;
+  RightText := ' ' + IntToStr(Pct) + '%  ' +
+    WideString(FarViewEncodingName(FViewer.Encoding));
+  if FViewer.Hex then
+    RightText := RightText + '  Hex'
+  else if not FViewer.Wrap and (FViewer.LeftCol > 0) then
+    RightText := RightText + '  Col ' + IntToStr(FViewer.LeftCol + 1);
+  RightText := RightText + ' ';
+  if Length(RightText) > ViewW - 8 then
+    RightText := '';
+  FillCells(ViewX, 0, ViewW, FPal[fpEditTitleBack]);
+  Title := ' ' + FarFitPath(FViewer.FileName, ViewW - Length(RightText) - 2);
+  PutText(ViewX, 0, ViewW - Length(RightText), Title, FPal[fpEditTitleText],
+    FPal[fpEditTitleBack]);
+  if RightText <> '' then
+    PutText(ViewX + ViewW - Length(RightText), 0, Length(RightText),
+      RightText, FPal[fpEditTitleText], FPal[fpEditTitleBack]);
+  // Цвета: заданы для редактора в палитре - они, нет - цвета панели
+  TextFg := FPal[fpPanelText];
+  PageBg := FPal[fpPanelBack];
+  if FPal[fpEditText] <> clNone then
+    TextFg := FPal[fpEditText];
+  if FPal[fpEditBack] <> clNone then
+    PageBg := FPal[fpEditBack];
+  HlFg := FPal[fpEditSelText];
+  HlBg := FPal[fpEditSelBack];
+  for RowIdx := 0 to TextRows - 1 do
+  begin
+    Row := RowIdx + 1;
+    if RowIdx > High(Shown) then
+    begin
+      FillCells(ViewX, Row, ViewW, PageBg);
+      Continue;
+    end;
+    LineText := Shown[RowIdx].Text;
+    PutText(ViewX, Row, ViewW, LineText, TextFg, PageBg);
+    HlStart := Shown[RowIdx].HlStart;
+    HlLen := Shown[RowIdx].HlLen;
+    if HlStart >= ViewW then
+      HlLen := 0;
+    if HlStart + HlLen > ViewW then
+      HlLen := ViewW - HlStart;
+    if HlLen > 0 then
+      PutText(ViewX + HlStart, Row, HlLen, Copy(LineText, HlStart + 1, HlLen),
+        HlFg, HlBg);
+  end;
+end;
+
 // Закрытие unIDE: текст в редакторе FAR изменён - спросить (окном
 // Windows: окна FAR может быть не видно). False - не закрывать
 function TFarView.EditorCanClose: Boolean;
@@ -7230,10 +7801,10 @@ begin
   Result := True;
   if (FEditor = nil) or not FEditor.Modified then
     Exit;
-  Prompt := 'Файл ' + FEditor.FileName + ' изменён в редакторе unIDE FAR.' +
-    #13#10'Записать изменения?';
+  Prompt := 'Файл ' + FEditor.FileName + ' изменён в редакторе ' +
+    WideString(FarProduct) + '.'#13#10'Записать изменения?';
   Answer := FarMessageBox(GetParentFormHandle, PWideChar(Prompt),
-    PWideChar(WideString('unIDE FAR')), MB_YESNOCANCEL or MB_ICONQUESTION);
+    PWideChar(WideString(FarProduct)), MB_YESNOCANCEL or MB_ICONQUESTION);
   if Answer = IDNO then
     Exit;
   if Answer <> IDYES then
@@ -7248,7 +7819,7 @@ begin
     Prompt := 'В кодировке Windows нет некоторых символов текста.'#13#10 +
       'Да - записать в UTF-8, Нет - заменить их на "?".';
     Answer := FarMessageBox(GetParentFormHandle, PWideChar(Prompt),
-      PWideChar(WideString('unIDE FAR')), MB_YESNOCANCEL or MB_ICONQUESTION);
+      PWideChar(WideString(FarProduct)), MB_YESNOCANCEL or MB_ICONQUESTION);
     if Answer = IDYES then
       FEditor.SaveToFile(FEditor.FileName, feUtf8, False, Lossy, ErrorText)
     else if Answer = IDNO then
@@ -7263,19 +7834,17 @@ begin
   begin
     Prompt := 'Файл не записан: ' + WideString(ErrorText);
     FarMessageBox(GetParentFormHandle, PWideChar(Prompt),
-      PWideChar(WideString('unIDE FAR')), MB_OK or MB_ICONERROR);
+      PWideChar(WideString(FarProduct)), MB_OK or MB_ICONERROR);
     Result := False;
   end;
 end;
 
+// Окно верхнего уровня, в котором FAR (форма unIDE, главное окно uniFAR) -
+// владелец окон Windows (сообщения, ход операции, ShellExecute)
 function TFarView.GetParentFormHandle: HWND;
-var
-  ParentForm: TCustomForm;
 begin
-  ParentForm := GetParentForm(Self);
-  if ParentForm <> nil then
-    Result := ParentForm.Handle
-  else
+  Result := FarGetAncestor(Handle, FarGaRoot);
+  if Result = 0 then
     Result := Handle;
 end;
 
@@ -7293,7 +7862,7 @@ begin
   try
     if not FarDirExists(Root) then
     begin
-      Status('unIDE FAR: диск ' + Root + ' не готов');
+      Status(FarProduct + ': диск ' + Root + ' не готов');
       Exit;
     end;
     // Куда вести:
@@ -7352,7 +7921,7 @@ var
 begin
   if Length(FHistory) = 0 then
   begin
-    Status('unIDE FAR: история папок пуста');
+    Status(FarProduct + ': история папок пуста');
     Exit;
   end;
   SetLength(Items, Length(FHistory));
@@ -7378,6 +7947,41 @@ end;
 function TFarView.CmdRow: Integer;
 begin
   Result := FRows - KeyBarRows - 1;
+end;
+
+// Последняя строка вывода команд (и панелей): над командной строкой, а
+// есть строка сообщений - над ней
+function TFarView.OutBottom: Integer;
+begin
+  Result := CmdRow - 1;
+  if FMessageLine then
+    Dec(Result);
+end;
+
+procedure TFarView.SetMessageLine(AValue: Boolean);
+begin
+  if AValue = FMessageLine then
+    Exit;
+  FMessageLine := AValue;
+  EnsureVisible(FPanels[0]);
+  EnsureVisible(FPanels[1]);
+  Invalidate;
+end;
+
+// Строка сообщений: цвета строки вывода команд
+procedure TFarView.DrawMessageLine;
+var
+  Row: Integer;
+  Shown: WideString;
+begin
+  Row := CmdRow - 1;
+  if Row < 0 then
+    Exit;
+  FillCells(0, Row, FCols, FPal[fpCmdBack]);
+  Shown := FMessageText;
+  if Length(Shown) > FCols then
+    Shown := Copy(Shown, 1, FCols - 3) + '...';
+  PutText(0, Row, Length(Shown), Shown, FPal[fpOutText], FPal[fpCmdBack]);
 end;
 
 // Приглашение: путь активной панели и '>' (как у cmd.exe)
@@ -7417,10 +8021,10 @@ end;
 
 procedure TFarView.CopyToClipboard(const AText: WideString);
 begin
-  if FarCopyToClipboard(AText) then
+  if FarCopyToClipboard(Handle, AText) then
     Status('В буфере: ' + string(AText))
   else
-    Status('unIDE FAR: буфер обмена занят - не скопировано');
+    Status(FarProduct + ': буфер обмена занят - не скопировано');
 end;
 
 function TFarView.CursorFullName: WideString;
@@ -7536,8 +8140,8 @@ begin
           Invalidate;
         end;
       Ord('V'):                       // вставить
-        if Clipboard.HasFormat(CF_TEXT) then
-          CmdInsert(Clipboard.AsText);
+        if FarClipboardHasText then
+          CmdInsert(FarClipboardText);
       VK_RETURN:                      // имя файла под курсором
         begin
           Panel := ActivePanel;
@@ -7569,7 +8173,7 @@ begin
              not Panel.FItems[Panel.Cursor].IsUp then
             CopyToClipboard(Panel.FItems[Panel.Cursor].Name)
           else
-            Status('unIDE FAR: курсор на "..", имени для буфера нет');
+            Status(FarProduct + ': курсор на "..", имени для буфера нет');
         end;
       VK_CANCEL:                      // Ctrl+Break - прервать команду
         if FProcHandle <> 0 then
@@ -7620,8 +8224,8 @@ begin
     VK_INSERT:
       if AShift then
       begin
-        if Clipboard.HasFormat(CF_TEXT) then
-          CmdInsert(Clipboard.AsText);
+        if FarClipboardHasText then
+          CmdInsert(FarClipboardText);
       end
       else
         Result := False;
@@ -7664,7 +8268,7 @@ begin
     Exit;
   if FProcHandle <> 0 then
   begin
-    Status('unIDE FAR: прежняя команда ещё выполняется (Ctrl+Break - ' +
+    Status(FarProduct + ': прежняя команда ещё выполняется (Ctrl+Break - ' +
       'прервать)');
     Exit;
   end;
@@ -7675,8 +8279,8 @@ begin
   if not CmdBuiltin(Command) then
     CmdRun(Command);
   // Вывода не видно (панели во всё окно) - подсказка
-  if not FPanelsHidden and (PanelHeight >= CmdRow) then
-    Status('unIDE FAR: вывод команды - Ctrl+O или Ctrl+Up');
+  if not FPanelsHidden and (PanelHeight > OutBottom) then
+    Status(FarProduct + ': вывод команды - Ctrl+O или Ctrl+Up');
   Invalidate;
 end;
 
@@ -7757,7 +8361,7 @@ begin
   begin
     OutLine('Папка ' + FarStripSlash(Target) + ' не существует - открыта ' +
       FarStripSlash(ParentDir));
-    Status('unIDE FAR: папка ' + string(FarStripSlash(Target)) +
+    Status(FarProduct + ': папка ' + string(FarStripSlash(Target)) +
       ' не существует - открыта папка выше');
     ChangeDir(ActivePanel, ParentDir, '');
     Exit;
@@ -7765,7 +8369,7 @@ begin
   // Нет и её - сообщение, команда - снова в строке ввода: поправить и
   // повторить
   OutLine('Папка ' + FarStripSlash(Target) + ' не существует');
-  Status('unIDE FAR: папка ' + string(FarStripSlash(Target)) +
+  Status(FarProduct + ': папка ' + string(FarStripSlash(Target)) +
     ' не существует - поправьте путь и нажмите Enter');
   CmdSetText(FarTrimW(ACommand));
 end;
@@ -7812,7 +8416,7 @@ begin
     PipeSize := 0;
   if not FarCreatePipe(OutRead, OutWrite, @Security, PipeSize) then
   begin
-    OutLine('unIDE FAR: трубу вывода не создать: ' +
+    OutLine(FarProduct + ': трубу вывода не создать: ' +
       SysErrorMessage(GetLastError));
     Exit;
   end;
@@ -7820,7 +8424,7 @@ begin
   begin
     CloseHandle(OutRead);
     CloseHandle(OutWrite);
-    OutLine('unIDE FAR: трубу ввода не создать: ' +
+    OutLine(FarProduct + ': трубу ввода не создать: ' +
       SysErrorMessage(GetLastError));
     Exit;
   end;
@@ -7843,7 +8447,7 @@ begin
   if not FarCreateProcess(nil, PWideChar(CommandLine), nil, nil, True,
        FarCreateNoWindow, nil, PWideChar(WorkDir), Startup, ProcInfo) then
   begin
-    OutLine('unIDE FAR: не запустить: ' + SysErrorMessage(GetLastError));
+    OutLine(FarProduct + ': не запустить: ' + SysErrorMessage(GetLastError));
     CloseHandle(OutRead);
     CloseHandle(OutWrite);
     CloseHandle(InRead);
@@ -7961,7 +8565,7 @@ begin
     else if not FarGetExitCode(FProcHandle, ProcExitCode) then
       ProcExitCode := 0
     else if (ProcExitCode <> 0) and not WasCapture then
-      Status('unIDE FAR: команда завершилась с кодом ' +
+      Status(FarProduct + ': команда завершилась с кодом ' +
         IntToStr(ProcExitCode));
     CloseHandle(FProcHandle);
   end;
@@ -7981,7 +8585,7 @@ begin
       if (FArcAction = aaAdd) and not FArcJobExists then
         FarDeleteFile(PWideChar(FArcJobFile));
       FArcAction := aaNone;
-      Status('unIDE FAR: работа с архивом прервана');
+      Status(FarProduct + ': работа с архивом прервана');
     end
     else
       ArcDone(ProcExitCode);
@@ -8322,7 +8926,7 @@ function TFarView.ArcBlocked: Boolean;
 begin
   Result := ActivePanel.IsArchive;
   if Result then
-    Status('unIDE FAR: в архиве пока только просмотр и распаковка (F5, ' +
+    Status(FarProduct + ': в архиве пока только просмотр и распаковка (F5, ' +
       'Enter)');
 end;
 
@@ -8334,7 +8938,7 @@ procedure TFarView.OpenArchive(APanelIndex: Integer; const AFile,
 begin
   if FProcHandle <> 0 then
   begin
-    Status('unIDE FAR: выполняется команда - архив откроется после неё');
+    Status(FarProduct + ': выполняется команда - архив откроется после неё');
     Exit;
   end;
   FArcAction := aaList;
@@ -8374,7 +8978,7 @@ begin
       Command := Command + WideString(' "-p') + FArcJobPassword +
         WideString('"');
     Command := Command + WideString(' "') + FArcJobFile + WideString('"');
-    Status('unIDE FAR: открываю архив...');
+    Status(FarProduct + ': открываю архив...');
   end
   else
   begin
@@ -8382,7 +8986,7 @@ begin
     ListFile := FArcJobTemp + '~unide_list.txt';
     if not FarForceDirs(FArcJobTemp) then
     begin
-      Status('unIDE FAR: временную папку не создать: ' +
+      Status(FarProduct + ': временную папку не создать: ' +
         SysErrorMessage(GetLastError));
       FArcAction := aaNone;
       Exit;
@@ -8410,7 +9014,7 @@ begin
     end;
     if not ListOk then
     begin
-      Status('unIDE FAR: список для 7-Zip не записать');
+      Status(FarProduct + ': список для 7-Zip не записать');
       ArcCleanupTemp;
       FArcAction := aaNone;
       Exit;
@@ -8434,7 +9038,7 @@ begin
       end;
       Command := Command + WideString(' "') + FArcJobFile +
         WideString('" "@') + ListFile + WideString('"');
-      Status('unIDE FAR: упаковка... (Ctrl+Break - прервать)');
+      Status(FarProduct + ': упаковка... (Ctrl+Break - прервать)');
     end
     else
     begin
@@ -8447,7 +9051,7 @@ begin
       Command := Command + WideString(' "-o') +
         Copy(FArcJobTemp, 1, Length(FArcJobTemp) - 1) + WideString('" "') +
         FArcJobFile + WideString('" "@') + ListFile + WideString('"');
-      Status('unIDE FAR: распаковка...');
+      Status(FarProduct + ': распаковка...');
     end;
   end;
   if not StartProcess(Command, FPanels[FArcJobPanel].Path, True) then
@@ -8463,25 +9067,20 @@ end;
 // работа затянется; «Отмена» в нём - как Ctrl+Break (ProcTick)
 procedure TFarView.ArcProgressStart;
 var
-  ParentForm: TCustomForm;
   ParentWnd: HWND;
   Title, Line1: WideString;
 begin
   if FArcProgress = nil then
     FArcProgress := TFarProgress.Create;
-  ParentForm := GetParentForm(Self);
-  if ParentForm <> nil then
-    ParentWnd := ParentForm.Handle
-  else
-    ParentWnd := Handle;
+  ParentWnd := GetParentFormHandle;
   if FArcAction = aaAdd then
   begin
-    Title := 'unIDE FAR - упаковка';
+    Title := FarProduct + ' - упаковка';
     Line1 := 'В архив ' + FArcJobFile;
   end
   else
   begin
-    Title := 'unIDE FAR - распаковка';
+    Title := FarProduct + ' - распаковка';
     Line1 := 'Из архива ' + FArcJobFile;
   end;
   FArcAddPercent := -1;
@@ -8510,7 +9109,7 @@ begin
   end;
   if Found = '' then
     Found := 'архив не открыть';
-  Status('unIDE FAR: 7-Zip: ' + string(Found));
+  Status(FarProduct + ': 7-Zip: ' + string(Found));
   // Весь ответ 7-Zip - в вывод под панелями
   OutLine('7-Zip: ' + FArcJobFile);
   OutAppend(AOutput);
@@ -8541,7 +9140,7 @@ begin
   if (FSzThread <> nil) or SzInstallRunning then
   begin
     FArcAction := aaNone;
-    Status('unIDE FAR: 7-Zip уже устанавливается');
+    Status(FarProduct + ': 7-Zip уже устанавливается');
     Exit;
   end;
   SzGetOsInfo(OsInfo);
@@ -8580,7 +9179,7 @@ begin
   if (FSzThread <> nil) or SzInstallRunning then
   begin
     FArcAction := aaNone;
-    Status('unIDE FAR: 7-Zip уже устанавливается');
+    Status(FarProduct + ': 7-Zip уже устанавливается');
     Exit;
   end;
   if FSzTarget = '' then
@@ -8668,14 +9267,14 @@ begin
   begin
     FArcAction := aaNone;
     if WasCancelled then
-      Status('unIDE FAR: установка 7-Zip отменена')
+      Status(FarProduct + ': установка 7-Zip отменена')
     else if ErrorText <> '' then
       SzFail('7-Zip не установить: ' + WideString(ErrorText))
     else
       SzFail('7-Zip не установить: 7z.exe после установки не найден.');
     Exit;
   end;
-  Status('unIDE FAR: 7-Zip ' + FSzPackage.Version + ' (' + FSzPackage.Arch +
+  Status(FarProduct + ': 7-Zip ' + FSzPackage.Version + ' (' + FSzPackage.Arch +
     ') установлен в ' + string(FSzTarget));
   // Работа с архивом, ради которой 7-Zip качали
   if FArcAction <> aaNone then
@@ -8740,7 +9339,7 @@ begin
       ExtractFileName(string(FArcJobFile)), 60)], True, False, True, '',
       ['OK', 'Cancel']);
     FDlgMasked := True;
-    Status('unIDE FAR: архив защищён паролем');
+    Status(FarProduct + ': архив защищён паролем');
     Exit;
   end;
   FArcAction := aaNone;
@@ -8796,7 +9395,7 @@ begin
             EnsureVisible(FPanels[DestPanel]);
           end;
         if not Aborted and (AExitCode = 0) then
-          Status('unIDE FAR: распаковано: ' + IntToStr(Length(FArcJobNames)));
+          Status(FarProduct + ': распаковано: ' + IntToStr(Length(FArcJobNames)));
         Invalidate;
       end;
     aaAdd:
@@ -8865,9 +9464,9 @@ begin
       Windows.FindClose(FindHandle);
     end;
     if FArcJobExists then
-      Status('unIDE FAR: добавлено в архив ' + string(ArcName) + SizeText)
+      Status(FarProduct + ': добавлено в архив ' + string(ArcName) + SizeText)
     else
-      Status('unIDE FAR: архив создан: ' + string(ArcName) + SizeText);
+      Status(FarProduct + ': архив создан: ' + string(ArcName) + SizeText);
   end;
   Invalidate;
 end;
@@ -8883,7 +9482,7 @@ begin
   // Панель за это время ушла в другую папку - не трогаем
   if Panel.DisplayPath <> FArcJobStart then
   begin
-    Status('unIDE FAR: панель уже в другой папке - архив не открыт');
+    Status(FarProduct + ': панель уже в другой папке - архив не открыт');
     Exit;
   end;
   if not FarParseSlt(AOutput, Entries) then
@@ -8910,7 +9509,7 @@ begin
   Panel.FArcPassword := FArcJobPassword;
   Panel.BuildArcView('');
   EnsureVisible(Panel);
-  Status('unIDE FAR: ' + string(ExtractFileName(string(FArcJobFile))) +
+  Status(FarProduct + ': ' + string(ExtractFileName(string(FArcJobFile))) +
     ' - записей: ' + IntToStr(Length(Entries)));
   Invalidate;
 end;
@@ -8996,14 +9595,14 @@ begin
   end;
   if FProcHandle <> 0 then
   begin
-    Status('unIDE FAR: выполняется команда - подождите');
+    Status(FarProduct + ': выполняется команда - подождите');
     Exit;
   end;
   // Файл из архива - во временную папку %TEMP%\unIDE_far\<метка>\
   TempLen := FarGetTempPath(MAX_PATH + 1, TempBuffer);
   if (TempLen = 0) or (TempLen > MAX_PATH) then
   begin
-    Status('unIDE FAR: нет временной папки Windows');
+    Status(FarProduct + ': нет временной папки Windows');
     Exit;
   end;
   FArcAction := aaOpenFile;
@@ -9028,7 +9627,7 @@ var
 begin
   if FPanels[1 - FActive].IsArchive or FPanels[1 - FActive].IsFtp then
   begin
-    Status('unIDE FAR: из архива - только в обычную папку');
+    Status(FarProduct + ': из архива - только в обычную папку');
     Exit;
   end;
   Names := CollectNames(False);
@@ -9054,13 +9653,13 @@ begin
     Exit;
   if FProcHandle <> 0 then
   begin
-    Status('unIDE FAR: выполняется команда - подождите');
+    Status(FarProduct + ': выполняется команда - подождите');
     Exit;
   end;
   Target := FarWithSlash(FarFullPath(FPanels[1 - FActive].Path, Target));
   if not FarForceDirs(Target) then
   begin
-    Status('unIDE FAR: папку не создать: ' + SysErrorMessage(GetLastError));
+    Status(FarProduct + ': папку не создать: ' + SysErrorMessage(GetLastError));
     Exit;
   end;
   FArcAction := aaExtract;
@@ -9366,13 +9965,13 @@ begin
           else if Pos < Length(Text) then
             Delete(Text, Pos + 1, 1);
     VK_INSERT:
-      if InEdit and AShift and Clipboard.HasFormat(CF_TEXT) then
-        DlgRowInsert(Clipboard.AsText);
+      if InEdit and AShift and FarClipboardHasText then
+        DlgRowInsert(FarClipboardText);
   else
     if InEdit and ACtrl and not AAlt and (AKey = Ord('V')) then
     begin
-      if Clipboard.HasFormat(CF_TEXT) then
-        DlgRowInsert(Clipboard.AsText);
+      if FarClipboardHasText then
+        DlgRowInsert(FarClipboardText);
     end
     else if InEdit and ACtrl and not AAlt and (AKey = Ord('Y')) then
       with FDlgRows[FDlgRow] do
@@ -9527,7 +10126,7 @@ var
   begin
     FDlgRow := ARow;
     FDlgFocus := -1;
-    Status('unIDE FAR: ' + AMessage);
+    Status(FarProduct + ': ' + AMessage);
     Invalidate;
   end;
 
@@ -9629,7 +10228,7 @@ begin
     Verb := 'упаковка'
   else
     Verb := 'распаковка';
-  Status('unIDE FAR: ' + Verb + ' ' + IntToStr(Percent) + '% (Ctrl+Break - ' +
+  Status(FarProduct + ': ' + Verb + ' ' + IntToStr(Percent) + '% (Ctrl+Break - ' +
     'прервать)');
 end;
 
@@ -9666,7 +10265,7 @@ begin
   Panel := ActivePanel;
   if Panel.IsArchive then
   begin
-    Status('unIDE FAR: поиск в архиве пока не делается - выйдите из архива');
+    Status(FarProduct + ': поиск в архиве пока не делается - выйдите из архива');
     Exit;
   end;
   if Panel.Path = '' then
@@ -9900,7 +10499,7 @@ begin
     Exit;
   if Item.IsDir then
   begin
-    Status('unIDE FAR: это папка - Enter перейдёт в неё');
+    Status(FarProduct + ': это папка - Enter перейдёт в неё');
     Exit;
   end;
   OpenEditor(Item.Dir + Item.Name);
@@ -10239,7 +10838,7 @@ begin
   if FIniName = '' then
     Exit;
   SaveState(FIniName);
-  Status('unIDE FAR: настройки записаны в ' + ExtractFileName(FIniName));
+  Status(FarProduct + ': настройки записаны в ' + ExtractFileName(FIniName));
 end;
 
 // ---------------------------------------------------------------------------
