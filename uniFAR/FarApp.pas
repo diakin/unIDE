@@ -15,6 +15,10 @@ unit FarApp;
 //
 //  Схемы подсветки (редактор F4) - папка schemes\ там же, где искался
 //  editor.ini (рядом с uniFAR.exe или выше).
+//
+//  Командная строка: uniFAR.exe [папка | файл] - активная панель в эту
+//  папку (у файла - в его папку, курсор на нём).
+//  Значок - res\uniFAR_icon.res (res\make_icon.py).
 // ---------------------------------------------------------------------------
 
 {$mode delphi}
@@ -25,9 +29,15 @@ procedure FarAppRun;
 
 implementation
 
+{$R res\uniFAR_icon.res}
+
 uses
   Windows, Messages, SysUtils, Classes, IniFiles, Graphics, ClrScheme,
   SchemeFiles, UnFar;
+
+function AppCommandLineToArgv(ACmdLine: PWideChar;
+  var AArgCount: Integer): PPWideChar; stdcall;
+  external 'shell32.dll' name 'CommandLineToArgvW';
 
 const
   AppTitle = 'uniFAR';
@@ -295,7 +305,7 @@ begin
   FillChar(WndClass, SizeOf(WndClass), 0);
   WndClass.lpfnWndProc := @MainWindowProc;
   WndClass.hInstance := HInstance;
-  WndClass.hIcon := LoadIcon(HInstance, 'MAINICON');
+  WndClass.hIcon := LoadIcon(HInstance, 'UNIFARICON');
   if WndClass.hIcon = 0 then
     WndClass.hIcon := LoadIcon(0, IDI_APPLICATION);
   WndClass.hCursor := LoadCursor(0, IDC_ARROW);
@@ -350,6 +360,43 @@ begin
     SetString(Result, Buffer, Len);
 end;
 
+// Первый параметр командной строки (Unicode); нет - пусто
+function FirstParamW: WideString;
+var
+  Args: PPWideChar;
+  ArgCount: Integer;
+begin
+  Result := '';
+  ArgCount := 0;
+  Args := AppCommandLineToArgv(GetCommandLineW, ArgCount);
+  if Args = nil then
+    Exit;
+  try
+    if ArgCount >= 2 then
+      Result := WideString(PPWideChar(PtrUInt(Args) + SizeOf(PWideChar))^);
+  finally
+    LocalFree(HLOCAL(Args));
+  end;
+end;
+
+// Папка или файл из командной строки - в активную панель
+procedure OpenFromCommandLine;
+var
+  Param: WideString;
+  Attr: DWORD;
+begin
+  Param := FirstParamW;
+  if Param = '' then
+    Exit;
+  Attr := GetFileAttributesW(PWideChar(Param));
+  if Attr = $FFFFFFFF then
+    Exit;
+  if Attr and FILE_ATTRIBUTE_DIRECTORY <> 0 then
+    FarView.ShowFolder(Param)
+  else
+    FarView.ShowFile(Param);
+end;
+
 procedure MessageLoop;
 var
   Msg: TMsg;
@@ -375,6 +422,7 @@ begin
     LoadSettings;
     CreateMainWindow;
     FarView.LoadState(IniName, CurrentDirW);
+    OpenFromCommandLine;
     MessageLoop;
   finally
     FreeAndNil(FarView);

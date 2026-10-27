@@ -147,7 +147,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.39';
+  FarBuild = 'b.40';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -176,7 +176,7 @@ type
     fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd,
     fdFind, fdFtpEdit, fdFtpPassword, fdFtpDelete, fdFtpError,
     fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
-    fdViewFind, fdViewGoto);
+    fdViewFind, fdViewGoto, fdHiDelete);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -232,7 +232,8 @@ type
 
   // Открытое меню: смена диска (Alt+F1 / Alt+F2), сортировка (Ctrl+F12),
   // история папок (Alt+F12)
-  TFarMenuKind = (fmNone, fmDrive, fmSort, fmHistory, fmOptions);
+  TFarMenuKind = (fmNone, fmDrive, fmSort, fmHistory, fmOptions,
+    fmPalGroups, fmPalItems, fmHiRules);
 
   TFarMenuItem = record
     Text: WideString;       // '&' перед буквой быстрого выбора
@@ -242,6 +243,10 @@ type
     Disabled: Boolean;      // недоступен: виден серым, выбрать нельзя
     Data: WideString;       // что выбрано: путь, буква диска
     Tag: Integer;
+    // Текст пункта - своими цветами (образец цвета; clNone - цвет панели)
+    HasColors: Boolean;
+    Fore: TColor;
+    Back: TColor;
   end;
   TFarMenuItems = array of TFarMenuItem;
 
@@ -404,6 +409,26 @@ type
     FViewer: TFarViewer;
     FViewFind: WideString;
     FViewFindCase: Boolean;
+    // F9 - Colors / Files highlighting своими окнами: группа палитры в
+    // меню элементов, правило для удаления, окно выбора цвета (Pick*)
+    FPalGroupFirst: TFarPalItem;
+    FHiDelIdx: Integer;
+    FPickOpen: Boolean;
+    FPickRule: Boolean;
+    FPickPalItem: TFarPalItem;
+    FPickRuleIdx: Integer;
+    FPickExt: WideString;
+    FPickExtPos: Integer;
+    FPickFore: TColor;
+    FPickBack: TColor;
+    FPickForeText: WideString;
+    FPickBackText: WideString;
+    FPickForePos: Integer;
+    FPickBackPos: Integer;
+    FPickFocus: Integer;
+    FPickLeft, FPickTop, FPickExtRow, FPickExtCol, FPickForeCol: Integer;
+    FPickBackCol, FPickGridRow, FPickRgbRow, FPickBtnRow: Integer;
+    FPickBtnCol: array[0..2] of Integer;
     FPal: TFarPalette;            // цвета элементов (F9 - Options - Colors)
     FIniName: string;             // editor.ini (LoadState) - для Save setup
     // Раскраска файлов: правила и их расширения как WideString (сравнение
@@ -680,6 +705,33 @@ type
     function ViewKeyLabel(AKeyIndex: Integer; AShift, ACtrl,
       AAlt: Boolean): string;
     procedure DrawViewer;
+    procedure ShowPalGroups(ACursor: Integer);
+    procedure ShowPalItems(AFirst: TFarPalItem; ACursor: TFarPalItem);
+    procedure ShowHiRules(ACursor: Integer);
+    procedure HiRulesApply(ACursor: Integer);
+    function HiRulesKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    procedure HiDeleteRule(AIndex: Integer);
+    procedure PickOpenPal(AItem: TFarPalItem);
+    procedure PickOpenRule(AIndex: Integer);
+    procedure PickSyncText;
+    procedure PickClose;
+    function PickButtonCount: Integer;
+    function PickButtonText(AIndex: Integer): WideString;
+    function PickHasFocus(AFocus: Integer): Boolean;
+    procedure PickMoveFocus(ADelta: Integer);
+    procedure PickButton(AIndex: Integer);
+    procedure PickGridSet(ABack: Boolean; AIndex: Integer);
+    procedure PickGridKey(ABack: Boolean; AKey: Word);
+    procedure PickEditKey(var AText: WideString; var APos: Integer;
+      AKey: Word; AChar: WideChar);
+    procedure PickRgbChanged(ABack: Boolean);
+    function PickKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    procedure PickChar(ACh: WideChar);
+    procedure PickDrawGrid(AGridCol, ARow: Integer; ABack, AFocused: Boolean);
+    procedure PickDrawEdit(ACol, ARow, AWidth: Integer;
+      const AText: WideString; APos: Integer; AFocused: Boolean);
+    procedure DrawPick;
+    procedure PickMouse(AX, AY: Integer);
     function GetParentFormHandle: HWND;
     procedure FindConfirm;
     procedure FindBegin(const AOptions: TFarFindOptions);
@@ -816,6 +868,8 @@ type
     // Курсор активной панели - на файл AFileName (папка другая - перейти
     // в неё). Щелчок по вкладке редактора, когда FAR открыт.
     procedure ShowFile(const AFileName: WideString);
+    // Активная панель - в папку APath (uniFAR: папка из командной строки)
+    procedure ShowFolder(const APath: WideString);
     procedure LoadState(const AIniName: string; const ADefaultDir: WideString);
     // Закрытие unIDE: в редакторе F4 изменён текст - спросить (окном
     // Windows). False - не закрывать
@@ -1794,6 +1848,89 @@ end;
 function FarPanelBackColor: TColor;
 begin
   Result := FarCurPanelBack;
+end;
+
+const
+  // 16 цветов консоли (TColor - $00BBGGRR), порядок FAR: тёмные, светлые
+  FarConColors: array[0..15] of TColor = (
+    $000000, $800000, $008000, $808000, $000080, $800080, $008080, $C0C0C0,
+    $808080, $FF0000, $00FF00, $FFFF00, $0000FF, $FF00FF, $00FFFF, $FFFFFF);
+  FarPickCellW = 3;          // ширина клетки сетки
+  FarPickPanelIdx = 16;      // «Panel» в сетке фона правила
+  // Поля окна выбора цвета (FPickFocus)
+  pfExt = 0;
+  pfForeGrid = 1;
+  pfBackGrid = 2;
+  pfForeRgb = 3;
+  pfBackRgb = 4;
+  pfBtn = 5;                 // pfBtn + номер кнопки
+
+// Номер цвета консоли для AColor; -1 - не из шестнадцати
+function FarConIndex(AColor: TColor): Integer;
+var
+  ColorIdx: Integer;
+begin
+  Result := -1;
+  if AColor = clNone then
+    Exit;
+  for ColorIdx := 0 to 15 do
+    if ColorToRGB(AColor) = FarConColors[ColorIdx] then
+    begin
+      Result := ColorIdx;
+      Exit;
+    end;
+end;
+
+// Текст на фоне AColor: чёрный на светлом, белый на тёмном
+function FarContrast(AColor: TColor): TColor;
+var
+  RgbValue: Longint;
+begin
+  RgbValue := ColorToRGB(AColor);
+  if GetRValue(RgbValue) * 30 + GetGValue(RgbValue) * 59 +
+     GetBValue(RgbValue) * 11 > 12800 then
+    Result := FarBlack
+  else
+    Result := FarWhite;
+end;
+
+// Поле #RRGGBB: '#' не обязателен; '-' - нет цвета (AAllowNone). False -
+// не цвет
+function FarParseRgb(const AText: WideString; AAllowNone: Boolean;
+  var AColor: TColor): Boolean;
+var
+  Text: string;
+begin
+  Result := False;
+  Text := Trim(string(AText));
+  if (Text = '-') and AAllowNone then
+  begin
+    AColor := clNone;
+    Result := True;
+    Exit;
+  end;
+  if (Text <> '') and (Text[1] <> '#') then
+    Text := '#' + Text;
+  if Length(Text) <> 7 then
+    Exit;
+  AColor := FarTextToColor(Text, clNone);
+  Result := AColor <> clNone;
+end;
+
+// Номер группы палитры, где элемент AItem
+function FarPalGroupIndex(AItem: TFarPalItem): Integer;
+var
+  Item: TFarPalItem;
+  GroupName: string;
+begin
+  Result := -1;
+  GroupName := '';
+  for Item := Low(TFarPalItem) to AItem do
+    if FarPalGroup(Item) <> GroupName then
+    begin
+      GroupName := FarPalGroup(Item);
+      Inc(Result);
+    end;
 end;
 
 procedure FarPaletteDefault(var APalette: TFarPalette);
@@ -3305,6 +3442,8 @@ begin
         DrawMenu;
       if FDlgKind <> fdNone then
         DrawDialog;
+      if FPickOpen then
+        DrawPick;
     end;
   finally
     SelectObject(FBuffer.Canvas.Handle, OldFont);
@@ -3399,6 +3538,14 @@ begin
     EditBounds(EditX0, EditW0);
   if CanFocus and not Focused then
     SetFocus;
+  // Окно выбора цвета: щелчки - только ему
+  if FPickOpen then
+  begin
+    if Button = mbLeft then
+      PickMouse(X, Y);
+    Invalidate;
+    Exit;
+  end;
   // Открыто меню: щелчок по пункту выбирает его, мимо меню - закрывает
   if FMenuKind <> fmNone then
   begin
@@ -3510,6 +3657,8 @@ var
   WheelX, WheelW, WheelStep: Integer;
 begin
   Message.Result := 1;
+  if FPickOpen then
+    Exit;
   if FMenuKind <> fmNone then
   begin
     if Message.WheelDelta > 0 then
@@ -3657,6 +3806,16 @@ begin
   // приходит в кодировке Windows; окно uniFAR - Unicode (KeyChar)
   if AMsg.message = WM_CHAR then
   begin
+    // Окно выбора цвета: поля расширения и #RRGGBB
+    if FPickOpen then
+    begin
+      WideCh := KeyChar(AMsg.wParam);
+      if (KeyCode >= 32) and (WideCh <> #0) then
+        PickChar(WideCh);
+      Invalidate;
+      Result := True;
+      Exit;
+    end;
     if (FDlgKind <> fdNone) and (KeyCode >= 32) and
        ((FDlgHasEdit and (FDlgFocus < 0)) or DlgRowIsEdit) then
     begin
@@ -3731,7 +3890,22 @@ begin
     Invalidate;
   end;
 
-  if FMenuKind <> fmNone then
+  if FPickOpen then
+  begin
+    Result := PickKey(KeyCode, ShiftDown, CtrlDown, AltDown);
+    // Символы полей - WM_CHAR: без TranslateMessage его не будет
+    if (FPickFocus = pfExt) or (FPickFocus = pfForeRgb) or
+       (FPickFocus = pfBackRgb) then
+      if (KeyCode <> VK_ESCAPE) and (KeyCode <> VK_TAB) and
+         (KeyCode <> VK_RETURN) and (KeyCode <> VK_BACK) and
+         (KeyCode <> VK_DELETE) and (KeyCode <> VK_LEFT) and
+         (KeyCode <> VK_RIGHT) and (KeyCode <> VK_HOME) and
+         (KeyCode <> VK_END) and not ((KeyCode >= VK_F1) and
+         (KeyCode <= VK_F12)) then
+        Result := False;
+    Invalidate;
+  end
+  else if FMenuKind <> fmNone then
   begin
     Result := MenuKey(KeyCode, ShiftDown, CtrlDown, AltDown);
     Invalidate;
@@ -4479,6 +4653,16 @@ begin
     EditFindConfirm;
     Exit;
   end;
+  // Files highlighting: удалить правило? Потом - снова список правил
+  if FDlgKind = fdHiDelete then
+  begin
+    DlgClose;
+    if AButton = 0 then
+      HiDeleteRule(FHiDelIdx)
+    else
+      ShowHiRules(FHiDelIdx);
+    Exit;
+  end;
   // Просмотр: поиск
   if (FDlgKind = fdViewFind) and (AButton = 0) then
   begin
@@ -4898,6 +5082,16 @@ end;
 function TFarView.ActiveIndex: Integer;
 begin
   Result := FActive;
+end;
+
+procedure TFarView.ShowFolder(const APath: WideString);
+begin
+  if (APath = '') or not FarDirExists(APath) then
+    Exit;
+  if ActivePanel.IsFtp or ActivePanel.IsArchive or EditorShown(FActive) then
+    FActive := 1 - FActive;
+  ChangeDir(ActivePanel, FarWithSlash(APath), '');
+  Invalidate;
 end;
 
 procedure TFarView.ShowFile(const AFileName: WideString);
@@ -5382,9 +5576,16 @@ var
 begin
   // Пока меню открыто, клавиши - только ему
   Result := True;
+  // Правила раскраски: Ins, Del, пробел, F4, Ctrl+стрелки
+  if (FMenuKind = fmHiRules) and HiRulesKey(AKey, AShift, ACtrl, AAlt) then
+    Exit;
   case AKey of
     VK_ESCAPE, VK_F10:
-      MenuClose;
+      // Элементы палитры - обратно в группы
+      if (AKey = VK_ESCAPE) and (FMenuKind = fmPalItems) then
+        ShowPalGroups(FarPalGroupIndex(FPalGroupFirst))
+      else
+        MenuClose;
     VK_UP:
       MenuMove(-1);
     VK_DOWN:
@@ -5457,6 +5658,7 @@ var
   Kind: TFarMenuKind;
   PanelIndex: Integer;
   Panel: TFarPanel;
+  Pal: TFarPalette;
 begin
   if (AIndex < 0) or (AIndex > High(FMenuItems)) then
     Exit;
@@ -5496,22 +5698,38 @@ begin
       else
         Status(FarProduct + ': папки нет: ' + Item.Data);
     fmOptions:
+      // Окна unIDE (VCL), если заданы; иначе свои (uniFAR)
       case Item.Tag of
         1:
           if Assigned(FOnColorsDialog) then
             FOnColorsDialog(Self)
           else
-            Status(FarProduct + ': Files highlighting - пока только в unIDE ' +
-              '(или правкой [FarColors] в ' + ExtractFileName(FIniName) + ')');
+            ShowHiRules(0);
         2:
           SaveSetup;
         3:
           if Assigned(FOnPaletteDialog) then
             FOnPaletteDialog(Self)
           else
-            Status(FarProduct + ': Colors - пока только в unIDE (или ' +
-              'правкой [FarPalette] в ' + ExtractFileName(FIniName) + ')');
+            ShowPalGroups(0);
       end;
+    fmPalGroups:
+      if Item.Tag >= 0 then
+        ShowPalItems(TFarPalItem(Item.Tag), TFarPalItem(Item.Tag))
+      else
+      begin
+        // Default colors: вся палитра - стандартная
+        FarPaletteDefault(Pal);
+        SetPalette(Pal);
+        if FIniName <> '' then
+          FarPaletteSave(FIniName, Pal);
+        Status(FarProduct + ': палитра - стандартные цвета');
+        ShowPalGroups(0);
+      end;
+    fmPalItems:
+      PickOpenPal(TFarPalItem(Item.Tag));
+    fmHiRules:
+      PickOpenRule(Item.Tag);
   end;
   Invalidate;
 end;
@@ -5547,7 +5765,7 @@ var
   TextW, HotPos, SepY: Integer;
   Item: TFarMenuItem;
   ItemText: WideString;
-  Back, Fore, HotFore: TColor;
+  Back, Fore, HotFore, SampleFore, SampleBack: TColor;
 begin
   MaxW := Length(FMenuTitle) + 4;
   for ItemIndex := 0 to High(FMenuItems) do
@@ -5651,6 +5869,18 @@ begin
     else
       ItemText := FarFitName(ItemText, TextW);
     PutText(FMenuLeft + 4, RowY, TextW, ItemText, Fore, Back);
+    // Образец цвета: текст пункта - его цветами
+    if Item.HasColors then
+    begin
+      SampleFore := Item.Fore;
+      SampleBack := Item.Back;
+      if SampleFore = clNone then
+        SampleFore := FPal[fpPanelText];
+      if SampleBack = clNone then
+        SampleBack := FPal[fpPanelBack];
+      PutText(FMenuLeft + 4, RowY, Length(ItemText), ItemText, SampleFore,
+        SampleBack);
+    end;
     if (HotPos > 0) and (HotPos <= Length(ItemText)) then
       PutText(FMenuLeft + 4 + HotPos - 1, RowY, 1, ItemText[HotPos], HotFore,
         Back);
@@ -10804,6 +11034,862 @@ begin
       Result := True;
       Exit;
     end;
+end;
+
+// ---------------------------------------------------------------------------
+//  F9 - Options - Colors и Files highlighting своими окнами (без VCL): для
+//  uniFAR. В unIDE эти пункты открывают окна DlgFarPalette и DlgFarColors
+//  (OnPaletteDialog, OnColorsDialog), если они заданы.
+//
+//  Colors: меню групп палитры -> меню элементов группы (справа - цвет) ->
+//  окно выбора цвета. Files highlighting: меню правил раскраски (образец -
+//  цветами правила); Enter / F4 - изменить, Ins - новое, Del - удалить,
+//  пробел - вкл / выкл, Ctrl+Up / Ctrl+Down - выше / ниже (действует первое
+//  подходящее правило).
+//
+//  Окно выбора цвета (Pick*): 16 цветов консоли FAR сеткой 4 x 4 (у правила
+//  - две сетки, текст и фон; у фона ещё «Panel» - фон панели) и поле
+//  #RRGGBB - любой цвет. Стрелки в сетке сразу меняют цвет, образец внизу
+//  показывает результат. Tab / Shift+Tab - между полями, Enter - Set (OK),
+//  Esc - отмена. Изменения записываются в ini сразу (как OK в окнах unIDE).
+// ---------------------------------------------------------------------------
+
+// Меню групп палитры; ACursor - группа под курсором
+procedure TFarView.ShowPalGroups(ACursor: Integer);
+var
+  Items: TFarMenuItems;
+  Item: TFarPalItem;
+  GroupName: string;
+  GroupCount: Integer;
+begin
+  SetLength(Items, 0);
+  GroupCount := 0;
+  GroupName := '';
+  for Item := Low(TFarPalItem) to High(TFarPalItem) do
+    if FarPalGroup(Item) <> GroupName then
+    begin
+      GroupName := FarPalGroup(Item);
+      SetLength(Items, Length(Items) + 1);
+      Items[High(Items)].Text := WideString(GroupName);
+      Items[High(Items)].Mark := ' ';
+      Items[High(Items)].Tag := Ord(Item);   // первый элемент группы
+      Inc(GroupCount);
+    end;
+  SetLength(Items, Length(Items) + 2);
+  Items[High(Items) - 1].Separator := True;
+  Items[High(Items)].Text := '&Default colors';
+  Items[High(Items)].Mark := ' ';
+  Items[High(Items)].Tag := -1;
+  if (ACursor < 0) or (ACursor >= GroupCount) then
+    ACursor := 0;
+  MenuOpen(fmPalGroups, 'Colors', Items, ACursor, FActive);
+end;
+
+// Меню элементов группы, где элемент AFirst (первый в группе); справа -
+// цвет. ACursor - элемент под курсором
+procedure TFarView.ShowPalItems(AFirst: TFarPalItem; ACursor: TFarPalItem);
+var
+  Items: TFarMenuItems;
+  Item: TFarPalItem;
+  GroupName: string;
+  CursorIdx: Integer;
+begin
+  FPalGroupFirst := AFirst;
+  GroupName := FarPalGroup(AFirst);
+  SetLength(Items, 0);
+  CursorIdx := 0;
+  for Item := AFirst to High(TFarPalItem) do
+  begin
+    if FarPalGroup(Item) <> GroupName then
+      Break;
+    SetLength(Items, Length(Items) + 1);
+    Items[High(Items)].Text := WideString(FarPalCaption(Item));
+    Items[High(Items)].Mark := ' ';
+    Items[High(Items)].Tag := Ord(Item);
+    if FPal[Item] = clNone then
+      Items[High(Items)].RightText := 'нет'
+    else
+      Items[High(Items)].RightText := WideString(FarColorToText(FPal[Item]));
+    // Образец: справа цветом элемента
+    Items[High(Items)].HasColors := True;
+    if FarPalIsBack(Item) then
+    begin
+      Items[High(Items)].Fore := FPal[FarPalPair(Item)];
+      Items[High(Items)].Back := FPal[Item];
+    end
+    else
+    begin
+      Items[High(Items)].Fore := FPal[Item];
+      Items[High(Items)].Back := FPal[FarPalPair(Item)];
+    end;
+    if Item = ACursor then
+      CursorIdx := High(Items);
+  end;
+  MenuOpen(fmPalItems, WideString(GroupName), Items, CursorIdx, FActive);
+end;
+
+// Меню правил раскраски; ACursor - правило под курсором
+procedure TFarView.ShowHiRules(ACursor: Integer);
+var
+  Items: TFarMenuItems;
+  RuleIdx: Integer;
+begin
+  SetLength(Items, Length(FColorRules));
+  for RuleIdx := 0 to High(FColorRules) do
+  begin
+    Items[RuleIdx].Text := WideString('*.' + FColorRules[RuleIdx].Ext);
+    if FColorRules[RuleIdx].Enabled then
+      Items[RuleIdx].Mark := FarCheckMark
+    else
+      Items[RuleIdx].Mark := ' ';
+    Items[RuleIdx].RightText :=
+      WideString(FarColorToText(FColorRules[RuleIdx].Fore) + ' ' +
+      FarColorToText(FColorRules[RuleIdx].Back));
+    Items[RuleIdx].Tag := RuleIdx;
+    Items[RuleIdx].HasColors := True;
+    Items[RuleIdx].Fore := FColorRules[RuleIdx].Fore;
+    Items[RuleIdx].Back := FColorRules[RuleIdx].Back;
+  end;
+  if Length(Items) = 0 then
+  begin
+    // Пустой список: один пункт - добавить
+    SetLength(Items, 1);
+    Items[0].Text := '(нет правил - Ins: добавить)';
+    Items[0].Mark := ' ';
+    Items[0].Tag := -1;
+  end;
+  MenuOpen(fmHiRules, 'Files highlighting', Items, ACursor, FActive);
+  Status(FarProduct + ': Enter / F4 - изменить, Ins - добавить, Del - ' +
+    'удалить, пробел - вкл/выкл, Ctrl+Up/Down - порядок');
+end;
+
+// Правила изменены: в окно и в ini
+procedure TFarView.HiRulesApply(ACursor: Integer);
+var
+  Rules: TFarColorRules;
+begin
+  FarCopyRules(FColorRules, Rules);
+  SetColorRules(Rules);
+  if FIniName <> '' then
+    FarColorsSave(FIniName, FColorRules);
+  ShowHiRules(ACursor);
+end;
+
+// Клавиши меню правил сверх обычных. True - разобрана
+function TFarView.HiRulesKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+var
+  RuleIdx: Integer;
+  Swap: TFarColorRule;
+begin
+  Result := True;
+  RuleIdx := -1;
+  if (FMenuCursor >= 0) and (FMenuCursor <= High(FMenuItems)) then
+    RuleIdx := FMenuItems[FMenuCursor].Tag;
+  if (RuleIdx > High(FColorRules)) then
+    RuleIdx := -1;
+  if (AKey = VK_INSERT) and not ACtrl and not AAlt then
+  begin
+    MenuClose;
+    PickOpenRule(-1);
+  end
+  else if ((AKey = VK_F4) or (AKey = VK_RETURN)) and not ACtrl and
+          not AAlt then
+  begin
+    MenuClose;
+    PickOpenRule(RuleIdx);
+  end
+  else if (AKey = VK_DELETE) and (RuleIdx >= 0) then
+  begin
+    FHiDelIdx := RuleIdx;
+    MenuClose;
+    DlgOpen(fdHiDelete, 'Files highlighting', ['Delete highlighting for',
+      WideString('*.' + FColorRules[RuleIdx].Ext) + '?'], True, True, False,
+      '', ['Delete', 'Cancel']);
+  end
+  else if (AKey = VK_SPACE) and (RuleIdx >= 0) then
+  begin
+    FColorRules[RuleIdx].Enabled := not FColorRules[RuleIdx].Enabled;
+    HiRulesApply(FMenuCursor);
+  end
+  else if ACtrl and ((AKey = VK_UP) or (AKey = VK_DOWN)) and
+          (RuleIdx >= 0) then
+  begin
+    if (AKey = VK_UP) and (RuleIdx > 0) then
+    begin
+      Swap := FColorRules[RuleIdx - 1];
+      FColorRules[RuleIdx - 1] := FColorRules[RuleIdx];
+      FColorRules[RuleIdx] := Swap;
+      HiRulesApply(RuleIdx - 1);
+    end
+    else if (AKey = VK_DOWN) and (RuleIdx < High(FColorRules)) then
+    begin
+      Swap := FColorRules[RuleIdx + 1];
+      FColorRules[RuleIdx + 1] := FColorRules[RuleIdx];
+      FColorRules[RuleIdx] := Swap;
+      HiRulesApply(RuleIdx + 1);
+    end;
+  end
+  else
+    Result := False;
+end;
+
+procedure TFarView.HiDeleteRule(AIndex: Integer);
+var
+  RuleIdx: Integer;
+begin
+  if (AIndex < 0) or (AIndex > High(FColorRules)) then
+    Exit;
+  for RuleIdx := AIndex to High(FColorRules) - 1 do
+    FColorRules[RuleIdx] := FColorRules[RuleIdx + 1];
+  SetLength(FColorRules, Length(FColorRules) - 1);
+  if AIndex > High(FColorRules) then
+    AIndex := High(FColorRules);
+  HiRulesApply(AIndex);
+end;
+
+// ---------------------------------------------------------------------------
+//  Окно выбора цвета
+// ---------------------------------------------------------------------------
+
+procedure TFarView.PickOpenPal(AItem: TFarPalItem);
+begin
+  FPickOpen := True;
+  FPickRule := False;
+  FPickPalItem := AItem;
+  FPickFore := FPal[AItem];
+  FPickBack := clNone;
+  PickSyncText;
+  FPickFocus := pfForeGrid;
+  Invalidate;
+end;
+
+procedure TFarView.PickOpenRule(AIndex: Integer);
+begin
+  FPickOpen := True;
+  FPickRule := True;
+  FPickRuleIdx := AIndex;
+  if (AIndex >= 0) and (AIndex <= High(FColorRules)) then
+  begin
+    FPickExt := WideString(FColorRules[AIndex].Ext);
+    FPickFore := FColorRules[AIndex].Fore;
+    FPickBack := FColorRules[AIndex].Back;
+    FPickFocus := pfForeGrid;
+  end
+  else
+  begin
+    FPickRuleIdx := -1;
+    FPickExt := '';
+    FPickFore := FarWhite;
+    FPickBack := clNone;
+    FPickFocus := pfExt;
+  end;
+  FPickExtPos := Length(FPickExt);
+  PickSyncText;
+  Invalidate;
+end;
+
+// Поля #RRGGBB - по выбранным цветам
+procedure TFarView.PickSyncText;
+begin
+  FPickForeText := WideString(FarColorToText(FPickFore));
+  FPickBackText := WideString(FarColorToText(FPickBack));
+  FPickForePos := Length(FPickForeText);
+  FPickBackPos := Length(FPickBackText);
+end;
+
+// Закрыть; вернуться в меню, откуда открыли
+procedure TFarView.PickClose;
+begin
+  FPickOpen := False;
+  if FPickRule then
+  begin
+    if FPickRuleIdx >= 0 then
+      ShowHiRules(FPickRuleIdx)
+    else
+      ShowHiRules(High(FColorRules));
+  end
+  else
+    ShowPalItems(FPalGroupFirst, FPickPalItem);
+  Invalidate;
+end;
+
+function TFarView.PickButtonCount: Integer;
+begin
+  if FPickRule then
+    Result := 2      // OK, Cancel
+  else
+    Result := 3;     // Set, Default, Cancel
+end;
+
+function TFarView.PickButtonText(AIndex: Integer): WideString;
+begin
+  if FPickRule then
+  begin
+    if AIndex = 0 then
+      Result := 'OK'
+    else
+      Result := 'Cancel';
+  end
+  else
+    case AIndex of
+      0: Result := 'Set';
+      1: Result := 'Default';
+    else
+      Result := 'Cancel';
+    end;
+end;
+
+// Поле есть в этом окне
+function TFarView.PickHasFocus(AFocus: Integer): Boolean;
+begin
+  if FPickRule then
+    Result := (AFocus >= pfExt) and (AFocus < pfBtn + PickButtonCount)
+  else
+    Result := ((AFocus = pfForeGrid) or (AFocus = pfForeRgb)) or
+              ((AFocus >= pfBtn) and (AFocus < pfBtn + PickButtonCount));
+end;
+
+procedure TFarView.PickMoveFocus(ADelta: Integer);
+var
+  Target, Total: Integer;
+begin
+  Total := pfBtn + PickButtonCount;
+  Target := FPickFocus;
+  repeat
+    Target := (Target + ADelta + Total) mod Total;
+  until PickHasFocus(Target) or (Target = FPickFocus);
+  FPickFocus := Target;
+end;
+
+procedure TFarView.PickButton(AIndex: Integer);
+var
+  Ext: string;
+  RuleIdx: Integer;
+begin
+  if FPickRule then
+  begin
+    if AIndex <> 0 then
+    begin
+      PickClose;
+      Exit;
+    end;
+    Ext := FarNormalizeExt(string(FPickExt));
+    if Ext = '' then
+    begin
+      Status(FarProduct + ': расширение не задано (pas, *.pas, .pas)');
+      FPickFocus := pfExt;
+      Exit;
+    end;
+    for RuleIdx := 0 to High(FColorRules) do
+      if (RuleIdx <> FPickRuleIdx) and
+         (CompareText(FColorRules[RuleIdx].Ext, Ext) = 0) then
+      begin
+        Status(FarProduct + ': правило для *.' + Ext + ' уже есть');
+        FPickFocus := pfExt;
+        Exit;
+      end;
+    if FPickRuleIdx < 0 then
+    begin
+      SetLength(FColorRules, Length(FColorRules) + 1);
+      FPickRuleIdx := High(FColorRules);
+      FColorRules[FPickRuleIdx].Enabled := True;
+    end;
+    FColorRules[FPickRuleIdx].Ext := Ext;
+    FColorRules[FPickRuleIdx].Fore := FPickFore;
+    FColorRules[FPickRuleIdx].Back := FPickBack;
+    FPickOpen := False;
+    HiRulesApply(FPickRuleIdx);
+    Exit;
+  end;
+  case AIndex of
+    0:
+      begin
+        FPal[FPickPalItem] := FPickFore;
+        SetPalette(FPal);
+        if FIniName <> '' then
+          FarPaletteSave(FIniName, FPal);
+        PickClose;
+      end;
+    1:
+      begin
+        // Стандартный цвет - в поля; записывается по Set
+        FPickFore := FarPalDefault(FPickPalItem);
+        PickSyncText;
+      end;
+  else
+    PickClose;
+  end;
+end;
+
+// Сетка: курсор на AIndex - цвет сразу меняется
+procedure TFarView.PickGridSet(ABack: Boolean; AIndex: Integer);
+begin
+  if ABack then
+  begin
+    if AIndex = FarPickPanelIdx then
+      FPickBack := clNone
+    else
+      FPickBack := FarConColors[AIndex];
+  end
+  else
+    FPickFore := FarConColors[AIndex];
+  PickSyncText;
+end;
+
+procedure TFarView.PickGridKey(ABack: Boolean; AKey: Word);
+var
+  Current, Target: Integer;
+begin
+  if ABack then
+  begin
+    if FPickBack = clNone then
+      Current := FarPickPanelIdx
+    else
+      Current := FarConIndex(FPickBack);
+  end
+  else
+    Current := FarConIndex(FPickFore);
+  if Current < 0 then
+    Current := 0;
+  Target := Current;
+  case AKey of
+    VK_LEFT:
+      if (Current < 16) and (Current mod 4 > 0) then
+        Target := Current - 1;
+    VK_RIGHT:
+      if (Current < 16) and (Current mod 4 < 3) then
+        Target := Current + 1;
+    VK_UP:
+      if Current = FarPickPanelIdx then
+        Target := 12
+      else if Current >= 4 then
+        Target := Current - 4;
+    VK_DOWN:
+      if Current < 12 then
+        Target := Current + 4
+      else if ABack and (Current < 16) then
+        Target := FarPickPanelIdx;
+    VK_HOME:
+      Target := 0;
+    VK_END:
+      Target := 15;
+  end;
+  PickGridSet(ABack, Target);
+end;
+
+// Правка поля (расширение или #RRGGBB): символ AChar (#0 - клавиша AKey)
+procedure TFarView.PickEditKey(var AText: WideString; var APos: Integer;
+  AKey: Word; AChar: WideChar);
+begin
+  if APos > Length(AText) then
+    APos := Length(AText);
+  if AChar <> #0 then
+  begin
+    Insert(WideString(AChar), AText, APos + 1);
+    Inc(APos);
+    Exit;
+  end;
+  case AKey of
+    VK_BACK:
+      if APos > 0 then
+      begin
+        Delete(AText, APos, 1);
+        Dec(APos);
+      end;
+    VK_DELETE:
+      if APos < Length(AText) then
+        Delete(AText, APos + 1, 1);
+    VK_LEFT:
+      if APos > 0 then
+        Dec(APos);
+    VK_RIGHT:
+      if APos < Length(AText) then
+        Inc(APos);
+    VK_HOME:
+      APos := 0;
+    VK_END:
+      APos := Length(AText);
+  end;
+end;
+
+// Поле #RRGGBB изменено: цвет - если текст уже цвет
+procedure TFarView.PickRgbChanged(ABack: Boolean);
+var
+  NewColor: TColor;
+begin
+  if ABack then
+  begin
+    if FarParseRgb(FPickBackText, True, NewColor) then
+      FPickBack := NewColor;
+  end
+  else if FarParseRgb(FPickForeText, not FPickRule and
+          (FarPalDefault(FPickPalItem) = clNone), NewColor) then
+    FPickFore := NewColor;
+end;
+
+function TFarView.PickKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+begin
+  Result := True;
+  case AKey of
+    VK_ESCAPE, VK_F10:
+      begin
+        PickClose;
+        Exit;
+      end;
+    VK_TAB:
+      begin
+        if AShift then
+          PickMoveFocus(-1)
+        else
+          PickMoveFocus(1);
+        Exit;
+      end;
+    VK_RETURN:
+      begin
+        if FPickFocus >= pfBtn then
+          PickButton(FPickFocus - pfBtn)
+        else
+          PickButton(0);
+        Exit;
+      end;
+  end;
+  case FPickFocus of
+    pfForeGrid, pfBackGrid:
+      if (AKey = VK_LEFT) or (AKey = VK_RIGHT) or (AKey = VK_UP) or
+         (AKey = VK_DOWN) or (AKey = VK_HOME) or (AKey = VK_END) then
+        PickGridKey(FPickFocus = pfBackGrid, AKey);
+    pfExt:
+      PickEditKey(FPickExt, FPickExtPos, AKey, #0);
+    pfForeRgb:
+      begin
+        PickEditKey(FPickForeText, FPickForePos, AKey, #0);
+        PickRgbChanged(False);
+      end;
+    pfBackRgb:
+      begin
+        PickEditKey(FPickBackText, FPickBackPos, AKey, #0);
+        PickRgbChanged(True);
+      end;
+  else
+    // Кнопки: стрелки - между ними, пробел - нажать
+    if (AKey = VK_LEFT) or (AKey = VK_UP) then
+      PickMoveFocus(-1)
+    else if (AKey = VK_RIGHT) or (AKey = VK_DOWN) then
+      PickMoveFocus(1)
+    else if AKey = VK_SPACE then
+      PickButton(FPickFocus - pfBtn);
+  end;
+end;
+
+procedure TFarView.PickChar(ACh: WideChar);
+begin
+  case FPickFocus of
+    pfExt:
+      PickEditKey(FPickExt, FPickExtPos, 0, ACh);
+    pfForeRgb:
+      begin
+        PickEditKey(FPickForeText, FPickForePos, 0, ACh);
+        PickRgbChanged(False);
+      end;
+    pfBackRgb:
+      begin
+        PickEditKey(FPickBackText, FPickBackPos, 0, ACh);
+        PickRgbChanged(True);
+      end;
+  end;
+end;
+
+// Сетка цветов: AGridCol - колонка слева, ARow - верхняя строка
+procedure TFarView.PickDrawGrid(AGridCol, ARow: Integer; ABack,
+  AFocused: Boolean);
+var
+  ColorIdx, CellCol, CellRow, Selected: Integer;
+  CellColor: TColor;
+  Back: TColor;
+  CellText: WideString;
+begin
+  if ABack then
+  begin
+    if FPickBack = clNone then
+      Selected := FarPickPanelIdx
+    else
+      Selected := FarConIndex(FPickBack);
+  end
+  else
+    Selected := FarConIndex(FPickFore);
+  for ColorIdx := 0 to 15 do
+  begin
+    CellCol := AGridCol + (ColorIdx mod 4) * FarPickCellW;
+    CellRow := ARow + ColorIdx div 4;
+    CellColor := FarConColors[ColorIdx];
+    if ColorIdx = Selected then
+    begin
+      if AFocused then
+        CellText := WideString('[') + FarCheckMark + WideString(']')
+      else
+        CellText := WideString(' ') + FarCheckMark + WideString(' ');
+    end
+    else
+      CellText := '   ';
+    PutText(CellCol, CellRow, FarPickCellW, CellText, FarContrast(CellColor),
+      CellColor);
+  end;
+  if ABack then
+  begin
+    Back := FPal[fpDlgBack];
+    if Selected = FarPickPanelIdx then
+    begin
+      if AFocused then
+        Back := FPal[fpDlgFocusBack];
+      CellText := FarCheckMark + WideString(' Panel');
+    end
+    else
+      CellText := '  Panel';
+    PutText(AGridCol, ARow + 4, 4 * FarPickCellW, CellText, FPal[fpDlgText],
+      Back);
+  end;
+end;
+
+// Поле ввода с кареткой, когда в фокусе
+procedure TFarView.PickDrawEdit(ACol, ARow, AWidth: Integer;
+  const AText: WideString; APos: Integer; AFocused: Boolean);
+var
+  Shown: WideString;
+  Scroll, CaretX: Integer;
+begin
+  Scroll := 0;
+  if APos > AWidth - 1 then
+    Scroll := APos - AWidth + 1;
+  Shown := Copy(AText, Scroll + 1, AWidth);
+  PutText(ACol, ARow, AWidth, Shown, FPal[fpDlgEditText],
+    FPal[fpDlgEditBack]);
+  if AFocused then
+  begin
+    CaretX := (ACol + APos - Scroll) * FCellW;
+    FBuffer.Canvas.Brush.Style := bsSolid;
+    FBuffer.Canvas.Brush.Color := FPal[fpDlgEditText];
+    FBuffer.Canvas.FillRect(Rect(CaretX, ARow * FCellH + 1, CaretX + 2,
+      (ARow + 1) * FCellH - 1));
+  end;
+end;
+
+procedure TFarView.DrawPick;
+var
+  BoxW, BoxH, BoxLeft, BoxTop, Inner, Row, SepY, ButtonIdx, ButtonsW: Integer;
+  ButtonCol: Integer;
+  Back, Fore, SampleFore, SampleBack: TColor;
+  Title, Caption, SampleText, ButtonText: WideString;
+begin
+  BoxW := 54;
+  if BoxW > FCols - 2 then
+    BoxW := FCols - 2;
+  if FPickRule then
+    BoxH := 18
+  else
+    BoxH := 17;
+  if (BoxW < 40) or (PanelHeight < BoxH) then
+    Exit;
+  BoxLeft := (FCols - BoxW) div 2;
+  BoxTop := (PanelHeight - BoxH) div 2;
+  if BoxTop < 0 then
+    BoxTop := 0;
+  Inner := BoxLeft + 5;
+  FPickLeft := BoxLeft;
+  FPickTop := BoxTop;
+  Back := FPal[fpDlgBack];
+  Fore := FPal[fpDlgText];
+  for Row := BoxTop to BoxTop + BoxH - 1 do
+    FillCells(BoxLeft, Row, BoxW, Back);
+  DrawBox(BoxLeft + 2, BoxTop + 1, BoxLeft + BoxW - 3, BoxTop + BoxH - 2, Fore);
+  if FPickRule then
+    Title := 'Files highlighting'
+  else
+    Title := 'Colors';
+  PutCentered(BoxLeft, BoxTop + 1, BoxW, ' ' + Title + ' ', Fore, Back);
+
+  Row := BoxTop + 2;
+  if FPickRule then
+  begin
+    PutText(Inner, Row, 11, 'Extension:', Fore, Back);
+    FPickExtRow := Row;
+    FPickExtCol := Inner + 11;
+    PickDrawEdit(Inner + 11, Row, BoxW - 10 - 11, FPickExt, FPickExtPos,
+      FPickFocus = pfExt);
+  end
+  else
+  begin
+    Caption := WideString(FarPalGroup(FPickPalItem) + ': ' +
+      FarPalCaption(FPickPalItem));
+    PutText(Inner, Row, BoxW - 10, FarFitName(Caption, BoxW - 10), Fore, Back);
+  end;
+  Inc(Row, 2);
+
+  // Подписи сеток: с фокусом - цветом фокуса
+  FPickForeCol := Inner;
+  FPickBackCol := Inner + 4 * FarPickCellW + 8;
+  if FPickRule then
+    Caption := 'Foreground'
+  else
+    Caption := 'Color';
+  if FPickFocus = pfForeGrid then
+    PutText(FPickForeCol, Row, Length(Caption), Caption, FPal[fpDlgFocusText],
+      FPal[fpDlgFocusBack])
+  else
+    PutText(FPickForeCol, Row, Length(Caption), Caption, Fore, Back);
+  if FPickRule then
+  begin
+    Caption := 'Background';
+    if FPickFocus = pfBackGrid then
+      PutText(FPickBackCol, Row, Length(Caption), Caption,
+        FPal[fpDlgFocusText], FPal[fpDlgFocusBack])
+    else
+      PutText(FPickBackCol, Row, Length(Caption), Caption, Fore, Back);
+  end;
+  Inc(Row);
+  FPickGridRow := Row;
+  PickDrawGrid(FPickForeCol, Row, False, FPickFocus = pfForeGrid);
+  if FPickRule then
+    PickDrawGrid(FPickBackCol, Row, True, FPickFocus = pfBackGrid);
+  Inc(Row, 4);
+  if FPickRule then
+    Inc(Row);   // строка Panel
+  Inc(Row);
+
+  // Поля #RRGGBB
+  FPickRgbRow := Row;
+  PickDrawEdit(FPickForeCol, Row, 9, FPickForeText, FPickForePos,
+    FPickFocus = pfForeRgb);
+  if FPickRule then
+    PickDrawEdit(FPickBackCol, Row, 9, FPickBackText, FPickBackPos,
+      FPickFocus = pfBackRgb);
+  Inc(Row, 2);
+
+  // Образец
+  if FPickRule then
+  begin
+    SampleFore := FPickFore;
+    if FPickBack = clNone then
+      SampleBack := FPal[fpPanelBack]
+    else
+      SampleBack := FPickBack;
+    if FPickExt <> '' then
+      SampleText := ' file.' + FPickExt + ' '
+    else
+      SampleText := ' file.ext ';
+  end
+  else
+  begin
+    SampleText := ' Sample text ';
+    if FarPalIsBack(FPickPalItem) then
+    begin
+      SampleFore := FPal[FarPalPair(FPickPalItem)];
+      SampleBack := FPickFore;
+    end
+    else
+    begin
+      SampleFore := FPickFore;
+      SampleBack := FPal[FarPalPair(FPickPalItem)];
+    end;
+    // «Нет» (редактор: из схемы) - образец цветами панели
+    if SampleFore = clNone then
+      SampleFore := FPal[fpPanelText];
+    if SampleBack = clNone then
+      SampleBack := FPal[fpPanelBack];
+    if FPickFore = clNone then
+      SampleText := ' (нет - из схемы) ';
+  end;
+  PutText(Inner, Row, 8, 'Sample:', Fore, Back);
+  PutText(Inner + 8, Row, Length(SampleText), SampleText, SampleFore,
+    SampleBack);
+  Inc(Row);
+
+  // Разделитель и кнопки
+  SepY := Row * FCellH + FCellH div 2;
+  with FBuffer.Canvas do
+  begin
+    Pen.Color := Fore;
+    MoveTo((BoxLeft + 2) * FCellW + FCellW div 2 + 1, SepY);
+    LineTo((BoxLeft + BoxW - 3) * FCellW + FCellW div 2, SepY);
+  end;
+  Inc(Row);
+  ButtonsW := 0;
+  for ButtonIdx := 0 to PickButtonCount - 1 do
+    Inc(ButtonsW, Length(PickButtonText(ButtonIdx)) + 5);
+  Dec(ButtonsW);
+  ButtonCol := BoxLeft + (BoxW - ButtonsW) div 2;
+  FPickBtnRow := Row;
+  for ButtonIdx := 0 to PickButtonCount - 1 do
+  begin
+    ButtonText := '[ ' + PickButtonText(ButtonIdx) + ' ]';
+    FPickBtnCol[ButtonIdx] := ButtonCol;
+    if FPickFocus = pfBtn + ButtonIdx then
+      PutText(ButtonCol, Row, Length(ButtonText), ButtonText,
+        FPal[fpDlgFocusText], FPal[fpDlgFocusBack])
+    else
+      PutText(ButtonCol, Row, Length(ButtonText), ButtonText, Fore, Back);
+    Inc(ButtonCol, Length(ButtonText) + 1);
+  end;
+end;
+
+// Щелчок в окне выбора цвета
+procedure TFarView.PickMouse(AX, AY: Integer);
+var
+  Col, Row, GridIdx, ButtonIdx: Integer;
+
+  function GridHit(AGridCol: Integer; ABack: Boolean): Boolean;
+  begin
+    Result := False;
+    if (Col < AGridCol) or (Col >= AGridCol + 4 * FarPickCellW) then
+      Exit;
+    if (Row >= FPickGridRow) and (Row < FPickGridRow + 4) then
+    begin
+      GridIdx := (Row - FPickGridRow) * 4 + (Col - AGridCol) div FarPickCellW;
+      PickGridSet(ABack, GridIdx);
+      Result := True;
+    end
+    else if ABack and (Row = FPickGridRow + 4) then
+    begin
+      PickGridSet(True, FarPickPanelIdx);
+      Result := True;
+    end;
+  end;
+
+begin
+  Col := AX div FCellW;
+  Row := AY div FCellH;
+  if GridHit(FPickForeCol, False) then
+  begin
+    FPickFocus := pfForeGrid;
+    Exit;
+  end;
+  if FPickRule and GridHit(FPickBackCol, True) then
+  begin
+    FPickFocus := pfBackGrid;
+    Exit;
+  end;
+  if FPickRule and (Row = FPickExtRow) and (Col >= FPickExtCol) then
+  begin
+    FPickFocus := pfExt;
+    Exit;
+  end;
+  if Row = FPickRgbRow then
+  begin
+    if (Col >= FPickForeCol) and (Col < FPickForeCol + 9) then
+      FPickFocus := pfForeRgb
+    else if FPickRule and (Col >= FPickBackCol) and
+            (Col < FPickBackCol + 9) then
+      FPickFocus := pfBackRgb;
+    Exit;
+  end;
+  if Row = FPickBtnRow then
+    for ButtonIdx := 0 to PickButtonCount - 1 do
+      if (Col >= FPickBtnCol[ButtonIdx]) and (Col < FPickBtnCol[ButtonIdx] +
+         Length(PickButtonText(ButtonIdx)) + 4) then
+      begin
+        FPickFocus := pfBtn + ButtonIdx;
+        PickButton(ButtonIdx);
+        Exit;
+      end;
 end;
 
 // F9: меню Options (только оно - решено). Что ещё не сделано - серым
