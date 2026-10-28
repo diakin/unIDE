@@ -80,6 +80,9 @@ type
     FCommitColor: array of Integer;
     FSelHashes: TStringList;
     FActionBranch: string;
+    // Сведения о коммите - после того, как выделение перестало меняться
+    // (CommitSelect, SelTimerTick)
+    FSelTimer: TTimer;
     FBtnPick: TUiButton;
     FBtnMergeBranch: TUiButton;
     FBtnDelBranch: TUiButton;
@@ -117,6 +120,7 @@ type
     procedure ShowCommit(AIndex: Integer);
     procedure ShowFileDiff(AIndex: Integer);
     procedure CommitSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
+    procedure SelTimerTick(Sender: TObject);
     procedure FileSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure BtnMoreClick(Sender: TObject);
     procedure BtnCopyClick(Sender: TObject);
@@ -195,6 +199,10 @@ var
   Column: TListColumn;
 begin
   FSelHashes := TStringList.Create;
+  FSelTimer := TTimer.Create(Self);
+  FSelTimer.Enabled := False;
+  FSelTimer.Interval := 40;
+  FSelTimer.OnTimer := SelTimerTick;
   FAction := ghaNone;
   FCurHash := '';
   FLimit := GitHistPage;
@@ -915,11 +923,34 @@ begin
   end;
 end;
 
+// Выделение в списке коммитов меняется. При Ctrl+A, Shift+щелчке или
+// протяжке мышью событие приходит на каждую строку, а ShowCommit - это три
+// запуска git (show, rev-parse, diff): на 145 строках выделение шло
+// секунды. Поэтому здесь только перезапуск таймера, а сведения читаются
+// один раз, когда события кончились (SelTimerTick)
 procedure TDlgGitHistory.CommitSelect(Sender: TObject; Item: TListItem;
   Selected: Boolean);
 begin
-  if Selected and (Item <> nil) then
-    ShowCommit(Item.Index);
+  FSelTimer.Enabled := False;
+  FSelTimer.Enabled := True;
+end;
+
+// Выделение успокоилось: сведения - о строке с фокусом (по ней щёлкнули
+// последней), если она выделена, иначе о первой выделенной. Тот же коммит
+// уже показан - git не запускается, обновляются только кнопки
+procedure TDlgGitHistory.SelTimerTick(Sender: TObject);
+var
+  Item: TListItem;
+begin
+  FSelTimer.Enabled := False;
+  Item := FCommitList.ItemFocused;
+  if (Item = nil) or not Item.Selected then
+    Item := FCommitList.Selected;
+  if (Item <> nil) and (Item.Index <= High(FCommits)) and
+     (FCommits[Item.Index].Hash <> FCurHash) then
+    ShowCommit(Item.Index)
+  else
+    UpdateButtons;
 end;
 
 procedure TDlgGitHistory.FileSelect(Sender: TObject; Item: TListItem;
