@@ -273,6 +273,25 @@ begin
 end;
 
 // Позиция ANeedle в AHay (WideString; Pos Delphi 7 - для string); 0 - нет
+// ADest := AFirst + ASecond. Обе пустые - приёмник очищается явно: в
+// unIDE (Delphi 7) после Enter в начале строки строка оставалась прежней
+// (копия вместо пустой), хотя в uniFAR (Free Pascal) тот же код работает.
+// Пустая строка теперь не получается сложением двух пустых WideString
+procedure EdSetJoin(var ADest: WideString; const AFirst, ASecond: WideString);
+begin
+  if AFirst = '' then
+  begin
+    if ASecond = '' then
+      ADest := ''
+    else
+      ADest := ASecond;
+  end
+  else if ASecond = '' then
+    ADest := AFirst
+  else
+    ADest := AFirst + ASecond;
+end;
+
 function EdPos(const ANeedle, AHay: WideString): Integer;
 var
   StartIdx, CharIdx: Integer;
@@ -644,10 +663,10 @@ begin
     for PartIdx := FCount - 1 downto ARow + 1 do
       FLines[PartIdx + PartCount - 1] := FLines[PartIdx];
     Inc(FCount, PartCount - 1);
-    FLines[ARow] := Head + Parts[0];
+    EdSetJoin(FLines[ARow], Head, Parts[0]);
     for PartIdx := 1 to PartCount - 2 do
       FLines[ARow + PartIdx] := Parts[PartIdx];
-    FLines[ARow + PartCount - 1] := Parts[PartCount - 1] + Tail;
+    EdSetJoin(FLines[ARow + PartCount - 1], Parts[PartCount - 1], Tail);
     AEndRow := ARow + PartCount - 1;
     AEndCol := Length(Parts[PartCount - 1]);
   end;
@@ -670,8 +689,8 @@ begin
   for RowIdx := ARow1 + 1 to ARow2 - 1 do
     Result := Result + #10 + FLines[RowIdx];
   Result := Result + #10 + Copy(FLines[ARow2], 1, ACol2);
-  FLines[ARow1] := Copy(FLines[ARow1], 1, ACol1) +
-    Copy(FLines[ARow2], ACol2 + 1, MaxInt);
+  EdSetJoin(FLines[ARow1], Copy(FLines[ARow1], 1, ACol1),
+    Copy(FLines[ARow2], ACol2 + 1, MaxInt));
   Removed := ARow2 - ARow1;
   for RowIdx := ARow1 + 1 to FCount - 1 - Removed do
     FLines[RowIdx] := FLines[RowIdx + Removed];
