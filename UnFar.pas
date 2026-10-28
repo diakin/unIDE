@@ -151,7 +151,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.44';
+  FarBuild = 'b.45';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -180,7 +180,7 @@ type
     fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd,
     fdFind, fdFtpEdit, fdFtpPassword, fdFtpDelete, fdFtpError,
     fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
-    fdViewFind, fdViewGoto, fdHiDelete);
+    fdViewFind, fdViewGoto, fdHiDelete, fdHistClear);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -531,8 +531,11 @@ type
     FMenuTopRow: Integer;
     FMenuWidth: Integer;
     FMenuRows: Integer;
-    // История папок (Alt+F12): старые сверху, новые снизу
+    // История папок (Alt+F12): старые сверху, новые снизу. FHistoryLock -
+    // закреплённые (Ins в меню): их не удаляют Del, Shift+Del и вытеснение
+    // старых записей при переполнении
     FHistory: TFarNames;
+    FHistoryLock: array of Boolean;
     // Поиск файлов (Alt+F7): окно Find file - что искать (запоминается),
     // окно найденного - поверх панелей
     FFindMask: WideString;
@@ -825,7 +828,10 @@ type
     procedure DrawMenu;
     procedure ShowDriveMenu(APanelIndex: Integer);
     procedure ShowSortMenu;
-    procedure ShowHistoryMenu;
+    procedure ShowHistoryMenu(ACursor: Integer = -1);
+    function HistoryFind(const APath: WideString): Integer;
+    procedure HistoryDelete(AIndex: Integer);
+    procedure HistoryClearUnlocked;
     procedure SetSort(APanel: TFarPanel; AMode: TFarSortMode);
     procedure ToggleSelFirst(APanel: TFarPanel);
     procedure SelectDrive(APanelIndex: Integer; ALetter: WideChar);
@@ -5040,6 +5046,20 @@ begin
     EditFindConfirm;
     Exit;
   end;
+  // История папок: очистить? Потом - снова меню истории (если что-то
+  // осталось)
+  if FDlgKind = fdHistClear then
+  begin
+    DlgClose;
+    if AButton = 0 then
+    begin
+      HistoryClearUnlocked;
+      ShowHistoryMenu;
+    end
+    else
+      ShowHistoryMenu(FHiDelIdx);
+    Exit;
+  end;
   // Files highlighting: удалить правило? Потом - снова список правил
   if FDlgKind = fdHiDelete then
   begin
@@ -6008,26 +6028,60 @@ begin
       MenuMove(FMenuRows - 1);
     VK_RETURN:
       MenuActivate(FMenuCursor);
-    VK_DELETE:
-      // История папок: Del - убрать папку из истории
+    VK_INSERT:
+      // История папок: Ins - закрепить / открепить папку
       if (FMenuKind = fmHistory) and (FMenuCursor >= 0) and
          (FMenuCursor <= High(FMenuItems)) then
       begin
-        for HistoryIndex := High(FHistory) downto 0 do
-          if FarSameName(FHistory[HistoryIndex],
-                         FMenuItems[FMenuCursor].Data) then
-          begin
-            for ItemIndex := HistoryIndex to High(FHistory) - 1 do
-              FHistory[ItemIndex] := FHistory[ItemIndex + 1];
-            SetLength(FHistory, Length(FHistory) - 1);
-          end;
-        for ItemIndex := FMenuCursor to High(FMenuItems) - 1 do
-          FMenuItems[ItemIndex] := FMenuItems[ItemIndex + 1];
-        SetLength(FMenuItems, Length(FMenuItems) - 1);
-        if Length(FMenuItems) = 0 then
-          MenuClose
-        else if FMenuCursor > High(FMenuItems) then
-          FMenuCursor := High(FMenuItems);
+        HistoryIndex := HistoryFind(FMenuItems[FMenuCursor].Data);
+        if HistoryIndex >= 0 then
+        begin
+          FHistoryLock[HistoryIndex] := not FHistoryLock[HistoryIndex];
+          if FHistoryLock[HistoryIndex] then
+            FMenuItems[FMenuCursor].Mark := FarCheckMark
+          else
+            FMenuItems[FMenuCursor].Mark := ' ';
+          Invalidate;
+        end;
+      end;
+    VK_DELETE:
+      // История папок: Shift+Del - убрать папку под курсором (кроме
+      // закреплённой), Del - очистить историю, закреплённые остаются
+      if (FMenuKind = fmHistory) and AShift and (FMenuCursor >= 0) and
+         (FMenuCursor <= High(FMenuItems)) then
+      begin
+        HistoryIndex := HistoryFind(FMenuItems[FMenuCursor].Data);
+        if (HistoryIndex >= 0) and FHistoryLock[HistoryIndex] then
+          Status(FarProduct + ': папка закреплена (Ins - открепить)')
+        else
+        begin
+          if HistoryIndex >= 0 then
+            HistoryDelete(HistoryIndex);
+          for ItemIndex := FMenuCursor to High(FMenuItems) - 1 do
+            FMenuItems[ItemIndex] := FMenuItems[ItemIndex + 1];
+          SetLength(FMenuItems, Length(FMenuItems) - 1);
+          if Length(FMenuItems) = 0 then
+            MenuClose
+          else if FMenuCursor > High(FMenuItems) then
+            FMenuCursor := High(FMenuItems);
+          Invalidate;
+        end;
+      end
+      else if (FMenuKind = fmHistory) and not ACtrl and not AAlt then
+      begin
+        HistoryIndex := High(FHistoryLock);
+        while (HistoryIndex >= 0) and FHistoryLock[HistoryIndex] do
+          Dec(HistoryIndex);
+        if HistoryIndex < 0 then
+          Status(FarProduct + ': в истории только закреплённые папки')
+        else
+        begin
+          FHiDelIdx := FMenuCursor;
+          MenuClose;
+          DlgOpen(fdHistClear, 'Folders history',
+            ['Clear folders history?', 'Locked folders will be kept'],
+            True, True, False, '', ['Clear', 'Cancel']);
+        end;
       end;
   else
     // Буква - пункт с этой буквой быстрого выбора
@@ -8835,36 +8889,79 @@ end;
 //  История папок (Alt+F12): общая для обеих панелей, до FarHistoryMax
 // ---------------------------------------------------------------------------
 
+function TFarView.HistoryFind(const APath: WideString): Integer;
+begin
+  Result := High(FHistory);
+  while (Result >= 0) and not FarSameName(FHistory[Result], APath) do
+    Dec(Result);
+end;
+
+procedure TFarView.HistoryDelete(AIndex: Integer);
+var
+  MoveIndex: Integer;
+begin
+  if (AIndex < 0) or (AIndex > High(FHistory)) then
+    Exit;
+  for MoveIndex := AIndex to High(FHistory) - 1 do
+  begin
+    FHistory[MoveIndex] := FHistory[MoveIndex + 1];
+    FHistoryLock[MoveIndex] := FHistoryLock[MoveIndex + 1];
+  end;
+  SetLength(FHistory, Length(FHistory) - 1);
+  SetLength(FHistoryLock, Length(FHistory));
+end;
+
+procedure TFarView.HistoryClearUnlocked;
+var
+  HistoryIndex: Integer;
+begin
+  for HistoryIndex := High(FHistory) downto 0 do
+    if not FHistoryLock[HistoryIndex] then
+      HistoryDelete(HistoryIndex);
+end;
+
+// Папка уходит в конец списка (закрепление сохраняется). При переполнении
+// вытесняются самые старые незакреплённые
 procedure TFarView.HistoryAdd(const APath: WideString);
 var
-  HistoryIndex, MoveIndex: Integer;
+  HistoryIndex: Integer;
+  WasLocked: Boolean;
 begin
   if APath = '' then
     Exit;
-  for HistoryIndex := High(FHistory) downto 0 do
-    if FarSameName(FHistory[HistoryIndex], APath) then
-    begin
-      for MoveIndex := HistoryIndex to High(FHistory) - 1 do
-        FHistory[MoveIndex] := FHistory[MoveIndex + 1];
-      SetLength(FHistory, Length(FHistory) - 1);
-    end;
-  SetLength(FHistory, Length(FHistory) + 1);
-  FHistory[High(FHistory)] := APath;
-  if Length(FHistory) > FarHistoryMax then
+  SetLength(FHistoryLock, Length(FHistory));
+  WasLocked := False;
+  HistoryIndex := HistoryFind(APath);
+  while HistoryIndex >= 0 do
   begin
-    for MoveIndex := 0 to FarHistoryMax - 1 do
-      FHistory[MoveIndex] := FHistory[MoveIndex + Length(FHistory) -
-        FarHistoryMax];
-    SetLength(FHistory, FarHistoryMax);
+    WasLocked := WasLocked or FHistoryLock[HistoryIndex];
+    HistoryDelete(HistoryIndex);
+    HistoryIndex := HistoryFind(APath);
+  end;
+  SetLength(FHistory, Length(FHistory) + 1);
+  SetLength(FHistoryLock, Length(FHistory));
+  FHistory[High(FHistory)] := APath;
+  FHistoryLock[High(FHistory)] := WasLocked;
+  while Length(FHistory) > FarHistoryMax do
+  begin
+    HistoryIndex := 0;
+    while (HistoryIndex < High(FHistory)) and FHistoryLock[HistoryIndex] do
+      Inc(HistoryIndex);
+    if HistoryIndex >= High(FHistory) then
+      Break;
+    HistoryDelete(HistoryIndex);
   end;
 end;
 
-procedure TFarView.ShowHistoryMenu;
+// Меню истории: Enter - перейти, Ins - закрепить, Shift+Del - убрать
+// папку, Del - очистить (закреплённые остаются)
+procedure TFarView.ShowHistoryMenu(ACursor: Integer);
 var
   Items: TFarMenuItems;
   HistoryIndex: Integer;
   ShownPath: WideString;
 begin
+  SetLength(FHistoryLock, Length(FHistory));
   if Length(FHistory) = 0 then
   begin
     Status(FarProduct + ': история папок пуста');
@@ -8878,12 +8975,17 @@ begin
       SetLength(ShownPath, Length(ShownPath) - 1);
     Items[HistoryIndex].Text := FarEscapeAmp(ShownPath);
     Items[HistoryIndex].RightText := '';
-    Items[HistoryIndex].Mark := ' ';
+    if FHistoryLock[HistoryIndex] then
+      Items[HistoryIndex].Mark := FarCheckMark
+    else
+      Items[HistoryIndex].Mark := ' ';
     Items[HistoryIndex].Separator := False;
     Items[HistoryIndex].Data := FHistory[HistoryIndex];
     Items[HistoryIndex].Tag := HistoryIndex;
   end;
-  MenuOpen(fmHistory, 'Folders history', Items, High(Items), FActive);
+  if (ACursor < 0) or (ACursor > High(Items)) then
+    ACursor := High(Items);
+  MenuOpen(fmHistory, 'Folders history', Items, ACursor, FActive);
 end;
 
 // ---------------------------------------------------------------------------
@@ -12651,6 +12753,7 @@ begin
     if HistoryCount < 0 then
       HistoryCount := 0;
     SetLength(FHistory, 0);
+    SetLength(FHistoryLock, 0);
     for HistoryIndex := 1 to HistoryCount do
     begin
       SavedPath := FarDecodePath(Ini.ReadString(FarHistorySection,
@@ -12658,7 +12761,10 @@ begin
       if SavedPath <> '' then
       begin
         SetLength(FHistory, Length(FHistory) + 1);
+        SetLength(FHistoryLock, Length(FHistory));
         FHistory[High(FHistory)] := SavedPath;
+        FHistoryLock[High(FHistory)] := Ini.ReadBool(FarHistorySection,
+          'Lock' + IntToStr(HistoryIndex), False);
       end;
     end;
 
@@ -12786,9 +12892,15 @@ begin
     end;
     Ini.EraseSection(FarHistorySection);
     Ini.WriteInteger(FarHistorySection, 'Count', Length(FHistory));
+    SetLength(FHistoryLock, Length(FHistory));
     for HistoryIndex := 0 to High(FHistory) do
+    begin
       Ini.WriteString(FarHistorySection, 'Folder' + IntToStr(HistoryIndex + 1),
         FarEncodePath(FHistory[HistoryIndex]));
+      if FHistoryLock[HistoryIndex] then
+        Ini.WriteBool(FarHistorySection, 'Lock' + IntToStr(HistoryIndex + 1),
+          True);
+    end;
     for PanelIndex := 0 to 1 do
     begin
       Ini.WriteInteger(FarIniSection, SidePrefix[PanelIndex] + 'Sort',
