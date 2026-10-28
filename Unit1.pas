@@ -538,6 +538,10 @@ type
     // AddClrString, которые вставляет пункт Debug (RuntimeLog)
     pnlRunLog: TPanel;
     RuntimeLog: TRichEdit;
+    // Git log - команды git и их вывод (панель Git, меню Repository и
+    // Branch), отдельно от сборки. Команды отделены пустой строкой
+    pnlGitLog: TPanel;
+    GitLogEdit: TRichEdit;
     StatusBar1: TUiStatusBar;
     Panel1: TPanel;
     FontDialog1: TFontDialog;
@@ -1130,6 +1134,12 @@ type
     FGitBtnPull: TUiButton;
     FGitBtnPush: TUiButton;
     FGitLblHint: TUiLabel;
+    // Git status на строке Build: OK (зелёный) / Внимание (оранжевый) /
+    // Error (красный) - итог проверок GitCollectProblems по последнему
+    // обновлению панели; щелчок - git status и проверки в Git log
+    FGitLblStatus: TUiLabel;
+    FGitStatusErrors: TStringList;
+    FGitStatusWarns: TStringList;
     // Кнопка Repository... и её меню: недавние репозитории (FGitRecent,
     // editor.ini [Git] Recent1..), выбор, Add / Clone / New. FGitRepoTop -
     // репозиторий на панели по последнему обновлению ('' - нет)
@@ -3080,6 +3090,11 @@ type
     procedure GitSetHint(const AText: string; AIsError: Boolean);
     procedure GitPlaceHint;
     function  GitCurrentOp(const AGit, ARepo: string): string;
+    procedure GitCollectProblems(const AGit, ARepo, ABranch: string;
+                                 const AChanges: TGitChanges;
+                                 ADetails: TStrings);
+    procedure GitShowStatusLabel(AChecked: Boolean);
+    procedure GitStatusClick(Sender: TObject);
     function  GitConflictFiles(const AGit, ARepo: string;
                                AList: TStrings): Integer;
     function  GitMarkerCount(const AFile: string;
@@ -3430,11 +3445,13 @@ type
     procedure LogDiag(const S: string);
     procedure LogRaw(const S: string);
     procedure LogComp(const S: string);
+    procedure LogGit(const S: string; AColor: TColor = clNone);
+    procedure LogGitBreak;
     procedure LogSuspects(AMessages: TStringList; ACount: Integer);
     procedure LogErr(const S: string);
     procedure WriteCompileBat(const AExe, AParams, ADir, ADpr: string);
     procedure LogTo(AEdit: TRichEdit; const S: string;
-                    AColor: TColor = clNone);
+                    AColor: TColor = clNone; ABare: Boolean = False);
     procedure ProbeRun;
     procedure SnapReset;
     procedure ObjAutoSnap;
@@ -3460,6 +3477,7 @@ type
     procedure LogTabsChange(Sender: TObject);
     procedure ShowCompLog;
     procedure ShowErrLog;
+    procedure ShowGitLog;
     procedure UpdateCompilerCaption;
     procedure btnCompileClick(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
@@ -25009,6 +25027,8 @@ begin
   FreeAndNil(FProjectReg);
   FreeAndNil(FBasDialects);
   FreeAndNil(FGitRecent);
+  FreeAndNil(FGitStatusErrors);
+  FreeAndNil(FGitStatusWarns);
   FreeAndNil(FBuildKindManual);
   FreeAndNil(FFbBuild);
   FreeAndNil(FRqBuild);
@@ -46123,6 +46143,28 @@ begin
     FCompDlg.ShowLine(Trim(S));
 end;
 
+// Строка в Git log: команды git и их вывод. Окна ещё нет (сообщение до
+// FormCreate) - в Compilation log, терять строку нельзя
+procedure TForm1.LogGit(const S: string; AColor: TColor);
+begin
+  FLastDiag := '';
+  if GitLogEdit <> nil then
+    LogTo(GitLogEdit, S, AColor)
+  else
+    LogComp(S);
+end;
+
+// Пустая строка в Git log - граница перед следующей командой, чтобы её
+// вывод не сливался с прежним. В пустом логе не нужна
+procedure TForm1.LogGitBreak;
+begin
+  if (GitLogEdit = nil) or (GitLogEdit.Parent = nil) then
+    Exit;
+  if GitLogEdit.GetTextLen = 0 then
+    Exit;
+  LogTo(GitLogEdit, '', clNone, True);
+end;
+
 // Подозрения на ошибки в программе (уровень Suspect перевода RqToFb) -
 // отдельным списком после итога перевода: среди сотни обычных
 // предупреждений они теряются, а это, скорее всего, баги программы. Ещё раз
@@ -46182,6 +46224,8 @@ begin
     LogEdit.PopupMenu := FLogPopup;
   if RuntimeLog <> nil then
     RuntimeLog.PopupMenu := FLogPopup;
+  if GitLogEdit <> nil then
+    GitLogEdit.PopupMenu := FLogPopup;
 
   LogTabsChange(nil);
 end;
@@ -48993,6 +49037,8 @@ begin
   pnlHiLog.Visible := LogTabs.TabIndex = 2;
   if pnlRunLog <> nil then
     pnlRunLog.Visible := LogTabs.TabIndex = 3;
+  if pnlGitLog <> nil then
+    pnlGitLog.Visible := LogTabs.TabIndex = 4;
 end;
 
 // Показать вкладку компиляции. Зовётся, когда начинается сборка или
@@ -49012,6 +49058,16 @@ begin
   if (LogTabs = nil) or (LogTabs.TabIndex = 1) then
     Exit;
   LogTabs.TabIndex := 1;
+  LogTabsChange(nil);
+end;
+
+// Показать вкладку Git log. Зовётся командами git с выводом в журнал
+// (GitLongOp и др.)
+procedure TForm1.ShowGitLog;
+begin
+  if (LogTabs = nil) or (pnlGitLog = nil) or (LogTabs.TabIndex = 4) then
+    Exit;
+  LogTabs.TabIndex := 4;
   LogTabsChange(nil);
 end;
 
@@ -65782,7 +65838,7 @@ end;
 //  Clone, New; editor.ini [Git] Repository), иначе - тот, где лежат
 //  исходники открытого проекта ReactOS, папка проекта или файл вкладки.
 //  Команды, которые ходят в сеть (fetch, pull, push, clone), и commit
-//  пишут вывод в Compilation log; Esc - прервать.
+//  пишут вывод в Git log; Esc - прервать.
 // ---------------------------------------------------------------------------
 
 const
@@ -65810,10 +65866,20 @@ begin
     Result := '';
 end;
 
-// Строка вывода git - в Compilation log
+// Строка вывода git - в Git log
 procedure TForm1.GitOnLine(const ALine: WideString);
+var
+  LineText: string;
+  LineColor: TColor;
 begin
-  LogComp('  ' + string(ALine));
+  LineText := string(ALine);
+  LineColor := clNone;
+  if (Copy(LineText, 1, 6) = 'error:') or (Copy(LineText, 1, 6) = 'fatal:') then
+    LineColor := clRed
+  else if (Copy(LineText, 1, 8) = 'warning:') or
+          (Copy(LineText, 1, 5) = 'hint:') then
+    LineColor := SuspectLogColor;
+  LogGit('  ' + LineText, LineColor);
 end;
 
 // Пока git работает: окно живёт, Esc - прервать
@@ -65826,7 +65892,7 @@ begin
   Result := not FGitCancel;
 end;
 
-// git AArgs в папке ADir. ALog - команда и вывод в Compilation log, окно
+// git AArgs в папке ADir. ALog - команда и вывод в Git log, окно
 // не замирает, Esc прерывает; иначе - тихо (быстрые запросы для панели).
 // Результат - код выхода git, -1 - не запустился или прерван
 function TForm1.GitRunIn(const AGit, ADir, AArgs: string; ALog: Boolean;
@@ -65840,7 +65906,8 @@ begin
   ExitCode := -1;
   if ALog then
   begin
-    LogComp('git ' + AArgs + '   (' + ADir + ')');
+    LogGitBreak;
+    LogGit('git ' + AArgs + '   (' + ADir + ')');
     FGitCancel := False;
     // Ход команды - на жёлтой панели над редактором (BusyBegin): fetch,
     // pull, push и прочие команды с выводом в журнал
@@ -65861,7 +65928,7 @@ begin
         BusyEnd(GitCmd + ': готово', True)
       else
         BusyEnd(GitCmd + ': ошибка, код ' + IntToStr(ExitCode) +
-                ' - см. Compilation log', False);
+                ' - см. Git log', False);
     end;
   end
   else
@@ -65871,12 +65938,12 @@ begin
   if ErrText <> '' then
   begin
     if ALog then
-      LogComp('git: ' + ErrText);
+      LogGit('git: ' + ErrText);
     Result := -1;
   end
   else if ALog and (ExitCode <> 0) then
   begin
-    LogComp('git: код выхода ' + IntToStr(ExitCode));
+    LogGit('git: код выхода ' + IntToStr(ExitCode), clRed);
     // Логина нет - предложить повторить в консоли, где git его спросит
     if GitLoginHint(AGit, ADir, AOutput, Wincred) and not FGitCancel then
     begin
@@ -65888,7 +65955,7 @@ begin
 end;
 
 // Вывод git с ошибкой входа по https (terminal prompts disabled; строка
-// про SSL/TLS от credential helper) - подсказка в Compilation log: какие
+// про SSL/TLS от credential helper) - подсказка в Git log: какие
 // credential.helper настроены и как задать логин один раз. True - git
 // хотел спросить логин в консоли (её предложит GitConsoleLogin); AWincred
 // - wincred в действующем списке helper'ов (после последнего пустого
@@ -65912,7 +65979,7 @@ begin
               (Pos('защищённый канал', OutLower) > 0);
   if not NoPrompt and not TlsError then
     Exit;
-  LogComp('git: вход на сервер по https не выполнен - git не получил имя ' +
+  LogGit('git: вход на сервер по https не выполнен - git не получил имя ' +
           'пользователя и пароль. unIDE запускает git без консоли ' +
           '(GIT_TERMINAL_PROMPT=0), поэтому логин может дать только ' +
           'credential helper.');
@@ -65922,10 +65989,10 @@ begin
                 'credential.helper', False, HelperOut) = 0 then
       HelperLines.Text := string(GitTrimOut(HelperOut));
     if HelperLines.Count = 0 then
-      LogComp('git: credential.helper не задан')
+      LogGit('git: credential.helper не задан')
     else
     begin
-      LogComp('git: credential.helper (по порядку вызова):');
+      LogGit('git: credential.helper (по порядку вызова):');
       for LineIndex := 0 to HelperLines.Count - 1 do
       begin
         // file:<путь><Tab><значение>
@@ -65942,7 +66009,7 @@ begin
         HelperLine := StringReplace(HelperLines[LineIndex], #9, '   ',
                                     [rfReplaceAll]);
         if Trim(HelperLine) <> '' then
-          LogComp('    ' + HelperLine);
+          LogGit('    ' + HelperLine);
       end;
     end;
   finally
@@ -65950,22 +66017,22 @@ begin
   end;
   if TlsError then
   begin
-    LogComp('git: строка про SSL/TLS - текст ошибки .NET Framework. Из ' +
+    LogGit('git: строка про SSL/TLS - текст ошибки .NET Framework. Из ' +
             'helper''ов Git for Windows на .NET работает manager (Git ' +
             'Credential Manager). Если это он - .NET можно разрешить TLS ' +
             '1.2 (нужны права администратора и перезагрузка):');
-    LogComp('    reg add "HKLM\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" ' +
+    LogGit('    reg add "HKLM\SOFTWARE\Microsoft\.NETFramework\v4.0.30319" ' +
             '/v SchUseStrongCrypto /t REG_DWORD /d 1 /f');
-    LogComp('    reg add "HKLM\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\' +
+    LogGit('    reg add "HKLM\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\' +
             'v4.0.30319" /v SchUseStrongCrypto /t REG_DWORD /d 1 /f');
-    LogComp('  либо обойтись без .NET - helper wincred, как ниже.');
+    LogGit('  либо обойтись без .NET - helper wincred, как ниже.');
   end;
-  LogComp('git: задать логин один раз - кнопка Git Bash на панели Git, в ' +
+  LogGit('git: задать логин один раз - кнопка Git Bash на панели Git, в ' +
           'открывшемся окне:');
-  LogComp('    git config --global --replace-all credential.helper ""');
-  LogComp('    git config --global --add credential.helper wincred');
-  LogComp('    git fetch');
-  LogComp('  Username - логин GitHub, Password - personal access token ' +
+  LogGit('    git config --global --replace-all credential.helper ""');
+  LogGit('    git config --global --add credential.helper wincred');
+  LogGit('    git fetch');
+  LogGit('  Username - логин GitHub, Password - personal access token ' +
           '(пароль от аккаунта GitHub для git по https не принимается). ' +
           'wincred сохранит его в диспетчере учётных данных Windows, ' +
           'дальше unIDE возьмёт его оттуда. Пустое значение в первой ' +
@@ -66021,7 +66088,7 @@ begin
       SetWincred := False
     else
     begin
-      LogComp('git: повтор в консоли отменён');
+      LogGit('git: повтор в консоли отменён');
       Exit;
     end;
   end;
@@ -66032,27 +66099,27 @@ end;
 
 // credential.helper = wincred в глобальном конфиге git: прежний список
 // сбрасывается пустым значением, затем wincred. Команды и итог - в
-// Compilation log
+// Git log
 function TForm1.GitSetWincred(const AGit, ADir: string): Boolean;
 var
   ConfigOut: WideString;
 begin
   Result := False;
-  LogComp('git config --global --replace-all credential.helper ""');
+  LogGit('git config --global --replace-all credential.helper ""');
   if GitRunIn(AGit, ADir, 'config --global --replace-all ' +
               'credential.helper ""', False, ConfigOut) <> 0 then
   begin
-    LogComp('git: не выполнено - ' + string(GitTrimOut(ConfigOut)));
+    LogGit('git: не выполнено - ' + string(GitTrimOut(ConfigOut)));
     Exit;
   end;
-  LogComp('git config --global --add credential.helper wincred');
+  LogGit('git config --global --add credential.helper wincred');
   if GitRunIn(AGit, ADir, 'config --global --add credential.helper ' +
               'wincred', False, ConfigOut) <> 0 then
   begin
-    LogComp('git: не выполнено - ' + string(GitTrimOut(ConfigOut)));
+    LogGit('git: не выполнено - ' + string(GitTrimOut(ConfigOut)));
     Exit;
   end;
-  LogComp('git: credential.helper = wincred (глобальный конфиг git)');
+  LogGit('git: credential.helper = wincred (глобальный конфиг git)');
   Result := True;
 end;
 
@@ -66149,7 +66216,7 @@ begin
     end;
     if not GitSetWincred(Git, Dir) then
     begin
-      AError := 'wincred не настроен (подробности - Compilation log)';
+      AError := 'wincred не настроен (подробности - Git log)';
       Exit;
     end;
     Helpers := 'wincred';
@@ -66170,7 +66237,7 @@ begin
       ' ' + string(GitTrimOut(ApproveOut));
     Exit;
   end;
-  LogComp('Git: логин ' + AUser + ' для github.com сохранён ' +
+  LogGit('Git: логин ' + AUser + ' для github.com сохранён ' +
           '(credential.helper: ' + Helpers + ')');
   Result := True;
 end;
@@ -66282,12 +66349,12 @@ begin
   except
     on E: Exception do
     begin
-      LogComp('git: ' + ScriptName + ' не записать - ' + E.Message);
+      LogGit('git: ' + ScriptName + ' не записать - ' + E.Message);
       Exit;
     end;
   end;
   CmdLine := 'cmd.exe /C ""' + ScriptName + '""';
-  LogComp('git ' + AArgs + '   (' + ADir + ') - в окне консоли, unIDE ждёт ' +
+  LogGit('git ' + AArgs + '   (' + ADir + ') - в окне консоли, unIDE ждёт ' +
           'его закрытия');
   FillChar(SI, SizeOf(SI), 0);
   SI.cb := SizeOf(SI);
@@ -66296,7 +66363,7 @@ begin
   if not CreateProcess(nil, PChar(CmdLine), nil, nil, False,
                        CREATE_NEW_CONSOLE, nil, PChar(ADir), SI, PI) then
   begin
-    LogComp('git: консоль не запустить - ' + SysErrorMessage(GetLastError));
+    LogGit('git: консоль не запустить - ' + SysErrorMessage(GetLastError));
     DeleteFile(ScriptName);
     Exit;
   end;
@@ -66315,9 +66382,9 @@ begin
   DeleteFile(ScriptName);
   Result := Integer(ExitCode);
   if Result = 0 then
-    LogComp('git: в консоли выполнено')
+    LogGit('git: в консоли выполнено')
   else
-    LogComp('git: в консоли код выхода ' + IntToStr(Result));
+    LogGit('git: в консоли код выхода ' + IntToStr(Result));
 end;
 
 // Тихий запрос: первая строка вывода, код выхода не 0 - ''
@@ -66417,7 +66484,7 @@ begin
 end;
 
 // Для команд меню: git есть (нет - предложить), репозиторий найден, git
-// сейчас ничего не делает. Нет - сообщение в Compilation log и False
+// сейчас ничего не делает. Нет - сообщение в Git log и False
 function TForm1.GitPrepare(var AGit, ARepo: string): Boolean;
 var
   BaseDir: string;
@@ -66425,8 +66492,8 @@ begin
   Result := False;
   if FGitBusy then
   begin
-    ShowCompLog;
-    LogComp('Git: прежняя команда ещё работает (Esc - прервать)');
+    ShowGitLog;
+    LogGit('Git: прежняя команда ещё работает (Esc - прервать)');
     Exit;
   end;
   AGit := GitExePath(True);
@@ -66436,12 +66503,12 @@ begin
   ARepo := GitRepoTop(AGit, BaseDir);
   if ARepo = '' then
   begin
-    ShowCompLog;
+    ShowGitLog;
     if BaseDir = '' then
-      LogComp('Git: репозиторий не выбран - Repository - Add Local ' +
+      LogGit('Git: репозиторий не выбран - Repository - Add Local ' +
               'Repository, Clone Repository или New Repository')
     else
-      LogComp('Git: ' + BaseDir + ' - не в репозитории git. Repository - ' +
+      LogGit('Git: ' + BaseDir + ' - не в репозитории git. Repository - ' +
               'Add Local Repository, Clone Repository или New Repository');
     Exit;
   end;
@@ -66519,21 +66586,21 @@ begin
   end;
 end;
 
-// Длинная команда (сеть, commit): вывод в Compilation log, панель - после
+// Длинная команда (сеть, commit): вывод в Git log, панель - после
 function TForm1.GitLongOp(const AGit, ARepo, AArgs: string): Integer;
 var
   Output: WideString;
   HintText: string;
   HintIsError: Boolean;
 begin
-  ShowCompLog;
+  ShowGitLog;
   FGitBusy := True;
   try
     StatusBar1.SimpleText := 'git ' + AArgs + ' ... (Esc - прервать)';
     StatusBar1.SimplePanel := True;
     Result := GitRunIn(AGit, ARepo, AArgs, True, Output);
     if Result = 0 then
-      LogComp('git: готово');
+      LogGit('git: готово');
   finally
     FGitBusy := False;
     StatusBar1.SimplePanel := False;
@@ -66544,7 +66611,10 @@ begin
   HintText := GitExplain(AArgs, Output, Result, HintIsError);
   if HintText <> '' then
   begin
-    LogComp('Подсказка: ' + HintText);
+    if HintIsError then
+      LogGit('Подсказка: ' + HintText, clRed)
+    else
+      LogGit('Подсказка: ' + HintText, TColor($008000));
     GitSetHint(HintText, HintIsError);
     // И на панели над редактором (где был ход команды): ошибка - дольше
     if HintIsError then
@@ -66597,13 +66667,22 @@ begin
   OpLeft := 4;
   if FGitBtnAbort <> nil then
   begin
-    PlaceOpButton(FGitBtnConflicts, FGitOp <> '');
-    PlaceOpButton(FGitBtnAutoResolve, FGitOp <> '');
-    PlaceOpButton(FGitBtnContinue, FGitOp <> '');
+    // bisect - не правка: конфликтов и продолжения у него нет, только
+    // выход (git bisect reset)
+    PlaceOpButton(FGitBtnConflicts, (FGitOp <> '') and (FGitOp <> 'bisect'));
+    PlaceOpButton(FGitBtnAutoResolve, (FGitOp <> '') and (FGitOp <> 'bisect'));
+    PlaceOpButton(FGitBtnContinue, (FGitOp <> '') and (FGitOp <> 'bisect'));
     PlaceOpButton(FGitBtnSkip, (FGitOp = 'cherry-pick') or
-                  (FGitOp = 'revert'));
+                  (FGitOp = 'revert') or (FGitOp = 'rebase') or
+                  (FGitOp = 'am'));
     PlaceOpButton(FGitBtnAbort, FGitOp <> '');
-    if FGitOp <> '' then
+    if FGitOp = 'bisect' then
+    begin
+      Inc(OpLeft, 6);
+      FGitBtnAbort.Hint := 'Закончить bisect: вернуться на ветку, где он ' +
+        'начат (git bisect reset)';
+    end
+    else if FGitOp <> '' then
     begin
       Inc(OpLeft, 6);
       FGitBtnAbort.Hint := 'Отменить ' + FGitOp + ': файлы - как до него ' +
@@ -66613,7 +66692,15 @@ begin
     end;
   end;
   FGitLblBuild.Left := OpLeft;
-  FGitLblHint.Left := FGitLblBuild.Left + FGitLblBuild.Width + 24;
+  // Git status - сразу за строкой Build, подсказка - за ним
+  if (FGitLblStatus <> nil) and FGitLblStatus.Visible then
+  begin
+    FGitLblStatus.Left := FGitLblBuild.Left + FGitLblBuild.Width + 16;
+    FGitLblStatus.Top := FGitLblBuild.Top;
+    FGitLblHint.Left := FGitLblStatus.Left + FGitLblStatus.Width + 24;
+  end
+  else
+    FGitLblHint.Left := FGitLblBuild.Left + FGitLblBuild.Width + 24;
   FGitLblHint.Top := FGitLblBuild.Top;
   if FGitBtnView <> nil then
   begin
@@ -66681,6 +66768,15 @@ begin
         'изменения, ' + Cmd + ' их не перезаписывает: закоммитьте ' +
         '(Commit...), отложите (Stash) или отмените (Commit... - Discard ' +
         'Selected). Следы прерванного Pull - отменить';
+    Exit;
+  end;
+  // Новый cherry-pick / revert / rebase, когда прежний не закончен
+  if (Pos('is already in progress', OutLower) > 0) or
+     (Pos('already a rebase', OutLower) > 0) then
+  begin
+    AIsError := True;
+    Result := 'не закончена прежняя операция git - сначала Continue или ' +
+      'Abort в начале строки Build (Git status - подробно)';
     Exit;
   end;
   // Pull, checkout и пр. при незаконченном слиянии / cherry-pick / revert
@@ -66850,7 +66946,7 @@ begin
   NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 400, 66,
     GitBashClick);
   NewButton('Compare...', 'Сравнить две ветки: коммиты, которые есть только ' +
-    'в одной из них (с файлами и разницей), сводка - в Compilation log',
+    'в одной из них (с файлами и разницей), сводка - в Git log',
     470, 76, GitCompareClick);
   NewButton('Merge Into...', 'Влить текущую ветку в другую (например ' +
     'mainTest в main) и отправить ту на сервер (git push)', 550, 92,
@@ -66930,9 +67026,16 @@ begin
   FGitLblBuild := NewLabel(4, 75, '');
   // Что сделала последняя команда - словами (GitSetHint)
   FGitLblHint := NewLabel(300, 75, '');
+  // Git status - итог проверок (GitCollectProblems); щелчок - подробно
+  FGitLblStatus := NewLabel(300, 75, '');
+  FGitLblStatus.Visible := False;
+  FGitLblStatus.Cursor := crHandPoint;
+  FGitLblStatus.OnClick := GitStatusClick;
+  FGitStatusErrors := TStringList.Create;
+  FGitStatusWarns := TStringList.Create;
   // Незаконченное слияние / cherry-pick / revert (GitPlaceHint)
   FGitBtnConflicts := NewButton('Conflicts...', 'Файлы с конфликтом: список ' +
-    'в Compilation log, выбранный - в редактор на первый конфликт ' +
+    'в Git log, выбранный - в редактор на первый конфликт ' +
     '(<<<<<<<)', 4, 84, GitConflictsClick);
   FGitBtnAutoResolve := NewButton('Auto-resolve', 'Разрешить конфликты, ' +
     'где обе стороны только добавили строки в одно место (в общей версии ' +
@@ -67006,9 +67109,11 @@ var
   Output: WideString;
   Changes: TGitChanges;
   Ahead, Behind, BranchIdx, StashCount, StashIdx: Integer;
+  StatusChecked: Boolean;
 begin
   if (FGitBar = nil) or not FGitBar.Visible or FGitBusy then
     Exit;
+  StatusChecked := False;
   Git := GitExePath(False);
   BaseDir := GitBaseDir;
   Repo := '';
@@ -67170,6 +67275,9 @@ begin
       'метка, число коммитов после неё и короткий хеш); Changes - сколько ' +
       'файлов изменено (Commit... - список)';
     FGitOp := GitCurrentOp(Git, Repo);
+    // Git status на строке Build: проверки по этому обновлению
+    GitCollectProblems(Git, Repo, Branch, Changes, nil);
+    StatusChecked := True;
     HeadNow := GitQuery(Git, Repo, 'rev-parse -q --verify HEAD');
     if FGitOp <> '' then
     begin
@@ -67214,11 +67322,12 @@ begin
         OpNote := OldOp + ' отменён - файлы и ветка как до него'
       else
         OpNote := OldOp + ' закончен';
-      LogComp('Git: ' + OpNote);
+      LogGit('Git: ' + OpNote);
       GitSetHint(OpNote, False);
     end;
   finally
     FGitBranchFill := False;
+    GitShowStatusLabel(StatusChecked);
     GitPlaceHint;
     // Состояние .git после обновления: дальше GitPollTick сравнивает с ним
     FGitStateSig := GitStateSig;
@@ -67298,9 +67407,10 @@ end;
 // подпись меняется раз в 5 с, панель обновляется по времени
 function TForm1.GitStateSig: string;
 const
-  SigFiles: array[0..10] of string = ('HEAD', 'index', 'ORIG_HEAD',
+  SigFiles: array[0..13] of string = ('HEAD', 'index', 'ORIG_HEAD',
     'FETCH_HEAD', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD',
-    'packed-refs', 'logs\HEAD', 'refs\stash', 'sequencer\todo');
+    'packed-refs', 'logs\HEAD', 'refs\stash', 'sequencer\todo',
+    'rebase-merge', 'rebase-apply', 'BISECT_LOG');
 var
   GitDir, HeadRef, BranchPath: string;
   HeadLines: TStringList;
@@ -67713,7 +67823,7 @@ begin
     try
       FileLines.LoadFromFile(FullPath);
     except
-      LogComp('  ' + APath + ': не прочитать');
+      LogGit('  ' + APath + ': не прочитать');
       Exit;
     end;
     if GitParseConflicts(FileLines, FileBlocks) = 0 then
@@ -67725,7 +67835,7 @@ begin
     if GitRunIn(AGit, ARepo, 'checkout-index --stage=all --temp -- ' +
        string(GitQuote(WideString(APath))), False, Output) <> 0 then
     begin
-      LogComp('  ' + APath + ': версий конфликта в индексе нет');
+      LogGit('  ' + APath + ': версий конфликта в индексе нет');
       ALeft := Length(FileBlocks);
       Exit;
     end;
@@ -67737,7 +67847,7 @@ begin
     TempNames.DelimitedText := TempLine;
     if TempNames.Count < 3 then
     begin
-      LogComp('  ' + APath + ': git checkout-index - ' + TempLine);
+      LogGit('  ' + APath + ': git checkout-index - ' + TempLine);
       ALeft := Length(FileBlocks);
       Exit;
     end;
@@ -67746,7 +67856,7 @@ begin
     TempTheirs := TempPath(TempNames[2]);
     if (TempOurs = '') or (TempTheirs = '') then
     begin
-      LogComp('  ' + APath + ': файл удалён в одной из веток - вручную');
+      LogGit('  ' + APath + ': файл удалён в одной из веток - вручную');
       ALeft := Length(FileBlocks);
       Exit;
     end;
@@ -67793,7 +67903,7 @@ begin
             Break;
           end;
       if not Known then
-        LogComp('  ' + APath + ', строка ' +
+        LogGit('  ' + APath + ', строка ' +
           IntToStr(FileBlocks[BlockIdx].StartLine + 1) + ': общая версия ' +
           'не найдена (блок правили вручную?) - оставлен')
       else if (Trim(BaseText) <> '') and
@@ -67806,20 +67916,20 @@ begin
                 ChainFits(BlockIdx, FoundIdx))) then
       begin
         Resolve[BlockIdx] := True;
-        LogComp('  ' + APath + ', строка ' +
+        LogGit('  ' + APath + ', строка ' +
           IntToStr(FileBlocks[BlockIdx].StartLine + 1) + ': обе ветки ' +
           'дописали конец одной цепочки - оставлены обе (проверьте)');
       end
       else if Trim(BaseText) <> '' then
       begin
         ChainText[BlockIdx] := '';
-        LogComp('  ' + APath + ', строка ' +
+        LogGit('  ' + APath + ', строка ' +
           IntToStr(FileBlocks[BlockIdx].StartLine + 1) + ': обе ветки ' +
           'меняли одни и те же строки - вручную');
       end
       else if GitInsertsOverlap(FileBlocks[BlockIdx].Ours,
               FileBlocks[BlockIdx].Theirs, SameLine) then
-        LogComp('  ' + APath + ', строка ' +
+        LogGit('  ' + APath + ', строка ' +
           IntToStr(FileBlocks[BlockIdx].StartLine + 1) + ': в обеих ' +
           'вставках есть "' + SameLine + '" - вручную')
       else
@@ -67888,13 +67998,13 @@ begin
   AutoSaveEditorFiles;
   Files := TStringList.Create;
   try
-    ShowCompLog;
+    ShowGitLog;
     if GitConflictFiles(Git, Repo, Files) = 0 then
     begin
-      LogComp('Git: файлов с конфликтом нет');
+      LogGit('Git: файлов с конфликтом нет');
       Exit;
     end;
-    LogComp('Git: Auto-resolve - обе вставки остаются там, где в общей ' +
+    LogGit('Git: Auto-resolve - обе вставки остаются там, где в общей ' +
             'версии было пусто:');
     TotalResolved := 0;
     TotalLeft := 0;
@@ -67907,7 +68017,7 @@ begin
       end;
       Inc(TotalResolved, Resolved);
       Inc(TotalLeft, LeftCount);
-      LogComp('  ' + Files[FileIdx] + ': разрешено ' + IntToStr(Resolved) +
+      LogGit('  ' + Files[FileIdx] + ': разрешено ' + IntToStr(Resolved) +
               ', осталось ' + IntToStr(LeftCount));
     end;
   finally
@@ -67921,14 +68031,23 @@ begin
     GitSetHint('Auto-resolve: разрешено ' + IntToStr(TotalResolved) +
       ', осталось ' + IntToStr(TotalLeft) + ' - Conflicts..., исправить ' +
       'вручную', True);
-  LogComp('Git: разрешено ' + IntToStr(TotalResolved) + ', осталось ' +
+  LogGit('Git: разрешено ' + IntToStr(TotalResolved) + ', осталось ' +
           IntToStr(TotalLeft));
   // Открытые в редакторе файлы - перечитать с диска
   CheckDiskChanges(-1);
 end;
 
-// Что не закончено: 'merge', 'cherry-pick', 'revert' или ''
+// Что не закончено: 'merge', 'cherry-pick', 'revert', 'rebase', 'am',
+// 'bisect' или ''.
+// Кроме меток MERGE_HEAD / CHERRY_PICK_HEAD / REVERT_HEAD смотрится папка
+// .git: серия cherry-pick / revert (sequencer) бывает и без метки -
+// например, конфликт закоммичен без --continue, и git на новый cherry-pick
+// отвечает "already in progress"; rebase и am - папки rebase-merge /
+// rebase-apply; bisect - BISECT_LOG. .git - файл (worktree) - только метки
 function TForm1.GitCurrentOp(const AGit, ARepo: string): string;
+var
+  GitDir: string;
+  TodoLines: TStringList;
 begin
   Result := '';
   if GitQuery(AGit, ARepo, 'rev-parse -q --verify MERGE_HEAD') <> '' then
@@ -67937,6 +68056,251 @@ begin
     Result := 'cherry-pick'
   else if GitQuery(AGit, ARepo, 'rev-parse -q --verify REVERT_HEAD') <> '' then
     Result := 'revert';
+  if Result <> '' then
+    Exit;
+  GitDir := IncludeTrailingPathDelimiter(ARepo) + '.git\';
+  if not DirectoryExists(GitDir) then
+    Exit;
+  if DirectoryExists(GitDir + 'rebase-merge') then
+    Result := 'rebase'
+  else if DirectoryExists(GitDir + 'rebase-apply') then
+  begin
+    if FileExists(GitDir + 'rebase-apply\applying') then
+      Result := 'am'
+    else
+      Result := 'rebase';
+  end
+  else if DirectoryExists(GitDir + 'sequencer') then
+  begin
+    // Первая строка списка: 'pick <коммит> ...' или 'revert <коммит> ...'
+    Result := 'cherry-pick';
+    TodoLines := TStringList.Create;
+    try
+      try
+        TodoLines.LoadFromFile(GitDir + 'sequencer\todo');
+        if (TodoLines.Count > 0) and
+           (Copy(TrimLeft(TodoLines[0]), 1, 6) = 'revert') then
+          Result := 'revert';
+      except
+        // списка нет или не прочитать - cherry-pick
+      end;
+    finally
+      TodoLines.Free;
+    end;
+  end
+  else if FileExists(GitDir + 'BISECT_LOG') then
+    Result := 'bisect';
+end;
+
+// Проверки состояния репозитория - для строки Git status на панели и для
+// GitStatusClick. Результат - в FGitStatusErrors и FGitStatusWarns: что не
+// так и что сделать.
+// Error - то, что мешает работать дальше: незаконченная операция,
+// файлы с конфликтом, HEAD без ветки, занятый index.lock.
+// Внимание - работает, но может помешать позже: файлы со скрытыми
+// изменениями (skip-worktree - Ignore в окне Commit, assume-unchanged):
+// git status их не показывает, а checkout другой ветки на них
+// останавливается; файлы и в репозитории, и в .gitignore; ветка разошлась
+// с сервером. ADetails <> nil - сюда же имена файлов по каждой проверке.
+// FGitOp, FGitAhead, FGitBehind - уже по этому обновлению (GitRefreshBar)
+procedure TForm1.GitCollectProblems(const AGit, ARepo, ABranch: string;
+  const AChanges: TGitChanges; ADetails: TStrings);
+const
+  // Имён файлов в Git log по одной проверке - не больше
+  DetailMax = 50;
+var
+  Output: WideString;
+  Lines, Hidden: TStringList;
+  LineIdx, ChangeIdx: Integer;
+  Code, LineText: string;
+
+  procedure AddDetails(const ATitle: string; AFiles: TStrings);
+  var
+    FileIdx: Integer;
+  begin
+    if (ADetails = nil) or (AFiles.Count = 0) then
+      Exit;
+    ADetails.Add(ATitle);
+    for FileIdx := 0 to AFiles.Count - 1 do
+    begin
+      if FileIdx >= DetailMax then
+      begin
+        ADetails.Add('  ... ещё ' + IntToStr(AFiles.Count - DetailMax));
+        Break;
+      end;
+      ADetails.Add('  ' + AFiles[FileIdx]);
+    end;
+  end;
+
+begin
+  FGitStatusErrors.Clear;
+  FGitStatusWarns.Clear;
+  if FGitOp = 'bisect' then
+    FGitStatusErrors.Add('идёт bisect - закончить: Abort в начале строки ' +
+      'Build (git bisect reset)')
+  else if FGitOp <> '' then
+    FGitStatusErrors.Add('не закончен ' + FGitOp + ' - Continue или Abort ' +
+      'в начале строки Build');
+  if FileExists(IncludeTrailingPathDelimiter(ARepo) + '.git\index.lock') then
+    FGitStatusErrors.Add('есть .git\index.lock: работает другой git ' +
+      '(GitHub Desktop, Git Bash) или он был прерван. Если git сейчас не ' +
+      'запущен - удалить этот файл');
+  if (ABranch = '') and (FGitOp <> 'rebase') and (FGitOp <> 'bisect') and
+     (GitQuery(AGit, ARepo, 'rev-parse -q --verify HEAD') <> '') then
+    FGitStatusErrors.Add('HEAD отсоединён от ветки - выбрать ветку в ' +
+      'списке Branch');
+
+  Lines := TStringList.Create;
+  Hidden := TStringList.Create;
+  try
+    // Конфликты - по уже прочитанному git status
+    for ChangeIdx := 0 to High(AChanges) do
+    begin
+      Code := AChanges[ChangeIdx].Code;
+      if (Code = 'UU') or (Code = 'AA') or (Code = 'DD') or
+         (Code = 'AU') or (Code = 'UA') or (Code = 'DU') or (Code = 'UD') then
+        Hidden.Add(string(AChanges[ChangeIdx].Path));
+    end;
+    if Hidden.Count > 0 then
+    begin
+      FGitStatusErrors.Add('файлов с конфликтом: ' + IntToStr(Hidden.Count) +
+        ' - Conflicts..., исправить, сохранить, Continue');
+      AddDetails('Файлы с конфликтом:', Hidden);
+    end;
+
+    // Скрытые изменения: git ls-files -v - 'S' skip-worktree, строчная
+    // буква - assume-unchanged
+    Hidden.Clear;
+    if GitRunIn(AGit, ARepo, 'ls-files -v', False, Output) = 0 then
+    begin
+      Lines.Text := string(Output);
+      for LineIdx := 0 to Lines.Count - 1 do
+      begin
+        LineText := Lines[LineIdx];
+        if (Length(LineText) > 2) and
+           ((LineText[1] = 'S') or (LineText[1] in ['a'..'z'])) then
+          Hidden.Add(Copy(LineText, 3, MaxInt));
+      end;
+    end;
+    if Hidden.Count > 0 then
+    begin
+      FGitStatusWarns.Add('файлов со скрытыми изменениями (skip-worktree / ' +
+        'assume-unchanged): ' + IntToStr(Hidden.Count) + ' - git status их ' +
+        'не показывает, а checkout другой ветки на них останавливается. ' +
+        'Вернуть: Branch - Hidden Local Changes...');
+      AddDetails('Скрытые изменения:', Hidden);
+    end;
+
+    // В репозитории и в .gitignore сразу
+    Hidden.Clear;
+    if GitRunIn(AGit, ARepo, 'ls-files -ci --exclude-standard', False,
+       Output) = 0 then
+    begin
+      Lines.Text := string(Output);
+      for LineIdx := 0 to Lines.Count - 1 do
+        if Trim(Lines[LineIdx]) <> '' then
+          Hidden.Add(Lines[LineIdx]);
+    end;
+    if Hidden.Count > 0 then
+    begin
+      FGitStatusWarns.Add('файлов и в репозитории, и в .gitignore: ' +
+        IntToStr(Hidden.Count) + ' - .gitignore на них не действует. ' +
+        'Убрать из репозитория: Commit... - Ignore - «Перестать ' +
+        'отслеживать»; или убрать правило из .gitignore');
+      AddDetails('В репозитории и в .gitignore:', Hidden);
+    end;
+  finally
+    Hidden.Free;
+    Lines.Free;
+  end;
+
+  if (FGitAhead > 0) and (FGitBehind > 0) then
+    FGitStatusWarns.Add('ветка разошлась с сервером: не отправлено ' +
+      IntToStr(FGitAhead) + ', не забрано ' + IntToStr(FGitBehind) +
+      ' - Pull (слияние), затем Push');
+end;
+
+// Строка Git status по FGitStatusErrors / FGitStatusWarns. AChecked =
+// False - проверок не было (нет git или репозитория): строки нет
+procedure TForm1.GitShowStatusLabel(AChecked: Boolean);
+var
+  HintText: string;
+  ItemIdx: Integer;
+begin
+  if (FGitLblStatus = nil) or (FGitStatusErrors = nil) then
+    Exit;
+  if not AChecked then
+  begin
+    FGitLblStatus.Caption := '';
+    FGitLblStatus.Visible := False;
+    Exit;
+  end;
+  FGitLblStatus.ThemeColors := False;
+  if FGitStatusErrors.Count > 0 then
+  begin
+    FGitLblStatus.Caption := 'Git status: Error';
+    FGitLblStatus.Font.Color := $3C3CFF;
+  end
+  else if FGitStatusWarns.Count > 0 then
+  begin
+    FGitLblStatus.Caption := 'Git status: Внимание';
+    FGitLblStatus.Font.Color := $0090FF;
+  end
+  else
+  begin
+    FGitLblStatus.Caption := 'Git status: OK';
+    FGitLblStatus.Font.Color := $30C030;
+  end;
+  HintText := '';
+  for ItemIdx := 0 to FGitStatusErrors.Count - 1 do
+    HintText := HintText + 'Error: ' + FGitStatusErrors[ItemIdx] + #13#10;
+  for ItemIdx := 0 to FGitStatusWarns.Count - 1 do
+    HintText := HintText + 'Внимание: ' + FGitStatusWarns[ItemIdx] + #13#10;
+  if HintText = '' then
+    HintText := 'Проверки unIDE: проблем нет'#13#10;
+  FGitLblStatus.Hint := HintText + 'Щелчок - git status и проверки в Git log';
+  FGitLblStatus.Visible := True;
+end;
+
+// Щелчок по Git status: панель - заново, в Git log - полный git status и
+// итог проверок с именами файлов. Вывод отделён от прежнего пустой строкой
+procedure TForm1.GitStatusClick(Sender: TObject);
+var
+  Git, Repo: string;
+  Output: WideString;
+  Changes: TGitChanges;
+  Details: TStringList;
+  ItemIdx: Integer;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  GitRefreshBar;
+  ShowGitLog;
+  GitRunIn(Git, Repo, '-c color.status=false status', True, Output);
+  SetLength(Changes, 0);
+  if GitRunIn(Git, Repo, 'status --porcelain=v1 -z', False, Output) = 0 then
+    GitParseStatus(Output, Changes);
+  Details := TStringList.Create;
+  try
+    GitCollectProblems(Git, Repo, GitCurrentBranch(Git, Repo), Changes,
+      Details);
+    GitShowStatusLabel(True);
+    GitPlaceHint;
+    if (FGitStatusErrors.Count = 0) and (FGitStatusWarns.Count = 0) then
+      LogGit('Проверки unIDE: проблем нет - Git status: OK', TColor($008000))
+    else
+    begin
+      LogGit('Проверки unIDE:');
+      for ItemIdx := 0 to FGitStatusErrors.Count - 1 do
+        LogGit('  Error: ' + FGitStatusErrors[ItemIdx], clRed);
+      for ItemIdx := 0 to FGitStatusWarns.Count - 1 do
+        LogGit('  Внимание: ' + FGitStatusWarns[ItemIdx], SuspectLogColor);
+      for ItemIdx := 0 to Details.Count - 1 do
+        LogGit('  ' + Details[ItemIdx]);
+    end;
+  finally
+    Details.Free;
+  end;
 end;
 
 // Файлы с неразрешённым конфликтом (пути git, через /); результат - сколько
@@ -67995,14 +68359,14 @@ begin
   Files := TStringList.Create;
   Choices := TStringList.Create;
   try
-    ShowCompLog;
+    ShowGitLog;
     if GitConflictFiles(Git, Repo, Files) = 0 then
     begin
-      LogComp('Git: файлов с конфликтом нет - Continue закончит ' + FGitOp);
+      LogGit('Git: файлов с конфликтом нет - Continue закончит ' + FGitOp);
       GitPlaceHint;
       Exit;
     end;
-    LogComp('Git: файлы с конфликтом (' + FGitOp + '):');
+    LogGit('Git: файлы с конфликтом (' + FGitOp + '):');
     for FileIdx := 0 to Files.Count - 1 do
     begin
       FullPath := IncludeTrailingPathDelimiter(Repo) +
@@ -68014,9 +68378,9 @@ begin
       else
         Choice := Files[FileIdx] + '  (маркеров нет - уже исправлен)';
       Choices.Add(Choice);
-      LogComp('  ' + Choice);
+      LogGit('  ' + Choice);
     end;
-    LogComp('  В файле: от <<<<<<< до ======= - текущая ветка, от ======= ' +
+    LogGit('  В файле: от <<<<<<< до ======= - текущая ветка, от ======= ' +
             'до >>>>>>> - вливаемое (коммит или ветка). Оставить нужное, ' +
             'строки-маркеры удалить, сохранить; когда все файлы готовы - ' +
             'Continue');
@@ -68049,10 +68413,11 @@ begin
   // Правки конфликтов в редакторе - на диск
   AutoSaveEditorFiles;
   FGitOp := GitCurrentOp(Git, Repo);
-  if FGitOp = '' then
+  if (FGitOp = '') or (FGitOp = 'bisect') then
   begin
-    ShowCompLog;
-    LogComp('Git: незаконченного слияния, cherry-pick или revert нет');
+    ShowGitLog;
+    LogGit('Git: незаконченной правки (merge, cherry-pick, revert, rebase, ' +
+           'am) нет');
     GitRefreshBar;
     Exit;
   end;
@@ -68095,7 +68460,8 @@ begin
   if not GitPrepare(Git, Repo) then
     Exit;
   FGitOp := GitCurrentOp(Git, Repo);
-  if (FGitOp <> 'cherry-pick') and (FGitOp <> 'revert') then
+  if (FGitOp <> 'cherry-pick') and (FGitOp <> 'revert') and
+     (FGitOp <> 'rebase') and (FGitOp <> 'am') then
   begin
     GitRefreshBar;
     Exit;
@@ -68117,6 +68483,15 @@ begin
   if FGitOp = '' then
   begin
     GitRefreshBar;
+    Exit;
+  end;
+  if FGitOp = 'bisect' then
+  begin
+    if MessageDlg('Закончить bisect (git bisect reset)?'#13#10#13#10 +
+       'Ветка станет той, где bisect начат.', mtConfirmation,
+       [mbOK, mbCancel], 0) <> mrOk then
+      Exit;
+    GitLongOp(Git, Repo, 'bisect reset');
     Exit;
   end;
   if MessageDlg('Отменить ' + FGitOp + ' (git ' + FGitOp + ' --abort)?' +
@@ -68155,8 +68530,8 @@ begin
   Branch := GitCurrentBranch(AGit, ARepo);
   if Branch = '' then
   begin
-    ShowCompLog;
-    LogComp('Git: HEAD отсоединён (не на ветке) - Push не выполнен. ' +
+    ShowGitLog;
+    LogGit('Git: HEAD отсоединён (не на ветке) - Push не выполнен. ' +
             'Branch - New Branch создаст ветку здесь');
     Exit;
   end;
@@ -68166,8 +68541,8 @@ begin
     GitLongOp(AGit, ARepo, 'push')
   else if GitQuery(AGit, ARepo, 'config --get remote.origin.url') = '' then
   begin
-    ShowCompLog;
-    LogComp('Git: у репозитория нет remote origin - Repository - Repository ' +
+    ShowGitLog;
+    LogGit('Git: у репозитория нет remote origin - Repository - Repository ' +
             'Settings (адрес на GitHub)');
   end
   else
@@ -68254,17 +68629,17 @@ var
   ChangeIdx, SelIdx: Integer;
   IsSelected: Boolean;
 begin
-  ShowCompLog;
+  ShowGitLog;
   if GitRunIn(AGit, ARepo, 'status --porcelain=v1 -z -uall', False,
      Output) <> 0 then
   begin
-    LogComp('Git: git status не вышел');
+    LogGit('Git: git status не вышел');
     Exit;
   end;
   GitParseStatus(Output, AllChanges);
   if Length(AllChanges) = 0 then
   begin
-    LogComp('Git: изменений нет - коммитить нечего');
+    LogGit('Git: изменений нет - коммитить нечего');
     Exit;
   end;
   Branch := GitCurrentBranch(AGit, ARepo);
@@ -68317,12 +68692,12 @@ begin
   if (MsgFile = '') or (SelFile = '') or ((UnselList <> '') and
      (UnselFile = '')) then
   begin
-    LogComp('Git: временный файл не создать - коммит не выполнен');
+    LogGit('Git: временный файл не создать - коммит не выполнен');
     Exit;
   end;
   FGitBusy := True;
   try
-    LogComp('Git: коммит в ' + Branch + ' - файлов: ' +
+    LogGit('Git: коммит в ' + Branch + ' - файлов: ' +
             IntToStr(Length(Selected)));
     if (UnselFile <> '') and FGitDlgHasHead and
        (GitRunIn(AGit, ARepo, 'reset -q --pathspec-from-file=' +
@@ -68336,11 +68711,11 @@ begin
     if GitRunIn(AGit, ARepo, 'commit -F ' +
        string(GitQuote(WideString(MsgFile))), True, Output) <> 0 then
     begin
-      LogComp('Git: коммит не выполнен (нет имени автора - git config ' +
+      LogGit('Git: коммит не выполнен (нет имени автора - git config ' +
               '--global user.name и user.email; подробности выше)');
       Exit;
     end;
-    LogComp('git: коммит выполнен');
+    LogGit('git: коммит выполнен');
   finally
     FGitBusy := False;
     DeleteFile(MsgFile);
@@ -68371,7 +68746,7 @@ begin
     Exit;
   Root := string(GitTool.GitFindRoot(How));
   CmdLine := string(GitTerminalCommand(Root, Repo));
-  LogComp('Git Bash: ' + CmdLine);
+  LogGit('Git Bash: ' + CmdLine);
   FillChar(SI, SizeOf(SI), 0);
   SI.cb := SizeOf(SI);
   FillChar(PI, SizeOf(PI), 0);
@@ -68379,7 +68754,7 @@ begin
   if not CreateProcess(nil, PChar(CmdLine), nil, nil, False, 0, nil,
                        PChar(Repo), SI, PI) then
   begin
-    LogComp('Git Bash: не запустить - ' + SysErrorMessage(GetLastError));
+    LogGit('Git Bash: не запустить - ' + SysErrorMessage(GetLastError));
     Exit;
   end;
   CloseHandle(PI.hThread);
@@ -68534,15 +68909,15 @@ begin
     Exit;
   end;
   Dir := IncludeTrailingPathDelimiter(Parent) + RepoName;
-  ShowCompLog;
+  ShowGitLog;
   if not DirectoryExists(Dir) then
   begin
     if not ForceDirectories(Dir) then
     begin
-      LogComp('Git: папку ' + Dir + ' не создать');
+      LogGit('Git: папку ' + Dir + ' не создать');
       Exit;
     end;
-    LogComp('Git: создана папка ' + Dir);
+    LogGit('Git: создана папка ' + Dir);
   end;
   Dir := IncludeTrailingPathDelimiter(Dir);
   Top := GitRepoTop(Git, Dir);
@@ -68551,11 +68926,11 @@ begin
     if CompareText(IncludeTrailingPathDelimiter(Top), Dir) <> 0 then
     begin
       // Папка внутри другого репозитория - вложенный git init не делаем
-      LogComp('Git: ' + Dir + ' лежит внутри репозитория ' + Top +
+      LogGit('Git: ' + Dir + ' лежит внутри репозитория ' + Top +
               ' - новый репозиторий в ней не создаётся');
       Exit;
     end;
-    LogComp('Git: ' + Dir + ' - уже репозиторий git, git init не нужен');
+    LogGit('Git: ' + Dir + ' - уже репозиторий git, git init не нужен');
   end
   else if GitLongOp(Git, Dir, 'init') <> 0 then
     Exit;
@@ -68571,7 +68946,7 @@ begin
        FProjectReg.ValueFromIndex[PrjIdx]), Dir) = 0 then
       HasProject := True;
   if HasProject then
-    LogComp('Git: для папки уже есть проект unIDE')
+    LogGit('Git: для папки уже есть проект unIDE')
   else
   begin
     FNewPrjPresetDir := Dir;
@@ -68593,8 +68968,8 @@ begin
     Dir := GitBaseDir;
   if (Dir = '') or not DirectoryExists(Dir) then
   begin
-    ShowCompLog;
-    LogComp('Git: репозиторий не выбран - Repository... или Clone ' +
+    ShowGitLog;
+    LogGit('Git: репозиторий не выбран - Repository... или Clone ' +
             'Repository');
     Exit;
   end;
@@ -68628,16 +69003,16 @@ var
   Output: WideString;
   Created: Boolean;
 begin
-  ShowCompLog;
+  ShowGitLog;
   Origin := GitQuery(AGit, ADir, 'config --get remote.origin.url');
   if Origin <> '' then
   begin
-    LogComp('Git: origin уже прописан - ' + Origin);
+    LogGit('Git: origin уже прописан - ' + Origin);
     Exit;
   end;
   if not GitCredentialGet(User, Token) then
   begin
-    LogComp('Git: логин GitHub не сохранён - репозиторий на GitHub не ' +
+    LogGit('Git: логин GitHub не сохранён - репозиторий на GitHub не ' +
             'проверен и не создан. Войдите: Repository - Clone Repository ' +
             '- Войти... (логин и personal access token) и повторите New ' +
             'Repository для этой папки');
@@ -68653,13 +69028,13 @@ begin
   end;
   if Exists < 0 then
   begin
-    LogComp('GitHub: не узнать, есть ли репозиторий ' + AName + ' - ' +
+    LogGit('GitHub: не узнать, есть ли репозиторий ' + AName + ' - ' +
             ErrText);
     Exit;
   end;
   if Exists = 1 then
   begin
-    LogComp('GitHub: репозиторий ' + Login + '/' + AName + ' уже есть');
+    LogGit('GitHub: репозиторий ' + Login + '/' + AName + ' уже есть');
     if MessageDlg('9831:На GitHub уже есть репозиторий ' + Login + '/' +
                   AName + '.'#13#10#13#10'Прописать его как origin этой ' +
                   'папки?'#13#10 + CloneUrl, mtConfirmation, [mbYes, mbNo],
@@ -68667,7 +69042,7 @@ begin
       Exit;
     if GitRunIn(AGit, ADir, 'remote add origin ' +
        string(GitQuote(WideString(CloneUrl))), True, Output) = 0 then
-      LogComp('Git: origin = ' + CloneUrl + '. Если там уже есть ' +
+      LogGit('Git: origin = ' + CloneUrl + '. Если там уже есть ' +
               'коммиты - сначала Fetch и Pull, потом Push');
     Exit;
   end;
@@ -68681,7 +69056,7 @@ begin
     ['Private', 'Public', 'Не создавать'], 0, 2);
   if Answer > 1 then
     Exit;
-  LogComp('GitHub: создание репозитория ' + AName + '...');
+  LogGit('GitHub: создание репозитория ' + AName + '...');
   Screen.Cursor := crHourGlass;
   try
     Created := GitHubCreateRepo(Token, AName, Answer = 0, CloneUrl,
@@ -68691,16 +69066,16 @@ begin
   end;
   if not Created then
   begin
-    LogComp('GitHub: репозиторий не создан - ' + ErrText);
+    LogGit('GitHub: репозиторий не создан - ' + ErrText);
     Exit;
   end;
-  LogComp('GitHub: создан ' + HtmlUrl);
+  LogGit('GitHub: создан ' + HtmlUrl);
   if GitRunIn(AGit, ADir, 'remote add origin ' +
      string(GitQuote(WideString(CloneUrl))), True, Output) = 0 then
-    LogComp('Git: origin = ' + CloneUrl + '. Дальше: Commit..., затем ' +
+    LogGit('Git: origin = ' + CloneUrl + '. Дальше: Commit..., затем ' +
             'Push - ветка опубликуется на GitHub')
   else
-    LogComp('Git: origin не прописан - Repository Settings, адрес ' +
+    LogGit('Git: origin не прописан - Repository Settings, адрес ' +
             CloneUrl);
 end;
 
@@ -68719,15 +69094,15 @@ begin
      StartDir, Dir) then
     Exit;
   Repo := GitRepoTop(Git, Dir);
-  ShowCompLog;
+  ShowGitLog;
   if Repo = '' then
   begin
-    LogComp('Git: ' + Dir + ' - не репозиторий git (New Repository - ' +
+    LogGit('Git: ' + Dir + ' - не репозиторий git (New Repository - ' +
             'создать)');
     Exit;
   end;
   GitSetChosenRepo(Repo);
-  LogComp('Git: репозиторий - ' + Repo);
+  LogGit('Git: репозиторий - ' + Repo);
   GitRefreshBar;
 end;
 
@@ -68776,18 +69151,18 @@ begin
   finally
     Ini.Free;
   end;
-  ShowCompLog;
+  ShowGitLog;
   Parent := ExtractFilePath(Target);
   if not DirectoryExists(Parent) and not ForceDirectories(Parent) then
   begin
-    LogComp('Git: папку ' + Parent + ' не создать');
+    LogGit('Git: папку ' + Parent + ' не создать');
     Exit;
   end;
   if GitLongOp(Git, Parent, 'clone ' + string(GitQuote(WideString(Url))) +
      ' ' + string(GitQuote(WideString(Target)))) <> 0 then
     Exit;
   GitSetChosenRepo(Target);
-  LogComp('Git: репозиторий - ' + Target);
+  LogGit('Git: репозиторий - ' + Target);
   GitRefreshBar;
   if CreatePrj then
   begin
@@ -69036,16 +69411,16 @@ begin
   if (RecentIndex < 0) or (RecentIndex >= FGitRecent.Count) then
     Exit;
   Dir := FGitRecent[RecentIndex];
-  ShowCompLog;
+  ShowGitLog;
   if not DirectoryExists(Dir) then
   begin
-    LogComp('Git: папки ' + Dir + ' нет - убрана из списка');
+    LogGit('Git: папки ' + Dir + ' нет - убрана из списка');
     FGitRecent.Delete(RecentIndex);
     GitRecentSave;
     Exit;
   end;
   GitSetChosenRepo(Dir);
-  LogComp('Git: репозиторий - ' + Dir);
+  LogGit('Git: репозиторий - ' + Dir);
   GitRefreshBar;
 end;
 
@@ -69062,21 +69437,21 @@ begin
       FGitRecent.Delete(RecentIndex);
   GitRecentSave;
   FGitRecentSkip := ExcludeTrailingPathDelimiter(FGitRepoTop);
-  ShowCompLog;
-  LogComp('Git: ' + FGitRepoTop + ' убран из списка недавних');
+  ShowGitLog;
+  LogGit('Git: ' + FGitRepoTop + ' убран из списка недавних');
 end;
 
 procedure TForm1.GitUseProjectRepoClick(Sender: TObject);
 begin
   GitSetChosenRepo('');
-  ShowCompLog;
-  LogComp('Git: репозиторий - по открытому проекту (' + GitBaseDir + ')');
+  ShowGitLog;
+  LogGit('Git: репозиторий - по открытому проекту (' + GitBaseDir + ')');
   GitRefreshBar;
 end;
 
 procedure TForm1.GitOpenUrl(const AUrl: string);
 begin
-  LogComp('Git: ' + AUrl);
+  LogGit('Git: ' + AUrl);
   ShellExecute(Handle, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
 end;
 
@@ -69089,12 +69464,12 @@ begin
   Result := string(GitHubWebUrl(WideString(Remote)));
   if Result = '' then
   begin
-    ShowCompLog;
+    ShowGitLog;
     if Remote = '' then
-      LogComp('Git: у репозитория нет remote origin - Repository - ' +
+      LogGit('Git: у репозитория нет remote origin - Repository - ' +
               'Repository Settings')
     else
-      LogComp('Git: remote origin не на GitHub - ' + Remote);
+      LogGit('Git: remote origin не на GitHub - ' + Remote);
   end;
 end;
 
@@ -69177,8 +69552,8 @@ begin
       Branches.Delete(Branches.IndexOf(Current));
     if Branches.Count = 0 then
     begin
-      ShowCompLog;
-      LogComp('Git: других веток нет (Branch - New Branch)');
+      ShowGitLog;
+      LogGit('Git: других веток нет (Branch - New Branch)');
       Exit;
     end;
     Target := ChooseFromList('Switch Branch', 'Перейти на ветку (сейчас - ' +
@@ -69199,8 +69574,8 @@ begin
   Current := GitCurrentBranch(Git, Repo);
   if Current = '' then
   begin
-    ShowCompLog;
-    LogComp('Git: HEAD отсоединён - переименовывать нечего');
+    ShowGitLog;
+    LogGit('Git: HEAD отсоединён - переименовывать нечего');
     Exit;
   end;
   Name := Current;
@@ -69216,7 +69591,7 @@ begin
     Exit;
   end;
   if GitLongOp(Git, Repo, 'branch -m ' + string(GitQuote(WideString(Name)))) = 0 then
-    LogComp('Git: ветка на сервере (если была) осталась со старым именем; ' +
+    LogGit('Git: ветка на сервере (если была) осталась со старым именем; ' +
             'Push опубликует ' + Name);
 end;
 
@@ -69235,8 +69610,8 @@ begin
       Branches.Delete(Branches.IndexOf(Current));
     if Branches.Count = 0 then
     begin
-      ShowCompLog;
-      LogComp('Git: удалять нечего - кроме текущей (' + Current + ') веток нет');
+      ShowGitLog;
+      LogGit('Git: удалять нечего - кроме текущей (' + Current + ') веток нет');
       Exit;
     end;
     Target := ChooseFromList('Delete Branch', 'Удалить локальную ветку ' +
@@ -69255,7 +69630,7 @@ begin
     Exit;
   // -d отказывается, если коммиты ветки никуда не влиты
   if MessageDlg('9819:В ветке ' + Target + ' есть коммиты, которых нет в других ' +
-     'ветках (подробности - Compilation log).'#13#10#13#10'Удалить всё ' +
+     'ветках (подробности - Git log).'#13#10#13#10'Удалить всё ' +
      'равно (git branch -D)? Эти коммиты останутся только на сервере, ' +
      'если ветка туда отправлялась.', mtWarning, [mbOK, mbCancel], 0) = mrOk then
     GitLongOp(Git, Repo, 'branch -D ' + string(GitQuote(WideString(Target))));
@@ -69284,8 +69659,8 @@ begin
   DefaultBranch := GitDefaultRemoteBranch(Git, Repo);
   if DefaultBranch = '' then
   begin
-    ShowCompLog;
-    LogComp('Git: основная ветка сервера не найдена (сначала Fetch)');
+    ShowGitLog;
+    LogGit('Git: основная ветка сервера не найдена (сначала Fetch)');
     Exit;
   end;
   GitLongOp(Git, Repo, 'merge --no-edit ' +
@@ -69307,8 +69682,8 @@ begin
       Branches.Delete(Branches.IndexOf(Current));
     if Branches.Count = 0 then
     begin
-      ShowCompLog;
-      LogComp('Git: вливать нечего - других веток нет');
+      ShowGitLog;
+      LogGit('Git: вливать нечего - других веток нет');
       Exit;
     end;
     Target := ChooseFromList('Merge into Current Branch', 'Влить в ' +
@@ -69320,11 +69695,11 @@ begin
     Exit;
   if GitLongOp(Git, Repo, 'merge --no-edit ' +
      string(GitQuote(WideString(Target)))) <> 0 then
-    LogComp('Git: при конфликте - исправить файлы и Commit, или отменить ' +
+    LogGit('Git: при конфликте - исправить файлы и Commit, или отменить ' +
             'слияние в Git Bash: git merge --abort');
 end;
 
-// Compare...: две ветки (локальные и с сервера). Сводка в Compilation log:
+// Compare...: две ветки (локальные и с сервера). Сводка в Git log:
 // сколько коммитов только в каждой (rev-list --left-right --count) и какие
 // файлы разные (diff --stat); коммиты - окно History в режиме сравнения
 procedure TForm1.GitCompareClick(Sender: TObject);
@@ -69340,8 +69715,8 @@ begin
     GitBranchList(Git, Repo, True, Branches);
     if Branches.Count < 2 then
     begin
-      ShowCompLog;
-      LogComp('Git: сравнивать не с чем - веток меньше двух (с сервера - ' +
+      ShowGitLog;
+      LogGit('Git: сравнивать не с чем - веток меньше двух (с сервера - ' +
               'после Fetch)');
       Exit;
     end;
@@ -69363,7 +69738,7 @@ begin
   GitCompareShow(Git, Repo, LeftBranch, RightBranch);
 end;
 
-// Сравнение двух веток: сводка в Compilation log и окно сравнения
+// Сравнение двух веток: сводка в Git log и окно сравнения
 procedure TForm1.GitCompareShow(const Git, Repo, LeftBranch,
   RightBranch: string);
 var
@@ -69373,17 +69748,17 @@ var
   Dlg: TDlgGitHistory;
   HistAction: TGitHistAction;
 begin
-  ShowCompLog;
-  LogComp('Git: сравнение ' + LeftBranch + ' и ' + RightBranch);
+  ShowGitLog;
+  LogGit('Git: сравнение ' + LeftBranch + ' и ' + RightBranch);
   // Вывод: "<только в первой><Tab><только во второй>"
   Counts := GitQuery(Git, Repo, 'rev-list --left-right --count ' +
     string(GitQuote(WideString(LeftBranch + '...' + RightBranch))));
   TabPos := Pos(#9, Counts);
   if TabPos > 0 then
-    LogComp('  коммитов только в ' + LeftBranch + ': ' +
+    LogGit('  коммитов только в ' + LeftBranch + ': ' +
             Copy(Counts, 1, TabPos - 1) + ', только в ' + RightBranch + ': ' +
             Trim(Copy(Counts, TabPos + 1, MaxInt)));
-  LogComp('  разные файлы (git diff --stat ' + LeftBranch + ' ' +
+  LogGit('  разные файлы (git diff --stat ' + LeftBranch + ' ' +
           RightBranch + '):');
   GitRunIn(Git, Repo, 'diff --stat --no-color ' +
     string(GitQuote(WideString(LeftBranch))) + ' ' +
@@ -69436,8 +69811,8 @@ begin
     'rev-parse --abbrev-ref --symbolic-full-name @{u}');
   if (Branch = '') or (Upstream = '') then
   begin
-    ShowCompLog;
-    LogComp('Git: у текущей ветки нет ветки на сервере - сравнивать не с ' +
+    ShowGitLog;
+    LogGit('Git: у текущей ветки нет ветки на сервере - сравнивать не с ' +
             'чем');
     Exit;
   end;
@@ -69468,8 +69843,8 @@ begin
   Source := GitCurrentBranch(Git, Repo);
   if Source = '' then
   begin
-    ShowCompLog;
-    LogComp('Git: HEAD отсоединён - сначала перейдите на ветку, которую ' +
+    ShowGitLog;
+    LogGit('Git: HEAD отсоединён - сначала перейдите на ветку, которую ' +
             'нужно влить');
     Exit;
   end;
@@ -69491,8 +69866,8 @@ begin
     end;
     if Branches.Count = 0 then
     begin
-      ShowCompLog;
-      LogComp('Git: вливать некуда - кроме ' + Source + ' веток нет');
+      ShowGitLog;
+      LogGit('Git: вливать некуда - кроме ' + Source + ' веток нет');
       Exit;
     end;
     Target := ChooseFromList('Merge Into', 'Влить ' + Source + ' в ветку:',
@@ -69541,7 +69916,7 @@ begin
     if HasLocal then
       GitLongOp(Git, Repo, 'branch -f ' + QuoteArg(Target) + ' ' +
         QuoteArg(Source));
-    LogComp('Git: ' + Source + ' влита в ' + Target + ' (перемотка, без ' +
+    LogGit('Git: ' + Source + ' влита в ' + Target + ' (перемотка, без ' +
             'коммита слияния), ' + Target + ' отправлена на сервер');
     Exit;
   end;
@@ -69552,20 +69927,20 @@ begin
   if HasRemote and HasLocal and (GitLongOp(Git, Repo, 'merge --ff-only ' +
      QuoteArg('origin/' + Target)) <> 0) then
   begin
-    LogComp('Git: локальная ' + Target + ' разошлась с сервером - слияние ' +
+    LogGit('Git: локальная ' + Target + ' разошлась с сервером - слияние ' +
             'не делалось, обратно на ' + Source);
     GitLongOp(Git, Repo, 'checkout ' + QuoteArg(Source));
     Exit;
   end;
   if GitLongOp(Git, Repo, 'merge --no-edit ' + QuoteArg(Source)) <> 0 then
   begin
-    LogComp('Git: конфликт - сейчас ветка ' + Target + '. Исправить файлы ' +
+    LogGit('Git: конфликт - сейчас ветка ' + Target + '. Исправить файлы ' +
             'и Commit, затем Push и обратно на ' + Source + '; или отменить ' +
             'в Git Bash: git merge --abort');
     Exit;
   end;
   if GitLongOp(Git, Repo, 'push origin ' + QuoteArg(Target)) <> 0 then
-    LogComp('Git: слияние сделано локально, push не прошёл - отправить ' +
+    LogGit('Git: слияние сделано локально, push не прошёл - отправить ' +
             Target + ' можно позже (Push на ветке ' + Target + ')');
   GitLongOp(Git, Repo, 'checkout ' + QuoteArg(Source));
 end;
@@ -69590,8 +69965,8 @@ begin
   Base := GitCurrentBranch(Git, Repo);
   if Base = '' then
   begin
-    ShowCompLog;
-    LogComp('Git: HEAD отсоединён - сначала перейдите на основную ветку ' +
+    ShowGitLog;
+    LogGit('Git: HEAD отсоединён - сначала перейдите на основную ветку ' +
             '(например mainTest)');
     Exit;
   end;
@@ -69625,8 +70000,8 @@ begin
       end;
       if BranchRefs.Count = 0 then
       begin
-        ShowCompLog;
-        LogComp('Git: кроме ' + Base + ' веток нет');
+        ShowGitLog;
+        LogGit('Git: кроме ' + Base + ' веток нет');
         Exit;
       end;
 
@@ -69664,12 +70039,12 @@ begin
           begin
             if GitLongOp(Git, Repo, 'cherry-pick -x' + Hashes) <> 0 then
             begin
-              LogComp('Git: при конфликте - исправить файлы и Commit (или в ' +
+              LogGit('Git: при конфликте - исправить файлы и Commit (или в ' +
                       'Git Bash: git cherry-pick --continue), отменить - ' +
                       'git cherry-pick --abort');
               Exit;
             end;
-            LogComp('Git: перенесено в ' + Base + ' коммитов: ' +
+            LogGit('Git: перенесено в ' + Base + ' коммитов: ' +
                     IntToStr(PickCount) +
                     '; отправить на сервер - Push');
           end;
@@ -69687,11 +70062,11 @@ begin
             if GitLongOp(Git, Repo, 'merge --no-edit ' +
                string(GitQuote(WideString(Target)))) <> 0 then
             begin
-              LogComp('Git: при конфликте - исправить файлы и Commit, или ' +
+              LogGit('Git: при конфликте - исправить файлы и Commit, или ' +
                       'отменить слияние в Git Bash: git merge --abort');
               Exit;
             end;
-            LogComp('Git: ' + Target + ' влита в ' + Base +
+            LogGit('Git: ' + Target + ' влита в ' + Base +
                     '; отправить на сервер - Push');
           end;
         ghaDeleteBranch:
@@ -69977,7 +70352,7 @@ begin
        mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
       Exit;
     if GitLongOp(Git, Repo, 'revert --no-edit ' + Hash) <> 0 then
-      LogComp('Git: при конфликте - исправить файлы и Commit, или отменить ' +
+      LogGit('Git: при конфликте - исправить файлы и Commit, или отменить ' +
               'в Git Bash: git revert --abort');
   end;
 end;
@@ -70053,8 +70428,8 @@ begin
     else
       TrackedList := TrackedList + GitToUtf8(AChanges[ChangeIdx].Path) + #0;
   end;
-  ShowCompLog;
-  LogComp('Git: Discard - файлов: ' + IntToStr(Length(AChanges)));
+  ShowGitLog;
+  LogGit('Git: Discard - файлов: ' + IntToStr(Length(AChanges)));
   TrackedFile := '';
   NewFile := '';
   FGitBusy := True;
@@ -70065,7 +70440,7 @@ begin
       NewFile := GitWriteTempFile('discardnew', NewList);
       if NewFile = '' then
       begin
-        LogComp('Git: временный файл не создать - Discard не выполнен');
+        LogGit('Git: временный файл не создать - Discard не выполнен');
         Exit;
       end;
       if HasHead then
@@ -70086,7 +70461,7 @@ begin
       TrackedFile := GitWriteTempFile('discardtracked', TrackedList);
       if TrackedFile = '' then
       begin
-        LogComp('Git: временный файл не создать - Discard не выполнен');
+        LogGit('Git: временный файл не создать - Discard не выполнен');
         Exit;
       end;
       if GitRunIn(AGit, ARepo, 'checkout HEAD --pathspec-from-file=' +
@@ -70096,13 +70471,13 @@ begin
     end;
     if (RecycleCount > 0) and not GitRecycleFiles(Handle, Recycle) then
     begin
-      LogComp('Git: новые файлы в корзину не перенести (заняты или ' +
+      LogGit('Git: новые файлы в корзину не перенести (заняты или ' +
               'отменено) - они остались на месте');
       Exit;
     end;
     if RecycleCount > 0 then
-      LogComp('Git: новых файлов в корзине: ' + IntToStr(RecycleCount));
-    LogComp('git: изменения отменены');
+      LogGit('Git: новых файлов в корзине: ' + IntToStr(RecycleCount));
+    LogGit('git: изменения отменены');
     Result := True;
   finally
     FGitBusy := False;
@@ -70142,8 +70517,8 @@ begin
     Exit;
   if not GitAllChanges(Git, Repo, Changes) or (Length(Changes) = 0) then
   begin
-    ShowCompLog;
-    LogComp('Git: изменений нет - отменять нечего');
+    ShowGitLog;
+    LogGit('Git: изменений нет - отменять нечего');
     Exit;
   end;
   GitDiscardIn(Git, Repo, Changes, True);
@@ -70159,8 +70534,8 @@ begin
     Exit;
   if not GitAllChanges(Git, Repo, Changes) or (Length(Changes) = 0) then
   begin
-    ShowCompLog;
-    LogComp('Git: изменений нет - в stash класть нечего');
+    ShowGitLog;
+    LogGit('Git: изменений нет - в stash класть нечего');
     Exit;
   end;
   Branch := GitCurrentBranch(Git, Repo);
@@ -70220,8 +70595,8 @@ begin
   try
     if not GitStashList(AGit, ARepo, Items, Refs) then
     begin
-      ShowCompLog;
-      LogComp('Git: stash пуст');
+      ShowGitLog;
+      LogGit('Git: stash пуст');
       Exit;
     end;
     Picked := ChooseFromList(ACaption, APrompt, Items);
@@ -70246,7 +70621,7 @@ begin
   if Ref = '' then
     Exit;
   if GitLongOp(Git, Repo, 'stash pop ' + Ref) <> 0 then
-    LogComp('Git: запись stash осталась (конфликт или файлы заняты) - ' +
+    LogGit('Git: запись stash осталась (конфликт или файлы заняты) - ' +
             'подробности выше');
 end;
 
@@ -70592,15 +70967,15 @@ begin
       for PatIdx := 0 to High(Dirs) do
         AddUnique(Patterns, GitIgnorePattern(Dirs[PatIdx]));
   end;
-  ShowCompLog;
+  ShowGitLog;
   case Choice of
     ChFileShared, ChExtShared, ChDirShared:
       begin
         Result := GitAppendIgnore(IgnoreFile, Patterns);
         if Result then
-          LogComp('Git: в ' + IgnoreFile + ' добавлено: ' + Names)
+          LogGit('Git: в ' + IgnoreFile + ' добавлено: ' + Names)
         else
-          LogComp('Git: ' + IgnoreFile + ' не записать');
+          LogGit('Git: ' + IgnoreFile + ' не записать');
       end;
     ChFileLocal, ChExtLocal, ChDirLocal:
       begin
@@ -70609,7 +70984,7 @@ begin
           'rev-parse --git-path info/exclude');
         if ExcludeFile = '' then
         begin
-          LogComp('Git: путь к info/exclude не узнать');
+          LogGit('Git: путь к info/exclude не узнать');
           Exit;
         end;
         ExcludeFile := string(GitWinPath(WideString(ExcludeFile)));
@@ -70617,9 +70992,9 @@ begin
           ExcludeFile := IncludeTrailingPathDelimiter(FGitDlgRepo) + ExcludeFile;
         Result := GitAppendIgnore(ExcludeFile, Patterns);
         if Result then
-          LogComp('Git: в ' + ExcludeFile + ' добавлено (только у себя)')
+          LogGit('Git: в ' + ExcludeFile + ' добавлено (только у себя)')
         else
-          LogComp('Git: ' + ExcludeFile + ' не записать');
+          LogGit('Git: ' + ExcludeFile + ' не записать');
       end;
     ChUntrack:
       begin
@@ -70630,11 +71005,11 @@ begin
           Exit;
         Result := GitAppendIgnore(IgnoreFile, Patterns);
         if Result then
-          LogComp('Git: файлы больше не отслеживаются (удаление из ' +
+          LogGit('Git: файлы больше не отслеживаются (удаление из ' +
                   'репозитория - в следующем коммите), добавлены в ' +
                   '.gitignore')
         else
-          LogComp('Git: ' + IgnoreFile + ' не записать');
+          LogGit('Git: ' + IgnoreFile + ' не записать');
       end;
     ChSkip:
       begin
@@ -70653,13 +71028,13 @@ begin
           end;
         if not Found then
         begin
-          LogComp('Git: удалённый файл скрыть нельзя - верните его ' +
+          LogGit('Git: удалённый файл скрыть нельзя - верните его ' +
                   '(Discard) или закоммитьте удаление');
           Exit;
         end;
         Result := GitRunIn(FGitDlgGit, FGitDlgRepo, Args, True, Output) = 0;
         if Result then
-          LogComp('Git: изменения скрыты (вернуть - Repository - Hidden ' +
+          LogGit('Git: изменения скрыты (вернуть - Repository - Hidden ' +
                   'Local Changes)');
       end;
   end;
@@ -70697,8 +71072,8 @@ begin
     end;
     if Items.Count = 0 then
     begin
-      ShowCompLog;
-      LogComp('Git: скрытых изменений (skip-worktree) нет');
+      ShowGitLog;
+      LogGit('Git: скрытых изменений (skip-worktree) нет');
       Exit;
     end;
     Picked := ChooseFromList('Hidden Local Changes', 'Вернуть в список ' +
@@ -74708,9 +75083,9 @@ end;
 
 // Окна логов в порядке вкладок и окончания имён их файлов (SaveAllLogs)
 const
-  LogFileCount = 4;
+  LogFileCount = 5;
   LogFileSuffix: array[0..LogFileCount - 1] of string =
-    ('_compile.log', '_error.log', '_hilite.log', '_runtime.log');
+    ('_compile.log', '_error.log', '_hilite.log', '_runtime.log', '_git.log');
 
   // Есть ли в каком-нибудь логе текст - пункт меню Save all logs
 function TForm1.AnyLogFilled: Boolean;
@@ -74723,6 +75098,7 @@ begin
   LogBoxes[1] := ErrLogEdit;
   LogBoxes[2] := LogEdit;
   LogBoxes[3] := RuntimeLog;
+  LogBoxes[4] := GitLogEdit;
   for LogIdx := 0 to LogFileCount - 1 do
     if (LogBoxes[LogIdx] <> nil) and LogBoxes[LogIdx].HandleAllocated and
        (GetWindowTextLength(LogBoxes[LogIdx].Handle) > 0) then
@@ -74751,6 +75127,7 @@ begin
   LogBoxes[1] := ErrLogEdit;
   LogBoxes[2] := LogEdit;
   LogBoxes[3] := RuntimeLog;
+  LogBoxes[4] := GitLogEdit;
   if FCurrentFileName <> '' then
     BaseName := ChangeFileExt(FCurrentFileName, '')
   else
@@ -75213,7 +75590,8 @@ begin
                        (GetBValue(C) * 45 + 255 * 55) div 100));
 end;
 
-procedure TForm1.LogTo(AEdit: TRichEdit; const S: string; AColor: TColor);
+procedure TForm1.LogTo(AEdit: TRichEdit; const S: string; AColor: TColor;
+  ABare: Boolean);
 const
   // Вывод компилятора у большого проекта - тысячи строк, а командная
   // строка стоит в самом начале: при прежних 500 её срезало первой
@@ -75256,7 +75634,11 @@ begin
       Txt[K] := ' ';
   Txt := Trim(Txt);
 
-  Line := FormatDateTime('hh:nn:ss', Now) + '  ' + Txt + #13#10;
+  // ABare - строка как есть, без времени (пустая - разделитель команд)
+  if ABare then
+    Line := Txt + #13#10
+  else
+    Line := FormatDateTime('hh:nn:ss', Now) + '  ' + Txt + #13#10;
   Len := AEdit.GetTextLen;
   SendMessageA(H, EM_SETSEL, Len, Len);
 
@@ -78972,7 +79354,7 @@ procedure TForm1.UiFontsApply;
 var
   NewFont: TFont;
   OldLineH, NewLineH, LogIdx: Integer;
-  LogEdits: array[0..3] of TRichEdit;
+  LogEdits: array[0..4] of TRichEdit;
   CharFmt: TCharFormat;
 
   // Имя, высота и стиль NewFont - в ATarget, цвет у ATarget свой
@@ -79048,6 +79430,7 @@ begin
     LogEdits[1] := ErrLogEdit;
     LogEdits[2] := LogEdit;
     LogEdits[3] := RuntimeLog;
+    LogEdits[4] := GitLogEdit;
     for LogIdx := Low(LogEdits) to High(LogEdits) do
     begin
       if LogEdits[LogIdx] = nil then
