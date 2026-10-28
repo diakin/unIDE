@@ -151,7 +151,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.43';
+  FarBuild = 'b.44';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -673,6 +673,8 @@ type
     procedure FtpDeleteHost(APanelIndex: Integer);
     procedure FtpDeleteConfirmed;
     procedure FtpImportHosts;
+    procedure FtpCopyHosts;
+    function FtpPasteHosts: Boolean;
     function FtpKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure DrawFtpHosts(APanel: TFarPanel; APanelX, APanelW: Integer;
       AIsActive: Boolean);
@@ -4307,6 +4309,21 @@ begin
   Result := True;
   Plain := not ACtrl and not AAlt;
 
+  // Список адресов FTP: Ctrl+Ins (Ctrl+C) - адреса в буфер обмена,
+  // Shift+Ins (Ctrl+V) - адреса из буфера (если там ftp://...; иначе -
+  // вставка в командную строку, как обычно)
+  if (ActivePanel.FFtpMode = 1) and not AAlt then
+  begin
+    if ACtrl and not AShift and ((AKey = VK_INSERT) or (AKey = Ord('C'))) then
+    begin
+      FtpCopyHosts;
+      Exit;
+    end;
+    if ((AShift and not ACtrl and (AKey = VK_INSERT)) or
+        (ACtrl and not AShift and (AKey = Ord('V')))) and FtpPasteHosts then
+      Exit;
+  end;
+
   // Командная строка: её клавиши - первыми
   if CmdKey(AKey, AShift, ACtrl, AAlt, CmdHandled) then
   begin
@@ -7311,6 +7328,174 @@ begin
     Report := Report + ', не адрес FTP: ' + IntToStr(Unknown);
   if Added > 0 then
     Report := Report + ' (пароль спросится при первом входе)';
+  Status(Report);
+  Invalidate;
+end;
+
+// Адрес FTP строкой для буфера обмена: ftp://пользователь:пароль@хост:порт
+// /папка и через табуляцию - описание. Пароль - открытым текстом (как
+// копирует FAR); у адреса «спрашивать пароль» его нет
+function FarFtpHostLine(const AHost: TFarFtpHost): WideString;
+begin
+  Result := 'ftp://';
+  if AHost.User <> '' then
+  begin
+    Result := Result + AHost.User;
+    if (AHost.Password <> '') and not AHost.AskPassword then
+      Result := Result + ':' + AHost.Password;
+    Result := Result + '@';
+  end;
+  Result := Result + WideString(AHost.Host);
+  if (AHost.Port > 0) and (AHost.Port <> FarFtpDefaultPort) then
+    Result := Result + ':' + WideString(IntToStr(AHost.Port));
+  if AHost.Home <> '' then
+  begin
+    if AHost.Home[1] <> '/' then
+      Result := Result + '/';
+    Result := Result + AHost.Home;
+  end;
+  if AHost.Description <> '' then
+    Result := Result + #9 + AHost.Description;
+end;
+
+// Ctrl+Ins в списке адресов: выделенные адреса (или под курсором) - в
+// буфер обмена, по строке на адрес
+procedure TFarView.FtpCopyHosts;
+var
+  Panel: TFarPanel;
+  ItemIdx, HostIdx, Count, WithPass: Integer;
+  Text: WideString;
+
+  procedure AddHost(AIndex: Integer);
+  begin
+    if (AIndex < 0) or (AIndex > High(FFtpHosts)) then
+      Exit;
+    if Text <> '' then
+      Text := Text + #13#10;
+    Text := Text + FarFtpHostLine(FFtpHosts[AIndex]);
+    Inc(Count);
+    if (FFtpHosts[AIndex].Password <> '') and
+       not FFtpHosts[AIndex].AskPassword then
+      Inc(WithPass);
+  end;
+
+begin
+  Panel := ActivePanel;
+  Text := '';
+  Count := 0;
+  WithPass := 0;
+  for ItemIdx := 0 to Panel.Count - 1 do
+    if Panel.FItems[ItemIdx].Selected and not Panel.FItems[ItemIdx].IsUp then
+      AddHost(Panel.FItems[ItemIdx].OrigIndex);
+  if (Count = 0) and (Panel.Cursor >= 0) and (Panel.Cursor < Panel.Count) and
+     not Panel.FItems[Panel.Cursor].IsUp then
+  begin
+    HostIdx := Panel.FItems[Panel.Cursor].OrigIndex;
+    AddHost(HostIdx);
+  end;
+  if Count = 0 then
+    Exit;
+  if not FarCopyToClipboard(Handle, Text) then
+  begin
+    Status(FarProduct + ': буфер обмена занят - не скопировано');
+    Exit;
+  end;
+  if WithPass > 0 then
+    Status(FarProduct + ': FTP - в буфере обмена адресов: ' +
+      IntToStr(Count) + ', с паролем: ' + IntToStr(WithPass) +
+      ' (пароль - открытым текстом)')
+  else
+    Status(FarProduct + ': FTP - в буфере обмена адресов: ' + IntToStr(Count));
+end;
+
+// Shift+Ins в списке адресов: строки ftp://... из буфера обмена - в
+// список (с паролем, если он в строке). Такой же адрес (хост,
+// пользователь, папка) не повторяется; у него без пароля - пароль
+// дополняется. False - в буфере нет ни одной строки ftp://
+function TFarView.FtpPasteHosts: Boolean;
+var
+  Text, Line, Descr: WideString;
+  LineIdx, HostIdx, TabPos, Added, Updated, Same, LastIdx: Integer;
+  NewHost: TFarFtpHost;
+  Found: Integer;
+  Report: string;
+begin
+  Result := False;
+  Text := FarClipboardText;
+  if Text = '' then
+    Exit;
+  Added := 0;
+  Updated := 0;
+  Same := 0;
+  LastIdx := -1;
+  begin
+    // Строки по CR / LF (WideString - вручную)
+    Line := '';
+    for LineIdx := 1 to Length(Text) + 1 do
+      if (LineIdx > Length(Text)) or (Text[LineIdx] = #13) or
+         (Text[LineIdx] = #10) then
+      begin
+        Line := FarTrimW(Line);
+        if WideLowerCase(Copy(Line, 1, 6)) = 'ftp://' then
+        begin
+          Result := True;
+          Descr := '';
+          TabPos := Pos(WideString(#9), Line);
+          if TabPos > 0 then
+          begin
+            Descr := FarTrimW(Copy(Line, TabPos + 1, MaxInt));
+            Line := FarTrimW(Copy(Line, 1, TabPos - 1));
+          end;
+          FarFtpHostClear(NewHost);
+          if FarFtpParseUrl(Line, NewHost) and (NewHost.Host <> '') then
+          begin
+            NewHost.Description := Descr;
+            NewHost.AskPassword := NewHost.Password = '';
+            Found := -1;
+            for HostIdx := 0 to High(FFtpHosts) do
+              if (CompareText(FFtpHosts[HostIdx].Host, NewHost.Host) = 0) and
+                 (FFtpHosts[HostIdx].User = NewHost.User) and
+                 (FFtpHosts[HostIdx].Home = NewHost.Home) then
+                Found := HostIdx;
+            if Found < 0 then
+            begin
+              SetLength(FFtpHosts, Length(FFtpHosts) + 1);
+              FFtpHosts[High(FFtpHosts)] := NewHost;
+              LastIdx := High(FFtpHosts);
+              Inc(Added);
+            end
+            else
+            begin
+              LastIdx := Found;
+              if (NewHost.Password <> '') and
+                 ((FFtpHosts[Found].Password = '') or
+                  FFtpHosts[Found].AskPassword) then
+              begin
+                FFtpHosts[Found].Password := NewHost.Password;
+                FFtpHosts[Found].AskPassword := False;
+                Inc(Updated);
+              end
+              else
+                Inc(Same);
+            end;
+          end;
+        end;
+        Line := '';
+      end
+      else
+        Line := Line + Text[LineIdx];
+  end;
+  if not Result then
+    Exit;
+  if ((Added > 0) or (Updated > 0)) and (FIniName <> '') then
+    FarFtpHostsSave(FIniName, FFtpHosts);
+  if LastIdx >= 0 then
+    FtpFillHosts(ActivePanel, LastIdx);
+  Report := FarProduct + ': FTP - добавлено адресов: ' + IntToStr(Added);
+  if Updated > 0 then
+    Report := Report + ', пароль дополнен: ' + IntToStr(Updated);
+  if Same > 0 then
+    Report := Report + ', уже были: ' + IntToStr(Same);
   Status(Report);
   Invalidate;
 end;
