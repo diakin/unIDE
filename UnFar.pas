@@ -151,7 +151,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.50';
+  FarBuild = 'b.51';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -954,6 +954,10 @@ var
 // Путь для ANSI-кода IDE (Delphi 7): в кодировке Windows, если она вмещает
 // все символы, иначе - короткое имя 8.3; нельзя ни так, ни так - ''
 function FarToAnsiPath(const APath: WideString): string;
+// Путь для ini: в кодировке Windows, если она вмещает все символы, иначе
+// UTF-8 с пометкой (FarDecodePath читает оба вида)
+function FarEncodePath(const APath: WideString): string;
+function FarDecodePath(const AText: string): WideString;
 
 // Раскраска файлов: стандартный набор, чтение и запись editor.ini
 // ([FarColors]: '_Set=1' и строки 'ext=1,#RRGGBB,#RRGGBB'; '-' вместо фона

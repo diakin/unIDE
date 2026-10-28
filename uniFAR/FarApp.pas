@@ -21,7 +21,7 @@ unit FarApp;
 //  Значок - res\uniFAR_icon.res (res\make_icon.py).
 //
 //  Над панелями - вкладки папок (FarTabs.pas): папка активной панели и
-//  свежие папки истории, сколько поместится по ширине. Alt+Left /
+//  свой список вкладок ([FolderTabs]), сколько поместится по ширине. Alt+Left /
 //  Alt+Right - по вкладкам, мышь - просмотр, щелчок - перейти.
 //  uniFAR.ini [uniFAR] FolderTabs=0 - без вкладок.
 // ---------------------------------------------------------------------------
@@ -488,6 +488,8 @@ begin
     LoadSettings;
     CreateMainWindow;
     FarView.LoadState(IniName, CurrentDirW);
+    if TabBar <> nil then
+      TabBar.LoadList(IniName);
     OpenFromCommandLine;
     MessageLoop;
   finally
