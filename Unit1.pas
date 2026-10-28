@@ -3071,6 +3071,7 @@ type
     procedure GitRepoBtnClick(Sender: TObject);
     procedure GitRecentRepoClick(Sender: TObject);
     procedure GitRecentRemoveClick(Sender: TObject);
+    procedure GitDeleteRepoClick(Sender: TObject);
     procedure GitShowRepoFields(AShow: Boolean);
     procedure GitLayoutRepoRow;
     procedure GitCopyMenuPopup(Sender: TObject);
@@ -68870,6 +68871,8 @@ begin
   AddItem(RepoMenu, '-', '', nil);
   AddItem(RepoMenu, 'Repository Settings...', 'Адрес remote origin ' +
     '(git remote set-url)', GitRepoSettingsClick);
+  AddItem(RepoMenu, 'Delete Local Repository...', 'Папку текущего ' +
+    'репозитория - в корзину (на сервере он остаётся)', GitDeleteRepoClick);
 
   AddItem(BranchMenu, 'New Branch...', 'Новая ветка от текущего коммита и ' +
     'переход на неё (git checkout -b)', GitNewBranchClick);
@@ -69489,6 +69492,187 @@ begin
   FGitRecentSkip := ExcludeTrailingPathDelimiter(FGitRepoTop);
   ShowGitLog;
   LogGit('Git: ' + FGitRepoTop + ' убран из списка недавних');
+end;
+
+// Repository - Delete Local Repository: папка текущего репозитория - в
+// корзину, репозиторий на сервере не трогается. В вопросе - что пропадёт
+// вместе с папкой: незакоммиченные изменения, коммиты, которых нет на
+// сервере, записи stash. Не удаляется корень диска, папка с самой средой,
+// с открытым проектом и пока открыты вкладки с файлами из неё
+procedure TForm1.GitDeleteRepoClick(Sender: TObject);
+const
+  // Корзина не вмещает папку - Windows спросит, а не сотрёт молча
+  FofWantNukeWarning = $4000;
+var
+  Git, Repo, RepoSl, Remote, RemoteUrl, Warn, OpenList, Msg, Src: string;
+  Changes, Unpushed, Stashes, WinIndex, OpenCount, RecentIndex: Integer;
+  Answer, OpResult: Integer;
+  DlgType: TMsgDlgType;
+  Op: TSHFileOpStruct;
+
+  // Число строк вывода git; ошибка - -1
+  function GitLineCount(const AArgs: string): Integer;
+  var
+    Output: WideString;
+    OutText: string;
+    CharIndex: Integer;
+  begin
+    Result := -1;
+    if GitRunIn(Git, Repo, AArgs, False, Output) <> 0 then
+      Exit;
+    OutText := Trim(string(GitTrimOut(Output)));
+    if OutText = '' then
+    begin
+      Result := 0;
+      Exit;
+    end;
+    Result := 1;
+    for CharIndex := 1 to Length(OutText) do
+      if OutText[CharIndex] = #10 then
+        Inc(Result);
+  end;
+
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  ShowGitLog;
+  Repo := ExcludeTrailingPathDelimiter(Repo);
+  RepoSl := IncludeTrailingPathDelimiter(Repo);
+
+  if Length(Repo) <= 3 then
+  begin
+    LogGit('Git: ' + Repo + ' - корень диска, удалять не буду');
+    Exit;
+  end;
+  if AnsiStartsText(RepoSl, ExtractFilePath(Application.ExeName)) then
+  begin
+    LogGit('Git: в ' + Repo + ' находится сама среда (' +
+      Application.ExeName + ') - удалять не буду');
+    Exit;
+  end;
+  if (FCurrentProject <> '') and ProjectExists(FCurrentProject) and
+     AnsiStartsText(RepoSl,
+       IncludeTrailingPathDelimiter(ProjectDir(FCurrentProject))) then
+  begin
+    LogGit('Git: в ' + Repo + ' лежит открытый проект ' + FCurrentProject +
+      ' - сначала откройте другой проект');
+    Exit;
+  end;
+
+  // Открытые вкладки с файлами из папки
+  OpenCount := 0;
+  OpenList := '';
+  for WinIndex := 0 to WindowsItemCount - 1 do
+    if FWindows[WinIndex].Used and
+       AnsiStartsText(RepoSl, FWindows[WinIndex].FileName) then
+    begin
+      Inc(OpenCount);
+      if OpenCount <= 5 then
+        OpenList := OpenList + #13#10'  ' +
+          ExtractFileName(FWindows[WinIndex].FileName);
+    end;
+  if OpenCount > 0 then
+  begin
+    if OpenCount > 5 then
+      OpenList := OpenList + #13#10'  ... всего ' + IntToStr(OpenCount);
+    LogGit('Git: открыты файлы из ' + Repo + ' - закройте их вкладки');
+    MessageDlg('9833:Открыты файлы из папки репозитория ' + Repo + ':' +
+      OpenList + #13#10#13#10'Закройте их вкладки и повторите.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  // Что пропадёт вместе с папкой
+  Screen.Cursor := crHourGlass;
+  try
+    Changes := GitLineCount('status --porcelain');
+    Stashes := GitLineCount('stash list');
+    Remote := GitQuery(Git, Repo, 'remote');
+    RemoteUrl := GitQuery(Git, Repo, 'config --get remote.origin.url');
+    // Без remote --not --remotes ничего не вычитает: все коммиты веток
+    Unpushed := StrToIntDef(GitQuery(Git, Repo,
+      'rev-list --count --branches --not --remotes'), -1);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+
+  Warn := '';
+  if Changes > 0 then
+    Warn := Warn + #13#10'  - незакоммиченные изменения и новые файлы: ' +
+      IntToStr(Changes);
+  if Unpushed > 0 then
+  begin
+    if Remote = '' then
+      Warn := Warn + #13#10'  - коммиты: ' + IntToStr(Unpushed) +
+        ' (remote нет, репозиторий есть только в этой папке)'
+    else
+      Warn := Warn + #13#10'  - коммиты, которых нет на сервере: ' +
+        IntToStr(Unpushed);
+  end;
+  if Stashes > 0 then
+    Warn := Warn + #13#10'  - записи stash: ' + IntToStr(Stashes);
+  if (Changes < 0) or (Unpushed < 0) or (Stashes < 0) then
+    Warn := Warn + #13#10'  - git не ответил, состояние проверено не ' +
+      'полностью (подробности - Git log)';
+
+  Msg := '9834:Удалить локальный репозиторий?'#13#10#13#10 + Repo +
+    #13#10#13#10'Папка уйдёт в корзину целиком, вместе с файлами из ' +
+    '.gitignore (сборки, локальные настройки).';
+  if RemoteUrl <> '' then
+    Msg := Msg + ' Репозиторий на сервере (' + RemoteUrl +
+      ') не затрагивается.';
+  if Warn <> '' then
+  begin
+    Msg := Msg + #13#10#13#10'Вместе с папкой пропадут:' + Warn;
+    DlgType := mtWarning;
+  end
+  else
+  begin
+    Msg := Msg + #13#10#13#10'Незакоммиченных изменений, неотправленных ' +
+      'коммитов и stash нет.';
+    DlgType := mtConfirmation;
+  end;
+  Answer := MessageDlgButtons(Msg, DlgType, 'Delete Local Repository',
+    ['В корзину', 'Отмена'], 1, 1);
+  if Answer <> 0 then
+    Exit;
+
+  // Текущая папка процесса внутри - папку не удалить
+  if AnsiStartsText(RepoSl, IncludeTrailingPathDelimiter(GetCurrentDir)) then
+    SetCurrentDir(ExtractFilePath(Application.ExeName));
+
+  Src := Repo + #0#0;
+  FillChar(Op, SizeOf(Op), 0);
+  Op.Wnd := Handle;
+  Op.wFunc := FO_DELETE;
+  Op.pFrom := PChar(Src);
+  Op.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FofWantNukeWarning;
+  OpResult := SHFileOperation(Op);
+
+  if DirectoryExists(Repo) then
+  begin
+    if Op.fAnyOperationsAborted then
+      LogGit('Git: удаление ' + Repo + ' отменено')
+    else
+      LogGit('Git: ' + Repo + ' удалён не полностью (код ' +
+        IntToStr(OpResult) + '): файлы заняты - Git Bash, Проводник, ' +
+        'другая программа. Уже удалённое - в корзине');
+    GitRefreshBar;
+    Exit;
+  end;
+
+  GitRecentLoad;
+  for RecentIndex := FGitRecent.Count - 1 downto 0 do
+    if SameText(ExcludeTrailingPathDelimiter(FGitRecent[RecentIndex]),
+       Repo) then
+      FGitRecent.Delete(RecentIndex);
+  GitRecentSave;
+  if (FGitRepoChosen <> '') and AnsiStartsText(RepoSl,
+     IncludeTrailingPathDelimiter(FGitRepoChosen)) then
+    GitSetChosenRepo('');
+  LogGit('Git: ' + Repo + ' - в корзине; репозиторий - по открытому ' +
+    'проекту (' + GitBaseDir + ')');
+  GitRefreshBar;
 end;
 
 procedure TForm1.GitUseProjectRepoClick(Sender: TObject);
