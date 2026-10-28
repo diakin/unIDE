@@ -151,7 +151,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.45';
+  FarBuild = 'b.46';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -1110,8 +1110,10 @@ type
     dwProcessId, dwThreadId: DWORD;
   end;
 
-  // SHFILEOPSTRUCTW - в 32-битной Windows без выравнивания (packed)
-  TFarShFileOp = packed record
+  // SHFILEOPSTRUCTW: в 32-битной Windows без выравнивания (packed,
+  // pshpack1 в shellapi.h), в 64-битной - обычное выравнивание (pshpack8):
+  // packed там сдвигает поля после Func, и SHFileOperation падает
+  TFarShFileOp = {$IFDEF CPU64}record{$ELSE}packed record{$ENDIF}
     Wnd: HWND;
     Func: UINT;
     From: PWideChar;
