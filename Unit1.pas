@@ -38,6 +38,7 @@ uses
   EnvOptions,     // IDE Options: Preferences, Designer, Environment Variables
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
+  EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
@@ -1088,6 +1089,16 @@ type
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
     procedure FObjSetListClick(Sender: TObject);
+
+  private
+    // Прослойка редактора (EdIntf; план Lazarus, шаг 0.1). Все сообщения
+    // EM_* окну RichEdit1 идут через неё, чтобы потом подставить свой
+    // редактор. Создаётся при первом обращении к EdApi
+    FEdApi: TEdIntf;
+    function GetEdApi: TEdIntf;
+    function EdWindowHandle: HWND;
+  public
+    property EdApi: TEdIntf read GetEdApi;
 
     private
     OldRichEditProc: TWndMethod;
@@ -4262,6 +4273,22 @@ begin
   MsftEditActive := True;
 end;
 
+// Окно редактора для прослойки EdApi - при каждом вызове: VCL пересоздаёт
+// окно контрола (смена ScrollBars и т.п.), хранить HWND нельзя
+function TForm1.EdWindowHandle: HWND;
+begin
+  Result := RichEdit1.Handle;
+end;
+
+// Прослойка редактора создаётся при первом обращении: так она есть и для
+// вызовов, которые случаются раньше FormCreate (события при загрузке формы)
+function TForm1.GetEdApi: TEdIntf;
+begin
+  if FEdApi = nil then
+    FEdApi := TEdIntf.Create(EdWindowHandle);
+  Result := FEdApi;
+end;
+
 const
   EM_GETSCROLLPOS = WM_USER + 221; // Теперь константа видна всем методам в этом модуле
 
@@ -4683,9 +4710,9 @@ begin
 
   // Нижняя граница - начало строки под последней видимой
   Windows.GetClientRect(RichEdit1.Handle, ClientRect);
-  TopLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  TopLine := EdApi.FirstVisibleLine;
   LastLine := TopLine + ClientRect.Bottom div LineHeight + 2;
-  LimitPos := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LastLine, 0);
+  LimitPos := EdApi.LineIndex(LastLine);
   if LimitPos < 0 then
     LimitPos := TextLenInternal;
   // Правка ниже экрана или видимая часть уже разобрана
@@ -4842,14 +4869,14 @@ begin
     Exit;
   end;
 
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
-  LineIdx := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  EdApi.GetSel(Sel);
+  LineIdx := EdApi.ExLineFromChar(Sel.cpMin);
+  LineStart := EdApi.LineIndex(LineIdx);
   if LineStart < 0 then
     Exit;
 
   // Y берём у контрола: он уже учитывает прокрутку, в том числе неполную
-  SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@Pt), LineStart);
+  EdApi.PosFromChar(Pt, LineStart);
 
   Windows.GetClientRect(RichEdit1.Handle, R);
   R.Top := Pt.Y;
@@ -8813,7 +8840,7 @@ begin
 
   if RichEdit1.HandleAllocated then
   begin
-    SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+    EdApi.GetSel(Sel);
     FWindows[FWindowsIndex].CursorPos := Sel.cpMin;
   end;
 end;
@@ -13998,10 +14025,10 @@ begin
   OpenNamedFile(AFile);
   if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(AFile)) <> 0 then
     Exit;
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALine - 1, 0);
+  LineStart := EdApi.LineIndex(ALine - 1);
   if LineStart < 0 then
     Exit;
-  LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+  LineLen := EdApi.LineLength(LineStart);
   if not AInsert and (ReadLineText(ALine - 1, LineStart, LineLen) <> AOld) then
     Exit;
   EditorFreeze;
@@ -17315,8 +17342,8 @@ begin
   Result := 0;
   if not RichEdit1.HandleAllocated then
     Exit;
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
-  Result := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
+  EdApi.GetSel(Sel);
+  Result := EdApi.ExLineFromChar(Sel.cpMin);
 end;
 
 // Прокручивает окно так, чтобы строка с кареткой оказалась примерно посередине.
@@ -17339,7 +17366,7 @@ begin
     Exit; // окно слишком низкое, центрировать нечего
 
   CaretLine := CurrentLineIndex;
-  TopLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  TopLine := EdApi.FirstVisibleLine;
 
   Want := CaretLine - Visible div 2;
   if Want < 0 then
@@ -17347,7 +17374,7 @@ begin
 
   // EM_LINESCROLL сдвигает ОТНОСИТЕЛЬНО текущей позиции
   if Want <> TopLine then
-    SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, Want - TopLine);
+    EdApi.LineScroll(Want - TopLine);
 end;
 
 // Постоянные пункты подменю BookMarks
@@ -17591,7 +17618,7 @@ var
   var
     HitLine: Integer;
   begin
-    HitLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, APos);
+    HitLine := EdApi.ExLineFromChar(APos);
     Result := (HitLine >= 0) and (HitLine < RichEdit1.Lines.Count) and
               (Trim(RichEdit1.Lines[HitLine]) = AText);
   end;
@@ -17710,7 +17737,7 @@ begin
       Exit;
     end;
 
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
 
   N := Length(FWindows[FWindowsIndex].Bookmarks);
   SetLength(FWindows[FWindowsIndex].Bookmarks, N + 1);
@@ -18069,13 +18096,13 @@ begin
 
   RichEdit1.SelStart := NewPos;
   RichEdit1.SelLength := 0;
-  SendMessageA(RichEdit1.Handle, EM_SCROLLCARET, 0, 0);
+  EdApi.ScrollCaret;
   CenterCaretLine;
 
   // Подправляем закладку под актуальное состояние текста
   FWindows[WinIdx].Bookmarks[BmIdx].CharPos := NewPos;
   FWindows[WinIdx].Bookmarks[BmIdx].LineNo :=
-    SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, NewPos) + 1;
+    EdApi.ExLineFromChar(NewPos) + 1;
 
   if Remember then
     PushBmHistory(WinIdx, BmIdx);
@@ -18112,8 +18139,8 @@ begin
   if (BmIdx < 0) or (BmIdx > High(FWindows[WinIdx].Bookmarks)) then
     Exit;
 
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
-  LineIdx := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
+  EdApi.GetSel(Sel);
+  LineIdx := EdApi.ExLineFromChar(Sel.cpMin);
 
   FWindows[WinIdx].Bookmarks[BmIdx].CharPos := Sel.cpMin;
   FWindows[WinIdx].Bookmarks[BmIdx].LineNo := LineIdx + 1;
@@ -19608,7 +19635,7 @@ var
 begin
   if LineIdx < 0 then
     Exit;
-  P := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  P := EdApi.LineIndex(LineIdx);
   if P < 0 then
     Exit;
 
@@ -19616,7 +19643,7 @@ begin
     RichEdit1.SetFocus;
   RichEdit1.SelStart := P;
   RichEdit1.SelLength := 0;
-  SendMessageA(RichEdit1.Handle, EM_SCROLLCARET, 0, 0);
+  EdApi.ScrollCaret;
   CenterCaretLine;
   UpdateStatusBarInfo;
 end;
@@ -19721,7 +19748,7 @@ begin
     RichEdit1.SetFocus;
   RichEdit1.SelStart := P;
   RichEdit1.SelLength := Length(S);
-  SendMessageA(RichEdit1.Handle, EM_SCROLLCARET, 0, 0);
+  EdApi.ScrollCaret;
   CenterCaretLine;
   UpdateStatusBarInfo;
 
@@ -19761,7 +19788,7 @@ begin
     RichEdit1.SetFocus;
   RichEdit1.SelStart := Best;
   RichEdit1.SelLength := Length(S);
-  SendMessageA(RichEdit1.Handle, EM_SCROLLCARET, 0, 0);
+  EdApi.ScrollCaret;
   CenterCaretLine;
   UpdateStatusBarInfo;
 
@@ -19805,7 +19832,7 @@ begin
       RichEdit1.SetFocus;
     RichEdit1.SelStart := P;
     RichEdit1.SelLength := Length(S);
-    SendMessageA(RichEdit1.Handle, EM_SCROLLCARET, 0, 0);
+    EdApi.ScrollCaret;
     CenterCaretLine;
 
     case MessageDlg('11014:Заменить это вхождение?' + #13#10#13#10 + S + '  ->  ' + R,
@@ -20079,7 +20106,7 @@ begin
 
       // Текст сменился целиком - карта строится заново, один раз
       RebuildCommentRangeMap;
-      RichEditLinesCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+      RichEditLinesCount := EdApi.LineCount;
       UpdateVisibleBounds;
       RichEdit1.Invalidate;
       RefreshTabsModified;
@@ -20721,7 +20748,7 @@ begin
     RichEdit1.SelLength := 0;
     RichEdit1.Modified := True;
     RebuildCommentRangeMap;
-    RichEditLinesCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+    RichEditLinesCount := EdApi.LineCount;
     UpdateVisibleBounds;
     RichEdit1.Invalidate;
   end
@@ -21055,8 +21082,7 @@ begin
     begin
       ClickChar := DbgCharAtClient(ClickPt);
       if ClickChar >= 0 then
-        FPopupCondLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
-                                       ClickChar);
+        FPopupCondLine := EdApi.ExLineFromChar(ClickChar);
       // Щелчок по выделению в одной строке - выражение целиком
       // ("SumIdx * 2"), как у Ctrl+F5; иначе - имя под мышью
       if (ClickChar >= 0) and (RichEdit1.SelLength > 0) and
@@ -21639,8 +21665,7 @@ begin
 
   // Подсвечиваем найденное штатным выделением редактора: отрисовка выделения
   // уже есть в DrawRun, и мышью получается ровно тот же вид
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX,
-                            FMatchRows[Idx].LineNo, 0);
+  LineStart := EdApi.LineIndex(FMatchRows[Idx].LineNo);
 
   if (LineStart < 0) or (FMatchRows[Idx].MatchPos <= 0) then
   begin
@@ -21653,7 +21678,7 @@ begin
 
   RichEdit1.SelStart := LineStart + FMatchRows[Idx].MatchPos - 1;
   RichEdit1.SelLength := Length(FMatchPattern);
-  SendMessageA(RichEdit1.Handle, EM_SCROLLCARET, 0, 0);
+  EdApi.ScrollCaret;
   CenterCaretLine;
   UpdateStatusBarInfo;
 end;
@@ -23087,7 +23112,7 @@ begin
   else
     GTL.flags := GTL_PRECISE_ or GTL_NUMBYTES_;
   GTL.codepage := CP_ACP;
-  Len := SendMessageA(RichEdit1.Handle, EM_GETTEXTLENGTHEX_, Integer(@GTL), 0);
+  Len := EdApi.GetTextLengthEx(GTL);
   if Len <= 0 then
     Exit;
 
@@ -23099,8 +23124,7 @@ begin
   else
     GT.flags := 0;
   GT.codepage := CP_ACP;
-  Got := SendMessageA(RichEdit1.Handle, EM_GETTEXTEX_, Integer(@GT),
-                      Integer(PChar(Result)));
+  Got := EdApi.GetTextEx(GT, PChar(Result));
   if Got < 0 then
     Got := 0;
   if Got > Len then
@@ -23178,7 +23202,7 @@ begin
     FLockHighlight := True;
     try
       RichEdit1.SelectAll;
-      SendMessageA(RichEdit1.Handle, EM_SETPARAFORMAT, 0, Integer(@PF));
+      EdApi.SetParaFormat(PF);
       RichEdit1.SelStart := OldStart;
       RichEdit1.SelLength := OldLen;
     finally
@@ -23236,7 +23260,7 @@ begin
     Exit;
 
   TextLen := RichEdit1.GetTextLen;
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@OldSel));
+  EdApi.GetSel(OldSel);
   FLockHighlight := True;
   try
     Result := True;
@@ -23247,10 +23271,10 @@ begin
       else
         CheckSel.cpMin := TextLen;
       CheckSel.cpMax := CheckSel.cpMin;
-      SendMessageA(RichEdit1.Handle, EM_EXSETSEL, 0, Integer(@CheckSel));
+      EdApi.SetSel(CheckSel);
       FillChar(PF, SizeOf(PF), 0);
       PF.cbSize := SizeOf(PF);
-      SendMessageA(RichEdit1.Handle, EM_GETPARAFORMAT, 0, Integer(@PF));
+      EdApi.GetParaFormat(PF);
       if (PF.dwMask and PFM_TABSTOPS = 0) or
          (PF.cTabCount <> MAX_TAB_STOPS) or
          (PF.rgxTabs[0] <> TabTwips) or (PF.rgxTabs[1] <> 2 * TabTwips) then
@@ -23260,7 +23284,7 @@ begin
       end;
     end;
   finally
-    SendMessageA(RichEdit1.Handle, EM_EXSETSEL, 0, Integer(@OldSel));
+    EdApi.SetSel(OldSel);
     FLockHighlight := False;
   end;
 end;
@@ -23275,8 +23299,8 @@ begin
   Windows.GetClientRect(RichEdit1.Handle, Rect);
 
   // 1. Узнаем индекс верхней строки
-  FirstVisibleLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
-  FirstChar := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FirstVisibleLine, 0);
+  FirstVisibleLine := EdApi.FirstVisibleLine;
+  FirstChar := EdApi.LineIndex(FirstVisibleLine);
   // 2. Вычисляем нижнюю строку
   PtBottomRight.X := Rect.Right;
   PtBottomRight.Y := Rect.Bottom;
@@ -23284,11 +23308,10 @@ begin
   // EM_CHARFROMPOS в RichEdit: wParam = 0, lParam = адрес TPoint, возврат -
   // индекс символа. Это и есть нужное сообщение; EM_EXCHARFROMPOS в API
   // не существует, WM_USER + 53 - это EM_EXLIMITTEXT, ограничение длины.
-  LastVisibleCharIdx := SendMessageA(RichEdit1.Handle, EM_CHARFROMPOS, 0,
-                                     Integer(@PtBottomRight));
+  LastVisibleCharIdx := EdApi.CharFromPos(PtBottomRight);
 
   // Узнаем общее число строк в файле
-  TotalLinesInFile := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  TotalLinesInFile := EdApi.LineCount;
 
   // ЗАЩИТА: Если при быстром скроллинге Windows вернула ошибку координат (-1)
   if (LastVisibleCharIdx < 0) or (LastVisibleCharIdx = -1) then
@@ -23299,8 +23322,7 @@ begin
   end
   else
   begin
-    LastVisibleLine := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR,
-                                    LastVisibleCharIdx, 0);
+    LastVisibleLine := EdApi.LineFromChar(LastVisibleCharIdx);
   end;
 
   // ФИНАЛЬНАЯ СВЕРХНАДЕЖНАЯ КОРРЕКТИРОВКА ГРАНИЦ
@@ -23328,8 +23350,8 @@ begin
   if PaintBox1 = nil then
     Exit;
 
-  TopLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
-  TotalLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  TopLine := EdApi.FirstVisibleLine;
+  TotalLines := EdApi.LineCount;
   CaretLine := CurrentLineIndex;
 
   if (TopLine = FNumTopLine) and (TotalLines = FNumTotalLines) and
@@ -23387,7 +23409,7 @@ begin
     TR.lpstrText := @Buf[0];
 
   // 0 означает "за концом текста" - там символа и нет
-  if SendMessageA(RichEdit1.Handle, EM_GET_TEXTRANGE, 0, Integer(@TR)) <= 0 then
+  if EdApi.GetTextRange(TR) <= 0 then
     Exit;
 
   if MsftEditActive then
@@ -23421,7 +23443,7 @@ begin
     FillChar(W[1], (ACount + 1) * SizeOf(WideChar), 0);
     TR.lpstrText := PChar(PWideChar(W));
 
-    Got := SendMessageA(RichEdit1.Handle, EM_GET_TEXTRANGE, 0, Integer(@TR));
+    Got := EdApi.GetTextRange(TR);
     if Got <= 0 then
       Exit;
     if Got > ACount then
@@ -23441,7 +23463,7 @@ begin
   FillChar(Result[1], ACount + 1, 0);
   TR.lpstrText := PChar(Result);
 
-  Got := SendMessageA(RichEdit1.Handle, EM_GET_TEXTRANGE, 0, Integer(@TR));
+  Got := EdApi.GetTextRange(TR);
   if Got < 0 then
     Got := 0;
   SetLength(Result, Got);
@@ -23460,7 +23482,7 @@ begin
   Result := '';
   if not RichEdit1.HandleAllocated then
     Exit;
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   N := Sel.cpMax - Sel.cpMin;
   if N > AMaxLen then
     N := AMaxLen;
@@ -23512,7 +23534,7 @@ begin
   if stMatchCase in Options then
     Flags := Flags or FR_MATCHCASE_;
 
-  Result := SendMessageW(RichEdit1.Handle, EM_FINDTEXTW_, Flags, Integer(@FT));
+  Result := EdApi.FindTextW(Flags, FT);
 end;
 
 
@@ -23621,7 +23643,7 @@ begin
   if FScheme.FMarkerChars = [] then
     Exit;
 
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   FPreSelMin := Sel.cpMin;
   FPreSelMax := Sel.cpMax;
   // Длина в символах контрола: WM_GETTEXTLENGTH у RichEdit 4.1 считает
@@ -23671,7 +23693,7 @@ begin
   FMapEditPos := -1;
   if FPreValid and RichEdit1.HandleAllocated then
   begin
-    SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+    EdApi.GetSel(Sel);
     FMapEditPos := FPreSelMin;
     if Sel.cpMin < FMapEditPos then
       FMapEditPos := Sel.cpMin;
@@ -23691,7 +23713,7 @@ begin
     if (D <> 1) and (D <> -1) then
       Exit;
 
-    SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+    EdApi.GetSel(Sel);
 
     // Где именно текст изменился. У Delete каретка остаётся на месте,
     // у BackSpace уезжает на символ влево - по этому их и различаем.
@@ -23745,9 +23767,9 @@ begin
     // комментарий ли строка. Строку, где маркер есть, - в полный разбор.
     if FScheme.FLineCommentAtStart and (FScheme.FLineCommentMarker <> '') then
     begin
-      EditLineIdx := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, EditPos);
-      EditLineBeg := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, EditLineIdx, 0);
-      EditLineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, EditLineBeg, 0);
+      EditLineIdx := EdApi.ExLineFromChar(EditPos);
+      EditLineBeg := EdApi.LineIndex(EditLineIdx);
+      EditLineLen := EdApi.LineLength(EditLineBeg);
       if Pos(FScheme.FLineCommentMarker,
              TextRange(EditLineBeg, EditLineLen)) > 0 then
         Exit;
@@ -23812,15 +23834,15 @@ begin
     Exit;
 
   // 1. Общее число строк
-  TotalLines := RichEdit1.Perform(EM_GETLINECOUNT, 0, 0);
+  TotalLines := EdApi.LineCount;
   StatusBar1.Panels[0].Text := 'Строк:' + IntToStr(TotalLines);
 
   //  текущую позицию каретки (индекс символа под курсором)
-  RichEdit1.Perform(EM_EXGETSEL, 0, Integer(@Selection));
+  EdApi.GetSel(Selection);
   CursorPos := Selection.cpMin; // Глобальная позиция курсора в файле
 
   // 2. Текущая строка (начиная с 1)
-  CurrentLine := RichEdit1.Perform(EM_EXLINEFROMCHAR, 0, CursorPos) + 1;
+  CurrentLine := EdApi.ExLineFromChar(CursorPos) + 1;
   StatusBar1.Panels[1].Text := 'Стр: ' + IntToStr(CurrentLine);
 
   TotalChars := TextLenInternal; // в тех же единицах, что и позиция
@@ -23828,8 +23850,7 @@ begin
   // 3. Положение внутри текущей строки: отступ от её начала и длина строки.
   //    Индекс начала строки и её длину отдаёт сам контрол - читать текст
   //    ради этого не нужно.
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX,
-                            CurrentLine - 1, 0);
+  LineStart := EdApi.LineIndex(CurrentLine - 1);
   if LineStart < 0 then
   begin
     LineCol := 0;
@@ -23838,7 +23859,7 @@ begin
   else
   begin
     LineCol := CursorPos - LineStart;
-    LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+    LineLen := EdApi.LineLength(LineStart);
   end;
 
   StatusBar1.Panels[2].Text := 'Поз в строке: ' + IntToStr(LineCol) +
@@ -23853,7 +23874,7 @@ begin
   // контрол: каретка, клики и конец строки будут смещены.
 if (LogEdit <> nil) and (FEditHost <> nil) and (LineStart >= 0) then
   begin
-    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@CtlPt), CursorPos);
+    EdApi.PosFromChar(CtlPt, CursorPos);
     OurX := LinePrefixWidth(CurrentLine - 1, LineCol);
 
     FaceBuf[0] := #0;
@@ -23870,7 +23891,7 @@ if (LogEdit <> nil) and (FEditHost <> nil) and (LineStart >= 0) then
     // EM_LINEINDEX считает строки ОТОБРАЖЕНИЯ. Если следующая начинается
     // сразу за последним символом этой - между ними нет #13, и перенос
     // сделал сам контрол (мягкий). Если на символ дальше - перевод в тексте.
-    NextStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, CurrentLine, 0);
+    NextStart := EdApi.LineIndex(CurrentLine);
     if NextStart < 0 then
       BreakKind := 'посл'
     else if NextStart = LineStart + LineLen then
@@ -23883,11 +23904,10 @@ if (LogEdit <> nil) and (FEditHost <> nil) and (LineStart >= 0) then
     PrevKind := '-';
     if CurrentLine > 1 then
     begin
-      PrevStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX,
-                                CurrentLine - 2, 0);
+      PrevStart := EdApi.LineIndex(CurrentLine - 2);
       if PrevStart >= 0 then
       begin
-        PrevLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, PrevStart, 0);
+        PrevLen := EdApi.LineLength(PrevStart);
         if PrevStart + PrevLen = LineStart then
           PrevKind := 'МЯГКИЙ'
         else
@@ -25121,6 +25141,8 @@ begin
   // Tidy editor.ini: настройки записаны - новый экземпляр
   if FTidyRestart then
     TidyRestart;
+
+  FreeAndNil(FEdApi);
 end;
 
 // Маркер на вкладке должен следить за флагом изменений. Перерисовываем панель
@@ -25159,7 +25181,7 @@ begin
   // же EM_GETLINECOUNT, потом ещё EM_LINEINDEX и EM_LINELENGTH, и вычитает
   // единицу, когда последняя строка пуста: другая величина, чем в гуттере
   // и в UpdateVisibleBounds.
-  LineCountNow := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  LineCountNow := EdApi.LineCount;
   if RichEditLinesCount <> LineCountNow then
   begin
     RichEditLinesCount := LineCountNow;
@@ -26388,9 +26410,8 @@ begin
   // СНАЧАЛА ДЕШЁВАЯ ПРОВЕРКА по одной строке. Весь текст копировать на
   // каждое движение каретки нельзя - он бывает в сотни килобайт, а пара
   // ищется только когда каретка стоит на скобке или внутри тега.
-  LineIdx := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR,
-                          RichEdit1.SelStart, 0);
-  LineBeg := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  LineIdx := EdApi.LineFromChar(RichEdit1.SelStart);
+  LineBeg := EdApi.LineIndex(LineIdx);
   if (LineIdx < 0) or (LineBeg < 0) then
   begin
     if (OldA1 >= 0) or (OldB1 >= 0) or (OldBrackets <> '') then
@@ -27733,10 +27754,10 @@ begin
   for K := 0 to High(FFmtSusLine) do
     if FFmtSusLine[K] = ALineIdx then
     begin
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALineIdx, 0);
+      LineStart := EdApi.LineIndex(ALineIdx);
       if LineStart < 0 then
         Exit;
-      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      LineLen := EdApi.LineLength(LineStart);
       Result := (K <= High(FFmtSusText)) and
                 (LineLen = Length(FFmtSusText[K])) and
                 (TextRange(LineStart, LineLen) = FFmtSusText[K]);
@@ -27751,7 +27772,7 @@ begin
   if Length(FFmtSusLine) = 0 then
     Exit;
   if (FFmtSusFile <> FCurrentFileName) or
-     (FFmtSusLines <> SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0)) then
+     (FFmtSusLines <> EdApi.LineCount) then
     FmtSuspectClear;
 end;
 
@@ -27809,10 +27830,10 @@ begin
   K := Integer(lvSubList.Selected.Data);
   if (K < 0) or (K > High(FSubs)) then
     Exit;
-  Idx := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FSubs[K].BeginLine, 0);
+  Idx := EdApi.LineIndex(FSubs[K].BeginLine);
   if Idx < 0 then
     Exit;
-  SendMessageA(RichEdit1.Handle, EM_SETSEL, Idx, Idx);
+  EdApi.SetSelRange(Idx, Idx);
 
   // Строку объявления - на середину экрана, а не к нижнему краю, куда её
   // поставил бы EM_SCROLLCARET
@@ -27822,9 +27843,9 @@ begin
   Target := FSubs[K].BeginLine - VisLines div 2;
   if Target < 0 then
     Target := 0;
-  First := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  First := EdApi.FirstVisibleLine;
   if Target <> First then
-    SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, Target - First);
+    EdApi.LineScroll(Target - First);
 
   // Отметка найденной строки - цветом LineMark
   FFoundLine := FSubs[K].BeginLine;
@@ -30333,13 +30354,13 @@ begin
       // Значение в строке присваивания - на новое; строка сверяется:
       // в ней то же присваивание с тем же значением
       LineNo := FObjEditLine;
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      LineStart := EdApi.LineIndex(LineNo);
       if LineStart < 0 then
       begin
         TextChanged;
         Exit;
       end;
-      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      LineLen := EdApi.LineLength(LineStart);
       CurLine := ReadLineText(LineNo, LineStart, LineLen);
       if not RapidQFindAssign(CurLine, RapidQAssignName(Obj, FObjEditName),
                               ValStart, ValLen) or
@@ -30408,13 +30429,13 @@ begin
       begin
         // Блок в одну строку: оператор - перед его END CREATE, через ":"
         LineNo := Obj.CreateLine;
-        LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+        LineStart := EdApi.LineIndex(LineNo);
         if LineStart < 0 then
         begin
           TextChanged;
           Exit;
         end;
-        LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+        LineLen := EdApi.LineLength(LineStart);
         CurLine := ReadLineText(LineNo, LineStart, LineLen);
         if not RapidQInsertBeforeEnd(CurLine, Obj.Name, FObjEditName +
                                      RapidQEqStyle(CurLine) + NewText, NewLine) then
@@ -30443,7 +30464,7 @@ begin
       end;
       NewLine := LineIndent + RapidQAssignName(Obj, FObjEditName) + EqText +
                  NewText;
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+      LineStart := EdApi.LineIndex(InsAt);
       if LineStart < 0 then
       begin
         TextChanged;
@@ -31477,10 +31498,10 @@ begin
     begin
       // Заменить число в строке присваивания
       LineNo := Integer(Node.PropN.Objects[PropIdx]);
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      LineStart := EdApi.LineIndex(LineNo);
       if LineStart < 0 then
         Exit;
-      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      LineLen := EdApi.LineLength(LineStart);
       CurLine := ReadLineText(LineNo, LineStart, LineLen);
       if not RapidQFindAssign(CurLine, RapidQAssignName(Node, AProp), ValStart,
                               ValLen) then
@@ -31532,10 +31553,10 @@ begin
     begin
       // Блок в одну строку: перед его END CREATE, через ":"
       LineNo := Node.CreateLine;
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      LineStart := EdApi.LineIndex(LineNo);
       if LineStart < 0 then
         Exit;
-      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      LineLen := EdApi.LineLength(LineStart);
       CurLine := ReadLineText(LineNo, LineStart, LineLen);
       if not RapidQInsertBeforeEnd(CurLine, Node.Name,
                                    AProp + RapidQEqStyle(CurLine) + AValue, NewLine) then
@@ -31555,7 +31576,7 @@ begin
     InsAt := RapidQInsertPlace(Lines, Node, LineIndent, EqText);
     if InsAt < 0 then
       Exit;
-    LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+    LineStart := EdApi.LineIndex(InsAt);
     if LineStart < 0 then
       Exit;
     EditorFreeze;
@@ -32061,10 +32082,10 @@ begin
     if PropIdx >= 0 then
     begin
       LineNo := Integer(Node.PropN.Objects[PropIdx]);
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      LineStart := EdApi.LineIndex(LineNo);
       if LineStart < 0 then
         Exit;
-      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      LineLen := EdApi.LineLength(LineStart);
       CurLine := ReadLineText(LineNo, LineStart, LineLen);
       if not RapidQFindAssign(CurLine, RapidQAssignName(Node, AProp),
                               ValStart, ValLen) then
@@ -32102,10 +32123,10 @@ begin
     if (Node.EndLine = Node.CreateLine) and not Node.IsDim then
     begin
       LineNo := Node.CreateLine;
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      LineStart := EdApi.LineIndex(LineNo);
       if LineStart < 0 then
         Exit;
-      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      LineLen := EdApi.LineLength(LineStart);
       CurLine := ReadLineText(LineNo, LineStart, LineLen);
       if not RapidQInsertBeforeEnd(CurLine, Node.Name,
                                    AProp + RapidQEqStyle(CurLine) + AValue,
@@ -32133,7 +32154,7 @@ begin
       AMsg := 'некуда добавить строку';
       Exit;
     end;
-    LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+    LineStart := EdApi.LineIndex(InsAt);
     if LineStart < 0 then
       Exit;
     EditorFreeze;
@@ -32369,7 +32390,7 @@ var
 
   procedure InsertAt(ALine: Integer; const AText: string);
   begin
-    LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALine, 0);
+    LineStart := EdApi.LineIndex(ALine);
     if LineStart < 0 then
       LineStart := RichEdit1.GetTextLen;
     RichEdit1.SelStart := LineStart;
@@ -34888,7 +34909,7 @@ begin
   if FEdFreeze <> 1 then
     Exit;
   FEdFreezeSel := RichEdit1.SelStart;
-  FEdFreezeTop := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  FEdFreezeTop := EdApi.FirstVisibleLine;
   SendMessageA(RichEdit1.Handle, WM_SETREDRAW, 0, 0);
 end;
 
@@ -34907,9 +34928,9 @@ begin
     FEdFreezeSel := RichEdit1.GetTextLen;
   RichEdit1.SelStart := FEdFreezeSel;
   RichEdit1.SelLength := 0;
-  Top := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  Top := EdApi.FirstVisibleLine;
   if Top <> FEdFreezeTop then
-    SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, FEdFreezeTop - Top);
+    EdApi.LineScroll(FEdFreezeTop - Top);
 
   SendMessageA(RichEdit1.Handle, WM_SETREDRAW, 1, 0);
   RedrawWindow(RichEdit1.Handle, nil, 0,
@@ -35097,11 +35118,11 @@ begin
       // --- .dfm в активной вкладке: обычная правка текста редактора
       EditorFreeze;
       try
-        LS := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, Line, 0);
+        LS := EdApi.LineIndex(Line);
         Cur := '';
         if LS >= 0 then
         begin
-          LL := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LS, 0);
+          LL := EdApi.LineLength(LS);
           Cur := ReadLineText(Line, LS, LL);
         end;
 
@@ -35124,13 +35145,13 @@ begin
           end;
           Line := K;
           Relined := True;
-          LS := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, Line, 0);
+          LS := EdApi.LineIndex(Line);
           if LS < 0 then
           begin
             Changed;
             Exit;
           end;
-          LL := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LS, 0);
+          LL := EdApi.LineLength(LS);
           Cur := ReadLineText(Line, LS, LL);
         end;
 
@@ -35143,7 +35164,7 @@ begin
           end;
           NewLine := IndentOf(Cur) + '  ' + PName + ' = ' + NewRaw;
           // В начало следующей строки; заголовок последний - в конец текста
-          LS := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, Line + 1, 0);
+          LS := EdApi.LineIndex(Line + 1);
           if LS < 0 then
           begin
             RichEdit1.SelStart := RichEdit1.GetTextLen;
@@ -35521,17 +35542,14 @@ begin
   end;
   if not RichEdit1.HandleAllocated then
     Exit;
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   FObjPreMin := Sel.cpMin;
   FObjPreMax := Sel.cpMax;
   FObjPreLen := TextLenInternal;
-  FObjPreLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
-  FObjPreLineMin := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
-                                 Sel.cpMin);
-  FObjPreLineMax := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
-                                 Sel.cpMax);
-  FObjPreStartMin := SendMessageA(RichEdit1.Handle, EM_LINEINDEX,
-                                  FObjPreLineMin, 0);
+  FObjPreLines := EdApi.LineCount;
+  FObjPreLineMin := EdApi.ExLineFromChar(Sel.cpMin);
+  FObjPreLineMax := EdApi.ExLineFromChar(Sel.cpMax);
+  FObjPreStartMin := EdApi.LineIndex(FObjPreLineMin);
   FObjPreCode := Rel = 2;
   FObjPreValid := True;
   FObjLoadPending := False;
@@ -35594,12 +35612,12 @@ begin
   if (FDfmNodes = nil) or (FDfmNodes.Count = 0) then
     Exit;
 
-  NewLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  NewLines := EdApi.LineCount;
   D := NewLines - FObjPreLines;
   if D = 0 then
     Exit; // строк столько же - номера на месте
   NewLen := TextLenInternal;
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   Post := Sel.cpMin;
 
   if FObjPreMin < FObjPreMax then
@@ -35627,8 +35645,8 @@ begin
     else
       R1 := FObjPreMin;
     // Текст левее правки не менялся - строка и её начало те же, что до неё
-    LA := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, R1);
-    SA := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LA, 0);
+    LA := EdApi.ExLineFromChar(R1);
+    SA := EdApi.LineIndex(LA);
     // Вставки не было: сколько строк убавилось, столько переводов стёрто
     LB := LA - D;
   end;
@@ -36832,10 +36850,10 @@ var
 begin
   Result := '';
   P := RichEdit1.SelStart;
-  LineIdx := SendMessage(RichEdit1.Handle, EM_LINEFROMCHAR, P, 0);
+  LineIdx := EdApi.LineFromChar(P);
   if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
     Exit;
-  LineStart := SendMessage(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  LineStart := EdApi.LineIndex(LineIdx);
   S := RichEdit1.Lines[LineIdx];
   Col := P - LineStart + 1;
   if (Col < 1) or (Col > Length(S) + 1) then
@@ -42603,7 +42621,7 @@ begin
         ExtractFileName(PasFile) + ' не найден', clRed);
     Exit;
   end;
-  Line := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR, Pos0, 0);
+  Line := EdApi.LineFromChar(Pos0);
   GotoLine(Line);
 end;
 
@@ -42735,7 +42753,7 @@ begin
     P := FindTextEd('.' + Meth + '(', 0, RichEdit1.GetTextLen, []);
   if P < 0 then
     Exit;
-  Line := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR, P, 0);
+  Line := EdApi.LineFromChar(P);
   GotoLine(Line + 2);
 end;
 
@@ -44263,7 +44281,7 @@ begin
                 Exit;
   end;
 
-  Line := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR, P, 0);
+  Line := EdApi.LineFromChar(P);
   GotoLine(Line);
 end;
 
@@ -44306,7 +44324,7 @@ begin
   FLockScroll := True;
   try
     // --- вертикаль: считаем в СТРОКАХ, их число контрол отдаёт мгновенно
-    Lines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+    Lines := EdApi.LineCount;
     if LineHeight > 0 then
       VisLines := EditViewHeight div LineHeight
     else
@@ -44320,8 +44338,7 @@ begin
     else
       FVScroll.Max := 0;
     FVScroll.LargeChange := VisLines;
-    FVScroll.Position := SendMessageA(RichEdit1.Handle,
-                                      EM_GETFIRSTVISIBLELINE, 0, 0);
+    FVScroll.Position := EdApi.FirstVisibleLine;
     // Нижний край области текста RichEdit - по видимым строкам, иначе
     // последние строки файла прокруткой не достать
     FitEditRect(VisLines);
@@ -44394,10 +44411,10 @@ begin
   Result := 0;
   if not RichEdit1.HandleAllocated then
     Exit;
-  StartLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  StartLine := EdApi.FirstVisibleLine;
   Result := StartLine;
 
-  LineCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  LineCount := EdApi.LineCount;
   VisLines := 1;
   if LineHeight > 0 then
     VisLines := EditViewHeight div LineHeight;
@@ -44413,8 +44430,8 @@ begin
   if ATarget = StartLine then
     Exit;
 
-  SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, ATarget - StartLine);
-  FirstLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  EdApi.LineScroll(ATarget - StartLine);
+  FirstLine := EdApi.FirstVisibleLine;
   Result := FirstLine;
   if FirstLine = ATarget then
     Exit;
@@ -44422,9 +44439,9 @@ begin
   // RichEdit не дошёл до нужной строки - снимок до попыток
   Inc(FScrollRefusals);
   Windows.GetClientRect(RichEdit1.Handle, ClientRc);
-  SendMessageA(RichEdit1.Handle, EM_GETRECT, 0, Integer(@TextRect));
+  EdApi.GetRect(TextRect);
   ScrollPt := Point(0, 0);
-  SendMessageA(RichEdit1.Handle, EM_GETSCROLLPOS_, 0, Integer(@ScrollPt));
+  EdApi.GetScrollPos(ScrollPt);
   Report := Format('RichEdit не прокрутил: первая видимая %d, просили %d, ' +
   'стала %d; строк %d, видно %d (LineHeight %d); клиент %dx%d, панель %d, ' +
   'область текста %d..%d, scrollpos %d',
@@ -44435,16 +44452,16 @@ begin
   for StepIdx := 1 to 3 do
   begin
     case StepIdx of
-      1: SendMessageA(RichEdit1.Handle, EM_SETRECT, 0, Integer(@TextRect));
+      1: EdApi.SetRect(TextRect);
       2: SendMessageA(RichEdit1.Handle, WM_SIZE, SIZE_RESTORED,
                       MakeLong(ClientRc.Right, ClientRc.Bottom));
-      3: SendMessageA(RichEdit1.Handle, EM_SETTARGETDEVICE_, 0, 1);
+      3: EdApi.SetTargetDevice(1);
     end;
-    FirstLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+    FirstLine := EdApi.FirstVisibleLine;
     if FirstLine <> ATarget then
     begin
-      SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, ATarget - FirstLine);
-      FirstLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+      EdApi.LineScroll(ATarget - FirstLine);
+      FirstLine := EdApi.FirstVisibleLine;
     end;
     Report := Report + Format('; после %s: %d', [StepNames[StepIdx], FirstLine]);
     if FirstLine = ATarget then
@@ -44512,8 +44529,8 @@ begin
   // EM_SETRECT с той же областью сдвинул. WM_SIZE и EM_SETRECTNP этого не
   // делают. Шлём его здесь, сразу после смены размера, чтобы первая
   // прокрутка не упиралась (ScrollEditTo остаётся запасным путём).
-  SendMessageA(RichEdit1.Handle, EM_GETRECT, 0, Integer(@TextRect));
-  SendMessageA(RichEdit1.Handle, EM_SETRECT, 0, Integer(@TextRect));
+  EdApi.GetRect(TextRect);
+  EdApi.SetRect(TextRect);
   InvalidateRect(RichEdit1.Handle, nil, False);
 end;
 
@@ -44543,18 +44560,18 @@ begin
   // Шаг строк RichEdit - по двум соседним строкам; одна строка в файле -
   // наш LineHeight
   RichPitch := LineHeight;
-  FirstLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FirstLine, 0);
-  NextStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FirstLine + 1, 0);
+  FirstLine := EdApi.FirstVisibleLine;
+  LineStart := EdApi.LineIndex(FirstLine);
+  NextStart := EdApi.LineIndex(FirstLine + 1);
   if (LineStart >= 0) and (NextStart > LineStart) then
   begin
-    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstPt), LineStart);
-    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@NextPt), NextStart);
+    EdApi.PosFromChar(FirstPt, LineStart);
+    EdApi.PosFromChar(NextPt, NextStart);
     if NextPt.Y > FirstPt.Y then
       RichPitch := NextPt.Y - FirstPt.Y;
   end;
 
-  SendMessageA(RichEdit1.Handle, EM_GETRECT, 0, Integer(@TextRect));
+  EdApi.GetRect(TextRect);
   WantBottom := TextRect.Top + AVisLines * RichPitch;
   if WantBottom > EditViewHeight then
     WantBottom := EditViewHeight;
@@ -44567,7 +44584,7 @@ begin
                    LineHeight, RichPitch]));
   TextRect.Bottom := WantBottom;
   // Без перерисовки: кадр рисуем мы, а этот вызов идёт из его конца
-  SendMessageA(RichEdit1.Handle, EM_SETRECTNP, 0, Integer(@TextRect));
+  EdApi.SetRectNP(TextRect);
 end;
 
 // Показывает или прячет горизонтальную полосу.
@@ -44595,14 +44612,14 @@ function TForm1.LineAtY(AY: Integer): Integer;
 var
   Total: Integer;
 begin
-  Result := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  Result := EdApi.FirstVisibleLine;
   if LineHeight > 0 then
     Inc(Result, AY div LineHeight);
 
   if Result < 0 then
     Result := 0;
 
-  Total := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  Total := EdApi.LineCount;
   if Result > Total - 1 then
     Result := Total - 1;
 end;
@@ -45076,7 +45093,7 @@ begin
     Exit;
   end;
 
-  if SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALine, 0) < 0 then
+  if EdApi.LineIndex(ALine) < 0 then
     Exit;
 
   Result := LinePrefixWidth(ALine, MaxInt);
@@ -45101,10 +45118,10 @@ begin
   if (ALine < 0) or (ACount <= 0) then
     Exit;
 
-  Idx := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALine, 0);
+  Idx := EdApi.LineIndex(ALine);
   if Idx < 0 then
     Exit;
-  Len := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, Idx, 0);
+  Len := EdApi.LineLength(Idx);
   if Len <= 0 then
     Exit;
   if ACount > Len then
@@ -45180,8 +45197,7 @@ begin
     // RichEdit 4.1 отдаёт строку вместе с CR - место под него и под ноль
     SetLength(Result, ALen + 2);
     PWord(Pointer(Result))^ := ALen + 2;
-    Got := SendMessageA(RichEdit1.Handle, EM_GETLINE, ALine,
-                        Integer(Pointer(Result)));
+    Got := EdApi.GetLine(ALine, Pointer(Result));
     if Got < 0 then
       Got := 0;
     if Got > ALen then
@@ -45441,10 +45457,10 @@ begin
   L := @FLineInfo[AInfo];
 
   // 1. Правка внутри строки?
-  Line := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR_, 0, L^.CStart);
-  if SendMessageA(RichEdit1.Handle, EM_LINEINDEX, Line, 0) <> L^.CStart then
+  Line := EdApi.ExLineFromChar(L^.CStart);
+  if EdApi.LineIndex(Line) <> L^.CStart then
     Exit;
-  NewLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, L^.CStart, 0);
+  NewLen := EdApi.LineLength(L^.CStart);
   if NewLen <> L^.CLen + D then
     Exit;
   if L^.CN <> L^.CLen then
@@ -45690,8 +45706,7 @@ var
 begin
   G.flags := 0;
   G.codepage := 1200;
-  Result := SendMessageA(RichEdit1.Handle, EM_GETTEXTLENGTHEX_,
-                         Integer(@G), 0);
+  Result := EdApi.GetTextLengthEx(G);
 end;
 
 // Перед сообщением, которое может изменить текст: снимок выделения и длины.
@@ -45730,12 +45745,12 @@ begin
     Exit;
   end;
 
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   FCachePreMin := Sel.cpMin;
   FCachePreMax := Sel.cpMax;
   FCachePreLen := TextLenInternal;
-  FCachePreLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
-  FCachePreLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
+  FCachePreLines := EdApi.LineCount;
+  FCachePreLine := EdApi.ExLineFromChar(Sel.cpMin);
   FCachePreValid := True;
   FCacheDepth := FMsgDepth;
 end;
@@ -45753,7 +45768,7 @@ begin
     Exit;
   if Length(FLineDepth) <> FCachePreLines then
     Exit;   // карта не по этому тексту - ждём пересборку
-  NewLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  NewLines := EdApi.LineCount;
   Delta := NewLines - FCachePreLines;
   EditLine := FCachePreLine;
   if (Delta = 0) or (EditLine < 0) or (EditLine >= FCachePreLines) then
@@ -45913,11 +45928,11 @@ begin
   // EnsureCaretVisibleX не двигал FScrollX - каретка уходила за правый край.
   CheckCtlScrollX;
 
-  Line := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR_, 0, ACharPos);
-  Start := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, Line, 0);
+  Line := EdApi.ExLineFromChar(ACharPos);
+  Start := EdApi.LineIndex(Line);
   if Start < 0 then
     Exit;
-  SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@P), Start);
+  EdApi.PosFromChar(P, Start);
   Result.X := P.X + LinePrefixWidth(Line, ACharPos - Start);
   Result.Y := P.Y;
 end;
@@ -45932,14 +45947,14 @@ begin
   if ALine < 0 then
     Exit;
 
-  Idx := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALine, 0);
+  Idx := EdApi.LineIndex(ALine);
   if Idx < 0 then
     Exit;
-  Len := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, Idx, 0);
+  Len := EdApi.LineLength(Idx);
 
   Sel.cpMin := Idx + Len;
   Sel.cpMax := Sel.cpMin;
-  SendMessageA(RichEdit1.Handle, EM_EXSETSEL, 0, Integer(@Sel));
+  EdApi.SetSel(Sel);
 end;
 
 procedure TForm1.SetScrollX(AValue: Integer);
@@ -45979,7 +45994,7 @@ begin
   if not RichEdit1.HandleAllocated then
     Exit;
 
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   Pt := CaretPoint(Sel.cpMin);
 
   VW := ViewWidth;
@@ -46019,7 +46034,7 @@ var
 begin
   if not RichEdit1.HandleAllocated or FInCtlReset then
     Exit;
-  SendMessageA(RichEdit1.Handle, EM_GETSCROLLPOS, 0, Integer(@P));
+  EdApi.GetScrollPos(P);
   if P.X = 0 then
     Exit;
 
@@ -48650,10 +48665,9 @@ begin
   FDeclLine := HeadLine;
   FDeclCol := FirstPos;
   FDeclText := Trim(StringReplace(LineText, #9, ' ', [rfReplaceAll]));
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@CaretSel));
+  EdApi.GetSel(CaretSel);
   FDeclFromPos := CaretSel.cpMin;
-  FDeclFromLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
-                                FDeclFromPos);
+  FDeclFromLine := EdApi.ExLineFromChar(FDeclFromPos);
   FDeclIsBlock := True;
   FDeclBlockEnd := not FGuideMarks[AMarkIdx].AtTop;
   FDeclMode := 2;
@@ -48691,9 +48705,9 @@ begin
     Exit;
   end;
 
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
-  Line := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, Line, 0);
+  EdApi.GetSel(Sel);
+  Line := EdApi.ExLineFromChar(Sel.cpMin);
+  LineStart := EdApi.LineIndex(Line);
 
   Src := TStringList.Create;
   Cl := TStringList.Create;
@@ -48929,7 +48943,7 @@ begin
       end;
       GotoLine(FDeclLine);
       // Каретка - на имя в строке объявления
-      P := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FDeclLine, 0);
+      P := EdApi.LineIndex(FDeclLine);
       if P >= 0 then
       begin
         RichEdit1.SelStart := P + FDeclCol - 1;
@@ -48955,7 +48969,7 @@ begin
         RichEdit1.SetFocus;
       RichEdit1.SelStart := FDeclFromPos;
       RichEdit1.SelLength := 0;
-      SendMessageA(RichEdit1.Handle, EM_SCROLLCARET, 0, 0);
+      EdApi.ScrollCaret;
       CenterCaretLine;
       UpdateStatusBarInfo;
       FDeclMode := 2;
@@ -58489,7 +58503,7 @@ begin
   if (btnUndo <> nil) and RichEdit1.HandleAllocated then
   begin
     HasSel := RichEdit1.SelLength > 0;
-    btnUndo.Enabled := SendMessageA(RichEdit1.Handle, EM_CANUNDO, 0, 0) <> 0;
+    btnUndo.Enabled := EdApi.CanUndo;
     btnCut.Enabled := HasSel;
     btnCopy.Enabled := HasSel;
     btnPaste.Enabled := Clipboard.HasFormat(CF_TEXT);
@@ -59023,7 +59037,7 @@ begin
     if Copy(LineText, 1, 8) = '$include' then
       InsLine := LineIdx + 1;
   end;
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsLine, 0);
+  LineStart := EdApi.LineIndex(InsLine);
   if LineStart < 0 then
     Exit;
   Inc(FObjOwnWrite);
@@ -59284,7 +59298,7 @@ begin
     for LineIdx := 0 to Block.Count - 1 do
       BlockText := BlockText + Block[LineIdx] + #13#10;
 
-    LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+    LineStart := EdApi.LineIndex(InsAt);
     if LineStart < 0 then
       Exit;
     Inc(FObjOwnWrite);
@@ -59425,16 +59439,16 @@ procedure TForm1.RqDsgSetLines(ALineFrom, ACount: Integer; const AText: string);
 var
   StartPos, EndPos, LineTotal: Integer;
 begin
-  LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
-  StartPos := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALineFrom, 0);
+  LineTotal := EdApi.LineCount;
+  StartPos := EdApi.LineIndex(ALineFrom);
   if StartPos < 0 then
     Exit;
   if ALineFrom + ACount < LineTotal then
-    EndPos := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALineFrom + ACount, 0)
+    EndPos := EdApi.LineIndex(ALineFrom + ACount)
   else
   begin
-    EndPos := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineTotal - 1, 0);
-    EndPos := EndPos + SendMessageA(RichEdit1.Handle, EM_LINELENGTH, EndPos, 0);
+    EndPos := EdApi.LineIndex(LineTotal - 1);
+    EndPos := EndPos + EdApi.LineLength(EndPos);
   end;
   Inc(FObjOwnWrite);
   try
@@ -59513,7 +59527,7 @@ begin
   if FDsgMiLayoutLog <> nil then
     FDsgMiLayoutLog.Visible := False;
   FDsgMiUndo.Enabled := RichEdit1.HandleAllocated and
-    (SendMessageA(RichEdit1.Handle, EM_CANUNDO, 0, 0) <> 0);
+    EdApi.CanUndo;
   FDsgMiCut.Enabled := HasSel;
   FDsgMiCopy.Enabled := HasSel;
   FDsgMiPaste.Enabled := CanPaste;
@@ -59593,10 +59607,10 @@ end;
 procedure TForm1.RqDsgUndo;
 begin
   if not RqDsgFileActive or
-     (SendMessageA(RichEdit1.Handle, EM_CANUNDO, 0, 0) = 0) then
+     not EdApi.CanUndo then
     Exit;
   ObjCancelEdit;
-  SendMessageA(RichEdit1.Handle, EM_UNDO, 0, 0);
+  EdApi.Undo;
   RqDsgAfterEdit(FRqDsgForm);
 end;
 
@@ -60080,10 +60094,10 @@ procedure TForm1.RqDsgSetLineText(ALine: Integer; const AText: string);
 var
   LineStart, LineLen: Integer;
 begin
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALine, 0);
+  LineStart := EdApi.LineIndex(ALine);
   if LineStart < 0 then
     Exit;
-  LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+  LineLen := EdApi.LineLength(LineStart);
   Inc(FObjOwnWrite);
   try
     EditorFreeze;
@@ -60219,17 +60233,17 @@ begin
     // последнего символа, с переводом строки перед блоком
     if AtEnd then
     begin
-      LastLine := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0) - 1;
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LastLine, 0);
+      LastLine := EdApi.LineCount - 1;
+      LineStart := EdApi.LineIndex(LastLine);
       if LineStart < 0 then
         Exit;
       LineStart := LineStart +
-                   SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+                   EdApi.LineLength(LineStart);
       BlockText := #13#10 + BlockText;
     end
     else
     begin
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+      LineStart := EdApi.LineIndex(InsAt);
       if LineStart < 0 then
         Exit;
     end;
@@ -60410,15 +60424,15 @@ begin
     // Строка в главном файле. После последней строки текста - с переводом
     // строки перед ней.
     InsText := '$INCLUDE "' + IncName + '"' + #13#10;
-    LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+    LineStart := EdApi.LineIndex(InsAt);
     if LineStart < 0 then
     begin
-      LastLine := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0) - 1;
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LastLine, 0);
+      LastLine := EdApi.LineCount - 1;
+      LineStart := EdApi.LineIndex(LastLine);
       if LineStart < 0 then
         Exit;
       LineStart := LineStart +
-                   SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+                   EdApi.LineLength(LineStart);
       InsText := #13#10 + '$INCLUDE "' + IncName + '"';
     end;
     Inc(FObjOwnWrite);
@@ -62184,9 +62198,9 @@ var
   end;
 
 begin
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
-  Line := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, Line, 0);
+  EdApi.GetSel(Sel);
+  Line := EdApi.ExLineFromChar(Sel.cpMin);
+  LineStart := EdApi.LineIndex(Line);
   OwnIndex := False;
   FoundIndex := nil;
 
@@ -62606,7 +62620,7 @@ begin
      (Y < YOffset) or not RichEdit1.HandleAllocated then
     Exit;
   LineIdx := FirstVisibleLine + (Y - YOffset) div LineHeight;
-  LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  LineTotal := EdApi.LineCount;
   if (LineIdx < 0) or (LineIdx >= LineTotal) then
     Exit;
   // Правая кнопка - условие точки останова (RapidQ)
@@ -63758,19 +63772,18 @@ begin
     Exit;
   // Верхняя строка - у контрола напрямую: UpdateVisibleBounds ищет ещё и
   // нижнюю через EM_CHARFROMPOS, на большом файле это заметно
-  TopLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  TopLine := EdApi.FirstVisibleLine;
   TopY := 0;
-  LineStartChar := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, TopLine, 0);
+  LineStartChar := EdApi.LineIndex(TopLine);
   if LineStartChar >= 0 then
   begin
-    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstPt),
-                 LineStartChar);
+    EdApi.PosFromChar(FirstPt, LineStartChar);
     TopY := FirstPt.Y;
   end;
   if AY < TopY then
     Exit;
   Result := TopLine + (AY - TopY) div LineHeight;
-  LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  LineTotal := EdApi.LineCount;
   if (Result < 0) or (Result >= LineTotal) then
     Result := -1;
 end;
@@ -63831,16 +63844,15 @@ begin
 
   // Верхняя строка - у контрола напрямую: UpdateVisibleBounds ищет ещё и
   // нижнюю через EM_CHARFROMPOS, на большом файле это заметно
-  TopLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  TopLine := EdApi.FirstVisibleLine;
   TopY := 0;
-  LineStartChar := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, TopLine, 0);
+  LineStartChar := EdApi.LineIndex(TopLine);
   if LineStartChar >= 0 then
   begin
-    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstPt),
-                 LineStartChar);
+    EdApi.PosFromChar(FirstPt, LineStartChar);
     TopY := FirstPt.Y;
   end;
-  LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  LineTotal := EdApi.LineCount;
 
   // Квадратик закладки слева, кружок и стрелка - справа от него (шрифт
   // номера закладки ставит MarksLayout)
@@ -64026,7 +64038,7 @@ begin
   SetLength(FWindows[FWindowsIndex].Bookmarks, BmCount + 1);
   FWindows[FWindowsIndex].Bookmarks[BmCount].LineNo := ALineIdx + 1;
   FWindows[FWindowsIndex].Bookmarks[BmCount].CharPos :=
-    SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALineIdx, 0);
+    EdApi.LineIndex(ALineIdx);
   if ALineIdx < RichEdit1.Lines.Count then
     FWindows[FWindowsIndex].Bookmarks[BmCount].Text :=
       Trim(RichEdit1.Lines[ALineIdx])
@@ -64083,10 +64095,10 @@ var
   LineText, NamePart: string;
 begin
   Result := AWord;
-  LineIdx := SendMessage(RichEdit1.Handle, EM_LINEFROMCHAR, ACharPos, 0);
+  LineIdx := EdApi.LineFromChar(ACharPos);
   if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
     Exit;
-  LineStart := SendMessage(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  LineStart := EdApi.LineIndex(LineIdx);
   LineText := RichEdit1.Lines[LineIdx];
   CaretCol := ACharPos - LineStart + 1;
   ColonPos := Pos(':', LineText);
@@ -64115,10 +64127,10 @@ begin
   Result := '';
   if not RichEdit1.HandleAllocated or (ACharPos < 0) then
     Exit;
-  LineIdx := SendMessage(RichEdit1.Handle, EM_LINEFROMCHAR, ACharPos, 0);
+  LineIdx := EdApi.LineFromChar(ACharPos);
   if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
     Exit;
-  LineStart := SendMessage(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  LineStart := EdApi.LineIndex(LineIdx);
   LineText := RichEdit1.Lines[LineIdx];
   StartCol := ACharPos - LineStart + 1;
   // Символ не буква - смотрим знак слева (позиция сразу за словом)
@@ -64169,19 +64181,18 @@ begin
   TextPt.X := APoint.X + FScrollX;
   TextPt.Y := APoint.Y;
   LineIdx := LineAtY(APoint.Y);
-  LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  LineTotal := EdApi.LineCount;
   if (LineIdx < 0) or (LineIdx >= LineTotal) then
     Exit;
   // Правее конца строки - пусто (контрол отдал бы последний символ)
   if TextPt.X >= LinePixelWidth(LineIdx) then
     Exit;
-  Result := SendMessageA(RichEdit1.Handle, EM_CHARFROMPOS, 0,
-                         Integer(@TextPt));
+  Result := EdApi.CharFromPos(TextPt);
   if Result < 0 then
     Exit;
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  LineStart := EdApi.LineIndex(LineIdx);
   if (Result < LineStart) or
-     (SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Result) <>
+     (EdApi.ExLineFromChar(Result) <>
       LineIdx) then
     Result := -1;
 end;
@@ -72156,7 +72167,7 @@ begin
   Result := 0;
   if not RichEdit1.HandleAllocated then
     Exit;
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   Result := Sel.cpMax;
 end;
 
@@ -72165,8 +72176,8 @@ function TForm1.CiLineOf(ACharPos: Integer; var ALineIdx,
                          ALineStart: Integer): string;
 begin
   Result := '';
-  ALineIdx := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, ACharPos);
-  ALineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALineIdx, 0);
+  ALineIdx := EdApi.ExLineFromChar(ACharPos);
+  ALineStart := EdApi.LineIndex(ALineIdx);
   if (ALineIdx >= 0) and (ALineIdx < RichEdit1.Lines.Count) then
     Result := RichEdit1.Lines[ALineIdx];
 end;
@@ -74414,17 +74425,14 @@ begin
       ((((FDbgSession = nil) or FDbgSession.Finished) and
         (FRqDbgExe = '')) or (FCurrentFileName = ''))) then
     Exit;
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   FDbgPreMin := Sel.cpMin;
   FDbgPreMax := Sel.cpMax;
   FDbgPreLen := TextLenInternal;
-  FDbgPreLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
-  FDbgPreLineMin := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
-                                 Sel.cpMin);
-  FDbgPreLineMax := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
-                                 Sel.cpMax);
-  FDbgPreStartMin := SendMessageA(RichEdit1.Handle, EM_LINEINDEX,
-                                  FDbgPreLineMin, 0);
+  FDbgPreLines := EdApi.LineCount;
+  FDbgPreLineMin := EdApi.ExLineFromChar(Sel.cpMin);
+  FDbgPreLineMax := EdApi.ExLineFromChar(Sel.cpMax);
+  FDbgPreStartMin := EdApi.LineIndex(FDbgPreLineMin);
   FDbgPreValid := True;
 end;
 
@@ -74460,12 +74468,12 @@ begin
   FDbgPreValid := False;
   if not RichEdit1.HandleAllocated then
     Exit;
-  NewLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  NewLines := EdApi.LineCount;
   Delta := NewLines - FDbgPreLines;
   if Delta = 0 then
     Exit;
   NewLen := TextLenInternal;
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
 
   if FDbgPreMin < FDbgPreMax then
   begin
@@ -74491,9 +74499,8 @@ begin
       EditStart := FDbgPreMin - Removed
     else
       EditStart := FDbgPreMin;
-    FirstLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
-                              EditStart);
-    FirstStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FirstLine, 0);
+    FirstLine := EdApi.ExLineFromChar(EditStart);
+    FirstStart := EdApi.LineIndex(FirstLine);
     LastLine := FirstLine - Delta;
   end;
 
@@ -74539,7 +74546,7 @@ begin
       begin
         FWindows[FWindowsIndex].Bookmarks[MarkIdx].LineNo := NewLineNo;
         FWindows[FWindowsIndex].Bookmarks[MarkIdx].CharPos :=
-          SendMessageA(RichEdit1.Handle, EM_LINEINDEX, NewLineNo - 1, 0);
+          EdApi.LineIndex(NewLineNo - 1);
         BmMoved := True;
       end;
     end;
@@ -74908,10 +74915,10 @@ begin
   if ABasic then
     Ch := Ch + ['$'];
   P := RichEdit1.SelStart;
-  LineIdx := SendMessage(RichEdit1.Handle, EM_LINEFROMCHAR, P, 0);
+  LineIdx := EdApi.LineFromChar(P);
   if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
     Exit;
-  LineStart := SendMessage(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  LineStart := EdApi.LineIndex(LineIdx);
   S := RichEdit1.Lines[LineIdx];
   Col := P - LineStart + 1;
   if (Col < 1) or (Col > Length(S) + 1) then
@@ -74976,12 +74983,12 @@ begin
     Exit;
   Basic := Lang = 'bas';
 
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
-  Line := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
-  LS := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, Line, 0);
+  EdApi.GetSel(Sel);
+  Line := EdApi.ExLineFromChar(Sel.cpMin);
+  LS := EdApi.LineIndex(Line);
   if LS < 0 then
     Exit;
-  LL := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LS, 0);
+  LL := EdApi.LineLength(LS);
   Cur := ReadLineText(Line, LS, LL);
   K := 1;
   while (K <= Length(Cur)) and (Cur[K] in [' ', #9]) do
@@ -75039,9 +75046,8 @@ begin
   // замена - один шаг Undo.
   Sel.cpMin := LS + LL;
   Sel.cpMax := Sel.cpMin;
-  SendMessageA(RichEdit1.Handle, EM_EXSETSEL, 0, Integer(@Sel));
-  SendMessageA(RichEdit1.Handle, EM_REPLACESEL, 1,
-               Integer(PChar(#13#10 + Ind + Ins)));
+  EdApi.SetSel(Sel);
+  EdApi.ReplaceSel(#13#10 + Ind + Ins);
   UpdateStatusBarInfo;
 end;
 
@@ -75054,7 +75060,7 @@ begin
                 mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
     Exit;
   RichEdit1.SelectAll;
-  SendMessageA(RichEdit1.Handle, EM_REPLACESEL, 1, Integer(PChar('')));
+  EdApi.ReplaceSel('');
   UpdateStatusBarInfo;
 end;
 
@@ -75080,10 +75086,10 @@ const
 begin
   Result := False;
   P := RichEdit1.SelStart;
-  LineIdx := SendMessage(RichEdit1.Handle, EM_LINEFROMCHAR, P, 0);
+  LineIdx := EdApi.LineFromChar(P);
   if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
     Exit;
-  LineStart := SendMessage(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  LineStart := EdApi.LineIndex(LineIdx);
   S := RichEdit1.Lines[LineIdx];
   Col := P - LineStart + 1;
   if (Col < 1) or (Col > Length(S) + 1) then
@@ -75115,7 +75121,7 @@ var
   Got, N: Integer;
   Lost: BOOL;
 begin
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   if Sel.cpMax <= Sel.cpMin then
     if not WordRangeAtCaret(Sel) then
       Exit;
@@ -75127,7 +75133,7 @@ begin
     FillChar(W[1], (N + 1) * SizeOf(WideChar), 0);
     TR.chrg := Sel;
     TR.lpstrText := PChar(PWideChar(W));
-    Got := SendMessageA(RichEdit1.Handle, EM_GET_TEXTRANGE, 0, Integer(@TR));
+    Got := EdApi.GetTextRange(TR);
     if Got <= 0 then
       Exit;
     Lost := False;
@@ -75148,10 +75154,10 @@ begin
   if T = S then
     Exit;
 
-  SendMessageA(RichEdit1.Handle, EM_EXSETSEL, 0, Integer(@Sel));
-  SendMessageA(RichEdit1.Handle, EM_REPLACESEL, 1, Integer(PChar(T)));
+  EdApi.SetSel(Sel);
+  EdApi.ReplaceSel(T);
   // Изменённый кусок остаётся выделенным
-  SendMessageA(RichEdit1.Handle, EM_EXSETSEL, 0, Integer(@Sel));
+  EdApi.SetSel(Sel);
   UpdateStatusBarInfo;
 end;
 
@@ -75294,7 +75300,7 @@ begin
   if not RichEdit1.HandleAllocated or not RichEdit1.Focused then
     Exit;
 
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   Pt := CaretPoint(Sel.cpMin);
 
   // Каретку рисуем всегда сами. Системной управляет контрол, и правее своей
@@ -75548,7 +75554,7 @@ begin
           // только свою область текста, полоса в область обновления не
           // попадает, и в ней оставалась картинка прежнего кадра. Кладём её
           // из буфера всегда, мимо отсечения по области обновления.
-          SendMessageA(RichEdit1.Handle, EM_GETRECT, 0, Integer(@TextRc));
+          EdApi.GetRect(TextRc);
           if (TextRc.Bottom > 0) and (TextRc.Bottom < H) then
           begin
             FullDC := GetDC(RichEdit1.Handle);
@@ -75604,9 +75610,9 @@ const
 begin
   if not RichEdit1.HandleAllocated then
     Exit;
-  if Cardinal(SendMessageA(RichEdit1.Handle, EM_GETLIMITTEXT, 0, 0)) <
+  if Cardinal(EdApi.GetLimitText) <
      Cardinal(EditorTextLimit) then
-    SendMessageA(RichEdit1.Handle, EM_EXLIMITTEXT, 0, EditorTextLimit);
+    EdApi.SetLimitText(EditorTextLimit);
 end;
 
 // Запрет мягкого переноса строк.
@@ -75631,7 +75637,7 @@ begin
   FNoWrapHandle := RichEdit1.Handle;
   // ДИАГНОСТИКА: ненулевой ответ - контрол режим принял
   LogDiag('EM_SETTARGETDEVICE(0, 1) = ' +
-          IntToStr(SendMessageA(RichEdit1.Handle, EM_SETTARGETDEVICE_, 0, 1)) +
+          IntToStr(EdApi.SetTargetDevice(1)) +
   ', окно ' + IntToHex(RichEdit1.Handle, 8));
 end;
 
@@ -75669,10 +75675,10 @@ var
 begin
   if not RichEdit1.HandleAllocated then
     Exit;
-  Mask := SendMessageA(RichEdit1.Handle, EM_GETEVENTMASK_, 0, 0);
+  Mask := EdApi.GetEventMask;
   Need := (Mask or ENM_SELCHANGE_) and not ENM_REQUESTRESIZE_;
   if Need <> Mask then
-    SendMessageA(RichEdit1.Handle, EM_SETEVENTMASK_, 0, Need);
+    EdApi.SetEventMask(Need);
 end;
 
 // Обёртка: считает глубину вложенности.
@@ -75709,14 +75715,14 @@ var
 begin
   if not RichEdit1.HandleAllocated then
     Exit;
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  EdApi.GetSel(Sel);
   NewEnd := Sel.cpMax;
   while (NewEnd > Sel.cpMin) and (CharAt(NewEnd - 1) in [' ', #9]) do
     Dec(NewEnd);
   if (NewEnd = Sel.cpMax) or (NewEnd = Sel.cpMin) then
     Exit;
   Sel.cpMax := NewEnd;
-  SendMessageA(RichEdit1.Handle, EM_EXSETSEL, 0, Integer(@Sel));
+  EdApi.SetSel(Sel);
 end;
 
 procedure TForm1.NewRichEditProc(var Message: TMessage);
@@ -75884,8 +75890,7 @@ begin
     if WheelLines <> 0 then
       // Знак минус: колесо от себя даёт положительную дельту, а прокручивать
       // при этом надо ВВЕРХ, то есть к меньшим номерам строк
-      ScrollEditTo(SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE,
-                                0, 0) - WheelLines);
+      ScrollEditTo(EdApi.FirstVisibleLine - WheelLines);
 
     Message.Result := 0;
     Exit;
@@ -76040,8 +76045,7 @@ begin
     EnterText := '';
     for EnterIdx := 1 to EnterCount do
       EnterText := EnterText + #13 + EnterIndent;
-    SendMessage(RichEdit1.Handle, EM_REPLACESEL, 1,
-                Integer(PChar(EnterText)));
+    EdApi.ReplaceSel(EnterText);
     // То, что после клавиши делает общий путь ниже (сюда он не доходит)
     EnsureCaretVisibleX;
     UpdateLineNumbers;
@@ -76052,8 +76056,7 @@ begin
   if (Message.Msg = WM_CHAR) and (Message.WParam = 13) and
      (GetKeyState(VK_CONTROL) >= 0) and not RichEdit1.ReadOnly then
   begin
-    SendMessage(RichEdit1.Handle, EM_REPLACESEL, 1,
-                Integer(PChar(#13 + EnterIndentText)));
+    EdApi.ReplaceSel(#13 + EnterIndentText);
     Message.Result := 0;
     Exit;
   end;
@@ -77445,14 +77448,14 @@ begin
     // Копим заново на каждый кадр: видимые строки сменились
     FMaxVisW := 0;
 
-    SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+    EdApi.GetSel(Sel);
     SelMin := Sel.cpMin;
     SelMax := Sel.cpMax;
     SelBgRgb := ColorToRGB(UiColor('Editor.SelBG'));
     SelFgRgb := ColorToRGB(UiColor('Editor.SelText'));
 
-    LineStartCharIdx := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FirstVisibleLine, 0);
-    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstCharPos), LineStartCharIdx);
+    LineStartCharIdx := EdApi.LineIndex(FirstVisibleLine);
+    EdApi.PosFromChar(FirstCharPos, LineStartCharIdx);
     if LineStartCharIdx <> -1 then
       YOffset := FirstCharPos.Y
     else
@@ -77464,8 +77467,8 @@ begin
     for CurrentLineIdx := FirstVisibleLine to LastVisibleLine do
     begin
       Lap(FPerfTok); // хвост разбора предыдущей строки
-      LineStartCharIdx := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, CurrentLineIdx, 0);
-      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStartCharIdx, 0);
+      LineStartCharIdx := EdApi.LineIndex(CurrentLineIdx);
+      LineLen := EdApi.LineLength(LineStartCharIdx);
 
       // Сдвиг НАШ: своей прокрутки у контрола при такой ширине не бывает
       Pt.X := -FScrollX;
@@ -77902,7 +77905,7 @@ begin
 
   // Строим карту для стартового текста
   RebuildCommentRangeMap;
-  RichEditLinesCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  RichEditLinesCount := EdApi.LineCount;
   UpdateVisibleBounds;
 
   // У класса окна RichEdit выставлен CS_HREDRAW, но не CS_VREDRAW. Поэтому смена
@@ -78137,7 +78140,7 @@ begin
 
   LineCount := 1;
   if RichEdit1.HandleAllocated then
-    LineCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+    LineCount := EdApi.LineCount;
   FGutterDigits := GutterDigitsFor(LineCount);
   NewW := 4 + DigitW * FGutterDigits + 9;
   // Полоса меток - своей ширины (alLeft за номерами); за ней - отступ
@@ -78198,10 +78201,10 @@ begin
   // КРИТИЧЕСКИЙ ШАГ ДЛЯ ПЛАВНОСТИ:
   // Узнаем точную попиксельную координату Y для самого первого видимого символа в RichEdit.
   // Windows возвращает её с учетом полускролла (например, -4 пикселя, если строка уезжает вверх).
-  LineStartCharIdx := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FirstVisibleLine, 0);
+  LineStartCharIdx := EdApi.LineIndex(FirstVisibleLine);
   if LineStartCharIdx <> -1 then
   begin
-    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstCharPos), LineStartCharIdx);
+    EdApi.PosFromChar(FirstCharPos, LineStartCharIdx);
     YOffset := FirstCharPos.Y; // Записываем точный пиксельный сдвиг
   end
   else
@@ -79554,12 +79557,12 @@ begin
   Result := '';
   if not RichEdit1.HandleAllocated then
     Exit;
-  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
-  LineNo := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+  EdApi.GetSel(Sel);
+  LineNo := EdApi.ExLineFromChar(Sel.cpMin);
+  LineStart := EdApi.LineIndex(LineNo);
   if LineStart < 0 then
     Exit;
-  LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+  LineLen := EdApi.LineLength(LineStart);
   LineText := TextRange(LineStart, LineLen);
   Before := Copy(LineText, 1, Sel.cpMin - LineStart);
 
@@ -79576,8 +79579,8 @@ begin
     CharIdx := LineNo - 1;
     while CharIdx >= 0 do
     begin
-      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, CharIdx, 0);
-      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      LineStart := EdApi.LineIndex(CharIdx);
+      LineLen := EdApi.LineLength(LineStart);
       LineText := TextRange(LineStart, LineLen);
       if Trim(LineText) <> '' then
         Break;
@@ -79671,8 +79674,8 @@ begin
   PasteText := Clipboard.AsText;
   if PasteText = '' then
     Exit;
-  SendMessage(RichEdit1.Handle, EM_REPLACESEL, 1, Integer(PChar(PasteText)));
-  SendMessageA(RichEdit1.Handle, EM_SCROLLCARET, 0, 0);
+  EdApi.ReplaceSel(PasteText);
+  EdApi.ScrollCaret;
 end;
 
 procedure TForm1.EditClickEvent(Sender: TObject);
@@ -79685,7 +79688,7 @@ begin
   if (Sender = mUndo) or (Sender = btnUndo) then
     RichEdit1.Undo
   else if Sender = mRedo then
-    RichEdit1.Perform(EM_REDO, 0, 0)
+    EdApi.Redo
   else if (Sender = mCut) or (Sender = btnCut) then
     RichEdit1.CutToClipboard
   else if (Sender = mCopy) or (Sender = btnCopy) then
@@ -79703,7 +79706,7 @@ begin
   if (Sender = mUndo) or (Sender = btnUndo) or (Sender = pmuUndo) then
     RichEdit1.Undo
   else if (Sender = mRedo) or (Sender = pmuRedo) then
-    RichEdit1.Perform(EM_REDO, 0, 0)
+    EdApi.Redo
   else if (Sender = mCut) or (Sender = btnCut) or (Sender = pmuCut) then
     RichEdit1.CutToClipboard
   else if (Sender = mCopy) or (Sender = btnCopy) or (Sender = pmuCopy) then
@@ -80363,8 +80366,7 @@ begin
                 Exit;
   end;
 
-  CaretLine := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR,
-                            RichEdit1.SelStart, 0);
+  CaretLine := EdApi.LineFromChar(RichEdit1.SelStart);
 
   // RapidQ: однострочные "CREATE ... : ... : END CREATE" - сначала по
   // строке на оператор, отступы им расставит форматирование ниже
@@ -80688,7 +80690,7 @@ begin
       // Текст уже тот, что будет после форматирования, по числу строк:
       // развёртка CREATE и замена #11 сделаны выше, а форматирование
       // строк не добавляет
-      FFmtSusLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+      FFmtSusLines := EdApi.LineCount;
       for K := 0 to High(SusLines) do
       begin
         FFmtSusLine[K] := SusLines[K];
@@ -80750,7 +80752,7 @@ begin
     RichEdit1.Modified := True;
 
     // Каретка - на ту же строку, в её начало
-    K := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, CaretLine, 0);
+    K := EdApi.LineIndex(CaretLine);
     if K < 0 then
       K := 0;
     RichEdit1.SelStart := K;
@@ -80758,7 +80760,7 @@ begin
 
     // Текст сменился целиком - карта и списки строятся заново, один раз
     RebuildCommentRangeMap;
-    RichEditLinesCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+    RichEditLinesCount := EdApi.LineCount;
     UpdateVisibleBounds;
     RichEdit1.Invalidate;
     if PaintBox1 <> nil then
@@ -82298,7 +82300,7 @@ begin
   NewWin := FSplitWin;
   OldTop := 0;
   if RichEdit1.HandleAllocated then
-    OldTop := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+    OldTop := EdApi.FirstVisibleLine;
 
   // Вид каждой панели при смене панелей остаётся своим: на месте
   // редактора остаётся его вид (страница по формату - страница), на
@@ -82324,18 +82326,18 @@ begin
   FSplitPlaceTimer.Enabled := False;
   if not RichEdit1.HandleAllocated then
     Exit;
-  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FSplitClickLine, 0);
+  LineStart := EdApi.LineIndex(FSplitClickLine);
   if LineStart >= 0 then
   begin
-    LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+    LineLen := EdApi.LineLength(LineStart);
     if FSplitClickCol > LineLen then
       FSplitClickCol := LineLen;
     RichEdit1.SelStart := LineStart + FSplitClickCol;
     RichEdit1.SelLength := 0;
   end;
-  CurTop := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  CurTop := EdApi.FirstVisibleLine;
   if CurTop <> FSplitClickTop then
-    SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, FSplitClickTop - CurTop);
+    EdApi.LineScroll(FSplitClickTop - CurTop);
   if RichEdit1.CanFocus then
     RichEdit1.SetFocus;
   UpdateLineNumbers;

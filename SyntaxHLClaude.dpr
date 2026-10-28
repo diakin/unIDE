@@ -74,6 +74,7 @@ uses
   MdHtml in 'MdHtml.pas',
   FmtView in 'FmtView.pas',
   SplitPane in 'SplitPane.pas',
+  EdIntf in 'EdIntf.pas',
   Wv2View in 'Wv2View.pas',
   FarFind in 'FarFind.pas',
   FarVolumes in 'FarVolumes.pas',
