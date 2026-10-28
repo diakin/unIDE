@@ -82,6 +82,7 @@ uses
   FarProgress in 'FarProgress.pas',
   SchemeLine in 'SchemeLine.pas',
   SchemeFiles in 'SchemeFiles.pas',
+  EdBuffer in 'EdBuffer.pas',
   FarEdit in 'FarEdit.pas',
   FarViewer in 'FarViewer.pas',
   UnFar in 'UnFar.pas',

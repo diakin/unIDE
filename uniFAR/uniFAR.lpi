@@ -58,6 +58,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="..\EdBuffer.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="..\SchemeFiles.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>
