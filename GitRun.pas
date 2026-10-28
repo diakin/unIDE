@@ -51,6 +51,18 @@ type
 
   TGitPaths = array of WideString;
 
+  // Файл в репозитории, который подходит под правила .gitignore (окно
+  // DlgGitTracked): путь и правило по git check-ignore -v
+  TGitTrackedFile = record
+    Path: WideString;     // от корня репозитория, '/' - разделитель
+    Source: string;       // файл правила: '.gitignore', 'папка/.gitignore',
+                          // '.git/info/exclude'; '' - правило не найдено
+    LineNo: string;       // номер строки правила в нём
+    Pattern: string;      // само правило: '*.dll', 'old/'
+    Rule: string;         // для показа: '.gitignore:31  *.dll'
+  end;
+  TGitTrackedFiles = array of TGitTrackedFile;
+
 const
   GitBaseArgs = '-c core.quotepath=false -c color.ui=false ';
   // git log: поля через #$1F, записи через #$1E (GitParseLog)

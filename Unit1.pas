@@ -1140,6 +1140,9 @@ type
     FGitLblStatus: TUiLabel;
     FGitStatusErrors: TStringList;
     FGitStatusWarns: TStringList;
+    // Файлов и в репозитории, и в .gitignore по последней проверке -
+    // щелчок по Git status открывает тогда окно Tracked but Ignored
+    FGitTrackedCount: Integer;
     // Кнопка Repository... и её меню: недавние репозитории (FGitRecent,
     // editor.ini [Git] Recent1..), выбор, Add / Clone / New. FGitRepoTop -
     // репозиторий на панели по последнему обновлению ('' - нет)
@@ -3095,6 +3098,10 @@ type
                                  ADetails: TStrings);
     procedure GitShowStatusLabel(AChecked: Boolean);
     procedure GitStatusClick(Sender: TObject);
+    function  GitTrackedLoad(var AFiles: TGitTrackedFiles): Boolean;
+    function  GitTrackedKeep(const AFiles: TGitTrackedFiles): Boolean;
+    function  GitTrackedUntrack(const AFiles: TGitTrackedFiles): Boolean;
+    procedure GitTrackedClick(Sender: TObject);
     function  GitConflictFiles(const AGit, ARepo: string;
                                AList: TStrings): Integer;
     function  GitMarkerCount(const AFile: string;
@@ -4145,6 +4152,7 @@ var
     GitInfo,      // ветка и коммит исходников сборки (<exe>.build.txt)
     DlgGitCommit, // окно Commit (меню Repository, панель Git)
     DlgGitHistory, // окно History (меню Repository, панель Git)
+    DlgGitTracked, // окно Tracked but Ignored (меню Branch, Git status)
     DlgGitClone,  // окно Clone Repository (список GitHub, URL, путь)
     GitHubApi,    // GitHubCreateRepo - New Repository на GitHub
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
@@ -68135,6 +68143,7 @@ var
 begin
   FGitStatusErrors.Clear;
   FGitStatusWarns.Clear;
+  FGitTrackedCount := 0;
   if FGitOp = 'bisect' then
     FGitStatusErrors.Add('идёт bisect - закончить: Abort в начале строки ' +
       'Build (git bisect reset)')
@@ -68201,12 +68210,13 @@ begin
         if Trim(Lines[LineIdx]) <> '' then
           Hidden.Add(Lines[LineIdx]);
     end;
+    FGitTrackedCount := Hidden.Count;
     if Hidden.Count > 0 then
     begin
       FGitStatusWarns.Add('файлов и в репозитории, и в .gitignore: ' +
         IntToStr(Hidden.Count) + ' - .gitignore на них не действует. ' +
-        'Убрать из репозитория: Commit... - Ignore - «Перестать ' +
-        'отслеживать»; или убрать правило из .gitignore');
+        'Оставить или убрать из репозитория: Branch - Tracked but ' +
+        'Ignored Files... (открывается и щелчком по Git status)');
       AddDetails('В репозитории и в .gitignore:', Hidden);
     end;
   finally
@@ -68301,6 +68311,9 @@ begin
   finally
     Details.Free;
   end;
+  // Файлы и в репозитории, и в .gitignore - сразу окно, где их разобрать
+  if FGitTrackedCount > 0 then
+    GitTrackedClick(nil);
 end;
 
 // Файлы с неразрешённым конфликтом (пути git, через /); результат - сколько
@@ -68845,6 +68858,10 @@ begin
   AddItem(BranchMenu, 'Hidden Local Changes...', 'Файлы, чьи изменения ' +
     'скрыты (Ignore - скрыть свои изменения, skip-worktree): вернуть в ' +
     'список изменений', GitHiddenClick);
+  AddItem(BranchMenu, 'Tracked but Ignored Files...', 'Файлы в ' +
+    'репозитории, которые подходят под .gitignore: оставить (исключение в ' +
+    '.gitignore) или убрать из репозитория (git rm --cached)',
+    GitTrackedClick);
   AddItem(BranchMenu, '-', '', nil);
   AddItem(BranchMenu, 'Update from Default Branch', 'Влить в текущую ' +
     'ветку основную ветку сервера (git merge origin/<основная>)',
@@ -71084,6 +71101,352 @@ begin
   if Picked <> '' then
     GitLongOp(Git, Repo, 'update-index --no-skip-worktree -- ' +
       string(GitQuote(WideString(Picked))));
+end;
+
+// ---------------------------------------------------------------------------
+//  Tracked but Ignored: файлы в репозитории, которые подходят под
+//  .gitignore. Окно - DlgGitTracked; здесь список (GitTrackedLoad) и
+//  действия (GitTrackedKeep, GitTrackedUntrack). Репозиторий окна -
+//  FGitDlgGit / FGitDlgRepo
+// ---------------------------------------------------------------------------
+
+const
+  // Длина аргументов одного вызова git со списком файлов: командная
+  // строка Windows не бесконечна - файлы идут пачками
+  GitArgsChunk = 7000;
+
+// Вывод git с -z: части через #0 (пустые - пропускаются)
+procedure GitSplitZero(const AText: WideString; var AParts: TGitPaths);
+var
+  StartPos, CharIdx: Integer;
+
+  procedure AddPart(const APart: WideString);
+  begin
+    if APart = '' then
+      Exit;
+    SetLength(AParts, Length(AParts) + 1);
+    AParts[High(AParts)] := APart;
+  end;
+
+begin
+  SetLength(AParts, 0);
+  StartPos := 1;
+  for CharIdx := 1 to Length(AText) do
+    if AText[CharIdx] = #0 then
+    begin
+      AddPart(Copy(AText, StartPos, CharIdx - StartPos));
+      StartPos := CharIdx + 1;
+    end;
+  if StartPos <= Length(AText) then
+    AddPart(GitTrimOut(Copy(AText, StartPos, MaxInt)));
+end;
+
+// Список: git ls-files -z -ci --exclude-standard; правило каждого файла -
+// git check-ignore -v --no-index (пачками; -z у check-ignore - только со
+// --stdin). Строка вывода: '<файл правил>:<строка>:<правило><TAB><путь>';
+// в имени файла правил бывает ':' (C:/...), поэтому строка правила -
+// первое ':<цифры>:'. False - git не ответил
+function TForm1.GitTrackedLoad(var AFiles: TGitTrackedFiles): Boolean;
+var
+  Output: WideString;
+  Paths: TGitPaths;
+  Lines: TStringList;
+  Args, LineText, RulePart, LinePath, Source, LineNo, Pattern: string;
+  PathIdx, FirstIdx, NextIdx, LineIdx, FileIdx, TabPos, ColonPos,
+  DigitEnd: Integer;
+begin
+  Result := False;
+  SetLength(AFiles, 0);
+  if GitRunIn(FGitDlgGit, FGitDlgRepo, 'ls-files -z -ci --exclude-standard',
+     False, Output) <> 0 then
+    Exit;
+  GitSplitZero(Output, Paths);
+  SetLength(AFiles, Length(Paths));
+  for PathIdx := 0 to High(Paths) do
+  begin
+    AFiles[PathIdx].Path := Paths[PathIdx];
+    AFiles[PathIdx].Source := '';
+    AFiles[PathIdx].LineNo := '';
+    AFiles[PathIdx].Pattern := '';
+    AFiles[PathIdx].Rule := '';
+  end;
+  Lines := TStringList.Create;
+  try
+    FirstIdx := 0;
+    while FirstIdx <= High(AFiles) do
+    begin
+      Args := 'check-ignore -v --no-index --';
+      NextIdx := FirstIdx;
+      while (NextIdx <= High(AFiles)) and
+            ((NextIdx = FirstIdx) or (Length(Args) < GitArgsChunk)) do
+      begin
+        Args := Args + ' ' + string(GitQuote(AFiles[NextIdx].Path));
+        Inc(NextIdx);
+      end;
+      // Код 0 - что-то подходит под правила, 1 - ничего
+      if GitRunIn(FGitDlgGit, FGitDlgRepo, Args, False, Output) >= 0 then
+      begin
+        Lines.Text := string(Output);
+        for LineIdx := 0 to Lines.Count - 1 do
+        begin
+          LineText := Lines[LineIdx];
+          TabPos := Pos(#9, LineText);
+          if TabPos = 0 then
+            Continue;
+          RulePart := Copy(LineText, 1, TabPos - 1);
+          LinePath := Copy(LineText, TabPos + 1, MaxInt);
+          // Первое ':<цифры>:' - номер строки правила
+          Source := '';
+          LineNo := '';
+          Pattern := '';
+          ColonPos := 1;
+          while ColonPos < Length(RulePart) do
+          begin
+            if RulePart[ColonPos] = ':' then
+            begin
+              DigitEnd := ColonPos + 1;
+              while (DigitEnd <= Length(RulePart)) and
+                    (RulePart[DigitEnd] in ['0'..'9']) do
+                Inc(DigitEnd);
+              if (DigitEnd > ColonPos + 1) and
+                 (DigitEnd <= Length(RulePart)) and
+                 (RulePart[DigitEnd] = ':') then
+              begin
+                Source := Copy(RulePart, 1, ColonPos - 1);
+                LineNo := Copy(RulePart, ColonPos + 1,
+                  DigitEnd - ColonPos - 1);
+                Pattern := Copy(RulePart, DigitEnd + 1, MaxInt);
+                Break;
+              end;
+            end;
+            Inc(ColonPos);
+          end;
+          if Source = '' then
+            Continue;
+          for FileIdx := FirstIdx to NextIdx - 1 do
+            if string(AFiles[FileIdx].Path) = LinePath then
+            begin
+              AFiles[FileIdx].Source := Source;
+              AFiles[FileIdx].LineNo := LineNo;
+              AFiles[FileIdx].Pattern := Pattern;
+              AFiles[FileIdx].Rule := Source + ':' + LineNo + '  ' + Pattern;
+              Break;
+            end;
+        end;
+      end;
+      FirstIdx := NextIdx;
+    end;
+  finally
+    Lines.Free;
+  end;
+  Result := True;
+end;
+
+// Оставить в репозитории: исключение !путь - в тот файл правил, где
+// правило (корневой .gitignore, .gitignore папки, .git/info/exclude;
+// общий файл пользователя - в корневой .gitignore). Правило папки
+// ('old/') исключением файла не снять: git не смотрит внутрь исключённой
+// папки - тогда исключение и для самой папки. После записи список
+// проверяется заново: оставшиеся в нём файлы - в Git log
+function TForm1.GitTrackedKeep(const AFiles: TGitTrackedFiles): Boolean;
+const
+  KeepHeader = '# Файлы в репозитории вопреки правилам выше ' +
+    '(unIDE: Branch - Tracked but Ignored Files)';
+var
+  Targets: TStringList;
+  TargetPats: array of TGitPaths;
+  Recheck: TGitTrackedFiles;
+  FileIdx, TargetIdx, SegIdx, PatIdx, CheckIdx, NotTaken: Integer;
+  Source, BaseDir, TargetFile, DirName: string;
+  RelPath, DirPrefix: WideString;
+  Segments: TStringList;
+
+  procedure AddPattern(ATarget: Integer; const APattern: WideString);
+  begin
+    SetLength(TargetPats[ATarget], Length(TargetPats[ATarget]) + 1);
+    TargetPats[ATarget][High(TargetPats[ATarget])] := APattern;
+  end;
+
+begin
+  Result := False;
+  if MessageDlg('Оставить в репозитории файлов: ' + IntToStr(Length(AFiles)) +
+     '?'#13#10#13#10'В .gitignore допишутся исключения (!путь): файлы ' +
+     'остаются в репозитории, проверка Git status о них больше не ' +
+     'говорит. Изменение .gitignore нужно закоммитить (Commit...).',
+     mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  Targets := TStringList.Create;
+  Segments := TStringList.Create;
+  try
+    for FileIdx := 0 to High(AFiles) do
+    begin
+      Source := AFiles[FileIdx].Source;
+      if Source = '' then
+      begin
+        LogGit('Git: правило не найдено, пропущен: ' +
+          string(AFiles[FileIdx].Path), SuspectLogColor);
+        Continue;
+      end;
+      // Файл правил и путь от его папки
+      RelPath := AFiles[FileIdx].Path;
+      if (Source = '.gitignore') or
+         (Copy(Source, Length(Source) - 10, 11) = '/.gitignore') then
+      begin
+        BaseDir := Copy(Source, 1, Length(Source) - 10);
+        if (BaseDir <> '') and
+           (Copy(string(RelPath), 1, Length(BaseDir)) <> BaseDir) then
+        begin
+          LogGit('Git: файл не в папке своего .gitignore, пропущен: ' +
+            string(RelPath), SuspectLogColor);
+          Continue;
+        end;
+        RelPath := Copy(RelPath, Length(BaseDir) + 1, MaxInt);
+        TargetFile := Source;
+      end
+      else if Source = '.git/info/exclude' then
+        TargetFile := Source
+      else
+        TargetFile := '.gitignore';
+      TargetIdx := Targets.IndexOf(TargetFile);
+      if TargetIdx < 0 then
+      begin
+        TargetIdx := Targets.Add(TargetFile);
+        SetLength(TargetPats, Targets.Count);
+        SetLength(TargetPats[TargetIdx], 0);
+        AddPattern(TargetIdx, KeepHeader);
+      end;
+      // Правило папки: исключение и для неё - для первой папки пути с тем
+      // же именем, что в правиле
+      DirName := AFiles[FileIdx].Pattern;
+      if (DirName <> '') and (DirName[Length(DirName)] = '/') then
+      begin
+        Delete(DirName, Length(DirName), 1);
+        while Pos('/', DirName) > 0 do
+          Delete(DirName, 1, Pos('/', DirName));
+        Segments.Text := StringReplace(string(RelPath), '/', #13#10,
+          [rfReplaceAll]);
+        DirPrefix := '';
+        for SegIdx := 0 to Segments.Count - 2 do
+        begin
+          if DirPrefix <> '' then
+            DirPrefix := DirPrefix + '/';
+          DirPrefix := DirPrefix + Segments[SegIdx];
+          if AnsiSameText(Segments[SegIdx], DirName) then
+          begin
+            AddPattern(TargetIdx, '!' + GitIgnorePattern(DirPrefix) + '/');
+            Break;
+          end;
+        end;
+      end;
+      AddPattern(TargetIdx, '!' + GitIgnorePattern(RelPath));
+    end;
+
+    for TargetIdx := 0 to Targets.Count - 1 do
+    begin
+      TargetFile := IncludeTrailingPathDelimiter(FGitDlgRepo) +
+        StringReplace(Targets[TargetIdx], '/', '', [rfReplaceAll]);
+      if GitAppendIgnore(TargetFile, TargetPats[TargetIdx]) then
+      begin
+        LogGit('Git: исключения дописаны в ' + Targets[TargetIdx] + ':');
+        for PatIdx := 1 to High(TargetPats[TargetIdx]) do
+          LogGit('  ' + string(TargetPats[TargetIdx][PatIdx]));
+        Result := True;
+      end
+      else
+        LogGit('Git: ' + TargetFile + ' не записать', clRed);
+    end;
+  finally
+    Segments.Free;
+    Targets.Free;
+  end;
+  if not Result then
+    Exit;
+  // Проверка: какие файлы и после исключений подходят под правила
+  NotTaken := 0;
+  if GitTrackedLoad(Recheck) then
+    for FileIdx := 0 to High(AFiles) do
+      for CheckIdx := 0 to High(Recheck) do
+        if Recheck[CheckIdx].Path = AFiles[FileIdx].Path then
+        begin
+          Inc(NotTaken);
+          LogGit('Git: исключение не подействовало: ' +
+            string(AFiles[FileIdx].Path) + ' (правило ' +
+            Recheck[CheckIdx].Rule + ')', clRed);
+          Break;
+        end;
+  if NotTaken = 0 then
+    LogGit('Git: исключения действуют - файлы остаются в репозитории',
+      TColor($008000));
+end;
+
+// Убрать из репозитория: git rm --cached (пачками). Файлы остаются на
+// диске; из репозитория уходят следующим коммитом
+function TForm1.GitTrackedUntrack(const AFiles: TGitTrackedFiles): Boolean;
+var
+  Output: WideString;
+  Args: string;
+  FirstIdx, NextIdx: Integer;
+begin
+  Result := False;
+  if MessageDlg('Убрать из репозитория файлов: ' + IntToStr(Length(AFiles)) +
+     ' (git rm --cached)?'#13#10#13#10'На диске файлы остаются; из ' +
+     'репозитория они уйдут следующим коммитом (Commit...). На других ' +
+     'компьютерах при Pull этого коммита они удалятся с диска.',
+     mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  FirstIdx := 0;
+  while FirstIdx <= High(AFiles) do
+  begin
+    Args := 'rm --cached -q --';
+    NextIdx := FirstIdx;
+    while (NextIdx <= High(AFiles)) and
+          ((NextIdx = FirstIdx) or (Length(Args) < GitArgsChunk)) do
+    begin
+      Args := Args + ' ' + string(GitQuote(AFiles[NextIdx].Path));
+      Inc(NextIdx);
+    end;
+    if GitRunIn(FGitDlgGit, FGitDlgRepo, Args, True, Output) = 0 then
+      Result := True;
+    FirstIdx := NextIdx;
+  end;
+  if Result then
+    LogGit('Git: файлы убраны из репозитория (на диске остались) - ' +
+      'закоммитьте: Commit...', TColor($008000));
+end;
+
+// Branch - Tracked but Ignored Files... (и щелчок по Git status, когда
+// такие файлы есть)
+procedure TForm1.GitTrackedClick(Sender: TObject);
+var
+  Git, Repo: string;
+  Files: TGitTrackedFiles;
+  Dlg: TDlgGitTracked;
+  Changed: Boolean;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  FGitDlgGit := Git;
+  FGitDlgRepo := Repo;
+  if not GitTrackedLoad(Files) then
+  begin
+    ShowGitLog;
+    LogGit('Git: список файлов не прочитать (git ls-files)', clRed);
+    Exit;
+  end;
+  ShowGitLog;
+  Dlg := TDlgGitTracked.CreateDlg(Self, 'Tracked but Ignored - ' +
+    ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), Files,
+    GitTrackedLoad, GitTrackedKeep, GitTrackedUntrack);
+  try
+    Dlg.ShowModal;
+    Changed := Dlg.Changed;
+  finally
+    Dlg.Free;
+  end;
+  GitRefreshBar;
+  if Changed then
+    GitSetHint('.gitignore / список файлов репозитория изменены - ' +
+      'закоммитьте (Commit...)', False);
 end;
 
 // ReactOS - Run Image: образ последней сборки - в эмуляторе, без сборки

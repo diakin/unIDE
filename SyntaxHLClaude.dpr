@@ -92,6 +92,7 @@ uses
   GitRun in 'GitRun.pas',
   DlgGitCommit in 'DlgGitCommit.pas',
   DlgGitHistory in 'DlgGitHistory.pas',
+  DlgGitTracked in 'DlgGitTracked.pas',
   GitHubApi in 'GitHubApi.pas',
   GitDiffView in 'GitDiffView.pas',
   DlgGitClone in 'DlgGitClone.pas',
