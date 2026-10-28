@@ -23,6 +23,9 @@ unit FarApp;
 
 {$mode delphi}
 
+// Исходник в кодировке Windows-1251 (строки с кириллицей в WideString)
+{$CODEPAGE CP1251}
+
 interface
 
 procedure FarAppRun;
@@ -295,6 +298,19 @@ begin
   end;
 end;
 
+// Заголовок окна: версия FAR и дата сборки - видно, свежий ли exe
+function AppCaption: WideString;
+var
+  BuildDate: string;
+begin
+  BuildDate := {$I %DATE%};      // ГГГГ/ММ/ДД
+  if Length(BuildDate) = 10 then
+    BuildDate := Copy(BuildDate, 9, 2) + '.' + Copy(BuildDate, 6, 2) + '.' +
+      Copy(BuildDate, 1, 4);
+  Result := WideString(AppTitle + ' ' + FarBuild + ' (сборка ' + BuildDate +
+    ' ' + Copy({$I %TIME%}, 1, 5) + ')');
+end;
+
 procedure CreateMainWindow;
 var
   WndClass: TWndClassW;
@@ -322,7 +338,7 @@ begin
   finally
     Ini.Free;
   end;
-  MainWnd := CreateWindowExW(0, AppClassName, PWideChar(WideString(AppTitle)),
+  MainWnd := CreateWindowExW(0, AppClassName, PWideChar(AppCaption),
     WS_OVERLAPPEDWINDOW or WS_CLIPCHILDREN, WinLeft, WinTop, WinWidth,
     WinHeight, 0, 0, HInstance, nil);
   if MainWnd = 0 then

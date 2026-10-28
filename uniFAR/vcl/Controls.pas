@@ -15,6 +15,9 @@ unit Controls;
 
 {$mode delphi}
 
+// Исходник в кодировке Windows-1251 (строки с кириллицей в WideString)
+{$CODEPAGE CP1251}
+
 interface
 
 uses

@@ -139,6 +139,10 @@ unit UnFar;
 //  Цвета - палитра FAR по умолчанию (far\palette.cpp форка FarManager).
 // ---------------------------------------------------------------------------
 
+// Free Pascal (uniFAR): исходник в кодировке Windows-1251 - строки с
+// кириллицей в WideString без кракозябр. Delphi 7 эту строку пропускает
+{$IFDEF FPC}{$CODEPAGE CP1251}{$ENDIF}
+
 interface
 
 uses
@@ -147,7 +151,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.41';
+  FarBuild = 'b.42';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;

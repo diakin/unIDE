@@ -20,6 +20,10 @@ unit SchemeFiles;
 //  [Themes] Current (ThemeKey: основная тема - '').
 // ---------------------------------------------------------------------------
 
+// Free Pascal (uniFAR): исходник в кодировке Windows-1251 - строки с
+// кириллицей в WideString без кракозябр. Delphi 7 эту строку пропускает
+{$IFDEF FPC}{$CODEPAGE CP1251}{$ENDIF}
+
 interface
 
 uses
