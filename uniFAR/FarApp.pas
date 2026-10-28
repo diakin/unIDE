@@ -21,9 +21,9 @@ unit FarApp;
 //  Значок - res\uniFAR_icon.res (res\make_icon.py).
 //
 //  Над панелями - вкладки папок (FarTabs.pas): папка активной панели и
-//  свежие папки истории, под ними - полный путь. Alt+Left / Alt+Right -
-//  по вкладкам. Сколько вкладок - uniFAR.ini [uniFAR] FolderTabs (по
-//  умолчанию 10, 0 - без вкладок).
+//  свежие папки истории, сколько поместится по ширине. Alt+Left /
+//  Alt+Right - по вкладкам, мышь - просмотр, щелчок - перейти.
+//  uniFAR.ini [uniFAR] FolderTabs=0 - без вкладок.
 // ---------------------------------------------------------------------------
 
 {$mode delphi}
@@ -366,7 +366,7 @@ begin
     WinWidth := Ini.ReadInteger(AppIniSection, 'Width', 1020);
     WinHeight := Ini.ReadInteger(AppIniSection, 'Height', 680);
     Maximized := Ini.ReadInteger(AppIniSection, 'Maximized', 0) <> 0;
-    TabCount := Ini.ReadInteger(AppIniSection, 'FolderTabs', 10);
+    TabCount := Ini.ReadInteger(AppIniSection, 'FolderTabs', 1);
   finally
     Ini.Free;
   end;
@@ -389,7 +389,6 @@ begin
   if TabCount > 0 then
   begin
     TabBar := TFarTabBar.Create(nil, FarView);
-    TabBar.MaxTabs := TabCount;
     TabBar.ParentWindow := MainWnd;
     FarView.OnPainted := Events.FarPainted;
   end;

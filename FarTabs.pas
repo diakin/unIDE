@@ -1,13 +1,12 @@
 unit FarTabs;
 
 // ---------------------------------------------------------------------------
-//  Вкладки папок над панелями uniFAR (FarApp): верхняя строка - вкладки
-//  (шрифт 8 пт), под ней - строка с полным путём выбранной вкладки (шрифтом
-//  панелей).
+//  Вкладки папок над панелями uniFAR (FarApp): строка вкладок шрифтом 8 пт.
 //
 //  Самая левая вкладка - папка активной панели. За ней - последние папки
 //  из истории папок (Alt+F12), сначала самые свежие, без повторов и без
-//  папки активной панели; всего не больше MaxTabs.
+//  папки активной панели; сколько поместится по ширине окна.
+//  Цвета - палитра FAR, группа «Вкладки» (F9 - Options - Colors).
 //
 //  Клавиши (их передаёт цикл сообщений FarApp, пока фокус в окне FAR):
 //    Alt+Left / Alt+Right - курсор на вкладку активной панели (самую
@@ -19,7 +18,9 @@ unit FarTabs;
 //      истории, Alt+F12 - Ins, не убирает).
 //    Esc - выйти из режима вкладок; остальные клавиши - тоже, и клавиша
 //      уходит панели.
-//  Мышь: щелчок по вкладке - то же, что переход на неё; крестик - убрать.
+//  Мышь: вкладка под мышью подсвечивается, активная панель показывает её
+//  папку (просмотр). Щелчок - остаться в этой папке; мышь ушла с полосы
+//  без щелчка - панель возвращается в прежнюю папку. Крестик - убрать.
 //
 //  Пока ходят по вкладкам, список не меняется (снимок при входе в режим),
 //  и переходы не пишутся в историю (TFarView.HistoryPaused). Когда режим
@@ -40,10 +41,14 @@ type
   TFarTabBar = class(TCustomControl)
   private
     FView: TFarView;
-    FModeOn: Boolean;          // курсор на вкладках (Alt+стрелка, щелчок)
+    FModeOn: Boolean;          // курсор на вкладках (Alt+стрелка, мышь)
+    FHoverMode: Boolean;       // режим включила мышь: ушла - вернуться
+    FHoverIdx: Integer;        // вкладка под мышью (-1 - нет)
+    FTracking: Boolean;        // TrackMouseEvent: ждём WM_MOUSELEAVE
     FSel: Integer;             // выбранная вкладка в режиме вкладок
     FSnapshot: TFarNames;      // список вкладок, пока режим включён
     FStartPath: WideString;    // папка активной панели при входе в режим
+    FStartItem: WideString;    // и имя под курсором (вернуться на него)
     FMaxTabs: Integer;
     FTabFont: HFONT;
     FTabTextH: Integer;
@@ -53,18 +58,24 @@ type
     procedure CreateTabFont;
     function TabHeight: Integer;
     procedure CurrentTabs(var ATabs: TFarNames);
+    function TabWidth(ADC: HDC; const APath: WideString;
+      AIndex: Integer): Integer;
+    function TabAt(AX, AY: Integer): Integer;
+    procedure CancelHover;
     function TabCaption(const APath: WideString): WideString;
     procedure GoToTab(AIndex: Integer);
     procedure RemoveTab(AIndex: Integer);
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
+    procedure WMMouseLeave(var Message: TMessage); message $02A3;
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
       X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
   public
     constructor Create(AOwner: TComponent; AView: TFarView); reintroduce;
     destructor Destroy; override;
-    // Высота полосы: вкладки + строка пути (шрифт панелей)
+    // Высота полосы вкладок
     function BarHeight: Integer;
     // Клавиша из цикла сообщений (WM_KEYDOWN / WM_SYSKEYDOWN окна FAR).
     // True - разобрана, панели не отдавать
@@ -84,12 +95,20 @@ const
   TabGap = 2;             // между вкладками
   CloseW = 14;            // место под крестик
   TabMinW = 48;
+  TabMaxW = 220;          // длинное имя - с многоточием
+  TabMaxCount = 50;       // не больше, чем папок в истории
   CloseMark: WideChar = WideChar($00D7);   // крестик (знак умножения)
 
 type
   TTabSize = record
     cx: Longint;
     cy: Longint;
+  end;
+  TTabTrackMouse = record
+    cbSize: DWORD;
+    dwFlags: DWORD;
+    hwndTrack: HWND;
+    dwHoverTime: DWORD;
   end;
 
 // W-функции - свои объявления (одинаково в Delphi 7 и Free Pascal)
@@ -101,6 +120,11 @@ function TabTextExtent(ADC: HDC; AText: PWideChar; ACount: Integer;
   external 'gdi32.dll' name 'GetTextExtentPoint32W';
 function TabFileAttr(AFileName: PWideChar): DWORD; stdcall;
   external 'kernel32.dll' name 'GetFileAttributesW';
+function TabTrackMouseEvent(var AEvent: TTabTrackMouse): BOOL; stdcall;
+  external 'user32.dll' name 'TrackMouseEvent';
+
+const
+  TabTmeLeave = $00000002;
 
 function TabSameName(const AFirst, ASecond: WideString): Boolean;
 var
@@ -129,8 +153,9 @@ constructor TFarTabBar.Create(AOwner: TComponent; AView: TFarView);
 begin
   inherited Create(AOwner);
   FView := AView;
-  FMaxTabs := 10;
+  FMaxTabs := TabMaxCount;
   FSel := 0;
+  FHoverIdx := -1;
   FBuffer := TBitmap.Create;
   CreateTabFont;
 end;
@@ -172,22 +197,40 @@ begin
 end;
 
 function TFarTabBar.BarHeight: Integer;
-var
-  PathH: Integer;
 begin
-  PathH := 16;
-  if (FView <> nil) and (FView.CellHeight > 0) then
-    PathH := FView.CellHeight;
-  Result := TabHeight + PathH;
+  Result := TabHeight + 2;
+end;
+
+// Ширина вкладки по тексту (с полями и крестиком)
+function TFarTabBar.TabWidth(ADC: HDC; const APath: WideString;
+  AIndex: Integer): Integer;
+var
+  Caption: WideString;
+  TextSize: TTabSize;
+begin
+  Caption := TabCaption(APath);
+  TextSize.cx := 0;
+  TextSize.cy := 0;
+  if Caption <> '' then
+    TabTextExtent(ADC, PWideChar(Caption), Length(Caption), TextSize);
+  Result := TextSize.cx + 2 * TabPadX;
+  if AIndex > 0 then
+    Inc(Result, CloseW);
+  if Result < TabMinW then
+    Result := TabMinW;
+  if Result > TabMaxW then
+    Result := TabMaxW;
 end;
 
 // Вкладки сейчас: в режиме - снимок; иначе папка активной панели и
 // свежие папки истории
 procedure TFarTabBar.CurrentTabs(var ATabs: TFarNames);
 var
-  HistIdx, TabIdx, Count: Integer;
+  HistIdx, TabIdx, Count, UsedW, NextW: Integer;
   Path: WideString;
   Dup: Boolean;
+  MeasureDC: HDC;
+  OldFont: HGDIOBJ;
 begin
   if FModeOn then
   begin
@@ -197,6 +240,11 @@ begin
   SetLength(ATabs, 1);
   ATabs[0] := FView.ActivePath;
   Count := 1;
+  // Сколько поместится по ширине окна
+  MeasureDC := GetDC(0);
+  OldFont := SelectObject(MeasureDC, FTabFont);
+  try
+  UsedW := 2 + TabWidth(MeasureDC, ATabs[0], 0) + TabGap;
   for HistIdx := FView.HistoryCount - 1 downto 0 do
   begin
     if Count >= FMaxTabs then
@@ -213,9 +261,17 @@ begin
       end;
     if Dup then
       Continue;
+    NextW := TabWidth(MeasureDC, Path, Count);
+    if UsedW + NextW > ClientWidth - 2 then
+      Break;
+    Inc(UsedW, NextW + TabGap);
     SetLength(ATabs, Count + 1);
     ATabs[Count] := Path;
     Inc(Count);
+  end;
+  finally
+    SelectObject(MeasureDC, OldFont);
+    ReleaseDC(0, MeasureDC);
   end;
 end;
 
@@ -252,13 +308,10 @@ var
   Pal: TFarPalette;
   DrawDC: HDC;
   OldFont: HGDIOBJ;
-  TabIdx, TabCount, TabX, TabW, MaxW, TextW, TabH, PathH, PathY: Integer;
-  Widths: array of Integer;
-  TotalW: Integer;
-  Caption, PathText: WideString;
-  TextSize: TTabSize;
+  TabIdx, TabCount, TabX, TabW, TabH: Integer;
+  Caption: WideString;
   TextRect, TabRect: TRect;
-  Selected: Boolean;
+  Lit: Boolean;
   BackColor, TextColor: TColor;
   FrameBrush, FillBrush: HBRUSH;
 begin
@@ -273,81 +326,63 @@ begin
   CurrentTabs(Tabs);
   TabCount := Length(Tabs);
   TabH := TabHeight;
-  PathH := ClientHeight - TabH;
   DrawDC := FBuffer.Canvas.Handle;
 
-  // Фон полосы вкладок
-  FillBrush := CreateSolidBrush(ColorToRGB(Pal[fpCmdBack]));
-  TextRect := Rect(0, 0, ClientWidth, TabH);
+  // Фон полосы
+  FillBrush := CreateSolidBrush(ColorToRGB(Pal[fpTabBarBack]));
+  TextRect := Rect(0, 0, ClientWidth, ClientHeight);
   FillRect(DrawDC, TextRect, FillBrush);
   DeleteObject(FillBrush);
 
-  // Ширины: по тексту; не помещаются - поровну
   OldFont := SelectObject(DrawDC, FTabFont);
-  SetLength(Widths, TabCount);
-  TotalW := 0;
-  for TabIdx := 0 to TabCount - 1 do
-  begin
-    Caption := TabCaption(Tabs[TabIdx]);
-    TextSize.cx := 0;
-    TextSize.cy := 0;
-    if Caption <> '' then
-      TabTextExtent(DrawDC, PWideChar(Caption), Length(Caption), TextSize);
-    TextW := TextSize.cx + 2 * TabPadX;
-    if TabIdx > 0 then
-      Inc(TextW, CloseW);
-    if TextW < TabMinW then
-      TextW := TabMinW;
-    Widths[TabIdx] := TextW;
-    Inc(TotalW, TextW + TabGap);
-  end;
-  if (TabCount > 0) and (TotalW > ClientWidth - 4) then
-  begin
-    MaxW := (ClientWidth - 4) div TabCount - TabGap;
-    if MaxW < 24 then
-      MaxW := 24;
-    for TabIdx := 0 to TabCount - 1 do
-      if Widths[TabIdx] > MaxW then
-        Widths[TabIdx] := MaxW;
-  end;
-
   SetLength(FTabRects, TabCount);
   SetLength(FCloseRects, TabCount);
   SetBkMode(DrawDC, TRANSPARENT);
   TabX := 2;
   for TabIdx := 0 to TabCount - 1 do
   begin
-    TabW := Widths[TabIdx];
-    TabRect := Rect(TabX, 2, TabX + TabW, TabH);
-    FTabRects[TabIdx] := TabRect;
-    Selected := FModeOn and (TabIdx = FSel);
-    if Selected then
+    TabW := TabWidth(DrawDC, Tabs[TabIdx], TabIdx);
+    // Первая вкладка шире окна - по ширине окна
+    if TabX + TabW > ClientWidth - 2 then
+      TabW := ClientWidth - 2 - TabX;
+    if TabW < 8 then
     begin
-      BackColor := Pal[fpPanelCursorBack];
-      TextColor := Pal[fpPanelCursorText];
+      SetLength(FTabRects, TabIdx);
+      SetLength(FCloseRects, TabIdx);
+      Break;
+    end;
+    TabRect := Rect(TabX, 2, TabX + TabW, TabH + 2);
+    FTabRects[TabIdx] := TabRect;
+    // Подсвечена: под мышью или курсор режима вкладок
+    Lit := (FModeOn and (TabIdx = FSel)) or (TabIdx = FHoverIdx);
+    if Lit then
+    begin
+      BackColor := Pal[fpTabSelBack];
+      TextColor := Pal[fpTabSelText];
     end
     else
     begin
-      BackColor := Pal[fpPanelBack];
+      BackColor := Pal[fpTabBack];
       if TabIdx = 0 then
-        TextColor := Pal[fpPanelHeader]
+        TextColor := Pal[fpTabCurText]
       else
-        TextColor := Pal[fpPanelText];
+        TextColor := Pal[fpTabText];
     end;
     FillBrush := CreateSolidBrush(ColorToRGB(BackColor));
     FillRect(DrawDC, TabRect, FillBrush);
     DeleteObject(FillBrush);
-    FrameBrush := CreateSolidBrush(ColorToRGB(Pal[fpPanelFrame]));
+    FrameBrush := CreateSolidBrush(ColorToRGB(Pal[fpTabFrame]));
     FrameRect(DrawDC, TabRect, FrameBrush);
     DeleteObject(FrameBrush);
     SetTextColor(DrawDC, ColorToRGB(TextColor));
     Caption := TabCaption(Tabs[TabIdx]);
-    TextRect := Rect(TabX + TabPadX, 2, TabX + TabW - TabPadX, TabH);
+    TextRect := Rect(TabX + TabPadX, TabRect.Top, TabX + TabW - TabPadX,
+      TabRect.Bottom);
     if TabIdx > 0 then
     begin
       Dec(TextRect.Right, CloseW - 4);
-      FCloseRects[TabIdx] := Rect(TabX + TabW - CloseW - 2, 2,
-        TabX + TabW - 2, TabH);
+      FCloseRects[TabIdx] := Rect(TabX + TabW - CloseW - 2, TabRect.Top,
+        TabX + TabW - 2, TabRect.Bottom);
       TabDrawText(DrawDC, @CloseMark, 1, FCloseRects[TabIdx],
         DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
     end
@@ -360,34 +395,85 @@ begin
     Inc(TabX, TabW + TabGap);
   end;
   SelectObject(DrawDC, OldFont);
-
-  // Строка пути: выбранная вкладка (не в режиме - активная панель)
-  PathY := TabH;
-  FillBrush := CreateSolidBrush(ColorToRGB(Pal[fpPanelBack]));
-  TextRect := Rect(0, PathY, ClientWidth, PathY + PathH);
-  FillRect(DrawDC, TextRect, FillBrush);
-  DeleteObject(FillBrush);
-  PathText := '';
-  if FModeOn and (FSel >= 0) and (FSel < TabCount) then
-    PathText := Tabs[FSel]
-  else if TabCount > 0 then
-    PathText := Tabs[0];
-  if (Length(PathText) > 3) and (PathText[Length(PathText)] = '\') then
-    SetLength(PathText, Length(PathText) - 1);
-  if PathText <> '' then
-  begin
-    PathText := ' ' + PathText;
-    if FView.MainFont <> 0 then
-      OldFont := SelectObject(DrawDC, FView.MainFont)
-    else
-      OldFont := SelectObject(DrawDC, FTabFont);
-    SetTextColor(DrawDC, ColorToRGB(Pal[fpPanelHeader]));
-    TabDrawText(DrawDC, PWideChar(PathText), Length(PathText), TextRect,
-      DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
-      DT_PATH_ELLIPSIS);
-    SelectObject(DrawDC, OldFont);
-  end;
   Canvas.Draw(0, 0, FBuffer);
+end;
+
+function TFarTabBar.TabAt(AX, AY: Integer): Integer;
+var
+  TabIdx: Integer;
+begin
+  Result := -1;
+  for TabIdx := 0 to High(FTabRects) do
+    if PtInRect(FTabRects[TabIdx], Point(AX, AY)) then
+    begin
+      Result := TabIdx;
+      Exit;
+    end;
+end;
+
+// Мышь ушла с полосы, не щёлкнув: просмотр кончился - панель в прежнюю
+// папку
+procedure TFarTabBar.CancelHover;
+begin
+  FHoverIdx := -1;
+  if FModeOn and FHoverMode then
+  begin
+    if (FStartPath <> '') and not TabSameName(FStartPath, FView.ActivePath) and
+       TabDirExists(FStartPath) then
+    begin
+      // Курсор - на прежнее имя
+      if (FStartItem <> '') and (FStartItem <> '..') then
+      begin
+        if FStartPath[Length(FStartPath)] = '\' then
+          FView.ShowFile(FStartPath + FStartItem)
+        else
+          FView.ShowFile(FStartPath + '\' + FStartItem);
+      end
+      else
+        FView.ShowFolder(FStartPath);
+    end;
+    FHoverMode := False;
+    LeaveMode;
+  end;
+  Invalidate;
+end;
+
+procedure TFarTabBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  TrackInfo: TTabTrackMouse;
+  TabIdx: Integer;
+begin
+  inherited MouseMove(Shift, X, Y);
+  if FView = nil then
+    Exit;
+  if not FTracking then
+  begin
+    TrackInfo.cbSize := SizeOf(TrackInfo);
+    TrackInfo.dwFlags := TabTmeLeave;
+    TrackInfo.hwndTrack := Handle;
+    TrackInfo.dwHoverTime := 0;
+    FTracking := TabTrackMouseEvent(TrackInfo);
+  end;
+  TabIdx := TabAt(X, Y);
+  if (TabIdx < 0) or (TabIdx = FHoverIdx) then
+    Exit;
+  FHoverIdx := TabIdx;
+  // Вкладка под мышью: панель показывает её папку (просмотр)
+  if not FModeOn and FView.TabsAllowed then
+  begin
+    EnterMode;
+    FHoverMode := FModeOn;
+  end;
+  if FModeOn then
+    GoToTab(TabIdx);
+  Invalidate;
+end;
+
+procedure TFarTabBar.WMMouseLeave(var Message: TMessage);
+begin
+  FTracking := False;
+  CancelHover;
+  Message.Result := 0;
 end;
 
 procedure TFarTabBar.EnterMode;
@@ -396,6 +482,7 @@ begin
     Exit;
   CurrentTabs(FSnapshot);
   FStartPath := FView.ActivePath;
+  FStartItem := FView.ActiveCursorItem;
   FModeOn := True;
   FSel := 0;
   FView.HistoryPaused := True;
@@ -500,6 +587,8 @@ begin
     end;
     Exit;
   end;
+  // Клавиатура - режим больше не «просмотр мышью»
+  FHoverMode := False;
   // Режим вкладок: панель могла смениться (диалог, редактор) - выйти
   if not FView.TabsAllowed then
   begin
@@ -545,25 +634,25 @@ procedure TFarTabBar.MouseDown(Button: TMouseButton; Shift: TShiftState;
   X, Y: Integer);
 var
   TabIdx: Integer;
-  ClickPt: TPoint;
 begin
   inherited MouseDown(Button, Shift, X, Y);
   if (FView = nil) or (Button <> mbLeft) then
     Exit;
-  ClickPt := Point(X, Y);
-  for TabIdx := 0 to High(FTabRects) do
-    if PtInRect(FTabRects[TabIdx], ClickPt) then
+  TabIdx := TabAt(X, Y);
+  if TabIdx >= 0 then
+  begin
+    if (TabIdx > 0) and PtInRect(FCloseRects[TabIdx], Point(X, Y)) then
+      RemoveTab(TabIdx)
+    else if FView.TabsAllowed or FModeOn then
     begin
-      if (TabIdx > 0) and PtInRect(FCloseRects[TabIdx], ClickPt) then
-        RemoveTab(TabIdx)
-      else if FView.TabsAllowed then
-      begin
-        if not FModeOn then
-          EnterMode;
-        GoToTab(TabIdx);
-      end;
-      Break;
+      // Щелчок - остаться в папке вкладки
+      if not FModeOn then
+        EnterMode;
+      GoToTab(TabIdx);
+      FHoverMode := False;
+      LeaveMode;
     end;
+  end;
   if FView.HandleAllocated then
     Windows.SetFocus(FView.Handle);
   Invalidate;

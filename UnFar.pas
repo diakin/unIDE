@@ -151,7 +151,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.48';
+  FarBuild = 'b.49';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -251,6 +251,10 @@ type
     HasColors: Boolean;
     Fore: TColor;
     Back: TColor;
+    // Справа - квадратики с цветом (1 или 2) вместо RightText
+    SwatchCount: Integer;
+    Swatch1: TColor;
+    Swatch2: TColor;
   end;
   TFarMenuItems = array of TFarMenuItem;
 
@@ -349,7 +353,10 @@ type
     fpKeyNum, fpKeyNumBack, fpKeyText, fpKeyBack,
     fpCmdBack, fpCmdPrompt, fpCmdText, fpOutText,
     fpEditBack, fpEditText, fpEditTitleBack, fpEditTitleText, fpEditSelBack,
-    fpEditSelText);
+    fpEditSelText,
+    // Вкладки папок uniFAR (FarTabs)
+    fpTabBarBack, fpTabBack, fpTabText, fpTabCurText, fpTabSelBack,
+    fpTabSelText, fpTabFrame);
   TFarPalette = array[TFarPalItem] of TColor;
 
   TFarStatusEvent = procedure(const AText: string) of object;
@@ -830,6 +837,7 @@ type
     procedure MenuActivate(AIndex: Integer);
     function MenuItemAt(AX, AY: Integer): Integer;
     procedure DrawMenu;
+    procedure DrawSwatch(ACol, ARow: Integer; AColor, AFrame: TColor);
     procedure ShowDriveMenu(APanelIndex: Integer);
     procedure ShowSortMenu;
     procedure ShowHistoryMenu(ACursor: Integer = -1);
@@ -917,6 +925,8 @@ type
     // Для вкладок папок (FarTabs, uniFAR). ActivePath - папка активной
     // панели (FTP, архив - то, что в заголовке панели)
     function ActivePath: WideString;
+    // Имя под курсором активной панели ('' - список пуст)
+    function ActiveCursorItem: WideString;
     // Можно ходить по вкладкам: нет диалога и меню, активная панель -
     // обычная папка (не FTP, не архив, не редактор и не просмотр)
     function TabsAllowed: Boolean;
@@ -1031,6 +1041,8 @@ const
   // возрастанию - строчная, обратный порядок - прописная
   FarSortLetters = 'nxmsuca';
   FarHistoryMax = 50;
+  // Ширина квадратика с цветом в меню цветов (клеток)
+  FarSwatchCells = 4;
   FarHistorySection = 'FarHistory';
   FarCheckMark = WideChar($221A);  // отметка в меню (в Terminus cp1251 её
                                    // нет - рисует Lucida Console)
@@ -1753,7 +1765,9 @@ const
     'KeyNum', 'KeyNumBack', 'KeyText', 'KeyBack',
     'CmdBack', 'CmdPrompt', 'CmdText', 'OutText',
     'EditBack', 'EditText', 'EditTitleBack', 'EditTitleText', 'EditSelBack',
-    'EditSelText');
+    'EditSelText',
+    'TabBarBack', 'TabBack', 'TabText', 'TabCurrentText', 'TabSelBack',
+    'TabSelText', 'TabFrame');
 
   FarPalGroups: array[TFarPalItem] of string = (
     'Панели', 'Панели', 'Панели', 'Панели', 'Панели',
@@ -1766,7 +1780,9 @@ const
     'Кейбар', 'Кейбар', 'Кейбар', 'Кейбар',
     'Командная строка', 'Командная строка', 'Командная строка',
     'Командная строка',
-    'Редактор', 'Редактор', 'Редактор', 'Редактор', 'Редактор', 'Редактор');
+    'Редактор', 'Редактор', 'Редактор', 'Редактор', 'Редактор', 'Редактор',
+    'Вкладки', 'Вкладки', 'Вкладки', 'Вкладки', 'Вкладки', 'Вкладки',
+    'Вкладки');
 
   FarPalCaptions: array[TFarPalItem] of string = (
     'Фон панели',
@@ -1808,7 +1824,14 @@ const
     'Строка заголовка: фон',
     'Строка заголовка: текст',
     'Выделенный текст: фон',
-    'Выделенный текст: текст');
+    'Выделенный текст: текст',
+    'Фон полосы вкладок',
+    'Вкладка: фон',
+    'Вкладка: текст',
+    'Вкладка активной панели: текст',
+    'Вкладка под мышью / курсором: фон',
+    'Вкладка под мышью / курсором: текст',
+    'Рамка вкладки');
 
   FarPalDefaults: array[TFarPalItem] of TColor = (
     FarBlue, FarLightCyan, FarWhite, FarYellow, FarYellow,
@@ -1820,7 +1843,9 @@ const
     FarRed, FarWhite, FarLightGray, FarBlack,
     FarLightGray, FarBlack, FarBlack, FarCyan,
     FarBlack, FarLightGray, FarWhite, FarLightGray,
-    clNone, clNone, FarCyan, FarBlack, FarCyan, FarBlack);
+    clNone, clNone, FarCyan, FarBlack, FarCyan, FarBlack,
+    FarBlack, FarBlue, FarLightCyan, FarYellow, FarCyan, FarBlack,
+    FarLightCyan);
 
   FarPalBacks: array[TFarPalItem] of Boolean = (
     True, False, False, False, False,
@@ -1832,7 +1857,8 @@ const
     True, False, True, False,
     False, True, False, True,
     True, False, False, False,
-    True, False, True, False, True, False);
+    True, False, True, False, True, False,
+    True, True, False, False, True, False, False);
 
   FarPalPairs: array[TFarPalItem] of TFarPalItem = (
     fpPanelText, fpPanelBack, fpPanelBack, fpPanelBack, fpPanelBack,
@@ -1845,7 +1871,9 @@ const
     fpKeyNumBack, fpKeyNum, fpKeyBack, fpKeyText,
     fpCmdText, fpCmdBack, fpCmdBack, fpCmdBack,
     fpEditText, fpEditBack, fpEditTitleText, fpEditTitleBack, fpEditSelText,
-    fpEditSelBack);
+    fpEditSelBack,
+    fpTabText, fpTabText, fpTabBack, fpTabBack, fpTabSelText, fpTabSelBack,
+    fpTabBarBack);
 
 var
   FarCurPanelBack: TColor = FarBlue;
@@ -1917,7 +1945,9 @@ const
       $00784F26, $00CCCCCC, $001F1F6F, $00FFFFFF, $00CCCCCC,
       $001F1F6F, $006E6E6E, $00252525, $00CCCCCC, $00252525,
       $001F1F1F, $00FFC14F, $00CCCCCC, $00CCCCCC, clNone,
-      clNone, $00D47800, $00FFFFFF, $00784F26, $00CCCCCC),
+      clNone, $00D47800, $00FFFFFF, $00784F26, $00CCCCCC,
+      $00181818, $00252525, $00CCCCCC, $00FFC14F, $00714709, $00FFFFFF,
+      $006E6E6E),
     // FarLight 2026
     (
       $00FFFFFF, $003B3B3B, $00B85F00, $000D26A1, $00B85F00,
@@ -1927,7 +1957,9 @@ const
       $00FFD6AD, $003B3B3B, $000D26A1, $00FFFFFF, $00FFFFFF,
       $000D26A1, $007E7E7E, $00F8F8F8, $003B3B3B, $00F8F8F8,
       $00FFFFFF, $00B85F00, $003B3B3B, $003B3B3B, clNone,
-      clNone, $00B85F00, $00FFFFFF, $00FFD6AD, $003B3B3B));
+      clNone, $00B85F00, $00FFFFFF, $00FFD6AD, $003B3B3B,
+      $00EEEEEE, $00FFFFFF, $003B3B3B, $00B85F00, $00F7E4CC, $003B3B3B,
+      $00B0B0B0));
   FarThemeKeys: array[TFarPalItem] of string = (
     'Panel.Text', 'Panel.Text', 'Panel.Text.Highlight',
     'Panel.Text.Selected', 'Panel.Title.Column', 'Panel.Box',
@@ -1942,13 +1974,16 @@ const
     'CommandLine', 'CommandLine.Prefix', 'CommandLine',
     'CommandLine.UserScreen', '', '',
     'Editor.Status', 'Editor.Status', 'Editor.Text.Selected',
-    'Editor.Text.Selected');
+    'Editor.Text.Selected',
+    'CommandLine', 'Panel.Text', 'Panel.Text', 'Panel.Title.Column',
+    'Panel.Cursor', 'Panel.Cursor', 'Panel.Box');
   FarThemeBackKey: array[TFarPalItem] of Boolean = (
     True, False, False, False, False, False, True, False,
     True, False, False, False, False, True, True, False,
     True, False, True, False, True, False, True, False,
     True, False, False, True, False, True, True, False,
-    False, False, False, False, True, False, True, False);
+    False, False, False, False, True, False, True, False,
+    True, True, False, False, True, False, False);
   FarThemeSection = 'FarTheme';
 
 // Смесь цветов: AShare (0..100) процентов ATo в AFrom
@@ -2365,6 +2400,18 @@ begin
         FarPalKeys[Item], ''), FarPalDefaults[Item]);
       if (Color <> clNone) or (FarPalDefaults[Item] = clNone) then
         APalette[Item] := Color;
+    end;
+    // Палитра записана до вкладок (своя тема, импорт): их цвета - от
+    // цветов панели и командной строки
+    if Ini.ReadString(FarPaletteSection, FarPalKeys[fpTabBack], #1) = #1 then
+    begin
+      APalette[fpTabBarBack] := APalette[fpCmdBack];
+      APalette[fpTabBack] := APalette[fpPanelBack];
+      APalette[fpTabText] := APalette[fpPanelText];
+      APalette[fpTabCurText] := APalette[fpPanelHeader];
+      APalette[fpTabSelBack] := APalette[fpPanelCursorBack];
+      APalette[fpTabSelText] := APalette[fpPanelCursorText];
+      APalette[fpTabFrame] := APalette[fpPanelFrame];
     end;
   finally
     Ini.Free;
@@ -5540,6 +5587,13 @@ begin
     Result := ActivePanel.Path;
 end;
 
+function TFarView.ActiveCursorItem: WideString;
+begin
+  Result := '';
+  if (ActivePanel.Cursor >= 0) and (ActivePanel.Cursor < ActivePanel.Count) then
+    Result := ActivePanel.FItems[ActivePanel.Cursor].Name;
+end;
+
 function TFarView.TabsAllowed: Boolean;
 begin
   Result := (FDlgKind = fdNone) and (FMenuKind = fmNone) and
@@ -6322,7 +6376,7 @@ end;
 procedure TFarView.DrawMenu;
 var
   ItemIndex, RowIndex, MaxW, ItemW, BoxW, BoxH, AreaX, AreaW, RowY: Integer;
-  TextW, HotPos, SepY: Integer;
+  TextW, HotPos, SepY, SwatchCol: Integer;
   Item: TFarMenuItem;
   ItemText: WideString;
   Back, Fore, HotFore, SampleFore, SampleBack: TColor;
@@ -6331,7 +6385,10 @@ begin
   for ItemIndex := 0 to High(FMenuItems) do
   begin
     ItemW := Length(FarStripAmp(FMenuItems[ItemIndex].Text, HotPos)) + 2;
-    if FMenuItems[ItemIndex].RightText <> '' then
+    if FMenuItems[ItemIndex].SwatchCount > 0 then
+      Inc(ItemW, FMenuItems[ItemIndex].SwatchCount * FarSwatchCells +
+        FMenuItems[ItemIndex].SwatchCount + 2)
+    else if FMenuItems[ItemIndex].RightText <> '' then
       Inc(ItemW, Length(FMenuItems[ItemIndex].RightText) + 3);
     if ItemW > MaxW then
       MaxW := ItemW;
@@ -6422,7 +6479,9 @@ begin
     PutText(FMenuLeft + 2, RowY, 1, Item.Mark, Fore, Back);
     ItemText := FarStripAmp(Item.Text, HotPos);
     TextW := BoxW - 6;
-    if Item.RightText <> '' then
+    if Item.SwatchCount > 0 then
+      Dec(TextW, Item.SwatchCount * (FarSwatchCells + 1) + 1)
+    else if Item.RightText <> '' then
       Dec(TextW, Length(Item.RightText) + 1);
     if FMenuKind = fmHistory then
       ItemText := FarFitPath(ItemText, TextW)
@@ -6448,10 +6507,38 @@ begin
     if (HotPos > 0) and (HotPos <= Length(ItemText)) then
       PutText(FMenuLeft + 4 + HotPos - 1, RowY, 1, ItemText[HotPos], HotFore,
         Back);
-    if Item.RightText <> '' then
+    if Item.SwatchCount > 0 then
+    begin
+      // Квадратики с цветом: щелчок по строке, Enter - окно выбора цвета
+      SwatchCol := FMenuLeft + BoxW - 2 - Item.SwatchCount *
+        (FarSwatchCells + 1) + 1;
+      DrawSwatch(SwatchCol, RowY, Item.Swatch1, Fore);
+      if Item.SwatchCount > 1 then
+        DrawSwatch(SwatchCol + FarSwatchCells + 1, RowY, Item.Swatch2, Fore);
+    end
+    else if Item.RightText <> '' then
       PutText(FMenuLeft + BoxW - 2 - Length(Item.RightText), RowY,
         Length(Item.RightText), Item.RightText, Fore, Back);
   end;
+end;
+
+// Квадратик с цветом AColor в ACol, ARow (FarSwatchCells клеток), рамка -
+// AFrame. clNone - фон панели
+procedure TFarView.DrawSwatch(ACol, ARow: Integer; AColor, AFrame: TColor);
+var
+  SwatchRect: TRect;
+  FrameBrush: HBRUSH;
+begin
+  if AColor = clNone then
+    AColor := FPal[fpPanelBack];
+  SwatchRect := Rect(ACol * FCellW + 1, ARow * FCellH + 2,
+    (ACol + FarSwatchCells) * FCellW - 1, (ARow + 1) * FCellH - 2);
+  FBuffer.Canvas.Brush.Style := bsSolid;
+  FBuffer.Canvas.Brush.Color := AColor;
+  FBuffer.Canvas.FillRect(SwatchRect);
+  FrameBrush := CreateSolidBrush(ColorToRGB(AFrame));
+  Windows.FrameRect(FBuffer.Canvas.Handle, SwatchRect, FrameBrush);
+  DeleteObject(FrameBrush);
 end;
 
 // ---------------------------------------------------------------------------
@@ -12024,7 +12111,10 @@ begin
     if FPal[Item] = clNone then
       Items[High(Items)].RightText := 'нет'
     else
-      Items[High(Items)].RightText := WideString(FarColorToText(FPal[Item]));
+    begin
+      Items[High(Items)].SwatchCount := 1;
+      Items[High(Items)].Swatch1 := FPal[Item];
+    end;
     // Образец: справа цветом элемента
     Items[High(Items)].HasColors := True;
     if FarPalIsBack(Item) then
@@ -12086,9 +12176,10 @@ begin
       Items[RuleIdx].Mark := FarCheckMark
     else
       Items[RuleIdx].Mark := ' ';
-    Items[RuleIdx].RightText :=
-      WideString(FarColorToText(FColorRules[RuleIdx].Fore) + ' ' +
-      FarColorToText(FColorRules[RuleIdx].Back));
+    // Справа - цвет текста и цвет фона (нет фона - фон панели)
+    Items[RuleIdx].SwatchCount := 2;
+    Items[RuleIdx].Swatch1 := FColorRules[RuleIdx].Fore;
+    Items[RuleIdx].Swatch2 := FColorRules[RuleIdx].Back;
     Items[RuleIdx].Tag := RuleIdx;
     Items[RuleIdx].HasColors := True;
     Items[RuleIdx].Fore := FColorRules[RuleIdx].Fore;
@@ -12675,13 +12766,12 @@ begin
       (Row + 1) * FCellH - 1));
   end;
 
-  // Цвет текста: образец цвета и #RRGGBB
+  // Цвет текста: квадратик с цветом (Enter, щелчок - окно выбора цвета)
   Inc(Row, 2);
   FPickForeRow := Row;
   PutCaption(Inner, Row, 'Foreground:', FPickFocus = pfFore);
   PutText(Inner + 12, Row, 6, '', Fore, FPickFore);
-  PutText(Inner + 19, Row, 20, WideString(FarColorToText(FPickFore)) +
-    '  (Enter - выбрать)', Fore, Back);
+  PutText(Inner + 19, Row, 20, '(Enter - выбрать)', Fore, Back);
 
   // Цвет фона
   Inc(Row);
@@ -12695,7 +12785,7 @@ begin
   else
   begin
     PutText(Inner + 12, Row, 6, '', Fore, FPickBack);
-    Caption := WideString(FarColorToText(FPickBack));
+    Caption := '(Enter - выбрать)';
   end;
   PutText(Inner + 19, Row, 20, Caption, Fore, Back);
 
