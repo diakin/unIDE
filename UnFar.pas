@@ -151,7 +151,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.47';
+  FarBuild = 'b.48';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -536,6 +536,10 @@ type
     // старых записей при переполнении
     FHistory: TFarNames;
     FHistoryLock: array of Boolean;
+    // Вкладки папок uniFAR (FarTabs): пока по вкладкам ходят, переходы в
+    // историю не пишутся
+    FHistoryPaused: Boolean;
+    FOnPainted: TNotifyEvent;
     // Поиск файлов (Alt+F7): окно Find file - что искать (запоминается),
     // окно найденного - поверх панелей
     FFindMask: WideString;
@@ -910,6 +914,26 @@ type
     // Ширина окна FAR в режиме F4 (пикселей, 0 - не задана): ставит и
     // читает Unit1 (сплиттер), хранится в editor.ini ([Far] HalfWidth)
     property HalfWidth: Integer read FHalfWidth write FHalfWidth;
+    // Для вкладок папок (FarTabs, uniFAR). ActivePath - папка активной
+    // панели (FTP, архив - то, что в заголовке панели)
+    function ActivePath: WideString;
+    // Можно ходить по вкладкам: нет диалога и меню, активная панель -
+    // обычная папка (не FTP, не архив, не редактор и не просмотр)
+    function TabsAllowed: Boolean;
+    // История папок (Alt+F12): 0 - самая старая
+    function HistoryCount: Integer;
+    function HistoryItem(AIndex: Integer): WideString;
+    function HistoryIsLocked(AIndex: Integer): Boolean;
+    procedure HistoryAddPath(const APath: WideString);
+    // 1 - убрана, 0 - в истории её нет, -1 - закреплена (не убрана)
+    function HistoryRemovePath(const APath: WideString): Integer;
+    // Сообщение в строке сообщений (или OnStatus)
+    procedure StatusText(const AText: string);
+    property HistoryPaused: Boolean read FHistoryPaused write FHistoryPaused;
+    property MainFont: HFONT read FFontMain;
+    property CellHeight: Integer read FCellH;
+    // После каждой перерисовки (uniFAR: перерисовать вкладки)
+    property OnPainted: TNotifyEvent read FOnPainted write FOnPainted;
   end;
 
 var
@@ -3830,6 +3854,8 @@ begin
     SelectObject(FBuffer.Canvas.Handle, OldFont);
   end;
   Canvas.Draw(0, 0, FBuffer);
+  if Assigned(FOnPainted) then
+    FOnPainted(Self);
 end;
 
 procedure TFarView.Resize;
@@ -4647,7 +4673,8 @@ begin
     Status(FarProduct + ': папку не открыть: ' + ErrorText);
     Exit;
   end;
-  HistoryAdd(APanel.Path);
+  if not FHistoryPaused then
+    HistoryAdd(APanel.Path);
   DriveIndex := FarDriveIndex(APanel.Path);
   if DriveIndex >= 0 then
     FDriveLast[DriveIndex] := APanel.Path;
@@ -5499,6 +5526,74 @@ end;
 function TFarView.ActiveIndex: Integer;
 begin
   Result := FActive;
+end;
+
+// ---------------------------------------------------------------------------
+//  Для вкладок папок uniFAR (FarTabs.pas)
+// ---------------------------------------------------------------------------
+
+function TFarView.ActivePath: WideString;
+begin
+  if ActivePanel.IsFtp or ActivePanel.IsArchive then
+    Result := ActivePanel.DisplayPath
+  else
+    Result := ActivePanel.Path;
+end;
+
+function TFarView.TabsAllowed: Boolean;
+begin
+  Result := (FDlgKind = fdNone) and (FMenuKind = fmNone) and
+    not FFindOpen and not FPickOpen and not FPanelsHidden and
+    not EditorShown(FActive) and not ActivePanel.IsFtp and
+    not ActivePanel.IsArchive;
+end;
+
+function TFarView.HistoryCount: Integer;
+begin
+  Result := Length(FHistory);
+end;
+
+function TFarView.HistoryItem(AIndex: Integer): WideString;
+begin
+  if (AIndex >= 0) and (AIndex <= High(FHistory)) then
+    Result := FHistory[AIndex]
+  else
+    Result := '';
+end;
+
+function TFarView.HistoryIsLocked(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex <= High(FHistoryLock)) and
+    FHistoryLock[AIndex];
+end;
+
+procedure TFarView.HistoryAddPath(const APath: WideString);
+begin
+  HistoryAdd(APath);
+  Invalidate;
+end;
+
+function TFarView.HistoryRemovePath(const APath: WideString): Integer;
+var
+  HistoryIndex: Integer;
+begin
+  SetLength(FHistoryLock, Length(FHistory));
+  HistoryIndex := HistoryFind(APath);
+  if HistoryIndex < 0 then
+    Result := 0
+  else if FHistoryLock[HistoryIndex] then
+    Result := -1
+  else
+  begin
+    HistoryDelete(HistoryIndex);
+    Result := 1;
+  end;
+  Invalidate;
+end;
+
+procedure TFarView.StatusText(const AText: string);
+begin
+  Status(AText);
 end;
 
 procedure TFarView.ShowFolder(const APath: WideString);
