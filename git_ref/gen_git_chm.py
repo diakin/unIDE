@@ -21,7 +21,7 @@ import subprocess
 import sys
 
 PAGES = [
-    'index', 'bash', 'concepts', 'setup', 'daily', 'branches', 'remote',
+    'index', 'unide', 'bash', 'concepts', 'setup', 'daily', 'branches', 'remote',
     'undo', 'conflicts', 'history', 'files', 'cheatsheet',
 ]
 

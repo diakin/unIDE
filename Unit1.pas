@@ -3072,6 +3072,7 @@ type
     procedure GitRecentRepoClick(Sender: TObject);
     procedure GitRecentRemoveClick(Sender: TObject);
     procedure GitDeleteRepoClick(Sender: TObject);
+    procedure GitHelpClick(Sender: TObject);
     procedure GitShowRepoFields(AShow: Boolean);
     procedure GitLayoutRepoRow;
     procedure GitCopyMenuPopup(Sender: TObject);
@@ -66983,6 +66984,9 @@ begin
     '(например в mainTest), в одной таблице, цвет - по ветке. Перенести ' +
     'коммиты (cherry-pick), влить ветку целиком, удалить ветку', 646, 88,
     GitUnmergedClick);
+  // Справка: Tag 0 - раздел о панели (GitHelpClick)
+  NewButton('Help', 'Справка: что делают кнопки и строки панели Git, меню ' +
+    'Repository и Branch (git_ref\help\git.chm)', 738, 50, GitHelpClick);
   FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
     'недавние, по открытому проекту, Add Local / Clone / New', 4, 92,
     GitRepoBtnClick);
@@ -68873,6 +68877,9 @@ begin
     '(git remote set-url)', GitRepoSettingsClick);
   AddItem(RepoMenu, 'Delete Local Repository...', 'Папку текущего ' +
     'репозитория - в корзину (на сервере он остаётся)', GitDeleteRepoClick);
+  AddItem(RepoMenu, '-', '', nil);
+  AddItem(RepoMenu, 'Help', 'Справка: что делает каждый пункт меню ' +
+    'Repository (git_ref\help\git.chm)', GitHelpClick).Tag := 1;
 
   AddItem(BranchMenu, 'New Branch...', 'Новая ветка от текущего коммита и ' +
     'переход на неё (git checkout -b)', GitNewBranchClick);
@@ -68917,6 +68924,9 @@ begin
     GitViewBranchClick);
   AddItem(BranchMenu, 'Create Pull Request', 'Страница нового pull request ' +
     'для текущей ветки на GitHub', GitPullRequestClick);
+  AddItem(BranchMenu, '-', '', nil);
+  AddItem(BranchMenu, 'Help', 'Справка: что делает каждый пункт меню ' +
+    'Branch (git_ref\help\git.chm)', GitHelpClick).Tag := 2;
 end;
 
 // New Repository: папка (можно новую - в поле пути дописать её имя),
@@ -69673,6 +69683,27 @@ begin
   LogGit('Git: ' + Repo + ' - в корзине; репозиторий - по открытому ' +
     'проекту (' + GitBaseDir + ')');
   GitRefreshBar;
+end;
+
+// Help на панели Git (Tag 0) и в меню Repository (1), Branch (2): справка
+// по Git (git_ref\help\git.chm), страница unide.html - нужный раздел
+procedure TForm1.GitHelpClick(Sender: TObject);
+var
+  ChmFile, Topic: string;
+  HelpTag: Integer;
+begin
+  HelpTag := 0;
+  if Sender is TComponent then
+    HelpTag := TComponent(Sender).Tag;
+  case HelpTag of
+    1: Topic := 'unide.html#repomenu';
+    2: Topic := 'unide.html#branchmenu';
+  else
+    Topic := 'unide.html#panel';
+  end;
+  ChmFile := GitRefChm;
+  if (ChmFile = '') or not ChmShowTopic(ChmFile, Topic) then
+    ShowMessage('Справка по Git: ' + RqHelpLastError);
 end;
 
 procedure TForm1.GitUseProjectRepoClick(Sender: TObject);

@@ -1,0 +1,378 @@
+<h1>Git в unIDE: панель Git и меню</h1>
+<p>Команды Git в unIDE собраны в трёх местах: панель Git (вкладка <b>Git</b> рядом с
+<b>Components</b> над редактором), меню <b>Repository</b> и меню <b>Branch</b>. Все они
+работают с одним и тем же репозиторием &mdash; тем, что показан на панели. Команды git и их
+вывод пишутся во вкладку <b>Git log</b> внизу окна.</p>
+<p>Какой репозиторий текущий: выбранный вручную (Repository &rarr; Add Local Repository,
+Clone, New или список кнопки Repository... на панели), иначе &mdash; тот, в котором лежит
+открытый проект, а без проекта &mdash; файл активной вкладки. Выбор вручную запоминается
+для каждого проекта отдельно.</p>
+
+<h2><a name="panel"></a>Панель Git: строки</h2>
+<table>
+<tr><th>Строка</th><th>Что показывает</th></tr>
+<tr><td>Кнопки</td><td>Fetch, Pull, Push, Commit..., History..., Refresh, Git Bash,
+  Compare..., Merge Into..., Unmerged..., Help &mdash; см. <a href="#buttons">Кнопки
+  панели</a>.</td></tr>
+<tr><td>Repository... &nbsp;имя &nbsp;путь &nbsp;origin</td><td>Имя репозитория, его
+  папка и адрес <code>remote origin</code>. Путь и адрес можно выделить мышью и скопировать
+  (Ctrl+C), двойной щелчок выделяет всё. «(выбран вручную)» &mdash; репозиторий выбран не
+  по проекту. Правый щелчок по панели &mdash; меню Copy Local Path, Copy origin URL, Copy
+  Branch Name.</td></tr>
+<tr><td>Branch</td><td>Текущая ветка. Выбор другой ветки в списке &mdash; переход на неё
+  (<code>git checkout</code>). Строка <code>origin/имя</code> &mdash; ветка, которая есть
+  только на сервере: при выборе создаётся локальная ветка с тем же именем, связанная с
+  серверной. Ctrl+C &mdash; скопировать имя ветки.</td></tr>
+<tr><td><code>origin/ветка: ahead N, behind M</code></td><td>Сравнение с веткой на
+  сервере по последнему Fetch: <b>ahead</b> &mdash; коммиты, которые ещё не отправлены
+  (Push), <b>behind</b> &mdash; коммиты на сервере, которые ещё не забраны (Pull). Цвет:
+  зелёный &mdash; всё совпадает, оранжевый &mdash; есть неотправленные, красный &mdash;
+  есть незабранные. «нет ветки на сервере &mdash; Push опубликует её» &mdash; ветка пока
+  только локальная.</td></tr>
+<tr><td>Build</td><td><code>git describe --tags --always</code>: ближайшая метка, число
+  коммитов после неё и короткий хеш (без меток &mdash; только хеш).</td></tr>
+<tr><td>Changes</td><td>Сколько файлов изменено и не закоммичено (список &mdash;
+  Commit...). Есть изменения &mdash; строка оранжевая.</td></tr>
+<tr><td>Stash</td><td>Сколько записей в stash (показывается, когда они есть).</td></tr>
+<tr><td>Git status</td><td>Итог проверок: <b>OK</b>, <b>Внимание</b> или <b>Error</b>,
+  подробности &mdash; в подсказке. Щелчок &mdash; полный <code>git status</code> и
+  проверки с именами файлов в Git log; есть отслеживаемые файлы из
+  <code>.gitignore</code> &mdash; открывается окно <a href="#tracked">Tracked but
+  Ignored</a>. См. <a href="#status">Проверки Git status</a>.</td></tr>
+<tr><td>Подсказка справа</td><td>Что сделала последняя команда и что сделать дальше
+  (например «коммит сделан; не отправлено 1 &mdash; Push»).</td></tr>
+<tr><td>View</td><td>Появляется, когда есть неотправленные или незабранные коммиты:
+  окно сравнения ветки с её веткой на сервере (коммиты, файлы, разница).</td></tr>
+</table>
+<p>Подсветка кнопок: красная кнопка &mdash; следующий шаг. Pull красная &mdash; на
+сервере есть новые коммиты; Commit... красная &mdash; есть незакоммиченные изменения;
+Push красная &mdash; есть неотправленные коммиты или ветки на сервере ещё нет.</p>
+<p>Панель обновляется сама, когда меняются служебные файлы <code>.git</code> (в том числе
+после команд в Git Bash), и после каждой команды unIDE. Refresh &mdash; обновить сразу.</p>
+
+<h2><a name="buttons"></a>Кнопки панели</h2>
+<table>
+<tr><th>Кнопка</th><th>Что делает</th></tr>
+<tr><td>Fetch</td><td><code>git fetch --all --prune</code>: узнать, что нового на сервере
+  (ветки и коммиты). Рабочие файлы и ваши ветки не меняются; ветки, удалённые на сервере,
+  убираются из списка <code>origin/...</code>.</td></tr>
+<tr><td>Pull</td><td>Забрать изменения текущей ветки с сервера и влить их слиянием
+  (<code>git pull</code>, merge, без окна редактора). Если и у вас, и на сервере есть
+  новые коммиты, создаётся коммит слияния; при конфликте &mdash; см.
+  <a href="#conflicts">Конфликты</a>.</td></tr>
+<tr><td>Push</td><td>Отправить коммиты текущей ветки на сервер (<code>git push</code>).
+  Ветки на сервере ещё нет &mdash; публикует её (<code>git push -u origin
+  ветка</code>). Нет <code>remote origin</code> &mdash; сообщение: адрес задаётся в
+  Repository &rarr; Repository Settings.</td></tr>
+<tr><td>Commit...</td><td>Окно <a href="#commit">Commit</a>: изменённые файлы,
+  разница, заголовок и описание коммита.</td></tr>
+<tr><td>History...</td><td>Окно <a href="#history">History</a>: коммиты текущей
+  ветки.</td></tr>
+<tr><td>Refresh</td><td>Обновить сведения панели.</td></tr>
+<tr><td>Git Bash</td><td>Терминал Git Bash в папке репозитория. Пока он открыт, панель
+  проверяет репозиторий каждую секунду.</td></tr>
+<tr><td>Compare...</td><td><a href="#compare">Сравнить две ветки</a>.</td></tr>
+<tr><td>Merge Into...</td><td><a href="#mergeinto">Влить текущую ветку в другую</a>
+  (например mainTest в main) и отправить ту на сервер.</td></tr>
+<tr><td>Unmerged...</td><td><a href="#unmerged">Коммиты всех веток, которых нет в
+  текущей</a>.</td></tr>
+<tr><td>Help</td><td>Эта страница.</td></tr>
+<tr><td>Repository...</td><td>Меню: недавние репозитории (текущий отмечен, папки, которых
+  больше нет, убираются из списка), Use Repository of Current Project, Add Local
+  Repository..., Clone Repository..., New Repository..., Create Project from ...,
+  Remove ... from List &mdash; убрать текущий из списка недавних (папка не трогается;
+  он снова появится в списке, когда будет выбран или открыт с проектом).</td></tr>
+</table>
+<p>Во время незаконченного слияния, cherry-pick или revert на строке Build появляются
+кнопки Conflicts..., Auto-resolve, Continue, Skip, Abort &mdash; см.
+<a href="#conflicts">Конфликты</a>.</p>
+
+<h2><a name="repomenu"></a>Меню Repository</h2>
+<table>
+<tr><th>Пункт</th><th>Что делает</th></tr>
+<tr><td>New Repository...</td><td>Новый репозиторий. Сначала папка (новую можно
+  дописать в поле пути), затем имя &mdash; по умолчанию имя последней папки; другое имя
+  &mdash; папка с этим именем рядом. Папки нет &mdash; создаётся; папка не репозиторий
+  &mdash; <code>git init</code>; уже репозиторий &mdash; дальше работа с ним. Затем
+  GitHub: репозиторий с таким именем там есть &mdash; он прописывается как
+  <code>origin</code>; нет &mdash; вопрос, создать ли его (Private, Public или не
+  создавать; создаётся пустым, первый Push отправит туда коммиты). Для работы с GitHub
+  нужен сохранённый логин, см. <a href="#login">Вход на GitHub</a>. Если для папки нет
+  проекта unIDE &mdash; окно New Project на её основе.</td></tr>
+<tr><td>Add Local Repository...</td><td>Выбрать папку с уже существующим репозиторием
+  (подойдёт и любая папка внутри него). Папка не в репозитории &mdash; сообщение.</td></tr>
+<tr><td>Clone Repository...</td><td>Окно <a href="#clone">Clone Repository</a>:
+  скачать репозиторий с GitHub (<code>git clone</code>).</td></tr>
+<tr><td>Use Repository of Current Project</td><td>Снять выбор вручную: снова
+  репозиторий открытого проекта.</td></tr>
+<tr><td>Create Project from Repository...</td><td>Проект unIDE на основе текущего
+  репозитория: окно New Project с его папкой, «На базе существующего», тип проекта
+  определяется по файлам. Проект для этой папки уже есть &mdash; вопрос, открыть ли
+  его.</td></tr>
+<tr><td>Fetch, Pull, Push</td><td>Как кнопки панели, см. <a href="#buttons">Кнопки
+  панели</a>.</td></tr>
+<tr><td>Commit...</td><td>Окно <a href="#commit">Commit</a>.</td></tr>
+<tr><td>History...</td><td>Окно <a href="#history">History</a>.</td></tr>
+<tr><td>View on GitHub</td><td>Страница репозитория на GitHub в браузере. Нет
+  <code>origin</code> или он не на GitHub &mdash; сообщение в Git log.</td></tr>
+<tr><td>Open in Git Bash</td><td>Терминал Git Bash в папке репозитория.</td></tr>
+<tr><td>Show in Explorer</td><td>Папка репозитория в Проводнике.</td></tr>
+<tr><td>Repository Settings...</td><td>Адрес <code>remote origin</code>: показать,
+  поменять (<code>git remote set-url</code>) или добавить, если его нет.</td></tr>
+<tr><td>Delete Local Repository...</td><td>Папку текущего репозитория &mdash; в
+  корзину; репозиторий на сервере не трогается. См.
+  <a href="#delete">Удаление локального репозитория</a>.</td></tr>
+<tr><td>Help</td><td>Эта страница.</td></tr>
+</table>
+
+<h2><a name="branchmenu"></a>Меню Branch</h2>
+<table>
+<tr><th>Пункт</th><th>Что делает</th></tr>
+<tr><td>New Branch...</td><td>Новая ветка от текущего коммита и переход на неё
+  (<code>git checkout -b</code>). Имя без пробелов и символов <code>~ ^ : ? * [ \</code>,
+  не начинается с <code>-</code>, не кончается на <code>/</code> или
+  <code>.lock</code>.</td></tr>
+<tr><td>Switch Branch...</td><td>Перейти на другую локальную ветку (<code>git
+  checkout</code>). То же &mdash; выбор в списке Branch на панели.</td></tr>
+<tr><td>Rename Branch...</td><td>Переименовать текущую ветку (<code>git branch
+  -m</code>). Ветка на сервере, если была, остаётся со старым именем; Push опубликует
+  новое.</td></tr>
+<tr><td>Delete Branch...</td><td>Удалить локальную ветку (кроме текущей), <code>git
+  branch -d</code>. На сервере она остаётся. Если в ветке есть коммиты, которых нет в
+  других ветках, &mdash; второй вопрос: удалить всё равно (<code>git branch
+  -D</code>).</td></tr>
+<tr><td>Discard All Changes...</td><td>Отменить все незакоммиченные изменения:
+  изменённые файлы &mdash; как в последнем коммите, новые файлы &mdash; в корзину. С
+  подтверждением.</td></tr>
+<tr><td>Stash All Changes</td><td>Убрать все изменения, и новые файлы тоже, в stash
+  (<code>git stash push --include-untracked</code>). Рабочие файлы становятся как в
+  последнем коммите. Запись называется «unIDE ветка дата время».</td></tr>
+<tr><td>Restore Stash...</td><td>Выбрать запись stash и вернуть её изменения в рабочие
+  файлы (<code>git stash pop</code>). Запись убирается; при конфликте она
+  остаётся.</td></tr>
+<tr><td>Drop Stash...</td><td>Удалить запись stash (<code>git stash drop</code>), с
+  подтверждением. Изменения из неё пропадут.</td></tr>
+<tr><td>Hidden Local Changes...</td><td>Файлы, чьи изменения скрыты (Ignore &rarr;
+  «Скрыть свои изменения» в окне Commit, <code>skip-worktree</code>): выбранный файл
+  возвращается в список изменений (<code>git update-index
+  --no-skip-worktree</code>).</td></tr>
+<tr><td>Tracked but Ignored Files...</td><td>Окно <a href="#tracked">Tracked but
+  Ignored</a>: файлы, которые лежат в репозитории, хотя подходят под
+  <code>.gitignore</code>.</td></tr>
+<tr><td>Update from Default Branch</td><td>Влить в текущую ветку основную ветку
+  сервера (<code>origin/HEAD</code>, иначе <code>origin/main</code> или
+  <code>origin/master</code>): <code>git merge</code>. Сначала нужен Fetch.</td></tr>
+<tr><td>Merge into Current Branch...</td><td>Выбрать ветку (локальную или
+  <code>origin/...</code>) и влить её в текущую (<code>git merge</code>).</td></tr>
+<tr><td>Merge Current Branch Into...</td><td>То же, что кнопка
+  <a href="#mergeinto">Merge Into...</a>.</td></tr>
+<tr><td>Compare Branches...</td><td>То же, что кнопка <a href="#compare">Compare...</a>.</td></tr>
+<tr><td>Commits Not in Current Branch...</td><td>То же, что кнопка
+  <a href="#unmerged">Unmerged...</a>.</td></tr>
+<tr><td>View Branch on GitHub</td><td>Текущая ветка на GitHub в браузере.</td></tr>
+<tr><td>Create Pull Request</td><td>Страница нового pull request для текущей ветки на
+  GitHub.</td></tr>
+<tr><td>Help</td><td>Эта страница.</td></tr>
+</table>
+
+<h2><a name="commit"></a>Окно Commit</h2>
+<p>Список изменённых и новых файлов с флажками: в коммит идёт ровно то, что отмечено (как в
+GitHub Desktop). Справа &mdash; разница выбранного файла с подсветкой: добавленные строки
+&mdash; зелёным, удалённые &mdash; красным.</p>
+<ul>
+<li>Строки раскрашены по виду файла. Сверху красные &mdash; то, что обычно не коммитят (exe,
+  dcu, obj, log, tmp, bak, архивы и т.&nbsp;п.); они при первом показе без флажка. Дальше
+  библиотеки, картинки, исходники, текст и настройки. Флажки над списком отмечают или
+  снимают сразу все строки одного вида.</li>
+<li><b>Discard Selected...</b> (и правый щелчок &rarr; Discard Changes) &mdash; отменить
+  изменения выделенных строк (не отмеченных флажками): файлы &mdash; как в последнем
+  коммите, новые &mdash; в корзину.</li>
+<li><b>Ignore...</b> &mdash; чтобы выделенные файлы больше не предлагались к коммиту.
+  Варианты: в <code>.gitignore</code> (для всех, <code>.gitignore</code> попадёт в
+  коммит) &mdash; файл, все файлы с тем же расширением или папку; то же только у себя
+  (<code>.git/info/exclude</code>, в репозиторий не попадает); для файлов, которые уже в
+  репозитории, &mdash; перестать отслеживать (<code>git rm --cached</code> +
+  <code>.gitignore</code>: файл остаётся на диске, из репозитория удаляется следующим
+  коммитом) или скрыть свои изменения (<code>skip-worktree</code>: файл в репозитории
+  остаётся, ваши правки не предлагаются; вернуть &mdash; Branch &rarr; Hidden Local
+  Changes).</li>
+<li><b>Заголовок</b> (Summary) обязателен, <b>описание</b> &mdash; по желанию.</li>
+<li><b>Commit</b> &mdash; закоммитить отмеченное в текущую ветку; <b>Commit and Push</b>
+  &mdash; закоммитить и сразу отправить на сервер.</li>
+</ul>
+<p>Коммит не прошёл с сообщением про автора &mdash; не заданы имя и почта:
+<code>git config --global user.name "Имя"</code> и <code>git config --global user.email
+почта</code> (в Git Bash), см. <a href="setup.html">Первая настройка</a>.</p>
+
+<h2><a name="history"></a>Окно History</h2>
+<p>Коммиты текущей ветки (<code>git log</code>). У выбранного коммита &mdash; автор, дата,
+полный текст, изменённые файлы и разница выбранного файла. Коммиты, которые ещё не
+отправлены на сервер, &mdash; оранжевым. Load More &mdash; показать следующие
+коммиты.</p>
+<table>
+<tr><th>Кнопка</th><th>Что делает</th></tr>
+<tr><td>Copy SHA</td><td>Полный SHA выбранного коммита &mdash; в буфер обмена.</td></tr>
+<tr><td>View on GitHub</td><td>Страница коммита на GitHub.</td></tr>
+<tr><td>New Branch from Commit...</td><td>Новая ветка от выбранного коммита и переход на
+  неё. Выполняется после закрытия окна.</td></tr>
+<tr><td>Revert Commit</td><td>Новый коммит, который отменяет изменения выбранного
+  (<code>git revert</code>); история не переписывается. Выполняется после закрытия
+  окна.</td></tr>
+</table>
+
+<h2><a name="compare"></a>Compare: сравнение веток</h2>
+<p>Выбираются две ветки (локальные и <code>origin/...</code>). В Git log &mdash; сводка:
+сколько коммитов есть только в каждой ветке и какие файлы различаются (<code>git diff
+--stat</code>). Коммиты открываются в окне History в режиме сравнения: первый столбец
+&mdash; ветка, строки &mdash; цветом своей ветки, у каждого коммита &mdash; файлы и
+разница. Revert в этом режиме нет.</p>
+
+<h2><a name="mergeinto"></a>Merge Into: влить текущую ветку в другую</h2>
+<p>Например, работа идёт в mainTest, а готовое нужно перенести в main. Выбирается ветка, в
+которую вливать. Если у неё нет своих коммитов (она &mdash; предок текущей и на сервере,
+и локально), переключаться не нужно: текущая ветка отправляется на сервер под её именем
+(<code>git push origin текущая:другая</code>), а локальная другая ветка перематывается на
+тот же коммит. Иначе: переход на другую ветку, догнать сервер (<code>pull
+--ff-only</code>), <code>git merge</code> текущей, <code>git push</code> и возврат на
+текущую. При конфликте unIDE остаётся на другой ветке &mdash; см.
+<a href="#conflicts">Конфликты</a>.</p>
+
+<h2><a name="unmerged"></a>Unmerged: коммиты не в текущей ветке</h2>
+<p>Коммиты всех веток (локальных и <code>origin/...</code>), которых нет в текущей, в
+одной таблице; цвет строки &mdash; у каждой ветки свой. Коммит, перенесённый cherry-pick'ом
+с тем же содержимым, не показывается. Коммит, который есть в нескольких ветках, &mdash;
+одна строка, ветки через запятую.</p>
+<table>
+<tr><th>Кнопка</th><th>Что делает</th></tr>
+<tr><td>Cherry-pick</td><td>Перенести выделенные коммиты в текущую ветку, от старых к
+  новым (копии коммитов, <code>git cherry-pick -x</code>).</td></tr>
+<tr><td>Merge Branch</td><td>Влить в текущую ветку целиком ветку выделенного
+  коммита.</td></tr>
+<tr><td>Delete Branch</td><td>Удалить ветку выделенного коммита &mdash; локальную и на
+  сервере. Выделены коммиты из нескольких веток или ничего не выделено (Ctrl+щелчок снимает
+  выделение) &mdash; ветки выбираются из списка.</td></tr>
+<tr><td>Close</td><td>Закрыть окно.</td></tr>
+</table>
+<p>После Cherry-pick, Merge Branch и Delete Branch окно открывается снова с новым списком,
+пока его не закроют. Долгую загрузку списка можно прервать клавишей Esc.</p>
+
+<h2><a name="clone"></a>Окно Clone Repository</h2>
+<ul>
+<li>Вкладка <b>GitHub.com</b> &mdash; список ваших репозиториев на GitHub, с фильтром по
+  части имени; <b>Обновить</b> &mdash; перечитать список. Нет сохранённого логина &mdash;
+  кнопка <b>Войти...</b>, см. <a href="#login">Вход на GitHub</a>.</li>
+<li>Вкладка <b>URL</b> &mdash; адрес репозитория
+  (<code>https://github.com/владелец/имя.git</code>) или просто
+  <code>владелец/имя</code>.</li>
+<li><b>Локальный путь</b> &mdash; <code>папка\имя репозитория</code>. Он следует за
+  выбранным репозиторием, пока его не изменили вручную. <b>Choose...</b> выбирает папку, в
+  которой будет создана папка репозитория.</li>
+<li>Флажок <b>Создать проект на основе локального репозитория</b> &mdash; после
+  клонирования откроется окно New Project с папкой клона.</li>
+<li><b>Clone</b> &mdash; <code>git clone</code>. Папка и флажок запоминаются до следующего
+  раза.</li>
+</ul>
+<p>Если такой репозиторий у вас уже склонирован в другую папку, клон будет второй,
+независимой копией: Pull и коммиты в каждой папке делаются отдельно. Лишнюю копию можно
+убрать командой <a href="#delete">Delete Local Repository</a>.</p>
+
+<h2><a name="delete"></a>Удаление локального репозитория</h2>
+<p>Repository &rarr; Delete Local Repository... перемещает папку текущего репозитория в
+корзину целиком, вместе с файлами из <code>.gitignore</code> (сборки, локальные
+настройки). Репозиторий на сервере не трогается.</p>
+<ul>
+<li>Перед вопросом unIDE проверяет и перечисляет, что пропадёт вместе с папкой:
+  незакоммиченные изменения и новые файлы, коммиты, которых нет на сервере (если
+  <code>remote</code> нет &mdash; все коммиты: репозиторий есть только в этой папке),
+  записи stash. Есть что-то из этого &mdash; окно-предупреждение, кнопка по умолчанию
+  &mdash; «Отмена».</li>
+<li>Не удаляются: корень диска, папка, в которой лежит сама unIDE, папка открытого
+  проекта. Открыты вкладки с файлами из этой папки &mdash; unIDE показывает их и просит
+  закрыть.</li>
+<li>Папка не помещается в корзину &mdash; Windows спросит, удалить ли её насовсем.</li>
+<li>Файлы заняты (Git Bash, Проводник, другая программа) &mdash; папка удалится не
+  полностью, сообщение в Git log; уже удалённое &mdash; в корзине.</li>
+<li>После удаления репозиторий убирается из списка недавних, и панель снова показывает
+  репозиторий открытого проекта.</li>
+</ul>
+
+<h2><a name="tracked"></a>Окно Tracked but Ignored</h2>
+<p>Файлы, которые лежат в репозитории, хотя подходят под правила <code>.gitignore</code>
+(<code>.gitignore</code> на уже отслеживаемые файлы не действует). Для файлов, отмеченных
+флажками:</p>
+<ul>
+<li><b>Оставить в репозитории</b> &mdash; в <code>.gitignore</code> дописывается
+  исключение <code>!путь</code>, проверка Git status о файле больше не говорит;</li>
+<li><b>Убрать из репозитория</b> &mdash; <code>git rm --cached</code>: файл остаётся на
+  диске, из репозитория уходит следующим коммитом, дальше <code>.gitignore</code> его не
+  пускает.</li>
+</ul>
+<p>Отмечать помогают кнопки: все, ни одного, все с тем же правилом, что у выделенной
+строки, вся папка выделенной строки.</p>
+
+<h2><a name="status"></a>Проверки Git status</h2>
+<table>
+<tr><th>Уровень</th><th>Что проверяется</th></tr>
+<tr><td>Error</td><td>Незаконченное слияние, cherry-pick, revert или bisect; файлы с
+  конфликтом; HEAD отсоединён от ветки (выбрать ветку в списке Branch или Branch &rarr;
+  New Branch); есть <code>.git\index.lock</code> &mdash; работает другой git или он
+  завершился аварийно.</td></tr>
+<tr><td>Внимание</td><td>Файлы со скрытыми изменениями (<code>skip-worktree</code>,
+  <code>assume-unchanged</code>): <code>git status</code> их не показывает, а переход на
+  другую ветку на них останавливается; файлы, которые и в репозитории, и в
+  <code>.gitignore</code>; ветка разошлась с сервером (есть и неотправленные, и
+  незабранные коммиты &mdash; Pull, затем Push).</td></tr>
+</table>
+
+<h2><a name="conflicts"></a>Конфликты: Conflicts, Auto-resolve, Continue, Skip, Abort</h2>
+<p>Если слияние (Pull, Merge, Update from Default Branch), cherry-pick или revert
+остановилось на конфликте, на строке Build появляются кнопки:</p>
+<table>
+<tr><th>Кнопка</th><th>Что делает</th></tr>
+<tr><td>Conflicts...</td><td>Список файлов с конфликтом в Git log; выбранный файл
+  открывается в редакторе на первом конфликте. В файле: от <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>
+  до <code>=======</code> &mdash; текущая ветка, от <code>=======</code> до
+  <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> &mdash; вливаемое. Нужно оставить правильный текст и
+  убрать маркеры.</td></tr>
+<tr><td>Auto-resolve</td><td>Разрешить конфликты, где обе стороны только добавили строки
+  в одно место (в общей версии там ничего не было): остаются обе вставки, сначала текущей
+  ветки, потом вливаемая. Остальные конфликты остаются с маркерами &mdash;
+  вручную.</td></tr>
+<tr><td>Continue</td><td>Конфликты исправлены и файлы сохранены: отметить файлы
+  (<code>git add</code>) и закончить &mdash; коммит слияния или <code>git cherry-pick /
+  revert --continue</code>.</td></tr>
+<tr><td>Skip</td><td>Пропустить этот коммит и перейти к следующему (для cherry-pick,
+  revert, rebase).</td></tr>
+<tr><td>Abort</td><td>Отменить операцию: файлы и ветка &mdash; как до неё (<code>git
+  merge / cherry-pick / revert --abort</code>). Для bisect &mdash; закончить его
+  (<code>git bisect reset</code>).</td></tr>
+</table>
+<p>Подробнее о конфликтах &mdash; <a href="conflicts.html">Конфликты слияния</a>.</p>
+
+<h2><a name="login"></a>Вход на GitHub</h2>
+<p>Fetch, Pull, Push и Clone по <code>https</code> требуют логин. GitHub не принимает пароль
+от аккаунта для git: вместо пароля вводится <b>personal access token</b> (создаётся на
+GitHub в Settings &rarr; Developer settings &rarr; Personal access tokens).</p>
+<ul>
+<li>Если git не получил логин, unIDE предлагает повторить команду в окне консоли, где git
+  спросит Username (логин GitHub) и Password (token).</li>
+<li>Вариант <b>wincred и консоль</b> настраивает <code>credential.helper wincred</code>:
+  логин сохраняется в диспетчере учётных данных Windows, и дальше команды git из unIDE
+  проходят без консоли. <b>Только консоль</b> &mdash; логин придётся вводить при каждой
+  команде, которой нужен вход.</li>
+<li>В окне Clone Repository кнопка <b>Войти...</b> принимает логин и token, проверяет
+  token на GitHub и сохраняет его через git. Этот же логин нужен для списка репозиториев и
+  для создания репозитория на GitHub (New Repository).</li>
+</ul>
+
+<h2><a name="log"></a>Git log и прочее</h2>
+<ul>
+<li><b>Git log</b> (вкладка внизу окна) &mdash; все команды git, которые выполнила unIDE,
+  с папкой и выводом. Долгую команду можно прервать клавишей Esc.</li>
+<li>Команды pull, merge, checkout и cherry-pick сохраняют файлы, которые подходят под
+  <code>.gitignore</code>, но были убраны из репозитория в другом месте (<code>git rm
+  --cached</code>): git удалил бы их с диска, unIDE возвращает их после команды.</li>
+<li><b>ReactOS &rarr; Git Terminal (Git Bash)</b> &mdash; Git Bash в папке открытого
+  проекта; <b>ReactOS &rarr; Find or Install Git</b> &mdash; найти Git for Windows или
+  скачать свой переносной в <code>tools\git</code>.</li>
+</ul>
