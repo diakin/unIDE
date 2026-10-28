@@ -10,7 +10,11 @@ program uniFAR;
 //
 //  Сборка: Lazarus (uniFAR.lpi) или
 //    lazbuild uniFAR.lpi
-//    fpc -Mdelphi -Fuvcl -Fu.. -Fi.. uniFAR.lpr
+//    fpc -Mdelphi -FcCP1251 -Fuvcl -Fu.. -Fi.. uniFAR.lpr
+//
+//  -FcCP1251: исходники в кодировке Windows-1251. Без этого строки с
+//  кириллицей, которые сразу становятся WideString (заголовки, подписи
+//  окон), выходят кракозябрами
 // ---------------------------------------------------------------------------
 
 {$mode delphi}
