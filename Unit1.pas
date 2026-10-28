@@ -1197,6 +1197,12 @@ type
     FGitDlgGit: string;
     FGitDlgRepo: string;
     FGitDlgHasHead: Boolean;
+    // Окно History - немодальное, одно: ссылка (TDlgGitHistory), его git
+    // и репозиторий (окно Commit и другие меняют FGitDlgGit / FGitDlgRepo,
+    // пока History открыто)
+    FGitHistWin: TForm;
+    FGitHistGit: string;
+    FGitHistRepo: string;
     FGitTimer: TTimer;            // обновить панель чуть позже (GitShowBar)
     // Слежение за репозиторием, пока панель видна: раз в 5 с, пока открыт
     // Git Bash, запущенный кнопкой (FGitBashProc), - раз в секунду. Панель
@@ -3170,6 +3176,10 @@ type
     function  GitTickIdle: Boolean;
     procedure GitUnmergedProgress(const AText: string);
     procedure GitHistoryClick(Sender: TObject);
+    function  GitHistWinQuery(const AArgs: string;
+                              var AOutput: WideString): Integer;
+    procedure GitHistWinAction(Sender: TObject);
+    procedure GitHistWinDone(Sender: TObject);
     function  GitDiscardIn(const AGit, ARepo: string;
                            const AChanges: TGitChanges; AAsk: Boolean): Boolean;
     function  GitDlgDiscard(const AChanges: TGitChanges): Boolean;
@@ -24998,6 +25008,10 @@ begin
   IniBufOnWritten := nil;
   HangWatchStop;
   WndWatchStop;
+  // Окно History (немодальное) - его положение в editor.ini, пока главное
+  // окно цело
+  if FGitHistWin <> nil then
+    FreeAndNil(FGitHistWin);
   // Окно WebView2 и его загрузчик - пока программа целая (Runtime error
   // 216 при уничтожении в finalization)
   Wv2Shutdown;
@@ -70037,6 +70051,7 @@ begin
     RightBranch + ' - ' + ExtractFileName(ExcludeTrailingPathDelimiter(Repo)),
     WebUrl, GitHistQuery, LeftBranch + '...' + RightBranch);
   Dlg.SetSchemeProvider(SchemeCopyFor);
+  Dlg.SetPlacementIni(SettingsFileName);
   try
     Dlg.ShowModal;
     HistAction := Dlg.Action;
@@ -70286,6 +70301,7 @@ begin
           BusyEnd('', True);
       end;
       Dlg.SetSchemeProvider(SchemeCopyFor);
+      Dlg.SetPlacementIni(SettingsFileName);
       try
         Dlg.ShowModal;
         HistAction := Dlg.Action;
@@ -70562,34 +70578,76 @@ begin
   BusyStage(AText + ' (Esc - прервать)');
 end;
 
-// History: коммиты текущей ветки; New Branch from Commit и Revert Commit
-// - здесь, после закрытия окна (с журналом)
+// History: коммиты текущей ветки - немодальное окно, одно на программу.
+// Уже открыто для того же репозитория и ветки - вперёд и перечитать;
+// другой - прежнее закрыть, открыть новое. New Branch from Commit и Revert
+// Commit - сразу (GitHistWinAction), окно остаётся
 procedure TForm1.GitHistoryClick(Sender: TObject);
 var
-  Git, Repo, Branch, WebUrl, Hash, Name, Remote: string;
+  Git, Repo, Branch, WebUrl, Remote, Title: string;
   Dlg: TDlgGitHistory;
-  HistAction: TGitHistAction;
 begin
   if not GitPrepare(Git, Repo) then
     Exit;
-  FGitDlgGit := Git;
-  FGitDlgRepo := Repo;
   Branch := GitCurrentBranch(Git, Repo);
   if Branch = '' then
     Branch := 'HEAD';
+  Title := 'History - ' + Branch + ' - ' +
+    ExtractFileName(ExcludeTrailingPathDelimiter(Repo));
+  if FGitHistWin <> nil then
+  begin
+    if (FGitHistRepo = Repo) and (FGitHistWin.Caption = Title) then
+    begin
+      FGitHistWin.Show;
+      FGitHistWin.BringToFront;
+      TDlgGitHistory(FGitHistWin).ReloadCommits;
+      Exit;
+    end;
+    // Положение прежнего окна сохранится при закрытии
+    FGitHistWin.Close;
+    FGitHistWin := nil;
+  end;
+  // До создания окна: оно сразу читает коммиты через GitHistWinQuery
+  FGitHistGit := Git;
+  FGitHistRepo := Repo;
   // Адрес GitHub - для View on GitHub; не GitHub - кнопка недоступна
   Remote := GitQuery(Git, Repo, 'config --get remote.origin.url');
   WebUrl := string(GitHubWebUrl(WideString(Remote)));
-  Dlg := TDlgGitHistory.CreateDlg(Self, 'History - ' + Branch + ' - ' +
-    ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), WebUrl, GitHistQuery);
+  Dlg := TDlgGitHistory.CreateDlg(Self, Title, WebUrl, GitHistWinQuery);
   Dlg.SetSchemeProvider(SchemeCopyFor);
-  try
-    Dlg.ShowModal;
-    HistAction := Dlg.Action;
-    Hash := Dlg.SelectedHash;
-  finally
-    Dlg.Free;
-  end;
+  Dlg.SetPlacementIni(SettingsFileName);
+  FGitHistWin := Dlg;
+  Dlg.ShowModeless(GitHistWinAction, GitHistWinDone);
+end;
+
+// Окно History: тихий git в его репозитории (FGitHistGit / FGitHistRepo)
+function TForm1.GitHistWinQuery(const AArgs: string;
+  var AOutput: WideString): Integer;
+begin
+  Result := GitRunIn(FGitHistGit, FGitHistRepo, AArgs, False, AOutput);
+end;
+
+// Окно History уничтожено - ссылку забыть (если это всё ещё оно)
+procedure TForm1.GitHistWinDone(Sender: TObject);
+begin
+  if FGitHistWin = Sender then
+    FGitHistWin := nil;
+end;
+
+// New Branch from Commit / Revert Commit в окне History: сразу, с
+// журналом; окно остаётся - заголовок (ветка могла смениться) и коммиты
+// заново
+procedure TForm1.GitHistWinAction(Sender: TObject);
+var
+  Dlg: TDlgGitHistory;
+  Hash, Name, Branch: string;
+  HistAction: TGitHistAction;
+begin
+  if not (Sender is TDlgGitHistory) then
+    Exit;
+  Dlg := TDlgGitHistory(Sender);
+  HistAction := Dlg.Action;
+  Hash := Dlg.SelectedHash;
   if (HistAction = ghaNone) or (Hash = '') then
     Exit;
   if HistAction = ghaBranch then
@@ -70606,7 +70664,7 @@ begin
       ShowMessage('9820:Имя ветки не годится для git');
       Exit;
     end;
-    GitLongOp(Git, Repo, 'checkout -b ' + string(GitQuote(WideString(Name))) +
+    GitLongOp(FGitHistGit, FGitHistRepo, 'checkout -b ' + string(GitQuote(WideString(Name))) +
       ' ' + Hash);
   end
   else if HistAction = ghaRevert then
@@ -70616,9 +70674,18 @@ begin
        'история не переписывается. Отправить его на сервер - Push.',
        mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
       Exit;
-    if GitLongOp(Git, Repo, 'revert --no-edit ' + Hash) <> 0 then
+    if GitLongOp(FGitHistGit, FGitHistRepo, 'revert --no-edit ' + Hash) <> 0 then
       LogGit('Git: при конфликте - исправить файлы и Commit, или отменить ' +
               'в Git Bash: git revert --abort');
+  end;
+  if FGitHistWin = Dlg then
+  begin
+    Branch := GitCurrentBranch(FGitHistGit, FGitHistRepo);
+    if Branch = '' then
+      Branch := 'HEAD';
+    Dlg.Caption := 'History - ' + Branch + ' - ' +
+      ExtractFileName(ExcludeTrailingPathDelimiter(FGitHistRepo));
+    Dlg.ReloadCommits;
   end;
 end;
 
