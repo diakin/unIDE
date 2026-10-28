@@ -68691,10 +68691,19 @@ begin
   finally
     Dlg.Free;
   end;
-  // Пути - UTF-8 через #0 (--pathspec-from-file --pathspec-file-nul)
+  // Пути - UTF-8 через #0 (--pathspec-from-file --pathspec-file-nul).
+  // Изменение уже целиком в индексе (код 'X ' - в рабочей папке после
+  // него ничего): git add не нужен. Так, убранный из репозитория файл
+  // (git rm --cached, код 'D ') остаётся на диске и подходит под
+  // .gitignore - git add на нём отказывает «paths are ignored», и коммит
+  // не шёл
   SelList := '';
   for SelIdx := 0 to High(Selected) do
   begin
+    if (Length(Selected[SelIdx].Code) = 2) and
+       (Selected[SelIdx].Code <> '??') and
+       (Selected[SelIdx].Code[2] = ' ') then
+      Continue;
     SelList := SelList + GitToUtf8(Selected[SelIdx].Path) + #0;
     if Selected[SelIdx].OrigPath <> '' then
       SelList := SelList + GitToUtf8(Selected[SelIdx].OrigPath) + #0;
@@ -68717,12 +68726,15 @@ begin
     end;
   end;
   MsgFile := GitWriteTempFile('commitmsg', GitToUtf8(WideString(MsgText)) + #10);
-  SelFile := GitWriteTempFile('commitsel', SelList);
+  // Пустой список git add не подаётся: add -A без путей взял бы всё
+  SelFile := '';
+  if SelList <> '' then
+    SelFile := GitWriteTempFile('commitsel', SelList);
   UnselFile := '';
   if UnselList <> '' then
     UnselFile := GitWriteTempFile('commitunsel', UnselList);
-  if (MsgFile = '') or (SelFile = '') or ((UnselList <> '') and
-     (UnselFile = '')) then
+  if (MsgFile = '') or ((SelList <> '') and (SelFile = '')) or
+     ((UnselList <> '') and (UnselFile = '')) then
   begin
     LogGit('Git: временный файл не создать - коммит не выполнен');
     Exit;
@@ -68736,9 +68748,10 @@ begin
         string(GitQuote(WideString(UnselFile))) + ' --pathspec-file-nul',
         True, Output) <> 0) then
       Exit;
-    if GitRunIn(AGit, ARepo, 'add -A --pathspec-from-file=' +
-       string(GitQuote(WideString(SelFile))) + ' --pathspec-file-nul', True,
-       Output) <> 0 then
+    if (SelFile <> '') and
+       (GitRunIn(AGit, ARepo, 'add -A --pathspec-from-file=' +
+        string(GitQuote(WideString(SelFile))) + ' --pathspec-file-nul', True,
+        Output) <> 0) then
       Exit;
     if GitRunIn(AGit, ARepo, 'commit -F ' +
        string(GitQuote(WideString(MsgFile))), True, Output) <> 0 then
@@ -68751,7 +68764,8 @@ begin
   finally
     FGitBusy := False;
     DeleteFile(MsgFile);
-    DeleteFile(SelFile);
+    if SelFile <> '' then
+      DeleteFile(SelFile);
     if UnselFile <> '' then
       DeleteFile(UnselFile);
     GitRefreshBar;
