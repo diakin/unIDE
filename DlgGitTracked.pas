@@ -187,8 +187,9 @@ begin
     BtnKeepClick);
   FBtnUntrack := NewButton(FBtnPanel, 'Убрать из репозитория',
     'git rm --cached для отмеченных файлов: на диске остаются, из ' +
-    'репозитория уходят следующим коммитом. На других компьютерах при ' +
-    'Pull эти файлы удалятся с диска', BtnUntrackClick);
+    'репозитория уходят следующим коммитом. На других компьютерах Pull ' +
+    'из unIDE их сохраняет, из GitHub Desktop или Git Bash - удалит',
+    BtnUntrackClick);
   FBtnClose := NewButton(FBtnPanel, 'Close', '', nil);
   FBtnClose.Cancel := True;
   FBtnClose.ModalResult := mrCancel;
