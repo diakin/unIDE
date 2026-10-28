@@ -100,3 +100,4 @@ fb_ref/chm_work/
 # unIDE FAR: 7-Zip для архивов (tools\7zip, см. readme.txt там)
 !tools/7zip/7z.exe
 !tools/7zip/7z.dll
+/uniFAR/uniFAR.ini
