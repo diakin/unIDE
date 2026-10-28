@@ -3102,6 +3102,9 @@ type
     function  GitTrackedKeep(const AFiles: TGitTrackedFiles): Boolean;
     function  GitTrackedUntrack(const AFiles: TGitTrackedFiles): Boolean;
     procedure GitTrackedClick(Sender: TObject);
+    function  GitKeepBefore(const AGit, ARepo, AArgs: string;
+                            AFiles: TStrings; var AKeepDir: string): Boolean;
+    procedure GitKeepAfter(const ARepo, AKeepDir: string; AFiles: TStrings);
     function  GitConflictFiles(const AGit, ARepo: string;
                                AList: TStrings): Integer;
     function  GitMarkerCount(const AFile: string;
@@ -66594,22 +66597,38 @@ begin
   end;
 end;
 
-// Длинная команда (сеть, commit): вывод в Git log, панель - после
+// Длинная команда (сеть, commit): вывод в Git log, панель - после.
+// pull, merge, checkout, cherry-pick: файлы, которые команда удалит с
+// диска, хотя они подходят под .gitignore (их убрали из репозитория
+// git rm --cached в другом месте), - копируются в сторону до команды и
+// возвращаются после (GitKeepBefore / GitKeepAfter)
 function TForm1.GitLongOp(const AGit, ARepo, AArgs: string): Integer;
 var
   Output: WideString;
-  HintText: string;
+  HintText, KeepDir: string;
   HintIsError: Boolean;
+  KeepFiles: TStringList;
 begin
   ShowGitLog;
+  KeepFiles := TStringList.Create;
   FGitBusy := True;
   try
     StatusBar1.SimpleText := 'git ' + AArgs + ' ... (Esc - прервать)';
     StatusBar1.SimplePanel := True;
+    KeepDir := '';
+    if not GitKeepBefore(AGit, ARepo, AArgs, KeepFiles, KeepDir) then
+    begin
+      // Не сохранить - команду не выполнять: файлы пропали бы
+      Result := -1;
+      Exit;
+    end;
     Result := GitRunIn(AGit, ARepo, AArgs, True, Output);
     if Result = 0 then
       LogGit('git: готово');
+    if KeepFiles.Count > 0 then
+      GitKeepAfter(ARepo, KeepDir, KeepFiles);
   finally
+    KeepFiles.Free;
     FGitBusy := False;
     StatusBar1.SimplePanel := False;
     UpdateStatusBarInfo;
@@ -71447,6 +71466,294 @@ begin
   if Changed then
     GitSetHint('.gitignore / список файлов репозитория изменены - ' +
       'закоммитьте (Commit...)', False);
+end;
+
+// ---------------------------------------------------------------------------
+//  Сохранение файлов, которые подходят под .gitignore, при pull, merge,
+//  checkout, cherry-pick. Файл убрали из репозитория (git rm --cached) на
+//  другом компьютере или в другой ветке; в коммите это обычное удаление,
+//  и git, приводя рабочую папку к новому коммиту, удаляет файл с диска.
+//  Перед командой такие файлы копируются в .git\unide-keep\<время>, после
+//  неё возвращаются, если их нет на месте. «Подходит под .gitignore» - по
+//  правилам рабочей папки или корневого .gitignore той версии, к которой
+//  идёт команда (в одном коммите часто и правило, и удаление)
+// ---------------------------------------------------------------------------
+
+// AFiles - сохранённые пути (от корня, через /), AKeepDir - куда.
+// False - сохранить не вышло: команду выполнять нельзя
+function TForm1.GitKeepBefore(const AGit, ARepo, AArgs: string;
+  AFiles: TStrings; var AKeepDir: string): Boolean;
+var
+  Output: WideString;
+  Tokens, Ranges, Candidates, Ignored, Lines: TStringList;
+  Paths: TGitPaths;
+  Cmd, Target, Args, RulesFile, RulesText, SrcFile, DstFile: string;
+  TokIdx, RangeIdx, PathIdx, FirstIdx, NextIdx, LineIdx: Integer;
+  HasNewBranch: Boolean;
+  Stream: TFileStream;
+
+  function Unquote(const AText: string): string;
+  begin
+    Result := AText;
+    if (Length(Result) >= 2) and (Result[1] = '"') and
+       (Result[Length(Result)] = '"') then
+      Result := Copy(Result, 2, Length(Result) - 2);
+  end;
+
+begin
+  Result := True;
+  AFiles.Clear;
+  AKeepDir := '';
+  Tokens := TStringList.Create;
+  Ranges := TStringList.Create;
+  Candidates := TStringList.Create;
+  Ignored := TStringList.Create;
+  Lines := TStringList.Create;
+  try
+    // Слова команды; ключи -c имя=значение в начале - пропустить
+    Tokens.Text := StringReplace(Trim(AArgs), ' ', #13#10, [rfReplaceAll]);
+    for TokIdx := Tokens.Count - 1 downto 0 do
+      if Trim(Tokens[TokIdx]) = '' then
+        Tokens.Delete(TokIdx);
+    while (Tokens.Count >= 2) and (Tokens[0] = '-c') do
+    begin
+      Tokens.Delete(0);
+      Tokens.Delete(0);
+    end;
+    if Tokens.Count = 0 then
+      Exit;
+    Cmd := Tokens[0];
+    Tokens.Delete(0);
+    // Продолжение / отмена операции, файлы (--) - не трогать
+    if (Tokens.IndexOf('--') >= 0) or (Tokens.IndexOf('--abort') >= 0) or
+       (Tokens.IndexOf('--continue') >= 0) or (Tokens.IndexOf('--skip') >= 0) or
+       (Tokens.IndexOf('--quit') >= 0) then
+      Exit;
+
+    Target := '';
+    if Cmd = 'pull' then
+    begin
+      // Что придёт - известно после fetch (pull потом получит то же)
+      if GitRunIn(AGit, ARepo, 'fetch', True, Output) <> 0 then
+        Exit;
+      if GitQuery(AGit, ARepo, 'rev-parse -q --verify @{u}') = '' then
+        Exit;
+      Target := '@{u}';
+      Ranges.Add('HEAD...@{u}');
+    end
+    else if Cmd = 'merge' then
+    begin
+      for TokIdx := Tokens.Count - 1 downto 0 do
+        if Copy(Tokens[TokIdx], 1, 1) <> '-' then
+        begin
+          Target := Unquote(Tokens[TokIdx]);
+          Break;
+        end;
+      if Target <> '' then
+        Ranges.Add('HEAD...' + Target);
+    end
+    else if Cmd = 'checkout' then
+    begin
+      // checkout -b новая [--track откуда]: без --track - от HEAD, файлы
+      // не меняются
+      HasNewBranch := Tokens.IndexOf('-b') >= 0;
+      if HasNewBranch then
+      begin
+        TokIdx := Tokens.IndexOf('--track');
+        if (TokIdx >= 0) and (TokIdx < Tokens.Count - 1) then
+          Target := Unquote(Tokens[TokIdx + 1]);
+      end
+      else
+        for TokIdx := 0 to Tokens.Count - 1 do
+          if Copy(Tokens[TokIdx], 1, 1) <> '-' then
+          begin
+            Target := Unquote(Tokens[TokIdx]);
+            Break;
+          end;
+      if Target <> '' then
+        Ranges.Add('HEAD ' + Target);
+    end
+    else if Cmd = 'cherry-pick' then
+    begin
+      for TokIdx := 0 to Tokens.Count - 1 do
+        if Copy(Tokens[TokIdx], 1, 1) <> '-' then
+        begin
+          Target := Unquote(Tokens[TokIdx]);
+          Ranges.Add(Target + '^ ' + Target);
+        end;
+    end;
+    if Ranges.Count = 0 then
+      Exit;
+
+    // Удаляемые командой файлы, которые есть на диске
+    for RangeIdx := 0 to Ranges.Count - 1 do
+      if GitRunIn(AGit, ARepo, 'diff --name-only --no-renames ' +
+         '--diff-filter=D -z ' + Ranges[RangeIdx], False, Output) = 0 then
+      begin
+        GitSplitZero(Output, Paths);
+        for PathIdx := 0 to High(Paths) do
+          if (Candidates.IndexOf(string(Paths[PathIdx])) < 0) and
+             FileExists(IncludeTrailingPathDelimiter(ARepo) +
+               StringReplace(string(Paths[PathIdx]), '/', '\',
+               [rfReplaceAll])) then
+            Candidates.Add(string(Paths[PathIdx]));
+      end;
+    if Candidates.Count = 0 then
+      Exit;
+
+    // Правила: рабочей папки и корневого .gitignore версии Target
+    AKeepDir := IncludeTrailingPathDelimiter(ARepo) + '.git\unide-keep\' +
+      FormatDateTime('yyyymmdd-hhnnss', Now) + '\';
+    ForceDirectories(AKeepDir);
+    RulesFile := '';
+    if GitRunIn(AGit, ARepo, 'show ' + Target + ':.gitignore', False,
+       Output) = 0 then
+    begin
+      RulesFile := AKeepDir + '_target.gitignore';
+      RulesText := GitToUtf8(Output);
+      try
+        Stream := TFileStream.Create(RulesFile, fmCreate);
+        try
+          if RulesText <> '' then
+            Stream.WriteBuffer(RulesText[1], Length(RulesText));
+        finally
+          Stream.Free;
+        end;
+      except
+        RulesFile := '';
+      end;
+    end;
+    FirstIdx := 0;
+    while FirstIdx < Candidates.Count do
+    begin
+      Args := '';
+      if RulesFile <> '' then
+        Args := '-c ' + string(GitQuote(WideString('core.excludesFile=' +
+          StringReplace(RulesFile, '\', '/', [rfReplaceAll])))) + ' ';
+      Args := Args + 'check-ignore --no-index --';
+      NextIdx := FirstIdx;
+      while (NextIdx < Candidates.Count) and
+            ((NextIdx = FirstIdx) or (Length(Args) < GitArgsChunk)) do
+      begin
+        Args := Args + ' ' + string(GitQuote(WideString(Candidates[NextIdx])));
+        Inc(NextIdx);
+      end;
+      // Код 0 - что-то подходит, 1 - ничего
+      if GitRunIn(AGit, ARepo, Args, False, Output) >= 0 then
+      begin
+        Lines.Text := string(Output);
+        for LineIdx := 0 to Lines.Count - 1 do
+          if (Trim(Lines[LineIdx]) <> '') and
+             (Candidates.IndexOf(Lines[LineIdx]) >= 0) and
+             (Ignored.IndexOf(Lines[LineIdx]) < 0) then
+            Ignored.Add(Lines[LineIdx]);
+      end;
+      FirstIdx := NextIdx;
+    end;
+    if RulesFile <> '' then
+      DeleteFile(RulesFile);
+    if Ignored.Count = 0 then
+    begin
+      RemoveDir(ExcludeTrailingPathDelimiter(AKeepDir));
+      RemoveDir(IncludeTrailingPathDelimiter(ARepo) + '.git\unide-keep');
+      AKeepDir := '';
+      Exit;
+    end;
+
+    // Копии
+    for PathIdx := 0 to Ignored.Count - 1 do
+    begin
+      SrcFile := IncludeTrailingPathDelimiter(ARepo) +
+        StringReplace(Ignored[PathIdx], '/', '\', [rfReplaceAll]);
+      DstFile := AKeepDir + StringReplace(Ignored[PathIdx], '/', '\',
+        [rfReplaceAll]);
+      ForceDirectories(ExtractFilePath(DstFile));
+      if not Windows.CopyFile(PChar(SrcFile), PChar(DstFile), False) then
+      begin
+        LogGit('Git: не сохранить ' + Ignored[PathIdx] + ' в ' + AKeepDir +
+          ' - git ' + Cmd + ' не выполняется, чтобы файл не пропал', clRed);
+        Result := False;
+        Exit;
+      end;
+      AFiles.Add(Ignored[PathIdx]);
+    end;
+    LogGit('Git: ' + Cmd + ' удалит с диска файлы, которые подходят под ' +
+      '.gitignore (их убрали из репозитория): ' + IntToStr(AFiles.Count) +
+      ' - сохранены в ' + AKeepDir + ', вернутся после команды',
+      SuspectLogColor);
+    for PathIdx := 0 to AFiles.Count - 1 do
+      LogGit('  ' + AFiles[PathIdx]);
+  finally
+    Lines.Free;
+    Ignored.Free;
+    Candidates.Free;
+    Ranges.Free;
+    Tokens.Free;
+  end;
+end;
+
+// После команды: сохранённых файлов нет на месте - вернуть. Копии, которые
+// вернулись или не понадобились, - удалить; не вернувшиеся остаются в
+// AKeepDir (путь - в Git log)
+procedure TForm1.GitKeepAfter(const ARepo, AKeepDir: string;
+  AFiles: TStrings);
+var
+  Dirs: TStringList;
+  FileIdx, DirIdx, Restored, Failed: Integer;
+  SrcFile, DstFile, DirPath: string;
+begin
+  Restored := 0;
+  Failed := 0;
+  Dirs := TStringList.Create;
+  try
+    for FileIdx := 0 to AFiles.Count - 1 do
+    begin
+      SrcFile := AKeepDir + StringReplace(AFiles[FileIdx], '/', '\',
+        [rfReplaceAll]);
+      DstFile := IncludeTrailingPathDelimiter(ARepo) +
+        StringReplace(AFiles[FileIdx], '/', '\', [rfReplaceAll]);
+      if not FileExists(DstFile) then
+      begin
+        ForceDirectories(ExtractFilePath(DstFile));
+        if Windows.CopyFile(PChar(SrcFile), PChar(DstFile), False) then
+        begin
+          Inc(Restored);
+          LogGit('  возвращён: ' + AFiles[FileIdx], TColor($008000));
+        end
+        else
+        begin
+          Inc(Failed);
+          LogGit('  не вернуть: ' + AFiles[FileIdx] + ' - копия: ' + SrcFile,
+            clRed);
+          Continue;
+        end;
+      end;
+      DeleteFile(SrcFile);
+      DirPath := ExtractFileDir(SrcFile);
+      while (Length(DirPath) > Length(AKeepDir)) and
+            (Dirs.IndexOf(DirPath) < 0) do
+      begin
+        Dirs.Add(DirPath);
+        DirPath := ExtractFileDir(DirPath);
+      end;
+    end;
+    // Папки копий - от самых глубоких (непустые RemoveDir не трогает)
+    Dirs.Sort;
+    for DirIdx := Dirs.Count - 1 downto 0 do
+      RemoveDir(Dirs[DirIdx]);
+    if Failed = 0 then
+    begin
+      RemoveDir(ExcludeTrailingPathDelimiter(AKeepDir));
+      RemoveDir(IncludeTrailingPathDelimiter(ARepo) + '.git\unide-keep');
+    end;
+  finally
+    Dirs.Free;
+  end;
+  if Restored > 0 then
+    LogGit('Git: возвращено на диск файлов: ' + IntToStr(Restored) +
+      ' (в репозитории их нет, .gitignore их не пускает)', TColor($008000))
+  else if Failed = 0 then
+    LogGit('Git: сохранённые файлы на месте - возвращать не понадобилось');
 end;
 
 // ReactOS - Run Image: образ последней сборки - в эмуляторе, без сборки
