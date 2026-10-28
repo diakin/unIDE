@@ -1,1 +1,0 @@
-"C:\BAS\RAPIDQ\rc.exe" -r  -I"C:/BAS/RAPIDQ/INC/" -L"C:/BAS/RAPIDQ/LIB/" -G"C:/BAS/RAPIDQ/ico/icon39.ico" "C:\bas\RapidQ\inc\qftpdirlistview.bas" "C:\bas\RapidQ\inc\qftpdirlistview.exe"
