@@ -121,8 +121,7 @@ type
     procedure SetSchemeProvider(AProvider: TGitSchemeEvent);
   end;
 
-implementation
-
+// Вид файла и его цвет - и для окна Tracked but Ignored (DlgGitTracked)
 const
   // Вид файла в окне Commit (порядок - порядок строк)
   gfkJunk = 0;      // красный: сборка, журналы, резервные копии
@@ -135,6 +134,16 @@ const
 
   GitKindNames: array[0..gfkCount - 1] of string = (
     'не коммитить?', 'библиотека', 'картинка', 'исходник', 'текст', '');
+
+// Вид файла по имени и расширению (gfk*)
+function GitFileKind(const APath: WideString): Integer;
+// Цвет текста вида AKind на фоне ABack (светлый / тёмный - свои цвета);
+// clNone - цвет темы
+function GitKindColor(AKind: Integer; ABack: TColor): TColor;
+
+implementation
+
+const
   // Подписи флажков видов над списком
   GitKindGroupNames: array[0..gfkCount - 1] of string = (
     'не коммитить', 'библиотеки', 'картинки', 'исходники', 'текст', 'прочее');

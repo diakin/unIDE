@@ -16,6 +16,11 @@ unit DlgGitTracked;
 //  Отмечать помогают кнопки: все, ни одного, все с тем же правилом, что у
 //  выделенной строки, вся папка выделенной строки.
 //
+//  Строки - по виду файла, как в окне Commit (GitFileKind, GitKindColor
+//  из DlgGitCommit): сверху красные - то, что обычно не хранят в
+//  репозитории (exe, log, $$$, архивы, old ...), затем библиотеки,
+//  картинки, исходники, текст; цвет строки - цвет вида.
+//
 //  Окно строится в коде, .dfm нет. Список и действия - у Unit1 (OnLoad,
 //  OnKeep, OnUntrack: спрашивают и выполняют сами); после действия список
 //  перечитывается, флажки оставшихся строк сохраняются.
@@ -29,6 +34,7 @@ uses
   UiButton,      // TUiButton
   UiStdCtrls,    // TUiLabel, TUiPanel
   UiComCtrls,    // TUiListView
+  DlgGitCommit,  // GitFileKind, GitKindColor, GitKindNames - вид файла
   GitRun;        // TGitTrackedFile
 
 type
@@ -75,6 +81,10 @@ type
       Change: TItemChange);
     procedure LayoutTop(Sender: TObject);
     procedure LayoutButtons(Sender: TObject);
+    procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
+      State: TCustomDrawState; var DefaultDraw: Boolean);
+    procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
+      SubItem: Integer; State: TCustomDrawState; var DefaultDraw: Boolean);
     // $0128 - WM_UPDATEUISTATE (кнопки не пропадают по Alt, как в других окнах)
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
   public
@@ -205,10 +215,15 @@ begin
   FList.HideSelection := False;
   Column := FList.Columns.Add;
   Column.Caption := 'Файл';
-  Column.Width := 520;
+  Column.Width := 480;
   Column := FList.Columns.Add;
   Column.Caption := 'Правило .gitignore';
-  Column.Width := 260;
+  Column.Width := 200;
+  Column := FList.Columns.Add;
+  Column.Caption := 'Вид';
+  Column.Width := 100;
+  FList.OnCustomDrawItem := ListCustomDrawItem;
+  FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
   FillList(nil);
   FList.OnChange := ListChange;
   UpdateCount;
@@ -253,22 +268,28 @@ begin
   FBtnKeep.SetBounds(BtnRight - 180, BtnTop, 180, BtnH);
 end;
 
-// Список по FFiles. AKeepChecked - пути, у которых флажок стоял до
-// перечитывания (nil - все без флажков)
+// Список по FFiles: сначала красные (не хранить?), затем по видам как в
+// окне Commit; внутри вида - порядок git. AKeepChecked - пути, у которых
+// флажок стоял до перечитывания (nil - все без флажков)
 procedure TDlgGitTracked.FillList(AKeepChecked: TStrings);
 var
-  FileIdx: Integer;
+  FileIdx, KindIdx, FileKind: Integer;
   Item: TListItem;
 begin
   FFilling := True;
   FList.Items.BeginUpdate;
   try
     FList.Items.Clear;
+    for KindIdx := 0 to gfkCount - 1 do
     for FileIdx := 0 to High(FFiles) do
     begin
+      FileKind := GitFileKind(FFiles[FileIdx].Path);
+      if FileKind <> KindIdx then
+        Continue;
       Item := FList.Items.Add;
       Item.Caption := string(FFiles[FileIdx].Path);
       Item.SubItems.Add(FFiles[FileIdx].Rule);
+      Item.SubItems.Add(GitKindNames[FileKind]);
       Item.Data := Pointer(FileIdx);
       Item.Checked := (AKeepChecked <> nil) and
         (AKeepChecked.IndexOf(string(FFiles[FileIdx].Path)) >= 0);
@@ -431,6 +452,35 @@ begin
     FChanged := True;
     Reload;
   end;
+end;
+
+// Цвет строки - по виду файла (clNone - цвет темы)
+procedure TDlgGitTracked.ListCustomDrawItem(Sender: TCustomListView;
+  Item: TListItem; State: TCustomDrawState; var DefaultDraw: Boolean);
+var
+  FileIdx: Integer;
+  KindColor: TColor;
+begin
+  KindColor := clNone;
+  if Item <> nil then
+  begin
+    FileIdx := Integer(Item.Data);
+    if (FileIdx >= 0) and (FileIdx <= High(FFiles)) then
+      KindColor := GitKindColor(GitFileKind(FFiles[FileIdx].Path),
+        FList.Color);
+  end;
+  if KindColor <> clNone then
+    Sender.Canvas.Font.Color := KindColor
+  else
+    Sender.Canvas.Font.Color := FList.Font.Color;
+  DefaultDraw := True;
+end;
+
+procedure TDlgGitTracked.ListCustomDrawSubItem(Sender: TCustomListView;
+  Item: TListItem; SubItem: Integer; State: TCustomDrawState;
+  var DefaultDraw: Boolean);
+begin
+  ListCustomDrawItem(Sender, Item, State, DefaultDraw);
 end;
 
 // Флажок строки поставили или сняли - число отмеченных
