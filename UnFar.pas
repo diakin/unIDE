@@ -151,7 +151,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.49';
+  FarBuild = 'b.50';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;

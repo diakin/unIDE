@@ -275,26 +275,49 @@ begin
   end;
 end;
 
+// Подпись вкладки: «D:\» - корень, «D:\папка» - папка в корне, глубже -
+// «D:\..\папка». Сетевой путь - «\\сервер\..\папка»; FTP, архив - имя
+// после последнего / или \
 function TFarTabBar.TabCaption(const APath: WideString): WideString;
 var
-  Path: WideString;
-  CharIdx: Integer;
+  Path, Root, Name: WideString;
+  CharIdx, RootLen: Integer;
 begin
   Path := APath;
-  if (Length(Path) > 3) and (Path[Length(Path)] = '\') then
+  if (Length(Path) > 3) and ((Path[Length(Path)] = '\') or
+     (Path[Length(Path)] = '/')) then
     SetLength(Path, Length(Path) - 1);
-  // Корень диска - «D:»
-  if (Length(Path) <= 3) and (Length(Path) >= 2) and (Path[2] = ':') then
+  // Корень пути: «D:\» или «\\сервер\»; иначе - без корня
+  Root := '';
+  if (Length(Path) >= 2) and (Path[2] = ':') then
+    Root := Copy(Path, 1, 2) + '\'
+  else if Copy(Path, 1, 2) = '\\' then
   begin
-    Result := Copy(Path, 1, 2);
+    CharIdx := 3;
+    while (CharIdx <= Length(Path)) and (Path[CharIdx] <> '\') do
+      Inc(CharIdx);
+    Root := Copy(Path, 1, CharIdx);
+    if (Length(Root) > 0) and (Root[Length(Root)] <> '\') then
+      Root := Root + '\';
+  end;
+  RootLen := Length(Root);
+  if (Root <> '') and (Length(Path) <= RootLen) then
+  begin
+    Result := Root;
     Exit;
   end;
   CharIdx := Length(Path);
   while (CharIdx > 0) and (Path[CharIdx] <> '\') and (Path[CharIdx] <> '/') do
     Dec(CharIdx);
-  Result := Copy(Path, CharIdx + 1, MaxInt);
-  if Result = '' then
-    Result := Path;
+  Name := Copy(Path, CharIdx + 1, MaxInt);
+  if Name = '' then
+    Name := Path;
+  if Root = '' then
+    Result := Name
+  else if CharIdx <= RootLen then
+    Result := Root + Name                    // папка прямо в корне
+  else
+    Result := Root + '..\' + Name;
 end;
 
 procedure TFarTabBar.WMEraseBkgnd(var Message: TWMEraseBkgnd);
