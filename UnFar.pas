@@ -153,7 +153,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.54';
+  FarBuild = 'b.55';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -8329,6 +8329,120 @@ begin
     Result := Result + #9 + AHost.Description;
 end;
 
+// Имя адреса из панели FTP-плагина FAR Manager - его копирует Ctrl+Ins:
+// ftp_<пользователь>_<пароль>_<хост>_<остаток>.ftp, в нём '.', ':', '@',
+// '/' заменены на '_'. Разбор приблизительный: хост - четыре числа подряд
+// (IPv4) после пароля, всё между пользователем и ними - пароль; остаток,
+// если начинается с имени пользователя, - папка /пользователь/сайт,
+// иначе - в комментарий. Без IPv4: пользователь,
+// пароль, остальное - имя хоста через точки. Нужны и 'ftp_' в начале, и
+// '.ftp' в конце. False - не такое имя
+function FarFtpHostFromFarName(const AText: WideString;
+  var AHost: TFarFtpHost): Boolean;
+var
+  Name, Token, Password, HostText, Rest: WideString;
+  Tokens: array of WideString;
+  CharIdx, TokenIdx, IpIdx, ProbeIdx: Integer;
+  IsIp: Boolean;
+
+  function IsByte(const AToken: WideString): Boolean;
+  var
+    DigitIdx: Integer;
+  begin
+    Result := (Length(AToken) >= 1) and (Length(AToken) <= 3);
+    for DigitIdx := 1 to Length(AToken) do
+      if (AToken[DigitIdx] < '0') or (AToken[DigitIdx] > '9') then
+        Result := False;
+    if Result then
+      Result := StrToInt(string(AToken)) <= 255;
+  end;
+
+  function JoinTokens(AFrom, ATo: Integer; const ASep: WideString): WideString;
+  var
+    JoinIdx: Integer;
+  begin
+    Result := '';
+    for JoinIdx := AFrom to ATo do
+    begin
+      if JoinIdx > AFrom then
+        Result := Result + ASep;
+      Result := Result + Tokens[JoinIdx];
+    end;
+  end;
+
+begin
+  Result := False;
+  FarFtpHostClear(AHost);
+  Name := FarTrimW(AText);
+  if (Length(Name) >= 2) and (Name[1] = '"') and (Name[Length(Name)] = '"') then
+    Name := Copy(Name, 2, Length(Name) - 2);
+  // Полное имя (Alt+Shift+Ins) - только имя файла
+  CharIdx := Length(Name);
+  while (CharIdx > 0) and (Name[CharIdx] <> '\') do
+    Dec(CharIdx);
+  Name := Copy(Name, CharIdx + 1, MaxInt);
+  if (WideLowerCase(Copy(Name, 1, 4)) <> 'ftp_') or
+     (WideLowerCase(Copy(Name, Length(Name) - 3, 4)) <> '.ftp') then
+    Exit;
+  Name := Copy(Name, 5, Length(Name) - 8);
+  Tokens := nil;
+  Token := '';
+  for CharIdx := 1 to Length(Name) + 1 do
+    if (CharIdx > Length(Name)) or (Name[CharIdx] = '_') then
+    begin
+      SetLength(Tokens, Length(Tokens) + 1);
+      Tokens[High(Tokens)] := Token;
+      Token := '';
+    end
+    else
+      Token := Token + Name[CharIdx];
+  if (Length(Tokens) < 3) or (Tokens[0] = '') then
+    Exit;
+  IpIdx := -1;
+  for TokenIdx := 1 to Length(Tokens) - 4 do
+  begin
+    IsIp := True;
+    for ProbeIdx := TokenIdx to TokenIdx + 3 do
+      if not IsByte(Tokens[ProbeIdx]) then
+        IsIp := False;
+    if IsIp then
+    begin
+      IpIdx := TokenIdx;
+      Break;
+    end;
+  end;
+  Rest := '';
+  if IpIdx >= 1 then
+  begin
+    Password := JoinTokens(1, IpIdx - 1, '_');
+    HostText := JoinTokens(IpIdx, IpIdx + 3, '.');
+    Rest := JoinTokens(IpIdx + 4, High(Tokens), '.');
+  end
+  else
+  begin
+    if Length(Tokens) < 4 then
+      Exit;
+    Password := Tokens[1];
+    HostText := JoinTokens(2, High(Tokens), '.');
+  end;
+  if HostText = '' then
+    Exit;
+  AHost.Host := string(HostText);
+  AHost.User := Tokens[0];
+  AHost.Password := Password;
+  AHost.AskPassword := Password = '';
+  AHost.Passive := True;
+  // Остаток начинается с имени пользователя - похоже на папку хостинга
+  // /пользователь/сайт (u123_site_com - /u123/site.com); иначе - в
+  // комментарий
+  if (IpIdx >= 1) and (IpIdx + 4 <= High(Tokens)) and
+     (Tokens[IpIdx + 4] = Tokens[0]) and (IpIdx + 5 <= High(Tokens)) then
+    AHost.Home := '/' + Tokens[0] + '/' + JoinTokens(IpIdx + 5, High(Tokens), '.')
+  else
+    AHost.Description := Rest;
+  Result := True;
+end;
+
 // Ctrl+Ins в списке адресов: выделенные адреса (или под курсором) - в
 // буфер обмена, по строке на адрес
 procedure TFarView.FtpCopyHosts;
@@ -8386,12 +8500,14 @@ end;
 function TFarView.FtpPasteHosts: Boolean;
 var
   Text, Line, Descr: WideString;
-  LineIdx, HostIdx, TabPos, Added, Updated, Same, LastIdx: Integer;
+  LineIdx, HostIdx, TabPos, Added, Updated, Same, LastIdx, FarNames: Integer;
   NewHost: TFarFtpHost;
   Found: Integer;
   Report: string;
+  Parsed: Boolean;
 begin
   Result := False;
+  FarNames := 0;
   Text := FarClipboardText;
   if Text = '' then
     Exit;
@@ -8407,6 +8523,7 @@ begin
          (Text[LineIdx] = #10) then
       begin
         Line := FarTrimW(Line);
+        Parsed := False;
         if WideLowerCase(Copy(Line, 1, 6)) = 'ftp://' then
         begin
           Result := True;
@@ -8418,10 +8535,23 @@ begin
             Line := FarTrimW(Copy(Line, 1, TabPos - 1));
           end;
           FarFtpHostClear(NewHost);
-          if FarFtpParseUrl(Line, NewHost) and (NewHost.Host <> '') then
+          Parsed := FarFtpParseUrl(Line, NewHost) and (NewHost.Host <> '');
+          if Parsed then
           begin
             NewHost.Description := Descr;
             NewHost.AskPassword := NewHost.Password = '';
+          end;
+        end
+        // Имя адреса из FAR Manager (Ctrl+Ins в панели его FTP-плагина)
+        else if FarFtpHostFromFarName(Line, NewHost) then
+        begin
+          Result := True;
+          Parsed := True;
+          Inc(FarNames);
+        end;
+        if Parsed then
+        begin
+          begin
             Found := -1;
             for HostIdx := 0 to High(FFtpHosts) do
               if (CompareText(FFtpHosts[HostIdx].Host, NewHost.Host) = 0) and
@@ -8467,7 +8597,13 @@ begin
     Report := Report + ', пароль дополнен: ' + IntToStr(Updated);
   if Same > 0 then
     Report := Report + ', уже были: ' + IntToStr(Same);
+  if FarNames > 0 then
+    Report := Report + '; из имени FAR адрес разобран приблизительно - ' +
+      'проверьте (F4)';
   Status(Report);
+  // Один адрес из имени FAR - сразу окно адреса: проверить и поправить
+  if (FarNames = 1) and (Added + Updated + Same = 1) and (LastIdx >= 0) then
+    FtpEditHost(FActive, LastIdx);
   Invalidate;
 end;
 
