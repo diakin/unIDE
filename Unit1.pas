@@ -5096,6 +5096,7 @@ begin
   UiDefault('Decl.FoundBG', $00FFF0E0, $00503C28);  // объявление найдено
   UiDefault('Decl.BackBG', $00C0FFFF, $00283C3C);   // стоим на объявлении
   UiDefault('Decl.NoneBG', clBtnFace, $00302D2D);   // не найдено или пусто
+  UiDefault('Decl.OwnEdBG', $00FFD8B0, $00703010);  // пусто, свой редактор
   UiDefault('Decl.Text', clWindowText, $00DCDCDC);
 
   // Роли элементов окна (UiPaintControl): светлый цвет - системный, как у
@@ -5414,6 +5415,8 @@ begin
     Result := 'Панель объявления: на объявлении (щелчок - назад)'
   else if AKey = 'Decl.NoneBG' then
     Result := 'Панель объявления: не найдено'
+  else if AKey = 'Decl.OwnEdBG' then
+    Result := 'Панель объявления: пусто, работает свой редактор'
   else if AKey = 'Decl.Text' then
     Result := 'Панель объявления: текст'
   else if AKey = 'Ide.WindowBG' then
@@ -7794,6 +7797,9 @@ end;
 // этом остаётся прежним, с первой сборки.
 var
   GAppTitle: string = '';
+  // Пометка в заголовке: работает свой редактор вместо RichEdit
+  // (EdEmuStart). Вставляется после названия программы
+  GOwnEdMark: string = '';
 
 function AppTitle: string;
 var
@@ -7819,6 +7825,8 @@ begin
       GAppTitle := GAppTitle + ' [' + Application.ExeName + ']';
   end;
   Result := GAppTitle;
+  if GOwnEdMark <> '' then
+    Insert(GOwnEdMark, Result, Length('Редактор кода') + 1);
 end;
 
 function IsUntitledName(const S: string): Boolean;
@@ -40161,6 +40169,7 @@ var
   OldFont: HGDIOBJ;
   Metrics: TTextMetric;
   StartLineH, StartCharW: Integer;
+  OldTitle: string;
 begin
   OwnOn := False;
   if FileExists(SettingsFileName) then
@@ -40202,6 +40211,12 @@ begin
   FEdEmu.Start(StartText);
   LogOwnEd('Свой редактор вместо RichEdit (IDE Options - Preferences): ' +
     'включён');
+  // Заголовок окна и панель над редактором - что работает свой редактор
+  OldTitle := AppTitle;
+  GOwnEdMark := ' (свой редактор)';
+  if Copy(Caption, 1, Length(OldTitle)) = OldTitle then
+    Caption := AppTitle + Copy(Caption, Length(OldTitle) + 1, MaxInt);
+  DeclPanelShow;
 end;
 
 // View - свой редактор, проба (шаги 0.7.2 - 0.7.3): копия текста вкладки -
@@ -48939,6 +48954,15 @@ begin
     S := '';
     FDeclPanel.Color := UiColor('Decl.NoneBG');
     FDeclPanel.Hint := '';
+    // Свой редактор вместо RichEdit (план портирования, 0.7.4): панель
+    // синяя, подпись - какой редактор работает
+    if FEdEmu <> nil then
+    begin
+      S := 'Свой редактор вместо RichEdit (0.7.4)';
+      FDeclPanel.Color := UiColor('Decl.OwnEdBG');
+      FDeclPanel.Hint := 'Включается и выключается в IDE Options - ' +
+        'Preferences, действует после перезапуска';
+    end;
   end;
   FDeclPanel.Font.Color := UiColor('Decl.Text');
   // '&' в подписи панели - знак ускорителя, его удваиваем
