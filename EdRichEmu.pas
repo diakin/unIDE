@@ -1116,11 +1116,20 @@ end;
 procedure TEdRichEmu.Notify;
 var
   SelMin, SelMax: Integer;
+  SelMoved: Boolean;
   Info: TEmuSelChange;
   Parent, Window: HWND;
 begin
   Window := Wnd;
   Parent := GetParent(Window);
+  // Выделение появилось, сменилось или пропало - перерисовать: RichEdit сам
+  // помечал грязной изменившуюся область, и Unit1 рисует выделение только
+  // в кадре (HighlightVisibleText). Без этого выделение мышью и Shift+
+  // стрелками на экране не появлялось
+  GetSelIdx(SelMin, SelMax);
+  SelMoved := (SelMin <> FLastSelMin) or (SelMax <> FLastSelMax);
+  if SelMoved and ((SelMin <> SelMax) or (FLastSelMin <> FLastSelMax)) then
+    FNeedPaint := True;
   if FNeedPaint then
   begin
     FNeedPaint := False;
@@ -1133,8 +1142,7 @@ begin
       SendMessage(Parent, WM_COMMAND, MakeWParam(GetDlgCtrlID(Window),
         EN_CHANGE), Integer(Window));
   end;
-  GetSelIdx(SelMin, SelMax);
-  if (SelMin <> FLastSelMin) or (SelMax <> FLastSelMax) then
+  if SelMoved then
   begin
     FLastSelMin := SelMin;
     FLastSelMax := SelMax;

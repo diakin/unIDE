@@ -97,6 +97,49 @@ begin
   Result := DefWindowProcA(AWnd, AMsg, AWParam, ALParam);
 end;
 
+procedure Check(const AWhat: string; AOk: Boolean); forward;
+
+// Выделение мышью и клавишами (Shift+стрелка): выделение есть и окно
+// заказало перерисовку - иначе выделение не появится на экране
+procedure SelectionPaints(const APrefix: string);
+var
+  KeyState: TKeyboardState;
+  Range: TRange;
+  Dummy: TRect;
+begin
+  SendMessageA(EditWnd, EM_SETSEL, 0, 0);
+  UpdateWindow(EditWnd);
+  ValidateRect(EditWnd, nil);
+  SendMessageA(EditWnd, WM_LBUTTONDOWN, MK_LBUTTON, MakeLong(4, 4));
+  SendMessageA(EditWnd, WM_MOUSEMOVE, MK_LBUTTON, MakeLong(60, 4));
+  SendMessageA(EditWnd, WM_LBUTTONUP, 0, MakeLong(60, 4));
+  SendMessageA(EditWnd, EM_EXGETSEL_, 0, Integer(@Range));
+  Check(APrefix + ': mouse selection ' + IntToStr(Range.cpMin) + '..' +
+    IntToStr(Range.cpMax), Range.cpMax > Range.cpMin);
+  // Настоящий RichEdit под Wine рисует сразу, без заказа - проверяем свой
+  if APrefix = 'own' then
+    Check(APrefix + ': mouse selection repaints',
+      GetUpdateRect(EditWnd, Dummy, False));
+
+  SendMessageA(EditWnd, EM_SETSEL, 0, 0);
+  UpdateWindow(EditWnd);
+  ValidateRect(EditWnd, nil);
+  GetKeyboardState(KeyState);
+  KeyState[VK_SHIFT] := $80;
+  SetKeyboardState(KeyState);
+  SendMessageA(EditWnd, WM_KEYDOWN, VK_RIGHT, 1);
+  SendMessageA(EditWnd, WM_KEYDOWN, VK_RIGHT, 1);
+  KeyState[VK_SHIFT] := 0;
+  SetKeyboardState(KeyState);
+  SendMessageA(EditWnd, EM_EXGETSEL_, 0, Integer(@Range));
+  Check(APrefix + ': shift+right selection ' + IntToStr(Range.cpMin) + '..' +
+    IntToStr(Range.cpMax), (Range.cpMin = 0) and (Range.cpMax = 2));
+  // Настоящий RichEdit под Wine рисует сразу, без заказа - проверяем свой
+  if APrefix = 'own' then
+    Check(APrefix + ': shift+right repaints',
+      GetUpdateRect(EditWnd, Dummy, False));
+end;
+
 procedure Check(const AWhat: string; AOk: Boolean);
 begin
   if AOk then
@@ -185,6 +228,11 @@ begin
   SendMessageA(EditWnd, EM_LINESCROLL, 0, 30);
   SendMessageA(EditWnd, EM_SETMODIFY, 1, 0);
 
+  SelectionPaints('rich');
+  SendMessageA(EditWnd, EM_SETSEL, 500, 510);
+  SendMessageA(EditWnd, EM_LINESCROLL, 0, -1000);
+  SendMessageA(EditWnd, EM_LINESCROLL, 0, 64);
+  SendMessageA(EditWnd, EM_SETMODIFY, 1, 0);
   Before := TextOf(False);
   SelBefore := SelOf;
   TopBefore := SendMessageA(EditWnd, EM_GETFIRSTVISIBLELINE, 0, 0);
@@ -208,6 +256,9 @@ begin
     SendMessageA(EditWnd, EM_GETEVENTMASK_, 0, 0) = MaskBefore);
   Check('own: RichEdit text emptied', TextOf(True) = '');
   Check('own: no EN_CHANGE on switch', ChangeCount = ChangesBefore);
+
+  SelectionPaints('own');
+  SendMessageA(EditWnd, EM_SETSEL, 500, 510);
 
   // Правка через свой
   SendMessageA(EditWnd, EM_SETSEL, 0, 0);
