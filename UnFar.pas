@@ -119,6 +119,10 @@ unit UnFar;
 //    - b.38: палитра: цвет текста и фона редактора (нет - из схемы).
 //    - b.54: редактор, Shift+F8 - кодировка записи (ANSI, UTF-8, UTF-8 с
 //      BOM, UTF-16); другая, чем у файла, - файл изменён, F2 пишет в ней.
+//    - b.58: поля окон с несколькими строками (Alt+F7 и др.) правятся как
+//      в редакторе: выделение Shift+стрелки / мышью, Ctrl+A, Ctrl+C / X / V,
+//      Ctrl+Z. Masks и Text в Alt+F7 - со списком прежних значений
+//      (Ctrl+Down, стрелка справа; [FarFindHistory] в ini).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -153,7 +157,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.57';
+  FarBuild = 'b.58';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -198,6 +202,12 @@ type
     Values: TFarNames;
     Index: Integer;          // выбранное значение
     IsCheck: Boolean;        // флажок [x] (выбор из двух: 0 - снят)
+    Anchor: Integer;         // начало выделения (-1 - нет), конец - Pos
+    IsCombo: Boolean;        // поле со списком прежних значений (стрелка)
+    History: TFarNames;      // прежние значения, первое - последнее
+    UndoText: WideString;    // Ctrl+Z: текст до последней правки
+    UndoPos: Integer;
+    Typing: Boolean;         // идёт набор: правки - одним шагом отмены
   end;
   TFarDlgRows = array of TFarDlgRow;
 
@@ -522,6 +532,13 @@ type
     FDlgRow: Integer;             // строка с фокусом; -1 - фокус на кнопках
     FDlgRowsTop: Integer;         // где нарисована первая (для мыши)
     FDlgRowsLeft: Integer;        // колонка начала полей
+    FDlgRowsW: Integer;           // ширина полей (со стрелкой списка)
+    FDlgDrop: Integer;            // строка с открытым списком; -1 - нет
+    FDlgDropIndex: Integer;       // выбранное в списке
+    FDlgDropTop: Integer;         // первое видимое в списке
+    FDlgDropRow: Integer;         // где нарисован список (для мыши)
+    FDlgDropH: Integer;
+    FDlgDragRow: Integer;         // протяжка мышью в поле; -1 - нет
     // Слежение за папками панелей
     FWatch: array[0..1] of THandle;
     FWatchPath: array[0..1] of WideString;
@@ -555,6 +572,8 @@ type
     // окно найденного - поверх панелей
     FFindMask: WideString;
     FFindText: WideString;
+    FFindMaskHist: TFarNames;     // прежние маски и тексты (списки полей)
+    FFindTextHist: TFarNames;
     FFindCodePage: Integer;
     FFindCase: Boolean;
     FFindWhole: Boolean;
@@ -870,6 +889,22 @@ type
     function DlgRowIsEdit: Boolean;
     procedure DlgRowInsert(const AText: WideString);
     procedure DlgRowsMouse(AX, AY: Integer);
+    procedure DlgRowsMouseMove(AX: Integer);
+    procedure DlgRowsDblClick;
+    procedure DlgAddCombo(const ACaption, AText: WideString;
+      const AHistory: TFarNames);
+    function DlgRowSel(const ARow: TFarDlgRow; out ASelFrom,
+      ASelTo: Integer): Boolean;
+    procedure DlgRowDeleteSel;
+    procedure DlgRowSaveUndo(ATyping: Boolean);
+    function DlgRowEditKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    procedure DlgDropOpen;
+    procedure DlgDropChoose;
+    function DlgDropKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    function DlgDropMouse(AX, AY: Integer): Boolean;
+    procedure DlgDropDelete;
+    procedure DlgHistoryStore(ARowIndex: Integer);
+    procedure DrawDialogDrop;
     function DlgChoiceCol(const ARow: TFarDlgRow; AValueIndex: Integer): Integer;
     procedure DoArcExtract(const ATarget: WideString);
     procedure ArcError(const AOutput: WideString);
@@ -1123,6 +1158,9 @@ const
   FarOutMaxLines = 2000;           // столько строк вывода держим
   FarCmdHistoryMax = 50;
   FarCmdHistorySection = 'FarCmdHistory';
+  FarFindHistorySection = 'FarFindHistory';
+  FarFindHistoryMax = 20;          // столько прежних масок / текстов
+  FarDlgDropRows = 8;              // строк в списке поля
   FarVkLeftBracket = $DB;          // VK_OEM_4: '['
   FarVkRightBracket = $DD;         // VK_OEM_6: ']'
   FarSeErrNoAssoc = 31;            // SE_ERR_NOASSOC: нет программы для файла
@@ -3242,6 +3280,8 @@ begin
   FFindMask := '*.*';
   FFindFolders := True;
   FFindDone := True;
+  FDlgDrop := -1;
+  FDlgDragRow := -1;
 end;
 
 destructor TFarView.Destroy;
@@ -4115,10 +4155,26 @@ begin
   // Открыт диалог: щелчок по его кнопке нажимает её, панели не трогаем
   if FDlgKind <> fdNone then
   begin
+    // Открыт список поля: щелчок по нему выбирает, мимо - закрывает
+    if FDlgDrop >= 0 then
+    begin
+      if (Button = mbLeft) and DlgDropMouse(X, Y) then
+      begin
+        Invalidate;
+        Exit;
+      end;
+      FDlgDrop := -1;
+    end;
     if (Button = mbLeft) and (Length(FDlgRows) > 0) and
        (Y div FCellH >= FDlgRowsTop) and
        (Y div FCellH < FDlgRowsTop + Length(FDlgRows)) then
-      DlgRowsMouse(X, Y)
+    begin
+      DlgRowsMouse(X, Y);
+      // Двойной щелчок по полю - выделить слово
+      if (ssDouble in Shift) and DlgRowIsEdit and (FDlgDrop < 0) and
+         (X div FCellW >= FDlgRowsLeft) then
+        DlgRowsDblClick;
+    end
     else if (Button = mbLeft) and (Y div FCellH = FDlgButtonRow) then
       for ItemIndex := 0 to High(FDlgButtonCol) do
         if (X div FCellW >= FDlgButtonCol[ItemIndex]) and
@@ -4289,6 +4345,9 @@ begin
   // Протяжка в редакторе - выделение
   if FEditDragging and (FEditor <> nil) and (ssLeft in Shift) then
     EditMouse(X, Y, True, True);
+  // Протяжка в поле окна - выделение
+  if (FDlgDragRow >= 0) and (FDlgKind <> fdNone) and (ssLeft in Shift) then
+    DlgRowsMouseMove(X);
 end;
 
 procedure TFarView.MouseUp(Button: TMouseButton; Shift: TShiftState;
@@ -4296,7 +4355,10 @@ procedure TFarView.MouseUp(Button: TMouseButton; Shift: TShiftState;
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Button = mbLeft then
+  begin
     FEditDragging := False;
+    FDlgDragRow := -1;
+  end;
 end;
 
 // ---------------------------------------------------------------------------
@@ -4379,7 +4441,11 @@ begin
     begin
       WideCh := KeyChar(AMsg.wParam);
       if (WideCh <> #0) and DlgRowIsEdit then
-        DlgRowInsert(WideCh)
+      begin
+        FDlgDrop := -1;
+        DlgRowSaveUndo(True);
+        DlgRowInsert(WideCh);
+      end
       else if WideCh <> #0 then
         DlgInsertText(WideCh);
       Invalidate;
@@ -5042,6 +5108,8 @@ begin
   FDlgMasked := False;
   FDlgRows := nil;
   FDlgRow := -1;
+  FDlgDrop := -1;
+  FDlgDragRow := -1;
   if AHasEdit then
     FDlgFocus := -1
   else
@@ -5069,6 +5137,8 @@ begin
   FDlgLines := nil;
   FDlgRows := nil;
   FDlgRow := -1;
+  FDlgDrop := -1;
+  FDlgDragRow := -1;
   FDlgButtons := nil;
   FDlgButtonCol := nil;
   Invalidate;
@@ -5467,6 +5537,7 @@ begin
   // значения выбора (выбранное - бирюзовым, с фокусом - белым по чёрному)
   FDlgRowsTop := Row;
   FDlgRowsLeft := InnerLeft + FarDlgCaptionW;
+  FDlgRowsW := InnerW - FarDlgCaptionW;
   for LineIndex := 0 to High(FDlgRows) do
   begin
     DrawDialogRow(LineIndex, Row, InnerLeft, InnerW, Fore, Back);
@@ -5502,6 +5573,9 @@ begin
         ButtonBack);
     Inc(ButtonCol, Length(ButtonText) + 1);
   end;
+  // Открытый список поля - поверх всего окна
+  if FDlgDrop >= 0 then
+    DrawDialogDrop;
 end;
 
 // ---------------------------------------------------------------------------
@@ -12045,6 +12119,12 @@ begin
     if (Index < 0) or (Index > High(Values)) then
       Index := 0;
     IsCheck := False;
+    Anchor := -1;
+    IsCombo := False;
+    History := nil;
+    UndoText := AText;
+    UndoPos := Length(AText);
+    Typing := False;
   end;
   // Фокус - на первой строке
   FDlgRow := 0;
@@ -12074,6 +12154,7 @@ procedure TFarView.DrawDialogRow(ARowIndex, ARow, AInnerLeft,
   AInnerW: Integer; AFore, ABack: TColor);
 var
   FieldLeft, FieldW, ValueIndex, CharIndex, CaretX, ValueCol: Integer;
+  SelFrom, SelTo, VisFrom, VisTo, ArrowX, ArrowY, ArrowHalf, LineIndex: Integer;
   ShownText, ValueText: WideString;
   Focused: Boolean;
 begin
@@ -12118,6 +12199,23 @@ begin
     end
     else
     begin
+      // Поле со списком: справа стрелка вниз (треугольник) на фоне окна
+      if IsCombo then
+      begin
+        Dec(FieldW);
+        FillCells(FieldLeft + FieldW, ARow, 1, ABack);
+        ArrowHalf := (FCellW - 1) div 2;
+        if ArrowHalf < 2 then
+          ArrowHalf := 2;
+        ArrowX := (FieldLeft + FieldW) * FCellW + FCellW div 2;
+        ArrowY := ARow * FCellH + (FCellH - ArrowHalf) div 2;
+        FBuffer.Canvas.Brush.Style := bsSolid;
+        FBuffer.Canvas.Brush.Color := AFore;
+        for LineIndex := 0 to ArrowHalf do
+          FBuffer.Canvas.FillRect(Rect(ArrowX - ArrowHalf + LineIndex,
+            ArrowY + LineIndex, ArrowX + ArrowHalf - LineIndex + 1,
+            ArrowY + LineIndex + 1));
+      end;
       if Pos < Scroll then
         Scroll := Pos;
       if Pos > Scroll + FieldW - 1 then
@@ -12127,12 +12225,22 @@ begin
         for CharIndex := 1 to Length(ShownText) do
           ShownText[CharIndex] := '*';
       FillCells(FieldLeft, ARow, FieldW, FPal[fpDlgEditBack]);
-      if Fresh and Focused then
-        PutText(FieldLeft, ARow, Length(ShownText), ShownText,
-          FPal[fpDlgSelText], FPal[fpDlgSelBack])
-      else
-        PutText(FieldLeft, ARow, Length(ShownText), ShownText,
-          FPal[fpDlgEditText], FPal[fpDlgEditBack]);
+      PutText(FieldLeft, ARow, Length(ShownText), ShownText,
+        FPal[fpDlgEditText], FPal[fpDlgEditBack]);
+      // Выделение (нетронутый текст - весь) - белым по чёрному
+      if Focused and DlgRowSel(FDlgRows[ARowIndex], SelFrom, SelTo) then
+      begin
+        VisFrom := SelFrom;
+        if VisFrom < Scroll then
+          VisFrom := Scroll;
+        VisTo := SelTo;
+        if VisTo > Scroll + Length(ShownText) then
+          VisTo := Scroll + Length(ShownText);
+        if VisTo > VisFrom then
+          PutText(FieldLeft + VisFrom - Scroll, ARow, VisTo - VisFrom,
+            Copy(ShownText, VisFrom - Scroll + 1, VisTo - VisFrom),
+            FPal[fpDlgSelText], FPal[fpDlgSelBack]);
+      end;
       if Focused then
       begin
         CaretX := (FieldLeft + Pos - Scroll) * FCellW;
@@ -12145,20 +12253,656 @@ begin
   end;
 end;
 
+// Вставка в поле с фокусом - на место выделения (нетронутый текст -
+// заменяется весь)
 procedure TFarView.DlgRowInsert(const AText: WideString);
+begin
+  if not DlgRowIsEdit then
+    Exit;
+  DlgRowDeleteSel;
+  with FDlgRows[FDlgRow] do
+  begin
+    Insert(AText, Text, Pos + 1);
+    Inc(Pos, Length(AText));
+  end;
+  Invalidate;
+end;
+
+// Выделение строки: [ASelFrom, ASelTo) в символах от 0; нетронутый текст -
+// выделен весь
+function TFarView.DlgRowSel(const ARow: TFarDlgRow; out ASelFrom,
+  ASelTo: Integer): Boolean;
+begin
+  ASelFrom := 0;
+  ASelTo := 0;
+  if ARow.Fresh then
+    ASelTo := Length(ARow.Text)
+  else if (ARow.Anchor >= 0) and (ARow.Anchor <> ARow.Pos) then
+  begin
+    if ARow.Anchor < ARow.Pos then
+    begin
+      ASelFrom := ARow.Anchor;
+      ASelTo := ARow.Pos;
+    end
+    else
+    begin
+      ASelFrom := ARow.Pos;
+      ASelTo := ARow.Anchor;
+    end;
+    if ASelTo > Length(ARow.Text) then
+      ASelTo := Length(ARow.Text);
+  end;
+  Result := ASelTo > ASelFrom;
+end;
+
+// Удалить выделенное в поле с фокусом; выделения после - нет
+procedure TFarView.DlgRowDeleteSel;
+var
+  SelFrom, SelTo: Integer;
+begin
+  if not DlgRowIsEdit then
+    Exit;
+  if DlgRowSel(FDlgRows[FDlgRow], SelFrom, SelTo) then
+    with FDlgRows[FDlgRow] do
+    begin
+      Delete(Text, SelFrom + 1, SelTo - SelFrom);
+      Pos := SelFrom;
+    end;
+  FDlgRows[FDlgRow].Fresh := False;
+  FDlgRows[FDlgRow].Anchor := -1;
+end;
+
+// Запомнить текст для Ctrl+Z. Набор символов подряд - один шаг отмены
+procedure TFarView.DlgRowSaveUndo(ATyping: Boolean);
 begin
   if not DlgRowIsEdit then
     Exit;
   with FDlgRows[FDlgRow] do
   begin
-    if Fresh then
+    if not (ATyping and Typing) then
     begin
-      Text := '';
-      Pos := 0;
-      Fresh := False;
+      UndoText := Text;
+      UndoPos := Pos;
     end;
-    Insert(AText, Text, Pos + 1);
-    Inc(Pos, Length(AText));
+    Typing := ATyping;
+  end;
+end;
+
+// Поле со списком прежних значений: строка ввода + список по стрелке
+procedure TFarView.DlgAddCombo(const ACaption, AText: WideString;
+  const AHistory: TFarNames);
+var
+  RowIndex, HistIndex: Integer;
+begin
+  DlgAddRow(ACaption, False, False, AText, [], 0);
+  RowIndex := High(FDlgRows);
+  FDlgRows[RowIndex].IsCombo := True;
+  SetLength(FDlgRows[RowIndex].History, Length(AHistory));
+  for HistIndex := 0 to High(AHistory) do
+    FDlgRows[RowIndex].History[HistIndex] := AHistory[HistIndex];
+end;
+
+// Значение - в начало списка прежних (повтор убирается), не больше AMax
+procedure FarHistoryPush(var AList: TFarNames; const AValue: WideString;
+  AMax: Integer);
+var
+  SrcIndex, DstIndex: Integer;
+begin
+  if AValue = '' then
+    Exit;
+  DstIndex := 1;
+  SetLength(AList, Length(AList) + 1);
+  for SrcIndex := High(AList) - 1 downto 0 do
+    AList[SrcIndex + 1] := AList[SrcIndex];
+  AList[0] := AValue;
+  for SrcIndex := 1 to High(AList) do
+    if AList[SrcIndex] <> AValue then
+    begin
+      AList[DstIndex] := AList[SrcIndex];
+      Inc(DstIndex);
+    end;
+  if DstIndex > AMax then
+    DstIndex := AMax;
+  SetLength(AList, DstIndex);
+end;
+
+// Разделитель слов для Ctrl+стрелок и двойного щелчка
+function FarDlgIsSep(AChar: WideChar): Boolean;
+begin
+  Result := (AChar = ' ') or (AChar = #9) or (AChar = ';') or
+    (AChar = ',') or (AChar = '\') or (AChar = '/') or (AChar = '.') or
+    (AChar = ':') or (AChar = '*') or (AChar = '?');
+end;
+
+// Первая строка текста (из буфера обмена в однострочное поле)
+function FarFirstLine(const AText: WideString): WideString;
+var
+  CharIndex: Integer;
+begin
+  Result := AText;
+  for CharIndex := 1 to Length(Result) do
+    if (Result[CharIndex] = #13) or (Result[CharIndex] = #10) then
+    begin
+      Result := Copy(Result, 1, CharIndex - 1);
+      Break;
+    end;
+  for CharIndex := 1 to Length(Result) do
+    if Result[CharIndex] = #9 then
+      Result[CharIndex] := ' ';
+end;
+
+// Клавиши поля ввода: как в редакторе - стрелки, Home / End (с Shift -
+// выделение, с Ctrl - по словам), Ctrl+A, Ctrl+C / Ctrl+Ins, Ctrl+X /
+// Shift+Del, Ctrl+V / Shift+Ins, Ctrl+Z, Ctrl+Y - очистить,
+// Ctrl+Down / Alt+Down - список прежних значений. False - не своя клавиша
+function TFarView.DlgRowEditKey(AKey: Word; AShift, ACtrl,
+  AAlt: Boolean): Boolean;
+var
+  SelFrom, SelTo, NewPos: Integer;
+  HasSel: Boolean;
+  SwapText: WideString;
+  SwapPos: Integer;
+
+  // Каретку в NewPos: с Shift - выделение от прежнего места
+  procedure MoveCaret(ANewPos: Integer);
+  begin
+    with FDlgRows[FDlgRow] do
+    begin
+      if ANewPos < 0 then
+        ANewPos := 0;
+      if ANewPos > Length(Text) then
+        ANewPos := Length(Text);
+      if AShift then
+      begin
+        if Fresh then
+        begin
+          Anchor := 0;
+          Pos := Length(Text);
+        end
+        else if Anchor < 0 then
+          Anchor := Pos;
+      end
+      else
+        Anchor := -1;
+      Fresh := False;
+      Typing := False;
+      Pos := ANewPos;
+    end;
+  end;
+
+  function WordLeft(AFrom: Integer): Integer;
+  begin
+    Result := AFrom;
+    with FDlgRows[FDlgRow] do
+    begin
+      while (Result > 0) and FarDlgIsSep(Text[Result]) do
+        Dec(Result);
+      while (Result > 0) and not FarDlgIsSep(Text[Result]) do
+        Dec(Result);
+    end;
+  end;
+
+  function WordRight(AFrom: Integer): Integer;
+  begin
+    Result := AFrom;
+    with FDlgRows[FDlgRow] do
+    begin
+      while (Result < Length(Text)) and not FarDlgIsSep(Text[Result + 1]) do
+        Inc(Result);
+      while (Result < Length(Text)) and FarDlgIsSep(Text[Result + 1]) do
+        Inc(Result);
+    end;
+  end;
+
+  procedure CopySel;
+  begin
+    // Поле пароля в буфер не копируется
+    if FDlgRows[FDlgRow].Masked then
+      Exit;
+    if HasSel then
+      FarCopyToClipboard(Handle, Copy(FDlgRows[FDlgRow].Text, SelFrom + 1,
+        SelTo - SelFrom))
+    else if FDlgRows[FDlgRow].Text <> '' then
+      FarCopyToClipboard(Handle, FDlgRows[FDlgRow].Text);
+  end;
+
+  procedure PasteClip;
+  var
+    PasteText: WideString;
+  begin
+    if not FarClipboardHasText then
+      Exit;
+    PasteText := FarFirstLine(FarClipboardText);
+    DlgRowSaveUndo(False);
+    DlgRowInsert(PasteText);
+  end;
+
+begin
+  Result := True;
+  HasSel := DlgRowSel(FDlgRows[FDlgRow], SelFrom, SelTo);
+  case AKey of
+    VK_LEFT:
+      with FDlgRows[FDlgRow] do
+        if ACtrl then
+          MoveCaret(WordLeft(Pos))
+        else if HasSel and not AShift and not Fresh then
+          MoveCaret(SelFrom)
+        else
+          MoveCaret(Pos - 1);
+    VK_RIGHT:
+      with FDlgRows[FDlgRow] do
+        if ACtrl then
+          MoveCaret(WordRight(Pos))
+        else if HasSel and not AShift and not Fresh then
+          MoveCaret(SelTo)
+        else
+          MoveCaret(Pos + 1);
+    VK_HOME:
+      MoveCaret(0);
+    VK_END:
+      MoveCaret(Length(FDlgRows[FDlgRow].Text));
+    VK_BACK:
+      begin
+        DlgRowSaveUndo(True);
+        if HasSel then
+          DlgRowDeleteSel
+        else
+          with FDlgRows[FDlgRow] do
+          begin
+            Fresh := False;
+            if ACtrl then
+              NewPos := WordLeft(Pos)
+            else
+              NewPos := Pos - 1;
+            if NewPos < 0 then
+              NewPos := 0;
+            Delete(Text, NewPos + 1, Pos - NewPos);
+            Pos := NewPos;
+          end;
+      end;
+    VK_DELETE:
+      if AShift and not ACtrl then
+      begin
+        // Shift+Del - вырезать
+        if HasSel and not FDlgRows[FDlgRow].Masked then
+        begin
+          CopySel;
+          DlgRowSaveUndo(False);
+          DlgRowDeleteSel;
+        end;
+      end
+      else
+      begin
+        DlgRowSaveUndo(True);
+        if HasSel then
+          DlgRowDeleteSel
+        else
+          with FDlgRows[FDlgRow] do
+          begin
+            if ACtrl then
+              NewPos := WordRight(Pos)
+            else
+              NewPos := Pos + 1;
+            if NewPos > Length(Text) then
+              NewPos := Length(Text);
+            Delete(Text, Pos + 1, NewPos - Pos);
+          end;
+      end;
+    VK_INSERT:
+      if ACtrl and not AShift then
+        CopySel
+      else if AShift and not ACtrl then
+        PasteClip;
+    VK_DOWN:
+      if (ACtrl or AAlt) and FDlgRows[FDlgRow].IsCombo then
+        DlgDropOpen
+      else
+        Result := False;
+  else
+    if ACtrl and not AAlt and (AKey = Ord('A')) then
+      with FDlgRows[FDlgRow] do
+      begin
+        Fresh := False;
+        Anchor := 0;
+        Pos := Length(Text);
+        Typing := False;
+      end
+    else if ACtrl and not AAlt and (AKey = Ord('C')) then
+      CopySel
+    else if ACtrl and not AAlt and (AKey = Ord('X')) then
+    begin
+      if HasSel and not FDlgRows[FDlgRow].Masked then
+      begin
+        CopySel;
+        DlgRowSaveUndo(False);
+        DlgRowDeleteSel;
+      end;
+    end
+    else if ACtrl and not AAlt and (AKey = Ord('V')) then
+      PasteClip
+    else if ACtrl and not AAlt and (AKey = Ord('Z')) then
+      // Отмена последней правки (повторное Ctrl+Z - возврат)
+      with FDlgRows[FDlgRow] do
+      begin
+        SwapText := Text;
+        SwapPos := Pos;
+        Text := UndoText;
+        Pos := UndoPos;
+        UndoText := SwapText;
+        UndoPos := SwapPos;
+        if Pos > Length(Text) then
+          Pos := Length(Text);
+        Fresh := False;
+        Anchor := -1;
+        Typing := False;
+      end
+    else if ACtrl and not AAlt and (AKey = Ord('Y')) then
+    begin
+      DlgRowSaveUndo(False);
+      with FDlgRows[FDlgRow] do
+      begin
+        Text := '';
+        Pos := 0;
+        Fresh := False;
+        Anchor := -1;
+      end;
+    end
+    else
+      Result := False;
+  end;
+end;
+
+// Открыть список прежних значений поля с фокусом; выбрано - текущее
+// значение, если оно есть в списке
+procedure TFarView.DlgDropOpen;
+var
+  HistIndex: Integer;
+begin
+  if not DlgRowIsEdit or not FDlgRows[FDlgRow].IsCombo then
+    Exit;
+  if Length(FDlgRows[FDlgRow].History) = 0 then
+  begin
+    Status(FarProduct + ': список прежних значений пуст');
+    Exit;
+  end;
+  FDlgDrop := FDlgRow;
+  FDlgDropIndex := 0;
+  FDlgDropTop := 0;
+  with FDlgRows[FDlgRow] do
+    for HistIndex := 0 to High(History) do
+      if History[HistIndex] = Text then
+      begin
+        FDlgDropIndex := HistIndex;
+        Break;
+      end;
+  Invalidate;
+end;
+
+// Выбранное в списке - в поле (как нетронутый текст: ввод заменит его)
+procedure TFarView.DlgDropChoose;
+begin
+  if FDlgDrop < 0 then
+    Exit;
+  FDlgRow := FDlgDrop;
+  FDlgFocus := -1;
+  with FDlgRows[FDlgDrop] do
+    if (FDlgDropIndex >= 0) and (FDlgDropIndex <= High(History)) then
+    begin
+      UndoText := Text;
+      UndoPos := Pos;
+      Typing := False;
+      Text := History[FDlgDropIndex];
+      Pos := Length(Text);
+      Scroll := 0;
+      Anchor := -1;
+      Fresh := True;
+    end;
+  FDlgDrop := -1;
+  Invalidate;
+end;
+
+// Del в списке - убрать значение из прежних
+procedure TFarView.DlgDropDelete;
+var
+  HistIndex: Integer;
+begin
+  if FDlgDrop < 0 then
+    Exit;
+  with FDlgRows[FDlgDrop] do
+  begin
+    if (FDlgDropIndex < 0) or (FDlgDropIndex > High(History)) then
+      Exit;
+    for HistIndex := FDlgDropIndex to High(History) - 1 do
+      History[HistIndex] := History[HistIndex + 1];
+    SetLength(History, Length(History) - 1);
+    if FDlgDropIndex > High(History) then
+      FDlgDropIndex := High(History);
+  end;
+  DlgHistoryStore(FDlgDrop);
+  if Length(FDlgRows[FDlgDrop].History) = 0 then
+    FDlgDrop := -1;
+end;
+
+// Список прежних значений строки - обратно владельцу (поиск: маски, текст)
+procedure TFarView.DlgHistoryStore(ARowIndex: Integer);
+var
+  HistIndex: Integer;
+  Target: TFarNames;
+begin
+  if (ARowIndex < 0) or (ARowIndex > High(FDlgRows)) then
+    Exit;
+  SetLength(Target, Length(FDlgRows[ARowIndex].History));
+  for HistIndex := 0 to High(Target) do
+    Target[HistIndex] := FDlgRows[ARowIndex].History[HistIndex];
+  if FDlgKind = fdFind then
+  begin
+    if ARowIndex = 0 then
+      FFindMaskHist := Target
+    else if ARowIndex = 1 then
+      FFindTextHist := Target;
+  end;
+end;
+
+// Клавиши открытого списка: стрелки, PgUp / PgDn, Home / End, Enter -
+// выбрать, Del - убрать значение, Esc - закрыть. Прочие - закрыть список
+// и отдать клавишу полю
+function TFarView.DlgDropKey(AKey: Word; AShift, ACtrl,
+  AAlt: Boolean): Boolean;
+var
+  ItemCount: Integer;
+begin
+  Result := True;
+  ItemCount := Length(FDlgRows[FDlgDrop].History);
+  case AKey of
+    VK_ESCAPE, VK_F10:
+      FDlgDrop := -1;
+    VK_RETURN:
+      DlgDropChoose;
+    VK_UP:
+      if ACtrl or AAlt then
+        FDlgDrop := -1
+      else if FDlgDropIndex > 0 then
+        Dec(FDlgDropIndex);
+    VK_DOWN:
+      if ACtrl or AAlt then
+        FDlgDrop := -1
+      else if FDlgDropIndex < ItemCount - 1 then
+        Inc(FDlgDropIndex);
+    VK_PRIOR:
+      begin
+        Dec(FDlgDropIndex, FarDlgDropRows - 1);
+        if FDlgDropIndex < 0 then
+          FDlgDropIndex := 0;
+      end;
+    VK_NEXT:
+      begin
+        Inc(FDlgDropIndex, FarDlgDropRows - 1);
+        if FDlgDropIndex > ItemCount - 1 then
+          FDlgDropIndex := ItemCount - 1;
+      end;
+    VK_HOME:
+      FDlgDropIndex := 0;
+    VK_END:
+      FDlgDropIndex := ItemCount - 1;
+    VK_DELETE:
+      DlgDropDelete;
+  else
+    FDlgDrop := -1;
+    Result := DlgRowsKey(AKey, AShift, ACtrl, AAlt);
+  end;
+  Invalidate;
+end;
+
+// Список прежних значений под полем (не влезает - над ним), рамкой
+procedure TFarView.DrawDialogDrop;
+var
+  FieldRow, ListLeft, ListW, ItemIndex, RowIndex, ItemCount: Integer;
+  ItemText: WideString;
+  Fore, Back: TColor;
+  FrameRectPx: TRect;
+begin
+  if (FDlgDrop < 0) or (FDlgDrop > High(FDlgRows)) then
+    Exit;
+  ItemCount := Length(FDlgRows[FDlgDrop].History);
+  if ItemCount = 0 then
+    Exit;
+  FieldRow := FDlgRowsTop + FDlgDrop;
+  ListLeft := FDlgRowsLeft;
+  ListW := FDlgRowsW;
+  FDlgDropH := ItemCount;
+  if FDlgDropH > FarDlgDropRows then
+    FDlgDropH := FarDlgDropRows;
+  // Строки списка + рамка сверху и снизу
+  if FieldRow + 1 + FDlgDropH + 2 <= PanelHeight then
+    FDlgDropRow := FieldRow + 2
+  else
+    FDlgDropRow := FieldRow - FDlgDropH - 1;
+  if FDlgDropRow < 1 then
+    FDlgDropRow := 1;
+  if FDlgDropIndex < FDlgDropTop then
+    FDlgDropTop := FDlgDropIndex;
+  if FDlgDropIndex >= FDlgDropTop + FDlgDropH then
+    FDlgDropTop := FDlgDropIndex - FDlgDropH + 1;
+  if FDlgDropTop > ItemCount - FDlgDropH then
+    FDlgDropTop := ItemCount - FDlgDropH;
+  if FDlgDropTop < 0 then
+    FDlgDropTop := 0;
+  for RowIndex := FDlgDropRow - 1 to FDlgDropRow + FDlgDropH do
+    FillCells(ListLeft, RowIndex, ListW, FPal[fpMenuBack]);
+  FrameRectPx := Rect(ListLeft * FCellW + FCellW div 2,
+    (FDlgDropRow - 1) * FCellH + FCellH div 2,
+    (ListLeft + ListW - 1) * FCellW + FCellW div 2,
+    (FDlgDropRow + FDlgDropH) * FCellH + FCellH div 2);
+  with FBuffer.Canvas do
+  begin
+    Pen.Color := FPal[fpMenuFrame];
+    MoveTo(FrameRectPx.Left, FrameRectPx.Top);
+    LineTo(FrameRectPx.Right, FrameRectPx.Top);
+    LineTo(FrameRectPx.Right, FrameRectPx.Bottom);
+    LineTo(FrameRectPx.Left, FrameRectPx.Bottom);
+    LineTo(FrameRectPx.Left, FrameRectPx.Top);
+  end;
+  // Значения выше / ниже видимых - стрелки на рамке
+  if FDlgDropTop > 0 then
+    PutText(ListLeft + ListW - 3, FDlgDropRow - 1, 1, '^',
+      FPal[fpMenuHotkey], FPal[fpMenuBack]);
+  if FDlgDropTop + FDlgDropH < ItemCount then
+    PutText(ListLeft + ListW - 3, FDlgDropRow + FDlgDropH, 1, 'v',
+      FPal[fpMenuHotkey], FPal[fpMenuBack]);
+  for RowIndex := 0 to FDlgDropH - 1 do
+  begin
+    ItemIndex := FDlgDropTop + RowIndex;
+    if ItemIndex >= ItemCount then
+      Break;
+    Fore := FPal[fpMenuText];
+    if ItemIndex = FDlgDropIndex then
+      Back := FPal[fpMenuCursorBack]
+    else
+      Back := FPal[fpMenuBack];
+    FillCells(ListLeft + 1, FDlgDropRow + RowIndex, ListW - 2, Back);
+    ItemText := FarFitName(FDlgRows[FDlgDrop].History[ItemIndex], ListW - 4);
+    PutText(ListLeft + 2, FDlgDropRow + RowIndex, ListW - 4, ItemText, Fore,
+      Back);
+  end;
+end;
+
+// Щелчок при открытом списке: по значению - выбрать, по стрелке поля -
+// закрыть. False - щелчок мимо (список закроется, щелчок пойдёт окну)
+function TFarView.DlgDropMouse(AX, AY: Integer): Boolean;
+var
+  ClickRow, ClickCol: Integer;
+begin
+  Result := False;
+  ClickRow := AY div FCellH;
+  ClickCol := AX div FCellW;
+  if (ClickRow = FDlgRowsTop + FDlgDrop) and
+     (ClickCol = FDlgRowsLeft + FDlgRowsW - 1) then
+  begin
+    FDlgDrop := -1;
+    Result := True;
+    Exit;
+  end;
+  if (ClickCol >= FDlgRowsLeft) and (ClickCol < FDlgRowsLeft + FDlgRowsW) and
+     (ClickRow >= FDlgDropRow - 1) and (ClickRow <= FDlgDropRow + FDlgDropH) then
+  begin
+    Result := True;
+    if (ClickRow >= FDlgDropRow) and (ClickRow < FDlgDropRow + FDlgDropH) and
+       (FDlgDropTop + ClickRow - FDlgDropRow <=
+        High(FDlgRows[FDlgDrop].History)) then
+    begin
+      FDlgDropIndex := FDlgDropTop + ClickRow - FDlgDropRow;
+      DlgDropChoose;
+    end;
+  end;
+end;
+
+// Протяжка мышью по полю - выделение от места нажатия
+procedure TFarView.DlgRowsMouseMove(AX: Integer);
+var
+  ClickCol, NewPos: Integer;
+begin
+  if (FDlgDragRow <> FDlgRow) or not DlgRowIsEdit then
+    Exit;
+  ClickCol := AX div FCellW;
+  with FDlgRows[FDlgRow] do
+  begin
+    NewPos := Scroll + ClickCol - FDlgRowsLeft;
+    if NewPos < 0 then
+      NewPos := 0;
+    if NewPos > Length(Text) then
+      NewPos := Length(Text);
+    if NewPos <> Pos then
+    begin
+      if Anchor < 0 then
+        Anchor := Pos;
+      Pos := NewPos;
+      Fresh := False;
+      Typing := False;
+      Invalidate;
+    end;
+  end;
+end;
+
+// Двойной щелчок по полю - выделить слово под кареткой
+procedure TFarView.DlgRowsDblClick;
+var
+  WordFrom, WordTo: Integer;
+begin
+  FDlgDragRow := -1;
+  with FDlgRows[FDlgRow] do
+  begin
+    WordFrom := Pos;
+    WordTo := Pos;
+    while (WordFrom > 0) and not FarDlgIsSep(Text[WordFrom]) do
+      Dec(WordFrom);
+    while (WordTo < Length(Text)) and not FarDlgIsSep(Text[WordTo + 1]) do
+      Inc(WordTo);
+    if WordTo = WordFrom then
+      Exit;
+    Fresh := False;
+    Typing := False;
+    Anchor := WordFrom;
+    Pos := WordTo;
   end;
   Invalidate;
 end;
@@ -12179,9 +12923,21 @@ var
   InEdit, InChoice: Boolean;
 begin
   Result := True;
+  // Открыт список поля - клавиши ему
+  if FDlgDrop >= 0 then
+  begin
+    Result := DlgDropKey(AKey, AShift, ACtrl, AAlt);
+    Exit;
+  end;
   ButtonCount := Length(FDlgButtons);
   RowCount := Length(FDlgRows);
   InEdit := DlgRowIsEdit;
+  // Поле ввода: клавиши правки как в редакторе
+  if InEdit and DlgRowEditKey(AKey, AShift, ACtrl, AAlt) then
+  begin
+    Invalidate;
+    Exit;
+  end;
   InChoice := (FDlgRow >= 0) and not InEdit;
   OldIndex := -1;
   if InChoice then
@@ -12239,16 +12995,7 @@ begin
         end;
       end;
     VK_LEFT, VK_RIGHT:
-      if InEdit then
-        with FDlgRows[FDlgRow] do
-        begin
-          Fresh := False;
-          if (AKey = VK_LEFT) and (Pos > 0) then
-            Dec(Pos)
-          else if (AKey = VK_RIGHT) and (Pos < Length(Text)) then
-            Inc(Pos);
-        end
-      else if InChoice then
+      if InChoice then
       begin
         if AKey = VK_LEFT then
           FarDlgChoose(FDlgRows[FDlgRow], FDlgRows[FDlgRow].Index - 1)
@@ -12263,64 +13010,15 @@ begin
           FDlgFocus := (FDlgFocus + 1) mod ButtonCount;
       end;
     VK_HOME, VK_END:
-      if InEdit then
-        with FDlgRows[FDlgRow] do
-        begin
-          Fresh := False;
-          if AKey = VK_HOME then
-            Pos := 0
-          else
-            Pos := Length(Text);
-        end
-      else if InChoice then
+      if InChoice then
       begin
         if AKey = VK_HOME then
           FarDlgChoose(FDlgRows[FDlgRow], 0)
         else
           FarDlgChoose(FDlgRows[FDlgRow], MaxInt);
       end;
-    VK_BACK:
-      if InEdit then
-        with FDlgRows[FDlgRow] do
-          if Fresh then
-          begin
-            Text := '';
-            Pos := 0;
-            Fresh := False;
-          end
-          else if Pos > 0 then
-          begin
-            Delete(Text, Pos, 1);
-            Dec(Pos);
-          end;
-    VK_DELETE:
-      if InEdit then
-        with FDlgRows[FDlgRow] do
-          if Fresh then
-          begin
-            Text := '';
-            Pos := 0;
-            Fresh := False;
-          end
-          else if Pos < Length(Text) then
-            Delete(Text, Pos + 1, 1);
-    VK_INSERT:
-      if InEdit and AShift and FarClipboardHasText then
-        DlgRowInsert(FarClipboardText);
   else
-    if InEdit and ACtrl and not AAlt and (AKey = Ord('V')) then
-    begin
-      if FarClipboardHasText then
-        DlgRowInsert(FarClipboardText);
-    end
-    else if InEdit and ACtrl and not AAlt and (AKey = Ord('Y')) then
-      with FDlgRows[FDlgRow] do
-      begin
-        Text := '';
-        Pos := 0;
-        Fresh := False;
-      end
-    else if ACtrl or AAlt then
+    if ACtrl or AAlt then
       Result := True   // сочетания в окне никуда не отдаём (ярлыки меню)
     else
       Result := False; // буквы, цифры - символы поля ввода (WM_CHAR)
@@ -12360,12 +13058,27 @@ begin
       if (FDlgKind = fdArcAdd) and (RowIndex = 1) and (Index <> OldIndex) then
         ArcAddFormatChanged(OldIndex);
     end
+    else if IsCombo and (ClickCol = FDlgRowsLeft + FDlgRowsW - 1) then
+      // Стрелка поля - список прежних значений
+      DlgDropOpen
     else if ClickCol >= FDlgRowsLeft then
     begin
+      // С Shift - выделение от прежнего места каретки
+      if GetKeyState(VK_SHIFT) < 0 then
+      begin
+        if Fresh then
+          Anchor := 0
+        else if Anchor < 0 then
+          Anchor := Pos;
+      end
+      else
+        Anchor := -1;
       Fresh := False;
+      Typing := False;
       Pos := Scroll + ClickCol - FDlgRowsLeft;
       if Pos > Length(Text) then
         Pos := Length(Text);
+      FDlgDragRow := RowIndex;
     end;
   Invalidate;
 end;
@@ -12614,8 +13327,8 @@ begin
     FFindMask := '*.*';
   DlgOpen(fdFind, 'Find file', ['Search in ' + FarFitPath(Panel.Path, 50)],
     False, False, False, '', ['Find', 'Cancel']);
-  DlgAddRow('Masks:', False, False, FFindMask, [], 0);
-  DlgAddRow('Text:', False, False, FFindText, [], 0);
+  DlgAddCombo('Masks:', FFindMask, FFindMaskHist);
+  DlgAddCombo('Text:', FFindText, FFindTextHist);
   DlgAddRow('Code page:', True, False, '', ['All', 'ANSI', 'OEM', 'UTF-8',
     'UTF-16'], FFindCodePage);
   DlgAddCheck('Case sensitive', FFindCase);
@@ -12639,6 +13352,8 @@ begin
   if FFindMask = '' then
     FFindMask := '*.*';
   FFindText := FDlgRows[1].Text;
+  FarHistoryPush(FFindMaskHist, FFindMask, FarFindHistoryMax);
+  FarHistoryPush(FFindTextHist, FFindText, FarFindHistoryMax);
   FFindCodePage := FDlgRows[2].Index;
   FFindCase := FDlgRows[3].Index = 1;
   FFindWhole := FDlgRows[4].Index = 1;
@@ -14160,6 +14875,22 @@ begin
       end;
     end;
     FCmdHistPos := Length(FCmdHistory);
+    // Alt+F7: прежние маски и тексты (списки полей)
+    SetLength(FFindMaskHist, 0);
+    SetLength(FFindTextHist, 0);
+    for HistoryIndex := FarFindHistoryMax downto 1 do
+    begin
+      FarHistoryPush(FFindMaskHist, FarDecodePath(Ini.ReadString(
+        FarFindHistorySection, 'Mask' + IntToStr(HistoryIndex), '')),
+        FarFindHistoryMax);
+      FarHistoryPush(FFindTextHist, FarDecodePath(Ini.ReadString(
+        FarFindHistorySection, 'Text' + IntToStr(HistoryIndex), '')),
+        FarFindHistoryMax);
+    end;
+    if Length(FFindMaskHist) = 0 then
+      FarHistoryPush(FFindMaskHist, FFindMask, FarFindHistoryMax);
+    if Length(FFindTextHist) = 0 then
+      FarHistoryPush(FFindTextHist, FFindText, FarFindHistoryMax);
     FActive := Ini.ReadInteger(FarIniSection, 'Active', 0);
     if (FActive < 0) or (FActive > 1) then
       FActive := 0;
@@ -14263,6 +14994,13 @@ begin
     for HistoryIndex := 0 to High(FCmdHistory) do
       Ini.WriteString(FarCmdHistorySection, 'Cmd' + IntToStr(HistoryIndex + 1),
         FarEncodePath(FCmdHistory[HistoryIndex]));
+    Ini.EraseSection(FarFindHistorySection);
+    for HistoryIndex := 0 to High(FFindMaskHist) do
+      Ini.WriteString(FarFindHistorySection, 'Mask' +
+        IntToStr(HistoryIndex + 1), FarEncodePath(FFindMaskHist[HistoryIndex]));
+    for HistoryIndex := 0 to High(FFindTextHist) do
+      Ini.WriteString(FarFindHistorySection, 'Text' +
+        IntToStr(HistoryIndex + 1), FarEncodePath(FFindTextHist[HistoryIndex]));
     if FHalfWidth > 0 then
       Ini.WriteInteger(FarIniSection, 'HalfWidth', FHalfWidth);
   finally
