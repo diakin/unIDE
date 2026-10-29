@@ -3498,6 +3498,7 @@ type
     procedure EnsureCaretVisibleX;
     procedure SyncCaretX;
     procedure LogDiag(const S: string);
+    procedure LogOwnEd(const S: string);
     procedure LogRaw(const S: string);
     procedure LogComp(const S: string);
     procedure LogGit(const S: string; AColor: TColor = clNone);
@@ -40148,7 +40149,7 @@ end;
 
 procedure TForm1.EdEmuLog(const AText: string);
 begin
-  LogDiag(AText);
+  LogOwnEd(AText);
 end;
 
 procedure TForm1.EdEmuStart;
@@ -40175,7 +40176,7 @@ begin
     Exit;
   if not MsftEditActive then
   begin
-    LogDiag('Свой редактор вместо RichEdit: не включён - нет RichEdit 4.1 ' +
+    LogOwnEd('Свой редактор вместо RichEdit: не включён - нет RichEdit 4.1 ' +
       '(msftedit.dll)');
     Exit;
   end;
@@ -40199,7 +40200,7 @@ begin
   FEdEmu.OnLog := EdEmuLog;
   FEdEmu.SetMetrics(StartLineH, StartCharW, FTabChars);
   FEdEmu.Start(StartText);
-  LogDiag('Свой редактор вместо RichEdit (IDE Options - Preferences): ' +
+  LogOwnEd('Свой редактор вместо RichEdit (IDE Options - Preferences): ' +
     'включён');
 end;
 
@@ -76793,6 +76794,17 @@ begin
     Exit;
   FLastDiag := S;
   LogTo(LogEdit, S);
+end;
+
+// Строка HiLite log о своём редакторе (план портирования, 0.7.4 и дальше:
+// EdRichEmu, EdEmuStart) - синим, чтобы отличалась от остальной
+// диагностики. На тёмном фоне лога синий светлее (UiLogColor)
+procedure TForm1.LogOwnEd(const S: string);
+begin
+  if S = FLastDiag then
+    Exit;
+  FLastDiag := S;
+  LogTo(LogEdit, S, clBlue);
 end;
 
 // Дописывание строки в любое из окон лога: время, текст, обрезка старого.
