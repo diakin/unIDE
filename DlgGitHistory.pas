@@ -43,6 +43,7 @@ uses
   UiStdCtrls,    // TUiLabel, TUiPanel
   UiComCtrls,    // TUiListView
   GitDiffView,   // TGitDiffView - разница с подсветкой
+  IniBuf,        // TBufIniFile - положение окна в editor.ini
   GitRun;        // TGitCommit, разбор вывода
 
 type
@@ -83,6 +84,15 @@ type
     // Сведения о коммите - после того, как выделение перестало меняться
     // (CommitSelect, SelTimerTick)
     FSelTimer: TTimer;
+    // Положение окна, разделителей и ширина колонок - в файле настроек
+    // (SetPlacementIni), раздел по виду окна (PlaceSection)
+    FIniFile: string;
+    FPlaceSaved: Boolean;
+    // Немодальное окно (History, ShowModeless): New Branch / Revert -
+    // сразу FOnAction, окно остаётся; FOnDone - окно уничтожается
+    FModeless: Boolean;
+    FOnAction: TNotifyEvent;
+    FOnDone: TNotifyEvent;
     FBtnPick: TUiButton;
     FBtnMergeBranch: TUiButton;
     FBtnDelBranch: TUiButton;
@@ -121,6 +131,11 @@ type
     procedure ShowFileDiff(AIndex: Integer);
     procedure CommitSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure SelTimerTick(Sender: TObject);
+    function  PlaceSection: string;
+    procedure LoadPlacement;
+    procedure SavePlacement;
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure BtnCloseClick(Sender: TObject);
     procedure FileSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
     procedure BtnMoreClick(Sender: TObject);
     procedure BtnCopyClick(Sender: TObject);
@@ -140,6 +155,15 @@ type
       AWebUrl: string; AOnQuery: TGitQueryEvent; const ABase: string;
       ABranchRefs: TStrings; AOnProgress: TGitProgressEvent = nil);
     destructor Destroy; override;
+    // Положение и размер окна, разделители, ширина колонок списка - из
+    // файла настроек AIniFile; при закрытии - туда же
+    procedure SetPlacementIni(const AIniFile: string);
+    // Показать немодальным: New Branch from Commit и Revert Commit - сразу
+    // AOnAction (Action, SelectedHash), окно остаётся; AOnDone - окно
+    // уничтожается
+    procedure ShowModeless(AOnAction, AOnDone: TNotifyEvent);
+    // Коммиты заново (после действия в немодальном окне)
+    procedure ReloadCommits;
     property Action: TGitHistAction read FAction;
     property SelectedHash: string read FCurHash;
     // Cherry-pick: выделенные коммиты, от старых к новым
@@ -189,6 +213,11 @@ end;
 
 destructor TDlgGitHistory.Destroy;
 begin
+  // Закрыли не крестиком (программа выходит при открытом окне)
+  if not FPlaceSaved then
+    SavePlacement;
+  if Assigned(FOnDone) then
+    FOnDone(Self);
   FSelHashes.Free;
   inherited Destroy;
 end;
@@ -207,6 +236,7 @@ begin
   FCurHash := '';
   FLimit := GitHistPage;
   Caption := ATitle;
+  OnClose := FormClose;
   Position := poMainFormCenter;
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu, biMaximize];
@@ -984,7 +1014,13 @@ begin
   if FCurHash = '' then
     Exit;
   FAction := ghaBranch;
-  ModalResult := mrOk;
+  if FModeless then
+  begin
+    if Assigned(FOnAction) then
+      FOnAction(Self);
+  end
+  else
+    ModalResult := mrOk;
 end;
 
 procedure TDlgGitHistory.BtnRevertClick(Sender: TObject);
@@ -992,7 +1028,166 @@ begin
   if FCurHash = '' then
     Exit;
   FAction := ghaRevert;
-  ModalResult := mrOk;
+  if FModeless then
+  begin
+    if Assigned(FOnAction) then
+      FOnAction(Self);
+  end
+  else
+    ModalResult := mrOk;
+end;
+
+procedure TDlgGitHistory.BtnCloseClick(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TDlgGitHistory.ShowModeless(AOnAction, AOnDone: TNotifyEvent);
+begin
+  FModeless := True;
+  FOnAction := AOnAction;
+  FOnDone := AOnDone;
+  // Немодальное окно ModalResult не закрывает - Close кнопкой (и Esc)
+  FBtnClose.ModalResult := mrNone;
+  FBtnClose.OnClick := BtnCloseClick;
+  Show;
+end;
+
+procedure TDlgGitHistory.ReloadCommits;
+begin
+  FAction := ghaNone;
+  LoadCommits;
+end;
+
+// Закрытие (и модального, и немодального): положение - в файл настроек;
+// немодальное - уничтожить
+procedure TDlgGitHistory.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  SavePlacement;
+  if FModeless then
+    Action := caFree;
+end;
+
+function TDlgGitHistory.PlaceSection: string;
+begin
+  if FUnmerged then
+    Result := 'GitUnmergedWindow'
+  else if FCompare then
+    Result := 'GitCompareWindow'
+  else
+    Result := 'GitHistoryWindow';
+end;
+
+procedure TDlgGitHistory.SetPlacementIni(const AIniFile: string);
+begin
+  FIniFile := AIniFile;
+  LoadPlacement;
+end;
+
+// Положение из файла настроек: окно - в пределах рабочего стола (монитор
+// могли сменить); разделители и колонки - если сохранены и не слишком малы
+procedure TDlgGitHistory.LoadPlacement;
+var
+  Ini: TBufIniFile;
+  Sect, Widths: string;
+  WinLeft, WinTop, WinWidth, WinHeight, PaneSize, ColIdx, CommaPos: Integer;
+  Work: TRect;
+begin
+  if (FIniFile = '') or not FileExists(FIniFile) then
+    Exit;
+  Sect := PlaceSection;
+  Ini := TBufIniFile.Create(FIniFile);
+  try
+    WinWidth := Ini.ReadInteger(Sect, 'Width', 0);
+    WinHeight := Ini.ReadInteger(Sect, 'Height', 0);
+    if (WinWidth >= Constraints.MinWidth) and
+       (WinHeight >= Constraints.MinHeight) then
+    begin
+      WinLeft := Ini.ReadInteger(Sect, 'Left', Left);
+      WinTop := Ini.ReadInteger(Sect, 'Top', Top);
+      Work := Screen.DesktopRect;
+      if WinWidth > Work.Right - Work.Left then
+        WinWidth := Work.Right - Work.Left;
+      if WinHeight > Work.Bottom - Work.Top then
+        WinHeight := Work.Bottom - Work.Top;
+      if WinLeft + WinWidth > Work.Right then
+        WinLeft := Work.Right - WinWidth;
+      if WinTop + WinHeight > Work.Bottom then
+        WinTop := Work.Bottom - WinHeight;
+      if WinLeft < Work.Left then
+        WinLeft := Work.Left;
+      if WinTop < Work.Top then
+        WinTop := Work.Top;
+      Position := poDesigned;
+      SetBounds(WinLeft, WinTop, WinWidth, WinHeight);
+    end;
+    PaneSize := Ini.ReadInteger(Sect, 'ListWidth', 0);
+    if PaneSize >= 200 then
+      FLeft.Width := PaneSize;
+    PaneSize := Ini.ReadInteger(Sect, 'DetailsHeight', 0);
+    if PaneSize >= 40 then
+      FDetails.Height := PaneSize;
+    PaneSize := Ini.ReadInteger(Sect, 'FilesHeight', 0);
+    if PaneSize >= 40 then
+      FFileList.Height := PaneSize;
+    // Ширина колонок списка коммитов: через запятую, по порядку
+    Widths := Ini.ReadString(Sect, 'Columns', '');
+    ColIdx := 0;
+    while (Widths <> '') and (ColIdx < FCommitList.Columns.Count) do
+    begin
+      CommaPos := Pos(',', Widths + ',');
+      PaneSize := StrToIntDef(Trim(Copy(Widths, 1, CommaPos - 1)), 0);
+      if PaneSize >= 20 then
+        FCommitList.Columns[ColIdx].Width := PaneSize;
+      Delete(Widths, 1, CommaPos);
+      Inc(ColIdx);
+    end;
+    if Ini.ReadBool(Sect, 'Maximized', False) then
+      WindowState := wsMaximized;
+  finally
+    Ini.Free;
+  end;
+end;
+
+// Положение в файл настроек: размер «в обычном виде» (и когда окно
+// развёрнуто), развёрнуто ли, разделители, ширина колонок
+procedure TDlgGitHistory.SavePlacement;
+var
+  Ini: TBufIniFile;
+  Place: TWindowPlacement;
+  Sect, Widths: string;
+  ColIdx: Integer;
+begin
+  FPlaceSaved := True;
+  if (FIniFile = '') or not HandleAllocated then
+    Exit;
+  Place.length := SizeOf(Place);
+  if not GetWindowPlacement(Handle, @Place) then
+    Exit;
+  Sect := PlaceSection;
+  Widths := '';
+  for ColIdx := 0 to FCommitList.Columns.Count - 1 do
+  begin
+    if ColIdx > 0 then
+      Widths := Widths + ',';
+    Widths := Widths + IntToStr(FCommitList.Columns[ColIdx].Width);
+  end;
+  Ini := TBufIniFile.Create(FIniFile);
+  try
+    Ini.WriteInteger(Sect, 'Left', Place.rcNormalPosition.Left);
+    Ini.WriteInteger(Sect, 'Top', Place.rcNormalPosition.Top);
+    Ini.WriteInteger(Sect, 'Width', Place.rcNormalPosition.Right -
+      Place.rcNormalPosition.Left);
+    Ini.WriteInteger(Sect, 'Height', Place.rcNormalPosition.Bottom -
+      Place.rcNormalPosition.Top);
+    Ini.WriteBool(Sect, 'Maximized', WindowState = wsMaximized);
+    Ini.WriteInteger(Sect, 'ListWidth', FLeft.Width);
+    Ini.WriteInteger(Sect, 'DetailsHeight', FDetails.Height);
+    Ini.WriteInteger(Sect, 'FilesHeight', FFileList.Height);
+    Ini.WriteString(Sect, 'Columns', Widths);
+  finally
+    Ini.Free;
+  end;
 end;
 
 procedure TDlgGitHistory.SetSchemeProvider(AProvider: TGitSchemeEvent);

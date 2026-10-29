@@ -60,445 +60,445 @@ type
   // показать (TComboBox). nil - нечем: заглушка.
   TDsgMapClassEvent = function(const AClassName: string): TComponentClass
                       of object;
-  TDsgPlaceEvent = procedure(const AParent: string; X, Y, AFormX, AFormY: Integer;
-                             var AHandled: Boolean) of object;
+TDsgPlaceEvent = procedure(const AParent: string; X, Y, AFormX, AFormY: Integer;
+                           var AHandled: Boolean) of object;
 
-  // Маркер изменения размера: окошко 6x6 внутри рамки выделенного компонента
-  TDsgCaret = class(TCustomControl)
-  private
-    FDesigner: TFormDesigner;
-    FIndex: Integer;
-    FActive: Boolean;
-    FFrom: TPoint;
-    FRect: TRect;
-    function CanDrag: Boolean;
-    procedure WMSetCursor(var Message: TWMSetCursor); message WM_SETCURSOR;
+// Маркер изменения размера: окошко 6x6 внутри рамки выделенного компонента
+TDsgCaret = class(TCustomControl)
+private
+  FDesigner: TFormDesigner;
+  FIndex: Integer;
+  FActive: Boolean;
+  FFrom: TPoint;
+  FRect: TRect;
+  function CanDrag: Boolean;
+  procedure WMSetCursor(var Message: TWMSetCursor); message WM_SETCURSOR;
   protected
-    procedure Paint; override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
+  procedure Paint; override;
+  procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
                       X, Y: Integer); override;
+  procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+  procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
+                    X, Y: Integer); override;
   public
-    constructor CreateCaret(AOwner: TComponent; ADesigner: TFormDesigner;
-                            AIndex: Integer);
-  end;
+  constructor CreateCaret(AOwner: TComponent; ADesigner: TFormDesigner;
+                          AIndex: Integer);
+end;
 
-  // Уголок компонента группы: окошко 5x5 поверх формы, как маркер выделения.
-  // Отдельным окном, а не рисованием на самом компоненте: своя отрисовка
-  // компонента (подсветка под мышью и т. п.) его не закрывает. Окно
-  // выключено (Enabled = False) - щелчки проходят к компоненту под ним.
-  TDsgGroupMark = class(TCustomControl)
-  protected
-    procedure Paint; override;
-  end;
+// Уголок компонента группы: окошко 5x5 поверх формы, как маркер выделения.
+// Отдельным окном, а не рисованием на самом компоненте: своя отрисовка
+// компонента (подсветка под мышью и т. п.) его не закрывает. Окно
+// выключено (Enabled = False) - щелчки проходят к компоненту под ним.
+TDsgGroupMark = class(TCustomControl)
+protected
+  procedure Paint; override;
+end;
 
-  // Имя невизуального компонента под его значком (Show component captions).
-  // Как уголки группы - окно формы через ParentWindow, выключенное: в
-  // раскладку формы не входит, щелчки проходят мимо.
-  TDsgIconCaption = class(TCustomControl)
-  protected
-    procedure Paint; override;
-  end;
+// Имя невизуального компонента под его значком (Show component captions).
+// Как уголки группы - окно формы через ParentWindow, выключенное: в
+// раскладку формы не входит, щелчки проходят мимо.
+TDsgIconCaption = class(TCustomControl)
+protected
+  procedure Paint; override;
+end;
 
-  // Значок невизуального компонента (TTimer, TMainMenu, диалоги) в его точке
-  // Left/Top, как в конструкторе Delphi
-  TDsgIcon = class(TCustomControl)
-  private
-    FDesigner: TFormDesigner;
-    FComp: TComponent;
-    FClassName: string;
-    FActive, FMoved: Boolean;
-    FFrom: TPoint;
-    FStart: TPoint;
-    FCaption: TDsgIconCaption;   // принадлежит значку; nil - подписи нет
-    procedure PlaceCaption;
+// Значок невизуального компонента (TTimer, TMainMenu, диалоги) в его точке
+// Left/Top, как в конструкторе Delphi
+TDsgIcon = class(TCustomControl)
+private
+  FDesigner: TFormDesigner;
+  FComp: TComponent;
+  FClassName: string;
+  FActive, FMoved: Boolean;
+  FFrom: TPoint;
+  FStart: TPoint;
+  FCaption: TDsgIconCaption;   // принадлежит значку; nil - подписи нет
+  procedure PlaceCaption;
   public
-    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
+  procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
   protected
-    procedure Paint; override;
-    procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
-    procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
+  procedure Paint; override;
+  procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
                       X, Y: Integer); override;
-  end;
+  procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+  procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
+                    X, Y: Integer); override;
+end;
 
-  // Заглушки для классов, которых в редакторе нет (TComPort, TRichView):
-  // визуальный - серый прямоугольник с подписью, невизуальный - значок
-  TDsgStub = class(TPanel);
-  TDsgNonVisual = class(TComponent);
+// Заглушки для классов, которых в редакторе нет (TComPort, TRichView):
+// визуальный - серый прямоугольник с подписью, невизуальный - значок
+TDsgStub = class(TPanel);
+TDsgNonVisual = class(TComponent);
 
-  TFormDesigner = class
-  private
-    FForm: TForm;
-    FCarets: array[1..8] of TDsgCaret;
-    FSel: TComponent;
-    // Сетка (IDE Options - Designer): шаг по X и Y, показывать ли точки,
-    // привязывать ли к ней перемещение и размер
-    FGridX: Integer;
-    FGridY: Integer;
-    FShowGrid: Boolean;
-    // Кисть-узор сетки: клетка FGridX x FGridY цвета формы с точкой в углу.
-    // Фон формы стирается одной заливкой этой кистью (PaintGrid) - Windows
-    // сама размножает клетку по области перерисовки. Пересоздаётся, когда
-    // меняется шаг или цвет формы.
-    FGridBrush: HBRUSH;
-    FGridBrushColor: TColor;
-    FGridBrushX: Integer;
-    FGridBrushY: Integer;
-    FSnapToGrid: Boolean;
-    // Имена под значками невизуальных компонентов
-    FShowCaptions: Boolean;
-    // Подсказка над компонентом под мышью: «Имя: Класс», с ExtendedHints -
-    // место, размер, TabStop и TabOrder. Своё окно подсказки: Hint самих
-    // компонентов формы - их свойство из .dfm, его не трогаем.
-    FShowHints: Boolean;
-    FExtendedHints: Boolean;
-    FHintWnd: THintWindow;
-    FHintTimer: TTimer;
-    FHintTarget: TComponent;
-    FHintShown: Boolean;
-    FRootName: string;
-    FClassOf: TStringList;    // имя компонента -> класс из .dfm
-    FVisualUnknown: TStringList; // неизвестные классы, у которых есть Width
-    // Сторонние компоненты, показанные классом-аналогом (OnMapClass):
-    // какие классы так прочитаны и какие компоненты так созданы - у них
-    // рамка цвета ForeignColor
-    FOnMapClass: TDsgMapClassEvent;
-    FMapped: TStringList;
-    FForeign: TList;
-    FForeignColor: TColor;
-    // перемещение мышью
-    FDragging, FDragMoved: Boolean;
-    FDragCtl: TControl;
-    FDragFrom: TPoint;
-    FDragRect: TRect;
-    // Пока тянут - компонент на месте, рисуется только рамка будущего
-    // места (XOR, как в Delphi): форма с сеткой перерисовывается один раз,
-    // при отпускании кнопки. FFrames - рамки на экране, FDragNew - новые
-    // места (в координатах родителя): у одного компонента - [0], у группы -
-    // по индексу в FGroup (пустой прямоугольник - не двигается).
-    FFrames: array of TRect;
-    FFramesShown: Boolean;
-    FDragNew: array of TRect;
-    // Выделение рамкой: нажали на пустом месте формы (или с Ctrl - внутри
-    // контейнера) и ведут мышь. Рамка рисуется так же, XOR (FFrames); по
-    // отпусканию в группу идут дети FBandParent, которых рамка задела.
-    FBanding: Boolean;
-    FBandMoved: Boolean;
-    FBandFrom: TPoint;          // точка нажатия, экран
-    FBandRect: TRect;           // рамка сейчас, экран
-    FBandParent: TWinControl;
-    // Журнал перетаскивания (HiLite log): что происходит, пока тянут -
-    // движения мыши, рамки, перерисовки окон формы, смены мест, маркеры.
-    // Включается на время одного переноса или рамки (TraceStart ...
-    // TraceEnd); подробных строк - не больше TraceMaxLines, в конце - итог.
-    // Маркеры и уголки группы переставляются при замороженной форме
-    // (WM_SETREDRAW): каждое окошко, спрятанное или сдвинутое по одному,
-    // заставляло Windows сразу стирать фон под ним - компонент моргал по
-    // 8-10 раз. Места, которые надо перерисовать, копятся в FFreezeRect и
-    // рисуются одним разом в ThawForm.
-    FFreezeDepth: Integer;
-    FFreezeRect: TRect;
-    FDragTrace: Boolean;         // журнал включён (editor.ini, DragTrace)
-    // Замер рамки (всегда, без DragTrace): время рисования рамки и
-    // промежутки между движениями мыши - в счётчиках, в лог одной строкой
-    // при отпускании (TimingReport). Во время переноса лог не пишется.
-    FTimFreq: Int64;             // частота QueryPerformanceCounter
-    FTimFrames: Integer;         // рисований рамки (ToggleDragFrames)
-    FTimFrameSum: Int64;         // их суммарное время, тики счётчика
-    FTimFrameMax: Int64;
-    FTimMoves: Integer;          // движений мыши
-    FTimMoveFirst: Int64;        // время первого и прошлого движения
-    FTimMoveLast: Int64;
-    FTimGapMax: Int64;           // наибольший промежуток между движениями
-    FTimMoveSum: Int64;          // суммарное время обработки движения
-    FTimMoveMax: Int64;
-    FTrace: Boolean;
-    FTraceWhat: string;          // что тянут - в заголовок журнала
-    FTraceHeader: Boolean;       // заголовок уже в журнале
-    FTraceStart: Cardinal;
-    FTraceLines: Integer;
-    FTraceMoves: Integer;
-    FTraceFrames: Integer;
-    FTracePaintRoot: Integer;
-    FTracePaintKids: Integer;
-    FTraceErase: Integer;
-    FTracePos: Integer;
-    FTraceFlush: Integer;
-    FTraceMarks: Integer;
-    FTraceCarets: Integer;
-    FOnSelect: TDsgSelectEvent;
-    FOnChange: TDsgChangeEvent;
-    FOnKey: TDsgKeyEvent;
-    FOnClose: TNotifyEvent;
-    FOnPlace: TDsgPlaceEvent;
-    FOnDblClick: TDsgNameEvent;
-    FOnContext: TDsgPointEvent;
-    FOnPageChange: TDsgPageEvent;
-    FOnBatch: TDsgBatchEvent;
-    FOnGroupChange: TNotifyEvent;
-    // Группа выделенных Shift+щелчком (как в Delphi): первым - главный
-    // (FSel), по нему выравниваются остальные. Пуста или один - группы нет,
-    // выделение обычное, с чёрными маркерами. У группы маркеров нет - у
-    // каждого её компонента уголки (ShowGroupMarks).
-    FGroup: TList;
-    FGroupMarks: TList;           // окошки уголков, по 4 на компонент
-    FGroupDrag: Boolean;          // тянут группу
-    FGroupFrom: array of TRect;   // места компонентов группы до переноса
-    // Компоненты, созданные по коду модуля (runtime): только просмотр -
-    // их не двигают, не растягивают и не пишут в .dfm
-    FRuntime: TList;
-    // Компоненты .dfm, у которых часть места и размера при работе задаёт
-    // код (MarkCodePlaced): строки "адрес компонента=буквы" - L, T, W, H.
-    // С FLockCodePlaced эти координаты не меняются ни мышью, ни маркерами;
-    // без него (по умолчанию, как в Delphi) двигаются и пишутся в .dfm, а
-    // при работе код всё равно ставит своё.
-    FCodePlaced: TStringList;
-    FLockCodePlaced: Boolean;
-    // Идёт установка компонентов из кода (BeginRuntime .. FinishRuntime):
-    // окно не перерисовывается, выравнивание в контейнерах отложено
-    FRtBatch: Boolean;
-    // BeginRuntime выключил перерисовку (WM_SETREDRAW 0): только у видимой
-    // формы. WM_SETREDRAW 1 делает окно видимым (Windows ставит WS_VISIBLE)
-    // - у спрятанной формы второго вида это показывало её недостроенной.
-    FRedrawOff: Boolean;
-    // Прежняя форма при новой загрузке: видна, пока новая строится, и
-    // уходит, когда новую покажут (ShowForm) - без пустого места на экране
-    FOldForm: TForm;
-    FAlignOff: TList;            // кому отложено выравнивание - вернуть
-    // Контролы, скрытые в .dfm или в коде (Visible = False). В
-    // конструкторе они показываются, но обводятся красной рамкой.
-    FHidden: TList;
-    // Видимость по вкладкам: что код показывает и прячет при смене вкладки.
-    // Имена - TPageControl, Objects - TStringList "Компонент=1/0". Правило
-    // здесь сильнее Visible из .dfm (FHidden). См. SetPageRules.
-    FPageRules: TStringList;
-    FRuntimeParent: TComponent;  // родитель для AddRuntime объектом, не именем
-    FLastRuntime: TComponent;    // что создал последний AddRuntime
-    FRefocusing: Boolean; // форма сейчас забирает фокус себе
-    // Компоненты вкладок TTabControl (SetTabMembers): строки - адрес
-    // TTabControl, Objects - TStringList "Имя=номер вкладки"
-    FTabMembers: TStringList;
-    procedure SetGridX(AValue: Integer);
-    procedure SetGridY(AValue: Integer);
-    procedure SetGrid(AValue: Integer);
-    procedure SetShowGrid(AValue: Boolean);
-    procedure SetShowCaptions(AValue: Boolean);
-    procedure SetShowHints(AValue: Boolean);
-    procedure HintTimerTick(Sender: TObject);
-    function  HintTarget(const AScreen: TPoint): TComponent;
-    function  HintText(AComp: TComponent): string;
-    procedure ApplyTabMembers(ATabCtl: TTabControl);
-    procedure LockButtonRows;
-    procedure ToggleGroup(AComp: TComponent);
-    procedure ShowGroupMarks;
-    procedure CommitGroup;
-    procedure SpaceGroup(AHorz: Boolean);
-    function PlaceParent(ATarget: TComponent): TWinControl;
-    procedure ApplyPropText(AObj: TPersistent; const AProp, AValue: string);
-    function PrepareText(const AText: string): string;
-    procedure ReaderFindClass(Reader: TReader; const ClassName: string;
-                              var ComponentClass: TComponentClass);
-    procedure ReaderFindMethod(Reader: TReader; const MethodName: string;
-                               var Address: Pointer; var Error: Boolean);
-    procedure ReaderError(Reader: TReader; const Message: string;
-                          var Handled: Boolean);
-    procedure AfterLoad(AHidden: Boolean);
-    procedure FlushPaint;
-    procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    procedure Clear;
+TFormDesigner = class
+private
+  FForm: TForm;
+  FCarets: array[1..8] of TDsgCaret;
+  FSel: TComponent;
+  // Сетка (IDE Options - Designer): шаг по X и Y, показывать ли точки,
+  // привязывать ли к ней перемещение и размер
+  FGridX: Integer;
+  FGridY: Integer;
+  FShowGrid: Boolean;
+  // Кисть-узор сетки: клетка FGridX x FGridY цвета формы с точкой в углу.
+  // Фон формы стирается одной заливкой этой кистью (PaintGrid) - Windows
+  // сама размножает клетку по области перерисовки. Пересоздаётся, когда
+  // меняется шаг или цвет формы.
+  FGridBrush: HBRUSH;
+  FGridBrushColor: TColor;
+  FGridBrushX: Integer;
+  FGridBrushY: Integer;
+  FSnapToGrid: Boolean;
+  // Имена под значками невизуальных компонентов
+  FShowCaptions: Boolean;
+  // Подсказка над компонентом под мышью: «Имя: Класс», с ExtendedHints -
+  // место, размер, TabStop и TabOrder. Своё окно подсказки: Hint самих
+  // компонентов формы - их свойство из .dfm, его не трогаем.
+  FShowHints: Boolean;
+  FExtendedHints: Boolean;
+  FHintWnd: THintWindow;
+  FHintTimer: TTimer;
+  FHintTarget: TComponent;
+  FHintShown: Boolean;
+  FRootName: string;
+  FClassOf: TStringList;    // имя компонента -> класс из .dfm
+  FVisualUnknown: TStringList; // неизвестные классы, у которых есть Width
+  // Сторонние компоненты, показанные классом-аналогом (OnMapClass):
+  // какие классы так прочитаны и какие компоненты так созданы - у них
+  // рамка цвета ForeignColor
+  FOnMapClass: TDsgMapClassEvent;
+  FMapped: TStringList;
+  FForeign: TList;
+  FForeignColor: TColor;
+  // перемещение мышью
+  FDragging, FDragMoved: Boolean;
+  FDragCtl: TControl;
+  FDragFrom: TPoint;
+  FDragRect: TRect;
+  // Пока тянут - компонент на месте, рисуется только рамка будущего
+  // места (XOR, как в Delphi): форма с сеткой перерисовывается один раз,
+  // при отпускании кнопки. FFrames - рамки на экране, FDragNew - новые
+  // места (в координатах родителя): у одного компонента - [0], у группы -
+  // по индексу в FGroup (пустой прямоугольник - не двигается).
+  FFrames: array of TRect;
+  FFramesShown: Boolean;
+  FDragNew: array of TRect;
+  // Выделение рамкой: нажали на пустом месте формы (или с Ctrl - внутри
+  // контейнера) и ведут мышь. Рамка рисуется так же, XOR (FFrames); по
+  // отпусканию в группу идут дети FBandParent, которых рамка задела.
+  FBanding: Boolean;
+  FBandMoved: Boolean;
+  FBandFrom: TPoint;          // точка нажатия, экран
+  FBandRect: TRect;           // рамка сейчас, экран
+  FBandParent: TWinControl;
+  // Журнал перетаскивания (HiLite log): что происходит, пока тянут -
+  // движения мыши, рамки, перерисовки окон формы, смены мест, маркеры.
+  // Включается на время одного переноса или рамки (TraceStart ...
+  // TraceEnd); подробных строк - не больше TraceMaxLines, в конце - итог.
+  // Маркеры и уголки группы переставляются при замороженной форме
+  // (WM_SETREDRAW): каждое окошко, спрятанное или сдвинутое по одному,
+  // заставляло Windows сразу стирать фон под ним - компонент моргал по
+  // 8-10 раз. Места, которые надо перерисовать, копятся в FFreezeRect и
+  // рисуются одним разом в ThawForm.
+  FFreezeDepth: Integer;
+  FFreezeRect: TRect;
+  FDragTrace: Boolean;         // журнал включён (editor.ini, DragTrace)
+  // Замер рамки (всегда, без DragTrace): время рисования рамки и
+  // промежутки между движениями мыши - в счётчиках, в лог одной строкой
+  // при отпускании (TimingReport). Во время переноса лог не пишется.
+  FTimFreq: Int64;             // частота QueryPerformanceCounter
+  FTimFrames: Integer;         // рисований рамки (ToggleDragFrames)
+  FTimFrameSum: Int64;         // их суммарное время, тики счётчика
+  FTimFrameMax: Int64;
+  FTimMoves: Integer;          // движений мыши
+  FTimMoveFirst: Int64;        // время первого и прошлого движения
+  FTimMoveLast: Int64;
+  FTimGapMax: Int64;           // наибольший промежуток между движениями
+  FTimMoveSum: Int64;          // суммарное время обработки движения
+  FTimMoveMax: Int64;
+  FTrace: Boolean;
+  FTraceWhat: string;          // что тянут - в заголовок журнала
+  FTraceHeader: Boolean;       // заголовок уже в журнале
+  FTraceStart: Cardinal;
+  FTraceLines: Integer;
+  FTraceMoves: Integer;
+  FTraceFrames: Integer;
+  FTracePaintRoot: Integer;
+  FTracePaintKids: Integer;
+  FTraceErase: Integer;
+  FTracePos: Integer;
+  FTraceFlush: Integer;
+  FTraceMarks: Integer;
+  FTraceCarets: Integer;
+  FOnSelect: TDsgSelectEvent;
+  FOnChange: TDsgChangeEvent;
+  FOnKey: TDsgKeyEvent;
+  FOnClose: TNotifyEvent;
+  FOnPlace: TDsgPlaceEvent;
+  FOnDblClick: TDsgNameEvent;
+  FOnContext: TDsgPointEvent;
+  FOnPageChange: TDsgPageEvent;
+  FOnBatch: TDsgBatchEvent;
+  FOnGroupChange: TNotifyEvent;
+  // Группа выделенных Shift+щелчком (как в Delphi): первым - главный
+  // (FSel), по нему выравниваются остальные. Пуста или один - группы нет,
+  // выделение обычное, с чёрными маркерами. У группы маркеров нет - у
+  // каждого её компонента уголки (ShowGroupMarks).
+  FGroup: TList;
+  FGroupMarks: TList;           // окошки уголков, по 4 на компонент
+  FGroupDrag: Boolean;          // тянут группу
+  FGroupFrom: array of TRect;   // места компонентов группы до переноса
+  // Компоненты, созданные по коду модуля (runtime): только просмотр -
+  // их не двигают, не растягивают и не пишут в .dfm
+  FRuntime: TList;
+  // Компоненты .dfm, у которых часть места и размера при работе задаёт
+  // код (MarkCodePlaced): строки "адрес компонента=буквы" - L, T, W, H.
+  // С FLockCodePlaced эти координаты не меняются ни мышью, ни маркерами;
+  // без него (по умолчанию, как в Delphi) двигаются и пишутся в .dfm, а
+  // при работе код всё равно ставит своё.
+  FCodePlaced: TStringList;
+  FLockCodePlaced: Boolean;
+  // Идёт установка компонентов из кода (BeginRuntime .. FinishRuntime):
+  // окно не перерисовывается, выравнивание в контейнерах отложено
+  FRtBatch: Boolean;
+  // BeginRuntime выключил перерисовку (WM_SETREDRAW 0): только у видимой
+  // формы. WM_SETREDRAW 1 делает окно видимым (Windows ставит WS_VISIBLE)
+  // - у спрятанной формы второго вида это показывало её недостроенной.
+  FRedrawOff: Boolean;
+  // Прежняя форма при новой загрузке: видна, пока новая строится, и
+  // уходит, когда новую покажут (ShowForm) - без пустого места на экране
+  FOldForm: TForm;
+  FAlignOff: TList;            // кому отложено выравнивание - вернуть
+  // Контролы, скрытые в .dfm или в коде (Visible = False). В
+  // конструкторе они показываются, но обводятся красной рамкой.
+  FHidden: TList;
+  // Видимость по вкладкам: что код показывает и прячет при смене вкладки.
+  // Имена - TPageControl, Objects - TStringList "Компонент=1/0". Правило
+  // здесь сильнее Visible из .dfm (FHidden). См. SetPageRules.
+  FPageRules: TStringList;
+  FRuntimeParent: TComponent;  // родитель для AddRuntime объектом, не именем
+  FLastRuntime: TComponent;    // что создал последний AddRuntime
+  FRefocusing: Boolean; // форма сейчас забирает фокус себе
+  // Компоненты вкладок TTabControl (SetTabMembers): строки - адрес
+  // TTabControl, Objects - TStringList "Имя=номер вкладки"
+  FTabMembers: TStringList;
+  procedure SetGridX(AValue: Integer);
+  procedure SetGridY(AValue: Integer);
+  procedure SetGrid(AValue: Integer);
+  procedure SetShowGrid(AValue: Boolean);
+  procedure SetShowCaptions(AValue: Boolean);
+  procedure SetShowHints(AValue: Boolean);
+  procedure HintTimerTick(Sender: TObject);
+  function  HintTarget(const AScreen: TPoint): TComponent;
+  function  HintText(AComp: TComponent): string;
+  procedure ApplyTabMembers(ATabCtl: TTabControl);
+  procedure LockButtonRows;
+  procedure ToggleGroup(AComp: TComponent);
+  procedure ShowGroupMarks;
+  procedure CommitGroup;
+  procedure SpaceGroup(AHorz: Boolean);
+  function PlaceParent(ATarget: TComponent): TWinControl;
+  procedure ApplyPropText(AObj: TPersistent; const AProp, AValue: string);
+  function PrepareText(const AText: string): string;
+  procedure ReaderFindClass(Reader: TReader; const ClassName: string;
+                            var ComponentClass: TComponentClass);
+  procedure ReaderFindMethod(Reader: TReader; const MethodName: string;
+                             var Address: Pointer; var Error: Boolean);
+  procedure ReaderError(Reader: TReader; const Message: string;
+                        var Handled: Boolean);
+  procedure AfterLoad(AHidden: Boolean);
+  procedure FlushPaint;
+  procedure FormClose(Sender: TObject; var Action: TCloseAction);
+  procedure Clear;
   public
-    constructor Create;
-    destructor Destroy; override;
-    // AHidden - построить форму, но не показывать (второй вид формы
-    // строится невидимым, потом показывается ShowForm)
-    function Load(const ADfmText: string; var AError: string;
-                  AHidden: Boolean = False): Boolean;
-    // Показать построенную форму: поверх главного окна редактора, с фокусом.
-    // Прежняя форма (была видна, пока строилась новая) после этого уходит.
-    procedure ShowForm;
-    // Прежняя форма больше не нужна, а новую не показывают (спрятана)
-    procedure DropOldForm;
-    // Значение по сетке (если привязка включена): X - по шагу X, Y - по Y
-    function SnapX(V: Integer): Integer;
-    function SnapY(V: Integer): Integer;
-    // Подписи значков - по ShowCaptions
-    procedure UpdateIconCaptions;
-    // Мышь над формой конструктора (точка экрана): подсказка компонента
-    procedure HoverAt(const AScreen: TPoint);
-    procedure HideHint;
-    procedure Select(AComp: TComponent; ANotify: Boolean);
-    // Щелчок по строке меню формы (точка в координатах экрана): меню не
-    // раскрывается, выделяется меню формы, а в инспекторе - пункт под
-    // мышью (OnSelect с его именем)
-    procedure MenuBarClick(const AScreen: TPoint);
-    procedure SelectByName(const AName: string);
-    function SelectedName: string;
-    function SelControl: TControl;
-    procedure ShowCarets;
-    procedure HideCarets;
-    procedure ToggleDragFrames;
-    procedure SetDragFrames(const ANew: array of TRect);
-    procedure ClearDragFrames;
-    function  GetDragging: Boolean;
-    procedure BandSelect;
-    procedure FreezeForm;
-    procedure ThawForm;
-    procedure AddRepaint(const R: TRect);
-    procedure TimingReset;
-    procedure TimingReport(const AWhat: string);
-    procedure TraceStart(const AWhat: string);
-    procedure TraceLine(const AText: string);
-    procedure TraceEnd;
-    procedure TraceMsg(ACtl: TWinControl; const AMsg: TMessage);
-    function  PaintGrid(DC: HDC): Boolean;
-    // от перехватчиков сообщений
-    procedure MouseDown(ATarget: TComponent; const AScreen: TPoint);
-    procedure MouseMove(const AScreen: TPoint);
-    procedure MouseMoveWork(const AScreen: TPoint);
-    procedure MouseUp;
-    procedure KeyDown(AKey: Word);
-    procedure FormMoved;
-    procedure CommitBounds(AComp: TComponent);
-    property Form: TForm read FForm;
-    property RootName: string read FRootName;
-    property Dragging: Boolean read GetDragging;
-    // Журнал переноса в HiLite log: [Designer] DragTrace=1 в editor.ini
-    property DragTrace: Boolean read FDragTrace write FDragTrace;
-    // Шаг сетки по обеим осям (прежнее свойство): чтение - шаг по X
-    property Grid: Integer read FGridX write SetGrid;
-    property GridX: Integer read FGridX write SetGridX;
-    property GridY: Integer read FGridY write SetGridY;
-    property ShowGrid: Boolean read FShowGrid write SetShowGrid;
-    property SnapToGrid: Boolean read FSnapToGrid write FSnapToGrid;
-    property ShowCaptions: Boolean read FShowCaptions write SetShowCaptions;
-    property ShowHints: Boolean read FShowHints write SetShowHints;
-    property ExtendedHints: Boolean read FExtendedHints write FExtendedHints;
-    // Запирать координаты, которые задаёт код (MarkCodePlaced); False -
-    // как в Delphi
-    property LockCodePlaced: Boolean read FLockCodePlaced write FLockCodePlaced;
-    property OnSelect: TDsgSelectEvent read FOnSelect write FOnSelect;
-    property OnChange: TDsgChangeEvent read FOnChange write FOnChange;
-    property OnKey: TDsgKeyEvent read FOnKey write FOnKey;
-    property OnClose: TNotifyEvent read FOnClose write FOnClose;
-    property OnPlace: TDsgPlaceEvent read FOnPlace write FOnPlace;
-    property OnDblClick: TDsgNameEvent read FOnDblClick write FOnDblClick;
-    property OnContext: TDsgPointEvent read FOnContext write FOnContext;
-    property OnPageChange: TDsgPageEvent read FOnPageChange write FOnPageChange;
-    property OnBatch: TDsgBatchEvent read FOnBatch write FOnBatch;
-    // Состав группы изменился (Shift+щелчок)
-    property OnGroupChange: TNotifyEvent read FOnGroupChange write FOnGroupChange;
-    property OnMapClass: TDsgMapClassEvent read FOnMapClass write FOnMapClass;
-    property ForeignColor: TColor read FForeignColor write FForeignColor;
-    // Сколько компонентов в группе; 0 - группы нет
-    function GroupCount: Integer;
-    // Имена выделенных: группы (главный первым) или одного выделенного.
-    // Сама форма и компоненты из кода не входят.
-    procedure GroupNames(ANames: TStrings);
-    function InGroup(AComp: TComponent): Boolean;
-    // Компоненты группы - объектами, включая созданные в коде и безымянные
-    // (значок невизуального - его компонент). Группы нет - пусто.
-    procedure GroupComps(AList: TList);
-    // Группа из компонентов, созданных в коде (кнопки палитры и т. п.).
-    // Группа бывает либо из таких, либо из компонентов .dfm - не вперемешку.
-    // Место таким задаёт код: их не двигают, не выравнивают и в .dfm не
-    // пишут - правятся только свойства (главное окно, editor.ini).
-    function GroupIsRuntime: Boolean;
-    // Выравнивание группы по главному (первому выделенному):
-    // 0 - левые края, 1 - правые, 2 - верх, 3 - низ, 4 - ширина, 5 - высота;
-    // 6, 7 - расставить на равных промежутках по ширине, по высоте
-    // родителя (SpaceGroup)
-    procedure AlignGroup(AKind: Integer);
-    // Правый щелчок по AComp: выделить и попросить главное окно показать
-    // меню конструктора
-    procedure ContextMenu(AComp: TComponent; const AScreen: TPoint);
-    // Двойной щелчок: выделенный компонент - в OnDblClick. Перетаскивание,
-    // начатое вторым нажатием, отменяется.
-    procedure DblClick;
-    // Компонент, созданный в коде: класс, имя переменной, родитель (имя
-    // компонента на форме, '' или имя корня - сама форма) и свойства
-    // "Имя=значение" в записи .dfm. Выражения, которые не разобрать, и
-    // события пропускаются. False - класс неизвестен или родителя нет.
-    function AddRuntime(const AName, AClass, AParent: string;
-                        AProps: TStrings): Boolean;
-    function IsRuntime(AComp: TComponent): Boolean;
-    // Родитель следующих AddRuntime - сам компонент, а не имя: у созданных
-    // в чужом модуле (вкладки палитры внутри TDsgPalette) имени нет.
-    // nil - искать по имени, как раньше.
-    property RuntimeParent: TComponent read FRuntimeParent write FRuntimeParent;
-    property LastRuntime: TComponent read FLastRuntime;
-    // Перед серией AddRuntime: окно перестаёт перерисовываться, выравнивание
-    // во всех контейнерах откладывается до FinishRuntime. Иначе каждое
-    // свойство каждого компонента (Left, Width, Align...) - перерисовка и
-    // пересчёт раскладки родителя: сотни компонентов - секунды.
-    procedure BeginRuntime;
-    // Все компоненты из кода поставлены - пересчитать выравнивание сразу,
-    // во всех контейнерах: иначе оно пересчитывается при первом щелчке
-    // (маркеры выделения - тоже окна на форме), и раскладка прыгает. После
-    // BeginRuntime - вернуть выравнивание и перерисовку.
-    procedure FinishRuntime;
-    // Компонент .dfm, которому код меняет родителя (RichEdit1.Parent :=
-    // FEditHost): ставится туда же, что и в работе. Дальше он только для
-    // просмотра - его Left/Top в .dfm записаны относительно прежнего
-    // родителя, и писать туда новые было бы неверно.
-    function Reparent(const AName, AParent: string): Boolean;
-    procedure MarkRuntime(ACtl: TWinControl);
-    // Серая пунктирная рамка у контейнера без видимой границы (TPanel с
-    // BevelOuter = bvNone и т. п.), как в Delphi: иначе его края на форме
-    // не видны. Только в окне конструктора, в .dfm не пишется.
-    procedure MarkBorderless(ACtl: TWinControl);
-    // Такая же рамка у безоконных детей ACtl, которые сами ничего не рисуют:
-    // плоская TSpeedButton (Flat) - пока над ней нет мыши, TPaintBox,
-    // TImage без картинки. Их рисует ACtl, поэтому и рамка - здесь.
-    procedure MarkInvisibleKids(ACtl: TWinControl);
-    // Компонент .dfm, у которого часть места и размера при работе задаёт
-    // код. ASides - какие координаты: L (Left), T (Top), W (Width),
-    // H (Height). Главное окно ставит их как в живой форме и помечает
-    // здесь: двигать по этой оси и тянуть эту сторону нельзя, остальное -
-    // можно, и в .dfm пишется только оно.
-    procedure MarkCodePlaced(AComp: TComponent; const ASides: string);
-    // Буквы координат, которые задаёт код и которые заперты; '' - никакие
-    // (и всегда '', пока LockCodePlaced = False)
-    function CodePlacedSides(AComp: TComponent): string;
-    // Красная рамка у скрытых: у самого ACtl, если он скрыт, и у его
-    // безоконных детей (TLabel и т. п.) - их рисует ACtl
-    procedure MarkHidden(ACtl: TWinControl);
-    // Рамка цвета ForeignColor у стороннего компонента, показанного
-    // аналогом: у самого ACtl и у его безоконных детей
-    procedure MarkForeign(ACtl: TWinControl);
-    // Компонент формы под точкой экрана: самый верхний, включая
-    // отключённые. Внутренние контролы компонента (кнопки TRadioGroup)
-    // заменяются им самим.
-    function TargetAt(const AScreen: TPoint): TControl;
-    // Видимость компонентов для открытой вкладки APageCtl: строки
-    // "Имя=1" (показан) или "Имя=0" (скрыт). Заменяет прежние правила этого
-    // TPageControl и перерисовывает форму.
-    procedure SetPageRules(const APageCtl: string; ARules: TStrings);
-    // Скрыт ли компонент: по правилу вкладки, если оно есть, иначе по .dfm
-    function MarkedHidden(AC: TControl): Boolean;
-    // Какой компонент на какой вкладке ATabCtl: строки "Имя=номер вкладки".
-    // У TTabControl одна клиентская область на все вкладки, и что на какой
-    // из них, знает только код (палитра - TDsgPalette). Показываются
-    // компоненты открытой вкладки, остальные прячутся - и сразу, и при
-    // щелчке по вкладке в конструкторе. Красной рамки у спрятанных так нет:
-    // они не скрыты, они на другой вкладке.
-    procedure SetTabMembers(ATabCtl: TTabControl; AMembers: TStrings);
-    // Одно свойство одному компоненту - после правки в инспекторе, без
-    // перестройки формы. AComp - имя компонента (созданный в коде назван
-    // по переменной), имя корня - сама форма. AValue - в записи .dfm.
-    // False - компонента на форме нет или свойство так не ставится (Name):
-    // нужна полная перезагрузка.
-    function SetPropText(const AComp, AProp, AValue: string): Boolean;
-    // То же по самому компоненту - и безымянному
-    function SetCompPropText(AComp: TComponent;
-                             const AProp, AValue: string): Boolean;
-    // Перерисовать маркеры выделения и уголки группы (сменился
-    // DsgCaretColor или DsgGroupColor)
-    procedure RepaintCarets;
-  end;
+  constructor Create;
+  destructor Destroy; override;
+  // AHidden - построить форму, но не показывать (второй вид формы
+  // строится невидимым, потом показывается ShowForm)
+  function Load(const ADfmText: string; var AError: string;
+                AHidden: Boolean = False): Boolean;
+  // Показать построенную форму: поверх главного окна редактора, с фокусом.
+  // Прежняя форма (была видна, пока строилась новая) после этого уходит.
+  procedure ShowForm;
+  // Прежняя форма больше не нужна, а новую не показывают (спрятана)
+  procedure DropOldForm;
+  // Значение по сетке (если привязка включена): X - по шагу X, Y - по Y
+  function SnapX(V: Integer): Integer;
+  function SnapY(V: Integer): Integer;
+  // Подписи значков - по ShowCaptions
+  procedure UpdateIconCaptions;
+  // Мышь над формой конструктора (точка экрана): подсказка компонента
+  procedure HoverAt(const AScreen: TPoint);
+  procedure HideHint;
+  procedure Select(AComp: TComponent; ANotify: Boolean);
+  // Щелчок по строке меню формы (точка в координатах экрана): меню не
+  // раскрывается, выделяется меню формы, а в инспекторе - пункт под
+  // мышью (OnSelect с его именем)
+  procedure MenuBarClick(const AScreen: TPoint);
+  procedure SelectByName(const AName: string);
+  function SelectedName: string;
+  function SelControl: TControl;
+  procedure ShowCarets;
+  procedure HideCarets;
+  procedure ToggleDragFrames;
+  procedure SetDragFrames(const ANew: array of TRect);
+  procedure ClearDragFrames;
+  function  GetDragging: Boolean;
+  procedure BandSelect;
+  procedure FreezeForm;
+  procedure ThawForm;
+  procedure AddRepaint(const R: TRect);
+  procedure TimingReset;
+  procedure TimingReport(const AWhat: string);
+  procedure TraceStart(const AWhat: string);
+  procedure TraceLine(const AText: string);
+  procedure TraceEnd;
+  procedure TraceMsg(ACtl: TWinControl; const AMsg: TMessage);
+  function  PaintGrid(DC: HDC): Boolean;
+  // от перехватчиков сообщений
+  procedure MouseDown(ATarget: TComponent; const AScreen: TPoint);
+  procedure MouseMove(const AScreen: TPoint);
+  procedure MouseMoveWork(const AScreen: TPoint);
+  procedure MouseUp;
+  procedure KeyDown(AKey: Word);
+  procedure FormMoved;
+  procedure CommitBounds(AComp: TComponent);
+  property Form: TForm read FForm;
+  property RootName: string read FRootName;
+  property Dragging: Boolean read GetDragging;
+  // Журнал переноса в HiLite log: [Designer] DragTrace=1 в editor.ini
+  property DragTrace: Boolean read FDragTrace write FDragTrace;
+  // Шаг сетки по обеим осям (прежнее свойство): чтение - шаг по X
+  property Grid: Integer read FGridX write SetGrid;
+  property GridX: Integer read FGridX write SetGridX;
+  property GridY: Integer read FGridY write SetGridY;
+  property ShowGrid: Boolean read FShowGrid write SetShowGrid;
+  property SnapToGrid: Boolean read FSnapToGrid write FSnapToGrid;
+  property ShowCaptions: Boolean read FShowCaptions write SetShowCaptions;
+  property ShowHints: Boolean read FShowHints write SetShowHints;
+  property ExtendedHints: Boolean read FExtendedHints write FExtendedHints;
+  // Запирать координаты, которые задаёт код (MarkCodePlaced); False -
+  // как в Delphi
+  property LockCodePlaced: Boolean read FLockCodePlaced write FLockCodePlaced;
+  property OnSelect: TDsgSelectEvent read FOnSelect write FOnSelect;
+  property OnChange: TDsgChangeEvent read FOnChange write FOnChange;
+  property OnKey: TDsgKeyEvent read FOnKey write FOnKey;
+  property OnClose: TNotifyEvent read FOnClose write FOnClose;
+  property OnPlace: TDsgPlaceEvent read FOnPlace write FOnPlace;
+  property OnDblClick: TDsgNameEvent read FOnDblClick write FOnDblClick;
+  property OnContext: TDsgPointEvent read FOnContext write FOnContext;
+  property OnPageChange: TDsgPageEvent read FOnPageChange write FOnPageChange;
+  property OnBatch: TDsgBatchEvent read FOnBatch write FOnBatch;
+  // Состав группы изменился (Shift+щелчок)
+  property OnGroupChange: TNotifyEvent read FOnGroupChange write FOnGroupChange;
+  property OnMapClass: TDsgMapClassEvent read FOnMapClass write FOnMapClass;
+  property ForeignColor: TColor read FForeignColor write FForeignColor;
+  // Сколько компонентов в группе; 0 - группы нет
+  function GroupCount: Integer;
+  // Имена выделенных: группы (главный первым) или одного выделенного.
+  // Сама форма и компоненты из кода не входят.
+  procedure GroupNames(ANames: TStrings);
+  function InGroup(AComp: TComponent): Boolean;
+  // Компоненты группы - объектами, включая созданные в коде и безымянные
+  // (значок невизуального - его компонент). Группы нет - пусто.
+  procedure GroupComps(AList: TList);
+  // Группа из компонентов, созданных в коде (кнопки палитры и т. п.).
+  // Группа бывает либо из таких, либо из компонентов .dfm - не вперемешку.
+  // Место таким задаёт код: их не двигают, не выравнивают и в .dfm не
+  // пишут - правятся только свойства (главное окно, editor.ini).
+  function GroupIsRuntime: Boolean;
+  // Выравнивание группы по главному (первому выделенному):
+  // 0 - левые края, 1 - правые, 2 - верх, 3 - низ, 4 - ширина, 5 - высота;
+  // 6, 7 - расставить на равных промежутках по ширине, по высоте
+  // родителя (SpaceGroup)
+  procedure AlignGroup(AKind: Integer);
+  // Правый щелчок по AComp: выделить и попросить главное окно показать
+  // меню конструктора
+  procedure ContextMenu(AComp: TComponent; const AScreen: TPoint);
+  // Двойной щелчок: выделенный компонент - в OnDblClick. Перетаскивание,
+  // начатое вторым нажатием, отменяется.
+  procedure DblClick;
+  // Компонент, созданный в коде: класс, имя переменной, родитель (имя
+  // компонента на форме, '' или имя корня - сама форма) и свойства
+  // "Имя=значение" в записи .dfm. Выражения, которые не разобрать, и
+  // события пропускаются. False - класс неизвестен или родителя нет.
+  function AddRuntime(const AName, AClass, AParent: string;
+                      AProps: TStrings): Boolean;
+  function IsRuntime(AComp: TComponent): Boolean;
+  // Родитель следующих AddRuntime - сам компонент, а не имя: у созданных
+  // в чужом модуле (вкладки палитры внутри TDsgPalette) имени нет.
+  // nil - искать по имени, как раньше.
+  property RuntimeParent: TComponent read FRuntimeParent write FRuntimeParent;
+  property LastRuntime: TComponent read FLastRuntime;
+  // Перед серией AddRuntime: окно перестаёт перерисовываться, выравнивание
+  // во всех контейнерах откладывается до FinishRuntime. Иначе каждое
+  // свойство каждого компонента (Left, Width, Align...) - перерисовка и
+  // пересчёт раскладки родителя: сотни компонентов - секунды.
+  procedure BeginRuntime;
+  // Все компоненты из кода поставлены - пересчитать выравнивание сразу,
+  // во всех контейнерах: иначе оно пересчитывается при первом щелчке
+  // (маркеры выделения - тоже окна на форме), и раскладка прыгает. После
+  // BeginRuntime - вернуть выравнивание и перерисовку.
+  procedure FinishRuntime;
+  // Компонент .dfm, которому код меняет родителя (RichEdit1.Parent :=
+  // FEditHost): ставится туда же, что и в работе. Дальше он только для
+  // просмотра - его Left/Top в .dfm записаны относительно прежнего
+  // родителя, и писать туда новые было бы неверно.
+  function Reparent(const AName, AParent: string): Boolean;
+  procedure MarkRuntime(ACtl: TWinControl);
+  // Серая пунктирная рамка у контейнера без видимой границы (TPanel с
+  // BevelOuter = bvNone и т. п.), как в Delphi: иначе его края на форме
+  // не видны. Только в окне конструктора, в .dfm не пишется.
+  procedure MarkBorderless(ACtl: TWinControl);
+  // Такая же рамка у безоконных детей ACtl, которые сами ничего не рисуют:
+  // плоская TSpeedButton (Flat) - пока над ней нет мыши, TPaintBox,
+  // TImage без картинки. Их рисует ACtl, поэтому и рамка - здесь.
+  procedure MarkInvisibleKids(ACtl: TWinControl);
+  // Компонент .dfm, у которого часть места и размера при работе задаёт
+  // код. ASides - какие координаты: L (Left), T (Top), W (Width),
+  // H (Height). Главное окно ставит их как в живой форме и помечает
+  // здесь: двигать по этой оси и тянуть эту сторону нельзя, остальное -
+  // можно, и в .dfm пишется только оно.
+  procedure MarkCodePlaced(AComp: TComponent; const ASides: string);
+  // Буквы координат, которые задаёт код и которые заперты; '' - никакие
+  // (и всегда '', пока LockCodePlaced = False)
+  function CodePlacedSides(AComp: TComponent): string;
+  // Красная рамка у скрытых: у самого ACtl, если он скрыт, и у его
+  // безоконных детей (TLabel и т. п.) - их рисует ACtl
+  procedure MarkHidden(ACtl: TWinControl);
+  // Рамка цвета ForeignColor у стороннего компонента, показанного
+  // аналогом: у самого ACtl и у его безоконных детей
+  procedure MarkForeign(ACtl: TWinControl);
+  // Компонент формы под точкой экрана: самый верхний, включая
+  // отключённые. Внутренние контролы компонента (кнопки TRadioGroup)
+  // заменяются им самим.
+  function TargetAt(const AScreen: TPoint): TControl;
+  // Видимость компонентов для открытой вкладки APageCtl: строки
+  // "Имя=1" (показан) или "Имя=0" (скрыт). Заменяет прежние правила этого
+  // TPageControl и перерисовывает форму.
+  procedure SetPageRules(const APageCtl: string; ARules: TStrings);
+  // Скрыт ли компонент: по правилу вкладки, если оно есть, иначе по .dfm
+  function MarkedHidden(AC: TControl): Boolean;
+  // Какой компонент на какой вкладке ATabCtl: строки "Имя=номер вкладки".
+  // У TTabControl одна клиентская область на все вкладки, и что на какой
+  // из них, знает только код (палитра - TDsgPalette). Показываются
+  // компоненты открытой вкладки, остальные прячутся - и сразу, и при
+  // щелчке по вкладке в конструкторе. Красной рамки у спрятанных так нет:
+  // они не скрыты, они на другой вкладке.
+  procedure SetTabMembers(ATabCtl: TTabControl; AMembers: TStrings);
+  // Одно свойство одному компоненту - после правки в инспекторе, без
+  // перестройки формы. AComp - имя компонента (созданный в коде назван
+  // по переменной), имя корня - сама форма. AValue - в записи .dfm.
+  // False - компонента на форме нет или свойство так не ставится (Name):
+  // нужна полная перезагрузка.
+  function SetPropText(const AComp, AProp, AValue: string): Boolean;
+  // То же по самому компоненту - и безымянному
+  function SetCompPropText(AComp: TComponent;
+                           const AProp, AValue: string): Boolean;
+  // Перерисовать маркеры выделения и уголки группы (сменился
+  // DsgCaretColor или DsgGroupColor)
+  procedure RepaintCarets;
+end;
 
 // Точечная правка свойств объекта AName в тексте .dfm. Есть строка
 // свойства на уровне объекта - меняется значение; нет - добавляется сразу
@@ -554,98 +554,98 @@ var
   // цветов IDE (Dsg.GroupMark); после смены - RepaintCarets.
   DsgGroupColor: TColor = $00E07000;
 
-// Отладочная строка в лог главного окна
-procedure DsgLog(const S: string; AColor: TColor = clRed);
+  // Отладочная строка в лог главного окна
+  procedure DsgLog(const S: string; AColor: TColor = clRed);
 
-// Класс объекта AName из его заголовка в .dfm (TButton). '' - нет объекта.
-function DfmObjectClass(const AText, AName: string): string;
+  // Класс объекта AName из его заголовка в .dfm (TButton). '' - нет объекта.
+  function DfmObjectClass(const AText, AName: string): string;
 
-// Значение свойства AProp объекта AName - как записано в .dfm, одной
-// строкой (OnClick = Button1Click -> Button1Click). '' - свойства нет.
-// Ищется только среди своих свойств объекта, не у вложенных.
-function DfmGetProp(const AText, AName, AProp: string): string;
+  // Значение свойства AProp объекта AName - как записано в .dfm, одной
+  // строкой (OnClick = Button1Click -> Button1Click). '' - свойства нет.
+  // Ищется только среди своих свойств объекта, не у вложенных.
+  function DfmGetProp(const AText, AName, AProp: string): string;
 
-// Метод формы: объявление ADecl ("procedure Button1Click(Sender: TObject);")
-// - в первую секцию класса AClassName, после полей и методов, перед первым
-// словом видимости; тело с пустыми begin/end - в конец implementation,
-// перед initialization/finalization или end. модуля. Нет класса - APas.
-function PasAddMethod(const APas, AClassName, ADecl: string): string;
+  // Метод формы: объявление ADecl ("procedure Button1Click(Sender: TObject);")
+  // - в первую секцию класса AClassName, после полей и методов, перед первым
+  // словом видимости; тело с пустыми begin/end - в конец implementation,
+  // перед initialization/finalization или end. модуля. Нет класса - APas.
+  function PasAddMethod(const APas, AClassName, ADecl: string): string;
 
-// Имя родителя объекта AName в тексте .dfm: объект, в чьём блоке он лежит.
-// У детей формы - имя корня. '' - объекта нет или это сам корень.
-function DfmParentOf(const AText, AName: string): string;
+  // Имя родителя объекта AName в тексте .dfm: объект, в чьём блоке он лежит.
+  // У детей формы - имя корня. '' - объекта нет или это сам корень.
+  function DfmParentOf(const AText, AName: string): string;
 
-// Блок object AName ... end с нулевым отступом (для буфера обмена)
-function DfmObjectText(const AText, AName: string): string;
+  // Блок object AName ... end с нулевым отступом (для буфера обмена)
+  function DfmObjectText(const AText, AName: string): string;
 
-// Перенос блока объекта последним (AToFront, поверх соседей) или первым
-// (под соседей) среди детей его родителя: порядок в .dfm - это порядок
-// создания и, значит, Z-порядок
-function DfmMoveObject(const AText, AName: string; AToFront: Boolean): string;
+  // Перенос блока объекта последним (AToFront, поверх соседей) или первым
+  // (под соседей) среди детей его родителя: порядок в .dfm - это порядок
+  // создания и, значит, Z-порядок
+  function DfmMoveObject(const AText, AName: string; AToFront: Boolean): string;
 
-// Вставка первым ребёнком AParent: после его собственных свойств, перед
-// первым вложенным объектом
-function DfmInsertObjectFirst(const AText, AParent, AObjText: string): string;
+  // Вставка первым ребёнком AParent: после его собственных свойств, перед
+  // первым вложенным объектом
+  function DfmInsertObjectFirst(const AText, AParent, AObjText: string): string;
 
-// Модуль AUnit - в uses раздела interface, если его там ещё нет: без
-// ExtCtrls в uses строка "Panel1: TPanel;" не соберётся. Уже есть или uses
-// не найден - APas.
-function PasAddUses(const APas, AUnit: string): string;
+  // Модуль AUnit - в uses раздела interface, если его там ещё нет: без
+  // ExtCtrls в uses строка "Panel1: TPanel;" не соберётся. Уже есть или uses
+  // не найден - APas.
+  function PasAddUses(const APas, AUnit: string): string;
 
-// Идентификатор AIdent встречается в тексте как отдельное слово (без учёта
-// регистра). Для подбора свободного имени компонента.
-function PasHasIdent(const APas, AIdent: string): Boolean;
+  // Идентификатор AIdent встречается в тексте как отдельное слово (без учёта
+  // регистра). Для подбора свободного имени компонента.
+  function PasHasIdent(const APas, AIdent: string): Boolean;
 
-// Поля компонентов из объявления класса формы AClassName в тексте модуля:
-// строки вида "Button1: TButton;". В строке "A, B: TLabel;" убирается
-// только нужное имя. Обработчики событий и код не трогаются.
-function PasRemoveFields(const APas, AClassName: string;
-                         ANames: TStrings): string;
+  // Поля компонентов из объявления класса формы AClassName в тексте модуля:
+  // строки вида "Button1: TButton;". В строке "A, B: TLabel;" убирается
+  // только нужное имя. Обработчики событий и код не трогаются.
+  function PasRemoveFields(const APas, AClassName: string;
+                           ANames: TStrings): string;
 
-// Переименование компонента AOld в ANew в тексте .dfm: заголовок object и
-// свойства-ссылки, значение которых - одно это имя (FocusControl = Label1,
-// PopupMenu = PopupMenu1), в том числе внутри коллекций. AHandlers - пары
-// "старый обработчик=новый": значения событий с такими именами тоже
-// меняются (у всех компонентов, которые делят обработчик). Нет объекта -
-// AText.
-function DfmRenameObject(const AText, AOld, ANew: string;
-                         AHandlers: TStrings): string;
+  // Переименование компонента AOld в ANew в тексте .dfm: заголовок object и
+  // свойства-ссылки, значение которых - одно это имя (FocusControl = Label1,
+  // PopupMenu = PopupMenu1), в том числе внутри коллекций. AHandlers - пары
+  // "старый обработчик=новый": значения событий с такими именами тоже
+  // меняются (у всех компонентов, которые делят обработчик). Нет объекта -
+  // AText.
+  function DfmRenameObject(const AText, AOld, ANew: string;
+                           AHandlers: TStrings): string;
 
-// Обработчики объекта AName с именами по образцу Delphi - имя компонента и
-// событие без On (Button1Click для OnClick): пары "Button1Click=
-// btnOkClick" для нового имени ANew - в APairs. Другие имена не трогаются.
-procedure DfmHandlerRenames(const AText, AName, ANew: string;
-                            APairs: TStrings);
+  // Обработчики объекта AName с именами по образцу Delphi - имя компонента и
+  // событие без On (Button1Click для OnClick): пары "Button1Click=
+  // btnOkClick" для нового имени ANew - в APairs. Другие имена не трогаются.
+  procedure DfmHandlerRenames(const AText, AName, ANew: string;
+                              APairs: TStrings);
 
-// Смена класса объекта AName в .dfm на ANewClass. Свои свойства объекта,
-// которых у нового класса нет, убираются, их имена - в ARemoved
-// ("Label1.Layout"). Свойство считается своим у класса по первой части
-// имени до точки (Font у Font.Name). Свойства, которые класс пишет сам
-// (Items.Strings, Lines.Strings - не published), остаются, если новый
-// класс - наследник старого; иначе убираются. Вложенные объекты остаются.
-function DfmReplaceClass(const AText, AName: string;
-                         AOldClass, ANewClass: TClass;
-                         ARemoved: TStrings): string;
+  // Смена класса объекта AName в .dfm на ANewClass. Свои свойства объекта,
+  // которых у нового класса нет, убираются, их имена - в ARemoved
+  // ("Label1.Layout"). Свойство считается своим у класса по первой части
+  // имени до точки (Font у Font.Name). Свойства, которые класс пишет сам
+  // (Items.Strings, Lines.Strings - не published), остаются, если новый
+  // класс - наследник старого; иначе убираются. Вложенные объекты остаются.
+  function DfmReplaceClass(const AText, AName: string;
+                           AOldClass, ANewClass: TClass;
+                           ARemoved: TStrings): string;
 
-// Тип поля компонента AName в объявлении класса формы AClassName:
-// "Label1: TLabel;" -> "Label1: TButton;". В строке "A, B: TLabel;" имя
-// выносится отдельным полем. Нет поля - APas.
-function PasSetFieldType(const APas, AClassName, AName, AType: string): string;
+  // Тип поля компонента AName в объявлении класса формы AClassName:
+  // "Label1: TLabel;" -> "Label1: TButton;". В строке "A, B: TLabel;" имя
+  // выносится отдельным полем. Нет поля - APas.
+  function PasSetFieldType(const APas, AClassName, AName, AType: string): string;
 
-// Замена идентификатора AOld на ANew во всём тексте модуля - только как
-// отдельного слова, без учёта регистра, вне строк и комментариев.
-// AUnqualified: после точки имя меняется только у Self. (Self.Button1) -
-// Form2.Button1 относится к другому компоненту; так переименовываются
-// поля. Без него меняется и после точки (TForm1.Button1Click) - так
-// переименовываются методы.
-function PasRenameIdent(const APas, AOld, ANew: string;
-                        AUnqualified: Boolean): string;
+  // Замена идентификатора AOld на ANew во всём тексте модуля - только как
+  // отдельного слова, без учёта регистра, вне строк и комментариев.
+  // AUnqualified: после точки имя меняется только у Self. (Self.Button1) -
+  // Form2.Button1 относится к другому компоненту; так переименовываются
+  // поля. Без него меняется и после точки (TForm1.Button1Click) - так
+  // переименовываются методы.
+  function PasRenameIdent(const APas, AOld, ANew: string;
+                          AUnqualified: Boolean): string;
 
-implementation
+  implementation
 
-uses
-  TypInfo, Buttons, Menus, UiScroll,
-  Math;   // Min, Max - рамка выделения
+  uses
+    TypInfo, Buttons, Menus, UiScroll,
+    Math;   // Min, Max - рамка выделения
 
 const
   CaretSize = 6;
@@ -662,12 +662,12 @@ type
     FCtl: TWinControl;
     FPrev: TWndMethod;
     procedure WndProc(var Msg: TMessage);
-  public
+    public
     constructor CreateHook(ACtl: TWinControl; ADesigner: TFormDesigner);
     destructor Destroy; override;
   end;
 
-// Отступ строки пробелами
+  // Отступ строки пробелами
 function LeadSpaces(const S: string): Integer;
 begin
   Result := 0;
@@ -740,35 +740,35 @@ begin
 
   case V[1] of
     '(':
-      while (LastCh(V) <> ')') and (I + 1 < SL.Count) do
-      begin
-        Inc(I);
-        V := Trim(SL[I]);
-      end;
+    while (LastCh(V) <> ')') and (I + 1 < SL.Count) do
+    begin
+      Inc(I);
+      V := Trim(SL[I]);
+    end;
     '{':
-      while (LastCh(V) <> '}') and (I + 1 < SL.Count) do
+    while (LastCh(V) <> '}') and (I + 1 < SL.Count) do
+    begin
+      Inc(I);
+      V := Trim(SL[I]);
+    end;
+    '<':
+    if V <> '<>' then
+    begin
+      // Коллекция: item ... end внутри, бывают вложенные коллекции.
+      // Пустая вложенная (Columns = <>) глубину не меняет.
+      D := 1;
+      while (D > 0) and (I + 1 < SL.Count) do
       begin
         Inc(I);
         V := Trim(SL[I]);
+        if Copy(V, Length(V) - 1, 2) = '<>' then
+          // пустая коллекция - ничего
+        else if LastCh(V) = '>' then
+          Dec(D)
+        else if LastCh(V) = '<' then
+          Inc(D);
       end;
-    '<':
-      if V <> '<>' then
-      begin
-        // Коллекция: item ... end внутри, бывают вложенные коллекции.
-        // Пустая вложенная (Columns = <>) глубину не меняет.
-        D := 1;
-        while (D > 0) and (I + 1 < SL.Count) do
-        begin
-          Inc(I);
-          V := Trim(SL[I]);
-          if Copy(V, Length(V) - 1, 2) = '<>' then
-            // пустая коллекция - ничего
-          else if LastCh(V) = '>' then
-            Dec(D)
-          else if LastCh(V) = '<' then
-            Inc(D);
-        end;
-      end;
+    end;
   else
     // Строка, склеенная из частей через +
     while (LastCh(V) = '+') and (I + 1 < SL.Count) do
@@ -961,7 +961,7 @@ end;
 const
   TraceMaxLines = 400;
 
-// Прямоугольник строкой - для журнала
+  // Прямоугольник строкой - для журнала
 function DsgRectText(const R: TRect): string;
 begin
   Result := Format('(%d,%d)-(%d,%d)', [R.Left, R.Top, R.Right, R.Bottom]);
@@ -1880,94 +1880,94 @@ begin
     WM_RBUTTONDOWN:
       Exit;
     WM_RBUTTONUP:
-      begin
-        Pt := Point(SmallInt(LoWord(Msg.LParam)), SmallInt(HiWord(Msg.LParam)));
-        Target := FDesigner.TargetAt(FCtl.ClientToScreen(Pt));
-        FDesigner.ContextMenu(Target, FCtl.ClientToScreen(Pt));
-        Exit;
-      end;
+    begin
+      Pt := Point(SmallInt(LoWord(Msg.LParam)), SmallInt(HiWord(Msg.LParam)));
+      Target := FDesigner.TargetAt(FCtl.ClientToScreen(Pt));
+      FDesigner.ContextMenu(Target, FCtl.ClientToScreen(Pt));
+      Exit;
+    end;
     WM_CONTEXTMENU:
       Exit;
 
     WM_PAINT:
-      begin
-        FPrev(Msg);
-        if FDesigner.IsRuntime(FCtl) then
-          FDesigner.MarkRuntime(FCtl)
-        else if not IsRoot then
-          FDesigner.MarkBorderless(FCtl);
-        FDesigner.MarkInvisibleKids(FCtl);
-        FDesigner.MarkHidden(FCtl);
-        FDesigner.MarkForeign(FCtl);
-        Exit;
-      end;
+    begin
+      FPrev(Msg);
+      if FDesigner.IsRuntime(FCtl) then
+        FDesigner.MarkRuntime(FCtl)
+      else if not IsRoot then
+        FDesigner.MarkBorderless(FCtl);
+      FDesigner.MarkInvisibleKids(FCtl);
+      FDesigner.MarkHidden(FCtl);
+      FDesigner.MarkForeign(FCtl);
+      Exit;
+    end;
 
     WM_LBUTTONDOWN, WM_LBUTTONDBLCLK:
+    begin
+      Pt := Point(SmallInt(LoWord(Msg.LParam)), SmallInt(HiWord(Msg.LParam)));
+      // Щелчок по TLabel, TSpeedButton и другим безоконным приходит их
+      // родителю - компонент ищем по точке. От корня формы, а не от
+      // окна, получившего щелчок: над отключённой кнопкой щелчок
+      // получает окно ПОД ней (Windows отключённые окна пропускает),
+      // например кнопка соседнего TRadioGroup.
+      Target := FDesigner.TargetAt(FCtl.ClientToScreen(Pt));
+      SetCapture(FCtl.Handle);
+      FDesigner.MouseDown(Target, FCtl.ClientToScreen(Pt));
+      if Msg.Msg = WM_LBUTTONDBLCLK then
       begin
-        Pt := Point(SmallInt(LoWord(Msg.LParam)), SmallInt(HiWord(Msg.LParam)));
-        // Щелчок по TLabel, TSpeedButton и другим безоконным приходит их
-        // родителю - компонент ищем по точке. От корня формы, а не от
-        // окна, получившего щелчок: над отключённой кнопкой щелчок
-        // получает окно ПОД ней (Windows отключённые окна пропускает),
-        // например кнопка соседнего TRadioGroup.
-        Target := FDesigner.TargetAt(FCtl.ClientToScreen(Pt));
-        SetCapture(FCtl.Handle);
-        FDesigner.MouseDown(Target, FCtl.ClientToScreen(Pt));
-        if Msg.Msg = WM_LBUTTONDBLCLK then
-        begin
-          FDesigner.DblClick;
-          Exit;
-        end;
-        // Вкладки переключаются и в конструкторе - как у Delphi: иначе до
-        // компонентов на других страницах не добраться
-        if (FCtl is TPageControl) and (Target = FCtl) and
-           (TPageControl(FCtl).IndexOfTabAt(Pt.X, Pt.Y) >= 0) then
-        begin
-          ReleaseCapture;
-          OldPage := TPageControl(FCtl).ActivePageIndex;
-          FPrev(Msg);
-          // Вкладка сменилась внутри FPrev (TCN_SELCHANGE обрабатывается
-          // сразу) - сообщить: видимость компонентов по вкладке
-          if (TPageControl(FCtl).ActivePageIndex <> OldPage) and
-             Assigned(FDesigner.FOnPageChange) then
-            FDesigner.FOnPageChange(FCtl.Name,
-                                    TPageControl(FCtl).ActivePageIndex);
-        end;
-        // TTabControl - так же; какие компоненты на открытой вкладке,
-        // задано SetTabMembers
-        if (FCtl is TTabControl) and (Target = FCtl) and
-           (TTabControl(FCtl).IndexOfTabAt(Pt.X, Pt.Y) >= 0) then
-        begin
-          ReleaseCapture;
-          OldPage := TTabControl(FCtl).TabIndex;
-          FPrev(Msg);
-          if TTabControl(FCtl).TabIndex <> OldPage then
-            FDesigner.ApplyTabMembers(TTabControl(FCtl));
-        end;
+        FDesigner.DblClick;
         Exit;
       end;
+      // Вкладки переключаются и в конструкторе - как у Delphi: иначе до
+      // компонентов на других страницах не добраться
+      if (FCtl is TPageControl) and (Target = FCtl) and
+         (TPageControl(FCtl).IndexOfTabAt(Pt.X, Pt.Y) >= 0) then
+      begin
+        ReleaseCapture;
+        OldPage := TPageControl(FCtl).ActivePageIndex;
+        FPrev(Msg);
+        // Вкладка сменилась внутри FPrev (TCN_SELCHANGE обрабатывается
+        // сразу) - сообщить: видимость компонентов по вкладке
+        if (TPageControl(FCtl).ActivePageIndex <> OldPage) and
+           Assigned(FDesigner.FOnPageChange) then
+          FDesigner.FOnPageChange(FCtl.Name,
+                                  TPageControl(FCtl).ActivePageIndex);
+      end;
+      // TTabControl - так же; какие компоненты на открытой вкладке,
+      // задано SetTabMembers
+      if (FCtl is TTabControl) and (Target = FCtl) and
+         (TTabControl(FCtl).IndexOfTabAt(Pt.X, Pt.Y) >= 0) then
+      begin
+        ReleaseCapture;
+        OldPage := TTabControl(FCtl).TabIndex;
+        FPrev(Msg);
+        if TTabControl(FCtl).TabIndex <> OldPage then
+          FDesigner.ApplyTabMembers(TTabControl(FCtl));
+      end;
+      Exit;
+    end;
 
     WM_MOUSEMOVE:
+    begin
+      Pt := Point(SmallInt(LoWord(Msg.LParam)),
+                  SmallInt(HiWord(Msg.LParam)));
+      if FDesigner.Dragging then
       begin
-        Pt := Point(SmallInt(LoWord(Msg.LParam)),
-                    SmallInt(HiWord(Msg.LParam)));
-        if FDesigner.Dragging then
-        begin
-          FDesigner.HideHint;
-          FDesigner.MouseMove(FCtl.ClientToScreen(Pt));
-        end
-        else
-          FDesigner.HoverAt(FCtl.ClientToScreen(Pt));
-        Exit;
-      end;
+        FDesigner.HideHint;
+        FDesigner.MouseMove(FCtl.ClientToScreen(Pt));
+      end
+      else
+        FDesigner.HoverAt(FCtl.ClientToScreen(Pt));
+      Exit;
+    end;
 
     WM_LBUTTONUP:
-      begin
-        if GetCapture = FCtl.Handle then
-          ReleaseCapture;
-        FDesigner.MouseUp;
-        Exit;
-      end;
+    begin
+      if GetCapture = FCtl.Handle then
+        ReleaseCapture;
+      FDesigner.MouseUp;
+      Exit;
+    end;
 
     // Правая кнопка и контекстное меню разобраны выше
     WM_RBUTTONDBLCLK, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MBUTTONDBLCLK:
@@ -1977,91 +1977,91 @@ begin
     // выделяет пункт в инспекторе, как в Delphi
     WM_NCLBUTTONDOWN, WM_NCLBUTTONDBLCLK:
       if IsRoot and (Msg.WParam = HTMENU) then
-      begin
-        FDesigner.MenuBarClick(Point(SmallInt(LoWord(Msg.LParam)),
-                                     SmallInt(HiWord(Msg.LParam))));
-        Exit;
-      end;
+    begin
+      FDesigner.MenuBarClick(Point(SmallInt(LoWord(Msg.LParam)),
+                                   SmallInt(HiWord(Msg.LParam))));
+      Exit;
+    end;
 
     // Alt и F10 тоже раскрыли бы меню формы
     WM_SYSCOMMAND:
       if IsRoot and ((Msg.WParam and $FFF0) = SC_KEYMENU) then
-        Exit;
+      Exit;
 
     CN_KEYDOWN:
-      // Приходит от IsKeyMsg до разбора горячих клавиш меню. Result = 1 -
-      // клавиша обработана: ни меню главного окна, ни WM_KEYDOWN её не
-      // получат. Остальные клавиши (Ctrl+S и т. д.) идут в меню как обычно.
+    // Приходит от IsKeyMsg до разбора горячих клавиш меню. Result = 1 -
+    // клавиша обработана: ни меню главного окна, ни WM_KEYDOWN её не
+    // получат. Остальные клавиши (Ctrl+S и т. д.) идут в меню как обычно.
       if DsgOwnKey(Msg.WParam) then
-      begin
-        FDesigner.KeyDown(Msg.WParam);
-        Msg.Result := 1;
-        Exit;
-      end;
+    begin
+      FDesigner.KeyDown(Msg.WParam);
+      Msg.Result := 1;
+      Exit;
+    end;
 
     WM_KEYDOWN:
-      begin
-        FDesigner.KeyDown(Msg.WParam);
-        Exit;
-      end;
+    begin
+      FDesigner.KeyDown(Msg.WParam);
+      Exit;
+    end;
 
     WM_CHAR, WM_KEYUP:
       Exit;
 
     WM_SETFOCUS:
-      // Фокус у контрола на форме конструктора - это мигающая каретка в
-      // поле и перехваченные клавиши. Возвращаем его форме, но не прямо из
-      // обработчика фокуса, а следом, сообщением. Пока форма забирает
-      // фокус (FRefocusing), ответный WM_SETFOCUS контрола не учитываем,
-      // иначе пара WM_SETFOCUS - WM_DSG_FOCUS идёт по кругу.
+    // Фокус у контрола на форме конструктора - это мигающая каретка в
+    // поле и перехваченные клавиши. Возвращаем его форме, но не прямо из
+    // обработчика фокуса, а следом, сообщением. Пока форма забирает
+    // фокус (FRefocusing), ответный WM_SETFOCUS контрола не учитываем,
+    // иначе пара WM_SETFOCUS - WM_DSG_FOCUS идёт по кругу.
       if not IsRoot and not FDesigner.FRefocusing then
-        PostMessage(FDesigner.Form.Handle, WM_DSG_FOCUS, 0, 0);
+      PostMessage(FDesigner.Form.Handle, WM_DSG_FOCUS, 0, 0);
 
     WM_DSG_FOCUS:
       if IsRoot then
-      begin
-        FDesigner.FRefocusing := True;
-        try
-          FDesigner.Form.ActiveControl := nil;
-          Windows.SetFocus(FCtl.Handle);
-        finally
-          FDesigner.FRefocusing := False;
-        end;
-        Exit;
+    begin
+      FDesigner.FRefocusing := True;
+      try
+        FDesigner.Form.ActiveControl := nil;
+        Windows.SetFocus(FCtl.Handle);
+      finally
+        FDesigner.FRefocusing := False;
       end;
+      Exit;
+    end;
 
     WM_ERASEBKGND:
       if IsRoot then
-      begin
-        // Фон с сеткой - одной заливкой; без сетки - обычное стирание
-        if FDesigner.PaintGrid(HDC(Msg.WParam)) then
-          Msg.Result := 1
-        else
-          FPrev(Msg);
-        Exit;
-      end;
+    begin
+      // Фон с сеткой - одной заливкой; без сетки - обычное стирание
+      if FDesigner.PaintGrid(HDC(Msg.WParam)) then
+        Msg.Result := 1
+      else
+        FPrev(Msg);
+      Exit;
+    end;
 
     WM_EXITSIZEMOVE:
       if IsRoot then
-      begin
-        FPrev(Msg);
-        FDesigner.FormMoved;
-        Exit;
-      end;
+    begin
+      FPrev(Msg);
+      FDesigner.FormMoved;
+      Exit;
+    end;
 
     WM_SIZE:
-      // Размер формы поменялся - выровненные компоненты (alRight,
-      // alClient) встали по-новому. Раскладка делается внутри обработки
-      // WM_SIZE (Realign), поэтому маркеры - после неё. Маркеры в
-      // раскладке формы не участвуют и сами за компонентом не едут.
+    // Размер формы поменялся - выровненные компоненты (alRight,
+    // alClient) встали по-новому. Раскладка делается внутри обработки
+    // WM_SIZE (Realign), поэтому маркеры - после неё. Маркеры в
+    // раскладке формы не участвуют и сами за компонентом не едут.
       if IsRoot then
-      begin
-        FPrev(Msg);
-        if ((FDesigner.FCarets[1] <> nil) and FDesigner.FCarets[1].Visible) or
-           (FDesigner.GroupCount > 1) then
-          FDesigner.ShowCarets;
-        Exit;
-      end;
+    begin
+      FPrev(Msg);
+      if ((FDesigner.FCarets[1] <> nil) and FDesigner.FCarets[1].Visible) or
+         (FDesigner.GroupCount > 1) then
+        FDesigner.ShowCarets;
+      Exit;
+    end;
   end;
 
   FPrev(Msg);
@@ -2765,7 +2765,7 @@ const
   DWMWA_TRANSITIONS_FORCEDISABLED = 3;
 type
   TDwmSetWindowAttribute = function(AHwnd: HWND; AAttribute: DWORD;
-    AValue: Pointer; ASize: DWORD): HResult; stdcall;
+                                    AValue: Pointer; ASize: DWORD): HResult; stdcall;
 var
   DwmLib: HMODULE;
   SetAttr: TDwmSetWindowAttribute;
@@ -3046,15 +3046,15 @@ begin
   begin
     Ctl := TControl(AComp);
     Result := Result + #13#10 + Format('Origin: %d, %d; Size: %d x %d',
-      [Ctl.Left, Ctl.Top, Ctl.Width, Ctl.Height]);
+                                       [Ctl.Left, Ctl.Top, Ctl.Width, Ctl.Height]);
     if (Ctl is TWinControl) and (Ctl <> FForm) then
       Result := Result + #13#10 + Format('Tab Stop: %s; Order: %d',
-        [BoolToStr(TWinControl(Ctl).TabStop, True),
-         TWinControl(Ctl).TabOrder]);
+                                         [BoolToStr(TWinControl(Ctl).TabStop, True),
+                                         TWinControl(Ctl).TabOrder]);
   end
   else
     Result := Result + #13#10 + Format('Origin: %d, %d',
-      [LongRec(AComp.DesignInfo).Lo, LongRec(AComp.DesignInfo).Hi]);
+                                       [LongRec(AComp.DesignInfo).Lo, LongRec(AComp.DesignInfo).Hi]);
 end;
 
 procedure TFormDesigner.HideHint;
@@ -3688,33 +3688,33 @@ begin
     case PI^.PropType^^.Kind of
       tkInteger:
         if IdentToColor(V, C) then
-          SetOrdProp(AObj, PI, C)
-        else if TryStrToInt(V, N) then
-          SetOrdProp(AObj, PI, N);
+        SetOrdProp(AObj, PI, C)
+      else if TryStrToInt(V, N) then
+        SetOrdProp(AObj, PI, N);
       tkChar:
         if (Length(V) = 3) and (V[1] = '''') then
-          SetOrdProp(AObj, PI, Ord(V[2]));
+        SetOrdProp(AObj, PI, Ord(V[2]));
       tkEnumeration:
-        begin
-          N := GetEnumValue(PI^.PropType^, V);
-          if N >= 0 then
-            SetOrdProp(AObj, PI, N);
-        end;
+      begin
+        N := GetEnumValue(PI^.PropType^, V);
+        if N >= 0 then
+          SetOrdProp(AObj, PI, N);
+      end;
       tkSet:
         if (V[1] = '[') and (V[Length(V)] = ']') then
-          SetSetProp(AObj, PI, Copy(V, 2, Length(V) - 2));
+        SetSetProp(AObj, PI, Copy(V, 2, Length(V) - 2));
       tkString, tkLString, tkWString:
         if (Length(V) >= 2) and (V[1] = '''') and (V[Length(V)] = '''') then
-        begin
-          S := Copy(V, 2, Length(V) - 2);
-          S := StringReplace(S, '''''', '''', [rfReplaceAll]);
-          SetStrProp(AObj, PI, S);
-        end;
+      begin
+        S := Copy(V, 2, Length(V) - 2);
+        S := StringReplace(S, '''''', '''', [rfReplaceAll]);
+        SetStrProp(AObj, PI, S);
+      end;
       tkFloat:
-        begin
-          S := StringReplace(V, '.', DecimalSeparator, []);
-          SetFloatProp(AObj, PI, StrToFloat(S));
-        end;
+      begin
+        S := StringReplace(V, '.', DecimalSeparator, []);
+        SetFloatProp(AObj, PI, StrToFloat(S));
+      end;
     end;
   except
     // выражение или значение не того типа - пропускаем
@@ -3744,10 +3744,10 @@ begin
      ((AProps.IndexOfName('Width') >= 0) or (AProps.IndexOfName('Height') >= 0)) then
   begin
     DsgLog('2969: runtime ' + AName + ': класс ' + AClass +
-           ' неизвестен - заглушка', clGray);
-    Cls := TDsgStub;
-    if AName <> '' then
-      FClassOf.Values[AName] := AClass;
+    ' неизвестен - заглушка', clGray);
+           Cls := TDsgStub;
+           if AName <> '' then
+           FClassOf.Values[AName] := AClass;
   end;
   if (Cls = nil) or not Cls.InheritsFrom(TComponent) then
   begin
@@ -3758,8 +3758,8 @@ begin
   if Cls.InheritsFrom(TCustomForm) then
   begin
     DsgLog('2983: runtime ' + AName + ': ' + AClass + ' - отдельное окно, ' +
-           'не показываем', clGray);
-    Exit;
+    'не показываем', clGray);
+           Exit;
   end;
 
   if FRuntimeParent <> nil then
@@ -3885,8 +3885,8 @@ begin
   if not (C is TControl) or not (P is TWinControl) then
   begin
     DsgLog('3110: перенос ' + AName + ' в ' + AParent + ': не найден ' +
-           'компонент или родитель');
-    Exit;
+    'компонент или родитель');
+           Exit;
   end;
   if DsgLogVerbose then
     DsgLog('3115: перенос ' + AName + ' в ' + AParent, clNavy);
@@ -4702,17 +4702,17 @@ begin
     P := C.Parent.ScreenToClient(RefR.TopLeft);
     case AKind of
       0: if Pos('L', Code) = 0 then
-           OffsetRect(R, P.X - R.Left, 0);
+        OffsetRect(R, P.X - R.Left, 0);
       1: if Pos('L', Code) = 0 then
-           OffsetRect(R, P.X + Ref.Width - R.Right, 0);
+        OffsetRect(R, P.X + Ref.Width - R.Right, 0);
       2: if Pos('T', Code) = 0 then
-           OffsetRect(R, 0, P.Y - R.Top);
+        OffsetRect(R, 0, P.Y - R.Top);
       3: if Pos('T', Code) = 0 then
-           OffsetRect(R, 0, P.Y + Ref.Height - R.Bottom);
+        OffsetRect(R, 0, P.Y + Ref.Height - R.Bottom);
       4: if Pos('W', Code) = 0 then
-           R.Right := R.Left + Ref.Width;
+        R.Right := R.Left + Ref.Width;
       5: if Pos('H', Code) = 0 then
-           R.Bottom := R.Top + Ref.Height;
+        R.Bottom := R.Top + Ref.Height;
     end;
     if AKind in [0..3] then
       ClampToParent(C.Parent, R, False);
@@ -4727,13 +4727,13 @@ type
   // место для детей - ниже подписи
   TDsgClientCrack = class(TWinControl);
 
-// Расставить группу по родителю на равных промежутках: по ширине (AHorz)
-// или по высоте. Промежутки одинаковые и между компонентами, и от краёв
-// родителя (его места для детей). Порядок - как стоят сейчас (слева
-// направо, сверху вниз), размеры не меняются, другая ось не трогается.
-// Участвуют компоненты с тем же родителем, что у главного (первого
-// выделенного), без Align и не те, чьё место по этой оси задаёт код.
-// Не помещаются - промежутки нулевые, ряд идёт от края.
+  // Расставить группу по родителю на равных промежутках: по ширине (AHorz)
+  // или по высоте. Промежутки одинаковые и между компонентами, и от краёв
+  // родителя (его места для детей). Порядок - как стоят сейчас (слева
+  // направо, сверху вниз), размеры не меняются, другая ось не трогается.
+  // Участвуют компоненты с тем же родителем, что у главного (первого
+  // выделенного), без Align и не те, чьё место по этой оси задаёт код.
+  // Не помещаются - промежутки нулевые, ряд идёт от края.
 procedure TFormDesigner.SpaceGroup(AHorz: Boolean);
 var
   Par: TWinControl;
@@ -4772,8 +4772,8 @@ begin
     if Items.Count < 2 then
     begin
       DsgLog('3990: расстановка: подходящих компонентов меньше двух ' +
-             '(нужен общий родитель, без Align)', clGray);
-      Exit;
+      '(нужен общий родитель, без Align)', clGray);
+             Exit;
     end;
 
     // Порядок - по нынешнему месту
@@ -4944,7 +4944,7 @@ end;
 // Одна строка замера после переноса; без движений мыши - ничего
 procedure TFormDesigner.TimingReport(const AWhat: string);
 
-  // Тики счётчика - в миллисекунды с десятыми
+// Тики счётчика - в миллисекунды с десятыми
   function Ms(ATicks: Int64): string;
   begin
     if FTimFreq <= 0 then
@@ -4965,12 +4965,12 @@ begin
   else
     FrameAvg := 0;
   DsgLog(Format('3804: %s - движений мыши %d за %s мс, промежуток между ' +
-                'ними: средний %s мс, наибольший %s мс; обработка ' +
-                'движения: средняя %s мс, наибольшая %s мс; рисований ' +
-                'рамки %d: среднее %s мс, наибольшее %s мс',
+  'ними: средний %s мс, наибольший %s мс; обработка ' +
+  'движения: средняя %s мс, наибольшая %s мс; рисований ' +
+  'рамки %d: среднее %s мс, наибольшее %s мс',
                 [AWhat, FTimMoves, Ms(FTimMoveLast - FTimMoveFirst),
-                 Ms(GapAvg), Ms(FTimGapMax), Ms(MoveAvg), Ms(FTimMoveMax),
-                 FTimFrames, Ms(FrameAvg), Ms(FTimFrameMax)]), clNavy);
+                Ms(GapAvg), Ms(FTimGapMax), Ms(MoveAvg), Ms(FTimMoveMax),
+                FTimFrames, Ms(FrameAvg), Ms(FTimFrameMax)]), clNavy);
 end;
 
 procedure TFormDesigner.TraceStart(const AWhat: string);
@@ -5010,8 +5010,8 @@ begin
   if FTraceLines = TraceMaxLines then
   begin
     DsgLog('3801: перенос: дальше подробные строки не пишутся, итог - в ' +
-           'конце', clNavy);
-    Exit;
+    'конце', clNavy);
+           Exit;
   end;
   DsgLog(Format('3802: %5d мс  %s', [GetTickCount - FTraceStart, AText]),
          clGray);
@@ -5025,12 +5025,12 @@ begin
   if FTraceMoves = 0 then
     Exit;   // щелчок без движения
   DsgLog(Format('3803: перенос - итог за %d мс: движений мыши %d, ' +
-                'перерисовок рамки %d, WM_PAINT формы %d, WM_PAINT ' +
-                'компонентов %d, WM_ERASEBKGND %d, смен места окон %d, ' +
-                'FlushPaint %d, ShowGroupMarks %d, маркеров (Show/Hide) %d',
+  'перерисовок рамки %d, WM_PAINT формы %d, WM_PAINT ' +
+  'компонентов %d, WM_ERASEBKGND %d, смен места окон %d, ' +
+  'FlushPaint %d, ShowGroupMarks %d, маркеров (Show/Hide) %d',
                 [GetTickCount - FTraceStart, FTraceMoves, FTraceFrames,
-                 FTracePaintRoot, FTracePaintKids, FTraceErase, FTracePos,
-                 FTraceFlush, FTraceMarks, FTraceCarets]), clNavy);
+                FTracePaintRoot, FTracePaintKids, FTraceErase, FTracePos,
+                FTraceFlush, FTraceMarks, FTraceCarets]), clNavy);
 end;
 
 // Сообщения окон формы во время переноса: кто перерисовывается и что
@@ -5042,31 +5042,31 @@ var
 begin
   case AMsg.Msg of
     WM_PAINT:
-      begin
-        if ACtl = FForm then
-          Inc(FTracePaintRoot)
-        else
-          Inc(FTracePaintKids);
-        if not GetUpdateRect(ACtl.Handle, Upd, False) then
-          Upd := Rect(0, 0, 0, 0);
-        TraceLine('WM_PAINT ' + ACtl.Name + ' ' + DsgRectText(Upd));
-      end;
+    begin
+      if ACtl = FForm then
+        Inc(FTracePaintRoot)
+      else
+        Inc(FTracePaintKids);
+      if not GetUpdateRect(ACtl.Handle, Upd, False) then
+        Upd := Rect(0, 0, 0, 0);
+      TraceLine('WM_PAINT ' + ACtl.Name + ' ' + DsgRectText(Upd));
+    end;
     WM_ERASEBKGND:
-      begin
-        Inc(FTraceErase);
-        TraceLine('WM_ERASEBKGND ' + ACtl.Name);
-      end;
+    begin
+      Inc(FTraceErase);
+      TraceLine('WM_ERASEBKGND ' + ACtl.Name);
+    end;
     WM_WINDOWPOSCHANGED:
+    begin
+      WinPos := PWindowPos(AMsg.LParam);
+      if (WinPos <> nil) and ((WinPos^.flags and SWP_NOMOVE) = 0) then
       begin
-        WinPos := PWindowPos(AMsg.LParam);
-        if (WinPos <> nil) and ((WinPos^.flags and SWP_NOMOVE) = 0) then
-        begin
-          Inc(FTracePos);
-          TraceLine(Format('WM_WINDOWPOSCHANGED %s -> %d,%d %dx%d',
-                           [ACtl.Name, WinPos^.x, WinPos^.y, WinPos^.cx,
-                            WinPos^.cy]));
-        end;
+        Inc(FTracePos);
+        TraceLine(Format('WM_WINDOWPOSCHANGED %s -> %d,%d %dx%d',
+                         [ACtl.Name, WinPos^.x, WinPos^.y, WinPos^.cx,
+                         WinPos^.cy]));
       end;
+    end;
   end;
 end;
 
@@ -5163,7 +5163,7 @@ begin
   // почему группа не собирается
   if GetKeyState(VK_SHIFT) < 0 then
     DsgLog('3771: Shift+щелчок: под мышью ' + DsgCompName(ATarget) +
-           ', выделен ' + DsgCompName(FSel) + ', из кода: ' +
+    ', выделен ' + DsgCompName(FSel) + ', из кода: ' +
            BoolToStr(IsRuntime(ATarget), True) + ' / ' +
            BoolToStr(IsRuntime(FSel), True) + ', в группе ' +
            IntToStr(FGroup.Count), clNavy);
@@ -5181,8 +5181,8 @@ begin
     else
       DsgLog('3788: Shift+щелчок: ' + DsgCompName(ATarget) + ' и ' +
              DsgCompName(FSel) + ' - один из .dfm, другой из кода, в одну ' +
-             'группу их не взять', clNavy);
-    Exit;
+      'группу их не взять', clNavy);
+             Exit;
   end;
 
   // Щелчок по компоненту группы - тянут всю группу; выделение не меняется
@@ -5198,7 +5198,7 @@ begin
     FDragging := True;
     FDragMoved := False;
     TraceStart(Format('группа из %d, тянут за %s', [FGroup.Count,
-                                                   FDragCtl.Name]));
+                      FDragCtl.Name]));
     Exit;
   end;
 
@@ -5481,21 +5481,21 @@ begin
       // размер: у alTop/alBottom высота, у alLeft/alRight ширина
       case C.Align of
         alTop, alBottom:
-          begin
-            if Pos('H', Code) > 0 then
-              Exit;
-            L.Add('Height=' + IntToStr(C.Height));
-            FOnChange(C.Name, L);
+        begin
+          if Pos('H', Code) > 0 then
             Exit;
-          end;
+          L.Add('Height=' + IntToStr(C.Height));
+          FOnChange(C.Name, L);
+          Exit;
+        end;
         alLeft, alRight:
-          begin
-            if Pos('W', Code) > 0 then
-              Exit;
-            L.Add('Width=' + IntToStr(C.Width));
-            FOnChange(C.Name, L);
+        begin
+          if Pos('W', Code) > 0 then
             Exit;
-          end;
+          L.Add('Width=' + IntToStr(C.Width));
+          FOnChange(C.Name, L);
+          Exit;
+        end;
         alNone: ;
       else
         Exit;
@@ -5796,62 +5796,63 @@ begin
   Idx := 1;
   Copied := 1;
   while Idx <= Len do
-    case APas[Idx] of
-      '{':
-        begin
-          while (Idx <= Len) and (APas[Idx] <> '}') do
-            Inc(Idx);
-          Inc(Idx);
-        end;
-      '(':
-        if (Idx < Len) and (APas[Idx + 1] = '*') then
-        begin
-          Inc(Idx, 2);
-          while (Idx < Len) and
-                not ((APas[Idx] = '*') and (APas[Idx + 1] = ')')) do
-            Inc(Idx);
-          Inc(Idx, 2);
-        end
-        else
-          Inc(Idx);
-      '/':
-        if (Idx < Len) and (APas[Idx + 1] = '/') then
-        begin
-          while (Idx <= Len) and not (APas[Idx] in [#13, #10]) do
-            Inc(Idx);
-        end
-        else
-          Inc(Idx);
-      '''':
-        begin
-          Inc(Idx);
-          while (Idx <= Len) and (APas[Idx] <> '''') do
-            Inc(Idx);
-          Inc(Idx);
-        end;
-      '0'..'9', '$', '#':
-        begin
-          Inc(Idx);
-          while (Idx <= Len) and (APas[Idx] in IdChars) do
-            Inc(Idx);
-        end;
-      'A'..'Z', 'a'..'z', '_':
-        begin
-          TokStart := Idx;
-          while (Idx <= Len) and (APas[Idx] in IdChars) do
-            Inc(Idx);
-          if (Idx - TokStart = Length(AOld)) and
-             (CompareText(Copy(APas, TokStart, Idx - TokStart), AOld) = 0) and
-             QualOk(TokStart) then
-          begin
-            Result := Result + Copy(APas, Copied, TokStart - Copied) + ANew;
-            Copied := Idx;
-          end;
-        end;
-    else
+  case APas[Idx] of
+    '{':
+    begin
+      while (Idx <= Len) and (APas[Idx] <> '}') do
+        Inc(Idx);
       Inc(Idx);
     end;
+    '(':
+    if (Idx < Len) and (APas[Idx + 1] = '*') then
+    begin
+      Inc(Idx, 2);
+      while (Idx < Len) and
+            not ((APas[Idx] = '*') and (APas[Idx + 1] = ')')) do
+        Inc(Idx);
+      Inc(Idx, 2);
+    end
+  else
+    Inc(Idx);
+    '/':
+    if (Idx < Len) and (APas[Idx + 1] = '/') then
+    begin
+      while (Idx <= Len) and not (APas[Idx] in [#13, #10]) do
+        Inc(Idx);
+    end
+  else
+    Inc(Idx);
+    '''':
+    begin
+      Inc(Idx);
+      while (Idx <= Len) and (APas[Idx] <> '''') do
+        Inc(Idx);
+      Inc(Idx);
+    end;
+    '0'..'9', '$', '#':
+    begin
+      Inc(Idx);
+      while (Idx <= Len) and (APas[Idx] in IdChars) do
+        Inc(Idx);
+    end;
+    'A'..'Z', 'a'..'z', '_':
+    begin
+      TokStart := Idx;
+      while (Idx <= Len) and (APas[Idx] in IdChars) do
+        Inc(Idx);
+      if (Idx - TokStart = Length(AOld)) and
+         (CompareText(Copy(APas, TokStart, Idx - TokStart), AOld) = 0) and
+         QualOk(TokStart) then
+      begin
+        Result := Result + Copy(APas, Copied, TokStart - Copied) + ANew;
+        Copied := Idx;
+      end;
+    end;
+  else
+    Inc(Idx);
+  end;
   Result := Result + Copy(APas, Copied, MaxInt);
 end;
 
 end.
+

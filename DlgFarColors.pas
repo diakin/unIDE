@@ -191,22 +191,25 @@ begin
       end;
     ColFore, ColBack:
       begin
+        // Цвет - квадратиком во всю ячейку (без #RRGGBB); фон панели -
+        // квадратик его цвета и подпись
         SwatchRect := Classes.Rect(Rect.Left + 4, Rect.Top + 3,
-          Rect.Left + 4 + SwatchWidth, Rect.Bottom - 3);
+          Rect.Right - 4, Rect.Bottom - 3);
         if (ACol = ColBack) and (Rule.Back = clNone) then
         begin
+          SwatchRect.Right := Rect.Left + 4 + SwatchWidth;
           GridCanvas.Brush.Color := FarPanelBackColor;
           CellText := 'фон панели';
         end
         else if ACol = ColBack then
         begin
           GridCanvas.Brush.Color := Rule.Back;
-          CellText := FarColorToText(Rule.Back);
+          CellText := '';
         end
         else
         begin
           GridCanvas.Brush.Color := Rule.Fore;
-          CellText := FarColorToText(Rule.Fore);
+          CellText := '';
         end;
         GridCanvas.FillRect(SwatchRect);
         GridCanvas.Brush.Color := Fore;

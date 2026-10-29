@@ -14,6 +14,9 @@ unit FarFtp;
 //    (TFarFtpThread): сеть может отвечать долго. Соединение (TFarFtpConn)
 //    живёт, пока панель на FTP, и переиспользуется; разорвано сервером -
 //    поток соединяется заново один раз;
+//  - операции с файлами (TFarFtpJob, свой поток): скачать / закачать с
+//    подпапками (ход по байтам, прерывание), перенос, удаление, новая
+//    папка, переименование;
 //  - имена файлов приходят байтами сервера (функции WinInet *A): байты
 //    хранятся как есть (Raw - для команд серверу), для показа - UTF-8,
 //    если байты - верный UTF-8, иначе - кодировка Windows (cp1251).
@@ -96,6 +99,89 @@ type
     property ErrorText: string read FErrorText;
     property Warning: string read FWarning;
     property Finished: Boolean read GetFinished;
+  end;
+
+  // Операции с файлами на сервере (TFarFtpJob)
+  TFarFtpJobKind = (fjDownload, fjUpload, fjDelete, fjMkDir, fjRename);
+
+  // Что взять: на сервере - Raw (имя байтами в RemoteDir), на диске -
+  // Local (имя в LocalDir)
+  TFarFtpJobItem = record
+    Raw: string;
+    Local: WideString;
+    IsDir: Boolean;
+    Size: Int64;
+    Time: TFileTime;
+  end;
+  TFarFtpJobItems = array of TFarFtpJobItem;
+
+  // Шаг плана: файл или папка с полными путями
+  TFarFtpStep = record
+    Remote: string;          // путь на сервере (байтами)
+    Local: WideString;       // путь на диске
+    IsDir: Boolean;
+    Size: Int64;
+    Time: TFileTime;
+  end;
+  TFarFtpSteps = array of TFarFtpStep;
+
+  // Задача потока: скачать / закачать (с подпапками), удалить, создать
+  // папку, переименовать. Ход - Progress (байты, имя файла); Cancel -
+  // прервать (соединение закрывается, недокачанный файл удаляется)
+  TFarFtpJob = class(TThread)
+  private
+    FConn: TFarFtpConn;
+    FHost: TFarFtpHost;
+    FKind: TFarFtpJobKind;
+    FRemoteDir: string;
+    FLocalDir: WideString;
+    FItems: TFarFtpJobItems;
+    FNewName: string;        // fjMkDir - имя папки, fjRename - новое имя
+    FMoveSource: Boolean;    // перенос: после копирования удалить исходные
+    FSteps: TFarFtpSteps;
+    FLock: TRTLCriticalSection;
+    FBytesDone: Int64;
+    FBytesTotal: Int64;
+    FFilesDone: Integer;
+    FFilesTotal: Integer;
+    FCurName: WideString;
+    FErrorText: string;
+    FFinished: Integer;
+    FCancelled: Integer;
+    function GetFinished: Boolean;
+    function GetCancelled: Boolean;
+    procedure SetCur(const AName: WideString);
+    procedure AddDone(ABytes: Int64);
+    function Fail(const AWhat: string): Boolean;
+    function EnsureConnected: Boolean;
+    function ListAbs(const ADir: string; var AEntries: TFarFtpEntries): Boolean;
+    function PlanRemote(const ARemote: string; const ALocal: WideString;
+      AIsDir: Boolean; ASize: Int64; const ATime: TFileTime): Boolean;
+    function PlanLocal(const ALocal: WideString; const ARemote: string;
+      AIsDir: Boolean; ASize: Int64): Boolean;
+    function GetFile(const AStep: TFarFtpStep): Boolean;
+    function PutFile(const AStep: TFarFtpStep): Boolean;
+    procedure RunDownload;
+    procedure RunUpload;
+    procedure RunDelete;
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(AConn: TFarFtpConn; const AHost: TFarFtpHost;
+      AKind: TFarFtpJobKind; const ARemoteDir: string;
+      const ALocalDir: WideString; const AItems: TFarFtpJobItems;
+      const ANewName: string; AMoveSource: Boolean);
+    destructor Destroy; override;
+    procedure Cancel;
+    // Ход: байты (всего - 0, пока план не готов), файлы, имя текущего
+    procedure Progress(var ADone, ATotal: Int64; var AFiles,
+      AFilesTotal: Integer; var AName: WideString);
+    property Conn: TFarFtpConn read FConn;
+    property Kind: TFarFtpJobKind read FKind;
+    property ErrorText: string read FErrorText;
+    property Finished: Boolean read GetFinished;
+    property Cancelled: Boolean read GetCancelled;
+    property FilesDone: Integer read FFilesDone;
   end;
 
 // Адреса: чтение и запись editor.ini ([FarFtp])
@@ -728,7 +814,10 @@ begin
     Result := PAnsiChar(@DirBuffer[0]);
 end;
 
-function TFarFtpThread.DoConnect: Boolean;
+// Соединиться с адресом AHost (прежнее соединение закрывается). False -
+// не вышло, AError - почему
+function FtpConnectConn(AConn: TFarFtpConn; const AHost: TFarFtpHost;
+  var AError: string): Boolean;
 var
   Timeout: DWORD;
   User, Password: string;
@@ -736,48 +825,54 @@ var
   Flags: DWORD;
 begin
   Result := False;
-  FConn.Close;
-  FConn.FSession := FtpInternetOpen('unIDE FAR', FtpOpenTypeDirect, nil, nil,
+  AConn.Close;
+  AConn.FSession := FtpInternetOpen('unIDE FAR', FtpOpenTypeDirect, nil, nil,
     0);
-  if FConn.FSession = nil then
+  if AConn.FSession = nil then
   begin
-    FErrorText := FtpErrorText(GetLastError);
+    AError := FtpErrorText(GetLastError);
     Exit;
   end;
   Timeout := FtpTimeoutMs;
-  FtpInternetSetOption(FConn.FSession, FtpOptionConnectTimeout, @Timeout,
+  FtpInternetSetOption(AConn.FSession, FtpOptionConnectTimeout, @Timeout,
     SizeOf(Timeout));
-  FtpInternetSetOption(FConn.FSession, FtpOptionSendTimeout, @Timeout,
+  FtpInternetSetOption(AConn.FSession, FtpOptionSendTimeout, @Timeout,
     SizeOf(Timeout));
-  FtpInternetSetOption(FConn.FSession, FtpOptionReceiveTimeout, @Timeout,
+  FtpInternetSetOption(AConn.FSession, FtpOptionReceiveTimeout, @Timeout,
     SizeOf(Timeout));
-  if FHost.User = '' then
+  if AHost.User = '' then
   begin
     User := 'anonymous';
     Password := 'unide@';
   end
   else
   begin
-    User := FtpWideToMultiStr(FtpCpAnsi, FHost.User);
-    Password := FtpWideToMultiStr(FtpCpAnsi, FHost.Password);
+    User := FtpWideToMultiStr(FtpCpAnsi, AHost.User);
+    Password := FtpWideToMultiStr(FtpCpAnsi, AHost.Password);
   end;
-  if FHost.Port > 0 then
-    Port := FHost.Port
+  if AHost.Port > 0 then
+    Port := AHost.Port
   else
     Port := FarFtpDefaultPort;
   Flags := 0;
-  if FHost.Passive then
+  if AHost.Passive then
     Flags := FtpFlagPassive;
-  FConn.FConnect := FtpInternetConnect(FConn.FSession, PAnsiChar(FHost.Host),
+  AConn.FConnect := FtpInternetConnect(AConn.FSession, PAnsiChar(AHost.Host),
     Port, PAnsiChar(User), PAnsiChar(Password), FtpServiceFtp, Flags, 0);
-  if FConn.FConnect = nil then
+  if AConn.FConnect = nil then
   begin
-    FErrorText := FtpErrorText(GetLastError);
-    FConn.Close;
+    AError := FtpErrorText(GetLastError);
+    AConn.Close;
     Exit;
   end;
-  FLoginDir := FtpCurrentDir(FConn.FConnect);
   Result := True;
+end;
+
+function TFarFtpThread.DoConnect: Boolean;
+begin
+  Result := FtpConnectConn(FConn, FHost, FErrorText);
+  if Result then
+    FLoginDir := FtpCurrentDir(FConn.FConnect);
 end;
 
 function TFarFtpThread.DoList: Boolean;
@@ -885,6 +980,687 @@ begin
     end;
     if FCancelled <> 0 then
       FErrorText := 'прервано';
+  finally
+    InterlockedExchange(FFinished, 1);
+  end;
+end;
+
+
+// ---------------------------------------------------------------------------
+//  Операции с файлами на сервере (TFarFtpJob): план (все файлы и папки с
+//  полными путями, подпапки - обходом), затем выполнение по плану. Файлы
+//  идут блоками через FtpOpenFile / InternetReadFile / InternetWriteFile
+//  (ход по байтам); на диске - W-функции (имена в Unicode).
+// ---------------------------------------------------------------------------
+
+type
+  TFtpFindDataW = record
+    dwFileAttributes: DWORD;
+    ftCreationTime: TFileTime;
+    ftLastAccessTime: TFileTime;
+    ftLastWriteTime: TFileTime;
+    nFileSizeHigh: DWORD;
+    nFileSizeLow: DWORD;
+    dwReserved0: DWORD;
+    dwReserved1: DWORD;
+    cFileName: array[0..MAX_PATH - 1] of WideChar;
+    cAlternateFileName: array[0..13] of WideChar;
+  end;
+
+const
+  FtpTransferBinary = 2;            // FTP_TRANSFER_TYPE_BINARY
+  FtpBlockSize = 65536;
+
+function FtpOpenFile(AConnect: Pointer; AFileName: PAnsiChar; AAccess,
+  AFlags, AContext: DWORD): Pointer; stdcall;
+  external 'wininet.dll' name 'FtpOpenFileA';
+function FtpReadFile(AFile: Pointer; ABuffer: Pointer; AToRead: DWORD;
+  var ARead: DWORD): BOOL; stdcall;
+  external 'wininet.dll' name 'InternetReadFile';
+function FtpWriteFile(AFile: Pointer; ABuffer: Pointer; AToWrite: DWORD;
+  var AWritten: DWORD): BOOL; stdcall;
+  external 'wininet.dll' name 'InternetWriteFile';
+function FtpMakeDir(AConnect: Pointer; ADir: PAnsiChar): BOOL; stdcall;
+  external 'wininet.dll' name 'FtpCreateDirectoryA';
+function FtpRemoveDir(AConnect: Pointer; ADir: PAnsiChar): BOOL; stdcall;
+  external 'wininet.dll' name 'FtpRemoveDirectoryA';
+function FtpDeleteFile(AConnect: Pointer; AFileName: PAnsiChar): BOOL; stdcall;
+  external 'wininet.dll' name 'FtpDeleteFileA';
+function FtpRenameFile(AConnect: Pointer; AExisting, ANew: PAnsiChar): BOOL;
+  stdcall; external 'wininet.dll' name 'FtpRenameFileA';
+function FtpLocalCreate(AFileName: PWideChar; AAccess, AShare: DWORD;
+  ASecurity: Pointer; ACreation, AFlags: DWORD; ATemplate: THandle): THandle;
+  stdcall; external 'kernel32.dll' name 'CreateFileW';
+function FtpLocalMakeDir(APath: PWideChar; ASecurity: Pointer): BOOL; stdcall;
+  external 'kernel32.dll' name 'CreateDirectoryW';
+function FtpLocalDelete(AFileName: PWideChar): BOOL; stdcall;
+  external 'kernel32.dll' name 'DeleteFileW';
+function FtpLocalRemoveDir(APath: PWideChar): BOOL; stdcall;
+  external 'kernel32.dll' name 'RemoveDirectoryW';
+function FtpLocalFindFirst(AFileName: PWideChar;
+  var AFindData: TFtpFindDataW): THandle; stdcall;
+  external 'kernel32.dll' name 'FindFirstFileW';
+function FtpLocalFindNext(AFind: THandle;
+  var AFindData: TFtpFindDataW): BOOL; stdcall;
+  external 'kernel32.dll' name 'FindNextFileW';
+function FtpLocalAttr(AFileName: PWideChar): DWORD; stdcall;
+  external 'kernel32.dll' name 'GetFileAttributesW';
+function FtpLocalSetAttr(AFileName: PWideChar; AAttr: DWORD): BOOL; stdcall;
+  external 'kernel32.dll' name 'SetFileAttributesW';
+
+function FtpWithBackslash(const APath: WideString): WideString;
+begin
+  if (APath = '') or (APath[Length(APath)] = '\') then
+    Result := APath
+  else
+    Result := APath + '\';
+end;
+
+function FtpTimeEmpty(const ATime: TFileTime): Boolean;
+begin
+  Result := (ATime.dwLowDateTime = 0) and (ATime.dwHighDateTime = 0);
+end;
+
+constructor TFarFtpJob.Create(AConn: TFarFtpConn; const AHost: TFarFtpHost;
+  AKind: TFarFtpJobKind; const ARemoteDir: string;
+  const ALocalDir: WideString; const AItems: TFarFtpJobItems;
+  const ANewName: string; AMoveSource: Boolean);
+var
+  ItemIdx: Integer;
+begin
+  FConn := AConn;
+  FHost := AHost;
+  FKind := AKind;
+  FRemoteDir := ARemoteDir;
+  FLocalDir := ALocalDir;
+  SetLength(FItems, Length(AItems));
+  for ItemIdx := 0 to High(AItems) do
+    FItems[ItemIdx] := AItems[ItemIdx];
+  FNewName := ANewName;
+  FMoveSource := AMoveSource;
+  FSteps := nil;
+  InitializeCriticalSection(FLock);
+  FBytesDone := 0;
+  FBytesTotal := 0;
+  FFilesDone := 0;
+  FFilesTotal := 0;
+  FCurName := '';
+  FErrorText := '';
+  FFinished := 0;
+  FCancelled := 0;
+  FreeOnTerminate := False;
+  inherited Create(False);
+end;
+
+destructor TFarFtpJob.Destroy;
+begin
+  inherited Destroy;
+  DeleteCriticalSection(FLock);
+end;
+
+function TFarFtpJob.GetFinished: Boolean;
+begin
+  Result := FFinished <> 0;
+end;
+
+function TFarFtpJob.GetCancelled: Boolean;
+begin
+  Result := FCancelled <> 0;
+end;
+
+procedure TFarFtpJob.Cancel;
+begin
+  InterlockedExchange(FCancelled, 1);
+  FConn.Close;
+end;
+
+procedure TFarFtpJob.Progress(var ADone, ATotal: Int64; var AFiles,
+  AFilesTotal: Integer; var AName: WideString);
+begin
+  EnterCriticalSection(FLock);
+  try
+    ADone := FBytesDone;
+    ATotal := FBytesTotal;
+    AFiles := FFilesDone;
+    AFilesTotal := FFilesTotal;
+    AName := FCurName;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+procedure TFarFtpJob.SetCur(const AName: WideString);
+begin
+  EnterCriticalSection(FLock);
+  try
+    FCurName := AName;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+procedure TFarFtpJob.AddDone(ABytes: Int64);
+begin
+  EnterCriticalSection(FLock);
+  try
+    Inc(FBytesDone, ABytes);
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+// Ошибка: текст - что делали и ответ сервера / Windows. Всегда False
+function TFarFtpJob.Fail(const AWhat: string): Boolean;
+var
+  ErrorCode: DWORD;
+begin
+  ErrorCode := GetLastError;
+  if FCancelled <> 0 then
+    FErrorText := 'прервано'
+  else if ErrorCode <> 0 then
+    FErrorText := AWhat + ': ' + FtpErrorText(ErrorCode)
+  else
+    FErrorText := AWhat;
+  Result := False;
+end;
+
+// Соединение живо (PWD отвечает) - дальше с ним; нет - соединиться заново
+function TFarFtpJob.EnsureConnected: Boolean;
+begin
+  Result := FConn.Connected and (FtpCurrentDir(FConn.FConnect) <> '');
+  if not Result then
+    Result := FtpConnectConn(FConn, FHost, FErrorText);
+end;
+
+// Содержимое папки сервера ADir (полный путь)
+function TFarFtpJob.ListAbs(const ADir: string;
+  var AEntries: TFarFtpEntries): Boolean;
+var
+  FindHandle: Pointer;
+  FindData: TFtpFindData;
+  Entry: TFarFtpEntry;
+  ErrorCode: DWORD;
+  Count: Integer;
+begin
+  Result := False;
+  AEntries := nil;
+  if not FtpSetCurrentDir(FConn.FConnect, PAnsiChar(ADir)) then
+  begin
+    Fail('папка ' + ADir);
+    Exit;
+  end;
+  FillChar(FindData, SizeOf(FindData), 0);
+  FindHandle := FtpFindFirst(FConn.FConnect, nil, FindData,
+    FtpFlagReload or FtpFlagNoCacheWrite, 0);
+  if FindHandle = nil then
+  begin
+    ErrorCode := GetLastError;
+    Result := ErrorCode = FtpErrorNoMoreFiles;
+    if not Result then
+    begin
+      SetLastError(ErrorCode);
+      Fail('список ' + ADir);
+    end;
+    Exit;
+  end;
+  Count := 0;
+  try
+    repeat
+      Entry.Raw := PAnsiChar(@FindData.cFileName[0]);
+      if (Entry.Raw <> '') and (Entry.Raw <> '.') and (Entry.Raw <> '..') then
+      begin
+        Entry.Name := FarFtpDecode(Entry.Raw);
+        Entry.Attr := FindData.dwFileAttributes;
+        Entry.IsDir := (FindData.dwFileAttributes and
+          FILE_ATTRIBUTE_DIRECTORY) <> 0;
+        Entry.Size := Int64(FindData.nFileSizeHigh) shl 32 or
+          FindData.nFileSizeLow;
+        Entry.Time := FindData.ftLastWriteTime;
+        SetLength(AEntries, Count + 1);
+        AEntries[Count] := Entry;
+        Inc(Count);
+      end;
+      FillChar(FindData, SizeOf(FindData), 0);
+    until (FCancelled <> 0) or not FtpFindNext(FindHandle, FindData);
+  finally
+    FtpInternetCloseHandle(FindHandle);
+  end;
+  Result := FCancelled = 0;
+end;
+
+// План с сервера: шаг ARemote; у папки - её содержимое (после неё)
+function TFarFtpJob.PlanRemote(const ARemote: string; const ALocal: WideString;
+  AIsDir: Boolean; ASize: Int64; const ATime: TFileTime): Boolean;
+var
+  Entries: TFarFtpEntries;
+  EntryIdx: Integer;
+  ChildLocal: WideString;
+begin
+  Result := False;
+  if FCancelled <> 0 then
+    Exit;
+  SetLength(FSteps, Length(FSteps) + 1);
+  FSteps[High(FSteps)].Remote := ARemote;
+  FSteps[High(FSteps)].Local := ALocal;
+  FSteps[High(FSteps)].IsDir := AIsDir;
+  FSteps[High(FSteps)].Size := ASize;
+  FSteps[High(FSteps)].Time := ATime;
+  if not AIsDir then
+  begin
+    Inc(FFilesTotal);
+    EnterCriticalSection(FLock);
+    Inc(FBytesTotal, ASize);
+    LeaveCriticalSection(FLock);
+    Result := True;
+    Exit;
+  end;
+  SetCur(FarFtpDecode(ARemote));
+  if not ListAbs(ARemote, Entries) then
+    Exit;
+  for EntryIdx := 0 to High(Entries) do
+  begin
+    if ALocal <> '' then
+      ChildLocal := FtpWithBackslash(ALocal) + Entries[EntryIdx].Name
+    else
+      ChildLocal := '';
+    if not PlanRemote(FarFtpJoin(ARemote, Entries[EntryIdx].Raw), ChildLocal,
+       Entries[EntryIdx].IsDir, Entries[EntryIdx].Size,
+       Entries[EntryIdx].Time) then
+      Exit;
+  end;
+  Result := True;
+end;
+
+// План с диска: шаг ALocal; у папки - её содержимое (после неё)
+function TFarFtpJob.PlanLocal(const ALocal: WideString; const ARemote: string;
+  AIsDir: Boolean; ASize: Int64): Boolean;
+var
+  FindHandle: THandle;
+  FindData: TFtpFindDataW;
+  Name: WideString;
+  ChildSize: Int64;
+  ChildIsDir: Boolean;
+  Children: array of WideString;
+  ChildDirs: array of Boolean;
+  ChildSizes: array of Int64;
+  ChildIdx: Integer;
+  NoTime: TFileTime;
+begin
+  Result := False;
+  if FCancelled <> 0 then
+    Exit;
+  SetLength(FSteps, Length(FSteps) + 1);
+  FSteps[High(FSteps)].Remote := ARemote;
+  FSteps[High(FSteps)].Local := ALocal;
+  FSteps[High(FSteps)].IsDir := AIsDir;
+  FSteps[High(FSteps)].Size := ASize;
+  FillChar(NoTime, SizeOf(NoTime), 0);
+  FSteps[High(FSteps)].Time := NoTime;
+  if not AIsDir then
+  begin
+    Inc(FFilesTotal);
+    EnterCriticalSection(FLock);
+    Inc(FBytesTotal, ASize);
+    LeaveCriticalSection(FLock);
+    Result := True;
+    Exit;
+  end;
+  // Содержимое папки - сначала список (поиск закрывается до обхода)
+  Children := nil;
+  ChildDirs := nil;
+  ChildSizes := nil;
+  FindHandle := FtpLocalFindFirst(PWideChar(FtpWithBackslash(ALocal) + '*'),
+    FindData);
+  if FindHandle <> INVALID_HANDLE_VALUE then
+  try
+    repeat
+      Name := PWideChar(@FindData.cFileName[0]);
+      if (Name <> '.') and (Name <> '..') then
+      begin
+        ChildIsDir := (FindData.dwFileAttributes and
+          FILE_ATTRIBUTE_DIRECTORY) <> 0;
+        ChildSize := Int64(FindData.nFileSizeHigh) shl 32 or
+          FindData.nFileSizeLow;
+        SetLength(Children, Length(Children) + 1);
+        SetLength(ChildDirs, Length(Children));
+        SetLength(ChildSizes, Length(Children));
+        Children[High(Children)] := Name;
+        ChildDirs[High(Children)] := ChildIsDir;
+        ChildSizes[High(Children)] := ChildSize;
+      end;
+    until not FtpLocalFindNext(FindHandle, FindData);
+  finally
+    Windows.FindClose(FindHandle);
+  end;
+  for ChildIdx := 0 to High(Children) do
+    if not PlanLocal(FtpWithBackslash(ALocal) + Children[ChildIdx],
+       FarFtpJoin(ARemote, FarFtpEncode(Children[ChildIdx])),
+       ChildDirs[ChildIdx], ChildSizes[ChildIdx]) then
+      Exit;
+  Result := True;
+end;
+
+function TFarFtpJob.GetFile(const AStep: TFarFtpStep): Boolean;
+var
+  RemoteHandle: Pointer;
+  LocalHandle: THandle;
+  Buffer: array[0..FtpBlockSize - 1] of Byte;
+  ReadLen, Written: DWORD;
+  Ok: Boolean;
+begin
+  Result := False;
+  SetCur(AStep.Local);
+  RemoteHandle := FtpOpenFile(FConn.FConnect, PAnsiChar(AStep.Remote),
+    GENERIC_READ, FtpTransferBinary or FtpFlagReload, 0);
+  if RemoteHandle = nil then
+  begin
+    Fail('скачать ' + AStep.Remote);
+    Exit;
+  end;
+  try
+    // Файл только для чтения - снять атрибут, иначе не перезаписать
+    if FtpLocalAttr(PWideChar(AStep.Local)) <> $FFFFFFFF then
+      FtpLocalSetAttr(PWideChar(AStep.Local), FILE_ATTRIBUTE_NORMAL);
+    LocalHandle := FtpLocalCreate(PWideChar(AStep.Local), GENERIC_WRITE, 0,
+      nil, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if LocalHandle = INVALID_HANDLE_VALUE then
+    begin
+      Fail('файл не создать: ' + string(AStep.Local));
+      Exit;
+    end;
+    Ok := True;
+    try
+      repeat
+        ReadLen := 0;
+        if not FtpReadFile(RemoteHandle, @Buffer[0], SizeOf(Buffer),
+           ReadLen) then
+        begin
+          Ok := Fail('скачать ' + AStep.Remote);
+          Break;
+        end;
+        if ReadLen = 0 then
+          Break;
+        Written := 0;
+        if not WriteFile(LocalHandle, Buffer[0], ReadLen, Written, nil) or
+           (Written <> ReadLen) then
+        begin
+          Ok := Fail('запись ' + string(AStep.Local));
+          Break;
+        end;
+        AddDone(ReadLen);
+      until FCancelled <> 0;
+      if FCancelled <> 0 then
+        Ok := Fail('прервано');
+      if Ok and not FtpTimeEmpty(AStep.Time) then
+        SetFileTime(LocalHandle, nil, nil, @AStep.Time);
+    finally
+      CloseHandle(LocalHandle);
+    end;
+    // Недокачанный файл не оставлять
+    if not Ok then
+      FtpLocalDelete(PWideChar(AStep.Local));
+    Result := Ok;
+  finally
+    FtpInternetCloseHandle(RemoteHandle);
+  end;
+end;
+
+function TFarFtpJob.PutFile(const AStep: TFarFtpStep): Boolean;
+var
+  RemoteHandle: Pointer;
+  LocalHandle: THandle;
+  Buffer: array[0..FtpBlockSize - 1] of Byte;
+  ReadLen, Written: DWORD;
+  Ok: Boolean;
+begin
+  Result := False;
+  SetCur(AStep.Local);
+  LocalHandle := FtpLocalCreate(PWideChar(AStep.Local), GENERIC_READ,
+    FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
+  if LocalHandle = INVALID_HANDLE_VALUE then
+  begin
+    Fail('файл не открыть: ' + string(AStep.Local));
+    Exit;
+  end;
+  try
+    RemoteHandle := FtpOpenFile(FConn.FConnect, PAnsiChar(AStep.Remote),
+      GENERIC_WRITE, FtpTransferBinary or FtpFlagReload, 0);
+    if RemoteHandle = nil then
+    begin
+      Fail('закачать ' + AStep.Remote);
+      Exit;
+    end;
+    Ok := True;
+    try
+      repeat
+        ReadLen := 0;
+        if not ReadFile(LocalHandle, Buffer[0], SizeOf(Buffer), ReadLen,
+           nil) then
+        begin
+          Ok := Fail('чтение ' + string(AStep.Local));
+          Break;
+        end;
+        if ReadLen = 0 then
+          Break;
+        Written := 0;
+        if not FtpWriteFile(RemoteHandle, @Buffer[0], ReadLen, Written) or
+           (Written <> ReadLen) then
+        begin
+          Ok := Fail('закачать ' + AStep.Remote);
+          Break;
+        end;
+        AddDone(ReadLen);
+      until FCancelled <> 0;
+      if FCancelled <> 0 then
+        Ok := Fail('прервано');
+    finally
+      FtpInternetCloseHandle(RemoteHandle);
+    end;
+    // Прервано - недокачанный файл на сервере убрать
+    if not Ok then
+      FtpDeleteFile(FConn.FConnect, PAnsiChar(AStep.Remote));
+    Result := Ok;
+  finally
+    CloseHandle(LocalHandle);
+  end;
+end;
+
+procedure TFarFtpJob.RunDownload;
+var
+  ItemIdx, StepIdx: Integer;
+begin
+  for ItemIdx := 0 to High(FItems) do
+    if not PlanRemote(FarFtpJoin(FRemoteDir, FItems[ItemIdx].Raw),
+       FtpWithBackslash(FLocalDir) + FItems[ItemIdx].Local,
+       FItems[ItemIdx].IsDir, FItems[ItemIdx].Size, FItems[ItemIdx].Time) then
+      Exit;
+  for StepIdx := 0 to High(FSteps) do
+  begin
+    if FCancelled <> 0 then
+    begin
+      Fail('прервано');
+      Exit;
+    end;
+    if FSteps[StepIdx].IsDir then
+    begin
+      if not FtpLocalMakeDir(PWideChar(FSteps[StepIdx].Local), nil) and
+         (FtpLocalAttr(PWideChar(FSteps[StepIdx].Local)) = $FFFFFFFF) then
+      begin
+        Fail('папку не создать: ' + string(FSteps[StepIdx].Local));
+        Exit;
+      end;
+    end
+    else
+    begin
+      if not GetFile(FSteps[StepIdx]) then
+        Exit;
+      Inc(FFilesDone);
+    end;
+  end;
+  // Перенос: исходные на сервере - удалить (вложенные раньше папок)
+  if FMoveSource then
+    for StepIdx := High(FSteps) downto 0 do
+    begin
+      SetCur(FarFtpDecode(FSteps[StepIdx].Remote));
+      if FSteps[StepIdx].IsDir then
+      begin
+        if not FtpRemoveDir(FConn.FConnect, PAnsiChar(FSteps[StepIdx].Remote)) then
+        begin
+          Fail('удалить папку ' + FSteps[StepIdx].Remote);
+          Exit;
+        end;
+      end
+      else if not FtpDeleteFile(FConn.FConnect,
+              PAnsiChar(FSteps[StepIdx].Remote)) then
+      begin
+        Fail('удалить ' + FSteps[StepIdx].Remote);
+        Exit;
+      end;
+    end;
+end;
+
+procedure TFarFtpJob.RunUpload;
+var
+  ItemIdx, StepIdx: Integer;
+begin
+  for ItemIdx := 0 to High(FItems) do
+    if not PlanLocal(FtpWithBackslash(FLocalDir) + FItems[ItemIdx].Local,
+       FarFtpJoin(FRemoteDir, FItems[ItemIdx].Raw), FItems[ItemIdx].IsDir,
+       FItems[ItemIdx].Size) then
+      Exit;
+  for StepIdx := 0 to High(FSteps) do
+  begin
+    if FCancelled <> 0 then
+    begin
+      Fail('прервано');
+      Exit;
+    end;
+    if FSteps[StepIdx].IsDir then
+      // Папка уже есть - сервер откажет, это не ошибка
+      FtpMakeDir(FConn.FConnect, PAnsiChar(FSteps[StepIdx].Remote))
+    else
+    begin
+      if not PutFile(FSteps[StepIdx]) then
+        Exit;
+      Inc(FFilesDone);
+    end;
+  end;
+  // Перенос: исходные на диске - удалить (вложенные раньше папок)
+  if FMoveSource then
+    for StepIdx := High(FSteps) downto 0 do
+    begin
+      SetCur(FSteps[StepIdx].Local);
+      if FSteps[StepIdx].IsDir then
+      begin
+        if not FtpLocalRemoveDir(PWideChar(FSteps[StepIdx].Local)) then
+        begin
+          Fail('папку не удалить: ' + string(FSteps[StepIdx].Local));
+          Exit;
+        end;
+      end
+      else
+      begin
+        FtpLocalSetAttr(PWideChar(FSteps[StepIdx].Local),
+          FILE_ATTRIBUTE_NORMAL);
+        if not FtpLocalDelete(PWideChar(FSteps[StepIdx].Local)) then
+        begin
+          Fail('файл не удалить: ' + string(FSteps[StepIdx].Local));
+          Exit;
+        end;
+      end;
+    end;
+end;
+
+procedure TFarFtpJob.RunDelete;
+var
+  ItemIdx, StepIdx: Integer;
+begin
+  for ItemIdx := 0 to High(FItems) do
+    if not PlanRemote(FarFtpJoin(FRemoteDir, FItems[ItemIdx].Raw), '',
+       FItems[ItemIdx].IsDir, 0, FItems[ItemIdx].Time) then
+      Exit;
+  for StepIdx := High(FSteps) downto 0 do
+  begin
+    if FCancelled <> 0 then
+    begin
+      Fail('прервано');
+      Exit;
+    end;
+    SetCur(FarFtpDecode(FSteps[StepIdx].Remote));
+    if FSteps[StepIdx].IsDir then
+    begin
+      if not FtpRemoveDir(FConn.FConnect, PAnsiChar(FSteps[StepIdx].Remote)) then
+      begin
+        Fail('удалить папку ' + FSteps[StepIdx].Remote);
+        Exit;
+      end;
+    end
+    else
+    begin
+      if not FtpDeleteFile(FConn.FConnect, PAnsiChar(FSteps[StepIdx].Remote)) then
+      begin
+        Fail('удалить ' + FSteps[StepIdx].Remote);
+        Exit;
+      end;
+      Inc(FFilesDone);
+    end;
+  end;
+end;
+
+procedure TFarFtpJob.Execute;
+var
+  FromPath, ToPath, TargetPath: string;
+  ItemIdx: Integer;
+begin
+  try
+    try
+      if not EnsureConnected then
+        Exit;
+      case FKind of
+        fjDownload:
+          RunDownload;
+        fjUpload:
+          RunUpload;
+        fjDelete:
+          RunDelete;
+        fjMkDir:
+          if not FtpMakeDir(FConn.FConnect,
+             PAnsiChar(FarFtpJoin(FRemoteDir, FNewName))) then
+            Fail('создать папку ' + FNewName);
+        fjRename:
+          begin
+            // Куда: путь от корня ('/...') или от текущей папки. Несколько
+            // имён или путь кончается на '/' - в эту папку с прежними
+            // именами
+            if (FNewName <> '') and (FNewName[1] = '/') then
+              TargetPath := FNewName
+            else
+              TargetPath := FarFtpJoin(FRemoteDir, FNewName);
+            for ItemIdx := 0 to High(FItems) do
+            begin
+              FromPath := FarFtpJoin(FRemoteDir, FItems[ItemIdx].Raw);
+              if (Length(FItems) > 1) or ((TargetPath <> '') and
+                 (TargetPath[Length(TargetPath)] = '/')) then
+                ToPath := FarFtpJoin(TargetPath, FItems[ItemIdx].Raw)
+              else
+                ToPath := TargetPath;
+              SetCur(FarFtpDecode(FromPath));
+              if not FtpRenameFile(FConn.FConnect, PAnsiChar(FromPath),
+                 PAnsiChar(ToPath)) then
+              begin
+                Fail('переименовать ' + FromPath);
+                Break;
+              end;
+              Inc(FFilesDone);
+            end;
+          end;
+      end;
+      if (FCancelled <> 0) and (FErrorText = '') then
+        FErrorText := 'прервано';
+    except
+      on E: Exception do
+        FErrorText := E.Message;
+    end;
   finally
     InterlockedExchange(FFinished, 1);
   end;

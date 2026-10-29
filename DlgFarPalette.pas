@@ -63,7 +63,8 @@ const
   ColSample = 2;
   ColColor = 3;
   SwatchWidth = 28;
-  PalItemCount = Ord(High(TFarPalItem)) + 1;
+  // Без группы «Вкладки» - они только у uniFAR (в unIDE FAR вкладок нет)
+  PalItemCount = Ord(fpTabBarBack);
 
 constructor TDlgFarPalette.CreateDlg(AOwner: TComponent;
   const APalette: TFarPalette; AOnChange: TNotifyEvent);
@@ -233,8 +234,14 @@ begin
       end;
     ColColor:
       begin
-        SwatchRect := Classes.Rect(Rect.Left + 4, Rect.Top + 3,
-          Rect.Left + 4 + SwatchWidth, Rect.Bottom - 3);
+        // Цвет - квадратиком во всю ячейку (без #RRGGBB); нет цвета -
+        // пустой квадратик и «из схемы»
+        if FPalette[Item] = clNone then
+          SwatchRect := Classes.Rect(Rect.Left + 4, Rect.Top + 3,
+            Rect.Left + 4 + SwatchWidth, Rect.Bottom - 3)
+        else
+          SwatchRect := Classes.Rect(Rect.Left + 4, Rect.Top + 3,
+            Rect.Right - 4, Rect.Bottom - 3);
         if FPalette[Item] <> clNone then
         begin
           GridCanvas.Brush.Color := FPalette[Item];
@@ -244,10 +251,7 @@ begin
         GridCanvas.FrameRect(SwatchRect);
         GridCanvas.Brush.Color := Back;
         if FPalette[Item] = clNone then
-          GridCanvas.TextOut(SwatchRect.Right + 6, TextY, 'из схемы')
-        else
-          GridCanvas.TextOut(SwatchRect.Right + 6, TextY,
-            FarColorToText(FPalette[Item]));
+          GridCanvas.TextOut(SwatchRect.Right + 6, TextY, 'из схемы');
       end;
   end;
 end;
