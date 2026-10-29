@@ -151,7 +151,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.52';
+  FarBuild = 'b.53';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -546,6 +546,7 @@ type
     // Вкладки папок uniFAR (FarTabs): пока по вкладкам ходят, переходы в
     // историю не пишутся
     FHistoryPaused: Boolean;
+    FEditWideDefault: Boolean;
     FOnPainted: TNotifyEvent;
     // Поиск файлов (Alt+F7): окно Find file - что искать (запоминается),
     // окно найденного - поверх панелей
@@ -942,6 +943,9 @@ type
     // Сообщение в строке сообщений (или OnStatus)
     procedure StatusText(const AText: string);
     property HistoryPaused: Boolean read FHistoryPaused write FHistoryPaused;
+    // F4: редактор сразу на всю ширину окна (uniFAR); F5 - в половину
+    property EditWideDefault: Boolean read FEditWideDefault
+      write FEditWideDefault;
     property MainFont: HFONT read FFontMain;
     property CellHeight: Integer read FCellH;
     // После каждой перерисовки (uniFAR: перерисовать вкладки)
@@ -8059,12 +8063,16 @@ begin
       FEditPanel := FSingle
     else
       FEditPanel := 1 - FActive;
-    FEditWide := False;
+    FEditWide := FEditWideDefault and (FSingle < 0);
   end;
   FActive := FEditPanel;
   FEditQuitAfterSave := False;
-  Status(FarProduct + ': редактор - ' + string(AFileName) + ' (F2 - записать, ' +
-    'Esc - закрыть, F5 - на всю ширину)');
+  if FEditWide then
+    Status(FarProduct + ': редактор - ' + string(AFileName) + ' (F2 - ' +
+      'записать, Esc - закрыть, F5 - в половину окна)')
+  else
+    Status(FarProduct + ': редактор - ' + string(AFileName) + ' (F2 - ' +
+      'записать, Esc - закрыть, F5 - на всю ширину)');
   Invalidate;
 end;
 
