@@ -14,6 +14,10 @@ unit EdView;
 //  Ctrl+Y, Ctrl+Shift+Z. Правки одного действия - одна группа отката, набор
 //  подряд - одна правка (группы - в TEdBuffer).
 //
+//  Каретка, выделение, команды правки и разбор клавиш - в TEdEditor
+//  (EdEditor.pas): то же ядро правки - у замены RichEdit в основном
+//  редакторе (шаг 0.7.4). Окно добавляет отрисовку, прокрутку, мышь.
+//
 //  - Шрифт моноширинный: каждый символ - ячейка CharW x LineH. X символа =
 //    (колонка с раскрытыми табуляциями) x CharW; обратно - делением. Замеры
 //    ширины строк не нужны.
@@ -41,9 +45,8 @@ uses
   Windows, Messages,
   {$ENDIF}
   SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls,
-  {$IFDEF FPC}Clipbrd,{$ENDIF}
   {$IFNDEF FPC}UiScroll,{$ENDIF}
-  EdBuffer;
+  EdBuffer, EdEditor;
 
 type
   {$IFDEF FPC}
@@ -74,13 +77,7 @@ type
     FBuffer: TEdBuffer;
     FTopRow: Integer;          // первая видимая строка
     FLeftCol: Integer;         // первая видимая колонка экрана
-    FCaretRow: Integer;
-    FCaretCol: Integer;        // символ в строке (с 0)
-    FPrefCol: Integer;         // колонка экрана для движения вверх-вниз
-    FSelActive: Boolean;       // выделение: от (FSelRow, FSelCol) до каретки
-    FSelRow: Integer;
-    FSelCol: Integer;
-    FTabSize: Integer;
+    FEditor: TEdEditor;        // каретка, выделение, правка
     FCharW: Integer;
     FLineH: Integer;
     FMetricsValid: Boolean;
@@ -107,9 +104,7 @@ type
     FOnLineRuns: TEdLineRunsEvent;
     FOnCaretMove: TNotifyEvent;
     FOnChange: TNotifyEvent;
-    FReadOnly: Boolean;
-    FOverwrite: Boolean;       // Ins: набор заменяет символ под кареткой
-    FAutoIndent: Boolean;      // Enter - с отступом текущей строки
+    FCaretOverwrite: Boolean;  // каретка создана для режима замены
     FMouseSelecting: Boolean;  // левая кнопка нажата в тексте
     FLastMouse: TPoint;
     FScrollTimer: TTimer;      // прокрутка у края при протяжке мышью
@@ -124,7 +119,18 @@ type
     procedure SetBuffer(AValue: TEdBuffer);
     procedure BufferChanged(Sender: TObject; AFirst, AOldCount,
       ANewCount: Integer);
+    procedure EditorMoved(Sender: TObject);
+    procedure EditorScroll(Sender: TObject; ARows: Integer);
+    function GetCaretRow: Integer;
+    function GetCaretCol: Integer;
+    function GetTabSize: Integer;
     procedure SetTabSize(AValue: Integer);
+    function GetReadOnly: Boolean;
+    procedure SetReadOnly(AValue: Boolean);
+    function GetOverwrite: Boolean;
+    procedure SetOverwrite(AValue: Boolean);
+    function GetAutoIndent: Boolean;
+    procedure SetAutoIndent(AValue: Boolean);
     procedure SetShowGutter(AValue: Boolean);
     procedure UpdateMetrics;
     procedure UpdateGutterWidth;
@@ -140,19 +146,8 @@ type
     procedure PaintGutterRow(ACanvas: TCanvas; ARow, AY: Integer);
     procedure OutCells(ACanvas: TCanvas; AX, AY, ACount: Integer);
     function RowLength(ARow: Integer): Integer;
-    procedure AfterEdit;
-    procedure DeleteSelectionRaw;
-    procedure DeleteRange(ARow1, ACol1, ARow2, ACol2: Integer);
-    procedure WordLeftOf(var ARow, ACol: Integer);
-    procedure WordRightOf(var ARow, ACol: Integer);
-    procedure SelectWordAt(ARow, ACol: Integer);
-    procedure SelectLine(ARow: Integer);
-    procedure TypeChar(ACh: WideChar);
-    procedure IndentBlock(AOutdent: Boolean);
     procedure ExtendToMouse;
     procedure ScrollTimerTick(Sender: TObject);
-    procedure SetOverwrite(AValue: Boolean);
-    function OwnsKey(AKey: Word; AShift: TShiftState): Boolean;
     {$IFNDEF FPC}
     procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
     {$ENDIF}
@@ -243,12 +238,12 @@ type
     property Buffer: TEdBuffer read FBuffer write SetBuffer;
     property TopRow: Integer read FTopRow;
     property LeftCol: Integer read FLeftCol;
-    property CaretRow: Integer read FCaretRow;
-    property CaretCol: Integer read FCaretCol;
+    property CaretRow: Integer read GetCaretRow;
+    property CaretCol: Integer read GetCaretCol;
     property CharW: Integer read FCharW;
     property LineH: Integer read FLineH;
     property GutterWidth: Integer read FGutterW;
-    property TabSize: Integer read FTabSize write SetTabSize;
+    property TabSize: Integer read GetTabSize write SetTabSize;
     property ShowGutter: Boolean read FShowGutter write SetShowGutter;
     property TextColor: TColor read FTextColor write FTextColor;
     property BackColor: TColor read FBackColor write FBackColor;
@@ -264,25 +259,21 @@ type
     property OnCaretMove: TNotifyEvent read FOnCaretMove write FOnCaretMove;
     // Текст буфера изменился (любой правкой, и не из этого окна)
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
-    property ReadOnly: Boolean read FReadOnly write FReadOnly;
-    property Overwrite: Boolean read FOverwrite write SetOverwrite;
-    property AutoIndent: Boolean read FAutoIndent write FAutoIndent;
+    property ReadOnly: Boolean read GetReadOnly write SetReadOnly;
+    property Overwrite: Boolean read GetOverwrite write SetOverwrite;
+    property AutoIndent: Boolean read GetAutoIndent write SetAutoIndent;
+    // Ядро правки: каретка, выделение, команды
+    property Editor: TEdEditor read FEditor;
     property Font;
     property TabStop;
     property Align;
     property PopupMenu;
   end;
 
-// Буфер обмена: текст Unicode (Windows - CF_UNICODETEXT, иначе - LCL)
-function EdClipboardText: WideString;
-procedure EdSetClipboardText(const AText: WideString);
 
 implementation
 
 const
-  EdCfUnicodeText = 13;        // CF_UNICODETEXT
-  EdCfText = 1;                // CF_TEXT
-
   // Байт стиля ячейки: биты TFontStyle
   EdStyleBold = 1;
   EdStyleItalic = 2;
@@ -319,173 +310,6 @@ begin
   {$ENDIF}
 end;
 
-// Символ слова: буквы, цифры, '_' и всё не латинское выше пробелов
-// (кириллица) - как у редактора F4 (FarEdit)
-function EdIsWordChar(ACh: WideChar): Boolean;
-begin
-  Result := ((ACh >= 'a') and (ACh <= 'z')) or ((ACh >= 'A') and (ACh <= 'Z')) or
-    ((ACh >= '0') and (ACh <= '9')) or (ACh = '_') or (Ord(ACh) >= 192);
-end;
-
-// Переводы строк любого вида (CRLF, CR, LF) - #10
-function EdNormalizeBreaks(const AText: WideString): WideString;
-var
-  SrcIdx, DstIdx: Integer;
-begin
-  SetLength(Result, Length(AText));
-  DstIdx := 0;
-  SrcIdx := 1;
-  while SrcIdx <= Length(AText) do
-  begin
-    Inc(DstIdx);
-    if AText[SrcIdx] = #13 then
-    begin
-      Result[DstIdx] := #10;
-      if (SrcIdx < Length(AText)) and (AText[SrcIdx + 1] = #10) then
-        Inc(SrcIdx);
-    end
-    else
-      Result[DstIdx] := AText[SrcIdx];
-    Inc(SrcIdx);
-  end;
-  SetLength(Result, DstIdx);
-end;
-
-// #10 -> #13#10 (буфер обмена Windows)
-function EdCrlf(const AText: WideString): WideString;
-var
-  SrcIdx, DstIdx, BreakCount: Integer;
-begin
-  BreakCount := 0;
-  for SrcIdx := 1 to Length(AText) do
-    if AText[SrcIdx] = #10 then
-      Inc(BreakCount);
-  SetLength(Result, Length(AText) + BreakCount);
-  DstIdx := 0;
-  for SrcIdx := 1 to Length(AText) do
-  begin
-    if AText[SrcIdx] = #10 then
-    begin
-      Inc(DstIdx);
-      Result[DstIdx] := #13;
-    end;
-    Inc(DstIdx);
-    Result[DstIdx] := AText[SrcIdx];
-  end;
-end;
-
-{$IFDEF MSWINDOWS}
-// Буфер обмена занят другой программой - несколько попыток
-function EdOpenClipboard: Boolean;
-var
-  TryIdx: Integer;
-begin
-  Result := False;
-  for TryIdx := 1 to 10 do
-  begin
-    if OpenClipboard(0) then
-    begin
-      Result := True;
-      Exit;
-    end;
-    Sleep(10);
-  end;
-end;
-
-function EdClipboardText: WideString;
-var
-  DataHandle: THandle;
-  DataPtr: Pointer;
-  AnsiText: AnsiString;
-  WideLen: Integer;
-begin
-  Result := '';
-  if not EdOpenClipboard then
-    Exit;
-  try
-    DataHandle := GetClipboardData(EdCfUnicodeText);
-    if DataHandle <> 0 then
-    begin
-      DataPtr := GlobalLock(DataHandle);
-      if DataPtr <> nil then
-      try
-        Result := PWideChar(DataPtr);
-      finally
-        GlobalUnlock(DataHandle);
-      end;
-      Exit;
-    end;
-    DataHandle := GetClipboardData(EdCfText);
-    if DataHandle = 0 then
-      Exit;
-    DataPtr := GlobalLock(DataHandle);
-    if DataPtr = nil then
-      Exit;
-    try
-      AnsiText := PAnsiChar(DataPtr);
-    finally
-      GlobalUnlock(DataHandle);
-    end;
-    if AnsiText <> '' then
-    begin
-      WideLen := MultiByteToWideChar(CP_ACP, 0, PAnsiChar(AnsiText),
-        Length(AnsiText), nil, 0);
-      SetLength(Result, WideLen);
-      if WideLen > 0 then
-        MultiByteToWideChar(CP_ACP, 0, PAnsiChar(AnsiText), Length(AnsiText),
-          PWideChar(Result), WideLen);
-    end;
-  finally
-    CloseClipboard;
-  end;
-end;
-
-procedure EdSetClipboardText(const AText: WideString);
-var
-  DataHandle: THandle;
-  DataPtr: Pointer;
-  ByteCount: Integer;
-begin
-  if not EdOpenClipboard then
-    Exit;
-  try
-    EmptyClipboard;
-    ByteCount := (Length(AText) + 1) * SizeOf(WideChar);
-    DataHandle := GlobalAlloc(GMEM_MOVEABLE or GMEM_DDESHARE, ByteCount);
-    if DataHandle = 0 then
-      Exit;
-    DataPtr := GlobalLock(DataHandle);
-    if DataPtr = nil then
-    begin
-      GlobalFree(DataHandle);
-      Exit;
-    end;
-    try
-      FillChar(DataPtr^, ByteCount, 0);
-      if AText <> '' then
-        Move(AText[1], DataPtr^, Length(AText) * SizeOf(WideChar));
-    finally
-      GlobalUnlock(DataHandle);
-    end;
-    // CF_TEXT для старых программ Windows делает сама из CF_UNICODETEXT
-    if SetClipboardData(EdCfUnicodeText, DataHandle) = 0 then
-      GlobalFree(DataHandle);
-  finally
-    CloseClipboard;
-  end;
-end;
-{$ELSE}
-function EdClipboardText: WideString;
-begin
-  Result := UTF8Decode(Clipboard.AsText);
-end;
-
-procedure EdSetClipboardText(const AText: WideString);
-begin
-  Clipboard.AsText := UTF8Encode(AText);
-end;
-{$ENDIF}
-
 // ---------------------------------------------------------------------------
 
 constructor TEdView.Create(AOwner: TComponent);
@@ -493,9 +317,11 @@ begin
   inherited Create(AOwner);
   // Кадр - первым: смена шрифта ниже уже меряет ячейку по нему
   FBack := TBitmap.Create;
+  FEditor := TEdEditor.Create;
+  FEditor.OnCaretMove := EditorMoved;
+  FEditor.OnScroll := EditorScroll;
   ControlStyle := ControlStyle + [csOpaque, csCaptureMouse, csClickEvents];
   TabStop := True;
-  FTabSize := 8;
   FShowGutter := True;
   FTextColor := clWindowText;
   FBackColor := clWindow;
@@ -519,7 +345,6 @@ begin
   FHBar.TabStop := False;
   FHBar.Parent := Self;
   FHBar.OnChange := HBarChange;
-  FAutoIndent := True;
   FScrollTimer := TTimer.Create(Self);
   FScrollTimer.Enabled := False;
   FScrollTimer.Interval := 50;
@@ -533,64 +358,8 @@ destructor TEdView.Destroy;
 begin
   SetBuffer(nil);
   FBack.Free;
+  FEditor.Free;
   inherited Destroy;
-end;
-
-procedure TEdView.SetBuffer(AValue: TEdBuffer);
-begin
-  if AValue = FBuffer then
-    Exit;
-  if FBuffer <> nil then
-    FBuffer.RemoveListener(BufferChanged);
-  FBuffer := AValue;
-  if FBuffer <> nil then
-    FBuffer.AddListener(BufferChanged);
-  FTopRow := 0;
-  FLeftCol := 0;
-  FCaretRow := 0;
-  FCaretCol := 0;
-  FPrefCol := 0;
-  FSelActive := False;
-  FMaxColsValid := False;
-  UpdateGutterWidth;
-  UpdateBars;
-  PlaceCaret;
-  Invalidate;
-end;
-
-// Буфер изменился: каретка - в пределах текста, ширина - пересчитать
-procedure TEdView.BufferChanged(Sender: TObject; AFirst, AOldCount,
-  ANewCount: Integer);
-begin
-  FMaxColsValid := False;
-  if FCaretRow >= FBuffer.Count then
-    FCaretRow := FBuffer.Count - 1;
-  if FCaretCol > FBuffer.LineLength(FCaretRow) then
-    FCaretCol := FBuffer.LineLength(FCaretRow);
-  if FSelRow >= FBuffer.Count then
-  begin
-    FSelRow := FBuffer.Count - 1;
-    FSelCol := FBuffer.LineLength(FSelRow);
-  end;
-  UpdateGutterWidth;
-  UpdateBars;
-  PlaceCaret;
-  Invalidate;
-  if Assigned(FOnChange) then
-    FOnChange(Self);
-end;
-
-procedure TEdView.SetTabSize(AValue: Integer);
-begin
-  if AValue < 1 then
-    AValue := 1;
-  if AValue = FTabSize then
-    Exit;
-  FTabSize := AValue;
-  FMaxColsValid := False;
-  UpdateBars;
-  PlaceCaret;
-  Invalidate;
 end;
 
 procedure TEdView.SetShowGutter(AValue: Boolean);
@@ -697,55 +466,6 @@ begin
     FMaxColsValid := True;
   end;
   Result := FMaxCols;
-end;
-
-function TEdView.ScreenCol(ARow, ACol: Integer): Integer;
-var
-  Line: WideString;
-  CharIdx, Limit: Integer;
-begin
-  Result := 0;
-  if FBuffer = nil then
-    Exit;
-  Line := FBuffer[ARow];
-  Limit := ACol;
-  if Limit > Length(Line) then
-    Limit := Length(Line);
-  for CharIdx := 1 to Limit do
-    if Line[CharIdx] = #9 then
-      Result := (Result div FTabSize + 1) * FTabSize
-    else
-      Inc(Result);
-end;
-
-function TEdView.ColAtScreen(ARow, AScreenCol: Integer): Integer;
-var
-  Line: WideString;
-  CharIdx, CellPos, NextPos: Integer;
-begin
-  Result := 0;
-  if FBuffer = nil then
-    Exit;
-  Line := FBuffer[ARow];
-  CellPos := 0;
-  for CharIdx := 1 to Length(Line) do
-  begin
-    if Line[CharIdx] = #9 then
-      NextPos := (CellPos div FTabSize + 1) * FTabSize
-    else
-      NextPos := CellPos + 1;
-    if AScreenCol < NextPos then
-    begin
-      if (Line[CharIdx] = #9) and
-         (AScreenCol - CellPos > (NextPos - CellPos) div 2) then
-        Result := CharIdx
-      else
-        Result := CharIdx - 1;
-      Exit;
-    end;
-    CellPos := NextPos;
-  end;
-  Result := Length(Line);
 end;
 
 function TEdView.VisibleRows: Integer;
@@ -890,11 +610,11 @@ var
 begin
   NewTop := FTopRow;
   NewLeft := FLeftCol;
-  if FCaretRow < NewTop then
-    NewTop := FCaretRow
-  else if FCaretRow >= NewTop + VisibleRows then
-    NewTop := FCaretRow - VisibleRows + 1;
-  CaretScreen := ScreenCol(FCaretRow, FCaretCol);
+  if FEditor.CaretRow < NewTop then
+    NewTop := FEditor.CaretRow
+  else if FEditor.CaretRow >= NewTop + VisibleRows then
+    NewTop := FEditor.CaretRow - VisibleRows + 1;
+  CaretScreen := ScreenCol(FEditor.CaretRow, FEditor.CaretCol);
   // Вбок - с запасом в четверть окна, чтобы не двигать на каждый символ
   Margin := VisibleCols div 4;
   if CaretScreen < NewLeft then
@@ -937,7 +657,8 @@ begin
     Exit;
   UpdateMetrics;
   // Замена (Ins) - каретка во всю ячейку
-  if FOverwrite then
+  FCaretOverwrite := FEditor.Overwrite;
+  if FEditor.Overwrite then
     CaretWidth := FCharW
   else
     CaretWidth := 2;
@@ -973,8 +694,8 @@ var
 begin
   if not FCaretMade then
     Exit;
-  CaretX := FGutterW + (ScreenCol(FCaretRow, FCaretCol) - FLeftCol) * FCharW;
-  CaretY := (FCaretRow - FTopRow) * FLineH;
+  CaretX := FGutterW + (ScreenCol(FEditor.CaretRow, FEditor.CaretCol) - FLeftCol) * FCharW;
+  CaretY := (FEditor.CaretRow - FTopRow) * FLineH;
   // Вне текста - за краем окна (каретка не видна)
   if (CaretX < FGutterW) or (CaretY < 0) then
   begin
@@ -986,71 +707,6 @@ begin
   {$ELSE}
   SetCaretPos(CaretX, CaretY);
   {$ENDIF}
-end;
-
-procedure TEdView.CaretTo(ARow, ACol: Integer; AKeepPref: Boolean);
-var
-  OldRow: Integer;
-begin
-  if FBuffer = nil then
-    Exit;
-  if ARow < 0 then
-    ARow := 0;
-  if ARow >= FBuffer.Count then
-    ARow := FBuffer.Count - 1;
-  if ACol < 0 then
-    ACol := 0;
-  if ACol > FBuffer.LineLength(ARow) then
-    ACol := FBuffer.LineLength(ARow);
-  OldRow := FCaretRow;
-  FCaretRow := ARow;
-  FCaretCol := ACol;
-  if not AKeepPref then
-    FPrefCol := ScreenCol(FCaretRow, FCaretCol);
-  EnsureCaretVisible;
-  // Строка с кареткой выделена фоном и номером - перерисовать обе
-  if (OldRow <> FCaretRow) or FSelActive then
-    Invalidate;
-  if Assigned(FOnCaretMove) then
-    FOnCaretMove(Self);
-end;
-
-procedure TEdView.SetSelection(ARow, ACol: Integer);
-begin
-  FSelActive := True;
-  FSelRow := ARow;
-  FSelCol := ACol;
-  Invalidate;
-end;
-
-procedure TEdView.ClearSelection;
-begin
-  if not FSelActive then
-    Exit;
-  FSelActive := False;
-  Invalidate;
-end;
-
-function TEdView.SelRange(var ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
-begin
-  Result := FSelActive and ((FSelRow <> FCaretRow) or (FSelCol <> FCaretCol));
-  if not Result then
-    Exit;
-  if (FSelRow < FCaretRow) or
-     ((FSelRow = FCaretRow) and (FSelCol < FCaretCol)) then
-  begin
-    ARow1 := FSelRow;
-    ACol1 := FSelCol;
-    ARow2 := FCaretRow;
-    ACol2 := FCaretCol;
-  end
-  else
-  begin
-    ARow1 := FCaretRow;
-    ACol1 := FCaretCol;
-    ARow2 := FSelRow;
-    ACol2 := FSelCol;
-  end;
 end;
 
 // ---------------------------------------------------------------------------
@@ -1118,7 +774,7 @@ var
 begin
   RowBack := FGutterColor;
   RowFore := FGutterTextColor;
-  if ARow = FCaretRow then
+  if ARow = FEditor.CaretRow then
   begin
     if FGutterCurColor <> clNone then
       RowBack := FGutterCurColor;
@@ -1139,7 +795,7 @@ begin
     FCellFore[CellIdx] := RowFore;
     FCellBack[CellIdx] := RowBack;
     FCellStyle[CellIdx] := 0;
-    if ARow = FCaretRow then
+    if ARow = FEditor.CaretRow then
       FCellStyle[CellIdx] := EdStyleBold;
   end;
   for CellIdx := 1 to Length(NumText) do
@@ -1163,7 +819,7 @@ begin
   if CellCount <= 0 then
     Exit;
   RowBack := FBackColor;
-  if (ARow = FCaretRow) and (FCurLineColor <> clNone) then
+  if (ARow = FEditor.CaretRow) and (FCurLineColor <> clNone) then
     RowBack := FCurLineColor;
   // Пустые ячейки - пробелы фоном строки
   SetLength(FCellText, CellCount);
@@ -1191,7 +847,7 @@ begin
       Break;
     CharCode := Line[CharIdx + 1];
     if CharCode = #9 then
-      CellWidth := FTabSize - ScreenPos mod FTabSize
+      CellWidth := FEditor.TabSize - ScreenPos mod FEditor.TabSize
     else
       CellWidth := 1;
     // Кусок, в который попал символ
@@ -1336,37 +992,11 @@ begin
   inherited;
 end;
 
-// Клавиши, которые окно разбирает само: в Delphi 7 они не уходят ярлыкам
-// меню формы и главного окна (Ctrl+C, Ctrl+Z... главного меню unIDE
-// работают с RichEdit) - см. CNKeyDown
-function TEdView.OwnsKey(AKey: Word; AShift: TShiftState): Boolean;
-var
-  Ctrl, Alt: Boolean;
-begin
-  Ctrl := ssCtrl in AShift;
-  Alt := ssAlt in AShift;
-  case AKey of
-    VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_PRIOR, VK_NEXT, VK_HOME, VK_END,
-    VK_INSERT, VK_DELETE:
-      Result := not Alt;
-    VK_BACK:
-      Result := True;
-    VK_RETURN:
-      Result := not Alt and not Ctrl;
-    VK_TAB:
-      Result := not Alt and not Ctrl;
-    Ord('A'), Ord('C'), Ord('V'), Ord('X'), Ord('Y'), Ord('Z'):
-      Result := Ctrl and not Alt;
-  else
-    Result := False;
-  end;
-end;
-
 {$IFNDEF FPC}
 procedure TEdView.CNKeyDown(var Message: TWMKeyDown);
 begin
   // Свои клавиши - мимо ярлыков меню: сообщение уходит в KeyDown
-  if OwnsKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
+  if FEditor.OwnsKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
   begin
     Message.Result := 0;
     Exit;
@@ -1374,164 +1004,6 @@ begin
   inherited;
 end;
 {$ENDIF}
-
-procedure TEdView.KeyDown(var Key: Word; Shift: TShiftState);
-var
-  Ctrl, Sel, Alt: Boolean;
-  NewRow, NewCol, Row1, Col1, Row2, Col2, PageRows, LineIdx: Integer;
-  Line: WideString;
-begin
-  inherited KeyDown(Key, Shift);
-  if (FBuffer = nil) or (Key = 0) then
-    Exit;
-  Ctrl := ssCtrl in Shift;
-  Sel := ssShift in Shift;
-  Alt := ssAlt in Shift;
-  NewRow := FCaretRow;
-  NewCol := FCaretCol;
-  // Буквы - только с Ctrl (без Alt: Ctrl+Alt - AltGr, это символ)
-  if (Key >= Ord('A')) and (Key <= Ord('Z')) and (not Ctrl or Alt) then
-    Exit;
-  case Key of
-    VK_LEFT:
-      if not Sel and not Ctrl and SelRange(Row1, Col1, Row2, Col2) then
-        // Без Shift при выделении - к его началу
-        MoveTo(Row1, Col1, False)
-      else
-      begin
-        if Ctrl then
-          WordLeftOf(NewRow, NewCol)
-        else if NewCol > 0 then
-          Dec(NewCol)
-        else if NewRow > 0 then
-        begin
-          Dec(NewRow);
-          NewCol := FBuffer.LineLength(NewRow);
-        end;
-        MoveTo(NewRow, NewCol, Sel);
-      end;
-    VK_RIGHT:
-      if not Sel and not Ctrl and SelRange(Row1, Col1, Row2, Col2) then
-        MoveTo(Row2, Col2, False)
-      else
-      begin
-        if Ctrl then
-          WordRightOf(NewRow, NewCol)
-        else if NewCol < FBuffer.LineLength(NewRow) then
-          Inc(NewCol)
-        else if NewRow < FBuffer.Count - 1 then
-        begin
-          Inc(NewRow);
-          NewCol := 0;
-        end;
-        MoveTo(NewRow, NewCol, Sel);
-      end;
-    VK_UP:
-      if Ctrl then
-        ScrollTo(FTopRow - 1, FLeftCol)
-      else if FCaretRow > 0 then
-        MoveTo(FCaretRow - 1, ColAtScreen(FCaretRow - 1, FPrefCol), Sel, True)
-      else
-        MoveTo(FCaretRow, FCaretCol, Sel, True);
-    VK_DOWN:
-      if Ctrl then
-        ScrollTo(FTopRow + 1, FLeftCol)
-      else if FCaretRow < FBuffer.Count - 1 then
-        MoveTo(FCaretRow + 1, ColAtScreen(FCaretRow + 1, FPrefCol), Sel, True)
-      else
-        MoveTo(FCaretRow, FCaretCol, Sel, True);
-    VK_PRIOR, VK_NEXT:
-      begin
-        // Страница: окно и каретка - на столько же строк
-        if Key = VK_PRIOR then
-          PageRows := -(VisibleRows - 1)
-        else
-          PageRows := VisibleRows - 1;
-        ScrollTo(FTopRow + PageRows, FLeftCol);
-        NewRow := FCaretRow + PageRows;
-        if NewRow < 0 then
-          NewRow := 0;
-        if NewRow > FBuffer.Count - 1 then
-          NewRow := FBuffer.Count - 1;
-        MoveTo(NewRow, ColAtScreen(NewRow, FPrefCol), Sel, True);
-      end;
-    VK_HOME:
-      if Ctrl then
-        MoveTo(0, 0, Sel)
-      else
-      begin
-        // К первому непробельному символу строки; уже там - в начало
-        Line := FBuffer[FCaretRow];
-        LineIdx := 0;
-        while (LineIdx < Length(Line)) and
-              ((Line[LineIdx + 1] = ' ') or (Line[LineIdx + 1] = #9)) do
-          Inc(LineIdx);
-        if FCaretCol = LineIdx then
-          LineIdx := 0;
-        MoveTo(FCaretRow, LineIdx, Sel);
-      end;
-    VK_END:
-      if Ctrl then
-        MoveTo(FBuffer.Count - 1, FBuffer.LineLength(FBuffer.Count - 1), Sel)
-      else
-        MoveTo(FCaretRow, FBuffer.LineLength(FCaretRow), Sel);
-    VK_INSERT:
-      if Ctrl and not Sel then
-        CopyToClipboard
-      else if Sel and not Ctrl then
-        PasteFromClipboard
-      else if not Ctrl and not Sel then
-        SetOverwrite(not FOverwrite);
-    VK_DELETE:
-      if Sel and not Ctrl then
-        CutToClipboard
-      else if Ctrl then
-        DeleteWordRight
-      else
-        DeleteChar;
-    VK_BACK:
-      if Alt and Sel then
-        Redo
-      else if Alt then
-        Undo
-      else if Ctrl then
-        DeleteWordLeft
-      else
-        Backspace;
-    VK_RETURN:
-      if Alt then
-        Exit
-      else
-        NewLine;
-    VK_TAB:
-      if Ctrl or Alt then
-        Exit
-      else if Sel then
-        IndentBlock(True)
-      else if SelRange(Row1, Col1, Row2, Col2) and (Row2 > Row1) then
-        IndentBlock(False)
-      else
-        InsertText(#9, True);
-    Ord('A'):
-      SelectAll;
-    Ord('C'):
-      CopyToClipboard;
-    Ord('X'):
-      CutToClipboard;
-    Ord('V'):
-      PasteFromClipboard;
-    Ord('Z'):
-      if Sel then
-        Redo
-      else
-        Undo;
-    Ord('Y'):
-      Redo;
-  else
-    Exit;
-  end;
-  Key := 0;
-end;
 
 {$IFDEF FPC}
 procedure TEdView.UTF8KeyPress(var UTF8Key: TUTF8Char);
@@ -1547,7 +1019,7 @@ begin
   if (WideText = '') or (Ord(WideText[1]) < 32) or (WideText[1] = #127) then
     Exit;
   for CharIdx := 1 to Length(WideText) do
-    TypeChar(WideText[CharIdx]);
+    FEditor.TypeChar(WideText[CharIdx]);
   UTF8Key := '';
 end;
 {$ELSE}
@@ -1563,7 +1035,7 @@ begin
   WideCh := WideChar(Ord(Key));
   if Ord(Key) >= 128 then
     MultiByteToWideChar(CP_ACP, 0, @Key, 1, @WideCh, 1);
-  TypeChar(WideCh);
+  FEditor.TypeChar(WideCh);
   Key := #0;
 end;
 {$ENDIF}
@@ -1596,14 +1068,14 @@ begin
   if IsTriple then
   begin
     FDblClickTick := 0;
-    SelectLine(ClickRow);
+    FEditor.SelectLine(ClickRow);
     Exit;
   end;
   if ssDouble in Shift then
   begin
     FDblClickTick := EdTicks;
     FDblClickPos := Point(X, Y);
-    SelectWordAt(ClickRow, ClickCol);
+    FEditor.SelectWordAt(ClickRow, ClickCol);
     Exit;
   end;
   FDblClickTick := 0;
@@ -1613,9 +1085,7 @@ begin
   begin
     MoveTo(ClickRow, ClickCol, False);
     // Начало протяжки: выделение от места щелчка (пока пустое)
-    FSelActive := True;
-    FSelRow := FCaretRow;
-    FSelCol := FCaretCol;
+    FEditor.SetSelection(FEditor.CaretRow, FEditor.CaretCol);
   end;
   FMouseSelecting := True;
   FLastMouse := Point(X, Y);
@@ -1645,8 +1115,8 @@ begin
     Exit;
   FMouseSelecting := False;
   FScrollTimer.Enabled := False;
-  if FSelActive and not HasSelection then
-    FSelActive := False;
+  if FEditor.SelActive and not FEditor.HasSelection then
+    FEditor.ClearSelection;
 end;
 
 procedure TEdView.ExtendToMouse;
@@ -1680,470 +1150,247 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-//  Переходы и выделение
+//  Буфер и ядро правки (TEdEditor)
 // ---------------------------------------------------------------------------
 
-procedure TEdView.MoveTo(ARow, ACol: Integer; ASelect: Boolean;
-  AKeepPref: Boolean);
+procedure TEdView.SetBuffer(AValue: TEdBuffer);
 begin
-  if FBuffer = nil then
+  if AValue = FBuffer then
     Exit;
-  if ARow < 0 then
-    ARow := 0;
-  if ARow >= FBuffer.Count then
-    ARow := FBuffer.Count - 1;
-  if ACol < 0 then
-    ACol := 0;
-  if ACol > FBuffer.LineLength(ARow) then
-    ACol := FBuffer.LineLength(ARow);
-  if ASelect then
-  begin
-    if not FSelActive then
-    begin
-      FSelActive := True;
-      FSelRow := FCaretRow;
-      FSelCol := FCaretCol;
-    end;
-  end
-  else if FSelActive then
-  begin
-    FSelActive := False;
-    Invalidate;
-  end;
-  // Движение каретки - конец набора: следующий набор - новая правка
-  if (ARow <> FCaretRow) or (ACol <> FCaretCol) then
-    FBuffer.BeginGroup;
-  CaretTo(ARow, ACol, AKeepPref);
-end;
-
-function TEdView.HasSelection: Boolean;
-begin
-  Result := FSelActive and ((FSelRow <> FCaretRow) or (FSelCol <> FCaretCol));
-end;
-
-function TEdView.SelectedText: WideString;
-var
-  Row1, Col1, Row2, Col2: Integer;
-begin
-  Result := '';
-  if (FBuffer <> nil) and SelRange(Row1, Col1, Row2, Col2) then
-    Result := EdCrlf(FBuffer.TextRange(Row1, Col1, Row2, Col2));
-end;
-
-procedure TEdView.SelectAll;
-begin
-  if FBuffer = nil then
-    Exit;
-  FSelActive := True;
-  FSelRow := 0;
-  FSelCol := 0;
-  FBuffer.BeginGroup;
-  CaretTo(FBuffer.Count - 1, FBuffer.LineLength(FBuffer.Count - 1));
+  if FBuffer <> nil then
+    FBuffer.RemoveListener(BufferChanged);
+  FBuffer := AValue;
+  if FBuffer <> nil then
+    FBuffer.AddListener(BufferChanged);
+  FEditor.Buffer := FBuffer;
+  FTopRow := 0;
+  FLeftCol := 0;
+  FMaxColsValid := False;
+  UpdateGutterWidth;
+  UpdateBars;
+  PlaceCaret;
   Invalidate;
 end;
 
-procedure TEdView.WordLeftOf(var ARow, ACol: Integer);
-var
-  Line: WideString;
+// Буфер изменился: каретка - в пределах текста, ширина - пересчитать
+procedure TEdView.BufferChanged(Sender: TObject; AFirst, AOldCount,
+  ANewCount: Integer);
 begin
-  if ACol = 0 then
-  begin
-    if ARow > 0 then
-    begin
-      Dec(ARow);
-      ACol := FBuffer.LineLength(ARow);
-    end;
-    Exit;
-  end;
-  Line := FBuffer[ARow];
-  while (ACol > 0) and not EdIsWordChar(Line[ACol]) do
-    Dec(ACol);
-  while (ACol > 0) and EdIsWordChar(Line[ACol]) do
-    Dec(ACol);
+  FMaxColsValid := False;
+  FEditor.ClampToBuffer;
+  UpdateGutterWidth;
+  UpdateBars;
+  PlaceCaret;
+  Invalidate;
+  if Assigned(FOnChange) then
+    FOnChange(Self);
 end;
 
-procedure TEdView.WordRightOf(var ARow, ACol: Integer);
-var
-  Line: WideString;
+// Каретка, выделение или текст изменились (ядро правки): каретка видна,
+// окно перерисовано; режим замены - каретка другой ширины
+procedure TEdView.EditorMoved(Sender: TObject);
 begin
-  Line := FBuffer[ARow];
-  if ACol >= Length(Line) then
-  begin
-    if ARow < FBuffer.Count - 1 then
-    begin
-      Inc(ARow);
-      ACol := 0;
-    end;
-    Exit;
-  end;
-  while (ACol < Length(Line)) and EdIsWordChar(Line[ACol + 1]) do
-    Inc(ACol);
-  while (ACol < Length(Line)) and not EdIsWordChar(Line[ACol + 1]) do
-    Inc(ACol);
-end;
-
-// Двойной щелчок: слово под мышью (или слева от неё); не слово - символ
-procedure TEdView.SelectWordAt(ARow, ACol: Integer);
-var
-  Line: WideString;
-  WordStart, WordEnd: Integer;
-begin
-  Line := FBuffer[ARow];
-  if (ACol >= Length(Line)) or not EdIsWordChar(Line[ACol + 1]) then
-    if (ACol > 0) and (ACol <= Length(Line)) and EdIsWordChar(Line[ACol]) then
-      Dec(ACol);
-  WordStart := ACol;
-  WordEnd := ACol;
-  if (ACol < Length(Line)) and EdIsWordChar(Line[ACol + 1]) then
-  begin
-    while (WordStart > 0) and EdIsWordChar(Line[WordStart]) do
-      Dec(WordStart);
-    while (WordEnd < Length(Line)) and EdIsWordChar(Line[WordEnd + 1]) do
-      Inc(WordEnd);
-  end
-  else if ACol < Length(Line) then
-    WordEnd := ACol + 1;
-  MoveTo(ARow, WordStart, False);
-  MoveTo(ARow, WordEnd, True);
-end;
-
-// Тройной щелчок: строка целиком, с переводом строки
-procedure TEdView.SelectLine(ARow: Integer);
-begin
-  MoveTo(ARow, 0, False);
-  if ARow < FBuffer.Count - 1 then
-    MoveTo(ARow + 1, 0, True)
-  else
-    MoveTo(ARow, FBuffer.LineLength(ARow), True);
-end;
-
-procedure TEdView.SetOverwrite(AValue: Boolean);
-begin
-  if AValue = FOverwrite then
-    Exit;
-  FOverwrite := AValue;
-  if FCaretMade then
+  if FCaretMade and (FCaretOverwrite <> FEditor.Overwrite) then
   begin
     KillCaret;
     MakeCaret;
   end;
-  if Assigned(FOnCaretMove) then
-    FOnCaretMove(Self);
-end;
-
-// ---------------------------------------------------------------------------
-//  Правка. Каждое действие - своя группа отката (BeginGroup), кроме набора
-//  подряд: он продолжает группу, пока каретку не двигали
-// ---------------------------------------------------------------------------
-
-// После правки: каретка видна, колонка для движения вверх-вниз - новая
-procedure TEdView.AfterEdit;
-begin
-  FPrefCol := ScreenCol(FCaretRow, FCaretCol);
   EnsureCaretVisible;
   Invalidate;
   if Assigned(FOnCaretMove) then
     FOnCaretMove(Self);
 end;
 
-// Удаление с откатом (каретка до правки - в записи отката); каретка - в
-// начало удалённого
-procedure TEdView.DeleteRange(ARow1, ACol1, ARow2, ACol2: Integer);
+procedure TEdView.EditorScroll(Sender: TObject; ARows: Integer);
 begin
-  FBuffer.DeleteText(ARow1, ACol1, ARow2, ACol2, FCaretRow, FCaretCol);
-  FCaretRow := ARow1;
-  FCaretCol := ACol1;
+  ScrollTo(FTopRow + ARows, FLeftCol);
 end;
 
-procedure TEdView.DeleteSelectionRaw;
-var
-  Row1, Col1, Row2, Col2: Integer;
+procedure TEdView.KeyDown(var Key: Word; Shift: TShiftState);
 begin
-  if SelRange(Row1, Col1, Row2, Col2) then
-    DeleteRange(Row1, Col1, Row2, Col2);
-  FSelActive := False;
+  inherited KeyDown(Key, Shift);
+  if (Key = 0) or (FBuffer = nil) then
+    Exit;
+  FEditor.PageRows := VisibleRows;
+  if FEditor.KeyDown(Key, Shift) then
+    Key := 0;
+end;
+
+function TEdView.GetCaretRow: Integer;
+begin
+  Result := FEditor.CaretRow;
+end;
+
+function TEdView.GetCaretCol: Integer;
+begin
+  Result := FEditor.CaretCol;
+end;
+
+function TEdView.GetTabSize: Integer;
+begin
+  Result := FEditor.TabSize;
+end;
+
+procedure TEdView.SetTabSize(AValue: Integer);
+begin
+  if AValue = FEditor.TabSize then
+    Exit;
+  FEditor.TabSize := AValue;
+  FMaxColsValid := False;
+  UpdateBars;
+  PlaceCaret;
+  Invalidate;
+end;
+
+function TEdView.GetReadOnly: Boolean;
+begin
+  Result := FEditor.ReadOnly;
+end;
+
+procedure TEdView.SetReadOnly(AValue: Boolean);
+begin
+  FEditor.ReadOnly := AValue;
+end;
+
+function TEdView.GetOverwrite: Boolean;
+begin
+  Result := FEditor.Overwrite;
+end;
+
+procedure TEdView.SetOverwrite(AValue: Boolean);
+begin
+  FEditor.Overwrite := AValue;
+end;
+
+function TEdView.GetAutoIndent: Boolean;
+begin
+  Result := FEditor.AutoIndent;
+end;
+
+procedure TEdView.SetAutoIndent(AValue: Boolean);
+begin
+  FEditor.AutoIndent := AValue;
+end;
+
+function TEdView.ScreenCol(ARow, ACol: Integer): Integer;
+begin
+  Result := FEditor.ScreenCol(ARow, ACol);
+end;
+
+function TEdView.ColAtScreen(ARow, AScreenCol: Integer): Integer;
+begin
+  Result := FEditor.ColAtScreen(ARow, AScreenCol);
+end;
+
+procedure TEdView.CaretTo(ARow, ACol: Integer; AKeepPref: Boolean);
+begin
+  FEditor.CaretTo(ARow, ACol, AKeepPref);
+end;
+
+procedure TEdView.MoveTo(ARow, ACol: Integer; ASelect: Boolean;
+  AKeepPref: Boolean);
+begin
+  FEditor.MoveTo(ARow, ACol, ASelect, AKeepPref);
+end;
+
+procedure TEdView.SetSelection(ARow, ACol: Integer);
+begin
+  FEditor.SetSelection(ARow, ACol);
+end;
+
+procedure TEdView.ClearSelection;
+begin
+  FEditor.ClearSelection;
+end;
+
+function TEdView.SelRange(var ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
+begin
+  Result := FEditor.SelRange(ARow1, ACol1, ARow2, ACol2);
+end;
+
+function TEdView.HasSelection: Boolean;
+begin
+  Result := FEditor.HasSelection;
+end;
+
+function TEdView.SelectedText: WideString;
+begin
+  Result := FEditor.SelectedText;
+end;
+
+procedure TEdView.SelectAll;
+begin
+  FEditor.SelectAll;
 end;
 
 procedure TEdView.InsertText(const AText: WideString; ATyping: Boolean);
-var
-  Clean: WideString;
-  EndRow, EndCol: Integer;
 begin
-  if FReadOnly or (FBuffer = nil) then
-    Exit;
-  Clean := EdNormalizeBreaks(AText);
-  // Набор продолжает свою группу, если выделения нет и до него был набор
-  if not (ATyping and not HasSelection and FBuffer.LastIsTyping) then
-    FBuffer.BeginGroup;
-  if HasSelection then
-    DeleteSelectionRaw;
-  FSelActive := False;
-  if Clean <> '' then
-  begin
-    FBuffer.InsertText(FCaretRow, FCaretCol, Clean, ATyping, FCaretRow,
-      FCaretCol, EndRow, EndCol);
-    FCaretRow := EndRow;
-    FCaretCol := EndCol;
-  end;
-  AfterEdit;
-end;
-
-// Символ с клавиатуры; в режиме замены - вместо символа под кареткой
-procedure TEdView.TypeChar(ACh: WideChar);
-var
-  EndRow, EndCol: Integer;
-begin
-  if FReadOnly or (FBuffer = nil) then
-    Exit;
-  if FOverwrite and not HasSelection and
-     (FCaretCol < FBuffer.LineLength(FCaretRow)) then
-  begin
-    if not FBuffer.LastIsTyping then
-      FBuffer.BeginGroup;
-    FBuffer.DeleteText(FCaretRow, FCaretCol, FCaretRow, FCaretCol + 1,
-      FCaretRow, FCaretCol);
-    FBuffer.InsertText(FCaretRow, FCaretCol, ACh, True, FCaretRow, FCaretCol,
-      EndRow, EndCol);
-    FCaretRow := EndRow;
-    FCaretCol := EndCol;
-    AfterEdit;
-  end
-  else
-    InsertText(ACh, True);
+  FEditor.InsertText(AText, ATyping);
 end;
 
 procedure TEdView.DeleteSelection;
 begin
-  if FReadOnly or (FBuffer = nil) or not HasSelection then
-    Exit;
-  FBuffer.BeginGroup;
-  DeleteSelectionRaw;
-  AfterEdit;
+  FEditor.DeleteSelection;
 end;
 
 procedure TEdView.Backspace;
 begin
-  if FReadOnly or (FBuffer = nil) then
-    Exit;
-  FBuffer.BeginGroup;
-  if HasSelection then
-    DeleteSelectionRaw
-  else if FCaretCol > 0 then
-    DeleteRange(FCaretRow, FCaretCol - 1, FCaretRow, FCaretCol)
-  else if FCaretRow > 0 then
-    DeleteRange(FCaretRow - 1, FBuffer.LineLength(FCaretRow - 1), FCaretRow, 0);
-  FSelActive := False;
-  AfterEdit;
+  FEditor.Backspace;
 end;
 
 procedure TEdView.DeleteChar;
 begin
-  if FReadOnly or (FBuffer = nil) then
-    Exit;
-  FBuffer.BeginGroup;
-  if HasSelection then
-    DeleteSelectionRaw
-  else if FCaretCol < FBuffer.LineLength(FCaretRow) then
-    DeleteRange(FCaretRow, FCaretCol, FCaretRow, FCaretCol + 1)
-  else if FCaretRow < FBuffer.Count - 1 then
-    DeleteRange(FCaretRow, FCaretCol, FCaretRow + 1, 0);
-  FSelActive := False;
-  AfterEdit;
+  FEditor.DeleteChar;
 end;
 
-// Enter: перевод строки и отступ, как у текущей строки (до каретки)
 procedure TEdView.NewLine;
-var
-  Line, Indent: WideString;
-  CharIdx: Integer;
 begin
-  if FReadOnly or (FBuffer = nil) then
-    Exit;
-  Indent := '';
-  if FAutoIndent then
-  begin
-    Line := FBuffer[FCaretRow];
-    CharIdx := 1;
-    while (CharIdx <= Length(Line)) and (CharIdx <= FCaretCol) and
-          ((Line[CharIdx] = ' ') or (Line[CharIdx] = #9)) do
-      Inc(CharIdx);
-    Indent := Copy(Line, 1, CharIdx - 1);
-  end;
-  InsertText(#10 + Indent);
+  FEditor.NewLine;
 end;
 
 procedure TEdView.DeleteWordLeft;
-var
-  WordRow, WordCol: Integer;
 begin
-  if FReadOnly or (FBuffer = nil) then
-    Exit;
-  if HasSelection then
-  begin
-    DeleteSelection;
-    Exit;
-  end;
-  WordRow := FCaretRow;
-  WordCol := FCaretCol;
-  WordLeftOf(WordRow, WordCol);
-  if (WordRow = FCaretRow) and (WordCol = FCaretCol) then
-    Exit;
-  FBuffer.BeginGroup;
-  DeleteRange(WordRow, WordCol, FCaretRow, FCaretCol);
-  AfterEdit;
+  FEditor.DeleteWordLeft;
 end;
 
 procedure TEdView.DeleteWordRight;
-var
-  WordRow, WordCol: Integer;
 begin
-  if FReadOnly or (FBuffer = nil) then
-    Exit;
-  if HasSelection then
-  begin
-    DeleteSelection;
-    Exit;
-  end;
-  WordRow := FCaretRow;
-  WordCol := FCaretCol;
-  WordRightOf(WordRow, WordCol);
-  if (WordRow = FCaretRow) and (WordCol = FCaretCol) then
-    Exit;
-  FBuffer.BeginGroup;
-  DeleteRange(FCaretRow, FCaretCol, WordRow, WordCol);
-  AfterEdit;
-end;
-
-// Tab по нескольким строкам - табуляция в начало каждой; Shift+Tab -
-// убрать одну табуляцию или до TabSize пробелов в начале. Строка, где
-// выделение кончается в колонке 0, не трогается. Одна группа отката
-procedure TEdView.IndentBlock(AOutdent: Boolean);
-var
-  Row1, Col1, Row2, Col2, LastRow, RowIdx, Removed, EndRow, EndCol: Integer;
-  HadSel: Boolean;
-  Line: WideString;
-begin
-  if FReadOnly or (FBuffer = nil) then
-    Exit;
-  HadSel := SelRange(Row1, Col1, Row2, Col2);
-  if not HadSel then
-  begin
-    Row1 := FCaretRow;
-    Row2 := FCaretRow;
-    Col2 := FCaretCol;
-  end;
-  LastRow := Row2;
-  if (Row2 > Row1) and (Col2 = 0) then
-    LastRow := Row2 - 1;
-  FBuffer.BeginGroup;
-  for RowIdx := Row1 to LastRow do
-    if AOutdent then
-    begin
-      Line := FBuffer[RowIdx];
-      Removed := 0;
-      if (Line <> '') and (Line[1] = #9) then
-        Removed := 1
-      else
-        while (Removed < FTabSize) and (Removed < Length(Line)) and
-              (Line[Removed + 1] = ' ') do
-          Inc(Removed);
-      if Removed > 0 then
-      begin
-        FBuffer.DeleteText(RowIdx, 0, RowIdx, Removed, FCaretRow, FCaretCol);
-        if (RowIdx = FCaretRow) and not HadSel then
-        begin
-          Dec(FCaretCol, Removed);
-          if FCaretCol < 0 then
-            FCaretCol := 0;
-        end;
-      end;
-    end
-    else
-      FBuffer.InsertText(RowIdx, 0, #9, False, FCaretRow, FCaretCol, EndRow,
-        EndCol);
-  FBuffer.BeginGroup;
-  if HadSel then
-  begin
-    // Выделены строки блока целиком
-    FSelActive := True;
-    FSelRow := Row1;
-    FSelCol := 0;
-    FCaretRow := Row2;
-    if LastRow < Row2 then
-      FCaretCol := 0
-    else
-      FCaretCol := FBuffer.LineLength(Row2);
-  end
-  else if FCaretCol > FBuffer.LineLength(FCaretRow) then
-    FCaretCol := FBuffer.LineLength(FCaretRow);
-  AfterEdit;
+  FEditor.DeleteWordRight;
 end;
 
 procedure TEdView.CutToClipboard;
 begin
-  if FReadOnly or not HasSelection then
-    Exit;
-  CopyToClipboard;
-  DeleteSelection;
+  FEditor.CutToClipboard;
 end;
 
 procedure TEdView.CopyToClipboard;
 begin
-  if HasSelection then
-    EdSetClipboardText(SelectedText);
+  FEditor.CopyToClipboard;
 end;
 
 procedure TEdView.PasteFromClipboard;
-var
-  ClipText: WideString;
 begin
-  if FReadOnly then
-    Exit;
-  ClipText := EdClipboardText;
-  if ClipText <> '' then
-    InsertText(ClipText, False);
+  FEditor.PasteFromClipboard;
 end;
 
 procedure TEdView.Undo;
-var
-  NewRow, NewCol: Integer;
 begin
-  if FReadOnly or (FBuffer = nil) then
-    Exit;
-  NewRow := FCaretRow;
-  NewCol := FCaretCol;
-  if not FBuffer.Undo(NewRow, NewCol) then
-    Exit;
-  FSelActive := False;
-  FCaretRow := NewRow;
-  FCaretCol := NewCol;
-  AfterEdit;
+  FEditor.Undo;
 end;
 
 procedure TEdView.Redo;
-var
-  NewRow, NewCol: Integer;
 begin
-  if FReadOnly or (FBuffer = nil) then
-    Exit;
-  NewRow := FCaretRow;
-  NewCol := FCaretCol;
-  if not FBuffer.Redo(NewRow, NewCol) then
-    Exit;
-  FSelActive := False;
-  FCaretRow := NewRow;
-  FCaretCol := NewCol;
-  AfterEdit;
+  FEditor.Redo;
 end;
 
 function TEdView.CanUndo: Boolean;
 begin
-  Result := (FBuffer <> nil) and not FReadOnly and FBuffer.CanUndo;
+  Result := FEditor.CanUndo;
 end;
 
 function TEdView.CanRedo: Boolean;
 begin
-  Result := (FBuffer <> nil) and not FReadOnly and FBuffer.CanRedo;
+  Result := FEditor.CanRedo;
 end;
 
 function TEdView.DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;

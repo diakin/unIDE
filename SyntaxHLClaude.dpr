@@ -83,6 +83,8 @@ uses
   SchemeLine in 'SchemeLine.pas',
   SchemeFiles in 'SchemeFiles.pas',
   EdBuffer in 'EdBuffer.pas',
+  EdClip in 'EdClip.pas',
+  EdEditor in 'EdEditor.pas',
   EdView in 'EdView.pas',
   EdScheme in 'EdScheme.pas',
   DlgEdPreview in 'DlgEdPreview.pas',
