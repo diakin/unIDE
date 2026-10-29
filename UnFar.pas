@@ -153,7 +153,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.55';
+  FarBuild = 'b.56';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -737,6 +737,7 @@ type
     procedure FtpImportHosts;
     procedure FtpCopyHosts;
     function FtpPasteHosts: Boolean;
+    procedure FtpExportHosts;
     function FtpKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure DrawFtpHosts(APanel: TFarPanel; APanelX, APanelW: Integer;
       AIsActive: Boolean);
@@ -8168,8 +8169,9 @@ begin
       FtpFillHosts(FPanels[PanelIndex], HostIdx);
 end;
 
-// Адрес FTP из файла FAR Manager: FTP-плагин по F5 на адресе пишет файл
-// его настроек (строки Ключ=Значение). Берутся адрес (Url или HostName -
+// Адрес FTP из файла: файл uniFAR (F5 в списке адресов) - адрес одной
+// строкой ftp://..., с паролем; файл FAR Manager - FTP-плагин по F5 на
+// адресе пишет файл его настроек (строки Ключ=Значение). Берутся адрес (Url или HostName -
 // хост, порт, папка), пользователь, папка, порт, пассивный режим,
 // описание. Пароль не переносится: спросится при первом входе. False - в
 // файле нет адреса
@@ -8199,6 +8201,27 @@ begin
     except
       Exit;
     end;
+    // Файл uniFAR (F5 в списке адресов): адрес одной строкой
+    // ftp://пользователь:пароль@хост:порт/папка и через табуляцию описание
+    for LineIdx := 0 to Lines.Count - 1 do
+      if LowerCase(Copy(Trim(Lines[LineIdx]), 1, 6)) = 'ftp://' then
+      begin
+        Value := Trim(Lines[LineIdx]);
+        DescrText := '';
+        EqPos := Pos(#9, Value);
+        if EqPos > 0 then
+        begin
+          DescrText := Trim(Copy(Value, EqPos + 1, MaxInt));
+          Value := Trim(Copy(Value, 1, EqPos - 1));
+        end;
+        if FarFtpParseUrl(WideString(Value), AHost) and (AHost.Host <> '') then
+        begin
+          AHost.Description := WideString(DescrText);
+          AHost.AskPassword := AHost.Password = '';
+          Result := True;
+        end;
+        Exit;
+      end;
     for LineIdx := 0 to Lines.Count - 1 do
     begin
       EqPos := Pos('=', Lines[LineIdx]);
@@ -8252,12 +8275,13 @@ end;
 procedure TFarView.FtpImportHosts;
 var
   Names: TFarNames;
-  NameIdx, HostIdx, Added, Skipped, Unknown, LastIdx: Integer;
+  NameIdx, HostIdx, Added, Skipped, Unknown, LastIdx, AskAdded: Integer;
   NewHost: TFarFtpHost;
   Found: Boolean;
   Report: string;
 begin
   Names := CollectNames(False);
+  AskAdded := 0;
   Added := 0;
   Skipped := 0;
   Unknown := 0;
@@ -8287,6 +8311,8 @@ begin
     FFtpHosts[High(FFtpHosts)] := NewHost;
     LastIdx := High(FFtpHosts);
     Inc(Added);
+    if NewHost.AskPassword and (NewHost.User <> '') then
+      Inc(AskAdded);
   end;
   if (Added > 0) and (FIniName <> '') then
     FarFtpHostsSave(FIniName, FFtpHosts);
@@ -8297,8 +8323,9 @@ begin
     Report := Report + ', уже были: ' + IntToStr(Skipped);
   if Unknown > 0 then
     Report := Report + ', не адрес FTP: ' + IntToStr(Unknown);
-  if Added > 0 then
-    Report := Report + ' (пароль спросится при первом входе)';
+  if AskAdded > 0 then
+    Report := Report + ' (без пароля: ' + IntToStr(AskAdded) +
+      ' - спросится при первом входе)';
   Status(Report);
   Invalidate;
 end;
@@ -8607,6 +8634,108 @@ begin
   Invalidate;
 end;
 
+// F5 в списке адресов: выделенные адреса (или под курсором) - в папку
+// другой панели, по файлу на адрес: «пользователь@хост_порт_папка.ftp»
+// (порт - если не 21, папка - если задана), внутри -
+// адрес одной строкой (как Ctrl+Ins: ftp://пользователь:пароль@хост:порт
+// /папка, через табуляцию - описание). Такой файл F5 в список адресов
+// добавляет обратно. Пароль - открытым текстом
+procedure TFarView.FtpExportHosts;
+var
+  Panel, Other: TFarPanel;
+  HostIdxs: array of Integer;
+  ItemIdx, HostNo, Written, WithPass: Integer;
+  Host: TFarFtpHost;
+  FileName, FullPath, LastName, HomeText: WideString;
+  LineText: string;
+  FileHandle: THandle;
+  WrittenLen: DWORD;
+begin
+  Panel := ActivePanel;
+  Other := FPanels[1 - FActive];
+  if Other.IsFtp or Other.IsArchive or (Other.Path = '') then
+  begin
+    Status(FarProduct + ': FTP - F5 пишет адреса в файлы: откройте папку ' +
+      'на диске в другой панели');
+    Exit;
+  end;
+  HostIdxs := nil;
+  for ItemIdx := 0 to Panel.Count - 1 do
+    if Panel.FItems[ItemIdx].Selected and not Panel.FItems[ItemIdx].IsUp then
+    begin
+      SetLength(HostIdxs, Length(HostIdxs) + 1);
+      HostIdxs[High(HostIdxs)] := Panel.FItems[ItemIdx].OrigIndex;
+    end;
+  if (Length(HostIdxs) = 0) and (Panel.Cursor >= 0) and
+     (Panel.Cursor < Panel.Count) and not Panel.FItems[Panel.Cursor].IsUp then
+  begin
+    SetLength(HostIdxs, 1);
+    HostIdxs[0] := Panel.FItems[Panel.Cursor].OrigIndex;
+  end;
+  Written := 0;
+  WithPass := 0;
+  LastName := '';
+  for HostNo := 0 to High(HostIdxs) do
+  begin
+    if (HostIdxs[HostNo] < 0) or (HostIdxs[HostNo] > High(FFtpHosts)) then
+      Continue;
+    Host := FFtpHosts[HostIdxs[HostNo]];
+    FileName := WideString(Host.Host);
+    if Host.User <> '' then
+      FileName := Host.User + '@' + FileName;
+    if (Host.Port > 0) and (Host.Port <> FarFtpDefaultPort) then
+      FileName := FileName + '_' + WideString(IntToStr(Host.Port));
+    // Папка - в имя: адреса одного сервера с разными папками - разные файлы
+    HomeText := FarTrimW(Host.Home);
+    while (HomeText <> '') and (HomeText[1] = '/') do
+      Delete(HomeText, 1, 1);
+    if HomeText <> '' then
+      FileName := FileName + '_' + HomeText;
+    FileName := FarSafeFileName(FileName);
+    while (Length(FileName) > 0) and (FileName[Length(FileName)] = '_') do
+      SetLength(FileName, Length(FileName) - 1);
+    FileName := FileName + '.ftp';
+    FullPath := Other.Path + FileName;
+    // Кодировка Windows: файл читает и FAR, и F5 сюда же
+    LineText := string(FarFtpHostLine(Host)) + #13#10;
+    FileHandle := FarCreateFile(PWideChar(FullPath), GENERIC_WRITE, 0, nil,
+      CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if FileHandle = INVALID_HANDLE_VALUE then
+    begin
+      Status(FarProduct + ': файл не создать: ' + string(FullPath) + ' - ' +
+        SysErrorMessage(GetLastError));
+      Break;
+    end;
+    try
+      WriteFile(FileHandle, LineText[1], Length(LineText), WrittenLen, nil);
+    finally
+      CloseHandle(FileHandle);
+    end;
+    Inc(Written);
+    LastName := FileName;
+    if (Host.Password <> '') and not Host.AskPassword then
+      Inc(WithPass);
+  end;
+  if Written = 0 then
+    Exit;
+  Other.Reread;
+  if LastName <> '' then
+  begin
+    ItemIdx := Other.IndexOfName(LastName);
+    if ItemIdx >= 0 then
+      Other.Cursor := ItemIdx;
+  end;
+  EnsureVisible(Other);
+  if WithPass > 0 then
+    Status(FarProduct + ': FTP - адресов записано в файлы: ' +
+      IntToStr(Written) + ' (' + string(Other.Path) + '), с паролем: ' +
+      IntToStr(WithPass) + ' - открытым текстом')
+  else
+    Status(FarProduct + ': FTP - адресов записано в файлы: ' +
+      IntToStr(Written) + ' (' + string(Other.Path) + ')');
+  Invalidate;
+end;
+
 // Клавиши панели на FTP. True - клавиша обработана; False - обычная
 // (стрелки, Insert, Tab, сортировка, Alt+F1 / Alt+F2 и т.п.)
 function TFarView.FtpKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
@@ -8667,7 +8796,13 @@ begin
           Exit;
         end;
     end;
-  // Список адресов: Shift+F4 - новый, F4 - изменить, F8 / Del - удалить
+  // Список адресов: Shift+F4 - новый, F4 - изменить, F8 / Del - удалить,
+  // F5 - адреса в файлы в папку другой панели
+  if (Panel.FFtpMode = 1) and Plain and not AShift and (AKey = VK_F5) then
+  begin
+    FtpExportHosts;
+    Exit;
+  end;
   if (Panel.FFtpMode = 1) and Plain then
     case AKey of
       VK_F4:
