@@ -153,7 +153,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.56';
+  FarBuild = 'b.57';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -561,6 +561,9 @@ type
     FFindFolders: Boolean;
     FFindArea: Integer;            // 0 - с подпапками, 1 - только папка, 2 - диск
     FFindOpen: Boolean;
+    // Окно найденного спрятано на время редактора / просмотра (F4 / F3 в
+    // нём): закрыли их - окно снова на месте
+    FFindSuspended: Boolean;
     FFindThread: TFarFindThread;
     FFindTimer: TTimer;
     FFindOptions: TFarFindOptions;
@@ -811,6 +814,7 @@ type
     function FindCurrent(var AItem: TFarFindItem): Boolean;
     procedure FindGoTo;
     procedure FindEdit;
+    procedure FindView;
     procedure FindButton(AIndex: Integer);
     function FindKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     function FindRowText(ARowIdx, AWidth: Integer): WideString;
@@ -9107,6 +9111,12 @@ begin
     EnsureVisible(FPanels[PanelIndex]);
   end;
   Status(FarProduct + ': редактор закрыт');
+  // Открыт из окна найденного (F4) - снова к нему
+  if FFindSuspended and (FViewer = nil) then
+  begin
+    FFindSuspended := False;
+    FFindOpen := True;
+  end;
   Invalidate;
 end;
 
@@ -9767,6 +9777,12 @@ begin
   if FSingle < 0 then
     FActive := 1 - FEditPanel;
   Status('');
+  // Открыт из окна найденного (F3) - снова к нему
+  if FFindSuspended and (FEditor = nil) then
+  begin
+    FFindSuspended := False;
+    FFindOpen := True;
+  end;
   Invalidate;
 end;
 
@@ -12654,6 +12670,7 @@ begin
   FFindFocus := -1;
   FFindDone := False;
   FFindOpen := True;
+  FFindSuspended := False;
   FFindThread := TFarFindThread.Create(AOptions);
   if FFindTimer = nil then
   begin
@@ -12685,6 +12702,7 @@ procedure TFarView.FindQuit;
 begin
   FindStopThread;
   FFindOpen := False;
+  FFindSuspended := False;
   SetLength(FFindItems, 0);
   SetLength(FFindRows, 0);
   Invalidate;
@@ -12827,6 +12845,32 @@ begin
     Exit;
   end;
   OpenEditor(Item.Dir + Item.Name);
+  // Редактор открылся - окно найденного спрятать до его закрытия
+  if (FEditor <> nil) and FarSameName(FEditor.FileName, Item.Dir + Item.Name) then
+  begin
+    FFindOpen := False;
+    FFindSuspended := True;
+  end;
+end;
+
+// F3 в окне найденного: просмотр файла под курсором
+procedure TFarView.FindView;
+var
+  Item: TFarFindItem;
+begin
+  if not FindCurrent(Item) then
+    Exit;
+  if Item.IsDir then
+  begin
+    Status(FarProduct + ': это папка - Enter перейдёт в неё');
+    Exit;
+  end;
+  OpenViewer(Item.Dir + Item.Name);
+  if (FViewer <> nil) and FarSameName(FViewer.FileName, Item.Dir + Item.Name) then
+  begin
+    FFindOpen := False;
+    FFindSuspended := True;
+  end;
 end;
 
 // Кнопки окна найденного: New search, Go to, Edit, Stop / Cancel
@@ -12895,6 +12939,8 @@ begin
         FindButton(FFindFocus);
     VK_F4:
       FindEdit;
+    VK_F3:
+      FindView;
   else
     // Остальное не отдаём панелям и меню IDE
     Result := True;
