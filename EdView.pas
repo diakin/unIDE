@@ -77,6 +77,17 @@ type
   TEdTextClickEvent = procedure(Sender: TObject; ARow, ACol: Integer)
     of object;
 
+  // Отметка строки ARow целиком (владелец окна): ABack - фон строки и всех
+  // её символов, AFore - цвет всех символов; clNone - не менять. Выделение
+  // рисуется поверх
+  TEdRowStyleEvent = procedure(Sender: TObject; ARow: Integer;
+    var ABack, AFore: TColor) of object;
+  // Дорисовать строку ARow поверх текста (направляющие отступов и т.п.):
+  // ATextX - X колонки 0 с учётом прокрутки вбок (левее GutterWidth - не
+  // рисовать), AY - верх строки
+  TEdRowPaintEvent = procedure(Sender: TObject; ACanvas: TCanvas;
+    ARow, ATextX, AY: Integer) of object;
+
   TEdView = class(TCustomControl)
   private
     FBuffer: TEdBuffer;
@@ -111,6 +122,8 @@ type
     FOnChange: TNotifyEvent;
     FOnTextClick: TEdTextClickEvent;
     FOnViewScroll: TNotifyEvent;
+    FOnRowStyle: TEdRowStyleEvent;
+    FOnRowPaint: TEdRowPaintEvent;
     FCaretOverwrite: Boolean;  // каретка создана для режима замены
     FMouseSelecting: Boolean;  // левая кнопка нажата в тексте
     FLastMouse: TPoint;
@@ -275,6 +288,8 @@ type
     // каретка ушла за край) - сразу, не при отрисовке
     property OnViewScroll: TNotifyEvent read FOnViewScroll
       write FOnViewScroll;
+    property OnRowStyle: TEdRowStyleEvent read FOnRowStyle write FOnRowStyle;
+    property OnRowPaint: TEdRowPaintEvent read FOnRowPaint write FOnRowPaint;
     property ReadOnly: Boolean read GetReadOnly write SetReadOnly;
     property Overwrite: Boolean read GetOverwrite write SetOverwrite;
     property AutoIndent: Boolean read GetAutoIndent write SetAutoIndent;
@@ -834,7 +849,7 @@ var
   Line: WideString;
   CellCount, RunCount, RunIdx, CharIdx, ScreenPos, CellWidth, CellIdx,
   CellNo, Sel1Row, Sel1Col, Sel2Row, Sel2Col: Integer;
-  RowBack, CharFore, CharBack: TColor;
+  RowBack, CharFore, CharBack, MarkBack, MarkFore: TColor;
   CharStyle: Byte;
   HasSel, CharSel, PastEndSel: Boolean;
   CharCode: WideChar;
@@ -845,6 +860,12 @@ begin
   RowBack := FBackColor;
   if (ARow = FEditor.CaretRow) and (FCurLineColor <> clNone) then
     RowBack := FCurLineColor;
+  MarkBack := clNone;
+  MarkFore := clNone;
+  if Assigned(FOnRowStyle) then
+    FOnRowStyle(Self, ARow, MarkBack, MarkFore);
+  if MarkBack <> clNone then
+    RowBack := MarkBack;
   // Пустые ячейки - пробелы фоном строки
   SetLength(FCellText, CellCount);
   SetLength(FCellFore, CellCount);
@@ -889,6 +910,11 @@ begin
         CharBack := FRuns[RunIdx].Back;
       CharStyle := EdStyleByte(FRuns[RunIdx].Style);
     end;
+    // Отмеченная строка: фон отметки у всех символов, цвет - если задан
+    if MarkBack <> clNone then
+      CharBack := MarkBack;
+    if MarkFore <> clNone then
+      CharFore := MarkFore;
     if HasSel then
     begin
       CharSel := ((ARow > Sel1Row) or (CharIdx >= Sel1Col)) and
@@ -920,6 +946,8 @@ begin
      (ScreenPos < FLeftCol + CellCount) then
     FCellBack[ScreenPos - FLeftCol] := FSelColor;
   OutCells(ACanvas, FGutterW, AY, CellCount);
+  if Assigned(FOnRowPaint) then
+    FOnRowPaint(Self, ACanvas, ARow, FGutterW - FLeftCol * FCharW, AY);
 end;
 
 // Ячейки FCellText[1 .. ACount] - кусками одного вида, каждый символ в

@@ -17,6 +17,11 @@ type
     Other: array[Boolean] of TEdView;
     procedure TextClick(Sender: TObject; ARow, ACol: Integer);
     procedure ViewScroll(Sender: TObject);
+    procedure RowStyle(Sender: TObject; ARow: Integer; var ABack, AFore: TColor);
+    procedure RowPaint(Sender: TObject; ACanvas: TCanvas; ARow, ATextX, AY: Integer);
+  public
+    StyleRows, PaintRows: Integer;
+    MarkPixelOk: Boolean;
   end;
 
 procedure THost.TextClick(Sender: TObject; ARow, ACol: Integer);
@@ -24,6 +29,26 @@ begin
   ClickRow := ARow;
   ClickCol := ACol;
   Inc(Clicks);
+end;
+
+procedure THost.RowStyle(Sender: TObject; ARow: Integer; var ABack, AFore: TColor);
+begin
+  Inc(StyleRows);
+  if ARow = 202 then
+  begin
+    ABack := clYellow;
+    AFore := clRed;
+  end;
+end;
+
+procedure THost.RowPaint(Sender: TObject; ACanvas: TCanvas; ARow, ATextX, AY: Integer);
+begin
+  Inc(PaintRows);
+  // Строка 202 отмечена: фон под текстом - цвет отметки
+  if ARow = 202 then
+    MarkPixelOk := ACanvas.Pixels[ATextX + TEdView(Sender).CharW * 20 + 1, AY + 1] = clYellow;
+  ACanvas.Brush.Color := clLime;
+  ACanvas.FillRect(Rect(ATextX, AY, ATextX + 2, AY + TEdView(Sender).LineH));
 end;
 
 procedure THost.ViewScroll(Sender: TObject);
@@ -111,6 +136,17 @@ begin
   MainView.Undo;
   MainView.Undo;
   Check('undo from main seen in pane', PaneView.Buffer.Lines[0] = 'line 1');
+
+  PaneView.OnRowStyle := Host.RowStyle;
+  PaneView.OnRowPaint := Host.RowPaint;
+  PaneView.Repaint;
+  Application.ProcessMessages;
+  Check('row hooks called (' + IntToStr(Host.StyleRows) + '/' +
+    IntToStr(Host.PaintRows) + ')', (Host.StyleRows > 10) and
+    (Host.StyleRows = Host.PaintRows));
+  Check('marked row background', Host.MarkPixelOk);
+  PaneView.OnRowStyle := nil;
+  PaneView.OnRowPaint := nil;
 
   TTestView(PaneView).MouseDown(mbLeft, [], PaneView.GutterWidth +
     PaneView.CharW * 2 + 1, PaneView.LineH * 3 + 1);

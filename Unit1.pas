@@ -41,6 +41,8 @@ uses
   EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
   DlgEdPreview,   // свой редактор - окно пробы (шаги 0.7.2 - 0.7.3)
   EdRichEmu,      // свой редактор вместо RichEdit1 (шаг 0.7.4)
+  EdView,         // окно своего редактора - вторая панель (шаг 0.7.5)
+  EdScheme,       // EdAnsiLine - строка буфера в кодировке Windows
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
@@ -3341,6 +3343,18 @@ type
     procedure SplitSyncClick(Sender: TObject);
     procedure SplitTextScroll(ATopLine: Integer);
     procedure SplitSyncFromEditor;
+    function LineCommentStart(const ALineStr: string; ALineLen,
+      ALineStart: Integer): Integer;
+    function LineMarkGroupOf(const ALineStr: string; ALineLen,
+      ALineStart: Integer): Integer;
+    function LineMarkColors(ALine: Integer; const ALineStr: string;
+      ALineStart: Integer; out AFore, ABack: TColor): Boolean;
+    function SplitDecoOn: Boolean;
+    procedure SplitRowStyle(Sender: TObject; ARow: Integer;
+      var ABack, AFore: TColor);
+    procedure SplitRowPaint(Sender: TObject; ACanvas: TCanvas;
+      ARow, ATextX, AY: Integer);
+    procedure SplitDecoCheck;
     function SplitOwnEdText: Boolean;
     procedure SplitWindowClosed(AWinIdx: Integer);
     function  SplitEditTop: Integer;
@@ -3848,6 +3862,11 @@ type
     FSplitSync: Boolean;
     FSplitSyncBusy: Boolean;
     FSplitSyncTop: Integer;
+    // Отметки строк и направляющие второй панели (та же вкладка) - по
+    // данным редактора; с этими данными панель нарисована в последний раз
+    FSplitDecoMapVer: Cardinal;
+    FSplitDecoFound: Integer;
+    FSplitDecoDepth: Integer;
 
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
@@ -78083,6 +78102,123 @@ begin
   end;
 end;
 
+// Начало строчного комментария в строке ALineStr (с 1; 0 - нет). Кавычки
+// и блочные комментарии пропускаются - как FindLineCommentFrom(1) в
+// HighlightVisibleText
+function TForm1.LineCommentStart(const ALineStr: string; ALineLen,
+  ALineStart: Integer): Integer;
+var
+  FI: Integer;
+begin
+  Result := 0;
+  if FScheme.FLineCommentMarker = '' then
+    Exit;
+  FI := 1;
+  while FI <= ALineLen - Length(FScheme.FLineCommentMarker) + 1 do
+  begin
+    if (ALineStr[FI] = FScheme.FLineCommentMarker[1]) and
+       (Copy(ALineStr, FI, Length(FScheme.FLineCommentMarker)) =
+        FScheme.FLineCommentMarker) and
+       FScheme.LineCommentPosOk(ALineStr, FI) then
+      if not InRanges(StringRanges, ALineStart + FI - 1) and
+         not InRanges(CommentRanges, ALineStart + FI - 1) then
+      begin
+        Result := FI;
+        Exit;
+      end;
+    Inc(FI);
+  end;
+end;
+
+// Группа отметки (LineMark) строки ALineStr (сквозной индекс её начала -
+// ALineStart); -1 - слов отметки нет. Идентификаторы по порядку, как у
+// ключевых слов, поэтому побеждает самое левое слово; при равенстве -
+// группа, которая выше в файле схемы. HighlightVisibleText (редактор) и
+// вторая панель (SplitRowStyle)
+function TForm1.LineMarkGroupOf(const ALineStr: string; ALineLen,
+  ALineStart: Integer): Integer;
+var
+  MI, MEnd, CmtPos, G, W, P, L, Best: Integer;
+  Ident, Pat: string;
+begin
+  Result := -1;
+  if Length(FScheme.MarkGroups) = 0 then
+    Exit;
+
+  CmtPos := LineCommentStart(ALineStr, ALineLen, ALineStart);
+  if CmtPos <= 0 then
+    CmtPos := ALineLen + 1;
+  Best := MaxInt;
+
+  // ОДНОСЛОВНЫЕ ОБРАЗЦЫ: идентификаторы строки по порядку, поиск в списке.
+  // Идут слева направо, поэтому первое попадание - самое левое.
+  MI := 1;
+  while MI < CmtPos do
+  begin
+    if ALineStr[MI] in ['a'..'z', 'A'..'Z', '_'] then
+    begin
+      MEnd := MI;
+      while (MEnd <= ALineLen) and
+            (ALineStr[MEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+        Inc(MEnd);
+      Ident := Copy(ALineStr, MI, MEnd - MI);
+      if not InRanges(StringRanges, ALineStart + MI - 1) and
+         not InRanges(CommentRanges, ALineStart + MI - 1) then
+        for G := 0 to High(FScheme.MarkGroups) do
+          if (FScheme.MarkGroups[G].Words <> nil) and
+             (FScheme.MarkGroups[G].Words.IndexOf(Ident) >= 0) then
+          begin
+            Best := MI;
+            Result := G;
+            Break;
+          end;
+      if Best < MaxInt then
+        Break;
+      MI := MEnd;
+    end
+    else
+      Inc(MI);
+  end;
+
+  // ОБРАЗЦЫ С ПРОБЕЛОМ ("end sub", "sub "): по идентификаторам их не
+  // найти, ищем подстрокой, без учёта регистра. Граница слова проверяется
+  // только у того края, который сам буквенный: у образца 'sub ' правый
+  // край - пробел, и следом за ним имя подпрограммы - совпадение.
+  // Побеждает всё равно самое левое совпадение, поэтому просмотр идёт
+  // только левее уже найденного.
+  for G := 0 to High(FScheme.MarkGroups) do
+  begin
+    if FScheme.MarkGroups[G].Words = nil then
+      Continue;
+    for W := 0 to FScheme.MarkGroups[G].Words.Count - 1 do
+    begin
+      Pat := FScheme.MarkGroups[G].Words[W];
+      L := Length(Pat);
+      if (L = 0) or (Pos(' ', Pat) = 0) then
+        Continue;
+      for P := 1 to CmtPos - L do
+      begin
+        if P >= Best then
+          Break;
+        if (AnsiStrLIComp(PChar(@ALineStr[P]), PChar(Pat), L) = 0) and
+           (not (Pat[1] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
+            (P = 1) or
+            not (ALineStr[P - 1] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
+           (not (Pat[L] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
+            (P + L > ALineLen) or
+            not (ALineStr[P + L] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
+           not InRanges(StringRanges, ALineStart + P - 1) and
+           not InRanges(CommentRanges, ALineStart + P - 1) then
+        begin
+          Best := P;
+          Result := G;
+          Break;
+        end;
+      end;
+    end;
+  end;
+end;
+
 procedure TForm1.HighlightVisibleText;
 const
   EM_GETSCROLLPOS = WM_USER + 221; // Системный код для Delphi 7
@@ -78737,86 +78873,8 @@ var
 // Идентификаторы по порядку, как у ключевых слов, поэтому побеждает самое
 // левое слово; при равенстве - группа, которая выше в файле схемы.
   function LineMarkGroup: Integer;
-  var
-    MI, MEnd, CmtPos, G, W, P, L, Best: Integer;
-    Ident, Pat: string;
   begin
-    Result := -1;
-    if Length(FScheme.MarkGroups) = 0 then
-      Exit;
-
-    CmtPos := FindLineCommentFrom(1);
-    if CmtPos <= 0 then
-      CmtPos := LineLen + 1;
-    Best := MaxInt;
-
-    // ОДНОСЛОВНЫЕ ОБРАЗЦЫ: идентификаторы строки по порядку, поиск в списке.
-    // Идут слева направо, поэтому первое попадание - самое левое.
-    MI := 1;
-    while MI < CmtPos do
-    begin
-      if LineStr[MI] in ['a'..'z', 'A'..'Z', '_'] then
-      begin
-        MEnd := MI;
-        while (MEnd <= LineLen) and
-              (LineStr[MEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
-          Inc(MEnd);
-        Ident := Copy(LineStr, MI, MEnd - MI);
-        if not IsCharInString(LineStartCharIdx + MI - 1) and
-           not IsCharInBlockComment(LineStartCharIdx + MI - 1) then
-          for G := 0 to High(FScheme.MarkGroups) do
-            if (FScheme.MarkGroups[G].Words <> nil) and
-               (FScheme.MarkGroups[G].Words.IndexOf(Ident) >= 0) then
-            begin
-              Best := MI;
-              Result := G;
-              Break;
-            end;
-        if Best < MaxInt then
-          Break;
-        MI := MEnd;
-      end
-      else
-        Inc(MI);
-    end;
-
-    // ОБРАЗЦЫ С ПРОБЕЛОМ ("end sub", "sub "): по идентификаторам их не
-    // найти, ищем подстрокой, без учёта регистра. Граница слова проверяется
-    // только у того края, который сам буквенный: у образца 'sub ' правый
-    // край - пробел, и следом за ним имя подпрограммы - совпадение.
-    // Побеждает всё равно самое левое совпадение, поэтому просмотр идёт
-    // только левее уже найденного.
-    for G := 0 to High(FScheme.MarkGroups) do
-    begin
-      if FScheme.MarkGroups[G].Words = nil then
-        Continue;
-      for W := 0 to FScheme.MarkGroups[G].Words.Count - 1 do
-      begin
-        Pat := FScheme.MarkGroups[G].Words[W];
-        L := Length(Pat);
-        if (L = 0) or (Pos(' ', Pat) = 0) then
-          Continue;
-        for P := 1 to CmtPos - L do
-        begin
-          if P >= Best then
-            Break;
-          if (AnsiStrLIComp(PChar(@LineStr[P]), PChar(Pat), L) = 0) and
-             (not (Pat[1] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
-              (P = 1) or
-              not (LineStr[P - 1] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
-             (not (Pat[L] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
-              (P + L > LineLen) or
-              not (LineStr[P + L] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
-             not IsCharInString(LineStartCharIdx + P - 1) and
-             not IsCharInBlockComment(LineStartCharIdx + P - 1) then
-          begin
-            Best := P;
-            Result := G;
-            Break;
-          end;
-        end;
-      end;
-    end;
+    Result := LineMarkGroupOf(LineStr, LineLen, LineStartCharIdx);
   end;
 
 // Окно длинной строки целиком внутри строчного комментария, начатого
@@ -79204,6 +79262,8 @@ begin
 
     // Вторая панель с синхронной прокруткой - на ту же первую строку
     SplitSyncFromEditor;
+    // Отметки строк и направляющие второй панели - по новым данным
+    SplitDecoCheck;
 
     // Отметки Format text - снять, если номера строк уже не те
     FmtSuspectCheck;
@@ -83835,6 +83895,8 @@ begin
   FSplit.OnFmtClick := SplitFmtClick;
   FSplit.OnCloseClick := SplitCloseClick;
   FSplit.OnTextScroll := SplitTextScroll;
+  FSplit.OnRowStyle := SplitRowStyle;
+  FSplit.OnRowPaint := SplitRowPaint;
   FSplit.Header.OnSyncClick := SplitSyncClick;
   FSplitSync := True;
   FSplitSyncTop := -1;
@@ -84279,6 +84341,226 @@ begin
     FSplit.Header.SetColors(SplitIdle, TextColor);
     FEditHeader.SetColors(ActiveBack, TextColor);
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Вторая панель (окно TEdView), та же вкладка, что в редакторе: отметки
+//  строк (заголовки подпрограмм, LineMark, Format text, отладка) и
+//  направляющие отступов - по тем же данным, что у редактора
+//  (HighlightVisibleText): карты CommentRanges / StringRanges, FLineDepth,
+//  FLineTick, схема вкладки. У другой вкладки этих данных нет - там только
+//  раскраска по схеме.
+// ---------------------------------------------------------------------------
+
+// Цвета отметки строки ALine (ALineStr - её текст в кодировке Windows,
+// ALineStart - сквозной индекс начала); False - строка не отмечена.
+// Порядок - как в HighlightVisibleText: заголовок тела, LineMark, Format
+// text, отладка
+function TForm1.LineMarkColors(ALine: Integer; const ALineStr: string;
+  ALineStart: Integer; out AFore, ABack: TColor): Boolean;
+var
+  IsBody: Boolean;
+  MarkGroup, DbgKind: Integer;
+begin
+  AFore := clNone;
+  ABack := clNone;
+  Result := False;
+  if (FScheme = nil) or (ALineStr = '') then
+    Exit;
+  IsBody := (ALine = FFoundLine) or IsSubBeginLine(ALine);
+  MarkGroup := -1;
+  if not IsBody and FUseSyntaxHighlight then
+    MarkGroup := LineMarkGroupOf(ALineStr, Length(ALineStr), ALineStart);
+  Result := IsBody or (MarkGroup >= 0);
+  ABack := clYellow;
+  if IsBody then
+  begin
+    if FScheme.FSubBodyHasColors then
+    begin
+      AFore := FScheme.FSubBodyFG;
+      ABack := FScheme.FSubBodyBG;
+    end
+    else if Length(FScheme.MarkGroups) > 0 then
+    begin
+      AFore := FScheme.MarkGroups[0].FgColor;
+      ABack := FScheme.MarkGroups[0].BgColor;
+    end;
+  end
+  else if (MarkGroup >= 0) and (MarkGroup <= High(FScheme.MarkGroups)) then
+  begin
+    AFore := FScheme.MarkGroups[MarkGroup].FgColor;
+    ABack := FScheme.MarkGroups[MarkGroup].BgColor;
+  end;
+  if (Length(FFmtSusLine) > 0) and FmtSuspectAt(ALine) then
+  begin
+    Result := True;
+    ABack := UiColor('Format.SuspectBG');
+    AFore := UiColor('Format.SuspectText');
+  end;
+  DbgKind := DbgLineKind(ALine);
+  if DbgKind > 0 then
+  begin
+    Result := True;
+    case DbgKind of
+      1:
+      begin
+        ABack := UiColor('Debug.BreakBG');
+        AFore := UiColor('Debug.BreakText');
+      end;
+      2:
+      begin
+        ABack := UiColor('Debug.NoCodeBG');
+        AFore := UiColor('Debug.BreakText');
+      end;
+    else
+      ABack := UiColor('Debug.ExecBG');
+      AFore := UiColor('Debug.ExecText');
+    end;
+  end;
+  if not Result then
+  begin
+    AFore := clNone;
+    ABack := clNone;
+  end;
+end;
+
+// Во второй панели буфер своего редактора - данные редактора к ней подходят
+function TForm1.SplitDecoOn: Boolean;
+begin
+  Result := SplitOwnEdText and (FSplit.SharedBuffer <> nil) and
+            (FSplit.SharedBuffer = FEdEmu.Buffer) and (FScheme <> nil);
+end;
+
+procedure TForm1.SplitRowStyle(Sender: TObject; ARow: Integer;
+  var ABack, AFore: TColor);
+var
+  MarkFore, MarkBack: TColor;
+begin
+  if not SplitDecoOn or (ARow < 0) or (ARow >= FEdEmu.Buffer.Count) then
+    Exit;
+  if LineMarkColors(ARow, EdAnsiLine(FEdEmu.Buffer[ARow]),
+    FEdEmu.Buffer.CharIndex(ARow, 0), MarkFore, MarkBack) then
+  begin
+    ABack := MarkBack;
+    AFore := MarkFore;
+  end;
+end;
+
+// Направляющие отступов строки ARow - как DrawTabGuides в
+// HighlightVisibleText: число полос - по FLineDepth, колонки - по ведущим
+// пробелам и табуляциям строки; ячейки окна - моноширинные (CharW)
+procedure TForm1.SplitRowPaint(Sender: TObject; ACanvas: TCanvas;
+  ARow, ATextX, AY: Integer);
+const
+  MaxBars = 64;
+var
+  View: TEdView;
+  Line: WideString;
+  LineLen, LineStart, GStep, GCell, GRun, GStart, GIdx, NCols, FirstCol,
+  BarCount, Level, Col, GX1, GW, GT, CharW, LineH: Integer;
+  Cols: array[0..MaxBars - 1] of Integer;
+begin
+  if not FUseHotTab or (FIndentKind = IndentNone) or not SplitDecoOn then
+    Exit;
+  if not SchemeHasBlocks or
+     ((FWindowsIndex >= 0) and (FWindowsIndex < WindowsItemCount) and
+      FWindows[FWindowsIndex].NoGuides) then
+    Exit;
+  View := TEdView(Sender);
+  if (ARow < 0) or (ARow >= FEdEmu.Buffer.Count) then
+    Exit;
+  CharW := View.CharW;
+  LineH := View.LineH;
+  Line := FEdEmu.Buffer[ARow];
+  LineLen := Length(Line);
+  LineStart := FEdEmu.Buffer.CharIndex(ARow, 0);
+  GStep := FIndentSize;
+  if GStep < 1 then
+    GStep := 2;
+  if FIndentKind = IndentTabs then
+    GCell := FTabChars
+  else
+    GCell := 1;
+  if GCell < 1 then
+    GCell := 1;
+
+  NCols := 0;
+  GRun := 0;
+  GStart := 1;
+  GIdx := 1;
+  while (GIdx <= LineLen) and ((Line[GIdx] = #9) or (Line[GIdx] = ' ')) do
+  begin
+    if GRun = 0 then
+      GStart := GIdx;
+    Inc(GRun);
+    if GRun >= GStep then
+    begin
+      if NCols < MaxBars then
+      begin
+        Cols[NCols] := GStart - 1;
+        Inc(NCols);
+      end;
+      GRun := 0;
+    end;
+    Inc(GIdx);
+  end;
+  FirstCol := GIdx - 1;
+  if InRanges(CommentRanges, LineStart) or InRanges(StringRanges, LineStart) then
+    NCols := 0;
+
+  if ARow <= High(FLineDepth) then
+    BarCount := FLineDepth[ARow]
+  else
+    BarCount := NCols;
+  if BarCount > MaxBars then
+    BarCount := MaxBars;
+
+  GW := FHotTabBarWidth;
+  if (GW <= 0) or (GW > CharW) then
+    GW := CharW;
+  for Level := 0 to BarCount - 1 do
+  begin
+    if Level < NCols then
+      Col := Cols[Level]
+    else if NCols > 0 then
+      Col := Cols[NCols - 1] + (Level - NCols + 1) * GStep
+    else
+      Col := Level * GStep;
+    if (FirstCol < LineLen) and (Col >= FirstCol) then
+      Break;
+    if (LineLen > 0) and (Col <= LineLen) then
+      GX1 := ATextX + View.ScreenCol(ARow, Col) * CharW
+    else
+      GX1 := ATextX + Col * GCell * CharW;
+    if GX1 < View.GutterWidth then
+      Continue;
+    ACanvas.Brush.Style := bsSolid;
+    ACanvas.Brush.Color := PaleColor(FHotTabColors[Level mod HotTabLevels]);
+    ACanvas.FillRect(Rect(GX1, AY, GX1 + GW, AY + LineH));
+    // Последняя строка раздела объявлений - уголок, как у редактора
+    if (ARow <= High(FLineTick)) and (FLineTick[ARow] = Level + 1) then
+    begin
+      GT := GW;
+      if GT > 2 then
+        GT := 2;
+      ACanvas.FillRect(Rect(GX1, AY + LineH - GT, GX1 + CharW, AY + LineH));
+    end;
+  end;
+end;
+
+// Данные редактора для второй панели сменились (карта пересобрана,
+// переход к строке, вложенность) - перерисовать её. Из HighlightVisibleText
+procedure TForm1.SplitDecoCheck;
+begin
+  if not SplitDecoOn or (FSplit.EdView = nil) then
+    Exit;
+  if (FSplitDecoMapVer = FMapVer) and (FSplitDecoFound = FFoundLine) and
+     (FSplitDecoDepth = Length(FLineDepth)) then
+    Exit;
+  FSplitDecoMapVer := FMapVer;
+  FSplitDecoFound := FFoundLine;
+  FSplitDecoDepth := Length(FLineDepth);
+  FSplit.EdView.Invalidate;
 end;
 
 // Во второй панели - текст в окне TEdView (свой редактор)

@@ -115,6 +115,8 @@ type
     FOnFmtClick: TNotifyEvent;
     FOnCloseClick: TNotifyEvent;
     FOnTextScroll: TSplitScrollEvent;
+    FOnRowStyle: TEdRowStyleEvent;
+    FOnRowPaint: TEdRowPaintEvent;
     procedure EdTextScroll(Sender: TObject);
     procedure TextClickPos(Sender: TObject; ALine, ACol, ATopLine: Integer);
     procedure EdTextClick(Sender: TObject; ARow, ACol: Integer);
@@ -182,6 +184,12 @@ type
     // Текст в окне TEdView прокрутили (синхронная прокрутка, Unit1)
     property OnTextScroll: TSplitScrollEvent read FOnTextScroll
       write FOnTextScroll;
+    // Отметки строк и направляющие отступов окна TEdView - от Unit1 (как у
+    // редактора); задавать до первого показа текста
+    property OnRowStyle: TEdRowStyleEvent read FOnRowStyle write FOnRowStyle;
+    property OnRowPaint: TEdRowPaintEvent read FOnRowPaint write FOnRowPaint;
+    // Окно TEdView (nil - ещё не создано)
+    property EdView: TEdView read FEdText;
   end;
 
 implementation
@@ -592,6 +600,8 @@ begin
   FEdText.PopupMenu := FMenu;
   FEdText.OnTextClick := EdTextClick;
   FEdText.OnViewScroll := EdTextScroll;
+  FEdText.OnRowStyle := FOnRowStyle;
+  FEdText.OnRowPaint := FOnRowPaint;
 end;
 
 procedure TSplitPane.ShowEdText(AShared: TEdBuffer; const AText: WideString;
