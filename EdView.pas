@@ -72,6 +72,11 @@ type
     const ALine: WideString; var ARuns: TEdRuns;
     var ACount: Integer) of object;
 
+  // Щелчок по тексту окна в режиме «только щелчок» (OnTextClick): символ
+  // ACol строки ARow (с 0)
+  TEdTextClickEvent = procedure(Sender: TObject; ARow, ACol: Integer)
+    of object;
+
   TEdView = class(TCustomControl)
   private
     FBuffer: TEdBuffer;
@@ -104,6 +109,7 @@ type
     FOnLineRuns: TEdLineRunsEvent;
     FOnCaretMove: TNotifyEvent;
     FOnChange: TNotifyEvent;
+    FOnTextClick: TEdTextClickEvent;
     FCaretOverwrite: Boolean;  // каретка создана для режима замены
     FMouseSelecting: Boolean;  // левая кнопка нажата в тексте
     FLastMouse: TPoint;
@@ -259,6 +265,11 @@ type
     property OnCaretMove: TNotifyEvent read FOnCaretMove write FOnCaretMove;
     // Текст буфера изменился (любой правкой, и не из этого окна)
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    // Задан - простой щелчок левой кнопкой по тексту не ставит каретку и не
+    // начинает выделение, а сообщает место (вторая панель Unit1: щелчок -
+    // править там). Shift+щелчок, двойной и тройной - как обычно
+    property OnTextClick: TEdTextClickEvent read FOnTextClick
+      write FOnTextClick;
     property ReadOnly: Boolean read GetReadOnly write SetReadOnly;
     property Overwrite: Boolean read GetOverwrite write SetOverwrite;
     property AutoIndent: Boolean read GetAutoIndent write SetAutoIndent;
@@ -1056,6 +1067,12 @@ begin
   if (Button <> mbLeft) or (FBuffer = nil) then
     Exit;
   PosAt(X, Y, ClickRow, ClickCol);
+  if Assigned(FOnTextClick) and (Shift * [ssShift, ssDouble] = []) then
+  begin
+    FDblClickTick := 0;
+    FOnTextClick(Self, ClickRow, ClickCol);
+    Exit;
+  end;
   // Тройной щелчок: Lazarus сообщает сам, в Delphi 7 - щелчок вскоре после
   // двойного на том же месте
   {$IFDEF FPC}
@@ -1175,8 +1192,28 @@ end;
 // Буфер изменился: каретка - в пределах текста, ширина - пересчитать
 procedure TEdView.BufferChanged(Sender: TObject; AFirst, AOldCount,
   ANewCount: Integer);
+var
+  RowIdx, LastRow, Cols: Integer;
 begin
-  FMaxColsValid := False;
+  // Ширина самой длинной строки: при правке - только по изменённым
+  // строкам (она может лишь вырасти; укороченная строка оставляет прежнюю
+  // ширину до полного пересчёта). Полный проход по большому файлу на
+  // каждое нажатие заметен; весь текст заменён - пересчитать заново
+  if FMaxColsValid and (FBuffer <> nil) and
+     not ((AFirst = 0) and (ANewCount >= FBuffer.Count)) then
+  begin
+    LastRow := AFirst + ANewCount - 1;
+    if LastRow > FBuffer.Count - 1 then
+      LastRow := FBuffer.Count - 1;
+    for RowIdx := AFirst to LastRow do
+    begin
+      Cols := ScreenCol(RowIdx, MaxInt);
+      if Cols > FMaxCols then
+        FMaxCols := Cols;
+    end;
+  end
+  else
+    FMaxColsValid := False;
   FEditor.ClampToBuffer;
   UpdateGutterWidth;
   UpdateBars;

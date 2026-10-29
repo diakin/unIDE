@@ -8,6 +8,10 @@ unit SplitPane;
 //  можно только в нём. Вторая панель показывает другую (или ту же) вкладку
 //  только для чтения:
 //    - текст с подсветкой по схеме файла (SchemeRtf -> RTF в RichEdit);
+//    - при своём редакторе (план портирования, шаг 0.7.5) - текст в окне
+//      TEdView (EdView.pas) с номерами строк и своими полосами прокрутки;
+//      та же вкладка, что в редакторе, - тот же буфер TEdBuffer, правки
+//      видны сразу (ShowEdText);
 //    - или вид "по формату" (FmtView: страница IE, RTF, RVF).
 //  Щелчок по тексту второй панели меняет панели местами: редактор
 //  переезжает туда, где щёлкнули, и открывает её вкладку с кареткой в
@@ -32,13 +36,15 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, ExtCtrls,
-  StdCtrls, Menus, Forms, UiButton, UiMenus, FmtView;
+  StdCtrls, Menus, Forms, UiButton, UiMenus, FmtView, ClrScheme, EdBuffer,
+  EdView, EdScheme;
 
 type
   // soVertical - панели слева и справа (разделитель вертикальный)
   TSplitOrient = (soNone, soVertical, soHorizontal);
   // Что показано во второй панели
-  TSplitView = (svNone, svText, svWeb, svFmt);
+  // svEdText - текст в окне TEdView (свой редактор)
+  TSplitView = (svNone, svText, svWeb, svFmt, svEdText);
   TSplitTextClickEvent = procedure(ALine, ACol, ATopLine: Integer) of object;
 
   // Строка заголовка панели редактора: имя файла (щелчок - выбор вкладки),
@@ -79,6 +85,10 @@ type
     FBody: TPanel;
     FSplitter: TSplitter;
     FText: TRtfPreview;      // текст с подсветкой
+    FEdText: TEdView;        // текст с подсветкой - при своём редакторе
+    FEdOwn: TEdBuffer;       // копия текста вкладки для FEdText
+    FEdShared: TEdBuffer;    // или буфер своего редактора (та же вкладка)
+    FEdHigh: TEdSchemeHighlighter;
     FWeb: TWebPreview;       // по формату: md, html, mht
     FFmt: TRtfPreview;       // по формату: rtf, rvf
     FMenu: TUiPopupMenu;     // правая кнопка: копировать, выделить всё
@@ -90,6 +100,9 @@ type
     FOnFmtClick: TNotifyEvent;
     FOnCloseClick: TNotifyEvent;
     procedure TextClickPos(Sender: TObject; ALine, ACol, ATopLine: Integer);
+    procedure EdTextClick(Sender: TObject; ARow, ACol: Integer);
+    procedure EdTextFree;
+    procedure EdTextEnsure;
     procedure HeaderTitleClick(Sender: TObject);
     procedure HeaderFmtClick(Sender: TObject);
     procedure HeaderCloseClick(Sender: TObject);
@@ -109,6 +122,19 @@ type
     // Текст с подсветкой: ARtf - из SchemeTextToRtf, APaper - фон схемы
     procedure ShowText(const ARtf, ASourceFile: string; APaper: TColor;
       ATopLine: Integer);
+    // Текст в окне TEdView: AShared - буфер своего редактора (в панели
+    // та же вкладка; правки видны сразу), иначе - копия AText. AScheme
+    // переходит панели (nil - без подсветки). Шрифт, табуляция, цвета -
+    // SetEdLook, до ShowEdText
+    procedure ShowEdText(AShared: TEdBuffer; const AText: WideString;
+      AScheme: TClrScheme; ATopLine: Integer);
+    procedure SetEdLook(AFont: TFont; ATabSize: Integer; AGutter, AGutterText,
+      AGutterCur, AGutterCurText, ASel, ASelText: TColor);
+    // Отпустить буфер своего редактора (его освобождают или он уходит к
+    // другой вкладке); окно TEdView прячется
+    procedure DetachShared;
+    // Первая видимая строка окна TEdView
+    procedure EdScrollTo(ATopLine: Integer);
     // Сообщение вместо содержимого (нет вкладки, ошибка)
     procedure ShowNotice(const AText: string);
     // После показа в Web или Fmt - убрать остальное
@@ -128,6 +154,8 @@ type
     property Orient: TSplitOrient read FOrient;
     property EditorFirst: Boolean read FEditorFirst;
     property View: TSplitView read FView;
+    // Буфер своего редактора, который показывает панель; nil - нет
+    property SharedBuffer: TEdBuffer read FEdShared;
     property Shown: Boolean read IsShown;
     property OnTextClick: TSplitTextClickEvent read FOnTextClick
       write FOnTextClick;
@@ -311,6 +339,8 @@ end;
 
 destructor TSplitPane.Destroy;
 begin
+  EdTextFree;
+  FreeAndNil(FEdText);
   FreeAndNil(FText);
   FreeAndNil(FWeb);
   FreeAndNil(FFmt);
@@ -441,6 +471,8 @@ end;
 procedure TSplitPane.KeepOnly(AView: TSplitView);
 begin
   FView := AView;
+  if (AView <> svEdText) and (FEdText <> nil) and FEdText.Visible then
+    FEdText.Visible := False;
   if (AView <> svText) and FText.IsShown then
     FText.HideView;
   if (AView <> svWeb) and FWeb.IsShown then
@@ -458,6 +490,98 @@ begin
   KeepOnly(svText);
 end;
 
+// Окно отпускает буфер, подсветка и копия текста освобождаются
+procedure TSplitPane.EdTextFree;
+begin
+  if FEdText <> nil then
+    FEdText.Buffer := nil;
+  FreeAndNil(FEdHigh);
+  FreeAndNil(FEdOwn);
+  FEdShared := nil;
+end;
+
+procedure TSplitPane.EdTextEnsure;
+begin
+  if FEdText <> nil then
+    Exit;
+  FEdText := TEdView.Create(nil);
+  FEdText.Visible := False;
+  FEdText.Parent := FBody;
+  FEdText.Align := alClient;
+  FEdText.ReadOnly := True;
+  FEdText.TabStop := False;
+  FEdText.PopupMenu := FMenu;
+  FEdText.OnTextClick := EdTextClick;
+end;
+
+procedure TSplitPane.ShowEdText(AShared: TEdBuffer; const AText: WideString;
+  AScheme: TClrScheme; ATopLine: Integer);
+var
+  ShowBuf: TEdBuffer;
+begin
+  EdTextEnsure;
+  EdTextFree;
+  if AShared <> nil then
+    ShowBuf := AShared
+  else
+  begin
+    FEdOwn := TEdBuffer.Create;
+    FEdOwn.SetText(AText);
+    ShowBuf := FEdOwn;
+  end;
+  FEdShared := AShared;
+  FEdHigh := TEdSchemeHighlighter.Create(ShowBuf, AScheme, clWindowText,
+    clWindow);
+  FEdText.TextColor := FEdHigh.TextColor;
+  FEdText.BackColor := FEdHigh.BackColor;
+  FEdText.OnLineRuns := FEdHigh.LineRuns;
+  FEdText.Buffer := ShowBuf;
+  FEdText.Visible := True;
+  KeepOnly(svEdText);
+  FEdText.RefreshAll;
+  if ATopLine > 0 then
+    FEdText.ScrollTo(ATopLine, 0);
+end;
+
+procedure TSplitPane.SetEdLook(AFont: TFont; ATabSize: Integer; AGutter,
+  AGutterText, AGutterCur, AGutterCurText, ASel, ASelText: TColor);
+begin
+  EdTextEnsure;
+  if AFont <> nil then
+    FEdText.Font.Assign(AFont);
+  FEdText.TabSize := ATabSize;
+  FEdText.GutterColor := AGutter;
+  FEdText.GutterTextColor := AGutterText;
+  FEdText.GutterCurColor := AGutterCur;
+  FEdText.GutterCurText := AGutterCurText;
+  FEdText.SelColor := ASel;
+  FEdText.SelTextColor := ASelText;
+  FEdText.RefreshAll;
+end;
+
+procedure TSplitPane.DetachShared;
+begin
+  if FEdShared = nil then
+    Exit;
+  EdTextFree;
+  if FEdText <> nil then
+    FEdText.Visible := False;
+  if FView = svEdText then
+    FView := svNone;
+end;
+
+procedure TSplitPane.EdScrollTo(ATopLine: Integer);
+begin
+  if (FEdText <> nil) and (FEdText.Buffer <> nil) and (ATopLine >= 0) then
+    FEdText.ScrollTo(ATopLine, FEdText.LeftCol);
+end;
+
+procedure TSplitPane.EdTextClick(Sender: TObject; ARow, ACol: Integer);
+begin
+  if Assigned(FOnTextClick) then
+    FOnTextClick(ARow, ACol, FEdText.TopRow);
+end;
+
 procedure TSplitPane.ShowNotice(const AText: string);
 begin
   FText.PaperColor := clWhite;
@@ -467,13 +591,19 @@ end;
 
 function TSplitPane.TextTopLine: Integer;
 begin
-  Result := FText.TopLine;
+  if (FView = svEdText) and (FEdText <> nil) then
+    Result := FEdText.TopRow
+  else
+    Result := FText.TopLine;
 end;
 
 function TSplitPane.OwnsWindow(AWnd: HWND): Boolean;
 begin
   Result := IsShown and (FText.OwnsWindow(AWnd) or FFmt.OwnsWindow(AWnd) or
-                         FWeb.OwnsWindow(AWnd));
+                         FWeb.OwnsWindow(AWnd) or
+                         ((FEdText <> nil) and FEdText.HandleAllocated and
+                          ((AWnd = FEdText.Handle) or
+                           IsChild(FEdText.Handle, AWnd))));
 end;
 
 function TSplitPane.WebOwnsWindow(AWnd: HWND): Boolean;
@@ -490,6 +620,7 @@ procedure TSplitPane.CopySelection;
 begin
   case FView of
     svText: FText.CopySelection;
+    svEdText: FEdText.CopyToClipboard;
     svWeb: FWeb.CopySelection;
     svFmt: FFmt.CopySelection;
   end;
@@ -499,6 +630,7 @@ procedure TSplitPane.SelectAll;
 begin
   case FView of
     svText: FText.SelectAll;
+    svEdText: FEdText.SelectAll;
     svWeb: FWeb.SelectAll;
     svFmt: FFmt.SelectAll;
   end;

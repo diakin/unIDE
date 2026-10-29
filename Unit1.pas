@@ -3833,6 +3833,10 @@ type
     FSplitClickLine: Integer;
     FSplitClickCol: Integer;
     FSplitClickTop: Integer;
+    // Свой редактор: показать во второй панели копию текста, даже если в ней
+    // та же вкладка, что в редакторе (вкладка редактора сейчас сменится, а
+    // буфер своего редактора перейдёт к новой) - SplitRefresh
+    FSplitNoShare: Boolean;
 
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
@@ -8965,6 +8969,17 @@ begin
     // ещё активна (SaveActiveClrSchema пишет в схему активной вкладки)
     if (Form2 <> nil) and Form2.Visible then
       Form2.BeforeTabSwitch;
+    // Во второй панели буфер своего редактора (та же вкладка): он сейчас
+    // перейдёт к новой вкладке - панели копию текста прежней
+    if (FSplit <> nil) and (FEdEmu <> nil) and (FSplit.SharedBuffer <> nil) then
+    begin
+      FSplitNoShare := True;
+      try
+        SplitRefresh(-1);
+      finally
+        FSplitNoShare := False;
+      end;
+    end;
     // Во второй панели эта же вкладка, а последние правки ещё не дошли до
     // неё (SplitTimerTick ждёт паузы) - обновить, пока текст в редакторе
     if (FSplit <> nil) and (FSplitWin = FWindowsIndex) and
@@ -40240,6 +40255,9 @@ begin
   end
   else
   begin
+    // Вторая панель могла показывать буфер своего редактора
+    if FSplit <> nil then
+      FSplit.DetachShared;
     FEdEmu.GiveToWindow;
     FreeAndNil(FEdEmu);
     // Шаг табуляции RichEdit - на новый текст (EM_SETPARAFORMAT на весь)
@@ -40257,6 +40275,9 @@ begin
   if Copy(Caption, 1, Length(OldTitle)) = OldTitle then
     Caption := AppTitle + Copy(Caption, Length(OldTitle) + 1, MaxInt);
   DeclPanelShow;
+
+  // Вторая панель - окно TEdView при своём редакторе, RTF при RichEdit
+  SplitRefresh(-1);
 
   // Кадр, полосы, номера строк, строка состояния - по новому окну
   UpdateScrollBars;
@@ -83890,7 +83911,7 @@ var
   Kind: TFmtKind;
   FileName, Utf8Text, Rtf, ErrText: string;
   Scheme: TClrScheme;
-  Shown, FromDisk: Boolean;
+  Shown, FromDisk, Shared: Boolean;
   TopLine: Integer;
 begin
   if (FSplit = nil) or not FSplit.Shown then
@@ -83968,10 +83989,31 @@ begin
   // схема редактора остаётся схемой его вкладки
   if ATopLine >= 0 then
     TopLine := ATopLine
-  else if FSplit.View = svText then
+  else if (FSplit.View = svText) or (FSplit.View = svEdText) then
     TopLine := FSplit.TextTopLine
   else
     TopLine := 0;
+
+  // Свой редактор (шаг 0.7.5): текст - в окне TEdView с номерами строк и
+  // своими полосами. Та же вкладка, что в редакторе, - тот же буфер:
+  // правки видны сразу, обновлять по таймеру нечего
+  if FEdEmu <> nil then
+  begin
+    // Заново и для того же буфера: схема и цвета могли смениться (тема);
+    // подсветка разбирает текст лениво, по видимым строкам
+    Shared := (FSplitWin = FWindowsIndex) and not FSplitNoShare;
+    FSplit.SetEdLook(RichEdit1.Font, FTabChars, FGutterBG, FGutterFG,
+      UiColor('Gutter.CurBG'), UiColor('Gutter.CurText'),
+      UiColor('Editor.SelBG'), UiColor('Editor.SelText'));
+    Scheme := SchemeCopyFor(FileName);
+    if Shared then
+      FSplit.ShowEdText(FEdEmu.Buffer, '', Scheme, TopLine)
+    else
+      FSplit.ShowEdText(nil, WideString(SplitWinText(FSplitWin)), Scheme,
+        TopLine);
+    Exit;
+  end;
+
   Scheme := SchemeCopyFor(FileName);
   if Scheme = nil then
   begin
@@ -83999,6 +84041,14 @@ begin
   end;
   if (FSplitWin <> FWindowsIndex) or (FEditSerial = FSplitSerial) then
     Exit;
+  // Свой редактор, та же вкладка: панель показывает его буфер - правки
+  // в ней уже есть
+  if (FEdEmu <> nil) and (FSplit.SharedBuffer = FEdEmu.Buffer) and
+     (FSplit.View = svEdText) then
+  begin
+    FSplitSerial := FEditSerial;
+    Exit;
+  end;
   if FEditSerial <> FSplitTickSerial then
   begin
     FSplitTickSerial := FEditSerial;   // ещё набирают - подождать
