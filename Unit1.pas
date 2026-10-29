@@ -40350,6 +40350,9 @@ begin
   SplitRefresh(-1);
   // Логи - окнами своего редактора или TRichEdit (шаг 0.7.6)
   LogsShowOwn(AOn);
+  // Окна разницы git и просмотр зависимостей RapidQ - по этому же флажку,
+  // при следующем показе (GitDiffView, DlgRqDeps)
+  EdOwnEditorOn := AOn;
   OwnEdBtnUpdate;
 
   // Кадр, полосы, номера строк, строка состояния - по новому окну
