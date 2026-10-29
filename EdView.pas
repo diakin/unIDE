@@ -142,6 +142,8 @@ type
     procedure EditorMoved(Sender: TObject);
     procedure EditorScroll(Sender: TObject; ARows: Integer);
     function GetCaretRow: Integer;
+    function AreaW: Integer;
+    function AreaH: Integer;
     function GetCaretCol: Integer;
     function GetTabSize: Integer;
     procedure SetTabSize(AValue: Integer);
@@ -503,10 +505,30 @@ begin
   Result := FMaxCols;
 end;
 
+// Ширина и высота клиентской области. Окно без родителя (создано, Parent
+// ещё не задан - TEdLogView, свойства из конструктора) - по Width / Height:
+// ClientWidth у Delphi 7 спрашивает окно Windows, а создать его без
+// родителя нельзя («Control '' has no parent window»)
+function TEdView.AreaW: Integer;
+begin
+  if HandleAllocated or (Parent <> nil) then
+    Result := ClientWidth
+  else
+    Result := Width;
+end;
+
+function TEdView.AreaH: Integer;
+begin
+  if HandleAllocated or (Parent <> nil) then
+    Result := ClientHeight
+  else
+    Result := Height;
+end;
+
 function TEdView.VisibleRows: Integer;
 begin
   UpdateMetrics;
-  Result := (ClientHeight - FBarSize) div FLineH;
+  Result := (AreaH - FBarSize) div FLineH;
   if Result < 1 then
     Result := 1;
 end;
@@ -514,7 +536,7 @@ end;
 function TEdView.VisibleCols: Integer;
 begin
   UpdateMetrics;
-  Result := (ClientWidth - FBarSize - FGutterW) div FCharW;
+  Result := (AreaW - FBarSize - FGutterW) div FCharW;
   if Result < 1 then
     Result := 1;
 end;
@@ -548,9 +570,9 @@ end;
 
 procedure TEdView.LayoutBars;
 begin
-  FVBar.SetBounds(ClientWidth - FBarSize, 0, FBarSize,
-    ClientHeight - FBarSize);
-  FHBar.SetBounds(0, ClientHeight - FBarSize, ClientWidth - FBarSize,
+  FVBar.SetBounds(AreaW - FBarSize, 0, FBarSize,
+    AreaH - FBarSize);
+  FHBar.SetBounds(0, AreaH - FBarSize, AreaW - FBarSize,
     FBarSize);
 end;
 
