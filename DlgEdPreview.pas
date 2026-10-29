@@ -1,12 +1,16 @@
 unit DlgEdPreview;
 
 // ---------------------------------------------------------------------------
-//  Окно «Свой редактор - просмотр» (View, план портирования, шаг 0.7.2):
-//  текст вкладки - снимком на момент открытия - в окне TEdView (EdView.pas)
-//  с подсветкой по схеме файла (EdScheme.pas). Только просмотр: стрелки,
-//  PgUp / PgDn, Home / End, Ctrl+Home / Ctrl+End, Ctrl+стрелки - прокрутка,
-//  колесо, щелчок мышью. Нужно, чтобы сравнить вид и скорость своего окна
-//  с RichEdit на тех же файлах, пока свой редактор не заменил RichEdit.
+//  Окно «Свой редактор - проба» (View, план портирования, шаги 0.7.2 -
+//  0.7.3): текст вкладки - копией на момент открытия - в окне TEdView
+//  (EdView.pas) с подсветкой по схеме файла (EdScheme.pas). Копию можно
+//  править (набор, выделение, буфер обмена, откат - см. EdView); в файл и
+//  во вкладку правки не попадают. Нужно, чтобы сравнить вид, скорость и
+//  поведение своего окна с RichEdit на тех же файлах, пока свой редактор
+//  не заменил RichEdit.
+//
+//  Ярлыки главного меню unIDE (Ctrl+S, F9...) в этом окне не работают:
+//  они действуют на RichEdit, а не на копию. Esc - закрыть окно.
 //
 //  Окно немодальное, их может быть несколько; закрытое освобождается.
 // ---------------------------------------------------------------------------
@@ -17,6 +21,7 @@ interface
 
 uses
   {$IFDEF MSWINDOWS}Windows,{$ENDIF}
+  {$IFDEF FPC}LCLIntf, LCLType, LMessages,{$ELSE}Messages,{$ENDIF}
   SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls, StdCtrls,
   ClrScheme, EdBuffer, EdView, EdScheme;
 
@@ -57,6 +62,11 @@ type
     FStatus: TPanel;
     FLoadMs: Cardinal;
     procedure ViewCaretMove(Sender: TObject);
+    {$IFDEF FPC}
+    procedure FormShortCut(var Msg: TLMKey; var Handled: Boolean);
+    {$ELSE}
+    procedure FormShortCut(var Msg: TWMKey; var Handled: Boolean);
+    {$ENDIF}
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FormDestroy(Sender: TObject);
   end;
@@ -70,11 +80,42 @@ begin
 end;
 
 procedure TEdPreviewForm.ViewCaretMove(Sender: TObject);
+var
+  ModText, InsText: string;
 begin
-  FStatus.Caption := Format('  Строка %d, символ %d   |   строк %d, ' +
-    'символов %d   |   открыто за %d мс   |   только просмотр (шаг 0.7.2)',
-    [FView.CaretRow + 1, FView.CaretCol + 1, FBuffer.Count,
+  if FBuffer.Modified then
+    ModText := 'изменён'
+  else
+    ModText := 'не изменён';
+  if FView.Overwrite then
+    InsText := 'замена'
+  else
+    InsText := 'вставка';
+  FStatus.Caption := Format('  Строка %d, символ %d   |   %s   |   %s   |   ' +
+    'строк %d, символов %d   |   открыто за %d мс   |   копия, в файл ' +
+    'не записывается',
+    [FView.CaretRow + 1, FView.CaretCol + 1, InsText, ModText, FBuffer.Count,
      FBuffer.TextLength, FLoadMs]);
+end;
+
+// Ярлыки главного меню unIDE - мимо: они правят RichEdit, а не эту копию.
+// Свои клавиши окно правки разбирает раньше (TEdView.CNKeyDown). Esc -
+// закрыть; Alt+F4 - как обычно
+{$IFDEF FPC}
+procedure TEdPreviewForm.FormShortCut(var Msg: TLMKey; var Handled: Boolean);
+{$ELSE}
+procedure TEdPreviewForm.FormShortCut(var Msg: TWMKey; var Handled: Boolean);
+{$ENDIF}
+begin
+  if Msg.CharCode = VK_ESCAPE then
+  begin
+    Close;
+    Handled := True;
+    Exit;
+  end;
+  if (Msg.CharCode = VK_F4) and (GetKeyState(VK_MENU) < 0) then
+    Exit;
+  Handled := True;
 end;
 
 procedure TEdPreviewForm.FormClose(Sender: TObject; var Action: TCloseAction);
@@ -99,11 +140,12 @@ var
 begin
   StartTick := EdTicks;
   Form := TEdPreviewForm.CreateNew(Application);
-  Form.Caption := 'Свой редактор (просмотр): ' + ATitle;
+  Form.Caption := 'Свой редактор (проба, копия): ' + ATitle;
   Form.Position := poMainFormCenter;
   Form.Width := 900;
   Form.Height := 640;
   Form.OnClose := Form.FormClose;
+  Form.OnShortCut := Form.FormShortCut;
   Form.OnDestroy := Form.FormDestroy;
 
   Form.FBuffer := TEdBuffer.Create;
@@ -135,6 +177,7 @@ begin
   Form.FView.SelTextColor := PickColor(AColors.SelText, clHighlightText);
   Form.FView.OnLineRuns := Form.FHighlighter.LineRuns;
   Form.FView.OnCaretMove := Form.ViewCaretMove;
+  Form.FView.OnChange := Form.ViewCaretMove;
   Form.FView.Buffer := Form.FBuffer;
   Form.FView.RefreshAll;
 

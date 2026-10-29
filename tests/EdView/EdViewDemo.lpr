@@ -1,14 +1,14 @@
 program EdViewDemo;
 
 // Проверка окна TEdView (EdView.pas) без unIDE: Lazarus / Free Pascal, LCL.
-// Файл, схема, место каретки, выделение и клавиши - из параметров; окно
-// показывается, снимок экрана делает тот, кто запускает (под Linux - Xvfb
-// и import). Каретка и окно после каждой клавиши - в stdout.
+// Файл, схема, место каретки, выделение и сценарий клавиш и мыши - из
+// параметров; окно показывается, снимок экрана делает тот, кто запускает
+// (под Linux - Xvfb и import). После каждого шага сценария - каретка и
+// окно в stdout; show - строки текста, выделение, откат.
 //
 //   EdViewDemo <файл cp1251> <папка схем> <ключ схемы> <строка> <колонка>
-//     <выделить строк> <ширина табуляции> [клавиши]
-//   клавиши: U D L R - стрелки, P p - PgDn / PgUp, H E - Home / End,
-//     T B - Ctrl+Home / Ctrl+End, S - Ctrl+Down
+//     <выделить строк> <ширина табуляции> ['сценарий']
+//   сценарий - см. RunKeys (например 't:abc cZ show')
 //
 // Сборка под Linux (gtk2), из этой папки:
 //   fpc -Mdelphi -FcCP1251 -dLCL -dLCLgtk2 -Fu<lazarus>/lcl/units/x86_64-linux/gtk2
@@ -43,36 +43,142 @@ begin
   Halt(3);
 end;
 
+procedure SendKey(AKey: Word; AShift: TShiftState);
+begin
+  TViewAccess(Demo_View).KeyDown(AKey, AShift);
+end;
+
+// Сценарий: слова через пробел.
+//   U D L R P p H E T B S - клавиши перемещения (S - Ctrl+Down),
+//   sU sD sL sR sH sE - с Shift, cL cR - Ctrl+стрелки, csR - Ctrl+Shift+Right
+//   t:текст - набор (подчёркивание = пробел), BS DEL cBS cDEL ENT TAB sTAB INS
+//   cA cC cX cV cZ cY csZ aBS - сочетания
+//   m:X,Y - щелчок, ms:X,Y - Shift+щелчок, md:X,Y - двойной, mt:X,Y - тройной,
+//   drag:X1,Y1,X2,Y2 - протяжка
+//   show - строки 1..12 и каретка в stdout
 procedure RunKeys(const AKeys: string);
 var
-  KeyIdx: Integer;
-  Key: Word;
-  Shift: TShiftState;
+  Words: TStringList;
+  WordIdx, CharIdx, X1, Y1, X2, Y2: Integer;
+  Cmd, Arg: string;
+  Utf: TUTF8Char;
+  Parts: TStringList;
+  RowIdx: Integer;
 begin
   if Demo_View = nil then
     Exit;
-  for KeyIdx := 1 to Length(AKeys) do
-  begin
-    Shift := [];
-    case AKeys[KeyIdx] of
-      'U': Key := VK_UP;
-      'D': Key := VK_DOWN;
-      'L': Key := VK_LEFT;
-      'R': Key := VK_RIGHT;
-      'P': Key := VK_NEXT;
-      'p': Key := VK_PRIOR;
-      'H': Key := VK_HOME;
-      'E': Key := VK_END;
-      'T': begin Key := VK_HOME; Shift := [ssCtrl]; end;
-      'B': begin Key := VK_END; Shift := [ssCtrl]; end;
-      'S': begin Key := VK_DOWN; Shift := [ssCtrl]; end;
-    else
-      Continue;
+  Words := TStringList.Create;
+  Parts := TStringList.Create;
+  try
+    Words.Delimiter := ' ';
+    Words.StrictDelimiter := True;
+    Words.DelimitedText := AKeys;
+    for WordIdx := 0 to Words.Count - 1 do
+    begin
+      Cmd := Words[WordIdx];
+      Arg := '';
+      if Pos(':', Cmd) > 0 then
+      begin
+        Arg := Copy(Cmd, Pos(':', Cmd) + 1, MaxInt);
+        Cmd := Copy(Cmd, 1, Pos(':', Cmd) - 1);
+      end;
+      Parts.CommaText := Arg;
+      if Cmd = 'U' then SendKey(VK_UP, [])
+      else if Cmd = 'D' then SendKey(VK_DOWN, [])
+      else if Cmd = 'L' then SendKey(VK_LEFT, [])
+      else if Cmd = 'R' then SendKey(VK_RIGHT, [])
+      else if Cmd = 'P' then SendKey(VK_NEXT, [])
+      else if Cmd = 'p' then SendKey(VK_PRIOR, [])
+      else if Cmd = 'H' then SendKey(VK_HOME, [])
+      else if Cmd = 'E' then SendKey(VK_END, [])
+      else if Cmd = 'T' then SendKey(VK_HOME, [ssCtrl])
+      else if Cmd = 'B' then SendKey(VK_END, [ssCtrl])
+      else if Cmd = 'S' then SendKey(VK_DOWN, [ssCtrl])
+      else if Cmd = 'sU' then SendKey(VK_UP, [ssShift])
+      else if Cmd = 'sD' then SendKey(VK_DOWN, [ssShift])
+      else if Cmd = 'sL' then SendKey(VK_LEFT, [ssShift])
+      else if Cmd = 'sR' then SendKey(VK_RIGHT, [ssShift])
+      else if Cmd = 'sH' then SendKey(VK_HOME, [ssShift])
+      else if Cmd = 'sE' then SendKey(VK_END, [ssShift])
+      else if Cmd = 'cL' then SendKey(VK_LEFT, [ssCtrl])
+      else if Cmd = 'cR' then SendKey(VK_RIGHT, [ssCtrl])
+      else if Cmd = 'csR' then SendKey(VK_RIGHT, [ssCtrl, ssShift])
+      else if Cmd = 'BS' then SendKey(VK_BACK, [])
+      else if Cmd = 'cBS' then SendKey(VK_BACK, [ssCtrl])
+      else if Cmd = 'aBS' then SendKey(VK_BACK, [ssAlt])
+      else if Cmd = 'DEL' then SendKey(VK_DELETE, [])
+      else if Cmd = 'cDEL' then SendKey(VK_DELETE, [ssCtrl])
+      else if Cmd = 'ENT' then SendKey(VK_RETURN, [])
+      else if Cmd = 'TAB' then SendKey(VK_TAB, [])
+      else if Cmd = 'sTAB' then SendKey(VK_TAB, [ssShift])
+      else if Cmd = 'INS' then SendKey(VK_INSERT, [])
+      else if Cmd = 'cA' then SendKey(Ord('A'), [ssCtrl])
+      else if Cmd = 'cC' then SendKey(Ord('C'), [ssCtrl])
+      else if Cmd = 'cX' then SendKey(Ord('X'), [ssCtrl])
+      else if Cmd = 'cV' then SendKey(Ord('V'), [ssCtrl])
+      else if Cmd = 'cZ' then SendKey(Ord('Z'), [ssCtrl])
+      else if Cmd = 'cY' then SendKey(Ord('Y'), [ssCtrl])
+      else if Cmd = 'csZ' then SendKey(Ord('Z'), [ssCtrl, ssShift])
+      else if Cmd = 't' then
+      begin
+        Arg := StringReplace(Arg, '_', ' ', [rfReplaceAll]);
+        CharIdx := 1;
+        while CharIdx <= Length(Arg) do
+        begin
+          // символ UTF-8 целиком
+          Utf := Arg[CharIdx];
+          Inc(CharIdx);
+          while (CharIdx <= Length(Arg)) and (Ord(Arg[CharIdx]) and $C0 = $80) do
+          begin
+            Utf := Utf + Arg[CharIdx];
+            Inc(CharIdx);
+          end;
+          TViewAccess(Demo_View).UTF8KeyPress(Utf);
+        end;
+      end
+      else if (Cmd = 'm') or (Cmd = 'ms') or (Cmd = 'md') or (Cmd = 'mt') then
+      begin
+        X1 := StrToInt(Parts[0]);
+        Y1 := StrToInt(Parts[1]);
+        if Cmd = 'm' then
+          TViewAccess(Demo_View).MouseDown(mbLeft, [ssLeft], X1, Y1)
+        else if Cmd = 'ms' then
+          TViewAccess(Demo_View).MouseDown(mbLeft, [ssLeft, ssShift], X1, Y1)
+        else if Cmd = 'md' then
+          TViewAccess(Demo_View).MouseDown(mbLeft, [ssLeft, ssDouble], X1, Y1)
+        else
+          TViewAccess(Demo_View).MouseDown(mbLeft, [ssLeft, ssTriple], X1, Y1);
+        TViewAccess(Demo_View).MouseUp(mbLeft, [], X1, Y1);
+      end
+      else if Cmd = 'drag' then
+      begin
+        X1 := StrToInt(Parts[0]); Y1 := StrToInt(Parts[1]);
+        X2 := StrToInt(Parts[2]); Y2 := StrToInt(Parts[3]);
+        TViewAccess(Demo_View).MouseDown(mbLeft, [ssLeft], X1, Y1);
+        TViewAccess(Demo_View).MouseMove([ssLeft], (X1 + X2) div 2, (Y1 + Y2) div 2);
+        TViewAccess(Demo_View).MouseMove([ssLeft], X2, Y2);
+        TViewAccess(Demo_View).MouseUp(mbLeft, [], X2, Y2);
+      end
+      else if Cmd = 'info' then
+        Writeln('  charw ', Demo_View.CharW, ' lineh ', Demo_View.LineH, ' gutter ', Demo_View.GutterWidth)
+      else if Cmd = 'show' then
+      begin
+        for RowIdx := 0 to Demo_View.Buffer.Count - 1 do
+          if RowIdx < 12 then
+            Writeln('  |', UTF8Encode(Demo_View.Buffer[RowIdx]), '|');
+        Writeln('  sel "', StringReplace(UTF8Encode(Demo_View.SelectedText), #13#10, '\n', [rfReplaceAll]), '"');
+        Writeln('  undo ', Demo_View.Buffer.UndoCount, ' redo ', Demo_View.Buffer.RedoCount,
+          ' modified ', Demo_View.Buffer.Modified);
+      end
+      else
+        Writeln('?? ', Cmd);
+      Writeln(Words[WordIdx], ' caret ', Demo_View.CaretRow + 1, ':', Demo_View.CaretCol + 1,
+        ' top ', Demo_View.TopRow + 1, ' left ', Demo_View.LeftCol);
+      Flush(Output);
     end;
-    TViewAccess(Demo_View).KeyDown(Key, Shift);
-    Writeln(AKeys[KeyIdx], ' caret ', Demo_View.CaretRow + 1, ':', Demo_View.CaretCol + 1,
-      ' top ', Demo_View.TopRow + 1, ' left ', Demo_View.LeftCol);
-    Flush(Output);
+  finally
+    Parts.Free;
+    Words.Free;
   end;
 end;
 

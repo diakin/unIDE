@@ -39,7 +39,7 @@ uses
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
-  DlgEdPreview,   // свой редактор - окно просмотра (шаг 0.7.2)
+  DlgEdPreview,   // свой редактор - окно пробы (шаги 0.7.2 - 0.7.3)
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
@@ -1445,7 +1445,7 @@ type
     // Пункты меню Подсветка (вкладка и View) и схемы их подпунктов по Tag
     FHlTabItem, FHlViewItem: TMenuItem;
     FWv2ViewItem: TMenuItem;  // View - Просмотр в WebView2
-    FEdPreviewItem: TMenuItem; // View - свой редактор, просмотр (0.7.2)
+    FEdPreviewItem: TMenuItem; // View - свой редактор, проба (0.7.3)
     // Options - unIDE FAR: Files highlighting (окно раскраски файлов)
     FFarColorsItem: TMenuItem;
     // Options - unIDE FAR: Colors (палитра окна FAR)
@@ -24800,11 +24800,12 @@ begin
                        'WebView2';
   FWv2ViewItem.OnClick := Wv2ViewClick;
   mView.Insert(mViewFmt.MenuIndex + 1, FWv2ViewItem);
-  // View - свой редактор, окно просмотра (план портирования, шаг 0.7.2)
+  // View - свой редактор, окно пробы (план портирования, шаги 0.7.2 - 0.7.3)
   FEdPreviewItem := TMenuItem.Create(Self);
-  FEdPreviewItem.Caption := 'Свой редактор - просмотр (0.7.2)';
-  FEdPreviewItem.Hint := 'Текст вкладки - в окне своего редактора (EdView), ' +
-                         'только просмотр: сравнить вид и скорость с RichEdit';
+  FEdPreviewItem.Caption := 'Свой редактор - проба (0.7.3)';
+  FEdPreviewItem.Hint := 'Копия текста вкладки - в окне своего редактора ' +
+                         '(EdView): сравнить вид, скорость и правку с ' +
+                         'RichEdit; в файл не записывается';
   FEdPreviewItem.OnClick := EdPreviewClick;
   mView.Insert(FWv2ViewItem.MenuIndex + 1, FEdPreviewItem);
   // Раскраска файлов в unIDE FAR - то же окно, что F9 - Options - Files
@@ -40117,9 +40118,10 @@ begin
   BringToFront;
 end;
 
-// View - свой редактор, просмотр (шаг 0.7.2): текст вкладки снимком - в
-// окне EdView с подсветкой по схеме файла, шрифт и шаг табуляции - как в
-// редакторе, каретка - на том же месте
+// View - свой редактор, проба (шаги 0.7.2 - 0.7.3): копия текста вкладки -
+// в окне EdView с подсветкой по схеме файла, шрифт и шаг табуляции - как в
+// редакторе, каретка - на том же месте. Копию можно править, в файл и во
+// вкладку правки не попадают
 procedure TForm1.EdPreviewClick(Sender: TObject);
 var
   Sel: TCharRange;
