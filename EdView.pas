@@ -299,6 +299,10 @@ type
     property TabStop;
     property Align;
     property PopupMenu;
+    // Щелчок и двойной щелчок (окна логов, EdLog): сначала окно ставит
+    // каретку или выделяет слово, потом - событие
+    property OnClick;
+    property OnDblClick;
   end;
 
 
