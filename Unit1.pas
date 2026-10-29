@@ -44,6 +44,7 @@ uses
   EdView,         // окно своего редактора - вторая панель (шаг 0.7.5)
   EdScheme,       // EdAnsiLine - строка буфера в кодировке Windows
   EdLog,          // окна логов на своём редакторе (шаг 0.7.6)
+  EdBuffer,       // TEdBuffer - текст второй панели
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
@@ -84087,12 +84088,15 @@ end;
 //  редактора становится текстом второй панели на том же месте прокрутки.
 //
 //  Если во второй панели та же вкладка, что в редакторе, она обновляется
-//  после паузы в наборе (SplitTimerTick); текст с подсветкой больше
-//  SplitLiveLimit символов - только при смене панелей и выборе вкладки.
+//  после паузы в наборе (SplitTimerTick); текст больше SplitLiveLimit
+//  символов - только при смене панелей и выборе вкладки. С окном TEdView
+//  (шаг 0.7.5) обновление - копия текста, без построения RTF, поэтому
+//  предел выше прежнего (был 1 000 000 - для RTF). При своём редакторе
+//  та же вкладка обновлений не ждёт - буфер общий.
 // ---------------------------------------------------------------------------
 
 const
-  SplitLiveLimit = 1000000;
+  SplitLiveLimit = 8000000;
 
 function TForm1.SplitWinValid(AWinIdx: Integer): Boolean;
 begin
@@ -84250,7 +84254,7 @@ end;
 procedure TForm1.SplitRefresh(ATopLine: Integer);
 var
   Kind: TFmtKind;
-  FileName, Utf8Text, Rtf, ErrText: string;
+  FileName, Utf8Text, ErrText: string;
   Scheme: TClrScheme;
   Shown, FromDisk, Shared: Boolean;
   TopLine: Integer;
@@ -84337,14 +84341,17 @@ begin
   else
     TopLine := 0;
 
-  // Свой редактор (шаг 0.7.5): текст - в окне TEdView с номерами строк и
-  // своими полосами. Та же вкладка, что в редакторе, - тот же буфер:
-  // правки видны сразу, обновлять по таймеру нечего
-  if FEdEmu <> nil then
+  // Текст - в окне TEdView с номерами строк и своими полосами (шаг 0.7.5;
+  // прежний RTF в окне RichEdit был медленным на больших файлах и с
+  // полосами Windows). Свой редактор и та же вкладка - тот же буфер:
+  // правки видны сразу, обновлять по таймеру нечего. RichEdit или другая
+  // вкладка - копия текста; та же вкладка при RichEdit обновляется после
+  // паузы в наборе (SplitTimerTick)
   begin
     // Заново и для того же буфера: схема и цвета могли смениться (тема);
     // подсветка разбирает текст лениво, по видимым строкам
-    Shared := (FSplitWin = FWindowsIndex) and not FSplitNoShare;
+    Shared := (FEdEmu <> nil) and (FSplitWin = FWindowsIndex) and
+              not FSplitNoShare;
     // Синхронная прокрутка - с той же строки, что в редакторе
     if FSplitSync and RichEdit1.HandleAllocated then
       TopLine := EdApi.FirstVisibleLine;
@@ -84366,22 +84373,6 @@ begin
     FSplitSyncTop := TopLine;
     FSplit.Header.SetSync(True, FSplitSync);
     SplitUpdateHeaders;
-    Exit;
-  end;
-
-  Scheme := SchemeCopyFor(FileName);
-  if Scheme = nil then
-  begin
-    FSplit.ShowNotice('Схема подсветки для ' + TabFileName(FileName) +
-                      ' не прочиталась.');
-    Exit;
-  end;
-  try
-    Rtf := SchemeTextToRtf(AdjustLineBreaks(SplitWinText(FSplitWin)), Scheme,
-                           RichEdit1.Font.Name, RichEdit1.Font.Size);
-    FSplit.ShowText(Rtf, FileName, SchemePageColor(Scheme), TopLine);
-  finally
-    Scheme.Free;
   end;
 end;
 
@@ -84593,7 +84584,10 @@ begin
   begin
     SplitIdle := UiColor('Pane.OwnEdBG');
     SplitIdleText := UiColor('Pane.OwnEdText');
-    FSplit.Header.SetTitleMark('   [свой редактор, EdView]');
+    if FEdEmu <> nil then
+      FSplit.Header.SetTitleMark('   [свой редактор, EdView]')
+    else
+      FSplit.Header.SetTitleMark('   [EdView]');
   end
   else
     FSplit.Header.SetTitleMark('');
@@ -84693,19 +84687,28 @@ end;
 // Во второй панели буфер своего редактора - данные редактора к ней подходят
 function TForm1.SplitDecoOn: Boolean;
 begin
-  Result := SplitOwnEdText and (FSplit.SharedBuffer <> nil) and
-            (FSplit.SharedBuffer = FEdEmu.Buffer) and (FScheme <> nil);
+  // Та же вкладка: общий буфер своего редактора или копия текста, снятая
+  // после последней правки (FSplitSerial) - номера строк и индексы те же
+  Result := SplitOwnEdText and (FScheme <> nil) and
+            (FSplitWin = FWindowsIndex) and (FSplit.EdView <> nil) and
+            (FSplit.EdView.Buffer <> nil) and
+            (((FEdEmu <> nil) and (FSplit.SharedBuffer = FEdEmu.Buffer)) or
+             (FSplitSerial = FEditSerial));
 end;
 
 procedure TForm1.SplitRowStyle(Sender: TObject; ARow: Integer;
   var ABack, AFore: TColor);
 var
   MarkFore, MarkBack: TColor;
+  PaneBuf: TEdBuffer;
 begin
-  if not SplitDecoOn or (ARow < 0) or (ARow >= FEdEmu.Buffer.Count) then
+  if not SplitDecoOn then
     Exit;
-  if LineMarkColors(ARow, EdAnsiLine(FEdEmu.Buffer[ARow]),
-    FEdEmu.Buffer.CharIndex(ARow, 0), MarkFore, MarkBack) then
+  PaneBuf := FSplit.EdView.Buffer;
+  if (ARow < 0) or (ARow >= PaneBuf.Count) then
+    Exit;
+  if LineMarkColors(ARow, EdAnsiLine(PaneBuf[ARow]),
+    PaneBuf.CharIndex(ARow, 0), MarkFore, MarkBack) then
   begin
     ABack := MarkBack;
     AFore := MarkFore;
@@ -84733,13 +84736,13 @@ begin
       FWindows[FWindowsIndex].NoGuides) then
     Exit;
   View := TEdView(Sender);
-  if (ARow < 0) or (ARow >= FEdEmu.Buffer.Count) then
+  if (View.Buffer = nil) or (ARow < 0) or (ARow >= View.Buffer.Count) then
     Exit;
   CharW := View.CharW;
   LineH := View.LineH;
-  Line := FEdEmu.Buffer[ARow];
+  Line := View.Buffer[ARow];
   LineLen := Length(Line);
-  LineStart := FEdEmu.Buffer.CharIndex(ARow, 0);
+  LineStart := View.Buffer.CharIndex(ARow, 0);
   GStep := FIndentSize;
   if GStep < 1 then
     GStep := 2;
@@ -84832,8 +84835,7 @@ end;
 // Во второй панели - текст в окне TEdView (свой редактор)
 function TForm1.SplitOwnEdText: Boolean;
 begin
-  Result := (FSplit <> nil) and FSplit.Shown and (FEdEmu <> nil) and
-            (FSplit.View = svEdText);
+  Result := (FSplit <> nil) and FSplit.Shown and (FSplit.View = svEdText);
 end;
 
 // Кнопка Sync в заголовке второй панели
