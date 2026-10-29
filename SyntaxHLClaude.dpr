@@ -86,6 +86,7 @@ uses
   EdClip in 'EdClip.pas',
   EdEditor in 'EdEditor.pas',
   EdView in 'EdView.pas',
+  EdRichEmu in 'EdRichEmu.pas',
   EdScheme in 'EdScheme.pas',
   DlgEdPreview in 'DlgEdPreview.pas',
   FarEdit in 'FarEdit.pas',

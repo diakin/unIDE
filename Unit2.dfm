@@ -2018,6 +2018,26 @@ object Form2: TForm2
           OnClick = EnvOptionClick
         end
       end
+      object grpPrefOwnEditor: TUiGroupBox
+        Left = 8
+        Top = 152
+        Width = 588
+        Height = 56
+        Caption = ' Editor (porting to Lazarus) '
+        TabOrder = 3
+        object chkPrefOwnEditor: TUiCheckBox
+          Left = 12
+          Top = 22
+          Width = 560
+          Height = 20
+          Caption = 'Own editor instead of RichEdit (after restart)'
+          TabOrder = 0
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Текст, выделение, правка и откат основного редактора - свои (EdBuffer), а не окна RichEdit. Пробный режим шага 0.7.4: действует после перезапуска unIDE; что ещё не сделано - пишется в HiLite log'
+          OnClick = EnvOptionClick
+        end
+      end
       object grpPrefModList: TUiGroupBox
         Left = 8
         Top = 88

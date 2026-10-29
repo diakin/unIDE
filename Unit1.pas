@@ -40,6 +40,7 @@ uses
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
   DlgEdPreview,   // свой редактор - окно пробы (шаги 0.7.2 - 0.7.3)
+  EdRichEmu,      // свой редактор вместо RichEdit1 (шаг 0.7.4)
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
@@ -1121,6 +1122,9 @@ type
 
     private
     OldRichEditProc: TWndMethod;
+    // Свой редактор вместо RichEdit (IDE Options - Preferences, OwnEditor):
+    // сообщения RichEdit1 сначала разбирает он, см. DefEditProc. nil - RichEdit
+    FEdEmu: TEdRichEmu;
     // Меню Started Util: открытые окна утилит (немодальные окна поверх
     // главного); FUtilSig - каким набором окон меню построено
     FUtilMenu: TMenuItem;
@@ -2831,6 +2835,9 @@ type
     procedure DsgPaletteGlyph(Sender: TObject);
     procedure PaletteIconsClick(Sender: TObject);
     procedure EdPreviewClick(Sender: TObject);
+    procedure DefEditProc(var Message: TMessage);
+    procedure EdEmuStart;
+    procedure EdEmuLog(const AText: string);
     procedure IncMgrOpenFile(const AFile: string; ALine: Integer);
     procedure IncRefDirs(var ASysDir, ARefDir: string);
     procedure FindIncShow(const AName: string);
@@ -25088,6 +25095,7 @@ begin
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then
     RichEdit1.WindowProc := OldRichEditProc;
+  FreeAndNil(FEdEmu);
   Application.OnHint := nil; // форма уходит, обработчик держать нельзя
   Application.OnMessage := nil;
   Application.OnActivate := nil;
@@ -40116,6 +40124,83 @@ begin
      (CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(AFile)) = 0) then
     GotoLine(ALine - 1);
   BringToFront;
+end;
+
+// ---------------------------------------------------------------------------
+//  Свой редактор вместо RichEdit (план портирования, шаг 0.7.4)
+//
+//  IDE Options - Preferences - Own editor instead of RichEdit (editor.ini,
+//  [Preferences] OwnEditor) - при запуске. Окно RichEdit1 остаётся, но
+//  сообщения, которые раньше разбирал RichEdit (OldRichEditProc), сначала
+//  получает TEdRichEmu (EdRichEmu.pas): текст, выделение, правка, откат,
+//  строки, места символов - его. Чего он не знает - уходит к RichEdit, а
+//  незнакомые EM_* - один раз в HiLite log. Рисует, как и раньше,
+//  HighlightVisibleText.
+// ---------------------------------------------------------------------------
+
+// Вместо прежней оконной процедуры RichEdit1 (из NewRichEditProcBody)
+procedure TForm1.DefEditProc(var Message: TMessage);
+begin
+  if (FEdEmu <> nil) and FEdEmu.Handle(Message) then
+    Exit;
+  OldRichEditProc(Message);
+end;
+
+procedure TForm1.EdEmuLog(const AText: string);
+begin
+  LogDiag(AText);
+end;
+
+procedure TForm1.EdEmuStart;
+var
+  Ini: TIniFile;
+  OwnOn: Boolean;
+  StartText: string;
+  DC: HDC;
+  OldFont: HGDIOBJ;
+  Metrics: TTextMetric;
+  StartLineH, StartCharW: Integer;
+begin
+  OwnOn := False;
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      OwnOn := Ini.ReadBool('Preferences', 'OwnEditor', False);
+    finally
+      Ini.Free;
+    end;
+  end;
+  if not OwnOn or (FEdEmu <> nil) then
+    Exit;
+  if not MsftEditActive then
+  begin
+    LogDiag('Свой редактор вместо RichEdit: не включён - нет RichEdit 4.1 ' +
+      '(msftedit.dll)');
+    Exit;
+  end;
+  // Текст, что уже в RichEdit, - до того, как сообщения уйдут своему
+  StartText := GetEditorText;
+  StartLineH := 16;
+  StartCharW := 8;
+  DC := GetDC(RichEdit1.Handle);
+  try
+    OldFont := SelectObject(DC, RichEdit1.Font.Handle);
+    if GetTextMetrics(DC, Metrics) then
+    begin
+      StartLineH := Metrics.tmHeight + Metrics.tmExternalLeading;
+      StartCharW := Metrics.tmAveCharWidth;
+    end;
+    SelectObject(DC, OldFont);
+  finally
+    ReleaseDC(RichEdit1.Handle, DC);
+  end;
+  FEdEmu := TEdRichEmu.Create(EdWindowHandle, OldRichEditProc);
+  FEdEmu.OnLog := EdEmuLog;
+  FEdEmu.SetMetrics(StartLineH, StartCharW, FTabChars);
+  FEdEmu.Start(StartText);
+  LogDiag('Свой редактор вместо RichEdit (IDE Options - Preferences): ' +
+    'включён');
 end;
 
 // View - свой редактор, проба (шаги 0.7.2 - 0.7.3): копия текста вкладки -
@@ -77453,7 +77538,7 @@ begin
     // В родном режиме фон стирает сам контрол - иначе останется мусор
     if NativePaintMode then
     begin
-      OldRichEditProc(Message);
+      DefEditProc(Message);
       Exit;
     end;
 
@@ -77468,7 +77553,7 @@ begin
     if NativePaintMode then
     begin
       // Рисует сам RichEdit. Номера строк всё равно наши, их обновляем сами
-      OldRichEditProc(Message);
+      DefEditProc(Message);
       UpdateLineNumbers;
       Exit;
     end;
@@ -77501,7 +77586,7 @@ begin
       ObjLinesLocked(Message);
       FDbgPreValid := False;
     end;
-    OldRichEditProc(Message);
+    DefEditProc(Message);
     Exit;
   end;
 
@@ -77757,7 +77842,7 @@ begin
     HideOwnCaret;
 
   PerfT := PerfNow;
-  OldRichEditProc(Message);
+  DefEditProc(Message);
 
   // Наша работа по EN_CHANGE идёт ВНУТРИ этого вызова - вычитаем её,
   // чтобы в FPerfCtl осталось чистое время самого контрола
@@ -78971,6 +79056,9 @@ begin
     end;
     if CharW < 1 then
       CharW := 1;
+    // Свой редактор: места символов - по тем же ячейкам, что и отрисовка
+    if FEdEmu <> nil then
+      FEdEmu.SetMetrics(LineHeight, CharW, FTabChars);
 
     // Направляющие выделяют блоки: в языке без слов блоков и без тегов
     // (журналы, текст - схемы .log, .txt) их нет и рисовать нечего. И
@@ -79473,6 +79561,8 @@ begin
   // Сабклассинг RichEdit
   OldRichEditProc := RichEdit1.WindowProc;
   RichEdit1.WindowProc := NewRichEditProc;
+  // Свой редактор вместо RichEdit - если включён в IDE Options
+  EdEmuStart;
 
   // Динамически подключаем событие изменений
   RichEdit1.OnChange := RichEdit1Change;

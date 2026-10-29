@@ -29,6 +29,9 @@ type
     HideDesignersOnRun: Boolean;  // спрятать конструкторы форм на время работы
     FormPreviewDelay: Integer;    // View Unit / View Form: превью формы -
                                   // через столько мс после остановки мыши
+    OwnEditor: Boolean;           // свой редактор вместо RichEdit (план
+                                  // портирования, шаг 0.7.4); после
+                                  // перезапуска
     // Designer
     DsgShowGrid: Boolean;
     DsgSnapToGrid: Boolean;
@@ -132,6 +135,7 @@ begin
   AOpts.MinimizeOnRun := False;
   AOpts.HideDesignersOnRun := True;   // так среда работала и раньше
   AOpts.FormPreviewDelay := 100;
+  AOpts.OwnEditor := False;
   AOpts.DsgShowGrid := True;
   AOpts.DsgDragTrace := False;
   AOpts.DsgSnapToGrid := True;
@@ -178,6 +182,7 @@ begin
                                               AOpts.ShowCompileProgress);
     AOpts.MinimizeOnRun := Ini.ReadBool(SecPrefs, 'MinimizeOnRun',
                                         AOpts.MinimizeOnRun);
+    AOpts.OwnEditor := Ini.ReadBool(SecPrefs, 'OwnEditor', AOpts.OwnEditor);
     AOpts.HideDesignersOnRun := Ini.ReadBool(SecPrefs, 'HideDesignersOnRun',
                                              AOpts.HideDesignersOnRun);
     AOpts.FormPreviewDelay := PreviewDelayValue(
@@ -218,6 +223,7 @@ begin
     Ini.WriteBool(SecPrefs, 'ShowCompilerProgress', AOpts.ShowCompileProgress);
     Ini.WriteBool(SecPrefs, 'MinimizeOnRun', AOpts.MinimizeOnRun);
     Ini.WriteBool(SecPrefs, 'HideDesignersOnRun', AOpts.HideDesignersOnRun);
+    Ini.WriteBool(SecPrefs, 'OwnEditor', AOpts.OwnEditor);
     Ini.WriteInteger(SecPrefs, 'FormPreviewDelayMs',
                      PreviewDelayValue(AOpts.FormPreviewDelay));
     Ini.WriteBool(SecDesigner, 'DisplayGrid', AOpts.DsgShowGrid);

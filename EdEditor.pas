@@ -59,6 +59,9 @@ type
     FReadOnly: Boolean;
     FOverwrite: Boolean;
     FAutoIndent: Boolean;
+    FSmartHome: Boolean;
+    FTypingUndo: Boolean;
+    FTypingRun: Boolean;       // идёт набор: каретку с тех пор не двигали
     FPageRows: Integer;
     FOnCaretMove: TNotifyEvent;
     FOnScroll: TEdScrollEvent;
@@ -69,11 +72,14 @@ type
     procedure SetBuffer(AValue: TEdBuffer);
     procedure SetOverwrite(AValue: Boolean);
     procedure SetTabSize(AValue: Integer);
+    procedure BeginTypingStep;
   public
     constructor Create;
     // Каретка и выделение - в пределах текста (после правки буфера не
     // отсюда)
     procedure ClampToBuffer;
+    // Конец набора: следующая правка - новая группа отката
+    procedure StopTyping;
 
     // --- Позиции ---
     // Колонка экрана символа ACol строки ARow (табуляции раскрыты) и
@@ -143,6 +149,12 @@ type
     property ReadOnly: Boolean read FReadOnly write FReadOnly;
     property Overwrite: Boolean read FOverwrite write SetOverwrite;
     property AutoIndent: Boolean read FAutoIndent write FAutoIndent;
+    // Home - к первому непробельному символу (повтор - в начало строки);
+    // False - сразу в начало, как в RichEdit
+    property SmartHome: Boolean read FSmartHome write FSmartHome;
+    // Откат как у RichEdit: Backspace, Delete и Enter посреди набора - в
+    // той же правке, что и набор (False - каждая такая клавиша - своя)
+    property TypingUndo: Boolean read FTypingUndo write FTypingUndo;
     // Строк в странице окна (PgUp / PgDn)
     property PageRows: Integer read FPageRows write FPageRows;
     property OnCaretMove: TNotifyEvent read FOnCaretMove write FOnCaretMove;
@@ -216,12 +228,14 @@ begin
   inherited Create;
   FTabSize := 8;
   FAutoIndent := True;
+  FSmartHome := True;
   FPageRows := 20;
 end;
 
 procedure TEdEditor.SetBuffer(AValue: TEdBuffer);
 begin
   FBuffer := AValue;
+  FTypingRun := False;
   FCaretRow := 0;
   FCaretCol := 0;
   FPrefCol := 0;
@@ -264,6 +278,21 @@ begin
   end;
   if FSelCol > FBuffer.LineLength(FSelRow) then
     FSelCol := FBuffer.LineLength(FSelRow);
+end;
+
+procedure TEdEditor.StopTyping;
+begin
+  FTypingRun := False;
+  if FBuffer <> nil then
+    FBuffer.BeginGroup;
+end;
+
+// Перед Backspace, Delete, Enter: посреди набора (TypingUndo) - в той же
+// группе отката, иначе - новая
+procedure TEdEditor.BeginTypingStep;
+begin
+  if not (FTypingUndo and FTypingRun and not HasSelection) then
+    FBuffer.BeginGroup;
 end;
 
 procedure TEdEditor.Moved;
@@ -414,7 +443,10 @@ begin
     FSelActive := False;
   // Движение каретки - конец набора: следующий набор - новая правка
   if (ARow <> FCaretRow) or (ACol <> FCaretCol) then
+  begin
+    FTypingRun := False;
     FBuffer.BeginGroup;
+  end;
   CaretTo(ARow, ACol, AKeepPref);
 end;
 
@@ -556,8 +588,10 @@ begin
     Exit;
   Clean := EdNormalizeBreaks(AText);
   // Набор продолжает свою группу, если выделения нет и до него был набор
-  if not (ATyping and not HasSelection and FBuffer.LastIsTyping) then
+  if not (ATyping and not HasSelection and
+          (FBuffer.LastIsTyping or (FTypingUndo and FTypingRun))) then
     FBuffer.BeginGroup;
+  FTypingRun := ATyping;
   if HasSelection then
     DeleteSelectionRaw;
   FSelActive := False;
@@ -580,8 +614,9 @@ begin
   if FOverwrite and not HasSelection and
      (FCaretCol < FBuffer.LineLength(FCaretRow)) then
   begin
-    if not FBuffer.LastIsTyping then
+    if not (FBuffer.LastIsTyping or (FTypingUndo and FTypingRun)) then
       FBuffer.BeginGroup;
+    FTypingRun := True;
     FBuffer.DeleteText(FCaretRow, FCaretCol, FCaretRow, FCaretCol + 1,
       FCaretRow, FCaretCol);
     FBuffer.InsertText(FCaretRow, FCaretCol, ACh, True, FCaretRow, FCaretCol,
@@ -607,7 +642,8 @@ procedure TEdEditor.Backspace;
 begin
   if FReadOnly or (FBuffer = nil) then
     Exit;
-  FBuffer.BeginGroup;
+  BeginTypingStep;
+  FTypingRun := True;
   if HasSelection then
     DeleteSelectionRaw
   else if FCaretCol > 0 then
@@ -622,7 +658,8 @@ procedure TEdEditor.DeleteChar;
 begin
   if FReadOnly or (FBuffer = nil) then
     Exit;
-  FBuffer.BeginGroup;
+  BeginTypingStep;
+  FTypingRun := True;
   if HasSelection then
     DeleteSelectionRaw
   else if FCaretCol < FBuffer.LineLength(FCaretRow) then
@@ -638,6 +675,7 @@ procedure TEdEditor.NewLine;
 var
   Line, Indent: WideString;
   CharIdx: Integer;
+  WasRun: Boolean;
 begin
   if FReadOnly or (FBuffer = nil) then
     Exit;
@@ -651,7 +689,19 @@ begin
       Inc(CharIdx);
     Indent := Copy(Line, 1, CharIdx - 1);
   end;
-  InsertText(#10 + Indent);
+  if FTypingUndo then
+  begin
+    // Как у RichEdit: перевод строки посреди набора - в той же правке
+    BeginTypingStep;
+    WasRun := FTypingRun;
+    FTypingRun := True;
+    InsertText(#10 + Indent, True);
+    // Следующий символ - новая запись отката, но та же группа
+    if not WasRun then
+      FTypingRun := True;
+  end
+  else
+    InsertText(#10 + Indent);
 end;
 
 procedure TEdEditor.DeleteWordLeft;
@@ -794,6 +844,7 @@ begin
     Exit;
   NewRow := FCaretRow;
   NewCol := FCaretCol;
+  FTypingRun := False;
   if not FBuffer.Undo(NewRow, NewCol) then
     Exit;
   FSelActive := False;
@@ -810,6 +861,7 @@ begin
     Exit;
   NewRow := FCaretRow;
   NewCol := FCaretCol;
+  FTypingRun := False;
   if not FBuffer.Redo(NewRow, NewCol) then
     Exit;
   FSelActive := False;
@@ -954,7 +1006,7 @@ begin
         while (LineIdx < Length(Line)) and
               ((Line[LineIdx + 1] = ' ') or (Line[LineIdx + 1] = #9)) do
           Inc(LineIdx);
-        if FCaretCol = LineIdx then
+        if (FCaretCol = LineIdx) or not FSmartHome then
           LineIdx := 0;
         MoveTo(FCaretRow, LineIdx, Sel);
       end;
