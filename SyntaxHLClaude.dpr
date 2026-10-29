@@ -88,6 +88,7 @@ uses
   EdView in 'EdView.pas',
   EdRichEmu in 'EdRichEmu.pas',
   EdScheme in 'EdScheme.pas',
+  EdLog in 'EdLog.pas',
   DlgEdPreview in 'DlgEdPreview.pas',
   FarEdit in 'FarEdit.pas',
   FarViewer in 'FarViewer.pas',

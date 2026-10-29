@@ -43,6 +43,7 @@ uses
   EdRichEmu,      // свой редактор вместо RichEdit1 (шаг 0.7.4)
   EdView,         // окно своего редактора - вторая панель (шаг 0.7.5)
   EdScheme,       // EdAnsiLine - строка буфера в кодировке Windows
+  EdLog,          // окна логов на своём редакторе (шаг 0.7.6)
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
@@ -3549,6 +3550,12 @@ type
     procedure Dbg(const S: string; AColor: TColor = clRed);
     function  IsCompilerError(const S: string): Boolean;
     procedure InitLogPanel;
+    function LogViewOf(AEdit: TRichEdit): TEdLogView;
+    procedure LogClear(AEdit: TRichEdit);
+    procedure LogViewSync(AEdit: TRichEdit);
+    procedure LogsShowOwn(AOn: Boolean);
+    procedure LogViewsSyncAll;
+    function LogClickLine(Sender: TObject; out ALine: string): Boolean;
     procedure LogTabsChange(Sender: TObject);
     procedure ShowCompLog;
     procedure ShowErrLog;
@@ -3867,6 +3874,11 @@ type
     FSplitDecoMapVer: Cardinal;
     FSplitDecoFound: Integer;
     FSplitDecoDepth: Integer;
+    // Окна логов на своём редакторе (шаг 0.7.6), по одному на каждый лог
+    // TRichEdit, в том же месте: CompLogEdit, ErrLogEdit, LogEdit,
+    // RuntimeLog, GitLogEdit. LogTo пишет в оба, показан - один (флажок
+    // своего редактора, LogsShowOwn)
+    FLogViews: array[0..4] of TEdLogView;
 
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
@@ -5676,6 +5688,8 @@ begin
       StartupStage('Тема IDE: разморозка окон');
     UiFreezeForms(False);
   end;
+  // Окна логов своего редактора - цветами новой темы
+  LogViewsSyncAll;
 end;
 
 procedure TForm1.UiApplyNow;
@@ -16822,11 +16836,11 @@ begin
 
   // Логи прежнего проекта
   if CompLogEdit <> nil then
-    CompLogEdit.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Clear;
+    LogClear(ErrLogEdit);
   if RuntimeLog <> nil then
-    RuntimeLog.Clear;
+    LogClear(RuntimeLog);
 
   // Программа прежнего проекта, если ещё запущена, работает дальше: её
   // окончание по-прежнему отслеживает RunTimerTick
@@ -40316,6 +40330,8 @@ begin
 
   // Вторая панель - окно TEdView при своём редакторе, RTF при RichEdit
   SplitRefresh(-1);
+  // Логи - окнами своего редактора или TRichEdit (шаг 0.7.6)
+  LogsShowOwn(AOn);
 
   // Кадр, полосы, номера строк, строка состояния - по новому окну
   UpdateScrollBars;
@@ -46623,6 +46639,9 @@ end;
 // здесь только то, что в дизайнере не задаётся: обработчики и начальное
 // состояние вкладок.
 procedure TForm1.InitLogPanel;
+var
+  LogIdx, LineIdx: Integer;
+  Box: TRichEdit;
 begin
   if (LogTabs = nil) or (pnlCompLog = nil) or (pnlHiLog = nil) or
      (pnlErrLog = nil) then
@@ -46650,7 +46669,169 @@ begin
   if GitLogEdit <> nil then
     GitLogEdit.PopupMenu := FLogPopup;
 
+  // Окна логов на своём редакторе - рядом с каждым TRichEdit, пока скрыты
+  // (LogsShowOwn)
+  for LogIdx := Low(FLogViews) to High(FLogViews) do
+  begin
+    case LogIdx of
+      0: Box := CompLogEdit;
+      1: Box := ErrLogEdit;
+      2: Box := LogEdit;
+      3: Box := RuntimeLog;
+    else
+      Box := GitLogEdit;
+    end;
+    if (Box = nil) or (FLogViews[LogIdx] <> nil) then
+      Continue;
+    FLogViews[LogIdx] := TEdLogView.Create(Self);
+    FLogViews[LogIdx].Visible := False;
+    FLogViews[LogIdx].Parent := Box.Parent;
+    FLogViews[LogIdx].Align := alClient;
+    FLogViews[LogIdx].PopupMenu := FLogPopup;
+    FLogViews[LogIdx].OnClick := Box.OnClick;
+    FLogViews[LogIdx].OnDblClick := Box.OnDblClick;
+    // Что уже записано до создания окна - без цвета
+    for LineIdx := 0 to Box.Lines.Count - 1 do
+      FLogViews[LogIdx].AddLine(WideString(Box.Lines[LineIdx]), clNone);
+  end;
+
   LogTabsChange(nil);
+end;
+
+// Окно лога на своём редакторе для лога AEdit; nil - нет (не лог)
+function TForm1.LogViewOf(AEdit: TRichEdit): TEdLogView;
+begin
+  Result := nil;
+  if AEdit = nil then
+    Exit;
+  if AEdit = CompLogEdit then
+    Result := FLogViews[0]
+  else if AEdit = ErrLogEdit then
+    Result := FLogViews[1]
+  else if AEdit = LogEdit then
+    Result := FLogViews[2]
+  else if AEdit = RuntimeLog then
+    Result := FLogViews[3]
+  else if AEdit = GitLogEdit then
+    Result := FLogViews[4];
+end;
+
+// Очистить лог: TRichEdit и его окно на своём редакторе
+procedure TForm1.LogClear(AEdit: TRichEdit);
+var
+  View: TEdLogView;
+begin
+  if AEdit = nil then
+    Exit;
+  AEdit.Lines.Clear;
+  View := LogViewOf(AEdit);
+  if View <> nil then
+    View.ClearLog;
+end;
+
+// Шрифт и цвета окна лога на своём редакторе - от его TRichEdit (тема,
+// Font.Logs). Шрифт - моноширинный, как у редактора: окно рисует символы
+// ячейками одной ширины; размер - логов
+procedure TForm1.LogViewSync(AEdit: TRichEdit);
+var
+  View: TEdLogView;
+  NewBack, NewText: TColor;
+begin
+  View := LogViewOf(AEdit);
+  if View = nil then
+    Exit;
+  NewBack := AEdit.Color;
+  NewText := UiLogColor(AEdit, clNone);
+  if (View.Font.Name <> RichEdit1.Font.Name) or
+     (View.Font.Height <> AEdit.Font.Height) then
+  begin
+    View.Font.Name := RichEdit1.Font.Name;
+    View.Font.Height := AEdit.Font.Height;
+  end;
+  if (View.BackColor <> NewBack) or (View.TextColor <> NewText) then
+  begin
+    View.BackColor := NewBack;
+    View.TextColor := NewText;
+    View.GutterColor := NewBack;
+    View.SelColor := UiColor('Editor.SelBG');
+    View.SelTextColor := UiColor('Editor.SelText');
+    View.RefreshAll;
+  end;
+end;
+
+// Шрифт и цвета всех показанных окон логов своего редактора (тема, шрифты)
+procedure TForm1.LogViewsSyncAll;
+begin
+  if (FLogViews[0] <> nil) and FLogViews[0].Visible then
+    LogViewSync(CompLogEdit);
+  if (FLogViews[1] <> nil) and FLogViews[1].Visible then
+    LogViewSync(ErrLogEdit);
+  if (FLogViews[2] <> nil) and FLogViews[2].Visible then
+    LogViewSync(LogEdit);
+  if (FLogViews[3] <> nil) and FLogViews[3].Visible then
+    LogViewSync(RuntimeLog);
+  if (FLogViews[4] <> nil) and FLogViews[4].Visible then
+    LogViewSync(GitLogEdit);
+end;
+
+// Логи - окнами своего редактора (AOn) или TRichEdit. Текст у обоих один:
+// LogTo пишет в оба
+procedure TForm1.LogsShowOwn(AOn: Boolean);
+var
+  LogIdx: Integer;
+  Box: TRichEdit;
+begin
+  for LogIdx := Low(FLogViews) to High(FLogViews) do
+  begin
+    if FLogViews[LogIdx] = nil then
+      Continue;
+    case LogIdx of
+      0: Box := CompLogEdit;
+      1: Box := ErrLogEdit;
+      2: Box := LogEdit;
+      3: Box := RuntimeLog;
+    else
+      Box := GitLogEdit;
+    end;
+    if Box = nil then
+      Continue;
+    if AOn then
+      LogViewSync(Box);
+    FLogViews[LogIdx].Visible := AOn;
+    Box.Visible := not AOn;
+    if AOn then
+      FLogViews[LogIdx].ScrollTo(FLogViews[LogIdx].LogCount, 0);
+  end;
+end;
+
+// Строка лога, по которой щёлкнули: окно TRichEdit - строка каретки, окно
+// своего редактора - строка его каретки. False - не лог или вне строк
+function TForm1.LogClickLine(Sender: TObject; out ALine: string): Boolean;
+var
+  LineIdx: Integer;
+  LogBox: TRichEdit;
+  View: TEdLogView;
+begin
+  Result := False;
+  ALine := '';
+  if Sender is TEdLogView then
+  begin
+    View := TEdLogView(Sender);
+    LineIdx := View.CaretRow;
+    if (LineIdx < 0) or (LineIdx >= View.LogCount) then
+      Exit;
+    ALine := string(View.LogLine(LineIdx));
+    Result := True;
+    Exit;
+  end;
+  if not (Sender is TRichEdit) then
+    Exit;
+  LogBox := TRichEdit(Sender);
+  LineIdx := SendMessageA(LogBox.Handle, EM_LINEFROMCHAR, LogBox.SelStart, 0);
+  if (LineIdx < 0) or (LineIdx >= LogBox.Lines.Count) then
+    Exit;
+  ALine := LogBox.Lines[LineIdx];
+  Result := True;
 end;
 
 // Окно лога, для которого открыто меню. nil - меню вызвано не из лога.
@@ -46667,6 +46848,7 @@ end;
 procedure TForm1.LogPopupPopup(Sender: TObject);
 var
   E: TRichEdit;
+  View: TEdLogView;
   Sel: TCharRange;
   HasSel, CanEdit, CanPaste, CanUndo: Boolean;
   I: Integer;
@@ -46676,6 +46858,19 @@ begin
   CanUndo := False;
   CanEdit := False;
   CanPaste := False;
+  // Окно лога на своём редакторе: только копировать и выделить всё
+  if (FLogPopup.PopupComponent is TEdLogView) then
+  begin
+    View := TEdLogView(FLogPopup.PopupComponent);
+    for I := 0 to FLogPopup.Items.Count - 1 do
+    case FLogPopup.Items[I].Tag of
+      1, 2, 4, 5: FLogPopup.Items[I].Enabled := False;
+      3: FLogPopup.Items[I].Enabled := View.HasSelection;
+      6: FLogPopup.Items[I].Enabled := View.LogCount > 0;
+      7: FLogPopup.Items[I].Enabled := AnyLogFilled;
+    end;
+    Exit;
+  end;
   if (E <> nil) and E.HandleAllocated then
   begin
     SendMessage(E.Handle, EM_EXGETSEL, 0, Integer(@Sel));
@@ -46711,6 +46906,14 @@ begin
   if TMenuItem(Sender).Tag = 7 then
   begin
     SaveAllLogs;
+    Exit;
+  end;
+  if FLogPopup.PopupComponent is TEdLogView then
+  begin
+    case TMenuItem(Sender).Tag of
+      3: TEdLogView(FLogPopup.PopupComponent).CopyToClipboard;
+      6: TEdLogView(FLogPopup.PopupComponent).SelectAll;
+    end;
     Exit;
   end;
   E := LogPopupEdit;
@@ -51354,9 +51557,9 @@ begin
   // имена файлов и строк, и понять, к какому запуску относится строка,
   // нельзя.
   if CompLogEdit <> nil then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   if FBuildReason <> '' then
     LogComp('Сборщик: Delphi (' + FBuildReason + ')');
   if CompareText(BuildPrj, FCurrentProject) <> 0 then
@@ -51994,9 +52197,9 @@ begin
   else
     ShowCompLog;
     if CompLogEdit <> nil then
-      CompLogEdit.Lines.Clear;
+      LogClear(CompLogEdit);
     if ErrLogEdit <> nil then
-      ErrLogEdit.Lines.Clear;
+      LogClear(ErrLogEdit);
     if Kind <> bkNone then
     begin
       LogComp('Сборщик: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')');
@@ -52435,9 +52638,9 @@ begin
   Result := False;
   ShowCompLog;
   if CompLogEdit <> nil then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   LogComp('Сборщик: Lazarus (' + FBuildReason + ')');
 
   if not CheckDiskChanges(-1) then
@@ -52587,9 +52790,9 @@ begin
   Result := False;
   ShowCompLog;
   if CompLogEdit <> nil then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   LogComp('Сборщик: ' + BuildKindName(bkCMakeNinja) + ' (' + FBuildReason +
   ')');
   BuildPrj := BuildProject;
@@ -53267,9 +53470,9 @@ begin
   if not AKeepLog then
   begin
     if CompLogEdit <> nil then
-      CompLogEdit.Lines.Clear;
+      LogClear(CompLogEdit);
     if ErrLogEdit <> nil then
-      ErrLogEdit.Lines.Clear;
+      LogClear(ErrLogEdit);
     if FBuildReason <> '' then
       LogComp('Сборщик: Arduino (' + FBuildReason + ')');
   end;
@@ -53930,9 +54133,9 @@ begin
   ShowCompLog;
   // Сборка копии для снимка: лог не чистится - в нём шаги снимка
   if (CompLogEdit <> nil) and not FRqProbeActive then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   if not FRqProbeActive and (FBuildReason <> '') then
     LogComp('Сборщик: RapidQ (' + FBuildReason + ')');
 
@@ -54680,9 +54883,9 @@ begin
   Result := False;
   ShowCompLog;
   if CompLogEdit <> nil then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   if FBuildReason <> '' then
     LogComp('Сборщик: FreeBASIC (' + FBuildReason + ')');
 
@@ -55316,9 +55519,9 @@ begin
   FCompDlg.StartStage(fbsCheck, 0, '');
   ShowCompLog;
   if CompLogEdit <> nil then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   if FBuildReason <> '' then
     LogComp('Сборщик: RapidQ через FreeBASIC (' + FBuildReason + ')');
 
@@ -56786,7 +56989,7 @@ begin
   end;
   ShowCompLog;
   if (CompLogEdit <> nil) then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   // Копия собирается из файлов на диске
   if RichEdit1.Modified then
     if not SaveCurrentFile then
@@ -76555,17 +76758,11 @@ end;
 // Щелчок по строке "Лог сохранён: путь" - путь в буфер обмена
 procedure TForm1.LogEditClick(Sender: TObject);
 var
-  LineIdx, TextStart: Integer;
+  TextStart: Integer;
   LineText, FilePath: string;
-  LogBox: TRichEdit;
 begin
-  if not (Sender is TRichEdit) then
+  if not LogClickLine(Sender, LineText) then
     Exit;
-  LogBox := TRichEdit(Sender);
-  LineIdx := SendMessageA(LogBox.Handle, EM_LINEFROMCHAR, LogBox.SelStart, 0);
-  if (LineIdx < 0) or (LineIdx >= LogBox.Lines.Count) then
-    Exit;
-  LineText := LogBox.Lines[LineIdx];
   // Время в начале строки - отрезаем, как в LogEditDblClick
   TextStart := Pos('  ', LineText);
   if (TextStart > 0) and (TextStart <= 10) then
@@ -76581,25 +76778,21 @@ end;
 
 procedure TForm1.LogEditDblClick(Sender: TObject);
 var
-  LineIdx, Start: Integer;
+  Start: Integer;
   S, FName, Full, Where: string;
   ErrLine, K: Integer;
-  E: TRichEdit;
   W: TStringList;
 begin
-  // Строку берём у того окна, по которому щёлкнули: обработчик висит на
-  // окне компиляции, но привязка к конкретному полю тут не нужна
-  if Sender is TRichEdit then
-    E := TRichEdit(Sender)
-  else
-    E := CompLogEdit;
-  if E = nil then
+  // Строку берём у того окна, по которому щёлкнули (TRichEdit или окно
+  // своего редактора): обработчик висит на окне компиляции, но привязка к
+  // конкретному полю тут не нужна
+  if (Sender is TRichEdit) or (Sender is TEdLogView) then
+  begin
+    if not LogClickLine(Sender, S) then
+      Exit;
+  end
+  else if not LogClickLine(CompLogEdit, S) then
     Exit;
-
-  LineIdx := SendMessageA(E.Handle, EM_LINEFROMCHAR, E.SelStart, 0);
-  if (LineIdx < 0) or (LineIdx >= E.Lines.Count) then
-    Exit;
-  S := E.Lines[LineIdx];
 
   // В начале строки лога стоит время - отрезаем его
   Start := Pos('  ', S);
@@ -76997,6 +77190,7 @@ var
   Cut, Len, K: Integer;
   H: HWND;
   Fmt: TCharFormat2;
+  View: TEdLogView;
 begin
   if (AEdit = nil) or (AEdit.Parent = nil) or
      (csDestroying in ComponentState) then
@@ -77052,6 +77246,25 @@ begin
 
   SendMessageA(H, EM_REPLACESEL, 0, Integer(PChar(Line)));
   SendMessageA(H, EM_SCROLLCARET, 0, 0);
+
+  // То же - в окно лога на своём редакторе: строк столько же, срез начала -
+  // тот же, цвет - тот же (на тёмном фоне - светлее)
+  View := LogViewOf(AEdit);
+  if View <> nil then
+  begin
+    if View.LogCount > LogMaxLines then
+      View.DeleteFirst(LogCutLines);
+    if ABare then
+      Line := Txt
+    else
+      Line := FormatDateTime('hh:nn:ss', Now) + '  ' + Txt;
+    if (AColor = clNone) and not UiLogIsDark(AEdit) then
+      View.AddLine(WideString(Line), clNone)
+    else
+      View.AddLine(WideString(Line), UiLogColor(AEdit, AColor));
+    if View.Visible then
+      LogViewSync(AEdit);
+  end;
   // Прокрутка к последней строке. EM_SCROLLCARET привязан к каретке, а она
   // у окна лога без фокуса (фокус в редакторе) - одной его мало. SB_BOTTOM
   // от каретки и фокуса не зависит.
@@ -80909,6 +81122,8 @@ begin
   finally
     NewFont.Free;
   end;
+  // Окна логов своего редактора - размером шрифта логов
+  LogViewsSyncAll;
 end;
 
 // Шрифт "окна и панели" (Font.Windows) - окну AForm. Меняются само окно и
