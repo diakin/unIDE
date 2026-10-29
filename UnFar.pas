@@ -151,7 +151,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.51';
+  FarBuild = 'b.52';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -593,6 +593,8 @@ type
     function ActivePanel: TFarPanel;
     procedure PanelBounds(AIndex: Integer; var AX0, AWidth: Integer);
     function PanelHeight: Integer;
+    function DocHeight: Integer;
+    function InDocArea(AX, AY: Integer): Boolean;
     function MaxPanelCut: Integer;
     // Командная строка и вывод
     function CmdRow: Integer;
@@ -3387,6 +3389,26 @@ begin
   Result := OutBottom + 1 - FPanelCut;
 end;
 
+// Редактор (F4) и просмотр (F3) - во всю высоту до командной строки
+// (строки сообщений), укорачивание панелей (Ctrl+Up) их не касается
+function TFarView.DocHeight: Integer;
+begin
+  Result := OutBottom + 1;
+end;
+
+// Точка (пиксели окна) - в окне редактора / просмотра
+function TFarView.InDocArea(AX, AY: Integer): Boolean;
+var
+  DocX, DocW: Integer;
+begin
+  Result := False;
+  if not DocOpen or FPanelsHidden or (AY div FCellH >= DocHeight) then
+    Exit;
+  EditBounds(DocX, DocW);
+  Result := FEditWide or ((AX div FCellW >= DocX) and
+    (AX div FCellW < DocX + DocW));
+end;
+
 // Короче не укоротить: у панели должно остаться место под рамку,
 // заголовок колонок, две строки имён, строку о файле и итог
 function TFarView.MaxPanelCut: Integer;
@@ -3881,12 +3903,14 @@ begin
           DrawPanel(0);
         if not EditorShown(1) then
           DrawPanel(1);
+        // Вывод команд под панелями - до редактора: тот во всю высоту
+        // и закрывает вывод в своей части окна
+        if PanelHeight <= OutBottom then
+          DrawOutput(PanelHeight, OutBottom);
         if FEditor <> nil then
           DrawEditor;
         if FViewer <> nil then
           DrawViewer;
-        if PanelHeight <= OutBottom then
-          DrawOutput(PanelHeight, OutBottom);
       end;
       if FMessageLine then
         DrawMessageLine;
@@ -4042,8 +4066,10 @@ begin
     Invalidate;
     Exit;
   end;
-  // Панели спрятаны или щелчок ниже панелей (вывод, командная строка)
-  if FPanelsHidden or (Y div FCellH >= PanelHeight) then
+  // Панели спрятаны или щелчок ниже панелей (вывод, командная строка);
+  // редактор и просмотр - во всю высоту
+  if FPanelsHidden or ((Y div FCellH >= PanelHeight) and
+     not InDocArea(X, Y)) then
   begin
     Invalidate;
     Exit;
@@ -4139,7 +4165,8 @@ begin
   end;
   // Колесо над выводом (или панели спрятаны) - прокрутка вывода
   WheelPoint := ScreenToClient(Point(Message.XPos, Message.YPos));
-  if FPanelsHidden or (WheelPoint.Y div FCellH >= PanelHeight) then
+  if FPanelsHidden or ((WheelPoint.Y div FCellH >= PanelHeight) and
+     not InDocArea(WheelPoint.X, WheelPoint.Y)) then
   begin
     if Message.WheelDelta > 0 then
       Inc(FOutScroll, 3)
@@ -7935,7 +7962,7 @@ end;
 // Строк текста: панель без строки заголовка
 function TFarView.EditTextRows: Integer;
 begin
-  Result := PanelHeight - 1;
+  Result := DocHeight - 1;
   if Result < 1 then
     Result := 1;
 end;
@@ -8399,7 +8426,7 @@ var
 begin
   Ed := FEditor;
   EditBounds(EditX, EditW);
-  PanelH := PanelHeight;
+  PanelH := DocHeight;
   if (EditW < 4) or (PanelH < 2) then
     Exit;
   // Заголовок: имя файла; справа - изменён, строка / всего, колонка,
@@ -8587,7 +8614,7 @@ end;
 
 function TFarView.ViewTextRows: Integer;
 begin
-  Result := PanelHeight - 1;
+  Result := DocHeight - 1;
   if Result < 1 then
     Result := 1;
 end;
@@ -8918,7 +8945,7 @@ var
   Pct: Integer;
 begin
   EditBounds(ViewX, ViewW);
-  PanelH := PanelHeight;
+  PanelH := DocHeight;
   if (ViewW < 4) or (PanelH < 2) then
     Exit;
   TextRows := PanelH - 1;
