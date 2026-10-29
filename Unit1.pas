@@ -40181,8 +40181,16 @@ begin
       Ini.Free;
     end;
   end;
-  if not OwnOn or (FEdEmu <> nil) then
+  if FEdEmu <> nil then
     Exit;
+  // Какой редактор работает - в HiLite log при каждом запуске
+  if not OwnOn then
+  begin
+    LogOwnEd('Редактор: RichEdit (свой редактор выключен - IDE Options, ' +
+      'Preferences; в ' + SettingsFileName + ' [Preferences] OwnEditor ' +
+      'не 1)');
+    Exit;
+  end;
   if not MsftEditActive then
   begin
     LogOwnEd('Свой редактор вместо RichEdit: не включён - нет RichEdit 4.1 ' +
