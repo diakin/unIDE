@@ -99,13 +99,19 @@ begin
 end;
 
 // Ярлыки главного меню unIDE - мимо: они правят RichEdit, а не эту копию.
-// Свои клавиши окно правки разбирает раньше (TEdView.CNKeyDown). Esc -
-// закрыть; Alt+F4 - как обычно
+// Глушатся только ярлыки - сочетания с Ctrl или с Alt и F-клавиши. Всё
+// остальное (буквы, Shift+буквы) надо пропустить: нажатие, разобранное
+// здесь, Windows уже не переводит в символ (TranslateMessage не
+// вызывается) - набор не доходил до окна. Свои сочетания окно правки
+// разбирает раньше (TEdView.CNKeyDown). Ctrl+Alt (AltGr) - тоже символ.
+// Esc - закрыть; Alt+F4 - как обычно
 {$IFDEF FPC}
 procedure TEdPreviewForm.FormShortCut(var Msg: TLMKey; var Handled: Boolean);
 {$ELSE}
 procedure TEdPreviewForm.FormShortCut(var Msg: TWMKey; var Handled: Boolean);
 {$ENDIF}
+var
+  CtrlDown, AltDown: Boolean;
 begin
   if Msg.CharCode = VK_ESCAPE then
   begin
@@ -113,9 +119,13 @@ begin
     Handled := True;
     Exit;
   end;
-  if (Msg.CharCode = VK_F4) and (GetKeyState(VK_MENU) < 0) then
+  CtrlDown := GetKeyState(VK_CONTROL) < 0;
+  AltDown := GetKeyState(VK_MENU) < 0;
+  if (Msg.CharCode = VK_F4) and AltDown then
     Exit;
-  Handled := True;
+  if ((Msg.CharCode >= VK_F1) and (Msg.CharCode <= VK_F24)) or
+     (CtrlDown <> AltDown) then
+    Handled := True;
 end;
 
 procedure TEdPreviewForm.FormClose(Sender: TObject; var Action: TCloseAction);
