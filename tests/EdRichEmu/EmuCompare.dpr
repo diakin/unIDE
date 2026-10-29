@@ -7,6 +7,8 @@ program EmuCompare;
 //
 // Сборка - Free Pascal win32 (или Delphi 7), запуск - Windows или Wine:
 //   fpc -Twin32 -Mdelphi -Fu..\.. EmuCompare.dpr
+// В конце - места символов под номерами поля ввода ($D6 / $D7, как их шлёт
+// Unit1 из-под Delphi 7) и нижняя видимая строка, как её считает Unit1.
 // Известные расхождения (проверка под Wine, msftedit Wine 9.0): индексы за
 // концом текста, EM_LINELENGTH(-1), выделение всего (у RichEdit - на символ
 // больше: знак конца документа), Modified после WM_SETTEXT, место каретки
@@ -350,7 +352,8 @@ const
 var
   WndClass: TWndClassA;
   LineNo, CharNo, Bad: Integer;
-  Pt: TPoint;
+  Pt, PtA: TPoint;
+  Rc: TRect;
   Txt: AnsiString;
   Msg: TMsg;
 begin
@@ -459,6 +462,36 @@ begin
       Inc(Bad);
   end;
   Writeln('pos round trip mismatches: ', Bad);
+  // Номера поля ввода ($D6 / $D7, Messages.pas Delphi 7): ответы - как у
+  // WM_USER + 38 / 39, у настоящего RichEdit и у своего
+  Bad := 0;
+  SendMessageA(WndA, WM_SETTEXT, 0, Integer(PAnsiChar(Txt)));
+  for CharNo := 0 to 300 do
+  begin
+    SendMessageA(WndA, $00D6, Integer(@Pt), CharNo);
+    PtA := Pt;
+    SendMessageA(WndA, EM_POSFROMCHAR_, Integer(@Pt), CharNo);
+    if (Pt.X <> PtA.X) or (Pt.Y <> PtA.Y) then
+      Inc(Bad);
+    SendMessageA(WndB, $00D6, Integer(@Pt), CharNo);
+    PtA := Pt;
+    SendMessageA(WndB, EM_POSFROMCHAR_, Integer(@Pt), CharNo);
+    if (Pt.X <> PtA.X) or (Pt.Y <> PtA.Y) then
+      Inc(Bad);
+    if SendMessageA(WndB, $00D7, 0, Integer(@Pt)) <> CharNo then
+      Inc(Bad);
+  end;
+  Writeln('$D6/$D7 vs WM_USER+38/39 mismatches: ', Bad);
+  // Как UpdateVisibleBounds в Unit1: нижний правый угол клиента -> символ -> строка
+  GetClientRect(WndA, Rc);
+  Pt := Point(Rc.Right, Rc.Bottom);
+  CharNo := SendMessageA(WndA, $00D7, 0, Integer(@Pt));
+  Write('last visible line: real ', SendMessageA(WndA, EM_LINEFROMCHAR, CharNo, 0));
+  GetClientRect(WndB, Rc);
+  Pt := Point(Rc.Right, Rc.Bottom);
+  CharNo := SendMessageA(WndB, $00D7, 0, Integer(@Pt));
+  Writeln(', own ', SendMessageA(WndB, EM_LINEFROMCHAR, CharNo, 0),
+    ' (first visible ', SendMessageA(WndB, EM_GETFIRSTVISIBLELINE, 0, 0), ')');
   SendMessageA(WndB, EM_LINESCROLL, 0, 1000);
   Writeln('after LINESCROLL 1000: first visible ', SendMessageA(WndB, EM_GETFIRSTVISIBLELINE, 0, 0),
     ' (lines ', SendMessageA(WndB, EM_GETLINECOUNT, 0, 0), ')');

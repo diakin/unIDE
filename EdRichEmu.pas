@@ -142,6 +142,15 @@ const
   EM_POSFROMCHAR_ = WM_USER + 38;
   EM_CHARFROMPOS_ = WM_USER + 39;
   EM_SCROLLCARET_ = WM_USER + 49;
+  // Те же четыре сообщения под номерами поля ввода (Messages.pas Delphi 7:
+  // EM_GETLIMITTEXT = $D5, EM_POSFROMCHAR = $D6, EM_CHARFROMPOS = $D7,
+  // EM_SCROLLCARET = $B7). RichEdit 4.1 отвечает на оба номера одинаково.
+  // В RichEdit.pas Delphi 7 этой части RichEdit.h нет, и Unit1 / EdIntf
+  // получают номера из Messages.pas
+  EM_GETLIMITTEXT_ED = $00D5;
+  EM_POSFROMCHAR_ED = $00D6;
+  EM_CHARFROMPOS_ED = $00D7;
+  EM_SCROLLCARET_ED = $00B7;
   EM_CANPASTE_ = WM_USER + 50;
   EM_DISPLAYBAND_ = WM_USER + 51;
   EM_EXGETSEL_ = WM_USER + 52;
@@ -1448,7 +1457,7 @@ begin
           FLimitText := EmuDefaultLimit
         else
           FLimitText := Message.WParam;
-      EM_GETLIMITTEXT_:
+      EM_GETLIMITTEXT_, EM_GETLIMITTEXT_ED:
         Message.Result := FLimitText;
       EM_SETEVENTMASK_:
         begin
@@ -1467,13 +1476,13 @@ begin
         end;
 
       // --- Экран ---
-      EM_POSFROMCHAR_:
+      EM_POSFROMCHAR_, EM_POSFROMCHAR_ED:
         begin
           Pt := PPoint(Message.WParam);
           if Pt <> nil then
             CharPoint(Message.LParam, Pt^);
         end;
-      EM_CHARFROMPOS_:
+      EM_CHARFROMPOS_, EM_CHARFROMPOS_ED:
         Message.Result := PointChar(PPoint(Message.LParam)^);
       EM_GETFIRSTVISIBLELINE:
         Message.Result := FTopRow;
@@ -1482,7 +1491,7 @@ begin
           ScrollToRow(FTopRow + Message.LParam);
           Message.Result := 1;
         end;
-      EM_SCROLLCARET_:
+      EM_SCROLLCARET_, EM_SCROLLCARET_ED:
         ScrollCaretIntoView;
       EM_SCROLL:
         begin
