@@ -117,6 +117,8 @@ unit UnFar;
 //      SchemeLine): в панели рядом с файлами или на всю ширину (F5);
 //      основной редактор unIDE по F4 больше не открывается.
 //    - b.38: палитра: цвет текста и фона редактора (нет - из схемы).
+//    - b.54: редактор, Shift+F8 - кодировка записи (ANSI, UTF-8, UTF-8 с
+//      BOM, UTF-16); другая, чем у файла, - файл изменён, F2 пишет в ней.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -151,7 +153,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.53';
+  FarBuild = 'b.54';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -237,7 +239,7 @@ type
   // Открытое меню: смена диска (Alt+F1 / Alt+F2), сортировка (Ctrl+F12),
   // история папок (Alt+F12)
   TFarMenuKind = (fmNone, fmDrive, fmSort, fmHistory, fmOptions,
-    fmPalGroups, fmPalItems, fmHiRules, fmThemes);
+    fmPalGroups, fmPalItems, fmHiRules, fmThemes, fmEditEncoding);
 
   TFarMenuItem = record
     Text: WideString;       // '&' перед буквой быстрого выбора
@@ -709,6 +711,7 @@ type
     procedure EditFindConfirm;
     procedure EditFindNext;
     procedure EditGoto(const AText: WideString);
+    procedure EditEncodingMenu;
     procedure EditChar(ACh: WideChar);
     function EditKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure EditMouse(AX, AY: Integer; AShiftDown, ADrag: Boolean);
@@ -1111,7 +1114,7 @@ const
   FarEdKeysNormal: array[0..11] of string = ('', 'Save', '', '', 'Wide', '',
     'Search', '', '', 'Quit', '', '');
   FarEdKeysShift: array[0..11] of string = ('', 'SaveAs', '', '', '', '',
-    'Next', '', '', '', '', '');
+    'Next', 'Encode', '', '', '', '');
   FarEdKeysAlt: array[0..11] of string = ('', '', '', '', '', '', '', 'Goto',
     '', '', '', '');
 
@@ -6379,6 +6382,17 @@ begin
         ApplyTheme(FarThemeNames[Item.Tag], Pal);
     fmHiRules:
       PickOpenRule(Item.Tag);
+    fmEditEncoding:
+      if FEditor <> nil then
+      begin
+        FEditor.Encoding := TFarEditEncoding(Item.Tag);
+        if FEditor.Modified then
+          Status(FarProduct + ': кодировка записи - ' +
+            FarEditEncodingTitle(FEditor.Encoding) + '; F2 - записать')
+        else
+          Status(FarProduct + ': кодировка записи - ' +
+            FarEditEncodingTitle(FEditor.Encoding));
+      end;
   end;
   Invalidate;
 end;
@@ -6441,12 +6455,15 @@ begin
   BoxH := FMenuRows + 2;
   FMenuWidth := BoxW;
 
-  // Смена диска и сортировка - над своей панелью, история - посередине
+  // Смена диска и сортировка - над своей панелью, история - посередине,
+  // кодировка записи - над редактором (он бывает и на всю ширину)
   if FMenuKind = fmHistory then
   begin
     AreaX := 0;
     AreaW := FCols;
   end
+  else if (FMenuKind = fmEditEncoding) and (FEditor <> nil) then
+    EditBounds(AreaX, AreaW)
   else
     PanelBounds(FMenuPanel, AreaX, AreaW);
   FMenuLeft := AreaX + (AreaW - BoxW) div 2;
@@ -8180,6 +8197,41 @@ begin
   Invalidate;
 end;
 
+// Shift+F8: кодировка, в которой F2 запишет файл. Текст в редакторе -
+// Unicode, перекодируется при записи. Не та, что у файла на диске, - файл
+// считается изменённым (звёздочка в заголовке). Символов нет в кодировке
+// Windows - при записи в ANSI спросит (UTF-8 / ANSI с '?' / отмена)
+procedure TFarView.EditEncodingMenu;
+const
+  MenuEncodings: array[0..3] of TFarEditEncoding =
+    (feAnsi, feUtf8, feUtf8Bom, feUtf16);
+  MenuHotkeys: array[0..3] of string = ('&1', '&2', '&3', '&4');
+var
+  Items: TFarMenuItems;
+  ItemIdx, CursorIdx: Integer;
+begin
+  if FEditor = nil then
+    Exit;
+  SetLength(Items, Length(MenuEncodings));
+  CursorIdx := 0;
+  for ItemIdx := 0 to High(MenuEncodings) do
+  begin
+    Items[ItemIdx].Text := WideString(MenuHotkeys[ItemIdx] + ' ' +
+      FarEditEncodingTitle(MenuEncodings[ItemIdx]));
+    Items[ItemIdx].RightText := '';
+    Items[ItemIdx].Separator := False;
+    Items[ItemIdx].Tag := Ord(MenuEncodings[ItemIdx]);
+    if MenuEncodings[ItemIdx] = FEditor.Encoding then
+    begin
+      Items[ItemIdx].Mark := FarCheckMark;
+      CursorIdx := ItemIdx;
+    end
+    else
+      Items[ItemIdx].Mark := ' ';
+  end;
+  MenuOpen(fmEditEncoding, 'Save encoding', Items, CursorIdx, FEditPanel);
+end;
+
 procedure TFarView.EditGoto(const AText: WideString);
 var
   LineNo: Integer;
@@ -8253,6 +8305,8 @@ begin
         True, Ed.FileName, ['Save', 'Cancel'])
     else if Plain and AShift and (AKey = VK_F7) then
       EditFindNext
+    else if Plain and AShift and (AKey = VK_F8) then
+      EditEncodingMenu
     else if AAlt and not ACtrl and not AShift and (AKey = VK_F8) then
       DlgOpen(fdEditGoto, 'Go to', ['Line number (1..' + IntToStr(Ed.Count) +
         '):'], False, False, True, IntToStr(Ed.Row + 1), ['Go', 'Cancel'])

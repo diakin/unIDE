@@ -56,6 +56,7 @@ type
     FEncoding: TFarEditEncoding;
     FLineBreak: WideString;
     FFinalBreak: Boolean;
+    FSavedEncoding: TFarEditEncoding; // в какой кодировке файл на диске
     FModified: Boolean;
     FRow: Integer;
     FCol: Integer;
@@ -88,6 +89,7 @@ type
     procedure RecordDelete(ARow, ACol: Integer; const AText: WideString);
     procedure UpdateModified;
     function GetLine(AIndex: Integer): WideString;
+    function GetModified: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -140,8 +142,9 @@ type
     property Count: Integer read FCount;
     property Lines[AIndex: Integer]: WideString read GetLine;
     property FileName: WideString read FFileName write FFileName;
+    // Кодировка записи (F2). Другая, чем у файла на диске, - Modified
     property Encoding: TFarEditEncoding read FEncoding write FEncoding;
-    property Modified: Boolean read FModified;
+    property Modified: Boolean read GetModified;
     property Row: Integer read FRow;
     property Col: Integer read FCol;
     property TopRow: Integer read FTopRow write FTopRow;
@@ -153,6 +156,8 @@ type
 
 // Имя кодировки для строки состояния
 function FarEditEncodingName(AEncoding: TFarEditEncoding): string;
+// Кодировка подробно - для меню Shift+F8 и строки состояния
+function FarEditEncodingTitle(AEncoding: TFarEditEncoding): string;
 // Текст буфера обмена (Unicode; нет - ANSI); '' - пусто
 function FarClipboardText: WideString;
 
@@ -199,6 +204,17 @@ begin
     feUtf16: Result := 'UTF-16';
   else
     Result := 'ANSI ' + IntToStr(GetACP);
+  end;
+end;
+
+function FarEditEncodingTitle(AEncoding: TFarEditEncoding): string;
+begin
+  case AEncoding of
+    feUtf8: Result := 'UTF-8';
+    feUtf8Bom: Result := 'UTF-8 with BOM';
+    feUtf16: Result := 'UTF-16 LE';
+  else
+    Result := 'ANSI (Windows ' + IntToStr(GetACP) + ')';
   end;
 end;
 
@@ -333,6 +349,7 @@ begin
   FLines[0] := '';
   FCount := 1;
   FEncoding := feAnsi;
+  FSavedEncoding := feAnsi;
   FLineBreak := #13#10;
   FFinalBreak := False;
   FTabSize := 8;
@@ -353,6 +370,12 @@ begin
     Result := FLines[AIndex]
   else
     Result := '';
+end;
+
+// Изменён текст или выбрана другая кодировка записи (Shift+F8)
+function TFarEditor.GetModified: Boolean;
+begin
+  Result := FModified or (FEncoding <> FSavedEncoding);
 end;
 
 procedure TFarEditor.SetScheme(AScheme: TClrScheme; ADefFg, ADefBg: Integer);
@@ -1226,6 +1249,7 @@ begin
     Dec(LineCount);
   FCount := LineCount;
   FFileName := AFileName;
+  FSavedEncoding := FEncoding;
   FRow := 0;
   FCol := 0;
   FPrefCol := 0;
@@ -1245,7 +1269,7 @@ function TFarEditor.SaveToFile(const AFileName: WideString;
   var AError: string): Boolean;
 var
   Text: WideString;
-  Raw: string;
+  Raw, Bom: string;
   RowIdx, ByteLen: Integer;
   UsedDefault: BOOL;
   FileHandle: THandle;
@@ -1281,8 +1305,17 @@ begin
           EdWideToMulti(EdCpUtf8, 0, PWideChar(Text), Length(Text),
             PAnsiChar(Raw), ByteLen, nil, nil);
         end;
+        // BOM - байтами. Строковая константа в Free Pascal ({$CODEPAGE
+        // CP1251}) при сложении перекодируется в кодировку Windows: при
+        // кодировке не 1251 байты EF и BF становились '?'
         if AEncoding = feUtf8Bom then
-          Raw := #$EF#$BB#$BF + Raw;
+        begin
+          SetLength(Bom, 3);
+          Bom[1] := AnsiChar($EF);
+          Bom[2] := AnsiChar($BB);
+          Bom[3] := AnsiChar($BF);
+          Raw := Bom + Raw;
+        end;
       end;
   else
     Raw := '';
@@ -1320,6 +1353,7 @@ begin
   end;
   FFileName := AFileName;
   FEncoding := AEncoding;
+  FSavedEncoding := AEncoding;
   FSavedUndo := FUndoCount;
   FModified := False;
   Result := True;
