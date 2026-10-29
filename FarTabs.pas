@@ -3,19 +3,21 @@ unit FarTabs;
 // ---------------------------------------------------------------------------
 //  Вкладки папок над панелями uniFAR (FarApp): строка вкладок шрифтом 8 пт.
 //
-//  Самая левая вкладка - папка активной панели. За ней - последние папки
-//  из истории папок (Alt+F12), сначала самые свежие, без повторов и без
-//  папки активной панели; сколько поместится по ширине окна.
+//  Самая левая вкладка - папка активной панели. За ней - список вкладок
+//  (свой, хранится в uniFAR.ini [FolderTabs]) без папки активной панели;
+//  сколько поместится по ширине окна. Списка ещё нет (первый запуск) - в
+//  него берутся последние папки истории папок (Alt+F12). Дальше история
+//  на список не влияет: в список добавляет Enter, убирает Del.
 //  Цвета - палитра FAR, группа «Вкладки» (F9 - Options - Colors).
 //
 //  Клавиши (их передаёт цикл сообщений FarApp, пока фокус в окне FAR):
 //    Alt+Left / Alt+Right - курсор на вкладку активной панели (самую
 //      левую), дальше - на соседнюю вкладку; активная панель сразу
 //      переходит в папку вкладки. В режиме вкладок - и Left / Right без Alt.
-//    Enter - на вкладке активной панели: её папка - в историю папок; на
-//      другой вкладке - остаться в её папке. Режим вкладок кончается.
-//    Del - убрать вкладку из списка (папку - из истории; закреплённую в
-//      истории, Alt+F12 - Ins, не убирает).
+//    Enter - на вкладке активной панели: её папка - в список вкладок
+//      (первой); на другой вкладке - остаться в её папке. Режим вкладок
+//      кончается.
+//    Del - убрать вкладку из списка (история папок не меняется).
 //    Esc - выйти из режима вкладок; остальные клавиши - тоже, и клавиша
 //      уходит панели.
 //  Мышь: вкладка под мышью подсвечивается, активная панель показывает её
@@ -50,6 +52,8 @@ type
     FStartPath: WideString;    // папка активной панели при входе в режим
     FStartItem: WideString;    // и имя под курсором (вернуться на него)
     FMaxTabs: Integer;
+    FList: TFarNames;          // список вкладок (без вкладки активной панели)
+    FIniName: string;          // где хранится список
     FTabFont: HFONT;
     FTabTextH: Integer;
     FBuffer: TBitmap;
@@ -65,6 +69,10 @@ type
     function TabCaption(const APath: WideString): WideString;
     procedure GoToTab(AIndex: Integer);
     procedure RemoveTab(AIndex: Integer);
+    function ListFind(const APath: WideString): Integer;
+    procedure ListDelete(AIndex: Integer);
+    procedure ListAddFirst(const APath: WideString);
+    procedure SaveList;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
     procedure WMMouseLeave(var Message: TMessage); message $02A3;
   protected
@@ -82,11 +90,17 @@ type
     function HandleKey(AKey: Word): Boolean;
     procedure EnterMode;
     procedure LeaveMode;
+    // Список вкладок из uniFAR.ini [FolderTabs]; нет раздела - последние
+    // папки истории (звать после TFarView.LoadState)
+    procedure LoadList(const AIniName: string);
     property ModeOn: Boolean read FModeOn;
     property MaxTabs: Integer read FMaxTabs write FMaxTabs;
   end;
 
 implementation
+
+uses
+  IniBuf;
 
 const
   TabFontPt = 8;
@@ -96,7 +110,9 @@ const
   CloseW = 14;            // место под крестик
   TabMinW = 48;
   TabMaxW = 220;          // длинное имя - с многоточием
-  TabMaxCount = 50;       // не больше, чем папок в истории
+  TabMaxCount = 50;       // длина списка вкладок
+  TabSection = 'FolderTabs';
+  TabFirstFromHistory = 10;   // первый запуск: столько папок из истории
   CloseMark: WideChar = WideChar($00D7);   // крестик (знак умножения)
 
 type
@@ -226,9 +242,8 @@ end;
 // свежие папки истории
 procedure TFarTabBar.CurrentTabs(var ATabs: TFarNames);
 var
-  HistIdx, TabIdx, Count, UsedW, NextW: Integer;
+  ListIdx, Count, UsedW, NextW: Integer;
   Path: WideString;
-  Dup: Boolean;
   MeasureDC: HDC;
   OldFont: HGDIOBJ;
 begin
@@ -244,34 +259,123 @@ begin
   MeasureDC := GetDC(0);
   OldFont := SelectObject(MeasureDC, FTabFont);
   try
-  UsedW := 2 + TabWidth(MeasureDC, ATabs[0], 0) + TabGap;
-  for HistIdx := FView.HistoryCount - 1 downto 0 do
-  begin
-    if Count >= FMaxTabs then
-      Break;
-    Path := FView.HistoryItem(HistIdx);
-    if Path = '' then
-      Continue;
-    Dup := False;
-    for TabIdx := 0 to Count - 1 do
-      if TabSameName(ATabs[TabIdx], Path) then
-      begin
-        Dup := True;
+    UsedW := 2 + TabWidth(MeasureDC, ATabs[0], 0) + TabGap;
+    for ListIdx := 0 to High(FList) do
+    begin
+      Path := FList[ListIdx];
+      if (Path = '') or TabSameName(Path, ATabs[0]) then
+        Continue;
+      NextW := TabWidth(MeasureDC, Path, Count);
+      if UsedW + NextW > ClientWidth - 2 then
         Break;
-      end;
-    if Dup then
-      Continue;
-    NextW := TabWidth(MeasureDC, Path, Count);
-    if UsedW + NextW > ClientWidth - 2 then
-      Break;
-    Inc(UsedW, NextW + TabGap);
-    SetLength(ATabs, Count + 1);
-    ATabs[Count] := Path;
-    Inc(Count);
-  end;
+      Inc(UsedW, NextW + TabGap);
+      SetLength(ATabs, Count + 1);
+      ATabs[Count] := Path;
+      Inc(Count);
+    end;
   finally
     SelectObject(MeasureDC, OldFont);
     ReleaseDC(0, MeasureDC);
+  end;
+end;
+
+function TFarTabBar.ListFind(const APath: WideString): Integer;
+begin
+  Result := High(FList);
+  while (Result >= 0) and not TabSameName(FList[Result], APath) do
+    Dec(Result);
+end;
+
+procedure TFarTabBar.ListDelete(AIndex: Integer);
+var
+  ListIdx: Integer;
+begin
+  if (AIndex < 0) or (AIndex > High(FList)) then
+    Exit;
+  for ListIdx := AIndex to High(FList) - 1 do
+    FList[ListIdx] := FList[ListIdx + 1];
+  SetLength(FList, Length(FList) - 1);
+end;
+
+// Папка - первой в списке (была в нём - переезжает вперёд)
+procedure TFarTabBar.ListAddFirst(const APath: WideString);
+var
+  ListIdx: Integer;
+begin
+  if APath = '' then
+    Exit;
+  ListDelete(ListFind(APath));
+  SetLength(FList, Length(FList) + 1);
+  for ListIdx := High(FList) downto 1 do
+    FList[ListIdx] := FList[ListIdx - 1];
+  FList[0] := APath;
+  if Length(FList) > FMaxTabs then
+    SetLength(FList, FMaxTabs);
+end;
+
+procedure TFarTabBar.LoadList(const AIniName: string);
+var
+  Ini: TBufIniFile;
+  Count, ListIdx, HistIdx: Integer;
+  Path: WideString;
+begin
+  FIniName := AIniName;
+  SetLength(FList, 0);
+  if AIniName = '' then
+    Exit;
+  Ini := TBufIniFile.Create(AIniName);
+  try
+    Count := Ini.ReadInteger(TabSection, 'Count', -1);
+    if Count >= 0 then
+    begin
+      if Count > FMaxTabs then
+        Count := FMaxTabs;
+      for ListIdx := 1 to Count do
+      begin
+        Path := FarDecodePath(Ini.ReadString(TabSection,
+          'Tab' + IntToStr(ListIdx), ''));
+        if (Path <> '') and (ListFind(Path) < 0) then
+        begin
+          SetLength(FList, Length(FList) + 1);
+          FList[High(FList)] := Path;
+        end;
+      end;
+      Exit;
+    end;
+  finally
+    Ini.Free;
+  end;
+  // Первый запуск: последние папки истории, свежие первыми
+  for HistIdx := FView.HistoryCount - 1 downto 0 do
+  begin
+    if Length(FList) >= TabFirstFromHistory then
+      Break;
+    Path := FView.HistoryItem(HistIdx);
+    if (Path <> '') and (ListFind(Path) < 0) then
+    begin
+      SetLength(FList, Length(FList) + 1);
+      FList[High(FList)] := Path;
+    end;
+  end;
+  SaveList;
+end;
+
+procedure TFarTabBar.SaveList;
+var
+  Ini: TBufIniFile;
+  ListIdx: Integer;
+begin
+  if FIniName = '' then
+    Exit;
+  Ini := TBufIniFile.Create(FIniName);
+  try
+    Ini.EraseSection(TabSection);
+    Ini.WriteInteger(TabSection, 'Count', Length(FList));
+    for ListIdx := 0 to High(FList) do
+      Ini.WriteString(TabSection, 'Tab' + IntToStr(ListIdx + 1),
+        FarEncodePath(FList[ListIdx]));
+  finally
+    Ini.Free;
   end;
 end;
 
@@ -551,24 +655,23 @@ procedure TFarTabBar.RemoveTab(AIndex: Integer);
 var
   Tabs: TFarNames;
   Path: WideString;
-  Removed, TabIdx: Integer;
+  ListIdx, TabIdx: Integer;
 begin
   CurrentTabs(Tabs);
   if (AIndex < 0) or (AIndex > High(Tabs)) then
     Exit;
   Path := Tabs[AIndex];
-  Removed := FView.HistoryRemovePath(Path);
-  if Removed < 0 then
+  ListIdx := ListFind(Path);
+  if ListIdx >= 0 then
   begin
-    FView.StatusText(FarProduct + ': папка закреплена в истории (Alt+F12, ' +
-      'Ins - открепить)');
-    Exit;
+    ListDelete(ListIdx);
+    SaveList;
   end;
   if AIndex = 0 then
   begin
-    // Вкладка активной панели остаётся: убрана только запись истории
-    if Removed = 0 then
-      FView.StatusText(FarProduct + ': этой папки в истории нет');
+    // Вкладка активной панели остаётся всегда: из списка убрана её папка
+    if ListIdx < 0 then
+      FView.StatusText(FarProduct + ': этой папки нет в списке вкладок');
     Invalidate;
     Exit;
   end;
@@ -636,8 +739,9 @@ begin
       begin
         if FSel = 0 then
         begin
-          FView.HistoryAddPath(FView.ActivePath);
-          FView.StatusText(FarProduct + ': папка добавлена в историю - ' +
+          ListAddFirst(FView.ActivePath);
+          SaveList;
+          FView.StatusText(FarProduct + ': папка добавлена во вкладки - ' +
             string(FView.ActivePath));
         end;
         LeaveMode;
