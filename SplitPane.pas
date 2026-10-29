@@ -56,11 +56,17 @@ type
     FTitle: TLabel;
     FFmtBtn: TUiButton;
     FCloseBtn: TUiButton;
+    FSyncBtn: TUiButton;
+    FTitleText: string;
+    FTitleMark: string;
     FOnTitleClick: TNotifyEvent;
     FOnFmtClick: TNotifyEvent;
     FOnCloseClick: TNotifyEvent;
+    FOnSyncClick: TNotifyEvent;
     procedure TitleClick(Sender: TObject);
     procedure FmtBtnClick(Sender: TObject);
+    procedure SyncBtnClick(Sender: TObject);
+    procedure ShowTitle;
     procedure CloseBtnClick(Sender: TObject);
   public
     // AParent - панель, сверху которой встаёт заголовок (alTop);
@@ -70,11 +76,20 @@ type
     destructor Destroy; override;
     procedure SetTitle(const ATitle, AHint: string; AHasFmt, AFmtShown: Boolean);
     procedure SetColors(ABack, AText: TColor);
+    // Кнопка синхронной прокрутки (только у заголовка второй панели):
+    // AVisible - показать, AOn - включена
+    procedure SetSync(AVisible, AOn: Boolean);
+    // Пометка после имени файла (свой редактор); '' - без неё
+    procedure SetTitleMark(const AMark: string);
     property Panel: TPanel read FPanel;
     property OnTitleClick: TNotifyEvent read FOnTitleClick write FOnTitleClick;
     property OnFmtClick: TNotifyEvent read FOnFmtClick write FOnFmtClick;
     property OnCloseClick: TNotifyEvent read FOnCloseClick write FOnCloseClick;
+    property OnSyncClick: TNotifyEvent read FOnSyncClick write FOnSyncClick;
   end;
+
+  // Первая видимая строка текста второй панели сменилась
+  TSplitScrollEvent = procedure(ATopLine: Integer) of object;
 
   TSplitPane = class
   private
@@ -99,6 +114,8 @@ type
     FOnTitleClick: TNotifyEvent;
     FOnFmtClick: TNotifyEvent;
     FOnCloseClick: TNotifyEvent;
+    FOnTextScroll: TSplitScrollEvent;
+    procedure EdTextScroll(Sender: TObject);
     procedure TextClickPos(Sender: TObject; ALine, ACol, ATopLine: Integer);
     procedure EdTextClick(Sender: TObject; ARow, ACol: Integer);
     procedure EdTextFree;
@@ -162,6 +179,9 @@ type
     property OnTitleClick: TNotifyEvent read FOnTitleClick write FOnTitleClick;
     property OnFmtClick: TNotifyEvent read FOnFmtClick write FOnFmtClick;
     property OnCloseClick: TNotifyEvent read FOnCloseClick write FOnCloseClick;
+    // Текст в окне TEdView прокрутили (синхронная прокрутка, Unit1)
+    property OnTextScroll: TSplitScrollEvent read FOnTextScroll
+      write FOnTextScroll;
   end;
 
 implementation
@@ -203,6 +223,22 @@ begin
     FCloseBtn.OnClick := CloseBtnClick;
   end;
 
+  if AWithClose then
+  begin
+    FSyncBtn := TUiButton.Create(FPanel);
+    FSyncBtn.Parent := FPanel;
+    FSyncBtn.Left := 500;
+    FSyncBtn.Align := alRight;
+    FSyncBtn.Width := 70;
+    FSyncBtn.Caption := 'Sync';
+    FSyncBtn.TabStop := False;
+    FSyncBtn.Hint := 'Синхронная прокрутка: панели показывают одни и те ' +
+      'же номера строк';
+    FSyncBtn.ShowHint := True;
+    FSyncBtn.Visible := False;
+    FSyncBtn.OnClick := SyncBtnClick;
+  end;
+
   FFmtBtn := TUiButton.Create(FPanel);
   FFmtBtn.Parent := FPanel;
   FFmtBtn.Left := 1000;
@@ -234,10 +270,28 @@ begin
   inherited Destroy;
 end;
 
+procedure TPaneHeader.ShowTitle;
+var
+  NewCaption: string;
+begin
+  NewCaption := '  ' + FTitleText + '  ...' + FTitleMark;
+  if FTitle.Caption <> NewCaption then
+    FTitle.Caption := NewCaption;
+end;
+
+procedure TPaneHeader.SetTitleMark(const AMark: string);
+begin
+  if AMark = FTitleMark then
+    Exit;
+  FTitleMark := AMark;
+  ShowTitle;
+end;
+
 procedure TPaneHeader.SetTitle(const ATitle, AHint: string;
   AHasFmt, AFmtShown: Boolean);
 begin
-  FTitle.Caption := '  ' + ATitle + '  ...';
+  FTitleText := ATitle;
+  ShowTitle;
   FTitle.Hint := AHint;
   // Скрытая кнопка alRight хранит прежний Left: показанная после сужения
   // заголовка, она могла бы встать правее кнопки закрытия
@@ -261,6 +315,31 @@ begin
     FPanel.Color := ABack;
   if FTitle.Font.Color <> AText then
     FTitle.Font.Color := AText;
+end;
+
+procedure TPaneHeader.SetSync(AVisible, AOn: Boolean);
+var
+  NewCaption: string;
+begin
+  if FSyncBtn = nil then
+    Exit;
+  if AOn then
+    NewCaption := 'Sync: on'
+  else
+    NewCaption := 'Sync: off';
+  if FSyncBtn.Caption <> NewCaption then
+    FSyncBtn.Caption := NewCaption;
+  // Показанная кнопка alRight - левее кнопки Txt / Fmt
+  if AVisible and not FSyncBtn.Visible then
+    FSyncBtn.Left := FFmtBtn.Left - FSyncBtn.Width;
+  if FSyncBtn.Visible <> AVisible then
+    FSyncBtn.Visible := AVisible;
+end;
+
+procedure TPaneHeader.SyncBtnClick(Sender: TObject);
+begin
+  if Assigned(FOnSyncClick) then
+    FOnSyncClick(Self);
 end;
 
 procedure TPaneHeader.TitleClick(Sender: TObject);
@@ -512,6 +591,7 @@ begin
   FEdText.TabStop := False;
   FEdText.PopupMenu := FMenu;
   FEdText.OnTextClick := EdTextClick;
+  FEdText.OnViewScroll := EdTextScroll;
 end;
 
 procedure TSplitPane.ShowEdText(AShared: TEdBuffer; const AText: WideString;
@@ -574,6 +654,12 @@ procedure TSplitPane.EdScrollTo(ATopLine: Integer);
 begin
   if (FEdText <> nil) and (FEdText.Buffer <> nil) and (ATopLine >= 0) then
     FEdText.ScrollTo(ATopLine, FEdText.LeftCol);
+end;
+
+procedure TSplitPane.EdTextScroll(Sender: TObject);
+begin
+  if Assigned(FOnTextScroll) and (FEdText.Buffer <> nil) then
+    FOnTextScroll(FEdText.TopRow);
 end;
 
 procedure TSplitPane.EdTextClick(Sender: TObject; ARow, ACol: Integer);

@@ -12,8 +12,11 @@ uses
 
 type
   THost = class
-    ClickRow, ClickCol, Clicks: Integer;
+    ClickRow, ClickCol, Clicks, ScrollEvents: Integer;
+    Busy: Boolean;
+    Other: array[Boolean] of TEdView;
     procedure TextClick(Sender: TObject; ARow, ACol: Integer);
+    procedure ViewScroll(Sender: TObject);
   end;
 
 procedure THost.TextClick(Sender: TObject; ARow, ACol: Integer);
@@ -21,6 +24,26 @@ begin
   ClickRow := ARow;
   ClickCol := ACol;
   Inc(Clicks);
+end;
+
+procedure THost.ViewScroll(Sender: TObject);
+var
+  Target: TEdView;
+begin
+  Inc(ScrollEvents);
+  // Синхронная прокрутка, как в Unit1: перенос в другое окно под флагом
+  if Busy then
+    Exit;
+  if Sender = Other[False] then
+    Target := Other[True]
+  else
+    Target := Other[False];
+  Busy := True;
+  try
+    Target.ScrollTo(TEdView(Sender).TopRow, Target.LeftCol);
+  finally
+    Busy := False;
+  end;
 end;
 
 type
@@ -96,6 +119,25 @@ begin
     (Host.ClickCol = 2));
   Check('pane click left no selection', not PaneView.HasSelection);
   TTestView(PaneView).MouseUp(mbLeft, [], 10, 10);
+
+  // Синхронная прокрутка: событие на каждую смену строки, без зацикливания
+  Host.Other[False] := MainView;
+  Host.Other[True] := PaneView;
+  MainView.OnViewScroll := Host.ViewScroll;
+  PaneView.OnViewScroll := Host.ViewScroll;
+  Host.ScrollEvents := 0;
+  MainView.ScrollTo(40, 0);
+  Check('sync main->pane (' + IntToStr(PaneView.TopRow) + ', events ' +
+    IntToStr(Host.ScrollEvents) + ')', (PaneView.TopRow = 40) and
+    (Host.ScrollEvents = 2));
+  TTestView(PaneView).DoMouseWheel([], -120, Point(10, 10));
+  Check('sync pane wheel->main (' + IntToStr(MainView.TopRow) + ')',
+    (MainView.TopRow = PaneView.TopRow) and (MainView.TopRow > 40));
+  MainView.CaretTo(150, 0);
+  Check('sync caret scroll->pane (' + IntToStr(MainView.TopRow) + '/' +
+    IntToStr(PaneView.TopRow) + ')', MainView.TopRow = PaneView.TopRow);
+  MainView.OnViewScroll := nil;
+  PaneView.OnViewScroll := nil;
 
   // Порядок Unit1: панель отпускает буфер, потом буфер освобождается
   PaneView.Buffer := nil;

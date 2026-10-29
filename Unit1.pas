@@ -3338,6 +3338,10 @@ type
     procedure SplitTabMenuClick(Sender: TObject);
     procedure SplitFmtClick(Sender: TObject);
     procedure SplitCloseClick(Sender: TObject);
+    procedure SplitSyncClick(Sender: TObject);
+    procedure SplitTextScroll(ATopLine: Integer);
+    procedure SplitSyncFromEditor;
+    function SplitOwnEdText: Boolean;
     procedure SplitWindowClosed(AWinIdx: Integer);
     function  SplitEditTop: Integer;
     procedure SplitUpdateHeaders;
@@ -3837,6 +3841,13 @@ type
     // та же вкладка, что в редакторе (вкладка редактора сейчас сменится, а
     // буфер своего редактора перейдёт к новой) - SplitRefresh
     FSplitNoShare: Boolean;
+    // Синхронная прокрутка второй панели (окно TEdView, свой редактор):
+    // включена (кнопка Sync в её заголовке), идёт перенос положения из одной
+    // панели в другую (чтобы ответ не вернулся обратно), первая видимая
+    // строка редактора, уже переданная панели
+    FSplitSync: Boolean;
+    FSplitSyncBusy: Boolean;
+    FSplitSyncTop: Integer;
 
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
@@ -79191,6 +79202,9 @@ begin
 
     UpdateVisibleBounds;
 
+    // Вторая панель с синхронной прокруткой - на ту же первую строку
+    SplitSyncFromEditor;
+
     // Отметки Format text - снять, если номера строк уже не те
     FmtSuspectCheck;
 
@@ -83820,6 +83834,10 @@ begin
   FSplit.OnTitleClick := SplitTitleClick;
   FSplit.OnFmtClick := SplitFmtClick;
   FSplit.OnCloseClick := SplitCloseClick;
+  FSplit.OnTextScroll := SplitTextScroll;
+  FSplit.Header.OnSyncClick := SplitSyncClick;
+  FSplitSync := True;
+  FSplitSyncTop := -1;
   FSplit.Web.OnOpenFile := FmtOpenFromView;
   FSplit.Web.OnLog := FmtLog;
   FSplit.Fmt.OnLog := FmtLog;
@@ -83937,6 +83955,8 @@ begin
     StringReplace(FileName, '/', '\', [rfReplaceAll]) + #13#10 +
     'Щелчок по тексту - править здесь; по заголовку - другая вкладка',
     Kind <> fkNone, FSplitFmt);
+  // Кнопка Sync - только у текста в окне TEdView (ниже, при своём редакторе)
+  FSplit.Header.SetSync(False, FSplitSync);
   SplitUpdateHeaders;
 
   if FSplitFmt then
@@ -84002,15 +84022,27 @@ begin
     // Заново и для того же буфера: схема и цвета могли смениться (тема);
     // подсветка разбирает текст лениво, по видимым строкам
     Shared := (FSplitWin = FWindowsIndex) and not FSplitNoShare;
+    // Синхронная прокрутка - с той же строки, что в редакторе
+    if FSplitSync and RichEdit1.HandleAllocated then
+      TopLine := EdApi.FirstVisibleLine;
     FSplit.SetEdLook(RichEdit1.Font, FTabChars, FGutterBG, FGutterFG,
       UiColor('Gutter.CurBG'), UiColor('Gutter.CurText'),
       UiColor('Editor.SelBG'), UiColor('Editor.SelText'));
     Scheme := SchemeCopyFor(FileName);
-    if Shared then
-      FSplit.ShowEdText(FEdEmu.Buffer, '', Scheme, TopLine)
-    else
-      FSplit.ShowEdText(nil, WideString(SplitWinText(FSplitWin)), Scheme,
-        TopLine);
+    // Показ прокручивает окно панели - это не прокрутка пользователем
+    FSplitSyncBusy := True;
+    try
+      if Shared then
+        FSplit.ShowEdText(FEdEmu.Buffer, '', Scheme, TopLine)
+      else
+        FSplit.ShowEdText(nil, WideString(SplitWinText(FSplitWin)), Scheme,
+          TopLine);
+    finally
+      FSplitSyncBusy := False;
+    end;
+    FSplitSyncTop := TopLine;
+    FSplit.Header.SetSync(True, FSplitSync);
+    SplitUpdateHeaders;
     Exit;
   end;
 
@@ -84199,7 +84231,7 @@ end;
 procedure TForm1.SplitUpdateHeaders;
 var
   EditKind: TFmtKind;
-  ActiveBack, IdleBack, TextColor: TColor;
+  ActiveBack, IdleBack, TextColor, EditIdle, SplitIdle: TColor;
   EditFile: string;
 begin
   if (FSplit = nil) or (FEditHeader = nil) or not FSplit.Shown then
@@ -84219,16 +84251,85 @@ begin
   ActiveBack := UiColor('Tabs.ActiveBG');
   IdleBack := UiColor('Tabs.InactiveBG');
   TextColor := UiColor('Tabs.Text');
+  // Свой редактор: панель, где он работает, - синим, когда не активна
+  // (активная - цветом активной вкладки, как всегда), и с подписью
+  EditIdle := IdleBack;
+  SplitIdle := IdleBack;
+  if FEdEmu <> nil then
+  begin
+    EditIdle := UiColor('Decl.OwnEdBG');
+    FEditHeader.SetTitleMark('   [свой редактор]');
+  end
+  else
+    FEditHeader.SetTitleMark('');
+  if SplitOwnEdText then
+  begin
+    SplitIdle := UiColor('Decl.OwnEdBG');
+    FSplit.Header.SetTitleMark('   [свой редактор, EdView]');
+  end
+  else
+    FSplit.Header.SetTitleMark('');
   if FSplitActive then
   begin
     FSplit.Header.SetColors(ActiveBack, TextColor);
-    FEditHeader.SetColors(IdleBack, TextColor);
+    FEditHeader.SetColors(EditIdle, TextColor);
   end
   else
   begin
-    FSplit.Header.SetColors(IdleBack, TextColor);
+    FSplit.Header.SetColors(SplitIdle, TextColor);
     FEditHeader.SetColors(ActiveBack, TextColor);
   end;
+end;
+
+// Во второй панели - текст в окне TEdView (свой редактор)
+function TForm1.SplitOwnEdText: Boolean;
+begin
+  Result := (FSplit <> nil) and FSplit.Shown and (FEdEmu <> nil) and
+            (FSplit.View = svEdText);
+end;
+
+// Кнопка Sync в заголовке второй панели
+procedure TForm1.SplitSyncClick(Sender: TObject);
+begin
+  FSplitSync := not FSplitSync;
+  if FSplit <> nil then
+    FSplit.Header.SetSync(SplitOwnEdText, FSplitSync);
+  FSplitSyncTop := -1;
+  if FSplitSync then
+    SplitSyncFromEditor;
+end;
+
+// Вторую панель прокрутили (окно TEdView) - редактор на ту же строку
+procedure TForm1.SplitTextScroll(ATopLine: Integer);
+begin
+  if FSplitSyncBusy or not FSplitSync or not SplitOwnEdText or
+     not RichEdit1.HandleAllocated then
+    Exit;
+  FSplitSyncBusy := True;
+  try
+    FSplitSyncTop := ScrollEditTo(ATopLine);
+    UpdateScrollBars;
+    UpdateLineNumbers;
+  finally
+    FSplitSyncBusy := False;
+  end;
+end;
+
+// Редактор прокрутили (из HighlightVisibleText - на каждом кадре, по уже
+// посчитанной FirstVisibleLine) - вторую панель на ту же строку
+procedure TForm1.SplitSyncFromEditor;
+begin
+  if FSplitSyncBusy or not FSplitSync or not SplitOwnEdText then
+    Exit;
+  if FirstVisibleLine = FSplitSyncTop then
+    Exit;
+  FSplitSyncBusy := True;
+  try
+    FSplit.EdScrollTo(FirstVisibleLine);
+  finally
+    FSplitSyncBusy := False;
+  end;
+  FSplitSyncTop := FirstVisibleLine;
 end;
 
 // Нажатие мыши в окне AWnd (AppMessage): в какой панели теперь работают

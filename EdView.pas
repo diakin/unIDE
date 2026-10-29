@@ -110,6 +110,7 @@ type
     FOnCaretMove: TNotifyEvent;
     FOnChange: TNotifyEvent;
     FOnTextClick: TEdTextClickEvent;
+    FOnViewScroll: TNotifyEvent;
     FCaretOverwrite: Boolean;  // каретка создана для режима замены
     FMouseSelecting: Boolean;  // левая кнопка нажата в тексте
     FLastMouse: TPoint;
@@ -270,6 +271,10 @@ type
     // править там). Shift+щелчок, двойной и тройной - как обычно
     property OnTextClick: TEdTextClickEvent read FOnTextClick
       write FOnTextClick;
+    // Первая видимая строка сменилась (полоса, колесо, клавиши, ScrollTo,
+    // каретка ушла за край) - сразу, не при отрисовке
+    property OnViewScroll: TNotifyEvent read FOnViewScroll
+      write FOnViewScroll;
     property ReadOnly: Boolean read GetReadOnly write SetReadOnly;
     property Overwrite: Boolean read GetOverwrite write SetOverwrite;
     property AutoIndent: Boolean read GetAutoIndent write SetAutoIndent;
@@ -596,6 +601,7 @@ end;
 procedure TEdView.ScrollTo(ATopRow, ALeftCol: Integer);
 var
   RowMax: Integer;
+  RowMoved: Boolean;
 begin
   RowMax := 0;
   if FBuffer <> nil then
@@ -608,16 +614,20 @@ begin
     ALeftCol := 0;
   if (ATopRow = FTopRow) and (ALeftCol = FLeftCol) then
     Exit;
+  RowMoved := ATopRow <> FTopRow;
   FTopRow := ATopRow;
   FLeftCol := ALeftCol;
   UpdateBars;
   PlaceCaret;
   Invalidate;
+  if RowMoved and Assigned(FOnViewScroll) then
+    FOnViewScroll(Self);
 end;
 
 procedure TEdView.EnsureCaretVisible;
 var
   NewTop, NewLeft, CaretScreen, Margin: Integer;
+  RowMoved: Boolean;
 begin
   NewTop := FTopRow;
   NewLeft := FLeftCol;
@@ -636,10 +646,13 @@ begin
     NewLeft := 0;
   if (NewTop <> FTopRow) or (NewLeft <> FLeftCol) then
   begin
+    RowMoved := NewTop <> FTopRow;
     FTopRow := NewTop;
     FLeftCol := NewLeft;
     UpdateBars;
     Invalidate;
+    if RowMoved and Assigned(FOnViewScroll) then
+      FOnViewScroll(Self);
   end;
   PlaceCaret;
 end;
