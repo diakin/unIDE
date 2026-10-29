@@ -2841,6 +2841,8 @@ type
     procedure DefEditProc(var Message: TMessage);
     procedure EdEmuStart;
     procedure EdEmuSwitch(AOn: Boolean);
+    procedure OwnEdBtnClick(Sender: TObject);
+    procedure OwnEdBtnUpdate;
     procedure EdEmuLog(const AText: string);
     procedure IncMgrOpenFile(const AFile: string; ALine: Integer);
     procedure IncRefDirs(var ASysDir, ARefDir: string);
@@ -3874,6 +3876,8 @@ type
     FSplitDecoMapVer: Cardinal;
     FSplitDecoFound: Integer;
     FSplitDecoDepth: Integer;
+    // Кнопка «Own editor» на панели инструментов (временно) - OwnEdBtnClick
+    FOwnEdBtn: TUiButton;
     // Окна логов на своём редакторе (шаг 0.7.6), по одному на каждый лог
     // TRichEdit, в том же месте: CompLogEdit, ErrLogEdit, LogEdit,
     // RuntimeLog, GitLogEdit. LogTo пишет в оба, показан - один (флажок
@@ -24814,6 +24818,19 @@ begin
   CurrentLeft := RowRightEdge([btnOpen, btnSave, btnSavePrj, btnUndo, btnCut,
                               btnCopy, btnPaste]);
 
+  // Свой редактор / RichEdit - кнопкой на панели (временно, пока идёт
+  // портирование): то же, что флажок в IDE Options - Preferences
+  FOwnEdBtn := TUiButton.Create(Self);
+  FOwnEdBtn.Parent := pnlToolbarIn;
+  FOwnEdBtn.SetBounds(CurrentLeft + 8, 4, 104, 26);
+  FOwnEdBtn.TabStop := False;
+  FOwnEdBtn.ShowHint := True;
+  FOwnEdBtn.Hint := 'Свой редактор вместо RichEdit - включить / ' +
+    'выключить (как в IDE Options - Preferences). Временная кнопка ' +
+    'на время портирования';
+  FOwnEdBtn.OnClick := OwnEdBtnClick;
+  OwnEdBtnUpdate;
+
   // Теперь известны правые края рядов - подгоняем под них левую панель.
   // Рядов два, панель шире того, который длиннее.
   {
@@ -40332,6 +40349,7 @@ begin
   SplitRefresh(-1);
   // Логи - окнами своего редактора или TRichEdit (шаг 0.7.6)
   LogsShowOwn(AOn);
+  OwnEdBtnUpdate;
 
   // Кадр, полосы, номера строк, строка состояния - по новому окну
   UpdateScrollBars;
@@ -40339,6 +40357,26 @@ begin
   UpdateLineNumbers;
   UpdateStatusBarInfo;
   SyncCaretX;
+end;
+
+// Кнопка на панели инструментов: свой редактор / RichEdit, сразу. Флажок
+// в IDE Options - тот же (FEnv.OwnEditor, editor.ini)
+procedure TForm1.OwnEdBtnClick(Sender: TObject);
+begin
+  FEnv.OwnEditor := FEdEmu = nil;
+  EnvOptionsChanged;
+  OwnEdBtnUpdate;
+end;
+
+// Подпись кнопки - какой редактор работает сейчас
+procedure TForm1.OwnEdBtnUpdate;
+begin
+  if FOwnEdBtn = nil then
+    Exit;
+  if FEdEmu <> nil then
+    FOwnEdBtn.Caption := 'Own editor: on'
+  else
+    FOwnEdBtn.Caption := 'Own editor: off';
 end;
 
 // View - свой редактор, проба (шаги 0.7.2 - 0.7.3): копия текста вкладки -
