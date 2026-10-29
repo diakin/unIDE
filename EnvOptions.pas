@@ -30,8 +30,8 @@ type
     FormPreviewDelay: Integer;    // View Unit / View Form: превью формы -
                                   // через столько мс после остановки мыши
     OwnEditor: Boolean;           // свой редактор вместо RichEdit (план
-                                  // портирования, шаг 0.7.4); после
-                                  // перезапуска
+                                  // портирования, шаг 0.7.4);
+                                  // переключается сразу
     // Designer
     DsgShowGrid: Boolean;
     DsgSnapToGrid: Boolean;

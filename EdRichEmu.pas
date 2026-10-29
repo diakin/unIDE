@@ -121,6 +121,14 @@ type
     // уведомления выключаются; текст - из ATakeText (ANSI, строки через
     // CRLF) - то, что было в RichEdit
     procedure Start(const ATakeText: string);
+    // Начать работу посреди сеанса (переключение в IDE Options): текст,
+    // выделение, первая видимая строка и «изменён» - у самого RichEdit; его
+    // текст потом очищается. Откат начинается заново
+    procedure TakeFromWindow;
+    // Закончить работу посреди сеанса: текст, выделение, первая видимая
+    // строка, «изменён» и маска уведомлений - обратно RichEdit. Откат у
+    // RichEdit начинается заново. После вызова объект только освободить
+    procedure GiveToWindow;
     // Шаг строк и ширина символа (шрифт RichEdit1), табуляция - колонок
     procedure SetMetrics(ALineH, ACharW, ATabChars: Integer);
     // Сообщение окну RichEdit1: True - разобрано здесь, Message.Result -
@@ -401,6 +409,79 @@ begin
   FTextChanged := False;
   FLastSelMin := 0;
   FLastSelMax := 0;
+end;
+
+procedure TEdRichEmu.TakeFromWindow;
+const
+  NoText: AnsiString = '';
+var
+  LenInfo: TEmuGetTextLengthEx;
+  GetInfo: TEmuGetTextEx;
+  Range: TEmuCharRange;
+  TextChars, GotChars, TopLine: Integer;
+  WasModified: Boolean;
+  Text: WideString;
+begin
+  // Текст - в UTF-16, перевод строки - CR, как в модели RichEdit
+  LenInfo.flags := 0;
+  LenInfo.codepage := CP_UNICODE_;
+  TextChars := DefSend(EM_GETTEXTLENGTHEX_, Integer(@LenInfo), 0);
+  if TextChars < 0 then
+    TextChars := 0;
+  SetLength(Text, TextChars + 1);
+  FillChar(GetInfo, SizeOf(GetInfo), 0);
+  GetInfo.cb := (TextChars + 1) * 2;
+  GetInfo.flags := 0;
+  GetInfo.codepage := CP_UNICODE_;
+  GotChars := DefSend(EM_GETTEXTEX_, Integer(@GetInfo), Integer(PWideChar(Text)));
+  if GotChars < 0 then
+    GotChars := 0;
+  if GotChars > TextChars then
+    GotChars := TextChars;
+  SetLength(Text, GotChars);
+  Range.cpMin := 0;
+  Range.cpMax := 0;
+  DefSend(EM_EXGETSEL_, 0, Integer(@Range));
+  TopLine := DefSend(EM_GETFIRSTVISIBLELINE, 0, 0);
+  WasModified := DefSend(EM_GETMODIFY, 0, 0) <> 0;
+
+  Start('');
+  SetAllText(Text);
+  SetSelIdx(Range.cpMin, Range.cpMax);
+  ScrollToRow(TopLine);
+  FModified := WasModified;
+  // Текст и выделение те же, что были у RichEdit: уведомлять не о чем
+  FTextChanged := False;
+  GetSelIdx(FLastSelMin, FLastSelMax);
+  FNeedPaint := True;
+
+  // Свой текст у RichEdit больше не нужен; уведомления у него уже выключены
+  DefSend(WM_SETTEXT, 0, Integer(PAnsiChar(NoText)));
+  DefSend(EM_EMPTYUNDOBUFFER, 0, 0);
+end;
+
+procedure TEdRichEmu.GiveToWindow;
+var
+  SetInfo: TEmuSetTextEx;
+  Range: TEmuCharRange;
+  SelMin, SelMax, TopLine: Integer;
+  Text: WideString;
+begin
+  DoMouseUp;
+  Text := WideText(False);
+  GetSelIdx(SelMin, SelMax);
+  // Уведомления у RichEdit выключены (Start) - текст ставится молча
+  SetInfo.flags := 0;
+  SetInfo.codepage := CP_UNICODE_;
+  DefSend(EM_SETTEXTEX_, Integer(@SetInfo), Integer(PWideChar(Text)));
+  Range.cpMin := SelMin;
+  Range.cpMax := SelMax;
+  DefSend(EM_EXSETSEL_, 0, Integer(@Range));
+  TopLine := DefSend(EM_GETFIRSTVISIBLELINE, 0, 0);
+  if TopLine <> FTopRow then
+    DefSend(EM_LINESCROLL, 0, FTopRow - TopLine);
+  DefSend(EM_SETMODIFY, Ord(FModified), 0);
+  DefSend(EM_SETEVENTMASK_, 0, FEventMask);
 end;
 
 procedure TEdRichEmu.SetMetrics(ALineH, ACharW, ATabChars: Integer);

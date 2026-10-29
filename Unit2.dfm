@@ -2030,11 +2030,11 @@ object Form2: TForm2
           Top = 22
           Width = 560
           Height = 20
-          Caption = 'Own editor instead of RichEdit (after restart)'
+          Caption = 'Own editor instead of RichEdit'
           TabOrder = 0
           ParentShowHint = False
           ShowHint = True
-          Hint = 'Текст, выделение, правка и откат основного редактора - свои (EdBuffer), а не окна RichEdit. Пробный режим шага 0.7.4: действует после перезапуска unIDE; что ещё не сделано - пишется в HiLite log'
+          Hint = 'Текст, выделение, правка и откат основного редактора - свои (EdBuffer), а не окна RichEdit. Пробный режим шага 0.7.4: переключается сразу, история отката текущей вкладки начинается заново; что ещё не сделано - пишется в HiLite log'
           OnClick = EnvOptionClick
         end
       end
