@@ -276,6 +276,19 @@ type
   end;
   TStrArray = array of string;
 
+  // Снимок записанного текста окна: по нему откат (Ctrl+Z / Ctrl+Y),
+  // вернувший текст к записанному, снимает звёздочку. Сам текст не хранится -
+  // длина и две суммы. Stamp - размер и время файла на диске при снимке:
+  // файл с тех пор изменили - снимок не годится.
+  TCleanSnap = record
+    Valid: Boolean;
+    Len: Integer;
+    Sum1: Cardinal;
+    Sum2: Cardinal;
+    FileName: string;
+    Stamp: string;
+  end;
+
   // Одно текстовое окно: файл целиком в памяти плюс его состояние.
   //
   // В исходном варианте на BASIC под это отводились параллельные массивы
@@ -287,6 +300,7 @@ type
     Text: string;       // было Window()
     CursorPos: Integer; // было CursWin()
     Modified: Boolean;  // было Modif()
+    Clean: TCleanSnap;  // записанный текст (см. CleanCapture)
     IsUtf8: Boolean;    // кодировка файла на диске
     HasBom: Boolean;
     Broken: Boolean;    // файла нет на диске - окно помечается как нерабочее
@@ -1829,6 +1843,12 @@ type
     FLockTabs: Boolean; // защита от рекурсии при программной смене вкладки
     FTabHintIdx: Integer; // вкладка, для которой показана подсказка (TabsMouseMove)
     FTabsModShown: Boolean; // каким Modified был отрисован маркер
+    // Записанный текст текущего окна (CleanCapture); FCleanPending - флаг
+    // изменений сброшен, снимок снять перед следующей правкой;
+    // FUndoCheckPending - был откат или повтор, сверить в AppIdle
+    FClean: TCleanSnap;
+    FCleanPending: Boolean;
+    FUndoCheckPending: Boolean;
     // Переключение вкладки идёт в две половины: текст с подсветкой - сразу
     // (ActivateWindow), разборы для правой панели - после показа
     // (WMTabSwitched). FTabSwitchGen - номер переключения: устаревшее
@@ -2524,6 +2544,9 @@ type
     procedure DlgCheckAllClick(Sender: TObject);
     procedure DlgDeactivate(Sender: TObject);
     procedure RefreshTabsModified;
+    procedure CleanCapture;
+    procedure CleanBeforeMsg(const Message: TMessage);
+    procedure CleanAfterUndo;
     procedure InvalidateAllWindowMaps;
     procedure CloseAllWindows;
     procedure ProjectClosedReset;
@@ -8867,6 +8890,9 @@ begin
 
   FWindows[FWindowsIndex].Text := GetEditorText;
   FWindows[FWindowsIndex].Modified := RichEdit1.Modified;
+  if FCleanPending then
+    CleanCapture;
+  FWindows[FWindowsIndex].Clean := FClean;
   FWindows[FWindowsIndex].IsUtf8 := FFileIsUtf8;
   FWindows[FWindowsIndex].HasBom := FFileHasBom;
 
@@ -9005,6 +9031,15 @@ begin
   FObjLoadPending := True;
 
   RichEdit1.Modified := FWindows[Index].Modified;
+  // Снимок записанного текста: окно не изменено - снимется заново
+  // (FCleanPending от EM_SETMODIFY), изменено - свой, если он этого файла
+  if FWindows[Index].Modified then
+  begin
+    FClean := FWindows[Index].Clean;
+    if CompareText(FClean.FileName, FCurrentFileName) <> 0 then
+      FClean.Valid := False;
+    FCleanPending := False;
+  end;
   RichEdit1.SelStart := FWindows[Index].CursorPos;
   RichEdit1.SelLength := 0;
   TText := GetTickCount - TA;
@@ -25199,6 +25234,123 @@ end;
 // FTabsModShown: сохранение (и другие места, где Modified сбрасывается)
 // снимало звёздочку, не трогая FTabsModShown. Он оставался True, и на
 // следующей правке Modified = FTabsModShown - звёздочка не появлялась.
+// ---------------------------------------------------------------------------
+//  Откат до записанного текста снимает звёздочку.
+//
+//  RichEdit сам флаг изменений не снимает: Ctrl+Z, вернувший текст к
+//  записанному, оставлял звёздочку на вкладке и в заголовке, а Save и вопрос
+//  при закрытии - активными. Поэтому:
+//  - флаг сброшен (RichEdit1.Modified := False - EM_SETMODIFY, это запись,
+//    открытие, переключение окна) - перед следующей правкой снимается
+//    снимок текста (CleanBeforeMsg -> CleanCapture): длина, две суммы,
+//    размер и время файла;
+//  - после отката или повтора (EM_UNDO, WM_UNDO, EM_REDO, Ctrl+Z, Ctrl+Y)
+//    в простое (AppIdle) текст сверяется со снимком: совпал, и файл на диске
+//    тот же - флаг снимается, звёздочка тоже.
+//  Снимок свой у каждого окна (TEditorWindow.Clean).
+// ---------------------------------------------------------------------------
+
+{$IFOPT Q+}{$DEFINE CleanSumQ}{$Q-}{$ENDIF}
+{$IFOPT R+}{$DEFINE CleanSumR}{$R-}{$ENDIF}
+// Две независимые суммы текста (FNV-1a и djb2 со сдвигом)
+procedure CleanTextSums(const AText: string; var ASum1, ASum2: Cardinal);
+var
+  CharIdx: Integer;
+  CharCode: Cardinal;
+begin
+  ASum1 := Cardinal(2166136261);
+  ASum2 := Cardinal(5381);
+  for CharIdx := 1 to Length(AText) do
+  begin
+    CharCode := Ord(AText[CharIdx]);
+    ASum1 := (ASum1 xor CharCode) * Cardinal(16777619);
+    ASum2 := ((ASum2 shl 5) + ASum2 + (ASum2 shr 27)) xor CharCode;
+  end;
+end;
+{$IFDEF CleanSumQ}{$Q+}{$UNDEF CleanSumQ}{$ENDIF}
+{$IFDEF CleanSumR}{$R+}{$UNDEF CleanSumR}{$ENDIF}
+
+// Размер и время записи файла; '' - файла нет (или имени нет)
+function CleanFileStamp(const AFileName: string): string;
+var
+  FileData: TWin32FileAttributeData;
+begin
+  Result := '';
+  if AFileName = '' then
+    Exit;
+  if not GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard,
+     @FileData) then
+    Exit;
+  Result := IntToHex(FileData.nFileSizeHigh, 8) +
+    IntToHex(FileData.nFileSizeLow, 8) + ':' +
+    IntToHex(FileData.ftLastWriteTime.dwHighDateTime, 8) +
+    IntToHex(FileData.ftLastWriteTime.dwLowDateTime, 8);
+end;
+
+// Снимок текущего текста как записанного (флаг изменений сброшен). Флаг
+// уже взведён - что-то поменяло текст мимо нас, снимка нет
+procedure TForm1.CleanCapture;
+var
+  Txt: string;
+begin
+  FCleanPending := False;
+  if not RichEdit1.HandleAllocated or RichEdit1.Modified then
+  begin
+    FClean.Valid := False;
+    Exit;
+  end;
+  Txt := GetEditorTextCR;
+  FClean.Len := Length(Txt);
+  CleanTextSums(Txt, FClean.Sum1, FClean.Sum2);
+  FClean.FileName := FCurrentFileName;
+  FClean.Stamp := CleanFileStamp(FCurrentFileName);
+  FClean.Valid := True;
+end;
+
+// Перед сообщением, которое может поменять текст (NewRichEditProcBody):
+// снимок, если ждёт; откат / повтор - сверить в простое
+procedure TForm1.CleanBeforeMsg(const Message: TMessage);
+begin
+  if FCleanPending then
+    CleanCapture;
+  if (Message.Msg = WM_UNDO) or (Message.Msg = EM_UNDO) or
+     (Message.Msg = EM_REDO) or
+     ((Message.Msg = WM_KEYDOWN) and (GetKeyState(VK_CONTROL) < 0) and
+      ((Message.WParam = Ord('Z')) or (Message.WParam = Ord('Y')))) then
+    FUndoCheckPending := True;
+end;
+
+// После отката / повтора (AppIdle): текст снова записанный - флаг снять
+procedure TForm1.CleanAfterUndo;
+var
+  Txt: string;
+  Sum1, Sum2: Cardinal;
+begin
+  FUndoCheckPending := False;
+  if not FClean.Valid or not RichEdit1.HandleAllocated or
+     not RichEdit1.Modified then
+    Exit;
+  if CompareText(FClean.FileName, FCurrentFileName) <> 0 then
+    Exit;
+  Txt := GetEditorTextCR;
+  if Length(Txt) <> FClean.Len then
+    Exit;
+  CleanTextSums(Txt, Sum1, Sum2);
+  if (Sum1 <> FClean.Sum1) or (Sum2 <> FClean.Sum2) then
+    Exit;
+  // Файл на диске с тех пор писали - записанный текст уже другой
+  if CleanFileStamp(FCurrentFileName) <> FClean.Stamp then
+    Exit;
+  RichEdit1.Modified := False;
+  // Текст тот же, что в снимке, - снимать заново незачем
+  FCleanPending := False;
+  if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
+    FWindows[FWindowsIndex].Modified := False;
+  if Pos(' *', Caption) > 0 then
+    Caption := AppTitle + ' - ' + DisplayName;
+  RefreshTabsModified;
+end;
+
 procedure TForm1.RefreshTabsModified;
 var
   TabIdx: Integer;
@@ -58496,6 +58648,13 @@ begin
      ((FRqDesigner <> nil) and FRqDesigner.Dragging) then
     Exit;
   StartTick := GetTickCount;
+  // Снимок записанного текста - в простое, а не на первой клавише после
+  // записи (большой файл); откат вернул записанный текст - снять звёздочку
+  // (до вида кнопок: Save)
+  if FCleanPending then
+    CleanCapture;
+  if FUndoCheckPending then
+    CleanAfterUndo;
   UpdateToolbarState;
   UtilMenuUpdate;
   if not FUtilsPrjDone or (FUtilsPrjKey <> FCurrentProject) then
@@ -77081,6 +77240,10 @@ var
   CursorPt: TPoint;
   SerialBefore: Cardinal;
 begin
+  // Флаг изменений сброшен (запись, открытие, переключение окна) - перед
+  // следующей правкой снять снимок записанного текста (CleanCapture)
+  if (Message.Msg = EM_SETMODIFY) and (Message.WParam = 0) then
+    FCleanPending := True;
   // Вставка - только текстом (PastePlainText): WM_PASTE от меню Windows и
   // Ctrl+V / Shift+Insert, если их не перехватило меню формы
   if FMsgDepth = 0 then
@@ -77282,6 +77445,10 @@ begin
     Message.Result := 0;
     Exit;
   end;
+
+  // Снимок записанного текста - до правки, и под блокировкой тоже
+  if IsTextChangeMsg(Message.Msg) then
+    CleanBeforeMsg(Message);
 
   if FLockHighlight then
   begin
