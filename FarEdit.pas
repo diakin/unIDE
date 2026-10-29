@@ -44,6 +44,7 @@ type
     FEncoding: TFarEditEncoding;
     FLineBreak: WideString;
     FFinalBreak: Boolean;
+    FSavedEncoding: TFarEditEncoding; // в какой кодировке файл на диске
     FRow: Integer;
     FCol: Integer;
     FPrefCol: Integer;       // колонка экрана для движения вверх-вниз
@@ -119,6 +120,7 @@ type
     // Строки и откат
     property Buffer: TEdBuffer read FBuffer;
     property FileName: WideString read FFileName write FFileName;
+    // Кодировка записи (F2). Другая, чем у файла на диске, - Modified
     property Encoding: TFarEditEncoding read FEncoding write FEncoding;
     property Modified: Boolean read GetModified;
     property Row: Integer read FRow;
@@ -132,6 +134,8 @@ type
 
 // Имя кодировки для строки состояния
 function FarEditEncodingName(AEncoding: TFarEditEncoding): string;
+// Кодировка подробно - для меню Shift+F8 и строки состояния
+function FarEditEncodingTitle(AEncoding: TFarEditEncoding): string;
 // Текст буфера обмена (Unicode; нет - ANSI); '' - пусто
 function FarClipboardText: WideString;
 
@@ -178,6 +182,17 @@ begin
     feUtf16: Result := 'UTF-16';
   else
     Result := 'ANSI ' + IntToStr(GetACP);
+  end;
+end;
+
+function FarEditEncodingTitle(AEncoding: TFarEditEncoding): string;
+begin
+  case AEncoding of
+    feUtf8: Result := 'UTF-8';
+    feUtf8Bom: Result := 'UTF-8 with BOM';
+    feUtf16: Result := 'UTF-16 LE';
+  else
+    Result := 'ANSI (Windows ' + IntToStr(GetACP) + ')';
   end;
 end;
 
@@ -292,6 +307,7 @@ begin
   FBuffer := TEdBuffer.Create;
   FBuffer.AddListener(BufferChanged);
   FEncoding := feAnsi;
+  FSavedEncoding := feAnsi;
   FLineBreak := #13#10;
   FFinalBreak := False;
   FTabSize := 8;
@@ -316,9 +332,10 @@ begin
   Result := FBuffer.Count;
 end;
 
+// Изменён текст или выбрана другая кодировка записи (Shift+F8)
 function TFarEditor.GetModified: Boolean;
 begin
-  Result := FBuffer.Modified;
+  Result := FBuffer.Modified or (FEncoding <> FSavedEncoding);
 end;
 
 procedure TFarEditor.BufferChanged(Sender: TObject; AFirst, AOldCount,
@@ -963,6 +980,7 @@ begin
     Dec(LineCount);
   FBuffer.AssignLines(NewLines, LineCount);
   FFileName := AFileName;
+  FSavedEncoding := FEncoding;
   FRow := 0;
   FCol := 0;
   FPrefCol := 0;
@@ -978,7 +996,7 @@ function TFarEditor.SaveToFile(const AFileName: WideString;
   var AError: string): Boolean;
 var
   Text: WideString;
-  Raw: string;
+  Raw, Bom: string;
   ByteLen: Integer;
   UsedDefault: BOOL;
   FileHandle: THandle;
@@ -1010,8 +1028,17 @@ begin
           EdWideToMulti(EdCpUtf8, 0, PWideChar(Text), Length(Text),
             PAnsiChar(Raw), ByteLen, nil, nil);
         end;
+        // BOM - байтами. Строковая константа в Free Pascal ({$CODEPAGE
+        // CP1251}) при сложении перекодируется в кодировку Windows: при
+        // кодировке не 1251 байты EF и BF становились '?'
         if AEncoding = feUtf8Bom then
-          Raw := #$EF#$BB#$BF + Raw;
+        begin
+          SetLength(Bom, 3);
+          Bom[1] := AnsiChar($EF);
+          Bom[2] := AnsiChar($BB);
+          Bom[3] := AnsiChar($BF);
+          Raw := Bom + Raw;
+        end;
       end;
   else
     Raw := '';
@@ -1049,6 +1076,7 @@ begin
   end;
   FFileName := AFileName;
   FEncoding := AEncoding;
+  FSavedEncoding := AEncoding;
   FBuffer.MarkSaved;
   Result := True;
 end;

@@ -380,6 +380,8 @@ begin
   FarView := TFarView.Create(nil);
   FarView.UnicodeChars := True;
   FarView.MessageLine := True;
+  // F4 - редактор сразу на всю ширину (F5 - в половину окна)
+  FarView.EditWideDefault := True;
   FarView.OnClose := Events.FarClose;
   FarView.OnGetScheme := Events.FarGetScheme;
   // OnEditFile, OnLeave, OnHalfResize, OnShowPanels - режим F4 рядом с
