@@ -102,7 +102,7 @@ unit UnFar;
 //      адресов (Host | Home | User; Shift+F4 - новый, F4 - изменить,
 //      F8 / Del - удалить; editor.ini [FarFtp], пароль - DPAPI), вход
 //      на сервер и папки сервера (Enter, '..', Ctrl+R) - WinInet в своём
-//      потоке (FarFtp). Копирование и прочее на сервере - следующим шагом.
+//      потоке (FarFtp). Файлы на сервере: F3, F4, F5, F6, F7, F8 (TFarFtpJob).
 //    - b.34: FTP: Home адреса не открылся (550) - тот же путь без '/' в
 //      начале (от папки входа), нет и его - папка входа, причина - в строке
 //      состояния.
@@ -182,7 +182,8 @@ type
     fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd,
     fdFind, fdFtpEdit, fdFtpPassword, fdFtpDelete, fdFtpError,
     fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
-    fdViewFind, fdViewGoto, fdHiDelete, fdHistClear);
+    fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
+    fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -589,6 +590,29 @@ type
     FFtpPassPanel: Integer;        // окно пароля: панель и адрес
     FFtpPassHostIdx: Integer;
     FFtpDelIdx: Integer;           // удалить адрес: какой
+    // Операции с файлами на сервере (TFarFtpJob): идущая
+    FFtpJob: TFarFtpJob;
+    FFtpJobPanel: Integer;         // панель FTP, чьё соединение у операции
+    FFtpJobSess: Integer;          // FFtpSession панели при запуске
+    FFtpJobAfter: Integer;         // после: 1 - просмотр, 2 - редактор
+    FFtpJobTemp: WideString;       // файл для просмотра / редактора
+    FFtpJobFocusRaw: string;       // курсор панели FTP после - на это имя
+    FFtpJobMove: Boolean;
+    FFtpProgress: TFarProgress;
+    // ... и ждущая ответа в окне (F5, F6, F7, F8, «файлы уже есть»)
+    FFtpOpKind: TFarFtpJobKind;
+    FFtpOpItems: TFarFtpJobItems;
+    FFtpOpPanel: Integer;
+    FFtpOpMove: Boolean;
+    FFtpOpRemoteDir: string;
+    FFtpOpRemoteTarget: string;
+    FFtpOpLocalDir: WideString;
+    // Файл с сервера в редакторе (F4): F2 - отправить обратно
+    FEditFtpTemp: WideString;
+    FEditFtpRaw: string;
+    FEditFtpDir: string;
+    FEditFtpPanel: Integer;
+    FEditFtpHost: TFarFtpHost;
     FFtpDelPanel: Integer;
     procedure CreateFonts;
     procedure FreeFonts;
@@ -687,6 +711,25 @@ type
     procedure FtpCheck;
     procedure FtpUp(APanelIndex: Integer);
     procedure FtpEnter(APanelIndex: Integer);
+    function FtpBusy: Boolean;
+    function FtpCollect(APanel: TFarPanel;
+      ACurrentOnly: Boolean): TFarFtpJobItems;
+    function FtpCollectLocal(APanel: TFarPanel): TFarFtpJobItems;
+    procedure FtpRunJob(AKind: TFarFtpJobKind; APanelIdx: Integer;
+      const ARemoteDir: string; const ALocalDir: WideString;
+      const AItems: TFarFtpJobItems; const ANewName: string; AMove: Boolean;
+      AAfter: Integer; const ATemp: WideString; const AFocusRaw: string);
+    procedure FtpViewEdit(AEdit: Boolean);
+    procedure FtpStartCopyFrom(AMove, ACurrentOnly: Boolean);
+    procedure FtpStartCopyTo(AMove: Boolean);
+    procedure FtpCopyConfirm(const AText: WideString);
+    procedure FtpOverwriteAnswer(AButton: Integer);
+    procedure FtpRunOp;
+    procedure FtpAskMkDir;
+    procedure FtpMkDirConfirm(const AText: WideString);
+    procedure FtpAskDelete;
+    procedure FtpUploadEdited;
+    procedure FtpJobDone;
     procedure FtpEditHost(APanelIndex, AHostIdx: Integer);
     procedure FtpEditConfirm(AConnect: Boolean);
     procedure FtpDeleteHost(APanelIndex: Integer);
@@ -1360,6 +1403,15 @@ begin
   Attr := FarGetAttributes(PWideChar(APath));
   Result := (Attr <> FarInvalidAttr) and
             (Attr and FILE_ATTRIBUTE_DIRECTORY <> 0);
+end;
+
+function FarFileExists(const APath: WideString): Boolean;
+var
+  Attr: DWORD;
+begin
+  Attr := FarGetAttributes(PWideChar(APath));
+  Result := (Attr <> FarInvalidAttr) and
+            (Attr and FILE_ATTRIBUTE_DIRECTORY = 0);
 end;
 
 function FarWithSlash(const APath: WideString): WideString;
@@ -3224,6 +3276,15 @@ begin
     end;
     FPanels[FtpIdx].FtpLeave;
   end;
+  if FFtpJob <> nil then
+  begin
+    FFtpJob.Cancel;
+    FFtpJob.WaitFor;
+    FFtpJob.Conn.Free;
+    FFtpJob.Free;
+    FFtpJob := nil;
+  end;
+  FreeAndNil(FFtpProgress);
   FProcTimer.Enabled := False;
   if FProcHandle <> 0 then
     ProcFinish(True);
@@ -5215,6 +5276,13 @@ begin
       FEditQuitAfterSave := False;
     Exit;
   end;
+  // FTP: файлы уже есть - Overwrite / Skip / Cancel
+  if FDlgKind = fdFtpOverwrite then
+  begin
+    DlgClose;
+    FtpOverwriteAnswer(AButton);
+    Exit;
+  end;
   Kind := FDlgKind;
   EditText := FDlgEdit;
   SavedAction := FArcAction;
@@ -5261,6 +5329,13 @@ begin
       FtpPasswordEntered(EditText);
     fdFtpDelete:
       FtpDeleteConfirmed;
+    fdFtpCopy:
+      FtpCopyConfirm(EditText);
+    fdFtpMkDir:
+      FtpMkDirConfirm(EditText);
+    fdFtpDelFiles:
+      FtpRunJob(fjDelete, FFtpOpPanel, FFtpOpRemoteDir, '', FFtpOpItems, '',
+        False, 0, '', '');
     fdEditSave:
       if (FEditor <> nil) and (FarTrimW(EditText) <> '') then
         EditSave(FarFullPath(FarWithSlash(ExtractFilePath(
@@ -5486,9 +5561,16 @@ begin
     FtpImportHosts;
     Exit;
   end;
+  // На панель FTP (папка сервера) - закачать
+  if not ACurrentOnly and (FPanels[1 - FActive].FFtpMode = 2) and
+     not ActivePanel.IsFtp and not ActivePanel.IsArchive then
+  begin
+    FtpStartCopyTo(AMove);
+    Exit;
+  end;
   if not ACurrentOnly and FPanels[1 - FActive].IsFtp then
   begin
-    Status(FarProduct + ': копирование на FTP - следующим шагом');
+    Status(FarProduct + ': FTP - сначала войдите на сервер в другой панели');
     Exit;
   end;
   Names := CollectNames(ACurrentOnly);
@@ -6969,7 +7051,7 @@ end;
 //  (FtpCheck). Пока поток идёт, соединение у него (панель - без него);
 //  панель ушла с FTP за это время (FFtpSession другой) - ответ
 //  отбрасывается, соединение закрывается.
-//  Копирование, папки, удаление на сервере - следующим шагом.
+//  Файлы на сервере (F3 .. F8, закачка с другой панели) - ниже, TFarFtpJob.
 // ---------------------------------------------------------------------------
 
 procedure FarEmptyItem(var AItem: TFarItem);
@@ -7278,10 +7360,27 @@ end;
 // Ответ потока FTP (WatchTick)
 procedure TFarView.FtpCheck;
 var
-  PanelIndex: Integer;
+  PanelIndex, FilesDone, FilesTotal: Integer;
   Thread: TFarFtpThread;
   Panel: TFarPanel;
+  BytesDone, BytesTotal: Int64;
+  CurName: WideString;
 begin
+  // Операция с файлами: ход в окно Windows, «Отмена» там - прервать
+  if FFtpJob <> nil then
+  begin
+    if FFtpJob.Finished then
+      FtpJobDone
+    else if FFtpProgress <> nil then
+    begin
+      FFtpJob.Progress(BytesDone, BytesTotal, FilesDone, FilesTotal, CurName);
+      if BytesTotal > 0 then
+        FFtpProgress.SetPercent(Integer(BytesDone * 100 div BytesTotal));
+      FFtpProgress.SetLine2(CurName);
+      if FFtpProgress.Cancelled then
+        FFtpJob.Cancel;
+    end;
+  end;
   for PanelIndex := 0 to 1 do
   begin
     Thread := FFtpThread[PanelIndex];
@@ -7369,8 +7468,590 @@ begin
     FtpStartList(APanelIndex, Panel.FFtpHost, Panel.FFtpHostIdx,
       FarFtpJoin(Panel.FFtpDir, Item.FtpRaw), '')
   else
-    Status(FarProduct + ': FTP - просмотр и копирование файлов - следующим ' +
-      'шагом');
+    FtpViewEdit(False);
+end;
+
+// ---------------------------------------------------------------------------
+//  FTP: файлы на сервере. В панели FTP: F3 / Enter - просмотр, F4 -
+//  правка (F2 в редакторе - записать и отправить на сервер), F5 -
+//  скачать в папку другой панели, F6 - скачать и удалить на сервере или
+//  (имя без пути на диске) переименовать на сервере, Shift+F6 -
+//  переименовать, F7 - новая папка, F8 / Del - удалить. С обычной панели
+//  на панель FTP: F5 - закачать, F6 - закачать и удалить на диске.
+//  Работа - поток TFarFtpJob (FarFtp), ход - окно Windows (FarProgress),
+//  итог забирает FtpCheck (FtpJobDone)
+// ---------------------------------------------------------------------------
+
+// Идёт запрос или операция FTP - сообщение и True
+function TFarView.FtpBusy: Boolean;
+var
+  PanelIdx: Integer;
+begin
+  Result := FFtpJob <> nil;
+  for PanelIdx := 0 to 1 do
+    if FFtpThread[PanelIdx] <> nil then
+      Result := True;
+  if Result then
+    Status(FarProduct + ': FTP - ждём сервер (Esc - прервать)');
+end;
+
+// Выделенные (или под курсором) файлы и папки панели FTP
+function TFarView.FtpCollect(APanel: TFarPanel;
+  ACurrentOnly: Boolean): TFarFtpJobItems;
+var
+  Items: TFarFtpJobItems;
+  ItemIdx, Count: Integer;
+
+  procedure AddItem(const AItem: TFarItem);
+  begin
+    SetLength(Items, Count + 1);
+    Items[Count].Raw := AItem.FtpRaw;
+    Items[Count].Local := AItem.Name;
+    Items[Count].IsDir := AItem.IsDir;
+    Items[Count].Size := AItem.Size;
+    Items[Count].Time := AItem.WriteTime;
+    Inc(Count);
+  end;
+
+begin
+  Items := nil;
+  Count := 0;
+  if not ACurrentOnly then
+    for ItemIdx := 0 to APanel.Count - 1 do
+      if APanel.FItems[ItemIdx].Selected and not APanel.FItems[ItemIdx].IsUp then
+        AddItem(APanel.FItems[ItemIdx]);
+  if (Count = 0) and (APanel.Cursor >= 0) and (APanel.Cursor < APanel.Count) and
+     not APanel.FItems[APanel.Cursor].IsUp then
+    AddItem(APanel.FItems[APanel.Cursor]);
+  Result := Items;
+end;
+
+// Выделенные (или под курсором) файлы и папки обычной панели - закачать
+function TFarView.FtpCollectLocal(APanel: TFarPanel): TFarFtpJobItems;
+var
+  Items: TFarFtpJobItems;
+  Names: TFarNames;
+  NameIdx, ItemIdx: Integer;
+begin
+  Items := nil;
+  Names := CollectNames(False);
+  for NameIdx := 0 to High(Names) do
+  begin
+    ItemIdx := APanel.IndexOfName(Names[NameIdx]);
+    if ItemIdx < 0 then
+      Continue;
+    SetLength(Items, Length(Items) + 1);
+    Items[High(Items)].Raw := FarFtpEncode(Names[NameIdx]);
+    Items[High(Items)].Local := Names[NameIdx];
+    Items[High(Items)].IsDir := APanel.FItems[ItemIdx].IsDir;
+    Items[High(Items)].Size := APanel.FItems[ItemIdx].Size;
+    Items[High(Items)].Time := APanel.FItems[ItemIdx].WriteTime;
+  end;
+  Result := Items;
+end;
+
+function FarFtpSubject(const AItems: TFarFtpJobItems): WideString;
+begin
+  if Length(AItems) = 1 then
+    Result := '"' + AItems[0].Local + '"'
+  else
+    Result := WideString(IntToStr(Length(AItems))) + ' items';
+end;
+
+// Имя для файла на диске: символы, недопустимые в Windows, - '_'
+function FarSafeFileName(const AName: WideString): WideString;
+var
+  CharIdx: Integer;
+begin
+  Result := AName;
+  for CharIdx := 1 to Length(Result) do
+    case Ord(Result[CharIdx]) of
+      0..31, 34, 42, 47, 58, 60, 62, 63, 92, 124:   // " * / : < > ? \ |
+        Result[CharIdx] := '_';
+    end;
+  if Result = '' then
+    Result := '_';
+end;
+
+// Путь на диске (буква диска, \\сервер или '\' внутри), а не имя на сервере
+function FarLooksLocal(const AText: WideString): Boolean;
+begin
+  Result := ((Length(AText) >= 2) and (AText[2] = ':')) or
+    (Copy(AText, 1, 2) = '\\') or (Pos('\', AText) > 0);
+end;
+
+procedure TFarView.FtpRunJob(AKind: TFarFtpJobKind; APanelIdx: Integer;
+  const ARemoteDir: string; const ALocalDir: WideString;
+  const AItems: TFarFtpJobItems; const ANewName: string; AMove: Boolean;
+  AAfter: Integer; const ATemp: WideString; const AFocusRaw: string);
+var
+  Panel: TFarPanel;
+  Conn: TFarFtpConn;
+  Title: WideString;
+begin
+  Panel := FPanels[APanelIdx];
+  if (Panel.FFtpMode <> 2) or FtpBusy then
+    Exit;
+  Conn := Panel.FFtpConn;
+  Panel.FFtpConn := nil;
+  if Conn = nil then
+    Conn := TFarFtpConn.Create;
+  FFtpJobPanel := APanelIdx;
+  FFtpJobSess := Panel.FFtpSession;
+  FFtpJobAfter := AAfter;
+  FFtpJobTemp := ATemp;
+  FFtpJobFocusRaw := AFocusRaw;
+  FFtpJobMove := AMove;
+  FFtpJob := TFarFtpJob.Create(Conn, Panel.FFtpHost, AKind, ARemoteDir,
+    ALocalDir, AItems, ANewName, AMove);
+  case AKind of
+    fjDownload:
+      Title := 'Скачивание с FTP';
+    fjUpload:
+      Title := 'Закачивание на FTP';
+    fjDelete:
+      Title := 'Удаление на FTP';
+  else
+    Title := '';
+  end;
+  if Title <> '' then
+  begin
+    FFtpProgress := TFarProgress.Create;
+    if not FFtpProgress.Start(GetParentFormHandle, Title,
+       FarFtpHostUrl(Panel.FFtpHost)) then
+      FreeAndNil(FFtpProgress);
+  end;
+  Status(FarProduct + ': FTP - ' + string(FarFtpHostUrl(Panel.FFtpHost)) +
+    ': работаю... (Esc - прервать)');
+  Invalidate;
+end;
+
+// F3 / F4 на файле сервера: скачать во временную папку и открыть
+procedure TFarView.FtpViewEdit(AEdit: Boolean);
+var
+  Panel: TFarPanel;
+  Item: TFarItem;
+  Items: TFarFtpJobItems;
+  TempBuffer: array[0..MAX_PATH] of WideChar;
+  TempLen: DWORD;
+  TempDir, SafeName: WideString;
+  After: Integer;
+begin
+  Panel := ActivePanel;
+  if (Panel.Cursor < 0) or (Panel.Cursor >= Panel.Count) then
+    Exit;
+  Item := Panel.FItems[Panel.Cursor];
+  if Item.IsUp or Item.IsDir then
+    Exit;
+  if FtpBusy then
+    Exit;
+  if AEdit and (FEditor <> nil) and FEditor.Modified then
+  begin
+    Status(FarProduct + ': в редакторе изменён другой файл - сначала ' +
+      'запишите (F2) или закройте (Esc)');
+    Exit;
+  end;
+  TempLen := FarGetTempPath(MAX_PATH + 1, TempBuffer);
+  if (TempLen = 0) or (TempLen > MAX_PATH) then
+  begin
+    Status(FarProduct + ': нет временной папки Windows');
+    Exit;
+  end;
+  SetString(TempDir, TempBuffer, TempLen);
+  TempDir := FarWithSlash(TempDir) + 'unIDE_ftp\' +
+    WideString(IntToStr(GetTickCount)) + '\';
+  if not FarForceDirs(TempDir) then
+  begin
+    Status(FarProduct + ': папку не создать: ' + string(TempDir));
+    Exit;
+  end;
+  SafeName := FarSafeFileName(Item.Name);
+  SetLength(Items, 1);
+  Items[0].Raw := Item.FtpRaw;
+  Items[0].Local := SafeName;
+  Items[0].IsDir := False;
+  Items[0].Size := Item.Size;
+  Items[0].Time := Item.WriteTime;
+  if AEdit then
+  begin
+    // Запись в редакторе (F2) - отправить файл обратно на сервер
+    FEditFtpTemp := TempDir + SafeName;
+    FEditFtpRaw := Item.FtpRaw;
+    FEditFtpDir := Panel.FFtpDir;
+    FEditFtpPanel := FActive;
+    FEditFtpHost := Panel.FFtpHost;
+    After := 2;
+  end
+  else
+    After := 1;
+  FtpRunJob(fjDownload, FActive, Panel.FFtpDir, TempDir, Items, '', False,
+    After, TempDir + SafeName, '');
+end;
+
+// F5 / F6 / Shift+F6 в панели FTP
+procedure TFarView.FtpStartCopyFrom(AMove, ACurrentOnly: Boolean);
+var
+  Panel, Other: TFarPanel;
+  Target, Subject: WideString;
+begin
+  Panel := ActivePanel;
+  if FtpBusy then
+    Exit;
+  FFtpOpItems := FtpCollect(Panel, ACurrentOnly);
+  if Length(FFtpOpItems) = 0 then
+    Exit;
+  FFtpOpKind := fjDownload;
+  FFtpOpMove := AMove;
+  FFtpOpPanel := FActive;
+  FFtpOpRemoteDir := Panel.FFtpDir;
+  Other := FPanels[1 - FActive];
+  if ACurrentOnly then
+    Target := FFtpOpItems[0].Local
+  else if not Other.IsFtp and not Other.IsArchive and (Other.Path <> '') then
+    Target := Other.Path
+  else
+    Target := '';
+  Subject := FarFtpSubject(FFtpOpItems);
+  if AMove then
+    DlgOpen(fdFtpCopy, FarDlgTitleMove, ['Rename or move ' + Subject +
+      ' to:', 'path on disk - download, name - rename on the server'], False,
+      False, True, Target, ['Rename', 'Cancel'])
+  else
+    DlgOpen(fdFtpCopy, FarDlgTitleCopy, ['Copy ' + Subject + ' to:'], False,
+      False, True, Target, ['Copy', 'Cancel']);
+end;
+
+// F5 / F6 с обычной панели на панель FTP (папка сервера)
+procedure TFarView.FtpStartCopyTo(AMove: Boolean);
+var
+  FtpPanel: TFarPanel;
+  Subject: WideString;
+begin
+  FtpPanel := FPanels[1 - FActive];
+  if FtpBusy then
+    Exit;
+  FFtpOpItems := FtpCollectLocal(ActivePanel);
+  if Length(FFtpOpItems) = 0 then
+    Exit;
+  FFtpOpKind := fjUpload;
+  FFtpOpMove := AMove;
+  FFtpOpPanel := 1 - FActive;
+  FFtpOpRemoteDir := FtpPanel.FFtpDir;
+  FFtpOpLocalDir := ActivePanel.Path;
+  Subject := FarFtpSubject(FFtpOpItems);
+  if AMove then
+    DlgOpen(fdFtpCopy, FarDlgTitleMove, ['Move ' + Subject +
+      ' to the FTP folder:'], False, False, True,
+      FarFtpDecode(FtpPanel.FFtpDir), ['Move', 'Cancel'])
+  else
+    DlgOpen(fdFtpCopy, FarDlgTitleCopy, ['Copy ' + Subject +
+      ' to the FTP folder:'], False, False, True,
+      FarFtpDecode(FtpPanel.FFtpDir), ['Copy', 'Cancel']);
+end;
+
+// [ Copy ] / [ Rename ] в окне F5 / F6 для FTP
+procedure TFarView.FtpCopyConfirm(const AText: WideString);
+var
+  Text, Target, Base, TargetDir, TargetName: WideString;
+  FtpPanel: TFarPanel;
+  RemoteTarget, NewName: string;
+  ItemIdx, Conflicts, ListIdx: Integer;
+  IntoDir: Boolean;
+  FirstConflict: WideString;
+begin
+  Text := FarTrimW(AText);
+  FtpPanel := FPanels[FFtpOpPanel];
+  if FtpPanel.FFtpMode <> 2 then
+    Exit;
+  Conflicts := 0;
+  FirstConflict := '';
+  if FFtpOpKind = fjDownload then
+  begin
+    if (Text <> '') and not FarLooksLocal(Text) then
+    begin
+      // Имя или путь на сервере: F6 - переименовать / перенести там
+      if not FFtpOpMove then
+      begin
+        Status(FarProduct + ': FTP - копировать можно в папку на диске ' +
+          '(путь с буквой диска)');
+        Exit;
+      end;
+      NewName := FarFtpEncode(Text);
+      // Одно имя - папка этой же панели: внутрь неё
+      if (Length(FFtpOpItems) = 1) and (NewName[1] <> '/') then
+        for ListIdx := 0 to FtpPanel.Count - 1 do
+          if FtpPanel.FItems[ListIdx].IsDir and
+             (FtpPanel.FItems[ListIdx].FtpRaw = NewName) then
+            NewName := NewName + '/';
+      if NewName[Length(NewName)] = '/' then
+        FtpRunJob(fjRename, FFtpOpPanel, FFtpOpRemoteDir, '', FFtpOpItems,
+          NewName, False, 0, '', '')
+      else
+        FtpRunJob(fjRename, FFtpOpPanel, FFtpOpRemoteDir, '', FFtpOpItems,
+          NewName, False, 0, '', NewName);
+      Exit;
+    end;
+    if Text = '' then
+      Exit;
+    // Папка на диске
+    Base := '';
+    if not FPanels[1 - FFtpOpPanel].IsFtp and
+       not FPanels[1 - FFtpOpPanel].IsArchive then
+      Base := FPanels[1 - FFtpOpPanel].Path;
+    Target := FarFullPath(Base, Text);
+    IntoDir := (Target[Length(Target)] = '\') or FarDirExists(Target) or
+      (Length(FFtpOpItems) > 1);
+    if IntoDir then
+      TargetDir := FarWithSlash(Target)
+    else
+    begin
+      FarSplitPath(Target, TargetDir, TargetName);
+      TargetDir := FarWithSlash(TargetDir);
+      FFtpOpItems[0].Local := TargetName;
+    end;
+    if not FarForceDirs(TargetDir) then
+    begin
+      Status(FarProduct + ': папку не создать: ' + string(TargetDir));
+      Exit;
+    end;
+    FFtpOpLocalDir := TargetDir;
+    // Файлы, что уже есть на диске
+    for ItemIdx := 0 to High(FFtpOpItems) do
+      if not FFtpOpItems[ItemIdx].IsDir and
+         FarFileExists(TargetDir + FFtpOpItems[ItemIdx].Local) then
+      begin
+        Inc(Conflicts);
+        if FirstConflict = '' then
+          FirstConflict := FFtpOpItems[ItemIdx].Local;
+      end;
+  end
+  else
+  begin
+    // Закачать: папка сервера - текущая, путь от корня или от текущей
+    RemoteTarget := FarFtpEncode(Text);
+    if RemoteTarget = '' then
+      RemoteTarget := FFtpOpRemoteDir
+    else if RemoteTarget[1] <> '/' then
+      RemoteTarget := FarFtpJoin(FFtpOpRemoteDir, RemoteTarget);
+    FFtpOpRemoteTarget := RemoteTarget;
+    // Файлы, что уже есть в папке сервера (видна в панели)
+    if RemoteTarget = FFtpOpRemoteDir then
+      for ItemIdx := 0 to High(FFtpOpItems) do
+        if not FFtpOpItems[ItemIdx].IsDir then
+          for ListIdx := 0 to FtpPanel.Count - 1 do
+            if not FtpPanel.FItems[ListIdx].IsDir and
+               (FtpPanel.FItems[ListIdx].FtpRaw = FFtpOpItems[ItemIdx].Raw) then
+            begin
+              Inc(Conflicts);
+              if FirstConflict = '' then
+                FirstConflict := FFtpOpItems[ItemIdx].Local;
+            end;
+  end;
+  if Conflicts > 0 then
+  begin
+    DlgOpen(fdFtpOverwrite, 'Warning', ['Files already exist: ' +
+      WideString(IntToStr(Conflicts)), FarFitName(FirstConflict, 50),
+      'Overwrite them?'], True, True, False, '',
+      ['Overwrite', 'Skip', 'Cancel']);
+    Exit;
+  end;
+  FtpRunOp;
+end;
+
+// Overwrite / Skip в окне «файлы уже есть»
+procedure TFarView.FtpOverwriteAnswer(AButton: Integer);
+var
+  Kept: TFarFtpJobItems;
+  ItemIdx, ListIdx: Integer;
+  Exists: Boolean;
+  FtpPanel: TFarPanel;
+begin
+  if AButton = 0 then
+  begin
+    FtpRunOp;
+    Exit;
+  end;
+  if AButton <> 1 then
+    Exit;
+  FtpPanel := FPanels[FFtpOpPanel];
+  Kept := nil;
+  for ItemIdx := 0 to High(FFtpOpItems) do
+  begin
+    Exists := False;
+    if not FFtpOpItems[ItemIdx].IsDir then
+    begin
+      if FFtpOpKind = fjDownload then
+        Exists := FarFileExists(FFtpOpLocalDir + FFtpOpItems[ItemIdx].Local)
+      else if FFtpOpRemoteTarget = FFtpOpRemoteDir then
+        for ListIdx := 0 to FtpPanel.Count - 1 do
+          if not FtpPanel.FItems[ListIdx].IsDir and
+             (FtpPanel.FItems[ListIdx].FtpRaw = FFtpOpItems[ItemIdx].Raw) then
+            Exists := True;
+    end;
+    if not Exists then
+    begin
+      SetLength(Kept, Length(Kept) + 1);
+      Kept[High(Kept)] := FFtpOpItems[ItemIdx];
+    end;
+  end;
+  FFtpOpItems := Kept;
+  if Length(FFtpOpItems) = 0 then
+  begin
+    Status(FarProduct + ': FTP - все файлы уже есть, ничего не скопировано');
+    Exit;
+  end;
+  FtpRunOp;
+end;
+
+procedure TFarView.FtpRunOp;
+begin
+  if FFtpOpKind = fjDownload then
+    FtpRunJob(fjDownload, FFtpOpPanel, FFtpOpRemoteDir, FFtpOpLocalDir,
+      FFtpOpItems, '', FFtpOpMove, 0, '', '')
+  else
+    FtpRunJob(fjUpload, FFtpOpPanel, FFtpOpRemoteTarget, FFtpOpLocalDir,
+      FFtpOpItems, '', FFtpOpMove, 0, '', FFtpOpItems[0].Raw);
+end;
+
+// F7 в панели FTP
+procedure TFarView.FtpAskMkDir;
+begin
+  if FtpBusy then
+    Exit;
+  FFtpOpPanel := FActive;
+  DlgOpen(fdFtpMkDir, 'Make folder', ['Create the folder on the FTP ' +
+    'server:'], False, False, True, '', ['OK', 'Cancel']);
+end;
+
+procedure TFarView.FtpMkDirConfirm(const AText: WideString);
+var
+  Name: string;
+  Panel: TFarPanel;
+begin
+  Name := FarFtpEncode(FarTrimW(AText));
+  Panel := FPanels[FFtpOpPanel];
+  if (Name = '') or (Panel.FFtpMode <> 2) then
+    Exit;
+  FtpRunJob(fjMkDir, FFtpOpPanel, Panel.FFtpDir, '', nil, Name, False, 0, '',
+    Name);
+end;
+
+// F8 / Del в панели FTP
+procedure TFarView.FtpAskDelete;
+var
+  Panel: TFarPanel;
+begin
+  Panel := ActivePanel;
+  if FtpBusy then
+    Exit;
+  FFtpOpItems := FtpCollect(Panel, False);
+  if Length(FFtpOpItems) = 0 then
+    Exit;
+  FFtpOpPanel := FActive;
+  FFtpOpRemoteDir := Panel.FFtpDir;
+  DlgOpen(fdFtpDelFiles, 'Delete', ['Do you wish to delete',
+    FarFitName(FarFtpSubject(FFtpOpItems), 50), 'on the FTP server?'], True,
+    True, False, '', ['Delete', 'Cancel']);
+end;
+
+// Записан файл, открытый с сервера (F4): отправить его обратно
+procedure TFarView.FtpUploadEdited;
+var
+  Panel: TFarPanel;
+  Items: TFarFtpJobItems;
+  TempDir, TempName: WideString;
+begin
+  Panel := FPanels[FEditFtpPanel];
+  if (Panel.FFtpMode <> 2) or
+     (CompareText(Panel.FFtpHost.Host, FEditFtpHost.Host) <> 0) or
+     (Panel.FFtpHost.User <> FEditFtpHost.User) then
+  begin
+    Status(FarProduct + ': панель ушла с этого FTP - файл записан только ' +
+      'здесь: ' + string(FEditFtpTemp));
+    Exit;
+  end;
+  if FtpBusy then
+  begin
+    Status(FarProduct + ': FTP занят - файл записан здесь (' +
+      string(FEditFtpTemp) + '), запишите ещё раз (F2) позже');
+    Exit;
+  end;
+  FarSplitPath(FEditFtpTemp, TempDir, TempName);
+  SetLength(Items, 1);
+  Items[0].Raw := FEditFtpRaw;
+  Items[0].Local := TempName;
+  Items[0].IsDir := False;
+  Items[0].Size := 0;
+  FillChar(Items[0].Time, SizeOf(Items[0].Time), 0);
+  FtpRunJob(fjUpload, FEditFtpPanel, FEditFtpDir, FarWithSlash(TempDir),
+    Items, '', False, 0, '', FEditFtpRaw);
+end;
+
+// Операция FTP кончилась: соединение - панели, итог, панели - перечитать
+procedure TFarView.FtpJobDone;
+var
+  Job: TFarFtpJob;
+  Panel: TFarPanel;
+  OnFtp: Boolean;
+  ErrorText, Report: string;
+  Kind: TFarFtpJobKind;
+  Files, PanelIdx: Integer;
+begin
+  Job := FFtpJob;
+  FFtpJob := nil;
+  Job.WaitFor;
+  if FFtpProgress <> nil then
+  begin
+    FFtpProgress.Stop;
+    FreeAndNil(FFtpProgress);
+  end;
+  Panel := FPanels[FFtpJobPanel];
+  OnFtp := (Panel.FFtpMode = 2) and (Panel.FFtpSession = FFtpJobSess);
+  if OnFtp then
+    Panel.FFtpConn := Job.Conn
+  else
+    Job.Conn.Free;
+  ErrorText := Job.ErrorText;
+  Kind := Job.Kind;
+  Files := Job.FilesDone;
+  Job.Free;
+  case Kind of
+    fjDownload:
+      Report := 'скачано файлов: ' + IntToStr(Files);
+    fjUpload:
+      Report := 'закачано файлов: ' + IntToStr(Files);
+    fjDelete:
+      Report := 'удалено файлов: ' + IntToStr(Files);
+    fjMkDir:
+      Report := 'папка создана';
+  else
+    Report := 'переименовано: ' + IntToStr(Files);
+  end;
+  if ErrorText = 'прервано' then
+    Status(FarProduct + ': FTP - прервано (' + Report + ')')
+  else if ErrorText <> '' then
+    FtpError(FarFtpHostUrl(Panel.FFtpHost), WideString(ErrorText))
+  else if FFtpJobAfter = 0 then
+    Status(FarProduct + ': FTP - ' + Report);
+  // Обычные панели - перечитать; сервер - если там что-то изменилось
+  for PanelIdx := 0 to 1 do
+    if not FPanels[PanelIdx].IsFtp and not FPanels[PanelIdx].IsArchive then
+    begin
+      FPanels[PanelIdx].Reread;
+      EnsureVisible(FPanels[PanelIdx]);
+    end;
+  // Скачивание с переносом - на сервере стало меньше файлов
+  if OnFtp and (FFtpJobAfter = 0) and ((Kind <> fjDownload) or FFtpJobMove) then
+    FtpStartList(FFtpJobPanel, Panel.FFtpHost, Panel.FFtpHostIdx,
+      Panel.FFtpDir, FFtpJobFocusRaw);
+  if ErrorText = '' then
+    case FFtpJobAfter of
+      1:
+        OpenViewer(FFtpJobTemp);
+      2:
+        OpenEditor(FFtpJobTemp);
+    end;
+  Invalidate;
 end;
 
 // Окно адреса: AHostIdx - изменить, -1 - новый
@@ -7800,6 +8481,13 @@ begin
   Result := True;
   Panel := ActivePanel;
   Plain := not ACtrl and not AAlt;
+  // Esc - прервать операцию с файлами
+  if (AKey = VK_ESCAPE) and (FFtpJob <> nil) then
+  begin
+    FFtpJob.Cancel;
+    Status(FarProduct + ': FTP - прерываю...');
+    Exit;
+  end;
   // Esc - прервать запрос к серверу
   if (AKey = VK_ESCAPE) and (FFtpThread[FActive] <> nil) then
   begin
@@ -7861,14 +8549,51 @@ begin
           Exit;
         end;
     end;
-  // Остальные операции с файлами на FTP - позже
-  if (Plain and ((AKey = VK_F3) or (AKey = VK_F4) or (AKey = VK_F5) or
-     (AKey = VK_F6) or (AKey = VK_F7) or (AKey = VK_F8) or
-     (AKey = VK_DELETE))) or (Plain and AShift and (AKey = VK_F1)) or
+  // Файлы на сервере
+  if (Panel.FFtpMode = 2) and Plain and not AShift then
+    case AKey of
+      VK_F3:
+        begin
+          FtpViewEdit(False);
+          Exit;
+        end;
+      VK_F4:
+        begin
+          FtpViewEdit(True);
+          Exit;
+        end;
+      VK_F5:
+        begin
+          FtpStartCopyFrom(False, False);
+          Exit;
+        end;
+      VK_F6:
+        begin
+          FtpStartCopyFrom(True, False);
+          Exit;
+        end;
+      VK_F7:
+        begin
+          FtpAskMkDir;
+          Exit;
+        end;
+      VK_F8, VK_DELETE:
+        begin
+          FtpAskDelete;
+          Exit;
+        end;
+    end;
+  if (Panel.FFtpMode = 2) and Plain and AShift and (AKey = VK_F6) then
+  begin
+    FtpStartCopyFrom(True, True);
+    Exit;
+  end;
+  // Остального на FTP нет: архивы, поиск, F3 / F5 в списке адресов
+  if (Plain and ((AKey = VK_F3) or (AKey = VK_F5) or (AKey = VK_F6) or
+     (AKey = VK_F7))) or (Plain and AShift and (AKey = VK_F1)) or
      (AAlt and not ACtrl and (AKey = VK_F7)) then
   begin
-    Status(FarProduct + ': FTP - просмотр, копирование, папки и удаление на ' +
-      'сервере - следующим шагом');
+    Status(FarProduct + ': FTP - здесь эта клавиша не работает');
     Exit;
   end;
   Result := False;
@@ -8159,6 +8884,9 @@ begin
   end;
   Status(FarProduct + ': записан ' + string(AFileName) + ' (' +
     FarEditEncodingName(FEditor.Encoding) + ')');
+  // Файл с сервера (F4 в панели FTP) - отправить обратно
+  if (FEditFtpTemp <> '') and FarSameName(AFileName, FEditFtpTemp) then
+    FtpUploadEdited;
   // Панели, где этот файл, - перечитать (кроме той, где редактор)
   for PanelIndex := 0 to 1 do
     if not EditorShown(PanelIndex) then
