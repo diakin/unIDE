@@ -83,6 +83,10 @@ type
     FKindChecks: array[0..5] of TUiCheckBox;
     FKindUpdating: Boolean;
     FKindLaying: Boolean;
+    // Заголовок, подставленный автоматически (AutoSummary); пока поле
+    // совпадает с ним, он обновляется вслед за флажками
+    FAutoSummary: string;
+    procedure UpdateAutoSummary;
     procedure KindCheckClick(Sender: TObject);
     procedure LayoutKinds(Sender: TObject);
     procedure ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -671,6 +675,91 @@ begin
   end;
   if KindsChanged then
     LayoutKinds(nil);
+  UpdateAutoSummary;
+end;
+
+// Заголовок коммита по отмеченным файлам, как у GitHub Desktop
+// (по-английски): один файл - «Update Unit1.pas», «Add x.bas», «Delete
+// y.txt», «Rename a.pas»; несколько одного вида - имена, если коротко,
+// иначе «Update 5 files»; разные виды - «Add 2 files, update 3 files».
+// Поле, которое правили руками, не трогается
+procedure TDlgGitCommit.UpdateAutoSummary;
+const
+  VerbCount = 4;
+  Verbs: array[0..VerbCount - 1] of string = ('Add', 'Update', 'Delete',
+    'Rename');
+  MaxNamesLen = 60;
+var
+  ItemIdx, ChangeIdx, VerbIdx, UsedVerbs, LastVerb: Integer;
+  Counts: array[0..VerbCount - 1] of Integer;
+  Names: array[0..VerbCount - 1] of string;
+  Code, FileName, NewSummary, Part: string;
+begin
+  if FSummary = nil then
+    Exit;
+  if (Trim(FSummary.Text) <> '') and (FSummary.Text <> FAutoSummary) then
+    Exit;
+  for VerbIdx := 0 to VerbCount - 1 do
+  begin
+    Counts[VerbIdx] := 0;
+    Names[VerbIdx] := '';
+  end;
+  for ItemIdx := 0 to FList.Items.Count - 1 do
+  begin
+    if not FList.Items[ItemIdx].Checked then
+      Continue;
+    ChangeIdx := Integer(FList.Items[ItemIdx].Data);
+    if (ChangeIdx < 0) or (ChangeIdx > High(FChanges)) then
+      Continue;
+    Code := FChanges[ChangeIdx].Code;
+    if (Code = '??') or (Pos('A', Code) > 0) then
+      VerbIdx := 0
+    else if Pos('D', Code) > 0 then
+      VerbIdx := 2
+    else if (Pos('R', Code) > 0) or (FChanges[ChangeIdx].OrigPath <> '') then
+      VerbIdx := 3
+    else
+      VerbIdx := 1;
+    FileName := ExtractFileName(StringReplace(
+      string(FChanges[ChangeIdx].Path), '/', '\', [rfReplaceAll]));
+    Inc(Counts[VerbIdx]);
+    if Names[VerbIdx] <> '' then
+      Names[VerbIdx] := Names[VerbIdx] + ', ';
+    Names[VerbIdx] := Names[VerbIdx] + FileName;
+  end;
+  UsedVerbs := 0;
+  LastVerb := -1;
+  for VerbIdx := 0 to VerbCount - 1 do
+    if Counts[VerbIdx] > 0 then
+    begin
+      Inc(UsedVerbs);
+      LastVerb := VerbIdx;
+    end;
+  NewSummary := '';
+  if UsedVerbs = 1 then
+  begin
+    if Length(Names[LastVerb]) <= MaxNamesLen then
+      NewSummary := Verbs[LastVerb] + ' ' + Names[LastVerb]
+    else
+      NewSummary := Verbs[LastVerb] + ' ' + IntToStr(Counts[LastVerb]) +
+        ' files';
+  end
+  else if UsedVerbs > 1 then
+    for VerbIdx := 0 to VerbCount - 1 do
+      if Counts[VerbIdx] > 0 then
+      begin
+        if Counts[VerbIdx] = 1 then
+          Part := Verbs[VerbIdx] + ' ' + Names[VerbIdx]
+        else
+          Part := Verbs[VerbIdx] + ' ' + IntToStr(Counts[VerbIdx]) + ' files';
+        if NewSummary <> '' then
+          NewSummary := NewSummary + ', ' + LowerCase(Copy(Part, 1, 1)) +
+            Copy(Part, 2, MaxInt)
+        else
+          NewSummary := Part;
+      end;
+  FAutoSummary := NewSummary;
+  FSummary.Text := NewSummary;
 end;
 
 // Флажок вида: отметить (или снять) все строки этого вида
