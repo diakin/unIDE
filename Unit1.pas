@@ -67713,24 +67713,25 @@ begin
     'разница, заголовок и описание коммита. Красная - есть ' +
     'незакоммиченные изменения: их нужно закоммитить, тогда Push отправит ' +
     'их на сервер', 184, 72, GitCommitClick);
-  NewButton('History...', 'История коммитов ветки: файлы и разница, Revert, ' +
-    'ветка от коммита', 260, 72, GitHistoryClick);
-  NewButton('Refresh', 'Обновить сведения панели', 336, 60, GitRefreshClick);
-  NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 400, 66,
+  NewButton('Commits history...', 'История коммитов ветки: файлы и ' +
+    'разница, Revert, ветка от коммита, коммит в отдельную папку', 260, 112,
+    GitHistoryClick);
+  NewButton('Refresh', 'Обновить сведения панели', 376, 60, GitRefreshClick);
+  NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 440, 66,
     GitBashClick);
   NewButton('Compare...', 'Сравнить две ветки: коммиты, которые есть только ' +
     'в одной из них (с файлами и разницей), сводка - в Git log',
-    470, 76, GitCompareClick);
+    510, 76, GitCompareClick);
   NewButton('Merge Into...', 'Влить текущую ветку в другую (например ' +
-    'mainTest в main) и отправить ту на сервер (git push)', 550, 92,
+    'mainTest в main) и отправить ту на сервер (git push)', 590, 92,
     GitMergeIntoClick);
   NewButton('Unmerged...', 'Коммиты всех веток, которых нет в текущей ' +
     '(например в mainTest), в одной таблице, цвет - по ветке. Перенести ' +
-    'коммиты (cherry-pick), влить ветку целиком, удалить ветку', 646, 88,
+    'коммиты (cherry-pick), влить ветку целиком, удалить ветку', 686, 88,
     GitUnmergedClick);
   // Справка: Tag 0 - раздел о панели (GitHelpClick)
   NewButton('Help', 'Справка: что делают кнопки и строки панели Git, меню ' +
-    'Repository и Branch (git_ref\help\git.chm)', 738, 50, GitHelpClick);
+    'Repository и Branch (git_ref\help\git.chm)', 778, 50, GitHelpClick);
   FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
     'недавние, по открытому проекту, Add Local / Clone / New', 4, 92,
     GitRepoBtnClick);
@@ -69607,7 +69608,7 @@ begin
     GitPushClick);
   AddItem(RepoMenu, 'Commit...', 'Окно Commit: изменения, разница, ' +
     'заголовок и описание', GitCommitClick);
-  AddItem(RepoMenu, 'History...', 'История коммитов текущей ветки',
+  AddItem(RepoMenu, 'Commits history...', 'История коммитов текущей ветки',
     GitHistoryClick);
   AddItem(RepoMenu, '-', '', nil);
   AddItem(RepoMenu, 'View on GitHub', 'Страница репозитория в браузере',
@@ -71322,7 +71323,7 @@ begin
   Branch := GitCurrentBranch(Git, Repo);
   if Branch = '' then
     Branch := 'HEAD';
-  Title := 'History - ' + Branch + ' - ' +
+  Title := 'Commits history - ' + Branch + ' - ' +
     ExtractFileName(ExcludeTrailingPathDelimiter(Repo));
   if FGitHistWin <> nil then
   begin
@@ -71364,13 +71365,13 @@ begin
     FGitHistWin := nil;
 end;
 
-// New Branch from Commit / Revert Commit в окне History: сразу, с
-// журналом; окно остаётся - заголовок (ветка могла смениться) и коммиты
-// заново
+// New Branch from Commit / Revert Commit / Checkout to Folder в окне
+// History: сразу, с журналом; окно остаётся - заголовок (ветка могла
+// смениться) и коммиты заново
 procedure TForm1.GitHistWinAction(Sender: TObject);
 var
   Dlg: TDlgGitHistory;
-  Hash, Name, Branch: string;
+  Hash, Name, Branch, Folder: string;
   HistAction: TGitHistAction;
 begin
   if not (Sender is TDlgGitHistory) then
@@ -71407,13 +71408,41 @@ begin
     if GitLongOp(FGitHistGit, FGitHistRepo, 'revert --no-edit ' + Hash) <> 0 then
       LogGit('Git: при конфликте - исправить файлы и Commit, или отменить ' +
               'в Git Bash: git revert --abort');
+  end
+  else if HistAction = ghaWorktree then
+  begin
+    // Рядом с репозиторием: <папка репозитория>-<SHA, 7 знаков>. Рабочая
+    // папка и ветка не меняются; убрать потом - git worktree remove <папка>
+    Folder := ExcludeTrailingPathDelimiter(FGitHistRepo) + '-' +
+      Copy(Hash, 1, 7);
+    if not InputQuery('Checkout to Folder', 'Папка для файлов коммита ' +
+       Copy(Hash, 1, 7) + ' (её ещё не должно быть):', Folder) then
+      Exit;
+    Folder := ExcludeTrailingPathDelimiter(Trim(Folder));
+    if Folder = '' then
+      Exit;
+    if DirectoryExists(Folder) then
+    begin
+      ShowMessage('Папка уже есть: ' + Folder + #13#10 +
+        'Выберите другое имя или удалите её (если это прежняя копия - ' +
+        'git worktree remove в Git Bash).');
+      Exit;
+    end;
+    if GitLongOp(FGitHistGit, FGitHistRepo, 'worktree add --detach ' +
+       string(GitQuote(WideString(Folder))) + ' ' + Hash) = 0 then
+    begin
+      LogGit('Git: коммит ' + Copy(Hash, 1, 7) + ' - в папке ' + Folder +
+        '; убрать: git worktree remove ' + string(GitQuote(WideString(Folder))));
+      ShellExecute(Handle, 'open', PChar(Folder), nil, nil, SW_SHOWNORMAL);
+    end;
+    Exit;   // текущая ветка и её коммиты не изменились
   end;
   if FGitHistWin = Dlg then
   begin
     Branch := GitCurrentBranch(FGitHistGit, FGitHistRepo);
     if Branch = '' then
       Branch := 'HEAD';
-    Dlg.Caption := 'History - ' + Branch + ' - ' +
+    Dlg.Caption := 'Commits history - ' + Branch + ' - ' +
       ExtractFileName(ExcludeTrailingPathDelimiter(FGitHistRepo));
     Dlg.ReloadCommits;
   end;

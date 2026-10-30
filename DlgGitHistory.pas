@@ -56,7 +56,7 @@ type
 
   // Что сделать после закрытия окна
   TGitHistAction = (ghaNone, ghaBranch, ghaRevert, ghaCherryPick,
-    ghaMergeBranch, ghaDeleteBranch);
+    ghaMergeBranch, ghaDeleteBranch, ghaWorktree);
 
   TDlgGitHistory = class(TForm)
   private
@@ -113,6 +113,7 @@ type
     FBtnWeb: TUiButton;
     FBtnBranch: TUiButton;
     FBtnRevert: TUiButton;
+    FBtnWorktree: TUiButton;
     FBtnClose: TUiButton;
     procedure Build(const ATitle: string);
     procedure LoadCommits;
@@ -142,6 +143,7 @@ type
     procedure BtnWebClick(Sender: TObject);
     procedure BtnBranchClick(Sender: TObject);
     procedure BtnRevertClick(Sender: TObject);
+    procedure BtnWorktreeClick(Sender: TObject);
     procedure LayoutButtons(Sender: TObject);
     function Query(const AArgs: string; var AOutput: WideString): Integer;
     procedure UpdateButtons;
@@ -158,7 +160,8 @@ type
     // Положение и размер окна, разделители, ширина колонок списка - из
     // файла настроек AIniFile; при закрытии - туда же
     procedure SetPlacementIni(const AIniFile: string);
-    // Показать немодальным: New Branch from Commit и Revert Commit - сразу
+    // Показать немодальным: New Branch from Commit, Revert Commit и
+    // Checkout to Folder - сразу
     // AOnAction (Action, SelectedHash), окно остаётся; AOnDone - окно
     // уничтожается
     procedure ShowModeless(AOnAction, AOnDone: TNotifyEvent);
@@ -384,6 +387,16 @@ begin
   FBtnRevert.OnClick := BtnRevertClick;
   FBtnRevert.Visible := not FCompare and not FUnmerged;
 
+  FBtnWorktree := TUiButton.Create(Self);
+  FBtnWorktree.Parent := FBtnPanel;
+  FBtnWorktree.Caption := 'Checkout to Folder...';
+  FBtnWorktree.Hint := 'Файлы выбранного коммита - в отдельную папку ' +
+    '(git worktree add --detach), чтобы собрать и проверить; рабочая ' +
+    'папка и текущая ветка не меняются';
+  FBtnWorktree.ShowHint := True;
+  FBtnWorktree.OnClick := BtnWorktreeClick;
+  FBtnWorktree.Visible := not FCompare and not FUnmerged;
+
   FBtnPick := TUiButton.Create(Self);
   FBtnPick.Parent := FBtnPanel;
   FBtnPick.Caption := 'Cherry-pick';
@@ -462,6 +475,8 @@ begin
   Place(FBtnBranch, 170);
   if FBtnRevert.Visible then
     Place(FBtnRevert, 100);
+  if FBtnWorktree.Visible then
+    Place(FBtnWorktree, 130);
   if FUnmerged then
   begin
     Place(FBtnPick, 84);
@@ -489,6 +504,7 @@ begin
   FBtnWeb.Enabled := HasCommit and (FWebUrl <> '');
   FBtnBranch.Enabled := HasCommit;
   FBtnRevert.Enabled := HasCommit;
+  FBtnWorktree.Enabled := HasCommit;
   FBtnPick.Enabled := FCommitList.SelCount > 0;
   FBtnMergeBranch.Enabled := HasCommit;
 end;
@@ -1028,6 +1044,20 @@ begin
   if FCurHash = '' then
     Exit;
   FAction := ghaRevert;
+  if FModeless then
+  begin
+    if Assigned(FOnAction) then
+      FOnAction(Self);
+  end
+  else
+    ModalResult := mrOk;
+end;
+
+procedure TDlgGitHistory.BtnWorktreeClick(Sender: TObject);
+begin
+  if FCurHash = '' then
+    Exit;
+  FAction := ghaWorktree;
   if FModeless then
   begin
     if Assigned(FOnAction) then
