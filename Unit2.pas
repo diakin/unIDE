@@ -203,8 +203,6 @@ type
     chkPrefProgress: TUiCheckBox;
     chkPrefMinimize: TUiCheckBox;
     chkPrefHideDsg: TUiCheckBox;
-    grpPrefOwnEditor: TUiGroupBox;
-    chkPrefOwnEditor: TUiCheckBox;
     grpPrefModList: TUiGroupBox;
     lblPrefPreviewDelay: TLabel;
     edPrefPreviewDelay: TUiEdit;
@@ -5637,7 +5635,6 @@ begin
     chkPrefProgress.Checked := Form1.FEnv.ShowCompileProgress;
     chkPrefMinimize.Checked := Form1.FEnv.MinimizeOnRun;
     chkPrefHideDsg.Checked := Form1.FEnv.HideDesignersOnRun;
-    chkPrefOwnEditor.Checked := Form1.FEnv.OwnEditor;
     udPrefPreviewDelay.Position := Form1.FEnv.FormPreviewDelay;
     edPrefPreviewDelay.Text := IntToStr(Form1.FEnv.FormPreviewDelay);
     chkDsgGrid.Checked := Form1.FEnv.DsgShowGrid;
@@ -5667,7 +5664,6 @@ begin
   Form1.FEnv.ShowCompileProgress := chkPrefProgress.Checked;
   Form1.FEnv.MinimizeOnRun := chkPrefMinimize.Checked;
   Form1.FEnv.HideDesignersOnRun := chkPrefHideDsg.Checked;
-  Form1.FEnv.OwnEditor := chkPrefOwnEditor.Checked;
   Form1.FEnv.DsgShowGrid := chkDsgGrid.Checked;
   Form1.FEnv.DsgSnapToGrid := chkDsgSnap.Checked;
   Form1.FEnv.DsgAutoCreateForms := chkDsgAutoCreate.Checked;

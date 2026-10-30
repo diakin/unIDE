@@ -2850,9 +2850,6 @@ type
     procedure EdPreviewClick(Sender: TObject);
     procedure DefEditProc(var Message: TMessage);
     procedure EdEmuStart;
-    procedure EdEmuSwitch(AOn: Boolean);
-    procedure OwnEdBtnClick(Sender: TObject);
-    procedure OwnEdBtnUpdate;
     procedure EdEmuLog(const AText: string);
     procedure IncMgrOpenFile(const AFile: string; ALine: Integer);
     procedure IncRefDirs(var ASysDir, ARefDir: string);
@@ -3886,8 +3883,6 @@ type
     FSplitDecoMapVer: Cardinal;
     FSplitDecoFound: Integer;
     FSplitDecoDepth: Integer;
-    // Кнопка «Own editor» на панели инструментов (временно) - OwnEdBtnClick
-    FOwnEdBtn: TUiButton;
     // Окна логов на своём редакторе (шаг 0.7.6), по одному на каждый лог
     // TRichEdit, в том же месте: CompLogEdit, ErrLogEdit, LogEdit,
     // RuntimeLog, GitLogEdit. LogTo пишет в оба, показан - один (флажок
@@ -7870,9 +7865,6 @@ end;
 // этом остаётся прежним, с первой сборки.
 var
   GAppTitle: string = '';
-  // Пометка в заголовке: работает свой редактор вместо RichEdit
-  // (EdEmuStart). Вставляется после названия программы
-  GOwnEdMark: string = '';
 
 function AppTitle: string;
 var
@@ -7898,8 +7890,6 @@ begin
       GAppTitle := GAppTitle + ' [' + Application.ExeName + ']';
   end;
   Result := GAppTitle;
-  if GOwnEdMark <> '' then
-    Insert(GOwnEdMark, Result, Length('Редактор кода') + 1);
 end;
 
 function IsUntitledName(const S: string): Boolean;
@@ -24863,19 +24853,6 @@ begin
   CurrentLeft := RowRightEdge([btnOpen, btnSave, btnSavePrj, btnUndo, btnCut,
                               btnCopy, btnPaste]);
 
-  // Свой редактор / RichEdit - кнопкой на панели (временно, пока идёт
-  // портирование): то же, что флажок в IDE Options - Preferences
-  FOwnEdBtn := TUiButton.Create(Self);
-  FOwnEdBtn.Parent := pnlToolbarIn;
-  FOwnEdBtn.SetBounds(CurrentLeft + 8, 4, 104, 26);
-  FOwnEdBtn.TabStop := False;
-  FOwnEdBtn.ShowHint := True;
-  FOwnEdBtn.Hint := 'Свой редактор вместо RichEdit - включить / ' +
-    'выключить (как в IDE Options - Preferences). Временная кнопка ' +
-    'на время портирования';
-  FOwnEdBtn.OnClick := OwnEdBtnClick;
-  OwnEdBtnUpdate;
-
   // Теперь известны правые края рядов - подгоняем под них левую панель.
   // Рядов два, панель шире того, который длиннее.
   {
@@ -40268,11 +40245,11 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-//  Свой редактор вместо RichEdit (план портирования, шаг 0.7.4)
+//  Свой редактор (план портирования, шаги 0.7.4, 0.7.7)
 //
-//  IDE Options - Preferences - Own editor instead of RichEdit (editor.ini,
-//  [Preferences] OwnEditor) - при запуске и сразу по флажку (EdEmuSwitch).
-//  Окно RichEdit1 остаётся, но
+//  Включается при запуске (EdEmuStart) и больше не выключается: прежний
+//  режим «текст у RichEdit» и переключатель убраны (шаг 0.7.7). Окно
+//  RichEdit1 остаётся, но
 //  сообщения, которые раньше разбирал RichEdit (OldRichEditProc), сначала
 //  получает TEdRichEmu (EdRichEmu.pas): текст, выделение, правка, откат,
 //  строки, места символов - его. Чего он не знает - уходит к RichEdit, а
@@ -40293,114 +40270,61 @@ begin
   LogOwnEd(AText);
 end;
 
+// Включить свой редактор (при запуске). Текст, выделение, первая видимая
+// строка и «изменён» переходят от RichEdit. Без RichEdit 4.1
+// (msftedit.dll) свой редактор не включается: окно для него - RichEdit 4.1
 procedure TForm1.EdEmuStart;
-var
-  Ini: TIniFile;
-  OwnOn: Boolean;
-begin
-  OwnOn := False;
-  if FileExists(SettingsFileName) then
-  begin
-    Ini := TIniFile.Create(SettingsFileName);
-    try
-      OwnOn := Ini.ReadBool('Preferences', 'OwnEditor', False);
-    finally
-      Ini.Free;
-    end;
-  end;
-  if FEdEmu <> nil then
-    Exit;
-  // Какой редактор работает - в HiLite log при каждом запуске
-  if not OwnOn then
-  begin
-    LogOwnEd('Редактор: RichEdit (свой редактор выключен - IDE Options, ' +
-      'Preferences; в ' + SettingsFileName + ' [Preferences] OwnEditor ' +
-      'не 1)');
-    Exit;
-  end;
-  EdEmuSwitch(True);
-end;
-
-// Включить (AOn) или выключить свой редактор - при запуске (EdEmuStart) и
-// флажком в IDE Options посреди сеанса (EnvOptionsChanged). Текст вкладки,
-// выделение, первая видимая строка и «изменён» переходят от RichEdit к
-// своему или обратно; история отката текущей вкладки начинается заново -
-// у каждого из двух она своя
-procedure TForm1.EdEmuSwitch(AOn: Boolean);
 var
   DC: HDC;
   OldFont: HGDIOBJ;
   Metrics: TTextMetric;
   StartLineH, StartCharW: Integer;
-  OldTitle: string;
 begin
-  if (FEdEmu <> nil) = AOn then
+  if FEdEmu <> nil then
     Exit;
   if not RichEdit1.HandleAllocated then
     Exit;
-  if AOn then
+  if not MsftEditActive then
   begin
-    if not MsftEditActive then
-    begin
-      LogOwnEd('Свой редактор вместо RichEdit: не включён - нет RichEdit ' +
-        '4.1 (msftedit.dll)');
-      Exit;
-    end;
-    StartLineH := 16;
-    StartCharW := 8;
-    DC := GetDC(RichEdit1.Handle);
-    try
-      OldFont := SelectObject(DC, RichEdit1.Font.Handle);
-      if GetTextMetrics(DC, Metrics) then
-      begin
-        StartLineH := Metrics.tmHeight + Metrics.tmExternalLeading;
-        StartCharW := Metrics.tmAveCharWidth;
-      end;
-      SelectObject(DC, OldFont);
-    finally
-      ReleaseDC(RichEdit1.Handle, DC);
-    end;
-    FEdEmu := TEdRichEmu.Create(EdWindowHandle, OldRichEditProc);
-    Inc(FEdEmuSerial);
-    FEdEmu.OnLog := EdEmuLog;
-    FEdEmu.SetMetrics(StartLineH, StartCharW, FTabChars);
-    // Текст, выделение, прокрутка, «изменён» - у RichEdit, до того, как
-    // сообщения уйдут своему
-    FEdEmu.TakeFromWindow;
-    LogOwnEd('Свой редактор вместо RichEdit (IDE Options - Preferences): ' +
-      'включён');
-  end
-  else
-  begin
-    // Вторая панель могла показывать буфер своего редактора
-    if FSplit <> nil then
-      FSplit.DetachShared;
-    FEdEmu.GiveToWindow;
-    FreeAndNil(FEdEmu);
-    // Шаг табуляции RichEdit - на новый текст (EM_SETPARAFORMAT на весь)
-    ApplyTabStops;
-    LogOwnEd('Свой редактор выключен (IDE Options - Preferences): ' +
-      'работает RichEdit');
+    LogOwnEd('Свой редактор не включён - нет RichEdit 4.1 (msftedit.dll). ' +
+      'Работает RichEdit 3.0, этот режим больше не поддерживается');
+    Application.MessageBox(PChar('Нет RichEdit 4.1 (msftedit.dll): ' +
+      'свой редактор не включён, текст редактирует RichEdit 3.0. ' +
+      'Этот режим больше не поддерживается.'), PChar(AppTitle),
+      MB_OK or MB_ICONWARNING);
+    Exit;
   end;
+  StartLineH := 16;
+  StartCharW := 8;
+  DC := GetDC(RichEdit1.Handle);
+  try
+    OldFont := SelectObject(DC, RichEdit1.Font.Handle);
+    if GetTextMetrics(DC, Metrics) then
+    begin
+      StartLineH := Metrics.tmHeight + Metrics.tmExternalLeading;
+      StartCharW := Metrics.tmAveCharWidth;
+    end;
+    SelectObject(DC, OldFont);
+  finally
+    ReleaseDC(RichEdit1.Handle, DC);
+  end;
+  FEdEmu := TEdRichEmu.Create(EdWindowHandle, OldRichEditProc);
+  Inc(FEdEmuSerial);
+  FEdEmu.OnLog := EdEmuLog;
+  FEdEmu.SetMetrics(StartLineH, StartCharW, FTabChars);
+  // Текст, выделение, прокрутка, «изменён» - у RichEdit, до того, как
+  // сообщения уйдут своему
+  FEdEmu.TakeFromWindow;
+  LogOwnEd('Редактор: свой (EdBuffer)');
 
-  // Заголовок окна и панель над редактором - какой редактор работает
-  OldTitle := AppTitle;
-  if AOn then
-    GOwnEdMark := ' (свой редактор)'
-  else
-    GOwnEdMark := '';
-  if Copy(Caption, 1, Length(OldTitle)) = OldTitle then
-    Caption := AppTitle + Copy(Caption, Length(OldTitle) + 1, MaxInt);
   DeclPanelShow;
-
-  // Вторая панель - окно TEdView при своём редакторе, RTF при RichEdit
+  // Вторая панель - окно TEdView на буфере своего редактора
   SplitRefresh(-1);
-  // Логи - окнами своего редактора или TRichEdit (шаг 0.7.6)
-  LogsShowOwn(AOn);
-  // Окна разницы git и просмотр зависимостей RapidQ - по этому же флажку,
-  // при следующем показе (GitDiffView, DlgRqDeps)
-  EdOwnEditorOn := AOn;
-  OwnEdBtnUpdate;
+  // Логи - окнами своего редактора (шаг 0.7.6)
+  LogsShowOwn(True);
+  // Окна разницы git и просмотр зависимостей RapidQ - тоже свои
+  // (GitDiffView, DlgRqDeps)
+  EdOwnEditorOn := True;
 
   // Кадр, полосы, номера строк, строка состояния - по новому окну
   UpdateScrollBars;
@@ -40408,26 +40332,6 @@ begin
   UpdateLineNumbers;
   UpdateStatusBarInfo;
   SyncCaretX;
-end;
-
-// Кнопка на панели инструментов: свой редактор / RichEdit, сразу. Флажок
-// в IDE Options - тот же (FEnv.OwnEditor, editor.ini)
-procedure TForm1.OwnEdBtnClick(Sender: TObject);
-begin
-  FEnv.OwnEditor := FEdEmu = nil;
-  EnvOptionsChanged;
-  OwnEdBtnUpdate;
-end;
-
-// Подпись кнопки - какой редактор работает сейчас
-procedure TForm1.OwnEdBtnUpdate;
-begin
-  if FOwnEdBtn = nil then
-    Exit;
-  if FEdEmu <> nil then
-    FOwnEdBtn.Caption := 'Own editor: on'
-  else
-    FOwnEdBtn.Caption := 'Own editor: off';
 end;
 
 // View - свой редактор, проба (шаги 0.7.2 - 0.7.3): копия текста вкладки -
@@ -49352,15 +49256,6 @@ begin
     S := '';
     FDeclPanel.Color := UiColor('Decl.NoneBG');
     FDeclPanel.Hint := '';
-    // Свой редактор вместо RichEdit (план портирования, 0.7.4): панель
-    // синяя, подпись - какой редактор работает
-    if FEdEmu <> nil then
-    begin
-      S := 'Свой редактор вместо RichEdit (0.7.4)';
-      FDeclPanel.Color := UiColor('Decl.OwnEdBG');
-      FDeclPanel.Hint := 'Включается и выключается в IDE Options - ' +
-        'Preferences';
-    end;
   end;
   FDeclPanel.Font.Color := UiColor('Decl.Text');
   // '&' в подписи панели - знак ускорителя, его удваиваем
@@ -73859,9 +73754,6 @@ end;
 procedure TForm1.EnvOptionsChanged;
 begin
   EnvSaveOptions(SettingsFileName, FEnv);
-  // Свой редактор / RichEdit - сразу, без перезапуска
-  if FEnv.OwnEditor <> (FEdEmu <> nil) then
-    EdEmuSwitch(FEnv.OwnEditor);
   EnvApplyDesigner(FDesigner);
   if FDsgOther <> FDesigner then
     EnvApplyDesigner(FDsgOther);
