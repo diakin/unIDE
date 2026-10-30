@@ -2715,6 +2715,9 @@ type
     private
     cmbRqInc: TUiComboBox;
     FRqIncItems: TStringList;
+    // Lazarus: разрядность сборки fpc.exe в рамке Project (32 - i386-win32,
+    // 64 - x86_64-win64); пишется в Target CPU / OS проекта
+    cmbLazBits: TUiComboBox;
     // Галка "FB smart" в рамке Project (сборка rc.exe): перед rc.exe -
     // строгая проверка исходника переводом RqToFb в режиме Smart.
     // FRqStrict - главные файлы с галкой (editor.ini [RapidQ.Strict]).
@@ -2740,6 +2743,7 @@ type
     // или own|<папка>
     procedure FillRqIncCombo;
     procedure cmbRqIncChange(Sender: TObject);
+    procedure cmbLazBitsChange(Sender: TObject);
     function  RapidQLoadCustomTypes(ALines: TStrings;
                                     const AFile: string): Integer;
     procedure RapidQFillObjTables(AObj: TObject);
@@ -3600,6 +3604,9 @@ type
     function  FpcExe(var AProblem: string): string;
     function  FpcSetting(const AKey: string): string;
     function  FpcBuildSetting(const APrjKey, AIdeKey: string): string;
+    function  LazBuildViaFpc(const ALpi: string): Boolean;
+    function  LazBits: Integer;
+    function  LazBitsExe(const AExe: string): string;
     function  FpcTargetSource: string;
     function  CompileFpc(const ASource, ALpi: string): Boolean;
     function  RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
@@ -13675,7 +13682,8 @@ end;
 procedure TForm1.UpdateBuildBar;
 var
   Kind, OutKind, Bits, RqComp, IncLeft: Integer;
-  RqViaFb: Boolean;
+  RqViaFb, LazViaFpc: Boolean;
+  LazLpi, LazExe: string;
   Target, Why, Fqbn, BoardName, BoardText, PortText, ManualMark: string;
   RosCfg: TRosSettings;
 begin
@@ -13836,6 +13844,46 @@ cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target
       cmbFbBits.Left := cmbRqComp.Left + cmbRqComp.Width + 4
     else if cmbFbKind <> nil then
       cmbFbBits.Left := cmbFbKind.Left + cmbFbKind.Width + 4;
+  end;
+  // Lazarus: разрядность сборки fpc.exe. При сборке lazbuild она задаётся
+  // в .lpi - переключатель недоступен
+  if cmbLazBits <> nil then
+  begin
+    cmbLazBits.Visible := Kind = bkLazarus;
+    if Kind = bkLazarus then
+    begin
+      FBuildBarBusy := True;
+      try
+        if LazBits = 64 then
+          cmbLazBits.ItemIndex := 1
+        else
+          cmbLazBits.ItemIndex := 0;
+      finally
+        FBuildBarBusy := False;
+      end;
+      LazLpi := LazTargetLpi;
+      LazViaFpc := LazBuildViaFpc(LazLpi);
+      cmbLazBits.Enabled := LazViaFpc and (FCurrentFileName <> '');
+      if LazViaFpc then
+      begin
+        if LazLpi <> '' then
+          LazExe := LazBitsExe(LazExeOf(LazLpi))
+        else
+        begin
+          LazExe := FpcTargetSource;
+          if LazExe <> '' then
+            LazExe := LazBitsExe(ChangeFileExt(LazExe, '.exe'));
+        end;
+        cmbLazBits.Hint := 'Разрядность сборки fpc.exe: 32 - i386-win32, ' +
+          '64 - x86_64-win64 (Target CPU / OS в Project Properties). ' +
+          '64-битный exe - с суффиксом 64: ' + ExtractFileName(LazExe);
+      end
+      else
+        cmbLazBits.Hint := 'Сборка идёт lazbuild по ' +
+          ExtractFileName(LazLpi) + ': разрядность задаётся в .lpi. ' +
+          'Переключатель действует при сборке fpc.exe (поле fpc.exe в ' +
+          'IDE Options - Compilers - Lazarus)';
+    end;
   end;
   // RapidQ: папка inc проекта - верхней строкой, за подписью цели, до
   // правого края рамки; подпись - до списка
@@ -24553,6 +24601,21 @@ begin
     chkRqInfo.ShowHint := True;
     chkRqInfo.Visible := False;
     chkRqInfo.OnClick := chkRqStrictClick;
+  end;
+
+  // Lazarus: разрядность сборки fpc.exe - на месте вида результата
+  // FreeBASIC (UpdateBuildBar, cmbLazBitsChange)
+  if cmbFbKind <> nil then
+  begin
+    cmbLazBits := TUiComboBox.Create(Self);
+    cmbLazBits.Parent := cmbFbKind.Parent;
+    cmbLazBits.Style := csDropDownList;
+    cmbLazBits.SetBounds(cmbFbKind.Left, cmbFbKind.Top, 60, cmbFbKind.Height);
+    cmbLazBits.Items.Add('32');
+    cmbLazBits.Items.Add('64');
+    cmbLazBits.ShowHint := True;
+    cmbLazBits.Visible := False;
+    cmbLazBits.OnChange := cmbLazBitsChange;
   end;
 
   // Точки останова: щелчок по полосе номеров строк
@@ -52377,6 +52440,98 @@ begin
   end;
 end;
 
+// Сборка идёт fpc.exe, а не lazbuild (как решает CompileLazarus): нет
+// .lpi; .lpi с .lpr того же имени и задано поле fpc.exe или нет lazbuild
+function TForm1.LazBuildViaFpc(const ALpi: string): Boolean;
+var
+  Problem: string;
+begin
+  Result := ALpi = '';
+  if Result then
+    Exit;
+  if (CompareText(ExtractFileExt(ALpi), '.lpi') <> 0) or
+     not FileExists(ChangeFileExt(ALpi, '.lpr')) then
+    Exit;
+  Result := (FpcSetting('FpcFile') <> '') or (LazbuildExe(Problem) = '');
+end;
+
+// Разрядность сборки fpc.exe: Target CPU проекта (пусто - IDE Options);
+// не задан - по папке fpc.exe (...\bin\x86_64-win64\ - 64)
+function TForm1.LazBits: Integer;
+var
+  Cpu: string;
+begin
+  Cpu := LowerCase(FpcBuildSetting('LazCpu', 'FpcCpu'));
+  if Cpu = '' then
+    Cpu := LowerCase(FpcSetting('FpcFile'));
+  if Pos('x86_64', Cpu) > 0 then
+    Result := 64
+  else
+    Result := 32;
+end;
+
+// Имя exe сборки fpc.exe: у 64-битной - суффикс 64 перед расширением
+// (edit2gb.exe - edit2gb64.exe), чтобы 32- и 64-битный exe лежали рядом
+function TForm1.LazBitsExe(const AExe: string): string;
+begin
+  Result := AExe;
+  if (AExe <> '') and (LazBits = 64) then
+    Result := ChangeFileExt(AExe, '') + '64' + ExtractFileExt(AExe);
+end;
+
+// Выбор разрядности в рамке Project: Target CPU / OS проекта сборки
+// (Project Properties, рамка Lazarus); проекта нет - IDE Options -
+// Compilers - Lazarus
+procedure TForm1.cmbLazBitsChange(Sender: TObject);
+var
+  Cpu, TargetOs, BuildPrj: string;
+  Prj: TProjectIni;
+  Ini: TIniFile;
+begin
+  if FBuildBarBusy or (cmbLazBits = nil) then
+    Exit;
+  if cmbLazBits.ItemIndex = 1 then
+  begin
+    Cpu := 'x86_64';
+    TargetOs := 'win64';
+  end
+  else
+  begin
+    Cpu := 'i386';
+    TargetOs := 'win32';
+  end;
+  BuildPrj := BuildProject;
+  if (BuildPrj <> '') and ProjectExists(BuildPrj) then
+  begin
+    Prj := TProjectIni.Create(SettingsFileName, BuildPrj);
+    try
+      Prj.WriteString('Project', 'LazCpu', Cpu);
+      Prj.WriteString('Project', 'LazOs', TargetOs);
+    finally
+      Prj.Free;
+    end;
+    Dbg('Lazarus ' + BuildPrj + ': ' + Cpu + '-' + TargetOs +
+      ' (Project Properties)', clGray);
+  end
+  else
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Ini.WriteString(CompilerSection('Lazarus'), 'FpcCpu', Cpu);
+      Ini.WriteString(CompilerSection('Lazarus'), 'FpcOs', TargetOs);
+    finally
+      Ini.Free;
+    end;
+    Dbg('Lazarus: ' + Cpu + '-' + TargetOs +
+      ' (IDE Options - Compilers - Lazarus)', clGray);
+  end;
+  FRunExeKey := '';   // exe другой
+  UpdateBuildBar;
+  // Фокус - в редактор, как у переключателя сборщика
+  if not cmbLazBits.DroppedDown and RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
+end;
+
 // Сборка ASource через fpc.exe; ALpi - описание проекта, из которого
 // берутся режим, пути и имя exe (может быть пусто). Лог уже очищен и
 // файлы сохранены (CompileLazarus)
@@ -52403,6 +52558,8 @@ begin
     Exe := LazExeOf(ALpi);
   if Exe = '' then
     Exe := ChangeFileExt(ASource, '.exe');
+  // 64-битный - с суффиксом 64, рядом с 32-битным
+  Exe := LazBitsExe(Exe);
   if not FreeBusyExe(Exe) then
     Exit;
 
@@ -58818,12 +58975,16 @@ begin
   begin
     TargetSrc := LazTargetLpi;
     if TargetSrc <> '' then
-      Result := LazExeOf(TargetSrc)
+    begin
+      Result := LazExeOf(TargetSrc);
+      if LazBuildViaFpc(TargetSrc) then
+        Result := LazBitsExe(Result);
+    end
     else
     begin
       TargetSrc := FpcTargetSource;
       if TargetSrc <> '' then
-        Result := ChangeFileExt(TargetSrc, '.exe');
+        Result := LazBitsExe(ChangeFileExt(TargetSrc, '.exe'));
     end;
   end
   else if Kind = bkFreeBasic then
@@ -62341,10 +62502,14 @@ begin
         'или .lpr проекта');
         Exit;
       end;
-      Exe := ChangeFileExt(Dpr, '.exe');
+      Exe := LazBitsExe(ChangeFileExt(Dpr, '.exe'));
     end
     else
+    begin
       Exe := LazExeOf(Dpr);
+      if LazBuildViaFpc(Dpr) then
+        Exe := LazBitsExe(Exe);
+    end;
     if Exe = '' then
     begin
       LogComp('Запуск: имя exe по ' + ExtractFileName(Dpr) + ' не ' +
