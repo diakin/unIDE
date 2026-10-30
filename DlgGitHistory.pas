@@ -390,9 +390,10 @@ begin
   FBtnWorktree := TUiButton.Create(Self);
   FBtnWorktree.Parent := FBtnPanel;
   FBtnWorktree.Caption := 'Checkout to Folder...';
-  FBtnWorktree.Hint := 'Файлы выбранного коммита - в отдельную папку ' +
-    '(git worktree add --detach), чтобы собрать и проверить; рабочая ' +
-    'папка и текущая ветка не меняются';
+  FBtnWorktree.Hint := 'Копия рабочей папки в состоянии выбранного ' +
+    'коммита: <папка репозитория>-<SHA>, рядом с репозиторием, - собрать ' +
+    'и проверить. Файлы вне git - из рабочей папки; другой коммит - та же ' +
+    'копия переименовывается. Рабочая папка и ветка не меняются';
   FBtnWorktree.ShowHint := True;
   FBtnWorktree.OnClick := BtnWorktreeClick;
   FBtnWorktree.Visible := not FCompare and not FUnmerged;

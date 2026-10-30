@@ -3232,6 +3232,8 @@ type
     function  GitHistWinQuery(const AArgs: string;
                               var AOutput: WideString): Integer;
     procedure GitHistWinAction(Sender: TObject);
+    procedure GitCommitCopy(const AHash: string);
+    function GitCopyUntracked(const ASrcDir, ADstDir: string): Integer;
     procedure GitHistWinDone(Sender: TObject);
     function  GitDiscardIn(const AGit, ARepo: string;
                            const AChanges: TGitChanges; AAsk: Boolean): Boolean;
@@ -71371,7 +71373,7 @@ end;
 procedure TForm1.GitHistWinAction(Sender: TObject);
 var
   Dlg: TDlgGitHistory;
-  Hash, Name, Branch, Folder: string;
+  Hash, Name, Branch: string;
   HistAction: TGitHistAction;
 begin
   if not (Sender is TDlgGitHistory) then
@@ -71411,30 +71413,7 @@ begin
   end
   else if HistAction = ghaWorktree then
   begin
-    // Рядом с репозиторием: <папка репозитория>-<SHA, 7 знаков>. Рабочая
-    // папка и ветка не меняются; убрать потом - git worktree remove <папка>
-    Folder := ExcludeTrailingPathDelimiter(FGitHistRepo) + '-' +
-      Copy(Hash, 1, 7);
-    if not InputQuery('Checkout to Folder', 'Папка для файлов коммита ' +
-       Copy(Hash, 1, 7) + ' (её ещё не должно быть):', Folder) then
-      Exit;
-    Folder := ExcludeTrailingPathDelimiter(Trim(Folder));
-    if Folder = '' then
-      Exit;
-    if DirectoryExists(Folder) then
-    begin
-      ShowMessage('Папка уже есть: ' + Folder + #13#10 +
-        'Выберите другое имя или удалите её (если это прежняя копия - ' +
-        'git worktree remove в Git Bash).');
-      Exit;
-    end;
-    if GitLongOp(FGitHistGit, FGitHistRepo, 'worktree add --detach ' +
-       string(GitQuote(WideString(Folder))) + ' ' + Hash) = 0 then
-    begin
-      LogGit('Git: коммит ' + Copy(Hash, 1, 7) + ' - в папке ' + Folder +
-        '; убрать: git worktree remove ' + string(GitQuote(WideString(Folder))));
-      ShellExecute(Handle, 'open', PChar(Folder), nil, nil, SW_SHOWNORMAL);
-    end;
+    GitCommitCopy(Hash);
     Exit;   // текущая ветка и её коммиты не изменились
   end;
   if FGitHistWin = Dlg then
@@ -71446,6 +71425,211 @@ begin
       ExtractFileName(ExcludeTrailingPathDelimiter(FGitHistRepo));
     Dlg.ReloadCommits;
   end;
+end;
+
+// Checkout to Folder (окно History): копия рабочей папки в состоянии
+// коммита AHash - <папка репозитория>-<7 знаков SHA>, рядом с
+// репозиторием; собрать и проверить коммит, не трогая рабочую папку и
+// ветку.
+//   - Копии ещё нет: git worktree add --detach (файлы коммита), потом
+//     из рабочей папки - всё, чего нет в git (неотслеживаемые и
+//     игнорируемые: .cfg, библиотеки, ...); файлы коммита не
+//     перезаписываются.
+//   - Копия есть (зарегистрированный worktree с таким именем): папка
+//     переименовывается (git worktree move), отслеживаемые файлы -
+//     как в AHash (checkout --force); неотслеживаемые остаются.
+procedure TForm1.GitCommitCopy(const AHash: string);
+var
+  RepoDir, Folder, OldFolder, WtPath, ShortHash: string;
+  Output: WideString;
+  Lines: TStringList;
+  LineIdx, CopyCount: Integer;
+
+  // <папка репозитория>-<7 шестнадцатеричных знаков> рядом с репозиторием
+  function IsCommitCopy(const APath: string): Boolean;
+  var
+    Suffix: string;
+    CharIdx: Integer;
+  begin
+    Result := False;
+    if not SameText(ExtractFilePath(APath), ExtractFilePath(RepoDir)) then
+      Exit;
+    if not SameText(Copy(ExtractFileName(APath), 1,
+       Length(ExtractFileName(RepoDir)) + 1), ExtractFileName(RepoDir) + '-') then
+      Exit;
+    Suffix := Copy(ExtractFileName(APath), Length(ExtractFileName(RepoDir)) + 2,
+      MaxInt);
+    if Length(Suffix) <> 7 then
+      Exit;
+    for CharIdx := 1 to Length(Suffix) do
+      if Pos(LowerCase(Suffix[CharIdx]), '0123456789abcdef') = 0 then
+        Exit;
+    Result := True;
+  end;
+
+  function Quoted(const APath: string): string;
+  begin
+    Result := string(GitQuote(WideString(APath)));
+  end;
+
+begin
+  ShortHash := Copy(AHash, 1, 7);
+  RepoDir := ExcludeTrailingPathDelimiter(FGitHistRepo);
+  Folder := RepoDir + '-' + ShortHash;
+
+  // Прежняя копия - среди worktree репозитория
+  OldFolder := '';
+  if GitRunIn(FGitHistGit, FGitHistRepo, 'worktree list --porcelain', False,
+     Output) = 0 then
+  begin
+    Lines := TStringList.Create;
+    try
+      GitSplitLines(Output, Lines);
+      for LineIdx := 0 to Lines.Count - 1 do
+        if Copy(Lines[LineIdx], 1, 9) = 'worktree ' then
+        begin
+          WtPath := ExcludeTrailingPathDelimiter(StringReplace(
+            Copy(Lines[LineIdx], 10, MaxInt), '/', '\', [rfReplaceAll]));
+          if IsCommitCopy(WtPath) then
+          begin
+            OldFolder := WtPath;
+            Break;
+          end;
+        end;
+    finally
+      Lines.Free;
+    end;
+  end;
+
+  ShowGitLog;
+  if OldFolder <> '' then
+  begin
+    // Правки в копии пропадут - спросить
+    if (GitQuery(FGitHistGit, OldFolder,
+       'status --porcelain --untracked-files=no') <> '') and
+       (MessageDlg('В копии ' + OldFolder + ' есть изменённые ' +
+       'отслеживаемые файлы.'#13#10#13#10 + 'Они станут такими, как в ' +
+       'коммите ' + ShortHash + ', правки пропадут.', mtWarning,
+       [mbOK, mbCancel], 0) <> mrOk) then
+      Exit;
+    if not SameText(OldFolder, Folder) then
+    begin
+      if DirectoryExists(Folder) then
+      begin
+        ShowMessage('Папка уже есть: ' + Folder + #13#10 +
+          'Прежнюю копию (' + OldFolder + ') в неё не переименовать.');
+        Exit;
+      end;
+      if GitRunIn(FGitHistGit, FGitHistRepo, 'worktree move ' +
+         Quoted(OldFolder) + ' ' + Quoted(Folder), True, Output) <> 0 then
+        Exit;
+    end;
+    if GitRunIn(FGitHistGit, Folder, 'checkout --detach --force ' + AHash,
+       True, Output) <> 0 then
+      Exit;
+    LogGit('Git: копия ' + Folder + ' - коммит ' + ShortHash +
+      ' (неотслеживаемые файлы - прежние)');
+  end
+  else
+  begin
+    if DirectoryExists(Folder) then
+    begin
+      ShowMessage('Папка уже есть: ' + Folder + #13#10 +
+        'Она не копия репозитория (git worktree) - удалите её или ' +
+        'переименуйте.');
+      Exit;
+    end;
+    if GitRunIn(FGitHistGit, FGitHistRepo, 'worktree add --detach ' +
+       Quoted(Folder) + ' ' + AHash, True, Output) <> 0 then
+      Exit;
+    CopyCount := GitCopyUntracked(RepoDir, Folder);
+    if CopyCount < 0 then
+      Exit;
+    LogGit('Git: копия ' + Folder + ' - коммит ' + ShortHash + ', из ' +
+      'рабочей папки добавлено файлов вне git: ' + IntToStr(CopyCount));
+  end;
+  LogGit('  Другой коммит - снова Checkout to Folder (папка ' +
+    'переименуется); убрать копию: git worktree remove --force ' +
+    Quoted(Folder));
+  ShellExecute(Handle, 'open', PChar(Folder), nil, nil, SW_SHOWNORMAL);
+end;
+
+// Файлы рабочей папки ASrcDir, которых нет в git (неотслеживаемые и
+// игнорируемые; git ls-files -o), - в ADstDir по тем же путям. Файл,
+// который в ADstDir уже есть (из коммита), не перезаписывается.
+// Результат - сколько скопировано, -1 - git не ответил или прервано (Esc)
+function TForm1.GitCopyUntracked(const ASrcDir, ADstDir: string): Integer;
+var
+  Output, RelPath, SrcPath, DstPath: WideString;
+  StartIdx, CharIdx, FileCount, FailCount, SeenCount: Integer;
+
+  procedure MakeDirFor(const AFile: WideString);
+  var
+    DirPath: WideString;
+    SlashIdx: Integer;
+  begin
+    // Все папки пути по очереди; уже существующие CreateDirectoryW
+    // пропускает с ошибкой, её не смотрим
+    DirPath := AFile;
+    SlashIdx := Length(DirPath);
+    while (SlashIdx > 0) and (DirPath[SlashIdx] <> '\') do
+      Dec(SlashIdx);
+    SetLength(DirPath, SlashIdx - 1);
+    for SlashIdx := Length(WideString(ADstDir)) + 2 to Length(DirPath) do
+      if DirPath[SlashIdx] = '\' then
+        CreateDirectoryW(PWideChar(Copy(DirPath, 1, SlashIdx - 1)), nil);
+    CreateDirectoryW(PWideChar(DirPath), nil);
+  end;
+
+begin
+  Result := -1;
+  if GitRunIn(FGitHistGit, ASrcDir, 'ls-files -o -z', False, Output) <> 0 then
+  begin
+    LogGit('git ls-files -o: ошибка - файлы вне git не скопированы', clRed);
+    Exit;
+  end;
+  FileCount := 0;
+  FailCount := 0;
+  SeenCount := 0;
+  FGitCancel := False;
+  BusyBegin('Копия: файлы вне git (Esc - прервать)');
+  try
+    StartIdx := 1;
+    for CharIdx := 1 to Length(Output) + 1 do
+      if (CharIdx > Length(Output)) or (Output[CharIdx] = #0) then
+      begin
+        RelPath := Copy(Output, StartIdx, CharIdx - StartIdx);
+        StartIdx := CharIdx + 1;
+        // Пусто или вложенный репозиторий ('папка/') - пропустить
+        if (RelPath = '') or (RelPath[Length(RelPath)] = '/') then
+          Continue;
+        RelPath := GitWinPath(RelPath);
+        SrcPath := WideString(ASrcDir) + '\' + RelPath;
+        DstPath := WideString(ADstDir) + '\' + RelPath;
+        MakeDirFor(DstPath);
+        if CopyFileW(PWideChar(SrcPath), PWideChar(DstPath), True) then
+          Inc(FileCount)
+        else if GetFileAttributesW(PWideChar(DstPath)) = $FFFFFFFF then
+        begin
+          Inc(FailCount);
+          if FailCount <= 20 then
+            LogGit('  не скопирован: ' + string(RelPath), clRed);
+        end;
+        Inc(SeenCount);
+        if SeenCount mod 200 = 0 then
+          if not GitOnIdle then
+          begin
+            LogGit('Копирование прервано (Esc), скопировано файлов: ' +
+              IntToStr(FileCount), clRed);
+            Exit;
+          end;
+      end;
+  finally
+    BusyEnd('Копия: файлов вне git ' + IntToStr(FileCount), FailCount = 0);
+  end;
+  if FailCount > 0 then
+    LogGit('Не скопировано файлов: ' + IntToStr(FailCount), clRed);
+  Result := FileCount;
 end;
 
 // Отменить изменения файлов AChanges, как Discard в GitHub Desktop:
