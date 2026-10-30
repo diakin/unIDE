@@ -111,3 +111,4 @@ uniFAR/*.lps
 uniFAR/backup/
 uniFAR/uniFAR.ini
 uniFAR/*_compile.bat
+/uniFAR/uniFAR.exe.old
