@@ -24861,8 +24861,11 @@ begin
 
   // editor.ini записан самим редактором (TBufIniFile) - не правка снаружи
   IniBufOnWritten := IniOwnWritten;
+  // Сборка в каждой записи hang.log - то же, что в скобках заголовка окна
   HangWatchStart(Application.Handle,
-                 ExtractFilePath(Application.ExeName) + 'hang.log', Handle);
+                 ExtractFilePath(Application.ExeName) + 'hang.log', Handle,
+                 Copy(AppTitle, Pos('[', AppTitle) + 1,
+                      Length(AppTitle) - Pos('[', AppTitle) - 1));
 
   // Прежний exe, переименованный при сборке из работающего редактора
   // (FreeBusyExe), - убрать, если его программа уже закрыта

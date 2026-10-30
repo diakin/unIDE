@@ -18,6 +18,16 @@ unit HangWatch;
 //  коротком цикле); разные - идёт долгая работа. Когда поток снова
 //  отвечает, в журнал пишется, сколько он не отвечал.
 //
+//  Короткие задержки. WM_NULL посылается каждые PollEvery мс и сначала
+//  ждётся ShortWait мс. Не ответил за это время - сразу снимок стека (поток
+//  ещё там, где задержался), дальше ожидание до PingWait. Ответил раньше
+//  PingWait - в журнал строка «задержка N мс» и этот снимок: так видно,
+//  что тормозит при вводе и щелчках, хотя окно и не «зависло». Не чаще
+//  ShortMaxPerMin записей в минуту.
+//
+//  В заголовке каждой записи - сборка (время exe, ветка и коммит, имя
+//  exe): ABuild в HangWatchStart.
+//
 //  Модальный диалог зависанием не считается: он сам выбирает сообщения.
 //
 //  Одного WM_NULL мало. Поток, который ждёт ответа на свой SendMessage к
@@ -57,9 +67,10 @@ uses
 // AWnd - окно, которое обслуживает главный поток (Application.Handle).
 // ALogFile - журнал; пишется только при зависании. AUiWnd - главное окно
 // программы: по нему спрашивается IsHungAppWindow (0 - по AWnd).
-// Сбои - в crash.log рядом с ALogFile.
+// Сбои - в crash.log рядом с ALogFile. ABuild - какая сборка запущена,
+// в заголовок каждой записи.
 procedure HangWatchStart(AWnd: HWND; const ALogFile: string;
-                         AUiWnd: HWND = 0);
+                         AUiWnd: HWND = 0; const ABuild: string = '');
 procedure HangWatchStop;
 // Цепочка вызовов текущего потока - строками в ALines, теми же словами,
 // что в hang.log (процедура и строка по .map). Для журналов, которым надо
@@ -77,8 +88,10 @@ const
   THREAD_GET_CONTEXT = $0008;
   THREAD_QUERY_INFORMATION = $0040;
 
-  PingEvery = 1000;        // мс между проверками
+  PollEvery = 100;         // мс между проверками
+  ShortWait = 300;         // мс без ответа - короткая задержка, снимок
   PingWait = 3000;         // мс без ответа - зависание
+  ShortMaxPerMin = 30;     // записей о коротких задержках в минуту
   StackBytes = 65536;      // сколько стека копировать от ESP
   MaxFrames = 64;
   MaxCodeAddrs = 40;
@@ -94,6 +107,9 @@ type
     FLastCpu: Int64;       // процессорное время потока при прошлом снимке, мс
     FLastTick: Cardinal;
     FWhy: string;          // по какому признаку зависание
+    FBuild: string;        // какая сборка запущена - в заголовки записей
+    FShortMinute: Cardinal;  // начало текущей минуты счёта коротких задержек
+    FShortCount: Integer;    // записей о них в этой минуте
     FStop: THandle;        // событие: пора выходить
     FLogFile: string;
     FCrashFile: string;    // crash.log
@@ -114,7 +130,12 @@ type
     procedure LoadMap;
     function InCode(A: Cardinal): Boolean;
     function Describe(A: Cardinal): string;
+    function Snap(var AEip, AEsp, AEbp: Cardinal; var AStack: TStackCopy;
+                  var AGot: Cardinal): Boolean;
     procedure Sample(ANum: Integer; AHungMs: Cardinal);
+    procedure ShortSample(ALines: TStrings);
+    procedure ShortReport(ADelayMs: Cardinal; ALines: TStrings);
+    function BuildNote: string;
     procedure DescribeStack(AEip, AEsp, AEbp: Cardinal;
                             const AStack: TStackCopy; AGot: Cardinal;
                             ALines: TStrings);
@@ -125,7 +146,8 @@ type
   protected
     procedure Execute; override;
   public
-    constructor Create(AWnd: HWND; const ALogFile: string; AUiWnd: HWND);
+    constructor Create(AWnd: HWND; const ALogFile: string; AUiWnd: HWND;
+                       const ABuild: string);
     destructor Destroy; override;
   end;
 
@@ -164,10 +186,11 @@ function CrashSetFilter(AFilter: Pointer): Pointer; stdcall;
 // ---------------------------------------------------------------------------
 
 constructor THangWatch.Create(AWnd: HWND; const ALogFile: string;
-                              AUiWnd: HWND);
+                              AUiWnd: HWND; const ABuild: string);
 begin
   inherited Create(True);
   FWnd := AWnd;
+  FBuild := ABuild;
   FUiWnd := AUiWnd;
   if FUiWnd = 0 then
     FUiWnd := AWnd;
@@ -445,16 +468,100 @@ begin
   end;
 end;
 
-// Снимок главного потока. Между SuspendThread и ResumeThread - только
-// системные вызовы и память на стеке сторожа (см. заголовок модуля).
-procedure THangWatch.Sample(ANum: Integer; AHungMs: Cardinal);
+// Сборка - в скобках для заголовка записи; не задана - пусто
+function THangWatch.BuildNote: string;
+begin
+  if FBuild = '' then
+    Result := ''
+  else
+    Result := '  [' + FBuild + ']';
+end;
+
+// Остановить главный поток, снять EIP, ESP, EBP и копию стека, отпустить.
+// Между SuspendThread и ResumeThread - только системные вызовы и память на
+// стеке сторожа (см. заголовок модуля). False - снять не удалось
+function THangWatch.Snap(var AEip, AEsp, AEbp: Cardinal;
+  var AStack: TStackCopy; var AGot: Cardinal): Boolean;
 var
   Ctx: TContext;
-  Stack: TStackCopy;
-  Got, Size, Esp, Ebp, Eip: Cardinal;
+  Size: Cardinal;
   MBI: TMemoryBasicInformation;
+begin
+  Result := False;
+  AGot := 0;
+  AEsp := 0;
+  AEbp := 0;
+  AEip := 0;
+  if FMain = 0 then
+    Exit;
+  if SuspendThread(FMain) = DWORD(-1) then
+    Exit;
+  try
+    FillChar(Ctx, SizeOf(Ctx), 0);
+    Ctx.ContextFlags := CONTEXT_CONTROL or CONTEXT_INTEGER;
+    if GetThreadContext(FMain, Ctx) then
+    begin
+      Result := True;
+      AEsp := Ctx.Esp;
+      AEbp := Ctx.Ebp;
+      AEip := Ctx.Eip;
+      // Копия стека от ESP до конца его области памяти, не больше StackBytes
+      if VirtualQuery(Pointer(AEsp), MBI, SizeOf(MBI)) = SizeOf(MBI) then
+      begin
+        Size := Cardinal(MBI.BaseAddress) + MBI.RegionSize - AEsp;
+        if Size > StackBytes then
+          Size := StackBytes;
+        if not ReadProcessMemory(GetCurrentProcess, Pointer(AEsp), @AStack,
+                                 Size, AGot) then
+          AGot := 0;
+      end;
+    end;
+  finally
+    ResumeThread(FMain);
+  end;
+end;
+
+// Снимок на короткой задержке: цепочка вызовов строками в ALines, в
+// журнал - потом, если поток ответит раньше PingWait (ShortReport)
+procedure THangWatch.ShortSample(ALines: TStrings);
+var
+  Stack: TStackCopy;
+  Got, Esp, Ebp, Eip: Cardinal;
+begin
+  if not Snap(Eip, Esp, Ebp, Stack, Got) then
+    Exit;
+  DescribeStack(Eip, Esp, Ebp, Stack, Got, ALines);
+end;
+
+// Короткая задержка кончилась: заголовок и снимок - в журнал
+procedure THangWatch.ShortReport(ADelayMs: Cardinal; ALines: TStrings);
+var
+  LineIdx: Integer;
+begin
+  if GetTickCount - FShortMinute >= 60000 then
+  begin
+    FShortMinute := GetTickCount;
+    FShortCount := 0;
+  end;
+  Inc(FShortCount);
+  if FShortCount > ShortMaxPerMin then
+    Exit;
+  WriteLog(Format('---- %s  задержка %d мс (главный поток не отвечал)%s',
+                  [FormatDateTime('dd.mm.yyyy hh:nn:ss', Now), ADelayMs,
+                   BuildNote]));
+  if FShortCount = ShortMaxPerMin then
+    WriteLog('(в эту минуту больше задержек не пишется)');
+  for LineIdx := 0 to ALines.Count - 1 do
+    WriteLog(ALines[LineIdx]);
+  WriteLog('');
+end;
+
+// Снимок главного потока при зависании - в журнал
+procedure THangWatch.Sample(ANum: Integer; AHungMs: Cardinal);
+var
+  Stack: TStackCopy;
+  Got, Esp, Ebp, Eip: Cardinal;
   I: Integer;
-  Ok: Boolean;
   SL: TStringList;
   Cpu: Int64;
 
@@ -472,48 +579,15 @@ var
   end;
 
 begin
-  if FMain = 0 then
-    Exit;
-  Got := 0;
-  Ok := False;
-  Esp := 0;
-  Ebp := 0;
-  Eip := 0;
-
-  if SuspendThread(FMain) = DWORD(-1) then
-    Exit;
-  try
-    FillChar(Ctx, SizeOf(Ctx), 0);
-    Ctx.ContextFlags := CONTEXT_CONTROL or CONTEXT_INTEGER;
-    if GetThreadContext(FMain, Ctx) then
-    begin
-      Ok := True;
-      Esp := Ctx.Esp;
-      Ebp := Ctx.Ebp;
-      Eip := Ctx.Eip;
-      // Копия стека от ESP до конца его области памяти, не больше StackBytes
-      if VirtualQuery(Pointer(Esp), MBI, SizeOf(MBI)) = SizeOf(MBI) then
-      begin
-        Size := Cardinal(MBI.BaseAddress) + MBI.RegionSize - Esp;
-        if Size > StackBytes then
-          Size := StackBytes;
-        if not ReadProcessMemory(GetCurrentProcess, Pointer(Esp), @Stack,
-                                 Size, Got) then
-          Got := 0;
-      end;
-    end;
-  finally
-    ResumeThread(FMain);
-  end;
-  if not Ok then
+  if not Snap(Eip, Esp, Ebp, Stack, Got) then
     Exit;
 
   // Дальше - уже можно и строки, и кучу: поток продолжил работу
   SL := TStringList.Create;
   try
-    SL.Add(Format('==== %s  главный поток не отвечает %.1f с  (снимок %d)',
+    SL.Add(Format('==== %s  главный поток не отвечает %.1f с  (снимок %d)%s',
                   [FormatDateTime('dd.mm.yyyy hh:nn:ss', Now),
-                   AHungMs / 1000, ANum]));
+                   AHungMs / 1000, ANum, BuildNote]));
     SL.Add('Признак: ' + FWhy);
     Cpu := ThreadCpuMs;
     if (ANum > 1) and (Cpu >= 0) and (FLastCpu >= 0) then
@@ -654,10 +728,10 @@ var
 begin
   SL := TStringList.Create;
   try
-    SL.Add(Format('==== %s  сбой: исключение $%.8x  %s',
+    SL.Add(Format('==== %s  сбой: исключение $%.8x  %s%s',
                   [FormatDateTime('dd.mm.yyyy hh:nn:ss', Now),
                    CrashRec.ExceptionCode,
-                   CrashCodeText(CrashRec.ExceptionCode)]));
+                   CrashCodeText(CrashRec.ExceptionCode), BuildNote]));
     if CrashThread = MainThreadID then
       SL.Add('Поток: главный')
     else
@@ -741,10 +815,11 @@ end;
 procedure THangWatch.Execute;
 var
   R, Waited: DWORD;
-  HungSince, Now_: Cardinal;
+  HungSince, Now_, PingStart: Cardinal;
   Samples: Integer;
   Ok: Boolean;
   WaitFor2: array[0..1] of THandle;
+  ShortLines: TStringList;
 
   // Обработчик сбоя ждёт разбора - разобрать и отпустить его
   function CrashPending: Boolean;
@@ -767,12 +842,14 @@ begin
   Samples := 0;
   WaitFor2[0] := FStop;
   WaitFor2[1] := CrashEvent;
+  ShortLines := TStringList.Create;
+  try
   while not Terminated do
   begin
     if CrashEvent <> 0 then
-      Waited := WaitForMultipleObjects(2, @WaitFor2, False, PingEvery)
+      Waited := WaitForMultipleObjects(2, @WaitFor2, False, PollEvery)
     else
-      Waited := WaitForSingleObject(FStop, PingEvery);
+      Waited := WaitForSingleObject(FStop, PollEvery);
     if Waited = WAIT_OBJECT_0 then
       Break;
     // Сбой - разбор и дальше: процесс всё равно закроется
@@ -781,11 +858,34 @@ begin
     if not IsWindow(FWnd) then
       Break;
     R := 0;
-    Ok := SendMessageTimeout(FWnd, WM_NULL, 0, 0, SMTO_NORMAL, PingWait,
+    PingStart := GetTickCount;
+    Ok := SendMessageTimeout(FWnd, WM_NULL, 0, 0, SMTO_NORMAL, ShortWait,
                              R) <> 0;
     // Главный поток не ответил, потому что упал и ждёт в обработчике
     if CrashPending then
       Continue;
+    if not Ok then
+    begin
+      // Не ответил за ShortWait: снимок сейчас, пока поток там же; потом
+      // ждать до PingWait. Ответил - это короткая задержка
+      ShortLines.Clear;
+      if HungSince = 0 then
+      try
+        ShortSample(ShortLines);
+      except
+        ShortLines.Clear;
+      end;
+      Ok := SendMessageTimeout(FWnd, WM_NULL, 0, 0, SMTO_NORMAL,
+                               PingWait - ShortWait, R) <> 0;
+      if CrashPending then
+        Continue;
+      if Ok and (HungSince = 0) and not Terminated then
+      try
+        ShortReport(GetTickCount - PingStart, ShortLines);
+      except
+        // журнал не записался - дальше
+      end;
+    end;
     if not Ok then
       FWhy := 'нет ответа на WM_NULL ' + IntToStr(PingWait div 1000) + ' с'
     else if IsWindow(FUiWnd) and IsHungAppWindow(FUiWnd) then
@@ -830,6 +930,9 @@ begin
       end;
     end;
   end;
+  finally
+    ShortLines.Free;
+  end;
 end;
 
 // ---------------------------------------------------------------------------
@@ -858,7 +961,7 @@ begin
 end;
 
 procedure HangWatchStart(AWnd: HWND; const ALogFile: string;
-                         AUiWnd: HWND = 0);
+                         AUiWnd: HWND = 0; const ABuild: string = '');
 begin
   if Watch <> nil then
     Exit;
@@ -866,7 +969,7 @@ begin
   // проверяет потом - сигнал не должен съедаться
   CrashEvent := CreateEvent(nil, True, False, nil);
   CrashDone := CreateEvent(nil, False, False, nil);
-  Watch := THangWatch.Create(AWnd, ALogFile, AUiWnd);
+  Watch := THangWatch.Create(AWnd, ALogFile, AUiWnd, ABuild);
   Watch.Resume;
   OldCrashFilter := CrashSetFilter(@HangCrashFilter);
 end;
