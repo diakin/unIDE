@@ -39,6 +39,12 @@ uses
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
+  DlgEdPreview,   // свой редактор - окно пробы (шаги 0.7.2 - 0.7.3)
+  EdRichEmu,      // свой редактор вместо RichEdit1 (шаг 0.7.4)
+  EdView,         // окно своего редактора - вторая панель (шаг 0.7.5)
+  EdScheme,       // EdAnsiLine - строка буфера в кодировке Windows
+  EdLog,          // окна логов на своём редакторе (шаг 0.7.6)
+  EdBuffer,       // TEdBuffer - текст второй панели
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
@@ -297,7 +303,14 @@ type
   TEditorWindow = record
     Used: Boolean;      // слот занят
     FileName: string;   // было CmdParam()
-    Text: string;       // было Window()
+    // Текст окна (было Window()) - свой TEdBuffer у каждой вкладки:
+    // активная показывает его в своём редакторе без копирования, откат -
+    // в нём же и переживает смену вкладки. Строкой (ANSI, CRLF) -
+    // WinText, запись - SetWinText; TextCache - строка по версии
+    // буфера TextKey (-1 - нет)
+    Buffer: TEdBuffer;
+    TextCache: string;
+    TextKey: Integer;
     CursorPos: Integer; // было CursWin()
     Modified: Boolean;  // было Modif()
     Clean: TCleanSnap;  // записанный текст (см. CleanCapture)
@@ -1120,6 +1133,9 @@ type
 
     private
     OldRichEditProc: TWndMethod;
+    // Свой редактор вместо RichEdit (IDE Options - Preferences, OwnEditor):
+    // сообщения RichEdit1 сначала разбирает он, см. DefEditProc. nil - RichEdit
+    FEdEmu: TEdRichEmu;
     // Меню Started Util: открытые окна утилит (немодальные окна поверх
     // главного); FUtilSig - каким набором окон меню построено
     FUtilMenu: TMenuItem;
@@ -1444,6 +1460,7 @@ type
     // Пункты меню Подсветка (вкладка и View) и схемы их подпунктов по Tag
     FHlTabItem, FHlViewItem: TMenuItem;
     FWv2ViewItem: TMenuItem;  // View - Просмотр в WebView2
+    FEdPreviewItem: TMenuItem; // View - свой редактор, проба (0.7.3)
     // Options - unIDE FAR: Files highlighting (окно раскраски файлов)
     FFarColorsItem: TMenuItem;
     // Options - unIDE FAR: Colors (палитра окна FAR)
@@ -1711,6 +1728,15 @@ type
     // указатель строк модуля (ObjSetterIndex) узнаёт, что текст активной
     // вкладки тот же, не забирая его из контрола и не считая сумму.
     FEditSerial: Cardinal;
+    // Кэши текста при своём редакторе (ключ - EditorTextKey): текст через
+    // CR для карты, скобок и снимка «записан»; строки и очищенные строки
+    // для панели объявлений. Номер включения своего редактора - в ключе
+    FEdEmuSerial: Integer;
+    FTextCrCache: string;
+    FTextCrKey: string;
+    FDeclSrc: TStringList;
+    FDeclCl: TStringList;
+    FDeclKey: string;
     FObjSetEdKey: string;
     FObjEditIdx: Integer;
     FObjEditOld: string;    // значение как было в строке .dfm
@@ -2832,6 +2858,10 @@ type
     procedure DsgAddForeignPages;
     procedure DsgPaletteGlyph(Sender: TObject);
     procedure PaletteIconsClick(Sender: TObject);
+    procedure EdPreviewClick(Sender: TObject);
+    procedure DefEditProc(var Message: TMessage);
+    procedure EdEmuStart;
+    procedure EdEmuLog(const AText: string);
     procedure IncMgrOpenFile(const AFile: string; ALine: Integer);
     procedure IncRefDirs(var ASysDir, ARefDir: string);
     procedure FindIncShow(const AName: string);
@@ -3206,6 +3236,8 @@ type
     function  GitHistWinQuery(const AArgs: string;
                               var AOutput: WideString): Integer;
     procedure GitHistWinAction(Sender: TObject);
+    procedure GitCommitCopy(const AHash: string);
+    function GitCopyUntracked(const ASrcDir, ADstDir: string): Integer;
     procedure GitHistWinDone(Sender: TObject);
     function  GitDiscardIn(const AGit, ARepo: string;
                            const AChanges: TGitChanges; AAsk: Boolean): Boolean;
@@ -3331,6 +3363,22 @@ type
     procedure SplitTabMenuClick(Sender: TObject);
     procedure SplitFmtClick(Sender: TObject);
     procedure SplitCloseClick(Sender: TObject);
+    procedure SplitSyncClick(Sender: TObject);
+    procedure SplitTextScroll(ATopLine: Integer);
+    procedure SplitSyncFromEditor;
+    function LineCommentStart(const ALineStr: string; ALineLen,
+      ALineStart: Integer): Integer;
+    function LineMarkGroupOf(const ALineStr: string; ALineLen,
+      ALineStart: Integer): Integer;
+    function LineMarkColors(ALine: Integer; const ALineStr: string;
+      ALineStart: Integer; out AFore, ABack: TColor): Boolean;
+    function SplitDecoOn: Boolean;
+    procedure SplitRowStyle(Sender: TObject; ARow: Integer;
+      var ABack, AFore: TColor);
+    procedure SplitRowPaint(Sender: TObject; ACanvas: TCanvas;
+      ARow, ATextX, AY: Integer);
+    procedure SplitDecoCheck;
+    function SplitOwnEdText: Boolean;
     procedure SplitWindowClosed(AWinIdx: Integer);
     function  SplitEditTop: Integer;
     procedure SplitUpdateHeaders;
@@ -3492,6 +3540,7 @@ type
     procedure EnsureCaretVisibleX;
     procedure SyncCaretX;
     procedure LogDiag(const S: string);
+    procedure LogOwnEd(const S: string);
     procedure LogRaw(const S: string);
     procedure LogComp(const S: string);
     procedure LogGit(const S: string; AColor: TColor = clNone);
@@ -3523,6 +3572,12 @@ type
     procedure Dbg(const S: string; AColor: TColor = clRed);
     function  IsCompilerError(const S: string): Boolean;
     procedure InitLogPanel;
+    function LogViewOf(AEdit: TRichEdit): TEdLogView;
+    procedure LogClear(AEdit: TRichEdit);
+    procedure LogViewSync(AEdit: TRichEdit);
+    procedure LogsShowOwn(AOn: Boolean);
+    procedure LogViewsSyncAll;
+    function LogClickLine(Sender: TObject; out ALine: string): Boolean;
     procedure LogTabsChange(Sender: TObject);
     procedure ShowCompLog;
     procedure ShowErrLog;
@@ -3833,6 +3888,27 @@ type
     FSplitClickLine: Integer;
     FSplitClickCol: Integer;
     FSplitClickTop: Integer;
+    // Свой редактор: показать во второй панели копию текста, даже если в ней
+    // та же вкладка, что в редакторе (вкладка редактора сейчас сменится, а
+    // буфер своего редактора перейдёт к новой) - SplitRefresh
+    FSplitNoShare: Boolean;
+    // Синхронная прокрутка второй панели (окно TEdView, свой редактор):
+    // включена (кнопка Sync в её заголовке), идёт перенос положения из одной
+    // панели в другую (чтобы ответ не вернулся обратно), первая видимая
+    // строка редактора, уже переданная панели
+    FSplitSync: Boolean;
+    FSplitSyncBusy: Boolean;
+    FSplitSyncTop: Integer;
+    // Отметки строк и направляющие второй панели (та же вкладка) - по
+    // данным редактора; с этими данными панель нарисована в последний раз
+    FSplitDecoMapVer: Cardinal;
+    FSplitDecoFound: Integer;
+    FSplitDecoDepth: Integer;
+    // Окна логов на своём редакторе (шаг 0.7.6), по одному на каждый лог
+    // TRichEdit, в том же месте: CompLogEdit, ErrLogEdit, LogEdit,
+    // RuntimeLog, GitLogEdit. LogTo пишет в оба, показан - один (флажок
+    // своего редактора, LogsShowOwn)
+    FLogViews: array[0..4] of TEdLogView;
 
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
@@ -3895,6 +3971,9 @@ type
     FSymHintTimer: TTimer;
     FSymHintWord: string;
     FSymHintPt: TPoint;
+    // Мышь стояла здесь, когда подсказку убрала клавиша: пока она не
+    // сдвинется, подсказку не показывать снова
+    FSymHintKeyPt: TPoint;
     FIndentKind: Integer;
     FIndentSize: Integer;
 
@@ -3970,6 +4049,12 @@ type
     function  GetEditorText: string;
     function  GetEditorTextCR: string;
     function  GetEditorTextEx(AUseCRLF: Boolean): string;
+    function  EditorTextKey: string;
+    function  GetEditorTextCRCached: string;
+    function  WinText(AWinIdx: Integer): string;
+    function  WinTextSize(AWinIdx: Integer): Integer;
+    procedure SetWinText(AWinIdx: Integer; const AText: string);
+    procedure FreeWinBuffer(AWinIdx: Integer);
     procedure SetEditorText(const S: string);
 
     function  PaleColor(C: TColor): TColor;
@@ -4719,7 +4804,7 @@ begin
 
   // Читаем весь текст редактора в память за один раз. Перевод строки должен
   // быть ОДНИМ символом, как в индексах контрола: позиции карты - это они.
-  FullText := GetEditorTextCR;
+  FullText := GetEditorTextCRCached;
   ScanCommentRanges(FullText, 0);
 
   // Подстраиваем интервал таймера под РЕАЛЬНУЮ стоимость разбора на этом
@@ -5097,6 +5182,11 @@ begin
   UiDefault('Decl.FoundBG', $00FFF0E0, $00503C28);  // объявление найдено
   UiDefault('Decl.BackBG', $00C0FFFF, $00283C3C);   // стоим на объявлении
   UiDefault('Decl.NoneBG', clBtnFace, $00302D2D);   // не найдено или пусто
+  UiDefault('Decl.OwnEdBG', $00FFD8B0, $00703010);  // пусто, свой редактор
+  // Заголовок панели своего редактора (окно разделено), когда панель не
+  // активна: оранжевый, текст чёрный
+  UiDefault('Pane.OwnEdBG', $0000A5FF, $000080D0);
+  UiDefault('Pane.OwnEdText', clBlack, clBlack);
   UiDefault('Decl.Text', clWindowText, $00DCDCDC);
 
   // Роли элементов окна (UiPaintControl): светлый цвет - системный, как у
@@ -5415,6 +5505,12 @@ begin
     Result := 'Панель объявления: на объявлении (щелчок - назад)'
   else if AKey = 'Decl.NoneBG' then
     Result := 'Панель объявления: не найдено'
+  else if AKey = 'Decl.OwnEdBG' then
+    Result := 'Панель объявления: пусто, работает свой редактор'
+  else if AKey = 'Pane.OwnEdBG' then
+    Result := 'Заголовок панели своего редактора (не активной): фон'
+  else if AKey = 'Pane.OwnEdText' then
+    Result := 'Заголовок панели своего редактора (не активной): текст'
   else if AKey = 'Decl.Text' then
     Result := 'Панель объявления: текст'
   else if AKey = 'Ide.WindowBG' then
@@ -5631,6 +5727,8 @@ begin
       StartupStage('Тема IDE: разморозка окон');
     UiFreezeForms(False);
   end;
+  // Окна логов своего редактора - цветами новой темы
+  LogViewsSyncAll;
 end;
 
 procedure TForm1.UiApplyNow;
@@ -8049,7 +8147,7 @@ begin
       if I = FWindowsIndex then
         MemTxt := GetEditorText
       else
-        MemTxt := FWindows[I].Text;
+        MemTxt := WinText(I);
       if SameNoEols(Merged, MemTxt) then
         NoteDisk(FN, Merged)        // то же самое - запомнить и молчать
       else
@@ -8103,11 +8201,11 @@ begin
           if W = FWindowsIndex then
             MemTxt := GetEditorText
           else
-            MemTxt := FWindows[W].Text;
+            MemTxt := WinText(W);
           Merged := Merge3(BaseTxt, MemTxt, Disk[K], Cf);
           if W = FWindowsIndex then
             StoreCurrentWindow;
-          FWindows[W].Text := Merged;
+          SetWinText(W, Merged);
           FWindows[W].Modified := True;
           FWindows[W].MapValid := False;
           SetLength(FWindows[W].CommentRanges, 0);
@@ -8148,7 +8246,7 @@ begin
             FWindows[I].FileName := '(без имени: ' + ExtractFileName(FN) +
             ' с диска' + ExtractFileExt(FN) + ')';
             FWindows[I].IncOwner := '';
-            FWindows[I].Text := Disk[K];
+            SetWinText(I, Disk[K]);
             FWindows[I].CursorPos := 0;
             FWindows[I].Modified := False;
             FWindows[I].IsUtf8 := False;
@@ -8410,7 +8508,7 @@ begin
   FWindows[Idx].Used := True;
   FWindows[Idx].FileName := FN;
   FWindows[Idx].IncOwner := '';
-  FWindows[Idx].Text := LoadTextFile(FN); // тут же определится кодировка
+  SetWinText(Idx, LoadTextFile(FN)); // тут же определится кодировка
   FWindows[Idx].CursorPos := 0;
   FWindows[Idx].Modified := False;
   FWindows[Idx].IsUtf8 := FFileIsUtf8;
@@ -8448,7 +8546,7 @@ begin
   FWindows[Idx].Used := True;
   FWindows[Idx].FileName := '(без имени' + Ext + ')';
   FWindows[Idx].IncOwner := '';
-  FWindows[Idx].Text := '';
+  SetWinText(Idx, '');
   FWindows[Idx].CursorPos := 0;
   FWindows[Idx].Modified := False;
   FWindows[Idx].IsUtf8 := False;
@@ -8786,7 +8884,7 @@ begin
     try
       if MapReadStr(FS) <> MapCacheSign then
         Exit;
-      if MapReadStr(FS) <> MapCacheKey(FWindows[Index].Text, Sig) then
+      if MapReadStr(FS) <> MapCacheKey(WinText(Index), Sig) then
         Exit;
       MapReadRanges(FS, CR);
       MapReadRanges(FS, SR);
@@ -8850,7 +8948,7 @@ begin
     FS := TFileStream.Create(FN, fmCreate);
     try
       MapWriteStr(FS, MapCacheSign);
-      MapWriteStr(FS, MapCacheKey(FWindows[Index].Text,
+      MapWriteStr(FS, MapCacheKey(WinText(Index),
                                   FWindows[Index].MapSchemeSig));
       MapWriteRanges(FS, FWindows[Index].CommentRanges);
       MapWriteRanges(FS, FWindows[Index].StringRanges);
@@ -8900,7 +8998,9 @@ begin
   if not FWindows[FWindowsIndex].Used then
     Exit;
 
-  FWindows[FWindowsIndex].Text := GetEditorText;
+  // Свой редактор правит буфер вкладки на месте - копировать нечего
+  if FEdEmu = nil then
+    SetWinText(FWindowsIndex, GetEditorText);
   FWindows[FWindowsIndex].Modified := RichEdit1.Modified;
   if FCleanPending then
     CleanCapture;
@@ -8957,6 +9057,17 @@ begin
     // ещё активна (SaveActiveClrSchema пишет в схему активной вкладки)
     if (Form2 <> nil) and Form2.Visible then
       Form2.BeforeTabSwitch;
+    // Во второй панели буфер своего редактора (та же вкладка): он сейчас
+    // перейдёт к новой вкладке - панели копию текста прежней
+    if (FSplit <> nil) and (FEdEmu <> nil) and (FSplit.SharedBuffer <> nil) then
+    begin
+      FSplitNoShare := True;
+      try
+        SplitRefresh(-1);
+      finally
+        FSplitNoShare := False;
+      end;
+    end;
     // Во второй панели эта же вкладка, а последние правки ещё не дошли до
     // неё (SplitTimerTick ждёт паузы) - обновить, пока текст в редакторе
     if (FSplit <> nil) and (FSplitWin = FWindowsIndex) and
@@ -8992,14 +9103,22 @@ begin
   if StartupActive then
   begin
     StartupTab := ExtractFileName(FWindows[Index].FileName) + ' (' +
-      IntToStr(Length(FWindows[Index].Text) div 1024) + ' КБ)';
+      IntToStr(WinTextSize(Index) div 1024) + ' КБ)';
     StartupStage('Вкладка ' + StartupTab + ': схема');
   end;
   TA := GetTickCount;
   Inc(FObjOwnWrite);
   FLockHighlight := True;
   try
-    SetEditorText('');
+    // Свой редактор: прежняя вкладка остаётся в своём буфере, на время
+    // смены схемы в редакторе - пустой свой
+    if FEdEmu <> nil then
+    begin
+      Inc(FEditSerial);
+      FEdEmu.UseBuffer(nil, False);
+    end
+    else
+      SetEditorText('');
   finally
     FLockHighlight := False;
     Dec(FObjOwnWrite);
@@ -9034,7 +9153,16 @@ begin
   Inc(FObjOwnWrite);
   FLockHighlight := True;
   try
-    SetEditorText(FWindows[Index].Text);
+    if FEdEmu <> nil then
+    begin
+      // Буфер вкладки - в редактор без копирования, с его откатом
+      if FWindows[Index].Buffer = nil then
+        SetWinText(Index, '');
+      Inc(FEditSerial);
+      FEdEmu.UseBuffer(FWindows[Index].Buffer, FWindows[Index].Modified);
+    end
+    else
+      SetEditorText(WinText(Index));
   finally
     FLockHighlight := False;
     Dec(FObjOwnWrite);
@@ -10315,7 +10443,7 @@ begin
     FWindows[I].Used := False;
     FWindows[I].FileName := '';
     FWindows[I].IncOwner := '';
-    FWindows[I].Text := '';
+    FreeWinBuffer(I);
     FWindows[I].CursorPos := 0;
     FWindows[I].Modified := False;
     FWindows[I].Broken := False;
@@ -15983,7 +16111,7 @@ begin
     end;
 
     FWindows[I].FileName := NewName;
-    FWindows[I].Text := LoadTextFile(NewName);
+    SetWinText(I, LoadTextFile(NewName));
     FWindows[I].IsUtf8 := FFileIsUtf8;
     FWindows[I].HasBom := FFileHasBom;
     FWindows[I].Broken := False;
@@ -16157,7 +16285,7 @@ begin
       begin
         Inc(FileCount);
         StartupStage('Чтение ' + ExtractFileName(Path));
-        FWindows[I].Text := LoadTextFile(Path);
+        SetWinText(I, LoadTextFile(Path));
         FWindows[I].IsUtf8 := FFileIsUtf8;
         FWindows[I].HasBom := FFileHasBom;
         FWindows[I].Broken := False;
@@ -16167,7 +16295,7 @@ begin
         // Файла нет - окно остаётся в списке, но помечается нерабочим.
         // Разбираться с такими будут пункты Remove missing files from list
         // и Find lost files...
-        FWindows[I].Text := '';
+        SetWinText(I, '');
         FWindows[I].Broken := True;
       end;
 
@@ -16275,7 +16403,7 @@ begin
   if ActIdx >= 0 then
     StartupStage('Открытие активной вкладки ' +
       ExtractFileName(FWindows[ActIdx].FileName) + ' (' +
-      IntToStr(Length(FWindows[ActIdx].Text) div 1024) + ' КБ): уход с прежней')
+      IntToStr(WinTextSize(ActIdx) div 1024) + ' КБ): уход с прежней')
   else
     StartupStage('Открытие активной вкладки: открытых файлов нет');
   StageTick := GetTickCount;
@@ -16824,11 +16952,11 @@ begin
 
   // Логи прежнего проекта
   if CompLogEdit <> nil then
-    CompLogEdit.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Clear;
+    LogClear(ErrLogEdit);
   if RuntimeLog <> nil then
-    RuntimeLog.Clear;
+    LogClear(RuntimeLog);
 
   // Программа прежнего проекта, если ещё запущена, работает дальше: её
   // окончание по-прежнему отслеживает RunTimerTick
@@ -17710,7 +17838,7 @@ begin
     Exit;
   TextLines := TStringList.Create;
   try
-    TextLines.Text := FWindows[WinIdx].Text;
+    TextLines.Text := WinText(WinIdx);
     // Начала строк в координатах редактора: перевод строки - один символ
     SetLength(LineStarts, TextLines.Count + 1);
     LineStarts[0] := 0;
@@ -19227,7 +19355,7 @@ begin
   end;
   if CompareText(FDiskReadFail, FN) = 0 then
     FDiskReadFail := '';
-  FWindows[W].Text := LoadedText;
+  SetWinText(W, LoadedText);
   FWindows[W].IsUtf8 := FFileIsUtf8;
   FWindows[W].HasBom := FFileHasBom;
 
@@ -19246,7 +19374,7 @@ begin
   SetLength(FWindows[W].StringRanges, 0);
 
   // Каретку сохраняем, но файл мог стать короче
-  if FWindows[W].CursorPos > Length(FWindows[W].Text) then
+  if FWindows[W].CursorPos > Length(WinText(W)) then
     FWindows[W].CursorPos := 0;
 
   if W = FWindowsIndex then
@@ -19331,7 +19459,7 @@ begin
   FWindows[WinIdx].Used := False;
   FWindows[WinIdx].FileName := '';
   FWindows[WinIdx].IncOwner := '';
-  FWindows[WinIdx].Text := '';
+  FreeWinBuffer(WinIdx);
   FWindows[WinIdx].CursorPos := 0;
   FWindows[WinIdx].Modified := False;
   FWindows[WinIdx].Broken := False;
@@ -20437,7 +20565,7 @@ begin
        not FWindows[WinIdx].Used then
       Continue;
     MatchCount := ScanTextForMatches(FWindows[WinIdx].FileName, WinIdx,
-                                     FWindows[WinIdx].Text, APattern);
+                                     WinText(WinIdx), APattern);
     if MatchCount > 0 then
     begin
       Inc(Result, MatchCount);
@@ -20905,7 +21033,7 @@ begin
   end
   else
   begin
-    FWindows[AWinIdx].Text := AText;
+    SetWinText(AWinIdx, AText);
     FWindows[AWinIdx].Modified := True;
     FWindows[AWinIdx].MapValid := False;
     SetLength(FWindows[AWinIdx].CommentRanges, 0);
@@ -20988,7 +21116,7 @@ begin
           if WinIdx = FWindowsIndex then
             Src := GetEditorText
           else
-            Src := FWindows[WinIdx].Text;
+            Src := WinText(WinIdx);
           Res := ReplaceInText(Src, Pattern, Replacement, Count);
           if Count = 0 then
             Continue;
@@ -23156,7 +23284,7 @@ begin
       WinIdx := -1;
   end;
   if WinIdx >= 0 then
-    Txt := FWindows[WinIdx].Text
+    Txt := WinText(WinIdx)
   else if not FifReadFile(AFile, Txt) then
   begin
     Inc(FFifChecked);
@@ -23287,6 +23415,112 @@ procedure TForm1.SetEditorText(const S: string);
 begin
   Inc(FEditSerial);
   RichEdit1.SetTextBuf(PChar(S));
+end;
+
+// ---------------------------------------------------------------------------
+//  Текст вкладки (перевод Unit1 на буфер, шаг 2)
+//
+//  У каждой вкладки свой TEdBuffer (FWindows[].Buffer). Активная вкладка
+//  показывает его в своём редакторе (TEdRichEmu.UseBuffer): при смене
+//  вкладки текст не копируется, откат вкладки сохраняется. Без своего
+//  редактора (нет RichEdit 4.1) буфер - хранилище текста неактивных
+//  вкладок, как прежнее поле Text.
+// ---------------------------------------------------------------------------
+
+// Текст вкладки строкой (ANSI, перевод строки - CRLF). Строка
+// запоминается до следующей правки буфера (TextKey - его версия)
+function TForm1.WinText(AWinIdx: Integer): string;
+begin
+  Result := '';
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
+    Exit;
+  if FWindows[AWinIdx].Buffer = nil then
+    Exit;
+  if FWindows[AWinIdx].TextKey <> FWindows[AWinIdx].Buffer.Version then
+  begin
+    FWindows[AWinIdx].TextCache :=
+      string(FWindows[AWinIdx].Buffer.GetText(#13#10));
+    FWindows[AWinIdx].TextKey := FWindows[AWinIdx].Buffer.Version;
+  end;
+  Result := FWindows[AWinIdx].TextCache;
+end;
+
+// Длина текста вкладки в символах (перевод строки - один), без строки
+function TForm1.WinTextSize(AWinIdx: Integer): Integer;
+begin
+  Result := 0;
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
+    Exit;
+  if FWindows[AWinIdx].Buffer <> nil then
+    Result := FWindows[AWinIdx].Buffer.TextLength;
+end;
+
+// Новый текст вкладки (откат её буфера очищается). Вкладка на экране -
+// через окно редактора (WM_SETTEXT), с его уведомлениями
+procedure TForm1.SetWinText(AWinIdx: Integer; const AText: string);
+begin
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
+    Exit;
+  if FWindows[AWinIdx].Buffer = nil then
+    FWindows[AWinIdx].Buffer := TEdBuffer.Create;
+  if (FEdEmu <> nil) and (FEdEmu.Buffer = FWindows[AWinIdx].Buffer) then
+    SetEditorText(AText)
+  else
+    FWindows[AWinIdx].Buffer.SetText(WideString(AText));
+  FWindows[AWinIdx].TextCache := '';
+  FWindows[AWinIdx].TextKey := -1;
+end;
+
+// Вкладка закрыта: буфер освободить. Редактор и вторая панель, если
+// показывают его, - сначала на другой буфер
+procedure TForm1.FreeWinBuffer(AWinIdx: Integer);
+var
+  OldBuffer: TEdBuffer;
+begin
+  OldBuffer := FWindows[AWinIdx].Buffer;
+  FWindows[AWinIdx].Buffer := nil;
+  FWindows[AWinIdx].TextCache := '';
+  FWindows[AWinIdx].TextKey := -1;
+  if OldBuffer = nil then
+    Exit;
+  if (FSplit <> nil) and (FSplit.SharedBuffer = OldBuffer) then
+    FSplit.DetachShared;
+  if (FEdEmu <> nil) and (FEdEmu.Buffer = OldBuffer) then
+    FEdEmu.UseBuffer(nil, False);
+  OldBuffer.Free;
+end;
+
+// Ключ версии текста редактора для кэшей. Только при своём редакторе: у
+// TEdBuffer номер версии растёт на каждой правке и на замене текста
+// целиком (смена вкладки). При RichEdit - '' (кэши не используются:
+// EN_CHANGE и FEditSerial приходят не на каждую смену текста)
+function TForm1.EditorTextKey: string;
+begin
+  if FEdEmu = nil then
+    Result := ''
+  else
+    Result := IntToStr(FEdEmuSerial) + ':' +
+      IntToStr(FEdEmu.Buffer.Version);
+end;
+
+// GetEditorTextCR; пока текст не менялся - та же строка без нового
+// чтения из редактора (на Unit1.pas это строка в ~3 МБ)
+function TForm1.GetEditorTextCRCached: string;
+var
+  Key: string;
+begin
+  Key := EditorTextKey;
+  if (Key <> '') and (Key = FTextCrKey) then
+  begin
+    Result := FTextCrCache;
+    Exit;
+  end;
+  Result := GetEditorTextCR;
+  FTextCrKey := Key;
+  if Key <> '' then
+    FTextCrCache := Result
+  else
+    FTextCrCache := '';
 end;
 
 procedure TForm1.ApplyTabStops;
@@ -24887,6 +25121,14 @@ begin
                        'WebView2';
   FWv2ViewItem.OnClick := Wv2ViewClick;
   mView.Insert(mViewFmt.MenuIndex + 1, FWv2ViewItem);
+  // View - свой редактор, окно пробы (план портирования, шаги 0.7.2 - 0.7.3)
+  FEdPreviewItem := TMenuItem.Create(Self);
+  FEdPreviewItem.Caption := 'Свой редактор - проба (0.7.3)';
+  FEdPreviewItem.Hint := 'Копия текста вкладки - в окне своего редактора ' +
+                         '(EdView): сравнить вид, скорость и правку с ' +
+                         'RichEdit; в файл не записывается';
+  FEdPreviewItem.OnClick := EdPreviewClick;
+  mView.Insert(FWv2ViewItem.MenuIndex + 1, FEdPreviewItem);
   // Раскраска файлов в unIDE FAR - то же окно, что F9 - Options - Files
   // highlighting в самом FAR
   FFarColorsItem := TMenuItem.Create(Self);
@@ -25157,6 +25399,8 @@ begin
   FreeAndNil(FRqCompClasses);
   CiFreeAll;
   FreeAndNil(FRqDeclCache);  // панель объявления RapidQ
+  FreeAndNil(FDeclSrc);      // панель объявления: кэш строк
+  FreeAndNil(FDeclCl);
   FreeAndNil(FRqDeclFiles);
   RqHelpCloseAll;   // окна справки CHM - до выхода программы
   FreeAndNil(FWebView); // просмотр по формату: браузер и временная страница
@@ -25167,6 +25411,10 @@ begin
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then
     RichEdit1.WindowProc := OldRichEditProc;
+  FreeAndNil(FEdEmu);
+  // Буферы вкладок - после редактора: он снимает подписку с показанного
+  for I := 0 to WindowsItemCount - 1 do
+    FreeAndNil(FWindows[I].Buffer);
   Application.OnHint := nil; // форма уходит, обработчик держать нельзя
   Application.OnMessage := nil;
   Application.OnActivate := nil;
@@ -25389,7 +25637,7 @@ begin
     FClean.Valid := False;
     Exit;
   end;
-  Txt := GetEditorTextCR;
+  Txt := GetEditorTextCRCached;
   FClean.Len := Length(Txt);
   CleanTextSums(Txt, FClean.Sum1, FClean.Sum2);
   FClean.FileName := FCurrentFileName;
@@ -25422,7 +25670,7 @@ begin
     Exit;
   if CompareText(FClean.FileName, FCurrentFileName) <> 0 then
     Exit;
-  Txt := GetEditorTextCR;
+  Txt := GetEditorTextCRCached;
   if Length(Txt) <> FClean.Len then
     Exit;
   CleanTextSums(Txt, Sum1, Sum2);
@@ -26744,7 +26992,7 @@ begin
     Exit;
   end;
 
-  Txt := GetEditorTextCR;
+  Txt := GetEditorTextCRCached;
   Len := Length(Txt);
   Caret := RichEdit1.SelStart + 1; // в тексте позиции от единицы
   if (Len = 0) or (Caret < 1) or (Caret > Len + 1) then
@@ -28650,7 +28898,7 @@ begin
       if FromEditor then
         Raw := GetEditorText
       else if BufIdx >= 0 then
-        Raw := FWindows[BufIdx].Text
+        Raw := WinText(BufIdx)
       else
       begin
         // Двоичный .dfm через TStringList читать нельзя: нули и переводы
@@ -35488,7 +35736,7 @@ begin
       SL := TStringList.Create;
       try
         if WinIdx >= 0 then
-          Txt := FWindows[WinIdx].Text
+          Txt := WinText(WinIdx)
         else
         begin
           with TFileStream.Create(Dfm, fmOpenRead or fmShareDenyNone) do
@@ -35551,7 +35799,7 @@ begin
         if WinIdx >= 0 then
         begin
           // --- .dfm открыт в другой вкладке: правим её текст
-          FWindows[WinIdx].Text := Txt;
+          SetWinText(WinIdx, Txt);
           FWindows[WinIdx].Modified := True;
           FWindows[WinIdx].MapValid := False;
           UpdateTabCaption(WinIdx);
@@ -36486,7 +36734,7 @@ begin
   if W = FWindowsIndex then
     Result := GetEditorText
   else if W >= 0 then
-    Result := FWindows[W].Text
+    Result := WinText(W)
   else if FileExists(APas) then
     with TFileStream.Create(APas, fmOpenRead or fmShareDenyNone) do
     try
@@ -36520,7 +36768,7 @@ begin
   for I := 0 to WindowsItemCount - 1 do
     if FWindows[I].Used and
        IsPascalExt(ExtractFileExt(FWindows[I].FileName)) and
-       (Pos(Pat, AnsiUpperCase(FWindows[I].Text)) > 0) then
+       (Pos(Pat, AnsiUpperCase(WinText(I))) > 0) then
     begin
       Result := FWindows[I].FileName;
       Exit;
@@ -36971,7 +37219,7 @@ begin
   if Idx = FWindowsIndex then
     Result := GetEditorText
   else
-    Result := FWindows[Idx].Text;
+    Result := WinText(Idx);
 end;
 
 procedure TForm1.DsgSetText(const AText: string);
@@ -37007,7 +37255,7 @@ begin
   if Idx = FWindowsIndex then
     Result := GetEditorText
   else
-    Result := FWindows[Idx].Text;
+    Result := WinText(Idx);
 end;
 
 // Новый текст во вкладку файла. На диск ничего не пишется - до Save.
@@ -37062,7 +37310,7 @@ begin
   end
   else
   begin
-    FWindows[Idx].Text := AText;
+    SetWinText(Idx, AText);
     FWindows[Idx].Modified := True;
     FWindows[Idx].MapValid := False;
     UpdateTabCaption(Idx);
@@ -40195,6 +40443,122 @@ begin
      (CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(AFile)) = 0) then
     GotoLine(ALine - 1);
   BringToFront;
+end;
+
+// ---------------------------------------------------------------------------
+//  Свой редактор (план портирования, шаги 0.7.4, 0.7.7)
+//
+//  Включается при запуске (EdEmuStart) и больше не выключается: прежний
+//  режим «текст у RichEdit» и переключатель убраны (шаг 0.7.7). Окно
+//  RichEdit1 остаётся, но
+//  сообщения, которые раньше разбирал RichEdit (OldRichEditProc), сначала
+//  получает TEdRichEmu (EdRichEmu.pas): текст, выделение, правка, откат,
+//  строки, места символов - его. Чего он не знает - уходит к RichEdit, а
+//  незнакомые EM_* - один раз в HiLite log. Рисует, как и раньше,
+//  HighlightVisibleText.
+// ---------------------------------------------------------------------------
+
+// Вместо прежней оконной процедуры RichEdit1 (из NewRichEditProcBody)
+procedure TForm1.DefEditProc(var Message: TMessage);
+begin
+  if (FEdEmu <> nil) and FEdEmu.Handle(Message) then
+    Exit;
+  OldRichEditProc(Message);
+end;
+
+procedure TForm1.EdEmuLog(const AText: string);
+begin
+  LogOwnEd(AText);
+end;
+
+// Включить свой редактор (при запуске). Текст, выделение, первая видимая
+// строка и «изменён» переходят от RichEdit. Без RichEdit 4.1
+// (msftedit.dll) свой редактор не включается: окно для него - RichEdit 4.1
+procedure TForm1.EdEmuStart;
+var
+  DC: HDC;
+  OldFont: HGDIOBJ;
+  Metrics: TTextMetric;
+  StartLineH, StartCharW: Integer;
+begin
+  if FEdEmu <> nil then
+    Exit;
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  if not MsftEditActive then
+  begin
+    LogOwnEd('Свой редактор не включён - нет RichEdit 4.1 (msftedit.dll). ' +
+      'Работает RichEdit 3.0, этот режим больше не поддерживается');
+    Application.MessageBox(PChar('Нет RichEdit 4.1 (msftedit.dll): ' +
+      'свой редактор не включён, текст редактирует RichEdit 3.0. ' +
+      'Этот режим больше не поддерживается.'), PChar(AppTitle),
+      MB_OK or MB_ICONWARNING);
+    Exit;
+  end;
+  StartLineH := 16;
+  StartCharW := 8;
+  DC := GetDC(RichEdit1.Handle);
+  try
+    OldFont := SelectObject(DC, RichEdit1.Font.Handle);
+    if GetTextMetrics(DC, Metrics) then
+    begin
+      StartLineH := Metrics.tmHeight + Metrics.tmExternalLeading;
+      StartCharW := Metrics.tmAveCharWidth;
+    end;
+    SelectObject(DC, OldFont);
+  finally
+    ReleaseDC(RichEdit1.Handle, DC);
+  end;
+  FEdEmu := TEdRichEmu.Create(EdWindowHandle, OldRichEditProc);
+  Inc(FEdEmuSerial);
+  FEdEmu.OnLog := EdEmuLog;
+  FEdEmu.SetMetrics(StartLineH, StartCharW, FTabChars);
+  // Текст, выделение, прокрутка, «изменён» - у RichEdit, до того, как
+  // сообщения уйдут своему
+  FEdEmu.TakeFromWindow;
+  LogOwnEd('Редактор: свой (EdBuffer)');
+
+  DeclPanelShow;
+  // Вторая панель - окно TEdView на буфере своего редактора
+  SplitRefresh(-1);
+  // Логи - окнами своего редактора (шаг 0.7.6)
+  LogsShowOwn(True);
+  // Окна разницы git и просмотр зависимостей RapidQ - тоже свои
+  // (GitDiffView, DlgRqDeps)
+  EdOwnEditorOn := True;
+
+  // Кадр, полосы, номера строк, строка состояния - по новому окну
+  UpdateScrollBars;
+  InvalidateRect(RichEdit1.Handle, nil, False);
+  UpdateLineNumbers;
+  UpdateStatusBarInfo;
+  SyncCaretX;
+end;
+
+// View - свой редактор, проба (шаги 0.7.2 - 0.7.3): копия текста вкладки -
+// в окне EdView с подсветкой по схеме файла, шрифт и шаг табуляции - как в
+// редакторе, каретка - на том же месте. Копию можно править, в файл и во
+// вкладку правки не попадают
+procedure TForm1.EdPreviewClick(Sender: TObject);
+var
+  Sel: TCharRange;
+  CaretLine, CaretCol: Integer;
+  Colors: TEdPreviewColors;
+begin
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  EdApi.GetSel(Sel);
+  CaretLine := EdApi.ExLineFromChar(Sel.cpMin);
+  CaretCol := Sel.cpMin - EdApi.LineIndex(CaretLine);
+  Colors.Gutter := FGutterBG;
+  Colors.GutterText := FGutterFG;
+  Colors.GutterCur := UiColor('Gutter.CurBG');
+  Colors.GutterCurText := UiColor('Gutter.CurText');
+  Colors.Sel := UiColor('Editor.SelBG');
+  Colors.SelText := UiColor('Editor.SelText');
+  ShowEdPreview(DisplayName, WideString(GetEditorText),
+    SchemeCopyFor(FCurrentFileName), RichEdit1.Font, FTabChars, CaretLine,
+    CaretCol, Colors);
 end;
 
 procedure TForm1.PaletteIconsClick(Sender: TObject);
@@ -44536,7 +44900,7 @@ begin
     for I := 0 to WindowsItemCount - 1 do
       if FWindows[I].Used and
          IsPascalExt(ExtractFileExt(FWindows[I].FileName)) and
-         (Pos(Pat, AnsiUpperCase(FWindows[I].Text)) > 0) then
+         (Pos(Pat, AnsiUpperCase(WinText(I))) > 0) then
       begin
         Pas := FWindows[I].FileName;
         Break;
@@ -46469,6 +46833,9 @@ end;
 // здесь только то, что в дизайнере не задаётся: обработчики и начальное
 // состояние вкладок.
 procedure TForm1.InitLogPanel;
+var
+  LogIdx, LineIdx: Integer;
+  Box: TRichEdit;
 begin
   if (LogTabs = nil) or (pnlCompLog = nil) or (pnlHiLog = nil) or
      (pnlErrLog = nil) then
@@ -46496,7 +46863,169 @@ begin
   if GitLogEdit <> nil then
     GitLogEdit.PopupMenu := FLogPopup;
 
+  // Окна логов на своём редакторе - рядом с каждым TRichEdit, пока скрыты
+  // (LogsShowOwn)
+  for LogIdx := Low(FLogViews) to High(FLogViews) do
+  begin
+    case LogIdx of
+      0: Box := CompLogEdit;
+      1: Box := ErrLogEdit;
+      2: Box := LogEdit;
+      3: Box := RuntimeLog;
+    else
+      Box := GitLogEdit;
+    end;
+    if (Box = nil) or (FLogViews[LogIdx] <> nil) then
+      Continue;
+    FLogViews[LogIdx] := TEdLogView.Create(Self);
+    FLogViews[LogIdx].Visible := False;
+    FLogViews[LogIdx].Parent := Box.Parent;
+    FLogViews[LogIdx].Align := alClient;
+    FLogViews[LogIdx].PopupMenu := FLogPopup;
+    FLogViews[LogIdx].OnClick := Box.OnClick;
+    FLogViews[LogIdx].OnDblClick := Box.OnDblClick;
+    // Что уже записано до создания окна - без цвета
+    for LineIdx := 0 to Box.Lines.Count - 1 do
+      FLogViews[LogIdx].AddLine(WideString(Box.Lines[LineIdx]), clNone);
+  end;
+
   LogTabsChange(nil);
+end;
+
+// Окно лога на своём редакторе для лога AEdit; nil - нет (не лог)
+function TForm1.LogViewOf(AEdit: TRichEdit): TEdLogView;
+begin
+  Result := nil;
+  if AEdit = nil then
+    Exit;
+  if AEdit = CompLogEdit then
+    Result := FLogViews[0]
+  else if AEdit = ErrLogEdit then
+    Result := FLogViews[1]
+  else if AEdit = LogEdit then
+    Result := FLogViews[2]
+  else if AEdit = RuntimeLog then
+    Result := FLogViews[3]
+  else if AEdit = GitLogEdit then
+    Result := FLogViews[4];
+end;
+
+// Очистить лог: TRichEdit и его окно на своём редакторе
+procedure TForm1.LogClear(AEdit: TRichEdit);
+var
+  View: TEdLogView;
+begin
+  if AEdit = nil then
+    Exit;
+  AEdit.Lines.Clear;
+  View := LogViewOf(AEdit);
+  if View <> nil then
+    View.ClearLog;
+end;
+
+// Шрифт и цвета окна лога на своём редакторе - от его TRichEdit (тема,
+// Font.Logs). Шрифт - моноширинный, как у редактора: окно рисует символы
+// ячейками одной ширины; размер - логов
+procedure TForm1.LogViewSync(AEdit: TRichEdit);
+var
+  View: TEdLogView;
+  NewBack, NewText: TColor;
+begin
+  View := LogViewOf(AEdit);
+  if View = nil then
+    Exit;
+  NewBack := AEdit.Color;
+  NewText := UiLogColor(AEdit, clNone);
+  if (View.Font.Name <> RichEdit1.Font.Name) or
+     (View.Font.Height <> AEdit.Font.Height) then
+  begin
+    View.Font.Name := RichEdit1.Font.Name;
+    View.Font.Height := AEdit.Font.Height;
+  end;
+  if (View.BackColor <> NewBack) or (View.TextColor <> NewText) then
+  begin
+    View.BackColor := NewBack;
+    View.TextColor := NewText;
+    View.GutterColor := NewBack;
+    View.SelColor := UiColor('Editor.SelBG');
+    View.SelTextColor := UiColor('Editor.SelText');
+    View.RefreshAll;
+  end;
+end;
+
+// Шрифт и цвета всех показанных окон логов своего редактора (тема, шрифты)
+procedure TForm1.LogViewsSyncAll;
+begin
+  if (FLogViews[0] <> nil) and FLogViews[0].Visible then
+    LogViewSync(CompLogEdit);
+  if (FLogViews[1] <> nil) and FLogViews[1].Visible then
+    LogViewSync(ErrLogEdit);
+  if (FLogViews[2] <> nil) and FLogViews[2].Visible then
+    LogViewSync(LogEdit);
+  if (FLogViews[3] <> nil) and FLogViews[3].Visible then
+    LogViewSync(RuntimeLog);
+  if (FLogViews[4] <> nil) and FLogViews[4].Visible then
+    LogViewSync(GitLogEdit);
+end;
+
+// Логи - окнами своего редактора (AOn) или TRichEdit. Текст у обоих один:
+// LogTo пишет в оба
+procedure TForm1.LogsShowOwn(AOn: Boolean);
+var
+  LogIdx: Integer;
+  Box: TRichEdit;
+begin
+  for LogIdx := Low(FLogViews) to High(FLogViews) do
+  begin
+    if FLogViews[LogIdx] = nil then
+      Continue;
+    case LogIdx of
+      0: Box := CompLogEdit;
+      1: Box := ErrLogEdit;
+      2: Box := LogEdit;
+      3: Box := RuntimeLog;
+    else
+      Box := GitLogEdit;
+    end;
+    if Box = nil then
+      Continue;
+    if AOn then
+      LogViewSync(Box);
+    FLogViews[LogIdx].Visible := AOn;
+    Box.Visible := not AOn;
+    if AOn then
+      FLogViews[LogIdx].ScrollTo(FLogViews[LogIdx].LogCount, 0);
+  end;
+end;
+
+// Строка лога, по которой щёлкнули: окно TRichEdit - строка каретки, окно
+// своего редактора - строка его каретки. False - не лог или вне строк
+function TForm1.LogClickLine(Sender: TObject; out ALine: string): Boolean;
+var
+  LineIdx: Integer;
+  LogBox: TRichEdit;
+  View: TEdLogView;
+begin
+  Result := False;
+  ALine := '';
+  if Sender is TEdLogView then
+  begin
+    View := TEdLogView(Sender);
+    LineIdx := View.CaretRow;
+    if (LineIdx < 0) or (LineIdx >= View.LogCount) then
+      Exit;
+    ALine := string(View.LogLine(LineIdx));
+    Result := True;
+    Exit;
+  end;
+  if not (Sender is TRichEdit) then
+    Exit;
+  LogBox := TRichEdit(Sender);
+  LineIdx := SendMessageA(LogBox.Handle, EM_LINEFROMCHAR, LogBox.SelStart, 0);
+  if (LineIdx < 0) or (LineIdx >= LogBox.Lines.Count) then
+    Exit;
+  ALine := LogBox.Lines[LineIdx];
+  Result := True;
 end;
 
 // Окно лога, для которого открыто меню. nil - меню вызвано не из лога.
@@ -46513,6 +47042,7 @@ end;
 procedure TForm1.LogPopupPopup(Sender: TObject);
 var
   E: TRichEdit;
+  View: TEdLogView;
   Sel: TCharRange;
   HasSel, CanEdit, CanPaste, CanUndo: Boolean;
   I: Integer;
@@ -46522,6 +47052,19 @@ begin
   CanUndo := False;
   CanEdit := False;
   CanPaste := False;
+  // Окно лога на своём редакторе: только копировать и выделить всё
+  if (FLogPopup.PopupComponent is TEdLogView) then
+  begin
+    View := TEdLogView(FLogPopup.PopupComponent);
+    for I := 0 to FLogPopup.Items.Count - 1 do
+    case FLogPopup.Items[I].Tag of
+      1, 2, 4, 5: FLogPopup.Items[I].Enabled := False;
+      3: FLogPopup.Items[I].Enabled := View.HasSelection;
+      6: FLogPopup.Items[I].Enabled := View.LogCount > 0;
+      7: FLogPopup.Items[I].Enabled := AnyLogFilled;
+    end;
+    Exit;
+  end;
   if (E <> nil) and E.HandleAllocated then
   begin
     SendMessage(E.Handle, EM_EXGETSEL, 0, Integer(@Sel));
@@ -46557,6 +47100,14 @@ begin
   if TMenuItem(Sender).Tag = 7 then
   begin
     SaveAllLogs;
+    Exit;
+  end;
+  if FLogPopup.PopupComponent is TEdLogView then
+  begin
+    case TMenuItem(Sender).Tag of
+      3: TEdLogView(FLogPopup.PopupComponent).CopyToClipboard;
+      6: TEdLogView(FLogPopup.PopupComponent).SelectAll;
+    end;
     Exit;
   end;
   E := LogPopupEdit;
@@ -48990,10 +49541,11 @@ end;
 // Щелчок в редакторе: идентификатор под кареткой и его объявление
 procedure TForm1.DeclPanelUpdate;
 var
-  Ext, S, U, WU: string;
+  Ext, S, U, WU, Key: string;
   Src, Cl: TStringList;
   Sel: TCharRange;
   Line, LineStart, P, B, E, I, St, DL, DC: Integer;
+  OwnLists: Boolean;
 begin
   if (FDeclPanel = nil) or not RichEdit1.HandleAllocated then
     Exit;
@@ -49022,20 +49574,40 @@ begin
   Line := EdApi.ExLineFromChar(Sel.cpMin);
   LineStart := EdApi.LineIndex(Line);
 
-  Src := TStringList.Create;
-  Cl := TStringList.Create;
-  try
+  // Строки и очищенные строки (комментарии и литералы - пробелами). При
+  // своём редакторе - кэш до следующей правки: щелчки без правки между
+  // ними не делят весь текст на строки заново
+  Key := EditorTextKey;
+  if (Key <> '') and (Key = FDeclKey) and (FDeclSrc <> nil) then
+  begin
+    Src := FDeclSrc;
+    Cl := FDeclCl;
+    OwnLists := False;
+  end
+  else
+  begin
+    Src := TStringList.Create;
+    Cl := TStringList.Create;
     Src.Text := GetEditorText;
+    St := 0;
+    for I := 0 to Src.Count - 1 do
+      Cl.Add(UpperCase(DeclCleanLine(Src[I], St)));
+    OwnLists := Key = '';
+    if not OwnLists then
+    begin
+      FDeclSrc.Free;
+      FDeclCl.Free;
+      FDeclSrc := Src;
+      FDeclCl := Cl;
+      FDeclKey := Key;
+    end;
+  end;
+  try
     if (Line < 0) or (Line >= Src.Count) then
     begin
       DeclPanelShow;
       Exit;
     end;
-
-    // Очищенные строки: комментарии и литералы - пробелами
-    St := 0;
-    for I := 0 to Src.Count - 1 do
-      Cl.Add(UpperCase(DeclCleanLine(Src[I], St)));
 
     // Идентификатор под кареткой. Каретка сразу за словом - тоже он.
     S := Src[Line];
@@ -49095,8 +49667,12 @@ begin
       FDeclMode := 1;
     end;
   finally
-    Cl.Free;
-    Src.Free;
+    // Кэш FDeclSrc / FDeclCl остаётся до следующей правки
+    if OwnLists then
+    begin
+      Cl.Free;
+      Src.Free;
+    end;
   end;
   DeclPanelShow;
 end;
@@ -49192,7 +49768,7 @@ begin
 
       W := IndexOfWindowByFile(FN);
       if W >= 0 then
-        UnitSrc.Text := FWindows[W].Text
+        UnitSrc.Text := WinText(W)
       else
       try
         UnitSrc.LoadFromFile(FN);
@@ -51191,9 +51767,9 @@ begin
   // имена файлов и строк, и понять, к какому запуску относится строка,
   // нельзя.
   if CompLogEdit <> nil then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   if FBuildReason <> '' then
     LogComp('Сборщик: Delphi (' + FBuildReason + ')');
   if CompareText(BuildPrj, FCurrentProject) <> 0 then
@@ -51831,9 +52407,9 @@ begin
   else
     ShowCompLog;
     if CompLogEdit <> nil then
-      CompLogEdit.Lines.Clear;
+      LogClear(CompLogEdit);
     if ErrLogEdit <> nil then
-      ErrLogEdit.Lines.Clear;
+      LogClear(ErrLogEdit);
     if Kind <> bkNone then
     begin
       LogComp('Сборщик: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')');
@@ -52704,9 +53280,9 @@ begin
   Result := False;
   ShowCompLog;
   if CompLogEdit <> nil then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   LogComp('Сборщик: Lazarus (' + FBuildReason + ')');
 
   if not CheckDiskChanges(-1) then
@@ -52892,9 +53468,9 @@ begin
   Result := False;
   ShowCompLog;
   if CompLogEdit <> nil then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   LogComp('Сборщик: ' + BuildKindName(bkCMakeNinja) + ' (' + FBuildReason +
   ')');
   BuildPrj := BuildProject;
@@ -53572,9 +54148,9 @@ begin
   if not AKeepLog then
   begin
     if CompLogEdit <> nil then
-      CompLogEdit.Lines.Clear;
+      LogClear(CompLogEdit);
     if ErrLogEdit <> nil then
-      ErrLogEdit.Lines.Clear;
+      LogClear(ErrLogEdit);
     if FBuildReason <> '' then
       LogComp('Сборщик: Arduino (' + FBuildReason + ')');
   end;
@@ -54235,9 +54811,9 @@ begin
   ShowCompLog;
   // Сборка копии для снимка: лог не чистится - в нём шаги снимка
   if (CompLogEdit <> nil) and not FRqProbeActive then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   if not FRqProbeActive and (FBuildReason <> '') then
     LogComp('Сборщик: RapidQ (' + FBuildReason + ')');
 
@@ -54985,9 +55561,9 @@ begin
   Result := False;
   ShowCompLog;
   if CompLogEdit <> nil then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   if FBuildReason <> '' then
     LogComp('Сборщик: FreeBASIC (' + FBuildReason + ')');
 
@@ -55621,9 +56197,9 @@ begin
   FCompDlg.StartStage(fbsCheck, 0, '');
   ShowCompLog;
   if CompLogEdit <> nil then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   if ErrLogEdit <> nil then
-    ErrLogEdit.Lines.Clear;
+    LogClear(ErrLogEdit);
   if FBuildReason <> '' then
     LogComp('Сборщик: RapidQ через FreeBASIC (' + FBuildReason + ')');
 
@@ -57091,7 +57667,7 @@ begin
   end;
   ShowCompLog;
   if (CompLogEdit <> nil) then
-    CompLogEdit.Lines.Clear;
+    LogClear(CompLogEdit);
   // Копия собирается из файлов на диске
   if RichEdit1.Modified then
     if not SaveCurrentFile then
@@ -61754,8 +62330,8 @@ begin
   FWindows[Idx].Used := True;
   FWindows[Idx].FileName := '(без имени.pas)';
   FWindows[Idx].IncOwner := '';
-  FWindows[Idx].Text := 'unit Unit1;'#13#10#13#10'interface'#13#10#13#10 +
-  'implementation'#13#10#13#10'end.'#13#10;
+  SetWinText(Idx, 'unit Unit1;'#13#10#13#10'interface'#13#10#13#10 +
+  'implementation'#13#10#13#10'end.'#13#10);
 FWindows[Idx].CursorPos := 0;
   FWindows[Idx].Modified := False;
   FWindows[Idx].IsUtf8 := False;
@@ -62947,7 +63523,7 @@ begin
   WinIdx := IndexOfWindowByFile(AFile);
   if WinIdx >= 0 then
   begin
-    ALines.Text := FWindows[WinIdx].Text;
+    ALines.Text := WinText(WinIdx);
     Result := True;
     Exit;
   end;
@@ -67721,24 +68297,25 @@ begin
     'разница, заголовок и описание коммита. Красная - есть ' +
     'незакоммиченные изменения: их нужно закоммитить, тогда Push отправит ' +
     'их на сервер', 184, 72, GitCommitClick);
-  NewButton('History...', 'История коммитов ветки: файлы и разница, Revert, ' +
-    'ветка от коммита', 260, 72, GitHistoryClick);
-  NewButton('Refresh', 'Обновить сведения панели', 336, 60, GitRefreshClick);
-  NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 400, 66,
+  NewButton('Commits history...', 'История коммитов ветки: файлы и ' +
+    'разница, Revert, ветка от коммита, коммит в отдельную папку', 260, 112,
+    GitHistoryClick);
+  NewButton('Refresh', 'Обновить сведения панели', 376, 60, GitRefreshClick);
+  NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 440, 66,
     GitBashClick);
   NewButton('Compare...', 'Сравнить две ветки: коммиты, которые есть только ' +
     'в одной из них (с файлами и разницей), сводка - в Git log',
-    470, 76, GitCompareClick);
+    510, 76, GitCompareClick);
   NewButton('Merge Into...', 'Влить текущую ветку в другую (например ' +
-    'mainTest в main) и отправить ту на сервер (git push)', 550, 92,
+    'mainTest в main) и отправить ту на сервер (git push)', 590, 92,
     GitMergeIntoClick);
   NewButton('Unmerged...', 'Коммиты всех веток, которых нет в текущей ' +
     '(например в mainTest), в одной таблице, цвет - по ветке. Перенести ' +
-    'коммиты (cherry-pick), влить ветку целиком, удалить ветку', 646, 88,
+    'коммиты (cherry-pick), влить ветку целиком, удалить ветку', 686, 88,
     GitUnmergedClick);
   // Справка: Tag 0 - раздел о панели (GitHelpClick)
   NewButton('Help', 'Справка: что делают кнопки и строки панели Git, меню ' +
-    'Repository и Branch (git_ref\help\git.chm)', 738, 50, GitHelpClick);
+    'Repository и Branch (git_ref\help\git.chm)', 778, 50, GitHelpClick);
   FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
     'недавние, по открытому проекту, Add Local / Clone / New', 4, 92,
     GitRepoBtnClick);
@@ -69615,7 +70192,7 @@ begin
     GitPushClick);
   AddItem(RepoMenu, 'Commit...', 'Окно Commit: изменения, разница, ' +
     'заголовок и описание', GitCommitClick);
-  AddItem(RepoMenu, 'History...', 'История коммитов текущей ветки',
+  AddItem(RepoMenu, 'Commits history...', 'История коммитов текущей ветки',
     GitHistoryClick);
   AddItem(RepoMenu, '-', '', nil);
   AddItem(RepoMenu, 'View on GitHub', 'Страница репозитория в браузере',
@@ -71330,7 +71907,7 @@ begin
   Branch := GitCurrentBranch(Git, Repo);
   if Branch = '' then
     Branch := 'HEAD';
-  Title := 'History - ' + Branch + ' - ' +
+  Title := 'Commits history - ' + Branch + ' - ' +
     ExtractFileName(ExcludeTrailingPathDelimiter(Repo));
   if FGitHistWin <> nil then
   begin
@@ -71372,9 +71949,9 @@ begin
     FGitHistWin := nil;
 end;
 
-// New Branch from Commit / Revert Commit в окне History: сразу, с
-// журналом; окно остаётся - заголовок (ветка могла смениться) и коммиты
-// заново
+// New Branch from Commit / Revert Commit / Checkout to Folder в окне
+// History: сразу, с журналом; окно остаётся - заголовок (ветка могла
+// смениться) и коммиты заново
 procedure TForm1.GitHistWinAction(Sender: TObject);
 var
   Dlg: TDlgGitHistory;
@@ -71415,16 +71992,226 @@ begin
     if GitLongOp(FGitHistGit, FGitHistRepo, 'revert --no-edit ' + Hash) <> 0 then
       LogGit('Git: при конфликте - исправить файлы и Commit, или отменить ' +
               'в Git Bash: git revert --abort');
+  end
+  else if HistAction = ghaWorktree then
+  begin
+    GitCommitCopy(Hash);
+    Exit;   // текущая ветка и её коммиты не изменились
   end;
   if FGitHistWin = Dlg then
   begin
     Branch := GitCurrentBranch(FGitHistGit, FGitHistRepo);
     if Branch = '' then
       Branch := 'HEAD';
-    Dlg.Caption := 'History - ' + Branch + ' - ' +
+    Dlg.Caption := 'Commits history - ' + Branch + ' - ' +
       ExtractFileName(ExcludeTrailingPathDelimiter(FGitHistRepo));
     Dlg.ReloadCommits;
   end;
+end;
+
+// Checkout to Folder (окно History): копия рабочей папки в состоянии
+// коммита AHash - <папка репозитория>-<7 знаков SHA>, рядом с
+// репозиторием; собрать и проверить коммит, не трогая рабочую папку и
+// ветку.
+//   - Копии ещё нет: git worktree add --detach (файлы коммита), потом
+//     из рабочей папки - всё, чего нет в git (неотслеживаемые и
+//     игнорируемые: .cfg, библиотеки, ...); файлы коммита не
+//     перезаписываются.
+//   - Копия есть (зарегистрированный worktree с таким именем): папка
+//     переименовывается (git worktree move), отслеживаемые файлы -
+//     как в AHash (checkout --force); неотслеживаемые остаются.
+procedure TForm1.GitCommitCopy(const AHash: string);
+var
+  RepoDir, Folder, OldFolder, WtPath, ShortHash: string;
+  Output: WideString;
+  Lines: TStringList;
+  LineIdx, CopyCount: Integer;
+
+  // <папка репозитория>-<7 шестнадцатеричных знаков> рядом с репозиторием
+  function IsCommitCopy(const APath: string): Boolean;
+  var
+    Suffix: string;
+    CharIdx: Integer;
+  begin
+    Result := False;
+    if not SameText(ExtractFilePath(APath), ExtractFilePath(RepoDir)) then
+      Exit;
+    if not SameText(Copy(ExtractFileName(APath), 1,
+       Length(ExtractFileName(RepoDir)) + 1), ExtractFileName(RepoDir) + '-') then
+      Exit;
+    Suffix := Copy(ExtractFileName(APath), Length(ExtractFileName(RepoDir)) + 2,
+      MaxInt);
+    if Length(Suffix) <> 7 then
+      Exit;
+    for CharIdx := 1 to Length(Suffix) do
+      if Pos(LowerCase(Suffix[CharIdx]), '0123456789abcdef') = 0 then
+        Exit;
+    Result := True;
+  end;
+
+  function Quoted(const APath: string): string;
+  begin
+    Result := string(GitQuote(WideString(APath)));
+  end;
+
+begin
+  ShortHash := Copy(AHash, 1, 7);
+  RepoDir := ExcludeTrailingPathDelimiter(FGitHistRepo);
+  Folder := RepoDir + '-' + ShortHash;
+
+  // Прежняя копия - среди worktree репозитория
+  OldFolder := '';
+  if GitRunIn(FGitHistGit, FGitHistRepo, 'worktree list --porcelain', False,
+     Output) = 0 then
+  begin
+    Lines := TStringList.Create;
+    try
+      GitSplitLines(Output, Lines);
+      for LineIdx := 0 to Lines.Count - 1 do
+        if Copy(Lines[LineIdx], 1, 9) = 'worktree ' then
+        begin
+          WtPath := ExcludeTrailingPathDelimiter(StringReplace(
+            Copy(Lines[LineIdx], 10, MaxInt), '/', '\', [rfReplaceAll]));
+          if IsCommitCopy(WtPath) then
+          begin
+            OldFolder := WtPath;
+            Break;
+          end;
+        end;
+    finally
+      Lines.Free;
+    end;
+  end;
+
+  ShowGitLog;
+  if OldFolder <> '' then
+  begin
+    // Правки в копии пропадут - спросить
+    if (GitQuery(FGitHistGit, OldFolder,
+       'status --porcelain --untracked-files=no') <> '') and
+       (MessageDlg('В копии ' + OldFolder + ' есть изменённые ' +
+       'отслеживаемые файлы.'#13#10#13#10 + 'Они станут такими, как в ' +
+       'коммите ' + ShortHash + ', правки пропадут.', mtWarning,
+       [mbOK, mbCancel], 0) <> mrOk) then
+      Exit;
+    if not SameText(OldFolder, Folder) then
+    begin
+      if DirectoryExists(Folder) then
+      begin
+        ShowMessage('Папка уже есть: ' + Folder + #13#10 +
+          'Прежнюю копию (' + OldFolder + ') в неё не переименовать.');
+        Exit;
+      end;
+      if GitRunIn(FGitHistGit, FGitHistRepo, 'worktree move ' +
+         Quoted(OldFolder) + ' ' + Quoted(Folder), True, Output) <> 0 then
+        Exit;
+    end;
+    if GitRunIn(FGitHistGit, Folder, 'checkout --detach --force ' + AHash,
+       True, Output) <> 0 then
+      Exit;
+    LogGit('Git: копия ' + Folder + ' - коммит ' + ShortHash +
+      ' (неотслеживаемые файлы - прежние)');
+  end
+  else
+  begin
+    if DirectoryExists(Folder) then
+    begin
+      ShowMessage('Папка уже есть: ' + Folder + #13#10 +
+        'Она не копия репозитория (git worktree) - удалите её или ' +
+        'переименуйте.');
+      Exit;
+    end;
+    if GitRunIn(FGitHistGit, FGitHistRepo, 'worktree add --detach ' +
+       Quoted(Folder) + ' ' + AHash, True, Output) <> 0 then
+      Exit;
+    CopyCount := GitCopyUntracked(RepoDir, Folder);
+    if CopyCount < 0 then
+      Exit;
+    LogGit('Git: копия ' + Folder + ' - коммит ' + ShortHash + ', из ' +
+      'рабочей папки добавлено файлов вне git: ' + IntToStr(CopyCount));
+  end;
+  LogGit('  Другой коммит - снова Checkout to Folder (папка ' +
+    'переименуется); убрать копию: git worktree remove --force ' +
+    Quoted(Folder));
+  ShellExecute(Handle, 'open', PChar(Folder), nil, nil, SW_SHOWNORMAL);
+end;
+
+// Файлы рабочей папки ASrcDir, которых нет в git (неотслеживаемые и
+// игнорируемые; git ls-files -o), - в ADstDir по тем же путям. Файл,
+// который в ADstDir уже есть (из коммита), не перезаписывается.
+// Результат - сколько скопировано, -1 - git не ответил или прервано (Esc)
+function TForm1.GitCopyUntracked(const ASrcDir, ADstDir: string): Integer;
+var
+  Output, RelPath, SrcPath, DstPath: WideString;
+  StartIdx, CharIdx, FileCount, FailCount, SeenCount: Integer;
+
+  procedure MakeDirFor(const AFile: WideString);
+  var
+    DirPath: WideString;
+    SlashIdx: Integer;
+  begin
+    // Все папки пути по очереди; уже существующие CreateDirectoryW
+    // пропускает с ошибкой, её не смотрим
+    DirPath := AFile;
+    SlashIdx := Length(DirPath);
+    while (SlashIdx > 0) and (DirPath[SlashIdx] <> '\') do
+      Dec(SlashIdx);
+    SetLength(DirPath, SlashIdx - 1);
+    for SlashIdx := Length(WideString(ADstDir)) + 2 to Length(DirPath) do
+      if DirPath[SlashIdx] = '\' then
+        CreateDirectoryW(PWideChar(Copy(DirPath, 1, SlashIdx - 1)), nil);
+    CreateDirectoryW(PWideChar(DirPath), nil);
+  end;
+
+begin
+  Result := -1;
+  if GitRunIn(FGitHistGit, ASrcDir, 'ls-files -o -z', False, Output) <> 0 then
+  begin
+    LogGit('git ls-files -o: ошибка - файлы вне git не скопированы', clRed);
+    Exit;
+  end;
+  FileCount := 0;
+  FailCount := 0;
+  SeenCount := 0;
+  FGitCancel := False;
+  BusyBegin('Копия: файлы вне git (Esc - прервать)');
+  try
+    StartIdx := 1;
+    for CharIdx := 1 to Length(Output) + 1 do
+      if (CharIdx > Length(Output)) or (Output[CharIdx] = #0) then
+      begin
+        RelPath := Copy(Output, StartIdx, CharIdx - StartIdx);
+        StartIdx := CharIdx + 1;
+        // Пусто или вложенный репозиторий ('папка/') - пропустить
+        if (RelPath = '') or (RelPath[Length(RelPath)] = '/') then
+          Continue;
+        RelPath := GitWinPath(RelPath);
+        SrcPath := WideString(ASrcDir) + '\' + RelPath;
+        DstPath := WideString(ADstDir) + '\' + RelPath;
+        MakeDirFor(DstPath);
+        if CopyFileW(PWideChar(SrcPath), PWideChar(DstPath), True) then
+          Inc(FileCount)
+        else if GetFileAttributesW(PWideChar(DstPath)) = $FFFFFFFF then
+        begin
+          Inc(FailCount);
+          if FailCount <= 20 then
+            LogGit('  не скопирован: ' + string(RelPath), clRed);
+        end;
+        Inc(SeenCount);
+        if SeenCount mod 200 = 0 then
+          if not GitOnIdle then
+          begin
+            LogGit('Копирование прервано (Esc), скопировано файлов: ' +
+              IntToStr(FileCount), clRed);
+            Exit;
+          end;
+      end;
+  finally
+    BusyEnd('Копия: файлов вне git ' + IntToStr(FileCount), FailCount = 0);
+  end;
+  if FailCount > 0 then
+    LogGit('Не скопировано файлов: ' + IntToStr(FailCount), clRed);
+  Result := FileCount;
 end;
 
 // Отменить изменения файлов AChanges, как Discard в GitHub Desktop:
@@ -74491,7 +75278,7 @@ begin
     FCiUnitCache := TStringList.Create;
   WinIdx := IndexOfWindowByFile(AFile);
   if WinIdx >= 0 then
-    Key := 'w' + IntToHex(Crc32Of(FWindows[WinIdx].Text), 8)
+    Key := 'w' + IntToHex(Crc32Of(WinText(WinIdx)), 8)
   else
     Key := 'f' + IntToStr(FileAge(AFile));
   CacheIdx := FCiUnitCache.IndexOf(LowerCase(AFile));
@@ -74509,7 +75296,7 @@ begin
     try
       try
         if WinIdx >= 0 then
-          UnitSrc.Text := FWindows[WinIdx].Text
+          UnitSrc.Text := WinText(WinIdx)
         else
           UnitSrc.LoadFromFile(AFile);
         CiScanPascal(UnitSrc, True, Entry.Syms);
@@ -75283,6 +76070,8 @@ begin
     WM_KEYDOWN:
     begin
       SymHintHide;
+      if not GetCursorPos(FSymHintKeyPt) then
+        FSymHintKeyPt := Point(-1, -1);
       CtrlDown := GetKeyState(VK_CONTROL) < 0;
       ShiftDown := GetKeyState(VK_SHIFT) < 0;
       if (Message.WParam = VK_SPACE) and CtrlDown then
@@ -75453,6 +76242,7 @@ end;
 
 procedure TForm1.SymHintSetup;
 begin
+  FSymHintKeyPt := Point(-1, -1);
   if FEdIns.TooltipSymbol then
   begin
     if FSymHintTimer = nil then
@@ -75503,6 +76293,12 @@ begin
     FSymHintPt := Point(-1, -1);
     Exit;
   end;
+  // После нажатия клавиши - только когда мышь сдвинется: иначе
+  // подсказка над тем же словом всплывала бы после каждой клавиши, и
+  // каждый раз заново искалось бы объявление
+  if (CursorPt.X = FSymHintKeyPt.X) and (CursorPt.Y = FSymHintKeyPt.Y) then
+    Exit;
+  FSymHintKeyPt := Point(-1, -1);
   ClientPt := RichEdit1.ScreenToClient(CursorPt);
   CharPos := DbgCharAtClient(ClientPt);
   WordText := CiWordAt(CharPos, LineIdx);
@@ -76878,17 +77674,11 @@ end;
 // Щелчок по строке "Лог сохранён: путь" - путь в буфер обмена
 procedure TForm1.LogEditClick(Sender: TObject);
 var
-  LineIdx, TextStart: Integer;
+  TextStart: Integer;
   LineText, FilePath: string;
-  LogBox: TRichEdit;
 begin
-  if not (Sender is TRichEdit) then
+  if not LogClickLine(Sender, LineText) then
     Exit;
-  LogBox := TRichEdit(Sender);
-  LineIdx := SendMessageA(LogBox.Handle, EM_LINEFROMCHAR, LogBox.SelStart, 0);
-  if (LineIdx < 0) or (LineIdx >= LogBox.Lines.Count) then
-    Exit;
-  LineText := LogBox.Lines[LineIdx];
   // Время в начале строки - отрезаем, как в LogEditDblClick
   TextStart := Pos('  ', LineText);
   if (TextStart > 0) and (TextStart <= 10) then
@@ -76904,25 +77694,21 @@ end;
 
 procedure TForm1.LogEditDblClick(Sender: TObject);
 var
-  LineIdx, Start: Integer;
+  Start: Integer;
   S, FName, Full, Where: string;
   ErrLine, K: Integer;
-  E: TRichEdit;
   W: TStringList;
 begin
-  // Строку берём у того окна, по которому щёлкнули: обработчик висит на
-  // окне компиляции, но привязка к конкретному полю тут не нужна
-  if Sender is TRichEdit then
-    E := TRichEdit(Sender)
-  else
-    E := CompLogEdit;
-  if E = nil then
+  // Строку берём у того окна, по которому щёлкнули (TRichEdit или окно
+  // своего редактора): обработчик висит на окне компиляции, но привязка к
+  // конкретному полю тут не нужна
+  if (Sender is TRichEdit) or (Sender is TEdLogView) then
+  begin
+    if not LogClickLine(Sender, S) then
+      Exit;
+  end
+  else if not LogClickLine(CompLogEdit, S) then
     Exit;
-
-  LineIdx := SendMessageA(E.Handle, EM_LINEFROMCHAR, E.SelStart, 0);
-  if (LineIdx < 0) or (LineIdx >= E.Lines.Count) then
-    Exit;
-  S := E.Lines[LineIdx];
 
   // В начале строки лога стоит время - отрезаем его
   Start := Pos('  ', S);
@@ -77252,6 +78038,17 @@ begin
   LogTo(LogEdit, S);
 end;
 
+// Строка HiLite log о своём редакторе (план портирования, 0.7.4 и дальше:
+// EdRichEmu, EdEmuStart) - синим, чтобы отличалась от остальной
+// диагностики. На тёмном фоне лога синий светлее (UiLogColor)
+procedure TForm1.LogOwnEd(const S: string);
+begin
+  if S = FLastDiag then
+    Exit;
+  FLastDiag := S;
+  LogTo(LogEdit, S, clBlue);
+end;
+
 // Дописывание строки в любое из окон лога: время, текст, обрезка старого.
 //
 // Окно ограничено LogMaxLines строками: при превышении срезается старое.
@@ -77309,6 +78106,7 @@ var
   Cut, Len, K: Integer;
   H: HWND;
   Fmt: TCharFormat2;
+  View: TEdLogView;
 begin
   if (AEdit = nil) or (AEdit.Parent = nil) or
      (csDestroying in ComponentState) then
@@ -77364,6 +78162,25 @@ begin
 
   SendMessageA(H, EM_REPLACESEL, 0, Integer(PChar(Line)));
   SendMessageA(H, EM_SCROLLCARET, 0, 0);
+
+  // То же - в окно лога на своём редакторе: строк столько же, срез начала -
+  // тот же, цвет - тот же (на тёмном фоне - светлее)
+  View := LogViewOf(AEdit);
+  if View <> nil then
+  begin
+    if View.LogCount > LogMaxLines then
+      View.DeleteFirst(LogCutLines);
+    if ABare then
+      Line := Txt
+    else
+      Line := FormatDateTime('hh:nn:ss', Now) + '  ' + Txt;
+    if (AColor = clNone) and not UiLogIsDark(AEdit) then
+      View.AddLine(WideString(Line), clNone)
+    else
+      View.AddLine(WideString(Line), UiLogColor(AEdit, AColor));
+    if View.Visible then
+      LogViewSync(AEdit);
+  end;
   // Прокрутка к последней строке. EM_SCROLLCARET привязан к каретке, а она
   // у окна лога без фокуса (фокус в редакторе) - одной его мало. SB_BOTTOM
   // от каретки и фокуса не зависит.
@@ -77995,7 +78812,7 @@ begin
     // В родном режиме фон стирает сам контрол - иначе останется мусор
     if NativePaintMode then
     begin
-      OldRichEditProc(Message);
+      DefEditProc(Message);
       Exit;
     end;
 
@@ -78010,7 +78827,7 @@ begin
     if NativePaintMode then
     begin
       // Рисует сам RichEdit. Номера строк всё равно наши, их обновляем сами
-      OldRichEditProc(Message);
+      DefEditProc(Message);
       UpdateLineNumbers;
       Exit;
     end;
@@ -78043,7 +78860,7 @@ begin
       ObjLinesLocked(Message);
       FDbgPreValid := False;
     end;
-    OldRichEditProc(Message);
+    DefEditProc(Message);
     Exit;
   end;
 
@@ -78299,7 +79116,7 @@ begin
     HideOwnCaret;
 
   PerfT := PerfNow;
-  OldRichEditProc(Message);
+  DefEditProc(Message);
 
   // Наша работа по EN_CHANGE идёт ВНУТРИ этого вызова - вычитаем её,
   // чтобы в FPerfCtl осталось чистое время самого контрола
@@ -78419,6 +79236,123 @@ begin
   begin
     FCachePreValid := False;
     FObjPreValid := False;
+  end;
+end;
+
+// Начало строчного комментария в строке ALineStr (с 1; 0 - нет). Кавычки
+// и блочные комментарии пропускаются - как FindLineCommentFrom(1) в
+// HighlightVisibleText
+function TForm1.LineCommentStart(const ALineStr: string; ALineLen,
+  ALineStart: Integer): Integer;
+var
+  FI: Integer;
+begin
+  Result := 0;
+  if FScheme.FLineCommentMarker = '' then
+    Exit;
+  FI := 1;
+  while FI <= ALineLen - Length(FScheme.FLineCommentMarker) + 1 do
+  begin
+    if (ALineStr[FI] = FScheme.FLineCommentMarker[1]) and
+       (Copy(ALineStr, FI, Length(FScheme.FLineCommentMarker)) =
+        FScheme.FLineCommentMarker) and
+       FScheme.LineCommentPosOk(ALineStr, FI) then
+      if not InRanges(StringRanges, ALineStart + FI - 1) and
+         not InRanges(CommentRanges, ALineStart + FI - 1) then
+      begin
+        Result := FI;
+        Exit;
+      end;
+    Inc(FI);
+  end;
+end;
+
+// Группа отметки (LineMark) строки ALineStr (сквозной индекс её начала -
+// ALineStart); -1 - слов отметки нет. Идентификаторы по порядку, как у
+// ключевых слов, поэтому побеждает самое левое слово; при равенстве -
+// группа, которая выше в файле схемы. HighlightVisibleText (редактор) и
+// вторая панель (SplitRowStyle)
+function TForm1.LineMarkGroupOf(const ALineStr: string; ALineLen,
+  ALineStart: Integer): Integer;
+var
+  MI, MEnd, CmtPos, G, W, P, L, Best: Integer;
+  Ident, Pat: string;
+begin
+  Result := -1;
+  if Length(FScheme.MarkGroups) = 0 then
+    Exit;
+
+  CmtPos := LineCommentStart(ALineStr, ALineLen, ALineStart);
+  if CmtPos <= 0 then
+    CmtPos := ALineLen + 1;
+  Best := MaxInt;
+
+  // ОДНОСЛОВНЫЕ ОБРАЗЦЫ: идентификаторы строки по порядку, поиск в списке.
+  // Идут слева направо, поэтому первое попадание - самое левое.
+  MI := 1;
+  while MI < CmtPos do
+  begin
+    if ALineStr[MI] in ['a'..'z', 'A'..'Z', '_'] then
+    begin
+      MEnd := MI;
+      while (MEnd <= ALineLen) and
+            (ALineStr[MEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+        Inc(MEnd);
+      Ident := Copy(ALineStr, MI, MEnd - MI);
+      if not InRanges(StringRanges, ALineStart + MI - 1) and
+         not InRanges(CommentRanges, ALineStart + MI - 1) then
+        for G := 0 to High(FScheme.MarkGroups) do
+          if (FScheme.MarkGroups[G].Words <> nil) and
+             (FScheme.MarkGroups[G].Words.IndexOf(Ident) >= 0) then
+          begin
+            Best := MI;
+            Result := G;
+            Break;
+          end;
+      if Best < MaxInt then
+        Break;
+      MI := MEnd;
+    end
+    else
+      Inc(MI);
+  end;
+
+  // ОБРАЗЦЫ С ПРОБЕЛОМ ("end sub", "sub "): по идентификаторам их не
+  // найти, ищем подстрокой, без учёта регистра. Граница слова проверяется
+  // только у того края, который сам буквенный: у образца 'sub ' правый
+  // край - пробел, и следом за ним имя подпрограммы - совпадение.
+  // Побеждает всё равно самое левое совпадение, поэтому просмотр идёт
+  // только левее уже найденного.
+  for G := 0 to High(FScheme.MarkGroups) do
+  begin
+    if FScheme.MarkGroups[G].Words = nil then
+      Continue;
+    for W := 0 to FScheme.MarkGroups[G].Words.Count - 1 do
+    begin
+      Pat := FScheme.MarkGroups[G].Words[W];
+      L := Length(Pat);
+      if (L = 0) or (Pos(' ', Pat) = 0) then
+        Continue;
+      for P := 1 to CmtPos - L do
+      begin
+        if P >= Best then
+          Break;
+        if (AnsiStrLIComp(PChar(@ALineStr[P]), PChar(Pat), L) = 0) and
+           (not (Pat[1] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
+            (P = 1) or
+            not (ALineStr[P - 1] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
+           (not (Pat[L] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
+            (P + L > ALineLen) or
+            not (ALineStr[P + L] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
+           not InRanges(StringRanges, ALineStart + P - 1) and
+           not InRanges(CommentRanges, ALineStart + P - 1) then
+        begin
+          Best := P;
+          Result := G;
+          Break;
+        end;
+      end;
+    end;
   end;
 end;
 
@@ -79076,86 +80010,8 @@ var
 // Идентификаторы по порядку, как у ключевых слов, поэтому побеждает самое
 // левое слово; при равенстве - группа, которая выше в файле схемы.
   function LineMarkGroup: Integer;
-  var
-    MI, MEnd, CmtPos, G, W, P, L, Best: Integer;
-    Ident, Pat: string;
   begin
-    Result := -1;
-    if Length(FScheme.MarkGroups) = 0 then
-      Exit;
-
-    CmtPos := FindLineCommentFrom(1);
-    if CmtPos <= 0 then
-      CmtPos := LineLen + 1;
-    Best := MaxInt;
-
-    // ОДНОСЛОВНЫЕ ОБРАЗЦЫ: идентификаторы строки по порядку, поиск в списке.
-    // Идут слева направо, поэтому первое попадание - самое левое.
-    MI := 1;
-    while MI < CmtPos do
-    begin
-      if LineStr[MI] in ['a'..'z', 'A'..'Z', '_'] then
-      begin
-        MEnd := MI;
-        while (MEnd <= LineLen) and
-              (LineStr[MEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
-          Inc(MEnd);
-        Ident := Copy(LineStr, MI, MEnd - MI);
-        if not IsCharInString(LineStartCharIdx + MI - 1) and
-           not IsCharInBlockComment(LineStartCharIdx + MI - 1) then
-          for G := 0 to High(FScheme.MarkGroups) do
-            if (FScheme.MarkGroups[G].Words <> nil) and
-               (FScheme.MarkGroups[G].Words.IndexOf(Ident) >= 0) then
-            begin
-              Best := MI;
-              Result := G;
-              Break;
-            end;
-        if Best < MaxInt then
-          Break;
-        MI := MEnd;
-      end
-      else
-        Inc(MI);
-    end;
-
-    // ОБРАЗЦЫ С ПРОБЕЛОМ ("end sub", "sub "): по идентификаторам их не
-    // найти, ищем подстрокой, без учёта регистра. Граница слова проверяется
-    // только у того края, который сам буквенный: у образца 'sub ' правый
-    // край - пробел, и следом за ним имя подпрограммы - совпадение.
-    // Побеждает всё равно самое левое совпадение, поэтому просмотр идёт
-    // только левее уже найденного.
-    for G := 0 to High(FScheme.MarkGroups) do
-    begin
-      if FScheme.MarkGroups[G].Words = nil then
-        Continue;
-      for W := 0 to FScheme.MarkGroups[G].Words.Count - 1 do
-      begin
-        Pat := FScheme.MarkGroups[G].Words[W];
-        L := Length(Pat);
-        if (L = 0) or (Pos(' ', Pat) = 0) then
-          Continue;
-        for P := 1 to CmtPos - L do
-        begin
-          if P >= Best then
-            Break;
-          if (AnsiStrLIComp(PChar(@LineStr[P]), PChar(Pat), L) = 0) and
-             (not (Pat[1] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
-              (P = 1) or
-              not (LineStr[P - 1] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
-             (not (Pat[L] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
-              (P + L > LineLen) or
-              not (LineStr[P + L] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
-             not IsCharInString(LineStartCharIdx + P - 1) and
-             not IsCharInBlockComment(LineStartCharIdx + P - 1) then
-          begin
-            Best := P;
-            Result := G;
-            Break;
-          end;
-        end;
-      end;
-    end;
+    Result := LineMarkGroupOf(LineStr, LineLen, LineStartCharIdx);
   end;
 
 // Окно длинной строки целиком внутри строчного комментария, начатого
@@ -79513,6 +80369,9 @@ begin
     end;
     if CharW < 1 then
       CharW := 1;
+    // Свой редактор: места символов - по тем же ячейкам, что и отрисовка
+    if FEdEmu <> nil then
+      FEdEmu.SetMetrics(LineHeight, CharW, FTabChars);
 
     // Направляющие выделяют блоки: в языке без слов блоков и без тегов
     // (журналы, текст - схемы .log, .txt) их нет и рисовать нечего. И
@@ -79537,6 +80396,11 @@ begin
     SetLength(FGuideMarks, 0);
 
     UpdateVisibleBounds;
+
+    // Вторая панель с синхронной прокруткой - на ту же первую строку
+    SplitSyncFromEditor;
+    // Отметки строк и направляющие второй панели - по новым данным
+    SplitDecoCheck;
 
     // Отметки Format text - снять, если номера строк уже не те
     FmtSuspectCheck;
@@ -80015,6 +80879,8 @@ begin
   // Сабклассинг RichEdit
   OldRichEditProc := RichEdit1.WindowProc;
   RichEdit1.WindowProc := NewRichEditProc;
+  // Свой редактор вместо RichEdit - если включён в IDE Options
+  EdEmuStart;
 
   // Динамически подключаем событие изменений
   RichEdit1.OnChange := RichEdit1Change;
@@ -81172,6 +82038,8 @@ begin
   finally
     NewFont.Free;
   end;
+  // Окна логов своего редактора - размером шрифта логов
+  LogViewsSyncAll;
 end;
 
 // Шрифт "окна и панели" (Font.Windows) - окну AForm. Меняются само окно и
@@ -81573,7 +82441,9 @@ begin
     if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
     begin
       FWindows[FWindowsIndex].FileName := FCurrentFileName;
-      FWindows[FWindowsIndex].Text := GetEditorText;
+      // Свой редактор: текст и так в буфере вкладки (и откат цел)
+      if FEdEmu = nil then
+        SetWinText(FWindowsIndex, GetEditorText);
       FWindows[FWindowsIndex].Modified := False;
       RebuildWindowsMenu;
     end;
@@ -84097,12 +84967,15 @@ end;
 //  редактора становится текстом второй панели на том же месте прокрутки.
 //
 //  Если во второй панели та же вкладка, что в редакторе, она обновляется
-//  после паузы в наборе (SplitTimerTick); текст с подсветкой больше
-//  SplitLiveLimit символов - только при смене панелей и выборе вкладки.
+//  после паузы в наборе (SplitTimerTick); текст больше SplitLiveLimit
+//  символов - только при смене панелей и выборе вкладки. С окном TEdView
+//  (шаг 0.7.5) обновление - копия текста, без построения RTF, поэтому
+//  предел выше прежнего (был 1 000 000 - для RTF). При своём редакторе
+//  та же вкладка обновлений не ждёт - буфер общий.
 // ---------------------------------------------------------------------------
 
 const
-  SplitLiveLimit = 1000000;
+  SplitLiveLimit = 8000000;
 
 function TForm1.SplitWinValid(AWinIdx: Integer): Boolean;
 begin
@@ -84116,7 +84989,7 @@ begin
   if AWinIdx = FWindowsIndex then
     Result := GetEditorText
   else
-    Result := FWindows[AWinIdx].Text;
+    Result := WinText(AWinIdx);
 end;
 
 function TForm1.SplitWinModified(AWinIdx: Integer): Boolean;
@@ -84165,6 +85038,12 @@ begin
   FSplit.OnTitleClick := SplitTitleClick;
   FSplit.OnFmtClick := SplitFmtClick;
   FSplit.OnCloseClick := SplitCloseClick;
+  FSplit.OnTextScroll := SplitTextScroll;
+  FSplit.OnRowStyle := SplitRowStyle;
+  FSplit.OnRowPaint := SplitRowPaint;
+  FSplit.Header.OnSyncClick := SplitSyncClick;
+  FSplitSync := True;
+  FSplitSyncTop := -1;
   FSplit.Web.OnOpenFile := FmtOpenFromView;
   FSplit.Web.OnLog := FmtLog;
   FSplit.Fmt.OnLog := FmtLog;
@@ -84254,9 +85133,9 @@ end;
 procedure TForm1.SplitRefresh(ATopLine: Integer);
 var
   Kind: TFmtKind;
-  FileName, Utf8Text, Rtf, ErrText: string;
+  FileName, Utf8Text, ErrText: string;
   Scheme: TClrScheme;
-  Shown, FromDisk: Boolean;
+  Shown, FromDisk, Shared: Boolean;
   TopLine: Integer;
 begin
   if (FSplit = nil) or not FSplit.Shown then
@@ -84282,6 +85161,8 @@ begin
     StringReplace(FileName, '/', '\', [rfReplaceAll]) + #13#10 +
     'Щелчок по тексту - править здесь; по заголовку - другая вкладка',
     Kind <> fkNone, FSplitFmt);
+  // Кнопка Sync - только у текста в окне TEdView (ниже, при своём редакторе)
+  FSplit.Header.SetSync(False, FSplitSync);
   SplitUpdateHeaders;
 
   if FSplitFmt then
@@ -84334,23 +85215,43 @@ begin
   // схема редактора остаётся схемой его вкладки
   if ATopLine >= 0 then
     TopLine := ATopLine
-  else if FSplit.View = svText then
+  else if (FSplit.View = svText) or (FSplit.View = svEdText) then
     TopLine := FSplit.TextTopLine
   else
     TopLine := 0;
-  Scheme := SchemeCopyFor(FileName);
-  if Scheme = nil then
+
+  // Текст - в окне TEdView с номерами строк и своими полосами (шаг 0.7.5;
+  // прежний RTF в окне RichEdit был медленным на больших файлах и с
+  // полосами Windows). Свой редактор и та же вкладка - тот же буфер:
+  // правки видны сразу, обновлять по таймеру нечего. RichEdit или другая
+  // вкладка - копия текста; та же вкладка при RichEdit обновляется после
+  // паузы в наборе (SplitTimerTick)
   begin
-    FSplit.ShowNotice('Схема подсветки для ' + TabFileName(FileName) +
-                      ' не прочиталась.');
-    Exit;
-  end;
-  try
-    Rtf := SchemeTextToRtf(AdjustLineBreaks(SplitWinText(FSplitWin)), Scheme,
-                           RichEdit1.Font.Name, RichEdit1.Font.Size);
-    FSplit.ShowText(Rtf, FileName, SchemePageColor(Scheme), TopLine);
-  finally
-    Scheme.Free;
+    // Заново и для того же буфера: схема и цвета могли смениться (тема);
+    // подсветка разбирает текст лениво, по видимым строкам
+    Shared := (FEdEmu <> nil) and (FSplitWin = FWindowsIndex) and
+              not FSplitNoShare;
+    // Синхронная прокрутка - с той же строки, что в редакторе
+    if FSplitSync and RichEdit1.HandleAllocated then
+      TopLine := EdApi.FirstVisibleLine;
+    FSplit.SetEdLook(RichEdit1.Font, FTabChars, FGutterBG, FGutterFG,
+      UiColor('Gutter.CurBG'), UiColor('Gutter.CurText'),
+      UiColor('Editor.SelBG'), UiColor('Editor.SelText'));
+    Scheme := SchemeCopyFor(FileName);
+    // Показ прокручивает окно панели - это не прокрутка пользователем
+    FSplitSyncBusy := True;
+    try
+      if Shared then
+        FSplit.ShowEdText(FEdEmu.Buffer, '', Scheme, TopLine)
+      else
+        FSplit.ShowEdText(nil, WideString(SplitWinText(FSplitWin)), Scheme,
+          TopLine);
+    finally
+      FSplitSyncBusy := False;
+    end;
+    FSplitSyncTop := TopLine;
+    FSplit.Header.SetSync(True, FSplitSync);
+    SplitUpdateHeaders;
   end;
 end;
 
@@ -84365,6 +85266,14 @@ begin
   end;
   if (FSplitWin <> FWindowsIndex) or (FEditSerial = FSplitSerial) then
     Exit;
+  // Свой редактор, та же вкладка: панель показывает его буфер - правки
+  // в ней уже есть
+  if (FEdEmu <> nil) and (FSplit.SharedBuffer = FEdEmu.Buffer) and
+     (FSplit.View = svEdText) then
+  begin
+    FSplitSerial := FEditSerial;
+    Exit;
+  end;
   if FEditSerial <> FSplitTickSerial then
   begin
     FSplitTickSerial := FEditSerial;   // ещё набирают - подождать
@@ -84515,7 +85424,8 @@ end;
 procedure TForm1.SplitUpdateHeaders;
 var
   EditKind: TFmtKind;
-  ActiveBack, IdleBack, TextColor: TColor;
+  ActiveBack, IdleBack, TextColor, EditIdle, SplitIdle, EditIdleText,
+  SplitIdleText: TColor;
   EditFile: string;
 begin
   if (FSplit = nil) or (FEditHeader = nil) or not FSplit.Shown then
@@ -84535,16 +85445,320 @@ begin
   ActiveBack := UiColor('Tabs.ActiveBG');
   IdleBack := UiColor('Tabs.InactiveBG');
   TextColor := UiColor('Tabs.Text');
+  // Свой редактор: панель, где он работает, - оранжевым, когда не активна
+  // (активная - цветом активной вкладки, как всегда), и с подписью
+  EditIdle := IdleBack;
+  SplitIdle := IdleBack;
+  EditIdleText := TextColor;
+  SplitIdleText := TextColor;
+  if FEdEmu <> nil then
+  begin
+    EditIdle := UiColor('Pane.OwnEdBG');
+    EditIdleText := UiColor('Pane.OwnEdText');
+    FEditHeader.SetTitleMark('   [свой редактор]');
+  end
+  else
+    FEditHeader.SetTitleMark('');
+  if SplitOwnEdText then
+  begin
+    SplitIdle := UiColor('Pane.OwnEdBG');
+    SplitIdleText := UiColor('Pane.OwnEdText');
+    if FEdEmu <> nil then
+      FSplit.Header.SetTitleMark('   [свой редактор, EdView]')
+    else
+      FSplit.Header.SetTitleMark('   [EdView]');
+  end
+  else
+    FSplit.Header.SetTitleMark('');
   if FSplitActive then
   begin
     FSplit.Header.SetColors(ActiveBack, TextColor);
-    FEditHeader.SetColors(IdleBack, TextColor);
+    FEditHeader.SetColors(EditIdle, EditIdleText);
   end
   else
   begin
-    FSplit.Header.SetColors(IdleBack, TextColor);
+    FSplit.Header.SetColors(SplitIdle, SplitIdleText);
     FEditHeader.SetColors(ActiveBack, TextColor);
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Вторая панель (окно TEdView), та же вкладка, что в редакторе: отметки
+//  строк (заголовки подпрограмм, LineMark, Format text, отладка) и
+//  направляющие отступов - по тем же данным, что у редактора
+//  (HighlightVisibleText): карты CommentRanges / StringRanges, FLineDepth,
+//  FLineTick, схема вкладки. У другой вкладки этих данных нет - там только
+//  раскраска по схеме.
+// ---------------------------------------------------------------------------
+
+// Цвета отметки строки ALine (ALineStr - её текст в кодировке Windows,
+// ALineStart - сквозной индекс начала); False - строка не отмечена.
+// Порядок - как в HighlightVisibleText: заголовок тела, LineMark, Format
+// text, отладка
+function TForm1.LineMarkColors(ALine: Integer; const ALineStr: string;
+  ALineStart: Integer; out AFore, ABack: TColor): Boolean;
+var
+  IsBody: Boolean;
+  MarkGroup, DbgKind: Integer;
+begin
+  AFore := clNone;
+  ABack := clNone;
+  Result := False;
+  if (FScheme = nil) or (ALineStr = '') then
+    Exit;
+  IsBody := (ALine = FFoundLine) or IsSubBeginLine(ALine);
+  MarkGroup := -1;
+  if not IsBody and FUseSyntaxHighlight then
+    MarkGroup := LineMarkGroupOf(ALineStr, Length(ALineStr), ALineStart);
+  Result := IsBody or (MarkGroup >= 0);
+  ABack := clYellow;
+  if IsBody then
+  begin
+    if FScheme.FSubBodyHasColors then
+    begin
+      AFore := FScheme.FSubBodyFG;
+      ABack := FScheme.FSubBodyBG;
+    end
+    else if Length(FScheme.MarkGroups) > 0 then
+    begin
+      AFore := FScheme.MarkGroups[0].FgColor;
+      ABack := FScheme.MarkGroups[0].BgColor;
+    end;
+  end
+  else if (MarkGroup >= 0) and (MarkGroup <= High(FScheme.MarkGroups)) then
+  begin
+    AFore := FScheme.MarkGroups[MarkGroup].FgColor;
+    ABack := FScheme.MarkGroups[MarkGroup].BgColor;
+  end;
+  if (Length(FFmtSusLine) > 0) and FmtSuspectAt(ALine) then
+  begin
+    Result := True;
+    ABack := UiColor('Format.SuspectBG');
+    AFore := UiColor('Format.SuspectText');
+  end;
+  DbgKind := DbgLineKind(ALine);
+  if DbgKind > 0 then
+  begin
+    Result := True;
+    case DbgKind of
+      1:
+      begin
+        ABack := UiColor('Debug.BreakBG');
+        AFore := UiColor('Debug.BreakText');
+      end;
+      2:
+      begin
+        ABack := UiColor('Debug.NoCodeBG');
+        AFore := UiColor('Debug.BreakText');
+      end;
+    else
+      ABack := UiColor('Debug.ExecBG');
+      AFore := UiColor('Debug.ExecText');
+    end;
+  end;
+  if not Result then
+  begin
+    AFore := clNone;
+    ABack := clNone;
+  end;
+end;
+
+// Во второй панели буфер своего редактора - данные редактора к ней подходят
+function TForm1.SplitDecoOn: Boolean;
+begin
+  // Та же вкладка: общий буфер своего редактора или копия текста, снятая
+  // после последней правки (FSplitSerial) - номера строк и индексы те же
+  Result := SplitOwnEdText and (FScheme <> nil) and
+            (FSplitWin = FWindowsIndex) and (FSplit.EdView <> nil) and
+            (FSplit.EdView.Buffer <> nil) and
+            (((FEdEmu <> nil) and (FSplit.SharedBuffer = FEdEmu.Buffer)) or
+             (FSplitSerial = FEditSerial));
+end;
+
+procedure TForm1.SplitRowStyle(Sender: TObject; ARow: Integer;
+  var ABack, AFore: TColor);
+var
+  MarkFore, MarkBack: TColor;
+  PaneBuf: TEdBuffer;
+begin
+  if not SplitDecoOn then
+    Exit;
+  PaneBuf := FSplit.EdView.Buffer;
+  if (ARow < 0) or (ARow >= PaneBuf.Count) then
+    Exit;
+  if LineMarkColors(ARow, EdAnsiLine(PaneBuf[ARow]),
+    PaneBuf.CharIndex(ARow, 0), MarkFore, MarkBack) then
+  begin
+    ABack := MarkBack;
+    AFore := MarkFore;
+  end;
+end;
+
+// Направляющие отступов строки ARow - как DrawTabGuides в
+// HighlightVisibleText: число полос - по FLineDepth, колонки - по ведущим
+// пробелам и табуляциям строки; ячейки окна - моноширинные (CharW)
+procedure TForm1.SplitRowPaint(Sender: TObject; ACanvas: TCanvas;
+  ARow, ATextX, AY: Integer);
+const
+  MaxBars = 64;
+var
+  View: TEdView;
+  Line: WideString;
+  LineLen, LineStart, GStep, GCell, GRun, GStart, GIdx, NCols, FirstCol,
+  BarCount, Level, Col, GX1, GW, GT, CharW, LineH: Integer;
+  Cols: array[0..MaxBars - 1] of Integer;
+begin
+  if not FUseHotTab or (FIndentKind = IndentNone) or not SplitDecoOn then
+    Exit;
+  if not SchemeHasBlocks or
+     ((FWindowsIndex >= 0) and (FWindowsIndex < WindowsItemCount) and
+      FWindows[FWindowsIndex].NoGuides) then
+    Exit;
+  View := TEdView(Sender);
+  if (View.Buffer = nil) or (ARow < 0) or (ARow >= View.Buffer.Count) then
+    Exit;
+  CharW := View.CharW;
+  LineH := View.LineH;
+  Line := View.Buffer[ARow];
+  LineLen := Length(Line);
+  LineStart := View.Buffer.CharIndex(ARow, 0);
+  GStep := FIndentSize;
+  if GStep < 1 then
+    GStep := 2;
+  if FIndentKind = IndentTabs then
+    GCell := FTabChars
+  else
+    GCell := 1;
+  if GCell < 1 then
+    GCell := 1;
+
+  NCols := 0;
+  GRun := 0;
+  GStart := 1;
+  GIdx := 1;
+  while (GIdx <= LineLen) and ((Line[GIdx] = #9) or (Line[GIdx] = ' ')) do
+  begin
+    if GRun = 0 then
+      GStart := GIdx;
+    Inc(GRun);
+    if GRun >= GStep then
+    begin
+      if NCols < MaxBars then
+      begin
+        Cols[NCols] := GStart - 1;
+        Inc(NCols);
+      end;
+      GRun := 0;
+    end;
+    Inc(GIdx);
+  end;
+  FirstCol := GIdx - 1;
+  if InRanges(CommentRanges, LineStart) or InRanges(StringRanges, LineStart) then
+    NCols := 0;
+
+  if ARow <= High(FLineDepth) then
+    BarCount := FLineDepth[ARow]
+  else
+    BarCount := NCols;
+  if BarCount > MaxBars then
+    BarCount := MaxBars;
+
+  GW := FHotTabBarWidth;
+  if (GW <= 0) or (GW > CharW) then
+    GW := CharW;
+  for Level := 0 to BarCount - 1 do
+  begin
+    if Level < NCols then
+      Col := Cols[Level]
+    else if NCols > 0 then
+      Col := Cols[NCols - 1] + (Level - NCols + 1) * GStep
+    else
+      Col := Level * GStep;
+    if (FirstCol < LineLen) and (Col >= FirstCol) then
+      Break;
+    if (LineLen > 0) and (Col <= LineLen) then
+      GX1 := ATextX + View.ScreenCol(ARow, Col) * CharW
+    else
+      GX1 := ATextX + Col * GCell * CharW;
+    if GX1 < View.GutterWidth then
+      Continue;
+    ACanvas.Brush.Style := bsSolid;
+    ACanvas.Brush.Color := PaleColor(FHotTabColors[Level mod HotTabLevels]);
+    ACanvas.FillRect(Rect(GX1, AY, GX1 + GW, AY + LineH));
+    // Последняя строка раздела объявлений - уголок, как у редактора
+    if (ARow <= High(FLineTick)) and (FLineTick[ARow] = Level + 1) then
+    begin
+      GT := GW;
+      if GT > 2 then
+        GT := 2;
+      ACanvas.FillRect(Rect(GX1, AY + LineH - GT, GX1 + CharW, AY + LineH));
+    end;
+  end;
+end;
+
+// Данные редактора для второй панели сменились (карта пересобрана,
+// переход к строке, вложенность) - перерисовать её. Из HighlightVisibleText
+procedure TForm1.SplitDecoCheck;
+begin
+  if not SplitDecoOn or (FSplit.EdView = nil) then
+    Exit;
+  if (FSplitDecoMapVer = FMapVer) and (FSplitDecoFound = FFoundLine) and
+     (FSplitDecoDepth = Length(FLineDepth)) then
+    Exit;
+  FSplitDecoMapVer := FMapVer;
+  FSplitDecoFound := FFoundLine;
+  FSplitDecoDepth := Length(FLineDepth);
+  FSplit.EdView.Invalidate;
+end;
+
+// Во второй панели - текст в окне TEdView (свой редактор)
+function TForm1.SplitOwnEdText: Boolean;
+begin
+  Result := (FSplit <> nil) and FSplit.Shown and (FSplit.View = svEdText);
+end;
+
+// Кнопка Sync в заголовке второй панели
+procedure TForm1.SplitSyncClick(Sender: TObject);
+begin
+  FSplitSync := not FSplitSync;
+  if FSplit <> nil then
+    FSplit.Header.SetSync(SplitOwnEdText, FSplitSync);
+  FSplitSyncTop := -1;
+  if FSplitSync then
+    SplitSyncFromEditor;
+end;
+
+// Вторую панель прокрутили (окно TEdView) - редактор на ту же строку
+procedure TForm1.SplitTextScroll(ATopLine: Integer);
+begin
+  if FSplitSyncBusy or not FSplitSync or not SplitOwnEdText or
+     not RichEdit1.HandleAllocated then
+    Exit;
+  FSplitSyncBusy := True;
+  try
+    FSplitSyncTop := ScrollEditTo(ATopLine);
+    UpdateScrollBars;
+    UpdateLineNumbers;
+  finally
+    FSplitSyncBusy := False;
+  end;
+end;
+
+// Редактор прокрутили (из HighlightVisibleText - на каждом кадре, по уже
+// посчитанной FirstVisibleLine) - вторую панель на ту же строку
+procedure TForm1.SplitSyncFromEditor;
+begin
+  if FSplitSyncBusy or not FSplitSync or not SplitOwnEdText then
+    Exit;
+  if FirstVisibleLine = FSplitSyncTop then
+    Exit;
+  FSplitSyncBusy := True;
+  try
+    FSplit.EdScrollTo(FirstVisibleLine);
+  finally
+    FSplitSyncBusy := False;
+  end;
+  FSplitSyncTop := FirstVisibleLine;
 end;
 
 // Нажатие мыши в окне AWnd (AppMessage): в какой панели теперь работают

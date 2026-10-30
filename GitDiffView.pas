@@ -21,20 +21,27 @@ unit GitDiffView;
 //  (не длиннее DiffPadMax) - полосы идут во всю ширину.
 //  Не разница (сообщение «выберите файл» и т. п.) - простым текстом.
 //  Смена темы - текст перерисовывается новыми цветами (UM_UITHEMECHANGED).
+//
+//  Шаг 0.7.6 плана портирования: TGitDiffView - панель, внутри которой
+//  окно TGitDiffRich (RichEdit, как было) или TGitDiffEd (свой редактор,
+//  TEdRowsView - те же строки и цвета, без RTF). Какое - по флажку своего
+//  редактора (EdOwnEditorOn), проверяется при каждом показе разницы.
+//  Строки разницы строит BuildDiffRows - общая для обоих.
 // ---------------------------------------------------------------------------
 
 interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls, Forms,
-  ComCtrls, UiTheme, ClrScheme, SchemeRtf;
+  ComCtrls, ExtCtrls, UiTheme, ClrScheme, SchemeRtf, EdView, EdRows;
 
 type
   // Схема подсветки для файла (свой объект - его освобождает окно); nil -
   // без подсветки
   TGitSchemeEvent = function(const AFileName: string): TClrScheme of object;
 
-  TGitDiffView = class(TRichEdit)
+  // Разница в окне RichEdit (RTF) - как было до шага 0.7.6
+  TGitDiffRich = class(TRichEdit)
   private
     FLastText: string;
     FOnScheme: TGitSchemeEvent;
@@ -51,6 +58,35 @@ type
     procedure ShowDiff(const AText: string);
     // Схема подсветки по имени файла из разницы
     property OnScheme: TGitSchemeEvent read FOnScheme write FOnScheme;
+  end;
+
+  // Разница в окне своего редактора
+  TGitDiffEd = class(TEdRowsView)
+  private
+    FLastText: string;
+    FOnScheme: TGitSchemeEvent;
+    procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
+    procedure Render;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ShowDiff(const AText: string);
+    property OnScheme: TGitSchemeEvent read FOnScheme write FOnScheme;
+  end;
+
+  // Панель разницы для окон Commit и History: внутри - TGitDiffRich или
+  // TGitDiffEd, по флажку своего редактора
+  TGitDiffView = class(TPanel)
+  private
+    FRich: TGitDiffRich;
+    FEd: TGitDiffEd;
+    FOnScheme: TGitSchemeEvent;
+    procedure SetOnScheme(AValue: TGitSchemeEvent);
+  public
+    constructor Create(AOwner: TComponent); override;
+    // Разница git или простой текст (определяется по содержимому)
+    procedure ShowDiff(const AText: string);
+    property OnScheme: TGitSchemeEvent read FOnScheme write SetOnScheme;
   end;
 
 implementation
@@ -179,7 +215,7 @@ begin
   ANew := TakeNumber('+');
 end;
 
-constructor TGitDiffView.Create(AOwner: TComponent);
+constructor TGitDiffRich.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   ReadOnly := True;
@@ -194,7 +230,7 @@ begin
 end;
 
 // Шрифт и цвета темы - только когда окно есть
-procedure TGitDiffView.ApplyLook;
+procedure TGitDiffRich.ApplyLook;
 begin
   if not HandleAllocated then
     Exit;
@@ -204,7 +240,7 @@ begin
   Font.Color := UiThemeColor('Edit.Text');
 end;
 
-destructor TGitDiffView.Destroy;
+destructor TGitDiffRich.Destroy;
 begin
   UiThemeRemoveClient(Self);
   inherited Destroy;
@@ -212,7 +248,7 @@ end;
 
 // Окно - RichEdit 4.1 или 2.0 (у 1.0 из VCL нет цвета фона под текстом).
 // Библиотека не выгружается (см. FmtView: окно живёт дольше модуля)
-procedure TGitDiffView.CreateParams(var Params: TCreateParams);
+procedure TGitDiffRich.CreateParams(var Params: TCreateParams);
 begin
   inherited CreateParams(Params);
   if DiffEditClass = '' then
@@ -233,7 +269,7 @@ begin
     CreateSubClass(Params, PChar(DiffEditClass));
 end;
 
-procedure TGitDiffView.CreateWnd;
+procedure TGitDiffRich.CreateWnd;
 begin
   inherited CreateWnd;
   // Выделение видно и без фокуса
@@ -245,7 +281,7 @@ begin
     Render;
 end;
 
-procedure TGitDiffView.UMUiThemeChanged(var Message: TMessage);
+procedure TGitDiffRich.UMUiThemeChanged(var Message: TMessage);
 begin
   if HandleAllocated then
   begin
@@ -255,7 +291,7 @@ begin
   Message.Result := 1;
 end;
 
-procedure TGitDiffView.ShowDiff(const AText: string);
+procedure TGitDiffRich.ShowDiff(const AText: string);
 begin
   FLastText := AText;
   if HandleAllocated then
@@ -295,71 +331,70 @@ begin
   Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
 end;
 
-procedure TGitDiffView.Render;
+// Строки разницы для окна: схема (по имени файла, OnScheme; освобождает
+// вызывающий), цвета фона и текста, строки с номерами, полосами и
+// подсветкой. Не разница - строки простого текста
+procedure BuildDiffRows(const AText: string; AOnScheme: TGitSchemeEvent;
+  var ARows: TSchemeRows; var AScheme: TClrScheme;
+  var APageBg, ATextFg: TColor);
 var
   Lines: TStringList;
-  Rows: TSchemeRows;
-  Scheme: TClrScheme;
-  Rtf, Line, Gutter, FileName: string;
+  Line, Gutter, FileName: string;
   LineIdx, RowCount, MaxWidth, OldNum, NewNum: Integer;
   InDiff, InHunk: Boolean;
-  PageBg, TextFg, DimFg, NumberFg, HunkFg: TColor;
+  DimFg, NumberFg, HunkFg: TColor;
   AddBg, AddGutterBg, DelBg, DelGutterBg, HunkBg: TColor;
-  Source: TDiffStreamSource;
-  Stream: TDiffEditStream;
 
   // Строка: колонка номеров (AGutter на AGutterBg), вводный кусок, текст
   procedure AddRow(const AGutter: string; AGutterBg: TColor;
-    const ALead, AText: string; AHighlight: Boolean; ATextFg, ARowBg: TColor;
+    const ALead, ARowText: string; AHighlight: Boolean; ARowFg, ARowBg: TColor;
     AReset: Boolean);
   begin
-    if RowCount >= Length(Rows) then
-      SetLength(Rows, RowCount * 2 + 16);
-    Rows[RowCount].Prefix := AGutter;
-    Rows[RowCount].PrefixFg := NumberFg;
-    Rows[RowCount].PrefixBg := AGutterBg;
-    Rows[RowCount].Lead := ALead;
-    Rows[RowCount].Text := ExpandTabs(AText);
-    Rows[RowCount].Highlight := AHighlight;
-    Rows[RowCount].TextFg := ATextFg;
-    Rows[RowCount].RowBg := ARowBg;
+    if RowCount >= Length(ARows) then
+      SetLength(ARows, RowCount * 2 + 16);
+    ARows[RowCount].Prefix := AGutter;
+    ARows[RowCount].PrefixFg := NumberFg;
+    ARows[RowCount].PrefixBg := AGutterBg;
+    ARows[RowCount].Lead := ALead;
+    ARows[RowCount].Text := ExpandTabs(ARowText);
+    ARows[RowCount].Highlight := AHighlight;
+    ARows[RowCount].TextFg := ARowFg;
+    ARows[RowCount].RowBg := ARowBg;
     if ARowBg <> clNone then
-      Rows[RowCount].PadTo := MaxWidth
+      ARows[RowCount].PadTo := MaxWidth
     else
-      Rows[RowCount].PadTo := 0;
-    Rows[RowCount].ResetBlock := AReset;
+      ARows[RowCount].PadTo := 0;
+    ARows[RowCount].ResetBlock := AReset;
     Inc(RowCount);
   end;
 
 begin
-  if not HandleAllocated then
-    Exit;
-  Scheme := nil;
+  AScheme := nil;
   Lines := TStringList.Create;
   try
-    Lines.Text := FLastText;
+    Lines.Text := AText;
     InDiff := LooksLikeDiff(Lines);
     // Схема - по имени файла в заголовке разницы
-    if InDiff and Assigned(FOnScheme) then
+    if InDiff and Assigned(AOnScheme) then
     begin
       FileName := DiffFileName(Lines);
       if FileName <> '' then
-        Scheme := FOnScheme(FileName);
+        AScheme := AOnScheme(FileName);
     end;
     // Фон и текст - из схемы, без неё - из темы
-    if Scheme <> nil then
+    if AScheme <> nil then
     begin
-      PageBg := SchemePageColor(Scheme);
-      TextFg := Scheme.FTextFG;
-      if (TextFg = clNone) or (TextFg = clDefault) then
-        TextFg := clWindowText;
+      APageBg := SchemePageColor(AScheme);
+      ATextFg := AScheme.FTextFG;
+      if (ATextFg = clNone) or (ATextFg = clDefault) then
+        ATextFg := clWindowText;
     end
     else
     begin
-      PageBg := UiThemeColor('Edit.BG');
-      TextFg := UiThemeColor('Edit.Text');
+      APageBg := UiThemeColor('Edit.BG');
+      ATextFg := UiThemeColor('Edit.Text');
     end;
-    if IsDarkColor(PageBg) then
+    if IsDarkColor(APageBg) then
     begin
       DimFg := $00909090;
       NumberFg := $00808080;
@@ -391,7 +426,7 @@ begin
           MaxWidth := Length(ExpandTabs(Lines[LineIdx]));
     Inc(MaxWidth, 2);
 
-    SetLength(Rows, Lines.Count + 1);
+    SetLength(ARows, Lines.Count + 1);
     RowCount := 0;
     OldNum := 0;
     NewNum := 0;
@@ -401,7 +436,7 @@ begin
     begin
       Line := Lines[LineIdx];
       if not InDiff then
-        AddRow('', clNone, '', Line, False, TextFg, clNone, False)
+        AddRow('', clNone, '', Line, False, ATextFg, clNone, False)
       else if Copy(Line, 1, 3) = '@@ ' then
       begin
         ParseHunk(Line, OldNum, NewNum);
@@ -419,13 +454,13 @@ begin
       else if Copy(Line, 1, 1) = '+' then
       begin
         AddRow(GutterNum(0) + ' ' + GutterNum(NewNum) + ' ', AddGutterBg,
-          '+ ', Copy(Line, 2, MaxInt), True, TextFg, AddBg, False);
+          '+ ', Copy(Line, 2, MaxInt), True, ATextFg, AddBg, False);
         Inc(NewNum);
       end
       else if Copy(Line, 1, 1) = '-' then
       begin
         AddRow(GutterNum(OldNum) + ' ' + GutterNum(0) + ' ', DelGutterBg,
-          '- ', Copy(Line, 2, MaxInt), True, TextFg, DelBg, False);
+          '- ', Copy(Line, 2, MaxInt), True, ATextFg, DelBg, False);
         Inc(OldNum);
       end
       else if Copy(Line, 1, 1) = '\' then
@@ -434,16 +469,34 @@ begin
       else
       begin
         AddRow(GutterNum(OldNum) + ' ' + GutterNum(NewNum) + ' ', clNone,
-          '  ', Copy(Line, 2, MaxInt), True, TextFg, clNone, False);
+          '  ', Copy(Line, 2, MaxInt), True, ATextFg, clNone, False);
         Inc(OldNum);
         Inc(NewNum);
       end;
     end;
-    SetLength(Rows, RowCount);
+    SetLength(ARows, RowCount);
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure TGitDiffRich.Render;
+var
+  Rows: TSchemeRows;
+  Scheme: TClrScheme;
+  Rtf: string;
+  PageBg, TextFg: TColor;
+  Source: TDiffStreamSource;
+  Stream: TDiffEditStream;
+begin
+  if not HandleAllocated then
+    Exit;
+  Scheme := nil;
+  try
+    BuildDiffRows(FLastText, FOnScheme, Rows, Scheme, PageBg, TextFg);
     Rtf := SchemeRowsToRtf(Rows, Scheme, Font.Name, Font.Size, TextFg,
       PageBg);
   finally
-    Lines.Free;
     Scheme.Free;
   end;
 
@@ -465,4 +518,100 @@ begin
   end;
 end;
 
+// ---------------------------------------------------------------------------
+//  TGitDiffEd - разница в окне своего редактора
+// ---------------------------------------------------------------------------
+
+constructor TGitDiffEd.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  Font.Name := 'Courier New';
+  Font.Size := 9;
+  UiThemeAddClient(Self);
+end;
+
+destructor TGitDiffEd.Destroy;
+begin
+  UiThemeRemoveClient(Self);
+  inherited Destroy;
+end;
+
+procedure TGitDiffEd.UMUiThemeChanged(var Message: TMessage);
+begin
+  Render;
+  Message.Result := 1;
+end;
+
+procedure TGitDiffEd.ShowDiff(const AText: string);
+begin
+  FLastText := AText;
+  Render;
+end;
+
+procedure TGitDiffEd.Render;
+var
+  Rows: TSchemeRows;
+  Scheme: TClrScheme;
+  PageBg, TextFg: TColor;
+begin
+  Scheme := nil;
+  try
+    BuildDiffRows(FLastText, FOnScheme, Rows, Scheme, PageBg, TextFg);
+    // Выделение - как у пунктов меню темы
+    SelColor := UiThemeColor('Menu.HotBG');
+    SelTextColor := UiThemeColor('Menu.HotText');
+    ShowRows(Rows, Scheme, TextFg, PageBg);
+  finally
+    Scheme.Free;
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  TGitDiffView - панель: окно RichEdit или своего редактора
+// ---------------------------------------------------------------------------
+
+constructor TGitDiffView.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  BevelOuter := bvNone;
+  Caption := '';
+end;
+
+procedure TGitDiffView.SetOnScheme(AValue: TGitSchemeEvent);
+begin
+  FOnScheme := AValue;
+  if FRich <> nil then
+    FRich.OnScheme := AValue;
+  if FEd <> nil then
+    FEd.OnScheme := AValue;
+end;
+
+procedure TGitDiffView.ShowDiff(const AText: string);
+begin
+  // Окно - по флажку своего редактора; флажок сменился - окно другое
+  if EdOwnEditorOn then
+  begin
+    FreeAndNil(FRich);
+    if FEd = nil then
+    begin
+      FEd := TGitDiffEd.Create(Self);
+      FEd.Parent := Self;
+      FEd.Align := alClient;
+      FEd.OnScheme := FOnScheme;
+    end;
+    FEd.ShowDiff(AText);
+  end
+  else
+  begin
+    FreeAndNil(FEd);
+    if FRich = nil then
+    begin
+      FRich := TGitDiffRich.Create(Self);
+      FRich.Parent := Self;
+      FRich.Align := alClient;
+      FRich.OnScheme := FOnScheme;
+    end;
+    FRich.ShowDiff(AText);
+  end;
+end;
 end.

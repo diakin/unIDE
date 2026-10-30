@@ -11,10 +11,12 @@ unit FarEdit;
 //    верный UTF-8 без BOM, иначе - кодировка Windows (CP_ACP). Запись - в
 //    той же кодировке, с теми же переводами строк (CRLF / LF / CR) и с
 //    переводом в конце файла, если он был;
-//  - откат: каждая правка - вставка или удаление куска текста (перевод
-//    строки внутри куска - #10). Правки одного действия (набор поверх
-//    выделения, вставка) - одна группа: Ctrl+Z откатывает её целиком.
-//    Набор подряд в одной строке - одна правка;
+//  - строки и откат - в TEdBuffer (EdBuffer.pas, общий с основным
+//    редактором unIDE по плану портирования): каждая правка - вставка или
+//    удаление куска текста (перевод строки внутри куска - #10). Правки
+//    одного действия (набор поверх выделения, вставка) - одна группа:
+//    Ctrl+Z откатывает её целиком. Набор подряд в одной строке - одна
+//    правка;
 //  - подсветка: TSchemeColorizer (SchemeLine) по строке в кодировке
 //    Windows; состояние «открыт блочный комментарий» в начале каждой
 //    строки - в FStates, после правки пересчитывается от неё вниз и только
@@ -28,36 +30,21 @@ unit FarEdit;
 interface
 
 uses
-  Windows, SysUtils, Classes, ClrScheme, SchemeLine;
+  Windows, SysUtils, Classes, ClrScheme, SchemeLine, EdBuffer;
 
 type
-  TFarEditLines = array of WideString;
+  TFarEditLines = TEdLines;
 
   TFarEditEncoding = (feAnsi, feUtf8, feUtf8Bom, feUtf16);
 
-  TFarEditUndo = record
-    IsInsert: Boolean;      // True - вставка Text в (Row, Col); False -
-                            // удаление Text, начинавшегося в (Row, Col)
-    Row: Integer;
-    Col: Integer;
-    Text: WideString;
-    Group: Integer;
-    CurRow: Integer;        // каретка до правки
-    CurCol: Integer;
-    Typing: Boolean;        // набор с клавиатуры (продолжается тем же)
-  end;
-  TFarEditUndos = array of TFarEditUndo;
-
   TFarEditor = class
   private
-    FLines: TFarEditLines;
-    FCount: Integer;
+    FBuffer: TEdBuffer;
     FFileName: WideString;
     FEncoding: TFarEditEncoding;
     FLineBreak: WideString;
     FFinalBreak: Boolean;
     FSavedEncoding: TFarEditEncoding; // в какой кодировке файл на диске
-    FModified: Boolean;
     FRow: Integer;
     FCol: Integer;
     FPrefCol: Integer;       // колонка экрана для движения вверх-вниз
@@ -67,28 +54,17 @@ type
     FSelRow: Integer;        // второй конец выделения (первый - каретка)
     FSelCol: Integer;
     FTabSize: Integer;
-    FUndo: TFarEditUndos;
-    FUndoCount: Integer;
-    FRedo: TFarEditUndos;
-    FRedoCount: Integer;
-    FGroup: Integer;
-    FSavedUndo: Integer;     // FUndoCount на момент записи (не изменён)
     FScheme: TClrScheme;
     FColorizer: TSchemeColorizer;
     FStates: array of Integer;
     FStatesValid: Integer;
     procedure LinesChanged(AFromRow: Integer);
-    procedure PushUndo(const AItem: TFarEditUndo);
-    function DoInsert(ARow, ACol: Integer; const AText: WideString;
-      var AEndRow, AEndCol: Integer): Boolean;
-    function DoDelete(ARow1, ACol1, ARow2, ACol2: Integer): WideString;
-    procedure EndPosOf(ARow, ACol: Integer; const AText: WideString;
-      var AEndRow, AEndCol: Integer);
-    procedure RecordInsert(ARow, ACol: Integer; const AText: WideString;
-      ATyping: Boolean);
-    procedure RecordDelete(ARow, ACol: Integer; const AText: WideString);
-    procedure UpdateModified;
+    procedure BufferChanged(Sender: TObject; AFirst, AOldCount,
+      ANewCount: Integer);
+    // Удалить кусок с откатом; каретка - в его начало
+    procedure DeleteRange(ARow1, ACol1, ARow2, ACol2: Integer);
     function GetLine(AIndex: Integer): WideString;
+    function GetCount: Integer;
     function GetModified: Boolean;
   public
     constructor Create;
@@ -139,8 +115,10 @@ type
     // Поиск AText с позиции каретки (после выделения) вниз; найдено -
     // выделено, каретка в конце
     function FindNext(const AText: WideString; ACaseSensitive: Boolean): Boolean;
-    property Count: Integer read FCount;
+    property Count: Integer read GetCount;
     property Lines[AIndex: Integer]: WideString read GetLine;
+    // Строки и откат
+    property Buffer: TEdBuffer read FBuffer;
     property FileName: WideString read FFileName write FFileName;
     // Кодировка записи (F2). Другая, чем у файла на диске, - Modified
     property Encoding: TFarEditEncoding read FEncoding write FEncoding;
@@ -289,25 +267,6 @@ begin
 end;
 
 // Позиция ANeedle в AHay (WideString; Pos Delphi 7 - для string); 0 - нет
-// ADest := AFirst + ASecond. Обе пустые - приёмник очищается явно: в
-// unIDE (Delphi 7) после Enter в начале строки строка оставалась прежней
-// (копия вместо пустой), хотя в uniFAR (Free Pascal) тот же код работает.
-// Пустая строка теперь не получается сложением двух пустых WideString
-procedure EdSetJoin(var ADest: WideString; const AFirst, ASecond: WideString);
-begin
-  if AFirst = '' then
-  begin
-    if ASecond = '' then
-      ADest := ''
-    else
-      ADest := ASecond;
-  end
-  else if ASecond = '' then
-    ADest := AFirst
-  else
-    ADest := AFirst + ASecond;
-end;
-
 function EdPos(const ANeedle, AHay: WideString): Integer;
 var
   StartIdx, CharIdx: Integer;
@@ -345,15 +304,13 @@ end;
 constructor TFarEditor.Create;
 begin
   inherited Create;
-  SetLength(FLines, 1);
-  FLines[0] := '';
-  FCount := 1;
+  FBuffer := TEdBuffer.Create;
+  FBuffer.AddListener(BufferChanged);
   FEncoding := feAnsi;
   FSavedEncoding := feAnsi;
   FLineBreak := #13#10;
   FFinalBreak := False;
   FTabSize := 8;
-  FSavedUndo := 0;
   FStatesValid := 0;
 end;
 
@@ -361,21 +318,30 @@ destructor TFarEditor.Destroy;
 begin
   FColorizer.Free;
   FScheme.Free;
+  FBuffer.Free;
   inherited Destroy;
 end;
 
 function TFarEditor.GetLine(AIndex: Integer): WideString;
 begin
-  if (AIndex >= 0) and (AIndex < FCount) then
-    Result := FLines[AIndex]
-  else
-    Result := '';
+  Result := FBuffer[AIndex];
+end;
+
+function TFarEditor.GetCount: Integer;
+begin
+  Result := FBuffer.Count;
 end;
 
 // Изменён текст или выбрана другая кодировка записи (Shift+F8)
 function TFarEditor.GetModified: Boolean;
 begin
-  Result := FModified or (FEncoding <> FSavedEncoding);
+  Result := FBuffer.Modified or (FEncoding <> FSavedEncoding);
+end;
+
+procedure TFarEditor.BufferChanged(Sender: TObject; AFirst, AOldCount,
+  ANewCount: Integer);
+begin
+  LinesChanged(AFirst);
 end;
 
 procedure TFarEditor.SetScheme(AScheme: TClrScheme; ADefFg, ADefBg: Integer);
@@ -419,10 +385,10 @@ begin
   Result := -1;
   if (FColorizer = nil) or (ARow <= 0) then
     Exit;
-  if ARow >= FCount then
-    ARow := FCount - 1;
-  if Length(FStates) < FCount then
-    SetLength(FStates, FCount + 64);
+  if ARow >= FBuffer.Count then
+    ARow := FBuffer.Count - 1;
+  if Length(FStates) < FBuffer.Count then
+    SetLength(FStates, FBuffer.Count + 64);
   if FStatesValid = 0 then
   begin
     FStates[0] := -1;
@@ -519,13 +485,13 @@ begin
     Exit;
   if Row1 = Row2 then
   begin
-    Result := Copy(FLines[Row1], Col1 + 1, Col2 - Col1);
+    Result := Copy(FBuffer[Row1], Col1 + 1, Col2 - Col1);
     Exit;
   end;
-  Result := Copy(FLines[Row1], Col1 + 1, MaxInt);
+  Result := Copy(FBuffer[Row1], Col1 + 1, MaxInt);
   for RowIdx := Row1 + 1 to Row2 - 1 do
-    Result := Result + #13#10 + FLines[RowIdx];
-  Result := Result + #13#10 + Copy(FLines[Row2], 1, Col2);
+    Result := Result + #13#10 + FBuffer[RowIdx];
+  Result := Result + #13#10 + Copy(FBuffer[Row2], 1, Col2);
 end;
 
 procedure TFarEditor.SelectAll;
@@ -533,8 +499,8 @@ begin
   FSelActive := True;
   FSelRow := 0;
   FSelCol := 0;
-  FRow := FCount - 1;
-  FCol := Length(FLines[FRow]);
+  FRow := FBuffer.Count - 1;
+  FCol := FBuffer.LineLength(FRow);
   FPrefCol := ScreenCol(FRow, FCol);
 end;
 
@@ -548,12 +514,12 @@ procedure TFarEditor.MoveTo(ARow, ACol: Integer; ASelect: Boolean;
 begin
   if ARow < 0 then
     ARow := 0;
-  if ARow >= FCount then
-    ARow := FCount - 1;
+  if ARow >= FBuffer.Count then
+    ARow := FBuffer.Count - 1;
   if ACol < 0 then
     ACol := 0;
-  if ACol > Length(FLines[ARow]) then
-    ACol := Length(FLines[ARow]);
+  if ACol > FBuffer.LineLength(ARow) then
+    ACol := FBuffer.LineLength(ARow);
   if ASelect then
   begin
     if not FSelActive then
@@ -567,7 +533,7 @@ begin
     FSelActive := False;
   // Движение каретки - конец набора: следующий набор - новая группа отката
   if (ARow <> FRow) or (ACol <> FCol) then
-    Inc(FGroup);
+    FBuffer.BeginGroup;
   FRow := ARow;
   FCol := ACol;
   if not AKeepPref then
@@ -581,8 +547,8 @@ begin
   NewRow := FRow + ADelta;
   if NewRow < 0 then
     NewRow := 0;
-  if NewRow >= FCount then
-    NewRow := FCount - 1;
+  if NewRow >= FBuffer.Count then
+    NewRow := FBuffer.Count - 1;
   MoveTo(NewRow, ColAtScreen(NewRow, FPrefCol), ASelect, True);
 end;
 
@@ -594,10 +560,10 @@ begin
   if FCol = 0 then
   begin
     if FRow > 0 then
-      MoveTo(FRow - 1, Length(FLines[FRow - 1]), ASelect);
+      MoveTo(FRow - 1, FBuffer.LineLength(FRow - 1), ASelect);
     Exit;
   end;
-  Line := FLines[FRow];
+  Line := FBuffer[FRow];
   NewCol := FCol;
   while (NewCol > 0) and not IsWordChar(Line[NewCol]) do
     Dec(NewCol);
@@ -611,10 +577,10 @@ var
   Line: WideString;
   NewCol: Integer;
 begin
-  Line := FLines[FRow];
+  Line := FBuffer[FRow];
   if FCol >= Length(Line) then
   begin
-    if FRow < FCount - 1 then
+    if FRow < FBuffer.Count - 1 then
       MoveTo(FRow + 1, 0, ASelect);
     Exit;
   end;
@@ -626,184 +592,26 @@ begin
   MoveTo(FRow, NewCol, ASelect);
 end;
 
-// Конец куска AText, вставленного в (ARow, ACol)
-procedure TFarEditor.EndPosOf(ARow, ACol: Integer; const AText: WideString;
-  var AEndRow, AEndCol: Integer);
-var
-  CharIdx, LastBreak: Integer;
+// Удаление с откатом (каретка до правки - в записи отката)
+procedure TFarEditor.DeleteRange(ARow1, ACol1, ARow2, ACol2: Integer);
 begin
-  AEndRow := ARow;
-  LastBreak := 0;
-  for CharIdx := 1 to Length(AText) do
-    if AText[CharIdx] = #10 then
-    begin
-      Inc(AEndRow);
-      LastBreak := CharIdx;
-    end;
-  if LastBreak = 0 then
-    AEndCol := ACol + Length(AText)
-  else
-    AEndCol := Length(AText) - LastBreak;
-end;
-
-// Вставка без отката. AText - строки через #10
-function TFarEditor.DoInsert(ARow, ACol: Integer; const AText: WideString;
-  var AEndRow, AEndCol: Integer): Boolean;
-var
-  Parts: TFarEditLines;
-  PartCount, CharIdx, StartIdx, PartIdx: Integer;
-  Head, Tail: WideString;
-begin
-  Result := AText <> '';
-  AEndRow := ARow;
-  AEndCol := ACol;
-  if not Result then
-    Exit;
-  // Куски между #10
-  PartCount := 0;
-  SetLength(Parts, 0);
-  StartIdx := 1;
-  for CharIdx := 1 to Length(AText) + 1 do
-    if (CharIdx > Length(AText)) or (AText[CharIdx] = #10) then
-    begin
-      SetLength(Parts, PartCount + 1);
-      Parts[PartCount] := Copy(AText, StartIdx, CharIdx - StartIdx);
-      Inc(PartCount);
-      StartIdx := CharIdx + 1;
-    end;
-  Head := Copy(FLines[ARow], 1, ACol);
-  Tail := Copy(FLines[ARow], ACol + 1, MaxInt);
-  if PartCount = 1 then
-  begin
-    FLines[ARow] := Head + Parts[0] + Tail;
-    AEndCol := ACol + Length(Parts[0]);
-  end
-  else
-  begin
-    // Новые строки - после ARow
-    if FCount + PartCount - 1 > Length(FLines) then
-      SetLength(FLines, FCount + PartCount - 1 + FCount div 4 + 16);
-    for PartIdx := FCount - 1 downto ARow + 1 do
-      FLines[PartIdx + PartCount - 1] := FLines[PartIdx];
-    Inc(FCount, PartCount - 1);
-    EdSetJoin(FLines[ARow], Head, Parts[0]);
-    for PartIdx := 1 to PartCount - 2 do
-      FLines[ARow + PartIdx] := Parts[PartIdx];
-    EdSetJoin(FLines[ARow + PartCount - 1], Parts[PartCount - 1], Tail);
-    AEndRow := ARow + PartCount - 1;
-    AEndCol := Length(Parts[PartCount - 1]);
-  end;
-  LinesChanged(ARow);
-end;
-
-// Удаление без отката; возвращает удалённое (строки через #10)
-function TFarEditor.DoDelete(ARow1, ACol1, ARow2, ACol2: Integer): WideString;
-var
-  RowIdx, Removed: Integer;
-begin
-  if ARow1 = ARow2 then
-  begin
-    Result := Copy(FLines[ARow1], ACol1 + 1, ACol2 - ACol1);
-    Delete(FLines[ARow1], ACol1 + 1, ACol2 - ACol1);
-    LinesChanged(ARow1);
-    Exit;
-  end;
-  Result := Copy(FLines[ARow1], ACol1 + 1, MaxInt);
-  for RowIdx := ARow1 + 1 to ARow2 - 1 do
-    Result := Result + #10 + FLines[RowIdx];
-  Result := Result + #10 + Copy(FLines[ARow2], 1, ACol2);
-  EdSetJoin(FLines[ARow1], Copy(FLines[ARow1], 1, ACol1),
-    Copy(FLines[ARow2], ACol2 + 1, MaxInt));
-  Removed := ARow2 - ARow1;
-  for RowIdx := ARow1 + 1 to FCount - 1 - Removed do
-    FLines[RowIdx] := FLines[RowIdx + Removed];
-  for RowIdx := FCount - Removed to FCount - 1 do
-    FLines[RowIdx] := '';
-  Dec(FCount, Removed);
-  LinesChanged(ARow1);
-end;
-
-procedure TFarEditor.PushUndo(const AItem: TFarEditUndo);
-begin
-  if FUndoCount >= Length(FUndo) then
-    SetLength(FUndo, FUndoCount * 2 + 64);
-  FUndo[FUndoCount] := AItem;
-  Inc(FUndoCount);
-  // Новая правка - повторять откаченное больше нечего
-  FRedoCount := 0;
-  // Состояние «записано» было в откаченной части - уже не достижимо
-  if FSavedUndo > FUndoCount then
-    FSavedUndo := -1;
-end;
-
-procedure TFarEditor.UpdateModified;
-begin
-  FModified := FUndoCount <> FSavedUndo;
-end;
-
-procedure TFarEditor.RecordInsert(ARow, ACol: Integer; const AText: WideString;
-  ATyping: Boolean);
-var
-  Item: TFarEditUndo;
-  EndRow, EndCol: Integer;
-begin
-  // Набор подряд: к прежней вставке, если она - набор и кончается здесь
-  if ATyping and (FUndoCount > 0) and (FUndoCount > FSavedUndo) and
-     FUndo[FUndoCount - 1].IsInsert and FUndo[FUndoCount - 1].Typing and
-     (FUndo[FUndoCount - 1].Group = FGroup) then
-  begin
-    EndPosOf(FUndo[FUndoCount - 1].Row, FUndo[FUndoCount - 1].Col,
-      FUndo[FUndoCount - 1].Text, EndRow, EndCol);
-    if (EndRow = ARow) and (EndCol = ACol) and (EdPos(#10, AText) = 0) then
-    begin
-      FUndo[FUndoCount - 1].Text := FUndo[FUndoCount - 1].Text + AText;
-      FRedoCount := 0;
-      Exit;
-    end;
-  end;
-  Item.IsInsert := True;
-  Item.Row := ARow;
-  Item.Col := ACol;
-  Item.Text := AText;
-  Item.Group := FGroup;
-  Item.CurRow := FRow;
-  Item.CurCol := FCol;
-  Item.Typing := ATyping;
-  PushUndo(Item);
-end;
-
-procedure TFarEditor.RecordDelete(ARow, ACol: Integer; const AText: WideString);
-var
-  Item: TFarEditUndo;
-begin
-  Item.IsInsert := False;
-  Item.Row := ARow;
-  Item.Col := ACol;
-  Item.Text := AText;
-  Item.Group := FGroup;
-  Item.CurRow := FRow;
-  Item.CurCol := FCol;
-  Item.Typing := False;
-  PushUndo(Item);
+  FBuffer.DeleteText(ARow1, ACol1, ARow2, ACol2, FRow, FCol);
+  FRow := ARow1;
+  FCol := ACol1;
 end;
 
 procedure TFarEditor.DeleteSelection;
 var
   Row1, Col1, Row2, Col2: Integer;
-  Removed: WideString;
 begin
   if not SelRange(Row1, Col1, Row2, Col2) then
   begin
     FSelActive := False;
     Exit;
   end;
-  Removed := DoDelete(Row1, Col1, Row2, Col2);
-  RecordDelete(Row1, Col1, Removed);
+  DeleteRange(Row1, Col1, Row2, Col2);
   FSelActive := False;
-  FRow := Row1;
-  FCol := Col1;
   FPrefCol := ScreenCol(FRow, FCol);
-  UpdateModified;
 end;
 
 procedure TFarEditor.InsertText(const AText: WideString; ATyping: Boolean);
@@ -828,29 +636,25 @@ begin
     Inc(CharIdx);
   end;
   // Набор продолжает группу набора, если выделения нет
-  ContinueTyping := ATyping and not HasSelection and (FUndoCount > 0) and
-    FUndo[FUndoCount - 1].Typing;
+  ContinueTyping := ATyping and not HasSelection and FBuffer.LastIsTyping;
   if not ContinueTyping then
-    Inc(FGroup);
+    FBuffer.BeginGroup;
   if HasSelection then
     DeleteSelection;
   FSelActive := False;
   if Clean = '' then
     Exit;
-  RecordInsert(FRow, FCol, Clean, ATyping);
-  DoInsert(FRow, FCol, Clean, EndRow, EndCol);
+  FBuffer.InsertText(FRow, FCol, Clean, ATyping, FRow, FCol, EndRow, EndCol);
   FRow := EndRow;
   FCol := EndCol;
   FPrefCol := ScreenCol(FRow, FCol);
-  UpdateModified;
 end;
 
 procedure TFarEditor.Backspace;
 var
-  Removed: WideString;
   NewRow, NewCol: Integer;
 begin
-  Inc(FGroup);
+  FBuffer.BeginGroup;
   if HasSelection then
   begin
     DeleteSelection;
@@ -867,35 +671,25 @@ begin
   else
   begin
     NewRow := FRow - 1;
-    NewCol := Length(FLines[NewRow]);
+    NewCol := FBuffer.LineLength(NewRow);
   end;
-  Removed := DoDelete(NewRow, NewCol, FRow, FCol);
-  RecordDelete(NewRow, NewCol, Removed);
-  FRow := NewRow;
-  FCol := NewCol;
+  DeleteRange(NewRow, NewCol, FRow, FCol);
   FPrefCol := ScreenCol(FRow, FCol);
-  UpdateModified;
 end;
 
 procedure TFarEditor.DeleteChar;
-var
-  Removed: WideString;
 begin
-  Inc(FGroup);
+  FBuffer.BeginGroup;
   if HasSelection then
   begin
     DeleteSelection;
     Exit;
   end;
   FSelActive := False;
-  if FCol < Length(FLines[FRow]) then
-    Removed := DoDelete(FRow, FCol, FRow, FCol + 1)
-  else if FRow < FCount - 1 then
-    Removed := DoDelete(FRow, FCol, FRow + 1, 0)
-  else
-    Exit;
-  RecordDelete(FRow, FCol, Removed);
-  UpdateModified;
+  if FCol < FBuffer.LineLength(FRow) then
+    DeleteRange(FRow, FCol, FRow, FCol + 1)
+  else if FRow < FBuffer.Count - 1 then
+    DeleteRange(FRow, FCol, FRow + 1, 0);
 end;
 
 // Enter: перевод строки и отступ, как у текущей строки (до каретки)
@@ -904,7 +698,7 @@ var
   Line, Indent: WideString;
   CharIdx: Integer;
 begin
-  Line := FLines[FRow];
+  Line := FBuffer[FRow];
   CharIdx := 1;
   while (CharIdx <= Length(Line)) and (CharIdx <= FCol) and
         ((Line[CharIdx] = ' ') or (Line[CharIdx] = #9)) do
@@ -916,39 +710,33 @@ end;
 // Ctrl+Y: удалить строку (как в FAR)
 procedure TFarEditor.DeleteLine;
 var
-  Removed: WideString;
+  KeepRow: Integer;
 begin
-  Inc(FGroup);
+  FBuffer.BeginGroup;
   FSelActive := False;
-  if FRow < FCount - 1 then
-  begin
-    Removed := DoDelete(FRow, 0, FRow + 1, 0);
-    RecordDelete(FRow, 0, Removed);
-  end
+  KeepRow := FRow;
+  if FRow < FBuffer.Count - 1 then
+    DeleteRange(FRow, 0, FRow + 1, 0)
   else if FRow > 0 then
   begin
     // Последняя строка: вместе с переводом строки перед ней
-    Removed := DoDelete(FRow - 1, Length(FLines[FRow - 1]), FRow,
-      Length(FLines[FRow]));
-    RecordDelete(FRow - 1, Length(FLines[FRow - 1]), Removed);
-    Dec(FRow);
+    KeepRow := FRow - 1;
+    DeleteRange(FRow - 1, FBuffer.LineLength(FRow - 1), FRow,
+      FBuffer.LineLength(FRow));
   end
-  else if FLines[0] <> '' then
-  begin
-    Removed := DoDelete(0, 0, 0, Length(FLines[0]));
-    RecordDelete(0, 0, Removed);
-  end
+  else if FBuffer.LineLength(0) > 0 then
+    DeleteRange(0, 0, 0, FBuffer.LineLength(0))
   else
     Exit;
+  FRow := KeepRow;
   FCol := ColAtScreen(FRow, FPrefCol);
-  UpdateModified;
 end;
 
 procedure TFarEditor.DeleteWordLeft;
 begin
   if not HasSelection then
     WordLeft(True);
-  Inc(FGroup);
+  FBuffer.BeginGroup;
   DeleteSelection;
 end;
 
@@ -956,82 +744,24 @@ procedure TFarEditor.DeleteWordRight;
 begin
   if not HasSelection then
     WordRight(True);
-  Inc(FGroup);
+  FBuffer.BeginGroup;
   DeleteSelection;
 end;
 
 procedure TFarEditor.Undo;
-var
-  Group, EndRow, EndCol: Integer;
-  Item: TFarEditUndo;
 begin
-  if FUndoCount = 0 then
+  if not FBuffer.Undo(FRow, FCol) then
     Exit;
-  Group := FUndo[FUndoCount - 1].Group;
-  while (FUndoCount > 0) and (FUndo[FUndoCount - 1].Group = Group) do
-  begin
-    Item := FUndo[FUndoCount - 1];
-    Dec(FUndoCount);
-    if Item.IsInsert then
-    begin
-      EndPosOf(Item.Row, Item.Col, Item.Text, EndRow, EndCol);
-      DoDelete(Item.Row, Item.Col, EndRow, EndCol);
-    end
-    else
-      DoInsert(Item.Row, Item.Col, Item.Text, EndRow, EndCol);
-    if FRedoCount >= Length(FRedo) then
-      SetLength(FRedo, FRedoCount * 2 + 64);
-    FRedo[FRedoCount] := Item;
-    Inc(FRedoCount);
-    FRow := Item.CurRow;
-    FCol := Item.CurCol;
-  end;
-  if FRow >= FCount then
-    FRow := FCount - 1;
-  if FCol > Length(FLines[FRow]) then
-    FCol := Length(FLines[FRow]);
   FSelActive := False;
   FPrefCol := ScreenCol(FRow, FCol);
-  Inc(FGroup);
-  UpdateModified;
 end;
 
 procedure TFarEditor.Redo;
-var
-  Group, EndRow, EndCol: Integer;
-  Item: TFarEditUndo;
 begin
-  if FRedoCount = 0 then
+  if not FBuffer.Redo(FRow, FCol) then
     Exit;
-  Group := FRedo[FRedoCount - 1].Group;
-  while (FRedoCount > 0) and (FRedo[FRedoCount - 1].Group = Group) do
-  begin
-    Item := FRedo[FRedoCount - 1];
-    Dec(FRedoCount);
-    if Item.IsInsert then
-    begin
-      DoInsert(Item.Row, Item.Col, Item.Text, EndRow, EndCol);
-      FRow := EndRow;
-      FCol := EndCol;
-    end
-    else
-    begin
-      EndPosOf(Item.Row, Item.Col, Item.Text, EndRow, EndCol);
-      DoDelete(Item.Row, Item.Col, EndRow, EndCol);
-      FRow := Item.Row;
-      FCol := Item.Col;
-    end;
-    // Повтор - снова в откат, не трогая остальное повторяемое
-    Item.Typing := False;
-    if FUndoCount >= Length(FUndo) then
-      SetLength(FUndo, FUndoCount * 2 + 64);
-    FUndo[FUndoCount] := Item;
-    Inc(FUndoCount);
-  end;
   FSelActive := False;
   FPrefCol := ScreenCol(FRow, FCol);
-  Inc(FGroup);
-  UpdateModified;
 end;
 
 function TFarEditor.FindNext(const AText: WideString;
@@ -1049,16 +779,16 @@ begin
     Needle := WideUpperCase(AText);
   // С каретки до конца, потом с начала до каретки
   for Pass := 0 to 1 do
-    for RowIdx := 0 to FCount - 1 do
+    for RowIdx := 0 to FBuffer.Count - 1 do
     begin
       if (Pass = 0) and (RowIdx < FRow) then
         Continue;
       if (Pass = 1) and (RowIdx > FRow) then
         Break;
       if ACaseSensitive then
-        Hay := FLines[RowIdx]
+        Hay := FBuffer[RowIdx]
       else
-        Hay := WideUpperCase(FLines[RowIdx]);
+        Hay := WideUpperCase(FBuffer[RowIdx]);
       if (Pass = 0) and (RowIdx = FRow) then
         StartCol := FCol
       else
@@ -1146,6 +876,7 @@ var
   HasHigh: Boolean;
   CharIdx, StartIdx, LineCount: Integer;
   BreakFound: Boolean;
+  NewLines: TEdLines;
 begin
   Result := False;
   AError := '';
@@ -1208,16 +939,16 @@ begin
   FLineBreak := #13#10;
   BreakFound := False;
   LineCount := 0;
-  SetLength(FLines, 1024);
+  SetLength(NewLines, 1024);
   StartIdx := 1;
   CharIdx := 1;
   while CharIdx <= Length(Text) do
   begin
     if (Text[CharIdx] = #13) or (Text[CharIdx] = #10) then
     begin
-      if LineCount >= Length(FLines) then
-        SetLength(FLines, LineCount * 2);
-      FLines[LineCount] := Copy(Text, StartIdx, CharIdx - StartIdx);
+      if LineCount >= Length(NewLines) then
+        SetLength(NewLines, LineCount * 2);
+      NewLines[LineCount] := Copy(Text, StartIdx, CharIdx - StartIdx);
       Inc(LineCount);
       if (Text[CharIdx] = #13) and (CharIdx < Length(Text)) and
          (Text[CharIdx + 1] = #10) then
@@ -1239,15 +970,15 @@ begin
     Inc(CharIdx);
   end;
   // Последняя строка (после последнего перевода - может быть пустой)
-  if LineCount >= Length(FLines) then
-    SetLength(FLines, LineCount + 1);
-  FLines[LineCount] := Copy(Text, StartIdx, MaxInt);
+  if LineCount >= Length(NewLines) then
+    SetLength(NewLines, LineCount + 1);
+  NewLines[LineCount] := Copy(Text, StartIdx, MaxInt);
   Inc(LineCount);
-  FFinalBreak := BreakFound and (FLines[LineCount - 1] = '');
+  FFinalBreak := BreakFound and (NewLines[LineCount - 1] = '');
   // Перевод в конце файла - не отдельная пустая строка для показа
   if FFinalBreak and (LineCount > 1) then
     Dec(LineCount);
-  FCount := LineCount;
+  FBuffer.AssignLines(NewLines, LineCount);
   FFileName := AFileName;
   FSavedEncoding := FEncoding;
   FRow := 0;
@@ -1256,10 +987,6 @@ begin
   FTopRow := 0;
   FLeftCol := 0;
   FSelActive := False;
-  FUndoCount := 0;
-  FRedoCount := 0;
-  FSavedUndo := 0;
-  FModified := False;
   FStatesValid := 0;
   Result := True;
 end;
@@ -1270,7 +997,7 @@ function TFarEditor.SaveToFile(const AFileName: WideString;
 var
   Text: WideString;
   Raw, Bom: string;
-  RowIdx, ByteLen: Integer;
+  ByteLen: Integer;
   UsedDefault: BOOL;
   FileHandle: THandle;
   Written: DWORD;
@@ -1278,13 +1005,9 @@ begin
   Result := False;
   AError := '';
   ALossy := False;
-  Text := '';
-  for RowIdx := 0 to FCount - 1 do
-  begin
-    Text := Text + FLines[RowIdx];
-    if (RowIdx < FCount - 1) or FFinalBreak then
-      Text := Text + FLineBreak;
-  end;
+  Text := FBuffer.GetText(FLineBreak);
+  if FFinalBreak then
+    Text := Text + FLineBreak;
   case AEncoding of
     feUtf16:
       begin
@@ -1354,8 +1077,7 @@ begin
   FFileName := AFileName;
   FEncoding := AEncoding;
   FSavedEncoding := AEncoding;
-  FSavedUndo := FUndoCount;
-  FModified := False;
+  FBuffer.MarkSaved;
   Result := True;
 end;
 
