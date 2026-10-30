@@ -456,6 +456,233 @@ begin
   end;
 end;
 
+// --- Большой текст: много кусков дерева, кэш строк ------------------------
+
+type
+  TLineReader = class
+  public
+    Buf: TEdBuffer;
+    ReadSum: Integer;
+    procedure OnChange(Sender: TObject; AFirst, AOldCount, ANewCount: Integer);
+  end;
+
+// Подписчик читает строки сразу после правки - кэш уже должен быть верным
+procedure TLineReader.OnChange(Sender: TObject; AFirst, AOldCount,
+  ANewCount: Integer);
+var
+  RowIdx: Integer;
+begin
+  for RowIdx := AFirst to AFirst + ANewCount - 1 do
+    Inc(ReadSum, Length(Buf[RowIdx]));
+end;
+
+// Строка ARow модели (строки через #10)
+function ModelLine(const AText: WideString; ARow: Integer): WideString;
+var
+  StartIdx, EndIdx: Integer;
+begin
+  StartIdx := ModelIndex(AText, ARow, 0) + 1;
+  EndIdx := StartIdx;
+  while (EndIdx <= Length(AText)) and (AText[EndIdx] <> #10) do
+    Inc(EndIdx);
+  Result := Copy(AText, StartIdx, EndIdx - StartIdx);
+end;
+
+function ModelLineCount(const AText: WideString): Integer;
+var
+  CharIdx: Integer;
+begin
+  Result := 1;
+  for CharIdx := 1 to Length(AText) do
+    if AText[CharIdx] = #10 then
+      Inc(Result);
+end;
+
+function RandomText(ALen: Integer): WideString;
+const
+  Letters = 'abcdefgh ';
+var
+  CharIdx: Integer;
+begin
+  SetLength(Result, ALen);
+  for CharIdx := 1 to ALen do
+    if Random(30) = 0 then
+      Result[CharIdx] := #10
+    else if Random(50) = 0 then
+      Result[CharIdx] := WideChar(1040 + Random(32))
+    else
+      Result[CharIdx] := WideChar(Letters[Random(Length(Letters)) + 1]);
+end;
+
+function GetTextModelCRLF(const AText: WideString): WideString;
+var
+  CharIdx: Integer;
+begin
+  Result := '';
+  for CharIdx := 1 to Length(AText) do
+    if AText[CharIdx] = #10 then
+      Result := Result + #13#10
+    else
+      Result := Result + AText[CharIdx];
+end;
+
+procedure TestLargeText;
+const
+  StepCount = 3000;
+var
+  Buf: TEdBuffer;
+  Reader: TLineReader;
+  Model, Original, Piece, Removed: WideString;
+  Step, Row1, Col1, Row2, Col2, EndRow, EndCol, Index1, Index2, CurRow,
+  CurCol, ReadIdx, RowIdx, ColIdx, EditCount, LineCount: Integer;
+  Lines: TEdLines;
+begin
+  RandSeed := 20261030;
+  Buf := TEdBuffer.Create;
+  Reader := TLineReader.Create;
+  Reader.Buf := Buf;
+  try
+    // ~ 60 кусков по EdPieceMax
+    Original := RandomText(60000);
+    Buf.SetText(Original);
+    Buf.AddListener(Reader.OnChange);
+    Model := Original;
+    CheckInt(Buf.Count, ModelLineCount(Model), 'large: count');
+    Check(Buf.GetText(#13#10) = GetTextModelCRLF(Model), 'large: CRLF');
+    EditCount := 0;
+    for Step := 1 to StepCount do
+    begin
+      Buf.BeginGroup;
+      Row1 := Random(Buf.Count);
+      Col1 := Random(Buf.LineLength(Row1) + 1);
+      Index1 := ModelIndex(Model, Row1, Col1);
+      case Random(10) of
+        0..4:
+          begin
+            // Вставка: обычно короткая, иногда больше куска
+            if Random(20) = 0 then
+              Piece := RandomText(1500 + Random(3000))
+            else
+              Piece := RandomText(Random(8) + 1);
+            Buf.InsertText(Row1, Col1, Piece, Random(2) = 0, Row1, Col1,
+              EndRow, EndCol);
+            Model := Copy(Model, 1, Index1) + Piece +
+              Copy(Model, Index1 + 1, MaxInt);
+            Inc(EditCount);
+          end;
+        5..8:
+          begin
+            if Random(30) = 0 then
+              Row2 := Row1 + Random(200)
+            else
+              Row2 := Row1 + Random(3);
+            if Row2 >= Buf.Count then
+              Row2 := Buf.Count - 1;
+            Col2 := Random(Buf.LineLength(Row2) + 1);
+            if (Row2 = Row1) and (Col2 < Col1) then
+              Col2 := Col1;
+            Index2 := ModelIndex(Model, Row2, Col2);
+            Removed := Buf.DeleteText(Row1, Col1, Row2, Col2, Row1, Col1);
+            Check(Removed = Copy(Model, Index1 + 1, Index2 - Index1),
+              'large: removed, step ' + IntToStr(Step));
+            if Index2 > Index1 then
+              Inc(EditCount);
+            Model := Copy(Model, 1, Index1) + Copy(Model, Index2 + 1, MaxInt);
+          end;
+      else
+        // Набор подряд по символу в одной строке
+        CurRow := Row1;
+        CurCol := Col1;
+        for ReadIdx := 1 to 20 do
+        begin
+          Buf.InsertText(CurRow, CurCol, 'z', True, CurRow, CurCol,
+            EndRow, EndCol);
+          CurRow := EndRow;
+          CurCol := EndCol;
+        end;
+        Model := Copy(Model, 1, Index1) + 'zzzzzzzzzzzzzzzzzzzz' +
+          Copy(Model, Index1 + 1, MaxInt);
+        Inc(EditCount);
+      end;
+      // Строки через кэш: вокруг правки и случайные
+      LineCount := ModelLineCount(Model);
+      if Buf.Count <> LineCount then
+      begin
+        CheckInt(Buf.Count, LineCount, 'large: count, step ' +
+          IntToStr(Step));
+        Break;
+      end;
+      for ReadIdx := 0 to 5 do
+      begin
+        if ReadIdx < 3 then
+          RowIdx := Row1 + ReadIdx - 1
+        else
+          RowIdx := Random(LineCount);
+        if (RowIdx >= 0) and (RowIdx < LineCount) and
+           (Buf[RowIdx] <> ModelLine(Model, RowIdx)) then
+        begin
+          Check(False, 'large: line ' + IntToStr(RowIdx) + ', step ' +
+            IntToStr(Step));
+          Break;
+        end;
+      end;
+      if Step mod 100 = 0 then
+      begin
+        CheckText(Buf, Model, 'large: text, step ' + IntToStr(Step));
+        CheckInt(Buf.TextLength, Length(Model), 'large: length');
+        for ReadIdx := 1 to 20 do
+        begin
+          Index1 := Random(Length(Model) + 1);
+          Buf.PosOfIndex(Index1, RowIdx, ColIdx);
+          CheckInt(ModelIndex(Model, RowIdx, ColIdx), Index1,
+            'large: index vs model');
+          CheckInt(Buf.CharIndex(RowIdx, ColIdx), Index1,
+            'large: index round trip');
+        end;
+        // Все строки подряд
+        RowIdx := 0;
+        Index1 := 1;
+        for Index2 := 1 to Length(Model) + 1 do
+          if (Index2 > Length(Model)) or (Model[Index2] = #10) then
+          begin
+            if Buf[RowIdx] <> Copy(Model, Index1, Index2 - Index1) then
+            begin
+              Check(False, 'large: sequential line ' + IntToStr(RowIdx));
+              Break;
+            end;
+            Inc(RowIdx);
+            Index1 := Index2 + 1;
+          end;
+      end;
+    end;
+    Check(Reader.ReadSum > 0, 'large: listener read lines');
+    // Откат всего
+    while Buf.Undo(CurRow, CurCol) do
+      ;
+    CheckText(Buf, Original, 'large: undo all');
+    Check(not Buf.Modified, 'large: undo all - not modified');
+    while Buf.Redo(CurRow, CurCol) do
+      ;
+    CheckText(Buf, Model, 'large: redo all');
+    // AssignLines
+    SetLength(Lines, 3);
+    Lines[0] := 'one';
+    Lines[1] := '';
+    Lines[2] := 'three';
+    Buf.AssignLines(Lines, 3);
+    Check(Lines = nil, 'AssignLines takes the array');
+    CheckText(Buf, 'one'#10#10'three', 'AssignLines text');
+    CheckInt(Buf.Count, 3, 'AssignLines count');
+    Check(Buf[2] = 'three', 'AssignLines line');
+    Writeln('large: edits ', EditCount, ', final lines ', Buf.Count);
+  finally
+    Buf.RemoveListener(Reader.OnChange);
+    Reader.Free;
+    Buf.Free;
+  end;
+end;
+
+
 begin
   TestSetGetText;
   TestRawEdits;
@@ -465,6 +692,7 @@ begin
   TestLongLine;
   TestListener;
   TestRandom;
+  TestLargeText;
   Writeln('EdBuffer: checks ', CheckCount, ', failed ', FailCount);
   if FailCount > 0 then
     Halt(1);
