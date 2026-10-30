@@ -3598,6 +3598,7 @@ type
     function  LazUnitPathOf(const ALpi: string): string;
     function  CompileLazarus: Boolean;
     function  FpcExe(var AProblem: string): string;
+    function  FpcSetting(const AKey: string): string;
     function  FpcTargetSource: string;
     function  CompileFpc(const ASource, ALpi: string): Boolean;
     function  RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
@@ -52186,8 +52187,11 @@ end;
 //  именем. Из .lpi (если он есть) берутся режим синтаксиса (-M), пути
 //  модулей и include (-Fu, -Fi) и имя exe (-o). Объектные файлы и .ppu -
 //  в подпапке lib рядом с программой (-FU), чтобы не мусорить в исходниках.
-//  fpc.exe (FpcExe): поле FpcPath в разделе Compiler.Lazarus editor.ini
-//  (файл fpc.exe или папка с ним), PATH, fpc из папки Lazarus
+//  Поле fpc.exe (FpcFile) в IDE Options - Compilers - Lazarus задано -
+//  сборка всегда им, даже когда lazbuild есть; Target CPU (FpcCpu) и
+//  Target OS (FpcOs) - ключи -P и -T, Options (FpcOptions) - прочие ключи.
+//  fpc.exe (FpcExe): поле FpcFile (файл fpc.exe или папка с ним), PATH,
+//  fpc из папки Lazarus
 //  (<lazarus>\fpc\<версия>\bin\<платформа>), <диск>:\FPC\<версия>\bin\
 //  <платформа>. Из нескольких платформ берётся x86_64-win64.
 //  Сообщения fpc "файл(строка,колонка) Error: ..." - как у lazbuild.
@@ -52236,9 +52240,25 @@ begin
   end;
 end;
 
-function TForm1.FpcExe(var AProblem: string): string;
+// Значение поля страницы Compilers - Lazarus (раздел с учётом выбранного
+// инструмента); нет - пусто
+function TForm1.FpcSetting(const AKey: string): string;
 var
   Ini: TIniFile;
+begin
+  Result := '';
+  if not FileExists(SettingsFileName) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Result := Trim(Ini.ReadString(CompilerSection('Lazarus'), AKey, ''));
+  finally
+    Ini.Free;
+  end;
+end;
+
+function TForm1.FpcExe(var AProblem: string): string;
+var
   Setting, Lazbuild, LazProblem: string;
   Buf: array[0..MAX_PATH] of Char;
   FilePart: PChar;
@@ -52246,18 +52266,8 @@ var
 begin
   Result := '';
   AProblem := '';
-  // 1. Поле FpcPath: файл - он, папка - fpc.exe в ней
-  Setting := '';
-  if FileExists(SettingsFileName) then
-  begin
-    Ini := TIniFile.Create(SettingsFileName);
-    try
-      Setting := Trim(Ini.ReadString(CompilerSection('Lazarus'),
-                                     'FpcPath', ''));
-    finally
-      Ini.Free;
-    end;
-  end;
+  // 1. Поле fpc.exe: файл - он, папка - fpc.exe в ней
+  Setting := FpcSetting('FpcFile');
   if Setting <> '' then
   begin
     if FileExists(Setting) and not DirectoryExists(Setting) then
@@ -52295,10 +52305,9 @@ begin
     end;
   AProblem := 'fpc.exe не найден. Искали: ';
   if Setting <> '' then
-    AProblem := AProblem + 'FpcPath (' + Setting + '), ';
+    AProblem := AProblem + 'поле fpc.exe (' + Setting + '), ';
   AProblem := AProblem + 'PATH, папку fpc в Lazarus, <диск>:\FPC. Путь ' +
-    'можно указать в editor.ini: раздел [' + CompilerSection('Lazarus') +
-    '], ключ FpcPath (fpc.exe или папка с ним)';
+    'задаётся в IDE Options - Compilers - Lazarus, поле fpc.exe';
 end;
 
 // Программа для сборки fpc без .lpi: вкладка .lpr или .pp, иначе цель
@@ -52332,7 +52341,7 @@ end;
 function TForm1.CompileFpc(const ASource, ALpi: string): Boolean;
 var
   Fpc, Problem, Dir, Params, Exe, ShortName, Options, Mode: string;
-  UnitPath, PathRest, PathItem, LibDir: string;
+  UnitPath, PathRest, PathItem, LibDir, Cpu, TargetOs, Extra: string;
   LogLine, ErrFile, FirstFile, Where: string;
   Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount, SepPos: Integer;
   StartTick: Cardinal;
@@ -52382,9 +52391,32 @@ begin
         Params := Params + ' -Fu"' + PathItem + '" -Fi"' + PathItem + '"';
     end;
   end;
+  // Платформа из настроек: -P (x86_64 - через ppcrossx64.exe) и -T
+  Cpu := FpcSetting('FpcCpu');
+  TargetOs := FpcSetting('FpcOs');
+  Extra := FpcSetting('FpcOptions');
+  if Cpu <> '' then
+    Params := ' -P' + Cpu + Params;
+  if TargetOs <> '' then
+    Params := ' -T' + TargetOs + Params;
+  // Ключи пользователя - после режима из .lpi: у fpc последний ключ главнее
+  if Extra <> '' then
+    Params := Params + ' ' + Extra;
+  // .ppu разных платформ не смешиваются: lib\<CPU>-<OS>
   LibDir := Dir + 'lib';
   if not DirectoryExists(LibDir) then
     CreateDir(LibDir);
+  if (Cpu <> '') or (TargetOs <> '') then
+  begin
+    if Cpu = '' then
+      LibDir := LibDir + '\default-' + TargetOs
+    else if TargetOs = '' then
+      LibDir := LibDir + '\' + Cpu + '-default'
+    else
+      LibDir := LibDir + '\' + Cpu + '-' + TargetOs;
+    if not DirectoryExists(LibDir) then
+      CreateDir(LibDir);
+  end;
   Params := Trim(Params + ' -FU"' + LibDir + '" -o"' + Exe + '" "' +
     ASource + '"');
 
@@ -52504,6 +52536,16 @@ begin
     LogComp('Сборка Lazarus: не найдено описание проекта .lpi - lazbuild ' +
     'собирает только по нему. Откройте .lpi или .lpr проекта или задайте ' +
     'цель проекта unIDE (Project Properties)');
+    Exit;
+  end;
+  // Поле fpc.exe задано - сборка им напрямую, lazbuild не нужен
+  Src := ChangeFileExt(Lpi, '.lpr');
+  if (FpcSetting('FpcFile') <> '') and
+     (CompareText(ExtractFileExt(Lpi), '.lpi') = 0) and FileExists(Src) then
+  begin
+    LogComp('Сборка fpc.exe из настроек Lazarus (поле fpc.exe), режим и ' +
+      'пути из ' + ExtractFileName(Lpi));
+    Result := CompileFpc(Src, Lpi);
     Exit;
   end;
   Lazbuild := LazbuildExe(Problem);
