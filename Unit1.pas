@@ -3239,8 +3239,9 @@ type
     procedure GitCommitCopy(const AHash: string);
     function GitFindCommitCopy: string;
     function GitRenameCommitCopy(const AFolder: string): string;
-    procedure GitBisect(ADlg: TDlgGitHistory; AAction: TGitHistAction;
-      const AHash: string);
+    // ADlg - окно истории (TDlgGitHistory: модуль подключён только в
+    // implementation), AVerdict - good, bad, skip или end
+    procedure GitBisect(ADlg: TObject; const AVerdict, AHash: string);
     function GitCopyUntracked(const ASrcDir, ADstDir: string): Integer;
     procedure GitHistWinDone(Sender: TObject);
     function  GitDiscardIn(const AGit, ARepo: string;
@@ -72008,7 +72009,13 @@ begin
   else if HistAction in [ghaBisectGood, ghaBisectBad, ghaBisectSkip,
                          ghaBisectEnd] then
   begin
-    GitBisect(Dlg, HistAction, Hash);
+    case HistAction of
+      ghaBisectGood: GitBisect(Dlg, 'good', Hash);
+      ghaBisectBad: GitBisect(Dlg, 'bad', Hash);
+      ghaBisectSkip: GitBisect(Dlg, 'skip', Hash);
+    else
+      GitBisect(Dlg, 'end', Hash);
+    end;
     Exit;   // bisect - в копии, текущая ветка не меняется
   end;
   if FGitHistWin = Dlg then
@@ -72195,10 +72202,9 @@ end;
 // переключает копию на коммит посередине; копия переименовывается по
 // нему, он выделяется в окне. Найден первый плохой - сообщение, копия
 // остаётся на нём, bisect закрыт.
-procedure TForm1.GitBisect(ADlg: TDlgGitHistory; AAction: TGitHistAction;
-  const AHash: string);
+procedure TForm1.GitBisect(ADlg: TObject; const AVerdict, AHash: string);
 var
-  Folder, Verdict, LineText, FirstBad, NextHash: string;
+  Folder, LineText, FirstBad, NextHash: string;
   Output: WideString;
   Lines: TStringList;
   LineIdx, Code: Integer;
@@ -72207,7 +72213,7 @@ begin
   Folder := GitFindCommitCopy;
   if Folder = '' then
   begin
-    if AAction = ghaBisectEnd then
+    if AVerdict = 'end' then
     begin
       ShowMessage('Копии (Checkout to Folder) нет - поиск не идёт.');
       Exit;
@@ -72220,7 +72226,7 @@ begin
   ShowGitLog;
   Bisecting := GitRunIn(FGitHistGit, Folder, 'bisect log', False, Output) = 0;
 
-  if AAction = ghaBisectEnd then
+  if AVerdict = 'end' then
   begin
     if not Bisecting then
     begin
@@ -72236,16 +72242,10 @@ begin
     Exit;
   end;
 
-  case AAction of
-    ghaBisectGood: Verdict := 'good';
-    ghaBisectBad: Verdict := 'bad';
-  else
-    Verdict := 'skip';
-  end;
   if not Bisecting then
     if GitRunIn(FGitHistGit, Folder, 'bisect start', True, Output) <> 0 then
       Exit;
-  Code := GitRunIn(FGitHistGit, Folder, 'bisect ' + Verdict + ' ' + AHash,
+  Code := GitRunIn(FGitHistGit, Folder, 'bisect ' + AVerdict + ' ' + AHash,
     True, Output);
   if Code <> 0 then
     Exit;   // ошибка git (например, изменённые файлы в копии) - в журнале
@@ -72274,7 +72274,8 @@ begin
     // Копию - на первый плохой, bisect закрыть
     GitRunIn(FGitHistGit, Folder, 'bisect reset ' + FirstBad, True, Output);
     Folder := GitRenameCommitCopy(Folder);
-    if (FGitHistWin = ADlg) and not ADlg.SelectCommit(FirstBad) then
+    if (FGitHistWin = ADlg) and (ADlg is TDlgGitHistory) and
+       not TDlgGitHistory(ADlg).SelectCommit(FirstBad) then
       LogGit('Git: коммита ' + Copy(FirstBad, 1, 7) + ' нет среди ' +
         'загруженных - Load More');
     LogGit('Git: первый плохой коммит - ' + Copy(FirstBad, 1, 7) +
@@ -72286,7 +72287,8 @@ begin
   else if NextHash <> '' then
   begin
     Folder := GitRenameCommitCopy(Folder);
-    if (FGitHistWin = ADlg) and not ADlg.SelectCommit(NextHash) then
+    if (FGitHistWin = ADlg) and (ADlg is TDlgGitHistory) and
+       not TDlgGitHistory(ADlg).SelectCommit(NextHash) then
       LogGit('Git: коммита ' + Copy(NextHash, 1, 7) + ' нет среди ' +
         'загруженных - Load More');
     LogGit('Git: копия ' + Folder + ' - на коммите ' + Copy(NextHash, 1, 7) +
@@ -72295,7 +72297,7 @@ begin
   end
   else
     // Отмечен только один край: git ждёт второй
-    LogGit('Git: отмечено (' + Verdict + ' ' + Copy(AHash, 1, 7) + '); ' +
+    LogGit('Git: отмечено (' + AVerdict + ' ' + Copy(AHash, 1, 7) + '); ' +
       'теперь отметьте коммит с другим результатом - Good (ошибки нет) ' +
       'или Bad (есть)');
 end;
