@@ -49,6 +49,26 @@ const
   SchemaHeadMark = #149#160;
 
 type
+  // Список слов схемы (подпрограммы, блоки, отступы) без учёта регистра.
+  // IndexOf - по хеш-таблице: разбор текста спрашивает про каждое слово
+  // каждой строки, а IndexOf обычного TStringList с CaseSensitive = False
+  // сравнивает через AnsiCompareText (CompareString Windows) - на большом
+  // файле это заметная доля пересборки карты. Регистр сводится таблицей
+  // (латиница и кириллица CP1251); результат - тот же индекс, что у
+  // TStringList.IndexOf (первая подходящая запись).
+  TSchemeWords = class(TStringList)
+  private
+    FSlots: array of Integer;   // индекс записи + 1; 0 - пусто
+    FSlotMask: Integer;
+    FHashValid: Boolean;
+    procedure RebuildHash;
+    function SameWord(const AItem, AWord: string): Boolean;
+  protected
+    procedure Changed; override;
+  public
+    function IndexOf(const S: string): Integer; override;
+  end;
+
   // Структура для хранения одного многострочного комментария
   // Пара маркеров блочного комментария. Первая пара живёт в полях
   // FBlockCommentStart/End и FBcFG/FBcBG - она есть всегда; здесь лежат
@@ -324,6 +344,106 @@ function  WordsBySpace(List: TStringList): string;
 
 implementation
 
+var
+  // Буква -> строчная: латиница и кириллица CP1251 (Ё/ё, А..Я)
+  WordLower: array[Char] of Char;
+
+procedure InitWordLower;
+var
+  CharCode: Integer;
+begin
+  for CharCode := 0 to 255 do
+    WordLower[Chr(CharCode)] := Chr(CharCode);
+  for CharCode := Ord('A') to Ord('Z') do
+    WordLower[Chr(CharCode)] := Chr(CharCode + 32);
+  for CharCode := $C0 to $DF do
+    WordLower[Chr(CharCode)] := Chr(CharCode + 32);
+  WordLower[#$A8] := #$B8;
+end;
+
+function WordHash(const AWord: string): Cardinal;
+var
+  CharIdx: Integer;
+begin
+  Result := 2166136261;
+  for CharIdx := 1 to Length(AWord) do
+    Result := (Result xor Ord(WordLower[AWord[CharIdx]])) * 16777619;
+end;
+
+{ TSchemeWords }
+
+procedure TSchemeWords.Changed;
+begin
+  FHashValid := False;
+  inherited Changed;
+end;
+
+function TSchemeWords.SameWord(const AItem, AWord: string): Boolean;
+var
+  CharIdx: Integer;
+begin
+  Result := False;
+  if Length(AItem) <> Length(AWord) then
+    Exit;
+  for CharIdx := 1 to Length(AWord) do
+    if WordLower[AItem[CharIdx]] <> WordLower[AWord[CharIdx]] then
+      Exit;
+  Result := True;
+end;
+
+procedure TSchemeWords.RebuildHash;
+var
+  SlotCount, ItemIdx, SlotIdx: Integer;
+begin
+  SlotCount := 16;
+  while SlotCount < Count * 2 do
+    SlotCount := SlotCount * 2;
+  FSlotMask := SlotCount - 1;
+  SetLength(FSlots, 0);
+  SetLength(FSlots, SlotCount);
+  for ItemIdx := 0 to Count - 1 do
+  begin
+    SlotIdx := Integer(WordHash(Strings[ItemIdx]) and Cardinal(FSlotMask));
+    while FSlots[SlotIdx] <> 0 do
+    begin
+      // Такое же слово уже есть - IndexOf вернёт первое
+      if SameWord(Strings[FSlots[SlotIdx] - 1], Strings[ItemIdx]) then
+        Break;
+      SlotIdx := (SlotIdx + 1) and FSlotMask;
+    end;
+    if FSlots[SlotIdx] = 0 then
+      FSlots[SlotIdx] := ItemIdx + 1;
+  end;
+  FHashValid := True;
+end;
+
+function TSchemeWords.IndexOf(const S: string): Integer;
+var
+  SlotIdx: Integer;
+begin
+  // С учётом регистра - как у TStringList
+  if CaseSensitive then
+  begin
+    Result := inherited IndexOf(S);
+    Exit;
+  end;
+  Result := -1;
+  if Count = 0 then
+    Exit;
+  if not FHashValid then
+    RebuildHash;
+  SlotIdx := Integer(WordHash(S) and Cardinal(FSlotMask));
+  while FSlots[SlotIdx] <> 0 do
+  begin
+    if SameWord(Strings[FSlots[SlotIdx] - 1], S) then
+    begin
+      Result := FSlots[SlotIdx] - 1;
+      Exit;
+    end;
+    SlotIdx := (SlotIdx + 1) and FSlotMask;
+  end;
+end;
+
 function ThemeKey(const AName: string): string;
 begin
   Result := Trim(AName);
@@ -341,64 +461,64 @@ begin
   FTextFG := clBlack;
   FTextBG := TColor($00F9F9F9);
   // Слова отметки строк - без учёта регистра, для быстрого IndexOf
-  FSubWords := TStringList.Create;
+  FSubWords := TSchemeWords.Create;
   FSubWords.Sorted := True;
   FSubWords.Duplicates := dupIgnore;
   FSubWords.CaseSensitive := False;
-  FSubEndWords := TStringList.Create;
+  FSubEndWords := TSchemeWords.Create;
   FSubEndWords.CaseSensitive := False;
-  FSubOpenWords := TStringList.Create;
+  FSubOpenWords := TSchemeWords.Create;
   FSubOpenWords.Sorted := True;
   FSubOpenWords.Duplicates := dupIgnore;
   FSubOpenWords.CaseSensitive := False;
-  FSubNoBodyWords := TStringList.Create;
+  FSubNoBodyWords := TSchemeWords.Create;
   FSubNoBodyWords.Sorted := True;
   FSubNoBodyWords.Duplicates := dupIgnore;
   FSubNoBodyWords.CaseSensitive := False;
   // Не Sorted: записи здесь с условием, порядок перебора свой
-  FTagVoid := TStringList.Create;
+  FTagVoid := TSchemeWords.Create;
   FTagVoid.Sorted := True;
   FTagVoid.Duplicates := dupIgnore;
   FTagVoid.CaseSensitive := False;
-  FSubOpenFirst := TStringList.Create;
+  FSubOpenFirst := TSchemeWords.Create;
   FSubOpenFirst.CaseSensitive := False;
-  FSubSkip := TStringList.Create;
+  FSubSkip := TSchemeWords.Create;
   FSubSkip.Sorted := True;
   FSubSkip.Duplicates := dupIgnore;
   FSubSkip.CaseSensitive := False;
-  FFmtOutdent := TStringList.Create;
+  FFmtOutdent := TSchemeWords.Create;
   FFmtOutdent.Sorted := True;
   FFmtOutdent.Duplicates := dupIgnore;
   FFmtOutdent.CaseSensitive := False;
-  FFmtSection := TStringList.Create;
+  FFmtSection := TSchemeWords.Create;
   FFmtSection.Sorted := True;
   FFmtSection.Duplicates := dupIgnore;
   FFmtSection.CaseSensitive := False;
-  FFmtClass := TStringList.Create;
+  FFmtClass := TSchemeWords.Create;
   FFmtClass.Sorted := True;
   FFmtClass.Duplicates := dupIgnore;
   FFmtClass.CaseSensitive := False;
-  FFmtStmtEnd := TStringList.Create;
+  FFmtStmtEnd := TSchemeWords.Create;
   FFmtStmtEnd.Sorted := True;
   FFmtStmtEnd.Duplicates := dupIgnore;
   FFmtStmtEnd.CaseSensitive := False;
-  FFmtHang := TStringList.Create;
+  FFmtHang := TSchemeWords.Create;
   FFmtHang.Sorted := True;
   FFmtHang.Duplicates := dupIgnore;
   FFmtHang.CaseSensitive := False;
-  FFmtContinue := TStringList.Create;
+  FFmtContinue := TSchemeWords.Create;
   FFmtContinue.Sorted := True;
   FFmtContinue.Duplicates := dupIgnore;
   FFmtContinue.CaseSensitive := False;
-  FFmtHangFirst := TStringList.Create;
+  FFmtHangFirst := TSchemeWords.Create;
   FFmtHangFirst.Sorted := True;
   FFmtHangFirst.Duplicates := dupIgnore;
   FFmtHangFirst.CaseSensitive := False;
-  FFmtContinueFirst := TStringList.Create;
+  FFmtContinueFirst := TSchemeWords.Create;
   FFmtContinueFirst.Sorted := True;
   FFmtContinueFirst.Duplicates := dupIgnore;
   FFmtContinueFirst.CaseSensitive := False;
-  FFmtLabel := TStringList.Create;
+  FFmtLabel := TSchemeWords.Create;
   FFmtLabel.Sorted := True;
   FFmtLabel.Duplicates := dupIgnore;
   FFmtLabel.CaseSensitive := False;
@@ -2167,5 +2287,8 @@ begin
     end;
   end;
 end;
+
+initialization
+  InitWordLower;
 
 end.
