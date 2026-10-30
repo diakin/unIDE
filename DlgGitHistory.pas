@@ -56,7 +56,8 @@ type
 
   // Что сделать после закрытия окна
   TGitHistAction = (ghaNone, ghaBranch, ghaRevert, ghaCherryPick,
-    ghaMergeBranch, ghaDeleteBranch, ghaWorktree);
+    ghaMergeBranch, ghaDeleteBranch, ghaWorktree, ghaBisectGood,
+    ghaBisectBad, ghaBisectSkip, ghaBisectEnd);
 
   TDlgGitHistory = class(TForm)
   private
@@ -114,6 +115,11 @@ type
     FBtnBranch: TUiButton;
     FBtnRevert: TUiButton;
     FBtnWorktree: TUiButton;
+    // Поиск регрессии (git bisect) в копии Checkout to Folder
+    FBtnGood: TUiButton;
+    FBtnBad: TUiButton;
+    FBtnSkip: TUiButton;
+    FBtnBisectEnd: TUiButton;
     FBtnClose: TUiButton;
     procedure Build(const ATitle: string);
     procedure LoadCommits;
@@ -144,6 +150,8 @@ type
     procedure BtnBranchClick(Sender: TObject);
     procedure BtnRevertClick(Sender: TObject);
     procedure BtnWorktreeClick(Sender: TObject);
+    procedure BtnBisectClick(Sender: TObject);
+    procedure DoAction(AAction: TGitHistAction);
     procedure LayoutButtons(Sender: TObject);
     function Query(const AArgs: string; var AOutput: WideString): Integer;
     procedure UpdateButtons;
@@ -167,6 +175,9 @@ type
     procedure ShowModeless(AOnAction, AOnDone: TNotifyEvent);
     // Коммиты заново (после действия в немодальном окне)
     procedure ReloadCommits;
+    // Выделить коммит AHash (полный или начало) и показать его; False -
+    // его нет среди загруженных
+    function SelectCommit(const AHash: string): Boolean;
     property Action: TGitHistAction read FAction;
     property SelectedHash: string read FCurHash;
     // Cherry-pick: выделенные коммиты, от старых к новым
@@ -398,6 +409,48 @@ begin
   FBtnWorktree.OnClick := BtnWorktreeClick;
   FBtnWorktree.Visible := not FCompare and not FUnmerged;
 
+  FBtnGood := TUiButton.Create(Self);
+  FBtnGood.Parent := FBtnPanel;
+  FBtnGood.Caption := 'Good';
+  FBtnGood.Hint := 'Поиск регрессии (git bisect в копии Checkout to ' +
+    'Folder): выбранный коммит хороший - ошибки в нём нет. Когда отмечены ' +
+    'и хороший, и плохой, копия переключается на коммит посередине: ' +
+    'собрать, проверить, отметить его';
+  FBtnGood.ShowHint := True;
+  FBtnGood.Tag := Ord(ghaBisectGood);
+  FBtnGood.OnClick := BtnBisectClick;
+  FBtnGood.Visible := not FCompare and not FUnmerged;
+
+  FBtnBad := TUiButton.Create(Self);
+  FBtnBad.Parent := FBtnPanel;
+  FBtnBad.Caption := 'Bad';
+  FBtnBad.Hint := 'Поиск регрессии: выбранный коммит плохой - ошибка в ' +
+    'нём есть';
+  FBtnBad.ShowHint := True;
+  FBtnBad.Tag := Ord(ghaBisectBad);
+  FBtnBad.OnClick := BtnBisectClick;
+  FBtnBad.Visible := not FCompare and not FUnmerged;
+
+  FBtnSkip := TUiButton.Create(Self);
+  FBtnSkip.Parent := FBtnPanel;
+  FBtnSkip.Caption := 'Skip';
+  FBtnSkip.Hint := 'Поиск регрессии: выбранный коммит не проверить (не ' +
+    'собирается) - git возьмёт соседний';
+  FBtnSkip.ShowHint := True;
+  FBtnSkip.Tag := Ord(ghaBisectSkip);
+  FBtnSkip.OnClick := BtnBisectClick;
+  FBtnSkip.Visible := not FCompare and not FUnmerged;
+
+  FBtnBisectEnd := TUiButton.Create(Self);
+  FBtnBisectEnd.Parent := FBtnPanel;
+  FBtnBisectEnd.Caption := 'End Bisect';
+  FBtnBisectEnd.Hint := 'Закончить поиск регрессии (git bisect reset): ' +
+    'копия возвращается на коммит, с которого поиск начался';
+  FBtnBisectEnd.ShowHint := True;
+  FBtnBisectEnd.Tag := Ord(ghaBisectEnd);
+  FBtnBisectEnd.OnClick := BtnBisectClick;
+  FBtnBisectEnd.Visible := not FCompare and not FUnmerged;
+
   FBtnPick := TUiButton.Create(Self);
   FBtnPick.Parent := FBtnPanel;
   FBtnPick.Caption := 'Cherry-pick';
@@ -478,6 +531,13 @@ begin
     Place(FBtnRevert, 100);
   if FBtnWorktree.Visible then
     Place(FBtnWorktree, 130);
+  if FBtnGood.Visible then
+  begin
+    Place(FBtnGood, 50);
+    Place(FBtnBad, 50);
+    Place(FBtnSkip, 50);
+    Place(FBtnBisectEnd, 84);
+  end;
   if FUnmerged then
   begin
     Place(FBtnPick, 84);
@@ -506,6 +566,9 @@ begin
   FBtnBranch.Enabled := HasCommit;
   FBtnRevert.Enabled := HasCommit;
   FBtnWorktree.Enabled := HasCommit;
+  FBtnGood.Enabled := HasCommit;
+  FBtnBad.Enabled := HasCommit;
+  FBtnSkip.Enabled := HasCommit;
   FBtnPick.Enabled := FCommitList.SelCount > 0;
   FBtnMergeBranch.Enabled := HasCommit;
 end;
@@ -1058,7 +1121,24 @@ procedure TDlgGitHistory.BtnWorktreeClick(Sender: TObject);
 begin
   if FCurHash = '' then
     Exit;
-  FAction := ghaWorktree;
+  DoAction(ghaWorktree);
+end;
+
+// Good / Bad / Skip / End Bisect: действие - в Tag кнопки
+procedure TDlgGitHistory.BtnBisectClick(Sender: TObject);
+var
+  BisectAction: TGitHistAction;
+begin
+  BisectAction := TGitHistAction((Sender as TUiButton).Tag);
+  if (FCurHash = '') and (BisectAction <> ghaBisectEnd) then
+    Exit;
+  DoAction(BisectAction);
+end;
+
+// Немодальное окно - сразу AOnAction, модальное - закрыть с mrOk
+procedure TDlgGitHistory.DoAction(AAction: TGitHistAction);
+begin
+  FAction := AAction;
   if FModeless then
   begin
     if Assigned(FOnAction) then
@@ -1066,6 +1146,26 @@ begin
   end
   else
     ModalResult := mrOk;
+end;
+
+function TDlgGitHistory.SelectCommit(const AHash: string): Boolean;
+var
+  CommitIdx: Integer;
+begin
+  Result := False;
+  if AHash = '' then
+    Exit;
+  for CommitIdx := 0 to High(FCommits) do
+    if (CommitIdx < FCommitList.Items.Count) and
+       (Copy(FCommits[CommitIdx].Hash, 1, Length(AHash)) = AHash) then
+    begin
+      FCommitList.ClearSelection;
+      FCommitList.Items[CommitIdx].Selected := True;
+      FCommitList.ItemFocused := FCommitList.Items[CommitIdx];
+      FCommitList.Items[CommitIdx].MakeVisible(False);
+      Result := True;
+      Exit;
+    end;
 end;
 
 procedure TDlgGitHistory.BtnCloseClick(Sender: TObject);

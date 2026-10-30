@@ -3237,6 +3237,10 @@ type
                               var AOutput: WideString): Integer;
     procedure GitHistWinAction(Sender: TObject);
     procedure GitCommitCopy(const AHash: string);
+    function GitFindCommitCopy: string;
+    function GitRenameCommitCopy(const AFolder: string): string;
+    procedure GitBisect(ADlg: TDlgGitHistory; AAction: TGitHistAction;
+      const AHash: string);
     function GitCopyUntracked(const ASrcDir, ADstDir: string): Integer;
     procedure GitHistWinDone(Sender: TObject);
     function  GitDiscardIn(const AGit, ARepo: string;
@@ -71966,7 +71970,7 @@ begin
   Dlg := TDlgGitHistory(Sender);
   HistAction := Dlg.Action;
   Hash := Dlg.SelectedHash;
-  if (HistAction = ghaNone) or (Hash = '') then
+  if (HistAction = ghaNone) or ((Hash = '') and (HistAction <> ghaBisectEnd)) then
     Exit;
   if HistAction = ghaBranch then
   begin
@@ -72000,6 +72004,12 @@ begin
   begin
     GitCommitCopy(Hash);
     Exit;   // текущая ветка и её коммиты не изменились
+  end
+  else if HistAction in [ghaBisectGood, ghaBisectBad, ghaBisectSkip,
+                         ghaBisectEnd] then
+  begin
+    GitBisect(Dlg, HistAction, Hash);
+    Exit;   // bisect - в копии, текущая ветка не меняется
   end;
   if FGitHistWin = Dlg then
   begin
@@ -72023,14 +72033,15 @@ end;
 //   - Копия есть (зарегистрированный worktree с таким именем): папка
 //     переименовывается (git worktree move), отслеживаемые файлы -
 //     как в AHash (checkout --force); неотслеживаемые остаются.
-procedure TForm1.GitCommitCopy(const AHash: string);
+// Копия Checkout to Folder (зарегистрированный worktree с именем
+// <папка репозитория>-<7 знаков SHA> рядом с репозиторием); нет - ''
+function TForm1.GitFindCommitCopy: string;
 var
-  RepoDir, Folder, OldFolder, WtPath, ShortHash: string;
+  RepoDir, WtPath: string;
   Output: WideString;
   Lines: TStringList;
-  LineIdx, CopyCount: Integer;
+  LineIdx: Integer;
 
-  // <папка репозитория>-<7 шестнадцатеричных знаков> рядом с репозиторием
   function IsCommitCopy(const APath: string): Boolean;
   var
     Suffix: string;
@@ -72052,18 +72063,9 @@ var
     Result := True;
   end;
 
-  function Quoted(const APath: string): string;
-  begin
-    Result := string(GitQuote(WideString(APath)));
-  end;
-
 begin
-  ShortHash := Copy(AHash, 1, 7);
+  Result := '';
   RepoDir := ExcludeTrailingPathDelimiter(FGitHistRepo);
-  Folder := RepoDir + '-' + ShortHash;
-
-  // Прежняя копия - среди worktree репозитория
-  OldFolder := '';
   if GitRunIn(FGitHistGit, FGitHistRepo, 'worktree list --porcelain', False,
      Output) = 0 then
   begin
@@ -72077,7 +72079,7 @@ begin
             Copy(Lines[LineIdx], 10, MaxInt), '/', '\', [rfReplaceAll]));
           if IsCommitCopy(WtPath) then
           begin
-            OldFolder := WtPath;
+            Result := WtPath;
             Break;
           end;
         end;
@@ -72085,6 +72087,54 @@ begin
       Lines.Free;
     end;
   end;
+end;
+
+// Копия AFolder - на имя по её текущему коммиту (git worktree move).
+// Результат - папка копии после этого (не переименовалась - прежняя)
+function TForm1.GitRenameCommitCopy(const AFolder: string): string;
+var
+  NewFolder: string;
+  Output: WideString;
+begin
+  Result := AFolder;
+  NewFolder := ExcludeTrailingPathDelimiter(FGitHistRepo) + '-' +
+    GitQuery(FGitHistGit, AFolder, 'rev-parse --short=7 HEAD');
+  if (Length(NewFolder) = Length(ExcludeTrailingPathDelimiter(FGitHistRepo)) + 1) or
+     SameText(NewFolder, AFolder) then
+    Exit;
+  if DirectoryExists(NewFolder) then
+  begin
+    LogGit('Git: папка ' + NewFolder + ' уже есть - копия остаётся в ' +
+      AFolder, clRed);
+    Exit;
+  end;
+  if GitRunIn(FGitHistGit, FGitHistRepo, 'worktree move ' +
+     string(GitQuote(WideString(AFolder))) + ' ' +
+     string(GitQuote(WideString(NewFolder))), True, Output) = 0 then
+    Result := NewFolder
+  else
+    LogGit('Git: копия не переименована (папка занята? запущен exe из ' +
+      'неё?) - она остаётся в ' + AFolder, clRed);
+end;
+
+procedure TForm1.GitCommitCopy(const AHash: string);
+var
+  RepoDir, Folder, OldFolder, ShortHash: string;
+  Output: WideString;
+  CopyCount: Integer;
+
+  function Quoted(const APath: string): string;
+  begin
+    Result := string(GitQuote(WideString(APath)));
+  end;
+
+begin
+  ShortHash := Copy(AHash, 1, 7);
+  RepoDir := ExcludeTrailingPathDelimiter(FGitHistRepo);
+  Folder := RepoDir + '-' + ShortHash;
+
+  // Прежняя копия - среди worktree репозитория
+  OldFolder := GitFindCommitCopy;
 
   ShowGitLog;
   if OldFolder <> '' then
@@ -72137,6 +72187,117 @@ begin
     'переименуется); убрать копию: git worktree remove --force ' +
     Quoted(Folder));
   ShellExecute(Handle, 'open', PChar(Folder), nil, nil, SW_SHOWNORMAL);
+end;
+
+// Поиск регрессии в копии Checkout to Folder (git bisect): Good / Bad /
+// Skip - отметить коммит AHash, End Bisect - закончить. Копии нет -
+// сначала она создаётся (на AHash). Отмечены и хороший, и плохой - git
+// переключает копию на коммит посередине; копия переименовывается по
+// нему, он выделяется в окне. Найден первый плохой - сообщение, копия
+// остаётся на нём, bisect закрыт.
+procedure TForm1.GitBisect(ADlg: TDlgGitHistory; AAction: TGitHistAction;
+  const AHash: string);
+var
+  Folder, Verdict, LineText, FirstBad, NextHash: string;
+  Output: WideString;
+  Lines: TStringList;
+  LineIdx, Code: Integer;
+  Bisecting: Boolean;
+begin
+  Folder := GitFindCommitCopy;
+  if Folder = '' then
+  begin
+    if AAction = ghaBisectEnd then
+    begin
+      ShowMessage('Копии (Checkout to Folder) нет - поиск не идёт.');
+      Exit;
+    end;
+    GitCommitCopy(AHash);
+    Folder := GitFindCommitCopy;
+    if Folder = '' then
+      Exit;   // не создалась - причина в журнале Git
+  end;
+  ShowGitLog;
+  Bisecting := GitRunIn(FGitHistGit, Folder, 'bisect log', False, Output) = 0;
+
+  if AAction = ghaBisectEnd then
+  begin
+    if not Bisecting then
+    begin
+      LogGit('Git: поиск регрессии в ' + Folder + ' не идёт');
+      Exit;
+    end;
+    if GitRunIn(FGitHistGit, Folder, 'bisect reset', True, Output) = 0 then
+    begin
+      Folder := GitRenameCommitCopy(Folder);
+      LogGit('Git: поиск закончен, копия ' + Folder + ' - на коммите, с ' +
+        'которого он начался');
+    end;
+    Exit;
+  end;
+
+  case AAction of
+    ghaBisectGood: Verdict := 'good';
+    ghaBisectBad: Verdict := 'bad';
+  else
+    Verdict := 'skip';
+  end;
+  if not Bisecting then
+    if GitRunIn(FGitHistGit, Folder, 'bisect start', True, Output) <> 0 then
+      Exit;
+  Code := GitRunIn(FGitHistGit, Folder, 'bisect ' + Verdict + ' ' + AHash,
+    True, Output);
+  if Code <> 0 then
+    Exit;   // ошибка git (например, изменённые файлы в копии) - в журнале
+
+  // Разбор ответа: найден первый плохой / следующий коммит / ждёт отметки
+  FirstBad := '';
+  NextHash := '';
+  Lines := TStringList.Create;
+  try
+    GitSplitLines(Output, Lines);
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      LineText := Trim(Lines[LineIdx]);
+      if Pos(' is the first bad commit', LineText) > 0 then
+        FirstBad := Copy(LineText, 1, Pos(' ', LineText) - 1)
+      else if (Copy(LineText, 1, 1) = '[') and (Pos(']', LineText) > 2) and
+              (NextHash = '') then
+        NextHash := Copy(LineText, 2, Pos(']', LineText) - 2);
+    end;
+  finally
+    Lines.Free;
+  end;
+
+  if FirstBad <> '' then
+  begin
+    // Копию - на первый плохой, bisect закрыть
+    GitRunIn(FGitHistGit, Folder, 'bisect reset ' + FirstBad, True, Output);
+    Folder := GitRenameCommitCopy(Folder);
+    if (FGitHistWin = ADlg) and not ADlg.SelectCommit(FirstBad) then
+      LogGit('Git: коммита ' + Copy(FirstBad, 1, 7) + ' нет среди ' +
+        'загруженных - Load More');
+    LogGit('Git: первый плохой коммит - ' + Copy(FirstBad, 1, 7) +
+      '; копия ' + Folder + ' на нём', TColor($008000));
+    MessageDlg('Первый плохой коммит: ' + Copy(FirstBad, 1, 7) + #13#10 +
+      #13#10 + 'Копия ' + Folder + ' переключена на него, поиск закончен. ' +
+      'Подробности - в журнале Git.', mtInformation, [mbOK], 0);
+  end
+  else if NextHash <> '' then
+  begin
+    Folder := GitRenameCommitCopy(Folder);
+    if (FGitHistWin = ADlg) and not ADlg.SelectCommit(NextHash) then
+      LogGit('Git: коммита ' + Copy(NextHash, 1, 7) + ' нет среди ' +
+        'загруженных - Load More');
+    LogGit('Git: копия ' + Folder + ' - на коммите ' + Copy(NextHash, 1, 7) +
+      ': соберите, проверьте и отметьте его Good, Bad или Skip',
+      TColor($008000));
+  end
+  else
+    // Отмечен только один край: git ждёт второй
+    LogGit('Git: отмечено (' + Verdict + ' ' + Copy(AHash, 1, 7) + '); ' +
+      'теперь отметьте коммит с другим результатом - Good (ошибки нет) ' +
+      'или Bad (есть)');
 end;
 
 // Файлы рабочей папки ASrcDir, которых нет в git (неотслеживаемые и
