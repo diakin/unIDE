@@ -71562,6 +71562,9 @@ var
   Dlg: TDlgGitHistory;
   HistAction: TGitHistAction;
   ActionBranch: string;
+  // Список пуст (все ветки влиты) - окно не показывается, сразу выбор
+  // веток для удаления; отказ там - выход, а не снова пустое окно
+  AutoDelete: Boolean;
 begin
   if not GitPrepare(Git, Repo) then
     Exit;
@@ -71626,14 +71629,29 @@ begin
       Dlg.SetSchemeProvider(SchemeCopyFor);
       Dlg.SetPlacementIni(SettingsFileName);
       try
-        Dlg.ShowModal;
-        HistAction := Dlg.Action;
-        Hash := Dlg.SelectedHash;
-        Hashes := '';
-        PickCount := Dlg.SelectedHashes.Count;
-        for RefIdx := 0 to Dlg.SelectedHashes.Count - 1 do
-          Hashes := Hashes + ' ' + Dlg.SelectedHashes[RefIdx];
-        ActionBranch := Dlg.ActionBranch;
+        AutoDelete := (Dlg.CommitCount = 0) and not FGitCancel;
+        if AutoDelete then
+        begin
+          ShowGitLog;
+          LogGit('Git: коммитов, которых нет в ' + Base + ', нет ни в ' +
+            'одной ветке - сразу выбор веток для удаления');
+          HistAction := ghaDeleteBranch;
+          Hash := '';
+          Hashes := '';
+          PickCount := 0;
+          ActionBranch := '';
+        end
+        else
+        begin
+          Dlg.ShowModal;
+          HistAction := Dlg.Action;
+          Hash := Dlg.SelectedHash;
+          Hashes := '';
+          PickCount := Dlg.SelectedHashes.Count;
+          for RefIdx := 0 to Dlg.SelectedHashes.Count - 1 do
+            Hashes := Hashes + ' ' + Dlg.SelectedHashes[RefIdx];
+          ActionBranch := Dlg.ActionBranch;
+        end;
       finally
         Dlg.Free;
       end;
@@ -71718,13 +71736,19 @@ begin
               // Unmerged: в таблице делать нечего
               if Choices.Count = 0 then
               begin
-                ShowMessage('Удалять нечего.');
+                if AutoDelete then
+                  LogGit('Git: кроме ' + Base + ' и main удалять нечего')
+                else
+                  ShowMessage('Удалять нечего.');
                 Exit;
               end;
               if not ChooseManyFromList('Delete Branch', 'Выделите ветки ' +
                  '(щелчком) и нажмите OK - они будут удалены (локальные и на ' +
                  'сервере):', Choices, Chosen) then
-                Continue;
+                if AutoDelete then
+                  Exit
+                else
+                  Continue;
               // Одно подтверждение на все: имена и сколько коммитов пропадёт
               LostCount := 0;
               Question := '';
@@ -71743,7 +71767,10 @@ begin
                 Question := '  ' + Choice + #13#10 + Question;
               end;
               if Chosen.Count = 0 then
-                Continue;
+                if AutoDelete then
+                  Exit
+                else
+                  Continue;
               if Chosen.Count = 1 then
               begin
                 BranchIdx := BranchRefs.IndexOfName(Chosen[0]);
@@ -71760,7 +71787,10 @@ begin
                   '(останутся только в истории reflog этого компьютера).';
               if MessageDlg(Question, mtWarning, [mbOK, mbCancel], 0) <>
                  mrOk then
-                Continue;
+                if AutoDelete then
+                  Exit
+                else
+                  Continue;
               for ChosenIdx := 0 to Chosen.Count - 1 do
               begin
                 BranchIdx := BranchRefs.IndexOfName(Chosen[ChosenIdx]);

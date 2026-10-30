@@ -178,6 +178,8 @@ type
     // Выделить коммит AHash (полный или начало) и показать его; False -
     // его нет среди загруженных
     function SelectCommit(const AHash: string): Boolean;
+    // Сколько коммитов в списке (Unmerged: 0 - все ветки уже влиты)
+    function CommitCount: Integer;
     property Action: TGitHistAction read FAction;
     property SelectedHash: string read FCurHash;
     // Cherry-pick: выделенные коммиты, от старых к новым
@@ -1146,6 +1148,11 @@ begin
   end
   else
     ModalResult := mrOk;
+end;
+
+function TDlgGitHistory.CommitCount: Integer;
+begin
+  Result := Length(FCommits);
 end;
 
 function TDlgGitHistory.SelectCommit(const AHash: string): Boolean;
