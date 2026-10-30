@@ -19,6 +19,11 @@ unit FarApp;
 //  Командная строка: uniFAR.exe [папка | файл] - активная панель в эту
 //  папку (у файла - в его папку, курсор на нём).
 //  Значок - res\uniFAR_icon.res (res\make_icon.py).
+//
+//  Над панелями - вкладки папок (FarTabs.pas): папка активной панели и
+//  свой список вкладок ([FolderTabs]), сколько поместится по ширине. Alt+Left /
+//  Alt+Right - по вкладкам, мышь - просмотр, щелчок - перейти.
+//  uniFAR.ini [uniFAR] FolderTabs=0 - без вкладок.
 // ---------------------------------------------------------------------------
 
 {$mode delphi}
@@ -36,7 +41,7 @@ implementation
 
 uses
   Windows, Messages, SysUtils, Classes, IniFiles, Graphics, ClrScheme,
-  SchemeFiles, UnFar;
+  SchemeFiles, UnFar, FarTabs;
 
 function AppCommandLineToArgv(ACmdLine: PWideChar;
   var AArgCount: Integer): PPWideChar; stdcall;
@@ -58,12 +63,14 @@ type
   TFarAppEvents = class
   public
     procedure FarClose(Sender: TObject);
+    procedure FarPainted(Sender: TObject);
     function FarGetScheme(const AFileName: WideString): TClrScheme;
   end;
 
 var
   MainWnd: HWND = 0;
   FarView: TFarView = nil;
+  TabBar: TFarTabBar = nil;
   Events: TFarAppEvents = nil;
   IniName: string = '';
   SchemesDir: string = '';
@@ -199,6 +206,20 @@ begin
   PostMessage(MainWnd, WM_CLOSE, 0, 0);
 end;
 
+procedure LayoutView; forward;
+
+// Окно FAR перерисовано: вкладки - тоже (папка панели, история могли
+// измениться); сменился шрифт панелей - другая высота полосы вкладок
+procedure TFarAppEvents.FarPainted(Sender: TObject);
+begin
+  if TabBar = nil then
+    Exit;
+  if TabBar.Height <> TabBar.BarHeight then
+    LayoutView
+  else
+    TabBar.Invalidate;
+end;
+
 function TFarAppEvents.FarGetScheme(const AFileName: WideString): TClrScheme;
 var
   SchemeKey: string;
@@ -244,6 +265,8 @@ procedure TryClose;
 begin
   if (FarView <> nil) and not FarView.EditorCanClose then
     Exit;
+  if TabBar <> nil then
+    TabBar.LeaveMode;
   SaveWindowPlacement;
   if FarView <> nil then
     FarView.SaveState(IniName);
@@ -253,11 +276,18 @@ end;
 procedure LayoutView;
 var
   ClientRect: TRect;
+  BarH: Integer;
 begin
   if FarView = nil then
     Exit;
   GetClientRect(MainWnd, ClientRect);
-  FarView.SetBounds(0, 0, ClientRect.Right, ClientRect.Bottom);
+  BarH := 0;
+  if TabBar <> nil then
+  begin
+    BarH := TabBar.BarHeight;
+    TabBar.SetBounds(0, 0, ClientRect.Right, BarH);
+  end;
+  FarView.SetBounds(0, BarH, ClientRect.Right, ClientRect.Bottom - BarH);
 end;
 
 function MainWindowProc(AWnd: HWND; AMsg: UINT; AWParam: WPARAM;
@@ -289,6 +319,7 @@ begin
       TryClose;
     WM_DESTROY:
       begin
+        FreeAndNil(TabBar);
         FreeAndNil(FarView);
         MainWnd := 0;
         PostQuitMessage(0);
@@ -315,7 +346,7 @@ procedure CreateMainWindow;
 var
   WndClass: TWndClassW;
   Ini: TIniFile;
-  WinLeft, WinTop, WinWidth, WinHeight: Integer;
+  WinLeft, WinTop, WinWidth, WinHeight, TabCount: Integer;
   Maximized: Boolean;
 begin
   FillChar(WndClass, SizeOf(WndClass), 0);
@@ -335,6 +366,7 @@ begin
     WinWidth := Ini.ReadInteger(AppIniSection, 'Width', 1020);
     WinHeight := Ini.ReadInteger(AppIniSection, 'Height', 680);
     Maximized := Ini.ReadInteger(AppIniSection, 'Maximized', 0) <> 0;
+    TabCount := Ini.ReadInteger(AppIniSection, 'FolderTabs', 1);
   finally
     Ini.Free;
   end;
@@ -348,12 +380,20 @@ begin
   FarView := TFarView.Create(nil);
   FarView.UnicodeChars := True;
   FarView.MessageLine := True;
+  // F4 - редактор сразу на всю ширину (F5 - в половину окна)
+  FarView.EditWideDefault := True;
   FarView.OnClose := Events.FarClose;
   FarView.OnGetScheme := Events.FarGetScheme;
   // OnEditFile, OnLeave, OnHalfResize, OnShowPanels - режим F4 рядом с
   // редактором unIDE; OnColorsDialog, OnPaletteDialog - окна настроек
   // unIDE. Здесь их нет
   FarView.ParentWindow := MainWnd;
+  if TabCount > 0 then
+  begin
+    TabBar := TFarTabBar.Create(nil, FarView);
+    TabBar.ParentWindow := MainWnd;
+    FarView.OnPainted := Events.FarPainted;
+  end;
   LayoutView;
 
   if Maximized then
@@ -419,6 +459,18 @@ var
 begin
   while GetMessageW(Msg, 0, 0, 0) do
   begin
+    // Вкладки папок: Alt+Left / Alt+Right, а в режиме вкладок - их клавиши
+    if (TabBar <> nil) and (FarView <> nil) and FarView.HandleAllocated and
+       (Msg.hwnd = FarView.Handle) then
+    begin
+      if ((Msg.message = WM_KEYDOWN) or (Msg.message = WM_SYSKEYDOWN)) and
+         TabBar.HandleKey(Word(Msg.wParam)) then
+        Continue;
+      // Щелчок по панелям - из режима вкладок
+      if TabBar.ModeOn and ((Msg.message = WM_LBUTTONDOWN) or
+         (Msg.message = WM_RBUTTONDOWN)) then
+        TabBar.LeaveMode;
+    end;
     // Клавиши окна FAR - сначала ему (F-клавиши, Alt+F1, символы и т.д.)
     if (FarView <> nil) and FarView.HandleAllocated and
        (Msg.hwnd = FarView.Handle) and
@@ -438,6 +490,8 @@ begin
     LoadSettings;
     CreateMainWindow;
     FarView.LoadState(IniName, CurrentDirW);
+    if TabBar <> nil then
+      TabBar.LoadList(IniName);
     OpenFromCommandLine;
     MessageLoop;
   finally

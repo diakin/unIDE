@@ -344,6 +344,9 @@ type
     // открывает окно списка (EditPathList). Папки, которых нет на этом
     // компьютере, в списке остаются - сборка их пропускает.
     FCompIsList: array of Boolean;
+    // Поле - простое значение, не путь (знак = перед ключом в таблице):
+    // кнопки «...» нет, значение не нормализуется как путь
+    FCompIsText: array of Boolean;
     FCompBtns: array of TUiButton;  // кнопки «...» полей, по номеру поля
     // RapidQ: Use IDE path - Compiler, Include, Library, Projects,
     // Templates, App icon берутся от IDE path (CompApplyIdePath)
@@ -3581,6 +3584,7 @@ begin
   SetLength(FCompEdits, 0);
   SetLength(FCompKeys, 0);
   SetLength(FCompIsList, 0);
+  SetLength(FCompIsText, 0);
 
   // Раздел настроек - по типу и выбранному инструменту. Инструмент без
   // имени пишется в раздел типа, как было до появления версий.
@@ -3649,6 +3653,13 @@ begin
       // в PATH, реестре, <диск>:\lazarus и Program Files (Unit1,
       // LazbuildExe)
       Fields.Add('LazarusPath|Lazarus path');
+      // Сборка fpc.exe напрямую (Unit1, CompileFpc): fpc.exe задан - им,
+      // без lazbuild; Target CPU и OS - ключи -P и -T (x86_64 и win64 -
+      // 64-битный exe через ppcrossx64.exe), Options - прочие ключи fpc
+      Fields.Add('FpcFile|fpc.exe');
+      Fields.Add('=FpcCpu|Target CPU');
+      Fields.Add('=FpcOs|Target OS');
+      Fields.Add('=FpcOptions|Options');
     end
     else if AType = 'Visual Basic' then
     begin
@@ -3714,6 +3725,7 @@ begin
       SetLength(FCompEdits, Fields.Count);
       SetLength(FCompKeys, Fields.Count);
       SetLength(FCompIsList, Fields.Count);
+      SetLength(FCompIsText, Fields.Count);
       SetLength(FCompBtns, Fields.Count);
 
       // RapidQ: галка Use IDE path над полями, как в RQdebugger
@@ -3742,6 +3754,9 @@ begin
         FCompIsList[I] := NoBrowse;
         if NoBrowse then
           Key := Copy(Key, 2, Length(Key));
+        FCompIsText[I] := (Key <> '') and (Key[1] = '=');
+        if FCompIsText[I] then
+          Key := Copy(Key, 2, Length(Key));
         FCompKeys[I] := Key;
 
         L := TLabel.Create(Self);
@@ -3762,6 +3777,14 @@ begin
         E.OnChange := CompEditChange;
         E.OnExit := CompEditExit;   // нормализация при уходе из поля
         FCompEdits[I] := E;
+
+        // Простое значение - без кнопки выбора
+        if FCompIsText[I] then
+        begin
+          FCompBtns[I] := nil;
+          Inc(Y, 28);
+          Continue;
+        end;
 
         // Кнопка выбора: у папки и файла - системный диалог, у списка
         // путей (поля со знаком минус перед ключом в таблице) - окно
@@ -3839,6 +3862,28 @@ begin
       'папки: Include передаётся ключом -i, Library - ключом -p. ' +
       'Вид результата (GUI, Console, DLL) и разрядность выбираются в рамке ' +
       'Project и запоминаются для главного .bas.';
+  end;
+
+  if AType = 'Lazarus' then
+  begin
+    L := TLabel.Create(Self);
+    L.Parent := pnlCompPage;
+    L.Left := 12;
+    L.Top := Y + 8;
+    L.AutoSize := False;
+    L.WordWrap := True;
+    L.Width := pnlCompPage.ClientWidth - 24;
+    L.Height := 150;
+    L.Anchors := [akLeft, akTop, akRight];
+    L.Caption :=
+      'Lazarus path - папка с lazbuild.exe; пустая - lazbuild ищется в ' +
+      'PATH, реестре и <диск>:\lazarus.' + #13#10#13#10 +
+      'fpc.exe задан - программа собирается им напрямую, без lazbuild: ' +
+      'режим и пути модулей берутся из .lpi, .ppu - в lib\<CPU>-<OS> ' +
+      'рядом с программой. Target CPU и Target OS - ключи -P и -T: ' +
+      'x86_64 и win64 дают 64-битный exe через кросс-компилятор ' +
+      'ppcrossx64.exe (он ставится с Free Pascal для win32). Options - ' +
+      'прочие ключи fpc через пробел, например -O3.';
   end;
 
   // Значения из editor.ini приводим в порядок сразу, не дожидаясь, пока
@@ -5002,6 +5047,16 @@ begin
       if (FCompEdits[I] = nil) or (I > High(FCompKeys)) then
         Continue;
 
+      if (I <= High(FCompIsText)) and FCompIsText[I] then
+      begin
+        // Не путь: только пробелы по краям
+        V := Trim(FCompEdits[I].Text);
+        if V <> FCompEdits[I].Text then
+          FCompEdits[I].Text := V;
+        Ini.WriteString(CompIniSection(FCompKeys[I]),
+                        CompIniKey(FCompKeys[I]), V);
+        Continue;
+      end;
       V := NormalizePathValue(FCompEdits[I].Text, IsFileKey(FCompKeys[I]),
                               FCompIsList[I], Dropped);
       if V <> FCompEdits[I].Text then
@@ -5035,6 +5090,14 @@ begin
   I := TUiEdit(Sender).Tag;
   if (I < 0) or (I > High(FCompKeys)) then
     Exit;
+  // Не путь: только пробелы по краям
+  if (I <= High(FCompIsText)) and FCompIsText[I] then
+  begin
+    V := Trim(TUiEdit(Sender).Text);
+    if V <> TUiEdit(Sender).Text then
+      TUiEdit(Sender).Text := V;
+    Exit;
+  end;
 
   Bad := TStringList.Create;
   Dropped := TStringList.Create;

@@ -276,6 +276,19 @@ type
   end;
   TStrArray = array of string;
 
+  // Снимок записанного текста окна: по нему откат (Ctrl+Z / Ctrl+Y),
+  // вернувший текст к записанному, снимает звёздочку. Сам текст не хранится -
+  // длина и две суммы. Stamp - размер и время файла на диске при снимке:
+  // файл с тех пор изменили - снимок не годится.
+  TCleanSnap = record
+    Valid: Boolean;
+    Len: Integer;
+    Sum1: Cardinal;
+    Sum2: Cardinal;
+    FileName: string;
+    Stamp: string;
+  end;
+
   // Одно текстовое окно: файл целиком в памяти плюс его состояние.
   //
   // В исходном варианте на BASIC под это отводились параллельные массивы
@@ -287,6 +300,7 @@ type
     Text: string;       // было Window()
     CursorPos: Integer; // было CursWin()
     Modified: Boolean;  // было Modif()
+    Clean: TCleanSnap;  // записанный текст (см. CleanCapture)
     IsUtf8: Boolean;    // кодировка файла на диске
     HasBom: Boolean;
     Broken: Boolean;    // файла нет на диске - окно помечается как нерабочее
@@ -1140,6 +1154,9 @@ type
     FGitLblStatus: TUiLabel;
     FGitStatusErrors: TStringList;
     FGitStatusWarns: TStringList;
+    // Файлов и в репозитории, и в .gitignore по последней проверке -
+    // щелчок по Git status открывает тогда окно Tracked but Ignored
+    FGitTrackedCount: Integer;
     // Кнопка Repository... и её меню: недавние репозитории (FGitRecent,
     // editor.ini [Git] Recent1..), выбор, Add / Clone / New. FGitRepoTop -
     // репозиторий на панели по последнему обновлению ('' - нет)
@@ -1194,6 +1211,12 @@ type
     FGitDlgGit: string;
     FGitDlgRepo: string;
     FGitDlgHasHead: Boolean;
+    // Окно History - немодальное, одно: ссылка (TDlgGitHistory), его git
+    // и репозиторий (окно Commit и другие меняют FGitDlgGit / FGitDlgRepo,
+    // пока History открыто)
+    FGitHistWin: TForm;
+    FGitHistGit: string;
+    FGitHistRepo: string;
     FGitTimer: TTimer;            // обновить панель чуть позже (GitShowBar)
     // Слежение за репозиторием, пока панель видна: раз в 5 с, пока открыт
     // Git Bash, запущенный кнопкой (FGitBashProc), - раз в секунду. Панель
@@ -1820,6 +1843,12 @@ type
     FLockTabs: Boolean; // защита от рекурсии при программной смене вкладки
     FTabHintIdx: Integer; // вкладка, для которой показана подсказка (TabsMouseMove)
     FTabsModShown: Boolean; // каким Modified был отрисован маркер
+    // Записанный текст текущего окна (CleanCapture); FCleanPending - флаг
+    // изменений сброшен, снимок снять перед следующей правкой;
+    // FUndoCheckPending - был откат или повтор, сверить в AppIdle
+    FClean: TCleanSnap;
+    FCleanPending: Boolean;
+    FUndoCheckPending: Boolean;
     // Переключение вкладки идёт в две половины: текст с подсветкой - сразу
     // (ActivateWindow), разборы для правой панели - после показа
     // (WMTabSwitched). FTabSwitchGen - номер переключения: устаревшее
@@ -2515,6 +2544,9 @@ type
     procedure DlgCheckAllClick(Sender: TObject);
     procedure DlgDeactivate(Sender: TObject);
     procedure RefreshTabsModified;
+    procedure CleanCapture;
+    procedure CleanBeforeMsg(const Message: TMessage);
+    procedure CleanAfterUndo;
     procedure InvalidateAllWindowMaps;
     procedure CloseAllWindows;
     procedure ProjectClosedReset;
@@ -2683,6 +2715,9 @@ type
     private
     cmbRqInc: TUiComboBox;
     FRqIncItems: TStringList;
+    // Lazarus: разрядность сборки fpc.exe в рамке Project (32 - i386-win32,
+    // 64 - x86_64-win64); пишется в Target CPU / OS проекта
+    cmbLazBits: TUiComboBox;
     // Галка "FB smart" в рамке Project (сборка rc.exe): перед rc.exe -
     // строгая проверка исходника переводом RqToFb в режиме Smart.
     // FRqStrict - главные файлы с галкой (editor.ini [RapidQ.Strict]).
@@ -2708,6 +2743,7 @@ type
     // или own|<папка>
     procedure FillRqIncCombo;
     procedure cmbRqIncChange(Sender: TObject);
+    procedure cmbLazBitsChange(Sender: TObject);
     function  RapidQLoadCustomTypes(ALines: TStrings;
                                     const AFile: string): Integer;
     procedure RapidQFillObjTables(AObj: TObject);
@@ -3068,6 +3104,8 @@ type
     procedure GitRepoBtnClick(Sender: TObject);
     procedure GitRecentRepoClick(Sender: TObject);
     procedure GitRecentRemoveClick(Sender: TObject);
+    procedure GitDeleteRepoClick(Sender: TObject);
+    procedure GitHelpClick(Sender: TObject);
     procedure GitShowRepoFields(AShow: Boolean);
     procedure GitLayoutRepoRow;
     procedure GitCopyMenuPopup(Sender: TObject);
@@ -3095,6 +3133,13 @@ type
                                  ADetails: TStrings);
     procedure GitShowStatusLabel(AChecked: Boolean);
     procedure GitStatusClick(Sender: TObject);
+    function  GitTrackedLoad(var AFiles: TGitTrackedFiles): Boolean;
+    function  GitTrackedKeep(const AFiles: TGitTrackedFiles): Boolean;
+    function  GitTrackedUntrack(const AFiles: TGitTrackedFiles): Boolean;
+    procedure GitTrackedClick(Sender: TObject);
+    function  GitKeepBefore(const AGit, ARepo, AArgs: string;
+                            AFiles: TStrings; var AKeepDir: string): Boolean;
+    procedure GitKeepAfter(const ARepo, AKeepDir: string; AFiles: TStrings);
     function  GitConflictFiles(const AGit, ARepo: string;
                                AList: TStrings): Integer;
     function  GitMarkerCount(const AFile: string;
@@ -3158,6 +3203,10 @@ type
     function  GitTickIdle: Boolean;
     procedure GitUnmergedProgress(const AText: string);
     procedure GitHistoryClick(Sender: TObject);
+    function  GitHistWinQuery(const AArgs: string;
+                              var AOutput: WideString): Integer;
+    procedure GitHistWinAction(Sender: TObject);
+    procedure GitHistWinDone(Sender: TObject);
     function  GitDiscardIn(const AGit, ARepo: string;
                            const AChanges: TGitChanges; AAsk: Boolean): Boolean;
     function  GitDlgDiscard(const AChanges: TGitChanges): Boolean;
@@ -3552,6 +3601,14 @@ type
     function  LazExeOf(const ALpi: string): string;
     function  LazUnitPathOf(const ALpi: string): string;
     function  CompileLazarus: Boolean;
+    function  FpcExe(var AProblem: string): string;
+    function  FpcSetting(const AKey: string): string;
+    function  FpcBuildSetting(const APrjKey, AIdeKey: string): string;
+    function  LazBuildViaFpc(const ALpi: string): Boolean;
+    function  LazBits: Integer;
+    function  LazBitsExe(const AExe: string): string;
+    function  FpcTargetSource: string;
+    function  CompileFpc(const ASource, ALpi: string): Boolean;
     function  RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
                          const AWorkDir: string): Integer;
     procedure RosNinjaLine(const ALine: string);
@@ -4145,6 +4202,7 @@ var
     GitInfo,      // ветка и коммит исходников сборки (<exe>.build.txt)
     DlgGitCommit, // окно Commit (меню Repository, панель Git)
     DlgGitHistory, // окно History (меню Repository, панель Git)
+    DlgGitTracked, // окно Tracked but Ignored (меню Branch, Git status)
     DlgGitClone,  // окно Clone Repository (список GitHub, URL, путь)
     GitHubApi,    // GitHubCreateRepo - New Repository на GitHub
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
@@ -8844,6 +8902,9 @@ begin
 
   FWindows[FWindowsIndex].Text := GetEditorText;
   FWindows[FWindowsIndex].Modified := RichEdit1.Modified;
+  if FCleanPending then
+    CleanCapture;
+  FWindows[FWindowsIndex].Clean := FClean;
   FWindows[FWindowsIndex].IsUtf8 := FFileIsUtf8;
   FWindows[FWindowsIndex].HasBom := FFileHasBom;
 
@@ -8982,6 +9043,15 @@ begin
   FObjLoadPending := True;
 
   RichEdit1.Modified := FWindows[Index].Modified;
+  // Снимок записанного текста: окно не изменено - снимется заново
+  // (FCleanPending от EM_SETMODIFY), изменено - свой, если он этого файла
+  if FWindows[Index].Modified then
+  begin
+    FClean := FWindows[Index].Clean;
+    if CompareText(FClean.FileName, FCurrentFileName) <> 0 then
+      FClean.Valid := False;
+    FCleanPending := False;
+  end;
   RichEdit1.SelStart := FWindows[Index].CursorPos;
   RichEdit1.SelLength := 0;
   TText := GetTickCount - TA;
@@ -11115,7 +11185,7 @@ var
   OldName, OldDir, OldType, OldTarget: string;
   NewName, NewDir, NewType, NewTarget, Dir, Val, SectName: string;
   IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList: string;
-  FbIconPath: string;
+  FbIconPath, LazCpu, LazOs, LazOptions: string;
   K, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
   DirChanged, OptionsChanged: Boolean;
   RosCfg: TRosSettings;
@@ -11163,10 +11233,15 @@ begin
     try
       IncOwnList := Prj.ReadString('Project', 'IncPaths', '');
       FbIconPath := Prj.ReadString('Project', 'FbIcon', '');
+      LazCpu := Prj.ReadString('Project', 'LazCpu', '');
+      LazOs := Prj.ReadString('Project', 'LazOs', '');
+      LazOptions := Prj.ReadString('Project', 'LazOptions', '');
     finally
       Prj.Free;
     end;
     Dlg.SetRqInc(IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList);
+    // Проект Lazarus: платформа и ключи сборки fpc.exe
+    Dlg.SetLazSettings(LazCpu, LazOs, LazOptions);
     // Значок exe проекта FreeBASIC
     Dlg.SetFbIcon(FbIconPath, OldDir);
     // Проект ReactOS: папка сборки, цель ninja, configure, скрипт RosBE
@@ -11226,6 +11301,19 @@ begin
       Prj := TProjectIni.Create(SettingsFileName, OldName);
       try
         Prj.WriteString('Project', 'FbIcon', Dlg.FbIcon);
+      finally
+        Prj.Free;
+      end;
+    end;
+    // Платформа и ключи fpc проекта Lazarus - туда же
+    if CompareText(NewType, 'Lazarus') = 0 then
+    begin
+      Dlg.GetLazSettings(LazCpu, LazOs, LazOptions);
+      Prj := TProjectIni.Create(SettingsFileName, OldName);
+      try
+        Prj.WriteString('Project', 'LazCpu', LazCpu);
+        Prj.WriteString('Project', 'LazOs', LazOs);
+        Prj.WriteString('Project', 'LazOptions', LazOptions);
       finally
         Prj.Free;
       end;
@@ -13578,9 +13666,13 @@ begin
     bkCMakeNinja:
       if RosSettingsOf(BuildProject, RosCfg) then
         Result := RosCfg.BuildDir;
-    // Lazarus: .lpi проекта (или .lpk)
+    // Lazarus: .lpi проекта (или .lpk); без .lpi - программа .lpr/.pp
     bkLazarus:
-      Result := LazTargetLpi;
+      begin
+        Result := LazTargetLpi;
+        if Result = '' then
+          Result := FpcTargetSource;
+      end;
   end;
 end;
 
@@ -13590,7 +13682,8 @@ end;
 procedure TForm1.UpdateBuildBar;
 var
   Kind, OutKind, Bits, RqComp, IncLeft: Integer;
-  RqViaFb: Boolean;
+  RqViaFb, LazViaFpc: Boolean;
+  LazLpi, LazExe: string;
   Target, Why, Fqbn, BoardName, BoardText, PortText, ManualMark: string;
   RosCfg: TRosSettings;
 begin
@@ -13751,6 +13844,46 @@ cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target
       cmbFbBits.Left := cmbRqComp.Left + cmbRqComp.Width + 4
     else if cmbFbKind <> nil then
       cmbFbBits.Left := cmbFbKind.Left + cmbFbKind.Width + 4;
+  end;
+  // Lazarus: разрядность сборки - ключи fpc.exe -P/-T или lazbuild
+  // --cpu/--os
+  if cmbLazBits <> nil then
+  begin
+    cmbLazBits.Visible := Kind = bkLazarus;
+    if Kind = bkLazarus then
+    begin
+      FBuildBarBusy := True;
+      try
+        if LazBits = 64 then
+          cmbLazBits.ItemIndex := 1
+        else
+          cmbLazBits.ItemIndex := 0;
+      finally
+        FBuildBarBusy := False;
+      end;
+      LazLpi := LazTargetLpi;
+      LazViaFpc := LazBuildViaFpc(LazLpi);
+      cmbLazBits.Enabled := FCurrentFileName <> '';
+      if LazViaFpc then
+      begin
+        if LazLpi <> '' then
+          LazExe := LazBitsExe(LazExeOf(LazLpi))
+        else
+        begin
+          LazExe := FpcTargetSource;
+          if LazExe <> '' then
+            LazExe := LazBitsExe(ChangeFileExt(LazExe, '.exe'));
+        end;
+        cmbLazBits.Hint := 'Разрядность сборки fpc.exe: 32 - i386-win32, ' +
+          '64 - x86_64-win64 (Target CPU / OS в Project Properties). ' +
+          '64-битный exe - с суффиксом 64: ' + ExtractFileName(LazExe);
+      end
+      else
+        cmbLazBits.Hint := 'Разрядность сборки lazbuild по ' +
+          ExtractFileName(LazLpi) + ': 32 - --cpu=i386 --os=win32, 64 - ' +
+          '--cpu=x86_64 --os=win64 (нужен ppcrossx64 в fpc Lazarus). Exe ' +
+          'одно для обеих: ' + ExtractFileName(LazExeOf(LazLpi));
+    end;
   end;
   // RapidQ: папка inc проекта - верхней строкой, за подписью цели, до
   // правого края рамки; подпись - до списка
@@ -24470,6 +24603,21 @@ begin
     chkRqInfo.OnClick := chkRqStrictClick;
   end;
 
+  // Lazarus: разрядность сборки fpc.exe - на месте вида результата
+  // FreeBASIC (UpdateBuildBar, cmbLazBitsChange)
+  if cmbFbKind <> nil then
+  begin
+    cmbLazBits := TUiComboBox.Create(Self);
+    cmbLazBits.Parent := cmbFbKind.Parent;
+    cmbLazBits.Style := csDropDownList;
+    cmbLazBits.SetBounds(cmbFbKind.Left, cmbFbKind.Top, 60, cmbFbKind.Height);
+    cmbLazBits.Items.Add('32');
+    cmbLazBits.Items.Add('64');
+    cmbLazBits.ShowHint := True;
+    cmbLazBits.Visible := False;
+    cmbLazBits.OnChange := cmbLazBitsChange;
+  end;
+
   // Точки останова: щелчок по полосе номеров строк
   FBreakMarks := TList.Create;
   FWatchList := TStringList.Create;
@@ -24985,6 +25133,10 @@ begin
   IniBufOnWritten := nil;
   HangWatchStop;
   WndWatchStop;
+  // Окно History (немодальное) - его положение в editor.ini, пока главное
+  // окно цело
+  if FGitHistWin <> nil then
+    FreeAndNil(FGitHistWin);
   // Окно WebView2 и его загрузчик - пока программа целая (Runtime error
   // 216 при уничтожении в finalization)
   Wv2Shutdown;
@@ -25172,6 +25324,123 @@ end;
 // FTabsModShown: сохранение (и другие места, где Modified сбрасывается)
 // снимало звёздочку, не трогая FTabsModShown. Он оставался True, и на
 // следующей правке Modified = FTabsModShown - звёздочка не появлялась.
+// ---------------------------------------------------------------------------
+//  Откат до записанного текста снимает звёздочку.
+//
+//  RichEdit сам флаг изменений не снимает: Ctrl+Z, вернувший текст к
+//  записанному, оставлял звёздочку на вкладке и в заголовке, а Save и вопрос
+//  при закрытии - активными. Поэтому:
+//  - флаг сброшен (RichEdit1.Modified := False - EM_SETMODIFY, это запись,
+//    открытие, переключение окна) - перед следующей правкой снимается
+//    снимок текста (CleanBeforeMsg -> CleanCapture): длина, две суммы,
+//    размер и время файла;
+//  - после отката или повтора (EM_UNDO, WM_UNDO, EM_REDO, Ctrl+Z, Ctrl+Y)
+//    в простое (AppIdle) текст сверяется со снимком: совпал, и файл на диске
+//    тот же - флаг снимается, звёздочка тоже.
+//  Снимок свой у каждого окна (TEditorWindow.Clean).
+// ---------------------------------------------------------------------------
+
+{$IFOPT Q+}{$DEFINE CleanSumQ}{$Q-}{$ENDIF}
+{$IFOPT R+}{$DEFINE CleanSumR}{$R-}{$ENDIF}
+// Две независимые суммы текста (FNV-1a и djb2 со сдвигом)
+procedure CleanTextSums(const AText: string; var ASum1, ASum2: Cardinal);
+var
+  CharIdx: Integer;
+  CharCode: Cardinal;
+begin
+  ASum1 := Cardinal(2166136261);
+  ASum2 := Cardinal(5381);
+  for CharIdx := 1 to Length(AText) do
+  begin
+    CharCode := Ord(AText[CharIdx]);
+    ASum1 := (ASum1 xor CharCode) * Cardinal(16777619);
+    ASum2 := ((ASum2 shl 5) + ASum2 + (ASum2 shr 27)) xor CharCode;
+  end;
+end;
+{$IFDEF CleanSumQ}{$Q+}{$UNDEF CleanSumQ}{$ENDIF}
+{$IFDEF CleanSumR}{$R+}{$UNDEF CleanSumR}{$ENDIF}
+
+// Размер и время записи файла; '' - файла нет (или имени нет)
+function CleanFileStamp(const AFileName: string): string;
+var
+  FileData: TWin32FileAttributeData;
+begin
+  Result := '';
+  if AFileName = '' then
+    Exit;
+  if not GetFileAttributesEx(PChar(AFileName), GetFileExInfoStandard,
+     @FileData) then
+    Exit;
+  Result := IntToHex(FileData.nFileSizeHigh, 8) +
+    IntToHex(FileData.nFileSizeLow, 8) + ':' +
+    IntToHex(FileData.ftLastWriteTime.dwHighDateTime, 8) +
+    IntToHex(FileData.ftLastWriteTime.dwLowDateTime, 8);
+end;
+
+// Снимок текущего текста как записанного (флаг изменений сброшен). Флаг
+// уже взведён - что-то поменяло текст мимо нас, снимка нет
+procedure TForm1.CleanCapture;
+var
+  Txt: string;
+begin
+  FCleanPending := False;
+  if not RichEdit1.HandleAllocated or RichEdit1.Modified then
+  begin
+    FClean.Valid := False;
+    Exit;
+  end;
+  Txt := GetEditorTextCR;
+  FClean.Len := Length(Txt);
+  CleanTextSums(Txt, FClean.Sum1, FClean.Sum2);
+  FClean.FileName := FCurrentFileName;
+  FClean.Stamp := CleanFileStamp(FCurrentFileName);
+  FClean.Valid := True;
+end;
+
+// Перед сообщением, которое может поменять текст (NewRichEditProcBody):
+// снимок, если ждёт; откат / повтор - сверить в простое
+procedure TForm1.CleanBeforeMsg(const Message: TMessage);
+begin
+  if FCleanPending then
+    CleanCapture;
+  if (Message.Msg = WM_UNDO) or (Message.Msg = EM_UNDO) or
+     (Message.Msg = EM_REDO) or
+     ((Message.Msg = WM_KEYDOWN) and (GetKeyState(VK_CONTROL) < 0) and
+      ((Message.WParam = Ord('Z')) or (Message.WParam = Ord('Y')))) then
+    FUndoCheckPending := True;
+end;
+
+// После отката / повтора (AppIdle): текст снова записанный - флаг снять
+procedure TForm1.CleanAfterUndo;
+var
+  Txt: string;
+  Sum1, Sum2: Cardinal;
+begin
+  FUndoCheckPending := False;
+  if not FClean.Valid or not RichEdit1.HandleAllocated or
+     not RichEdit1.Modified then
+    Exit;
+  if CompareText(FClean.FileName, FCurrentFileName) <> 0 then
+    Exit;
+  Txt := GetEditorTextCR;
+  if Length(Txt) <> FClean.Len then
+    Exit;
+  CleanTextSums(Txt, Sum1, Sum2);
+  if (Sum1 <> FClean.Sum1) or (Sum2 <> FClean.Sum2) then
+    Exit;
+  // Файл на диске с тех пор писали - записанный текст уже другой
+  if CleanFileStamp(FCurrentFileName) <> FClean.Stamp then
+    Exit;
+  RichEdit1.Modified := False;
+  // Текст тот же, что в снимке, - снимать заново незачем
+  FCleanPending := False;
+  if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
+    FWindows[FWindowsIndex].Modified := False;
+  if Pos(' *', Caption) > 0 then
+    Caption := AppTitle + ' - ' + DisplayName;
+  RefreshTabsModified;
+end;
+
 procedure TForm1.RefreshTabsModified;
 var
   TabIdx: Integer;
@@ -51992,9 +52261,441 @@ begin
   end;
 end;
 
+// ---------------------------------------------------------------------------
+//  Сборка Free Pascal без lazbuild: fpc.exe <программа>.lpr
+//
+//  Когда: у вкладки нет описания проекта .lpi (одиночная программа .lpr
+//  или .pp) или lazbuild.exe не найден, а рядом с .lpi лежит .lpr с тем же
+//  именем. Из .lpi (если он есть) берутся режим синтаксиса (-M), пути
+//  модулей и include (-Fu, -Fi) и имя exe (-o). Объектные файлы и .ppu -
+//  в подпапке lib рядом с программой (-FU), чтобы не мусорить в исходниках.
+//  Поле fpc.exe (FpcFile) в IDE Options - Compilers - Lazarus задано -
+//  сборка всегда им, даже когда lazbuild есть; Target CPU (FpcCpu) и
+//  Target OS (FpcOs) - ключи -P и -T, Options (FpcOptions) - прочие ключи.
+//  fpc.exe (FpcExe): поле FpcFile (файл fpc.exe или папка с ним), PATH,
+//  fpc из папки Lazarus
+//  (<lazarus>\fpc\<версия>\bin\<платформа>), <диск>:\FPC\<версия>\bin\
+//  <платформа>. Из нескольких платформ берётся x86_64-win64.
+//  Сообщения fpc "файл(строка,колонка) Error: ..." - как у lazbuild.
+// ---------------------------------------------------------------------------
+
+// fpc.exe в папках ARoot\<версия>\bin\<платформа>; x86_64-win64 - первым.
+// Нет - пусто
+function FpcUnderRoot(const ARoot: string): string;
+var
+  VerRec, TargetRec: TSearchRec;
+  Root, BinDir, Candidate: string;
+begin
+  Result := '';
+  if (ARoot = '') or not DirectoryExists(ARoot) then
+    Exit;
+  Root := IncludeTrailingPathDelimiter(ARoot);
+  if FindFirst(Root + '*', faDirectory, VerRec) = 0 then
+  try
+    repeat
+      if (VerRec.Name = '.') or (VerRec.Name = '..') or
+         ((VerRec.Attr and faDirectory) = 0) then
+        Continue;
+      BinDir := Root + VerRec.Name + '\bin\';
+      Candidate := BinDir + 'x86_64-win64\fpc.exe';
+      if FileExists(Candidate) then
+      begin
+        Result := Candidate;
+        Exit;
+      end;
+      if FindFirst(BinDir + '*', faDirectory, TargetRec) = 0 then
+      try
+        repeat
+          if (TargetRec.Name = '.') or (TargetRec.Name = '..') or
+             ((TargetRec.Attr and faDirectory) = 0) then
+            Continue;
+          Candidate := BinDir + TargetRec.Name + '\fpc.exe';
+          if (Result = '') and FileExists(Candidate) then
+            Result := Candidate;
+        until FindNext(TargetRec) <> 0;
+      finally
+        FindClose(TargetRec);
+      end;
+    until FindNext(VerRec) <> 0;
+  finally
+    FindClose(VerRec);
+  end;
+end;
+
+// Значение поля страницы Compilers - Lazarus (раздел с учётом выбранного
+// инструмента); нет - пусто
+function TForm1.FpcSetting(const AKey: string): string;
+var
+  Ini: TIniFile;
+begin
+  Result := '';
+  if not FileExists(SettingsFileName) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Result := Trim(Ini.ReadString(CompilerSection('Lazarus'), AKey, ''));
+  finally
+    Ini.Free;
+  end;
+end;
+
+// Значение для сборки fpc.exe: из свойств проекта сборки (Project
+// Properties, рамка Lazarus: ключ APrjKey), пусто - из IDE Options -
+// Compilers - Lazarus (AIdeKey)
+function TForm1.FpcBuildSetting(const APrjKey, AIdeKey: string): string;
+var
+  Prj: TProjectIni;
+  BuildPrj: string;
+begin
+  Result := '';
+  BuildPrj := BuildProject;
+  if (BuildPrj <> '') and ProjectExists(BuildPrj) then
+  begin
+    Prj := TProjectIni.Create(SettingsFileName, BuildPrj);
+    try
+      Result := Trim(Prj.ReadString('Project', APrjKey, ''));
+    finally
+      Prj.Free;
+    end;
+  end;
+  if Result = '' then
+    Result := FpcSetting(AIdeKey);
+end;
+
+function TForm1.FpcExe(var AProblem: string): string;
+var
+  Setting, Lazbuild, LazProblem: string;
+  Buf: array[0..MAX_PATH] of Char;
+  FilePart: PChar;
+  DriveCh: Char;
+begin
+  Result := '';
+  AProblem := '';
+  // 1. Поле fpc.exe: файл - он, папка - fpc.exe в ней
+  Setting := FpcSetting('FpcFile');
+  if Setting <> '' then
+  begin
+    if FileExists(Setting) and not DirectoryExists(Setting) then
+    begin
+      Result := Setting;
+      Exit;
+    end;
+    if FileExists(IncludeTrailingPathDelimiter(Setting) + 'fpc.exe') then
+    begin
+      Result := IncludeTrailingPathDelimiter(Setting) + 'fpc.exe';
+      Exit;
+    end;
+  end;
+  // 2. PATH
+  if SearchPath(nil, 'fpc.exe', nil, MAX_PATH, Buf, FilePart) > 0 then
+  begin
+    Result := Buf;
+    Exit;
+  end;
+  // 3. fpc из поставки Lazarus
+  Lazbuild := LazbuildExe(LazProblem);
+  if Lazbuild <> '' then
+  begin
+    Result := FpcUnderRoot(ExtractFilePath(Lazbuild) + 'fpc');
+    if Result <> '' then
+      Exit;
+  end;
+  // 4. <диск>:\FPC (установщик Free Pascal)
+  for DriveCh := 'C' to 'Z' do
+    if GetDriveType(PChar(DriveCh + ':\')) = DRIVE_FIXED then
+    begin
+      Result := FpcUnderRoot(DriveCh + ':\FPC');
+      if Result <> '' then
+        Exit;
+    end;
+  AProblem := 'fpc.exe не найден. Искали: ';
+  if Setting <> '' then
+    AProblem := AProblem + 'поле fpc.exe (' + Setting + '), ';
+  AProblem := AProblem + 'PATH, папку fpc в Lazarus, <диск>:\FPC. Путь ' +
+    'задаётся в IDE Options - Compilers - Lazarus, поле fpc.exe';
+end;
+
+// Программа для сборки fpc без .lpi: вкладка .lpr или .pp, иначе цель
+// проекта unIDE типа Lazarus с расширением .lpr или .pp. Нет - пусто
+function TForm1.FpcTargetSource: string;
+var
+  Ext, BuildPrj, Stored: string;
+begin
+  Result := '';
+  if FCurrentFileName = '' then
+    Exit;
+  Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  if ((Ext = '.lpr') or (Ext = '.pp')) and FileExists(FCurrentFileName) then
+  begin
+    Result := FCurrentFileName;
+    Exit;
+  end;
+  BuildPrj := BuildProject;
+  if ProjectBuildKind(BuildPrj) = bkLazarus then
+  begin
+    Stored := ProjectTargetFind(BuildPrj);
+    Ext := LowerCase(ExtractFileExt(Stored));
+    if ((Ext = '.lpr') or (Ext = '.pp')) and FileExists(Stored) then
+      Result := Stored;
+  end;
+end;
+
+// Сборка идёт fpc.exe, а не lazbuild (как решает CompileLazarus): нет
+// .lpi; .lpi с .lpr того же имени и задано поле fpc.exe или нет lazbuild
+function TForm1.LazBuildViaFpc(const ALpi: string): Boolean;
+var
+  Problem: string;
+begin
+  Result := ALpi = '';
+  if Result then
+    Exit;
+  if (CompareText(ExtractFileExt(ALpi), '.lpi') <> 0) or
+     not FileExists(ChangeFileExt(ALpi, '.lpr')) then
+    Exit;
+  Result := (FpcSetting('FpcFile') <> '') or (LazbuildExe(Problem) = '');
+end;
+
+// Разрядность сборки fpc.exe: Target CPU проекта (пусто - IDE Options);
+// не задан - по папке fpc.exe (...\bin\x86_64-win64\ - 64)
+function TForm1.LazBits: Integer;
+var
+  Cpu: string;
+begin
+  Cpu := LowerCase(FpcBuildSetting('LazCpu', 'FpcCpu'));
+  if Cpu = '' then
+    Cpu := LowerCase(FpcSetting('FpcFile'));
+  if Pos('x86_64', Cpu) > 0 then
+    Result := 64
+  else
+    Result := 32;
+end;
+
+// Имя exe сборки fpc.exe: у 64-битной - суффикс 64 перед расширением
+// (edit2gb.exe - edit2gb64.exe), чтобы 32- и 64-битный exe лежали рядом
+function TForm1.LazBitsExe(const AExe: string): string;
+begin
+  Result := AExe;
+  if (AExe <> '') and (LazBits = 64) then
+    Result := ChangeFileExt(AExe, '') + '64' + ExtractFileExt(AExe);
+end;
+
+// Выбор разрядности в рамке Project: Target CPU / OS проекта сборки
+// (Project Properties, рамка Lazarus); проекта нет - IDE Options -
+// Compilers - Lazarus
+procedure TForm1.cmbLazBitsChange(Sender: TObject);
+var
+  Cpu, TargetOs, BuildPrj: string;
+  Prj: TProjectIni;
+  Ini: TIniFile;
+begin
+  if FBuildBarBusy or (cmbLazBits = nil) then
+    Exit;
+  if cmbLazBits.ItemIndex = 1 then
+  begin
+    Cpu := 'x86_64';
+    TargetOs := 'win64';
+  end
+  else
+  begin
+    Cpu := 'i386';
+    TargetOs := 'win32';
+  end;
+  BuildPrj := BuildProject;
+  if (BuildPrj <> '') and ProjectExists(BuildPrj) then
+  begin
+    Prj := TProjectIni.Create(SettingsFileName, BuildPrj);
+    try
+      Prj.WriteString('Project', 'LazCpu', Cpu);
+      Prj.WriteString('Project', 'LazOs', TargetOs);
+    finally
+      Prj.Free;
+    end;
+    Dbg('Lazarus ' + BuildPrj + ': ' + Cpu + '-' + TargetOs +
+      ' (Project Properties)', clGray);
+  end
+  else
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Ini.WriteString(CompilerSection('Lazarus'), 'FpcCpu', Cpu);
+      Ini.WriteString(CompilerSection('Lazarus'), 'FpcOs', TargetOs);
+    finally
+      Ini.Free;
+    end;
+    Dbg('Lazarus: ' + Cpu + '-' + TargetOs +
+      ' (IDE Options - Compilers - Lazarus)', clGray);
+  end;
+  FRunExeKey := '';   // exe другой
+  UpdateBuildBar;
+  // Фокус - в редактор, как у переключателя сборщика
+  if not cmbLazBits.DroppedDown and RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
+end;
+
+// Сборка ASource через fpc.exe; ALpi - описание проекта, из которого
+// берутся режим, пути и имя exe (может быть пусто). Лог уже очищен и
+// файлы сохранены (CompileLazarus)
+function TForm1.CompileFpc(const ASource, ALpi: string): Boolean;
+var
+  Fpc, Problem, Dir, Params, Exe, ShortName, Options, Mode: string;
+  UnitPath, PathRest, PathItem, LibDir, Cpu, TargetOs, Extra: string;
+  LogLine, ErrFile, FirstFile, Where: string;
+  Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount, SepPos: Integer;
+  StartTick: Cardinal;
+  Built: Boolean;
+begin
+  Result := False;
+  Fpc := FpcExe(Problem);
+  if Fpc = '' then
+  begin
+    LogComp('Сборка Free Pascal: ' + Problem);
+    Exit;
+  end;
+  Dir := ExtractFilePath(ASource);
+  ShortName := ExtractFileName(ASource);
+  Exe := '';
+  if ALpi <> '' then
+    Exe := LazExeOf(ALpi);
+  if Exe = '' then
+    Exe := ChangeFileExt(ASource, '.exe');
+  // 64-битный - с суффиксом 64, рядом с 32-битным
+  Exe := LazBitsExe(Exe);
+  if not FreeBusyExe(Exe) then
+    Exit;
+
+  Params := '';
+  UnitPath := '';
+  if ALpi <> '' then
+  begin
+    Options := LazCompilerOptions(ALpi);
+    Mode := LazXmlValue(Options, '<Parsing>', '<SyntaxMode');
+    if Mode <> '' then
+      Params := Params + ' -M' + Mode;
+    UnitPath := LazUnitPathOf(ALpi);
+    PathRest := UnitPath;
+    while PathRest <> '' do
+    begin
+      SepPos := Pos(';', PathRest);
+      if SepPos > 0 then
+      begin
+        PathItem := Copy(PathRest, 1, SepPos - 1);
+        PathRest := Copy(PathRest, SepPos + 1, MaxInt);
+      end
+      else
+      begin
+        PathItem := PathRest;
+        PathRest := '';
+      end;
+      if PathItem <> '' then
+        Params := Params + ' -Fu"' + PathItem + '" -Fi"' + PathItem + '"';
+    end;
+  end;
+  // Платформа: -P (x86_64 - через ppcrossx64.exe) и -T; свойства проекта,
+  // пусто - IDE Options
+  Cpu := FpcBuildSetting('LazCpu', 'FpcCpu');
+  TargetOs := FpcBuildSetting('LazOs', 'FpcOs');
+  Extra := FpcBuildSetting('LazOptions', 'FpcOptions');
+  if Cpu <> '' then
+    Params := ' -P' + Cpu + Params;
+  if TargetOs <> '' then
+    Params := ' -T' + TargetOs + Params;
+  // Ключи пользователя - после режима из .lpi: у fpc последний ключ главнее
+  if Extra <> '' then
+    Params := Params + ' ' + Extra;
+  // .ppu разных платформ не смешиваются: lib\<CPU>-<OS>
+  LibDir := Dir + 'lib';
+  if not DirectoryExists(LibDir) then
+    CreateDir(LibDir);
+  if (Cpu <> '') or (TargetOs <> '') then
+  begin
+    if Cpu = '' then
+      LibDir := LibDir + '\default-' + TargetOs
+    else if TargetOs = '' then
+      LibDir := LibDir + '\' + Cpu + '-default'
+    else
+      LibDir := LibDir + '\' + Cpu + '-' + TargetOs;
+    if not DirectoryExists(LibDir) then
+      CreateDir(LibDir);
+  end;
+  Params := Trim(Params + ' -FU"' + LibDir + '" -o"' + Exe + '" "' +
+    ASource + '"');
+
+  FLastBuildDir := Dir;
+  FLastUnitPath := UnitPath;
+  LogComp('--- Компиляция fpc: ' + ShortName);
+  LogComp('"' + Fpc + '" ' + Params);
+  WriteCompileBat(Fpc, Params, Dir, ASource);
+
+  if CompLogEdit <> nil then
+    LogStart := CompLogEdit.Lines.Count
+  else
+    LogStart := -1;
+  StartTick := GetTickCount;
+  Code := -1;
+  Built := False;
+  ErrCount := 0;
+  FirstFile := '';
+  FirstLine := 0;
+  BusyBegin('Компиляция ' + ShortName);
+  try
+    // fpc пишет пути как получил (ANSI), сообщения - латиницей: не OEM
+    FCompNoOem := True;
+    try
+      Code := RunCompiler(Fpc, Params, Dir);
+    finally
+      FCompNoOem := False;
+    end;
+    if Code = -1 then
+      Exit;   // не запустился - причина уже в логе
+    if LogStart >= 0 then
+      for LineIdx := LogStart to CompLogEdit.Lines.Count - 1 do
+      begin
+        LogLine := StripLogTime(CompLogEdit.Lines[LineIdx]);
+        if not IsCompilerError(LogLine) then
+          Continue;
+        Inc(ErrCount);
+        if (FirstFile = '') and ParseCompilerLine(LogLine, ErrFile,
+           ErrLine) then
+        begin
+          ErrFile := ResolveErrorFile(ErrFile, Where);
+          if ErrFile <> '' then
+          begin
+            FirstFile := ErrFile;
+            FirstLine := ErrLine;
+          end;
+        end;
+      end;
+    Built := Code = 0;
+  finally
+    if Built then
+      BusyEnd('Компиляция: готово', True)
+    else
+      BusyEnd('Компиляция: ошибки', False);
+  end;
+  Result := Built;
+
+  if Built then
+  begin
+    LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - StartTick, Exe]));
+    Exit;
+  end;
+  LogComp(Format('--- Сборка не прошла: код завершения fpc %d, ' +
+  'ошибок: %d. Двойной щелчок по строке с ошибкой открывает файл на ' +
+  'нужной строке', [Code, ErrCount]));
+  SaveCompileLog(ChangeFileExt(ASource, '') + '_compile.log');
+  if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+    ShowErrLog;
+  if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
+  begin
+    OpenNamedFile(FirstFile);
+    GotoLine(FirstLine - 1);
+  end;
+end;
+
 function TForm1.CompileLazarus: Boolean;
 var
-  Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName: string;
+  Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName, Src: string;
+  Cpu, TargetOs: string;
   LogLine, ErrFile, FirstFile, Where: string;
   Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount: Integer;
   StartTick: Cardinal;
@@ -52025,15 +52726,42 @@ begin
   Lpi := LazTargetLpi;
   if Lpi = '' then
   begin
+    // Программа без .lpi (.lpr, .pp) - напрямую через fpc.exe
+    Src := FpcTargetSource;
+    if Src <> '' then
+    begin
+      LogComp('Описания проекта .lpi нет - собираю fpc.exe напрямую');
+      Result := CompileFpc(Src, '');
+      Exit;
+    end;
     LogComp('Сборка Lazarus: не найдено описание проекта .lpi - lazbuild ' +
     'собирает только по нему. Откройте .lpi или .lpr проекта или задайте ' +
     'цель проекта unIDE (Project Properties)');
+    Exit;
+  end;
+  // Поле fpc.exe задано - сборка им напрямую, lazbuild не нужен
+  Src := ChangeFileExt(Lpi, '.lpr');
+  if (FpcSetting('FpcFile') <> '') and
+     (CompareText(ExtractFileExt(Lpi), '.lpi') = 0) and FileExists(Src) then
+  begin
+    LogComp('Сборка fpc.exe из настроек Lazarus (поле fpc.exe), режим и ' +
+      'пути из ' + ExtractFileName(Lpi));
+    Result := CompileFpc(Src, Lpi);
     Exit;
   end;
   Lazbuild := LazbuildExe(Problem);
   if Lazbuild = '' then
   begin
     LogComp('Сборка Lazarus: ' + Problem);
+    // Без lazbuild: fpc.exe, режим и пути - из .lpi
+    Src := ChangeFileExt(Lpi, '.lpr');
+    if (CompareText(ExtractFileExt(Lpi), '.lpi') = 0) and
+       FileExists(Src) then
+    begin
+      LogComp('Собираю без lazbuild: fpc.exe напрямую, режим и пути из ' +
+        ExtractFileName(Lpi));
+      Result := CompileFpc(Src, Lpi);
+    end;
     Exit;
   end;
   Dir := ExtractFilePath(Lpi);
@@ -52045,6 +52773,15 @@ begin
   FLastBuildDir := Dir;
   FLastUnitPath := LazUnitPathOf(Lpi);
   Params := '"' + Lpi + '"';
+  // Разрядность из рамки Project / Project Properties (Target CPU / OS):
+  // ключи lazbuild --cpu и --os, они главнее значений в .lpi. Пусто - как
+  // в .lpi. x86_64 у 32-битного Lazarus - нужен ppcrossx64 в его fpc
+  Cpu := FpcBuildSetting('LazCpu', 'FpcCpu');
+  TargetOs := FpcBuildSetting('LazOs', 'FpcOs');
+  if Cpu <> '' then
+    Params := '--cpu=' + Cpu + ' ' + Params;
+  if TargetOs <> '' then
+    Params := '--os=' + TargetOs + ' ' + Params;
   LogComp('--- Компиляция: ' + ShortName);
   LogComp('"' + Lazbuild + '" ' + Params);
   WriteCompileBat(Lazbuild, Params, Dir, Lpi);
@@ -58248,7 +58985,17 @@ begin
   begin
     TargetSrc := LazTargetLpi;
     if TargetSrc <> '' then
+    begin
       Result := LazExeOf(TargetSrc);
+      if LazBuildViaFpc(TargetSrc) then
+        Result := LazBitsExe(Result);
+    end
+    else
+    begin
+      TargetSrc := FpcTargetSource;
+      if TargetSrc <> '' then
+        Result := LazBitsExe(ChangeFileExt(TargetSrc, '.exe'));
+    end;
   end
   else if Kind = bkFreeBasic then
   begin
@@ -58469,6 +59216,13 @@ begin
      ((FRqDesigner <> nil) and FRqDesigner.Dragging) then
     Exit;
   StartTick := GetTickCount;
+  // Снимок записанного текста - в простое, а не на первой клавише после
+  // записи (большой файл); откат вернул записанный текст - снять звёздочку
+  // (до вида кнопок: Save)
+  if FCleanPending then
+    CleanCapture;
+  if FUndoCheckPending then
+    CleanAfterUndo;
   UpdateToolbarState;
   UtilMenuUpdate;
   if not FUtilsPrjDone or (FUtilsPrjKey <> FCurrentProject) then
@@ -61750,11 +62504,22 @@ begin
     Dpr := LazTargetLpi;
     if Dpr = '' then
     begin
-      LogComp('Запуск: .lpi проекта Lazarus не найден. Откройте .lpi или ' +
-      '.lpr проекта');
-      Exit;
+      // Программа без .lpi, собранная fpc.exe: exe рядом с ней
+      Dpr := FpcTargetSource;
+      if Dpr = '' then
+      begin
+        LogComp('Запуск: .lpi проекта Lazarus не найден. Откройте .lpi ' +
+        'или .lpr проекта');
+        Exit;
+      end;
+      Exe := LazBitsExe(ChangeFileExt(Dpr, '.exe'));
+    end
+    else
+    begin
+      Exe := LazExeOf(Dpr);
+      if LazBuildViaFpc(Dpr) then
+        Exe := LazBitsExe(Exe);
     end;
-    Exe := LazExeOf(Dpr);
     if Exe = '' then
     begin
       LogComp('Запуск: имя exe по ' + ExtractFileName(Dpr) + ' не ' +
@@ -66586,22 +67351,38 @@ begin
   end;
 end;
 
-// Длинная команда (сеть, commit): вывод в Git log, панель - после
+// Длинная команда (сеть, commit): вывод в Git log, панель - после.
+// pull, merge, checkout, cherry-pick: файлы, которые команда удалит с
+// диска, хотя они подходят под .gitignore (их убрали из репозитория
+// git rm --cached в другом месте), - копируются в сторону до команды и
+// возвращаются после (GitKeepBefore / GitKeepAfter)
 function TForm1.GitLongOp(const AGit, ARepo, AArgs: string): Integer;
 var
   Output: WideString;
-  HintText: string;
+  HintText, KeepDir: string;
   HintIsError: Boolean;
+  KeepFiles: TStringList;
 begin
   ShowGitLog;
+  KeepFiles := TStringList.Create;
   FGitBusy := True;
   try
     StatusBar1.SimpleText := 'git ' + AArgs + ' ... (Esc - прервать)';
     StatusBar1.SimplePanel := True;
+    KeepDir := '';
+    if not GitKeepBefore(AGit, ARepo, AArgs, KeepFiles, KeepDir) then
+    begin
+      // Не сохранить - команду не выполнять: файлы пропали бы
+      Result := -1;
+      Exit;
+    end;
     Result := GitRunIn(AGit, ARepo, AArgs, True, Output);
     if Result = 0 then
       LogGit('git: готово');
+    if KeepFiles.Count > 0 then
+      GitKeepAfter(ARepo, KeepDir, KeepFiles);
   finally
+    KeepFiles.Free;
     FGitBusy := False;
     StatusBar1.SimplePanel := False;
     UpdateStatusBarInfo;
@@ -66955,6 +67736,9 @@ begin
     '(например в mainTest), в одной таблице, цвет - по ветке. Перенести ' +
     'коммиты (cherry-pick), влить ветку целиком, удалить ветку', 646, 88,
     GitUnmergedClick);
+  // Справка: Tag 0 - раздел о панели (GitHelpClick)
+  NewButton('Help', 'Справка: что делают кнопки и строки панели Git, меню ' +
+    'Repository и Branch (git_ref\help\git.chm)', 738, 50, GitHelpClick);
   FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
     'недавние, по открытому проекту, Add Local / Clone / New', 4, 92,
     GitRepoBtnClick);
@@ -68135,6 +68919,7 @@ var
 begin
   FGitStatusErrors.Clear;
   FGitStatusWarns.Clear;
+  FGitTrackedCount := 0;
   if FGitOp = 'bisect' then
     FGitStatusErrors.Add('идёт bisect - закончить: Abort в начале строки ' +
       'Build (git bisect reset)')
@@ -68201,12 +68986,13 @@ begin
         if Trim(Lines[LineIdx]) <> '' then
           Hidden.Add(Lines[LineIdx]);
     end;
+    FGitTrackedCount := Hidden.Count;
     if Hidden.Count > 0 then
     begin
       FGitStatusWarns.Add('файлов и в репозитории, и в .gitignore: ' +
         IntToStr(Hidden.Count) + ' - .gitignore на них не действует. ' +
-        'Убрать из репозитория: Commit... - Ignore - «Перестать ' +
-        'отслеживать»; или убрать правило из .gitignore');
+        'Оставить или убрать из репозитория: Branch - Tracked but ' +
+        'Ignored Files... (открывается и щелчком по Git status)');
       AddDetails('В репозитории и в .gitignore:', Hidden);
     end;
   finally
@@ -68301,6 +69087,9 @@ begin
   finally
     Details.Free;
   end;
+  // Файлы и в репозитории, и в .gitignore - сразу окно, где их разобрать
+  if FGitTrackedCount > 0 then
+    GitTrackedClick(nil);
 end;
 
 // Файлы с неразрешённым конфликтом (пути git, через /); результат - сколько
@@ -68659,10 +69448,19 @@ begin
   finally
     Dlg.Free;
   end;
-  // Пути - UTF-8 через #0 (--pathspec-from-file --pathspec-file-nul)
+  // Пути - UTF-8 через #0 (--pathspec-from-file --pathspec-file-nul).
+  // Изменение уже целиком в индексе (код 'X ' - в рабочей папке после
+  // него ничего): git add не нужен. Так, убранный из репозитория файл
+  // (git rm --cached, код 'D ') остаётся на диске и подходит под
+  // .gitignore - git add на нём отказывает «paths are ignored», и коммит
+  // не шёл
   SelList := '';
   for SelIdx := 0 to High(Selected) do
   begin
+    if (Length(Selected[SelIdx].Code) = 2) and
+       (Selected[SelIdx].Code <> '??') and
+       (Selected[SelIdx].Code[2] = ' ') then
+      Continue;
     SelList := SelList + GitToUtf8(Selected[SelIdx].Path) + #0;
     if Selected[SelIdx].OrigPath <> '' then
       SelList := SelList + GitToUtf8(Selected[SelIdx].OrigPath) + #0;
@@ -68685,12 +69483,15 @@ begin
     end;
   end;
   MsgFile := GitWriteTempFile('commitmsg', GitToUtf8(WideString(MsgText)) + #10);
-  SelFile := GitWriteTempFile('commitsel', SelList);
+  // Пустой список git add не подаётся: add -A без путей взял бы всё
+  SelFile := '';
+  if SelList <> '' then
+    SelFile := GitWriteTempFile('commitsel', SelList);
   UnselFile := '';
   if UnselList <> '' then
     UnselFile := GitWriteTempFile('commitunsel', UnselList);
-  if (MsgFile = '') or (SelFile = '') or ((UnselList <> '') and
-     (UnselFile = '')) then
+  if (MsgFile = '') or ((SelList <> '') and (SelFile = '')) or
+     ((UnselList <> '') and (UnselFile = '')) then
   begin
     LogGit('Git: временный файл не создать - коммит не выполнен');
     Exit;
@@ -68704,9 +69505,10 @@ begin
         string(GitQuote(WideString(UnselFile))) + ' --pathspec-file-nul',
         True, Output) <> 0) then
       Exit;
-    if GitRunIn(AGit, ARepo, 'add -A --pathspec-from-file=' +
-       string(GitQuote(WideString(SelFile))) + ' --pathspec-file-nul', True,
-       Output) <> 0 then
+    if (SelFile <> '') and
+       (GitRunIn(AGit, ARepo, 'add -A --pathspec-from-file=' +
+        string(GitQuote(WideString(SelFile))) + ' --pathspec-file-nul', True,
+        Output) <> 0) then
       Exit;
     if GitRunIn(AGit, ARepo, 'commit -F ' +
        string(GitQuote(WideString(MsgFile))), True, Output) <> 0 then
@@ -68719,7 +69521,8 @@ begin
   finally
     FGitBusy := False;
     DeleteFile(MsgFile);
-    DeleteFile(SelFile);
+    if SelFile <> '' then
+      DeleteFile(SelFile);
     if UnselFile <> '' then
       DeleteFile(UnselFile);
     GitRefreshBar;
@@ -68824,6 +69627,11 @@ begin
   AddItem(RepoMenu, '-', '', nil);
   AddItem(RepoMenu, 'Repository Settings...', 'Адрес remote origin ' +
     '(git remote set-url)', GitRepoSettingsClick);
+  AddItem(RepoMenu, 'Delete Local Repository...', 'Папку текущего ' +
+    'репозитория - в корзину (на сервере он остаётся)', GitDeleteRepoClick);
+  AddItem(RepoMenu, '-', '', nil);
+  AddItem(RepoMenu, 'Help', 'Справка: что делает каждый пункт меню ' +
+    'Repository (git_ref\help\git.chm)', GitHelpClick).Tag := 1;
 
   AddItem(BranchMenu, 'New Branch...', 'Новая ветка от текущего коммита и ' +
     'переход на неё (git checkout -b)', GitNewBranchClick);
@@ -68845,6 +69653,10 @@ begin
   AddItem(BranchMenu, 'Hidden Local Changes...', 'Файлы, чьи изменения ' +
     'скрыты (Ignore - скрыть свои изменения, skip-worktree): вернуть в ' +
     'список изменений', GitHiddenClick);
+  AddItem(BranchMenu, 'Tracked but Ignored Files...', 'Файлы в ' +
+    'репозитории, которые подходят под .gitignore: оставить (исключение в ' +
+    '.gitignore) или убрать из репозитория (git rm --cached)',
+    GitTrackedClick);
   AddItem(BranchMenu, '-', '', nil);
   AddItem(BranchMenu, 'Update from Default Branch', 'Влить в текущую ' +
     'ветку основную ветку сервера (git merge origin/<основная>)',
@@ -68864,6 +69676,9 @@ begin
     GitViewBranchClick);
   AddItem(BranchMenu, 'Create Pull Request', 'Страница нового pull request ' +
     'для текущей ветки на GitHub', GitPullRequestClick);
+  AddItem(BranchMenu, '-', '', nil);
+  AddItem(BranchMenu, 'Help', 'Справка: что делает каждый пункт меню ' +
+    'Branch (git_ref\help\git.chm)', GitHelpClick).Tag := 2;
 end;
 
 // New Repository: папка (можно новую - в поле пути дописать её имя),
@@ -69441,6 +70256,208 @@ begin
   LogGit('Git: ' + FGitRepoTop + ' убран из списка недавних');
 end;
 
+// Repository - Delete Local Repository: папка текущего репозитория - в
+// корзину, репозиторий на сервере не трогается. В вопросе - что пропадёт
+// вместе с папкой: незакоммиченные изменения, коммиты, которых нет на
+// сервере, записи stash. Не удаляется корень диска, папка с самой средой,
+// с открытым проектом и пока открыты вкладки с файлами из неё
+procedure TForm1.GitDeleteRepoClick(Sender: TObject);
+const
+  // Корзина не вмещает папку - Windows спросит, а не сотрёт молча
+  FofWantNukeWarning = $4000;
+var
+  Git, Repo, RepoSl, Remote, RemoteUrl, Warn, OpenList, Msg, Src: string;
+  Changes, Unpushed, Stashes, WinIndex, OpenCount, RecentIndex: Integer;
+  Answer, OpResult: Integer;
+  DlgType: TMsgDlgType;
+  Op: TSHFileOpStruct;
+
+  // Число строк вывода git; ошибка - -1
+  function GitLineCount(const AArgs: string): Integer;
+  var
+    Output: WideString;
+    OutText: string;
+    CharIndex: Integer;
+  begin
+    Result := -1;
+    if GitRunIn(Git, Repo, AArgs, False, Output) <> 0 then
+      Exit;
+    OutText := Trim(string(GitTrimOut(Output)));
+    if OutText = '' then
+    begin
+      Result := 0;
+      Exit;
+    end;
+    Result := 1;
+    for CharIndex := 1 to Length(OutText) do
+      if OutText[CharIndex] = #10 then
+        Inc(Result);
+  end;
+
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  ShowGitLog;
+  Repo := ExcludeTrailingPathDelimiter(Repo);
+  RepoSl := IncludeTrailingPathDelimiter(Repo);
+
+  if Length(Repo) <= 3 then
+  begin
+    LogGit('Git: ' + Repo + ' - корень диска, удалять не буду');
+    Exit;
+  end;
+  if AnsiStartsText(RepoSl, ExtractFilePath(Application.ExeName)) then
+  begin
+    LogGit('Git: в ' + Repo + ' находится сама среда (' +
+      Application.ExeName + ') - удалять не буду');
+    Exit;
+  end;
+  if (FCurrentProject <> '') and ProjectExists(FCurrentProject) and
+     AnsiStartsText(RepoSl,
+       IncludeTrailingPathDelimiter(ProjectDir(FCurrentProject))) then
+  begin
+    LogGit('Git: в ' + Repo + ' лежит открытый проект ' + FCurrentProject +
+      ' - сначала откройте другой проект');
+    Exit;
+  end;
+
+  // Открытые вкладки с файлами из папки
+  OpenCount := 0;
+  OpenList := '';
+  for WinIndex := 0 to WindowsItemCount - 1 do
+    if FWindows[WinIndex].Used and
+       AnsiStartsText(RepoSl, FWindows[WinIndex].FileName) then
+    begin
+      Inc(OpenCount);
+      if OpenCount <= 5 then
+        OpenList := OpenList + #13#10'  ' +
+          ExtractFileName(FWindows[WinIndex].FileName);
+    end;
+  if OpenCount > 0 then
+  begin
+    if OpenCount > 5 then
+      OpenList := OpenList + #13#10'  ... всего ' + IntToStr(OpenCount);
+    LogGit('Git: открыты файлы из ' + Repo + ' - закройте их вкладки');
+    MessageDlg('9833:Открыты файлы из папки репозитория ' + Repo + ':' +
+      OpenList + #13#10#13#10'Закройте их вкладки и повторите.',
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+
+  // Что пропадёт вместе с папкой
+  Screen.Cursor := crHourGlass;
+  try
+    Changes := GitLineCount('status --porcelain');
+    Stashes := GitLineCount('stash list');
+    Remote := GitQuery(Git, Repo, 'remote');
+    RemoteUrl := GitQuery(Git, Repo, 'config --get remote.origin.url');
+    // Без remote --not --remotes ничего не вычитает: все коммиты веток
+    Unpushed := StrToIntDef(GitQuery(Git, Repo,
+      'rev-list --count --branches --not --remotes'), -1);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+
+  Warn := '';
+  if Changes > 0 then
+    Warn := Warn + #13#10'  - незакоммиченные изменения и новые файлы: ' +
+      IntToStr(Changes);
+  if Unpushed > 0 then
+  begin
+    if Remote = '' then
+      Warn := Warn + #13#10'  - коммиты: ' + IntToStr(Unpushed) +
+        ' (remote нет, репозиторий есть только в этой папке)'
+    else
+      Warn := Warn + #13#10'  - коммиты, которых нет на сервере: ' +
+        IntToStr(Unpushed);
+  end;
+  if Stashes > 0 then
+    Warn := Warn + #13#10'  - записи stash: ' + IntToStr(Stashes);
+  if (Changes < 0) or (Unpushed < 0) or (Stashes < 0) then
+    Warn := Warn + #13#10'  - git не ответил, состояние проверено не ' +
+      'полностью (подробности - Git log)';
+
+  Msg := '9834:Удалить локальный репозиторий?'#13#10#13#10 + Repo +
+    #13#10#13#10'Папка уйдёт в корзину целиком, вместе с файлами из ' +
+    '.gitignore (сборки, локальные настройки).';
+  if RemoteUrl <> '' then
+    Msg := Msg + ' Репозиторий на сервере (' + RemoteUrl +
+      ') не затрагивается.';
+  if Warn <> '' then
+  begin
+    Msg := Msg + #13#10#13#10'Вместе с папкой пропадут:' + Warn;
+    DlgType := mtWarning;
+  end
+  else
+  begin
+    Msg := Msg + #13#10#13#10'Незакоммиченных изменений, неотправленных ' +
+      'коммитов и stash нет.';
+    DlgType := mtConfirmation;
+  end;
+  Answer := MessageDlgButtons(Msg, DlgType, 'Delete Local Repository',
+    ['В корзину', 'Отмена'], 1, 1);
+  if Answer <> 0 then
+    Exit;
+
+  // Текущая папка процесса внутри - папку не удалить
+  if AnsiStartsText(RepoSl, IncludeTrailingPathDelimiter(GetCurrentDir)) then
+    SetCurrentDir(ExtractFilePath(Application.ExeName));
+
+  Src := Repo + #0#0;
+  FillChar(Op, SizeOf(Op), 0);
+  Op.Wnd := Handle;
+  Op.wFunc := FO_DELETE;
+  Op.pFrom := PChar(Src);
+  Op.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FofWantNukeWarning;
+  OpResult := SHFileOperation(Op);
+
+  if DirectoryExists(Repo) then
+  begin
+    if Op.fAnyOperationsAborted then
+      LogGit('Git: удаление ' + Repo + ' отменено')
+    else
+      LogGit('Git: ' + Repo + ' удалён не полностью (код ' +
+        IntToStr(OpResult) + '): файлы заняты - Git Bash, Проводник, ' +
+        'другая программа. Уже удалённое - в корзине');
+    GitRefreshBar;
+    Exit;
+  end;
+
+  GitRecentLoad;
+  for RecentIndex := FGitRecent.Count - 1 downto 0 do
+    if SameText(ExcludeTrailingPathDelimiter(FGitRecent[RecentIndex]),
+       Repo) then
+      FGitRecent.Delete(RecentIndex);
+  GitRecentSave;
+  if (FGitRepoChosen <> '') and AnsiStartsText(RepoSl,
+     IncludeTrailingPathDelimiter(FGitRepoChosen)) then
+    GitSetChosenRepo('');
+  LogGit('Git: ' + Repo + ' - в корзине; репозиторий - по открытому ' +
+    'проекту (' + GitBaseDir + ')');
+  GitRefreshBar;
+end;
+
+// Help на панели Git (Tag 0) и в меню Repository (1), Branch (2): справка
+// по Git (git_ref\help\git.chm), страница unide.html - нужный раздел
+procedure TForm1.GitHelpClick(Sender: TObject);
+var
+  ChmFile, Topic: string;
+  HelpTag: Integer;
+begin
+  HelpTag := 0;
+  if Sender is TComponent then
+    HelpTag := TComponent(Sender).Tag;
+  case HelpTag of
+    1: Topic := 'unide.html#repomenu';
+    2: Topic := 'unide.html#branchmenu';
+  else
+    Topic := 'unide.html#panel';
+  end;
+  ChmFile := GitRefChm;
+  if (ChmFile = '') or not ChmShowTopic(ChmFile, Topic) then
+    ShowMessage('Справка по Git: ' + RqHelpLastError);
+end;
+
 procedure TForm1.GitUseProjectRepoClick(Sender: TObject);
 begin
   GitSetChosenRepo('');
@@ -69772,6 +70789,7 @@ begin
     RightBranch + ' - ' + ExtractFileName(ExcludeTrailingPathDelimiter(Repo)),
     WebUrl, GitHistQuery, LeftBranch + '...' + RightBranch);
   Dlg.SetSchemeProvider(SchemeCopyFor);
+  Dlg.SetPlacementIni(SettingsFileName);
   try
     Dlg.ShowModal;
     HistAction := Dlg.Action;
@@ -70021,6 +71039,7 @@ begin
           BusyEnd('', True);
       end;
       Dlg.SetSchemeProvider(SchemeCopyFor);
+      Dlg.SetPlacementIni(SettingsFileName);
       try
         Dlg.ShowModal;
         HistAction := Dlg.Action;
@@ -70297,34 +71316,76 @@ begin
   BusyStage(AText + ' (Esc - прервать)');
 end;
 
-// History: коммиты текущей ветки; New Branch from Commit и Revert Commit
-// - здесь, после закрытия окна (с журналом)
+// History: коммиты текущей ветки - немодальное окно, одно на программу.
+// Уже открыто для того же репозитория и ветки - вперёд и перечитать;
+// другой - прежнее закрыть, открыть новое. New Branch from Commit и Revert
+// Commit - сразу (GitHistWinAction), окно остаётся
 procedure TForm1.GitHistoryClick(Sender: TObject);
 var
-  Git, Repo, Branch, WebUrl, Hash, Name, Remote: string;
+  Git, Repo, Branch, WebUrl, Remote, Title: string;
   Dlg: TDlgGitHistory;
-  HistAction: TGitHistAction;
 begin
   if not GitPrepare(Git, Repo) then
     Exit;
-  FGitDlgGit := Git;
-  FGitDlgRepo := Repo;
   Branch := GitCurrentBranch(Git, Repo);
   if Branch = '' then
     Branch := 'HEAD';
+  Title := 'History - ' + Branch + ' - ' +
+    ExtractFileName(ExcludeTrailingPathDelimiter(Repo));
+  if FGitHistWin <> nil then
+  begin
+    if (FGitHistRepo = Repo) and (FGitHistWin.Caption = Title) then
+    begin
+      FGitHistWin.Show;
+      FGitHistWin.BringToFront;
+      TDlgGitHistory(FGitHistWin).ReloadCommits;
+      Exit;
+    end;
+    // Положение прежнего окна сохранится при закрытии
+    FGitHistWin.Close;
+    FGitHistWin := nil;
+  end;
+  // До создания окна: оно сразу читает коммиты через GitHistWinQuery
+  FGitHistGit := Git;
+  FGitHistRepo := Repo;
   // Адрес GitHub - для View on GitHub; не GitHub - кнопка недоступна
   Remote := GitQuery(Git, Repo, 'config --get remote.origin.url');
   WebUrl := string(GitHubWebUrl(WideString(Remote)));
-  Dlg := TDlgGitHistory.CreateDlg(Self, 'History - ' + Branch + ' - ' +
-    ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), WebUrl, GitHistQuery);
+  Dlg := TDlgGitHistory.CreateDlg(Self, Title, WebUrl, GitHistWinQuery);
   Dlg.SetSchemeProvider(SchemeCopyFor);
-  try
-    Dlg.ShowModal;
-    HistAction := Dlg.Action;
-    Hash := Dlg.SelectedHash;
-  finally
-    Dlg.Free;
-  end;
+  Dlg.SetPlacementIni(SettingsFileName);
+  FGitHistWin := Dlg;
+  Dlg.ShowModeless(GitHistWinAction, GitHistWinDone);
+end;
+
+// Окно History: тихий git в его репозитории (FGitHistGit / FGitHistRepo)
+function TForm1.GitHistWinQuery(const AArgs: string;
+  var AOutput: WideString): Integer;
+begin
+  Result := GitRunIn(FGitHistGit, FGitHistRepo, AArgs, False, AOutput);
+end;
+
+// Окно History уничтожено - ссылку забыть (если это всё ещё оно)
+procedure TForm1.GitHistWinDone(Sender: TObject);
+begin
+  if FGitHistWin = Sender then
+    FGitHistWin := nil;
+end;
+
+// New Branch from Commit / Revert Commit в окне History: сразу, с
+// журналом; окно остаётся - заголовок (ветка могла смениться) и коммиты
+// заново
+procedure TForm1.GitHistWinAction(Sender: TObject);
+var
+  Dlg: TDlgGitHistory;
+  Hash, Name, Branch: string;
+  HistAction: TGitHistAction;
+begin
+  if not (Sender is TDlgGitHistory) then
+    Exit;
+  Dlg := TDlgGitHistory(Sender);
+  HistAction := Dlg.Action;
+  Hash := Dlg.SelectedHash;
   if (HistAction = ghaNone) or (Hash = '') then
     Exit;
   if HistAction = ghaBranch then
@@ -70341,7 +71402,7 @@ begin
       ShowMessage('9820:Имя ветки не годится для git');
       Exit;
     end;
-    GitLongOp(Git, Repo, 'checkout -b ' + string(GitQuote(WideString(Name))) +
+    GitLongOp(FGitHistGit, FGitHistRepo, 'checkout -b ' + string(GitQuote(WideString(Name))) +
       ' ' + Hash);
   end
   else if HistAction = ghaRevert then
@@ -70351,9 +71412,18 @@ begin
        'история не переписывается. Отправить его на сервер - Push.',
        mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
       Exit;
-    if GitLongOp(Git, Repo, 'revert --no-edit ' + Hash) <> 0 then
+    if GitLongOp(FGitHistGit, FGitHistRepo, 'revert --no-edit ' + Hash) <> 0 then
       LogGit('Git: при конфликте - исправить файлы и Commit, или отменить ' +
               'в Git Bash: git revert --abort');
+  end;
+  if FGitHistWin = Dlg then
+  begin
+    Branch := GitCurrentBranch(FGitHistGit, FGitHistRepo);
+    if Branch = '' then
+      Branch := 'HEAD';
+    Dlg.Caption := 'History - ' + Branch + ' - ' +
+      ExtractFileName(ExcludeTrailingPathDelimiter(FGitHistRepo));
+    Dlg.ReloadCommits;
   end;
 end;
 
@@ -71084,6 +72154,642 @@ begin
   if Picked <> '' then
     GitLongOp(Git, Repo, 'update-index --no-skip-worktree -- ' +
       string(GitQuote(WideString(Picked))));
+end;
+
+// ---------------------------------------------------------------------------
+//  Tracked but Ignored: файлы в репозитории, которые подходят под
+//  .gitignore. Окно - DlgGitTracked; здесь список (GitTrackedLoad) и
+//  действия (GitTrackedKeep, GitTrackedUntrack). Репозиторий окна -
+//  FGitDlgGit / FGitDlgRepo
+// ---------------------------------------------------------------------------
+
+const
+  // Длина аргументов одного вызова git со списком файлов: командная
+  // строка Windows не бесконечна - файлы идут пачками
+  GitArgsChunk = 7000;
+
+// Вывод git с -z: части через #0 (пустые - пропускаются)
+procedure GitSplitZero(const AText: WideString; var AParts: TGitPaths);
+var
+  StartPos, CharIdx: Integer;
+
+  procedure AddPart(const APart: WideString);
+  begin
+    if APart = '' then
+      Exit;
+    SetLength(AParts, Length(AParts) + 1);
+    AParts[High(AParts)] := APart;
+  end;
+
+begin
+  SetLength(AParts, 0);
+  StartPos := 1;
+  for CharIdx := 1 to Length(AText) do
+    if AText[CharIdx] = #0 then
+    begin
+      AddPart(Copy(AText, StartPos, CharIdx - StartPos));
+      StartPos := CharIdx + 1;
+    end;
+  if StartPos <= Length(AText) then
+    AddPart(GitTrimOut(Copy(AText, StartPos, MaxInt)));
+end;
+
+// Список: git ls-files -z -ci --exclude-standard; правило каждого файла -
+// git check-ignore -v --no-index (пачками; -z у check-ignore - только со
+// --stdin). Строка вывода: '<файл правил>:<строка>:<правило><TAB><путь>';
+// в имени файла правил бывает ':' (C:/...), поэтому строка правила -
+// первое ':<цифры>:'. False - git не ответил
+function TForm1.GitTrackedLoad(var AFiles: TGitTrackedFiles): Boolean;
+var
+  Output: WideString;
+  Paths: TGitPaths;
+  Lines: TStringList;
+  Args, LineText, RulePart, LinePath, Source, LineNo, Pattern: string;
+  PathIdx, FirstIdx, NextIdx, LineIdx, FileIdx, TabPos, ColonPos,
+  DigitEnd: Integer;
+begin
+  Result := False;
+  SetLength(AFiles, 0);
+  if GitRunIn(FGitDlgGit, FGitDlgRepo, 'ls-files -z -ci --exclude-standard',
+     False, Output) <> 0 then
+    Exit;
+  GitSplitZero(Output, Paths);
+  SetLength(AFiles, Length(Paths));
+  for PathIdx := 0 to High(Paths) do
+  begin
+    AFiles[PathIdx].Path := Paths[PathIdx];
+    AFiles[PathIdx].Source := '';
+    AFiles[PathIdx].LineNo := '';
+    AFiles[PathIdx].Pattern := '';
+    AFiles[PathIdx].Rule := '';
+  end;
+  Lines := TStringList.Create;
+  try
+    FirstIdx := 0;
+    while FirstIdx <= High(AFiles) do
+    begin
+      Args := 'check-ignore -v --no-index --';
+      NextIdx := FirstIdx;
+      while (NextIdx <= High(AFiles)) and
+            ((NextIdx = FirstIdx) or (Length(Args) < GitArgsChunk)) do
+      begin
+        Args := Args + ' ' + string(GitQuote(AFiles[NextIdx].Path));
+        Inc(NextIdx);
+      end;
+      // Код 0 - что-то подходит под правила, 1 - ничего
+      if GitRunIn(FGitDlgGit, FGitDlgRepo, Args, False, Output) >= 0 then
+      begin
+        Lines.Text := string(Output);
+        for LineIdx := 0 to Lines.Count - 1 do
+        begin
+          LineText := Lines[LineIdx];
+          TabPos := Pos(#9, LineText);
+          if TabPos = 0 then
+            Continue;
+          RulePart := Copy(LineText, 1, TabPos - 1);
+          LinePath := Copy(LineText, TabPos + 1, MaxInt);
+          // Первое ':<цифры>:' - номер строки правила
+          Source := '';
+          LineNo := '';
+          Pattern := '';
+          ColonPos := 1;
+          while ColonPos < Length(RulePart) do
+          begin
+            if RulePart[ColonPos] = ':' then
+            begin
+              DigitEnd := ColonPos + 1;
+              while (DigitEnd <= Length(RulePart)) and
+                    (RulePart[DigitEnd] in ['0'..'9']) do
+                Inc(DigitEnd);
+              if (DigitEnd > ColonPos + 1) and
+                 (DigitEnd <= Length(RulePart)) and
+                 (RulePart[DigitEnd] = ':') then
+              begin
+                Source := Copy(RulePart, 1, ColonPos - 1);
+                LineNo := Copy(RulePart, ColonPos + 1,
+                  DigitEnd - ColonPos - 1);
+                Pattern := Copy(RulePart, DigitEnd + 1, MaxInt);
+                Break;
+              end;
+            end;
+            Inc(ColonPos);
+          end;
+          if Source = '' then
+            Continue;
+          for FileIdx := FirstIdx to NextIdx - 1 do
+            if string(AFiles[FileIdx].Path) = LinePath then
+            begin
+              AFiles[FileIdx].Source := Source;
+              AFiles[FileIdx].LineNo := LineNo;
+              AFiles[FileIdx].Pattern := Pattern;
+              AFiles[FileIdx].Rule := Source + ':' + LineNo + '  ' + Pattern;
+              Break;
+            end;
+        end;
+      end;
+      FirstIdx := NextIdx;
+    end;
+  finally
+    Lines.Free;
+  end;
+  Result := True;
+end;
+
+// Оставить в репозитории: исключение !путь - в тот файл правил, где
+// правило (корневой .gitignore, .gitignore папки, .git/info/exclude;
+// общий файл пользователя - в корневой .gitignore). Правило папки
+// ('old/') исключением файла не снять: git не смотрит внутрь исключённой
+// папки - тогда исключение и для самой папки. После записи список
+// проверяется заново: оставшиеся в нём файлы - в Git log
+function TForm1.GitTrackedKeep(const AFiles: TGitTrackedFiles): Boolean;
+const
+  KeepHeader = '# Файлы в репозитории вопреки правилам выше ' +
+    '(unIDE: Branch - Tracked but Ignored Files)';
+var
+  Targets: TStringList;
+  TargetPats: array of TGitPaths;
+  Recheck: TGitTrackedFiles;
+  FileIdx, TargetIdx, SegIdx, PatIdx, CheckIdx, NotTaken: Integer;
+  Source, BaseDir, TargetFile, DirName: string;
+  RelPath, DirPrefix: WideString;
+  Segments: TStringList;
+
+  procedure AddPattern(ATarget: Integer; const APattern: WideString);
+  begin
+    SetLength(TargetPats[ATarget], Length(TargetPats[ATarget]) + 1);
+    TargetPats[ATarget][High(TargetPats[ATarget])] := APattern;
+  end;
+
+begin
+  Result := False;
+  if MessageDlg('Оставить в репозитории файлов: ' + IntToStr(Length(AFiles)) +
+     '?'#13#10#13#10'В .gitignore допишутся исключения (!путь): файлы ' +
+     'остаются в репозитории, проверка Git status о них больше не ' +
+     'говорит. Изменение .gitignore нужно закоммитить (Commit...).',
+     mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  Targets := TStringList.Create;
+  Segments := TStringList.Create;
+  try
+    for FileIdx := 0 to High(AFiles) do
+    begin
+      Source := AFiles[FileIdx].Source;
+      if Source = '' then
+      begin
+        LogGit('Git: правило не найдено, пропущен: ' +
+          string(AFiles[FileIdx].Path), SuspectLogColor);
+        Continue;
+      end;
+      // Файл правил и путь от его папки
+      RelPath := AFiles[FileIdx].Path;
+      if (Source = '.gitignore') or
+         (Copy(Source, Length(Source) - 10, 11) = '/.gitignore') then
+      begin
+        BaseDir := Copy(Source, 1, Length(Source) - 10);
+        if (BaseDir <> '') and
+           (Copy(string(RelPath), 1, Length(BaseDir)) <> BaseDir) then
+        begin
+          LogGit('Git: файл не в папке своего .gitignore, пропущен: ' +
+            string(RelPath), SuspectLogColor);
+          Continue;
+        end;
+        RelPath := Copy(RelPath, Length(BaseDir) + 1, MaxInt);
+        TargetFile := Source;
+      end
+      else if Source = '.git/info/exclude' then
+        TargetFile := Source
+      else
+        TargetFile := '.gitignore';
+      TargetIdx := Targets.IndexOf(TargetFile);
+      if TargetIdx < 0 then
+      begin
+        TargetIdx := Targets.Add(TargetFile);
+        SetLength(TargetPats, Targets.Count);
+        SetLength(TargetPats[TargetIdx], 0);
+        AddPattern(TargetIdx, KeepHeader);
+      end;
+      // Правило папки: исключение и для неё - для первой папки пути с тем
+      // же именем, что в правиле
+      DirName := AFiles[FileIdx].Pattern;
+      if (DirName <> '') and (DirName[Length(DirName)] = '/') then
+      begin
+        Delete(DirName, Length(DirName), 1);
+        while Pos('/', DirName) > 0 do
+          Delete(DirName, 1, Pos('/', DirName));
+        Segments.Text := StringReplace(string(RelPath), '/', #13#10,
+          [rfReplaceAll]);
+        DirPrefix := '';
+        for SegIdx := 0 to Segments.Count - 2 do
+        begin
+          if DirPrefix <> '' then
+            DirPrefix := DirPrefix + '/';
+          DirPrefix := DirPrefix + Segments[SegIdx];
+          if AnsiSameText(Segments[SegIdx], DirName) then
+          begin
+            AddPattern(TargetIdx, '!' + GitIgnorePattern(DirPrefix) + '/');
+            Break;
+          end;
+        end;
+      end;
+      AddPattern(TargetIdx, '!' + GitIgnorePattern(RelPath));
+    end;
+
+    for TargetIdx := 0 to Targets.Count - 1 do
+    begin
+      TargetFile := IncludeTrailingPathDelimiter(FGitDlgRepo) +
+        StringReplace(Targets[TargetIdx], '/', '', [rfReplaceAll]);
+      if GitAppendIgnore(TargetFile, TargetPats[TargetIdx]) then
+      begin
+        LogGit('Git: исключения дописаны в ' + Targets[TargetIdx] + ':');
+        for PatIdx := 1 to High(TargetPats[TargetIdx]) do
+          LogGit('  ' + string(TargetPats[TargetIdx][PatIdx]));
+        Result := True;
+      end
+      else
+        LogGit('Git: ' + TargetFile + ' не записать', clRed);
+    end;
+  finally
+    Segments.Free;
+    Targets.Free;
+  end;
+  if not Result then
+    Exit;
+  // Проверка: какие файлы и после исключений подходят под правила
+  NotTaken := 0;
+  if GitTrackedLoad(Recheck) then
+    for FileIdx := 0 to High(AFiles) do
+      for CheckIdx := 0 to High(Recheck) do
+        if Recheck[CheckIdx].Path = AFiles[FileIdx].Path then
+        begin
+          Inc(NotTaken);
+          LogGit('Git: исключение не подействовало: ' +
+            string(AFiles[FileIdx].Path) + ' (правило ' +
+            Recheck[CheckIdx].Rule + ')', clRed);
+          Break;
+        end;
+  if NotTaken = 0 then
+    LogGit('Git: исключения действуют - файлы остаются в репозитории',
+      TColor($008000));
+end;
+
+// Убрать из репозитория: git rm --cached (пачками). Файлы остаются на
+// диске; из репозитория уходят следующим коммитом
+function TForm1.GitTrackedUntrack(const AFiles: TGitTrackedFiles): Boolean;
+var
+  Output: WideString;
+  Args: string;
+  FirstIdx, NextIdx: Integer;
+begin
+  Result := False;
+  if MessageDlg('Убрать из репозитория файлов: ' + IntToStr(Length(AFiles)) +
+     ' (git rm --cached)?'#13#10#13#10'На диске файлы остаются; из ' +
+     'репозитория они уйдут следующим коммитом (Commit...).'#13#10#13#10 +
+     'На других компьютерах Pull этого коммита удаляет их с диска. Pull ' +
+     'из unIDE их сохраняет (копия до Pull, возврат после, запись в Git ' +
+     'log); из GitHub Desktop или Git Bash - удалит.',
+     mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  FirstIdx := 0;
+  while FirstIdx <= High(AFiles) do
+  begin
+    Args := 'rm --cached -q --';
+    NextIdx := FirstIdx;
+    while (NextIdx <= High(AFiles)) and
+          ((NextIdx = FirstIdx) or (Length(Args) < GitArgsChunk)) do
+    begin
+      Args := Args + ' ' + string(GitQuote(AFiles[NextIdx].Path));
+      Inc(NextIdx);
+    end;
+    if GitRunIn(FGitDlgGit, FGitDlgRepo, Args, True, Output) = 0 then
+      Result := True;
+    FirstIdx := NextIdx;
+  end;
+  if Result then
+    LogGit('Git: файлы убраны из репозитория (на диске остались) - ' +
+      'закоммитьте: Commit...', TColor($008000));
+end;
+
+// Branch - Tracked but Ignored Files... (и щелчок по Git status, когда
+// такие файлы есть)
+procedure TForm1.GitTrackedClick(Sender: TObject);
+var
+  Git, Repo: string;
+  Files: TGitTrackedFiles;
+  Dlg: TDlgGitTracked;
+  Changed: Boolean;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  FGitDlgGit := Git;
+  FGitDlgRepo := Repo;
+  if not GitTrackedLoad(Files) then
+  begin
+    ShowGitLog;
+    LogGit('Git: список файлов не прочитать (git ls-files)', clRed);
+    Exit;
+  end;
+  ShowGitLog;
+  Dlg := TDlgGitTracked.CreateDlg(Self, 'Tracked but Ignored - ' +
+    ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), Files,
+    GitTrackedLoad, GitTrackedKeep, GitTrackedUntrack);
+  try
+    Dlg.ShowModal;
+    Changed := Dlg.Changed;
+  finally
+    Dlg.Free;
+  end;
+  GitRefreshBar;
+  if Changed then
+    GitSetHint('.gitignore / список файлов репозитория изменены - ' +
+      'закоммитьте (Commit...)', False);
+end;
+
+// ---------------------------------------------------------------------------
+//  Сохранение файлов, которые подходят под .gitignore, при pull, merge,
+//  checkout, cherry-pick. Файл убрали из репозитория (git rm --cached) на
+//  другом компьютере или в другой ветке; в коммите это обычное удаление,
+//  и git, приводя рабочую папку к новому коммиту, удаляет файл с диска.
+//  Перед командой такие файлы копируются в .git\unide-keep\<время>, после
+//  неё возвращаются, если их нет на месте. «Подходит под .gitignore» - по
+//  правилам рабочей папки или корневого .gitignore той версии, к которой
+//  идёт команда (в одном коммите часто и правило, и удаление)
+// ---------------------------------------------------------------------------
+
+// AFiles - сохранённые пути (от корня, через /), AKeepDir - куда.
+// False - сохранить не вышло: команду выполнять нельзя
+function TForm1.GitKeepBefore(const AGit, ARepo, AArgs: string;
+  AFiles: TStrings; var AKeepDir: string): Boolean;
+var
+  Output: WideString;
+  Tokens, Ranges, Candidates, Ignored, Lines: TStringList;
+  Paths: TGitPaths;
+  Cmd, Target, Args, RulesFile, RulesText, SrcFile, DstFile: string;
+  TokIdx, RangeIdx, PathIdx, FirstIdx, NextIdx, LineIdx: Integer;
+  HasNewBranch: Boolean;
+  Stream: TFileStream;
+
+  function Unquote(const AText: string): string;
+  begin
+    Result := AText;
+    if (Length(Result) >= 2) and (Result[1] = '"') and
+       (Result[Length(Result)] = '"') then
+      Result := Copy(Result, 2, Length(Result) - 2);
+  end;
+
+begin
+  Result := True;
+  AFiles.Clear;
+  AKeepDir := '';
+  Tokens := TStringList.Create;
+  Ranges := TStringList.Create;
+  Candidates := TStringList.Create;
+  Ignored := TStringList.Create;
+  Lines := TStringList.Create;
+  try
+    // Слова команды; ключи -c имя=значение в начале - пропустить
+    Tokens.Text := StringReplace(Trim(AArgs), ' ', #13#10, [rfReplaceAll]);
+    for TokIdx := Tokens.Count - 1 downto 0 do
+      if Trim(Tokens[TokIdx]) = '' then
+        Tokens.Delete(TokIdx);
+    while (Tokens.Count >= 2) and (Tokens[0] = '-c') do
+    begin
+      Tokens.Delete(0);
+      Tokens.Delete(0);
+    end;
+    if Tokens.Count = 0 then
+      Exit;
+    Cmd := Tokens[0];
+    Tokens.Delete(0);
+    // Продолжение / отмена операции, файлы (--) - не трогать
+    if (Tokens.IndexOf('--') >= 0) or (Tokens.IndexOf('--abort') >= 0) or
+       (Tokens.IndexOf('--continue') >= 0) or (Tokens.IndexOf('--skip') >= 0) or
+       (Tokens.IndexOf('--quit') >= 0) then
+      Exit;
+
+    Target := '';
+    if Cmd = 'pull' then
+    begin
+      // Что придёт - известно после fetch (pull потом получит то же)
+      if GitRunIn(AGit, ARepo, 'fetch', True, Output) <> 0 then
+        Exit;
+      if GitQuery(AGit, ARepo, 'rev-parse -q --verify @{u}') = '' then
+        Exit;
+      Target := '@{u}';
+      Ranges.Add('HEAD...@{u}');
+    end
+    else if Cmd = 'merge' then
+    begin
+      for TokIdx := Tokens.Count - 1 downto 0 do
+        if Copy(Tokens[TokIdx], 1, 1) <> '-' then
+        begin
+          Target := Unquote(Tokens[TokIdx]);
+          Break;
+        end;
+      if Target <> '' then
+        Ranges.Add('HEAD...' + Target);
+    end
+    else if Cmd = 'checkout' then
+    begin
+      // checkout -b новая [--track откуда]: без --track - от HEAD, файлы
+      // не меняются
+      HasNewBranch := Tokens.IndexOf('-b') >= 0;
+      if HasNewBranch then
+      begin
+        TokIdx := Tokens.IndexOf('--track');
+        if (TokIdx >= 0) and (TokIdx < Tokens.Count - 1) then
+          Target := Unquote(Tokens[TokIdx + 1]);
+      end
+      else
+        for TokIdx := 0 to Tokens.Count - 1 do
+          if Copy(Tokens[TokIdx], 1, 1) <> '-' then
+          begin
+            Target := Unquote(Tokens[TokIdx]);
+            Break;
+          end;
+      if Target <> '' then
+        Ranges.Add('HEAD ' + Target);
+    end
+    else if Cmd = 'cherry-pick' then
+    begin
+      for TokIdx := 0 to Tokens.Count - 1 do
+        if Copy(Tokens[TokIdx], 1, 1) <> '-' then
+        begin
+          Target := Unquote(Tokens[TokIdx]);
+          Ranges.Add(Target + '^ ' + Target);
+        end;
+    end;
+    if Ranges.Count = 0 then
+      Exit;
+
+    // Удаляемые командой файлы, которые есть на диске
+    for RangeIdx := 0 to Ranges.Count - 1 do
+      if GitRunIn(AGit, ARepo, 'diff --name-only --no-renames ' +
+         '--diff-filter=D -z ' + Ranges[RangeIdx], False, Output) = 0 then
+      begin
+        GitSplitZero(Output, Paths);
+        for PathIdx := 0 to High(Paths) do
+          if (Candidates.IndexOf(string(Paths[PathIdx])) < 0) and
+             FileExists(IncludeTrailingPathDelimiter(ARepo) +
+               StringReplace(string(Paths[PathIdx]), '/', '\',
+               [rfReplaceAll])) then
+            Candidates.Add(string(Paths[PathIdx]));
+      end;
+    if Candidates.Count = 0 then
+      Exit;
+
+    // Правила: рабочей папки и корневого .gitignore версии Target
+    AKeepDir := IncludeTrailingPathDelimiter(ARepo) + '.git\unide-keep\' +
+      FormatDateTime('yyyymmdd-hhnnss', Now) + '\';
+    ForceDirectories(AKeepDir);
+    RulesFile := '';
+    if GitRunIn(AGit, ARepo, 'show ' + Target + ':.gitignore', False,
+       Output) = 0 then
+    begin
+      RulesFile := AKeepDir + '_target.gitignore';
+      RulesText := GitToUtf8(Output);
+      try
+        Stream := TFileStream.Create(RulesFile, fmCreate);
+        try
+          if RulesText <> '' then
+            Stream.WriteBuffer(RulesText[1], Length(RulesText));
+        finally
+          Stream.Free;
+        end;
+      except
+        RulesFile := '';
+      end;
+    end;
+    FirstIdx := 0;
+    while FirstIdx < Candidates.Count do
+    begin
+      Args := '';
+      if RulesFile <> '' then
+        Args := '-c ' + string(GitQuote(WideString('core.excludesFile=' +
+          StringReplace(RulesFile, '\', '/', [rfReplaceAll])))) + ' ';
+      Args := Args + 'check-ignore --no-index --';
+      NextIdx := FirstIdx;
+      while (NextIdx < Candidates.Count) and
+            ((NextIdx = FirstIdx) or (Length(Args) < GitArgsChunk)) do
+      begin
+        Args := Args + ' ' + string(GitQuote(WideString(Candidates[NextIdx])));
+        Inc(NextIdx);
+      end;
+      // Код 0 - что-то подходит, 1 - ничего
+      if GitRunIn(AGit, ARepo, Args, False, Output) >= 0 then
+      begin
+        Lines.Text := string(Output);
+        for LineIdx := 0 to Lines.Count - 1 do
+          if (Trim(Lines[LineIdx]) <> '') and
+             (Candidates.IndexOf(Lines[LineIdx]) >= 0) and
+             (Ignored.IndexOf(Lines[LineIdx]) < 0) then
+            Ignored.Add(Lines[LineIdx]);
+      end;
+      FirstIdx := NextIdx;
+    end;
+    if RulesFile <> '' then
+      DeleteFile(RulesFile);
+    if Ignored.Count = 0 then
+    begin
+      RemoveDir(ExcludeTrailingPathDelimiter(AKeepDir));
+      RemoveDir(IncludeTrailingPathDelimiter(ARepo) + '.git\unide-keep');
+      AKeepDir := '';
+      Exit;
+    end;
+
+    // Копии
+    for PathIdx := 0 to Ignored.Count - 1 do
+    begin
+      SrcFile := IncludeTrailingPathDelimiter(ARepo) +
+        StringReplace(Ignored[PathIdx], '/', '\', [rfReplaceAll]);
+      DstFile := AKeepDir + StringReplace(Ignored[PathIdx], '/', '\',
+        [rfReplaceAll]);
+      ForceDirectories(ExtractFilePath(DstFile));
+      if not Windows.CopyFile(PChar(SrcFile), PChar(DstFile), False) then
+      begin
+        LogGit('Git: не сохранить ' + Ignored[PathIdx] + ' в ' + AKeepDir +
+          ' - git ' + Cmd + ' не выполняется, чтобы файл не пропал', clRed);
+        Result := False;
+        Exit;
+      end;
+      AFiles.Add(Ignored[PathIdx]);
+    end;
+    LogGit('Git: ' + Cmd + ' удалит с диска файлы, которые подходят под ' +
+      '.gitignore (их убрали из репозитория): ' + IntToStr(AFiles.Count) +
+      ' - сохранены в ' + AKeepDir + ', вернутся после команды',
+      SuspectLogColor);
+    for PathIdx := 0 to AFiles.Count - 1 do
+      LogGit('  ' + AFiles[PathIdx]);
+  finally
+    Lines.Free;
+    Ignored.Free;
+    Candidates.Free;
+    Ranges.Free;
+    Tokens.Free;
+  end;
+end;
+
+// После команды: сохранённых файлов нет на месте - вернуть. Копии, которые
+// вернулись или не понадобились, - удалить; не вернувшиеся остаются в
+// AKeepDir (путь - в Git log)
+procedure TForm1.GitKeepAfter(const ARepo, AKeepDir: string;
+  AFiles: TStrings);
+var
+  Dirs: TStringList;
+  FileIdx, DirIdx, Restored, Failed: Integer;
+  SrcFile, DstFile, DirPath: string;
+begin
+  Restored := 0;
+  Failed := 0;
+  Dirs := TStringList.Create;
+  try
+    for FileIdx := 0 to AFiles.Count - 1 do
+    begin
+      SrcFile := AKeepDir + StringReplace(AFiles[FileIdx], '/', '\',
+        [rfReplaceAll]);
+      DstFile := IncludeTrailingPathDelimiter(ARepo) +
+        StringReplace(AFiles[FileIdx], '/', '\', [rfReplaceAll]);
+      if not FileExists(DstFile) then
+      begin
+        ForceDirectories(ExtractFilePath(DstFile));
+        if Windows.CopyFile(PChar(SrcFile), PChar(DstFile), False) then
+        begin
+          Inc(Restored);
+          LogGit('  возвращён: ' + AFiles[FileIdx], TColor($008000));
+        end
+        else
+        begin
+          Inc(Failed);
+          LogGit('  не вернуть: ' + AFiles[FileIdx] + ' - копия: ' + SrcFile,
+            clRed);
+          Continue;
+        end;
+      end;
+      DeleteFile(SrcFile);
+      DirPath := ExtractFileDir(SrcFile);
+      while (Length(DirPath) > Length(AKeepDir)) and
+            (Dirs.IndexOf(DirPath) < 0) do
+      begin
+        Dirs.Add(DirPath);
+        DirPath := ExtractFileDir(DirPath);
+      end;
+    end;
+    // Папки копий - от самых глубоких (непустые RemoveDir не трогает)
+    Dirs.Sort;
+    for DirIdx := Dirs.Count - 1 downto 0 do
+      RemoveDir(Dirs[DirIdx]);
+    if Failed = 0 then
+    begin
+      RemoveDir(ExcludeTrailingPathDelimiter(AKeepDir));
+      RemoveDir(IncludeTrailingPathDelimiter(ARepo) + '.git\unide-keep');
+    end;
+  finally
+    Dirs.Free;
+  end;
+  if Restored > 0 then
+    LogGit('Git: возвращено на диск файлов: ' + IntToStr(Restored) +
+      ' (в репозитории их нет, .gitignore их не пускает)', TColor($008000))
+  else if Failed = 0 then
+    LogGit('Git: сохранённые файлы на месте - возвращать не понадобилось');
 end;
 
 // ReactOS - Run Image: образ последней сборки - в эмуляторе, без сборки
@@ -76113,6 +77819,10 @@ var
   CursorPt: TPoint;
   SerialBefore: Cardinal;
 begin
+  // Флаг изменений сброшен (запись, открытие, переключение окна) - перед
+  // следующей правкой снять снимок записанного текста (CleanCapture)
+  if (Message.Msg = EM_SETMODIFY) and (Message.WParam = 0) then
+    FCleanPending := True;
   // Вставка - только текстом (PastePlainText): WM_PASTE от меню Windows и
   // Ctrl+V / Shift+Insert, если их не перехватило меню формы
   if FMsgDepth = 0 then
@@ -76314,6 +78024,10 @@ begin
     Message.Result := 0;
     Exit;
   end;
+
+  // Снимок записанного текста - до правки, и под блокировкой тоже
+  if IsTextChangeMsg(Message.Msg) then
+    CleanBeforeMsg(Message);
 
   if FLockHighlight then
   begin

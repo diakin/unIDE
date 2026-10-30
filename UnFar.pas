@@ -102,7 +102,7 @@ unit UnFar;
 //      адресов (Host | Home | User; Shift+F4 - новый, F4 - изменить,
 //      F8 / Del - удалить; editor.ini [FarFtp], пароль - DPAPI), вход
 //      на сервер и папки сервера (Enter, '..', Ctrl+R) - WinInet в своём
-//      потоке (FarFtp). Копирование и прочее на сервере - следующим шагом.
+//      потоке (FarFtp). Файлы на сервере: F3, F4, F5, F6, F7, F8 (TFarFtpJob).
 //    - b.34: FTP: Home адреса не открылся (550) - тот же путь без '/' в
 //      начале (от папки входа), нет и его - папка входа, причина - в строке
 //      состояния.
@@ -117,6 +117,12 @@ unit UnFar;
 //      SchemeLine): в панели рядом с файлами или на всю ширину (F5);
 //      основной редактор unIDE по F4 больше не открывается.
 //    - b.38: палитра: цвет текста и фона редактора (нет - из схемы).
+//    - b.54: редактор, Shift+F8 - кодировка записи (ANSI, UTF-8, UTF-8 с
+//      BOM, UTF-16); другая, чем у файла, - файл изменён, F2 пишет в ней.
+//    - b.58: поля окон с несколькими строками (Alt+F7 и др.) правятся как
+//      в редакторе: выделение Shift+стрелки / мышью, Ctrl+A, Ctrl+C / X / V,
+//      Ctrl+Z. Masks и Text в Alt+F7 - со списком прежних значений
+//      (Ctrl+Down, стрелка справа; [FarFindHistory] в ini).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F1, F2, F3, F12 - заглушки по плану).
 //
@@ -151,7 +157,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
-  FarBuild = 'b.45';
+  FarBuild = 'b.58';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -180,7 +186,8 @@ type
     fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd,
     fdFind, fdFtpEdit, fdFtpPassword, fdFtpDelete, fdFtpError,
     fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
-    fdViewFind, fdViewGoto, fdHiDelete, fdHistClear);
+    fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
+    fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -195,6 +202,12 @@ type
     Values: TFarNames;
     Index: Integer;          // выбранное значение
     IsCheck: Boolean;        // флажок [x] (выбор из двух: 0 - снят)
+    Anchor: Integer;         // начало выделения (-1 - нет), конец - Pos
+    IsCombo: Boolean;        // поле со списком прежних значений (стрелка)
+    History: TFarNames;      // прежние значения, первое - последнее
+    UndoText: WideString;    // Ctrl+Z: текст до последней правки
+    UndoPos: Integer;
+    Typing: Boolean;         // идёт набор: правки - одним шагом отмены
   end;
   TFarDlgRows = array of TFarDlgRow;
 
@@ -237,7 +250,7 @@ type
   // Открытое меню: смена диска (Alt+F1 / Alt+F2), сортировка (Ctrl+F12),
   // история папок (Alt+F12)
   TFarMenuKind = (fmNone, fmDrive, fmSort, fmHistory, fmOptions,
-    fmPalGroups, fmPalItems, fmHiRules, fmThemes);
+    fmPalGroups, fmPalItems, fmHiRules, fmThemes, fmEditEncoding);
 
   TFarMenuItem = record
     Text: WideString;       // '&' перед буквой быстрого выбора
@@ -251,6 +264,10 @@ type
     HasColors: Boolean;
     Fore: TColor;
     Back: TColor;
+    // Справа - квадратики с цветом (1 или 2) вместо RightText
+    SwatchCount: Integer;
+    Swatch1: TColor;
+    Swatch2: TColor;
   end;
   TFarMenuItems = array of TFarMenuItem;
 
@@ -349,7 +366,10 @@ type
     fpKeyNum, fpKeyNumBack, fpKeyText, fpKeyBack,
     fpCmdBack, fpCmdPrompt, fpCmdText, fpOutText,
     fpEditBack, fpEditText, fpEditTitleBack, fpEditTitleText, fpEditSelBack,
-    fpEditSelText);
+    fpEditSelText,
+    // Вкладки папок uniFAR (FarTabs)
+    fpTabBarBack, fpTabBack, fpTabText, fpTabCurText, fpTabSelBack,
+    fpTabSelText, fpTabFrame);
   TFarPalette = array[TFarPalItem] of TColor;
 
   TFarStatusEvent = procedure(const AText: string) of object;
@@ -512,6 +532,13 @@ type
     FDlgRow: Integer;             // строка с фокусом; -1 - фокус на кнопках
     FDlgRowsTop: Integer;         // где нарисована первая (для мыши)
     FDlgRowsLeft: Integer;        // колонка начала полей
+    FDlgRowsW: Integer;           // ширина полей (со стрелкой списка)
+    FDlgDrop: Integer;            // строка с открытым списком; -1 - нет
+    FDlgDropIndex: Integer;       // выбранное в списке
+    FDlgDropTop: Integer;         // первое видимое в списке
+    FDlgDropRow: Integer;         // где нарисован список (для мыши)
+    FDlgDropH: Integer;
+    FDlgDragRow: Integer;         // протяжка мышью в поле; -1 - нет
     // Слежение за папками панелей
     FWatch: array[0..1] of THandle;
     FWatchPath: array[0..1] of WideString;
@@ -536,16 +563,26 @@ type
     // старых записей при переполнении
     FHistory: TFarNames;
     FHistoryLock: array of Boolean;
+    // Вкладки папок uniFAR (FarTabs): пока по вкладкам ходят, переходы в
+    // историю не пишутся
+    FHistoryPaused: Boolean;
+    FEditWideDefault: Boolean;
+    FOnPainted: TNotifyEvent;
     // Поиск файлов (Alt+F7): окно Find file - что искать (запоминается),
     // окно найденного - поверх панелей
     FFindMask: WideString;
     FFindText: WideString;
+    FFindMaskHist: TFarNames;     // прежние маски и тексты (списки полей)
+    FFindTextHist: TFarNames;
     FFindCodePage: Integer;
     FFindCase: Boolean;
     FFindWhole: Boolean;
     FFindFolders: Boolean;
     FFindArea: Integer;            // 0 - с подпапками, 1 - только папка, 2 - диск
     FFindOpen: Boolean;
+    // Окно найденного спрятано на время редактора / просмотра (F4 / F3 в
+    // нём): закрыли их - окно снова на месте
+    FFindSuspended: Boolean;
     FFindThread: TFarFindThread;
     FFindTimer: TTimer;
     FFindOptions: TFarFindOptions;
@@ -575,6 +612,29 @@ type
     FFtpPassPanel: Integer;        // окно пароля: панель и адрес
     FFtpPassHostIdx: Integer;
     FFtpDelIdx: Integer;           // удалить адрес: какой
+    // Операции с файлами на сервере (TFarFtpJob): идущая
+    FFtpJob: TFarFtpJob;
+    FFtpJobPanel: Integer;         // панель FTP, чьё соединение у операции
+    FFtpJobSess: Integer;          // FFtpSession панели при запуске
+    FFtpJobAfter: Integer;         // после: 1 - просмотр, 2 - редактор
+    FFtpJobTemp: WideString;       // файл для просмотра / редактора
+    FFtpJobFocusRaw: string;       // курсор панели FTP после - на это имя
+    FFtpJobMove: Boolean;
+    FFtpProgress: TFarProgress;
+    // ... и ждущая ответа в окне (F5, F6, F7, F8, «файлы уже есть»)
+    FFtpOpKind: TFarFtpJobKind;
+    FFtpOpItems: TFarFtpJobItems;
+    FFtpOpPanel: Integer;
+    FFtpOpMove: Boolean;
+    FFtpOpRemoteDir: string;
+    FFtpOpRemoteTarget: string;
+    FFtpOpLocalDir: WideString;
+    // Файл с сервера в редакторе (F4): F2 - отправить обратно
+    FEditFtpTemp: WideString;
+    FEditFtpRaw: string;
+    FEditFtpDir: string;
+    FEditFtpPanel: Integer;
+    FEditFtpHost: TFarFtpHost;
     FFtpDelPanel: Integer;
     procedure CreateFonts;
     procedure FreeFonts;
@@ -582,6 +642,8 @@ type
     function ActivePanel: TFarPanel;
     procedure PanelBounds(AIndex: Integer; var AX0, AWidth: Integer);
     function PanelHeight: Integer;
+    function DocHeight: Integer;
+    function InDocArea(AX, AY: Integer): Boolean;
     function MaxPanelCut: Integer;
     // Командная строка и вывод
     function CmdRow: Integer;
@@ -671,6 +733,25 @@ type
     procedure FtpCheck;
     procedure FtpUp(APanelIndex: Integer);
     procedure FtpEnter(APanelIndex: Integer);
+    function FtpBusy: Boolean;
+    function FtpCollect(APanel: TFarPanel;
+      ACurrentOnly: Boolean): TFarFtpJobItems;
+    function FtpCollectLocal(APanel: TFarPanel): TFarFtpJobItems;
+    procedure FtpRunJob(AKind: TFarFtpJobKind; APanelIdx: Integer;
+      const ARemoteDir: string; const ALocalDir: WideString;
+      const AItems: TFarFtpJobItems; const ANewName: string; AMove: Boolean;
+      AAfter: Integer; const ATemp: WideString; const AFocusRaw: string);
+    procedure FtpViewEdit(AEdit: Boolean);
+    procedure FtpStartCopyFrom(AMove, ACurrentOnly: Boolean);
+    procedure FtpStartCopyTo(AMove: Boolean);
+    procedure FtpCopyConfirm(const AText: WideString);
+    procedure FtpOverwriteAnswer(AButton: Integer);
+    procedure FtpRunOp;
+    procedure FtpAskMkDir;
+    procedure FtpMkDirConfirm(const AText: WideString);
+    procedure FtpAskDelete;
+    procedure FtpUploadEdited;
+    procedure FtpJobDone;
     procedure FtpEditHost(APanelIndex, AHostIdx: Integer);
     procedure FtpEditConfirm(AConnect: Boolean);
     procedure FtpDeleteHost(APanelIndex: Integer);
@@ -678,6 +759,7 @@ type
     procedure FtpImportHosts;
     procedure FtpCopyHosts;
     function FtpPasteHosts: Boolean;
+    procedure FtpExportHosts;
     function FtpKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure DrawFtpHosts(APanel: TFarPanel; APanelX, APanelW: Integer;
       AIsActive: Boolean);
@@ -695,6 +777,7 @@ type
     procedure EditFindConfirm;
     procedure EditFindNext;
     procedure EditGoto(const AText: WideString);
+    procedure EditEncodingMenu;
     procedure EditChar(ACh: WideChar);
     function EditKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure EditMouse(AX, AY: Integer; AShiftDown, ADrag: Boolean);
@@ -750,6 +833,7 @@ type
     function FindCurrent(var AItem: TFarFindItem): Boolean;
     procedure FindGoTo;
     procedure FindEdit;
+    procedure FindView;
     procedure FindButton(AIndex: Integer);
     function FindKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     function FindRowText(ARowIdx, AWidth: Integer): WideString;
@@ -805,6 +889,22 @@ type
     function DlgRowIsEdit: Boolean;
     procedure DlgRowInsert(const AText: WideString);
     procedure DlgRowsMouse(AX, AY: Integer);
+    procedure DlgRowsMouseMove(AX: Integer);
+    procedure DlgRowsDblClick;
+    procedure DlgAddCombo(const ACaption, AText: WideString;
+      const AHistory: TFarNames);
+    function DlgRowSel(const ARow: TFarDlgRow; out ASelFrom,
+      ASelTo: Integer): Boolean;
+    procedure DlgRowDeleteSel;
+    procedure DlgRowSaveUndo(ATyping: Boolean);
+    function DlgRowEditKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    procedure DlgDropOpen;
+    procedure DlgDropChoose;
+    function DlgDropKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    function DlgDropMouse(AX, AY: Integer): Boolean;
+    procedure DlgDropDelete;
+    procedure DlgHistoryStore(ARowIndex: Integer);
+    procedure DrawDialogDrop;
     function DlgChoiceCol(const ARow: TFarDlgRow; AValueIndex: Integer): Integer;
     procedure DoArcExtract(const ATarget: WideString);
     procedure ArcError(const AOutput: WideString);
@@ -826,6 +926,7 @@ type
     procedure MenuActivate(AIndex: Integer);
     function MenuItemAt(AX, AY: Integer): Integer;
     procedure DrawMenu;
+    procedure DrawSwatch(ACol, ARow: Integer; AColor, AFrame: TColor);
     procedure ShowDriveMenu(APanelIndex: Integer);
     procedure ShowSortMenu;
     procedure ShowHistoryMenu(ACursor: Integer = -1);
@@ -910,6 +1011,31 @@ type
     // Ширина окна FAR в режиме F4 (пикселей, 0 - не задана): ставит и
     // читает Unit1 (сплиттер), хранится в editor.ini ([Far] HalfWidth)
     property HalfWidth: Integer read FHalfWidth write FHalfWidth;
+    // Для вкладок папок (FarTabs, uniFAR). ActivePath - папка активной
+    // панели (FTP, архив - то, что в заголовке панели)
+    function ActivePath: WideString;
+    // Имя под курсором активной панели ('' - список пуст)
+    function ActiveCursorItem: WideString;
+    // Можно ходить по вкладкам: нет диалога и меню, активная панель -
+    // обычная папка (не FTP, не архив, не редактор и не просмотр)
+    function TabsAllowed: Boolean;
+    // История папок (Alt+F12): 0 - самая старая
+    function HistoryCount: Integer;
+    function HistoryItem(AIndex: Integer): WideString;
+    function HistoryIsLocked(AIndex: Integer): Boolean;
+    procedure HistoryAddPath(const APath: WideString);
+    // 1 - убрана, 0 - в истории её нет, -1 - закреплена (не убрана)
+    function HistoryRemovePath(const APath: WideString): Integer;
+    // Сообщение в строке сообщений (или OnStatus)
+    procedure StatusText(const AText: string);
+    property HistoryPaused: Boolean read FHistoryPaused write FHistoryPaused;
+    // F4: редактор сразу на всю ширину окна (uniFAR); F5 - в половину
+    property EditWideDefault: Boolean read FEditWideDefault
+      write FEditWideDefault;
+    property MainFont: HFONT read FFontMain;
+    property CellHeight: Integer read FCellH;
+    // После каждой перерисовки (uniFAR: перерисовать вкладки)
+    property OnPainted: TNotifyEvent read FOnPainted write FOnPainted;
   end;
 
 var
@@ -920,6 +1046,10 @@ var
 // Путь для ANSI-кода IDE (Delphi 7): в кодировке Windows, если она вмещает
 // все символы, иначе - короткое имя 8.3; нельзя ни так, ни так - ''
 function FarToAnsiPath(const APath: WideString): string;
+// Путь для ini: в кодировке Windows, если она вмещает все символы, иначе
+// UTF-8 с пометкой (FarDecodePath читает оба вида)
+function FarEncodePath(const APath: WideString): string;
+function FarDecodePath(const AText: string): WideString;
 
 // Раскраска файлов: стандартный набор, чтение и запись editor.ini
 // ([FarColors]: '_Set=1' и строки 'ext=1,#RRGGBB,#RRGGBB'; '-' вместо фона
@@ -1007,6 +1137,8 @@ const
   // возрастанию - строчная, обратный порядок - прописная
   FarSortLetters = 'nxmsuca';
   FarHistoryMax = 50;
+  // Ширина квадратика с цветом в меню цветов (клеток)
+  FarSwatchCells = 4;
   FarHistorySection = 'FarHistory';
   FarCheckMark = WideChar($221A);  // отметка в меню (в Terminus cp1251 её
                                    // нет - рисует Lucida Console)
@@ -1026,6 +1158,9 @@ const
   FarOutMaxLines = 2000;           // столько строк вывода держим
   FarCmdHistoryMax = 50;
   FarCmdHistorySection = 'FarCmdHistory';
+  FarFindHistorySection = 'FarFindHistory';
+  FarFindHistoryMax = 20;          // столько прежних масок / текстов
+  FarDlgDropRows = 8;              // строк в списке поля
   FarVkLeftBracket = $DB;          // VK_OEM_4: '['
   FarVkRightBracket = $DD;         // VK_OEM_6: ']'
   FarSeErrNoAssoc = 31;            // SE_ERR_NOASSOC: нет программы для файла
@@ -1065,7 +1200,7 @@ const
   FarEdKeysNormal: array[0..11] of string = ('', 'Save', '', '', 'Wide', '',
     'Search', '', '', 'Quit', '', '');
   FarEdKeysShift: array[0..11] of string = ('', 'SaveAs', '', '', '', '',
-    'Next', '', '', '', '', '');
+    'Next', 'Encode', '', '', '', '');
   FarEdKeysAlt: array[0..11] of string = ('', '', '', '', '', '', '', 'Goto',
     '', '', '', '');
 
@@ -1110,8 +1245,10 @@ type
     dwProcessId, dwThreadId: DWORD;
   end;
 
-  // SHFILEOPSTRUCTW - в 32-битной Windows без выравнивания (packed)
-  TFarShFileOp = packed record
+  // SHFILEOPSTRUCTW: в 32-битной Windows без выравнивания (packed,
+  // pshpack1 в shellapi.h), в 64-битной - обычное выравнивание (pshpack8):
+  // packed там сдвигает поля после Func, и SHFileOperation падает
+  TFarShFileOp = {$IFDEF CPU64}record{$ELSE}packed record{$ENDIF}
     Wnd: HWND;
     Func: UINT;
     From: PWideChar;
@@ -1309,6 +1446,15 @@ begin
   Attr := FarGetAttributes(PWideChar(APath));
   Result := (Attr <> FarInvalidAttr) and
             (Attr and FILE_ATTRIBUTE_DIRECTORY <> 0);
+end;
+
+function FarFileExists(const APath: WideString): Boolean;
+var
+  Attr: DWORD;
+begin
+  Attr := FarGetAttributes(PWideChar(APath));
+  Result := (Attr <> FarInvalidAttr) and
+            (Attr and FILE_ATTRIBUTE_DIRECTORY = 0);
 end;
 
 function FarWithSlash(const APath: WideString): WideString;
@@ -1727,7 +1873,9 @@ const
     'KeyNum', 'KeyNumBack', 'KeyText', 'KeyBack',
     'CmdBack', 'CmdPrompt', 'CmdText', 'OutText',
     'EditBack', 'EditText', 'EditTitleBack', 'EditTitleText', 'EditSelBack',
-    'EditSelText');
+    'EditSelText',
+    'TabBarBack', 'TabBack', 'TabText', 'TabCurrentText', 'TabSelBack',
+    'TabSelText', 'TabFrame');
 
   FarPalGroups: array[TFarPalItem] of string = (
     'Панели', 'Панели', 'Панели', 'Панели', 'Панели',
@@ -1740,7 +1888,9 @@ const
     'Кейбар', 'Кейбар', 'Кейбар', 'Кейбар',
     'Командная строка', 'Командная строка', 'Командная строка',
     'Командная строка',
-    'Редактор', 'Редактор', 'Редактор', 'Редактор', 'Редактор', 'Редактор');
+    'Редактор', 'Редактор', 'Редактор', 'Редактор', 'Редактор', 'Редактор',
+    'Вкладки', 'Вкладки', 'Вкладки', 'Вкладки', 'Вкладки', 'Вкладки',
+    'Вкладки');
 
   FarPalCaptions: array[TFarPalItem] of string = (
     'Фон панели',
@@ -1782,7 +1932,14 @@ const
     'Строка заголовка: фон',
     'Строка заголовка: текст',
     'Выделенный текст: фон',
-    'Выделенный текст: текст');
+    'Выделенный текст: текст',
+    'Фон полосы вкладок',
+    'Вкладка: фон',
+    'Вкладка: текст',
+    'Вкладка активной панели: текст',
+    'Вкладка под мышью / курсором: фон',
+    'Вкладка под мышью / курсором: текст',
+    'Рамка вкладки');
 
   FarPalDefaults: array[TFarPalItem] of TColor = (
     FarBlue, FarLightCyan, FarWhite, FarYellow, FarYellow,
@@ -1794,7 +1951,9 @@ const
     FarRed, FarWhite, FarLightGray, FarBlack,
     FarLightGray, FarBlack, FarBlack, FarCyan,
     FarBlack, FarLightGray, FarWhite, FarLightGray,
-    clNone, clNone, FarCyan, FarBlack, FarCyan, FarBlack);
+    clNone, clNone, FarCyan, FarBlack, FarCyan, FarBlack,
+    FarBlack, FarBlue, FarLightCyan, FarYellow, FarCyan, FarBlack,
+    FarLightCyan);
 
   FarPalBacks: array[TFarPalItem] of Boolean = (
     True, False, False, False, False,
@@ -1806,7 +1965,8 @@ const
     True, False, True, False,
     False, True, False, True,
     True, False, False, False,
-    True, False, True, False, True, False);
+    True, False, True, False, True, False,
+    True, True, False, False, True, False, False);
 
   FarPalPairs: array[TFarPalItem] of TFarPalItem = (
     fpPanelText, fpPanelBack, fpPanelBack, fpPanelBack, fpPanelBack,
@@ -1819,7 +1979,9 @@ const
     fpKeyNumBack, fpKeyNum, fpKeyBack, fpKeyText,
     fpCmdText, fpCmdBack, fpCmdBack, fpCmdBack,
     fpEditText, fpEditBack, fpEditTitleText, fpEditTitleBack, fpEditSelText,
-    fpEditSelBack);
+    fpEditSelBack,
+    fpTabText, fpTabText, fpTabBack, fpTabBack, fpTabSelText, fpTabSelBack,
+    fpTabBarBack);
 
 var
   FarCurPanelBack: TColor = FarBlue;
@@ -1891,7 +2053,9 @@ const
       $00784F26, $00CCCCCC, $001F1F6F, $00FFFFFF, $00CCCCCC,
       $001F1F6F, $006E6E6E, $00252525, $00CCCCCC, $00252525,
       $001F1F1F, $00FFC14F, $00CCCCCC, $00CCCCCC, clNone,
-      clNone, $00D47800, $00FFFFFF, $00784F26, $00CCCCCC),
+      clNone, $00D47800, $00FFFFFF, $00784F26, $00CCCCCC,
+      $00181818, $00252525, $00CCCCCC, $00FFC14F, $00714709, $00FFFFFF,
+      $006E6E6E),
     // FarLight 2026
     (
       $00FFFFFF, $003B3B3B, $00B85F00, $000D26A1, $00B85F00,
@@ -1901,7 +2065,9 @@ const
       $00FFD6AD, $003B3B3B, $000D26A1, $00FFFFFF, $00FFFFFF,
       $000D26A1, $007E7E7E, $00F8F8F8, $003B3B3B, $00F8F8F8,
       $00FFFFFF, $00B85F00, $003B3B3B, $003B3B3B, clNone,
-      clNone, $00B85F00, $00FFFFFF, $00FFD6AD, $003B3B3B));
+      clNone, $00B85F00, $00FFFFFF, $00FFD6AD, $003B3B3B,
+      $00EEEEEE, $00FFFFFF, $003B3B3B, $00B85F00, $00F7E4CC, $003B3B3B,
+      $00B0B0B0));
   FarThemeKeys: array[TFarPalItem] of string = (
     'Panel.Text', 'Panel.Text', 'Panel.Text.Highlight',
     'Panel.Text.Selected', 'Panel.Title.Column', 'Panel.Box',
@@ -1916,13 +2082,16 @@ const
     'CommandLine', 'CommandLine.Prefix', 'CommandLine',
     'CommandLine.UserScreen', '', '',
     'Editor.Status', 'Editor.Status', 'Editor.Text.Selected',
-    'Editor.Text.Selected');
+    'Editor.Text.Selected',
+    'CommandLine', 'Panel.Text', 'Panel.Text', 'Panel.Title.Column',
+    'Panel.Cursor', 'Panel.Cursor', 'Panel.Box');
   FarThemeBackKey: array[TFarPalItem] of Boolean = (
     True, False, False, False, False, False, True, False,
     True, False, False, False, False, True, True, False,
     True, False, True, False, True, False, True, False,
     True, False, False, True, False, True, True, False,
-    False, False, False, False, True, False, True, False);
+    False, False, False, False, True, False, True, False,
+    True, True, False, False, True, False, False);
   FarThemeSection = 'FarTheme';
 
 // Смесь цветов: AShare (0..100) процентов ATo в AFrom
@@ -2339,6 +2508,18 @@ begin
         FarPalKeys[Item], ''), FarPalDefaults[Item]);
       if (Color <> clNone) or (FarPalDefaults[Item] = clNone) then
         APalette[Item] := Color;
+    end;
+    // Палитра записана до вкладок (своя тема, импорт): их цвета - от
+    // цветов панели и командной строки
+    if Ini.ReadString(FarPaletteSection, FarPalKeys[fpTabBack], #1) = #1 then
+    begin
+      APalette[fpTabBarBack] := APalette[fpCmdBack];
+      APalette[fpTabBack] := APalette[fpPanelBack];
+      APalette[fpTabText] := APalette[fpPanelText];
+      APalette[fpTabCurText] := APalette[fpPanelHeader];
+      APalette[fpTabSelBack] := APalette[fpPanelCursorBack];
+      APalette[fpTabSelText] := APalette[fpPanelCursorText];
+      APalette[fpTabFrame] := APalette[fpPanelFrame];
     end;
   finally
     Ini.Free;
@@ -3099,6 +3280,8 @@ begin
   FFindMask := '*.*';
   FFindFolders := True;
   FFindDone := True;
+  FDlgDrop := -1;
+  FDlgDragRow := -1;
 end;
 
 destructor TFarView.Destroy;
@@ -3138,6 +3321,15 @@ begin
     end;
     FPanels[FtpIdx].FtpLeave;
   end;
+  if FFtpJob <> nil then
+  begin
+    FFtpJob.Cancel;
+    FFtpJob.WaitFor;
+    FFtpJob.Conn.Free;
+    FFtpJob.Free;
+    FFtpJob := nil;
+  end;
+  FreeAndNil(FFtpProgress);
   FProcTimer.Enabled := False;
   if FProcHandle <> 0 then
     ProcFinish(True);
@@ -3308,6 +3500,26 @@ begin
   if FPanelCut < 0 then
     FPanelCut := 0;
   Result := OutBottom + 1 - FPanelCut;
+end;
+
+// Редактор (F4) и просмотр (F3) - во всю высоту до командной строки
+// (строки сообщений), укорачивание панелей (Ctrl+Up) их не касается
+function TFarView.DocHeight: Integer;
+begin
+  Result := OutBottom + 1;
+end;
+
+// Точка (пиксели окна) - в окне редактора / просмотра
+function TFarView.InDocArea(AX, AY: Integer): Boolean;
+var
+  DocX, DocW: Integer;
+begin
+  Result := False;
+  if not DocOpen or FPanelsHidden or (AY div FCellH >= DocHeight) then
+    Exit;
+  EditBounds(DocX, DocW);
+  Result := FEditWide or ((AX div FCellW >= DocX) and
+    (AX div FCellW < DocX + DocW));
 end;
 
 // Короче не укоротить: у панели должно остаться место под рамку,
@@ -3804,12 +4016,14 @@ begin
           DrawPanel(0);
         if not EditorShown(1) then
           DrawPanel(1);
+        // Вывод команд под панелями - до редактора: тот во всю высоту
+        // и закрывает вывод в своей части окна
+        if PanelHeight <= OutBottom then
+          DrawOutput(PanelHeight, OutBottom);
         if FEditor <> nil then
           DrawEditor;
         if FViewer <> nil then
           DrawViewer;
-        if PanelHeight <= OutBottom then
-          DrawOutput(PanelHeight, OutBottom);
       end;
       if FMessageLine then
         DrawMessageLine;
@@ -3828,6 +4042,8 @@ begin
     SelectObject(FBuffer.Canvas.Handle, OldFont);
   end;
   Canvas.Draw(0, 0, FBuffer);
+  if Assigned(FOnPainted) then
+    FOnPainted(Self);
 end;
 
 procedure TFarView.Resize;
@@ -3939,10 +4155,26 @@ begin
   // Открыт диалог: щелчок по его кнопке нажимает её, панели не трогаем
   if FDlgKind <> fdNone then
   begin
+    // Открыт список поля: щелчок по нему выбирает, мимо - закрывает
+    if FDlgDrop >= 0 then
+    begin
+      if (Button = mbLeft) and DlgDropMouse(X, Y) then
+      begin
+        Invalidate;
+        Exit;
+      end;
+      FDlgDrop := -1;
+    end;
     if (Button = mbLeft) and (Length(FDlgRows) > 0) and
        (Y div FCellH >= FDlgRowsTop) and
        (Y div FCellH < FDlgRowsTop + Length(FDlgRows)) then
-      DlgRowsMouse(X, Y)
+    begin
+      DlgRowsMouse(X, Y);
+      // Двойной щелчок по полю - выделить слово
+      if (ssDouble in Shift) and DlgRowIsEdit and (FDlgDrop < 0) and
+         (X div FCellW >= FDlgRowsLeft) then
+        DlgRowsDblClick;
+    end
     else if (Button = mbLeft) and (Y div FCellH = FDlgButtonRow) then
       for ItemIndex := 0 to High(FDlgButtonCol) do
         if (X div FCellW >= FDlgButtonCol[ItemIndex]) and
@@ -3963,8 +4195,10 @@ begin
     Invalidate;
     Exit;
   end;
-  // Панели спрятаны или щелчок ниже панелей (вывод, командная строка)
-  if FPanelsHidden or (Y div FCellH >= PanelHeight) then
+  // Панели спрятаны или щелчок ниже панелей (вывод, командная строка);
+  // редактор и просмотр - во всю высоту
+  if FPanelsHidden or ((Y div FCellH >= PanelHeight) and
+     not InDocArea(X, Y)) then
   begin
     Invalidate;
     Exit;
@@ -4060,7 +4294,8 @@ begin
   end;
   // Колесо над выводом (или панели спрятаны) - прокрутка вывода
   WheelPoint := ScreenToClient(Point(Message.XPos, Message.YPos));
-  if FPanelsHidden or (WheelPoint.Y div FCellH >= PanelHeight) then
+  if FPanelsHidden or ((WheelPoint.Y div FCellH >= PanelHeight) and
+     not InDocArea(WheelPoint.X, WheelPoint.Y)) then
   begin
     if Message.WheelDelta > 0 then
       Inc(FOutScroll, 3)
@@ -4110,6 +4345,9 @@ begin
   // Протяжка в редакторе - выделение
   if FEditDragging and (FEditor <> nil) and (ssLeft in Shift) then
     EditMouse(X, Y, True, True);
+  // Протяжка в поле окна - выделение
+  if (FDlgDragRow >= 0) and (FDlgKind <> fdNone) and (ssLeft in Shift) then
+    DlgRowsMouseMove(X);
 end;
 
 procedure TFarView.MouseUp(Button: TMouseButton; Shift: TShiftState;
@@ -4117,7 +4355,10 @@ procedure TFarView.MouseUp(Button: TMouseButton; Shift: TShiftState;
 begin
   inherited MouseUp(Button, Shift, X, Y);
   if Button = mbLeft then
+  begin
     FEditDragging := False;
+    FDlgDragRow := -1;
+  end;
 end;
 
 // ---------------------------------------------------------------------------
@@ -4200,7 +4441,11 @@ begin
     begin
       WideCh := KeyChar(AMsg.wParam);
       if (WideCh <> #0) and DlgRowIsEdit then
-        DlgRowInsert(WideCh)
+      begin
+        FDlgDrop := -1;
+        DlgRowSaveUndo(True);
+        DlgRowInsert(WideCh);
+      end
       else if WideCh <> #0 then
         DlgInsertText(WideCh);
       Invalidate;
@@ -4645,7 +4890,8 @@ begin
     Status(FarProduct + ': папку не открыть: ' + ErrorText);
     Exit;
   end;
-  HistoryAdd(APanel.Path);
+  if not FHistoryPaused then
+    HistoryAdd(APanel.Path);
   DriveIndex := FarDriveIndex(APanel.Path);
   if DriveIndex >= 0 then
     FDriveLast[DriveIndex] := APanel.Path;
@@ -4862,6 +5108,8 @@ begin
   FDlgMasked := False;
   FDlgRows := nil;
   FDlgRow := -1;
+  FDlgDrop := -1;
+  FDlgDragRow := -1;
   if AHasEdit then
     FDlgFocus := -1
   else
@@ -4889,6 +5137,8 @@ begin
   FDlgLines := nil;
   FDlgRows := nil;
   FDlgRow := -1;
+  FDlgDrop := -1;
+  FDlgDragRow := -1;
   FDlgButtons := nil;
   FDlgButtonCol := nil;
   Invalidate;
@@ -5101,6 +5351,13 @@ begin
       FEditQuitAfterSave := False;
     Exit;
   end;
+  // FTP: файлы уже есть - Overwrite / Skip / Cancel
+  if FDlgKind = fdFtpOverwrite then
+  begin
+    DlgClose;
+    FtpOverwriteAnswer(AButton);
+    Exit;
+  end;
   Kind := FDlgKind;
   EditText := FDlgEdit;
   SavedAction := FArcAction;
@@ -5147,6 +5404,13 @@ begin
       FtpPasswordEntered(EditText);
     fdFtpDelete:
       FtpDeleteConfirmed;
+    fdFtpCopy:
+      FtpCopyConfirm(EditText);
+    fdFtpMkDir:
+      FtpMkDirConfirm(EditText);
+    fdFtpDelFiles:
+      FtpRunJob(fjDelete, FFtpOpPanel, FFtpOpRemoteDir, '', FFtpOpItems, '',
+        False, 0, '', '');
     fdEditSave:
       if (FEditor <> nil) and (FarTrimW(EditText) <> '') then
         EditSave(FarFullPath(FarWithSlash(ExtractFilePath(
@@ -5273,6 +5537,7 @@ begin
   // значения выбора (выбранное - бирюзовым, с фокусом - белым по чёрному)
   FDlgRowsTop := Row;
   FDlgRowsLeft := InnerLeft + FarDlgCaptionW;
+  FDlgRowsW := InnerW - FarDlgCaptionW;
   for LineIndex := 0 to High(FDlgRows) do
   begin
     DrawDialogRow(LineIndex, Row, InnerLeft, InnerW, Fore, Back);
@@ -5308,6 +5573,9 @@ begin
         ButtonBack);
     Inc(ButtonCol, Length(ButtonText) + 1);
   end;
+  // Открытый список поля - поверх всего окна
+  if FDlgDrop >= 0 then
+    DrawDialogDrop;
 end;
 
 // ---------------------------------------------------------------------------
@@ -5372,9 +5640,16 @@ begin
     FtpImportHosts;
     Exit;
   end;
+  // На панель FTP (папка сервера) - закачать
+  if not ACurrentOnly and (FPanels[1 - FActive].FFtpMode = 2) and
+     not ActivePanel.IsFtp and not ActivePanel.IsArchive then
+  begin
+    FtpStartCopyTo(AMove);
+    Exit;
+  end;
   if not ACurrentOnly and FPanels[1 - FActive].IsFtp then
   begin
-    Status(FarProduct + ': копирование на FTP - следующим шагом');
+    Status(FarProduct + ': FTP - сначала войдите на сервер в другой панели');
     Exit;
   end;
   Names := CollectNames(ACurrentOnly);
@@ -5497,6 +5772,81 @@ end;
 function TFarView.ActiveIndex: Integer;
 begin
   Result := FActive;
+end;
+
+// ---------------------------------------------------------------------------
+//  Для вкладок папок uniFAR (FarTabs.pas)
+// ---------------------------------------------------------------------------
+
+function TFarView.ActivePath: WideString;
+begin
+  if ActivePanel.IsFtp or ActivePanel.IsArchive then
+    Result := ActivePanel.DisplayPath
+  else
+    Result := ActivePanel.Path;
+end;
+
+function TFarView.ActiveCursorItem: WideString;
+begin
+  Result := '';
+  if (ActivePanel.Cursor >= 0) and (ActivePanel.Cursor < ActivePanel.Count) then
+    Result := ActivePanel.FItems[ActivePanel.Cursor].Name;
+end;
+
+function TFarView.TabsAllowed: Boolean;
+begin
+  Result := (FDlgKind = fdNone) and (FMenuKind = fmNone) and
+    not FFindOpen and not FPickOpen and not FPanelsHidden and
+    not EditorShown(FActive) and not ActivePanel.IsFtp and
+    not ActivePanel.IsArchive;
+end;
+
+function TFarView.HistoryCount: Integer;
+begin
+  Result := Length(FHistory);
+end;
+
+function TFarView.HistoryItem(AIndex: Integer): WideString;
+begin
+  if (AIndex >= 0) and (AIndex <= High(FHistory)) then
+    Result := FHistory[AIndex]
+  else
+    Result := '';
+end;
+
+function TFarView.HistoryIsLocked(AIndex: Integer): Boolean;
+begin
+  Result := (AIndex >= 0) and (AIndex <= High(FHistoryLock)) and
+    FHistoryLock[AIndex];
+end;
+
+procedure TFarView.HistoryAddPath(const APath: WideString);
+begin
+  HistoryAdd(APath);
+  Invalidate;
+end;
+
+function TFarView.HistoryRemovePath(const APath: WideString): Integer;
+var
+  HistoryIndex: Integer;
+begin
+  SetLength(FHistoryLock, Length(FHistory));
+  HistoryIndex := HistoryFind(APath);
+  if HistoryIndex < 0 then
+    Result := 0
+  else if FHistoryLock[HistoryIndex] then
+    Result := -1
+  else
+  begin
+    HistoryDelete(HistoryIndex);
+    Result := 1;
+  end;
+  Invalidate;
+end;
+
+procedure TFarView.StatusText(const AText: string);
+begin
+  Status(AText);
 end;
 
 procedure TFarView.ShowFolder(const APath: WideString);
@@ -6193,6 +6543,17 @@ begin
         ApplyTheme(FarThemeNames[Item.Tag], Pal);
     fmHiRules:
       PickOpenRule(Item.Tag);
+    fmEditEncoding:
+      if FEditor <> nil then
+      begin
+        FEditor.Encoding := TFarEditEncoding(Item.Tag);
+        if FEditor.Modified then
+          Status(FarProduct + ': кодировка записи - ' +
+            FarEditEncodingTitle(FEditor.Encoding) + '; F2 - записать')
+        else
+          Status(FarProduct + ': кодировка записи - ' +
+            FarEditEncodingTitle(FEditor.Encoding));
+      end;
   end;
   Invalidate;
 end;
@@ -6225,7 +6586,7 @@ end;
 procedure TFarView.DrawMenu;
 var
   ItemIndex, RowIndex, MaxW, ItemW, BoxW, BoxH, AreaX, AreaW, RowY: Integer;
-  TextW, HotPos, SepY: Integer;
+  TextW, HotPos, SepY, SwatchCol: Integer;
   Item: TFarMenuItem;
   ItemText: WideString;
   Back, Fore, HotFore, SampleFore, SampleBack: TColor;
@@ -6234,7 +6595,10 @@ begin
   for ItemIndex := 0 to High(FMenuItems) do
   begin
     ItemW := Length(FarStripAmp(FMenuItems[ItemIndex].Text, HotPos)) + 2;
-    if FMenuItems[ItemIndex].RightText <> '' then
+    if FMenuItems[ItemIndex].SwatchCount > 0 then
+      Inc(ItemW, FMenuItems[ItemIndex].SwatchCount * FarSwatchCells +
+        FMenuItems[ItemIndex].SwatchCount + 2)
+    else if FMenuItems[ItemIndex].RightText <> '' then
       Inc(ItemW, Length(FMenuItems[ItemIndex].RightText) + 3);
     if ItemW > MaxW then
       MaxW := ItemW;
@@ -6252,12 +6616,15 @@ begin
   BoxH := FMenuRows + 2;
   FMenuWidth := BoxW;
 
-  // Смена диска и сортировка - над своей панелью, история - посередине
+  // Смена диска и сортировка - над своей панелью, история - посередине,
+  // кодировка записи - над редактором (он бывает и на всю ширину)
   if FMenuKind = fmHistory then
   begin
     AreaX := 0;
     AreaW := FCols;
   end
+  else if (FMenuKind = fmEditEncoding) and (FEditor <> nil) then
+    EditBounds(AreaX, AreaW)
   else
     PanelBounds(FMenuPanel, AreaX, AreaW);
   FMenuLeft := AreaX + (AreaW - BoxW) div 2;
@@ -6325,7 +6692,9 @@ begin
     PutText(FMenuLeft + 2, RowY, 1, Item.Mark, Fore, Back);
     ItemText := FarStripAmp(Item.Text, HotPos);
     TextW := BoxW - 6;
-    if Item.RightText <> '' then
+    if Item.SwatchCount > 0 then
+      Dec(TextW, Item.SwatchCount * (FarSwatchCells + 1) + 1)
+    else if Item.RightText <> '' then
       Dec(TextW, Length(Item.RightText) + 1);
     if FMenuKind = fmHistory then
       ItemText := FarFitPath(ItemText, TextW)
@@ -6351,10 +6720,38 @@ begin
     if (HotPos > 0) and (HotPos <= Length(ItemText)) then
       PutText(FMenuLeft + 4 + HotPos - 1, RowY, 1, ItemText[HotPos], HotFore,
         Back);
-    if Item.RightText <> '' then
+    if Item.SwatchCount > 0 then
+    begin
+      // Квадратики с цветом: щелчок по строке, Enter - окно выбора цвета
+      SwatchCol := FMenuLeft + BoxW - 2 - Item.SwatchCount *
+        (FarSwatchCells + 1) + 1;
+      DrawSwatch(SwatchCol, RowY, Item.Swatch1, Fore);
+      if Item.SwatchCount > 1 then
+        DrawSwatch(SwatchCol + FarSwatchCells + 1, RowY, Item.Swatch2, Fore);
+    end
+    else if Item.RightText <> '' then
       PutText(FMenuLeft + BoxW - 2 - Length(Item.RightText), RowY,
         Length(Item.RightText), Item.RightText, Fore, Back);
   end;
+end;
+
+// Квадратик с цветом AColor в ACol, ARow (FarSwatchCells клеток), рамка -
+// AFrame. clNone - фон панели
+procedure TFarView.DrawSwatch(ACol, ARow: Integer; AColor, AFrame: TColor);
+var
+  SwatchRect: TRect;
+  FrameBrush: HBRUSH;
+begin
+  if AColor = clNone then
+    AColor := FPal[fpPanelBack];
+  SwatchRect := Rect(ACol * FCellW + 1, ARow * FCellH + 2,
+    (ACol + FarSwatchCells) * FCellW - 1, (ARow + 1) * FCellH - 2);
+  FBuffer.Canvas.Brush.Style := bsSolid;
+  FBuffer.Canvas.Brush.Color := AColor;
+  FBuffer.Canvas.FillRect(SwatchRect);
+  FrameBrush := CreateSolidBrush(ColorToRGB(AFrame));
+  Windows.FrameRect(FBuffer.Canvas.Handle, SwatchRect, FrameBrush);
+  DeleteObject(FrameBrush);
 end;
 
 // ---------------------------------------------------------------------------
@@ -6733,7 +7130,7 @@ end;
 //  (FtpCheck). Пока поток идёт, соединение у него (панель - без него);
 //  панель ушла с FTP за это время (FFtpSession другой) - ответ
 //  отбрасывается, соединение закрывается.
-//  Копирование, папки, удаление на сервере - следующим шагом.
+//  Файлы на сервере (F3 .. F8, закачка с другой панели) - ниже, TFarFtpJob.
 // ---------------------------------------------------------------------------
 
 procedure FarEmptyItem(var AItem: TFarItem);
@@ -7042,10 +7439,27 @@ end;
 // Ответ потока FTP (WatchTick)
 procedure TFarView.FtpCheck;
 var
-  PanelIndex: Integer;
+  PanelIndex, FilesDone, FilesTotal: Integer;
   Thread: TFarFtpThread;
   Panel: TFarPanel;
+  BytesDone, BytesTotal: Int64;
+  CurName: WideString;
 begin
+  // Операция с файлами: ход в окно Windows, «Отмена» там - прервать
+  if FFtpJob <> nil then
+  begin
+    if FFtpJob.Finished then
+      FtpJobDone
+    else if FFtpProgress <> nil then
+    begin
+      FFtpJob.Progress(BytesDone, BytesTotal, FilesDone, FilesTotal, CurName);
+      if BytesTotal > 0 then
+        FFtpProgress.SetPercent(Integer(BytesDone * 100 div BytesTotal));
+      FFtpProgress.SetLine2(CurName);
+      if FFtpProgress.Cancelled then
+        FFtpJob.Cancel;
+    end;
+  end;
   for PanelIndex := 0 to 1 do
   begin
     Thread := FFtpThread[PanelIndex];
@@ -7133,8 +7547,590 @@ begin
     FtpStartList(APanelIndex, Panel.FFtpHost, Panel.FFtpHostIdx,
       FarFtpJoin(Panel.FFtpDir, Item.FtpRaw), '')
   else
-    Status(FarProduct + ': FTP - просмотр и копирование файлов - следующим ' +
-      'шагом');
+    FtpViewEdit(False);
+end;
+
+// ---------------------------------------------------------------------------
+//  FTP: файлы на сервере. В панели FTP: F3 / Enter - просмотр, F4 -
+//  правка (F2 в редакторе - записать и отправить на сервер), F5 -
+//  скачать в папку другой панели, F6 - скачать и удалить на сервере или
+//  (имя без пути на диске) переименовать на сервере, Shift+F6 -
+//  переименовать, F7 - новая папка, F8 / Del - удалить. С обычной панели
+//  на панель FTP: F5 - закачать, F6 - закачать и удалить на диске.
+//  Работа - поток TFarFtpJob (FarFtp), ход - окно Windows (FarProgress),
+//  итог забирает FtpCheck (FtpJobDone)
+// ---------------------------------------------------------------------------
+
+// Идёт запрос или операция FTP - сообщение и True
+function TFarView.FtpBusy: Boolean;
+var
+  PanelIdx: Integer;
+begin
+  Result := FFtpJob <> nil;
+  for PanelIdx := 0 to 1 do
+    if FFtpThread[PanelIdx] <> nil then
+      Result := True;
+  if Result then
+    Status(FarProduct + ': FTP - ждём сервер (Esc - прервать)');
+end;
+
+// Выделенные (или под курсором) файлы и папки панели FTP
+function TFarView.FtpCollect(APanel: TFarPanel;
+  ACurrentOnly: Boolean): TFarFtpJobItems;
+var
+  Items: TFarFtpJobItems;
+  ItemIdx, Count: Integer;
+
+  procedure AddItem(const AItem: TFarItem);
+  begin
+    SetLength(Items, Count + 1);
+    Items[Count].Raw := AItem.FtpRaw;
+    Items[Count].Local := AItem.Name;
+    Items[Count].IsDir := AItem.IsDir;
+    Items[Count].Size := AItem.Size;
+    Items[Count].Time := AItem.WriteTime;
+    Inc(Count);
+  end;
+
+begin
+  Items := nil;
+  Count := 0;
+  if not ACurrentOnly then
+    for ItemIdx := 0 to APanel.Count - 1 do
+      if APanel.FItems[ItemIdx].Selected and not APanel.FItems[ItemIdx].IsUp then
+        AddItem(APanel.FItems[ItemIdx]);
+  if (Count = 0) and (APanel.Cursor >= 0) and (APanel.Cursor < APanel.Count) and
+     not APanel.FItems[APanel.Cursor].IsUp then
+    AddItem(APanel.FItems[APanel.Cursor]);
+  Result := Items;
+end;
+
+// Выделенные (или под курсором) файлы и папки обычной панели - закачать
+function TFarView.FtpCollectLocal(APanel: TFarPanel): TFarFtpJobItems;
+var
+  Items: TFarFtpJobItems;
+  Names: TFarNames;
+  NameIdx, ItemIdx: Integer;
+begin
+  Items := nil;
+  Names := CollectNames(False);
+  for NameIdx := 0 to High(Names) do
+  begin
+    ItemIdx := APanel.IndexOfName(Names[NameIdx]);
+    if ItemIdx < 0 then
+      Continue;
+    SetLength(Items, Length(Items) + 1);
+    Items[High(Items)].Raw := FarFtpEncode(Names[NameIdx]);
+    Items[High(Items)].Local := Names[NameIdx];
+    Items[High(Items)].IsDir := APanel.FItems[ItemIdx].IsDir;
+    Items[High(Items)].Size := APanel.FItems[ItemIdx].Size;
+    Items[High(Items)].Time := APanel.FItems[ItemIdx].WriteTime;
+  end;
+  Result := Items;
+end;
+
+function FarFtpSubject(const AItems: TFarFtpJobItems): WideString;
+begin
+  if Length(AItems) = 1 then
+    Result := '"' + AItems[0].Local + '"'
+  else
+    Result := WideString(IntToStr(Length(AItems))) + ' items';
+end;
+
+// Имя для файла на диске: символы, недопустимые в Windows, - '_'
+function FarSafeFileName(const AName: WideString): WideString;
+var
+  CharIdx: Integer;
+begin
+  Result := AName;
+  for CharIdx := 1 to Length(Result) do
+    case Ord(Result[CharIdx]) of
+      0..31, 34, 42, 47, 58, 60, 62, 63, 92, 124:   // " * / : < > ? \ |
+        Result[CharIdx] := '_';
+    end;
+  if Result = '' then
+    Result := '_';
+end;
+
+// Путь на диске (буква диска, \\сервер или '\' внутри), а не имя на сервере
+function FarLooksLocal(const AText: WideString): Boolean;
+begin
+  Result := ((Length(AText) >= 2) and (AText[2] = ':')) or
+    (Copy(AText, 1, 2) = '\\') or (Pos('\', AText) > 0);
+end;
+
+procedure TFarView.FtpRunJob(AKind: TFarFtpJobKind; APanelIdx: Integer;
+  const ARemoteDir: string; const ALocalDir: WideString;
+  const AItems: TFarFtpJobItems; const ANewName: string; AMove: Boolean;
+  AAfter: Integer; const ATemp: WideString; const AFocusRaw: string);
+var
+  Panel: TFarPanel;
+  Conn: TFarFtpConn;
+  Title: WideString;
+begin
+  Panel := FPanels[APanelIdx];
+  if (Panel.FFtpMode <> 2) or FtpBusy then
+    Exit;
+  Conn := Panel.FFtpConn;
+  Panel.FFtpConn := nil;
+  if Conn = nil then
+    Conn := TFarFtpConn.Create;
+  FFtpJobPanel := APanelIdx;
+  FFtpJobSess := Panel.FFtpSession;
+  FFtpJobAfter := AAfter;
+  FFtpJobTemp := ATemp;
+  FFtpJobFocusRaw := AFocusRaw;
+  FFtpJobMove := AMove;
+  FFtpJob := TFarFtpJob.Create(Conn, Panel.FFtpHost, AKind, ARemoteDir,
+    ALocalDir, AItems, ANewName, AMove);
+  case AKind of
+    fjDownload:
+      Title := 'Скачивание с FTP';
+    fjUpload:
+      Title := 'Закачивание на FTP';
+    fjDelete:
+      Title := 'Удаление на FTP';
+  else
+    Title := '';
+  end;
+  if Title <> '' then
+  begin
+    FFtpProgress := TFarProgress.Create;
+    if not FFtpProgress.Start(GetParentFormHandle, Title,
+       FarFtpHostUrl(Panel.FFtpHost)) then
+      FreeAndNil(FFtpProgress);
+  end;
+  Status(FarProduct + ': FTP - ' + string(FarFtpHostUrl(Panel.FFtpHost)) +
+    ': работаю... (Esc - прервать)');
+  Invalidate;
+end;
+
+// F3 / F4 на файле сервера: скачать во временную папку и открыть
+procedure TFarView.FtpViewEdit(AEdit: Boolean);
+var
+  Panel: TFarPanel;
+  Item: TFarItem;
+  Items: TFarFtpJobItems;
+  TempBuffer: array[0..MAX_PATH] of WideChar;
+  TempLen: DWORD;
+  TempDir, SafeName: WideString;
+  After: Integer;
+begin
+  Panel := ActivePanel;
+  if (Panel.Cursor < 0) or (Panel.Cursor >= Panel.Count) then
+    Exit;
+  Item := Panel.FItems[Panel.Cursor];
+  if Item.IsUp or Item.IsDir then
+    Exit;
+  if FtpBusy then
+    Exit;
+  if AEdit and (FEditor <> nil) and FEditor.Modified then
+  begin
+    Status(FarProduct + ': в редакторе изменён другой файл - сначала ' +
+      'запишите (F2) или закройте (Esc)');
+    Exit;
+  end;
+  TempLen := FarGetTempPath(MAX_PATH + 1, TempBuffer);
+  if (TempLen = 0) or (TempLen > MAX_PATH) then
+  begin
+    Status(FarProduct + ': нет временной папки Windows');
+    Exit;
+  end;
+  SetString(TempDir, TempBuffer, TempLen);
+  TempDir := FarWithSlash(TempDir) + 'unIDE_ftp\' +
+    WideString(IntToStr(GetTickCount)) + '\';
+  if not FarForceDirs(TempDir) then
+  begin
+    Status(FarProduct + ': папку не создать: ' + string(TempDir));
+    Exit;
+  end;
+  SafeName := FarSafeFileName(Item.Name);
+  SetLength(Items, 1);
+  Items[0].Raw := Item.FtpRaw;
+  Items[0].Local := SafeName;
+  Items[0].IsDir := False;
+  Items[0].Size := Item.Size;
+  Items[0].Time := Item.WriteTime;
+  if AEdit then
+  begin
+    // Запись в редакторе (F2) - отправить файл обратно на сервер
+    FEditFtpTemp := TempDir + SafeName;
+    FEditFtpRaw := Item.FtpRaw;
+    FEditFtpDir := Panel.FFtpDir;
+    FEditFtpPanel := FActive;
+    FEditFtpHost := Panel.FFtpHost;
+    After := 2;
+  end
+  else
+    After := 1;
+  FtpRunJob(fjDownload, FActive, Panel.FFtpDir, TempDir, Items, '', False,
+    After, TempDir + SafeName, '');
+end;
+
+// F5 / F6 / Shift+F6 в панели FTP
+procedure TFarView.FtpStartCopyFrom(AMove, ACurrentOnly: Boolean);
+var
+  Panel, Other: TFarPanel;
+  Target, Subject: WideString;
+begin
+  Panel := ActivePanel;
+  if FtpBusy then
+    Exit;
+  FFtpOpItems := FtpCollect(Panel, ACurrentOnly);
+  if Length(FFtpOpItems) = 0 then
+    Exit;
+  FFtpOpKind := fjDownload;
+  FFtpOpMove := AMove;
+  FFtpOpPanel := FActive;
+  FFtpOpRemoteDir := Panel.FFtpDir;
+  Other := FPanels[1 - FActive];
+  if ACurrentOnly then
+    Target := FFtpOpItems[0].Local
+  else if not Other.IsFtp and not Other.IsArchive and (Other.Path <> '') then
+    Target := Other.Path
+  else
+    Target := '';
+  Subject := FarFtpSubject(FFtpOpItems);
+  if AMove then
+    DlgOpen(fdFtpCopy, FarDlgTitleMove, ['Rename or move ' + Subject +
+      ' to:', 'path on disk - download, name - rename on the server'], False,
+      False, True, Target, ['Rename', 'Cancel'])
+  else
+    DlgOpen(fdFtpCopy, FarDlgTitleCopy, ['Copy ' + Subject + ' to:'], False,
+      False, True, Target, ['Copy', 'Cancel']);
+end;
+
+// F5 / F6 с обычной панели на панель FTP (папка сервера)
+procedure TFarView.FtpStartCopyTo(AMove: Boolean);
+var
+  FtpPanel: TFarPanel;
+  Subject: WideString;
+begin
+  FtpPanel := FPanels[1 - FActive];
+  if FtpBusy then
+    Exit;
+  FFtpOpItems := FtpCollectLocal(ActivePanel);
+  if Length(FFtpOpItems) = 0 then
+    Exit;
+  FFtpOpKind := fjUpload;
+  FFtpOpMove := AMove;
+  FFtpOpPanel := 1 - FActive;
+  FFtpOpRemoteDir := FtpPanel.FFtpDir;
+  FFtpOpLocalDir := ActivePanel.Path;
+  Subject := FarFtpSubject(FFtpOpItems);
+  if AMove then
+    DlgOpen(fdFtpCopy, FarDlgTitleMove, ['Move ' + Subject +
+      ' to the FTP folder:'], False, False, True,
+      FarFtpDecode(FtpPanel.FFtpDir), ['Move', 'Cancel'])
+  else
+    DlgOpen(fdFtpCopy, FarDlgTitleCopy, ['Copy ' + Subject +
+      ' to the FTP folder:'], False, False, True,
+      FarFtpDecode(FtpPanel.FFtpDir), ['Copy', 'Cancel']);
+end;
+
+// [ Copy ] / [ Rename ] в окне F5 / F6 для FTP
+procedure TFarView.FtpCopyConfirm(const AText: WideString);
+var
+  Text, Target, Base, TargetDir, TargetName: WideString;
+  FtpPanel: TFarPanel;
+  RemoteTarget, NewName: string;
+  ItemIdx, Conflicts, ListIdx: Integer;
+  IntoDir: Boolean;
+  FirstConflict: WideString;
+begin
+  Text := FarTrimW(AText);
+  FtpPanel := FPanels[FFtpOpPanel];
+  if FtpPanel.FFtpMode <> 2 then
+    Exit;
+  Conflicts := 0;
+  FirstConflict := '';
+  if FFtpOpKind = fjDownload then
+  begin
+    if (Text <> '') and not FarLooksLocal(Text) then
+    begin
+      // Имя или путь на сервере: F6 - переименовать / перенести там
+      if not FFtpOpMove then
+      begin
+        Status(FarProduct + ': FTP - копировать можно в папку на диске ' +
+          '(путь с буквой диска)');
+        Exit;
+      end;
+      NewName := FarFtpEncode(Text);
+      // Одно имя - папка этой же панели: внутрь неё
+      if (Length(FFtpOpItems) = 1) and (NewName[1] <> '/') then
+        for ListIdx := 0 to FtpPanel.Count - 1 do
+          if FtpPanel.FItems[ListIdx].IsDir and
+             (FtpPanel.FItems[ListIdx].FtpRaw = NewName) then
+            NewName := NewName + '/';
+      if NewName[Length(NewName)] = '/' then
+        FtpRunJob(fjRename, FFtpOpPanel, FFtpOpRemoteDir, '', FFtpOpItems,
+          NewName, False, 0, '', '')
+      else
+        FtpRunJob(fjRename, FFtpOpPanel, FFtpOpRemoteDir, '', FFtpOpItems,
+          NewName, False, 0, '', NewName);
+      Exit;
+    end;
+    if Text = '' then
+      Exit;
+    // Папка на диске
+    Base := '';
+    if not FPanels[1 - FFtpOpPanel].IsFtp and
+       not FPanels[1 - FFtpOpPanel].IsArchive then
+      Base := FPanels[1 - FFtpOpPanel].Path;
+    Target := FarFullPath(Base, Text);
+    IntoDir := (Target[Length(Target)] = '\') or FarDirExists(Target) or
+      (Length(FFtpOpItems) > 1);
+    if IntoDir then
+      TargetDir := FarWithSlash(Target)
+    else
+    begin
+      FarSplitPath(Target, TargetDir, TargetName);
+      TargetDir := FarWithSlash(TargetDir);
+      FFtpOpItems[0].Local := TargetName;
+    end;
+    if not FarForceDirs(TargetDir) then
+    begin
+      Status(FarProduct + ': папку не создать: ' + string(TargetDir));
+      Exit;
+    end;
+    FFtpOpLocalDir := TargetDir;
+    // Файлы, что уже есть на диске
+    for ItemIdx := 0 to High(FFtpOpItems) do
+      if not FFtpOpItems[ItemIdx].IsDir and
+         FarFileExists(TargetDir + FFtpOpItems[ItemIdx].Local) then
+      begin
+        Inc(Conflicts);
+        if FirstConflict = '' then
+          FirstConflict := FFtpOpItems[ItemIdx].Local;
+      end;
+  end
+  else
+  begin
+    // Закачать: папка сервера - текущая, путь от корня или от текущей
+    RemoteTarget := FarFtpEncode(Text);
+    if RemoteTarget = '' then
+      RemoteTarget := FFtpOpRemoteDir
+    else if RemoteTarget[1] <> '/' then
+      RemoteTarget := FarFtpJoin(FFtpOpRemoteDir, RemoteTarget);
+    FFtpOpRemoteTarget := RemoteTarget;
+    // Файлы, что уже есть в папке сервера (видна в панели)
+    if RemoteTarget = FFtpOpRemoteDir then
+      for ItemIdx := 0 to High(FFtpOpItems) do
+        if not FFtpOpItems[ItemIdx].IsDir then
+          for ListIdx := 0 to FtpPanel.Count - 1 do
+            if not FtpPanel.FItems[ListIdx].IsDir and
+               (FtpPanel.FItems[ListIdx].FtpRaw = FFtpOpItems[ItemIdx].Raw) then
+            begin
+              Inc(Conflicts);
+              if FirstConflict = '' then
+                FirstConflict := FFtpOpItems[ItemIdx].Local;
+            end;
+  end;
+  if Conflicts > 0 then
+  begin
+    DlgOpen(fdFtpOverwrite, 'Warning', ['Files already exist: ' +
+      WideString(IntToStr(Conflicts)), FarFitName(FirstConflict, 50),
+      'Overwrite them?'], True, True, False, '',
+      ['Overwrite', 'Skip', 'Cancel']);
+    Exit;
+  end;
+  FtpRunOp;
+end;
+
+// Overwrite / Skip в окне «файлы уже есть»
+procedure TFarView.FtpOverwriteAnswer(AButton: Integer);
+var
+  Kept: TFarFtpJobItems;
+  ItemIdx, ListIdx: Integer;
+  Exists: Boolean;
+  FtpPanel: TFarPanel;
+begin
+  if AButton = 0 then
+  begin
+    FtpRunOp;
+    Exit;
+  end;
+  if AButton <> 1 then
+    Exit;
+  FtpPanel := FPanels[FFtpOpPanel];
+  Kept := nil;
+  for ItemIdx := 0 to High(FFtpOpItems) do
+  begin
+    Exists := False;
+    if not FFtpOpItems[ItemIdx].IsDir then
+    begin
+      if FFtpOpKind = fjDownload then
+        Exists := FarFileExists(FFtpOpLocalDir + FFtpOpItems[ItemIdx].Local)
+      else if FFtpOpRemoteTarget = FFtpOpRemoteDir then
+        for ListIdx := 0 to FtpPanel.Count - 1 do
+          if not FtpPanel.FItems[ListIdx].IsDir and
+             (FtpPanel.FItems[ListIdx].FtpRaw = FFtpOpItems[ItemIdx].Raw) then
+            Exists := True;
+    end;
+    if not Exists then
+    begin
+      SetLength(Kept, Length(Kept) + 1);
+      Kept[High(Kept)] := FFtpOpItems[ItemIdx];
+    end;
+  end;
+  FFtpOpItems := Kept;
+  if Length(FFtpOpItems) = 0 then
+  begin
+    Status(FarProduct + ': FTP - все файлы уже есть, ничего не скопировано');
+    Exit;
+  end;
+  FtpRunOp;
+end;
+
+procedure TFarView.FtpRunOp;
+begin
+  if FFtpOpKind = fjDownload then
+    FtpRunJob(fjDownload, FFtpOpPanel, FFtpOpRemoteDir, FFtpOpLocalDir,
+      FFtpOpItems, '', FFtpOpMove, 0, '', '')
+  else
+    FtpRunJob(fjUpload, FFtpOpPanel, FFtpOpRemoteTarget, FFtpOpLocalDir,
+      FFtpOpItems, '', FFtpOpMove, 0, '', FFtpOpItems[0].Raw);
+end;
+
+// F7 в панели FTP
+procedure TFarView.FtpAskMkDir;
+begin
+  if FtpBusy then
+    Exit;
+  FFtpOpPanel := FActive;
+  DlgOpen(fdFtpMkDir, 'Make folder', ['Create the folder on the FTP ' +
+    'server:'], False, False, True, '', ['OK', 'Cancel']);
+end;
+
+procedure TFarView.FtpMkDirConfirm(const AText: WideString);
+var
+  Name: string;
+  Panel: TFarPanel;
+begin
+  Name := FarFtpEncode(FarTrimW(AText));
+  Panel := FPanels[FFtpOpPanel];
+  if (Name = '') or (Panel.FFtpMode <> 2) then
+    Exit;
+  FtpRunJob(fjMkDir, FFtpOpPanel, Panel.FFtpDir, '', nil, Name, False, 0, '',
+    Name);
+end;
+
+// F8 / Del в панели FTP
+procedure TFarView.FtpAskDelete;
+var
+  Panel: TFarPanel;
+begin
+  Panel := ActivePanel;
+  if FtpBusy then
+    Exit;
+  FFtpOpItems := FtpCollect(Panel, False);
+  if Length(FFtpOpItems) = 0 then
+    Exit;
+  FFtpOpPanel := FActive;
+  FFtpOpRemoteDir := Panel.FFtpDir;
+  DlgOpen(fdFtpDelFiles, 'Delete', ['Do you wish to delete',
+    FarFitName(FarFtpSubject(FFtpOpItems), 50), 'on the FTP server?'], True,
+    True, False, '', ['Delete', 'Cancel']);
+end;
+
+// Записан файл, открытый с сервера (F4): отправить его обратно
+procedure TFarView.FtpUploadEdited;
+var
+  Panel: TFarPanel;
+  Items: TFarFtpJobItems;
+  TempDir, TempName: WideString;
+begin
+  Panel := FPanels[FEditFtpPanel];
+  if (Panel.FFtpMode <> 2) or
+     (CompareText(Panel.FFtpHost.Host, FEditFtpHost.Host) <> 0) or
+     (Panel.FFtpHost.User <> FEditFtpHost.User) then
+  begin
+    Status(FarProduct + ': панель ушла с этого FTP - файл записан только ' +
+      'здесь: ' + string(FEditFtpTemp));
+    Exit;
+  end;
+  if FtpBusy then
+  begin
+    Status(FarProduct + ': FTP занят - файл записан здесь (' +
+      string(FEditFtpTemp) + '), запишите ещё раз (F2) позже');
+    Exit;
+  end;
+  FarSplitPath(FEditFtpTemp, TempDir, TempName);
+  SetLength(Items, 1);
+  Items[0].Raw := FEditFtpRaw;
+  Items[0].Local := TempName;
+  Items[0].IsDir := False;
+  Items[0].Size := 0;
+  FillChar(Items[0].Time, SizeOf(Items[0].Time), 0);
+  FtpRunJob(fjUpload, FEditFtpPanel, FEditFtpDir, FarWithSlash(TempDir),
+    Items, '', False, 0, '', FEditFtpRaw);
+end;
+
+// Операция FTP кончилась: соединение - панели, итог, панели - перечитать
+procedure TFarView.FtpJobDone;
+var
+  Job: TFarFtpJob;
+  Panel: TFarPanel;
+  OnFtp: Boolean;
+  ErrorText, Report: string;
+  Kind: TFarFtpJobKind;
+  Files, PanelIdx: Integer;
+begin
+  Job := FFtpJob;
+  FFtpJob := nil;
+  Job.WaitFor;
+  if FFtpProgress <> nil then
+  begin
+    FFtpProgress.Stop;
+    FreeAndNil(FFtpProgress);
+  end;
+  Panel := FPanels[FFtpJobPanel];
+  OnFtp := (Panel.FFtpMode = 2) and (Panel.FFtpSession = FFtpJobSess);
+  if OnFtp then
+    Panel.FFtpConn := Job.Conn
+  else
+    Job.Conn.Free;
+  ErrorText := Job.ErrorText;
+  Kind := Job.Kind;
+  Files := Job.FilesDone;
+  Job.Free;
+  case Kind of
+    fjDownload:
+      Report := 'скачано файлов: ' + IntToStr(Files);
+    fjUpload:
+      Report := 'закачано файлов: ' + IntToStr(Files);
+    fjDelete:
+      Report := 'удалено файлов: ' + IntToStr(Files);
+    fjMkDir:
+      Report := 'папка создана';
+  else
+    Report := 'переименовано: ' + IntToStr(Files);
+  end;
+  if ErrorText = 'прервано' then
+    Status(FarProduct + ': FTP - прервано (' + Report + ')')
+  else if ErrorText <> '' then
+    FtpError(FarFtpHostUrl(Panel.FFtpHost), WideString(ErrorText))
+  else if FFtpJobAfter = 0 then
+    Status(FarProduct + ': FTP - ' + Report);
+  // Обычные панели - перечитать; сервер - если там что-то изменилось
+  for PanelIdx := 0 to 1 do
+    if not FPanels[PanelIdx].IsFtp and not FPanels[PanelIdx].IsArchive then
+    begin
+      FPanels[PanelIdx].Reread;
+      EnsureVisible(FPanels[PanelIdx]);
+    end;
+  // Скачивание с переносом - на сервере стало меньше файлов
+  if OnFtp and (FFtpJobAfter = 0) and ((Kind <> fjDownload) or FFtpJobMove) then
+    FtpStartList(FFtpJobPanel, Panel.FFtpHost, Panel.FFtpHostIdx,
+      Panel.FFtpDir, FFtpJobFocusRaw);
+  if ErrorText = '' then
+    case FFtpJobAfter of
+      1:
+        OpenViewer(FFtpJobTemp);
+      2:
+        OpenEditor(FFtpJobTemp);
+    end;
+  Invalidate;
 end;
 
 // Окно адреса: AHostIdx - изменить, -1 - новый
@@ -7251,8 +8247,9 @@ begin
       FtpFillHosts(FPanels[PanelIndex], HostIdx);
 end;
 
-// Адрес FTP из файла FAR Manager: FTP-плагин по F5 на адресе пишет файл
-// его настроек (строки Ключ=Значение). Берутся адрес (Url или HostName -
+// Адрес FTP из файла: файл uniFAR (F5 в списке адресов) - адрес одной
+// строкой ftp://..., с паролем; файл FAR Manager - FTP-плагин по F5 на
+// адресе пишет файл его настроек (строки Ключ=Значение). Берутся адрес (Url или HostName -
 // хост, порт, папка), пользователь, папка, порт, пассивный режим,
 // описание. Пароль не переносится: спросится при первом входе. False - в
 // файле нет адреса
@@ -7282,6 +8279,27 @@ begin
     except
       Exit;
     end;
+    // Файл uniFAR (F5 в списке адресов): адрес одной строкой
+    // ftp://пользователь:пароль@хост:порт/папка и через табуляцию описание
+    for LineIdx := 0 to Lines.Count - 1 do
+      if LowerCase(Copy(Trim(Lines[LineIdx]), 1, 6)) = 'ftp://' then
+      begin
+        Value := Trim(Lines[LineIdx]);
+        DescrText := '';
+        EqPos := Pos(#9, Value);
+        if EqPos > 0 then
+        begin
+          DescrText := Trim(Copy(Value, EqPos + 1, MaxInt));
+          Value := Trim(Copy(Value, 1, EqPos - 1));
+        end;
+        if FarFtpParseUrl(WideString(Value), AHost) and (AHost.Host <> '') then
+        begin
+          AHost.Description := WideString(DescrText);
+          AHost.AskPassword := AHost.Password = '';
+          Result := True;
+        end;
+        Exit;
+      end;
     for LineIdx := 0 to Lines.Count - 1 do
     begin
       EqPos := Pos('=', Lines[LineIdx]);
@@ -7335,12 +8353,13 @@ end;
 procedure TFarView.FtpImportHosts;
 var
   Names: TFarNames;
-  NameIdx, HostIdx, Added, Skipped, Unknown, LastIdx: Integer;
+  NameIdx, HostIdx, Added, Skipped, Unknown, LastIdx, AskAdded: Integer;
   NewHost: TFarFtpHost;
   Found: Boolean;
   Report: string;
 begin
   Names := CollectNames(False);
+  AskAdded := 0;
   Added := 0;
   Skipped := 0;
   Unknown := 0;
@@ -7370,6 +8389,8 @@ begin
     FFtpHosts[High(FFtpHosts)] := NewHost;
     LastIdx := High(FFtpHosts);
     Inc(Added);
+    if NewHost.AskPassword and (NewHost.User <> '') then
+      Inc(AskAdded);
   end;
   if (Added > 0) and (FIniName <> '') then
     FarFtpHostsSave(FIniName, FFtpHosts);
@@ -7380,8 +8401,9 @@ begin
     Report := Report + ', уже были: ' + IntToStr(Skipped);
   if Unknown > 0 then
     Report := Report + ', не адрес FTP: ' + IntToStr(Unknown);
-  if Added > 0 then
-    Report := Report + ' (пароль спросится при первом входе)';
+  if AskAdded > 0 then
+    Report := Report + ' (без пароля: ' + IntToStr(AskAdded) +
+      ' - спросится при первом входе)';
   Status(Report);
   Invalidate;
 end;
@@ -7410,6 +8432,120 @@ begin
   end;
   if AHost.Description <> '' then
     Result := Result + #9 + AHost.Description;
+end;
+
+// Имя адреса из панели FTP-плагина FAR Manager - его копирует Ctrl+Ins:
+// ftp_<пользователь>_<пароль>_<хост>_<остаток>.ftp, в нём '.', ':', '@',
+// '/' заменены на '_'. Разбор приблизительный: хост - четыре числа подряд
+// (IPv4) после пароля, всё между пользователем и ними - пароль; остаток,
+// если начинается с имени пользователя, - папка /пользователь/сайт,
+// иначе - в комментарий. Без IPv4: пользователь,
+// пароль, остальное - имя хоста через точки. Нужны и 'ftp_' в начале, и
+// '.ftp' в конце. False - не такое имя
+function FarFtpHostFromFarName(const AText: WideString;
+  var AHost: TFarFtpHost): Boolean;
+var
+  Name, Token, Password, HostText, Rest: WideString;
+  Tokens: array of WideString;
+  CharIdx, TokenIdx, IpIdx, ProbeIdx: Integer;
+  IsIp: Boolean;
+
+  function IsByte(const AToken: WideString): Boolean;
+  var
+    DigitIdx: Integer;
+  begin
+    Result := (Length(AToken) >= 1) and (Length(AToken) <= 3);
+    for DigitIdx := 1 to Length(AToken) do
+      if (AToken[DigitIdx] < '0') or (AToken[DigitIdx] > '9') then
+        Result := False;
+    if Result then
+      Result := StrToInt(string(AToken)) <= 255;
+  end;
+
+  function JoinTokens(AFrom, ATo: Integer; const ASep: WideString): WideString;
+  var
+    JoinIdx: Integer;
+  begin
+    Result := '';
+    for JoinIdx := AFrom to ATo do
+    begin
+      if JoinIdx > AFrom then
+        Result := Result + ASep;
+      Result := Result + Tokens[JoinIdx];
+    end;
+  end;
+
+begin
+  Result := False;
+  FarFtpHostClear(AHost);
+  Name := FarTrimW(AText);
+  if (Length(Name) >= 2) and (Name[1] = '"') and (Name[Length(Name)] = '"') then
+    Name := Copy(Name, 2, Length(Name) - 2);
+  // Полное имя (Alt+Shift+Ins) - только имя файла
+  CharIdx := Length(Name);
+  while (CharIdx > 0) and (Name[CharIdx] <> '\') do
+    Dec(CharIdx);
+  Name := Copy(Name, CharIdx + 1, MaxInt);
+  if (WideLowerCase(Copy(Name, 1, 4)) <> 'ftp_') or
+     (WideLowerCase(Copy(Name, Length(Name) - 3, 4)) <> '.ftp') then
+    Exit;
+  Name := Copy(Name, 5, Length(Name) - 8);
+  Tokens := nil;
+  Token := '';
+  for CharIdx := 1 to Length(Name) + 1 do
+    if (CharIdx > Length(Name)) or (Name[CharIdx] = '_') then
+    begin
+      SetLength(Tokens, Length(Tokens) + 1);
+      Tokens[High(Tokens)] := Token;
+      Token := '';
+    end
+    else
+      Token := Token + Name[CharIdx];
+  if (Length(Tokens) < 3) or (Tokens[0] = '') then
+    Exit;
+  IpIdx := -1;
+  for TokenIdx := 1 to Length(Tokens) - 4 do
+  begin
+    IsIp := True;
+    for ProbeIdx := TokenIdx to TokenIdx + 3 do
+      if not IsByte(Tokens[ProbeIdx]) then
+        IsIp := False;
+    if IsIp then
+    begin
+      IpIdx := TokenIdx;
+      Break;
+    end;
+  end;
+  Rest := '';
+  if IpIdx >= 1 then
+  begin
+    Password := JoinTokens(1, IpIdx - 1, '_');
+    HostText := JoinTokens(IpIdx, IpIdx + 3, '.');
+    Rest := JoinTokens(IpIdx + 4, High(Tokens), '.');
+  end
+  else
+  begin
+    if Length(Tokens) < 4 then
+      Exit;
+    Password := Tokens[1];
+    HostText := JoinTokens(2, High(Tokens), '.');
+  end;
+  if HostText = '' then
+    Exit;
+  AHost.Host := string(HostText);
+  AHost.User := Tokens[0];
+  AHost.Password := Password;
+  AHost.AskPassword := Password = '';
+  AHost.Passive := True;
+  // Остаток начинается с имени пользователя - похоже на папку хостинга
+  // /пользователь/сайт (u123_site_com - /u123/site.com); иначе - в
+  // комментарий
+  if (IpIdx >= 1) and (IpIdx + 4 <= High(Tokens)) and
+     (Tokens[IpIdx + 4] = Tokens[0]) and (IpIdx + 5 <= High(Tokens)) then
+    AHost.Home := '/' + Tokens[0] + '/' + JoinTokens(IpIdx + 5, High(Tokens), '.')
+  else
+    AHost.Description := Rest;
+  Result := True;
 end;
 
 // Ctrl+Ins в списке адресов: выделенные адреса (или под курсором) - в
@@ -7469,12 +8605,14 @@ end;
 function TFarView.FtpPasteHosts: Boolean;
 var
   Text, Line, Descr: WideString;
-  LineIdx, HostIdx, TabPos, Added, Updated, Same, LastIdx: Integer;
+  LineIdx, HostIdx, TabPos, Added, Updated, Same, LastIdx, FarNames: Integer;
   NewHost: TFarFtpHost;
   Found: Integer;
   Report: string;
+  Parsed: Boolean;
 begin
   Result := False;
+  FarNames := 0;
   Text := FarClipboardText;
   if Text = '' then
     Exit;
@@ -7490,6 +8628,7 @@ begin
          (Text[LineIdx] = #10) then
       begin
         Line := FarTrimW(Line);
+        Parsed := False;
         if WideLowerCase(Copy(Line, 1, 6)) = 'ftp://' then
         begin
           Result := True;
@@ -7501,10 +8640,23 @@ begin
             Line := FarTrimW(Copy(Line, 1, TabPos - 1));
           end;
           FarFtpHostClear(NewHost);
-          if FarFtpParseUrl(Line, NewHost) and (NewHost.Host <> '') then
+          Parsed := FarFtpParseUrl(Line, NewHost) and (NewHost.Host <> '');
+          if Parsed then
           begin
             NewHost.Description := Descr;
             NewHost.AskPassword := NewHost.Password = '';
+          end;
+        end
+        // Имя адреса из FAR Manager (Ctrl+Ins в панели его FTP-плагина)
+        else if FarFtpHostFromFarName(Line, NewHost) then
+        begin
+          Result := True;
+          Parsed := True;
+          Inc(FarNames);
+        end;
+        if Parsed then
+        begin
+          begin
             Found := -1;
             for HostIdx := 0 to High(FFtpHosts) do
               if (CompareText(FFtpHosts[HostIdx].Host, NewHost.Host) = 0) and
@@ -7550,7 +8702,115 @@ begin
     Report := Report + ', пароль дополнен: ' + IntToStr(Updated);
   if Same > 0 then
     Report := Report + ', уже были: ' + IntToStr(Same);
+  if FarNames > 0 then
+    Report := Report + '; из имени FAR адрес разобран приблизительно - ' +
+      'проверьте (F4)';
   Status(Report);
+  // Один адрес из имени FAR - сразу окно адреса: проверить и поправить
+  if (FarNames = 1) and (Added + Updated + Same = 1) and (LastIdx >= 0) then
+    FtpEditHost(FActive, LastIdx);
+  Invalidate;
+end;
+
+// F5 в списке адресов: выделенные адреса (или под курсором) - в папку
+// другой панели, по файлу на адрес: «пользователь@хост_порт_папка.ftp»
+// (порт - если не 21, папка - если задана), внутри -
+// адрес одной строкой (как Ctrl+Ins: ftp://пользователь:пароль@хост:порт
+// /папка, через табуляцию - описание). Такой файл F5 в список адресов
+// добавляет обратно. Пароль - открытым текстом
+procedure TFarView.FtpExportHosts;
+var
+  Panel, Other: TFarPanel;
+  HostIdxs: array of Integer;
+  ItemIdx, HostNo, Written, WithPass: Integer;
+  Host: TFarFtpHost;
+  FileName, FullPath, LastName, HomeText: WideString;
+  LineText: string;
+  FileHandle: THandle;
+  WrittenLen: DWORD;
+begin
+  Panel := ActivePanel;
+  Other := FPanels[1 - FActive];
+  if Other.IsFtp or Other.IsArchive or (Other.Path = '') then
+  begin
+    Status(FarProduct + ': FTP - F5 пишет адреса в файлы: откройте папку ' +
+      'на диске в другой панели');
+    Exit;
+  end;
+  HostIdxs := nil;
+  for ItemIdx := 0 to Panel.Count - 1 do
+    if Panel.FItems[ItemIdx].Selected and not Panel.FItems[ItemIdx].IsUp then
+    begin
+      SetLength(HostIdxs, Length(HostIdxs) + 1);
+      HostIdxs[High(HostIdxs)] := Panel.FItems[ItemIdx].OrigIndex;
+    end;
+  if (Length(HostIdxs) = 0) and (Panel.Cursor >= 0) and
+     (Panel.Cursor < Panel.Count) and not Panel.FItems[Panel.Cursor].IsUp then
+  begin
+    SetLength(HostIdxs, 1);
+    HostIdxs[0] := Panel.FItems[Panel.Cursor].OrigIndex;
+  end;
+  Written := 0;
+  WithPass := 0;
+  LastName := '';
+  for HostNo := 0 to High(HostIdxs) do
+  begin
+    if (HostIdxs[HostNo] < 0) or (HostIdxs[HostNo] > High(FFtpHosts)) then
+      Continue;
+    Host := FFtpHosts[HostIdxs[HostNo]];
+    FileName := WideString(Host.Host);
+    if Host.User <> '' then
+      FileName := Host.User + '@' + FileName;
+    if (Host.Port > 0) and (Host.Port <> FarFtpDefaultPort) then
+      FileName := FileName + '_' + WideString(IntToStr(Host.Port));
+    // Папка - в имя: адреса одного сервера с разными папками - разные файлы
+    HomeText := FarTrimW(Host.Home);
+    while (HomeText <> '') and (HomeText[1] = '/') do
+      Delete(HomeText, 1, 1);
+    if HomeText <> '' then
+      FileName := FileName + '_' + HomeText;
+    FileName := FarSafeFileName(FileName);
+    while (Length(FileName) > 0) and (FileName[Length(FileName)] = '_') do
+      SetLength(FileName, Length(FileName) - 1);
+    FileName := FileName + '.ftp';
+    FullPath := Other.Path + FileName;
+    // Кодировка Windows: файл читает и FAR, и F5 сюда же
+    LineText := string(FarFtpHostLine(Host)) + #13#10;
+    FileHandle := FarCreateFile(PWideChar(FullPath), GENERIC_WRITE, 0, nil,
+      CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if FileHandle = INVALID_HANDLE_VALUE then
+    begin
+      Status(FarProduct + ': файл не создать: ' + string(FullPath) + ' - ' +
+        SysErrorMessage(GetLastError));
+      Break;
+    end;
+    try
+      WriteFile(FileHandle, LineText[1], Length(LineText), WrittenLen, nil);
+    finally
+      CloseHandle(FileHandle);
+    end;
+    Inc(Written);
+    LastName := FileName;
+    if (Host.Password <> '') and not Host.AskPassword then
+      Inc(WithPass);
+  end;
+  if Written = 0 then
+    Exit;
+  Other.Reread;
+  if LastName <> '' then
+  begin
+    ItemIdx := Other.IndexOfName(LastName);
+    if ItemIdx >= 0 then
+      Other.Cursor := ItemIdx;
+  end;
+  EnsureVisible(Other);
+  if WithPass > 0 then
+    Status(FarProduct + ': FTP - адресов записано в файлы: ' +
+      IntToStr(Written) + ' (' + string(Other.Path) + '), с паролем: ' +
+      IntToStr(WithPass) + ' - открытым текстом')
+  else
+    Status(FarProduct + ': FTP - адресов записано в файлы: ' +
+      IntToStr(Written) + ' (' + string(Other.Path) + ')');
   Invalidate;
 end;
 
@@ -7564,6 +8824,13 @@ begin
   Result := True;
   Panel := ActivePanel;
   Plain := not ACtrl and not AAlt;
+  // Esc - прервать операцию с файлами
+  if (AKey = VK_ESCAPE) and (FFtpJob <> nil) then
+  begin
+    FFtpJob.Cancel;
+    Status(FarProduct + ': FTP - прерываю...');
+    Exit;
+  end;
   // Esc - прервать запрос к серверу
   if (AKey = VK_ESCAPE) and (FFtpThread[FActive] <> nil) then
   begin
@@ -7607,7 +8874,13 @@ begin
           Exit;
         end;
     end;
-  // Список адресов: Shift+F4 - новый, F4 - изменить, F8 / Del - удалить
+  // Список адресов: Shift+F4 - новый, F4 - изменить, F8 / Del - удалить,
+  // F5 - адреса в файлы в папку другой панели
+  if (Panel.FFtpMode = 1) and Plain and not AShift and (AKey = VK_F5) then
+  begin
+    FtpExportHosts;
+    Exit;
+  end;
   if (Panel.FFtpMode = 1) and Plain then
     case AKey of
       VK_F4:
@@ -7625,14 +8898,51 @@ begin
           Exit;
         end;
     end;
-  // Остальные операции с файлами на FTP - позже
-  if (Plain and ((AKey = VK_F3) or (AKey = VK_F4) or (AKey = VK_F5) or
-     (AKey = VK_F6) or (AKey = VK_F7) or (AKey = VK_F8) or
-     (AKey = VK_DELETE))) or (Plain and AShift and (AKey = VK_F1)) or
+  // Файлы на сервере
+  if (Panel.FFtpMode = 2) and Plain and not AShift then
+    case AKey of
+      VK_F3:
+        begin
+          FtpViewEdit(False);
+          Exit;
+        end;
+      VK_F4:
+        begin
+          FtpViewEdit(True);
+          Exit;
+        end;
+      VK_F5:
+        begin
+          FtpStartCopyFrom(False, False);
+          Exit;
+        end;
+      VK_F6:
+        begin
+          FtpStartCopyFrom(True, False);
+          Exit;
+        end;
+      VK_F7:
+        begin
+          FtpAskMkDir;
+          Exit;
+        end;
+      VK_F8, VK_DELETE:
+        begin
+          FtpAskDelete;
+          Exit;
+        end;
+    end;
+  if (Panel.FFtpMode = 2) and Plain and AShift and (AKey = VK_F6) then
+  begin
+    FtpStartCopyFrom(True, True);
+    Exit;
+  end;
+  // Остального на FTP нет: архивы, поиск, F3 / F5 в списке адресов
+  if (Plain and ((AKey = VK_F3) or (AKey = VK_F5) or (AKey = VK_F6) or
+     (AKey = VK_F7))) or (Plain and AShift and (AKey = VK_F1)) or
      (AAlt and not ACtrl and (AKey = VK_F7)) then
   begin
-    Status(FarProduct + ': FTP - просмотр, копирование, папки и удаление на ' +
-      'сервере - следующим шагом');
+    Status(FarProduct + ': FTP - здесь эта клавиша не работает');
     Exit;
   end;
   Result := False;
@@ -7747,7 +9057,7 @@ end;
 // Строк текста: панель без строки заголовка
 function TFarView.EditTextRows: Integer;
 begin
-  Result := PanelHeight - 1;
+  Result := DocHeight - 1;
   if Result < 1 then
     Result := 1;
 end;
@@ -7844,12 +9154,16 @@ begin
       FEditPanel := FSingle
     else
       FEditPanel := 1 - FActive;
-    FEditWide := False;
+    FEditWide := FEditWideDefault and (FSingle < 0);
   end;
   FActive := FEditPanel;
   FEditQuitAfterSave := False;
-  Status(FarProduct + ': редактор - ' + string(AFileName) + ' (F2 - записать, ' +
-    'Esc - закрыть, F5 - на всю ширину)');
+  if FEditWide then
+    Status(FarProduct + ': редактор - ' + string(AFileName) + ' (F2 - ' +
+      'записать, Esc - закрыть, F5 - в половину окна)')
+  else
+    Status(FarProduct + ': редактор - ' + string(AFileName) + ' (F2 - ' +
+      'записать, Esc - закрыть, F5 - на всю ширину)');
   Invalidate;
 end;
 
@@ -7871,6 +9185,12 @@ begin
     EnsureVisible(FPanels[PanelIndex]);
   end;
   Status(FarProduct + ': редактор закрыт');
+  // Открыт из окна найденного (F4) - снова к нему
+  if FFindSuspended and (FViewer = nil) then
+  begin
+    FFindSuspended := False;
+    FFindOpen := True;
+  end;
   Invalidate;
 end;
 
@@ -7919,6 +9239,9 @@ begin
   end;
   Status(FarProduct + ': записан ' + string(AFileName) + ' (' +
     FarEditEncodingName(FEditor.Encoding) + ')');
+  // Файл с сервера (F4 в панели FTP) - отправить обратно
+  if (FEditFtpTemp <> '') and FarSameName(AFileName, FEditFtpTemp) then
+    FtpUploadEdited;
   // Панели, где этот файл, - перечитать (кроме той, где редактор)
   for PanelIndex := 0 to 1 do
     if not EditorShown(PanelIndex) then
@@ -7955,6 +9278,41 @@ begin
   else
     Status(FarProduct + ': не найдено: ' + string(FEditFind));
   Invalidate;
+end;
+
+// Shift+F8: кодировка, в которой F2 запишет файл. Текст в редакторе -
+// Unicode, перекодируется при записи. Не та, что у файла на диске, - файл
+// считается изменённым (звёздочка в заголовке). Символов нет в кодировке
+// Windows - при записи в ANSI спросит (UTF-8 / ANSI с '?' / отмена)
+procedure TFarView.EditEncodingMenu;
+const
+  MenuEncodings: array[0..3] of TFarEditEncoding =
+    (feAnsi, feUtf8, feUtf8Bom, feUtf16);
+  MenuHotkeys: array[0..3] of string = ('&1', '&2', '&3', '&4');
+var
+  Items: TFarMenuItems;
+  ItemIdx, CursorIdx: Integer;
+begin
+  if FEditor = nil then
+    Exit;
+  SetLength(Items, Length(MenuEncodings));
+  CursorIdx := 0;
+  for ItemIdx := 0 to High(MenuEncodings) do
+  begin
+    Items[ItemIdx].Text := WideString(MenuHotkeys[ItemIdx] + ' ' +
+      FarEditEncodingTitle(MenuEncodings[ItemIdx]));
+    Items[ItemIdx].RightText := '';
+    Items[ItemIdx].Separator := False;
+    Items[ItemIdx].Tag := Ord(MenuEncodings[ItemIdx]);
+    if MenuEncodings[ItemIdx] = FEditor.Encoding then
+    begin
+      Items[ItemIdx].Mark := FarCheckMark;
+      CursorIdx := ItemIdx;
+    end
+    else
+      Items[ItemIdx].Mark := ' ';
+  end;
+  MenuOpen(fmEditEncoding, 'Save encoding', Items, CursorIdx, FEditPanel);
 end;
 
 procedure TFarView.EditGoto(const AText: WideString);
@@ -8030,6 +9388,8 @@ begin
         True, Ed.FileName, ['Save', 'Cancel'])
     else if Plain and AShift and (AKey = VK_F7) then
       EditFindNext
+    else if Plain and AShift and (AKey = VK_F8) then
+      EditEncodingMenu
     else if AAlt and not ACtrl and not AShift and (AKey = VK_F8) then
       DlgOpen(fdEditGoto, 'Go to', ['Line number (1..' + IntToStr(Ed.Count) +
         '):'], False, False, True, IntToStr(Ed.Row + 1), ['Go', 'Cancel'])
@@ -8211,7 +9571,7 @@ var
 begin
   Ed := FEditor;
   EditBounds(EditX, EditW);
-  PanelH := PanelHeight;
+  PanelH := DocHeight;
   if (EditW < 4) or (PanelH < 2) then
     Exit;
   // Заголовок: имя файла; справа - изменён, строка / всего, колонка,
@@ -8399,7 +9759,7 @@ end;
 
 function TFarView.ViewTextRows: Integer;
 begin
-  Result := PanelHeight - 1;
+  Result := DocHeight - 1;
   if Result < 1 then
     Result := 1;
 end;
@@ -8491,6 +9851,12 @@ begin
   if FSingle < 0 then
     FActive := 1 - FEditPanel;
   Status('');
+  // Открыт из окна найденного (F3) - снова к нему
+  if FFindSuspended and (FEditor = nil) then
+  begin
+    FFindSuspended := False;
+    FFindOpen := True;
+  end;
   Invalidate;
 end;
 
@@ -8730,7 +10096,7 @@ var
   Pct: Integer;
 begin
   EditBounds(ViewX, ViewW);
-  PanelH := PanelHeight;
+  PanelH := DocHeight;
   if (ViewW < 4) or (PanelH < 2) then
     Exit;
   TextRows := PanelH - 1;
@@ -10753,6 +12119,12 @@ begin
     if (Index < 0) or (Index > High(Values)) then
       Index := 0;
     IsCheck := False;
+    Anchor := -1;
+    IsCombo := False;
+    History := nil;
+    UndoText := AText;
+    UndoPos := Length(AText);
+    Typing := False;
   end;
   // Фокус - на первой строке
   FDlgRow := 0;
@@ -10782,6 +12154,7 @@ procedure TFarView.DrawDialogRow(ARowIndex, ARow, AInnerLeft,
   AInnerW: Integer; AFore, ABack: TColor);
 var
   FieldLeft, FieldW, ValueIndex, CharIndex, CaretX, ValueCol: Integer;
+  SelFrom, SelTo, VisFrom, VisTo, ArrowX, ArrowY, ArrowHalf, LineIndex: Integer;
   ShownText, ValueText: WideString;
   Focused: Boolean;
 begin
@@ -10826,6 +12199,23 @@ begin
     end
     else
     begin
+      // Поле со списком: справа стрелка вниз (треугольник) на фоне окна
+      if IsCombo then
+      begin
+        Dec(FieldW);
+        FillCells(FieldLeft + FieldW, ARow, 1, ABack);
+        ArrowHalf := (FCellW - 1) div 2;
+        if ArrowHalf < 2 then
+          ArrowHalf := 2;
+        ArrowX := (FieldLeft + FieldW) * FCellW + FCellW div 2;
+        ArrowY := ARow * FCellH + (FCellH - ArrowHalf) div 2;
+        FBuffer.Canvas.Brush.Style := bsSolid;
+        FBuffer.Canvas.Brush.Color := AFore;
+        for LineIndex := 0 to ArrowHalf do
+          FBuffer.Canvas.FillRect(Rect(ArrowX - ArrowHalf + LineIndex,
+            ArrowY + LineIndex, ArrowX + ArrowHalf - LineIndex + 1,
+            ArrowY + LineIndex + 1));
+      end;
       if Pos < Scroll then
         Scroll := Pos;
       if Pos > Scroll + FieldW - 1 then
@@ -10835,12 +12225,22 @@ begin
         for CharIndex := 1 to Length(ShownText) do
           ShownText[CharIndex] := '*';
       FillCells(FieldLeft, ARow, FieldW, FPal[fpDlgEditBack]);
-      if Fresh and Focused then
-        PutText(FieldLeft, ARow, Length(ShownText), ShownText,
-          FPal[fpDlgSelText], FPal[fpDlgSelBack])
-      else
-        PutText(FieldLeft, ARow, Length(ShownText), ShownText,
-          FPal[fpDlgEditText], FPal[fpDlgEditBack]);
+      PutText(FieldLeft, ARow, Length(ShownText), ShownText,
+        FPal[fpDlgEditText], FPal[fpDlgEditBack]);
+      // Выделение (нетронутый текст - весь) - белым по чёрному
+      if Focused and DlgRowSel(FDlgRows[ARowIndex], SelFrom, SelTo) then
+      begin
+        VisFrom := SelFrom;
+        if VisFrom < Scroll then
+          VisFrom := Scroll;
+        VisTo := SelTo;
+        if VisTo > Scroll + Length(ShownText) then
+          VisTo := Scroll + Length(ShownText);
+        if VisTo > VisFrom then
+          PutText(FieldLeft + VisFrom - Scroll, ARow, VisTo - VisFrom,
+            Copy(ShownText, VisFrom - Scroll + 1, VisTo - VisFrom),
+            FPal[fpDlgSelText], FPal[fpDlgSelBack]);
+      end;
       if Focused then
       begin
         CaretX := (FieldLeft + Pos - Scroll) * FCellW;
@@ -10853,20 +12253,656 @@ begin
   end;
 end;
 
+// Вставка в поле с фокусом - на место выделения (нетронутый текст -
+// заменяется весь)
 procedure TFarView.DlgRowInsert(const AText: WideString);
+begin
+  if not DlgRowIsEdit then
+    Exit;
+  DlgRowDeleteSel;
+  with FDlgRows[FDlgRow] do
+  begin
+    Insert(AText, Text, Pos + 1);
+    Inc(Pos, Length(AText));
+  end;
+  Invalidate;
+end;
+
+// Выделение строки: [ASelFrom, ASelTo) в символах от 0; нетронутый текст -
+// выделен весь
+function TFarView.DlgRowSel(const ARow: TFarDlgRow; out ASelFrom,
+  ASelTo: Integer): Boolean;
+begin
+  ASelFrom := 0;
+  ASelTo := 0;
+  if ARow.Fresh then
+    ASelTo := Length(ARow.Text)
+  else if (ARow.Anchor >= 0) and (ARow.Anchor <> ARow.Pos) then
+  begin
+    if ARow.Anchor < ARow.Pos then
+    begin
+      ASelFrom := ARow.Anchor;
+      ASelTo := ARow.Pos;
+    end
+    else
+    begin
+      ASelFrom := ARow.Pos;
+      ASelTo := ARow.Anchor;
+    end;
+    if ASelTo > Length(ARow.Text) then
+      ASelTo := Length(ARow.Text);
+  end;
+  Result := ASelTo > ASelFrom;
+end;
+
+// Удалить выделенное в поле с фокусом; выделения после - нет
+procedure TFarView.DlgRowDeleteSel;
+var
+  SelFrom, SelTo: Integer;
+begin
+  if not DlgRowIsEdit then
+    Exit;
+  if DlgRowSel(FDlgRows[FDlgRow], SelFrom, SelTo) then
+    with FDlgRows[FDlgRow] do
+    begin
+      Delete(Text, SelFrom + 1, SelTo - SelFrom);
+      Pos := SelFrom;
+    end;
+  FDlgRows[FDlgRow].Fresh := False;
+  FDlgRows[FDlgRow].Anchor := -1;
+end;
+
+// Запомнить текст для Ctrl+Z. Набор символов подряд - один шаг отмены
+procedure TFarView.DlgRowSaveUndo(ATyping: Boolean);
 begin
   if not DlgRowIsEdit then
     Exit;
   with FDlgRows[FDlgRow] do
   begin
-    if Fresh then
+    if not (ATyping and Typing) then
     begin
-      Text := '';
-      Pos := 0;
-      Fresh := False;
+      UndoText := Text;
+      UndoPos := Pos;
     end;
-    Insert(AText, Text, Pos + 1);
-    Inc(Pos, Length(AText));
+    Typing := ATyping;
+  end;
+end;
+
+// Поле со списком прежних значений: строка ввода + список по стрелке
+procedure TFarView.DlgAddCombo(const ACaption, AText: WideString;
+  const AHistory: TFarNames);
+var
+  RowIndex, HistIndex: Integer;
+begin
+  DlgAddRow(ACaption, False, False, AText, [], 0);
+  RowIndex := High(FDlgRows);
+  FDlgRows[RowIndex].IsCombo := True;
+  SetLength(FDlgRows[RowIndex].History, Length(AHistory));
+  for HistIndex := 0 to High(AHistory) do
+    FDlgRows[RowIndex].History[HistIndex] := AHistory[HistIndex];
+end;
+
+// Значение - в начало списка прежних (повтор убирается), не больше AMax
+procedure FarHistoryPush(var AList: TFarNames; const AValue: WideString;
+  AMax: Integer);
+var
+  SrcIndex, DstIndex: Integer;
+begin
+  if AValue = '' then
+    Exit;
+  DstIndex := 1;
+  SetLength(AList, Length(AList) + 1);
+  for SrcIndex := High(AList) - 1 downto 0 do
+    AList[SrcIndex + 1] := AList[SrcIndex];
+  AList[0] := AValue;
+  for SrcIndex := 1 to High(AList) do
+    if AList[SrcIndex] <> AValue then
+    begin
+      AList[DstIndex] := AList[SrcIndex];
+      Inc(DstIndex);
+    end;
+  if DstIndex > AMax then
+    DstIndex := AMax;
+  SetLength(AList, DstIndex);
+end;
+
+// Разделитель слов для Ctrl+стрелок и двойного щелчка
+function FarDlgIsSep(AChar: WideChar): Boolean;
+begin
+  Result := (AChar = ' ') or (AChar = #9) or (AChar = ';') or
+    (AChar = ',') or (AChar = '\') or (AChar = '/') or (AChar = '.') or
+    (AChar = ':') or (AChar = '*') or (AChar = '?');
+end;
+
+// Первая строка текста (из буфера обмена в однострочное поле)
+function FarFirstLine(const AText: WideString): WideString;
+var
+  CharIndex: Integer;
+begin
+  Result := AText;
+  for CharIndex := 1 to Length(Result) do
+    if (Result[CharIndex] = #13) or (Result[CharIndex] = #10) then
+    begin
+      Result := Copy(Result, 1, CharIndex - 1);
+      Break;
+    end;
+  for CharIndex := 1 to Length(Result) do
+    if Result[CharIndex] = #9 then
+      Result[CharIndex] := ' ';
+end;
+
+// Клавиши поля ввода: как в редакторе - стрелки, Home / End (с Shift -
+// выделение, с Ctrl - по словам), Ctrl+A, Ctrl+C / Ctrl+Ins, Ctrl+X /
+// Shift+Del, Ctrl+V / Shift+Ins, Ctrl+Z, Ctrl+Y - очистить,
+// Ctrl+Down / Alt+Down - список прежних значений. False - не своя клавиша
+function TFarView.DlgRowEditKey(AKey: Word; AShift, ACtrl,
+  AAlt: Boolean): Boolean;
+var
+  SelFrom, SelTo, NewPos: Integer;
+  HasSel: Boolean;
+  SwapText: WideString;
+  SwapPos: Integer;
+
+  // Каретку в NewPos: с Shift - выделение от прежнего места
+  procedure MoveCaret(ANewPos: Integer);
+  begin
+    with FDlgRows[FDlgRow] do
+    begin
+      if ANewPos < 0 then
+        ANewPos := 0;
+      if ANewPos > Length(Text) then
+        ANewPos := Length(Text);
+      if AShift then
+      begin
+        if Fresh then
+        begin
+          Anchor := 0;
+          Pos := Length(Text);
+        end
+        else if Anchor < 0 then
+          Anchor := Pos;
+      end
+      else
+        Anchor := -1;
+      Fresh := False;
+      Typing := False;
+      Pos := ANewPos;
+    end;
+  end;
+
+  function WordLeft(AFrom: Integer): Integer;
+  begin
+    Result := AFrom;
+    with FDlgRows[FDlgRow] do
+    begin
+      while (Result > 0) and FarDlgIsSep(Text[Result]) do
+        Dec(Result);
+      while (Result > 0) and not FarDlgIsSep(Text[Result]) do
+        Dec(Result);
+    end;
+  end;
+
+  function WordRight(AFrom: Integer): Integer;
+  begin
+    Result := AFrom;
+    with FDlgRows[FDlgRow] do
+    begin
+      while (Result < Length(Text)) and not FarDlgIsSep(Text[Result + 1]) do
+        Inc(Result);
+      while (Result < Length(Text)) and FarDlgIsSep(Text[Result + 1]) do
+        Inc(Result);
+    end;
+  end;
+
+  procedure CopySel;
+  begin
+    // Поле пароля в буфер не копируется
+    if FDlgRows[FDlgRow].Masked then
+      Exit;
+    if HasSel then
+      FarCopyToClipboard(Handle, Copy(FDlgRows[FDlgRow].Text, SelFrom + 1,
+        SelTo - SelFrom))
+    else if FDlgRows[FDlgRow].Text <> '' then
+      FarCopyToClipboard(Handle, FDlgRows[FDlgRow].Text);
+  end;
+
+  procedure PasteClip;
+  var
+    PasteText: WideString;
+  begin
+    if not FarClipboardHasText then
+      Exit;
+    PasteText := FarFirstLine(FarClipboardText);
+    DlgRowSaveUndo(False);
+    DlgRowInsert(PasteText);
+  end;
+
+begin
+  Result := True;
+  HasSel := DlgRowSel(FDlgRows[FDlgRow], SelFrom, SelTo);
+  case AKey of
+    VK_LEFT:
+      with FDlgRows[FDlgRow] do
+        if ACtrl then
+          MoveCaret(WordLeft(Pos))
+        else if HasSel and not AShift and not Fresh then
+          MoveCaret(SelFrom)
+        else
+          MoveCaret(Pos - 1);
+    VK_RIGHT:
+      with FDlgRows[FDlgRow] do
+        if ACtrl then
+          MoveCaret(WordRight(Pos))
+        else if HasSel and not AShift and not Fresh then
+          MoveCaret(SelTo)
+        else
+          MoveCaret(Pos + 1);
+    VK_HOME:
+      MoveCaret(0);
+    VK_END:
+      MoveCaret(Length(FDlgRows[FDlgRow].Text));
+    VK_BACK:
+      begin
+        DlgRowSaveUndo(True);
+        if HasSel then
+          DlgRowDeleteSel
+        else
+          with FDlgRows[FDlgRow] do
+          begin
+            Fresh := False;
+            if ACtrl then
+              NewPos := WordLeft(Pos)
+            else
+              NewPos := Pos - 1;
+            if NewPos < 0 then
+              NewPos := 0;
+            Delete(Text, NewPos + 1, Pos - NewPos);
+            Pos := NewPos;
+          end;
+      end;
+    VK_DELETE:
+      if AShift and not ACtrl then
+      begin
+        // Shift+Del - вырезать
+        if HasSel and not FDlgRows[FDlgRow].Masked then
+        begin
+          CopySel;
+          DlgRowSaveUndo(False);
+          DlgRowDeleteSel;
+        end;
+      end
+      else
+      begin
+        DlgRowSaveUndo(True);
+        if HasSel then
+          DlgRowDeleteSel
+        else
+          with FDlgRows[FDlgRow] do
+          begin
+            if ACtrl then
+              NewPos := WordRight(Pos)
+            else
+              NewPos := Pos + 1;
+            if NewPos > Length(Text) then
+              NewPos := Length(Text);
+            Delete(Text, Pos + 1, NewPos - Pos);
+          end;
+      end;
+    VK_INSERT:
+      if ACtrl and not AShift then
+        CopySel
+      else if AShift and not ACtrl then
+        PasteClip;
+    VK_DOWN:
+      if (ACtrl or AAlt) and FDlgRows[FDlgRow].IsCombo then
+        DlgDropOpen
+      else
+        Result := False;
+  else
+    if ACtrl and not AAlt and (AKey = Ord('A')) then
+      with FDlgRows[FDlgRow] do
+      begin
+        Fresh := False;
+        Anchor := 0;
+        Pos := Length(Text);
+        Typing := False;
+      end
+    else if ACtrl and not AAlt and (AKey = Ord('C')) then
+      CopySel
+    else if ACtrl and not AAlt and (AKey = Ord('X')) then
+    begin
+      if HasSel and not FDlgRows[FDlgRow].Masked then
+      begin
+        CopySel;
+        DlgRowSaveUndo(False);
+        DlgRowDeleteSel;
+      end;
+    end
+    else if ACtrl and not AAlt and (AKey = Ord('V')) then
+      PasteClip
+    else if ACtrl and not AAlt and (AKey = Ord('Z')) then
+      // Отмена последней правки (повторное Ctrl+Z - возврат)
+      with FDlgRows[FDlgRow] do
+      begin
+        SwapText := Text;
+        SwapPos := Pos;
+        Text := UndoText;
+        Pos := UndoPos;
+        UndoText := SwapText;
+        UndoPos := SwapPos;
+        if Pos > Length(Text) then
+          Pos := Length(Text);
+        Fresh := False;
+        Anchor := -1;
+        Typing := False;
+      end
+    else if ACtrl and not AAlt and (AKey = Ord('Y')) then
+    begin
+      DlgRowSaveUndo(False);
+      with FDlgRows[FDlgRow] do
+      begin
+        Text := '';
+        Pos := 0;
+        Fresh := False;
+        Anchor := -1;
+      end;
+    end
+    else
+      Result := False;
+  end;
+end;
+
+// Открыть список прежних значений поля с фокусом; выбрано - текущее
+// значение, если оно есть в списке
+procedure TFarView.DlgDropOpen;
+var
+  HistIndex: Integer;
+begin
+  if not DlgRowIsEdit or not FDlgRows[FDlgRow].IsCombo then
+    Exit;
+  if Length(FDlgRows[FDlgRow].History) = 0 then
+  begin
+    Status(FarProduct + ': список прежних значений пуст');
+    Exit;
+  end;
+  FDlgDrop := FDlgRow;
+  FDlgDropIndex := 0;
+  FDlgDropTop := 0;
+  with FDlgRows[FDlgRow] do
+    for HistIndex := 0 to High(History) do
+      if History[HistIndex] = Text then
+      begin
+        FDlgDropIndex := HistIndex;
+        Break;
+      end;
+  Invalidate;
+end;
+
+// Выбранное в списке - в поле (как нетронутый текст: ввод заменит его)
+procedure TFarView.DlgDropChoose;
+begin
+  if FDlgDrop < 0 then
+    Exit;
+  FDlgRow := FDlgDrop;
+  FDlgFocus := -1;
+  with FDlgRows[FDlgDrop] do
+    if (FDlgDropIndex >= 0) and (FDlgDropIndex <= High(History)) then
+    begin
+      UndoText := Text;
+      UndoPos := Pos;
+      Typing := False;
+      Text := History[FDlgDropIndex];
+      Pos := Length(Text);
+      Scroll := 0;
+      Anchor := -1;
+      Fresh := True;
+    end;
+  FDlgDrop := -1;
+  Invalidate;
+end;
+
+// Del в списке - убрать значение из прежних
+procedure TFarView.DlgDropDelete;
+var
+  HistIndex: Integer;
+begin
+  if FDlgDrop < 0 then
+    Exit;
+  with FDlgRows[FDlgDrop] do
+  begin
+    if (FDlgDropIndex < 0) or (FDlgDropIndex > High(History)) then
+      Exit;
+    for HistIndex := FDlgDropIndex to High(History) - 1 do
+      History[HistIndex] := History[HistIndex + 1];
+    SetLength(History, Length(History) - 1);
+    if FDlgDropIndex > High(History) then
+      FDlgDropIndex := High(History);
+  end;
+  DlgHistoryStore(FDlgDrop);
+  if Length(FDlgRows[FDlgDrop].History) = 0 then
+    FDlgDrop := -1;
+end;
+
+// Список прежних значений строки - обратно владельцу (поиск: маски, текст)
+procedure TFarView.DlgHistoryStore(ARowIndex: Integer);
+var
+  HistIndex: Integer;
+  Target: TFarNames;
+begin
+  if (ARowIndex < 0) or (ARowIndex > High(FDlgRows)) then
+    Exit;
+  SetLength(Target, Length(FDlgRows[ARowIndex].History));
+  for HistIndex := 0 to High(Target) do
+    Target[HistIndex] := FDlgRows[ARowIndex].History[HistIndex];
+  if FDlgKind = fdFind then
+  begin
+    if ARowIndex = 0 then
+      FFindMaskHist := Target
+    else if ARowIndex = 1 then
+      FFindTextHist := Target;
+  end;
+end;
+
+// Клавиши открытого списка: стрелки, PgUp / PgDn, Home / End, Enter -
+// выбрать, Del - убрать значение, Esc - закрыть. Прочие - закрыть список
+// и отдать клавишу полю
+function TFarView.DlgDropKey(AKey: Word; AShift, ACtrl,
+  AAlt: Boolean): Boolean;
+var
+  ItemCount: Integer;
+begin
+  Result := True;
+  ItemCount := Length(FDlgRows[FDlgDrop].History);
+  case AKey of
+    VK_ESCAPE, VK_F10:
+      FDlgDrop := -1;
+    VK_RETURN:
+      DlgDropChoose;
+    VK_UP:
+      if ACtrl or AAlt then
+        FDlgDrop := -1
+      else if FDlgDropIndex > 0 then
+        Dec(FDlgDropIndex);
+    VK_DOWN:
+      if ACtrl or AAlt then
+        FDlgDrop := -1
+      else if FDlgDropIndex < ItemCount - 1 then
+        Inc(FDlgDropIndex);
+    VK_PRIOR:
+      begin
+        Dec(FDlgDropIndex, FarDlgDropRows - 1);
+        if FDlgDropIndex < 0 then
+          FDlgDropIndex := 0;
+      end;
+    VK_NEXT:
+      begin
+        Inc(FDlgDropIndex, FarDlgDropRows - 1);
+        if FDlgDropIndex > ItemCount - 1 then
+          FDlgDropIndex := ItemCount - 1;
+      end;
+    VK_HOME:
+      FDlgDropIndex := 0;
+    VK_END:
+      FDlgDropIndex := ItemCount - 1;
+    VK_DELETE:
+      DlgDropDelete;
+  else
+    FDlgDrop := -1;
+    Result := DlgRowsKey(AKey, AShift, ACtrl, AAlt);
+  end;
+  Invalidate;
+end;
+
+// Список прежних значений под полем (не влезает - над ним), рамкой
+procedure TFarView.DrawDialogDrop;
+var
+  FieldRow, ListLeft, ListW, ItemIndex, RowIndex, ItemCount: Integer;
+  ItemText: WideString;
+  Fore, Back: TColor;
+  FrameRectPx: TRect;
+begin
+  if (FDlgDrop < 0) or (FDlgDrop > High(FDlgRows)) then
+    Exit;
+  ItemCount := Length(FDlgRows[FDlgDrop].History);
+  if ItemCount = 0 then
+    Exit;
+  FieldRow := FDlgRowsTop + FDlgDrop;
+  ListLeft := FDlgRowsLeft;
+  ListW := FDlgRowsW;
+  FDlgDropH := ItemCount;
+  if FDlgDropH > FarDlgDropRows then
+    FDlgDropH := FarDlgDropRows;
+  // Строки списка + рамка сверху и снизу
+  if FieldRow + 1 + FDlgDropH + 2 <= PanelHeight then
+    FDlgDropRow := FieldRow + 2
+  else
+    FDlgDropRow := FieldRow - FDlgDropH - 1;
+  if FDlgDropRow < 1 then
+    FDlgDropRow := 1;
+  if FDlgDropIndex < FDlgDropTop then
+    FDlgDropTop := FDlgDropIndex;
+  if FDlgDropIndex >= FDlgDropTop + FDlgDropH then
+    FDlgDropTop := FDlgDropIndex - FDlgDropH + 1;
+  if FDlgDropTop > ItemCount - FDlgDropH then
+    FDlgDropTop := ItemCount - FDlgDropH;
+  if FDlgDropTop < 0 then
+    FDlgDropTop := 0;
+  for RowIndex := FDlgDropRow - 1 to FDlgDropRow + FDlgDropH do
+    FillCells(ListLeft, RowIndex, ListW, FPal[fpMenuBack]);
+  FrameRectPx := Rect(ListLeft * FCellW + FCellW div 2,
+    (FDlgDropRow - 1) * FCellH + FCellH div 2,
+    (ListLeft + ListW - 1) * FCellW + FCellW div 2,
+    (FDlgDropRow + FDlgDropH) * FCellH + FCellH div 2);
+  with FBuffer.Canvas do
+  begin
+    Pen.Color := FPal[fpMenuFrame];
+    MoveTo(FrameRectPx.Left, FrameRectPx.Top);
+    LineTo(FrameRectPx.Right, FrameRectPx.Top);
+    LineTo(FrameRectPx.Right, FrameRectPx.Bottom);
+    LineTo(FrameRectPx.Left, FrameRectPx.Bottom);
+    LineTo(FrameRectPx.Left, FrameRectPx.Top);
+  end;
+  // Значения выше / ниже видимых - стрелки на рамке
+  if FDlgDropTop > 0 then
+    PutText(ListLeft + ListW - 3, FDlgDropRow - 1, 1, '^',
+      FPal[fpMenuHotkey], FPal[fpMenuBack]);
+  if FDlgDropTop + FDlgDropH < ItemCount then
+    PutText(ListLeft + ListW - 3, FDlgDropRow + FDlgDropH, 1, 'v',
+      FPal[fpMenuHotkey], FPal[fpMenuBack]);
+  for RowIndex := 0 to FDlgDropH - 1 do
+  begin
+    ItemIndex := FDlgDropTop + RowIndex;
+    if ItemIndex >= ItemCount then
+      Break;
+    Fore := FPal[fpMenuText];
+    if ItemIndex = FDlgDropIndex then
+      Back := FPal[fpMenuCursorBack]
+    else
+      Back := FPal[fpMenuBack];
+    FillCells(ListLeft + 1, FDlgDropRow + RowIndex, ListW - 2, Back);
+    ItemText := FarFitName(FDlgRows[FDlgDrop].History[ItemIndex], ListW - 4);
+    PutText(ListLeft + 2, FDlgDropRow + RowIndex, ListW - 4, ItemText, Fore,
+      Back);
+  end;
+end;
+
+// Щелчок при открытом списке: по значению - выбрать, по стрелке поля -
+// закрыть. False - щелчок мимо (список закроется, щелчок пойдёт окну)
+function TFarView.DlgDropMouse(AX, AY: Integer): Boolean;
+var
+  ClickRow, ClickCol: Integer;
+begin
+  Result := False;
+  ClickRow := AY div FCellH;
+  ClickCol := AX div FCellW;
+  if (ClickRow = FDlgRowsTop + FDlgDrop) and
+     (ClickCol = FDlgRowsLeft + FDlgRowsW - 1) then
+  begin
+    FDlgDrop := -1;
+    Result := True;
+    Exit;
+  end;
+  if (ClickCol >= FDlgRowsLeft) and (ClickCol < FDlgRowsLeft + FDlgRowsW) and
+     (ClickRow >= FDlgDropRow - 1) and (ClickRow <= FDlgDropRow + FDlgDropH) then
+  begin
+    Result := True;
+    if (ClickRow >= FDlgDropRow) and (ClickRow < FDlgDropRow + FDlgDropH) and
+       (FDlgDropTop + ClickRow - FDlgDropRow <=
+        High(FDlgRows[FDlgDrop].History)) then
+    begin
+      FDlgDropIndex := FDlgDropTop + ClickRow - FDlgDropRow;
+      DlgDropChoose;
+    end;
+  end;
+end;
+
+// Протяжка мышью по полю - выделение от места нажатия
+procedure TFarView.DlgRowsMouseMove(AX: Integer);
+var
+  ClickCol, NewPos: Integer;
+begin
+  if (FDlgDragRow <> FDlgRow) or not DlgRowIsEdit then
+    Exit;
+  ClickCol := AX div FCellW;
+  with FDlgRows[FDlgRow] do
+  begin
+    NewPos := Scroll + ClickCol - FDlgRowsLeft;
+    if NewPos < 0 then
+      NewPos := 0;
+    if NewPos > Length(Text) then
+      NewPos := Length(Text);
+    if NewPos <> Pos then
+    begin
+      if Anchor < 0 then
+        Anchor := Pos;
+      Pos := NewPos;
+      Fresh := False;
+      Typing := False;
+      Invalidate;
+    end;
+  end;
+end;
+
+// Двойной щелчок по полю - выделить слово под кареткой
+procedure TFarView.DlgRowsDblClick;
+var
+  WordFrom, WordTo: Integer;
+begin
+  FDlgDragRow := -1;
+  with FDlgRows[FDlgRow] do
+  begin
+    WordFrom := Pos;
+    WordTo := Pos;
+    while (WordFrom > 0) and not FarDlgIsSep(Text[WordFrom]) do
+      Dec(WordFrom);
+    while (WordTo < Length(Text)) and not FarDlgIsSep(Text[WordTo + 1]) do
+      Inc(WordTo);
+    if WordTo = WordFrom then
+      Exit;
+    Fresh := False;
+    Typing := False;
+    Anchor := WordFrom;
+    Pos := WordTo;
   end;
   Invalidate;
 end;
@@ -10887,9 +12923,21 @@ var
   InEdit, InChoice: Boolean;
 begin
   Result := True;
+  // Открыт список поля - клавиши ему
+  if FDlgDrop >= 0 then
+  begin
+    Result := DlgDropKey(AKey, AShift, ACtrl, AAlt);
+    Exit;
+  end;
   ButtonCount := Length(FDlgButtons);
   RowCount := Length(FDlgRows);
   InEdit := DlgRowIsEdit;
+  // Поле ввода: клавиши правки как в редакторе
+  if InEdit and DlgRowEditKey(AKey, AShift, ACtrl, AAlt) then
+  begin
+    Invalidate;
+    Exit;
+  end;
   InChoice := (FDlgRow >= 0) and not InEdit;
   OldIndex := -1;
   if InChoice then
@@ -10947,16 +12995,7 @@ begin
         end;
       end;
     VK_LEFT, VK_RIGHT:
-      if InEdit then
-        with FDlgRows[FDlgRow] do
-        begin
-          Fresh := False;
-          if (AKey = VK_LEFT) and (Pos > 0) then
-            Dec(Pos)
-          else if (AKey = VK_RIGHT) and (Pos < Length(Text)) then
-            Inc(Pos);
-        end
-      else if InChoice then
+      if InChoice then
       begin
         if AKey = VK_LEFT then
           FarDlgChoose(FDlgRows[FDlgRow], FDlgRows[FDlgRow].Index - 1)
@@ -10971,64 +13010,15 @@ begin
           FDlgFocus := (FDlgFocus + 1) mod ButtonCount;
       end;
     VK_HOME, VK_END:
-      if InEdit then
-        with FDlgRows[FDlgRow] do
-        begin
-          Fresh := False;
-          if AKey = VK_HOME then
-            Pos := 0
-          else
-            Pos := Length(Text);
-        end
-      else if InChoice then
+      if InChoice then
       begin
         if AKey = VK_HOME then
           FarDlgChoose(FDlgRows[FDlgRow], 0)
         else
           FarDlgChoose(FDlgRows[FDlgRow], MaxInt);
       end;
-    VK_BACK:
-      if InEdit then
-        with FDlgRows[FDlgRow] do
-          if Fresh then
-          begin
-            Text := '';
-            Pos := 0;
-            Fresh := False;
-          end
-          else if Pos > 0 then
-          begin
-            Delete(Text, Pos, 1);
-            Dec(Pos);
-          end;
-    VK_DELETE:
-      if InEdit then
-        with FDlgRows[FDlgRow] do
-          if Fresh then
-          begin
-            Text := '';
-            Pos := 0;
-            Fresh := False;
-          end
-          else if Pos < Length(Text) then
-            Delete(Text, Pos + 1, 1);
-    VK_INSERT:
-      if InEdit and AShift and FarClipboardHasText then
-        DlgRowInsert(FarClipboardText);
   else
-    if InEdit and ACtrl and not AAlt and (AKey = Ord('V')) then
-    begin
-      if FarClipboardHasText then
-        DlgRowInsert(FarClipboardText);
-    end
-    else if InEdit and ACtrl and not AAlt and (AKey = Ord('Y')) then
-      with FDlgRows[FDlgRow] do
-      begin
-        Text := '';
-        Pos := 0;
-        Fresh := False;
-      end
-    else if ACtrl or AAlt then
+    if ACtrl or AAlt then
       Result := True   // сочетания в окне никуда не отдаём (ярлыки меню)
     else
       Result := False; // буквы, цифры - символы поля ввода (WM_CHAR)
@@ -11068,12 +13058,27 @@ begin
       if (FDlgKind = fdArcAdd) and (RowIndex = 1) and (Index <> OldIndex) then
         ArcAddFormatChanged(OldIndex);
     end
+    else if IsCombo and (ClickCol = FDlgRowsLeft + FDlgRowsW - 1) then
+      // Стрелка поля - список прежних значений
+      DlgDropOpen
     else if ClickCol >= FDlgRowsLeft then
     begin
+      // С Shift - выделение от прежнего места каретки
+      if GetKeyState(VK_SHIFT) < 0 then
+      begin
+        if Fresh then
+          Anchor := 0
+        else if Anchor < 0 then
+          Anchor := Pos;
+      end
+      else
+        Anchor := -1;
       Fresh := False;
+      Typing := False;
       Pos := Scroll + ClickCol - FDlgRowsLeft;
       if Pos > Length(Text) then
         Pos := Length(Text);
+      FDlgDragRow := RowIndex;
     end;
   Invalidate;
 end;
@@ -11322,8 +13327,8 @@ begin
     FFindMask := '*.*';
   DlgOpen(fdFind, 'Find file', ['Search in ' + FarFitPath(Panel.Path, 50)],
     False, False, False, '', ['Find', 'Cancel']);
-  DlgAddRow('Masks:', False, False, FFindMask, [], 0);
-  DlgAddRow('Text:', False, False, FFindText, [], 0);
+  DlgAddCombo('Masks:', FFindMask, FFindMaskHist);
+  DlgAddCombo('Text:', FFindText, FFindTextHist);
   DlgAddRow('Code page:', True, False, '', ['All', 'ANSI', 'OEM', 'UTF-8',
     'UTF-16'], FFindCodePage);
   DlgAddCheck('Case sensitive', FFindCase);
@@ -11347,6 +13352,8 @@ begin
   if FFindMask = '' then
     FFindMask := '*.*';
   FFindText := FDlgRows[1].Text;
+  FarHistoryPush(FFindMaskHist, FFindMask, FarFindHistoryMax);
+  FarHistoryPush(FFindTextHist, FFindText, FarFindHistoryMax);
   FFindCodePage := FDlgRows[2].Index;
   FFindCase := FDlgRows[3].Index = 1;
   FFindWhole := FDlgRows[4].Index = 1;
@@ -11378,6 +13385,7 @@ begin
   FFindFocus := -1;
   FFindDone := False;
   FFindOpen := True;
+  FFindSuspended := False;
   FFindThread := TFarFindThread.Create(AOptions);
   if FFindTimer = nil then
   begin
@@ -11409,6 +13417,7 @@ procedure TFarView.FindQuit;
 begin
   FindStopThread;
   FFindOpen := False;
+  FFindSuspended := False;
   SetLength(FFindItems, 0);
   SetLength(FFindRows, 0);
   Invalidate;
@@ -11551,6 +13560,32 @@ begin
     Exit;
   end;
   OpenEditor(Item.Dir + Item.Name);
+  // Редактор открылся - окно найденного спрятать до его закрытия
+  if (FEditor <> nil) and FarSameName(FEditor.FileName, Item.Dir + Item.Name) then
+  begin
+    FFindOpen := False;
+    FFindSuspended := True;
+  end;
+end;
+
+// F3 в окне найденного: просмотр файла под курсором
+procedure TFarView.FindView;
+var
+  Item: TFarFindItem;
+begin
+  if not FindCurrent(Item) then
+    Exit;
+  if Item.IsDir then
+  begin
+    Status(FarProduct + ': это папка - Enter перейдёт в неё');
+    Exit;
+  end;
+  OpenViewer(Item.Dir + Item.Name);
+  if (FViewer <> nil) and FarSameName(FViewer.FileName, Item.Dir + Item.Name) then
+  begin
+    FFindOpen := False;
+    FFindSuspended := True;
+  end;
 end;
 
 // Кнопки окна найденного: New search, Go to, Edit, Stop / Cancel
@@ -11619,6 +13654,8 @@ begin
         FindButton(FFindFocus);
     VK_F4:
       FindEdit;
+    VK_F3:
+      FindView;
   else
     // Остальное не отдаём панелям и меню IDE
     Result := True;
@@ -11927,7 +13964,10 @@ begin
     if FPal[Item] = clNone then
       Items[High(Items)].RightText := 'нет'
     else
-      Items[High(Items)].RightText := WideString(FarColorToText(FPal[Item]));
+    begin
+      Items[High(Items)].SwatchCount := 1;
+      Items[High(Items)].Swatch1 := FPal[Item];
+    end;
     // Образец: справа цветом элемента
     Items[High(Items)].HasColors := True;
     if FarPalIsBack(Item) then
@@ -11989,9 +14029,10 @@ begin
       Items[RuleIdx].Mark := FarCheckMark
     else
       Items[RuleIdx].Mark := ' ';
-    Items[RuleIdx].RightText :=
-      WideString(FarColorToText(FColorRules[RuleIdx].Fore) + ' ' +
-      FarColorToText(FColorRules[RuleIdx].Back));
+    // Справа - цвет текста и цвет фона (нет фона - фон панели)
+    Items[RuleIdx].SwatchCount := 2;
+    Items[RuleIdx].Swatch1 := FColorRules[RuleIdx].Fore;
+    Items[RuleIdx].Swatch2 := FColorRules[RuleIdx].Back;
     Items[RuleIdx].Tag := RuleIdx;
     Items[RuleIdx].HasColors := True;
     Items[RuleIdx].Fore := FColorRules[RuleIdx].Fore;
@@ -12578,13 +14619,12 @@ begin
       (Row + 1) * FCellH - 1));
   end;
 
-  // Цвет текста: образец цвета и #RRGGBB
+  // Цвет текста: квадратик с цветом (Enter, щелчок - окно выбора цвета)
   Inc(Row, 2);
   FPickForeRow := Row;
   PutCaption(Inner, Row, 'Foreground:', FPickFocus = pfFore);
   PutText(Inner + 12, Row, 6, '', Fore, FPickFore);
-  PutText(Inner + 19, Row, 20, WideString(FarColorToText(FPickFore)) +
-    '  (Enter - выбрать)', Fore, Back);
+  PutText(Inner + 19, Row, 20, '(Enter - выбрать)', Fore, Back);
 
   // Цвет фона
   Inc(Row);
@@ -12598,7 +14638,7 @@ begin
   else
   begin
     PutText(Inner + 12, Row, 6, '', Fore, FPickBack);
-    Caption := WideString(FarColorToText(FPickBack));
+    Caption := '(Enter - выбрать)';
   end;
   PutText(Inner + 19, Row, 20, Caption, Fore, Back);
 
@@ -12835,6 +14875,22 @@ begin
       end;
     end;
     FCmdHistPos := Length(FCmdHistory);
+    // Alt+F7: прежние маски и тексты (списки полей)
+    SetLength(FFindMaskHist, 0);
+    SetLength(FFindTextHist, 0);
+    for HistoryIndex := FarFindHistoryMax downto 1 do
+    begin
+      FarHistoryPush(FFindMaskHist, FarDecodePath(Ini.ReadString(
+        FarFindHistorySection, 'Mask' + IntToStr(HistoryIndex), '')),
+        FarFindHistoryMax);
+      FarHistoryPush(FFindTextHist, FarDecodePath(Ini.ReadString(
+        FarFindHistorySection, 'Text' + IntToStr(HistoryIndex), '')),
+        FarFindHistoryMax);
+    end;
+    if Length(FFindMaskHist) = 0 then
+      FarHistoryPush(FFindMaskHist, FFindMask, FarFindHistoryMax);
+    if Length(FFindTextHist) = 0 then
+      FarHistoryPush(FFindTextHist, FFindText, FarFindHistoryMax);
     FActive := Ini.ReadInteger(FarIniSection, 'Active', 0);
     if (FActive < 0) or (FActive > 1) then
       FActive := 0;
@@ -12938,6 +14994,13 @@ begin
     for HistoryIndex := 0 to High(FCmdHistory) do
       Ini.WriteString(FarCmdHistorySection, 'Cmd' + IntToStr(HistoryIndex + 1),
         FarEncodePath(FCmdHistory[HistoryIndex]));
+    Ini.EraseSection(FarFindHistorySection);
+    for HistoryIndex := 0 to High(FFindMaskHist) do
+      Ini.WriteString(FarFindHistorySection, 'Mask' +
+        IntToStr(HistoryIndex + 1), FarEncodePath(FFindMaskHist[HistoryIndex]));
+    for HistoryIndex := 0 to High(FFindTextHist) do
+      Ini.WriteString(FarFindHistorySection, 'Text' +
+        IntToStr(HistoryIndex + 1), FarEncodePath(FFindTextHist[HistoryIndex]));
     if FHalfWidth > 0 then
       Ini.WriteInteger(FarIniSection, 'HalfWidth', FHalfWidth);
   finally

@@ -56,6 +56,7 @@ type
     FEncoding: TFarEditEncoding;
     FLineBreak: WideString;
     FFinalBreak: Boolean;
+    FSavedEncoding: TFarEditEncoding; // в какой кодировке файл на диске
     FModified: Boolean;
     FRow: Integer;
     FCol: Integer;
@@ -88,6 +89,7 @@ type
     procedure RecordDelete(ARow, ACol: Integer; const AText: WideString);
     procedure UpdateModified;
     function GetLine(AIndex: Integer): WideString;
+    function GetModified: Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -140,8 +142,9 @@ type
     property Count: Integer read FCount;
     property Lines[AIndex: Integer]: WideString read GetLine;
     property FileName: WideString read FFileName write FFileName;
+    // Кодировка записи (F2). Другая, чем у файла на диске, - Modified
     property Encoding: TFarEditEncoding read FEncoding write FEncoding;
-    property Modified: Boolean read FModified;
+    property Modified: Boolean read GetModified;
     property Row: Integer read FRow;
     property Col: Integer read FCol;
     property TopRow: Integer read FTopRow write FTopRow;
@@ -153,6 +156,8 @@ type
 
 // Имя кодировки для строки состояния
 function FarEditEncodingName(AEncoding: TFarEditEncoding): string;
+// Кодировка подробно - для меню Shift+F8 и строки состояния
+function FarEditEncodingTitle(AEncoding: TFarEditEncoding): string;
 // Текст буфера обмена (Unicode; нет - ANSI); '' - пусто
 function FarClipboardText: WideString;
 
@@ -199,6 +204,17 @@ begin
     feUtf16: Result := 'UTF-16';
   else
     Result := 'ANSI ' + IntToStr(GetACP);
+  end;
+end;
+
+function FarEditEncodingTitle(AEncoding: TFarEditEncoding): string;
+begin
+  case AEncoding of
+    feUtf8: Result := 'UTF-8';
+    feUtf8Bom: Result := 'UTF-8 with BOM';
+    feUtf16: Result := 'UTF-16 LE';
+  else
+    Result := 'ANSI (Windows ' + IntToStr(GetACP) + ')';
   end;
 end;
 
@@ -273,6 +289,25 @@ begin
 end;
 
 // Позиция ANeedle в AHay (WideString; Pos Delphi 7 - для string); 0 - нет
+// ADest := AFirst + ASecond. Обе пустые - приёмник очищается явно: в
+// unIDE (Delphi 7) после Enter в начале строки строка оставалась прежней
+// (копия вместо пустой), хотя в uniFAR (Free Pascal) тот же код работает.
+// Пустая строка теперь не получается сложением двух пустых WideString
+procedure EdSetJoin(var ADest: WideString; const AFirst, ASecond: WideString);
+begin
+  if AFirst = '' then
+  begin
+    if ASecond = '' then
+      ADest := ''
+    else
+      ADest := ASecond;
+  end
+  else if ASecond = '' then
+    ADest := AFirst
+  else
+    ADest := AFirst + ASecond;
+end;
+
 function EdPos(const ANeedle, AHay: WideString): Integer;
 var
   StartIdx, CharIdx: Integer;
@@ -314,6 +349,7 @@ begin
   FLines[0] := '';
   FCount := 1;
   FEncoding := feAnsi;
+  FSavedEncoding := feAnsi;
   FLineBreak := #13#10;
   FFinalBreak := False;
   FTabSize := 8;
@@ -334,6 +370,12 @@ begin
     Result := FLines[AIndex]
   else
     Result := '';
+end;
+
+// Изменён текст или выбрана другая кодировка записи (Shift+F8)
+function TFarEditor.GetModified: Boolean;
+begin
+  Result := FModified or (FEncoding <> FSavedEncoding);
 end;
 
 procedure TFarEditor.SetScheme(AScheme: TClrScheme; ADefFg, ADefBg: Integer);
@@ -644,10 +686,10 @@ begin
     for PartIdx := FCount - 1 downto ARow + 1 do
       FLines[PartIdx + PartCount - 1] := FLines[PartIdx];
     Inc(FCount, PartCount - 1);
-    FLines[ARow] := Head + Parts[0];
+    EdSetJoin(FLines[ARow], Head, Parts[0]);
     for PartIdx := 1 to PartCount - 2 do
       FLines[ARow + PartIdx] := Parts[PartIdx];
-    FLines[ARow + PartCount - 1] := Parts[PartCount - 1] + Tail;
+    EdSetJoin(FLines[ARow + PartCount - 1], Parts[PartCount - 1], Tail);
     AEndRow := ARow + PartCount - 1;
     AEndCol := Length(Parts[PartCount - 1]);
   end;
@@ -670,8 +712,8 @@ begin
   for RowIdx := ARow1 + 1 to ARow2 - 1 do
     Result := Result + #10 + FLines[RowIdx];
   Result := Result + #10 + Copy(FLines[ARow2], 1, ACol2);
-  FLines[ARow1] := Copy(FLines[ARow1], 1, ACol1) +
-    Copy(FLines[ARow2], ACol2 + 1, MaxInt);
+  EdSetJoin(FLines[ARow1], Copy(FLines[ARow1], 1, ACol1),
+    Copy(FLines[ARow2], ACol2 + 1, MaxInt));
   Removed := ARow2 - ARow1;
   for RowIdx := ARow1 + 1 to FCount - 1 - Removed do
     FLines[RowIdx] := FLines[RowIdx + Removed];
@@ -1207,6 +1249,7 @@ begin
     Dec(LineCount);
   FCount := LineCount;
   FFileName := AFileName;
+  FSavedEncoding := FEncoding;
   FRow := 0;
   FCol := 0;
   FPrefCol := 0;
@@ -1226,7 +1269,7 @@ function TFarEditor.SaveToFile(const AFileName: WideString;
   var AError: string): Boolean;
 var
   Text: WideString;
-  Raw: string;
+  Raw, Bom: string;
   RowIdx, ByteLen: Integer;
   UsedDefault: BOOL;
   FileHandle: THandle;
@@ -1262,8 +1305,17 @@ begin
           EdWideToMulti(EdCpUtf8, 0, PWideChar(Text), Length(Text),
             PAnsiChar(Raw), ByteLen, nil, nil);
         end;
+        // BOM - байтами. Строковая константа в Free Pascal ({$CODEPAGE
+        // CP1251}) при сложении перекодируется в кодировку Windows: при
+        // кодировке не 1251 байты EF и BF становились '?'
         if AEncoding = feUtf8Bom then
-          Raw := #$EF#$BB#$BF + Raw;
+        begin
+          SetLength(Bom, 3);
+          Bom[1] := AnsiChar($EF);
+          Bom[2] := AnsiChar($BB);
+          Bom[3] := AnsiChar($BF);
+          Raw := Bom + Raw;
+        end;
       end;
   else
     Raw := '';
@@ -1301,6 +1353,7 @@ begin
   end;
   FFileName := AFileName;
   FEncoding := AEncoding;
+  FSavedEncoding := AEncoding;
   FSavedUndo := FUndoCount;
   FModified := False;
   Result := True;
