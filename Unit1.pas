@@ -3597,6 +3597,9 @@ type
     function  LazExeOf(const ALpi: string): string;
     function  LazUnitPathOf(const ALpi: string): string;
     function  CompileLazarus: Boolean;
+    function  FpcExe(var AProblem: string): string;
+    function  FpcTargetSource: string;
+    function  CompileFpc(const ASource, ALpi: string): Boolean;
     function  RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
                          const AWorkDir: string): Integer;
     procedure RosNinjaLine(const ALine: string);
@@ -13636,9 +13639,13 @@ begin
     bkCMakeNinja:
       if RosSettingsOf(BuildProject, RosCfg) then
         Result := RosCfg.BuildDir;
-    // Lazarus: .lpi проекта (или .lpk)
+    // Lazarus: .lpi проекта (или .lpk); без .lpi - программа .lpr/.pp
     bkLazarus:
-      Result := LazTargetLpi;
+      begin
+        Result := LazTargetLpi;
+        if Result = '' then
+          Result := FpcTargetSource;
+      end;
   end;
 end;
 
@@ -52171,9 +52178,291 @@ begin
   end;
 end;
 
+// ---------------------------------------------------------------------------
+//  Сборка Free Pascal без lazbuild: fpc.exe <программа>.lpr
+//
+//  Когда: у вкладки нет описания проекта .lpi (одиночная программа .lpr
+//  или .pp) или lazbuild.exe не найден, а рядом с .lpi лежит .lpr с тем же
+//  именем. Из .lpi (если он есть) берутся режим синтаксиса (-M), пути
+//  модулей и include (-Fu, -Fi) и имя exe (-o). Объектные файлы и .ppu -
+//  в подпапке lib рядом с программой (-FU), чтобы не мусорить в исходниках.
+//  fpc.exe (FpcExe): поле FpcPath в разделе Compiler.Lazarus editor.ini
+//  (файл fpc.exe или папка с ним), PATH, fpc из папки Lazarus
+//  (<lazarus>\fpc\<версия>\bin\<платформа>), <диск>:\FPC\<версия>\bin\
+//  <платформа>. Из нескольких платформ берётся x86_64-win64.
+//  Сообщения fpc "файл(строка,колонка) Error: ..." - как у lazbuild.
+// ---------------------------------------------------------------------------
+
+// fpc.exe в папках ARoot\<версия>\bin\<платформа>; x86_64-win64 - первым.
+// Нет - пусто
+function FpcUnderRoot(const ARoot: string): string;
+var
+  VerRec, TargetRec: TSearchRec;
+  Root, BinDir, Candidate: string;
+begin
+  Result := '';
+  if (ARoot = '') or not DirectoryExists(ARoot) then
+    Exit;
+  Root := IncludeTrailingPathDelimiter(ARoot);
+  if FindFirst(Root + '*', faDirectory, VerRec) = 0 then
+  try
+    repeat
+      if (VerRec.Name = '.') or (VerRec.Name = '..') or
+         ((VerRec.Attr and faDirectory) = 0) then
+        Continue;
+      BinDir := Root + VerRec.Name + '\bin\';
+      Candidate := BinDir + 'x86_64-win64\fpc.exe';
+      if FileExists(Candidate) then
+      begin
+        Result := Candidate;
+        Exit;
+      end;
+      if FindFirst(BinDir + '*', faDirectory, TargetRec) = 0 then
+      try
+        repeat
+          if (TargetRec.Name = '.') or (TargetRec.Name = '..') or
+             ((TargetRec.Attr and faDirectory) = 0) then
+            Continue;
+          Candidate := BinDir + TargetRec.Name + '\fpc.exe';
+          if (Result = '') and FileExists(Candidate) then
+            Result := Candidate;
+        until FindNext(TargetRec) <> 0;
+      finally
+        FindClose(TargetRec);
+      end;
+    until FindNext(VerRec) <> 0;
+  finally
+    FindClose(VerRec);
+  end;
+end;
+
+function TForm1.FpcExe(var AProblem: string): string;
+var
+  Ini: TIniFile;
+  Setting, Lazbuild, LazProblem: string;
+  Buf: array[0..MAX_PATH] of Char;
+  FilePart: PChar;
+  DriveCh: Char;
+begin
+  Result := '';
+  AProblem := '';
+  // 1. Поле FpcPath: файл - он, папка - fpc.exe в ней
+  Setting := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Setting := Trim(Ini.ReadString(CompilerSection('Lazarus'),
+                                     'FpcPath', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+  if Setting <> '' then
+  begin
+    if FileExists(Setting) and not DirectoryExists(Setting) then
+    begin
+      Result := Setting;
+      Exit;
+    end;
+    if FileExists(IncludeTrailingPathDelimiter(Setting) + 'fpc.exe') then
+    begin
+      Result := IncludeTrailingPathDelimiter(Setting) + 'fpc.exe';
+      Exit;
+    end;
+  end;
+  // 2. PATH
+  if SearchPath(nil, 'fpc.exe', nil, MAX_PATH, Buf, FilePart) > 0 then
+  begin
+    Result := Buf;
+    Exit;
+  end;
+  // 3. fpc из поставки Lazarus
+  Lazbuild := LazbuildExe(LazProblem);
+  if Lazbuild <> '' then
+  begin
+    Result := FpcUnderRoot(ExtractFilePath(Lazbuild) + 'fpc');
+    if Result <> '' then
+      Exit;
+  end;
+  // 4. <диск>:\FPC (установщик Free Pascal)
+  for DriveCh := 'C' to 'Z' do
+    if GetDriveType(PChar(DriveCh + ':\')) = DRIVE_FIXED then
+    begin
+      Result := FpcUnderRoot(DriveCh + ':\FPC');
+      if Result <> '' then
+        Exit;
+    end;
+  AProblem := 'fpc.exe не найден. Искали: ';
+  if Setting <> '' then
+    AProblem := AProblem + 'FpcPath (' + Setting + '), ';
+  AProblem := AProblem + 'PATH, папку fpc в Lazarus, <диск>:\FPC. Путь ' +
+    'можно указать в editor.ini: раздел [' + CompilerSection('Lazarus') +
+    '], ключ FpcPath (fpc.exe или папка с ним)';
+end;
+
+// Программа для сборки fpc без .lpi: вкладка .lpr или .pp, иначе цель
+// проекта unIDE типа Lazarus с расширением .lpr или .pp. Нет - пусто
+function TForm1.FpcTargetSource: string;
+var
+  Ext, BuildPrj, Stored: string;
+begin
+  Result := '';
+  if FCurrentFileName = '' then
+    Exit;
+  Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  if ((Ext = '.lpr') or (Ext = '.pp')) and FileExists(FCurrentFileName) then
+  begin
+    Result := FCurrentFileName;
+    Exit;
+  end;
+  BuildPrj := BuildProject;
+  if ProjectBuildKind(BuildPrj) = bkLazarus then
+  begin
+    Stored := ProjectTargetFind(BuildPrj);
+    Ext := LowerCase(ExtractFileExt(Stored));
+    if ((Ext = '.lpr') or (Ext = '.pp')) and FileExists(Stored) then
+      Result := Stored;
+  end;
+end;
+
+// Сборка ASource через fpc.exe; ALpi - описание проекта, из которого
+// берутся режим, пути и имя exe (может быть пусто). Лог уже очищен и
+// файлы сохранены (CompileLazarus)
+function TForm1.CompileFpc(const ASource, ALpi: string): Boolean;
+var
+  Fpc, Problem, Dir, Params, Exe, ShortName, Options, Mode: string;
+  UnitPath, PathRest, PathItem, LibDir: string;
+  LogLine, ErrFile, FirstFile, Where: string;
+  Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount, SepPos: Integer;
+  StartTick: Cardinal;
+  Built: Boolean;
+begin
+  Result := False;
+  Fpc := FpcExe(Problem);
+  if Fpc = '' then
+  begin
+    LogComp('Сборка Free Pascal: ' + Problem);
+    Exit;
+  end;
+  Dir := ExtractFilePath(ASource);
+  ShortName := ExtractFileName(ASource);
+  Exe := '';
+  if ALpi <> '' then
+    Exe := LazExeOf(ALpi);
+  if Exe = '' then
+    Exe := ChangeFileExt(ASource, '.exe');
+  if not FreeBusyExe(Exe) then
+    Exit;
+
+  Params := '';
+  UnitPath := '';
+  if ALpi <> '' then
+  begin
+    Options := LazCompilerOptions(ALpi);
+    Mode := LazXmlValue(Options, '<Parsing>', '<SyntaxMode');
+    if Mode <> '' then
+      Params := Params + ' -M' + Mode;
+    UnitPath := LazUnitPathOf(ALpi);
+    PathRest := UnitPath;
+    while PathRest <> '' do
+    begin
+      SepPos := Pos(';', PathRest);
+      if SepPos > 0 then
+      begin
+        PathItem := Copy(PathRest, 1, SepPos - 1);
+        PathRest := Copy(PathRest, SepPos + 1, MaxInt);
+      end
+      else
+      begin
+        PathItem := PathRest;
+        PathRest := '';
+      end;
+      if PathItem <> '' then
+        Params := Params + ' -Fu"' + PathItem + '" -Fi"' + PathItem + '"';
+    end;
+  end;
+  LibDir := Dir + 'lib';
+  if not DirectoryExists(LibDir) then
+    CreateDir(LibDir);
+  Params := Trim(Params + ' -FU"' + LibDir + '" -o"' + Exe + '" "' +
+    ASource + '"');
+
+  FLastBuildDir := Dir;
+  FLastUnitPath := UnitPath;
+  LogComp('--- Компиляция fpc: ' + ShortName);
+  LogComp('"' + Fpc + '" ' + Params);
+  WriteCompileBat(Fpc, Params, Dir, ASource);
+
+  if CompLogEdit <> nil then
+    LogStart := CompLogEdit.Lines.Count
+  else
+    LogStart := -1;
+  StartTick := GetTickCount;
+  Code := -1;
+  Built := False;
+  ErrCount := 0;
+  FirstFile := '';
+  FirstLine := 0;
+  BusyBegin('Компиляция ' + ShortName);
+  try
+    // fpc пишет пути как получил (ANSI), сообщения - латиницей: не OEM
+    FCompNoOem := True;
+    try
+      Code := RunCompiler(Fpc, Params, Dir);
+    finally
+      FCompNoOem := False;
+    end;
+    if Code = -1 then
+      Exit;   // не запустился - причина уже в логе
+    if LogStart >= 0 then
+      for LineIdx := LogStart to CompLogEdit.Lines.Count - 1 do
+      begin
+        LogLine := StripLogTime(CompLogEdit.Lines[LineIdx]);
+        if not IsCompilerError(LogLine) then
+          Continue;
+        Inc(ErrCount);
+        if (FirstFile = '') and ParseCompilerLine(LogLine, ErrFile,
+           ErrLine) then
+        begin
+          ErrFile := ResolveErrorFile(ErrFile, Where);
+          if ErrFile <> '' then
+          begin
+            FirstFile := ErrFile;
+            FirstLine := ErrLine;
+          end;
+        end;
+      end;
+    Built := Code = 0;
+  finally
+    if Built then
+      BusyEnd('Компиляция: готово', True)
+    else
+      BusyEnd('Компиляция: ошибки', False);
+  end;
+  Result := Built;
+
+  if Built then
+  begin
+    LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - StartTick, Exe]));
+    Exit;
+  end;
+  LogComp(Format('--- Сборка не прошла: код завершения fpc %d, ' +
+  'ошибок: %d. Двойной щелчок по строке с ошибкой открывает файл на ' +
+  'нужной строке', [Code, ErrCount]));
+  SaveCompileLog(ChangeFileExt(ASource, '') + '_compile.log');
+  if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+    ShowErrLog;
+  if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
+  begin
+    OpenNamedFile(FirstFile);
+    GotoLine(FirstLine - 1);
+  end;
+end;
+
 function TForm1.CompileLazarus: Boolean;
 var
-  Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName: string;
+  Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName, Src: string;
   LogLine, ErrFile, FirstFile, Where: string;
   Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount: Integer;
   StartTick: Cardinal;
@@ -52204,6 +52493,14 @@ begin
   Lpi := LazTargetLpi;
   if Lpi = '' then
   begin
+    // Программа без .lpi (.lpr, .pp) - напрямую через fpc.exe
+    Src := FpcTargetSource;
+    if Src <> '' then
+    begin
+      LogComp('Описания проекта .lpi нет - собираю fpc.exe напрямую');
+      Result := CompileFpc(Src, '');
+      Exit;
+    end;
     LogComp('Сборка Lazarus: не найдено описание проекта .lpi - lazbuild ' +
     'собирает только по нему. Откройте .lpi или .lpr проекта или задайте ' +
     'цель проекта unIDE (Project Properties)');
@@ -52213,6 +52510,15 @@ begin
   if Lazbuild = '' then
   begin
     LogComp('Сборка Lazarus: ' + Problem);
+    // Без lazbuild: fpc.exe, режим и пути - из .lpi
+    Src := ChangeFileExt(Lpi, '.lpr');
+    if (CompareText(ExtractFileExt(Lpi), '.lpi') = 0) and
+       FileExists(Src) then
+    begin
+      LogComp('Собираю без lazbuild: fpc.exe напрямую, режим и пути из ' +
+        ExtractFileName(Lpi));
+      Result := CompileFpc(Src, Lpi);
+    end;
     Exit;
   end;
   Dir := ExtractFilePath(Lpi);
@@ -58427,7 +58733,13 @@ begin
   begin
     TargetSrc := LazTargetLpi;
     if TargetSrc <> '' then
-      Result := LazExeOf(TargetSrc);
+      Result := LazExeOf(TargetSrc)
+    else
+    begin
+      TargetSrc := FpcTargetSource;
+      if TargetSrc <> '' then
+        Result := ChangeFileExt(TargetSrc, '.exe');
+    end;
   end
   else if Kind = bkFreeBasic then
   begin
@@ -61936,11 +62248,18 @@ begin
     Dpr := LazTargetLpi;
     if Dpr = '' then
     begin
-      LogComp('Запуск: .lpi проекта Lazarus не найден. Откройте .lpi или ' +
-      '.lpr проекта');
-      Exit;
-    end;
-    Exe := LazExeOf(Dpr);
+      // Программа без .lpi, собранная fpc.exe: exe рядом с ней
+      Dpr := FpcTargetSource;
+      if Dpr = '' then
+      begin
+        LogComp('Запуск: .lpi проекта Lazarus не найден. Откройте .lpi ' +
+        'или .lpr проекта');
+        Exit;
+      end;
+      Exe := ChangeFileExt(Dpr, '.exe');
+    end
+    else
+      Exe := LazExeOf(Dpr);
     if Exe = '' then
     begin
       LogComp('Запуск: имя exe по ' + ExtractFileName(Dpr) + ' не ' +
