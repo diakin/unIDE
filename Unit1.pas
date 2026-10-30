@@ -13845,8 +13845,8 @@ cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target
     else if cmbFbKind <> nil then
       cmbFbBits.Left := cmbFbKind.Left + cmbFbKind.Width + 4;
   end;
-  // Lazarus: разрядность сборки fpc.exe. При сборке lazbuild она задаётся
-  // в .lpi - переключатель недоступен
+  // Lazarus: разрядность сборки - ключи fpc.exe -P/-T или lazbuild
+  // --cpu/--os
   if cmbLazBits <> nil then
   begin
     cmbLazBits.Visible := Kind = bkLazarus;
@@ -13863,7 +13863,7 @@ cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target
       end;
       LazLpi := LazTargetLpi;
       LazViaFpc := LazBuildViaFpc(LazLpi);
-      cmbLazBits.Enabled := LazViaFpc and (FCurrentFileName <> '');
+      cmbLazBits.Enabled := FCurrentFileName <> '';
       if LazViaFpc then
       begin
         if LazLpi <> '' then
@@ -13879,10 +13879,10 @@ cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target
           '64-битный exe - с суффиксом 64: ' + ExtractFileName(LazExe);
       end
       else
-        cmbLazBits.Hint := 'Сборка идёт lazbuild по ' +
-          ExtractFileName(LazLpi) + ': разрядность задаётся в .lpi. ' +
-          'Переключатель действует при сборке fpc.exe (поле fpc.exe в ' +
-          'IDE Options - Compilers - Lazarus)';
+        cmbLazBits.Hint := 'Разрядность сборки lazbuild по ' +
+          ExtractFileName(LazLpi) + ': 32 - --cpu=i386 --os=win32, 64 - ' +
+          '--cpu=x86_64 --os=win64 (нужен ppcrossx64 в fpc Lazarus). Exe ' +
+          'одно для обеих: ' + ExtractFileName(LazExeOf(LazLpi));
     end;
   end;
   // RapidQ: папка inc проекта - верхней строкой, за подписью цели, до
@@ -52695,6 +52695,7 @@ end;
 function TForm1.CompileLazarus: Boolean;
 var
   Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName, Src: string;
+  Cpu, TargetOs: string;
   LogLine, ErrFile, FirstFile, Where: string;
   Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount: Integer;
   StartTick: Cardinal;
@@ -52772,6 +52773,15 @@ begin
   FLastBuildDir := Dir;
   FLastUnitPath := LazUnitPathOf(Lpi);
   Params := '"' + Lpi + '"';
+  // Разрядность из рамки Project / Project Properties (Target CPU / OS):
+  // ключи lazbuild --cpu и --os, они главнее значений в .lpi. Пусто - как
+  // в .lpi. x86_64 у 32-битного Lazarus - нужен ppcrossx64 в его fpc
+  Cpu := FpcBuildSetting('LazCpu', 'FpcCpu');
+  TargetOs := FpcBuildSetting('LazOs', 'FpcOs');
+  if Cpu <> '' then
+    Params := '--cpu=' + Cpu + ' ' + Params;
+  if TargetOs <> '' then
+    Params := '--os=' + TargetOs + ' ' + Params;
   LogComp('--- Компиляция: ' + ShortName);
   LogComp('"' + Lazbuild + '" ' + Params);
   WriteCompileBat(Lazbuild, Params, Dir, Lpi);
