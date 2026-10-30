@@ -264,6 +264,11 @@ type
     lblIncPaths: TLabel;
     // Рамка проекта ReactOS / LiberNT (строится кодом в BuildRosControls)
     grpRos: TUiGroupBox;
+    // Рамка проекта Lazarus: платформа и ключи сборки fpc.exe
+    grpLaz: TUiGroupBox;
+    cbLazCpu: TUiComboBox;
+    cbLazOs: TUiComboBox;
+    edLazOptions: TUiEdit;
     cbRosBuildDir: TUiComboBox;
     btnRosBuildDir: TUiButton;
     cbRosTarget: TUiComboBox;
@@ -301,6 +306,7 @@ type
     procedure btnIncDelClick(Sender: TObject);
     procedure btnIncDelAllClick(Sender: TObject);
     procedure BuildRosControls;
+    procedure BuildLazControls;
     procedure BuildRqKindControls;
     function RosSourceDir: string;
     procedure cbRosBuildDirDropDown(Sender: TObject);
@@ -362,6 +368,10 @@ type
     function RqComp: Integer;
     // Разрядность сборки через FreeBASIC: 32 или 64
     function RqBits: Integer;
+    // Рамка Lazarus: Target CPU, Target OS и ключи fpc проекта (пусто -
+    // из IDE Options - Compilers - Lazarus)
+    procedure SetLazSettings(const ACpu, AOs, AOptions: string);
+    procedure GetLazSettings(var ACpu, AOs, AOptions: string);
     // Рамка ReactOS: заполнить по настройкам проекта и прочитать. Пути в
     // поле папки сборки - от папки проекта (edDir), если они внутри неё.
     procedure SetRosSettings(const ASettings: TRosSettings);
@@ -383,6 +393,7 @@ const
   CompactRqClientHeight = 352;
   CompactRosClientHeight = 456;
   CompactFbClientHeight = 306;
+  CompactLazClientHeight = 376;
   FullClientHeight = 560;
   // Design-пакеты Delphi 7
   KnownPackagesKey = 'Software\Borland\Delphi\7.0\Known Packages';
@@ -406,6 +417,7 @@ begin
   FFormClasses := TStringList.Create;
   FPkgPaths := TStringList.Create;
   BuildRosControls;
+  BuildLazControls;
   BuildRqKindControls;
   SetOptionsVisible(False);
 end;
@@ -433,6 +445,8 @@ begin
   grpFbRes.Visible := CompareText(cbType.Text, 'FreeBASIC') = 0;
   if grpRos <> nil then
     grpRos.Visible := IsRosType;
+  if grpLaz <> nil then
+    grpLaz.Visible := CompareText(cbType.Text, 'Lazarus') = 0;
   if cbRqKind <> nil then
   begin
     cbRqKind.Visible := FRqKindShown and grpRqInc.Visible;
@@ -447,6 +461,8 @@ begin
     ClientHeight := CompactRosClientHeight
   else if grpFbRes.Visible then
     ClientHeight := CompactFbClientHeight
+  else if (grpLaz <> nil) and grpLaz.Visible then
+    ClientHeight := CompactLazClientHeight
   else
     ClientHeight := CompactClientHeight;
 end;
@@ -573,6 +589,92 @@ begin
   NoteLabel.Caption := 'Папка проекта - корень исходников (configure.cmd, ' +
                        'CMakeLists.txt, PreLoad.cmake). Compile: configure, ' +
                        'если в папке сборки нет build.ninja, затем ninja.';
+end;
+
+// Рамка Lazarus - на месте рамки папки inc:
+//   Target CPU  [x86_64 v]   (ключ -P)
+//   Target OS   [win64  v]   (ключ -T)
+//   Ключи fpc   [-O3               ]
+//   пояснение
+// Пустое поле - значение из IDE Options - Compilers - Lazarus (Unit1,
+// FpcSetting)
+procedure TDlgNewPrj.BuildLazControls;
+const
+  LabelLeft = 12;
+  FieldLeft = 130;
+
+  procedure AddLabel(ATop: Integer; const ACaption: string);
+  var
+    RowLabel: TLabel;
+  begin
+    RowLabel := TLabel.Create(Self);
+    RowLabel.Parent := grpLaz;
+    RowLabel.SetBounds(LabelLeft, ATop + 4, FieldLeft - LabelLeft - 4, 13);
+    RowLabel.Caption := ACaption;
+  end;
+
+var
+  NoteLabel: TLabel;
+begin
+  if grpLaz <> nil then
+    Exit;
+  grpLaz := TUiGroupBox.Create(Self);
+  grpLaz.Parent := tsProject;
+  grpLaz.SetBounds(grpRqInc.Left, grpRqInc.Top, grpRqInc.Width, 142);
+  grpLaz.Caption := 'Lazarus: сборка fpc.exe';
+  grpLaz.Visible := False;
+
+  AddLabel(22, 'Target CPU');
+  cbLazCpu := TUiComboBox.Create(Self);
+  cbLazCpu.Parent := grpLaz;
+  cbLazCpu.Style := csDropDown;
+  cbLazCpu.SetBounds(FieldLeft, 22, 200, 21);
+  cbLazCpu.Items.Add('i386');
+  cbLazCpu.Items.Add('x86_64');
+  cbLazCpu.Hint := 'Ключ -P: x86_64 - 64-битный exe (через ppcrossx64.exe ' +
+                   'у 32-битного Free Pascal); пусто - из IDE Options';
+  cbLazCpu.ShowHint := True;
+
+  AddLabel(50, 'Target OS');
+  cbLazOs := TUiComboBox.Create(Self);
+  cbLazOs.Parent := grpLaz;
+  cbLazOs.Style := csDropDown;
+  cbLazOs.SetBounds(FieldLeft, 50, 200, 21);
+  cbLazOs.Items.Add('win32');
+  cbLazOs.Items.Add('win64');
+  cbLazOs.Hint := 'Ключ -T; пусто - из IDE Options';
+  cbLazOs.ShowHint := True;
+
+  AddLabel(78, 'Ключи fpc');
+  edLazOptions := TUiEdit.Create(Self);
+  edLazOptions.Parent := grpLaz;
+  edLazOptions.SetBounds(FieldLeft, 78, 566, 21);
+  edLazOptions.Hint := 'Прочие ключи fpc через пробел, например -O3; ' +
+                       'пусто - из IDE Options';
+  edLazOptions.ShowHint := True;
+
+  NoteLabel := TLabel.Create(Self);
+  NoteLabel.Parent := grpLaz;
+  NoteLabel.AutoSize := False;
+  NoteLabel.WordWrap := True;
+  NoteLabel.SetBounds(LabelLeft, 106, 690, 28);
+  NoteLabel.Caption := 'Действуют при сборке fpc.exe (поле fpc.exe в IDE ' +
+                       'Options - Compilers - Lazarus). Пустое поле - ' +
+                       'значение оттуда же.';
+end;
+
+procedure TDlgNewPrj.SetLazSettings(const ACpu, AOs, AOptions: string);
+begin
+  cbLazCpu.Text := ACpu;
+  cbLazOs.Text := AOs;
+  edLazOptions.Text := AOptions;
+end;
+
+procedure TDlgNewPrj.GetLazSettings(var ACpu, AOs, AOptions: string);
+begin
+  ACpu := Trim(cbLazCpu.Text);
+  AOs := Trim(cbLazOs.Text);
+  AOptions := Trim(edLazOptions.Text);
 end;
 
 // Списки нового проекта RapidQ - справа от типа, в той же строке:

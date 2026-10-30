@@ -3599,6 +3599,7 @@ type
     function  CompileLazarus: Boolean;
     function  FpcExe(var AProblem: string): string;
     function  FpcSetting(const AKey: string): string;
+    function  FpcBuildSetting(const APrjKey, AIdeKey: string): string;
     function  FpcTargetSource: string;
     function  CompileFpc(const ASource, ALpi: string): Boolean;
     function  RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
@@ -11177,7 +11178,7 @@ var
   OldName, OldDir, OldType, OldTarget: string;
   NewName, NewDir, NewType, NewTarget, Dir, Val, SectName: string;
   IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList: string;
-  FbIconPath: string;
+  FbIconPath, LazCpu, LazOs, LazOptions: string;
   K, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
   DirChanged, OptionsChanged: Boolean;
   RosCfg: TRosSettings;
@@ -11225,10 +11226,15 @@ begin
     try
       IncOwnList := Prj.ReadString('Project', 'IncPaths', '');
       FbIconPath := Prj.ReadString('Project', 'FbIcon', '');
+      LazCpu := Prj.ReadString('Project', 'LazCpu', '');
+      LazOs := Prj.ReadString('Project', 'LazOs', '');
+      LazOptions := Prj.ReadString('Project', 'LazOptions', '');
     finally
       Prj.Free;
     end;
     Dlg.SetRqInc(IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList);
+    // Проект Lazarus: платформа и ключи сборки fpc.exe
+    Dlg.SetLazSettings(LazCpu, LazOs, LazOptions);
     // Значок exe проекта FreeBASIC
     Dlg.SetFbIcon(FbIconPath, OldDir);
     // Проект ReactOS: папка сборки, цель ninja, configure, скрипт RosBE
@@ -11288,6 +11294,19 @@ begin
       Prj := TProjectIni.Create(SettingsFileName, OldName);
       try
         Prj.WriteString('Project', 'FbIcon', Dlg.FbIcon);
+      finally
+        Prj.Free;
+      end;
+    end;
+    // Платформа и ключи fpc проекта Lazarus - туда же
+    if CompareText(NewType, 'Lazarus') = 0 then
+    begin
+      Dlg.GetLazSettings(LazCpu, LazOs, LazOptions);
+      Prj := TProjectIni.Create(SettingsFileName, OldName);
+      try
+        Prj.WriteString('Project', 'LazCpu', LazCpu);
+        Prj.WriteString('Project', 'LazOs', LazOs);
+        Prj.WriteString('Project', 'LazOptions', LazOptions);
       finally
         Prj.Free;
       end;
@@ -52257,6 +52276,29 @@ begin
   end;
 end;
 
+// Значение для сборки fpc.exe: из свойств проекта сборки (Project
+// Properties, рамка Lazarus: ключ APrjKey), пусто - из IDE Options -
+// Compilers - Lazarus (AIdeKey)
+function TForm1.FpcBuildSetting(const APrjKey, AIdeKey: string): string;
+var
+  Prj: TProjectIni;
+  BuildPrj: string;
+begin
+  Result := '';
+  BuildPrj := BuildProject;
+  if (BuildPrj <> '') and ProjectExists(BuildPrj) then
+  begin
+    Prj := TProjectIni.Create(SettingsFileName, BuildPrj);
+    try
+      Result := Trim(Prj.ReadString('Project', APrjKey, ''));
+    finally
+      Prj.Free;
+    end;
+  end;
+  if Result = '' then
+    Result := FpcSetting(AIdeKey);
+end;
+
 function TForm1.FpcExe(var AProblem: string): string;
 var
   Setting, Lazbuild, LazProblem: string;
@@ -52391,10 +52433,11 @@ begin
         Params := Params + ' -Fu"' + PathItem + '" -Fi"' + PathItem + '"';
     end;
   end;
-  // Платформа из настроек: -P (x86_64 - через ppcrossx64.exe) и -T
-  Cpu := FpcSetting('FpcCpu');
-  TargetOs := FpcSetting('FpcOs');
-  Extra := FpcSetting('FpcOptions');
+  // Платформа: -P (x86_64 - через ppcrossx64.exe) и -T; свойства проекта,
+  // пусто - IDE Options
+  Cpu := FpcBuildSetting('LazCpu', 'FpcCpu');
+  TargetOs := FpcBuildSetting('LazOs', 'FpcOs');
+  Extra := FpcBuildSetting('LazOptions', 'FpcOptions');
   if Cpu <> '' then
     Params := ' -P' + Cpu + Params;
   if TargetOs <> '' then
