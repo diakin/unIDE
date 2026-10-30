@@ -1721,6 +1721,15 @@ type
     // указатель строк модуля (ObjSetterIndex) узнаёт, что текст активной
     // вкладки тот же, не забирая его из контрола и не считая сумму.
     FEditSerial: Cardinal;
+    // Кэши текста при своём редакторе (ключ - EditorTextKey): текст через
+    // CR для карты, скобок и снимка «записан»; строки и очищенные строки
+    // для панели объявлений. Номер включения своего редактора - в ключе
+    FEdEmuSerial: Integer;
+    FTextCrCache: string;
+    FTextCrKey: string;
+    FDeclSrc: TStringList;
+    FDeclCl: TStringList;
+    FDeclKey: string;
     FObjSetEdKey: string;
     FObjEditIdx: Integer;
     FObjEditOld: string;    // значение как было в строке .dfm
@@ -4021,6 +4030,8 @@ type
     function  GetEditorText: string;
     function  GetEditorTextCR: string;
     function  GetEditorTextEx(AUseCRLF: Boolean): string;
+    function  EditorTextKey: string;
+    function  GetEditorTextCRCached: string;
     procedure SetEditorText(const S: string);
 
     function  PaleColor(C: TColor): TColor;
@@ -4770,7 +4781,7 @@ begin
 
   // Читаем весь текст редактора в память за один раз. Перевод строки должен
   // быть ОДНИМ символом, как в индексах контрола: позиции карты - это они.
-  FullText := GetEditorTextCR;
+  FullText := GetEditorTextCRCached;
   ScanCommentRanges(FullText, 0);
 
   // Подстраиваем интервал таймера под РЕАЛЬНУЮ стоимость разбора на этом
@@ -23306,6 +23317,39 @@ begin
   RichEdit1.SetTextBuf(PChar(S));
 end;
 
+// Ключ версии текста редактора для кэшей. Только при своём редакторе: у
+// TEdBuffer номер версии растёт на каждой правке и на замене текста
+// целиком (смена вкладки). При RichEdit - '' (кэши не используются:
+// EN_CHANGE и FEditSerial приходят не на каждую смену текста)
+function TForm1.EditorTextKey: string;
+begin
+  if FEdEmu = nil then
+    Result := ''
+  else
+    Result := IntToStr(FEdEmuSerial) + ':' +
+      IntToStr(FEdEmu.Buffer.Version);
+end;
+
+// GetEditorTextCR; пока текст не менялся - та же строка без нового
+// чтения из редактора (на Unit1.pas это строка в ~3 МБ)
+function TForm1.GetEditorTextCRCached: string;
+var
+  Key: string;
+begin
+  Key := EditorTextKey;
+  if (Key <> '') and (Key = FTextCrKey) then
+  begin
+    Result := FTextCrCache;
+    Exit;
+  end;
+  Result := GetEditorTextCR;
+  FTextCrKey := Key;
+  if Key <> '' then
+    FTextCrCache := Result
+  else
+    FTextCrCache := '';
+end;
+
 procedure TForm1.ApplyTabStops;
 begin
   ApplyTabStopsEx(True);
@@ -25180,6 +25224,8 @@ begin
   FreeAndNil(FRqCompClasses);
   CiFreeAll;
   FreeAndNil(FRqDeclCache);  // панель объявления RapidQ
+  FreeAndNil(FDeclSrc);      // панель объявления: кэш строк
+  FreeAndNil(FDeclCl);
   FreeAndNil(FRqDeclFiles);
   RqHelpCloseAll;   // окна справки CHM - до выхода программы
   FreeAndNil(FWebView); // просмотр по формату: браузер и временная страница
@@ -25413,7 +25459,7 @@ begin
     FClean.Valid := False;
     Exit;
   end;
-  Txt := GetEditorTextCR;
+  Txt := GetEditorTextCRCached;
   FClean.Len := Length(Txt);
   CleanTextSums(Txt, FClean.Sum1, FClean.Sum2);
   FClean.FileName := FCurrentFileName;
@@ -25446,7 +25492,7 @@ begin
     Exit;
   if CompareText(FClean.FileName, FCurrentFileName) <> 0 then
     Exit;
-  Txt := GetEditorTextCR;
+  Txt := GetEditorTextCRCached;
   if Length(Txt) <> FClean.Len then
     Exit;
   CleanTextSums(Txt, Sum1, Sum2);
@@ -26768,7 +26814,7 @@ begin
     Exit;
   end;
 
-  Txt := GetEditorTextCR;
+  Txt := GetEditorTextCRCached;
   Len := Length(Txt);
   Caret := RichEdit1.SelStart + 1; // в тексте позиции от единицы
   if (Len = 0) or (Caret < 1) or (Caret > Len + 1) then
@@ -40315,6 +40361,7 @@ begin
       ReleaseDC(RichEdit1.Handle, DC);
     end;
     FEdEmu := TEdRichEmu.Create(EdWindowHandle, OldRichEditProc);
+    Inc(FEdEmuSerial);
     FEdEmu.OnLog := EdEmuLog;
     FEdEmu.SetMetrics(StartLineH, StartCharW, FTabChars);
     // Текст, выделение, прокрутка, «изменён» - у RichEdit, до того, как
@@ -49398,10 +49445,11 @@ end;
 // Щелчок в редакторе: идентификатор под кареткой и его объявление
 procedure TForm1.DeclPanelUpdate;
 var
-  Ext, S, U, WU: string;
+  Ext, S, U, WU, Key: string;
   Src, Cl: TStringList;
   Sel: TCharRange;
   Line, LineStart, P, B, E, I, St, DL, DC: Integer;
+  OwnLists: Boolean;
 begin
   if (FDeclPanel = nil) or not RichEdit1.HandleAllocated then
     Exit;
@@ -49430,20 +49478,40 @@ begin
   Line := EdApi.ExLineFromChar(Sel.cpMin);
   LineStart := EdApi.LineIndex(Line);
 
-  Src := TStringList.Create;
-  Cl := TStringList.Create;
-  try
+  // Строки и очищенные строки (комментарии и литералы - пробелами). При
+  // своём редакторе - кэш до следующей правки: щелчки без правки между
+  // ними не делят весь текст на строки заново
+  Key := EditorTextKey;
+  if (Key <> '') and (Key = FDeclKey) and (FDeclSrc <> nil) then
+  begin
+    Src := FDeclSrc;
+    Cl := FDeclCl;
+    OwnLists := False;
+  end
+  else
+  begin
+    Src := TStringList.Create;
+    Cl := TStringList.Create;
     Src.Text := GetEditorText;
+    St := 0;
+    for I := 0 to Src.Count - 1 do
+      Cl.Add(UpperCase(DeclCleanLine(Src[I], St)));
+    OwnLists := Key = '';
+    if not OwnLists then
+    begin
+      FDeclSrc.Free;
+      FDeclCl.Free;
+      FDeclSrc := Src;
+      FDeclCl := Cl;
+      FDeclKey := Key;
+    end;
+  end;
+  try
     if (Line < 0) or (Line >= Src.Count) then
     begin
       DeclPanelShow;
       Exit;
     end;
-
-    // Очищенные строки: комментарии и литералы - пробелами
-    St := 0;
-    for I := 0 to Src.Count - 1 do
-      Cl.Add(UpperCase(DeclCleanLine(Src[I], St)));
 
     // Идентификатор под кареткой. Каретка сразу за словом - тоже он.
     S := Src[Line];
@@ -49503,8 +49571,12 @@ begin
       FDeclMode := 1;
     end;
   finally
-    Cl.Free;
-    Src.Free;
+    // Кэш FDeclSrc / FDeclCl остаётся до следующей правки
+    if OwnLists then
+    begin
+      Cl.Free;
+      Src.Free;
+    end;
   end;
   DeclPanelShow;
 end;
