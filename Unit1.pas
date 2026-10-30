@@ -3959,6 +3959,9 @@ type
     FSymHintTimer: TTimer;
     FSymHintWord: string;
     FSymHintPt: TPoint;
+    // Мышь стояла здесь, когда подсказку убрала клавиша: пока она не
+    // сдвинется, подсказку не показывать снова
+    FSymHintKeyPt: TPoint;
     FIndentKind: Integer;
     FIndentSize: Integer;
 
@@ -75488,6 +75491,8 @@ begin
     WM_KEYDOWN:
     begin
       SymHintHide;
+      if not GetCursorPos(FSymHintKeyPt) then
+        FSymHintKeyPt := Point(-1, -1);
       CtrlDown := GetKeyState(VK_CONTROL) < 0;
       ShiftDown := GetKeyState(VK_SHIFT) < 0;
       if (Message.WParam = VK_SPACE) and CtrlDown then
@@ -75658,6 +75663,7 @@ end;
 
 procedure TForm1.SymHintSetup;
 begin
+  FSymHintKeyPt := Point(-1, -1);
   if FEdIns.TooltipSymbol then
   begin
     if FSymHintTimer = nil then
@@ -75708,6 +75714,12 @@ begin
     FSymHintPt := Point(-1, -1);
     Exit;
   end;
+  // После нажатия клавиши - только когда мышь сдвинется: иначе
+  // подсказка над тем же словом всплывала бы после каждой клавиши, и
+  // каждый раз заново искалось бы объявление
+  if (CursorPt.X = FSymHintKeyPt.X) and (CursorPt.Y = FSymHintKeyPt.Y) then
+    Exit;
+  FSymHintKeyPt := Point(-1, -1);
   ClientPt := RichEdit1.ScreenToClient(CursorPt);
   CharPos := DbgCharAtClient(ClientPt);
   WordText := CiWordAt(CharPos, LineIdx);
