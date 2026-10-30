@@ -317,17 +317,47 @@ end;
 
 function TEdBuffer.TextRange(ARow1, ACol1, ARow2, ACol2: Integer): WideString;
 var
-  RowIdx: Integer;
+  RowIdx, LastMid, TotalLen, CharPos: Integer;
+  Head, Tail: WideString;
+
+  procedure Put(const APart: WideString);
+  begin
+    if APart <> '' then
+    begin
+      Move(APart[1], Result[CharPos], Length(APart) * SizeOf(WideChar));
+      Inc(CharPos, Length(APart));
+    end;
+  end;
+
 begin
   if ARow1 = ARow2 then
   begin
     Result := Copy(GetLine(ARow1), ACol1 + 1, ACol2 - ACol1);
     Exit;
   end;
-  Result := Copy(GetLine(ARow1), ACol1 + 1, MaxInt);
+  // Длина - заранее, как в GetText: сцепление по строке на большом
+  // диапазоне квадратично (на весь Unit1.pas - десятки секунд)
+  Head := Copy(GetLine(ARow1), ACol1 + 1, MaxInt);
+  Tail := Copy(GetLine(ARow2), 1, ACol2);
+  LastMid := ARow2 - 1;
+  if LastMid > FCount - 1 then
+    LastMid := FCount - 1;
+  TotalLen := Length(Head) + Length(Tail) + (ARow2 - ARow1);
+  for RowIdx := ARow1 + 1 to LastMid do
+    Inc(TotalLen, Length(FLines[RowIdx]));
+  SetLength(Result, TotalLen);
+  CharPos := 1;
+  Put(Head);
   for RowIdx := ARow1 + 1 to ARow2 - 1 do
-    Result := Result + #10 + GetLine(RowIdx);
-  Result := Result + #10 + Copy(GetLine(ARow2), 1, ACol2);
+  begin
+    Result[CharPos] := #10;
+    Inc(CharPos);
+    if RowIdx <= LastMid then
+      Put(FLines[RowIdx]);
+  end;
+  Result[CharPos] := #10;
+  Inc(CharPos);
+  Put(Tail);
 end;
 
 function TEdBuffer.InsertRaw(ARow, ACol: Integer; const AText: WideString;
