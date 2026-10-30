@@ -303,7 +303,14 @@ type
   TEditorWindow = record
     Used: Boolean;      // слот занят
     FileName: string;   // было CmdParam()
-    Text: string;       // было Window()
+    // Текст окна (было Window()) - свой TEdBuffer у каждой вкладки:
+    // активная показывает его в своём редакторе без копирования, откат -
+    // в нём же и переживает смену вкладки. Строкой (ANSI, CRLF) -
+    // WinText, запись - SetWinText; TextCache - строка по версии
+    // буфера TextKey (-1 - нет)
+    Buffer: TEdBuffer;
+    TextCache: string;
+    TextKey: Integer;
     CursorPos: Integer; // было CursWin()
     Modified: Boolean;  // было Modif()
     Clean: TCleanSnap;  // записанный текст (см. CleanCapture)
@@ -4027,6 +4034,10 @@ type
     function  GetEditorTextEx(AUseCRLF: Boolean): string;
     function  EditorTextKey: string;
     function  GetEditorTextCRCached: string;
+    function  WinText(AWinIdx: Integer): string;
+    function  WinTextSize(AWinIdx: Integer): Integer;
+    procedure SetWinText(AWinIdx: Integer; const AText: string);
+    procedure FreeWinBuffer(AWinIdx: Integer);
     procedure SetEditorText(const S: string);
 
     function  PaleColor(C: TColor): TColor;
@@ -8119,7 +8130,7 @@ begin
       if I = FWindowsIndex then
         MemTxt := GetEditorText
       else
-        MemTxt := FWindows[I].Text;
+        MemTxt := WinText(I);
       if SameNoEols(Merged, MemTxt) then
         NoteDisk(FN, Merged)        // то же самое - запомнить и молчать
       else
@@ -8173,11 +8184,11 @@ begin
           if W = FWindowsIndex then
             MemTxt := GetEditorText
           else
-            MemTxt := FWindows[W].Text;
+            MemTxt := WinText(W);
           Merged := Merge3(BaseTxt, MemTxt, Disk[K], Cf);
           if W = FWindowsIndex then
             StoreCurrentWindow;
-          FWindows[W].Text := Merged;
+          SetWinText(W, Merged);
           FWindows[W].Modified := True;
           FWindows[W].MapValid := False;
           SetLength(FWindows[W].CommentRanges, 0);
@@ -8218,7 +8229,7 @@ begin
             FWindows[I].FileName := '(без имени: ' + ExtractFileName(FN) +
             ' с диска' + ExtractFileExt(FN) + ')';
             FWindows[I].IncOwner := '';
-            FWindows[I].Text := Disk[K];
+            SetWinText(I, Disk[K]);
             FWindows[I].CursorPos := 0;
             FWindows[I].Modified := False;
             FWindows[I].IsUtf8 := False;
@@ -8480,7 +8491,7 @@ begin
   FWindows[Idx].Used := True;
   FWindows[Idx].FileName := FN;
   FWindows[Idx].IncOwner := '';
-  FWindows[Idx].Text := LoadTextFile(FN); // тут же определится кодировка
+  SetWinText(Idx, LoadTextFile(FN)); // тут же определится кодировка
   FWindows[Idx].CursorPos := 0;
   FWindows[Idx].Modified := False;
   FWindows[Idx].IsUtf8 := FFileIsUtf8;
@@ -8518,7 +8529,7 @@ begin
   FWindows[Idx].Used := True;
   FWindows[Idx].FileName := '(без имени' + Ext + ')';
   FWindows[Idx].IncOwner := '';
-  FWindows[Idx].Text := '';
+  SetWinText(Idx, '');
   FWindows[Idx].CursorPos := 0;
   FWindows[Idx].Modified := False;
   FWindows[Idx].IsUtf8 := False;
@@ -8856,7 +8867,7 @@ begin
     try
       if MapReadStr(FS) <> MapCacheSign then
         Exit;
-      if MapReadStr(FS) <> MapCacheKey(FWindows[Index].Text, Sig) then
+      if MapReadStr(FS) <> MapCacheKey(WinText(Index), Sig) then
         Exit;
       MapReadRanges(FS, CR);
       MapReadRanges(FS, SR);
@@ -8920,7 +8931,7 @@ begin
     FS := TFileStream.Create(FN, fmCreate);
     try
       MapWriteStr(FS, MapCacheSign);
-      MapWriteStr(FS, MapCacheKey(FWindows[Index].Text,
+      MapWriteStr(FS, MapCacheKey(WinText(Index),
                                   FWindows[Index].MapSchemeSig));
       MapWriteRanges(FS, FWindows[Index].CommentRanges);
       MapWriteRanges(FS, FWindows[Index].StringRanges);
@@ -8970,7 +8981,9 @@ begin
   if not FWindows[FWindowsIndex].Used then
     Exit;
 
-  FWindows[FWindowsIndex].Text := GetEditorText;
+  // Свой редактор правит буфер вкладки на месте - копировать нечего
+  if FEdEmu = nil then
+    SetWinText(FWindowsIndex, GetEditorText);
   FWindows[FWindowsIndex].Modified := RichEdit1.Modified;
   if FCleanPending then
     CleanCapture;
@@ -9073,14 +9086,22 @@ begin
   if StartupActive then
   begin
     StartupTab := ExtractFileName(FWindows[Index].FileName) + ' (' +
-      IntToStr(Length(FWindows[Index].Text) div 1024) + ' КБ)';
+      IntToStr(WinTextSize(Index) div 1024) + ' КБ)';
     StartupStage('Вкладка ' + StartupTab + ': схема');
   end;
   TA := GetTickCount;
   Inc(FObjOwnWrite);
   FLockHighlight := True;
   try
-    SetEditorText('');
+    // Свой редактор: прежняя вкладка остаётся в своём буфере, на время
+    // смены схемы в редакторе - пустой свой
+    if FEdEmu <> nil then
+    begin
+      Inc(FEditSerial);
+      FEdEmu.UseBuffer(nil, False);
+    end
+    else
+      SetEditorText('');
   finally
     FLockHighlight := False;
     Dec(FObjOwnWrite);
@@ -9115,7 +9136,16 @@ begin
   Inc(FObjOwnWrite);
   FLockHighlight := True;
   try
-    SetEditorText(FWindows[Index].Text);
+    if FEdEmu <> nil then
+    begin
+      // Буфер вкладки - в редактор без копирования, с его откатом
+      if FWindows[Index].Buffer = nil then
+        SetWinText(Index, '');
+      Inc(FEditSerial);
+      FEdEmu.UseBuffer(FWindows[Index].Buffer, FWindows[Index].Modified);
+    end
+    else
+      SetEditorText(WinText(Index));
   finally
     FLockHighlight := False;
     Dec(FObjOwnWrite);
@@ -10396,7 +10426,7 @@ begin
     FWindows[I].Used := False;
     FWindows[I].FileName := '';
     FWindows[I].IncOwner := '';
-    FWindows[I].Text := '';
+    FreeWinBuffer(I);
     FWindows[I].CursorPos := 0;
     FWindows[I].Modified := False;
     FWindows[I].Broken := False;
@@ -16001,7 +16031,7 @@ begin
     end;
 
     FWindows[I].FileName := NewName;
-    FWindows[I].Text := LoadTextFile(NewName);
+    SetWinText(I, LoadTextFile(NewName));
     FWindows[I].IsUtf8 := FFileIsUtf8;
     FWindows[I].HasBom := FFileHasBom;
     FWindows[I].Broken := False;
@@ -16175,7 +16205,7 @@ begin
       begin
         Inc(FileCount);
         StartupStage('Чтение ' + ExtractFileName(Path));
-        FWindows[I].Text := LoadTextFile(Path);
+        SetWinText(I, LoadTextFile(Path));
         FWindows[I].IsUtf8 := FFileIsUtf8;
         FWindows[I].HasBom := FFileHasBom;
         FWindows[I].Broken := False;
@@ -16185,7 +16215,7 @@ begin
         // Файла нет - окно остаётся в списке, но помечается нерабочим.
         // Разбираться с такими будут пункты Remove missing files from list
         // и Find lost files...
-        FWindows[I].Text := '';
+        SetWinText(I, '');
         FWindows[I].Broken := True;
       end;
 
@@ -16293,7 +16323,7 @@ begin
   if ActIdx >= 0 then
     StartupStage('Открытие активной вкладки ' +
       ExtractFileName(FWindows[ActIdx].FileName) + ' (' +
-      IntToStr(Length(FWindows[ActIdx].Text) div 1024) + ' КБ): уход с прежней')
+      IntToStr(WinTextSize(ActIdx) div 1024) + ' КБ): уход с прежней')
   else
     StartupStage('Открытие активной вкладки: открытых файлов нет');
   StageTick := GetTickCount;
@@ -17728,7 +17758,7 @@ begin
     Exit;
   TextLines := TStringList.Create;
   try
-    TextLines.Text := FWindows[WinIdx].Text;
+    TextLines.Text := WinText(WinIdx);
     // Начала строк в координатах редактора: перевод строки - один символ
     SetLength(LineStarts, TextLines.Count + 1);
     LineStarts[0] := 0;
@@ -19245,7 +19275,7 @@ begin
   end;
   if CompareText(FDiskReadFail, FN) = 0 then
     FDiskReadFail := '';
-  FWindows[W].Text := LoadedText;
+  SetWinText(W, LoadedText);
   FWindows[W].IsUtf8 := FFileIsUtf8;
   FWindows[W].HasBom := FFileHasBom;
 
@@ -19264,7 +19294,7 @@ begin
   SetLength(FWindows[W].StringRanges, 0);
 
   // Каретку сохраняем, но файл мог стать короче
-  if FWindows[W].CursorPos > Length(FWindows[W].Text) then
+  if FWindows[W].CursorPos > Length(WinText(W)) then
     FWindows[W].CursorPos := 0;
 
   if W = FWindowsIndex then
@@ -19349,7 +19379,7 @@ begin
   FWindows[WinIdx].Used := False;
   FWindows[WinIdx].FileName := '';
   FWindows[WinIdx].IncOwner := '';
-  FWindows[WinIdx].Text := '';
+  FreeWinBuffer(WinIdx);
   FWindows[WinIdx].CursorPos := 0;
   FWindows[WinIdx].Modified := False;
   FWindows[WinIdx].Broken := False;
@@ -20455,7 +20485,7 @@ begin
        not FWindows[WinIdx].Used then
       Continue;
     MatchCount := ScanTextForMatches(FWindows[WinIdx].FileName, WinIdx,
-                                     FWindows[WinIdx].Text, APattern);
+                                     WinText(WinIdx), APattern);
     if MatchCount > 0 then
     begin
       Inc(Result, MatchCount);
@@ -20923,7 +20953,7 @@ begin
   end
   else
   begin
-    FWindows[AWinIdx].Text := AText;
+    SetWinText(AWinIdx, AText);
     FWindows[AWinIdx].Modified := True;
     FWindows[AWinIdx].MapValid := False;
     SetLength(FWindows[AWinIdx].CommentRanges, 0);
@@ -21006,7 +21036,7 @@ begin
           if WinIdx = FWindowsIndex then
             Src := GetEditorText
           else
-            Src := FWindows[WinIdx].Text;
+            Src := WinText(WinIdx);
           Res := ReplaceInText(Src, Pattern, Replacement, Count);
           if Count = 0 then
             Continue;
@@ -23174,7 +23204,7 @@ begin
       WinIdx := -1;
   end;
   if WinIdx >= 0 then
-    Txt := FWindows[WinIdx].Text
+    Txt := WinText(WinIdx)
   else if not FifReadFile(AFile, Txt) then
   begin
     Inc(FFifChecked);
@@ -23305,6 +23335,79 @@ procedure TForm1.SetEditorText(const S: string);
 begin
   Inc(FEditSerial);
   RichEdit1.SetTextBuf(PChar(S));
+end;
+
+// ---------------------------------------------------------------------------
+//  Текст вкладки (перевод Unit1 на буфер, шаг 2)
+//
+//  У каждой вкладки свой TEdBuffer (FWindows[].Buffer). Активная вкладка
+//  показывает его в своём редакторе (TEdRichEmu.UseBuffer): при смене
+//  вкладки текст не копируется, откат вкладки сохраняется. Без своего
+//  редактора (нет RichEdit 4.1) буфер - хранилище текста неактивных
+//  вкладок, как прежнее поле Text.
+// ---------------------------------------------------------------------------
+
+// Текст вкладки строкой (ANSI, перевод строки - CRLF). Строка
+// запоминается до следующей правки буфера (TextKey - его версия)
+function TForm1.WinText(AWinIdx: Integer): string;
+begin
+  Result := '';
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
+    Exit;
+  if FWindows[AWinIdx].Buffer = nil then
+    Exit;
+  if FWindows[AWinIdx].TextKey <> FWindows[AWinIdx].Buffer.Version then
+  begin
+    FWindows[AWinIdx].TextCache :=
+      string(FWindows[AWinIdx].Buffer.GetText(#13#10));
+    FWindows[AWinIdx].TextKey := FWindows[AWinIdx].Buffer.Version;
+  end;
+  Result := FWindows[AWinIdx].TextCache;
+end;
+
+// Длина текста вкладки в символах (перевод строки - один), без строки
+function TForm1.WinTextSize(AWinIdx: Integer): Integer;
+begin
+  Result := 0;
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
+    Exit;
+  if FWindows[AWinIdx].Buffer <> nil then
+    Result := FWindows[AWinIdx].Buffer.TextLength;
+end;
+
+// Новый текст вкладки (откат её буфера очищается). Вкладка на экране -
+// через окно редактора (WM_SETTEXT), с его уведомлениями
+procedure TForm1.SetWinText(AWinIdx: Integer; const AText: string);
+begin
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
+    Exit;
+  if FWindows[AWinIdx].Buffer = nil then
+    FWindows[AWinIdx].Buffer := TEdBuffer.Create;
+  if (FEdEmu <> nil) and (FEdEmu.Buffer = FWindows[AWinIdx].Buffer) then
+    SetEditorText(AText)
+  else
+    FWindows[AWinIdx].Buffer.SetText(WideString(AText));
+  FWindows[AWinIdx].TextCache := '';
+  FWindows[AWinIdx].TextKey := -1;
+end;
+
+// Вкладка закрыта: буфер освободить. Редактор и вторая панель, если
+// показывают его, - сначала на другой буфер
+procedure TForm1.FreeWinBuffer(AWinIdx: Integer);
+var
+  OldBuffer: TEdBuffer;
+begin
+  OldBuffer := FWindows[AWinIdx].Buffer;
+  FWindows[AWinIdx].Buffer := nil;
+  FWindows[AWinIdx].TextCache := '';
+  FWindows[AWinIdx].TextKey := -1;
+  if OldBuffer = nil then
+    Exit;
+  if (FSplit <> nil) and (FSplit.SharedBuffer = OldBuffer) then
+    FSplit.DetachShared;
+  if (FEdEmu <> nil) and (FEdEmu.Buffer = OldBuffer) then
+    FEdEmu.UseBuffer(nil, False);
+  OldBuffer.Free;
 end;
 
 // Ключ версии текста редактора для кэшей. Только при своём редакторе: у
@@ -25214,6 +25317,9 @@ begin
   if Assigned(OldRichEditProc) then
     RichEdit1.WindowProc := OldRichEditProc;
   FreeAndNil(FEdEmu);
+  // Буферы вкладок - после редактора: он снимает подписку с показанного
+  for I := 0 to WindowsItemCount - 1 do
+    FreeAndNil(FWindows[I].Buffer);
   Application.OnHint := nil; // форма уходит, обработчик держать нельзя
   Application.OnMessage := nil;
   Application.OnActivate := nil;
@@ -28697,7 +28803,7 @@ begin
       if FromEditor then
         Raw := GetEditorText
       else if BufIdx >= 0 then
-        Raw := FWindows[BufIdx].Text
+        Raw := WinText(BufIdx)
       else
       begin
         // Двоичный .dfm через TStringList читать нельзя: нули и переводы
@@ -35535,7 +35641,7 @@ begin
       SL := TStringList.Create;
       try
         if WinIdx >= 0 then
-          Txt := FWindows[WinIdx].Text
+          Txt := WinText(WinIdx)
         else
         begin
           with TFileStream.Create(Dfm, fmOpenRead or fmShareDenyNone) do
@@ -35598,7 +35704,7 @@ begin
         if WinIdx >= 0 then
         begin
           // --- .dfm открыт в другой вкладке: правим её текст
-          FWindows[WinIdx].Text := Txt;
+          SetWinText(WinIdx, Txt);
           FWindows[WinIdx].Modified := True;
           FWindows[WinIdx].MapValid := False;
           UpdateTabCaption(WinIdx);
@@ -36533,7 +36639,7 @@ begin
   if W = FWindowsIndex then
     Result := GetEditorText
   else if W >= 0 then
-    Result := FWindows[W].Text
+    Result := WinText(W)
   else if FileExists(APas) then
     with TFileStream.Create(APas, fmOpenRead or fmShareDenyNone) do
     try
@@ -36567,7 +36673,7 @@ begin
   for I := 0 to WindowsItemCount - 1 do
     if FWindows[I].Used and
        IsPascalExt(ExtractFileExt(FWindows[I].FileName)) and
-       (Pos(Pat, AnsiUpperCase(FWindows[I].Text)) > 0) then
+       (Pos(Pat, AnsiUpperCase(WinText(I))) > 0) then
     begin
       Result := FWindows[I].FileName;
       Exit;
@@ -37018,7 +37124,7 @@ begin
   if Idx = FWindowsIndex then
     Result := GetEditorText
   else
-    Result := FWindows[Idx].Text;
+    Result := WinText(Idx);
 end;
 
 procedure TForm1.DsgSetText(const AText: string);
@@ -37054,7 +37160,7 @@ begin
   if Idx = FWindowsIndex then
     Result := GetEditorText
   else
-    Result := FWindows[Idx].Text;
+    Result := WinText(Idx);
 end;
 
 // Новый текст во вкладку файла. На диск ничего не пишется - до Save.
@@ -37109,7 +37215,7 @@ begin
   end
   else
   begin
-    FWindows[Idx].Text := AText;
+    SetWinText(Idx, AText);
     FWindows[Idx].Modified := True;
     FWindows[Idx].MapValid := False;
     UpdateTabCaption(Idx);
@@ -44699,7 +44805,7 @@ begin
     for I := 0 to WindowsItemCount - 1 do
       if FWindows[I].Used and
          IsPascalExt(ExtractFileExt(FWindows[I].FileName)) and
-         (Pos(Pat, AnsiUpperCase(FWindows[I].Text)) > 0) then
+         (Pos(Pat, AnsiUpperCase(WinText(I))) > 0) then
       begin
         Pas := FWindows[I].FileName;
         Break;
@@ -49567,7 +49673,7 @@ begin
 
       W := IndexOfWindowByFile(FN);
       if W >= 0 then
-        UnitSrc.Text := FWindows[W].Text
+        UnitSrc.Text := WinText(W)
       else
       try
         UnitSrc.LoadFromFile(FN);
@@ -61651,8 +61757,8 @@ begin
   FWindows[Idx].Used := True;
   FWindows[Idx].FileName := '(без имени.pas)';
   FWindows[Idx].IncOwner := '';
-  FWindows[Idx].Text := 'unit Unit1;'#13#10#13#10'interface'#13#10#13#10 +
-  'implementation'#13#10#13#10'end.'#13#10;
+  SetWinText(Idx, 'unit Unit1;'#13#10#13#10'interface'#13#10#13#10 +
+  'implementation'#13#10#13#10'end.'#13#10);
 FWindows[Idx].CursorPos := 0;
   FWindows[Idx].Modified := False;
   FWindows[Idx].IsUtf8 := False;
@@ -62833,7 +62939,7 @@ begin
   WinIdx := IndexOfWindowByFile(AFile);
   if WinIdx >= 0 then
   begin
-    ALines.Text := FWindows[WinIdx].Text;
+    ALines.Text := WinText(WinIdx);
     Result := True;
     Exit;
   end;
@@ -74377,7 +74483,7 @@ begin
     FCiUnitCache := TStringList.Create;
   WinIdx := IndexOfWindowByFile(AFile);
   if WinIdx >= 0 then
-    Key := 'w' + IntToHex(Crc32Of(FWindows[WinIdx].Text), 8)
+    Key := 'w' + IntToHex(Crc32Of(WinText(WinIdx)), 8)
   else
     Key := 'f' + IntToStr(FileAge(AFile));
   CacheIdx := FCiUnitCache.IndexOf(LowerCase(AFile));
@@ -74395,7 +74501,7 @@ begin
     try
       try
         if WinIdx >= 0 then
-          UnitSrc.Text := FWindows[WinIdx].Text
+          UnitSrc.Text := WinText(WinIdx)
         else
           UnitSrc.LoadFromFile(AFile);
         CiScanPascal(UnitSrc, True, Entry.Syms);
@@ -81531,7 +81637,9 @@ begin
     if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
     begin
       FWindows[FWindowsIndex].FileName := FCurrentFileName;
-      FWindows[FWindowsIndex].Text := GetEditorText;
+      // Свой редактор: текст и так в буфере вкладки (и откат цел)
+      if FEdEmu = nil then
+        SetWinText(FWindowsIndex, GetEditorText);
       FWindows[FWindowsIndex].Modified := False;
       RebuildWindowsMenu;
     end;
@@ -84077,7 +84185,7 @@ begin
   if AWinIdx = FWindowsIndex then
     Result := GetEditorText
   else
-    Result := FWindows[AWinIdx].Text;
+    Result := WinText(AWinIdx);
 end;
 
 function TForm1.SplitWinModified(AWinIdx: Integer): Boolean;

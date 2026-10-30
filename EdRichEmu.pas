@@ -51,7 +51,8 @@ type
   private
     FGetHandle: TEdEmuHandleFunc;
     FDefProc: TEdEmuDefProc;
-    FBuffer: TEdBuffer;
+    FBuffer: TEdBuffer;         // текст на экране: свой или буфер вкладки
+    FOwnBuffer: TEdBuffer;      // свой (UseBuffer(nil))
     FEditor: TEdEditor;
     FTopRow: Integer;
     FLineH: Integer;
@@ -129,6 +130,13 @@ type
     // строка, «изменён» и маска уведомлений - обратно RichEdit. Откат у
     // RichEdit начинается заново. После вызова объект только освободить
     procedure GiveToWindow;
+    // Показать другой текст - буфер вкладки (Unit1): буфер окну не
+    // принадлежит, освобождает его хозяин, и до освобождения окно должно
+    // перейти на другой буфер; nil - снова свой (очищается). Откат - у
+    // буфера, поэтому он сохраняется между показами. Каретка - в начале,
+    // прокрутка - сверху, «изменён» - AModified. Уведомления - как после
+    // WM_SETTEXT (EN_CHANGE)
+    procedure UseBuffer(ABuffer: TEdBuffer; AModified: Boolean);
     // Шаг строк и ширина символа (шрифт RichEdit1), табуляция - колонок
     procedure SetMetrics(ALineH, ACharW, ATabChars: Integer);
     // Сообщение окну RichEdit1: True - разобрано здесь, Message.Result -
@@ -358,7 +366,8 @@ begin
   inherited Create;
   FGetHandle := AGetHandle;
   FDefProc := ADefProc;
-  FBuffer := TEdBuffer.Create;
+  FOwnBuffer := TEdBuffer.Create;
+  FBuffer := FOwnBuffer;
   FBuffer.AddListener(BufferChanged);
   FEditor := TEdEditor.Create;
   FEditor.Buffer := FBuffer;
@@ -377,7 +386,9 @@ destructor TEdRichEmu.Destroy;
 begin
   FLogged.Free;
   FEditor.Free;
-  FBuffer.Free;
+  // Буфер вкладки живёт дальше - подписку с него снять
+  FBuffer.RemoveListener(BufferChanged);
+  FOwnBuffer.Free;
   inherited Destroy;
 end;
 
@@ -739,6 +750,29 @@ begin
       if Result[CharIdx] = #10 then
         Result[CharIdx] := #13;
   end;
+end;
+
+procedure TEdRichEmu.UseBuffer(ABuffer: TEdBuffer; AModified: Boolean);
+begin
+  if ABuffer = nil then
+  begin
+    ABuffer := FOwnBuffer;
+    FOwnBuffer.SetText('');
+  end;
+  if ABuffer <> FBuffer then
+  begin
+    FBuffer.RemoveListener(BufferChanged);
+    FBuffer := ABuffer;
+    FBuffer.AddListener(BufferChanged);
+  end;
+  FEditor.Buffer := FBuffer;
+  FTopRow := 0;
+  FModified := AModified;
+  FTextChanged := True;
+  FNeedPaint := True;
+  // Вне сообщения окну - уведомить сразу (в сообщении - Handle в конце)
+  if FDepth = 0 then
+    Notify;
 end;
 
 // Весь текст заново (WM_SETTEXT): откат пуст, каретка - в начале
