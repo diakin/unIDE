@@ -1940,6 +1940,10 @@ type
     // Ход разбора карты большого текста (от MapProgressMinLen) в той же
     // панели: этап и процент (MapProgressStage, MapProgress)
     FMapProgress: Boolean;
+    // RebuildCommentRangeMap строит только карту комментариев и строк, а
+    // подпрограммы, имена компонентов и уровни строк оставляет: их не
+    // меняет Format text (отступы и хвостовые пробелы, строки те же)
+    FMapKeepAux: Boolean;
     FMapProgressName: string;
     FMapProgressStage: string;
     // Меню по правому щелчку в окнах лога (Compiler, Errors, HiLite log):
@@ -5023,16 +5027,25 @@ begin
     //
     // Тройной запас означает, что на пересборку уходит не больше трети времени.
     // Список подпрограмм - по тому же тексту, карты уже готовы
-    MapProgressStage('подпрограммы');
-    RebuildSubList(FullText);
+    if not FMapKeepAux then
+    begin
+      MapProgressStage('подпрограммы');
+      RebuildSubList(FullText);
+    end;
     TSub := PerfNow;
     // Имена компонентов - тоже: присваивания Create(Self) могли появиться
-    MapProgressStage('компоненты');
-    RebuildCompNames(FullText);
+    if not FMapKeepAux then
+    begin
+      MapProgressStage('компоненты');
+      RebuildCompNames(FullText);
+    end;
     TComp := PerfNow;
     // Уровни вложенности строк - по тому же тексту
-    MapProgressStage('уровни строк');
-    RebuildLineDepths(FullText);
+    if not FMapKeepAux then
+    begin
+      MapProgressStage('уровни строк');
+      RebuildLineDepths(FullText);
+    end;
   finally
     if FMapProgress then
     begin
@@ -84759,6 +84772,9 @@ var
   NewLine: string;
   // Большой текст: ход в жёлтой панели и время этапов в журнале подсветки
   ShowBusy: Boolean;
+  // Подпрограммы, компоненты и уровни строк верны для текста до
+  // форматирования: после него их можно не пересчитывать (FMapKeepAux)
+  AuxValid: Boolean;
   TickStart, TickPrep, TickLoop, TickSet: Cardinal;
   NewIndent, StmtOld, StmtNew, CaretLine, Changed: Integer;
   Cont, PrevInside: Boolean;
@@ -84891,13 +84907,16 @@ begin
   // Мягкие переносы #11 (вставлял Shift+Enter) - обычными переводами
   // строки: иначе текст после #11 считается той же строкой, и его отступ
   // не трогается
+  // Считаем по тексту с одиночными CR из кэша - он же нужен ниже (Src) и
+  // карте: на 32 МБ отдельная копия текста только для подсчёта - сотни мс
   VtCount := 0;
-  Expanded := GetEditorText;
+  Expanded := GetEditorTextCRCached;
   for K := 1 to Length(Expanded) do
     if Expanded[K] = #11 then
       Inc(VtCount);
   if VtCount > 0 then
   begin
+    Expanded := GetEditorText;
     if OrigText = '' then
       OrigText := Expanded;
     FLockHighlight := True;
@@ -84913,13 +84932,14 @@ begin
   // отсекаются слова внутри строк и комментариев
   if FMapStale then
     RebuildCommentRangeMap;
+  AuxValid := (FAuxTimer = nil) or not FAuxTimer.Enabled;
 
   Step := FIndentSize;
   if Step < 1 then
     Step := 2;
 
   // Текст с одиночными CR: позиции в нём совпадают с картами
-  Src := GetEditorTextCR;
+  Src := GetEditorTextCRCached;
   Len := Length(Src);
   if Len = 0 then
     Exit;
@@ -85275,8 +85295,18 @@ begin
     RichEdit1.SelStart := K;
     RichEdit1.SelLength := 0;
 
-    // Текст сменился целиком - карта и списки строятся заново, один раз
-    RebuildCommentRangeMap;
+    // Текст сменился целиком - карта строится заново, один раз. Строки
+    // остались те же, поменялись только отступы и пробелы в конце:
+    // подпрограммы, компоненты и уровни строк от этого не зависят (проверено
+    // на файлах репозитория с перемешанными отступами), их не пересчитываем.
+    // Уровни должны быть по всем строкам - иначе списки неполные, полный разбор
+    FMapKeepAux := AuxValid and
+      (not SchemeHasBlocks or (Length(FLineDepth) = SL.Count));
+    try
+      RebuildCommentRangeMap;
+    finally
+      FMapKeepAux := False;
+    end;
     if GetTickCount - TickStart >= 500 then
       Dbg(Format('Format text: %d мс - подготовка и текст %d, разбор строк %d, ' +
         'сборка и текст в редактор %d, карта %d',
