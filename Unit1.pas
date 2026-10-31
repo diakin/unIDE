@@ -1937,6 +1937,11 @@ type
     FBusyStage: string;
     FBusyStart, FBusyLast: Cardinal;
     FBusyDepth: Integer;
+    // Ход разбора карты большого текста (от MapProgressMinLen) в той же
+    // панели: этап и процент (MapProgressStage, MapProgress)
+    FMapProgress: Boolean;
+    FMapProgressName: string;
+    FMapProgressStage: string;
     // Меню по правому щелчку в окнах лога (Compiler, Errors, HiLite log):
     // Undo, Cut, Copy, Paste, Delete, Select All. Какое окно - по
     // PopupComponent, его выставляет VCL при показе меню.
@@ -2498,6 +2503,8 @@ type
     procedure BusyBegin(const AStage: string);
     procedure BusyStage(const AStage: string);
     procedure BusyTick;
+    procedure MapProgressStage(const AStage: string);
+    procedure MapProgress(ADone, ATotal: Integer);
     procedure BusyEnd(const AResult: string; AOk: Boolean);
     procedure BusyNote(const AText: string; AOk: Boolean; AShowMs: Cardinal);
     procedure AppActivate(Sender: TObject);
@@ -4913,6 +4920,12 @@ begin
   SetLength(StringRanges, StrCount);
 end;
 
+const
+  // С какого размера (знаков текста, байт файла) чтение файла и разбор
+  // карты показывают ход в жёлтой панели над редактором: на 32 МБ это
+  // секунды, без индикатора программа выглядит зависшей
+  MapProgressMinLen = 4 * 1024 * 1024;
+
 procedure TForm1.RebuildCommentRangeMap;
 var
   FullText: string;
@@ -4983,27 +4996,50 @@ begin
   // быть ОДНИМ символом, как в индексах контрола: позиции карты - это они.
   FullText := GetEditorTextCRCached;
   TText := PerfNow;
-  ScanCommentRanges(FullText, 0);
-  TCmt := PerfNow;
+  FMapProgress := Length(FullText) >= MapProgressMinLen;
+  if FMapProgress then
+  begin
+    if (FWindowsIndex >= 0) and (FWindowsIndex <= WindowsItemCount - 1) then
+      FMapProgressName := ExtractFileName(FWindows[FWindowsIndex].FileName)
+    else
+      FMapProgressName := '';
+    if FMapProgressName = '' then
+      FMapProgressName := 'Разбор';
+    BusyBegin(FMapProgressName);
+  end;
+  try
+    MapProgressStage('комментарии и строки');
+    ScanCommentRanges(FullText, 0);
+    TCmt := PerfNow;
 
-  // Подстраиваем интервал таймера под РЕАЛЬНУЮ стоимость разбора на этом
-  // файле. Фиксированные 150 мс одинаково плохи с обеих сторон: на небольшом
-  // файле подсветка зря отстаёт от клавиатуры, на 32-мегабайтном даже они
-  // могут оказаться мало.
-  //
-  // Меряем ТОЧНЫМ счётчиком, а не GetTickCount: у того шаг около 15 мс, и
-  // разбор файла в триста килобайт укладывался в один тик - на экране было
-  // ровно "0", хотя работа шла.
-  //
-  // Тройной запас означает, что на пересборку уходит не больше трети времени.
-  // Список подпрограмм - по тому же тексту, карты уже готовы
-  RebuildSubList(FullText);
-  TSub := PerfNow;
-  // Имена компонентов - тоже: присваивания Create(Self) могли появиться
-  RebuildCompNames(FullText);
-  TComp := PerfNow;
-  // Уровни вложенности строк - по тому же тексту
-  RebuildLineDepths(FullText);
+    // Подстраиваем интервал таймера под РЕАЛЬНУЮ стоимость разбора на этом
+    // файле. Фиксированные 150 мс одинаково плохи с обеих сторон: на небольшом
+    // файле подсветка зря отстаёт от клавиатуры, на 32-мегабайтном даже они
+    // могут оказаться мало.
+    //
+    // Меряем ТОЧНЫМ счётчиком, а не GetTickCount: у того шаг около 15 мс, и
+    // разбор файла в триста килобайт укладывался в один тик - на экране было
+    // ровно "0", хотя работа шла.
+    //
+    // Тройной запас означает, что на пересборку уходит не больше трети времени.
+    // Список подпрограмм - по тому же тексту, карты уже готовы
+    MapProgressStage('подпрограммы');
+    RebuildSubList(FullText);
+    TSub := PerfNow;
+    // Имена компонентов - тоже: присваивания Create(Self) могли появиться
+    MapProgressStage('компоненты');
+    RebuildCompNames(FullText);
+    TComp := PerfNow;
+    // Уровни вложенности строк - по тому же тексту
+    MapProgressStage('уровни строк');
+    RebuildLineDepths(FullText);
+  finally
+    if FMapProgress then
+    begin
+      FMapProgress := False;
+      BusyEnd('', True);
+    end;
+  end;
 
   FPerfRebuild := PerfNow - T0;
   FMapStale := False;
@@ -8267,6 +8303,7 @@ end;
 procedure TForm1.LoadWinFile(AWinIdx: Integer; const AFileName: string);
 var
   NewText: WideString;
+  ShowBusy: Boolean;
 begin
   // Открытие из проекта, списка недавних, перечитывание: окно остаётся
   // пустым, сообщение - как у ошибки чтения
@@ -8275,8 +8312,17 @@ begin
       FileTooLargeText);
   if LoadWinMapped(AWinIdx, AFileName) then
     Exit;
-  NewText := LoadFileWide(AFileName);
-  SetWinWide(AWinIdx, NewText);
+  // Большой файл читается секунду и дольше - этап в панели хода
+  ShowBusy := EdFileSize(AFileName) >= MapProgressMinLen;
+  if ShowBusy then
+    BusyBegin(ExtractFileName(AFileName) + ': чтение');
+  try
+    NewText := LoadFileWide(AFileName);
+    SetWinWide(AWinIdx, NewText);
+  finally
+    if ShowBusy then
+      BusyEnd('', True);
+  end;
   // Файл от 8 МБ - запас адресов после открытия
   if EdFileSize(AFileName) >= 8 * 1024 * 1024 then
     LogAddressSpace(ExtractFileName(AFileName) + ' открыт');
@@ -28688,6 +28734,8 @@ begin
       if (I < Len) and (AText[I] = #13) and (AText[I + 1] = #10) then
         Inc(I);
       LineStart := I + 1;
+      if (D.LineNo and 4095) = 0 then
+        MapProgress(I, Len);
     end;
     Inc(I);
   end;
@@ -29084,6 +29132,8 @@ begin
         Inc(I);
       Inc(LineNo);
       LineStart := I + 1;
+      if (LineNo and 4095) = 0 then
+        MapProgress(I, Len);
     end;
     Inc(I);
   end;
@@ -51142,6 +51192,25 @@ begin
   FBusyPanel.Caption := '  ' + FBusyStage + '   ' +
                         IntToStr((Ms - FBusyStart) div 1000) + ' с   ' + S;
   FBusyPanel.Update;
+end;
+
+// Этап разбора карты большого текста - в панель хода (FMapProgress)
+procedure TForm1.MapProgressStage(const AStage: string);
+begin
+  FMapProgressStage := FMapProgressName + ': ' + AStage;
+  if FMapProgress then
+    BusyStage(FMapProgressStage);
+end;
+
+// Доля пройденного текста на этапе разбора карты. Вызывать можно часто:
+// панель перерисовывается не чаще раза в 150 мс (BusyTick)
+procedure TForm1.MapProgress(ADone, ATotal: Integer);
+begin
+  if not FMapProgress or (ATotal <= 0) then
+    Exit;
+  FBusyStage := FMapProgressStage + ' ' +
+                IntToStr(Int64(ADone) * 100 div ATotal) + '%';
+  BusyTick;
 end;
 
 // Конец работы. У внешнего вызова - итог на 5 секунд: зелёный - удалось,
