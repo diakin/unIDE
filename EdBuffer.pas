@@ -28,6 +28,13 @@ unit EdBuffer;
 //  - Version растёт при каждой правке; подписчики (AddListener) получают,
 //    какие строки заменены: первая, сколько было, сколько стало.
 //
+//  - Большой файл (шаг 0.7.8): LoadMapped - исходный текст не строка, а
+//    байты файла, отображённого в память (UTF-8 или однобайтовая кодовая
+//    страница). Куски таких байтов (Source = 2) декодируются по запросу;
+//    при загрузке файл проходится один раз - считаются знаки и переводы
+//    строки по блокам EdMapBlock байтов. Границы блоков и разрезы кусков -
+//    только между знаками и не между #13 и #10.
+//
 //  Модуль без Windows и VCL/LCL: собирается Free Pascal (Windows, Linux).
 //  Тесты - tests\EdBuffer.
 // ---------------------------------------------------------------------------
@@ -43,9 +50,12 @@ const
   EdPieceMax = 256;      // наибольший кусок при загрузке и вставке, символов
   EdCacheSize = 256;     // строк в кэше чтения (степень двойки)
   EdCacheBlock = 32;     // строк читается подряд при промахе кэша
+  EdMapBlock = 4096;     // байтов в куске отображённого файла при загрузке
 
 type
   TEdLines = array of WideString;
+  // Байт однобайтовой кодовой страницы -> знак
+  TEdCharMap = array[0..255] of WideChar;
 
   TEdUndoItem = record
     IsInsert: Boolean;      // True - вставка Text в (Row, Col); False -
@@ -66,7 +76,8 @@ type
 
   // Узел дерева кусков: кусок Source (0 - FOrig, 1 - FAdd) с символа Start
   // (с 0) длиной Len, в нём Lf переводов строки; SubLen / SubLf - то же для
-  // всего поддерева
+  // всего поддерева. Source = 2 - байты отображённого файла: Start - байт
+  // (с 0), ByteLen - байтов, Len - знаков после декодирования
   PEdPiece = ^TEdPiece;
   TEdPiece = record
     Left: PEdPiece;
@@ -75,6 +86,7 @@ type
     Source: Byte;
     Start: Integer;
     Len: Integer;
+    ByteLen: Integer;
     Lf: Integer;
     SubLen: Integer;
     SubLf: Integer;
@@ -99,6 +111,16 @@ type
     FSavedUndo: Integer;    // FUndoCount на момент записи; -1 - не достичь
     FVersion: Integer;
     FListeners: array of TEdChangeEvent;
+    // --- отображённый файл (Source = 2) ---
+    FMapData: PAnsiChar;
+    FMapSize: Integer;
+    FMapUtf8: Boolean;
+    FMapChars: TEdCharMap;
+    FMapOwner: TObject;      // держит отображение; освобождается буфером
+    FScratch: WideString;    // декодированный кусок
+    FScratchStart: Integer;  // его байты (-1 - пусто)
+    FScratchLen: Integer;
+    FBlkStart, FBlkBytes, FBlkChars, FBlkLf: array of Integer;
     function GetLine(AIndex: Integer): WideString;
     procedure Changed(AFirst, AOldCount, ANewCount: Integer);
     procedure PushUndo(const AItem: TEdUndoItem);
@@ -107,6 +129,13 @@ type
     function PieceText(ANode: PEdPiece): PWideChar;
     function NewPiece(ASource: Byte; AStart, ALen: Integer;
       APrio: Cardinal): PEdPiece;
+    function NewMappedPiece(AByteStart, AByteLen, AChars, ALf: Integer;
+      APrio: Cardinal): PEdPiece;
+    function MapDecode(AStart, AStop, AMaxChars: Integer; ADest: PWideChar;
+      var AByteEnd, ALf: Integer): Integer;
+    function MappedOffset(ANode: PEdPiece; AChars: Integer): Integer;
+    function BuildMappedTree(AFirst, ALast, ADepth: Integer): PEdPiece;
+    procedure ReleaseMap;
     procedure SplitTree(ANode: PEdPiece; APos: Integer;
       var ALeft, ARight: PEdPiece);
     function MergeTree(ALeft, ARight: PEdPiece): PEdPiece;
@@ -143,6 +172,15 @@ type
     // Замена текста массивом строк (строки без #10): ALines забирается
     // (после вызова пуст), ACount строк (0 - один пустой). Откат очищается
     procedure AssignLines(var ALines: TEdLines; ACount: Integer);
+    // Текст - байты ASize с AData (без BOM): UTF-8 (AIsUtf8) или
+    // однобайтовая кодовая страница по ACharMap. Байты не копируются и
+    // должны жить, пока буфер на них ссылается: AOwner (например,
+    // отображение файла) буфер освобождает сам - при новом тексте или в
+    // Destroy. Откат очищается, текст считается записанным
+    procedure LoadMapped(AData: PAnsiChar; ASize: Integer; AIsUtf8: Boolean;
+      const ACharMap: TEdCharMap; AOwner: TObject);
+    // Текст - байты отображённого файла (LoadMapped)
+    function IsMapped: Boolean;
     // Конец куска AText (строки через #10), вставленного в (ARow, ACol)
     class procedure EndPosOf(ARow, ACol: Integer; const AText: WideString;
       var AEndRow, AEndCol: Integer);
@@ -299,6 +337,7 @@ begin
   FSeed := $9E3779B9;
   FPatchedRow := -1;
   FSavedUndo := 0;
+  FScratchStart := -1;
   FOrig := '';
   LoadOrig(1);
 end;
@@ -307,6 +346,7 @@ destructor TEdBuffer.Destroy;
 begin
   FreeTree(FRoot);
   FRoot := nil;
+  ReleaseMap;
   inherited Destroy;
 end;
 
@@ -322,7 +362,25 @@ begin
 end;
 
 function TEdBuffer.PieceText(ANode: PEdPiece): PWideChar;
+var
+  ByteEnd, LfCount: Integer;
 begin
+  if ANode^.Source = 2 then
+  begin
+    // Байты файла: декодировать весь кусок в FScratch (последний кусок
+    // запоминается - чтение строк подряд попадает в него же)
+    if (FScratchStart <> ANode^.Start) or (FScratchLen <> ANode^.ByteLen) then
+    begin
+      if Length(FScratch) < ANode^.ByteLen then
+        SetLength(FScratch, ANode^.ByteLen + 64);
+      MapDecode(ANode^.Start, ANode^.Start + ANode^.ByteLen, MaxInt,
+        PWideChar(Pointer(FScratch)), ByteEnd, LfCount);
+      FScratchStart := ANode^.Start;
+      FScratchLen := ANode^.ByteLen;
+    end;
+    Result := PWideChar(Pointer(FScratch));
+    Exit;
+  end;
   if ANode^.Source = 0 then
     Result := PWideChar(Pointer(FOrig))
   else
@@ -340,16 +398,187 @@ begin
   Result^.Source := ASource;
   Result^.Start := AStart;
   Result^.Len := ALen;
+  Result^.ByteLen := 0;
   Result^.Lf := CountBreaks(PieceText(Result), ALen);
   Result^.SubLen := ALen;
   Result^.SubLf := Result^.Lf;
+end;
+
+function TEdBuffer.NewMappedPiece(AByteStart, AByteLen, AChars, ALf: Integer;
+  APrio: Cardinal): PEdPiece;
+begin
+  New(Result);
+  Result^.Left := nil;
+  Result^.Right := nil;
+  Result^.Prio := APrio;
+  Result^.Source := 2;
+  Result^.Start := AByteStart;
+  Result^.ByteLen := AByteLen;
+  Result^.Len := AChars;
+  Result^.Lf := ALf;
+  Result^.SubLen := AChars;
+  Result^.SubLf := ALf;
+end;
+
+// Декодировать байты отображённого файла с AStart до AStop (или до
+// AMaxChars знаков) в ADest (nil - только счёт). Правила - как у
+// EdFileText.EdDecodeBytes для всего файла: #13#10 и одиночный #13 - один
+// #10; UTF-8 - недопустимый ведущий байт или хвост не того вида - '?' на
+// один байт, оборванная концом файла последовательность - '?' до конца,
+// за U+FFFF и половинки пары - '?'. Хвост последовательности читается и за
+// AStop (файл весь в памяти), поэтому кусок декодируется так же, как
+// декодировался бы весь файл. Результат - число знаков; AByteEnd - где
+// остановились (после #13 знака, на котором набрано AMaxChars, его #10
+// тоже пропускается); ALf - число #10
+function TEdBuffer.MapDecode(AStart, AStop, AMaxChars: Integer;
+  ADest: PWideChar; var AByteEnd, ALf: Integer): Integer;
+var
+  BytePos, Extra, TailIdx, RunStart, RunEnd: Integer;
+  LeadByte: Byte;
+  CodePoint: Cardinal;
+  PrevCR: Boolean;
+begin
+  Result := 0;
+  ALf := 0;
+  PrevCR := False;
+  BytePos := AStart;
+  while BytePos < AStop do
+  begin
+    if Result >= AMaxChars then
+    begin
+      if PrevCR and (FMapData[BytePos] = #10) then
+        Inc(BytePos);
+      PrevCR := False;
+      Break;
+    end;
+    LeadByte := Byte(FMapData[BytePos]);
+    // Быстрый путь: ASCII без #13 (почти весь текст программ)
+    if (LeadByte < $80) and (LeadByte <> 13) and
+       ((LeadByte <> 10) or not PrevCR) then
+    begin
+      PrevCR := False;
+      if ADest = nil then
+      begin
+        // Только счёт: до первого байта не из ASCII, #13 или границы
+        if AMaxChars - Result > AStop - BytePos then
+          RunEnd := AStop
+        else
+          RunEnd := BytePos + (AMaxChars - Result);
+        RunStart := BytePos;
+        while (BytePos < RunEnd) and (Byte(FMapData[BytePos]) < $80) and
+          (FMapData[BytePos] <> #13) do
+        begin
+          if FMapData[BytePos] = #10 then
+            Inc(ALf);
+          Inc(BytePos);
+        end;
+        Inc(Result, BytePos - RunStart);
+      end
+      else
+      begin
+        if LeadByte = 10 then
+          Inc(ALf);
+        ADest[Result] := WideChar(LeadByte);
+        Inc(Result);
+        Inc(BytePos);
+      end;
+      Continue;
+    end;
+    if LeadByte < $80 then
+    begin
+      CodePoint := LeadByte;
+      Inc(BytePos);
+    end
+    else if not FMapUtf8 then
+    begin
+      CodePoint := Word(FMapChars[LeadByte]);
+      Inc(BytePos);
+    end
+    else
+    begin
+      if (LeadByte and $E0) = $C0 then
+      begin
+        CodePoint := LeadByte and $1F;
+        Extra := 1;
+      end
+      else if (LeadByte and $F0) = $E0 then
+      begin
+        CodePoint := LeadByte and $0F;
+        Extra := 2;
+      end
+      else if (LeadByte and $F8) = $F0 then
+      begin
+        CodePoint := LeadByte and $07;
+        Extra := 3;
+      end
+      else
+      begin
+        CodePoint := Ord('?');
+        Extra := 0;
+      end;
+      if BytePos + Extra >= FMapSize then
+      begin
+        CodePoint := Ord('?');
+        Extra := FMapSize - BytePos - 1;
+      end
+      else
+        for TailIdx := 1 to Extra do
+        begin
+          if (Byte(FMapData[BytePos + TailIdx]) and $C0) <> $80 then
+          begin
+            CodePoint := Ord('?');
+            Extra := 0;
+            Break;
+          end;
+          CodePoint := (CodePoint shl 6) or
+            (Byte(FMapData[BytePos + TailIdx]) and $3F);
+        end;
+      Inc(BytePos, Extra + 1);
+      if (CodePoint > $FFFF) or
+         ((CodePoint >= $D800) and (CodePoint <= $DFFF)) then
+        CodePoint := Ord('?');
+    end;
+
+    if CodePoint = 13 then
+    begin
+      CodePoint := 10;
+      PrevCR := True;
+    end
+    else if (CodePoint = 10) and PrevCR then
+    begin
+      PrevCR := False;
+      Continue;
+    end
+    else
+      PrevCR := False;
+    if CodePoint = 10 then
+      Inc(ALf);
+    if ADest <> nil then
+      ADest[Result] := WideChar(CodePoint);
+    Inc(Result);
+  end;
+  // Остановились по AStop сразу после #13: его #10 - тоже сюда (границы
+  // блоков при загрузке)
+  if PrevCR and (BytePos < FMapSize) and (FMapData[BytePos] = #10) then
+    Inc(BytePos);
+  AByteEnd := BytePos;
+end;
+
+// Байт (от начала куска) после первых AChars знаков куска Source = 2
+function TEdBuffer.MappedOffset(ANode: PEdPiece; AChars: Integer): Integer;
+var
+  ByteEnd, LfCount: Integer;
+begin
+  MapDecode(ANode^.Start, ANode^.Start + ANode^.ByteLen, AChars, nil,
+    ByteEnd, LfCount);
+  Result := ByteEnd - ANode^.Start;
 end;
 
 // Разрезать дерево: ALeft - первые APos символов, ARight - остальное
 procedure TEdBuffer.SplitTree(ANode: PEdPiece; APos: Integer;
   var ALeft, ARight: PEdPiece);
 var
-  LeftLen, Offset: Integer;
+  LeftLen, Offset, ByteOffset: Integer;
   Tail, Middle: PEdPiece;
 begin
   if ANode = nil then
@@ -377,8 +606,18 @@ begin
   begin
     // Разрез внутри куска: хвост - новый кусок перед правым поддеревом
     Offset := APos - LeftLen;
-    Tail := NewPiece(ANode^.Source, ANode^.Start + Offset,
-      ANode^.Len - Offset, NextPrio);
+    if ANode^.Source = 2 then
+    begin
+      ByteOffset := MappedOffset(ANode, Offset);
+      Tail := NewMappedPiece(ANode^.Start + ByteOffset,
+        ANode^.ByteLen - ByteOffset, ANode^.Len - Offset, 0, NextPrio);
+      Tail^.Lf := CountBreaks(PieceText(Tail), Tail^.Len);
+      Tail^.SubLf := Tail^.Lf;
+      ANode^.ByteLen := ByteOffset;
+    end
+    else
+      Tail := NewPiece(ANode^.Source, ANode^.Start + Offset,
+        ANode^.Len - Offset, NextPrio);
     ANode^.Len := Offset;
     ANode^.Lf := ANode^.Lf - Tail^.Lf;
     ARight := MergeTree(Tail, ANode^.Right);
@@ -425,6 +664,33 @@ begin
   Result^.Left := BuildTree(AFirst, MidIdx - 1, ADepth + 1);
   Result^.Right := BuildTree(MidIdx + 1, ALast, ADepth + 1);
   UpdatePiece(Result);
+end;
+
+// Дерево из блоков отображённого файла AFirst .. ALast (FBlk*), приоритеты -
+// как в BuildTree
+function TEdBuffer.BuildMappedTree(AFirst, ALast, ADepth: Integer): PEdPiece;
+var
+  MidIdx: Integer;
+begin
+  Result := nil;
+  if AFirst > ALast then
+    Exit;
+  MidIdx := (AFirst + ALast) div 2;
+  Result := NewMappedPiece(FBlkStart[MidIdx], FBlkBytes[MidIdx],
+    FBlkChars[MidIdx], FBlkLf[MidIdx],
+    Cardinal($FFFFFFFF) - (Cardinal(ADepth) shl 24) - (NextPrio and $FFFFFF));
+  Result^.Left := BuildMappedTree(AFirst, MidIdx - 1, ADepth + 1);
+  Result^.Right := BuildMappedTree(MidIdx + 1, ALast, ADepth + 1);
+  UpdatePiece(Result);
+end;
+
+procedure TEdBuffer.ReleaseMap;
+begin
+  FMapData := nil;
+  FMapSize := 0;
+  FScratchStart := -1;
+  FScratch := '';
+  FreeAndNil(FMapOwner);
 end;
 
 // Набор подряд: дописать ALen символов FAdd с AAddStart к последнему куску
@@ -517,6 +783,8 @@ var
   PieceCount: Integer;
 begin
   FreeTree(FRoot);
+  FRoot := nil;
+  ReleaseMap;
   FAdd := '';
   FAddLen := 0;
   PieceCount := (Length(FOrig) + EdPieceMax - 1) div EdPieceMax;
@@ -867,6 +1135,71 @@ begin
   end;
   ALines := nil;
   LoadOrig(FCount);
+end;
+
+procedure TEdBuffer.LoadMapped(AData: PAnsiChar; ASize: Integer;
+  AIsUtf8: Boolean; const ACharMap: TEdCharMap; AOwner: TObject);
+var
+  OldCount, BlockCount, BytePos, ByteEnd, CharCount, LfCount: Integer;
+begin
+  OldCount := FCount;
+  FreeTree(FRoot);
+  FRoot := nil;
+  ReleaseMap;
+  FOrig := '';
+  FAdd := '';
+  FAddLen := 0;
+  FMapData := AData;
+  FMapSize := ASize;
+  FMapUtf8 := AIsUtf8;
+  FMapChars := ACharMap;
+  FMapOwner := AOwner;
+
+  // Один проход по файлу: блоки около EdMapBlock байтов, граница - между
+  // знаками и не между #13 и #10 (её выбирает MapDecode)
+  BlockCount := 0;
+  SetLength(FBlkStart, ASize div EdMapBlock + 1);
+  SetLength(FBlkBytes, Length(FBlkStart));
+  SetLength(FBlkChars, Length(FBlkStart));
+  SetLength(FBlkLf, Length(FBlkStart));
+  BytePos := 0;
+  while BytePos < ASize do
+  begin
+    if BytePos + EdMapBlock < ASize then
+      CharCount := MapDecode(BytePos, BytePos + EdMapBlock, MaxInt, nil,
+        ByteEnd, LfCount)
+    else
+      CharCount := MapDecode(BytePos, ASize, MaxInt, nil, ByteEnd, LfCount);
+    if BlockCount >= Length(FBlkStart) then
+    begin
+      SetLength(FBlkStart, BlockCount * 2);
+      SetLength(FBlkBytes, BlockCount * 2);
+      SetLength(FBlkChars, BlockCount * 2);
+      SetLength(FBlkLf, BlockCount * 2);
+    end;
+    FBlkStart[BlockCount] := BytePos;
+    FBlkBytes[BlockCount] := ByteEnd - BytePos;
+    FBlkChars[BlockCount] := CharCount;
+    FBlkLf[BlockCount] := LfCount;
+    Inc(BlockCount);
+    BytePos := ByteEnd;
+  end;
+  FRoot := BuildMappedTree(0, BlockCount - 1, 0);
+  FBlkStart := nil;
+  FBlkBytes := nil;
+  FBlkChars := nil;
+  FBlkLf := nil;
+
+  FCount := SubLfOf(FRoot) + 1;
+  ClearCache;
+  ClearUndo;
+  FSavedUndo := 0;
+  Changed(0, OldCount, FCount);
+end;
+
+function TEdBuffer.IsMapped: Boolean;
+begin
+  Result := FMapData <> nil;
 end;
 
 class procedure TEdBuffer.EndPosOf(ARow, ACol: Integer;

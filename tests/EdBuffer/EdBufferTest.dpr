@@ -682,6 +682,275 @@ begin
   end;
 end;
 
+// --- Отображённый файл (LoadMapped, шаг 0.7.8) -----------------------------
+
+// Тот же разбор, что EdFileText.EdDecodeBytes (там он с Windows-модулями)
+function RefDecode(const ARaw: AnsiString; AIsUtf8: Boolean;
+  const AMap: TEdCharMap): WideString;
+var
+  ByteIdx, RawLen, Extra, TailIdx, OutLen: Integer;
+  LeadByte: Byte;
+  CodePoint: Cardinal;
+  PrevCR: Boolean;
+begin
+  RawLen := Length(ARaw);
+  SetLength(Result, RawLen);
+  OutLen := 0;
+  PrevCR := False;
+  ByteIdx := 1;
+  while ByteIdx <= RawLen do
+  begin
+    LeadByte := Byte(ARaw[ByteIdx]);
+    if (LeadByte < $80) or not AIsUtf8 then
+    begin
+      if LeadByte < $80 then
+        CodePoint := LeadByte
+      else
+        CodePoint := Word(AMap[LeadByte]);
+      Inc(ByteIdx);
+    end
+    else
+    begin
+      if (LeadByte and $E0) = $C0 then
+      begin
+        CodePoint := LeadByte and $1F;
+        Extra := 1;
+      end
+      else if (LeadByte and $F0) = $E0 then
+      begin
+        CodePoint := LeadByte and $0F;
+        Extra := 2;
+      end
+      else if (LeadByte and $F8) = $F0 then
+      begin
+        CodePoint := LeadByte and $07;
+        Extra := 3;
+      end
+      else
+      begin
+        CodePoint := Ord('?');
+        Extra := 0;
+      end;
+      if ByteIdx + Extra > RawLen then
+      begin
+        CodePoint := Ord('?');
+        Extra := RawLen - ByteIdx;
+      end
+      else
+        for TailIdx := 1 to Extra do
+        begin
+          if (Byte(ARaw[ByteIdx + TailIdx]) and $C0) <> $80 then
+          begin
+            CodePoint := Ord('?');
+            Extra := 0;
+            Break;
+          end;
+          CodePoint := (CodePoint shl 6) or
+            (Byte(ARaw[ByteIdx + TailIdx]) and $3F);
+        end;
+      Inc(ByteIdx, Extra + 1);
+      if (CodePoint > $FFFF) or
+         ((CodePoint >= $D800) and (CodePoint <= $DFFF)) then
+        CodePoint := Ord('?');
+    end;
+    if CodePoint = 13 then
+    begin
+      Inc(OutLen);
+      Result[OutLen] := #10;
+      PrevCR := True;
+      Continue;
+    end;
+    if (CodePoint = 10) and PrevCR then
+    begin
+      PrevCR := False;
+      Continue;
+    end;
+    PrevCR := False;
+    Inc(OutLen);
+    Result[OutLen] := WideChar(CodePoint);
+  end;
+  SetLength(Result, OutLen);
+end;
+
+// Случайные байты из кусочков, неудобных для границ блоков: #13#10,
+// одиночные #13 и #10, UTF-8 по 2-4 байта, недопустимые байты
+function RandomRaw(ALen: Integer; AIsUtf8: Boolean): AnsiString;
+const
+  Tokens: array[0..13] of AnsiString = ('a', 'bc', ' ', #13#10, #13, #10,
+    #13#13#10, #$D0#$96, #$E2#$82#$AC, #$F0#$9F#$98#$80, #$80, #$FF,
+    #$C3'a', #$E2#$82);
+  AnsiTokens: array[0..6] of AnsiString = ('a', 'xyz', #13#10, #13, #10,
+    #$C6, #$98);
+var
+  Token: AnsiString;
+begin
+  Result := '';
+  while Length(Result) < ALen do
+  begin
+    if AIsUtf8 then
+    begin
+      // Больше обычного текста, чтобы строки были разной длины
+      if Random(3) = 0 then
+        Token := Tokens[Random(Length(Tokens))]
+      else
+        Token := Tokens[Random(3)];
+    end
+    else
+      Token := AnsiTokens[Random(Length(AnsiTokens))];
+    Result := Result + Token;
+  end;
+end;
+
+procedure CheckMapped(const ARaw: AnsiString; AIsUtf8: Boolean;
+  const AMap: TEdCharMap; const AWhat: string);
+var
+  Buf: TEdBuffer;
+  Expected: WideString;
+  RowIdx, ColIdx, CheckIdx, Index1: Integer;
+begin
+  Expected := RefDecode(ARaw, AIsUtf8, AMap);
+  Buf := TEdBuffer.Create;
+  try
+    if ARaw = '' then
+      Buf.LoadMapped(nil, 0, AIsUtf8, AMap, nil)
+    else
+      Buf.LoadMapped(PAnsiChar(ARaw), Length(ARaw), AIsUtf8, AMap, nil);
+    CheckText(Buf, Expected, AWhat + ': text');
+    CheckInt(Buf.Count, ModelLineCount(Expected), AWhat + ': count');
+    CheckInt(Buf.TextLength, Length(Expected), AWhat + ': length');
+    // Строки вразброс (не подряд - мимо чтения блоками)
+    for CheckIdx := 1 to 50 do
+    begin
+      RowIdx := Random(Buf.Count);
+      if Buf[RowIdx] <> ModelLine(Expected, RowIdx) then
+      begin
+        Check(False, AWhat + ': line ' + IntToStr(RowIdx));
+        Break;
+      end;
+    end;
+    for CheckIdx := 1 to 50 do
+    begin
+      Index1 := Random(Length(Expected) + 1);
+      Buf.PosOfIndex(Index1, RowIdx, ColIdx);
+      CheckInt(ModelIndex(Expected, RowIdx, ColIdx), Index1,
+        AWhat + ': index');
+    end;
+    Check(Buf.IsMapped = (ARaw <> ''), AWhat + ': mapped');
+  finally
+    Buf.Free;
+  end;
+end;
+
+procedure TestMapped;
+const
+  StepCount = 3000;
+var
+  Map: TEdCharMap;
+  Raw: AnsiString;
+  Buf: TEdBuffer;
+  Model, Original, Piece, Removed: WideString;
+  ByteIdx, Round, Step, Row1, Col1, Row2, Col2, EndRow, EndCol, Index1,
+  Index2, CurRow, CurCol, EditCount, CharIdx: Integer;
+begin
+  RandSeed := 20261031;
+  // Своя таблица: байт $80.. - кириллица с U+0400
+  for ByteIdx := 0 to 255 do
+    if ByteIdx < $80 then
+      Map[ByteIdx] := WideChar(ByteIdx)
+    else
+      Map[ByteIdx] := WideChar($0400 + ByteIdx - $80);
+
+  CheckMapped('', True, Map, 'mapped empty');
+  CheckMapped('abc', True, Map, 'mapped short');
+  CheckMapped('a'#13, True, Map, 'mapped CR at end');
+  CheckMapped(#13#10, True, Map, 'mapped CRLF only');
+  CheckMapped('x'#$E2#$82, True, Map, 'mapped cut UTF-8 at end');
+  CheckMapped('x'#$F0, True, Map, 'mapped lead byte at end');
+  // Граница блока: #13 последним байтом блока, #10 - первым следующего
+  Raw := StringOfChar(AnsiChar('q'), EdMapBlock - 1) + #13#10 + 'tail';
+  CheckMapped(Raw, True, Map, 'mapped CRLF on block edge');
+  Raw := StringOfChar(AnsiChar('q'), EdMapBlock - 1) + #$E2#$82#$AC + 'z';
+  CheckMapped(Raw, True, Map, 'mapped UTF-8 on block edge');
+  Raw := StringOfChar(AnsiChar('q'), EdMapBlock - 2) + #$E2#$82'z'#13#10;
+  CheckMapped(Raw, True, Map, 'mapped bad UTF-8 on block edge');
+  for Round := 1 to 20 do
+  begin
+    CheckMapped(RandomRaw(EdMapBlock * 3 + Random(EdMapBlock), True), True,
+      Map, 'mapped utf8 random ' + IntToStr(Round));
+    CheckMapped(RandomRaw(EdMapBlock * 3 + Random(EdMapBlock), False), False,
+      Map, 'mapped ansi random ' + IntToStr(Round));
+  end;
+
+  // Правки, откат и повтор поверх байтов файла
+  Raw := RandomRaw(EdMapBlock * 8, True);
+  Original := RefDecode(Raw, True, Map);
+  Buf := TEdBuffer.Create;
+  try
+    Buf.LoadMapped(PAnsiChar(Raw), Length(Raw), True, Map, nil);
+    Model := Original;
+    EditCount := 0;
+    for Step := 1 to StepCount do
+    begin
+      Buf.BeginGroup;
+      Row1 := Random(Buf.Count);
+      Col1 := Random(Buf.LineLength(Row1) + 1);
+      Index1 := ModelIndex(Model, Row1, Col1);
+      if Random(2) = 0 then
+      begin
+        Piece := '';
+        for CharIdx := 1 to Random(5) + 1 do
+          if Random(6) = 0 then
+            Piece := Piece + #10
+          else
+            Piece := Piece + WideChar(Ord('A') + Random(26));
+        Buf.InsertText(Row1, Col1, Piece, False, Row1, Col1, EndRow, EndCol);
+        Model := Copy(Model, 1, Index1) + Piece + Copy(Model, Index1 + 1,
+          MaxInt);
+        Inc(EditCount);
+      end
+      else
+      begin
+        Index2 := Index1 + Random(40);
+        if Index2 > Length(Model) then
+          Index2 := Length(Model);
+        Buf.PosOfIndex(Index2, Row2, Col2);
+        Removed := Buf.DeleteText(Row1, Col1, Row2, Col2, Row1, Col1);
+        if Index2 > Index1 then
+          Inc(EditCount);
+        Check(Removed = Copy(Model, Index1 + 1, Index2 - Index1),
+          'mapped edit: removed, step ' + IntToStr(Step));
+        Model := Copy(Model, 1, Index1) + Copy(Model, Index2 + 1, MaxInt);
+      end;
+      if Step mod 100 = 0 then
+        if Buf.GetText(#10) <> Model then
+        begin
+          CheckText(Buf, Model, 'mapped edit: step ' + IntToStr(Step));
+          Break;
+        end;
+      // Строка рядом с правкой - через кэш
+      if Buf[Row1] <> ModelLine(Model, Row1) then
+      begin
+        Check(False, 'mapped edit: line, step ' + IntToStr(Step));
+        Break;
+      end;
+    end;
+    CheckText(Buf, Model, 'mapped edit: final');
+    while Buf.Undo(CurRow, CurCol) do
+      ;
+    CheckText(Buf, Original, 'mapped edit: undo all');
+    Check(not Buf.Modified, 'mapped edit: not modified after undo');
+    while Buf.Redo(CurRow, CurCol) do
+      ;
+    CheckText(Buf, Model, 'mapped edit: redo all');
+    // Новый текст снимает отображение
+    Buf.SetText('x');
+    Check(not Buf.IsMapped, 'mapped: SetText releases');
+    Writeln('mapped: edits ', EditCount, ', lines ', Buf.Count);
+  finally
+    Buf.Free;
+  end;
+end;
+
 
 begin
   TestSetGetText;
@@ -693,6 +962,7 @@ begin
   TestListener;
   TestRandom;
   TestLargeText;
+  TestMapped;
   Writeln('EdBuffer: checks ', CheckCount, ', failed ', FailCount);
   if FailCount > 0 then
     Halt(1);

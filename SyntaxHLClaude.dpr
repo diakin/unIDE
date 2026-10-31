@@ -93,6 +93,7 @@ uses
   EdHostWin in 'EdHostWin.pas',
   EdHost in 'EdHost.pas',
   EdFileText in 'EdFileText.pas',
+  EdMapFile in 'EdMapFile.pas',
   DlgEdPreview in 'DlgEdPreview.pas',
   FarEdit in 'FarEdit.pas',
   FarViewer in 'FarViewer.pas',

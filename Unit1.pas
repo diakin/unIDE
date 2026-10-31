@@ -47,6 +47,7 @@ uses
   EdLog,          // окна логов на своём редакторе (шаг 0.7.6)
   EdBuffer,       // TEdBuffer - текст второй панели
   EdFileText,     // файл <-> TEdBuffer без ANSI-строки всего текста (шаг 3)
+  EdMapFile,      // большой файл - отображением в память (шаг 0.7.8)
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
@@ -2447,7 +2448,9 @@ type
     function  LoadFileWide(const FileName: string): WideString;
     procedure SetWinWide(AWinIdx: Integer; var AText: WideString);
     procedure LoadWinFile(AWinIdx: Integer; const AFileName: string);
+    function  LoadWinMapped(AWinIdx: Integer; const AFileName: string): Boolean;
     procedure SaveEditorFile(const AFileName: string);
+    procedure SaveMappedEditor(const AFileName: string);
     function  CheckDiskChanges(AOnly: Integer): Boolean;
     function  AskDiskChange(W: Integer; IsMod, CanMerge, Many: Boolean;
                             var ASame: Boolean): Integer;
@@ -7946,8 +7949,59 @@ procedure TForm1.LoadWinFile(AWinIdx: Integer; const AFileName: string);
 var
   NewText: WideString;
 begin
+  if LoadWinMapped(AWinIdx, AFileName) then
+    Exit;
   NewText := LoadFileWide(AFileName);
   SetWinWide(AWinIdx, NewText);
+end;
+
+// Большой файл (от EdLargeFileSize, шаг 0.7.8) - в буфер вкладки
+// отображением в память: без строки всего файла, без WideString всего
+// текста и без копии байтов для слияния (файл открыт только на чтение
+// другими программами, изменить его снаружи нельзя). Кодировка - в
+// FFileIsUtf8 / FFileHasBom, как у LoadFileWide. False - файл не большой
+// (или форма, или многобайтовая кодовая страница Windows): читать прежним
+// путём. Исключение - файл не открыт или не отображён
+function TForm1.LoadWinMapped(AWinIdx: Integer;
+  const AFileName: string): Boolean;
+var
+  IsUtf8, HasBom: Boolean;
+  StartTick: Cardinal;
+  Buffer: TEdBuffer;
+begin
+  Result := False;
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
+    Exit;
+  if IsFormExt(ExtractFileExt(AFileName)) then
+    Exit;
+  if EdFileSize(AFileName) < EdLargeFileSize then
+    Exit;
+  if FWindows[AWinIdx].Buffer = nil then
+  begin
+    FWindows[AWinIdx].Buffer := TEdBuffer.Create;
+    FWindows[AWinIdx].Buffer.AddListener(MapBufferChanged);
+  end;
+  Buffer := FWindows[AWinIdx].Buffer;
+  StartTick := GetTickCount;
+  IsUtf8 := False;
+  HasBom := False;
+  if not EdLoadMapped(Buffer, AFileName, IsUtf8, HasBom) then
+    Exit;
+  Result := True;
+  FFileIsUtf8 := IsUtf8;
+  FFileHasBom := HasBom;
+  if (FEdEmu <> nil) and (FEdEmu.Buffer = Buffer) then
+  begin
+    Inc(FEditSerial);
+    FEdEmu.UseBuffer(Buffer, False);
+  end;
+  FWindows[AWinIdx].TextCache := '';
+  FWindows[AWinIdx].TextKey := -1;
+  NoteDisk(AFileName, '');
+  LogComp(Format('%s: %d МБ, открыт отображением в память (большой ' +
+    'файл), строк %d, %d мс', [ExtractFileName(AFileName),
+    EdFileSize(AFileName) div (1024 * 1024), Buffer.Count,
+    GetTickCount - StartTick]));
 end;
 
 // Прочитать файл с определением кодировки (UTF-8, BOM, двоичная форма),
@@ -8101,6 +8155,31 @@ end;
 // байты собираются по строкам буфера (EdFileText.EdEncodeBuffer), без
 // ANSI-строки всего текста; кодировка - та, в которой файл был открыт.
 // Без своего редактора - SaveTextFile с текстом окна
+// Большой файл (отображение, шаг 0.7.8): запись по строкам через временный
+// файл, затем файл отображается заново (EdFileText.EdSaveMapped). Откат
+// после записи пуст; каретка остаётся на том же месте текста
+procedure TForm1.SaveMappedEditor(const AFileName: string);
+var
+  CaretPos: Integer;
+  StartTick: Cardinal;
+begin
+  CaretPos := RichEdit1.SelStart;
+  StartTick := GetTickCount;
+  try
+    EdSaveMapped(FEdEmu.Buffer, AFileName, FFileIsUtf8, FFileHasBom);
+  finally
+    Inc(FEditSerial);
+    FEdEmu.UseBuffer(FEdEmu.Buffer, False);
+    if CaretPos > FEdEmu.Buffer.TextLength then
+      CaretPos := FEdEmu.Buffer.TextLength;
+    RichEdit1.SelStart := CaretPos;
+    SendMessage(RichEdit1.Handle, EM_SCROLLCARET, 0, 0);
+  end;
+  NoteDisk(AFileName, '');
+  LogComp(Format('%s: записан (большой файл), %d мс',
+    [ExtractFileName(AFileName), GetTickCount - StartTick]));
+end;
+
 procedure TForm1.SaveEditorFile(const AFileName: string);
 var
   Stream: TFileStream;
@@ -8110,6 +8189,11 @@ begin
   if FEdEmu = nil then
   begin
     SaveTextFile(AFileName, GetEditorText);
+    Exit;
+  end;
+  if FEdEmu.Buffer.IsMapped then
+  begin
+    SaveMappedEditor(AFileName);
     Exit;
   end;
   Raw := EdEncodeBuffer(FEdEmu.Buffer, FFileIsUtf8);
@@ -19936,9 +20020,10 @@ function TForm1.ReloadWindowFromDisk(W: Integer; AAsk: Boolean): Boolean;
 var
   FN: string;
   LoadedText: WideString;
-  IsMod, SavedUtf8, SavedBom: Boolean;
+  IsMod, SavedUtf8, SavedBom, IsMapped: Boolean;
 begin
   Result := False;
+  IsMapped := False;
   FN := FWindows[W].FileName;
   if not FileExists(FN) then
   begin
@@ -19968,7 +20053,9 @@ begin
   // Файл не открылся (его держит другой процесс) - окно остаётся как было,
   // время файла не запоминается: проверка диска попробует ещё раз
   try
-    LoadedText := LoadFileWide(FN);
+    IsMapped := LoadWinMapped(W, FN);
+    if not IsMapped then
+      LoadedText := LoadFileWide(FN);
   except
     on E: Exception do
     begin
@@ -19989,7 +20076,8 @@ begin
   end;
   if CompareText(FDiskReadFail, FN) = 0 then
     FDiskReadFail := '';
-  SetWinWide(W, LoadedText);
+  if not IsMapped then
+    SetWinWide(W, LoadedText);
   FWindows[W].IsUtf8 := FFileIsUtf8;
   FWindows[W].HasBom := FFileHasBom;
 
@@ -20008,7 +20096,7 @@ begin
   SetLength(FWindows[W].StringRanges, 0);
 
   // Каретку сохраняем, но файл мог стать короче
-  if FWindows[W].CursorPos > Length(WinText(W)) then
+  if FWindows[W].CursorPos > WinTextSize(W) then
     FWindows[W].CursorPos := 0;
 
   if W = FWindowsIndex then
