@@ -2054,6 +2054,21 @@ type
     // Карта разобрана заново только до этой позиции (RescanVisibleMap),
     // дальше диапазонов нет до полной пересборки; 0 - карта полная
     FMapPartialEnd: Integer;
+    // Шаг 4 - карта после правки разбирается от места правки до схождения
+    // со старой картой (ResyncMap), а не по всему тексту. FMapBuffer -
+    // буфер, по которому построена карта, FMapBufLen - его длина на момент
+    // последнего уведомления. Правки с тех пор (MapBufferChanged): начало и
+    // конец задетого куска в нынешних позициях, общий сдвиг длины, число
+    // уведомлений; FMapDirtyStart = -1 - правок не было
+    FMapBuffer: TEdBuffer;
+    FMapBufLen: Integer;
+    FMapDirtyStart: Integer;
+    FMapDirtyEnd: Integer;
+    FMapDirtyDelta: Integer;
+    FMapDirtyCalls: Integer;
+    // Список подпрограмм, имена компонентов, уровни строк после правки,
+    // карта которой сошлась (RebuildAuxParse): по своему таймеру
+    FAuxTimer: TTimer;
 
     // Кэш длинных строк - см. GetLineInfo
     FLineInfo: array[0..LineInfoCount - 1] of TLineInfo;
@@ -3792,6 +3807,14 @@ type
                         var AKind: Integer): Boolean;
     procedure CapturePreEdit;
     function  TryShiftMap: Boolean;
+    procedure MapBufferChanged(Sender: TObject; AFirst, AOldCount,
+      ANewCount: Integer);
+    procedure MapBind(ABuffer: TEdBuffer);
+    function  ResyncMap: Boolean;
+    procedure MapAfterEdit;
+    procedure ScheduleAuxRebuild;
+    procedure AuxTimerTick(Sender: TObject);
+    procedure RebuildAuxParse;
     function  PerfNow: Int64;
     function  PerfMs(ATicks: Int64): string;
     procedure ProgressStart(const ACaption: string);
@@ -4781,10 +4804,19 @@ begin
     SetLength(CommentRanges, 0);
     SetLength(StringRanges, 0);
     FMapStale := True;
+    MapBind(nil);
     Exit;
   end;
 
   T0 := PerfNow;
+  // Списки ниже строятся здесь же - их отдельный заказ снять
+  if FAuxTimer <> nil then
+    FAuxTimer.Enabled := False;
+  // Карта - по тексту на экране: правки с этого места ведёт ResyncMap
+  if FEdEmu <> nil then
+    MapBind(FEdEmu.Buffer)
+  else
+    MapBind(nil);
 
   // 1. Очищаем старые карты перед пересчётом
   SetLength(CommentRanges, 0);
@@ -4969,7 +5001,17 @@ end;
 procedure TForm1.FlushMapRebuild;
 begin
   if (FMapTimer = nil) or not FMapTimer.Enabled then
+  begin
+    // Карта сошлась после правки, а списки ещё ждут своего таймера - они
+    // тоже ложатся в запись окна
+    if (FAuxTimer <> nil) and FAuxTimer.Enabled then
+    begin
+      FAuxTimer.Enabled := False;
+      RebuildAuxParse;
+      RichEdit1.Invalidate;
+    end;
     Exit;
+  end;
 
   RebuildCommentRangeMap; // она сама снимет заказ
 
@@ -7875,7 +7917,10 @@ begin
   if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
     Exit;
   if FWindows[AWinIdx].Buffer = nil then
+  begin
     FWindows[AWinIdx].Buffer := TEdBuffer.Create;
+    FWindows[AWinIdx].Buffer.AddListener(MapBufferChanged);
+  end;
   if (FEdEmu <> nil) and (FEdEmu.Buffer = FWindows[AWinIdx].Buffer) then
   begin
     Inc(FEditSerial);
@@ -8998,6 +9043,7 @@ end;
 procedure TForm1.RestoreWindowParse(Index: Integer);
 begin
   FMapPartialEnd := 0; // карта окна полная
+  MapBind(FWindows[Index].Buffer);
   CommentRanges := Copy(FWindows[Index].CommentRanges, 0,
                         Length(FWindows[Index].CommentRanges));
   StringRanges := Copy(FWindows[Index].StringRanges, 0,
@@ -9422,6 +9468,8 @@ begin
     // после показа.
     if FMapTimer <> nil then
       FMapTimer.Enabled := False;
+    if FAuxTimer <> nil then
+      FAuxTimer.Enabled := False;
   finally
     FTabSwitching := False;
   end;
@@ -9723,6 +9771,313 @@ begin
       Exit;
     end;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Карта после правки - от места правки до схождения (шаг 4)
+//
+//  Правка, задевшая маркер (кавычку, скобку комментария), вставка, откат,
+//  замена: раньше - разбор видимой части и полный разбор всего текста по
+//  таймеру. Теперь разбирается кусок от последнего диапазона перед правкой
+//  до первой строки после правки, где разбор сходится со старой картой:
+//  начало строки и в новой, и в старой карте - обычный код, не внутри
+//  диапазона. Дальше текст не менялся, автомат идёт из того же состояния -
+//  старые диапазоны верны, только сдвинуты на изменение длины. Кусок
+//  растёт вдвое, пока не сойдётся, не больше MapResyncMax символов за
+//  правкой; не сошлось (открыли комментарий до конца файла) - как раньше:
+//  видимая часть сразу, всё - по таймеру.
+//
+//  Где правили, сообщает буфер (MapBufferChanged): строки с первой по
+//  последнюю задетую и длина текста. Список подпрограмм, имена компонентов
+//  и уровни строк после сошедшейся карты - по своему таймеру
+//  (ScheduleAuxRebuild), им нужен весь текст.
+// ---------------------------------------------------------------------------
+
+const
+  MapResyncMax = 262144;
+
+// Карта построена по ABuffer (nil - ни по какому): правок с этого места нет
+procedure TForm1.MapBind(ABuffer: TEdBuffer);
+begin
+  FMapBuffer := ABuffer;
+  if ABuffer <> nil then
+    FMapBufLen := ABuffer.TextLength
+  else
+    FMapBufLen := 0;
+  FMapDirtyStart := -1;
+  FMapDirtyEnd := -1;
+  FMapDirtyDelta := 0;
+  FMapDirtyCalls := 0;
+end;
+
+// Уведомление буфера вкладки: строки AFirst .. AFirst + AOldCount - 1
+// заменены ANewCount строками. Для буфера карты - задетый кусок (с начала
+// строки AFirst до начала строки после замены) сливается с прежним
+procedure TForm1.MapBufferChanged(Sender: TObject; AFirst, AOldCount,
+  ANewCount: Integer);
+var
+  NewLen, Delta, EditStart, NewEnd, OldEnd: Integer;
+begin
+  if (FMapBuffer = nil) or (Sender <> FMapBuffer) then
+    Exit;
+  NewLen := FMapBuffer.TextLength;
+  Delta := NewLen - FMapBufLen;
+  FMapBufLen := NewLen;
+  EditStart := FMapBuffer.CharIndex(AFirst, 0);
+  // Конец куска - начало следующей строки; правка в последней строке -
+  // за концом текста (позиция после последнего символа)
+  if AFirst + ANewCount < FMapBuffer.Count then
+    NewEnd := FMapBuffer.CharIndex(AFirst + ANewCount, 0)
+  else
+    NewEnd := NewLen + 1;
+  OldEnd := NewEnd - Delta;
+  if FMapDirtyStart < 0 then
+  begin
+    FMapDirtyStart := EditStart;
+    FMapDirtyEnd := NewEnd;
+    FMapDirtyDelta := Delta;
+  end
+  else
+  begin
+    // Прежний кусок - в позиции после этой правки
+    if FMapDirtyStart >= OldEnd then
+      Inc(FMapDirtyStart, Delta)
+    else if FMapDirtyStart > EditStart then
+      FMapDirtyStart := EditStart;
+    if FMapDirtyEnd >= OldEnd then
+      Inc(FMapDirtyEnd, Delta)
+    else if FMapDirtyEnd > EditStart then
+      FMapDirtyEnd := NewEnd;
+    if EditStart < FMapDirtyStart then
+      FMapDirtyStart := EditStart;
+    if NewEnd > FMapDirtyEnd then
+      FMapDirtyEnd := NewEnd;
+    Inc(FMapDirtyDelta, Delta);
+  end;
+  Inc(FMapDirtyCalls);
+end;
+
+// Разбор с места правки до схождения со старой картой. True - карта
+// полная и верная; False - не сошлось в MapResyncMax символов за правкой
+// или разбирать так нельзя (карта неполная, ждёт полного разбора) - карта
+// не тронута, дальше прежний путь
+function TForm1.ResyncMap: Boolean;
+var
+  OldComments, OldStrings: TCommentRangeArray;
+  KeepComments, KeepStrings, ResumePos, ScanEnd, MaxEnd, TextLen: Integer;
+  ChunkLen, LineRow, LineCol, MeetPos, OldMeet, RangeIdx, NewCount: Integer;
+  AnchorPos: Integer;
+  Found: Boolean;
+begin
+  Result := False;
+  if (FMapDirtyStart < 0) or (FMapBuffer = nil) or (FEdEmu = nil) or
+     (FEdEmu.Buffer <> FMapBuffer) or not FUseSyntaxHighlight or
+     FMapStale or (FMapPartialEnd > 0) or
+     ((FMapTimer <> nil) and FMapTimer.Enabled) then
+    Exit;
+  // Заменён большой кусок (весь текст) - быстрее разобрать всё по таймеру
+  if FMapDirtyEnd - FMapDirtyStart > MapResyncMax then
+    Exit;
+  TextLen := FMapBuffer.TextLength;
+
+  OldComments := Copy(CommentRanges, 0, Length(CommentRanges));
+  OldStrings := Copy(StringRanges, 0, Length(StringRanges));
+
+  // Запас в маркер: правка могла достроить или разбить маркер слева. Перед
+  // правкой позиции старой карты не менялись.
+  //
+  // Разбор - с начала строки, где стоит AnchorPos: там по старой карте
+  // обычный код (строчный комментарий кончается переводом строки). Начало
+  // строки внутри старого диапазона - с начала этого диапазона: там автомат
+  // тоже был в обычном коде, на открывающем маркере
+  AnchorPos := FMapDirtyStart - FScheme.FMaxMarkerLen - 1;
+  if AnchorPos < 0 then
+    AnchorPos := 0;
+  FMapBuffer.PosOfIndex(AnchorPos, LineRow, LineCol);
+  ResumePos := FMapBuffer.CharIndex(LineRow, 0);
+  for RangeIdx := 0 to High(OldComments) do
+    if (OldComments[RangeIdx].StartPos <= ResumePos) and
+       (OldComments[RangeIdx].EndPos > ResumePos) then
+    begin
+      ResumePos := OldComments[RangeIdx].StartPos;
+      Break;
+    end
+    else if OldComments[RangeIdx].StartPos > ResumePos then
+      Break;
+  for RangeIdx := 0 to High(OldStrings) do
+    if (OldStrings[RangeIdx].StartPos <= ResumePos) and
+       (OldStrings[RangeIdx].EndPos > ResumePos) then
+    begin
+      ResumePos := OldStrings[RangeIdx].StartPos;
+      Break;
+    end
+    else if OldStrings[RangeIdx].StartPos > ResumePos then
+      Break;
+  KeepComments := 0;
+  while (KeepComments <= High(OldComments)) and
+        (OldComments[KeepComments].EndPos <= ResumePos) do
+    Inc(KeepComments);
+  KeepStrings := 0;
+  while (KeepStrings <= High(OldStrings)) and
+        (OldStrings[KeepStrings].EndPos <= ResumePos) do
+    Inc(KeepStrings);
+
+  MaxEnd := FMapDirtyEnd + MapResyncMax;
+  if MaxEnd > TextLen then
+    MaxEnd := TextLen;
+  ChunkLen := FMapDirtyEnd - ResumePos + 4096;
+  Found := False;
+  MeetPos := 0;
+  repeat
+    ScanEnd := ResumePos + ChunkLen;
+    if ScanEnd > MaxEnd then
+      ScanEnd := MaxEnd;
+    SetLength(CommentRanges, KeepComments);
+    SetLength(StringRanges, KeepStrings);
+    if ScanEnd > ResumePos then
+      ScanCommentRanges(TextRange(ResumePos, ScanEnd - ResumePos), ResumePos);
+    // Разобрано до конца текста - карта полная, старая не нужна
+    if ScanEnd >= TextLen then
+    begin
+      Found := True;
+      MeetPos := -1;
+      Break;
+    end;
+    // Первая строка после правки, где обе карты - в обычном коде
+    if FMapDirtyEnd <= TextLen then
+    begin
+      FMapBuffer.PosOfIndex(FMapDirtyEnd, LineRow, LineCol);
+      if LineCol > 0 then
+        Inc(LineRow);
+      while LineRow < FMapBuffer.Count do
+      begin
+        MeetPos := FMapBuffer.CharIndex(LineRow, 0);
+        if MeetPos >= ScanEnd then
+          Break;
+        OldMeet := MeetPos - FMapDirtyDelta;
+        if not InRanges(CommentRanges, MeetPos) and
+           not InRanges(StringRanges, MeetPos) and
+           not InRanges(OldComments, OldMeet) and
+           not InRanges(OldStrings, OldMeet) then
+        begin
+          Found := True;
+          Break;
+        end;
+        Inc(LineRow);
+      end;
+    end;
+    if Found or (ScanEnd >= MaxEnd) then
+      Break;
+    ChunkLen := ChunkLen * 2;
+  until False;
+
+  if not Found then
+  begin
+    // Карта как была: дальше разбор видимой части и полный по таймеру
+    CommentRanges := OldComments;
+    StringRanges := OldStrings;
+    Exit;
+  end;
+
+  if MeetPos >= 0 then
+  begin
+    // Новые диапазоны - до точки схождения, дальше - старые со сдвигом
+    OldMeet := MeetPos - FMapDirtyDelta;
+    NewCount := KeepComments;
+    while (NewCount <= High(CommentRanges)) and
+          (CommentRanges[NewCount].StartPos < MeetPos) do
+      Inc(NewCount);
+    SetLength(CommentRanges, NewCount);
+    for RangeIdx := 0 to High(OldComments) do
+      if OldComments[RangeIdx].StartPos >= OldMeet then
+      begin
+        SetLength(CommentRanges, Length(CommentRanges) + 1);
+        CommentRanges[High(CommentRanges)] := OldComments[RangeIdx];
+        Inc(CommentRanges[High(CommentRanges)].StartPos, FMapDirtyDelta);
+        Inc(CommentRanges[High(CommentRanges)].EndPos, FMapDirtyDelta);
+      end;
+    NewCount := KeepStrings;
+    while (NewCount <= High(StringRanges)) and
+          (StringRanges[NewCount].StartPos < MeetPos) do
+      Inc(NewCount);
+    SetLength(StringRanges, NewCount);
+    for RangeIdx := 0 to High(OldStrings) do
+      if OldStrings[RangeIdx].StartPos >= OldMeet then
+      begin
+        SetLength(StringRanges, Length(StringRanges) + 1);
+        StringRanges[High(StringRanges)] := OldStrings[RangeIdx];
+        Inc(StringRanges[High(StringRanges)].StartPos, FMapDirtyDelta);
+        Inc(StringRanges[High(StringRanges)].EndPos, FMapDirtyDelta);
+      end;
+  end;
+
+  FMapPartialEnd := 0;
+  // Кэш строк сверяет версию карты - строки разберутся заново
+  Inc(FMapVer);
+  Result := True;
+end;
+
+// Правка не обошлась сдвигом карты (TryShiftMap): разбор с места правки до
+// схождения; не вышло - видимая часть сразу, весь текст по таймеру
+procedure TForm1.MapAfterEdit;
+begin
+  if ResyncMap then
+  begin
+    ScheduleAuxRebuild;
+    if RichEdit1.HandleAllocated then
+      Windows.InvalidateRect(RichEdit1.Handle, nil, False);
+  end
+  else
+  begin
+    RescanVisibleMap(FMapEditPos, True);
+    ScheduleMapRebuild;
+  end;
+  // Правки учтены - ResyncMap либо разобрал их, либо ждёт полный разбор,
+  // который привяжет карту заново
+  FMapDirtyStart := -1;
+  FMapDirtyEnd := -1;
+  FMapDirtyDelta := 0;
+  FMapDirtyCalls := 0;
+end;
+
+// Списки по всему тексту после сошедшейся карты - не сразу: пока набирают,
+// заказ отодвигается
+procedure TForm1.ScheduleAuxRebuild;
+begin
+  if FAuxTimer = nil then
+  begin
+    FAuxTimer := TTimer.Create(Self);
+    FAuxTimer.Enabled := False;
+    FAuxTimer.OnTimer := AuxTimerTick;
+  end;
+  // Не чаще, чем полный разбор (его интервал - втрое больше его длительности)
+  FAuxTimer.Interval := 500;
+  if (FMapTimer <> nil) and (FMapTimer.Interval > 500) then
+    FAuxTimer.Interval := FMapTimer.Interval;
+  FAuxTimer.Enabled := False;
+  FAuxTimer.Enabled := True;
+end;
+
+procedure TForm1.AuxTimerTick(Sender: TObject);
+begin
+  FAuxTimer.Enabled := False;
+  RebuildAuxParse;
+  // Направляющие отступов - по новым уровням строк
+  RichEdit1.Invalidate;
+end;
+
+// Список подпрограмм, имена компонентов, уровни строк - по тексту на
+// экране, карта уже верна (их часть RebuildCommentRangeMap)
+procedure TForm1.RebuildAuxParse;
+var
+  FullText: string;
+begin
+  if FSuppressMapRebuild or not FUseSyntaxHighlight then
+    Exit;
+  FullText := GetEditorTextCRCached;
+  RebuildSubList(FullText);
+  RebuildCompNames(FullText);
+  RebuildLineDepths(FullText);
 end;
 
 // Индекс первого диапазона, начинающегося не раньше CharIndex, или -1
@@ -23658,7 +24013,10 @@ begin
   if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
     Exit;
   if FWindows[AWinIdx].Buffer = nil then
+  begin
     FWindows[AWinIdx].Buffer := TEdBuffer.Create;
+    FWindows[AWinIdx].Buffer.AddListener(MapBufferChanged);
+  end;
   if (FEdEmu <> nil) and (FEdEmu.Buffer = FWindows[AWinIdx].Buffer) then
     SetEditorText(AText)
   else
@@ -23679,6 +24037,8 @@ begin
   FWindows[AWinIdx].TextKey := -1;
   if OldBuffer = nil then
     Exit;
+  if FMapBuffer = OldBuffer then
+    MapBind(nil);
   if (FSplit <> nil) and (FSplit.SharedBuffer = OldBuffer) then
     FSplit.DetachShared;
   if (FEdEmu <> nil) and (FEdEmu.Buffer = OldBuffer) then
@@ -24269,6 +24629,10 @@ begin
     // Больше единицы - вставка или удаление куска.
     if (D <> 1) and (D <> -1) then
       Exit;
+    // С прошлого разбора буфер менялся не одной правкой - разбирает
+    // ResyncMap: старые диапазоны должны остаться несдвинутыми
+    if FMapDirtyCalls > 1 then
+      Exit;
 
     EdApi.GetSel(Sel);
 
@@ -24287,11 +24651,25 @@ begin
     // Окно после правки: символ мог не только исчезнуть, но и появиться
     PostWin := TextRange(EditPos - FScheme.FMaxMarkerLen - 1, FScheme.FMaxMarkerLen * 2 + 2);
 
-    // Правка безобидна или нет - границы двигаем в любом случае.
-    //
-    // Если задет маркер, карта всё равно будет разобрана заново (по таймеру),
-    // но до этого подсветка не должна уезжать от текста на каждый набранный
-    // символ: неточной останется только сама правленая часть.
+    if HasMarker(FPreWin) or HasMarker(PostWin) then
+      Exit; // задело маркер - разбор с места правки (MapAfterEdit)
+
+    // Маркер только в начале строки (^; у Inno Setup): символ, вписанный
+    // или стёртый левее маркера, сам маркерным не является, но решает,
+    // комментарий ли строка. Строку, где маркер есть, - в полный разбор.
+    if FScheme.FLineCommentAtStart and (FScheme.FLineCommentMarker <> '') then
+    begin
+      EditLineIdx := EdApi.ExLineFromChar(EditPos);
+      EditLineBeg := EdApi.LineIndex(EditLineIdx);
+      EditLineLen := EdApi.LineLength(EditLineBeg);
+      if Pos(FScheme.FLineCommentMarker,
+             TextRange(EditLineBeg, EditLineLen)) > 0 then
+        Exit;
+    end;
+
+    // Правка безобидна - границы двигаем. Задевшую маркер разбирает
+    // MapAfterEdit по несдвинутой карте (ResyncMap сравнивает со старыми
+    // позициями), поэтому сдвиг - только здесь.
     //
     // Диапазон, НАЧАВШИЙСЯ после правки, уезжает целиком. Диапазон, внутри
     // которого правили, растягивается или сжимается - у него двигается только
@@ -24315,22 +24693,10 @@ begin
       Inc(StringRanges[I].EndPos, D);
     if FMapPartialEnd > EditPos then
       Inc(FMapPartialEnd, D);
-
-    if HasMarker(FPreWin) or HasMarker(PostWin) then
-      Exit; // задело маркер - ещё и полный разбор
-
-    // Маркер только в начале строки (^; у Inno Setup): символ, вписанный
-    // или стёртый левее маркера, сам маркерным не является, но решает,
-    // комментарий ли строка. Строку, где маркер есть, - в полный разбор.
-    if FScheme.FLineCommentAtStart and (FScheme.FLineCommentMarker <> '') then
-    begin
-      EditLineIdx := EdApi.ExLineFromChar(EditPos);
-      EditLineBeg := EdApi.LineIndex(EditLineIdx);
-      EditLineLen := EdApi.LineLength(EditLineBeg);
-      if Pos(FScheme.FLineCommentMarker,
-             TextRange(EditLineBeg, EditLineLen)) > 0 then
-        Exit;
-    end;
+    // Правка учтена сдвигом - ResyncMap она не нужна
+    FMapDirtyStart := -1;
+    FMapDirtyCalls := 0;
+    FMapDirtyDelta := 0;
 
     Result := True;
   finally
@@ -46667,11 +47033,7 @@ begin
     if Pos(' *', Form1.Caption) = 0 then
       Form1.Caption := AppTitle + ' - ' + DisplayName + ' *';
     if not TryShiftMap then
-    begin
-      // Экран - сразу, весь текст - по таймеру
-      RescanVisibleMap(FMapEditPos, True);
-      ScheduleMapRebuild;
-    end;
+      MapAfterEdit;
     FNeedLineInv := True;
   end;
 
@@ -79412,10 +79774,7 @@ begin
       PerfT := PerfNow;
       if not EditHandled then
         if not TryShiftMap then
-        begin
-          RescanVisibleMap(FMapEditPos, True);
-          ScheduleMapRebuild;
-        end;
+          MapAfterEdit;
 
       // Метим ТОЛЬКО строку с кареткой, и в обоих случаях.
       //
