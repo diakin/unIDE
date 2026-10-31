@@ -1548,15 +1548,19 @@ type
     FPopupWatchExpr: string;
     // Строка, где открыто меню редактора: для пункта условия точки
     FPopupCondLine: Integer;
-    // Полоса меток: строка, по которой щёлкнули; одиночный щелчок
-    // (закладка) ждёт FMarkTimer - не окажется ли он началом двойного
-    // (точка останова)
+    // Полоса меток: строка, по которой щёлкнули. Одиночный щелчок сразу
+    // переключает закладку; если он окажется началом двойного (точка
+    // останова), закладки и история возвращаются из снимка FMarkUndo*
     FMarkClickLine: Integer;
-    FMarkTimer: TTimer;
-    // Закладка, поставленная или снятая таймером щелчка: строка и время -
-    // если щелчок окажется двойным (точка останова), она возвращается
+    // Строка и время щелчка, переключившего закладку
     FMarkBmLine: Integer;
     FMarkBmTick: Cardinal;
+    // Снимок до щелчка: окно, его закладки, история посещений
+    FMarkUndoWin: Integer;
+    FMarkUndoBms: TBookmarkArray;
+    FMarkUndoHistWin: array of Integer;
+    FMarkUndoHistIdx: array of Integer;
+    FMarkUndoHistPos: Integer;
     // Значение под мышью на остановке: подсказка, таймер, что показано и
     // где стояла мышь на прошлом тике
     FDbgHintWnd: THintWindow;
@@ -3051,8 +3055,8 @@ type
     procedure DbgHintTimerTick(Sender: TObject);
     procedure DbgHintHide;
     function  MarksLineAtY(AY: Integer): Integer;
-    procedure MarkTimerTick(Sender: TObject);
     procedure BmToggleAtLine(ALineIdx: Integer);
+    procedure MarkBmUndo;
     procedure DbgAddWatch(const AExpr: string);
     procedure DbgWatchShow;
     procedure ArdWndShow(AWnd: TForm);
@@ -65167,48 +65171,62 @@ begin
   end;
 end;
 
-// Задержка закладки после щелчка по полосе меток, мс
-const
-  MarkClickDelay = 250;
-
-  // Одиночный щелчок ждёт MarkClickDelay, не станет ли он двойным: закладку
-  // ставит таймер. Задержка короче системного времени двойного щелчка:
-  // медленный двойной щелчок успевает поставить закладку - её снимает
-  // MarksBoxDblClick.
+// Одиночный щелчок по полосе меток ставит или снимает закладку сразу, без
+// ожидания двойного щелчка. Перед этим состояние закладок окна и истории
+// запоминается: если щелчок окажется первым из двойного, MarksBoxDblClick
+// возвращает его как было (номера закладок не сдвигаются) и ставит точку
+// останова.
 procedure TForm1.MarksBoxClick(Sender: TObject);
+var
+  HistIdx: Integer;
 begin
-  if FMarkClickLine < 0 then
+  FMarkBmLine := -1;
+  if (FMarkClickLine < 0) or (FWindowsIndex < 0) or
+     not FWindows[FWindowsIndex].Used then
     Exit;
-  if FMarkTimer = nil then
+  FMarkUndoWin := FWindowsIndex;
+  FMarkUndoBms := Copy(FWindows[FWindowsIndex].Bookmarks);
+  SetLength(FMarkUndoHistWin, Length(FBmHistWin));
+  SetLength(FMarkUndoHistIdx, Length(FBmHistIdx));
+  for HistIdx := 0 to High(FBmHistWin) do
   begin
-    FMarkTimer := TTimer.Create(Self);
-    FMarkTimer.Enabled := False;
-    FMarkTimer.OnTimer := MarkTimerTick;
+    FMarkUndoHistWin[HistIdx] := FBmHistWin[HistIdx];
+    FMarkUndoHistIdx[HistIdx] := FBmHistIdx[HistIdx];
   end;
-  FMarkTimer.Enabled := False;
-  FMarkTimer.Interval := MarkClickDelay;
-  FMarkTimer.Enabled := True;
-end;
-
-procedure TForm1.MarkTimerTick(Sender: TObject);
-begin
-  FMarkTimer.Enabled := False;
+  FMarkUndoHistPos := FBmHistPos;
   BmToggleAtLine(FMarkClickLine);
   FMarkBmLine := FMarkClickLine;
   FMarkBmTick := GetTickCount;
 end;
 
+// Возвращает закладки и историю из снимка MarksBoxClick
+procedure TForm1.MarkBmUndo;
+var
+  HistIdx: Integer;
+begin
+  if (FMarkUndoWin < 0) or (FMarkUndoWin > WindowsItemCount - 1) or
+     not FWindows[FMarkUndoWin].Used then
+    Exit;
+  FWindows[FMarkUndoWin].Bookmarks := Copy(FMarkUndoBms);
+  SetLength(FBmHistWin, Length(FMarkUndoHistWin));
+  SetLength(FBmHistIdx, Length(FMarkUndoHistIdx));
+  for HistIdx := 0 to High(FMarkUndoHistWin) do
+  begin
+    FBmHistWin[HistIdx] := FMarkUndoHistWin[HistIdx];
+    FBmHistIdx[HistIdx] := FMarkUndoHistIdx[HistIdx];
+  end;
+  FBmHistPos := FMarkUndoHistPos;
+  RebuildBookmarksMenu;
+  MarksBox.Invalidate;
+end;
+
 procedure TForm1.MarksBoxDblClick(Sender: TObject);
 begin
-  if FMarkTimer <> nil then
-  begin
-    // Первый щелчок двойного уже переключил закладку - вернуть как было
-    if not FMarkTimer.Enabled and (FMarkClickLine >= 0) and
-       (FMarkBmLine = FMarkClickLine) and
-       (GetTickCount - FMarkBmTick <= GetDoubleClickTime) then
-      BmToggleAtLine(FMarkClickLine);
-    FMarkTimer.Enabled := False;
-  end;
+  // Первый щелчок двойного уже переключил закладку - вернуть как было
+  if (FMarkClickLine >= 0) and (FMarkBmLine = FMarkClickLine) and
+     (FMarkUndoWin = FWindowsIndex) and
+     (GetTickCount - FMarkBmTick <= GetDoubleClickTime) then
+    MarkBmUndo;
   FMarkBmLine := -1;
   if FMarkClickLine >= 0 then
     DbgToggleBreak(FMarkClickLine);
