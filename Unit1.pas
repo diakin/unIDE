@@ -1909,6 +1909,9 @@ type
     // сказано в логе, повторно - после удачного чтения
     FDiskReadFail: string;
     FLargeSkipped: string;   // что уже отмечено в логе LargeSkip (шаг 0.7.8)
+    // Предел файла 32-разрядной сборки, МБ ([Editor] MaxFile32MB, 0 -
+    // MaxFile32Size)
+    FMaxFile32MB: Integer;
 
     // Индикатор долгой работы - компиляция, пробный запуск для снимка -
     // в строке состояния справа: этап, секунды с начала и бегущие точки.
@@ -2466,6 +2469,8 @@ type
     function  LoadWinMapped(AWinIdx: Integer; const AFileName: string): Boolean;
     function  FileSizeAllowed(const AFileName: string): Boolean;
     function  FileTooLargeText: string;
+    function  MaxFile32Bytes: Int64;
+    procedure LogAddressSpace(const AWhat: string);
     function  IsLargeText: Boolean;
     function  LargeSkip(const AWhat: string): Boolean;
     procedure SaveEditorFile(const AFileName: string);
@@ -7636,6 +7641,7 @@ begin
     FUseSyntaxHighlight := Ini.ReadBool('Editor', 'SyntaxHighlight', FUseSyntaxHighlight);
     RestoreFormBounds(Ini);
     FTabChars           := Ini.ReadInteger('Editor', 'TabChars', FTabChars);
+    FMaxFile32MB        := Ini.ReadInteger('Editor', 'MaxFile32MB', FMaxFile32MB);
     FShowSpaces         := Ini.ReadBool('Editor', 'ShowSpaces', FShowSpaces);
     FIndentKind         := Ini.ReadInteger('Editor', 'IndentKind', FIndentKind);
     if (FIndentKind < IndentSpaces) or (FIndentKind > IndentNone) then
@@ -7796,6 +7802,7 @@ begin
       Ini.WriteBool('Editor', 'HotTabHighlight', FUseHotTab);
       Ini.WriteBool('Editor', 'SyntaxHighlight', FUseSyntaxHighlight);
       Ini.WriteInteger('Editor', 'TabChars', FTabChars);
+      Ini.WriteInteger('Editor', 'MaxFile32MB', FMaxFile32MB);
       Ini.WriteBool('Editor', 'ShowSpaces', FShowSpaces);
       Ini.WriteInteger('Editor', 'IndentKind', FIndentKind);
       Ini.WriteInteger('Editor', 'IndentSize', FIndentSize);
@@ -8196,10 +8203,18 @@ end;
 // MaxFile32Size (решение 2026-10-31: на большее адресов 32-разрядного
 // процесса для текста строкой может не хватить), 64-разрядная - любой (от
 // EdLargeFileSize - отображением)
+function TForm1.MaxFile32Bytes: Int64;
+begin
+  if FMaxFile32MB > 0 then
+    Result := Int64(FMaxFile32MB) * 1024 * 1024
+  else
+    Result := MaxFile32Size;
+end;
+
 function TForm1.FileSizeAllowed(const AFileName: string): Boolean;
 begin
 {$IFDEF CPU32}
-  Result := EdFileSize(AFileName) <= MaxFile32Size;
+  Result := EdFileSize(AFileName) <= MaxFile32Bytes;
 {$ELSE}
   Result := True;
 {$ENDIF}
@@ -8209,7 +8224,41 @@ function TForm1.FileTooLargeText: string;
 begin
   Result := Format('В 32-разрядной сборке поддерживаются файлы до %d МБ.' +
     #13#10'Для больших файлов используйте 64-разрядную сборку.',
-    [MaxFile32Size div (1024 * 1024)]);
+    [MaxFile32Bytes div (1024 * 1024)]);
+end;
+
+// Адреса процесса в Compilation log: занято, свободно и самый большой
+// свободный участок (строка WideString / ANSI всего текста - один сплошной
+// блок, Out of memory - когда такого участка нет). Для проверки предела
+// MaxFile32MB
+procedure TForm1.LogAddressSpace(const AWhat: string);
+var
+  MemInfo: TMemoryBasicInformation;
+  Addr: PtrUInt;
+  FreeTotal, Largest, UsedTotal: Int64;
+begin
+  FreeTotal := 0;
+  Largest := 0;
+  UsedTotal := 0;
+  Addr := $10000;
+  while VirtualQuery(Pointer(Addr), MemInfo, SizeOf(MemInfo)) =
+    SizeOf(MemInfo) do
+  begin
+    if MemInfo.State = MEM_FREE then
+    begin
+      Inc(FreeTotal, MemInfo.RegionSize);
+      if Int64(MemInfo.RegionSize) > Largest then
+        Largest := MemInfo.RegionSize;
+    end
+    else
+      Inc(UsedTotal, MemInfo.RegionSize);
+    if PtrUInt(MemInfo.BaseAddress) + MemInfo.RegionSize <= Addr then
+      Break;
+    Addr := PtrUInt(MemInfo.BaseAddress) + MemInfo.RegionSize;
+  end;
+  LogComp(Format('%s: адреса - занято %d МБ, свободно %d МБ, самый большой ' +
+    'свободный участок %d МБ', [AWhat, UsedTotal div (1024 * 1024),
+    FreeTotal div (1024 * 1024), Largest div (1024 * 1024)]));
 end;
 
 procedure TForm1.LoadWinFile(AWinIdx: Integer; const AFileName: string);
@@ -8225,6 +8274,9 @@ begin
     Exit;
   NewText := LoadFileWide(AFileName);
   SetWinWide(AWinIdx, NewText);
+  // Файл от 8 МБ - запас адресов после открытия
+  if EdFileSize(AFileName) >= 8 * 1024 * 1024 then
+    LogAddressSpace(ExtractFileName(AFileName) + ' открыт');
 end;
 
 // В редакторе большой файл (отображение, шаг 0.7.8): весь текст строкой не
