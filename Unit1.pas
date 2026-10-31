@@ -41,6 +41,7 @@ uses
   EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
   DlgEdPreview,   // свой редактор - окно пробы (шаги 0.7.2 - 0.7.3)
   EdRichEmu,      // свой редактор вместо RichEdit1 (шаг 0.7.4)
+  EdHost,         // окно RichEdit1 без RichEdit (шаг 0.7.7)
   EdView,         // окно своего редактора - вторая панель (шаг 0.7.5)
   EdScheme,       // EdAnsiLine - строка буфера в кодировке Windows
   EdLog,          // окна логов на своём редакторе (шаг 0.7.6)
@@ -362,36 +363,6 @@ type
   end;
 
 type
-  // TRichEdit с окном RichEdit 4.1 (msftedit.dll, класс RICHEDIT50W).
-  //
-  // Объявлен в этом модуле ДО TForm1, поэтому RichEdit1 из DFM создаётся
-  // этим классом. Всё остальное - от VCL. Сообщения окна обрабатывает свой
-  // редактор (TEdRichEmu, EdEmuStart) - так же, как RichEdit 4.1.
-  //
-  // Зачем: RichEdit 3.0 (riched20.dll) режет строку шире 24576 пикселей на
-  // строки отображения (3071 символ при 8 px), 4.1 - нет. Проверено в пробе
-  // RichLimitTest: до миллиона символов строка одна.
-  //
-  // Что меняется для кода. Класс только Unicode. Окно VCL регистрирует
-  // ANSI-функцией, и стандартные сообщения (WM_SETTEXT, WM_GETTEXT,
-  // EM_GETLINE, EM_REPLACESEL) Windows перекодирует сама. Собственные
-  // сообщения RichEdit - нет: EM_GETTEXTRANGE, EM_GETSELTEXT, EM_FINDTEXT
-  // работают с UTF-16. Поэтому текст через них берётся только функциями
-  // TextRange, CharAt, SelTextA и FindTextEd. RichEdit1.SelText на чтение и
-  // RichEdit1.FindText напрямую НЕ использовать.
-  //
-  // Lines.Add и Lines.Insert у этих контролов тоже НЕ использовать, в том
-  // числе через Lines.Strings в DFM. VCL после вставки сверяет позицию
-  // каретки с длиной вставленной строки вместе с CRLF, а 4.1 хранит перевод
-  // строки одним символом - сверка не сходится, и VCL поднимает
-  // EOutOfResources 'RichEdit line insertion error'.
-  //
-  // Без msftedit.dll unIDE не работает (EdEmuStart): прежние обходы для
-  // RichEdit 3.0 убраны в шаге 0.7.7 плана портирования.
-  TRichEdit = class(ComCtrls.TRichEdit)
-  protected
-    procedure CreateParams(var Params: TCreateParams); override;
-  end;
 
   // РАЗМЕТКА ОДНОЙ СТРОКИ - общая для трёх разборов текста: списка
   // подпрограмм (RebuildSubListBlocks), уровней вложенности
@@ -536,7 +507,6 @@ type
   TDelphiNewKind = (dnkForm, dnkUnit, dnkDataModule, dnkFrame);
 
   TForm1 = class(TForm)
-    RichEdit1: TRichEdit;
     MainMenu1: TMainMenu;
     OpenDialog1: TOpenDialog;
     SaveDialog1: TSaveDialog;
@@ -1126,10 +1096,14 @@ type
     property EdApi: TEdIntf read GetEdApi;
 
   protected
-    // Окна логов - сразу после чтения формы из .dfm, до FormCreate: в лог
-    // пишут и при создании формы
+    // Окно редактора и окна логов - сразу после чтения формы из .dfm, до
+    // FormCreate: в лог пишут и при создании формы
     procedure Loaded; override;
   public
+    // Окно основного редактора (шаг 0.7.7: своё окно, не RichEdit). Имя
+    // прежнее; текст, выделение, ввод - у своего редактора (FEdEmu,
+    // EdEmuStart), свойства - как у TRichEdit (EdHost.TEdHostEdit)
+    RichEdit1: TEdHostEdit;
     // Окна логов на своём редакторе (шаг 0.7.6; с шага 0.7.7 - без
     // TRichEdit). CompLogEdit - вывод компилятора и сообщения сборки,
     // ErrLogEdit - ошибки, LogEdit - HiLite log (диагностика),
@@ -4420,25 +4394,6 @@ const
   rqcFbSmart = 1;     // FreeBASIC через RqToFb, режим Smart
   rqcFbCompat = 2;    // FreeBASIC через RqToFb, режим Compat
 
-var
-  // msftedit.dll загружена, и окно RichEdit1 создаётся классом RICHEDIT50W
-  MsftEditLib: HMODULE = 0;
-
-procedure TRichEdit.CreateParams(var Params: TCreateParams);
-begin
-  // VCL уже подставил RICHEDIT20A - подставляем поверх класс 4.1
-  inherited CreateParams(Params);
-
-  if MsftEditLib = 0 then
-    MsftEditLib := LoadLibrary('msftedit.dll');
-  if MsftEditLib = 0 then
-    Exit;
-
-  CreateSubClass(Params, 'RICHEDIT50W');
-  // Это TCustomRichEdit делает после своей подстановки - повторяем
-  Params.WindowClass.style := Params.WindowClass.style and
-                              not (CS_HREDRAW or CS_VREDRAW);
-end;
 
 // Окно редактора для прослойки EdApi - при каждом вызове: VCL пересоздаёт
 // окно контрола (смена ScrollBars и т.п.), хранить HWND нельзя
@@ -23786,7 +23741,7 @@ begin
   TR.chrg.cpMin := APos;
   TR.chrg.cpMax := APos + 1;
 
-  // Ответ - в UTF-16, как у RichEdit 4.1 (см. TRichEdit в начале модуля)
+  // Ответ - в UTF-16, как у RichEdit 4.1 (свой редактор, EdRichEmu)
   TR.lpstrText := PChar(@WBuf[0]);
 
   // 0 означает "за концом текста" - там символа и нет
@@ -23815,7 +23770,7 @@ begin
   TR.chrg.cpMin := AFrom;
   TR.chrg.cpMax := AFrom + ACount;
 
-  // Ответ - в UTF-16, как у RichEdit 4.1 (см. TRichEdit в начале модуля).
+  // Ответ - в UTF-16, как у RichEdit 4.1 (свой редактор, EdRichEmu).
   // Плюс символ под завершающий ноль.
   SetLength(W, ACount + 1);
   FillChar(W[1], (ACount + 1) * SizeOf(WideChar), 0);
@@ -38575,9 +38530,8 @@ begin
       C := FDesigner.Form.Components[I];
       if (C.Name = '') or not (C is TControl) then
         Continue;
-      // Живой того же класса или его наследник: RichEdit1 и логи у живой
-      // формы - TRichEdit из Unit1 (наследник ComCtrls.TRichEdit), а
-      // конструктор ставит ComCtrls.TRichEdit
+      // Живой того же класса или его наследник (RichEdit1 и логи живой
+      // формы создаются кодом, в .dfm их нет)
       L := LF.FindComponent(C.Name);
       if (L = nil) or not L.InheritsFrom(C.ClassType) then
         Continue;
@@ -40448,9 +40402,8 @@ begin
 end;
 
 // Включить свой редактор (при запуске). Текст, выделение, первая видимая
-// строка и «изменён» переходят от RichEdit. Без RichEdit 4.1
-// (msftedit.dll) свой редактор не включается: окно для него - RichEdit 4.1,
-// а прежней работы на RichEdit 3.0 больше нет - unIDE закрывается
+// строка и «изменён» переходят от окна RichEdit1 (что в него записано до
+// запуска, EdHostWin)
 procedure TForm1.EdEmuStart;
 var
   DC: HDC;
@@ -40462,15 +40415,6 @@ begin
     Exit;
   if not RichEdit1.HandleAllocated then
     Exit;
-  if MsftEditLib = 0 then
-  begin
-    LogOwnEd('Свой редактор не включён - нет RichEdit 4.1 (msftedit.dll)');
-    Application.MessageBox(PChar('Нет RichEdit 4.1 (msftedit.dll): ' +
-      'редактор unIDE без него не работает. Программа будет закрыта.'),
-      PChar(AppTitle), MB_OK or MB_ICONERROR);
-    Application.Terminate;
-    Exit;
-  end;
   StartLineH := 16;
   StartCharW := 8;
   DC := GetDC(RichEdit1.Handle);
@@ -46849,6 +46793,21 @@ end;
 procedure TForm1.Loaded;
 begin
   inherited Loaded;
+  // Окно редактора - как было в .dfm (потом его переносит в FEditHost
+  // FormCreate)
+  RichEdit1 := TEdHostEdit.Create(Self);
+  RichEdit1.Name := 'RichEdit1';
+  RichEdit1.SetBounds(57, 8, 3000, 457);
+  RichEdit1.Align := alLeft;
+  RichEdit1.Color := clBtnShadow;
+  RichEdit1.ParentFont := False;
+  RichEdit1.Font.Charset := DEFAULT_CHARSET;
+  RichEdit1.Font.Color := clGray;
+  RichEdit1.Font.Height := -15;
+  RichEdit1.Font.Name := 'Source Code Pro';
+  RichEdit1.Font.Style := [];
+  RichEdit1.Parent := Self;
+  RichEdit1.TabOrder := 0;
   if pnlCompLog <> nil then
     CompLogEdit := NewLogView(Self, pnlCompLog, -12);
   if pnlErrLog <> nil then
@@ -80786,10 +80745,6 @@ begin
   EnsureNoWrap;
   EnsureEventMask;
 
-  if MsftEditLib <> 0 then
-    LogDiag('RichEdit 4.1 (msftedit.dll, RICHEDIT50W)')
-  else
-    LogDiag('msftedit.dll не загружена');
 
   // Итог проверки путей editor.ini (CheckIniPaths в FormCreate)
   if FIniPathLog <> nil then
@@ -80829,6 +80784,13 @@ begin
   StartupStage('Проверка путей проектов');
   RelocateMissingProjects;
 
+  // Оконная процедура окна редактора и свой редактор - до первого текста
+  // (стартовый текст ниже уже идёт своему редактору). Нужны FTabChars и
+  // шрифт из настроек - они прочитаны выше
+  OldRichEditProc := RichEdit1.WindowProc;
+  RichEdit1.WindowProc := NewRichEditProc;
+  EdEmuStart;
+
   // Шаг табуляции RichEdit приводим к выбранной ширине
   ApplyTabStops;
 
@@ -80840,19 +80802,9 @@ begin
   RichEditLinesCount := EdApi.LineCount;
   UpdateVisibleBounds;
 
-  // У класса окна RichEdit выставлен CS_HREDRAW, но не CS_VREDRAW. Поэтому смена
-  // ВЫСОТЫ инвалидирует только новую полосу, а смена ШИРИНЫ - всю клиентскую
-  // область, и так на каждый пиксель протяжки рамки. Отсюда мерцание только при
-  // горизонтальном ресайзе. Перенос строк выключен (WordWrap = False), значит
-  // разметка от ширины не зависит и полная перерисовка не нужна.
-  SetClassLong(RichEdit1.Handle, GCL_STYLE,
-               GetClassLong(RichEdit1.Handle, GCL_STYLE) and not CS_HREDRAW);
-
-  // Сабклассинг RichEdit
-  OldRichEditProc := RichEdit1.WindowProc;
-  RichEdit1.WindowProc := NewRichEditProc;
-  // Свой редактор вместо RichEdit - если включён в IDE Options
-  EdEmuStart;
+  // CS_HREDRAW / CS_VREDRAW у класса окна редактора сняты в
+  // TEdHostEdit.CreateParams: перенос строк выключен, смена ширины не
+  // требует перерисовать всё окно
 
   // Динамически подключаем событие изменений
   RichEdit1.OnChange := RichEdit1Change;

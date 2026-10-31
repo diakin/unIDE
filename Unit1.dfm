@@ -20,30 +20,6 @@ object Form1: TForm1
   OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
-  object RichEdit1: TRichEdit
-    Left = 57
-    Top = 8
-    Width = 3000
-    Height = 457
-    Align = alLeft
-    BevelInner = bvNone
-    BevelOuter = bvNone
-    BorderStyle = bsNone
-    Color = clBtnShadow
-    Font.Charset = DEFAULT_CHARSET
-    Font.Color = clGray
-    Font.Height = -15
-    Font.Name = 'Source Code Pro'
-    Font.Style = []
-    HideSelection = False
-    HideScrollBars = False
-    ParentFont = False
-    PlainText = True
-    ScrollBars = ssBoth
-    TabOrder = 0
-    WantTabs = True
-    WordWrap = False
-  end
   object pnlMain: TPanel
     Left = 3057
     Top = 0

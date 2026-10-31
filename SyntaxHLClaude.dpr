@@ -90,6 +90,8 @@ uses
   EdScheme in 'EdScheme.pas',
   EdLog in 'EdLog.pas',
   EdRows in 'EdRows.pas',
+  EdHostWin in 'EdHostWin.pas',
+  EdHost in 'EdHost.pas',
   DlgEdPreview in 'DlgEdPreview.pas',
   FarEdit in 'FarEdit.pas',
   FarViewer in 'FarViewer.pas',
