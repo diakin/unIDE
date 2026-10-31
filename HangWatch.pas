@@ -76,6 +76,9 @@ procedure HangWatchStop;
 // что в hang.log (процедура и строка по .map). Для журналов, которым надо
 // знать, кто сделал вызов (WndWatch: кто скрыл главное окно).
 procedure HangWatchCallStack(ALines: TStrings);
+// Адреса процесса одной строкой: занято, свободно и самый большой
+// свободный участок, в МБ
+function AddressSpaceText: string;
 
 implementation
 
@@ -960,8 +963,108 @@ begin
     Result := TCrashFilter(OldCrashFilter)(ExceptionInfo);
 end;
 
+function AddressSpaceText: string;
+var
+  MemInfo: TMemoryBasicInformation;
+  Addr: Cardinal;
+  FreeTotal, Largest, UsedTotal: Int64;
+begin
+  FreeTotal := 0;
+  Largest := 0;
+  UsedTotal := 0;
+  Addr := $10000;
+  while VirtualQuery(Pointer(Addr), MemInfo, SizeOf(MemInfo)) =
+    SizeOf(MemInfo) do
+  begin
+    if MemInfo.State = MEM_FREE then
+    begin
+      Inc(FreeTotal, MemInfo.RegionSize);
+      if Int64(MemInfo.RegionSize) > Largest then
+        Largest := MemInfo.RegionSize;
+    end
+    else
+      Inc(UsedTotal, MemInfo.RegionSize);
+    if Cardinal(MemInfo.BaseAddress) + MemInfo.RegionSize <= Addr then
+      Break;
+    Addr := Cardinal(MemInfo.BaseAddress) + MemInfo.RegionSize;
+  end;
+  Result := Format('адреса - занято %d МБ, свободно %d МБ, самый большой ' +
+    'свободный участок %d МБ', [UsedTotal div (1024 * 1024),
+    FreeTotal div (1024 * 1024), Largest div (1024 * 1024)]);
+end;
+
+// ---------------------------------------------------------------------------
+//  Нехватка памяти (Out of memory)
+//
+//  Менеджер памяти Delphi, не получив блок, вызывает System.ErrorProc с
+//  кодом 203; обработчик SysUtils превращает это в EOutOfMemory. К окну
+//  «Out of memory» или к записи в журнале стек уже свёрнут, и не видно,
+//  кто просил память. Свой обработчик стоит перед обработчиком SysUtils:
+//  пока стек цел, пишет в crash.log цепочку вызовов и состояние адресов,
+//  потом отдаёт управление прежнему - исключение то же, что и раньше.
+//  Записей - не больше OomMaxReports за запуск.
+// ---------------------------------------------------------------------------
+
+const
+  OomErrorCode = 203;      // runtime error 203 - heap overflow
+  OomMaxReports = 5;
+
+type
+  // Код ошибки в System объявлен как Byte: принимаем и передаём регистр
+  // целиком, а смотрим только младший байт
+  TOomErrorProc = procedure(ErrorCode: Integer; ErrorAddr: Pointer);
+
+var
+  OldErrorProc: Pointer = nil;
+  OomBusy: Integer = 0;
+  OomReports: Integer = 0;
+
+procedure OomReport;
+var
+  Lines: TStringList;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Add(Format('==== %s  нехватка памяти (Out of memory)%s',
+                     [FormatDateTime('dd.mm.yyyy hh:nn:ss', Now),
+                      Watch.BuildNote]));
+    if GetCurrentThreadId = MainThreadID then
+      Lines.Add('Поток: главный')
+    else
+      Lines.Add('Поток: ' + IntToStr(GetCurrentThreadId) + ' (не главный)');
+    Lines.Add(AddressSpaceText);
+    HangWatchCallStack(Lines);
+    Watch.WriteCrash(Lines);
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure OomErrorProc(ErrorCode: Integer; ErrorAddr: Pointer);
+var
+  CodeByte: Integer;
+begin
+  CodeByte := ErrorCode and $FF;
+  if (CodeByte = OomErrorCode) and (Watch <> nil) and
+     (OomReports < OomMaxReports) and
+     (InterlockedExchange(OomBusy, 1) = 0) then
+  begin
+    Inc(OomReports);
+    try
+      OomReport;
+    except
+      // запись не удалась (памяти нет и на неё) - дальше как обычно
+    end;
+    OomBusy := 0;
+  end;
+  if OldErrorProc <> nil then
+    TOomErrorProc(OldErrorProc)(CodeByte, ErrorAddr);
+end;
+
 procedure HangWatchStart(AWnd: HWND; const ALogFile: string;
                          AUiWnd: HWND = 0; const ABuild: string = '');
+var
+  NewProc: Pointer;
 begin
   if Watch <> nil then
     Exit;
@@ -972,6 +1075,14 @@ begin
   Watch := THangWatch.Create(AWnd, ALogFile, AUiWnd, ABuild);
   Watch.Resume;
   OldCrashFilter := CrashSetFilter(@HangCrashFilter);
+  // ErrorProc - процедурная переменная: копия значения через Move, без
+  // разницы, как она объявлена в System. У Free Pascal у неё третий
+  // параметр (кадр стека) - там обработчик не ставится
+{$IFNDEF FPC}
+  Move(ErrorProc, OldErrorProc, SizeOf(Pointer));
+  NewProc := @OomErrorProc;
+  Move(NewProc, ErrorProc, SizeOf(Pointer));
+{$ENDIF}
 end;
 
 procedure HangWatchCallStack(ALines: TStrings);
@@ -1023,6 +1134,11 @@ begin
     Exit;
   CrashSetFilter(OldCrashFilter);
   OldCrashFilter := nil;
+  if OldErrorProc <> nil then
+  begin
+    Move(OldErrorProc, ErrorProc, SizeOf(Pointer));
+    OldErrorProc := nil;
+  end;
   SetEvent(Watch.FStop);
   Watch.Terminate;
   Watch.WaitFor;
