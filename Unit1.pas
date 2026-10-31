@@ -84754,7 +84754,12 @@ var
   // Колонки выравнивания незакрытых скобок, в координатах нового текста:
   // первый символ после "(". Вершина - самая внутренняя скобка.
   ParenCols: array of Integer;
+  ParenCnt: Integer;  // занято в ParenCols: массив растёт удвоением
   PC: Integer;
+  NewLine: string;
+  // Большой текст: ход в жёлтой панели и время этапов в журнале подсветки
+  ShowBusy: Boolean;
+  TickStart, TickPrep, TickLoop, TickSet: Cardinal;
   NewIndent, StmtOld, StmtNew, CaretLine, Changed: Integer;
   Cont, PrevInside: Boolean;
   B: TBlockState;
@@ -84855,6 +84860,12 @@ begin
   end;
 
   CaretLine := EdApi.LineFromChar(RichEdit1.SelStart);
+  TickStart := GetTickCount;
+  ShowBusy := (FEdEmu <> nil) and (FEdEmu.Buffer <> nil) and
+    (FEdEmu.Buffer.TextLength >= MapProgressMinLen);
+  if ShowBusy then
+    BusyBegin('Format text: подготовка');
+  try
 
   // RapidQ: однострочные "CREATE ... : ... : END CREATE" - сначала по
   // строке на оператор, отступы им расставит форматирование ниже
@@ -84912,6 +84923,9 @@ begin
   Len := Length(Src);
   if Len = 0 then
     Exit;
+  TickPrep := GetTickCount;
+  if ShowBusy then
+    BusyStage('Format text: строки');
 
   // RapidQ: дети объектов - ступенькой под родителями
   SetLength(ParentLevels, 0);
@@ -84931,6 +84945,7 @@ begin
     LineStart := 1;
     SetLength(SusLines, 0);
     SetLength(SusTexts, 0);
+    ParenCnt := 0;
 
     // .dfm - своим разбором, цикл ниже не выполняется
     if IsDfm then
@@ -84995,8 +85010,9 @@ begin
             Pad := StringOfChar(' ', NewIndent);
           end;
 
-          SL.Add(Pad + Body);
-          if Raw <> Pad + Body then
+          NewLine := Pad + Body;
+          SL.Add(NewLine);
+          if Raw <> NewLine then
             Inc(Changed);
         end
         else
@@ -85028,14 +85044,14 @@ begin
 
           // Скобок, открытых выше, не осталось - и колонок выравнивания
           if B.Paren <= 0 then
-            SetLength(ParenCols, 0);
+            ParenCnt := 0;
 
-          if Cont and (B.Paren > 0) and (Length(ParenCols) > 0) and
+          if Cont and (B.Paren > 0) and (ParenCnt > 0) and
              (FIndentKind <> IndentTabs) and (FIndentKind <> IndentNone) then
             // Перенос внутри скобки - под первый символ после неё: под
             // первый параметр. Табами колонку не выставить, там остаётся
             // прежнее правило.
-            NewIndent := ParenCols[High(ParenCols)]
+            NewIndent := ParenCols[ParenCnt - 1]
           else if Cont then
           begin
             // Свой сдвиг относительно первой строки оператора
@@ -85095,8 +85111,9 @@ begin
             Pad := StringOfChar(' ', NewIndent);
           end;
 
-          SL.Add(Pad + Body);
-          if Raw <> Pad + Body then
+          NewLine := Pad + Body;
+          SL.Add(NewLine);
+          if Raw <> NewLine then
             Inc(Changed);
 
           // Язык без знака переноса (Паскаль, C): строка не должна
@@ -85108,7 +85125,7 @@ begin
             SetLength(SusLines, Length(SusLines) + 1);
             SetLength(SusTexts, Length(SusTexts) + 1);
             SusLines[High(SusLines)] := SL.Count - 1;
-            SusTexts[High(SusTexts)] := Pad + Body;
+            SusTexts[High(SusTexts)] := NewLine;
           end;
 
           // Скобки строки: открытая - колонка первого непробельного символа
@@ -85131,14 +85148,16 @@ begin
                 PC := K + 1;
                 while (PC <= Length(L.Code)) and (L.Code[PC] in [' ', #9]) do
                   Inc(PC);
-                SetLength(ParenCols, Length(ParenCols) + 1);
+                if ParenCnt >= Length(ParenCols) then
+                  SetLength(ParenCols, ParenCnt * 2 + 16);
                 if PC <= Length(L.Code) then
-                  ParenCols[High(ParenCols)] := NewIndent + PC - 1
+                  ParenCols[ParenCnt] := NewIndent + PC - 1
                 else
-                  ParenCols[High(ParenCols)] := StmtNew + Step;
+                  ParenCols[ParenCnt] := StmtNew + Step;
+                Inc(ParenCnt);
               end
-              else if (L.Code[K] = ')') and (Length(ParenCols) > 0) then
-                SetLength(ParenCols, Length(ParenCols) - 1);
+              else if (L.Code[K] = ')') and (ParenCnt > 0) then
+                Dec(ParenCnt);
               Inc(K);
             end;
           end;
@@ -85159,9 +85178,16 @@ begin
         if (I < Len) and (Src[I] = #13) and (Src[I + 1] = #10) then
           Inc(I);
         LineStart := I + 1;
+        if ShowBusy and ((SL.Count and 4095) = 0) then
+        begin
+          FBusyStage := 'Format text: строки ' +
+                        IntToStr(Int64(I) * 100 div Len) + '%';
+          BusyTick;
+        end;
       end;
       Inc(I);
     end;
+    TickLoop := GetTickCount;
 
     // Строки с точкой в конце - в Compilation log и в окно ошибок, строкой
     // "файл(строка) ...": двойной щелчок переходит к ней. В редакторе -
@@ -85230,12 +85256,15 @@ begin
        (Length(Res) >= 2) and (Copy(Res, Length(Res) - 1, 2) = #13#10) then
       SetLength(Res, Length(Res) - 2);
 
+    if ShowBusy then
+      BusyStage('Format text: текст в редактор');
     FLockHighlight := True;
     try
       SetEditorText(Res);
     finally
       FLockHighlight := False;
     end;
+    TickSet := GetTickCount;
 
     RichEdit1.Modified := True;
 
@@ -85248,6 +85277,11 @@ begin
 
     // Текст сменился целиком - карта и списки строятся заново, один раз
     RebuildCommentRangeMap;
+    if GetTickCount - TickStart >= 500 then
+      Dbg(Format('Format text: %d мс - подготовка и текст %d, разбор строк %d, ' +
+        'сборка и текст в редактор %d, карта %d',
+        [GetTickCount - TickStart, TickPrep - TickStart, TickLoop - TickPrep,
+         TickSet - TickLoop, GetTickCount - TickSet]), clGray);
     RichEditLinesCount := EdApi.LineCount;
     UpdateVisibleBounds;
     RichEdit1.Invalidate;
@@ -85277,6 +85311,10 @@ begin
     StatusBar1.SimplePanel := True;
   finally
     SL.Free;
+  end;
+  finally
+    if ShowBusy then
+      BusyEnd('', True);
   end;
 end;
 
