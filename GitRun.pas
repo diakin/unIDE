@@ -112,6 +112,7 @@ function GitToUtf8(const AText: WideString): string;
 implementation
 
 const
+  GitPipeSize = 1048576;   // буфер трубы вывода git (CreatePipe)
   GitCreateNoWindow = $08000000;
   GitCreateUnicodeEnv = $00000400;
   GitStartfUseStdHandles = $00000100;
@@ -278,10 +279,11 @@ var
   InputRead, InputWrite: THandle;
   InputWritten: DWORD;
   CmdLine, EnvBlock: WideString;
-  Buffer: array[0..8191] of AnsiChar;
+  Buffer: array[0..65535] of AnsiChar;
   AllRaw, LineBuf, Piece: string;
   Avail, ReadCount, ExitCode: DWORD;
-  Finished, Cancelled: Boolean;
+  Finished, Cancelled, GotData: Boolean;
+  IdleTick: DWORD;
 
   // Готовые строки из LineBuf - в AOnLine. Режем по байтам #10 / #13:
   // символ UTF-8 может прийти разрезанным между чтениями трубы
@@ -318,8 +320,13 @@ var
         Break;
       SetString(Piece, PAnsiChar(@Buffer[0]), ReadCount);
       AllRaw := AllRaw + Piece;
-      LineBuf := LineBuf + Piece;
-      FlushLines(False);
+      GotData := True;
+      // Построчно - только если строки кому-то нужны (AOnLine)
+      if Assigned(AOnLine) then
+      begin
+        LineBuf := LineBuf + Piece;
+        FlushLines(False);
+      end;
     end;
   end;
 
@@ -330,7 +337,10 @@ begin
   FillChar(Security, SizeOf(Security), 0);
   Security.nLength := SizeOf(Security);
   Security.bInheritHandle := True;
-  if not GitCreatePipe(ReadPipe, WritePipe, @Security, 0) then
+  // Буфер трубы - GitPipeSize: заполнив трубу, git ждёт, пока цикл ниже
+  // её прочитает; с маленьким буфером по умолчанию большой вывод (git diff
+  // большого файла) шёл кусками между засыпаниями цикла
+  if not GitCreatePipe(ReadPipe, WritePipe, @Security, GitPipeSize) then
   begin
     Result := 'труба не создана: ' + SysErrorMessage(GetLastError);
     Exit;
@@ -390,19 +400,29 @@ begin
   LineBuf := '';
   Cancelled := False;
   try
+    IdleTick := GetTickCount;
     repeat
       Finished := WaitForSingleObject(ProcInfo.hProcess, 0) = WAIT_OBJECT_0;
+      GotData := False;
       ReadAvailable;
       if Finished then
         Break;
-      if Assigned(AOnIdle) and not AOnIdle then
+      // Окно живёт (AOnIdle) не чаще раза в 15 мс, пока вывод идёт
+      if not GotData or (GetTickCount - IdleTick >= 15) then
       begin
-        GitTerminateProcess(ProcInfo.hProcess, 1);
-        WaitForSingleObject(ProcInfo.hProcess, 3000);
-        Cancelled := True;
-        Break;
+        IdleTick := GetTickCount;
+        if Assigned(AOnIdle) and not AOnIdle then
+        begin
+          GitTerminateProcess(ProcInfo.hProcess, 1);
+          WaitForSingleObject(ProcInfo.hProcess, 3000);
+          Cancelled := True;
+          Break;
+        end;
       end;
-      Sleep(15);
+      // Труба была пуста - подождать; читали - сразу дальше: git, может
+      // быть, уже пишет следующий кусок
+      if not GotData then
+        Sleep(15);
     until False;
     // Остаток после выхода процесса
     ReadAvailable;

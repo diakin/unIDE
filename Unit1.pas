@@ -3223,6 +3223,7 @@ type
     procedure GitPushIn(const AGit, ARepo: string);
     procedure GitPushClick(Sender: TObject);
     function  GitDiffOf(const AChange: TGitChange): WideString;
+    procedure GitDiffTraceLog(const AText: string);
     procedure GitCommitIn(const AGit, ARepo: string);
     procedure GitCommitClick(Sender: TObject);
     procedure GitBashClick(Sender: TObject);
@@ -4319,6 +4320,7 @@ var
     GitInfo,      // ветка и коммит исходников сборки (<exe>.build.txt)
     DlgGitCommit, // окно Commit (меню Repository, панель Git)
     DlgGitHistory, // окно History (меню Repository, панель Git)
+    GitDiffView,  // GitDiffTrace - время показа разницы в окне Commit
     DlgGitTracked, // окно Tracked but Ignored (меню Branch, Git status)
     DlgGitClone,  // окно Clone Repository (список GitHub, URL, путь)
     GitHubApi,    // GitHubCreateRepo - New Repository на GitHub
@@ -70516,6 +70518,7 @@ const
 var
   Args: string;
   ExitCode: Integer;
+  StartTick: DWORD;
 begin
   if AChange.Code = '??' then
     Args := 'diff --no-color --no-index -- /dev/null ' +
@@ -70528,7 +70531,10 @@ begin
   end
   else
     Args := 'diff --no-color --cached -- ' + string(GitQuote(AChange.Path));
+  StartTick := GetTickCount;
   ExitCode := GitRunIn(FGitDlgGit, FGitDlgRepo, Args, False, Result);
+  LogGit('Git: git ' + Args + ' - ' + IntToStr(Length(Result) div 1024) +
+    ' КБ, ' + IntToStr(GetTickCount - StartTick) + ' мс');
   if (ExitCode < 0) or ((ExitCode > 1) and (Result = '')) then
     Result := 'git diff не вышел (код ' + IntToStr(ExitCode) + ')';
   if Trim(string(Result)) = '' then
@@ -70538,6 +70544,12 @@ begin
     Result := Copy(Result, 1, DiffMax) + #13#10'... (обрезано)';
   // Memo ждёт #13#10
   Result := WideString(AdjustLineBreaks(string(Result)));
+end;
+
+// Время показа разницы в окне Commit - в Git log (GitDiffView.GitDiffTrace)
+procedure TForm1.GitDiffTraceLog(const AText: string);
+begin
+  LogGit(AText);
 end;
 
 // Файл во временной папке: текст UTF-8 (без BOM). Имя - '' не вышло
@@ -70599,6 +70611,7 @@ begin
     ExtractFileName(ExcludeTrailingPathDelimiter(ARepo)), AllChanges,
     GitDiffOf, GitDlgDiscard, GitDlgIgnore, GitDlgStatus);
   Dlg.SetSchemeProvider(SchemeCopyFor);
+  GitDiffTrace := GitDiffTraceLog;
   try
     if Dlg.ShowModal <> mrOk then
       Exit;
@@ -70606,6 +70619,7 @@ begin
     MsgText := Dlg.MessageText;
     PushAfter := Dlg.PushAfter;
   finally
+    GitDiffTrace := nil;
     Dlg.Free;
   end;
   // Пути - UTF-8 через #0 (--pathspec-from-file --pathspec-file-nul).

@@ -36,6 +36,9 @@ type
   // без подсветки
   TGitSchemeEvent = function(const AFileName: string): TClrScheme of object;
 
+  // Строка о времени показа разницы (для Git log)
+  TGitDiffTraceEvent = procedure(const AText: string) of object;
+
   // Разница в окне своего редактора
   TGitDiffEd = class(TEdRowsView)
   private
@@ -62,6 +65,11 @@ type
     procedure ShowDiff(const AText: string);
     property OnScheme: TGitSchemeEvent read FOnScheme write SetOnScheme;
   end;
+
+var
+  // Задано - TGitDiffEd.ShowDiff сообщает сюда размер разницы и время
+  // показа (окно Commit, Unit1.GitCommitIn)
+  GitDiffTrace: TGitDiffTraceEvent = nil;
 
 implementation
 
@@ -357,9 +365,15 @@ begin
 end;
 
 procedure TGitDiffEd.ShowDiff(const AText: string);
+var
+  StartTick: DWORD;
 begin
   FLastText := AText;
+  StartTick := GetTickCount;
   Render;
+  if Assigned(GitDiffTrace) then
+    GitDiffTrace('Git: показ разницы - ' + IntToStr(Length(AText) div 1024) +
+      ' КБ, ' + IntToStr(GetTickCount - StartTick) + ' мс');
 end;
 
 procedure TGitDiffEd.Render;
