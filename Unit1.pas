@@ -447,6 +447,18 @@ type
     Closed: TIntArray;
     ClosedAtBegin: array of Boolean;
   end;
+
+  // Уровни строк по ходу разбора блоков (RebuildLineDepths): то, что нужно
+  // для пустых строк и засечек после прохода по всему тексту
+  TDepthScan = record
+    Cap: Integer;
+    LineNo: Integer;
+    Blank: array of Boolean;     // строка только из пробелов
+    HasCode: array of Boolean;   // в строке есть код, не одни комментарии
+    Outd: array of Boolean;      // строка начата закрывающим словом (end)
+    SectIdx: TIntArray;          // полоса раздела объявлений на строке, -1 - нет
+  end;
+
   TBigIntArr = array[0..(MaxInt div SizeOf(Integer)) - 1] of Integer;
   PBigIntArr = ^TBigIntArr;
 
@@ -3576,6 +3588,11 @@ type
     procedure BlockAfterLine(const AText: string; const L: TLineScan;
                              var B: TBlockState);
     procedure RebuildLineDepths(const AText: string);
+    procedure DepthScanInit(var D: TDepthScan);
+    procedure DepthScanLine(const AText: string; ALineStart, ALineEnd: Integer;
+                            const L: TLineScan; const B: TBlockState;
+                            var D: TDepthScan);
+    procedure DepthScanFinish(var D: TDepthScan);
     procedure RebuildSubList(const AText: string);
     procedure RebuildCompNames(const AText: string);
     function  CompNameAt(P: PChar; Len: Integer): Boolean;
@@ -4065,6 +4082,12 @@ type
     // нет закрывающего слова, и без засечки его полоса обрывается в
     // пустоте - у блока begin ... end конец виден по самому end.
     FLineTick: TIntArray;
+    // Уровни строк уже посчитаны проходом RebuildSubListBlocks по этому же
+    // тексту (адрес и длина строки): RebuildLineDepths, вызванный следом,
+    // второй раз текст не разбирает. Сбрасывается первым же вызовом
+    FDepthsFromSubs: Boolean;
+    FDepthsText: Pointer;
+    FDepthsLen: Integer;
     FHotTabColors: array[0..HotTabLevels - 1] of TColor; // Цвета полос по уровням
     FHotTabBarWidth: Integer;       // Ширина маркера отступа В ПИКСЕЛЯХ
     FHotTabPale: Integer;           // Бледность направляющих, 0..100 %
@@ -10250,49 +10273,102 @@ end;
 // ---------------------------------------------------------------------------
 
 // Попадает ли символ внутрь какого-нибудь диапазона
+// Подсказка для поиска: где в последний раз нашёлся диапазон у каждого из
+// недавно спрошенных массивов. Разбор карты идёт по тексту сверху вниз, и
+// следующий вопрос почти всегда приходится на тот же или соседний диапазон -
+// тогда хватает пары сравнений вместо двоичного поиска по сотне тысяч
+// литералов. Подсказка только начальная точка: ответ проверяется по самому
+// массиву, так что устаревшая подсказка (массив пересобран) даёт тот же
+// результат, просто через двоичный поиск.
+var
+  RangeHintArr: array[0..3] of Pointer;
+  RangeHintIdx: array[0..3] of Integer;
+  RangeHintNext: Integer;
+
+// Индекс первого диапазона, кончающегося после APos (EndPos > APos);
+// Length(Arr), если такого нет
+function RangesLowerBound(const Arr: TCommentRangeArray; APos: Integer): Integer;
+const
+  MaxSteps = 8;
+var
+  Count, Slot, Idx, Steps, Lo, Hi, Mid: Integer;
+begin
+  Count := Length(Arr);
+  Result := 0;
+  if Count = 0 then
+    Exit;
+  Slot := 0;
+  while (Slot <= High(RangeHintArr)) and (RangeHintArr[Slot] <> Pointer(Arr)) do
+    Inc(Slot);
+  Idx := -1;
+  if Slot <= High(RangeHintArr) then
+  begin
+    Idx := RangeHintIdx[Slot];
+    if Idx > Count then
+      Idx := Count;
+    if Idx < 0 then
+      Idx := 0;
+    Steps := 0;
+    while (Idx < Count) and (Arr[Idx].EndPos <= APos) and (Steps < MaxSteps) do
+    begin
+      Inc(Idx);
+      Inc(Steps);
+    end;
+    while (Idx > 0) and (Arr[Idx - 1].EndPos > APos) and (Steps < MaxSteps) do
+    begin
+      Dec(Idx);
+      Inc(Steps);
+    end;
+    if ((Idx < Count) and (Arr[Idx].EndPos <= APos)) or
+       ((Idx > 0) and (Arr[Idx - 1].EndPos > APos)) then
+      Idx := -1; // далеко от подсказки - двоичный поиск
+  end
+  else
+  begin
+    Slot := RangeHintNext;
+    RangeHintNext := (RangeHintNext + 1) mod (High(RangeHintArr) + 1);
+    RangeHintArr[Slot] := Pointer(Arr);
+  end;
+  if Idx < 0 then
+  begin
+    Lo := 0;
+    Hi := Count;
+    while Lo < Hi do
+    begin
+      Mid := (Lo + Hi) div 2;
+      if Arr[Mid].EndPos > APos then
+        Hi := Mid
+      else
+        Lo := Mid + 1;
+    end;
+    Idx := Lo;
+  end;
+  RangeHintIdx[Slot] := Idx;
+  Result := Idx;
+end;
+
 // Есть ли диапазон, задевающий позиции AFrom..ATo (как в InRanges: позиция
 // P внутри, если StartPos <= P < EndPos). Диапазоны идут по порядку и не
-// пересекаются: двоичный поиск первого, кончающегося после AFrom
+// пересекаются: нужен первый, кончающийся после AFrom
 function RangesTouch(const Arr: TCommentRangeArray; AFrom, ATo: Integer): Boolean;
 var
-  Lo, Hi, Mid: Integer;
+  Idx: Integer;
 begin
   Result := False;
   if AFrom > ATo then
     Exit;
-  Lo := 0;
-  Hi := High(Arr);
-  while Lo < Hi do
-  begin
-    Mid := (Lo + Hi) div 2;
-    if Arr[Mid].EndPos > AFrom then
-      Hi := Mid
-    else
-      Lo := Mid + 1;
-  end;
-  Result := (Lo <= High(Arr)) and (Arr[Lo].EndPos > AFrom) and
-            (Arr[Lo].StartPos <= ATo);
+  Idx := RangesLowerBound(Arr, AFrom);
+  Result := (Idx < Length(Arr)) and (Arr[Idx].StartPos <= ATo);
 end;
 
+// Попадает ли символ внутрь какого-нибудь диапазона
 function InRanges(const Arr: TCommentRangeArray; CharIndex: Integer): Boolean;
 var
-  Lo, Hi, Mid: Integer;
+  Idx: Integer;
 begin
-  Result := False;
-  Lo := 0;
-  Hi := High(Arr);
-  while Lo <= Hi do
-  begin
-    Mid := (Lo + Hi) div 2;
-    if CharIndex < Arr[Mid].StartPos then
-      Hi := Mid - 1
-    else if CharIndex >= Arr[Mid].EndPos then
-      Lo := Mid + 1
-    else
-    begin
-      Result := True;
-      Exit;
-    end;
+  Idx := RangesLowerBound(Arr, CharIndex);
+  Result := (Idx < Length(Arr)) and (Arr[Idx].StartPos <= CharIndex);
+end;
   end;
 end;
 
@@ -28572,16 +28648,19 @@ end;
 
 procedure TForm1.RebuildLineDepths(const AText: string);
 var
-  I, Len, LineStart, LineNo, Lv, Cap, K, J, V: Integer;
+  I, Len, LineStart: Integer;
   B: TBlockState;
   L: TLineScan;
-  Blank: array of Boolean;     // строка только из пробелов
-  HasCode: array of Boolean;   // в строке есть код, не одни комментарии
-  Outd: array of Boolean;      // строка начата закрывающим словом (end)
-  SectIdx: TIntArray;          // полоса раздела объявлений на строке, -1 - нет
-  NextNB: TIntArray;           // ближайшая непустая строка ниже, -1 - нет
-  Prev, Unop: Integer;
+  D: TDepthScan;
 begin
+  // Уровни уже есть: их посчитал RebuildSubListBlocks тем же проходом
+  if FDepthsFromSubs then
+  begin
+    FDepthsFromSubs := False;
+    if (FDepthsText = Pointer(AText)) and (FDepthsLen = Length(AText)) then
+      Exit;
+  end;
+
   SetLength(FLineDepth, 0);
   SetLength(FLineTick, 0);
   if not SchemeHasBlocks then
@@ -28591,18 +28670,10 @@ begin
   if Len = 0 then
     Exit;
 
-  // Строк не больше, чем переводов строки плюс один; растём порциями
-  Cap := 1024;
-  SetLength(FLineDepth, Cap);
-  SetLength(Blank, Cap);
-  SetLength(HasCode, Cap);
-  SetLength(Outd, Cap);
-  SetLength(SectIdx, Cap);
-
+  DepthScanInit(D);
   BlockInit(B);
   // Разбор идёт с первой строки файла, значит секция объявлений впереди
   B.BeforeScope := (FScheme.FSubScope <> '') and (SubScopeStart(AText) > 1);
-  LineNo := 0;
   LineStart := 1;
 
   I := 1;
@@ -28612,92 +28683,123 @@ begin
     begin
       ScanLine(AText, LineStart, I - 1, B, L);
       BlockBeforeLine(L, B);
-
-      // Раздел объявлений даёт уровень, как оператор без begin под then:
-      // сам var или type стоит на уровне окружения, а всё под ним -
-      // на уровень правее. Само объявление записи тогда первый уровень,
-      // её поля - второй. Правило то же, что в FormatIndentText.
-      // Закрывающий тег - на уровень своего парного, см. TagCloseLevel
-      if FScheme.FSubTags then
-      begin
-        if not TagCloseLevel(AText, L, B, Lv) then
-          Lv := B.Depth;
-      end
-      else
-      begin
-        // Та же формула, что у FormatIndentText: полоса должна стоять там,
-        // где форматирование ставит отступ. Объявленная, но ещё не
-        // открытая подпрограмма уровень даёт - так вложенная function
-        // оказывается на уровень правее внешней процедуры, а её тело ещё
-        // на один. Своя объявительная часть уровня не добавляет: var и
-        // begin стоят вровень с заголовком.
-        Unop := 0;
-        for K := 0 to B.Top do
-          if (K <= High(B.Opened)) and not B.Opened[K] then
-            Inc(Unop);
-        Lv := B.Depth + Unop;
-        if not L.IsHeader and (B.Top >= 0) and (B.Top <= High(B.Opened)) and
-           not B.Opened[B.Top] then
-          Dec(Lv);
-        Inc(Lv, B.Hang);
-        if B.InSection and not L.IsHeader then
-          Inc(Lv);
-        if L.IsOutdent then
-          Dec(Lv);
-      end;
-      if Lv < 0 then
-        Lv := 0;
-
-      if LineNo >= Cap then
-      begin
-        Cap := Cap * 2;
-        SetLength(FLineDepth, Cap);
-        SetLength(Blank, Cap);
-        SetLength(HasCode, Cap);
-        SetLength(Outd, Cap);
-        SetLength(SectIdx, Cap);
-      end;
-
-      // Полоса раздела - последний уровень строки: его и добавляет раздел.
-      // Сама строка var / const / type в раздел не входит. Состояние берём
-      // до BlockAfterLine, как и сам уровень.
-      if not FScheme.FSubTags and B.InSection and not L.IsHeader and
-         not L.IsSect then
-        SectIdx[LineNo] := Lv - 1
-      else
-        SectIdx[LineNo] := -1;
-      Outd[LineNo] := L.IsOutdent;
-      // Строка с кодом, а не одни комментарии: засечка ставится по
-      // последнему объявлению, а не по комментарию под ним - он обычно
-      // относится к тому, что идёт ниже
-      HasCode[LineNo] := Trim(L.Code) <> '';
-
-      Blank[LineNo] := True;
-      for K := LineStart to I - 1 do
-        if not (AText[K] in [' ', #9]) then
-        begin
-          Blank[LineNo] := False;
-          Break;
-        end;
-
+      DepthScanLine(AText, LineStart, I - 1, L, B, D);
       if L.IsHeader then
         BlockPushHeader(-1, B);
       BlockAfterLine(AText, L, B);
 
-      FLineDepth[LineNo] := Lv;
-
       if (I < Len) and (AText[I] = #13) and (AText[I + 1] = #10) then
         Inc(I);
-      Inc(LineNo);
       LineStart := I + 1;
     end;
     Inc(I);
   end;
 
+  DepthScanFinish(D);
+end;
+
+procedure TForm1.DepthScanInit(var D: TDepthScan);
+begin
+  // Строк не больше, чем переводов строки плюс один; растём порциями
+  D.Cap := 1024;
+  D.LineNo := 0;
+  SetLength(FLineDepth, D.Cap);
+  SetLength(FLineTick, 0);
+  SetLength(D.Blank, D.Cap);
+  SetLength(D.HasCode, D.Cap);
+  SetLength(D.Outd, D.Cap);
+  SetLength(D.SectIdx, D.Cap);
+end;
+
+// Уровень одной строки. Вызывается после BlockBeforeLine и до
+// BlockPushHeader / BlockAfterLine: уровень - по состоянию перед строкой
+procedure TForm1.DepthScanLine(const AText: string; ALineStart, ALineEnd: Integer;
+  const L: TLineScan; const B: TBlockState; var D: TDepthScan);
+var
+  Lv, K, Unop, LineNo: Integer;
+begin
+  // Раздел объявлений даёт уровень, как оператор без begin под then:
+  // сам var или type стоит на уровне окружения, а всё под ним -
+  // на уровень правее. Само объявление записи тогда первый уровень,
+  // её поля - второй. Правило то же, что в FormatIndentText.
+  // Закрывающий тег - на уровень своего парного, см. TagCloseLevel
+  if FScheme.FSubTags then
+  begin
+    if not TagCloseLevel(AText, L, B, Lv) then
+      Lv := B.Depth;
+  end
+  else
+  begin
+    // Та же формула, что у FormatIndentText: полоса должна стоять там,
+    // где форматирование ставит отступ. Объявленная, но ещё не
+    // открытая подпрограмма уровень даёт - так вложенная function
+    // оказывается на уровень правее внешней процедуры, а её тело ещё
+    // на один. Своя объявительная часть уровня не добавляет: var и
+    // begin стоят вровень с заголовком.
+    Unop := 0;
+    for K := 0 to B.Top do
+      if (K <= High(B.Opened)) and not B.Opened[K] then
+        Inc(Unop);
+    Lv := B.Depth + Unop;
+    if not L.IsHeader and (B.Top >= 0) and (B.Top <= High(B.Opened)) and
+       not B.Opened[B.Top] then
+      Dec(Lv);
+    Inc(Lv, B.Hang);
+    if B.InSection and not L.IsHeader then
+      Inc(Lv);
+    if L.IsOutdent then
+      Dec(Lv);
+  end;
+  if Lv < 0 then
+    Lv := 0;
+
+  LineNo := D.LineNo;
+  if LineNo >= D.Cap then
+  begin
+    D.Cap := D.Cap * 2;
+    SetLength(FLineDepth, D.Cap);
+    SetLength(D.Blank, D.Cap);
+    SetLength(D.HasCode, D.Cap);
+    SetLength(D.Outd, D.Cap);
+    SetLength(D.SectIdx, D.Cap);
+  end;
+
+  // Полоса раздела - последний уровень строки: его и добавляет раздел.
+  // Сама строка var / const / type в раздел не входит. Состояние берём
+  // до BlockAfterLine, как и сам уровень.
+  if not FScheme.FSubTags and B.InSection and not L.IsHeader and
+     not L.IsSect then
+    D.SectIdx[LineNo] := Lv - 1
+  else
+    D.SectIdx[LineNo] := -1;
+  D.Outd[LineNo] := L.IsOutdent;
+  // Строка с кодом, а не одни комментарии: засечка ставится по
+  // последнему объявлению, а не по комментарию под ним - он обычно
+  // относится к тому, что идёт ниже
+  D.HasCode[LineNo] := Trim(L.Code) <> '';
+
+  D.Blank[LineNo] := True;
+  for K := ALineStart to ALineEnd do
+    if not (AText[K] in [' ', #9]) then
+    begin
+      D.Blank[LineNo] := False;
+      Break;
+    end;
+
+  FLineDepth[LineNo] := Lv;
+  D.LineNo := LineNo + 1;
+end;
+
+// После прохода: пустые строки и засечки разделов
+procedure TForm1.DepthScanFinish(var D: TDepthScan);
+var
+  LineNo, K, J, V, Prev: Integer;
+  NextNB: TIntArray;           // ближайшая непустая строка ниже, -1 - нет
+begin
+  LineNo := D.LineNo;
   SetLength(FLineDepth, LineNo);
   if LineNo = 0 then
     Exit;
-
   // --- пустые строки: уровень - по строке ниже
   //
   // Пустая строка относится к тому, что идёт под ней: после begin - к телу
@@ -28714,19 +28816,19 @@ begin
   for K := LineNo - 1 downto 0 do
   begin
     NextNB[K] := J;
-    if not Blank[K] then
+    if not D.Blank[K] then
       J := K;
   end;
 
   Prev := -1;
   for K := 0 to LineNo - 1 do
   begin
-    if Blank[K] then
+    if D.Blank[K] then
     begin
       J := NextNB[K];
       if J < 0 then
         V := 0                        // хвост файла
-      else if Outd[J] then
+      else if D.Outd[J] then
       begin
         // Ниже end: строка ещё в блоке - на уровне его тела
         V := FLineDepth[J] + 1;
@@ -28758,20 +28860,20 @@ begin
     FLineTick[K] := 0;
   for K := 0 to LineNo - 1 do
   begin
-    if Blank[K] or not HasCode[K] or (SectIdx[K] < 0) then
+    if D.Blank[K] or not D.HasCode[K] or (D.SectIdx[K] < 0) then
       Continue;
-    if FLineDepth[K] <= SectIdx[K] then
+    if FLineDepth[K] <= D.SectIdx[K] then
       Continue; // полосы раздела на самой строке нет
 
     J := K + 1;
-    while (J < LineNo) and (Blank[J] or not HasCode[J]) do
+    while (J < LineNo) and (D.Blank[J] or not D.HasCode[J]) do
       Inc(J);
     // Дальше закрывающее слово - это конец записи или класса внутри
     // раздела: у такого блока конец виден по его end, засечка не нужна
-    if (J < LineNo) and Outd[J] then
+    if (J < LineNo) and D.Outd[J] then
       Continue;
-    if (J >= LineNo) or (SectIdx[J] < 0) or (SectIdx[J] < SectIdx[K]) then
-      FLineTick[K] := SectIdx[K] + 1;
+    if (J >= LineNo) or (D.SectIdx[J] < 0) or (D.SectIdx[J] < D.SectIdx[K]) then
+      FLineTick[K] := D.SectIdx[K] + 1;
   end;
 end;
 
@@ -28915,13 +29017,27 @@ var
   LineStr: string;
   B: TBlockState;
   L: TLineScan;
+  // Тем же проходом считаем и уровни строк (RebuildLineDepths): разбор
+  // блоков у них общий, а на файле в 32 МБ каждый проход - секунды
+  WithDepths: Boolean;
+  D: TDepthScan;
 begin
   SetLength(FSubs, 0);
   SubCount := 0;
   ScopeStart := SubScopeStart(AText);
+  FDepthsFromSubs := False;
 
   Len := Length(AText);
   BlockInit(B);
+  WithDepths := SchemeHasBlocks and (Len > 0);
+  if WithDepths then
+  begin
+    // Как в RebuildLineDepths: выше слова SubScope (implementation)
+    // заголовков нет - там объявления. Сюда они и так не попадали
+    // (ScopeStart), а состояние блоков должно совпасть с RebuildLineDepths
+    B.BeforeScope := (FScheme.FSubScope <> '') and (ScopeStart > 1);
+    DepthScanInit(D);
+  end;
   LineNo := 0;
   LineStart := 1;
 
@@ -28932,6 +29048,8 @@ begin
     begin
       ScanLine(AText, LineStart, I - 1, B, L);
       BlockBeforeLine(L, B);
+      if WithDepths then
+        DepthScanLine(AText, LineStart, I - 1, L, B, D);
 
       // ЗАГОЛОВОК: выше границы SubScope подпрограмм не ищем - там лежат
       // объявления интерфейса, тел у них нет
@@ -28946,7 +29064,9 @@ begin
         FSubs[SubCount - 1].BeginLine := LineNo;
         FSubs[SubCount - 1].EndLine := LineNo;
         BlockPushHeader(SubCount - 1, B);
-      end;
+      end
+      else if L.IsHeader and WithDepths then
+        BlockPushHeader(-1, B); // как в RebuildLineDepths
 
       BlockAfterLine(AText, L, B);
 
@@ -28988,6 +29108,14 @@ begin
   for K := 0 to High(FSubs) do
     if FSubs[K].EndLine < FSubs[K].BeginLine then
       FSubs[K].EndLine := FSubs[K].BeginLine;
+
+  if WithDepths then
+  begin
+    DepthScanFinish(D);
+    FDepthsFromSubs := True;
+    FDepthsText := Pointer(AText);
+    FDepthsLen := Len;
+  end;
 
   FillSubListView;
 end;

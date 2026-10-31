@@ -68,6 +68,7 @@ type
     FMinLen, FMaxLen: Integer;
     procedure RebuildHash;
     function SameWord(const AItem, AWord: string): Boolean;
+    function FindInSlots(const S: string): Integer;
   protected
     procedure Changed; override;
   public
@@ -471,8 +472,6 @@ begin
 end;
 
 function TSchemeWords.IndexOf(const S: string): Integer;
-var
-  SlotIdx: Integer;
 begin
   // С учётом регистра - как у TStringList
   if CaseSensitive then
@@ -489,6 +488,18 @@ begin
     Exit;
   if (S <> '') and not (WordLower[S[1]] in FFirstChars) then
     Exit;
+  Result := FindInSlots(S);
+end;
+
+// Поиск по хешу вынесен из IndexOf: строка Strings[] - временная, и
+// компилятор ставит на неё защитный блок try/finally на входе в функцию.
+// В IndexOf он стоял бы на каждом вызове, хотя большинство слов
+// отсекается раньше, по длине и первой букве
+function TSchemeWords.FindInSlots(const S: string): Integer;
+var
+  SlotIdx: Integer;
+begin
+  Result := -1;
   SlotIdx := Integer(WordHash(S) and Cardinal(FSlotMask));
   while FSlots[SlotIdx] <> 0 do
   begin
