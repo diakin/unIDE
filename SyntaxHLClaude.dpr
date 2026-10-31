@@ -72,6 +72,7 @@ uses
   SearchDirs in 'SearchDirs.pas',
   RunConsole in 'RunConsole.pas',
   ProcRun in 'ProcRun.pas',
+  PathKit in 'PathKit.pas',
   MdHtml in 'MdHtml.pas',
   FmtView in 'FmtView.pas',
   SplitPane in 'SplitPane.pas',

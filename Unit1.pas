@@ -39,6 +39,7 @@ uses
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   ProcRun,        // запуск внешних программ: канал вывода, ожидание, код выхода
+  PathKit,        // пути: разделитель папок, имя exe, папки рядом с программой
   EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
   DlgEdPreview,   // свой редактор - окно пробы (шаги 0.7.2 - 0.7.3)
   EdRichEmu,      // свой редактор вместо RichEdit1 (шаг 0.7.4)
@@ -4488,7 +4489,7 @@ function OwnTrialExeOf(const AMainExe: string): string;
 begin
   Result := ExtractFilePath(AMainExe) +
             ChangeFileExt(ExtractFileName(AMainExe), '') + OwnTrialSuffix +
-  '.exe';
+            ExeExt;
 end;
 
 // Свободное имя для прежнего файла: AFile.old, .old1, .old2 ...
@@ -9243,7 +9244,7 @@ begin
   if CompareText(Folder, BaseName) = 0 then
     Result := AFile
   else
-    Result := Dir + BaseName + '\' + ExtractFileName(AFile);
+    Result := Dir + BaseName + PathDelim + ExtractFileName(AFile);
 end;
 
 // .ino / .pde лежит не в папке своего имени и не дополнительным файлом
@@ -9266,7 +9267,7 @@ begin
   // расположение папки - пробуем найти файл рядом с программой. Прямые
   // косые (D:/папка/файл.inc из сообщения компилятора) - обратными: иначе
   // имя на вкладке - весь путь, а тот же файл открылся бы второй раз
-  FN := ResolveFileName(StringReplace(FileName, '/', '\', [rfReplaceAll]));
+  FN := ResolveFileName(PathNative(FileName));
 
   if not FileExists(FN) then
   begin
@@ -9670,7 +9671,7 @@ var
 begin
   SchemeKey := SchemeKeyFor(AFile, WindowExt(AFile));
   Result := FScheme.MarkersSig + ' | clr ' + SchemeKey + ' ' +
-    IntToStr(FileAge(ExtractFilePath(Application.ExeName) + 'schemes\' +
+    IntToStr(FileAge(AppSubDir('schemes') +
                      SchemeKey + '.clr')) + ' ' +
     IntToStr(FileAge(DefaultSchemaFile)) + ' | comp ' +
     IntToStr(Ord(FScheme.FCompHasColors));
@@ -9678,7 +9679,7 @@ end;
 
 function TForm1.MapCacheFileFor(const AFile: string): string;
 begin
-  Result := ExtractFilePath(Application.ExeName) + 'dsgcache\' +
+  Result := AppSubDir('dsgcache') +
             ExtractFileName(AFile) + '_' +
             IntToHex(Crc32Of(AnsiLowerCase(AFile)), 8) + '.mapcache';
 end;
@@ -11067,7 +11068,7 @@ end;
 
 function TForm1.ProjectsDir: string;
 begin
-  Result := ExtractFilePath(Application.ExeName) + 'projects\';
+  Result := AppSubDir('projects');
 end;
 
 // --- Проверка путей в editor.ini ------------------------------------------
@@ -12439,7 +12440,7 @@ begin
         if ((SR.Attr and faDirectory) = 0) or (SR.Name = '.') or
            (SR.Name = '..') then
           Continue;
-        Sub := ProjectsDir + SR.Name + '\' + SR.Name + '.prj';
+        Sub := ProjectsDir + SR.Name + PathDelim + SR.Name + '.prj';
         if FileExists(Sub) then
           AddPrj(SR.Name, Sub);
       until FindNext(SR) <> 0;
@@ -13591,7 +13592,7 @@ begin
         SL.Add('fn main() {');
         SL.Add('    println!("Hello, world!");');
         SL.Add('}');
-        SL.SaveToFile(Dir + 'src\main.rs');
+        SL.SaveToFile(Dir + 'src' + PathDelim + 'main.rs');
       end
       else if CompareText(Tp, 'AutoHotkey') = 0 then
       begin
@@ -13660,7 +13661,7 @@ begin
     else if CompareText(Tp, 'Python') = 0 then
       TargetFile := Dir + 'main.py'
     else if CompareText(Tp, 'Rust') = 0 then
-      TargetFile := Dir + 'src\main.rs'
+      TargetFile := Dir + 'src' + PathDelim + 'main.rs'
     else if CompareText(Tp, 'AutoHotkey') = 0 then
       TargetFile := Dir + Nm + '.ahk'
     else if RqMain <> '' then
@@ -13738,8 +13739,8 @@ begin
     else if (CompareText(Tp, 'Python') = 0) and FileExists(Dir + 'main.py') then
       OpenNamedFile(Dir + 'main.py')
     else if (CompareText(Tp, 'Rust') = 0) and
-            FileExists(Dir + 'src\main.rs') then
-      OpenNamedFile(Dir + 'src\main.rs')
+            FileExists(Dir + 'src' + PathDelim + 'main.rs') then
+      OpenNamedFile(Dir + 'src' + PathDelim + 'main.rs')
     else if (CompareText(Tp, 'AutoHotkey') = 0) and
             FileExists(Dir + Nm + '.ahk') then
       OpenNamedFile(Dir + Nm + '.ahk')
@@ -14339,7 +14340,7 @@ begin
   if NameEnd > Length(Txt) then
     Exit;
   Result := Trim(Copy(Txt, 2, NameEnd - 2));
-  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+  Result := PathNative(Result);
 end;
 
 // Где лежит файл из #include. Порядок, как у fbc: путь полный - как есть;
@@ -16938,7 +16939,7 @@ begin
         if Tail = '' then
           Tail := Parts[I]
         else
-          Tail := Tail + '\' + Parts[I];
+          Tail := Tail + PathDelim + Parts[I];
 
       Cand := Base + Tail;
       if FileExists(Cand) then
@@ -17464,8 +17465,7 @@ begin
       // пробуем найти его рядом с программой по хвосту пути
       // Прямые косые - обратными (D:/папка/файл.inc записан, когда файл
       // открывали из сообщения компилятора, до правки OpenNamedFile)
-      Src := StringReplace(PrjPathFromStore(PrjDir, StripLeadingNumber(Raw)),
-      '/', '\', [rfReplaceAll]);
+      Src := PathNative(PrjPathFromStore(PrjDir, StripLeadingNumber(Raw)));
                            Path := ResolveFileName(Src);
       // Тот же файл уже в списке другой записью пути - второй раз не
       // открываем (слот остаётся пустым, его вкладка и закладки не грузятся)
@@ -17833,7 +17833,7 @@ begin
     if (FCurrentFileName <> '') and FileExists(FCurrentFileName) then
       RegisterProject(AName, ExtractFilePath(FCurrentFileName))
     else
-      RegisterProject(AName, ProjectsDir + AName + '\');
+      RegisterProject(AName, ProjectsDir + AName + PathDelim);
 
   StoreCurrentWindow; // в записи окна должны лежать свежие текст и каретка
 
@@ -18022,7 +18022,8 @@ begin
   // путь модуля (projects\X\..\X\Unit1.pas). Показываем его без '..' и
   // '.'. Внутреннее имя файла не трогаем - по нему сверяются вкладки,
   // точки останова и прочее.
-  if (Pos('\..\', FN) > 0) or (Pos('\.\', FN) > 0) then
+  if (Pos(PathDelim + '..' + PathDelim, FN) > 0) or
+     (Pos(PathDelim + '.' + PathDelim, FN) > 0) then
     FN := ExpandFileName(FN);
 
   FStatus2.Panels[0].Text := FN;
@@ -20077,13 +20078,13 @@ const
   // только по "\" и ":"
 function TabFileName(const APath: string): string;
 begin
-  Result := ExtractFileName(StringReplace(APath, '/', '\', [rfReplaceAll]));
+  Result := ExtractFileName(PathNative(APath));
 end;
 
 function TabDirName(const APath: string): string;
 begin
   Result := ExtractFileName(ExcludeTrailingPathDelimiter(
-    ExtractFilePath(StringReplace(APath, '/', '\', [rfReplaceAll]))));
+    ExtractFilePath(PathNative(APath))));
 end;
 
 function TForm1.TabCaptionFor(WinIdx: Integer): string;
@@ -20143,10 +20144,10 @@ begin
   Result := '';
   if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or not FWindows[WinIdx].Used then
     Exit;
-  Result := StringReplace(FWindows[WinIdx].FileName, '/', '\', [rfReplaceAll]);
+  Result := PathNative(FWindows[WinIdx].FileName);
   if FWindows[WinIdx].IncOwner <> '' then
     Result := Result + #13#10'Подключён в ' +
-              StringReplace(FWindows[WinIdx].IncOwner, '/', '\', [rfReplaceAll]);
+              PathNative(FWindows[WinIdx].IncOwner);
   if WinIdx = FWindowsIndex then
     IsMod := RichEdit1.Modified
   else
@@ -26482,7 +26483,7 @@ var
 begin
   Result := False;
   TrialExe := Application.ExeName;
-  MainExe := ExtractFilePath(TrialExe) + OwnExeBase + '.exe';
+  MainExe := ExtractFilePath(TrialExe) + ExeName(OwnExeBase);
   OldMain := '';
   if FileExists(MainExe) then
   begin
@@ -26561,7 +26562,7 @@ begin
   if OwnIsTrial and FStartupDone and not FPromoted then
     FPromoted := OwnPromoteTrial;   // выход не через FormCloseQuery
   if FPromoted then
-    FRestartExe := ExtractFilePath(Application.ExeName) + OwnExeBase + '.exe';
+    FRestartExe := AppDir + ExeName(OwnExeBase);
   ArdFreeAll;
   FreeAndNil(FRqIncItems);
   FreeAndNil(FRqStrict);
@@ -31118,8 +31119,8 @@ begin
       repeat
         if ((Found.Attr and faDirectory) <> 0) and (Found.Name <> '.') and
            (Found.Name <> '..') and
-           DirectoryExists(ProjectsDir + Found.Name + '\rapidq_ref') then
-          AddDir(ProjectsDir + Found.Name + '\rapidq_ref');
+           DirectoryExists(ProjectsDir + Found.Name + PathDelim + 'rapidq_ref') then
+          AddDir(ProjectsDir + Found.Name + PathDelim + 'rapidq_ref');
       until FindNext(Found) <> 0;
     finally
       FindClose(Found);
@@ -31243,7 +31244,7 @@ end;
 // Include UnIde по умолчанию: rapidq_ref\RQInc рядом с exe ('' - её нет)
 function TForm1.RapidQIncUnIdeDefault: string;
 begin
-  Result := ExtractFilePath(Application.ExeName) + 'rapidq_ref\RQInc';
+  Result := AppFile('rapidq_ref/RQInc');
   if not DirectoryExists(Result) then
     Result := '';
 end;
@@ -34861,7 +34862,7 @@ end;
 
 function TForm1.ObjCacheFileFor(const ADfm: string): string;
 begin
-  Result := ExtractFilePath(Application.ExeName) + 'dsgcache\' +
+  Result := AppSubDir('dsgcache') +
             ChangeFileExt(ExtractFileName(ADfm), '') + '_' +
             IntToHex(Crc32Of(AnsiLowerCase(ADfm)), 8) + '.objcache';
 end;
@@ -34958,7 +34959,7 @@ begin
   Dpr := ProjectTargetOf(FCurrentProject);
   if Dpr = '' then
     Exit;
-  Result := ExtractFilePath(Application.ExeName) + 'dsgcache\probe_' +
+  Result := AppSubDir('dsgcache') + 'probe_' +
             ChangeFileExt(ExtractFileName(Dpr), '') + '_' +
             IntToHex(Crc32Of(AnsiLowerCase(Dpr)), 8) + '.txt';
 end;
@@ -35145,7 +35146,7 @@ begin
   // Папка пробного запуска - рядом с редактором, не во временной: после
   // запуска в ней можно посмотреть, что произошло (probe.log, копия .dpr,
   // снимок probe.txt, собранный exe)
-  FProbeDir := ExtractFilePath(Application.ExeName) + 'dsgprobe\';
+  FProbeDir := AppSubDir('dsgprobe');
   try
     Step('начало, проект ' + FCurrentProject + ', форма ' + FObjFormClass);
     ForceDirectories(FProbeDir);
@@ -40377,8 +40378,7 @@ begin
     RootDir := ExtractFilePath(ExcludeTrailingPathDelimiter(BinDir));
   StageTick := GetTickCount;
   try
-    FDsgForeign.Scan(RootDir, ExtractFilePath(Application.ExeName) +
-    'dsgcache\palette_foreign.txt');
+    FDsgForeign.Scan(RootDir, AppFile('dsgcache/palette_foreign.txt'));
   except
     on E: Exception do
     begin
@@ -40461,11 +40461,10 @@ begin
     ARefDir := ExtractFilePath(ExcludeTrailingPathDelimiter(ASysDir)) +
                'incOld'
   else
-    ARefDir := ExtractFilePath(Application.ExeName) + 'rapidq_ref\incOld';
+    ARefDir := AppFile('rapidq_ref/incOld');
   if (ASysDir = '') or not DirectoryExists(ARefDir) then
-    if DirectoryExists(ExtractFilePath(Application.ExeName) +
-                       'rapidq_ref\incOld') then
-      ARefDir := ExtractFilePath(Application.ExeName) + 'rapidq_ref\incOld';
+    if DirectoryExists(AppFile('rapidq_ref/incOld')) then
+      ARefDir := AppFile('rapidq_ref/incOld');
 end;
 
 // Utils - Find inc file
@@ -43498,7 +43497,7 @@ const
 
 function DsgClipFileName: string;
 begin
-  Result := ExtractFilePath(Application.ExeName) + 'dsgcache\clipboard.txt';
+  Result := AppFile('dsgcache/clipboard.txt');
 end;
 
 // Первый object блока: "Name: TClass" - для подписи в истории
@@ -53858,7 +53857,7 @@ var
     Result := False;
     if ADir = '' then
       Exit;
-    Candidate := IncludeTrailingPathDelimiter(ADir) + 'lazbuild.exe';
+    Candidate := IncludeTrailingPathDelimiter(ADir) + ExeName('lazbuild');
     if FileExists(Candidate) then
     begin
       LazFound := Candidate;
@@ -53923,7 +53922,9 @@ begin
     Result := LazFound;
     Exit;
   end;
-  // 4. <диск>:\lazarus на локальных дисках, Program Files
+  // 4. <диск>:\lazarus на локальных дисках, Program Files (буквы дисков -
+  // только Windows)
+  {$IFDEF MSWINDOWS}
   for DriveCh := 'C' to 'Z' do
     if GetDriveType(PChar(DriveCh + ':\')) = DRIVE_FIXED then
       if Probe(DriveCh + ':\lazarus') then
@@ -53931,6 +53932,7 @@ begin
         Result := LazFound;
         Exit;
       end;
+  {$ENDIF}
   if ProbeEnv('ProgramFiles') or ProbeEnv('ProgramFiles(x86)') or
      ProbeEnv('ProgramW6432') then
   begin
@@ -53959,10 +53961,10 @@ begin
     Name := ChangeFileExt(ExtractFileName(ALpi), '');
   if Pos('$(', Name) > 0 then
     Exit;
-  Name := StringReplace(Name, '/', '\', [rfReplaceAll]);
+  Name := PathNative(Name);
   if ExtractFileExt(Name) = '' then
-    Name := Name + '.exe';
-  if (ExtractFileDrive(Name) = '') and (Copy(Name, 1, 1) <> '\') then
+    Name := Name + ExeExt;
+  if not PathIsAbs(Name) then
     Name := ExtractFilePath(ALpi) + Name;
   Result := ExpandFileName(Name);
 end;
@@ -53994,8 +53996,8 @@ begin
     end;
     if (Item = '') or (Pos('$(', Item) > 0) then
       Continue;
-    Item := StringReplace(Item, '/', '\', [rfReplaceAll]);
-    if (ExtractFileDrive(Item) = '') and (Copy(Item, 1, 1) <> '\') then
+    Item := PathNative(Item);
+    if not PathIsAbs(Item) then
       Item := Dir + Item;
     Item := ExcludeTrailingPathDelimiter(ExpandFileName(Item));
     if Result <> '' then
@@ -54123,9 +54125,9 @@ begin
       Result := Setting;
       Exit;
     end;
-    if FileExists(IncludeTrailingPathDelimiter(Setting) + 'fpc.exe') then
+    if FileExists(IncludeTrailingPathDelimiter(Setting) + ExeName('fpc')) then
     begin
-      Result := IncludeTrailingPathDelimiter(Setting) + 'fpc.exe';
+      Result := IncludeTrailingPathDelimiter(Setting) + ExeName('fpc');
       Exit;
     end;
   end;
@@ -54143,7 +54145,8 @@ begin
     if Result <> '' then
       Exit;
   end;
-  // 4. <диск>:\FPC (установщик Free Pascal)
+  // 4. <диск>:\FPC (установщик Free Pascal; буквы дисков - только Windows)
+  {$IFDEF MSWINDOWS}
   for DriveCh := 'C' to 'Z' do
     if GetDriveType(PChar(DriveCh + ':\')) = DRIVE_FIXED then
     begin
@@ -54151,6 +54154,7 @@ begin
       if Result <> '' then
         Exit;
     end;
+  {$ENDIF}
   AProblem := 'fpc.exe не найден. Искали: ';
   if Setting <> '' then
     AProblem := AProblem + 'поле fpc.exe (' + Setting + '), ';
@@ -54300,7 +54304,7 @@ begin
   if ALpi <> '' then
     Exe := LazExeOf(ALpi);
   if Exe = '' then
-    Exe := ChangeFileExt(ASource, '.exe');
+    Exe := ChangeFileExt(ASource, ExeExt);
   // 64-битный - с суффиксом 64, рядом с 32-битным
   Exe := LazBitsExe(Exe);
   if not FreeBusyExe(Exe) then
@@ -54352,11 +54356,11 @@ begin
   if (Cpu <> '') or (TargetOs <> '') then
   begin
     if Cpu = '' then
-      LibDir := LibDir + '\default-' + TargetOs
+      LibDir := LibDir + PathDelim + 'default-' + TargetOs
     else if TargetOs = '' then
-      LibDir := LibDir + '\' + Cpu + '-default'
+      LibDir := LibDir + PathDelim + Cpu + '-default'
     else
-      LibDir := LibDir + '\' + Cpu + '-' + TargetOs;
+      LibDir := LibDir + PathDelim + Cpu + '-' + TargetOs;
     if not DirectoryExists(LibDir) then
       CreateDir(LibDir);
   end;
@@ -55539,7 +55543,7 @@ begin
       if (NameStart = 0) or (NameEnd = 0) then
         Continue;
       IncName := Trim(Copy(LowLine, NameStart + 1, NameEnd - 1));
-      IncName := StringReplace(IncName, '/', '\', [rfReplaceAll]);
+      IncName := PathNative(IncName);
       if CompareText(ExtractFileName(IncName), ExtractFileName(AFile)) = 0 then
       begin
         Result := True;
@@ -58832,7 +58836,7 @@ begin
     FBuildRapidQ := False;
   end;
 
-  FProbeDir := ExtractFilePath(Application.ExeName) + 'dsgprobe\';
+  FProbeDir := AppSubDir('dsgprobe');
   ForceDirectories(FProbeDir);
   ProbeBas := ExtractFilePath(MainBas) + '_rqprobe.bas';
   OutFile := ExtractFilePath(MainBas) + '_rqprobe.txt';
@@ -59478,7 +59482,7 @@ begin
   Copied := 0;
   for Index := Low(UiUnits) to High(UiUnits) do
   begin
-    DstFile := Result + '\' + UiUnits[Index] + '.pas';
+    DstFile := Result + PathDelim + UiUnits[Index] + '.pas';
     if SourceDir <> '' then
     begin
       SrcFile := SourceDir + UiUnits[Index] + '.pas';
@@ -60170,7 +60174,7 @@ end;
 // удаляется при записи нового (ModPreviewSaveDisk)
 function ModPreviewDiskName(const AFile, AStamp: string): string;
 begin
-  Result := ExtractFilePath(Application.ExeName) + 'dsgcache\' +
+  Result := AppSubDir('dsgcache') +
             ChangeFileExt(ExtractFileName(AFile), '') + '_' +
             IntToHex(Crc32Of(AnsiLowerCase(AFile)), 8) + '_' +
             IntToHex(Crc32Of(AStamp + '|4'), 8) + '.preview.jpg';
@@ -60722,7 +60726,7 @@ begin
     begin
       TargetSrc := FpcTargetSource;
       if TargetSrc <> '' then
-        Result := LazBitsExe(ChangeFileExt(TargetSrc, '.exe'));
+        Result := LazBitsExe(ChangeFileExt(TargetSrc, ExeExt));
     end;
   end
   else if Kind = bkFreeBasic then
@@ -63677,7 +63681,7 @@ begin
         (FProjectReg.Values['TestForm' + IntToStr(Num)] <> '') do
     Inc(Num);
   Nm := 'TestForm' + IntToStr(Num);
-  Dir := ProjectsDir + Nm + '\';
+  Dir := ProjectsDir + Nm + PathDelim;
   if not ForceDirectories(Dir) then
   begin
     ShowMessage('27239:New Form: не удалось создать папку ' + Dir);
@@ -64017,10 +64021,12 @@ var
   Copied, SrcIdx, Merged: Integer;
 
   // Файл ARel (путь от папки) - из первой папки-источника, где он есть
-  procedure CopyIfMissing(const ARel: string);
+  procedure CopyIfMissing(const ARelName: string);
   var
     DirIdx: Integer;
+    ARel: string;
   begin
+    ARel := PathNative(ARelName);
     if FileExists(DstDir + ARel) then
       Exit;
     for DirIdx := Low(SrcDirs) to High(SrcDirs) do
@@ -64037,10 +64043,12 @@ var
 // Файл ARel - из первой папки-источника, где он есть, если там он
 // новее (описание компонентов RapidQ пересобирается, старая копия рядом
 // с exe перекрыла бы новую)
-  procedure CopyIfNewer(const ARel: string);
+  procedure CopyIfNewer(const ARelName: string);
   var
     DirIdx: Integer;
+    ARel: string;
   begin
+    ARel := PathNative(ARelName);
     for DirIdx := Low(SrcDirs) to High(SrcDirs) do
       if FileExists(SrcDirs[DirIdx] + ARel) then
       begin
@@ -64062,12 +64070,12 @@ var
     Found: TSearchRec;
   begin
     for DirIdx := Low(SrcDirs) to High(SrcDirs) do
-      if FindFirst(SrcDirs[DirIdx] + ARelDir + '\*.*', faAnyFile,
+      if FindFirst(SrcDirs[DirIdx] + ARelDir + PathDelim + '*', faAnyFile,
                    Found) = 0 then
       try
       repeat
         if (Found.Attr and faDirectory) = 0 then
-          CopyIfMissing(ARelDir + '\' + Found.Name);
+          CopyIfMissing(ARelDir + PathDelim + Found.Name);
       until FindNext(Found) <> 0;
       finally
         FindClose(Found);
@@ -64240,7 +64248,7 @@ begin
         'или .lpr проекта');
         Exit;
       end;
-      Exe := LazBitsExe(ChangeFileExt(Dpr, '.exe'));
+      Exe := LazBitsExe(ChangeFileExt(Dpr, ExeExt));
     end
     else
     begin
@@ -67263,7 +67271,7 @@ begin
              for NameIdx := 0 to Shown.Count - 1 do
     begin
       Parent := ArdChunkParent(AParent, NameIdx, Shown.Count, Shown);
-      SubFolder := IncludeTrailingPathDelimiter(AFolder) + Shown[NameIdx] + '\';
+      SubFolder := IncludeTrailingPathDelimiter(AFolder) + Shown[NameIdx] + PathDelim;
       Sketch := ArdSketchFile(SubFolder);
       if Sketch <> '' then
         ArdAddItem(Parent, ArdMenuText(Shown[NameIdx]), ArdSketchItemClick,
@@ -69928,7 +69936,7 @@ begin
         begin
           if ExtractFileDrive(SeqHead) = '' then
             SeqHead := IncludeTrailingPathDelimiter(Repo) + SeqHead;
-          SeqHead := StringReplace(SeqHead, '/', '\', [rfReplaceAll]);
+          SeqHead := PathNative(SeqHead);
           if FileExists(SeqHead) then
           begin
             SeqLines := TStringList.Create;
@@ -70038,7 +70046,7 @@ function TForm1.GitStateSig: string;
 const
   SigFiles: array[0..13] of string = ('HEAD', 'index', 'ORIG_HEAD',
     'FETCH_HEAD', 'MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD',
-    'packed-refs', 'logs\HEAD', 'refs\stash', 'sequencer\todo',
+    'packed-refs', 'logs/HEAD', 'refs/stash', 'sequencer/todo',
     'rebase-merge', 'rebase-apply', 'BISECT_LOG');
 var
   GitDir, HeadRef, BranchPath: string;
@@ -70064,14 +70072,14 @@ begin
   Result := FGitRepoTop;
   if FGitRepoTop = '' then
     Exit;
-  GitDir := IncludeTrailingPathDelimiter(FGitRepoTop) + '.git\';
+  GitDir := IncludeTrailingPathDelimiter(FGitRepoTop) + '.git' + PathDelim;
   if not DirectoryExists(GitDir) then
   begin
     Result := Result + '|' + IntToStr(GetTickCount div 5000);
     Exit;
   end;
   for FileIdx := Low(SigFiles) to High(SigFiles) do
-    Result := Result + '|' + FileSig(GitDir + SigFiles[FileIdx]);
+    Result := Result + '|' + FileSig(GitDir + PathNative(SigFiles[FileIdx]));
   // HEAD: 'ref: refs/heads/<ветка>' - файл ветки и origin/<ветка>
   HeadRef := '';
   HeadLines := TStringList.Create;
@@ -70088,10 +70096,10 @@ begin
   end;
   if Copy(HeadRef, 1, 16) = 'ref: refs/heads/' then
   begin
-    BranchPath := StringReplace(Copy(HeadRef, 17, MaxInt), '/', '\',
-      [rfReplaceAll]);
-    Result := Result + '|' + FileSig(GitDir + 'refs\heads\' + BranchPath) +
-      '|' + FileSig(GitDir + 'refs\remotes\origin\' + BranchPath);
+    BranchPath := PathNative(Copy(HeadRef, 17, MaxInt));
+    Result := Result + '|' +
+      FileSig(GitDir + PathNative('refs/heads/') + BranchPath) + '|' +
+      FileSig(GitDir + PathNative('refs/remotes/origin/') + BranchPath);
   end;
 end;
 
@@ -70432,7 +70440,7 @@ var
     Result := '';
     if (AName <> '') and (AName <> '.') then
       Result := IncludeTrailingPathDelimiter(ARepo) +
-        StringReplace(AName, '/', '\', [rfReplaceAll]);
+        PathNative(AName);
   end;
 
 begin
@@ -70687,14 +70695,14 @@ begin
     Result := 'revert';
   if Result <> '' then
     Exit;
-  GitDir := IncludeTrailingPathDelimiter(ARepo) + '.git\';
+  GitDir := IncludeTrailingPathDelimiter(ARepo) + '.git' + PathDelim;
   if not DirectoryExists(GitDir) then
     Exit;
   if DirectoryExists(GitDir + 'rebase-merge') then
     Result := 'rebase'
   else if DirectoryExists(GitDir + 'rebase-apply') then
   begin
-    if FileExists(GitDir + 'rebase-apply\applying') then
+    if FileExists(GitDir + PathNative('rebase-apply/applying')) then
       Result := 'am'
     else
       Result := 'rebase';
@@ -70706,7 +70714,7 @@ begin
     TodoLines := TStringList.Create;
     try
       try
-        TodoLines.LoadFromFile(GitDir + 'sequencer\todo');
+        TodoLines.LoadFromFile(GitDir + PathNative('sequencer/todo'));
         if (TodoLines.Count > 0) and
            (Copy(TrimLeft(TodoLines[0]), 1, 6) = 'revert') then
           Result := 'revert';
@@ -70771,7 +70779,8 @@ begin
   else if FGitOp <> '' then
     FGitStatusErrors.Add('не закончен ' + FGitOp + ' - Continue или Abort ' +
       'в начале строки Build');
-  if FileExists(IncludeTrailingPathDelimiter(ARepo) + '.git\index.lock') then
+  if FileExists(IncludeTrailingPathDelimiter(ARepo) +
+     PathNative('.git/index.lock')) then
     FGitStatusErrors.Add('есть .git\index.lock: работает другой git ' +
       '(GitHub Desktop, Git Bash) или он был прерван. Если git сейчас не ' +
       'запущен - удалить этот файл');
@@ -71257,7 +71266,7 @@ var
 begin
   try
     Raw := ReadWholeFile(IncludeTrailingPathDelimiter(FGitDlgRepo) +
-      StringReplace(string(ARelPath), '/', '\', [rfReplaceAll]));
+      PathNative(string(ARelPath)));
   except
     on E: Exception do
     begin
@@ -73479,8 +73488,8 @@ begin
       for LineIdx := 0 to Lines.Count - 1 do
         if Copy(Lines[LineIdx], 1, 9) = 'worktree ' then
         begin
-          WtPath := ExcludeTrailingPathDelimiter(StringReplace(
-            Copy(Lines[LineIdx], 10, MaxInt), '/', '\', [rfReplaceAll]));
+          WtPath := ExcludeTrailingPathDelimiter(
+            PathNative(Copy(Lines[LineIdx], 10, MaxInt)));
           if IsCommitCopy(WtPath) then
           begin
             Result := WtPath;
@@ -74980,16 +74989,16 @@ begin
         for PathIdx := 0 to High(Paths) do
           if (Candidates.IndexOf(string(Paths[PathIdx])) < 0) and
              FileExists(IncludeTrailingPathDelimiter(ARepo) +
-               StringReplace(string(Paths[PathIdx]), '/', '\',
-               [rfReplaceAll])) then
+               PathNative(string(Paths[PathIdx]))) then
             Candidates.Add(string(Paths[PathIdx]));
       end;
     if Candidates.Count = 0 then
       Exit;
 
     // Правила: рабочей папки и корневого .gitignore версии Target
-    AKeepDir := IncludeTrailingPathDelimiter(ARepo) + '.git\unide-keep\' +
-      FormatDateTime('yyyymmdd-hhnnss', Now) + '\';
+    AKeepDir := IncludeTrailingPathDelimiter(ARepo) +
+      PathNative('.git/unide-keep/') +
+      FormatDateTime('yyyymmdd-hhnnss', Now) + PathDelim;
     ForceDirectories(AKeepDir);
     RulesFile := '';
     if GitRunIn(AGit, ARepo, 'show ' + Target + ':.gitignore', False,
@@ -75041,7 +75050,8 @@ begin
     if Ignored.Count = 0 then
     begin
       RemoveDir(ExcludeTrailingPathDelimiter(AKeepDir));
-      RemoveDir(IncludeTrailingPathDelimiter(ARepo) + '.git\unide-keep');
+      RemoveDir(IncludeTrailingPathDelimiter(ARepo) +
+        PathNative('.git/unide-keep'));
       AKeepDir := '';
       Exit;
     end;
@@ -75050,9 +75060,8 @@ begin
     for PathIdx := 0 to Ignored.Count - 1 do
     begin
       SrcFile := IncludeTrailingPathDelimiter(ARepo) +
-        StringReplace(Ignored[PathIdx], '/', '\', [rfReplaceAll]);
-      DstFile := AKeepDir + StringReplace(Ignored[PathIdx], '/', '\',
-        [rfReplaceAll]);
+        PathNative(Ignored[PathIdx]);
+      DstFile := AKeepDir + PathNative(Ignored[PathIdx]);
       ForceDirectories(ExtractFilePath(DstFile));
       if not Windows.CopyFile(PChar(SrcFile), PChar(DstFile), False) then
       begin
@@ -75094,10 +75103,9 @@ begin
   try
     for FileIdx := 0 to AFiles.Count - 1 do
     begin
-      SrcFile := AKeepDir + StringReplace(AFiles[FileIdx], '/', '\',
-        [rfReplaceAll]);
+      SrcFile := AKeepDir + PathNative(AFiles[FileIdx]);
       DstFile := IncludeTrailingPathDelimiter(ARepo) +
-        StringReplace(AFiles[FileIdx], '/', '\', [rfReplaceAll]);
+        PathNative(AFiles[FileIdx]);
       if not FileExists(DstFile) then
       begin
         ForceDirectories(ExtractFilePath(DstFile));
@@ -75130,7 +75138,8 @@ begin
     if Failed = 0 then
     begin
       RemoveDir(ExcludeTrailingPathDelimiter(AKeepDir));
-      RemoveDir(IncludeTrailingPathDelimiter(ARepo) + '.git\unide-keep');
+      RemoveDir(IncludeTrailingPathDelimiter(ARepo) +
+        PathNative('.git/unide-keep'));
     end;
   finally
     Dirs.Free;
@@ -75606,7 +75615,7 @@ begin
     ArdAddLibExamples(mArdExamples, Settings.SketchPath + 'libraries',
     'Examples from Custom Libraries', HeaderDone);
                       if (Settings.LibPath <> '') and
-                      (CompareText(Settings.LibPath, Settings.SketchPath + 'libraries\') <> 0) then
+                      (CompareText(Settings.LibPath, Settings.SketchPath + 'libraries' + PathDelim) <> 0) then
                       ArdAddLibExamples(mArdExamples, Settings.LibPath,
       'Examples from Custom Libraries', HeaderDone);
 
@@ -75677,7 +75686,7 @@ begin
   Roots := TStringList.Create;
   try
     if Settings.IdePath <> '' then
-      Roots.Add(Settings.IdePath + 'libraries\');
+      Roots.Add(Settings.IdePath + 'libraries' + PathDelim);
     BoardIdx := FArdHw.BoardByFqbn(ArdBoardFqbn);
     if BoardIdx >= 0 then
     begin
@@ -75689,9 +75698,9 @@ begin
 
     Roots.Clear;
     if Settings.SketchPath <> '' then
-      Roots.Add(Settings.SketchPath + 'libraries\');
+      Roots.Add(Settings.SketchPath + 'libraries' + PathDelim);
     if (Settings.LibPath <> '') and
-       (CompareText(Settings.LibPath, Settings.SketchPath + 'libraries\') <> 0) then
+       (CompareText(Settings.LibPath, Settings.SketchPath + 'libraries' + PathDelim) <> 0) then
       Roots.Add(Settings.LibPath);
     ArdAddLibGroup('Contributed libraries', Roots);
   finally
@@ -79073,7 +79082,7 @@ begin
   begin
     if FileExists(AName) and (ExtractFileDrive(AName) <> '') then
       Result := AName
-    else if (ExtractFileDrive(AName) = '') and (Copy(AName, 1, 1) <> '\') and
+    else if not PathIsAbs(AName) and
             (FLastBuildDir <> '') and
             FileExists(IncludeTrailingPathDelimiter(FLastBuildDir) + AName) then
       Result := ExpandFileName(IncludeTrailingPathDelimiter(FLastBuildDir) +
@@ -82757,8 +82766,7 @@ end;
 // они свои у каждого языка.
 function TForm1.DefaultSchemaFile: string;
 begin
-  Result := SchemeDefaultPath(ExtractFilePath(Application.ExeName) +
-    'schemes\');
+  Result := SchemeDefaultPath(AppSubDir('schemes'));
 end;
 
 // Отдельная схема подсветки для файла AFile - та же, что выбрал бы
@@ -82768,8 +82776,8 @@ end;
 function TForm1.SchemeCopyFor(const AFile: string): TClrScheme;
 begin
   // Чтение - SchemeFiles.SchemeLoadFromDir (общее с uniFAR)
-  Result := SchemeLoadFromDir(ExtractFilePath(Application.ExeName) +
-    'schemes\', SchemeKeyFor(AFile, ExtractFileExt(AFile)), FScheme.FTheme,
+  Result := SchemeLoadFromDir(AppSubDir('schemes'),
+    SchemeKeyFor(AFile, ExtractFileExt(AFile)), FScheme.FTheme,
     FIniFontColor, FIniBGColor);
 end;
 
@@ -82814,7 +82822,7 @@ begin
   // только тип проекта: .inc в проекте RapidQ Basic - схема Basic
   IncIsBasic := (FCurrentProject <> '') and
     (CompareText(ProjectTypeOf(FCurrentProject), 'RapidQ Basic') = 0);
-  Result := SchemeKeyByExt(ExtractFilePath(Application.ExeName) + 'schemes\',
+  Result := SchemeKeyByExt(AppSubDir('schemes'),
     AExt, IncIsBasic);
 end;
 
@@ -82826,7 +82834,7 @@ var
   Ini: TIniFile;
 begin
   ARows.Clear;
-  Dir := ExtractFilePath(Application.ExeName) + 'schemes\';
+  Dir := AppSubDir('schemes');
   Rows := TStringList.Create;
   IniKeys := TStringList.Create;
   try
@@ -82895,7 +82903,7 @@ begin
     Delete(ExtName, 1, 1);
   if ExtName = '' then
     Exit;
-  Dir := ExtractFilePath(Application.ExeName) + 'schemes\';
+  Dir := AppSubDir('schemes');
   try
     ForceDirectories(Dir);
     Ini := TIniFile.Create(Dir + 'alias.ini');
@@ -82924,7 +82932,7 @@ var
   SR: TSearchRec;
   Names: TStringList;
 begin
-  Dir := ExtractFilePath(Application.ExeName) + 'schemes\';
+  Dir := AppSubDir('schemes');
   Names := TStringList.Create;
   try
     Names.Sorted := True;
@@ -83071,7 +83079,7 @@ var
   Ini: TIniFile;
   HasAlias: Boolean;
 begin
-  Dir := ExtractFilePath(Application.ExeName) + 'schemes\';
+  Dir := AppSubDir('schemes');
   // Выбрано для этого файла
   Chosen := FileSchemeOf(AFile);
   if (Chosen <> '') and FileExists(Dir + Chosen + '.clr') then
@@ -83799,7 +83807,7 @@ begin
 
   // Находим путь к файлу схемы (например, schemes\pas.clr). Своей схемы
   // у расширения нет - по соответствию: .pp -> pas, .lfm -> dfm
-  ClrPath := ExtractFilePath(Application.ExeName) + 'schemes\' +
+  ClrPath := AppSubDir('schemes') +
              SchemeKeyFor(AFile, Ext) + '.clr';
 
   ResetSchemaState;
@@ -85690,7 +85698,7 @@ begin
     end;
     ExeDir := ExtractFilePath(Application.ExeName);
     Dirs.Add(ExeDir);
-    Dirs.Add(ExeDir + 'help\');
+    Dirs.Add(ExeDir + 'help' + PathDelim);
     for DirIdx := 0 to Dirs.Count - 1 do
     begin
       if FindFirst(Dirs[DirIdx] + '*.chm', faAnyFile, Found) = 0 then
@@ -86089,7 +86097,7 @@ begin
 
   // Сохранение из окна настроек идёт в ту же схему, что и загрузка: для
   // .pp - в pas.clr, для файла с выбранной подсветкой - в её схему
-  Result := ExtractFilePath(Application.ExeName) + 'schemes\' +
+  Result := AppSubDir('schemes') +
             SchemeKeyFor(ActiveWindowFile, Ext) + '.clr';
 end;
 
@@ -86693,7 +86701,7 @@ begin
   if Kind = fkNone then
     FSplitFmt := False;
   FSplit.SetTitle(TabFileName(FileName),
-    StringReplace(FileName, '/', '\', [rfReplaceAll]) + #13#10 +
+    PathNative(FileName) + #13#10 +
     'Щелчок по тексту - править здесь; по заголовку - другая вкладка',
     Kind <> fkNone, FSplitFmt);
   // Кнопка Sync - только у текста в окне TEdView (ниже, при своём редакторе)
@@ -86970,7 +86978,7 @@ begin
     EditFile := FWindows[FWindowsIndex].FileName;
     EditKind := FmtKindOf(EditFile);
     FEditHeader.SetTitle(TabFileName(EditFile),
-      StringReplace(EditFile, '/', '\', [rfReplaceAll]) + #13#10 +
+      PathNative(EditFile) + #13#10 +
       'Щелчок - другая вкладка в этой панели',
       EditKind <> fkNone, FWindows[FWindowsIndex].FmtShown);
   end
