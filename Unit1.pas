@@ -59844,7 +59844,10 @@ begin
   // для отложенного нет: вопросы и прочее - только по видимому окну
   if StartupActive then
     Exit;
-  // Первый простой: окно показано, запуск прошёл (OwnPromoteTrial)
+  // Первый простой: окно показано, запуск прошёл (OwnPromoteTrial).
+  // Над редактором по умолчанию - вкладка Git, а не палитра Components
+  if not FStartupDone and (FPalTabs <> nil) and (FPalTabs.TabIndex <> 1) then
+    GitShowBar(True);
   FStartupDone := True;
   // Простой наступает после КАЖДОГО сообщения, в том числе после каждого
   // движения мыши. Пока в конструкторе тянут компонент или рамку, вид
@@ -60082,7 +60085,7 @@ const
 var
   ModeKey: string;
   Basic, RqMode, CanStep, ArdRow: Boolean;
-  Kind, OldKind: Integer;
+  Kind: Integer;
   RunRow: array[0..RunRowCount - 1] of TControl;
   RowIdx, SlotIdx, PageIdx: Integer;
 
@@ -60114,7 +60117,6 @@ begin
     Kind := bkDelphi;
   if FLangMode = Kind then
     Exit;
-  OldKind := FLangMode;
   FLangMode := Kind;
   // Basic - всё, что не Delphi: только-Delphi спрятано. RqMode - то, что
   // есть только у RapidQ (Includes, палитра RQ, условия точек останова).
@@ -60195,13 +60197,11 @@ begin
                                 RqMode <> ((PageIdx >= FRqPalPage) and (PageIdx <= FRqPalLast)));
     FDsgPalette.ApplyPages;
   end;
-  // Проект ReactOS: палитра не нужна - сразу вкладка Git; из ReactOS в
-  // другой режим - снова Components. В остальных случаях вкладку выбирает
-  // пользователь (Components | Git на рамке палитры)
+  // Проект ReactOS: палитра не нужна - сразу вкладка Git. В остальных
+  // случаях вкладку выбирает пользователь (Components | Git на рамке
+  // палитры); по умолчанию - Git (AppIdle)
   if Kind = bkCMakeNinja then
-    GitShowBar(True)
-  else if OldKind = bkCMakeNinja then
-    GitShowBar(False);
+    GitShowBar(True);
   Dbg('Режим среды: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')',
       clGray);
 end;
