@@ -1455,6 +1455,8 @@ type
     FIncGuess: TStringList;
     // Пункты меню Подсветка (вкладка и View) и схемы их подпунктов по Tag
     FHlTabItem, FHlViewItem: TMenuItem;
+    // Меню вкладки: «Удалить файл (в Корзину)» (DeleteFileClick)
+    FDelTabItem: TMenuItem;
     FWv2ViewItem: TMenuItem;  // View - Просмотр в WebView2
     FEdPreviewItem: TMenuItem; // View - свой редактор, проба (0.7.3)
     // Options - unIDE FAR: Files highlighting (окно раскраски файлов)
@@ -2394,6 +2396,8 @@ type
     procedure BuildFileMenu;
     procedure EncodingItemClick(Sender: TObject);
     procedure EncodingMenuSync;
+    procedure DeleteFileClick(Sender: TObject);
+    procedure DeleteWindowFile(AWinIdx: Integer);
     procedure RebuildReopenMenu;
     procedure AddToRecent(const FileName: string);
     procedure ReopenItemClick(Sender: TObject);
@@ -8521,7 +8525,7 @@ end;
 
 procedure TForm1.BuildFileMenu;
 var
-  EncMenu: TMenuItem;
+  EncMenu, DelItem: TMenuItem;
   EncIdx: Integer;
 const
   EncCaptions: array[0..2] of string = ('UTF-8', 'UTF-8 BOM', 'ANSI');
@@ -8544,6 +8548,78 @@ begin
     FEncItems[EncIdx].GroupIndex := 1;
   end;
   EncodingMenuSync;
+
+  // DeleteFile - после Encoding: файл активного окна в Корзину
+  DelItem := TMenuItem.Create(Self);
+  DelItem.Caption := 'DeleteFile';
+  DelItem.Hint := 'Файл активного окна - в Корзину, окно закрывается';
+  DelItem.OnClick := DeleteFileClick;
+  mSaveAs.Parent.Insert(EncMenu.MenuIndex + 1, DelItem);
+end;
+
+// File > DeleteFile и меню вкладки > «Удалить файл (в Корзину)». Из меню
+// вкладки - окно вкладки под мышью, иначе - активное окно
+procedure TForm1.DeleteFileClick(Sender: TObject);
+var
+  ClickPt: TPoint;
+  TabIdx, WinIdx: Integer;
+begin
+  WinIdx := FWindowsIndex;
+  if (Sender = FDelTabItem) and (FTabs <> nil) then
+  begin
+    ClickPt := FTabs.ScreenToClient(FTabsPopup.PopupAt);
+    TabIdx := FTabs.IndexOfTabAt(ClickPt.X, ClickPt.Y);
+    if TabIdx < 0 then
+      TabIdx := FTabs.TabIndex;
+    if (TabIdx >= 0) and (TabIdx <= High(FTabWin)) then
+      WinIdx := FTabWin[TabIdx];
+  end;
+  DeleteWindowFile(WinIdx);
+end;
+
+// Файл окна AWinIdx - в Корзину (SHFileOperation с FOF_ALLOWUNDO, как
+// Discard в окне Commit), после вопроса; окно закрывается без вопроса о
+// сохранении, файл уходит из списка Reopen
+procedure TForm1.DeleteWindowFile(AWinIdx: Integer);
+var
+  FileName: string;
+  Paths: TGitPaths;
+  RecentIdx: Integer;
+begin
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) or
+     not FWindows[AWinIdx].Used then
+    Exit;
+  FileName := FWindows[AWinIdx].FileName;
+  if (FileName = '') or not FileExists(FileName) then
+  begin
+    ShowMessage('Файла нет на диске:'#13#10 + FileName);
+    Exit;
+  end;
+  if MessageDlg('Удалить файл в Корзину?'#13#10#13#10 + FileName +
+                #13#10#13#10'Окно файла закроется, несохранённые изменения ' +
+                'в нём пропадут.', mtWarning, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+  SetLength(Paths, 1);
+  Paths[0] := WideString(FileName);
+  if not GitRecycleFiles(Handle, Paths) or FileExists(FileName) then
+  begin
+    ShowMessage('Файл не удалён:'#13#10 + FileName);
+    Exit;
+  end;
+  // Окно закрывается без вопроса о сохранении: файла уже нет
+  if AWinIdx = FWindowsIndex then
+    RichEdit1.Modified := False;
+  FWindows[AWinIdx].Modified := False;
+  CloseWindow(AWinIdx);
+  if FRecentFiles <> nil then
+  begin
+    for RecentIdx := FRecentFiles.Count - 1 downto 0 do
+      if CompareText(FRecentFiles[RecentIdx], FileName) = 0 then
+        FRecentFiles.Delete(RecentIdx);
+    RebuildReopenMenu;
+    SaveSettings;
+  end;
+  LogComp('Файл удалён в Корзину: ' + FileName);
 end;
 
 // Отметка в File > Encoding - по кодировке активного окна (FFileIsUtf8 /
@@ -25668,6 +25744,11 @@ begin
   FHlTabItem.OnClick := HighlightMenuFill;
   FHlTabItem.Add(NewItem('-', 0, False, False, nil, 0, ''));
   FTabsPopup.Items.Insert(1, FHlTabItem);
+  // Удалить файл вкладки - после «Закрыть остальные вкладки»
+  FDelTabItem := TMenuItem.Create(Self);
+  FDelTabItem.Caption := 'Удалить файл (в Корзину)';
+  FDelTabItem.OnClick := DeleteFileClick;
+  FTabsPopup.Items.Insert(FTabsPopupItem4.MenuIndex + 1, FDelTabItem);
   FHlViewItem := TMenuItem.Create(Self);
   FHlViewItem.Caption := 'Highlighting';
   FHlViewItem.OnClick := HighlightMenuFill;
