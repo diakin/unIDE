@@ -721,9 +721,14 @@ begin
     Inc(Result, FBuffer.Count - 1);
 end;
 
+// Большой файл (буфер на отображении, шаг 0.7.8) целиком не отдаётся:
+// строка всего текста - гигабайты. Такой запрос (WM_GETTEXT, EM_GETTEXTEX,
+// EM_STREAMOUT) получает пустой текст, WM_GETTEXTLENGTH - 0
 function TEdRichEmu.WideText(AUseCrlf: Boolean): WideString;
 begin
-  if AUseCrlf then
+  if FBuffer.IsMapped then
+    Result := ''
+  else if AUseCrlf then
     Result := FBuffer.GetText(#13#10)
   else
     Result := FBuffer.GetText(#13);
@@ -1240,7 +1245,10 @@ begin
           Message.Result := MaxChars;
         end;
       WM_GETTEXTLENGTH:
-        Message.Result := TextLen(True, CP_ACP);
+        if FBuffer.IsMapped then
+          Message.Result := 0
+        else
+          Message.Result := TextLen(True, CP_ACP);
       WM_SETTEXT:
         begin
           if Message.LParam <> 0 then

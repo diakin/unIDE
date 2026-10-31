@@ -1908,6 +1908,7 @@ type
     // Файл, который не прочитался при проверке диска (занят): о нём уже
     // сказано в логе, повторно - после удачного чтения
     FDiskReadFail: string;
+    FLargeSkipped: string;   // что уже отмечено в логе LargeSkip (шаг 0.7.8)
 
     // Индикатор долгой работы - компиляция, пробный запуск для снимка -
     // в строке состояния справа: этап, секунды с начала и бегущие точки.
@@ -2449,6 +2450,8 @@ type
     procedure SetWinWide(AWinIdx: Integer; var AText: WideString);
     procedure LoadWinFile(AWinIdx: Integer; const AFileName: string);
     function  LoadWinMapped(AWinIdx: Integer; const AFileName: string): Boolean;
+    function  IsLargeText: Boolean;
+    function  LargeSkip(const AWhat: string): Boolean;
     procedure SaveEditorFile(const AFileName: string);
     procedure SaveMappedEditor(const AFileName: string);
     function  CheckDiskChanges(AOnly: Integer): Boolean;
@@ -4816,6 +4819,18 @@ begin
     SetLength(StringRanges, 0);
     FMapStale := True;
     MapBind(nil);
+    Exit;
+  end;
+
+  // Большой файл: карта по всему тексту не строится (блочные комментарии
+  // через несколько строк пока не видны - шаг 0.7.8, часть 3)
+  if IsLargeText then
+  begin
+    SetLength(CommentRanges, 0);
+    SetLength(StringRanges, 0);
+    FMapStale := False;
+    MapBind(nil);
+    LargeSkip('карта комментариев');
     Exit;
   end;
 
@@ -7955,6 +7970,27 @@ begin
   SetWinWide(AWinIdx, NewText);
 end;
 
+// В редакторе большой файл (отображение, шаг 0.7.8): весь текст строкой не
+// собирается (GetEditorText, WinText - пусто), карта комментариев не
+// строится
+function TForm1.IsLargeText: Boolean;
+begin
+  Result := (FEdEmu <> nil) and (FEdEmu.Buffer <> nil) and
+    FEdEmu.Buffer.IsMapped;
+end;
+
+// Проход по всему тексту AWhat пропущен из-за большого файла: в Compilation
+// log - один раз за сеанс на каждый AWhat. Результат всегда True (для
+// "if LargeSkip(..) then Exit")
+function TForm1.LargeSkip(const AWhat: string): Boolean;
+begin
+  Result := True;
+  if Pos(';' + AWhat + ';', FLargeSkipped) > 0 then
+    Exit;
+  FLargeSkipped := FLargeSkipped + ';' + AWhat + ';';
+  LogComp('Большой файл: пропущено ' + AWhat + ' (весь текст строкой)');
+end;
+
 // Большой файл (от EdLargeFileSize, шаг 0.7.8) - в буфер вкладки
 // отображением в память: без строки всего файла, без WideString всего
 // текста и без копии байтов для слияния (файл открыт только на чтение
@@ -9283,6 +9319,8 @@ begin
   Result := False;
   if not FUseSyntaxHighlight or IsUntitledName(FWindows[Index].FileName) then
     Exit;
+  if (FWindows[Index].Buffer <> nil) and FWindows[Index].Buffer.IsMapped then
+    Exit;
   FN := MapCacheFileFor(FWindows[Index].FileName);
   if not FileExists(FN) then
     Exit;
@@ -9348,6 +9386,8 @@ begin
   if not FWindows[Index].Used or not FWindows[Index].MapValid or
      FWindows[Index].MapSaved or (FWindows[Index].MapSchemeSig = '') or
      IsUntitledName(FWindows[Index].FileName) then
+    Exit;
+  if (FWindows[Index].Buffer <> nil) and FWindows[Index].Buffer.IsMapped then
     Exit;
   FN := MapCacheFileFor(FWindows[Index].FileName);
   if not ForceDirectories(ExtractFilePath(FN)) then
@@ -24104,6 +24144,8 @@ begin
   Result := '';
   if not RichEdit1.HandleAllocated then
     Exit;
+  if IsLargeText and LargeSkip('GetEditorText') then
+    Exit;
 
   if AUseCRLF then
     GTL.flags := GTL_USECRLF_ or GTL_PRECISE_ or GTL_NUMBYTES_
@@ -24154,6 +24196,8 @@ begin
   if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
     Exit;
   if FWindows[AWinIdx].Buffer = nil then
+    Exit;
+  if FWindows[AWinIdx].Buffer.IsMapped and LargeSkip('WinText') then
     Exit;
   if FWindows[AWinIdx].TextKey <> FWindows[AWinIdx].Buffer.Version then
   begin
