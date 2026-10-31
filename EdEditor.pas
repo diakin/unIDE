@@ -812,8 +812,15 @@ begin
 end;
 
 procedure TEdEditor.CutToClipboard;
+var
+  Row1, Col1, Row2, Col2: Integer;
 begin
   if FReadOnly or not HasSelection then
+    Exit;
+  // Большой файл: выделение больше EdMaxRangeText в буфер обмена не
+  // попадёт - и не удаляется
+  if SelRange(Row1, Col1, Row2, Col2) and
+     FBuffer.RangeTooLarge(Row1, Col1, Row2, Col2) then
     Exit;
   CopyToClipboard;
   DeleteSelection;

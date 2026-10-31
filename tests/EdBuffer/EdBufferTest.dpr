@@ -942,6 +942,17 @@ begin
     while Buf.Redo(CurRow, CurCol) do
       ;
     CheckText(Buf, Model, 'mapped edit: redo all');
+    // Отрезок больше EdMaxRangeText: строкой не отдаётся, удаляется без
+    // отката
+    Raw := StringOfChar(AnsiChar('a'), EdMaxRangeText) + #13#10'tail';
+    Buf.LoadMapped(PAnsiChar(Raw), Length(Raw), False, Map, nil);
+    Check(Buf.RangeTooLarge(0, 0, 1, 2), 'mapped big: too large');
+    Check(not Buf.RangeTooLarge(0, 0, 0, 10), 'mapped big: small range');
+    Check(Buf.TextRange(0, 0, 1, 2) = '', 'mapped big: no text');
+    Check(Buf.TextRange(1, 0, 1, 4) = 'tail', 'mapped big: small text');
+    Buf.DeleteText(0, 0, 1, 2, 0, 0);
+    Check(Buf.GetText(#10) = 'il', 'mapped big: deleted');
+    Check(Buf.Modified and not Buf.CanUndo, 'mapped big: modified, no undo');
     // Новый текст снимает отображение
     Buf.SetText('x');
     Check(not Buf.IsMapped, 'mapped: SetText releases');

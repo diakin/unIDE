@@ -51,6 +51,10 @@ const
   EdCacheSize = 256;     // строк в кэше чтения (степень двойки)
   EdCacheBlock = 32;     // строк читается подряд при промахе кэша
   EdMapBlock = 4096;     // байтов в куске отображённого файла при загрузке
+  // Больше стольких знаков кусок текста отображённого файла строкой не
+  // отдаётся (TextRange - пусто), удаление - без отката: строка была бы
+  // сотнями мегабайт
+  EdMaxRangeText = 16 * 1024 * 1024;
 
 type
   TEdLines = array of WideString;
@@ -181,6 +185,9 @@ type
       const ACharMap: TEdCharMap; AOwner: TObject);
     // Текст - байты отображённого файла (LoadMapped)
     function IsMapped: Boolean;
+    // Отрезок больше EdMaxRangeText в отображённом файле: TextRange отдаст
+    // пусто, DeleteText удалит без отката
+    function RangeTooLarge(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
     // Конец куска AText (строки через #10), вставленного в (ARow, ACol)
     class procedure EndPosOf(ARow, ACol: Integer; const AText: WideString;
       var AEndRow, AEndCol: Integer);
@@ -1202,6 +1209,12 @@ begin
   Result := FMapData <> nil;
 end;
 
+function TEdBuffer.RangeTooLarge(ARow1, ACol1, ARow2, ACol2: Integer): Boolean;
+begin
+  Result := IsMapped and
+    (CharIndex(ARow2, ACol2) - CharIndex(ARow1, ACol1) > EdMaxRangeText);
+end;
+
 class procedure TEdBuffer.EndPosOf(ARow, ACol: Integer;
   const AText: WideString; var AEndRow, AEndCol: Integer);
 var
@@ -1227,6 +1240,11 @@ var
 begin
   Index1 := CharIndex(ARow1, ACol1);
   Index2 := CharIndex(ARow2, ACol2);
+  if IsMapped and (Index2 - Index1 > EdMaxRangeText) then
+  begin
+    Result := '';
+    Exit;
+  end;
   Result := ReadRange(Index1, Index2 - Index1);
 end;
 
@@ -1369,6 +1387,16 @@ begin
   Result := '';
   if (ARow1 = ARow2) and (ACol1 = ACol2) then
     Exit;
+  if RangeTooLarge(ARow1, ACol1, ARow2, ACol2) then
+  begin
+    // Удалённое строкой не читается: откат очищается, текст - изменён
+    DeleteAt(CharIndex(ARow1, ACol1),
+      CharIndex(ARow2, ACol2) - CharIndex(ARow1, ACol1));
+    ClearUndo;
+    FSavedUndo := -1;
+    Changed(ARow1, ARow2 - ARow1 + 1, 1);
+    Exit;
+  end;
   Result := DeleteRaw(ARow1, ACol1, ARow2, ACol2);
   RecordDelete(ARow1, ACol1, Result, ACurRow, ACurCol);
 end;

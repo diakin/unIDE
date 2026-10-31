@@ -24809,6 +24809,11 @@ begin
   Result := '';
   if (ACount <= 0) or not RichEdit1.HandleAllocated then
     Exit;
+  // Большой файл: кусок больше EdMaxRangeText строкой не берётся (буфер
+  // EdRichEmu его всё равно не отдаст, а SetLength ниже - сотни мегабайт)
+  if IsLargeText and (ACount > EdMaxRangeText) and
+     LargeSkip('кусок текста больше 16 млн знаков') then
+    Exit;
   if AFrom < 0 then
     AFrom := 0;
 
