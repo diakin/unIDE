@@ -8232,9 +8232,16 @@ end;
 // блок, Out of memory - когда такого участка нет). Для проверки предела
 // MaxFile32MB
 procedure TForm1.LogAddressSpace(const AWhat: string);
+type
+  // Адрес числом: PtrUInt есть только во Free Pascal, Delphi 7 - Cardinal
+{$IFDEF FPC}
+  TAddrNum = PtrUInt;
+{$ELSE}
+  TAddrNum = Cardinal;
+{$ENDIF}
 var
   MemInfo: TMemoryBasicInformation;
-  Addr: PtrUInt;
+  Addr: TAddrNum;
   FreeTotal, Largest, UsedTotal: Int64;
 begin
   FreeTotal := 0;
@@ -8252,9 +8259,9 @@ begin
     end
     else
       Inc(UsedTotal, MemInfo.RegionSize);
-    if PtrUInt(MemInfo.BaseAddress) + MemInfo.RegionSize <= Addr then
+    if TAddrNum(MemInfo.BaseAddress) + MemInfo.RegionSize <= Addr then
       Break;
-    Addr := PtrUInt(MemInfo.BaseAddress) + MemInfo.RegionSize;
+    Addr := TAddrNum(MemInfo.BaseAddress) + MemInfo.RegionSize;
   end;
   LogComp(Format('%s: адреса - занято %d МБ, свободно %d МБ, самый большой ' +
     'свободный участок %d МБ', [AWhat, UsedTotal div (1024 * 1024),
