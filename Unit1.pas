@@ -3581,6 +3581,7 @@ type
     function  FindCreateLine(const AText: string; ANode: TObject): Integer;
     procedure JumpToUnitLine(ALine: Integer);
     function  SubScopeStart(const AText: string): Integer;
+    function  SubScopeAhead(const AText: string; AFrom: Integer): Boolean;
     function  LastToken(const S: string): string;
     procedure ScanLine(const AText: string; ALineStart, ALineEnd: Integer;
                        const B: TBlockState; var L: TLineScan);
@@ -27546,6 +27547,53 @@ begin
   end;
 end;
 
+// Есть ли ниже AFrom строка со словом SubScope (implementation) раньше, чем
+// конец модуля ("end." в начале строки). Нужно на склеенных файлах: после
+// "end." одного модуля начинается следующий, и до его implementation снова
+// идут объявления без тел
+function TForm1.SubScopeAhead(const AText: string; AFrom: Integer): Boolean;
+var
+  I, Len, P, WordEnd: Integer;
+  Word: string;
+begin
+  Result := False;
+  if FScheme.FSubScope = '' then
+    Exit;
+  Len := Length(AText);
+  P := AFrom;
+  I := AFrom;
+  while I <= Len + 1 do
+  begin
+    if (I > Len) or (AText[I] = #13) or (AText[I] = #10) then
+    begin
+      while (P < I) and ((AText[P] = ' ') or (AText[P] = #9)) do
+        Inc(P);
+      WordEnd := P;
+      while (WordEnd < I) and
+            (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+        Inc(WordEnd);
+      if (WordEnd > P) and not InRanges(StringRanges, P - 1) and
+         not InRanges(CommentRanges, P - 1) then
+      begin
+        Word := Copy(AText, P, WordEnd - P);
+        if CompareText(Word, FScheme.FSubScope) = 0 then
+        begin
+          Result := True;
+          Exit;
+        end;
+        if (WordEnd < I) and (AText[WordEnd] = '.') and
+           (FScheme.FSubEndWords <> nil) and
+           (FScheme.FSubEndWords.IndexOf(Word) >= 0) then
+          Exit;
+      end;
+      if (I < Len) and (AText[I] = #13) and (AText[I + 1] = #10) then
+        Inc(I);
+      P := I + 1;
+    end;
+    Inc(I);
+  end;
+end;
+
 // Последний элемент строки: слово целиком, а если строка кончается не
 // буквой - этот последний символ. Нужно для языков, где блок открывает и
 // закрывает одиночный знак: '{' в конце строки - такое же слово блока, как
@@ -27987,10 +28035,14 @@ begin
 
   // Раздел var или type кончается на заголовке, на begin и на словах уровня
   // модуля (implementation). Внутри класса private раздел не закрывает:
-  // глубина там не нулевая.
+  // глубина там не нулевая. Выше implementation procedure и function -
+  // объявления (не заголовки), но раздел они тоже закрывают
   if L.IsSect or L.IsHeader or L.IsOpen or
      ((B.Top < 0) and (B.Depth = 0) and
-      (FScheme.FFmtStmtEnd.IndexOf(L.First) >= 0)) then
+      ((FScheme.FFmtStmtEnd.IndexOf(L.First) >= 0) or
+       (FScheme.FSubWords.IndexOf(L.First) >= 0) or
+       ((FScheme.FSubScope <> '') and
+        (CompareText(L.First, FScheme.FSubScope) = 0)))) then
     B.InSection := False;
 
   // Оператор без begin: begin под then и слово else возвращаются на уровень
@@ -28689,6 +28741,17 @@ begin
   if B.BeforeScope and (FScheme.FSubScope <> '') and
      (CompareText(L.First, FScheme.FSubScope) = 0) then
     B.BeforeScope := False;
+
+  // Конец модуля ("end." на нулевой глубине). В склеенном файле ниже идёт
+  // следующий модуль: его объявления до implementation - снова без тел
+  if (FScheme.FSubScope <> '') and not B.BeforeScope and (B.Depth = 0) and
+     (L.Last = '.') and (FScheme.FSubEndWords.IndexOf(L.First) >= 0) then
+  begin
+    B.InSection := False;
+    B.Hang := 0;
+    B.Paren := 0;
+    B.BeforeScope := SubScopeAhead(AText, L.LastPos + 1);
+  end;
 end;
 
 // Уровень вложенности каждой строки - для направляющих полос.
@@ -28734,7 +28797,7 @@ begin
   DepthScanInit(D);
   BlockInit(B);
   // Разбор идёт с первой строки файла, значит секция объявлений впереди
-  B.BeforeScope := (FScheme.FSubScope <> '') and (SubScopeStart(AText) > 1);
+  B.BeforeScope := SubScopeAhead(AText, 1);
   LineStart := 1;
 
   I := 1;
@@ -29088,6 +29151,10 @@ begin
   SetLength(FSubs, 0);
   SubCount := 0;
   ScopeStart := SubScopeStart(AText);
+  // Склеенные файлы: первый - программа без implementation, слово нашлось
+  // в следующем модуле - заголовки ищем с начала
+  if (ScopeStart > 1) and not SubScopeAhead(AText, 1) then
+    ScopeStart := 1;
   FDepthsFromSubs := False;
 
   Len := Length(AText);
@@ -84835,7 +84902,7 @@ begin
   SL := TStringList.Create;
   try
     BlockInit(B);
-    B.BeforeScope := (FScheme.FSubScope <> '') and (SubScopeStart(Src) > 1);
+    B.BeforeScope := SubScopeAhead(Src, 1);
     PrevCode := '';
     StmtOld := 0;
     StmtNew := 0;
