@@ -61,12 +61,20 @@ type
     FSlots: array of Integer;   // индекс записи + 1; 0 - пусто
     FSlotMask: Integer;
     FHashValid: Boolean;
+    // Быстрый отказ до хеша: первые буквы слов (в нижнем регистре) и
+    // наименьшая / наибольшая длина. Большинство слов текста - не из
+    // списка, и на разборе файла в 32 МБ хеш на каждое слово заметен
+    FFirstChars: set of Char;
+    FMinLen, FMaxLen: Integer;
     procedure RebuildHash;
     function SameWord(const AItem, AWord: string): Boolean;
   protected
     procedure Changed; override;
   public
     function IndexOf(const S: string): Integer; override;
+    // Может ли слово AText[APos..APos+ALen-1] быть в списке: проверка по
+    // длине и первой букве, без копии слова. False - точно нет
+    function MayContain(const AText: string; APos, ALen: Integer): Boolean;
   end;
 
   // Структура для хранения одного многострочного комментария
@@ -342,6 +350,10 @@ function  WordsByComma(List: TStringList): string;
 procedure SetWordsBySpace(List: TStringList; const S: string);
 function  WordsBySpace(List: TStringList): string;
 
+// То же для любого списка: не TSchemeWords - всегда True (проверять IndexOf)
+function WordsMayContain(AList: TStrings; const AText: string;
+  APos, ALen: Integer): Boolean;
+
 implementation
 
 var
@@ -393,7 +405,7 @@ end;
 
 procedure TSchemeWords.RebuildHash;
 var
-  SlotCount, ItemIdx, SlotIdx: Integer;
+  SlotCount, ItemIdx, SlotIdx, ItemLen: Integer;
 begin
   SlotCount := 16;
   while SlotCount < Count * 2 do
@@ -401,8 +413,18 @@ begin
   FSlotMask := SlotCount - 1;
   SetLength(FSlots, 0);
   SetLength(FSlots, SlotCount);
+  FFirstChars := [];
+  FMinLen := MaxInt;
+  FMaxLen := 0;
   for ItemIdx := 0 to Count - 1 do
   begin
+    ItemLen := Length(Strings[ItemIdx]);
+    if ItemLen < FMinLen then
+      FMinLen := ItemLen;
+    if ItemLen > FMaxLen then
+      FMaxLen := ItemLen;
+    if ItemLen > 0 then
+      Include(FFirstChars, WordLower[Strings[ItemIdx][1]]);
     SlotIdx := Integer(WordHash(Strings[ItemIdx]) and Cardinal(FSlotMask));
     while FSlots[SlotIdx] <> 0 do
     begin
@@ -415,6 +437,37 @@ begin
       FSlots[SlotIdx] := ItemIdx + 1;
   end;
   FHashValid := True;
+end;
+
+function TSchemeWords.MayContain(const AText: string; APos,
+  ALen: Integer): Boolean;
+begin
+  if CaseSensitive then
+  begin
+    Result := True;
+    Exit;
+  end;
+  Result := False;
+  if Count = 0 then
+    Exit;
+  if not FHashValid then
+    RebuildHash;
+  if (ALen < FMinLen) or (ALen > FMaxLen) then
+    Exit;
+  if (ALen > 0) and not (WordLower[AText[APos]] in FFirstChars) then
+    Exit;
+  Result := True;
+end;
+
+function WordsMayContain(AList: TStrings; const AText: string;
+  APos, ALen: Integer): Boolean;
+begin
+  if AList = nil then
+    Result := False
+  else if AList is TSchemeWords then
+    Result := TSchemeWords(AList).MayContain(AText, APos, ALen)
+  else
+    Result := True;
 end;
 
 function TSchemeWords.IndexOf(const S: string): Integer;
@@ -432,6 +485,10 @@ begin
     Exit;
   if not FHashValid then
     RebuildHash;
+  if (Length(S) < FMinLen) or (Length(S) > FMaxLen) then
+    Exit;
+  if (S <> '') and not (WordLower[S[1]] in FFirstChars) then
+    Exit;
   SlotIdx := Integer(WordHash(S) and Cardinal(FSlotMask));
   while FSlots[SlotIdx] <> 0 do
   begin

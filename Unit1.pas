@@ -4649,6 +4649,12 @@ var
   StrKind, StrHitKind, CurLen: Integer;
   CurMark: string;
   EndMark: string;
+  // Первые символы всех маркеров открытия (строка, блочный и строчный
+  // комментарий): с другого символа в обычном коде ничего не начинается,
+  // и StrStartAt / BcStartAt для него не вызываются
+  StartChars: set of Char;
+  MarkIdx: Integer;
+  Mark: string;
 
   // Проверяет, стоит ли в FullText начиная с 1-базовой позиции APos
   // ровно маркер Marker. Пустой маркер не совпадает никогда.
@@ -4691,6 +4697,22 @@ begin
 
   // Длины динамических маркеров текущей языковой схемы
   LcLen  := Length(FScheme.FLineCommentMarker);
+
+  StartChars := [];
+  for MarkIdx := 0 to Length(FScheme.FStrExtra) do
+  begin
+    Mark := FScheme.StrMark(MarkIdx);
+    if Mark <> '' then
+      Include(StartChars, Mark[1]);
+  end;
+  for MarkIdx := 0 to Length(FScheme.FBcExtra) do
+  begin
+    Mark := FScheme.BcStartMark(MarkIdx);
+    if Mark <> '' then
+      Include(StartChars, Mark[1]);
+  end;
+  if LcLen > 0 then
+    Include(StartChars, FScheme.FLineCommentMarker[1]);
 
   // Инициализируем флаги состояний автомата
   InBlock := False;
@@ -4792,6 +4814,11 @@ begin
     // тройная кавычка - там """ это блочный комментарий, а не начало
     // строки. Побеждает самый длинный совпавший маркер; при равной длине
     // комментарий важнее литерала.
+    if not (FullText[I] in StartChars) then
+    begin
+      Inc(I);
+      Continue;
+    end;
     HitStr   := StrStartAt(FullText, I, StrHitKind);
     // У маркера ^; (Inno Setup) комментарий - только в начале строки
     HitLine  := MatchesAt(FScheme.FLineCommentMarker, I) and
@@ -10314,6 +10341,30 @@ end;
 // ---------------------------------------------------------------------------
 
 // Попадает ли символ внутрь какого-нибудь диапазона
+// Есть ли диапазон, задевающий позиции AFrom..ATo (как в InRanges: позиция
+// P внутри, если StartPos <= P < EndPos). Диапазоны идут по порядку и не
+// пересекаются: двоичный поиск первого, кончающегося после AFrom
+function RangesTouch(const Arr: TCommentRangeArray; AFrom, ATo: Integer): Boolean;
+var
+  Lo, Hi, Mid: Integer;
+begin
+  Result := False;
+  if AFrom > ATo then
+    Exit;
+  Lo := 0;
+  Hi := High(Arr);
+  while Lo < Hi do
+  begin
+    Mid := (Lo + Hi) div 2;
+    if Arr[Mid].EndPos > AFrom then
+      Hi := Mid
+    else
+      Lo := Mid + 1;
+  end;
+  Result := (Lo <= High(Arr)) and (Arr[Lo].EndPos > AFrom) and
+            (Arr[Lo].StartPos <= ATo);
+end;
+
 function InRanges(const Arr: TCommentRangeArray; CharIndex: Integer): Boolean;
 var
   Lo, Hi, Mid: Integer;
@@ -28475,7 +28526,11 @@ procedure TForm1.BlockAfterLine(const AText: string; const L: TLineScan;
 var
   K, WordEnd, TokStart, HangBefore: Integer;
   W: string;
+  Ch: Char;
   EqSeen, Masked: Boolean;
+  // Литерал или блочный комментарий задевает кодовую часть строки: только
+  // тогда каждый токен проверяется по картам (InRanges)
+  LineMasked: Boolean;
 
   procedure AddClosed(ATag: Integer; AAtBegin: Boolean);
   begin
@@ -28502,12 +28557,15 @@ begin
   end;
 
   EqSeen := False;
+  LineMasked := RangesTouch(StringRanges, L.FirstPos - 1, L.CmtPos - 2) or
+                RangesTouch(CommentRanges, L.FirstPos - 1, L.CmtPos - 2);
   K := L.FirstPos;
   while K < L.CmtPos do
   begin
     TokStart := K;
-    Masked := InRanges(StringRanges, K - 1) or
-              InRanges(CommentRanges, K - 1);
+    Masked := LineMasked and
+              (InRanges(StringRanges, K - 1) or
+               InRanges(CommentRanges, K - 1));
 
     // Слово целиком либо один знак: '{' и '}' в C-подобных языках - такие
     // же слова блока, как begin и end, только состоят из одного символа
@@ -28516,26 +28574,39 @@ begin
       WordEnd := K;
       while (WordEnd < L.CmtPos) and (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
         Inc(WordEnd);
+      // Слово не может быть ни в одном списке ниже - без копии и поиска.
+      // Первое слово строки - всегда: для него ещё OpensAtLineStart
+      if (TokStart <> L.FirstWordPos) and
+         not WordsMayContain(FScheme.FSubOpenWords, AText, K, WordEnd - K) and
+         not WordsMayContain(FScheme.FFmtClass, AText, K, WordEnd - K) and
+         not WordsMayContain(FScheme.FSubNoBodyWords, AText, K, WordEnd - K) and
+         not WordsMayContain(FScheme.FSubEndWords, AText, K, WordEnd - K) then
+      begin
+        K := WordEnd;
+        Continue;
+      end;
       W := Copy(AText, K, WordEnd - K);
       K := WordEnd;
     end
     else
     begin
-      W := AText[K];
+      // Строка из одного символа - только для знаков из B.Chars
+      Ch := AText[K];
       if not Masked then
       begin
-        if W = '=' then
+        if Ch = '=' then
           EqSeen := True
-        else if W = '(' then
+        else if Ch = '(' then
           Inc(B.Paren)
-        else if W = ')' then
+        else if Ch = ')' then
           if B.Paren > 0 then
             Dec(B.Paren);
       end;
       Inc(K);
       // Знак, которого нет среди слов блоков, дальше не разбираем
-      if not (W[1] in B.Chars) then
+      if not (Ch in B.Chars) then
         Continue;
+      W := Ch;
     end;
 
     if not Masked then
