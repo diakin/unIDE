@@ -133,6 +133,11 @@ type
     // Весь текст: строки через #10 (#13#10 и одиночный #13 - тоже перевод
     // строки). Откат очищается, текст считается записанным
     procedure SetText(const AText: WideString);
+    // То же, но строка забирается без копии (после вызова AText пуст):
+    // для текста, только что прочитанного из файла. #13 в ней ищется и
+    // заменяется на месте; текст уже через #10 - без лишнего прохода с
+    // переносом
+    procedure TakeText(var AText: WideString);
     // Весь текст, строки через ALineBreak (после последней - нет)
     function GetText(const ALineBreak: WideString): WideString;
     // Замена текста массивом строк (строки без #10): ALines забирается
@@ -771,6 +776,42 @@ begin
   FRoot := nil;
   FOrig := NewText;
   NewText := '';
+  LoadOrig(FCount);
+end;
+
+procedure TEdBuffer.TakeText(var AText: WideString);
+var
+  SrcIdx, DestIdx, TextLen: Integer;
+begin
+  TextLen := Length(AText);
+  SrcIdx := 1;
+  while (SrcIdx <= TextLen) and (AText[SrcIdx] <> #13) do
+    Inc(SrcIdx);
+  if SrcIdx <= TextLen then
+  begin
+    // С первого #13: #13#10 и одиночный #13 - в #10, сдвиг на месте
+    DestIdx := SrcIdx - 1;
+    while SrcIdx <= TextLen do
+    begin
+      Inc(DestIdx);
+      if AText[SrcIdx] = #13 then
+      begin
+        AText[DestIdx] := #10;
+        if (SrcIdx < TextLen) and (AText[SrcIdx + 1] = #10) then
+          Inc(SrcIdx);
+      end
+      else
+        AText[DestIdx] := AText[SrcIdx];
+      Inc(SrcIdx);
+    end;
+    SetLength(AText, DestIdx);
+  end;
+  FreeTree(FRoot);
+  FRoot := nil;
+  // WideString при присваивании копируется - передаём сам указатель
+  FOrig := '';
+  Pointer(FOrig) := Pointer(AText);
+  Pointer(AText) := nil;
   LoadOrig(FCount);
 end;
 

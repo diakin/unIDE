@@ -46,6 +46,7 @@ uses
   EdScheme,       // EdAnsiLine - строка буфера в кодировке Windows
   EdLog,          // окна логов на своём редакторе (шаг 0.7.6)
   EdBuffer,       // TEdBuffer - текст второй панели
+  EdFileText,     // файл <-> TEdBuffer без ANSI-строки всего текста (шаг 3)
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
@@ -252,10 +253,17 @@ type
   end;
   TReplBackupArray = array of TReplBackup;
 
-  // Текст файла на диске на момент последнего чтения или записи здесь
+  // Текст файла на диске на момент последнего чтения или записи здесь.
+  // Файл, прочитанный или записанный прямо через буфер (шаг 3), хранится
+  // байтами (Raw, без BOM; RawUtf8 - в UTF-8): в ANSI-текст он переводится
+  // только при слиянии, BaseText
   TDiskBase = class
   public
     Text: string;
+    Raw: string;
+    RawUtf8: Boolean;
+    HasRaw: Boolean;
+    function BaseText: string;
   end;
 
   // Подпрограмма из списка SubList: имя (строка объявления), первая и
@@ -2407,7 +2415,13 @@ type
     procedure CloseTab(TabIdx: Integer);
     function  ReloadWindowFromDisk(W: Integer; AAsk: Boolean): Boolean;
     procedure NoteDisk(const AFile, AText: string);
+    procedure NoteDiskRaw(const AFile, ARaw: string; AIsUtf8: Boolean);
+    function  DiskBaseOf(const AFile: string): TDiskBase;
     function  ReadTextFileDecoded(const FileName: string): string;
+    function  LoadFileWide(const FileName: string): WideString;
+    procedure SetWinWide(AWinIdx: Integer; var AText: WideString);
+    procedure LoadWinFile(AWinIdx: Integer; const AFileName: string);
+    procedure SaveEditorFile(const AFileName: string);
     function  CheckDiskChanges(AOnly: Integer): Boolean;
     function  AskDiskChange(W: Integer; IsMod, CanMerge, Many: Boolean;
                             var ASame: Boolean): Integer;
@@ -7771,6 +7785,27 @@ begin
     Result := 2;
 end;
 
+// Байты файла как есть.
+// fmShareDenyNone: файл, который другая программа держит открытым на
+// запись (сборка пишет свой лог), тоже читается; с fmShareDenyWrite
+// открытие в этом случае не удаётся
+function ReadWholeFile(const FileName: string): string;
+var
+  Stream: TFileStream;
+  Size: Integer;
+begin
+  Result := '';
+  Stream := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
+  try
+    Size := Stream.Size;
+    SetLength(Result, Size);
+    if Size > 0 then
+      Stream.ReadBuffer(Result[1], Size);
+  finally
+    Stream.Free;
+  end;
+end;
+
 // Читает файл как есть и возвращает текст уже в ANSI, попутно запоминая,
 // в какой кодировке он лежал на диске.
 //
@@ -7786,29 +7821,83 @@ begin
   NoteDisk(FileName, Result);
 end;
 
+// Файл для буфера вкладки (шаг 3): байты сразу в текст UTF-16 через #10,
+// без ANSI-строки всего текста (EdFileText.EdDecodeBytes). Кодировка - в
+// FFileIsUtf8 / FFileHasBom, как у ReadTextFileDecoded; на диске
+// запоминаются сами байты. Двоичная форма - текстом, через
+// ReadTextFileDecoded
+function TForm1.LoadFileWide(const FileName: string): WideString;
+var
+  Raw, FormText: string;
+begin
+  FFileIsUtf8 := False;
+  FFileHasBom := False;
+  Raw := ReadWholeFile(FileName);
+
+  if IsFormExt(ExtractFileExt(FileName)) and (DfmBinaryKind(Raw) <> 0) then
+  begin
+    Raw := '';
+    FormText := LoadTextFile(FileName);
+    Result := EdDecodeBytes(FormText, False);
+    Exit;
+  end;
+
+  // BOM UTF-8: EF BB BF
+  if (Length(Raw) >= 3) and (Byte(Raw[1]) = $EF) and
+     (Byte(Raw[2]) = $BB) and (Byte(Raw[3]) = $BF) then
+  begin
+    FFileIsUtf8 := True;
+    FFileHasBom := True;
+    Delete(Raw, 1, 3);
+  end
+  else if LooksLikeUtf8(Raw) then
+    FFileIsUtf8 := True;
+
+  Result := EdDecodeBytes(Raw, FFileIsUtf8);
+  NoteDiskRaw(FileName, Raw, FFileIsUtf8);
+end;
+
+// Новый текст вкладки из LoadFileWide; AText забирается (после вызова
+// пуст). Вкладка на экране - через окно редактора (EM_SETTEXTEX в UTF-16),
+// с его уведомлениями, как SetWinText; иначе буфер забирает строку без
+// копии (TEdBuffer.TakeText)
+procedure TForm1.SetWinWide(AWinIdx: Integer; var AText: WideString);
+begin
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) then
+    Exit;
+  if FWindows[AWinIdx].Buffer = nil then
+    FWindows[AWinIdx].Buffer := TEdBuffer.Create;
+  if (FEdEmu <> nil) and (FEdEmu.Buffer = FWindows[AWinIdx].Buffer) then
+  begin
+    Inc(FEditSerial);
+    EdSendWideText(RichEdit1.Handle, AText);
+    AText := '';
+  end
+  else
+    FWindows[AWinIdx].Buffer.TakeText(AText);
+  FWindows[AWinIdx].TextCache := '';
+  FWindows[AWinIdx].TextKey := -1;
+end;
+
+// Файл во вкладку прямо в буфер (вместо SetWinText(.., LoadTextFile(..)))
+procedure TForm1.LoadWinFile(AWinIdx: Integer; const AFileName: string);
+var
+  NewText: WideString;
+begin
+  NewText := LoadFileWide(AFileName);
+  SetWinWide(AWinIdx, NewText);
+end;
+
 // Прочитать файл с определением кодировки (UTF-8, BOM, двоичная форма),
 // ничего не запоминая. Кодировку пишет в FFileIsUtf8 / FFileHasBom.
 function TForm1.ReadTextFileDecoded(const FileName: string): string;
 var
-  Stream: TFileStream;
   Raw: string;
-  Size: Integer;
 begin
   FFileIsUtf8 := False;
   FFileHasBom := False;
 
-  // fmShareDenyNone: файл, который другая программа держит открытым на
-  // запись (сборка пишет свой лог), тоже читается; с fmShareDenyWrite
-  // открытие в этом случае не удаётся
-  Stream := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
-  try
-    Size := Stream.Size;
-    SetLength(Raw, Size);
-    if Size > 0 then
-      Stream.ReadBuffer(Raw[1], Size);
-  finally
-    Stream.Free;
-  end;
+  Raw := ReadWholeFile(FileName);
 
   if IsFormExt(ExtractFileExt(FileName)) and (DfmBinaryKind(Raw) <> 0) then
   begin
@@ -7944,6 +8033,39 @@ begin
   end;
   // Записали сами - это не изменение снаружи
   NoteDisk(FileName, Text);
+end;
+
+// Текст редактора в файл (Save, Save As) прямо из буфера на экране (шаг 3):
+// байты собираются по строкам буфера (EdFileText.EdEncodeBuffer), без
+// ANSI-строки всего текста; кодировка - та, в которой файл был открыт.
+// Без своего редактора - SaveTextFile с текстом окна
+procedure TForm1.SaveEditorFile(const AFileName: string);
+var
+  Stream: TFileStream;
+  Raw: string;
+  Bom: array[0..2] of Byte;
+begin
+  if FEdEmu = nil then
+  begin
+    SaveTextFile(AFileName, GetEditorText);
+    Exit;
+  end;
+  Raw := EdEncodeBuffer(FEdEmu.Buffer, FFileIsUtf8);
+
+  Stream := TFileStream.Create(AFileName, fmCreate);
+  try
+    if FFileIsUtf8 and FFileHasBom then
+    begin
+      Bom[0] := $EF; Bom[1] := $BB; Bom[2] := $BF;
+      Stream.WriteBuffer(Bom, 3);
+    end;
+    if Raw <> '' then
+      Stream.WriteBuffer(Raw[1], Length(Raw));
+  finally
+    Stream.Free;
+  end;
+  // Записали сами - это не изменение снаружи
+  NoteDiskRaw(AFileName, Raw, FFileIsUtf8);
 end;
 
 // ---------------------------------------------------------------------------
@@ -8142,7 +8264,7 @@ begin
         Obj := FDiskAges.Objects[I];
       CanMerge := IsMod and (Obj is TDiskBase);
       if CanMerge then
-        BaseTxt := TDiskBase(Obj).Text;
+        BaseTxt := TDiskBase(Obj).BaseText;
 
       if not Same then
         Choice := AskDiskChange(W, IsMod, CanMerge, Changed.Count - K > 1,
@@ -8262,7 +8384,9 @@ begin
   ReloadWindowFromDisk(WinIdx, False);
 end;
 
-procedure TForm1.NoteDisk(const AFile, AText: string);
+// Запись о файле на диске: время - сейчас, предок для слияния - заполнит
+// вызывающий
+function TForm1.DiskBaseOf(const AFile: string): TDiskBase;
 var
   Key: string;
   I: Integer;
@@ -8276,7 +8400,47 @@ begin
   FDiskAges.ValueFromIndex[I] := IntToStr(FileAge(AFile));
   if not (FDiskAges.Objects[I] is TDiskBase) then
     FDiskAges.Objects[I] := TDiskBase.Create;
-  TDiskBase(FDiskAges.Objects[I]).Text := AText;
+  Result := TDiskBase(FDiskAges.Objects[I]);
+end;
+
+procedure TForm1.NoteDisk(const AFile, AText: string);
+var
+  Base: TDiskBase;
+begin
+  Base := DiskBaseOf(AFile);
+  Base.Text := AText;
+  Base.Raw := '';
+  Base.HasRaw := False;
+end;
+
+// То же байтами файла (без BOM): в ANSI-текст - только при слиянии
+procedure TForm1.NoteDiskRaw(const AFile, ARaw: string; AIsUtf8: Boolean);
+var
+  Base: TDiskBase;
+begin
+  Base := DiskBaseOf(AFile);
+  Base.Text := '';
+  Base.Raw := ARaw;
+  Base.RawUtf8 := AIsUtf8;
+  Base.HasRaw := True;
+end;
+
+// Предок для слияния ANSI-текстом - как его дал бы ReadTextFileDecoded
+function TDiskBase.BaseText: string;
+begin
+  if not HasRaw then
+  begin
+    Result := Text;
+    Exit;
+  end;
+  if RawUtf8 then
+  begin
+    Result := Utf8ToAnsiFull(Raw);
+    if (Result = '') and (Raw <> '') then
+      Result := Raw;
+  end
+  else
+    Result := Raw;
 end;
 
 
@@ -8473,7 +8637,7 @@ begin
   FWindows[Idx].Used := True;
   FWindows[Idx].FileName := FN;
   FWindows[Idx].IncOwner := '';
-  SetWinText(Idx, LoadTextFile(FN)); // тут же определится кодировка
+  LoadWinFile(Idx, FN); // тут же определится кодировка
   FWindows[Idx].CursorPos := 0;
   FWindows[Idx].Modified := False;
   FWindows[Idx].IsUtf8 := FFileIsUtf8;
@@ -16076,7 +16240,7 @@ begin
     end;
 
     FWindows[I].FileName := NewName;
-    SetWinText(I, LoadTextFile(NewName));
+    LoadWinFile(I, NewName);
     FWindows[I].IsUtf8 := FFileIsUtf8;
     FWindows[I].HasBom := FFileHasBom;
     FWindows[I].Broken := False;
@@ -16250,7 +16414,7 @@ begin
       begin
         Inc(FileCount);
         StartupStage('Чтение ' + ExtractFileName(Path));
-        SetWinText(I, LoadTextFile(Path));
+        LoadWinFile(I, Path);
         FWindows[I].IsUtf8 := FFileIsUtf8;
         FWindows[I].HasBom := FFileHasBom;
         FWindows[I].Broken := False;
@@ -19266,7 +19430,8 @@ end;
 // сама. False - файла нет или отказались.
 function TForm1.ReloadWindowFromDisk(W: Integer; AAsk: Boolean): Boolean;
 var
-  FN, LoadedText: string;
+  FN: string;
+  LoadedText: WideString;
   IsMod, SavedUtf8, SavedBom: Boolean;
 begin
   Result := False;
@@ -19299,7 +19464,7 @@ begin
   // Файл не открылся (его держит другой процесс) - окно остаётся как было,
   // время файла не запоминается: проверка диска попробует ещё раз
   try
-    LoadedText := LoadTextFile(FN);
+    LoadedText := LoadFileWide(FN);
   except
     on E: Exception do
     begin
@@ -19320,7 +19485,7 @@ begin
   end;
   if CompareText(FDiskReadFail, FN) = 0 then
     FDiskReadFail := '';
-  SetWinText(W, LoadedText);
+  SetWinWide(W, LoadedText);
   FWindows[W].IsUtf8 := FFileIsUtf8;
   FWindows[W].HasBom := FFileHasBom;
 
@@ -82366,7 +82531,7 @@ begin
 
   // Запись файла на диск
   try
-    SaveTextFile(FCurrentFileName, GetEditorText);
+    SaveEditorFile(FCurrentFileName);
 
     // Сбрасываем флаг изменений — теперь текст считается сохраненным
     RichEdit1.Modified := False;
