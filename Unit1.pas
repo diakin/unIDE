@@ -1560,6 +1560,8 @@ type
     // переключает закладку; если он окажется началом двойного (точка
     // останова), закладки и история возвращаются из снимка FMarkUndo*
     FMarkClickLine: Integer;
+    // File > Encoding: UTF-8, UTF-8 BOM, ANSI (Tag 0..2), BuildFileMenu
+    FEncItems: array[0..2] of TMenuItem;
     // Строка и время щелчка, переключившего закладку
     FMarkBmLine: Integer;
     FMarkBmTick: Cardinal;
@@ -2372,6 +2374,8 @@ type
 
     // Меню File
     procedure BuildFileMenu;
+    procedure EncodingItemClick(Sender: TObject);
+    procedure EncodingMenuSync;
     procedure RebuildReopenMenu;
     procedure AddToRecent(const FileName: string);
     procedure ReopenItemClick(Sender: TObject);
@@ -8464,11 +8468,71 @@ begin
 end;
 
 procedure TForm1.BuildFileMenu;
+var
+  EncMenu: TMenuItem;
+  EncIdx: Integer;
+const
+  EncCaptions: array[0..2] of string = ('UTF-8', 'UTF-8 BOM', 'ANSI');
 begin
   RebuildReopenMenu;
 
   mSave.Caption := 'SaveFile';
   mSave.ShortCut := ShortCut(Ord('S'), [ssCtrl]);
+
+  // Encoding - сразу после Save As
+  EncMenu := TMenuItem.Create(Self);
+  EncMenu.Caption := '&Encoding';
+  mSaveAs.Parent.Insert(mSaveAs.MenuIndex + 1, EncMenu);
+  for EncIdx := 0 to High(FEncItems) do
+  begin
+    FEncItems[EncIdx] := MakeItem(Self, EncMenu, EncCaptions[EncIdx],
+      EncodingItemClick, 0);
+    FEncItems[EncIdx].Tag := EncIdx;
+    FEncItems[EncIdx].RadioItem := True;
+    FEncItems[EncIdx].GroupIndex := 1;
+  end;
+  EncodingMenuSync;
+end;
+
+// Отметка в File > Encoding - по кодировке активного окна (FFileIsUtf8 /
+// FFileHasBom). Зовётся из RefreshStatusBar, рядом с панелью кодировки
+procedure TForm1.EncodingMenuSync;
+var
+  EncIdx: Integer;
+begin
+  if FEncItems[0] = nil then
+    Exit;
+  if not FFileIsUtf8 then
+    EncIdx := 2
+  else if FFileHasBom then
+    EncIdx := 1
+  else
+    EncIdx := 0;
+  if not FEncItems[EncIdx].Checked then
+    FEncItems[EncIdx].Checked := True;
+end;
+
+// File > Encoding: в какой кодировке Save запишет файл активного окна.
+// Текст в редакторе не меняется; окно помечается изменённым - новая
+// кодировка ляжет на диск при сохранении. При переходе на ANSI символы,
+// которых нет в кодовой странице Windows, запишутся как '?'
+procedure TForm1.EncodingItemClick(Sender: TObject);
+var
+  NewUtf8, NewBom: Boolean;
+begin
+  if (FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used then
+    Exit;
+  NewUtf8 := TMenuItem(Sender).Tag <> 2;
+  NewBom := TMenuItem(Sender).Tag = 1;
+  if (NewUtf8 = FFileIsUtf8) and (NewBom = FFileHasBom) then
+    Exit;
+  FFileIsUtf8 := NewUtf8;
+  FFileHasBom := NewBom;
+  FWindows[FWindowsIndex].IsUtf8 := NewUtf8;
+  FWindows[FWindowsIndex].HasBom := NewBom;
+  RichEdit1.Modified := True;
+  UpdateTabCaption(FWindowsIndex);
+  RefreshStatusBar;
 end;
 
 // Перестраивает подменю Reopen по списку недавних файлов
@@ -24445,6 +24509,7 @@ CurrentChar := CharAt(CursorPos);
     else
       StatusBar1.Panels[5].Text := 'ANSI';
   end;
+  EncodingMenuSync;
 
   // 7. ЗАМЕР: наш код / контрол / отрисовка, миллисекунды на одно нажатие.
   // Плюс длительность последнего полного разбора карты.
