@@ -2464,6 +2464,8 @@ type
     procedure SetWinWide(AWinIdx: Integer; var AText: WideString);
     procedure LoadWinFile(AWinIdx: Integer; const AFileName: string);
     function  LoadWinMapped(AWinIdx: Integer; const AFileName: string): Boolean;
+    function  FileSizeAllowed(const AFileName: string): Boolean;
+    function  FileTooLargeText: string;
     function  IsLargeText: Boolean;
     function  LargeSkip(const AWhat: string): Boolean;
     procedure SaveEditorFile(const AFileName: string);
@@ -4926,6 +4928,7 @@ end;
 // ---------------------------------------------------------------------------
 
 const
+  MaxFile32Size = 32 * 1024 * 1024; // предел файла 32-разрядной сборки
   LargeSafeStep = 256 * 1024;   // знаков на одно место FLargeSafe
   LargeWindowPad = 64 * 1024;   // запас окна выше и ниже экрана
   LargeMaxScan = 4 * 1024 * 1024; // дальше - разбор окна приблизительный
@@ -8189,10 +8192,35 @@ begin
 end;
 
 // Файл во вкладку прямо в буфер (вместо SetWinText(.., LoadTextFile(..)))
+// Размер файла, который эта сборка открывает: 32-разрядная - до
+// MaxFile32Size (решение 2026-10-31: на большее адресов 32-разрядного
+// процесса для текста строкой может не хватить), 64-разрядная - любой (от
+// EdLargeFileSize - отображением)
+function TForm1.FileSizeAllowed(const AFileName: string): Boolean;
+begin
+{$IFDEF CPU32}
+  Result := EdFileSize(AFileName) <= MaxFile32Size;
+{$ELSE}
+  Result := True;
+{$ENDIF}
+end;
+
+function TForm1.FileTooLargeText: string;
+begin
+  Result := Format('В 32-разрядной сборке поддерживаются файлы до %d МБ.' +
+    #13#10'Для больших файлов используйте 64-разрядную сборку.',
+    [MaxFile32Size div (1024 * 1024)]);
+end;
+
 procedure TForm1.LoadWinFile(AWinIdx: Integer; const AFileName: string);
 var
   NewText: WideString;
 begin
+  // Открытие из проекта, списка недавних, перечитывание: окно остаётся
+  // пустым, сообщение - как у ошибки чтения
+  if not FileSizeAllowed(AFileName) then
+    raise Exception.Create(ExtractFileName(AFileName) + ': ' +
+      FileTooLargeText);
   if LoadWinMapped(AWinIdx, AFileName) then
     Exit;
   NewText := LoadFileWide(AFileName);
@@ -9134,6 +9162,12 @@ begin
       RebuildReopenMenu;
       SaveSettings;
     end;
+    Exit;
+  end;
+
+  if not FileSizeAllowed(FN) then
+  begin
+    ShowMessage(FileTooLargeText);
     Exit;
   end;
 
