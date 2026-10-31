@@ -109,23 +109,23 @@ begin
   Result := HelpError;
 end;
 
-// Папки-кандидаты AFolder (rapidq_ref, fb_ref), с "\" в конце
+// Папки-кандидаты AFolder (rapidq_ref, fb_ref), с разделителем в конце
 procedure CandidateDirs(AList: TStrings; const AFolder: string = 'rapidq_ref');
 var
   ExeDir, ProjDir: string;
   Found: TSearchRec;
 begin
   ExeDir := ExtractFilePath(Application.ExeName);
-  AList.Add(ExeDir + AFolder + '\');
+  AList.Add(ExeDir + AFolder + PathDelim);
   AList.Add(ExtractFilePath(ExcludeTrailingPathDelimiter(ExeDir)) + AFolder +
-            '\');
-  ProjDir := ExeDir + 'projects\';
+            PathDelim);
+  ProjDir := ExeDir + 'projects' + PathDelim;
   if FindFirst(ProjDir + '*', faDirectory, Found) = 0 then
   try
     repeat
       if ((Found.Attr and faDirectory) <> 0) and (Found.Name <> '.') and
          (Found.Name <> '..') then
-        AList.Add(ProjDir + Found.Name + '\' + AFolder + '\');
+        AList.Add(ProjDir + Found.Name + PathDelim + AFolder + PathDelim);
     until FindNext(Found) <> 0;
   finally
     FindClose(Found);

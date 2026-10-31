@@ -73,6 +73,9 @@ var
 
 implementation
 
+uses
+  PathKit;
+
 const
   DiffPadMax = 300;        // строки длиннее не дополняются пробелами
   DiffTabSize = 4;
@@ -185,7 +188,7 @@ begin
   Result := Trim(Result);
   if (Result <> '') and (Result[1] = '"') then
     Result := Copy(Result, 2, Length(Result) - 2);
-  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+  Result := PathNative(Result);
 end;
 
 // Строки разницы для окна: схема (по имени файла, OnScheme; освобождает

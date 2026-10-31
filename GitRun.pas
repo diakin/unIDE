@@ -626,9 +626,12 @@ var
   CharIndex: Integer;
 begin
   Result := APath;
+  // Не под Windows путь git ('/') - и есть путь системы
+  {$IFDEF MSWINDOWS}
   for CharIndex := 1 to Length(Result) do
     if Result[CharIndex] = '/' then
       Result[CharIndex] := '\';
+  {$ENDIF}
 end;
 
 end.

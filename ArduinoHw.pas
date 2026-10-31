@@ -255,7 +255,7 @@ end;
 
 function ArdLibraryExamples(const ALibFolder: string): string;
 begin
-  Result := DirWithSlash(ALibFolder) + 'examples\';
+  Result := DirWithSlash(ALibFolder) + 'examples' + PathDelim;
   if not DirectoryExists(Result) then
     Result := '';
 end;
@@ -274,7 +274,7 @@ begin
     ArdSubFolders(AFolder, Folders);
     for FolderIdx := 0 to Folders.Count - 1 do
     begin
-      LibFolder := DirWithSlash(AFolder) + Folders[FolderIdx] + '\';
+      LibFolder := DirWithSlash(AFolder) + Folders[FolderIdx] + PathDelim;
       if not FileExists(LibFolder + 'library.properties') and
          not DirectoryExists(LibFolder + 'src') and
          not HasFiles(LibFolder + '*.h') then
@@ -318,7 +318,7 @@ begin
     Exit;
   end;
   if DirectoryExists(Folder + 'src') then
-    Folder := Folder + 'src\';
+    Folder := Folder + 'src' + PathDelim;
   if FindFirst(Folder + '*.h', faAnyFile and not faDirectory, Found) = 0 then
   try
     repeat
@@ -334,13 +334,13 @@ begin
   Result := '';
   if (ASettings.IdePath <> '') and
      DirectoryExists(ASettings.IdePath + 'examples') then
-    Result := ASettings.IdePath + 'examples\'
+    Result := ASettings.IdePath + 'examples' + PathDelim
   else if (ASettings.CliDataPath <> '') and
           DirectoryExists(ASettings.CliDataPath + 'examples') then
-    Result := ASettings.CliDataPath + 'examples\'
+    Result := ASettings.CliDataPath + 'examples' + PathDelim
   else if (ASettings.Arduino15Path <> '') and
           DirectoryExists(ASettings.Arduino15Path + 'examples') then
-    Result := ASettings.Arduino15Path + 'examples\';
+    Result := ASettings.Arduino15Path + 'examples' + PathDelim;
 end;
 
 // ---------------------------------------------------------------------------
@@ -487,22 +487,22 @@ begin
       ArdSubFolders(DataFolders[DataIdx] + 'packages', Vendors);
       for VendorIdx := 0 to Vendors.Count - 1 do
       begin
-        HwFolder := DataFolders[DataIdx] + 'packages\' + Vendors[VendorIdx] +
-                    '\hardware\';
+        HwFolder := DataFolders[DataIdx] + 'packages' + PathDelim +
+                    Vendors[VendorIdx] + PathDelim + 'hardware' + PathDelim;
         ArdSubFolders(HwFolder, Arches);
         for ArchIdx := 0 to Arches.Count - 1 do
         begin
-          ArchFolder := HwFolder + Arches[ArchIdx] + '\';
+          ArchFolder := HwFolder + Arches[ArchIdx] + PathDelim;
           ArdSubFolders(ArchFolder, Versions);
           BestVersion := '';
           for VersionIdx := 0 to Versions.Count - 1 do
-            if FileExists(ArchFolder + Versions[VersionIdx] + '\boards.txt') and
+            if FileExists(ArchFolder + Versions[VersionIdx] + PathDelim + 'boards.txt') and
                ((BestVersion = '') or
                 (ArdCompareVersion(Versions[VersionIdx], BestVersion) > 0)) then
               BestVersion := Versions[VersionIdx];
           if BestVersion <> '' then
             AddPlatform(Vendors[VendorIdx] + ':' + Arches[ArchIdx],
-                        BestVersion, ArchFolder + BestVersion + '\');
+                        BestVersion, ArchFolder + BestVersion + PathDelim);
         end;
       end;
     end;
@@ -510,15 +510,15 @@ begin
     // Платформы, поставленные вручную: <sketchbook>\hardware\<vendor>\<arch>
     if ASettings.SketchPath <> '' then
     begin
-      HwFolder := ASettings.SketchPath + 'hardware\';
+      HwFolder := ASettings.SketchPath + 'hardware' + PathDelim;
       ArdSubFolders(HwFolder, Vendors);
       for VendorIdx := 0 to Vendors.Count - 1 do
       begin
         ArdSubFolders(HwFolder + Vendors[VendorIdx], Arches);
         for ArchIdx := 0 to Arches.Count - 1 do
           AddPlatform(Vendors[VendorIdx] + ':' + Arches[ArchIdx], '',
-                      HwFolder + Vendors[VendorIdx] + '\' + Arches[ArchIdx] +
-                      '\');
+                      HwFolder + Vendors[VendorIdx] + PathDelim + Arches[ArchIdx] +
+                      PathDelim);
       end;
     end;
   finally
@@ -585,7 +585,7 @@ begin
   Result := '';
   if (APlatformIdx < 0) or (APlatformIdx >= FPlatformCount) then
     Exit;
-  Result := FPlatforms[APlatformIdx].Folder + 'libraries\';
+  Result := FPlatforms[APlatformIdx].Folder + 'libraries' + PathDelim;
   if not DirectoryExists(Result) then
     Result := '';
 end;

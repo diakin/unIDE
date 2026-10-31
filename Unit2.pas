@@ -1722,7 +1722,8 @@ begin
       ') - взять схему неоткуда.');
     Exit;
   end;
-  SrcFile := ExtractFilePath(SrcDpr) + 'schemes\' + ExtractFileName(Target);
+  SrcFile := ExtractFilePath(SrcDpr) + 'schemes' + PathDelim +
+    ExtractFileName(Target);
   if not FileExists(SrcFile) then
   begin
     ShowMessage('В исходниках такой схемы нет: ' + SrcFile);

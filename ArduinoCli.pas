@@ -189,7 +189,7 @@ function ArdParseGccLine(const AText: string; var AFile: string;
 implementation
 
 uses
-  ProcRun;
+  ProcRun, PathKit;
 
 // ---------------------------------------------------------------------------
 //  Настройки
@@ -846,8 +846,8 @@ begin
       Root := ASettings.Arduino15Path;
     if Root = '' then
       Continue;
-    Root := Root + 'packages\' + Vendor + '\hardware\' + Arch + '\' +
-            Trim(AVersion) + '\';
+    Root := Root + 'packages' + PathDelim + Vendor + PathDelim + 'hardware' +
+            PathDelim + Arch + PathDelim + Trim(AVersion) + PathDelim;
     if DirectoryExists(Root) then
     begin
       Result := Root;
@@ -1455,7 +1455,7 @@ begin
   if SketchName = '' then
     Exit;
   Result := IncludeTrailingPathDelimiter(ASettings.BuildPath) + SketchName +
-            '\';
+            PathDelim;
 end;
 
 function ArdCompileArgs(const ASettings: TArdSettings;
@@ -1591,7 +1591,7 @@ begin
     AColNo := StrToIntDef(Copy(Work, NumEnd + 1, ColEnd - NumEnd - 1), 0);
 
   AFile := Trim(Copy(Work, 1, ColonPos - 1));
-  AFile := StringReplace(AFile, '/', '\', [rfReplaceAll]);
+  AFile := PathNative(AFile);
   Result := (AFile <> '') and (ALineNo > 0);
 end;
 

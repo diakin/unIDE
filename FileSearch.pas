@@ -141,7 +141,7 @@ begin
           if ASubDirs and (SR.Name[1] <> '.') and
              (CompareText(SR.Name, '__history') <> 0) and
              (CompareText(SR.Name, '__recovery') <> 0) then
-            Subs.Add(ADir + SR.Name + '\');
+            Subs.Add(ADir + SR.Name + PathDelim);
         end
         else if FifMatchMasks(SR.Name, AMasks) then
         begin

@@ -147,6 +147,9 @@ function GitKindColor(AKind: Integer; ABack: TColor): TColor;
 
 implementation
 
+uses
+  PathKit;
+
 const
   // Подписи флажков видов над списком
   GitKindGroupNames: array[0..gfkCount - 1] of string = (
@@ -173,8 +176,7 @@ function GitFileKind(const APath: WideString): Integer;
 var
   FileName, Ext: string;
 begin
-  FileName := LowerCase(ExtractFileName(StringReplace(string(APath), '/',
-    '\', [rfReplaceAll])));
+  FileName := LowerCase(ExtractFileName(PathNative(string(APath))));
   Ext := ExtractFileExt(FileName);
   if Ext = '' then
     Ext := FileName;               // .gitignore и т. п. без имени
@@ -720,8 +722,7 @@ begin
       VerbIdx := 3
     else
       VerbIdx := 1;
-    FileName := ExtractFileName(StringReplace(
-      string(FChanges[ChangeIdx].Path), '/', '\', [rfReplaceAll]));
+    FileName := ExtractFileName(PathNative(string(FChanges[ChangeIdx].Path)));
     Inc(Counts[VerbIdx]);
     if Names[VerbIdx] <> '' then
       Names[VerbIdx] := Names[VerbIdx] + ', ';

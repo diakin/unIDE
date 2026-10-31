@@ -228,6 +228,9 @@ procedure FmtSetIeEdge(const AFileName: string; AOn: Boolean);
 
 implementation
 
+uses
+  PathKit;
+
 const
   WM_FMT_OPENFILE = WM_USER + 1;
   WM_FMT_ANCHOR = WM_USER + 2;
@@ -457,7 +460,7 @@ begin
   if (Decoded <> Body) and IsValidUtf8(Decoded) and
      (Utf8ToAnsi(Decoded) <> '') then
     Decoded := Utf8ToAnsi(Decoded);
-  Result := StringReplace(Decoded, '/', '\', [rfReplaceAll]);
+  Result := PathNative(Decoded);
 end;
 
 // Метка из адреса (после #), раскодированная из %XX и UTF-8
