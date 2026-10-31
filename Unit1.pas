@@ -21615,6 +21615,10 @@ begin
       else
         S := 'Matches';
       end;
+      // Текст - без своего фона: после RestoreDC прошлой ячейки цвет фона
+      // текста в DC снова белый, а TCanvas его не ставит заново (цвет кисти
+      // тот же) - шапка выходила белыми прямоугольниками
+      SetBkMode(Cnv.Handle, TRANSPARENT);
       Cnv.TextOut(Rect.Left + 3, Rect.Top + 1, S);
       Exit;
     end;
