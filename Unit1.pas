@@ -8213,11 +8213,12 @@ end;
 
 function TForm1.FileSizeAllowed(const AFileName: string): Boolean;
 begin
-{$IFDEF CPU32}
-  Result := EdFileSize(AFileName) <= MaxFile32Bytes;
-{$ELSE}
-  Result := True;
-{$ENDIF}
+  // По размеру указателя, а не {$IFDEF CPU32}: Delphi 7 этого символа не
+  // определяет, и предел в её (всегда 32-разрядной) сборке не действовал
+  if SizeOf(Pointer) = 4 then
+    Result := EdFileSize(AFileName) <= MaxFile32Bytes
+  else
+    Result := True;
 end;
 
 function TForm1.FileTooLargeText: string;
