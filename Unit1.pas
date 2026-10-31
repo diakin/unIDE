@@ -4868,6 +4868,9 @@ var
   FullText: string;
   I: Integer;
   T0: Int64; // замер длительности разбора, точным счётчиком
+  // Отметки этапов разбора (точный счётчик): текст, комментарии и строки,
+  // подпрограммы, имена компонентов
+  TText, TCmt, TSub, TComp: Int64;
 begin
   // Во время переключения окна в редакторе ещё лежит текст предыдущего файла,
   // и строить по нему карту бессмысленно - ActivateWindow сделает это сам,
@@ -4929,7 +4932,9 @@ begin
   // Читаем весь текст редактора в память за один раз. Перевод строки должен
   // быть ОДНИМ символом, как в индексах контрола: позиции карты - это они.
   FullText := GetEditorTextCRCached;
+  TText := PerfNow;
   ScanCommentRanges(FullText, 0);
+  TCmt := PerfNow;
 
   // Подстраиваем интервал таймера под РЕАЛЬНУЮ стоимость разбора на этом
   // файле. Фиксированные 150 мс одинаково плохи с обеих сторон: на небольшом
@@ -4943,8 +4948,10 @@ begin
   // Тройной запас означает, что на пересборку уходит не больше трети времени.
   // Список подпрограмм - по тому же тексту, карты уже готовы
   RebuildSubList(FullText);
+  TSub := PerfNow;
   // Имена компонентов - тоже: присваивания Create(Self) могли появиться
   RebuildCompNames(FullText);
+  TComp := PerfNow;
   // Уровни вложенности строк - по тому же тексту
   RebuildLineDepths(FullText);
 
@@ -4955,6 +4962,16 @@ begin
     FLastRebuildMs := (FPerfRebuild * 1000) div FPerfFreq
   else
     FLastRebuildMs := 0;
+
+  // Долгий разбор - по этапам в журнал подсветки: что именно медленно
+  if (FPerfFreq > 0) and (FLastRebuildMs >= 500) then
+    Dbg(Format('карта: разбор %d мс - текст %d, комментарии и строки %d, ' +
+      'подпрограммы %d (%d шт.), компоненты %d, уровни строк %d',
+      [FLastRebuildMs, (TText - T0) * 1000 div FPerfFreq,
+       (TCmt - TText) * 1000 div FPerfFreq,
+       (TSub - TCmt) * 1000 div FPerfFreq, Length(FSubs),
+       (TComp - TSub) * 1000 div FPerfFreq,
+       (T0 + FPerfRebuild - TComp) * 1000 div FPerfFreq]), clGray);
 
   if FMapTimer <> nil then
   begin
