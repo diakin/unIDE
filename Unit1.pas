@@ -2058,6 +2058,20 @@ type
     // Карта разобрана заново только до этой позиции (RescanVisibleMap),
     // дальше диапазонов нет до полной пересборки; 0 - карта полная
     FMapPartialEnd: Integer;
+    // Большой файл (шаг 0.7.8, часть 3): карта комментариев - только окно
+    // вокруг экрана [FLargeMapFrom, FLargeMapTo) по версии буфера
+    // FLargeMapVer. FLargeSafe[K] - место не внутри комментария или строки
+    // не дальше начала строки с позицией K * LargeSafeStep: с него разбор
+    // окна верен. Считаются по порядку с начала файла, по таймеру
+    // FLargeTimer до блока FLargeWant
+    FLargeMapFrom: Integer;
+    FLargeMapTo: Integer;
+    FLargeMapVer: Integer;
+    FLargeMapExact: Boolean;
+    FLargeSafe: TIntArray;
+    FLargeSafeBuffer: TEdBuffer;
+    FLargeWant: Integer;
+    FLargeTimer: TTimer;
     // Шаг 4 - карта после правки разбирается от места правки до схождения
     // со старой картой (ResyncMap), а не по всему тексту. FMapBuffer -
     // буфер, по которому построена карта, FMapBufLen - его длина на момент
@@ -2741,6 +2755,11 @@ type
     procedure RebuildCommentRangeMap;
     procedure ScanCommentRanges(const FullText: string; ABase: Integer);
     procedure RescanVisibleMap(AEditPos: Integer; AInvalidate: Boolean);
+    function  LargeScanSafe(AFrom, ATo: Integer): Integer;
+    function  LargeSafeNext: Boolean;
+    procedure LargeMapEnsure;
+    procedure LargeMapEdited(ABuffer: TEdBuffer; AFirstRow: Integer);
+    procedure LargeTimerTick(Sender: TObject);
 
     procedure UpdateStatusBarInfo; // Заказать обновление статус-бара
     procedure RefreshStatusBar;    // Собственно пересчёт полей
@@ -4822,14 +4841,15 @@ begin
     Exit;
   end;
 
-  // Большой файл: карта по всему тексту не строится (блочные комментарии
-  // через несколько строк пока не видны - шаг 0.7.8, часть 3)
+  // Большой файл: карта по всему тексту не строится - только окно вокруг
+  // экрана при отрисовке (LargeMapEnsure, шаг 0.7.8, часть 3)
   if IsLargeText then
   begin
     SetLength(CommentRanges, 0);
     SetLength(StringRanges, 0);
     FMapStale := False;
     MapBind(nil);
+    FLargeMapFrom := -1;
     LargeSkip('карта комментариев');
     Exit;
   end;
@@ -4892,6 +4912,207 @@ begin
   end;
 end;
 
+// ---------------------------------------------------------------------------
+//  Карта комментариев большого файла (шаг 0.7.8, часть 3)
+//
+//  Весь текст не разбирается: CommentRanges / StringRanges - только окно от
+//  места, где состояние известно (не внутри комментария или строки), до
+//  64 К знаков ниже экрана. Такие места (FLargeSafe) - по одному на каждые
+//  LargeSafeStep знаков; их цепочка считается с начала файла кусками
+//  (ScanCommentRanges по куску, незакрытый в конце куска комментарий -
+//  следующий кусок с его начала). Экран дальше посчитанного - сначала
+//  приблизительно (разбор с 64 К выше экрана), таймер досчитывает
+//  цепочку и перерисовывает. Правка выбрасывает места ниже себя.
+// ---------------------------------------------------------------------------
+
+const
+  LargeSafeStep = 256 * 1024;   // знаков на одно место FLargeSafe
+  LargeWindowPad = 64 * 1024;   // запас окна выше и ниже экрана
+  LargeMaxScan = 4 * 1024 * 1024; // дальше - разбор окна приблизительный
+
+// Разобрать [AFrom, ATo) и вернуть, откуда разбирать дальше: ATo, а если
+// комментарий или строка в конце куска не закрыты - их начало. Карта окна
+// при этом не трогается
+function TForm1.LargeScanSafe(AFrom, ATo: Integer): Integer;
+var
+  SavedComments, SavedStrings: TCommentRangeArray;
+begin
+  Result := ATo;
+  SavedComments := CommentRanges;
+  SavedStrings := StringRanges;
+  CommentRanges := nil;
+  StringRanges := nil;
+  try
+    ScanCommentRanges(TextRange(AFrom, ATo - AFrom), AFrom);
+    // Маркеры не переходят через перевод строки, ATo - начало строки:
+    // конец ровно в ATo - незакрытый (ScanCommentRanges ставит конец куска)
+    if (Length(CommentRanges) > 0) and
+       (CommentRanges[High(CommentRanges)].EndPos >= ATo) then
+      Result := CommentRanges[High(CommentRanges)].StartPos;
+    if (Length(StringRanges) > 0) and
+       (StringRanges[High(StringRanges)].EndPos >= ATo) and
+       (StringRanges[High(StringRanges)].StartPos < Result) then
+      Result := StringRanges[High(StringRanges)].StartPos;
+  finally
+    CommentRanges := SavedComments;
+    StringRanges := SavedStrings;
+  end;
+end;
+
+// Следующее место цепочки FLargeSafe. False - текст кончился
+function TForm1.LargeSafeNext: Boolean;
+var
+  Buffer: TEdBuffer;
+  Target, Row, Col, LinePos, FromPos: Integer;
+begin
+  Result := False;
+  Buffer := FLargeSafeBuffer;
+  if Buffer = nil then
+    Exit;
+  Target := Length(FLargeSafe) * LargeSafeStep;
+  if Target >= Buffer.TextLength then
+    Exit;
+  Buffer.PosOfIndex(Target, Row, Col);
+  LinePos := Buffer.CharIndex(Row, 0);
+  FromPos := FLargeSafe[High(FLargeSafe)];
+  SetLength(FLargeSafe, Length(FLargeSafe) + 1);
+  if LinePos <= FromPos then
+    FLargeSafe[High(FLargeSafe)] := FromPos
+  else
+    FLargeSafe[High(FLargeSafe)] := LargeScanSafe(FromPos, LinePos);
+  Result := True;
+end;
+
+// Перед отрисовкой: карта окна вокруг экрана
+procedure TForm1.LargeMapEnsure;
+var
+  Buffer: TEdBuffer;
+  ClientRect: TRect;
+  TopLine, LastLine, VisFrom, VisTo, BlockIdx, FromPos, ToPos, Row,
+  Col: Integer;
+  Exact: Boolean;
+begin
+  Buffer := FEdEmu.Buffer;
+  if (LineHeight <= 0) or not RichEdit1.HandleAllocated then
+    Exit;
+  if FLargeSafeBuffer <> Buffer then
+  begin
+    FLargeSafeBuffer := Buffer;
+    SetLength(FLargeSafe, 1);
+    FLargeSafe[0] := 0;
+    FLargeMapFrom := -1;
+  end;
+  if FLargeMapVer <> Buffer.Version then
+    FLargeMapFrom := -1;
+
+  Windows.GetClientRect(RichEdit1.Handle, ClientRect);
+  TopLine := EdApi.FirstVisibleLine;
+  if TopLine >= Buffer.Count then
+    TopLine := Buffer.Count - 1;
+  if TopLine < 0 then
+    TopLine := 0;
+  LastLine := TopLine + ClientRect.Bottom div LineHeight + 2;
+  VisFrom := Buffer.CharIndex(TopLine, 0);
+  if LastLine >= Buffer.Count then
+    VisTo := Buffer.TextLength
+  else
+    VisTo := Buffer.CharIndex(LastLine, 0);
+  BlockIdx := VisFrom div LargeSafeStep;
+
+  if (FLargeMapFrom >= 0) and (FLargeMapFrom <= VisFrom) and
+     (VisTo <= FLargeMapTo) and
+     (FLargeMapExact or (High(FLargeSafe) < BlockIdx)) then
+    Exit;
+
+  // Рядом с посчитанным - досчитать сразу
+  while (High(FLargeSafe) < BlockIdx) and (High(FLargeSafe) >= BlockIdx - 2) do
+    if not LargeSafeNext then
+      Break;
+  Exact := (High(FLargeSafe) >= BlockIdx) and
+    (VisFrom - FLargeSafe[BlockIdx] <= LargeMaxScan);
+  if Exact then
+    FromPos := FLargeSafe[BlockIdx]
+  else
+  begin
+    FromPos := VisFrom - LargeWindowPad;
+    if FromPos < 0 then
+      FromPos := 0;
+    Buffer.PosOfIndex(FromPos, Row, Col);
+    FromPos := Buffer.CharIndex(Row, 0);
+    if High(FLargeSafe) < BlockIdx then
+    begin
+      FLargeWant := BlockIdx;
+      if FLargeTimer = nil then
+      begin
+        FLargeTimer := TTimer.Create(Self);
+        FLargeTimer.Enabled := False;
+        FLargeTimer.Interval := 30;
+        FLargeTimer.OnTimer := LargeTimerTick;
+      end;
+      FLargeTimer.Enabled := True;
+    end;
+  end;
+  ToPos := VisTo + LargeWindowPad;
+  if ToPos >= Buffer.TextLength then
+    ToPos := Buffer.TextLength
+  else
+  begin
+    Buffer.PosOfIndex(ToPos, Row, Col);
+    ToPos := Buffer.CharIndex(Row, 0);
+  end;
+
+  SetLength(CommentRanges, 0);
+  SetLength(StringRanges, 0);
+  if ToPos > FromPos then
+    ScanCommentRanges(TextRange(FromPos, ToPos - FromPos), FromPos);
+  FLargeMapFrom := FromPos;
+  FLargeMapTo := ToPos;
+  FLargeMapVer := Buffer.Version;
+  FLargeMapExact := Exact;
+  Inc(FMapVer);
+end;
+
+// Правка в большом файле с начала строки AFirstRow: места цепочки ниже
+// неё и окно устарели
+procedure TForm1.LargeMapEdited(ABuffer: TEdBuffer; AFirstRow: Integer);
+var
+  KeepCount: Integer;
+begin
+  if ABuffer <> FLargeSafeBuffer then
+    Exit;
+  FLargeMapFrom := -1;
+  KeepCount := ABuffer.CharIndex(AFirstRow, 0) div LargeSafeStep + 1;
+  if KeepCount < Length(FLargeSafe) then
+    SetLength(FLargeSafe, KeepCount);
+end;
+
+// Цепочка мест до блока экрана - кусками по ~40 мс; дошли - перерисовать
+procedure TForm1.LargeTimerTick(Sender: TObject);
+var
+  StartTick: Cardinal;
+  AtEnd: Boolean;
+begin
+  if not IsLargeText or (FLargeSafeBuffer <> FEdEmu.Buffer) then
+  begin
+    FLargeTimer.Enabled := False;
+    Exit;
+  end;
+  StartTick := GetTickCount;
+  AtEnd := False;
+  while (High(FLargeSafe) < FLargeWant) and (GetTickCount - StartTick < 40) do
+    if not LargeSafeNext then
+    begin
+      AtEnd := True;
+      Break;
+    end;
+  if AtEnd or (High(FLargeSafe) >= FLargeWant) then
+  begin
+    FLargeTimer.Enabled := False;
+    FLargeMapFrom := -1;
+    Windows.InvalidateRect(RichEdit1.Handle, nil, False);
+  end;
+end;
+
 // Карта заново - только до конца видимой части экрана.
 //
 // Правка, задевшая маркер (открыла или закрыла комментарий, кавычку),
@@ -4914,6 +5135,14 @@ begin
   if not FUseSyntaxHighlight or FMapStale or (AEditPos < 0) or
      (LineHeight <= 0) or not RichEdit1.HandleAllocated then
     Exit;
+  // Большой файл: карту окна заново построит отрисовка (LargeMapEnsure)
+  if IsLargeText then
+  begin
+    FLargeMapFrom := -1;
+    if AInvalidate then
+      Windows.InvalidateRect(RichEdit1.Handle, nil, False);
+    Exit;
+  end;
 
   // Нижняя граница - начало строки под последней видимой
   Windows.GetClientRect(RichEdit1.Handle, ClientRect);
@@ -10022,6 +10251,8 @@ procedure TForm1.MapBufferChanged(Sender: TObject; AFirst, AOldCount,
 var
   NewLen, Delta, EditStart, NewEnd, OldEnd: Integer;
 begin
+  if (Sender is TEdBuffer) and TEdBuffer(Sender).IsMapped then
+    LargeMapEdited(TEdBuffer(Sender), AFirst);
   if (FMapBuffer = nil) or (Sender <> FMapBuffer) then
     Exit;
   NewLen := FMapBuffer.TextLength;
@@ -81367,6 +81598,9 @@ begin
   // не важно, кто и откуда её переключил.
   if FUseSyntaxHighlight and FMapStale then
     RebuildCommentRangeMap;
+  // Большой файл - карта окна вокруг экрана
+  if FUseSyntaxHighlight and IsLargeText then
+    LargeMapEnsure;
   // Карта после правки разобрана только до прежнего низа экрана, а экран
   // прокрутили ниже - доразобрать видимое (полная пересборка ещё впереди)
   if FUseSyntaxHighlight and (FMapPartialEnd > 0) then
