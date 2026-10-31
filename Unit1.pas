@@ -18250,9 +18250,55 @@ var
   Dlg: TDlgDelPrj;
   Lst: TCheckListBox;
   Names, Sorted: TStringList;
-  Nm, DirSl, Dir, Reason, S, Report: string;
+  Nm, DirSl, Dir, Reason, S, Report, DoneReport: string;
   I, J, Cnt, Open, Dirty, Done, Skipped: Integer;
   Folders, CurGone, CurChecked: Boolean;
+  FileCount, DirCount, TotalFiles: Integer;
+  ByteCount, TotalBytes: Int64;
+
+  // Файлы, вложенные папки и байты в папке ADir (с разделителем в конце)
+  procedure CountTree(const ADir: string);
+  var
+    Found: TSearchRec;
+  begin
+    if FindFirst(ADir + '*', faAnyFile, Found) <> 0 then
+      Exit;
+    try
+      repeat
+        if (Found.Name = '.') or (Found.Name = '..') then
+          Continue;
+        if (Found.Attr and faDirectory) <> 0 then
+        begin
+          Inc(DirCount);
+          CountTree(ADir + Found.Name + PathDelim);
+        end
+        else
+        begin
+          Inc(FileCount);
+          {$IFDEF MSWINDOWS}
+          // Size у Delphi 7 - Integer: файлы больше 2 ГБ - по FindData
+          Inc(ByteCount, Int64(Found.FindData.nFileSizeHigh) shl 32 +
+            Found.FindData.nFileSizeLow);
+          {$ELSE}
+          Inc(ByteCount, Found.Size);
+          {$ENDIF}
+        end;
+      until FindNext(Found) <> 0;
+    finally
+      FindClose(Found);
+    end;
+  end;
+
+  function SizeText(ABytes: Int64): string;
+  begin
+    if ABytes >= 1024 * 1024 then
+      Result := FormatFloat('0.0', ABytes / (1024 * 1024)) + ' МБ'
+    else if ABytes >= 1024 then
+      Result := FormatFloat('0.0', ABytes / 1024) + ' КБ'
+    else
+      Result := IntToStr(ABytes) + ' байт';
+  end;
+
 begin
   if FProjectReg = nil then
     LoadProjectReg;
@@ -18354,6 +18400,9 @@ if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
     Done := 0;
     Skipped := 0;
     Report := '';
+    DoneReport := '';
+    TotalFiles := 0;
+    TotalBytes := 0;
     CurGone := False;
     for I := 0 to Lst.Items.Count - 1 do
     begin
@@ -18364,8 +18413,12 @@ if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
       Dir := ExcludeTrailingPathDelimiter(DirSl);
 
       if not DirectoryExists(DirSl) then
+      begin
         // Папки уже нет - только запись в списке
-        LogRaw('Убран из списка: ' + Nm + '  ' + #149 + '  ' + DirSl)
+        LogRaw('Убран из списка: ' + Nm + '  ' + #149 + '  ' + DirSl);
+        DoneReport := DoneReport + #13#10 + Nm + ': папки не было, убран ' +
+          'из списка';
+      end
       else if Folders then
       begin
         Reason := ProjectFolderBlockReason(DirSl);
@@ -18375,18 +18428,40 @@ if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
           Report := Report + #13#10 + Nm + ': ' + Reason;
           Continue;
         end;
+        // Что уходит в корзину - до удаления, для отчёта
+        FileCount := 0;
+        DirCount := 0;
+        ByteCount := 0;
+        CountTree(DirSl);
         if not DeleteProjectFolder(Dir) then
         begin
           Inc(Skipped);
           Report := Report + #13#10 + Nm + ': папку удалить не удалось';
           Continue;
         end;
-        LogRaw('Проект удалён вместе с папкой: ' + Nm + '  ' + #149 +
-        '  ' + Dir);
+        if DirectoryExists(Dir) then
+        begin
+          // Часть файлов занята - папка осталась
+          Inc(Skipped);
+          Report := Report + #13#10 + Nm + ': папка удалена не полностью ' +
+            '(файлы заняты другой программой?), удалённое - в корзине';
+          Continue;
+        end;
+        Inc(TotalFiles, FileCount);
+        Inc(TotalBytes, ByteCount);
+        S := 'файлов ' + IntToStr(FileCount) + ', папок ' +
+          IntToStr(DirCount) + ', ' + SizeText(ByteCount);
+        DoneReport := DoneReport + #13#10 + Nm + ': ' + S;
+        LogRaw('Проект удалён вместе с папкой (в корзину): ' + Nm + '  ' +
+          #149 + '  ' + Dir + '  ' + #149 + '  ' + S);
       end
       else
+      begin
         LogRaw('Убран из списка проектов: ' + Nm + '  ' + #149 + '  ' +
                DirSl);
+        DoneReport := DoneReport + #13#10 + Nm + ': убран из списка, ' +
+          'файлы на месте';
+      end;
 
       // Раздел проекта в editor.ini и запись в [Projects]
       IniReplaceSection(SettingsFileName, ProjectSectionPrefix + Nm, nil);
@@ -18407,9 +18482,17 @@ if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
   else
     RebuildProjectsMenu;
 
+  // Итог: что удалено (и сколько файлов ушло в корзину), что - нет
+  S := 'Удалено проектов: ' + IntToStr(Done);
+  if Folders and (TotalFiles > 0) then
+    S := S + ', в корзину ушло файлов: ' + IntToStr(TotalFiles) + ' (' +
+      SizeText(TotalBytes) + ')';
+  if DoneReport <> '' then
+    S := S + #13#10 + DoneReport;
   if Skipped > 0 then
-    ShowMessage('8934:Удалено проектов: ' + IntToStr(Done) + ', не удалено: ' +
-                IntToStr(Skipped) + #13#10 + Report);
+    S := S + #13#10#13#10 + 'Не удалено: ' + IntToStr(Skipped) + Report;
+  if Done + Skipped > 0 then
+    ShowMessage('8934:' + S);
 end;
 
 // Кнопки "Отметить все" (Tag = 1) и "Снять все" (Tag = 0) окна удаления
