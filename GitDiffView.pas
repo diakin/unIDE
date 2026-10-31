@@ -339,6 +339,9 @@ begin
   Font.Name := 'Courier New';
   Font.Size := 9;
   UiThemeAddClient(Self);
+  // Пустое окно - сразу цветами темы, а не белым: окно History показывает
+  // разницу только после выбора коммита
+  Render;
 end;
 
 destructor TGitDiffEd.Destroy;
