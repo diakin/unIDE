@@ -6027,33 +6027,6 @@ begin
     UiFillColors;
   end;
 end;
-// Диагностика фона списков (Ide.ListBG): что делает с ним UiApply. В лог -
-// каждое новое сообщение по элементу один раз.
-var
-  UiBgSeen: TStringList = nil;
-
-procedure UiBgNote(C: TControl; const S: string);
-var
-  Key, Nm: string;
-begin
-  if Form1 = nil then
-    Exit;
-  if UiBgSeen = nil then
-    UiBgSeen := TStringList.Create;
-  Key := IntToHex(Integer(C), 8) + ' ' + S;
-  if UiBgSeen.IndexOf(Key) >= 0 then
-    Exit;
-  UiBgSeen.Add(Key);
-  Nm := '';
-  if C <> nil then
-  begin
-    Nm := C.Name + ':' + C.ClassName;
-    if C.Parent <> nil then
-      Nm := Nm + ' в ' + C.Parent.Name + ':' + C.Parent.ClassName;
-    Nm := Nm + ' - ';
-  end;
-  Form1.Dbg('2639: фон: ' + Nm + S, clNavy);
-end;
 
 // Тема своих элементов (UiTheme): Light или Dark по режиму IDE, цвета
 // ролей темы - из ролей IDE (IDE.clr). Роли IDE, которых в теме нет
@@ -6129,8 +6102,6 @@ begin
   GlyphsBefore := FUiGlyphBuilt;
   FormsTick := 0;
   ThemeTick := 0;
-  UiBgNote(nil, 'UiApply, Ide.ListBG = ' + ColorToString(UiColor('Ide.ListBG')) +
-  ', режим ' + IntToStr(Ord(FIdeDark)));
            if FTabs <> nil then
            FTabs.Invalidate;
   // Маркеры выделения в конструкторе форм
@@ -6576,40 +6547,6 @@ begin
     TUiIconButton(ABtn).Glyph := AGlyph;
 end;
 
-// Диагностика значков: что UiApplyGlyph делает с каждым значком. В лог -
-// каждое новое сообщение по кнопке один раз.
-var
-  UiGlyphSeen: TStringList = nil;
-
-procedure UiGlyphNote(ABtn: TControl; const AWhat: string);
-var
-  Key, Who: string;
-  Owner: TWinControl;
-begin
-  if Form1 = nil then
-    Exit;
-  // Кнопки палитры (их сотни) в лог не пишем - итог даёт замер UiApply
-  // (3091)
-  Owner := ABtn.Parent;
-  while Owner <> nil do
-  begin
-    if Owner is TDsgPalette then
-      Exit;
-    Owner := Owner.Parent;
-  end;
-  if UiGlyphSeen = nil then
-    UiGlyphSeen := TStringList.Create;
-  Key := IntToHex(Integer(ABtn), 8) + ' ' + AWhat;
-  if UiGlyphSeen.IndexOf(Key) >= 0 then
-    Exit;
-  UiGlyphSeen.Add(Key);
-  Who := ABtn.Name;
-  if Who = '' then
-    Who := '"' + ABtn.Hint + '"';
-  if ABtn.Parent <> nil then
-    Who := Who + ' в ' + ABtn.Parent.Name + ':' + ABtn.Parent.ClassName;
-  Form1.Dbg('3089: значок: ' + Who + ' - ' + AWhat, clNavy);
-end;
 
 // Кнопка палитры компонентов (TDsgPalette где-то среди родителей)
 function UiIsPaletteBtn(ABtn: TControl): Boolean;
@@ -6661,7 +6598,6 @@ begin
     Mark := TUiGlyph.Create(ABtn);
     Mark.Orig.Assign(BtnGlyph(ABtn));
     Mark.IsDark := False;
-    UiGlyphNote(ABtn, 'метка создана');
   end;
 
   // Значки палитры перекрашиваются цветом Palette.Icon, свои компоненты -
@@ -6714,12 +6650,10 @@ begin
       Inc(FUiGlyphBuilt);
     end;
     SetBtnGlyph(ABtn, Mark.Dark);
-    UiGlyphNote(ABtn, 'тёмный фон: поставлен тёмный значок');
   end
   else
   begin
     SetBtnGlyph(ABtn, Mark.Orig);
-    UiGlyphNote(ABtn, 'светлый фон: поставлен исходный');
   end;
   Mark.IsDark := DarkBack;
 end;
@@ -7068,16 +7002,9 @@ var
     Cur := TUiCtl(C).Color;
     if not IsOurs(Cur, AKey, ASys) then
     begin
-      if AKey = 'Ide.ListBG' then
-        UiBgNote(C, 'цвет ' + ColorToString(Cur) + ' не свой, не меняется ' +
-        '(светлый ' + FUiLight.Values[AKey] + ', тёмный ' +
-                 FUiDark.Values[AKey] + ', прежний ' +
-                 FUiApplied.Values[AKey] + ')');
       Exit;
     end;
     NewC := UiColor(AKey);
-    if AKey = 'Ide.ListBG' then
-      UiBgNote(C, ColorToString(Cur) + ' -> ' + ColorToString(NewC));
     if Cur <> NewC then
       TUiCtl(C).Color := NewC;
   end;
@@ -7603,33 +7530,15 @@ begin
                                           ColorToString(FGutterFG)));
   FGutterBG := StringToColor(ThemeIniRead(Ini, 'Editor', 'GutterBG',
                                           ColorToString(FGutterBG)));
-  // Нашлись ли в editor.ini цвета выбранной темы - в HiLite log
-  if FScheme.FTheme <> '' then
-    if Ini.ValueExists('Editor', 'BGColor@' + FScheme.FTheme) then
-      Dbg('3305: editor.ini: тема ' + FScheme.FTheme + ', фон ' +
-          ColorToString(FIniBGColor) + ', текст ' + ColorToString(FIniFontColor),
-          clNavy)
-    else
-      Dbg('3309: editor.ini: тема ' + FScheme.FTheme + ' - ключа BGColor@' +
-          FScheme.FTheme + ' в [Editor] нет, цвета основные', clNavy);
 end;
 
 // Цвета выбранной темы - поверх только что прочитанной схемы. Раздел Text
 // задаёт и цвет шрифта редактора.
 procedure TForm1.ApplySchemeTheme;
-var
-  N: Integer;
 begin
-  N := FScheme.ApplyTheme;
+  FScheme.ApplyTheme;
   if FScheme.FSchemaHasText then
     SetEditorFontColor(FScheme.FTextFG);
-  // Какая тема и сколько её цветов нашлось в схеме - в HiLite log
-  if FScheme.FTheme = '' then
-    Dbg('3324: схема: основная тема (' + BaseThemeName + ')', clNavy)
-  else
-    Dbg('3326: схема: тема ' + FScheme.FTheme + ', разделов с её цветами ' +
-        IntToStr(N) + ' из ' + IntToStr(FScheme.FThemeColors.Count) +
-    ' строк тем в файлах', clNavy);
 end;
 
 procedure TForm1.ApplyTheme(const AName: string);
@@ -25377,13 +25286,6 @@ var
   Selection: TCharRange;
   CurrentChar: Char;
   SubIdx: Integer;
-  CtlPt: TPoint;
-  OurX: Integer;
-  NextStart, LineW, PrevStart, PrevLen: Integer;
-  BreakKind, PrevKind: string;
-  FaceBuf: array[0..63] of Char;
-  DC: HDC;
-  OldFont: HGDIOBJ;
 begin
   // ЗАЩИТА: Если статус-бар не создан или в нем нет панелей, выходим, чтобы не было Access Violation
   if (StatusBar1 = nil) or (StatusBar1.Panels.Count < 5) then
@@ -25421,71 +25323,6 @@ begin
   StatusBar1.Panels[2].Text := 'Поз в строке: ' + IntToStr(LineCol) +
   '/' + IntToStr(LineLen);
 
-  // ДИАГНОСТИКА расхождения разметок. Пишется в LogEdit - см. LogDiag.
-  //   кнт   - X каретки, как его считает контрол (EM_POSFROMCHAR)
-  //   наш   - X того же символа по нашей разметке, по которой рисуем
-  //   сдвиг - FScrollX
-  //   шрифт - гарнитура, которую GDI реально выбрал для нашего HFONT
-  // Если кнт и наш расходятся, текст рисуется не там, где его видит
-  // контрол: каретка, клики и конец строки будут смещены.
-if (LogEdit <> nil) and (FEditHost <> nil) and (LineStart >= 0) then
-  begin
-    EdApi.PosFromChar(CtlPt, CursorPos);
-    OurX := LinePrefixWidth(CurrentLine - 1, LineCol);
-
-    FaceBuf[0] := #0;
-    DC := GetDC(RichEdit1.Handle);
-    OldFont := SelectObject(DC, RichEdit1.Font.Handle);
-    try
-      GetTextFace(DC, SizeOf(FaceBuf), FaceBuf);
-    finally
-      SelectObject(DC, OldFont);
-      ReleaseDC(RichEdit1.Handle, DC);
-    end;
-
-    // Какой перевод стоит в конце текущей строки контрола.
-    // EM_LINEINDEX считает строки ОТОБРАЖЕНИЯ. Если следующая начинается
-    // сразу за последним символом этой - между ними нет #13, и перенос
-    // сделал сам контрол (мягкий). Если на символ дальше - перевод в тексте.
-    NextStart := EdApi.LineIndex(CurrentLine);
-    if NextStart < 0 then
-      BreakKind := 'посл'
-    else if NextStart = LineStart + LineLen then
-      BreakKind := 'МЯГКИЙ'
-    else
-      BreakKind := 'текст';
-    LineW := LinePixelWidth(CurrentLine - 1);
-
-    // То же для стыка с ПРЕДЫДУЩЕЙ строкой: её не нужно навещать кареткой
-    PrevKind := '-';
-    if CurrentLine > 1 then
-    begin
-      PrevStart := EdApi.LineIndex(CurrentLine - 2);
-      if PrevStart >= 0 then
-      begin
-        PrevLen := EdApi.LineLength(PrevStart);
-        if PrevStart + PrevLen = LineStart then
-          PrevKind := 'МЯГКИЙ'
-        else
-          PrevKind := 'текст';
-      end;
-    end;
-
-    LogDiag(
-    'стр ' + IntToStr(CurrentLine) + '/' + IntToStr(TotalLines) +
-    ' поз ' + IntToStr(LineCol) + '/' + IntToStr(LineLen) +
-    ' | перенос пред ' + PrevKind + ' след ' + BreakKind + ' шир ' + IntToStr(LineW) + ' | ' +
-    'X кнт ' + IntToStr(CtlPt.X) + ' наш ' + IntToStr(OurX) +
-    ' сдвиг ' + IntToStr(FScrollX) +
-    ' свой ' + IntToStr(FCtlScrollX) +
-    ' | VW ' + IntToStr(ViewWidth) + ' хост ' +
-      IntToStr(FEditHost.ClientWidth) + ' | ' + StrPas(FaceBuf) +
-    ' / ' + RichEdit1.Font.Name + ' ' + IntToStr(RichEdit1.Font.Size) +
-    ' | сбр ' + IntToStr(FInvalAll) +
-    ' пр ' + IntToStr(FEditUpd) + '/' + IntToStr(FEditDrop) +
-    ' en ' + IntToStr(FEnChangeIn) + '/' + IntToStr(FEnChangeOut) +
-    ' гл ' + IntToStr(FEnNested) + '/' + IntToStr(FEnTop));
-  end;
 
   // 4. Позиция в файле и общая длина текста
   StatusBar1.Panels[3].Text := 'Поз.: ' + IntToStr(CursorPos) +
@@ -26692,8 +26529,6 @@ begin
     for I := 0 to FUiCustom.Count - 1 do
       FUiCustom.Objects[I].Free;
   FreeAndNil(FUiCustom);
-  FreeAndNil(UiBgSeen);
-  FreeAndNil(UiGlyphSeen);
   ProbeClear;
   FreeAndNil(FProbeSnaps);
   // Программа под отладчиком RapidQ работает дальше сама: без файла
@@ -40272,7 +40107,7 @@ end;
 procedure TForm1.DsgAddForeignPages;
 var
   StartTick, StageTick, ScanTick, LibsTick: Cardinal;
-  CompIdx, PageIdx, LibIdx, LogIdx: Integer;
+  CompIdx, PageIdx, LibIdx: Integer;
   PageMap: TStringList;
   Comp: TDsgForeignComp;
   ForeignBtn: TSpeedButton;
@@ -40324,8 +40159,6 @@ begin
   finally
     PageMap.Free;
   end;
-  for LogIdx := 0 to FDsgForeign.Log.Count - 1 do
-    Dbg('21880: палитра, сторонние: ' + FDsgForeign.Log[LogIdx], clGray);
   Dbg('21880: палитра, сторонние: ' + IntToStr(GetTickCount - StartTick) +
   ' мс (список ' + IntToStr(ScanTick) + ', пакеты значков ' +
       IntToStr(LibsTick) + ', кнопки ' +
@@ -80055,10 +79888,7 @@ begin
   if FNoWrapHandle = RichEdit1.Handle then
     Exit;
   FNoWrapHandle := RichEdit1.Handle;
-  // ДИАГНОСТИКА: ненулевой ответ - контрол режим принял
-  LogDiag('EM_SETTARGETDEVICE(0, 1) = ' +
-          IntToStr(EdApi.SetTargetDevice(1)) +
-  ', окно ' + IntToHex(RichEdit1.Handle, 8));
+  EdApi.SetTargetDevice(1);
 end;
 
 // Сообщения, после которых текст или его метрика могут стать другими
@@ -80551,8 +80381,6 @@ begin
       else
       begin
         FPendingEn := 0;
-        LogDiag(Format('EN_CHANGE без снимка, внешнее сообщение $%.4x',
-                       [FOuterMsg]));
       end;
     end;
 
