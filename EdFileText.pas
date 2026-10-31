@@ -22,7 +22,7 @@ unit EdFileText;
 interface
 
 uses
-  Windows, SysUtils, EdBuffer;
+  Windows, Messages, SysUtils, EdBuffer;
 
 // Байты файла (без BOM) - текст для буфера: строки через #10 (#13#10 и
 // одиночный #13 - тоже перевод строки). AIsUtf8 - своим разбором UTF-8
