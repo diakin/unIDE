@@ -3810,8 +3810,7 @@ type
     function  FindDelphiRoots(AList: TStrings): Integer;
     function  RecoverDelphiRoot(const ASect: string): string;
     function  RemapMovedPath(const AOld, ANewDir: string): string;
-    function  DelphiRegKeyOf(const ARoot: string; var ARootKey: HKEY): string;
-    function  RegReadAny(const AKey, AValue: string): string;
+    function  DelphiRegKeyOf(const ARoot: string): string;
     function  ExpandMachineVars(const S, ARoot, AKey: string): string;
     function  RelocatePathList(const AOld, AFromReg, AOldRoot, ANewRoot,
                                ARegKey, ATitle: string): string;
@@ -4391,7 +4390,7 @@ var
   uses
     Unit2, // Подключили вторую форму к первой!
     FormSnapshot, // снимок живой формы для инспектора объектов
-    Registry,     // поиск установленных Delphi, когда dcc32 не на месте
+    OsReg,        // чтение реестра Windows: установленные Delphi, AutoHotkey, Lazarus
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
     DelphiOpts,   // Project options Delphi: номер сборки и версия в .res
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
@@ -52153,56 +52152,47 @@ end;
 // уводит туда.
 function TForm1.FindDelphiRoots(AList: TStrings): Integer;
 
-  procedure Scan(ARootKey: HKEY; const ABranch, APrefix: string;
+  procedure Scan(ARegRoot: TOsRegRoot; const ABranch, APrefix: string;
                  AShortName: Boolean);
   var
-    Reg: TRegistry;
     Keys: TStringList;
-    I: Integer;
+    KeyIdx: Integer;
     Root, Nm: string;
   begin
-    Reg := TRegistry.Create;
     Keys := TStringList.Create;
     try
-      Reg.RootKey := ARootKey;
-      if not Reg.OpenKeyReadOnly(ABranch) then
+      if not OsRegSubKeys(ARegRoot, ABranch, Keys) then
         Exit;
-      Reg.GetKeyNames(Keys);
-      Reg.CloseKey;
 
-      for I := 0 to Keys.Count - 1 do
-        if Reg.OpenKeyReadOnly(ABranch + '\' + Keys[I]) then
-        begin
-          Root := '';
-          if Reg.ValueExists('RootDir') then
-            Root := Reg.ReadString('RootDir');
-          Reg.CloseKey;
+      for KeyIdx := 0 to Keys.Count - 1 do
+      begin
+        Root := OsRegReadString(ARegRoot, ABranch + '\' + Keys[KeyIdx],
+                                'RootDir');
+        if (Root = '') or
+           not FileExists(IncludeTrailingPathDelimiter(Root) +
+                          'Bin\dcc32.exe') then
+          Continue;
 
-          if (Root = '') or
-             not FileExists(IncludeTrailingPathDelimiter(Root) +
-          'Bin\dcc32.exe') then
-                            Continue;
+        // Имя - то же, что пишет Find installed: "Delphi 7", "BDS 22.0"
+        if AShortName then
+          Nm := APrefix + Copy(Keys[KeyIdx], 1,
+                               Pos('.', Keys[KeyIdx] + '.') - 1)
+        else
+          Nm := APrefix + Keys[KeyIdx];
 
-          // Имя - то же, что пишет Find installed: "Delphi 7", "BDS 22.0"
-                            if AShortName then
-                            Nm := APrefix + Copy(Keys[I], 1, Pos('.', Keys[I] + '.') - 1)
-          else
-            Nm := APrefix + Keys[I];
-
-          if AList.IndexOfName(Nm) < 0 then
-            AList.Add(Nm + '=' + IncludeTrailingPathDelimiter(Root));
-        end;
+        if AList.IndexOfName(Nm) < 0 then
+          AList.Add(Nm + '=' + IncludeTrailingPathDelimiter(Root));
+      end;
     finally
       Keys.Free;
-      Reg.Free;
     end;
   end;
 
 begin
-  Scan(HKEY_CURRENT_USER,  'Software\Borland\Delphi', 'Delphi ', True);
-  Scan(HKEY_LOCAL_MACHINE, 'Software\Borland\Delphi', 'Delphi ', True);
-  Scan(HKEY_CURRENT_USER,  'Software\Embarcadero\BDS', 'BDS ', False);
-  Scan(HKEY_LOCAL_MACHINE, 'Software\Embarcadero\BDS', 'BDS ', False);
+  Scan(orUser,    'Software\Borland\Delphi', 'Delphi ', True);
+  Scan(orMachine, 'Software\Borland\Delphi', 'Delphi ', True);
+  Scan(orUser,    'Software\Embarcadero\BDS', 'BDS ', False);
+  Scan(orMachine, 'Software\Embarcadero\BDS', 'BDS ', False);
   Result := AList.Count;
 end;
 
@@ -52330,86 +52320,45 @@ begin
 end;
 
 // Ветка реестра установки Delphi с данным корнем: там её Library path и
-// переменные среды. ARootKey - в каком разделе нашлась.
-function TForm1.DelphiRegKeyOf(const ARoot: string; var ARootKey: HKEY): string;
+// переменные среды. Сначала HKCU, потом HKLM. '' - не нашлась.
+function TForm1.DelphiRegKeyOf(const ARoot: string): string;
 
-  function Scan(AKey: HKEY; const ABranch: string): string;
+  function Scan(ARegRoot: TOsRegRoot; const ABranch: string): string;
   var
-    Reg: TRegistry;
     Keys: TStringList;
-    I: Integer;
-    R: string;
+    KeyIdx: Integer;
+    RootDir: string;
   begin
     Result := '';
-    Reg := TRegistry.Create;
     Keys := TStringList.Create;
     try
-      Reg.RootKey := AKey;
-      if not Reg.OpenKeyReadOnly(ABranch) then
+      if not OsRegSubKeys(ARegRoot, ABranch, Keys) then
         Exit;
-      Reg.GetKeyNames(Keys);
-      Reg.CloseKey;
-      for I := 0 to Keys.Count - 1 do
-        if Reg.OpenKeyReadOnly(ABranch + '\' + Keys[I]) then
+      for KeyIdx := 0 to Keys.Count - 1 do
+      begin
+        RootDir := OsRegReadString(ARegRoot, ABranch + '\' + Keys[KeyIdx],
+                                   'RootDir');
+        if (RootDir <> '') and
+           (CompareText(ExcludeTrailingPathDelimiter(RootDir),
+                        ExcludeTrailingPathDelimiter(ARoot)) = 0) then
         begin
-          R := '';
-          if Reg.ValueExists('RootDir') then
-            R := Reg.ReadString('RootDir');
-          Reg.CloseKey;
-          if (R <> '') and
-             (CompareText(ExcludeTrailingPathDelimiter(R),
-                          ExcludeTrailingPathDelimiter(ARoot)) = 0) then
-          begin
-            Result := ABranch + '\' + Keys[I];
-            Exit;
-          end;
+          Result := ABranch + '\' + Keys[KeyIdx];
+          Exit;
         end;
+      end;
     finally
       Keys.Free;
-      Reg.Free;
     end;
   end;
 
 begin
-  ARootKey := HKEY_CURRENT_USER;
-  Result := Scan(HKEY_CURRENT_USER, 'Software\Borland\Delphi');
+  Result := Scan(orUser, 'Software\Borland\Delphi');
   if Result = '' then
-    Result := Scan(HKEY_CURRENT_USER, 'Software\Embarcadero\BDS');
-  if Result <> '' then
-    Exit;
-  ARootKey := HKEY_LOCAL_MACHINE;
-  Result := Scan(HKEY_LOCAL_MACHINE, 'Software\Borland\Delphi');
+    Result := Scan(orUser, 'Software\Embarcadero\BDS');
   if Result = '' then
-    Result := Scan(HKEY_LOCAL_MACHINE, 'Software\Embarcadero\BDS');
-end;
-
-// Значение из реестра: сначала HKCU, потом HKLM. '' - нет нигде.
-function TForm1.RegReadAny(const AKey, AValue: string): string;
-var
-  Reg: TRegistry;
-  K: Integer;
-begin
-  Result := '';
-  Reg := TRegistry.Create;
-  try
-    for K := 0 to 1 do
-    begin
-      if K = 0 then
-        Reg.RootKey := HKEY_CURRENT_USER
-      else
-        Reg.RootKey := HKEY_LOCAL_MACHINE;
-      if Reg.OpenKeyReadOnly(AKey) then
-      begin
-        if Reg.ValueExists(AValue) then
-          Result := Reg.ReadString(AValue);
-        Reg.CloseKey;
-      end;
-      if Result <> '' then
-        Exit;
-    end;
-  finally
-    Reg.Free;
-  end;
+    Result := Scan(orMachine, 'Software\Borland\Delphi');
+  if Result = '' then
+    Result := Scan(orMachine, 'Software\Embarcadero\BDS');
 end;
 
 // Развёртка переменных в пути новой машины: $(DELPHI) и $(BDS) - корень
@@ -52447,7 +52396,7 @@ begin
 
     V := '';
     if AKey <> '' then
-      V := RegReadAny(AKey + '\Environment Variables', Nm);
+      V := OsRegReadAny(AKey + '\Environment Variables', Nm);
     if V = '' then
     begin
       N := GetEnvironmentVariable(PChar(Nm), Buf, SizeOf(Buf));
@@ -52455,10 +52404,7 @@ begin
         V := Buf;
     end;
     if V = '' then
-      V := RegReadAny('Environment', Nm);
-    if V = '' then
-      V := RegReadAny('SYSTEM\CurrentControlSet\Control\Session Manager\' +
-      'Environment', Nm);
+      V := OsStoredEnvVar(Nm);
 
                       if V <> '' then
       begin
@@ -52580,7 +52526,6 @@ var
   Ini: TIniFile;
   Prj: TProjectIni;
   Sect, OldRoot, NewRoot, RegKey, V, NewV, PrjDir, Head: string;
-  RootKey: HKEY;
   Keys: TStringList;
   I, P, Fixed, Lost: Integer;
 
@@ -52661,10 +52606,10 @@ begin
     // --- 2, 3. Пути поиска и вывода
     RegKey := '';
     if NewRoot <> '' then
-      RegKey := DelphiRegKeyOf(NewRoot, RootKey);
+      RegKey := DelphiRegKeyOf(NewRoot);
 
     V := Trim(Ini.ReadString(Sect, 'LibPath', ''));
-    NewV := RelocatePathList(V, RegReadAny(RegKey + '\Library', 'Search Path'),
+    NewV := RelocatePathList(V, OsRegReadAny(RegKey + '\Library', 'Search Path'),
                              OldRoot, NewRoot, RegKey, 'Library path');
     // Исходники Delphi в Library path не записываем вовсе: сборка их всё
     // равно отбросит, а в настройках они только вводят в заблуждение
@@ -52672,7 +52617,7 @@ begin
     Ini.WriteString(Sect, 'LibPath', NewV);
 
     V := Trim(Ini.ReadString(Sect, 'BrowsePath', ''));
-    NewV := RelocatePathList(V, RegReadAny(RegKey + '\Library', 'Browsing Path'),
+    NewV := RelocatePathList(V, OsRegReadAny(RegKey + '\Library', 'Browsing Path'),
                              OldRoot, NewRoot, RegKey, 'Browsing path');
     Ini.WriteString(Sect, 'BrowsePath', NewV);
 
@@ -53581,7 +53526,7 @@ begin
   end;
   Dirs := TStringList.Create;
   try
-    InstallDir := RegReadAny('SOFTWARE\AutoHotkey', 'InstallDir');
+    InstallDir := OsRegReadAny('SOFTWARE\AutoHotkey', 'InstallDir');
     if InstallDir <> '' then
       Dirs.Add(IncludeTrailingPathDelimiter(InstallDir) + 'Compiler');
     AddEnvDir('ProgramFiles', 'AutoHotkey\Compiler');
@@ -53986,7 +53931,7 @@ begin
     Exit;
   end;
   // 3. Папка установки из реестра (установщик Lazarus)
-  InstallDir := RegReadAny(
+  InstallDir := OsRegReadAny(
     'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\lazarus_is1',
     'InstallLocation');
   if (InstallDir <> '') and Probe(InstallDir) then

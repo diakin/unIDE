@@ -74,6 +74,7 @@ uses
   ProcRun in 'ProcRun.pas',
   PathKit in 'PathKit.pas',
   OsShell in 'OsShell.pas',
+  OsReg in 'OsReg.pas',
   MdHtml in 'MdHtml.pas',
   FmtView in 'FmtView.pas',
   SplitPane in 'SplitPane.pas',

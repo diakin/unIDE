@@ -5,7 +5,8 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, Grids, StdCtrls,ExtCtrls,ComCtrls,StrUtils, Menus, IniFiles,
-  FileCtrl, Registry, Gauges,
+  FileCtrl, Gauges,
+  OsReg,          // чтение реестра Windows: установки Delphi, переменные среды
   UiButton,       // кнопка, которую рисует программа (вместо TButton)
   UiGroupBox,     // рамка с подписью своими цветами (вместо TGroupBox)
   UiStdCtrls,     // флажок, переключатель и прочие свои элементы Standard
@@ -3239,7 +3240,6 @@ end;
 // такой ветки нет, пути указываются руками.
 procedure TForm2.btnToolFindClick(Sender: TObject);
 var
-  Reg: TRegistry;
   Keys: TStringList;
   I, Found: Integer;
   Root, Nm: string;
@@ -3255,7 +3255,6 @@ var
   procedure AddFound(const AName, ARoot, AKey: string);
   var
     Lib: string;
-    R3: TRegistry;
   begin
     if (AName = '') or (ARoot = '') or not DirectoryExists(ARoot) then
       Exit;
@@ -3271,20 +3270,10 @@ var
     // Пути поиска модулей берём те же, что у самой среды: она хранит их
     // в реестре, в Library\Search Path. Переменные разворачиваем - dcc32
     // про них не знает.
-    R3 := TRegistry.Create;
-    try
-      R3.RootKey := HKEY_CURRENT_USER;
-      if R3.OpenKeyReadOnly(AKey + '\Library') then
-      begin
-        Lib := R3.ReadString('Search Path');
-        R3.CloseKey;
-        if Lib <> '' then
-          Ini.WriteString('Compiler.' + FCompType + '.' + AName, 'LibPath',
-                          ExpandVars(Lib, ARoot, AKey));
-      end;
-    finally
-      R3.Free;
-    end;
+    Lib := OsRegReadString(orUser, AKey + '\Library', 'Search Path');
+    if Lib <> '' then
+      Ini.WriteString('Compiler.' + FCompType + '.' + AName, 'LibPath',
+                      ExpandVars(Lib, ARoot, AKey));
 
     Inc(Found);
   end;
@@ -3297,46 +3286,31 @@ begin
   end;
 
   Found := 0;
-  Reg := TRegistry.Create;
   Keys := TStringList.Create;
   Ini := TIniFile.Create(Form1.SettingsFileName);
   try
-    Reg.RootKey := HKEY_CURRENT_USER;
-
     // Borland: Delphi 5, 6, 7
-    if Reg.OpenKeyReadOnly('Software\Borland\Delphi') then
-    begin
-      Reg.GetKeyNames(Keys);
-      Reg.CloseKey;
+    if OsRegSubKeys(orUser, 'Software\Borland\Delphi', Keys) then
       for I := 0 to Keys.Count - 1 do
-        if Reg.OpenKeyReadOnly('Software\Borland\Delphi\' + Keys[I]) then
-        begin
-          Root := Reg.ReadString('RootDir');
-          Reg.CloseKey;
-          Nm := 'Delphi ' + Copy(Keys[I], 1, Pos('.', Keys[I] + '.') - 1);
-          AddFound(Nm, Root, 'Software\Borland\Delphi\' + Keys[I]);
-        end;
-    end;
+      begin
+        Root := OsRegReadString(orUser, 'Software\Borland\Delphi\' + Keys[I],
+                                'RootDir');
+        Nm := 'Delphi ' + Copy(Keys[I], 1, Pos('.', Keys[I] + '.') - 1);
+        AddFound(Nm, Root, 'Software\Borland\Delphi\' + Keys[I]);
+      end;
 
     // Embarcadero: BDS 2005 и новее, номер версии продукта в имени ветки
-    Keys.Clear;
-    if Reg.OpenKeyReadOnly('Software\Embarcadero\BDS') then
-    begin
-      Reg.GetKeyNames(Keys);
-      Reg.CloseKey;
+    if OsRegSubKeys(orUser, 'Software\Embarcadero\BDS', Keys) then
       for I := 0 to Keys.Count - 1 do
-        if Reg.OpenKeyReadOnly('Software\Embarcadero\BDS\' + Keys[I]) then
-        begin
-          Root := Reg.ReadString('RootDir');
-          Reg.CloseKey;
-          AddFound('BDS ' + Keys[I], Root,
-                   'Software\Embarcadero\BDS\' + Keys[I]);
-        end;
-    end;
+      begin
+        Root := OsRegReadString(orUser, 'Software\Embarcadero\BDS\' + Keys[I],
+                                'RootDir');
+        AddFound('BDS ' + Keys[I], Root,
+                 'Software\Embarcadero\BDS\' + Keys[I]);
+      end;
   finally
     Ini.Free;
     Keys.Free;
-    Reg.Free;
   end;
 
   if Found = 0 then
@@ -3936,7 +3910,6 @@ function TForm2.ExpandDelphiRegVars(const S, ARoot, AKey: string): string;
 var
   Vars: TStringList;
   VarIdx: Integer;
-  Reg: TRegistry;
 begin
   Result := S;
   if ARoot <> '' then
@@ -3945,18 +3918,13 @@ begin
                 [rfReplaceAll, rfIgnoreCase]);
 
   Vars := TStringList.Create;
-  Reg := TRegistry.Create;
   try
-    Reg.RootKey := HKEY_CURRENT_USER;
     if (AKey <> '') and
-       Reg.OpenKeyReadOnly(AKey + '\Environment Variables') then
-    begin
-      Reg.GetValueNames(Vars);
+       OsRegValues(orUser, AKey + '\Environment Variables', Vars) then
       for VarIdx := 0 to Vars.Count - 1 do
-        Result := StringReplace(Result, '$(' + Vars[VarIdx] + ')',
-                    Reg.ReadString(Vars[VarIdx]), [rfReplaceAll, rfIgnoreCase]);
-      Reg.CloseKey;
-    end;
+        Result := StringReplace(Result, '$(' + Vars.Names[VarIdx] + ')',
+                    Vars.Values[Vars.Names[VarIdx]],
+                    [rfReplaceAll, rfIgnoreCase]);
 
     if Pos('$(', Result) > 0 then
     begin
@@ -3968,7 +3936,6 @@ begin
                     [rfReplaceAll, rfIgnoreCase]);
     end;
   finally
-    Reg.Free;
     Vars.Free;
   end;
 end;
@@ -3979,7 +3946,6 @@ end;
 function TForm2.FindDelphiRegKey(const ARoot, ATool: string;
                                  var AFoundRoot: string): string;
 var
-  Reg: TRegistry;
   Keys: TStringList;
   BranchIdx, KeyIdx, Installs: Integer;
   Branch, RootDir, ToolName, ByName, ByNameRoot, Single, SingleRoot: string;
@@ -3991,27 +3957,20 @@ begin
   Single := '';
   SingleRoot := '';
   Installs := 0;
-  Reg := TRegistry.Create;
   Keys := TStringList.Create;
   try
-    Reg.RootKey := HKEY_CURRENT_USER;
     for BranchIdx := 0 to 1 do
     begin
       if BranchIdx = 0 then
         Branch := 'Software\Borland\Delphi'
       else
         Branch := 'Software\Embarcadero\BDS';
-      Keys.Clear;
-      if not Reg.OpenKeyReadOnly(Branch) then
+      if not OsRegSubKeys(orUser, Branch, Keys) then
         Continue;
-      Reg.GetKeyNames(Keys);
-      Reg.CloseKey;
       for KeyIdx := 0 to Keys.Count - 1 do
       begin
-        if not Reg.OpenKeyReadOnly(Branch + '\' + Keys[KeyIdx]) then
-          Continue;
-        RootDir := Reg.ReadString('RootDir');
-        Reg.CloseKey;
+        RootDir := OsRegReadString(orUser, Branch + '\' + Keys[KeyIdx],
+                                   'RootDir');
         if (RootDir = '') or not DirectoryExists(RootDir) then
           Continue;
         Inc(Installs);
@@ -4039,7 +3998,6 @@ begin
     end;
   finally
     Keys.Free;
-    Reg.Free;
   end;
   if ByName <> '' then
   begin
@@ -4579,7 +4537,6 @@ end;
 procedure TForm2.btnDelphiImportClick(Sender: TObject);
 var
   Root, FoundRoot, RegKey, RegLib, RegBrowse, Tool: string;
-  Reg: TRegistry;
   RootIdx, LibIdx, BrowseIdx: Integer;
 
   // AFirst, к нему - из ASecond, чего в AFirst нет. AKept - сколько взято
@@ -4651,22 +4608,8 @@ begin
     FCompEdits[RootIdx].Text := IncludeTrailingPathDelimiter(Root);
   end;
 
-  RegLib := '';
-  RegBrowse := '';
-  Reg := TRegistry.Create;
-  try
-    Reg.RootKey := HKEY_CURRENT_USER;
-    if Reg.OpenKeyReadOnly(RegKey + '\Library') then
-    begin
-      if Reg.ValueExists('Search Path') then
-        RegLib := Reg.ReadString('Search Path');
-      if Reg.ValueExists('Browsing Path') then
-        RegBrowse := Reg.ReadString('Browsing Path');
-      Reg.CloseKey;
-    end;
-  finally
-    Reg.Free;
-  end;
+  RegLib := OsRegReadString(orUser, RegKey + '\Library', 'Search Path');
+  RegBrowse := OsRegReadString(orUser, RegKey + '\Library', 'Browsing Path');
   if (RegLib = '') and (RegBrowse = '') then
   begin
     ShowMessage('В ' + RegKey + '\Library путей нет.');
@@ -4815,7 +4758,6 @@ function TForm2.LookupEnvVar(const AName: string): string;
 var
   Buf: array[0..2047] of Char;
   N: DWORD;
-  Reg: TRegistry;
 begin
   Result := '';
   if AName = '' then
@@ -4828,31 +4770,8 @@ begin
     Exit;
   end;
 
-  Reg := TRegistry.Create;
-  try
-    // Пользовательские
-    Reg.RootKey := HKEY_CURRENT_USER;
-    if Reg.OpenKeyReadOnly('Environment') then
-    begin
-      if Reg.ValueExists(AName) then
-        Result := Reg.ReadString(AName);
-      Reg.CloseKey;
-    end;
-    if Result <> '' then
-      Exit;
-
-    // Системные
-    Reg.RootKey := HKEY_LOCAL_MACHINE;
-    if Reg.OpenKeyReadOnly('SYSTEM\CurrentControlSet\Control\' +
-                           'Session Manager\Environment') then
-    begin
-      if Reg.ValueExists(AName) then
-        Result := Reg.ReadString(AName);
-      Reg.CloseKey;
-    end;
-  finally
-    Reg.Free;
-  end;
+  // Сохранённые в системе: пользовательские, потом общие
+  Result := OsStoredEnvVar(AName);
 end;
 
 // Переменные среды Delphi из реестра, строками вида Имя=значение.
@@ -4869,45 +4788,33 @@ end;
 // просматриваем все ветки и берём первое совпадение по имени.
 procedure TForm2.CollectDelphiVars(AList: TStrings);
 
-  procedure Scan(ARootKey: HKEY; const ABranch: string);
+  procedure Scan(ARegRoot: TOsRegRoot; const ABranch: string);
   var
-    Reg: TRegistry;
-    Keys, Names: TStringList;
-    I, J: Integer;
+    Keys, Vars: TStringList;
+    KeyIdx, VarIdx: Integer;
   begin
-    Reg := TRegistry.Create;
     Keys := TStringList.Create;
-    Names := TStringList.Create;
+    Vars := TStringList.Create;
     try
-      Reg.RootKey := ARootKey;
-      if not Reg.OpenKeyReadOnly(ABranch) then
+      if not OsRegSubKeys(ARegRoot, ABranch, Keys) then
         Exit;
-      Reg.GetKeyNames(Keys);
-      Reg.CloseKey;
-
-      for I := 0 to Keys.Count - 1 do
-        if Reg.OpenKeyReadOnly(ABranch + '\' + Keys[I] +
-                               '\Environment Variables') then
-        begin
-          Names.Clear;
-          Reg.GetValueNames(Names);
-          for J := 0 to Names.Count - 1 do
-            if AList.IndexOfName(Names[J]) < 0 then
-              AList.Add(Names[J] + '=' + Reg.ReadString(Names[J]));
-          Reg.CloseKey;
-        end;
+      for KeyIdx := 0 to Keys.Count - 1 do
+        if OsRegValues(ARegRoot, ABranch + '\' + Keys[KeyIdx] +
+                       '\Environment Variables', Vars) then
+          for VarIdx := 0 to Vars.Count - 1 do
+            if AList.IndexOfName(Vars.Names[VarIdx]) < 0 then
+              AList.Add(Vars[VarIdx]);
     finally
-      Names.Free;
+      Vars.Free;
       Keys.Free;
-      Reg.Free;
     end;
   end;
 
 begin
-  Scan(HKEY_CURRENT_USER,  'Software\Borland\Delphi');
-  Scan(HKEY_LOCAL_MACHINE, 'Software\Borland\Delphi');
-  Scan(HKEY_CURRENT_USER,  'Software\Embarcadero\BDS');
-  Scan(HKEY_LOCAL_MACHINE, 'Software\Embarcadero\BDS');
+  Scan(orUser,    'Software\Borland\Delphi');
+  Scan(orMachine, 'Software\Borland\Delphi');
+  Scan(orUser,    'Software\Embarcadero\BDS');
+  Scan(orMachine, 'Software\Embarcadero\BDS');
 end;
 
 // Приведение введённого значения к тому, что понимает компилятор.
