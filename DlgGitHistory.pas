@@ -37,7 +37,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
-  StdCtrls, ExtCtrls, ComCtrls, Clipbrd, ShellAPI,
+  StdCtrls, ExtCtrls, ComCtrls, Clipbrd, OsShell,
   UiButton,      // TUiButton
   UiEditCtrls,   // TUiMemo
   UiStdCtrls,    // TUiLabel, TUiPanel
@@ -1087,8 +1087,7 @@ end;
 procedure TDlgGitHistory.BtnWebClick(Sender: TObject);
 begin
   if (FCurHash <> '') and (FWebUrl <> '') then
-    ShellExecute(Handle, 'open', PChar(FWebUrl + '/commit/' + FCurHash), nil,
-      nil, SW_SHOWNORMAL);
+    ShellOpen(Handle, FWebUrl + '/commit/' + FCurHash);
 end;
 
 procedure TDlgGitHistory.BtnBranchClick(Sender: TObject);

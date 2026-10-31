@@ -67,7 +67,7 @@ function FbHelpKeyword(const AChm, AWord: string): Boolean;
 implementation
 
 uses
-  Forms, ShellAPI;
+  Forms, OsShell;
 
 const
   ChmRel = 'help\rapidq.chm';
@@ -245,8 +245,7 @@ begin
   HtmlFile := RqHelpFind(HtmlRel);
   if HtmlFile = '' then
     Exit;
-  Result := ShellExecute(0, 'open', PChar(HtmlFile), nil,
-                         PChar(ExtractFilePath(HtmlFile)), SW_SHOWNORMAL) > 32;
+  Result := ShellOpenIn(0, HtmlFile, ExtractFilePath(HtmlFile));
   if not Result then
     HelpError := 'не открылся ' + HtmlFile;
 end;

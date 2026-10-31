@@ -40,6 +40,7 @@ uses
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   ProcRun,        // запуск внешних программ: канал вывода, ожидание, код выхода
   PathKit,        // пути: разделитель папок, имя exe, папки рядом с программой
+  OsShell,        // оболочка ОС: открыть по ассоциации, показать в папке, корзина
   EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
   DlgEdPreview,   // свой редактор - окно пробы (шаги 0.7.2 - 0.7.3)
   EdRichEmu,      // свой редактор вместо RichEdit1 (шаг 0.7.4)
@@ -12047,8 +12048,7 @@ var
   Params: string;
 begin
   Params := '/tidyswap:' + IntToStr(GetCurrentProcessId);
-  if ShellExecute(0, 'open', PChar(FRestartExe), PChar(Params),
-                  PChar(ExtractFilePath(FRestartExe)), SW_SHOWNORMAL) > 32 then
+  if ShellRun(0, FRestartExe, Params, ExtractFilePath(FRestartExe)) then
     Exit;
   Notes := TStringList.Create;
   try
@@ -17975,10 +17975,9 @@ begin
   begin
     if Target <> '' then
       // Папка с выделенным главным файлом
-      ShellExecute(Handle, 'open', 'explorer.exe',
-                   PChar('/select,"' + Target + '"'), nil, SW_SHOWNORMAL)
+      ShellShowInFolder(Handle, Target)
     else
-      ShellExecute(Handle, 'open', PChar(Dir), nil, nil, SW_SHOWNORMAL);
+      ShellOpen(Handle, Dir);
     Exit;
   end;
 
@@ -18223,21 +18222,11 @@ end;
 // здесь стоит дорого, а откат из корзины ничего не стоит.
 function TForm1.DeleteProjectFolder(const ADir: string): Boolean;
 var
-  Op: TSHFileOpStruct;
-  Src: string;
   Res: Integer;
+  Aborted: Boolean;
 begin
-  // Список путей для оболочки заканчивается двумя нулями
-  Src := ExcludeTrailingPathDelimiter(ADir) + #0#0;
-
-  FillChar(Op, SizeOf(Op), 0);
-  Op.Wnd := Handle;
-  Op.wFunc := FO_DELETE;
-  Op.pFrom := PChar(Src);
-  Op.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION;
-
-  Res := SHFileOperation(Op);
-  Result := (Res = 0) and (Op.fAnyOperationsAborted = False);
+  Res := ShellRecycle(Handle, ADir, [], Aborted);
+  Result := (Res = 0) and not Aborted;
 
   if not Result then
     LogRaw('Delete Project: папка не удалена, код ' + IntToStr(Res) +
@@ -51791,7 +51780,7 @@ begin
     end;
     LogComp(Format('--- Релиз готов: %d, не найдено %d. Состав - Project -> ' +
     'Release files', [Copied, Missed]));
-                   ShellExecute(Handle, 'open', PChar(RelDir), nil, nil, SW_SHOWNORMAL);
+    ShellOpen(Handle, RelDir);
   finally
     L.Free;
   end;
@@ -67483,8 +67472,7 @@ begin
   LinkUrl := TMenuItem(Sender).Hint;
   if LinkUrl = '' then
     Exit;
-  if ShellExecute(Handle, 'open', PChar(LinkUrl), nil, nil,
-                  SW_SHOWNORMAL) <= 32 then
+  if not ShellOpen(Handle, LinkUrl) then
     ShowMessage('9802:Не удалось открыть в браузере:'#13#10 + LinkUrl);
 end;
 
@@ -72223,15 +72211,12 @@ end;
 // сервере, записи stash. Не удаляется корень диска, папка с самой средой,
 // с открытым проектом и пока открыты вкладки с файлами из неё
 procedure TForm1.GitDeleteRepoClick(Sender: TObject);
-const
-  // Корзина не вмещает папку - Windows спросит, а не сотрёт молча
-  FofWantNukeWarning = $4000;
 var
-  Git, Repo, RepoSl, Remote, RemoteUrl, Warn, OpenList, Msg, Src: string;
+  Git, Repo, RepoSl, Remote, RemoteUrl, Warn, OpenList, Msg: string;
   Changes, Unpushed, Stashes, WinIndex, OpenCount, RecentIndex: Integer;
   Answer, OpResult: Integer;
   DlgType: TMsgDlgType;
-  Op: TSHFileOpStruct;
+  Aborted: Boolean;
 
   // Число строк вывода git; ошибка - -1
   function GitLineCount(const AArgs: string): Integer;
@@ -72364,17 +72349,12 @@ begin
   if AnsiStartsText(RepoSl, IncludeTrailingPathDelimiter(GetCurrentDir)) then
     SetCurrentDir(ExtractFilePath(Application.ExeName));
 
-  Src := Repo + #0#0;
-  FillChar(Op, SizeOf(Op), 0);
-  Op.Wnd := Handle;
-  Op.wFunc := FO_DELETE;
-  Op.pFrom := PChar(Src);
-  Op.fFlags := FOF_ALLOWUNDO or FOF_NOCONFIRMATION or FofWantNukeWarning;
-  OpResult := SHFileOperation(Op);
+  // Корзина не вмещает папку - Windows спросит, а не сотрёт молча
+  OpResult := ShellRecycle(Handle, Repo, [sroNukeWarning], Aborted);
 
   if DirectoryExists(Repo) then
   begin
-    if Op.fAnyOperationsAborted then
+    if Aborted then
       LogGit('Git: удаление ' + Repo + ' отменено')
     else
       LogGit('Git: ' + Repo + ' удалён не полностью (код ' +
@@ -72430,7 +72410,7 @@ end;
 procedure TForm1.GitOpenUrl(const AUrl: string);
 begin
   LogGit('Git: ' + AUrl);
-  ShellExecute(Handle, 'open', PChar(AUrl), nil, nil, SW_SHOWNORMAL);
+  ShellOpen(Handle, AUrl);
 end;
 
 // Страница репозитория на GitHub ('' - remote не на GitHub, сообщение)
@@ -72467,7 +72447,7 @@ var
   Git, Repo: string;
 begin
   if GitPrepare(Git, Repo) then
-    ShellExecute(Handle, 'open', PChar(Repo), nil, nil, SW_SHOWNORMAL);
+    ShellOpen(Handle, Repo);
 end;
 
 // Адрес remote origin: показать, поменять (set-url) или добавить
@@ -73599,7 +73579,7 @@ begin
   LogGit('  Другой коммит - снова Checkout to Folder (папка ' +
     'переименуется); убрать копию: git worktree remove --force ' +
     Quoted(Folder));
-  ShellExecute(Handle, 'open', PChar(Folder), nil, nil, SW_SHOWNORMAL);
+  ShellOpen(Handle, Folder);
 end;
 
 // Поиск регрессии в копии Checkout to Folder (git bisect): Good / Bad /
@@ -85528,9 +85508,8 @@ begin
     // Appendix D: функции RQProc.inc (compdoc/gen_funcs.py)
     6: Done := RqHelpShowTopic('funcs.html');
     // Справочник Windows API на сайте Microsoft - в браузере
-    7: Done := ShellExecute(Handle, 'open',
-                 'https://learn.microsoft.com/en-us/windows/win32/api/', nil, nil,
-                 SW_SHOWNORMAL) > 32;
+    7: Done := ShellOpen(Handle,
+                 'https://learn.microsoft.com/en-us/windows/win32/api/');
   else
     Done := True;
   end;
@@ -85729,7 +85708,7 @@ begin
   if Answer = mrYes then
     Result := FbHelpPick
   else if Answer = mrNo then
-    ShellExecute(Handle, 'open', FbHelpOnline, nil, nil, SW_SHOWNORMAL);
+    ShellOpen(Handle, FbHelpOnline);
 end;
 
 // Help - unIDE manual: руководство пользователя unIDE
@@ -85796,8 +85775,7 @@ begin
         Done := ChmShowTopic(ChmFile, '');
     end;
     4:
-      Done := ShellExecute(Handle, 'open', FbHelpOnline, nil, nil,
-                           SW_SHOWNORMAL) > 32;
+      Done := ShellOpen(Handle, FbHelpOnline);
   end;
   if not Done then
     ShowMessage('Справка FreeBASIC: ' + RqHelpLastError);
@@ -86439,8 +86417,7 @@ begin
                   'последняя для неё версия 109).' + #13#10 +
                   'После установки снова выберите "Просмотр в WebView2".',
                   mtConfirmation, [mbYes, mbNo], 0) = mrYes then
-      ShellExecute(Handle, 'open', PChar(Wv2DownloadUrl), nil, nil,
-                   SW_SHOWNORMAL);
+      ShellOpen(Handle, Wv2DownloadUrl);
   end
   else
     MessageDlg('WebView2 не запустился.' + #13#10#13#10 + ErrText,

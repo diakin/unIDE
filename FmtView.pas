@@ -50,7 +50,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls,
-  ComCtrls, Menus, Forms, ShellAPI, Variants, ComObj, Registry, SHDocVw,
+  ComCtrls, Menus, Forms, Variants, ComObj, Registry, SHDocVw,
   IniFiles, MdHtml, ProcRun;
 
 type
@@ -229,7 +229,7 @@ procedure FmtSetIeEdge(const AFileName: string; AOn: Boolean);
 implementation
 
 uses
-  PathKit;
+  PathKit, OsShell;
 
 const
   WM_FMT_OPENFILE = WM_USER + 1;
@@ -1329,12 +1329,12 @@ begin
   else if LocalPath <> '' then
   begin
     Log('браузер: ' + Url + ' - программой Windows: ' + LocalPath);
-    ShellExecute(0, 'open', PChar(LocalPath), nil, nil, SW_SHOWNORMAL);
+    ShellOpen(0, LocalPath);
   end
   else
   begin
     Log('браузер: ' + Url + ' - программой Windows');
-    ShellExecute(0, 'open', PChar(Url), nil, nil, SW_SHOWNORMAL);
+    ShellOpen(0, Url);
   end;
 end;
 

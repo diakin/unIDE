@@ -73,6 +73,7 @@ uses
   RunConsole in 'RunConsole.pas',
   ProcRun in 'ProcRun.pas',
   PathKit in 'PathKit.pas',
+  OsShell in 'OsShell.pas',
   MdHtml in 'MdHtml.pas',
   FmtView in 'FmtView.pas',
   SplitPane in 'SplitPane.pas',

@@ -112,7 +112,7 @@ function GitToUtf8(const AText: WideString): string;
 implementation
 
 uses
-  ProcRun;
+  ProcRun, OsShell;
 
 const
   GitPipeSize = 1048576;   // буфер трубы вывода git (CreatePipe)
@@ -338,54 +338,10 @@ begin
     Result := 'прервано';
 end;
 
-type
-  TGitShFileOp = packed record
-    Wnd: HWND;
-    Func: UINT;
-    From: PWideChar;
-    Dest: PWideChar;
-    Flags: Word;
-    AnyAborted: BOOL;
-    NameMappings: Pointer;
-    ProgressTitle: PWideChar;
-  end;
-
-function GitShFileOperation(var AOp: TGitShFileOp): Integer; stdcall;
-  external 'shell32.dll' name 'SHFileOperationW';
-function GitGetFileAttributes(AName: PWideChar): DWORD; stdcall;
-  external 'kernel32.dll' name 'GetFileAttributesW';
-
-const
-  GitFoDelete = 3;
-  GitFofSilent = $4;
-  GitFofNoConfirmation = $10;
-  GitFofAllowUndo = $40;
-  GitFofNoErrorUI = $400;
-
+// Корзина - OsShell (общая с остальной программой)
 function GitRecycleFiles(AWnd: HWND; const AFiles: TGitPaths): Boolean;
-var
-  FromList: WideString;
-  FileIdx: Integer;
-  ShellOp: TGitShFileOp;
 begin
-  Result := True;
-  FromList := '';
-  // Только то, что есть: отсутствующий файл SHFileOperation считает
-  // ошибкой и не трогает остальные
-  for FileIdx := 0 to High(AFiles) do
-    if (AFiles[FileIdx] <> '') and
-       (GitGetFileAttributes(PWideChar(AFiles[FileIdx])) <> $FFFFFFFF) then
-      FromList := FromList + AFiles[FileIdx] + WideChar(#0);
-  if FromList = '' then
-    Exit;
-  FromList := FromList + WideChar(#0);
-  FillChar(ShellOp, SizeOf(ShellOp), 0);
-  ShellOp.Wnd := AWnd;
-  ShellOp.Func := GitFoDelete;
-  ShellOp.From := PWideChar(FromList);
-  ShellOp.Flags := GitFofAllowUndo or GitFofNoConfirmation or GitFofSilent or
-    GitFofNoErrorUI;
-  Result := (GitShFileOperation(ShellOp) = 0) and not ShellOp.AnyAborted;
+  Result := ShellRecycleFilesW(AWnd, AFiles);
 end;
 
 // Следующее поле до разделителя ASep (или до конца); APos - после него
