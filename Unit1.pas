@@ -1469,6 +1469,11 @@ type
     // подпрограммы, в имени которых есть этот текст; пусто - все
     FSubFilter: TUiEdit;
     FSubFilterText: string;
+    // Строки таблицы подпрограмм: номер строки таблицы -> индекс в FSubs
+    // (с учётом фильтра). Таблица виртуальная (OwnerData): все строки
+    // заводятся сразу числом Items.Count, текст ячеек ListView спрашивает
+    // через SubListData только для строк, которые рисует
+    FSubView: TIntArray;
     // Шрифты групп: умолчания (как в .dfm при запуске) и выбранные
     // (editor.ini [IdeFonts]); строка - Имя|высота|стиль (BIUS)
     FUiFontDefs, FUiFonts: TStringList;
@@ -3579,6 +3584,7 @@ type
     procedure FormatIndentText;
     function  FormatDfmLines(const ASrc: string; ALines: TStringList): Integer;
     procedure FillSubListView;
+    procedure SubListData(Sender: TObject; Item: TListItem);
     // Вкладка Includes правой панели (RapidQ)
     function  IncludesApply: Boolean;
     procedure RefreshIncludes;
@@ -29269,8 +29275,7 @@ end;
 
 procedure TForm1.FillSubListView;
 var
-  K: Integer;
-  It: TListItem;
+  K, ViewCount: Integer;
 begin
   if lvSubList = nil then
     Exit;
@@ -29282,25 +29287,48 @@ begin
     Exit;
   end;
   FSubListViewPending := False;
+
+  // Сначала номера строк (с фильтром), потом все строки таблицы разом:
+  // по одному TListItem на подпрограмму на файле в 32 МБ - 5,4 с
+  SetLength(FSubView, Length(FSubs));
+  ViewCount := 0;
+  for K := 0 to High(FSubs) do
+  begin
+    if (FSubFilterText <> '') and
+       (Pos(FSubFilterText, LowerCase(FSubs[K].Name)) = 0) then
+      Continue;
+    FSubView[ViewCount] := K;
+    Inc(ViewCount);
+  end;
+  SetLength(FSubView, ViewCount);
+
   lvSubList.Items.BeginUpdate;
   try
-    lvSubList.Items.Clear;
-    for K := 0 to High(FSubs) do
-    begin
-      if (FSubFilterText <> '') and
-         (Pos(FSubFilterText, LowerCase(FSubs[K].Name)) = 0) then
-        Continue;
-      It := lvSubList.Items.Add;
-      It.Caption := SubListCaption(FSubs[K].Name);
-      It.SubItems.Add(IntToStr(FSubs[K].BeginLine + 1));
-      It.SubItems.Add(IntToStr(FSubs[K].EndLine + 1));
-      It.Data := Pointer(K);
-    end;
+    lvSubList.Selected := nil;
+    lvSubList.Items.Count := ViewCount;
   finally
     lvSubList.Items.EndUpdate;
   end;
+  lvSubList.Invalidate;
   // Полоса прокрутки могла появиться или уйти - ширина Name по новой
   SubListFitColumns;
+end;
+
+// Текст строки таблицы подпрограмм - по запросу ListView (OwnerData)
+procedure TForm1.SubListData(Sender: TObject; Item: TListItem);
+var
+  K: Integer;
+begin
+  if (Item.Index < 0) or (Item.Index > High(FSubView)) then
+    Exit;
+  K := FSubView[Item.Index];
+  if (K < 0) or (K > High(FSubs)) then
+    Exit;
+  Item.Caption := SubListCaption(FSubs[K].Name);
+  Item.SubItems.Clear;
+  Item.SubItems.Add(IntToStr(FSubs[K].BeginLine + 1));
+  Item.SubItems.Add(IntToStr(FSubs[K].EndLine + 1));
+  Item.Data := Pointer(K);
 end;
 
 // SubList сменил размер - колонка Name по ширине, Begin и End у правого края
@@ -82347,6 +82375,9 @@ begin
     // OnResize у TControl защищённый, отсюда TUiCtl
     if lvSubList <> nil then
     begin
+      // Таблица подпрограмм виртуальная: см. FSubView
+      lvSubList.OwnerData := True;
+      lvSubList.OnData := SubListData;
       TUiCtl(lvSubList).OnResize := SubListResize;
       SubListFitColumns;
       SubFilterPlace;
