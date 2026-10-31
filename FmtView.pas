@@ -51,7 +51,7 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls,
   ComCtrls, Menus, Forms, ShellAPI, Variants, ComObj, Registry, SHDocVw,
-  IniFiles, MdHtml;
+  IniFiles, MdHtml, ProcRun;
 
 type
   TFmtKind = (fkNone, fkMarkdown, fkHtml, fkMht, fkRtf, fkRvf);
@@ -1589,38 +1589,30 @@ end;
 function TRtfPreview.RunRvf2Rtf(const AHelper, ARvfFile, ARtfFile: string;
   out AError: string): Boolean;
 var
-  StartInfo: TStartupInfo;
-  ProcInfo: TProcessInformation;
-  CmdLine: string;
-  WaitResult, ExitCodeValue: DWORD;
+  Proc: TProcRun;
+  ExitCodeValue: Integer;
 begin
   Result := False;
   AError := '';
-  CmdLine := '"' + AHelper + '" "' + ARvfFile + '" "' + ARtfFile + '"';
-  FillChar(StartInfo, SizeOf(StartInfo), 0);
-  StartInfo.cb := SizeOf(StartInfo);
-  StartInfo.dwFlags := STARTF_USESHOWWINDOW;
-  StartInfo.wShowWindow := SW_HIDE;
-  FillChar(ProcInfo, SizeOf(ProcInfo), 0);
-  UniqueString(CmdLine);   // CreateProcess может писать в строку
-  if not CreateProcess(nil, PChar(CmdLine), nil, nil, False, 0, nil,
-                       PChar(ExtractFilePath(AHelper)), StartInfo,
-                       ProcInfo) then
-  begin
-    AError := 'не запустился: ' + SysErrorMessage(GetLastError);
-    Exit;
-  end;
+  Proc := TProcRun.Create;
   try
-    WaitResult := WaitForSingleObject(ProcInfo.hProcess, RvfHelperTimeout);
-    if WaitResult <> WAIT_OBJECT_0 then
+    Proc.CommandLine := '"' + AHelper + '" "' + ARvfFile + '" "' +
+      ARtfFile + '"';
+    Proc.Dir := ExtractFilePath(AHelper);
+    Proc.Window := pwHidden;
+    if not Proc.Start then
     begin
-      TerminateProcess(ProcInfo.hProcess, 1);
+      AError := Proc.ErrorText;
+      Exit;
+    end;
+    if not Proc.WaitFor(RvfHelperTimeout) then
+    begin
+      Proc.Terminate(1);
       AError := 'не закончил работу за ' +
                 IntToStr(RvfHelperTimeout div 1000) + ' с';
       Exit;
     end;
-    ExitCodeValue := 0;
-    GetExitCodeProcess(ProcInfo.hProcess, ExitCodeValue);
+    ExitCodeValue := Proc.ExitCode;
     case ExitCodeValue of
       0: Result := FileExists(ARtfFile);
       1: AError := 'не понял параметры (код 1)';
@@ -1632,8 +1624,7 @@ begin
     if (ExitCodeValue = 0) and not Result then
       AError := 'не создал ' + ARtfFile;
   finally
-    CloseHandle(ProcInfo.hThread);
-    CloseHandle(ProcInfo.hProcess);
+    Proc.Free;
   end;
 end;
 

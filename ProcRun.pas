@@ -16,6 +16,8 @@ unit ProcRun;
 //
 // Delphi 7: без PtrUInt, Exit(значение), inline.
 
+{$IFDEF FPC}{$MODE DELPHI}{$ENDIF}
+
 interface
 
 uses
@@ -57,8 +59,10 @@ type
     Console: TProcConsole;
     // Вывод и ошибки (stdout + stderr) - в канал, читать Read
     CaptureOutput: Boolean;
-    // Вывод и ошибки - в файл (создаётся заново); CaptureOutput не нужен
+    // Вывод и ошибки - в файл (создаётся заново); CaptureOutput не нужен.
+    // OutputFileW, если задан, - вместо OutputFile (имя вне кодовой страницы)
     OutputFile: string;
+    OutputFileW: WideString;
     // Вход - канал: WriteInput, CloseInput. InputText - записать сразу
     // после запуска и закрыть (короткий текст, умещается в буфер канала)
     PipeInput: Boolean;
@@ -77,8 +81,9 @@ type
     function Available: Cardinal;
     // Дописать в AText то, что есть в канале вывода, не ожидая. Результат -
     // прочитано байт; -1 - канал закрыт (программа вышла и всё прочитано)
-    // или вывод не в канал
-    function Read(var AText: string): Integer;
+    // или вывод не в канал. AMaxBytes > 0 - прочитать не больше (вызов из
+    // таймера окна: быстро пишущая программа не держит окно)
+    function Read(var AText: string; AMaxBytes: Integer = 0): Integer;
     // Записать во вход (PipeInput). False - канал закрыт
     function WriteInput(const AData: string): Boolean;
     // Закрыть вход: для программы - конец ввода
@@ -214,7 +219,18 @@ begin
   end;
 
   // Вывод: файл или канал
-  if OutputFile <> '' then
+  if OutputFileW <> '' then
+  begin
+    FileHandle := CreateFileW(PWideChar(OutputFileW), GENERIC_WRITE,
+      FILE_SHARE_READ, @Security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
+    if FileHandle = INVALID_HANDLE_VALUE then
+    begin
+      SetError(GetLastError, 'файл вывода не создан (' +
+        string(OutputFileW) + ')');
+      Exit;
+    end;
+  end
+  else if OutputFile <> '' then
   begin
     FileHandle := CreateFile(PChar(OutputFile), GENERIC_WRITE,
       FILE_SHARE_READ, @Security, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
@@ -366,9 +382,9 @@ begin
     Result := Avail;
 end;
 
-function TProcRun.Read(var AText: string): Integer;
+function TProcRun.Read(var AText: string; AMaxBytes: Integer): Integer;
 var
-  Buf: array[0..4095] of Char;
+  Buf: array[0..65535] of Char;
   Avail, Want, Got: DWORD;
   OldLen: Integer;
 begin
@@ -390,6 +406,8 @@ begin
     Want := Avail;
     if Want > SizeOf(Buf) then
       Want := SizeOf(Buf);
+    if (AMaxBytes > 0) and (Integer(Want) > AMaxBytes - Result) then
+      Want := AMaxBytes - Result;
     Got := 0;
     if not ReadFile(FOutRead, Buf, Want, Got, nil) or (Got = 0) then
     begin
@@ -401,7 +419,7 @@ begin
     SetLength(AText, OldLen + Integer(Got));
     Move(Buf[0], AText[OldLen + 1], Got);
     Inc(Result, Got);
-  until False;
+  until (AMaxBytes > 0) and (Result >= AMaxBytes);
 end;
 
 function TProcRun.WriteInput(const AData: string): Boolean;
@@ -558,9 +576,9 @@ begin
     Result := FProc.Output.NumBytesAvailable;
 end;
 
-function TProcRun.Read(var AText: string): Integer;
+function TProcRun.Read(var AText: string; AMaxBytes: Integer): Integer;
 var
-  Buf: array[0..4095] of Char;
+  Buf: array[0..65535] of Char;
   Avail, Want, Got, OldLen: Integer;
   WasRunning: Boolean;
 begin
@@ -578,6 +596,8 @@ begin
     Want := Avail;
     if Want > SizeOf(Buf) then
       Want := SizeOf(Buf);
+    if (AMaxBytes > 0) and (Want > AMaxBytes - Result) then
+      Want := AMaxBytes - Result;
     Got := FProc.Output.Read(Buf, Want);
     if Got <= 0 then
       Break;
@@ -585,7 +605,7 @@ begin
     SetLength(AText, OldLen + Got);
     Move(Buf[0], AText[OldLen + 1], Got);
     Inc(Result, Got);
-  until False;
+  until (AMaxBytes > 0) and (Result >= AMaxBytes);
   if (Result = 0) and not WasRunning then
     Result := -1;
 end;

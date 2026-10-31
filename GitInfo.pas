@@ -46,6 +46,9 @@ function GitBuildInfoFile(const AExe: string): string;
 
 implementation
 
+uses
+  ProcRun;
+
 function GitBuildInfoFile(const AExe: string): string;
 begin
   Result := ChangeFileExt(AExe, '.build.txt');
@@ -219,14 +222,9 @@ function GitStatus(const ARoot: string; AChanges: TStrings): Boolean;
 const
   WaitMs = 15000;
 var
-  GitExe, CmdLine, Output, Chunk: string;
-  Security: TSecurityAttributes;
-  ReadPipe, WritePipe: THandle;
-  StartInfo: TStartupInfo;
-  ProcInfo: TProcessInformation;
-  Buf: array[0..4095] of Char;
-  BytesRead, Avail, ExitCode: DWORD;
-  StartTick: DWORD;
+  GitExe, Output: string;
+  Proc: TProcRun;
+  StartTick: Cardinal;
   Finished: Boolean;
 {$ENDIF}
 begin
@@ -236,70 +234,35 @@ begin
   GitExe := GitFindExe;
   if GitExe = '' then
     Exit;
-  Security.nLength := SizeOf(Security);
-  Security.lpSecurityDescriptor := nil;
-  Security.bInheritHandle := True;
-  if not CreatePipe(ReadPipe, WritePipe, @Security, 0) then
-    Exit;
+  Proc := TProcRun.Create;
   try
-    FillChar(StartInfo, SizeOf(StartInfo), 0);
-    StartInfo.cb := SizeOf(StartInfo);
-    StartInfo.dwFlags := STARTF_USESTDHANDLES or STARTF_USESHOWWINDOW;
-    StartInfo.wShowWindow := SW_HIDE;
-    StartInfo.hStdOutput := WritePipe;
-    StartInfo.hStdError := WritePipe;
-    StartInfo.hStdInput := GetStdHandle(STD_INPUT_HANDLE);
-    CmdLine := '"' + GitExe + '" -C "' + ExcludeTrailingPathDelimiter(ARoot) +
-               '" status --porcelain';
-    if not CreateProcess(nil, PChar(CmdLine), nil, nil, True,
-                         CREATE_NO_WINDOW, nil, PChar(ARoot), StartInfo,
-                         ProcInfo) then
+    Proc.CommandLine := '"' + GitExe + '" -C "' +
+      ExcludeTrailingPathDelimiter(ARoot) + '" status --porcelain';
+    Proc.Dir := ARoot;
+    Proc.Window := pwHidden;
+    Proc.Console := pcNoWindow;
+    Proc.CaptureOutput := True;
+    if not Proc.Start then
       Exit;
-    CloseHandle(WritePipe);
-    WritePipe := 0;
     Output := '';
     StartTick := GetTickCount;
     Finished := False;
-    try
-      // Читаем, пока git не закончит (и не дольше WaitMs): иначе он
-      // встанет на заполненном канале
-      repeat
-        Avail := 0;
-        if PeekNamedPipe(ReadPipe, nil, 0, nil, @Avail, nil) and (Avail > 0) then
-        begin
-          if ReadFile(ReadPipe, Buf, SizeOf(Buf), BytesRead, nil) and
-             (BytesRead > 0) then
-          begin
-            SetString(Chunk, Buf, BytesRead);
-            Output := Output + Chunk;
-          end;
-        end
-        else if WaitForSingleObject(ProcInfo.hProcess, 50) = WAIT_OBJECT_0 then
-          Finished := True;
-      until Finished or (GetTickCount - StartTick > WaitMs);
-      // Остаток после конца процесса
-      while PeekNamedPipe(ReadPipe, nil, 0, nil, @Avail, nil) and (Avail > 0) and
-            ReadFile(ReadPipe, Buf, SizeOf(Buf), BytesRead, nil) and
-            (BytesRead > 0) do
-      begin
-        SetString(Chunk, Buf, BytesRead);
-        Output := Output + Chunk;
-      end;
-      if not Finished then
-        TerminateProcess(ProcInfo.hProcess, 1);
-      GetExitCodeProcess(ProcInfo.hProcess, ExitCode);
-      Result := Finished and (ExitCode = 0);
-    finally
-      CloseHandle(ProcInfo.hProcess);
-      CloseHandle(ProcInfo.hThread);
-    end;
-    if Result then
-      AChanges.Text := Output;
+    // Читаем, пока git не закончит (и не дольше WaitMs): иначе он
+    // встанет на заполненном канале
+    repeat
+      if Proc.Read(Output) <= 0 then
+        Finished := Proc.WaitFor(50);
+    until Finished or (GetTickCount - StartTick > WaitMs);
+    // Остаток после конца процесса
+    Proc.Read(Output);
+    if not Finished then
+      Proc.Terminate(1);
+    Result := Finished and (Proc.ExitCode = 0);
   finally
-    CloseHandle(ReadPipe);
-    if WritePipe <> 0 then
-      CloseHandle(WritePipe);
+    Proc.Free;
   end;
+  if Result then
+    AChanges.Text := Output;
   {$ENDIF}
 end;
 

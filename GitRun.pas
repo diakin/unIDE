@@ -111,56 +111,16 @@ function GitToUtf8(const AText: WideString): string;
 
 implementation
 
+uses
+  ProcRun;
+
 const
   GitPipeSize = 1048576;   // буфер трубы вывода git (CreatePipe)
-  GitCreateNoWindow = $08000000;
-  GitCreateUnicodeEnv = $00000400;
-  GitStartfUseStdHandles = $00000100;
-  GitStartfUseShowWindow = $00000001;
 
-type
-  TGitStartupInfoW = record
-    cb: DWORD;
-    lpReserved, lpDesktop, lpTitle: PWideChar;
-    dwX, dwY, dwXSize, dwYSize, dwXCountChars, dwYCountChars,
-    dwFillAttribute, dwFlags: DWORD;
-    wShowWindow, cbReserved2: Word;
-    lpReserved2: Pointer;
-    hStdInput, hStdOutput, hStdError: THandle;
-  end;
-  TGitProcessInfo = record
-    hProcess, hThread: THandle;
-    dwProcessId, dwThreadId: DWORD;
-  end;
-  TGitSecurity = record
-    nLength: DWORD;
-    lpSecurityDescriptor: Pointer;
-    bInheritHandle: BOOL;
-  end;
-
-function GitCreateProcessW(AAppName, ACmdLine: PWideChar;
-  AProcAttr, AThreadAttr: Pointer; AInherit: BOOL; AFlags: DWORD;
-  AEnv: Pointer; ACurDir: PWideChar; var AStartup: TGitStartupInfoW;
-  var AProcInfo: TGitProcessInfo): BOOL; stdcall;
-  external 'kernel32.dll' name 'CreateProcessW';
-function GitCreatePipe(var ARead, AWrite: THandle; AAttr: Pointer;
-  ASize: DWORD): BOOL; stdcall; external 'kernel32.dll' name 'CreatePipe';
-function GitPeekNamedPipe(APipe: THandle; ABuffer: Pointer; ASize: DWORD;
-  ARead, AAvail, ALeft: PDWORD): BOOL; stdcall;
-  external 'kernel32.dll' name 'PeekNamedPipe';
-function GitReadFile(AFile: THandle; var ABuffer; ACount: DWORD;
-  var ARead: DWORD; AOverlapped: Pointer): BOOL; stdcall;
-  external 'kernel32.dll' name 'ReadFile';
-function GitGetExitCode(AProcess: THandle; var ACode: DWORD): BOOL; stdcall;
-  external 'kernel32.dll' name 'GetExitCodeProcess';
-function GitTerminateProcess(AProcess: THandle; ACode: UINT): BOOL; stdcall;
-  external 'kernel32.dll' name 'TerminateProcess';
 function GitGetEnvStrings: PWideChar; stdcall;
   external 'kernel32.dll' name 'GetEnvironmentStringsW';
 function GitFreeEnvStrings(AEnv: PWideChar): BOOL; stdcall;
   external 'kernel32.dll' name 'FreeEnvironmentStringsW';
-function GitSetHandleInfo(AHandle: THandle; AMask, AFlags: DWORD): BOOL;
-  stdcall; external 'kernel32.dll' name 'SetHandleInformation';
 function GitMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
   AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
   external 'kernel32.dll' name 'MultiByteToWideChar';
@@ -272,16 +232,8 @@ function GitExec(const AGitExe, AArgs, AWorkDir: WideString;
   AOnLine: TGitLineEvent; AOnIdle: TGitIdleEvent; var AOutput: WideString;
   var AExitCode: Integer; const AInput: string = ''): string;
 var
-  Security: TGitSecurity;
-  Startup: TGitStartupInfoW;
-  ProcInfo: TGitProcessInfo;
-  ReadPipe, WritePipe: THandle;
-  InputRead, InputWrite: THandle;
-  InputWritten: DWORD;
-  CmdLine, EnvBlock: WideString;
-  Buffer: array[0..65535] of AnsiChar;
+  Proc: TProcRun;
   AllRaw, LineBuf, Piece: string;
-  Avail, ReadCount, ExitCode: DWORD;
   Finished, Cancelled, GotData: Boolean;
   IdleTick: DWORD;
 
@@ -309,24 +261,16 @@ var
 
   procedure ReadAvailable;
   begin
-    while GitPeekNamedPipe(ReadPipe, nil, 0, nil, @Avail, nil) and
-          (Avail > 0) do
+    Piece := '';
+    if Proc.Read(Piece) <= 0 then
+      Exit;
+    AllRaw := AllRaw + Piece;
+    GotData := True;
+    // Построчно - только если строки кому-то нужны (AOnLine)
+    if Assigned(AOnLine) then
     begin
-      ReadCount := 0;
-      if Avail > SizeOf(Buffer) then
-        Avail := SizeOf(Buffer);
-      if not GitReadFile(ReadPipe, Buffer, Avail, ReadCount, nil) or
-         (ReadCount = 0) then
-        Break;
-      SetString(Piece, PAnsiChar(@Buffer[0]), ReadCount);
-      AllRaw := AllRaw + Piece;
-      GotData := True;
-      // Построчно - только если строки кому-то нужны (AOnLine)
-      if Assigned(AOnLine) then
-      begin
-        LineBuf := LineBuf + Piece;
-        FlushLines(False);
-      end;
+      LineBuf := LineBuf + Piece;
+      FlushLines(False);
     end;
   end;
 
@@ -334,75 +278,32 @@ begin
   Result := '';
   AOutput := '';
   AExitCode := -1;
-  FillChar(Security, SizeOf(Security), 0);
-  Security.nLength := SizeOf(Security);
-  Security.bInheritHandle := True;
-  // Буфер трубы - GitPipeSize: заполнив трубу, git ждёт, пока цикл ниже
-  // её прочитает; с маленьким буфером по умолчанию большой вывод (git diff
-  // большого файла) шёл кусками между засыпаниями цикла
-  if not GitCreatePipe(ReadPipe, WritePipe, @Security, GitPipeSize) then
-  begin
-    Result := 'труба не создана: ' + SysErrorMessage(GetLastError);
-    Exit;
-  end;
-  // Свой конец трубы git не наследует (HANDLE_FLAG_INHERIT = 1)
-  GitSetHandleInfo(ReadPipe, 1, 0);
-  // Вход git: своя труба; текст короткий - пишется целиком сразу после
-  // запуска (буфер трубы его вмещает), затем труба закрывается (конец
-  // ввода)
-  InputRead := 0;
-  InputWrite := 0;
-  if AInput <> '' then
-  begin
-    if not GitCreatePipe(InputRead, InputWrite, @Security, 0) then
+  Proc := TProcRun.Create;
+  try
+    Proc.CommandLineW := GitQuote(AGitExe) + ' ' + GitBaseArgs + AArgs;
+    Proc.DirW := AWorkDir;
+    Proc.EnvBlockW := GitEnvBlock;
+    Proc.Window := pwHidden;
+    Proc.Console := pcNoWindow;
+    Proc.CaptureOutput := True;
+    // Буфер трубы - GitPipeSize: заполнив трубу, git ждёт, пока цикл ниже
+    // её прочитает; с маленьким буфером по умолчанию большой вывод (git diff
+    // большого файла) шёл кусками между засыпаниями цикла
+    Proc.PipeSize := GitPipeSize;
+    // Вход git: текст короткий - пишется целиком сразу после запуска (буфер
+    // трубы его вмещает), затем труба закрывается (конец ввода)
+    Proc.InputText := AInput;
+    if not Proc.Start then
     begin
-      Result := 'труба входа не создана: ' + SysErrorMessage(GetLastError);
-      CloseHandle(ReadPipe);
-      CloseHandle(WritePipe);
+      Result := 'git ' + Proc.ErrorText;
       Exit;
     end;
-    GitSetHandleInfo(InputWrite, 1, 0);
-  end;
-  CmdLine := GitQuote(AGitExe) + ' ' + GitBaseArgs + AArgs;
-  EnvBlock := GitEnvBlock;
-  FillChar(Startup, SizeOf(Startup), 0);
-  Startup.cb := SizeOf(Startup);
-  Startup.dwFlags := GitStartfUseStdHandles or GitStartfUseShowWindow;
-  Startup.wShowWindow := SW_HIDE;
-  Startup.hStdInput := InputRead;
-  Startup.hStdOutput := WritePipe;
-  Startup.hStdError := WritePipe;
-  FillChar(ProcInfo, SizeOf(ProcInfo), 0);
-  if not GitCreateProcessW(nil, PWideChar(CmdLine), nil, nil, True,
-     GitCreateNoWindow or GitCreateUnicodeEnv, PWideChar(EnvBlock),
-     PWideChar(AWorkDir), Startup, ProcInfo) then
-  begin
-    Result := 'git не запустить: ' + SysErrorMessage(GetLastError);
-    CloseHandle(ReadPipe);
-    CloseHandle(WritePipe);
-    if InputRead <> 0 then
-    begin
-      CloseHandle(InputRead);
-      CloseHandle(InputWrite);
-    end;
-    Exit;
-  end;
-  CloseHandle(WritePipe);
-  CloseHandle(ProcInfo.hThread);
-  if InputRead <> 0 then
-  begin
-    CloseHandle(InputRead);
-    InputWritten := 0;
-    WriteFile(InputWrite, PChar(AInput)^, Length(AInput), InputWritten, nil);
-    CloseHandle(InputWrite);
-  end;
-  AllRaw := '';
-  LineBuf := '';
-  Cancelled := False;
-  try
+    AllRaw := '';
+    LineBuf := '';
+    Cancelled := False;
     IdleTick := GetTickCount;
     repeat
-      Finished := WaitForSingleObject(ProcInfo.hProcess, 0) = WAIT_OBJECT_0;
+      Finished := not Proc.Running;
       GotData := False;
       ReadAvailable;
       if Finished then
@@ -413,8 +314,8 @@ begin
         IdleTick := GetTickCount;
         if Assigned(AOnIdle) and not AOnIdle then
         begin
-          GitTerminateProcess(ProcInfo.hProcess, 1);
-          WaitForSingleObject(ProcInfo.hProcess, 3000);
+          Proc.Terminate(1);
+          Proc.WaitFor(3000);
           Cancelled := True;
           Break;
         end;
@@ -427,12 +328,10 @@ begin
     // Остаток после выхода процесса
     ReadAvailable;
     FlushLines(True);
-    ExitCode := 0;
-    GitGetExitCode(ProcInfo.hProcess, ExitCode);
-    AExitCode := Integer(ExitCode);
+    Proc.WaitFor(3000);
+    AExitCode := Proc.ExitCode;
   finally
-    CloseHandle(ProcInfo.hProcess);
-    CloseHandle(ReadPipe);
+    Proc.Free;
   end;
   AOutput := GitFromUtf8(AllRaw);
   if Cancelled then

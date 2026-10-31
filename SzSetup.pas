@@ -112,7 +112,6 @@ type
     FDownloadDir: WideString;
     FPlan: TSzPlan;
     FStage: TSzStage;
-    FProcess: THandle;
     FSession: Pointer;
     FLock: TRTLCriticalSection;
     FCancelled: Boolean;
@@ -200,6 +199,9 @@ function SzFileSha256(const AFileName: WideString): string;
 
 implementation
 
+uses
+  ProcRun;
+
 // ---------------------------------------------------------------------------
 //  Версия 7-Zip: 26.04 (2026-10-05). Источники - официальные: релизы
 //  github.com/ip7z/7zip (на них ведёт www.7-zip.org/download.html) и
@@ -258,11 +260,7 @@ const
   SzAttrDirectory = $10;
   SzMoveReplace = 1;          // MOVEFILE_REPLACE_EXISTING
   SzMoveCopyAllowed = 2;      // MOVEFILE_COPY_ALLOWED
-  SzStartfUseShowWindow = 1;
-  SzStartfUseStdHandles = $100;
-  SzCreateNoWindow = $08000000;
   SzCsidlLocalAppData = $1C;
-  SzWaitTimeout = $102;
 
 type
   TSzOsVersionW = record
@@ -286,29 +284,6 @@ type
     dwReserved0, dwReserved1: DWORD;
     cFileName: array[0..MAX_PATH - 1] of WideChar;
     cAlternateFileName: array[0..13] of WideChar;
-  end;
-
-  TSzStartupInfo = record
-    cb: DWORD;
-    lpReserved, lpDesktop, lpTitle: PWideChar;
-    dwX, dwY, dwXSize, dwYSize: DWORD;
-    dwXCountChars, dwYCountChars, dwFillAttribute: DWORD;
-    dwFlags: DWORD;
-    wShowWindow: Word;
-    cbReserved2: Word;
-    lpReserved2: Pointer;
-    hStdInput, hStdOutput, hStdError: THandle;
-  end;
-
-  TSzProcessInfo = record
-    hProcess, hThread: THandle;
-    dwProcessId, dwThreadId: DWORD;
-  end;
-
-  TSzSecurityAttributes = record
-    nLength: DWORD;
-    lpSecurityDescriptor: Pointer;
-    bInheritHandle: BOOL;
   end;
 
   // VS_FIXEDFILEINFO
@@ -368,17 +343,6 @@ function SzFindFirstFile(APath: PWideChar;
 function SzFindNextFile(AHandle: THandle;
   var AData: TSzFindData): BOOL; stdcall;
   external 'kernel32.dll' name 'FindNextFileW';
-function SzCreateProcess(AAppName, ACommandLine: PWideChar;
-  AProcessAttr, AThreadAttr: Pointer; AInheritHandles: BOOL;
-  ACreationFlags: DWORD; AEnvironment: Pointer; ACurrentDir: PWideChar;
-  var AStartupInfo: TSzStartupInfo;
-  var AProcessInfo: TSzProcessInfo): BOOL; stdcall;
-  external 'kernel32.dll' name 'CreateProcessW';
-function SzGetExitCodeProcess(AProcess: THandle;
-  var AExitCode: DWORD): BOOL; stdcall;
-  external 'kernel32.dll' name 'GetExitCodeProcess';
-function SzTerminateProcess(AProcess: THandle; AExitCode: UINT): BOOL;
-  stdcall; external 'kernel32.dll' name 'TerminateProcess';
 function SzShGetFolderPath(AOwner: HWND; AFolder: Integer; AToken: THandle;
   AFlags: DWORD; APath: PWideChar): HRESULT; stdcall;
   external 'shell32.dll' name 'SHGetFolderPathW';
@@ -990,7 +954,6 @@ begin
   FTargetDir := SzWithSlash(ATargetDir);
   FPlan := APlan;
   FStage := ssDownload;
-  FProcess := 0;
   // Файлы по одному - загрузка внутри папки; папка целиком - рядом с ней
   if FPlan.MoveNames <> '' then
     FDownloadDir := FTargetDir + '~download\'
@@ -1233,11 +1196,10 @@ end;
 function TSzInstall.Extract: string;
 var
   DownloadDir, Command, LogFile, ListFile, Extractor: WideString;
-  Security: TSzSecurityAttributes;
-  Startup: TSzStartupInfo;
-  ProcInfo: TSzProcessInfo;
+  Proc: TProcRun;
   LogHandle, ListHandle: THandle;
-  ExitCode, ReadCount, Written: DWORD;
+  ExitCode: Integer;
+  ReadCount, Written: DWORD;
   LogText, ListText: string;
   LogWide, Line: WideString;
   LineStart, LineEnd: Integer;
@@ -1262,53 +1224,34 @@ begin
     Extractor := FPlan.Extractor
   else
     Extractor := FFiles[0].FileName;
-  FillChar(Security, SizeOf(Security), 0);
-  Security.nLength := SizeOf(Security);
-  Security.bInheritHandle := True;
-  LogHandle := SzCreateFile(PWideChar(LogFile), SzGenericWrite,
-    SzFileShareRead, @Security, SzCreateAlways, SzFileAttrNormal, 0);
-  if LogHandle = INVALID_HANDLE_VALUE then
-  begin
-    Result := 'файл журнала не создать: ' + SzErrorText(GetLastError);
-    Exit;
-  end;
   Command := WideString('"') + Extractor +
     WideString('" x -y -sccUTF-8 -scsUTF-8 -bso0 -bsp0 "-o') + DownloadDir +
     WideString('x" "') + FFiles[FPlan.Archive].FileName + WideString('" "@') +
     ListFile + WideString('"');
-  FillChar(Startup, SizeOf(Startup), 0);
-  Startup.cb := SizeOf(Startup);
-  Startup.dwFlags := SzStartfUseShowWindow or SzStartfUseStdHandles;
-  Startup.wShowWindow := SW_HIDE;
-  Startup.hStdInput := 0;
-  Startup.hStdOutput := LogHandle;
-  Startup.hStdError := LogHandle;
-  FillChar(ProcInfo, SizeOf(ProcInfo), 0);
-  if not SzCreateProcess(nil, PWideChar(Command), nil, nil, True,
-     SzCreateNoWindow, nil, PWideChar(DownloadDir), Startup, ProcInfo) then
-  begin
-    Result := ExtractFileName(string(Extractor)) + ' не запустить: ' +
-      SzErrorText(GetLastError);
-    CloseHandle(LogHandle);
-    Exit;
-  end;
-  CloseHandle(ProcInfo.hThread);
-  FProcess := ProcInfo.hProcess;
+  ExitCode := 0;
+  Proc := TProcRun.Create;
   try
-    while WaitForSingleObject(ProcInfo.hProcess, 100) = SzWaitTimeout do
+    Proc.CommandLineW := Command;
+    Proc.DirW := DownloadDir;
+    Proc.OutputFileW := LogFile;
+    Proc.Window := pwHidden;
+    Proc.Console := pcNoWindow;
+    if not Proc.Start then
+    begin
+      Result := ExtractFileName(string(Extractor)) + ' - ' + Proc.ErrorText;
+      Exit;
+    end;
+    while not Proc.WaitFor(100) do
       if FCancelled then
       begin
-        SzTerminateProcess(ProcInfo.hProcess, 1);
-        WaitForSingleObject(ProcInfo.hProcess, 5000);
+        Proc.Terminate(1);
+        Proc.WaitFor(5000);
         Result := 'отменено';
         Break;
       end;
-    ExitCode := 0;
-    SzGetExitCodeProcess(ProcInfo.hProcess, ExitCode);
+    ExitCode := Proc.ExitCode;
   finally
-    FProcess := 0;
-    CloseHandle(ProcInfo.hProcess);
-    CloseHandle(LogHandle);
+    Proc.Free;
   end;
   if (Result <> '') or (ExitCode <= 1) then
     Exit;

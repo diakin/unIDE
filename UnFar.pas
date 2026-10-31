@@ -153,7 +153,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, ExtCtrls,
-  IniBuf, SzSetup, FarFind, FarVolumes, FarFtp, FarProgress,
+  IniBuf, SzSetup, ProcRun, FarFind, FarVolumes, FarFtp, FarProgress,
   ClrScheme, SchemeLine, FarEdit, FarViewer;
 
 const
@@ -474,9 +474,8 @@ type
     FOutOpen: Boolean;
     FOutScroll: Integer;
     FPanelsHidden: Boolean;       // Ctrl+O: панели спрятаны, виден вывод
-    // Выполняемая команда: процесс cmd.exe и его вывод (труба)
-    FProcHandle: THandle;
-    FProcPipe: THandle;
+    // Выполняемая команда: процесс cmd.exe (7z.exe) с выводом в канал
+    FCmdProc: TProcRun;
     FProcTimer: TTimer;
     // Загрузка 7-Zip (нет tools\7zip\7z.exe)
     FSzThread: TSzInstall;
@@ -1151,10 +1150,6 @@ const
 
   // Командная строка
   FarCpOem = 1;                    // CP_OEMCP: вывод консольных программ
-  FarHandleInherit = 1;            // HANDLE_FLAG_INHERIT
-  FarStartfUseShowWindow = 1;
-  FarStartfUseStdHandles = $100;
-  FarCreateNoWindow = $08000000;
   FarOutMaxLines = 2000;           // столько строк вывода держим
   FarCmdHistoryMax = 50;
   FarCmdHistorySection = 'FarCmdHistory';
@@ -1219,31 +1214,6 @@ type
   end;
 
   TFarInt64Ptr = ^Int64;
-
-  TFarSecurityAttributes = record
-    nLength: DWORD;
-    lpSecurityDescriptor: Pointer;
-    bInheritHandle: BOOL;
-  end;
-
-  TFarStartupInfo = record
-    cb: DWORD;
-    lpReserved: PWideChar;
-    lpDesktop: PWideChar;
-    lpTitle: PWideChar;
-    dwX, dwY, dwXSize, dwYSize: DWORD;
-    dwXCountChars, dwYCountChars, dwFillAttribute: DWORD;
-    dwFlags: DWORD;
-    wShowWindow: Word;
-    cbReserved2: Word;
-    lpReserved2: Pointer;
-    hStdInput, hStdOutput, hStdError: THandle;
-  end;
-
-  TFarProcessInfo = record
-    hProcess, hThread: THandle;
-    dwProcessId, dwThreadId: DWORD;
-  end;
 
   // SHFILEOPSTRUCTW: в 32-битной Windows без выравнивания (packed,
   // pshpack1 в shellapi.h), в 64-битной - обычное выравнивание (pshpack8):
@@ -1325,33 +1295,12 @@ function FarSetErrorMode(AMode: UINT): UINT; stdcall;
 function FarGetShortPath(ALongPath, AShortPath: PWideChar;
   ABufferLen: DWORD): DWORD; stdcall;
   external 'kernel32.dll' name 'GetShortPathNameW';
-// Командная строка: процесс cmd.exe с выводом в трубу
-function FarCreatePipe(var AReadPipe, AWritePipe: THandle;
-  AAttributes: Pointer; ASize: DWORD): BOOL; stdcall;
-  external 'kernel32.dll' name 'CreatePipe';
-function FarSetHandleInfo(AHandle: THandle; AMask, AFlags: DWORD): BOOL;
-  stdcall; external 'kernel32.dll' name 'SetHandleInformation';
-function FarPeekPipe(APipe: THandle; ABuffer: Pointer; ABufferSize: DWORD;
-  ABytesRead, ATotalAvail, ABytesLeft: Pointer): BOOL; stdcall;
-  external 'kernel32.dll' name 'PeekNamedPipe';
-function FarReadFile(AFile: THandle; ABuffer: Pointer; AToRead: DWORD;
-  ABytesRead: Pointer; AOverlapped: Pointer): BOOL; stdcall;
-  external 'kernel32.dll' name 'ReadFile';
-function FarGetExitCode(AProcess: THandle; var AExitCode: DWORD): BOOL;
-  stdcall; external 'kernel32.dll' name 'GetExitCodeProcess';
-function FarTerminate(AProcess: THandle; AExitCode: UINT): BOOL; stdcall;
-  external 'kernel32.dll' name 'TerminateProcess';
+// Командная строка
 function FarGetEnvVar(AName, ABuffer: PWideChar; ASize: DWORD): DWORD;
   stdcall; external 'kernel32.dll' name 'GetEnvironmentVariableW';
 function FarGetFullPath(AFileName: PWideChar; ABufferLen: DWORD;
   ABuffer: PWideChar; AFilePart: Pointer): DWORD; stdcall;
   external 'kernel32.dll' name 'GetFullPathNameW';
-function FarCreateProcess(AAppName, ACommandLine: PWideChar;
-  AProcessAttr, AThreadAttr: Pointer; AInherit: BOOL; AFlags: DWORD;
-  AEnvironment: Pointer; ACurrentDir: PWideChar;
-  var AStartupInfo: TFarStartupInfo;
-  var AProcessInfo: TFarProcessInfo): BOOL; stdcall;
-  external 'kernel32.dll' name 'CreateProcessW';
 function FarGetTempPath(ABufferLen: DWORD; ABuffer: PWideChar): DWORD;
   stdcall; external 'kernel32.dll' name 'GetTempPathW';
 function FarShellExecute(AWnd: HWND; AOperation, AFile, AParameters,
@@ -3331,7 +3280,7 @@ begin
   end;
   FreeAndNil(FFtpProgress);
   FProcTimer.Enabled := False;
-  if FProcHandle <> 0 then
+  if FCmdProc <> nil then
     ProcFinish(True);
   FArcProgress.Free;
   FArcProgress := nil;
@@ -4980,7 +4929,7 @@ begin
   Ext := WideLowerCase(FarNameExt(Name));
   if (Ext = 'exe') or (Ext = 'com') or (Ext = 'bat') or (Ext = 'cmd') then
   begin
-    if FProcHandle <> 0 then
+    if FCmdProc <> nil then
     begin
       Status(FarProduct + ': прежняя команда ещё выполняется (Ctrl+Break - ' +
         'прервать; Shift+Enter - запустить в своём окне)');
@@ -10590,7 +10539,7 @@ begin
             Status(FarProduct + ': курсор на "..", имени для буфера нет');
         end;
       VK_CANCEL:                      // Ctrl+Break - прервать команду
-        if FProcHandle <> 0 then
+        if FCmdProc <> nil then
         begin
           ProcFinish(True);
           OutLine('^C');
@@ -10680,7 +10629,7 @@ begin
   Command := FarTrimW(FCmdText);
   if Command = '' then
     Exit;
-  if FProcHandle <> 0 then
+  if FCmdProc <> nil then
   begin
     Status(FarProduct + ': прежняя команда ещё выполняется (Ctrl+Break - ' +
       'прервать)');
@@ -10812,69 +10761,28 @@ end;
 function TFarView.StartProcess(const ACommandLine, AWorkDir: WideString;
   ACapture: Boolean): Boolean;
 var
-  Security: TFarSecurityAttributes;
-  OutRead, OutWrite, InRead, InWrite: THandle;
-  Startup: TFarStartupInfo;
-  ProcInfo: TFarProcessInfo;
-  CommandLine, WorkDir: WideString;
-  PipeSize: DWORD;
+  Proc: TProcRun;
 begin
   Result := False;
-  Security.nLength := SizeOf(Security);
-  Security.lpSecurityDescriptor := nil;
-  Security.bInheritHandle := True;
-  // Список большого архива - мегабайты: труба побольше
+  Proc := TProcRun.Create;
+  Proc.CommandLineW := ACommandLine;
+  Proc.DirW := AWorkDir;
+  Proc.Window := pwHidden;
+  Proc.Console := pcNoWindow;
+  Proc.CaptureOutput := True;
+  // Вход - канал, закрытый сразу после запуска: конец файла
+  Proc.PipeInput := True;
+  // Список большого архива - мегабайты: канал побольше
   if ACapture then
-    PipeSize := 1024 * 1024
-  else
-    PipeSize := 0;
-  if not FarCreatePipe(OutRead, OutWrite, @Security, PipeSize) then
+    Proc.PipeSize := 1024 * 1024;
+  if not Proc.Start then
   begin
-    OutLine(FarProduct + ': трубу вывода не создать: ' +
-      SysErrorMessage(GetLastError));
+    OutLine(FarProduct + ': ' + Proc.ErrorText);
+    Proc.Free;
     Exit;
   end;
-  if not FarCreatePipe(InRead, InWrite, @Security, 0) then
-  begin
-    CloseHandle(OutRead);
-    CloseHandle(OutWrite);
-    OutLine(FarProduct + ': трубу ввода не создать: ' +
-      SysErrorMessage(GetLastError));
-    Exit;
-  end;
-  // Наши концы труб процессу не нужны
-  FarSetHandleInfo(OutRead, FarHandleInherit, 0);
-  FarSetHandleInfo(InWrite, FarHandleInherit, 0);
-
-  CommandLine := ACommandLine;
-  WorkDir := AWorkDir;
-  FillChar(Startup, SizeOf(Startup), 0);
-  Startup.cb := SizeOf(Startup);
-  Startup.dwFlags := FarStartfUseStdHandles or FarStartfUseShowWindow;
-  Startup.wShowWindow := SW_HIDE;
-  Startup.hStdInput := InRead;
-  Startup.hStdOutput := OutWrite;
-  Startup.hStdError := OutWrite;
-  FillChar(ProcInfo, SizeOf(ProcInfo), 0);
-  // Строка команды CreateProcessW может менять - у WideString она и так
-  // своя (не общая с другими строками)
-  if not FarCreateProcess(nil, PWideChar(CommandLine), nil, nil, True,
-       FarCreateNoWindow, nil, PWideChar(WorkDir), Startup, ProcInfo) then
-  begin
-    OutLine(FarProduct + ': не запустить: ' + SysErrorMessage(GetLastError));
-    CloseHandle(OutRead);
-    CloseHandle(OutWrite);
-    CloseHandle(InRead);
-    CloseHandle(InWrite);
-    Exit;
-  end;
-  // Концы процесса закрываем у себя: иначе труба не кончится вместе с ним
-  CloseHandle(OutWrite);
-  CloseHandle(InRead);
-  CloseHandle(InWrite);
-  CloseHandle(ProcInfo.hThread);
-  FProcHandle := ProcInfo.hProcess;
-  FProcPipe := OutRead;
+  Proc.CloseInput;
+  FCmdProc := Proc;
   FProcCapture := ACapture;
   FProcRaw := '';
   FProcTimer.Enabled := True;
@@ -10885,56 +10793,48 @@ end;
 // закончился и труба пуста - закрыть
 procedure TFarView.ProcTick(Sender: TObject);
 var
-  Available, BytesRead: DWORD;
-  Buffer: array[0..8191] of AnsiChar;
-  WideBuffer: array[0..8192] of WideChar;
-  WideLen, Rounds, MaxRounds, OldLen: Integer;
+  Chunk: string;
+  WideBuffer: array of WideChar;
+  ReadCount, WideLen, MaxBytes: Integer;
   Text: WideString;
-  Changed: Boolean;
+  Changed, Closed: Boolean;
 begin
-  if FProcHandle = 0 then
+  if FCmdProc = nil then
   begin
     FProcTimer.Enabled := False;
     Exit;
   end;
   Changed := False;
-  Rounds := 0;
-  // В буфер (7z.exe) - читаем всё, что есть: список архива бывает большим
+  // В буфер (7z.exe) - читаем всё, что есть: список архива бывает большим.
+  // В окно вывода - не больше 128 КБ за раз: окно не замирает
   if FProcCapture then
-    MaxRounds := 4096
+    MaxBytes := 32 * 1024 * 1024
   else
-    MaxRounds := 16;
-  while Rounds < MaxRounds do
+    MaxBytes := 128 * 1024;
+  Chunk := '';
+  ReadCount := FCmdProc.Read(Chunk, MaxBytes);
+  // -1 - программа закрыла свой конец канала и всё прочитано
+  Closed := ReadCount < 0;
+  if ReadCount > 0 then
   begin
-    Inc(Rounds);
-    Available := 0;
-    if not FarPeekPipe(FProcPipe, nil, 0, nil, @Available, nil) then
-      Break;   // процесс закрыл свой конец - конец вывода
-    if Available = 0 then
-      Break;
-    if Available > SizeOf(Buffer) then
-      Available := SizeOf(Buffer);
-    BytesRead := 0;
-    if not FarReadFile(FProcPipe, @Buffer[0], Available, @BytesRead, nil) or
-       (BytesRead = 0) then
-      Break;
     if FProcCapture then
     begin
-      OldLen := Length(FProcRaw);
-      SetLength(FProcRaw, OldLen + Integer(BytesRead));
-      Move(Buffer[0], FProcRaw[OldLen + 1], BytesRead);
+      FProcRaw := FProcRaw + Chunk;
       if FArcAction in [aaAdd, aaExtract, aaOpenFile] then
         ArcAddProgress;
-      Continue;
-    end;
-    WideLen := FarMultiToWide(FarCpOem, 0, @Buffer[0], BytesRead,
-      @WideBuffer[0], Length(WideBuffer) - 1);
-    if WideLen > 0 then
+    end
+    else
     begin
-      WideBuffer[WideLen] := #0;
-      Text := PWideChar(@WideBuffer[0]);
-      OutAppend(Text);
-      Changed := True;
+      SetLength(WideBuffer, ReadCount + 1);
+      WideLen := FarMultiToWide(FarCpOem, 0, PAnsiChar(Chunk), ReadCount,
+        @WideBuffer[0], ReadCount);
+      if WideLen > 0 then
+      begin
+        SetLength(Text, WideLen);
+        Move(WideBuffer[0], Text[1], WideLen * SizeOf(WideChar));
+        OutAppend(Text);
+        Changed := True;
+      end;
     end;
   end;
   // «Отмена» в окне хода распаковки / упаковки - прервать 7z.exe
@@ -10945,15 +10845,12 @@ begin
     Invalidate;
     Exit;
   end;
-  if WaitForSingleObject(FProcHandle, 0) = WAIT_OBJECT_0 then
+  // Программа вышла и канал пуст - конец
+  if (Closed or (ReadCount = 0)) and FCmdProc.WaitFor(0) and
+     (FCmdProc.Available = 0) then
   begin
-    Available := 0;
-    if not FarPeekPipe(FProcPipe, nil, 0, nil, @Available, nil) or
-       (Available = 0) then
-    begin
-      ProcFinish(False);
-      Changed := True;
-    end;
+    ProcFinish(False);
+    Changed := True;
   end;
   if Changed then
     Invalidate;
@@ -10972,21 +10869,19 @@ begin
     FArcProgress.Stop;
   ProcExitCode := 0;
   WasCapture := FProcCapture;
-  if FProcHandle <> 0 then
+  if FCmdProc <> nil then
   begin
     if AKill then
-      FarTerminate(FProcHandle, 1)
-    else if not FarGetExitCode(FProcHandle, ProcExitCode) then
-      ProcExitCode := 0
-    else if (ProcExitCode <> 0) and not WasCapture then
-      Status(FarProduct + ': команда завершилась с кодом ' +
-        IntToStr(ProcExitCode));
-    CloseHandle(FProcHandle);
+      FCmdProc.Terminate(1)
+    else if FCmdProc.WaitFor(0) and (FCmdProc.ExitCode > 0) then
+    begin
+      ProcExitCode := DWORD(FCmdProc.ExitCode);
+      if not WasCapture then
+        Status(FarProduct + ': команда завершилась с кодом ' +
+          IntToStr(ProcExitCode));
+    end;
+    FreeAndNil(FCmdProc);
   end;
-  if FProcPipe <> 0 then
-    CloseHandle(FProcPipe);
-  FProcHandle := 0;
-  FProcPipe := 0;
   FProcCapture := False;
   FOutOpen := False;
   // 7z.exe: что дальше - по работе с архивом
@@ -11350,7 +11245,7 @@ end;
 procedure TFarView.OpenArchive(APanelIndex: Integer; const AFile,
   ATitle: WideString; ANested: Boolean; const APassword: WideString);
 begin
-  if FProcHandle <> 0 then
+  if FCmdProc <> nil then
   begin
     Status(FarProduct + ': выполняется команда - архив откроется после неё');
     Exit;
@@ -12007,7 +11902,7 @@ begin
     Invalidate;
     Exit;
   end;
-  if FProcHandle <> 0 then
+  if FCmdProc <> nil then
   begin
     Status(FarProduct + ': выполняется команда - подождите');
     Exit;
@@ -12065,7 +11960,7 @@ begin
   Target := FarTrimW(ATarget);
   if (Target = '') or (Length(FDlgNames) = 0) or not Panel.IsArchive then
     Exit;
-  if FProcHandle <> 0 then
+  if FCmdProc <> nil then
   begin
     Status(FarProduct + ': выполняется команда - подождите');
     Exit;
@@ -13225,7 +13120,7 @@ begin
     FocusRow(0, 'это имя папки');
     Exit;
   end;
-  if FProcHandle <> 0 then
+  if FCmdProc <> nil then
   begin
     FocusRow(0, 'выполняется команда - подождите');
     Exit;

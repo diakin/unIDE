@@ -188,6 +188,9 @@ function ArdParseGccLine(const AText: string; var AFile: string;
 
 implementation
 
+uses
+  ProcRun;
+
 // ---------------------------------------------------------------------------
 //  Настройки
 // ---------------------------------------------------------------------------
@@ -449,12 +452,9 @@ function ArdRunCli(const ASettings: TArdSettings; const AArgs: string;
                    AOnIdle: TArdIdleEvent;
                    AOnProgress: TArdLineEvent = nil): Integer;
 var
-  SecAttr: TSecurityAttributes;
-  StartInfo: TStartupInfo;
-  ProcInfo: TProcessInformation;
-  ReadPipe, WritePipe: THandle;
-  Buffer: array[0..4095] of Char;
-  BytesRead, BytesAvail, ExitCode: DWORD;
+  Proc: TProcRun;
+  Chunk: string;
+  Got: Integer;
   Pending, LineText, CmdLine, WorkDir, LastProgress: string;
   LocaleBuf: array[0..255] of Char;
   HadLocale, Cancel, Ended, Started: Boolean;
@@ -516,23 +516,13 @@ begin
   if (WorkDir = '') or not DirectoryExists(WorkDir) then
     WorkDir := GetCurrentDir;
 
-  FillChar(SecAttr, SizeOf(SecAttr), 0);
-  SecAttr.nLength := SizeOf(SecAttr);
-  SecAttr.bInheritHandle := True;
-  if not CreatePipe(ReadPipe, WritePipe, @SecAttr, 0) then
-  begin
-    EmitLine('Не удалось создать канал для вывода arduino-cli');
-    Exit;
-  end;
-
+  Proc := TProcRun.Create;
   try
-    FillChar(StartInfo, SizeOf(StartInfo), 0);
-    StartInfo.cb := SizeOf(StartInfo);
-    StartInfo.dwFlags := STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;
-    StartInfo.wShowWindow := SW_HIDE;
-    StartInfo.hStdOutput := WritePipe;
-    StartInfo.hStdError := WritePipe;
-    StartInfo.hStdInput := 0;
+    Proc.CommandLine := CmdLine;
+    Proc.Dir := WorkDir;
+    Proc.Window := pwHidden;
+    Proc.Console := pcNoWindow;
+    Proc.CaptureOutput := True;
 
     // Английская локаль: таблицы разбираются по заголовкам колонок (так же
     // делал RQdebugger: set ARDUINO_LOCALE=en). Переменная - только на время
@@ -541,9 +531,7 @@ begin
                                         SizeOf(LocaleBuf)) > 0;
     Windows.SetEnvironmentVariable('ARDUINO_LOCALE', 'en');
     try
-      Started := CreateProcess(nil, PChar(CmdLine), nil, nil, True,
-                               CREATE_NO_WINDOW, nil, PChar(WorkDir),
-                               StartInfo, ProcInfo);
+      Started := Proc.Start;
     finally
       if HadLocale then
         Windows.SetEnvironmentVariable('ARDUINO_LOCALE', LocaleBuf)
@@ -552,88 +540,72 @@ begin
     end;
     if not Started then
     begin
-      EmitLine('Не удалось запустить: ' + CmdLine);
+      EmitLine('Не удалось запустить: ' + CmdLine + ' (' + Proc.ErrorText + ')');
       Exit;
     end;
-
-    // Свой конец записи закрываем сразу, иначе чтение не увидит конца
-    CloseHandle(WritePipe);
-    WritePipe := 0;
 
     Pending := '';
     LastProgress := '';
     Ended := False;
     Cancel := False;
-    try
-      repeat
-        BytesAvail := 0;
-        if not PeekNamedPipe(ReadPipe, nil, 0, nil, @BytesAvail, nil) then
+    repeat
+      Chunk := '';
+      Got := Proc.Read(Chunk);
+      if Got < 0 then
+        Break;
+      if Got = 0 then
+      begin
+        if Ended then
           Break;
-        if BytesAvail = 0 then
-        begin
-          if Ended then
-            Break;
-          if WaitForSingleObject(ProcInfo.hProcess, 50) = WAIT_OBJECT_0 then
-            Ended := True;
-          if Assigned(AOnIdle) then
-            AOnIdle(Cancel);
-          if Cancel then
-          begin
-            TerminateProcess(ProcInfo.hProcess, 1);
-            Break;
-          end;
-          Continue;
-        end;
-        if BytesAvail > SizeOf(Buffer) then
-          BytesAvail := SizeOf(Buffer);
-        if not ReadFile(ReadPipe, Buffer, BytesAvail, BytesRead, nil) or
-           (BytesRead = 0) then
-          Break;
-        SetString(LineText, Buffer, BytesRead);
-        Pending := Pending + LineText;
-
-        // Целые строки - сразу, хвост ждёт следующего чтения
-        NewLinePos := Pos(#10, Pending);
-        while NewLinePos > 0 do
-        begin
-          LineText := Copy(Pending, 1, NewLinePos - 1);
-          Pending := Copy(Pending, NewLinePos + 1, Length(Pending));
-          EmitLine(LineText);
-          LastProgress := '';
-          NewLinePos := Pos(#10, Pending);
-        end;
-        EmitProgress;
-
+        if Proc.WaitFor(50) then
+          Ended := True;
         if Assigned(AOnIdle) then
           AOnIdle(Cancel);
         if Cancel then
         begin
-          TerminateProcess(ProcInfo.hProcess, 1);
+          Proc.Terminate(1);
           Break;
         end;
-      until False;
-
-      if Pending <> '' then
-        EmitLine(Pending);
-
-      if Cancel then
-        Result := ArdRunCancelled
-      else
-      begin
-        WaitForSingleObject(ProcInfo.hProcess, 2000);
-        if GetExitCodeProcess(ProcInfo.hProcess, ExitCode) then
-          Result := Integer(ExitCode)
-        else
-          Result := 0;
+        Continue;
       end;
-    finally
-      CloseHandle(ProcInfo.hThread);
-      CloseHandle(ProcInfo.hProcess);
+      Pending := Pending + Chunk;
+
+      // Целые строки - сразу, хвост ждёт следующего чтения
+      NewLinePos := Pos(#10, Pending);
+      while NewLinePos > 0 do
+      begin
+        LineText := Copy(Pending, 1, NewLinePos - 1);
+        Pending := Copy(Pending, NewLinePos + 1, Length(Pending));
+        EmitLine(LineText);
+        LastProgress := '';
+        NewLinePos := Pos(#10, Pending);
+      end;
+      EmitProgress;
+
+      if Assigned(AOnIdle) then
+        AOnIdle(Cancel);
+      if Cancel then
+      begin
+        Proc.Terminate(1);
+        Break;
+      end;
+    until False;
+
+    if Pending <> '' then
+      EmitLine(Pending);
+
+    if Cancel then
+      Result := ArdRunCancelled
+    else
+    begin
+      Proc.WaitFor(2000);
+      if Proc.ExitCode >= 0 then
+        Result := Proc.ExitCode
+      else
+        Result := 0;
     end;
   finally
-    if WritePipe <> 0 then
-      CloseHandle(WritePipe);
-    CloseHandle(ReadPipe);
+    Proc.Free;
   end;
 end;
 
