@@ -74829,7 +74829,7 @@ begin
   end;
   ShowGitLog;
   Dlg := TDlgGitTracked.CreateDlg(Self, 'Tracked but Ignored - ' +
-    ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), Files,
+    ExtractFileName(ExcludeTrailingPathDelimiter(Repo)), Repo, Files,
     GitTrackedLoad, GitTrackedKeep, GitTrackedUntrack);
   try
     Dlg.ShowModal;
