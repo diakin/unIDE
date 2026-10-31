@@ -427,6 +427,11 @@ type
     procedure LayoutIndentGroup;
     procedure LayoutGroupActions;
     procedure RefreshUiGrid;
+    // Открыта вкладка IDE colors: щелчок по элементу главного окна выбирает
+    // строку его цвета (Form1.UiPickClick)
+    function UiPickActive: Boolean;
+    // Строку роли AKey в таблице IDE colors - выбрать и показать
+    procedure UiSelectKey(const AKey: string);
     procedure InitCompilersTab;
     procedure LoadToolList(const AType: string);
     procedure SaveToolList(const AType: string);
@@ -3422,6 +3427,32 @@ begin
     SampleFont.Free;
   end;
   UiGrid.Invalidate;
+end;
+
+function TForm2.UiPickActive: Boolean;
+begin
+  Result := Visible and (pcOptions.ActivePage = tsIdeColors);
+end;
+
+procedure TForm2.UiSelectKey(const AKey: string);
+var
+  KeyIdx, NewTop: Integer;
+begin
+  KeyIdx := UiKeys.IndexOf(AKey);
+  if KeyIdx < 0 then
+    Exit;
+  UiGrid.Row := KeyIdx + 1;
+  // Строки не было видно - в середину таблицы
+  if (UiGrid.Row < UiGrid.TopRow) or
+     (UiGrid.Row >= UiGrid.TopRow + UiGrid.VisibleRowCount) then
+  begin
+    NewTop := UiGrid.Row - UiGrid.VisibleRowCount div 2;
+    if NewTop < UiGrid.FixedRows then
+      NewTop := UiGrid.FixedRows;
+    UiGrid.TopRow := NewTop;
+  end;
+  UiGrid.Invalidate;
+  BringToFront;
 end;
 
 // В колонке цвета - квадрат образца и название цвета

@@ -1142,6 +1142,9 @@ type
     // приходит уже другому окну и не должно открыть меню IDE
     FFar: TFarView;
     FFarEatF10Up: Boolean;
+    // Щелчок ушёл в таблицу IDE colors (UiPickClick): отпускание кнопки
+    // тоже не отдаётся элементу
+    FUiPickUp: Boolean;
     // Git (GitRun): панель на месте палитры в режиме проекта ReactOS, её
     // элементы; FGitBusy - идёт команда git с журналом, FGitCancel - Esc;
     // FGitRepoChosen - репозиторий, выбранный вручную (editor.ini [Git]);
@@ -3750,6 +3753,8 @@ type
     procedure MarksLayout(ACanvas: TCanvas; var ABmH, ABmW, ADotD,
                           AWidth: Integer);
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
+    function  UiPickClick(const Msg: TMsg): Boolean;
+    function  UiKeyAt(ACtl: TControl; const AScreenPt: TPoint): string;
     procedure TabsWndProc(var Message: TMessage);
     procedure TabsHostWndProc(var Message: TMessage);
     procedure FitTabsToWidth;
@@ -24599,6 +24604,21 @@ var
   CursorPt: TPoint;
   PanelIdx: Integer;
 begin
+  // Открыта вкладка IDE colors окна настроек: щелчок по элементу главного
+  // окна выбирает строку его цвета, сам элемент щелчка не получает
+  if (Msg.message = WM_LBUTTONUP) and FUiPickUp then
+  begin
+    FUiPickUp := False;
+    Handled := True;
+    Exit;
+  end;
+  if ((Msg.message = WM_LBUTTONDOWN) or (Msg.message = WM_LBUTTONDBLCLK)) and
+     (Form2 <> nil) and Form2.UiPickActive and UiPickClick(Msg) then
+  begin
+    FUiPickUp := True;
+    Handled := True;
+    Exit;
+  end;
   // Отпускание F10 после того, как F10 открыл или закрыл unIDE FAR: иначе
   // Windows откроет полосу меню IDE (в каком бы окне ни был фокус)
   if FFarEatF10Up and (Msg.wParam = VK_F10) and
@@ -65201,6 +65221,151 @@ end;
 // ---------------------------------------------------------------------------
 
 // Строка под координатой Y полосы; -1 - ниже текста
+// ---------------------------------------------------------------------------
+//  Выбор цвета щелчком (IDE Options - IDE colors and Fonts)
+//
+//  Пока вкладка IDE colors открыта, щелчок по элементу главного окна не
+//  идёт элементу, а выбирает в таблице строку его цвета (AppMessage). В
+//  тексте редактора (кроме выделения) и во второй панели цвета задаёт
+//  схема подсветки (вкладка Color Scheme) - там щелчок работает как обычно.
+// ---------------------------------------------------------------------------
+
+function TForm1.UiPickClick(const Msg: TMsg): Boolean;
+var
+  Ctl: TControl;
+  Key: string;
+begin
+  Result := False;
+  if (Msg.hwnd <> Handle) and not IsChild(Handle, Msg.hwnd) then
+    Exit;
+  Ctl := FindDragTarget(Msg.pt, True);
+  if Ctl = nil then
+    Exit;
+  Key := UiKeyAt(Ctl, Msg.pt);
+  if Key = '' then
+    Exit;
+  Form2.UiSelectKey(Key);
+  Result := True;
+end;
+
+// Роль цвета элемента ACtl в точке экрана AScreenPt; '' - цвет не из
+// таблицы IDE colors
+function TForm1.UiKeyAt(ACtl: TControl; const AScreenPt: TPoint): string;
+var
+  Probe: TControl;
+  LocalPt: TPoint;
+  TabIdx, LineIdx, CharIdx, BmIdx: Integer;
+  Sel: TCharRange;
+begin
+  Result := '';
+  // Сначала известные элементы - сам ACtl или его родитель
+  Probe := ACtl;
+  while Probe <> nil do
+  begin
+    LocalPt := Probe.ScreenToClient(AScreenPt);
+    if Probe = FMenuBar then
+    begin
+      Result := 'Menu.BG';
+      Exit;
+    end;
+    if Probe = FTabs then
+    begin
+      TabIdx := FTabs.IndexOfTabAt(LocalPt.X, LocalPt.Y);
+      if TabIdx < 0 then
+        Result := 'Tabs.Border'
+      else if TabIdx = FTabs.TabIndex then
+        Result := 'Tabs.ActiveBG'
+      else
+        Result := 'Tabs.InactiveBG';
+      Exit;
+    end;
+    if Probe = PaintBox1 then
+    begin
+      Result := 'Gutter.CurBG';
+      Exit;
+    end;
+    if Probe = MarksBox then
+    begin
+      Result := 'Gutter.MarksBG';
+      LineIdx := MarksLineAtY(LocalPt.Y);
+      if LineIdx < 0 then
+        Exit;
+      if (FCurrentFileName <> '') and
+         (DbgMarkAt(FCurrentFileName, LineIdx) <> nil) then
+        Result := 'Gutter.BreakDot'
+      else if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
+        for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
+          if (FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo = LineIdx + 1)
+             and not FWindows[FWindowsIndex].Bookmarks[BmIdx].Missing then
+          begin
+            Result := 'Gutter.BmBG';
+            Break;
+          end;
+      Exit;
+    end;
+    if Probe = RichEdit1 then
+    begin
+      // Выделение - цвет из таблицы; остальной текст - схема подсветки
+      if RichEdit1.HandleAllocated and (RichEdit1.SelLength > 0) then
+      begin
+        EdApi.GetSel(Sel);
+        CharIdx := EdApi.CharFromPos(LocalPt);
+        if (CharIdx >= Sel.cpMin) and (CharIdx < Sel.cpMax) then
+          Result := 'Editor.SelBG';
+      end;
+      Exit;
+    end;
+    if Probe = FDeclPanel then
+    begin
+      if FDeclPanel.Color = UiColor('Decl.BackBG') then
+        Result := 'Decl.BackBG'
+      else if FDeclPanel.Color = UiColor('Decl.NoneBG') then
+        Result := 'Decl.NoneBG'
+      else if FDeclPanel.Color = UiColor('Decl.OwnEdBG') then
+        Result := 'Decl.OwnEdBG'
+      else
+        Result := 'Decl.FoundBG';
+      Exit;
+    end;
+    if Probe = FObjTree then
+    begin
+      Result := 'ObjTree.SelBG';
+      Exit;
+    end;
+    if Probe = FMatchGrid then
+    begin
+      Result := 'Match.HitBG';
+      Exit;
+    end;
+    if Probe is TEdLogView then
+    begin
+      Result := 'Ide.LogBG';
+      Exit;
+    end;
+    // Вторая панель и прочие окна своего редактора - схема подсветки
+    if Probe is TEdView then
+      Exit;
+    Probe := Probe.Parent;
+  end;
+
+  // Остальное - по виду элемента
+  if ACtl is TUiIconButton then
+    Result := 'IconButton.BG'
+  else if ACtl is TUiButton then
+    Result := 'Button.BG'
+  else if ACtl is TUiScrollBar then
+    Result := 'Scroll.Track'
+  else if ACtl is TCustomGroupBox then
+    Result := 'Group.Border'
+  else if (ACtl is TCustomEdit) or (ACtl is TCustomComboBox) then
+    Result := 'Ide.EditBG'
+  else if (ACtl is TCustomListBox) or (ACtl is TCustomGrid) or
+          (ACtl is TCustomTreeView) or (ACtl is TCustomListView) then
+    Result := 'Ide.ListBG'
+  else
+    Result := 'Ide.WindowBG';
+end;
+
 function TForm1.MarksLineAtY(AY: Integer): Integer;
 var
   LineStartChar, LineTotal, TopY, TopLine: Integer;
