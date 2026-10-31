@@ -71,6 +71,7 @@ uses
   GitInfo in 'GitInfo.pas',
   SearchDirs in 'SearchDirs.pas',
   RunConsole in 'RunConsole.pas',
+  ProcRun in 'ProcRun.pas',
   MdHtml in 'MdHtml.pas',
   FmtView in 'FmtView.pas',
   SplitPane in 'SplitPane.pas',

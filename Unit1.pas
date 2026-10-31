@@ -38,6 +38,7 @@ uses
   EnvOptions,     // IDE Options: Preferences, Designer, Environment Variables
   CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
+  ProcRun,        // запуск внешних программ: канал вывода, ожидание, код выхода
   EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
   DlgEdPreview,   // свой редактор - окно пробы (шаги 0.7.2 - 0.7.3)
   EdRichEmu,      // свой редактор вместо RichEdit1 (шаг 0.7.4)
@@ -1248,7 +1249,7 @@ type
     // обновляется, когда меняются служебные файлы .git (FGitStateSig - их
     // время и размер при последнем обновлении)
     FGitPollTimer: TTimer;
-    FGitBashProc: THandle;
+    FGitBashProc: TProcRun;
     FGitStateSig: string;
     // Вкладки Components | Git на верхней линии рамки палитры
     FPalTabs: TUiCaptionTabs;
@@ -4044,7 +4045,7 @@ type
     FRosNinjaStage: Integer;
     FRosNinjaLogged: Integer;
     FRosInstallStage: Integer;  // этап окна хода в RosInstallRosBEClick
-    FRosQemuProcess: THandle;   // QEMU, запущенный Run проекта ReactOS
+    FRosQemuProc: TProcRun;     // QEMU, запущенный Run проекта ReactOS
     // Ход перевода RqToFb (RqFbConvProgress): строк в прошлой сборке, время
     // последнего обновления окна
     FRqFbPrevLines: Integer;
@@ -26539,6 +26540,10 @@ begin
   IniBufOnWritten := nil;
   HangWatchStop;
   WndWatchStop;
+  // Запущенные Git Bash и эмулятор работают дальше - отпускаем только
+  // свои объекты
+  FreeAndNil(FGitBashProc);
+  FreeAndNil(FRosQemuProc);
   // Окно History (немодальное) - его положение в editor.ini, пока главное
   // окно цело
   if FGitHistWin <> nil then
@@ -35034,9 +35039,8 @@ procedure TForm1.ProbeRun;
 var
   Src, Exe, OutF, Cur, Cls: string;
   Ok: Boolean;
-  SI: TStartupInfo;
-  PI: TProcessInformation;
-  W, Code: DWORD;
+  Proc: TProcRun;
+  Exited: Boolean;
   SL, Log: TStringList;
   I: Integer;
   PT: TProbeText;
@@ -35147,14 +35151,15 @@ begin
     DeleteFile(OutF);
     Cur := ExtractFilePath(FProbeDprFile);
     SetEnvironmentVariable('DSGPROBE_OUT', PChar(OutF));
-    FillChar(SI, SizeOf(SI), 0);
-    SI.cb := SizeOf(SI);
     Step('запуск, текущая папка ' + Cur);
-    if not CreateProcess(nil, PChar('"' + Exe + '"'), nil, nil, False, 0, nil,
-                         PChar(Cur), SI, PI) then
+    Proc := TProcRun.Create;
+    Proc.CommandLine := '"' + Exe + '"';
+    Proc.Dir := Cur;
+    if not Proc.Start then
     begin
       SetEnvironmentVariable('DSGPROBE_OUT', nil);
-      Step('не запустился, код ' + IntToStr(GetLastError));
+      Step('не запустился, код ' + IntToStr(Proc.ErrorCode));
+      Proc.Free;
       Exit;
     end;
     SetEnvironmentVariable('DSGPROBE_OUT', nil);
@@ -35164,29 +35169,24 @@ begin
       // Ждём по 100 мс, чтобы окно и индикатор жили; всего - 15 с
       Tk := GetTickCount;
       repeat
-        W := WaitForSingleObject(PI.hProcess, 100);
+        Exited := Proc.WaitFor(100);
         BusyTick;
         Application.ProcessMessages;
-      until (W <> WAIT_TIMEOUT) or (GetTickCount - Tk >= 15000);
-      if W = WAIT_TIMEOUT then
+      until Exited or (GetTickCount - Tk >= 15000);
+      if not Exited then
       begin
-        TerminateProcess(PI.hProcess, 1);
+        Proc.Terminate(1);
         Step('за 15 с программа не дошла до конца создания форм и ' +
         'остановлена. Долгое в OnCreate оберните в {$IFNDEF DSGPROBE} ' +
         '... {$ENDIF}');
       end
       else
-      begin
-        Code := 0;
-        GetExitCodeProcess(PI.hProcess, Code);
         Step('программа завершилась за ' +
              FormatFloat('0.0', (Now - T0) * 86400) + ' с от начала сборки, ' +
-        'код выхода ' + IntToStr(Code) +
+        'код выхода ' + IntToStr(Proc.ExitCode) +
         ' (0 - дошла до снимка, иное - упала раньше)');
-      end;
     finally
-      CloseHandle(PI.hThread);
-      CloseHandle(PI.hProcess);
+      Proc.Free;
       Screen.Cursor := crDefault;
     end;
 
@@ -51828,47 +51828,18 @@ begin
   end;
 end;
 
-// Снять процесс со всеми дочерними: taskkill /T есть в Windows с XP
-// Professional. Ждём его не дольше 10 с.
-procedure KillProcessTree(APid: DWORD);
-var
-  KillSI: TStartupInfo;
-  KillPI: TProcessInformation;
-  KillCmd: string;
-begin
-  FillChar(KillSI, SizeOf(KillSI), 0);
-  KillSI.cb := SizeOf(KillSI);
-  KillSI.dwFlags := STARTF_USESHOWWINDOW;
-  KillSI.wShowWindow := SW_HIDE;
-  KillCmd := 'taskkill /T /F /PID ' + IntToStr(APid);
-  if not CreateProcess(nil, PChar(KillCmd), nil, nil, False, CREATE_NO_WINDOW,
-                       nil, nil, KillSI, KillPI) then
-    Exit;
-  WaitForSingleObject(KillPI.hProcess, 10000);
-  CloseHandle(KillPI.hThread);
-  CloseHandle(KillPI.hProcess);
-end;
-
 function TForm1.RunCompiler(const AExe, AParams, AWorkDir: string): Integer;
 var
-  SecAttr: TSecurityAttributes;
-  SI: TStartupInfo;
-  PI: TProcessInformation;
-  hRead, hWrite: THandle;
-  Buf: array[0..4095] of Char;
-  Got: DWORD;
+  Proc: TProcRun;
+  Chunk: string;
+  Got: Integer;
   Acc, Line: string;
-  Code: DWORD;
   NL: Integer;
-  Cmd: string;
   Ini: TIniFile;
   Oem, Ended, Killed: Boolean;
-  Avail, Want: DWORD;
-  CreateFlags: DWORD;
 begin
   Result := -1;
   Killed := False;
-
   // Консольная программа пишет в OEM-кодировке (866), а лог и редактор
   // работают в ANSI (1251): без перевода кириллица в сообщениях и путях
   // приходит мусором. Ключ [Compiler] OemOutput=0 перевод отключает - на
@@ -51887,43 +51858,25 @@ begin
   if FCompNoOem then
     Oem := False;
 
-  FillChar(SecAttr, SizeOf(SecAttr), 0);
-  SecAttr.nLength := SizeOf(SecAttr);
-  SecAttr.bInheritHandle := True;
-  if not CreatePipe(hRead, hWrite, @SecAttr, 0) then
-  begin
-    LogComp('Не удалось создать канал для вывода компилятора');
-    Exit;
-  end;
-
+  Proc := TProcRun.Create;
   try
-    FillChar(SI, SizeOf(SI), 0);
-    SI.cb := SizeOf(SI);
-    SI.dwFlags := STARTF_USESHOWWINDOW or STARTF_USESTDHANDLES;
-    SI.wShowWindow := SW_HIDE;
-    SI.hStdOutput := hWrite;
-    SI.hStdError := hWrite;
-    SI.hStdInput := 0;
-
-    Cmd := '"' + AExe + '" ' + AParams;
+    Proc.CommandLine := '"' + AExe + '" ' + AParams;
+    Proc.Dir := AWorkDir;
+    Proc.Window := pwHidden;
+    Proc.CaptureOutput := True;
     // ReactOS: RosBE.cmd вызывает doskey; в процессе без консоли
     // (CREATE_NO_WINDOW) он завершался аварийно - окно Windows "Прекращена
     // работа программы" (Windows 7, 15.10.2026). Поэтому - своя консоль,
     // скрытая (SW_HIDE); вывод всё равно идёт в канал
     if FRosBuilding then
-      CreateFlags := CREATE_NEW_CONSOLE
+      Proc.Console := pcNewConsole
     else
-      CreateFlags := CREATE_NO_WINDOW;
-    if not CreateProcess(nil, PChar(Cmd), nil, nil, True, CreateFlags,
-                         nil, PChar(AWorkDir), SI, PI) then
+      Proc.Console := pcNoWindow;
+    if not Proc.Start then
     begin
-      LogComp('Не удалось запустить: ' + AExe);
+      LogComp('Не удалось запустить: ' + AExe + ' (' + Proc.ErrorText + ')');
       Exit;
     end;
-
-    // Свой конец записи закрываем сразу, иначе чтение не увидит конца
-    CloseHandle(hWrite);
-    hWrite := 0;
     CompProgressStart(AExe, AParams);   // Preferences - Show compiler progress
 
     // Чтение без блокировки: ReadFile ждал бы, пока компилятор что-нибудь
@@ -51941,34 +51894,30 @@ begin
         // ReactOS: под cmd идут ninja и gcc - снимается всё дерево, иначе
         // они держат канал и работают дальше
         if FRosBuilding then
-          KillProcessTree(PI.dwProcessId);
-        TerminateProcess(PI.hProcess, 1);
+          Proc.KillTree
+        else
+          Proc.Terminate(1);
         LogComp('Сборка остановлена: компилятор снят кнопкой Стоп');
       end;
-      Avail := 0;
-      if not PeekNamedPipe(hRead, nil, 0, nil, @Avail, nil) then
+      Chunk := '';
+      Got := Proc.Read(Chunk);
+      if Got < 0 then
         Break;
-      if Avail = 0 then
+      if Got = 0 then
       begin
         if Ended then
           Break;   // процесс вышел, а канал держит кто-то ещё - не ждать
-        if WaitForSingleObject(PI.hProcess, 50) = WAIT_OBJECT_0 then
+        if Proc.WaitFor(50) then
           Ended := True;
         BusyTick;
         Application.ProcessMessages;
         Continue;
       end;
-      Want := Avail;
-      if Want > SizeOf(Buf) - 1 then
-        Want := SizeOf(Buf) - 1;
-      if not ReadFile(hRead, Buf, Want, Got, nil) or (Got = 0) then
-        Break;
       // Перевод по прочитанному куску, а не по строке: замена побайтовая,
       // граница чтения её не ломает
       if Oem then
-        OemToCharBuffA(@Buf[0], @Buf[0], Got);
-      Buf[Got] := #0;
-      Acc := Acc + string(Buf);
+        OemToCharBuffA(PChar(Chunk), PChar(Chunk), Got);
+      Acc := Acc + Chunk;
 
       // Выводим только целые строки, хвост копим до следующего чтения
       NL := Pos(#10, Acc);
@@ -52004,18 +51953,11 @@ begin
       CompProgressLine(Acc);
     end;
 
-    WaitForSingleObject(PI.hProcess, INFINITE);
-    Code := 0;
-    GetExitCodeProcess(PI.hProcess, Code);
-    Result := Code;
+    Proc.WaitFor(INFINITE);
+    Result := Proc.ExitCode;
     CompProgressDone(Result);
-
-    CloseHandle(PI.hThread);
-    CloseHandle(PI.hProcess);
   finally
-    if hWrite <> 0 then
-      CloseHandle(hWrite);
-    CloseHandle(hRead);
+    Proc.Free;
   end;
 end;
 
@@ -58555,46 +58497,35 @@ var
 // RqProbeWaitMs.
   function RunProbe(const AConsole: string; var AElapsed: Cardinal): Boolean;
   var
-    StartInfo: TStartupInfo;
-    ProcInfo: TProcessInformation;
-    SecAttr: TSecurityAttributes;
-    ConsoleHandle: THandle;
-    WaitRes, ProcExit: DWORD;
+    Proc: TProcRun;
+    ConsoleProbe: Integer;
+    ProcExit: Integer;
     StartTick, ExitMs: Cardinal;
-    Started, ProcEnded: Boolean;
+    ProcEnded: Boolean;
     WinLines: TStringList;
     WinIdx: Integer;
   begin
     AElapsed := 0;
     LastOutSize := -1;
     OutText := '';
-    FillChar(StartInfo, SizeOf(StartInfo), 0);
-    StartInfo.cb := SizeOf(StartInfo);
-    SecAttr.nLength := SizeOf(SecAttr);
-    SecAttr.lpSecurityDescriptor := nil;
-    SecAttr.bInheritHandle := True;
-    ConsoleHandle := CreateFile(PChar(AConsole), GENERIC_WRITE,
-                                FILE_SHARE_READ, @SecAttr, CREATE_ALWAYS,
-                                FILE_ATTRIBUTE_NORMAL, 0);
-    if ConsoleHandle <> INVALID_HANDLE_VALUE then
+    Proc := TProcRun.Create;
+    Proc.CommandLine := '"' + FRqProbeExe + '"';
+    Proc.Dir := RunDir;
+    // Файл для вывода консоли: не создаётся - запуск без него
+    ConsoleProbe := FileCreate(AConsole);
+    if ConsoleProbe >= 0 then
     begin
-      StartInfo.dwFlags := STARTF_USESTDHANDLES;
-      StartInfo.hStdInput := 0;
-      StartInfo.hStdOutput := ConsoleHandle;
-      StartInfo.hStdError := ConsoleHandle;
+      FileClose(ConsoleProbe);
+      Proc.OutputFile := AConsole;
     end
     else
       LogComp('Снимок RapidQ: файл для вывода консоли не создан (' + AConsole +
       ', код ' + IntToStr(GetLastError) + ') - запуск без него');
-              LogComp('Снимок RapidQ: запуск ' + FRqProbeExe);
-              Started := CreateProcess(nil, PChar('"' + FRqProbeExe + '"'), nil, nil,
-                                       ConsoleHandle <> INVALID_HANDLE_VALUE, 0, nil,
-                                       PChar(RunDir), StartInfo, ProcInfo);
-              if not Started then
+    LogComp('Снимок RapidQ: запуск ' + FRqProbeExe);
+    if not Proc.Start then
     begin
-      LogComp('Снимок RapidQ: не запустился, код ' + IntToStr(GetLastError));
-      if ConsoleHandle <> INVALID_HANDLE_VALUE then
-        CloseHandle(ConsoleHandle);
+      LogComp('Снимок RapidQ: не запустился, код ' + IntToStr(Proc.ErrorCode));
+      Proc.Free;
       Result := False;
       Exit;
     end;
@@ -58606,12 +58537,11 @@ var
       ExitMs := 0;
       ProcExit := 0;
       repeat
-        WaitRes := WaitForSingleObject(ProcInfo.hProcess, 100);
-        if (WaitRes <> WAIT_TIMEOUT) and not ProcEnded then
+        if Proc.WaitFor(100) and not ProcEnded then
         begin
           ProcEnded := True;
           ExitMs := GetTickCount - StartTick;
-          GetExitCodeProcess(ProcInfo.hProcess, ProcExit);
+          ProcExit := Proc.ExitCode;
         end;
         BusyTick;
         Application.ProcessMessages;
@@ -58628,21 +58558,21 @@ var
         // другое окно, ждущее ответа
         WinLines := TStringList.Create;
         try
-          RapidQProcessWindows(ProcInfo.dwProcessId, WinLines);
+          RapidQProcessWindows(Proc.Pid, WinLines);
           if WinLines.Count = 0 then
             LogComp(Format('Снимок RapidQ: видимых окон у процесса (pid %d) ' +
-            'нет', [ProcInfo.dwProcessId]))
+            'нет', [Proc.Pid]))
           else
           begin
             LogComp(Format('Снимок RapidQ: видимые окна процесса (pid %d):',
-                           [ProcInfo.dwProcessId]));
+                           [Proc.Pid]));
             for WinIdx := 0 to WinLines.Count - 1 do
               LogComp(WinLines[WinIdx]);
           end;
         finally
           WinLines.Free;
         end;
-        TerminateProcess(ProcInfo.hProcess, 1);
+        Proc.Terminate(1);
         LogComp(Format('Снимок RapidQ: за %d с программа не записала значения ' +
         'и остановлена', [RqProbeWaitMs div 1000]));
       end;
@@ -58659,10 +58589,7 @@ var
                          [RqProbeWaitMs div 1000]));
       end;
     finally
-      CloseHandle(ProcInfo.hThread);
-      CloseHandle(ProcInfo.hProcess);
-      if ConsoleHandle <> INVALID_HANDLE_VALUE then
-        CloseHandle(ConsoleHandle);
+      Proc.Free;
       Screen.Cursor := crDefault;
       BusyEnd('Снимок RapidQ', FileExists(OutFile));
     end;
@@ -64206,8 +64133,8 @@ end;
 procedure TForm1.RunTarget;
 var
   Dpr, Exe, Dir, Cmd, ErrText: string;
-  SI: TStartupInfo;
-  PI: TProcessInformation;
+  Proc: TProcRun;
+  ProcHandle: THandle;
   Con: TRunConsole;
   RapidQ: Boolean;
   Kind, OutKind, Bits: Integer;
@@ -64347,7 +64274,7 @@ begin
   // идёт в лог - иначе сообщение об ошибке при старте не прочитать
   if ExeIsConsole(Exe) then
   begin
-    if not RunConsoleStart(Exe, Dir, PI.hProcess, Con, ErrText) then
+    if not RunConsoleStart(Exe, Dir, ProcHandle, Con, ErrText) then
     begin
       LogComp('Запуск не удался: ' + Exe + ' (' + ErrText + ')');
       Exit;
@@ -64355,7 +64282,7 @@ begin
     if FRunCons = nil then
       FRunCons := TList.Create;
     FRunCons.Add(Con);
-    RunAdd(ExpandFileName(Exe), PI.hProcess);
+    RunAdd(ExpandFileName(Exe), ProcHandle);
     FRunExeTick := 0;
     LogComp('--- Запуск: ' + Exe + ' (консоль: после конца программы окно ' +
             'ждёт клавишу, его текст - сюда)');
@@ -64367,23 +64294,27 @@ begin
     Exit;
   end;
 
-  FillChar(SI, SizeOf(SI), 0);
-  SI.cb := SizeOf(SI);
-
-  if not CreateProcess(nil, PChar(Cmd), nil, nil, False, 0,
-                       nil, PChar(Dir), SI, PI) then
-  begin
-    LogComp('Запуск не удался: ' + Exe);
-    Exit;
+  Proc := TProcRun.Create;
+  try
+    Proc.CommandLine := Cmd;
+    Proc.Dir := Dir;
+    if not Proc.Start then
+    begin
+      LogComp('Запуск не удался: ' + Exe + ' (' + Proc.ErrorText + ')');
+      Exit;
+    end;
+    // Дескриптор - в список запущенных (RunAdd), закрывает его тот список
+    ProcHandle := Proc.DetachHandle;
+  finally
+    Proc.Free;
   end;
 
-  CloseHandle(PI.hThread);
   // За запущенной программой следим всегда: пока она работает, Compile &
   // Run на вкладках с этой целью серая, а Program reset её останавливает
   // (как в Delphi). На вкладке с другой целью можно собрать и запустить
   // другую программу. Когда закроются все, вернётся и форма конструктора,
   // если запуск её прятал.
-  RunAdd(ExpandFileName(Exe), PI.hProcess);
+  RunAdd(ExpandFileName(Exe), ProcHandle);
   FRunExeTick := 0;   // цель могла записаться при сборке - пересчитать
   LogComp('--- Запуск: ' + Exe);
   // Preferences - Minimize on run (запуск без отладчика): среда
@@ -65828,9 +65759,8 @@ end;
 // в логе: RunTarget запустит программу как обычно.
 function TForm1.RqDbgLaunch(const AExe, ADir: string): Boolean;
 var
-  StartInfo: TStartupInfo;
-  ProcInfo: TProcessInformation;
-  RunCmd: string;
+  Proc: TProcRun;
+  ProcHandle: THandle;
   Mode, RunTo, Armed: Integer;
 begin
   Result := False;
@@ -65880,20 +65810,23 @@ begin
     Exit;
   end;
 
-  FillChar(StartInfo, SizeOf(StartInfo), 0);
-  StartInfo.cb := SizeOf(StartInfo);
-  RunCmd := '"' + AExe + '"';
-  if not CreateProcess(nil, PChar(RunCmd), nil, nil, False, 0, nil,
-                       PChar(ADir), StartInfo, ProcInfo) then
-  begin
-    LogComp('Отладчик RapidQ: запуск не удался - ' + AExe + ' (' +
-            SysErrorMessage(GetLastError) + ')');
-    DeleteFile(FRqDbgInstr.CmdFile);
-    RqDbgCloseEvents;
-    Exit;
+  Proc := TProcRun.Create;
+  try
+    Proc.CommandLine := '"' + AExe + '"';
+    Proc.Dir := ADir;
+    if not Proc.Start then
+    begin
+      LogComp('Отладчик RapidQ: запуск не удался - ' + AExe + ' (' +
+              Proc.ErrorText + ')');
+      DeleteFile(FRqDbgInstr.CmdFile);
+      RqDbgCloseEvents;
+      Exit;
+    end;
+    ProcHandle := Proc.DetachHandle;
+  finally
+    Proc.Free;
   end;
-  CloseHandle(ProcInfo.hThread);
-  RunAdd(ExpandFileName(AExe), ProcInfo.hProcess);
+  RunAdd(ExpandFileName(AExe), ProcHandle);
   FRunExeTick := 0;
   FRqDbgOn := True;
   FRqDbgPaused := False;
@@ -67888,66 +67821,47 @@ end;
 // начало журнала в лог
 procedure TForm1.RosStartEmulator(const ACmdLine, AWorkDir, ALogFile: string);
 var
-  SI: TStartupInfo;
-  PI: TProcessInformation;
-  SecAttr: TSecurityAttributes;
-  LogHandle: THandle;
-  CmdBuf: string;
-  ExitCode: DWORD;
+  Proc: TProcRun;
+  LogProbe: Integer;
+  ExitCode: Integer;
   WaitStep: Integer;
   LogLines: TStringList;
   LineIdx: Integer;
 begin
-  LogHandle := INVALID_HANDLE_VALUE;
-  FillChar(SI, SizeOf(SI), 0);
-  SI.cb := SizeOf(SI);
+  Proc := TProcRun.Create;
+  Proc.CommandLine := ACmdLine;
+  Proc.Dir := AWorkDir;
+  // Вывод эмулятора - в файл; файл не создаётся - запуск без него
   if ALogFile <> '' then
   begin
-    FillChar(SecAttr, SizeOf(SecAttr), 0);
-    SecAttr.nLength := SizeOf(SecAttr);
-    SecAttr.bInheritHandle := True;
-    LogHandle := CreateFile(PChar(ALogFile), GENERIC_WRITE, FILE_SHARE_READ,
-                            @SecAttr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0);
-    if LogHandle <> INVALID_HANDLE_VALUE then
+    LogProbe := FileCreate(ALogFile);
+    if LogProbe >= 0 then
     begin
-      SI.dwFlags := STARTF_USESTDHANDLES;
-      SI.hStdInput := 0;
-      SI.hStdOutput := LogHandle;
-      SI.hStdError := LogHandle;
+      FileClose(LogProbe);
+      Proc.OutputFile := ALogFile;
     end;
   end;
-  CmdBuf := ACmdLine;
-  UniqueString(CmdBuf);
-  FillChar(PI, SizeOf(PI), 0);
-  if not CreateProcess(nil, PChar(CmdBuf), nil, nil,
-                       LogHandle <> INVALID_HANDLE_VALUE, 0, nil,
-                       PChar(AWorkDir), SI, PI) then
+  if not Proc.Start then
   begin
-    LogComp('Запуск: не запустить - ' + SysErrorMessage(GetLastError));
-    if LogHandle <> INVALID_HANDLE_VALUE then
-      CloseHandle(LogHandle);
+    LogComp('Запуск: ' + Proc.ErrorText);
+    Proc.Free;
     Exit;
   end;
-  if LogHandle <> INVALID_HANDLE_VALUE then
-    CloseHandle(LogHandle);
-  CloseHandle(PI.hThread);
-  FRosQemuProcess := PI.hProcess;
+  FRosQemuProc := Proc;
   // Первые 3 секунды: не закрылся ли сразу (ошибка)
   for WaitStep := 1 to 30 do
   begin
-    if WaitForSingleObject(FRosQemuProcess, 100) <> WAIT_TIMEOUT then
+    if Proc.WaitFor(100) then
       Break;
     Application.ProcessMessages;
   end;
-  if WaitForSingleObject(FRosQemuProcess, 0) = WAIT_TIMEOUT then
+  if Proc.Running then
   begin
     LogComp('Запуск: эмулятор работает (своё окно)');
     Exit;
   end;
-  ExitCode := 0;
-  GetExitCodeProcess(FRosQemuProcess, ExitCode);
-  CloseHandle(FRosQemuProcess);
-  FRosQemuProcess := 0;
+  ExitCode := Proc.ExitCode;
+  FreeAndNil(FRosQemuProc);
   LogComp('Запуск: эмулятор сразу завершился, код ' + IntToStr(ExitCode));
   if (ALogFile <> '') and FileExists(ALogFile) then
   begin
@@ -67973,51 +67887,43 @@ end;
 // себя удаляет; нет его - уже выполнен
 function TForm1.GitRunPostInstall(const ARoot: string): Boolean;
 var
-  CmdLine, CmdBuf: string;
-  SI: TStartupInfo;
-  PI: TProcessInformation;
+  CmdLine: string;
+  Proc: TProcRun;
   WaitStep: Integer;
-  ExitCode: DWORD;
+  ExitCode: Integer;
 begin
   Result := True;
   CmdLine := string(GitPostInstallCommand(ARoot));
   if CmdLine = '' then
     Exit;
   LogComp('Git: post-install.bat - настройка распакованного PortableGit');
-  FillChar(SI, SizeOf(SI), 0);
-  SI.cb := SizeOf(SI);
-  SI.dwFlags := STARTF_USESHOWWINDOW;
-  SI.wShowWindow := SW_HIDE;
-  FillChar(PI, SizeOf(PI), 0);
-  CmdBuf := CmdLine;
-  UniqueString(CmdBuf);
-  if not CreateProcess(nil, PChar(CmdBuf), nil, nil, False, 0, nil,
-                       PChar(ARoot), SI, PI) then
-  begin
-    LogComp('Git: post-install.bat не запустить - ' +
-            SysErrorMessage(GetLastError));
-    Result := False;
-    Exit;
-  end;
-  CloseHandle(PI.hThread);
+  Proc := TProcRun.Create;
   try
+    Proc.CommandLine := CmdLine;
+    Proc.Dir := ARoot;
+    Proc.Window := pwHidden;
+    if not Proc.Start then
+    begin
+      LogComp('Git: post-install.bat - ' + Proc.ErrorText);
+      Result := False;
+      Exit;
+    end;
     for WaitStep := 1 to 1200 do
     begin
-      if WaitForSingleObject(PI.hProcess, 100) <> WAIT_TIMEOUT then
+      if Proc.WaitFor(100) then
         Break;
       BusyTick;
       Application.ProcessMessages;
     end;
-    ExitCode := 0;
-    if WaitForSingleObject(PI.hProcess, 0) = WAIT_TIMEOUT then
+    if Proc.Running then
     begin
       LogComp('Git: post-install.bat не закончился за 2 минуты - терминал ' +
               'открывается без ожидания');
       Exit;
     end;
-    GetExitCodeProcess(PI.hProcess, ExitCode);
+    ExitCode := Proc.ExitCode;
   finally
-    CloseHandle(PI.hProcess);
+    Proc.Free;
   end;
   Result := not FileExists(IncludeTrailingPathDelimiter(ARoot) +
                            GitPostInstallName);
@@ -68159,9 +68065,7 @@ end;
 // активной вкладки, нет и его - в папке unIDE)
 procedure TForm1.GitTerminalClick(Sender: TObject);
 var
-  Root, Dir, CmdLine, CmdBuf, How: string;
-  SI: TStartupInfo;
-  PI: TProcessInformation;
+  Root, Dir, CmdLine, How, ErrText: string;
 begin
   if FBusyDepth > 0 then
     Exit;
@@ -68183,19 +68087,8 @@ begin
   CmdLine := string(GitTerminalCommand(Root, Dir));
   GitTool.GitFindRoot(How);
   LogComp('Git Terminal (' + How + '): ' + CmdLine);
-  FillChar(SI, SizeOf(SI), 0);
-  SI.cb := SizeOf(SI);
-  FillChar(PI, SizeOf(PI), 0);
-  CmdBuf := CmdLine;
-  UniqueString(CmdBuf);
-  if not CreateProcess(nil, PChar(CmdBuf), nil, nil, False, 0, nil,
-                       PChar(Dir), SI, PI) then
-  begin
-    LogComp('Git Terminal: не запустить - ' + SysErrorMessage(GetLastError));
-    Exit;
-  end;
-  CloseHandle(PI.hThread);
-  CloseHandle(PI.hProcess);
+  if not ProcLaunch(CmdLine, Dir, ErrText) then
+    LogComp('Git Terminal: ' + ErrText);
 end;
 
 // Find or Install Git: что есть (в системе, свой) - с версиями в журнал и
@@ -68962,9 +68855,7 @@ var
   TempBuf: array[0..MAX_PATH] of Char;
   ScriptName, ScriptText, OemText, CmdLine: string;
   ScriptStream: TFileStream;
-  SI: TStartupInfo;
-  PI: TProcessInformation;
-  ExitCode: DWORD;
+  Proc: TProcRun;
 begin
   Result := GitConsoleNotRun;
   if GetTempPath(MAX_PATH, TempBuf) = 0 then
@@ -69014,31 +68905,27 @@ begin
   CmdLine := 'cmd.exe /C ""' + ScriptName + '""';
   LogGit('git ' + AArgs + '   (' + ADir + ') - в окне консоли, unIDE ждёт ' +
           'его закрытия');
-  FillChar(SI, SizeOf(SI), 0);
-  SI.cb := SizeOf(SI);
-  FillChar(PI, SizeOf(PI), 0);
-  UniqueString(CmdLine);
-  if not CreateProcess(nil, PChar(CmdLine), nil, nil, False,
-                       CREATE_NEW_CONSOLE, nil, PChar(ADir), SI, PI) then
-  begin
-    LogGit('git: консоль не запустить - ' + SysErrorMessage(GetLastError));
-    DeleteFile(ScriptName);
-    Exit;
-  end;
-  CloseHandle(PI.hThread);
+  Proc := TProcRun.Create;
   try
-    while WaitForSingleObject(PI.hProcess, 100) = WAIT_TIMEOUT do
+    Proc.CommandLine := CmdLine;
+    Proc.Dir := ADir;
+    Proc.Console := pcNewConsole;
+    if not Proc.Start then
+    begin
+      LogGit('git: консоль - ' + Proc.ErrorText);
+      DeleteFile(ScriptName);
+      Exit;
+    end;
+    while not Proc.WaitFor(100) do
     begin
       BusyTick;
       Application.ProcessMessages;
     end;
-    ExitCode := 0;
-    GetExitCodeProcess(PI.hProcess, ExitCode);
+    Result := Proc.ExitCode;
   finally
-    CloseHandle(PI.hProcess);
+    Proc.Free;
   end;
   DeleteFile(ScriptName);
-  Result := Integer(ExitCode);
   if Result = 0 then
     LogGit('git: в консоли выполнено')
   else
@@ -70045,8 +69932,7 @@ begin
     FGitPollTimer.Enabled := False;
     FGitPollTimer.OnTimer := GitPollTick;
   end;
-  if (FGitBashProc <> 0) and
-     (WaitForSingleObject(FGitBashProc, 0) = WAIT_TIMEOUT) then
+  if (FGitBashProc <> nil) and FGitBashProc.Running then
     FGitPollTimer.Interval := 1000
   else
     FGitPollTimer.Interval := 5000;
@@ -70064,11 +69950,9 @@ begin
     Exit;
   end;
   // Git Bash закрыли - дальше раз в 5 с
-  if (FGitBashProc <> 0) and
-     (WaitForSingleObject(FGitBashProc, 0) <> WAIT_TIMEOUT) then
+  if (FGitBashProc <> nil) and not FGitBashProc.Running then
   begin
-    CloseHandle(FGitBashProc);
-    FGitBashProc := 0;
+    FreeAndNil(FGitBashProc);
     FGitPollTimer.Interval := 5000;
   end;
   if FGitBusy or (FBusyDepth > 0) or FGitCmbBranch.DroppedDown then
@@ -71547,29 +71431,25 @@ end;
 procedure TForm1.GitBashClick(Sender: TObject);
 var
   Git, Repo, Root, How, CmdLine: string;
-  SI: TStartupInfo;
-  PI: TProcessInformation;
+  Proc: TProcRun;
 begin
   if not GitPrepare(Git, Repo) then
     Exit;
   Root := string(GitTool.GitFindRoot(How));
   CmdLine := string(GitTerminalCommand(Root, Repo));
   LogGit('Git Bash: ' + CmdLine);
-  FillChar(SI, SizeOf(SI), 0);
-  SI.cb := SizeOf(SI);
-  FillChar(PI, SizeOf(PI), 0);
-  UniqueString(CmdLine);
-  if not CreateProcess(nil, PChar(CmdLine), nil, nil, False, 0, nil,
-                       PChar(Repo), SI, PI) then
+  Proc := TProcRun.Create;
+  Proc.CommandLine := CmdLine;
+  Proc.Dir := Repo;
+  if not Proc.Start then
   begin
-    LogGit('Git Bash: не запустить - ' + SysErrorMessage(GetLastError));
+    LogGit('Git Bash: ' + Proc.ErrorText);
+    Proc.Free;
     Exit;
   end;
-  CloseHandle(PI.hThread);
   // Пока Git Bash открыт - панель проверяется раз в секунду (GitPollTick)
-  if FGitBashProc <> 0 then
-    CloseHandle(FGitBashProc);
-  FGitBashProc := PI.hProcess;
+  FGitBashProc.Free;
+  FGitBashProc := Proc;
   GitPollStart;
 end;
 
@@ -75244,16 +75124,15 @@ begin
     Exit;
   end;
   // Прежний эмулятор ещё работает - второй на тот же диск не запускаем
-  if FRosQemuProcess <> 0 then
+  if FRosQemuProc <> nil then
   begin
-    if WaitForSingleObject(FRosQemuProcess, 0) = WAIT_TIMEOUT then
+    if FRosQemuProc.Running then
     begin
       LogComp('Запуск: эмулятор уже работает - закройте его окно, затем ' +
               'Run снова');
       Exit;
     end;
-    CloseHandle(FRosQemuProcess);
-    FRosQemuProcess := 0;
+    FreeAndNil(FRosQemuProc);
   end;
   WorkDir := IncludeTrailingPathDelimiter(RosCfg.BuildDir) + 'unide-qemu\';
   ForceDirectories(WorkDir);
