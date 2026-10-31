@@ -72330,23 +72330,24 @@ begin
   Repo := ExcludeTrailingPathDelimiter(Repo);
   RepoSl := IncludeTrailingPathDelimiter(Repo);
 
+  // Отказ - не только в Git log: окно, иначе кажется, что пункт не сработал
+  Msg := '';
   if Length(Repo) <= 3 then
-  begin
-    LogGit('Git: ' + Repo + ' - корень диска, удалять не буду');
-    Exit;
-  end;
-  if AnsiStartsText(RepoSl, ExtractFilePath(Application.ExeName)) then
-  begin
-    LogGit('Git: в ' + Repo + ' находится сама среда (' +
-      Application.ExeName + ') - удалять не буду');
-    Exit;
-  end;
-  if (FCurrentProject <> '') and ProjectExists(FCurrentProject) and
+    Msg := Repo + ' - корень диска, удалять не буду.'
+  else if AnsiStartsText(RepoSl, ExtractFilePath(Application.ExeName)) then
+    Msg := 'В ' + Repo + ' находится сама среда (' + Application.ExeName +
+      ') - удалять не буду.'
+  else if (FCurrentProject <> '') and ProjectExists(FCurrentProject) and
      AnsiStartsText(RepoSl,
        IncludeTrailingPathDelimiter(ProjectDir(FCurrentProject))) then
+    Msg := 'В папке репозитория'#13#10 + Repo + #13#10'лежит открытый ' +
+      'проект ' + FCurrentProject + '.'#13#10#13#10'Сначала закройте ' +
+      'проект (Project - Close Project) или откройте другой, затем ' +
+      'повторите Delete Local Repository.';
+  if Msg <> '' then
   begin
-    LogGit('Git: в ' + Repo + ' лежит открытый проект ' + FCurrentProject +
-      ' - сначала откройте другой проект');
+    LogGit('Git: ' + StringReplace(Msg, #13#10, ' ', [rfReplaceAll]));
+    MessageDlg(Msg, mtInformation, [mbOK], 0);
     Exit;
   end;
 
@@ -72440,9 +72441,13 @@ begin
     if Aborted then
       LogGit('Git: удаление ' + Repo + ' отменено')
     else
-      LogGit('Git: ' + Repo + ' удалён не полностью (код ' +
-        IntToStr(OpResult) + '): файлы заняты - Git Bash, Проводник, ' +
-        'другая программа. Уже удалённое - в корзине');
+    begin
+      Msg := Repo + ' удалён не полностью (код ' + IntToStr(OpResult) +
+        '): файлы заняты - Git Bash, Проводник, другая программа. Уже ' +
+        'удалённое - в корзине';
+      LogGit('Git: ' + Msg);
+      MessageDlg(Msg + '.', mtWarning, [mbOK], 0);
+    end;
     GitRefreshBar;
     Exit;
   end;
@@ -72459,6 +72464,8 @@ begin
   LogGit('Git: ' + Repo + ' - в корзине; репозиторий - по открытому ' +
     'проекту (' + GitBaseDir + ')');
   GitRefreshBar;
+  MessageDlg('Локальный репозиторий удалён (папка - в корзине):'#13#10 +
+    Repo, mtInformation, [mbOK], 0);
 end;
 
 // Help на панели Git (Tag 0) и в меню Repository (1), Branch (2): справка
