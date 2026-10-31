@@ -3227,6 +3227,8 @@ type
     procedure GitPushIn(const AGit, ARepo: string);
     procedure GitPushClick(Sender: TObject);
     function  GitDiffOf(const AChange: TGitChange): WideString;
+    function  GitNewFileDiff(const ARelPath: WideString;
+      AMaxLen: Integer): WideString;
     procedure GitDiffTraceLog(const AText: string);
     procedure GitCommitIn(const AGit, ARepo: string);
     procedure GitCommitClick(Sender: TObject);
@@ -70613,6 +70615,18 @@ begin
   else
     Args := 'diff --no-color --cached -- ' + string(GitQuote(AChange.Path));
   StartTick := GetTickCount;
+  // Новый файл - разница строится здесь, без git: git diff --no-index
+  // большого файла в Windows шёл секундами (2,9 МБ - 5,3 с по Git log),
+  // а окно всё равно показывает только первые DiffMax символов
+  if AChange.Code = '??' then
+  begin
+    Result := GitNewFileDiff(AChange.Path, DiffMax);
+    LogGit('Git: новый файл ' + string(AChange.Path) + ' - разница без git, ' +
+      IntToStr(Length(Result) div 1024) + ' КБ, ' +
+      IntToStr(GetTickCount - StartTick) + ' мс');
+    Result := WideString(AdjustLineBreaks(string(Result)));
+    Exit;
+  end;
   ExitCode := GitRunIn(FGitDlgGit, FGitDlgRepo, Args, False, Result);
   LogGit('Git: git ' + Args + ' - ' + IntToStr(Length(Result) div 1024) +
     ' КБ, ' + IntToStr(GetTickCount - StartTick) + ' мс');
@@ -70625,6 +70639,93 @@ begin
     Result := Copy(Result, 1, DiffMax) + #13#10'... (обрезано)';
   // Memo ждёт #13#10
   Result := WideString(AdjustLineBreaks(string(Result)));
+end;
+
+// Разница нового (не отслеживаемого) файла в виде git diff: заголовок,
+// кусок @@ -0,0 +1,N @@ и строки с '+'. Файл читается сам (кодировка - как
+// при открытии: BOM или проверка UTF-8, иначе ANSI); в разницу идут только
+// первые AMaxLen символов, дальше - «... (обрезано)». Двоичный (#0 в первых
+// 8000 байтах) - строка «Binary files ... differ», как у git
+function TForm1.GitNewFileDiff(const ARelPath: WideString;
+  AMaxLen: Integer): WideString;
+var
+  Raw: string;
+  Text, Header: WideString;
+  IsUtf8, Cut: Boolean;
+  LineCount, SrcIdx, DstIdx, TextLen: Integer;
+  CurChar: WideChar;
+begin
+  try
+    Raw := ReadWholeFile(IncludeTrailingPathDelimiter(FGitDlgRepo) +
+      StringReplace(string(ARelPath), '/', '\', [rfReplaceAll]));
+  except
+    on E: Exception do
+    begin
+      Result := 'Файл не прочитан: ' + ARelPath + #10 + WideString(E.Message);
+      Exit;
+    end;
+  end;
+  Header := 'diff --git a/' + ARelPath + ' b/' + ARelPath + #10 +
+    'new file mode 100644' + #10;
+  if Pos(#0, Copy(Raw, 1, 8000)) > 0 then
+  begin
+    Result := Header + 'Binary files /dev/null and b/' + ARelPath +
+      ' differ' + #10;
+    Exit;
+  end;
+  if Raw = '' then
+  begin
+    Result := Header;
+    Exit;
+  end;
+  // BOM UTF-8: EF BB BF
+  IsUtf8 := (Length(Raw) >= 3) and (Byte(Raw[1]) = $EF) and
+            (Byte(Raw[2]) = $BB) and (Byte(Raw[3]) = $BF);
+  if IsUtf8 then
+    Delete(Raw, 1, 3)
+  else
+    IsUtf8 := LooksLikeUtf8(Raw);
+  Text := EdDecodeBytes(Raw, IsUtf8);   // переводы строк - #10
+  Raw := '';
+  TextLen := Length(Text);
+  LineCount := 0;
+  for SrcIdx := 1 to TextLen do
+    if Text[SrcIdx] = #10 then
+      Inc(LineCount);
+  if (TextLen > 0) and (Text[TextLen] <> #10) then
+    Inc(LineCount);
+  Header := Header + '--- /dev/null' + #10 + '+++ b/' + ARelPath + #10 +
+    '@@ -0,0 +1,' + WideString(IntToStr(LineCount)) + ' @@' + #10;
+  // Строки с '+': на каждую строку - один символ сверху, не больше чем
+  // символов текста
+  if TextLen > AMaxLen then
+    SetLength(Result, Length(Header) + AMaxLen * 2 + 2)
+  else
+    SetLength(Result, Length(Header) + TextLen * 2 + 2);
+  for DstIdx := 1 to Length(Header) do
+    Result[DstIdx] := Header[DstIdx];
+  DstIdx := Length(Header) + 1;
+  Result[DstIdx] := '+';
+  Inc(DstIdx);
+  SrcIdx := 1;
+  while (SrcIdx <= TextLen) and (SrcIdx <= AMaxLen) do
+  begin
+    CurChar := Text[SrcIdx];
+    Result[DstIdx] := CurChar;
+    Inc(DstIdx);
+    if (CurChar = #10) and (SrcIdx < TextLen) then
+    begin
+      Result[DstIdx] := '+';
+      Inc(DstIdx);
+    end;
+    Inc(SrcIdx);
+  end;
+  Cut := SrcIdx <= TextLen;
+  SetLength(Result, DstIdx - 1);
+  if Cut then
+    Result := Result + #10'... (обрезано)'
+  else if Text[TextLen] <> #10 then
+    Result := Result + #10'\ No newline at end of file' + #10;
 end;
 
 // Время показа разницы в окне Commit - в Git log (GitDiffView.GitDiffTrace)
