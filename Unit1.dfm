@@ -112,23 +112,6 @@ object Form1: TForm1
         BevelOuter = bvNone
         ParentBackground = False
         TabOrder = 1
-        object CompLogEdit: TRichEdit
-          Left = 0
-          Top = 0
-          Width = 0
-          Height = 105
-          Align = alClient
-          BorderStyle = bsNone
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -12
-          Font.Name = 'Tahoma'
-          Font.Style = []
-          ParentFont = False
-          ScrollBars = ssBoth
-          TabOrder = 0
-          WordWrap = False
-        end
       end
       object pnlErrLog: TPanel
         Left = 0
@@ -140,23 +123,6 @@ object Form1: TForm1
         ParentBackground = False
         TabOrder = 3
         Visible = False
-        object ErrLogEdit: TRichEdit
-          Left = 0
-          Top = 0
-          Width = 0
-          Height = 105
-          Align = alClient
-          BorderStyle = bsNone
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -14
-          Font.Name = 'Tahoma'
-          Font.Style = []
-          ParentFont = False
-          ScrollBars = ssBoth
-          TabOrder = 0
-          WordWrap = False
-        end
       end
       object pnlHiLog: TPanel
         Left = 0
@@ -168,23 +134,6 @@ object Form1: TForm1
         ParentBackground = False
         TabOrder = 2
         Visible = False
-        object LogEdit: TRichEdit
-          Left = 0
-          Top = 0
-          Width = 0
-          Height = 105
-          Align = alClient
-          BorderStyle = bsNone
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -14
-          Font.Name = 'Tahoma'
-          Font.Style = []
-          ParentFont = False
-          ScrollBars = ssBoth
-          TabOrder = 0
-          WordWrap = False
-        end
       end
       object pnlRunLog: TPanel
         Left = 0
@@ -196,23 +145,6 @@ object Form1: TForm1
         ParentBackground = False
         TabOrder = 4
         Visible = False
-        object RuntimeLog: TRichEdit
-          Left = 0
-          Top = 0
-          Width = 0
-          Height = 105
-          Align = alClient
-          BorderStyle = bsNone
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -14
-          Font.Name = 'Tahoma'
-          Font.Style = []
-          ParentFont = False
-          ScrollBars = ssBoth
-          TabOrder = 0
-          WordWrap = False
-        end
       end
       object pnlGitLog: TPanel
         Left = 0
@@ -224,23 +156,6 @@ object Form1: TForm1
         ParentBackground = False
         TabOrder = 5
         Visible = False
-        object GitLogEdit: TRichEdit
-          Left = 0
-          Top = 0
-          Width = 0
-          Height = 105
-          Align = alClient
-          BorderStyle = bsNone
-          Font.Charset = DEFAULT_CHARSET
-          Font.Color = clWindowText
-          Font.Height = -14
-          Font.Name = 'Tahoma'
-          Font.Style = []
-          ParentFont = False
-          ScrollBars = ssBoth
-          TabOrder = 0
-          WordWrap = False
-        end
       end
     end
     object FTabs: TUiTabControl

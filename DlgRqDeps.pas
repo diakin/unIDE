@@ -14,10 +14,9 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
-  ExtCtrls, ComCtrls, Dialogs, RichEdit, CommCtrl, IniFiles,
+  ExtCtrls, ComCtrls, Dialogs, CommCtrl, IniFiles,
   ClrScheme,    // схема подсветки для просмотра
-  SchemeRtf,    // текст -> RTF с цветами схемы
-  EdView,       // EdOwnEditorOn - флажок своего редактора
+  SchemeRtf,    // SchemePageColor - фон схемы
   EdRows,       // просмотр в окне своего редактора (шаг 0.7.6)
   IncCheck,     // эталон, TIncProgress
   RqDeps,       // TRqDepScan, поиск и выбор копий
@@ -69,29 +68,6 @@ const
   RqDepsDirsSection = 'RqDepsSearchDirs';
 
 implementation
-
-type
-  // TRichEdit Delphi 7 создаёт окно RichEdit 1.0 (RICHED32.DLL, класс
-  // RICHEDIT). Оно не показывает подложку символов из RTF (\highlight), а
-  // ею просмотр выделяет строки с ошибками и строку перехода. Этот - то же
-  // самое окном RichEdit 2.0 (RICHED20.DLL, класс RichEdit20A); нет DLL -
-  // остаётся 1.0.
-  TRichEdit20 = class(TRichEdit)
-  protected
-    procedure CreateParams(var Params: TCreateParams); override;
-  end;
-
-var
-  RichEdit20Lib: HMODULE = 0;
-
-procedure TRichEdit20.CreateParams(var Params: TCreateParams);
-begin
-  inherited CreateParams(Params);
-  if RichEdit20Lib = 0 then
-    RichEdit20Lib := LoadLibrary('RICHED20.DLL');
-  if RichEdit20Lib <> 0 then
-    CreateSubClass(Params, 'RichEdit20A');
-end;
 
 type
   // Таблица темы IDE (TUiListView: цвета, шапка колонок), у которой и
@@ -181,9 +157,8 @@ type
     lvCands: TRqListView;     // копии на диске: путь, размер, создан, изменён
     splDeps: TSplitter;
     splCands: TSplitter;
-    memPreview: TRichEdit20;  // текст копии, выделенной в lvCands
-    // То же в окне своего редактора (шаг 0.7.6): при включённом своём
-    // редакторе (EdOwnEditorOn) показано оно, memPreview спрятан
+    // Текст копии, выделенной в lvCands, - в окне своего редактора
+    // (шаг 0.7.6; окно RichEdit убрано в шаге 0.7.7)
     FEdPreview: TEdRowsView;
     // Схема подсветки просмотра (не своя - её освобождает вызвавший); nil -
     // просмотр без подсветки
@@ -233,7 +208,6 @@ type
     procedure LoadPlacement;
     procedure SavePlacement;
     procedure EmptyPreview(const AText: string);
-    function OwnPreview: Boolean;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure FillList;
     procedure FillRow(AItem: TListItem);
@@ -586,20 +560,7 @@ begin
   splReport.Visible := False;
   FReportPaths := TStringList.Create;
 
-  memPreview := TRichEdit20.Create(Self);
-  memPreview.Parent := Self;
-  memPreview.Align := alClient;
-  memPreview.ReadOnly := True;
-  memPreview.WordWrap := False;
-  memPreview.ScrollBars := ssBoth;
-  memPreview.HideSelection := False;
-  memPreview.Font.Name := 'Courier New';
-  memPreview.Font.Height := -12;
-  // Цвет пустого просмотра - как у таблицы (тема), см. EmptyPreview
-  memPreview.ParentColor := False;
-
   FEdPreview := TEdRowsView.Create(Self);
-  FEdPreview.Visible := False;
   FEdPreview.Parent := Self;
   FEdPreview.Align := alClient;
   FEdPreview.ShowGutter := True;
@@ -1218,16 +1179,11 @@ const
   PreviewMax = 1048576;
 var
   Stream: TFileStream;
-  RtfStream: TStringStream;
   Buf: string;
   ErrLines: TList;
   ItemIdx, HeadIdx, LineNo: Integer;
   Txt: string;
 begin
-  // Без этого RichEdit берёт не больше 32К знаков
-  memPreview.Perform(EM_EXLIMITTEXT, 0, $7FFFFFF0);
-  memPreview.Lines.Clear;
-  OwnPreview;
   if not AIsText then
   begin
     EmptyPreview('(' + AFile + ' - не текст, просмотра нет)');
@@ -1271,43 +1227,20 @@ begin
                 ErrLines.Add(Pointer(LineNo));
             end;
           end;
-        if FEdPreview.Visible then
-        begin
-          // Свой редактор: те же строки и цвета, без RTF
-          FEdPreview.SelColor := clHighlight;
-          FEdPreview.SelTextColor := clHighlightText;
-          FEdPreview.GutterColor := SchemePageColor(FScheme);
-          FEdPreview.ShowRows(SchemeTextRows(AdjustLineBreaks(Buf)), FScheme,
-            lvDeps.Font.Color, SchemePageColor(FScheme), ErrLines, ACurLine);
-        end
-        else
-        begin
-          memPreview.Color := SchemePageColor(FScheme);
-          RtfStream := TStringStream.Create(SchemeTextToRtf(
-            AdjustLineBreaks(Buf), FScheme, 'Courier New', 9, ErrLines,
-            ACurLine));
-          try
-            memPreview.PlainText := False;
-            memPreview.Lines.LoadFromStream(RtfStream);
-          finally
-            RtfStream.Free;
-          end;
-        end;
+        FEdPreview.SelColor := clHighlight;
+        FEdPreview.SelTextColor := clHighlightText;
+        FEdPreview.GutterColor := SchemePageColor(FScheme);
+        FEdPreview.ShowRows(SchemeTextRows(AdjustLineBreaks(Buf)), FScheme,
+          lvDeps.Font.Color, SchemePageColor(FScheme), ErrLines, ACurLine);
       finally
         ErrLines.Free;
       end;
     end
     else
     begin
-      EmptyPreview('');
-      if FEdPreview.Visible then
-        FEdPreview.ShowPlain(AdjustLineBreaks(Buf), lvDeps.Font.Color,
-          lvDeps.Color)
-      else
-        memPreview.Text := AdjustLineBreaks(Buf);
+      FEdPreview.ShowPlain(AdjustLineBreaks(Buf), lvDeps.Font.Color,
+        lvDeps.Color);
     end;
-    if not FEdPreview.Visible then
-      memPreview.SelStart := 0;
   except
     on E: Exception do
       EmptyPreview('Не прочитан: ' + E.Message);
@@ -1316,31 +1249,9 @@ end;
 
 // Просмотр без подсветки: цвета таблицы (тема IDE), не белый фон и не
 // фон схемы от прошлого файла. AText - пояснение вместо текста файла.
-// Просмотр - окном своего редактора (флажок своего редактора, EdView.
-// EdOwnEditorOn) или RichEdit; проверяется при каждой загрузке просмотра
-function TRqDepsForm.OwnPreview: Boolean;
-begin
-  Result := EdOwnEditorOn;
-  if FEdPreview.Visible <> Result then
-  begin
-    FEdPreview.Visible := Result;
-    memPreview.Visible := not Result;
-  end;
-end;
-
 procedure TRqDepsForm.EmptyPreview(const AText: string);
 begin
-  if OwnPreview then
-  begin
-    FEdPreview.ShowPlain(AText, lvDeps.Font.Color, lvDeps.Color);
-    Exit;
-  end;
-  memPreview.Color := lvDeps.Color;
-  memPreview.Font.Color := lvDeps.Font.Color;
-  memPreview.DefAttributes.Color := lvDeps.Font.Color;
-  // Не Lines.Add: у окна RichEdit 2.0 вставка строки через Lines
-  // кончается исключением "RichEdit line insertion error"
-  memPreview.Text := AText;
+  FEdPreview.ShowPlain(AText, lvDeps.Font.Color, lvDeps.Color);
 end;
 
 // Отчёт проверки / исправления - в список ошибок. Строка "путь - ..." задаёт
@@ -1454,7 +1365,7 @@ end;
 
 procedure TRqDepsForm.lbReportClick(Sender: TObject);
 var
-  ItemIdx, LineNo, CharPos, FirstVisible: Integer;
+  ItemIdx, LineNo: Integer;
   Txt: string;
 begin
   ItemIdx := lbReport.ItemIndex;
@@ -1466,26 +1377,14 @@ begin
   LineNo := 0;
   if Copy(Txt, 1, 5) = 'стр. ' then
     LineNo := StrToIntDef(Copy(Txt, 6, Pos(':', Txt) - 6), 0);
-  // Строка LineNo - своей подложкой (SchemeTextToRtf), не выделением:
+  // Строка LineNo - своей подложкой (ShowRows, ACurLine), не выделением:
   // на системном выделении светлые цвета схемы не видны
   LoadPreview(FReportPaths[ItemIdx], True, LineNo);
   if LineNo <= 0 then
     Exit;
-  // Свой редактор: каретка на строку, строку - с тремя строками перед ней
-  if FEdPreview.Visible then
-  begin
-    FEdPreview.CaretTo(LineNo - 1, 0);
-    FEdPreview.ScrollTo(LineNo - 4, 0);
-    Exit;
-  end;
-  CharPos := memPreview.Perform(EM_LINEINDEX, LineNo - 1, 0);
-  if CharPos < 0 then
-    Exit;
-  memPreview.SelStart := CharPos;
-  memPreview.SelLength := 0;
-  // Строку - не к самому верху, с тремя строками перед ней
-  FirstVisible := memPreview.Perform(EM_GETFIRSTVISIBLELINE, 0, 0);
-  memPreview.Perform(EM_LINESCROLL, 0, LineNo - 4 - FirstVisible);
+  // Каретка на строку, строку - с тремя строками перед ней
+  FEdPreview.CaretTo(LineNo - 1, 0);
+  FEdPreview.ScrollTo(LineNo - 4, 0);
 end;
 
 procedure TRqDepsForm.lvDepsSelectItem(Sender: TObject; Item: TListItem;
@@ -2129,11 +2028,5 @@ begin
     Items.Free;
   end;
 end;
-
-initialization
-
-finalization
-  if RichEdit20Lib <> 0 then
-    FreeLibrary(RichEdit20Lib);
 
 end.

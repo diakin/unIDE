@@ -307,13 +307,6 @@ type
     property OnDblClick;
   end;
 
-
-// Свой редактор включён (Unit1, флажок Own editor): окна, которые бывают и
-// на TRichEdit, и на своём редакторе (GitDiffView, DlgRqDeps), выбирают по
-// нему, каким показываться
-var
-  EdOwnEditorOn: Boolean = False;
-
 implementation
 
 const
