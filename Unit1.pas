@@ -4579,9 +4579,49 @@ end;
 // Диапазоны ДОПИСЫВАЮТСЯ в CommentRanges и StringRanges; позиции в них -
 // позиции контрола, FullText начинается с позиции ABase. Начало FullText
 // должно быть в обычном коде (не в комментарии и не в строке).
+// Добавить элемент в конец динамического массива с запасом: ёмкость растёт
+// вдвое, ACount - сколько занято. Массив по одному элементу (SetLength
+// +1) менеджер памяти Delphi 7 переносит на новое место при каждом росте
+// крупного блока, а прежние участки адресов остаются занятыми: на файле в
+// 32 МБ (сотни тысяч комментариев и строк) в 32-разрядном процессе
+// кончались адреса (crash.log, 31.10.2026). После заполнения - SetLength
+// до ACount.
+procedure GrowRanges(var ARanges: TCommentRangeArray; var ACount: Integer);
+var
+  NewCap: Integer;
+begin
+  Inc(ACount);
+  if ACount > Length(ARanges) then
+  begin
+    NewCap := Length(ARanges) * 2;
+    if NewCap < 1024 then
+      NewCap := 1024;
+    if NewCap < ACount then
+      NewCap := ACount;
+    SetLength(ARanges, NewCap);
+  end;
+end;
+
+procedure GrowSubs(var ASubs: TSubInfoArray; var ACount: Integer);
+var
+  NewCap: Integer;
+begin
+  Inc(ACount);
+  if ACount > Length(ASubs) then
+  begin
+    NewCap := Length(ASubs) * 2;
+    if NewCap < 256 then
+      NewCap := 256;
+    if NewCap < ACount then
+      NewCap := ACount;
+    SetLength(ASubs, NewCap);
+  end;
+end;
+
 procedure TForm1.ScanCommentRanges(const FullText: string; ABase: Integer);
 var
   TextLen, I: Integer;
+  CmtCount, StrCount: Integer;  // занято в CommentRanges / StringRanges
   // Маркер только в начале строки (^;): FullText начат с середины строки
   // (доразбор с конца литерала или комментария) - до первого перевода
   // строки комментарий не открывается
@@ -4625,6 +4665,8 @@ var
 
 begin
   TextLen := Length(FullText);
+  CmtCount := Length(CommentRanges);
+  StrCount := Length(StringRanges);
 
   LcMidStart := False;
   LcFirstBreak := 0;
@@ -4682,10 +4724,10 @@ begin
         else
         begin
           InString := False;
-          SetLength(StringRanges, Length(StringRanges) + 1);
-          StringRanges[High(StringRanges)].StartPos := StringStartPos;
-          StringRanges[High(StringRanges)].Kind := StrKind;
-          StringRanges[High(StringRanges)].EndPos := ABase + I + CurLen - 1;
+          GrowRanges(StringRanges, StrCount);
+          StringRanges[StrCount - 1].StartPos := StringStartPos;
+          StringRanges[StrCount - 1].Kind := StrKind;
+          StringRanges[StrCount - 1].EndPos := ABase + I + CurLen - 1;
           Inc(I, CurLen);
         end;
       end
@@ -4721,18 +4763,18 @@ begin
         P := PosEx(EndMark, FullText, I);
 
       InBlock := False;
-      SetLength(CommentRanges, Length(CommentRanges) + 1);
-      CommentRanges[High(CommentRanges)].StartPos := StartPos;
-      CommentRanges[High(CommentRanges)].Kind := BlockKind;
+      GrowRanges(CommentRanges, CmtCount);
+      CommentRanges[CmtCount - 1].StartPos := StartPos;
+      CommentRanges[CmtCount - 1].Kind := BlockKind;
 
       if P = 0 then
       begin
         // Закрытия в тексте нет - комментарий тянется до конца
-        CommentRanges[High(CommentRanges)].EndPos := ABase + TextLen;
+        CommentRanges[CmtCount - 1].EndPos := ABase + TextLen;
         Break;
       end;
 
-      CommentRanges[High(CommentRanges)].EndPos := ABase + P + Length(EndMark) - 1;
+      CommentRanges[CmtCount - 1].EndPos := ABase + P + Length(EndMark) - 1;
       I := P + Length(EndMark);
       Continue;
     end;
@@ -4797,19 +4839,22 @@ begin
 
   if InBlock then
   begin
-    SetLength(CommentRanges, Length(CommentRanges) + 1);
-    CommentRanges[High(CommentRanges)].StartPos := StartPos;
-    CommentRanges[High(CommentRanges)].Kind := BlockKind;
-    CommentRanges[High(CommentRanges)].EndPos := ABase + TextLen;
+    GrowRanges(CommentRanges, CmtCount);
+    CommentRanges[CmtCount - 1].StartPos := StartPos;
+    CommentRanges[CmtCount - 1].Kind := BlockKind;
+    CommentRanges[CmtCount - 1].EndPos := ABase + TextLen;
   end;
 
   if InString then
   begin
-    SetLength(StringRanges, Length(StringRanges) + 1);
-    StringRanges[High(StringRanges)].StartPos := StringStartPos;
-    StringRanges[High(StringRanges)].Kind := StrKind;
-    StringRanges[High(StringRanges)].EndPos := ABase + TextLen;
+    GrowRanges(StringRanges, StrCount);
+    StringRanges[StrCount - 1].StartPos := StringStartPos;
+    StringRanges[StrCount - 1].Kind := StrKind;
+    StringRanges[StrCount - 1].EndPos := ABase + TextLen;
   end;
+
+  SetLength(CommentRanges, CmtCount);
+  SetLength(StringRanges, StrCount);
 end;
 
 procedure TForm1.RebuildCommentRangeMap;
@@ -10488,11 +10533,12 @@ begin
     for RangeIdx := 0 to High(OldComments) do
       if OldComments[RangeIdx].StartPos >= OldMeet then
       begin
-        SetLength(CommentRanges, Length(CommentRanges) + 1);
-        CommentRanges[High(CommentRanges)] := OldComments[RangeIdx];
-        Inc(CommentRanges[High(CommentRanges)].StartPos, FMapDirtyDelta);
-        Inc(CommentRanges[High(CommentRanges)].EndPos, FMapDirtyDelta);
+        GrowRanges(CommentRanges, NewCount);
+        CommentRanges[NewCount - 1] := OldComments[RangeIdx];
+        Inc(CommentRanges[NewCount - 1].StartPos, FMapDirtyDelta);
+        Inc(CommentRanges[NewCount - 1].EndPos, FMapDirtyDelta);
       end;
+    SetLength(CommentRanges, NewCount);
     NewCount := KeepStrings;
     while (NewCount <= High(StringRanges)) and
           (StringRanges[NewCount].StartPos < MeetPos) do
@@ -10501,11 +10547,12 @@ begin
     for RangeIdx := 0 to High(OldStrings) do
       if OldStrings[RangeIdx].StartPos >= OldMeet then
       begin
-        SetLength(StringRanges, Length(StringRanges) + 1);
-        StringRanges[High(StringRanges)] := OldStrings[RangeIdx];
-        Inc(StringRanges[High(StringRanges)].StartPos, FMapDirtyDelta);
-        Inc(StringRanges[High(StringRanges)].EndPos, FMapDirtyDelta);
+        GrowRanges(StringRanges, NewCount);
+        StringRanges[NewCount - 1] := OldStrings[RangeIdx];
+        Inc(StringRanges[NewCount - 1].StartPos, FMapDirtyDelta);
+        Inc(StringRanges[NewCount - 1].EndPos, FMapDirtyDelta);
       end;
+    SetLength(StringRanges, NewCount);
   end;
 
   FMapPartialEnd := 0;
@@ -28802,6 +28849,7 @@ end;
 procedure TForm1.RebuildSubList(const AText: string);
 var
   I, Len, LineStart, LineNo, P, WordEnd, Open, K, ScopeStart: Integer;
+  SubCount: Integer;   // занято в FSubs
   Word, LineStr: string;
 
   function LineMatchesEnd(const S: string): Boolean;
@@ -28824,6 +28872,7 @@ var
 
 begin
   SetLength(FSubs, 0);
+  SubCount := 0;
 
   // Языки с фигурными скобками разбираются иначе: там у объявления нет
   // ключевого слова, есть имя, круглые скобки и тело в { }
@@ -28885,8 +28934,8 @@ begin
           // Предыдущая кончается перед этой, если концов у языка нет
           if (Open >= 0) and (FScheme.FSubEndWords.Count = 0) then
             FSubs[Open].EndLine := LineNo - 1;
-          SetLength(FSubs, Length(FSubs) + 1);
-          Open := High(FSubs);
+          GrowSubs(FSubs, SubCount);
+          Open := SubCount - 1;
           FSubs[Open].Name := LineStr;
           FSubs[Open].BeginLine := LineNo;
           FSubs[Open].EndLine := LineNo;
@@ -28913,6 +28962,7 @@ begin
   // Последняя незакрытая - до конца файла
   if Open >= 0 then
     FSubs[Open].EndLine := LineNo - 1;
+  SetLength(FSubs, SubCount);
   for K := 0 to High(FSubs) do
     if FSubs[K].EndLine < FSubs[K].BeginLine then
       FSubs[K].EndLine := FSubs[K].BeginLine;
@@ -28932,11 +28982,13 @@ end;
 procedure TForm1.RebuildSubListBlocks(const AText: string);
 var
   I, Len, LineStart, LineNo, K, ScopeStart, Idx: Integer;
+  SubCount: Integer;   // занято в FSubs
   LineStr: string;
   B: TBlockState;
   L: TLineScan;
 begin
   SetLength(FSubs, 0);
+  SubCount := 0;
   ScopeStart := SubScopeStart(AText);
 
   Len := Length(AText);
@@ -28960,11 +29012,11 @@ begin
         if Length(LineStr) > 300 then
           SetLength(LineStr, 300);
 
-        SetLength(FSubs, Length(FSubs) + 1);
-        FSubs[High(FSubs)].Name := LineStr;
-        FSubs[High(FSubs)].BeginLine := LineNo;
-        FSubs[High(FSubs)].EndLine := LineNo;
-        BlockPushHeader(High(FSubs), B);
+        GrowSubs(FSubs, SubCount);
+        FSubs[SubCount - 1].Name := LineStr;
+        FSubs[SubCount - 1].BeginLine := LineNo;
+        FSubs[SubCount - 1].EndLine := LineNo;
+        BlockPushHeader(SubCount - 1, B);
       end;
 
       BlockAfterLine(AText, L, B);
@@ -28974,7 +29026,7 @@ begin
       for K := 0 to B.ClosedCount - 1 do
       begin
         Idx := B.Closed[K];
-        if (Idx >= 0) and (Idx <= High(FSubs)) then
+        if (Idx >= 0) and (Idx < SubCount) then
           if B.ClosedAtBegin[K] then
             FSubs[Idx].EndLine := FSubs[Idx].BeginLine
           else
@@ -28995,7 +29047,7 @@ begin
   while B.Top >= 0 do
   begin
     Idx := B.Tags[B.Top];
-    if (Idx >= 0) and (Idx <= High(FSubs)) then
+    if (Idx >= 0) and (Idx < SubCount) then
       if B.Opened[B.Top] then
         FSubs[Idx].EndLine := LineNo - 1
       else
@@ -29003,6 +29055,7 @@ begin
     Dec(B.Top);
   end;
 
+  SetLength(FSubs, SubCount);
   for K := 0 to High(FSubs) do
     if FSubs[K].EndLine < FSubs[K].BeginLine then
       FSubs[K].EndLine := FSubs[K].BeginLine;
@@ -29023,6 +29076,7 @@ procedure TForm1.RebuildSubListBraces(const AText: string);
 var
   I, Len, LineNo, Depth, J, K, NameEnd, NameStart, ParDepth, BegLine: Integer;
   Open, WordStart, WordEnd: Integer;
+  SubCount: Integer;   // занято в FSubs
   Nm, LineStr, FirstWord: string;
 
   // Слово оператора: перед '(' или первым в строке оно значит, что это не
@@ -29067,6 +29121,8 @@ var
   end;
 
 begin
+  // FSubs очищен в RebuildSubList
+  SubCount := Length(FSubs);
   Len := Length(AText);
   LineNo := 0;
   Depth := 0;
@@ -29158,8 +29214,8 @@ begin
 
                   BegLine := LineOf(I, LineNo, NameStart);
 
-                  SetLength(FSubs, Length(FSubs) + 1);
-                  Open := High(FSubs);
+                  GrowSubs(FSubs, SubCount);
+                  Open := SubCount - 1;
                   FSubs[Open].Name := LineStr;
                   FSubs[Open].BeginLine := BegLine;
                   FSubs[Open].EndLine := BegLine;
@@ -29186,6 +29242,7 @@ begin
 
   if Open >= 0 then
     FSubs[Open].EndLine := LineNo;
+  SetLength(FSubs, SubCount);
 
   FillSubListView;
 end;
