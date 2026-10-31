@@ -997,7 +997,9 @@ end;
 //  Нехватка памяти (Out of memory)
 //
 //  Менеджер памяти Delphi, не получив блок, вызывает System.ErrorProc с
-//  кодом 203; обработчик SysUtils превращает это в EOutOfMemory. К окну
+//  кодом reOutOfMemory (Delphi 7 передаёт номер из TRuntimeError, это 1, а
+//  не 203 - номер runtime error); обработчик SysUtils превращает это в
+//  EOutOfMemory. К окну
 //  «Out of memory» или к записи в журнале стек уже свёрнут, и не видно,
 //  кто просил память. Свой обработчик стоит перед обработчиком SysUtils:
 //  пока стек цел, пишет в crash.log цепочку вызовов и состояние адресов,
@@ -1006,7 +1008,8 @@ end;
 // ---------------------------------------------------------------------------
 
 const
-  OomErrorCode = 203;      // runtime error 203 - heap overflow
+  OomErrorCode = 1;        // Ord(reOutOfMemory) в System Delphi 7
+  OomRunErrorCode = 203;   // то же номером runtime error - на всякий случай
   OomMaxReports = 5;
 
 type
@@ -1045,7 +1048,8 @@ var
   CodeByte: Integer;
 begin
   CodeByte := ErrorCode and $FF;
-  if (CodeByte = OomErrorCode) and (Watch <> nil) and
+  if ((CodeByte = OomErrorCode) or (CodeByte = OomRunErrorCode)) and
+     (Watch <> nil) and
      (OomReports < OomMaxReports) and
      (InterlockedExchange(OomBusy, 1) = 0) then
   begin
