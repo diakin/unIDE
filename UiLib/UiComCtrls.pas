@@ -24,6 +24,7 @@ unit UiComCtrls;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, ComCtrls,
   CommCtrl, UiTheme, UiEditCtrls;
 
@@ -37,6 +38,7 @@ type
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
     procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
+    procedure CreateParams(var Params: TCreateParams); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -51,6 +53,7 @@ type
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
     procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
+    procedure CreateParams(var Params: TCreateParams); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -113,6 +116,11 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+{$IFDEF FPC}
+    // Как TListView.UpdateItems в VCL: перерисовать строки с AFirst по
+    // ALast (LVM_REDRAWITEMS) сразу
+    procedure UpdateItems(AFirst, ALast: Integer);
+{$ENDIF}
   published
     property ThemeColors: Boolean read FThemeColors write SetThemeColors
       default True;
@@ -185,7 +193,7 @@ begin
     // сам элемент Windows (TCM_ADJUSTRECT).
     RectVal := CustomTabControl.ClientRect;
     if CustomTabControl.HandleAllocated then
-      SendMessage(CustomTabControl.Handle, TCM_ADJUSTRECT, 0, Integer(@RectVal));
+      SendMessage(CustomTabControl.Handle, TCM_ADJUSTRECT, 0, LPARAM(@RectVal));
     InflateRect(RectVal, 1, 1);
     Cv.Brush.Color := UiThemeColorFor(CustomTabControl, 'Tab.Border');
     Cv.FrameRect(RectVal);
@@ -218,7 +226,7 @@ begin
         DIS.hDC := DC;
         DIS.rcItem := RectVal2;
         InflateRect(DIS.rcItem, -1, -1);   // рамка ярлычка - наша
-        CustomTabControl.Perform(CN_DRAWITEM, 0, Longint(@DIS));
+        CustomTabControl.Perform(CN_DRAWITEM, 0, LPARAM(@DIS));
         Continue;
       end;
       Str := UiTabAcc.Tabs[I];
@@ -260,6 +268,15 @@ begin
   Message.Result := 0;
 end;
 
+// Вкладки в несколько рядов (MultiLine): у ярлычков-вкладок Windows ставит
+// ряд выбранной вкладки вниз, к странице, и ряды меняются местами при
+// каждом выборе. У ярлычков-кнопок (TCS_BUTTONS) ряды стоят на месте.
+procedure UiTabsFixRows(CustomTabControl: TCustomTabControl; var Params: TCreateParams);
+begin
+  if Params.Style and TCS_MULTILINE <> 0 then
+    Params.Style := Params.Style or TCS_BUTTONS;
+end;
+
 // ---------------------------------------------------------------------------
 //  TUiPageControl
 // ---------------------------------------------------------------------------
@@ -275,6 +292,12 @@ destructor TUiPageControl.Destroy;
 begin
   UiThemeRemoveClient(Self);
   inherited Destroy;
+end;
+
+procedure TUiPageControl.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  UiTabsFixRows(Self, Params);
 end;
 
 procedure TUiPageControl.UMUiThemeChanged(var Message: TMessage);
@@ -336,6 +359,12 @@ destructor TUiTabControl.Destroy;
 begin
   UiThemeRemoveClient(Self);
   inherited Destroy;
+end;
+
+procedure TUiTabControl.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  UiTabsFixRows(Self, Params);
 end;
 
 procedure TUiTabControl.UMUiThemeChanged(var Message: TMessage);
@@ -469,7 +498,7 @@ begin
 
     for I := 0 to Panels.Count - 1 do
     begin
-      if SendMessage(Handle, SB_GETRECT, I, Integer(@RectVal)) = 0 then
+      if SendMessage(Handle, SB_GETRECT, I, LPARAM(@RectVal)) = 0 then
         Continue;
       StatusPanel := Panels[I];
       if StatusPanel.Style = psOwnerDraw then
@@ -608,6 +637,18 @@ end;
 //  TUiListView
 // ---------------------------------------------------------------------------
 
+{$IFDEF FPC}
+procedure TUiListView.UpdateItems(AFirst, ALast: Integer);
+const
+  LVM_REDRAWITEMS_ = $1000 + 21;
+begin
+  if not HandleAllocated then
+    Exit;
+  SendMessage(Handle, LVM_REDRAWITEMS_, AFirst, ALast);
+  UpdateWindow(Handle);
+end;
+{$ENDIF}
+
 constructor TUiListView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -714,7 +755,7 @@ var
   Wnd: HWND;
 begin
   if not UiThemeNativeFor(Self) and HandleAllocated and
-     (Message.NMHdr^.code = NM_CUSTOMDRAW) then
+     (Integer(Message.NMHdr^.code) = Integer(NM_CUSTOMDRAW)) then
   begin
     Wnd := SendMessage(Handle, LVM_GETHEADER, 0, 0);
     if (Wnd <> 0) and (Message.NMHdr^.hwndFrom = Wnd) then
@@ -801,7 +842,7 @@ begin
   RectVal2 := RectVal;
   if Num > 0 then
   begin
-    if SendMessage(Wnd, HDM_GETITEMRECT, Num - 1, Integer(@RectVal2)) = 0 then
+    if SendMessage(Wnd, HDM_GETITEMRECT, Num - 1, LPARAM(@RectVal2)) = 0 then
       Exit;
     RectVal2.Left := RectVal2.Right;
     RectVal2.Right := RectVal.Right;

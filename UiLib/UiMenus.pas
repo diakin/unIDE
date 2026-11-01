@@ -34,6 +34,7 @@ unit UiMenus;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, LCLProc, LMessages, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Menus,
   ImgList, UiTheme;
 
@@ -52,7 +53,8 @@ type
     procedure HookForm;
     procedure UnhookForm;
     procedure FormWndProc(var Message: TMessage);
-    procedure FormShortCut(var Msg: TWMKey; var Handled: Boolean);
+    procedure FormShortCut(var Msg: {$IFDEF FPC}TLMKey{$ELSE}TWMKey{$ENDIF};
+      var Handled: Boolean);
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
@@ -87,6 +89,9 @@ type
 
   TUiPopupMenu = class(TPopupMenu)
   public
+    // Точка вызова (экранная): PopupPoint предка не заполняется - Popup
+    // переписан без inherited
+    PopupAt: TPoint;
     procedure Popup(PosX, PosY: Integer); override;
   end;
 
@@ -100,6 +105,18 @@ type
     // конструктор форм IDE)
     property Bar: TUiMenuBar read FBar;
   end;
+
+// Слежение за меню программы (IDE: инспектор и редактор идут за меню
+// своей формы). PopupHook - меню TUiPopupMenu раскрывается; ItemHook -
+// пункт выбран и его Click уже выполнен (всплывающее меню и строка меню
+// TUiMenuBar).
+type
+  TUiMenuPopupHook = procedure(AMenu: TPopupMenu) of object;
+  TUiMenuItemHook = procedure(AItem: TMenuItem) of object;
+
+var
+  UiMenuPopupHook: TUiMenuPopupHook = nil;
+  UiMenuItemHook: TUiMenuItemHook = nil;
 
 // Раскрыть меню пунктов AItems в точке X, Y (экран) и ждать выбора.
 // ABar/ABarIndex - меню раскрыто из строки меню (стрелки влево-вправо
@@ -132,6 +149,9 @@ type
     OwnerWnd: HWND;
     ShowAccel: Boolean;
     RowTop, RowBottom: array of Integer;
+    // Левый край столбца строки: меню выше экрана - в несколько столбцов
+    RowLeft: array of Integer;
+    ColWidth: Integer;        // ширина одного столбца
     ItemHeight: Integer;
     CaptionWidth, ShortCutWidth: Integer;
     Gutter: Integer;              // левая колонка: отметка или значок
@@ -140,7 +160,7 @@ type
     procedure Paint; override;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
     procedure WMMouseActivate(var Message: TWMMouseActivate); message WM_MOUSEACTIVATE;
-    procedure Layout(var AWidth, AHeight: Integer);
+    procedure Layout(var AWidth, AHeight: Integer; AMaxHeight: Integer);
     function  RowAt(const AScreen: TPoint): Integer;
     function  Selectable(AIndex: Integer): Boolean;
     function  NextSelectable(AFrom, AStep: Integer): Integer;
@@ -166,17 +186,34 @@ begin
   Message.Result := MA_NOACTIVATE;
 end;
 
+// Подпись пункта. Клавиша может стоять в самой подписи после табуляции
+// ('&Undo'#9'Ctrl+Z'), как это понимает меню Windows: подпись - до
+// табуляции, клавиша рисуется своей колонкой (ItemShortCut).
 function ItemText(AItem: TMenuItem): string;
+var
+  TabPos: Integer;
 begin
   Result := AItem.Caption;
+  TabPos := Pos(#9, Result);
+  if TabPos > 0 then
+    SetLength(Result, TabPos - 1);
 end;
 
+// Клавиша пункта: из ShortCut, иначе - текст после табуляции в подписи
 function ItemShortCut(AItem: TMenuItem): string;
+var
+  TabPos: Integer;
 begin
   if AItem.ShortCut <> 0 then
     Result := ShortCutToText(AItem.ShortCut)
   else
-    Result := '';
+  begin
+    TabPos := Pos(#9, AItem.Caption);
+    if TabPos > 0 then
+      Result := Copy(AItem.Caption, TabPos + 1, MaxInt)
+    else
+      Result := '';
+  end;
 end;
 
 function IsSeparator(AItem: TMenuItem): Boolean;
@@ -216,9 +253,13 @@ begin
 end;
 
 // Размер окна и места строк
-procedure TUiMenuWindow.Layout(var AWidth, AHeight: Integer);
+// AMaxHeight > 0 - высота, в которую окно должно уложиться: строки, не
+// влезающие в столбец, переносятся в следующий (меню Windows с полным
+// списком открытых файлов выше экрана).
+procedure TUiMenuWindow.Layout(var AWidth, AHeight: Integer;
+  AMaxHeight: Integer);
 var
-  Index, PosY, WidthPx: Integer;
+  Index, PosY, WidthPx, ColLeft, ColCount, RowH, MaxY: Integer;
   Item: TMenuItem;
   Measure: TRect;
 begin
@@ -279,8 +320,39 @@ begin
     RowBottom[Index] := PosY;
   end;
   Canvas.Font.Style := [];
-  AWidth := Gutter + CaptionWidth + 24 + ShortCutWidth + ArrowWidth + 2;
+  ColWidth := Gutter + CaptionWidth + 24 + ShortCutWidth + ArrowWidth + 2;
+  SetLength(RowLeft, Items.Count);
+  for Index := 0 to Items.Count - 1 do
+    RowLeft[Index] := 0;
+  AWidth := ColWidth;
   AHeight := PosY + 2 + 2;       // + рамка
+  if (AMaxHeight <= 0) or (AHeight <= AMaxHeight) then
+    Exit;
+
+  // Выше разрешённого - столбцами: высоты строк те же, строка, которая не
+  // влезает в столбец, начинает следующий
+  ColLeft := 0;
+  ColCount := 1;
+  MaxY := 0;
+  PosY := 2;
+  for Index := 0 to Items.Count - 1 do
+  begin
+    RowH := RowBottom[Index] - RowTop[Index];
+    if (RowH > 0) and (PosY + RowH + 2 + 2 > AMaxHeight) and (PosY > 2) then
+    begin
+      Inc(ColLeft, ColWidth);
+      Inc(ColCount);
+      PosY := 2;
+    end;
+    RowTop[Index] := PosY;
+    RowLeft[Index] := ColLeft;
+    Inc(PosY, RowH);
+    RowBottom[Index] := PosY;
+    if PosY > MaxY then
+      MaxY := PosY;
+  end;
+  AWidth := ColWidth * ColCount;
+  AHeight := MaxY + 2 + 2;
 end;
 
 function TUiMenuWindow.Selectable(AIndex: Integer): Boolean;
@@ -324,7 +396,9 @@ begin
   if (Local.X < 0) or (Local.X >= ClientWidth) then
     Exit;
   for Index := 0 to Items.Count - 1 do
-    if (Local.Y >= RowTop[Index]) and (Local.Y < RowBottom[Index]) then
+    if (Local.Y >= RowTop[Index]) and (Local.Y < RowBottom[Index]) and
+       (Local.X >= RowLeft[Index]) and
+       (Local.X < RowLeft[Index] + ColWidth) then
     begin
       if Selectable(Index) then
         Result := Index;
@@ -353,7 +427,8 @@ begin
     Item := Items[Index];
     if not Item.Visible or (RowBottom[Index] <= RowTop[Index]) then
       Continue;
-    Row := Rect(2, RowTop[Index], ClientWidth - 2, RowBottom[Index]);
+    Row := Rect(RowLeft[Index] + 2, RowTop[Index],
+                RowLeft[Index] + ColWidth - 2, RowBottom[Index]);
     if IsSeparator(Item) then
     begin
       Canvas.Pen.Color := UiThemeColor('Menu.Border');
@@ -475,6 +550,11 @@ type
     ShowAccel: Boolean;
     Chosen: TMenuItem;
     Done: Boolean;
+    // Точка мыши при открытии. Отпускание выбирает пункт, только если
+    // после открытия мышь сдвинулась или кнопку нажали над меню: иначе
+    // отпускание кнопки, открывшей меню, выбрало бы пункт под мышью.
+    StartPt: TPoint;
+    Armed: Boolean;
     constructor Create;
     destructor Destroy; override;
     function  Deepest: TUiMenuWindow;
@@ -520,7 +600,7 @@ procedure TUiMenuTracker.OpenLevel(AItems: TMenuItem; PosX, PosY: Integer;
   AFromRight: Integer; ASelectFirst: Boolean);
 var
   Win: TUiMenuWindow;
-  WidthPx, HeightPx: Integer;
+  WidthPx, HeightPx, DefIdx, MaxH: Integer;
   Work: TRect;
 begin
   // Меню, которые строятся на лету, заполняются в OnClick пункта с
@@ -537,9 +617,16 @@ begin
   Win.Selected := -1;
   Win.Font := Screen.MenuFont;
   Win.HandleNeeded;
-  Win.Layout(WidthPx, HeightPx);
-
   Work := Screen.WorkAreaRect;
+  // Высота - не больше места под точкой открытия: иначе окно сдвигалось
+  // вверх и накрывало строку меню вместе с мышью, и отпускание кнопки,
+  // открывшей меню, выбирало пункт под ней. Места меньше половины экрана -
+  // весь экран.
+  MaxH := Work.Bottom - PosY;
+  if MaxH < (Work.Bottom - Work.Top) div 2 then
+    MaxH := Work.Bottom - Work.Top;
+  Win.Layout(WidthPx, HeightPx, MaxH);
+
   if PosX + WidthPx > Work.Right then
   begin
     if AFromRight >= 0 then
@@ -558,6 +645,15 @@ begin
   Levels.Add(Win);
   if ASelectFirst then
     Win.Selected := Win.NextSelectable(-1, 1);
+  // Пункт по умолчанию (Default) выделен сразу, как бы меню ни открыли:
+  // так список показывает текущий элемент (например, закладку на строке
+  // с кареткой), и Enter выбирает его
+  for DefIdx := 0 to AItems.Count - 1 do
+    if AItems[DefIdx].Default and Win.Selectable(DefIdx) then
+    begin
+      Win.Selected := DefIdx;
+      Break;
+    end;
   Win.Invalidate;
 end;
 
@@ -588,8 +684,10 @@ begin
   if not Item.Enabled or (Item.Count = 0) then
     Exit;
   CloseAfter(ALevel);
-  Origin := Win.ClientToScreen(Point(Win.ClientWidth, Win.RowTop[Win.Selected]));
-  OpenLevel(Item, Origin.X, Origin.Y - 3, Win.Left, ASelectFirst);
+  Origin := Win.ClientToScreen(Point(Win.RowLeft[Win.Selected] + Win.ColWidth,
+                                     Win.RowTop[Win.Selected]));
+  OpenLevel(Item, Origin.X, Origin.Y - 3,
+            Win.Left + Win.RowLeft[Win.Selected], ASelectFirst);
 end;
 
 // Меню другого пункта строки меню
@@ -660,6 +758,9 @@ var
   Win: TUiMenuWindow;
   Local: TPoint;
 begin
+  if not Armed and ((Abs(AScreen.X - StartPt.X) > 3) or
+                    (Abs(AScreen.Y - StartPt.Y) > 3)) then
+    Armed := True;
   Level := LevelAt(AScreen);
   if Level >= 0 then
   begin
@@ -690,7 +791,10 @@ var
   BarItem: Integer;
 begin
   if LevelAt(AScreen) >= 0 then
+  begin
+    Armed := True;
     Exit;                     // выбор - по отпусканию
+  end;
   if Bar <> nil then
   begin
     Local := Bar.ScreenToClient(AScreen);
@@ -714,6 +818,8 @@ var
   Level, Row: Integer;
   Win: TUiMenuWindow;
 begin
+  if not Armed then
+    Exit;
   Level := LevelAt(AScreen);
   if Level < 0 then
     Exit;
@@ -823,6 +929,7 @@ begin
     Tracker.Bar := ABar;
     Tracker.BarIndex := ABarIndex;
     Tracker.ShowAccel := AByKeyboard;
+    GetCursorPos(Tracker.StartPt);
     Tracker.OwnerWnd := GetActiveWindow;
     if Tracker.OwnerWnd = 0 then
       Tracker.OwnerWnd := Application.Handle;
@@ -904,6 +1011,9 @@ begin
   FHot := -1;
   FOpen := -1;
   TabStop := False;
+  // Paint заливает всю полосу и потом пишет пункты; без буфера при смене
+  // ширины окна заливка была видна до текста - пункты мигали
+  DoubleBuffered := True;
   UiThemeAddClient(Self);
 end;
 
@@ -1009,7 +1119,8 @@ begin
   FOldFormProc(Message);
 end;
 
-procedure TUiMenuBar.FormShortCut(var Msg: TWMKey; var Handled: Boolean);
+procedure TUiMenuBar.FormShortCut(var Msg: {$IFDEF FPC}TLMKey{$ELSE}TWMKey{$ENDIF};
+  var Handled: Boolean);
 begin
   if Assigned(FOldShortCut) then
     FOldShortCut(Msg, Handled);
@@ -1131,7 +1242,11 @@ begin
   FShowAccel := AByKeyboard;
   Chosen := UiTrackMenu(nil, 0, 0, Self, AIndex, AByKeyboard);
   if Chosen <> nil then
+  begin
     Chosen.Click;
+    if Assigned(UiMenuItemHook) then
+      UiMenuItemHook(Chosen);
+  end;
 end;
 
 procedure TUiMenuBar.WMEraseBkgnd(var Message: TWMEraseBkgnd);
@@ -1237,21 +1352,46 @@ procedure TUiPopupMenu.Popup(PosX, PosY: Integer);
 var
   Chosen: TMenuItem;
   Probe: TControl;
+  Flags: UINT;
+  Cmd: Integer;
 begin
+  PopupAt := Point(PosX, PosY);
+  if Assigned(UiMenuPopupHook) then
+    UiMenuPopupHook(Self);
   // Тема Light при темах Windows - меню Windows. Тема - по окну, на
   // котором меню вызвали, иначе общая.
   Probe := nil;
   if PopupComponent is TControl then
     Probe := TControl(PopupComponent);
-  if UiThemeNativeFor(Probe) then
-  begin
-    inherited Popup(PosX, PosY);
-    Exit;
-  end;
   DoPopup(Self);
-  Chosen := UiTrackMenu(Items, PosX, PosY, nil, -1, False);
+  // В LCL окна PopupList нет - там меню всегда своё
+  if {$IFDEF FPC}False and{$ENDIF} UiThemeNativeFor(Probe) then
+  begin
+    // Меню Windows, но выбранный пункт - нам (TPM_RETURNCMD), а не через
+    // WM_COMMAND окну PopupList: так после его Click известно, какой он
+    // (UiMenuItemHook)
+    Flags := TPM_RIGHTBUTTON or TPM_RETURNCMD;
+    case Alignment of
+      paRight: Flags := Flags or TPM_RIGHTALIGN;
+      paCenter: Flags := Flags or TPM_CENTERALIGN;
+    else
+      Flags := Flags or TPM_LEFTALIGN;
+    end;
+    Cmd := Integer(TrackPopupMenu(Items.Handle, Flags, PosX, PosY, 0,
+                                  {$IFDEF FPC}0{$ELSE}PopupList.Window{$ENDIF},
+                                  nil));
+    Chosen := nil;
+    if Cmd <> 0 then
+      Chosen := FindItem(Cmd, fkCommand);
+  end
+  else
+    Chosen := UiTrackMenu(Items, PosX, PosY, nil, -1, False);
   if Chosen <> nil then
+  begin
     Chosen.Click;
+    if Assigned(UiMenuItemHook) then
+      UiMenuItemHook(Chosen);
+  end;
 end;
 
 procedure TUiMainMenu.Loaded;

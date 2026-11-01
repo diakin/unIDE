@@ -35,7 +35,8 @@ unit UiScroll;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
+  // LCLType - до Windows: TScrollInfo нужен виндовый (SetScrollInfo)
+  {$IFDEF FPC} LCLType, {$ENDIF} Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
   ComCtrls, StdCtrls, Grids;
 
 type
@@ -160,6 +161,12 @@ type
 
 // Наши полосы элемента, если уже поставлены, иначе nil
 function UiScrollFind(ACtl: TWinControl): TUiListScroll;
+
+// Сверить все наши полосы элементов сейчас, не дожидаясь таймера. Нужно
+// сразу после показа окна: пока оно было спрятано, сверка по таймеру
+// убрала полосы его элементов (элемент не виден), и до следующей сверки
+// на их месте видны полосы Windows.
+procedure UiScrollSyncAll;
 
 // Служебная часть TUiListScroll (полоса или угол поверх полос элемента), а
 // не полоса, которую поставили в форму сами. Для снимка формы: таких
@@ -773,6 +780,12 @@ begin
       TUiListScroll(List[I]).Sync;
 end;
 
+procedure UiScrollSyncAll;
+begin
+  if Ticker <> nil then
+    Ticker.Tick(nil);
+end;
+
 function UiScrollFind(ACtl: TWinControl): TUiListScroll;
 var
   K: Integer;
@@ -1188,7 +1201,7 @@ begin
     RectVal.Left := 0;             // LVIR_BOUNDS
     RowH := 0;
     if (Count > 0) and
-       (SendMessage(FCtl.Handle, LVM_GETITEMRECT_, 0, Integer(@RectVal)) <> 0) then
+       (SendMessage(FCtl.Handle, LVM_GETITEMRECT_, 0, LPARAM(@RectVal)) <> 0) then
       RowH := RectVal.Bottom - RectVal.Top;
     if RowH <= 0 then
       Exit;

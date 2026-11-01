@@ -15,15 +15,22 @@ unit UiGroupBox;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls,
   UiTheme;
 
 type
-  TUiGroupBox = class(TCustomGroupBox)
+  // В LCL TCustomGroupBox - окно виджета без Paint и Canvas: там рамка -
+  // TCustomControl, место детей под подписью задаёт AdjustClientRect
+  TUiGroupBox = class({$IFDEF FPC}TCustomControl{$ELSE}TCustomGroupBox{$ENDIF})
   private
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
+    procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
   protected
     procedure Paint; override;
+    {$IFDEF FPC}
+    procedure AdjustClientRect(var ARect: TRect); override;
+    {$ENDIF}
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -34,7 +41,7 @@ type
     property Caption;
     property Color;
     property Constraints;
-    property Ctl3D;
+    {$IFNDEF FPC}property Ctl3D;{$ENDIF}
     property DockSite;
     property DragCursor;
     property DragKind;
@@ -44,7 +51,7 @@ type
     property ParentBackground default True;
     property ParentBiDiMode;
     property ParentColor;
-    property ParentCtl3D;
+    {$IFNDEF FPC}property ParentCtl3D;{$ENDIF}
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
@@ -73,8 +80,25 @@ implementation
 constructor TUiGroupBox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  {$IFDEF FPC}
+  ControlStyle := ControlStyle + [csAcceptsControls, csCaptureMouse,
+    csClickEvents, csSetCaption, csDoubleClicks, csReplicatable];
+  SetInitialBounds(0, 0, 185, 105);
+  {$ENDIF}
   UiThemeAddClient(Self);
 end;
+
+{$IFDEF FPC}
+// Место детей: внутри рамки, сверху - под строкой подписи (как у
+// TCustomGroupBox Delphi)
+procedure TUiGroupBox.AdjustClientRect(var ARect: TRect);
+begin
+  inherited AdjustClientRect(ARect);
+  Canvas.Font := Font;
+  Inc(ARect.Top, Canvas.TextHeight('0'));
+  InflateRect(ARect, -1, -1);
+end;
+{$ENDIF}
 
 destructor TUiGroupBox.Destroy;
 begin
@@ -89,6 +113,20 @@ begin
   Message.Result := 0;
 end;
 
+// С двойной буферизацией фон стирается в буфере (WMPaint VCL шлёт
+// WM_ERASEBKGND с DC буфера в обоих параметрах). Стирание на экране, которое
+// Windows шлёт при BeginPaint, пропускается: с темами Windows и
+// ParentBackground оно рисовало на экран фон родителя без подписи, и
+// подпись мигала до прихода буфера.
+procedure TUiGroupBox.WMEraseBkgnd(var Message: TWMEraseBkgnd);
+begin
+  if DoubleBuffered and
+     (TMessage(Message).WParam <> TMessage(Message).LParam) then
+    Message.Result := 1
+  else
+    inherited;
+end;
+
 // Как у TCustomGroupBox без темы: рамка от середины строки подписи, подпись
 // с отступом 8 точек поверх рамки на фоне рамки
 procedure TUiGroupBox.Paint;
@@ -99,11 +137,14 @@ var
   Str: string;
 begin
   // Тема Light - как у TGroupBox: при включённых темах Windows рисует тема
+  // (в LCL предок - TCustomControl, тему не рисует: всегда сами)
+  {$IFNDEF FPC}
   if UiThemeNativeFor(Self) then
   begin
     inherited Paint;
     Exit;
   end;
+  {$ENDIF}
   with Canvas do
   begin
     Font := Self.Font;
@@ -121,7 +162,7 @@ begin
         RectVal := Rect(8, 0, 0, HeightPx)
       else
         RectVal := Rect(RectVal.Right - 8, 0, 0, HeightPx);
-      Flags := DrawTextBiDiModeFlags(DT_SINGLELINE);
+      Flags := UiDrawTextFlags(Self, DT_SINGLELINE);
       // Self.: внутри with Canvas Handle - у холста, он и нужен DrawText
       DrawText(Handle, PChar(Str), Length(Str), RectVal, Flags or DT_CALCRECT);
       if UseRightToLeftAlignment then

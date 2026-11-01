@@ -28,6 +28,7 @@ unit UiStdCtrls;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
   ExtCtrls, UiTheme, UiGroupBox;
 
@@ -186,7 +187,7 @@ type
     property Caption;
     property Color;
     property Constraints;
-    property Ctl3D;
+    {$IFNDEF FPC}property Ctl3D;{$ENDIF}
     property UseDockManager default True;
     property DockSite;
     property DragCursor;
@@ -195,11 +196,11 @@ type
     property Enabled;
     property FullRepaint;
     property Font;
-    property Locked;
+    {$IFNDEF FPC}property Locked;{$ENDIF}
     property ParentBiDiMode;
     property ParentBackground;
     property ParentColor;
-    property ParentCtl3D;
+    {$IFNDEF FPC}property ParentCtl3D;{$ENDIF}
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
@@ -207,7 +208,7 @@ type
     property TabOrder;
     property TabStop;
     property Visible;
-    property OnCanResize;
+    {$IFNDEF FPC}property OnCanResize;{$ENDIF}
     property OnClick;
     property OnConstrainedResize;
     property OnContextPopup;
@@ -1001,7 +1002,7 @@ begin
     else
       Fl := Fl or DT_CENTER;
     end;
-    DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, DrawTextBiDiModeFlags(Fl));
+    DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, UiDrawTextFlags(Self, Fl));
     Canvas.Brush.Style := bsSolid;
   end;
 end;
@@ -1070,7 +1071,7 @@ begin
     Str := Str + ' ';
   if not ShowAccelChar then
     Flags := Flags or DT_NOPREFIX;
-  Flags := DrawTextBiDiModeFlags(Flags);
+  Flags := UiDrawTextFlags(Self, Flags);
   Canvas.Font := Font;
   Canvas.Font.Color := UiThemeColorFor(Self, 'OffText');
   DrawText(Canvas.Handle, PChar(Str), Length(Str), Rect, Flags);

@@ -29,6 +29,7 @@ unit UiEditCtrls;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls,
   UiTheme;
 
@@ -65,20 +66,20 @@ type
     property CharCase;
     property Color;
     property Constraints;
-    property Ctl3D;
+    {$IFNDEF FPC}property Ctl3D;{$ENDIF}
     property DragCursor;
     property DragKind;
     property DragMode;
     property Enabled;
     property Font;
     property HideSelection;
-    property ImeMode;
-    property ImeName;
+    {$IFNDEF FPC}property ImeMode;{$ENDIF}
+    {$IFNDEF FPC}property ImeName;{$ENDIF}
     property MaxLength;
-    property OEMConvert;
+    {$IFNDEF FPC}property OEMConvert;{$ENDIF}
     property ParentBiDiMode;
     property ParentColor;
-    property ParentCtl3D;
+    {$IFNDEF FPC}property ParentCtl3D;{$ENDIF}
     property ParentFont;
     property ParentShowHint;
     property PasswordChar;
@@ -138,21 +139,21 @@ type
     property BorderStyle;
     property Color;
     property Constraints;
-    property Ctl3D;
+    {$IFNDEF FPC}property Ctl3D;{$ENDIF}
     property DragCursor;
     property DragKind;
     property DragMode;
     property Enabled;
     property Font;
     property HideSelection;
-    property ImeMode;
-    property ImeName;
+    {$IFNDEF FPC}property ImeMode;{$ENDIF}
+    {$IFNDEF FPC}property ImeName;{$ENDIF}
     property Lines;
     property MaxLength;
-    property OEMConvert;
+    {$IFNDEF FPC}property OEMConvert;{$ENDIF}
     property ParentBiDiMode;
     property ParentColor;
-    property ParentCtl3D;
+    {$IFNDEF FPC}property ParentCtl3D;{$ENDIF}
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
@@ -215,22 +216,22 @@ type
     property Color;
     property Columns;
     property Constraints;
-    property Ctl3D;
+    {$IFNDEF FPC}property Ctl3D;{$ENDIF}
     property DragCursor;
     property DragKind;
     property DragMode;
     property Enabled;
     property ExtendedSelect;
     property Font;
-    property ImeMode;
-    property ImeName;
+    {$IFNDEF FPC}property ImeMode;{$ENDIF}
+    {$IFNDEF FPC}property ImeName;{$ENDIF}
     property IntegralHeight;
     property ItemHeight;
     property Items;
     property MultiSelect;
     property ParentBiDiMode;
     property ParentColor;
-    property ParentCtl3D;
+    {$IFNDEF FPC}property ParentCtl3D;{$ENDIF}
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
@@ -239,7 +240,7 @@ type
     property Sorted;
     property TabOrder;
     property TabStop;
-    property TabWidth;
+    {$IFNDEF FPC}property TabWidth;{$ENDIF}
     property Visible;
     property OnClick;
     property OnContextPopup;
@@ -268,7 +269,9 @@ type
     FApplying: Boolean;
     FReady: Boolean;
     FHot: Boolean;
+    FListOwnerDraw: Boolean;
     procedure SetThemeColors(Value: Boolean);
+    procedure SetListOwnerDraw(Value: Boolean);
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure CMColorChanged(var Message: TMessage); message CM_COLORCHANGED;
     procedure CMMouseEnter(var Message: TMessage); message CM_MOUSEENTER;
@@ -279,33 +282,39 @@ type
   protected
     procedure ApplyTheme;
     procedure Loaded; override;
+    procedure CreateParams(var Params: TCreateParams); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
     property ThemeColors: Boolean read FThemeColors write SetThemeColors
       default True;
+    // Строки раскрытого списка рисует OnDrawItem при любом Style, и у
+    // списка с полем ввода (csDropDown) тоже: CBS_OWNERDRAWFIXED и
+    // CBS_HASSTRINGS к стилю окна. Поле ввода остаётся обычным.
+    property ListOwnerDraw: Boolean read FListOwnerDraw write SetListOwnerDraw
+      default False;
     property Style;
     property Anchors;
     property BiDiMode;
     property CharCase;
     property Color;
     property Constraints;
-    property Ctl3D;
+    {$IFNDEF FPC}property Ctl3D;{$ENDIF}
     property DragCursor;
     property DragKind;
     property DragMode;
     property DropDownCount;
     property Enabled;
     property Font;
-    property ImeMode;
-    property ImeName;
+    {$IFNDEF FPC}property ImeMode;{$ENDIF}
+    {$IFNDEF FPC}property ImeName;{$ENDIF}
     property ItemHeight;
     property ItemIndex default -1;
     property MaxLength;
     property ParentBiDiMode;
     property ParentColor;
-    property ParentCtl3D;
+    {$IFNDEF FPC}property ParentCtl3D;{$ENDIF}
     property ParentFont;
     property ParentShowHint;
     property PopupMenu;
@@ -718,6 +727,23 @@ begin
   begin
     FThemeColors := Value;
     ApplyTheme;
+  end;
+end;
+
+procedure TUiComboBox.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  if FListOwnerDraw then
+    Params.Style := Params.Style or CBS_OWNERDRAWFIXED or CBS_HASSTRINGS;
+end;
+
+procedure TUiComboBox.SetListOwnerDraw(Value: Boolean);
+begin
+  if FListOwnerDraw <> Value then
+  begin
+    FListOwnerDraw := Value;
+    if HandleAllocated then
+      {$IFDEF FPC}RecreateWnd(Self){$ELSE}RecreateWnd{$ENDIF};
   end;
 end;
 
