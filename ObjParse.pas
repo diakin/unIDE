@@ -176,26 +176,26 @@ var
 function Crc32Of(const Str: string): Cardinal;
 var
   I, K: Integer;
-  Cnt: Cardinal;
+  CrcVal: Cardinal;
 begin
   if not Crc32Ready then
   begin
     for I := 0 to 255 do
     begin
-      Cnt := Cardinal(I);
+      CrcVal := Cardinal(I);
       for K := 1 to 8 do
-        if (Cnt and 1) <> 0 then
-          Cnt := (Cnt shr 1) xor $EDB88320
+        if (CrcVal and 1) <> 0 then
+          CrcVal := (CrcVal shr 1) xor $EDB88320
         else
-          Cnt := Cnt shr 1;
-      Crc32Table[I] := Cnt;
+          CrcVal := CrcVal shr 1;
+      Crc32Table[I] := CrcVal;
     end;
     Crc32Ready := True;
   end;
-  Cnt := $FFFFFFFF;
+  CrcVal := $FFFFFFFF;
   for I := 1 to Length(Str) do
-    Cnt := Crc32Table[Byte(Cnt xor Cardinal(Ord(Str[I])))] xor (Cnt shr 8);
-  Result := not Cnt;
+    CrcVal := Crc32Table[Byte(CrcVal xor Cardinal(Ord(Str[I])))] xor (CrcVal shr 8);
+  Result := not CrcVal;
 end;
 
 // Поле записи кэша: табуляция и переводы строки внутри - \t, \r, \n,
@@ -253,19 +253,19 @@ end;
 // Строка записи - поля через табуляцию
 procedure SplitTabs(const Str: string; AList: TStrings);
 var
-  CharPos, QuotePos: Integer;
+  CharPos, TabPos: Integer;
 begin
   AList.Clear;
   CharPos := 1;
   repeat
-    QuotePos := PosEx(#9, Str, CharPos);
-    if QuotePos = 0 then
+    TabPos := PosEx(#9, Str, CharPos);
+    if TabPos = 0 then
     begin
       AList.Add(Copy(Str, CharPos, MaxInt));
       Break;
     end;
-    AList.Add(Copy(Str, CharPos, QuotePos - CharPos));
-    CharPos := QuotePos + 1;
+    AList.Add(Copy(Str, CharPos, TabPos - CharPos));
+    CharPos := TabPos + 1;
   until False;
 end;
 
@@ -686,18 +686,18 @@ end;
 procedure CodeSplitArgs(const Str: string; AList: TStrings);
 var
   P, Delta: Integer;
-  FlagQ: Boolean;
+  InQuote: Boolean;
   Cur: string;
 begin
   AList.Clear;
   Delta := 0;
-  FlagQ := False;
+  InQuote := False;
   Cur := '';
   for P := 1 to Length(Str) do
   begin
     if Str[P] = '''' then
-      FlagQ := not FlagQ;
-    if not FlagQ then
+      InQuote := not InQuote;
+    if not InQuote then
     begin
       if Str[P] = '(' then
         Inc(Delta)
@@ -1004,7 +1004,7 @@ function CodeFactoryCall(ALines: TStrings; Idx: Integer; AFacts: TList;
                          var ALhs, AClass, APar, ACap: string): Boolean;
 var
   Txt, ValStr, Call: string;
-  ByteVal, QuotePos, Idx2, K, Depth, M: Integer;
+  AssignPos, ParenPos, Idx2, K, Depth, M: Integer;
   InQ: Boolean;
   FactoryRec: TFactoryRec;
   Args: TStringList;
@@ -1013,26 +1013,26 @@ begin
   Txt := Trim(CodeNoComment(ALines[Idx]));
   if (Copy(Txt, 1, 2) = '//') or (AFacts.Count = 0) then
     Exit;
-  ByteVal := Pos(':=', Txt);
-  if ByteVal > 0 then
+  AssignPos := Pos(':=', Txt);
+  if AssignPos > 0 then
   begin
-    ALhs := Trim(Copy(Txt, 1, ByteVal - 1));
+    ALhs := Trim(Copy(Txt, 1, AssignPos - 1));
     if not IsValidIdent(ALhs) then
       Exit;
-    ValStr := Trim(Copy(Txt, ByteVal + 2, MaxInt));
+    ValStr := Trim(Copy(Txt, AssignPos + 2, MaxInt));
   end
   else
   begin
     ALhs := '';   // только создатель: имя - из его var-параметра
     ValStr := Txt;
   end;
-  QuotePos := Pos('(', ValStr);
-  if QuotePos = 0 then
+  ParenPos := Pos('(', ValStr);
+  if ParenPos = 0 then
     Exit;
   FactoryRec := nil;
   for M := 0 to AFacts.Count - 1 do
     if (TFactoryRec(AFacts[M]).Cls <> '') and
-       (CompareText(TFactoryRec(AFacts[M]).Name, Trim(Copy(ValStr, 1, QuotePos - 1))) = 0) then
+       (CompareText(TFactoryRec(AFacts[M]).Name, Trim(Copy(ValStr, 1, ParenPos - 1))) = 0) then
     begin
       FactoryRec := TFactoryRec(AFacts[M]);
       Break;
@@ -1040,10 +1040,10 @@ begin
   if FactoryRec = nil then
     Exit;
   // Функция - только с присваиванием, создатель - только без него
-  if (ByteVal > 0) <> (FactoryRec.OutIdx < 0) then
+  if (AssignPos > 0) <> (FactoryRec.OutIdx < 0) then
     Exit;
 
-  Call := Copy(ValStr, QuotePos + 1, MaxInt);
+  Call := Copy(ValStr, ParenPos + 1, MaxInt);
   Idx2 := Idx;
   repeat
     Depth := 1;
@@ -1103,7 +1103,7 @@ function CodeConfCall(ALines: TStrings; Idx2: Integer; AFacts: TList;
                       var AVar, APar, ACap: string): Boolean;
 var
   Txt, Call, ValStr: string;
-  QuotePos, K, M, Depth, Len: Integer;
+  ParenPos, K, M, Depth, Len: Integer;
   InQ: Boolean;
   FactoryRec: TFactoryRec;
   Args: TStringList;
@@ -1112,10 +1112,10 @@ begin
   Txt := Trim(CodeNoComment(ALines[Idx2]));
   if (Copy(Txt, 1, 2) = '//') or (AFacts.Count = 0) then
     Exit;
-  QuotePos := Pos('(', Txt);
-  if (QuotePos = 0) or ((Pos(':=', Txt) > 0) and (Pos(':=', Txt) < QuotePos)) then
+  ParenPos := Pos('(', Txt);
+  if (ParenPos = 0) or ((Pos(':=', Txt) > 0) and (Pos(':=', Txt) < ParenPos)) then
     Exit;
-  ValStr := Trim(Copy(Txt, 1, QuotePos - 1));
+  ValStr := Trim(Copy(Txt, 1, ParenPos - 1));
   if not IsValidIdent(ValStr) then
     Exit;
   FactoryRec := nil;
@@ -1129,7 +1129,7 @@ begin
   if FactoryRec = nil then
     Exit;
 
-  Call := Copy(Txt, QuotePos + 1, MaxInt);
+  Call := Copy(Txt, ParenPos + 1, MaxInt);
   Len := Idx2;
   repeat
     Depth := 1;
@@ -3032,7 +3032,7 @@ var
   CtorArgs: TStringList; // аргументы конструктора - поиск родителя
   CVar, CPar, CCap: string;
   Bound: array of Boolean;
-  I, J, K, CharPos, QuotePos: Integer;
+  I, J, K, CharPos, AssignPos: Integer;
   Txt, UpStr, Cls, Lhs, PName, ValStr: string;
   CodeRec2, R2, CodeRec: TCodeRec;
   Root, Target, Grp, DfmNode2, DfmNode, LinkTo: TDfmNode;
@@ -3091,9 +3091,9 @@ var
       Dec(M);
     AClass := Copy(Str, M + 1, CodeRec - 1 - M);
     ALhs := '';
-    QuotePos := Pos(':=', Str);
-    if (QuotePos > 0) and (QuotePos < M + 1) then
-      ALhs := Trim(Copy(Str, 1, QuotePos - 1));
+    AssignPos := Pos(':=', Str);
+    if (AssignPos > 0) and (AssignPos < M + 1) then
+      ALhs := Trim(Copy(Str, 1, AssignPos - 1));
     if CompareText(Copy(ALhs, 1, 5), 'Self.') = 0 then
       ALhs := Copy(ALhs, 6, MaxInt);
     Result := (AClass <> '') and (UpCase(AClass[1]) = 'T');
@@ -3325,10 +3325,10 @@ begin
 
           if Pos(AnsiUpperCase(CodeRec2.LHS) + '.', UpStr) <> 1 then
             Continue;
-          QuotePos := Pos(':=', Txt);
-          if QuotePos <= 0 then
+          AssignPos := Pos(':=', Txt);
+          if AssignPos <= 0 then
             Continue;
-          PName := Trim(Copy(Txt, Length(CodeRec2.LHS) + 2, QuotePos - Length(CodeRec2.LHS) - 2));
+          PName := Trim(Copy(Txt, Length(CodeRec2.LHS) + 2, AssignPos - Length(CodeRec2.LHS) - 2));
           if (PName = '') or (Pos('(', PName) > 0) then
             Continue;
           ValStr := ValueAfterAssign(Txt);
@@ -3367,11 +3367,11 @@ begin
           begin
             Txt := Copy(Txt, CharPos + 1, MaxInt);
             CharPos := Pos('(', Txt);
-            QuotePos := LastDelimiter(')', Txt);
-            if (CharPos > 0) and (QuotePos > CharPos) then
+            AssignPos := LastDelimiter(')', Txt);
+            if (CharPos > 0) and (AssignPos > CharPos) then
             begin
               CtorArgs.Clear;
-              CodeSplitArgs(Copy(Txt, CharPos + 1, QuotePos - CharPos - 1), CtorArgs);
+              CodeSplitArgs(Copy(Txt, CharPos + 1, AssignPos - CharPos - 1), CtorArgs);
               for J := 0 to CtorArgs.Count - 1 do
               begin
                 ValStr := Trim(CtorArgs[J]);
@@ -3541,15 +3541,15 @@ begin
           if Bound[J] then
             Break;
           Txt := Trim(CodeNoComment(Lines[J]));
-          QuotePos := Pos(':=', Txt);
-          if (QuotePos = 0) or (CompareText(Trim(Copy(Txt, 1, QuotePos - 1)), CodeRec2.Par) <> 0) then
+          AssignPos := Pos(':=', Txt);
+          if (AssignPos = 0) or (CompareText(Trim(Copy(Txt, 1, AssignPos - 1)), CodeRec2.Par) <> 0) then
             Continue;
           ValStr := ValueAfterAssign(Txt);
           if IsValidIdent(ValStr) then
           begin
-            QuotePos := Index.IndexOf(ValStr);
-            if QuotePos >= 0 then
-              Target := TDfmNode(Index.Objects[QuotePos]);
+            AssignPos := Index.IndexOf(ValStr);
+            if AssignPos >= 0 then
+              Target := TDfmNode(Index.Objects[AssignPos]);
           end;
           Break;   // ближайшее присваивание решает
         end;
@@ -3582,10 +3582,10 @@ begin
       if (Txt = '') or (Copy(Txt, 1, 2) = '//') then
         Continue;
       CharPos := Pos('.', Txt);
-      QuotePos := Pos(':=', Txt);
-      if (CharPos <= 1) or (QuotePos <= CharPos) then
+      AssignPos := Pos(':=', Txt);
+      if (CharPos <= 1) or (AssignPos <= CharPos) then
         Continue;
-      if CompareText(Trim(Copy(Txt, CharPos + 1, QuotePos - CharPos - 1)), 'Parent') <> 0 then
+      if CompareText(Trim(Copy(Txt, CharPos + 1, AssignPos - CharPos - 1)), 'Parent') <> 0 then
         Continue;
       J := Index.IndexOf(Copy(Txt, 1, CharPos - 1));
       if J < 0 then

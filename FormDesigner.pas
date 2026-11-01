@@ -1540,7 +1540,7 @@ end;
 function PasAddUses(const APas, AUnit: string): string;
 var
   SL: TStringList;
-  I, IntU, EndPos, CharPos: Integer;
+  I, UsesLine, EndPos, CharPos: Integer;
   WordStr, Code, Tail, Line: string;
   InIface: Boolean;
 begin
@@ -1553,7 +1553,7 @@ begin
 
     // uses раздела interface
     InIface := False;
-    IntU := -1;
+    UsesLine := -1;
     for I := 0 to SL.Count - 1 do
     begin
       WordStr := FirstWordU(SL[I]);
@@ -1563,16 +1563,16 @@ begin
         Break
       else if InIface and (WordStr = 'USES') then
       begin
-        IntU := I;
+        UsesLine := I;
         Break;
       end;
     end;
-    if IntU < 0 then
+    if UsesLine < 0 then
       Exit;
 
     // Конец списка - строка с точкой с запятой (не в комментарии)
     EndPos := -1;
-    for I := IntU to SL.Count - 1 do
+    for I := UsesLine to SL.Count - 1 do
     begin
       Code := SL[I];
       CharPos := Pos('//', Code);
@@ -1589,7 +1589,7 @@ begin
 
     // Уже в списке?
     Code := '';
-    for I := IntU to EndPos do
+    for I := UsesLine to EndPos do
     begin
       Line := SL[I];
       CharPos := Pos('//', Line);
@@ -3414,7 +3414,7 @@ procedure TFormDesigner.ShowCarets;
 var
   Ctrl: TControl;
   Pnt, Was: TPoint;
-  Len, TmpVal, WidthPx, HeightPx, MX, MY, I, Pass: Integer;
+  CaretLeft, CaretTop, CaretWidth, CaretHeight, MX, MY, I, Pass: Integer;
   OldR: array[1..8] of TRect;
   WasVisible: array[1..8] of Boolean;
 begin
@@ -3463,30 +3463,30 @@ begin
     // хватает одного прохода.
 
     Was := Point(MaxInt, MaxInt);
-    WidthPx := -1;
-    HeightPx := -1;
+    CaretWidth := -1;
+    CaretHeight := -1;
     for Pass := 1 to 3 do
     begin
       Pnt := FForm.ScreenToClient(Ctrl.Parent.ClientToScreen(Point(Ctrl.Left, Ctrl.Top)));
-      if (Pnt.X = Was.X) and (Pnt.Y = Was.Y) and (Ctrl.Width = WidthPx) and
-         (Ctrl.Height = HeightPx) then
+      if (Pnt.X = Was.X) and (Pnt.Y = Was.Y) and (Ctrl.Width = CaretWidth) and
+         (Ctrl.Height = CaretHeight) then
         Break;
       Was := Pnt;
-      Len := Pnt.X;
-      TmpVal := Pnt.Y;
-      WidthPx := Ctrl.Width;
-      HeightPx := Ctrl.Height;
-      MX := Len + (WidthPx - CaretSize) div 2;
-      MY := TmpVal + (HeightPx - CaretSize) div 2;
+      CaretLeft := Pnt.X;
+      CaretTop := Pnt.Y;
+      CaretWidth := Ctrl.Width;
+      CaretHeight := Ctrl.Height;
+      MX := CaretLeft + (CaretWidth - CaretSize) div 2;
+      MY := CaretTop + (CaretHeight - CaretSize) div 2;
 
-      FCarets[1].SetBounds(Len, TmpVal, CaretSize, CaretSize);
-      FCarets[2].SetBounds(Len, MY, CaretSize, CaretSize);
-      FCarets[3].SetBounds(Len, TmpVal + HeightPx - CaretSize, CaretSize, CaretSize);
-      FCarets[4].SetBounds(MX, TmpVal + HeightPx - CaretSize, CaretSize, CaretSize);
-      FCarets[5].SetBounds(Len + WidthPx - CaretSize, TmpVal + HeightPx - CaretSize, CaretSize, CaretSize);
-      FCarets[6].SetBounds(Len + WidthPx - CaretSize, MY, CaretSize, CaretSize);
-      FCarets[7].SetBounds(Len + WidthPx - CaretSize, TmpVal, CaretSize, CaretSize);
-      FCarets[8].SetBounds(MX, TmpVal, CaretSize, CaretSize);
+      FCarets[1].SetBounds(CaretLeft, CaretTop, CaretSize, CaretSize);
+      FCarets[2].SetBounds(CaretLeft, MY, CaretSize, CaretSize);
+      FCarets[3].SetBounds(CaretLeft, CaretTop + CaretHeight - CaretSize, CaretSize, CaretSize);
+      FCarets[4].SetBounds(MX, CaretTop + CaretHeight - CaretSize, CaretSize, CaretSize);
+      FCarets[5].SetBounds(CaretLeft + CaretWidth - CaretSize, CaretTop + CaretHeight - CaretSize, CaretSize, CaretSize);
+      FCarets[6].SetBounds(CaretLeft + CaretWidth - CaretSize, MY, CaretSize, CaretSize);
+      FCarets[7].SetBounds(CaretLeft + CaretWidth - CaretSize, CaretTop, CaretSize, CaretSize);
+      FCarets[8].SetBounds(MX, CaretTop, CaretSize, CaretSize);
     end;
 
     // Поверх всего на форме: компонент может лежать глубоко в панелях
@@ -4661,7 +4661,7 @@ end;
 // нет - все окошки прячутся. Компонент на скрытой вкладке - без уголков.
 procedure TFormDesigner.ShowGroupMarks;
 var
-  Need, I, Idx3, StartPos: Integer;
+  Need, I, Idx3, MarkSize: Integer;
   DsgGroupMark: TDsgGroupMark;
   Ctrl: TControl;
   Pnt: TPoint;
@@ -4678,7 +4678,7 @@ begin
     Exit;
   FreezeForm;
   try
-    StartPos := GroupMarkSize;
+    MarkSize := GroupMarkSize;
     if GroupCount > 1 then
       Need := FGroup.Count * 4
     else
@@ -4688,8 +4688,8 @@ begin
       DsgGroupMark := TDsgGroupMark.Create(FForm);
       DsgGroupMark.Visible := False;
       DsgGroupMark.Enabled := False;
-      DsgGroupMark.Width := StartPos;
-      DsgGroupMark.Height := StartPos;
+      DsgGroupMark.Width := MarkSize;
+      DsgGroupMark.Height := MarkSize;
       DsgGroupMark.ParentWindow := FForm.Handle;
       FGroupMarks.Add(DsgGroupMark);
     end;
@@ -4718,11 +4718,11 @@ begin
             DsgGroupMark.ParentWindow := FForm.Handle;
           Pnt := FForm.ScreenToClient(Ctrl.Parent.ClientToScreen(Point(Ctrl.Left, Ctrl.Top)));
           case I mod 4 of
-            0: DsgGroupMark.SetBounds(Pnt.X, Pnt.Y, StartPos, StartPos);
-            1: DsgGroupMark.SetBounds(Pnt.X + Ctrl.Width - StartPos, Pnt.Y, StartPos, StartPos);
-            2: DsgGroupMark.SetBounds(Pnt.X, Pnt.Y + Ctrl.Height - StartPos, StartPos, StartPos);
+            0: DsgGroupMark.SetBounds(Pnt.X, Pnt.Y, MarkSize, MarkSize);
+            1: DsgGroupMark.SetBounds(Pnt.X + Ctrl.Width - MarkSize, Pnt.Y, MarkSize, MarkSize);
+            2: DsgGroupMark.SetBounds(Pnt.X, Pnt.Y + Ctrl.Height - MarkSize, MarkSize, MarkSize);
           else
-            DsgGroupMark.SetBounds(Pnt.X + Ctrl.Width - StartPos, Pnt.Y + Ctrl.Height - StartPos, StartPos, StartPos);
+            DsgGroupMark.SetBounds(Pnt.X + Ctrl.Width - MarkSize, Pnt.Y + Ctrl.Height - MarkSize, MarkSize, MarkSize);
           end;
           if not DsgGroupMark.Visible then
             DsgGroupMark.Visible := True;

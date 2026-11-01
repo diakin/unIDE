@@ -1009,8 +1009,8 @@ type
     procedure cmbFbBuildChange(Sender: TObject);
     procedure cmbRqCompChange(Sender: TObject);
     procedure TabsMouseDown(Sender: TObject; Button: TMouseButton;
-                            Shift: TShiftState; X, Y: Integer);
-    procedure TabsMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+                            Shift: TShiftState; PosX, PosY: Integer);
+    procedure TabsMouseMove(Sender: TObject; Shift: TShiftState; PosX, PosY: Integer);
     procedure ShowModulesClick(Sender: TObject);
     procedure ShowFormsClick(Sender: TObject);
     procedure SnapshotOwnFormClick(Sender: TObject);
@@ -1041,11 +1041,11 @@ type
     function  FbHelpFile(AAsk: Boolean): string;
     function  FbHelpPick: string;
     procedure Status2MouseDown(Sender: TObject; Button: TMouseButton;
-                               Shift: TShiftState; X, Y: Integer);
+                               Shift: TShiftState; PosX, PosY: Integer);
     procedure SplitBarMouseDown(Sender: TObject; Button: TMouseButton;
-                                Shift: TShiftState; X, Y: Integer);
+                                Shift: TShiftState; PosX, PosY: Integer);
     procedure SplitBarMouseMove(Sender: TObject; Shift: TShiftState;
-                                X, Y: Integer);
+                                PosX, PosY: Integer);
     procedure SplitLineDraw;
     procedure SplitDragEnd(AApply: Boolean);
     procedure ApplyRightPanelWidth(ANewWidth: Integer);
@@ -1054,7 +1054,7 @@ type
     procedure RightPanelPlaceButtons;
     procedure PaletteTabRows(Sender: TObject);
     procedure SplitBarMouseUp(Sender: TObject; Button: TMouseButton;
-                              Shift: TShiftState; X, Y: Integer);
+                              Shift: TShiftState; PosX, PosY: Integer);
     procedure ObjSourceClick(Sender: TObject);
     procedure CodeTreeClick(Sender: TObject);
     procedure DeclPanelClick(Sender: TObject);
@@ -1164,7 +1164,7 @@ type
     procedure BreakCondClick(Sender: TObject);
     procedure MarksBoxPaint(Sender: TObject);
     procedure MarksBoxMouseDown(Sender: TObject; Button: TMouseButton;
-                                Shift: TShiftState; X, Y: Integer);
+                                Shift: TShiftState; PosX, PosY: Integer);
     procedure MarksBoxClick(Sender: TObject);
     procedure MarksBoxDblClick(Sender: TObject);
     procedure ToolbarButtonClickEvent(Sender: TObject);
@@ -2620,7 +2620,7 @@ type
     procedure TabsDrawTab(ADC: HDC; const ARect: TRect; ATab: Integer;
                           AActive: Boolean);
     procedure CloseTab(TabIdx: Integer);
-    function  ReloadWindowFromDisk(W: Integer; AAsk: Boolean): Boolean;
+    function  ReloadWindowFromDisk(WinIdx: Integer; AAsk: Boolean): Boolean;
     procedure NoteDisk(const AFile, AText: string);
     procedure NoteDiskRaw(const AFile, ARaw: string; AIsUtf8: Boolean);
     function  DiskBaseOf(const AFile: string): TDiskBase;
@@ -2638,7 +2638,7 @@ type
     procedure SaveEditorFile(const AFileName: string);
     procedure SaveMappedEditor(const AFileName: string);
     function  CheckDiskChanges(AOnly: Integer): Boolean;
-    function  AskDiskChange(W: Integer; IsMod, CanMerge, Many: Boolean;
+    function  AskDiskChange(WinIdx: Integer; IsMod, CanMerge, Many: Boolean;
                             var ASame: Boolean): Integer;
     procedure BusyBegin(const AStage: string);
     procedure BusyStage(const AStage: string);
@@ -2661,7 +2661,7 @@ type
     procedure FitSearchBox;
     procedure ToggleSearchPanel;
     function  SearchOptions: TSearchTypes;
-    procedure AddHistory(Cmb: TUiComboBox; const S: string);
+    procedure AddHistory(Cmb: TUiComboBox; const Str: string);
     procedure GotoLine(LineIdx: Integer);
     function  MatchPosInLine(const Line, Pattern: string): Integer;
     function  MatchPosFrom(const Line, Pattern: string;
@@ -2687,7 +2687,7 @@ type
     procedure MatchGridDrawCell(Sender: TObject; ACol, ARow: Integer;
                                 Rect: TRect; State: TGridDrawState);
     procedure MatchGridMouseDown(Sender: TObject; Button: TMouseButton;
-                                 Shift: TShiftState; X, Y: Integer);
+                                 Shift: TShiftState; PosX, PosY: Integer);
     procedure ToggleMatchGroup(Idx: Integer);
     procedure JumpToMatch(Idx: Integer);
     function  IndexOfWindowByFile(const AFile: string): Integer;
@@ -3027,10 +3027,10 @@ type
     procedure DsgAddRqCompPages;
     procedure RqDsgAddCompInclude(ALines: TStrings; ABefore: Integer);
     function  RqPalSelected: string;
-    procedure RqDsgPlace(const AParent: string; X, Y, AFormX, AFormY: Integer;
+    procedure RqDsgPlace(const AParent: string; PosX, PosY, AFormX, AFormY: Integer;
                          var AHandled: Boolean);
     procedure WMRqDsgPlace(var Msg: TMessage); message WM_USER + 323;
-    procedure RqDsgInsert(const AClass, AParent: string; X, Y: Integer);
+    procedure RqDsgInsert(const AClass, AParent: string; PosX, PosY: Integer);
     procedure RqNewWindowFile(const AFile: string);
     function  RqNewTargetMain(const AWhat: string): Boolean;
     procedure RqNewInclude;
@@ -3144,18 +3144,18 @@ type
     procedure DsgKey(AKey: Word; ACtrl, AShift: Boolean);
     procedure DsgClose(Sender: TObject);
     procedure WMDsgClosed(var Msg: TMessage); message WM_USER + 312;
-    procedure DsgPlace(const AParent: string; X, Y, AFormX, AFormY: Integer;
+    procedure DsgPlace(const AParent: string; PosX, PosY, AFormX, AFormY: Integer;
                        var AHandled: Boolean);
     procedure WMDsgPlace(var Msg: TMessage); message WM_USER + 313;
     function  DsgDescNewText(const AClassName, AName: string;
-                             X, Y: Integer): string;
+                             PosX, PosY: Integer): string;
     function  DsgNewObjectText(ACls: TComponentClass; const AName: string;
-                               X, Y: Integer): string;
+                               PosX, PosY: Integer): string;
     procedure DsgInsert;
     function  DsgMapClass(const AClassName: string): TComponentClass;
     function  DsgAnalogFor(AForeign: TClass): TComponentClass;
     function  DsgForeignObjectText(const AClass, AName: string;
-                                   X, Y: Integer; AForeign: TClass): string;
+                                   PosX, PosY: Integer; AForeign: TClass): string;
     procedure DsgDblClick(const AName: string);
     procedure DsgContext(const AScreen: TPoint);
     // Меню и клавиши конструктора RapidQ
@@ -3581,7 +3581,7 @@ type
     procedure DbgLinesPost;
     procedure WMDbgDone(var Msg: TMessage); message WM_USER + 321;
     procedure PaintBox1MouseDown(Sender: TObject; Button: TMouseButton;
-                                 Shift: TShiftState; X, Y: Integer);
+                                 Shift: TShiftState; PosX, PosY: Integer);
     procedure DsgDefaultEvent(const AName, AEvent: string);
     function  WindowOfFile(const AFile: string): Integer;
     procedure ObjBeginEdit;
@@ -3596,7 +3596,7 @@ type
                            var AWritable: Boolean): TDsgTypeDesc;
     function  DescDefaults(const AClassName: string): TStringList;
     function  DescUnitOf(const AClassName: string): string;
-    procedure ObjAddValue(const S: string);
+    procedure ObjAddValue(const Str: string);
     function  ObjThemeColorFor(const AClassName, AProp: string): string;
     function  ObjCodeProps: TStringList;
     procedure ObjScanCodeProps(const ASrc: string; AResIdx: TStringList;
@@ -3678,33 +3678,33 @@ type
     procedure JumpToUnitLine(ALine: Integer);
     function  SubScopeStart(const AText: string): Integer;
     function  SubScopeAhead(const AText: string; AFrom: Integer): Boolean;
-    function  LastToken(const S: string): string;
+    function  LastToken(const Str: string): string;
     procedure ScanLine(const AText: string; ALineStart, ALineEnd: Integer;
-                       const B: TBlockState; var L: TLineScan);
-    procedure BlockInit(var B: TBlockState);
-    procedure BlockBeforeLine(const L: TLineScan; var B: TBlockState);
-    procedure BlockPushHeader(ATag: Integer; var B: TBlockState);
-    function  OpensAtLineStart(const W: string; const L: TLineScan): Boolean;
-    function  HangsAtLineStart(const L: TLineScan): Boolean;
-    function  ContinuesAtLineStart(const L: TLineScan): Boolean;
+                       const BlockState: TBlockState; var LineScan: TLineScan);
+    procedure BlockInit(var BlockState: TBlockState);
+    procedure BlockBeforeLine(const LineScan: TLineScan; var BlockState: TBlockState);
+    procedure BlockPushHeader(ATag: Integer; var BlockState: TBlockState);
+    function  OpensAtLineStart(const WordStr: string; const LineScan: TLineScan): Boolean;
+    function  HangsAtLineStart(const LineScan: TLineScan): Boolean;
+    function  ContinuesAtLineStart(const LineScan: TLineScan): Boolean;
     function  IsLabelLine(const ACode: string): Boolean;
     function  ClosesLabel(const ACode: string): Boolean;
-    function  TagCloseLevel(const AText: string; const L: TLineScan;
-                            const B: TBlockState; var ALevel: Integer): Boolean;
+    function  TagCloseLevel(const AText: string; const LineScan: TLineScan;
+                            const BlockState: TBlockState; var ALevel: Integer): Boolean;
     procedure UpdatePairMatch;
-    procedure ScanTags(const AText: string; const L: TLineScan;
-                       var B: TBlockState);
-    procedure BlockAfterLine(const AText: string; const L: TLineScan;
-                             var B: TBlockState);
+    procedure ScanTags(const AText: string; const LineScan: TLineScan;
+                       var BlockState: TBlockState);
+    procedure BlockAfterLine(const AText: string; const LineScan: TLineScan;
+                             var BlockState: TBlockState);
     procedure RebuildLineDepths(const AText: string);
-    procedure DepthScanInit(var D: TDepthScan);
+    procedure DepthScanInit(var DepthScan: TDepthScan);
     procedure DepthScanLine(const AText: string; ALineStart, ALineEnd: Integer;
-                            const L: TLineScan; const B: TBlockState;
-                            var D: TDepthScan);
-    procedure DepthScanFinish(var D: TDepthScan);
+                            const LineScan: TLineScan; const BlockState: TBlockState;
+                            var DepthScan: TDepthScan);
+    procedure DepthScanFinish(var DepthScan: TDepthScan);
     procedure RebuildSubList(const AText: string);
     procedure RebuildCompNames(const AText: string);
-    function  CompNameAt(P: PChar; Len: Integer): Boolean;
+    function  CompNameAt(CharPtr: PChar; Len: Integer): Boolean;
     procedure RebuildSubListBraces(const AText: string);
     procedure RebuildSubListBlocks(const AText: string);
     procedure FormatIndentText;
@@ -3736,20 +3736,20 @@ type
     procedure RebuildKeywordHash;
     procedure EnsureKeywordHash;
     procedure KwListChanged(Sender: TObject);
-    function  KeywordGroupOf(P: PChar; Len: Integer): Integer;
+    function  KeywordGroupOf(CharPtr: PChar; Len: Integer): Integer;
     procedure CaretToLineEnd(ALine: Integer);
     procedure EnsureCaretVisibleX;
     procedure SyncCaretX;
-    procedure LogDiag(const S: string);
-    procedure LogOwnEd(const S: string);
-    procedure LogRaw(const S: string);
-    procedure LogComp(const S: string);
-    procedure LogGit(const S: string; AColor: TColor = clNone);
+    procedure LogDiag(const Str: string);
+    procedure LogOwnEd(const Str: string);
+    procedure LogRaw(const Str: string);
+    procedure LogComp(const Str: string);
+    procedure LogGit(const Str: string; AColor: TColor = clNone);
     procedure LogGitBreak;
     procedure LogSuspects(AMessages: TStringList; ACount: Integer);
-    procedure LogErr(const S: string);
+    procedure LogErr(const Str: string);
     procedure WriteCompileBat(const AExe, AParams, ADir, ADpr: string);
-    procedure LogTo(AEdit: TEdLogView; const S: string;
+    procedure LogTo(AEdit: TEdLogView; const Str: string;
                     AColor: TColor = clNone; ABare: Boolean = False);
     procedure ProbeRun;
     procedure SnapReset;
@@ -3760,8 +3760,8 @@ type
     procedure OwnSnapStashClear;
     procedure PrepareOptionsForm;
     function  OwnLiveForm(const AClass: string): TCustomForm;
-    function  OwnFormPrint(F: TCustomForm): string;
-    procedure OwnFormCensus(F: TCustomForm; AList: TStringList);
+    function  OwnFormPrint(Frm: TCustomForm): string;
+    procedure OwnFormCensus(Frm: TCustomForm; AList: TStringList);
     function  OwnCensusDiff(const AClass: string): string;
     function  OwnSnapStale(const AClass: string): Boolean;
     function  OwnSnapFor(const AClass: string): string;
@@ -3770,8 +3770,8 @@ type
     procedure ProbeClear;
     function  MakeProbeDpr(const ADpr: string): string;
     function  IsOwnProject: Boolean;
-    procedure Dbg(const S: string; AColor: TColor = clRed);
-    function  IsCompilerError(const S: string): Boolean;
+    procedure Dbg(const Str: string; AColor: TColor = clRed);
+    function  IsCompilerError(const Str: string): Boolean;
     procedure InitLogPanel;
     procedure LogClear(AEdit: TEdLogView);
     procedure LogViewSync(AEdit: TEdLogView);
@@ -3821,7 +3821,7 @@ type
     function  FindDeclInUnits(ASrc, ACl: TStrings; const AW: string;
                               var AFile: string; var ALine, ACol: Integer;
                               var AText: string): Boolean;
-    function  ParseCompilerLine(const S: string; var AFile: string;
+    function  ParseCompilerLine(const Str: string; var AFile: string;
                                 var ALine: Integer): Boolean;
     function  RunCompiler(const AExe, AParams, AWorkDir: string): Integer;
     function  BuildRcFiles(const ADir, ARoot: string): Boolean;
@@ -3905,7 +3905,7 @@ type
     function  RecoverDelphiRoot(const ASect: string): string;
     function  RemapMovedPath(const AOld, ANewDir: string): string;
     function  DelphiRegKeyOf(const ARoot: string): string;
-    function  ExpandMachineVars(const S, ARoot, AKey: string): string;
+    function  ExpandMachineVars(const Str, ARoot, AKey: string): string;
     function  RelocatePathList(const AOld, AFromReg, AOldRoot, ANewRoot,
                                ARegKey, ATitle: string): string;
     function  FilterSourceDirs(const AList, ARoot: string): string;
@@ -3945,21 +3945,21 @@ type
     procedure FitTabsToWidth;
     procedure UpdateTabsHeight;
     procedure CheckCtlScrollX;
-    procedure XorOwnCaret(DC: HDC; const P: TPoint);
-    procedure MoveOwnCaret(const P: TPoint; AOn: Boolean);
+    procedure XorOwnCaret(DC: HDC; const Pnt: TPoint);
+    procedure MoveOwnCaret(const Pnt: TPoint; AOn: Boolean);
     procedure HideOwnCaret;
     procedure InvalidateWidthCache;
     function  ReadLineText(ALine, AStart, ALen: Integer): string;
-    function  MeasureLineXPos(DC: HDC; const S: string; ALen: Integer): TIntArray;
-    function  MeasureRun(DC: HDC; P: PChar; N, StartX: Integer;
+    function  MeasureLineXPos(DC: HDC; const Str: string; ALen: Integer): TIntArray;
+    function  MeasureRun(DC: HDC; CharPtr: PChar; Num, StartX: Integer;
                          OutX: PBigIntArr): Integer;
     function  GetLineInfo(DC: HDC; ALine, AStart, ALen: Integer;
                           var AText: string): Integer;
-    function  BlockAtX(AInfo, X: Integer): Integer;
+    function  BlockAtX(AInfo, PosX: Integer): Integer;
     function  SegAtIdx(AInfo, AIdx: Integer): Integer;
-    procedure BuildSegments(DC: HDC; AInfo: Integer; P: PChar; N, BaseIdx,
+    procedure BuildSegments(DC: HDC; AInfo: Integer; CharPtr: PChar; Num, BaseIdx,
                             StartX: Integer; var AIdx, AX, ATab: TIntArray);
-    function  UpdateLineAfterEdit(AInfo, A, B, D: Integer): Boolean;
+    function  UpdateLineAfterEdit(AInfo, Num1, SelBegin, Delta: Integer): Boolean;
     procedure ComputeLineComment(AInfo: Integer);
     procedure ComputeLineMark(AInfo: Integer);
     function  TextLenInternal: Integer;
@@ -3971,7 +3971,7 @@ type
     procedure FormResizeEvent(Sender: TObject);
     function  TextRange(AFrom, ACount: Integer): string;
     function  SelTextA(AMaxLen: Integer): string;
-    function  FindTextEd(const S: string; StartPos, Len: Integer;
+    function  FindTextEd(const Str: string; StartPos, Len: Integer;
                          Options: TSearchTypes): Integer;
     function  BcStartAt(const AText: string; APos: Integer;
                         var AKind: Integer): Boolean;
@@ -4018,7 +4018,7 @@ type
     procedure ModPreviewSchedule(AItem: TListItem);
     procedure ModPreviewFreeCache;
     procedure ProjectListMouseMove(Sender: TObject; Shift: TShiftState;
-                                   X, Y: Integer);
+                                   PosX, PosY: Integer);
     procedure ProjectListSelect(Sender: TObject; Item: TListItem;
                                 Change: TItemChange);
     procedure mWindowsClick(Sender: TObject);
@@ -4250,7 +4250,7 @@ type
     procedure ReloadActiveClrSchema;
 
     // ---- МЕТОДЫ
-    function  LooksLikeUtf8(const S: string): Boolean;
+    function  LooksLikeUtf8(const Str: string): Boolean;
     function  LoadTextFile(const FileName: string): string;
     procedure SaveTextFile(const FileName, Text: string);
     function  GetEditorText: string;
@@ -4262,9 +4262,9 @@ type
     function  WinTextSize(AWinIdx: Integer): Integer;
     procedure SetWinText(AWinIdx: Integer; const AText: string);
     procedure FreeWinBuffer(AWinIdx: Integer);
-    procedure SetEditorText(const S: string);
+    procedure SetEditorText(const Str: string);
 
-    function  PaleColor(C: TColor): TColor;
+    function  PaleColor(Clr: TColor): TColor;
 
 
     procedure UpdateVisibleBounds; // Быстрый пересчёт границ видимой области
@@ -4285,10 +4285,10 @@ type
     // Цвета текущего режима (Light / Dark / своя тема) - в FUiColors
     procedure UiFillColors;
     procedure ReadThemeSetting;
-    procedure UiPaintTree(C: TControl);
-    procedure UiPaintControl(C: TControl);
-    procedure UiPaintColors(C: TControl);
-    procedure UiSetParentBgFor(C: TControl);
+    procedure UiPaintTree(Ctrl: TControl);
+    procedure UiPaintControl(Ctrl: TControl);
+    procedure UiPaintColors(Ctrl: TControl);
+    procedure UiSetParentBgFor(Ctrl: TControl);
     procedure DsgThemeLook;
     procedure DsgRetheme;
     procedure DsgMirrorBuffering;
@@ -4756,7 +4756,7 @@ end;
 
 procedure TForm1.ScanCommentRanges(const FullText: string; ABase: Integer);
 var
-  TextLen, I: Integer;
+  TextLen, Idx: Integer;
   CmtCount, StrCount: Integer;  // занято в CommentRanges / StringRanges
   // Маркер только в начале строки (^;): FullText начат с середины строки
   // (доразбор с конца литерала или комментария) - до первого перевода
@@ -4775,7 +4775,7 @@ var
   HitLine, HitBlock, HitStr: Boolean;
   SLen, LLen, BLen: Integer; // длины совпавших маркеров
   // Пара маркеров открытого блочного комментария и найденная в позиции
-  BlockKind, HitKind, P: Integer;
+  BlockKind, HitKind, CharPos: Integer;
   StrKind, StrHitKind, CurLen: Integer;
   CurMark: string;
   EndMark: string;
@@ -4852,10 +4852,10 @@ begin
   InString := False;
   StartPos := 0;
   StringStartPos := 0;
-  I := 1;
+  Idx := 1;
 
   // 2. ГЛАВНЫЙ ПОСИМВОЛЬНЫЙ ЦИКЛ АВТОМАТА РАЗБОРА
-  while I <= TextLen do
+  while Idx <= TextLen do
   begin
 
     // СОСТОЯНИЕ №1: Мы внутри строкового литерала
@@ -4867,30 +4867,30 @@ begin
       // Знак экранирования: следующий символ к разбору не относится.
       // В C и JavaScript это обратная косая, и без неё \" закрыло бы
       // литерал раньше времени.
-      if (FScheme.FStrEscape <> #0) and (FullText[I] = FScheme.FStrEscape) then
+      if (FScheme.FStrEscape <> #0) and (FullText[Idx] = FScheme.FStrEscape) then
       begin
-        Inc(I, 2);
+        Inc(Idx, 2);
         Continue;
       end;
 
-      if (CurLen > 0) and MatchesAt(CurMark, I) then
+      if (CurLen > 0) and MatchesAt(CurMark, Idx) then
       begin
         // Экранирование удвоением маркера ('' в Pascal, "" в Бейсике);
         // там, где задан знак экранирования, удвоение не применяется
-        if (FScheme.FStrEscape = #0) and MatchesAt(CurMark, I + CurLen) then
-          Inc(I, CurLen * 2)
+        if (FScheme.FStrEscape = #0) and MatchesAt(CurMark, Idx + CurLen) then
+          Inc(Idx, CurLen * 2)
         else
         begin
           InString := False;
           GrowRanges(StringRanges, StrCount);
           StringRanges[StrCount - 1].StartPos := StringStartPos;
           StringRanges[StrCount - 1].Kind := StrKind;
-          StringRanges[StrCount - 1].EndPos := ABase + I + CurLen - 1;
-          Inc(I, CurLen);
+          StringRanges[StrCount - 1].EndPos := ABase + Idx + CurLen - 1;
+          Inc(Idx, CurLen);
         end;
       end
       else
-        Inc(I);
+        Inc(Idx);
       Continue;
     end;
 
@@ -4899,9 +4899,9 @@ begin
     // и кавычки внутри строчного комментария полностью игнорируются.
     if InSingleLine then
     begin
-      if (FullText[I] = #13) or (FullText[I] = #10) then
+      if (FullText[Idx] = #13) or (FullText[Idx] = #10) then
         InSingleLine := False;
-      Inc(I);
+      Inc(Idx);
       Continue;
     end;
 
@@ -4916,24 +4916,24 @@ begin
     begin
       EndMark := FScheme.BcEndMark(BlockKind);
       if EndMark = '' then
-        P := 0
+        CharPos := 0
       else
-        P := PosEx(EndMark, FullText, I);
+        CharPos := PosEx(EndMark, FullText, Idx);
 
       InBlock := False;
       GrowRanges(CommentRanges, CmtCount);
       CommentRanges[CmtCount - 1].StartPos := StartPos;
       CommentRanges[CmtCount - 1].Kind := BlockKind;
 
-      if P = 0 then
+      if CharPos = 0 then
       begin
         // Закрытия в тексте нет - комментарий тянется до конца
         CommentRanges[CmtCount - 1].EndPos := ABase + TextLen;
         Break;
       end;
 
-      CommentRanges[CmtCount - 1].EndPos := ABase + P + Length(EndMark) - 1;
-      I := P + Length(EndMark);
+      CommentRanges[CmtCount - 1].EndPos := ABase + CharPos + Length(EndMark) - 1;
+      Idx := CharPos + Length(EndMark);
       Continue;
     end;
 
@@ -4944,17 +4944,17 @@ begin
     // тройная кавычка - там """ это блочный комментарий, а не начало
     // строки. Побеждает самый длинный совпавший маркер; при равной длине
     // комментарий важнее литерала.
-    if not (FullText[I] in StartChars) then
+    if not (FullText[Idx] in StartChars) then
     begin
-      Inc(I);
+      Inc(Idx);
       Continue;
     end;
-    HitStr   := StrStartAt(FullText, I, StrHitKind);
+    HitStr   := StrStartAt(FullText, Idx, StrHitKind);
     // У маркера ^; (Inno Setup) комментарий - только в начале строки
-    HitLine  := MatchesAt(FScheme.FLineCommentMarker, I) and
-                FScheme.LineCommentPosOk(FullText, I) and
-                (not LcMidStart or ((LcFirstBreak > 0) and (I > LcFirstBreak)));
-    HitBlock := BcStartAt(FullText, I, HitKind);
+    HitLine  := MatchesAt(FScheme.FLineCommentMarker, Idx) and
+                FScheme.LineCommentPosOk(FullText, Idx) and
+                (not LcMidStart or ((LcFirstBreak > 0) and (Idx > LcFirstBreak)));
+    HitBlock := BcStartAt(FullText, Idx, HitKind);
 
     SLen := 0;
     if HitStr then
@@ -4970,15 +4970,15 @@ begin
     begin
       InBlock := True;
       BlockKind := HitKind;
-      StartPos := ABase + I - 1;
-      Inc(I, BLen);
+      StartPos := ABase + Idx - 1;
+      Inc(Idx, BLen);
       Continue;
     end;
 
     if (LLen > 0) and (LLen >= SLen) then
     begin
       InSingleLine := True;
-      Inc(I, LLen);
+      Inc(Idx, LLen);
       Continue;
     end;
 
@@ -4986,13 +4986,13 @@ begin
     begin
       InString := True;
       StrKind := StrHitKind;
-      StringStartPos := ABase + I - 1;
-      Inc(I, SLen);
+      StringStartPos := ABase + Idx - 1;
+      Inc(Idx, SLen);
       Continue;
     end;
 
     // Маркеров нет - просто переходим к следующему символу
-    Inc(I);
+    Inc(Idx);
   end;
 
   // 3. ФИНАЛЬНАЯ ЗАЩИТА: файл закончился, а строка так и не была закрыта.
@@ -5029,7 +5029,7 @@ const
 procedure TForm1.RebuildCommentRangeMap;
 var
   FullText: string;
-  I: Integer;
+  Idx: Integer;
   T0: Int64; // замер длительности разбора, точным счётчиком
   // Отметки этапов разбора (точный счётчик): текст, комментарии и строки,
   // подпрограммы, имена компонентов
@@ -5170,15 +5170,15 @@ begin
 
   if FMapTimer <> nil then
   begin
-    I := FLastRebuildMs * 3;
-    if I < 50 then
-      I := 50;    // чаще нет смысла: глаз не различит
+    Idx := FLastRebuildMs * 3;
+    if Idx < 50 then
+      Idx := 50;    // чаще нет смысла: глаз не различит
     // Верхняя граница высокая осознанно. При разборе в 600 мс потолок
     // в 400 означал бы, что таймер запускает новый разбор раньше, чем
     // кончился предыдущий, - программа встала бы намертво.
-    if I > 3000 then
-      I := 3000;
-    FMapTimer.Interval := I;
+    if Idx > 3000 then
+      Idx := 3000;
+    FMapTimer.Interval := Idx;
   end;
 end;
 
@@ -5467,10 +5467,10 @@ end;
 // шагом в 15 мс для замера одного нажатия не годится.
 function TForm1.PerfNow: Int64;
 var
-  C: Int64;
+  Counter: Int64;
 begin
-  if QueryPerformanceCounter(C) then
-    Result := C
+  if QueryPerformanceCounter(Counter) then
+    Result := Counter
   else
     Result := 0;
 end;
@@ -5576,7 +5576,7 @@ var
   Sel: TCharRange;
   LineIdx, LineStart: Integer;
   Pt: TPoint;
-  R: TRect;
+  RectVal: TRect;
 begin
   if not RichEdit1.HandleAllocated then
     Exit;
@@ -5595,15 +5595,15 @@ begin
   // Y берём у контрола: он уже учитывает прокрутку, в том числе неполную
   EdApi.PosFromChar(Pt, LineStart);
 
-  Windows.GetClientRect(RichEdit1.Handle, R);
-  R.Top := Pt.Y;
-  R.Bottom := Pt.Y + LineHeight;
+  Windows.GetClientRect(RichEdit1.Handle, RectVal);
+  RectVal.Top := Pt.Y;
+  RectVal.Bottom := Pt.Y + LineHeight;
 
   // Строка уехала за пределы видимой области - перерисовывать нечего
-  if (R.Bottom < 0) or (R.Top > R.Bottom) then
+  if (RectVal.Bottom < 0) or (RectVal.Top > RectVal.Bottom) then
     Exit;
 
-  Windows.InvalidateRect(RichEdit1.Handle, @R, False);
+  Windows.InvalidateRect(RichEdit1.Handle, @RectVal, False);
 end;
 
 procedure TForm1.MapTimerTick(Sender: TObject);
@@ -5668,37 +5668,37 @@ begin
 end;
 function TForm1.UiColor(const AKey: string): TColor;
 var
-  I: Integer;
+  Idx: Integer;
 begin
   Result := clBtnFace;
   if FUiColors = nil then
     Exit;
-  I := FUiColors.IndexOfName(AKey);
-  if I >= 0 then
-    Result := StringToColor(Copy(FUiColors[I], Length(AKey) + 2, MaxInt));
+  Idx := FUiColors.IndexOfName(AKey);
+  if Idx >= 0 then
+    Result := StringToColor(Copy(FUiColors[Idx], Length(AKey) + 2, MaxInt));
 end;
 
 procedure TForm1.UiSetColor(const AKey: string; AColor: TColor);
 var
-  I: Integer;
-  L: TStringList;
+  Idx: Integer;
+  StrList: TStringList;
 begin
   if FUiColors = nil then
     Exit;
-  I := FUiColors.IndexOfName(AKey);
-  if I >= 0 then
-    FUiColors[I] := AKey + '=' + ColorToString(AColor)
+  Idx := FUiColors.IndexOfName(AKey);
+  if Idx >= 0 then
+    FUiColors[Idx] := AKey + '=' + ColorToString(AColor)
   else
     FUiColors.Add(AKey + '=' + ColorToString(AColor));
   // И в список своего режима - по нему пишется IDE.clr
   if FIdeMode = IdeModeCustom then
-    L := UiCustomSet(FIdeCustom)
+    StrList := UiCustomSet(FIdeCustom)
   else if FIdeMode = IdeModeDark then
-    L := FUiDark
+    StrList := FUiDark
   else
-    L := FUiLight;
-  if L <> nil then
-    L.Values[AKey] := ColorToString(AColor);
+    StrList := FUiLight;
+  if StrList <> nil then
+    StrList.Values[AKey] := ColorToString(AColor);
 end;
 // Умолчания и чтение IDE.clr. Ключей в файле может не быть - тогда
 // остаётся умолчание; лишние ключи из файла сохраняются как есть, чтобы
@@ -5839,7 +5839,7 @@ end;
 procedure TForm1.LoadUiSchema;
 var
   SL, Set1: TStringList;
-  I, P: Integer;
+  I, CharPos: Integer;
   Key, Val, CName: string;
 begin
   // Заново: при смене режима в таблице лежат цвета прежнего
@@ -5874,15 +5874,15 @@ begin
         Val := Trim(Copy(SL[I], Length(SL.Names[I]) + 2, MaxInt));
         if Val = '' then
           Continue;
-        P := Pos('@', Key);
-        if P = 0 then
+        CharPos := Pos('@', Key);
+        if CharPos = 0 then
           FUiLight.Values[Key] := Val              // светлый режим
-        else if CompareText(Copy(Key, P + 1, MaxInt), 'IdeDark') = 0 then
-          FUiDark.Values[Copy(Key, 1, P - 1)] := Val
-        else if CompareText(Copy(Key, P + 1, 4), 'Ide:') = 0 then
+        else if CompareText(Copy(Key, CharPos + 1, MaxInt), 'IdeDark') = 0 then
+          FUiDark.Values[Copy(Key, 1, CharPos - 1)] := Val
+        else if CompareText(Copy(Key, CharPos + 1, 4), 'Ide:') = 0 then
         begin
           // Своя тема: Ключ@Ide:Имя
-          CName := Trim(Copy(Key, P + 5, MaxInt));
+          CName := Trim(Copy(Key, CharPos + 5, MaxInt));
           if CName <> '' then
           begin
             Set1 := UiCustomSet(CName);
@@ -5891,7 +5891,7 @@ begin
               Set1 := TStringList.Create;
               FUiCustom.AddObject(CName, Set1);
             end;
-            Set1.Values[Copy(Key, 1, P - 1)] := Val;
+            Set1.Values[Copy(Key, 1, CharPos - 1)] := Val;
           end;
         end
         else
@@ -5916,17 +5916,17 @@ end;
 // (на случай ролей, которых в ней ещё нет), поверх - её цвета.
 procedure TForm1.UiFillColors;
 var
-  L: TStringList;
+  StrList: TStringList;
   I: Integer;
 begin
   if FIdeMode = IdeModeCustom then
   begin
     FUiColors.Assign(FUiDarkDef);
-    L := UiCustomSet(FIdeCustom);
-    if L <> nil then
-      for I := 0 to L.Count - 1 do
-        FUiColors.Values[L.Names[I]] :=
-          Copy(L[I], Length(L.Names[I]) + 2, MaxInt);
+    StrList := UiCustomSet(FIdeCustom);
+    if StrList <> nil then
+      for I := 0 to StrList.Count - 1 do
+        FUiColors.Values[StrList.Names[I]] :=
+          Copy(StrList[I], Length(StrList.Names[I]) + 2, MaxInt);
   end
   else if FIdeMode = IdeModeDark then
     FUiColors.Assign(FUiDark)
@@ -5936,14 +5936,14 @@ end;
 
 function TForm1.UiCustomSet(const AName: string): TStringList;
 var
-  I: Integer;
+  Idx: Integer;
 begin
   Result := nil;
   if (FUiCustom = nil) or (AName = '') then
     Exit;
-  I := FUiCustom.IndexOf(AName);
-  if I >= 0 then
-    Result := TStringList(FUiCustom.Objects[I]);
+  Idx := FUiCustom.IndexOf(AName);
+  if Idx >= 0 then
+    Result := TStringList(FUiCustom.Objects[Idx]);
 end;
 
 procedure TForm1.UiCustomNames(AList: TStrings);
@@ -5958,38 +5958,38 @@ end;
 
 function TForm1.UiCustomAdd(const AName: string): Boolean;
 var
-  N: string;
-  L: TStringList;
+  NameStr: string;
+  StrList: TStringList;
 begin
   Result := False;
-  N := Trim(AName);
+  NameStr := Trim(AName);
   // Имя - часть ключа IDE.clr (Ключ@Ide:Имя=цвет): без "=" и не с ";"/"["
-  if (N = '') or (Pos('=', N) > 0) or (N[1] = ';') or (N[1] = '[') then
+  if (NameStr = '') or (Pos('=', NameStr) > 0) or (NameStr[1] = ';') or (NameStr[1] = '[') then
     Exit;
   if FUiCustom = nil then
     FUiCustom := TStringList.Create;
-  if UiCustomSet(N) <> nil then
+  if UiCustomSet(NameStr) <> nil then
     Exit;
-  L := TStringList.Create;
-  L.Assign(FUiColors);          // копия цветов текущего режима
-  FUiCustom.AddObject(N, L);
+  StrList := TStringList.Create;
+  StrList.Assign(FUiColors);          // копия цветов текущего режима
+  FUiCustom.AddObject(NameStr, StrList);
   SaveUiSchema;
   Result := True;
 end;
 
 procedure TForm1.UiCustomDelete(const AName: string);
 var
-  I: Integer;
+  Idx: Integer;
   Was: Boolean;
 begin
   if FUiCustom = nil then
     Exit;
-  I := FUiCustom.IndexOf(AName);
-  if I < 0 then
+  Idx := FUiCustom.IndexOf(AName);
+  if Idx < 0 then
     Exit;
   Was := (FIdeMode = IdeModeCustom) and (CompareText(FIdeCustom, AName) = 0);
-  FUiCustom.Objects[I].Free;
-  FUiCustom.Delete(I);
+  FUiCustom.Objects[Idx].Free;
+  FUiCustom.Delete(Idx);
   SaveUiSchema;
   // Удалили включённую - режим Dark
   if Was then
@@ -6000,14 +6000,14 @@ end;
 // своя тема бывает и светлой
 function TForm1.UiDarkBack: Boolean;
 var
-  C: Longint;
+  BackRGB: Longint;
 begin
   Result := False;
   if not FIdeDark then
     Exit;
-  C := ColorToRGB(UiColor('Ide.WindowBG'));
-  Result := (GetRValue(C) * 299 + GetGValue(C) * 587 +
-             GetBValue(C) * 114) div 1000 < 128;
+  BackRGB := ColorToRGB(UiColor('Ide.WindowBG'));
+  Result := (GetRValue(BackRGB) * 299 + GetGValue(BackRGB) * 587 +
+             GetBValue(BackRGB) * 114) div 1000 < 128;
 end;
 // Понятное название роли для таблицы настроек. Ключа нет в списке - он же
 // и показывается: так новый цвет виден сразу, даже без подписи.
@@ -6172,13 +6172,13 @@ end;
 // перезапишет SaveUiSchema, когда об этом попросят)
 procedure TForm1.UiResetDefaults;
 var
-  L: TStringList;
+  StrList: TStringList;
 begin
   // Только цвета текущего режима: умолчания впишутся заново в пустой список.
   // Своя тема - тёмные умолчания.
-  L := nil;
+  StrList := nil;
   if FIdeMode = IdeModeCustom then
-    L := UiCustomSet(FIdeCustom)
+    StrList := UiCustomSet(FIdeCustom)
   else if FIdeMode = IdeModeDark then
   begin
     if FUiDark <> nil then
@@ -6189,9 +6189,9 @@ begin
   if FUiColors <> nil then
     FUiColors.Clear;
   LoadUiDefaults;
-  if L <> nil then
+  if StrList <> nil then
   begin
-    L.Assign(FUiDarkDef);
+    StrList.Assign(FUiDarkDef);
     UiFillColors;
   end;
 end;
@@ -6372,54 +6372,54 @@ end;
 //  становится исходным.
 // ---------------------------------------------------------------------------
 
-procedure UiRGBToHLS(R, G, B: Byte; var H, L, S: Double);
+procedure UiRGBToHLS(Red, Green, Blue: Byte; var Hue, Light, Sat: Double);
 var
-  Rf, Gf, Bf, Mx, Mn, D: Double;
+  Rf, Gf, Bf, Mx, Mn, Delta: Double;
 begin
-  Rf := R / 255; Gf := G / 255; Bf := B / 255;
+  Rf := Red / 255; Gf := Green / 255; Bf := Blue / 255;
   Mx := Rf;
   if Gf > Mx then Mx := Gf;
   if Bf > Mx then Mx := Bf;
   Mn := Rf;
   if Gf < Mn then Mn := Gf;
   if Bf < Mn then Mn := Bf;
-  L := (Mx + Mn) / 2;
+  Light := (Mx + Mn) / 2;
   if Mx = Mn then
   begin
-    H := 0; S := 0; Exit;
+    Hue := 0; Sat := 0; Exit;
   end;
-  D := Mx - Mn;
-  if L <= 0.5 then S := D / (Mx + Mn) else S := D / (2 - Mx - Mn);
-  if Mx = Rf then H := (Gf - Bf) / D
-  else if Mx = Gf then H := 2 + (Bf - Rf) / D
-  else H := 4 + (Rf - Gf) / D;
-  H := H / 6;
-  if H < 0 then H := H + 1;
+  Delta := Mx - Mn;
+  if Light <= 0.5 then Sat := Delta / (Mx + Mn) else Sat := Delta / (2 - Mx - Mn);
+  if Mx = Rf then Hue := (Gf - Bf) / Delta
+  else if Mx = Gf then Hue := 2 + (Bf - Rf) / Delta
+  else Hue := 4 + (Rf - Gf) / Delta;
+  Hue := Hue / 6;
+  if Hue < 0 then Hue := Hue + 1;
 end;
 
-function UiHueToRGB(M1, M2, H: Double): Double;
+function UiHueToRGB(M1, M2, Hue: Double): Double;
 begin
-  if H < 0 then H := H + 1;
-  if H > 1 then H := H - 1;
-  if H < 1 / 6 then Result := M1 + (M2 - M1) * H * 6
-  else if H < 0.5 then Result := M2
-  else if H < 2 / 3 then Result := M1 + (M2 - M1) * (2 / 3 - H) * 6
+  if Hue < 0 then Hue := Hue + 1;
+  if Hue > 1 then Hue := Hue - 1;
+  if Hue < 1 / 6 then Result := M1 + (M2 - M1) * Hue * 6
+  else if Hue < 0.5 then Result := M2
+  else if Hue < 2 / 3 then Result := M1 + (M2 - M1) * (2 / 3 - Hue) * 6
   else Result := M1;
 end;
 
-procedure UiHLSToRGB(H, L, S: Double; var R, G, B: Byte);
+procedure UiHLSToRGB(Hue, Light, Sat: Double; var Red, Green, Blue: Byte);
 var
   M1, M2: Double;
 begin
-  if S = 0 then
+  if Sat = 0 then
   begin
-    R := Round(L * 255); G := R; B := R; Exit;
+    Red := Round(Light * 255); Green := Red; Blue := Red; Exit;
   end;
-  if L <= 0.5 then M2 := L * (1 + S) else M2 := L + S - L * S;
-  M1 := 2 * L - M2;
-  R := Round(UiHueToRGB(M1, M2, H + 1 / 3) * 255);
-  G := Round(UiHueToRGB(M1, M2, H) * 255);
-  B := Round(UiHueToRGB(M1, M2, H - 1 / 3) * 255);
+  if Light <= 0.5 then M2 := Light * (1 + Sat) else M2 := Light + Sat - Light * Sat;
+  M1 := 2 * Light - M2;
+  Red := Round(UiHueToRGB(M1, M2, Hue + 1 / 3) * 255);
+  Green := Round(UiHueToRGB(M1, M2, Hue) * 255);
+  Blue := Round(UiHueToRGB(M1, M2, Hue - 1 / 3) * 255);
 end;
 
 // Перевернуть яркость каждой точки, кроме прозрачного цвета
@@ -6429,26 +6429,26 @@ type
   PRGBLine = ^TRGBLine;
 var
   X, Y: Integer;
-  P: PRGBLine;
-  T: Longint;
-  H, L, S: Double;
-  R, G, B: Byte;
+  RGBLine: PRGBLine;
+  KeyRGB: Longint;
+  Hue, Light, Sat: Double;
+  Red, Green, Blue: Byte;
 begin
   Bmp.PixelFormat := pf24bit;
-  T := ColorToRGB(ATransparent);
+  KeyRGB := ColorToRGB(ATransparent);
   for Y := 0 to Bmp.Height - 1 do
   begin
-    P := Bmp.ScanLine[Y];
+    RGBLine := Bmp.ScanLine[Y];
     for X := 0 to Bmp.Width - 1 do
     begin
-      if (P[X].rgbtRed = GetRValue(T)) and (P[X].rgbtGreen = GetGValue(T)) and
-         (P[X].rgbtBlue = GetBValue(T)) then
+      if (RGBLine[X].rgbtRed = GetRValue(KeyRGB)) and (RGBLine[X].rgbtGreen = GetGValue(KeyRGB)) and
+         (RGBLine[X].rgbtBlue = GetBValue(KeyRGB)) then
         Continue;
-      UiRGBToHLS(P[X].rgbtRed, P[X].rgbtGreen, P[X].rgbtBlue, H, L, S);
-      UiHLSToRGB(H, 1 - L, S, R, G, B);
-      P[X].rgbtRed := R;
-      P[X].rgbtGreen := G;
-      P[X].rgbtBlue := B;
+      UiRGBToHLS(RGBLine[X].rgbtRed, RGBLine[X].rgbtGreen, RGBLine[X].rgbtBlue, Hue, Light, Sat);
+      UiHLSToRGB(Hue, 1 - Light, Sat, Red, Green, Blue);
+      RGBLine[X].rgbtRed := Red;
+      RGBLine[X].rgbtGreen := Green;
+      RGBLine[X].rgbtBlue := Blue;
     end;
   end;
 end;
@@ -6986,14 +6986,14 @@ begin
   UiPaintTree(AForm);
 end;
 
-procedure TForm1.UiPaintTree(C: TControl);
+procedure TForm1.UiPaintTree(Ctrl: TControl);
 var
   I: Integer;
 begin
-  UiPaintControl(C);
-  if C is TWinControl then
-    for I := 0 to TWinControl(C).ControlCount - 1 do
-      UiPaintTree(TWinControl(C).Controls[I]);
+  UiPaintControl(Ctrl);
+  if Ctrl is TWinControl then
+    for I := 0 to TWinControl(Ctrl).ControlCount - 1 do
+      UiPaintTree(TWinControl(Ctrl).Controls[I]);
 end;
 
 type
@@ -7043,35 +7043,35 @@ end;
 // (системный: clBtnFace, clWindow, clWindowText), цвет роли в другом
 // режиме или поставленный нами раньше. Свой цвет, который элементу задал код
 // (жёлтое поле темы, салатовая подсветка), остаётся.
-procedure TForm1.UiPaintControl(C: TControl);
+procedure TForm1.UiPaintControl(Ctrl: TControl);
 var
   LS: TUiListScroll;
 begin
-  if (C = nil) or (FUiLight = nil) or (FUiDark = nil) then
+  if (Ctrl = nil) or (FUiLight = nil) or (FUiDark = nil) then
     Exit;
 
   // Редактор и то, что красится цветами редактора или само
-  if (C = RichEdit1) or (C = Panel1) or (C = FTabs) or (C = FDeclPanel) or
-     (C = FBusyPanel) or ((C = FSubLabel) and (FSubLabel <> nil)) then
+  if (Ctrl = RichEdit1) or (Ctrl = Panel1) or (Ctrl = FTabs) or (Ctrl = FDeclPanel) or
+     (Ctrl = FBusyPanel) or ((Ctrl = FSubLabel) and (FSubLabel <> nil)) then
     Exit;
   // Просмотр по формату: цвета свои (страница, белый лист RTF), полосы
   // прокрутки - свои у браузера и RichEdit
-  if FmtIsViewControl(C) then
+  if FmtIsViewControl(Ctrl) then
     Exit;
 
   // Значок кнопки - под светлый фон; в IDE Dark - тёмный значок (свой, из
   // ленты, или с перевёрнутой яркостью). TUiIconButton фон и выделение
   // рисует сама - по родителю и теме.
-  if (C is TSpeedButton) or (C is TUiIconButton) then
+  if (Ctrl is TSpeedButton) or (Ctrl is TUiIconButton) then
   begin
-    UiApplyGlyph(TControl(C));
+    UiApplyGlyph(TControl(Ctrl));
     Exit;
   end;
 
   // Главное окно: цвет в .dfm свой - в IDE Light возвращается он
-  if C = Self then
+  if Ctrl = Self then
   begin
-    UiSetParentBgFor(C);
+    UiSetParentBgFor(Ctrl);
     if FIdeDark then
       Color := UiColor('Ide.WindowBG')
     else
@@ -7079,34 +7079,34 @@ begin
     Exit;
   end;
 
-  UiPaintColors(C);
+  UiPaintColors(Ctrl);
 
   // Линии сетки таблицы - свои, своим цветом
-  if C is TListView then
-    UiListGrid(TListView(C));
+  if Ctrl is TListView then
+    UiListGrid(TListView(Ctrl));
 
   // Свои полосы прокрутки поверх полос Windows: у списков, деревьев,
   // таблиц, логов и полей, прокручиваемых панелей. Один раз на элемент;
   // цвета - при каждом проходе. Пока полос у элемента нет, наши скрыты.
-  if ((C is TCustomTreeView) or (C is TCustomListView) or
-      (C is TCustomListBox) or (C is TCustomGrid) or
-      (C is TCustomMemo) or (C is TScrollBox)) and
-     (TWinControl(C).Parent <> nil) then
+  if ((Ctrl is TCustomTreeView) or (Ctrl is TCustomListView) or
+      (Ctrl is TCustomListBox) or (Ctrl is TCustomGrid) or
+      (Ctrl is TCustomMemo) or (Ctrl is TScrollBox)) and
+     (TWinControl(Ctrl).Parent <> nil) then
   begin
     // Цвета полос - по теме (UiTheme)
-    LS := UiScrollFind(TWinControl(C));
+    LS := UiScrollFind(TWinControl(Ctrl));
     if LS = nil then
-      LS := TUiListScroll.Attach(TWinControl(C));
+      LS := TUiListScroll.Attach(TWinControl(Ctrl));
   end;
 end;
 
 // Фон темы Windows (ParentBackground) у оконного элемента, кроме самих
 // окон: в IDE Dark выключен, в IDE Light возвращается тем, у кого его
 // выключили (UiSetParentBg)
-procedure TForm1.UiSetParentBgFor(C: TControl);
+procedure TForm1.UiSetParentBgFor(Ctrl: TControl);
 begin
-  if (C is TWinControl) and not (C is TCustomForm) then
-    UiSetParentBg(TWinControl(C), FIdeDark);
+  if (Ctrl is TWinControl) and not (Ctrl is TCustomForm) then
+    UiSetParentBg(TWinControl(Ctrl), FIdeDark);
 end;
 
 // Цвета роли элементу: фон, текст, шапка таблицы - по классу. Общее для
@@ -7142,7 +7142,7 @@ begin
     end;
 end;
 
-procedure TForm1.UiPaintColors(C: TControl);
+procedure TForm1.UiPaintColors(Ctrl: TControl);
 var
   BgKey, FgKey: string;
   Cur: TColor;
@@ -7167,56 +7167,56 @@ var
   var
     NewC: TColor;
   begin
-    Cur := TUiCtl(C).Color;
+    Cur := TUiCtl(Ctrl).Color;
     if not IsOurs(Cur, AKey, ASys) then
     begin
       Exit;
     end;
     NewC := UiColor(AKey);
     if Cur <> NewC then
-      TUiCtl(C).Color := NewC;
+      TUiCtl(Ctrl).Color := NewC;
   end;
 
   procedure SetFg(const AKey: string);
   var
     NewC: TColor;
   begin
-    Cur := TUiCtl(C).Font.Color;
+    Cur := TUiCtl(Ctrl).Font.Color;
     if not IsOurs(Cur, AKey, UiThemeFgSys) then
       Exit;
     NewC := UiColor(AKey);
     if Cur <> NewC then
-      TUiCtl(C).Font.Color := NewC;
+      TUiCtl(Ctrl).Font.Color := NewC;
   end;
 
 begin
-  if (C = nil) or (FUiLight = nil) or (FUiDark = nil) then
+  if (Ctrl = nil) or (FUiLight = nil) or (FUiDark = nil) then
     Exit;
   if FUiApplied = nil then
     FUiApplied := TStringList.Create;
 
-  UiSetParentBgFor(C);
+  UiSetParentBgFor(Ctrl);
 
   BgKey := '';
   FgKey := '';
-  if C is TCustomRichEdit then
+  if Ctrl is TCustomRichEdit then
     BgKey := 'Ide.LogBG'
-  else if (C is TCustomTreeView) or (C is TCustomListView) or
-          (C is TCustomListBox) or (C is TCustomGrid) then
+  else if (Ctrl is TCustomTreeView) or (Ctrl is TCustomListView) or
+          (Ctrl is TCustomListBox) or (Ctrl is TCustomGrid) then
   begin
     BgKey := 'Ide.ListBG';
     FgKey := 'Ide.ListText';
   end
-  else if (C is TCustomEdit) or (C is TCustomComboBox) then
+  else if (Ctrl is TCustomEdit) or (Ctrl is TCustomComboBox) then
   begin
     BgKey := 'Ide.EditBG';
     FgKey := 'Ide.EditText';
   end
-  else if (C is TCustomForm) or (C is TCustomPanel) or
-          (C is TCustomGroupBox) or (C is TTabSheet) or
-          (C is TScrollingWinControl) or (C is TSplitter) or
-          (C is TCustomLabel) or (C is TCustomCheckBox) or
-          (C is TRadioButton) then
+  else if (Ctrl is TCustomForm) or (Ctrl is TCustomPanel) or
+          (Ctrl is TCustomGroupBox) or (Ctrl is TTabSheet) or
+          (Ctrl is TScrollingWinControl) or (Ctrl is TSplitter) or
+          (Ctrl is TCustomLabel) or (Ctrl is TCustomCheckBox) or
+          (Ctrl is TRadioButton) then
   begin
     BgKey := 'Ide.WindowBG';
     FgKey := 'Ide.WindowText';
@@ -7228,22 +7228,22 @@ begin
     SetFg(FgKey);
 
   // Шапка и первая колонка таблицы - цветом окна
-  if C is TCustomGrid then
+  if Ctrl is TCustomGrid then
   begin
-    Cur := TUiGrid(C).FixedColor;
+    Cur := TUiGrid(Ctrl).FixedColor;
     if IsOurs(Cur, 'Ide.WindowBG', [clBtnFace, TColor($00F0F0F0)]) then
-      TUiGrid(C).FixedColor := UiColor('Ide.WindowBG');
+      TUiGrid(Ctrl).FixedColor := UiColor('Ide.WindowBG');
   end;
 end;
 
 // Имя таблицы для журнала: своё или имя родителя
-function UiCtlName(C: TControl): string;
+function UiCtlName(Ctrl: TControl): string;
 begin
-  Result := C.Name;
-  if (Result = '') and (C.Parent <> nil) then
-    Result := C.ClassName + ' в ' + C.Parent.Name + ':' + C.Parent.ClassName
+  Result := Ctrl.Name;
+  if (Result = '') and (Ctrl.Parent <> nil) then
+    Result := Ctrl.ClassName + ' в ' + Ctrl.Parent.Name + ':' + Ctrl.Parent.ClassName
   else if Result = '' then
-    Result := C.ClassName;
+    Result := Ctrl.ClassName;
 end;
 
 type
@@ -7335,23 +7335,23 @@ end;
 // от начала строки на ширину колонки.
 procedure TUiGridMark.DrawLines(DC: HDC; AItem, ASub: Integer; ACell: Boolean);
 var
-  R: TRect;
-  X, I: Integer;
+  RectVal: TRect;
+  PosX, I: Integer;
   Pen, OldPen: HPEN;
 begin
-  FillChar(R, SizeOf(R), 0);
-  R.Left := UiLVIR_BOUNDS;
+  FillChar(RectVal, SizeOf(RectVal), 0);
+  RectVal.Left := UiLVIR_BOUNDS;
   if ACell and (ASub > 0) then
   begin
-    R.Top := ASub;
-    if SendMessage(LV.Handle, UiLVM_GETSUBITEMRECT, AItem, Integer(@R)) = 0 then
+    RectVal.Top := ASub;
+    if SendMessage(LV.Handle, UiLVM_GETSUBITEMRECT, AItem, Integer(@RectVal)) = 0 then
     begin
       if Form1 <> nil then
         Form1.UiGridNote(LV, 'линии: LVM_GETSUBITEMRECT вернул 0');
       Exit;
     end;
   end
-  else if SendMessage(LV.Handle, UiLVM_GETITEMRECT, AItem, Integer(@R)) = 0 then
+  else if SendMessage(LV.Handle, UiLVM_GETITEMRECT, AItem, Integer(@RectVal)) = 0 then
   begin
     if Form1 <> nil then
       Form1.UiGridNote(LV, 'линии: LVM_GETITEMRECT вернул 0');
@@ -7363,22 +7363,22 @@ begin
     if ACell then
     begin
       if (ASub <= 0) and (LV.Columns.Count > 0) then
-        R.Right := R.Left + LV.Columns[0].Width;
-      MoveToEx(DC, R.Left, R.Bottom - 1, nil);
-      Windows.LineTo(DC, R.Right, R.Bottom - 1);
-      MoveToEx(DC, R.Right - 1, R.Top, nil);
-      Windows.LineTo(DC, R.Right - 1, R.Bottom);
+        RectVal.Right := RectVal.Left + LV.Columns[0].Width;
+      MoveToEx(DC, RectVal.Left, RectVal.Bottom - 1, nil);
+      Windows.LineTo(DC, RectVal.Right, RectVal.Bottom - 1);
+      MoveToEx(DC, RectVal.Right - 1, RectVal.Top, nil);
+      Windows.LineTo(DC, RectVal.Right - 1, RectVal.Bottom);
     end
     else
     begin
-      MoveToEx(DC, R.Left, R.Bottom - 1, nil);
-      Windows.LineTo(DC, R.Right, R.Bottom - 1);
-      X := R.Left;
+      MoveToEx(DC, RectVal.Left, RectVal.Bottom - 1, nil);
+      Windows.LineTo(DC, RectVal.Right, RectVal.Bottom - 1);
+      PosX := RectVal.Left;
       for I := 0 to LV.Columns.Count - 1 do
       begin
-        Inc(X, LV.Columns[I].Width);
-        MoveToEx(DC, X - 1, R.Top, nil);
-        Windows.LineTo(DC, X - 1, R.Bottom);
+        Inc(PosX, LV.Columns[I].Width);
+        MoveToEx(DC, PosX - 1, RectVal.Top, nil);
+        Windows.LineTo(DC, PosX - 1, RectVal.Bottom);
       end;
     end;
   finally
@@ -7400,32 +7400,32 @@ end;
 procedure TForm1.UiListGrid(ALV: TListView);
 var
   K: Integer;
-  M: TUiGridMark;
+  UiGridMark: TUiGridMark;
 begin
-  M := nil;
+  UiGridMark := nil;
   for K := 0 to ALV.ComponentCount - 1 do
     if ALV.Components[K] is TUiGridMark then
-      M := TUiGridMark(ALV.Components[K]);
-  if M = nil then
+      UiGridMark := TUiGridMark(ALV.Components[K]);
+  if UiGridMark = nil then
   begin
     // Сетку таблица не хочет или рисует строки сама - не трогаем (круг
     // таблиц тот же, что был с событиями OnAdvancedCustomDraw*)
     if not ALV.GridLines or Assigned(ALV.OnAdvancedCustomDrawItem) or
        Assigned(ALV.OnAdvancedCustomDrawSubItem) then
       Exit;
-    M := TUiGridMark.Create(ALV);
-    M.Color := clNone;
-    M.LV := ALV;
-    M.OldProc := ALV.WindowProc;
-    ALV.WindowProc := M.WndProc;
+    UiGridMark := TUiGridMark.Create(ALV);
+    UiGridMark.Color := clNone;
+    UiGridMark.LV := ALV;
+    UiGridMark.OldProc := ALV.WindowProc;
+    ALV.WindowProc := UiGridMark.WndProc;
     ALV.GridLines := False;
     Dbg('3187: сетка: таблица ' + UiCtlName(ALV) + ' - сетка Windows ' +
     'выключена, перехват NM_CUSTOMDRAW назначен', clNavy);
   end;
   // Перерисовать - только если цвет линий сменился
-  if M.Color <> UiColor('Grid.Lines') then
+  if UiGridMark.Color <> UiColor('Grid.Lines') then
   begin
-    M.Color := UiColor('Grid.Lines');
+    UiGridMark.Color := UiColor('Grid.Lines');
     ALV.Invalidate;
   end;
 end;
@@ -7465,7 +7465,7 @@ end;
 procedure TForm1.UiFreezeForms(AFreeze: Boolean);
 var
   I: Integer;
-  F: TCustomForm;
+  Frm: TCustomForm;
 begin
   if AFreeze then
   begin
@@ -7489,21 +7489,21 @@ begin
   end;
   for I := 0 to Screen.FormCount - 1 do
   begin
-    F := Screen.Forms[I];
-    if not F.Visible or not F.HandleAllocated then
+    Frm := Screen.Forms[I];
+    if not Frm.Visible or not Frm.HandleAllocated then
       Continue;
     if AFreeze then
-      SendMessage(F.Handle, WM_SETREDRAW, 0, 0)
+      SendMessage(Frm.Handle, WM_SETREDRAW, 0, 0)
     else
     begin
-      SendMessage(F.Handle, WM_SETREDRAW, 1, 0);
+      SendMessage(Frm.Handle, WM_SETREDRAW, 1, 0);
       // При запуске главное окно ещё прозрачное, и его целиком рисует
       // WMStartupFinish - здесь только помечаем к перерисовке
       if StartupActive then
-        RedrawWindow(F.Handle, nil, 0, RDW_ERASE or RDW_FRAME or
+        RedrawWindow(Frm.Handle, nil, 0, RDW_ERASE or RDW_FRAME or
                      RDW_INVALIDATE or RDW_ALLCHILDREN)
       else
-        RedrawWindow(F.Handle, nil, 0, RDW_ERASE or RDW_FRAME or
+        RedrawWindow(Frm.Handle, nil, 0, RDW_ERASE or RDW_FRAME or
                      RDW_INVALIDATE or RDW_ALLCHILDREN or RDW_UPDATENOW);
     end;
   end;
@@ -7561,7 +7561,7 @@ begin
 end;
 procedure TForm1.SaveUiSchema;
 var
-  SL, L: TStringList;
+  SL, StrList: TStringList;
   I, J: Integer;
   Key, Val: string;
 begin
@@ -7586,11 +7586,11 @@ begin
     if FUiCustom <> nil then
       for J := 0 to FUiCustom.Count - 1 do
       begin
-        L := TStringList(FUiCustom.Objects[J]);
-        for I := 0 to L.Count - 1 do
+        StrList := TStringList(FUiCustom.Objects[J]);
+        for I := 0 to StrList.Count - 1 do
         begin
-          Key := L.Names[I];
-          Val := Copy(L[I], Length(Key) + 2, MaxInt);
+          Key := StrList.Names[I];
+          Val := Copy(StrList[I], Length(Key) + 2, MaxInt);
           SL.Add(Key + '@Ide:' + FUiCustom[J] + '=' + Val);
         end;
       end;
@@ -7622,7 +7622,7 @@ end;
 procedure TForm1.ReadThemeSetting;
 var
   Ini: TIniFile;
-  S: string;
+  Str: string;
 begin
   FThemeName := BaseThemeName;
   if FileExists(SettingsFileName) then
@@ -7633,10 +7633,10 @@ begin
       // Режим IDE - цвета самой IDE, отдельно от темы редактора: Light,
       // Dark или Custom со своей темой ([Themes] IdeCustom). Есть ли такая
       // своя тема, проверит LoadUiSchema.
-      S := Trim(Ini.ReadString('Themes', 'Mode', 'Light'));
-      if CompareText(S, 'Dark') = 0 then
+      Str := Trim(Ini.ReadString('Themes', 'Mode', 'Light'));
+      if CompareText(Str, 'Dark') = 0 then
         FIdeMode := IdeModeDark
-      else if CompareText(S, 'Custom') = 0 then
+      else if CompareText(Str, 'Custom') = 0 then
         FIdeMode := IdeModeCustom
       else
         FIdeMode := IdeModeLight;
@@ -7801,7 +7801,7 @@ procedure TForm1.LoadSettings;
 var
   Ini: TIniFile;
   K: Integer;
-  S: string;
+  Str: string;
   WasMod: Boolean;
 begin
   if not FileExists(SettingsFileName) then
@@ -7860,9 +7860,9 @@ begin
       FRecentFiles.Clear;
       for K := 1 to 9 do
       begin
-        S := Ini.ReadString('Recent', 'File' + IntToStr(K), '');
-        if S <> '' then
-          FRecentFiles.Add(S);
+        Str := Ini.ReadString('Recent', 'File' + IntToStr(K), '');
+        if Str <> '' then
+          FRecentFiles.Add(Str);
       end;
     end;
 
@@ -7874,17 +7874,17 @@ begin
       K := 1;
       while True do
       begin
-        S := Trim(Ini.ReadString('HotFolders', 'Dir' + IntToStr(K), ''));
-        if S = '' then
+        Str := Trim(Ini.ReadString('HotFolders', 'Dir' + IntToStr(K), ''));
+        if Str = '' then
           Break;
 
-        if Copy(S, 1, 2) = '1 ' then
-          FHotFolders.AddObject(Copy(S, 3, Length(S)), Self)
-        else if Copy(S, 1, 2) = '0 ' then
-          FHotFolders.AddObject(Copy(S, 3, Length(S)), nil)
+        if Copy(Str, 1, 2) = '1 ' then
+          FHotFolders.AddObject(Copy(Str, 3, Length(Str)), Self)
+        else if Copy(Str, 1, 2) = '0 ' then
+          FHotFolders.AddObject(Copy(Str, 3, Length(Str)), nil)
         else
           // Строка без признака - считаем папку отмеченной
-          FHotFolders.AddObject(S, Self);
+          FHotFolders.AddObject(Str, Self);
 
         Inc(K);
       end;
@@ -7931,30 +7931,30 @@ end;
 // программа запустилась бы там, где её не видно.
 procedure TForm1.RestoreFormBounds(Ini: TIniFile);
 var
-  L, T, W, H: Integer;
-  R, Desk, Tmp: TRect;
+  SavedLeft, SavedTop, SavedWidth, SavedHeight: Integer;
+  RectVal, Desk, Tmp: TRect;
 begin
-  W := Ini.ReadInteger('MainForm', 'Width', 0);
-  H := Ini.ReadInteger('MainForm', 'Height', 0);
-  if (W < 200) or (H < 150) then
+  SavedWidth := Ini.ReadInteger('MainForm', 'Width', 0);
+  SavedHeight := Ini.ReadInteger('MainForm', 'Height', 0);
+  if (SavedWidth < 200) or (SavedHeight < 150) then
     Exit; // записи нет или она бессмысленная - оставляем как есть
 
-  L := Ini.ReadInteger('MainForm', 'Left', Left);
-  T := Ini.ReadInteger('MainForm', 'Top', Top);
+  SavedLeft := Ini.ReadInteger('MainForm', 'Left', Left);
+  SavedTop := Ini.ReadInteger('MainForm', 'Top', Top);
 
-  R := Rect(L, T, L + W, T + H);
+  RectVal := Rect(SavedLeft, SavedTop, SavedLeft + SavedWidth, SavedTop + SavedHeight);
   Desk := Rect(Screen.DesktopLeft, Screen.DesktopTop,
                Screen.DesktopLeft + Screen.DesktopWidth,
                Screen.DesktopTop + Screen.DesktopHeight);
-  if not IntersectRect(Tmp, R, Desk) then
+  if not IntersectRect(Tmp, RectVal, Desk) then
     Exit;
 
   // Заголовок должен остаться доступным мышью
-  if T < Screen.DesktopTop then
-    T := Screen.DesktopTop;
+  if SavedTop < Screen.DesktopTop then
+    SavedTop := Screen.DesktopTop;
 
   //  Position := poDesigned; // иначе VCL сам сдвинет окно при показе
-  SetBounds(L, T, W, H);
+  SetBounds(SavedLeft, SavedTop, SavedWidth, SavedHeight);
 
   if Ini.ReadBool('MainForm', 'Maximized', False) then
     WindowState := wsMaximized;
@@ -8032,27 +8032,27 @@ end;
 
 // Подмешивает к цвету C фон редактора в пропорции FHotTabPale процентов.
 // 0 - исходный насыщенный цвет, 100 - полное слияние с фоном.
-function TForm1.PaleColor(C: TColor): TColor;
+function TForm1.PaleColor(Clr: TColor): TColor;
 var
   Src, Dst: Longint;
-  R1, G1, B1, R2, G2, B2, P: Integer;
+  R1, G1, B1, R2, G2, B2, PalePct: Integer;
 begin
-  P := FHotTabPale;
-  if P < 0 then
-    P := 0;
-  if P > 100 then
-    P := 100;
+  PalePct := FHotTabPale;
+  if PalePct < 0 then
+    PalePct := 0;
+  if PalePct > 100 then
+    PalePct := 100;
 
-  if P = 0 then
+  if PalePct = 0 then
   begin
-    Result := C;
+    Result := Clr;
     Exit;
   end;
 
-  Src := ColorToRGB(C);
+  Src := ColorToRGB(Clr);
   Dst := ColorToRGB(FScheme.FTextBG); // направляющие лежат на подложке текста
 
-  if P = 100 then
+  if PalePct = 100 then
   begin
     Result := TColor(Dst);
     Exit;
@@ -8063,9 +8063,9 @@ begin
   G1 := (Src shr 8) and $FF;  G2 := (Dst shr 8) and $FF;
   B1 := (Src shr 16) and $FF; B2 := (Dst shr 16) and $FF;
 
-  R1 := R1 + (R2 - R1) * P div 100;
-  G1 := G1 + (G2 - G1) * P div 100;
-  B1 := B1 + (B2 - B1) * P div 100;
+  R1 := R1 + (R2 - R1) * PalePct div 100;
+  G1 := G1 + (G2 - G1) * PalePct div 100;
+  B1 := B1 + (B2 - B1) * PalePct div 100;
 
   Result := TColor(R1 or (G1 shl 8) or (B1 shl 16));
 end;
@@ -8086,45 +8086,45 @@ end;
 
 // Проверяет, укладываются ли байты строки в структуру UTF-8. Нужна для файлов
 // без BOM: чистый ASCII проверку проходит, но UTF-8 в нём и не отличить от ANSI.
-function TForm1.LooksLikeUtf8(const S: string): Boolean;
+function TForm1.LooksLikeUtf8(const Str: string): Boolean;
 var
-  I, Len, Extra, K: Integer;
-  B: Byte;
+  Idx, Len, Extra, K: Integer;
+  ByteVal: Byte;
   HasMulti: Boolean;
 begin
   Result := False;
   HasMulti := False;
-  Len := Length(S);
-  I := 1;
+  Len := Length(Str);
+  Idx := 1;
 
-  while I <= Len do
+  while Idx <= Len do
   begin
-    B := Byte(S[I]);
+    ByteVal := Byte(Str[Idx]);
 
-    if B < $80 then
-      Inc(I)
+    if ByteVal < $80 then
+      Inc(Idx)
     else
     begin
       // Длину последовательности определяем по старшим битам ведущего байта
-      if (B and $E0) = $C0 then
+      if (ByteVal and $E0) = $C0 then
         Extra := 1
-      else if (B and $F0) = $E0 then
+      else if (ByteVal and $F0) = $E0 then
         Extra := 2
-      else if (B and $F8) = $F0 then
+      else if (ByteVal and $F8) = $F0 then
         Extra := 3
       else
         Exit; // одиночный байт $80..$BF или $F8..$FF - это не UTF-8
 
-      if I + Extra > Len then
+      if Idx + Extra > Len then
         Exit;
 
       // Все хвостовые байты обязаны быть вида 10xxxxxx
       for K := 1 to Extra do
-        if (Byte(S[I + K]) and $C0) <> $80 then
+        if (Byte(Str[Idx + K]) and $C0) <> $80 then
           Exit;
 
       HasMulti := True;
-      Inc(I, Extra + 1);
+      Inc(Idx, Extra + 1);
     end;
   end;
 
@@ -8144,46 +8144,46 @@ end;
 // символ, которого нет в кодовой странице, становится '?' или похожим.
 // Структуру байтов заранее проверил LooksLikeUtf8; оборванная или
 // недопустимая последовательность всё равно даёт '?', а не отказ.
-function Utf8ToAnsiFull(const S: string): string;
+function Utf8ToAnsiFull(const Str: string): string;
 var
-  W: WideString;
-  P: PWideChar;
-  I, J, Len, Extra, K, N: Integer;
-  B: Byte;
+  WordStr: WideString;
+  WCharPtr: PWideChar;
+  Idx, Idx2, Len, Extra, K, Num: Integer;
+  ByteVal: Byte;
   CP: Cardinal;
 begin
   Result := '';
-  Len := Length(S);
+  Len := Length(Str);
   if Len = 0 then
     Exit;
 
   // Символов UTF-16 не больше, чем байтов: пара занимает 4 байта
-  SetLength(W, Len);
-  P := PWideChar(W);
-  I := 1;
-  J := 0;
+  SetLength(WordStr, Len);
+  WCharPtr := PWideChar(WordStr);
+  Idx := 1;
+  Idx2 := 0;
 
-  while I <= Len do
+  while Idx <= Len do
   begin
-    B := Byte(S[I]);
-    if B < $80 then
+    ByteVal := Byte(Str[Idx]);
+    if ByteVal < $80 then
     begin
-      CP := B;
+      CP := ByteVal;
       Extra := 0;
     end
-    else if (B and $E0) = $C0 then
+    else if (ByteVal and $E0) = $C0 then
     begin
-      CP := B and $1F;
+      CP := ByteVal and $1F;
       Extra := 1;
     end
-    else if (B and $F0) = $E0 then
+    else if (ByteVal and $F0) = $E0 then
     begin
-      CP := B and $0F;
+      CP := ByteVal and $0F;
       Extra := 2;
     end
-    else if (B and $F8) = $F0 then
+    else if (ByteVal and $F8) = $F0 then
     begin
-      CP := B and $07;
+      CP := ByteVal and $07;
       Extra := 3;
     end
     else
@@ -8192,25 +8192,25 @@ begin
       Extra := 0;
     end;
 
-    if I + Extra > Len then
+    if Idx + Extra > Len then
     begin
       // Последовательность оборвана концом файла
       CP := Ord('?');
-      Extra := Len - I;
+      Extra := Len - Idx;
     end
     else
       for K := 1 to Extra do
       begin
-        if (Byte(S[I + K]) and $C0) <> $80 then
+        if (Byte(Str[Idx + K]) and $C0) <> $80 then
         begin
           // Хвост не того вида - ведущий байт считаем одиночным
           CP := Ord('?');
           Extra := 0;
           Break;
         end;
-        CP := (CP shl 6) or (Byte(S[I + K]) and $3F);
+        CP := (CP shl 6) or (Byte(Str[Idx + K]) and $3F);
       end;
-    Inc(I, Extra + 1);
+    Inc(Idx, Extra + 1);
 
     if CP > $10FFFF then
       CP := Ord('?');
@@ -8218,26 +8218,26 @@ begin
     if CP > $FFFF then
     begin
       Dec(CP, $10000);
-      P[J] := WideChar(Word($D800 or (CP shr 10)));
-      Inc(J);
-      P[J] := WideChar(Word($DC00 or (CP and $3FF)));
-      Inc(J);
+      WCharPtr[Idx2] := WideChar(Word($D800 or (CP shr 10)));
+      Inc(Idx2);
+      WCharPtr[Idx2] := WideChar(Word($DC00 or (CP and $3FF)));
+      Inc(Idx2);
     end
     else
     begin
-      P[J] := WideChar(Word(CP));
-      Inc(J);
+      WCharPtr[Idx2] := WideChar(Word(CP));
+      Inc(Idx2);
     end;
   end;
 
-  if J = 0 then
+  if Idx2 = 0 then
     Exit;
 
-  N := WideCharToMultiByte(CP_ACP, 0, P, J, nil, 0, nil, nil);
-  if N <= 0 then
+  Num := WideCharToMultiByte(CP_ACP, 0, WCharPtr, Idx2, nil, 0, nil, nil);
+  if Num <= 0 then
     Exit;
-  SetLength(Result, N);
-  WideCharToMultiByte(CP_ACP, 0, P, J, PChar(Result), N, nil, nil);
+  SetLength(Result, Num);
+  WideCharToMultiByte(CP_ACP, 0, WCharPtr, Idx2, PChar(Result), Num, nil, nil);
 end;
 
 // Вид формы по её байтам:
@@ -8248,7 +8248,7 @@ end;
 //       4 байта. Так .dfm пишут некоторые старые версии и утилиты.
 function DfmBinaryKind(const ARaw: string): Integer;
 var
-  P: Integer;
+  CharPos: Integer;
 begin
   Result := 0;
   if Copy(ARaw, 1, 4) = 'TPF0' then
@@ -8259,17 +8259,17 @@ begin
   if (Length(ARaw) < 12) or (ARaw[1] <> #$FF) or (ARaw[2] <> #$0A) or
      (ARaw[3] <> #0) then
     Exit;
-  P := 4;
-  if ARaw[P] = #$FF then
-    Inc(P, 3)                    // имя - номер
+  CharPos := 4;
+  if ARaw[CharPos] = #$FF then
+    Inc(CharPos, 3)                    // имя - номер
   else
   begin
-    while (P <= Length(ARaw)) and (ARaw[P] <> #0) do
-      Inc(P);
-    Inc(P);                      // имя - строка с нулём
+    while (CharPos <= Length(ARaw)) and (ARaw[CharPos] <> #0) do
+      Inc(CharPos);
+    Inc(CharPos);                      // имя - строка с нулём
   end;
-  Inc(P, 2 + 4);                 // флаги и размер
-  if Copy(ARaw, P, 4) = 'TPF0' then
+  Inc(CharPos, 2 + 4);                 // флаги и размер
+  if Copy(ARaw, CharPos, 4) = 'TPF0' then
     Result := 2;
 end;
 
@@ -8593,26 +8593,26 @@ begin
   Result := GAppTitle;
 end;
 
-function IsUntitledName(const S: string): Boolean;
+function IsUntitledName(const Str: string): Boolean;
 begin
-  Result := (S = '') or (Pos('(без имени', S) = 1);
+  Result := (Str = '') or (Pos('(без имени', Str) = 1);
 end;
 
 // Расширение по имени из записи окна. У условного имени оно стоит перед
 // закрывающей скобкой, и ExtractFileExt вернул бы '.txt)'.
-function WindowExt(const S: string): string;
+function WindowExt(const Str: string): string;
 begin
-  if S = '' then
+  if Str = '' then
     Result := ''
-  else if IsUntitledName(S) then
+  else if IsUntitledName(Str) then
   begin
-    if S[Length(S)] = ')' then
-      Result := ExtractFileExt(Copy(S, 1, Length(S) - 1))
+    if Str[Length(Str)] = ')' then
+      Result := ExtractFileExt(Copy(Str, 1, Length(Str) - 1))
     else
-      Result := ExtractFileExt(S);
+      Result := ExtractFileExt(Str);
   end
   else
-    Result := ExtractFileExt(S);
+    Result := ExtractFileExt(Str);
 end;
 
 // Имя для заголовка окна: путь к файлу, а у нового файла - условное имя
@@ -8763,26 +8763,26 @@ end;
 // Вопрос по одному файлу. Ответ: 1 - перечитать, 2 - слить, 3 - открыть
 // версию с диска в новой вкладке, 4 - оставить текст окна. ASame - то же
 // для остальных изменённых файлов.
-function TForm1.AskDiskChange(W: Integer; IsMod, CanMerge, Many: Boolean;
+function TForm1.AskDiskChange(WinIdx: Integer; IsMod, CanMerge, Many: Boolean;
                               var ASame: Boolean): Integer;
 var
   Dlg: TDlgAskDisk;
-  S: string;
+  Str: string;
 begin
   Result := 4;
   ASame := False;
-  S := 'Файл изменён на диске другой программой:'#13#10 +
-       FWindows[W].FileName;
+  Str := 'Файл изменён на диске другой программой:'#13#10 +
+       FWindows[WinIdx].FileName;
   if IsMod then
-    S := S + #13#10#13#10'В окне есть несохранённые изменения. "Перечитать" ' +
+    Str := Str + #13#10#13#10'В окне есть несохранённые изменения. "Перечитать" ' +
     'их отбросит; "Слить" перенесёт в текст с диска.'
   else
-    S := S + #13#10#13#10'В окне изменений нет.';
+    Str := Str + #13#10#13#10'В окне изменений нет.';
 
   // Окно описано в DlgAskDisk.dfm; здесь - только то, что зависит от файла
   Dlg := TDlgAskDisk.Create(Self);
   try
-    Dlg.lblInfo.Caption := S;
+    Dlg.lblInfo.Caption := Str;
     Dlg.chkSame.Visible := Many;
     Dlg.btnMerge.Enabled := CanMerge;
     // По умолчанию - то, что ничего не теряет
@@ -8818,7 +8818,7 @@ end;
 // оставило конфликты или версия с диска открыта рядом для сравнения.
 function TForm1.CheckDiskChanges(AOnly: Integer): Boolean;
 var
-  I, K, W, Act, Choice, Cf: Integer;
+  I, K, WinIdx, Act, Choice, Cf: Integer;
   FN, Key, MemTxt, BaseTxt, Merged: string;
   Changed, Disk: TStringList;
   SavedUtf8, SavedBom, IsMod, Same, CanMerge, ReadOk: Boolean;
@@ -8897,14 +8897,14 @@ begin
     Choice := 4;
     for K := 0 to Changed.Count - 1 do
     begin
-      W := Integer(Changed.Objects[K]);
+      WinIdx := Integer(Changed.Objects[K]);
       FN := Changed[K];
-      if not FWindows[W].Used then
+      if not FWindows[WinIdx].Used then
         Continue;
-      if W = FWindowsIndex then
+      if WinIdx = FWindowsIndex then
         IsMod := RichEdit1.Modified
       else
-        IsMod := FWindows[W].Modified;
+        IsMod := FWindows[WinIdx].Modified;
 
       BaseTxt := '';
       I := FDiskAges.IndexOfName(AnsiUpperCase(ExpandFileName(FN)));
@@ -8916,7 +8916,7 @@ begin
         BaseTxt := TDiskBase(Obj).BaseText;
 
       if not Same then
-        Choice := AskDiskChange(W, IsMod, CanMerge, Changed.Count - K > 1,
+        Choice := AskDiskChange(WinIdx, IsMod, CanMerge, Changed.Count - K > 1,
                                 Same);
       Act := Choice;
       // "Так же для остальных": слить можно не везде - там перечитать,
@@ -8931,29 +8931,29 @@ begin
 
       case Act of
         1:
-          ReloadWindowFromDisk(W, False);
+          ReloadWindowFromDisk(WinIdx, False);
         2:
         begin
-          if W = FWindowsIndex then
+          if WinIdx = FWindowsIndex then
             MemTxt := GetEditorText
           else
-            MemTxt := WinText(W);
+            MemTxt := WinText(WinIdx);
           Merged := Merge3(BaseTxt, MemTxt, Disk[K], Cf);
-          if W = FWindowsIndex then
+          if WinIdx = FWindowsIndex then
             StoreCurrentWindow;
-          SetWinText(W, Merged);
-          FWindows[W].Modified := True;
-          FWindows[W].MapValid := False;
-          SetLength(FWindows[W].CommentRanges, 0);
-          SetLength(FWindows[W].StringRanges, 0);
-          if FWindows[W].CursorPos > Length(Merged) then
-            FWindows[W].CursorPos := 0;
+          SetWinText(WinIdx, Merged);
+          FWindows[WinIdx].Modified := True;
+          FWindows[WinIdx].MapValid := False;
+          SetLength(FWindows[WinIdx].CommentRanges, 0);
+          SetLength(FWindows[WinIdx].StringRanges, 0);
+          if FWindows[WinIdx].CursorPos > Length(Merged) then
+            FWindows[WinIdx].CursorPos := 0;
           // Теперь предок - версия с диска: она в окне учтена
           NoteDisk(FN, Disk[K]);
-          if W = FWindowsIndex then
-            ActivateWindow(W)
+          if WinIdx = FWindowsIndex then
+            ActivateWindow(WinIdx)
           else
-            UpdateTabCaption(W);
+            UpdateTabCaption(WinIdx);
           RebuildWindowsMenu;
           if Cf > 0 then
           begin
@@ -9038,18 +9038,18 @@ end;
 function TForm1.DiskBaseOf(const AFile: string): TDiskBase;
 var
   Key: string;
-  I: Integer;
+  Idx: Integer;
 begin
   if FDiskAges = nil then
     FDiskAges := TStringList.Create;
   Key := AnsiUpperCase(ExpandFileName(AFile));
-  I := FDiskAges.IndexOfName(Key);
-  if I < 0 then
-    I := FDiskAges.AddObject(Key + '=', TDiskBase.Create);
-  FDiskAges.ValueFromIndex[I] := IntToStr(FileAge(AFile));
-  if not (FDiskAges.Objects[I] is TDiskBase) then
-    FDiskAges.Objects[I] := TDiskBase.Create;
-  Result := TDiskBase(FDiskAges.Objects[I]);
+  Idx := FDiskAges.IndexOfName(Key);
+  if Idx < 0 then
+    Idx := FDiskAges.AddObject(Key + '=', TDiskBase.Create);
+  FDiskAges.ValueFromIndex[Idx] := IntToStr(FileAge(AFile));
+  if not (FDiskAges.Objects[Idx] is TDiskBase) then
+    FDiskAges.Objects[Idx] := TDiskBase.Create;
+  Result := TDiskBase(FDiskAges.Objects[Idx]);
 end;
 
 procedure TForm1.NoteDisk(const AFile, AText: string);
@@ -9607,73 +9607,73 @@ end;
 const
   MapCacheSign = 'SHLMAP2';
 
-procedure MapWriteInt(S: TStream; V: Integer);
+procedure MapWriteInt(Strm: TStream; IntVal: Integer);
 begin
-  S.WriteBuffer(V, SizeOf(V));
+  Strm.WriteBuffer(IntVal, SizeOf(IntVal));
 end;
 
-function MapReadInt(S: TStream): Integer;
+function MapReadInt(Strm: TStream): Integer;
 begin
-  S.ReadBuffer(Result, SizeOf(Result));
+  Strm.ReadBuffer(Result, SizeOf(Result));
 end;
 
 // Длина, потом символы. Длина больше остатка файла - файл испорчен.
-procedure MapWriteStr(S: TStream; const V: string);
+procedure MapWriteStr(Strm: TStream; const ValStr: string);
 begin
-  MapWriteInt(S, Length(V));
-  if V <> '' then
-    S.WriteBuffer(V[1], Length(V));
+  MapWriteInt(Strm, Length(ValStr));
+  if ValStr <> '' then
+    Strm.WriteBuffer(ValStr[1], Length(ValStr));
 end;
 
-function MapReadStr(S: TStream): string;
+function MapReadStr(Strm: TStream): string;
 var
-  L: Integer;
+  Len: Integer;
 begin
-  L := MapReadInt(S);
-  if (L < 0) or (L > S.Size - S.Position) then
+  Len := MapReadInt(Strm);
+  if (Len < 0) or (Len > Strm.Size - Strm.Position) then
     raise EReadError.Create('mapcache: длина строки');
-  SetLength(Result, L);
-  if L > 0 then
-    S.ReadBuffer(Result[1], L);
+  SetLength(Result, Len);
+  if Len > 0 then
+    Strm.ReadBuffer(Result[1], Len);
 end;
 
 // Число элементов, потом сами элементы одним куском
-procedure MapWriteRanges(S: TStream; const A: TCommentRangeArray);
+procedure MapWriteRanges(Strm: TStream; const CommentRangeArray: TCommentRangeArray);
 begin
-  MapWriteInt(S, Length(A));
-  if Length(A) > 0 then
-    S.WriteBuffer(A[0], Length(A) * SizeOf(TCommentRange));
+  MapWriteInt(Strm, Length(CommentRangeArray));
+  if Length(CommentRangeArray) > 0 then
+    Strm.WriteBuffer(CommentRangeArray[0], Length(CommentRangeArray) * SizeOf(TCommentRange));
 end;
 
-procedure MapReadRanges(S: TStream; var A: TCommentRangeArray);
+procedure MapReadRanges(Strm: TStream; var CommentRangeArray: TCommentRangeArray);
 var
-  N: Integer;
+  Num: Integer;
 begin
-  N := MapReadInt(S);
-  if (N < 0) or (Int64(N) * SizeOf(TCommentRange) > S.Size - S.Position) then
+  Num := MapReadInt(Strm);
+  if (Num < 0) or (Int64(Num) * SizeOf(TCommentRange) > Strm.Size - Strm.Position) then
     raise EReadError.Create('mapcache: число диапазонов');
-  SetLength(A, N);
-  if N > 0 then
-    S.ReadBuffer(A[0], N * SizeOf(TCommentRange));
+  SetLength(CommentRangeArray, Num);
+  if Num > 0 then
+    Strm.ReadBuffer(CommentRangeArray[0], Num * SizeOf(TCommentRange));
 end;
 
-procedure MapWriteInts(S: TStream; const A: TIntArray);
+procedure MapWriteInts(Strm: TStream; const IntArray: TIntArray);
 begin
-  MapWriteInt(S, Length(A));
-  if Length(A) > 0 then
-    S.WriteBuffer(A[0], Length(A) * SizeOf(Integer));
+  MapWriteInt(Strm, Length(IntArray));
+  if Length(IntArray) > 0 then
+    Strm.WriteBuffer(IntArray[0], Length(IntArray) * SizeOf(Integer));
 end;
 
-procedure MapReadInts(S: TStream; var A: TIntArray);
+procedure MapReadInts(Strm: TStream; var IntArray: TIntArray);
 var
-  N: Integer;
+  Num: Integer;
 begin
-  N := MapReadInt(S);
-  if (N < 0) or (Int64(N) * SizeOf(Integer) > S.Size - S.Position) then
+  Num := MapReadInt(Strm);
+  if (Num < 0) or (Int64(Num) * SizeOf(Integer) > Strm.Size - Strm.Position) then
     raise EReadError.Create('mapcache: число чисел');
-  SetLength(A, N);
-  if N > 0 then
-    S.ReadBuffer(A[0], N * SizeOf(Integer));
+  SetLength(IntArray, Num);
+  if Num > 0 then
+    Strm.ReadBuffer(IntArray[0], Num * SizeOf(Integer));
 end;
 
 // Ключ файла кэша: текст окна и подпись схемы
@@ -9787,7 +9787,7 @@ var
   Subs: TSubInfoArray;
   Depth, Slots: TIntArray;
   Words: TStrArray;
-  Mask, N, I: Integer;
+  Mask, Num, I: Integer;
 begin
   Result := False;
   if not FUseSyntaxHighlight or IsUntitledName(FWindows[Index].FileName) then
@@ -9807,11 +9807,11 @@ begin
         Exit;
       MapReadRanges(FS, CR);
       MapReadRanges(FS, SR);
-      N := MapReadInt(FS);
-      if (N < 0) or (N > FS.Size - FS.Position) then
+      Num := MapReadInt(FS);
+      if (Num < 0) or (Num > FS.Size - FS.Position) then
         Exit;
-      SetLength(Subs, N);
-      for I := 0 to N - 1 do
+      SetLength(Subs, Num);
+      for I := 0 to Num - 1 do
       begin
         Subs[I].Name := MapReadStr(FS);
         Subs[I].BeginLine := MapReadInt(FS);
@@ -9821,11 +9821,11 @@ begin
       DfmKey := MapReadStr(FS);
       Mask := MapReadInt(FS);
       MapReadInts(FS, Slots);
-      N := MapReadInt(FS);
-      if (N < 0) or (N > FS.Size - FS.Position) then
+      Num := MapReadInt(FS);
+      if (Num < 0) or (Num > FS.Size - FS.Position) then
         Exit;
-      SetLength(Words, N);
-      for I := 0 to N - 1 do
+      SetLength(Words, Num);
+      for I := 0 to Num - 1 do
         Words[I] := MapReadStr(FS);
     finally
       FS.Free;
@@ -10281,7 +10281,7 @@ end;
 // Перестраивает список файлов под постоянными пунктами
 procedure TForm1.RebuildWindowsMenu;
 var
-  I, N: Integer;
+  I, Num: Integer;
   It: TMenuItem;
 begin
   if (mWindows = nil) or (mWinSep = nil) then
@@ -10292,13 +10292,13 @@ begin
   while mWindows.Count > mWinSep.MenuIndex + 1 do
     mWindows.Items[mWindows.Count - 1].Free;
 
-  N := 0;
+  Num := 0;
   for I := 0 to WindowsItemCount - 1 do
     if FWindows[I].Used then
     begin
-      Inc(N);
+      Inc(Num);
       It := TMenuItem.Create(Self);
-      It.Caption := Format('%d %s', [N, FWindows[I].FileName]);
+      It.Caption := Format('%d %s', [Num, FWindows[I].FileName]);
       It.Tag := I; // индекс слота, а не номер в списке
       It.OnClick := WindowsItemClick;
       It.RadioItem := True;
@@ -10316,7 +10316,7 @@ begin
       mWindows.Add(It);
     end;
 
-  if N = 0 then
+  if Num = 0 then
   begin
     It := TMenuItem.Create(Self);
     It.Caption := '(no files)';
@@ -10346,22 +10346,22 @@ end;
 
 procedure TForm1.WindowsItemClick(Sender: TObject);
 var
-  W: Integer;
+  WinIdx: Integer;
 begin
   if not (Sender is TMenuItem) then
     Exit;
 
   // Файла нет на диске - переключаться некуда. Вместо сухого сообщения сразу
   // запускаем поиск, а если и он ни с чем - открываем список папок.
-  W := TMenuItem(Sender).Tag;
-  if (W >= 0) and (W <= WindowsItemCount - 1) and
-     FWindows[W].Used and FWindows[W].Broken then
+  WinIdx := TMenuItem(Sender).Tag;
+  if (WinIdx >= 0) and (WinIdx <= WindowsItemCount - 1) and
+     FWindows[WinIdx].Used and FWindows[WinIdx].Broken then
   begin
     // Молчаливая попытка: файл мог вернуться на место сам, да и обход папки
     // над программой делается здесь же
     if RelocateBrokenWindows = 0 then
     begin
-      ShowMessage('4961:Файл не найден:'#13#10 + FWindows[W].FileName + #13#10#13#10 +
+      ShowMessage('4961:Файл не найден:'#13#10 + FWindows[WinIdx].FileName + #13#10#13#10 +
       'Рядом с программой и в папке' + #13#10 + ParentOfExeDir + #13#10 +
       'его тоже нет. Сейчас откроется список папок для поиска.');
 
@@ -10370,8 +10370,8 @@ begin
     end;
 
     // Нашёлся именно он - открываем, раз уж по нему и кликали
-    if FWindows[W].Used and not FWindows[W].Broken then
-      ActivateWindow(W)
+    if FWindows[WinIdx].Used and not FWindows[WinIdx].Broken then
+      ActivateWindow(WinIdx)
     else
       ShowMessage('4973:Этот файл найти не удалось.');
 
@@ -10403,14 +10403,14 @@ end;
 //
 // К путям её применять НЕЛЬЗЯ: точка с запятой в имени файла в Windows
 // допустима, и такой путь оказался бы обрезан.
-function StripIniComment(const S: string): string;
+function StripIniComment(const Str: string): string;
 var
-  P: Integer;
+  CharPos: Integer;
 begin
-  Result := S;
-  P := Pos(';', Result);
-  if P > 0 then
-    Result := Copy(Result, 1, P - 1);
+  Result := Str;
+  CharPos := Pos(';', Result);
+  if CharPos > 0 then
+    Result := Copy(Result, 1, CharPos - 1);
   Result := Trim(Result);
 end;
 
@@ -10857,15 +10857,15 @@ begin
 end;
 
 // Ведущее число значения или 0, если его там нет
-function LeadingNumber(const S: string): Integer;
+function LeadingNumber(const Str: string): Integer;
 var
-  P: Integer;
+  CharPos: Integer;
   Tmp: string;
 begin
-  Tmp := Trim(S);
-  P := Pos(' ', Tmp);
-  if P > 1 then
-    Result := StrToIntDef(Copy(Tmp, 1, P - 1), 0)
+  Tmp := Trim(Str);
+  CharPos := Pos(' ', Tmp);
+  if CharPos > 1 then
+    Result := StrToIntDef(Copy(Tmp, 1, CharPos - 1), 0)
   else
     Result := StrToIntDef(Tmp, 0);
 end;
@@ -10875,17 +10875,17 @@ end;
 // Отрезаем только число в начале и только если за ним пробельный знак: в
 // пути вполне могут быть пробелы, как в "RQ IDE". Пробельный - не только
 // пробел: в старых .prj после номера встречается неразрывный пробел #160.
-function StripLeadingNumber(const S: string): string;
+function StripLeadingNumber(const Str: string): string;
 var
-  P: Integer;
+  CharPos: Integer;
 begin
-  Result := Trim(S);
-  P := 1;
-  while (P <= Length(Result)) and (Result[P] in ['0'..'9']) do
-    Inc(P);
-  if (P > 1) and (P <= Length(Result)) and
-     (Result[P] in [#1..#32, #160]) then
-    Result := Trim(Copy(Result, P + 1, Length(Result)));
+  Result := Trim(Str);
+  CharPos := 1;
+  while (CharPos <= Length(Result)) and (Result[CharPos] in ['0'..'9']) do
+    Inc(CharPos);
+  if (CharPos > 1) and (CharPos <= Length(Result)) and
+     (Result[CharPos] in [#1..#32, #160]) then
+    Result := Trim(Copy(Result, CharPos + 1, Length(Result)));
   // Trim не снимает #160 - на случай нескольких разделителей подряд
   while (Result <> '') and (Result[1] = #160) do
     Delete(Result, 1, 1);
@@ -11169,35 +11169,35 @@ end;
 // Значение - путь, если начинается с буквы диска (C:\) или с \\ (сеть).
 // Список через ";" (LibPath, BrowsePath) - несколько путей.
 
-function IniIsPath(const S: string): Boolean;
+function IniIsPath(const Str: string): Boolean;
 var
-  T: string;
+  Txt: string;
 begin
-  T := Trim(S);
-  Result := ((Length(T) >= 3) and (UpCase(T[1]) in ['A'..'Z']) and
-             (T[2] = ':') and (T[3] = '\')) or (Copy(T, 1, 2) = '\\');
+  Txt := Trim(Str);
+  Result := ((Length(Txt) >= 3) and (UpCase(Txt[1]) in ['A'..'Z']) and
+             (Txt[2] = ':') and (Txt[3] = '\')) or (Copy(Txt, 1, 2) = '\\');
 end;
 
 // Сколько путей значения есть на диске, и сколько путей в нём всего
 procedure IniPathCount(const AValue: string; var AExist, ATotal: Integer);
 var
-  S, P: string;
-  I: Integer;
+  Str, PartStr: string;
+  Idx: Integer;
 begin
   AExist := 0;
   ATotal := 0;
-  S := AValue + ';';
+  Str := AValue + ';';
   repeat
-    I := Pos(';', S);
-    P := Trim(Copy(S, 1, I - 1));
-    Delete(S, 1, I);
-    if IniIsPath(P) then
+    Idx := Pos(';', Str);
+    PartStr := Trim(Copy(Str, 1, Idx - 1));
+    Delete(Str, 1, Idx);
+    if IniIsPath(PartStr) then
     begin
       Inc(ATotal);
-      if DirectoryExists(P) or FileExists(P) then
+      if DirectoryExists(PartStr) or FileExists(PartStr) then
         Inc(AExist);
     end;
-  until S = '';
+  until Str = '';
 end;
 
 // Значение из строки "Имя=значение"
@@ -11210,15 +11210,15 @@ end;
 // (ProjectsOld1, Compiler.Delphi.Delphi 7Old2)
 function IniIsOldSection(const AName: string): Boolean;
 var
-  I: Integer;
+  Idx: Integer;
 begin
   Result := False;
-  I := Length(AName);
-  while (I > 0) and (AName[I] in ['0'..'9']) do
-    Dec(I);
-  if I = Length(AName) then
+  Idx := Length(AName);
+  while (Idx > 0) and (AName[Idx] in ['0'..'9']) do
+    Dec(Idx);
+  if Idx = Length(AName) then
     Exit; // нет номера
-  Result := (I > 3) and (CompareText(Copy(AName, I - 2, 3), 'Old') = 0);
+  Result := (Idx > 3) and (CompareText(Copy(AName, Idx - 2, 3), 'Old') = 0);
 end;
 
 // Раздел без данных: ключей нет или у всех пустые значения
@@ -11809,13 +11809,13 @@ end;
 // диска должен Delete Project, а не уборка списка.
 procedure TForm1.DeleteWrongProjectsClick(Sender: TObject);
 var
-  I, N: Integer;
+  I, Num: Integer;
   Nm, Path: string;
 begin
   if FProjectReg = nil then
     LoadProjectReg;
 
-  N := 0;
+  Num := 0;
   for I := FProjectReg.Count - 1 downto 0 do
   begin
     Nm := FProjectReg.Names[I];
@@ -11828,13 +11828,13 @@ begin
         IniReplaceSection(SettingsFileName, ProjectSectionPrefix + Nm, nil);
       end;
       FProjectReg.Delete(I);
-      Inc(N);
+      Inc(Num);
     end;
   end;
 
   SaveProjectReg;
   RebuildProjectsMenu;
-  LogRaw(Format('Delete wrong projects names: убрано записей %d', [N]));
+  LogRaw(Format('Delete wrong projects names: убрано записей %d', [Num]));
 end;
 
 // Tidy editor.ini (Project - Manage Projects): окно DlgTidyIni.
@@ -12495,7 +12495,7 @@ end;
 procedure TForm1.ScanProjectsFolderClick(Sender: TObject);
 var
   SR: TSearchRec;
-  N: Integer;
+  Num: Integer;
   Sub: string;
   Ini: TIniFile;
 
@@ -12504,14 +12504,14 @@ var
     if ProjectExists(AName) then
       Exit;
     Ini.WriteString('Projects', AName, AFile);
-    Inc(N);
+    Inc(Num);
   end;
 
 begin
   if FProjectReg = nil then
     LoadProjectReg;
 
-  N := 0;
+  Num := 0;
   Ini := TIniFile.Create(SettingsFileName);
   try
     // Старая раскладка: описания прямо в projects
@@ -12544,7 +12544,7 @@ begin
   end;
 
   ImportPrjAndLog;
-  LogRaw(Format('Scan projects folder: перенесено описаний %d', [N]));
+  LogRaw(Format('Scan projects folder: перенесено описаний %d', [Num]));
 end;
 
 // Open Project: описание .prj где угодно на диске - в список проектов,
@@ -12621,7 +12621,7 @@ var
   NewName, NewDir, NewType, NewTarget, Dir, Val, SectName: string;
   IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList: string;
   FbIconPath, LazCpu, LazOs, LazOptions: string;
-  K, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
+  Idx3, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
   DirChanged, OptionsChanged: Boolean;
   RosCfg: TRosSettings;
 begin
@@ -12657,10 +12657,10 @@ begin
     Dlg.chkBase.Visible := False;
     Dlg.edName.Text := OldName;
     Dlg.edDir.Text := OldDir;
-    K := Dlg.cbType.Items.IndexOf(OldType);
-    if K < 0 then
-      K := Dlg.cbType.Items.Add(OldType);
-    Dlg.cbType.ItemIndex := K;
+    Idx3 := Dlg.cbType.Items.IndexOf(OldType);
+    if Idx3 < 0 then
+      Idx3 := Dlg.cbType.Items.Add(OldType);
+    Dlg.cbType.ItemIndex := Idx3;
     // Папка inc (проект RapidQ): виды из настроек компилятора, выбор и
     // своя папка проекта
     RapidQIncSettings(OldName, IncSysDir, IncUserDir, IncMode, IncOwnDir);
@@ -12936,15 +12936,15 @@ const
     $00, $00, $00, $00,   // версия
     $00, $00, $00, $00);  // признаки
 var
-  F: TFileStream;
+  FileStrm: TFileStream;
 begin
   Result := False;
   try
-    F := TFileStream.Create(AFileName, fmCreate);
+    FileStrm := TFileStream.Create(AFileName, fmCreate);
     try
-      F.WriteBuffer(NullRes, SizeOf(NullRes));
+      FileStrm.WriteBuffer(NullRes, SizeOf(NullRes));
     finally
-      F.Free;
+      FileStrm.Free;
     end;
     Result := True;
   except
@@ -13984,21 +13984,21 @@ end;
 // пока путь набирается, промежуточные значения вроде C:\Prog пропускаем
 procedure TForm1.PickEditChange(Sender: TObject);
 var
-  S: string;
+  Str: string;
 begin
   if (FPickDir = nil) or (FPickEdit = nil) or FPickLock then
     Exit;
 
-  S := ExcludeTrailingPathDelimiter(Trim(FPickEdit.Text));
-  if (S = '') or not DirectoryExists(S) then
+  Str := ExcludeTrailingPathDelimiter(Trim(FPickEdit.Text));
+  if (Str = '') or not DirectoryExists(Str) then
     Exit;
-  if CompareText(S, ExcludeTrailingPathDelimiter(FPickDir.Directory)) = 0 then
+  if CompareText(Str, ExcludeTrailingPathDelimiter(FPickDir.Directory)) = 0 then
     Exit;
 
   FPickLock := True;
   try
     try
-      FPickDir.Directory := S;
+      FPickDir.Directory := Str;
       // Путь мог уйти на другой диск - список дисков за ним, после папки
       if FPickDrive <> nil then
         FPickDrive.Drive := FPickDir.Drive;
@@ -14015,21 +14015,21 @@ end;
 // OK закрывает окно только с существующей папкой в поле
 procedure TForm1.PickOkClick(Sender: TObject);
 var
-  S: string;
+  Str: string;
 begin
   if FPickEdit = nil then
     Exit;
-  S := ExcludeTrailingPathDelimiter(Trim(FPickEdit.Text));
+  Str := ExcludeTrailingPathDelimiter(Trim(FPickEdit.Text));
   // Новая папка (FPickAllowNew) - нужен полный путь с существующим диском
-  if FPickAllowNew and (S <> '') and (ExtractFileDrive(S) <> '') and
-     DirectoryExists(IncludeTrailingPathDelimiter(ExtractFileDrive(S))) then
+  if FPickAllowNew and (Str <> '') and (ExtractFileDrive(Str) <> '') and
+     DirectoryExists(IncludeTrailingPathDelimiter(ExtractFileDrive(Str))) then
   begin
     (TUiButton(Sender).Owner as TForm).ModalResult := mrOk;
     Exit;
   end;
-  if (S = '') or not DirectoryExists(S) then
+  if (Str = '') or not DirectoryExists(Str) then
   begin
-    ShowMessage('6769:Такой папки нет:'#13#10 + S);
+    ShowMessage('6769:Такой папки нет:'#13#10 + Str);
     Exit;
   end;
   (TUiButton(Sender).Owner as TForm).ModalResult := mrOk;
@@ -14084,26 +14084,26 @@ end;
 // Файл подходит типу проекта - по расширению из его масок
 function TForm1.MatchesProjectType(const AFile, AType: string): Boolean;
 var
-  Masks, M, Ext: string;
-  P: Integer;
+  Masks, MsgStr, Ext: string;
+  CharPos: Integer;
 begin
   Result := False;
   Ext := LowerCase(ExtractFileExt(AFile));
   Masks := MainMasksFor(AType);
   while Masks <> '' do
   begin
-    P := Pos(';', Masks);
-    if P > 0 then
+    CharPos := Pos(';', Masks);
+    if CharPos > 0 then
     begin
-      M := Copy(Masks, 1, P - 1);
-      Masks := Copy(Masks, P + 1, MaxInt);
+      MsgStr := Copy(Masks, 1, CharPos - 1);
+      Masks := Copy(Masks, CharPos + 1, MaxInt);
     end
     else
     begin
-      M := Masks;
+      MsgStr := Masks;
       Masks := '';
     end;
-    if LowerCase(ExtractFileExt(M)) = Ext then
+    if LowerCase(ExtractFileExt(MsgStr)) = Ext then
     begin
       Result := True;
       Exit;
@@ -14115,34 +14115,34 @@ end;
 function TForm1.MainFilesIn(const ADir, AType: string; AList: TStrings): Integer;
 var
   SR: TSearchRec;
-  Masks, M: string;
-  P: Integer;
+  Masks, MsgStr: string;
+  CharPos: Integer;
 begin
   AList.Clear;
   Masks := MainMasksFor(AType);
   while Masks <> '' do
   begin
-    P := Pos(';', Masks);
-    if P > 0 then
+    CharPos := Pos(';', Masks);
+    if CharPos > 0 then
     begin
-      M := Copy(Masks, 1, P - 1);
-      Masks := Copy(Masks, P + 1, MaxInt);
+      MsgStr := Copy(Masks, 1, CharPos - 1);
+      Masks := Copy(Masks, CharPos + 1, MaxInt);
     end
     else
     begin
-      M := Masks;
+      MsgStr := Masks;
       Masks := '';
     end;
 
     // Маска с подпапкой (src\main.rs): FindFirst вернёт одно имя файла,
     // подпапку дописываем сами - иначе путь потеряется
-    if FindFirst(IncludeTrailingPathDelimiter(ADir) + M,
+    if FindFirst(IncludeTrailingPathDelimiter(ADir) + MsgStr,
                  faAnyFile and not faDirectory, SR) = 0 then
     try
       repeat
         if ((SR.Attr and faDirectory) = 0) and
-           (AList.IndexOf(ExtractFilePath(M) + SR.Name) < 0) then
-          AList.Add(ExtractFilePath(M) + SR.Name);
+           (AList.IndexOf(ExtractFilePath(MsgStr) + SR.Name) < 0) then
+          AList.Add(ExtractFilePath(MsgStr) + SR.Name);
       until FindNext(SR) <> 0;
     finally
       FindClose(SR);
@@ -14157,7 +14157,7 @@ end;
 function TForm1.PickExistingMain(const ADir, AType: string;
                                  var AFile: string): Boolean;
 var
-  L: TStringList;
+  StrList: TStringList;
   Nm, Folder: string;
   I: Integer;
 begin
@@ -14170,9 +14170,9 @@ begin
     Exit;
   end;
 
-  L := TStringList.Create;
+  StrList := TStringList.Create;
   try
-    if MainFilesIn(ADir, AType, L) = 0 then
+    if MainFilesIn(ADir, AType, StrList) = 0 then
     begin
       ShowMessage('6900:В папке нет файла проекта ' + AType + ' (' +
                   MainMasksFor(AType) + '):'#13#10 + ADir);
@@ -14180,36 +14180,36 @@ begin
     end;
 
     Nm := '';
-    if L.Count = 1 then
-      Nm := L[0]
+    if StrList.Count = 1 then
+      Nm := StrList[0]
     else
     begin
       Folder := ExtractFileName(ExcludeTrailingPathDelimiter(ADir));
-      for I := 0 to L.Count - 1 do
-        if CompareText(ChangeFileExt(L[I], ''), Folder) = 0 then
+      for I := 0 to StrList.Count - 1 do
+        if CompareText(ChangeFileExt(StrList[I], ''), Folder) = 0 then
         begin
-          Nm := L[I];
+          Nm := StrList[I];
           Break;
         end;
       // Точка входа по соглашению языка: main.go, main.py, src\main.rs
       if Nm = '' then
-        for I := 0 to L.Count - 1 do
-          if (CompareText(ChangeFileExt(ExtractFileName(L[I]), ''), 'main') = 0) or
-             (CompareText(ChangeFileExt(ExtractFileName(L[I]), ''), '__main__') = 0) then
+        for I := 0 to StrList.Count - 1 do
+          if (CompareText(ChangeFileExt(ExtractFileName(StrList[I]), ''), 'main') = 0) or
+             (CompareText(ChangeFileExt(ExtractFileName(StrList[I]), ''), '__main__') = 0) then
           begin
-            Nm := L[I];
+            Nm := StrList[I];
             Break;
           end;
       if (Nm = '') and (CompareText(AType, 'WebSite') = 0) then
-        for I := 0 to L.Count - 1 do
-          if CompareText(ChangeFileExt(L[I], ''), 'index') = 0 then
+        for I := 0 to StrList.Count - 1 do
+          if CompareText(ChangeFileExt(StrList[I], ''), 'index') = 0 then
           begin
-            Nm := L[I];
+            Nm := StrList[I];
             Break;
           end;
       if Nm = '' then
         Nm := ChooseFromList('Проект ' + AType,
-        'В папке несколько подходящих файлов:', L);
+        'В папке несколько подходящих файлов:', StrList);
     end;
 
     if Nm = '' then
@@ -14217,7 +14217,7 @@ begin
     AFile := IncludeTrailingPathDelimiter(ADir) + Nm;
     Result := True;
   finally
-    L.Free;
+    StrList.Free;
   end;
 end;
 
@@ -14551,7 +14551,7 @@ end;
 // Ищется ") error N" или ") warning N" - путь может сам содержать скобки
 // (Program Files (x86)), поэтому номер строки берётся у скобки перед ними.
 // AIsError - ошибка, а не предупреждение.
-function FbParseErrorLine(const S: string; var AFile: string;
+function FbParseErrorLine(const Str: string; var AFile: string;
                           var ALine: Integer; var AIsError: Boolean): Boolean;
 var
   LowText, Tail: string;
@@ -14561,7 +14561,7 @@ begin
   AFile := '';
   ALine := 0;
   AIsError := False;
-  LowText := LowerCase(S);
+  LowText := LowerCase(Str);
   ClosePos := Pos(') error ', LowText);
   if ClosePos > 0 then
   begin
@@ -14575,30 +14575,30 @@ begin
   end;
   if ClosePos < 3 then
     Exit;
-  Tail := Copy(S, ClosePos + TagLen, 1);
+  Tail := Copy(Str, ClosePos + TagLen, 1);
   if (Tail = '') or not (Tail[1] in ['0'..'9']) then
     Exit;
   OpenPos := ClosePos - 1;
-  while (OpenPos > 0) and (S[OpenPos] in ['0'..'9']) do
+  while (OpenPos > 0) and (Str[OpenPos] in ['0'..'9']) do
     Dec(OpenPos);
-  if (OpenPos < 2) or (S[OpenPos] <> '(') or (OpenPos = ClosePos - 1) then
+  if (OpenPos < 2) or (Str[OpenPos] <> '(') or (OpenPos = ClosePos - 1) then
     Exit;
-  ALine := StrToIntDef(Copy(S, OpenPos + 1, ClosePos - OpenPos - 1), 0);
-  AFile := Trim(Copy(S, 1, OpenPos - 1));
+  ALine := StrToIntDef(Copy(Str, OpenPos + 1, ClosePos - OpenPos - 1), 0);
+  AFile := Trim(Copy(Str, 1, OpenPos - 1));
   Result := (AFile <> '') and (ALine > 0);
 end;
 
 // Ошибка fbc или его компоновщика - для красного цвета и окна ошибок
-function FbIsErrorLine(const S: string): Boolean;
+function FbIsErrorLine(const Str: string): Boolean;
 var
   ErrFile, LowText: string;
   ErrLine: Integer;
   IsError: Boolean;
 begin
-  Result := FbParseErrorLine(S, ErrFile, ErrLine, IsError) and IsError;
+  Result := FbParseErrorLine(Str, ErrFile, ErrLine, IsError) and IsError;
   if Result then
     Exit;
-  LowText := LowerCase(TrimLeft(S));
+  LowText := LowerCase(TrimLeft(Str));
   Result := (Copy(LowText, 1, 14) = 'linking failed') or
             (Copy(LowText, 1, 17) = 'assembling failed') or
             (Copy(LowText, 1, 18) = 'compiling c failed') or
@@ -16283,8 +16283,8 @@ end;
 
 procedure TForm1.HfAddClick(Sender: TObject);
 var
-  S: string;
-  I, K: Integer;
+  Str: string;
+  I, Idx3: Integer;
 begin
   if (FHfTree = nil) or (FHfTree.Selected = nil) then
     Exit;
@@ -16297,19 +16297,19 @@ begin
     Exit;
   end;
 
-  S := HfNodePath(FHfTree.Selected);
-  if S = '' then
+  Str := HfNodePath(FHfTree.Selected);
+  if Str = '' then
     Exit;
 
   // Повторно ту же папку не добавляем
   for I := 0 to FHfList.Items.Count - 1 do
-    if CompareText(FHfList.Items[I], S) = 0 then
+    if CompareText(FHfList.Items[I], Str) = 0 then
     begin
       FHfList.ItemIndex := I;
       Exit;
     end;
 
-  I := FHfList.Items.Add(S);
+  I := FHfList.Items.Add(Str);
   FHfList.ItemIndex := I;
   if FHfSearchMode then
   begin
@@ -16321,9 +16321,9 @@ begin
     // Внутри отмеченной - без галки, а та отмеченная - красным; иначе
     // галка (только что добавили - она и нужна), а с вложенных в неё
     // галки снимаются
-    K := HfNestedChecked(I);
-    if K >= 0 then
-      HfNestedRefused(I, K)
+    Idx3 := HfNestedChecked(I);
+    if Idx3 >= 0 then
+      HfNestedRefused(I, Idx3)
     else
     begin
       FHfList.Checked[I] := True;
@@ -16335,24 +16335,24 @@ end;
 
 procedure TForm1.HfDelClick(Sender: TObject);
 var
-  I: Integer;
+  Idx: Integer;
 begin
   if (FHfList = nil) or (FHfList.ItemIndex < 0) then
     Exit;
 
-  I := FHfList.ItemIndex;
+  Idx := FHfList.ItemIndex;
   // Папки поиска: стандартные не удаляются
-  if FHfSearchMode and (I < FHfFixedCount) then
+  if FHfSearchMode and (Idx < FHfFixedCount) then
   begin
     HfNote('Стандартную папку удалить нельзя - снимите галку, ' +
            'и она не будет искаться');
     Exit;
   end;
-  FHfList.Items.Delete(I);
+  FHfList.Items.Delete(Idx);
 
-  if I > FHfList.Items.Count - 1 then
-    I := FHfList.Items.Count - 1;
-  FHfList.ItemIndex := I;
+  if Idx > FHfList.Items.Count - 1 then
+    Idx := FHfList.Items.Count - 1;
+  FHfList.ItemIndex := Idx;
   HfSaveList;
 end;
 
@@ -16736,26 +16736,26 @@ procedure TForm1.HfSelectPath(const APath: string);
 var
   Parts: TStringList;
   Node, Child: TTreeNode;
-  I, K: Integer;
-  S: string;
+  I, Idx3: Integer;
+  Str: string;
 begin
   if (FHfTree = nil) or (APath = '') then
     Exit;
 
   Parts := TStringList.Create;
   try
-    S := APath;
-    while S <> '' do
+    Str := APath;
+    while Str <> '' do
     begin
-      K := Pos('\', S);
-      if K = 0 then
+      Idx3 := Pos('\', Str);
+      if Idx3 = 0 then
       begin
-        Parts.Add(S);
+        Parts.Add(Str);
         Break;
       end;
-      if K > 1 then
-        Parts.Add(Copy(S, 1, K - 1));
-      S := Copy(S, K + 1, Length(S));
+      if Idx3 > 1 then
+        Parts.Add(Copy(Str, 1, Idx3 - 1));
+      Str := Copy(Str, Idx3 + 1, Length(Str));
     end;
 
     if Parts.Count = 0 then
@@ -16810,10 +16810,10 @@ end;
 // в этом случае возвращаем пустую строку.
 function TForm1.ParentOfExeDir: string;
 var
-  S: string;
+  Str: string;
 begin
-  S := ExcludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName));
-  Result := ExtractFilePath(S);
+  Str := ExcludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName));
+  Result := ExtractFilePath(Str);
   if Length(Result) < 3 then
     Result := ''; // выше корня диска подниматься некуда
 end;
@@ -17240,33 +17240,33 @@ end;
 procedure TForm1.SplitCommonTail(const AOld, ANew: string;
                                  var HeadOld, HeadNew: string);
 var
-  I, J, K: Integer;
+  Idx, Idx2, Idx3: Integer;
 begin
   HeadOld := AOld;
   HeadNew := ANew;
 
   // Идём с конца, пока символы совпадают. Регистр не учитываем: у путей он
   // ничего не значит.
-  I := Length(AOld);
-  J := Length(ANew);
-  while (I > 0) and (J > 0) and
-        (AnsiUpperCase(AOld[I]) = AnsiUpperCase(ANew[J])) do
+  Idx := Length(AOld);
+  Idx2 := Length(ANew);
+  while (Idx > 0) and (Idx2 > 0) and
+        (AnsiUpperCase(AOld[Idx]) = AnsiUpperCase(ANew[Idx2])) do
   begin
-    Dec(I);
-    Dec(J);
+    Dec(Idx);
+    Dec(Idx2);
   end;
 
   // Совпадение могло оборваться посреди имени папки - доводим границу до
   // ближайшего разделителя, иначе в сообщении окажется огрызок имени
-  K := I + 1;
-  while (K <= Length(AOld)) and not (AOld[K] in ['\', '/']) do
-    Inc(K);
+  Idx3 := Idx + 1;
+  while (Idx3 <= Length(AOld)) and not (AOld[Idx3] in ['\', '/']) do
+    Inc(Idx3);
 
-  if K > Length(AOld) then
+  if Idx3 > Length(AOld) then
     Exit; // общего хвоста по границам папок нет - показываем пути целиком
 
-  HeadOld := Copy(AOld, 1, K);
-  HeadNew := Copy(ANew, 1, J + (K - I));
+  HeadOld := Copy(AOld, 1, Idx3);
+  HeadNew := Copy(ANew, 1, Idx2 + (Idx3 - Idx));
 end;
 
 // Сообщает, что дерево файлов переехало, и предлагает записать новые пути
@@ -17310,12 +17310,12 @@ end;
 // программа работала.
 procedure TForm1.CheckWrongNamesClick(Sender: TObject);
 var
-  I, N: Integer;
+  I, Num: Integer;
   SL: TStringList;
 begin
   SL := TStringList.Create;
   try
-    N := 0;
+    Num := 0;
     for I := 0 to WindowsItemCount - 1 do
     begin
       if not FWindows[I].Used then
@@ -17332,16 +17332,16 @@ begin
       end;
 
       FWindows[I].Broken := True;
-      Inc(N);
+      Inc(Num);
       SL.Add(Format('%d  %s', [I + 1, FWindows[I].FileName]));
     end;
 
     RebuildWindowsMenu;
 
-    if N = 0 then
+    if Num = 0 then
       ShowMessage('7957:Все файлы на месте.')
     else
-      ShowMessage(Format('7959:Не найдено файлов: %d', [N]) + #13#10#13#10 +
+      ShowMessage(Format('7959:Не найдено файлов: %d', [Num]) + #13#10#13#10 +
                   SL.Text + #13#10 +
       'В меню Windows они помечены красным крестиком.');
   finally
@@ -17487,7 +17487,7 @@ procedure TForm1.LoadProject(const AName: string);
 var
   Ini: TProjectIni;
   PrjDir: string;
-  I, J, CurIdx, TabCnt, TabWin, Relocated: Integer;
+  I, Idx2, CurIdx, TabCnt, TabWin, Relocated: Integer;
   Raw, Path, Src, Key, OldSample, NewSample: string;
   HotRecent, HotItem: string;
   HotSep, HotWin, HotBm: Integer;
@@ -17608,24 +17608,24 @@ begin
       // Закладки этого окна: читаем подряд, пока ключи не кончатся
       SetLength(FWindows[I].Bookmarks, 0);
       BmHistDropWindow(I);
-      J := 0;
+      Idx2 := 0;
       while True do
       begin
         // Первый индекс - НОМЕР ЗАКЛАДКИ, второй - номер окна
-        Key := IntToStr(J) + ',' + IntToStr(I);
+        Key := IntToStr(Idx2) + ',' + IntToStr(I);
         Raw := Trim(Ini.ReadString('Bookmarks', 'bmarkCaption' + Key, ''));
         if Raw = '' then
           Break;
 
-        SetLength(FWindows[I].Bookmarks, J + 1);
-        FWindows[I].Bookmarks[J].LineNo := LeadingNumber(Raw);
-        FWindows[I].Bookmarks[J].Text := StripLeadingNumber(Raw);
-        FWindows[I].Bookmarks[J].CharPos :=
+        SetLength(FWindows[I].Bookmarks, Idx2 + 1);
+        FWindows[I].Bookmarks[Idx2].LineNo := LeadingNumber(Raw);
+        FWindows[I].Bookmarks[Idx2].Text := StripLeadingNumber(Raw);
+        FWindows[I].Bookmarks[Idx2].CharPos :=
           StrToIntDef(StripIniComment(
           Ini.ReadString('Bookmarks', 'bmarkPosic' + Key, '0')), 0);
-        FWindows[I].Bookmarks[J].Pinned :=
+        FWindows[I].Bookmarks[Idx2].Pinned :=
           Ini.ReadString('Bookmarks', 'bmarkHot' + Key, '') = '1';
-        Inc(J);
+        Inc(Idx2);
       end;
       // Файл мог измениться после сохранения проекта - номера строк
       // проверяются по тексту, ненайденные закладки помечаются
@@ -17912,7 +17912,7 @@ end;
 procedure TForm1.SaveProjectTo(const AName: string);
 var
   Ini: TProjectIni;
-  I, J, N: Integer;
+  I, J, Num: Integer;
   HotPinned, HotRecentList: TList;
   HotText: string;
 begin
@@ -17938,13 +17938,13 @@ begin
     Ini.EraseSection('Windows');
     Ini.WriteString('Windows', 'Index', IntToStr(FWindowsIndex));
 
-    N := 0;
+    Num := 0;
     for I := 0 to WindowsItemCount - 1 do
       if FWindows[I].Used then
       begin
-        Inc(N);
+        Inc(Num);
         Ini.WriteString('Windows', 'win' + IntToStr(I),
-                        IntToStr(N) + ' ' + FWindows[I].FileName);
+                        IntToStr(Num) + ' ' + FWindows[I].FileName);
         Ini.WriteString('Windows', 'curposic' + IntToStr(I),
                         IntToStr(FWindows[I].CursorPos));
         if FWindows[I].IncOwner <> '' then
@@ -18141,15 +18141,15 @@ end;
 // Панель пути занимает всё, что осталось от размера и даты
 procedure TForm1.Status2Resize(Sender: TObject);
 var
-  W: Integer;
+  WidthPx: Integer;
 begin
   if FStatus2 = nil then
     Exit;
 
-  W := FStatus2.Width - FStatus2.Panels[1].Width - FStatus2.Panels[2].Width - 8;
-  if W < 80 then
-    W := 80;
-  FStatus2.Panels[0].Width := W;
+  WidthPx := FStatus2.Width - FStatus2.Panels[1].Width - FStatus2.Panels[2].Width - 8;
+  if WidthPx < 80 then
+    WidthPx := 80;
+  FStatus2.Panels[0].Width := WidthPx;
 end;
 
 // Клик по полю копирует путь целиком - но только если пользователь ничего
@@ -18158,13 +18158,13 @@ end;
 // Клик по панели пути копирует его в буфер обмена. По остальным панелям
 // не копируем: там нечего забирать.
 procedure TForm1.Status2MouseDown(Sender: TObject; Button: TMouseButton;
-                                  Shift: TShiftState; X, Y: Integer);
+                                  Shift: TShiftState; PosX, PosY: Integer);
 begin
   if Button <> mbLeft then
     Exit;
   if (FStatus2 = nil) or (FStatus2.Panels[0].Text = '') then
     Exit;
-  if X > FStatus2.Panels[0].Width then
+  if PosX > FStatus2.Panels[0].Width then
     Exit;
 
   Clipboard.AsText := FStatus2.Panels[0].Text;
@@ -18275,15 +18275,15 @@ end;
 // удаления его файла.
 procedure TForm1.UnregisterProject(const AName: string);
 var
-  I: Integer;
+  Idx: Integer;
 begin
   if FProjectReg = nil then
     LoadProjectReg;
 
-  I := FProjectReg.IndexOfName(AName);
-  if I >= 0 then
+  Idx := FProjectReg.IndexOfName(AName);
+  if Idx >= 0 then
   begin
-    FProjectReg.Delete(I);
+    FProjectReg.Delete(Idx);
     SaveProjectReg;
   end;
 end;
@@ -18342,7 +18342,7 @@ var
   Dlg: TDlgDelPrj;
   Lst: TCheckListBox;
   Names, Sorted: TStringList;
-  Nm, DirSl, Dir, Reason, S, Report, DoneReport: string;
+  Nm, DirSl, Dir, Reason, Str, Report, DoneReport: string;
   I, J, Cnt, Open, Dirty, Done, Skipped: Integer;
   Folders, CurGone, CurChecked: Boolean;
   FileCount, DirCount, TotalFiles: Integer;
@@ -18419,12 +18419,12 @@ begin
     begin
       Nm := Sorted[I];
       DirSl := ProjectDir(Nm);
-      S := Nm + '   ' + #149 + '   ' + DirSl;
+      Str := Nm + '   ' + #149 + '   ' + DirSl;
       if CompareText(Nm, FCurrentProject) = 0 then
-        S := S + '   (открыт)';
+        Str := Str + '   (открыт)';
       if not DirectoryExists(DirSl) then
-        S := S + '   (папки нет)';
-      Lst.Items.Add(S);
+        Str := Str + '   (папки нет)';
+      Lst.Items.Add(Str);
       Names.Add(Nm);
     end;
     Dlg.FitScrollWidth;
@@ -18466,20 +18466,20 @@ begin
 
     if Folders then
     begin
-      S := 'Удалить проектов: ' + IntToStr(Cnt) + ' вместе с папками ' +
+      Str := 'Удалить проектов: ' + IntToStr(Cnt) + ' вместе с папками ' +
       '(в корзину)?';
  if Open > 0 then
       begin
-        S := S + #13#10#13#10'Открыто файлов из этих папок: ' + IntToStr(Open);
+        Str := Str + #13#10#13#10'Открыто файлов из этих папок: ' + IntToStr(Open);
         if Dirty > 0 then
-          S := S + ', из них с несохранёнными изменениями: ' +
+          Str := Str + ', из них с несохранёнными изменениями: ' +
                IntToStr(Dirty);
       end;
     end
     else
-      S := 'Убрать из списка проектов: ' + IntToStr(Cnt) + '? Файлы ' +
+      Str := 'Убрать из списка проектов: ' + IntToStr(Cnt) + '? Файлы ' +
       'проектов останутся на месте.';
-if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+if MessageDlg('8865:' + Str, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
         Exit;
 
     // Открытый проект удаляется - его окна закроются. Если удаляется только
@@ -18541,11 +18541,11 @@ if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
         end;
         Inc(TotalFiles, FileCount);
         Inc(TotalBytes, ByteCount);
-        S := 'файлов ' + IntToStr(FileCount) + ', папок ' +
+        Str := 'файлов ' + IntToStr(FileCount) + ', папок ' +
           IntToStr(DirCount) + ', ' + SizeText(ByteCount);
-        DoneReport := DoneReport + #13#10 + Nm + ': ' + S;
+        DoneReport := DoneReport + #13#10 + Nm + ': ' + Str;
         LogRaw('Проект удалён вместе с папкой (в корзину): ' + Nm + '  ' +
-          #149 + '  ' + Dir + '  ' + #149 + '  ' + S);
+          #149 + '  ' + Dir + '  ' + #149 + '  ' + Str);
       end
       else
       begin
@@ -18575,16 +18575,16 @@ if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
     RebuildProjectsMenu;
 
   // Итог: что удалено (и сколько файлов ушло в корзину), что - нет
-  S := 'Удалено проектов: ' + IntToStr(Done);
+  Str := 'Удалено проектов: ' + IntToStr(Done);
   if Folders and (TotalFiles > 0) then
-    S := S + ', в корзину ушло файлов: ' + IntToStr(TotalFiles) + ' (' +
+    Str := Str + ', в корзину ушло файлов: ' + IntToStr(TotalFiles) + ' (' +
       SizeText(TotalBytes) + ')';
   if DoneReport <> '' then
-    S := S + #13#10 + DoneReport;
+    Str := Str + #13#10 + DoneReport;
   if Skipped > 0 then
-    S := S + #13#10#13#10 + 'Не удалено: ' + IntToStr(Skipped) + Report;
+    Str := Str + #13#10#13#10 + 'Не удалено: ' + IntToStr(Skipped) + Report;
   if Done + Skipped > 0 then
-    ShowMessage('8934:' + S);
+    ShowMessage('8934:' + Str);
 end;
 
 // Кнопки "Отметить все" (Tag = 1) и "Снять все" (Tag = 0) окна удаления
@@ -18819,35 +18819,35 @@ end;
 // остаётся на диске и в списке нетронутым.
 procedure TForm1.SaveProjectAsClick(Sender: TObject);
 var
-  S, OldName, OldDir, NewDir: string;
+  Str, OldName, OldDir, NewDir: string;
   Cnt: Integer;
   OldTarget, NewDpr, OldPrgName, FixErr: string;
 begin
-  S := FCurrentProject;
-  if not InputQuery('Save Project As', 'Имя проекта:', S) then
+  Str := FCurrentProject;
+  if not InputQuery('Save Project As', 'Имя проекта:', Str) then
     Exit;
 
-  S := Trim(S);
-  if S = '' then
+  Str := Trim(Str);
+  if Str = '' then
     Exit;
 
   // Имя проекта становится именем папки, поэтому недопустимые символы отсекаем
-  if (Pos('\', S) > 0) or (Pos('/', S) > 0) or (Pos(':', S) > 0) or
-     (Pos('*', S) > 0) or (Pos('?', S) > 0) or (Pos('"', S) > 0) or
-     (Pos('<', S) > 0) or (Pos('>', S) > 0) or (Pos('|', S) > 0) then
+  if (Pos('\', Str) > 0) or (Pos('/', Str) > 0) or (Pos(':', Str) > 0) or
+     (Pos('*', Str) > 0) or (Pos('?', Str) > 0) or (Pos('"', Str) > 0) or
+     (Pos('<', Str) > 0) or (Pos('>', Str) > 0) or (Pos('|', Str) > 0) then
   begin
     ShowMessage('9180:В имени проекта нельзя использовать символы \ / : * ? " < > |');
     Exit;
   end;
 
   // Прежнее имя - это обычное сохранение, копировать нечего
-  if CompareText(S, FCurrentProject) = 0 then
+  if CompareText(Str, FCurrentProject) = 0 then
   begin
-    SaveProjectTo(S);
+    SaveProjectTo(Str);
     Exit;
   end;
 
-  NewDir := IncludeTrailingPathDelimiter(ProjectsDir + S);
+  NewDir := IncludeTrailingPathDelimiter(ProjectsDir + Str);
 
   // Проект Delphi: .dpr переименовывается вместе с проектом, и новое имя
   // попадёт в строку program - оно должно быть идентификатором. OldTarget -
@@ -18859,7 +18859,7 @@ begin
      (CompareText(ExtractFileExt(ProjectTargetOf(FCurrentProject)),
   '.dpr') = 0) then
   begin
-    if not IsPascalIdent(S) then
+    if not IsPascalIdent(Str) then
     begin
       ShowMessage('9197:Имя проекта Delphi станет именем .dpr и программы ' +
       '(program). Допустимы латинские буквы, цифры и _, ' +
@@ -18874,10 +18874,10 @@ begin
       OldTarget := '';
   end;
 
-  if ProjectExists(S) then
+  if ProjectExists(Str) then
   begin
     ShowMessage('9196:Проект с таким именем уже есть в списке:'#13#10 +
-                ProjectDir(S));
+                ProjectDir(Str));
     Exit;
   end;
 
@@ -18894,7 +18894,7 @@ begin
     OldDir := ProjectDir(OldName);
     if DirectoryExists(OldDir) then
     begin
-      Cnt := CopyProjectFiles(OldDir, NewDir, OldTarget, OldName, S,
+      Cnt := CopyProjectFiles(OldDir, NewDir, OldTarget, OldName, Str,
                               CompareText(OldDir, ProjectsDir) = 0);
       if Cnt < 0 then
       begin
@@ -18908,24 +18908,24 @@ begin
 
   // Запись в [Projects] и раздел проекта - копия прежнего (тип, цель,
   // папка вывода...), окна и вкладки перепишет SaveProjectTo
-  RegisterProject(S, NewDir);
+  RegisterProject(Str, NewDir);
   if OldName <> '' then
     IniCopySection(SettingsFileName, ProjectSectionPrefix + OldName,
-                   ProjectSectionPrefix + S);
+                   ProjectSectionPrefix + Str);
   // Цель сборки теперь в новой папке
-  FixProjectTarget(S, NewDir, S);
+  FixProjectTarget(Str, NewDir, Str);
   // Строка program в новом .dpr - по новому имени
-  NewDpr := NewDir + S + '.dpr';
+  NewDpr := NewDir + Str + '.dpr';
   if FileExists(NewDpr) then
   begin
     if not DprFixProgramName(NewDpr, OldPrgName, FixErr) then
       LogRaw('Save Project As: имя в строке program не исправлено: ' + FixErr)
     else if OldPrgName <> '' then
       LogRaw('Save Project As: program ' + OldPrgName + ' заменено на ' +
-      'program ' + S);
+      'program ' + Str);
   end;
-  RepointWindows(OldDir, NewDir, OldTarget, OldName, S);
-  SaveProjectTo(S);
+  RepointWindows(OldDir, NewDir, OldTarget, OldName, Str);
+  SaveProjectTo(Str);
   RebuildProjectsMenu;
 end;
 
@@ -19011,15 +19011,15 @@ end;
 procedure TForm1.CenterCaretLine;
 var
   TopLine, CaretLine, Visible, Want: Integer;
-  R: TRect;
+  RectVal: TRect;
 begin
   if not RichEdit1.HandleAllocated then
     Exit;
   if LineHeight <= 0 then
     Exit;
 
-  Windows.GetClientRect(RichEdit1.Handle, R);
-  Visible := R.Bottom div LineHeight;
+  Windows.GetClientRect(RichEdit1.Handle, RectVal);
+  Visible := RectVal.Bottom div LineHeight;
   if Visible < 3 then
     Exit; // окно слишком низкое, центрировать нечего
 
@@ -19355,28 +19355,28 @@ end;
 // Переход по закладке
 procedure TForm1.BookmarkItemClick(Sender: TObject);
 var
-  I: Integer;
+  Idx: Integer;
 begin
   if not (Sender is TMenuItem) then
     Exit;
 
-  I := TMenuItem(Sender).Tag;
-  JumpToBookmark(FWindowsIndex, I, True);
+  Idx := TMenuItem(Sender).Tag;
+  JumpToBookmark(FWindowsIndex, Idx, True);
 
   // Номер строки мог измениться - правим подпись ЭТОГО пункта на месте.
   // Пересобирать список нельзя: он освободил бы сам Sender.
   if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used and
-     (I >= 0) and (I <= High(FWindows[FWindowsIndex].Bookmarks)) then
+     (Idx >= 0) and (Idx <= High(FWindows[FWindowsIndex].Bookmarks)) then
   begin
-    TMenuItem(Sender).Caption := BookmarkCaption(FWindowsIndex, I);
-    TMenuItem(Sender).Hint := FWindows[FWindowsIndex].Bookmarks[I].Text;
+    TMenuItem(Sender).Caption := BookmarkCaption(FWindowsIndex, Idx);
+    TMenuItem(Sender).Hint := FWindows[FWindowsIndex].Bookmarks[Idx].Text;
   end;
 end;
 
 // Add BookMark: ставит закладку на строку, где стоит каретка
 procedure TForm1.BmAddClick(Sender: TObject);
 var
-  LineIdx, N, I: Integer;
+  LineIdx, Num, I: Integer;
   Sel: TCharRange;
 begin
   if (FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used then
@@ -19397,17 +19397,17 @@ begin
 
   EdApi.GetSel(Sel);
 
-  N := Length(FWindows[FWindowsIndex].Bookmarks);
-  SetLength(FWindows[FWindowsIndex].Bookmarks, N + 1);
-  FWindows[FWindowsIndex].Bookmarks[N].LineNo := LineIdx + 1;
-  FWindows[FWindowsIndex].Bookmarks[N].CharPos := Sel.cpMin;
+  Num := Length(FWindows[FWindowsIndex].Bookmarks);
+  SetLength(FWindows[FWindowsIndex].Bookmarks, Num + 1);
+  FWindows[FWindowsIndex].Bookmarks[Num].LineNo := LineIdx + 1;
+  FWindows[FWindowsIndex].Bookmarks[Num].CharPos := Sel.cpMin;
   if LineIdx < RichEdit1.Lines.Count then
-    FWindows[FWindowsIndex].Bookmarks[N].Text := Trim(RichEdit1.Lines[LineIdx])
+    FWindows[FWindowsIndex].Bookmarks[Num].Text := Trim(RichEdit1.Lines[LineIdx])
   else
-    FWindows[FWindowsIndex].Bookmarks[N].Text := '';
+    FWindows[FWindowsIndex].Bookmarks[Num].Text := '';
 
   // Новая закладка - сразу в историю посещений, а значит, и в Hot Bookmarks
-  PushBmHistory(FWindowsIndex, N);
+  PushBmHistory(FWindowsIndex, Num);
   RebuildBookmarksMenu;
 end;
 
@@ -19443,7 +19443,7 @@ end;
 // Закладок в окне единицы, поэтому обычная сортировка вставками.
 procedure TForm1.BmSortClick(Sender: TObject);
 var
-  I, J, HistIdx: Integer;
+  I, Idx2, HistIdx: Integer;
   Tmp: TBookmark;
   TmpOrig: Integer;
   OrigIdx: array of Integer;   // прежний номер закладки на месте I
@@ -19460,17 +19460,17 @@ begin
   begin
     Tmp := FWindows[FWindowsIndex].Bookmarks[I];
     TmpOrig := OrigIdx[I];
-    J := I - 1;
-    while (J >= 0) and
-          (FWindows[FWindowsIndex].Bookmarks[J].LineNo > Tmp.LineNo) do
+    Idx2 := I - 1;
+    while (Idx2 >= 0) and
+          (FWindows[FWindowsIndex].Bookmarks[Idx2].LineNo > Tmp.LineNo) do
     begin
-      FWindows[FWindowsIndex].Bookmarks[J + 1] :=
-        FWindows[FWindowsIndex].Bookmarks[J];
-      OrigIdx[J + 1] := OrigIdx[J];
-      Dec(J);
+      FWindows[FWindowsIndex].Bookmarks[Idx2 + 1] :=
+        FWindows[FWindowsIndex].Bookmarks[Idx2];
+      OrigIdx[Idx2 + 1] := OrigIdx[Idx2];
+      Dec(Idx2);
     end;
-    FWindows[FWindowsIndex].Bookmarks[J + 1] := Tmp;
-    OrigIdx[J + 1] := TmpOrig;
+    FWindows[FWindowsIndex].Bookmarks[Idx2 + 1] := Tmp;
+    OrigIdx[Idx2 + 1] := TmpOrig;
   end;
 
   // История хранит номера закладок - переводим на новые
@@ -19702,7 +19702,7 @@ end;
 procedure TForm1.JumpToBookmark(WinIdx, BmIdx: Integer; Remember: Boolean);
 var
   Txt: string;
-  P, StartFrom, NewPos: Integer;
+  CharPos2, StartFrom, NewPos: Integer;
 begin
   if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) then
     Exit;
@@ -19731,20 +19731,20 @@ begin
     // Сначала - строка, равная тексту закладки, ближайшая к прежнему месту
     // выше или ниже (BmFindNearest). Такой нет (строку правили) - прежний
     // поиск вхождения: от прежнего места вниз, потом с начала.
-    P := BmFindNearest(Txt, NewPos);
-    if P < 0 then
+    CharPos2 := BmFindNearest(Txt, NewPos);
+    if CharPos2 < 0 then
     begin
       StartFrom := NewPos - Length(Txt);
       if StartFrom < 0 then
         StartFrom := 0;
-      P := FindTextEd(Txt, StartFrom, RichEdit1.GetTextLen, [stMatchCase]);
-      if P < 0 then
-        P := FindTextEd(Txt, 0, RichEdit1.GetTextLen, [stMatchCase]);
+      CharPos2 := FindTextEd(Txt, StartFrom, RichEdit1.GetTextLen, [stMatchCase]);
+      if CharPos2 < 0 then
+        CharPos2 := FindTextEd(Txt, 0, RichEdit1.GetTextLen, [stMatchCase]);
     end;
 
 
-    if P >= 0 then
-      NewPos := P;
+    if CharPos2 >= 0 then
+      NewPos := CharPos2;
   end;
 
   // Фокус ставим ДО каретки: контрол показывает её только когда активен,
@@ -20069,7 +20069,7 @@ end;
 // другого типа - в конец.
 function TForm1.TabInsertPos(WinIdx: Integer): Integer;
 var
-  I, W: Integer;
+  I, TabWinIdx: Integer;
   Ext, PairExt, Base: string;
 begin
   Result := Length(FTabWin);
@@ -20084,11 +20084,11 @@ begin
 
   for I := 0 to High(FTabWin) do
   begin
-    W := FTabWin[I];
-    if (W < 0) or (W > WindowsItemCount - 1) or not FWindows[W].Used then
+    TabWinIdx := FTabWin[I];
+    if (TabWinIdx < 0) or (TabWinIdx > WindowsItemCount - 1) or not FWindows[TabWinIdx].Used then
       Continue;
-    if (LowerCase(ExtractFileExt(FWindows[W].FileName)) = PairExt) and
-       (CompareText(ChangeFileExt(FWindows[W].FileName, ''), Base) = 0) then
+    if (LowerCase(ExtractFileExt(FWindows[TabWinIdx].FileName)) = PairExt) and
+       (CompareText(ChangeFileExt(FWindows[TabWinIdx].FileName, ''), Base) = 0) then
     begin
       if Ext = '.pas' then
         Result := I
@@ -20120,7 +20120,7 @@ end;
 // Показывает вкладку окна, создавая её при необходимости
 procedure TForm1.EnsureTab(WinIdx: Integer);
 var
-  I: Integer;
+  Idx: Integer;
 begin
   if FTabs = nil then
     Exit;
@@ -20133,15 +20133,15 @@ begin
   // OnChanging и OnChange, а они снова полезли бы переключать окна
   FLockTabs := True;
   try
-    I := TabIndexOfWindow(WinIdx);
-    if I < 0 then
+    Idx := TabIndexOfWindow(WinIdx);
+    if Idx < 0 then
     begin
       // В конец, а одноимённые .pas и .dfm - рядом
-      I := TabInsertPos(WinIdx);
-      InsertTabAt(I, WinIdx);
+      Idx := TabInsertPos(WinIdx);
+      InsertTabAt(Idx, WinIdx);
       FNewTabAdded := True;
     end;
-    FTabs.TabIndex := I;
+    FTabs.TabIndex := Idx;
   finally
     FLockTabs := False;
   end;
@@ -20157,17 +20157,17 @@ end;
 // Подпись вкладки после Save As: имя файла могло измениться
 procedure TForm1.UpdateTabCaption(WinIdx: Integer);
 var
-  I: Integer;
+  Idx: Integer;
 begin
   if FTabs = nil then
     Exit;
-  I := TabIndexOfWindow(WinIdx);
-  if I < 0 then
+  Idx := TabIndexOfWindow(WinIdx);
+  if Idx < 0 then
     Exit;
 
   FLockTabs := True;
   try
-    FTabs.Tabs[I] := TabCaptionFor(WinIdx);
+    FTabs.Tabs[Idx] := TabCaptionFor(WinIdx);
   finally
     FLockTabs := False;
   end;
@@ -20208,18 +20208,18 @@ end;
 // Клик по вкладке обрабатывается так же, как клик в меню Windows
 procedure TForm1.TabsChange(Sender: TObject);
 var
-  W: Integer;
+  WinIdx: Integer;
 begin
   if FLockTabs then
     Exit;
   if (FTabs.TabIndex < 0) or (FTabs.TabIndex > High(FTabWin)) then
     Exit;
 
-  W := FTabWin[FTabs.TabIndex];
-  if W = FWindowsIndex then
+  WinIdx := FTabWin[FTabs.TabIndex];
+  if WinIdx = FWindowsIndex then
     Exit;
 
-  ActivateWindow(W);
+  ActivateWindow(WinIdx);
 end;
 
 
@@ -20324,11 +20324,11 @@ end;
 
 // Подсказка - у вкладки под мышью. Сменилась вкладка - прежнюю подсказку
 // убираем (CancelHint), новая появится после обычной задержки
-procedure TForm1.TabsMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+procedure TForm1.TabsMouseMove(Sender: TObject; Shift: TShiftState; PosX, PosY: Integer);
 var
   Idx: Integer;
 begin
-  Idx := FTabs.IndexOfTabAt(X, Y);
+  Idx := FTabs.IndexOfTabAt(PosX, PosY);
   if Idx = FTabHintIdx then
     Exit;
   FTabHintIdx := Idx;
@@ -20345,44 +20345,44 @@ end;
 procedure TForm1.TabsDrawTab(ADC: HDC; const ARect: TRect; ATab: Integer;
                              AActive: Boolean);
 var
-  C: TCanvas;
-  S, Main, Cross, OwnerPart: string;
-  P, X, Y, OwnerPos: Integer;
+  Cnv: TCanvas;
+  Str, Main, Cross, OwnerPart: string;
+  CharPos, PosX, PosY, OwnerPos: Integer;
   TabWin, FmtWidth, BtnWidth, BtnHeight: Integer;
   HasFmt, ShowFmt: Boolean;
   BtnRect: TRect;
   BtnText: string;
   TextColor, BackColor: TColor;
 begin
-  C := TCanvas.Create;
+  Cnv := TCanvas.Create;
   try
-    C.Handle := ADC;
+    Cnv.Handle := ADC;
     if AActive then
-      C.Brush.Color := UiColor('Tabs.ActiveBG')
+      Cnv.Brush.Color := UiColor('Tabs.ActiveBG')
     else
-      C.Brush.Color := UiColor('Tabs.InactiveBG');
-    C.Brush.Style := bsSolid;
-    C.FillRect(ARect);
+      Cnv.Brush.Color := UiColor('Tabs.InactiveBG');
+    Cnv.Brush.Style := bsSolid;
+    Cnv.FillRect(ARect);
 
     if (ATab < 0) or (ATab >= FTabs.Tabs.Count) then
       Exit;
-    S := FTabs.Tabs[ATab];
+    Str := FTabs.Tabs[ATab];
 
     // Хвост подписи - кнопка закрытия (см. TabCaptionFor и TabCloseWidth)
-    Main := S;
+    Main := Str;
     Cross := '';
-    P := Length(S);
-    while (P > 0) and (S[P] = ' ') do
-      Dec(P);
-    if (P > 0) and (S[P] = 'x') then
+    CharPos := Length(Str);
+    while (CharPos > 0) and (Str[CharPos] = ' ') do
+      Dec(CharPos);
+    if (CharPos > 0) and (Str[CharPos] = 'x') then
     begin
       Cross := 'x';
-      Main := TrimRight(Copy(S, 1, P - 1));
+      Main := TrimRight(Copy(Str, 1, CharPos - 1));
     end;
 
-    C.Font := FTabs.Font;
-    C.Font.Color := UiColor('Tabs.Text');
-    C.Brush.Style := bsClear;
+    Cnv.Font := FTabs.Font;
+    Cnv.Font.Color := UiColor('Tabs.Text');
+    Cnv.Brush.Style := bsClear;
 
     // Кнопка Txt / Fmt (TabCaptionFor: место под неё - TabFmtPrefix)
     TabWin := -1;
@@ -20394,19 +20394,19 @@ begin
     if HasFmt then
     begin
       Delete(Main, 1, Length(TabFmtPrefix));
-      FmtWidth := C.TextWidth(TabFmtPrefix);
+      FmtWidth := Cnv.TextWidth(TabFmtPrefix);
       ShowFmt := FWindows[TabWin].FmtShown;
       // Прямоугольник: ширина - по надписи (шире из Txt и Fmt, чтобы при
       // переключении кнопка не меняла размер), высота - по вкладке
-      C.Font.Size := 7;
-      C.Font.Style := [fsBold];
-      BtnWidth := C.TextWidth('Txt');
-      if C.TextWidth('Fmt') > BtnWidth then
-        BtnWidth := C.TextWidth('Fmt');
+      Cnv.Font.Size := 7;
+      Cnv.Font.Style := [fsBold];
+      BtnWidth := Cnv.TextWidth('Txt');
+      if Cnv.TextWidth('Fmt') > BtnWidth then
+        BtnWidth := Cnv.TextWidth('Fmt');
       BtnWidth := BtnWidth + TabFmtPadding;
       BtnHeight := (ARect.Bottom - ARect.Top) - 6;
-      if BtnHeight < C.TextHeight('Txt') + 2 then
-        BtnHeight := C.TextHeight('Txt') + 2;
+      if BtnHeight < Cnv.TextHeight('Txt') + 2 then
+        BtnHeight := Cnv.TextHeight('Txt') + 2;
       BtnRect.Left := ARect.Left + 5;
       BtnRect.Top := ARect.Top + ((ARect.Bottom - ARect.Top) - BtnHeight) div 2;
       BtnRect.Right := BtnRect.Left + BtnWidth;
@@ -20416,34 +20416,34 @@ begin
       // залитый им квадрат с надписью Tabs.FmtBtnText
       TextColor := UiColor('Tabs.FmtBtn');
       BackColor := UiColor('Tabs.FmtBtnText');
-      C.Pen.Color := TextColor;
-      C.Pen.Width := 1;
+      Cnv.Pen.Color := TextColor;
+      Cnv.Pen.Width := 1;
       if ShowFmt then
       begin
-        C.Brush.Style := bsSolid;
-        C.Brush.Color := TextColor;
+        Cnv.Brush.Style := bsSolid;
+        Cnv.Brush.Color := TextColor;
         BtnText := 'Fmt';
       end
       else
       begin
-        C.Brush.Style := bsClear;
+        Cnv.Brush.Style := bsClear;
         BtnText := 'Txt';
       end;
-      C.Rectangle(BtnRect.Left, BtnRect.Top, BtnRect.Right, BtnRect.Bottom);
+      Cnv.Rectangle(BtnRect.Left, BtnRect.Top, BtnRect.Right, BtnRect.Bottom);
       // Рамка Txt - в два пикселя: тонкая на фоне вкладки теряется
       if not ShowFmt then
-        C.Rectangle(BtnRect.Left + 1, BtnRect.Top + 1, BtnRect.Right - 1,
+        Cnv.Rectangle(BtnRect.Left + 1, BtnRect.Top + 1, BtnRect.Right - 1,
                     BtnRect.Bottom - 1);
-      C.Brush.Style := bsClear;
+      Cnv.Brush.Style := bsClear;
       if ShowFmt then
-        C.Font.Color := BackColor
+        Cnv.Font.Color := BackColor
       else
-        C.Font.Color := TextColor;
-      C.TextOut(BtnRect.Left + (BtnWidth - C.TextWidth(BtnText)) div 2,
-                BtnRect.Top + (BtnHeight - C.TextHeight(BtnText)) div 2,
+        Cnv.Font.Color := TextColor;
+      Cnv.TextOut(BtnRect.Left + (BtnWidth - Cnv.TextWidth(BtnText)) div 2,
+                BtnRect.Top + (BtnHeight - Cnv.TextHeight(BtnText)) div 2,
                 BtnText);
-      C.Font := FTabs.Font;
-      C.Font.Color := UiColor('Tabs.Text');
+      Cnv.Font := FTabs.Font;
+      Cnv.Font.Color := UiColor('Tabs.Text');
       // Имя файла - правее кнопки, даже если места под неё (TabFmtPrefix)
       // в этом шрифте вышло меньше
       if BtnRect.Right + 6 > ARect.Left + 6 + FmtWidth then
@@ -20459,42 +20459,42 @@ begin
       Main := Copy(Main, 1, OwnerPos - 1);
     end;
 
-    Y := ARect.Top + ((ARect.Bottom - ARect.Top) - C.TextHeight('Wg')) div 2;
-    X := ARect.Left + 6 + FmtWidth;
-    C.TextOut(X, Y, Main);
+    PosY := ARect.Top + ((ARect.Bottom - ARect.Top) - Cnv.TextHeight('Wg')) div 2;
+    PosX := ARect.Left + 6 + FmtWidth;
+    Cnv.TextOut(PosX, PosY, Main);
     if OwnerPart <> '' then
     begin
-      X := X + C.TextWidth(Main);
-      C.Font.Color := UiColor('Tabs.Owner');
-      C.TextOut(X, Y, OwnerPart);
-      C.Font.Color := UiColor('Tabs.Text');
+      PosX := PosX + Cnv.TextWidth(Main);
+      Cnv.Font.Color := UiColor('Tabs.Owner');
+      Cnv.TextOut(PosX, PosY, OwnerPart);
+      Cnv.Font.Color := UiColor('Tabs.Text');
     end;
 
     if Cross <> '' then
     begin
       // Крестик приметным цветом - только у активной вкладки
       if AActive then
-        C.Font.Color := UiColor('Tabs.CloseOn')
+        Cnv.Font.Color := UiColor('Tabs.CloseOn')
       else
-        C.Font.Color := UiColor('Tabs.CloseOff');
-      C.Font.Style := C.Font.Style + [fsBold];
-      X := ARect.Right - TabCloseWidth +
-           (TabCloseWidth - C.TextWidth(Cross)) div 2;
-      C.TextOut(X, Y, Cross);
+        Cnv.Font.Color := UiColor('Tabs.CloseOff');
+      Cnv.Font.Style := Cnv.Font.Style + [fsBold];
+      PosX := ARect.Right - TabCloseWidth +
+           (TabCloseWidth - Cnv.TextWidth(Cross)) div 2;
+      Cnv.TextOut(PosX, PosY, Cross);
     end;
 
     // Вкладка второй панели редактора - черта снизу цветом кнопки Txt / Fmt
     if (FSplit <> nil) and FSplit.Shown and (TabWin >= 0) and
        (TabWin = FSplitWin) then
     begin
-      C.Brush.Style := bsSolid;
-      C.Brush.Color := UiColor('Tabs.FmtBtn');
-      C.FillRect(Rect(ARect.Left + 2, ARect.Bottom - 3, ARect.Right - 2,
+      Cnv.Brush.Style := bsSolid;
+      Cnv.Brush.Color := UiColor('Tabs.FmtBtn');
+      Cnv.FillRect(Rect(ARect.Left + 2, ARect.Bottom - 3, ARect.Right - 2,
                       ARect.Bottom - 1));
     end;
   finally
-    C.Handle := 0;
-    C.Free;
+    Cnv.Handle := 0;
+    Cnv.Free;
   end;
 end;
 
@@ -20539,15 +20539,15 @@ end;
 
 // Клик по крестику закрывает вкладку, не трогая само окно
 procedure TForm1.TabsMouseDown(Sender: TObject; Button: TMouseButton;
-                               Shift: TShiftState; X, Y: Integer);
+                               Shift: TShiftState; PosX, PosY: Integer);
 var
   Idx: Integer;
-  R: TRect;
+  RectVal: TRect;
 begin
   if Button <> mbLeft then
     Exit;
 
-  Idx := FTabs.IndexOfTabAt(X, Y);
+  Idx := FTabs.IndexOfTabAt(PosX, PosY);
   if Idx < 0 then
     Exit;
 
@@ -20561,8 +20561,8 @@ begin
      (Idx <= High(FTabWin)) and (FTabWin[Idx] >= 0) and
      (FTabWin[Idx] <= WindowsItemCount - 1) then
   begin
-    R := FTabs.TabRect(Idx);
-    if (FTabs.Tabs.Count <= 1) or (X < R.Right - TabCloseWidth) then
+    RectVal := FTabs.TabRect(Idx);
+    if (FTabs.Tabs.Count <= 1) or (PosX < RectVal.Right - TabCloseWidth) then
     begin
       FFar.ShowFile(FWindows[FTabWin[Idx]].FileName);
       if not FFarHalf then
@@ -20587,8 +20587,8 @@ begin
   // вид меняется у её окна и окно показывается
   if (Idx <= High(FTabWin)) and TabHasFmtView(FTabWin[Idx]) then
   begin
-    R := FTabs.TabRect(Idx);
-    if X < R.Left + TabFmtWidth then
+    RectVal := FTabs.TabRect(Idx);
+    if PosX < RectVal.Left + TabFmtWidth then
     begin
       if FTabWin[Idx] = FWindowsIndex then
         FmtToggle
@@ -20606,8 +20606,8 @@ begin
   if FTabs.Tabs.Count <= 1 then
     Exit; // единственную вкладку крестик не закрывает
 
-  R := FTabs.TabRect(Idx);
-  if X >= R.Right - TabCloseWidth then
+  RectVal := FTabs.TabRect(Idx);
+  if PosX >= RectVal.Right - TabCloseWidth then
     CloseTab(Idx);
 end;
 
@@ -20664,21 +20664,21 @@ end;
 // сборкой, системой контроля версий.
 procedure TForm1.ReloadFileClick(Sender: TObject);
 var
-  W: Integer;
+  WinIdx: Integer;
 begin
   if (FTabs = nil) or (FTabs.TabIndex < 0) or (FTabs.TabIndex > High(FTabWin)) then
     Exit;
 
-  W := FTabWin[FTabs.TabIndex];
-  if (W < 0) or (W > WindowsItemCount - 1) or not FWindows[W].Used then
+  WinIdx := FTabWin[FTabs.TabIndex];
+  if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or not FWindows[WinIdx].Used then
     Exit;
-  ReloadWindowFromDisk(W, True);
+  ReloadWindowFromDisk(WinIdx, True);
 end;
 
 // Перечитать окно W с диска. AAsk - спросить, если в окне есть
 // несохранённое (ReloadFileClick); проверка изменений снаружи спрашивает
 // сама. False - файла нет или отказались.
-function TForm1.ReloadWindowFromDisk(W: Integer; AAsk: Boolean): Boolean;
+function TForm1.ReloadWindowFromDisk(WinIdx: Integer; AAsk: Boolean): Boolean;
 var
   FN: string;
   LoadedText: WideString;
@@ -20686,7 +20686,7 @@ var
 begin
   Result := False;
   IsMapped := False;
-  FN := FWindows[W].FileName;
+  FN := FWindows[WinIdx].FileName;
   if not FileExists(FN) then
   begin
     ShowMessage('10131:Файл не найден:'#13#10 + FN);
@@ -20695,10 +20695,10 @@ begin
 
   // Флаг изменений у активного окна живёт в самом редакторе, у остальных -
   // в записи: там он обновляется только при переключении
-  if W = FWindowsIndex then
+  if WinIdx = FWindowsIndex then
     IsMod := RichEdit1.Modified
   else
-    IsMod := FWindows[W].Modified;
+    IsMod := FWindows[WinIdx].Modified;
 
   if IsMod and AAsk then
     if MessageDlg('10143:В файле ' + ExtractFileName(FN) + ' есть несохранённые ' +
@@ -20715,24 +20715,24 @@ begin
   // Файл не открылся (его держит другой процесс) - окно остаётся как было,
   // время файла не запоминается: проверка диска попробует ещё раз
   try
-    IsMapped := LoadWinMapped(W, FN);
+    IsMapped := LoadWinMapped(WinIdx, FN);
     if not IsMapped then
       LoadedText := LoadFileWide(FN);
   except
-    on E: Exception do
+    on Err: Exception do
     begin
       FFileIsUtf8 := SavedUtf8;
       FFileHasBom := SavedBom;
       Result := False;
       if AAsk then
-        ShowMessage('Файл не прочитан:'#13#10 + FN + #13#10#13#10 + E.Message)
+        ShowMessage('Файл не прочитан:'#13#10 + FN + #13#10#13#10 + Err.Message)
       else if CompareText(FDiskReadFail, FN) <> 0 then
       begin
         FDiskReadFail := FN;
         LogComp(ExtractFileName(FN) + ': изменён на диске, но не прочитан ' +
         '- окно не обновлено, следующая проверка попробует снова (' +
-                E.Message + ')');
-        if E is EOutOfMemory then
+                Err.Message + ')');
+        if Err is EOutOfMemory then
           LogAddressSpace(ExtractFileName(FN) + ': нехватка памяти');
       end;
       Exit;
@@ -20741,34 +20741,34 @@ begin
   if CompareText(FDiskReadFail, FN) = 0 then
     FDiskReadFail := '';
   if not IsMapped then
-    SetWinWide(W, LoadedText);
-  FWindows[W].IsUtf8 := FFileIsUtf8;
-  FWindows[W].HasBom := FFileHasBom;
+    SetWinWide(WinIdx, LoadedText);
+  FWindows[WinIdx].IsUtf8 := FFileIsUtf8;
+  FWindows[WinIdx].HasBom := FFileHasBom;
 
-  if W <> FWindowsIndex then
+  if WinIdx <> FWindowsIndex then
   begin
     FFileIsUtf8 := SavedUtf8;
     FFileHasBom := SavedBom;
   end;
 
-  FWindows[W].Modified := False;
-  FWindows[W].Broken := False;
+  FWindows[WinIdx].Modified := False;
+  FWindows[WinIdx].Broken := False;
 
   // Карта построена по прежнему тексту и больше не годится
-  FWindows[W].MapValid := False;
-  SetLength(FWindows[W].CommentRanges, 0);
-  SetLength(FWindows[W].StringRanges, 0);
+  FWindows[WinIdx].MapValid := False;
+  SetLength(FWindows[WinIdx].CommentRanges, 0);
+  SetLength(FWindows[WinIdx].StringRanges, 0);
 
   // Каретку сохраняем, но файл мог стать короче
-  if FWindows[W].CursorPos > WinTextSize(W) then
-    FWindows[W].CursorPos := 0;
+  if FWindows[WinIdx].CursorPos > WinTextSize(WinIdx) then
+    FWindows[WinIdx].CursorPos := 0;
 
-  if W = FWindowsIndex then
+  if WinIdx = FWindowsIndex then
     // ActivateWindow на СВОЁМ же окне не вызывает StoreCurrentWindow,
     // так что свежий текст не будет затёрт содержимым редактора
-    ActivateWindow(W)
+    ActivateWindow(WinIdx)
   else
-    UpdateTabCaption(W); // могла уйти звёздочка
+    UpdateTabCaption(WinIdx); // могла уйти звёздочка
 
   RebuildWindowsMenu;
 end;
@@ -20943,12 +20943,12 @@ var
   Pnl, Root, Cap: TPanel;
   BtnOk, BtnCancel, BtnAll: TUiButton;
   Map: array of Integer;
-  I, N, MaxW, W, H, MinW, WAll, WOk, WCancel, ItemH: Integer;
-  R: TRect;
+  I, Num, MaxW, WidthPx, HeightPx, MinW, WAll, WOk, WCancel, ItemH: Integer;
+  RectVal: TRect;
   Bmp: TBitmap;
 begin
-  N := WindowsInUse;
-  if N = 0 then
+  Num := WindowsInUse;
+  if Num = 0 then
   begin
     ShowMessage('10370:Нет открытых окон.');
     Exit;
@@ -20991,9 +20991,9 @@ begin
       MaxW := 0;
       for I := 0 to Lst.Items.Count - 1 do
       begin
-        W := Bmp.Canvas.TextWidth(Lst.Items[I]);
-        if W > MaxW then
-          MaxW := W;
+        WidthPx := Bmp.Canvas.TextWidth(Lst.Items[I]);
+        if WidthPx > MaxW then
+          MaxW := WidthPx;
       end;
       // Высота строки - по шрифту: окна у списка ещё нет, и его
       // ItemHeight пока прежний, 16
@@ -21015,26 +21015,26 @@ begin
     end;
 
     // К тексту добавляем флажок, полосу прокрутки и поля панели Root
-    W := MaxW + 26 + GetSystemMetrics(SM_CXVSCROLL) + 2 * Root.BorderWidth + 8;
+    WidthPx := MaxW + 26 + GetSystemMetrics(SM_CXVSCROLL) + 2 * Root.BorderWidth + 8;
 
     // Но не уже, чем нужно кнопкам внизу: три кнопки, зазоры между ними
     // и отступы от краёв
     MinW := WAll + WOk + WCancel + 3 * 8 + 2 * 14;
-    if W < MinW then
-      W := MinW;
-    if W > Screen.WorkAreaRect.Right - Screen.WorkAreaRect.Left - 40 then
-      W := Screen.WorkAreaRect.Right - Screen.WorkAreaRect.Left - 40;
-    Dlg.ClientWidth := W;
+    if WidthPx < MinW then
+      WidthPx := MinW;
+    if WidthPx > Screen.WorkAreaRect.Right - Screen.WorkAreaRect.Left - 40 then
+      WidthPx := Screen.WorkAreaRect.Right - Screen.WorkAreaRect.Left - 40;
+    Dlg.ClientWidth := WidthPx;
 
-    H := Lst.ItemHeight;
-    if H < ItemH then
-      H := ItemH;
-    H := H * Lst.Items.Count + Cap.Height + Pnl.Height + 2 * Root.BorderWidth + 6;
-    if H > Screen.WorkAreaRect.Bottom - Screen.WorkAreaRect.Top - 80 then
-      H := Screen.WorkAreaRect.Bottom - Screen.WorkAreaRect.Top - 80;
-    if H < 120 then
-      H := 120;
-    Dlg.ClientHeight := H;
+    HeightPx := Lst.ItemHeight;
+    if HeightPx < ItemH then
+      HeightPx := ItemH;
+    HeightPx := HeightPx * Lst.Items.Count + Cap.Height + Pnl.Height + 2 * Root.BorderWidth + 6;
+    if HeightPx > Screen.WorkAreaRect.Bottom - Screen.WorkAreaRect.Top - 80 then
+      HeightPx := Screen.WorkAreaRect.Bottom - Screen.WorkAreaRect.Top - 80;
+    if HeightPx < 120 then
+      HeightPx := 120;
+    Dlg.ClientHeight := HeightPx;
 
     // Кнопки: ширины - по тексту, правые прижаты к правому краю якорями
     BtnAll.Width := WAll;
@@ -21045,10 +21045,10 @@ begin
 
     // Ставим окно под пунктом меню Windows - так оно читается как его
     // продолжение, а не как случайный диалог посреди экрана
-    if GetMenuItemRectApi(Handle, MainMenu1.Handle, mWindows.MenuIndex, R) then
+    if GetMenuItemRectApi(Handle, MainMenu1.Handle, mWindows.MenuIndex, RectVal) then
     begin
-      Dlg.Left := R.Left;
-      Dlg.Top := R.Bottom;
+      Dlg.Left := RectVal.Left;
+      Dlg.Top := RectVal.Bottom;
     end
     else
     begin
@@ -21132,14 +21132,14 @@ procedure TForm1.BuildSearchPanel;
 const
   Row1 = 1;
 var
-  X, W, I, Arrow, R, D: Integer;
+  PosX, WidthPx, I, Arrow, RightEdge, Delta: Integer;
   Bmp: TBitmap;
 
   // Ширина текста шрифтом панели поиска - замер на временном холсте: у
   // самих контролов оконного хэндла ещё может не быть
-  function TextW(const S: string): Integer;
+  function TextW(const Str: string): Integer;
   begin
-    Result := Bmp.Canvas.TextWidth(S);
+    Result := Bmp.Canvas.TextWidth(Str);
   end;
 
 begin
@@ -21154,11 +21154,11 @@ begin
 
     cmbReplace.Width := 100;
 
-    X := 110;
-    Inc(X, 57);
-    Inc(X, 37);
+    PosX := 110;
+    Inc(PosX, 57);
+    Inc(PosX, 37);
 
-    Inc(X, 49);
+    Inc(PosX, 49);
     UndoBtn.Font.Assign(pnlSearchIn.Font);
     UndoBtn.Font.Style := [fsBold];
 
@@ -21171,12 +21171,12 @@ begin
     // часть шире, по самому длинному пункту: CB_SETDROPPEDWIDTH задаёт её
     // отдельно от поля. Плата: выбранный WholeWord или Go to line в
     // закрытом поле виден не целиком.
-    W := 0;
+    WidthPx := 0;
     for I := 0 to cmbMode.Items.Count - 1 do
-      if TextW(cmbMode.Items[I]) > W then
-        W := TextW(cmbMode.Items[I]);
+      if TextW(cmbMode.Items[I]) > WidthPx then
+        WidthPx := TextW(cmbMode.Items[I]);
     cmbMode.Width := TextW('WholeWord') + Arrow + 6;
-    SendMessage(cmbMode.Handle, CB_SETDROPPEDWIDTH, W + Arrow + 8, 0);
+    SendMessage(cmbMode.Handle, CB_SETDROPPEDWIDTH, WidthPx + Arrow + 8, 0);
 
     chkCase.Left := cmbMode.Left + cmbMode.Width + 4;
     chkCase.Width := TextW(chkCase.Caption) + 20;
@@ -21196,23 +21196,23 @@ begin
     cmbScope.WindowProc := ScopeWndProc;
     cmbScope.OnKeyDown := ScopeKeyDown;
 
-    W := 0;
+    WidthPx := 0;
     for I := 0 to cmbScope.Items.Count - 1 do
-      if TextW(cmbScope.Items[I]) > W then
-        W := TextW(cmbScope.Items[I]);
-    cmbScope.Width := W + Arrow + 8;
+      if TextW(cmbScope.Items[I]) > WidthPx then
+        WidthPx := TextW(cmbScope.Items[I]);
+    cmbScope.Width := WidthPx + Arrow + 8;
 
     // Правый край первой строки - вровень с третьей, самой длинной: лишнее
     // место отдаём полю поиска, кнопки за ним сдвигаем. Find-> встаёт у
     // правого края рамки.
-    R := cmbScope.Left + cmbScope.Width;
+    RightEdge := cmbScope.Left + cmbScope.Width;
 
-    D := R - (BtnNext.Left + BtnNext.Width);
-    if D > 0 then
+    Delta := RightEdge - (BtnNext.Left + BtnNext.Width);
+    if Delta > 0 then
     begin
-      cmbFind.Width := cmbFind.Width + D;
-      BtnPrev.Left := BtnPrev.Left + D;
-      BtnNext.Left := BtnNext.Left + D;
+      cmbFind.Width := cmbFind.Width + Delta;
+      BtnPrev.Left := BtnPrev.Left + Delta;
+      BtnNext.Left := BtnNext.Left + Delta;
     end;
 
     // Вторая строка - по первой: поле замены той же ширины, что поле
@@ -21234,15 +21234,15 @@ end;
 // рамка подстроится сама.
 procedure TForm1.FitSearchBox;
 var
-  I, R: Integer;
+  I, RightEdge: Integer;
 begin
   if (grpSearch = nil) or (pnlSearchIn = nil) then
     Exit;
 
-  R := 0;
+  RightEdge := 0;
   for I := 0 to pnlSearchIn.ControlCount - 1 do
-    if pnlSearchIn.Controls[I].Left + pnlSearchIn.Controls[I].Width > R then
-      R := pnlSearchIn.Controls[I].Left + pnlSearchIn.Controls[I].Width;
+    if pnlSearchIn.Controls[I].Left + pnlSearchIn.Controls[I].Width > RightEdge then
+      RightEdge := pnlSearchIn.Controls[I].Left + pnlSearchIn.Controls[I].Width;
 
   // Разница между шириной рамки и её клиентской частью - это обе боковые
   // кромки; плюс отступ справа, как слева у первого поля
@@ -21275,38 +21275,38 @@ begin
 end;
 
 // Кладёт строку в начало истории комбобокса, убирая дубликат
-procedure TForm1.AddHistory(Cmb: TUiComboBox; const S: string);
+procedure TForm1.AddHistory(Cmb: TUiComboBox; const Str: string);
 var
-  I: Integer;
+  Idx: Integer;
 begin
-  if (Cmb = nil) or (S = '') then
+  if (Cmb = nil) or (Str = '') then
     Exit;
 
-  I := Cmb.Items.IndexOf(S);
-  if I >= 0 then
-    Cmb.Items.Delete(I);
-  Cmb.Items.Insert(0, S);
+  Idx := Cmb.Items.IndexOf(Str);
+  if Idx >= 0 then
+    Cmb.Items.Delete(Idx);
+  Cmb.Items.Insert(0, Str);
 
   while Cmb.Items.Count > 20 do
     Cmb.Items.Delete(Cmb.Items.Count - 1);
 
   // Text сбрасывается при правке Items, поэтому возвращаем его на место
-  Cmb.Text := S;
+  Cmb.Text := Str;
 end;
 
 procedure TForm1.GotoLine(LineIdx: Integer);
 var
-  P: Integer;
+  LineStartPos: Integer;
 begin
   if LineIdx < 0 then
     Exit;
-  P := EdApi.LineIndex(LineIdx);
-  if P < 0 then
+  LineStartPos := EdApi.LineIndex(LineIdx);
+  if LineStartPos < 0 then
     Exit;
 
   if RichEdit1.CanFocus then
     RichEdit1.SetFocus;
-  RichEdit1.SelStart := P;
+  RichEdit1.SelStart := LineStartPos;
   RichEdit1.SelLength := 0;
   EdApi.ScrollCaret;
   CenterCaretLine;
@@ -21317,9 +21317,9 @@ end;
 // Из чего состоят слова. Байты со старшим битом тоже считаем буквами: в
 // CP1251 там кириллица, и русское слово в комментарии должно искаться целиком
 // так же, как английское.
-function IsWordChar(C: Char): Boolean;
+function IsWordChar(CharVal: Char): Boolean;
 begin
-  Result := (C in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or (C >= #128);
+  Result := (CharVal in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or (CharVal >= #128);
 end;
 
 // Позиция вхождения образца в строке начиная с FromPos, или 0.
@@ -21330,7 +21330,7 @@ end;
 function TForm1.MatchPosFrom(const Line, Pattern: string;
                              FromPos: Integer): Integer;
 var
-  L, P: string;
+  LineStr, PartStr: string;
   PL, Idx: Integer;
 begin
   Result := 0;
@@ -21342,16 +21342,16 @@ begin
 
   if chkCase.Checked then
   begin
-    L := Line;
-    P := Pattern;
+    LineStr := Line;
+    PartStr := Pattern;
   end
   else
   begin
-    L := AnsiUpperCase(Line);
-    P := AnsiUpperCase(Pattern);
+    LineStr := AnsiUpperCase(Line);
+    PartStr := AnsiUpperCase(Pattern);
   end;
 
-  Idx := PosEx(P, L, FromPos);
+  Idx := PosEx(PartStr, LineStr, FromPos);
 
   // Обычный режим и Go to line - годится первое же вхождение
   if (cmbMode = nil) or (cmbMode.ItemIndex <> 1) then
@@ -21362,13 +21362,13 @@ begin
 
   while Idx > 0 do
   begin
-    if ((Idx = 1) or (not IsWordChar(L[Idx - 1]))) and
-       ((Idx + PL > Length(L)) or (not IsWordChar(L[Idx + PL]))) then
+    if ((Idx = 1) or (not IsWordChar(LineStr[Idx - 1]))) and
+       ((Idx + PL > Length(LineStr)) or (not IsWordChar(LineStr[Idx + PL]))) then
     begin
       Result := Idx;
       Exit;
     end;
-    Idx := PosEx(P, L, Idx + 1);
+    Idx := PosEx(PartStr, LineStr, Idx + 1);
   end;
 end;
 
@@ -21381,38 +21381,38 @@ end;
 
 procedure TForm1.FileFindNext;
 var
-  S: string;
-  P, StartFrom: Integer;
+  Str: string;
+  FoundPos, StartFrom: Integer;
 begin
-  S := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
-  if S = '' then
+  Str := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
+  if Str = '' then
     Exit;
-  AddHistory(cmbFind, S);
+  AddHistory(cmbFind, Str);
 
   // Режим перехода по номеру строки: искать нечего, просто прыгаем
   if cmbMode.ItemIndex = 2 then
   begin
-    GotoLine(StrToIntDef(S, 1) - 1);
+    GotoLine(StrToIntDef(Str, 1) - 1);
     Exit;
   end;
 
   StartFrom := RichEdit1.SelStart + RichEdit1.SelLength;
-  P := FindTextEd(S, StartFrom, RichEdit1.GetTextLen, SearchOptions);
-  if P < 0 then
+  FoundPos := FindTextEd(Str, StartFrom, RichEdit1.GetTextLen, SearchOptions);
+  if FoundPos < 0 then
     // Дошли до конца - продолжаем с начала файла
-    P := FindTextEd(S, 0, RichEdit1.GetTextLen, SearchOptions);
+    FoundPos := FindTextEd(Str, 0, RichEdit1.GetTextLen, SearchOptions);
 
-  if P < 0 then
+  if FoundPos < 0 then
   begin
-    StatusBar1.SimpleText := 'Не найдено: ' + S;
+    StatusBar1.SimpleText := 'Не найдено: ' + Str;
     StatusBar1.SimplePanel := True;
     Exit;
   end;
 
   if RichEdit1.CanFocus then
     RichEdit1.SetFocus;
-  RichEdit1.SelStart := P;
-  RichEdit1.SelLength := Length(S);
+  RichEdit1.SelStart := FoundPos;
+  RichEdit1.SelLength := Length(Str);
   EdApi.ScrollCaret;
   CenterCaretLine;
   UpdateStatusBarInfo;
@@ -21425,26 +21425,26 @@ end;
 // файла и запоминаем последнее совпадение, оказавшееся левее каретки.
 procedure TForm1.FileFindPrev;
 var
-  S: string;
-  P, Best, Limit: Integer;
+  Str: string;
+  FoundPos, Best, Limit: Integer;
 begin
-  S := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
-  if S = '' then
+  Str := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
+  if Str = '' then
     Exit;
-  AddHistory(cmbFind, S);
+  AddHistory(cmbFind, Str);
 
   Limit := RichEdit1.SelStart;
   Best := -1;
-  P := FindTextEd(S, 0, RichEdit1.GetTextLen, SearchOptions);
-  while (P >= 0) and (P < Limit) do
+  FoundPos := FindTextEd(Str, 0, RichEdit1.GetTextLen, SearchOptions);
+  while (FoundPos >= 0) and (FoundPos < Limit) do
   begin
-    Best := P;
-    P := FindTextEd(S, P + 1, RichEdit1.GetTextLen, SearchOptions);
+    Best := FoundPos;
+    FoundPos := FindTextEd(Str, FoundPos + 1, RichEdit1.GetTextLen, SearchOptions);
   end;
 
   if Best < 0 then
   begin
-    StatusBar1.SimpleText := 'Выше ничего не найдено: ' + S;
+    StatusBar1.SimpleText := 'Выше ничего не найдено: ' + Str;
     StatusBar1.SimplePanel := True;
     Exit;
   end;
@@ -21452,7 +21452,7 @@ begin
   if RichEdit1.CanFocus then
     RichEdit1.SetFocus;
   RichEdit1.SelStart := Best;
-  RichEdit1.SelLength := Length(S);
+  RichEdit1.SelLength := Length(Str);
   EdApi.ScrollCaret;
   CenterCaretLine;
   UpdateStatusBarInfo;
@@ -21469,53 +21469,53 @@ end;
 // ответа "Нет" мы бы вернулись к тому же месту и спрашивали бесконечно.
 procedure TForm1.FileReplace;
 var
-  S, R: string;
-  P, N: Integer;
+  Str, RestStr: string;
+  SelPos, Num: Integer;
 begin
-  S := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
-  if S = '' then
+  Str := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
+  if Str = '' then
     Exit;
-  R := cmbReplace.Text;
+  RestStr := cmbReplace.Text;
 
-  AddHistory(cmbFind, S);
-  AddHistory(cmbReplace, R);
+  AddHistory(cmbFind, Str);
+  AddHistory(cmbReplace, RestStr);
   // Текст замены попадает и в историю поиска: после замены его часто
   // требуется найти
-  AddHistory(cmbFind, R);
-  cmbFind.Text := S; // но в поле оставляем сам образец
+  AddHistory(cmbFind, RestStr);
+  cmbFind.Text := Str; // но в поле оставляем сам образец
 
-  N := 0;
-  P := RichEdit1.SelStart;
+  Num := 0;
+  SelPos := RichEdit1.SelStart;
 
   while True do
   begin
-    P := FindTextEd(S, P, RichEdit1.GetTextLen, SearchOptions);
-    if P < 0 then
+    SelPos := FindTextEd(Str, SelPos, RichEdit1.GetTextLen, SearchOptions);
+    if SelPos < 0 then
       Break;
 
     if RichEdit1.CanFocus then
       RichEdit1.SetFocus;
-    RichEdit1.SelStart := P;
-    RichEdit1.SelLength := Length(S);
+    RichEdit1.SelStart := SelPos;
+    RichEdit1.SelLength := Length(Str);
     EdApi.ScrollCaret;
     CenterCaretLine;
 
-    case MessageDlg('11014:Заменить это вхождение?' + #13#10#13#10 + S + '  ->  ' + R,
+    case MessageDlg('11014:Заменить это вхождение?' + #13#10#13#10 + Str + '  ->  ' + RestStr,
                     mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
       mrYes:
       begin
-        RichEdit1.SelText := R;
-        Inc(N);
-        P := P + Length(R); // продолжаем ЗА вставленным текстом
+        RichEdit1.SelText := RestStr;
+        Inc(Num);
+        SelPos := SelPos + Length(RestStr); // продолжаем ЗА вставленным текстом
       end;
       mrNo:
-        P := P + Length(S);
+        SelPos := SelPos + Length(Str);
     else
       Break; // Отмена
     end;
   end;
 
-  StatusBar1.SimpleText := Format('Заменено: %d', [N]);
+  StatusBar1.SimpleText := Format('Заменено: %d', [Num]);
   StatusBar1.SimplePanel := True;
   UpdateStatusBarInfo;
 
@@ -21575,17 +21575,17 @@ end;
 // ста миллисекунд. False означает, что нажали Стоп и работу надо прервать.
 function TForm1.ProgressStep(APos, AMax: Integer; const AText: string): Boolean;
 var
-  T: Cardinal;
+  NowTick: Cardinal;
   Pct: Integer;
 begin
   Result := not FProgAbort;
   if (not Result) or (FProgForm = nil) then
     Exit;
 
-  T := GetTickCount;
-  if T - FProgLastTick < 100 then
+  NowTick := GetTickCount;
+  if NowTick - FProgLastTick < 100 then
     Exit; // ещё рано, работаем дальше
-  FProgLastTick := T;
+  FProgLastTick := NowTick;
 
   if AMax > 0 then
   begin
@@ -21629,8 +21629,8 @@ end;
 // ОДНИМ присваиванием. Карта пересобирается тоже один раз, в конце.
 procedure TForm1.FileReplaceAll;
 var
-  S, R, Src, Hay, Pat, Res: string;
-  P, N, PL, Start, Used, Cap: Integer;
+  Str, RestStr, Src, Hay, Pat, Res: string;
+  CharPos, Num, PL, Start, Used, Cap: Integer;
   WholeW, Aborted: Boolean;
 
   // Дописывает кусок в Res, расширяя буфер вдвое по мере надобности.
@@ -21638,20 +21638,20 @@ var
   // перевыделение памяти на каждом вхождении.
   procedure Append(const APart: string);
   var
-    L: Integer;
+    Len: Integer;
   begin
-    L := Length(APart);
-    if L = 0 then
+    Len := Length(APart);
+    if Len = 0 then
       Exit;
 
-    while Used + L > Cap do
+    while Used + Len > Cap do
     begin
       Cap := Cap * 2;
       SetLength(Res, Cap);
     end;
 
-    Move(APart[1], Res[Used + 1], L);
-    Inc(Used, L);
+    Move(APart[1], Res[Used + 1], Len);
+    Inc(Used, Len);
   end;
 
 // Границы слова для режима WholeWord. Смотрим по ИСХОДНОМУ тексту:
@@ -21664,16 +21664,16 @@ var
   end;
 
 begin
-  S := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
-  if S = '' then
+  Str := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
+  if Str = '' then
     Exit;
-  R := cmbReplace.Text;
+  RestStr := cmbReplace.Text;
 
-  AddHistory(cmbFind, S);
-  AddHistory(cmbReplace, R);
+  AddHistory(cmbFind, Str);
+  AddHistory(cmbReplace, RestStr);
 
   if MessageDlg('11212:Заменить ВСЕ вхождения во всём файле?' + #13#10#13#10 +
-                S + '  ->  ' + R + #13#10#13#10 +
+                Str + '  ->  ' + RestStr + #13#10#13#10 +
   'Откатить можно будет через Edit - Отменить массовую замену.',
                 mtWarning, [mbYes, mbNo], 0) <> mrYes then
     Exit;
@@ -21687,7 +21687,7 @@ begin
     FReplaceBackupWin := FWindowsIndex;
     SetLength(FReplBackups, 0);   // Undo - эта замена, не прежний All
 
-    PL := Length(S);
+    PL := Length(Str);
     WholeW := (cmbMode <> nil) and (cmbMode.ItemIndex = 1);
 
     // Для поиска без учёта регистра работаем по копии в верхнем регистре.
@@ -21696,49 +21696,49 @@ begin
     if chkCase.Checked then
     begin
       Hay := Src;
-      Pat := S;
+      Pat := Str;
     end
     else
     begin
       Hay := AnsiUpperCase(Src);
-      Pat := AnsiUpperCase(S);
+      Pat := AnsiUpperCase(Str);
     end;
 
     Cap := Length(Src) + 1024;
     SetLength(Res, Cap);
     Used := 0;
 
-    N := 0;
+    Num := 0;
     Start := 1;
     Aborted := False;
-    P := PosEx(Pat, Hay, Start);
+    CharPos := PosEx(Pat, Hay, Start);
 
-    while P > 0 do
+    while CharPos > 0 do
     begin
-      if WholeW and not AtWordBounds(P) then
+      if WholeW and not AtWordBounds(CharPos) then
       begin
         // Не целое слово - ищем дальше, ничего не заменяя
-        P := PosEx(Pat, Hay, P + 1);
+        CharPos := PosEx(Pat, Hay, CharPos + 1);
         Continue;
       end;
 
-      Append(Copy(Src, Start, P - Start));
-      Append(R);
-      Inc(N);
+      Append(Copy(Src, Start, CharPos - Start));
+      Append(RestStr);
+      Inc(Num);
 
-      Start := P + PL;
+      Start := CharPos + PL;
 
       // Показываем, докуда дошли по ИСХОДНОМУ тексту, и заодно даём окну
       // ожить. Внутри стоит своя отсечка по времени, так что вызов на
       // каждом вхождении недорог.
       if not ProgressStep(Start, Length(Src),
-                          Format('Заменено: %d', [N])) then
+                          Format('Заменено: %d', [Num])) then
       begin
         Aborted := True;
         Break;
       end;
 
-      P := PosEx(Pat, Hay, Start); // продолжаем ЗА образцом, не за заменой
+      CharPos := PosEx(Pat, Hay, Start); // продолжаем ЗА образцом, не за заменой
     end;
 
     // Прервали на середине - текст НЕ трогаем вовсе. Записывать половину
@@ -21747,7 +21747,7 @@ begin
     begin
       FReplaceBackup := '';
       StatusBar1.SimpleText :=
-        Format('Замена прервана, текст не изменён (найдено: %d)', [N]);
+        Format('Замена прервана, текст не изменён (найдено: %d)', [Num]);
       StatusBar1.SimplePanel := True;
       Exit;
     end;
@@ -21756,7 +21756,7 @@ begin
     Append(Copy(Src, Start, Length(Src) - Start + 1));
     SetLength(Res, Used);
 
-    if N > 0 then
+    if Num > 0 then
     begin
       FLockHighlight := True;
       try
@@ -21780,7 +21780,7 @@ begin
     ProgressStop;
   end;
 
-  StatusBar1.SimpleText := Format('Заменено: %d', [N]);
+  StatusBar1.SimpleText := Format('Заменено: %d', [Num]);
   StatusBar1.SimplePanel := True;
 
   if SearchScope = ScopeList then
@@ -22660,7 +22660,7 @@ procedure TForm1.PopupMenuPopup(Sender: TObject);
 const
   MaxLen = 40;
 var
-  S, L: string;
+  Str, LineStr: string;
   I: Integer;
   ClickPt: TPoint;
   ClickChar: Integer;
@@ -22694,38 +22694,38 @@ begin
   end;
 
   // Для подписи хватает начала выделения
-  S := SelTextA(MaxLen * 4);
-  for I := 1 to Length(S) do
-    if S[I] in [#13, #10, #9] then
-      S[I] := ' ';
-  S := Trim(S);
+  Str := SelTextA(MaxLen * 4);
+  for I := 1 to Length(Str) do
+    if Str[I] in [#13, #10, #9] then
+      Str[I] := ' ';
+  Str := Trim(Str);
 
-  if Length(S) > MaxLen then
-    S := Copy(S, 1, MaxLen) + '...';
+  if Length(Str) > MaxLen then
+    Str := Copy(Str, 1, MaxLen) + '...';
 
-  pmuSearch.Caption := 'Search {' + S + '}';
-  pmuSearch.Enabled := S <> '';
+  pmuSearch.Caption := 'Search {' + Str + '}';
+  pmuSearch.Enabled := Str <> '';
 
   // Регистр: выделение, а без него - слово под кареткой
-  if S = '' then
-    S := IdentAtCaret;
+  if Str = '' then
+    Str := IdentAtCaret;
   if pmuUpper <> nil then
   begin
-    pmuUpper.Caption := 'To UpperCase {' + S + '}';
-    pmuUpper.Enabled := S <> '';
-    pmuLower.Caption := 'To LowerCase {' + S + '}';
-    pmuLower.Enabled := S <> '';
+    pmuUpper.Caption := 'To UpperCase {' + Str + '}';
+    pmuUpper.Enabled := Str <> '';
+    pmuLower.Caption := 'To LowerCase {' + Str + '}';
+    pmuLower.Enabled := Str <> '';
   end;
 
   // Debug: строка на языке файла - Паскаль или RapidQ Basic
   if pmuDebug <> nil then
   begin
-    L := DebugLang;
-    if L = 'bas' then
+    LineStr := DebugLang;
+    if LineStr = 'bas' then
       pmuDebug.Caption := 'Debug (LogEdit)'
     else
       pmuDebug.Caption := 'Debug (RuntimeLog)';
-    pmuDebug.Enabled := (L <> '') and (DebugExpr(L) <> '');
+    pmuDebug.Enabled := (LineStr <> '') and (DebugExpr(LineStr) <> '');
   end;
 
   // Run to cursor: файл на диске, программа не идёт или стоит
@@ -22793,13 +22793,13 @@ end;
 // пункта меню, и делает это PopupMenuPopup на своей копии.
 procedure TForm1.SearchSelectedClick(Sender: TObject);
 var
-  S: string;
+  Str: string;
 begin
-  S := SelTextA(MaxInt);
-  if S = '' then
+  Str := SelTextA(MaxInt);
+  if Str = '' then
     Exit;
 
-  AddHistory(cmbFind, S);
+  AddHistory(cmbFind, Str);
   if cmbFind.CanFocus then
     cmbFind.SetFocus;
 end;
@@ -22863,7 +22863,7 @@ end;
 // развернуть, а список должен оставаться при нём.
 procedure TForm1.PlaceMatchForm;
 var
-  L, ScrLeft, ScrRight: Integer;
+  FormLeft, ScrLeft, ScrRight: Integer;
 begin
   if FMatchForm = nil then
     Exit;
@@ -22875,32 +22875,32 @@ begin
   ScrLeft := Screen.WorkAreaLeft;
   ScrRight := Screen.WorkAreaLeft + Screen.WorkAreaWidth;
 
-  L := Left + Width - MatchOverlap;
+  FormLeft := Left + Width - MatchOverlap;
 
   // За правый край рабочей области не уводим: иначе список окажется наполовину
   // за экраном, и как раз им пользоваться и не получится
-  if L + FMatchForm.Width > ScrRight then
-    L := ScrRight - FMatchForm.Width;
-  if L < ScrLeft then
-    L := ScrLeft;
+  if FormLeft + FMatchForm.Width > ScrRight then
+    FormLeft := ScrRight - FMatchForm.Width;
+  if FormLeft < ScrLeft then
+    FormLeft := ScrLeft;
 
-  FMatchForm.Left := L;
+  FMatchForm.Left := FormLeft;
   MatchFormResize(nil);
 end;
 
 // Текстовая колонка занимает всё, что осталось от окна
 procedure TForm1.MatchFormResize(Sender: TObject);
 var
-  W: Integer;
+  WidthPx: Integer;
 begin
   if (FMatchForm = nil) or (FMatchGrid = nil) then
     Exit;
 
-  W := FMatchForm.ClientWidth - FMatchGrid.ColWidths[0] -
+  WidthPx := FMatchForm.ClientWidth - FMatchGrid.ColWidths[0] -
        FMatchGrid.ColWidths[2] - 22;
-  if W < 120 then
-    W := 120;
-  FMatchGrid.ColWidths[1] := W;
+  if WidthPx < 120 then
+    WidthPx := 120;
+  FMatchGrid.ColWidths[1] := WidthPx;
 end;
 
 procedure TForm1.ResetMatchRows;
@@ -22912,38 +22912,38 @@ end;
 // проставит в него HitCount, когда досчитает вхождения
 function TForm1.AddMatchGroup(const AFile: string; AWinIdx: Integer): Integer;
 var
-  N: Integer;
+  Num: Integer;
 begin
-  N := Length(FMatchRows);
-  SetLength(FMatchRows, N + 1);
-  FMatchRows[N].Kind := mrkGroup;
-  FMatchRows[N].FileName := AFile;
-  FMatchRows[N].WinIdx := AWinIdx;
-  FMatchRows[N].LineNo := -1;
-  FMatchRows[N].MatchPos := 0;
-  FMatchRows[N].Text := '';
-  FMatchRows[N].HitCount := 0;
+  Num := Length(FMatchRows);
+  SetLength(FMatchRows, Num + 1);
+  FMatchRows[Num].Kind := mrkGroup;
+  FMatchRows[Num].FileName := AFile;
+  FMatchRows[Num].WinIdx := AWinIdx;
+  FMatchRows[Num].LineNo := -1;
+  FMatchRows[Num].MatchPos := 0;
+  FMatchRows[Num].Text := '';
+  FMatchRows[Num].HitCount := 0;
   // Find In Files: сначала только имена файлов, вхождения - по щелчку
   // на плюсе (или Find-> раскрывает группу, в которую переходит)
-  FMatchRows[N].Collapsed := FFifRunning;
-  Result := N;
+  FMatchRows[Num].Collapsed := FFifRunning;
+  Result := Num;
 end;
 
 procedure TForm1.AddMatchHit(const AFile: string; AWinIdx, ALineNo,
                              AMatchPos: Integer; const ALine: string);
 var
-  N: Integer;
+  Num: Integer;
 begin
-  N := Length(FMatchRows);
-  SetLength(FMatchRows, N + 1);
-  FMatchRows[N].Kind := mrkHit;
-  FMatchRows[N].FileName := AFile;
-  FMatchRows[N].WinIdx := AWinIdx;
-  FMatchRows[N].LineNo := ALineNo;
-  FMatchRows[N].MatchPos := AMatchPos;
-  FMatchRows[N].Text := TrimLeft(ALine);
-  FMatchRows[N].HitCount := 0;
-  FMatchRows[N].Collapsed := False;
+  Num := Length(FMatchRows);
+  SetLength(FMatchRows, Num + 1);
+  FMatchRows[Num].Kind := mrkHit;
+  FMatchRows[Num].FileName := AFile;
+  FMatchRows[Num].WinIdx := AWinIdx;
+  FMatchRows[Num].LineNo := ALineNo;
+  FMatchRows[Num].MatchPos := AMatchPos;
+  FMatchRows[Num].Text := TrimLeft(ALine);
+  FMatchRows[Num].HitCount := 0;
+  FMatchRows[Num].Collapsed := False;
 end;
 
 // Переносит массив в грид. Текст ячеек не заполняем: рисуем всё сами, а Cells
@@ -23013,8 +23013,8 @@ procedure TForm1.MatchGridDrawCell(Sender: TObject; ACol, ARow: Integer;
                                    Rect: TRect; State: TGridDrawState);
 var
   Cnv: TCanvas;
-  Idx, Saved, X, P, Q, BoxSize, BoxLeft, BoxTop, BoxMid: Integer;
-  S, Part: string;
+  Idx, Saved, PosX, CharPos, QuotePos, BoxSize, BoxLeft, BoxTop, BoxMid: Integer;
+  Str, Part: string;
   Selected: Boolean;
 begin
   Cnv := FMatchGrid.Canvas;
@@ -23035,16 +23035,16 @@ begin
       Cnv.FillRect(Rect);
       Cnv.Font.Color := FMatchGrid.Font.Color;
       case ACol of
-        0: S := 'Line';
-        1: S := 'Текст строки';
+        0: Str := 'Line';
+        1: Str := 'Текст строки';
       else
-        S := 'Matches';
+        Str := 'Matches';
       end;
       // Текст - без своего фона: после RestoreDC прошлой ячейки цвет фона
       // текста в DC снова белый, а TCanvas его не ставит заново (цвет кисти
       // тот же) - шапка выходила белыми прямоугольниками
       SetBkMode(Cnv.Handle, TRANSPARENT);
-      Cnv.TextOut(Rect.Left + 3, Rect.Top + 1, S);
+      Cnv.TextOut(Rect.Left + 3, Rect.Top + 1, Str);
       Exit;
     end;
 
@@ -23106,9 +23106,9 @@ begin
       end
       else
       begin
-        S := IntToStr(FMatchRows[Idx].HitCount);
+        Str := IntToStr(FMatchRows[Idx].HitCount);
         Cnv.Brush.Style := bsClear;
-        Cnv.TextOut(Rect.Right - 6 - Cnv.TextWidth(S), Rect.Top + 1, S);
+        Cnv.TextOut(Rect.Right - 6 - Cnv.TextWidth(Str), Rect.Top + 1, Str);
         Cnv.Brush.Style := bsSolid;
       end;
       Exit;
@@ -23132,9 +23132,9 @@ begin
     if ACol = 0 then
     begin
       // Номер строки прижимаем вправо: так столбик цифр читается колонкой
-      S := IntToStr(FMatchRows[Idx].LineNo + 1);
+      Str := IntToStr(FMatchRows[Idx].LineNo + 1);
       Cnv.Brush.Style := bsClear;
-      Cnv.TextOut(Rect.Right - 5 - Cnv.TextWidth(S), Rect.Top + 1, S);
+      Cnv.TextOut(Rect.Right - 5 - Cnv.TextWidth(Str), Rect.Top + 1, Str);
       Cnv.Brush.Style := bsSolid;
       Exit;
     end;
@@ -23143,14 +23143,14 @@ begin
     if ACol = 2 then
       Exit;
 
-    S := FMatchRows[Idx].Text;
-    X := Rect.Left + 3;
+    Str := FMatchRows[Idx].Text;
+    PosX := Rect.Left + 3;
 
     // Без образца подсвечивать нечего - выводим строку одним куском
     if FMatchPattern = '' then
     begin
       Cnv.Brush.Style := bsClear;
-      Cnv.TextOut(X, Rect.Top + 1, S);
+      Cnv.TextOut(PosX, Rect.Top + 1, Str);
       Cnv.Brush.Style := bsSolid;
       Exit;
     end;
@@ -23158,29 +23158,29 @@ begin
     // Разрезаем строку по вхождениям и рисуем кусками. Ищем ровно тем же
     // MatchPosFrom, что и сам поиск: иначе в режиме WholeWord подсветились бы
     // и куски слов, которых в списке нет.
-    P := 1;
-    while P <= Length(S) do
+    CharPos := 1;
+    while CharPos <= Length(Str) do
     begin
-      Q := MatchPosFrom(S, FMatchPattern, P);
-      if Q = 0 then
+      QuotePos := MatchPosFrom(Str, FMatchPattern, CharPos);
+      if QuotePos = 0 then
         Break;
 
-      if Q > P then
+      if QuotePos > CharPos then
       begin
-        Part := Copy(S, P, Q - P);
+        Part := Copy(Str, CharPos, QuotePos - CharPos);
         Cnv.Brush.Style := bsClear;
-        Cnv.TextOut(X, Rect.Top + 1, Part);
+        Cnv.TextOut(PosX, Rect.Top + 1, Part);
         Cnv.Brush.Style := bsSolid;
-        Inc(X, Cnv.TextWidth(Part));
+        Inc(PosX, Cnv.TextWidth(Part));
       end;
 
       // Найденный кусок - своим спокойным цветом (Match.HitBG,
       // Match.HitText), а не системным цветом выделения
-      Part := Copy(S, Q, Length(FMatchPattern));
+      Part := Copy(Str, QuotePos, Length(FMatchPattern));
       Cnv.Brush.Color := UiColor('Match.HitBG');
       Cnv.Font.Color := UiColor('Match.HitText');
-      Cnv.TextOut(X, Rect.Top + 1, Part);
-      Inc(X, Cnv.TextWidth(Part));
+      Cnv.TextOut(PosX, Rect.Top + 1, Part);
+      Inc(PosX, Cnv.TextWidth(Part));
 
       if Selected then
       begin
@@ -23193,14 +23193,14 @@ begin
         Cnv.Font.Color := FMatchGrid.Font.Color;
       end;
 
-      P := Q + Length(FMatchPattern);
+      CharPos := QuotePos + Length(FMatchPattern);
     end;
 
-    if P <= Length(S) then
+    if CharPos <= Length(Str) then
     begin
-      Part := Copy(S, P, Length(S) - P + 1);
+      Part := Copy(Str, CharPos, Length(Str) - CharPos + 1);
       Cnv.Brush.Style := bsClear;
-      Cnv.TextOut(X, Rect.Top + 1, Part);
+      Cnv.TextOut(PosX, Rect.Top + 1, Part);
       Cnv.Brush.Style := bsSolid;
     end;
 
@@ -23210,24 +23210,24 @@ begin
 end;
 
 procedure TForm1.MatchGridMouseDown(Sender: TObject; Button: TMouseButton;
-                                    Shift: TShiftState; X, Y: Integer);
+                                    Shift: TShiftState; PosX, PosY: Integer);
 var
-  C, R, Idx: Integer;
+  GridCol, GridRow, Idx: Integer;
 begin
   if Button <> mbLeft then
     Exit;
 
-  FMatchGrid.MouseToCell(X, Y, C, R);
-  if R < 1 then
+  FMatchGrid.MouseToCell(PosX, PosY, GridCol, GridRow);
+  if GridRow < 1 then
     Exit;
 
   // Спрятанная строка всё равно попадает под MouseToCell, если по её месту
   // щёлкнуть. Именно отсюда и брались переходы не в тот файл: клик по серой
   // полосе свёрнутой группы отдавал одну из её скрытых строк.
-  if FMatchGrid.RowHeights[R] <= 0 then
+  if FMatchGrid.RowHeights[GridRow] <= 0 then
     Exit;
 
-  Idx := R - 1;
+  Idx := GridRow - 1;
   if (Idx < 0) or (Idx > High(FMatchRows)) then
     Exit;
 
@@ -23301,7 +23301,7 @@ end;
 procedure TForm1.JumpToMatch(Idx: Integer);
 var
   FN: string;
-  I, W, LineStart: Integer;
+  I, MatchWinIdx, LineStart: Integer;
 begin
   if (Idx < 0) or (Idx > High(FMatchRows)) then
     Exit;
@@ -23313,24 +23313,24 @@ begin
 
   // Слот ищем заново, а не берём из строки: между поиском и кликом окно могли
   // закрыть, и по старому индексу лежит уже другой файл
-  W := IndexOfWindowByFile(FN);
+  MatchWinIdx := IndexOfWindowByFile(FN);
 
-  if W < 0 then
+  if MatchWinIdx < 0 then
   begin
     OpenNamedFile(FN);
-    W := IndexOfWindowByFile(FN);
-    if W < 0 then
+    MatchWinIdx := IndexOfWindowByFile(FN);
+    if MatchWinIdx < 0 then
       Exit; // не открылся - переходить некуда
   end;
 
-  if W <> FWindowsIndex then
-    ActivateWindow(W);
+  if MatchWinIdx <> FWindowsIndex then
+    ActivateWindow(MatchWinIdx);
 
   // Запоминаем слот во всех строках этого файла: соседнее вхождение уже не
   // пойдёт открывать файл заново
   for I := 0 to High(FMatchRows) do
     if CompareText(FMatchRows[I].FileName, FN) = 0 then
-      FMatchRows[I].WinIdx := W;
+      FMatchRows[I].WinIdx := MatchWinIdx;
 
   // Подсвечиваем найденное штатным выделением редактора: отрисовка выделения
   // уже есть в DrawRun, и мышью получается ровно тот же вид
@@ -23361,13 +23361,13 @@ end;
 // Группа тут всегда одна, но формат строк общий с Find In Files.
 procedure TForm1.BuildMatchList;
 var
-  S: string;
-  N: Integer;
+  Str: string;
+  Num: Integer;
 begin
-  S := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
-  if S = '' then
+  Str := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
+  if Str = '' then
     Exit;
-  AddHistory(cmbFind, S);
+  AddHistory(cmbFind, Str);
 
   // Идёт Find In Files: Match list теперь под этот список, поиск
   // останавливается и строки в список больше не добавляет
@@ -23378,14 +23378,14 @@ begin
   end;
 
   EnsureMatchForm;
-  FMatchPattern := S;
+  FMatchPattern := Str;
   FMatchKey := '';
   ResetMatchRows;
 
-  N := ScanTextForMatches(FCurrentFileName, FWindowsIndex, GetEditorText, S);
+  Num := ScanTextForMatches(FCurrentFileName, FWindowsIndex, GetEditorText, Str);
 
   FillMatchGrid;
-  FMatchForm.Caption := Format('Match list - %d', [N]);
+  FMatchForm.Caption := Format('Match list - %d', [Num]);
   PlaceMatchForm;
   FMatchForm.Show;
 end;
@@ -23403,38 +23403,38 @@ end;
 function TForm1.ScanTextForMatches(const AFile: string; AWinIdx: Integer;
                                    const AText, APattern: string): Integer;
 var
-  L: TStringList;
+  StrList: TStringList;
   I, Grp, MPos: Integer;
 begin
   Result := 0;
   Grp := -1;
 
-  L := TStringList.Create;
+  StrList := TStringList.Create;
   try
-    L.Text := AText;
-    for I := 0 to L.Count - 1 do
+    StrList.Text := AText;
+    for I := 0 to StrList.Count - 1 do
     begin
-      MPos := MatchPosInLine(L[I], APattern);
+      MPos := MatchPosInLine(StrList[I], APattern);
       if MPos = 0 then
         Continue;
 
       // Признак комментария берётся из схемы ТЕКУЩЕГО файла. Для чужого
       // расширения он может не подойти - это осознанное упрощение.
       if (chkDisableRem <> nil) and chkDisableRem.Checked and
-         FScheme.IsCommentLine(L[I]) then
+         FScheme.IsCommentLine(StrList[I]) then
         Continue;
 
       if Grp < 0 then
         Grp := AddMatchGroup(AFile, AWinIdx);
 
-      AddMatchHit(AFile, AWinIdx, I, MPos, L[I]);
+      AddMatchHit(AFile, AWinIdx, I, MPos, StrList[I]);
       Inc(Result);
     end;
 
     if Grp >= 0 then
       FMatchRows[Grp].HitCount := Result;
   finally
-    L.Free;
+    StrList.Free;
   end;
 end;
 
@@ -24414,7 +24414,7 @@ function TForm1.FifProjectFiles(AList: TStrings; var ANote: string): Boolean;
 var
   Tp, Target, Dir, Rec, FileNm, Masks: string;
   Units: TStringList;
-  I, P: Integer;
+  I, CharPos: Integer;
   Cancel: Boolean;
   SR: TSearchRec;
 
@@ -24447,10 +24447,10 @@ begin
       begin
         // UnitName|FileName|Form|Class
         Rec := Units[I];
-        P := Pos('|', Rec);
-        Rec := Copy(Rec, P + 1, MaxInt);
-        P := Pos('|', Rec);
-        FileNm := Copy(Rec, 1, P - 1);
+        CharPos := Pos('|', Rec);
+        Rec := Copy(Rec, CharPos + 1, MaxInt);
+        CharPos := Pos('|', Rec);
+        FileNm := Copy(Rec, 1, CharPos - 1);
         if FileNm = '' then
           Continue;
         if not ((Length(FileNm) >= 2) and (FileNm[2] = ':')) and
@@ -24796,10 +24796,10 @@ begin
   SetLength(Result, Got);
 end;
 
-procedure TForm1.SetEditorText(const S: string);
+procedure TForm1.SetEditorText(const Str: string);
 begin
   Inc(FEditSerial);
-  RichEdit1.SetTextBuf(PChar(S));
+  RichEdit1.SetTextBuf(PChar(Str));
 end;
 
 // ---------------------------------------------------------------------------
@@ -25197,7 +25197,7 @@ function TForm1.TextRange(AFrom, ACount: Integer): string;
 var
   TR: TGetTextRange;
   Got: Integer;
-  W: WideString;
+  WordStr: WideString;
 begin
   Result := '';
   if (ACount <= 0) or not RichEdit1.HandleAllocated then
@@ -25215,9 +25215,9 @@ begin
 
   // Ответ - в UTF-16, как у RichEdit 4.1 (свой редактор, EdRichEmu).
   // Плюс символ под завершающий ноль.
-  SetLength(W, ACount + 1);
-  FillChar(W[1], (ACount + 1) * SizeOf(WideChar), 0);
-  TR.lpstrText := PChar(PWideChar(W));
+  SetLength(WordStr, ACount + 1);
+  FillChar(WordStr[1], (ACount + 1) * SizeOf(WideChar), 0);
+  TR.lpstrText := PChar(PWideChar(WordStr));
 
   Got := EdApi.GetTextRange(TR);
   if Got <= 0 then
@@ -25228,7 +25228,7 @@ begin
   // В однобайтовой кодовой странице символ - байт; запас на случай
   // многобайтовой
   SetLength(Result, Got * 2);
-  Got := WideCharToMultiByte(CP_ACP, 0, PWideChar(W), Got,
+  Got := WideCharToMultiByte(CP_ACP, 0, PWideChar(WordStr), Got,
                              PChar(Result), Length(Result), nil, nil);
   SetLength(Result, Got);
 end;
@@ -25241,17 +25241,17 @@ end;
 function TForm1.SelTextA(AMaxLen: Integer): string;
 var
   Sel: TCharRange;
-  N: Integer;
+  Num: Integer;
 begin
   Result := '';
   if not RichEdit1.HandleAllocated then
     Exit;
   EdApi.GetSel(Sel);
-  N := Sel.cpMax - Sel.cpMin;
-  if N > AMaxLen then
-    N := AMaxLen;
-  if N > 0 then
-    Result := TextRange(Sel.cpMin, N);
+  Num := Sel.cpMax - Sel.cpMin;
+  if Num > AMaxLen then
+    Num := AMaxLen;
+  if Num > 0 then
+    Result := TextRange(Sel.cpMin, Num);
 end;
 
 // Поиск вперёд. Параметры и ответ - как у RichEdit1.FindText: позиция
@@ -25260,7 +25260,7 @@ end;
 // FindText из VCL отдаёт контролу строку в ANSI, а RichEdit 4.1 читает её
 // как UTF-16 - поиск ничего не находит (проверено в пробе). Здесь строка
 // уходит в UTF-16 через EM_FINDTEXTW.
-function TForm1.FindTextEd(const S: string; StartPos, Len: Integer;
+function TForm1.FindTextEd(const Str: string; StartPos, Len: Integer;
                            Options: TSearchTypes): Integer;
 const
   EM_FINDTEXTW_ = WM_USER + 123;
@@ -25274,17 +25274,17 @@ type
   end;
 var
   FT: TFindTextW_;
-  W: WideString;
+  WordStr: WideString;
   Flags: Integer;
 begin
   Result := -1;
-  if (S = '') or not RichEdit1.HandleAllocated then
+  if (Str = '') or not RichEdit1.HandleAllocated then
     Exit;
 
-  W := S; // из ANSI по кодовой странице системы
+  WordStr := Str; // из ANSI по кодовой странице системы
   FT.chrg.cpMin := StartPos;
   FT.chrg.cpMax := StartPos + Len;
-  FT.lpstrText := PWideChar(W);
+  FT.lpstrText := PWideChar(WordStr);
 
   Flags := FR_DOWN_;
   if stWholeWord in Options then
@@ -25316,8 +25316,8 @@ end;
 function TForm1.StrStartAt(const AText: string; APos: Integer;
                            var AKind: Integer): Boolean;
 var
-  I, BestLen, L: Integer;
-  M: string;
+  I, BestLen, Len: Integer;
+  MsgStr: string;
 begin
   Result := False;
   AKind := -1;
@@ -25325,17 +25325,17 @@ begin
 
   for I := 0 to Length(FScheme.FStrExtra) do
   begin
-    M := FScheme.StrMark(I);
-    L := Length(M);
-    if (L = 0) or (L <= BestLen) then
+    MsgStr := FScheme.StrMark(I);
+    Len := Length(MsgStr);
+    if (Len = 0) or (Len <= BestLen) then
       Continue;
     // Сначала первый символ: Copy на каждый символ текста - выделение
     // строки в памяти, и на полном разборе это большая часть времени
-    if (APos >= 1) and (APos + L - 1 <= Length(AText)) and
-       (AText[APos] = M[1]) and
-       ((L = 1) or (Copy(AText, APos, L) = M)) then
+    if (APos >= 1) and (APos + Len - 1 <= Length(AText)) and
+       (AText[APos] = MsgStr[1]) and
+       ((Len = 1) or (Copy(AText, APos, Len) = MsgStr)) then
     begin
-      BestLen := L;
+      BestLen := Len;
       AKind := I;
       Result := True;
     end;
@@ -25352,8 +25352,8 @@ end;
 function TForm1.BcStartAt(const AText: string; APos: Integer;
                           var AKind: Integer): Boolean;
 var
-  I, BestLen, L: Integer;
-  M: string;
+  I, BestLen, Len: Integer;
+  MsgStr: string;
 begin
   Result := False;
   AKind := -1;
@@ -25361,17 +25361,17 @@ begin
 
   for I := 0 to Length(FScheme.FBcExtra) do
   begin
-    M := FScheme.BcStartMark(I);
-    L := Length(M);
-    if (L = 0) or (L <= BestLen) then
+    MsgStr := FScheme.BcStartMark(I);
+    Len := Length(MsgStr);
+    if (Len = 0) or (Len <= BestLen) then
       Continue;
     // Сначала первый символ: Copy на каждый символ текста - выделение
     // строки в памяти, и на полном разборе это большая часть времени
-    if (APos >= 1) and (APos + L - 1 <= Length(AText)) and
-       (AText[APos] = M[1]) and
-       ((L = 1) or (Copy(AText, APos, L) = M)) then
+    if (APos >= 1) and (APos + Len - 1 <= Length(AText)) and
+       (AText[APos] = MsgStr[1]) and
+       ((Len = 1) or (Copy(AText, APos, Len) = MsgStr)) then
     begin
-      BestLen := L;
+      BestLen := Len;
       AKind := I;
       Result := True;
     end;
@@ -25428,17 +25428,17 @@ end;
 function TForm1.TryShiftMap: Boolean;
 var
   Sel: TCharRange;
-  NewLen, D, EditPos, I: Integer;
+  NewLen, Delta, EditPos, I: Integer;
   PostWin: string;
   EditLineIdx, EditLineBeg, EditLineLen: Integer;
 
-  function HasMarker(const S: string): Boolean;
+  function HasMarker(const Str: string): Boolean;
   var
     K: Integer;
   begin
     Result := True;
-    for K := 1 to Length(S) do
-      if S[K] in FScheme.FMarkerChars then
+    for K := 1 to Length(Str) do
+      if Str[K] in FScheme.FMarkerChars then
         Exit;
     Result := False;
   end;
@@ -25464,11 +25464,11 @@ begin
       Exit;
 
     NewLen := TextLenInternal;
-    D := NewLen - FPreLen;
+    Delta := NewLen - FPreLen;
 
     // Ноль - замена символа на символ (режим замены), маркеры могли смениться.
     // Больше единицы - вставка или удаление куска.
-    if (D <> 1) and (D <> -1) then
+    if (Delta <> 1) and (Delta <> -1) then
       Exit;
     // С прошлого разбора буфер менялся не одной правкой - разбирает
     // ResyncMap: старые диапазоны должны остаться несдвинутыми
@@ -25479,7 +25479,7 @@ begin
 
     // Где именно текст изменился. У Delete каретка остаётся на месте,
     // у BackSpace уезжает на символ влево - по этому их и различаем.
-    if D > 0 then
+    if Delta > 0 then
       EditPos := FPreSelMin
     else if Sel.cpMin = FPreSelMin then
       EditPos := FPreSelMin          // Delete: стёрли символ справа
@@ -25518,22 +25518,22 @@ begin
     for I := 0 to High(CommentRanges) do
       if CommentRanges[I].StartPos >= EditPos then
       begin
-        Inc(CommentRanges[I].StartPos, D);
-        Inc(CommentRanges[I].EndPos, D);
+        Inc(CommentRanges[I].StartPos, Delta);
+        Inc(CommentRanges[I].EndPos, Delta);
       end
     else if CommentRanges[I].EndPos > EditPos then
-      Inc(CommentRanges[I].EndPos, D);
+      Inc(CommentRanges[I].EndPos, Delta);
 
     for I := 0 to High(StringRanges) do
       if StringRanges[I].StartPos >= EditPos then
       begin
-        Inc(StringRanges[I].StartPos, D);
-        Inc(StringRanges[I].EndPos, D);
+        Inc(StringRanges[I].StartPos, Delta);
+        Inc(StringRanges[I].EndPos, Delta);
       end
     else if StringRanges[I].EndPos > EditPos then
-      Inc(StringRanges[I].EndPos, D);
+      Inc(StringRanges[I].EndPos, Delta);
     if FMapPartialEnd > EditPos then
-      Inc(FMapPartialEnd, D);
+      Inc(FMapPartialEnd, Delta);
     // Правка учтена сдвигом - ResyncMap она не нужна
     FMapDirtyStart := -1;
     FMapDirtyCalls := 0;
@@ -25735,7 +25735,7 @@ end;
 // программы - и окна настроек, и окна результатов поиска.
 procedure TForm1.AppMessage(var Msg: TMsg; var Handled: Boolean);
 var
-  C: TWinControl;
+  WinCtrl: TWinControl;
   CursorPt: TPoint;
   PanelIdx: Integer;
 begin
@@ -25932,12 +25932,12 @@ begin
   end;
   if Msg.message <> WM_MOUSEWHEEL then
     Exit;
-  C := FindControl(Msg.hwnd);
-  while (C <> nil) and not (C is TCustomGrid) do
-    C := C.Parent;
-  if C = nil then
+  WinCtrl := FindControl(Msg.hwnd);
+  while (WinCtrl <> nil) and not (WinCtrl is TCustomGrid) do
+    WinCtrl := WinCtrl.Parent;
+  if WinCtrl = nil then
     Exit;
-  ScrollGridByWheel(TCustomGrid(C), SmallInt(HiWord(Msg.wParam)));
+  ScrollGridByWheel(TCustomGrid(WinCtrl), SmallInt(HiWord(Msg.wParam)));
   Handled := True;
 end;
 
@@ -27321,8 +27321,8 @@ const
   TCM_GETITEMRECT_ = $1300 + 10;
   UDM_SETPOS_ = WM_USER + 103;
 var
-  N, First, I: Integer;
-  R: TRect;
+  Num, First, I: Integer;
+  RectVal: TRect;
   UpDown: HWND;
 
   function LastFits: Boolean;
@@ -27330,7 +27330,7 @@ var
     Limit: Integer;
     UR: TRect;
   begin
-    SendMessage(FTabs.Handle, TCM_GETITEMRECT_, N - 1, Integer(@R));
+    SendMessage(FTabs.Handle, TCM_GETITEMRECT_, Num - 1, Integer(@RectVal));
     Limit := FTabs.ClientWidth;
     UpDown := FindWindowEx(FTabs.Handle, 0, 'msctls_updown32', nil);
     if (UpDown <> 0) and IsWindowVisible(UpDown) then
@@ -27338,23 +27338,23 @@ var
       GetWindowRect(UpDown, UR);
       Dec(Limit, UR.Right - UR.Left);
     end;
-    Result := R.Right <= Limit;
+    Result := RectVal.Right <= Limit;
   end;
 
 begin
   if (FTabs = nil) or not FTabs.HandleAllocated or FInFitTabs then
     Exit;
-  N := FTabs.Tabs.Count;
-  if N < 2 then
+  Num := FTabs.Tabs.Count;
+  if Num < 2 then
     Exit;
 
   FInFitTabs := True;
   try
     First := 0;
-    for I := 0 to N - 1 do
+    for I := 0 to Num - 1 do
     begin
-      SendMessage(FTabs.Handle, TCM_GETITEMRECT_, I, Integer(@R));
-      if R.Left >= 0 then
+      SendMessage(FTabs.Handle, TCM_GETITEMRECT_, I, Integer(@RectVal));
+      if RectVal.Left >= 0 then
       begin
         First := I;
         Break;
@@ -27531,9 +27531,9 @@ end;
 // дочерние окна с двойной буферизацией не успевали перерисоваться - на
 // экране оставались полосы и куски прежней картинки.
 procedure TForm1.SplitBarMouseDown(Sender: TObject; Button: TMouseButton;
-                                   Shift: TShiftState; X, Y: Integer);
+                                   Shift: TShiftState; PosX, PosY: Integer);
 var
-  P: TPoint;
+  Pnt: TPoint;
 begin
   if Button <> mbLeft then
     Exit;
@@ -27543,9 +27543,9 @@ begin
     RightPanelCollapse(False);
     Exit;
   end;
-  GetCursorPos(P);
+  GetCursorPos(Pnt);
   FSplitDrag := True;
-  FSplitStartX := P.X;
+  FSplitStartX := Pnt.X;
   FSplitStartW := FRightPanel.Width;
   FSplitNewW := FSplitStartW;
   FSplitLineX := FRightPanel.Left;
@@ -27619,9 +27619,9 @@ end;
 // Панель тянется влево - шире, вправо - уже. Уже RightPanelMinWidth и шире,
 // чем окно минус RightPanelMinLeft, не даём.
 procedure TForm1.SplitBarMouseMove(Sender: TObject; Shift: TShiftState;
-                                   X, Y: Integer);
+                                   PosX, PosY: Integer);
 var
-  P: TPoint;
+  Pnt: TPoint;
   NewW, MaxW: Integer;
 begin
   if not FSplitDrag then
@@ -27632,8 +27632,8 @@ begin
     SplitDragEnd(True);
     Exit;
   end;
-  GetCursorPos(P);
-  NewW := FSplitStartW + (FSplitStartX - P.X);
+  GetCursorPos(Pnt);
+  NewW := FSplitStartW + (FSplitStartX - Pnt.X);
   MaxW := ClientWidth - RightPanelMinLeft;
   if MaxW < RightPanelMinWidth then
     MaxW := RightPanelMinWidth;
@@ -27652,7 +27652,7 @@ begin
 end;
 
 procedure TForm1.SplitBarMouseUp(Sender: TObject; Button: TMouseButton;
-                                 Shift: TShiftState; X, Y: Integer);
+                                 Shift: TShiftState; PosX, PosY: Integer);
 begin
   SplitDragEnd(True);
 end;
@@ -27677,41 +27677,41 @@ end;
 // оставило бы список пустым.
 function TForm1.SubScopeStart(const AText: string): Integer;
 var
-  I, Len, P, WordEnd: Integer;
+  Idx, Len, CharPos, WordEnd: Integer;
 begin
   Result := 1;
   if FScheme.FSubScope = '' then
     Exit;
 
   Len := Length(AText);
-  P := 1;
-  I := 1;
-  while I <= Len + 1 do
+  CharPos := 1;
+  Idx := 1;
+  while Idx <= Len + 1 do
   begin
-    if (I > Len) or (AText[I] = #13) or (AText[I] = #10) then
+    if (Idx > Len) or (AText[Idx] = #13) or (AText[Idx] = #10) then
     begin
       // Первое слово строки [P .. I-1], без ведущих пробелов
-      while (P < I) and ((AText[P] = ' ') or (AText[P] = #9)) do
-        Inc(P);
-      WordEnd := P;
-      while (WordEnd < I) and
+      while (CharPos < Idx) and ((AText[CharPos] = ' ') or (AText[CharPos] = #9)) do
+        Inc(CharPos);
+      WordEnd := CharPos;
+      while (WordEnd < Idx) and
             (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
         Inc(WordEnd);
 
-      if (WordEnd > P) and
-         (CompareText(Copy(AText, P, WordEnd - P), FScheme.FSubScope) = 0) and
-         not InRanges(StringRanges, P - 1) and
-         not InRanges(CommentRanges, P - 1) then
+      if (WordEnd > CharPos) and
+         (CompareText(Copy(AText, CharPos, WordEnd - CharPos), FScheme.FSubScope) = 0) and
+         not InRanges(StringRanges, CharPos - 1) and
+         not InRanges(CommentRanges, CharPos - 1) then
       begin
-        Result := I; // сама строка со словом в область поиска не входит
+        Result := Idx; // сама строка со словом в область поиска не входит
         Exit;
       end;
 
-      if (I < Len) and (AText[I] = #13) and (AText[I + 1] = #10) then
-        Inc(I);
-      P := I + 1;
+      if (Idx < Len) and (AText[Idx] = #13) and (AText[Idx + 1] = #10) then
+        Inc(Idx);
+      CharPos := Idx + 1;
     end;
-    Inc(I);
+    Inc(Idx);
   end;
 end;
 
@@ -27721,44 +27721,44 @@ end;
 // идут объявления без тел
 function TForm1.SubScopeAhead(const AText: string; AFrom: Integer): Boolean;
 var
-  I, Len, P, WordEnd: Integer;
+  Idx, Len, CharPos, WordEnd: Integer;
   Word: string;
 begin
   Result := False;
   if FScheme.FSubScope = '' then
     Exit;
   Len := Length(AText);
-  P := AFrom;
-  I := AFrom;
-  while I <= Len + 1 do
+  CharPos := AFrom;
+  Idx := AFrom;
+  while Idx <= Len + 1 do
   begin
-    if (I > Len) or (AText[I] = #13) or (AText[I] = #10) then
+    if (Idx > Len) or (AText[Idx] = #13) or (AText[Idx] = #10) then
     begin
-      while (P < I) and ((AText[P] = ' ') or (AText[P] = #9)) do
-        Inc(P);
-      WordEnd := P;
-      while (WordEnd < I) and
+      while (CharPos < Idx) and ((AText[CharPos] = ' ') or (AText[CharPos] = #9)) do
+        Inc(CharPos);
+      WordEnd := CharPos;
+      while (WordEnd < Idx) and
             (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
         Inc(WordEnd);
-      if (WordEnd > P) and not InRanges(StringRanges, P - 1) and
-         not InRanges(CommentRanges, P - 1) then
+      if (WordEnd > CharPos) and not InRanges(StringRanges, CharPos - 1) and
+         not InRanges(CommentRanges, CharPos - 1) then
       begin
-        Word := Copy(AText, P, WordEnd - P);
+        Word := Copy(AText, CharPos, WordEnd - CharPos);
         if CompareText(Word, FScheme.FSubScope) = 0 then
         begin
           Result := True;
           Exit;
         end;
-        if (WordEnd < I) and (AText[WordEnd] = '.') and
+        if (WordEnd < Idx) and (AText[WordEnd] = '.') and
            (FScheme.FSubEndWords <> nil) and
            (FScheme.FSubEndWords.IndexOf(Word) >= 0) then
           Exit;
       end;
-      if (I < Len) and (AText[I] = #13) and (AText[I + 1] = #10) then
-        Inc(I);
-      P := I + 1;
+      if (Idx < Len) and (AText[Idx] = #13) and (AText[Idx + 1] = #10) then
+        Inc(Idx);
+      CharPos := Idx + 1;
     end;
-    Inc(I);
+    Inc(Idx);
   end;
 end;
 
@@ -27766,35 +27766,35 @@ end;
 // буквой - этот последний символ. Нужно для языков, где блок открывает и
 // закрывает одиночный знак: '{' в конце строки - такое же слово блока, как
 // 'then' в Паскале.
-function TForm1.LastToken(const S: string): string;
+function TForm1.LastToken(const Str: string): string;
 var
-  E, J: Integer;
+  EndPos, Idx2: Integer;
 begin
   Result := '';
-  E := Length(S);
-  while (E >= 1) and (S[E] = ' ') do
-    Dec(E);
-  if E < 1 then
+  EndPos := Length(Str);
+  while (EndPos >= 1) and (Str[EndPos] = ' ') do
+    Dec(EndPos);
+  if EndPos < 1 then
     Exit;
 
-  if not (S[E] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) then
+  if not (Str[EndPos] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) then
   begin
-    Result := S[E];
+    Result := Str[EndPos];
     Exit;
   end;
 
-  J := E;
-  while (J >= 1) and (S[J] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
-    Dec(J);
-  Result := Copy(S, J + 1, E - J);
+  Idx2 := EndPos;
+  while (Idx2 >= 1) and (Str[Idx2] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+    Dec(Idx2);
+  Result := Copy(Str, Idx2 + 1, EndPos - Idx2);
 end;
 
 // Перенос, с которым открыт блок глубины ADepth (TBlockState.HangBase);
 // 0 - блока нет или он открыт без переноса
-function BlockHangBase(const B: TBlockState; ADepth: Integer): Integer;
+function BlockHangBase(const BlockState: TBlockState; ADepth: Integer): Integer;
 begin
-  if (ADepth >= 0) and (ADepth < Length(B.HangBase)) then
-    Result := B.HangBase[ADepth]
+  if (ADepth >= 0) and (ADepth < Length(BlockState.HangBase)) then
+    Result := BlockState.HangBase[ADepth]
   else
     Result := 0;
 end;
@@ -27803,124 +27803,124 @@ end;
 // нужно только для одного: внутри объявительного блока (class, record в
 // разделе type) слово procedure - это объявление метода, а не заголовок.
 procedure TForm1.ScanLine(const AText: string; ALineStart, ALineEnd: Integer;
-                          const B: TBlockState; var L: TLineScan);
+                          const BlockState: TBlockState; var LineScan: TLineScan);
 var
-  K, WordEnd, MarkLen: Integer;
+  Idx3, WordEnd, MarkLen: Integer;
 begin
-  L.FirstPos := ALineStart;
-  while (L.FirstPos <= ALineEnd) and
-        ((AText[L.FirstPos] = ' ') or (AText[L.FirstPos] = #9)) do
-    Inc(L.FirstPos);
-  L.LastPos := ALineEnd;
-  while (L.LastPos >= L.FirstPos) and
-        ((AText[L.LastPos] = ' ') or (AText[L.LastPos] = #9)) do
-    Dec(L.LastPos);
+  LineScan.FirstPos := ALineStart;
+  while (LineScan.FirstPos <= ALineEnd) and
+        ((AText[LineScan.FirstPos] = ' ') or (AText[LineScan.FirstPos] = #9)) do
+    Inc(LineScan.FirstPos);
+  LineScan.LastPos := ALineEnd;
+  while (LineScan.LastPos >= LineScan.FirstPos) and
+        ((AText[LineScan.LastPos] = ' ') or (AText[LineScan.LastPos] = #9)) do
+    Dec(LineScan.LastPos);
 
-  L.FirstWordPos := L.FirstPos;
-  L.Indent := L.FirstPos - ALineStart;
-  L.Empty := L.FirstPos > L.LastPos;
-  L.CmtPos := L.LastPos + 1;
-  L.Code := '';
-  L.First := '';
-  L.Last := '';
-  L.IsHeader := False;
-  L.IsOutdent := False;
-  L.IsSect := False;
-  L.CaseElse := False;
-  L.IsOpen := False;
-  L.IsHang := False;
-  L.Inside := False;
+  LineScan.FirstWordPos := LineScan.FirstPos;
+  LineScan.Indent := LineScan.FirstPos - ALineStart;
+  LineScan.Empty := LineScan.FirstPos > LineScan.LastPos;
+  LineScan.CmtPos := LineScan.LastPos + 1;
+  LineScan.Code := '';
+  LineScan.First := '';
+  LineScan.Last := '';
+  LineScan.IsHeader := False;
+  LineScan.IsOutdent := False;
+  LineScan.IsSect := False;
+  LineScan.CaseElse := False;
+  LineScan.IsOpen := False;
+  LineScan.IsHang := False;
+  LineScan.Inside := False;
 
-  if L.Empty then
+  if LineScan.Empty then
     Exit;
 
-  L.Inside := InRanges(CommentRanges, L.FirstPos - 1) or
-              InRanges(StringRanges, L.FirstPos - 1);
-  if L.Inside then
+  LineScan.Inside := InRanges(CommentRanges, LineScan.FirstPos - 1) or
+              InRanges(StringRanges, LineScan.FirstPos - 1);
+  if LineScan.Inside then
     Exit; // строка внутри блочного комментария или литерала - разбирать нечего
 
   // Начало строчного комментария: маркер вне литералов и блочных комментариев
   MarkLen := Length(FScheme.FLineCommentMarker);
   if MarkLen > 0 then
   begin
-    K := L.FirstPos;
-    while K <= L.LastPos - MarkLen + 1 do
+    Idx3 := LineScan.FirstPos;
+    while Idx3 <= LineScan.LastPos - MarkLen + 1 do
     begin
-      if (AText[K] = FScheme.FLineCommentMarker[1]) and
-         (Copy(AText, K, MarkLen) = FScheme.FLineCommentMarker) and
-         FScheme.LineCommentPosOk(AText, K) and
-         not InRanges(StringRanges, K - 1) and
-         not InRanges(CommentRanges, K - 1) then
+      if (AText[Idx3] = FScheme.FLineCommentMarker[1]) and
+         (Copy(AText, Idx3, MarkLen) = FScheme.FLineCommentMarker) and
+         FScheme.LineCommentPosOk(AText, Idx3) and
+         not InRanges(StringRanges, Idx3 - 1) and
+         not InRanges(CommentRanges, Idx3 - 1) then
       begin
-        L.CmtPos := K;
+        LineScan.CmtPos := Idx3;
         Break;
       end;
-      Inc(K);
+      Inc(Idx3);
     end;
   end;
 
   // Кодовая часть: до комментария, без хвостовых пробелов
-  K := L.CmtPos - 1;
-  while (K >= L.FirstPos) and InRanges(CommentRanges, K - 1) do
-    Dec(K);
-  while (K >= L.FirstPos) and ((AText[K] = ' ') or (AText[K] = #9)) do
-    Dec(K);
-  if K >= L.FirstPos then
-    L.Code := Copy(AText, L.FirstPos, K - L.FirstPos + 1);
+  Idx3 := LineScan.CmtPos - 1;
+  while (Idx3 >= LineScan.FirstPos) and InRanges(CommentRanges, Idx3 - 1) do
+    Dec(Idx3);
+  while (Idx3 >= LineScan.FirstPos) and ((AText[Idx3] = ' ') or (AText[Idx3] = #9)) do
+    Dec(Idx3);
+  if Idx3 >= LineScan.FirstPos then
+    LineScan.Code := Copy(AText, LineScan.FirstPos, Idx3 - LineScan.FirstPos + 1);
 
   // Первое слово строки. Строка, начатая знаком - '}' в C, - даёт этот знак:
   // для счётчика блоков он такое же слово, как end в Паскале.
-  WordEnd := L.FirstPos;
-  while (WordEnd <= L.LastPos) and (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+  WordEnd := LineScan.FirstPos;
+  while (WordEnd <= LineScan.LastPos) and (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
     Inc(WordEnd);
-  if WordEnd > L.FirstPos then
-    L.First := Copy(AText, L.FirstPos, WordEnd - L.FirstPos)
+  if WordEnd > LineScan.FirstPos then
+    LineScan.First := Copy(AText, LineScan.FirstPos, WordEnd - LineScan.FirstPos)
   else
-    L.First := Copy(AText, L.FirstPos, 1);
+    LineScan.First := Copy(AText, LineScan.FirstPos, 1);
 
   // Модификаторы начала строки пропускаем: в 'Public Sub Foo' значащее
   // слово - Sub. Пропуск идёт по цепочке, 'Public Shared Sub' тоже
   // разберётся. Declare в списке нет, поэтому 'Declare Sub' остаётся
   // объявлением и блока не открывает.
-  while (FScheme.FSubSkip <> nil) and (FScheme.FSubSkip.IndexOf(L.First) >= 0) do
+  while (FScheme.FSubSkip <> nil) and (FScheme.FSubSkip.IndexOf(LineScan.First) >= 0) do
   begin
-    K := WordEnd;
-    while (K <= L.LastPos) and ((AText[K] = ' ') or (AText[K] = #9)) do
-      Inc(K);
-    if (K > L.LastPos) or not (AText[K] in ['a'..'z', 'A'..'Z', '_']) then
+    Idx3 := WordEnd;
+    while (Idx3 <= LineScan.LastPos) and ((AText[Idx3] = ' ') or (AText[Idx3] = #9)) do
+      Inc(Idx3);
+    if (Idx3 > LineScan.LastPos) or not (AText[Idx3] in ['a'..'z', 'A'..'Z', '_']) then
       Break;
 
-    L.FirstWordPos := K;
-    WordEnd := K;
-    while (WordEnd <= L.LastPos) and (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+    LineScan.FirstWordPos := Idx3;
+    WordEnd := Idx3;
+    while (WordEnd <= LineScan.LastPos) and (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
       Inc(WordEnd);
-    L.First := Copy(AText, L.FirstWordPos, WordEnd - L.FirstWordPos);
+    LineScan.First := Copy(AText, LineScan.FirstWordPos, WordEnd - LineScan.FirstWordPos);
   end;
 
   // Последний элемент кодовой части
-  L.Last := LastToken(L.Code);
+  LineScan.Last := LastToken(LineScan.Code);
 
-  if L.First = '' then
+  if LineScan.First = '' then
     Exit;
 
   // Внутри объявительного блока procedure - объявление метода, не заголовок.
   // Выше слова SubScope - тоже объявление: тел там не бывает.
-  L.IsHeader := (FScheme.FSubWords.IndexOf(L.First) >= 0) and
-                not B.BeforeScope and
-                not ((B.Depth > 0) and (B.Depth <= Length(B.DeclBlock)) and
-                     B.DeclBlock[B.Depth - 1]);
-  L.IsOutdent := FScheme.FFmtOutdent.IndexOf(L.First) >= 0;
+  LineScan.IsHeader := (FScheme.FSubWords.IndexOf(LineScan.First) >= 0) and
+                not BlockState.BeforeScope and
+                not ((BlockState.Depth > 0) and (BlockState.Depth <= Length(BlockState.DeclBlock)) and
+                     BlockState.DeclBlock[BlockState.Depth - 1]);
+  LineScan.IsOutdent := FScheme.FFmtOutdent.IndexOf(LineScan.First) >= 0;
   // В режиме тегов строку, начатую закрывающим тегом, пишем на уровень
   // левее - её </div> встаёт вровень со своим <div>
-  if FScheme.FSubTags and (Copy(AText, L.FirstPos, 2) = '</') then
-    L.IsOutdent := True;
+  if FScheme.FSubTags and (Copy(AText, LineScan.FirstPos, 2) = '</') then
+    LineScan.IsOutdent := True;
   // Внутри незакрытой скобки var и const - модификаторы параметров в
   // перенесённом списке, а не начало раздела:
   //   function StrStartAt(const AText: string; APos: Integer;
   //                       var AKind: Integer): Boolean;
-  L.IsSect := (FScheme.FFmtSection.IndexOf(L.First) >= 0) and (B.Paren <= 0);
-  L.IsOpen := FScheme.FSubOpenWords.IndexOf(L.First) >= 0;
-  L.IsHang := FScheme.FFmtHang.IndexOf(L.First) >= 0;
+  LineScan.IsSect := (FScheme.FFmtSection.IndexOf(LineScan.First) >= 0) and (BlockState.Paren <= 0);
+  LineScan.IsOpen := FScheme.FSubOpenWords.IndexOf(LineScan.First) >= 0;
+  LineScan.IsHang := FScheme.FFmtHang.IndexOf(LineScan.First) >= 0;
 
   // else внутри открытого case - и предыдущая ветка закончена (переноса
   // от незавершённого if ... then нет): это else самого case. Он стоит
@@ -27932,14 +27932,14 @@ begin
   //     Beep;
   //   end;
   // У Free Pascal вместо else бывает otherwise - то же самое
-  L.CaseElse := ((L.IsHang and (CompareText(L.First, 'else') = 0)) or
-                 (CompareText(L.First, 'otherwise') = 0)) and
-                (B.Hang = BlockHangBase(B, B.Depth)) and (B.Depth > 0) and
-                (B.Depth <= Length(B.CaseBlock)) and B.CaseBlock[B.Depth - 1];
-  if L.CaseElse then
+  LineScan.CaseElse := ((LineScan.IsHang and (CompareText(LineScan.First, 'else') = 0)) or
+                 (CompareText(LineScan.First, 'otherwise') = 0)) and
+                (BlockState.Hang = BlockHangBase(BlockState, BlockState.Depth)) and (BlockState.Depth > 0) and
+                (BlockState.Depth <= Length(BlockState.CaseBlock)) and BlockState.CaseBlock[BlockState.Depth - 1];
+  if LineScan.CaseElse then
   begin
-    L.IsHang := False;
-    L.IsOutdent := True;
+    LineScan.IsHang := False;
+    LineScan.IsOutdent := True;
   end;
 end;
 
@@ -27951,67 +27951,67 @@ end;
 // Вторая форма нужна однострочному 'if x then y = 1', третья -
 // однострочному синониму типа 'type Foo as any' в FreeBASIC: и то и
 // другое блока не открывает.
-function TForm1.OpensAtLineStart(const W: string; const L: TLineScan): Boolean;
+function TForm1.OpensAtLineStart(const WordStr: string; const LineScan: TLineScan): Boolean;
 var
-  I, P, K, WordEnd: Integer;
+  I, CharPos, Idx3, WordEnd: Integer;
   Item, Tail, Wd: string;
   Negate: Boolean;
 begin
   Result := False;
-  if (FScheme.FSubOpenFirst = nil) or (FScheme.FSubOpenFirst.Count = 0) or (W = '') then
+  if (FScheme.FSubOpenFirst = nil) or (FScheme.FSubOpenFirst.Count = 0) or (WordStr = '') then
     Exit;
 
   for I := 0 to FScheme.FSubOpenFirst.Count - 1 do
   begin
     Item := FScheme.FSubOpenFirst[I];
     Negate := False;
-    P := Pos('=', Item);
-    if P = 0 then
+    CharPos := Pos('=', Item);
+    if CharPos = 0 then
     begin
-      P := Pos('!', Item);
-      Negate := P > 0;
+      CharPos := Pos('!', Item);
+      Negate := CharPos > 0;
     end;
 
-    if P > 0 then
+    if CharPos > 0 then
     begin
-      Tail := Trim(Copy(Item, P + 1, Length(Item)));
-      Item := Trim(Copy(Item, 1, P - 1));
+      Tail := Trim(Copy(Item, CharPos + 1, Length(Item)));
+      Item := Trim(Copy(Item, 1, CharPos - 1));
     end
     else
       Tail := '';
 
-    if CompareText(Item, W) <> 0 then
+    if CompareText(Item, WordStr) <> 0 then
       Continue;
 
     if Tail = '' then
       Result := True
     else if not Negate then
       // Условие на последнее слово строки
-      Result := CompareText(L.Last, Tail) = 0
+      Result := CompareText(LineScan.Last, Tail) = 0
     else
     begin
       // Условие "такого слова в строке нет" - ищем целым словом по
       // кодовой части, комментарий в счёт не идёт
       Result := True;
-      K := 1;
-      while K <= Length(L.Code) do
+      Idx3 := 1;
+      while Idx3 <= Length(LineScan.Code) do
       begin
-        if L.Code[K] in ['a'..'z', 'A'..'Z', '_'] then
+        if LineScan.Code[Idx3] in ['a'..'z', 'A'..'Z', '_'] then
         begin
-          WordEnd := K;
-          while (WordEnd <= Length(L.Code)) and
-                (L.Code[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+          WordEnd := Idx3;
+          while (WordEnd <= Length(LineScan.Code)) and
+                (LineScan.Code[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
             Inc(WordEnd);
-          Wd := Copy(L.Code, K, WordEnd - K);
+          Wd := Copy(LineScan.Code, Idx3, WordEnd - Idx3);
           if CompareText(Wd, Tail) = 0 then
           begin
             Result := False;
             Break;
           end;
-          K := WordEnd;
+          Idx3 := WordEnd;
         end
         else
-          Inc(K);
+          Inc(Idx3);
       end;
     end;
     Exit;
@@ -28023,26 +28023,26 @@ end;
 // только когда оно в строке одно; иначе решает следующее слово (else if x),
 // а 'try Gui ...' и 'else return' не переносят. '}' в начале пропускается:
 // '} else' - то же, что 'else'
-function TForm1.HangsAtLineStart(const L: TLineScan): Boolean;
+function TForm1.HangsAtLineStart(const LineScan: TLineScan): Boolean;
 var
   CodeLen, StartPos, WordEnd, WordNo: Integer;
   Wd: string;
 begin
   Result := False;
-  CodeLen := Length(L.Code);
+  CodeLen := Length(LineScan.Code);
   if (FScheme.FFmtHangFirst = nil) or (FScheme.FFmtHangFirst.Count = 0) or
-     (CodeLen = 0) or (L.Code[CodeLen] = '{') then
+     (CodeLen = 0) or (LineScan.Code[CodeLen] = '{') then
     Exit;
   StartPos := 1;
-  while (StartPos <= CodeLen) and (L.Code[StartPos] in ['}', ' ', #9]) do
+  while (StartPos <= CodeLen) and (LineScan.Code[StartPos] in ['}', ' ', #9]) do
     Inc(StartPos);
   for WordNo := 1 to 2 do
   begin
     WordEnd := StartPos;
     while (WordEnd <= CodeLen) and
-          (L.Code[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+          (LineScan.Code[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
       Inc(WordEnd);
-    Wd := Copy(L.Code, StartPos, WordEnd - StartPos);
+    Wd := Copy(LineScan.Code, StartPos, WordEnd - StartPos);
     if Wd = '' then
       Exit;
     if FScheme.FFmtHangFirst.IndexOf(Wd) >= 0 then
@@ -28053,7 +28053,7 @@ begin
     if FScheme.FFmtHangFirst.IndexOf(Wd + '$') < 0 then
       Exit;
     StartPos := WordEnd;
-    while (StartPos <= CodeLen) and (L.Code[StartPos] in [' ', #9]) do
+    while (StartPos <= CodeLen) and (LineScan.Code[StartPos] in [' ', #9]) do
       Inc(StartPos);
     if StartPos > CodeLen then
     begin
@@ -28066,15 +28066,15 @@ end;
 // FmtContinueFirst: строка начата образцом продолжения (',' '||' 'and').
 // Буквенный образец - целым словом. Строка с '::' - горячая клавиша или
 // hotstring, не продолжение
-function TForm1.ContinuesAtLineStart(const L: TLineScan): Boolean;
+function TForm1.ContinuesAtLineStart(const LineScan: TLineScan): Boolean;
 var
   ItemIdx: Integer;
   Item: string;
 begin
   Result := False;
   if (FScheme.FFmtContinueFirst = nil) or
-     (FScheme.FFmtContinueFirst.Count = 0) or (L.Code = '') or
-     (Pos('::', L.Code) > 0) then
+     (FScheme.FFmtContinueFirst.Count = 0) or (LineScan.Code = '') or
+     (Pos('::', LineScan.Code) > 0) then
     Exit;
   for ItemIdx := 0 to FScheme.FFmtContinueFirst.Count - 1 do
   begin
@@ -28082,9 +28082,9 @@ begin
     if Item = '' then
       Continue;
     if Item[1] in ['a'..'z', 'A'..'Z', '_'] then
-      Result := CompareText(L.First, Item) = 0
+      Result := CompareText(LineScan.First, Item) = 0
     else
-      Result := Copy(L.Code, 1, Length(Item)) = Item;
+      Result := Copy(LineScan.Code, 1, Length(Item)) = Item;
     if Result then
       Exit;
   end;
@@ -28144,7 +28144,7 @@ begin
   Result := ACode[ParenEnd] = ')';
 end;
 
-procedure TForm1.BlockInit(var B: TBlockState);
+procedure TForm1.BlockInit(var BlockState: TBlockState);
 
 // Односимвольные образцы списка - в набор символов
   procedure AddChars(AList: TStringList);
@@ -28155,93 +28155,93 @@ procedure TForm1.BlockInit(var B: TBlockState);
       Exit;
     for I := 0 to AList.Count - 1 do
       if Length(AList[I]) = 1 then
-        Include(B.Chars, AList[I][1]);
+        Include(BlockState.Chars, AList[I][1]);
   end;
 
 begin
-  B.Depth := 0;
-  B.Hang := 0;
-  B.Paren := 0;
-  B.InSection := False;
-  B.InLabel := False;
-  B.BeforeScope := False;   // включают те, кто разбирает текст с начала
-  B.Top := -1;
-  B.ClosedCount := 0;
-  B.TagTop := -1;
-  B.Opaque := '';
-  SetLength(B.TagStack, 0);
-  B.Chars := [];
+  BlockState.Depth := 0;
+  BlockState.Hang := 0;
+  BlockState.Paren := 0;
+  BlockState.InSection := False;
+  BlockState.InLabel := False;
+  BlockState.BeforeScope := False;   // включают те, кто разбирает текст с начала
+  BlockState.Top := -1;
+  BlockState.ClosedCount := 0;
+  BlockState.TagTop := -1;
+  BlockState.Opaque := '';
+  SetLength(BlockState.TagStack, 0);
+  BlockState.Chars := [];
   AddChars(FScheme.FSubOpenWords);
   AddChars(FScheme.FSubEndWords);
   AddChars(FScheme.FSubNoBodyWords);
   AddChars(FScheme.FFmtClass);
-  SetLength(B.HangBase, 0);
-  SetLength(B.StartDepth, 0);
-  SetLength(B.Tags, 0);
-  SetLength(B.Opened, 0);
-  SetLength(B.DeclBlock, 0);
-  SetLength(B.CaseBlock, 0);
-  SetLength(B.Closed, 0);
-  SetLength(B.ClosedAtBegin, 0);
+  SetLength(BlockState.HangBase, 0);
+  SetLength(BlockState.StartDepth, 0);
+  SetLength(BlockState.Tags, 0);
+  SetLength(BlockState.Opened, 0);
+  SetLength(BlockState.DeclBlock, 0);
+  SetLength(BlockState.CaseBlock, 0);
+  SetLength(BlockState.Closed, 0);
+  SetLength(BlockState.ClosedAtBegin, 0);
 end;
 
 // Что делается ДО расчёта отступа строки: закрывается раздел объявлений,
 // поправляется Hang, сбрасывается счёт скобок. Вызывается на каждой кодовой
 // строке; на строке продолжения все ветки всё равно ничего не меняют - её
 // первое слово не бывает ни словом блока, ни словом переноса.
-procedure TForm1.BlockBeforeLine(const L: TLineScan; var B: TBlockState);
+procedure TForm1.BlockBeforeLine(const LineScan: TLineScan; var BlockState: TBlockState);
 begin
-  if L.Code = '' then
+  if LineScan.Code = '' then
     Exit;
 
   // Уровень метки кончается перед следующей меткой, директивой, функцией
-  if B.InLabel and (B.Depth = 1) and (B.Hang = 0) and ClosesLabel(L.Code) then
+  if BlockState.InLabel and (BlockState.Depth = 1) and (BlockState.Hang = 0) and ClosesLabel(LineScan.Code) then
   begin
-    B.InLabel := False;
-    B.Depth := 0;
+    BlockState.InLabel := False;
+    BlockState.Depth := 0;
   end;
 
   // Раздел var или type кончается на заголовке, на begin и на словах уровня
   // модуля (implementation). Внутри класса private раздел не закрывает:
   // глубина там не нулевая. Выше implementation procedure и function -
   // объявления (не заголовки), но раздел они тоже закрывают
-  if L.IsSect or L.IsHeader or L.IsOpen or
-     ((B.Top < 0) and (B.Depth = 0) and
-      ((FScheme.FFmtStmtEnd.IndexOf(L.First) >= 0) or
-       (FScheme.FSubWords.IndexOf(L.First) >= 0) or
+  if LineScan.IsSect or LineScan.IsHeader or LineScan.IsOpen or
+     ((BlockState.Top < 0) and (BlockState.Depth = 0) and
+      ((FScheme.FFmtStmtEnd.IndexOf(LineScan.First) >= 0) or
+       (FScheme.FSubWords.IndexOf(LineScan.First) >= 0) or
        ((FScheme.FSubScope <> '') and
-        (CompareText(L.First, FScheme.FSubScope) = 0)))) then
-    B.InSection := False;
+        (CompareText(LineScan.First, FScheme.FSubScope) = 0)))) then
+    BlockState.InSection := False;
 
   // Оператор без begin: begin под then и слово else возвращаются на уровень
   // своего if. Строка, начатая end (until, finally), встаёт вровень со
   // своим begin: перенос - тот, с которым блок открыт.
-  if L.IsHeader or L.IsSect then
-    B.Hang := 0
-  else if L.IsOutdent then
-    B.Hang := BlockHangBase(B, B.Depth)
-  else if L.IsOpen or L.IsHang then
-    if B.Hang > 0 then
-      Dec(B.Hang);
+  if LineScan.IsHeader or LineScan.IsSect then
+    BlockState.Hang := 0
+  else if LineScan.IsOutdent then
+    BlockState.Hang := BlockHangBase(BlockState, BlockState.Depth)
+  else if LineScan.IsOpen or LineScan.IsHang then
+    if BlockState.Hang > 0 then
+      Dec(BlockState.Hang);
 
   // Строка явно начинает оператор - счёт незакрытых скобок сбрасываем: так
   // ошибка счёта не утащит за собой весь остаток файла
-  if L.IsHeader or L.IsOutdent or L.IsSect or L.IsOpen or L.IsHang or
-     (FScheme.FFmtStmtEnd.IndexOf(L.First) >= 0) then
-    B.Paren := 0;
+  if LineScan.IsHeader or LineScan.IsOutdent or LineScan.IsSect or LineScan.IsOpen or LineScan.IsHang or
+     (FScheme.FFmtStmtEnd.IndexOf(LineScan.First) >= 0) then
+    BlockState.Paren := 0;
 end;
 
 // Заголовок подпрограммы на стек. ATag - номер записи у вызывающего, -1
 // если он ему не нужен.
-procedure TForm1.BlockPushHeader(ATag: Integer; var B: TBlockState);
+procedure TForm1.BlockPushHeader(ATag: Integer; var BlockState: TBlockState);
 begin
-  Inc(B.Top);
-  SetLength(B.StartDepth, B.Top + 1);
-  SetLength(B.Tags, B.Top + 1);
-  SetLength(B.Opened, B.Top + 1);
-  B.StartDepth[B.Top] := B.Depth;
-  B.Tags[B.Top] := ATag;
-  B.Opened[B.Top] := False;
+  Inc(BlockState.Top);
+  SetLength(BlockState.StartDepth, BlockState.Top + 1);
+  SetLength(BlockState.Tags, BlockState.Top + 1);
+  SetLength(BlockState.Opened, BlockState.Top + 1);
+  BlockState.StartDepth[BlockState.Top] := BlockState.Depth;
+  BlockState.Tags[BlockState.Top] := ATag;
+  BlockState.Opened[BlockState.Top] := False;
 end;
 
 // Уровень строки, начатой закрывающим тегом. Его нельзя считать как
@@ -28249,29 +28249,29 @@ end;
 // <li> и <span> сразу, и вставать должен вровень со своим <td>. Это и
 // есть номер парного тега в стеке. False - пары нет, закрытие лишнее, и
 // строка остаётся на текущем уровне.
-function TForm1.TagCloseLevel(const AText: string; const L: TLineScan;
-                              const B: TBlockState; var ALevel: Integer): Boolean;
+function TForm1.TagCloseLevel(const AText: string; const LineScan: TLineScan;
+                              const BlockState: TBlockState; var ALevel: Integer): Boolean;
 var
-  E, NameEnd, I: Integer;
+  EndPos, NameEnd, I: Integer;
   Nm: string;
 begin
   Result := False;
   ALevel := 0;
-  if not FScheme.FSubTags or L.Empty or L.Inside then
+  if not FScheme.FSubTags or LineScan.Empty or LineScan.Inside then
     Exit;
-  if Copy(AText, L.FirstPos, 2) <> '</' then
+  if Copy(AText, LineScan.FirstPos, 2) <> '</' then
     Exit;
 
-  E := L.FirstPos + 2;
-  NameEnd := E;
-  while (NameEnd <= L.LastPos) and (AText[NameEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_', '-', ':']) do
+  EndPos := LineScan.FirstPos + 2;
+  NameEnd := EndPos;
+  while (NameEnd <= LineScan.LastPos) and (AText[NameEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_', '-', ':']) do
     Inc(NameEnd);
-  Nm := LowerCase(Copy(AText, E, NameEnd - E));
+  Nm := LowerCase(Copy(AText, EndPos, NameEnd - EndPos));
   if Nm = '' then
     Exit;
 
-  for I := B.TagTop downto 0 do
-    if B.TagStack[I] = Nm then
+  for I := BlockState.TagTop downto 0 do
+    if BlockState.TagStack[I] = Nm then
     begin
       ALevel := I;
       Result := True;
@@ -28294,7 +28294,7 @@ const
   CloseCh = ')]}';
 var
   Txt: string;
-  Len, Caret, P, K, Depth, A1, A2, B1, B2: Integer;
+  Len, Caret, CharPos, Idx3, Depth, A1, A2, B1, B2: Integer;
   Ch, Mate: Char;
   Forward_: Boolean;
   TagName, Nm: string;
@@ -28360,19 +28360,19 @@ begin
   else if FScheme.FSubTags then
   begin
     // Внутри тега: слева от каретки есть '<', и '>' между ними нет
-    K := Col;
-    if K > Length(LineTxt) then
-      K := Length(LineTxt);
-    while K >= 1 do
+    Idx3 := Col;
+    if Idx3 > Length(LineTxt) then
+      Idx3 := Length(LineTxt);
+    while Idx3 >= 1 do
     begin
-      if LineTxt[K] = '>' then
+      if LineTxt[Idx3] = '>' then
         Break;
-      if LineTxt[K] = '<' then
+      if LineTxt[Idx3] = '<' then
       begin
         Quick := True;
         Break;
       end;
-      Dec(K);
+      Dec(Idx3);
     end;
   end;
 
@@ -28395,16 +28395,16 @@ begin
 
   // СКОБКИ. Смотрим символ под кареткой, потом слева от неё - так пара
   // находится и когда каретка стоит сразу за скобкой.
-  P := 0;
+  CharPos := 0;
   if (Caret <= Len) and Live(Caret) and
      ((Pos(Txt[Caret], OpenCh) > 0) or (Pos(Txt[Caret], CloseCh) > 0)) then
-    P := Caret
+    CharPos := Caret
   else if (Caret - 1 >= 1) and Live(Caret - 1) and
           ((Pos(Txt[Caret - 1], OpenCh) > 0) or
            (Pos(Txt[Caret - 1], CloseCh) > 0)) then
-    P := Caret - 1;
+    CharPos := Caret - 1;
 
-  if P > 0 then
+  if CharPos > 0 then
   begin
     // Все скобки строки каретки - по уровню вложенности в этой строке:
     // открывающая - на текущем уровне, закрывающая - на уровень выше
@@ -28412,77 +28412,77 @@ begin
     Level := 0;
     for J := 1 to Length(LineTxt) do
     begin
-      K := LineBeg + J;   // позиция в Txt (от единицы)
-      if (K > Len) or not Live(K) then
+      Idx3 := LineBeg + J;   // позиция в Txt (от единицы)
+      if (Idx3 > Len) or not Live(Idx3) then
         Continue;
-      if Pos(Txt[K], OpenCh) > 0 then
+      if Pos(Txt[Idx3], OpenCh) > 0 then
       begin
         SetLength(FLineBrackets, Length(FLineBrackets) + 1);
-        FLineBrackets[High(FLineBrackets)] := Point(K - 1, Level);
+        FLineBrackets[High(FLineBrackets)] := Point(Idx3 - 1, Level);
         Inc(Level);
       end
-      else if Pos(Txt[K], CloseCh) > 0 then
+      else if Pos(Txt[Idx3], CloseCh) > 0 then
       begin
         if Level > 0 then
           Dec(Level);
         SetLength(FLineBrackets, Length(FLineBrackets) + 1);
-        FLineBrackets[High(FLineBrackets)] := Point(K - 1, Level);
+        FLineBrackets[High(FLineBrackets)] := Point(Idx3 - 1, Level);
       end;
     end;
 
-    Ch := Txt[P];
-    K := Pos(Ch, OpenCh);
-    Forward_ := K > 0;
+    Ch := Txt[CharPos];
+    Idx3 := Pos(Ch, OpenCh);
+    Forward_ := Idx3 > 0;
     if Forward_ then
-      Mate := CloseCh[K]
+      Mate := CloseCh[Idx3]
     else
       Mate := OpenCh[Pos(Ch, CloseCh)];
 
     Depth := 0;
-    K := P;
-    while (K >= 1) and (K <= Len) do
+    Idx3 := CharPos;
+    while (Idx3 >= 1) and (Idx3 <= Len) do
     begin
-      if Live(K) then
+      if Live(Idx3) then
       begin
-        if Txt[K] = Ch then
+        if Txt[Idx3] = Ch then
           Inc(Depth)
-        else if Txt[K] = Mate then
+        else if Txt[Idx3] = Mate then
         begin
           Dec(Depth);
           if Depth = 0 then
           begin
-            FPairA1 := P - 1;
-            FPairA2 := P - 1;
-            FPairB1 := K - 1;
-            FPairB2 := K - 1;
+            FPairA1 := CharPos - 1;
+            FPairA2 := CharPos - 1;
+            FPairB1 := Idx3 - 1;
+            FPairB2 := Idx3 - 1;
             Break;
           end;
         end;
       end;
       if Forward_ then
-        Inc(K)
+        Inc(Idx3)
       else
-        Dec(K);
+        Dec(Idx3);
     end;
   end
   // ТЕГИ. Каретка внутри <...>: ищем начало тега слева от неё.
   else if FScheme.FSubTags then
   begin
     TagStart := 0;
-    K := Caret;
-    if K > Len then
-      K := Len;
-    while (K >= 1) and (Caret - K < 1024) do
+    Idx3 := Caret;
+    if Idx3 > Len then
+      Idx3 := Len;
+    while (Idx3 >= 1) and (Caret - Idx3 < 1024) do
     begin
-      if Live(K) then
-        if Txt[K] = '>' then
+      if Live(Idx3) then
+        if Txt[Idx3] = '>' then
           Break // сначала встретилось закрытие - каретка вне тега
-        else if Txt[K] = '<' then
+        else if Txt[Idx3] = '<' then
         begin
-          TagStart := K;
+          TagStart := Idx3;
           Break;
         end;
-      Dec(K);
+      Dec(Idx3);
     end;
 
     if TagStart > 0 then
@@ -28514,17 +28514,17 @@ begin
         B2 := -1;
 
         if Closing then
-          K := TagStart - 1
+          Idx3 := TagStart - 1
         else
-          K := TagEnd + 1;
+          Idx3 := TagEnd + 1;
 
         // Идём по тексту, считая одноимённые теги
-        while (K >= 1) and (K <= Len) do
+        while (Idx3 >= 1) and (Idx3 <= Len) do
         begin
-          if (Txt[K] = '<') and Live(K) then
+          if (Txt[Idx3] = '<') and Live(Idx3) then
           begin
-            IsClose := (K < Len) and (Txt[K + 1] = '/');
-            J := K + 1;
+            IsClose := (Idx3 < Len) and (Txt[Idx3 + 1] = '/');
+            J := Idx3 + 1;
             if IsClose then
               Inc(J);
             NameEnd := J;
@@ -28541,8 +28541,8 @@ begin
               else
               begin
                 // Нашли пару - её границы
-                B1 := K - 1;
-                J := K;
+                B1 := Idx3 - 1;
+                J := Idx3;
                 while (J <= Len) and not ((Txt[J] = '>') and Live(J)) do
                   Inc(J);
                 if J > Len then
@@ -28554,9 +28554,9 @@ begin
           end;
 
           if Closing then
-            Dec(K)
+            Dec(Idx3)
           else
-            Inc(K);
+            Inc(Idx3);
         end;
 
         if B1 >= 0 then
@@ -28589,104 +28589,104 @@ end;
 // <div/>, объявления <!doctype> и комментарии <!-- -->. Содержимое script
 // и style - один непрозрачный кусок: внутри JavaScript свои правила, и
 // знак < там встречается как сравнение.
-procedure TForm1.ScanTags(const AText: string; const L: TLineScan;
-                          var B: TBlockState);
+procedure TForm1.ScanTags(const AText: string; const LineScan: TLineScan;
+                          var BlockState: TBlockState);
 var
-  K, E, NameEnd, J, Found: Integer;
+  Idx3, EndPos, NameEnd, Idx2, Found: Integer;
   Nm: string;
   Closing, SelfClose: Boolean;
 
   procedure PushTag(const AName: string);
   begin
-    Inc(B.TagTop);
-    if B.TagTop >= Length(B.TagStack) then
-      SetLength(B.TagStack, B.TagTop + 16);
-    B.TagStack[B.TagTop] := AName;
-    Inc(B.Depth);
+    Inc(BlockState.TagTop);
+    if BlockState.TagTop >= Length(BlockState.TagStack) then
+      SetLength(BlockState.TagStack, BlockState.TagTop + 16);
+    BlockState.TagStack[BlockState.TagTop] := AName;
+    Inc(BlockState.Depth);
   end;
 
 // Смотать стек до парного имени. Пары нет - не трогаем ничего.
   procedure UnwindTo(const AName: string);
   var
-    I: Integer;
+    Idx: Integer;
   begin
-    I := B.TagTop;
-    while (I >= 0) and (B.TagStack[I] <> AName) do
-      Dec(I);
-    if I < 0 then
+    Idx := BlockState.TagTop;
+    while (Idx >= 0) and (BlockState.TagStack[Idx] <> AName) do
+      Dec(Idx);
+    if Idx < 0 then
       Exit;
 
-    while B.TagTop >= I do
+    while BlockState.TagTop >= Idx do
     begin
-      Dec(B.TagTop);
-      if B.Depth > 0 then
-        Dec(B.Depth);
+      Dec(BlockState.TagTop);
+      if BlockState.Depth > 0 then
+        Dec(BlockState.Depth);
     end;
   end;
 
 begin
-  K := L.FirstPos;
-  while K <= L.LastPos do
+  Idx3 := LineScan.FirstPos;
+  while Idx3 <= LineScan.LastPos do
   begin
     // Внутри script или style ищем только его закрывающий тег
-    if B.Opaque <> '' then
+    if BlockState.Opaque <> '' then
     begin
-      if (AText[K] = '<') and
-         (CompareText(Copy(AText, K, Length(B.Opaque) + 2),
-      '</' + B.Opaque) = 0) then
+      if (AText[Idx3] = '<') and
+         (CompareText(Copy(AText, Idx3, Length(BlockState.Opaque) + 2),
+      '</' + BlockState.Opaque) = 0) then
       begin
-        UnwindTo(B.Opaque);
-        Inc(K, Length(B.Opaque) + 2);
-        B.Opaque := '';
+        UnwindTo(BlockState.Opaque);
+        Inc(Idx3, Length(BlockState.Opaque) + 2);
+        BlockState.Opaque := '';
       end
       else
-        Inc(K);
+        Inc(Idx3);
       Continue;
     end;
 
-    if (AText[K] <> '<') or InRanges(StringRanges, K - 1) or
-       InRanges(CommentRanges, K - 1) then
+    if (AText[Idx3] <> '<') or InRanges(StringRanges, Idx3 - 1) or
+       InRanges(CommentRanges, Idx3 - 1) then
     begin
-      Inc(K);
+      Inc(Idx3);
       Continue;
     end;
 
     // <!doctype, <![CDATA - объявления, уровня не дают
-    if (K < L.LastPos) and (AText[K + 1] = '!') then
+    if (Idx3 < LineScan.LastPos) and (AText[Idx3 + 1] = '!') then
     begin
-      Inc(K);
+      Inc(Idx3);
       Continue;
     end;
 
-    Closing := (K < L.LastPos) and (AText[K + 1] = '/');
-    E := K + 1;
+    Closing := (Idx3 < LineScan.LastPos) and (AText[Idx3 + 1] = '/');
+    EndPos := Idx3 + 1;
     if Closing then
-      Inc(E);
+      Inc(EndPos);
 
-    NameEnd := E;
-    while (NameEnd <= L.LastPos) and (AText[NameEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_', '-', ':']) do
+    NameEnd := EndPos;
+    while (NameEnd <= LineScan.LastPos) and (AText[NameEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_', '-', ':']) do
       Inc(NameEnd);
-    Nm := LowerCase(Copy(AText, E, NameEnd - E));
+    Nm := LowerCase(Copy(AText, EndPos, NameEnd - EndPos));
     if Nm = '' then
     begin
-      Inc(K);
+      Inc(Idx3);
       Continue;
     end;
 
     // Ищем конец тега. '>' внутри кавычек атрибута не считается: он попал
     // в карту строковых литералов.
     SelfClose := False;
-    J := NameEnd;
-    while J <= L.LastPos do
+    Idx2 := NameEnd;
+    while Idx2 <= LineScan.LastPos do
     begin
-      if not InRanges(StringRanges, J - 1) then
+      if not InRanges(StringRanges, Idx2 - 1) then
       begin
-        if AText[J] = '>' then
+        if AText[Idx2] = '>' then
           Break;
-        if (AText[J] = '/') and (J < L.LastPos) and (AText[J + 1] = '>') then
+        if (AText[Idx2] = '/') and (Idx2 < LineScan.LastPos) and (AText[Idx2 + 1] = '>') then
           SelfClose := True;
       end;
-      Inc(J);
+      Inc(Idx2);
     end;
 
     if Closing then
@@ -28696,15 +28696,15 @@ begin
       PushTag(Nm);
       // Содержимое скрипта и стилей разбирать нечем - пропускаем целиком
       if (Nm = 'script') or (Nm = 'style') then
-        B.Opaque := Nm;
+        BlockState.Opaque := Nm;
     end;
 
-    K := J + 1;
+    Idx3 := Idx2 + 1;
   end;
 
   // Закрывшихся подпрограмм в этом режиме не бывает
   Found := 0;
-  B.ClosedCount := Found;
+  BlockState.ClosedCount := Found;
 end;
 
 // Слова и скобки кодовой части строки - один проход на все три разбора.
@@ -28713,11 +28713,11 @@ end;
 // отсутствии точки с запятой в конце, SubNoBody закрывает заголовок без
 // тела, FmtHang в конце строки добавляет уровень следующему оператору.
 // Закрывшиеся за строку подпрограммы остаются в B.Closed.
-procedure TForm1.BlockAfterLine(const AText: string; const L: TLineScan;
-                                var B: TBlockState);
+procedure TForm1.BlockAfterLine(const AText: string; const LineScan: TLineScan;
+                                var BlockState: TBlockState);
 var
-  K, WordEnd, TokStart, HangBefore: Integer;
-  W: string;
+  Idx3, WordEnd, TokStart, HangBefore: Integer;
+  WordStr: string;
   Ch: Char;
   EqSeen, Masked: Boolean;
   // Литерал или блочный комментарий задевает кодовую часть строки: только
@@ -28726,131 +28726,131 @@ var
 
   procedure AddClosed(ATag: Integer; AAtBegin: Boolean);
   begin
-    if B.ClosedCount >= Length(B.Closed) then
+    if BlockState.ClosedCount >= Length(BlockState.Closed) then
     begin
-      SetLength(B.Closed, B.ClosedCount + 8);
-      SetLength(B.ClosedAtBegin, B.ClosedCount + 8);
+      SetLength(BlockState.Closed, BlockState.ClosedCount + 8);
+      SetLength(BlockState.ClosedAtBegin, BlockState.ClosedCount + 8);
     end;
-    B.Closed[B.ClosedCount] := ATag;
-    B.ClosedAtBegin[B.ClosedCount] := AAtBegin;
-    Inc(B.ClosedCount);
+    BlockState.Closed[BlockState.ClosedCount] := ATag;
+    BlockState.ClosedAtBegin[BlockState.ClosedCount] := AAtBegin;
+    Inc(BlockState.ClosedCount);
   end;
 
 begin
-  B.ClosedCount := 0;
-  if L.Empty or L.Inside then
+  BlockState.ClosedCount := 0;
+  if LineScan.Empty or LineScan.Inside then
     Exit;
 
   // Разбор по тегам идёт своим путём
   if FScheme.FSubTags then
   begin
-    ScanTags(AText, L, B);
+    ScanTags(AText, LineScan, BlockState);
     Exit;
   end;
 
   EqSeen := False;
-  LineMasked := RangesTouch(StringRanges, L.FirstPos - 1, L.CmtPos - 2) or
-                RangesTouch(CommentRanges, L.FirstPos - 1, L.CmtPos - 2);
-  K := L.FirstPos;
-  while K < L.CmtPos do
+  LineMasked := RangesTouch(StringRanges, LineScan.FirstPos - 1, LineScan.CmtPos - 2) or
+                RangesTouch(CommentRanges, LineScan.FirstPos - 1, LineScan.CmtPos - 2);
+  Idx3 := LineScan.FirstPos;
+  while Idx3 < LineScan.CmtPos do
   begin
-    TokStart := K;
+    TokStart := Idx3;
     Masked := LineMasked and
-              (InRanges(StringRanges, K - 1) or
-               InRanges(CommentRanges, K - 1));
+              (InRanges(StringRanges, Idx3 - 1) or
+               InRanges(CommentRanges, Idx3 - 1));
 
     // Слово целиком либо один знак: '{' и '}' в C-подобных языках - такие
     // же слова блока, как begin и end, только состоят из одного символа
-    if AText[K] in ['a'..'z', 'A'..'Z', '_'] then
+    if AText[Idx3] in ['a'..'z', 'A'..'Z', '_'] then
     begin
-      WordEnd := K;
-      while (WordEnd < L.CmtPos) and (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+      WordEnd := Idx3;
+      while (WordEnd < LineScan.CmtPos) and (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
         Inc(WordEnd);
       // Слово не может быть ни в одном списке ниже - без копии и поиска.
       // Первое слово строки - всегда: для него ещё OpensAtLineStart
-      if (TokStart <> L.FirstWordPos) and
-         not WordsMayContain(FScheme.FSubOpenWords, AText, K, WordEnd - K) and
-         not WordsMayContain(FScheme.FFmtClass, AText, K, WordEnd - K) and
-         not WordsMayContain(FScheme.FSubNoBodyWords, AText, K, WordEnd - K) and
-         not WordsMayContain(FScheme.FSubEndWords, AText, K, WordEnd - K) then
+      if (TokStart <> LineScan.FirstWordPos) and
+         not WordsMayContain(FScheme.FSubOpenWords, AText, Idx3, WordEnd - Idx3) and
+         not WordsMayContain(FScheme.FFmtClass, AText, Idx3, WordEnd - Idx3) and
+         not WordsMayContain(FScheme.FSubNoBodyWords, AText, Idx3, WordEnd - Idx3) and
+         not WordsMayContain(FScheme.FSubEndWords, AText, Idx3, WordEnd - Idx3) then
       begin
-        K := WordEnd;
+        Idx3 := WordEnd;
         Continue;
       end;
-      W := Copy(AText, K, WordEnd - K);
-      K := WordEnd;
+      WordStr := Copy(AText, Idx3, WordEnd - Idx3);
+      Idx3 := WordEnd;
     end
     else
     begin
       // Строка из одного символа - только для знаков из B.Chars
-      Ch := AText[K];
+      Ch := AText[Idx3];
       if not Masked then
       begin
         if Ch = '=' then
           EqSeen := True
         else if Ch = '(' then
-          Inc(B.Paren)
+          Inc(BlockState.Paren)
         else if Ch = ')' then
-          if B.Paren > 0 then
-            Dec(B.Paren);
+          if BlockState.Paren > 0 then
+            Dec(BlockState.Paren);
       end;
-      Inc(K);
+      Inc(Idx3);
       // Знак, которого нет среди слов блоков, дальше не разбираем
-      if not (Ch in B.Chars) then
+      if not (Ch in BlockState.Chars) then
         Continue;
-      W := Ch;
+      WordStr := Ch;
     end;
 
     if not Masked then
     begin
-      if (FScheme.FSubOpenWords.IndexOf(W) >= 0) or
-         ((TokStart = L.FirstWordPos) and OpensAtLineStart(W, L)) or
-         ((FScheme.FFmtClass.IndexOf(W) >= 0) and EqSeen and (L.Code <> '') and
-          (L.Code[Length(L.Code)] <> ';')) then
+      if (FScheme.FSubOpenWords.IndexOf(WordStr) >= 0) or
+         ((TokStart = LineScan.FirstWordPos) and OpensAtLineStart(WordStr, LineScan)) or
+         ((FScheme.FFmtClass.IndexOf(WordStr) >= 0) and EqSeen and (LineScan.Code <> '') and
+          (LineScan.Code[Length(LineScan.Code)] <> ';')) then
       begin
-        Inc(B.Depth);
+        Inc(BlockState.Depth);
         // Перенос, с которым открыт блок: его тело и end - от него
-        if Length(B.HangBase) <= B.Depth then
-          SetLength(B.HangBase, B.Depth + 1);
-        B.HangBase[B.Depth] := B.Hang;
-        if Length(B.DeclBlock) < B.Depth then
-          SetLength(B.DeclBlock, B.Depth);
-        if Length(B.CaseBlock) < B.Depth then
-          SetLength(B.CaseBlock, B.Depth);
-        B.CaseBlock[B.Depth - 1] := CompareText(W, 'case') = 0;
+        if Length(BlockState.HangBase) <= BlockState.Depth then
+          SetLength(BlockState.HangBase, BlockState.Depth + 1);
+        BlockState.HangBase[BlockState.Depth] := BlockState.Hang;
+        if Length(BlockState.DeclBlock) < BlockState.Depth then
+          SetLength(BlockState.DeclBlock, BlockState.Depth);
+        if Length(BlockState.CaseBlock) < BlockState.Depth then
+          SetLength(BlockState.CaseBlock, BlockState.Depth);
+        BlockState.CaseBlock[BlockState.Depth - 1] := CompareText(WordStr, 'case') = 0;
         // Объявительный блок: class, object или record в разделе type
-        B.DeclBlock[B.Depth - 1] := B.InSection or
-                                    (FScheme.FFmtClass.IndexOf(W) >= 0);
-        if (B.Top >= 0) and (B.Depth > B.StartDepth[B.Top]) then
-          B.Opened[B.Top] := True;
+        BlockState.DeclBlock[BlockState.Depth - 1] := BlockState.InSection or
+                                    (FScheme.FFmtClass.IndexOf(WordStr) >= 0);
+        if (BlockState.Top >= 0) and (BlockState.Depth > BlockState.StartDepth[BlockState.Top]) then
+          BlockState.Opened[BlockState.Top] := True;
       end
       // Тела не будет: forward, external. Запись кончается своей строкой,
       // иначе она осталась бы на стеке до конца файла и её "открыл" бы
       // первый же record или case ниже.
-      else if (B.Top >= 0) and not B.Opened[B.Top] and
-              (FScheme.FSubNoBodyWords.IndexOf(W) >= 0) then
+      else if (BlockState.Top >= 0) and not BlockState.Opened[BlockState.Top] and
+              (FScheme.FSubNoBodyWords.IndexOf(WordStr) >= 0) then
       begin
-        AddClosed(B.Tags[B.Top], True);
-        Dec(B.Top);
+        AddClosed(BlockState.Tags[BlockState.Top], True);
+        Dec(BlockState.Top);
       end
-      else if FScheme.FSubEndWords.IndexOf(W) >= 0 then
+      else if FScheme.FSubEndWords.IndexOf(WordStr) >= 0 then
       begin
-        if B.Depth > 0 then
-          Dec(B.Depth);
+        if BlockState.Depth > 0 then
+          Dec(BlockState.Depth);
         // Закрылись все, чьё тело вернулось на свою глубину
-        while (B.Top >= 0) and B.Opened[B.Top] and
-              (B.Depth <= B.StartDepth[B.Top]) do
+        while (BlockState.Top >= 0) and BlockState.Opened[BlockState.Top] and
+              (BlockState.Depth <= BlockState.StartDepth[BlockState.Top]) do
         begin
-          AddClosed(B.Tags[B.Top], False);
-          Dec(B.Top);
+          AddClosed(BlockState.Tags[BlockState.Top], False);
+          Dec(BlockState.Top);
         end;
         // Закрылся блок, внутри которого стоял заголовок, а тело так и не
         // началось (объявление метода в type ... class)
-        while (B.Top >= 0) and not B.Opened[B.Top] and
-              (B.Depth < B.StartDepth[B.Top]) do
+        while (BlockState.Top >= 0) and not BlockState.Opened[BlockState.Top] and
+              (BlockState.Depth < BlockState.StartDepth[BlockState.Top]) do
         begin
-          AddClosed(B.Tags[B.Top], True);
-          Dec(B.Top);
+          AddClosed(BlockState.Tags[BlockState.Top], True);
+          Dec(BlockState.Top);
         end;
       end;
     end;
@@ -28859,66 +28859,66 @@ begin
   // Язык без знака конца оператора (FmtHangFirst): оператор - строка.
   // if x / loop без '{' - следующая строка правее; иначе перенос того
   // блока, в котором стоим. Строка-продолжение переноса не меняет.
-  if (FScheme.FFmtHangFirst.Count > 0) and (L.Code <> '') and
-     not ContinuesAtLineStart(L) then
+  if (FScheme.FFmtHangFirst.Count > 0) and (LineScan.Code <> '') and
+     not ContinuesAtLineStart(LineScan) then
   begin
-    HangBefore := B.Hang;
-    if HangsAtLineStart(L) then
-      Inc(B.Hang)
+    HangBefore := BlockState.Hang;
+    if HangsAtLineStart(LineScan) then
+      Inc(BlockState.Hang)
     else
-      B.Hang := BlockHangBase(B, B.Depth);
+      BlockState.Hang := BlockHangBase(BlockState, BlockState.Depth);
     // Метки: return на уровне метки её закрывает, метка на верхнем уровне
     // открывает
     if FScheme.FFmtLabel.Count > 0 then
-      if B.InLabel and (B.Depth = 1) and (HangBefore = 0) and
-         (FScheme.FFmtLabel.IndexOf(L.First) >= 0) then
+      if BlockState.InLabel and (BlockState.Depth = 1) and (HangBefore = 0) and
+         (FScheme.FFmtLabel.IndexOf(LineScan.First) >= 0) then
       begin
-        B.InLabel := False;
-        B.Depth := 0;
-        B.Hang := 0;
+        BlockState.InLabel := False;
+        BlockState.Depth := 0;
+        BlockState.Hang := 0;
       end
-      else if not B.InLabel and (B.Depth = 0) and (HangBefore = 0) and
-              IsLabelLine(L.Code) then
+      else if not BlockState.InLabel and (BlockState.Depth = 0) and (HangBefore = 0) and
+              IsLabelLine(LineScan.Code) then
       begin
-        B.InLabel := True;
-        B.Depth := 1;
-        if Length(B.HangBase) <= 1 then
-          SetLength(B.HangBase, 2);
-        B.HangBase[1] := 0;
-        B.Hang := 0;
+        BlockState.InLabel := True;
+        BlockState.Depth := 1;
+        if Length(BlockState.HangBase) <= 1 then
+          SetLength(BlockState.HangBase, 2);
+        BlockState.HangBase[1] := 0;
+        BlockState.Hang := 0;
       end;
   end;
 
   // Чем кончилась кодовая часть: слово из FmtHang - следующий оператор идёт
   // правее; точка с запятой - оператор закончен
-  if L.Code <> '' then
+  if LineScan.Code <> '' then
   begin
     // else самого case переноса не даёт: за ним список операторов
-    if (L.Last <> '') and (FScheme.FFmtHang.IndexOf(L.Last) >= 0) and
-       not L.CaseElse then
-      Inc(B.Hang)
-    else if L.Code[Length(L.Code)] = ';' then
+    if (LineScan.Last <> '') and (FScheme.FFmtHang.IndexOf(LineScan.Last) >= 0) and
+       not LineScan.CaseElse then
+      Inc(BlockState.Hang)
+    else if LineScan.Code[Length(LineScan.Code)] = ';' then
       // Оператор закончен - перенос того блока, в котором он стоит
-      B.Hang := BlockHangBase(B, B.Depth);
+      BlockState.Hang := BlockHangBase(BlockState, BlockState.Depth);
 
-    if L.IsSect then
-      B.InSection := True;
+    if LineScan.IsSect then
+      BlockState.InSection := True;
   end;
 
   // Дошли до implementation - ниже начинаются тела
-  if B.BeforeScope and (FScheme.FSubScope <> '') and
-     (CompareText(L.First, FScheme.FSubScope) = 0) then
-    B.BeforeScope := False;
+  if BlockState.BeforeScope and (FScheme.FSubScope <> '') and
+     (CompareText(LineScan.First, FScheme.FSubScope) = 0) then
+    BlockState.BeforeScope := False;
 
   // Конец модуля ("end." на нулевой глубине). В склеенном файле ниже идёт
   // следующий модуль: его объявления до implementation - снова без тел
-  if (FScheme.FSubScope <> '') and not B.BeforeScope and (B.Depth = 0) and
-     (L.Last = '.') and (FScheme.FSubEndWords.IndexOf(L.First) >= 0) then
+  if (FScheme.FSubScope <> '') and not BlockState.BeforeScope and (BlockState.Depth = 0) and
+     (LineScan.Last = '.') and (FScheme.FSubEndWords.IndexOf(LineScan.First) >= 0) then
   begin
-    B.InSection := False;
-    B.Hang := 0;
-    B.Paren := 0;
-    B.BeforeScope := SubScopeAhead(AText, L.LastPos + 1);
+    BlockState.InSection := False;
+    BlockState.Hang := 0;
+    BlockState.Paren := 0;
+    BlockState.BeforeScope := SubScopeAhead(AText, LineScan.LastPos + 1);
   end;
 end;
 
@@ -28940,10 +28940,10 @@ end;
 
 procedure TForm1.RebuildLineDepths(const AText: string);
 var
-  I, Len, LineStart: Integer;
-  B: TBlockState;
-  L: TLineScan;
-  D: TDepthScan;
+  Idx, Len, LineStart: Integer;
+  BlockState: TBlockState;
+  LineScan: TLineScan;
+  DepthScan: TDepthScan;
 begin
   // Уровни уже есть: их посчитал RebuildSubListBlocks тем же проходом
   if FDepthsFromSubs then
@@ -28962,53 +28962,53 @@ begin
   if Len = 0 then
     Exit;
 
-  DepthScanInit(D);
-  BlockInit(B);
+  DepthScanInit(DepthScan);
+  BlockInit(BlockState);
   // Разбор идёт с первой строки файла, значит секция объявлений впереди
-  B.BeforeScope := SubScopeAhead(AText, 1);
+  BlockState.BeforeScope := SubScopeAhead(AText, 1);
   LineStart := 1;
 
-  I := 1;
-  while I <= Len + 1 do
+  Idx := 1;
+  while Idx <= Len + 1 do
   begin
-    if (I > Len) or (AText[I] = #13) or (AText[I] = #10) then
+    if (Idx > Len) or (AText[Idx] = #13) or (AText[Idx] = #10) then
     begin
-      ScanLine(AText, LineStart, I - 1, B, L);
-      BlockBeforeLine(L, B);
-      DepthScanLine(AText, LineStart, I - 1, L, B, D);
-      if L.IsHeader then
-        BlockPushHeader(-1, B);
-      BlockAfterLine(AText, L, B);
+      ScanLine(AText, LineStart, Idx - 1, BlockState, LineScan);
+      BlockBeforeLine(LineScan, BlockState);
+      DepthScanLine(AText, LineStart, Idx - 1, LineScan, BlockState, DepthScan);
+      if LineScan.IsHeader then
+        BlockPushHeader(-1, BlockState);
+      BlockAfterLine(AText, LineScan, BlockState);
 
-      if (I < Len) and (AText[I] = #13) and (AText[I + 1] = #10) then
-        Inc(I);
-      LineStart := I + 1;
-      if (D.LineNo and 4095) = 0 then
-        MapProgress(I, Len);
+      if (Idx < Len) and (AText[Idx] = #13) and (AText[Idx + 1] = #10) then
+        Inc(Idx);
+      LineStart := Idx + 1;
+      if (DepthScan.LineNo and 4095) = 0 then
+        MapProgress(Idx, Len);
     end;
-    Inc(I);
+    Inc(Idx);
   end;
 
-  DepthScanFinish(D);
+  DepthScanFinish(DepthScan);
 end;
 
-procedure TForm1.DepthScanInit(var D: TDepthScan);
+procedure TForm1.DepthScanInit(var DepthScan: TDepthScan);
 begin
   // Строк не больше, чем переводов строки плюс один; растём порциями
-  D.Cap := 1024;
-  D.LineNo := 0;
-  SetLength(FLineDepth, D.Cap);
+  DepthScan.Cap := 1024;
+  DepthScan.LineNo := 0;
+  SetLength(FLineDepth, DepthScan.Cap);
   SetLength(FLineTick, 0);
-  SetLength(D.Blank, D.Cap);
-  SetLength(D.HasCode, D.Cap);
-  SetLength(D.Outd, D.Cap);
-  SetLength(D.SectIdx, D.Cap);
+  SetLength(DepthScan.Blank, DepthScan.Cap);
+  SetLength(DepthScan.HasCode, DepthScan.Cap);
+  SetLength(DepthScan.Outd, DepthScan.Cap);
+  SetLength(DepthScan.SectIdx, DepthScan.Cap);
 end;
 
 // Уровень одной строки. Вызывается после BlockBeforeLine и до
 // BlockPushHeader / BlockAfterLine: уровень - по состоянию перед строкой
 procedure TForm1.DepthScanLine(const AText: string; ALineStart, ALineEnd: Integer;
-  const L: TLineScan; const B: TBlockState; var D: TDepthScan);
+  const LineScan: TLineScan; const BlockState: TBlockState; var DepthScan: TDepthScan);
 var
   Lv, K, Unop, LineNo: Integer;
 begin
@@ -29019,8 +29019,8 @@ begin
   // Закрывающий тег - на уровень своего парного, см. TagCloseLevel
   if FScheme.FSubTags then
   begin
-    if not TagCloseLevel(AText, L, B, Lv) then
-      Lv := B.Depth;
+    if not TagCloseLevel(AText, LineScan, BlockState, Lv) then
+      Lv := BlockState.Depth;
   end
   else
   begin
@@ -29031,66 +29031,66 @@ begin
     // на один. Своя объявительная часть уровня не добавляет: var и
     // begin стоят вровень с заголовком.
     Unop := 0;
-    for K := 0 to B.Top do
-      if (K <= High(B.Opened)) and not B.Opened[K] then
+    for K := 0 to BlockState.Top do
+      if (K <= High(BlockState.Opened)) and not BlockState.Opened[K] then
         Inc(Unop);
-    Lv := B.Depth + Unop;
-    if not L.IsHeader and (B.Top >= 0) and (B.Top <= High(B.Opened)) and
-       not B.Opened[B.Top] then
+    Lv := BlockState.Depth + Unop;
+    if not LineScan.IsHeader and (BlockState.Top >= 0) and (BlockState.Top <= High(BlockState.Opened)) and
+       not BlockState.Opened[BlockState.Top] then
       Dec(Lv);
-    Inc(Lv, B.Hang);
-    if B.InSection and not L.IsHeader then
+    Inc(Lv, BlockState.Hang);
+    if BlockState.InSection and not LineScan.IsHeader then
       Inc(Lv);
-    if L.IsOutdent then
+    if LineScan.IsOutdent then
       Dec(Lv);
   end;
   if Lv < 0 then
     Lv := 0;
 
-  LineNo := D.LineNo;
-  if LineNo >= D.Cap then
+  LineNo := DepthScan.LineNo;
+  if LineNo >= DepthScan.Cap then
   begin
-    D.Cap := D.Cap * 2;
-    SetLength(FLineDepth, D.Cap);
-    SetLength(D.Blank, D.Cap);
-    SetLength(D.HasCode, D.Cap);
-    SetLength(D.Outd, D.Cap);
-    SetLength(D.SectIdx, D.Cap);
+    DepthScan.Cap := DepthScan.Cap * 2;
+    SetLength(FLineDepth, DepthScan.Cap);
+    SetLength(DepthScan.Blank, DepthScan.Cap);
+    SetLength(DepthScan.HasCode, DepthScan.Cap);
+    SetLength(DepthScan.Outd, DepthScan.Cap);
+    SetLength(DepthScan.SectIdx, DepthScan.Cap);
   end;
 
   // Полоса раздела - последний уровень строки: его и добавляет раздел.
   // Сама строка var / const / type в раздел не входит. Состояние берём
   // до BlockAfterLine, как и сам уровень.
-  if not FScheme.FSubTags and B.InSection and not L.IsHeader and
-     not L.IsSect then
-    D.SectIdx[LineNo] := Lv - 1
+  if not FScheme.FSubTags and BlockState.InSection and not LineScan.IsHeader and
+     not LineScan.IsSect then
+    DepthScan.SectIdx[LineNo] := Lv - 1
   else
-    D.SectIdx[LineNo] := -1;
-  D.Outd[LineNo] := L.IsOutdent;
+    DepthScan.SectIdx[LineNo] := -1;
+  DepthScan.Outd[LineNo] := LineScan.IsOutdent;
   // Строка с кодом, а не одни комментарии: засечка ставится по
   // последнему объявлению, а не по комментарию под ним - он обычно
   // относится к тому, что идёт ниже
-  D.HasCode[LineNo] := Trim(L.Code) <> '';
+  DepthScan.HasCode[LineNo] := Trim(LineScan.Code) <> '';
 
-  D.Blank[LineNo] := True;
+  DepthScan.Blank[LineNo] := True;
   for K := ALineStart to ALineEnd do
     if not (AText[K] in [' ', #9]) then
     begin
-      D.Blank[LineNo] := False;
+      DepthScan.Blank[LineNo] := False;
       Break;
     end;
 
   FLineDepth[LineNo] := Lv;
-  D.LineNo := LineNo + 1;
+  DepthScan.LineNo := LineNo + 1;
 end;
 
 // После прохода: пустые строки и засечки разделов
-procedure TForm1.DepthScanFinish(var D: TDepthScan);
+procedure TForm1.DepthScanFinish(var DepthScan: TDepthScan);
 var
-  LineNo, K, J, V, Prev: Integer;
+  LineNo, K, Idx2, IntVal, Prev: Integer;
   NextNB: TIntArray;           // ближайшая непустая строка ниже, -1 - нет
 begin
-  LineNo := D.LineNo;
+  LineNo := DepthScan.LineNo;
   SetLength(FLineDepth, LineNo);
   if LineNo = 0 then
     Exit;
@@ -29106,34 +29106,34 @@ begin
   // правее самого end, но не глубже строки над ней. Так полоса тела
   // доходит до end без разрыва, а хвост под if ... then не тянется вниз.
   SetLength(NextNB, LineNo);
-  J := -1;
+  Idx2 := -1;
   for K := LineNo - 1 downto 0 do
   begin
-    NextNB[K] := J;
-    if not D.Blank[K] then
-      J := K;
+    NextNB[K] := Idx2;
+    if not DepthScan.Blank[K] then
+      Idx2 := K;
   end;
 
   Prev := -1;
   for K := 0 to LineNo - 1 do
   begin
-    if D.Blank[K] then
+    if DepthScan.Blank[K] then
     begin
-      J := NextNB[K];
-      if J < 0 then
-        V := 0                        // хвост файла
-      else if D.Outd[J] then
+      Idx2 := NextNB[K];
+      if Idx2 < 0 then
+        IntVal := 0                        // хвост файла
+      else if DepthScan.Outd[Idx2] then
       begin
         // Ниже end: строка ещё в блоке - на уровне его тела
-        V := FLineDepth[J] + 1;
+        IntVal := FLineDepth[Idx2] + 1;
         if Prev < 0 then
-          V := 0
-        else if FLineDepth[Prev] < V then
-          V := FLineDepth[Prev];
+          IntVal := 0
+        else if FLineDepth[Prev] < IntVal then
+          IntVal := FLineDepth[Prev];
       end
       else
-        V := FLineDepth[J];
-      FLineDepth[K] := V;
+        IntVal := FLineDepth[Idx2];
+      FLineDepth[K] := IntVal;
     end
     else
       Prev := K;
@@ -29154,40 +29154,40 @@ begin
     FLineTick[K] := 0;
   for K := 0 to LineNo - 1 do
   begin
-    if D.Blank[K] or not D.HasCode[K] or (D.SectIdx[K] < 0) then
+    if DepthScan.Blank[K] or not DepthScan.HasCode[K] or (DepthScan.SectIdx[K] < 0) then
       Continue;
-    if FLineDepth[K] <= D.SectIdx[K] then
+    if FLineDepth[K] <= DepthScan.SectIdx[K] then
       Continue; // полосы раздела на самой строке нет
 
-    J := K + 1;
-    while (J < LineNo) and (D.Blank[J] or not D.HasCode[J]) do
-      Inc(J);
+    Idx2 := K + 1;
+    while (Idx2 < LineNo) and (DepthScan.Blank[Idx2] or not DepthScan.HasCode[Idx2]) do
+      Inc(Idx2);
     // Дальше закрывающее слово - это конец записи или класса внутри
     // раздела: у такого блока конец виден по его end, засечка не нужна
-    if (J < LineNo) and D.Outd[J] then
+    if (Idx2 < LineNo) and DepthScan.Outd[Idx2] then
       Continue;
-    if (J >= LineNo) or (D.SectIdx[J] < 0) or (D.SectIdx[J] < D.SectIdx[K]) then
-      FLineTick[K] := D.SectIdx[K] + 1;
+    if (Idx2 >= LineNo) or (DepthScan.SectIdx[Idx2] < 0) or (DepthScan.SectIdx[Idx2] < DepthScan.SectIdx[K]) then
+      FLineTick[K] := DepthScan.SectIdx[K] + 1;
   end;
 end;
 
 procedure TForm1.RebuildSubList(const AText: string);
 var
-  I, Len, LineStart, LineNo, P, WordEnd, Open, K, ScopeStart: Integer;
+  Idx, Len, LineStart, LineNo, CharPos, WordEnd, Open, K, ScopeStart: Integer;
   SubCount: Integer;   // занято в FSubs
   Word, LineStr: string;
 
-  function LineMatchesEnd(const S: string): Boolean;
+  function LineMatchesEnd(const Str: string): Boolean;
   var
-    J, L: Integer;
+    J, Len2: Integer;
   begin
     Result := False;
     for J := 0 to FScheme.FSubEndWords.Count - 1 do
     begin
-      L := Length(FScheme.FSubEndWords[J]);
-      if (L > 0) and (Length(S) >= L) and
-         (CompareText(Copy(S, 1, L), FScheme.FSubEndWords[J]) = 0) and
-         ((Length(S) = L) or not (S[L + 1] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) then
+      Len2 := Length(FScheme.FSubEndWords[J]);
+      if (Len2 > 0) and (Length(Str) >= Len2) and
+         (CompareText(Copy(Str, 1, Len2), FScheme.FSubEndWords[J]) = 0) and
+         ((Length(Str) = Len2) or not (Str[Len2 + 1] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) then
       begin
         Result := True;
         Exit;
@@ -29229,32 +29229,32 @@ begin
   LineStart := 1;
   Open := -1; // индекс незакрытой подпрограммы
 
-  I := 1;
-  while I <= Len + 1 do
+  Idx := 1;
+  while Idx <= Len + 1 do
   begin
-    if (I > Len) or (AText[I] = #13) or (AText[I] = #10) then
+    if (Idx > Len) or (AText[Idx] = #13) or (AText[Idx] = #10) then
     begin
       // Строка [LineStart .. I-1]
-      P := LineStart;
-      while (P < I) and ((AText[P] = ' ') or (AText[P] = #9)) do
-        Inc(P);
+      CharPos := LineStart;
+      while (CharPos < Idx) and ((AText[CharPos] = ' ') or (AText[CharPos] = #9)) do
+        Inc(CharPos);
 
-      if P < I then
+      if CharPos < Idx then
       begin
-        WordEnd := P;
-        while (WordEnd < I) and
+        WordEnd := CharPos;
+        while (WordEnd < Idx) and
               (AText[WordEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
           Inc(WordEnd);
-        Word := Copy(AText, P, WordEnd - P);
-        LineStr := Trim(Copy(AText, P, I - P));
+        Word := Copy(AText, CharPos, WordEnd - CharPos);
+        LineStr := Trim(Copy(AText, CharPos, Idx - CharPos));
         if Length(LineStr) > 300 then
           SetLength(LineStr, 300);
 
         // Позиции в картах - от нуля, как индексы контрола
-        if (Word <> '') and (P >= ScopeStart) and
+        if (Word <> '') and (CharPos >= ScopeStart) and
            (FScheme.FSubWords.IndexOf(Word) >= 0) and
-           not InRanges(StringRanges, P - 1) and
-           not InRanges(CommentRanges, P - 1) then
+           not InRanges(StringRanges, CharPos - 1) and
+           not InRanges(CommentRanges, CharPos - 1) then
         begin
           // Предыдущая кончается перед этой, если концов у языка нет
           if (Open >= 0) and (FScheme.FSubEndWords.Count = 0) then
@@ -29267,8 +29267,8 @@ begin
         end
         else if (Open >= 0) and (FScheme.FSubEndWords.Count > 0) and
                 LineMatchesEnd(LineStr) and
-                not InRanges(StringRanges, P - 1) and
-                not InRanges(CommentRanges, P - 1) then
+                not InRanges(StringRanges, CharPos - 1) and
+                not InRanges(CommentRanges, CharPos - 1) then
         begin
           FSubs[Open].EndLine := LineNo;
           Open := -1;
@@ -29276,12 +29276,12 @@ begin
       end;
 
       // Перевод строки: CR, LF или CRLF
-      if (I < Len) and (AText[I] = #13) and (AText[I + 1] = #10) then
-        Inc(I);
+      if (Idx < Len) and (AText[Idx] = #13) and (AText[Idx + 1] = #10) then
+        Inc(Idx);
       Inc(LineNo);
-      LineStart := I + 1;
+      LineStart := Idx + 1;
     end;
-    Inc(I);
+    Inc(Idx);
   end;
 
   // Последняя незакрытая - до конца файла
@@ -29306,15 +29306,15 @@ end;
 // позже, чем надо.
 procedure TForm1.RebuildSubListBlocks(const AText: string);
 var
-  I, Len, LineStart, LineNo, K, ScopeStart, Idx: Integer;
+  Idx2, Len, LineStart, LineNo, K, ScopeStart, Idx: Integer;
   SubCount: Integer;   // занято в FSubs
   LineStr: string;
-  B: TBlockState;
-  L: TLineScan;
+  BlockState: TBlockState;
+  LineScan: TLineScan;
   // Тем же проходом считаем и уровни строк (RebuildLineDepths): разбор
   // блоков у них общий, а на файле в 32 МБ каждый проход - секунды
   WithDepths: Boolean;
-  D: TDepthScan;
+  DepthScan: TDepthScan;
 begin
   SetLength(FSubs, 0);
   SubCount := 0;
@@ -29326,34 +29326,34 @@ begin
   FDepthsFromSubs := False;
 
   Len := Length(AText);
-  BlockInit(B);
+  BlockInit(BlockState);
   WithDepths := SchemeHasBlocks and (Len > 0);
   if WithDepths then
   begin
     // Как в RebuildLineDepths: выше слова SubScope (implementation)
     // заголовков нет - там объявления. Сюда они и так не попадали
     // (ScopeStart), а состояние блоков должно совпасть с RebuildLineDepths
-    B.BeforeScope := (FScheme.FSubScope <> '') and (ScopeStart > 1);
-    DepthScanInit(D);
+    BlockState.BeforeScope := (FScheme.FSubScope <> '') and (ScopeStart > 1);
+    DepthScanInit(DepthScan);
   end;
   LineNo := 0;
   LineStart := 1;
 
-  I := 1;
-  while I <= Len + 1 do
+  Idx2 := 1;
+  while Idx2 <= Len + 1 do
   begin
-    if (I > Len) or (AText[I] = #13) or (AText[I] = #10) then
+    if (Idx2 > Len) or (AText[Idx2] = #13) or (AText[Idx2] = #10) then
     begin
-      ScanLine(AText, LineStart, I - 1, B, L);
-      BlockBeforeLine(L, B);
+      ScanLine(AText, LineStart, Idx2 - 1, BlockState, LineScan);
+      BlockBeforeLine(LineScan, BlockState);
       if WithDepths then
-        DepthScanLine(AText, LineStart, I - 1, L, B, D);
+        DepthScanLine(AText, LineStart, Idx2 - 1, LineScan, BlockState, DepthScan);
 
       // ЗАГОЛОВОК: выше границы SubScope подпрограмм не ищем - там лежат
       // объявления интерфейса, тел у них нет
-      if L.IsHeader and (L.FirstPos >= ScopeStart) then
+      if LineScan.IsHeader and (LineScan.FirstPos >= ScopeStart) then
       begin
-        LineStr := Trim(Copy(AText, L.FirstPos, I - L.FirstPos));
+        LineStr := Trim(Copy(AText, LineScan.FirstPos, Idx2 - LineScan.FirstPos));
         if Length(LineStr) > 300 then
           SetLength(LineStr, 300);
 
@@ -29361,47 +29361,47 @@ begin
         FSubs[SubCount - 1].Name := LineStr;
         FSubs[SubCount - 1].BeginLine := LineNo;
         FSubs[SubCount - 1].EndLine := LineNo;
-        BlockPushHeader(SubCount - 1, B);
+        BlockPushHeader(SubCount - 1, BlockState);
       end
-      else if L.IsHeader and WithDepths then
-        BlockPushHeader(-1, B); // как в RebuildLineDepths
+      else if LineScan.IsHeader and WithDepths then
+        BlockPushHeader(-1, BlockState); // как в RebuildLineDepths
 
-      BlockAfterLine(AText, L, B);
+      BlockAfterLine(AText, LineScan, BlockState);
 
       // Закрывшиеся: с телом - по этой строке, без тела (forward, external,
       // объявление метода) - длиной в свою строку
-      for K := 0 to B.ClosedCount - 1 do
+      for K := 0 to BlockState.ClosedCount - 1 do
       begin
-        Idx := B.Closed[K];
+        Idx := BlockState.Closed[K];
         if (Idx >= 0) and (Idx < SubCount) then
-          if B.ClosedAtBegin[K] then
+          if BlockState.ClosedAtBegin[K] then
             FSubs[Idx].EndLine := FSubs[Idx].BeginLine
           else
             FSubs[Idx].EndLine := LineNo;
       end;
 
       // Перевод строки: CR, LF или CRLF
-      if (I < Len) and (AText[I] = #13) and (AText[I + 1] = #10) then
-        Inc(I);
+      if (Idx2 < Len) and (AText[Idx2] = #13) and (AText[Idx2 + 1] = #10) then
+        Inc(Idx2);
       Inc(LineNo);
-      LineStart := I + 1;
+      LineStart := Idx2 + 1;
       if (LineNo and 4095) = 0 then
-        MapProgress(I, Len);
+        MapProgress(Idx2, Len);
     end;
-    Inc(I);
+    Inc(Idx2);
   end;
 
   // Осталось незакрытым: тело так и не началось - это объявление, длиной в
   // свою строку; тело началось, но не кончилось - файл оборван, до конца
-  while B.Top >= 0 do
+  while BlockState.Top >= 0 do
   begin
-    Idx := B.Tags[B.Top];
+    Idx := BlockState.Tags[BlockState.Top];
     if (Idx >= 0) and (Idx < SubCount) then
-      if B.Opened[B.Top] then
+      if BlockState.Opened[BlockState.Top] then
         FSubs[Idx].EndLine := LineNo - 1
       else
         FSubs[Idx].EndLine := FSubs[Idx].BeginLine;
-    Dec(B.Top);
+    Dec(BlockState.Top);
   end;
 
   SetLength(FSubs, SubCount);
@@ -29411,7 +29411,7 @@ begin
 
   if WithDepths then
   begin
-    DepthScanFinish(D);
+    DepthScanFinish(DepthScan);
     FDepthsFromSubs := True;
     FDepthsText := Pointer(AText);
     FDepthsLen := Len;
@@ -29431,7 +29431,7 @@ end;
 // пропускаются по общим картам, так что скобки внутри них не считаются.
 procedure TForm1.RebuildSubListBraces(const AText: string);
 var
-  I, Len, LineNo, Depth, J, K, NameEnd, NameStart, ParDepth, BegLine: Integer;
+  Idx, Len, LineNo, Depth, Idx2, Idx3, NameEnd, NameStart, ParDepth, BegLine: Integer;
   Open, WordStart, WordEnd: Integer;
   SubCount: Integer;   // занято в FSubs
   Nm, LineStr, FirstWord: string;
@@ -29463,17 +29463,17 @@ var
 // строке AFromLine: считаем переводы строк между ними
   function LineOf(AFrom, AFromLine, APos: Integer): Integer;
   var
-    M: Integer;
+    Mid: Integer;
   begin
     Result := AFromLine;
-    M := APos;
-    while M < AFrom do
+    Mid := APos;
+    while Mid < AFrom do
     begin
-      if AText[M] = #13 then
+      if AText[Mid] = #13 then
         Dec(Result)
-      else if (AText[M] = #10) and ((M = 1) or (AText[M - 1] <> #13)) then
+      else if (AText[Mid] = #10) and ((Mid = 1) or (AText[Mid - 1] <> #13)) then
         Dec(Result);
-      Inc(M);
+      Inc(Mid);
     end;
   end;
 
@@ -29485,54 +29485,54 @@ begin
   Depth := 0;
   Open := -1;
 
-  I := 1;
-  while I <= Len do
+  Idx := 1;
+  while Idx <= Len do
   begin
-    if AText[I] = #13 then
+    if AText[Idx] = #13 then
     begin
-      if (I < Len) and (AText[I + 1] = #10) then
-        Inc(I);
+      if (Idx < Len) and (AText[Idx + 1] = #10) then
+        Inc(Idx);
       Inc(LineNo);
     end
-    else if AText[I] = #10 then
+    else if AText[Idx] = #10 then
       Inc(LineNo)
-    else if not Skip(I) then
+    else if not Skip(Idx) then
     begin
-      if AText[I] = '{' then
+      if AText[Idx] = '{' then
       begin
         if (Depth = 0) and (Open < 0) then
         begin
           // Назад до ')' через пробелы и переводы строк
-          J := I - 1;
-          while (J >= 1) and ((AText[J] = ' ') or (AText[J] = #9) or
-                              (AText[J] = #13) or (AText[J] = #10)) do
-            Dec(J);
+          Idx2 := Idx - 1;
+          while (Idx2 >= 1) and ((AText[Idx2] = ' ') or (AText[Idx2] = #9) or
+                              (AText[Idx2] = #13) or (AText[Idx2] = #10)) do
+            Dec(Idx2);
 
-          if (J >= 1) and (AText[J] = ')') and not Skip(J) then
+          if (Idx2 >= 1) and (AText[Idx2] = ')') and not Skip(Idx2) then
           begin
             // Парная '(' - с учётом вложенных скобок
             ParDepth := 0;
-            K := J;
-            while K >= 1 do
+            Idx3 := Idx2;
+            while Idx3 >= 1 do
             begin
-              if not Skip(K) then
+              if not Skip(Idx3) then
               begin
-                if AText[K] = ')' then
+                if AText[Idx3] = ')' then
                   Inc(ParDepth)
-                else if AText[K] = '(' then
+                else if AText[Idx3] = '(' then
                 begin
                   Dec(ParDepth);
                   if ParDepth = 0 then
                     Break;
                 end;
               end;
-              Dec(K);
+              Dec(Idx3);
             end;
 
-            if (K >= 1) and (ParDepth = 0) then
+            if (Idx3 >= 1) and (ParDepth = 0) then
             begin
               // Имя перед '('
-              NameEnd := K - 1;
+              NameEnd := Idx3 - 1;
               while (NameEnd >= 1) and ((AText[NameEnd] = ' ') or
                                         (AText[NameEnd] = #9)) do
                 Dec(NameEnd);
@@ -29546,14 +29546,14 @@ begin
               begin
                 Nm := Copy(AText, NameStart, NameEnd - NameStart + 1);
                 // Начало строки с именем
-                K := NameStart;
-                while (K > 1) and (AText[K - 1] <> #13) and
-                      (AText[K - 1] <> #10) do
-                  Dec(K);
+                Idx3 := NameStart;
+                while (Idx3 > 1) and (AText[Idx3 - 1] <> #13) and
+                      (AText[Idx3 - 1] <> #10) do
+                  Dec(Idx3);
                 // Первое слово строки ('}' и пробелы пропускаются): у
                 // AutoHotkey 'If WinExist("x") {' - перед '(' имя функции
                 // WinExist, а строка - оператор if, не объявление
-                WordStart := K;
+                WordStart := Idx3;
                 while (WordStart < NameStart) and
                       (AText[WordStart] in [' ', #9, '}']) do
                   Inc(WordStart);
@@ -29565,11 +29565,11 @@ begin
                 if not IsStmtWord(Nm) and not IsStmtWord(FirstWord) then
                 begin
                   // Строка объявления: от начала строки с именем до ')'
-                  LineStr := Trim(Copy(AText, K, J - K + 1));
+                  LineStr := Trim(Copy(AText, Idx3, Idx2 - Idx3 + 1));
                   if Length(LineStr) > 300 then
                     SetLength(LineStr, 300);
 
-                  BegLine := LineOf(I, LineNo, NameStart);
+                  BegLine := LineOf(Idx, LineNo, NameStart);
 
                   GrowSubs(FSubs, SubCount);
                   Open := SubCount - 1;
@@ -29583,7 +29583,7 @@ begin
         end;
         Inc(Depth);
       end
-      else if AText[I] = '}' then
+      else if AText[Idx] = '}' then
       begin
         if Depth > 0 then
           Dec(Depth);
@@ -29594,7 +29594,7 @@ begin
         end;
       end;
     end;
-    Inc(I);
+    Inc(Idx);
   end;
 
   if Open >= 0 then
@@ -29668,18 +29668,18 @@ end;
 // Текст строки таблицы подпрограмм - по запросу ListView (OwnerData)
 procedure TForm1.SubListData(Sender: TObject; Item: TListItem);
 var
-  K: Integer;
+  Idx3: Integer;
 begin
   if (Item.Index < 0) or (Item.Index > High(FSubView)) then
     Exit;
-  K := FSubView[Item.Index];
-  if (K < 0) or (K > High(FSubs)) then
+  Idx3 := FSubView[Item.Index];
+  if (Idx3 < 0) or (Idx3 > High(FSubs)) then
     Exit;
-  Item.Caption := SubListCaption(FSubs[K].Name);
+  Item.Caption := SubListCaption(FSubs[Idx3].Name);
   Item.SubItems.Clear;
-  Item.SubItems.Add(IntToStr(FSubs[K].BeginLine + 1));
-  Item.SubItems.Add(IntToStr(FSubs[K].EndLine + 1));
-  Item.Data := Pointer(K);
+  Item.SubItems.Add(IntToStr(FSubs[Idx3].BeginLine + 1));
+  Item.SubItems.Add(IntToStr(FSubs[Idx3].EndLine + 1));
+  Item.Data := Pointer(Idx3);
 end;
 
 // SubList сменил размер - колонка Name по ширине, Begin и End у правого края
@@ -29874,14 +29874,14 @@ end;
 // Двойной щелчок по строке списка - переход к объявлению
 procedure TForm1.SubListDblClick(Sender: TObject);
 var
-  K, Idx, VisLines, Target, First: Integer;
+  Idx3, Idx, VisLines, Target, First: Integer;
 begin
   if (lvSubList = nil) or (lvSubList.Selected = nil) then
     Exit;
-  K := Integer(lvSubList.Selected.Data);
-  if (K < 0) or (K > High(FSubs)) then
+  Idx3 := Integer(lvSubList.Selected.Data);
+  if (Idx3 < 0) or (Idx3 > High(FSubs)) then
     Exit;
-  Idx := EdApi.LineIndex(FSubs[K].BeginLine);
+  Idx := EdApi.LineIndex(FSubs[Idx3].BeginLine);
   if Idx < 0 then
     Exit;
   EdApi.SetSelRange(Idx, Idx);
@@ -29891,7 +29891,7 @@ begin
   VisLines := 1;
   if LineHeight > 0 then
     VisLines := EditViewHeight div LineHeight;
-  Target := FSubs[K].BeginLine - VisLines div 2;
+  Target := FSubs[Idx3].BeginLine - VisLines div 2;
   if Target < 0 then
     Target := 0;
   First := EdApi.FirstVisibleLine;
@@ -29899,7 +29899,7 @@ begin
     EdApi.LineScroll(Target - First);
 
   // Отметка найденной строки - цветом LineMark
-  FFoundLine := FSubs[K].BeginLine;
+  FFoundLine := FSubs[Idx3].BeginLine;
 
   if RichEdit1.CanFocus then
     RichEdit1.SetFocus;
@@ -30063,57 +30063,57 @@ end;
 // его Caption или Text: иначе десяток строк TPanel подряд не различить.
 function TForm1.DfmNodeCaption(ANode: TObject): string;
 var
-  N: TDfmNode;
-  K, ArrIdx: Integer;
+  DfmNode: TDfmNode;
+  Idx3, ArrIdx: Integer;
   ArrName: string;
   IsArr: Boolean;
 begin
-  N := TDfmNode(ANode);
+  DfmNode := TDfmNode(ANode);
   // Элемент массива компонентов: PalBtn17 - PalBtn[17]. Только узел
   // снимка: компонент из .dfm или из кода с таким же именем - не элемент.
-  IsArr := N.IsSnap and ObjArrayOf(N.Name, ArrName, ArrIdx);
+  IsArr := DfmNode.IsSnap and ObjArrayOf(DfmNode.Name, ArrName, ArrIdx);
   if IsArr then
-    Result := ArrName + '[' + IntToStr(ArrIdx) + ']: ' + N.ClassNm
-  else if N.Name <> '' then
-    Result := N.Name + ': ' + N.ClassNm
-  else if N.VarName <> '' then
+    Result := ArrName + '[' + IntToStr(ArrIdx) + ']: ' + DfmNode.ClassNm
+  else if DfmNode.Name <> '' then
+    Result := DfmNode.Name + ': ' + DfmNode.ClassNm
+  else if DfmNode.VarName <> '' then
   begin
     // Созданный в коде - с именем переменной из исходника
-    Result := N.ClassNm + ' (' + N.VarName + ')';
+    Result := DfmNode.ClassNm + ' (' + DfmNode.VarName + ')';
     // Узел снимка с переменной остаётся отдельным, когда одна строка кода
     // создаёт несколько компонентов (цикл): различаются они подписью
-    if N.IsSnap then
+    if DfmNode.IsSnap then
     begin
-      K := N.PropN.IndexOf('Caption');
-      if K < 0 then
-        K := N.PropN.IndexOf('Text');
-      if (K >= 0) and (N.PropV[K] <> '') then
-        Result := Result + '  "' + N.PropV[K] + '"';
+      Idx3 := DfmNode.PropN.IndexOf('Caption');
+      if Idx3 < 0 then
+        Idx3 := DfmNode.PropN.IndexOf('Text');
+      if (Idx3 >= 0) and (DfmNode.PropV[Idx3] <> '') then
+        Result := Result + '  "' + DfmNode.PropV[Idx3] + '"';
     end;
   end
   else
   begin
-    Result := N.ClassNm;
-    K := N.PropN.IndexOf('Caption');
-    if K < 0 then
-      K := N.PropN.IndexOf('Text');
-    if (K >= 0) and (N.PropV[K] <> '') then
-      Result := Result + '  "' + N.PropV[K] + '"';
+    Result := DfmNode.ClassNm;
+    Idx3 := DfmNode.PropN.IndexOf('Caption');
+    if Idx3 < 0 then
+      Idx3 := DfmNode.PropN.IndexOf('Text');
+    if (Idx3 >= 0) and (DfmNode.PropV[Idx3] <> '') then
+      Result := Result + '  "' + DfmNode.PropV[Idx3] + '"';
   end;
 
   if IsArr then
     Result := Result + '  (элемент массива)'
-  else if N.SnapRoot then
+  else if DfmNode.SnapRoot then
     Result := Result + '  (снимок ' + TimeToStr(FObjSnapTime) + ')'
-  else if N.IsLink then
+  else if DfmNode.IsLink then
     Result := Result + '  (из .dfm, перенесён в коде)'
-  else if N.IsLive then
+  else if DfmNode.IsLive then
     Result := Result + '  (runtime, значения из снимка)'
-  else if N.IsRuntime then
+  else if DfmNode.IsRuntime then
     Result := Result + '  (runtime)';
   // Приписка узла: у объектов RapidQ - номер строки CREATE
-  if N.Note <> '' then
-    Result := Result + '   ' + N.Note;
+  if DfmNode.Note <> '' then
+    Result := Result + '   ' + DfmNode.Note;
 end;
 
 // Узлы - в дерево на экране. Внутрь ссылок не спускаемся: их содержимое
@@ -30133,16 +30133,16 @@ var
   RootIdx: Integer;
   StartTick, StageTick, TSave, TAdd, TRestore, TShow, TProps: Cardinal;
 
-  procedure AddNode(AParent: TTreeNode; N: TDfmNode);
+  procedure AddNode(AParent: TTreeNode; DfmNode: TDfmNode);
   var
-    T: TTreeNode;
+    TreeNode: TTreeNode;
     I: Integer;
   begin
-    T := FObjTree.Items.AddChildObject(AParent, DfmNodeCaption(N), N);
-    if N.IsLink then
+    TreeNode := FObjTree.Items.AddChildObject(AParent, DfmNodeCaption(DfmNode), DfmNode);
+    if DfmNode.IsLink then
       Exit;
-    for I := 0 to N.Children.Count - 1 do
-      AddNode(T, TDfmNode(N.Children[I]));
+    for I := 0 to DfmNode.Children.Count - 1 do
+      AddNode(TreeNode, TDfmNode(DfmNode.Children[I]));
   end;
 
 // Ключ узла - путь из подписей с номером среди братьев: подписи у
@@ -33860,8 +33860,8 @@ begin
       Ini.Free;
     end;
   except
-    on E: Exception do
-      LogComp('editor.ini не записан: ' + E.Message);
+    on Err: Exception do
+      LogComp('editor.ini не записан: ' + Err.Message);
   end;
 end;
 
@@ -34663,36 +34663,36 @@ var
   // "procedure TForm1.NewProjectClick(Sender: TObject);". '' - вне процедур.
   function ProcAt(ALine: Integer): string;
   var
-    I, P: Integer;
-    T, U: string;
+    I, CharPos: Integer;
+    Txt2, UpStr: string;
   begin
     Result := '';
     if (ALine < 0) or (ALine >= Lines.Count) then
       Exit;
     for I := ALine downto 0 do
     begin
-      T := Lines[I];
-      U := UpperCase(T);
-      if Copy(U, 1, 10) = 'PROCEDURE ' then
-        T := Trim(Copy(T, 11, MaxInt))
-      else if Copy(U, 1, 9) = 'FUNCTION ' then
-        T := Trim(Copy(T, 10, MaxInt))
-      else if (Copy(U, 1, 12) = 'CONSTRUCTOR ') or
-              (Copy(U, 1, 11) = 'DESTRUCTOR ') then
-        T := Trim(Copy(T, Pos(' ', T) + 1, MaxInt))
+      Txt2 := Lines[I];
+      UpStr := UpperCase(Txt2);
+      if Copy(UpStr, 1, 10) = 'PROCEDURE ' then
+        Txt2 := Trim(Copy(Txt2, 11, MaxInt))
+      else if Copy(UpStr, 1, 9) = 'FUNCTION ' then
+        Txt2 := Trim(Copy(Txt2, 10, MaxInt))
+      else if (Copy(UpStr, 1, 12) = 'CONSTRUCTOR ') or
+              (Copy(UpStr, 1, 11) = 'DESTRUCTOR ') then
+        Txt2 := Trim(Copy(Txt2, Pos(' ', Txt2) + 1, MaxInt))
       else
         Continue;
-      P := Pos('(', T);
-      if P = 0 then
-        P := Pos(';', T);
-      if P = 0 then
-        P := Pos(':', T);
-      if P > 0 then
-        T := Copy(T, 1, P - 1);
-      P := LastDelimiter('.', T);
-      if P > 0 then
-        Delete(T, 1, P);
-      Result := Trim(T);
+      CharPos := Pos('(', Txt2);
+      if CharPos = 0 then
+        CharPos := Pos(';', Txt2);
+      if CharPos = 0 then
+        CharPos := Pos(':', Txt2);
+      if CharPos > 0 then
+        Txt2 := Copy(Txt2, 1, CharPos - 1);
+      CharPos := LastDelimiter('.', Txt2);
+      if CharPos > 0 then
+        Delete(Txt2, 1, CharPos);
+      Result := Trim(Txt2);
       Exit;
     end;
   end;
@@ -34700,36 +34700,36 @@ var
 // Процедура приписывается там, где она меняется: у окон и диалогов
 // (родитель - модуль) и у компонентов, созданных не в той процедуре, что
 // их родитель. Внутри одной процедуры не повторяется.
-  procedure AddNodes(AParent: TTreeNode; N: TDfmNode; const AParentProc: string);
+  procedure AddNodes(AParent: TTreeNode; DfmNode2: TDfmNode; const AParentProc: string);
   var
     I: Integer;
-    T: TTreeNode;
-    S, Proc: string;
-    C: TDfmNode;
+    Txt2: TTreeNode;
+    Str, Proc: string;
+    DfmNode: TDfmNode;
   begin
-    for I := 0 to N.Children.Count - 1 do
+    for I := 0 to DfmNode2.Children.Count - 1 do
     begin
-      C := TDfmNode(N.Children[I]);
-      if C.VarName <> '' then
-        S := C.VarName + ': ' + C.ClassNm
-      else if C.Name <> '' then
-        S := C.Name + ': ' + C.ClassNm
+      DfmNode := TDfmNode(DfmNode2.Children[I]);
+      if DfmNode.VarName <> '' then
+        Str := DfmNode.VarName + ': ' + DfmNode.ClassNm
+      else if DfmNode.Name <> '' then
+        Str := DfmNode.Name + ': ' + DfmNode.ClassNm
       else
-        S := C.ClassNm;
-      Proc := ProcAt(C.CreateLine);
-      if C.CreateLine >= 0 then
-        S := S + '   (' + IntToStr(C.CreateLine + 1) + ')';
+        Str := DfmNode.ClassNm;
+      Proc := ProcAt(DfmNode.CreateLine);
+      if DfmNode.CreateLine >= 0 then
+        Str := Str + '   (' + IntToStr(DfmNode.CreateLine + 1) + ')';
       if (Proc <> '') and (CompareText(Proc, AParentProc) <> 0) then
-        S := S + '   ' + Proc;
-      T := FCodeTree.Items.AddChildObject(AParent, S, Pointer(C.CreateLine));
-      AddNodes(T, C, Proc);
+        Str := Str + '   ' + Proc;
+      Txt2 := FCodeTree.Items.AddChildObject(AParent, Str, Pointer(DfmNode.CreateLine));
+      AddNodes(Txt2, DfmNode, Proc);
     end;
   end;
 
 var
   Ext, Txt: string;
   Root, Grp: TDfmNode;
-  Top, G: TTreeNode;
+  Top, TreeNode: TTreeNode;
   Start, I: Integer;
 begin
   if FCodeTree = nil then
@@ -34779,8 +34779,8 @@ begin
                                      Top.Expand(False);
                                      if (Grp <> nil) and (Grp <> Root) then
     begin
-      G := FCodeTree.Items.AddObject(nil, '(родитель не определён)', Pointer(-1));
-      AddNodes(G, Grp, '');
+      TreeNode := FCodeTree.Items.AddObject(nil, '(родитель не определён)', Pointer(-1));
+      AddNodes(TreeNode, Grp, '');
     end;
   finally
     FCodeTree.Items.EndUpdate;
@@ -34962,14 +34962,14 @@ end;
 
 function TForm1.ProbeSnapFor(const AClass: string): string;
 var
-  I: Integer;
+  Idx: Integer;
 begin
   Result := '';
   if (FProbeSnaps = nil) or (AClass = '') then
     Exit;
-  I := FProbeSnaps.IndexOf(AClass);
-  if I >= 0 then
-    Result := TProbeText(FProbeSnaps.Objects[I]).Text;
+  Idx := FProbeSnaps.IndexOf(AClass);
+  if Idx >= 0 then
+    Result := TProbeText(FProbeSnaps.Objects[Idx]).Text;
 end;
 
 procedure TForm1.ProbeClear;
@@ -35133,26 +35133,26 @@ end;
 
 procedure TForm1.ProbeCacheSave;
 var
-  F, S: string;
+  FileStr, Str: string;
   I: Integer;
 begin
-  F := ProbeCacheFile;
-  if (F = '') or (FProbeSnaps = nil) or (FProbeSnaps.Count = 0) then
+  FileStr := ProbeCacheFile;
+  if (FileStr = '') or (FProbeSnaps = nil) or (FProbeSnaps.Count = 0) then
     Exit;
-  S := '//DSGPROBE-TIME ' + IntToStr(DateTimeToFileDate(FProbeTime)) + #13#10;
+  Str := '//DSGPROBE-TIME ' + IntToStr(DateTimeToFileDate(FProbeTime)) + #13#10;
   for I := 0 to FProbeSnaps.Count - 1 do
-    S := S + '//DSGPROBE ' + FProbeSnaps[I] + #13#10 +
+    Str := Str + '//DSGPROBE ' + FProbeSnaps[I] + #13#10 +
          TProbeText(FProbeSnaps.Objects[I]).Text;
   try
-    ForceDirectories(ExtractFilePath(F));
-    with TFileStream.Create(F, fmCreate) do
+    ForceDirectories(ExtractFilePath(FileStr));
+    with TFileStream.Create(FileStr, fmCreate) do
     try
-      if S <> '' then
-        WriteBuffer(S[1], Length(S));
+      if Str <> '' then
+        WriteBuffer(Str[1], Length(Str));
     finally
       Free;
     end;
-    FProbeCacheTried := F;
+    FProbeCacheTried := FileStr;
   except
     // не записался - после перезапуска понадобится новый пробный запуск
   end;
@@ -35162,32 +35162,32 @@ end;
 // Для каждого файла - один раз за сеанс.
 procedure TForm1.ProbeCacheLoad;
 var
-  F: string;
+  FileStr: string;
   SL: TStringList;
-  I, T: Integer;
+  I, StampVal: Integer;
   PT: TProbeText;
 begin
   if (FProbeSnaps <> nil) and (FProbeSnaps.Count > 0) then
     Exit;
-  F := ProbeCacheFile;
-  if (F = '') or (CompareText(F, FProbeCacheTried) = 0) then
+  FileStr := ProbeCacheFile;
+  if (FileStr = '') or (CompareText(FileStr, FProbeCacheTried) = 0) then
     Exit;
-  FProbeCacheTried := F;
-  if not FileExists(F) then
+  FProbeCacheTried := FileStr;
+  if not FileExists(FileStr) then
     Exit;
   if FProbeSnaps = nil then
     FProbeSnaps := TStringList.Create;
   SL := TStringList.Create;
   try
-    SL.LoadFromFile(F);
+    SL.LoadFromFile(FileStr);
     PT := nil;
     for I := 0 to SL.Count - 1 do
       if Copy(SL[I], 1, 16) = '//DSGPROBE-TIME ' then
       begin
-        T := StrToIntDef(Trim(Copy(SL[I], 17, MaxInt)), 0);
-        if T > 0 then
+        StampVal := StrToIntDef(Trim(Copy(SL[I], 17, MaxInt)), 0);
+        if StampVal > 0 then
         try
-          FProbeTime := FileDateToDateTime(T);
+          FProbeTime := FileDateToDateTime(StampVal);
         except
         end;
       end
@@ -35218,7 +35218,7 @@ function TForm1.MakeProbeDpr(const ADpr: string): string;
 var
   SL: TStringList;
   I, Uses_, LastCreate: Integer;
-  T, TL, Cfg: string;
+  Txt, TL, Cfg: string;
 begin
   Result := '';
   SL := TStringList.Create;
@@ -35228,8 +35228,8 @@ begin
     LastCreate := -1;
     for I := 0 to SL.Count - 1 do
     begin
-      T := Trim(SL[I]);
-      TL := LowerCase(T);
+      Txt := Trim(SL[I]);
+      TL := LowerCase(Txt);
       if Copy(TL, 1, 8) = 'program ' then
         SL[I] := 'program _dsgprobe;'
       else if (Uses_ < 0) and ((TL = 'uses') or (Copy(TL, 1, 5) = 'uses ')) then
@@ -35284,21 +35284,21 @@ var
   Done: Boolean;
 
   // Шаг пробного запуска: в лог компиляции и в dsgprobe\probe.log
-  procedure Step(const S: string);
+  procedure Step(const Str: string);
   begin
-    LogComp('Пробный запуск: ' + S);
-    Log.Add(FormatDateTime('hh:nn:ss.zzz', Now) + '  ' + S);
+    LogComp('Пробный запуск: ' + Str);
+    Log.Add(FormatDateTime('hh:nn:ss.zzz', Now) + '  ' + Str);
   end;
 
   function FileInfo(const AFile: string): string;
   var
-    F: TSearchRec;
+    FindRec: TSearchRec;
   begin
-    if FindFirst(AFile, faAnyFile, F) = 0 then
+    if FindFirst(AFile, faAnyFile, FindRec) = 0 then
     begin
-      Result := IntToStr(F.Size) + ' байт, ' +
-                FormatDateTime('dd.mm.yyyy hh:nn:ss', FileDateToDateTime(F.Time));
-      FindClose(F);
+      Result := IntToStr(FindRec.Size) + ' байт, ' +
+                FormatDateTime('dd.mm.yyyy hh:nn:ss', FileDateToDateTime(FindRec.Time));
+      FindClose(FindRec);
     end
     else
       Result := 'нет файла';
@@ -35636,20 +35636,20 @@ end;
 // создана при запуске, даже если окно сейчас не открыто.
 procedure TForm1.TakeOwnSnap(const AClass: string);
 var
-  F: TCustomForm;
+  Frm: TCustomForm;
   OldCursor: TCursor;
 begin
-  F := OwnLiveForm(AClass);
+  Frm := OwnLiveForm(AClass);
   // Окно настроек заполняется данными при первом открытии (InitOptions):
   // строки путей Arduino, страница Compilers, таблицы. Не открывалось -
   // снимок показал бы пустые элементы из .dfm. Заполняем, как перед
   // показом, но окно не открываем. Уже заполненное не трогаем: в открытом
   // окне могут быть несохранённые правки.
-  if (F <> nil) and (F = Form2) and not Form2.IsBuilt then
+  if (Frm <> nil) and (Frm = Form2) and not Form2.IsBuilt then
     PrepareOptionsForm;
   // Формы этого класса в работающем редакторе нет (не создаётся при
   // запуске) - снимать нечего; чужую форму не снимаем
-  if F = nil then
+  if Frm = nil then
     Exit;
   // Снимок другой формы не теряется - откладывается (OwnSnapRestore)
   if (FObjSnapText <> '') and
@@ -35670,12 +35670,12 @@ begin
     // тогда. У формы, которую ещё ни разу не показывали, окон нет, и
     // снимок показал бы UpDown в углу. Поэтому окна создаются заранее -
     // форма при этом не показывается.
-    ProbeCreateHandles(F);
-    FObjSnapText := FormSnapshotText(F);
-    FObjSnapPrint := OwnFormPrint(F);
+    ProbeCreateHandles(Frm);
+    FObjSnapText := FormSnapshotText(Frm);
+    FObjSnapPrint := OwnFormPrint(Frm);
     if FOwnSnapCensus = nil then
       FOwnSnapCensus := TStringList.Create;
-    OwnFormCensus(F, FOwnSnapCensus);
+    OwnFormCensus(Frm, FOwnSnapCensus);
   finally
     if not FTabWork then
       Screen.Cursor := OldCursor;
@@ -35703,39 +35703,39 @@ end;
 // заново на каждом переходе. Меняется отпечаток, когда меняется состав:
 // окно настроек построило свои контролы при первом открытии (InitOptions),
 // в меню Reopen стало больше пунктов.
-function TForm1.OwnFormPrint(F: TCustomForm): string;
+function TForm1.OwnFormPrint(Frm: TCustomForm): string;
 
-  function CountCtl(W: TWinControl): Integer;
+  function CountCtl(WinCtrl: TWinControl): Integer;
   var
     I: Integer;
   begin
-    Result := W.ControlCount;
-    for I := 0 to W.ControlCount - 1 do
-      if W.Controls[I] is TWinControl then
-        Inc(Result, CountCtl(TWinControl(W.Controls[I])));
+    Result := WinCtrl.ControlCount;
+    for I := 0 to WinCtrl.ControlCount - 1 do
+      if WinCtrl.Controls[I] is TWinControl then
+        Inc(Result, CountCtl(TWinControl(WinCtrl.Controls[I])));
   end;
 
 var
   CompIdx, CompCnt: Integer;
 begin
   Result := '';
-  if F = nil then
+  if Frm = nil then
     Exit;
   // Таймеры не считаются: редактор заводит свои по ходу работы (отложенная
   // запись, подсказки, второй вид конструктора), и каждый такой таймер
   // заставлял снимать форму заново - с пересверкой живого вида и столбца
   // «Строка кода» (полсекунды на первый Cut)
   CompCnt := 0;
-  for CompIdx := 0 to F.ComponentCount - 1 do
-    if not (F.Components[CompIdx] is TTimer) then
+  for CompIdx := 0 to Frm.ComponentCount - 1 do
+    if not (Frm.Components[CompIdx] is TTimer) then
       Inc(CompCnt);
-  Result := IntToStr(CompCnt) + '/' + IntToStr(CountCtl(F));
+  Result := IntToStr(CompCnt) + '/' + IntToStr(CountCtl(Frm));
 end;
 
 // Состав живой формы для сверки (что появилось или пропало с прошлого
 // снимка): компоненты формы - "класс имя", контролы чужих владельцев в
 // дереве Parent - "ctl класс имя @родитель". Сортированный, с повторами.
-procedure TForm1.OwnFormCensus(F: TCustomForm; AList: TStringList);
+procedure TForm1.OwnFormCensus(Frm: TCustomForm; AList: TStringList);
 
   procedure WalkControls(AParent: TWinControl);
   var
@@ -35745,7 +35745,7 @@ procedure TForm1.OwnFormCensus(F: TCustomForm; AList: TStringList);
     for CtlIdx := 0 to AParent.ControlCount - 1 do
     begin
       Ctl := AParent.Controls[CtlIdx];
-      if Ctl.Owner <> F then
+      if Ctl.Owner <> Frm then
         AList.Add('ctl ' + Ctl.ClassName + ' ' + Ctl.Name + ' @' +
                   AParent.Name);
       if Ctl is TWinControl then
@@ -35759,13 +35759,13 @@ begin
   AList.Clear;
   AList.Sorted := True;
   AList.Duplicates := dupAccept;
-  if F = nil then
+  if Frm = nil then
     Exit;
-  for CompIdx := 0 to F.ComponentCount - 1 do
-    if not (F.Components[CompIdx] is TTimer) then   // как в OwnFormPrint
-      AList.Add(F.Components[CompIdx].ClassName + ' ' +
-                F.Components[CompIdx].Name);
-  WalkControls(F);
+  for CompIdx := 0 to Frm.ComponentCount - 1 do
+    if not (Frm.Components[CompIdx] is TTimer) then   // как в OwnFormPrint
+      AList.Add(Frm.Components[CompIdx].ClassName + ' ' +
+                Frm.Components[CompIdx].Name);
+  WalkControls(Frm);
 end;
 
 // Что в составе живой формы AClass появилось (+) и пропало (-) с прошлого
@@ -35837,13 +35837,13 @@ end;
 // Свой снимок формы AClass есть, но состав живой формы с тех пор другой
 function TForm1.OwnSnapStale(const AClass: string): Boolean;
 var
-  F: TCustomForm;
+  Frm: TCustomForm;
 begin
   Result := False;
   if OwnSnapFor(AClass) = '' then
     Exit;
-  F := OwnLiveForm(AClass);
-  Result := (F <> nil) and (OwnFormPrint(F) <> FObjSnapPrint);
+  Frm := OwnLiveForm(AClass);
+  Result := (Frm <> nil) and (OwnFormPrint(Frm) <> FObjSnapPrint);
 end;
 
 procedure TForm1.SnapshotOwnFormClick(Sender: TObject);
@@ -35877,7 +35877,7 @@ end;
 
 procedure TForm1.ObjSourceClick(Sender: TObject);
 var
-  F: string;
+  FileStr: string;
 begin
   // Файл RapidQ: снимок убирается совсем
   if FObjRapidQ then
@@ -35893,10 +35893,10 @@ begin
     Exit;
   ProbeClear;
   // Снимки убраны совсем - и сохранённый для следующего сеанса
-  F := ProbeCacheFile;
-  if F <> '' then
-    DeleteFile(F);
-  FProbeCacheTried := F;
+  FileStr := ProbeCacheFile;
+  if FileStr <> '' then
+    DeleteFile(FileStr);
+  FProbeCacheTried := FileStr;
   FObjSnapText := '';
   OwnSnapStashClear;
   Inc(FObjSnapGen);
@@ -36098,18 +36098,18 @@ end;
 // берём TForm, свойства у них общие.
 function TForm1.DescClassFor(ANode: TObject): string;
 var
-  N: TDfmNode;
+  DfmNode: TDfmNode;
 begin
   Result := '';
   // Классы RapidQ (QForm, QRichEdit) - не классы Delphi
   if FObjRapidQ then
     Exit;
-  N := TDfmNode(ANode);
-  if (N = nil) or (N.ClassNm = '') then
+  DfmNode := TDfmNode(ANode);
+  if (DfmNode = nil) or (DfmNode.ClassNm = '') then
     Exit;
-  if DsgDescOf(N.ClassNm) <> nil then
-    Result := N.ClassNm
-  else if (N.Parent = nil) and (DsgDescOf('TForm') <> nil) then
+  if DsgDescOf(DfmNode.ClassNm) <> nil then
+    Result := DfmNode.ClassNm
+  else if (DfmNode.Parent = nil) and (DsgDescOf('TForm') <> nil) then
     Result := 'TForm';
 end;
 
@@ -36159,21 +36159,21 @@ function TForm1.PropTypeFor(AClass: TClass; const APath: string;
                             var AWritable: Boolean): Pointer;
 var
   Rest, Part: string;
-  P: Integer;
+  CharPos: Integer;
   PI: PPropInfo;
-  C: TClass;
+  ClassRef: TClass;
 begin
   Result := nil;
   AWritable := False;
-  C := AClass;
+  ClassRef := AClass;
   Rest := APath;
-  while (C <> nil) and (Rest <> '') do
+  while (ClassRef <> nil) and (Rest <> '') do
   begin
-    P := Pos('.', Rest);
-    if P > 0 then
+    CharPos := Pos('.', Rest);
+    if CharPos > 0 then
     begin
-      Part := Copy(Rest, 1, P - 1);
-      Rest := Copy(Rest, P + 1, MaxInt);
+      Part := Copy(Rest, 1, CharPos - 1);
+      Rest := Copy(Rest, CharPos + 1, MaxInt);
     end
     else
     begin
@@ -36181,7 +36181,7 @@ begin
       Rest := '';
     end;
 
-    PI := GetPropInfo(C, Part);
+    PI := GetPropInfo(ClassRef, Part);
     if PI = nil then
       Exit;
     if Rest = '' then
@@ -36193,7 +36193,7 @@ begin
     // Середина пути - только вложенный объект (Font, Constraints)
     if PI^.PropType^^.Kind <> tkClass then
       Exit;
-    C := GetTypeData(PI^.PropType^)^.ClassType;
+    ClassRef := GetTypeData(PI^.PropType^)^.ClassType;
   end;
 end;
 
@@ -36203,9 +36203,9 @@ end;
 // один раз на класс.
 function TForm1.DefaultsFor(AClass: TClass): TStringList;
 var
-  I, P: Integer;
+  I, CharPos: Integer;
   Inst: TComponent;
-  Txt, L, Nm, V: string;
+  Txt, LineStr, Nm, ValStr: string;
   SL: TStringList;
 begin
   I := FRttiDefaults.IndexOf(AClass.ClassName);
@@ -36236,19 +36236,19 @@ begin
     SL.Text := Txt;
     for I := 0 to SL.Count - 1 do
     begin
-      L := SL[I];
+      LineStr := SL[I];
       // Свойства самого объекта - ровно два пробела отступа; четыре и больше -
       // продолжение многострочного значения
-      if (Length(L) < 3) or (Copy(L, 1, 2) <> '  ') or (L[3] = ' ') then
+      if (Length(LineStr) < 3) or (Copy(LineStr, 1, 2) <> '  ') or (LineStr[3] = ' ') then
         Continue;
-      P := Pos(' = ', L);
-      if P <= 0 then
+      CharPos := Pos(' = ', LineStr);
+      if CharPos <= 0 then
         Continue;
-      Nm := Trim(Copy(L, 1, P - 1));
-      V := Copy(L, P + 3, MaxInt);
-      if (V = '') or (V = '(') then
+      Nm := Trim(Copy(LineStr, 1, CharPos - 1));
+      ValStr := Copy(LineStr, CharPos + 3, MaxInt);
+      if (ValStr = '') or (ValStr = '(') then
         Continue;
-      Result.Add(Nm + '=' + V);
+      Result.Add(Nm + '=' + ValStr);
     end;
   finally
     SL.Free;
@@ -36321,10 +36321,10 @@ begin
 end;
 
 // Сборщик имён для GetColorValues / GetCursorValues
-procedure TForm1.ObjAddValue(const S: string);
+procedure TForm1.ObjAddValue(const Str: string);
 begin
   if FObjCombo <> nil then
-    FObjCombo.Items.Add(S);
+    FObjCombo.Items.Add(Str);
 end;
 
 // Подходит ли значение типу свойства. Тип неизвестен - подходит всё: для
@@ -36333,9 +36333,9 @@ function TForm1.ValidatePropValue(ATyp: TDsgTypeDesc; const ARaw: string;
                                   var AMsg: string): Boolean;
 var
   ElemTyp: TDsgTypeDesc;
-  S, El, Allowed: string;
-  P, V, Code: Integer;
-  F: Extended;
+  Str, El, Allowed: string;
+  CharPos, IntVal, Code: Integer;
+  ValF: Extended;
 
   function EnumNames(AEnum: TDsgTypeDesc): string;
   var
@@ -36369,27 +36369,27 @@ begin
     dtkSet:
     begin
       ElemTyp := DsgDescBase.FindType(ATyp.ElemType);
-      S := Trim(ARaw);
-      if (Length(S) < 2) or (S[1] <> '[') or (S[Length(S)] <> ']') then
+      Str := Trim(ARaw);
+      if (Length(Str) < 2) or (Str[1] <> '[') or (Str[Length(Str)] <> ']') then
       begin
         Result := False;
         AMsg := 'Набор пишется в квадратных скобках: [a, b]. ' +
         'Допустимо: ' + EnumNames(ElemTyp);
 Exit;
       end;
-      S := Copy(S, 2, Length(S) - 2);
-      while S <> '' do
+      Str := Copy(Str, 2, Length(Str) - 2);
+      while Str <> '' do
       begin
-        P := Pos(',', S);
-        if P > 0 then
+        CharPos := Pos(',', Str);
+        if CharPos > 0 then
         begin
-          El := Trim(Copy(S, 1, P - 1));
-          S := Copy(S, P + 1, MaxInt);
+          El := Trim(Copy(Str, 1, CharPos - 1));
+          Str := Copy(Str, CharPos + 1, MaxInt);
         end
         else
         begin
-          El := Trim(S);
-          S := '';
+          El := Trim(Str);
+          Str := '';
         end;
         if (El <> '') and (ElemTyp <> nil) and
            (ElemTyp.ValueIndex(El) < 0) then
@@ -36404,13 +36404,13 @@ Exit;
 
     dtkInteger:
     begin
-      if (ATyp.Name = 'TColor') and IdentToColor(ARaw, V) then
+      if (ATyp.Name = 'TColor') and IdentToColor(ARaw, IntVal) then
         Exit;
-      if (ATyp.Name = 'TCursor') and IdentToCursor(ARaw, V) then
+      if (ATyp.Name = 'TCursor') and IdentToCursor(ARaw, IntVal) then
         Exit;
-      if (ATyp.Name = 'TFontCharset') and IdentToCharset(ARaw, V) then
+      if (ATyp.Name = 'TFontCharset') and IdentToCharset(ARaw, IntVal) then
         Exit;
-      Val(ARaw, V, Code);
+      Val(ARaw, IntVal, Code);
       if Code <> 0 then
       begin
         Result := False;
@@ -36428,7 +36428,7 @@ Exit;
 
     dtkInt64:
     begin
-      Val(ARaw, F, Code);   // без дробной части проверит Val по Int64 ниже
+      Val(ARaw, ValF, Code);   // без дробной части проверит Val по Int64 ниже
       if (Code <> 0) or (Pos('.', ARaw) > 0) then
       begin
         Result := False;
@@ -36439,7 +36439,7 @@ Exit;
     dtkFloat:
     begin
       // В .dfm дробная часть всегда через точку, Val её и ждёт
-      Val(ARaw, F, Code);
+      Val(ARaw, ValF, Code);
       if Code <> 0 then
       begin
         Result := False;
@@ -36576,18 +36576,18 @@ const
   LVIR_BOUNDS = 0;
 var
   It: TListItem;
-  Idx, K, H: Integer;
-  Raw, Why, S, El: string;
-  R: TRect;
+  Idx, Idx3, HeightPx: Integer;
+  Raw, Why, Str, El: string;
+  RectVal: TRect;
   DescCls: string;
   TI, ElemTyp: TDsgTypeDesc;
-  W: Boolean;
-  N: TDfmNode;
+  FlagW: Boolean;
+  DfmNode: TDfmNode;
 begin
   It := FObjProps.Selected;
   if (It = nil) or (FObjCurNode = nil) then
     Exit;
-  N := TDfmNode(FObjCurNode);
+  DfmNode := TDfmNode(FObjCurNode);
   Idx := Integer(It.Data);
 
   // Строка Parent (ObjParentRow) не правится - переход к родителю
@@ -36606,23 +36606,23 @@ begin
 
   // Компонент создан в коде - свойство правится в .pas: та же таблица и те
   // же редакторы, а запись идёт строкой присваивания
-  FObjEditCode := N.FromCode;
+  FObjEditCode := DfmNode.FromCode;
   FObjEditLine := -1;
   if FObjEditCode then
   begin
-    if DescClassFor(N) = '' then
+    if DescClassFor(DfmNode) = '' then
     begin
       // Класс редактору неизвестен - выбирать значение не из чего,
       // остаётся переход к строке
-      if (Idx >= 0) and (Idx < N.PropN.Count) and
-         (Integer(N.PropN.Objects[Idx]) >= 0) then
-        JumpToUnitLine(Integer(N.PropN.Objects[Idx]))
+      if (Idx >= 0) and (Idx < DfmNode.PropN.Count) and
+         (Integer(DfmNode.PropN.Objects[Idx]) >= 0) then
+        JumpToUnitLine(Integer(DfmNode.PropN.Objects[Idx]))
       else
-        ShowMessage('18532:Класс ' + N.ClassNm + ' редактору неизвестен - ' +
+        ShowMessage('18532:Класс ' + DfmNode.ClassNm + ' редактору неизвестен - ' +
         'значение можно поправить только в коде.');
                     Exit;
     end;
-    if N.CreateLine < 0 then
+    if DfmNode.CreateLine < 0 then
     begin
       ShowMessage('18538:Строка создания этого компонента в коде не найдена - ' +
       'непонятно, куда писать свойство.');
@@ -36633,8 +36633,8 @@ begin
   // Элемент массива компонентов - правка в editor.ini и сразу на живой
   // компонент (ObjApplyArrayEdit). editor.ini читает только сам редактор,
   // поэтому так правятся элементы только его собственных форм.
-  FObjEditArray := not FObjEditCode and N.IsSnap and
-                   ObjArrayOf(N.Name, FObjEditArrName, FObjEditArrIdx);
+  FObjEditArray := not FObjEditCode and DfmNode.IsSnap and
+                   ObjArrayOf(DfmNode.Name, FObjEditArrName, FObjEditArrIdx);
   if FObjEditArray and not IsOwnProject then
   begin
     ShowMessage('18634:' + FObjEditArrName + '[' + IntToStr(FObjEditArrIdx) +
@@ -36647,20 +36647,20 @@ begin
   // код его задаёт
   if FObjEditArray then
   begin
-    S := '';
+    Str := '';
     if Idx >= 0 then
     begin
-      if Idx < N.PropN.Count then
-        S := N.PropN[Idx];
+      if Idx < DfmNode.PropN.Count then
+        Str := DfmNode.PropN[Idx];
     end
     else if (FObjMissing <> nil) and (-Idx - 1 < FObjMissing.Count) then
-      S := FObjMissing.Names[-Idx - 1];
-    if ObjArrayCodeProp(FObjEditArrName, FObjEditArrIdx, S, K) then
+      Str := FObjMissing.Names[-Idx - 1];
+    if ObjArrayCodeProp(FObjEditArrName, FObjEditArrIdx, Str, Idx3) then
     begin
-      if K >= 0 then
-        JumpToUnitLine(K)
+      if Idx3 >= 0 then
+        JumpToUnitLine(Idx3)
       else
-        ShowMessage('18657:' + S + ' у ' + FObjEditArrName + '[' +
+        ShowMessage('18657:' + Str + ' у ' + FObjEditArrName + '[' +
                     IntToStr(FObjEditArrIdx) + '] задаёт код - в ' +
         'инспекторе не правится.');
                     Exit;
@@ -36670,10 +36670,10 @@ begin
   Why := '';
   if FObjEditArray then
     Why := ''   // файл формы не нужен - запись в editor.ini
-  else if (N.Name = '') and (N.Parent <> nil) and not FObjEditCode then
+  else if (DfmNode.Name = '') and (DfmNode.Parent <> nil) and not FObjEditCode then
     Why := 'У объекта в .dfm нет имени. Пока имя не проставлено, найти его ' +
     'в тексте нельзя - правка ушла бы в чужой объект.'
-  else if N.IsSnap or N.IsLink then
+  else if DfmNode.IsSnap or DfmNode.IsLink then
     Why := 'Это компонент из снимка живой формы - файла у него нет.'
   else if not FObjEditCode then
   begin
@@ -36682,8 +36682,8 @@ begin
     else if FObjDfmBinary then
       Why := 'Файл формы двоичный. Сохраните форму в Delphi как текст ' +
       '(правый щелчок по форме - Text DFM) и повторите.'
-    else if (Idx >= 0) and (Idx < N.PropRaw.Count) and
-            (N.PropRaw.Objects[Idx] <> nil) then
+    else if (Idx >= 0) and (Idx < DfmNode.PropRaw.Count) and
+            (DfmNode.PropRaw.Objects[Idx] <> nil) then
       Why := 'Значение занимает несколько строк .dfm - одной строкой его ' +
       'не заменить. Правьте его в тексте .dfm.';
   end;
@@ -36697,22 +36697,22 @@ begin
   // значение по умолчанию, и при записи строка добавится.
   if Idx >= 0 then
   begin
-    if Idx >= N.PropN.Count then
+    if Idx >= DfmNode.PropN.Count then
       Exit;
     FObjEditInsert := False;
-    FObjEditName := N.PropN[Idx];
-    Raw := N.PropRaw[Idx];
+    FObjEditName := DfmNode.PropN[Idx];
+    Raw := DfmNode.PropRaw[Idx];
     if FObjEditCode then
-      FObjEditLine := Integer(N.PropN.Objects[Idx]); // -1 - только в снимке
+      FObjEditLine := Integer(DfmNode.PropN.Objects[Idx]); // -1 - только в снимке
   end
   else
   begin
-    K := -Idx - 1;
-    if (FObjMissing = nil) or (K >= FObjMissing.Count) then
+    Idx3 := -Idx - 1;
+    if (FObjMissing = nil) or (Idx3 >= FObjMissing.Count) then
       Exit;
     FObjEditInsert := True;
-    FObjEditName := FObjMissing.Names[K];
-    Raw := Copy(FObjMissing[K], Length(FObjEditName) + 2, MaxInt);
+    FObjEditName := FObjMissing.Names[Idx3];
+    Raw := Copy(FObjMissing[Idx3], Length(FObjEditName) + 2, MaxInt);
   end;
   FObjEditIdx := Idx;
   FObjEditOld := Raw;
@@ -36723,13 +36723,13 @@ begin
   // Значение задаёт код - сказать об этом, но править дать: в .dfm оно
   // запишется, а при работе код поставит своё
   if not FObjEditCode and not FObjEditArray and
-     ObjIsCodeProp(N, FObjEditName) then
+     ObjIsCodeProp(DfmNode, FObjEditName) then
   begin
-    S := ObjCodeSetterOf(N.Name, FObjEditName);
-    if S = '' then
-      S := 'значение при работе отличается от записанного в .dfm, но ' +
+    Str := ObjCodeSetterOf(DfmNode.Name, FObjEditName);
+    if Str = '' then
+      Str := 'значение при работе отличается от записанного в .dfm, но ' +
       'строку, где код его ставит, в модуле формы не нашёл';
-ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: ' + S +
+ShowMessage('18729:' + FObjEditName + ' у ' + DfmNode.Name + ' задаёт код: ' + Str +
       '.'#13#10#13#10'Значение запишется в .dfm, но при работе ' +
       'программы код поставит своё.');
   end;
@@ -36737,14 +36737,14 @@ ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: '
   // Тип свойства - для выбора редактора и проверки. Неизвестный класс -
   // тип nil: простой ввод текстом.
   TI := nil;
-  DescCls := DescClassFor(N);
+  DescCls := DescClassFor(DfmNode);
   if DescCls <> '' then
-    TI := DescPropType(DescCls, FObjEditName, W);
+    TI := DescPropType(DescCls, FObjEditName, FlagW);
   FObjEditType := TI;
 
-  R.Top := 1;               // колонка значения
-  R.Left := LVIR_BOUNDS;
-  SendMessage(FObjProps.Handle, LVM_GETSUBITEMRECT, It.Index, Integer(@R));
+  RectVal.Top := 1;               // колонка значения
+  RectVal.Left := LVIR_BOUNDS;
+  SendMessage(FObjProps.Handle, LVM_GETSUBITEMRECT, It.Index, Integer(@RectVal));
 
   FObjEditIsStr := False;
   FObjThemeColor := '';
@@ -36788,27 +36788,27 @@ ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: '
     ElemTyp := DsgDescBase.FindType(TI.ElemType);
     if ElemTyp <> nil then
       FObjSetList.Items.AddStrings(ElemTyp.Values);
-    S := Trim(Raw);
-    if (S <> '') and (S[1] = '[') then
-      Delete(S, 1, 1);
-    if (S <> '') and (S[Length(S)] = ']') then
-      Delete(S, Length(S), 1);
-    while S <> '' do
+    Str := Trim(Raw);
+    if (Str <> '') and (Str[1] = '[') then
+      Delete(Str, 1, 1);
+    if (Str <> '') and (Str[Length(Str)] = ']') then
+      Delete(Str, Length(Str), 1);
+    while Str <> '' do
     begin
-      K := Pos(',', S);
-      if K > 0 then
+      Idx3 := Pos(',', Str);
+      if Idx3 > 0 then
       begin
-        El := Trim(Copy(S, 1, K - 1));
-        S := Copy(S, K + 1, MaxInt);
+        El := Trim(Copy(Str, 1, Idx3 - 1));
+        Str := Copy(Str, Idx3 + 1, MaxInt);
       end
       else
       begin
-        El := Trim(S);
-        S := '';
+        El := Trim(Str);
+        Str := '';
       end;
-      K := FObjSetList.Items.IndexOf(El);
-      if K >= 0 then
-        FObjSetList.Checked[K] := True;
+      Idx3 := FObjSetList.Items.IndexOf(El);
+      if Idx3 >= 0 then
+        FObjSetList.Checked[Idx3] := True;
     end;
     FObjActive := FObjSetList;
   end
@@ -36829,14 +36829,14 @@ ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: '
   if FObjActive = FObjSetList then
   begin
     // Список галок - под ячейкой, на нужное число строк, но не выше сетки
-    H := FObjSetList.ItemHeight * FObjSetList.Items.Count + 6;
-    if H > 200 then
-      H := 200;
-    FObjSetList.SetBounds(R.Left, R.Top, R.Right - R.Left, H);
+    HeightPx := FObjSetList.ItemHeight * FObjSetList.Items.Count + 6;
+    if HeightPx > 200 then
+      HeightPx := 200;
+    FObjSetList.SetBounds(RectVal.Left, RectVal.Top, RectVal.Right - RectVal.Left, HeightPx);
   end
   else
-    FObjActive.SetBounds(R.Left, R.Top, R.Right - R.Left,
-                         R.Bottom - R.Top + 2);
+    FObjActive.SetBounds(RectVal.Left, RectVal.Top, RectVal.Right - RectVal.Left,
+                         RectVal.Bottom - RectVal.Top + 2);
 
   FObjActive.Visible := True;
   FObjActive.SetFocus;
@@ -36882,29 +36882,29 @@ end;
 procedure TForm1.ObjApplyCodeEdit(AObj: TObject; const AName, AValue: string);
 
 // Сколько пробелов и табуляций в начале строки
-  function LeadSpacesOf(const S: string): Integer;
+  function LeadSpacesOf(const Str: string): Integer;
   begin
     Result := 0;
-    while (Result < Length(S)) and (S[Result + 1] in [' ', #9]) do
+    while (Result < Length(Str)) and (Str[Result + 1] in [' ', #9]) do
       Inc(Result);
   end;
 
 var
-  N: TDfmNode;
-  Pas, Txt, T, Pre, Tail, Ind, VarNm: string;
+  DfmNode: TDfmNode;
+  Pas, Txt, Txt2, Pre, Tail, Ind, VarNm: string;
   SL: TStringList;
-  I, Ins, P, Q, L, CL: Integer;
+  I, Ins, CharPos, QuotePos, Len, CL: Integer;
   InsLine: Integer;       // номер вставленной строки, -1 - строка заменена
   Relined: Boolean;       // сохранённый номер не подошёл, строка найдена заново
 
   // Строка начинается с "APre :=" (пробелы вокруг любые)
-  function IsAssign(const S, APre: string): Boolean;
+  function IsAssign(const Str, APre: string): Boolean;
   var
-    U: string;
+    UpStr: string;
   begin
-    U := UpperCase(TrimLeft(S));
-    Result := (Copy(U, 1, Length(APre)) = UpperCase(APre)) and
-              (Copy(TrimLeft(Copy(U, Length(APre) + 1, MaxInt)), 1, 2) = ':=');
+    UpStr := UpperCase(TrimLeft(Str));
+    Result := (Copy(UpStr, 1, Length(APre)) = UpperCase(APre)) and
+              (Copy(TrimLeft(Copy(UpStr, Length(APre) + 1, MaxInt)), 1, 2) = ':=');
   end;
 
 // Ближайшая к AHint строка, которая удовлетворяет условию: присваивание
@@ -36926,13 +36926,13 @@ var
   end;
 
 begin
-  N := TDfmNode(AObj);
+  DfmNode := TDfmNode(AObj);
   InsLine := -1;
   Relined := False;
   // Компонент из кода адресуется переменной: имя в .dfm у него обычно пустое
-  VarNm := N.Name;
+  VarNm := DfmNode.Name;
   if VarNm = '' then
-    VarNm := N.VarName;
+    VarNm := DfmNode.VarName;
   if VarNm = '' then
   begin
     ShowMessage('18786:У этого компонента нет ни имени, ни переменной - ' +
@@ -36962,68 +36962,68 @@ begin
     begin
       // Правим готовую строку: "  FTabs.HotTrack := False;  // что-то".
       // Номер не подошёл - ближайшее к нему присваивание того же свойства.
-      L := FObjEditLine;
-      if (L >= SL.Count) or not IsAssign(SL[L], Pre) then
+      Len := FObjEditLine;
+      if (Len >= SL.Count) or not IsAssign(SL[Len], Pre) then
       begin
-        L := Nearest(Pre, False, FObjEditLine);
-        if L < 0 then
+        Len := Nearest(Pre, False, FObjEditLine);
+        if Len < 0 then
         begin
           ShowMessage('18819:Текст модуля изменился после разбора. Обновите ' +
           'инспектор.');
-                      ObjScheduleRefresh(N, AName);
+                      ObjScheduleRefresh(DfmNode, AName);
                       Exit;
         end;
         Relined := True;
-        if (FObjEditIdx >= 0) and (FObjEditIdx < N.PropN.Count) then
-          N.PropN.Objects[FObjEditIdx] := TObject(L);
+        if (FObjEditIdx >= 0) and (FObjEditIdx < DfmNode.PropN.Count) then
+          DfmNode.PropN.Objects[FObjEditIdx] := TObject(Len);
       end;
-      T := SL[L];
-      P := Pos(':=', T);
-      Q := P + 2;
-      while (Q <= Length(T)) and (T[Q] <> ';') do
-        Inc(Q);
-      if Q > Length(T) then
+      Txt2 := SL[Len];
+      CharPos := Pos(':=', Txt2);
+      QuotePos := CharPos + 2;
+      while (QuotePos <= Length(Txt2)) and (Txt2[QuotePos] <> ';') do
+        Inc(QuotePos);
+      if QuotePos > Length(Txt2) then
         Tail := ''
       else
-        Tail := Copy(T, Q + 1, MaxInt);
-      SL[L] := Copy(T, 1, P + 1) + ' ' + AValue + ';' + Tail;
+        Tail := Copy(Txt2, QuotePos + 1, MaxInt);
+      SL[Len] := Copy(Txt2, 1, CharPos + 1) + ' ' + AValue + ';' + Tail;
     end
     else
     begin
       // Такой строки нет - добавляем после последнего присваивания этой
       // переменной, но не выходя за пределы своей процедуры
-      if N.CreateLine < 0 then
+      if DfmNode.CreateLine < 0 then
         Exit;
       // Строка создания не на месте - ближайшая к ней "Переменная :=
       // ...Create", а нет такой - любое присваивание переменной (компонент
       // мог прийти из помощника: Btn := MakeBtn(...))
-      CL := N.CreateLine;
+      CL := DfmNode.CreateLine;
       if (CL >= SL.Count) or not IsAssign(SL[CL], VarNm) then
       begin
-        CL := Nearest(VarNm, True, N.CreateLine);
+        CL := Nearest(VarNm, True, DfmNode.CreateLine);
         if CL < 0 then
-          CL := Nearest(VarNm, False, N.CreateLine);
+          CL := Nearest(VarNm, False, DfmNode.CreateLine);
         if CL < 0 then
         begin
           ShowMessage('18856:Строка создания ' + VarNm + ' в модуле не найдена. ' +
           'Обновите инспектор.');
-                      ObjScheduleRefresh(N, AName);
+                      ObjScheduleRefresh(DfmNode, AName);
                       Exit;
         end;
-        N.CreateLine := CL;
+        DfmNode.CreateLine := CL;
         Relined := True;
       end;
       Ins := CL;
       for I := CL + 1 to SL.Count - 1 do
       begin
-        T := Trim(SL[I]);
+        Txt2 := Trim(SL[I]);
         if (LeadSpacesOf(SL[I]) = 0) and
-           ((CompareText(Copy(T, 1, 10), 'procedure ') = 0) or
-            (CompareText(Copy(T, 1, 9), 'function ') = 0) or
-            (CompareText(T, 'end;') = 0)) then
+           ((CompareText(Copy(Txt2, 1, 10), 'procedure ') = 0) or
+            (CompareText(Copy(Txt2, 1, 9), 'function ') = 0) or
+            (CompareText(Txt2, 'end;') = 0)) then
           Break;
-        if (CompareText(Copy(T, 1, Length(VarNm) + 1), VarNm + '.') = 0) and
-           (Pos(':=', T) > 0) then
+        if (CompareText(Copy(Txt2, 1, Length(VarNm) + 1), VarNm + '.') = 0) and
+           (Pos(':=', Txt2) > 0) then
           Ins := I;
       end;
       Ind := Copy(SL[Ins], 1, LeadSpacesOf(SL[Ins]));
@@ -37041,13 +37041,13 @@ begin
 
   // Как и для .dfm - на месте, без разбора модуля
   if CompareText(AName, 'Name') = 0 then
-    ObjScheduleRefresh(N, AName)
+    ObjScheduleRefresh(DfmNode, AName)
   else
   begin
-    ObjPointUpdate(N, AName, AValue, InsLine, True);
+    ObjPointUpdate(DfmNode, AName, AValue, InsLine, True);
     // Номера остальных узлов - разбором, форма конструктора остаётся
     if Relined then
-      ObjScheduleRelines(N, AName);
+      ObjScheduleRelines(DfmNode, AName);
   end;
 end;
 
@@ -37091,8 +37091,8 @@ end;
 procedure TForm1.ObjApplyEdit;
 var
   Obj: TDfmNode;
-  PName, NewRaw, NewLine, Cur, Dfm, Txt, Msg, S: string;
-  Line, WinIdx, LS, LL, P, K: Integer;
+  PName, NewRaw, NewLine, Cur, Dfm, Txt, Msg, Str: string;
+  Line, WinIdx, LS, LL, CharPos, K: Integer;
   SL: TStringList;
   EndsWithBreak: Boolean;
   InsLine: Integer;       // номер вставленной строки, -1 - строка заменена
@@ -37101,34 +37101,34 @@ var
   // Строка - то самое свойство с тем самым значением?
   function MatchesProp(const AText: string): Boolean;
   var
-    T: string;
+    Txt2: string;
   begin
-    T := Trim(AText);
-    Result := (CompareText(Copy(T, 1, Length(PName) + 3), PName + ' = ') = 0) and
-              (Copy(T, Length(PName) + 4, MaxInt) = FObjEditOld);
+    Txt2 := Trim(AText);
+    Result := (CompareText(Copy(Txt2, 1, Length(PName) + 3), PName + ' = ') = 0) and
+              (Copy(Txt2, Length(PName) + 4, MaxInt) = FObjEditOld);
   end;
 
 // Строка - заголовок нужного объекта?
   function MatchesHeader(const AText: string): Boolean;
   var
-    T, U: string;
+    Txt2, UpStr: string;
   begin
-    T := Trim(AText);
-    U := UpperCase(T);
-    Result := (Copy(U, 1, 7) = 'OBJECT ') or (Copy(U, 1, 10) = 'INHERITED ') or
-              (Copy(U, 1, 7) = 'INLINE ');
+    Txt2 := Trim(AText);
+    UpStr := UpperCase(Txt2);
+    Result := (Copy(UpStr, 1, 7) = 'OBJECT ') or (Copy(UpStr, 1, 10) = 'INHERITED ') or
+              (Copy(UpStr, 1, 7) = 'INLINE ');
     if Result and (Obj.Name <> '') then
-      Result := Pos(UpperCase(Obj.Name) + ':', U) > 0;
+      Result := Pos(UpperCase(Obj.Name) + ':', UpStr) > 0;
   end;
 
   function IndentOf(const AText: string): string;
   var
-    J: Integer;
+    Idx2: Integer;
   begin
-    J := 1;
-    while (J <= Length(AText)) and (AText[J] in [' ', #9]) do
-      Inc(J);
-    Result := Copy(AText, 1, J - 1);
+    Idx2 := 1;
+    while (Idx2 <= Length(AText)) and (AText[Idx2] in [' ', #9]) do
+      Inc(Idx2);
+    Result := Copy(AText, 1, Idx2 - 1);
   end;
 
   procedure Changed;
@@ -37151,15 +37151,15 @@ begin
   // --- новое значение из того редактора, что открыт
   if FObjActive = FObjSetList then
   begin
-    S := '';
+    Str := '';
     for K := 0 to FObjSetList.Items.Count - 1 do
       if FObjSetList.Checked[K] then
       begin
-        if S <> '' then
-          S := S + ', ';
-        S := S + FObjSetList.Items[K];
+        if Str <> '' then
+          Str := Str + ', ';
+        Str := Str + FObjSetList.Items[K];
       end;
-    NewRaw := '[' + S + ']';
+    NewRaw := '[' + Str + ']';
   end
   else if FObjActive = FObjCombo then
   begin
@@ -37187,8 +37187,8 @@ begin
   // Горячая клавиша: в .dfm она числом, а вводят её как Ctrl+S
   if (FObjEditType <> nil) and (FObjEditType.Name = 'TShortCut') then
   begin
-    Val(NewRaw, K, P);
-    if (P <> 0) and (TextToShortCut(NewRaw) <> 0) then
+    Val(NewRaw, K, CharPos);
+    if (CharPos <> 0) and (TextToShortCut(NewRaw) <> 0) then
       NewRaw := IntToStr(TextToShortCut(NewRaw));
   end;
 
@@ -37402,10 +37402,10 @@ begin
         // убираем, чтобы файл не менялся там, где его не трогали
         if not EndsWithBreak then
         begin
-          P := Length(Txt);
-          while (P > 0) and (Txt[P] in [#13, #10]) do
-            Dec(P);
-          SetLength(Txt, P);
+          CharPos := Length(Txt);
+          while (CharPos > 0) and (Txt[CharPos] in [#13, #10]) do
+            Dec(CharPos);
+          SetLength(Txt, CharPos);
         end;
 
         if WinIdx >= 0 then
@@ -37496,13 +37496,13 @@ end;
 procedure TForm1.ObjPointUpdate(AObj: TObject; const AProp, ARaw: string;
                                 AInsLine: Integer; ACode: Boolean);
 var
-  N: TDfmNode;
+  DfmNode: TDfmNode;
   Idx, I: Integer;
   Shown, Nm: string;
   It: TListItem;
 begin
-  N := TDfmNode(AObj);
-  if N = nil then
+  DfmNode := TDfmNode(AObj);
+  if DfmNode = nil then
     Exit;
 
   if AInsLine >= 0 then
@@ -37515,27 +37515,27 @@ begin
   if FObjEditInsert then
   begin
     // Серое свойство стало записанным: строка в тексте у него теперь есть
-    Idx := N.PropN.AddObject(AProp, TObject(AInsLine));
-    N.PropV.Add(Shown);
+    Idx := DfmNode.PropN.AddObject(AProp, TObject(AInsLine));
+    DfmNode.PropV.Add(Shown);
     if ACode then
-      N.PropRaw.AddObject(ARaw, TObject(1)) // как у разбора кода
+      DfmNode.PropRaw.AddObject(ARaw, TObject(1)) // как у разбора кода
     else
-      N.PropRaw.AddObject(ARaw, nil);
+      DfmNode.PropRaw.AddObject(ARaw, nil);
   end
   else
   begin
     Idx := FObjEditIdx;
-    if (Idx < 0) or (Idx >= N.PropN.Count) or (Idx >= N.PropV.Count) or
-       (Idx >= N.PropRaw.Count) then
+    if (Idx < 0) or (Idx >= DfmNode.PropN.Count) or (Idx >= DfmNode.PropV.Count) or
+       (Idx >= DfmNode.PropRaw.Count) then
     begin
       ObjScheduleRefresh(AObj, AProp);
       Exit;
     end;
     // Значение было только в снимке - теперь у него своя строка в коде
     if ACode and (AInsLine >= 0) then
-      N.PropN.Objects[Idx] := TObject(AInsLine);
-    N.PropV[Idx] := Shown;
-    N.PropRaw[Idx] := ARaw;
+      DfmNode.PropN.Objects[Idx] := TObject(AInsLine);
+    DfmNode.PropV[Idx] := Shown;
+    DfmNode.PropRaw[Idx] := ARaw;
   end;
 
   // --- строка таблицы, если показан этот узел. Data у строки - то, что
@@ -37552,8 +37552,8 @@ begin
           It.SubItems.Add(Shown);
         It.Data := Pointer(Idx);
         // Новое значение - снова «Theme color» или уже свой цвет
-        if not N.IsSnap and not N.IsLink then
-          ObjMarkSchemeItem(It, DescClassFor(N));
+        if not DfmNode.IsSnap and not DfmNode.IsLink then
+          ObjMarkSchemeItem(It, DescClassFor(DfmNode));
         FObjProps.UpdateItems(I, I);
         Break;
       end;
@@ -37561,12 +37561,12 @@ begin
 
   // --- компонент на форме конструктора. Созданный в коде назван там по
   // переменной (см. DsgAddRuntime).
-  if (FDesigner <> nil) and not N.IsSnap and
+  if (FDesigner <> nil) and not DfmNode.IsSnap and
      (CompareText(FObjDfmFile, FDsgDfm) = 0) then
   begin
-    Nm := N.Name;
+    Nm := DfmNode.Name;
     if Nm = '' then
-      Nm := N.VarName;
+      Nm := DfmNode.VarName;
     if (Nm = '') or not FDesigner.SetPropText(Nm, AProp, ARaw) then
       DsgReload
       // То же - спрятанному второму виду. Правка в коде (.pas) текст .dfm не
@@ -37588,47 +37588,47 @@ end;
 // .dfm. Номера строк снимка (у узлов IsSnap) - строки его текста, не файла.
 procedure TForm1.ObjShiftLines(AFrom: Integer; ACode: Boolean);
 
-  procedure ShiftList(L: TStrings);
+  procedure ShiftList(StrList: TStrings);
   var
-    K, V: Integer;
+    K, IntVal: Integer;
   begin
-    for K := 0 to L.Count - 1 do
+    for K := 0 to StrList.Count - 1 do
     begin
-      V := Integer(L.Objects[K]);
-      if V >= AFrom then
-        L.Objects[K] := TObject(V + 1);
+      IntVal := Integer(StrList.Objects[K]);
+      if IntVal >= AFrom then
+        StrList.Objects[K] := TObject(IntVal + 1);
     end;
   end;
 
 var
   I: Integer;
-  N: TDfmNode;
+  DfmNode: TDfmNode;
 begin
   if FDfmNodes = nil then
     Exit;
   for I := 0 to FDfmNodes.Count - 1 do
   begin
-    N := TDfmNode(FDfmNodes[I]);
-    if N = nil then
+    DfmNode := TDfmNode(FDfmNodes[I]);
+    if DfmNode = nil then
       Continue;
     if ACode then
     begin
-      if N.CreateLine >= AFrom then
-        N.CreateLine := N.CreateLine + 1;
-      if N.FromCode then
+      if DfmNode.CreateLine >= AFrom then
+        DfmNode.CreateLine := DfmNode.CreateLine + 1;
+      if DfmNode.FromCode then
       begin
-        ShiftList(N.PropN);
-        ShiftList(N.EvN);
+        ShiftList(DfmNode.PropN);
+        ShiftList(DfmNode.EvN);
       end;
     end
-    else if not N.FromCode and not N.IsSnap then
+    else if not DfmNode.FromCode and not DfmNode.IsSnap then
     begin
-      if N.Line >= AFrom then
-        N.Line := N.Line + 1;
-      if N.EndLine >= AFrom then
-        N.EndLine := N.EndLine + 1;
-      ShiftList(N.PropN);
-      ShiftList(N.EvN);
+      if DfmNode.Line >= AFrom then
+        DfmNode.Line := DfmNode.Line + 1;
+      if DfmNode.EndLine >= AFrom then
+        DfmNode.EndLine := DfmNode.EndLine + 1;
+      ShiftList(DfmNode.PropN);
+      ShiftList(DfmNode.EvN);
     end;
   end;
 end;
@@ -37706,23 +37706,23 @@ end;
 
 procedure TForm1.ObjLinesPost;
 var
-  NewLen, NewLines, D, Post, R1, LA, LB, SA, K, I: Integer;
+  NewLen, NewLines, Delta, Post, R1, LA, LB, SA, Idx3, I: Integer;
   Sel: TCharRange;
-  N: TDfmNode;
+  DfmNode: TDfmNode;
   Unsure: Boolean;
 
   // Номер строки после правки. LA..LB - строки, задетые правкой, R1 - её
   // начало, SA - начало строки LA.
-  function Map(L: Integer): Integer;
+  function Map(Len: Integer): Integer;
   begin
-    if L < LA then
-      Result := L
-    else if L > LB then
-      Result := L + D
-    else if (L = LA) and (SA < R1) then
-      Result := L                 // начало строки левее правки - на месте
-    else if L = LB then
-      Result := L + D             // строка начиналась там, где правка кончилась
+    if Len < LA then
+      Result := Len
+    else if Len > LB then
+      Result := Len + Delta
+    else if (Len = LA) and (SA < R1) then
+      Result := Len                 // начало строки левее правки - на месте
+    else if Len = LB then
+      Result := Len + Delta             // строка начиналась там, где правка кончилась
     else
     begin
       Result := LA;               // строка удалена целиком
@@ -37730,15 +37730,15 @@ var
     end;
   end;
 
-  procedure MapList(L: TStrings);
+  procedure MapList(Len: TStrings);
   var
-    J, V: Integer;
+    J, IntVal: Integer;
   begin
-    for J := 0 to L.Count - 1 do
+    for J := 0 to Len.Count - 1 do
     begin
-      V := Integer(L.Objects[J]);
-      if V >= 0 then
-        L.Objects[J] := TObject(Map(V));
+      IntVal := Integer(Len.Objects[J]);
+      if IntVal >= 0 then
+        Len.Objects[J] := TObject(Map(IntVal));
     end;
   end;
 
@@ -37762,8 +37762,8 @@ begin
     Exit;
 
   NewLines := EdApi.LineCount;
-  D := NewLines - FObjPreLines;
-  if D = 0 then
+  Delta := NewLines - FObjPreLines;
+  if Delta = 0 then
     Exit; // строк столько же - номера на месте
   NewLen := TextLenInternal;
   EdApi.GetSel(Sel);
@@ -37788,42 +37788,42 @@ begin
   else
   begin
     // Удаление без выделения: BackSpace - левее каретки, Delete - правее
-    K := FObjPreLen - NewLen;
+    Idx3 := FObjPreLen - NewLen;
     if Post < FObjPreMin then
-      R1 := FObjPreMin - K
+      R1 := FObjPreMin - Idx3
     else
       R1 := FObjPreMin;
     // Текст левее правки не менялся - строка и её начало те же, что до неё
     LA := EdApi.ExLineFromChar(R1);
     SA := EdApi.LineIndex(LA);
     // Вставки не было: сколько строк убавилось, столько переводов стёрто
-    LB := LA - D;
+    LB := LA - Delta;
   end;
 
   Unsure := False;
   for I := 0 to FDfmNodes.Count - 1 do
   begin
-    N := TDfmNode(FDfmNodes[I]);
-    if N = nil then
+    DfmNode := TDfmNode(FDfmNodes[I]);
+    if DfmNode = nil then
       Continue;
     if FObjPreCode then
     begin
-      if N.CreateLine >= 0 then
-        N.CreateLine := Map(N.CreateLine);
-      if N.FromCode then
+      if DfmNode.CreateLine >= 0 then
+        DfmNode.CreateLine := Map(DfmNode.CreateLine);
+      if DfmNode.FromCode then
       begin
-        MapList(N.PropN);
-        MapList(N.EvN);
+        MapList(DfmNode.PropN);
+        MapList(DfmNode.EvN);
       end;
     end
-    else if not N.FromCode and not N.IsSnap then
+    else if not DfmNode.FromCode and not DfmNode.IsSnap then
     begin
-      if N.Line >= 0 then
-        N.Line := Map(N.Line);
-      if N.EndLine >= 0 then
-        N.EndLine := Map(N.EndLine);
-      MapList(N.PropN);
-      MapList(N.EvN);
+      if DfmNode.Line >= 0 then
+        DfmNode.Line := Map(DfmNode.Line);
+      if DfmNode.EndLine >= 0 then
+        DfmNode.EndLine := Map(DfmNode.EndLine);
+      MapList(DfmNode.PropN);
+      MapList(DfmNode.EvN);
     end;
   end;
   if Unsure then
@@ -37849,62 +37849,62 @@ function TForm1.ObjFindDfmLine(ALines: TStrings; AObj: TObject;
                                const AProp, AOld: string;
                                AHeader: Boolean): Integer;
 var
-  N: TDfmNode;
-  I, H, HI, Ind: Integer;
-  T, U, Nm: string;
+  DfmNode: TDfmNode;
+  I, HeadLine, HI, Ind: Integer;
+  Txt, UpStr, Nm: string;
 
-  function IndentOf(const S: string): Integer;
+  function IndentOf(const Str: string): Integer;
   begin
     Result := 0;
-    while (Result < Length(S)) and (S[Result + 1] in [' ', #9]) do
+    while (Result < Length(Str)) and (Str[Result + 1] in [' ', #9]) do
       Inc(Result);
   end;
 
 begin
   Result := -1;
-  N := TDfmNode(AObj);
-  if (N = nil) or (N.Name = '') then
+  DfmNode := TDfmNode(AObj);
+  if (DfmNode = nil) or (DfmNode.Name = '') then
     Exit;
-  Nm := UpperCase(N.Name) + ':';
+  Nm := UpperCase(DfmNode.Name) + ':';
 
-  H := -1;
+  HeadLine := -1;
   for I := 0 to ALines.Count - 1 do
   begin
-    T := UpperCase(Trim(ALines[I]));
-    if (Copy(T, 1, 7) = 'OBJECT ') or (Copy(T, 1, 7) = 'INLINE ') then
-      U := TrimLeft(Copy(T, 8, MaxInt))
-    else if Copy(T, 1, 10) = 'INHERITED ' then
-      U := TrimLeft(Copy(T, 11, MaxInt))
+    Txt := UpperCase(Trim(ALines[I]));
+    if (Copy(Txt, 1, 7) = 'OBJECT ') or (Copy(Txt, 1, 7) = 'INLINE ') then
+      UpStr := TrimLeft(Copy(Txt, 8, MaxInt))
+    else if Copy(Txt, 1, 10) = 'INHERITED ' then
+      UpStr := TrimLeft(Copy(Txt, 11, MaxInt))
     else
       Continue;
-    if Copy(U, 1, Length(Nm)) = Nm then
+    if Copy(UpStr, 1, Length(Nm)) = Nm then
     begin
-      H := I;
+      HeadLine := I;
       Break;
     end;
   end;
-  if H < 0 then
+  if HeadLine < 0 then
     Exit;
   if AHeader then
   begin
-    Result := H;
+    Result := HeadLine;
     Exit;
   end;
 
-  HI := IndentOf(ALines[H]);
-  for I := H + 1 to ALines.Count - 1 do
+  HI := IndentOf(ALines[HeadLine]);
+  for I := HeadLine + 1 to ALines.Count - 1 do
   begin
-    T := ALines[I];
-    if Trim(T) = '' then
+    Txt := ALines[I];
+    if Trim(Txt) = '' then
       Continue;
-    Ind := IndentOf(T);
+    Ind := IndentOf(Txt);
     if Ind <= HI then
       Break; // end объекта
     if Ind <> HI + 2 then
       Continue;
-    T := Trim(T);
-    if (CompareText(Copy(T, 1, Length(AProp) + 3), AProp + ' = ') = 0) and
-       (Copy(T, Length(AProp) + 4, MaxInt) = AOld) then
+    Txt := Trim(Txt);
+    if (CompareText(Copy(Txt, 1, Length(AProp) + 3), AProp + ' = ') = 0) and
+       (Copy(Txt, Length(AProp) + 4, MaxInt) = AOld) then
     begin
       Result := I;
       Exit;
@@ -37929,16 +37929,16 @@ end;
 
 procedure TForm1.ObjPostRefresh(AObj: TObject; const AProp: string);
 var
-  N: TDfmNode;
+  DfmNode: TDfmNode;
 begin
-  N := TDfmNode(AObj);
+  DfmNode := TDfmNode(AObj);
   FObjRefreshNode := AObj;
   FObjRefreshName := '';
-  if N <> nil then
+  if DfmNode <> nil then
   begin
-    FObjRefreshName := N.Name;
+    FObjRefreshName := DfmNode.Name;
     if FObjRefreshName = '' then
-      FObjRefreshName := N.VarName;
+      FObjRefreshName := DfmNode.VarName;
   end;
   FObjRefreshProp := AProp;
   FObjDfmKey := '';
@@ -37963,19 +37963,19 @@ procedure TForm1.WMTabSwitched(var Msg: TMessage);
 const
   TabWorkShowMs = 300;
 var
-  W: Integer;
+  WinIdx: Integer;
   T0, TSub, TObj, TCode: Cardinal;
 begin
-  W := Msg.WParam;
-  if (W <> FWindowsIndex) or (Msg.LParam <> FTabSwitchGen) then
+  WinIdx := Msg.WParam;
+  if (WinIdx <> FWindowsIndex) or (Msg.LParam <> FTabSwitchGen) then
     Exit;
-  if (W < 0) or (W > WindowsItemCount - 1) or not FWindows[W].Used then
+  if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or not FWindows[WinIdx].Used then
     Exit;
 
   FTabWork := True;
-  FTabWorkShown := FWindows[W].WorkMs > TabWorkShowMs;
+  FTabWorkShown := FWindows[WinIdx].WorkMs > TabWorkShowMs;
   if FTabWorkShown then
-    BusyBegin('Разбор ' + ExtractFileName(FWindows[W].FileName));
+    BusyBegin('Разбор ' + ExtractFileName(FWindows[WinIdx].FileName));
   T0 := GetTickCount;
   TSub := 0;
   TObj := 0;
@@ -38009,14 +38009,14 @@ begin
     end;
   finally
     FTabWork := False;
-    FWindows[W].WorkMs := GetTickCount - T0;
+    FWindows[WinIdx].WorkMs := GetTickCount - T0;
     if FTabWorkShown then
       BusyEnd('', True);
     FTabWorkShown := False;
   end;
 
-  Dbg('19245: вкладка ' + ExtractFileName(FWindows[W].FileName) +
-  ': после показа ' + IntToStr(FWindows[W].WorkMs) + ' мс (подпрограммы ' +
+  Dbg('19245: вкладка ' + ExtractFileName(FWindows[WinIdx].FileName) +
+  ': после показа ' + IntToStr(FWindows[WinIdx].WorkMs) + ' мс (подпрограммы ' +
       IntToStr(TSub) + ', инспектор ' + IntToStr(TObj) + ', дерево кода ' +
       IntToStr(TCode) + ')', clGray);
 end;
@@ -38031,7 +38031,7 @@ end;
 procedure TForm1.WMObjRefresh(var Msg: TMessage);
 var
   Nm, Prop: string;
-  N: TDfmNode;
+  DfmNode: TDfmNode;
   Dsg: Boolean;
 begin
   if not FObjRefreshPending or (FObjTree = nil) then
@@ -38055,10 +38055,10 @@ begin
   if (FObjTree.Selected <> nil) and (FObjTree.Selected.Data <> nil) and
      (FObjTree.Selected.Data <> FObjRefreshNode) then
   begin
-    N := TDfmNode(FObjTree.Selected.Data);
-    Nm := N.Name;
+    DfmNode := TDfmNode(FObjTree.Selected.Data);
+    Nm := DfmNode.Name;
     if Nm = '' then
-      Nm := N.VarName;
+      Nm := DfmNode.VarName;
     Prop := '';
   end;
   if FObjProps.Selected <> nil then
@@ -38137,14 +38137,14 @@ end;
 procedure TForm1.ObjSelect(const AName, AClass, AProp: string);
 var
   I: Integer;
-  N: TDfmNode;
+  DfmNode: TDfmNode;
   It: TListItem;
 begin
   for I := 0 to FObjTree.Items.Count - 1 do
   begin
-    N := TDfmNode(FObjTree.Items[I].Data);
-    if (N <> nil) and not N.IsSnap and (CompareText(N.Name, AName) = 0) and
-       (CompareText(N.ClassNm, AClass) = 0) then
+    DfmNode := TDfmNode(FObjTree.Items[I].Data);
+    if (DfmNode <> nil) and not DfmNode.IsSnap and (CompareText(DfmNode.Name, AName) = 0) and
+       (CompareText(DfmNode.ClassNm, AClass) = 0) then
     begin
       FObjTree.Selected := FObjTree.Items[I];
       FObjTree.Selected.MakeVisible;
@@ -38343,14 +38343,14 @@ end;
 // Текст модуля: из вкладки, если он открыт, иначе с диска
 function TForm1.UnitTextOf(const APas: string): string;
 var
-  W: Integer;
+  WinIdx: Integer;
 begin
   Result := '';
-  W := WindowOfFile(APas);
-  if W = FWindowsIndex then
+  WinIdx := WindowOfFile(APas);
+  if WinIdx = FWindowsIndex then
     Result := GetEditorText
-  else if W >= 0 then
-    Result := WinText(W)
+  else if WinIdx >= 0 then
+    Result := WinText(WinIdx)
   else if FileExists(APas) then
     with TFileStream.Create(APas, fmOpenRead or fmShareDenyNone) do
     try
@@ -38394,38 +38394,38 @@ end;
 // Строка, где создаётся компонент узла. -1 - не нашлась или выбор отменён.
 function TForm1.FindCreateLine(const AText: string; ANode: TObject): Integer;
 var
-  N: TDfmNode;
+  DfmNode: TDfmNode;
   Lines, Cands, CapHit, CapLike, LitHit: TStringList;
-  I, J, K, P: Integer;
-  Cap, Lit, U, L, Lhs, Cls, S, ParentNm: string;
+  I, J, Idx3, CharPos: Integer;
+  Cap, Lit, UpStr, LineStr, Lhs, Cls, Str, ParentNm: string;
 
   // "  FToolbar := TPanel.Create(Self);" -> класс и переменная слева
   function ParseCreate(const ALine: string; var AClass, ALhs: string): Boolean;
   var
-    T, TU: string;
-    Q, E, B: Integer;
+    Txt, TU: string;
+    QuotePos, EndPos, RangeFrom: Integer;
   begin
     Result := False;
-    T := Trim(ALine);
-    if Copy(T, 1, 2) = '//' then
+    Txt := Trim(ALine);
+    if Copy(Txt, 1, 2) = '//' then
       Exit;
-    TU := UpperCase(T);
-    Q := CodeCreatePos(TU);
-    if Q <= 0 then
+    TU := UpperCase(Txt);
+    QuotePos := CodeCreatePos(TU);
+    if QuotePos <= 0 then
       Exit;
     // класс - идентификатор прямо перед .Create
-    E := Q - 1;
-    B := E;
-    while (B >= 1) and (T[B] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
-      Dec(B);
-    AClass := Copy(T, B + 1, E - B);
+    EndPos := QuotePos - 1;
+    RangeFrom := EndPos;
+    while (RangeFrom >= 1) and (Txt[RangeFrom] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+      Dec(RangeFrom);
+    AClass := Copy(Txt, RangeFrom + 1, EndPos - RangeFrom);
     if AClass = '' then
       Exit;
     // слева от класса - ":=" и переменная, если присваивание есть
     ALhs := '';
-    P := Pos(':=', T);
-    if (P > 0) and (P < B) then
-      ALhs := Trim(Copy(T, 1, P - 1));
+    CharPos := Pos(':=', Txt);
+    if (CharPos > 0) and (CharPos < RangeFrom) then
+      ALhs := Trim(Copy(Txt, 1, CharPos - 1));
     Result := True;
   end;
 
@@ -38434,30 +38434,30 @@ var
 // него не входит: так отсекаются и ';', и комментарий за ним.
   function LiteralAfterAssign(const ALine: string): string;
   var
-    T: string;
-    Q, E: Integer;
+    Txt: string;
+    QuotePos, EndPos: Integer;
     InQ: Boolean;
   begin
     Result := '';
-    T := Trim(ALine);
-    Q := Pos(':=', T);
-    if Q <= 0 then
+    Txt := Trim(ALine);
+    QuotePos := Pos(':=', Txt);
+    if QuotePos <= 0 then
       Exit;
-    T := Trim(Copy(T, Q + 2, MaxInt));
-    if (T = '') or not (T[1] in ['''', '#']) then
+    Txt := Trim(Copy(Txt, QuotePos + 2, MaxInt));
+    if (Txt = '') or not (Txt[1] in ['''', '#']) then
       Exit;
 
-    E := 1;
+    EndPos := 1;
     InQ := False;
-    while E <= Length(T) do
+    while EndPos <= Length(Txt) do
     begin
-      if T[E] = '''' then
+      if Txt[EndPos] = '''' then
         InQ := not InQ         // '' внутри строки - два переключения подряд
-      else if not InQ and not (T[E] in ['#', '0'..'9', '+', ' ']) then
+      else if not InQ and not (Txt[EndPos] in ['#', '0'..'9', '+', ' ']) then
         Break;
-      Inc(E);
+      Inc(EndPos);
     end;
-    Result := DecodeDfmString(Trim(Copy(T, 1, E - 1)));
+    Result := DecodeDfmString(Trim(Copy(Txt, 1, EndPos - 1)));
   end;
 
   // Куски-литералы справа от := : "'Install 7-Zip ' + SzVersion + ' (x)'"
@@ -38466,39 +38466,39 @@ var
                           var AStartsLit: Boolean);
   var
     Rhs, Run: string;
-    Q, E: Integer;
+    QuotePos, EndPos: Integer;
     InQ: Boolean;
   begin
     APieces.Clear;
     AStartsLit := False;
-    Q := Pos(':=', ALine);
-    if Q <= 0 then
+    QuotePos := Pos(':=', ALine);
+    if QuotePos <= 0 then
       Exit;
-    Rhs := Trim(Copy(ALine, Q + 2, MaxInt));
+    Rhs := Trim(Copy(ALine, QuotePos + 2, MaxInt));
     AStartsLit := (Rhs <> '') and (Rhs[1] in ['''', '#']);
-    E := 1;
-    while E <= Length(Rhs) do
+    EndPos := 1;
+    while EndPos <= Length(Rhs) do
     begin
-      if not (Rhs[E] in ['''', '#']) then
+      if not (Rhs[EndPos] in ['''', '#']) then
       begin
         // Комментарий за выражением - дальше не смотрим
-        if Copy(Rhs, E, 2) = '//' then
+        if Copy(Rhs, EndPos, 2) = '//' then
           Break;
-        Inc(E);
+        Inc(EndPos);
         Continue;
       end;
       // Литерал: кавычки, #коды и + между ними
-      Q := E;
+      QuotePos := EndPos;
       InQ := False;
-      while E <= Length(Rhs) do
+      while EndPos <= Length(Rhs) do
       begin
-        if Rhs[E] = '''' then
+        if Rhs[EndPos] = '''' then
           InQ := not InQ
-        else if not InQ and not (Rhs[E] in ['#', '0'..'9', ' ']) then
+        else if not InQ and not (Rhs[EndPos] in ['#', '0'..'9', ' ']) then
           Break;
-        Inc(E);
+        Inc(EndPos);
       end;
-      Run := Trim(Copy(Rhs, Q, E - Q));
+      Run := Trim(Copy(Rhs, QuotePos, EndPos - QuotePos));
       if Run <> '' then
         APieces.Add(DecodeDfmString(Run));
     end;
@@ -38614,7 +38614,7 @@ var
       Result := Integer(AList.Objects[0]);
       Exit;
     end;
-    Sel := ChooseFromList('Где создаётся ' + N.ClassNm,
+    Sel := ChooseFromList('Где создаётся ' + DfmNode.ClassNm,
     'Подходящих строк несколько:', AList);
                           if Sel <> '' then
                           Result := Integer(AList.Objects[AList.IndexOf(Sel)]);
@@ -38628,7 +38628,7 @@ var
 
 begin
   Result := -1;
-  N := TDfmNode(ANode);
+  DfmNode := TDfmNode(ANode);
   Lines := TStringList.Create;
   Cands := TStringList.Create;
   CapHit := TStringList.Create;
@@ -38639,32 +38639,32 @@ begin
 
     // Подпись узла - для сверки
     Cap := '';
-    K := N.PropN.IndexOf('Caption');
-    if K < 0 then
-      K := N.PropN.IndexOf('Text');
-    if K >= 0 then
-      Cap := N.PropV[K];
+    Idx3 := DfmNode.PropN.IndexOf('Caption');
+    if Idx3 < 0 then
+      Idx3 := DfmNode.PropN.IndexOf('Text');
+    if Idx3 >= 0 then
+      Cap := DfmNode.PropV[Idx3];
     // Родитель узла - кому компонент добавляется (RosMenu.Add(LinkItem))
     ParentNm := '';
-    if (N.Parent <> nil) and (N.Parent.Parent <> nil) then
+    if (DfmNode.Parent <> nil) and (DfmNode.Parent.Parent <> nil) then
     begin
-      ParentNm := N.Parent.VarName;
+      ParentNm := DfmNode.Parent.VarName;
       if ParentNm = '' then
-        ParentNm := N.Parent.Name;
+        ParentNm := DfmNode.Parent.Name;
     end;
 
     for I := 0 to Lines.Count - 1 do
     begin
       if not ParseCreate(Lines[I], Cls, Lhs) then
         Continue;
-      if CompareText(Cls, N.ClassNm) <> 0 then
+      if CompareText(Cls, DfmNode.ClassNm) <> 0 then
         Continue;
       AddCand(Cands, I);
 
       // 1. имя - слева от := или в X.Name := 'Имя' ниже
-      if N.Name <> '' then
+      if DfmNode.Name <> '' then
       begin
-        if CompareText(Lhs, N.Name) = 0 then
+        if CompareText(Lhs, DfmNode.Name) = 0 then
         begin
           Result := I;
           Exit;
@@ -38675,7 +38675,7 @@ begin
             Break;
           if (Lhs <> '') and
              (Pos(AnsiUpperCase(Lhs + '.Name'), AnsiUpperCase(Lines[J])) > 0) and
-             (LiteralAfterAssign(Lines[J]) = N.Name) then
+             (LiteralAfterAssign(Lines[J]) = DfmNode.Name) then
           begin
             Result := I;
             Exit;
@@ -38689,9 +38689,9 @@ begin
         begin
           if J >= Lines.Count then
             Break;
-          U := AnsiUpperCase(Trim(Lines[J]));
-          if (Pos(AnsiUpperCase(Lhs + '.Caption'), U) = 1) or
-             (Pos(AnsiUpperCase(Lhs + '.Text'), U) = 1) then
+          UpStr := AnsiUpperCase(Trim(Lines[J]));
+          if (Pos(AnsiUpperCase(Lhs + '.Caption'), UpStr) = 1) or
+             (Pos(AnsiUpperCase(Lhs + '.Text'), UpStr) = 1) then
           begin
             if LiteralAfterAssign(Lines[J]) = Cap then
             begin
@@ -38706,7 +38706,7 @@ begin
             end;
           end;
           // Дошли до создания следующего - дальше не наше
-          if ParseCreate(Lines[J], S, L) then
+          if ParseCreate(Lines[J], Str, LineStr) then
             Break;
         end;
     end;
@@ -38724,10 +38724,10 @@ begin
       Lit := EncodeDfmString(Cap);
       for I := 0 to Lines.Count - 1 do
       begin
-        L := Trim(Lines[I]);
-        if Copy(L, 1, 2) = '//' then
+        LineStr := Trim(Lines[I]);
+        if Copy(LineStr, 1, 2) = '//' then
           Continue;
-        if Pos(Lit, L) > 0 then
+        if Pos(Lit, LineStr) > 0 then
           AddCand(LitHit, I);
       end;
       Result := Choose(LitHit);
@@ -38789,9 +38789,9 @@ end;
 // поэтому без проверки, где сейчас мышь.
 procedure TForm1.ObjJumpToSelected;
 var
-  N: TDfmNode;
+  DfmNode2: TDfmNode;
   Pas, Txt, Dfm, Arr: string;
-  Line, ArrIdx, K: Integer;
+  Line, ArrIdx, Idx3: Integer;
 
   // Runtime-узел, которого нет ни в .dfm, ни в коде модуля: его создал сам
   // компонент-владелец из своих свойств. Так TRadioGroup делает TGroupButton
@@ -38804,43 +38804,43 @@ var
   // прежним - узел-родитель в снимке, а снимок целиком из узлов IsSnap.
   function JumpToDfmOwner: Boolean;
   var
-    A: TDfmNode;
+    DfmNode: TDfmNode;
     TN: TTreeNode;
-    Cap, Lit, LitW, F: string;
-    L0, L1, K, I: Integer;
-    W: WideString;
+    Cap, Lit, LitW, FileStr: string;
+    L0, L1, Idx3, I: Integer;
+    WordStr: WideString;
     SL: TStringList;
   begin
     Result := False;
     if (FObjDfmFile = '') or FObjDfmBinary or (FObjTree.Selected = nil) then
       Exit;
-    A := nil;
+    DfmNode := nil;
     TN := FObjTree.Selected.Parent;
     while TN <> nil do
     begin
       if TN.Data <> nil then
       begin
-        A := TDfmNode(TN.Data);
-        if not (A.IsRuntime or A.IsSnap or A.FromCode) then
+        DfmNode := TDfmNode(TN.Data);
+        if not (DfmNode.IsRuntime or DfmNode.IsSnap or DfmNode.FromCode) then
           Break;
-        A := nil;
+        DfmNode := nil;
       end;
       TN := TN.Parent;
     end;
-    if (A = nil) or (A.Line < 0) then
+    if (DfmNode = nil) or (DfmNode.Line < 0) then
       Exit;
 
     // Всё нужное - до OpenNamedFile: он перестраивает дерево, и узлы
     // освобождаются
-    L0 := A.Line;
-    L1 := A.EndLine;
-    F := FObjDfmFile;
+    L0 := DfmNode.Line;
+    L1 := DfmNode.EndLine;
+    FileStr := FObjDfmFile;
     Cap := '';
-    K := N.PropN.IndexOf('Caption');
-    if K < 0 then
-      K := N.PropN.IndexOf('Text');
-    if K >= 0 then
-      Cap := N.PropV[K];
+    Idx3 := DfmNode2.PropN.IndexOf('Caption');
+    if Idx3 < 0 then
+      Idx3 := DfmNode2.PropN.IndexOf('Text');
+    if Idx3 >= 0 then
+      Cap := DfmNode2.PropV[Idx3];
 
     Line := L0;
     if Cap <> '' then
@@ -38848,16 +38848,16 @@ var
       // Подпись в .dfm записана либо как есть, либо кодами #1053 -
       // проверяются оба вида
       Lit := EncodeDfmString(Cap);
-      W := Cap;
+      WordStr := Cap;
       LitW := '';
-      for I := 1 to Length(W) do
-        if Ord(W[I]) > 127 then
-          LitW := LitW + '#' + IntToStr(Ord(W[I]))
+      for I := 1 to Length(WordStr) do
+        if Ord(WordStr[I]) > 127 then
+          LitW := LitW + '#' + IntToStr(Ord(WordStr[I]))
         else
-          LitW := LitW + Char(W[I]);
+          LitW := LitW + Char(WordStr[I]);
       SL := TStringList.Create;
       try
-        SL.Text := UnitTextOf(F);
+        SL.Text := UnitTextOf(FileStr);
         if (L1 < 0) or (L1 >= SL.Count) then
           L1 := SL.Count - 1;
         for I := L0 to L1 do
@@ -38872,7 +38872,7 @@ var
       end;
     end;
 
-    OpenNamedFile(F);
+    OpenNamedFile(FileStr);
     GotoLine(Line);
     Result := True;
   end;
@@ -38880,13 +38880,13 @@ var
 begin
   if (FObjTree.Selected = nil) or (FObjTree.Selected.Data = nil) then
     Exit;
-  N := TDfmNode(FObjTree.Selected.Data);
+  DfmNode2 := TDfmNode(FObjTree.Selected.Data);
 
   // Объект RapidQ - к его строке CREATE в открытом файле
   if FObjRapidQ then
   begin
-    if N.CreateLine >= 0 then
-      GotoLine(N.CreateLine);
+    if DfmNode2.CreateLine >= 0 then
+      GotoLine(DfmNode2.CreateLine);
     Exit;
   end;
 
@@ -38894,11 +38894,11 @@ begin
   // Номер строки и имя файла берём ДО OpenNamedFile: переключение вкладки
   // перестраивает инспектор, а при этом старые узлы освобождаются, и
   // читать N.Line после было бы чтением из освобождённой памяти.
-  if not N.IsRuntime and not N.IsSnap and not N.FromCode then
+  if not DfmNode2.IsRuntime and not DfmNode2.IsSnap and not DfmNode2.FromCode then
   begin
-    if (FObjDfmFile = '') or FObjDfmBinary or (N.Line < 0) then
+    if (FObjDfmFile = '') or FObjDfmBinary or (DfmNode2.Line < 0) then
       Exit;
-    Line := N.Line;
+    Line := DfmNode2.Line;
     Dfm := FObjDfmFile;
     OpenNamedFile(Dfm);
     GotoLine(Line);
@@ -38906,28 +38906,28 @@ begin
   end;
 
   // Элемент массива компонентов - к строке, где создаются элементы
-  if N.IsSnap and ObjArrayOf(N.Name, Arr, ArrIdx) then
+  if DfmNode2.IsSnap and ObjArrayOf(DfmNode2.Name, Arr, ArrIdx) then
   begin
-    K := -1;
+    Idx3 := -1;
     if FObjArrayLines <> nil then
-      K := FObjArrayLines.IndexOf(Arr + '.CREATE');
-    if K < 0 then
+      Idx3 := FObjArrayLines.IndexOf(Arr + '.CREATE');
+    if Idx3 < 0 then
       ShowMessage('20584:Создание элементов ' + Arr + ' в модуле формы не ' +
       'найдено.')
     else
-      JumpToUnitLine(Integer(FObjArrayLines.Objects[K]));
+      JumpToUnitLine(Integer(FObjArrayLines.Objects[Idx3]));
     Exit;
   end;
 
-  if not N.IsRuntime then
+  if not DfmNode2.IsRuntime then
     Exit;
 
   // Кнопки TRadioGroup в коде не создаются никогда - сразу к владельцу
-  if (CompareText(N.ClassNm, 'TGroupButton') = 0) or
-     (CompareText(N.ClassNm, 'TUiGroupButton') = 0) then
+  if (CompareText(DfmNode2.ClassNm, 'TGroupButton') = 0) or
+     (CompareText(DfmNode2.ClassNm, 'TUiGroupButton') = 0) then
   begin
     if not JumpToDfmOwner then
-      ShowMessage('20358:' + N.ClassNm + ' создаёт владелец, а его в .dfm ' +
+      ShowMessage('20358:' + DfmNode2.ClassNm + ' создаёт владелец, а его в .dfm ' +
       'не найти.');
                   Exit;
   end;
@@ -38945,28 +38945,28 @@ begin
   // Переменная найдена при разборе - строка создания известна. Сверяем:
   // модуль могли поправить, и номера строк уехали
   Line := -1;
-  if (N.VarName <> '') and (N.CreateLine >= 0) then
+  if (DfmNode2.VarName <> '') and (DfmNode2.CreateLine >= 0) then
     with TStringList.Create do
     try
       Text := Txt;
       // Строка создания: X := TКласс.Create(...) или через помощник модуля
       // X := MakeBtn(...) - тогда .Create в ней нет, но есть присваивание
-      if (N.CreateLine < Count) and
-         (Pos(AnsiUpperCase(N.VarName), AnsiUpperCase(Strings[N.CreateLine])) > 0) and
-         ((CodeCreatePos(AnsiUpperCase(Strings[N.CreateLine])) > 0) or
-          (Pos(':=', Strings[N.CreateLine]) > 0)) then
-        Line := N.CreateLine;
+      if (DfmNode2.CreateLine < Count) and
+         (Pos(AnsiUpperCase(DfmNode2.VarName), AnsiUpperCase(Strings[DfmNode2.CreateLine])) > 0) and
+         ((CodeCreatePos(AnsiUpperCase(Strings[DfmNode2.CreateLine])) > 0) or
+          (Pos(':=', Strings[DfmNode2.CreateLine]) > 0)) then
+        Line := DfmNode2.CreateLine;
     finally
       Free;
     end;
   if Line < 0 then
-    Line := FindCreateLine(Txt, N);
+    Line := FindCreateLine(Txt, DfmNode2);
   if Line < 0 then
   begin
     // В коде создания нет - узел мог создать владелец из .dfm
     if JumpToDfmOwner then
       Exit;
-    ShowMessage('20397:Создание ' + N.ClassNm + ' в ' + ExtractFileName(Pas) +
+    ShowMessage('20397:Создание ' + DfmNode2.ClassNm + ' в ' + ExtractFileName(Pas) +
     ' не найдено.');
                 Exit;
   end;
@@ -39149,15 +39149,15 @@ end;
 procedure TForm1.ObjSelectName(const AName: string);
 var
   I: Integer;
-  N: TDfmNode;
+  DfmNode: TDfmNode;
 begin
   if FObjTree = nil then
     Exit;
   for I := 0 to FObjTree.Items.Count - 1 do
   begin
-    N := TDfmNode(FObjTree.Items[I].Data);
-    if (N <> nil) and not N.IsSnap and not N.IsLink and not N.FromCode and
-       (CompareText(N.Name, AName) = 0) then
+    DfmNode := TDfmNode(FObjTree.Items[I].Data);
+    if (DfmNode <> nil) and not DfmNode.IsSnap and not DfmNode.IsLink and not DfmNode.FromCode and
+       (CompareText(DfmNode.Name, AName) = 0) then
     begin
       FObjTree.Selected := FObjTree.Items[I];
       FObjTree.Selected.MakeVisible;
@@ -39171,37 +39171,37 @@ end;
 function TForm1.ObjSelectAnyName(const AName: string): Boolean;
 var
   I: Integer;
-  N: TDfmNode;
-  T, P: TTreeNode;
+  DfmNode: TDfmNode;
+  TreeNode2, TreeNode: TTreeNode;
 begin
   Result := False;
   if (FObjTree = nil) or (AName = '') then
     Exit;
-  T := nil;
+  TreeNode2 := nil;
   for I := 0 to FObjTree.Items.Count - 1 do
   begin
-    N := TDfmNode(FObjTree.Items[I].Data);
-    if (N = nil) or N.IsLink then
+    DfmNode := TDfmNode(FObjTree.Items[I].Data);
+    if (DfmNode = nil) or DfmNode.IsLink then
       Continue;
-    if (CompareText(N.Name, AName) <> 0) and
-       not ((N.Name = '') and (CompareText(N.VarName, AName) = 0)) then
+    if (CompareText(DfmNode.Name, AName) <> 0) and
+       not ((DfmNode.Name = '') and (CompareText(DfmNode.VarName, AName) = 0)) then
       Continue;
-    T := FObjTree.Items[I];
-    if not N.IsSnap then
+    TreeNode2 := FObjTree.Items[I];
+    if not DfmNode.IsSnap then
       Break; // узел .dfm или кода важнее узла снимка
   end;
-  if T = nil then
+  if TreeNode2 = nil then
     Exit;
 
-  P := T.Parent;
-  while P <> nil do
+  TreeNode := TreeNode2.Parent;
+  while TreeNode <> nil do
   begin
-    P.Expanded := True;
-    P := P.Parent;
+    TreeNode.Expanded := True;
+    TreeNode := TreeNode.Parent;
   end;
-  T.Expanded := True;
-  FObjTree.Selected := T;
-  T.MakeVisible;
+  TreeNode2.Expanded := True;
+  FObjTree.Selected := TreeNode2;
+  TreeNode2.MakeVisible;
   Result := True;
 end;
 
@@ -39209,33 +39209,33 @@ end;
 // '' - каретка не на слове.
 function TForm1.IdentAtCaret: string;
 var
-  P, LineIdx, LineStart, Col, A, B: Integer;
-  S: string;
+  CharPos, LineIdx, LineStart, Col, WordStart, WordEnd: Integer;
+  Str: string;
 begin
   Result := '';
-  P := RichEdit1.SelStart;
-  LineIdx := EdApi.LineFromChar(P);
+  CharPos := RichEdit1.SelStart;
+  LineIdx := EdApi.LineFromChar(CharPos);
   if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
     Exit;
   LineStart := EdApi.LineIndex(LineIdx);
-  S := RichEdit1.Lines[LineIdx];
-  Col := P - LineStart + 1;
-  if (Col < 1) or (Col > Length(S) + 1) then
+  Str := RichEdit1.Lines[LineIdx];
+  Col := CharPos - LineStart + 1;
+  if (Col < 1) or (Col > Length(Str) + 1) then
     Exit;
 
-  A := Col;
+  WordStart := Col;
   // Каретка стоит за словом - смотрим знак слева
-  if (A > Length(S)) or not (S[A] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
-    Dec(A);
-  if (A < 1) or (A > Length(S)) or
-     not (S[A] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+  if (WordStart > Length(Str)) or not (Str[WordStart] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    Dec(WordStart);
+  if (WordStart < 1) or (WordStart > Length(Str)) or
+     not (Str[WordStart] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
     Exit;
-  B := A;
-  while (A > 1) and (S[A - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
-    Dec(A);
-  while (B < Length(S)) and (S[B + 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
-    Inc(B);
-  Result := Copy(S, A, B - A + 1);
+  WordEnd := WordStart;
+  while (WordStart > 1) and (Str[WordStart - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Dec(WordStart);
+  while (WordEnd < Length(Str)) and (Str[WordEnd + 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Inc(WordEnd);
+  Result := Copy(Str, WordStart, WordEnd - WordStart + 1);
   if Result[1] in ['0'..'9'] then
     Result := ''; // число, не имя
 end;
@@ -39582,17 +39582,17 @@ end;
 function TForm1.DsgDelphiBin: string;
 var
   Found: TStringList;
-  I: Integer;
+  Idx: Integer;
 begin
   Result := '';
   Found := TStringList.Create;
   try
     if FindDelphiRoots(Found) > 0 then
     begin
-      I := Found.IndexOfName('Delphi 7');
-      if I < 0 then
-        I := 0;
-      Result := Copy(Found[I], Pos('=', Found[I]) + 1, MaxInt);
+      Idx := Found.IndexOfName('Delphi 7');
+      if Idx < 0 then
+        Idx := 0;
+      Result := Copy(Found[Idx], Pos('=', Found[Idx]) + 1, MaxInt);
     end;
   finally
     Found.Free;
@@ -39638,17 +39638,17 @@ begin
 end;
 
 // Узел лежит в отдельном дереве снимка (под узлом «снимок ...»)
-function InSnapTree(N: TDfmNode): Boolean;
+function InSnapTree(DfmNode: TDfmNode): Boolean;
 begin
   Result := False;
-  while N <> nil do
+  while DfmNode <> nil do
   begin
-    if N.SnapRoot then
+    if DfmNode.SnapRoot then
     begin
       Result := True;
       Exit;
     end;
-    N := N.Parent;
+    DfmNode := DfmNode.Parent;
   end;
 end;
 
@@ -39661,41 +39661,41 @@ end;
 // Место узла в дереве: номера среди братьев от верхнего уровня, через "/".
 // По нему компонент конструктора находит свой узел и после перестройки
 // дерева с тем же составом.
-function TreeNodePath(T: TTreeNode): string;
+function TreeNodePath(TreeNode: TTreeNode): string;
 begin
   Result := '';
-  while T <> nil do
+  while TreeNode <> nil do
   begin
-    Result := '/' + IntToStr(T.Index) + Result;
-    T := T.Parent;
+    Result := '/' + IntToStr(TreeNode.Index) + Result;
+    TreeNode := TreeNode.Parent;
   end;
 end;
 
 // Узел по месту (TreeNodePath); nil - такого места в дереве нет
 function TreeNodeAtPath(ATree: TTreeView; const APath: string): TTreeNode;
 var
-  S, Part: string;
-  P, K, I: Integer;
+  Str, Part: string;
+  CharPos, Idx3, I: Integer;
 begin
   Result := nil;
-  S := APath;
-  while S <> '' do
+  Str := APath;
+  while Str <> '' do
   begin
-    if S[1] = '/' then
-      Delete(S, 1, 1);
-    P := Pos('/', S);
-    if P = 0 then
+    if Str[1] = '/' then
+      Delete(Str, 1, 1);
+    CharPos := Pos('/', Str);
+    if CharPos = 0 then
     begin
-      Part := S;
-      S := '';
+      Part := Str;
+      Str := '';
     end
     else
     begin
-      Part := Copy(S, 1, P - 1);
-      Delete(S, 1, P - 1);
+      Part := Copy(Str, 1, CharPos - 1);
+      Delete(Str, 1, CharPos - 1);
     end;
-    K := StrToIntDef(Part, -1);
-    if K < 0 then
+    Idx3 := StrToIntDef(Part, -1);
+    if Idx3 < 0 then
     begin
       Result := nil;
       Exit;
@@ -39703,12 +39703,12 @@ begin
     if Result = nil then
     begin
       Result := ATree.Items.GetFirstNode;
-      for I := 1 to K do
+      for I := 1 to Idx3 do
         if Result <> nil then
           Result := Result.getNextSibling;
     end
-    else if K < Result.Count then
-      Result := Result.Item[K]
+    else if Idx3 < Result.Count then
+      Result := Result.Item[Idx3]
     else
       Result := nil;
     if Result = nil then
@@ -39719,59 +39719,59 @@ end;
 // Узел и компонент - одна пара из AMade: класс узла совпадает с классом
 // компонента (или компонент - заглушка неизвестного класса). Дерево могли
 // перестроить с другим составом - тогда по старому месту стоит чужой узел.
-function DsgMadeMatch(T: TTreeNode; C: TComponent): Boolean;
+function DsgMadeMatch(TreeNode: TTreeNode; Comp: TComponent): Boolean;
 var
-  N: TDfmNode;
+  DfmNode: TDfmNode;
 begin
   Result := False;
-  if (T = nil) or (C = nil) or (T.Data = nil) then
+  if (TreeNode = nil) or (Comp = nil) or (TreeNode.Data = nil) then
     Exit;
-  N := TDfmNode(T.Data);
-  Result := (CompareText(N.ClassNm, C.ClassName) = 0) or (C is TDsgStub);
+  DfmNode := TDfmNode(TreeNode.Data);
+  Result := (CompareText(DfmNode.ClassNm, Comp.ClassName) = 0) or (Comp is TDsgStub);
 end;
 
 // Узел дерева компонента, поставленного DsgAddRuntime; nil - не из них
 function DsgMadeNode(AMade: TStringList; ATree: TTreeView;
-                     C: TComponent): TTreeNode;
+                     Comp: TComponent): TTreeNode;
 var
-  I: Integer;
+  Idx: Integer;
 begin
   Result := nil;
-  if (AMade = nil) or (ATree = nil) or (C = nil) then
+  if (AMade = nil) or (ATree = nil) or (Comp = nil) then
     Exit;
-  I := AMade.IndexOfName(IntToHex(Integer(C), 8));
-  if I < 0 then
+  Idx := AMade.IndexOfName(IntToHex(Integer(Comp), 8));
+  if Idx < 0 then
     Exit;
   Result := TreeNodeAtPath(ATree,
-                           Copy(AMade[I], Pos('=', AMade[I]) + 1, MaxInt));
-  if not DsgMadeMatch(Result, C) then
+                           Copy(AMade[Idx], Pos('=', AMade[Idx]) + 1, MaxInt));
+  if not DsgMadeMatch(Result, Comp) then
     Result := nil;
 end;
 
 // Компонент конструктора, поставленный DsgAddRuntime по узлу T; nil - нет
-function DsgMadeComp(AMade: TStringList; T: TTreeNode): TComponent;
+function DsgMadeComp(AMade: TStringList; TreeNode: TTreeNode): TComponent;
 var
   I: Integer;
   Path: string;
 begin
   Result := nil;
-  if (AMade = nil) or (T = nil) then
+  if (AMade = nil) or (TreeNode = nil) then
     Exit;
-  Path := TreeNodePath(T);
+  Path := TreeNodePath(TreeNode);
   for I := 0 to AMade.Count - 1 do
     if Copy(AMade[I], Pos('=', AMade[I]) + 1, MaxInt) = Path then
     begin
       Result := TComponent(AMade.Objects[I]);
       Break;
     end;
-  if not DsgMadeMatch(T, Result) then
+  if not DsgMadeMatch(TreeNode, Result) then
     Result := nil;
 end;
 
 procedure TForm1.DsgAddRuntime;
 var
-  I, J, K: Integer;
-  N: TDfmNode;
+  I, J, Idx3: Integer;
+  DfmNode: TDfmNode;
   Props, Made: TStringList;
   Nm, ParNm, Val: string;
   ParComp: TComponent;
@@ -39809,92 +39809,92 @@ begin
         clNavy);
     for I := 0 to FObjTree.Items.Count - 1 do
     begin
-      N := TDfmNode(FObjTree.Items[I].Data);
+      DfmNode := TDfmNode(FObjTree.Items[I].Data);
       // Отдельное дерево снимка (узел «снимок ...») - не часть формы. А
       // узлы снимка, приставшие к форме (IsRuntime: код их не распознал,
       // но они живые - например, кнопки из помощника), ставим: их места
       // известны из снимка.
-      if (N = nil) or InSnapTree(N) then
+      if (DfmNode = nil) or InSnapTree(DfmNode) then
         Continue;
 
       ParNm := '';
-      if N.Parent <> nil then
+      if DfmNode.Parent <> nil then
       begin
-        ParNm := N.Parent.Name;
+        ParNm := DfmNode.Parent.Name;
         if ParNm = '' then
-          ParNm := N.Parent.VarName;
+          ParNm := DfmNode.Parent.VarName;
       end;
 
       // Компонент .dfm, которому код меняет родителя: переставить туда же
-      if N.IsLink then
+      if DfmNode.IsLink then
       begin
-        FDesigner.Reparent(N.Name, ParNm);
+        FDesigner.Reparent(DfmNode.Name, ParNm);
         if LinkMoves <> '' then
           LinkMoves := LinkMoves + ', ';
-        LinkMoves := LinkMoves + N.Name + ' -> ' + ParNm;
+        LinkMoves := LinkMoves + DfmNode.Name + ' -> ' + ParNm;
         Continue;
       end;
-      if not (N.FromCode or N.IsRuntime) then
+      if not (DfmNode.FromCode or DfmNode.IsRuntime) then
         Continue;
 
       // Кнопки TRadioGroup из снимка не ставим: конструктор создаёт
       // TRadioGroup по .dfm, и тот сам строит свои кнопки по Items. Вторые,
       // из снимка, легли бы поверх заглушками неизвестного класса.
-      if (CompareText(N.ClassNm, 'TGroupButton') = 0) or
-         (CompareText(N.ClassNm, 'TUiGroupButton') = 0) then
+      if (CompareText(DfmNode.ClassNm, 'TGroupButton') = 0) or
+         (CompareText(DfmNode.ClassNm, 'TUiGroupButton') = 0) then
         Continue;
 
       // Под служебной веткой «(родитель не определён)» - ставить некуда:
       // у этой ветки нет своего родителя, и без проверки её дети легли бы
       // прямо на форму
-      if (N.Parent <> nil) and (Copy(N.Parent.ClassNm, 1, 1) = '(') then
+      if (DfmNode.Parent <> nil) and (Copy(DfmNode.Parent.ClassNm, 1, 1) = '(') then
       begin
-        Dbg('20817: runtime ' + N.VarName + ' ' + N.ClassNm +
+        Dbg('20817: runtime ' + DfmNode.VarName + ' ' + DfmNode.ClassNm +
         ': родитель не определён - пропущен', clGray);
             Continue;
       end;
 
       // Родитель уже создан здесь по своему узлу - берём его самого
       ParComp := nil;
-      if (N.Parent <> nil) and (N.Parent.Parent <> nil) then
+      if (DfmNode.Parent <> nil) and (DfmNode.Parent.Parent <> nil) then
       begin
-        K := Made.IndexOf(IntToHex(Integer(N.Parent), 8));
-        if K >= 0 then
-          ParComp := TComponent(Made.Objects[K]);
+        Idx3 := Made.IndexOf(IntToHex(Integer(DfmNode.Parent), 8));
+        if Idx3 >= 0 then
+          ParComp := TComponent(Made.Objects[Idx3]);
       end;
 
       // Родитель есть, но безымянный, не корень и здесь не создан - это
       // ветка «родитель не определён»: ставить некуда
-      if (ParComp = nil) and (N.Parent <> nil) and (N.Parent.Parent <> nil) and
+      if (ParComp = nil) and (DfmNode.Parent <> nil) and (DfmNode.Parent.Parent <> nil) and
          (ParNm = '') then
       begin
-        Dbg('20836: runtime ' + N.VarName + ' ' + N.ClassNm +
+        Dbg('20836: runtime ' + DfmNode.VarName + ' ' + DfmNode.ClassNm +
         ': родитель не определён - пропущен', clGray);
             Continue;
       end;
 
-      Nm := N.Name;
+      Nm := DfmNode.Name;
       if Nm = '' then
-        Nm := N.VarName;
+        Nm := DfmNode.VarName;
 
       Props.Clear;
-      for J := 0 to N.PropN.Count - 1 do
+      for J := 0 to DfmNode.PropN.Count - 1 do
       begin
-        if J < N.PropRaw.Count then
-          Val := N.PropRaw[J]
+        if J < DfmNode.PropRaw.Count then
+          Val := DfmNode.PropRaw[J]
         else
-          Val := N.PropV[J];
-        Props.Add(N.PropN[J] + '=' + Val);
+          Val := DfmNode.PropV[J];
+        Props.Add(DfmNode.PropN[J] + '=' + Val);
       end;
       FDesigner.RuntimeParent := ParComp;
       try
-        FDesigner.AddRuntime(Nm, N.ClassNm, ParNm, Props);
+        FDesigner.AddRuntime(Nm, DfmNode.ClassNm, ParNm, Props);
       finally
         FDesigner.RuntimeParent := nil;
       end;
       if FDesigner.LastRuntime <> nil then
       begin
-        Made.AddObject(IntToHex(Integer(N), 8), FDesigner.LastRuntime);
+        Made.AddObject(IntToHex(Integer(DfmNode), 8), FDesigner.LastRuntime);
         if FDsgMade <> nil then
           FDsgMade.AddObject(IntToHex(Integer(FDesigner.LastRuntime), 8) +
           '=' + TreeNodePath(FObjTree.Items[I]),
@@ -39967,16 +39967,16 @@ var
   ResName: string;
   Res: TResourceStream;
   Txt: TStringStream;
-  K: Integer;
+  Idx3: Integer;
   PT: TProbeText;
 begin
   Result := '';
   if FDsgResTexts = nil then
     FDsgResTexts := TStringList.Create;
-  K := FDsgResTexts.IndexOf(AClass);
-  if K >= 0 then
+  Idx3 := FDsgResTexts.IndexOf(AClass);
+  if Idx3 >= 0 then
   begin
-    Result := TProbeText(FDsgResTexts.Objects[K]).Text;
+    Result := TProbeText(FDsgResTexts.Objects[Idx3]).Text;
     Exit;
   end;
   ResName := UpperCase(AClass);
@@ -40070,28 +40070,28 @@ end;
 // пробелов, остальное прописными
 function DsgNormValue(const AValue: string): string;
 var
-  T: string;
-  N: Integer;
-  C: Longint;
+  Txt: string;
+  Num: Integer;
+  ColorVal: Longint;
 begin
-  T := Trim(AValue);
+  Txt := Trim(AValue);
   Result := '';
-  if T = '' then
+  if Txt = '' then
     Exit;
-  case T[1] of
+  case Txt[1] of
     '''', '#':
-    Result := 'S' + DecodeDfmString(T);
+    Result := 'S' + DecodeDfmString(Txt);
     '[', '(':
-    Result := UpperCase(StringReplace(T, ' ', '', [rfReplaceAll]));
+    Result := UpperCase(StringReplace(Txt, ' ', '', [rfReplaceAll]));
   else
-    if TryStrToInt(T, N) then
-      Result := 'N' + IntToStr(N)
-    else if IdentToColor(T, C) then
-      Result := 'N' + IntToStr(C)
-    else if IdentToCursor(T, C) then
-      Result := 'N' + IntToStr(C)
+    if TryStrToInt(Txt, Num) then
+      Result := 'N' + IntToStr(Num)
+    else if IdentToColor(Txt, ColorVal) then
+      Result := 'N' + IntToStr(ColorVal)
+    else if IdentToCursor(Txt, ColorVal) then
+      Result := 'N' + IntToStr(ColorVal)
     else
-      Result := UpperCase(T);
+      Result := UpperCase(Txt);
   end;
 end;
 
@@ -40100,11 +40100,11 @@ end;
 function DsgNodeValue(AN: TDfmNode; const ANm: string;
                       ADefs: TStrings): string;
 var
-  K: Integer;
+  Idx3: Integer;
 begin
-  K := AN.PropN.IndexOf(ANm);
-  if (K >= 0) and (K < AN.PropRaw.Count) then
-    Result := AN.PropRaw[K]
+  Idx3 := AN.PropN.IndexOf(ANm);
+  if (Idx3 >= 0) and (Idx3 < AN.PropRaw.Count) then
+    Result := AN.PropRaw[Idx3]
   else if ADefs <> nil then
     Result := ADefs.Values[ANm]
   else
@@ -40115,16 +40115,16 @@ end;
 procedure DsgIndexNodes(ANodes: TList; AIndex: TStringList);
 var
   I: Integer;
-  N: TDfmNode;
+  DfmNode: TDfmNode;
 begin
   AIndex.Sorted := True;
   AIndex.Duplicates := dupIgnore;
   AIndex.CaseSensitive := False;
   for I := 0 to ANodes.Count - 1 do
   begin
-    N := TDfmNode(ANodes[I]);
-    if N.Name <> '' then
-      AIndex.AddObject(N.Name, N);
+    DfmNode := TDfmNode(ANodes[I]);
+    if DfmNode.Name <> '' then
+      AIndex.AddObject(DfmNode.Name, DfmNode);
   end;
 end;
 
@@ -40132,22 +40132,22 @@ end;
 // родителя: у выровненного своя только свободная сторона, у прижатого к
 // правому (нижнему) краю Left (Top) и растянутого Width (Height) - от
 // размера родителя, а он в конструкторе другой
-function DsgOwnBound(C: TControl; const AProp: string): Boolean;
+function DsgOwnBound(Ctrl: TControl; const AProp: string): Boolean;
 var
-  A: TAnchors;
+  Anchors2: TAnchors;
 begin
   Result := False;
-  A := C.Anchors;
-  case C.Align of
+  Anchors2 := Ctrl.Anchors;
+  case Ctrl.Align of
     alNone:
       if AProp = 'Left' then
-      Result := not ((akRight in A) and not (akLeft in A))
+      Result := not ((akRight in Anchors2) and not (akLeft in Anchors2))
     else if AProp = 'Width' then
-      Result := not ((akLeft in A) and (akRight in A))
+      Result := not ((akLeft in Anchors2) and (akRight in Anchors2))
     else if AProp = 'Top' then
-      Result := not ((akBottom in A) and not (akTop in A))
+      Result := not ((akBottom in Anchors2) and not (akTop in Anchors2))
     else if AProp = 'Height' then
-      Result := not ((akTop in A) and (akBottom in A));
+      Result := not ((akTop in Anchors2) and (akBottom in Anchors2));
     alTop, alBottom:
       Result := AProp = 'Height';
     alLeft, alRight:
@@ -40158,11 +40158,11 @@ end;
 // Контрол, которому живая форма ставит свои полосы прокрутки
 // (UiPaintControl): список, дерево, таблица, мемо или лог, прокручиваемая
 // панель
-function DsgNeedsUiScroll(C: TControl): Boolean;
+function DsgNeedsUiScroll(Ctrl: TControl): Boolean;
 begin
-  Result := (C is TCustomTreeView) or (C is TCustomListView) or
-            (C is TCustomListBox) or (C is TCustomGrid) or
-            (C is TCustomMemo) or (C is TScrollBox);
+  Result := (Ctrl is TCustomTreeView) or (Ctrl is TCustomListView) or
+            (Ctrl is TCustomListBox) or (Ctrl is TCustomGrid) or
+            (Ctrl is TCustomMemo) or (Ctrl is TScrollBox);
 end;
 
 // У таблицы тема выключила сетку Windows и рисует линии сама (UiListGrid)
@@ -40182,16 +40182,16 @@ end;
 // Раскрытые узлы - как у живого дерева того же состава
 procedure DsgCopyExpanded(ADst, ASrc: TTreeView);
 var
-  D, S: TTreeNode;
+  TreeNode, TreeNode2: TTreeNode;
 begin
-  D := ADst.Items.GetFirstNode;
-  S := ASrc.Items.GetFirstNode;
-  while (D <> nil) and (S <> nil) do
+  TreeNode := ADst.Items.GetFirstNode;
+  TreeNode2 := ASrc.Items.GetFirstNode;
+  while (TreeNode <> nil) and (TreeNode2 <> nil) do
   begin
-    if S.Expanded and D.HasChildren then
-      D.Expanded := True;
-    D := D.GetNext;
-    S := S.GetNext;
+    if TreeNode2.Expanded and TreeNode.HasChildren then
+      TreeNode.Expanded := True;
+    TreeNode := TreeNode.GetNext;
+    TreeNode2 := TreeNode2.GetNext;
   end;
 end;
 
@@ -40217,7 +40217,7 @@ const
 var
   LF: TCustomForm;
   I, J, Comps, Props, Placed, Glyphs, Scrolls, Lists, Grids: Integer;
-  C, L: TComponent;
+  Comp, Comp2: TComponent;
   DC, LC: TControl;
   ResTxt, SnapTxt, Nm, SV, Sides: string;
   ResNodes, SnapNodes, TabNodes: TList;
@@ -40423,16 +40423,16 @@ begin
 
     for I := 0 to FDesigner.Form.ComponentCount - 1 do
     begin
-      C := FDesigner.Form.Components[I];
-      if (C.Name = '') or not (C is TControl) then
+      Comp := FDesigner.Form.Components[I];
+      if (Comp.Name = '') or not (Comp is TControl) then
         Continue;
       // Живой того же класса или его наследник (RichEdit1 и логи живой
       // формы создаются кодом, в .dfm их нет)
-      L := LF.FindComponent(C.Name);
-      if (L = nil) or not L.InheritsFrom(C.ClassType) then
+      Comp2 := LF.FindComponent(Comp.Name);
+      if (Comp2 = nil) or not Comp2.InheritsFrom(Comp.ClassType) then
         Continue;
-      DC := TControl(C);
-      LC := TControl(L);
+      DC := TControl(Comp);
+      LC := TControl(Comp2);
 
 
       TickPart := GetTickCount;
@@ -40497,11 +40497,11 @@ begin
       // нет, оно у другого родителя.
       // Компонента нет в снимке или не было при сборке (nil) - всё из
       // .dfm вкладки
-      Entries := DiffFor(C.Name, LC);
+      Entries := DiffFor(Comp.Name, LC);
       if Entries = nil then
         Continue;
       TabNode := nil;
-      J := TabIdx.IndexOf(C.Name);
+      J := TabIdx.IndexOf(Comp.Name);
       if J >= 0 then
         TabNode := TDfmNode(TabIdx.Objects[J]);
       Defs := DefaultsFor(LC.ClassType);
@@ -40580,17 +40580,17 @@ begin
     // списка.
     for I := 0 to FDesigner.Form.ComponentCount - 1 do
     begin
-      C := FDesigner.Form.Components[I];
-      if not (C is TWinControl) or (TWinControl(C).Parent = nil) or
-         not DsgNeedsUiScroll(TControl(C)) or
-         (UiScrollFind(TWinControl(C)) <> nil) then
+      Comp := FDesigner.Form.Components[I];
+      if not (Comp is TWinControl) or (TWinControl(Comp).Parent = nil) or
+         not DsgNeedsUiScroll(TControl(Comp)) or
+         (UiScrollFind(TWinControl(Comp)) <> nil) then
         Continue;
-      L := nil;
-      if C.Name <> '' then
-        L := LF.FindComponent(C.Name);
-      if (L is TWinControl) and (UiScrollFind(TWinControl(L)) = nil) then
+      Comp2 := nil;
+      if Comp.Name <> '' then
+        Comp2 := LF.FindComponent(Comp.Name);
+      if (Comp2 is TWinControl) and (UiScrollFind(TWinControl(Comp2)) = nil) then
         Continue;
-      TUiListScroll.Attach(TWinControl(C));
+      TUiListScroll.Attach(TWinControl(Comp));
       Inc(Scrolls);
     end;
 
@@ -40600,21 +40600,21 @@ begin
     // же именем - как у неё; без имени - по GridLines копии.
     for I := 0 to FDesigner.Form.ComponentCount - 1 do
     begin
-      C := FDesigner.Form.Components[I];
-      if not (C is TListView) or DsgHasGridMark(TListView(C)) then
+      Comp := FDesigner.Form.Components[I];
+      if not (Comp is TListView) or DsgHasGridMark(TListView(Comp)) then
         Continue;
-      L := nil;
-      if C.Name <> '' then
-        L := LF.FindComponent(C.Name);
-      if L is TListView then
+      Comp2 := nil;
+      if Comp.Name <> '' then
+        Comp2 := LF.FindComponent(Comp.Name);
+      if Comp2 is TListView then
       begin
-        if not DsgHasGridMark(TListView(L)) then
+        if not DsgHasGridMark(TListView(Comp2)) then
           Continue;
-        TListView(C).GridLines := True;
+        TListView(Comp).GridLines := True;
       end
-      else if not TListView(C).GridLines then
+      else if not TListView(Comp).GridLines then
         Continue;
-      UiListGrid(TListView(C));
+      UiListGrid(TListView(Comp));
       Inc(Grids);
     end;
   finally
@@ -40713,7 +40713,7 @@ end;
 procedure TForm1.DsgThemeLook;
 var
   I: Integer;
-  C: TComponent;
+  Comp: TComponent;
 begin
   if (FDesigner = nil) or (FDesigner.Form = nil) or not IsOwnProject or
      (OwnLiveForm(FObjFormClass) = nil) then
@@ -40723,16 +40723,16 @@ begin
     FDesigner.Form.Color := UiColor('Ide.WindowBG');
   for I := 0 to FDesigner.Form.ComponentCount - 1 do
   begin
-    C := FDesigner.Form.Components[I];
-    if not (C is TControl) then
+    Comp := FDesigner.Form.Components[I];
+    if not (Comp is TControl) then
       Continue;
-    if (CompareText(C.Name, 'RichEdit1') = 0) or
-       (CompareText(C.Name, 'Panel1') = 0) or
-       (CompareText(C.Name, 'FTabs') = 0) or
-       (CompareText(C.Name, 'FDeclPanel') = 0) or
-       (CompareText(C.Name, 'FBusyPanel') = 0) then
+    if (CompareText(Comp.Name, 'RichEdit1') = 0) or
+       (CompareText(Comp.Name, 'Panel1') = 0) or
+       (CompareText(Comp.Name, 'FTabs') = 0) or
+       (CompareText(Comp.Name, 'FDeclPanel') = 0) or
+       (CompareText(Comp.Name, 'FBusyPanel') = 0) then
       Continue;
-    UiPaintColors(TControl(C));
+    UiPaintColors(TControl(Comp));
   end;
 end;
 
@@ -40745,8 +40745,8 @@ end;
 procedure TForm1.DsgPaletteTabs;
 var
   I, Page: Integer;
-  B: TComponent;
-  P: TWinControl;
+  Comp: TComponent;
+  WinCtrl: TWinControl;
   Members: TStringList;
 begin
   if (FDesigner = nil) or (FDesigner.Form = nil) or (FDsgPalette = nil) or
@@ -40755,13 +40755,13 @@ begin
      (CompareText(FObjFormClass, DfmRootClass(DsgGetText)) <> 0) then
     Exit;
   // Вкладки палитры в конструкторе - предок копии кнопки
-  P := nil;
-  B := FDesigner.Form.FindComponent(PalBtn[1].Name);
-  if B is TControl then
-    P := TControl(B).Parent;
-  while (P <> nil) and not (P is TTabControl) do
-    P := P.Parent;
-  if P = nil then
+  WinCtrl := nil;
+  Comp := FDesigner.Form.FindComponent(PalBtn[1].Name);
+  if Comp is TControl then
+    WinCtrl := TControl(Comp).Parent;
+  while (WinCtrl <> nil) and not (WinCtrl is TTabControl) do
+    WinCtrl := WinCtrl.Parent;
+  if WinCtrl = nil then
   begin
     Dbg('21806: конструктор: вкладки палитры не найдены - видны кнопки всех ' +
     'страниц', clGray);
@@ -40776,7 +40776,7 @@ begin
       if Page >= 0 then
         Members.Add(PalBtn[I].Name + '=' + IntToStr(Page));
     end;
-    FDesigner.SetTabMembers(TTabControl(P), Members);
+    FDesigner.SetTabMembers(TTabControl(WinCtrl), Members);
   finally
     Members.Free;
   end;
@@ -40804,7 +40804,7 @@ end;
 procedure TForm1.BuildPaletteButtons;
 var
   Page, I: Integer;
-  L: TList;
+  ObjList: TList;
   T0: Cardinal;
 
   procedure AddBtn(AClass: TComponentClass; APage: Integer; ACustom: Boolean);
@@ -40826,13 +40826,13 @@ begin
   PalBtnCount := 0;
   for Page := 0 to DsgPageCount - 1 do
   begin
-    L := DsgPageClasses(Page);
-    for I := 0 to L.Count - 1 do
-      AddBtn(TComponentClass(L[I]), Page, False);
-    L := DsgPageCustomClasses(Page);
-    if L <> nil then
-      for I := 0 to L.Count - 1 do
-        AddBtn(TComponentClass(L[I]), Page, True);
+    ObjList := DsgPageClasses(Page);
+    for I := 0 to ObjList.Count - 1 do
+      AddBtn(TComponentClass(ObjList[I]), Page, False);
+    ObjList := DsgPageCustomClasses(Page);
+    if ObjList <> nil then
+      for I := 0 to ObjList.Count - 1 do
+        AddBtn(TComponentClass(ObjList[I]), Page, True);
   end;
   DsgAddRapidQPages;
   DsgAddForeignPages;
@@ -40867,10 +40867,10 @@ begin
   try
     FDsgForeign.Scan(RootDir, AppFile('dsgcache/palette_foreign.txt'));
   except
-    on E: Exception do
+    on Err: Exception do
     begin
       Dbg('21881: палитра: сторонние компоненты не прочитаны - ' +
-          E.Message);
+          Err.Message);
       Exit;
     end;
   end;
@@ -42739,17 +42739,17 @@ end;
 function PropInList(const AList, AProp: string): Boolean;
 var
   Rest, Item: string;
-  P: Integer;
+  CharPos: Integer;
 begin
   Result := False;
   Rest := AList;
   while Rest <> '' do
   begin
-    P := Pos(',', Rest);
-    if P = 0 then
-      P := Length(Rest) + 1;
-    Item := Trim(Copy(Rest, 1, P - 1));
-    Rest := Copy(Rest, P + 1, MaxInt);
+    CharPos := Pos(',', Rest);
+    if CharPos = 0 then
+      CharPos := Length(Rest) + 1;
+    Item := Trim(Copy(Rest, 1, CharPos - 1));
+    Rest := Copy(Rest, CharPos + 1, MaxInt);
     if CompareText(Item, AProp) = 0 then
     begin
       Result := True;
@@ -42771,9 +42771,9 @@ procedure TForm1.ApplyArrayIni(const AArray, ACodeProps: string);
 var
   Ini: TIniFile;
   Keys: TStringList;
-  I, P: Integer;
+  I, CharPos: Integer;
   Section, Key, Prop, Value: string;
-  C: TComponent;
+  Comp: TComponent;
 begin
   if not FileExists(SettingsFileName) then
     Exit;
@@ -42785,27 +42785,27 @@ begin
     for I := 0 to Keys.Count - 1 do
     begin
       Key := Keys[I];
-      P := Pos('.', Key);
-      if P < 2 then
+      CharPos := Pos('.', Key);
+      if CharPos < 2 then
         Continue;
-      Prop := Copy(Key, P + 1, MaxInt);
+      Prop := Copy(Key, CharPos + 1, MaxInt);
       if (CompareText(Prop, 'Name') = 0) or PropInList(ACodeProps, Prop) then
       begin
         Dbg('21939: [' + Section + '] ' + Key + ': свойством управляет код - ' +
         'строка пропущена');
             Continue;
       end;
-      C := FindComponent(AArray + Copy(Key, 1, P - 1));
-      if C = nil then
+      Comp := FindComponent(AArray + Copy(Key, 1, CharPos - 1));
+      if Comp = nil then
       begin
         Dbg('21946: [' + Section + '] ' + Key + ': компонента ' + AArray +
-            Copy(Key, 1, P - 1) + ' нет');
+            Copy(Key, 1, CharPos - 1) + ' нет');
         Continue;
       end;
       Value := Ini.ReadString(Section, Key, '');
-      if not SetPropFromText(C, Prop, Value) then
+      if not SetPropFromText(Comp, Prop, Value) then
         Dbg('21952: [' + Section + '] ' + Key + ': свойство не записано (' +
-            C.ClassName + ', значение "' + Value + '")');
+            Comp.ClassName + ', значение "' + Value + '")');
     end;
   finally
     Keys.Free;
@@ -42822,7 +42822,7 @@ function TForm1.SetPropFromText(AObj: TObject; const AProp,
                                 AValue: string): Boolean;
 var
   PI: PPropInfo;
-  N, P: Integer;
+  Num, CharPos: Integer;
   Obj: TObject;
   Path: string;
 begin
@@ -42830,17 +42830,17 @@ begin
   // Вложенное свойство (Font.Style): спуск по объектным свойствам
   Obj := AObj;
   Path := AProp;
-  P := Pos('.', Path);
-  while P > 0 do
+  CharPos := Pos('.', Path);
+  while CharPos > 0 do
   begin
-    PI := GetPropInfo(Obj, Copy(Path, 1, P - 1));
+    PI := GetPropInfo(Obj, Copy(Path, 1, CharPos - 1));
     if (PI = nil) or (PI^.PropType^^.Kind <> tkClass) then
       Exit;
     Obj := GetObjectProp(Obj, PI);
     if Obj = nil then
       Exit;
-    Path := Copy(Path, P + 1, MaxInt);
-    P := Pos('.', Path);
+    Path := Copy(Path, CharPos + 1, MaxInt);
+    CharPos := Pos('.', Path);
   end;
   PI := GetPropInfo(Obj, Path);
   if (PI = nil) or (PI^.SetProc = nil) then
@@ -42856,8 +42856,8 @@ begin
         Exit;
       tkInteger:
       begin
-        if (PI^.PropType^ = TypeInfo(TColor)) and IdentToColor(AValue, N) then
-          SetOrdProp(Obj, PI, N)
+        if (PI^.PropType^ = TypeInfo(TColor)) and IdentToColor(AValue, Num) then
+          SetOrdProp(Obj, PI, Num)
         else
           SetOrdProp(Obj, PI, StrToInt(AValue));
       end;
@@ -42883,7 +42883,7 @@ end;
 // Щелчок по компоненту в конструкторе - он же в дереве инспектора
 procedure TForm1.DsgSelect(const AName: string);
 var
-  T, P: TTreeNode;
+  TreeNode2, TreeNode: TTreeNode;
 begin
   FDsgSelecting := True;
   try
@@ -42892,19 +42892,19 @@ begin
       // Безымянный компонент (кнопки и вкладки палитры, созданные в чужом
       // модуле): по имени его узел не найти - берём узел, по которому
       // DsgAddRuntime его поставил
-      T := nil;
+      TreeNode2 := nil;
       if FDesigner <> nil then
-        T := DsgMadeNode(FDsgMade, FObjTree, FDesigner.SelControl);
-      if T <> nil then
+        TreeNode2 := DsgMadeNode(FDsgMade, FObjTree, FDesigner.SelControl);
+      if TreeNode2 <> nil then
       begin
-        P := T.Parent;
-        while P <> nil do
+        TreeNode := TreeNode2.Parent;
+        while TreeNode <> nil do
         begin
-          P.Expanded := True;
-          P := P.Parent;
+          TreeNode.Expanded := True;
+          TreeNode := TreeNode.Parent;
         end;
-        FObjTree.Selected := T;
-        T.MakeVisible;
+        FObjTree.Selected := TreeNode2;
+        TreeNode2.MakeVisible;
       end;
     end
     // Сначала узлы .dfm; нет такого - компонент из кода (по переменной)
@@ -43052,7 +43052,7 @@ end;
 procedure TForm1.DsgSelNames(ANames: TStrings);
 var
   I: Integer;
-  Txt, P: string;
+  Txt, PartStr: string;
   Nested: Boolean;
 begin
   ANames.Clear;
@@ -43065,13 +43065,13 @@ begin
   for I := ANames.Count - 1 downto 0 do
   begin
     Nested := False;
-    P := DfmParentOf(Txt, ANames[I]);
-    while (P <> '') and not Nested do
+    PartStr := DfmParentOf(Txt, ANames[I]);
+    while (PartStr <> '') and not Nested do
     begin
-      if ANames.IndexOf(P) >= 0 then
+      if ANames.IndexOf(PartStr) >= 0 then
         Nested := True
       else
-        P := DfmParentOf(Txt, P);
+        PartStr := DfmParentOf(Txt, PartStr);
     end;
     if Nested then
       ANames.Delete(I);
@@ -43122,18 +43122,18 @@ end;
 // возвращает компоненты, но не окно, которое с тех пор подвинули
 function TForm1.DsgKeepFormPos(const AText: string): string;
 var
-  L: TStringList;
+  StrList: TStringList;
 begin
   Result := AText;
   if (FDesigner = nil) or (FDesigner.Form = nil) then
     Exit;
-  L := TStringList.Create;
+  StrList := TStringList.Create;
   try
-    L.Add('Left=' + IntToStr(FDesigner.Form.Left));
-    L.Add('Top=' + IntToStr(FDesigner.Form.Top));
-    Result := DfmSetProps(AText, FDesigner.RootName, L);
+    StrList.Add('Left=' + IntToStr(FDesigner.Form.Left));
+    StrList.Add('Top=' + IntToStr(FDesigner.Form.Top));
+    Result := DfmSetProps(AText, FDesigner.RootName, StrList);
   finally
-    L.Free;
+    StrList.Free;
   end;
 end;
 
@@ -44787,23 +44787,23 @@ end;
 // всегда в форму: в .dfm они лежат на корне.
 function TForm1.DsgPasteParent(const AClass: string): string;
 var
-  C: TComponent;
+  Comp: TComponent;
   Cls: TPersistentClass;
 begin
   Result := FDesigner.RootName;
   Cls := GetClass(AClass);
   if (Cls <> nil) and not Cls.InheritsFrom(TControl) then
     Exit;
-  C := FDesigner.Form.FindComponent(FDesigner.SelectedName);
-  if not (C is TControl) or FDesigner.IsRuntime(C) then
+  Comp := FDesigner.Form.FindComponent(FDesigner.SelectedName);
+  if not (Comp is TControl) or FDesigner.IsRuntime(Comp) then
     Exit;
-  if (C is TPageControl) and (TPageControl(C).ActivePage <> nil) then
-    C := TPageControl(C).ActivePage
-  else if not ((C is TWinControl) and not (C is TDsgStub) and
-               (csAcceptsControls in TControl(C).ControlStyle)) then
-    C := TControl(C).Parent;
-  if (C <> nil) and (C <> FDesigner.Form) and (C.Name <> '') then
-    Result := C.Name;
+  if (Comp is TPageControl) and (TPageControl(Comp).ActivePage <> nil) then
+    Comp := TPageControl(Comp).ActivePage
+  else if not ((Comp is TWinControl) and not (Comp is TDsgStub) and
+               (csAcceptsControls in TControl(Comp).ControlStyle)) then
+    Comp := TControl(Comp).Parent;
+  if (Comp <> nil) and (Comp <> FDesigner.Form) and (Comp.Name <> '') then
+    Result := Comp.Name;
 end;
 
 // Cut: в буфер обмена (DsgCopy) и из формы (DsgDelete). Имена вырезанного
@@ -44847,24 +44847,24 @@ end;
 // как при вставке с палитры.
 procedure TForm1.DsgPaste;
 var
-  Txt, OldDfm, NewDfm, PasFile, OldPas, NewPas, Root, Par, T, Nm, Cl, NewNm,
-  Base, V, First: string;
+  Txt, OldDfm, NewDfm, PasFile, OldPas, NewPas, Root, Par, Txt2, Nm, Cl, NewNm,
+  Base, ValStr, First: string;
   SL, Map, Names, Clss: TStringList;
-  I, P, N, Ind, A, B: Integer;
+  I, CharPos, Num, Ind, RangeFrom, RangeTo: Integer;
 
   // Имя последнего Cut в этой же форме: идентификатор в .pas - ссылки кода
   // на вырезанный компонент, имя ему можно вернуть
-  function WasCut(const S: string): Boolean;
+  function WasCut(const Str: string): Boolean;
   begin
-    Result := (FDsgCutNames <> nil) and (FDsgCutNames.IndexOf(S) >= 0) and
+    Result := (FDsgCutNames <> nil) and (FDsgCutNames.IndexOf(Str) >= 0) and
               (CompareText(FDsgCutClass, Root) = 0);
   end;
 
-  function NameFree(const S: string): Boolean;
+  function NameFree(const Str: string): Boolean;
   begin
-    Result := not DfmObjectRange(OldDfm, S, A, B) and
-              ((OldPas = '') or not PasHasIdent(OldPas, S) or WasCut(S)) and
-              (Names.IndexOf(S) < 0);
+    Result := not DfmObjectRange(OldDfm, Str, RangeFrom, RangeTo) and
+              ((OldPas = '') or not PasHasIdent(OldPas, Str) or WasCut(Str)) and
+              (Names.IndexOf(Str) < 0);
   end;
 
 begin
@@ -44901,9 +44901,9 @@ begin
     for I := 0 to SL.Count - 1 do
       if Trim(SL[I]) <> '' then
       begin
-        P := Length(SL[I]) - Length(TrimLeft(SL[I]));
-        if P < Ind then
-          Ind := P;
+        CharPos := Length(SL[I]) - Length(TrimLeft(SL[I]));
+        if CharPos < Ind then
+          Ind := CharPos;
       end;
     if (Ind > 0) and (Ind < MaxInt) then
       for I := 0 to SL.Count - 1 do
@@ -44912,14 +44912,14 @@ begin
     // Имена: занятое - новое свободное
     for I := 0 to SL.Count - 1 do
     begin
-      T := Trim(SL[I]);
-      if CompareText(Copy(T, 1, 7), 'object ') <> 0 then
+      Txt2 := Trim(SL[I]);
+      if CompareText(Copy(Txt2, 1, 7), 'object ') <> 0 then
         Continue;
-      P := Pos(':', T);
-      if P = 0 then
+      CharPos := Pos(':', Txt2);
+      if CharPos = 0 then
         Continue;
-      Nm := Trim(Copy(T, 8, P - 8));
-      Cl := Trim(Copy(T, P + 1, MaxInt));
+      Nm := Trim(Copy(Txt2, 8, CharPos - 8));
+      Cl := Trim(Copy(Txt2, CharPos + 1, MaxInt));
       if Nm = '' then
         Continue;
       if NameFree(Nm) then
@@ -44929,10 +44929,10 @@ begin
         Base := Cl;
         if (Length(Base) > 1) and (UpCase(Base[1]) = 'T') then
           Delete(Base, 1, 1);
-        N := 1;
+        Num := 1;
         repeat
-          NewNm := Base + IntToStr(N);
-          Inc(N);
+          NewNm := Base + IntToStr(Num);
+          Inc(Num);
         until NameFree(NewNm);
       end;
       Map.Values[Nm] := NewNm;
@@ -44949,21 +44949,21 @@ begin
     I := 0;
     while I < SL.Count do
     begin
-      T := Trim(SL[I]);
-      P := Pos(' = ', T);
-      if P > 0 then
+      Txt2 := Trim(SL[I]);
+      CharPos := Pos(' = ', Txt2);
+      if CharPos > 0 then
       begin
-        Nm := Copy(T, 1, P - 1);
-        V := Trim(Copy(T, P + 3, MaxInt));
-        if (CompareText(Copy(Nm, 1, 2), 'On') = 0) and IsValidIdent(V) and
-           ((OldPas = '') or not PasHasIdent(OldPas, V)) then
+        Nm := Copy(Txt2, 1, CharPos - 1);
+        ValStr := Trim(Copy(Txt2, CharPos + 3, MaxInt));
+        if (CompareText(Copy(Nm, 1, 2), 'On') = 0) and IsValidIdent(ValStr) and
+           ((OldPas = '') or not PasHasIdent(OldPas, ValStr)) then
         begin
           SL.Delete(I);
           Continue;
         end;
-        if IsValidIdent(V) and (Map.IndexOfName(V) >= 0) then
+        if IsValidIdent(ValStr) and (Map.IndexOfName(ValStr) >= 0) then
           SL[I] := Copy(SL[I], 1, Length(SL[I]) - Length(TrimLeft(SL[I]))) +
-                   Nm + ' = ' + Map.Values[V];
+                   Nm + ' = ' + Map.Values[ValStr];
       end;
       Inc(I);
     end;
@@ -45325,7 +45325,7 @@ function DsgDefaultEventOf(AClass: TClass): string;
 const
   Pref: array[0..2] of string = ('OnCreate', 'OnChange', 'OnClick');
 var
-  I, N: Integer;
+  I, Num: Integer;
   List: PPropList;
   PI: PPropInfo;
 begin
@@ -45339,10 +45339,10 @@ begin
       Exit;
     end;
   end;
-  N := GetPropList(AClass.ClassInfo, [tkMethod], nil);
-  if N = 0 then
+  Num := GetPropList(AClass.ClassInfo, [tkMethod], nil);
+  if Num = 0 then
     Exit;
-  GetMem(List, N * SizeOf(PPropInfo));
+  GetMem(List, Num * SizeOf(PPropInfo));
   try
     GetPropList(AClass.ClassInfo, [tkMethod], List); // по алфавиту
     Result := List^[0]^.Name;
@@ -45359,7 +45359,7 @@ function DsgEventDecl(AClass: TClass; const AEvent, AMethod: string): string;
 var
   PI: PPropInfo;
   TD: PTypeData;
-  P: PChar;
+  CharPtr: PChar;
   I: Integer;
   Flags: TParamFlags;
   PName, TName, Md, Grp, GrpKey, Key, Params: string;
@@ -45369,18 +45369,18 @@ begin
   if (PI = nil) or (PI^.PropType^^.Kind <> tkMethod) then
     Exit;
   TD := GetTypeData(PI^.PropType^);
-  P := @TD^.ParamList;
+  CharPtr := @TD^.ParamList;
   Params := '';
   Grp := '';
   GrpKey := '';
   for I := 0 to TD^.ParamCount - 1 do
   begin
-    Move(P^, Flags, SizeOf(Flags));
-    Inc(P, SizeOf(Flags));
-    PName := PShortString(P)^;
-    Inc(P, Length(PName) + 1);
-    TName := PShortString(P)^;
-    Inc(P, Length(TName) + 1);
+    Move(CharPtr^, Flags, SizeOf(Flags));
+    Inc(CharPtr, SizeOf(Flags));
+    PName := PShortString(CharPtr)^;
+    Inc(CharPtr, Length(PName) + 1);
+    TName := PShortString(CharPtr)^;
+    Inc(CharPtr, Length(TName) + 1);
 
     Md := '';
     if pfVar in Flags then
@@ -45421,7 +45421,7 @@ begin
   if Params <> '' then
     Result := Result + '(' + Params + ')';
   if TD^.MethodKind = mkFunction then
-    Result := Result + ': ' + PShortString(P)^;
+    Result := Result + ': ' + PShortString(CharPtr)^;
   Result := Result + ';';
 end;
 
@@ -45569,8 +45569,8 @@ var
   DescCls: string;
   Writable: Boolean;
   EvType: TDsgTypeDesc;
-  L: TStringList;
-  P, Line: Integer;
+  StrList: TStringList;
+  FoundPos, Line: Integer;
 begin
   Dfm := DsgGetText;
   Root := DfmRootClass(Dfm);
@@ -45639,12 +45639,12 @@ begin
       end;
     end;
 
-    L := TStringList.Create;
+    StrList := TStringList.Create;
     try
-      L.Add(Ev + '=' + Meth);
-      NewDfm := DfmSetProps(Dfm, AName, L);
+      StrList.Add(Ev + '=' + Meth);
+      NewDfm := DfmSetProps(Dfm, AName, StrList);
     finally
-      L.Free;
+      StrList.Free;
     end;
 
     if NewPas <> Pas then
@@ -45667,17 +45667,17 @@ begin
   // К телу обработчика: TForm0.Button1Click, строка после begin
   OpenNamedFile(PasFile);
   Pat := Root + '.' + Meth;
-  P := FindTextEd(Pat, 0, RichEdit1.GetTextLen, []);
-  if P < 0 then
-    P := FindTextEd('.' + Meth + '(', 0, RichEdit1.GetTextLen, []);
-  if P < 0 then
+  FoundPos := FindTextEd(Pat, 0, RichEdit1.GetTextLen, []);
+  if FoundPos < 0 then
+    FoundPos := FindTextEd('.' + Meth + '(', 0, RichEdit1.GetTextLen, []);
+  if FoundPos < 0 then
     Exit;
-  Line := EdApi.LineFromChar(P);
+  Line := EdApi.LineFromChar(FoundPos);
   GotoLine(Line + 2);
 end;
 
 // Щелчок по форме конструктора при выбранном на палитре классе
-procedure TForm1.DsgPlace(const AParent: string; X, Y, AFormX, AFormY: Integer;
+procedure TForm1.DsgPlace(const AParent: string; PosX, PosY, AFormX, AFormY: Integer;
                           var AHandled: Boolean);
 var
   ForeignName, LoadError: string;
@@ -45706,7 +45706,7 @@ begin
     if BplInheritsFromName(ForeignCls, 'TControl') then
     begin
       FDsgPlaceParent := AParent;
-      FDsgPlacePt := Point(X, Y);
+      FDsgPlacePt := Point(PosX, PosY);
     end
     else
     begin
@@ -45724,7 +45724,7 @@ begin
   if FDsgPlaceCls.InheritsFrom(TControl) then
   begin
     FDsgPlaceParent := AParent;
-    FDsgPlacePt := Point(X, Y);
+    FDsgPlacePt := Point(PosX, PosY);
   end
   else
   begin
@@ -45750,14 +45750,14 @@ end;
 // TabOrder не пишется: VCL расставит его при чтении, Delphi - при записи.
 // Не удалось создать или записать - минимальный текст с Left/Top.
 function TForm1.DsgNewObjectText(ACls: TComponentClass; const AName: string;
-                                 X, Y: Integer): string;
+                                 PosX, PosY: Integer): string;
 var
   Tmp: TForm;
   Inst: TComponent;
   Bin, Txt: TMemoryStream;
   SL: TStringList;
   I: Integer;
-  S: string;
+  Str: string;
 begin
   Result := '';
   Tmp := nil;
@@ -45772,18 +45772,18 @@ begin
       begin
         Tmp := TForm.CreateNew(nil);
         TControl(Inst).Parent := Tmp;
-        TControl(Inst).SetBounds(X, Y, TControl(Inst).Width,
+        TControl(Inst).SetBounds(PosX, PosY, TControl(Inst).Width,
                                  TControl(Inst).Height);
       end
       else
-        Inst.DesignInfo := MakeLong(Word(X), Word(Y));
+        Inst.DesignInfo := MakeLong(Word(PosX), Word(PosY));
       Inst.Name := AName;
 
       Bin.WriteComponent(Inst);
       Bin.Position := 0;
       ObjectBinaryToText(Bin, Txt);
-      SetString(S, PChar(Txt.Memory), Txt.Size);
-      SL.Text := S;
+      SetString(Str, PChar(Txt.Memory), Txt.Size);
+      SL.Text := Str;
       for I := SL.Count - 1 downto 0 do
         if Copy(SL[I], 1, 13) = '  TabOrder = ' then
           SL.Delete(I);
@@ -45801,8 +45801,8 @@ begin
 
   if Result = '' then
     Result := 'object ' + AName + ': ' + ACls.ClassName + #13#10 +
-    '  Left = ' + IntToStr(X) + #13#10 +
-    '  Top = ' + IntToStr(Y) + #13#10 +
+    '  Left = ' + IntToStr(PosX) + #13#10 +
+    '  Top = ' + IntToStr(PosY) + #13#10 +
     'end'#13#10;
 end;
 
@@ -45810,15 +45810,15 @@ end;
 // то же, что DsgNewObjectText, без создания экземпляра. Класса в описании
 // нет - минимальный текст с Left/Top.
 function TForm1.DsgDescNewText(const AClassName, AName: string;
-                               X, Y: Integer): string;
+                               PosX, PosY: Integer): string;
 begin
   Result := '';
   if DsgDescOf(AClassName) <> nil then
-    Result := DsgDescBase.NewObjectText(AClassName, AName, X, Y);
+    Result := DsgDescBase.NewObjectText(AClassName, AName, PosX, PosY);
   if Result = '' then
     Result := 'object ' + AName + ': ' + AClassName + #13#10 +
-    '  Left = ' + IntToStr(X) + #13#10 +
-    '  Top = ' + IntToStr(Y) + #13#10 +
+    '  Left = ' + IntToStr(PosX) + #13#10 +
+    '  Top = ' + IntToStr(PosY) + #13#10 +
     'end'#13#10;
 end;
 
@@ -46176,7 +46176,7 @@ var
   Base, Nm, OldDfm, NewDfm, PasFile, OldPas, NewPas, Obj: string;
   Foreign, ClsName, UnitNm, LoadError: string;
   ForeignCls: TClass;
-  N, A, B: Integer;
+  Num, RangeFrom, RangeTo: Integer;
 begin
   Cls := FDsgPlaceCls;
   FDsgPlaceCls := nil;
@@ -46219,11 +46219,11 @@ begin
   Base := ClsName;
   if (Length(Base) > 1) and (UpCase(Base[1]) = 'T') then
     Delete(Base, 1, 1);
-  N := 1;
+  Num := 1;
   repeat
-    Nm := Base + IntToStr(N);
-    Inc(N);
-  until not DfmObjectRange(OldDfm, Nm, A, B) and
+    Nm := Base + IntToStr(Num);
+    Inc(Num);
+  until not DfmObjectRange(OldDfm, Nm, RangeFrom, RangeTo) and
         ((OldPas = '') or not PasHasIdent(OldPas, Nm));
 
   if Cls <> nil then
@@ -46376,7 +46376,7 @@ end;
 // иначе программа при загрузке формы остановилась бы на "Property ... does
 // not exist". Аналога нет - место и размер, у невизуального - место.
 function TForm1.DsgForeignObjectText(const AClass, AName: string;
-                                     X, Y: Integer; AForeign: TClass): string;
+                                     PosX, PosY: Integer; AForeign: TClass): string;
 var
   Analog: TComponentClass;
   ObjLines: TStringList;
@@ -46393,7 +46393,7 @@ begin
       ForeignType := AForeign.ClassInfo;
     ObjLines := TStringList.Create;
     try
-      ObjLines.Text := DsgDescNewText(Analog.ClassName, AName, X, Y);
+      ObjLines.Text := DsgDescNewText(Analog.ClassName, AName, PosX, PosY);
       if ObjLines.Count > 0 then
         ObjLines[0] := 'object ' + AName + ': ' + AClass;
       SkipProp := False;
@@ -46434,8 +46434,8 @@ begin
   end;
 
   Result := 'object ' + AName + ': ' + AClass + #13#10 +
-  '  Left = ' + IntToStr(X) + #13#10 +
-  '  Top = ' + IntToStr(Y) + #13#10;
+  '  Left = ' + IntToStr(PosX) + #13#10 +
+  '  Top = ' + IntToStr(PosY) + #13#10;
 if (AForeign <> nil) and BplInheritsFromName(AForeign, 'TWinControl') then
     Result := Result + '  Width = 185'#13#10'  Height = 89'#13#10
   else if (AForeign <> nil) and BplInheritsFromName(AForeign, 'TControl') then
@@ -46484,25 +46484,25 @@ end;
 // переменной (VarName), и сломанными не считаются.
 function TForm1.ObjNodeState(ANode: TObject): Integer;
 var
-  N: TDfmNode;
-  I: Integer;
+  DfmNode: TDfmNode;
+  Idx: Integer;
   Broken: Boolean;
 begin
   Result := 0;
-  N := TDfmNode(ANode);
-  if N = nil then
+  DfmNode := TDfmNode(ANode);
+  if DfmNode = nil then
     Exit;
-  if N.FromCode or N.IsRuntime then
-    Broken := (N.Name = '') and (N.VarName = '')
+  if DfmNode.FromCode or DfmNode.IsRuntime then
+    Broken := (DfmNode.Name = '') and (DfmNode.VarName = '')
   else
-    Broken := (N.Name = '') and (N.Parent <> nil);
+    Broken := (DfmNode.Name = '') and (DfmNode.Parent <> nil);
   if Broken then
   begin
     Result := 1;
     Exit;
   end;
-  I := N.PropN.IndexOf('Align');
-  if (I >= 0) and (CompareText(Trim(N.PropV[I]), 'alNone') <> 0) then
+  Idx := DfmNode.PropN.IndexOf('Align');
+  if (Idx >= 0) and (CompareText(Trim(DfmNode.PropV[Idx]), 'alNone') <> 0) then
     Result := 2;
 end;
 
@@ -46510,17 +46510,17 @@ end;
 // заполнена и стоит в начале - сдвигаем на ATop строк.
 procedure ObjScrollToTop(LV: TListView; ATop: Integer);
 var
-  H: Integer;
-  R: TRect;
+  HeightPx: Integer;
+  RectVal: TRect;
 begin
   if (ATop <= 0) or (LV.Items.Count = 0) then
     Exit;
   if ATop >= LV.Items.Count then
     ATop := LV.Items.Count - 1;
-  R := LV.Items[0].DisplayRect(drBounds);
-  H := R.Bottom - R.Top;
-  if H > 0 then
-    LV.Scroll(0, ATop * H);
+  RectVal := LV.Items[0].DisplayRect(drBounds);
+  HeightPx := RectVal.Bottom - RectVal.Top;
+  if HeightPx > 0 then
+    LV.Scroll(0, ATop * HeightPx);
 end;
 
 // ---------------------------------------------------------------------------
@@ -46725,18 +46725,18 @@ end;
 function TForm1.ObjNodeByName(const AName: string): TObject;
 var
   I: Integer;
-  N: TDfmNode;
+  DfmNode: TDfmNode;
 begin
   Result := nil;
   if (FDfmNodes = nil) or (AName = '') then
     Exit;
   for I := 0 to FDfmNodes.Count - 1 do
   begin
-    N := TDfmNode(FDfmNodes[I]);
-    if not N.IsSnap and not N.FromCode and
-       (CompareText(N.Name, AName) = 0) then
+    DfmNode := TDfmNode(FDfmNodes[I]);
+    if not DfmNode.IsSnap and not DfmNode.FromCode and
+       (CompareText(DfmNode.Name, AName) = 0) then
     begin
-      Result := N;
+      Result := DfmNode;
       Exit;
     end;
   end;
@@ -46747,11 +46747,11 @@ end;
 function ObjGroupValueOf(ADefs: TStringList; AN: TDfmNode;
                          const AProp: string): string;
 var
-  K: Integer;
+  Idx3: Integer;
 begin
-  K := AN.PropN.IndexOf(AProp);
-  if (K >= 0) and (K < AN.PropV.Count) then
-    Result := AN.PropV[K]
+  Idx3 := AN.PropN.IndexOf(AProp);
+  if (Idx3 >= 0) and (Idx3 < AN.PropV.Count) then
+    Result := AN.PropV[Idx3]
   else if ADefs <> nil then
     Result := DecodeDfmString(ADefs.Values[AProp])
   else
@@ -46763,13 +46763,13 @@ var
   Names: TStringList;
   Nodes: TList;
   I, J: Integer;
-  N: TDfmNode;
+  DfmNode: TDfmNode;
   DescCls: string;
   It: TListItem;
-  P, V0, V, Cap: string;
-  Common, Same, W: Boolean;
+  PartStr, V0, ValStr, Cap: string;
+  Common, Same, FlagW: Boolean;
   Comps: TList;
-  T: TTreeNode;
+  TreeNode: TTreeNode;
 begin
   if (FDesigner = nil) or (AObj = nil) or TDfmNode(AObj).FromCode or
      (CompareText(FObjDfmFile, FDsgDfm) <> 0) or
@@ -46787,15 +46787,15 @@ begin
         FDesigner.GroupComps(Comps);
         for I := 0 to Comps.Count - 1 do
         begin
-          T := DsgMadeNode(FDsgMade, FObjTree, TComponent(Comps[I]));
-          if (T = nil) or (T.Data = nil) then
+          TreeNode := DsgMadeNode(FDsgMade, FObjTree, TComponent(Comps[I]));
+          if (TreeNode = nil) or (TreeNode.Data = nil) then
             Continue;
-          N := TDfmNode(T.Data);
-          Nodes.Add(N);
-          if N.Name <> '' then
-            Names.Add(N.Name)
+          DfmNode := TDfmNode(TreeNode.Data);
+          Nodes.Add(DfmNode);
+          if DfmNode.Name <> '' then
+            Names.Add(DfmNode.Name)
           else
-            Names.Add(N.ClassNm);
+            Names.Add(DfmNode.ClassNm);
         end;
       finally
         Comps.Free;
@@ -46806,9 +46806,9 @@ begin
       FDesigner.GroupNames(Names);
       for I := 0 to Names.Count - 1 do
       begin
-        N := TDfmNode(ObjNodeByName(Names[I]));
-        if N <> nil then
-          Nodes.Add(N);
+        DfmNode := TDfmNode(ObjNodeByName(Names[I]));
+        if DfmNode <> nil then
+          Nodes.Add(DfmNode);
       end;
     end;
     if Nodes.Count < 2 then
@@ -46826,30 +46826,30 @@ begin
     for I := FObjProps.Items.Count - 1 downto 0 do
     begin
       It := FObjProps.Items[I];
-      P := It.Caption;
+      PartStr := It.Caption;
       Common := True;
       Same := True;
       V0 := '';
       for J := 0 to Nodes.Count - 1 do
       begin
-        N := TDfmNode(Nodes[J]);
-        DescCls := DescClassFor(N);
-        if (DescCls = '') or (DescPropType(DescCls, P, W) = nil) then
+        DfmNode := TDfmNode(Nodes[J]);
+        DescCls := DescClassFor(DfmNode);
+        if (DescCls = '') or (DescPropType(DescCls, PartStr, FlagW) = nil) then
         begin
           // Свойство не у всех (или класс неизвестен и в .dfm его нет)
-          if (DescCls <> '') or (N.PropN.IndexOf(P) < 0) then
+          if (DescCls <> '') or (DfmNode.PropN.IndexOf(PartStr) < 0) then
           begin
             Common := False;
             Break;
           end;
         end;
         if DescCls <> '' then
-          V := ObjGroupValueOf(DescDefaults(DescCls), N, P)
+          ValStr := ObjGroupValueOf(DescDefaults(DescCls), DfmNode, PartStr)
         else
-          V := ObjGroupValueOf(nil, N, P);
+          ValStr := ObjGroupValueOf(nil, DfmNode, PartStr);
         if J = 0 then
-          V0 := V
-        else if V <> V0 then
+          V0 := ValStr
+        else if ValStr <> V0 then
           Same := False;
       end;
       if not Common then
@@ -46874,7 +46874,7 @@ end;
 // False - группы нет, правка идёт обычным путём.
 function TForm1.ObjGroupApply(const AProp, ARaw: string): Boolean;
 var
-  Names, L: TStringList;
+  Names, StrList: TStringList;
   Old, New: string;
   I: Integer;
 begin
@@ -46883,17 +46883,17 @@ begin
      (CompareText(FObjDfmFile, FDsgDfm) <> 0) then
     Exit;
   Names := TStringList.Create;
-  L := TStringList.Create;
+  StrList := TStringList.Create;
   try
     FDesigner.GroupNames(Names);
     if Names.Count < 2 then
       Exit;
     Result := True;
-    L.Add(AProp + '=' + ARaw);
+    StrList.Add(AProp + '=' + ARaw);
     Old := DsgGetText;
     New := Old;
     for I := 0 to Names.Count - 1 do
-      New := DfmSetProps(New, Names[I], L);
+      New := DfmSetProps(New, Names[I], StrList);
     if New = Old then
       Exit;
     DsgPushUndo(Old, '');
@@ -46917,7 +46917,7 @@ begin
         DsgOtherLater;
     end;
   finally
-    L.Free;
+    StrList.Free;
     Names.Free;
   end;
   if (Result) and (FDesigner <> nil) then
@@ -46943,13 +46943,13 @@ function TForm1.ObjGroupApplyArray(const AProp, ARaw: string): Boolean;
 var
   Comps, Nodes: TList;
   Arrs: TStringList;
-  I, Idx, K, P: Integer;
-  T: TTreeNode;
-  N: TDfmNode;
+  I, Idx, Idx3, CharPos: Integer;
+  TreeNode: TTreeNode;
+  DfmNode: TDfmNode;
   Arr, Value, Shown, Section, Key: string;
   Ini: TIniFile;
-  F: TCustomForm;
-  C: TComponent;
+  Frm: TCustomForm;
+  Comp: TComponent;
 begin
   Result := False;
   if (FDesigner = nil) or not FDesigner.GroupIsRuntime or
@@ -46963,14 +46963,14 @@ begin
     FDesigner.GroupComps(Comps);
     for I := 0 to Comps.Count - 1 do
     begin
-      T := DsgMadeNode(FDsgMade, FObjTree, TComponent(Comps[I]));
-      N := nil;
-      if T <> nil then
-        N := TDfmNode(T.Data);
-      if (N = nil) or not N.IsSnap or not ObjArrayOf(N.Name, Arr, Idx) then
+      TreeNode := DsgMadeNode(FDsgMade, FObjTree, TComponent(Comps[I]));
+      DfmNode := nil;
+      if TreeNode <> nil then
+        DfmNode := TDfmNode(TreeNode.Data);
+      if (DfmNode = nil) or not DfmNode.IsSnap or not ObjArrayOf(DfmNode.Name, Arr, Idx) then
       begin
-        if N <> nil then
-          Arr := N.Name + ': ' + N.ClassNm
+        if DfmNode <> nil then
+          Arr := DfmNode.Name + ': ' + DfmNode.ClassNm
         else
           Arr := TComponent(Comps[I]).ClassName;
         ShowMessage('24271:В группе есть компонент из кода, который не элемент ' +
@@ -46978,14 +46978,14 @@ begin
         'в коде. Группе значение не поставлено.');
                     Exit;
       end;
-      if ObjArrayCodeProp(Arr, Idx, AProp, K) then
+      if ObjArrayCodeProp(Arr, Idx, AProp, Idx3) then
       begin
         ShowMessage('24278:' + AProp + ' у ' + Arr + '[' + IntToStr(Idx) +
         '] задаёт код - в инспекторе не правится. Группе ' +
         'значение не поставлено.');
                     Exit;
       end;
-      Nodes.Add(N);
+      Nodes.Add(DfmNode);
       Arrs.Add(Arr + '=' + IntToStr(Idx));
     end;
 
@@ -46994,20 +46994,20 @@ begin
     else
       Value := ARaw;
     Shown := DecodeDfmString(ARaw);
-    F := OwnLiveForm(FObjFormClass);
+    Frm := OwnLiveForm(FObjFormClass);
     Ini := TIniFile.Create(SettingsFileName);
     try
       for I := 0 to Nodes.Count - 1 do
       begin
-        N := TDfmNode(Nodes[I]);
+        DfmNode := TDfmNode(Nodes[I]);
         Section := 'Array ' + Arrs.Names[I];
         Key := Copy(Arrs[I], Pos('=', Arrs[I]) + 1, MaxInt) + '.' + AProp;
         Ini.WriteString(Section, Key, Value);
         // Живой компонент - сразу, без перезапуска
-        C := nil;
-        if F <> nil then
-          C := F.FindComponent(N.Name);
-        if (C = nil) or not SetPropFromText(C, AProp, Value) then
+        Comp := nil;
+        if Frm <> nil then
+          Comp := Frm.FindComponent(DfmNode.Name);
+        if (Comp = nil) or not SetPropFromText(Comp, AProp, Value) then
           Dbg('24306: [' + Section + '] ' + Key + ': записано в editor.ini, ' +
           'живому компоненту не поставлено', clRed);
           // Копия в конструкторе
@@ -47015,19 +47015,19 @@ begin
               Dbg('24310: [' + Section + '] ' + Key + ': в конструкторе не ' +
             'поставлено', clRed);
             // Узел - для таблицы инспектора
-                  P := N.PropN.IndexOf(AProp);
-                  if P >= 0 then
+                  CharPos := DfmNode.PropN.IndexOf(AProp);
+                  if CharPos >= 0 then
         begin
-          if P < N.PropV.Count then
-            N.PropV[P] := Shown;
-          if P < N.PropRaw.Count then
-            N.PropRaw[P] := ARaw;
+          if CharPos < DfmNode.PropV.Count then
+            DfmNode.PropV[CharPos] := Shown;
+          if CharPos < DfmNode.PropRaw.Count then
+            DfmNode.PropRaw[CharPos] := ARaw;
         end
         else
         begin
-          N.PropN.AddObject(AProp, TObject(-1));
-          N.PropV.Add(Shown);
-          N.PropRaw.AddObject(ARaw, nil);
+          DfmNode.PropN.AddObject(AProp, TObject(-1));
+          DfmNode.PropV.Add(Shown);
+          DfmNode.PropRaw.AddObject(ARaw, nil);
         end;
       end;
     finally
@@ -47220,7 +47220,7 @@ var
   Nm: string;
   TI: TDsgTypeDesc;
   Events: TStringList;
-  W: Boolean;
+  FlagW: Boolean;
   StartTick, StageTick, TList, TDefaults, TEvents, TCodeCol: Cardinal;
 begin
   StartTick := GetTickCount;
@@ -47356,8 +47356,8 @@ begin
           Nm := Defs.Names[I];
           if (Copy(Nm, 1, 2) = 'On') or (Obj.PropN.IndexOf(Nm) >= 0) then
             Continue;
-          TI := DescPropType(DescCls, Nm, W);
-          if (TI = nil) or not W or (TI.Kind in [dtkClass, dtkMethod]) then
+          TI := DescPropType(DescCls, Nm, FlagW);
+          if (TI = nil) or not FlagW or (TI.Kind in [dtkClass, dtkMethod]) then
             Continue;
           // Горячую клавишу снимок пишет текстом, а .dfm хранит числом
           if TI.Name = 'TShortCut' then
@@ -47474,7 +47474,7 @@ end;
 procedure TForm1.ObjEventsDblClick(Sender: TObject);
 var
   Handler, Pas, Pat: string;
-  P, Line, I: Integer;
+  CharPos, Line, I: Integer;
   Obj: TDfmNode;
 begin
   // Объект RapidQ - к его SUB-обработчику
@@ -47535,26 +47535,26 @@ begin
 
   OpenNamedFile(Pas);
 
-  P := -1;
+  CharPos := -1;
   if FObjFormClass <> '' then
   begin
     Pat := FObjFormClass + '.' + Handler;
-    P := FindTextEd(Pat, 0, RichEdit1.GetTextLen, []);
+    CharPos := FindTextEd(Pat, 0, RichEdit1.GetTextLen, []);
   end;
-  if P < 0 then
+  if CharPos < 0 then
   begin
     Pat := '.' + Handler + '(';
-    P := FindTextEd(Pat, 0, RichEdit1.GetTextLen, []);
+    CharPos := FindTextEd(Pat, 0, RichEdit1.GetTextLen, []);
   end;
 
-  if P < 0 then
+  if CharPos < 0 then
   begin
     ShowMessage('22180:Обработчик ' + Handler + ' в ' + ExtractFileName(Pas) +
     ' не найден');
                 Exit;
   end;
 
-  Line := EdApi.LineFromChar(P);
+  Line := EdApi.LineFromChar(CharPos);
   GotoLine(Line);
 end;
 
@@ -47899,18 +47899,18 @@ end;
 
 // Хеш слова: регистр букв ASCII не учитывается. Переполнения нет -
 // только сдвиги и xor, так что от $Q+ не зависит.
-function KwHash(P: PChar; Len: Integer): Cardinal;
+function KwHash(CharPtr: PChar; Len: Integer): Cardinal;
 var
   I: Integer;
-  C: Char;
+  CharVal: Char;
 begin
   Result := Cardinal(Len);
   for I := 0 to Len - 1 do
   begin
-    C := P[I];
-    if C in ['A'..'Z'] then
-      C := Chr(Ord(C) + 32);
-    Result := ((Result shl 5) or (Result shr 27)) xor Cardinal(Ord(C));
+    CharVal := CharPtr[I];
+    if CharVal in ['A'..'Z'] then
+      CharVal := Chr(Ord(CharVal) + 32);
+    Result := ((Result shl 5) or (Result shr 27)) xor Cardinal(Ord(CharVal));
   end;
   Result := Result xor (Result shr 13);
 end;
@@ -47931,53 +47931,53 @@ end;
 // и прежде.
 procedure TForm1.RebuildKeywordHash;
 var
-  G, I, N, Size, Slot, Idx: Integer;
-  W: string;
-  L: TStringList;
+  G, I, Num, Size, Slot, Idx: Integer;
+  WordStr: string;
+  StrList: TStringList;
 begin
   FKwStale := False;
 
-  N := 0;
+  Num := 0;
   SetLength(FKwSig, Length(FScheme.KeywordGroups));
   for G := 0 to High(FScheme.KeywordGroups) do
   begin
-    L := FScheme.KeywordGroups[G].Words;
-    FKwSig[G] := Pointer(L);
-    if L <> nil then
+    StrList := FScheme.KeywordGroups[G].Words;
+    FKwSig[G] := Pointer(StrList);
+    if StrList <> nil then
     begin
-      Inc(N, L.Count);
+      Inc(Num, StrList.Count);
       // Правка списка (редактор схемы меняет CommaText) - повод пересобрать.
       // Других подписчиков у OnChange нет.
-      if not Assigned(L.OnChange) then
-        L.OnChange := KwListChanged;
+      if not Assigned(StrList.OnChange) then
+        StrList.OnChange := KwListChanged;
     end;
   end;
 
   // Заполнение не выше четверти - цепочки пробирования короткие
   Size := 64;
-  while Size < N * 4 do
+  while Size < Num * 4 do
     Size := Size * 2;
   SetLength(FKwSlots, Size);
   for I := 0 to Size - 1 do
     FKwSlots[I] := -1;
   FKwMask := Size - 1;
-  SetLength(FKwWords, N);
-  SetLength(FKwGroup, N);
+  SetLength(FKwWords, Num);
+  SetLength(FKwGroup, Num);
 
-  N := 0;
+  Num := 0;
   for G := 0 to High(FScheme.KeywordGroups) do
   begin
-    L := FScheme.KeywordGroups[G].Words;
-    if L = nil then
+    StrList := FScheme.KeywordGroups[G].Words;
+    if StrList = nil then
       Continue;
-    for I := 0 to L.Count - 1 do
+    for I := 0 to StrList.Count - 1 do
     begin
-      W := LowerCase(L[I]);
-      if W = '' then
+      WordStr := LowerCase(StrList[I]);
+      if WordStr = '' then
         Continue;
-      Slot := Integer(KwHash(PChar(W), Length(W)) and Cardinal(FKwMask));
+      Slot := Integer(KwHash(PChar(WordStr), Length(WordStr)) and Cardinal(FKwMask));
       Idx := FKwSlots[Slot];
-      while (Idx >= 0) and (FKwWords[Idx] <> W) do
+      while (Idx >= 0) and (FKwWords[Idx] <> WordStr) do
       begin
         Slot := (Slot + 1) and FKwMask;
         Idx := FKwSlots[Slot];
@@ -47987,15 +47987,15 @@ begin
         FKwGroup[Idx] := G // повтор - побеждает поздняя группа
       else
       begin
-        FKwWords[N] := W;
-        FKwGroup[N] := G;
-        FKwSlots[Slot] := N;
-        Inc(N);
+        FKwWords[Num] := WordStr;
+        FKwGroup[Num] := G;
+        FKwSlots[Slot] := Num;
+        Inc(Num);
       end;
     end;
   end;
-  SetLength(FKwWords, N);
-  SetLength(FKwGroup, N);
+  SetLength(FKwWords, Num);
+  SetLength(FKwGroup, Num);
 end;
 
 // Проверка перед кадром. Кроме флага от OnChange сверяем сами списки:
@@ -48004,7 +48004,7 @@ end;
 procedure TForm1.EnsureKeywordHash;
 var
   G: Integer;
-  L: TStringList;
+  StrList: TStringList;
 begin
   if not FKwStale then
   begin
@@ -48013,9 +48013,9 @@ begin
     else
       for G := 0 to High(FScheme.KeywordGroups) do
       begin
-        L := FScheme.KeywordGroups[G].Words;
-        if (FKwSig[G] <> Pointer(L)) or
-           ((L <> nil) and not Assigned(L.OnChange)) then
+        StrList := FScheme.KeywordGroups[G].Words;
+        if (FKwSig[G] <> Pointer(StrList)) or
+           ((StrList <> nil) and not Assigned(StrList.OnChange)) then
         begin
           FKwStale := True;
           Break;
@@ -48033,34 +48033,34 @@ begin
 end;
 
 // Группа ключевого слова P[0..Len-1] или -1
-function TForm1.KeywordGroupOf(P: PChar; Len: Integer): Integer;
+function TForm1.KeywordGroupOf(CharPtr: PChar; Len: Integer): Integer;
 var
-  Slot, Idx, I: Integer;
-  C: Char;
-  Q: PChar;
+  Slot, Idx, Idx2: Integer;
+  CharVal: Char;
+  CharPtr2: PChar;
 begin
   Result := -1;
   if (Len <= 0) or (Length(FKwSlots) = 0) then
     Exit;
 
-  Slot := Integer(KwHash(P, Len) and Cardinal(FKwMask));
+  Slot := Integer(KwHash(CharPtr, Len) and Cardinal(FKwMask));
   Idx := FKwSlots[Slot];
   while Idx >= 0 do
   begin
     if Length(FKwWords[Idx]) = Len then
     begin
-      Q := PChar(FKwWords[Idx]);
-      I := 0;
-      while I < Len do
+      CharPtr2 := PChar(FKwWords[Idx]);
+      Idx2 := 0;
+      while Idx2 < Len do
       begin
-        C := P[I];
-        if C in ['A'..'Z'] then
-          C := Chr(Ord(C) + 32);
-        if C <> Q[I] then
+        CharVal := CharPtr[Idx2];
+        if CharVal in ['A'..'Z'] then
+          CharVal := Chr(Ord(CharVal) + 32);
+        if CharVal <> CharPtr2[Idx2] then
           Break;
-        Inc(I);
+        Inc(Idx2);
       end;
-      if I = Len then
+      if Idx2 = Len then
       begin
         Result := FKwGroup[Idx];
         Exit;
@@ -48084,19 +48084,19 @@ end;
 
 procedure TForm1.RebuildCompNames(const AText: string);
 var
-  Ext, Dfm, Key, Raw, Up, W, Own: string;
+  Ext, Dfm, Key, Raw, Up, WordStr, Own: string;
   Names, PairVar, PairOwn: TStringList;
-  P, E, Q, K, HSize, Slot, Idx, I, N: Integer;
+  CharPos, EndPos, QuotePos, Idx3, HSize, Slot, Idx, I, Num: Integer;
   Added: Boolean;
 
-  function IsIdentStr(const S: string): Boolean;
+  function IsIdentStr(const Str: string): Boolean;
   var
     J: Integer;
   begin
-    Result := (S <> '') and (S[1] in ['a'..'z', 'A'..'Z', '_']);
+    Result := (Str <> '') and (Str[1] in ['a'..'z', 'A'..'Z', '_']);
     if Result then
-      for J := 2 to Length(S) do
-        if not (S[J] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) then
+      for J := 2 to Length(Str) do
+        if not (Str[J] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) then
         begin
           Result := False;
           Exit;
@@ -48107,23 +48107,23 @@ var
   procedure AddDfmNames(const ATxt: string; AList: TStrings);
   var
     SL: TStringList;
-    J, C: Integer;
-    L, U, H: string;
+    J, ColonPos: Integer;
+    LineStr, UpStr, HeadStr: string;
   begin
     SL := TStringList.Create;
     try
       SL.Text := ATxt;
       for J := 0 to SL.Count - 1 do
       begin
-        L := Trim(SL[J]);
-        U := UpperCase(L);
-        if (Copy(U, 1, 7) = 'OBJECT ') or (Copy(U, 1, 10) = 'INHERITED ') or
-           (Copy(U, 1, 7) = 'INLINE ') then
+        LineStr := Trim(SL[J]);
+        UpStr := UpperCase(LineStr);
+        if (Copy(UpStr, 1, 7) = 'OBJECT ') or (Copy(UpStr, 1, 10) = 'INHERITED ') or
+           (Copy(UpStr, 1, 7) = 'INLINE ') then
         begin
-          H := Trim(Copy(L, Pos(' ', L) + 1, MaxInt));
-          C := Pos(':', H);
-          if C > 1 then
-            AList.Add(Trim(Copy(H, 1, C - 1)));
+          HeadStr := Trim(Copy(LineStr, Pos(' ', LineStr) + 1, MaxInt));
+          ColonPos := Pos(':', HeadStr);
+          if ColonPos > 1 then
+            AList.Add(Trim(Copy(HeadStr, 1, ColonPos - 1)));
         end;
       end;
     finally
@@ -48186,58 +48186,58 @@ begin
     if not IsFormExt(Ext) then
     begin
       Up := UpperCase(AText);
-      P := PosEx('.CREATE(', Up, 1);
-      while P > 0 do
+      CharPos := PosEx('.CREATE(', Up, 1);
+      while CharPos > 0 do
       begin
         // Закомментированное присваивание компонента не создаёт
-        if not InRanges(CommentRanges, P - 1) and
-           not InRanges(StringRanges, P - 1) then
+        if not InRanges(CommentRanges, CharPos - 1) and
+           not InRanges(StringRanges, CharPos - 1) then
         begin
           // Вперёд: владелец - один идентификатор до закрывающей скобки
-          E := P + 8;
-          K := E;
-          while (K <= Length(AText)) and (AText[K] <> ')') and
-                (AText[K] <> #13) and (AText[K] <> #10) do
-            Inc(K);
-          Own := Trim(Copy(AText, E, K - E));
+          EndPos := CharPos + 8;
+          Idx3 := EndPos;
+          while (Idx3 <= Length(AText)) and (AText[Idx3] <> ')') and
+                (AText[Idx3] <> #13) and (AText[Idx3] <> #10) do
+            Inc(Idx3);
+          Own := Trim(Copy(AText, EndPos, Idx3 - EndPos));
 
           // Назад: имя класса
-          E := P - 1;
-          Q := E;
-          while (Q >= 1) and (AText[Q] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
-            Dec(Q);
-          if (E > Q) and (Own <> '') and IsIdentStr(Own) then
+          EndPos := CharPos - 1;
+          QuotePos := EndPos;
+          while (QuotePos >= 1) and (AText[QuotePos] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+            Dec(QuotePos);
+          if (EndPos > QuotePos) and (Own <> '') and IsIdentStr(Own) then
           begin
             // Пробелы, затем :=
-            K := Q;
-            while (K >= 1) and (AText[K] in [' ', #9]) do
-              Dec(K);
-            if (K >= 2) and (AText[K] = '=') and (AText[K - 1] = ':') then
+            Idx3 := QuotePos;
+            while (Idx3 >= 1) and (AText[Idx3] in [' ', #9]) do
+              Dec(Idx3);
+            if (Idx3 >= 2) and (AText[Idx3] = '=') and (AText[Idx3 - 1] = ':') then
             begin
-              K := K - 2;
-              while (K >= 1) and (AText[K] in [' ', #9]) do
-                Dec(K);
+              Idx3 := Idx3 - 2;
+              while (Idx3 >= 1) and (AText[Idx3] in [' ', #9]) do
+                Dec(Idx3);
               // Имя переменной слева от :=
-              E := K;
-              while (K >= 1) and
-                    (AText[K] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
-                Dec(K);
-              if E > K then
+              EndPos := Idx3;
+              while (Idx3 >= 1) and
+                    (AText[Idx3] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+                Dec(Idx3);
+              if EndPos > Idx3 then
               begin
-                W := Copy(AText, K + 1, E - K);
+                WordStr := Copy(AText, Idx3 + 1, EndPos - Idx3);
                 // Result в конструкторе-помощнике (MakeBtn и подобные) -
                 // не имя компонента
-                if (W[1] in ['a'..'z', 'A'..'Z', '_']) and
-                   (CompareText(W, 'Result') <> 0) then
+                if (WordStr[1] in ['a'..'z', 'A'..'Z', '_']) and
+                   (CompareText(WordStr, 'Result') <> 0) then
                 begin
-                  PairVar.Add(W);
+                  PairVar.Add(WordStr);
                   PairOwn.Add(Own);
                 end;
               end;
             end;
           end;
         end;
-        P := PosEx('.CREATE(', Up, P + 1);
+        CharPos := PosEx('.CREATE(', Up, CharPos + 1);
       end;
 
       // Известные владельцы: Self, Application и имена из .dfm. Каждый
@@ -48261,23 +48261,23 @@ begin
     end;
 
     // --- хеш, как у ключевых слов: заполнение не выше четверти
-    N := Names.Count;
-    if N = 0 then
+    Num := Names.Count;
+    if Num = 0 then
       Exit;
     HSize := 64;
-    while HSize < N * 4 do
+    while HSize < Num * 4 do
       HSize := HSize * 2;
     SetLength(FCompSlots, HSize);
     for I := 0 to HSize - 1 do
       FCompSlots[I] := -1;
     FCompMask := HSize - 1;
-    SetLength(FCompWords, N);
+    SetLength(FCompWords, Num);
 
-    for I := 0 to N - 1 do
+    for I := 0 to Num - 1 do
     begin
-      W := LowerCase(Names[I]);
-      FCompWords[I] := W;
-      Slot := Integer(KwHash(PChar(W), Length(W)) and Cardinal(FCompMask));
+      WordStr := LowerCase(Names[I]);
+      FCompWords[I] := WordStr;
+      Slot := Integer(KwHash(PChar(WordStr), Length(WordStr)) and Cardinal(FCompMask));
       Idx := FCompSlots[Slot];
       while Idx >= 0 do
       begin
@@ -48295,34 +48295,34 @@ end;
 
 // Слово P[0..Len-1] - имя компонента? Регистр не учитывается, как у
 // ключевых слов (KeywordGroupOf).
-function TForm1.CompNameAt(P: PChar; Len: Integer): Boolean;
+function TForm1.CompNameAt(CharPtr: PChar; Len: Integer): Boolean;
 var
-  Slot, Idx, I: Integer;
-  C: Char;
-  Q: PChar;
+  Slot, Idx, Idx2: Integer;
+  CharVal: Char;
+  CharPtr2: PChar;
 begin
   Result := False;
   if (Len <= 0) or (Length(FCompSlots) = 0) then
     Exit;
 
-  Slot := Integer(KwHash(P, Len) and Cardinal(FCompMask));
+  Slot := Integer(KwHash(CharPtr, Len) and Cardinal(FCompMask));
   Idx := FCompSlots[Slot];
   while Idx >= 0 do
   begin
     if Length(FCompWords[Idx]) = Len then
     begin
-      Q := PChar(FCompWords[Idx]);
-      I := 0;
-      while I < Len do
+      CharPtr2 := PChar(FCompWords[Idx]);
+      Idx2 := 0;
+      while Idx2 < Len do
       begin
-        C := P[I];
-        if C in ['A'..'Z'] then
-          C := Chr(Ord(C) + 32);
-        if C <> Q[I] then
+        CharVal := CharPtr[Idx2];
+        if CharVal in ['A'..'Z'] then
+          CharVal := Chr(Ord(CharVal) + 32);
+        if CharVal <> CharPtr2[Idx2] then
           Break;
-        Inc(I);
+        Inc(Idx2);
       end;
-      if I = Len then
+      if Idx2 = Len then
       begin
         Result := True;
         Exit;
@@ -48381,8 +48381,8 @@ end;
 // у отрисовки (MeasureRun, GetLineInfo). Без ограничения длины строки.
 function TForm1.LinePrefixWidth(ALine, ACount: Integer): Integer;
 var
-  Idx, Len, Info, K, Rest, N: Integer;
-  S, Full: string;
+  Idx, Len, Info, Idx3, Rest, Num: Integer;
+  Str, Full: string;
   XPos: TIntArray;
   DC: HDC;
   OldFont: HGDIOBJ;
@@ -48412,27 +48412,27 @@ begin
         Result := FLineInfo[Info].CTotalW
       else
       begin
-        K := SegAtIdx(Info, ACount);
-        Result := FLineInfo[Info].CSegX[K];
-        Rest := ACount - FLineInfo[Info].CSegIdx[K];
+        Idx3 := SegAtIdx(Info, ACount);
+        Result := FLineInfo[Info].CSegX[Idx3];
+        Rest := ACount - FLineInfo[Info].CSegIdx[Idx3];
         if Rest > 0 then
         begin
-          S := TextRange(Idx + FLineInfo[Info].CSegIdx[K], Rest);
-          N := Length(S);
-          if N > 0 then
-            Result := MeasureRun(DC, PChar(S), N, Result, nil);
+          Str := TextRange(Idx + FLineInfo[Info].CSegIdx[Idx3], Rest);
+          Num := Length(Str);
+          if Num > 0 then
+            Result := MeasureRun(DC, PChar(Str), Num, Result, nil);
         end;
       end;
     end
     else
     begin
-      S := ReadLineText(ALine, Idx, Len);
-      Len := Length(S);
+      Str := ReadLineText(ALine, Idx, Len);
+      Len := Length(Str);
       if Len <= 0 then
         Exit;
       if ACount > Len then
         ACount := Len;
-      XPos := MeasureLineXPos(DC, S, Len);
+      XPos := MeasureLineXPos(DC, Str, Len);
       Result := XPos[ACount];
     end;
   finally
@@ -48459,7 +48459,7 @@ function TForm1.ReadLineText(ALine, AStart, ALen: Integer): string;
 const
   MaxGetLine = 65000;
 var
-  Got, P: Integer;
+  Got, CharPos: Integer;
 begin
   Result := '';
   if ALen <= 0 then
@@ -48480,9 +48480,9 @@ begin
   else
     Result := TextRange(AStart, ALen);
 
-  P := Pos(#0, Result);
-  if P > 0 then
-    SetLength(Result, P - 1);
+  CharPos := Pos(#0, Result);
+  if CharPos > 0 then
+    SetLength(Result, CharPos - 1);
 end;
 
 // Замер куска строки: P[0..N-1], X в начале куска - StartX (от начала
@@ -48495,12 +48495,12 @@ end;
 // Участок между табуляциями - один вызов GetTextExtentExPoint; очень длинный
 // меряется частями по ChunkLen: ширины при выводе TextOut складываются,
 // кернинг GDI здесь не применяет.
-function TForm1.MeasureRun(DC: HDC; P: PChar; N, StartX: Integer;
+function TForm1.MeasureRun(DC: HDC; CharPtr: PChar; Num, StartX: Integer;
                            OutX: PBigIntArr): Integer;
 const
   ChunkLen = 8192;
 var
-  I, SegEnd, K, M, X, Tab: Integer;
+  Idx, SegEnd, K, Mid, PosX, Tab: Integer;
   Sz: TSize;
 begin
   Tab := TabStopN;
@@ -48509,61 +48509,61 @@ begin
   if Length(FDxBuf) < ChunkLen then
     SetLength(FDxBuf, ChunkLen);
 
-  X := StartX;
-  I := 0;
-  while I < N do
+  PosX := StartX;
+  Idx := 0;
+  while Idx < Num do
   begin
-    if P[I] = #9 then
+    if CharPtr[Idx] = #9 then
     begin
-      X := ((X div Tab) + 1) * Tab;
+      PosX := ((PosX div Tab) + 1) * Tab;
       if OutX <> nil then
-        OutX^[I] := X;
-      Inc(I);
+        OutX^[Idx] := PosX;
+      Inc(Idx);
       Continue;
     end;
 
-    SegEnd := I;
-    while (SegEnd < N) and (P[SegEnd] <> #9) do
+    SegEnd := Idx;
+    while (SegEnd < Num) and (CharPtr[SegEnd] <> #9) do
       Inc(SegEnd);
 
-    while I < SegEnd do
+    while Idx < SegEnd do
     begin
-      M := SegEnd - I;
-      if M > ChunkLen then
-        M := ChunkLen;
+      Mid := SegEnd - Idx;
+      if Mid > ChunkLen then
+        Mid := ChunkLen;
 
-      if GetTextExtentExPointApi(DC, P + I, M, 0, nil, @FDxBuf[0], Sz) then
+      if GetTextExtentExPointApi(DC, CharPtr + Idx, Mid, 0, nil, @FDxBuf[0], Sz) then
       begin
         if OutX <> nil then
-          for K := 0 to M - 1 do
-            OutX^[I + K] := X + FDxBuf[K];
-        Inc(X, FDxBuf[M - 1]);
+          for K := 0 to Mid - 1 do
+            OutX^[Idx + K] := PosX + FDxBuf[K];
+        Inc(PosX, FDxBuf[Mid - 1]);
       end
       else
       begin
         // GDI отказал - запасной путь, чтобы не рисовать всё в одну точку
-        for K := 0 to M - 1 do
+        for K := 0 to Mid - 1 do
         begin
-          Inc(X, LoWord(GetTabbedTextExtent(DC, P + I + K, 1, 1, Tab)));
+          Inc(PosX, LoWord(GetTabbedTextExtent(DC, CharPtr + Idx + K, 1, 1, Tab)));
           if OutX <> nil then
-            OutX^[I + K] := X;
+            OutX^[Idx + K] := PosX;
         end;
       end;
-      Inc(I, M);
+      Inc(Idx, Mid);
     end;
   end;
-  Result := X;
+  Result := PosX;
 end;
 
 // Таблица позиций строки: XPos[k] - ширина первых k символов в пикселях,
 // табуляции раскрыты. XPos[0] = 0, всего ALen + 1 значение.
-function TForm1.MeasureLineXPos(DC: HDC; const S: string;
+function TForm1.MeasureLineXPos(DC: HDC; const Str: string;
                                 ALen: Integer): TIntArray;
 begin
   SetLength(Result, ALen + 1);
   Result[0] := 0;
   if ALen > 0 then
-    MeasureRun(DC, PChar(Pointer(S)), ALen, 0, PBigIntArr(@Result[1]));
+    MeasureRun(DC, PChar(Pointer(Str)), ALen, 0, PBigIntArr(@Result[1]));
 end;
 
 // Сведения о длинной строке: разреженная таблица X, полная ширина и
@@ -48580,18 +48580,18 @@ end;
 function TForm1.GetLineInfo(DC: HDC; ALine, AStart, ALen: Integer;
                             var AText: string): Integer;
 var
-  I, X, N, Tab: Integer;
-  F: HFONT;
-  P: PChar;
+  I, PosX, Num, Tab: Integer;
+  FontHnd: HFONT;
+  CharPtr: PChar;
 begin
   AText := '';
   Tab := TabStopN;
-  F := RichEdit1.Font.Handle;
+  FontHnd := RichEdit1.Font.Handle;
 
   for I := Low(FLineInfo) to High(FLineInfo) do
     if FLineInfo[I].CUsed and (FLineInfo[I].CVer = FTextVer) and
        (FLineInfo[I].CStart = AStart) and (FLineInfo[I].CLen = ALen) and
-       (FLineInfo[I].CFont = F) and (FLineInfo[I].CTab = Tab) then
+       (FLineInfo[I].CFont = FontHnd) and (FLineInfo[I].CTab = Tab) then
     begin
       Result := I;
       Exit;
@@ -48599,24 +48599,24 @@ begin
 
   Inc(FInfoBuilds);
   AText := ReadLineText(ALine, AStart, ALen);
-  N := Length(AText);
-  P := PChar(Pointer(AText));
+  Num := Length(AText);
+  CharPtr := PChar(Pointer(AText));
 
   I := FLineInfoNext;
   FLineInfoNext := (I + 1) mod Length(FLineInfo);
 
-  BuildSegments(DC, I, P, N, 0, 0, FLineInfo[I].CSegIdx,
+  BuildSegments(DC, I, CharPtr, Num, 0, 0, FLineInfo[I].CSegIdx,
                 FLineInfo[I].CSegX, FLineInfo[I].CSegTab);
-  X := FLineInfo[I].CSegX[High(FLineInfo[I].CSegX)];
+  PosX := FLineInfo[I].CSegX[High(FLineInfo[I].CSegX)];
 
   FLineInfo[I].CUsed := True;
   FLineInfo[I].CVer := FTextVer;
   FLineInfo[I].CStart := AStart;
   FLineInfo[I].CLen := ALen;
-  FLineInfo[I].CN := N;
-  FLineInfo[I].CFont := F;
+  FLineInfo[I].CN := Num;
+  FLineInfo[I].CFont := FontHnd;
   FLineInfo[I].CTab := Tab;
-  FLineInfo[I].CTotalW := X;
+  FLineInfo[I].CTotalW := PosX;
   FLineInfo[I].CCommentKnown := False;
   FLineInfo[I].CMarkKnown := False;
   Result := I;
@@ -48625,41 +48625,41 @@ end;
 // Сегменты куска строки P[0..N-1]: по XBlockLen символов, первый
 // начинается с символа BaseIdx строки на X = StartX. В массивы кладутся
 // опорные точки кусков и последней - точка конца.
-procedure TForm1.BuildSegments(DC: HDC; AInfo: Integer; P: PChar; N, BaseIdx,
+procedure TForm1.BuildSegments(DC: HDC; AInfo: Integer; CharPtr: PChar; Num, BaseIdx,
                                StartX: Integer; var AIdx, AX, ATab: TIntArray);
 var
-  NB, K, J, BlockN, X, T: Integer;
+  NB, K, J, BlockN, PosX, TmpVal: Integer;
 begin
-  NB := (N + XBlockLen - 1) div XBlockLen;
+  NB := (Num + XBlockLen - 1) div XBlockLen;
   SetLength(AIdx, NB + 1);
   SetLength(AX, NB + 1);
   SetLength(ATab, NB + 1);
-  X := StartX;
+  PosX := StartX;
   for K := 0 to NB - 1 do
   begin
     AIdx[K] := BaseIdx + K * XBlockLen;
-    AX[K] := X;
-    BlockN := N - K * XBlockLen;
+    AX[K] := PosX;
+    BlockN := Num - K * XBlockLen;
     if BlockN > XBlockLen then
       BlockN := XBlockLen;
-    T := 0;
+    TmpVal := 0;
     for J := 0 to BlockN - 1 do
-      if P[K * XBlockLen + J] = #9 then
+      if CharPtr[K * XBlockLen + J] = #9 then
       begin
-        T := 1;
+        TmpVal := 1;
         Break;
       end;
-    ATab[K] := T;
-    X := MeasureRun(DC, P + K * XBlockLen, BlockN, X, nil);
+    ATab[K] := TmpVal;
+    PosX := MeasureRun(DC, CharPtr + K * XBlockLen, BlockN, PosX, nil);
   end;
-  AIdx[NB] := BaseIdx + N;
-  AX[NB] := X;
+  AIdx[NB] := BaseIdx + Num;
+  AX[NB] := PosX;
   ATab[NB] := 0;
 end;
 
 // Сегмент, в котором лежит X: наибольший k (без точки конца) с
 // CSegX[k] <= X
-function TForm1.BlockAtX(AInfo, X: Integer): Integer;
+function TForm1.BlockAtX(AInfo, PosX: Integer): Integer;
 var
   Lo, Hi, Mid: Integer;
 begin
@@ -48670,7 +48670,7 @@ begin
   while Lo < Hi do
   begin
     Mid := (Lo + Hi + 1) div 2;
-    if FLineInfo[AInfo].CSegX[Mid] <= X then
+    if FLineInfo[AInfo].CSegX[Mid] <= PosX then
       Lo := Mid
     else
       Hi := Mid - 1;
@@ -48714,12 +48714,12 @@ end;
 //    сдвиг кратен шагу табуляции и дальше опять одинаков. Поэтому первый
 //    сегмент с табуляцией правее правки меряется заново, а за ним - снова
 //    простой сдвиг.
-function TForm1.UpdateLineAfterEdit(AInfo, A, B, D: Integer): Boolean;
+function TForm1.UpdateLineAfterEdit(AInfo, Num1, SelBegin, Delta: Integer): Boolean;
 const
   EM_EXLINEFROMCHAR_ = WM_USER + 54;
 var
-  L: ^TLineInfo;
-  Line, NewLen, POld, QOld, KF, KL, S, J, NOld, Cnt, Delta1, Delta2,
+  LineInfoPtr: ^TLineInfo;
+  Line, NewLen, POld, QOld, KF, KL, StartPos, J, NOld, Cnt, Delta1, Delta2,
   OldEndS, NewX: Integer;
   Txt: string;
   NIdx, NX, NTab, TIdx, TX, TTab: TIntArray;
@@ -48727,75 +48727,75 @@ var
   OldFont: HGDIOBJ;
 begin
   Result := False;
-  L := @FLineInfo[AInfo];
+  LineInfoPtr := @FLineInfo[AInfo];
 
   // 1. Правка внутри строки?
-  Line := EdApi.ExLineFromChar(L^.CStart);
-  if EdApi.LineIndex(Line) <> L^.CStart then
+  Line := EdApi.ExLineFromChar(LineInfoPtr^.CStart);
+  if EdApi.LineIndex(Line) <> LineInfoPtr^.CStart then
     Exit;
-  NewLen := EdApi.LineLength(L^.CStart);
-  if NewLen <> L^.CLen + D then
+  NewLen := EdApi.LineLength(LineInfoPtr^.CStart);
+  if NewLen <> LineInfoPtr^.CLen + Delta then
     Exit;
-  if L^.CN <> L^.CLen then
+  if LineInfoPtr^.CN <> LineInfoPtr^.CLen then
     Exit; // в строке был #0 - не связываемся
 
-  POld := A - L^.CStart;
+  POld := Num1 - LineInfoPtr^.CStart;
   if POld < 0 then
     POld := 0;
-  QOld := B - L^.CStart;
-  if QOld > L^.CN then
-    QOld := L^.CN;
+  QOld := SelBegin - LineInfoPtr^.CStart;
+  if QOld > LineInfoPtr^.CN then
+    QOld := LineInfoPtr^.CN;
   if QOld < POld then
     QOld := POld;
 
   KF := SegAtIdx(AInfo, POld);
   KL := SegAtIdx(AInfo, QOld);
-  NOld := High(L^.CSegIdx); // индекс точки конца
+  NOld := High(LineInfoPtr^.CSegIdx); // индекс точки конца
 
   DC := GetDC(RichEdit1.Handle);
   OldFont := SelectObject(DC, RichEdit1.Font.Handle);
   try
     // 2. Задетые сегменты KF..KL - заново, по новому тексту
-    Cnt := L^.CSegIdx[KL + 1] + D - L^.CSegIdx[KF];
+    Cnt := LineInfoPtr^.CSegIdx[KL + 1] + Delta - LineInfoPtr^.CSegIdx[KF];
     if Cnt < 0 then
       Exit;
-    Txt := TextRange(L^.CStart + L^.CSegIdx[KF], Cnt);
+    Txt := TextRange(LineInfoPtr^.CStart + LineInfoPtr^.CSegIdx[KF], Cnt);
     if Length(Txt) <> Cnt then
       Exit;
-    BuildSegments(DC, AInfo, PChar(Pointer(Txt)), Cnt, L^.CSegIdx[KF],
-                  L^.CSegX[KF], NIdx, NX, NTab);
-    Delta1 := NX[High(NX)] - L^.CSegX[KL + 1];
+    BuildSegments(DC, AInfo, PChar(Pointer(Txt)), Cnt, LineInfoPtr^.CSegIdx[KF],
+                  LineInfoPtr^.CSegX[KF], NIdx, NX, NTab);
+    Delta1 := NX[High(NX)] - LineInfoPtr^.CSegX[KL + 1];
 
     // Хвост: точки после KL сдвигаются на D символов и на Delta1 пикселей,
     // до первого сегмента с табуляцией включительно - его меряем заново
-    S := -1;
+    StartPos := -1;
     for J := KL + 1 to NOld - 1 do
-      if L^.CSegTab[J] <> 0 then
+      if LineInfoPtr^.CSegTab[J] <> 0 then
       begin
-        S := J;
+        StartPos := J;
         Break;
       end;
 
     Delta2 := Delta1;
-    if (S >= 0) and (Delta1 <> 0) then
+    if (StartPos >= 0) and (Delta1 <> 0) then
     begin
-      OldEndS := L^.CSegX[S + 1];
-      Txt := TextRange(L^.CStart + L^.CSegIdx[S] + D,
-                       L^.CSegIdx[S + 1] - L^.CSegIdx[S]);
-      if Length(Txt) <> L^.CSegIdx[S + 1] - L^.CSegIdx[S] then
+      OldEndS := LineInfoPtr^.CSegX[StartPos + 1];
+      Txt := TextRange(LineInfoPtr^.CStart + LineInfoPtr^.CSegIdx[StartPos] + Delta,
+                       LineInfoPtr^.CSegIdx[StartPos + 1] - LineInfoPtr^.CSegIdx[StartPos]);
+      if Length(Txt) <> LineInfoPtr^.CSegIdx[StartPos + 1] - LineInfoPtr^.CSegIdx[StartPos] then
         Exit;
       NewX := MeasureRun(DC, PChar(Pointer(Txt)), Length(Txt),
-                         L^.CSegX[S] + Delta1, nil);
+                         LineInfoPtr^.CSegX[StartPos] + Delta1, nil);
       Delta2 := NewX - OldEndS;
     end;
 
     for J := KL + 1 to NOld do
     begin
-      Inc(L^.CSegIdx[J], D);
-      if (S >= 0) and (J > S) then
-        Inc(L^.CSegX[J], Delta2)
+      Inc(LineInfoPtr^.CSegIdx[J], Delta);
+      if (StartPos >= 0) and (J > StartPos) then
+        Inc(LineInfoPtr^.CSegX[J], Delta2)
       else
-        Inc(L^.CSegX[J], Delta1);
+        Inc(LineInfoPtr^.CSegX[J], Delta1);
     end;
   finally
     SelectObject(DC, OldFont);
@@ -48809,9 +48809,9 @@ begin
   SetLength(TTab, Cnt);
   for J := 0 to KF - 1 do
   begin
-    TIdx[J] := L^.CSegIdx[J];
-    TX[J] := L^.CSegX[J];
-    TTab[J] := L^.CSegTab[J];
+    TIdx[J] := LineInfoPtr^.CSegIdx[J];
+    TX[J] := LineInfoPtr^.CSegX[J];
+    TTab[J] := LineInfoPtr^.CSegTab[J];
   end;
   for J := 0 to High(NIdx) - 1 do
   begin
@@ -48821,32 +48821,32 @@ begin
   end;
   for J := KL + 1 to NOld do
   begin
-    TIdx[KF + High(NIdx) + J - KL - 1] := L^.CSegIdx[J];
-    TX[KF + High(NIdx) + J - KL - 1] := L^.CSegX[J];
-    TTab[KF + High(NIdx) + J - KL - 1] := L^.CSegTab[J];
+    TIdx[KF + High(NIdx) + J - KL - 1] := LineInfoPtr^.CSegIdx[J];
+    TX[KF + High(NIdx) + J - KL - 1] := LineInfoPtr^.CSegX[J];
+    TTab[KF + High(NIdx) + J - KL - 1] := LineInfoPtr^.CSegTab[J];
   end;
-  L^.CSegIdx := TIdx;
-  L^.CSegX := TX;
-  L^.CSegTab := TTab;
+  LineInfoPtr^.CSegIdx := TIdx;
+  LineInfoPtr^.CSegX := TX;
+  LineInfoPtr^.CSegTab := TTab;
 
-  Inc(L^.CLen, D);
-  Inc(L^.CN, D);
-  L^.CMarkKnown := False; // слово могли вписать или стереть
-  L^.CTotalW := L^.CSegX[High(L^.CSegX)];
+  Inc(LineInfoPtr^.CLen, Delta);
+  Inc(LineInfoPtr^.CN, Delta);
+  LineInfoPtr^.CMarkKnown := False; // слово могли вписать или стереть
+  LineInfoPtr^.CTotalW := LineInfoPtr^.CSegX[High(LineInfoPtr^.CSegX)];
 
   // Строчный комментарий правее правки уезжает вместе с текстом; если
   // правка задела его маркер или была левее - пусть ищется заново
   // Маркер только в начале строки (^;): правка левее него может сделать
   // строку не комментарием - тогда тоже искать заново
-  if L^.CCommentKnown and (L^.CLineComment > 0) then
+  if LineInfoPtr^.CCommentKnown and (LineInfoPtr^.CLineComment > 0) then
   begin
-    if (L^.CLineComment - 1 > QOld) and not FScheme.FLineCommentAtStart then
-      Inc(L^.CLineComment, D)
-    else if L^.CLineComment - 1 + Length(FScheme.FLineCommentMarker) >= POld then
-      L^.CCommentKnown := False;
+    if (LineInfoPtr^.CLineComment - 1 > QOld) and not FScheme.FLineCommentAtStart then
+      Inc(LineInfoPtr^.CLineComment, Delta)
+    else if LineInfoPtr^.CLineComment - 1 + Length(FScheme.FLineCommentMarker) >= POld then
+      LineInfoPtr^.CCommentKnown := False;
   end
   else
-    L^.CCommentKnown := False;
+    LineInfoPtr^.CCommentKnown := False;
 
   Result := True;
 end;
@@ -48860,21 +48860,21 @@ end;
 // только полный просмотр всех групп.
 procedure TForm1.ComputeLineMark(AInfo: Integer);
 var
-  L: ^TLineInfo;
+  LineInfoPtr: ^TLineInfo;
   W, G, Pos0, EndPos, CmtPos, Best: Integer;
   Pat: string;
   Opts: TSearchTypes;
 begin
-  L := @FLineInfo[AInfo];
-  L^.CMarkGroup := -1;
-  L^.CMarkMapVer := FMapVer;
-  L^.CMarkKnown := True;
+  LineInfoPtr := @FLineInfo[AInfo];
+  LineInfoPtr^.CMarkGroup := -1;
+  LineInfoPtr^.CMarkMapVer := FMapVer;
+  LineInfoPtr^.CMarkKnown := True;
   if Length(FScheme.MarkGroups) = 0 then
     Exit;
 
-  EndPos := L^.CStart + L^.CN;
-  if L^.CLineComment > 0 then
-    CmtPos := L^.CStart + L^.CLineComment - 1 // правее - комментарий
+  EndPos := LineInfoPtr^.CStart + LineInfoPtr^.CN;
+  if LineInfoPtr^.CLineComment > 0 then
+    CmtPos := LineInfoPtr^.CStart + LineInfoPtr^.CLineComment - 1 // правее - комментарий
   else
     CmtPos := EndPos;
 
@@ -48896,7 +48896,7 @@ begin
       else
         Opts := [];
 
-      Pos0 := L^.CStart;
+      Pos0 := LineInfoPtr^.CStart;
       while Pos0 < CmtPos do
       begin
         Pos0 := FindTextEd(Pat, Pos0, CmtPos - Pos0, Opts);
@@ -48909,7 +48909,7 @@ begin
           if Pos0 < Best then
           begin
             Best := Pos0;
-            L^.CMarkGroup := G;
+            LineInfoPtr^.CMarkGroup := G;
           end;
           Break;
         end;
@@ -48925,20 +48925,20 @@ end;
 // кавычки и блочные комментарии отсекаются по общим картам.
 procedure TForm1.ComputeLineComment(AInfo: Integer);
 var
-  L: ^TLineInfo;
+  LineInfoPtr: ^TLineInfo;
   Pos0, EndPos, Lvl: Integer;
   Tail: string;
 begin
-  L := @FLineInfo[AInfo];
-  L^.CLineComment := 0;
-  L^.CCommentLevel := 0;
-  L^.CMapVer := FMapVer;
-  L^.CCommentKnown := True;
+  LineInfoPtr := @FLineInfo[AInfo];
+  LineInfoPtr^.CLineComment := 0;
+  LineInfoPtr^.CCommentLevel := 0;
+  LineInfoPtr^.CMapVer := FMapVer;
+  LineInfoPtr^.CCommentKnown := True;
   if FScheme.FLineCommentMarker = '' then
     Exit;
 
-  EndPos := L^.CStart + L^.CN;
-  Pos0 := L^.CStart;
+  EndPos := LineInfoPtr^.CStart + LineInfoPtr^.CN;
+  Pos0 := LineInfoPtr^.CStart;
   while Pos0 < EndPos do
   begin
     Pos0 := FindTextEd(FScheme.FLineCommentMarker, Pos0, EndPos - Pos0, [stMatchCase]);
@@ -48947,18 +48947,18 @@ begin
     // Маркер только в начале строки (^; в схеме): левее не пробел -
     // этот и все следующие маркеры строки комментария не открывают
     if FScheme.FLineCommentAtStart and
-       not FScheme.LineCommentPosOk(TextRange(L^.CStart, Pos0 - L^.CStart),
-                                    Pos0 - L^.CStart + 1) then
+       not FScheme.LineCommentPosOk(TextRange(LineInfoPtr^.CStart, Pos0 - LineInfoPtr^.CStart),
+                                    Pos0 - LineInfoPtr^.CStart + 1) then
       Exit;
     if not InRanges(StringRanges, Pos0) and
        not InRanges(CommentRanges, Pos0) then
     begin
-      L^.CLineComment := Pos0 - L^.CStart + 1;
+      LineInfoPtr^.CLineComment := Pos0 - LineInfoPtr^.CStart + 1;
       Tail := TextRange(Pos0 + Length(FScheme.FLineCommentMarker), 5);
       Lvl := 0;
       while (Lvl < Length(Tail)) and (Tail[Lvl + 1] = '!') do
         Inc(Lvl);
-      L^.CCommentLevel := Lvl;
+      LineInfoPtr^.CCommentLevel := Lvl;
       Exit;
     end;
     Inc(Pos0);
@@ -48975,11 +48975,11 @@ type
     codepage: UINT;
   end;
 var
-  G: TGetTextLengthEx_;
+  LenReq: TGetTextLengthEx_;
 begin
-  G.flags := 0;
-  G.codepage := 1200;
-  Result := EdApi.GetTextLengthEx(G);
+  LenReq.flags := 0;
+  LenReq.codepage := 1200;
+  Result := EdApi.GetTextLengthEx(LenReq);
 end;
 
 // Перед сообщением, которое может изменить текст: снимок выделения и длины.
@@ -49138,7 +49138,7 @@ end;
 // BackSpace стирает слева, Delete - справа.
 procedure TForm1.ApplyWidthEdit;
 var
-  NewLen, D, A, B, I: Integer;
+  NewLen, Delta, RangeFrom, RangeTo, I: Integer;
 begin
   ObjLinesPost;
   DbgLinesPost;
@@ -49151,19 +49151,19 @@ begin
   FCachePreValid := False;
 
   NewLen := TextLenInternal;
-  D := NewLen - FCachePreLen;
-  A := FCachePreMin - 1;
-  B := FCachePreMax + 1;
+  Delta := NewLen - FCachePreLen;
+  RangeFrom := FCachePreMin - 1;
+  RangeTo := FCachePreMax + 1;
 
   for I := Low(FLineInfo) to High(FLineInfo) do
   begin
     if not FLineInfo[I].CUsed or (FLineInfo[I].CVer <> FTextVer) then
       Continue;
-    if FLineInfo[I].CStart + FLineInfo[I].CLen < A then
+    if FLineInfo[I].CStart + FLineInfo[I].CLen < RangeFrom then
       Continue // строка целиком левее правки
-    else if FLineInfo[I].CStart > B then
-      Inc(FLineInfo[I].CStart, D) // правее: текст тот же, начало сдвинулось
-    else if UpdateLineAfterEdit(I, A, B, D) then
+    else if FLineInfo[I].CStart > RangeTo then
+      Inc(FLineInfo[I].CStart, Delta) // правее: текст тот же, начало сдвинулось
+    else if UpdateLineAfterEdit(I, RangeFrom, RangeTo, Delta) then
       Inc(FEditUpd) // правка внутри строки - поправили точки
     else
     begin
@@ -49184,7 +49184,7 @@ const
   EM_EXLINEFROMCHAR_ = WM_USER + 54;
 var
   Line, Start: Integer;
-  P: TPoint;
+  Pnt: TPoint;
 begin
   Result.X := 0;
   Result.Y := 0;
@@ -49201,9 +49201,9 @@ begin
   Start := EdApi.LineIndex(Line);
   if Start < 0 then
     Exit;
-  EdApi.PosFromChar(P, Start);
-  Result.X := P.X + LinePrefixWidth(Line, ACharPos - Start);
-  Result.Y := P.Y;
+  EdApi.PosFromChar(Pnt, Start);
+  Result.X := Pnt.X + LinePrefixWidth(Line, ACharPos - Start);
+  Result.Y := Pnt.Y;
 end;
 
 // Каретку - в конец указанной строки. Именно этого ждут от клика правее
@@ -49299,15 +49299,15 @@ procedure TForm1.CheckCtlScrollX;
 const
   EM_GETSCROLLPOS = WM_USER + 221;
 var
-  P: TPoint;
+  Pnt: TPoint;
 begin
   if not RichEdit1.HandleAllocated or FInCtlReset then
     Exit;
-  EdApi.GetScrollPos(P);
-  if P.X = 0 then
+  EdApi.GetScrollPos(Pnt);
+  if Pnt.X = 0 then
     Exit;
 
-  FCtlScrollX := P.X;
+  FCtlScrollX := Pnt.X;
   FInCtlReset := True;
   try
     SendMessageA(RichEdit1.Handle, WM_HSCROLL, SB_LEFT, 0);
@@ -49319,13 +49319,13 @@ begin
   UpdateStatusBarInfo;
 end;
 
-procedure TForm1.LogRaw(const S: string);
+procedure TForm1.LogRaw(const Str: string);
 begin
   // Глушение повторов - свойство диагностики, а не обычного сообщения:
   // сбрасываем последнюю строку, чтобы следующий LogDiag не принял свою
   // за повтор этой
   FLastDiag := '';
-  LogTo(LogEdit, S);
+  LogTo(LogEdit, Str);
 end;
 
 // Ошибка ли это в терминах компилятора. Строка dcc32 выглядит как
@@ -49333,28 +49333,28 @@ end;
 // - смотрим слово после закрывающей скобки. Error и Fatal красим, Warning и
 // Hint нет: иначе красного станет столько, что он перестанет что-либо
 // значить.
-function TForm1.IsCompilerError(const S: string): Boolean;
+function TForm1.IsCompilerError(const Str: string): Boolean;
 var
-  T: string;
-  P: Integer;
+  Txt: string;
+  CharPos: Integer;
 begin
-  T := S;
-  P := Pos(')', T);
-  if P > 0 then
-    T := Copy(T, P + 1, Length(T));
-  T := TrimLeft(T);
-  Result := (AnsiCompareText(Copy(T, 1, 5), 'Error') = 0) or
-            (AnsiCompareText(Copy(T, 1, 5), 'Fatal') = 0) or
-            ArdIsGccError(S) or   // gcc: "файл:строка:столбец: error: ..."
-            FbIsErrorLine(S);     // fbc: "файл(строка) error N: ..."
+  Txt := Str;
+  CharPos := Pos(')', Txt);
+  if CharPos > 0 then
+    Txt := Copy(Txt, CharPos + 1, Length(Txt));
+  Txt := TrimLeft(Txt);
+  Result := (AnsiCompareText(Copy(Txt, 1, 5), 'Error') = 0) or
+            (AnsiCompareText(Copy(Txt, 1, 5), 'Fatal') = 0) or
+            ArdIsGccError(Str) or   // gcc: "файл:строка:столбец: error: ..."
+            FbIsErrorLine(Str);     // fbc: "файл(строка) error N: ..."
 end;
 
 // Подозрение на ошибку в самой программе - строка перевода RqToFb уровня
 // Suspect: "файл(строка) Suspect: ..." (тело процедуры не найдено,
 // опечатка в имени, строка в числовую переменную...)
-function IsSuspectLine(const S: string): Boolean;
+function IsSuspectLine(const Str: string): Boolean;
 begin
-  Result := Pos(') Suspect:', S) > 0;
+  Result := Pos(') Suspect:', Str) > 0;
 end;
 
 const
@@ -49364,43 +49364,43 @@ const
 
   // Строка в окно компиляции. Панель могла ещё не строиться (сообщение до
   // FormCreate) - тогда пишем в прежнее окно, терять строку нельзя.
-procedure TForm1.LogComp(const S: string);
+procedure TForm1.LogComp(const Str: string);
 var
-  C: TColor;
+  Clr: TColor;
 begin
   FLastDiag := '';
-  if IsCompilerError(S) then
-    C := clRed
-  else if IsSuspectLine(S) then
-    C := SuspectLogColor
+  if IsCompilerError(Str) then
+    Clr := clRed
+  else if IsSuspectLine(Str) then
+    Clr := SuspectLogColor
   else
-    C := clNone;
+    Clr := clNone;
 
   if CompLogEdit <> nil then
-    LogTo(CompLogEdit, S, C)
+    LogTo(CompLogEdit, Str, Clr)
   else
-    LogTo(LogEdit, S, C);
+    LogTo(LogEdit, Str, Clr);
 
   // Ошибка идёт ещё и в своё окно. Предупреждений и подсказок компилятор
   // выдаёт сотнями, и ошибка среди них теряется.
-  if C = clRed then
-    LogErr(S);
+  if Clr = clRed then
+    LogErr(Str);
 
   // Окно хода сборки: последняя строка лога - что сейчас происходит (или,
   // после неудачи, почему сборка не прошла)
-  if (FCompDlg <> nil) and FCompDlg.Building and (Trim(S) <> '') then
-    FCompDlg.ShowLine(Trim(S));
+  if (FCompDlg <> nil) and FCompDlg.Building and (Trim(Str) <> '') then
+    FCompDlg.ShowLine(Trim(Str));
 end;
 
 // Строка в Git log: команды git и их вывод. Окна ещё нет (сообщение до
 // FormCreate) - в Compilation log, терять строку нельзя
-procedure TForm1.LogGit(const S: string; AColor: TColor);
+procedure TForm1.LogGit(const Str: string; AColor: TColor);
 begin
   FLastDiag := '';
   if GitLogEdit <> nil then
-    LogTo(GitLogEdit, S, AColor)
+    LogTo(GitLogEdit, Str, AColor)
   else
-    LogComp(S);
+    LogComp(Str);
 end;
 
 // Пустая строка в Git log - граница перед следующей командой, чтобы её
@@ -49437,10 +49437,10 @@ begin
     end;
 end;
 
-procedure TForm1.LogErr(const S: string);
+procedure TForm1.LogErr(const Str: string);
 begin
   if ErrLogEdit <> nil then
-    LogTo(ErrLogEdit, S, clRed);
+    LogTo(ErrLogEdit, Str, clRed);
 end;
 
 // Настройка панели лога. Панель, вкладки и панели логов описаны в форме,
@@ -49622,259 +49622,259 @@ end;
 // Строка без комментариев и литералов: они заменяются пробелами той же
 // длины. AState - незакрытый блочный комментарий с прошлой строки:
 // 0 - нет, 1 - { }, 2 - (* *).
-function DeclCleanLine(const S: string; var AState: Integer): string;
+function DeclCleanLine(const Str: string; var AState: Integer): string;
 var
-  I, J, L: Integer;
+  Idx, J, Len: Integer;
 begin
-  Result := S;
-  L := Length(S);
-  I := 1;
-  while I <= L do
+  Result := Str;
+  Len := Length(Str);
+  Idx := 1;
+  while Idx <= Len do
   case AState of
     1:
     begin
-      if S[I] = '}' then
+      if Str[Idx] = '}' then
         AState := 0;
-      Result[I] := ' ';
-      Inc(I);
+      Result[Idx] := ' ';
+      Inc(Idx);
     end;
     2:
-      if (S[I] = '*') and (I < L) and (S[I + 1] = ')') then
+      if (Str[Idx] = '*') and (Idx < Len) and (Str[Idx + 1] = ')') then
     begin
-      Result[I] := ' ';
-      Result[I + 1] := ' ';
+      Result[Idx] := ' ';
+      Result[Idx + 1] := ' ';
       AState := 0;
-      Inc(I, 2);
+      Inc(Idx, 2);
     end
   else
     begin
-      Result[I] := ' ';
-      Inc(I);
+      Result[Idx] := ' ';
+      Inc(Idx);
     end;
   else
-    if S[I] = '{' then
+    if Str[Idx] = '{' then
     begin
       AState := 1;
-      Result[I] := ' ';
-      Inc(I);
+      Result[Idx] := ' ';
+      Inc(Idx);
     end
-  else if (S[I] = '(') and (I < L) and (S[I + 1] = '*') then
+  else if (Str[Idx] = '(') and (Idx < Len) and (Str[Idx + 1] = '*') then
     begin
       AState := 2;
-      Result[I] := ' ';
-      Result[I + 1] := ' ';
-      Inc(I, 2);
+      Result[Idx] := ' ';
+      Result[Idx + 1] := ' ';
+      Inc(Idx, 2);
     end
-  else if (S[I] = '/') and (I < L) and (S[I + 1] = '/') then
+  else if (Str[Idx] = '/') and (Idx < Len) and (Str[Idx + 1] = '/') then
     begin
-      for J := I to L do
+      for J := Idx to Len do
         Result[J] := ' ';
       Break;
     end
-  else if S[I] = '''' then
+  else if Str[Idx] = '''' then
     begin
       // До закрывающей кавычки; '' внутри - закрытие и тут же новое
       // открытие, на результат не влияет
-      J := I + 1;
-      while (J <= L) and (S[J] <> '''') do
+      J := Idx + 1;
+      while (J <= Len) and (Str[J] <> '''') do
         Inc(J);
-      if J > L then
-        J := L;
-      while I <= J do
+      if J > Len then
+        J := Len;
+      while Idx <= J do
       begin
-        Result[I] := ' ';
-        Inc(I);
+        Result[Idx] := ' ';
+        Inc(Idx);
       end;
     end
   else
-    Inc(I);
+    Inc(Idx);
   end;
 end;
 
-function DeclIdStart(C: Char): Boolean;
+function DeclIdStart(CharVal: Char): Boolean;
 begin
-  Result := C in ['A'..'Z', 'a'..'z', '_'];
+  Result := CharVal in ['A'..'Z', 'a'..'z', '_'];
 end;
 
-function DeclIdChar(C: Char): Boolean;
+function DeclIdChar(CharVal: Char): Boolean;
 begin
-  Result := C in ['A'..'Z', 'a'..'z', '_', '0'..'9'];
+  Result := CharVal in ['A'..'Z', 'a'..'z', '_', '0'..'9'];
 end;
 
 // Слово с позиции I (идентификатор), I встаёт за него
-function DeclReadId(const U: string; var I: Integer): string;
+function DeclReadId(const UpStr: string; var Idx: Integer): string;
 var
-  S: Integer;
+  StartPos: Integer;
 begin
-  S := I;
-  while (I <= Length(U)) and DeclIdChar(U[I]) do
-    Inc(I);
-  Result := Copy(U, S, I - S);
+  StartPos := Idx;
+  while (Idx <= Length(UpStr)) and DeclIdChar(UpStr[Idx]) do
+    Inc(Idx);
+  Result := Copy(UpStr, StartPos, Idx - StartPos);
 end;
 
-procedure DeclSkipSp(const U: string; var I: Integer);
+procedure DeclSkipSp(const UpStr: string; var Idx: Integer);
 begin
-  while (I <= Length(U)) and (U[I] in [' ', #9]) do
-    Inc(I);
+  while (Idx <= Length(UpStr)) and (UpStr[Idx] in [' ', #9]) do
+    Inc(Idx);
 end;
 
 // U[AFrom..ATo] - список имён через запятую. True, если он правильный и
 // AW в нём есть; ACol - позиция AW.
-function DeclIdentList(const U: string; AFrom, ATo: Integer;
+function DeclIdentList(const UpStr: string; AFrom, ATo: Integer;
                        const AW: string; var ACol: Integer): Boolean;
 var
-  I, S: Integer;
+  Idx, StartPos: Integer;
   Id: string;
   Found: Boolean;
 begin
   Result := False;
   Found := False;
-  if ATo > Length(U) then
-    ATo := Length(U);
-  I := AFrom;
-  DeclSkipSp(U, I);
+  if ATo > Length(UpStr) then
+    ATo := Length(UpStr);
+  Idx := AFrom;
+  DeclSkipSp(UpStr, Idx);
   while True do
   begin
-    if (I > ATo) or not DeclIdStart(U[I]) then
+    if (Idx > ATo) or not DeclIdStart(UpStr[Idx]) then
       Exit;
-    S := I;
-    Id := DeclReadId(U, I);
-    if I - 1 > ATo then
+    StartPos := Idx;
+    Id := DeclReadId(UpStr, Idx);
+    if Idx - 1 > ATo then
       Exit;
     if Id = AW then
     begin
       Found := True;
-      ACol := S;
+      ACol := StartPos;
     end;
-    DeclSkipSp(U, I);
-    if I > ATo then
+    DeclSkipSp(UpStr, Idx);
+    if Idx > ATo then
       Break;
-    if U[I] <> ',' then
+    if UpStr[Idx] <> ',' then
       Exit;
-    Inc(I);
-    DeclSkipSp(U, I);
+    Inc(Idx);
+    DeclSkipSp(UpStr, Idx);
   end;
   Result := Found;
 end;
 
 // Есть ли в строке слово AW целиком
-function DeclHasWord(const U, AW: string): Boolean;
+function DeclHasWord(const UpStr, AW: string): Boolean;
 var
-  P, K: Integer;
+  CharPos, Idx3: Integer;
 begin
   Result := False;
-  K := 1;
+  Idx3 := 1;
   while True do
   begin
-    P := PosEx(AW, U, K);
-    if P = 0 then
+    CharPos := PosEx(AW, UpStr, Idx3);
+    if CharPos = 0 then
       Exit;
-    if ((P = 1) or not DeclIdChar(U[P - 1])) and
-       ((P + Length(AW) > Length(U)) or not DeclIdChar(U[P + Length(AW)])) then
+    if ((CharPos = 1) or not DeclIdChar(UpStr[CharPos - 1])) and
+       ((CharPos + Length(AW) > Length(UpStr)) or not DeclIdChar(UpStr[CharPos + Length(AW)])) then
     begin
       Result := True;
       Exit;
     end;
-    K := P + 1;
+    Idx3 := CharPos + 1;
   end;
 end;
 
 // Слово заголовка подпрограммы (после необязательного CLASS). '' - не
 // заголовок. AAfter - позиция за словом.
-function DeclHeaderKw(const U: string; var AAfter: Integer): string;
+function DeclHeaderKw(const UpStr: string; var AAfter: Integer): string;
 var
-  I: Integer;
-  W: string;
+  Idx: Integer;
+  WordStr: string;
 begin
   Result := '';
-  I := 1;
-  DeclSkipSp(U, I);
-  W := DeclReadId(U, I);
-  if W = 'CLASS' then
+  Idx := 1;
+  DeclSkipSp(UpStr, Idx);
+  WordStr := DeclReadId(UpStr, Idx);
+  if WordStr = 'CLASS' then
   begin
-    DeclSkipSp(U, I);
-    W := DeclReadId(U, I);
+    DeclSkipSp(UpStr, Idx);
+    WordStr := DeclReadId(UpStr, Idx);
   end;
-  if (W = 'PROCEDURE') or (W = 'FUNCTION') or (W = 'CONSTRUCTOR') or
-     (W = 'DESTRUCTOR') or (W = 'PROPERTY') or (W = 'OPERATOR') then
+  if (WordStr = 'PROCEDURE') or (WordStr = 'FUNCTION') or (WordStr = 'CONSTRUCTOR') or
+     (WordStr = 'DESTRUCTOR') or (WordStr = 'PROPERTY') or (WordStr = 'OPERATOR') then
   begin
-    Result := W;
-    AAfter := I;
+    Result := WordStr;
+    AAfter := Idx;
   end;
 end;
 
 // Объявлено ли AW в строке U (очищенной, в верхнем регистре).
 // AName - смотреть ли имя в заголовке подпрограммы, AParams - имена её
 // параметров.
-function DeclMatchLine(const U, AW: string; AName, AParams: Boolean;
+function DeclMatchLine(const UpStr, AW: string; AName, AParams: Boolean;
                        var ACol: Integer): Boolean;
 var
-  I, S, E, K, A, B, Q: Integer;
+  Idx, StartPos, EndPos, Idx3, Num1, ByteVal, QuotePos: Integer;
   Kw, Id, Rest: string;
 begin
   Result := False;
-  I := 1;
-  DeclSkipSp(U, I);
-  if I > Length(U) then
+  Idx := 1;
+  DeclSkipSp(UpStr, Idx);
+  if Idx > Length(UpStr) then
     Exit;
 
   // Заголовок: имя (у TForm1.Name - последняя часть) и параметры
-  Kw := DeclHeaderKw(U, K);
+  Kw := DeclHeaderKw(UpStr, Idx3);
   if Kw <> '' then
   begin
-    I := K;
-    DeclSkipSp(U, I);
-    S := 0;
-    while (I <= Length(U)) and DeclIdStart(U[I]) do
+    Idx := Idx3;
+    DeclSkipSp(UpStr, Idx);
+    StartPos := 0;
+    while (Idx <= Length(UpStr)) and DeclIdStart(UpStr[Idx]) do
     begin
-      S := I;
-      Id := DeclReadId(U, I);
-      DeclSkipSp(U, I);
-      if (I <= Length(U)) and (U[I] = '.') then
+      StartPos := Idx;
+      Id := DeclReadId(UpStr, Idx);
+      DeclSkipSp(UpStr, Idx);
+      if (Idx <= Length(UpStr)) and (UpStr[Idx] = '.') then
       begin
-        Inc(I);
-        DeclSkipSp(U, I);
+        Inc(Idx);
+        DeclSkipSp(UpStr, Idx);
       end
       else
         Break;
     end;
-    if AName and (S > 0) and (Id = AW) then
+    if AName and (StartPos > 0) and (Id = AW) then
     begin
-      ACol := S;
+      ACol := StartPos;
       Result := True;
       Exit;
     end;
     if not AParams or (Kw = 'PROPERTY') then
       Exit;
     // Параметры: (A, B: Integer; var C: string; const D)
-    K := Pos('(', U);
-    if K = 0 then
+    Idx3 := Pos('(', UpStr);
+    if Idx3 = 0 then
       Exit;
-    E := PosEx(')', U, K);
-    if E = 0 then
-      E := Length(U) + 1;
-    A := K + 1;
-    while A < E do
+    EndPos := PosEx(')', UpStr, Idx3);
+    if EndPos = 0 then
+      EndPos := Length(UpStr) + 1;
+    Num1 := Idx3 + 1;
+    while Num1 < EndPos do
     begin
-      B := PosEx(';', U, A);
-      if (B = 0) or (B > E) then
-        B := E;
-      I := A;
-      DeclSkipSp(U, I);
-      Q := I;
-      Id := DeclReadId(U, Q);
+      ByteVal := PosEx(';', UpStr, Num1);
+      if (ByteVal = 0) or (ByteVal > EndPos) then
+        ByteVal := EndPos;
+      Idx := Num1;
+      DeclSkipSp(UpStr, Idx);
+      QuotePos := Idx;
+      Id := DeclReadId(UpStr, QuotePos);
       if (Id = 'VAR') or (Id = 'CONST') or (Id = 'OUT') or
          (Id = 'CONSTREF') then
-        I := Q;
-      Q := PosEx(':', U, I);
-      if (Q = 0) or (Q > B) then
-        Q := B;
-      if DeclIdentList(U, I, Q - 1, AW, ACol) then
+        Idx := QuotePos;
+      QuotePos := PosEx(':', UpStr, Idx);
+      if (QuotePos = 0) or (QuotePos > ByteVal) then
+        QuotePos := ByteVal;
+      if DeclIdentList(UpStr, Idx, QuotePos - 1, AW, ACol) then
       begin
         Result := True;
         Exit;
       end;
-      A := B + 1;
+      Num1 := ByteVal + 1;
     end;
     Exit;
   end;
@@ -49882,109 +49882,109 @@ begin
   // Переменная обработчика исключения: on E: Exception do - в том числе
   // после except в той же строке. Её область - сам обработчик, но для
   // панели хватает того, что строка - в своей процедуре выше щелчка.
-  K := 1;
-  while K <= Length(U) do
+  Idx3 := 1;
+  while Idx3 <= Length(UpStr) do
   begin
-    if DeclIdStart(U[K]) and ((K = 1) or not DeclIdChar(U[K - 1])) then
+    if DeclIdStart(UpStr[Idx3]) and ((Idx3 = 1) or not DeclIdChar(UpStr[Idx3 - 1])) then
     begin
-      A := K;
-      Id := DeclReadId(U, A);
+      Num1 := Idx3;
+      Id := DeclReadId(UpStr, Num1);
       if Id = 'ON' then
       begin
-        B := A;
-        DeclSkipSp(U, B);
-        S := B;
-        if (B <= Length(U)) and DeclIdStart(U[B]) then
+        ByteVal := Num1;
+        DeclSkipSp(UpStr, ByteVal);
+        StartPos := ByteVal;
+        if (ByteVal <= Length(UpStr)) and DeclIdStart(UpStr[ByteVal]) then
         begin
-          Rest := DeclReadId(U, B);
-          DeclSkipSp(U, B);
-          if (B <= Length(U)) and (U[B] = ':') and
-             ((B = Length(U)) or (U[B + 1] <> '=')) and
-             DeclHasWord(Copy(U, B + 1, MaxInt), 'DO') then
+          Rest := DeclReadId(UpStr, ByteVal);
+          DeclSkipSp(UpStr, ByteVal);
+          if (ByteVal <= Length(UpStr)) and (UpStr[ByteVal] = ':') and
+             ((ByteVal = Length(UpStr)) or (UpStr[ByteVal + 1] <> '=')) and
+             DeclHasWord(Copy(UpStr, ByteVal + 1, MaxInt), 'DO') then
           begin
             if Rest = AW then
             begin
-              ACol := S;
+              ACol := StartPos;
               Result := True;
             end;
             Exit;
           end;
         end;
       end;
-      K := A;
+      Idx3 := Num1;
     end
     else
-      Inc(K);
+      Inc(Idx3);
   end;
 
   // Раздел в той же строке: var X: Integer, const C = 1, type T = ...
-  Q := I;
-  Id := DeclReadId(U, Q);
+  QuotePos := Idx;
+  Id := DeclReadId(UpStr, QuotePos);
   if (Id = 'VAR') or (Id = 'CONST') or (Id = 'TYPE') or
      (Id = 'THREADVAR') or (Id = 'OUT') or (Id = 'RESOURCESTRING') then
   begin
-    I := Q;
-    DeclSkipSp(U, I);
+    Idx := QuotePos;
+    DeclSkipSp(UpStr, Idx);
   end;
 
   // Первый знак после списка имён
-  K := I;
-  while (K <= Length(U)) and (DeclIdChar(U[K]) or (U[K] in [' ', #9, ','])) do
-    Inc(K);
-  if K > Length(U) then
+  Idx3 := Idx;
+  while (Idx3 <= Length(UpStr)) and (DeclIdChar(UpStr[Idx3]) or (UpStr[Idx3] in [' ', #9, ','])) do
+    Inc(Idx3);
+  if Idx3 > Length(UpStr) then
     Exit;
 
-  if (U[K] = ':') and ((K = Length(U)) or (U[K + 1] <> '=')) then
+  if (UpStr[Idx3] = ':') and ((Idx3 = Length(UpStr)) or (UpStr[Idx3 + 1] <> '=')) then
   begin
     // Имена: тип. После ':' должен быть тип, а не оператор ветки case.
-    Rest := Trim(Copy(U, K + 1, MaxInt));
+    Rest := Trim(Copy(UpStr, Idx3 + 1, MaxInt));
     if (Rest = '') or (Pos(':=', Rest) > 0) then
       Exit;
-    Result := DeclIdentList(U, I, K - 1, AW, ACol);
+    Result := DeclIdentList(UpStr, Idx, Idx3 - 1, AW, ACol);
   end
-  else if (U[K] = '=') and ((K = Length(U)) or (U[K + 1] <> '>')) then
+  else if (UpStr[Idx3] = '=') and ((Idx3 = Length(UpStr)) or (UpStr[Idx3 + 1] <> '>')) then
   begin
     // Имя = ... : type или const. Продолжение условия вида "B = C then"
     // объявлением не считается.
-    Rest := Copy(U, K + 1, MaxInt);
+    Rest := Copy(UpStr, Idx3 + 1, MaxInt);
     if DeclHasWord(Rest, 'THEN') or DeclHasWord(Rest, 'DO') or
        DeclHasWord(Rest, 'AND') or DeclHasWord(Rest, 'OR') or
        DeclHasWord(Rest, 'UNTIL') or DeclHasWord(Rest, 'ELSE') then
       Exit;
-    if DeclIdentList(U, I, K - 1, AW, ACol) then
+    if DeclIdentList(UpStr, Idx, Idx3 - 1, AW, ACol) then
     begin
       Result := True;
       Exit;
     end;
     // Перечисление: TMode = (mNone, mEdit)
-    A := K + 1;
-    DeclSkipSp(U, A);
-    if (A <= Length(U)) and (U[A] = '(') then
+    Num1 := Idx3 + 1;
+    DeclSkipSp(UpStr, Num1);
+    if (Num1 <= Length(UpStr)) and (UpStr[Num1] = '(') then
     begin
-      E := PosEx(')', U, A);
-      if E = 0 then
-        E := Length(U) + 1;
-      Result := DeclIdentList(U, A + 1, E - 1, AW, ACol);
+      EndPos := PosEx(')', UpStr, Num1);
+      if EndPos = 0 then
+        EndPos := Length(UpStr) + 1;
+      Result := DeclIdentList(UpStr, Num1 + 1, EndPos - 1, AW, ACol);
     end;
   end;
 end;
 
 // Первое слово строки, если она начинается с первой колонки; иначе ''
-function DeclCol1Word(const U: string): string;
+function DeclCol1Word(const UpStr: string): string;
 var
-  I: Integer;
+  Idx: Integer;
 begin
   Result := '';
-  if (U = '') or not DeclIdStart(U[1]) then
+  if (UpStr = '') or not DeclIdStart(UpStr[1]) then
     Exit;
-  I := 1;
-  Result := DeclReadId(U, I);
+  Idx := 1;
+  Result := DeclReadId(UpStr, Idx);
 end;
 
 // Заголовок без тела: forward, external
-function DeclNoBody(const U: string): Boolean;
+function DeclNoBody(const UpStr: string): Boolean;
 begin
-  Result := DeclHasWord(U, 'FORWARD') or DeclHasWord(U, 'EXTERNAL');
+  Result := DeclHasWord(UpStr, 'FORWARD') or DeclHasWord(UpStr, 'EXTERNAL');
 end;
 
 // Поиск объявления AW (в верхнем регистре). ACl - очищенные строки в
@@ -49992,8 +49992,8 @@ end;
 function FindPascalDecl(ACl: TStrings; ACaret: Integer; const AW: string;
                         var ALine, ACol: Integer): Boolean;
 var
-  I, H, K, C: Integer;
-  S, W1: string;
+  I, HeadLine, Idx3, Cnt: Integer;
+  Str, W1: string;
   HasIntf, InImpl, InRoutine: Boolean;
 begin
   Result := False;
@@ -50004,17 +50004,17 @@ begin
   // 1. Своя процедура: заголовок с первой колонки выше строки щелчка.
   //    var, const, type, begin с первой колонки - её же разделы, их
   //    проходим; end и границы разделов модуля - процедуры нет.
-  H := -1;
+  HeadLine := -1;
   for I := ACaret downto 0 do
   begin
-    S := ACl[I];
-    W1 := DeclCol1Word(S);
+    Str := ACl[I];
+    W1 := DeclCol1Word(Str);
     if W1 = '' then
       Continue;
-    if (DeclHeaderKw(S, K) <> '') and (DeclHeaderKw(S, K) <> 'PROPERTY') then
+    if (DeclHeaderKw(Str, Idx3) <> '') and (DeclHeaderKw(Str, Idx3) <> 'PROPERTY') then
     begin
-      if not DeclNoBody(S) then
-        H := I;
+      if not DeclNoBody(Str) then
+        HeadLine := I;
       Break;
     end;
     if (W1 = 'END') or (W1 = 'IMPLEMENTATION') or (W1 = 'INTERFACE') or
@@ -50023,12 +50023,12 @@ begin
   end;
   // У самого заголовка - только параметры: щелчок по имени процедуры в
   // её реализации ищет объявление в классе, в разделе 2
-  if H >= 0 then
-    for I := H to ACaret do
-      if DeclMatchLine(ACl[I], AW, I <> H, True, C) then
+  if HeadLine >= 0 then
+    for I := HeadLine to ACaret do
+      if DeclMatchLine(ACl[I], AW, I <> HeadLine, True, Cnt) then
       begin
         ALine := I;
-        ACol := C;
+        ACol := Cnt;
       end;
   if ALine >= 0 then
   begin
@@ -50051,8 +50051,8 @@ begin
   InRoutine := False;
   for I := 0 to ACl.Count - 1 do
   begin
-    S := ACl[I];
-    W1 := DeclCol1Word(S);
+    Str := ACl[I];
+    W1 := DeclCol1Word(Str);
     if W1 <> '' then
     begin
       if W1 = 'IMPLEMENTATION' then
@@ -50061,17 +50061,17 @@ begin
         InRoutine := False;
         Continue;
       end;
-      if InImpl and (DeclHeaderKw(S, K) <> '') and
-         (DeclHeaderKw(S, K) <> 'PROPERTY') then
+      if InImpl and (DeclHeaderKw(Str, Idx3) <> '') and
+         (DeclHeaderKw(Str, Idx3) <> 'PROPERTY') then
       begin
-        if DeclMatchLine(S, AW, True, False, C) then
+        if DeclMatchLine(Str, AW, True, False, Cnt) then
         begin
           ALine := I;
-          ACol := C;
+          ACol := Cnt;
           Result := True;
           Exit;
         end;
-        InRoutine := not DeclNoBody(S);
+        InRoutine := not DeclNoBody(Str);
         Continue;
       end;
       if (W1 = 'END') and InRoutine then
@@ -50082,10 +50082,10 @@ begin
     end;
     if InRoutine then
       Continue;
-    if DeclMatchLine(S, AW, True, False, C) then
+    if DeclMatchLine(Str, AW, True, False, Cnt) then
     begin
       ALine := I;
-      ACol := C;
+      ACol := Cnt;
       Result := True;
       Exit;
     end;
@@ -50099,8 +50099,8 @@ end;
 // от него остаётся слово IN - оно пропускается.
 procedure DeclUsesUnits(ASrc, ACl: TStrings; AUnits: TStrings);
 var
-  I, P, Start: Integer;
-  U, Id: string;
+  I, CharPos, Start: Integer;
+  UpStr, Id: string;
   InUses, WantName: Boolean;
 begin
   AUnits.Clear;
@@ -50108,14 +50108,14 @@ begin
   WantName := False;
   for I := 0 to ACl.Count - 1 do
   begin
-    U := ACl[I];
-    P := 1;
-    while P <= Length(U) do
+    UpStr := ACl[I];
+    CharPos := 1;
+    while CharPos <= Length(UpStr) do
     begin
-      if DeclIdStart(U[P]) and ((P = 1) or not DeclIdChar(U[P - 1])) then
+      if DeclIdStart(UpStr[CharPos]) and ((CharPos = 1) or not DeclIdChar(UpStr[CharPos - 1])) then
       begin
-        Start := P;
-        Id := DeclReadId(U, P);
+        Start := CharPos;
+        Id := DeclReadId(UpStr, CharPos);
         if not InUses then
         begin
           if Id = 'USES' then
@@ -50126,18 +50126,18 @@ begin
         end
         else if WantName then
         begin
-          AUnits.Add(Copy(ASrc[I], Start, P - Start));
+          AUnits.Add(Copy(ASrc[I], Start, CharPos - Start));
           WantName := False;
         end;
       end
       else
       begin
         if InUses then
-          if U[P] = ',' then
+          if UpStr[CharPos] = ',' then
             WantName := True
-          else if U[P] = ';' then
+          else if UpStr[CharPos] = ';' then
             InUses := False;
-        Inc(P);
+        Inc(CharPos);
       end;
     end;
   end;
@@ -50150,8 +50150,8 @@ end;
 function FindInterfaceDecl(ASrc: TStrings; const AW: string;
                            var ALine, ACol: Integer): Boolean;
 var
-  I, St, C: Integer;
-  U, W1: string;
+  I, St, Cnt: Integer;
+  UpStr, W1: string;
   InIntf: Boolean;
 begin
   Result := False;
@@ -50160,8 +50160,8 @@ begin
   InIntf := False;
   for I := 0 to ASrc.Count - 1 do
   begin
-    U := UpperCase(DeclCleanLine(ASrc[I], St));
-    W1 := DeclCol1Word(U);
+    UpStr := UpperCase(DeclCleanLine(ASrc[I], St));
+    W1 := DeclCol1Word(UpStr);
     if W1 = 'INTERFACE' then
     begin
       InIntf := True;
@@ -50169,10 +50169,10 @@ begin
     end;
     if W1 = 'IMPLEMENTATION' then
       Exit;
-    if InIntf and DeclMatchLine(U, AW, True, False, C) then
+    if InIntf and DeclMatchLine(UpStr, AW, True, False, Cnt) then
     begin
       ALine := I;
-      ACol := C;
+      ACol := Cnt;
       Result := True;
       Exit;
     end;
@@ -50200,48 +50200,48 @@ end;
 //                               и свойства из константы
 //                               <массив>CodeProps = 'Tag,Visible'
 // Свойство может быть путём: Arr[I].Font.Style.
-procedure ArrScanLine(AList: TStrings; const S, U, AArr: string;
+procedure ArrScanLine(AList: TStrings; const Str, UpStr, AArr: string;
                       ALine: Integer);
 var
-  P, Q, B, Depth: Integer;
+  CharPos, QuotePos, ApoPos, Depth: Integer;
   Idx, Prop, Rest, Item: string;
 begin
-  if Pos(AArr, U) = 0 then
+  if Pos(AArr, UpStr) = 0 then
     Exit;
-  P := 1;
-  while P <= Length(U) - Length(AArr) + 1 do
+  CharPos := 1;
+  while CharPos <= Length(UpStr) - Length(AArr) + 1 do
   begin
-    if (U[P] <> AArr[1]) or ((P > 1) and DeclIdChar(U[P - 1])) or
-       (Copy(U, P, Length(AArr)) <> AArr) then
+    if (UpStr[CharPos] <> AArr[1]) or ((CharPos > 1) and DeclIdChar(UpStr[CharPos - 1])) or
+       (Copy(UpStr, CharPos, Length(AArr)) <> AArr) then
     begin
-      Inc(P);
+      Inc(CharPos);
       Continue;
     end;
-    Q := P + Length(AArr);
-    P := Q;
+    QuotePos := CharPos + Length(AArr);
+    CharPos := QuotePos;
 
     // Константа <массив>CodeProps = '...': значение - из S, в U оно стёрто
-    if (Copy(U, Q, 9) = 'CODEPROPS') and
-       ((Q + 9 > Length(U)) or not DeclIdChar(U[Q + 9])) then
+    if (Copy(UpStr, QuotePos, 9) = 'CODEPROPS') and
+       ((QuotePos + 9 > Length(UpStr)) or not DeclIdChar(UpStr[QuotePos + 9])) then
     begin
-      Q := Q + 9;
-      DeclSkipSp(U, Q);
-      if (Q > Length(U)) or (U[Q] <> '=') then
+      QuotePos := QuotePos + 9;
+      DeclSkipSp(UpStr, QuotePos);
+      if (QuotePos > Length(UpStr)) or (UpStr[QuotePos] <> '=') then
         Continue;
-      while (Q <= Length(S)) and (S[Q] <> '''') do
-        Inc(Q);
-      Rest := Copy(S, Q + 1, MaxInt);
-      B := Pos('''', Rest);
-      if B = 0 then
+      while (QuotePos <= Length(Str)) and (Str[QuotePos] <> '''') do
+        Inc(QuotePos);
+      Rest := Copy(Str, QuotePos + 1, MaxInt);
+      ApoPos := Pos('''', Rest);
+      if ApoPos = 0 then
         Continue;
-      Rest := Copy(Rest, 1, B - 1);
+      Rest := Copy(Rest, 1, ApoPos - 1);
       while Rest <> '' do
       begin
-        B := Pos(',', Rest);
-        if B = 0 then
-          B := Length(Rest) + 1;
-        Item := Trim(Copy(Rest, 1, B - 1));
-        Rest := Copy(Rest, B + 1, MaxInt);
+        ApoPos := Pos(',', Rest);
+        if ApoPos = 0 then
+          ApoPos := Length(Rest) + 1;
+        Item := Trim(Copy(Rest, 1, ApoPos - 1));
+        Rest := Copy(Rest, ApoPos + 1, MaxInt);
         if Item <> '' then
           AList.AddObject(AArr + '.*.' + UpperCase(Item), TObject(ALine));
       end;
@@ -50249,49 +50249,49 @@ begin
     end;
 
     // Дальше - только Arr[...]
-    if (Q <= Length(U)) and DeclIdChar(U[Q]) then
+    if (QuotePos <= Length(UpStr)) and DeclIdChar(UpStr[QuotePos]) then
       Continue;               // другое слово: PalBtnCount
-    DeclSkipSp(U, Q);
-    if (Q > Length(U)) or (U[Q] <> '[') then
+    DeclSkipSp(UpStr, QuotePos);
+    if (QuotePos > Length(UpStr)) or (UpStr[QuotePos] <> '[') then
       Continue;
-    B := Q;
+    ApoPos := QuotePos;
     Depth := 0;
-    while Q <= Length(U) do
+    while QuotePos <= Length(UpStr) do
     begin
-      if U[Q] = '[' then
+      if UpStr[QuotePos] = '[' then
         Inc(Depth)
-      else if U[Q] = ']' then
+      else if UpStr[QuotePos] = ']' then
       begin
         Dec(Depth);
         if Depth = 0 then
           Break;
       end;
-      Inc(Q);
+      Inc(QuotePos);
     end;
-    if Q > Length(U) then
+    if QuotePos > Length(UpStr) then
       Continue;
-    Idx := Trim(Copy(U, B + 1, Q - B - 1));
-    Inc(Q);
-    P := Q;
-    DeclSkipSp(U, Q);
+    Idx := Trim(Copy(UpStr, ApoPos + 1, QuotePos - ApoPos - 1));
+    Inc(QuotePos);
+    CharPos := QuotePos;
+    DeclSkipSp(UpStr, QuotePos);
 
-    if (Q <= Length(U)) and (U[Q] = '.') then
+    if (QuotePos <= Length(UpStr)) and (UpStr[QuotePos] = '.') then
     begin
       // Свойство, возможно путём: .Font.Style
       Prop := '';
-      while (Q <= Length(U)) and (U[Q] = '.') do
+      while (QuotePos <= Length(UpStr)) and (UpStr[QuotePos] = '.') do
       begin
-        Inc(Q);
-        DeclSkipSp(U, Q);
-        Item := DeclReadId(U, Q);
+        Inc(QuotePos);
+        DeclSkipSp(UpStr, QuotePos);
+        Item := DeclReadId(UpStr, QuotePos);
         if Item = '' then
           Break;
         if Prop <> '' then
           Prop := Prop + '.';
         Prop := Prop + Item;
-        DeclSkipSp(U, Q);
+        DeclSkipSp(UpStr, QuotePos);
       end;
-      if (Prop = '') or (Copy(U, Q, 2) <> ':=') then
+      if (Prop = '') or (Copy(UpStr, QuotePos, 2) <> ':=') then
         Continue;
       if (Idx <> '') and (StrToIntDef(Idx, -1) >= 0) then
         AList.AddObject(AArr + '.' + IntToStr(StrToInt(Idx)) + '.' + Prop,
@@ -50299,8 +50299,8 @@ begin
       else
         AList.AddObject(AArr + '.*.' + Prop, TObject(ALine));
     end
-    else if (Copy(U, Q, 2) = ':=') and
-            (Pos('.CREATE', Copy(U, Q, MaxInt)) > 0) then
+    else if (Copy(UpStr, QuotePos, 2) = ':=') and
+            (Pos('.CREATE', Copy(UpStr, QuotePos, MaxInt)) > 0) then
       AList.AddObject(AArr + '.CREATE', TObject(ALine));
   end;
 end;
@@ -50311,8 +50311,8 @@ procedure TForm1.ObjCollectArrays(const ASrc: string);
 var
   ArrKey: string;
   SL: TStringList;
-  I, St, P, K, E, A: Integer;
-  U, Rest, Names, Nm, TypeNm: string;
+  I, St, CharPos, Idx3, EndPos, A: Integer;
+  UpStr, Rest, Names, Nm, TypeNm: string;
   Cls: TPersistentClass;
   NewLines: TStringList;
   HeadCnt, OldEnd, NewEnd, LineNo: Integer;
@@ -50380,43 +50380,43 @@ begin
     for I := 0 to SL.Count - 1 do
     begin
       // Комментарии и строки - пробелами, позиции не сдвигаются
-      U := UpperCase(DeclCleanLine(SL[I], St));
-      P := Pos('ARRAY', U);
-      if P = 0 then
+      UpStr := UpperCase(DeclCleanLine(SL[I], St));
+      CharPos := Pos('ARRAY', UpStr);
+      if CharPos = 0 then
         Continue;
       // Слово целиком, перед ним - двоеточие объявления
-      if ((P > 1) and DeclIdChar(U[P - 1])) or
-         ((P + 5 <= Length(U)) and DeclIdChar(U[P + 5])) then
+      if ((CharPos > 1) and DeclIdChar(UpStr[CharPos - 1])) or
+         ((CharPos + 5 <= Length(UpStr)) and DeclIdChar(UpStr[CharPos + 5])) then
         Continue;
-      K := P - 1;
-      while (K >= 1) and (U[K] in [' ', #9]) do
-        Dec(K);
-      if (K < 1) or (U[K] <> ':') then
+      Idx3 := CharPos - 1;
+      while (Idx3 >= 1) and (UpStr[Idx3] in [' ', #9]) do
+        Dec(Idx3);
+      if (Idx3 < 1) or (UpStr[Idx3] <> ':') then
         Continue;
 
       // Тип элемента - слово после OF: зарегистрированный компонент
-      Rest := Copy(U, P + 5, MaxInt);
-      E := Pos(' OF ', Rest);
-      if E = 0 then
+      Rest := Copy(UpStr, CharPos + 5, MaxInt);
+      EndPos := Pos(' OF ', Rest);
+      if EndPos = 0 then
         Continue;
-      E := E + 4;
-      DeclSkipSp(Rest, E);
-      TypeNm := DeclReadId(Rest, E);
+      EndPos := EndPos + 4;
+      DeclSkipSp(Rest, EndPos);
+      TypeNm := DeclReadId(Rest, EndPos);
       Cls := GetClass(TypeNm);
       if (Cls = nil) or not Cls.InheritsFrom(TComponent) then
         Continue;
 
       // Имена - список через запятую перед двоеточием, в написании текста
-      Names := Trim(Copy(SL[I], 1, K - 1));
+      Names := Trim(Copy(SL[I], 1, Idx3 - 1));
       if CompareText(Copy(Names, 1, 4), 'var ') = 0 then
         Names := Trim(Copy(Names, 5, MaxInt));
       while Names <> '' do
       begin
-        E := Pos(',', Names);
-        if E = 0 then
-          E := Length(Names) + 1;
-        Nm := Trim(Copy(Names, 1, E - 1));
-        Names := Trim(Copy(Names, E + 1, MaxInt));
+        EndPos := Pos(',', Names);
+        if EndPos = 0 then
+          EndPos := Length(Names) + 1;
+        Nm := Trim(Copy(Names, 1, EndPos - 1));
+        Names := Trim(Copy(Names, EndPos + 1, MaxInt));
         if (Nm <> '') and DeclIdStart(Nm[1]) then
           FObjArrayNames.Add(Nm);
       end;
@@ -50428,9 +50428,9 @@ begin
     St := 0;
     for I := 0 to SL.Count - 1 do
     begin
-      U := UpperCase(DeclCleanLine(SL[I], St));
+      UpStr := UpperCase(DeclCleanLine(SL[I], St));
       for A := 0 to FObjArrayNames.Count - 1 do
-        ArrScanLine(FObjArrayLines, SL[I], U,
+        ArrScanLine(FObjArrayLines, SL[I], UpStr,
                     UpperCase(FObjArrayNames[A]), I);
     end;
   finally
@@ -50447,7 +50447,7 @@ end;
 function TForm1.ObjArrayOf(const AName: string; var AArray: string;
                            var AIndex: Integer): Boolean;
 var
-  P, First, K: Integer;
+  P, First, Idx3: Integer;
   Digits: string;
 begin
   Result := False;
@@ -50466,10 +50466,10 @@ begin
     AIndex := StrToIntDef(Digits, -1);
     if (AIndex < 0) or (IntToStr(AIndex) <> Digits) then
       Continue;
-    K := FObjArrayNames.IndexOf(Copy(AName, 1, P));
-    if K >= 0 then
+    Idx3 := FObjArrayNames.IndexOf(Copy(AName, 1, P));
+    if Idx3 >= 0 then
     begin
-      AArray := FObjArrayNames[K];
+      AArray := FObjArrayNames[Idx3];
       Result := True;
       Exit;
     end;
@@ -50485,19 +50485,19 @@ function TForm1.ObjArrayCodeProp(const AArray: string; AIndex: Integer;
                                  const AProp: string;
                                  var ALine: Integer): Boolean;
 var
-  K: Integer;
+  Idx3: Integer;
 begin
   ALine := -1;
-  K := -1;
+  Idx3 := -1;
   if (FObjArrayLines <> nil) and (AProp <> '') then
   begin
-    K := FObjArrayLines.IndexOf(AArray + '.' + IntToStr(AIndex) + '.' + AProp);
-    if K < 0 then
-      K := FObjArrayLines.IndexOf(AArray + '.*.' + AProp);
+    Idx3 := FObjArrayLines.IndexOf(AArray + '.' + IntToStr(AIndex) + '.' + AProp);
+    if Idx3 < 0 then
+      Idx3 := FObjArrayLines.IndexOf(AArray + '.*.' + AProp);
   end;
-  if K >= 0 then
+  if Idx3 >= 0 then
   begin
-    ALine := Integer(FObjArrayLines.Objects[K]);
+    ALine := Integer(FObjArrayLines.Objects[Idx3]);
     Result := True;
   end
   else
@@ -50508,13 +50508,13 @@ end;
 // строка таблицы. ARaw - значение как в .dfm; в ini строка без кавычек.
 procedure TForm1.ObjApplyArrayEdit(AObj: TObject; const AProp, ARaw: string);
 var
-  N: TDfmNode;
+  DfmNode: TDfmNode;
   Value, Section, Key: string;
-  F: TCustomForm;
-  C: TComponent;
+  Frm: TCustomForm;
+  Comp: TComponent;
   Ini: TIniFile;
 begin
-  N := TDfmNode(AObj);
+  DfmNode := TDfmNode(AObj);
   if FObjEditIsStr then
     Value := DecodeDfmString(ARaw)
   else
@@ -50529,11 +50529,11 @@ begin
   end;
 
   // Живой компонент - сразу, без перезапуска
-  C := nil;
-  F := OwnLiveForm(FObjFormClass);
-  if F <> nil then
-    C := F.FindComponent(N.Name);
-  if (C = nil) or not SetPropFromText(C, AProp, Value) then
+  Comp := nil;
+  Frm := OwnLiveForm(FObjFormClass);
+  if Frm <> nil then
+    Comp := Frm.FindComponent(DfmNode.Name);
+  if (Comp = nil) or not SetPropFromText(Comp, AProp, Value) then
     Dbg('27063: [' + Section + '] ' + Key + ': записано в editor.ini, ' +
     'живому компоненту не поставлено', clRed);
 
@@ -50558,9 +50558,9 @@ var
   ResNodes, SnapNodes: TList;
   ResIdx, Names: TStringList;
   Defs: TStringList;
-  S, R: TDfmNode;
-  L: TComponent;
-  I, J, K: Integer;
+  DfmNode2, DfmNode: TDfmNode;
+  Comp: TComponent;
+  I, J, Idx3: Integer;
 begin
   if FObjCodeProps = nil then
   begin
@@ -50631,30 +50631,30 @@ begin
     DsgIndexNodes(ResNodes, ResIdx);
     for I := 0 to SnapNodes.Count - 1 do
     begin
-      S := TDfmNode(SnapNodes[I]);
-      if S.Name = '' then
+      DfmNode2 := TDfmNode(SnapNodes[I]);
+      if DfmNode2.Name = '' then
         Continue;
-      K := ResIdx.IndexOf(S.Name);
-      if K < 0 then
+      Idx3 := ResIdx.IndexOf(DfmNode2.Name);
+      if Idx3 < 0 then
         Continue;      // создан кодом - в .dfm его нет
-      R := TDfmNode(ResIdx.Objects[K]);
-      L := LF.FindComponent(S.Name);
-      if L = nil then
+      DfmNode := TDfmNode(ResIdx.Objects[Idx3]);
+      Comp := LF.FindComponent(DfmNode2.Name);
+      if Comp = nil then
         Continue;
-      Defs := DefaultsFor(L.ClassType);
+      Defs := DefaultsFor(Comp.ClassType);
       Names.Clear;
-      Names.AddStrings(S.PropN);
-      for J := 0 to R.PropN.Count - 1 do
-        if Names.IndexOf(R.PropN[J]) < 0 then
-          Names.Add(R.PropN[J]);
+      Names.AddStrings(DfmNode2.PropN);
+      for J := 0 to DfmNode.PropN.Count - 1 do
+        if Names.IndexOf(DfmNode.PropN[J]) < 0 then
+          Names.Add(DfmNode.PropN[J]);
       for J := 0 to Names.Count - 1 do
       begin
         Nm := Names[J];
         if (Nm = 'Name') or (Nm = 'ClientWidth') or (Nm = 'ClientHeight') or
            (Copy(Nm, 1, 6) = 'Glyph.') or (Copy(Nm, 1, 8) = 'Picture.') then
           Continue;
-        SV := DsgNodeValue(S, Nm, Defs);
-        RV := DsgNodeValue(R, Nm, Defs);
+        SV := DsgNodeValue(DfmNode2, Nm, Defs);
+        RV := DsgNodeValue(DfmNode, Nm, Defs);
         if (SV = '') or (Copy(SV, 1, 2) = '''(') or
            (DsgNormValue(SV) = DsgNormValue(RV)) then
           Continue;
@@ -50668,9 +50668,9 @@ begin
         // от кода
         if ((Nm = 'Left') or (Nm = 'Top') or (Nm = 'Width') or
             (Nm = 'Height')) and
-           (not (L is TControl) or not DsgOwnBound(TControl(L), Nm)) then
+           (not (Comp is TControl) or not DsgOwnBound(TControl(Comp), Nm)) then
           Continue;
-        FObjCodeProps.Add(S.Name + '.' + Nm);
+        FObjCodeProps.Add(DfmNode2.Name + '.' + Nm);
       end;
     end;
 
@@ -50704,9 +50704,9 @@ const
   Bounds: array[0..3] of string = ('Left', 'Top', 'Width', 'Height');
 var
   SL: TStringList;
-  I, P, Q, St, B: Integer;
-  U, Id, Path, Part: string;
-  C: TComponent;
+  I, CharPos, QuotePos, St, B: Integer;
+  UpStr, Id, Path, Part: string;
+  Comp: TComponent;
 
   procedure AddProp(const AName, AProp: string);
   var
@@ -50716,7 +50716,7 @@ var
     Own := True;
     for K := Low(Bounds) to High(Bounds) do
       if CompareText(AProp, Bounds[K]) = 0 then
-        Own := (C is TControl) and DsgOwnBound(TControl(C), Bounds[K]);
+        Own := (Comp is TControl) and DsgOwnBound(TControl(Comp), Bounds[K]);
     if Own then
       FObjCodeProps.Add(AName + '.' + AProp);
   end;
@@ -50730,43 +50730,43 @@ begin
     St := 0;
     for I := 0 to SL.Count - 1 do
     begin
-      U := DeclCleanLine(SL[I], St);
-      P := 1;
-      while P <= Length(U) do
+      UpStr := DeclCleanLine(SL[I], St);
+      CharPos := 1;
+      while CharPos <= Length(UpStr) do
       begin
-        if not DeclIdStart(U[P]) or
-           ((P > 1) and (DeclIdChar(U[P - 1]) or (U[P - 1] = '.'))) then
+        if not DeclIdStart(UpStr[CharPos]) or
+           ((CharPos > 1) and (DeclIdChar(UpStr[CharPos - 1]) or (UpStr[CharPos - 1] = '.'))) then
         begin
-          Inc(P);
+          Inc(CharPos);
           Continue;
         end;
-        Q := P;
-        Id := DeclReadId(U, Q);
-        P := Q;
-        if (Q > Length(U)) or (U[Q] <> '.') or (AResIdx.IndexOf(Id) < 0) then
+        QuotePos := CharPos;
+        Id := DeclReadId(UpStr, QuotePos);
+        CharPos := QuotePos;
+        if (QuotePos > Length(UpStr)) or (UpStr[QuotePos] <> '.') or (AResIdx.IndexOf(Id) < 0) then
           Continue;
-        C := ALive.FindComponent(Id);
+        Comp := ALive.FindComponent(Id);
         // Путь свойства после точки: Height, Font.Color, SetBounds
         Path := '';
-        while (Q <= Length(U)) and (U[Q] = '.') do
+        while (QuotePos <= Length(UpStr)) and (UpStr[QuotePos] = '.') do
         begin
-          Inc(Q);
-          Part := DeclReadId(U, Q);
+          Inc(QuotePos);
+          Part := DeclReadId(UpStr, QuotePos);
           if Part = '' then
             Break;
           if Path <> '' then
             Path := Path + '.';
           Path := Path + Part;
         end;
-        P := Q;
-        DeclSkipSp(U, Q);
-        if (CompareText(Path, 'SetBounds') = 0) and (Q <= Length(U)) and
-           (U[Q] = '(') then
+        CharPos := QuotePos;
+        DeclSkipSp(UpStr, QuotePos);
+        if (CompareText(Path, 'SetBounds') = 0) and (QuotePos <= Length(UpStr)) and
+           (UpStr[QuotePos] = '(') then
         begin
           for B := Low(Bounds) to High(Bounds) do
             AddProp(Id, Bounds[B]);
         end
-        else if (Path <> '') and (Copy(U, Q, 2) = ':=') then
+        else if (Path <> '') and (Copy(UpStr, QuotePos, 2) = ':=') then
         begin
           if CompareText(Path, 'BoundsRect') = 0 then
             for B := Low(Bounds) to High(Bounds) do
@@ -51300,46 +51300,46 @@ end;
 
 // Токены очищенного текста (комментарии и строки уже пробелы), в верхнем
 // регистре: имена, числа, := .. <> <= >= и одиночные знаки
-procedure VisTokenize(const S: string; AList: TStrings);
+procedure VisTokenize(const Str: string; AList: TStrings);
 var
-  I, J, L: Integer;
+  Idx, Idx2, Len: Integer;
 begin
-  L := Length(S);
-  I := 1;
-  while I <= L do
+  Len := Length(Str);
+  Idx := 1;
+  while Idx <= Len do
   begin
-    if S[I] <= ' ' then
+    if Str[Idx] <= ' ' then
     begin
-      Inc(I);
+      Inc(Idx);
       Continue;
     end;
-    J := I;
-    if DeclIdStart(S[I]) then
+    Idx2 := Idx;
+    if DeclIdStart(Str[Idx]) then
     begin
-      while (J <= L) and DeclIdChar(S[J]) do
-        Inc(J);
+      while (Idx2 <= Len) and DeclIdChar(Str[Idx2]) do
+        Inc(Idx2);
     end
-    else if S[I] in ['0'..'9'] then
+    else if Str[Idx] in ['0'..'9'] then
     begin
-      while (J <= L) and (S[J] in ['0'..'9']) do
-        Inc(J);
+      while (Idx2 <= Len) and (Str[Idx2] in ['0'..'9']) do
+        Inc(Idx2);
     end
-    else if (I < L) and (((S[I] = ':') and (S[I + 1] = '=')) or
-                         ((S[I] = '.') and (S[I + 1] = '.')) or
-                         ((S[I] = '<') and (S[I + 1] in ['>', '='])) or
-                         ((S[I] = '>') and (S[I + 1] = '='))) then
-      J := I + 2
+    else if (Idx < Len) and (((Str[Idx] = ':') and (Str[Idx + 1] = '=')) or
+                         ((Str[Idx] = '.') and (Str[Idx + 1] = '.')) or
+                         ((Str[Idx] = '<') and (Str[Idx + 1] in ['>', '='])) or
+                         ((Str[Idx] = '>') and (Str[Idx + 1] = '='))) then
+      Idx2 := Idx + 2
     else
-      J := I + 1;
-    AList.Add(UpperCase(Copy(S, I, J - I)));
-    I := J;
+      Idx2 := Idx + 1;
+    AList.Add(UpperCase(Copy(Str, Idx, Idx2 - Idx)));
+    Idx := Idx2;
   end;
 end;
 
-function VisTok(ATok: TStrings; P: Integer): string;
+function VisTok(ATok: TStrings; CharPos: Integer): string;
 begin
-  if (P >= 0) and (P < ATok.Count) then
-    Result := ATok[P]
+  if (CharPos >= 0) and (CharPos < ATok.Count) then
+    Result := ATok[CharPos]
   else
     Result := '';
 end;
@@ -51350,11 +51350,11 @@ end;
 procedure VisParseHandler(ATok: TStrings; const APc: string;
                           APages, ARules: TStrings);
 var
-  P: Integer;
+  CharPos: Integer;
 
-  function T(K: Integer): string;
+  function TokAt(TokOfs: Integer): string;
   begin
-    Result := VisTok(ATok, P + K);
+    Result := VisTok(ATok, CharPos + TokOfs);
   end;
 
 // Токены C1..C2 без скобок и без приставки Форма. / Self. перед APc
@@ -51377,50 +51377,50 @@ var
 // Номер вкладки из условия if; -2 - условие не про вкладку
   function CondPage(C1, C2: Integer): Integer;
   var
-    L: TStringList;
-    N, K: Integer;
+    StrList: TStringList;
+    Num, Idx3: Integer;
   begin
     Result := -2;
-    L := Strip(C1, C2);
+    StrList := Strip(C1, C2);
     try
-      if (L.Count < 5) or (L[0] <> APc) or (L[1] <> '.') or (L[3] <> '=') then
+      if (StrList.Count < 5) or (StrList[0] <> APc) or (StrList[1] <> '.') or (StrList[3] <> '=') then
         Exit;
-      if ((L[2] = 'ACTIVEPAGEINDEX') or (L[2] = 'TABINDEX')) and
-         (L.Count = 5) then
+      if ((StrList[2] = 'ACTIVEPAGEINDEX') or (StrList[2] = 'TABINDEX')) and
+         (StrList.Count = 5) then
       begin
-        N := StrToIntDef(L[4], -1);
-        if N >= 0 then
-          Result := N;
+        Num := StrToIntDef(StrList[4], -1);
+        if Num >= 0 then
+          Result := Num;
       end
-      else if L[2] = 'ACTIVEPAGE' then
+      else if StrList[2] = 'ACTIVEPAGE' then
       begin
         // TabSheet4 или Форма.TabSheet4
-        if L.Count = 5 then
-          K := 4
-        else if (L.Count = 7) and (L[5] = '.') then
-          K := 6
+        if StrList.Count = 5 then
+          Idx3 := 4
+        else if (StrList.Count = 7) and (StrList[5] = '.') then
+          Idx3 := 6
         else
           Exit;
-        N := APages.IndexOf(L[K]);
-        if N >= 0 then
-          Result := N;
+        Num := APages.IndexOf(StrList[Idx3]);
+        if Num >= 0 then
+          Result := Num;
       end;
     finally
-      L.Free;
+      StrList.Free;
     end;
   end;
 
 // Селектор case - это номер вкладки?
   function CaseIsPage(C1, C2: Integer): Boolean;
   var
-    L: TStringList;
+    StrList: TStringList;
   begin
-    L := Strip(C1, C2);
+    StrList := Strip(C1, C2);
     try
-      Result := (L.Count = 3) and (L[0] = APc) and (L[1] = '.') and
-                ((L[2] = 'ACTIVEPAGEINDEX') or (L[2] = 'TABINDEX'));
+      Result := (StrList.Count = 3) and (StrList[0] = APc) and (StrList[1] = '.') and
+                ((StrList[2] = 'ACTIVEPAGEINDEX') or (StrList[2] = 'TABINDEX'));
     finally
-      L.Free;
+      StrList.Free;
     end;
   end;
 
@@ -51435,196 +51435,196 @@ var
       Result := -2;
   end;
 
-  function IsStop(const S: string): Boolean;
+  function IsStop(const Str: string): Boolean;
   begin
-    Result := (S = ';') or (S = 'END') or (S = 'ELSE') or (S = 'UNTIL') or
-              (S = 'EXCEPT') or (S = 'FINALLY') or (S = '');
+    Result := (Str = ';') or (Str = 'END') or (Str = 'ELSE') or (Str = 'UNTIL') or
+              (Str = 'EXCEPT') or (Str = 'FINALLY') or (Str = '');
   end;
 
 // До парного END; P - за открывающим словом
   procedure SkipToEnd;
   var
-    D: Integer;
+    Delta: Integer;
   begin
-    D := 1;
-    while (P < ATok.Count) and (D > 0) do
+    Delta := 1;
+    while (CharPos < ATok.Count) and (Delta > 0) do
     begin
-      if (ATok[P] = 'BEGIN') or (ATok[P] = 'CASE') or (ATok[P] = 'TRY') or
-         (ATok[P] = 'ASM') then
-        Inc(D)
-      else if ATok[P] = 'END' then
-        Dec(D);
-      Inc(P);
+      if (ATok[CharPos] = 'BEGIN') or (ATok[CharPos] = 'CASE') or (ATok[CharPos] = 'TRY') or
+         (ATok[CharPos] = 'ASM') then
+        Inc(Delta)
+      else if ATok[CharPos] = 'END' then
+        Dec(Delta);
+      Inc(CharPos);
     end;
   end;
 
 // Один оператор с позиции P; P встаёт за него (на ; или слово-границу)
   procedure ParseStmt(APg: Integer);
   var
-    C1, D, N, Last: Integer;
+    C1, Delta, Num, Last: Integer;
     IsPage, Fin: Boolean;
   begin
-    if P >= ATok.Count then
+    if CharPos >= ATok.Count then
       Exit;
 
-    if T(0) = 'BEGIN' then
+    if TokAt(0) = 'BEGIN' then
     begin
-      Inc(P);
-      while (P < ATok.Count) and (T(0) <> 'END') do
+      Inc(CharPos);
+      while (CharPos < ATok.Count) and (TokAt(0) <> 'END') do
       begin
         ParseStmt(APg);
-        if T(0) <> 'END' then
-          Inc(P);   // ; или то, что не разобрали, - шаг вперёд
+        if TokAt(0) <> 'END' then
+          Inc(CharPos);   // ; или то, что не разобрали, - шаг вперёд
       end;
-      Inc(P);
+      Inc(CharPos);
       Exit;
     end;
 
-    if T(0) = 'IF' then
+    if TokAt(0) = 'IF' then
     begin
-      Inc(P);
-      C1 := P;
-      D := 0;
-      while (P < ATok.Count) and not ((T(0) = 'THEN') and (D = 0)) do
+      Inc(CharPos);
+      C1 := CharPos;
+      Delta := 0;
+      while (CharPos < ATok.Count) and not ((TokAt(0) = 'THEN') and (Delta = 0)) do
       begin
-        if T(0) = '(' then
-          Inc(D)
-        else if T(0) = ')' then
-          Dec(D);
-        Inc(P);
+        if TokAt(0) = '(' then
+          Inc(Delta)
+        else if TokAt(0) = ')' then
+          Dec(Delta);
+        Inc(CharPos);
       end;
-      N := Sub(APg, CondPage(C1, P - 1));
-      Inc(P);
-      ParseStmt(N);
-      if T(0) = 'ELSE' then
+      Num := Sub(APg, CondPage(C1, CharPos - 1));
+      Inc(CharPos);
+      ParseStmt(Num);
+      if TokAt(0) = 'ELSE' then
       begin
         // Ветка "не эта вкладка": на какой именно - неизвестно
-        Inc(P);
+        Inc(CharPos);
         ParseStmt(-2);
       end;
       Exit;
     end;
 
-    if T(0) = 'CASE' then
+    if TokAt(0) = 'CASE' then
     begin
-      Inc(P);
-      C1 := P;
-      while (P < ATok.Count) and (T(0) <> 'OF') do
-        Inc(P);
-      IsPage := CaseIsPage(C1, P - 1);
-      Inc(P);
-      while (P < ATok.Count) and (T(0) <> 'END') do
+      Inc(CharPos);
+      C1 := CharPos;
+      while (CharPos < ATok.Count) and (TokAt(0) <> 'OF') do
+        Inc(CharPos);
+      IsPage := CaseIsPage(C1, CharPos - 1);
+      Inc(CharPos);
+      while (CharPos < ATok.Count) and (TokAt(0) <> 'END') do
       begin
-        if T(0) = 'ELSE' then
+        if TokAt(0) = 'ELSE' then
         begin
-          Inc(P);
-          while (P < ATok.Count) and (T(0) <> 'END') do
+          Inc(CharPos);
+          while (CharPos < ATok.Count) and (TokAt(0) <> 'END') do
           begin
             ParseStmt(-2);
-            if T(0) <> 'END' then
-              Inc(P);
+            if TokAt(0) <> 'END' then
+              Inc(CharPos);
           end;
           Break;
         end;
         // Метка: одно число - вкладка; список или диапазон не разбираем
-        N := StrToIntDef(T(0), -1);
-        if (N < 0) or (T(1) <> ':') or not IsPage then
-          N := -2;
-        while (P < ATok.Count) and (T(0) <> ':') do
-          Inc(P);
-        Inc(P);
-        ParseStmt(Sub(APg, N));
-        if T(0) = ';' then
-          Inc(P);
+        Num := StrToIntDef(TokAt(0), -1);
+        if (Num < 0) or (TokAt(1) <> ':') or not IsPage then
+          Num := -2;
+        while (CharPos < ATok.Count) and (TokAt(0) <> ':') do
+          Inc(CharPos);
+        Inc(CharPos);
+        ParseStmt(Sub(APg, Num));
+        if TokAt(0) = ';' then
+          Inc(CharPos);
       end;
-      Inc(P);
+      Inc(CharPos);
       Exit;
     end;
 
-    if T(0) = 'TRY' then
+    if TokAt(0) = 'TRY' then
     begin
-      Inc(P);
-      while (P < ATok.Count) and (T(0) <> 'EXCEPT') and
-            (T(0) <> 'FINALLY') and (T(0) <> 'END') do
+      Inc(CharPos);
+      while (CharPos < ATok.Count) and (TokAt(0) <> 'EXCEPT') and
+            (TokAt(0) <> 'FINALLY') and (TokAt(0) <> 'END') do
       begin
         ParseStmt(APg);
-        if (T(0) <> 'EXCEPT') and (T(0) <> 'FINALLY') and (T(0) <> 'END') then
-          Inc(P);
+        if (TokAt(0) <> 'EXCEPT') and (TokAt(0) <> 'FINALLY') and (TokAt(0) <> 'END') then
+          Inc(CharPos);
       end;
-      if T(0) = 'END' then
+      if TokAt(0) = 'END' then
       begin
-        Inc(P);
+        Inc(CharPos);
         Exit;
       end;
-      Fin := T(0) = 'FINALLY';
-      Inc(P);
+      Fin := TokAt(0) = 'FINALLY';
+      Inc(CharPos);
       if Fin then
       begin
         // finally выполняется всегда
-        while (P < ATok.Count) and (T(0) <> 'END') do
+        while (CharPos < ATok.Count) and (TokAt(0) <> 'END') do
         begin
           ParseStmt(APg);
-          if T(0) <> 'END' then
-            Inc(P);
+          if TokAt(0) <> 'END' then
+            Inc(CharPos);
         end;
-        Inc(P);
+        Inc(CharPos);
       end
       else
         SkipToEnd;   // обработчики исключений не разбираем
       Exit;
     end;
 
-    if T(0) = 'REPEAT' then
+    if TokAt(0) = 'REPEAT' then
     begin
-      Inc(P);
-      while (P < ATok.Count) and (T(0) <> 'UNTIL') do
+      Inc(CharPos);
+      while (CharPos < ATok.Count) and (TokAt(0) <> 'UNTIL') do
       begin
         ParseStmt(APg);
-        if T(0) <> 'UNTIL' then
-          Inc(P);
+        if TokAt(0) <> 'UNTIL' then
+          Inc(CharPos);
       end;
-      Inc(P);
-      D := 0;
-      while (P < ATok.Count) and not ((D = 0) and IsStop(T(0))) do
+      Inc(CharPos);
+      Delta := 0;
+      while (CharPos < ATok.Count) and not ((Delta = 0) and IsStop(TokAt(0))) do
       begin
-        if T(0) = '(' then
-          Inc(D)
-        else if T(0) = ')' then
-          Dec(D);
-        Inc(P);
+        if TokAt(0) = '(' then
+          Inc(Delta)
+        else if TokAt(0) = ')' then
+          Dec(Delta);
+        Inc(CharPos);
       end;
       Exit;
     end;
 
-    if (T(0) = 'WHILE') or (T(0) = 'FOR') or (T(0) = 'WITH') then
+    if (TokAt(0) = 'WHILE') or (TokAt(0) = 'FOR') or (TokAt(0) = 'WITH') then
     begin
-      D := 0;
-      while (P < ATok.Count) and not ((T(0) = 'DO') and (D = 0)) do
+      Delta := 0;
+      while (CharPos < ATok.Count) and not ((TokAt(0) = 'DO') and (Delta = 0)) do
       begin
-        if T(0) = '(' then
-          Inc(D)
-        else if T(0) = ')' then
-          Dec(D);
-        Inc(P);
+        if TokAt(0) = '(' then
+          Inc(Delta)
+        else if TokAt(0) = ')' then
+          Dec(Delta);
+        Inc(CharPos);
       end;
-      Inc(P);
+      Inc(CharPos);
       ParseStmt(APg);
       Exit;
     end;
 
     // Простой оператор - до ; или слова-границы
-    C1 := P;
-    D := 0;
-    while (P < ATok.Count) and not ((D = 0) and IsStop(T(0))) do
+    C1 := CharPos;
+    Delta := 0;
+    while (CharPos < ATok.Count) and not ((Delta = 0) and IsStop(TokAt(0))) do
     begin
-      if T(0) = '(' then
-        Inc(D)
-      else if T(0) = ')' then
-        Dec(D);
-      Inc(P);
+      if TokAt(0) = '(' then
+        Inc(Delta)
+      else if TokAt(0) = ')' then
+        Dec(Delta);
+      Inc(CharPos);
     end;
     // Имя.Visible := True / False
-    Last := P - 1;
+    Last := CharPos - 1;
     if (APg <> -2) and (Last - 4 >= C1) and
        ((ATok[Last] = 'TRUE') or (ATok[Last] = 'FALSE')) and
        (ATok[Last - 1] = ':=') and (ATok[Last - 2] = 'VISIBLE') and
@@ -51638,7 +51638,7 @@ var
   end;
 
 begin
-  P := 0;
+  CharPos := 0;
   ParseStmt(-1);
 end;
 
@@ -51647,8 +51647,8 @@ end;
 function DfmEventOf(const ADfm, AObj, AEvent: string): string;
 var
   SL: TStringList;
-  I, P: Integer;
-  S, Hdr: string;
+  I, CharPos: Integer;
+  Str, Hdr: string;
   InObj: Boolean;
 begin
   Result := '';
@@ -51659,26 +51659,26 @@ begin
     Hdr := UpperCase(AObj) + ':';
     for I := 0 to SL.Count - 1 do
     begin
-      S := Trim(SL[I]);
+      Str := Trim(SL[I]);
       if not InObj then
       begin
-        if ((CompareText(Copy(S, 1, 7), 'object ') = 0) or
-            (CompareText(Copy(S, 1, 10), 'inherited ') = 0) or
-            (CompareText(Copy(S, 1, 7), 'inline ') = 0)) and
-           (Pos(Hdr, UpperCase(StringReplace(S, ' ', '', [rfReplaceAll]))) > 0) then
+        if ((CompareText(Copy(Str, 1, 7), 'object ') = 0) or
+            (CompareText(Copy(Str, 1, 10), 'inherited ') = 0) or
+            (CompareText(Copy(Str, 1, 7), 'inline ') = 0)) and
+           (Pos(Hdr, UpperCase(StringReplace(Str, ' ', '', [rfReplaceAll]))) > 0) then
           InObj := True;
         Continue;
       end;
       // Свойства объекта кончаются на первом вложенном объекте или end
-      if (CompareText(Copy(S, 1, 7), 'object ') = 0) or
-         (CompareText(Copy(S, 1, 10), 'inherited ') = 0) or
-         (CompareText(Copy(S, 1, 7), 'inline ') = 0) or
-         (CompareText(S, 'end') = 0) then
+      if (CompareText(Copy(Str, 1, 7), 'object ') = 0) or
+         (CompareText(Copy(Str, 1, 10), 'inherited ') = 0) or
+         (CompareText(Copy(Str, 1, 7), 'inline ') = 0) or
+         (CompareText(Str, 'end') = 0) then
         Exit;
-      P := Pos('=', S);
-      if (P > 0) and (CompareText(Trim(Copy(S, 1, P - 1)), AEvent) = 0) then
+      CharPos := Pos('=', Str);
+      if (CharPos > 0) and (CompareText(Trim(Copy(Str, 1, CharPos - 1)), AEvent) = 0) then
       begin
-        Result := Trim(Copy(S, P + 1, MaxInt));
+        Result := Trim(Copy(Str, CharPos + 1, MaxInt));
         Exit;
       end;
     end;
@@ -51691,9 +51691,9 @@ end;
 // Разбор его OnChange - и правила видимости этой вкладки в конструктор.
 procedure TForm1.DsgPageChange(const APageCtl: string; AIndex: Integer);
 var
-  Dfm, Handler, Pas, Txt, U, Id, Nm, Log: string;
+  Dfm, Handler, Pas, Txt, UpStr, Id, Nm, Log: string;
   Src, Tok, Pages, Rules, Final: TStringList;
-  I, K, H, B, E, St, Pg: Integer;
+  I, Idx3, HeadLine, BeginLine, EndLine, St, Pg: Integer;
   PC: TComponent;
 begin
   if (FDesigner = nil) or (FDesigner.Form = nil) then
@@ -51722,49 +51722,49 @@ begin
 
       // Заголовок обработчика: procedure TФорма.Имя с первой колонки;
       // тело - от begin до end; с первой колонки
-      H := -1;
+      HeadLine := -1;
       St := 0;
       for I := 0 to Src.Count - 1 do
       begin
-        U := UpperCase(DeclCleanLine(Src[I], St));
-        Src[I] := U;
-        if (H < 0) and (DeclCol1Word(U) = 'PROCEDURE') then
+        UpStr := UpperCase(DeclCleanLine(Src[I], St));
+        Src[I] := UpStr;
+        if (HeadLine < 0) and (DeclCol1Word(UpStr) = 'PROCEDURE') then
         begin
-          K := 10;
-          DeclSkipSp(U, K);
+          Idx3 := 10;
+          DeclSkipSp(UpStr, Idx3);
           Id := '';
-          while (K <= Length(U)) and DeclIdStart(U[K]) do
+          while (Idx3 <= Length(UpStr)) and DeclIdStart(UpStr[Idx3]) do
           begin
-            Id := DeclReadId(U, K);
-            DeclSkipSp(U, K);
-            if (K <= Length(U)) and (U[K] = '.') then
+            Id := DeclReadId(UpStr, Idx3);
+            DeclSkipSp(UpStr, Idx3);
+            if (Idx3 <= Length(UpStr)) and (UpStr[Idx3] = '.') then
             begin
-              Inc(K);
-              DeclSkipSp(U, K);
+              Inc(Idx3);
+              DeclSkipSp(UpStr, Idx3);
             end
             else
               Break;
           end;
           if Id = Handler then
-            H := I;
+            HeadLine := I;
         end;
       end;
 
-      B := -1;
-      E := -1;
-      if H >= 0 then
-        for I := H + 1 to Src.Count - 1 do
-          if (B < 0) and (DeclCol1Word(Src[I]) = 'BEGIN') then
-            B := I
-          else if (B >= 0) and (DeclCol1Word(Src[I]) = 'END') then
+      BeginLine := -1;
+      EndLine := -1;
+      if HeadLine >= 0 then
+        for I := HeadLine + 1 to Src.Count - 1 do
+          if (BeginLine < 0) and (DeclCol1Word(Src[I]) = 'BEGIN') then
+            BeginLine := I
+          else if (BeginLine >= 0) and (DeclCol1Word(Src[I]) = 'END') then
           begin
-            E := I;
+            EndLine := I;
             Break;
           end;
 
-      if (B >= 0) and (E > B) then
+      if (BeginLine >= 0) and (EndLine > BeginLine) then
       begin
-        for I := B to E do
+        for I := BeginLine to EndLine do
           VisTokenize(Src[I], Tok);
 
         PC := FDesigner.Form.FindComponent(APageCtl);
@@ -51778,14 +51778,14 @@ begin
         // выполнения - последнее присваивание побеждает
         for I := 0 to Rules.Count - 1 do
         begin
-          U := Rules[I];
-          K := Pos(' ', U);
-          Pg := StrToIntDef(Copy(U, 1, K - 1), -2);
-          U := Copy(U, K + 1, MaxInt);
-          K := Pos(' ', U);
-          Nm := Copy(U, 1, K - 1);
+          UpStr := Rules[I];
+          Idx3 := Pos(' ', UpStr);
+          Pg := StrToIntDef(Copy(UpStr, 1, Idx3 - 1), -2);
+          UpStr := Copy(UpStr, Idx3 + 1, MaxInt);
+          Idx3 := Pos(' ', UpStr);
+          Nm := Copy(UpStr, 1, Idx3 - 1);
           if (Pg = -1) or (Pg = AIndex) then
-            Final.Values[Nm] := Copy(U, K + 1, MaxInt);
+            Final.Values[Nm] := Copy(UpStr, Idx3 + 1, MaxInt);
         end;
       end;
     end;
@@ -51860,7 +51860,7 @@ end;
 // Подпись и цвет панели по FDeclMode
 procedure TForm1.DeclPanelShow;
 var
-  S: string;
+  Str: string;
 begin
   if FDeclPanel = nil then
     Exit;
@@ -51868,16 +51868,16 @@ begin
     1:
     begin
       if FDeclNoneText <> '' then
-        S := FDeclNoneText
+        Str := FDeclNoneText
       else
-        S := FDeclWord + ': объявление не найдено ни в этом файле, ни в ' +
+        Str := FDeclWord + ': объявление не найдено ни в этом файле, ни в ' +
         'модулях проекта из uses';
  FDeclPanel.Color := UiColor('Decl.NoneBG');
       FDeclPanel.Hint := '';
     end;
     2:
     begin
-      S := IntToStr(FDeclLine + 1) + ':   ' + FDeclText;
+      Str := IntToStr(FDeclLine + 1) + ':   ' + FDeclText;
       FDeclPanel.Color := UiColor('Decl.FoundBG');
       if FDeclIsBlock and FDeclBlockEnd then
         FDeclPanel.Hint := 'Конец блока. Щелчок - перейти к строке ' +
@@ -51890,7 +51890,7 @@ begin
       else
       begin
         // Объявление в другом модуле: его имя перед номером строки
-        S := ExtractFileName(FDeclOtherFile) + ':' + S;
+        Str := ExtractFileName(FDeclOtherFile) + ':' + Str;
         FDeclPanel.Hint := 'Щелчок - открыть ' + FDeclOtherFile +
         ' на объявлении';
       end;
@@ -51899,14 +51899,14 @@ begin
     begin
       if FDeclOtherFile = '' then
       begin
-        S := '<< ' + IntToStr(FDeclFromLine + 1) + '   |   ' +
+        Str := '<< ' + IntToStr(FDeclFromLine + 1) + '   |   ' +
              IntToStr(FDeclLine + 1) + ':   ' + FDeclText;
         FDeclPanel.Hint := 'Щелчок - вернуться к строке ' +
                            IntToStr(FDeclFromLine + 1);
       end
       else
       begin
-        S := '<< ' + ExtractFileName(FDeclFile) + ':' +
+        Str := '<< ' + ExtractFileName(FDeclFile) + ':' +
              IntToStr(FDeclFromLine + 1) + '   |   ' +
              ExtractFileName(FDeclOtherFile) + ':' +
              IntToStr(FDeclLine + 1) + ':   ' + FDeclText;
@@ -51917,13 +51917,13 @@ begin
       FDeclPanel.Color := UiColor('Decl.BackBG');
     end;
   else
-    S := '';
+    Str := '';
     FDeclPanel.Color := UiColor('Decl.NoneBG');
     FDeclPanel.Hint := '';
   end;
   FDeclPanel.Font.Color := UiColor('Decl.Text');
   // '&' в подписи панели - знак ускорителя, его удваиваем
-  FDeclPanel.Caption := '  ' + StringReplace(S, '&', '&&', [rfReplaceAll]);
+  FDeclPanel.Caption := '  ' + StringReplace(Str, '&', '&&', [rfReplaceAll]);
 end;
 
 // Метка направляющей под точкой (AX, AY) окна редактора; -1 - нет. Точка
@@ -52004,10 +52004,10 @@ end;
 // Щелчок в редакторе: идентификатор под кареткой и его объявление
 procedure TForm1.DeclPanelUpdate;
 var
-  Ext, S, U, WU, Key: string;
+  Ext, Str, UpStr, WU, Key: string;
   Src, Cl: TStringList;
   Sel: TCharRange;
-  Line, LineStart, P, B, E, I, St, DL, DC: Integer;
+  Line, LineStart, CharPos, WordStart, WordEnd, I, St, DL, DC: Integer;
   OwnLists: Boolean;
 begin
   if (FDeclPanel = nil) or not RichEdit1.HandleAllocated then
@@ -52073,34 +52073,34 @@ begin
     end;
 
     // Идентификатор под кареткой. Каретка сразу за словом - тоже он.
-    S := Src[Line];
-    U := Cl[Line];
-    P := Sel.cpMin - LineStart + 1;
-    if (P > Length(S)) or (P < 1) or not DeclIdChar(S[P]) then
-      Dec(P);
-    if (P < 1) or (P > Length(S)) or not DeclIdChar(S[P]) then
+    Str := Src[Line];
+    UpStr := Cl[Line];
+    CharPos := Sel.cpMin - LineStart + 1;
+    if (CharPos > Length(Str)) or (CharPos < 1) or not DeclIdChar(Str[CharPos]) then
+      Dec(CharPos);
+    if (CharPos < 1) or (CharPos > Length(Str)) or not DeclIdChar(Str[CharPos]) then
     begin
       DeclPanelShow;
       Exit;
     end;
     // В комментарии или строке - не идентификатор
-    if U[P] = ' ' then
+    if UpStr[CharPos] = ' ' then
     begin
       DeclPanelShow;
       Exit;
     end;
-    B := P;
-    while (B > 1) and DeclIdChar(S[B - 1]) do
-      Dec(B);
-    E := P;
-    while (E < Length(S)) and DeclIdChar(S[E + 1]) do
-      Inc(E);
-    if not DeclIdStart(S[B]) then
+    WordStart := CharPos;
+    while (WordStart > 1) and DeclIdChar(Str[WordStart - 1]) do
+      Dec(WordStart);
+    WordEnd := CharPos;
+    while (WordEnd < Length(Str)) and DeclIdChar(Str[WordEnd + 1]) do
+      Inc(WordEnd);
+    if not DeclIdStart(Str[WordStart]) then
     begin
       DeclPanelShow;
       Exit;
     end;
-    FDeclWord := Copy(S, B, E - B + 1);
+    FDeclWord := Copy(Str, WordStart, WordEnd - WordStart + 1);
     WU := UpperCase(FDeclWord);
     if DeclIsKeyword(WU) then
     begin
@@ -52146,7 +52146,7 @@ end;
 function TForm1.DeclUnitFile(const AUnit, ADir: string; ADprUnits: TStrings;
                              const ADprDir: string): string;
 var
-  I, P: Integer;
+  I, CharPos: Integer;
   Ext, Rec, FN: string;
 begin
   for I := 0 to WindowsItemCount - 1 do
@@ -52175,12 +52175,12 @@ begin
   for I := 0 to ADprUnits.Count - 1 do
   begin
     Rec := ADprUnits[I];
-    P := Pos('|', Rec);
-    if CompareText(Copy(Rec, 1, P - 1), AUnit) <> 0 then
+    CharPos := Pos('|', Rec);
+    if CompareText(Copy(Rec, 1, CharPos - 1), AUnit) <> 0 then
       Continue;
-    Rec := Copy(Rec, P + 1, MaxInt);
-    P := Pos('|', Rec);
-    FN := Copy(Rec, 1, P - 1);
+    Rec := Copy(Rec, CharPos + 1, MaxInt);
+    CharPos := Pos('|', Rec);
+    FN := Copy(Rec, 1, CharPos - 1);
     if ExtractFileDrive(FN) = '' then
       FN := ADprDir + FN;
     FN := ExpandFileName(FN);
@@ -52207,7 +52207,7 @@ function TForm1.FindDeclInUnits(ASrc, ACl: TStrings; const AW: string;
 var
   Units, DprUnits, UnitSrc: TStringList;
   Dpr, DprDir, Dir, FN: string;
-  I, W: Integer;
+  I, WinIdx: Integer;
 begin
   Result := False;
   AFile := '';
@@ -52229,9 +52229,9 @@ begin
       if (FN = '') or (CompareText(FN, FCurrentFileName) = 0) then
         Continue;
 
-      W := IndexOfWindowByFile(FN);
-      if W >= 0 then
-        UnitSrc.Text := WinText(W)
+      WinIdx := IndexOfWindowByFile(FN);
+      if WinIdx >= 0 then
+        UnitSrc.Text := WinText(WinIdx)
       else
       try
         UnitSrc.LoadFromFile(FN);
@@ -52260,7 +52260,7 @@ end;
 // переходит на его вкладку), второй возвращает в исходный файл.
 procedure TForm1.DeclPanelClick(Sender: TObject);
 var
-  P: Integer;
+  LineStartPos: Integer;
   Moved: Boolean;
 begin
   if not RichEdit1.HandleAllocated then
@@ -52295,10 +52295,10 @@ begin
       end;
       GotoLine(FDeclLine);
       // Каретка - на имя в строке объявления
-      P := EdApi.LineIndex(FDeclLine);
-      if P >= 0 then
+      LineStartPos := EdApi.LineIndex(FDeclLine);
+      if LineStartPos >= 0 then
       begin
-        RichEdit1.SelStart := P + FDeclCol - 1;
+        RichEdit1.SelStart := LineStartPos + FDeclCol - 1;
         RichEdit1.SelLength := 0;
         UpdateStatusBarInfo;
       end;
@@ -52411,7 +52411,7 @@ end;
 //   C:\...\Blink\Blink.ino:12:5: error: 'foo' was not declared
 // разбирает ArdParseGccLine; они проверяются первыми: в тексте сообщения
 // gcc бывают скобки с числом, и разбор Borland принял бы их за номер.
-function TForm1.ParseCompilerLine(const S: string; var AFile: string;
+function TForm1.ParseCompilerLine(const Str: string; var AFile: string;
                                   var ALine: Integer): Boolean;
 var
   ColNo: Integer;
@@ -52430,39 +52430,39 @@ var
     AFile := '';
     ALine := 0;
 
-    P1 := Pos('(', S);
+    P1 := Pos('(', Str);
     while P1 > 0 do
     begin
       P2 := P1;
-      while (P2 <= Length(S)) and (S[P2] <> ')') do
+      while (P2 <= Length(Str)) and (Str[P2] <> ')') do
         Inc(P2);
-      if P2 > Length(S) then
+      if P2 > Length(Str) then
         Exit;
-      Num := Copy(S, P1 + 1, P2 - P1 - 1);
+      Num := Copy(Str, P1 + 1, P2 - P1 - 1);
       if Pos(',', Num) > 0 then
         Num := Copy(Num, 1, Pos(',', Num) - 1);
       // "Hint: (11030) ..." (номер сообщения fpc) - не место в файле
-      IsNum := (Num <> '') and (P1 >= 2) and (S[P1 - 1] <> ' ');
+      IsNum := (Num <> '') and (P1 >= 2) and (Str[P1 - 1] <> ' ');
       for I := 1 to Length(Num) do
         if not (Num[I] in ['0'..'9']) then
           IsNum := False;
       if IsNum then
       begin
-        AFile := Trim(Copy(S, 1, P1 - 1));
+        AFile := Trim(Copy(Str, 1, P1 - 1));
         ALine := StrToIntDef(Num, 0);
         Result := (AFile <> '') and (ALine > 0);
         Exit;
       end;
-      P1 := PosEx('(', S, P2 + 1);
+      P1 := PosEx('(', Str, P2 + 1);
     end;
   end;
 
 begin
   // fbc: "файл(строка) error N: ..." - первым: путь может содержать скобки,
   // а ParseBorland берёт первую
-  Result := FbParseErrorLine(S, AFile, ALine, FbError);
+  Result := FbParseErrorLine(Str, AFile, ALine, FbError);
   if not Result then
-    Result := ArdParseGccLine(S, AFile, ALine, ColNo);
+    Result := ArdParseGccLine(Str, AFile, ALine, ColNo);
   if not Result then
     Result := ParseBorland;
 end;
@@ -52511,7 +52511,7 @@ const
 var
   Ms: Cardinal;
   Frame, I: Integer;
-  S: string;
+  Str: string;
 begin
   if (FBusyDepth <= 0) or (FBusyPanel = nil) then
     Exit;
@@ -52520,14 +52520,14 @@ begin
     Exit;
   FBusyLast := Ms;
   Frame := ((Ms - FBusyStart) div 150) mod Track;
-  S := '';
+  Str := '';
   for I := 0 to Track - 1 do
     if (I >= Frame) and (I < Frame + 3) or (I < Frame + 3 - Track) then
-      S := S + #149     // жирная точка
+      Str := Str + #149     // жирная точка
     else
-      S := S + #183;    // мелкая точка
+      Str := Str + #183;    // мелкая точка
   FBusyPanel.Caption := '  ' + FBusyStage + '   ' +
-                        IntToStr((Ms - FBusyStart) div 1000) + ' с   ' + S;
+                        IntToStr((Ms - FBusyStart) div 1000) + ' с   ' + Str;
   FBusyPanel.Update;
 end;
 
@@ -52641,8 +52641,8 @@ end;
 function TForm1.ReleaseSavedList(AList: TStrings): Boolean;
 var
   Ini: TProjectIni;
-  I, N: Integer;
-  V: string;
+  I, Num: Integer;
+  ValStr: string;
 begin
   AList.Clear;
   Result := False;
@@ -52653,12 +52653,12 @@ begin
     if not Ini.ValueExists('Release', 'Count') then
       Exit;
     Result := True;
-    N := Ini.ReadInteger('Release', 'Count', 0);
-    for I := 1 to N do
+    Num := Ini.ReadInteger('Release', 'Count', 0);
+    for I := 1 to Num do
     begin
-      V := Trim(Ini.ReadString('Release', 'File' + IntToStr(I), ''));
-      if V <> '' then
-        AList.Add(V);
+      ValStr := Trim(Ini.ReadString('Release', 'File' + IntToStr(I), ''));
+      if ValStr <> '' then
+        AList.Add(ValStr);
     end;
   finally
     Ini.Free;
@@ -52860,7 +52860,7 @@ end;
 procedure TForm1.ReleaseFilesClick(Sender: TObject);
 var
   Dpr: string;
-  L: TStringList;
+  StrList: TStringList;
 begin
   if FCurrentProject = '' then
   begin
@@ -52873,11 +52873,11 @@ begin
     ShowMessage('29468:У проекта нет файла .dpr:'#13#10 + Dpr);
     Exit;
   end;
-  L := TStringList.Create;
+  StrList := TStringList.Create;
   try
-    ReleaseFilesDialog(Dpr, ExtractFilePath(DelphiExeOf(Dpr)), L);
+    ReleaseFilesDialog(Dpr, ExtractFilePath(DelphiExeOf(Dpr)), StrList);
   finally
-    L.Free;
+    StrList.Free;
   end;
 end;
 
@@ -52912,7 +52912,7 @@ end;
 procedure TForm1.BuildReleaseClick(Sender: TObject);
 var
   Dpr, ExeFile, ExeDir, DprDir, RelDir, Nm, Src, PrjType: string;
-  L: TStringList;
+  StrList: TStringList;
   I, Copied, Missed: Integer;
   IsDir: Boolean;
 begin
@@ -52938,16 +52938,16 @@ begin
 
   // Сборка заново: в релиз не должен попасть прежний exe. Изменённые
   // вкладки - на диск: dcc32 собирает файлы, а не текст редактора.
-  L := TStringList.Create;
+  StrList := TStringList.Create;
   try
-    if not SaveAllModified(L) then
+    if not SaveAllModified(StrList) then
     begin
-      ShowMessage('29540:Не сохранены файлы:'#13#10 + L.Text +
+      ShowMessage('29540:Не сохранены файлы:'#13#10 + StrList.Text +
                   #13#10'Релиз не собирается.');
       Exit;
     end;
   finally
-    L.Free;
+    StrList.Free;
   end;
   if not CompileDelphi then
   begin
@@ -52962,11 +52962,11 @@ begin
     Exit;
   end;
 
-  L := TStringList.Create;
+  StrList := TStringList.Create;
   try
     // Состав: выбранный раньше, иначе - окно выбора
-    if not ReleaseSavedList(L) then
-      if not ReleaseFilesDialog(Dpr, ExeDir, L) then
+    if not ReleaseSavedList(StrList) then
+      if not ReleaseFilesDialog(Dpr, ExeDir, StrList) then
       begin
         LogComp('--- Релиз не собран: состав не выбран');
         Exit;
@@ -52998,9 +52998,9 @@ begin
 
     Copied := 1;
     Missed := 0;
-    for I := 0 to L.Count - 1 do
+    for I := 0 to StrList.Count - 1 do
     begin
-      Nm := L[I];
+      Nm := StrList[I];
       IsDir := (Nm <> '') and (Nm[Length(Nm)] = '\');
       if IsDir then
       begin
@@ -53051,7 +53051,7 @@ begin
     'Release files', [Copied, Missed]));
     ShellOpen(Handle, RelDir);
   finally
-    L.Free;
+    StrList.Free;
   end;
 end;
 
@@ -53394,7 +53394,7 @@ function TForm1.RecoverDelphiRoot(const ASect: string): string;
 var
   Found, Names: TStringList;
   Tool, Pick: string;
-  I, P: Integer;
+  I, CharPos: Integer;
   Ini: TIniFile;
 
   // Значение строки Имя=Путь - без ValueFromIndex, его в Delphi 7 может
@@ -53414,8 +53414,8 @@ begin
 
     // Имя инструмента - хвост раздела после "Compiler.Delphi."
     Tool := '';
-    P := Pos('Compiler.Delphi.', ASect);
-    if P = 1 then
+    CharPos := Pos('Compiler.Delphi.', ASect);
+    if CharPos = 1 then
       Tool := Copy(ASect, Length('Compiler.Delphi.') + 1, MaxInt);
 
     if Found.Count = 1 then
@@ -53482,7 +53482,7 @@ end;
 function TForm1.RemapMovedPath(const AOld, ANewDir: string): string;
 var
   Rest, Cand: string;
-  P: Integer;
+  CharPos: Integer;
 begin
   Result := AOld;
   if (AOld = '') or FileExists(AOld) or DirectoryExists(AOld) then
@@ -53490,10 +53490,10 @@ begin
 
   Result := '';
   Rest := AOld;
-  P := Pos('\', Rest);
-  while P > 0 do
+  CharPos := Pos('\', Rest);
+  while CharPos > 0 do
   begin
-    Rest := Copy(Rest, P + 1, MaxInt);
+    Rest := Copy(Rest, CharPos + 1, MaxInt);
     if Rest = '' then
       Break;
     Cand := IncludeTrailingPathDelimiter(ANewDir) + Rest;
@@ -53502,7 +53502,7 @@ begin
       Result := Cand;
       Exit;
     end;
-    P := Pos('\', Rest);
+    CharPos := Pos('\', Rest);
   end;
 end;
 
@@ -53552,15 +53552,15 @@ end;
 // Delphi, остальные $(Имя) - сначала переменные этой установки Delphi,
 // потом переменные окружения Windows, текущие и из реестра. Та же логика,
 // что в окне настроек (Unit2), но без привязки к его полям.
-function TForm1.ExpandMachineVars(const S, ARoot, AKey: string): string;
+function TForm1.ExpandMachineVars(const Str, ARoot, AKey: string): string;
 var
-  P, Q: Integer;
-  Nm, V: string;
+  CharPos, QuotePos: Integer;
+  Nm, ValStr: string;
   Buf: array[0..2047] of Char;
-  N: DWORD;
+  Num: DWORD;
   Guard: Integer;
 begin
-  Result := S;
+  Result := Str;
   if ARoot <> '' then
   begin
     Result := StringReplace(Result, '$(DELPHI)',
@@ -53572,39 +53572,39 @@ begin
   // Каждое имя раскрываем один раз; нераскрытое остаётся как есть, и цикл
   // идёт дальше за ним
   Guard := 0;
-  P := Pos('$(', Result);
-  while (P > 0) and (Guard < 50) do
+  CharPos := Pos('$(', Result);
+  while (CharPos > 0) and (Guard < 50) do
   begin
     Inc(Guard);
-    Q := PosEx(')', Result, P);
-    if Q <= 0 then
+    QuotePos := PosEx(')', Result, CharPos);
+    if QuotePos <= 0 then
       Break;
-    Nm := Copy(Result, P + 2, Q - P - 2);
+    Nm := Copy(Result, CharPos + 2, QuotePos - CharPos - 2);
 
-    V := '';
+    ValStr := '';
     if AKey <> '' then
-      V := OsRegReadAny(AKey + '\Environment Variables', Nm);
-    if V = '' then
+      ValStr := OsRegReadAny(AKey + '\Environment Variables', Nm);
+    if ValStr = '' then
     begin
-      N := GetEnvironmentVariable(PChar(Nm), Buf, SizeOf(Buf));
-      if (N > 0) and (N < SizeOf(Buf)) then
-        V := Buf;
+      Num := GetEnvironmentVariable(PChar(Nm), Buf, SizeOf(Buf));
+      if (Num > 0) and (Num < SizeOf(Buf)) then
+        ValStr := Buf;
     end;
-    if V = '' then
-      V := OsStoredEnvVar(Nm);
+    if ValStr = '' then
+      ValStr := OsStoredEnvVar(Nm);
 
-                      if V <> '' then
+                      if ValStr <> '' then
       begin
-        Result := Copy(Result, 1, P - 1) + ExcludeTrailingPathDelimiter(V) +
-                  Copy(Result, Q + 1, MaxInt);
-        P := PosEx('$(', Result, P);
+        Result := Copy(Result, 1, CharPos - 1) + ExcludeTrailingPathDelimiter(ValStr) +
+                  Copy(Result, QuotePos + 1, MaxInt);
+        CharPos := PosEx('$(', Result, CharPos);
       end
     else
-      P := PosEx('$(', Result, Q + 1);
+      CharPos := PosEx('$(', Result, QuotePos + 1);
   end;
 
-  N := ExpandEnvironmentStrings(PChar(Result), Buf, SizeOf(Buf));
-  if (N > 0) and (N <= SizeOf(Buf)) then
+  Num := ExpandEnvironmentStrings(PChar(Result), Buf, SizeOf(Buf));
+  if (Num > 0) and (Num <= SizeOf(Buf)) then
     Result := Buf;
 end;
 
@@ -53617,27 +53617,27 @@ function TForm1.RelocatePathList(const AOld, AFromReg, AOldRoot, ANewRoot,
                                  ARegKey, ATitle: string): string;
 var
   Src, Seen: TStringList;
-  V, OR_, NR: string;
-  P, I, Dropped: Integer;
+  ValStr, OR_, NR: string;
+  CharPos, I, Dropped: Integer;
 
-  procedure SplitInto(const S: string; AList: TStrings);
+  procedure SplitInto(const Str: string; AList: TStrings);
   var
-    R, Item: string;
-    K: Integer;
+    RestStr, Item: string;
+    Idx3: Integer;
   begin
-    R := S;
-    while R <> '' do
+    RestStr := Str;
+    while RestStr <> '' do
     begin
-      K := Pos(';', R);
-      if K > 0 then
+      Idx3 := Pos(';', RestStr);
+      if Idx3 > 0 then
       begin
-        Item := Trim(Copy(R, 1, K - 1));
-        R := Copy(R, K + 1, MaxInt);
+        Item := Trim(Copy(RestStr, 1, Idx3 - 1));
+        RestStr := Copy(RestStr, Idx3 + 1, MaxInt);
       end
       else
       begin
-        Item := Trim(R);
-        R := '';
+        Item := Trim(RestStr);
+        RestStr := '';
       end;
       if Item <> '' then
         AList.Add(Item);
@@ -53657,35 +53657,35 @@ begin
     Seen.CaseSensitive := False;
 
     SplitInto(AOld, Src);
-    P := Src.Count;          // до этой границы - старые записи
+    CharPos := Src.Count;          // до этой границы - старые записи
     SplitInto(AFromReg, Src);
 
     for I := 0 to Src.Count - 1 do
     begin
-      V := ExpandMachineVars(Src[I], ANewRoot, ARegKey);
+      ValStr := ExpandMachineVars(Src[I], ANewRoot, ARegKey);
 
       // Старая запись внутри прежней папки Delphi - в новую папку
-      if (I < P) and (AOldRoot <> '') and (ANewRoot <> '') and
-         (Pos(OR_, AnsiUpperCase(IncludeTrailingPathDelimiter(V))) = 1) then
-        V := NR + Copy(V, Length(OR_) + 1, MaxInt);
+      if (I < CharPos) and (AOldRoot <> '') and (ANewRoot <> '') and
+         (Pos(OR_, AnsiUpperCase(IncludeTrailingPathDelimiter(ValStr))) = 1) then
+        ValStr := NR + Copy(ValStr, Length(OR_) + 1, MaxInt);
 
-      if FileExists(V) and not DirectoryExists(V) then
-        V := ExtractFilePath(V);
-      if Length(V) > 3 then
-        V := ExcludeTrailingPathDelimiter(V);
+      if FileExists(ValStr) and not DirectoryExists(ValStr) then
+        ValStr := ExtractFilePath(ValStr);
+      if Length(ValStr) > 3 then
+        ValStr := ExcludeTrailingPathDelimiter(ValStr);
 
-      if Seen.IndexOf(V) >= 0 then
+      if Seen.IndexOf(ValStr) >= 0 then
         Continue;
-      Seen.Add(V);
+      Seen.Add(ValStr);
 
       // Своей записи нет на этом компьютере - остаётся: может быть путём
       // с другого компьютера, сборка её пропустит. Из реестра - только
       // существующие.
-      if not DirectoryExists(V) then
+      if not DirectoryExists(ValStr) then
       begin
-        if I < P then
+        if I < CharPos then
           LogComp('  ' + ATitle + ': папки нет на этом компьютере, ' +
-          'оставлена - ' + V)
+          'оставлена - ' + ValStr)
         else
         begin
           Inc(Dropped);
@@ -53694,9 +53694,9 @@ begin
       end;
 
       if Result = '' then
-        Result := V
+        Result := ValStr
       else
-        Result := Result + ';' + V;
+        Result := Result + ';' + ValStr;
     end;
   finally
     Seen.Free;
@@ -53712,9 +53712,9 @@ procedure TForm1.FixPathsAfterMoveClick(Sender: TObject);
 var
   Ini: TIniFile;
   Prj: TProjectIni;
-  Sect, OldRoot, NewRoot, RegKey, V, NewV, PrjDir, Head: string;
+  Sect, OldRoot, NewRoot, RegKey, ValStr, NewV, PrjDir, Head: string;
   Keys: TStringList;
-  I, P, Fixed, Lost: Integer;
+  I, CharPos, Fixed, Lost: Integer;
 
   // Путь из значения вида "N путь" - номер окна, пробел, путь
   procedure FixNumbered(const ASection: string);
@@ -53727,11 +53727,11 @@ var
     for J := 0 to Keys.Count - 1 do
     begin
       Val := Prj.ReadString(ASection, Keys[J], '');
-      P := Pos(' ', Val);
-      if P <= 0 then
+      CharPos := Pos(' ', Val);
+      if CharPos <= 0 then
         Continue;
-      Num := Copy(Val, 1, P - 1);
-      Path := PrjPathFromStore(PrjDir, Copy(Val, P + 1, MaxInt));
+      Num := Copy(Val, 1, CharPos - 1);
+      Path := PrjPathFromStore(PrjDir, Copy(Val, CharPos + 1, MaxInt));
       if (Path = '') or (StrToIntDef(Num, -1) < 0) then
         Continue;
       if FileExists(Path) then
@@ -53775,9 +53775,9 @@ begin
       NewRoot := OldRoot;
       // Путь уже рабочий - возможно, его починила сборка. Прежний корень
       // она оставила в DelphiPathPrev: без него старые записи не перевести
-      V := StripIniComment(Ini.ReadString(Sect, 'DelphiPathPrev', ''));
-      if V <> '' then
-        OldRoot := IncludeTrailingPathDelimiter(V);
+      ValStr := StripIniComment(Ini.ReadString(Sect, 'DelphiPathPrev', ''));
+      if ValStr <> '' then
+        OldRoot := IncludeTrailingPathDelimiter(ValStr);
       LogComp('Delphi на месте: ' + NewRoot);
     end
     else
@@ -53795,16 +53795,16 @@ begin
     if NewRoot <> '' then
       RegKey := DelphiRegKeyOf(NewRoot);
 
-    V := Trim(Ini.ReadString(Sect, 'LibPath', ''));
-    NewV := RelocatePathList(V, OsRegReadAny(RegKey + '\Library', 'Search Path'),
+    ValStr := Trim(Ini.ReadString(Sect, 'LibPath', ''));
+    NewV := RelocatePathList(ValStr, OsRegReadAny(RegKey + '\Library', 'Search Path'),
                              OldRoot, NewRoot, RegKey, 'Library path');
     // Исходники Delphi в Library path не записываем вовсе: сборка их всё
     // равно отбросит, а в настройках они только вводят в заблуждение
     NewV := FilterSourceDirs(NewV, NewRoot);
     Ini.WriteString(Sect, 'LibPath', NewV);
 
-    V := Trim(Ini.ReadString(Sect, 'BrowsePath', ''));
-    NewV := RelocatePathList(V, OsRegReadAny(RegKey + '\Library', 'Browsing Path'),
+    ValStr := Trim(Ini.ReadString(Sect, 'BrowsePath', ''));
+    NewV := RelocatePathList(ValStr, OsRegReadAny(RegKey + '\Library', 'Browsing Path'),
                              OldRoot, NewRoot, RegKey, 'Browsing path');
     Ini.WriteString(Sect, 'BrowsePath', NewV);
 
@@ -53814,11 +53814,11 @@ begin
         Head := 'ExePath'
       else
         Head := 'DcuPath';
-      V := StripIniComment(Ini.ReadString(Sect, Head, ''));
-      if V = '' then
+      ValStr := StripIniComment(Ini.ReadString(Sect, Head, ''));
+      if ValStr = '' then
         Continue;
-      NewV := RelocatePathList(V, '', OldRoot, NewRoot, RegKey, Head);
-      if NewV <> V then
+      NewV := RelocatePathList(ValStr, '', OldRoot, NewRoot, RegKey, Head);
+      if NewV <> ValStr then
       begin
         Ini.WriteString(Sect, Head, NewV);
         if NewV = '' then
@@ -53847,10 +53847,10 @@ begin
       Keys := TStringList.Create;
       Prj := TProjectIni.Create(SettingsFileName, FCurrentProject);
       try
-        V := PrjTargetFromStore(PrjDir, Prj.ReadString('Project', 'Target', ''));
-        if (V <> '') and not FileExists(V) then
+        ValStr := PrjTargetFromStore(PrjDir, Prj.ReadString('Project', 'Target', ''));
+        if (ValStr <> '') and not FileExists(ValStr) then
         begin
-          NewV := RemapMovedPath(V, PrjDir);
+          NewV := RemapMovedPath(ValStr, PrjDir);
           if NewV <> '' then
           begin
             Prj.WriteString('Project', 'Target', PrjTargetToStore(PrjDir, NewV));
@@ -53858,7 +53858,7 @@ begin
           end
           else
           begin
-            LogComp('  Цель сборки не найдена: ' + V);
+            LogComp('  Цель сборки не найдена: ' + ValStr);
             Inc(Lost);
           end;
         end;
@@ -53931,8 +53931,8 @@ end;
 // Самой Delphi эти папки для сборки не нужны никогда.
 function TForm1.FilterSourceDirs(const AList, ARoot: string): string;
 var
-  Rest, V, Up, SrcDir, ExpDir: string;
-  P: Integer;
+  Rest, ValStr, Up, SrcDir, ExpDir: string;
+  CharPos: Integer;
 begin
   Result := '';
   if ARoot = '' then
@@ -53947,31 +53947,31 @@ begin
   Rest := AList;
   while Rest <> '' do
   begin
-    P := Pos(';', Rest);
-    if P > 0 then
+    CharPos := Pos(';', Rest);
+    if CharPos > 0 then
     begin
-      V := Trim(Copy(Rest, 1, P - 1));
-      Rest := Copy(Rest, P + 1, MaxInt);
+      ValStr := Trim(Copy(Rest, 1, CharPos - 1));
+      Rest := Copy(Rest, CharPos + 1, MaxInt);
     end
     else
     begin
-      V := Trim(Rest);
+      ValStr := Trim(Rest);
       Rest := '';
     end;
-    if V = '' then
+    if ValStr = '' then
       Continue;
 
-    Up := AnsiUpperCase(IncludeTrailingPathDelimiter(V));
+    Up := AnsiUpperCase(IncludeTrailingPathDelimiter(ValStr));
     if (Pos(SrcDir, Up) = 1) or (Pos(ExpDir, Up) = 1) then
     begin
-      LogComp('Путь поиска не передан компилятору - исходники Delphi: ' + V);
+      LogComp('Путь поиска не передан компилятору - исходники Delphi: ' + ValStr);
       Continue;
     end;
 
     if Result = '' then
-      Result := V
+      Result := ValStr
     else
-      Result := Result + ';' + V;
+      Result := Result + ';' + ValStr;
   end;
 end;
 
@@ -53989,7 +53989,7 @@ procedure TForm1.CheckShadowDcus(const ADir, ARoot: string);
 var
   Lib, Bad: TStringList;
   SR: TSearchRec;
-  LibDir, D, Nm, Msg: string;
+  LibDir, DirStr, Nm, Msg: string;
   I: Integer;
 begin
   if (ADir = '') or (ARoot = '') or not DirectoryExists(ADir) then
@@ -53997,10 +53997,10 @@ begin
   LibDir := IncludeTrailingPathDelimiter(ARoot) + 'Lib\';
   if not DirectoryExists(LibDir) then
     Exit;
-  D := IncludeTrailingPathDelimiter(ADir);
+  DirStr := IncludeTrailingPathDelimiter(ADir);
 
   // Одна и та же папка: исходники самой Delphi не проверяем
-  if CompareText(D, LibDir) = 0 then
+  if CompareText(DirStr, LibDir) = 0 then
     Exit;
 
   Lib := TStringList.Create;
@@ -54019,11 +54019,11 @@ begin
     if Lib.Count = 0 then
       Exit;
 
-    if FindFirst(D + '*.dcu', faAnyFile, SR) = 0 then
+    if FindFirst(DirStr + '*.dcu', faAnyFile, SR) = 0 then
     try
       repeat
         Nm := ChangeFileExt(SR.Name, '');
-        if (Lib.IndexOf(Nm) >= 0) and not FileExists(D + Nm + '.pas') then
+        if (Lib.IndexOf(Nm) >= 0) and not FileExists(DirStr + Nm + '.pas') then
           Bad.Add(SR.Name);
       until FindNext(SR) <> 0;
     finally
@@ -54040,9 +54040,9 @@ begin
       Msg := Msg + Format('    ... и ещё %d'#13#10, [Bad.Count - 20]);
 
     LogComp(Format('В %s лежат .dcu модулей Delphi (%d): они перекрывают ' +
-    'библиотеку из Lib', [D, Bad.Count]));
+    'библиотеку из Lib', [DirStr, Bad.Count]));
 
-                   if MessageDlg('26166:В папке' + #13#10 + D + #13#10 +
+                   if MessageDlg('26166:В папке' + #13#10 + DirStr + #13#10 +
     'лежат .dcu модулей самой Delphi:' + #13#10#13#10 + Msg +
                                  #13#10 + 'Они берутся вместо библиотечных из Lib и ломают ' +
     'сборку. Скорее всего, это след сборки с исходниками ' +
@@ -54054,7 +54054,7 @@ begin
     end;
 
     for I := 0 to Bad.Count - 1 do
-      if DeleteFile(D + Bad[I]) then
+      if DeleteFile(DirStr + Bad[I]) then
         LogComp('  Удалён: ' + Bad[I])
       else
         LogComp('  Не удалось удалить: ' + Bad[I]);
@@ -54488,8 +54488,8 @@ begin
     try
       MadeDir := ForceDirectories(ExeDir);
     except
-      on E: Exception do
-        LogComp('Компиляция: ' + E.Message + ' - ' + ExeDir);
+      on Err: Exception do
+        LogComp('Компиляция: ' + Err.Message + ' - ' + ExeDir);
     end;
     if not MadeDir then
     begin
@@ -54635,11 +54635,11 @@ begin
 end;
 
 // Строка лога без времени в начале ("hh:nn:ss  текст")
-function StripLogTime(const S: string): string;
+function StripLogTime(const Str: string): string;
 var
   Gap: Integer;
 begin
-  Result := S;
+  Result := Str;
   Gap := Pos('  ', Result);
   if (Gap > 0) and (Gap <= 10) then
     Result := Copy(Result, Gap + 2, Length(Result));
@@ -57909,9 +57909,9 @@ begin
     try
       RcLines.SaveToFile(Result);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        LogComp('Не записан ' + Result + ': ' + E.Message);
+        LogComp('Не записан ' + Result + ': ' + Err.Message);
         Result := '';
       end;
     end;
@@ -59691,10 +59691,10 @@ var
       try
         ConsoleLines.LoadFromFile(AFile);
       except
-        on E: Exception do
+        on Err: Exception do
         begin
           LogComp('Снимок RapidQ: вывод консоли не прочитан: ' + AFile +
-          ' (' + E.Message + ')');
+          ' (' + Err.Message + ')');
                   Exit;
         end;
       end;
@@ -60719,33 +60719,33 @@ end;
 
 procedure TForm1.CheckUnitPath(const AList: string);
 var
-  Rest, V: string;
-  P: Integer;
+  Rest, ValStr: string;
+  CharPos: Integer;
 begin
   Rest := AList;
   while Rest <> '' do
   begin
-    P := Pos(';', Rest);
-    if P > 0 then
+    CharPos := Pos(';', Rest);
+    if CharPos > 0 then
     begin
-      V := Trim(Copy(Rest, 1, P - 1));
-      Rest := Copy(Rest, P + 1, Length(Rest));
+      ValStr := Trim(Copy(Rest, 1, CharPos - 1));
+      Rest := Copy(Rest, CharPos + 1, Length(Rest));
     end
     else
     begin
-      V := Trim(Rest);
+      ValStr := Trim(Rest);
       Rest := '';
     end;
 
-    if V = '' then
+    if ValStr = '' then
       Continue;
 
-    if Pos('$(', V) > 0 then
-      LogComp('Путь поиска: нераскрытая переменная - ' + V)
-    else if FileExists(V) and not DirectoryExists(V) then
-      LogComp('Путь поиска: это файл, а не папка - ' + V)
-    else if not DirectoryExists(V) then
-      LogComp('Путь поиска: папка не найдена - ' + V);
+    if Pos('$(', ValStr) > 0 then
+      LogComp('Путь поиска: нераскрытая переменная - ' + ValStr)
+    else if FileExists(ValStr) and not DirectoryExists(ValStr) then
+      LogComp('Путь поиска: это файл, а не папка - ' + ValStr)
+    else if not DirectoryExists(ValStr) then
+      LogComp('Путь поиска: папка не найдена - ' + ValStr);
   end;
 end;
 
@@ -60774,28 +60774,28 @@ end;
 // перед ней (DfmBinaryKind), текстовая - со слова object
 function TForm1.DfmIsBinary(const AFile: string): Boolean;
 var
-  F: TFileStream;
+  FileStrm: TFileStream;
   Head: string;
-  N: Integer;
+  FileSize: Integer;
 begin
   Result := False;
   if not FileExists(AFile) then
     Exit;
 
   try
-    F := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
+    FileStrm := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
     try
       // Заголовок ресурса с именем формы укладывается в первые байты
-      N := F.Size;
-      if N > 512 then
-        N := 512;
-      if N < 4 then
+      FileSize := FileStrm.Size;
+      if FileSize > 512 then
+        FileSize := 512;
+      if FileSize < 4 then
         Exit;
-      SetLength(Head, N);
-      F.ReadBuffer(Head[1], N);
+      SetLength(Head, FileSize);
+      FileStrm.ReadBuffer(Head[1], FileSize);
       Result := DfmBinaryKind(Head) <> 0;
     finally
-      F.Free;
+      FileStrm.Free;
     end;
   except
     Result := False;
@@ -60812,7 +60812,7 @@ function TForm1.DfmCaptionOf(const AFile: string): string;
 var
   Src: TMemoryStream;
   SL: TStringList;
-  I, Depth, P: Integer;
+  I, Depth, CharPos: Integer;
   Line, Up, Raw: string;
 begin
   Result := '';
@@ -60872,9 +60872,9 @@ begin
         Result := StringReplace(Result, '''''', '''', [rfReplaceAll]);
 
         // Длинный заголовок в .dfm склеен из частей - берём первую
-        P := Pos(''' +', Result);
-        if P > 0 then
-          Result := Copy(Result, 1, P - 1);
+        CharPos := Pos(''' +', Result);
+        if CharPos > 0 then
+          Result := Copy(Result, 1, CharPos - 1);
         Exit;
       end;
     end;
@@ -60907,7 +60907,7 @@ function TForm1.MakeListWindow(var AForm: TForm; var ALV: TListView;
 var
   Wnd: TDlgListWnd;
   Rest, Item, Cap: string;
-  P, W: Integer;
+  CharPos, WidthPx: Integer;
   Col: TListColumn;
 begin
   Result := AForm = nil;
@@ -60934,11 +60934,11 @@ begin
   Rest := ACols;
   while Rest <> '' do
   begin
-    P := Pos(';', Rest);
-    if P > 0 then
+    CharPos := Pos(';', Rest);
+    if CharPos > 0 then
     begin
-      Item := Copy(Rest, 1, P - 1);
-      Rest := Copy(Rest, P + 1, Length(Rest));
+      Item := Copy(Rest, 1, CharPos - 1);
+      Rest := Copy(Rest, CharPos + 1, Length(Rest));
     end
     else
     begin
@@ -60946,13 +60946,13 @@ begin
       Rest := '';
     end;
 
-    P := Pos('|', Item);
-    Cap := Copy(Item, 1, P - 1);
-    W := StrToIntDef(Copy(Item, P + 1, Length(Item)), 100);
+    CharPos := Pos('|', Item);
+    Cap := Copy(Item, 1, CharPos - 1);
+    WidthPx := StrToIntDef(Copy(Item, CharPos + 1, Length(Item)), 100);
 
     Col := ALV.Columns.Add;
     Col.Caption := Cap;
-    Col.Width := W;
+    Col.Width := WidthPx;
   end;
 
   // Скрытая колонка с полным путём
@@ -60973,7 +60973,7 @@ var
   Units: TStringList;
   Dpr, Dir, PrjName, Rec, UnitNm, FileNm, FormNm, FormCls, Full, Tp,
   Dfm: string;
-  I, P, FormTotal: Integer;
+  I, CharPos, FormTotal: Integer;
   HasForm: Boolean;
   It: TListItem;
 
@@ -61173,15 +61173,15 @@ begin
       for I := 0 to Units.Count - 1 do
       begin
         Rec := Units[I];
-        P := Pos('|', Rec);
-        UnitNm := Copy(Rec, 1, P - 1);
-        Rec := Copy(Rec, P + 1, Length(Rec));
-        P := Pos('|', Rec);
-        FileNm := Copy(Rec, 1, P - 1);
-        Rec := Copy(Rec, P + 1, Length(Rec));
-        P := Pos('|', Rec);
-        FormNm := Copy(Rec, 1, P - 1);
-        FormCls := Copy(Rec, P + 1, Length(Rec));
+        CharPos := Pos('|', Rec);
+        UnitNm := Copy(Rec, 1, CharPos - 1);
+        Rec := Copy(Rec, CharPos + 1, Length(Rec));
+        CharPos := Pos('|', Rec);
+        FileNm := Copy(Rec, 1, CharPos - 1);
+        Rec := Copy(Rec, CharPos + 1, Length(Rec));
+        CharPos := Pos('|', Rec);
+        FormNm := Copy(Rec, 1, CharPos - 1);
+        FormCls := Copy(Rec, CharPos + 1, Length(Rec));
 
         Full := FileNm;
         if ExtractFilePath(Full) = '' then
@@ -61339,7 +61339,7 @@ end;
 // Строка под мышью сменилась - подсказка гасится и появится заново уже
 // с текстом новой строки
 procedure TForm1.ProjectListMouseMove(Sender: TObject; Shift: TShiftState;
-                                      X, Y: Integer);
+                                      PosX, PosY: Integer);
 var
   LV: TListView;
   Item: TListItem;
@@ -61349,7 +61349,7 @@ begin
   if not (Sender is TListView) then
     Exit;
   LV := TListView(Sender);
-  Item := LV.GetItemAt(X, Y);
+  Item := LV.GetItemAt(PosX, PosY);
   if Item = FModHintItem then
     Exit;
   FModHintItem := Item;
@@ -61620,8 +61620,8 @@ procedure TForm1.ProjectListSelect(Sender: TObject; Item: TListItem;
                                    Change: TItemChange);
 var
   LV: TListView;
-  S: string;
-  N: Integer;
+  Str: string;
+  Num: Integer;
 begin
   if not (Sender is TListView) or (FModPath = nil) then
     Exit;
@@ -61634,13 +61634,13 @@ begin
   end;
 
   ModPreviewSchedule(LV.Selected);
-  N := LV.Selected.SubItems.Count;
-  S := '  ' + LV.Selected.SubItems[N - 1];
-  if Copy(LV.Selected.SubItems[N - 2], 1, 7) = 'rqform:' then
-    S := S + '   +   форма ' + Copy(LV.Selected.SubItems[N - 2], 8, MaxInt)
-  else if LV.Selected.SubItems[N - 2] <> '' then
-    S := S + '   +   ' + ExtractFileName(LV.Selected.SubItems[N - 2]);
-  FModPath.Caption := S;
+  Num := LV.Selected.SubItems.Count;
+  Str := '  ' + LV.Selected.SubItems[Num - 1];
+  if Copy(LV.Selected.SubItems[Num - 2], 1, 7) = 'rqform:' then
+    Str := Str + '   +   форма ' + Copy(LV.Selected.SubItems[Num - 2], 8, MaxInt)
+  else if LV.Selected.SubItems[Num - 2] <> '' then
+    Str := Str + '   +   ' + ExtractFileName(LV.Selected.SubItems[Num - 2]);
+  FModPath.Caption := Str;
 end;
 
 // Двойной щелчок открывает файл строки: модуль (у первой строки - .dpr).
@@ -61668,7 +61668,7 @@ var
   LV: TListView;
   Hit: TUiLVHitTest;
   FN, Dfm, Pas: string;
-  N: Integer;
+  Num: Integer;
 begin
   if not (Sender is TListView) then
     Exit;
@@ -61677,8 +61677,8 @@ begin
   if (LV.Selected = nil) or (LV.Selected.SubItems.Count < 2) then
     Exit;
 
-  N := LV.Selected.SubItems.Count;
-  FN := LV.Selected.SubItems[N - 1];
+  Num := LV.Selected.SubItems.Count;
+  FN := LV.Selected.SubItems[Num - 1];
 
   FillChar(Hit, SizeOf(Hit), 0);
   GetCursorPos(Hit.Pt);
@@ -61687,9 +61687,9 @@ begin
   // Колонка формы - или окно открыто как View Form: тогда любая колонка
   // строки с формой
   if (FModFormsMode or (Hit.SubItem = ColForm)) and
-     (LV.Selected.SubItems[N - 2] <> '') then
+     (LV.Selected.SubItems[Num - 2] <> '') then
   begin
-    Dfm := LV.Selected.SubItems[N - 2];
+    Dfm := LV.Selected.SubItems[Num - 2];
     // Форма RapidQ: файл во вкладке, форма в конструкторе
     if Copy(Dfm, 1, 7) = 'rqform:' then
     begin
@@ -62813,7 +62813,7 @@ end;
 
 // Щелчок по форме конструктора RapidQ при выбранном на палитре классе:
 // вставка - после того, как конструктор закончит с мышью (сообщением)
-procedure TForm1.RqDsgPlace(const AParent: string; X, Y, AFormX,
+procedure TForm1.RqDsgPlace(const AParent: string; PosX, PosY, AFormX,
                             AFormY: Integer; var AHandled: Boolean);
 begin
   if RqPalSelected = '' then
@@ -62821,7 +62821,7 @@ begin
   AHandled := True;
   FRqPlaceClass := RqPalSelected;
   FRqPlaceParent := AParent;
-  FRqPlacePt := Point(X, Y);
+  FRqPlacePt := Point(PosX, PosY);
   PostMessage(Handle, WM_USER + 323, 0, 0);
 end;
 
@@ -62895,7 +62895,7 @@ end;
 
 // Блок CREATE компонента класса AClass - в текст (см. начало раздела).
 // AParent - имя контейнера под мышью (или формы), X, Y - точка в нём.
-procedure TForm1.RqDsgInsert(const AClass, AParent: string; X, Y: Integer);
+procedure TForm1.RqDsgInsert(const AClass, AParent: string; PosX, PosY: Integer);
 var
   Lines, Block: TStringList;
   Nodes, Roots: TList;
@@ -63032,8 +63032,8 @@ begin
       else if RqDsgHasProp(AClass, 'Text') then
         Block.Add(OwnIndent + Step + 'Text = "' + NewName + '"');
       RqDsgDefaultSize(AClass, CompWidth, CompHeight);
-      Block.Add(OwnIndent + Step + 'Left = ' + IntToStr(X));
-      Block.Add(OwnIndent + Step + 'Top = ' + IntToStr(Y));
+      Block.Add(OwnIndent + Step + 'Left = ' + IntToStr(PosX));
+      Block.Add(OwnIndent + Step + 'Top = ' + IntToStr(PosY));
       Block.Add(OwnIndent + Step + 'Width = ' + IntToStr(CompWidth));
       Block.Add(OwnIndent + Step + 'Height = ' + IntToStr(CompHeight));
       if RqDsgKindOf(AClass) = rkTab then
@@ -64039,9 +64039,9 @@ begin
     try
       NewText.SaveToFile(AFile);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        ShowMessage('New Form: файл ' + AFile + ' не записан: ' + E.Message);
+        ShowMessage('New Form: файл ' + AFile + ' не записан: ' + Err.Message);
         Exit;
       end;
     end;
@@ -64156,10 +64156,10 @@ begin
       try
         NewText.SaveToFile(IncFile);
       except
-        on E: Exception do
+        on Err: Exception do
         begin
           ShowMessage('New Include: файл ' + IncFile + ' не записан: ' +
-                      E.Message);
+                      Err.Message);
           Exit;
         end;
       end;
@@ -66377,14 +66377,14 @@ end;
 
 // Щелчок по номеру строки - точка останова на этой строке
 procedure TForm1.PaintBox1MouseDown(Sender: TObject; Button: TMouseButton;
-                                    Shift: TShiftState; X, Y: Integer);
+                                    Shift: TShiftState; PosX, PosY: Integer);
 var
   LineIdx, LineTotal: Integer;
 begin
   if not (Button in [mbLeft, mbRight]) or (LineHeight <= 0) or
-     (Y < YOffset) or not RichEdit1.HandleAllocated then
+     (PosY < YOffset) or not RichEdit1.HandleAllocated then
     Exit;
-  LineIdx := FirstVisibleLine + (Y - YOffset) div LineHeight;
+  LineIdx := FirstVisibleLine + (PosY - YOffset) div LineHeight;
   LineTotal := EdApi.LineCount;
   if (LineIdx < 0) or (LineIdx >= LineTotal) then
     Exit;
@@ -67020,9 +67020,9 @@ begin
       CmdLines.SaveToFile(FRqDbgInstr.CmdFile);
       Result := True;
     except
-      on E: Exception do
+      on Err: Exception do
         LogComp('Отладчик RapidQ: не записан файл команды ' +
-                FRqDbgInstr.CmdFile + ' (' + E.Message + ')');
+                FRqDbgInstr.CmdFile + ' (' + Err.Message + ')');
     end;
   finally
     CmdLines.Free;
@@ -67859,16 +67859,16 @@ begin
 end;
 
 procedure TForm1.MarksBoxMouseDown(Sender: TObject; Button: TMouseButton;
-                                   Shift: TShiftState; X, Y: Integer);
+                                   Shift: TShiftState; PosX, PosY: Integer);
 var
   CondLine: Integer;
 begin
   if Button = mbLeft then
-    FMarkClickLine := MarksLineAtY(Y)
+    FMarkClickLine := MarksLineAtY(PosY)
   else if Button = mbRight then
   begin
     // Как на номерах строк: условие точки останова
-    CondLine := MarksLineAtY(Y);
+    CondLine := MarksLineAtY(PosY);
     if CondLine >= 0 then
       DbgEditCondition(CondLine);
   end;
@@ -70188,9 +70188,9 @@ begin
       ScriptStream.Free;
     end;
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      LogGit('git: ' + ScriptName + ' не записать - ' + E.Message);
+      LogGit('git: ' + ScriptName + ' не записать - ' + Err.Message);
       Exit;
     end;
   end;
@@ -72485,9 +72485,9 @@ begin
     Raw := ReadWholeFile(IncludeTrailingPathDelimiter(FGitDlgRepo) +
       PathNative(string(ARelPath)));
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      Result := 'Файл не прочитан: ' + ARelPath + #10 + WideString(E.Message);
+      Result := 'Файл не прочитан: ' + ARelPath + #10 + WideString(Err.Message);
       Exit;
     end;
   end;
@@ -76649,8 +76649,8 @@ begin
     try
       Report.SaveToFile(ReportFile);
     except
-      on E: Exception do
-        LogComp('pciids.inf: отчёт не записан - ' + E.Message);
+      on Err: Exception do
+        LogComp('pciids.inf: отчёт не записан - ' + Err.Message);
     end;
     // В журнал - сводка без числа записей по производителям и без
     // списков изменений и проверки (они в отчёте)
@@ -80258,8 +80258,8 @@ end;
 function TForm1.ResolveErrorFile(const AName: string;
                                  var AWhere: string): string;
 var
-  Rest, V: string;
-  P: Integer;
+  Rest, ValStr: string;
+  CharPos: Integer;
 
   // Кандидат: файл есть - кладём путь в AFull. Иначе место уходит в
   // перечень просмотренных.
@@ -80314,21 +80314,21 @@ begin
   Rest := FLastUnitPath;
   while Rest <> '' do
   begin
-    P := Pos(';', Rest);
-    if P > 0 then
+    CharPos := Pos(';', Rest);
+    if CharPos > 0 then
     begin
-      V := Trim(Copy(Rest, 1, P - 1));
-      Rest := Copy(Rest, P + 1, Length(Rest));
+      ValStr := Trim(Copy(Rest, 1, CharPos - 1));
+      Rest := Copy(Rest, CharPos + 1, Length(Rest));
     end
     else
     begin
-      V := Trim(Rest);
+      ValStr := Trim(Rest);
       Rest := '';
     end;
 
-    if V = '' then
+    if ValStr = '' then
       Continue;
-    if Probe(V, Result) then
+    if Probe(ValStr, Result) then
       Exit;
   end;
 
@@ -80353,9 +80353,9 @@ begin
       ForceDirectories(ExtractFilePath(AFile));
       LogLines.SaveToFile(AFile);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        LogComp('Лог компиляции не сохранён: ' + AFile + ' (' + E.Message +
+        LogComp('Лог компиляции не сохранён: ' + AFile + ' (' + Err.Message +
         ')');
                 Exit;
       end;
@@ -80477,39 +80477,39 @@ end;
 procedure TForm1.LogEditDblClick(Sender: TObject);
 var
   Start: Integer;
-  S, FName, Full, Where: string;
+  Str, FName, Full, Where: string;
   ErrLine, K: Integer;
-  W: TStringList;
+  StrList: TStringList;
 begin
   // Строку берём у того окна лога, по которому щёлкнули: обработчик висит
   // на окнах компиляции и ошибок, привязка к конкретному полю тут не нужна
   if Sender is TEdLogView then
   begin
-    if not LogClickLine(Sender, S) then
+    if not LogClickLine(Sender, Str) then
       Exit;
   end
-  else if not LogClickLine(CompLogEdit, S) then
+  else if not LogClickLine(CompLogEdit, Str) then
     Exit;
 
   // В начале строки лога стоит время - отрезаем его
-  Start := Pos('  ', S);
+  Start := Pos('  ', Str);
   if (Start > 0) and (Start <= 10) then
-    S := Copy(S, Start + 2, Length(S));
+    Str := Copy(Str, Start + 2, Length(Str));
 
-  if not ParseCompilerLine(S, FName, ErrLine) then
+  if not ParseCompilerLine(Str, FName, ErrLine) then
     Exit;
 
   Full := ResolveErrorFile(FName, Where);
   if Full = '' then
   begin
     LogComp('Файл ' + FName + ' не найден. Искали в:');
-    W := TStringList.Create;
+    StrList := TStringList.Create;
     try
-      W.Text := Where;
-      for K := 0 to W.Count - 1 do
-        LogComp('    ' + W[K]);
+      StrList.Text := Where;
+      for K := 0 to StrList.Count - 1 do
+        LogComp('    ' + StrList[K]);
     finally
-      W.Free;
+      StrList.Free;
     end;
     Exit;
   end;
@@ -80522,9 +80522,9 @@ end;
 // Отладочная строка в HiLite log, цветом (по умолчанию красным). Как
 // AddClrString в RapidQ: Dbg('27578: FileName = ' + FileName);
 // Номер строки в начале текста ставится так же, как у сообщений.
-procedure TForm1.Dbg(const S: string; AColor: TColor);
+procedure TForm1.Dbg(const Str: string; AColor: TColor);
 begin
-  LogTo(LogEdit, S, AColor);
+  LogTo(LogEdit, Str, AColor);
 end;
 
 procedure AddClrString(const AddString: string; Clr: TColor; Sender: TEdLogView);
@@ -80542,12 +80542,12 @@ end;
 // Схема, а не расширение: .dpr, .pp, .inc идут по pas.clr (см. SchemeExtFor).
 function TForm1.DebugLang: string;
 var
-  E: string;
+  ExtStr: string;
 begin
-  E := LowerCase(ChangeFileExt(ExtractFileName(ActiveSchemaFile), ''));
-  if E = 'pas' then
+  ExtStr := LowerCase(ChangeFileExt(ExtractFileName(ActiveSchemaFile), ''));
+  if ExtStr = 'pas' then
     Result := 'pas'
-  else if E = 'bas' then
+  else if ExtStr = 'bas' then
     Result := 'bas'
   else
     Result := '';
@@ -80556,35 +80556,35 @@ end;
 // Выражение под кареткой: имя с точками (Obj.Field), в Basic и с $
 function TForm1.ExprAtCaret(ABasic: Boolean): string;
 var
-  P, LineIdx, LineStart, Col, A, B: Integer;
-  S: string;
+  CharPos, LineIdx, LineStart, Col, WordStart, WordEnd: Integer;
+  Str: string;
   Ch: set of Char;
 begin
   Result := '';
   Ch := ['A'..'Z', 'a'..'z', '0'..'9', '_', '.'];
   if ABasic then
     Ch := Ch + ['$'];
-  P := RichEdit1.SelStart;
-  LineIdx := EdApi.LineFromChar(P);
+  CharPos := RichEdit1.SelStart;
+  LineIdx := EdApi.LineFromChar(CharPos);
   if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
     Exit;
   LineStart := EdApi.LineIndex(LineIdx);
-  S := RichEdit1.Lines[LineIdx];
-  Col := P - LineStart + 1;
-  if (Col < 1) or (Col > Length(S) + 1) then
+  Str := RichEdit1.Lines[LineIdx];
+  Col := CharPos - LineStart + 1;
+  if (Col < 1) or (Col > Length(Str) + 1) then
     Exit;
 
-  A := Col;
-  if (A > Length(S)) or not (S[A] in Ch) then
-    Dec(A);
-  if (A < 1) or (A > Length(S)) or not (S[A] in Ch) then
+  WordStart := Col;
+  if (WordStart > Length(Str)) or not (Str[WordStart] in Ch) then
+    Dec(WordStart);
+  if (WordStart < 1) or (WordStart > Length(Str)) or not (Str[WordStart] in Ch) then
     Exit;
-  B := A;
-  while (A > 1) and (S[A - 1] in Ch) do
-    Dec(A);
-  while (B < Length(S)) and (S[B + 1] in Ch) do
-    Inc(B);
-  Result := Copy(S, A, B - A + 1);
+  WordEnd := WordStart;
+  while (WordStart > 1) and (Str[WordStart - 1] in Ch) do
+    Dec(WordStart);
+  while (WordEnd < Length(Str)) and (Str[WordEnd + 1] in Ch) do
+    Inc(WordEnd);
+  Result := Copy(Str, WordStart, WordEnd - WordStart + 1);
   while (Result <> '') and (Result[1] = '.') do
     Delete(Result, 1, 1);
   while (Result <> '') and (Result[Length(Result)] = '.') do
@@ -80613,15 +80613,15 @@ end;
 // надо поправить руками.
 procedure TForm1.DebugLineClick(Sender: TObject);
 var
-  Lang, Expr, Lab, Val, Ins, Ind, Cur, Low, N, OB, CB: string;
+  Lang, Expr, Lab, Val, Ins, Ind, Cur, Low, NameStr, OB, CB: string;
   Sel: TCharRange;
-  Line, LS, LL, A, B, K: Integer;
+  Line, LS, LL, OpenPos, ClosePos, Idx3: Integer;
   Basic: Boolean;
 
   // Апостроф внутри паскалевской строки - двойной
-  function Q(const S: string): string;
+  function PasEscape(const Str: string): string;
   begin
-    Result := StringReplace(S, '''', '''''', [rfReplaceAll]);
+    Result := StringReplace(Str, '''', '''''', [rfReplaceAll]);
   end;
 
 begin
@@ -80640,11 +80640,11 @@ begin
     Exit;
   LL := EdApi.LineLength(LS);
   Cur := ReadLineText(Line, LS, LL);
-  K := 1;
-  while (K <= Length(Cur)) and (Cur[K] in [' ', #9]) do
-    Inc(K);
-  Ind := Copy(Cur, 1, K - 1);
-  N := IntToStr(Line + 1);
+  Idx3 := 1;
+  while (Idx3 <= Length(Cur)) and (Cur[Idx3] in [' ', #9]) do
+    Inc(Idx3);
+  Ind := Copy(Cur, 1, Idx3 - 1);
+  NameStr := IntToStr(Line + 1);
 
   // Индекс массива: A(i) в Basic, A[I] в Паскале
   if Basic then
@@ -80657,10 +80657,10 @@ begin
     OB := '[';
     CB := ']';
   end;
-  A := Pos(OB, Expr);
-  B := 0;
-  if A > 1 then
-    B := PosEx(CB, Expr, A + 1);
+  OpenPos := Pos(OB, Expr);
+  ClosePos := 0;
+  if OpenPos > 1 then
+    ClosePos := PosEx(CB, Expr, OpenPos + 1);
 
   if Basic then
   begin
@@ -80672,22 +80672,22 @@ begin
       Val := '+('
     else
       Val := '+str$(';
-    if B > A then
-      Lab := '"' + N + ':' + Copy(Expr, 1, A - 1) + '("+str$(' +
-             Copy(Expr, A + 1, B - A - 1) + ')+")' +
-             Copy(Expr, B + 1, MaxInt) + '="'
+    if ClosePos > OpenPos then
+      Lab := '"' + NameStr + ':' + Copy(Expr, 1, OpenPos - 1) + '("+str$(' +
+             Copy(Expr, OpenPos + 1, ClosePos - OpenPos - 1) + ')+")' +
+             Copy(Expr, ClosePos + 1, MaxInt) + '="'
     else
-      Lab := '"' + N + ':' + Expr + '="';
+      Lab := '"' + NameStr + ':' + Expr + '="';
     Ins := 'call  AddClrString (' + Lab + Val + Expr + '), clred, LogEdit)';
   end
   else
   begin
-    if B > A then
-      Lab := '''' + N + ':' + Q(Copy(Expr, 1, A - 1)) + '['' + VarToStr(' +
-             Copy(Expr, A + 1, B - A - 1) + ') + '']' +
-             Q(Copy(Expr, B + 1, MaxInt)) + '='''
+    if ClosePos > OpenPos then
+      Lab := '''' + NameStr + ':' + PasEscape(Copy(Expr, 1, OpenPos - 1)) + '['' + VarToStr(' +
+             Copy(Expr, OpenPos + 1, ClosePos - OpenPos - 1) + ') + '']' +
+             PasEscape(Copy(Expr, ClosePos + 1, MaxInt)) + '='''
     else
-      Lab := '''' + N + ':' + Q(Expr) + '=''';
+      Lab := '''' + NameStr + ':' + PasEscape(Expr) + '=''';
     Ins := 'AddClrString(' + Lab + ' + VarToStr(' + Expr +
     '), clRed, Form1.RuntimeLog);';
   end;
@@ -80729,33 +80729,33 @@ end;
 // Границы слова под кареткой; False - каретка не на слове
 function TForm1.WordRangeAtCaret(var ASel: TCharRange): Boolean;
 var
-  P, LineIdx, LineStart, Col, A, B: Integer;
-  S: string;
+  CharPos, LineIdx, LineStart, Col, WordStart, WordEnd: Integer;
+  Str: string;
 const
   Ch = ['A'..'Z', 'a'..'z', '0'..'9', '_', #192..#255, #168, #184];
 begin
   Result := False;
-  P := RichEdit1.SelStart;
-  LineIdx := EdApi.LineFromChar(P);
+  CharPos := RichEdit1.SelStart;
+  LineIdx := EdApi.LineFromChar(CharPos);
   if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
     Exit;
   LineStart := EdApi.LineIndex(LineIdx);
-  S := RichEdit1.Lines[LineIdx];
-  Col := P - LineStart + 1;
-  if (Col < 1) or (Col > Length(S) + 1) then
+  Str := RichEdit1.Lines[LineIdx];
+  Col := CharPos - LineStart + 1;
+  if (Col < 1) or (Col > Length(Str) + 1) then
     Exit;
-  A := Col;
-  if (A > Length(S)) or not (S[A] in Ch) then
-    Dec(A);
-  if (A < 1) or (A > Length(S)) or not (S[A] in Ch) then
+  WordStart := Col;
+  if (WordStart > Length(Str)) or not (Str[WordStart] in Ch) then
+    Dec(WordStart);
+  if (WordStart < 1) or (WordStart > Length(Str)) or not (Str[WordStart] in Ch) then
     Exit;
-  B := A;
-  while (A > 1) and (S[A - 1] in Ch) do
-    Dec(A);
-  while (B < Length(S)) and (S[B + 1] in Ch) do
-    Inc(B);
-  ASel.cpMin := LineStart + A - 1;
-  ASel.cpMax := LineStart + B;
+  WordEnd := WordStart;
+  while (WordStart > 1) and (Str[WordStart - 1] in Ch) do
+    Dec(WordStart);
+  while (WordEnd < Length(Str)) and (Str[WordEnd + 1] in Ch) do
+    Inc(WordEnd);
+  ASel.cpMin := LineStart + WordStart - 1;
+  ASel.cpMax := LineStart + WordEnd;
   Result := True;
 end;
 
@@ -80765,27 +80765,27 @@ end;
 procedure TForm1.CaseConvertClick(Sender: TObject);
 var
   Sel: TCharRange;
-  S, T: string;
-  W: WideString;
+  Str, Txt: string;
+  WordStr: WideString;
   TR: TGetTextRange;
-  Got, N: Integer;
+  Got, Num: Integer;
   Lost: BOOL;
 begin
   EdApi.GetSel(Sel);
   if Sel.cpMax <= Sel.cpMin then
     if not WordRangeAtCaret(Sel) then
       Exit;
-  N := Sel.cpMax - Sel.cpMin;
+  Num := Sel.cpMax - Sel.cpMin;
 
-  SetLength(W, N + 1);
-  FillChar(W[1], (N + 1) * SizeOf(WideChar), 0);
+  SetLength(WordStr, Num + 1);
+  FillChar(WordStr[1], (Num + 1) * SizeOf(WideChar), 0);
   TR.chrg := Sel;
-  TR.lpstrText := PChar(PWideChar(W));
+  TR.lpstrText := PChar(PWideChar(WordStr));
   Got := EdApi.GetTextRange(TR);
   if Got <= 0 then
     Exit;
   Lost := False;
-  WideCharToMultiByte(CP_ACP, 0, PWideChar(W), Got, nil, 0, nil, @Lost);
+  WideCharToMultiByte(CP_ACP, 0, PWideChar(WordStr), Got, nil, 0, nil, @Lost);
   if Lost then
   begin
     ShowMessage('27837:В выделении есть символы вне кодовой страницы ' +
@@ -80793,38 +80793,38 @@ begin
     Exit;
   end;
 
-  S := TextRange(Sel.cpMin, N);
+  Str := TextRange(Sel.cpMin, Num);
   if Sender = pmuUpper then
-    T := AnsiUpperCase(S)
+    Txt := AnsiUpperCase(Str)
   else
-    T := AnsiLowerCase(S);
-  if T = S then
+    Txt := AnsiLowerCase(Str);
+  if Txt = Str then
     Exit;
 
   EdApi.SetSel(Sel);
-  EdApi.ReplaceSel(T);
+  EdApi.ReplaceSel(Txt);
   // Изменённый кусок остаётся выделенным
   EdApi.SetSel(Sel);
   UpdateStatusBarInfo;
 end;
 
-procedure TForm1.LogDiag(const S: string);
+procedure TForm1.LogDiag(const Str: string);
 begin
-  if S = FLastDiag then
+  if Str = FLastDiag then
     Exit;
-  FLastDiag := S;
-  LogTo(LogEdit, S);
+  FLastDiag := Str;
+  LogTo(LogEdit, Str);
 end;
 
 // Строка HiLite log о своём редакторе (план портирования, 0.7.4 и дальше:
 // EdRichEmu, EdEmuStart) - синим, чтобы отличалась от остальной
 // диагностики. На тёмном фоне лога синий светлее (UiLogColor)
-procedure TForm1.LogOwnEd(const S: string);
+procedure TForm1.LogOwnEd(const Str: string);
 begin
-  if S = FLastDiag then
+  if Str = FLastDiag then
     Exit;
-  FLastDiag := S;
-  LogTo(LogEdit, S, clBlue);
+  FLastDiag := Str;
+  LogTo(LogEdit, Str, clBlue);
 end;
 
 // Дописывание строки в любое из окон лога: время, текст, обрезка старого.
@@ -80835,10 +80835,10 @@ end;
 // Яркость цвета, 0..255
 function UiLum(AColor: TColor): Integer;
 var
-  C: Longint;
+  ColorRGB: Longint;
 begin
-  C := ColorToRGB(AColor);
-  Result := (GetRValue(C) * 299 + GetGValue(C) * 587 + GetBValue(C) * 114) div 1000;
+  ColorRGB := ColorToRGB(AColor);
+  Result := (GetRValue(ColorRGB) * 299 + GetGValue(ColorRGB) * 587 + GetBValue(ColorRGB) * 114) div 1000;
 end;
 
 // Фон лога тёмный (IDE Dark и «Логи: фон» - тёмный)
@@ -80853,7 +80853,7 @@ end;
 // тот же, читается. Обычный цвет текста (clNone) - текстом списков.
 function TForm1.UiLogColor(AEdit: TEdLogView; AColor: TColor): TColor;
 var
-  C: Longint;
+  ColorRGB: Longint;
 begin
   Result := AColor;
   if not UiLogIsDark(AEdit) then
@@ -80865,14 +80865,14 @@ begin
   end;
   if UiLum(AColor) >= 150 then
     Exit;
-  C := ColorToRGB(AColor);
+  ColorRGB := ColorToRGB(AColor);
   // 45% цвета и 55% белого
-  Result := TColor(RGB((GetRValue(C) * 45 + 255 * 55) div 100,
-                       (GetGValue(C) * 45 + 255 * 55) div 100,
-                       (GetBValue(C) * 45 + 255 * 55) div 100));
+  Result := TColor(RGB((GetRValue(ColorRGB) * 45 + 255 * 55) div 100,
+                       (GetGValue(ColorRGB) * 45 + 255 * 55) div 100,
+                       (GetBValue(ColorRGB) * 45 + 255 * 55) div 100));
 end;
 
-procedure TForm1.LogTo(AEdit: TEdLogView; const S: string; AColor: TColor;
+procedure TForm1.LogTo(AEdit: TEdLogView; const Str: string; AColor: TColor;
   ABare: Boolean);
 const
   // Вывод компилятора у большого проекта - тысячи строк, а командная
@@ -80892,7 +80892,7 @@ begin
   // Перевод строки внутри сообщения разорвал бы запись: время осталось бы
   // на своей строке, текст ушёл на следующую. dcc32 так и делает - возврат
   // каретки посреди строки у него обычное дело.
-  Txt := S;
+  Txt := Str;
   for CharIdx := 1 to Length(Txt) do
     if (Txt[CharIdx] = #13) or (Txt[CharIdx] = #10) then
       Txt[CharIdx] := ' ';
@@ -80948,21 +80948,21 @@ begin
 end;
 
 // Прямоугольник каретки инвертируется: второй вызов в той же точке её стирает
-procedure TForm1.XorOwnCaret(DC: HDC; const P: TPoint);
+procedure TForm1.XorOwnCaret(DC: HDC; const Pnt: TPoint);
 const
   SPI_GETCARETWIDTH_ = $2006;
 var
-  W, H: Integer;
+  WidthPx, HeightPx: Integer;
 begin
   // Не уже системной, если в Windows она задана толще
-  W := 0;
-  if not SystemParametersInfo(SPI_GETCARETWIDTH_, 0, @W, 0) or
-     (W < OwnCaretWidth) then
-    W := OwnCaretWidth;
-  H := LineHeight;
-  if H <= 0 then
-    H := 16;
-  PatBlt(DC, P.X, P.Y, W, H, DSTINVERT);
+  WidthPx := 0;
+  if not SystemParametersInfo(SPI_GETCARETWIDTH_, 0, @WidthPx, 0) or
+     (WidthPx < OwnCaretWidth) then
+    WidthPx := OwnCaretWidth;
+  HeightPx := LineHeight;
+  if HeightPx <= 0 then
+    HeightPx := 16;
+  PatBlt(DC, Pnt.X, Pnt.Y, WidthPx, HeightPx, DSTINVERT);
 end;
 
 // Своя каретка: стереть на старом месте, запомнить новое, при AOn
@@ -80971,7 +80971,7 @@ end;
 // Что на экране, помнит FOwnCaretDrawn. Отрисовка кадра (PaintDoubleBuffered)
 // кладёт каретку в буфер ровно по этому флагу, так что после любой
 // перерисовки экран с ним согласован, и следующее инвертирование верно.
-procedure TForm1.MoveOwnCaret(const P: TPoint; AOn: Boolean);
+procedure TForm1.MoveOwnCaret(const Pnt: TPoint; AOn: Boolean);
 var
   DC: HDC;
 begin
@@ -80987,10 +80987,10 @@ begin
       XorOwnCaret(DC, FOwnCaretPt);
     FOwnCaretDrawn := False;
     FOwnCaretOn := AOn;
-    FOwnCaretPt := P;
+    FOwnCaretPt := Pnt;
     if AOn then
     begin
-      XorOwnCaret(DC, P);
+      XorOwnCaret(DC, Pnt);
       FOwnCaretDrawn := True;
     end;
   finally
@@ -81079,8 +81079,8 @@ var
   ScreenDC, MemDC: HDC;
   Bmp, OldBmp: HBITMAP;
   Br: HBRUSH;
-  R: TRect;
-  W, H: Integer;
+  RectVal: TRect;
+  WidthPx, HeightPx: Integer;
   HadMarks: Boolean;
   FullDC: HDC;
   TextRc: TRect;
@@ -81110,22 +81110,22 @@ begin
 
   ScreenDC := BeginPaint(RichEdit1.Handle, PS);
   try
-    Windows.GetClientRect(RichEdit1.Handle, R);
+    Windows.GetClientRect(RichEdit1.Handle, RectVal);
 
     // Ширину берём ВИДИМУЮ, а не у контрола: он растянут во весь рабочий
     // стол, и буфер на всю его ширину - это десятки мегабайт на каждый кадр.
     // Правее видимой области всё равно ничего не покажут.
-    R.Right := ViewWidth;
-    W := R.Right;
-    H := R.Bottom;
-    if (W <= 0) or (H <= 0) then
+    RectVal.Right := ViewWidth;
+    WidthPx := RectVal.Right;
+    HeightPx := RectVal.Bottom;
+    if (WidthPx <= 0) or (HeightPx <= 0) then
       Exit;
 
     MemDC := CreateCompatibleDC(ScreenDC);
     if MemDC = 0 then
       Exit;
     try
-      Bmp := CreateCompatibleBitmap(ScreenDC, W, H);
+      Bmp := CreateCompatibleBitmap(ScreenDC, WidthPx, HeightPx);
       if Bmp = 0 then
         Exit;
 
@@ -81135,7 +81135,7 @@ begin
         //    вдруг ничего не нарисует, получим правильный фон, а не чёрный экран.
         Br := CreateSolidBrush(ColorToRGB(RichEdit1.Color));
         try
-          Windows.FillRect(MemDC, R, Br);
+          Windows.FillRect(MemDC, RectVal, Br);
         finally
           DeleteObject(Br);
         end;
@@ -81157,7 +81157,7 @@ begin
         end;
 
         // Линия правого поля (Editor Options - Margin and gutter)
-        EdDrawRightMargin(MemDC, W, H);
+        EdDrawRightMargin(MemDC, WidthPx, HeightPx);
 
         // Своя каретка - в кадр, если по флагу она сейчас на экране
         if FOwnCaretDrawn then
@@ -81169,14 +81169,14 @@ begin
         begin
           FullDC := GetDC(RichEdit1.Handle);
           try
-            BitBlt(FullDC, 0, 0, W, H, MemDC, 0, 0, SRCCOPY);
+            BitBlt(FullDC, 0, 0, WidthPx, HeightPx, MemDC, 0, 0, SRCCOPY);
           finally
             ReleaseDC(RichEdit1.Handle, FullDC);
           end;
         end
         else
         begin
-          BitBlt(ScreenDC, 0, 0, W, H, MemDC, 0, 0, SRCCOPY);
+          BitBlt(ScreenDC, 0, 0, WidthPx, HeightPx, MemDC, 0, 0, SRCCOPY);
           // Полоса под областью текста RichEdit (FitEditRect ставит её низ
           // на целое число строк, остаток до низа окна - до LineHeight-1
           // пикселей). При прокрутке RichEdit сдвигает и помечает грязной
@@ -81184,11 +81184,11 @@ begin
           // попадает, и в ней оставалась картинка прежнего кадра. Кладём её
           // из буфера всегда, мимо отсечения по области обновления.
           EdApi.GetRect(TextRc);
-          if (TextRc.Bottom > 0) and (TextRc.Bottom < H) then
+          if (TextRc.Bottom > 0) and (TextRc.Bottom < HeightPx) then
           begin
             FullDC := GetDC(RichEdit1.Handle);
             try
-              BitBlt(FullDC, 0, TextRc.Bottom, W, H - TextRc.Bottom,
+              BitBlt(FullDC, 0, TextRc.Bottom, WidthPx, HeightPx - TextRc.Bottom,
                      MemDC, 0, TextRc.Bottom, SRCCOPY);
             finally
               ReleaseDC(RichEdit1.Handle, FullDC);
@@ -81991,7 +81991,7 @@ end;
 function TForm1.LineMarkGroupOf(const ALineStr: string; ALineLen,
   ALineStart: Integer): Integer;
 var
-  MI, MEnd, CmtPos, G, W, P, L, Best: Integer;
+  MI, MEnd, CmtPos, G, W, P, Len, Best: Integer;
   Ident, Pat: string;
 begin
   Result := -1;
@@ -82046,20 +82046,20 @@ begin
     for W := 0 to FScheme.MarkGroups[G].Words.Count - 1 do
     begin
       Pat := FScheme.MarkGroups[G].Words[W];
-      L := Length(Pat);
-      if (L = 0) or (Pos(' ', Pat) = 0) then
+      Len := Length(Pat);
+      if (Len = 0) or (Pos(' ', Pat) = 0) then
         Continue;
-      for P := 1 to CmtPos - L do
+      for P := 1 to CmtPos - Len do
       begin
         if P >= Best then
           Break;
-        if (AnsiStrLIComp(PChar(@ALineStr[P]), PChar(Pat), L) = 0) and
+        if (AnsiStrLIComp(PChar(@ALineStr[P]), PChar(Pat), Len) = 0) and
            (not (Pat[1] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
             (P = 1) or
             not (ALineStr[P - 1] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
-           (not (Pat[L] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
-            (P + L > ALineLen) or
-            not (ALineStr[P + L] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
+           (not (Pat[Len] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) or
+            (P + Len > ALineLen) or
+            not (ALineStr[P + Len] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
            not InRanges(StringRanges, ALineStart + P - 1) and
            not InRanges(CommentRanges, ALineStart + P - 1) then
         begin
@@ -82151,17 +82151,17 @@ var
   // BitBlt в конце кадра.
   procedure Lap(var Acc: Int64);
   var
-    T: Int64;
+    StartTick: Int64;
   begin
     GdiFlush;
-    T := PerfNow;
-    Inc(Acc, T - TMark);
-    TMark := T;
+    StartTick := PerfNow;
+    Inc(Acc, StartTick - TMark);
+    TMark := StartTick;
   end;
 
 // Первый символ строки (1..LineLen), правый край которого правее X;
 // LineLen + 1, если такого нет. Двоичный поиск по LineXPos.
-  function CharRightOf(X: Integer): Integer;
+  function CharRightOf(PosX: Integer): Integer;
   var
     Lo, Hi, Mid: Integer;
   begin
@@ -82170,7 +82170,7 @@ var
     while Lo < Hi do
     begin
       Mid := (Lo + Hi) div 2;
-      if LineXPos[Mid] > X then
+      if LineXPos[Mid] > PosX then
         Hi := Mid
       else
         Lo := Mid + 1;
@@ -82219,7 +82219,7 @@ var
   function BlockRangeAt(CharIndex: Integer; var AKind: Integer;
                         var AEndPos: Integer): Boolean;
   var
-    M: Integer;
+    RangeIdx: Integer;
 
     function Covers(AIdx: Integer): Boolean;
     begin
@@ -82239,26 +82239,26 @@ var
     // позиции. Накрывать её может он сам - если комментарий здесь и
     // начинается, как у хвостового, - либо предыдущий, если позиция
     // внутри. Проверяем оба.
-    M := FirstRangeFrom(CommentRanges, CharIndex);
-    if M < 0 then
-      M := High(CommentRanges);
+    RangeIdx := FirstRangeFrom(CommentRanges, CharIndex);
+    if RangeIdx < 0 then
+      RangeIdx := High(CommentRanges);
 
-    if not Covers(M) then
-      Dec(M);
-    if not Covers(M) then
+    if not Covers(RangeIdx) then
+      Dec(RangeIdx);
+    if not Covers(RangeIdx) then
       Exit;
 
-    AKind := CommentRanges[M].Kind;
-    AEndPos := CommentRanges[M].EndPos;
+    AKind := CommentRanges[RangeIdx].Kind;
+    AEndPos := CommentRanges[RangeIdx].EndPos;
     Result := True;
   end;
 
 // Только пара маркеров; -1 - позиция вне блочного комментария
   function BlockKindAt(CharIndex: Integer): Integer;
   var
-    E: Integer;
+    EndPos2: Integer;
   begin
-    if not BlockRangeAt(CharIndex, Result, E) then
+    if not BlockRangeAt(CharIndex, Result, EndPos2) then
       Result := -1;
   end;
 
@@ -82388,7 +82388,7 @@ var
 // Слова начинаются в [FromPos..ToPos], по той же причине, что у операторов.
   procedure HighlightKeywordsAll(FromPos, ToPos: Integer);
   var
-    KwI, KwEnd, G: Integer;
+    KwI, KwEnd, KwGroup: Integer;
     CompFg, CompBg: TColor;
   begin
     if (Length(FKwSlots) = 0) and (Length(FCompSlots) = 0) then
@@ -82408,16 +82408,16 @@ var
               (LineStr[KwEnd] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
           Inc(KwEnd);
 
-        G := KeywordGroupOf(LinePtr + (KwI - 1), KwEnd - KwI);
-        if (G >= 0) and
+        KwGroup := KeywordGroupOf(LinePtr + (KwI - 1), KwEnd - KwI);
+        if (KwGroup >= 0) and
            not IsCharInString(LineStartCharIdx + KwI - 1) and
            not IsCharInBlockComment(LineStartCharIdx + KwI - 1) then
-          DrawRun(KwI, KwEnd - 1, FScheme.KeywordGroups[G].FgColor,
-                  FScheme.KeywordGroups[G].BgColor)
+          DrawRun(KwI, KwEnd - 1, FScheme.KeywordGroups[KwGroup].FgColor,
+                  FScheme.KeywordGroups[KwGroup].BgColor)
           // Не ключевое слово - может быть имя компонента формы. Ключевое
           // слово важнее: компонент с именем begin не назовёшь, а если
           // совпало с типом из списка - пусть остаётся цветом типа.
-        else if (G < 0) and (Length(FCompSlots) > 0) and
+        else if (KwGroup < 0) and (Length(FCompSlots) > 0) and
                 CompNameAt(LinePtr + (KwI - 1), KwEnd - KwI) and
                 not IsCharInString(LineStartCharIdx + KwI - 1) and
                 not IsCharInBlockComment(LineStartCharIdx + KwI - 1) then
@@ -82582,7 +82582,7 @@ var
     // Каким маркером открыт литерал, накрывающий позицию; -1 - основным
     function StrKindAt(CharIndex: Integer): Integer;
     var
-      M: Integer;
+      RangeIdx: Integer;
 
       function Covers(AIdx: Integer): Boolean;
       begin
@@ -82595,13 +82595,13 @@ var
       Result := 0;
       if Length(StringRanges) = 0 then
         Exit;
-      M := FirstRangeFrom(StringRanges, CharIndex);
-      if M < 0 then
-        M := High(StringRanges);
-      if not Covers(M) then
-        Dec(M);
-      if Covers(M) then
-        Result := StringRanges[M].Kind;
+      RangeIdx := FirstRangeFrom(StringRanges, CharIndex);
+      if RangeIdx < 0 then
+        RangeIdx := High(StringRanges);
+      if not Covers(RangeIdx) then
+        Dec(RangeIdx);
+      if Covers(RangeIdx) then
+        Result := StringRanges[RangeIdx].Kind;
     end;
 
   begin
@@ -82659,7 +82659,7 @@ var
 // поэтому маркеры внутри кавычек и внутри других комментариев не мешают.
   function FindBlockStartFrom(FromPos: Integer): Integer;
   var
-    Idx, M: Integer;
+    Idx, RangeIdx: Integer;
   begin
     Result := 0;
     if FScheme.FBlockCommentStart = '' then
@@ -82671,12 +82671,12 @@ var
     // Теперь один двоичный поиск: берём первый диапазон, начинающийся не
     // раньше нужной позиции, и проверяем, попал ли он в эту строку.
     Idx := LineStartCharIdx + FromPos - 1;
-    M := FirstRangeFrom(CommentRanges, Idx);
-    if M < 0 then
+    RangeIdx := FirstRangeFrom(CommentRanges, Idx);
+    if RangeIdx < 0 then
       Exit;
 
-    if CommentRanges[M].StartPos <= LineStartCharIdx + LineLen - 1 then
-      Result := CommentRanges[M].StartPos - LineStartCharIdx + 1;
+    if CommentRanges[RangeIdx].StartPos <= LineStartCharIdx + LineLen - 1 then
+      Result := CommentRanges[RangeIdx].StartPos - LineStartCharIdx + 1;
   end;
 
 // Рисует остаток строки начиная с CommentPos как комментарий.
@@ -82747,25 +82747,25 @@ var
 
     procedure DrawOne(AFrom, ATo: Integer);
     var
-      F, T: Integer;
+      StartCol, StartTick: Integer;
       FgColor: TColor;
     begin
       if AFrom < 0 then
         Exit;
       // В координаты строки, от единицы
-      F := AFrom - LineStartCharIdx + 1;
-      T := ATo - LineStartCharIdx + 1;
-      if (T < 1) or (F > LineLen) then
+      StartCol := AFrom - LineStartCharIdx + 1;
+      StartTick := ATo - LineStartCharIdx + 1;
+      if (StartTick < 1) or (StartCol > LineLen) then
         Exit;
-      if F < 1 then
-        F := 1;
-      if T > LineLen then
-        T := LineLen;
+      if StartCol < 1 then
+        StartCol := 1;
+      if StartTick > LineLen then
+        StartTick := LineLen;
       // Цвет текста пары не задан (clNone) - цвет скобки по уровню
       FgColor := FScheme.FPairFG;
       if FgColor = clNone then
         FgColor := BracketColorAt(AFrom);
-      DrawRun(F, T, ColorToRGB(FgColor), ColorToRGB(FScheme.FPairBG));
+      DrawRun(StartCol, StartTick, ColorToRGB(FgColor), ColorToRGB(FScheme.FPairBG));
     end;
 
   begin
@@ -82776,7 +82776,7 @@ var
 // Каретка на скобке: все скобки строки - цветами линий отступа по уровню
   procedure DrawLineBrackets;
   var
-    BrIdx, F: Integer;
+    BrIdx, StartCol: Integer;
     BgColor: TColor;
   begin
     BgColor := FScheme.FTextBG;
@@ -82784,9 +82784,9 @@ var
       BgColor := RichEdit1.Color;
     for BrIdx := 0 to High(FLineBrackets) do
     begin
-      F := FLineBrackets[BrIdx].X - LineStartCharIdx + 1;
-      if (F >= 1) and (F <= LineLen) then
-        DrawRun(F, F, ColorToRGB(BracketColorAt(FLineBrackets[BrIdx].X)),
+      StartCol := FLineBrackets[BrIdx].X - LineStartCharIdx + 1;
+      if (StartCol >= 1) and (StartCol <= LineLen) then
+        DrawRun(StartCol, StartCol, ColorToRGB(BracketColorAt(FLineBrackets[BrIdx].X)),
                 ColorToRGB(BgColor));
     end;
   end;
@@ -82870,7 +82870,7 @@ var
     MaxBars = 64;
   var
     GI, Level, GX1, GX2, GW, GT, GIdx, GStep, GRun, GStart: Integer;
-    BarCount, NCols, C, FirstCol, GCell: Integer;
+    BarCount, NCols, LevelColor, FirstCol, GCell: Integer;
     Cols: array[0..MaxBars - 1] of Integer; // колонки уровней, от нуля
     GRect: TRect;
   begin
@@ -82946,20 +82946,20 @@ var
     for Level := 0 to BarCount - 1 do
     begin
       if Level < NCols then
-        C := Cols[Level]
+        LevelColor := Cols[Level]
       else if NCols > 0 then
-        C := Cols[NCols - 1] + (Level - NCols + 1) * GStep
+        LevelColor := Cols[NCols - 1] + (Level - NCols + 1) * GStep
       else
-        C := Level * GStep;
+        LevelColor := Level * GStep;
 
       // Правее текста полосу не ставим: строка с отступом меньше своей
       // вложенности получит столько полос, сколько влезло в отступ
       // Строка из одних пробелов (отступ, поставленный Enter) - как
       // пустая: полосы по вложенности, без разрыва
-      if (FirstCol < LineLen) and (C >= FirstCol) then
+      if (FirstCol < LineLen) and (LevelColor >= FirstCol) then
         Break;
 
-      GIdx := LineStartCharIdx + C;
+      GIdx := LineStartCharIdx + LevelColor;
       // Под выделением полосу не рисуем, иначе затрём подсветку выделения
       if (SelMax > SelMin) and (GIdx >= SelMin) and (GIdx < SelMax) then
         Continue;
@@ -82971,11 +82971,11 @@ var
       if (GW <= 0) or (GW > CharW) then
         GW := CharW;
 
-      if (LineLen > 0) and (C <= LineLen) then
-        GX1 := LineStartX + LineXPos[C]
+      if (LineLen > 0) and (LevelColor <= LineLen) then
+        GX1 := LineStartX + LineXPos[LevelColor]
       else
         // Пустая строка: ширина символа отступа своя у таба и у пробела
-        GX1 := LineStartX + C * GCell * CharW;
+        GX1 := LineStartX + LevelColor * GCell * CharW;
       GX2 := GX1 + GW;
       if GX2 > GX1 then
       begin
@@ -83791,7 +83791,7 @@ procedure TForm1.UpdateGutterWidth;
 var
   Bmp: TBitmap;
   C: Char;
-  DigitW, W, NewW: Integer;
+  DigitW, WidthPx, NewW: Integer;
   BmH, BmW, DotD, MarksW: Integer;
   LineCount: Integer;
 begin
@@ -83805,9 +83805,9 @@ begin
     DigitW := 0;
     for C := '0' to '9' do
     begin
-      W := Bmp.Canvas.TextWidth(C);
-      if W > DigitW then
-        DigitW := W;
+      WidthPx := Bmp.Canvas.TextWidth(C);
+      if WidthPx > DigitW then
+        DigitW := WidthPx;
     end;
     // Полоса меток справа от номеров - под квадратик закладки и кружок
     MarksLayout(Bmp.Canvas, BmH, BmW, DotD, MarksW);
@@ -83852,7 +83852,7 @@ var
   I: Integer;
   CurrentY: Integer;
   LineNumStr: string;
-  R: TRect;
+  RectVal: TRect;
   FirstCharPos: TPoint;
   LineStartCharIdx: Integer;
   CaretLine: Integer;
@@ -83907,10 +83907,10 @@ begin
     LineNumStr := IntToStr(I + 1);
 
     // Конструируем прямоугольник ячейки для текста
-    R.Left := 0;
-    R.Top := CurrentY;
-    R.Right := PaintBox1.Width - 1;
-    R.Bottom := CurrentY + LineHeight;
+    RectVal.Left := 0;
+    RectVal.Top := CurrentY;
+    RectVal.Right := PaintBox1.Width - 1;
+    RectVal.Bottom := CurrentY + LineHeight;
 
     // Строка с кареткой: заливаем ячейку и пишем номер жирным
     if I = CaretLine then
@@ -83918,7 +83918,7 @@ begin
       PaintBox1.Canvas.Brush.Style := bsSolid;
       // Цвет - из цветов IDE (IDE Light / IDE Dark)
       PaintBox1.Canvas.Brush.Color := UiColor('Gutter.CurBG');
-      PaintBox1.Canvas.FillRect(R);
+      PaintBox1.Canvas.FillRect(RectVal);
       PaintBox1.Canvas.Brush.Style := bsClear;
       PaintBox1.Canvas.Font.Style := [fsBold];
       // Текст - из цветов IDE; clDefault - цветом цифр полосы
@@ -83944,7 +83944,7 @@ begin
       else
         PaintBox1.Canvas.Brush.Color := UiColor('Debug.ExecBG');
       end;
-      PaintBox1.Canvas.FillRect(R);
+      PaintBox1.Canvas.FillRect(RectVal);
       PaintBox1.Canvas.Brush.Style := bsClear;
       PaintBox1.Canvas.Font.Style := [fsBold];
       if DbgKind = 3 then
@@ -83953,11 +83953,11 @@ begin
         PaintBox1.Canvas.Font.Color := UiColor('Debug.BreakText');
     end;
 
-    R.Left := 4;
-    R.Right := PaintBox1.Width - 5;
+    RectVal.Left := 4;
+    RectVal.Right := PaintBox1.Width - 5;
 
     // Выравниваем номера строк строго по ПРАВОМУ краю
-    DrawTextA(PaintBox1.Canvas.Handle, PChar(LineNumStr), Length(LineNumStr), R, DT_RIGHT or DT_SINGLELINE or DT_VCENTER);
+    DrawTextA(PaintBox1.Canvas.Handle, PChar(LineNumStr), Length(LineNumStr), RectVal, DT_RIGHT or DT_SINGLELINE or DT_VCENTER);
   end;
 
   // Полоса меток рядом - по тем же строкам: прокрутка и правка, после
@@ -84132,8 +84132,8 @@ begin
     end;
     Result := True;
   except
-    on E: Exception do
-      LogComp('File Types: alias.ini не записан - ' + E.Message);
+    on Err: Exception do
+      LogComp('File Types: alias.ini не записан - ' + Err.Message);
   end;
   // Схема активной вкладки - по новому соответствию; другие вкладки
   // возьмут свою при переходе на них (ActivateWindow)
@@ -84238,8 +84238,8 @@ begin
       Ini.Free;
     end;
   except
-    on E: Exception do
-      LogComp('Подсветка: editor.ini не записан - ' + E.Message);
+    on Err: Exception do
+      LogComp('Подсветка: editor.ini не записан - ' + Err.Message);
   end;
 end;
 
@@ -84577,8 +84577,8 @@ begin
       Ini.Free;
     end;
   except
-    on E: Exception do
-      LogComp('Шрифты IDE: editor.ini не записан - ' + E.Message);
+    on Err: Exception do
+      LogComp('Шрифты IDE: editor.ini не записан - ' + Err.Message);
   end;
   UiFontsApply;
 end;
@@ -84598,8 +84598,8 @@ begin
       Ini.Free;
     end;
   except
-    on E: Exception do
-      LogComp('Шрифты IDE: editor.ini не записан - ' + E.Message);
+    on Err: Exception do
+      LogComp('Шрифты IDE: editor.ini не записан - ' + Err.Message);
   end;
   UiFontsApply;
 end;
@@ -84886,20 +84886,20 @@ end;
 // Расширения Паскаля: модули, программы, пакеты, вставки
 function TForm1.IsPascalExt(const AExt: string): Boolean;
 var
-  E: string;
+  ExtStr: string;
 begin
-  E := LowerCase(AExt);
-  Result := (E = '.pas') or (E = '.pp') or (E = '.p') or (E = '.dpr') or
-            (E = '.lpr') or (E = '.dpk') or (E = '.inc');
+  ExtStr := LowerCase(AExt);
+  Result := (ExtStr = '.pas') or (ExtStr = '.pp') or (ExtStr = '.p') or (ExtStr = '.dpr') or
+            (ExtStr = '.lpr') or (ExtStr = '.dpk') or (ExtStr = '.inc');
 end;
 
 // Расширения файлов формы: Delphi и Lazarus
 function TForm1.IsFormExt(const AExt: string): Boolean;
 var
-  E: string;
+  ExtStr: string;
 begin
-  E := LowerCase(AExt);
-  Result := (E = '.dfm') or (E = '.lfm');
+  ExtStr := LowerCase(AExt);
+  Result := (ExtStr = '.dfm') or (ExtStr = '.lfm');
 end;
 
 // Схема для расширения Ext: встроенные умолчания, поверх - •default•.clr
@@ -85157,8 +85157,8 @@ begin
     StatusBar1.Panels[0].Text := 'Сохранено';
     Result := True;
   except
-    on E: Exception do
-      ShowMessage('30738:Не удалось сохранить файл: ' + E.Message);
+    on Err: Exception do
+      ShowMessage('30738:Не удалось сохранить файл: ' + Err.Message);
   end;
 end;
 
@@ -85931,7 +85931,7 @@ var
   ParentLevels: TIntArray;
   Src, Res, Raw, Body, Pad: string;
   SL: TStringList;
-  I, Len, LineStart, K, Unop, Base, Step: Integer;
+  Idx, Len, LineStart, K, Unop, Base, Step: Integer;
   // Колонки выравнивания незакрытых скобок, в координатах нового текста:
   // первый символ после "(". Вершина - самая внутренняя скобка.
   ParenCols: array of Integer;
@@ -85946,8 +85946,8 @@ var
   TickStart, TickPrep, TickLoop, TickSet: Cardinal;
   NewIndent, StmtOld, StmtNew, CaretLine, Changed: Integer;
   Cont, PrevInside: Boolean;
-  B: TBlockState;
-  L: TLineScan;
+  BlockState: TBlockState;
+  LineScan: TLineScan;
   PrevCode: string;
   OrigText, Expanded: string;
   ExpandCount, VtCount: Integer;
@@ -85988,26 +85988,26 @@ var
   end;
 
 // Закончен ли оператор строкой S
-  function EndsStatement(const S: string): Boolean;
+  function EndsStatement(const Str: string): Boolean;
   var
     LastW: string;
   begin
     Result := True;
-    if S = '' then
+    if Str = '' then
       Exit;
 
     // В режиме тегов оператор - это тег: закончен, если закрыта угловая
     // скобка. Тег, растянутый на несколько строк, считается переносом.
     if FScheme.FSubTags then
     begin
-      Result := S[Length(S)] = '>';
+      Result := Str[Length(Str)] = '>';
       Exit;
     end;
 
-    if S[Length(S)] = ';' then
+    if Str[Length(Str)] = ';' then
       Exit;
 
-    LastW := LastToken(S);
+    LastW := LastToken(Str);
     if LastW = '' then
     begin
       Result := False;
@@ -86123,8 +86123,8 @@ begin
 
   SL := TStringList.Create;
   try
-    BlockInit(B);
-    B.BeforeScope := SubScopeAhead(Src, 1);
+    BlockInit(BlockState);
+    BlockState.BeforeScope := SubScopeAhead(Src, 1);
     PrevCode := '';
     StmtOld := 0;
     StmtNew := 0;
@@ -86139,51 +86139,51 @@ begin
     if IsDfm then
     begin
       Changed := FormatDfmLines(Src, SL);
-      I := Len + 2;
+      Idx := Len + 2;
     end
     else
-      I := 1;
-    while I <= Len + 1 do
+      Idx := 1;
+    while Idx <= Len + 1 do
     begin
-      if (I > Len) or (Src[I] = #13) or (Src[I] = #10) then
+      if (Idx > Len) or (Src[Idx] = #13) or (Src[Idx] = #10) then
       begin
-        Raw := Copy(Src, LineStart, I - LineStart);
-        ScanLine(Src, LineStart, I - 1, B, L);
+        Raw := Copy(Src, LineStart, Idx - LineStart);
+        ScanLine(Src, LineStart, Idx - 1, BlockState, LineScan);
 
-        if L.Empty then
+        if LineScan.Empty then
         begin
           SL.Add('');
           if Raw <> '' then
             Inc(Changed);
         end
-        else if L.Inside then
+        else if LineScan.Inside then
         begin
           // БЛОЧНЫЙ КОММЕНТАРИЙ (и многострочный литерал) двигается
           // целиком: первая его строка встаёт по уровню блока, остальные
           // сохраняют свой сдвиг относительно неё. Так внутреннее
           // выравнивание не рушится, а комментарий у левого края
           // перестаёт разрывать столбик направляющих.
-          Body := Copy(Src, L.FirstPos, L.LastPos - L.FirstPos + 1);
+          Body := Copy(Src, LineScan.FirstPos, LineScan.LastPos - LineScan.FirstPos + 1);
 
           if PrevInside then
-            NewIndent := StmtNew + (L.Indent - StmtOld)
+            NewIndent := StmtNew + (LineScan.Indent - StmtOld)
           else
           begin
             Unop := 0;
-            for K := 0 to B.Top do
-              if not B.Opened[K] then
+            for K := 0 to BlockState.Top do
+              if not BlockState.Opened[K] then
                 Inc(Unop);
 
-            Base := B.Depth + Unop + B.Hang;
-            if (B.Top >= 0) and not B.Opened[B.Top] then
+            Base := BlockState.Depth + Unop + BlockState.Hang;
+            if (BlockState.Top >= 0) and not BlockState.Opened[BlockState.Top] then
               Dec(Base);
-            if B.InSection then
+            if BlockState.InSection then
               Inc(Base);
             if Base < 0 then
               Base := 0;
 
             NewIndent := Base * Step;
-            StmtOld := L.Indent;
+            StmtOld := LineScan.Indent;
             StmtNew := NewIndent;
           end;
           if NewIndent < 0 then
@@ -86205,7 +86205,7 @@ begin
         end
         else
         begin
-          Body := Copy(Src, L.FirstPos, L.LastPos - L.FirstPos + 1);
+          Body := Copy(Src, LineScan.FirstPos, LineScan.LastPos - LineScan.FirstPos + 1);
 
           // Строка, начатая словом блока или переноса (begin, else, then),
           // продолжением не считается никогда. Иначе цепочка
@@ -86218,23 +86218,23 @@ begin
           // Без знака конца оператора (AutoHotkey) продолжение - строка,
           // начатая образцом из FmtContinueFirst: ', x' '|| y'
           if FScheme.FFmtHangFirst.Count > 0 then
-            Cont := ContinuesAtLineStart(L)
+            Cont := ContinuesAtLineStart(LineScan)
           else if FScheme.FFmtContinue.Count > 0 then
             Cont := FScheme.FFmtContinue.IndexOf(LastToken(PrevCode)) >= 0
           else
-            Cont := (B.Paren > 0) or not EndsStatement(PrevCode);
+            Cont := (BlockState.Paren > 0) or not EndsStatement(PrevCode);
 
-          Cont := Cont and (L.Code <> '') and (PrevCode <> '') and
-                  not L.IsHeader and not L.IsOutdent and not L.IsSect and
-                  not L.IsOpen and not L.IsHang;
+          Cont := Cont and (LineScan.Code <> '') and (PrevCode <> '') and
+                  not LineScan.IsHeader and not LineScan.IsOutdent and not LineScan.IsSect and
+                  not LineScan.IsOpen and not LineScan.IsHang;
 
-          BlockBeforeLine(L, B);
+          BlockBeforeLine(LineScan, BlockState);
 
           // Скобок, открытых выше, не осталось - и колонок выравнивания
-          if B.Paren <= 0 then
+          if BlockState.Paren <= 0 then
             ParenCnt := 0;
 
-          if Cont and (B.Paren > 0) and (ParenCnt > 0) and
+          if Cont and (BlockState.Paren > 0) and (ParenCnt > 0) and
              (FIndentKind <> IndentTabs) and (FIndentKind <> IndentNone) then
             // Перенос внутри скобки - под первый символ после неё: под
             // первый параметр. Табами колонку не выставить, там остаётся
@@ -86243,27 +86243,27 @@ begin
           else if Cont then
           begin
             // Свой сдвиг относительно первой строки оператора
-            NewIndent := StmtNew + (L.Indent - StmtOld);
+            NewIndent := StmtNew + (LineScan.Indent - StmtOld);
             if NewIndent < 0 then
               NewIndent := 0;
           end
           else
           begin
             Unop := 0;
-            for K := 0 to B.Top do
-              if not B.Opened[K] then
+            for K := 0 to BlockState.Top do
+              if not BlockState.Opened[K] then
                 Inc(Unop);
 
-            Base := B.Depth + Unop;
+            Base := BlockState.Depth + Unop;
             // Своя объявительная часть уровня не добавляет: var и begin
             // процедуры стоят вровень с её заголовком
-            if not L.IsHeader and (B.Top >= 0) and not B.Opened[B.Top] then
+            if not LineScan.IsHeader and (BlockState.Top >= 0) and not BlockState.Opened[BlockState.Top] then
               Dec(Base);
 
-            Inc(Base, B.Hang);
-            if B.InSection and not L.IsHeader then
+            Inc(Base, BlockState.Hang);
+            if BlockState.InSection and not LineScan.IsHeader then
               Inc(Base);
-            if L.IsOutdent then
+            if LineScan.IsOutdent then
               Dec(Base);
             // RapidQ: объект под родителем, свойства - под объектом
             if SL.Count < Length(ParentLevels) then
@@ -86272,16 +86272,16 @@ begin
             // В режиме тегов уровень задаёт стек, а не счётчик: у
             // закрывающего тега это уровень его парного
             if FScheme.FSubTags then
-              if not TagCloseLevel(Src, L, B, Base) then
-                Base := B.Depth;
+              if not TagCloseLevel(Src, LineScan, BlockState, Base) then
+                Base := BlockState.Depth;
 
             if Base < 0 then
               Base := 0;
 
             NewIndent := Base * Step;
-            if L.Code <> '' then
+            if LineScan.Code <> '' then
             begin
-              StmtOld := L.Indent;
+              StmtOld := LineScan.Indent;
               StmtNew := NewIndent;
             end;
           end;
@@ -86308,7 +86308,7 @@ begin
           // кончаться точкой
           if (FScheme.FFmtContinue.Count = 0) and
              (FScheme.FFmtHangFirst.Count = 0) and not FScheme.FSubTags and
-             EndsWithDot(L.Code) then
+             EndsWithDot(LineScan.Code) then
           begin
             SetLength(SusLines, Length(SusLines) + 1);
             SetLength(SusTexts, Length(SusTexts) + 1);
@@ -86320,60 +86320,60 @@ begin
           // после неё (при пробельном отступе колонка = отступ + позиция в
           // коде); скобка в конце строки - на шаг правее начала оператора.
           // Закрытая снимает свою колонку. Строки в кавычках пропускаем.
-          if L.Code <> '' then
+          if LineScan.Code <> '' then
           begin
             K := 1;
-            while K <= Length(L.Code) do
+            while K <= Length(LineScan.Code) do
             begin
-              if L.Code[K] = '''' then
+              if LineScan.Code[K] = '''' then
               begin
                 Inc(K);
-                while (K <= Length(L.Code)) and (L.Code[K] <> '''') do
+                while (K <= Length(LineScan.Code)) and (LineScan.Code[K] <> '''') do
                   Inc(K);
               end
-              else if L.Code[K] = '(' then
+              else if LineScan.Code[K] = '(' then
               begin
                 PC := K + 1;
-                while (PC <= Length(L.Code)) and (L.Code[PC] in [' ', #9]) do
+                while (PC <= Length(LineScan.Code)) and (LineScan.Code[PC] in [' ', #9]) do
                   Inc(PC);
                 if ParenCnt >= Length(ParenCols) then
                   SetLength(ParenCols, ParenCnt * 2 + 16);
-                if PC <= Length(L.Code) then
+                if PC <= Length(LineScan.Code) then
                   ParenCols[ParenCnt] := NewIndent + PC - 1
                 else
                   ParenCols[ParenCnt] := StmtNew + Step;
                 Inc(ParenCnt);
               end
-              else if (L.Code[K] = ')') and (ParenCnt > 0) then
+              else if (LineScan.Code[K] = ')') and (ParenCnt > 0) then
                 Dec(ParenCnt);
               Inc(K);
             end;
           end;
 
-          if L.IsHeader then
-            BlockPushHeader(-1, B);
-          BlockAfterLine(Src, L, B);
+          if LineScan.IsHeader then
+            BlockPushHeader(-1, BlockState);
+          BlockAfterLine(Src, LineScan, BlockState);
 
-          if L.Code <> '' then
-            PrevCode := L.Code;
+          if LineScan.Code <> '' then
+            PrevCode := LineScan.Code;
         end;
 
         // Пустая строка комментарий не прерывает: якорь сдвига остаётся
-        if not L.Empty then
-          PrevInside := L.Inside;
+        if not LineScan.Empty then
+          PrevInside := LineScan.Inside;
 
         // Перевод строки: CR, LF или CRLF
-        if (I < Len) and (Src[I] = #13) and (Src[I + 1] = #10) then
-          Inc(I);
-        LineStart := I + 1;
+        if (Idx < Len) and (Src[Idx] = #13) and (Src[Idx + 1] = #10) then
+          Inc(Idx);
+        LineStart := Idx + 1;
         if ShowBusy and ((SL.Count and 4095) = 0) then
         begin
           FBusyStage := 'Format text: строки ' +
-                        IntToStr(Int64(I) * 100 div Len) + '%';
+                        IntToStr(Int64(Idx) * 100 div Len) + '%';
           BusyTick;
         end;
       end;
-      Inc(I);
+      Inc(Idx);
     end;
     TickLoop := GetTickCount;
 
@@ -86861,8 +86861,8 @@ begin
       Ini.Free;
     end;
   except
-    on E: Exception do
-      LogComp('Справка FreeBASIC: editor.ini не записан - ' + E.Message);
+    on Err: Exception do
+      LogComp('Справка FreeBASIC: editor.ini не записан - ' + Err.Message);
   end;
 end;
 
@@ -88604,14 +88604,14 @@ end;
 //     зависит от пакетов, установленных в Delphi, в форму они не входят, а
 //     в конструкторе своей формы стояли бы стопкой с красными рамками
 //     скрытых - их видимость переключает палитра, а не код формы.
-function DsgSnapSkip(C: TComponent): Boolean;
+function DsgSnapSkip(Comp: TComponent): Boolean;
 begin
-  Result := UiScrollIsService(C);
+  Result := UiScrollIsService(Comp);
   // Окна просмотра по формату (FmtView) - не часть формы, их создаёт код
-  if not Result and (C is TControl) then
-    Result := FmtIsViewControl(TControl(C));
-  if not Result and (C is TSpeedButton) and (C.Owner is TDsgPalette) then
-    Result := TDsgPalette(C.Owner).ForeignOf(TControl(C)) <> '';
+  if not Result and (Comp is TControl) then
+    Result := FmtIsViewControl(TControl(Comp));
+  if not Result and (Comp is TSpeedButton) and (Comp.Owner is TDsgPalette) then
+    Result := TDsgPalette(Comp.Owner).ForeignOf(TControl(Comp)) <> '';
 end;
 
 procedure TForm1.FObjSetListClick(Sender: TObject);
