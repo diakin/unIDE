@@ -72651,8 +72651,6 @@ procedure TForm1.GitBuildMenus;
     AMenu.Add(Result);
   end;
 
-var
-  // .dfm: BranchMenu: TMenuItem;
 begin
   // .dfm: RepoMenu := TMenuItem.Create(Self);
   // .dfm: RepoMenu.Caption := 'Repository';
