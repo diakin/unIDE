@@ -24771,7 +24771,7 @@ begin
     Exit;
   if IsLargeText and LargeSkip('GetEditorText') then
     Exit;
-  Result := string(FEdEmu.GetAllText(AUseCRLF));
+  Result := EdAnsiText(FEdEmu.GetAllText(AUseCRLF));
 end;
 
 procedure TForm1.SetEditorText(const Str: string);
@@ -24803,7 +24803,7 @@ begin
   if FWindows[AWinIdx].TextKey <> FWindows[AWinIdx].Buffer.Version then
   begin
     FWindows[AWinIdx].TextCache :=
-      string(FWindows[AWinIdx].Buffer.GetText(#13#10));
+      EdAnsiText(FWindows[AWinIdx].Buffer.GetText(#13#10));
     FWindows[AWinIdx].TextKey := FWindows[AWinIdx].Buffer.Version;
   end;
   Result := FWindows[AWinIdx].TextCache;
@@ -24833,7 +24833,7 @@ begin
   if (FEdEmu <> nil) and (FEdEmu.Buffer = FWindows[AWinIdx].Buffer) then
     SetEditorText(AText)
   else
-    FWindows[AWinIdx].Buffer.SetText(WideString(AText));
+    FWindows[AWinIdx].Buffer.SetText(EdWideText(AText));
   FWindows[AWinIdx].TextCache := '';
   FWindows[AWinIdx].TextKey := -1;
 end;
@@ -25131,7 +25131,7 @@ begin
   Result := #0;
   if (APos < 0) or (FEdEmu = nil) then
     Exit;
-  Str := string(FEdEmu.GetRange(APos, APos + 1));
+  Str := EdAnsiText(FEdEmu.GetRange(APos, APos + 1));
   if Str <> '' then
     Result := Str[1];
 end;
@@ -25150,7 +25150,7 @@ begin
     Exit;
   if AFrom < 0 then
     AFrom := 0;
-  Result := string(FEdEmu.GetRange(AFrom, AFrom + ACount));
+  Result := EdAnsiText(FEdEmu.GetRange(AFrom, AFrom + ACount));
 end;
 
 // Начало выделенного текста, не длиннее AMaxLen символов: весь текст
@@ -25195,7 +25195,7 @@ begin
   if stMatchCase in Options then
     Flags := Flags or FR_MATCHCASE_;
   // Строка - из ANSI по кодовой странице системы
-  Result := FEdEmu.FindText(Flags, StartPos, StartPos + Len, WideString(Str));
+  Result := FEdEmu.FindText(Flags, StartPos, StartPos + Len, EdWideText(Str));
 end;
 
 
@@ -42849,7 +42849,7 @@ begin
   Colors.GutterCurText := UiColor('Gutter.CurText');
   Colors.Sel := UiColor('Editor.SelBG');
   Colors.SelText := UiColor('Editor.SelText');
-  ShowEdPreview(DisplayName, WideString(GetEditorText),
+  ShowEdPreview(DisplayName, EdWideText(GetEditorText),
     SchemeCopyFor(FCurrentFileName), RichEdit1.Font, FTabChars, CaretLine,
     CaretCol, Colors);
 end;
@@ -52118,7 +52118,7 @@ begin
       Src.Capacity := FEdEmu.Buffer.Count;
       Cl.Capacity := FEdEmu.Buffer.Count;
       for I := 0 to FEdEmu.Buffer.Count - 1 do
-        Src.Add(string(FEdEmu.Buffer.Lines[I]));
+        Src.Add(EdAnsiText(FEdEmu.Buffer.Lines[I]));
     end;
     St := 0;
     for I := 0 to Src.Count - 1 do
@@ -87910,7 +87910,7 @@ begin
       if Shared then
         FSplit.ShowEdText(FEdEmu.Buffer, '', Scheme, TopLine)
       else
-        FSplit.ShowEdText(nil, WideString(SplitWinText(FSplitWin)), Scheme,
+        FSplit.ShowEdText(nil, EdWideText(SplitWinText(FSplitWin)), Scheme,
           TopLine);
     finally
       FSplitSyncBusy := False;

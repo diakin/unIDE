@@ -54,6 +54,14 @@ type
 // ('?' - такого символа в ней нет). Длина та же
 function EdAnsiLine(const ALine: WideString): string;
 
+// Текст редактора для Unit1 и обратно. Unit1 держит текст редактора в
+// строках string в кодировке Windows (CP_ACP), позиция байта = позиция
+// символа. В Delphi 7 это и есть string(WideString). Под FPC строки LCL -
+// UTF-8, и string(WideString) дал бы UTF-8 (длина другая, A-функции
+// рисования показывают его неверно), поэтому перевод - явно через CP_ACP
+function EdAnsiText(const AText: WideString): string;
+function EdWideText(const AText: string): WideString;
+
 implementation
 
 var
@@ -104,6 +112,42 @@ begin
   SetLength(Result, Length(ALine));
   for CharIdx := 1 to Length(ALine) do
     Result[CharIdx] := WideToAnsiMap[Ord(ALine[CharIdx])];
+end;
+
+function EdAnsiText(const AText: WideString): string;
+begin
+  {$IFDEF FPC}
+  Result := EdAnsiLine(AText);
+  {$ELSE}
+  Result := string(AText);
+  {$ENDIF}
+end;
+
+function EdWideText(const AText: string): WideString;
+{$IFDEF FPC}
+{$IFDEF MSWINDOWS}
+var
+  WideLen: Integer;
+{$ENDIF}
+{$ENDIF}
+begin
+  {$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+  Result := '';
+  if AText = '' then
+    Exit;
+  WideLen := MultiByteToWideChar(CP_ACP, 0, PAnsiChar(AText), Length(AText),
+    nil, 0);
+  SetLength(Result, WideLen);
+  if WideLen > 0 then
+    MultiByteToWideChar(CP_ACP, 0, PAnsiChar(AText), Length(AText),
+      PWideChar(Result), WideLen);
+  {$ELSE}
+  Result := UTF8Decode(AText);
+  {$ENDIF}
+  {$ELSE}
+  Result := WideString(AText);
+  {$ENDIF}
 end;
 
 // ---------------------------------------------------------------------------

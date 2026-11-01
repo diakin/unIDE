@@ -30,6 +30,9 @@ type
     FReadOnly: Boolean;
     FScrollBars: TScrollStyle;
     FOnChange: TNotifyEvent;
+{$IFDEF FPC}
+    FOrigWndProc: Pointer;   // оконная процедура LCL до EdHostSubProc
+{$ENDIF}
     function GetSelStart: Integer;
     procedure SetSelStart(AValue: Integer);
     function GetSelLength: Integer;
@@ -45,12 +48,23 @@ type
   protected
     procedure CreateParams(var Params: TCreateParams); override;
     procedure CreateWnd; override;
+{$IFDEF FPC}
+    procedure DestroyWnd; override;
+    // Text окна: в LCL - поле FCaption и SetWindowTextW в UTF-8, здесь -
+    // сообщения своему редактору в кодировке Windows, как в Delphi 7
+    function RealGetText: TCaption; override;
+    procedure RealSetText(const AValue: TCaption); override;
+{$ENDIF}
     procedure WndProc(var Message: TMessage); override;
     procedure Paint; override;
     procedure Change; virtual;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+{$IFDEF FPC}
+    // В LCL GetTextLen - длина FCaption, а не WM_GETTEXTLENGTH
+    function GetTextLen: Integer; reintroduce;
+{$ENDIF}
     procedure Undo;
     procedure CutToClipboard;
     procedure CopyToClipboard;
@@ -232,9 +246,113 @@ begin
     not (CS_HREDRAW or CS_VREDRAW);
 end;
 
+{$IFDEF FPC}
+// LCL (win32callback) передаёт в WindowProc контрола только сообщения,
+// которые разбирает сам, и сообщения от WM_USER. Остальные - EM_GETLINECOUNT,
+// EM_EXGETSEL, WM_GETTEXT, WM_CUT и т.п. - уходят в DefWindowProc, и свой
+// редактор их не видит (Lines.Count = 0, текст не показывается). Поэтому
+// окно подклассируется: эти сообщения - сразу в WindowProc, прочие - в
+// оконную процедуру LCL.
+//
+// Подкласс - ANSI (SetWindowLongPtrA), как окно в сборке Delphi 7: свой
+// редактор и Unit1 передают текст в кодировке Windows (CP_ACP). Окна LCL -
+// Unicode; текст сообщений от них (SetWindowTextW, WM_CHAR из очереди W)
+// Windows сама переводит в ANSI перед вызовом подкласса, а для оконной
+// процедуры LCL (CallWindowProcA) - обратно
+const
+  EdHostPropName = 'unIDE.EdHostEdit';
+
+function EdHostRoutes(AMsg: UINT): Boolean;
+begin
+  // WM_PAINT - тоже мимо LCL: LCL сам делает BeginPaint и передаёт DC в
+  // WParam, а Unit1 (NewRichEditProc) рисует всё окно сам, только при
+  // WParam = 0
+  Result := (AMsg = WM_PAINT) or (AMsg = WM_SETTEXT) or (AMsg = WM_GETTEXT) or
+            (AMsg = WM_GETTEXTLENGTH) or
+            ((AMsg >= $00B0) and (AMsg <= $00DA)) or   // EM_GETSEL..EM_GETIMESTATUS
+            ((AMsg >= WM_CUT) and (AMsg <= WM_UNDO)) or
+            // Символ - тоже мимо LCL: она переводит его в UTF-8 (KeyPress), а
+            // в WindowProc отдаёт CN_CHAR / LM_CHAR без кириллицы
+            (AMsg = WM_CHAR);
+end;
+
+function EdHostSubProc(AWnd: HWND; AMsg: UINT; AWParam: WPARAM;
+  ALParam: LPARAM): LRESULT; stdcall;
+var
+  Host: TEdHostEdit;
+  HostMsg: TMessage;
+begin
+  Host := TEdHostEdit(GetProp(AWnd, EdHostPropName));
+  if Host = nil then
+  begin
+    Result := DefWindowProcA(AWnd, AMsg, AWParam, ALParam);
+    Exit;
+  end;
+  if EdHostRoutes(AMsg) then
+  begin
+    FillChar(HostMsg, SizeOf(HostMsg), 0);
+    HostMsg.Msg := AMsg;
+    HostMsg.WParam := AWParam;
+    HostMsg.LParam := ALParam;
+    Host.WindowProc(HostMsg);
+    Result := HostMsg.Result;
+  end
+  else
+    Result := CallWindowProcA(WNDPROC(Host.FOrigWndProc), AWnd, AMsg,
+                              AWParam, ALParam);
+end;
+
+procedure TEdHostEdit.DestroyWnd;
+begin
+  if HandleAllocated and (FOrigWndProc <> nil) then
+  begin
+    SetWindowLongPtrA(Handle, GWL_WNDPROC, LONG_PTR(FOrigWndProc));
+    RemoveProp(Handle, EdHostPropName);
+    FOrigWndProc := nil;
+  end;
+  inherited DestroyWnd;
+end;
+
+function TEdHostEdit.GetTextLen: Integer;
+begin
+  Result := 0;
+  if HandleAllocated then
+    Result := SendMessageA(Handle, WM_GETTEXTLENGTH, 0, 0);
+end;
+
+function TEdHostEdit.RealGetText: TCaption;
+var
+  TextLen: Integer;
+begin
+  Result := '';
+  TextLen := GetTextLen;
+  if TextLen <= 0 then
+    Exit;
+  SetLength(Result, TextLen + 1);
+  TextLen := SendMessageA(Handle, WM_GETTEXT, TextLen + 1,
+    LPARAM(PAnsiChar(Result)));
+  if TextLen < 0 then
+    TextLen := 0;
+  SetLength(Result, TextLen);
+end;
+
+procedure TEdHostEdit.RealSetText(const AValue: TCaption);
+begin
+  if HandleAllocated then
+    SendMessageA(Handle, WM_SETTEXT, 0, LPARAM(PAnsiChar(AValue)))
+  else
+    inherited RealSetText(AValue);
+end;
+{$ENDIF}
+
 procedure TEdHostEdit.CreateWnd;
 begin
   inherited CreateWnd;
+{$IFDEF FPC}
+  SetProp(Handle, EdHostPropName, THandle(Self));
+  FOrigWndProc := Pointer(SetWindowLongPtrA(Handle, GWL_WNDPROC,
+                                            LONG_PTR(@EdHostSubProc)));
+{$ENDIF}
   // Маска уведомлений, как у TRichEdit: свой редактор берёт её при запуске
   SendMessage(Handle, EM_SETEVENTMASK_, 0, ENM_CHANGE_ or ENM_SELCHANGE_);
   if FReadOnly then
@@ -329,7 +447,16 @@ begin
   if Got > Length(Text) - 1 then
     Got := Length(Text) - 1;
   SetLength(Text, Got);
+  {$IFDEF FPC}
+  // Как у прочих строк редактора - в кодировке Windows (string(Text) под
+  // FPC дал бы UTF-8)
+  SetLength(Result, Got);
+  if Got > 0 then
+    SetLength(Result, WideCharToMultiByte(CP_ACP, 0, PWideChar(Text), Got,
+      PAnsiChar(Result), Got, nil, nil));
+  {$ELSE}
   Result := string(Text);
+  {$ENDIF}
 end;
 
 procedure TEdHostEdit.SetSelText(const AValue: string);
