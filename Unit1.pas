@@ -35105,11 +35105,47 @@ begin
   end;
 end;
 
+// Строка .dpr с первым модулем uses, если это менеджер памяти (FastMM4,
+// ShareMem и т.п.) и он стоит на своей строке; иначе -1. AUsesLine -
+// строка со словом uses
+function ProbeMemMgrLine(ALines: TStrings; AUsesLine: Integer): Integer;
+const
+  MemMgrUnits: array[0..4] of string = ('fastmm4', 'fastmm5', 'sharemem',
+                                        'simplesharemem', 'scalemm2');
+var
+  LineIdx, NameIdx, NameEnd: Integer;
+  LineText, UnitName: string;
+begin
+  Result := -1;
+  // uses и первый модуль на одной строке - не разбирается
+  if Trim(LowerCase(ALines[AUsesLine])) <> 'uses' then
+    Exit;
+  for LineIdx := AUsesLine + 1 to ALines.Count - 1 do
+  begin
+    LineText := LowerCase(Trim(ALines[LineIdx]));
+    if (LineText = '') or (Copy(LineText, 1, 2) = '//') or
+       ((LineText[1] = '{') and (Copy(LineText, 1, 2) <> '{$')) then
+      Continue;
+    NameEnd := 1;
+    while (NameEnd <= Length(LineText)) and
+          (LineText[NameEnd] in ['a'..'z', '0'..'9', '_']) do
+      Inc(NameEnd);
+    UnitName := Copy(LineText, 1, NameEnd - 1);
+    for NameIdx := Low(MemMgrUnits) to High(MemMgrUnits) do
+      if (UnitName = MemMgrUnits[NameIdx]) and (Pos(',', LineText) > 0) then
+      begin
+        Result := LineIdx;
+        Exit;
+      end;
+    Exit;   // первый модуль - не менеджер памяти
+  end;
+end;
+
 // Копия .dpr с зондом: _dsgprobe.dpr рядом с настоящим. '' - не вышло.
 function TForm1.MakeProbeDpr(const ADpr: string): string;
 var
   SL: TStringList;
-  I, Uses_, LastCreate: Integer;
+  I, Uses_, LastCreate, MemMgrLine: Integer;
   Txt, TL, Cfg: string;
 begin
   Result := '';
@@ -35143,8 +35179,13 @@ begin
 
     // Выход сразу после создания форм, Application.Run не выполняется
     SL.Insert(LastCreate + 1, '  DsgProbeDump;');
-    // Зонд - первым в uses
-    if Trim(LowerCase(SL[Uses_])) = 'uses' then
+    // Зонд - первым в uses. Но менеджер памяти (FastMM4 и т.п.) должен
+    // остаться первым: иначе он не ставится («Memory has already been
+    // allocated»), и пробный запуск стоит на его окне
+    MemMgrLine := ProbeMemMgrLine(SL, Uses_);
+    if MemMgrLine >= 0 then
+      SL.Insert(MemMgrLine + 1, '  DsgProbe,')
+    else if Trim(LowerCase(SL[Uses_])) = 'uses' then
       SL.Insert(Uses_ + 1, '  DsgProbe,')
     else
       SL[Uses_] := StringReplace(SL[Uses_], 'uses ', 'uses DsgProbe, ',
