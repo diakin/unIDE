@@ -10162,14 +10162,29 @@ begin
   end;
 end;
 
-// Уже в .dfm - серым: их переносить не нужно
+// Уже в .dfm - серым: их переносить не нужно. Переносится целиком -
+// фон зелёный, частично - жёлтый (выделенная строка - цветом выделения)
 procedure TMoveReportForm.ViewDrawItem(Sender: TCustomListView; Item: TListItem;
   State: TCustomDrawState; var DefaultDraw: Boolean);
+const
+  WholeBG = $0090EE90;     // светло-зелёный
+  PartialBG = $0080FFFF;   // светло-жёлтый
 begin
   if (csDestroying in ComponentState) or (Item.Data = nil) then
     Exit;
-  if TMoveInfo(Item.Data).Kind = mkInDfm then
-    Sender.Canvas.Font.Color := UiThemeColor('OffText');
+  case TMoveInfo(Item.Data).Kind of
+    mkInDfm:
+      Sender.Canvas.Font.Color := UiThemeColor('OffText');
+    mkWhole, mkPartial:
+      if not (cdsSelected in State) then
+      begin
+        if TMoveInfo(Item.Data).Kind = mkWhole then
+          Sender.Canvas.Brush.Color := WholeBG
+        else
+          Sender.Canvas.Brush.Color := PartialBG;
+        Sender.Canvas.Font.Color := clBlack;
+      end;
+  end;
 end;
 
 procedure TMoveReportForm.ViewDrawSubItem(Sender: TCustomListView;

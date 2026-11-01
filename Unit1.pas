@@ -43091,17 +43091,6 @@ begin
     end;
     ObjMoveStageDone(GetTickCount);
     AnalyzeMs := GetTickCount - AnalyzeStart;
-    StageText := '';
-    for Index := 0 to Times.Count - 1 do
-      if StrToIntDef(Times.ValueFromIndex[Index], 0) >= 50 then
-      begin
-        if StageText <> '' then
-          StageText := StageText + ', ';
-        StageText := StageText + Times.Names[Index] + ' ' +
-                     Times.ValueFromIndex[Index];
-      end;
-    if StageText <> '' then
-      StageText := ' (' + StageText + ')';
 
     // Окно разбора забирает список себе и освободит при закрытии
     Host.GoLine := ObjMoveGoLine;
@@ -43114,10 +43103,15 @@ begin
     WindowStart := GetTickCount;
     DfmMoveShowReport(List, PasFile, FObjDfmFile, FormClass, PasText, DfmText,
                       Host);
-    LogComp(Format('Перенести в .dfm: компонентов %d, разбор %d мс%s, ' +
+    // Итог и время каждого этапа разбора - своей строкой, по порядку
+    LogComp(Format('Перенести в .dfm: компонентов %d, разбор %d мс, ' +
                    'окно разбора %d мс',
-                   [MoveCount, AnalyzeMs, StageText,
-                    GetTickCount - WindowStart]));
+                   [MoveCount, AnalyzeMs, GetTickCount - WindowStart]));
+    for Index := 0 to Times.Count - 1 do
+    begin
+      StageText := Times.Names[Index];
+      LogComp(Format('  %s: %s мс', [StageText, Times.Values[StageText]]));
+    end;
   finally
     DfmMoveProgress := nil;
     FObjMoveTimes := nil;
