@@ -325,7 +325,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.26';
+  DfmMoveBuild = 'b.27';
 
 constructor TMoveInfo.Create;
 begin
@@ -4599,12 +4599,14 @@ var
     Result := False;
     if Head < 0 then
       Exit;
+    NodeStep('числа (IntValueAt)');
     Known := TStringList.Create;
     try
       RoutineIntValues(ALines, AKeys, AScan, AHelpers, Head, ALine, Known);
       Result := EvalIntExpr(AExpr, Known, AValue);
     finally
       Known.Free;
+      NodeStep('после чисел');
     end;
   end;
 
@@ -5620,8 +5622,13 @@ begin
     // alBottom)
     // Считаются и присваивания после then в той же строке
     // (if A then X.Top := 5;): они тоже меняют свойство после .dfm
-    for Index := CallLast + 1 to RangeLast - 1 do
-      CountPropAssigns(AKeys[Index], Node.VarName, PropCounts);
+    // Только строки со словом имени: присваивание X.Prop := - с ним
+    NodeStep('свойства: счёт присваиваний');
+    WordCandidates(AKeys, NameUpper, CallLast + 1, RangeLast - 1, SubLines);
+    for ScanIndex := 0 to SubLines.Count - 1 do
+      CountPropAssigns(AKeys[Integer(SubLines[ScanIndex])], Node.VarName,
+                       PropCounts);
+    NodeStep('свойства: помощник');
 
     // Строки X.... после создания в той же процедуре
     if (Helper <> nil) and (Helper.OutIdx >= 0) then
@@ -5647,6 +5654,7 @@ begin
       AddMoveItem(Info, Node.CreateLine, mlCreate, '', '');
       Info.NestLine := Node.CreateLine;
     end;
+    NodeStep('свойства: строки');
     SeenExit := False;
     // Строки, где что-то делается с этим компонентом, - только со словом
     // его имени; остальные нужны только для Exit. Обе выборки - по индексу
