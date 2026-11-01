@@ -318,7 +318,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.34';
+  DfmMoveBuild = 'b.35';
 
 constructor TMoveInfo.Create;
 begin
@@ -434,6 +434,25 @@ begin
       Exit;
     end;
   end;
+end;
+
+// Строка кода, где текст в кавычках заменён пробелами: имя внутри строки
+// ('unide.html#repomenu') - не упоминание переменной
+function BlankQuoted(const ACode: string): string;
+var
+  CharIndex: Integer;
+  InQuote: Boolean;
+begin
+  Result := ACode;
+  InQuote := False;
+  for CharIndex := 1 to Length(Result) do
+    if Result[CharIndex] = '''' then
+    begin
+      InQuote := not InQuote;
+      Result[CharIndex] := ' ';
+    end
+    else if InQuote then
+      Result[CharIndex] := ' ';
 end;
 
 // Строки объявления класса формы: заголовок и end; -1 - не нашлось
@@ -704,6 +723,8 @@ begin
     if (Pos('PROCEDURE ', U) = 1) or (Pos('FUNCTION ', U) = 1) or
        (Pos('CONSTRUCTOR ', U) = 1) or (Pos('//', U) = 1) then
       Continue;
+    // Без комментария и текста в кавычках: имя в строке - не вызов
+    T := BlankQuoted(StripComment(T));
     if not HasWord(T, AMethod) then
       Continue;
     P := Pos(':=', T);
@@ -4139,25 +4160,6 @@ end;
 // процедурах, где AName объявлена своей локальной переменной (там она
 // закрывает поле формы с тем же именем, и смысл этих строк не меняется).
 // False - есть другое место; его строка - в AOtherLine.
-// Строка кода, где текст в кавычках заменён пробелами: имя внутри строки
-// ('unide.html#repomenu') - не упоминание переменной
-function BlankQuoted(const ACode: string): string;
-var
-  CharIndex: Integer;
-  InQuote: Boolean;
-begin
-  Result := ACode;
-  InQuote := False;
-  for CharIndex := 1 to Length(Result) do
-    if Result[CharIndex] = '''' then
-    begin
-      InQuote := not InQuote;
-      Result[CharIndex] := ' ';
-    end
-    else if InQuote then
-      Result[CharIndex] := ' ';
-end;
-
 function NameFreeForField(ALines: TStrings; const AName: string;
   AFirst, ALast: Integer; var AOtherLine: Integer): Boolean;
 var
@@ -5545,7 +5547,7 @@ begin
   // и этот Exit не выполняется.
   if not Lazy and (AScan.BodyStart[Node.CreateLine] >= 0) then
     for Index := AScan.BodyStart[Node.CreateLine] + 1 to Node.CreateLine - 1 do
-      if HasWord(StripComment(ALines[Index]), 'Exit') and
+      if HasWord(BlankQuoted(StripComment(ALines[Index])), 'Exit') and
          not DfmNilGuardExit(Index) then
       begin
         Info.Reason := 'раньше в ' + Info.Routine + ' есть Exit (строка ' +
@@ -5717,7 +5719,7 @@ begin
       // после Exit - строка выполняется не всегда. В блоке по требованию
       // все строки - на его прямом пути (это проверено).
       Deep := (not Lazy and not AScan.Plain[Index]) or SeenExit;
-      if HasWord(Code, 'Exit') then
+      if HasWord(BlankQuoted(Code), 'Exit') then
         SeenExit := True;
 
       // Добавление в меню или список: P.Add(X), P.Items.Insert(N, X)...
@@ -6618,7 +6620,7 @@ begin
   // (таймеры, щелчки, отрисовка) - их обработчики здесь не отследить
   for CheckLine := 0 to ALines.Count - 1 do
     if (Pos('PROCESSMESSAGES', UpperCase(ALines[CheckLine])) > 0) and
-       HasWord(StripComment(ALines[CheckLine]), 'ProcessMessages') and
+       HasWord(BlankQuoted(StripComment(ALines[CheckLine])), 'ProcessMessages') and
        BeforeCreate(CheckLine) then
     begin
       for Index := 0 to Info.NilChecks.Count - 1 do
@@ -7426,7 +7428,7 @@ var
           for LineIndex := LoopHead + 1 to LoopEnd do
             if ((LineIndex < ForLine) or (LineIndex > BodyEnd)) and
                (LineIndex <> LocalDecl) and
-               HasWord(StripComment(Lines[LineIndex]), CallLhs) then
+               HasWord(BlankQuoted(StripComment(Lines[LineIndex])), CallLhs) then
             begin
               Reason := CallLhs + ' используется и вне цикла, строка ' +
                         IntToStr(LineIndex + 1);
@@ -7674,7 +7676,7 @@ var
             (LineIndex <= AHelper.HeadEnd)) or
            ((LineIndex >= ClassFirst) and (LineIndex <= ClassLast)) then
           Continue;
-        if not HasWord(StripComment(Lines[LineIndex]), AHelper.Name) then
+        if not HasWord(BlankQuoted(StripComment(Lines[LineIndex])), AHelper.Name) then
           Continue;
         Inc(RefCount);
         Listed := False;
@@ -7933,7 +7935,7 @@ var
             (LineIndex <= AHelper.HeadEnd)) or
            ((LineIndex >= ClassFirst) and (LineIndex <= ClassLast)) then
           Continue;
-        if not HasWord(StripComment(Lines[LineIndex]), AHelper.Name) then
+        if not HasWord(BlankQuoted(StripComment(Lines[LineIndex])), AHelper.Name) then
           Continue;
         Inc(RefCount);
         Moves := False;
