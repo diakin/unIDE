@@ -318,7 +318,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.23';
+  DfmMoveBuild = 'b.24';
 
 constructor TMoveInfo.Create;
 begin
@@ -648,6 +648,148 @@ begin
     Counted.Assigns := AAssigns;
     GUsesCache.AddObject(MethodUpper, Counted);
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Индекс слов модуля на время DfmMoveAnalyze: слово (заглавными) -> строки
+//  AKeys, где оно стоит целым словом. Циклы по всему модулю для одного имени
+//  идут только по этим строкам (на 765 компонентах и 90 тыс. строк - вместо
+//  70 млн Pos). Слово - как у HasPattern: граница - не буква, не цифра, не _.
+// ---------------------------------------------------------------------------
+
+type
+  TWordEntry = record
+    Word: string;
+    Next: Integer;        // следующая запись с тем же хэшем; -1
+    Lines: TList;         // номера строк по возрастанию, без повторов
+  end;
+
+const
+  WordHashSize = 65536;
+
+var
+  GWordKeys: TStrings = nil;
+  GWordHeads: array of Integer;
+  GWordEntries: array of TWordEntry;
+  GWordCount: Integer = 0;
+
+function WordHash(const AWord: string): Integer;
+var
+  CharIndex: Integer;
+  Sum: Cardinal;
+begin
+  Sum := 0;
+  for CharIndex := 1 to Length(AWord) do
+    Sum := ((Sum * 31) + Ord(AWord[CharIndex])) and $FFFFFF;
+  Result := Integer(Sum and (WordHashSize - 1));
+end;
+
+procedure WordIndexReset;
+var
+  EntryIndex: Integer;
+begin
+  for EntryIndex := 0 to GWordCount - 1 do
+    GWordEntries[EntryIndex].Lines.Free;
+  GWordEntries := nil;
+  GWordHeads := nil;
+  GWordCount := 0;
+  GWordKeys := nil;
+end;
+
+// Строки со словом AUpper (заглавными); nil - нет ни одной
+function WordIndexFind(const AUpper: string): TList;
+var
+  EntryIndex: Integer;
+begin
+  Result := nil;
+  if GWordHeads = nil then
+    Exit;
+  EntryIndex := GWordHeads[WordHash(AUpper)];
+  while EntryIndex >= 0 do
+  begin
+    if GWordEntries[EntryIndex].Word = AUpper then
+    begin
+      Result := GWordEntries[EntryIndex].Lines;
+      Exit;
+    end;
+    EntryIndex := GWordEntries[EntryIndex].Next;
+  end;
+end;
+
+procedure WordIndexStart(AKeys: TStrings);
+var
+  LineIndex, CharPos, WordStart, KeyLen, Bucket, EntryIndex: Integer;
+  Key, Word: string;
+  Lines: TList;
+begin
+  WordIndexReset;
+  SetLength(GWordHeads, WordHashSize);
+  for Bucket := 0 to WordHashSize - 1 do
+    GWordHeads[Bucket] := -1;
+  for LineIndex := 0 to AKeys.Count - 1 do
+  begin
+    Key := AKeys[LineIndex];
+    KeyLen := Length(Key);
+    CharPos := 1;
+    while CharPos <= KeyLen do
+    begin
+      if not IsIdentChar(Key[CharPos]) then
+      begin
+        Inc(CharPos);
+        Continue;
+      end;
+      WordStart := CharPos;
+      while (CharPos <= KeyLen) and IsIdentChar(Key[CharPos]) do
+        Inc(CharPos);
+      Word := Copy(Key, WordStart, CharPos - WordStart);
+      Bucket := WordHash(Word);
+      EntryIndex := GWordHeads[Bucket];
+      while (EntryIndex >= 0) and (GWordEntries[EntryIndex].Word <> Word) do
+        EntryIndex := GWordEntries[EntryIndex].Next;
+      if EntryIndex < 0 then
+      begin
+        if GWordCount >= Length(GWordEntries) then
+          SetLength(GWordEntries, GWordCount * 2 + 1024);
+        EntryIndex := GWordCount;
+        Inc(GWordCount);
+        GWordEntries[EntryIndex].Word := Word;
+        GWordEntries[EntryIndex].Lines := TList.Create;
+        GWordEntries[EntryIndex].Next := GWordHeads[Bucket];
+        GWordHeads[Bucket] := EntryIndex;
+      end;
+      Lines := GWordEntries[EntryIndex].Lines;
+      if (Lines.Count = 0) or
+         (Integer(Lines[Lines.Count - 1]) <> LineIndex) then
+        Lines.Add(Pointer(LineIndex));
+    end;
+  end;
+  GWordKeys := AKeys;
+end;
+
+// В AOut - номера строк AKeys с AFirst по ALast, где может стоять слово
+// AUpper (имя заглавными): по индексу слов, если он построен для AKeys;
+// иначе - все строки диапазона
+procedure WordCandidates(AKeys: TStrings; const AUpper: string;
+  AFirst, ALast: Integer; AOut: TList);
+var
+  Hits: TList;
+  HitIndex, LineIndex: Integer;
+begin
+  AOut.Clear;
+  if (AKeys <> nil) and (GWordKeys = AKeys) and IsValidIdent(AUpper) then
+  begin
+    Hits := WordIndexFind(AUpper);
+    if Hits <> nil then
+      for HitIndex := 0 to Hits.Count - 1 do
+      begin
+        LineIndex := Integer(Hits[HitIndex]);
+        if (LineIndex >= AFirst) and (LineIndex <= ALast) then
+          AOut.Add(Pointer(LineIndex));
+      end;
+  end
+  else
+    for LineIndex := AFirst to ALast do
+      AOut.Add(Pointer(LineIndex));
 end;
 
 // Значение - константа, которую можно записать в .dfm: число, строка в
@@ -4279,7 +4421,7 @@ end;
 procedure AnalyzeNodeWith(Info: TMoveInfo; ALines, AKeys: TStrings;
   const AFormClass: string; AClassFirst, AClassLast: Integer;
   ANames: TStrings; AHelpers: TList; AScan: TUnitScan;
-  HelperArgs: TStringList);
+  HelperArgs: TStringList; ScanLines: TList);
 var
   Helper: THelperInfo;
   CallLast, FreeHead, FreeEnd: Integer;
@@ -4289,6 +4431,7 @@ var
   Line, Code, Upper, Lhs, Owner, Ctor, Rest, PropName, Value, Target,
     AddParent, AddChild, Guard, SwitchProp, SwitchOn, RemoveParent,
     RemoveChild, NameUpper: string;
+  ScanIndex: Integer;
   CreatePos, Open, Close, Index, Head, RoutineEnd, Calls, Assigns,
     Creates, Assign, OwnerAt, Count, KeyNumber, LazyCond, LazyOpen,
     LazyEnd, RangeFirst, RangeLast, BadLine, SwitchLine, OtherLine,
@@ -5145,11 +5288,12 @@ begin
   OtherAssigns := 0;
   NameUpper := UpperCase(Node.VarName);
   if not Info.NewField then
-    for Index := ScopeFirst to ScopeLast do
+  begin
+    // Строка без имени (AKeys - заглавными) не присваивает ему
+    WordCandidates(AKeys, NameUpper, ScopeFirst, ScopeLast, ScanLines);
+    for ScanIndex := 0 to ScanLines.Count - 1 do
     begin
-      // Строка без имени (AKeys - заглавными) не присваивает ему
-      if (NameUpper <> '') and (Pos(NameUpper, AKeys[Index]) = 0) then
-        Continue;
+      Index := Integer(ScanLines[ScanIndex]);
       Code := StripComment(ALines[Index]);
       Assign := Pos(':=', Code);
       if (Assign = 0) or
@@ -5164,6 +5308,7 @@ begin
       else
         Inc(OtherAssigns);
     end;
+  end;
   if Creates > 1 then
   begin
     // Локальная переменная, которой по очереди создают несколько
@@ -5201,8 +5346,10 @@ begin
   if not Info.NewField then
   begin
     Upper := UpperCase(Node.VarName);
-    for Index := ScopeFirst to ScopeLast do
+    WordCandidates(AKeys, Upper, ScopeFirst, ScopeLast, ScanLines);
+    for ScanIndex := 0 to ScanLines.Count - 1 do
     begin
+      Index := Integer(ScanLines[ScanIndex]);
       if (Index = Node.CreateLine) or (Pos(Upper, AKeys[Index]) = 0) then
         Continue;
       if HasPattern(AKeys[Index], 'FREEANDNIL(' + Upper + ')') or
@@ -5329,13 +5476,15 @@ begin
   // Добавление в меню или список вне процедуры создания: после переноса
   // пункт добавился бы второй раз (в .dfm он уже вложен)
   NameUpper := UpperCase(Node.VarName);
-  if not Info.NewField then
-  for Index := ScopeFirst to ScopeLast do
-  begin
-    if (Index >= RangeFirst) and (Index <= RangeLast) then
-      Continue;
+  if Info.NewField then
+    ScanLines.Clear
+  else
     // Строка без имени (AKeys - заглавными) его не добавляет
-    if (NameUpper <> '') and (Pos(NameUpper, AKeys[Index]) = 0) then
+    WordCandidates(AKeys, NameUpper, ScopeFirst, ScopeLast, ScanLines);
+  for ScanIndex := 0 to ScanLines.Count - 1 do
+  begin
+    Index := Integer(ScanLines[ScanIndex]);
+    if (Index >= RangeFirst) and (Index <= RangeLast) then
       Continue;
     if ParseAddLine(Trim(StripComment(ALines[Index])), AddParent, AddChild) and
        (CompareText(AddChild, Node.VarName) = 0) and
@@ -5848,12 +5997,15 @@ procedure AnalyzeNode(Info: TMoveInfo; ALines, AKeys: TStrings;
   ANames: TStrings; AHelpers: TList; AScan: TUnitScan);
 var
   HelperArgs: TStringList;
+  ScanLines: TList;
 begin
   HelperArgs := TStringList.Create;
+  ScanLines := TList.Create;
   try
     AnalyzeNodeWith(Info, ALines, AKeys, AFormClass, AClassFirst, AClassLast,
-                    ANames, AHelpers, AScan, HelperArgs);
+                    ANames, AHelpers, AScan, HelperArgs, ScanLines);
   finally
+    ScanLines.Free;
     HelperArgs.Free;
   end;
 end;
@@ -6733,13 +6885,18 @@ var
   // меняют
   function GeometryStable(const AName: string): Boolean;
   var
-    LineIndex, PatternIndex, At, ArgIndex: Integer;
+    LineIndex, PatternIndex, At, ArgIndex, HitIndex: Integer;
     Key, Upper, CallName: string;
+    Hits: TList;
   begin
     Result := False;
     Upper := UpperCase(AName);
-    for LineIndex := 0 to Keys.Count - 1 do
+    Hits := TList.Create;
+    try
+    WordCandidates(Keys, Upper, 0, Keys.Count - 1, Hits);
+    for HitIndex := 0 to Hits.Count - 1 do
     begin
+      LineIndex := Integer(Hits[HitIndex]);
       Key := Keys[LineIndex];
       if not HasPattern(Key, Upper) then
         Continue;
@@ -6764,6 +6921,9 @@ var
       end;
     end;
     Result := True;
+    finally
+      Hits.Free;
+    end;
   end;
 
   // Процедуры-создатели: где компонент передан целиком, меняется ли его
@@ -7768,6 +7928,7 @@ begin
       Keys.Add(CodeKey(Lines[Index]));
     Scan.Scan(Lines);
     UsesCacheStart(Lines);
+    WordIndexStart(Keys);
     ReportStep('процедуры-создатели', 0, 0);
     FindClassDecl(Lines, AFormClass, ClassFirst, ClassLast);
     CollectHelpers(Lines, Helpers);
@@ -8358,6 +8519,7 @@ begin
       end;
     end;
   finally
+    WordIndexReset;
     UsesCacheReset;
     TreeLevel.Free;
     TreeData.Free;
