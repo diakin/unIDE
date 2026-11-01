@@ -318,7 +318,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.32';
+  DfmMoveBuild = 'b.33';
 
 constructor TMoveInfo.Create;
 begin
@@ -10379,14 +10379,19 @@ begin
       Info := TMoveInfo(View.Items[Index].Data);
       if Info = nil then
         Continue;
-      Inc(Counts[Info.Kind]);
       if View.Items[Index].Checked <> Info.Selected then
         View.Items[Index].Checked := Info.Selected;
-      if Info.Selected then
-        Inc(Count);
     end;
   finally
     FillingChecks := False;
+  end;
+  // Числа - по всему разбору: строки «уже в .dfm» в списке скрыты
+  for Index := 0 to List.Count - 1 do
+  begin
+    Info := TMoveInfo(List[Index]);
+    Inc(Counts[Info.Kind]);
+    if Info.Selected then
+      Inc(Count);
   end;
   Summary.Caption := Format('  Целиком: %d   Частично: %d   Нет: %d   ' +
     'Уже в .dfm: %d      Отмечено для переноса: %d', [Counts[mkWhole],
