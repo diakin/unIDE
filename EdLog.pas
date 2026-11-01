@@ -42,6 +42,32 @@ type
     // Весь текст, строки через #13#10 (с переводом строки в конце)
     function LogText: WideString;
     property LogCount: Integer read GetLogCount;
+  published
+    // Свойства и события для .dfm: окна логов кладутся на форму в IDE
+    // (пакет UiControls), а не создаются в коде
+    property Align;
+    property Anchors;
+    property Constraints;
+    property Enabled;
+    property Font;
+    property ParentFont;
+    property PopupMenu;
+    property ShowGutter;
+    property ShowHint;
+    property TabOrder;
+    property TabStop;
+    property Visible;
+    property OnClick;
+    property OnDblClick;
+    property OnEnter;
+    property OnExit;
+    property OnKeyDown;
+    property OnKeyPress;
+    property OnKeyUp;
+    property OnMouseDown;
+    property OnMouseMove;
+    property OnMouseUp;
+    property OnResize;
   end;
 
 implementation
@@ -135,5 +161,8 @@ begin
   ARuns[0].Style := [];
   ACount := 1;
 end;
+
+initialization
+  RegisterClass(TEdLogView);
 
 end.

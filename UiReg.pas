@@ -17,7 +17,7 @@ implementation
 
 uses
   Classes, UiTheme, UiScroll, UiButton, UiGroupBox, UiStdCtrls, UiEditCtrls,
-  UiComCtrls, UiMenus, UiStdDlgs;
+  UiComCtrls, UiMenus, UiStdDlgs, EdLog;
 
 procedure Register;
 begin
@@ -29,7 +29,8 @@ begin
     TUiMainMenu, TUiPopupMenu, TUiMenuBar,
     TUiPageControl, TUiTabControl, TUiStatusBar, TUiTreeView, TUiListView,
     TUiUpDown,
-    TUiColorDialog, TUiFontDialog]);
+    TUiColorDialog, TUiFontDialog,
+    TEdLogView]);
 end;
 
 end.

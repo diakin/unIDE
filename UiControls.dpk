@@ -44,6 +44,11 @@ contains
   UiComCtrls in 'UiComCtrls.pas',
   UiMenus in 'UiMenus.pas',
   UiStdDlgs in 'UiStdDlgs.pas',
+  EdClip in 'EdClip.pas',
+  EdBuffer in 'EdBuffer.pas',
+  EdEditor in 'EdEditor.pas',
+  EdView in 'EdView.pas',
+  EdLog in 'EdLog.pas',
   UiReg in 'UiReg.pas';
 
 end.
