@@ -39060,7 +39060,12 @@ begin
     // выделяется целиком и тут же заменяется.
     //
     // Сравнение - в координатах контрола: перевод строки одним CR
+    // Перенос в .dfm (ObjMoveBusy): шаги - этапами в панель хода и в лог
+    if FObjMoveTimes <> nil then
+      ObjMoveProgress('вкладка: текст редактора', 0, 0);
     OldCR := GetEditorTextCR;
+    if FObjMoveTimes <> nil then
+      ObjMoveProgress('вкладка: сравнение', 0, 0);
     NewCR := StringReplace(AText, #13#10, #13, [rfReplaceAll]);
     NewCR := StringReplace(NewCR, #10, #13, [rfReplaceAll]);
     if NewCR = OldCR then
@@ -39079,8 +39084,16 @@ begin
     try
       RichEdit1.SelStart := HeadLen;
       RichEdit1.SelLength := OldLen - HeadLen - TailLen;
+      if FObjMoveTimes <> nil then
+        ObjMoveProgress('вкладка: замена ' +
+                        IntToStr((OldLen - HeadLen - TailLen) div 1024) +
+                        ' КБ на ' +
+                        IntToStr((NewLen - HeadLen - TailLen) div 1024) +
+                        ' КБ', 0, 0);
       RichEdit1.SelText := Copy(NewCR, HeadLen + 1,
                                 NewLen - HeadLen - TailLen);
+      if FObjMoveTimes <> nil then
+        ObjMoveProgress('вкладка: перерисовка', 0, 0);
     finally
       EditorThaw;
     end;
