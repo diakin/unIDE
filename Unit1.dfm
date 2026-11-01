@@ -1154,6 +1154,11 @@ object Form1: TForm1
         Caption = 'Install Delphi 7 package (.dpk)...'
         OnClick = InstallPackageClick
       end
+      object mLazPrep: TMenuItem
+        Caption = 'Lazarus: prepare sources (UTF-8)'
+        Hint = 'Исходники проекта из папки текущего файла - в папку laz в UTF-8 для сборки Lazarus (шаг 1.2)'
+        OnClick = LazPrepClick
+      end
       object mUtilsSep1: TMenuItem
         Caption = '-'
       end

@@ -124,7 +124,8 @@ uses
   DlgGitClone in 'DlgGitClone.pas',
   UiCaptionTabs in 'UiCaptionTabs.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors},
-  DlgFarPalette in 'DlgFarPalette.pas';
+  DlgFarPalette in 'DlgFarPalette.pas',
+  LazPrep in 'LazPrep.pas';
 
 {$R *.res}
 

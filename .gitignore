@@ -112,3 +112,6 @@ uniFAR/backup/
 uniFAR/uniFAR.ini
 uniFAR/*_compile.bat
 /uniFAR/uniFAR.exe.old
+
+# Папка сборки Lazarus (Utils - Lazarus: prepare sources, шаг 1.2)
+/laz/

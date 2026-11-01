@@ -737,6 +737,7 @@ type
     mIncManager: TMenuItem;
     mFindInc: TMenuItem;
     mInstallPkg: TMenuItem;
+    mLazPrep: TMenuItem;
     BtnPnl: TPanel;
     FObjSnapBtn: TUiButton; // снимок поверх .dfm: показать / убрать (SnapCapShow)
     FObjDsgBtn: TUiButton; // Design form - открыть конструктор
@@ -1225,6 +1226,8 @@ type
     procedure FindIncClick(Sender: TObject);
     // Utils - собрать .dpk и записать в Known Packages Delphi 7
     procedure InstallPackageClick(Sender: TObject);
+    // Utils - исходники проекта в UTF-8 для сборки Lazarus (шаг 1.2)
+    procedure LazPrepClick(Sender: TObject);
     // Utils - unIDE FAR
     procedure FarMenuClick(Sender: TObject);
     procedure FarLayout;
@@ -4454,6 +4457,7 @@ var
   uses
     Unit2, // Подключили вторую форму к первой!
     FastMM4,      // FastGetHeapStatus - состояние кучи в hang.log и логе
+    LazPrep,      // исходники в UTF-8 для сборки Lazarus (шаг 1.2)
     FormSnapshot, // снимок живой формы для инспектора объектов
     OsReg,        // чтение реестра Windows: установленные Delphi, AutoHotkey, Lazarus
     DsgClassDescW, // запись описания классов по RTTI (шаг 0.8)
@@ -41100,6 +41104,61 @@ begin
   begin
     FileClose(ProbeHandle);
     DeleteFile(ProbeFile);
+  end;
+end;
+
+// Utils - Lazarus: подготовить исходники (шаг 1.2 плана). Папка проекта -
+// папка текущего файла, в ней должен быть .dpr; папка сборки - <она>\laz.
+// Туда .pas/.inc/.dpr/.dfm переводятся в UTF-8, .res/.rc/.manifest/.ico и
+// файлы папки lazarus\ копируются как есть; повторно - только изменённое.
+procedure TForm1.LazPrepClick(Sender: TObject);
+const
+  LazBuildDir = 'laz';
+var
+  SrcDir, DstDir: string;
+  DprRec: TSearchRec;
+  HasDpr: Boolean;
+  Report: TStringList;
+  Stats: TLazPrepStats;
+  StartTick: Cardinal;
+  LineIdx: Integer;
+begin
+  ShowCompLog;
+  if FCurrentFileName = '' then
+  begin
+    LogComp('Lazarus: откройте файл проекта Delphi (.dpr или модуль из его ' +
+            'папки)');
+    Exit;
+  end;
+  SrcDir := ExtractFilePath(FCurrentFileName);
+  HasDpr := FindFirst(SrcDir + '*.dpr', faAnyFile, DprRec) = 0;
+  if HasDpr then
+    FindClose(DprRec);
+  if not HasDpr then
+  begin
+    LogComp('Lazarus: в папке ' + SrcDir + ' нет .dpr - откройте файл из ' +
+            'папки проекта Delphi');
+    Exit;
+  end;
+  DstDir := SrcDir + LazBuildDir + PathDelim;
+  LogComp('--- Lazarus: исходники в UTF-8: ' + SrcDir + ' -> ' + DstDir);
+  StartTick := GetTickCount;
+  Report := TStringList.Create;
+  try
+    Screen.Cursor := crHourGlass;
+    try
+      LazPrepSources(SrcDir, DstDir, Report, Stats);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+    for LineIdx := 0 to Report.Count - 1 do
+      LogComp('  ' + Report[LineIdx]);
+    LogComp(Format('Lazarus: переведено в UTF-8 %d, скопировано %d, без ' +
+                   'изменений %d, ошибок %d (%d мс)',
+                   [Stats.Converted, Stats.Copied, Stats.Unchanged,
+                    Stats.Failed, GetTickCount - StartTick]));
+  finally
+    Report.Free;
   end;
 end;
 
