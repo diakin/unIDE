@@ -582,6 +582,7 @@ type
     FDiskTimer: TTimer;
     FStatusTimer: TTimer;
     FMapTimer: TTimer;
+    FMemTimer: TTimer;      // раз в секунду - индикатор памяти в статус-баре
     FTabsPopup: TUiPopupMenu;
     FPopupMenu: TUiPopupMenu;
     pmuFmtText: TMenuItem;
@@ -977,6 +978,9 @@ type
     procedure DiskTimerTick(Sender: TObject);
     procedure StatusTimerTick(Sender: TObject);
     procedure MapTimerTick(Sender: TObject);
+    procedure MemTimerTick(Sender: TObject);
+    procedure StatusBar1DrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel;
+      const Rect: TRect);
     procedure PopupMenuPopup(Sender: TObject);
     procedure FmtModeClick(Sender: TObject);
     procedure FmtPopupPopup(Sender: TObject);
@@ -2134,12 +2138,16 @@ type
     FPerfRebuild: Int64;
     FLastRebuildMs: Integer;
 
+    // Индикатор памяти (последняя панель статус-бара): адреса процесса в МБ
+    // при прошлом замере; FMemLargestMB < 0 - замера ещё не было
+    FMemUsedMB, FMemFreeMB, FMemLargestMB: Integer;
+
     // ЗАМЕР. Три статьи расхода на одно нажатие клавиши, в тиках счётчика:
     //   FPerfOur   - наш код (снимок, сдвиг карты)
     //   FPerfCtl   - сам RichEdit, за вычетом нашего
     //   FPerfPaint - отрисовка кадра
-    // Показываются в последней панели статус-бара. Когда станет ясно, куда
-    // уходит время, весь этот блок можно выкинуть.
+    // В статус-баре больше не показываются (там индикатор памяти); весь
+    // этот блок можно выкинуть.
     FPerfFreq: Int64;
     FPerfOur, FPerfCtl, FPerfPaint: Int64;
 
@@ -3974,7 +3982,7 @@ type
     procedure AuxTimerTick(Sender: TObject);
     procedure RebuildAuxParse;
     function  PerfNow: Int64;
-    function  PerfMs(ATicks: Int64): string;
+    procedure MemStatusUpdate;
     procedure ProgressStart(const ACaption: string);
     function  ProgressStep(APos, AMax: Integer; const AText: string): Boolean;
     procedure ProgressStop;
@@ -5463,15 +5471,75 @@ begin
     Result := 0;
 end;
 
-// Тики в миллисекунды, с одним знаком после запятой
-function TForm1.PerfMs(ATicks: Int64): string;
+const
+  // Индикатор памяти: самый большой свободный участок адресов, МБ. Целиком
+  // текст файла копируется одним куском (ANSI - длина, WideString - вдвое),
+  // поэтому важен участок, а не сумма свободного
+  MemWarnMB = 256;   // меньше - жёлтый
+  MemLowMB = 64;     // меньше - красный
+
+// Раз в секунду и после записи в лог о памяти: замер адресов процесса.
+// Панель перерисовывается, только если числа изменились
+procedure TForm1.MemStatusUpdate;
+var
+  UsedMB, FreeMB, LargestMB: Integer;
 begin
-  if FPerfFreq <= 0 then
-  begin
-    Result := '?';
+  if (StatusBar1 = nil) or (StatusBar1.Panels.Count < 7) then
     Exit;
+  AddressSpaceGet(UsedMB, FreeMB, LargestMB);
+  if (UsedMB = FMemUsedMB) and (FreeMB = FMemFreeMB) and
+     (LargestMB = FMemLargestMB) then
+    Exit;
+  FMemUsedMB := UsedMB;
+  FMemFreeMB := FreeMB;
+  FMemLargestMB := LargestMB;
+  StatusBar1.Panels[StatusBar1.Panels.Count - 1].Text :=
+    Format('Память: занято %d МБ, свободно %d, кусок %d',
+           [UsedMB, FreeMB, LargestMB]);
+  StatusBar1.Invalidate;
+end;
+
+procedure TForm1.MemTimerTick(Sender: TObject);
+begin
+  MemStatusUpdate;
+end;
+
+// Последняя панель - индикатор памяти: зелёный, жёлтый (меньше MemWarnMB
+// в самом большом свободном участке), красный (меньше MemLowMB)
+procedure TForm1.StatusBar1DrawPanel(StatusBar: TStatusBar;
+  Panel: TStatusPanel; const Rect: TRect);
+var
+  TextRect: TRect;
+  PanelText: string;
+begin
+  if Panel.Index <> StatusBar.Panels.Count - 1 then
+    Exit;
+  if FMemLargestMB < 0 then
+    Exit;
+  if FMemLargestMB < MemLowMB then
+  begin
+    StatusBar.Canvas.Brush.Color := RGB(190, 40, 40);
+    StatusBar.Canvas.Font.Color := clWhite;
+  end
+  else if FMemLargestMB < MemWarnMB then
+  begin
+    StatusBar.Canvas.Brush.Color := RGB(220, 180, 40);
+    StatusBar.Canvas.Font.Color := clBlack;
+  end
+  else
+  begin
+    StatusBar.Canvas.Brush.Color := RGB(40, 120, 50);
+    StatusBar.Canvas.Font.Color := clWhite;
   end;
-  Result := Format('%.1f', [ATicks * 1000 / FPerfFreq]);
+  StatusBar.Canvas.Brush.Style := bsSolid;
+  TextRect := Rect;
+  InflateRect(TextRect, -1, -2);
+  StatusBar.Canvas.FillRect(TextRect);
+  PanelText := Panel.Text;
+  InflateRect(TextRect, -3, 0);
+  StatusBar.Canvas.Brush.Style := bsClear;
+  DrawText(StatusBar.Canvas.Handle, PChar(PanelText), Length(PanelText),
+           TextRect, DT_SINGLELINE or DT_VCENTER or DT_LEFT or DT_END_ELLIPSIS);
 end;
 
 // Заказывает пересборку карты. Сама работа - через 150 мс, в MapTimerTick.
@@ -8380,6 +8448,7 @@ end;
 procedure TForm1.LogAddressSpace(const AWhat: string);
 begin
   LogComp(AWhat + ': ' + AddressSpaceText);
+  MemStatusUpdate;
 end;
 
 procedure TForm1.LoadWinFile(AWinIdx: Integer; const AFileName: string);
@@ -25519,19 +25588,6 @@ CurrentChar := CharAt(CursorPos);
       SubLabelShow('');
   end;
 
-  if StatusBar1.Panels.Count > 6 then
-    StatusBar1.Panels[6].Text :=
-      PerfMs(FPerfOur) + ' / ' + PerfMs(FPerfCtl) + ' / ' +
-      PerfMs(FPerfPaint) + ' | карта ' + PerfMs(FPerfRebuild) +
-    ' | стр ' + PerfMs(FPerfXPos) + ' фон ' + PerfMs(FPerfBase) +
-    ' кс ' + PerfMs(FPerfKw) + ' ток ' + PerfMs(FPerfTok) +
-    ' вызовов ' + IntToStr(FDrawCalls) +
-    ' | полн ' + IntToStr(FInfoBuilds) +
-    ' кмт ' + IntToStr(FCmtCalls) + '/' + PerfMs(FPerfCmt) +
-    ' сбр ' + IntToStr(FInvalAll) +
-    ' пр ' + IntToStr(FEditUpd) + '/' + IntToStr(FEditDrop) +
-    ' en ' + IntToStr(FEnChangeIn) + '/' + IntToStr(FEnChangeOut) +
-    ' гл ' + IntToStr(FEnNested) + '/' + IntToStr(FEnTop);
 end;
 
 type
@@ -26418,11 +26474,11 @@ begin
   // целиком. Этот лишний слой заливки и мелькал при протяжке рамки.
   // WS_CLIPCHILDREN рамкам тулбара ставит BufferToolbarTree (выше).
 
-  // Шестая панель статус-бара - кодировка открытого файла. Создаём кодом,
-  // чтобы не зависеть от того, сколько панелей описано в DFM.
-  while StatusBar1.Panels.Count < 7 do
-    StatusBar1.Panels.Add;
+  // Шестая панель статус-бара - кодировка открытого файла, седьмая -
+  // индикатор памяти (рисует StatusBar1DrawPanel). Обе описаны в DFM
   StatusBar1.Panels[5].Text := 'ANSI';
+  FMemLargestMB := -1;
+  MemStatusUpdate;
 
   StatusPanelsFit;
 
@@ -84514,9 +84570,8 @@ begin
         SampleBmp.Canvas.TextWidth('Поз.: 99999999/99999999') + 16;
       StatusBar1.Panels[4].Width := SampleBmp.Canvas.TextWidth('ASCII: 255 (''W'')') + 16;
       StatusBar1.Panels[5].Width := SampleBmp.Canvas.TextWidth('UTF-8 BOM') + 16;
-      StatusBar1.Panels[6].Width :=
-        SampleBmp.Canvas.TextWidth('999.9 / 999.9 / 999.9 | карта 9999.9' +
-      ' | стр 99.9 фон 99.9 кс 99.9 ток 99.9 вызовов 99999') + 16;
+      StatusBar1.Panels[6].Width := SampleBmp.Canvas.TextWidth(
+        'Память: занято 9999 МБ, свободно 9999, кусок 9999') + 16;
       LineH := SampleBmp.Canvas.TextHeight('Wg') + 8;
       if LineH > StatusBar1.Height then
         StatusBar1.Height := LineH;

@@ -294,7 +294,15 @@ object Form1: TForm1
       end
       item
         Width = 50
+      end
+      item
+        Width = 70
+      end
+      item
+        Style = psOwnerDraw
+        Width = 250
       end>
+    OnDrawPanel = StatusBar1DrawPanel
   end
   object Panel1: TPanel
     Left = 0
@@ -1257,6 +1265,11 @@ object Form1: TForm1
     Enabled = False
     OnTimer = MapTimerTick
     Left = 16
+    Top = 304
+  end
+  object FMemTimer: TTimer
+    OnTimer = MemTimerTick
+    Left = 48
     Top = 304
   end
   object FTabsPopup: TUiPopupMenu

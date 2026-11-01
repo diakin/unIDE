@@ -79,6 +79,9 @@ procedure HangWatchCallStack(ALines: TStrings);
 // Адреса процесса одной строкой: занято, свободно и самый большой
 // свободный участок, в МБ
 function AddressSpaceText: string;
+// То же числами, в мегабайтах: занято, свободно, самый большой свободный
+// участок (для индикатора памяти в статус-баре)
+procedure AddressSpaceGet(var AUsedMB, AFreeMB, ALargestMB: Integer);
 
 var
   // Состояние кучи, если менеджер памяти не тот, что в System (FastMM4:
@@ -968,14 +971,11 @@ begin
     Result := TCrashFilter(OldCrashFilter)(ExceptionInfo);
 end;
 
-function AddressSpaceText: string;
+procedure AddressSpaceGet(var AUsedMB, AFreeMB, ALargestMB: Integer);
 var
   MemInfo: TMemoryBasicInformation;
   Addr: Cardinal;
   FreeTotal, Largest, UsedTotal: Int64;
-{$IFNDEF FPC}
-  HeapInfo: THeapStatus;
-{$ENDIF}
 begin
   FreeTotal := 0;
   Largest := 0;
@@ -996,9 +996,21 @@ begin
       Break;
     Addr := Cardinal(MemInfo.BaseAddress) + MemInfo.RegionSize;
   end;
+  AUsedMB := UsedTotal div (1024 * 1024);
+  AFreeMB := FreeTotal div (1024 * 1024);
+  ALargestMB := Largest div (1024 * 1024);
+end;
+
+function AddressSpaceText: string;
+var
+  UsedMB, FreeMB, LargestMB: Integer;
+{$IFNDEF FPC}
+  HeapInfo: THeapStatus;
+{$ENDIF}
+begin
+  AddressSpaceGet(UsedMB, FreeMB, LargestMB);
   Result := Format('адреса - занято %d МБ, свободно %d МБ, самый большой ' +
-    'свободный участок %d МБ', [UsedTotal div (1024 * 1024),
-    FreeTotal div (1024 * 1024), Largest div (1024 * 1024)]);{$IFNDEF FPC}
+    'свободный участок %d МБ', [UsedMB, FreeMB, LargestMB]);{$IFNDEF FPC}
   // Куча Delphi: сколько занято данными программы и сколько адресов
   // держит сама куча. Занято адресов много, а данных мало - адреса
   // раздроблены; данных много - их действительно столько
