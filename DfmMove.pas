@@ -326,7 +326,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.40';
+  DfmMoveBuild = 'b.41';
 
 constructor TMoveInfo.Create;
 begin
@@ -962,13 +962,27 @@ begin
     Result := True;
     Exit;
   end;
-  // Строка: 'abc', 'a'#13'b', 'Ctrl+Z'. Только части в кавычках и коды
-  // #13, #$0D подряд; склейка через + вне кавычек - не константа.
+  // Строка: 'abc', 'a'#13'b', 'Ctrl+Z', 'abc ' + 'def' (склейка частей
+  // в кавычках и кодов #13, #$0D через + - тоже константа; DfmLiteral
+  // сводит её в одну строку)
   if V[1] in ['''', '#'] then
   begin
     Index := 1;
     while Index <= Length(V) do
-      if V[Index] = '''' then
+      if (V[Index] = '+') or (V[Index] = ' ') or (V[Index] = #9) then
+      begin
+        // + между частями: после него - снова часть
+        if V[Index] = '+' then
+        begin
+          Tail := Index + 1;
+          while (Tail <= Length(V)) and (V[Tail] in [' ', #9]) do
+            Inc(Tail);
+          if (Tail > Length(V)) or not (V[Tail] in ['''', '#']) then
+            Exit;
+        end;
+        Inc(Index);
+      end
+      else if V[Index] = '''' then
       begin
         // до закрывающей кавычки; '' внутри - одна кавычка
         Inc(Index);
@@ -1358,9 +1372,53 @@ end;
 function DfmLiteral(const AValue: string): string;
 var
   Number: Int64;
-  ErrorAt: Integer;
+  ErrorAt, CharAt: Integer;
+  Merged: string;
+  InQuote: Boolean;
 begin
   Result := Trim(AValue);
+  // 'abc ' + 'def' -> 'abc def'; 'a' + #13 -> 'a'#13: части подряд, соседние
+  // строки в кавычках - одной строкой
+  if (Result <> '') and (Result[1] in ['''', '#']) and
+     (Pos('+', Result) > 0) then
+  begin
+    Merged := '';
+    InQuote := False;
+    CharAt := 1;
+    while CharAt <= Length(Result) do
+    begin
+      if InQuote then
+      begin
+        if Result[CharAt] = '''' then
+        begin
+          if (CharAt < Length(Result)) and (Result[CharAt + 1] = '''') then
+          begin
+            Merged := Merged + '''''';
+            Inc(CharAt, 2);
+            Continue;
+          end;
+          InQuote := False;
+          Merged := Merged + '''';
+        end
+        else
+          Merged := Merged + Result[CharAt];
+      end
+      else if Result[CharAt] = '''' then
+      begin
+        // строка сразу после строки: ' + ' между ними выпал - склеить
+        if (Merged <> '') and (Merged[Length(Merged)] = '''') then
+          Delete(Merged, Length(Merged), 1)
+        else
+          Merged := Merged + '''';
+        InQuote := True;
+      end
+      else if not (Result[CharAt] in ['+', ' ', #9]) then
+        Merged := Merged + Result[CharAt];
+      Inc(CharAt);
+    end;
+    Result := Merged;
+    Exit;
+  end;
   if (Result <> '') and (Result[1] = '$') then
   begin
     Val(Result, Number, ErrorAt);

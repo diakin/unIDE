@@ -239,15 +239,39 @@ end;
 // Внутренняя часть контрола: без имени, владелец - сам родитель, а родитель
 // не контейнер (полосы прокрутки TEdView, кнопки составных контролов). В
 // .dfm её нет и быть не должно - её создаёт конструктор родителя.
+//
+// Так же - часть составного компонента не из VCL: без имени, владелец -
+// безымянный компонент своего модуля (палитра TDsgPalette: её вкладки,
+// прокрутка и кнопки строятся по списку компонентов, а не кодом формы).
 function IsInnerPart(AChild: TControl; AParent: TWinControl;
                      ARoot: TComponent): Boolean;
+const
+  VclUnits: array[0..9] of string = ('Controls', 'StdCtrls', 'ExtCtrls',
+    'ComCtrls', 'Forms', 'Menus', 'Buttons', 'Grids', 'CheckLst', 'Tabs');
+var
+  OwnerUnit: string;
+  UnitIdx: Integer;
 begin
-  Result := (AParent <> ARoot) and (AChild.Name = '') and
-            (AChild.Owner = AParent) and
-            not (AParent is TCustomPanel) and
-            not (AParent is TCustomGroupBox) and
-            not (AParent is TScrollingWinControl) and
-            not (AParent is TTabSheet);
+  Result := False;
+  if (AParent = ARoot) or (AChild.Name <> '') or (AChild.Owner = nil) or
+     (AChild.Owner = ARoot) then
+    Exit;
+  if (AChild.Owner = AParent) and
+     not (AParent is TCustomPanel) and
+     not (AParent is TCustomGroupBox) and
+     not (AParent is TScrollingWinControl) and
+     not (AParent is TTabSheet) then
+  begin
+    Result := True;
+    Exit;
+  end;
+  if AChild.Owner.Name <> '' then
+    Exit;
+  OwnerUnit := string(GetTypeData(AChild.Owner.ClassInfo)^.UnitName);
+  for UnitIdx := Low(VclUnits) to High(VclUnits) do
+    if CompareText(OwnerUnit, VclUnits[UnitIdx]) = 0 then
+      Exit;
+  Result := True;
 end;
 
 // Объект со всем, что под ним. Вложенность - как в .dfm: контролы по
