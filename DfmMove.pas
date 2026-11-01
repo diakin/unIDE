@@ -166,6 +166,9 @@ type
     Items: TList;             // TMoveLine - строки, которые уходят в .dfm
     NestParent: string;       // родитель в .dfm по коду; '' - форма (Self)
     NestLine: Integer;        // строка вложенности (порядок среди соседей)
+    // Вставка рядом: S.Parent.Insert(S.MenuIndex + 1, X) - в .dfm сразу
+    // после объекта S; '' - последним ребёнком родителя
+    InsertAfter: string;
     Selected: Boolean;        // отмечен в окне для переноса
     // Вызов помощника без переменной (MakeItem(Self, P, ...);): узел
     // создан разбором и принадлежит ему, имя - новое, поле добавится при
@@ -318,7 +321,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.35';
+  DfmMoveBuild = 'b.36';
 
 constructor TMoveInfo.Create;
 begin
@@ -1301,6 +1304,41 @@ begin
   Result := IsValidIdent(AChild);
 end;
 
+// Строка S.Parent.Insert(S.MenuIndex + 1, X); - пункт X встаёт сразу после
+// пункта S у его родителя. ASibling = S, AChild = X (как в строке).
+// ALine - без комментария и пробелов по краям.
+function ParseSiblingInsert(const ALine: string;
+  var ASibling, AChild: string): Boolean;
+var
+  Key, Head, Rest: string;
+  At, Comma, Close: Integer;
+begin
+  Result := False;
+  ASibling := '';
+  AChild := '';
+  Key := CodeKey(ALine);
+  At := Pos('.PARENT.INSERT(', Key);
+  if At <= 1 then
+    Exit;
+  Head := Copy(Key, 1, At - 1);
+  if not IsValidIdent(Head) then
+    Exit;
+  Rest := Copy(Key, At + Length('.PARENT.INSERT('), MaxInt);
+  if Copy(Rest, 1, Length(Head) + 13) <> Head + '.MENUINDEX+1,' then
+    Exit;
+  Rest := Copy(Rest, Length(Head) + 14, MaxInt);
+  if Copy(Rest, Length(Rest) - 1, 2) <> ');' then
+    Exit;
+  if not IsValidIdent(Copy(Rest, 1, Length(Rest) - 2)) then
+    Exit;
+  // Имена - как написаны в строке
+  ASibling := Trim(Copy(ALine, 1, Pos('.', ALine) - 1));
+  Comma := LastDelimiter(',', ALine);
+  Close := LastDelimiter(')', ALine);
+  AChild := Trim(Copy(ALine, Comma + 1, Close - Comma - 1));
+  Result := (CompareText(ASibling, Head) = 0) and IsValidIdent(AChild);
+end;
+
 // Строка P.Remove(X); или P.Items.Remove(X); - AParent = P, AChild = X
 function ParseRemoveLine(const ALine: string; var AParent, AChild: string): Boolean;
 var
@@ -1403,6 +1441,7 @@ begin
   Info.ChildAdds.Clear;
   Info.NestParent := '';
   Info.NestLine := -1;
+  Info.InsertAfter := '';
 end;
 
 function LineRef(ALines: TStrings; AIndex: Integer): string;
@@ -4586,8 +4625,9 @@ var
   NodeClass: TPersistentClass;
   Line, Code, Upper, Lhs, Owner, Ctor, Rest, PropName, Value, Target,
     AddParent, AddChild, Guard, SwitchProp, SwitchOn, RemoveParent,
-    RemoveChild, NameUpper: string;
-  ScanIndex: Integer;
+    RemoveChild, NameUpper, Sibling: string;
+  ScanIndex, SiblingAt: Integer;
+  SiblingNode: TDfmNode;
   ExitLines, SubLines: TList;
   CreatePos, Open, Close, Index, Head, RoutineEnd, Calls, Assigns,
     Creates, Assign, OwnerAt, Count, KeyNumber, LazyCond, LazyOpen,
@@ -5760,6 +5800,50 @@ begin
           Info.ChildAdds.AddObject(AddChild, TObject(Index));
           Continue;
         end;
+      end;
+
+      // Вставка рядом с пунктом: S.Parent.Insert(S.MenuIndex + 1, X) -
+      // родитель X - родитель S, в .dfm X встаёт сразу после S
+      if ParseSiblingInsert(Code, Sibling, AddChild) and
+         (CompareText(AddChild, Node.VarName) = 0) then
+      begin
+        if Deep then
+        begin
+          Info.Reason := 'вставляется рядом с ' + Sibling + ' внутри ' +
+                         'блока (if, try...), строка ' + IntToStr(Index + 1) +
+                         ' - проверить вручную';
+          ClearMoveData(Info);
+          Exit;
+        end;
+        AddParent := '';
+        SiblingAt := ANames.IndexOf(Sibling);
+        if (SiblingAt >= 0) and (ANames.Objects[SiblingAt] <> nil) then
+        begin
+          SiblingNode := TDfmNode(ANames.Objects[SiblingAt]).Parent;
+          if SiblingNode <> nil then
+          begin
+            if SiblingNode.Name <> '' then
+              AddParent := SiblingNode.Name
+            else
+              AddParent := SiblingNode.VarName;
+          end;
+        end;
+        if (AddParent = '') or not InTree(AddParent) then
+        begin
+          Info.Reason := 'вставляется рядом с ' + Sibling + ', строка ' +
+                         IntToStr(Index + 1) + ' - его родителя нет в ' +
+                         'дереве формы';
+          ClearMoveData(Info);
+          Exit;
+        end;
+        Info.MoveLines.Add(LineRef(ALines, Index) + '   [вложенность - ' +
+                           'пунктом в .dfm после ' + Sibling + ']');
+        AddMoveItem(Info, Index, mlNesting, '', AddParent);
+        Info.NestParent := AddParent;
+        Info.NestLine := Index;
+        Info.InsertAfter := Sibling;
+        HasNesting := True;
+        Continue;
       end;
 
       if HasWord(Code, 'with') and HasWord(Code, Node.VarName) then
@@ -9844,7 +9928,18 @@ begin
       ObjText.Clear;
       BuildObject(Info, 0);
       Before := Dfm;
-      Dfm := DfmInsertObject(Dfm, ParentName, ObjText.Text);
+      // Вставка рядом с пунктом (S.Parent.Insert(S.MenuIndex + 1, X)):
+      // сразу после S. S нет в .dfm (не отмечен) - последним ребёнком.
+      if Info.InsertAfter <> '' then
+      begin
+        Dfm := DfmInsertObjectAfter(Dfm, Info.InsertAfter, ObjText.Text);
+        if Dfm = Before then
+          AReport.Add('Внимание: ' + Info.Title + ' - ' + Info.InsertAfter +
+                      ' нет в .dfm, пункт встал последним в ' + ParentName +
+                      ': проверить порядок.');
+      end;
+      if Dfm = Before then
+        Dfm := DfmInsertObject(Dfm, ParentName, ObjText.Text);
       if Dfm = Before then
       begin
         AReport.Add('Ошибка: в .dfm не найден объект ' + ParentName +

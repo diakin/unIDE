@@ -524,6 +524,10 @@ function DfmDeleteObject(const AText, AName: string): string;
 // Нет родителя - AText.
 function DfmInsertObject(const AText, AParent, AObjText: string): string;
 
+// Вставка объекта сразу после объекта ASibling (тот же родитель, тот же
+// отступ). Нет ASibling - AText.
+function DfmInsertObjectAfter(const AText, ASibling, AObjText: string): string;
+
 // Класс корня формы из первой строки .dfm: TForm0. '' - не .dfm.
 function DfmRootClass(const AText: string): string;
 
@@ -944,6 +948,35 @@ begin
     for I := Obj.Count - 1 downto 0 do
       if Obj[I] <> '' then
         SL.Insert(Last, Pad + Obj[I]);
+    Result := TextLike(SL, AText);
+  finally
+    Obj.Free;
+    SL.Free;
+  end;
+end;
+
+function DfmInsertObjectAfter(const AText, ASibling, AObjText: string): string;
+var
+  SL, Obj: TStringList;
+  I, First, Last: Integer;
+  Pad: string;
+begin
+  Result := AText;
+  SL := TStringList.Create;
+  Obj := TStringList.Create;
+  try
+    SL.Text := AText;
+    First := FindObjectHeader(SL, ASibling);
+    if First <= 0 then
+      Exit;
+    Last := FindObjectEnd(SL, First);
+    if Last < 0 then
+      Exit;
+    Pad := StringOfChar(' ', LeadSpaces(SL[First]));
+    Obj.Text := AObjText;
+    for I := Obj.Count - 1 downto 0 do
+      if Obj[I] <> '' then
+        SL.Insert(Last + 1, Pad + Obj[I]);
     Result := TextLike(SL, AText);
   finally
     Obj.Free;
