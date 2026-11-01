@@ -235,6 +235,15 @@ type
     destructor Destroy; override;
   end;
 
+type
+  // Ход разбора: этап и сколько пройдено из ATotal (0 - без доли)
+  TDfmMoveProgress = procedure(const AStage: string;
+    ADone, ATotal: Integer) of object;
+
+var
+  // Задаёт IDE на время DfmMoveAnalyze; nil - ход не сообщается
+  DfmMoveProgress: TDfmMoveProgress = nil;
+
 // Разбор всех узлов дерева объектов (в порядке дерева). APasText - текст
 // модуля формы, AFormClass - класс формы (TForm1). AList получает
 // TMoveInfo - освободить вызывающему.
@@ -7619,6 +7628,13 @@ var
     end;
   end;
 
+  // Ход разбора - в панель хода IDE (DfmMoveProgress)
+  procedure ReportStep(const AStage: string; ADone, ATotal: Integer);
+  begin
+    if Assigned(DfmMoveProgress) then
+      DfmMoveProgress(AStage, ADone, ATotal);
+  end;
+
 begin
   Lines := TStringList.Create;
   Keys := TStringList.Create;
@@ -7632,9 +7648,11 @@ begin
   InitHandlers := TStringList.Create;
   try
     Lines.Text := APasText;
+    ReportStep('разбор модуля', 0, 0);
     for Index := 0 to Lines.Count - 1 do
       Keys.Add(CodeKey(Lines[Index]));
     Scan.Scan(Lines);
+    ReportStep('процедуры-создатели', 0, 0);
     FindClassDecl(Lines, AFormClass, ClassFirst, ClassLast);
     CollectHelpers(Lines, Helpers);
     CollectLocalCreators(Lines, AFormClass, Helpers);
@@ -7654,6 +7672,7 @@ begin
 
     for Index := 0 to ATree.Items.Count - 1 do
     begin
+      ReportStep('компоненты', Index, ATree.Items.Count);
       if ATree.Items[Index].Data = nil then
         Continue;
       Node := TDfmNode(ATree.Items[Index].Data);
@@ -7676,6 +7695,7 @@ begin
     // Процедуры-создатели: что из них уходит - по всем вызовам вместе
     for Index := 0 to Helpers.Count - 1 do
     begin
+      ReportStep('процедуры-создатели', Index, Helpers.Count);
       Helper := THelperInfo(Helpers[Index]);
       if (Helper.OutIdx >= 0) and Helper.Simple then
         ResolveVarHelper(Helper);
@@ -7686,6 +7706,7 @@ begin
     // остальные не показываются, как и раньше.
     for Index := 0 to Lines.Count - 1 do
     begin
+      ReportStep('вызовы без переменной', Index, Lines.Count);
       if not ParseHelperCall(Lines, Index, Helpers, Helper, CallLhs, CallArgs,
                              CallLast) then
         Continue;
@@ -7760,6 +7781,7 @@ begin
     // все вместе, с ними уходит и тело
     for Index := 0 to Helpers.Count - 1 do
     begin
+      ReportStep('локальные создатели', Index, Helpers.Count);
       Helper := THelperInfo(Helpers[Index]);
       if Helper.LocalCreator and Helper.Simple then
         ResolveLocalCreator(Helper);
@@ -7774,6 +7796,7 @@ begin
     // проверяют порядок.
     for Index := 0 to Lines.Count - 1 do
     begin
+      ReportStep('разделители меню', Index, Lines.Count);
       if not ParseAddLine(Trim(StripComment(Lines[Index])), ParentName,
                           CallLhs) or
          (CompareText(CallLhs, 'NewLine') <> 0) then
@@ -7853,6 +7876,7 @@ begin
     // Перестановка пунктов меню из .dfm (P.Remove(X) ... P.Add(X)): всё,
     // что процедура создаёт для P, - одна группа; итоговый порядок пишется
     // в .dfm при переносе
+    ReportStep('порядок пунктов меню', 0, 0);
     ReorderDone := TStringList.Create;
     try
       for Index := 0 to Lines.Count - 1 do
@@ -7908,6 +7932,7 @@ begin
     // Родитель не переносится - и ребёнку некуда (до устойчивого состояния)
     for Pass := 1 to 10 do
     begin
+      ReportStep('родители', Pass, 10);
       Changed := False;
       for Index := 0 to AList.Count - 1 do
       begin
@@ -7941,6 +7966,7 @@ begin
     // пунктов у P изменится. Строка остаётся у родителя с пометкой.
     for Index := 0 to AList.Count - 1 do
     begin
+      ReportStep('пункты в коде', Index, AList.Count);
       Info := TMoveInfo(AList[Index]);
       if not (Info.Kind in [mkWhole, mkPartial]) then
         Continue;
@@ -7957,6 +7983,7 @@ begin
     // компонентов «нет» - для подробностей «что ушло бы с родителем».
     for Index := 0 to AList.Count - 1 do
     begin
+      ReportStep('ссылки на компоненты', Index, AList.Count);
       Info := TMoveInfo(AList[Index]);
       for Other := 0 to Info.RefLines.Count - 1 do
       begin
@@ -7983,6 +8010,7 @@ begin
     // состояния.
     for Pass := 1 to 20 do
     begin
+      ReportStep('создание по требованию', Pass, 20);
       Changed := False;
       // Перестановка меню: пункты группы - только все вместе
       for Index := 0 to AList.Count - 1 do
@@ -8085,6 +8113,7 @@ begin
     // Итог: строки по порядку в модуле, вердикт по оставшимся строкам
     for Index := 0 to AList.Count - 1 do
     begin
+      ReportStep('итог', Index, AList.Count);
       Info := TMoveInfo(AList[Index]);
       Info.MoveLines.CustomSort(CompareLineRefs);
       Info.KeepLines.CustomSort(CompareLineRefs);
@@ -8119,6 +8148,7 @@ begin
                         InitHandlers, Names);
     for Index := 0 to AList.Count - 1 do
     begin
+      ReportStep('проверки на nil', Index, AList.Count);
       Info := TMoveInfo(AList[Index]);
       if not (Info.Kind in [mkWhole, mkPartial]) then
         Continue;
@@ -8157,6 +8187,7 @@ begin
     // Имя меняется у копии узла: дерево объектов его не видит.
     for Index := 0 to AList.Count - 1 do
     begin
+      ReportStep('имена', Index, AList.Count);
       Info := TMoveInfo(AList[Index]);
       if not Info.ReusedLocal then
         Continue;

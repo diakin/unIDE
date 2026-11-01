@@ -1365,6 +1365,11 @@ type
     // Data; сами объекты живут в FDfmNodes и освобождаются при каждом
     // перестроении.
     FObjMoveDfm: string;       // форма, для которой открыт разбор переноса
+    // Ход разбора переноса (ObjMoveProgress): текущий этап, его начало и
+    // время по этапам "этап=мс"
+    FObjMoveStage: string;
+    FObjMoveStageStart: Cardinal;
+    FObjMoveTimes: TStringList;
     // Визуальный конструктор: какая форма в нём и откат его правок
     FDesigner: TFormDesigner;
     FDsgDfm: string;
@@ -3064,6 +3069,8 @@ type
     procedure ObjMoveSetTexts(const APasFile, APasText, ADfmFile,
                               ADfmText: string);
     procedure ObjMoveDone;
+    procedure ObjMoveProgress(const AStage: string; ADone, ATotal: Integer);
+    procedure ObjMoveStageDone(ATick: Cardinal);
     procedure WMObjMoveAgain(var Msg: TMessage); message WM_USER + 318;
     procedure DsgMenuEdit;
     procedure DsgMenuWizardShow(ATemplates: TList; const ASelect: string;
@@ -42873,10 +42880,12 @@ end;
 // отмеченные компоненты переносятся и перенос откатывается.
 procedure TForm1.ObjMoveClick(Sender: TObject);
 var
-  PasFile, PasText, DfmText, FormClass: string;
+  PasFile, PasText, DfmText, FormClass, StageText: string;
   List: TList;
-  Index: Integer;
+  Index, MoveCount: Integer;
   Host: TDfmMoveHost;
+  Times: TStringList;
+  AnalyzeStart, AnalyzeMs, WindowStart: Cardinal;
 begin
   if (FObjTree = nil) or (FObjDfmFile = '') or (FObjTree.Items.Count = 0) then
   begin
@@ -42893,23 +42902,98 @@ begin
   DfmText := DsgFileText(FObjDfmFile);
   PasText := DsgFileText(PasFile);
   FormClass := DfmRootClass(DfmText);
-  List := TList.Create;
+
+  // Разбор большой формы идёт секунды: этап и доля - в панели хода над
+  // редактором, время по этапам - строкой в Compilation log
+  Times := TStringList.Create;
+  FObjMoveTimes := Times;
+  FObjMoveStage := '';
+  BusyBegin('Перенести в .dfm: разбор');
+  DfmMoveProgress := ObjMoveProgress;
   try
-    DfmMoveAnalyze(FObjTree, PasText, FormClass, List);
-  except
-    for Index := 0 to List.Count - 1 do
-      TObject(List[Index]).Free;
-    List.Free;
-    raise;
+    AnalyzeStart := GetTickCount;
+    List := TList.Create;
+    try
+      DfmMoveAnalyze(FObjTree, PasText, FormClass, List);
+    except
+      for Index := 0 to List.Count - 1 do
+        TObject(List[Index]).Free;
+      List.Free;
+      raise;
+    end;
+    ObjMoveStageDone(GetTickCount);
+    AnalyzeMs := GetTickCount - AnalyzeStart;
+    StageText := '';
+    for Index := 0 to Times.Count - 1 do
+      if StrToIntDef(Times.ValueFromIndex[Index], 0) >= 50 then
+      begin
+        if StageText <> '' then
+          StageText := StageText + ', ';
+        StageText := StageText + Times.Names[Index] + ' ' +
+                     Times.ValueFromIndex[Index];
+      end;
+    if StageText <> '' then
+      StageText := ' (' + StageText + ')';
+
+    // Окно разбора забирает список себе и освободит при закрытии
+    Host.GoLine := ObjMoveGoLine;
+    Host.GetText := ObjMoveGetText;
+    Host.SetTexts := ObjMoveSetTexts;
+    Host.Done := ObjMoveDone;
+    FObjMoveDfm := FObjDfmFile;
+    MoveCount := List.Count;
+    BusyStage('Перенести в .dfm: окно разбора');
+    WindowStart := GetTickCount;
+    DfmMoveShowReport(List, PasFile, FObjDfmFile, FormClass, PasText, DfmText,
+                      Host);
+    LogComp(Format('Перенести в .dfm: компонентов %d, разбор %d мс%s, ' +
+                   'окно разбора %d мс',
+                   [MoveCount, AnalyzeMs, StageText,
+                    GetTickCount - WindowStart]));
+  finally
+    DfmMoveProgress := nil;
+    FObjMoveTimes := nil;
+    Times.Free;
+    BusyEnd('', True);
   end;
-  // Окно разбора забирает список себе и освободит при закрытии
-  Host.GoLine := ObjMoveGoLine;
-  Host.GetText := ObjMoveGetText;
-  Host.SetTexts := ObjMoveSetTexts;
-  Host.Done := ObjMoveDone;
-  FObjMoveDfm := FObjDfmFile;
-  DfmMoveShowReport(List, PasFile, FObjDfmFile, FormClass, PasText, DfmText,
-                    Host);
+end;
+
+// Ход разбора «Перенести в .dfm» (DfmMoveProgress) - этап и доля в панель
+// хода. Сообщения окна в это время не обрабатываются; PeekMessage без
+// выборки сообщает Windows, что программа жива, - окно не становится
+// «Не отвечает». Панель перерисовывается не чаще раза в 150 мс (BusyTick).
+procedure TForm1.ObjMoveProgress(const AStage: string; ADone, ATotal: Integer);
+var
+  WinMsg: TMsg;
+  TickNow: Cardinal;
+begin
+  TickNow := GetTickCount;
+  if AStage <> FObjMoveStage then
+  begin
+    ObjMoveStageDone(TickNow);
+    FObjMoveStage := AStage;
+    FObjMoveStageStart := TickNow;
+  end;
+  if ATotal > 0 then
+    FBusyStage := 'Перенести в .dfm: ' + AStage + ' ' +
+                  IntToStr(Int64(ADone) * 100 div ATotal) + '%'
+  else
+    FBusyStage := 'Перенести в .dfm: ' + AStage;
+  BusyTick;
+  PeekMessage(WinMsg, 0, 0, 0, PM_NOREMOVE);
+end;
+
+// Время закончившегося этапа - к его сумме в FObjMoveTimes
+procedure TForm1.ObjMoveStageDone(ATick: Cardinal);
+var
+  Spent: Integer;
+begin
+  if (FObjMoveTimes = nil) or (FObjMoveStage = '') then
+    Exit;
+  Spent := StrToIntDef(FObjMoveTimes.Values[FObjMoveStage], 0) +
+           Integer(ATick - FObjMoveStageStart);
+  FObjMoveTimes.Values[FObjMoveStage] := IntToStr(Spent);
+  FObjMoveStage := '';
 end;
 
 // Окно разбора: встать на строку модуля формы
