@@ -38257,7 +38257,7 @@ end;
 function TForm1.FindCreateLine(const AText: string; ANode: TObject): Integer;
 var
   DfmNode: TDfmNode;
-  Lines, Cands, CapHit, CapLike, LitHit: TStringList;
+  Lines, Cands, CapHit, CapLike, LitHit, CreHit: TStringList;
   I, J, Idx3, CharPos: Integer;
   Cap, Lit, UpStr, LineStr, Lhs, Cls, Str, ParentNm: string;
 
@@ -38463,6 +38463,56 @@ var
     end;
   end;
 
+  // Переменная ALhs - имя другого компонента рядом с узлом (брат в дереве
+  // с этим именем или переменной): создание не того компонента
+  function IsSiblingName(const ALhs: string): Boolean;
+  var
+    ChildIdx: Integer;
+    Sibling: TDfmNode;
+  begin
+    Result := False;
+    if (DfmNode.Parent = nil) or (DfmNode.Parent.Children = nil) then
+      Exit;
+    for ChildIdx := 0 to DfmNode.Parent.Children.Count - 1 do
+    begin
+      Sibling := TDfmNode(DfmNode.Parent.Children[ChildIdx]);
+      if Sibling = DfmNode then
+        Continue;
+      if ((Sibling.Name <> '') and (CompareText(Sibling.Name, ALhs) = 0)) or
+         ((Sibling.VarName <> '') and
+          (CompareText(Sibling.VarName, ALhs) = 0)) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
+
+  // Строка ALine с литералом подписи - про переменную X ("X.Items.Add('64')",
+  // "X.Text := ..."): ближайшее выше создание X := TКласс узла.Create, не
+  // дальше 40 строк. -1 - строка не про такую переменную
+  function CreateAboveFor(ALine: Integer): Integer;
+  var
+    LineIdx: Integer;
+    Txt, CreCls, CreLhs: string;
+  begin
+    Result := -1;
+    Txt := AnsiUpperCase(Trim(Lines[ALine]));
+    for LineIdx := ALine - 1 downto ALine - 40 do
+    begin
+      if LineIdx < 0 then
+        Break;
+      if not ParseCreate(Lines[LineIdx], CreCls, CreLhs) or (CreLhs = '') then
+        Continue;
+      if Pos(AnsiUpperCase(CreLhs) + '.', Txt) <> 1 then
+        Continue;
+      if (CompareText(CreCls, DfmNode.ClassNm) = 0) and
+         not IsSiblingName(CreLhs) then
+        Result := LineIdx;
+      Exit;
+    end;
+  end;
+
   function Choose(AList: TStringList): Integer;
   var
     Sel: string;
@@ -38591,6 +38641,26 @@ begin
           Continue;
         if Pos(Lit, LineStr) > 0 then
           AddCand(LitHit, I);
+      end;
+      // Строки с литералом, которые относятся к созданной выше переменной
+      // того же класса (cmbLazBits.Items.Add('64') под cmbLazBits :=
+      // TUiComboBox.Create): вместо них - строки создания. Переменные,
+      // которые уже есть рядом в дереве под своим именем, - не наш узел
+      if LitHit.Count > 1 then
+      begin
+        CreHit := TStringList.Create;
+        try
+          for J := 0 to LitHit.Count - 1 do
+          begin
+            Idx3 := CreateAboveFor(Integer(LitHit.Objects[J]));
+            if (Idx3 >= 0) and (CreHit.IndexOfObject(TObject(Idx3)) < 0) then
+              AddCand(CreHit, Idx3);
+          end;
+          if CreHit.Count > 0 then
+            LitHit.Assign(CreHit);
+        finally
+          CreHit.Free;
+        end;
       end;
       Result := Choose(LitHit);
       if (Result >= 0) or (LitHit.Count > 1) then
