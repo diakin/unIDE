@@ -325,7 +325,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.29';
+  DfmMoveBuild = 'b.30';
 
 constructor TMoveInfo.Create;
 begin
@@ -10915,7 +10915,8 @@ var
   Column: TListColumn;
   Item: TListItem;
   Info: TMoveInfo;
-  Index: Integer;
+  Index, RestIndex: Integer;
+  KeepRow: Boolean;
   BtnClose, BtnSave, BtnSelectAll: TUiButton;
   Step: TMoveUndoStep;
 begin
@@ -11045,6 +11046,26 @@ begin
     for Index := 0 to AList.Count - 1 do
     begin
       Info := TMoveInfo(AList[Index]);
+      // Уже в .dfm - в списке не показывается (их число - в заголовке).
+      // Остаётся только родителем строк, которые не в .dfm, - чтобы было
+      // видно, куда они вложены.
+      if Info.Kind = mkInDfm then
+      begin
+        KeepRow := False;
+        RestIndex := Index + 1;
+        while (RestIndex < AList.Count) and
+              (TMoveInfo(AList[RestIndex]).Depth > Info.Depth) do
+        begin
+          if TMoveInfo(AList[RestIndex]).Kind <> mkInDfm then
+          begin
+            KeepRow := True;
+            Break;
+          end;
+          Inc(RestIndex);
+        end;
+        if not KeepRow then
+          Continue;
+      end;
       Item := Form.View.Items.Add;
       Item.Caption := StringOfChar(' ', Info.Depth * 4) + Info.Title;
       Item.SubItems.Add(KindNames[Info.Kind]);
