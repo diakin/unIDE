@@ -235,7 +235,7 @@ begin
       else
         Cv.Font.Color := UiThemeColorFor(CustomTabControl, 'OffText');
       Cv.Brush.Style := bsClear;
-      DrawText(Cv.Handle, PChar(Str), Length(Str), RectVal2,
+      UiDrawText(Cv.Handle, PChar(Str), Length(Str), RectVal2,
                DT_SINGLELINE or DT_CENTER or DT_VCENTER);
       Cv.Brush.Style := bsSolid;
     end;
@@ -491,7 +491,7 @@ begin
       RectVal := ClientRect;
       InflateRect(RectVal, -4, 0);
       Str := SimpleText;
-      DrawText(Cv.Handle, PChar(Str), Length(Str), RectVal,
+      UiDrawText(Cv.Handle, PChar(Str), Length(Str), RectVal,
                DT_SINGLELINE or DT_VCENTER or DT_LEFT or DT_END_ELLIPSIS);
       Exit;
     end;
@@ -525,7 +525,7 @@ begin
           Fl := Fl or DT_LEFT;
         end;
         InflateRect(RectVal, -3, 0);
-        DrawText(Cv.Handle, PChar(Str), Length(Str), RectVal, Fl);
+        UiDrawText(Cv.Handle, PChar(Str), Length(Str), RectVal, Fl);
         InflateRect(RectVal, 3, 0);
       end;
       // Черта справа от панели, кроме последней
@@ -820,7 +820,7 @@ begin
       Cv.Font.Color := UiThemeColorFor(Self, 'Button.Text');
       Cv.Brush.Style := bsClear;
       InflateRect(RectVal, -6, 0);
-      DrawText(Cv.Handle, PChar(Str), Length(Str), RectVal, Fl);
+      UiDrawText(Cv.Handle, PChar(Str), Length(Str), RectVal, Fl);
     end;
   finally
     Cv.Handle := 0;

@@ -180,6 +180,14 @@ function UiThemeNativeFor(AControl: TControl): Boolean;
 // Флаги DrawText с учётом направления текста контрола (в Delphi -
 // TControl.DrawTextBiDiModeFlags, в LCL такого метода нет)
 function UiDrawTextFlags(AControl: TControl; AFlags: Longint): Longint;
+// Вывод и размер текста строки string. В Delphi строки в CP1251 -
+// DrawText / GetTextExtentPoint32 как есть; в Lazarus строки в UTF-8 -
+// перевод в UTF-16 и DrawTextW / GetTextExtentPoint32W. ACount < 0 -
+// до #0
+function UiDrawText(ADC: HDC; AText: PChar; ACount: Integer;
+  var ARect: TRect; AFlags: Cardinal): Integer;
+function UiTextExtent(ADC: HDC; AText: PChar; ACount: Integer;
+  var ASize: TSize): Boolean;
 
 implementation
 
@@ -471,6 +479,51 @@ begin
   else
     Result := UiThemeColor(ARole);
 end;
+
+{$IFDEF FPC}
+function UiWideOf(AText: PChar; ACount: Integer): WideString;
+var
+  Src: string;
+begin
+  if ACount < 0 then
+    Src := AText
+  else
+    SetString(Src, AText, ACount);
+  Result := UTF8Decode(Src);
+end;
+
+function UiDrawText(ADC: HDC; AText: PChar; ACount: Integer;
+  var ARect: TRect; AFlags: Cardinal): Integer;
+var
+  Wide: WideString;
+begin
+  Wide := UiWideOf(AText, ACount);
+  Result := DrawTextW(ADC, PWideChar(Wide), Length(Wide), ARect, AFlags);
+end;
+
+function UiTextExtent(ADC: HDC; AText: PChar; ACount: Integer;
+  var ASize: TSize): Boolean;
+var
+  Wide: WideString;
+begin
+  Wide := UiWideOf(AText, ACount);
+  Result := GetTextExtentPoint32W(ADC, PWideChar(Wide), Length(Wide), ASize);
+end;
+{$ELSE}
+function UiDrawText(ADC: HDC; AText: PChar; ACount: Integer;
+  var ARect: TRect; AFlags: Cardinal): Integer;
+begin
+  Result := DrawText(ADC, AText, ACount, ARect, AFlags);
+end;
+
+function UiTextExtent(ADC: HDC; AText: PChar; ACount: Integer;
+  var ASize: TSize): Boolean;
+begin
+  if ACount < 0 then
+    ACount := StrLen(AText);
+  Result := GetTextExtentPoint32(ADC, AText, ACount, ASize);
+end;
+{$ENDIF}
 
 function UiDrawTextFlags(AControl: TControl; AFlags: Longint): Longint;
 begin

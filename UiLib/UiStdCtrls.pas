@@ -542,14 +542,14 @@ begin
   if (St and UISF_HIDEACCEL_) <> 0 then
     Fl := Fl or DT_HIDEPREFIX_;
   Canvas.Brush.Style := bsClear;
-  DrawText(Canvas.Handle, PChar(Str), Length(Str), TR, Fl);
+  UiDrawText(Canvas.Handle, PChar(Str), Length(Str), TR, Fl);
   Canvas.Brush.Style := bsSolid;
 
   // Рамка фокуса - вокруг подписи
   if Focused and (Str <> '') and ((St and UISF_HIDEFOCUS_) = 0) then
   begin
     FR := TR;
-    DrawText(Canvas.Handle, PChar(Str), Length(Str), FR, Fl or DT_CALCRECT);
+    UiDrawText(Canvas.Handle, PChar(Str), Length(Str), FR, Fl or DT_CALCRECT);
     FR.Top := TR.Top + (TR.Bottom - TR.Top - (FR.Bottom - FR.Top)) div 2;
     FR.Bottom := FR.Top + Canvas.TextHeight('0');
     InflateRect(FR, 1, 1);
@@ -1002,7 +1002,7 @@ begin
     else
       Fl := Fl or DT_CENTER;
     end;
-    DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, UiDrawTextFlags(Self, Fl));
+    UiDrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, UiDrawTextFlags(Self, Fl));
     Canvas.Brush.Style := bsSolid;
   end;
 end;
@@ -1074,7 +1074,7 @@ begin
   Flags := UiDrawTextFlags(Self, Flags);
   Canvas.Font := Font;
   Canvas.Font.Color := UiThemeColorFor(Self, 'OffText');
-  DrawText(Canvas.Handle, PChar(Str), Length(Str), Rect, Flags);
+  UiDrawText(Canvas.Handle, PChar(Str), Length(Str), Rect, Flags);
 end;
 
 initialization
