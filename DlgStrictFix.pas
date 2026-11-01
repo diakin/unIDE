@@ -84,6 +84,9 @@ function  StrictDropSkipped(AMessages, ASkipped: TStrings): Integer;
 
 implementation
 
+uses
+  UiTheme;   // UiDrawText - текст в Delphi и Lazarus
+
 type
   TStrictFixForm = class(TForm)
   private
@@ -887,12 +890,12 @@ begin
   PaintCanvas.Brush.Style := bsClear;
   DrawArea := Rect(16, 0, pbNoOptions.Width - 16, pbNoOptions.Height);
   // По центру, с переносом: размер текста узнаём, потом сдвигаем
-  DrawText(PaintCanvas.Handle, PChar(FNoOptionsText), -1, DrawArea,
+  UiDrawText(PaintCanvas.Handle, PChar(FNoOptionsText), -1, DrawArea,
            DT_CENTER or DT_WORDBREAK or DT_CALCRECT);
   OffsetRect(DrawArea, (pbNoOptions.Width - 32 -
              (DrawArea.Right - DrawArea.Left)) div 2,
              (pbNoOptions.Height - (DrawArea.Bottom - DrawArea.Top)) div 2);
-  DrawText(PaintCanvas.Handle, PChar(FNoOptionsText), -1, DrawArea,
+  UiDrawText(PaintCanvas.Handle, PChar(FNoOptionsText), -1, DrawArea,
            DT_CENTER or DT_WORDBREAK);
 end;
 

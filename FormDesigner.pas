@@ -656,6 +656,7 @@ var
 
   uses
     TypInfo, Buttons, Menus, UiScroll,
+    UiTheme,  // UiDrawText, UiTextExtent - текст в Delphi и Lazarus
     Math;   // Min, Max - рамка выделения
 
 const
@@ -2405,7 +2406,7 @@ begin
   Canvas.Font.Height := -11;
   Canvas.Font.Color := clWindowText;
   SetBkMode(Canvas.Handle, TRANSPARENT);
-  DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal,
+  UiDrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal,
            DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
 end;
 
@@ -2426,7 +2427,7 @@ begin
   try
     FCaption.Canvas.Font.Height := -11;
     OldFont := SelectObject(ScreenDC, FCaption.Canvas.Font.Handle);
-    if GetTextExtentPoint32(ScreenDC, PChar(FCaption.Caption),
+    if UiTextExtent(ScreenDC, PChar(FCaption.Caption),
                             Length(FCaption.Caption), TextSize) then
       TextWidth := TextSize.cx + 4;
     SelectObject(ScreenDC, OldFont);
@@ -2461,7 +2462,7 @@ begin
     Delete(Str, 1, 1);
   Canvas.Font.Height := -9;
   InflateRect(RectVal, -1, -1);
-  DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal,
+  UiDrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal,
            DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_END_ELLIPSIS);
 end;
 

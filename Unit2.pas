@@ -487,6 +487,7 @@ var
 implementation
 
 uses Unit1, ClrScheme,
+  UiTheme,       // UiDrawText - текст в Delphi и Lazarus
   GitInfo,       // <exe>.build.txt: папка исходников сборки (Reset Scheme)
   DlgPathList,   // окно списка путей (EditPathList)
   DlgEnvVar;     // окно имени и значения переменной (EnvEditDialog)
@@ -3469,7 +3470,7 @@ begin
     Cnv.Brush.Style := bsClear;
     RectVal := Rect;
     RectVal.Left := RectVal.Left + 4;
-    DrawText(Cnv.Handle, PChar(Str), Length(Str), RectVal,
+    UiDrawText(Cnv.Handle, PChar(Str), Length(Str), RectVal,
              DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS);
     Cnv.Font.Assign(UiGrid.Font);
     Exit;

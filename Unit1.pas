@@ -5528,7 +5528,7 @@ begin
   PanelText := Panel.Text;
   InflateRect(TextRect, -3, 0);
   StatusBar.Canvas.Brush.Style := bsClear;
-  DrawText(StatusBar.Canvas.Handle, PChar(PanelText), Length(PanelText),
+  UiDrawText(StatusBar.Canvas.Handle, PChar(PanelText), Length(PanelText),
            TextRect, DT_SINGLELINE or DT_VCENTER or DT_LEFT or DT_END_ELLIPSIS);
 end;
 
@@ -16011,7 +16011,7 @@ begin
       ClientW := MaxW;
     Dlg.Canvas.Font.Assign(Dlg.lblPrompt.Font);
     PromptRect := Rect(0, 0, ClientW - 2 * DlgMargin, 0);
-    DrawText(Dlg.Canvas.Handle, PChar(APrompt), -1, PromptRect,
+    UiDrawText(Dlg.Canvas.Handle, PChar(APrompt), -1, PromptRect,
              DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
     PromptH := PromptRect.Bottom + 4;
     if PromptH < 20 then
@@ -16728,7 +16728,7 @@ begin
     Lst.Canvas.Font.Color := $3C3CFF; // ярко-красный: виден и на тёмном фоне
   TextRect := Rect;
   Inc(TextRect.Left, 2);
-  DrawText(Lst.Canvas.Handle, PChar(Lst.Items[Index]), -1, TextRect,
+  UiDrawText(Lst.Canvas.Handle, PChar(Lst.Items[Index]), -1, TextRect,
            DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
 end;
 
@@ -36489,7 +36489,7 @@ begin
   try
     SetBkMode(ADC, TRANSPARENT);
     SetTextColor(ADC, ColorToRGB(UiColor('ObjProps.DefaultText')));
-    DrawText(ADC, PChar(ExtraText), Length(ExtraText), TextRect,
+    UiDrawText(ADC, PChar(ExtraText), Length(ExtraText), TextRect,
              DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_END_ELLIPSIS or
              DT_NOPREFIX);
   finally

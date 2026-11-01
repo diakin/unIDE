@@ -307,7 +307,7 @@ begin
       else
         Canvas.Font.Style := [];
       Measure := Rect(0, 0, 0, 0);
-      DrawText(Canvas.Handle, PChar(ItemText(Item)), -1, Measure,
+      UiDrawText(Canvas.Handle, PChar(ItemText(Item)), -1, Measure,
                DT_CALCRECT or DT_SINGLELINE);
       WidthPx := Measure.Right;
       if WidthPx > CaptionWidth then
@@ -511,13 +511,13 @@ begin
     if not ShowAccel then
       Flags := Flags or DT_HIDEPREFIX_;
     Str := ItemText(Item);
-    DrawText(Canvas.Handle, PChar(Str), Length(Str), TextRect, Flags);
+    UiDrawText(Canvas.Handle, PChar(Str), Length(Str), TextRect, Flags);
     Str := ItemShortCut(Item);
     if Str <> '' then
     begin
       TextRect := Rect(Row.Right - ArrowWidth - ShortCutWidth, Row.Top,
                        Row.Right - ArrowWidth, Row.Bottom);
-      DrawText(Canvas.Handle, PChar(Str), Length(Str), TextRect,
+      UiDrawText(Canvas.Handle, PChar(Str), Length(Str), TextRect,
                DT_SINGLELINE or DT_VCENTER or DT_LEFT or DT_NOPREFIX);
     end;
     Canvas.Font.Style := [];
@@ -1207,7 +1207,7 @@ begin
   begin
     Str := TopItem(Index).Caption;
     Measure := Rect(0, 0, 0, 0);
-    DrawText(Canvas.Handle, PChar(Str), -1, Measure, DT_CALCRECT or DT_SINGLELINE);
+    UiDrawText(Canvas.Handle, PChar(Str), -1, Measure, DT_CALCRECT or DT_SINGLELINE);
     WidthPx := Measure.Right + 16;
     if Index = AIndex then
     begin
@@ -1335,7 +1335,7 @@ begin
       Flags := Flags or DT_HIDEPREFIX_;
     Str := Item.Caption;
     Canvas.Brush.Style := bsClear;
-    DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, Flags);
+    UiDrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, Flags);
     Canvas.Brush.Style := bsSolid;
   end;
   // Черта снизу - граница с тем, что под меню

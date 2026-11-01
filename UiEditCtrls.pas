@@ -922,7 +922,7 @@ begin
       Txt := Text;
       InflateRect(RectVal3, -2, 0);
       Cv.Brush.Style := bsClear;
-      DrawText(Cv.Handle, PChar(Txt), Length(Txt), RectVal3,
+      UiDrawText(Cv.Handle, PChar(Txt), Length(Txt), RectVal3,
                DT_SINGLELINE or DT_VCENTER or DT_LEFT or DT_END_ELLIPSIS or
                DT_NOPREFIX);
     finally

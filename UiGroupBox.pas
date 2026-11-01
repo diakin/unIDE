@@ -164,7 +164,7 @@ begin
         RectVal := Rect(RectVal.Right - 8, 0, 0, HeightPx);
       Flags := UiDrawTextFlags(Self, DT_SINGLELINE);
       // Self.: внутри with Canvas Handle - у холста, он и нужен DrawText
-      DrawText(Handle, PChar(Str), Length(Str), RectVal, Flags or DT_CALCRECT);
+      UiDrawText(Handle, PChar(Str), Length(Str), RectVal, Flags or DT_CALCRECT);
       if UseRightToLeftAlignment then
         OffsetRect(RectVal, -(RectVal.Right - RectVal.Left), 0);
       Brush.Color := Self.Color;
@@ -172,7 +172,7 @@ begin
         Font.Color := UiThemeColorFor(Self, 'Group.Text')
       else
         Font.Color := UiThemeColorFor(Self, 'OffText');
-      DrawText(Handle, PChar(Str), Length(Str), RectVal, Flags);
+      UiDrawText(Handle, PChar(Str), Length(Str), RectVal, Flags);
     end;
   end;
 end;
