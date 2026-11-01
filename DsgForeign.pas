@@ -28,7 +28,8 @@ unit DsgForeign;
 interface
 
 uses
-  Windows, SysUtils, Classes, Registry;
+  Windows, SysUtils, Classes, Registry,
+  BplRtti;     // TBplClass - класс из пакета
 
 type
   // Сторонний компонент на странице палитры
@@ -70,7 +71,7 @@ type
     function IndexOfClass(const AClass: string): Integer;
     // Класс компонента из его runtime-пакета; nil - пакет не загрузился
     // или класса в нём нет, причина - в AError
-    function ForeignClass(AIndex: Integer; var AError: string): TClass;
+    function ForeignClass(AIndex: Integer; var AError: string): TBplClass;
     property Count: Integer read GetCount;
     property Comps[AIndex: Integer]: TDsgForeignComp read GetComp; default;
     property Pages: TStringList read FPages;
@@ -82,9 +83,6 @@ type
 function DsgDelphiRootDir: string;
 
 implementation
-
-uses
-  BplRtti;
 
 const
   RegDelphi = 'Software\Borland\Delphi\7.0';
@@ -229,7 +227,7 @@ begin
 end;
 
 function TDsgForeignList.ForeignClass(AIndex: Integer;
-                                      var AError: string): TClass;
+                                      var AError: string): TBplClass;
 var
   Comp: TDsgForeignComp;
   ModKey, LoadError: string;
@@ -277,7 +275,7 @@ begin
               Comp.CompClass;
     Exit;
   end;
-  Result := TClass(Pointer(FClassMap.Objects[ClsIdx]));
+  Result := TBplClass(FClassMap.Objects[ClsIdx]);
 end;
 
 function TDsgForeignList.GetCount: Integer;

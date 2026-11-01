@@ -18,10 +18,17 @@ program BplRttiTest;
 //    BplRttiTest <путь к runtime .bpl> [часть имени класса]
 //        - классы пакета, их предки, свойства и события. Без второго
 //          параметра свойства печатаются у всех наследников TComponent.
+//    BplRttiTest -compare <путь к runtime .bpl>
+//        - сверка BplRtti (свои записи RTTI Delphi 7) с модулем TypInfo и
+//          SysUtils.GetPackageInfo по всем классам пакета: цепочки предков,
+//          списки свойств, BplHasPublished против GetPropInfo, PACKAGEINFO.
+//          В лог - только расхождения и итог.
+//    Без параметров PACKAGEINFO каждого пакета тоже сверяется с
+//    GetPackageInfo.
 // ---------------------------------------------------------------------------
 
 uses
-  Windows, SysUtils, Classes, Registry,
+  Windows, SysUtils, Classes, Registry, TypInfo,
   BplRtti in '..\..\BplRtti.pas';
 
 var
@@ -37,6 +44,341 @@ begin
   if AText <> '' then
     CharToOemBuff(PChar(AText), PChar(OemText), Length(AText));
   Writeln(OemText);
+end;
+
+// ---------------------------------------------------------------------------
+//  Прежнее чтение через TypInfo и GetPackageInfo - для сверки (-compare).
+//  Класс пакета здесь - TClass: тест собран Delphi 7, раскладка та же.
+// ---------------------------------------------------------------------------
+
+const
+  OldNoDefault = Integer($80000000);
+
+var
+  DiffCount: Integer;
+
+procedure Differ(const AWhat, ANew, AOld: string);
+begin
+  Inc(DiffCount);
+  Say('РАСХОЖДЕНИЕ ' + AWhat);
+  Say('  BplRtti: ' + ANew);
+  Say('  TypInfo: ' + AOld);
+end;
+
+function LineAt(ALines: TStrings; AIndex: Integer): string;
+begin
+  if AIndex < ALines.Count then
+    Result := ALines[AIndex]
+  else
+    Result := '(нет строки)';
+end;
+
+function OldClassChain(AClass: TClass): string;
+var
+  Cur: TClass;
+begin
+  Result := '';
+  Cur := AClass;
+  while Cur <> nil do
+  begin
+    if Result <> '' then
+      Result := Result + ' < ';
+    Result := Result + Cur.ClassName;
+    Cur := Cur.ClassParent;
+  end;
+end;
+
+function OldEnumValues(AType: PTypeInfo): string;
+var
+  DataRec: PTypeData;
+  ValIdx: Integer;
+begin
+  Result := '';
+  DataRec := GetTypeData(AType);
+  for ValIdx := DataRec^.MinValue to DataRec^.MaxValue do
+  begin
+    if ValIdx - DataRec^.MinValue >= 40 then
+    begin
+      Result := Result + ', ...';
+      Exit;
+    end;
+    if Result <> '' then
+      Result := Result + ', ';
+    Result := Result + GetEnumName(AType, ValIdx);
+  end;
+end;
+
+function OldMethodSignature(AType: PTypeInfo): string;
+var
+  DataRec: PTypeData;
+  Cursor: PChar;
+  ParamIdx: Integer;
+  Flags: TParamFlags;
+  ParamName, TypeName, Params: string;
+begin
+  DataRec := GetTypeData(AType);
+  Cursor := @DataRec^.ParamList;
+  Params := '';
+  for ParamIdx := 0 to DataRec^.ParamCount - 1 do
+  begin
+    Move(Cursor^, Flags, SizeOf(Flags));
+    Inc(Cursor, SizeOf(Flags));
+    ParamName := PShortString(Cursor)^;
+    Inc(Cursor, Length(ParamName) + 1);
+    TypeName := PShortString(Cursor)^;
+    Inc(Cursor, Length(TypeName) + 1);
+    if Params <> '' then
+      Params := Params + '; ';
+    if pfVar in Flags then
+      Params := Params + 'var '
+    else if pfConst in Flags then
+      Params := Params + 'const '
+    else if pfOut in Flags then
+      Params := Params + 'out ';
+    Params := Params + ParamName;
+    if TypeName <> '' then
+    begin
+      Params := Params + ': ';
+      if pfArray in Flags then
+        Params := Params + 'array of ';
+      Params := Params + TypeName;
+    end;
+  end;
+  if DataRec^.MethodKind = mkFunction then
+    Result := 'function(' + Params + '): ' + PShortString(Cursor)^ +
+              ' of object'
+  else
+    Result := 'procedure(' + Params + ') of object';
+end;
+
+// То же, что прежний BplDumpProps; AProps - имена свойств (для сверки
+// BplHasPublished)
+procedure OldDumpProps(AClass: TClass; AOut, AProps: TStrings);
+var
+  ClsTypeInfo: PTypeInfo;
+  PropCount, PropIdx: Integer;
+  PropList: PPropList;
+  PropRec: PPropInfo;
+  PropType: PTypeInfo;
+  Line, KindName: string;
+  Events: TStringList;
+begin
+  ClsTypeInfo := AClass.ClassInfo;
+  if ClsTypeInfo = nil then
+  begin
+    AOut.Add('    (у класса нет RTTI)');
+    Exit;
+  end;
+  PropCount := GetTypeData(ClsTypeInfo)^.PropCount;
+  if PropCount = 0 then
+  begin
+    AOut.Add('    (published-свойств нет)');
+    Exit;
+  end;
+  Events := TStringList.Create;
+  GetMem(PropList, PropCount * SizeOf(Pointer));
+  try
+    PropCount := GetPropList(ClsTypeInfo, tkAny, PropList);
+    AOut.Add('    свойства:');
+    for PropIdx := 0 to PropCount - 1 do
+    begin
+      PropRec := PropList^[PropIdx];
+      PropType := PropRec^.PropType^;
+      AProps.Add(PropRec^.Name);
+      if PropType^.Kind = tkMethod then
+      begin
+        Events.Add('      ' + PropRec^.Name + ': ' + PropType^.Name + ' = ' +
+                   OldMethodSignature(PropType));
+        Continue;
+      end;
+      KindName := GetEnumName(TypeInfo(TTypeKind), Ord(PropType^.Kind));
+      Line := '      ' + PropRec^.Name + ': ' + PropType^.Name +
+              ' [' + KindName + ']';
+      if PropRec^.SetProc = nil then
+        Line := Line + ' только чтение';
+      if (PropRec^.Default <> OldNoDefault) and
+         (PropType^.Kind in [tkInteger, tkChar, tkEnumeration, tkSet,
+                             tkWChar]) then
+        Line := Line + ' default ' + IntToStr(PropRec^.Default);
+      case PropType^.Kind of
+        tkEnumeration:
+          Line := Line + ' (' + OldEnumValues(PropType) + ')';
+        tkSet:
+          Line := Line + ' (set of ' +
+                  OldEnumValues(GetTypeData(PropType)^.CompType^) + ')';
+        tkClass:
+          Line := Line + ' -> ' +
+                  OldClassChain(GetTypeData(PropType)^.ClassType);
+      end;
+      AOut.Add(Line);
+    end;
+    if Events.Count > 0 then
+    begin
+      AOut.Add('    события:');
+      AOut.AddStrings(Events);
+    end;
+  finally
+    FreeMem(PropList);
+    Events.Free;
+  end;
+end;
+
+type
+  TOldInfoLists = record
+    Units: TStrings;
+    Requires: TStrings;
+  end;
+  POldInfoLists = ^TOldInfoLists;
+
+procedure OldInfoProc(const AName: string; ANameType: TNameType;
+                      AFlags: Byte; AParam: Pointer);
+begin
+  case ANameType of
+    ntContainsUnit:
+      POldInfoLists(AParam)^.Units.Add(AName);
+    ntRequiresPackage:
+      POldInfoLists(AParam)^.Requires.Add(AName);
+  end;
+end;
+
+procedure OldPackageInfo(AModule: HMODULE; AUnits, ARequires: TStrings);
+var
+  Lists: TOldInfoLists;
+  InfoFlags: Integer;
+begin
+  AUnits.Clear;
+  ARequires.Clear;
+  if (AModule = 0) or
+     (FindResource(AModule, 'PACKAGEINFO', RT_RCDATA) = 0) then
+    Exit;
+  Lists.Units := AUnits;
+  Lists.Requires := ARequires;
+  InfoFlags := 0;
+  GetPackageInfo(AModule, @Lists, InfoFlags, OldInfoProc);
+end;
+
+// PACKAGEINFO: BplPackageInfo против GetPackageInfo
+procedure ComparePackageInfo(AModule: HMODULE; const AWhere: string);
+var
+  NewUnits, NewReq, OldUnits, OldReq: TStringList;
+begin
+  NewUnits := TStringList.Create;
+  NewReq := TStringList.Create;
+  OldUnits := TStringList.Create;
+  OldReq := TStringList.Create;
+  try
+    BplPackageInfo(AModule, NewUnits, NewReq);
+    try
+      OldPackageInfo(AModule, OldUnits, OldReq);
+    except
+      on Err: Exception do
+        OldUnits.Text := 'ошибка GetPackageInfo: ' + Err.Message;
+    end;
+    if NewUnits.Text <> OldUnits.Text then
+      Differ(AWhere + ': модули', NewUnits.CommaText, OldUnits.CommaText);
+    if NewReq.Text <> OldReq.Text then
+      Differ(AWhere + ': требует', NewReq.CommaText, OldReq.CommaText);
+  finally
+    OldReq.Free;
+    OldUnits.Free;
+    NewReq.Free;
+    NewUnits.Free;
+  end;
+end;
+
+// Все классы пакета: BplRtti против TypInfo
+procedure ComparePackage(const APath: string);
+var
+  Module: HMODULE;
+  LoadError, ClsName: string;
+  Found, NewLines, OldLines, PropNames: TStringList;
+  ClsIdx, LineIdx, PropIdx, PropTotal: Integer;
+  FoundClass: TBplClass;
+  SameClass: TClass;
+  OldHas: Boolean;
+  StartTick, NewTicks, OldTicks: Cardinal;
+begin
+  Say('Сверка с TypInfo: ' + APath);
+  Module := BplLoadForRtti(APath, LoadError);
+  if Module = 0 then
+  begin
+    Say('Не загрузился: ' + LoadError);
+    Exit;
+  end;
+  DiffCount := 0;
+  PropTotal := 0;
+  NewTicks := 0;
+  OldTicks := 0;
+  ComparePackageInfo(Module, 'PACKAGEINFO');
+  Found := TStringList.Create;
+  NewLines := TStringList.Create;
+  OldLines := TStringList.Create;
+  PropNames := TStringList.Create;
+  try
+    BplListClasses(Module, Found, nil);
+    Say('Классов: ' + IntToStr(Found.Count));
+    for ClsIdx := 0 to Found.Count - 1 do
+    begin
+      FoundClass := TBplClass(Found.Objects[ClsIdx]);
+      SameClass := TClass(FoundClass);
+      ClsName := Found.Names[ClsIdx];
+      if BplClassName(FoundClass) <> SameClass.ClassName then
+        Differ(ClsName + ': имя', BplClassName(FoundClass),
+               SameClass.ClassName);
+      if BplClassChain(FoundClass) <> OldClassChain(SameClass) then
+        Differ(ClsName + ': предки', BplClassChain(FoundClass),
+               OldClassChain(SameClass));
+      NewLines.Clear;
+      OldLines.Clear;
+      PropNames.Clear;
+      StartTick := GetTickCount;
+      BplDumpProps(FoundClass, NewLines);
+      NewTicks := NewTicks + (GetTickCount - StartTick);
+      StartTick := GetTickCount;
+      OldDumpProps(SameClass, OldLines, PropNames);
+      OldTicks := OldTicks + (GetTickCount - StartTick);
+      if NewLines.Text <> OldLines.Text then
+      begin
+        LineIdx := 0;
+        while (LineIdx < NewLines.Count) and (LineIdx < OldLines.Count) and
+              (NewLines[LineIdx] = OldLines[LineIdx]) do
+          Inc(LineIdx);
+        Differ(ClsName + ': свойства, строка ' + IntToStr(LineIdx + 1) +
+               ' (строк ' + IntToStr(NewLines.Count) + ' / ' +
+               IntToStr(OldLines.Count) + ')',
+               LineAt(NewLines, LineIdx),
+               LineAt(OldLines, LineIdx));
+      end;
+      // Каждое свойство и одно несуществующее
+      PropNames.Add('NoSuchPropXyz');
+      for PropIdx := 0 to PropNames.Count - 1 do
+      begin
+        OldHas := (SameClass.ClassInfo <> nil) and
+                  (GetPropInfo(SameClass.ClassInfo, PropNames[PropIdx]) <> nil);
+        if BplHasPublished(FoundClass, PropNames[PropIdx]) <> OldHas then
+          Differ(ClsName + ': BplHasPublished ' + PropNames[PropIdx],
+                 BoolToStr(not OldHas, True), BoolToStr(OldHas, True));
+        // Регистр имени не важен
+        if BplHasPublished(FoundClass, UpperCase(PropNames[PropIdx])) <>
+           OldHas then
+          Differ(ClsName + ': BplHasPublished ' +
+                 UpperCase(PropNames[PropIdx]),
+                 BoolToStr(not OldHas, True), BoolToStr(OldHas, True));
+      end;
+      Inc(PropTotal, PropNames.Count - 1);
+    end;
+  finally
+    PropNames.Free;
+    OldLines.Free;
+    NewLines.Free;
+    Found.Free;
+  end;
+  Say('Свойств сверено: ' + IntToStr(PropTotal) + '; время BplRtti ' +
+      IntToStr(NewTicks) + ' мс, TypInfo ' + IntToStr(OldTicks) + ' мс');
+  if DiffCount = 0 then
+    Say('Расхождений нет')
+  else
+    Say('Расхождений: ' + IntToStr(DiffCount));
 end;
 
 // Где Windows найдёт пакет по имени (как при загрузке зависимостей)
@@ -162,6 +504,7 @@ begin
       end;
       try
         BplPackageInfo(DataModule, Units, Requires);
+        ComparePackageInfo(DataModule, ExtractFileName(PkgPath));
       finally
         FreeLibrary(DataModule);
       end;
@@ -191,7 +534,7 @@ var
   LoadError: string;
   Found, Sample, Units, Requires, Props: TStringList;
   ClsIdx, LineIdx: Integer;
-  FoundClass: TClass;
+  FoundClass: TBplClass;
   StartTick: Cardinal;
   Kind: string;
 begin
@@ -232,7 +575,7 @@ begin
     Found.Sort;
     for ClsIdx := 0 to Found.Count - 1 do
     begin
-      FoundClass := TClass(Pointer(Found.Objects[ClsIdx]));
+      FoundClass := TBplClass(Found.Objects[ClsIdx]);
       if BplInheritsFromName(FoundClass, 'TWinControl') then
         Kind := 'оконный контрол'
       else if BplInheritsFromName(FoundClass, 'TControl') then
@@ -248,7 +591,7 @@ begin
         Say('    вид: ' + Kind);
       if AFilter <> '' then
       begin
-        if Pos(UpperCase(AFilter), UpperCase(FoundClass.ClassName)) = 0 then
+        if Pos(UpperCase(AFilter), UpperCase(BplClassName(FoundClass))) = 0 then
           Continue;
       end
       else if Kind = '' then
@@ -278,17 +621,25 @@ begin
   LogLines := TStringList.Create;
   try
     try
+      DiffCount := 0;
       if ParamCount = 0 then
       begin
         ListKnownPackages;
+        if DiffCount > 0 then
+          Say('PACKAGEINFO: расхождений с GetPackageInfo ' +
+              IntToStr(DiffCount))
+        else
+          Say('PACKAGEINFO: с GetPackageInfo совпадает у всех пакетов');
         Say('');
         ListPalette;
       end
+      else if CompareText(ParamStr(1), '-compare') = 0 then
+        ComparePackage(ParamStr(2))
       else
         DumpPackage(ParamStr(1), ParamStr(2));
     except
-      on E: Exception do
-        Say('Ошибка: ' + E.ClassName + ': ' + E.Message);
+      on Err: Exception do
+        Say('Ошибка: ' + Err.ClassName + ': ' + Err.Message);
     end;
     LogLines.SaveToFile(ExtractFilePath(ParamStr(0)) + 'BplRtti.log');
     Say('');

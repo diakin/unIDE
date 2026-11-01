@@ -10,6 +10,7 @@ uses
   DsgClasses,     // классы палитры для конструктора и инспектора
   DsgPalette,     // окно палитры компонентов
   DsgForeign,     // сторонние компоненты палитры (пакеты, установленные в Delphi)
+  BplRtti,        // TBplClass - класс стороннего пакета, предки по именам
   ClrScheme,      // цветовая схема подсветки (.clr) - TClrScheme
   RqDeclFind,     // объявления в исходниках RapidQ - панель объявления
   UiTheme,        // темы своих элементов: Light / Dark / Custom, цвета ролей
@@ -3153,9 +3154,9 @@ type
                                PosX, PosY: Integer): string;
     procedure DsgInsert;
     function  DsgMapClass(const AClassName: string): TComponentClass;
-    function  DsgAnalogFor(AForeign: TClass): TComponentClass;
+    function  DsgAnalogFor(AForeign: TBplClass): TComponentClass;
     function  DsgForeignObjectText(const AClass, AName: string;
-                                   PosX, PosY: Integer; AForeign: TClass): string;
+                                   PosX, PosY: Integer; AForeign: TBplClass): string;
     procedure DsgDblClick(const AName: string);
     procedure DsgContext(const AScreen: TPoint);
     // Меню и клавиши конструктора RapidQ
@@ -4533,7 +4534,6 @@ var
     DlgNewPrj,    // New Project - NewProjectClick
     DlgRelease,   // Release files - ReleaseFilesDialog
     ReleaseBuild, // Build Release: файлы, нужные программе, по исходникам
-    BplRtti,      // классы сторонних пакетов: предки по именам
     PrjStore,     // проекты в editor.ini, выбор editor.ini по папке программы
     TypInfo;      // свойства классов VCL для инспектора объектов
 
@@ -45681,7 +45681,7 @@ procedure TForm1.DsgPlace(const AParent: string; PosX, PosY, AFormX, AFormY: Int
                           var AHandled: Boolean);
 var
   ForeignName, LoadError: string;
-  ForeignCls: TClass;
+  ForeignCls: TBplClass;
 begin
   // Компонент RapidQ на форму Delphi не ставится - щелчок как обычный
   if RqPalSelected <> '' then
@@ -46175,7 +46175,7 @@ var
   Cls: TComponentClass;
   Base, Nm, OldDfm, NewDfm, PasFile, OldPas, NewPas, Obj: string;
   Foreign, ClsName, UnitNm, LoadError: string;
-  ForeignCls: TClass;
+  ForeignCls: TBplClass;
   Num, RangeFrom, RangeTo: Integer;
 begin
   Cls := FDsgPlaceCls;
@@ -46285,9 +46285,9 @@ end;
 //  заглушка: серая панель или значок. В .dfm всегда настоящий класс.
 // ---------------------------------------------------------------------------
 
-function TForm1.DsgAnalogFor(AForeign: TClass): TComponentClass;
+function TForm1.DsgAnalogFor(AForeign: TBplClass): TComponentClass;
 var
-  Cur: TClass;
+  Cur: TBplClass;
   CurName: string;
 
   function OnPalette(const AName: string): TComponentClass;
@@ -46313,10 +46313,10 @@ begin
   Result := nil;
   if AForeign = nil then
     Exit;
-  Cur := AForeign.ClassParent;
+  Cur := BplClassParent(AForeign);
   while Cur <> nil do
   begin
-    CurName := Cur.ClassName;
+    CurName := BplClassName(Cur);
     Result := OnPalette(CurName);
     if Result <> nil then
       Exit;
@@ -46326,7 +46326,7 @@ begin
       if Result <> nil then
         Exit;
     end;
-    Cur := Cur.ClassParent;
+    Cur := BplClassParent(Cur);
   end;
 end;
 
@@ -46335,7 +46335,7 @@ end;
 function TForm1.DsgMapClass(const AClassName: string): TComponentClass;
 var
   CacheIdx, CompIdx: Integer;
-  ForeignCls: TClass;
+  ForeignCls: TBplClass;
   LoadError: string;
 begin
   Result := nil;
@@ -46376,21 +46376,17 @@ end;
 // иначе программа при загрузке формы остановилась бы на "Property ... does
 // not exist". Аналога нет - место и размер, у невизуального - место.
 function TForm1.DsgForeignObjectText(const AClass, AName: string;
-                                     PosX, PosY: Integer; AForeign: TClass): string;
+                                     PosX, PosY: Integer; AForeign: TBplClass): string;
 var
   Analog: TComponentClass;
   ObjLines: TStringList;
   LineIdx, EqPos, DotPos: Integer;
   Line, PropName: string;
-  ForeignType: PTypeInfo;
   SkipProp: Boolean;
 begin
   Analog := DsgMapClass(AClass);
   if Analog <> nil then
   begin
-    ForeignType := nil;
-    if AForeign <> nil then
-      ForeignType := AForeign.ClassInfo;
     ObjLines := TStringList.Create;
     try
       ObjLines.Text := DsgDescNewText(Analog.ClassName, AName, PosX, PosY);
@@ -46413,8 +46409,8 @@ begin
             DotPos := Pos('.', PropName);
             if DotPos > 0 then
               PropName := Copy(PropName, 1, DotPos - 1);
-            SkipProp := (ForeignType = nil) or
-                        (GetPropInfo(ForeignType, PropName) = nil);
+            SkipProp := (AForeign = nil) or
+                        not BplHasPublished(AForeign, PropName);
           end
           else
             SkipProp := False;
