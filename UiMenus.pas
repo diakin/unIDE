@@ -67,6 +67,7 @@ type
     procedure Notification(AComponent: TComponent;
                            Operation: TOperation); override;
     procedure SetParent(AParent: TWinControl); override;
+    procedure Loaded; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -1051,6 +1052,16 @@ begin
   inherited SetParent(AParent);
   if (AParent <> nil) and not (csDestroying in ComponentState) then
     ApplyMode;
+end;
+
+// После чтения .dfm - ещё раз по теме: ссылки Menu (у строки и у окна)
+// ставятся после чтения всех компонентов, и в FPC - в обратном порядке
+// (TLinkedList.Add вставляет в начало). Строка получала Menu раньше окна,
+// окно потом ставило себе то же меню - были видны и меню Windows, и строка
+procedure TUiMenuBar.Loaded;
+begin
+  inherited Loaded;
+  ApplyMode;
 end;
 
 // Окно: Alt, F10, Alt+буква (без меню Windows их некому разобрать) и

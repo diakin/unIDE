@@ -4560,6 +4560,29 @@ begin
     SetLength(Result, Length(Result) - Length(OwnTrialSuffix));
 end;
 
+// Имя проекта, из которого собран этот exe: OwnExeBase без окончания
+// сборки Lazarus (_laz32 / _laz64, lazarus\SyntaxHLClaude.lpi). Для
+// сверки с проектом (IsOwnProject); имя рабочего exe - OwnExeBase
+function OwnProjectBase: string;
+const
+  LazSuffixes: array[0..1] of string = ('_laz32', '_laz64');
+var
+  SufIdx, SufLen: Integer;
+begin
+  Result := OwnExeBase;
+  for SufIdx := Low(LazSuffixes) to High(LazSuffixes) do
+  begin
+    SufLen := Length(LazSuffixes[SufIdx]);
+    if (Length(Result) > SufLen) and
+       (CompareText(Copy(Result, Length(Result) - SufLen + 1, MaxInt),
+                    LazSuffixes[SufIdx]) = 0) then
+    begin
+      SetLength(Result, Length(Result) - SufLen);
+      Exit;
+    end;
+  end;
+end;
+
 // Запущен пробный exe (имя оканчивается на OwnTrialSuffix)
 function OwnIsTrial: Boolean;
 begin
@@ -34850,7 +34873,7 @@ begin
   Dpr := ProjectTargetOf(FCurrentProject);
   Result := (Dpr <> '') and
             (CompareText(ChangeFileExt(ExtractFileName(Dpr), ''),
-                         OwnExeBase) = 0);
+                         OwnProjectBase) = 0);
   FOwnPrjName := FCurrentProject;
   FOwnPrjAge := PrjAge;
   FOwnPrjResult := Result;
@@ -60759,7 +60782,7 @@ begin
       SrcFile := ProjectTargetOf(FProjectReg.Names[Index]);
       if (SrcFile <> '') and
          (CompareText(ChangeFileExt(ExtractFileName(SrcFile), ''),
-                      OwnExeBase) = 0) and
+                      OwnProjectBase) = 0) and
                                     FileExists(ExtractFilePath(SrcFile) + 'UiTheme.pas') then
       begin
         SourceDir := ExtractFilePath(SrcFile);
@@ -64525,7 +64548,7 @@ begin
   // IsOwnProject). Модуль можно вписать и в него, но для пробы формы
   // обычно нужен отдельный проект - спрашиваем.
   if CompareText(ChangeFileExt(ExtractFileName(Dpr), ''),
-                 OwnExeBase) = 0 then
+                 OwnProjectBase) = 0 then
   begin
     if AKind = dnkForm then
     case MessageDlg('27238:New Form: текущий проект - сам редактор (' +
