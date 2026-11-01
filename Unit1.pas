@@ -38266,11 +38266,15 @@ end;
 //    1. компонент с именем - присваивание Имя := TКласс.Create или
 //       X.Name := 'Имя' после создания;
 //    2. есть Caption или Text - создание TКласс.Create, за которым в
-//       нескольких строках идёт X.Caption := 'та же подпись';
+//       нескольких строках идёт X.Caption := 'та же подпись'; затем
+//       подпись выражением, чьи литералы стоят в подписи по порядку:
+//       X.Caption := 'Install 7-Zip ' + SzVersion + '...';
 //    3. та же подпись литералом где угодно в коде - так создаются кнопки
 //       и пункты меню через помощники: MakeBtn('<-Find', ...);
 //    4. любое создание TКласс.Create.
-//  Одно совпадение - переходим. Несколько - список на выбор.
+//  Одно совпадение - переходим. Несколько - сначала оставляются те, где
+//  компонент кладётся в родителя узла (RosMenu.Add(X), Create(Родитель),
+//  X.Parent := Родитель); остальное - список на выбор.
 // ---------------------------------------------------------------------------
 
 // Текст модуля: из вкладки, если он открыт, иначе с диска
@@ -38328,9 +38332,9 @@ end;
 function TForm1.FindCreateLine(const AText: string; ANode: TObject): Integer;
 var
   N: TDfmNode;
-  Lines, Cands, CapHit, LitHit: TStringList;
+  Lines, Cands, CapHit, CapLike, LitHit: TStringList;
   I, J, K, P: Integer;
-  Cap, Lit, U, L, Lhs, Cls, S: string;
+  Cap, Lit, U, L, Lhs, Cls, S, ParentNm: string;
 
   // "  FToolbar := TPanel.Create(Self);" -> класс и переменная слева
   function ParseCreate(const ALine: string; var AClass, ALhs: string): Boolean;
@@ -38393,6 +38397,147 @@ var
     Result := DecodeDfmString(Trim(Copy(T, 1, E - 1)));
   end;
 
+  // Куски-литералы справа от := : "'Install 7-Zip ' + SzVersion + ' (x)'"
+  // -> "Install 7-Zip ", " (x)". AStartsLit - справа сначала литерал.
+  procedure LiteralPieces(const ALine: string; APieces: TStrings;
+                          var AStartsLit: Boolean);
+  var
+    Rhs, Run: string;
+    Q, E: Integer;
+    InQ: Boolean;
+  begin
+    APieces.Clear;
+    AStartsLit := False;
+    Q := Pos(':=', ALine);
+    if Q <= 0 then
+      Exit;
+    Rhs := Trim(Copy(ALine, Q + 2, MaxInt));
+    AStartsLit := (Rhs <> '') and (Rhs[1] in ['''', '#']);
+    E := 1;
+    while E <= Length(Rhs) do
+    begin
+      if not (Rhs[E] in ['''', '#']) then
+      begin
+        // Комментарий за выражением - дальше не смотрим
+        if Copy(Rhs, E, 2) = '//' then
+          Break;
+        Inc(E);
+        Continue;
+      end;
+      // Литерал: кавычки, #коды и + между ними
+      Q := E;
+      InQ := False;
+      while E <= Length(Rhs) do
+      begin
+        if Rhs[E] = '''' then
+          InQ := not InQ
+        else if not InQ and not (Rhs[E] in ['#', '0'..'9', ' ']) then
+          Break;
+        Inc(E);
+      end;
+      Run := Trim(Copy(Rhs, Q, E - Q));
+      if Run <> '' then
+        APieces.Add(DecodeDfmString(Run));
+    end;
+  end;
+
+  // Подпись собрана выражением из литералов и переменных: куски-литералы
+  // стоят в ACap по порядку, первый - в начале, если с него выражение
+  // начинается. Литералов меньше 4 символов - слишком мало для сверки.
+  function CaptionLike(const ALine, ACap: string): Boolean;
+  var
+    Pieces: TStringList;
+    PieceIdx, From, Found, Total: Integer;
+    StartsLit: Boolean;
+  begin
+    Result := False;
+    Pieces := TStringList.Create;
+    try
+      LiteralPieces(ALine, Pieces, StartsLit);
+      if Pieces.Count = 0 then
+        Exit;
+      Total := 0;
+      for PieceIdx := 0 to Pieces.Count - 1 do
+        Inc(Total, Length(Pieces[PieceIdx]));
+      if Total < 4 then
+        Exit;
+      From := 1;
+      for PieceIdx := 0 to Pieces.Count - 1 do
+      begin
+        if Pieces[PieceIdx] = '' then
+          Continue;
+        Found := PosEx(Pieces[PieceIdx], ACap, From);
+        if (Found <= 0) or (StartsLit and (PieceIdx = 0) and (Found <> 1)) then
+          Exit;
+        From := Found + Length(Pieces[PieceIdx]);
+      end;
+      Result := True;
+    finally
+      Pieces.Free;
+    end;
+  end;
+
+  // Создание в строке ALine кладётся в родителя узла: на той же строке
+  // TКласс.Create(Родитель) или ниже, до следующего создания,
+  // Родитель.Add(X), Родитель.Insert(..., X), X.Parent := Родитель
+  function HasParentLink(ALine: Integer): Boolean;
+  var
+    LineIdx: Integer;
+    Up, ParentUp, LhsUp, CreCls, CreLhs, NextCls, NextLhs: string;
+  begin
+    Result := False;
+    if (ParentNm = '') or not ParseCreate(Lines[ALine], CreCls, CreLhs) then
+      Exit;
+    ParentUp := AnsiUpperCase(ParentNm);
+    LhsUp := AnsiUpperCase(CreLhs);
+    Up := AnsiUpperCase(StringReplace(Lines[ALine], ' ', '', [rfReplaceAll]));
+    if Pos('.CREATE(' + ParentUp + ')', Up) > 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+    if CreLhs = '' then
+      Exit;
+    for LineIdx := ALine + 1 to ALine + 40 do
+    begin
+      if LineIdx >= Lines.Count then
+        Break;
+      if ParseCreate(Lines[LineIdx], NextCls, NextLhs) then
+        Break;
+      Up := AnsiUpperCase(StringReplace(Lines[LineIdx], ' ', '',
+                                        [rfReplaceAll]));
+      if (Pos(ParentUp + '.ADD(' + LhsUp + ')', Up) > 0) or
+         ((Pos(ParentUp + '.INSERT(', Up) > 0) and
+          (Pos(',' + LhsUp + ')', Up) > 0)) or
+         (Pos(LhsUp + '.PARENT:=' + ParentUp + ';', Up) > 0) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
+
+  // Из нескольких строк - те, где компонент кладётся в родителя узла;
+  // таких нет - список как был
+  procedure KeepParentLinked(AList: TStringList);
+  var
+    ItemIdx: Integer;
+    Linked: TStringList;
+  begin
+    if (AList.Count < 2) or (ParentNm = '') then
+      Exit;
+    Linked := TStringList.Create;
+    try
+      for ItemIdx := 0 to AList.Count - 1 do
+        if HasParentLink(Integer(AList.Objects[ItemIdx])) then
+          Linked.AddObject(AList[ItemIdx], AList.Objects[ItemIdx]);
+      if Linked.Count > 0 then
+        AList.Assign(Linked);
+    finally
+      Linked.Free;
+    end;
+  end;
+
   function Choose(AList: TStringList): Integer;
   var
     Sel: string;
@@ -38400,6 +38545,7 @@ var
     Result := -1;
     if AList.Count = 0 then
       Exit;
+    KeepParentLinked(AList);
     if AList.Count = 1 then
     begin
       Result := Integer(AList.Objects[0]);
@@ -38423,6 +38569,7 @@ begin
   Lines := TStringList.Create;
   Cands := TStringList.Create;
   CapHit := TStringList.Create;
+  CapLike := TStringList.Create;
   LitHit := TStringList.Create;
   try
     Lines.Text := AText;
@@ -38434,6 +38581,14 @@ begin
       K := N.PropN.IndexOf('Text');
     if K >= 0 then
       Cap := N.PropV[K];
+    // Родитель узла - кому компонент добавляется (RosMenu.Add(LinkItem))
+    ParentNm := '';
+    if (N.Parent <> nil) and (N.Parent.Parent <> nil) then
+    begin
+      ParentNm := N.Parent.VarName;
+      if ParentNm = '' then
+        ParentNm := N.Parent.Name;
+    end;
 
     for I := 0 to Lines.Count - 1 do
     begin
@@ -38472,12 +38627,20 @@ begin
           if J >= Lines.Count then
             Break;
           U := AnsiUpperCase(Trim(Lines[J]));
-          if ((Pos(AnsiUpperCase(Lhs + '.Caption'), U) = 1) or
-              (Pos(AnsiUpperCase(Lhs + '.Text'), U) = 1)) and
-             (LiteralAfterAssign(Lines[J]) = Cap) then
+          if (Pos(AnsiUpperCase(Lhs + '.Caption'), U) = 1) or
+             (Pos(AnsiUpperCase(Lhs + '.Text'), U) = 1) then
           begin
-            AddCand(CapHit, I);
-            Break;
+            if LiteralAfterAssign(Lines[J]) = Cap then
+            begin
+              AddCand(CapHit, I);
+              Break;
+            end;
+            // Подпись выражением: 'Install 7-Zip ' + SzVersion + '...'
+            if CaptionLike(Lines[J], Cap) then
+            begin
+              AddCand(CapLike, I);
+              Break;
+            end;
           end;
           // Дошли до создания следующего - дальше не наше
           if ParseCreate(Lines[J], S, L) then
@@ -38487,6 +38650,9 @@ begin
 
     Result := Choose(CapHit);
     if (Result >= 0) or (CapHit.Count > 1) then
+      Exit;
+    Result := Choose(CapLike);
+    if (Result >= 0) or (CapLike.Count > 1) then
       Exit;
 
     // 3. подпись литералом где угодно в коде: помощники вроде MakeBtn
@@ -38510,6 +38676,7 @@ begin
     Result := Choose(Cands);
   finally
     LitHit.Free;
+    CapLike.Free;
     CapHit.Free;
     Cands.Free;
     Lines.Free;
