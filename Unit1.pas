@@ -3071,6 +3071,7 @@ type
                               ADfmText: string);
     procedure ObjMoveDone;
     procedure ObjMoveProgress(const AStage: string; ADone, ATotal: Integer);
+    procedure ObjMovePump;
     procedure ObjMoveStageDone(ATick: Cardinal);
     procedure WMObjMoveAgain(var Msg: TMessage); message WM_USER + 318;
     procedure DsgMenuEdit;
@@ -43126,7 +43127,6 @@ end;
 // «Не отвечает». Панель перерисовывается не чаще раза в 150 мс (BusyTick).
 procedure TForm1.ObjMoveProgress(const AStage: string; ADone, ATotal: Integer);
 var
-  WinMsg: TMsg;
   TickNow: Cardinal;
 begin
   TickNow := GetTickCount;
@@ -43136,8 +43136,13 @@ begin
     FObjMoveStage := AStage;
     FObjMoveStageStart := TickNow;
   end;
-  // Ход приходит на каждую строку модуля: текст панели - только когда
-  // BusyTick её перерисует (не чаще 150 мс)
+  // Ход приходит и на каждую строку модуля - очередь не чаще 50 мс
+  if TickNow - FObjMovePeek >= 50 then
+  begin
+    FObjMovePeek := TickNow;
+    ObjMovePump;
+  end;
+  // Текст панели - только когда BusyTick её перерисует (не чаще 150 мс)
   if (FBusyLast <> 0) and (TickNow - FBusyLast < 150) then
     Exit;
   if ATotal > 0 then
@@ -43146,12 +43151,38 @@ begin
   else
     FBusyStage := 'Перенести в .dfm: ' + AStage;
   BusyTick;
-  // Ход приходит и на каждую строку модуля - PeekMessage не чаще 50 мс
-  if TickNow - FObjMovePeek >= 50 then
+end;
+
+// Очередь сообщений во время разбора: окно перерисовывается, сворачивается
+// и разворачивается (кнопка на панели задач), но мышь и клавиатура
+// отбрасываются - разбор читает текст и дерево, менять их нельзя.
+// Таймеры и прочие сообщения остаются в очереди до конца разбора.
+procedure TForm1.ObjMovePump;
+var
+  WinMsg: TMsg;
+  Command: Cardinal;
+begin
+  while PeekMessage(WinMsg, 0, WM_KEYFIRST, WM_KEYLAST, PM_REMOVE) do
+    ;
+  while PeekMessage(WinMsg, 0, WM_MOUSEFIRST, WM_MOUSELAST, PM_REMOVE) do
+    ;
+  // Заголовок окна (крестик, перетаскивание) - тоже нет
+  while PeekMessage(WinMsg, 0, WM_NCMOUSEMOVE, WM_NCMBUTTONDBLCLK,
+                    PM_REMOVE) do
+    ;
+  // Кнопка на панели задач: свернуть / развернуть
+  while PeekMessage(WinMsg, 0, WM_SYSCOMMAND, WM_SYSCOMMAND, PM_REMOVE) do
   begin
-    FObjMovePeek := TickNow;
-    PeekMessage(WinMsg, 0, 0, 0, PM_NOREMOVE);
+    Command := Cardinal(WinMsg.wParam) and $FFF0;
+    if (Command = SC_MINIMIZE) or (Command = SC_RESTORE) or
+       (Command = SC_MAXIMIZE) then
+      DispatchMessage(WinMsg);
   end;
+  while PeekMessage(WinMsg, 0, WM_PAINT, WM_PAINT, PM_REMOVE) do
+    DispatchMessage(WinMsg);
+  // Остальное не трогаем; PeekMessage заодно говорит Windows, что окно
+  // отвечает, и доставляет сообщения от других окон (активация)
+  PeekMessage(WinMsg, 0, 0, 0, PM_NOREMOVE);
 end;
 
 // Время закончившегося этапа - к его сумме в FObjMoveTimes
