@@ -318,7 +318,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.20';
+  DfmMoveBuild = 'b.21';
 
 constructor TMoveInfo.Create;
 begin
@@ -2341,16 +2341,6 @@ begin
       end;
       if not IsValidIdent(Name) then
         Continue;
-      Exists := False;
-      for HelperIndex := 0 to AHelpers.Count - 1 do
-        if CompareText(THelperInfo(AHelpers[HelperIndex]).Name, Name) = 0 then
-          Exists := True;
-      if Exists then
-        Continue;
-      // Вызывается несколько раз и не назначается обработчиком
-      CountUses(ALines, Name, Calls, Assigns);
-      if (Assigns > 0) or (Calls < 2) then
-        Continue;
       // Заголовок
       Head := Code;
       HeadEnd := Line;
@@ -2514,6 +2504,18 @@ begin
         StmtLine := NextLine;
       end;
       if not Ok or (LocalName = '') or (NestExpr = '') then
+        Continue;
+      // Проверки по всему модулю - только для процедур подходящего вида:
+      // их мало, а методов формы - тысячи
+      Exists := False;
+      for HelperIndex := 0 to AHelpers.Count - 1 do
+        if CompareText(THelperInfo(AHelpers[HelperIndex]).Name, Name) = 0 then
+          Exists := True;
+      if Exists then
+        Continue;
+      // Вызывается несколько раз и не назначается обработчиком
+      CountUses(ALines, Name, Calls, Assigns);
+      if (Assigns > 0) or (Calls < 2) then
         Continue;
 
       Helper := THelperInfo.Create;
@@ -5867,6 +5869,7 @@ var
   Text, Upper, Head, Word, Before, EventName, ObjectName, ObjectClass: string;
   Routine: TFormRoutine;
   PrevChar: Char;
+  Lookup: TStringList;
 begin
   Head := UpperCase(AFormClass) + '.';
   Index := 0;
@@ -5915,6 +5918,14 @@ begin
   // другого объекта), не справа от := (X.OnClick := Метод - назначение,
   // а не вызов) и, если у метода есть параметры, - со скобкой после имени
   // (без неё это ссылка на метод - аргумент или значение)
+  // Поиск имени - по сортированному списку: имя -> номер первого метода с
+  // этим именем (как ANames.IndexOf + ARoutines.IndexOf, но не перебором)
+  Lookup := TStringList.Create;
+  try
+  Lookup.Sorted := True;
+  for Index := 0 to ARoutines.Count - 1 do
+    if not Lookup.Find(TFormRoutine(ARoutines[Index]).Name, Target) then
+      Lookup.AddObject(TFormRoutine(ARoutines[Index]).Name, TObject(Index));
   for Index := 0 to ARoutines.Count - 1 do
   begin
     DfmMoveStep('вызовы процедур формы', Index, ARoutines.Count);
@@ -5950,7 +5961,10 @@ begin
               Word := Copy(Text, WordStart, CharPos - WordStart);
               if PrevChar <> '.' then
               begin
-                Target := ANames.IndexOf(Word);
+                if Lookup.Find(Word, Target) then
+                  Target := Integer(Lookup.Objects[Target])
+                else
+                  Target := -1;
                 if Target >= 0 then
                 begin
                   Before := TrimRight(Copy(Text, 1, WordStart - 1));
@@ -5977,10 +5991,9 @@ begin
                     if IsInitEventOf(ObjectClass, EventName) then
                       AInitHandlers.AddObject(Word, TObject(LineIndex));
                   end
-                  else if not TFormRoutine(ANames.Objects[Target]).HasParams or
+                  else if not TFormRoutine(ARoutines[Target]).HasParams or
                           ((After <= TextLen) and (Text[After] = '(')) then
-                    Routine.AddCall(LineIndex,
-                      ARoutines.IndexOf(ANames.Objects[Target]));
+                    Routine.AddCall(LineIndex, Target);
                 end;
               end;
               PrevChar := 'A';
@@ -5993,6 +6006,9 @@ begin
         end;
       end;
     end;
+  end;
+  finally
+    Lookup.Free;
   end;
 end;
 
@@ -7794,7 +7810,7 @@ begin
     // все вместе, с ними уходит и тело
     for Index := 0 to Helpers.Count - 1 do
     begin
-      ReportStep('локальные создатели', Index, Helpers.Count);
+      ReportStep('локальные создатели: вызовы', Index, Helpers.Count);
       Helper := THelperInfo(Helpers[Index]);
       if Helper.LocalCreator and Helper.Simple then
         ResolveLocalCreator(Helper);

@@ -43136,6 +43136,10 @@ begin
     FObjMoveStage := AStage;
     FObjMoveStageStart := TickNow;
   end;
+  // Ход приходит на каждую строку модуля: текст панели - только когда
+  // BusyTick её перерисует (не чаще 150 мс)
+  if (FBusyLast <> 0) and (TickNow - FBusyLast < 150) then
+    Exit;
   if ATotal > 0 then
     FBusyStage := 'Перенести в .dfm: ' + AStage + ' ' +
                   IntToStr(Int64(ADone) * 100 div ATotal) + '%'
