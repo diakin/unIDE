@@ -325,7 +325,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.27';
+  DfmMoveBuild = 'b.28';
 
 constructor TMoveInfo.Create;
 begin
@@ -522,17 +522,33 @@ begin
   end;
 end;
 
+// Кэш разбора (см. UsesCacheStart): строки ALines заглавными, если кэш
+// построен для ALines; иначе nil
+function UsesUpperFor(ALines: TStrings): TStringList; forward;
+// Найденная раньше строка реализации по заголовку AHead (ФОРМА.МЕТОД)
+function MethodImplLookup(const AHead: string; var ALine: Integer): Boolean;
+  forward;
+procedure MethodImplStore(const AHead: string; ALine: Integer); forward;
+
 // Строка реализации метода формы AMethod (procedure TForm1.AMethod); -1
 function FindMethodImpl(ALines: TStrings; const AFormClass,
   AMethod: string): Integer;
 var
   Index: Integer;
   T, Head: string;
+  Upper: TStringList;
 begin
   Result := -1;
   Head := UpperCase(AFormClass + '.' + AMethod);
+  // Во время разбора: тот же метод - из кэша; строки без Head (заглавными)
+  // пропускаются сразу
+  Upper := UsesUpperFor(ALines);
+  if (Upper <> nil) and MethodImplLookup(Head, Result) then
+    Exit;
   for Index := 0 to ALines.Count - 1 do
   begin
+    if (Upper <> nil) and (Pos(Head, Upper[Index]) = 0) then
+      Continue;
     T := UpperCase(Trim(ALines[Index]));
     if ((Pos('PROCEDURE ', T) = 1) or (Pos('FUNCTION ', T) = 1) or
         (Pos('CONSTRUCTOR ', T) = 1)) and
@@ -540,9 +556,11 @@ begin
        not IsIdentChar((T + ' ')[Pos(Head, T) + Length(Head)]) then
     begin
       Result := Index;
-      Exit;
+      Break;
     end;
   end;
+  if Upper <> nil then
+    MethodImplStore(Head, Result);
 end;
 
 // Процедура формы, в которой стоит строка ALine: её имя, строка
@@ -602,6 +620,7 @@ var
   GUsesLines: TStrings = nil;
   GUsesUpper: TStringList = nil;
   GUsesCache: TStringList = nil;
+  GMethodImpl: TStringList = nil;   // ФОРМА.МЕТОД -> строка реализации
 
 procedure UsesCacheReset;
 var
@@ -612,6 +631,8 @@ begin
       GUsesCache.Objects[Index].Free;
   GUsesCache.Free;
   GUsesCache := nil;
+  GMethodImpl.Free;
+  GMethodImpl := nil;
   GUsesUpper.Free;
   GUsesUpper := nil;
   GUsesLines := nil;
@@ -630,6 +651,32 @@ begin
     GUsesUpper.Add(UpperCase(ALines[Index]));
   GUsesCache := TStringList.Create;
   GUsesCache.Sorted := True;
+  GMethodImpl := TStringList.Create;
+  GMethodImpl.Sorted := True;
+  GMethodImpl.CaseSensitive := True;
+end;
+
+function UsesUpperFor(ALines: TStrings): TStringList;
+begin
+  Result := nil;
+  if (ALines <> nil) and (GUsesLines = ALines) and (GUsesUpper <> nil) and
+     (GUsesUpper.Count = ALines.Count) then
+    Result := GUsesUpper;
+end;
+
+function MethodImplLookup(const AHead: string; var ALine: Integer): Boolean;
+var
+  At: Integer;
+begin
+  Result := (GMethodImpl <> nil) and GMethodImpl.Find(AHead, At);
+  if Result then
+    ALine := Integer(GMethodImpl.Objects[At]);
+end;
+
+procedure MethodImplStore(const AHead: string; ALine: Integer);
+begin
+  if GMethodImpl <> nil then
+    GMethodImpl.AddObject(AHead, TObject(ALine));
 end;
 
 // Сколько раз метод формы вызывается и назначается обработчиком (вне
@@ -6729,6 +6776,9 @@ var
   ParentNode: TDfmNode;
   // CallKeepsGeometry по вызову и номеру аргумента ('ИМЯ#N' -> 0/1)
   GeometryCalls: TStringList;
+  // Вызовы без переменной: строки с именами помощников
+  HelperLines, OneHelperLines, MergedLines: TList;
+  HelperLineIndex: Integer;
   // Узлы дерева по номерам: Data и уровень. Items[N] дерева в Delphi 7
   // идёт от первого узла (N шагов) - в циклах по дереву это N*N.
   TreeData, TreeLevel: TList;
@@ -8073,6 +8123,9 @@ begin
   GeometryCalls := TStringList.Create;
   GeometryCalls.Sorted := True;
   GeometryCalls.CaseSensitive := True;
+  HelperLines := TList.Create;
+  OneHelperLines := TList.Create;
+  MergedLines := TList.Create;
   try
     TreeNode := ATree.Items.GetFirstNode;
     while TreeNode <> nil do
@@ -8143,8 +8196,21 @@ begin
     // Вызовы помощников без переменной (MakeItem(Self, P, ...);): в
     // дереве их нет. Переносимые - в список под родителем, с новым именем;
     // остальные не показываются, как и раньше.
-    for Index := 0 to Lines.Count - 1 do
+    // Строки - только со словом имени какого-нибудь помощника (по индексу
+    // слов): вызов начинается с этого имени
+    HelperLines.Clear;
+    for Other := 0 to Helpers.Count - 1 do
     begin
+      WordCandidates(Keys, UpperCase(THelperInfo(Helpers[Other]).Name), 0,
+                     Lines.Count - 1, OneHelperLines);
+      MergeLineLists(HelperLines, OneHelperLines, MergedLines);
+      HelperLines.Clear;
+      for HelperLineIndex := 0 to MergedLines.Count - 1 do
+        HelperLines.Add(MergedLines[HelperLineIndex]);
+    end;
+    for HelperLineIndex := 0 to HelperLines.Count - 1 do
+    begin
+      Index := Integer(HelperLines[HelperLineIndex]);
       ReportStep('вызовы без переменной', Index, Lines.Count);
       if not ParseHelperCall(Lines, Index, Helpers, Helper, CallLhs, CallArgs,
                              CallLast) then
@@ -8683,6 +8749,9 @@ begin
   finally
     WordIndexReset;
     UsesCacheReset;
+    MergedLines.Free;
+    OneHelperLines.Free;
+    HelperLines.Free;
     GeometryCalls.Free;
     TreeLevel.Free;
     TreeData.Free;
