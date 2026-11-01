@@ -1097,6 +1097,81 @@ begin
     TOomErrorProc(OldErrorProc)(CodeByte, ErrorAddr);
 end;
 
+// ---------------------------------------------------------------------------
+//  Access violation, пойманный обработчиком (окно VCL «Access violation at
+//  address ...»): сбой не доходит до HangCrashFilter, и в crash.log его не
+//  было. ExceptObjProc SysUtils вызывается, когда Delphi-обработчик берёт
+//  исключение Windows, - ещё до раскрутки стека: кадры упавшей процедуры
+//  на месте. Запись - место сбоя по .map и адреса кода в стеке.
+// ---------------------------------------------------------------------------
+
+const
+  AvMaxReports = 5;
+
+type
+  TAvExceptObj = function(P: PExceptionRecord): Exception;
+
+var
+  OldExceptObjProc: Pointer = nil;
+  AvBusy: Integer = 0;
+  AvReports: Integer = 0;
+  AvLastAddr: Pointer = nil;
+
+procedure AvReport(AInfo: PExceptionRecord);
+var
+  Lines: TStringList;
+  Access: string;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Add(Format('==== %s  Access violation%s',
+                     [FormatDateTime('dd.mm.yyyy hh:nn:ss', Now),
+                      Watch.BuildNote]));
+    if GetCurrentThreadId = MainThreadID then
+      Lines.Add('Поток: главный')
+    else
+      Lines.Add('Поток: ' + IntToStr(GetCurrentThreadId) + ' (не главный)');
+    if AInfo^.NumberParameters >= 2 then
+    begin
+      if AInfo^.ExceptionInformation[0] = 0 then
+        Access := 'чтение'
+      else
+        Access := 'запись';
+      Access := Format(', %s адреса %.8x', [Access,
+        AInfo^.ExceptionInformation[1]]);
+    end
+    else
+      Access := '';
+    Lines.Add(Format('Место  %.8x  %s%s', [Cardinal(AInfo^.ExceptionAddress),
+      Watch.Describe(Cardinal(AInfo^.ExceptionAddress)), Access]));
+    HangWatchCallStack(Lines);
+    Watch.WriteCrash(Lines);
+  finally
+    Lines.Free;
+  end;
+end;
+
+function AvExceptObj(P: PExceptionRecord): Exception;
+begin
+  // Одно место сбоя - одна запись подряд: обработчиков на пути исключения
+  // несколько, и ExceptObjProc зовётся для каждого
+  if (P <> nil) and (P^.ExceptionCode = STATUS_ACCESS_VIOLATION) and
+     (Watch <> nil) and (P^.ExceptionAddress <> AvLastAddr) and
+     (AvReports < AvMaxReports) and
+     (InterlockedExchange(AvBusy, 1) = 0) then
+  begin
+    AvLastAddr := P^.ExceptionAddress;
+    Inc(AvReports);
+    try
+      AvReport(P);
+    except
+      // запись не удалась - исключение идёт дальше как обычно
+    end;
+    AvBusy := 0;
+  end;
+  Result := TAvExceptObj(OldExceptObjProc)(P);
+end;
+
 procedure HangWatchStart(AWnd: HWND; const ALogFile: string;
                          AUiWnd: HWND = 0; const ABuild: string = '');
 var
@@ -1118,6 +1193,13 @@ begin
   Move(ErrorProc, OldErrorProc, SizeOf(Pointer));
   NewProc := @OomErrorProc;
   Move(NewProc, ErrorProc, SizeOf(Pointer));
+  // ExceptObjProc ставит SysUtils (GetExceptionObject); без него
+  // исключения Windows в объекты Delphi не превращаются - не трогаем
+  if ExceptObjProc <> nil then
+  begin
+    OldExceptObjProc := ExceptObjProc;
+    ExceptObjProc := @AvExceptObj;
+  end;
 {$ENDIF}
 end;
 
@@ -1175,6 +1257,13 @@ begin
     Move(OldErrorProc, ErrorProc, SizeOf(Pointer));
     OldErrorProc := nil;
   end;
+{$IFNDEF FPC}
+  if OldExceptObjProc <> nil then
+  begin
+    ExceptObjProc := OldExceptObjProc;
+    OldExceptObjProc := nil;
+  end;
+{$ENDIF}
   SetEvent(Watch.FStop);
   Watch.Terminate;
   Watch.WaitFor;
