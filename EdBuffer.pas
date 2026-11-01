@@ -51,6 +51,12 @@ const
   EdCacheSize = 256;     // строк в кэше чтения (степень двойки)
   EdCacheBlock = 32;     // строк читается подряд при промахе кэша
   EdMapBlock = 4096;     // байтов в куске отображённого файла при загрузке
+  // Буфер добавленного (FAdd) - блоками по столько знаков (2 МБ), а не
+  // одной строкой: одна строка росла удвоением, и на файле в 32 МБ после
+  // вставок 32-разрядному процессу не хватало адресов на её новый размер
+  // (crash.log 01.11.2026, TEdBuffer.InsertAt). Кусок дерева не переходит
+  // границу блока
+  EdAddBlock = 1024 * 1024;
   // Больше стольких знаков кусок текста отображённого файла строкой не
   // отдаётся (TextRange - пусто), удаление - без отката: строка была бы
   // сотнями мегабайт
@@ -79,8 +85,8 @@ type
     ANewCount: Integer) of object;
 
   // Узел дерева кусков: кусок Source (0 - FOrig, 1 - FAdd) с символа Start
-  // (с 0) длиной Len, в нём Lf переводов строки; SubLen / SubLf - то же для
-  // всего поддерева. Source = 2 - байты отображённого файла: Start - байт
+  // (с 0; у FAdd - сквозной номер по всем блокам) длиной Len, в нём Lf
+  // переводов строки; SubLen / SubLf - то же для всего поддерева. Source = 2 - байты отображённого файла: Start - байт
   // (с 0), ByteLen - байтов, Len - знаков после декодирования
   PEdPiece = ^TEdPiece;
   TEdPiece = record
@@ -100,8 +106,8 @@ type
   private
     FRoot: PEdPiece;
     FOrig: WideString;
-    FAdd: WideString;
-    FAddLen: Integer;        // занято в FAdd (остальное - запас)
+    FAdd: array of WideString; // блоки по EdAddBlock знаков
+    FAddLen: Integer;        // занято в FAdd всего (остальное - запас)
     FSeed: Cardinal;
     FCount: Integer;
     FCacheRows: array[0..EdCacheSize - 1] of Integer;   // -1 - пусто
@@ -389,10 +395,15 @@ begin
     Exit;
   end;
   if ANode^.Source = 0 then
-    Result := PWideChar(Pointer(FOrig))
+  begin
+    Result := PWideChar(Pointer(FOrig));
+    Inc(Result, ANode^.Start);
+  end
   else
-    Result := PWideChar(Pointer(FAdd));
-  Inc(Result, ANode^.Start);
+  begin
+    Result := PWideChar(Pointer(FAdd[ANode^.Start div EdAddBlock]));
+    Inc(Result, ANode^.Start mod EdAddBlock);
+  end;
 end;
 
 function TEdBuffer.NewPiece(ASource: Byte; AStart, ALen: Integer;
@@ -711,9 +722,11 @@ begin
   if ANode^.Right <> nil then
     Result := ExtendLast(ANode^.Right, AAddStart, ALen)
   else if (ANode^.Source = 1) and (ANode^.Start + ANode^.Len = AAddStart) and
-    (ANode^.Len + ALen <= EdPieceMax) then
+    (ANode^.Len + ALen <= EdPieceMax) and
+    (ANode^.Start div EdAddBlock = (AAddStart + ALen - 1) div EdAddBlock) then
   begin
-    Inc(ANode^.Lf, CountBreaks(PWideChar(Pointer(FAdd)) + AAddStart, ALen));
+    Inc(ANode^.Lf, CountBreaks(PWideChar(Pointer(FAdd[AAddStart div
+      EdAddBlock])) + AAddStart mod EdAddBlock, ALen));
     Inc(ANode^.Len, ALen);
     Result := True;
   end;
@@ -792,7 +805,7 @@ begin
   FreeTree(FRoot);
   FRoot := nil;
   ReleaseMap;
-  FAdd := '';
+  FAdd := nil;
   FAddLen := 0;
   PieceCount := (Length(FOrig) + EdPieceMax - 1) div EdPieceMax;
   FRoot := BuildTree(0, PieceCount - 1, 0);
@@ -805,24 +818,39 @@ end;
 
 procedure TEdBuffer.InsertAt(APos: Integer; const AText: WideString);
 var
-  TextLen, AddStart, Offset, Part: Integer;
+  TextLen, AddStart, Offset, Part, BlockIdx, BlockPos: Integer;
   LeftTree, RightTree: PEdPiece;
 begin
   TextLen := Length(AText);
   if TextLen = 0 then
     Exit;
   AddStart := FAddLen;
-  if FAddLen + TextLen > Length(FAdd) then
-    SetLength(FAdd, (FAddLen + TextLen) * 2 + 1024);
-  Move(AText[1], FAdd[FAddLen + 1], TextLen * SizeOf(WideChar));
-  Inc(FAddLen, TextLen);
+  // В блоки FAdd подряд; новый блок - когда текущий заполнен
+  Offset := 0;
+  while Offset < TextLen do
+  begin
+    BlockIdx := FAddLen div EdAddBlock;
+    BlockPos := FAddLen mod EdAddBlock;
+    if BlockIdx >= Length(FAdd) then
+    begin
+      SetLength(FAdd, BlockIdx + 1);
+      SetLength(FAdd[BlockIdx], EdAddBlock);
+    end;
+    Part := MinInt(EdAddBlock - BlockPos, TextLen - Offset);
+    Move(AText[Offset + 1], FAdd[BlockIdx][BlockPos + 1],
+      Part * SizeOf(WideChar));
+    Inc(FAddLen, Part);
+    Inc(Offset, Part);
+  end;
   SplitTree(FRoot, APos, LeftTree, RightTree);
   Offset := 0;
   if ExtendLast(LeftTree, AddStart, TextLen) then
     Offset := TextLen;
   while Offset < TextLen do
   begin
+    // Кусок - не через границу блока FAdd
     Part := MinInt(EdPieceMax, TextLen - Offset);
+    Part := MinInt(Part, EdAddBlock - (AddStart + Offset) mod EdAddBlock);
     LeftTree := MergeTree(LeftTree,
       NewPiece(1, AddStart + Offset, Part, NextPrio));
     Inc(Offset, Part);
@@ -1154,7 +1182,7 @@ begin
   FRoot := nil;
   ReleaseMap;
   FOrig := '';
-  FAdd := '';
+  FAdd := nil;
   FAddLen := 0;
   FMapData := AData;
   FMapSize := ASize;
