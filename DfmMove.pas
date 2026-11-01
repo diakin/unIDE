@@ -335,7 +335,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.47';
+  DfmMoveBuild = 'b.48';
   // Причина у объекта работающей формы без строки создания
   NotFoundReason = 'в модуле формы не найдено, где создаётся';
 
@@ -7176,12 +7176,71 @@ begin
   end;
 end;
 
+// APattern начинается с имени: есть в AKey, и перед ним не буква, не цифра,
+// не _ и не точка
+function HasWholeAt(const AKey, APattern: string): Boolean;
+var
+  From, At: Integer;
+begin
+  Result := False;
+  From := 1;
+  repeat
+    At := PosEx(APattern, AKey, From);
+    if At = 0 then
+      Exit;
+    if (At = 1) or not (AKey[At - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
+    begin
+      Result := True;
+      Exit;
+    end;
+    From := At + 1;
+  until False;
+end;
+
+// Строки модуля, которые добавляют что-то в AParent: AParent.Add(...),
+// .Items.Add, .Insert, Parent := AParent, вызов с AParent аргументом
+// (MakeItem(Self, AParent, ...), ArdAddItem(AParent, ...)). В AFound -
+// номера строк от нуля (не больше 50).
+procedure FindParentAdds(ALines: TStrings; const AParent: string;
+  AFound: TList);
+var
+  LineIdx: Integer;
+  Key, Up: string;
+begin
+  AFound.Clear;
+  if AParent = '' then
+    Exit;
+  Up := UpperCase(AParent);
+  for LineIdx := 0 to ALines.Count - 1 do
+  begin
+    if Pos(Up, UpperCase(ALines[LineIdx])) = 0 then
+      Continue;
+    Key := CodeKey(ALines[LineIdx]);
+    if HasWholeAt(Key, Up + '.ADD(') or HasWholeAt(Key, Up + '.ITEMS.ADD(') or
+       HasWholeAt(Key, Up + '.INSERT(') or
+       HasWholeAt(Key, Up + '.ITEMS.INSERT(') or
+       (Pos('PARENT:=' + Up + ';', Key) > 0) or
+       (Pos('(' + Up + ',', Key) > 0) or (Pos(',' + Up + ',', Key) > 0) or
+       (Pos(',' + Up + ')', Key) > 0) then
+    begin
+      AFound.Add(Pointer(LineIdx));
+      if AFound.Count >= 50 then
+        Exit;
+    end;
+  end;
+end;
+
 // Объекты работающей формы без имени, для которых нашлась строка создания
-// (FindSnapTwin), - из списка: их объясняет та строка, у неё - счётчик
+// (FindSnapTwin), - из списка: их объясняет та строка, у неё - счётчик.
+// Остальным - строки, которые что-то добавляют в их родителя; у одного
+// родителя такой объект показывается один, с числом остальных.
 procedure HideSnapTwins(AList: TList; ALines: TStrings);
 var
-  Index: Integer;
-  Info, Mate: TMoveInfo;
+  Index, ParentIdx, Other: Integer;
+  Info, Mate, FirstInfo: TMoveInfo;
+  ParentNode: TDfmNode;
+  ParentName, Text: string;
+  Found: TList;
 begin
   for Index := AList.Count - 1 downto 0 do
   begin
@@ -7205,6 +7264,83 @@ begin
       Info.Notes.Add('В работающей форме объектов без имени, созданных ' +
                      'этой строкой: ' + IntToStr(Info.TwinCount) +
                      ' (в списке не показаны).');
+  end;
+
+  // Оставшиеся: что добавляет в их родителя
+  Found := TList.Create;
+  try
+    Index := 0;
+    while Index < AList.Count do
+    begin
+      Info := TMoveInfo(AList[Index]);
+      if (Info.Kind <> mkNo) or (Info.CreateLine >= 0) or
+         (TDfmNode(Info.Node).VarName <> '') or
+         (TDfmNode(Info.Node).Name <> '') or
+         (Info.Reason <> NotFoundReason) then
+      begin
+        Inc(Index);
+        Continue;
+      end;
+      ParentIdx := Index - 1;
+      while (ParentIdx >= 0) and
+            (TMoveInfo(AList[ParentIdx]).Depth >= Info.Depth) do
+        Dec(ParentIdx);
+      ParentName := '';
+      if ParentIdx >= 0 then
+      begin
+        ParentNode := TDfmNode(TMoveInfo(AList[ParentIdx]).Node);
+        if ParentNode.Name <> '' then
+          ParentName := ParentNode.Name
+        else
+          ParentName := ParentNode.VarName;
+      end;
+      // Такие же без имени у того же родителя - одной строкой
+      FirstInfo := Info;
+      Other := Index + 1;
+      while Other < AList.Count do
+      begin
+        Mate := TMoveInfo(AList[Other]);
+        if Mate.Depth < Info.Depth then
+          Break;
+        if (Mate.Depth = Info.Depth) and (Mate.Kind = mkNo) and
+           (Mate.CreateLine < 0) and (TDfmNode(Mate.Node).VarName = '') and
+           (TDfmNode(Mate.Node).Name = '') and
+           (Mate.Reason = NotFoundReason) and
+           (CompareText(TDfmNode(Mate.Node).ClassNm,
+                        TDfmNode(Info.Node).ClassNm) = 0) then
+        begin
+          Inc(FirstInfo.TwinCount);
+          Mate.Free;
+          AList.Delete(Other);
+          Continue;
+        end;
+        Inc(Other);
+      end;
+      FindParentAdds(ALines, ParentName, Found);
+      if Found.Count > 0 then
+      begin
+        Text := Trim(StripComment(ALines[Integer(Found[0])]));
+        if Length(Text) > 70 then
+          Text := Copy(Text, 1, 67) + '...';
+        Info.Reason := 'объект без имени; в ' + ParentName +
+                       ' добавляет строка ' +
+                       IntToStr(Integer(Found[0]) + 1) + ': ' + Text;
+        if Found.Count > 1 then
+          Info.Reason := Info.Reason + ' (и ещё строк: ' +
+                         IntToStr(Found.Count - 1) + ')';
+        Info.Reason := Info.Reason + ' - проверить вручную';
+      end;
+      if FirstInfo.TwinCount > 0 then
+      begin
+        Info.Title := Info.Title + ' (x' + IntToStr(FirstInfo.TwinCount + 1) +
+                      ')';
+        Info.Notes.Add('У ' + ParentName + ' таких объектов без имени: ' +
+                       IntToStr(FirstInfo.TwinCount + 1) + '.');
+      end;
+      Inc(Index);
+    end;
+  finally
+    Found.Free;
   end;
 end;
 
