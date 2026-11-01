@@ -285,12 +285,17 @@ type
   // Перенос или его откат сделан: перечитать дерево объектов и разбор
   TDfmMoveDone = procedure of object;
 
+  // Долгая работа окна разбора (перенос, откат): AActive = True - начало
+  // этапа AStage (панель хода, DfmMoveProgress), False - конец
+  TDfmMoveBusy = procedure(const AStage: string; AActive: Boolean) of object;
+
   // Что окну разбора нужно от IDE
   TDfmMoveHost = record
     GoLine: TDfmMoveGoLine;
     GetText: TDfmMoveGetText;
     SetTexts: TDfmMoveSetTexts;
     Done: TDfmMoveDone;
+    Busy: TDfmMoveBusy;
   end;
 
 // Окно с результатом разбора. Немодальное: пока оно открыто, можно ходить
@@ -321,7 +326,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.38';
+  DfmMoveBuild = 'b.39';
 
 constructor TMoveInfo.Create;
 begin
@@ -10016,6 +10021,7 @@ begin
     Dfm := ADfmText;
     for Index := 0 to Order.Count - 1 do
     begin
+      DfmMoveStep('перенос: блоки .dfm', Index, Order.Count);
       Info := TMoveInfo(Order[Index]);
       ParentName := ParentDfmName(Info);
       if Receivers.IndexOf(ParentName) < 0 then
@@ -10059,6 +10065,7 @@ begin
     // в итоговом порядке
     for Index := 0 to Reorders.Count - 1 do
     begin
+      DfmMoveStep('перенос: меню', Index, Reorders.Count);
       Info := TMoveInfo(Reorders.Objects[Index]);
       Before := ReorderedDfm(Dfm, Info.OrderParent, Info.OrderGroup,
                              Info.OrderEnd);
@@ -10079,6 +10086,7 @@ begin
     // он встанет после него. По одному на родителя.
     for Index := 0 to AList.Count - 1 do
     begin
+      DfmMoveStep('перенос: порядок', Index, AList.Count);
       Info := TMoveInfo(AList[Index]);
       if not Info.Selected then
         Continue;
@@ -10105,6 +10113,7 @@ begin
     // Проверки на nil у переносимых: после переноса компонент есть всегда
     for Index := 0 to Order.Count - 1 do
     begin
+      DfmMoveStep('перенос: проверки на nil', Index, Order.Count);
       Info := TMoveInfo(Order[Index]);
       if Info.NilChecks.Count = 0 then
         Continue;
@@ -10122,6 +10131,7 @@ begin
     // Из них - те, что могут выполниться до прежнего создания
     for Index := 0 to Order.Count - 1 do
     begin
+      DfmMoveStep('перенос: проверки на nil', Index, Order.Count);
       Info := TMoveInfo(Order[Index]);
       if Info.NilRisk.Count = 0 then
         Continue;
@@ -10145,6 +10155,7 @@ begin
     // прочь: пустой var не компилируется.
     for Index := 0 to Order.Count - 1 do
     begin
+      DfmMoveStep('перенос: объявления var', Index, Order.Count);
       Info := TMoveInfo(Order[Index]);
       if Info.LocalDecl < 0 then
         Continue;
@@ -10197,6 +10208,7 @@ begin
       Replace[LineIndex] := '';
     for Index := 0 to Order.Count - 1 do
     begin
+      DfmMoveStep('перенос: строки кода', Index, Order.Count);
       Info := TMoveInfo(Order[Index]);
       if Info.ReplaceText <> '' then
         Replace[Info.CreateLine] :=
@@ -10229,6 +10241,7 @@ begin
                               '// .dfm: ' + TrimLeft(Lines[LineIndex]);
       end;
 
+    DfmMoveStep('перенос: поля и обработчики', 0, 0);
     // 6. Поля и обработчики - в published
     PublishInClass(Lines, AFormClass, Order, Handlers, AReport, FieldCount,
                    MethodCount);
@@ -10840,8 +10853,15 @@ begin
 
   Report := TStringList.Create;
   try
-    Count := DfmMoveApply(List, PasText, DfmText, FormClass,
-                          ChkDelete.Checked, NewPas, NewDfm, Report);
+    if Assigned(Host.Busy) then
+      Host.Busy('перенос', True);
+    try
+      Count := DfmMoveApply(List, PasText, DfmText, FormClass,
+                            ChkDelete.Checked, NewPas, NewDfm, Report);
+    finally
+      if Assigned(Host.Busy) then
+        Host.Busy('перенос', False);
+    end;
     ShowChecks;     // перенос мог снять отметки, которые нельзя выполнить
     Details.Lines.Assign(Report);
     if Count = 0 then
@@ -10884,7 +10904,14 @@ begin
     Step.NewDfm := NewDfm;
     Step.Report := Report.Text;
     UndoSteps.Add(Step);
-    Host.SetTexts(UnitFile, NewPas, DfmFile, NewDfm);
+    if Assigned(Host.Busy) then
+      Host.Busy('запись во вкладки', True);
+    try
+      Host.SetTexts(UnitFile, NewPas, DfmFile, NewDfm);
+    finally
+      if Assigned(Host.Busy) then
+        Host.Busy('запись во вкладки', False);
+    end;
     if Bak <> '' then
       ShowMessage('Перенесено компонентов: ' + IntToStr(Count) + '.' +
                   #13#10#13#10'Копии файлов с диска:' + Bak + #13#10#13#10 +
@@ -10919,7 +10946,14 @@ begin
     Msg := 'Вернуть модуль и форму к текстам до последнего переноса?';
   if MessageDlg(Msg, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
     Exit;
-  Host.SetTexts(Step.PasFile, Step.OldPas, Step.DfmFile, Step.OldDfm);
+  if Assigned(Host.Busy) then
+    Host.Busy('откат: запись во вкладки', True);
+  try
+    Host.SetTexts(Step.PasFile, Step.OldPas, Step.DfmFile, Step.OldDfm);
+  finally
+    if Assigned(Host.Busy) then
+      Host.Busy('откат: запись во вкладки', False);
+  end;
   UndoSteps.Remove(Step);
   Step.Free;
   Close;
