@@ -24695,72 +24695,19 @@ end;
 // Весь текст редактора в координатах контрола: перевод строки - один CR,
 // позиция символа в строке (с 1) = индекс контрола + 1. Для карты
 // комментариев и строк.
-//
-// RichEdit 4.1 отдаёт в WM_GETTEXT (RichEdit1.Text) перевод строки двумя
-// символами - карта, построенная по такому тексту, уезжала на символ за
-// каждую строку выше.
 function TForm1.GetEditorTextCR: string;
 begin
   Result := GetEditorTextEx(False);
 end;
 
 function TForm1.GetEditorTextEx(AUseCRLF: Boolean): string;
-const
-  EM_GETTEXTEX_ = WM_USER + 94;
-  EM_GETTEXTLENGTHEX_ = WM_USER + 95;
-  GT_USECRLF_ = 1;
-  GTL_USECRLF_ = 1;
-  GTL_PRECISE_ = 2;
-  GTL_NUMBYTES_ = 16;
-type
-  TGetTextEx_ = record
-    cb: DWORD;
-    flags: DWORD;
-    codepage: UINT;
-    lpDefaultChar: PChar;
-    lpUsedDefChar: PBOOL;
-  end;
-  TGetTextLengthEx_ = record
-    flags: DWORD;
-    codepage: UINT;
-  end;
-var
-  GT: TGetTextEx_;
-  GTL: TGetTextLengthEx_;
-  Len, Got: Integer;
 begin
-  // Кодовая страница и CRLF указаны явно, а не остаются на
-  // перекодирование Windows. Длина - точная, в байтах, с CRLF: WM_GETTEXTLENGTH
-  // этого не обещает, а TControl.Text по ней выделяет буфер.
   Result := '';
-  if not RichEdit1.HandleAllocated then
+  if FEdEmu = nil then
     Exit;
   if IsLargeText and LargeSkip('GetEditorText') then
     Exit;
-
-  if AUseCRLF then
-    GTL.flags := GTL_USECRLF_ or GTL_PRECISE_ or GTL_NUMBYTES_
-  else
-    GTL.flags := GTL_PRECISE_ or GTL_NUMBYTES_;
-  GTL.codepage := CP_ACP;
-  Len := EdApi.GetTextLengthEx(GTL);
-  if Len <= 0 then
-    Exit;
-
-  SetLength(Result, Len + 1);
-  FillChar(GT, SizeOf(GT), 0);
-  GT.cb := Len + 1;
-  if AUseCRLF then
-    GT.flags := GT_USECRLF_
-  else
-    GT.flags := 0;
-  GT.codepage := CP_ACP;
-  Got := EdApi.GetTextEx(GT, PChar(Result));
-  if Got < 0 then
-    Got := 0;
-  if Got > Len then
-    Got := Len;
-  SetLength(Result, Got);
+  Result := string(FEdEmu.GetAllText(AUseCRLF));
 end;
 
 procedure TForm1.SetEditorText(const Str: string);
@@ -25112,92 +25059,35 @@ begin
   PaintBox1.Invalidate;
 end;
 
-// Запрос куска текста у RichEdit. В RichEdit.pas от Delphi 7 ни структуры
-// TTextRange, ни константы EM_GETTEXTRANGE нет, поэтому объявляем их сами.
-// Имя константы своё, с подчёркиванием, - чтобы не столкнуться с версиями
-// модуля, где она всё-таки есть. Порядок полей задан WinAPI, менять нельзя.
-type
-  TGetTextRange = record
-    chrg: TCharRange; // TCharRange объявлен в RichEdit и уже используется
-    lpstrText: PChar;
-  end;
-
-const
-  EM_GET_TEXTRANGE = WM_USER + 75;
-
-  // Один символ текста по абсолютной позиции.
-  //
-  // Раньше ради него читалась ВСЯ строка редактора: FullText := RichEdit1.Text.
-  // Это WM_GETTEXT, то есть копия всего документа в новую строку - на файле
-  // в 32 МБ по 32 МБ на каждое обновление статус-бара. EM_GETTEXTRANGE просит
-  // у контрола ровно один символ.
+// Один символ текста по абсолютной позиции (модель RichEdit: перевод
+// строки - один символ CR); #0 - за концом текста
 function TForm1.CharAt(APos: Integer): Char;
 var
-  TR: TGetTextRange;
-  Buf: array[0..7] of Char;
-  WBuf: array[0..3] of WideChar;
+  Str: string;
 begin
   Result := #0;
-  if (APos < 0) or not RichEdit1.HandleAllocated then
+  if (APos < 0) or (FEdEmu = nil) then
     Exit;
-
-  FillChar(Buf, SizeOf(Buf), 0);
-  FillChar(WBuf, SizeOf(WBuf), 0);
-  TR.chrg.cpMin := APos;
-  TR.chrg.cpMax := APos + 1;
-
-  // Ответ - в UTF-16, как у RichEdit 4.1 (свой редактор, EdRichEmu)
-  TR.lpstrText := PChar(@WBuf[0]);
-
-  // 0 означает "за концом текста" - там символа и нет
-  if EdApi.GetTextRange(TR) <= 0 then
-    Exit;
-
-  WideCharToMultiByte(CP_ACP, 0, @WBuf[0], 1, @Buf[0], SizeOf(Buf) - 1,
-                      nil, nil);
-  Result := Buf[0];
+  Str := string(FEdEmu.GetRange(APos, APos + 1));
+  if Str <> '' then
+    Result := Str[1];
 end;
 
-// Кусок текста по абсолютным позициям. Тем же EM_GETTEXTRANGE, что и CharAt,
-// но под произвольную длину: нужен для окна вокруг каретки.
+// Кусок текста по абсолютным позициям, перевод строки - CR. Прямо из
+// буфера своего редактора (TEdRichEmu.GetRange), в кодировке Windows.
 function TForm1.TextRange(AFrom, ACount: Integer): string;
-var
-  TR: TGetTextRange;
-  Got: Integer;
-  WordStr: WideString;
 begin
   Result := '';
-  if (ACount <= 0) or not RichEdit1.HandleAllocated then
+  if (ACount <= 0) or (FEdEmu = nil) then
     Exit;
   // Большой файл: кусок больше EdMaxRangeText строкой не берётся (буфер
-  // EdRichEmu его всё равно не отдаст, а SetLength ниже - сотни мегабайт)
+  // его всё равно не отдаст, а строка - сотни мегабайт)
   if IsLargeText and (ACount > EdMaxRangeText) and
      LargeSkip('кусок текста больше 16 млн знаков') then
     Exit;
   if AFrom < 0 then
     AFrom := 0;
-
-  TR.chrg.cpMin := AFrom;
-  TR.chrg.cpMax := AFrom + ACount;
-
-  // Ответ - в UTF-16, как у RichEdit 4.1 (свой редактор, EdRichEmu).
-  // Плюс символ под завершающий ноль.
-  SetLength(WordStr, ACount + 1);
-  FillChar(WordStr[1], (ACount + 1) * SizeOf(WideChar), 0);
-  TR.lpstrText := PChar(PWideChar(WordStr));
-
-  Got := EdApi.GetTextRange(TR);
-  if Got <= 0 then
-    Exit;
-  if Got > ACount then
-    Got := ACount;
-
-  // В однобайтовой кодовой странице символ - байт; запас на случай
-  // многобайтовой
-  SetLength(Result, Got * 2);
-  Got := WideCharToMultiByte(CP_ACP, 0, PWideChar(WordStr), Got,
-                             PChar(Result), Length(Result), nil, nil);
-  SetLength(Result, Got);
+  Result := string(FEdEmu.GetRange(AFrom, AFrom + ACount));
 end;
 
 // Начало выделенного текста, не длиннее AMaxLen символов: весь текст
@@ -48351,37 +48241,20 @@ begin
   Inc(FInvalAll);
 end;
 
-// Текст строки ALine без перевода строки, длиной не больше ALen.
-//
-// EM_GETLINE берёт размер буфера из первого СЛОВА буфера, то есть не
-// больше 65535 символов; строки длиннее читаются через TextRange.
-// Строка обрезается на первом #0 - так было и прежде (StrPas), и разбор
-// дальше идёт по её длине.
+// Текст строки ALine без перевода строки, длиной не больше ALen. AStart -
+// индекс начала строки. Строка обрезается на первом #0 - так было и
+// прежде (StrPas), и разбор дальше идёт по её длине.
 function TForm1.ReadLineText(ALine, AStart, ALen: Integer): string;
-const
-  MaxGetLine = 65000;
 var
-  Got, CharPos: Integer;
+  CharPos: Integer;
 begin
   Result := '';
-  if ALen <= 0 then
+  if (ALen <= 0) or (FEdEmu = nil) then
     Exit;
-
-  if ALen < MaxGetLine then
-  begin
-    // RichEdit 4.1 отдаёт строку вместе с CR - место под него и под ноль
-    SetLength(Result, ALen + 2);
-    PWord(Pointer(Result))^ := ALen + 2;
-    Got := EdApi.GetLine(ALine, Pointer(Result));
-    if Got < 0 then
-      Got := 0;
-    if Got > ALen then
-      Got := ALen;
-    SetLength(Result, Got);
-  end
-  else
-    Result := TextRange(AStart, ALen);
-
+  Result := TextRange(AStart, ALen);
+  CharPos := Pos(#13, Result);
+  if CharPos > 0 then
+    SetLength(Result, CharPos - 1);
   CharPos := Pos(#0, Result);
   if CharPos > 0 then
     SetLength(Result, CharPos - 1);
@@ -48869,19 +48742,10 @@ end;
 
 // Длина текста в символах контрола (перевод строки - один символ)
 function TForm1.TextLenInternal: Integer;
-const
-  EM_GETTEXTLENGTHEX_ = WM_USER + 95;
-type
-  TGetTextLengthEx_ = record
-    flags: DWORD;
-    codepage: UINT;
-  end;
-var
-  LenReq: TGetTextLengthEx_;
 begin
-  LenReq.flags := 0;
-  LenReq.codepage := 1200;
-  Result := EdApi.GetTextLengthEx(LenReq);
+  Result := 0;
+  if FEdEmu <> nil then
+    Result := FEdEmu.Buffer.TextLength;
 end;
 
 // Перед сообщением, которое может изменить текст: снимок выделения и длины.
@@ -80668,8 +80532,7 @@ var
   Sel: TCharRange;
   Str, Txt: string;
   WordStr: WideString;
-  TR: TGetTextRange;
-  Got, Num: Integer;
+  Num: Integer;
   Lost: BOOL;
 begin
   EdApi.GetSel(Sel);
@@ -80678,15 +80541,14 @@ begin
       Exit;
   Num := Sel.cpMax - Sel.cpMin;
 
-  SetLength(WordStr, Num + 1);
-  FillChar(WordStr[1], (Num + 1) * SizeOf(WideChar), 0);
-  TR.chrg := Sel;
-  TR.lpstrText := PChar(PWideChar(WordStr));
-  Got := EdApi.GetTextRange(TR);
-  if Got <= 0 then
+  if FEdEmu = nil then
+    Exit;
+  WordStr := FEdEmu.GetRange(Sel.cpMin, Sel.cpMax);
+  if WordStr = '' then
     Exit;
   Lost := False;
-  WideCharToMultiByte(CP_ACP, 0, PWideChar(WordStr), Got, nil, 0, nil, @Lost);
+  WideCharToMultiByte(CP_ACP, 0, PWideChar(WordStr), Length(WordStr), nil, 0,
+                      nil, @Lost);
   if Lost then
   begin
     ShowMessage('27837:В выделении есть символы вне кодовой страницы ' +

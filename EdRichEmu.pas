@@ -142,6 +142,14 @@ type
     // Сообщение окну RichEdit1: True - разобрано здесь, Message.Result -
     // ответ; False - отдать RichEdit
     function Handle(var Message: TMessage): Boolean;
+    // Текст для Unit1 прямо из буфера, без сообщений (то же, что
+    // EM_GETTEXTRANGE и EM_GETTEXTEX): позиции и перевод строки - в модели
+    // RichEdit (CR - один символ)
+    // Кусок [AMin, AMax); AMax < 0 или за концом - до конца текста
+    function GetRange(AMin, AMax: Integer): WideString;
+    // Весь текст; AUseCrlf - перевод строки CRLF, иначе CR. Большой файл
+    // на отображении - пустая строка
+    function GetAllText(AUseCrlf: Boolean): WideString;
     property Buffer: TEdBuffer read FBuffer;
     property Editor: TEdEditor read FEditor;
     property TopRow: Integer read FTopRow;
@@ -755,6 +763,20 @@ begin
       if Result[CharIdx] = #10 then
         Result[CharIdx] := #13;
   end;
+end;
+
+function TEdRichEmu.GetRange(AMin, AMax: Integer): WideString;
+begin
+  if (AMax < 0) or (AMax > FBuffer.TextLength) then
+    AMax := FBuffer.TextLength;
+  if AMin < 0 then
+    AMin := 0;
+  Result := RangeText(AMin, AMax, False);
+end;
+
+function TEdRichEmu.GetAllText(AUseCrlf: Boolean): WideString;
+begin
+  Result := WideText(AUseCrlf);
 end;
 
 procedure TEdRichEmu.UseBuffer(ABuffer: TEdBuffer; AModified: Boolean);

@@ -49,22 +49,10 @@ type
     function LineFromChar(ACharIdx: Integer): Integer;
     // То же через EM_EXLINEFROMCHAR (индекс в lParam, без предела 64К)
     function ExLineFromChar(ACharIdx: Integer): Integer;
-    // Копия строки ALine в буфер ABuffer (EM_GETLINE). В первом слове
-    // буфера перед вызовом - его размер. Результат - число символов
-    function GetLine(ALine: Integer; ABuffer: Pointer): Integer;
 
-    // --- Текст целиком и куски ---
-    // Записи передаются как есть, без проверки типа: у Unit1 они объявлены
-    // локально в своих функциях (GETTEXTLENGTHEX, GETTEXTEX, TEXTRANGE,
-    // FINDTEXTEX - раскладка из RichEdit.h).
-    // Длина текста (EM_GETTEXTLENGTHEX, AInfo - GETTEXTLENGTHEX)
-    function GetTextLengthEx(var AInfo): Integer;
-    // Текст в буфер ABuffer (EM_GETTEXTEX, AInfo - GETTEXTEX). Результат -
-    // число записанных байт / символов
-    function GetTextEx(var AInfo; ABuffer: Pointer): Integer;
-    // Кусок текста (EM_GETTEXTRANGE, ARange - TEXTRANGE). Окно RichEdit 4.1
-    // пишет его в UTF-16 - см. TRichEdit в Unit1
-    function GetTextRange(var ARange): Integer;
+    // --- Поиск ---
+    // Текст целиком и куски Unit1 берёт прямо из буфера своего редактора
+    // (TEdRichEmu.GetRange, GetAllText), без сообщений.
     // Поиск (EM_FINDTEXTW через SendMessageW, AFind - FINDTEXTW). Результат -
     // позиция найденного, -1 - нет
     function FindTextW(AFlags: Integer; var AFind): Integer;
@@ -98,21 +86,11 @@ type
     procedure SetRect(const ARect: TRect);
     procedure SetRectNP(const ARect: TRect);
 
-    // --- Оформление и пределы ---
+    // --- Оформление ---
     // Формат абзаца (EM_GETPARAFORMAT / EM_SETPARAFORMAT). AFormat -
     // TParaFormat или TParaFormat2 с заполненным cbSize
     procedure GetParaFormat(var AFormat);
     procedure SetParaFormat(var AFormat);
-    // Предел объёма текста в символах (EM_GETLIMITTEXT / EM_EXLIMITTEXT)
-    function  GetLimitText: Integer;
-    procedure SetLimitText(ALimit: Integer);
-    // Перенос строк: 0 - по ширине окна, 1 - без переноса
-    // (EM_SETTARGETDEVICE, wParam 0). Результат - ответ окна
-    function  SetTargetDevice(ALineWidth: Integer): Integer;
-    // Какие уведомления окно шлёт родителю (EM_GETEVENTMASK /
-    // EM_SETEVENTMASK)
-    function  GetEventMask: Integer;
-    procedure SetEventMask(AMask: Integer);
   end;
 
 implementation
@@ -121,12 +99,6 @@ const
   // Сообщения RichEdit по RichEdit.h. Свои константы, а не из RichEdit.pas:
   // в модуле Delphi 7 части из них нет, у других другие имена. Значения -
   // те же, что у локальных констант, которыми Unit1 пользовался раньше
-  EM_GETTEXTRANGE_     = WM_USER + 75;
-  EM_GETEVENTMASK_     = WM_USER + 59;
-  EM_SETEVENTMASK_     = WM_USER + 69;
-  EM_SETTARGETDEVICE_  = WM_USER + 72;
-  EM_GETTEXTEX_        = WM_USER + 94;
-  EM_GETTEXTLENGTHEX_  = WM_USER + 95;
   EM_FINDTEXTW_        = WM_USER + 123;
 
 constructor TEdIntf.Create(AGetHandle: TEdHandleFunc);
@@ -167,27 +139,8 @@ begin
   Result := SendMessageA(Wnd, EM_EXLINEFROMCHAR, 0, ACharIdx);
 end;
 
-function TEdIntf.GetLine(ALine: Integer; ABuffer: Pointer): Integer;
-begin
-  Result := SendMessageA(Wnd, EM_GETLINE, ALine, Integer(ABuffer));
-end;
 
-// --- Текст целиком и куски ---
-
-function TEdIntf.GetTextLengthEx(var AInfo): Integer;
-begin
-  Result := SendMessageA(Wnd, EM_GETTEXTLENGTHEX_, Integer(@AInfo), 0);
-end;
-
-function TEdIntf.GetTextEx(var AInfo; ABuffer: Pointer): Integer;
-begin
-  Result := SendMessageA(Wnd, EM_GETTEXTEX_, Integer(@AInfo), Integer(ABuffer));
-end;
-
-function TEdIntf.GetTextRange(var ARange): Integer;
-begin
-  Result := SendMessageA(Wnd, EM_GETTEXTRANGE_, 0, Integer(@ARange));
-end;
+// --- Поиск ---
 
 function TEdIntf.FindTextW(AFlags: Integer; var AFind): Integer;
 begin
@@ -281,7 +234,7 @@ begin
   SendMessageA(Wnd, EM_SETRECTNP, 0, Integer(@ARect));
 end;
 
-// --- Оформление и пределы ---
+// --- Оформление ---
 
 procedure TEdIntf.GetParaFormat(var AFormat);
 begin
@@ -291,34 +244,6 @@ end;
 procedure TEdIntf.SetParaFormat(var AFormat);
 begin
   SendMessageA(Wnd, EM_SETPARAFORMAT, 0, Integer(@AFormat));
-end;
-
-function TEdIntf.GetLimitText: Integer;
-const
-  // В RichEdit.pas Delphi 7 этой константы нет
-  EM_GETLIMITTEXT_ = WM_USER + 37;
-begin
-  Result := SendMessageA(Wnd, EM_GETLIMITTEXT_, 0, 0);
-end;
-
-procedure TEdIntf.SetLimitText(ALimit: Integer);
-begin
-  SendMessageA(Wnd, EM_EXLIMITTEXT, 0, ALimit);
-end;
-
-function TEdIntf.SetTargetDevice(ALineWidth: Integer): Integer;
-begin
-  Result := SendMessageA(Wnd, EM_SETTARGETDEVICE_, 0, ALineWidth);
-end;
-
-function TEdIntf.GetEventMask: Integer;
-begin
-  Result := SendMessageA(Wnd, EM_GETEVENTMASK_, 0, 0);
-end;
-
-procedure TEdIntf.SetEventMask(AMask: Integer);
-begin
-  SendMessageA(Wnd, EM_SETEVENTMASK_, 0, AMask);
 end;
 
 end.
