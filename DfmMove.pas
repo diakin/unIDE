@@ -326,7 +326,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.39';
+  DfmMoveBuild = 'b.40';
 
 constructor TMoveInfo.Create;
 begin
@@ -9687,6 +9687,9 @@ var
   RootName, Dfm, Before, ParentName, DeclType, DeclTail, DeclText,
     ReorderKey: string;
   DeclNames, Reorders: TStringList;
+  // Раздел var -> сколько имён в нём ещё осталось ("строка=число")
+  VarLeft: TStringList;
+  VarLeftCount: Integer;
 
   // Имя родителя в .dfm: форма, объект .dfm или переносимый компонент
   function ParentDfmName(AInfo: TMoveInfo): string;
@@ -9942,6 +9945,7 @@ begin
   Summary := TStringList.Create;
   IconPlaces := TStringList.Create;
   DeclNames := TStringList.Create;
+  VarLeft := TStringList.Create;
   Reorders := TStringList.Create;
   Order := TList.Create;
   try
@@ -10171,20 +10175,30 @@ begin
                     'локальная переменная закроет поле.');
         Continue;
       end;
+      // Имён в разделе var - с учётом уже убранных этим переносом (две
+      // переменные одной строки или одного раздела уходят обе)
+      VarLeftCount := Info.LocalSectionNames;
+      if Info.LocalVarLine >= 0 then
+      begin
+        if VarLeft.IndexOfName(IntToStr(Info.LocalVarLine)) >= 0 then
+          VarLeftCount := StrToIntDef(
+            VarLeft.Values[IntToStr(Info.LocalVarLine)], VarLeftCount);
+        Dec(VarLeftCount);
+        VarLeft.Values[IntToStr(Info.LocalVarLine)] := IntToStr(VarLeftCount);
+      end;
       DeclTail := '';
       if Pos('//', Lines[Info.LocalDecl]) > 0 then
         DeclTail := Copy(Lines[Info.LocalDecl],
                          Pos('//', Lines[Info.LocalDecl]), MaxInt);
       if DeclNames.Count = 1 then
       begin
-        if (Info.LocalDecl = Info.LocalVarLine) and
-           (Info.LocalSectionNames > 1) then
+        if (Info.LocalDecl = Info.LocalVarLine) and (VarLeftCount > 0) then
           // var X: T; и дальше ещё объявления - остаётся слово var
           Lines[Info.LocalDecl] :=
             StringOfChar(' ', LeadSpacesOf(Lines[Info.LocalDecl])) + 'var'
         else
           Remove[Info.LocalDecl] := True;
-        if (Info.LocalSectionNames = 1) and (Info.LocalVarLine >= 0) then
+        if (VarLeftCount <= 0) and (Info.LocalVarLine >= 0) then
           Remove[Info.LocalVarLine] := True;
       end
       else
@@ -10193,6 +10207,9 @@ begin
         DeclText := DeclNames[0];
         for LineIndex := 1 to DeclNames.Count - 1 do
           DeclText := DeclText + ', ' + DeclNames[LineIndex];
+        // var A, B: T; в одной строке - слово var остаётся
+        if Info.LocalDecl = Info.LocalVarLine then
+          DeclText := 'var ' + DeclText;
         DeclText := StringOfChar(' ', LeadSpacesOf(Lines[Info.LocalDecl])) +
                     DeclText + ': ' + DeclType + ';';
         if DeclTail <> '' then
@@ -10265,6 +10282,7 @@ begin
     Order.Free;
     Reorders.Free;
     DeclNames.Free;
+    VarLeft.Free;
     IconPlaces.Free;
     Summary.Free;
     Receivers.Free;
