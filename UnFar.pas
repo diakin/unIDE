@@ -123,8 +123,11 @@ unit UnFar;
 //      в редакторе: выделение Shift+стрелки / мышью, Ctrl+A, Ctrl+C / X / V,
 //      Ctrl+Z. Masks и Text в Alt+F7 - со списком прежних значений
 //      (Ctrl+Down, стрелка справа; [FarFindHistory] в ini).
+//    - b.59: F1 - справка (FarHelp): окно поверх всего, тема - по месту, где
+//      нажали (панели, просмотр, редактор, поиск, FTP, архив, меню дисков,
+//      F9); ссылки - Tab / Enter, назад - Backspace / Alt+F1.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
-//  (F1, F2, F3, F12 - заглушки по плану).
+//  (F2, F12 - заглушки по плану).
 //
 //  Имена файлов - WideString, папки читаются W-функциями Windows
 //  (FindFirstFileW): имена с символами вне cp1251 не теряются.
@@ -154,10 +157,10 @@ interface
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, ExtCtrls,
   IniBuf, SzSetup, ProcRun, FarFind, FarVolumes, FarFtp, FarProgress,
-  ClrScheme, SchemeLine, FarEdit, FarViewer;
+  ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
 
 const
-  FarBuild = 'b.58';
+  FarBuild = 'b.59';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -433,6 +436,10 @@ type
     FViewer: TFarViewer;
     FViewFind: WideString;
     FViewFindCase: Boolean;
+    // Справка (F1): окно поверх всего; где нарисовано (для мыши)
+    FHelp: TFarHelp;
+    FHelpBoxLeft, FHelpBoxTop, FHelpBoxW, FHelpBoxH: Integer;
+    FHelpTextRows: Integer;
     // F9 - Colors / Files highlighting своими окнами: группа палитры в
     // меню элементов, правило для удаления, окно выбора цвета (Pick*)
     FPalGroupFirst: TFarPalItem;
@@ -794,6 +801,13 @@ type
     function ViewKeyLabel(AKeyIndex: Integer; AShift, ACtrl,
       AAlt: Boolean): string;
     procedure DrawViewer;
+    function HelpContext: string;
+    procedure OpenHelp(const ATopic: string);
+    procedure CloseHelp;
+    procedure HelpLayout;
+    function HelpKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    procedure HelpMouse(AX, AY: Integer);
+    procedure DrawHelp;
     procedure ShowPalGroups(ACursor: Integer);
     procedure ShowPalItems(AFirst: TFarPalItem; ACursor: TFarPalItem);
     procedure ShowHiRules(ACursor: Integer);
@@ -1192,7 +1206,12 @@ const
   FarKeysCtrl: array[0..11] of string = ('', '', 'Name', 'Extens', 'Write',
     'Size', 'Unsort', 'Creatn', 'Access', '', '', 'Sort');
   // Кейбар редактора (F4)
-  FarEdKeysNormal: array[0..11] of string = ('', 'Save', '', '', 'Wide', '',
+  // Кейбар справки (F1)
+  FarHelpBarNormal: array[0..11] of string = ('Index', '', '', '', '', '',
+    '', '', '', 'Quit', '', '');
+  FarHelpBarAlt: array[0..11] of string = ('Prev', '', '', '', '', '', '',
+    '', '', '', '', '');
+  FarEdKeysNormal: array[0..11] of string = ('Help', 'Save', '', '', 'Wide', '',
     'Search', '', '', 'Quit', '', '');
   FarEdKeysShift: array[0..11] of string = ('', 'SaveAs', '', '', '', '',
     'Next', 'Encode', '', '', '', '');
@@ -3240,6 +3259,7 @@ var
   FtpIdx: Integer;
 begin
   FOnStatus := nil;
+  FreeAndNil(FHelp);
   FSzTimer.Enabled := False;
   if FFindTimer <> nil then
     FFindTimer.Enabled := False;
@@ -3904,7 +3924,16 @@ begin
     KeyRow := FRows - RowCount + KeyIndex div PerRow;
     SlotIndex := KeyIndex mod PerRow;
     SlotCol := SlotIndex * SlotW;
-    if ViewerActive then
+    if FHelp <> nil then
+    begin
+      if AltDown then
+        KeyLabel := FarHelpBarAlt[KeyIndex]
+      else if CtrlDown or ShiftDown then
+        KeyLabel := ''
+      else
+        KeyLabel := FarHelpBarNormal[KeyIndex];
+    end
+    else if ViewerActive then
       KeyLabel := ViewKeyLabel(KeyIndex, ShiftDown, CtrlDown, AltDown)
     else if EditorActive then
     begin
@@ -3986,6 +4015,8 @@ begin
         DrawDialog;
       if FPickOpen then
         DrawPick;
+      if FHelp <> nil then
+        DrawHelp;
     end;
   finally
     SelectObject(FBuffer.Canvas.Handle, OldFont);
@@ -4082,6 +4113,14 @@ begin
     EditBounds(EditX0, EditW0);
   if CanFocus and not Focused then
     SetFocus;
+  // Справка: щелчки - только ей
+  if FHelp <> nil then
+  begin
+    if Button = mbLeft then
+      HelpMouse(X, Y);
+    Invalidate;
+    Exit;
+  end;
   // Окно выбора цвета: щелчки - только ему
   if FPickOpen then
   begin
@@ -4192,7 +4231,7 @@ var
   CursorPos: TPoint;
 begin
   inherited DblClick;
-  if (FDlgKind <> fdNone) or (FMenuKind <> fmNone) then
+  if (FHelp <> nil) or (FDlgKind <> fdNone) or (FMenuKind <> fmNone) then
     Exit;
   // Окно найденного: двойной щелчок по файлу - Go to
   if FFindOpen then
@@ -4219,6 +4258,16 @@ var
   WheelX, WheelW, WheelStep: Integer;
 begin
   Message.Result := 1;
+  if FHelp <> nil then
+  begin
+    HelpLayout;
+    if Message.WheelDelta > 0 then
+      FHelp.Scroll(-3, FHelpTextRows)
+    else if Message.WheelDelta < 0 then
+      FHelp.Scroll(3, FHelpTextRows);
+    Invalidate;
+    Exit;
+  end;
   if FPickOpen then
     Exit;
   if FMenuKind <> fmNone then
@@ -4375,6 +4424,12 @@ begin
   // приходит в кодировке Windows; окно uniFAR - Unicode (KeyChar)
   if AMsg.message = WM_CHAR then
   begin
+    // Справка: символы не нужны никому
+    if FHelp <> nil then
+    begin
+      Result := True;
+      Exit;
+    end;
     // Окно выбора цвета: поля расширения и #RRGGBB
     if FPickOpen then
     begin
@@ -4463,7 +4518,20 @@ begin
     Invalidate;
   end;
 
-  if FPickOpen then
+  // Справка (F1): открыта - клавиши ей; F1 без Shift, Ctrl, Alt - открыть
+  // справку о том, где нажали
+  if FHelp <> nil then
+  begin
+    Result := HelpKey(KeyCode, ShiftDown, CtrlDown, AltDown);
+    Invalidate;
+  end
+  else if (KeyCode = VK_F1) and not ShiftDown and not CtrlDown and
+          not AltDown then
+  begin
+    OpenHelp(HelpContext);
+    Result := True;
+  end
+  else if FPickOpen then
   begin
     Result := PickKey(KeyCode, ShiftDown, CtrlDown, AltDown);
     // Символы полей - WM_CHAR: без TranslateMessage его не будет
@@ -4656,8 +4724,7 @@ begin
             Exit;
           end;
       end;
-    if Plain and not AShift and ((AKey = VK_F1) or (AKey = VK_F2) or
-       (AKey = VK_F12)) then
+    if Plain and not AShift and ((AKey = VK_F2) or (AKey = VK_F12)) then
       Status(FarProduct + ': ' + KeyName(AKey, AShift, ACtrl, AAlt) +
         ' - заглушка')
     else
@@ -5745,8 +5812,8 @@ end;
 function TFarView.TabsAllowed: Boolean;
 begin
   Result := (FDlgKind = fdNone) and (FMenuKind = fmNone) and
-    not FFindOpen and not FPickOpen and not FPanelsHidden and
-    not EditorShown(FActive) and not ActivePanel.IsFtp and
+    not FFindOpen and not FPickOpen and (FHelp = nil) and
+    not FPanelsHidden and not EditorShown(FActive) and not ActivePanel.IsFtp and
     not ActivePanel.IsArchive;
 end;
 
@@ -10007,6 +10074,8 @@ begin
     Exit;
   end;
   case AKeyIndex of
+    0:
+      Result := 'Help';
     1:
       if FViewer.Wrap then
         Result := 'Unwrap'
@@ -14900,6 +14969,246 @@ begin
       Ini.WriteInteger(FarIniSection, 'HalfWidth', FHalfWidth);
   finally
     Ini.Free;
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Справка (F1): текст и ссылки - FarHelp, здесь окно и клавиши
+// ---------------------------------------------------------------------------
+
+// Тема справки о том месте, где нажали F1
+function TFarView.HelpContext: string;
+begin
+  case FMenuKind of
+    fmDrive:
+      Result := FarHelpDrives;
+    fmOptions, fmPalGroups, fmPalItems, fmHiRules, fmThemes:
+      Result := FarHelpOptions;
+    fmEditEncoding:
+      Result := FarHelpEditor;
+    fmSort, fmHistory:
+      Result := FarHelpPanels;
+  else
+    Result := '';
+  end;
+  if Result <> '' then
+    Exit;
+  if FPickOpen then
+    Result := FarHelpOptions
+  else
+    case FDlgKind of
+      fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd:
+        Result := FarHelpArchives;
+      fdFind:
+        Result := FarHelpFind;
+      fdFtpEdit, fdFtpPassword, fdFtpDelete, fdFtpError, fdFtpCopy,
+      fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite:
+        Result := FarHelpFtp;
+      fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto,
+      fdEditError:
+        Result := FarHelpEditor;
+      fdViewFind, fdViewGoto:
+        Result := FarHelpViewer;
+      fdHiDelete:
+        Result := FarHelpOptions;
+      fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew:
+        Result := FarHelpFiles;
+      fdHistClear:
+        Result := FarHelpPanels;
+    end;
+  if Result <> '' then
+    Exit;
+  if FFindOpen then
+    Result := FarHelpFind
+  else if ViewerActive then
+    Result := FarHelpViewer
+  else if EditorActive then
+    Result := FarHelpEditor
+  else if ActivePanel.IsFtp or (ActivePanel.FFtpMode = 1) then
+    Result := FarHelpFtp
+  else if ActivePanel.IsArchive then
+    Result := FarHelpArchives
+  else if FCmdText <> '' then
+    Result := FarHelpCmdLine
+  else
+    Result := FarHelpPanels;
+end;
+
+procedure TFarView.OpenHelp(const ATopic: string);
+begin
+  if FHelp = nil then
+    FHelp := TFarHelp.Create;
+  FHelp.Open(ATopic, False);
+  Invalidate;
+end;
+
+procedure TFarView.CloseHelp;
+begin
+  FreeAndNil(FHelp);
+  Invalidate;
+end;
+
+// Место окна справки: почти весь экран над кейбаром, не шире 80 клеток
+procedure TFarView.HelpLayout;
+var
+  FreeRows: Integer;
+begin
+  FreeRows := FRows - KeyBarRows;
+  FHelpBoxW := FCols - 4;
+  if FHelpBoxW > 80 then
+    FHelpBoxW := 80;
+  if FHelpBoxW < 20 then
+    FHelpBoxW := FCols;
+  FHelpBoxH := FreeRows - 2;
+  if FHelpBoxH < 5 then
+    FHelpBoxH := FreeRows;
+  FHelpBoxLeft := (FCols - FHelpBoxW) div 2;
+  FHelpBoxTop := (FreeRows - FHelpBoxH) div 2;
+  FHelpTextRows := FHelpBoxH - 2;
+  if FHelpTextRows < 1 then
+    FHelpTextRows := 1;
+end;
+
+function TFarView.HelpKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+begin
+  Result := True;
+  if FHelp = nil then
+    Exit;
+  HelpLayout;
+  if AAlt then
+  begin
+    // Alt+F1 - назад
+    if (AKey = VK_F1) and not ACtrl and not AShift then
+      FHelp.Back;
+    Exit;
+  end;
+  case AKey of
+    VK_ESCAPE, VK_F10:
+      CloseHelp;
+    VK_F1:
+      FHelp.Open(FarHelpContents, True);
+    VK_UP:
+      FHelp.Scroll(-1, FHelpTextRows);
+    VK_DOWN:
+      FHelp.Scroll(1, FHelpTextRows);
+    VK_PRIOR:
+      FHelp.Scroll(-FHelpTextRows, FHelpTextRows);
+    VK_NEXT:
+      FHelp.Scroll(FHelpTextRows, FHelpTextRows);
+    VK_HOME:
+      FHelp.GoHome;
+    VK_END:
+      FHelp.GoEnd(FHelpTextRows);
+    VK_TAB:
+      if AShift then
+        FHelp.NextLink(-1, FHelpTextRows)
+      else
+        FHelp.NextLink(1, FHelpTextRows);
+    VK_RIGHT:
+      FHelp.NextLink(1, FHelpTextRows);
+    VK_LEFT:
+      FHelp.NextLink(-1, FHelpTextRows);
+    VK_RETURN:
+      FHelp.Follow(-1);
+    VK_BACK:
+      FHelp.Back;
+  end;
+  // Остальные клавиши - никому: справка поверх всего
+end;
+
+// Щелчок: по ссылке - перейти, вне окна - закрыть справку
+procedure TFarView.HelpMouse(AX, AY: Integer);
+var
+  Col, Row, LinkIdx: Integer;
+begin
+  if FHelp = nil then
+    Exit;
+  HelpLayout;
+  Col := AX div FCellW;
+  Row := AY div FCellH;
+  if (Col < FHelpBoxLeft) or (Col >= FHelpBoxLeft + FHelpBoxW) or
+     (Row < FHelpBoxTop) or (Row >= FHelpBoxTop + FHelpBoxH) then
+  begin
+    CloseHelp;
+    Exit;
+  end;
+  LinkIdx := FHelp.LinkAt(FHelp.Top + Row - FHelpBoxTop - 1,
+    Col - FHelpBoxLeft - 3);
+  if LinkIdx >= 0 then
+    FHelp.Follow(LinkIdx);
+end;
+
+procedure TFarView.DrawHelp;
+var
+  Row, LineIdx, SpanIdx, TextLeft, TextW, SpanLen: Integer;
+  Span: TFarHelpSpan;
+  Fore, Back, MarkFore, LinkFore: TColor;
+  Title, Marker: WideString;
+begin
+  HelpLayout;
+  // Цвета как у справки FAR: текст чёрный, выделенное белое, ссылки жёлтые
+  // на бирюзовом - из палитры меню и диалогов
+  Fore := FPal[fpDlgText];
+  Back := FPal[fpMenuBack];
+  MarkFore := FPal[fpMenuText];
+  LinkFore := FPal[fpMenuHotkey];
+  for Row := FHelpBoxTop to FHelpBoxTop + FHelpBoxH - 1 do
+    FillCells(FHelpBoxLeft, Row, FHelpBoxW, Back);
+  DrawBox(FHelpBoxLeft + 1, FHelpBoxTop, FHelpBoxLeft + FHelpBoxW - 2,
+    FHelpBoxTop + FHelpBoxH - 1, FPal[fpMenuFrame]);
+  Title := ' ' + FHelp.Title + ' ';
+  PutCentered(FHelpBoxLeft, FHelpBoxTop, FHelpBoxW, Title, MarkFore, Back);
+  TextLeft := FHelpBoxLeft + 3;
+  TextW := FHelpBoxW - 6;
+  if TextW < 1 then
+    Exit;
+  for Row := 0 to FHelpTextRows - 1 do
+  begin
+    LineIdx := FHelp.Top + Row;
+    if LineIdx >= FHelp.LineCount then
+      Break;
+    PutText(TextLeft, FHelpBoxTop + 1 + Row, TextW, FHelp.Lines[LineIdx],
+      Fore, Back);
+  end;
+  // Выделенный текст и ссылки - поверх строк своими цветами
+  for SpanIdx := 0 to FHelp.MarkCount + FHelp.LinkCount - 1 do
+  begin
+    if SpanIdx < FHelp.MarkCount then
+      Span := FHelp.Marks[SpanIdx]
+    else
+      Span := FHelp.Links[SpanIdx - FHelp.MarkCount];
+    if (Span.Row < FHelp.Top) or (Span.Row >= FHelp.Top + FHelpTextRows) or
+       (Span.Col >= TextW) then
+      Continue;
+    SpanLen := Span.Len;
+    if Span.Col + SpanLen > TextW then
+      SpanLen := TextW - Span.Col;
+    if SpanLen <= 0 then
+      Continue;
+    Row := FHelpBoxTop + 1 + Span.Row - FHelp.Top;
+    if SpanIdx < FHelp.MarkCount then
+      PutText(TextLeft + Span.Col, Row, SpanLen,
+        Copy(FHelp.Lines[Span.Row], Span.Col + 1, SpanLen), MarkFore, Back)
+    else if SpanIdx - FHelp.MarkCount = FHelp.Link then
+      PutText(TextLeft + Span.Col, Row, SpanLen,
+        Copy(FHelp.Lines[Span.Row], Span.Col + 1, SpanLen), FPal[fpMenuText],
+        FPal[fpMenuCursorBack])
+    else
+      PutText(TextLeft + Span.Col, Row, SpanLen,
+        Copy(FHelp.Lines[Span.Row], Span.Col + 1, SpanLen), LinkFore, Back);
+  end;
+  // Текст длиннее окна: стрелки на рамке справа
+  if FHelp.Top > 0 then
+  begin
+    Marker := '^';
+    PutText(FHelpBoxLeft + FHelpBoxW - 2, FHelpBoxTop + 1, 1, Marker,
+      LinkFore, Back);
+  end;
+  if FHelp.Top + FHelpTextRows < FHelp.LineCount then
+  begin
+    Marker := 'v';
+    PutText(FHelpBoxLeft + FHelpBoxW - 2, FHelpBoxTop + FHelpBoxH - 2, 1,
+      Marker, LinkFore, Back);
   end;
 end;
 

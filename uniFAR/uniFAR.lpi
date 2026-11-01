@@ -54,6 +54,10 @@
         <IsPartOfProject Value="True"/>
       </Unit>
       <Unit>
+        <Filename Value="..\FarHelp.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit>
+      <Unit>
         <Filename Value="..\FarEdit.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit>

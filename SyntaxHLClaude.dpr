@@ -103,6 +103,7 @@ uses
   DlgEdPreview in 'DlgEdPreview.pas',
   FarEdit in 'FarEdit.pas',
   FarViewer in 'FarViewer.pas',
+  FarHelp in 'FarHelp.pas',
   UnFar in 'UnFar.pas',
   SzSetup in 'SzSetup.pas',
   QemuTool in 'QemuTool.pas',
