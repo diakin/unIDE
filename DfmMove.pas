@@ -335,7 +335,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.48';
+  DfmMoveBuild = 'b.49';
   // Причина у объекта работающей формы без строки создания
   NotFoundReason = 'в модуле формы не найдено, где создаётся';
 
@@ -7067,7 +7067,7 @@ function FindSnapTwin(AList: TList; AIndex: Integer;
 var
   Info, ParentInfo, Mate: TMoveInfo;
   Node, ParentNode, MateNode: TDfmNode;
-  ParentIdx, Other, LineIdx, LastLine: Integer;
+  ParentIdx, Other, LineIdx, LastLine, BackIdx: Integer;
   ParentName, Key, Head, Expr, SibName: string;
   Found: Boolean;
 
@@ -7164,6 +7164,53 @@ begin
         begin
           SibName := Copy(Expr, 1, Length(Expr) - 7);
           Found := IsValidIdent(SibName) and IsChildName(SibName);
+        end;
+        Break;
+      end;
+    end;
+    // Добавление через локальную переменную: E := S.Parent; ...
+    // E.Insert(N, X) / E.Add(X) - S ребёнок P
+    if not Found and (ParentName <> '') then
+    begin
+      LastLine := Mate.CreateLine + 30;
+      if LastLine > ALines.Count - 1 then
+        LastLine := ALines.Count - 1;
+      for LineIdx := Mate.CreateLine to LastLine do
+      begin
+        Key := CodeKey(ALines[LineIdx]);
+        if (Copy(Key, Length(Key) - Length(MateNode.VarName) - 1,
+                 Length(MateNode.VarName) + 2) <>
+            UpperCase(MateNode.VarName) + ');') or
+           ((Pos('.INSERT(', Key) = 0) and (Pos('.ADD(', Key) = 0)) then
+          Continue;
+        // Получатель - до точки
+        Head := Copy(Key, 1, Pos('.', Key) - 1);
+        if not IsValidIdent(Head) then
+          Break;
+        if CompareText(Head, ParentName) = 0 then
+        begin
+          Found := True;
+          Break;
+        end;
+        // Его присваивание выше: Head := S.Parent;
+        for BackIdx := LineIdx - 1 downto Mate.CreateLine - 15 do
+        begin
+          if BackIdx < 0 then
+            Break;
+          Expr := CodeKey(ALines[BackIdx]);
+          if Copy(Expr, 1, Length(Head) + 2) <> Head + ':=' then
+            Continue;
+          Expr := Copy(Expr, Length(Head) + 3, MaxInt);
+          if (Expr <> '') and (Expr[Length(Expr)] = ';') then
+            SetLength(Expr, Length(Expr) - 1);
+          if CompareText(Expr, ParentName) = 0 then
+            Found := True
+          else if CompareText(Copy(Expr, Length(Expr) - 6, 7), '.PARENT') = 0 then
+          begin
+            SibName := Copy(Expr, 1, Length(Expr) - 7);
+            Found := IsValidIdent(SibName) and IsChildName(SibName);
+          end;
+          Break;
         end;
         Break;
       end;
