@@ -47,6 +47,12 @@ implementation
 
 uses
   SysUtils, Controls, Forms, Menus, StdCtrls, ExtCtrls, ActnList,
+  {$IFDEF FPC}
+  // Сборка Lazarus: палитра - классы LCL (страницы те же, классов, которых
+  // в LCL нет, - нет)
+  Buttons, MaskEdit, Grids, CheckLst, ValEdit, ColorBox, ComboEx, ComCtrls,
+  ImgList, Dialogs, ExtDlgs, FileCtrl, FileCtrlLcl, Spin, Calendar,
+  {$ELSE}
   // Additional
   Buttons, Mask, Grids, CheckLst, AppEvnts, ValEdit,
   ActnMan, ActnMenus, ActnCtrls, ActnColorMaps, CustomizeDlg,
@@ -61,6 +67,7 @@ uses
   {$IFDEF DSG_SHELLCTRLS} ShellCtrls, {$ENDIF}
   // форматы Picture.Data в .dfm: initialization регистрирует TJPEGImage
   jpeg,
+  {$ENDIF}
   // свои компоненты (ряд Custom): вид по теме Light / Dark / Custom
   UiTheme, UiScroll, UiButton, UiGroupBox, UiStdCtrls, UiEditCtrls,
   UiComCtrls, UiMenus, UiStdDlgs;
@@ -154,6 +161,30 @@ begin
   // Служебные: не с палитры
   Reg([TForm, TFrame, TMenuItem, TAction, TTabSheet, TToolButton]);
 
+  {$IFDEF FPC}
+  RegPage('Standard',
+    [TMainMenu, TPopupMenu, TLabel, TEdit, TMemo, TButton, TCheckBox,
+     TRadioButton, TListBox, TComboBox, TScrollBar, TGroupBox, TRadioGroup,
+     TPanel, TActionList]);
+  RegPage('Additional',
+    [TBitBtn, TSpeedButton, TMaskEdit, TStringGrid, TDrawGrid, TImage,
+     TShape, TBevel, TScrollBox, TCheckListBox, TSplitter, TStaticText,
+     TControlBar, TApplicationProperties, TValueListEditor, TLabeledEdit,
+     TColorBox]);
+  RegPage('Win32',
+    [TTabControl, TPageControl, TImageList, TTrackBar, TProgressBar,
+     TUpDown, TTreeView, TListView, THeaderControl, TStatusBar, TToolBar,
+     TCoolBar, TComboBoxEx]);
+  RegPage('System', [TTimer, TPaintBox]);
+  RegPage('Dialogs',
+    [TOpenDialog, TSaveDialog, TOpenPictureDialog, TSavePictureDialog,
+     TFontDialog, TColorDialog, TFindDialog, TReplaceDialog]);
+  RegPage('Win 3.1',
+    [TNotebook, TFileListBox, TDirectoryListBox, TDriveComboBox,
+     TFilterComboBox]);
+  RegPage('Samples', [TSpinEdit, TCalendar]);
+  {$ELSE}
+
   RegPage('Standard',
     [TMainMenu, TPopupMenu, TLabel, TEdit, TMemo, TButton, TCheckBox,
      TRadioButton, TListBox, TComboBox, TScrollBar, TGroupBox, TRadioGroup,
@@ -192,6 +223,7 @@ begin
   {$IFDEF DSG_SHELLCTRLS}
   RegPage('Samples',
     [TShellTreeView, TShellComboBox, TShellListView, TShellChangeNotifier]);
+  {$ENDIF}
   {$ENDIF}
 
   // Свои компоненты - вторым рядом на тех же страницах

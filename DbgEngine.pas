@@ -70,6 +70,8 @@ uses
 
 type
   TDbgOffsetArray = array of Cardinal;
+  // ULONG_PTR: 4 байта в Win32, 8 в Win64
+  TDbgExcParam = {$IFDEF CPUX64}QWord{$ELSE}DWORD{$ENDIF};
 
   // Таблица номеров строк из .map
   TDbgLineMap = class
@@ -298,7 +300,7 @@ type
     function FindUserReturn(AEsp: Cardinal; var ARet, ASlot: Cardinal): Boolean;
     function OnSingleStep(AThreadId: DWORD): DWORD;
     function StepEvent(AThreadId: DWORD): DWORD;
-    function DelphiExceptionText(const AInfo: array of DWORD): string;
+    function DelphiExceptionText(const AInfo: array of TDbgExcParam): string;
   protected
     procedure Execute; override;
   public
@@ -325,6 +327,48 @@ const
 
 implementation
 
+// Регистры потока программы. Отлаживаемая программа всегда 32-разрядная
+// (Delphi 7). В 64-разрядной сборке unIDE она идёт под WOW64, и её
+// регистры читаются Wow64GetThreadContext в структуру x86 CONTEXT.
+{$IFDEF CPUX64}
+type
+  TDbgContext = record
+    ContextFlags: DWORD;
+    Dr0, Dr1, Dr2, Dr3, Dr6, Dr7: DWORD;
+    FloatSave: array[0..111] of Byte;
+    SegGs, SegFs, SegEs, SegDs: DWORD;
+    Edi, Esi, Ebx, Edx, Ecx, Eax: DWORD;
+    Ebp, Eip, SegCs, EFlags, Esp, SegSs: DWORD;
+    ExtendedRegisters: array[0..511] of Byte;
+  end;
+
+const
+  DbgCtxControl = $00010001;  // WOW64_CONTEXT_CONTROL
+  DbgCtxInteger = $00010002;  // WOW64_CONTEXT_INTEGER
+
+function DbgGetContext(AThread: THandle; var ACtx: TDbgContext): BOOL; stdcall;
+  external kernel32 name 'Wow64GetThreadContext';
+function DbgSetContext(AThread: THandle; const ACtx: TDbgContext): BOOL; stdcall;
+  external kernel32 name 'Wow64SetThreadContext';
+{$ELSE}
+type
+  TDbgContext = TContext;
+
+const
+  DbgCtxControl = CONTEXT_CONTROL;
+  DbgCtxInteger = CONTEXT_INTEGER;
+
+function DbgGetContext(AThread: THandle; var ACtx: TDbgContext): BOOL;
+begin
+  Result := GetThreadContext(AThread, ACtx);
+end;
+
+function DbgSetContext(AThread: THandle; const ACtx: TDbgContext): BOOL;
+begin
+  Result := SetThreadContext(AThread, ACtx);
+end;
+{$ENDIF}
+
 const
   WM_DBG_NOTE = WM_USER + 1;
 
@@ -343,6 +387,7 @@ const
   DbgExcBreakpoint  = $80000003;
   DbgExcSingleStep  = $80000004;
   DbgExcWx86Break   = $4000001F;  // загрузчик WOW64
+  DbgExcWx86Step    = $4000001E;  // шаг в 32-разрядном коде под WOW64
   DbgExcDelphi      = $0EEDFADE;  // raise в программе на Delphi
   DbgExcThreadName  = $406D1388;  // имя потока для отладчика Visual C++
   DbgExcPrintA      = $40010006;  // OutputDebugString изнутри
@@ -360,7 +405,7 @@ type
     ExceptionRecord: Pointer;
     ExceptionAddress: Pointer;
     NumberParameters: DWORD;
-    ExceptionInformation: array[0..14] of DWORD;
+    ExceptionInformation: array[0..14] of TDbgExcParam;
   end;
 
   TDbgExceptionInfo = record
@@ -420,7 +465,7 @@ type
       4: (ExitProcess: TDbgExitInfo);
       5: (LoadDll: TDbgLoadDllInfo);
       6: (DebugString: TDbgDebugStringInfo);
-      7: (Padding: array[0..95] of Byte);
+      7: (Padding: array[0..159] of Byte);  // 96 байт в Win32, 160 в Win64
   end;
 
 function DbgWaitForDebugEvent(var AEvent: TDbgDebugEvent;
@@ -1433,15 +1478,15 @@ function TDbgThread.SetEip(AThreadId: DWORD; AEip: Cardinal;
                            ATrace: Boolean): Boolean;
 var
   ThreadHandle: THandle;
-  Ctx: TContext;
+  Ctx: TDbgContext;
 begin
   Result := False;
   ThreadHandle := ThreadHandleOf(AThreadId);
   if ThreadHandle = 0 then
     Exit;
   FillChar(Ctx, SizeOf(Ctx), 0);
-  Ctx.ContextFlags := CONTEXT_CONTROL;
-  if not GetThreadContext(ThreadHandle, Ctx) then
+  Ctx.ContextFlags := DbgCtxControl;
+  if not DbgGetContext(ThreadHandle, Ctx) then
     Exit;
   if AEip <> 0 then
     Ctx.Eip := AEip;
@@ -1449,7 +1494,7 @@ begin
     Ctx.EFlags := Ctx.EFlags or DbgTrapFlag
   else
     Ctx.EFlags := Ctx.EFlags and not DbgTrapFlag;
-  Result := SetThreadContext(ThreadHandle, Ctx);
+  Result := DbgSetContext(ThreadHandle, Ctx);
 end;
 
 function TDbgThread.SetTrace(AThreadId: DWORD; AOn: Boolean): Boolean;
@@ -1461,7 +1506,7 @@ function TDbgThread.GetEipEsp(AThreadId: DWORD;
                               var AEip, AEsp: Cardinal): Boolean;
 var
   ThreadHandle: THandle;
-  Ctx: TContext;
+  Ctx: TDbgContext;
 begin
   Result := False;
   AEip := 0;
@@ -1470,8 +1515,8 @@ begin
   if ThreadHandle = 0 then
     Exit;
   FillChar(Ctx, SizeOf(Ctx), 0);
-  Ctx.ContextFlags := CONTEXT_CONTROL;
-  if not GetThreadContext(ThreadHandle, Ctx) then
+  Ctx.ContextFlags := DbgCtxControl;
+  if not DbgGetContext(ThreadHandle, Ctx) then
     Exit;
   AEip := Ctx.Eip;
   AEsp := Ctx.Esp;
@@ -1483,7 +1528,7 @@ end;
 procedure TDbgThread.SaveStopRegs(AThreadId: DWORD; AAddress: Cardinal);
 var
   ThreadHandle: THandle;
-  Ctx: TContext;
+  Ctx: TDbgContext;
   Regs: TDbgRegs;
 begin
   FillChar(Regs, SizeOf(Regs), 0);
@@ -1491,8 +1536,8 @@ begin
   if ThreadHandle <> 0 then
   begin
     FillChar(Ctx, SizeOf(Ctx), 0);
-    Ctx.ContextFlags := CONTEXT_CONTROL or CONTEXT_INTEGER;
-    if GetThreadContext(ThreadHandle, Ctx) then
+    Ctx.ContextFlags := DbgCtxControl or DbgCtxInteger;
+    if DbgGetContext(ThreadHandle, Ctx) then
     begin
       Regs[0] := Ctx.Eax;
       Regs[1] := Ctx.Ecx;
@@ -2062,7 +2107,7 @@ end;
 // AInfo[1] - объект исключения; у объекта первым полем - VMT, у VMT по
 // смещению vmtClassName - имя класса (ShortString); у Exception первое
 // поле - FMessage.
-function TDbgThread.DelphiExceptionText(const AInfo: array of DWORD): string;
+function TDbgThread.DelphiExceptionText(const AInfo: array of TDbgExcParam): string;
 var
   ObjAddr, VmtAddr, NameAddr, MsgAddr, MsgLen: Cardinal;
   LenByte: string;
@@ -2198,9 +2243,24 @@ begin
         begin
           ExcCode := DebugEvt.Exception.ExceptionRecord.ExceptionCode;
           ExcAddr := Cardinal(DebugEvt.Exception.ExceptionRecord.ExceptionAddress);
+{$IFDEF CPUX64}
+          // Под WOW64 INT3 32-разрядного кода приходит как DbgExcWx86Break,
+          // а DbgExcBreakpoint - из 64-разрядного ntdll: точка загрузчика
+          // (её пара в 32-разрядной части - DbgExcWx86Break) или поток
+          // DebugBreakProcess для Program pause
+          if ExcCode = DbgExcBreakpoint then
+          begin
+            if TakePauseWanted then
+              Status := OnPause(DebugEvt.ThreadId)
+            else
+              Status := DbgContinue;
+          end
+          else if ExcCode = DbgExcWx86Break then
+{$ELSE}
           if (ExcCode = DbgExcBreakpoint) or (ExcCode = DbgExcWx86Break) then
+{$ENDIF}
             Status := OnBreakpoint(DebugEvt.ThreadId, ExcAddr)
-          else if ExcCode = DbgExcSingleStep then
+          else if (ExcCode = DbgExcSingleStep) or (ExcCode = DbgExcWx86Step) then
             Status := OnSingleStep(DebugEvt.ThreadId)
           else
           begin

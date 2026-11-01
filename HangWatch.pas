@@ -520,6 +520,14 @@ var
   Size: Cardinal;
   MBI: TMemoryBasicInformation;
 begin
+{$IFDEF CPUX64}
+  // 64 бита: регистры и кадры EBP другие - стек не снимается
+  Result := False;
+  AGot := 0;
+  AEsp := 0;
+  AEbp := 0;
+  AEip := 0;
+{$ELSE}
   Result := False;
   AGot := 0;
   AEsp := 0;
@@ -552,6 +560,7 @@ begin
   finally
     ResumeThread(FMain);
   end;
+{$ENDIF}
 end;
 
 // Снимок на короткой задержке: цепочка вызовов строками в ALines, в
@@ -804,6 +813,9 @@ begin
              'с картой: Project -> Options -> Linker -> Map file: Detailed ' +
              '(у dcc32 ключ -GD).');
 
+    {$IFDEF CPUX64}
+    SL.Add('(стек в 64-разрядной сборке не разбирается)');
+    {$ELSE}
     // Стек упавшего потока от ESP исключения
     Got := 0;
     if VirtualQuery(Pointer(CrashCtx.Esp), MBI, SizeOf(MBI)) = SizeOf(MBI) then
@@ -816,6 +828,7 @@ begin
         Got := 0;
     end;
     DescribeStack(CrashCtx.Eip, CrashCtx.Esp, CrashCtx.Ebp, Stack, Got, SL);
+    {$ENDIF}
     SL.Add('');
     WriteCrash(SL);
   finally
@@ -847,7 +860,8 @@ end;
 
 procedure THangWatch.Execute;
 var
-  Res, Waited: DWORD;
+  Waited: DWORD;
+  Res: {$IFDEF FPC}DWORD_PTR{$ELSE}DWORD{$ENDIF};   // ответ SendMessageTimeout
   HungSince, Now_, PingStart: Cardinal;
   Samples: Integer;
   Ok: Boolean;
@@ -996,7 +1010,8 @@ end;
 procedure AddressSpaceGet(var AUsedMB, AFreeMB, ALargestMB: Integer);
 var
   MemInfo: TMemoryBasicInformation;
-  Addr: Cardinal;
+  // Адрес: в 64-разрядной сборке - 64 бита
+  Addr: {$IFDEF CPUX64}QWord{$ELSE}Cardinal{$ENDIF};
   FreeTotal, Largest, UsedTotal: Int64;
 begin
   FreeTotal := 0;
@@ -1014,9 +1029,9 @@ begin
     end
     else
       Inc(UsedTotal, MemInfo.RegionSize);
-    if Cardinal(MemInfo.BaseAddress) + MemInfo.RegionSize <= Addr then
+    if {$IFDEF CPUX64}QWord{$ELSE}Cardinal{$ENDIF}(MemInfo.BaseAddress) + MemInfo.RegionSize <= Addr then
       Break;
-    Addr := Cardinal(MemInfo.BaseAddress) + MemInfo.RegionSize;
+    Addr := {$IFDEF CPUX64}QWord{$ELSE}Cardinal{$ENDIF}(MemInfo.BaseAddress) + MemInfo.RegionSize;
   end;
   AUsedMB := UsedTotal div (1024 * 1024);
   AFreeMB := FreeTotal div (1024 * 1024);
@@ -1234,6 +1249,9 @@ var
   StackBuf: ^TStackCopy;
   MemInfo: TMemoryBasicInformation;
 begin
+{$IFDEF CPUX64}
+  ALines.Add('(цепочка вызовов в 64-разрядной сборке не снимается)');
+{$ELSE}
   if Watch = nil then
   begin
     ALines.Add('(сторож не запущен - цепочки нет)');
@@ -1262,6 +1280,7 @@ begin
   finally
     Dispose(StackBuf);
   end;
+{$ENDIF}
 end;
 
 // Событие и Terminate, потом ожидание. Если сторож в это время сидит в

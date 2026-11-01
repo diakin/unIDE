@@ -439,8 +439,12 @@ begin
   Log('=== запуск ' + Application.ExeName);
   Log('композиция рабочего стола: ' + CompositionText);
 
+  // В LCL у Application нет HookMainWindow: сообщения окна приложения
+  // в сборке Lazarus не отслеживаются
+  {$IFNDEF FPC}
   Application.HookMainWindow(AppHook);
   FHooked := True;
+  {$ENDIF}
   FTimerWnd := AllocateHWnd(TimerWndProc);
   SetTimer(FTimerWnd, 1, PollInterval, nil);
 end;
@@ -465,7 +469,7 @@ begin
   end;
   if FHooked then
   begin
-    Application.UnhookMainWindow(AppHook);
+    {$IFNDEF FPC}Application.UnhookMainWindow(AppHook);{$ENDIF}
     FHooked := False;
   end;
   Log('=== остановлен');
