@@ -326,7 +326,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.42';
+  DfmMoveBuild = 'b.43';
 
 constructor TMoveInfo.Create;
 begin
@@ -2378,7 +2378,10 @@ var
   Helper: THelperInfo;
   Head, Code, Upper, PropName, Expr, AddParent, AddChild, LoopKey,
     LoopVarName, LoopArrayName, ColumnText, IncText, IncName: string;
-  BlockEnd, CommaAt: Integer;
+  BlockEnd, CommaAt, BoundIdx: Integer;
+  Bounds: TBoundsArgs;
+const
+  BoundNames: array[0..3] of string = ('Left', 'Top', 'Width', 'Height');
 
   procedure Refuse(ALine: Integer; const ACode: string);
   begin
@@ -2610,6 +2613,18 @@ begin
         else if ParseAddLine(Code, AddParent, AddChild) and
                 (CompareText(AddChild, 'Result') = 0) then
           Helper.NestExpr := AddParent
+        else if (Copy(LoopKey, 1, 17) = 'RESULT.SETBOUNDS(') and
+                (Copy(LoopKey, Length(LoopKey) - 1, 2) = ');') and
+                BoundsArgs(Code, Bounds) then
+        begin
+          // Result.SetBounds(L, T, W, H) - четыре свойства
+          for BoundIdx := 0 to 3 do
+          begin
+            Helper.PropNames.Add(BoundNames[BoundIdx]);
+            Helper.PropExprs.Add(Bounds[BoundIdx]);
+            Helper.PropConds.Add('');
+          end;
+        end
         else
         begin
           Refuse(Line, Code);
