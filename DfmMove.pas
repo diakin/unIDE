@@ -331,7 +331,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.45';
+  DfmMoveBuild = 'b.46';
 
 constructor TMoveInfo.Create;
 begin
@@ -388,42 +388,42 @@ end;
 //  Разбор строк кода
 // ---------------------------------------------------------------------------
 
-function LeadSpacesOf(const S: string): Integer;
+function LeadSpacesOf(const Str: string): Integer;
 begin
   Result := 0;
-  while (Result < Length(S)) and (S[Result + 1] = ' ') do
+  while (Result < Length(Str)) and (Str[Result + 1] = ' ') do
     Inc(Result);
 end;
 
-function IsIdentChar(C: Char): Boolean;
+function IsIdentChar(CharVal: Char): Boolean;
 begin
-  Result := C in ['A'..'Z', 'a'..'z', '0'..'9', '_'];
+  Result := CharVal in ['A'..'Z', 'a'..'z', '0'..'9', '_'];
 end;
 
 // Есть ли в строке слово AWord (целиком, без учёта регистра), вне
 // комментария //
 function HasWord(const ALine, AWord: string): Boolean;
 var
-  Upper, W: string;
-  P, Cut: Integer;
+  Upper, WordStr: string;
+  CharPos, Cut: Integer;
 begin
   Result := False;
   Upper := UpperCase(ALine);
   Cut := Pos('//', Upper);
   if Cut > 0 then
     Upper := Copy(Upper, 1, Cut - 1);
-  W := UpperCase(AWord);
-  P := Pos(W, Upper);
-  while P > 0 do
+  WordStr := UpperCase(AWord);
+  CharPos := Pos(WordStr, Upper);
+  while CharPos > 0 do
   begin
-    if ((P = 1) or not IsIdentChar(Upper[P - 1])) and
-       ((P + Length(W) > Length(Upper)) or
-        not IsIdentChar(Upper[P + Length(W)])) then
+    if ((CharPos = 1) or not IsIdentChar(Upper[CharPos - 1])) and
+       ((CharPos + Length(WordStr) > Length(Upper)) or
+        not IsIdentChar(Upper[CharPos + Length(WordStr)])) then
     begin
       Result := True;
       Exit;
     end;
-    P := PosEx(W, Upper, P + 1);
+    CharPos := PosEx(WordStr, Upper, CharPos + 1);
   end;
 end;
 
@@ -473,15 +473,15 @@ procedure FindClassDecl(ALines: TStrings; const AFormClass: string;
   var AFirst, ALast: Integer);
 var
   Index: Integer;
-  T: string;
+  Txt: string;
 begin
   AFirst := -1;
   ALast := -1;
   for Index := 0 to ALines.Count - 1 do
   begin
-    T := UpperCase(Trim(ALines[Index]));
-    if (Pos(UpperCase(AFormClass) + ' = CLASS', T) = 1) or
-       (Pos(UpperCase(AFormClass) + '=CLASS', T) = 1) then
+    Txt := UpperCase(Trim(ALines[Index]));
+    if (Pos(UpperCase(AFormClass) + ' = CLASS', Txt) = 1) or
+       (Pos(UpperCase(AFormClass) + '=CLASS', Txt) = 1) then
     begin
       AFirst := Index;
       Break;
@@ -507,7 +507,7 @@ function IsFormField(ALines: TStrings; AFirst, ALast: Integer;
   const AName: string): Boolean;
 var
   Index, HitIndex, HitCount: Integer;
-  T: string;
+  Txt: string;
   Hits: TList;
   UseHits: Boolean;
 begin
@@ -535,11 +535,11 @@ begin
     else
       Index := AFirst + 1 + HitIndex;
     // Без комментария: скобки в нём - не признак метода
-    T := Trim(StripComment(ALines[Index]));
-    if (Pos(':', T) > 0) and (Pos('(', T) = 0) and HasWord(T, AName) and
-       (Pos('PROCEDURE', UpperCase(T)) <> 1) and
-       (Pos('FUNCTION', UpperCase(T)) <> 1) and
-       (Pos('PROPERTY', UpperCase(T)) <> 1) then
+    Txt := Trim(StripComment(ALines[Index]));
+    if (Pos(':', Txt) > 0) and (Pos('(', Txt) = 0) and HasWord(Txt, AName) and
+       (Pos('PROCEDURE', UpperCase(Txt)) <> 1) and
+       (Pos('FUNCTION', UpperCase(Txt)) <> 1) and
+       (Pos('PROPERTY', UpperCase(Txt)) <> 1) then
     begin
       Result := True;
       Exit;
@@ -560,7 +560,7 @@ function FindMethodImpl(ALines: TStrings; const AFormClass,
   AMethod: string): Integer;
 var
   Index: Integer;
-  T, Head: string;
+  Txt, Head: string;
   Upper: TStringList;
 begin
   Result := -1;
@@ -574,11 +574,11 @@ begin
   begin
     if (Upper <> nil) and (Pos(Head, Upper[Index]) = 0) then
       Continue;
-    T := UpperCase(Trim(ALines[Index]));
-    if ((Pos('PROCEDURE ', T) = 1) or (Pos('FUNCTION ', T) = 1) or
-        (Pos('CONSTRUCTOR ', T) = 1)) and
-       (Pos(Head, T) > 0) and
-       not IsIdentChar((T + ' ')[Pos(Head, T) + Length(Head)]) then
+    Txt := UpperCase(Trim(ALines[Index]));
+    if ((Pos('PROCEDURE ', Txt) = 1) or (Pos('FUNCTION ', Txt) = 1) or
+        (Pos('CONSTRUCTOR ', Txt) = 1)) and
+       (Pos(Head, Txt) > 0) and
+       not IsIdentChar((Txt + ' ')[Pos(Head, Txt) + Length(Head)]) then
     begin
       Result := Index;
       Break;
@@ -594,29 +594,29 @@ procedure EnclosingRoutine(ALines: TStrings; const AFormClass: string;
   ALine: Integer; var AName: string; var AHead, AEnd: Integer);
 var
   Index, Dot, Stop: Integer;
-  T: string;
+  Txt: string;
 begin
   AName := '';
   AHead := -1;
   AEnd := -1;
   for Index := ALine downto 0 do
   begin
-    T := ALines[Index];
-    if (LeadSpacesOf(T) = 0) and
-       ((Pos('PROCEDURE ', UpperCase(T)) = 1) or
-        (Pos('FUNCTION ', UpperCase(T)) = 1) or
-        (Pos('CONSTRUCTOR ', UpperCase(T)) = 1)) then
+    Txt := ALines[Index];
+    if (LeadSpacesOf(Txt) = 0) and
+       ((Pos('PROCEDURE ', UpperCase(Txt)) = 1) or
+        (Pos('FUNCTION ', UpperCase(Txt)) = 1) or
+        (Pos('CONSTRUCTOR ', UpperCase(Txt)) = 1)) then
     begin
       AHead := Index;
-      Dot := Pos('.', T);
+      Dot := Pos('.', Txt);
       if (Dot > 0) and
-         (CompareText(Trim(Copy(T, Pos(' ', T) + 1, Dot - Pos(' ', T) - 1)),
+         (CompareText(Trim(Copy(Txt, Pos(' ', Txt) + 1, Dot - Pos(' ', Txt) - 1)),
                       AFormClass) = 0) then
       begin
         Stop := Dot + 1;
-        while (Stop <= Length(T)) and IsIdentChar(T[Stop]) do
+        while (Stop <= Length(Txt)) and IsIdentChar(Txt[Stop]) do
           Inc(Stop);
-        AName := Copy(T, Dot + 1, Stop - Dot - 1);
+        AName := Copy(Txt, Dot + 1, Stop - Dot - 1);
       end;
       Break;
     end;
@@ -709,8 +709,8 @@ end;
 procedure CountUses(ALines: TStrings; const AMethod: string;
   var ACalls, AAssigns: Integer);
 var
-  Index, P, CacheAt: Integer;
-  T, U, MethodUpper: string;
+  Index, CharPos, CacheAt: Integer;
+  Txt, UpStr, MethodUpper: string;
   Cached: Boolean;
   Counted: TUsesCount;
 begin
@@ -731,18 +731,18 @@ begin
   begin
     if Cached and (Pos(MethodUpper, GUsesUpper[Index]) = 0) then
       Continue;
-    T := Trim(ALines[Index]);
-    U := UpperCase(T);
-    if (Pos('PROCEDURE ', U) = 1) or (Pos('FUNCTION ', U) = 1) or
-       (Pos('CONSTRUCTOR ', U) = 1) or (Pos('//', U) = 1) then
+    Txt := Trim(ALines[Index]);
+    UpStr := UpperCase(Txt);
+    if (Pos('PROCEDURE ', UpStr) = 1) or (Pos('FUNCTION ', UpStr) = 1) or
+       (Pos('CONSTRUCTOR ', UpStr) = 1) or (Pos('//', UpStr) = 1) then
       Continue;
     // Без комментария и текста в кавычках: имя в строке - не вызов
-    T := BlankQuoted(StripComment(T));
-    if not HasWord(T, AMethod) then
+    Txt := BlankQuoted(StripComment(Txt));
+    if not HasWord(Txt, AMethod) then
       Continue;
-    P := Pos(':=', T);
-    if (P > 0) and HasWord(Copy(T, P + 2, MaxInt), AMethod) and
-       (Pos('(', Copy(T, P + 2, MaxInt)) = 0) then
+    CharPos := Pos(':=', Txt);
+    if (CharPos > 0) and HasWord(Copy(Txt, CharPos + 2, MaxInt), AMethod) and
+       (Pos('(', Copy(Txt, CharPos + 2, MaxInt)) = 0) then
       Inc(AAssigns)
     else
       Inc(ACalls);
@@ -950,19 +950,19 @@ end;
 // кавычках, True/False, имя вида alTop / clRed / fsBold, набор [..] из них
 function IsLiteral(const AValue: string): Boolean;
 var
-  V, Item: string;
+  ValStr, Item: string;
   Index, Tail: Integer;
   Parts: TStringList;
 begin
-  V := Trim(AValue);
+  ValStr := Trim(AValue);
   Result := False;
-  if V = '' then
+  if ValStr = '' then
     Exit;
   // Число
-  if (V[1] in ['0'..'9', '-', '$']) then
+  if (ValStr[1] in ['0'..'9', '-', '$']) then
   begin
-    for Index := 2 to Length(V) do
-      if not (V[Index] in ['0'..'9', 'A'..'F', 'a'..'f', '.']) then
+    for Index := 2 to Length(ValStr) do
+      if not (ValStr[Index] in ['0'..'9', 'A'..'F', 'a'..'f', '.']) then
         Exit;
     Result := True;
     Exit;
@@ -970,34 +970,34 @@ begin
   // Строка: 'abc', 'a'#13'b', 'Ctrl+Z', 'abc ' + 'def' (склейка частей
   // в кавычках и кодов #13, #$0D через + - тоже константа; DfmLiteral
   // сводит её в одну строку)
-  if V[1] in ['''', '#'] then
+  if ValStr[1] in ['''', '#'] then
   begin
     Index := 1;
-    while Index <= Length(V) do
-      if (V[Index] = '+') or (V[Index] = ' ') or (V[Index] = #9) then
+    while Index <= Length(ValStr) do
+      if (ValStr[Index] = '+') or (ValStr[Index] = ' ') or (ValStr[Index] = #9) then
       begin
         // + между частями: после него - снова часть
-        if V[Index] = '+' then
+        if ValStr[Index] = '+' then
         begin
           Tail := Index + 1;
-          while (Tail <= Length(V)) and (V[Tail] in [' ', #9]) do
+          while (Tail <= Length(ValStr)) and (ValStr[Tail] in [' ', #9]) do
             Inc(Tail);
-          if (Tail > Length(V)) or not (V[Tail] in ['''', '#']) then
+          if (Tail > Length(ValStr)) or not (ValStr[Tail] in ['''', '#']) then
             Exit;
         end;
         Inc(Index);
       end
-      else if V[Index] = '''' then
+      else if ValStr[Index] = '''' then
       begin
         // до закрывающей кавычки; '' внутри - одна кавычка
         Inc(Index);
         while True do
         begin
-          if Index > Length(V) then
+          if Index > Length(ValStr) then
             Exit;             // строка не закрыта
-          if V[Index] = '''' then
+          if ValStr[Index] = '''' then
           begin
-            if (Index < Length(V)) and (V[Index + 1] = '''') then
+            if (Index < Length(ValStr)) and (ValStr[Index + 1] = '''') then
               Inc(Index, 2)
             else
               Break;
@@ -1007,19 +1007,19 @@ begin
         end;
         Inc(Index);
       end
-      else if V[Index] = '#' then
+      else if ValStr[Index] = '#' then
       begin
         Inc(Index);
         Tail := Index;
-        if (Index <= Length(V)) and (V[Index] = '$') then
+        if (Index <= Length(ValStr)) and (ValStr[Index] = '$') then
         begin
           Inc(Index);
-          while (Index <= Length(V)) and
-                (V[Index] in ['0'..'9', 'A'..'F', 'a'..'f']) do
+          while (Index <= Length(ValStr)) and
+                (ValStr[Index] in ['0'..'9', 'A'..'F', 'a'..'f']) do
             Inc(Index);
         end
         else
-          while (Index <= Length(V)) and (V[Index] in ['0'..'9']) do
+          while (Index <= Length(ValStr)) and (ValStr[Index] in ['0'..'9']) do
             Inc(Index);
         if Index = Tail then
           Exit;               // # без кода
@@ -1029,17 +1029,17 @@ begin
     Result := True;
     Exit;
   end;
-  if (CompareText(V, 'True') = 0) or (CompareText(V, 'False') = 0) then
+  if (CompareText(ValStr, 'True') = 0) or (CompareText(ValStr, 'False') = 0) then
   begin
     Result := True;
     Exit;
   end;
   // Набор
-  if (V[1] = '[') and (V[Length(V)] = ']') then
+  if (ValStr[1] = '[') and (ValStr[Length(ValStr)] = ']') then
   begin
     Parts := TStringList.Create;
     try
-      Parts.CommaText := Copy(V, 2, Length(V) - 2);
+      Parts.CommaText := Copy(ValStr, 2, Length(ValStr) - 2);
       for Index := 0 to Parts.Count - 1 do
       begin
         Item := Trim(Parts[Index]);
@@ -1055,13 +1055,13 @@ begin
   // Значение перечисления: две-три строчные буквы и заглавная (alTop,
   // clBtnFace, bsNone, poScreenCenter, taCenter)
   Index := 1;
-  while (Index <= Length(V)) and (V[Index] in ['a'..'z']) do
+  while (Index <= Length(ValStr)) and (ValStr[Index] in ['a'..'z']) do
     Inc(Index);
-  Result := (Index in [3, 4]) and (Index <= Length(V)) and
-            (V[Index] in ['A'..'Z']);
+  Result := (Index in [3, 4]) and (Index <= Length(ValStr)) and
+            (ValStr[Index] in ['A'..'Z']);
   if Result then
-    for Tail := Index to Length(V) do
-      if not IsIdentChar(V[Tail]) then
+    for Tail := Index to Length(ValStr) do
+      if not IsIdentChar(ValStr[Tail]) then
       begin
         Result := False;
         Exit;
@@ -10710,19 +10710,19 @@ var
 
 // Тексты совпадают, не считая #13 и переводов строки в конце: редактор
 // может хранить переводы строк иначе, чем их записали
-function SameBody(const A, B: string): Boolean;
+function SameBody(const ArgStr, BufStr: string): Boolean;
 
-  function Squeeze(const S: string): string;
+  function Squeeze(const Str: string): string;
   var
     From, Into, Stop: Integer;
   begin
-    SetLength(Result, Length(S));
+    SetLength(Result, Length(Str));
     Into := 0;
-    for From := 1 to Length(S) do
-      if S[From] <> #13 then
+    for From := 1 to Length(Str) do
+      if Str[From] <> #13 then
       begin
         Inc(Into);
-        Result[Into] := S[From];
+        Result[Into] := Str[From];
       end;
     Stop := Into;
     while (Stop > 0) and (Result[Stop] = #10) do
@@ -10731,7 +10731,7 @@ function SameBody(const A, B: string): Boolean;
   end;
 
 begin
-  Result := (A = B) or (Squeeze(A) = Squeeze(B));
+  Result := (ArgStr = BufStr) or (Squeeze(ArgStr) = Squeeze(BufStr));
 end;
 
 // Последний перенос модуля APasFile, который ещё можно откатить; nil - нет
