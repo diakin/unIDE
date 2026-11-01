@@ -27,6 +27,8 @@ type
     FMeasure: TBitmap;     // холст для замеров текста (без окна)
     function TextW(const AText: string): Integer;
     procedure SetTabIndex(Value: Integer);
+    function GetTabs: TStrings;
+    procedure SetTabs(Value: TStrings);
     procedure TabsChanged(Sender: TObject);
     function TabRect(AIndex: Integer): TRect;
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
@@ -43,9 +45,23 @@ type
     procedure AutoWidth;
     // Номер вкладки под точкой X (-1 - нет)
     function TabAt(X: Integer): Integer;
-    property Tabs: TStringList read FTabs;
-    property TabIndex: Integer read FTabIndex write SetTabIndex;
+  published
+    // Tabs - раньше TabIndex: при чтении .dfm номер проверяется по числу
+    // вкладок
+    property Tabs: TStrings read GetTabs write SetTabs;
+    property TabIndex: Integer read FTabIndex write SetTabIndex default 0;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
+    property Align;
+    property Anchors;
+    property Color;
+    property Enabled;
+    property Font;
+    property ParentColor;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+    property ShowHint;
+    property Visible;
   end;
 
 implementation
@@ -94,6 +110,16 @@ procedure TUiCaptionTabs.TabsChanged(Sender: TObject);
 begin
   AutoWidth;
   Invalidate;
+end;
+
+function TUiCaptionTabs.GetTabs: TStrings;
+begin
+  Result := FTabs;
+end;
+
+procedure TUiCaptionTabs.SetTabs(Value: TStrings);
+begin
+  FTabs.Assign(Value);
 end;
 
 procedure TUiCaptionTabs.SetTabIndex(Value: Integer);
@@ -210,5 +236,8 @@ begin
   else
     Cursor := crDefault;
 end;
+
+initialization
+  RegisterClass(TUiCaptionTabs);
 
 end.

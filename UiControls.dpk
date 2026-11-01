@@ -49,6 +49,9 @@ contains
   EdEditor in 'EdEditor.pas',
   EdView in 'EdView.pas',
   EdLog in 'EdLog.pas',
+  EdHostWin in 'EdHostWin.pas',
+  EdHost in 'EdHost.pas',
+  UiCaptionTabs in 'UiCaptionTabs.pas',
   UiReg in 'UiReg.pas';
 
 end.

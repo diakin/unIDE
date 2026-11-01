@@ -69,6 +69,9 @@ type
     property Text;
   published
     property Align;
+    property Anchors;
+    property Constraints;
+    property Enabled;
     property Color;
     property Font;
     property ParentFont;
@@ -76,6 +79,9 @@ type
     property TabOrder;
     property TabStop;
     property Visible;
+    property ShowHint;
+    property OnEnter;
+    property OnExit;
     property OnChange: TNotifyEvent read FOnChange write FOnChange;
   end;
 
@@ -381,5 +387,8 @@ procedure TEdHostEdit.SelectAll;
 begin
   SendMessage(Handle, EM_SETSEL, 0, -1);
 end;
+
+initialization
+  RegisterClass(TEdHostEdit);
 
 end.
