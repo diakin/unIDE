@@ -126,7 +126,7 @@ begin
   end;
 end;
 
-procedure DescribeType(ABase: TDsgClassBase; ATypeInfo: PTypeInfo); forward;
+function TypeKeyOf(ABase: TDsgClassBase; ATypeInfo: PTypeInfo): string; forward;
 
 procedure DescribeClassProps(ABase: TDsgClassBase; AClass: TClass;
                              ADesc: TDsgClassDesc);
@@ -159,22 +159,22 @@ begin
       PropRec := PropList^[PropIdx];
       Prop := TDsgPropDesc.Create;
       Prop.Name := string(PropRec^.Name);
-      Prop.TypeName := TypeNameOf(PropTypeOf(PropRec));
       Prop.Writable := PropRec^.SetProc <> nil;
       ADesc.Props.AddObject(Prop.Name, Prop);
     end;
     // Типы - после того как список свойств готов: описание типа-класса
     // добавляет в базу другие классы
     for PropIdx := 0 to PropCount - 1 do
-      DescribeType(ABase, PropTypeOf(PropList^[PropIdx]));
+      TDsgPropDesc(ADesc.Props.Objects[PropIdx]).TypeName :=
+        TypeKeyOf(ABase, PropTypeOf(PropList^[PropIdx]));
   finally
     FreeMem(PropList);
   end;
 end;
 
-procedure DescribeType(ABase: TDsgClassBase; ATypeInfo: PTypeInfo);
+procedure DescribeType(ABase: TDsgClassBase; ATypeInfo: PTypeInfo;
+                       Typ: TDsgTypeDesc);
 var
-  Typ: TDsgTypeDesc;
   TypeRec: PTypeData;
   ValIdx: Integer;
   ElemInfo: PTypeInfo;
@@ -182,9 +182,6 @@ var
   SubDesc: TDsgClassDesc;
   Kind, Params, ResType: string;
 begin
-  if (ATypeInfo = nil) or (ABase.FindType(TypeNameOf(ATypeInfo)) <> nil) then
-    Exit;
-  Typ := ABase.AddType(TypeNameOf(ATypeInfo));
   TypeRec := GetTypeData(ATypeInfo);
   case ATypeInfo^.Kind of
     tkInteger:
@@ -215,8 +212,7 @@ begin
       ElemInfo := CompTypeOf(ATypeInfo);
       if ElemInfo <> nil then
       begin
-        Typ.ElemType := TypeNameOf(ElemInfo);
-        DescribeType(ABase, ElemInfo);
+        Typ.ElemType := TypeKeyOf(ABase, ElemInfo);
       end;
     end;
     tkClass:
@@ -248,6 +244,35 @@ begin
   else
     Typ.Kind := dtkOther;
   end;
+end;
+
+// Ключ типа в описании. Один и тот же тип (тот же PTypeInfo) - тот же
+// ключ; одноимённый тип из другого модуля (TTabStyle в Tabs и ComCtrls,
+// TCanResizeEvent в Controls и ExtCtrls) - с ~2, ~3.
+function TypeKeyOf(ABase: TDsgClassBase; ATypeInfo: PTypeInfo): string;
+var
+  Typ: TDsgTypeDesc;
+  BaseName: string;
+  Number: Integer;
+begin
+  Result := '';
+  if ATypeInfo = nil then
+    Exit;
+  BaseName := TypeNameOf(ATypeInfo);
+  Result := BaseName;
+  Number := 1;
+  Typ := ABase.FindType(Result);
+  while (Typ <> nil) and (Typ.Tag <> ATypeInfo) do
+  begin
+    Inc(Number);
+    Result := BaseName + '~' + IntToStr(Number);
+    Typ := ABase.FindType(Result);
+  end;
+  if Typ <> nil then
+    Exit;
+  Typ := ABase.AddType(Result);
+  Typ.Tag := ATypeInfo;
+  DescribeType(ABase, ATypeInfo, Typ);
 end;
 
 function DsgDescribeClass(ABase: TDsgClassBase; AClass: TClass;

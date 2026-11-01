@@ -45006,7 +45006,7 @@ begin
       for ValIdx := 0 to ATyp.Values.Count - 1 do
         Result := Result + ' ' + ATyp.Values[ValIdx];
     dtkSet:
-      Result := Result + ' ' + ATyp.ElemType;
+      Result := Result + ' ' + DsgTypePlainName(ATyp.ElemType);
   end;
 end;
 
@@ -45262,9 +45262,12 @@ begin
         // Другое имя и место, чем при записи: проверяется и замена
         NameTwo := DsgDescNewName(ClsName);
         NameTwo := Copy(NameTwo, 1, Length(NameTwo) - 1) + '2';
+        // Даты (Date у TDateTimePicker) - время создания, не сверяются
         Check(ClsName + ' новый компонент',
-              DsgNewObjectText(TComponentClass(Cls), NameTwo, 24, 40),
-              ReadBack.NewObjectText(ClsName, NameTwo, 24, 40));
+              ReadBack.MaskDateLines(ClsName,
+                DsgNewObjectText(TComponentClass(Cls), NameTwo, 24, 40)),
+              ReadBack.MaskDateLines(ClsName,
+                ReadBack.NewObjectText(ClsName, NameTwo, 24, 40)));
       end;
     end;
     if Mismatches = 0 then

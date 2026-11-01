@@ -27,6 +27,8 @@ unit DsgClassDesc;
 //    type TCaption string
 //    type TFont class
 //    type TNotifyEvent method procedure|Sender: TObject|
+//  Одноимённые типы из разных модулей (TTabStyle в Tabs и ComCtrls) - с
+//  ~2, ~3 после имени: type TTabStyle~2 enum ...; prop Style TTabStyle~2 w.
 //  Строки, начинающиеся с ';', и пустые - пропускаются.
 // ---------------------------------------------------------------------------
 
@@ -50,7 +52,9 @@ type
 
   TDsgTypeDesc = class
   public
-    Name: string;
+    Key: string;                // имя в файле: TTabStyle, TTabStyle~2
+    Name: string;               // имя типа: TTabStyle
+    Tag: Pointer;               // для записи: откуда взят (PTypeInfo), в файл не идёт
     Kind: TDsgTypeKind;
     MinValue: Int64;            // целые и перечисления
     MaxValue: Int64;
@@ -68,7 +72,7 @@ type
   TDsgPropDesc = class
   public
     Name: string;
-    TypeName: string;
+    TypeName: string;           // ключ типа (TDsgTypeDesc.Key)
     Writable: Boolean;
   end;
 
@@ -97,9 +101,11 @@ type
     procedure Clear;
 
     function AddClass(const AName: string): TDsgClassDesc;
-    function AddType(const AName: string): TDsgTypeDesc;
+    // AKey - имя типа, у второго одноимённого из другого модуля -
+    // с ~2 и т.д.: TTabStyle в Tabs и в ComCtrls - разные типы
+    function AddType(const AKey: string): TDsgTypeDesc;
     function FindClass(const AName: string): TDsgClassDesc;
-    function FindType(const AName: string): TDsgTypeDesc;
+    function FindType(const AKey: string): TDsgTypeDesc;
     function ClassCount: Integer;
     function ClassAt(AIndex: Integer): TDsgClassDesc;
     function TypeCount: Integer;
@@ -124,11 +130,21 @@ type
     function DefaultEvent(const AClass: string): string;
     // "procedure Button1Click(Sender: TObject);"; '' - нет события
     function EventDecl(const AClass, AEvent, AMethod: string): string;
-    // Текст object ... end нового компонента с именем и местом; '' - нет
+    // Текст object ... end нового компонента с именем и местом; '' - нет.
+    // Свойства-даты (TDate, TTime, TDateTime - Date у TDateTimePicker)
+    // получают текущее время, как у Delphi при установке компонента.
     function NewObjectText(const AClass, AName: string; X, Y: Integer): string;
+    // Свойство AProp класса - дата или время
+    function IsDateProp(const AClass, AProp: string): Boolean;
+    // Значения свойств-дат в тексте object ... end заменены на "(дата)":
+    // для сверки текстов, записанных в разное время
+    function MaskDateLines(const AClass, AText: string): string;
   end;
 
 function DsgTypeKindName(AKind: TDsgTypeKind): string;
+
+// Имя типа по ключу: TTabStyle~2 -> TTabStyle
+function DsgTypePlainName(const AKey: string): string;
 
 // Имя, с которым записан текст нового компонента: класс без T и 1, как
 // первое имя у DsgInsert (Button1). Такое же по длине, как обычное имя, -
@@ -136,6 +152,16 @@ function DsgTypeKindName(AKind: TDsgTypeKind): string;
 function DsgDescNewName(const AClass: string): string;
 
 implementation
+
+function DsgTypePlainName(const AKey: string): string;
+var
+  MarkPos: Integer;
+begin
+  Result := AKey;
+  MarkPos := Pos('~', Result);
+  if MarkPos > 0 then
+    Result := Copy(Result, 1, MarkPos - 1);
+end;
 
 function DsgDescNewName(const AClass: string): string;
 begin
@@ -324,14 +350,15 @@ begin
   FOrder.AddObject(AName, Result);
 end;
 
-function TDsgClassBase.AddType(const AName: string): TDsgTypeDesc;
+function TDsgClassBase.AddType(const AKey: string): TDsgTypeDesc;
 begin
-  Result := FindType(AName);
+  Result := FindType(AKey);
   if Result <> nil then
     Exit;
   Result := TDsgTypeDesc.Create;
-  Result.Name := AName;
-  FTypes.AddObject(AName, Result);
+  Result.Key := AKey;
+  Result.Name := DsgTypePlainName(AKey);
+  FTypes.AddObject(AKey, Result);
 end;
 
 function TDsgClassBase.FindClass(const AName: string): TDsgClassDesc;
@@ -343,12 +370,12 @@ begin
     Result := TDsgClassDesc(FClasses.Objects[ItemIdx]);
 end;
 
-function TDsgClassBase.FindType(const AName: string): TDsgTypeDesc;
+function TDsgClassBase.FindType(const AKey: string): TDsgTypeDesc;
 var
   ItemIdx: Integer;
 begin
   Result := nil;
-  if FTypes.Find(AName, ItemIdx) then
+  if FTypes.Find(AKey, ItemIdx) then
     Result := TDsgTypeDesc(FTypes.Objects[ItemIdx]);
 end;
 
@@ -419,7 +446,7 @@ begin
   for ItemIdx := 0 to TypeCount - 1 do
   begin
     Typ := TypeAt(ItemIdx);
-    Line := 'type ' + Typ.Name + ' ' + KindNames[Typ.Kind];
+    Line := 'type ' + Typ.Key + ' ' + KindNames[Typ.Kind];
     case Typ.Kind of
       dtkInteger, dtkInt64:
         Line := Line + ' ' + IntToStr(Typ.MinValue) + ' ' +
@@ -747,6 +774,74 @@ begin
   Result := Result + ';';
 end;
 
+// Имя свойства из строки "  Date = 46327.17" верхнего уровня объекта;
+// '' - строка не такая
+function DateLineProp(const ALine: string): string;
+var
+  EqPos: Integer;
+begin
+  Result := '';
+  if (Length(ALine) < 3) or (Copy(ALine, 1, 2) <> '  ') or
+     (ALine[3] = ' ') then
+    Exit;
+  EqPos := Pos(' = ', ALine);
+  if EqPos > 0 then
+    Result := Trim(Copy(ALine, 1, EqPos - 1));
+end;
+
+// Дата числом, как в .dfm: дробная часть через точку
+function DateText(AValue: TDateTime): string;
+var
+  CharIdx: Integer;
+begin
+  Result := FloatToStr(AValue);
+  for CharIdx := 1 to Length(Result) do
+    if Result[CharIdx] = ',' then
+      Result[CharIdx] := '.';
+end;
+
+function TDsgClassBase.IsDateProp(const AClass, AProp: string): Boolean;
+var
+  Cls: TDsgClassDesc;
+  Prop: TDsgPropDesc;
+  TypeName: string;
+begin
+  Result := False;
+  if AProp = '' then
+    Exit;
+  Cls := FindClass(AClass);
+  if Cls = nil then
+    Exit;
+  Prop := Cls.FindProp(AProp);
+  if Prop = nil then
+    Exit;
+  TypeName := DsgTypePlainName(Prop.TypeName);
+  Result := (CompareText(TypeName, 'TDate') = 0) or
+            (CompareText(TypeName, 'TTime') = 0) or
+            (CompareText(TypeName, 'TDateTime') = 0);
+end;
+
+function TDsgClassBase.MaskDateLines(const AClass, AText: string): string;
+var
+  Lines: TStringList;
+  LineIdx: Integer;
+  PropName: string;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Text := AText;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      PropName := DateLineProp(Lines[LineIdx]);
+      if IsDateProp(AClass, PropName) then
+        Lines[LineIdx] := '  ' + PropName + ' = (дата)';
+    end;
+    Result := Lines.Text;
+  finally
+    Lines.Free;
+  end;
+end;
+
 function TDsgClassBase.NewObjectText(const AClass, AName: string;
   X, Y: Integer): string;
 var
@@ -764,7 +859,9 @@ begin
     for LineIdx := 0 to Cls.NewText.Count - 1 do
     begin
       Line := Cls.NewText[LineIdx];
-      if Line = '  Left = ' + IntToStr(DsgDescNewLeft) then
+      if IsDateProp(AClass, DateLineProp(Line)) then
+        Line := '  ' + DateLineProp(Line) + ' = ' + DateText(Now)
+      else if Line = '  Left = ' + IntToStr(DsgDescNewLeft) then
         Line := '  Left = ' + IntToStr(X)
       else if Line = '  Top = ' + IntToStr(DsgDescNewTop) then
         Line := '  Top = ' + IntToStr(Y)
