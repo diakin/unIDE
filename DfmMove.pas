@@ -321,7 +321,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.37';
+  DfmMoveBuild = 'b.38';
 
 constructor TMoveInfo.Create;
 begin
@@ -4626,7 +4626,7 @@ var
   Line, Code, Upper, Lhs, Owner, Ctor, Rest, PropName, Value, Target,
     AddParent, AddChild, Guard, SwitchProp, SwitchOn, RemoveParent,
     RemoveChild, NameUpper, Sibling: string;
-  ScanIndex, SiblingAt: Integer;
+  ScanIndex, SiblingAt, GuardIf: Integer;
   SiblingNode: TDfmNode;
   ExitLines, SubLines: TList;
   CreatePos, Open, Close, Index, Head, RoutineEnd, Calls, Assigns,
@@ -5185,6 +5185,95 @@ var
     end;
   end;
 
+  // Создание (строки AFirst..ALast) выполняется только под
+  // if X <> nil then / if Assigned(X) then, где X - компонент .dfm, который
+  // код не освобождает и не присваивает: после загрузки формы условие
+  // выполняется всегда. if - на прямом пути процедуры, без else, создание -
+  // его единственный оператор. AIfLine - строка if (может быть AFirst).
+  function DfmGuardOnly(AFirst, ALast: Integer; var AIfLine: Integer): Boolean;
+  var
+    Key, Cond, Name: string;
+    ThenAt, NextLine, GuardAt, HitIndex, LineIndex, IfLine: Integer;
+    GuardNode: TDfmNode;
+    Hits: TList;
+  begin
+    Result := False;
+    AIfLine := -1;
+    IfLine := -1;
+    Key := AKeys[AFirst];
+    if Copy(Key, 1, 3) = 'IF ' then
+      IfLine := AFirst
+    else
+    begin
+      LineIndex := AFirst - 1;
+      while (LineIndex >= 0) and (AKeys[LineIndex] = '') do
+        Dec(LineIndex);
+      if (LineIndex < 0) or (Copy(AKeys[LineIndex], 1, 3) <> 'IF ') or
+         (Copy(AKeys[LineIndex], Length(AKeys[LineIndex]) - 4, 5) <> ' THEN') then
+        Exit;
+      IfLine := LineIndex;
+    end;
+    if not AScan.Plain[IfLine] then
+      Exit;
+    Key := AKeys[IfLine];
+    ThenAt := Pos(' THEN', Key);
+    if ThenAt = 0 then
+      Exit;
+    // Создание - весь оператор после then: в той же строке оно до конца
+    // строки, иначе then - последнее в строке if
+    if (IfLine = AFirst) and (Pos(':=', Copy(Key, ThenAt, MaxInt)) = 0) then
+      Exit;
+    Cond := StringReplace(Copy(Key, 4, ThenAt - 4), ' ', '', [rfReplaceAll]);
+    while (Length(Cond) > 2) and (Cond[1] = '(') and
+          (Cond[Length(Cond)] = ')') do
+      Cond := Copy(Cond, 2, Length(Cond) - 2);
+    if Copy(Cond, Length(Cond) - 4, 5) = '<>NIL' then
+      Name := Copy(Cond, 1, Length(Cond) - 5)
+    else if (Copy(Cond, 1, 9) = 'ASSIGNED(') and
+            (Cond[Length(Cond)] = ')') then
+      Name := Copy(Cond, 10, Length(Cond) - 10)
+    else
+      Exit;
+    if not IsValidIdent(Name) then
+      Exit;
+    GuardAt := ANames.IndexOf(Name);
+    if (GuardAt < 0) or (ANames.Objects[GuardAt] = nil) then
+      Exit;
+    GuardNode := TDfmNode(ANames.Objects[GuardAt]);
+    if GuardNode.IsRuntime or GuardNode.FromCode or IsFormClass(GuardNode.ClassNm) then
+      Exit;
+    // Строка создания кончается оператором; дальше - не else
+    if Copy(AKeys[ALast], Length(AKeys[ALast]), 1) <> ';' then
+      Exit;
+    NextLine := ALast + 1;
+    while (NextLine < AKeys.Count) and (AKeys[NextLine] = '') do
+      Inc(NextLine);
+    if (NextLine < AKeys.Count) and (Copy(AKeys[NextLine], 1, 4) = 'ELSE') then
+      Exit;
+    // Код его не освобождает и не присваивает
+    Hits := TList.Create;
+    try
+      WordCandidates(AKeys, Name, 0, AKeys.Count - 1, Hits);
+      for HitIndex := 0 to Hits.Count - 1 do
+      begin
+        LineIndex := Integer(Hits[HitIndex]);
+        if (LineIndex >= AClassFirst) and (LineIndex <= AClassLast) then
+          Continue;
+        Key := AKeys[LineIndex];
+        if HasPattern(Key, 'FREEANDNIL(' + Name + ')') or
+           HasPattern(Key, Name + '.FREE') or
+           HasPattern(Key, Name + '.DESTROY') or
+           HasPattern(Key, Name + '.RELEASE') or
+           HasPattern(Key, Name + ':=') then
+          Exit;
+      end;
+    finally
+      Hits.Free;
+    end;
+    AIfLine := IfLine;
+    Result := True;
+  end;
+
   // Вызов процедуры-создателя: здесь - только родитель (он у каждого
   // вызова свой) и строки вызова, которые остаются. Какие строки самой
   // процедуры уходят в .dfm, решает разбор всех её вызовов вместе
@@ -5436,8 +5525,12 @@ begin
   LazyCond := -1;
   LazyOpen := -1;
   LazyEnd := -1;
+  // Под if X <> nil then, где X - компонент .dfm: условие после загрузки
+  // формы выполняется всегда - строка if уходит вместе с созданием
+  GuardIf := -1;
   // Проход развёрнутого цикла: путь проверен у строки for
-  if not AScan.Plain[Node.CreateLine] and (Info.UnrollArgs = nil) then
+  if not AScan.Plain[Node.CreateLine] and (Info.UnrollArgs = nil) and
+     not DfmGuardOnly(Node.CreateLine, CallLast, GuardIf) then
   begin
     if ((Helper <> nil) and ((Helper.OutIdx >= 0) or Helper.LocalCreator)) or
        not FindLazyBlock(AScan, AKeys, Node.CreateLine, Guard, LazyCond,
@@ -6223,6 +6316,20 @@ begin
       Info.Notes.Add('В модуле есть обход Components/Controls (строка ' +
                      Upper + ' и др.): он теперь увидит ' + Node.VarName +
                      ' и до первого вызова.');
+  end;
+
+  if GuardIf >= 0 then
+  begin
+    if GuardIf <> Node.CreateLine then
+    begin
+      Info.MoveLines.Add(LineRef(ALines, GuardIf) + '   [проверка на nil ' +
+                         'компонента .dfm - после загрузки формы он есть]');
+      AddMoveItem(Info, GuardIf, mlCreate, '', '');
+    end;
+    Info.Notes.Add('Создаётся под ' + Trim(StripComment(ALines[GuardIf])) +
+                   ' (строка ' + IntToStr(GuardIf + 1) + '): проверяемый ' +
+                   'компонент лежит в .dfm и код его не освобождает - ' +
+                   'условие выполняется всегда, проверка уходит.');
   end;
 
   if not Node.IsLive then
