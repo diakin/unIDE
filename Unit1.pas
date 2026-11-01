@@ -2142,14 +2142,10 @@ type
     // при прошлом замере; FMemLargestMB < 0 - замера ещё не было
     FMemUsedMB, FMemFreeMB, FMemLargestMB: Integer;
 
-    // ЗАМЕР. Три статьи расхода на одно нажатие клавиши, в тиках счётчика:
-    //   FPerfOur   - наш код (снимок, сдвиг карты)
-    //   FPerfCtl   - сам RichEdit, за вычетом нашего
-    //   FPerfPaint - отрисовка кадра
-    // В статус-баре больше не показываются (там индикатор памяти); весь
-    // этот блок можно выкинуть.
+    // ЗАМЕР отрисовки кадра, в тиках счётчика (FPerfFreq - тиков в секунду).
+    // В статус-баре больше не показывается (там индикатор памяти)
     FPerfFreq: Int64;
-    FPerfOur, FPerfCtl, FPerfPaint: Int64;
+    FPerfPaint: Int64;
 
     // ЗАМЕР кадра по статьям, в тиках. Считается в HighlightVisibleText:
     //   FPerfXPos - чтение строки из контрола и таблица координат
@@ -2278,22 +2274,15 @@ type
     //   FCmtCalls, FPerfCmt - поисков строчного комментария за кадр и время
     //   FInvalAll - сколько раз кэш сброшен целиком (с запуска)
     //   FEditUpd, FEditDrop - правок внутри строки: поправлено / выброшено
-    //   FEnChangeIn, FEnChangeOut - EN_CHANGE внутри сообщения со снимком /
-    //   вне его (с запуска)
     FInfoBuilds, FCmtCalls: Integer;
     FPerfCmt: Int64;
-    FInvalAll, FEditUpd, FEditDrop, FEnChangeIn, FEnChangeOut: Integer;
-    FEnTop, FEnNested: Integer; // EN_CHANGE: вне других сообщений / внутри
+    FInvalAll, FEditUpd, FEditDrop: Integer;
 
     // Глубина вложенности NewRichEditProc и глубина, на которой сделаны
     // снимки до правки (FPreValid, FCachePreValid) - см. NewRichEditProc
     FMsgDepth, FPreDepth, FCacheDepth: Integer;
     FOuterMsg: Cardinal; // сообщение верхнего уровня - для диагностики
 
-    // Правка, уже учтённая сразу после своего сообщения (HandleEditAfterMsg):
-    // сколько таких ждут своего EN_CHANGE и длина текста после последней
-    FPendingEn: Integer;
-    FKnownLen: Integer;
 
     // Своя каретка - там, где системная не видна: см. SyncCaretX
     FOwnCaretOn: Boolean;     // каретку рисуем мы
@@ -2918,7 +2907,6 @@ type
 
     procedure NewRichEditProc(var Message: TMessage);
     procedure NewRichEditProcBody(var Message: TMessage);
-    procedure HandleEditAfterMsg(const Message: TMessage);
     //    procedure NewRichEditProc1(var Message: TMessage);
     procedure HighlightVisibleText;
     procedure PaintDoubleBuffered; // весь кадр собирается в памяти
@@ -24792,8 +24780,7 @@ end;
 //  У каждой вкладки свой TEdBuffer (FWindows[].Buffer). Активная вкладка
 //  показывает его в своём редакторе (TEdRichEmu.UseBuffer): при смене
 //  вкладки текст не копируется, откат вкладки сохраняется. Без своего
-//  редактора (нет RichEdit 4.1) буфер - хранилище текста неактивных
-//  вкладок, как прежнее поле Text.
+//  буфер неактивной вкладки - хранилище её текста, как прежнее поле Text.
 // ---------------------------------------------------------------------------
 
 // Текст вкладки строкой (ANSI, перевод строки - CRLF). Строка
@@ -26175,8 +26162,6 @@ begin
   FPerfRebuild := 0;
   if not QueryPerformanceFrequency(FPerfFreq) then
     FPerfFreq := 0;
-  FPerfOur := 0;
-  FPerfCtl := 0;
   FPerfPaint := 0;
   FLpwLine := -1;   // 0 - настоящий номер строки, кэш должен быть пуст
   FFoundLine := -1;
@@ -48905,61 +48890,6 @@ begin
       SetLength(FLineTick, NewLines);
     end;
   end;
-end;
-
-// Правка учитывается сразу после сообщения, которое её сделало.
-//
-// Нужна потому, что RichEdit 4.1 присылает EN_CHANGE позже, вне этого
-// сообщения, когда снимка до правки уже нет. Здесь снимок ещё на месте:
-// кэш ширин поправляется по нему, карта сдвигается (TryShiftMap), и
-// запоминается, что уведомление об этой правке ещё придёт - его EN_CHANGE
-// пропустит.
-//
-// Правка считается состоявшейся, если изменилась длина текста, а для
-// набора символа, замены выделения и вставки - всегда: в режиме замены
-// длина не меняется.
-procedure TForm1.HandleEditAfterMsg(const Message: TMessage);
-var
-  NewLen: Integer;
-  Changed: Boolean;
-begin
-  NewLen := TextLenInternal;
-  Changed := (NewLen <> FCachePreLen) or
-             ((Message.Msg = WM_CHAR) and (Message.WParam >= 32)) or
-             (Message.Msg = EM_REPLACESEL) or (Message.Msg = WM_PASTE);
-  if not Changed then
-    Exit;
-  Inc(FEditSerial);
-
-  // До ApplyWidthEdit: он гасит снимок (FCachePreValid)
-  ShiftDepthForEdit;
-  ApplyWidthEdit;
-
-  if RichEdit1.Modified then
-  begin
-    if Pos(' *', Form1.Caption) = 0 then
-      Form1.Caption := AppTitle + ' - ' + DisplayName + ' *';
-    if not TryShiftMap then
-      MapAfterEdit;
-    FNeedLineInv := True;
-  end;
-
-  Inc(FPendingEn);
-  FKnownLen := NewLen;
-
-  // Строку с кареткой - перерисовать сейчас: EN_CHANGE, которое делало это
-  // раньше, придёт позже и будет пропущено
-  if FNeedLineInv then
-  begin
-    FNeedLineInv := False;
-    InvalidateCaretLine;
-  end;
-  // Большой текст (от MapProgressMinLen) изменился на 4 КБ и больше -
-  // запас адресов в лог: по таким строкам видно, сколько памяти уходит
-  // на правки (нехватка памяти на файле в 32 МБ, 01.11.2026)
-  if (NewLen >= MapProgressMinLen) and (Abs(NewLen - FCachePreLen) >= 4096) then
-    LogAddressSpace(Format('правка %d знаков, текст %d знаков',
-      [NewLen - FCachePreLen, NewLen]));
 end;
 
 // Текст изменился (EN_CHANGE). Если есть снимок - строки после правки
@@ -81239,11 +81169,10 @@ procedure TForm1.NewRichEditProcBody(var Message: TMessage);
 var
   WheelDelta, WheelLines: Integer;
   QueuedMsg: TMsg;
-  PerfT: Int64;
   MouseX, LineW: Integer;
   ClickLine: Integer;
-  EditHandled: Boolean;
   ClickBeyond: Boolean;
+  PreLen, NewLen: Integer;
   EnterCount, EnterIdx: Integer;
   EnterIndent, EnterText: string;
 begin
@@ -81451,11 +81380,7 @@ begin
      (Message.Msg = WM_PASTE) or (Message.Msg = WM_CUT) or
      (Message.Msg = WM_CLEAR) or (Message.Msg = WM_UNDO) or
      (Message.Msg = EM_REPLACESEL) or (Message.Msg = EM_UNDO) then
-  begin
-    FPerfOur := PerfNow;
     CapturePreEdit;
-    FPerfOur := PerfNow - FPerfOur;
-  end;
 
   // Каретка сдвинулась. Ловим ЗДЕСЬ, а не в WMNotify формы.
   //
@@ -81478,80 +81403,58 @@ begin
     ObjSyncFromCaret;
   end;
 
-  // 1. Изменение текста
+  // 1. Изменение текста.
+  //
+  // Свой редактор (TEdRichEmu) шлёт EN_CHANGE в конце внешнего сообщения,
+  // которое изменило текст, - вложенным вызовом, пока снимок до правки
+  // (CaptureWidthPre) ещё на месте. Правка без снимка (текст вкладки залит
+  // целиком, сообщение не из IsTextChangeMsg) - кэш ширин сбрасывается
+  // целиком (ApplyWidthEdit)
   if (Message.Msg = CN_COMMAND) and (TWMCommand(Message).NotifyCode = EN_CHANGE) then
   begin
+    // Длина до правки - для строки о памяти ниже; ApplyWidthEdit гасит снимок
     if FCachePreValid then
-      Inc(FEnChangeIn)
+      PreLen := FCachePreLen
     else
-      Inc(FEnChangeOut);
-    if FMsgDepth > 1 then
-      Inc(FEnNested)
-    else
-      Inc(FEnTop);
-
-    // Уведомление о правке, которую HandleEditAfterMsg уже учёл?
-    // RichEdit 4.1 присылает EN_CHANGE не внутри сообщения с символом, а
-    // позже (диагностика "en 0/N"): снимка до правки к этому моменту нет.
-    EditHandled := False;
-    if not FCachePreValid then
-    begin
-      // Длина та же, что после последней учтённой правки, - значит, после
-      // неё текст не менялся. По одному уведомлению на правку; если их
-      // пришло меньше, счётчик сбросит первая правка другой длины.
-      if (FPendingEn > 0) and (TextLenInternal = FKnownLen) then
-      begin
-        EditHandled := True;
-        Dec(FPendingEn);
-      end
-      else
-      begin
-        FPendingEn := 0;
-      end;
-    end;
+      PreLen := -1;
 
     // Вложенность строк сдвинуть - до ApplyWidthEdit: он гасит снимок.
-    // Без этого правка, чьё EN_CHANGE пришло внутри сообщения (вставка
-    // EM_REPLACESEL - Enter, Paste), оставляла FLineDepth несдвинутой, и
-    // направляющие ниже правки до пересборки карты рисовались по чужим
-    // строкам.
-    if not EditHandled then
-    begin
-      ShiftDepthForEdit;
-      ApplyWidthEdit; // текст другой - кэш ширин поправить
-    end;
+    // Без этого направляющие ниже правки до пересборки карты рисовались бы
+    // по чужим строкам
+    ShiftDepthForEdit;
+    ApplyWidthEdit; // текст другой - кэш ширин поправить
 
     if RichEdit1.Modified then
     begin
-      // RichEdit1.Modified := False;
-      //      if (FCurrentFileName <> '') and (Pos(' *', Form1.Caption) = 0) then
       if (Pos(' *', Form1.Caption) = 0) then
         Form1.Caption := AppTitle + ' - ' + DisplayName + ' *';
 
       // Сначала пробуем обойтись сдвигом позиций - он стоит доли
       // микросекунды. Не вышло - заказываем полный разбор по таймеру.
-      PerfT := PerfNow;
-      if not EditHandled then
-        if not TryShiftMap then
-          MapAfterEdit;
+      if not TryShiftMap then
+        MapAfterEdit;
 
       // Метим ТОЛЬКО строку с кареткой, и в обоих случаях.
       //
       // Когда сдвиг удался - потому что больше ничего и не изменилось.
       // Когда отказал - потому что карта СЕЙЧАС устарела, и перерисовывать
       // по ней весь экран значит размазать неверную подсветку по строкам,
-      // которых правка не касалась. Это и были бегущие артефакты. Полную
-      // перерисовку сделает тот, кто пересоберёт карту.
+      // которых правка не касалась. Полную перерисовку сделает тот, кто
+      // пересоберёт карту.
       //
-      // Само InvalidateRect отложено до конца обработки сообщения: сейчас
-      // контрол ещё не довёл до конца свою внутреннюю правку, и координата
-      // строки может не соответствовать тому, что он нарисует.
+      // Само InvalidateRect отложено до конца обработки сообщения - после
+      // DefEditProc ниже, см. FNeedLineInv
       FNeedLineInv := True;
-      // EN_CHANGE приходит ВНУТРИ обработки клавиши, поэтому прибавляем
-      // к уже замеренному снимку, а не перезаписываем
-      Inc(FPerfOur, PerfNow - PerfT);
     end;
-    // Exit;
+
+    // Большой текст (от MapProgressMinLen) изменился на 4 КБ и больше -
+    // запас адресов в лог: по таким строкам видно, сколько памяти уходит
+    // на правки (нехватка памяти на файле в 32 МБ, 01.11.2026)
+    NewLen := TextLenInternal;
+    if (PreLen >= 0) and (NewLen >= MapProgressMinLen) and
+       (Abs(NewLen - PreLen) >= 4096) then
+      LogAddressSpace(Format('правка %d знаков, текст %d знаков',
+        [NewLen - PreLen, NewLen]));
   end;
 
   // Пропускаем сообщение сквозь стандартное окно RichEdit, чтобы Windows
@@ -81581,17 +81484,7 @@ begin
      ((Message.Msg = WM_MOUSEMOVE) and (Message.WParam and MK_LBUTTON <> 0)) then
     HideOwnCaret;
 
-  PerfT := PerfNow;
   DefEditProc(Message);
-
-  // Наша работа по EN_CHANGE идёт ВНУТРИ этого вызова - вычитаем её,
-  // чтобы в FPerfCtl осталось чистое время самого контрола
-  if (Message.Msg = WM_KEYDOWN) or (Message.Msg = WM_CHAR) then
-  begin
-    FPerfCtl := PerfNow - PerfT - FPerfOur;
-    if FPerfCtl < 0 then
-      FPerfCtl := 0;
-  end;
 
   // Текст изменился - помечаем грязной строку с кареткой. Именно здесь,
   // после возврата из контрола: к этому моменту он уже перестроил свою
@@ -81684,10 +81577,7 @@ begin
   // Обработка сообщения закончена - снимок больше не действителен. Без этого
   // он пережил бы, скажем, нажатие стрелки и достался бы следующей правке,
   // пришедшей другим путём (SelText из кода замены) - с чужими координатами.
-  // Снимок этого сообщения не забран - EN_CHANGE внутри не пришло.
-  // Учитываем правку сами, не дожидаясь уведомления.
-  if FCachePreValid and (FCacheDepth = FMsgDepth) then
-    HandleEditAfterMsg(Message);
+  // Снимок, не забранный EN_CHANGE, значит: текст не менялся.
 
   // Каретку убирали перед вызовом контрола, а поставить заново было некому:
   // сообщение не двигало каретку и не меняло текст. Ставим сами.
