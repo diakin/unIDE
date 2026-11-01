@@ -38257,7 +38257,7 @@ end;
 function TForm1.FindCreateLine(const AText: string; ANode: TObject): Integer;
 var
   DfmNode: TDfmNode;
-  Lines, Cands, CapHit, CapLike, LitHit, CreHit: TStringList;
+  Lines, Cands, CapHit, CapLike, LitHit, CreHit, ParHit: TStringList;
   I, J, Idx3, CharPos: Integer;
   Cap, Lit, UpStr, LineStr, Lhs, Cls, Str, ParentNm: string;
 
@@ -38741,6 +38741,46 @@ begin
       Result := Choose(LitHit);
       if (Result >= 0) or (LitHit.Count > 1) then
         Exit;
+    end;
+
+    // 3а. по родителю: родитель узла известен из снимка живой формы
+    // (Parent у объекта), а строки, где к нему добавляется ребёнок, - те,
+    // где имя родителя стоит в вызове: TКласс.Create(Родитель),
+    // Родитель.Add(X), Родитель.Insert(..., X), X.Parent := Родитель,
+    // помощник MakeItem(Self, Родитель, ...)
+    if ParentNm <> '' then
+    begin
+      ParHit := TStringList.Create;
+      try
+        for I := 0 to Lines.Count - 1 do
+        begin
+          LineStr := Trim(Lines[I]);
+          if (Copy(LineStr, 1, 2) = '//') or not HasWord(LineStr, ParentNm) then
+            Continue;
+          // Создание другого класса - не наш узел
+          if ParseCreate(LineStr, Cls, Lhs) and
+             (CompareText(Cls, DfmNode.ClassNm) <> 0) then
+            Continue;
+          if HasParentLink(I) then
+            AddCand(ParHit, I)
+          else
+          begin
+            UpStr := AnsiUpperCase(StringReplace(LineStr, ' ', '',
+                                                 [rfReplaceAll]));
+            if (Pos(AnsiUpperCase(ParentNm) + '.ADD(', UpStr) > 0) or
+               (Pos(AnsiUpperCase(ParentNm) + '.INSERT(', UpStr) > 0) or
+               (Pos('.PARENT:=' + AnsiUpperCase(ParentNm) + ';', UpStr) > 0) then
+              AddCand(ParHit, I);
+          end;
+        end;
+        if ParHit.Count = 1 then
+        begin
+          Result := Integer(ParHit.Objects[0]);
+          Exit;
+        end;
+      finally
+        ParHit.Free;
+      end;
     end;
 
     // 4. любое создание этого класса
