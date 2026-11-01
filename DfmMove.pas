@@ -325,7 +325,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.25';
+  DfmMoveBuild = 'b.26';
 
 constructor TMoveInfo.Create;
 begin
@@ -473,17 +473,42 @@ begin
 end;
 
 // AName - поле класса формы (строка объявления с ним и двоеточием)
+// Строки ALines со словом AName (по индексу слов разбора): True - индекс
+// построен для ALines, AHits - строки по возрастанию (nil - ни одной)
+function WordHitsFor(ALines: TStrings; const AName: string;
+  var AHits: TList): Boolean; forward;
+
 function IsFormField(ALines: TStrings; AFirst, ALast: Integer;
   const AName: string): Boolean;
 var
-  Index: Integer;
+  Index, HitIndex, HitCount: Integer;
   T: string;
+  Hits: TList;
+  UseHits: Boolean;
 begin
   Result := False;
   if AFirst < 0 then
     Exit;
-  for Index := AFirst + 1 to ALast - 1 do
+  // Во время разбора - только строки, где есть слово AName
+  UseHits := WordHitsFor(ALines, AName, Hits);
+  if UseHits then
   begin
+    if Hits = nil then
+      Exit;
+    HitCount := Hits.Count;
+  end
+  else
+    HitCount := ALast - AFirst - 1;
+  for HitIndex := 0 to HitCount - 1 do
+  begin
+    if UseHits then
+    begin
+      Index := Integer(Hits[HitIndex]);
+      if (Index <= AFirst) or (Index >= ALast) then
+        Continue;
+    end
+    else
+      Index := AFirst + 1 + HitIndex;
     // Без комментария: скобки в нём - не признак метода
     T := Trim(StripComment(ALines[Index]));
     if (Pos(':', T) > 0) and (Pos('(', T) = 0) and HasWord(T, AName) and
@@ -676,6 +701,7 @@ const
 
 var
   GWordKeys: TStrings = nil;
+  GWordLines: TStrings = nil;     // строки модуля, по которым AKeys
   GWordHeads: array of Integer;
   GWordEntries: array of TWordEntry;
   GWordCount: Integer = 0;
@@ -701,6 +727,7 @@ begin
   GWordHeads := nil;
   GWordCount := 0;
   GWordKeys := nil;
+  GWordLines := nil;
 end;
 
 // Строки со словом AUpper (заглавными); nil - нет ни одной
@@ -723,7 +750,7 @@ begin
   end;
 end;
 
-procedure WordIndexStart(AKeys: TStrings);
+procedure WordIndexStart(AKeys, ALines: TStrings);
 var
   LineIndex, CharPos, WordStart, KeyLen, Bucket, EntryIndex: Integer;
   Key, Word: string;
@@ -771,6 +798,18 @@ begin
     end;
   end;
   GWordKeys := AKeys;
+  GWordLines := ALines;
+end;
+
+function WordHitsFor(ALines: TStrings; const AName: string;
+  var AHits: TList): Boolean;
+begin
+  AHits := nil;
+  Result := (ALines <> nil) and (GWordLines = ALines) and
+            (GWordKeys <> nil) and (GWordKeys.Count = ALines.Count) and
+            IsValidIdent(AName);
+  if Result then
+    AHits := WordIndexFind(UpperCase(AName));
 end;
 
 // В AOut - номера строк AKeys с AFirst по ALast, где может стоять слово
@@ -797,6 +836,40 @@ begin
   else
     for LineIndex := AFirst to ALast do
       AOut.Add(Pointer(LineIndex));
+end;
+
+// AOut - номера строк из AFirst и ASecond (оба по возрастанию) вместе, по
+// возрастанию, без повторов
+procedure MergeLineLists(AFirst, ASecond, AOut: TList);
+var
+  FirstAt, SecondAt, FirstLine, SecondLine: Integer;
+begin
+  AOut.Clear;
+  FirstAt := 0;
+  SecondAt := 0;
+  while (FirstAt < AFirst.Count) or (SecondAt < ASecond.Count) do
+  begin
+    if FirstAt < AFirst.Count then
+      FirstLine := Integer(AFirst[FirstAt])
+    else
+      FirstLine := MaxInt;
+    if SecondAt < ASecond.Count then
+      SecondLine := Integer(ASecond[SecondAt])
+    else
+      SecondLine := MaxInt;
+    if FirstLine <= SecondLine then
+    begin
+      AOut.Add(Pointer(FirstLine));
+      Inc(FirstAt);
+      if SecondLine = FirstLine then
+        Inc(SecondAt);
+    end
+    else
+    begin
+      AOut.Add(Pointer(SecondLine));
+      Inc(SecondAt);
+    end;
+  end;
 end;
 
 // Значение - константа, которую можно записать в .dfm: число, строка в
@@ -4029,14 +4102,29 @@ end;
 function NameFreeForField(ALines: TStrings; const AName: string;
   AFirst, ALast: Integer; var AOtherLine: Integer): Boolean;
 var
-  Index, Head, RoutineEnd, Scan, DeclLine, VarLine, SectionNames: Integer;
+  Index, Head, RoutineEnd, Scan, DeclLine, VarLine, SectionNames,
+    HitAt: Integer;
   Word: string;
+  Hits: TList;
+  UseHits: Boolean;
 begin
   Result := False;
   AOtherLine := -1;
   Index := 0;
+  // Во время разбора - сразу к следующей строке, где есть слово AName
+  UseHits := WordHitsFor(ALines, AName, Hits);
+  HitAt := 0;
   while Index < ALines.Count do
   begin
+    if UseHits then
+    begin
+      while (Hits <> nil) and (HitAt < Hits.Count) and
+            (Integer(Hits[HitAt]) < Index) do
+        Inc(HitAt);
+      if (Hits = nil) or (HitAt >= Hits.Count) then
+        Break;
+      Index := Integer(Hits[HitAt]);
+    end;
     if ((Index < AFirst) or (Index > ALast)) and
        HasWord(StripComment(ALines[Index]), AName) then
     begin
@@ -4439,6 +4527,7 @@ var
     AddParent, AddChild, Guard, SwitchProp, SwitchOn, RemoveParent,
     RemoveChild, NameUpper: string;
   ScanIndex: Integer;
+  ExitLines, SubLines: TList;
   CreatePos, Open, Close, Index, Head, RoutineEnd, Calls, Assigns,
     Creates, Assign, OwnerAt, Count, KeyNumber, LazyCond, LazyOpen,
     LazyEnd, RangeFirst, RangeLast, BadLine, SwitchLine, OtherLine,
@@ -5522,6 +5611,8 @@ begin
   HasNesting := False;
   PropCounts := TStringList.Create;
   SubCalls := TStringList.Create;
+  ExitLines := TList.Create;
+  SubLines := TList.Create;
   try
     // Сколько раз присваивается каждое свойство: присвоенное несколько раз
     // остаётся в коде - в .dfm попало бы только последнее значение, а
@@ -5557,8 +5648,15 @@ begin
       Info.NestLine := Node.CreateLine;
     end;
     SeenExit := False;
-    for Index := CallLast + 1 to RangeLast - 1 do
+    // Строки, где что-то делается с этим компонентом, - только со словом
+    // его имени; остальные нужны только для Exit. Обе выборки - по индексу
+    // слов (без него - все строки), вместе по возрастанию.
+    WordCandidates(AKeys, NameUpper, CallLast + 1, RangeLast - 1, SubLines);
+    WordCandidates(AKeys, 'EXIT', CallLast + 1, RangeLast - 1, ExitLines);
+    MergeLineLists(SubLines, ExitLines, ScanLines);
+    for ScanIndex := 0 to ScanLines.Count - 1 do
     begin
+      Index := Integer(ScanLines[ScanIndex]);
       Code := Trim(StripComment(ALines[Index]));
       if Code = '' then
         Continue;
@@ -5804,6 +5902,8 @@ begin
                            'вычисляется]');
     end;
   finally
+    SubLines.Free;
+    ExitLines.Free;
     SubCalls.Free;
     PropCounts.Free;
   end;
@@ -6619,6 +6719,8 @@ var
   LineHead, LineEnd, Calls, Assigns: Integer;
   RoutineName, ReorderKey, ReorderProblem: string;
   ParentNode: TDfmNode;
+  // CallKeepsGeometry по вызову и номеру аргумента ('ИМЯ#N' -> 0/1)
+  GeometryCalls: TStringList;
   // Узлы дерева по номерам: Data и уровень. Items[N] дерева в Delphi 7
   // идёт от первого узла (N шагов) - в циклах по дереву это N*N.
   TreeData, TreeLevel: TList;
@@ -6827,11 +6929,14 @@ var
   // Вызов ACall (имя без точки) с компонентом аргументом номер AArgIndex
   // его места и размеры не меняет: в теле процедуры нет присвоений
   // Параметр.Left, .Width... и параметр дальше не передаётся
-  function CallKeepsGeometry(const ACall: string; AArgIndex: Integer): Boolean;
+  function CallKeepsGeometryCalc(const ACall: string;
+    AArgIndex: Integer): Boolean;
   var
-    LineIndex, Found, HeadLast, Indent, PatternIndex: Integer;
-    Key, Head, ParamUpper, ClassUpper: string;
+    LineIndex, Found, HeadLast, Indent, PatternIndex, HitIndex: Integer;
+    Key, Head, ParamUpper, ClassUpper, HeadProc, HeadFunc, PlainProc,
+      PlainFunc: string;
     ParamList: TStringList;
+    Hits: TList;
   begin
     Result := False;
     if (ACall = 'ASSIGNED') or (ACall = 'FREEANDNIL') then
@@ -6842,21 +6947,31 @@ var
     if not IsValidIdent(ACall) then
       Exit;
     ClassUpper := UpperCase(AFormClass);
+    HeadProc := 'PROCEDURE ' + ClassUpper + '.' + ACall + '(';
+    HeadFunc := 'FUNCTION ' + ClassUpper + '.' + ACall + '(';
+    PlainProc := 'PROCEDURE ' + ACall + '(';
+    PlainFunc := 'FUNCTION ' + ACall + '(';
     Found := -1;
-    for LineIndex := 0 to Keys.Count - 1 do
-    begin
-      if (LineIndex >= ClassFirst) and (LineIndex <= ClassLast) then
-        Continue;
-      Key := Keys[LineIndex];
-      if (Pos('PROCEDURE ' + ClassUpper + '.' + ACall + '(', Key) = 1) or
-         (Pos('FUNCTION ' + ClassUpper + '.' + ACall + '(', Key) = 1) or
-         (Pos('PROCEDURE ' + ACall + '(', Key) = 1) or
-         (Pos('FUNCTION ' + ACall + '(', Key) = 1) then
+    // Заголовок - только в строках со словом ACall
+    Hits := TList.Create;
+    try
+      WordCandidates(Keys, ACall, 0, Keys.Count - 1, Hits);
+      for HitIndex := 0 to Hits.Count - 1 do
       begin
-        if Found >= 0 then
-          Exit;               // несколько с таким именем - не разбирается
-        Found := LineIndex;
+        LineIndex := Integer(Hits[HitIndex]);
+        if (LineIndex >= ClassFirst) and (LineIndex <= ClassLast) then
+          Continue;
+        Key := Keys[LineIndex];
+        if (Pos(HeadProc, Key) = 1) or (Pos(HeadFunc, Key) = 1) or
+           (Pos(PlainProc, Key) = 1) or (Pos(PlainFunc, Key) = 1) then
+        begin
+          if Found >= 0 then
+            Exit;               // несколько с таким именем - не разбирается
+          Found := LineIndex;
+        end;
       end;
+    finally
+      Hits.Free;
     end;
     if Found < 0 then
       Exit;
@@ -6895,6 +7010,22 @@ var
         Exit;
     end;
     Result := True;
+  end;
+
+  // То же, посчитанное один раз на вызов и номер аргумента
+  function CallKeepsGeometry(const ACall: string; AArgIndex: Integer): Boolean;
+  var
+    CacheKey: string;
+    CacheAt: Integer;
+  begin
+    CacheKey := ACall + '#' + IntToStr(AArgIndex);
+    if GeometryCalls.Find(CacheKey, CacheAt) then
+    begin
+      Result := GeometryCalls.Objects[CacheAt] <> nil;
+      Exit;
+    end;
+    Result := CallKeepsGeometryCalc(ACall, AArgIndex);
+    GeometryCalls.AddObject(CacheKey, TObject(Ord(Result)));
   end;
 
   // Места и размеры компонента .dfm AName код не меняет: нет присвоений
@@ -7931,6 +8062,9 @@ begin
   InitHandlers := TStringList.Create;
   TreeData := TList.Create;
   TreeLevel := TList.Create;
+  GeometryCalls := TStringList.Create;
+  GeometryCalls.Sorted := True;
+  GeometryCalls.CaseSensitive := True;
   try
     TreeNode := ATree.Items.GetFirstNode;
     while TreeNode <> nil do
@@ -7945,7 +8079,7 @@ begin
       Keys.Add(CodeKey(Lines[Index]));
     Scan.Scan(Lines);
     UsesCacheStart(Lines);
-    WordIndexStart(Keys);
+    WordIndexStart(Keys, Lines);
     ReportStep('процедуры-создатели', 0, 0);
     FindClassDecl(Lines, AFormClass, ClassFirst, ClassLast);
     CollectHelpers(Lines, Helpers);
@@ -8541,6 +8675,7 @@ begin
   finally
     WordIndexReset;
     UsesCacheReset;
+    GeometryCalls.Free;
     TreeLevel.Free;
     TreeData.Free;
     for Index := 0 to Routines.Count - 1 do
