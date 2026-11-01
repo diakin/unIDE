@@ -115,3 +115,27 @@ uniFAR/*_compile.bat
 
 # Папка сборки Lazarus (Utils - Lazarus: prepare sources, шаг 1.2)
 /laz/
+# Файлы в репозитории вопреки правилам выше (unIDE: Branch - Tracked but Ignored Files)
+!/rapidq_ref/RQIDEdistr2026inc/inc/ACE32.ZIP
+!/rapidq_ref/RQIDEdistr2026inc/inc/QSplitter.zip
+!/rapidq_ref/RQIDEdistr2026inc/inc/QStrinGrid_EX.zip
+!/rapidq_ref/RQIDEdistr2026inc/inc/QdigDisplay_Bmp.zip
+!/rapidq_ref/RQIDEdistr2026inc/inc/Qredex.zip
+!/rapidq_ref/RQIDEdistr2026inc/inc/RQProcess.zip
+!/rapidq_ref/RQIDEdistr2026inc/inc/inc.zip
+!/rapidq_ref/RQIDEdistr2026inc/inc/inc2.zip
+!/rapidq_ref/RQIDEdistr2026inc/inc/new obj/Object.zip
+!/rapidq_ref/RQIDEdistr2026inc/inc/newinc.zip
+!/rapidq_ref/RQIDEdistr2026inc/inc/rapidqinc.zip
+!/RqLcl/bin/rqlcl32.dll
+!/RqLcl/bin/rqlcl64.dll
+!/rapidq_ref/RQIDEdistr2026inc/inc/fbDate.dll
+!/rapidq_ref/RQIDEdistr2026inc/inc/openGL/rqglaux.dll
+!/rapidq_ref/RQIDEdistr2026inc/inc/zlibwapi.dll
+!/icons/old/
+!/icons/old/lazarus28/icons_dark.bmp
+!/icons/old/lazarus28/icons_light.bmp
+!/icons/old/lazarus28/preview.png
+!/rapidq_ref/inc/old/
+!/rapidq_ref/inc/old/QMaxSplitter.inc.txt
+!/rapidq_ref/inc/old/QSplitter.inc.txt
