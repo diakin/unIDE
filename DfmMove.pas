@@ -315,17 +315,10 @@ begin
     DfmMoveProgress(AStage, ADone, ATotal);
 end;
 
-// Временный замер: части разбора одного компонента - отдельными этапами в
-// логе (сюда же попадают компоненты из вызовов без переменной)
-procedure NodeStep(const APart: string);
-begin
-  DfmMoveStep('разбор компонента: ' + APart, 0, 0);
-end;
-
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.31';
+  DfmMoveBuild = 'b.32';
 
 constructor TMoveInfo.Create;
 begin
@@ -4646,14 +4639,12 @@ var
     Result := False;
     if Head < 0 then
       Exit;
-    NodeStep('числа (IntValueAt)');
     Known := TStringList.Create;
     try
       RoutineIntValues(ALines, AKeys, AScan, AHelpers, Head, ALine, Known);
       Result := EvalIntExpr(AExpr, Known, AValue);
     finally
       Known.Free;
-      NodeStep('после чисел');
     end;
   end;
 
@@ -5193,7 +5184,6 @@ var
   end;
 
 begin
-  NodeStep('начало');
   Node := TDfmNode(Info.Node);
 
   if not Node.IsRuntime and not Node.FromCode then
@@ -5314,7 +5304,6 @@ begin
       end;
     end;
   end;
-  NodeStep('владелец');
   if (CompareText(Owner, 'Self') <> 0) and not OwnerGoesToForm(Owner) then
   begin
     OwnerAt := ANames.IndexOf(Owner);
@@ -5333,7 +5322,6 @@ begin
                    'Уничтожается он всё равно вместе с ' + Owner +
                    ' (его пункты и дети); ' + Owner + '.Components в ' +
                    'модуле не используется.');
-  NodeStep('область имени');
   // Где имя компонента значит именно его: во всём модуле; у локальной
   // переменной - только в её процедуре (в других это их свои локальные)
   ScopeFirst := 0;
@@ -5373,7 +5361,6 @@ begin
                    'полем формы с тем же именем; её объявление в var ' +
                    'уходит.');
   end;
-  NodeStep('цикл, по требованию');
   if (Info.UnrollArgs = nil) and CodeLineInLoop(ALines, Node.CreateLine) then
   begin
     Info.Reason := 'создаётся в цикле, строка ' + IntToStr(Node.CreateLine + 1);
@@ -5430,7 +5417,6 @@ begin
     Info.LazyEnd := LazyEnd;
   end;
 
-  NodeStep('создания и освобождение');
   // Сколько раз эту переменную создают (конструктором или помощником).
   // Заодно - присвоения ей не конструктором (у локальной, которой создают
   // несколько компонентов, их быть не должно).
@@ -5526,7 +5512,6 @@ begin
     end;
   end;
 
-  NodeStep('процедура, Exit, вызовы');
   // Процедура, в которой создаётся
   EnclosingRoutine(ALines, AFormClass, Node.CreateLine, Info.Routine, Head,
                    RoutineEnd);
@@ -5577,7 +5562,6 @@ begin
                    ' - она вызывается в одном месте.');
   end;
 
-  NodeStep('класс');
   // Класс - из зарегистрированных в IDE: по нему проверяется, какие
   // свойства published
   NodeClass := GetClass(Node.ClassNm);
@@ -5625,7 +5609,6 @@ begin
       RangeLast := Info.ReuseEnd;
   end;
 
-  NodeStep('Add вне процедуры');
   // Добавление в меню или список вне процедуры создания: после переноса
   // пункт добавился бы второй раз (в .dfm он уже вложен)
   NameUpper := UpperCase(Node.VarName);
@@ -5656,7 +5639,6 @@ begin
     end;
   end;
 
-  NodeStep('свойства');
   HasNesting := False;
   PropCounts := TStringList.Create;
   SubCalls := TStringList.Create;
@@ -5670,12 +5652,10 @@ begin
     // Считаются и присваивания после then в той же строке
     // (if A then X.Top := 5;): они тоже меняют свойство после .dfm
     // Только строки со словом имени: присваивание X.Prop := - с ним
-    NodeStep('свойства: счёт присваиваний');
     WordCandidates(AKeys, NameUpper, CallLast + 1, RangeLast - 1, SubLines);
     for ScanIndex := 0 to SubLines.Count - 1 do
       CountPropAssigns(AKeys[Integer(SubLines[ScanIndex])], Node.VarName,
                        PropCounts);
-    NodeStep('свойства: помощник');
 
     // Строки X.... после создания в той же процедуре
     if (Helper <> nil) and (Helper.OutIdx >= 0) then
@@ -5701,7 +5681,6 @@ begin
       AddMoveItem(Info, Node.CreateLine, mlCreate, '', '');
       Info.NestLine := Node.CreateLine;
     end;
-    NodeStep('свойства: строки');
     SeenExit := False;
     // Строки, где что-то делается с этим компонентом, - только со словом
     // его имени; остальные нужны только для Exit. Обе выборки - по индексу
@@ -5963,7 +5942,6 @@ begin
     PropCounts.Free;
   end;
 
-  NodeStep('порядок и вложенность');
   // Раньше него в этой процедуре в того же родителя добавляется пункт,
   // который останется в коде: из .dfm (его вынули и добавляют заново),
   // NewLine, локальный. После переноса такой пункт встанет ниже
@@ -8223,9 +8201,7 @@ begin
     FindClassDecl(Lines, AFormClass, ClassFirst, ClassLast);
     CollectHelpers(Lines, Helpers);
     CollectLocalCreators(Lines, AFormClass, Helpers);
-    ReportStep('подготовка: MarkBareSafe', 0, 0);
     MarkBareSafe;
-    ReportStep('подготовка: имена дерева', 0, 0);
     // Имена всех узлов дерева - возможные родители и владельцы
     for Index := 0 to TreeData.Count - 1 do
       if TreeData[Index] <> nil then
@@ -8236,7 +8212,6 @@ begin
         if (Node.VarName <> '') and (Names.IndexOf(Node.VarName) < 0) then
           Names.AddObject(Node.VarName, Node);
       end;
-    ReportStep('подготовка: размеры .dfm', 0, 0);
     GDfmIntValues := TStringList.Create;
     CollectDfmIntValues;
 
