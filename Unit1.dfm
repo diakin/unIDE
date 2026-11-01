@@ -272,6 +272,25 @@ object Form1: TForm1
         Font.Height = -12
         Font.Style = [fsBold]
       end
+      object FSubLabel: TLabel
+        Align = alRight
+        AutoSize = True
+        Layout = tlCenter
+        Transparent = False
+        ParentColor = True
+        ParentFont = True
+        ShowAccelChar = False
+        Cursor = crDefault
+        ShowHint = True
+        Visible = False
+      end
+    end
+    object FFarSpacer: TPanel
+      Visible = False
+      BevelOuter = bvNone
+      Caption = ''
+      ParentBackground = False
+      Color = clNavy
     end
   end
   object StatusBar1: TUiStatusBar
@@ -793,6 +812,9 @@ object Form1: TForm1
       object mWinSep: TMenuItem
         Caption = '-'
       end
+    end
+    object FUtilMenu: TMenuItem
+      Caption = 'Started Util'
     end
     object mBookmarks: TMenuItem
       Caption = '&Bookmarks'
@@ -1855,6 +1877,314 @@ object Form1: TForm1
         Align = alClient
         BevelOuter = bvNone
         ParentFont = True
+        object FGitBar: TPanel
+          Visible = False
+          Align = alClient
+          BevelOuter = bvNone
+          Caption = ''
+          ParentColor = True
+          ParentFont = True
+          PopupMenu = FGitCopyMenu
+          object FGitBarButton1: TUiButton
+            Caption = 'Fetch'
+            Hint = 'git fetch: узнать, что нового на сервере (ветки и коммиты), рабочие файлы не меняются'
+            ShowHint = True
+            Left = 4
+            Top = 1
+            Width = 56
+            Height = 22
+            OnClick = GitFetchClick
+          end
+          object FGitBtnPull: TUiButton
+            Caption = 'Pull'
+            Hint = 'git pull: забрать изменения ветки с сервера и влить в текущую (merge). Красная - на сервере есть новые коммиты (после Fetch)'
+            ShowHint = True
+            Left = 64
+            Top = 1
+            Width = 56
+            Height = 22
+            OnClick = GitPullClick
+          end
+          object FGitBtnPush: TUiButton
+            Caption = 'Push'
+            Hint = 'git push: отправить коммиты текущей ветки на сервер (ветки там ещё нет - опубликовать). Красная - есть неотправленные коммиты'
+            ShowHint = True
+            Left = 124
+            Top = 1
+            Width = 56
+            Height = 22
+            OnClick = GitPushClick
+          end
+          object FGitBtnCommit: TUiButton
+            Caption = 'Commit...'
+            Hint = 'Окно Commit: изменённые файлы, разница, заголовок и описание коммита. Красная - есть незакоммиченные изменения: их нужно закоммитить, тогда Push отправит их на сервер'
+            ShowHint = True
+            Left = 184
+            Top = 1
+            Width = 72
+            Height = 22
+            OnClick = GitCommitClick
+          end
+          object FGitBarButton2: TUiButton
+            Caption = 'Commits history...'
+            Hint = 'История коммитов ветки: файлы и разница, Revert, ветка от коммита, коммит в отдельную папку'
+            ShowHint = True
+            Left = 260
+            Top = 1
+            Width = 112
+            Height = 22
+            OnClick = GitHistoryClick
+          end
+          object FGitBarButton3: TUiButton
+            Caption = 'Refresh'
+            Hint = 'Обновить сведения панели'
+            ShowHint = True
+            Left = 376
+            Top = 1
+            Width = 60
+            Height = 22
+            OnClick = GitRefreshClick
+          end
+          object FGitBarButton4: TUiButton
+            Caption = 'Git Bash'
+            Hint = 'Терминал Git Bash в папке репозитория'
+            ShowHint = True
+            Left = 440
+            Top = 1
+            Width = 66
+            Height = 22
+            OnClick = GitBashClick
+          end
+          object FGitBarButton5: TUiButton
+            Caption = 'Compare...'
+            Hint = 'Сравнить две ветки: коммиты, которые есть только в одной из них (с файлами и разницей), сводка - в Git log'
+            ShowHint = True
+            Left = 510
+            Top = 1
+            Width = 76
+            Height = 22
+            OnClick = GitCompareClick
+          end
+          object FGitBarButton6: TUiButton
+            Caption = 'Merge Into...'
+            Hint = 'Влить текущую ветку в другую (например mainTest в main) и отправить ту на сервер (git push)'
+            ShowHint = True
+            Left = 590
+            Top = 1
+            Width = 92
+            Height = 22
+            OnClick = GitMergeIntoClick
+          end
+          object FGitBarButton7: TUiButton
+            Caption = 'Unmerged...'
+            Hint = 'Коммиты всех веток, которых нет в текущей (например в mainTest), в одной таблице, цвет - по ветке. Перенести коммиты (cherry-pick), влить ветку целиком, удалить ветку'
+            ShowHint = True
+            Left = 686
+            Top = 1
+            Width = 88
+            Height = 22
+            OnClick = GitUnmergedClick
+          end
+          object FGitBarButton8: TUiButton
+            Caption = 'Help'
+            Hint = 'Справка: что делают кнопки и строки панели Git, меню Repository и Branch (git_ref\help\git.chm)'
+            ShowHint = True
+            Left = 778
+            Top = 1
+            Width = 50
+            Height = 22
+            OnClick = GitHelpClick
+          end
+          object FGitBtnRepo: TUiButton
+            Caption = 'Repository...'
+            Hint = 'Выбрать репозиторий: недавние, по открытому проекту, Add Local / Clone / New'
+            ShowHint = True
+            Left = 4
+            Top = 1
+            Width = 92
+            Height = 22
+            OnClick = GitRepoBtnClick
+            Top = 25
+          end
+          object FGitLblRepo: TUiLabel
+            AutoSize = True
+            Left = 102
+            Top = 27
+            Caption = '-'
+            ShowHint = True
+            Font.Size = 10
+            PopupMenu = FGitCopyMenu
+          end
+          object FGitEdPath: TUiEdit
+            BorderStyle = bsNone
+            ReadOnly = True
+            AutoSize = False
+            Font.Size = 10
+            Left = 200
+            Top = 27
+            Width = 100
+            Height = 18
+            ShowHint = True
+            OnDblClick = GitFieldDblClick
+          end
+          object FGitLblOrigin: TUiLabel
+            AutoSize = True
+            Left = 310
+            Top = 27
+            Caption = 'origin:'
+            ShowHint = True
+            Font.Size = 10
+            PopupMenu = FGitCopyMenu
+          end
+          object FGitEdRemote: TUiEdit
+            BorderStyle = bsNone
+            ReadOnly = True
+            AutoSize = False
+            Font.Size = 10
+            Left = 360
+            Top = 27
+            Width = 100
+            Height = 18
+            ShowHint = True
+            OnDblClick = GitFieldDblClick
+          end
+          object FGitLblManual: TUiLabel
+            AutoSize = True
+            Left = 470
+            Top = 27
+            Caption = '(выбран вручную)'
+            ShowHint = True
+            Font.Size = 10
+            PopupMenu = FGitCopyMenu
+          end
+          object FGitBarLabel1: TUiLabel
+            AutoSize = True
+            Left = 4
+            Top = 51
+            Caption = 'Branch:'
+            ShowHint = True
+            Font.Size = 10
+          end
+          object FGitCmbBranch: TUiComboBox
+            Style = csDropDownList
+            Font.Size = 10
+            Left = 64
+            Top = 47
+            Width = 220
+            Height = 21
+            ShowHint = True
+            OnKeyDown = GitBranchKeyDown
+            PopupMenu = FGitCopyMenu
+          end
+          object FGitLblSync: TUiLabel
+            AutoSize = True
+            Left = 292
+            Top = 51
+            Caption = ''
+            ShowHint = True
+            Font.Size = 10
+          end
+          object FGitLblBuild: TUiLabel
+            AutoSize = True
+            Left = 4
+            Top = 75
+            Caption = ''
+            ShowHint = True
+            Font.Size = 10
+          end
+          object FGitLblHint: TUiLabel
+            AutoSize = True
+            Left = 300
+            Top = 75
+            Caption = ''
+            ShowHint = True
+            Font.Size = 10
+          end
+          object FGitLblStatus: TUiLabel
+            AutoSize = True
+            Left = 300
+            Top = 75
+            Caption = ''
+            ShowHint = True
+            Font.Size = 10
+            Visible = False
+            Cursor = crHandPoint
+            OnClick = GitStatusClick
+          end
+          object FGitBtnConflicts: TUiButton
+            Caption = 'Conflicts...'
+            Hint = 'Файлы с конфликтом: список в Git log, выбранный - в редактор на первый конфликт (<<<<<<<)'
+            ShowHint = True
+            Left = 4
+            Top = 1
+            Width = 84
+            Height = 22
+            OnClick = GitConflictsClick
+            Top = 73
+            TextColor = clRed
+            Visible = False
+          end
+          object FGitBtnAutoResolve: TUiButton
+            Caption = 'Auto-resolve'
+            Hint = 'Разрешить конфликты, где обе стороны только добавили строки в одно место (в общей версии там ничего не было): оставить обе вставки - сначала текущей ветки, потом вливаемую. Остальные - с маркерами, вручную'
+            ShowHint = True
+            Left = 4
+            Top = 1
+            Width = 84
+            Height = 22
+            OnClick = GitAutoResolveClick
+            Top = 73
+            Visible = False
+          end
+          object FGitBtnContinue: TUiButton
+            Caption = 'Continue'
+            Hint = 'Конфликты исправлены и сохранены: отметить файлы (git add) и закончить - коммит слияния или git cherry-pick / revert --continue'
+            ShowHint = True
+            Left = 4
+            Top = 1
+            Width = 70
+            Height = 22
+            OnClick = GitContinueClick
+            Top = 73
+            Visible = False
+          end
+          object FGitBtnSkip: TUiButton
+            Caption = 'Skip'
+            Hint = ''
+            ShowHint = True
+            Left = 4
+            Top = 1
+            Width = 46
+            Height = 22
+            OnClick = GitSkipClick
+            Top = 73
+            Visible = False
+          end
+          object FGitBtnAbort: TUiButton
+            Caption = 'Abort'
+            Hint = ''
+            ShowHint = True
+            Left = 4
+            Top = 1
+            Width = 56
+            Height = 22
+            OnClick = GitAbortClick
+            Top = 73
+            Visible = False
+          end
+          object FGitBtnView: TUiButton
+            Caption = 'View'
+            Hint = 'Коммиты, которые не отправлены на сервер или не забраны с него: сравнение ветки с её веткой на сервере (файлы и разница)'
+            ShowHint = True
+            Left = 4
+            Top = 1
+            Width = 50
+            Height = 22
+            OnClick = GitViewSyncClick
+            Top = 73
+            Visible = False
+          end
+        end
       end
       object FPalTabs: TUiCaptionTabs
         Left = 8
@@ -2083,6 +2413,19 @@ object Form1: TForm1
           HideSelection = False
         end
       end
+    end
+    object FRightBtnMin: TUiButton
+      Caption = '_'
+      Hint = 'Свернуть правую панель'
+      ShowHint = True
+      OnClick = RightPanelBtnClick
+    end
+    object FRightBtnRestore: TUiButton
+      Caption = '[]'
+      Hint = 'Развернуть правую панель до прежней ширины'
+      ShowHint = True
+      OnClick = RightPanelBtnClick
+      Enabled = False
     end
   end
   object FObjRefreshTimer: TTimer
@@ -2326,5 +2669,42 @@ object Form1: TForm1
       Caption = 'Copy Branch Name'
       OnClick = GitCopyBranchClick
     end
+  end
+  object FAuxTimer: TTimer
+    Left = 256
+    Top = 16
+    Enabled = False
+    OnTimer = AuxTimerTick
+  end
+  object FDsgIconPopup: TUiPopupMenu
+    Left = 296
+    Top = 16
+    AutoHotkeys = maManual
+  end
+  object FDsgOtherTimer: TTimer
+    Left = 336
+    Top = 16
+    Enabled = False
+    Interval = 1500
+    OnTimer = DsgOtherTimerTick
+  end
+  object FRqDbgTimer: TTimer
+    Left = 376
+    Top = 16
+    Enabled = False
+    Interval = 50
+    OnTimer = RqDbgTimerTick
+  end
+  object FGitPollTimer: TTimer
+    Left = 416
+    Top = 16
+    Enabled = False
+    OnTimer = GitPollTick
+  end
+  object FSymHintTimer: TTimer
+    Left = 456
+    Top = 16
+    Enabled = False
+    OnTimer = SymHintTimerTick
   end
 end

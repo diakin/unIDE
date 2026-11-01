@@ -965,6 +965,47 @@ type
     mHelpGit: TMenuItem;
     mHelpQemu: TMenuItem;
     mHelpRosbe: TMenuItem;
+    FAuxTimer: TTimer;
+    FUtilMenu: TMenuItem;
+    FDsgIconPopup: TUiPopupMenu; // правая кнопка на кнопке палитры: Edit Icon
+    FRightBtnMin: TUiButton;
+    FRightBtnRestore: TUiButton;
+    FDsgOtherTimer: TTimer; // перестройка спрятанного после правки формы
+    FFarSpacer: TPanel;
+    FSubLabel: TLabel;
+    FRqDbgTimer: TTimer;
+    FGitBar: TPanel;
+    FGitBarButton1: TUiButton;
+    FGitBtnPull: TUiButton;
+    FGitBtnPush: TUiButton;
+    FGitBtnCommit: TUiButton;
+    FGitBarButton2: TUiButton;
+    FGitBarButton3: TUiButton;
+    FGitBarButton4: TUiButton;
+    FGitBarButton5: TUiButton;
+    FGitBarButton6: TUiButton;
+    FGitBarButton7: TUiButton;
+    FGitBarButton8: TUiButton;
+    FGitBtnRepo: TUiButton;
+    FGitLblRepo: TUiLabel;
+    FGitEdPath: TUiEdit;
+    FGitLblOrigin: TUiLabel;
+    FGitEdRemote: TUiEdit;
+    FGitLblManual: TUiLabel;
+    FGitBarLabel1: TUiLabel;
+    FGitCmbBranch: TUiComboBox;
+    FGitLblSync: TUiLabel;
+    FGitLblBuild: TUiLabel;
+    FGitLblHint: TUiLabel;
+    FGitLblStatus: TUiLabel;
+    FGitBtnConflicts: TUiButton;
+    FGitBtnAutoResolve: TUiButton;
+    FGitBtnContinue: TUiButton;
+    FGitBtnSkip: TUiButton;
+    FGitBtnAbort: TUiButton;
+    FGitBtnView: TUiButton;
+    FGitPollTimer: TTimer;
+    FSymHintTimer: TTimer;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -1267,6 +1308,24 @@ type
     procedure GitCopyPathClick(Sender: TObject);
     procedure GitCopyRemoteClick(Sender: TObject);
     procedure GitCopyBranchClick(Sender: TObject);
+    procedure AuxTimerTick(Sender: TObject);
+    procedure DsgOtherTimerTick(Sender: TObject);
+    procedure RqDbgTimerTick(Sender: TObject);
+    procedure GitRefreshClick(Sender: TObject);
+    procedure GitHelpClick(Sender: TObject);
+    procedure GitRepoBtnClick(Sender: TObject);
+    procedure GitFieldDblClick(Sender: TObject);
+    procedure GitBranchKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
+    procedure GitStatusClick(Sender: TObject);
+    procedure GitConflictsClick(Sender: TObject);
+    procedure GitAutoResolveClick(Sender: TObject);
+    procedure GitContinueClick(Sender: TObject);
+    procedure GitSkipClick(Sender: TObject);
+    procedure GitAbortClick(Sender: TObject);
+    procedure GitViewSyncClick(Sender: TObject);
+    procedure GitPollTick(Sender: TObject);
+    procedure SymHintTimerTick(Sender: TObject);
 
   private
     // Прослойка редактора (EdIntf; план Lazarus, шаг 0.1). Все сообщения
@@ -1287,7 +1346,6 @@ type
     FEdEmu: TEdRichEmu;
     // Меню Started Util: открытые окна утилит (немодальные окна поверх
     // главного); FUtilSig - каким набором окон меню построено
-    FUtilMenu: TMenuItem;
     FUtilSig: string;
     // Меню Utils: для какого проекта выставлена доступность пунктов
     // (UtilsMenuOpen по простою - тип проекта читается, когда проект сменился)
@@ -1305,21 +1363,12 @@ type
     // элементы; FGitBusy - идёт команда git с журналом, FGitCancel - Esc;
     // FGitRepoChosen - репозиторий, выбранный вручную (editor.ini [Git]);
     // FGitDlg... - для разницы файлов в окне Commit
-    FGitBar: TPanel;
-    FGitLblRepo: TUiLabel;
-    FGitLblSync: TUiLabel;
-    FGitLblBuild: TUiLabel;
-    FGitCmbBranch: TUiComboBox;
     // Панель Git: кнопки, которые подсвечиваются (Pull - на сервере новое,
     // Push - не отправлено), подсказка после команды (что произошло),
     // ahead / behind по последнему обновлению (-1 - не известно)
-    FGitBtnPull: TUiButton;
-    FGitBtnPush: TUiButton;
-    FGitLblHint: TUiLabel;
     // Git status на строке Build: OK (зелёный) / Внимание (оранжевый) /
     // Error (красный) - итог проверок GitCollectProblems по последнему
     // обновлению панели; щелчок - git status и проверки в Git log
-    FGitLblStatus: TUiLabel;
     FGitStatusErrors: TStringList;
     FGitStatusWarns: TStringList;
     // Файлов и в репозитории, и в .gitignore по последней проверке -
@@ -1328,7 +1377,6 @@ type
     // Кнопка Repository... и её меню: недавние репозитории (FGitRecent,
     // editor.ini [Git] Recent1..), выбор, Add / Clone / New. FGitRepoTop -
     // репозиторий на панели по последнему обновлению ('' - нет)
-    FGitBtnRepo: TUiButton;
     FGitRepoMenu: TUiPopupMenu;
     FGitRecent: TStringList;
     FGitRepoTop: string;
@@ -1338,17 +1386,12 @@ type
     // Строка репозитория: путь и origin - поля только для чтения (выделить
     // мышью и скопировать), подписи origin: и (выбран вручную); меню
     // копирования (правый щелчок по строкам панели, Ctrl+C в списке веток)
-    FGitEdPath: TUiEdit;
-    FGitLblOrigin: TUiLabel;
-    FGitEdRemote: TUiEdit;
-    FGitLblManual: TUiLabel;
     FGitRemoteUrl: string;
     FGitBranchName: string;
     FGitAhead: Integer;
     // Незакоммиченных изменений по последнему обновлению (-1 - не известно);
     // кнопка Commit... - красная, когда они есть
     FGitChanges: Integer;
-    FGitBtnCommit: TUiButton;
     // Незаконченная операция: 'merge', 'cherry-pick', 'revert' или '' (по
     // последнему обновлению); пока она есть - кнопки Conflicts...,
     // Continue, Skip (у cherry-pick и revert), Abort в начале строки Build
@@ -1357,12 +1400,6 @@ type
     // sequencer/head): операция пропала, HEAD тот же - отменена, другой -
     // закончена (GitRefreshBar пишет это на панель и в журнал)
     FGitOpStart: string;
-    FGitBtnConflicts: TUiButton;
-    FGitBtnAutoResolve: TUiButton;
-    FGitBtnContinue: TUiButton;
-    FGitBtnSkip: TUiButton;
-    FGitBtnAbort: TUiButton;
-    FGitBtnView: TUiButton;
     FGitBehind: Integer;
     FGitBusy: Boolean;
     FGitCancel: Boolean;
@@ -1386,7 +1423,6 @@ type
     // Git Bash, запущенный кнопкой (FGitBashProc), - раз в секунду. Панель
     // обновляется, когда меняются служебные файлы .git (FGitStateSig - их
     // время и размер при последнем обновлении)
-    FGitPollTimer: TTimer;
     FGitBashProc: TProcRun;
     FGitStateSig: string;
     // Режим F4 unIDE FAR: окно FAR - половина области редактора (одна
@@ -1395,7 +1431,6 @@ type
     // (его Esc закрывает; -1 - файл был открыт и до F4). FFarCreatedFile -
     // пустой файл, созданный Shift+F4: не сохранили (F2) - Esc его удаляет
     FFarHalf: Boolean;
-    FFarSpacer: TPanel;
     FFarOwnWin: Integer;
     // Окно, которое F4 открыл во второй панели редактора (окно разделено,
     // работали во второй панели); -1 - нет
@@ -1530,7 +1565,6 @@ type
     FDsgMade: TStringList;
     FDsgSelecting: Boolean; // выделение пришло из конструктора - обратно не слать
     FDsgPalette: TDsgPalette; // палитра компонентов при конструкторе
-    FDsgIconPopup: TUiPopupMenu; // правая кнопка на кнопке палитры: Edit Icon
     // Кнопки палитры - массив, по кнопке на класс, номер сквозной по всем
     // страницам; имя каждой - PalBtn<номер>. См. BuildPaletteButtons.
     PalBtn: array[1..PalBtnMax] of TSpeedButton;
@@ -1592,7 +1626,6 @@ type
     FDsgOtherMade: TStringList;   // его FDsgMade
     FDsgOtherGlyph: TList;        // его FDsgGlyphCopied
     FDsgOtherKey: string;         // по какому тексту построен (DsgViewKeyOf)
-    FDsgOtherTimer: TTimer;       // перестройка спрятанного после правки формы
     FDsgEditOldText: string;      // .dfm до правки из инспектора (ObjApplyEdit)
     // Обработчик выбранного пункта меню своей формы: к нему переходит
     // редактор после Click (WMLiveMenuJump)
@@ -1653,7 +1686,6 @@ type
     FRqDbgPaused: Boolean;      // программа стоит и ждёт команды
     FRqDbgEvStop: THandle;
     FRqDbgEvGo: THandle;
-    FRqDbgTimer: TTimer;
     FRqDbgLastMode: Integer;    // последняя команда (RqDbgMode*)
     FRqDbgLastRunTo: Integer;   // её точка Run to cursor
     // Переменные на остановке (файл состояния): "вид<TAB>имя<TAB>тип<TAB>
@@ -2015,7 +2047,6 @@ type
     // Кнопки свернуть / развернуть правую панель (справа в строке вкладок)
     // и её состояние: свёрнута - видны только разделитель и кнопка [];
     // ширина до сворачивания - в FRightPanelWidth (она и пишется в ini)
-    FRightBtnMin, FRightBtnRestore: TUiButton;
     FToolbarBaseHeight: Integer;   // тулбар с одним рядом вкладок палитры
     FRightCollapsed: Boolean;
     FRightStartCollapsed: Boolean;   // из editor.ini, ставится в FormCreate
@@ -2095,7 +2126,6 @@ type
     // См. DeclPanelUpdate.
     // Справа на той же панели - подпрограмма, в которой стоит каретка.
     // Непрозрачная, цвета панели: длинная подпись объявления уходит под неё
-    FSubLabel: TLabel;
     FDeclMode: Integer;     // 0 - пусто, 1 - не найдено, 2 - найдено,
     // 3 - стоим на объявлении, щелчок вернёт назад
     FDeclWord: string;      // идентификатор, как записан в тексте
@@ -2240,7 +2270,6 @@ type
     FMapDirtyCalls: Integer;
     // Список подпрограмм, имена компонентов, уровни строк после правки,
     // карта которой сошлась (RebuildAuxParse): по своему таймеру
-    FAuxTimer: TTimer;
 
     // Кэш длинных строк - см. GetLineInfo
     FLineInfo: array[0..LineInfoCount - 1] of TLineInfo;
@@ -3104,7 +3133,6 @@ type
                            AProps: TStrings);
     procedure DsgOtherSyncProp(const AOldText, AName, AProp, ARaw: string);
     procedure DsgOtherLater;
-    procedure DsgOtherTimerTick(Sender: TObject);
     procedure DsgSwitchView;
     procedure DsgKey(AKey: Word; ACtrl, AShift: Boolean);
     procedure DsgClose(Sender: TObject);
@@ -3240,7 +3268,6 @@ type
     function  RqDbgResolveMarks: Integer;
     function  RqDbgWriteCmd(AMode, ARunTo: Integer): Boolean;
     procedure RqDbgCommand(AMode, ARunTo: Integer);
-    procedure RqDbgTimerTick(Sender: TObject);
     procedure RqDbgStopped(APoint: Integer);
     procedure RqDbgCloseEvents;
     procedure RqDbgEnd;
@@ -3316,15 +3343,10 @@ type
     procedure GitRecentLoad;
     procedure GitRecentAdd(const ADir: string; AFromBar: Boolean);
     procedure GitRecentSave;
-    procedure GitRepoBtnClick(Sender: TObject);
     procedure GitRecentRepoClick(Sender: TObject);
     procedure GitRecentRemoveClick(Sender: TObject);
-    procedure GitHelpClick(Sender: TObject);
     procedure GitShowRepoFields(AShow: Boolean);
     procedure GitLayoutRepoRow;
-    procedure GitFieldDblClick(Sender: TObject);
-    procedure GitBranchKeyDown(Sender: TObject; var Key: Word;
-      Shift: TShiftState);
     function  GitRepoTop(const AGit, ADir: string): string;
     function  GitPrepare(var AGit, ARepo: string): Boolean;
     function  GitCurrentBranch(const AGit, ARepo: string): string;
@@ -3342,7 +3364,6 @@ type
                                  const AChanges: TGitChanges;
                                  ADetails: TStrings);
     procedure GitShowStatusLabel(AChecked: Boolean);
-    procedure GitStatusClick(Sender: TObject);
     function  GitTrackedLoad(var AFiles: TGitTrackedFiles): Boolean;
     function  GitTrackedKeep(const AFiles: TGitTrackedFiles): Boolean;
     function  GitTrackedUntrack(const AFiles: TGitTrackedFiles): Boolean;
@@ -3353,20 +3374,13 @@ type
                                AList: TStrings): Integer;
     function  GitMarkerCount(const AFile: string;
                              var AFirstLine: Integer): Integer;
-    procedure GitConflictsClick(Sender: TObject);
-    procedure GitAutoResolveClick(Sender: TObject);
     function  GitAutoResolveFile(const AGit, ARepo, APath: string;
                                  var AResolved, ALeft: Integer): Boolean;
-    procedure GitContinueClick(Sender: TObject);
-    procedure GitSkipClick(Sender: TObject);
-    procedure GitAbortClick(Sender: TObject);
     procedure GitBuildBar;
     procedure GitShowBar(AShow: Boolean);
     procedure GitRefreshBar;
     procedure GitRefreshLater;
-    procedure GitRefreshClick(Sender: TObject);
     procedure GitPollStart;
-    procedure GitPollTick(Sender: TObject);
     function  GitStateSig: string;
     procedure PalTabsChange(Sender: TObject);
     procedure PalSetCaption(const AText: string);
@@ -3382,7 +3396,6 @@ type
     function  GitWebUrl(const AGit, ARepo: string): string;
     function  GitDefaultRemoteBranch(const AGit, ARepo: string): string;
     procedure GitCompareShow(const Git, Repo, LeftBranch, RightBranch: string);
-    procedure GitViewSyncClick(Sender: TObject);
     function  GitDeleteBranchAll(const AGit, ARepo, ABranch, ARefs: string;
                                  AUnmerged: Integer;
                                  AAsk: Boolean = True): Boolean;
@@ -3945,7 +3958,6 @@ type
     function  ResyncMap: Boolean;
     procedure MapAfterEdit;
     procedure ScheduleAuxRebuild;
-    procedure AuxTimerTick(Sender: TObject);
     procedure RebuildAuxParse;
     function  PerfNow: Int64;
     procedure MemStatusUpdate;
@@ -4131,7 +4143,6 @@ type
     FCiParamOpen: Integer;        // позиция "(" показанной подсказки
     FCiParamLine: Integer;
     FSymHintWnd: THintWindow;     // Tooltip symbol insight
-    FSymHintTimer: TTimer;
     FSymHintWord: string;
     FSymHintPt: TPoint;
     // Мышь стояла здесь, когда подсказку убрала клавиша: пока она не
@@ -4343,7 +4354,6 @@ type
     procedure CiTimerTick(Sender: TObject);
     procedure SymHintSetup;
     procedure SymHintHide;
-    procedure SymHintTimerTick(Sender: TObject);
     procedure SaveFormBounds(Ini: TCustomIniFile);
     procedure IniOwnWritten(const AFile: string);
     procedure RestoreFormBounds(Ini: TIniFile);
@@ -10802,12 +10812,12 @@ end;
 // заказ отодвигается
 procedure TForm1.ScheduleAuxRebuild;
 begin
-  if FAuxTimer = nil then
-  begin
-    FAuxTimer := TTimer.Create(Self);
-    FAuxTimer.Enabled := False;
-    FAuxTimer.OnTimer := AuxTimerTick;
-  end;
+  // .dfm: if FAuxTimer = nil then
+  // .dfm: begin
+    // .dfm: FAuxTimer := TTimer.Create(Self);
+    // .dfm: FAuxTimer.Enabled := False;
+    // .dfm: FAuxTimer.OnTimer := AuxTimerTick;
+  // .dfm: end;
   // Не чаще, чем полный разбор (его интервал - втрое больше его длительности)
   FAuxTimer.Interval := 500;
   if (FMapTimer <> nil) and (FMapTimer.Interval > 500) then
@@ -25935,9 +25945,9 @@ begin
   end;
 
   // Меню Started Util - после Window; пункты - UtilMenuUpdate (по простою)
-  FUtilMenu := TMenuItem.Create(Self);
-  FUtilMenu.Caption := 'Started Util';
-  MainMenu1.Items.Insert(mWindows.MenuIndex + 1, FUtilMenu);
+  // .dfm: FUtilMenu := TMenuItem.Create(Self);
+  // .dfm: FUtilMenu.Caption := 'Started Util';
+  // .dfm: MainMenu1.Items.Insert(mWindows.MenuIndex + 1, FUtilMenu);
   FUtilSig := #1;
   UtilMenuUpdate;
 
@@ -26274,8 +26284,8 @@ begin
   BuildPaletteButtons;
   FLangMode := -1;
   // Правая кнопка на кнопке палитры - окно значков с её значком
-  FDsgIconPopup := TUiPopupMenu.Create(Self);
-  FDsgIconPopup.AutoHotkeys := maManual;
+  // .dfm: FDsgIconPopup := TUiPopupMenu.Create(Self);
+  // .dfm: FDsgIconPopup.AutoHotkeys := maManual;
   FDsgIconPopup.Items.Add(NewItem('Edit Icon...', 0, False, True,
                                   PaletteIconEditClick, 0, ''));
   FDsgPalette.ButtonPopup := FDsgIconPopup;
@@ -27266,19 +27276,19 @@ begin
 
   // Свернуть / развернуть панель: кнопки справа в строке вкладок, поверх
   // FRightPages
-  FRightBtnMin := TUiButton.Create(Self);
-  FRightBtnMin.Parent := FRightPanel;
-  FRightBtnMin.Caption := '_';
-  FRightBtnMin.Hint := 'Свернуть правую панель';
-  FRightBtnMin.ShowHint := True;
-  FRightBtnMin.OnClick := RightPanelBtnClick;
-  FRightBtnRestore := TUiButton.Create(Self);
-  FRightBtnRestore.Parent := FRightPanel;
-  FRightBtnRestore.Caption := '[]';
-  FRightBtnRestore.Hint := 'Развернуть правую панель до прежней ширины';
-  FRightBtnRestore.ShowHint := True;
-  FRightBtnRestore.OnClick := RightPanelBtnClick;
-  FRightBtnRestore.Enabled := False;
+  // .dfm: FRightBtnMin := TUiButton.Create(Self);
+  // .dfm: FRightBtnMin.Parent := FRightPanel;
+  // .dfm: FRightBtnMin.Caption := '_';
+  // .dfm: FRightBtnMin.Hint := 'Свернуть правую панель';
+  // .dfm: FRightBtnMin.ShowHint := True;
+  // .dfm: FRightBtnMin.OnClick := RightPanelBtnClick;
+  // .dfm: FRightBtnRestore := TUiButton.Create(Self);
+  // .dfm: FRightBtnRestore.Parent := FRightPanel;
+  // .dfm: FRightBtnRestore.Caption := '[]';
+  // .dfm: FRightBtnRestore.Hint := 'Развернуть правую панель до прежней ширины';
+  // .dfm: FRightBtnRestore.ShowHint := True;
+  // .dfm: FRightBtnRestore.OnClick := RightPanelBtnClick;
+  // .dfm: FRightBtnRestore.Enabled := False;
   RightPanelPlaceButtons;
 
   // Инспектор объектов разбирает .dfm только когда его вкладку открыли
@@ -39550,13 +39560,13 @@ procedure TForm1.DsgOtherLater;
 begin
   if FDsgOther = nil then
     Exit;
-  if FDsgOtherTimer = nil then
-  begin
-    FDsgOtherTimer := TTimer.Create(Self);
-    FDsgOtherTimer.Enabled := False;
-    FDsgOtherTimer.Interval := 1500;
-    FDsgOtherTimer.OnTimer := DsgOtherTimerTick;
-  end;
+  // .dfm: if FDsgOtherTimer = nil then
+  // .dfm: begin
+    // .dfm: FDsgOtherTimer := TTimer.Create(Self);
+    // .dfm: FDsgOtherTimer.Enabled := False;
+    // .dfm: FDsgOtherTimer.Interval := 1500;
+    // .dfm: FDsgOtherTimer.OnTimer := DsgOtherTimerTick;
+  // .dfm: end;
   FDsgOtherTimer.Enabled := False;   // отсчёт - заново от последней правки
   FDsgOtherTimer.Enabled := True;
 end;
@@ -41498,16 +41508,16 @@ procedure TForm1.FarHalfOn;
 begin
   if FFar = nil then
     Exit;
-  if FFarSpacer = nil then
-  begin
-    FFarSpacer := TPanel.Create(Self);
-    FFarSpacer.Visible := False;
-    FFarSpacer.BevelOuter := bvNone;
-    FFarSpacer.Caption := '';
-    FFarSpacer.ParentBackground := False;
-    FFarSpacer.Color := clNavy;
-    FFarSpacer.Parent := pnlMain;
-  end;
+  // .dfm: if FFarSpacer = nil then
+  // .dfm: begin
+    // .dfm: FFarSpacer := TPanel.Create(Self);
+    // .dfm: FFarSpacer.Visible := False;
+    // .dfm: FFarSpacer.BevelOuter := bvNone;
+    // .dfm: FFarSpacer.Caption := '';
+    // .dfm: FFarSpacer.ParentBackground := False;
+    // .dfm: FFarSpacer.Color := clNavy;
+    // .dfm: FFarSpacer.Parent := pnlMain;
+  // .dfm: end;
   if FFarSplitter = nil then
   begin
     // Сплиттер: при перетаскивании - линия-след (rsPattern), ширина
@@ -51723,18 +51733,18 @@ begin
 
   // Подпрограмма под кареткой - справа. Своего щелчка у подписи нет, и
   // щелчок по ней не уходит панели: переход к объявлению - только слева
-  FSubLabel := TLabel.Create(Self);
-  FSubLabel.Parent := FDeclPanel;
-  FSubLabel.Align := alRight;
-  FSubLabel.AutoSize := True;
-  FSubLabel.Layout := tlCenter;
-  FSubLabel.Transparent := False;
-  FSubLabel.ParentColor := True;
-  FSubLabel.ParentFont := True;
-  FSubLabel.ShowAccelChar := False;
-  FSubLabel.Cursor := crDefault;
-  FSubLabel.ShowHint := True;
-  FSubLabel.Visible := False;
+  // .dfm: FSubLabel := TLabel.Create(Self);
+  // .dfm: FSubLabel.Parent := FDeclPanel;
+  // .dfm: FSubLabel.Align := alRight;
+  // .dfm: FSubLabel.AutoSize := True;
+  // .dfm: FSubLabel.Layout := tlCenter;
+  // .dfm: FSubLabel.Transparent := False;
+  // .dfm: FSubLabel.ParentColor := True;
+  // .dfm: FSubLabel.ParentFont := True;
+  // .dfm: FSubLabel.ShowAccelChar := False;
+  // .dfm: FSubLabel.Cursor := crDefault;
+  // .dfm: FSubLabel.ShowHint := True;
+  // .dfm: FSubLabel.Visible := False;
 
   DeclPanelShow;
 end;
@@ -67031,12 +67041,12 @@ begin
   FRunExeTick := 0;
   FRqDbgOn := True;
   FRqDbgPaused := False;
-  if FRqDbgTimer = nil then
-  begin
-    FRqDbgTimer := TTimer.Create(Self);
-    FRqDbgTimer.Interval := 50;
-    FRqDbgTimer.OnTimer := RqDbgTimerTick;
-  end;
+  // .dfm: if FRqDbgTimer = nil then
+  // .dfm: begin
+    // .dfm: FRqDbgTimer := TTimer.Create(Self);
+    // .dfm: FRqDbgTimer.Interval := 50;
+    // .dfm: FRqDbgTimer.OnTimer := RqDbgTimerTick;
+  // .dfm: end;
   FRqDbgTimer.Enabled := True;
   LogComp('--- Запуск под отладчиком RapidQ: ' + AExe + ' (точек в копии ' +
           IntToStr(FRqDbgInstr.PointCount) + ', точек останова ' +
@@ -70692,79 +70702,79 @@ procedure TForm1.GitBuildBar;
   end;
 
 begin
-  FGitBar := TPanel.Create(Self);
-  FGitBar.Visible := False;
-  FGitBar.Parent := pnlPaletteIn;
-  FGitBar.Align := alClient;
-  FGitBar.BevelOuter := bvNone;
-  FGitBar.Caption := '';
-  FGitBar.ParentColor := True;
-  FGitBar.ParentFont := True;
-  NewButton('Fetch', 'git fetch: узнать, что нового на сервере (ветки и ' +
-    'коммиты), рабочие файлы не меняются', 4, 56, GitFetchClick);
+  // .dfm: FGitBar := TPanel.Create(Self);
+  // .dfm: FGitBar.Visible := False;
+  // .dfm: FGitBar.Parent := pnlPaletteIn;
+  // .dfm: FGitBar.Align := alClient;
+  // .dfm: FGitBar.BevelOuter := bvNone;
+  // .dfm: FGitBar.Caption := '';
+  // .dfm: FGitBar.ParentColor := True;
+  // .dfm: FGitBar.ParentFont := True;
+  // .dfm: NewButton('Fetch', 'git fetch: узнать, что нового на сервере (ветки и ' +
+    // .dfm: 'коммиты), рабочие файлы не меняются', 4, 56, GitFetchClick);
   FGitAhead := -1;
   FGitBehind := -1;
-  FGitBtnPull := NewButton('Pull', 'git pull: забрать изменения ветки с ' +
-    'сервера и влить в текущую (merge). Красная - на сервере есть новые ' +
-    'коммиты (после Fetch)', 64, 56, GitPullClick);
-  FGitBtnPush := NewButton('Push', 'git push: отправить коммиты текущей ' +
-    'ветки на сервер (ветки там ещё нет - опубликовать). Красная - есть ' +
-    'неотправленные коммиты', 124, 56, GitPushClick);
+  // .dfm: FGitBtnPull := NewButton('Pull', 'git pull: забрать изменения ветки с ' +
+    // .dfm: 'сервера и влить в текущую (merge). Красная - на сервере есть новые ' +
+    // .dfm: 'коммиты (после Fetch)', 64, 56, GitPullClick);
+  // .dfm: FGitBtnPush := NewButton('Push', 'git push: отправить коммиты текущей ' +
+    // .dfm: 'ветки на сервер (ветки там ещё нет - опубликовать). Красная - есть ' +
+    // .dfm: 'неотправленные коммиты', 124, 56, GitPushClick);
   FGitChanges := -1;
-  FGitBtnCommit := NewButton('Commit...', 'Окно Commit: изменённые файлы, ' +
-    'разница, заголовок и описание коммита. Красная - есть ' +
-    'незакоммиченные изменения: их нужно закоммитить, тогда Push отправит ' +
-    'их на сервер', 184, 72, GitCommitClick);
-  NewButton('Commits history...', 'История коммитов ветки: файлы и ' +
-    'разница, Revert, ветка от коммита, коммит в отдельную папку', 260, 112,
-    GitHistoryClick);
-  NewButton('Refresh', 'Обновить сведения панели', 376, 60, GitRefreshClick);
-  NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 440, 66,
-    GitBashClick);
-  NewButton('Compare...', 'Сравнить две ветки: коммиты, которые есть только ' +
-    'в одной из них (с файлами и разницей), сводка - в Git log',
-    510, 76, GitCompareClick);
-  NewButton('Merge Into...', 'Влить текущую ветку в другую (например ' +
-    'mainTest в main) и отправить ту на сервер (git push)', 590, 92,
-    GitMergeIntoClick);
-  NewButton('Unmerged...', 'Коммиты всех веток, которых нет в текущей ' +
-    '(например в mainTest), в одной таблице, цвет - по ветке. Перенести ' +
-    'коммиты (cherry-pick), влить ветку целиком, удалить ветку', 686, 88,
-    GitUnmergedClick);
+  // .dfm: FGitBtnCommit := NewButton('Commit...', 'Окно Commit: изменённые файлы, ' +
+    // .dfm: 'разница, заголовок и описание коммита. Красная - есть ' +
+    // .dfm: 'незакоммиченные изменения: их нужно закоммитить, тогда Push отправит ' +
+    // .dfm: 'их на сервер', 184, 72, GitCommitClick);
+  // .dfm: NewButton('Commits history...', 'История коммитов ветки: файлы и ' +
+    // .dfm: 'разница, Revert, ветка от коммита, коммит в отдельную папку', 260, 112,
+    // .dfm: GitHistoryClick);
+  // .dfm: NewButton('Refresh', 'Обновить сведения панели', 376, 60, GitRefreshClick);
+  // .dfm: NewButton('Git Bash', 'Терминал Git Bash в папке репозитория', 440, 66,
+    // .dfm: GitBashClick);
+  // .dfm: NewButton('Compare...', 'Сравнить две ветки: коммиты, которые есть только ' +
+    // .dfm: 'в одной из них (с файлами и разницей), сводка - в Git log',
+    // .dfm: 510, 76, GitCompareClick);
+  // .dfm: NewButton('Merge Into...', 'Влить текущую ветку в другую (например ' +
+    // .dfm: 'mainTest в main) и отправить ту на сервер (git push)', 590, 92,
+    // .dfm: GitMergeIntoClick);
+  // .dfm: NewButton('Unmerged...', 'Коммиты всех веток, которых нет в текущей ' +
+    // .dfm: '(например в mainTest), в одной таблице, цвет - по ветке. Перенести ' +
+    // .dfm: 'коммиты (cherry-pick), влить ветку целиком, удалить ветку', 686, 88,
+    // .dfm: GitUnmergedClick);
   // Справка: Tag 0 - раздел о панели (GitHelpClick)
-  NewButton('Help', 'Справка: что делают кнопки и строки панели Git, меню ' +
-    'Repository и Branch (git_ref\help\git.chm)', 778, 50, GitHelpClick);
-  FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
-    'недавние, по открытому проекту, Add Local / Clone / New', 4, 92,
-    GitRepoBtnClick);
-  FGitBtnRepo.Top := 25;
-  FGitLblRepo := NewLabel(102, 27, '-');
+  // .dfm: NewButton('Help', 'Справка: что делают кнопки и строки панели Git, меню ' +
+    // .dfm: 'Repository и Branch (git_ref\help\git.chm)', 778, 50, GitHelpClick);
+  // .dfm: FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
+    // .dfm: 'недавние, по открытому проекту, Add Local / Clone / New', 4, 92,
+    // .dfm: GitRepoBtnClick);
+  // .dfm: FGitBtnRepo.Top := 25;
+  // .dfm: FGitLblRepo := NewLabel(102, 27, '-');
   // Путь и origin - поля только для чтения без рамки: выделить мышью,
   // Ctrl+C или правый щелчок - Копировать; двойной щелчок - выделить всё
-  FGitEdPath := TUiEdit.Create(Self);
-  FGitEdPath.Parent := FGitBar;
-  FGitEdPath.BorderStyle := bsNone;
-  FGitEdPath.ReadOnly := True;
-  FGitEdPath.AutoSize := False;
-  FGitEdPath.Font.Size := 10;
-  FGitEdPath.SetBounds(200, 27, 100, 18);
+  // .dfm: FGitEdPath := TUiEdit.Create(Self);
+  // .dfm: FGitEdPath.Parent := FGitBar;
+  // .dfm: FGitEdPath.BorderStyle := bsNone;
+  // .dfm: FGitEdPath.ReadOnly := True;
+  // .dfm: FGitEdPath.AutoSize := False;
+  // .dfm: FGitEdPath.Font.Size := 10;
+  // .dfm: FGitEdPath.SetBounds(200, 27, 100, 18);
   FGitEdPath.Hint := 'Локальная папка репозитория: выделите мышью и Ctrl+C ' +
     '(двойной щелчок - всё)';
-  FGitEdPath.ShowHint := True;
-  FGitEdPath.OnDblClick := GitFieldDblClick;
-  FGitLblOrigin := NewLabel(310, 27, 'origin:');
-  FGitEdRemote := TUiEdit.Create(Self);
-  FGitEdRemote.Parent := FGitBar;
-  FGitEdRemote.BorderStyle := bsNone;
-  FGitEdRemote.ReadOnly := True;
-  FGitEdRemote.AutoSize := False;
-  FGitEdRemote.Font.Size := 10;
-  FGitEdRemote.SetBounds(360, 27, 100, 18);
+  // .dfm: FGitEdPath.ShowHint := True;
+  // .dfm: FGitEdPath.OnDblClick := GitFieldDblClick;
+  // .dfm: FGitLblOrigin := NewLabel(310, 27, 'origin:');
+  // .dfm: FGitEdRemote := TUiEdit.Create(Self);
+  // .dfm: FGitEdRemote.Parent := FGitBar;
+  // .dfm: FGitEdRemote.BorderStyle := bsNone;
+  // .dfm: FGitEdRemote.ReadOnly := True;
+  // .dfm: FGitEdRemote.AutoSize := False;
+  // .dfm: FGitEdRemote.Font.Size := 10;
+  // .dfm: FGitEdRemote.SetBounds(360, 27, 100, 18);
   FGitEdRemote.Hint := 'Адрес remote origin: выделите мышью и Ctrl+C ' +
     '(двойной щелчок - всё)';
-  FGitEdRemote.ShowHint := True;
-  FGitEdRemote.OnDblClick := GitFieldDblClick;
-  FGitLblManual := NewLabel(470, 27, '(выбран вручную)');
+  // .dfm: FGitEdRemote.ShowHint := True;
+  // .dfm: FGitEdRemote.OnDblClick := GitFieldDblClick;
+  // .dfm: FGitLblManual := NewLabel(470, 27, '(выбран вручную)');
   GitShowRepoFields(False);
   // Меню копирования: правый щелчок по строкам панели (у полей пути и
   // origin - своё меню Windows с Копировать)
@@ -70782,67 +70792,67 @@ begin
   // .dfm: FGitMiCopyBranch.Caption := 'Copy Branch Name';
   // .dfm: FGitMiCopyBranch.OnClick := GitCopyBranchClick;
   // .dfm: FGitCopyMenu.Items.Add(FGitMiCopyBranch);
-  FGitBar.PopupMenu := FGitCopyMenu;
-  FGitLblRepo.PopupMenu := FGitCopyMenu;
-  FGitLblOrigin.PopupMenu := FGitCopyMenu;
-  FGitLblManual.PopupMenu := FGitCopyMenu;
-  NewLabel(4, 51, 'Branch:');
-  FGitCmbBranch := TUiComboBox.Create(Self);
-  FGitCmbBranch.Parent := FGitBar;
-  FGitCmbBranch.Style := csDropDownList;
-  FGitCmbBranch.Font.Size := 10;
-  FGitCmbBranch.SetBounds(64, 47, 220, 21);
+  // .dfm: FGitBar.PopupMenu := FGitCopyMenu;
+  // .dfm: FGitLblRepo.PopupMenu := FGitCopyMenu;
+  // .dfm: FGitLblOrigin.PopupMenu := FGitCopyMenu;
+  // .dfm: FGitLblManual.PopupMenu := FGitCopyMenu;
+  // .dfm: NewLabel(4, 51, 'Branch:');
+  // .dfm: FGitCmbBranch := TUiComboBox.Create(Self);
+  // .dfm: FGitCmbBranch.Parent := FGitBar;
+  // .dfm: FGitCmbBranch.Style := csDropDownList;
+  // .dfm: FGitCmbBranch.Font.Size := 10;
+  // .dfm: FGitCmbBranch.SetBounds(64, 47, 220, 21);
   FGitCmbBranch.Hint := 'Текущая ветка; выбор другой - переключиться на неё ' +
     '(git checkout). origin/имя - ветка только на сервере: выбор создаст ' +
     'локальную ветку, следящую за ней';
-  FGitCmbBranch.ShowHint := True;
+  // .dfm: FGitCmbBranch.ShowHint := True;
   FGitCmbBranch.OnChange := GitBranchComboChange;
-  FGitCmbBranch.OnKeyDown := GitBranchKeyDown;
-  FGitCmbBranch.PopupMenu := FGitCopyMenu;
+  // .dfm: FGitCmbBranch.OnKeyDown := GitBranchKeyDown;
+  // .dfm: FGitCmbBranch.PopupMenu := FGitCopyMenu;
   FGitCmbBranch.Hint := FGitCmbBranch.Hint + '. Ctrl+C или правый щелчок - ' +
     'скопировать имя ветки';
-  FGitLblSync := NewLabel(292, 51, '');
-  FGitLblBuild := NewLabel(4, 75, '');
+  // .dfm: FGitLblSync := NewLabel(292, 51, '');
+  // .dfm: FGitLblBuild := NewLabel(4, 75, '');
   // Что сделала последняя команда - словами (GitSetHint)
-  FGitLblHint := NewLabel(300, 75, '');
+  // .dfm: FGitLblHint := NewLabel(300, 75, '');
   // Git status - итог проверок (GitCollectProblems); щелчок - подробно
-  FGitLblStatus := NewLabel(300, 75, '');
-  FGitLblStatus.Visible := False;
-  FGitLblStatus.Cursor := crHandPoint;
-  FGitLblStatus.OnClick := GitStatusClick;
+  // .dfm: FGitLblStatus := NewLabel(300, 75, '');
+  // .dfm: FGitLblStatus.Visible := False;
+  // .dfm: FGitLblStatus.Cursor := crHandPoint;
+  // .dfm: FGitLblStatus.OnClick := GitStatusClick;
   FGitStatusErrors := TStringList.Create;
   FGitStatusWarns := TStringList.Create;
   // Незаконченное слияние / cherry-pick / revert (GitPlaceHint)
-  FGitBtnConflicts := NewButton('Conflicts...', 'Файлы с конфликтом: список ' +
-    'в Git log, выбранный - в редактор на первый конфликт ' +
-    '(<<<<<<<)', 4, 84, GitConflictsClick);
-  FGitBtnAutoResolve := NewButton('Auto-resolve', 'Разрешить конфликты, ' +
-    'где обе стороны только добавили строки в одно место (в общей версии ' +
-    'там ничего не было): оставить обе вставки - сначала текущей ветки, ' +
-    'потом вливаемую. Остальные - с маркерами, вручную', 4, 84,
-    GitAutoResolveClick);
-  FGitBtnAutoResolve.Top := 73;
-  FGitBtnAutoResolve.Visible := False;
-  FGitBtnContinue := NewButton('Continue', 'Конфликты исправлены и ' +
-    'сохранены: отметить файлы (git add) и закончить - коммит слияния или ' +
-    'git cherry-pick / revert --continue', 4, 70, GitContinueClick);
-  FGitBtnSkip := NewButton('Skip', '', 4, 46, GitSkipClick);
-  FGitBtnAbort := NewButton('Abort', '', 4, 56, GitAbortClick);
-  FGitBtnConflicts.Top := 73;
-  FGitBtnContinue.Top := 73;
-  FGitBtnSkip.Top := 73;
-  FGitBtnAbort.Top := 73;
-  FGitBtnConflicts.TextColor := clRed;
-  FGitBtnConflicts.Visible := False;
+  // .dfm: FGitBtnConflicts := NewButton('Conflicts...', 'Файлы с конфликтом: список ' +
+    // .dfm: 'в Git log, выбранный - в редактор на первый конфликт ' +
+    // .dfm: '(<<<<<<<)', 4, 84, GitConflictsClick);
+  // .dfm: FGitBtnAutoResolve := NewButton('Auto-resolve', 'Разрешить конфликты, ' +
+    // .dfm: 'где обе стороны только добавили строки в одно место (в общей версии ' +
+    // .dfm: 'там ничего не было): оставить обе вставки - сначала текущей ветки, ' +
+    // .dfm: 'потом вливаемую. Остальные - с маркерами, вручную', 4, 84,
+    // .dfm: GitAutoResolveClick);
+  // .dfm: FGitBtnAutoResolve.Top := 73;
+  // .dfm: FGitBtnAutoResolve.Visible := False;
+  // .dfm: FGitBtnContinue := NewButton('Continue', 'Конфликты исправлены и ' +
+    // .dfm: 'сохранены: отметить файлы (git add) и закончить - коммит слияния или ' +
+    // .dfm: 'git cherry-pick / revert --continue', 4, 70, GitContinueClick);
+  // .dfm: FGitBtnSkip := NewButton('Skip', '', 4, 46, GitSkipClick);
+  // .dfm: FGitBtnAbort := NewButton('Abort', '', 4, 56, GitAbortClick);
+  // .dfm: FGitBtnConflicts.Top := 73;
+  // .dfm: FGitBtnContinue.Top := 73;
+  // .dfm: FGitBtnSkip.Top := 73;
+  // .dfm: FGitBtnAbort.Top := 73;
+  // .dfm: FGitBtnConflicts.TextColor := clRed;
+  // .dfm: FGitBtnConflicts.Visible := False;
   // За подсказкой: есть неотправленные или незабранные коммиты (GitPlaceHint)
-  FGitBtnView := NewButton('View', 'Коммиты, которые не отправлены на ' +
-    'сервер или не забраны с него: сравнение ветки с её веткой на сервере ' +
-    '(файлы и разница)', 4, 50, GitViewSyncClick);
-  FGitBtnView.Top := 73;
-  FGitBtnView.Visible := False;
-  FGitBtnContinue.Visible := False;
-  FGitBtnSkip.Visible := False;
-  FGitBtnAbort.Visible := False;
+  // .dfm: FGitBtnView := NewButton('View', 'Коммиты, которые не отправлены на ' +
+    // .dfm: 'сервер или не забраны с него: сравнение ветки с её веткой на сервере ' +
+    // .dfm: '(файлы и разница)', 4, 50, GitViewSyncClick);
+  // .dfm: FGitBtnView.Top := 73;
+  // .dfm: FGitBtnView.Visible := False;
+  // .dfm: FGitBtnContinue.Visible := False;
+  // .dfm: FGitBtnSkip.Visible := False;
+  // .dfm: FGitBtnAbort.Visible := False;
 end;
 
 // Палитра или панель Git (AShow - режим проекта ReactOS)
@@ -70850,8 +70860,7 @@ procedure TForm1.GitShowBar(AShow: Boolean);
 begin
   if AShow then
   begin
-    if FGitBar = nil then
-      GitBuildBar;
+  if FGitStatusErrors = nil then   // было: if FGitBar = nil then      GitBuildBar;
     if FDsgPalette <> nil then
       FDsgPalette.Visible := False;
     FGitBar.Visible := True;
@@ -71140,12 +71149,12 @@ end;
 // секунду, иначе раз в 5 с
 procedure TForm1.GitPollStart;
 begin
-  if FGitPollTimer = nil then
-  begin
-    FGitPollTimer := TTimer.Create(Self);
-    FGitPollTimer.Enabled := False;
-    FGitPollTimer.OnTimer := GitPollTick;
-  end;
+  // .dfm: if FGitPollTimer = nil then
+  // .dfm: begin
+    // .dfm: FGitPollTimer := TTimer.Create(Self);
+    // .dfm: FGitPollTimer.Enabled := False;
+    // .dfm: FGitPollTimer.OnTimer := GitPollTick;
+  // .dfm: end;
   if (FGitBashProc <> nil) and FGitBashProc.Running then
     FGitPollTimer.Interval := 1000
   else
@@ -78952,11 +78961,11 @@ begin
   FSymHintKeyPt := Point(-1, -1);
   if FEdIns.TooltipSymbol then
   begin
-    if FSymHintTimer = nil then
-    begin
-      FSymHintTimer := TTimer.Create(Self);
-      FSymHintTimer.OnTimer := SymHintTimerTick;
-    end;
+    // .dfm: if FSymHintTimer = nil then
+    // .dfm: begin
+      // .dfm: FSymHintTimer := TTimer.Create(Self);
+      // .dfm: FSymHintTimer.OnTimer := SymHintTimerTick;
+    // .dfm: end;
     FSymHintTimer.Interval := CiTickMs;
     FSymHintTimer.Enabled := True;
   end
