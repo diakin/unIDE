@@ -2142,21 +2142,8 @@ type
     // при прошлом замере; FMemLargestMB < 0 - замера ещё не было
     FMemUsedMB, FMemFreeMB, FMemLargestMB: Integer;
 
-    // ЗАМЕР отрисовки кадра, в тиках счётчика (FPerfFreq - тиков в секунду).
-    // В статус-баре больше не показывается (там индикатор памяти)
+    // Тиков счётчика (PerfNow) в секунду - для времени разбора карты
     FPerfFreq: Int64;
-    FPerfPaint: Int64;
-
-    // ЗАМЕР кадра по статьям, в тиках. Считается в HighlightVisibleText:
-    //   FPerfXPos - чтение строки из контрола и таблица координат
-    //   FPerfBase - базовый слой (вся строка обычным цветом)
-    //   FPerfKw   - ключевые слова
-    //   FPerfTok  - остальной разбор: операторы, числа, строки, комментарии,
-    //               направляющие отступов
-    // Что не вошло ни в одну статью (буфер, BitBlt, номера строк, полосы) -
-    // это FPerfPaint минус их сумма. FDrawCalls - вызовов TabbedTextOut за кадр.
-    FPerfXPos, FPerfBase, FPerfKw, FPerfTok: Int64;
-    FDrawCalls: Integer;
 
     // Хеш ключевых слов всех групп - см. RebuildKeywordHash
     FKwSlots: array of Integer;  // индекс в FKwWords, -1 - пусто
@@ -2268,15 +2255,6 @@ type
     // (ShiftDepthForEdit): иначе направляющие ниже вставленной строки рвутся
     FCachePreLines, FCachePreLine: Integer;
     FDxBuf: TIntArray;
-
-    // ДИАГНОСТИКА кэша длинных строк (статус-бар, панель 6):
-    //   FInfoBuilds - полных замеров строки за кадр
-    //   FCmtCalls, FPerfCmt - поисков строчного комментария за кадр и время
-    //   FInvalAll - сколько раз кэш сброшен целиком (с запуска)
-    //   FEditUpd, FEditDrop - правок внутри строки: поправлено / выброшено
-    FInfoBuilds, FCmtCalls: Integer;
-    FPerfCmt: Int64;
-    FInvalAll, FEditUpd, FEditDrop: Integer;
 
     // Глубина вложенности NewRichEditProc и глубина, на которой сделаны
     // снимки до правки (FPreValid, FCachePreValid) - см. NewRichEditProc
@@ -25169,42 +25147,27 @@ end;
 // Поиск вперёд. Параметры и ответ - как у RichEdit1.FindText: позиция
 // найденного или -1; ищется в [StartPos .. StartPos + Len].
 //
-// FindText из VCL отдаёт контролу строку в ANSI, а RichEdit 4.1 читает её
-// как UTF-16 - поиск ничего не находит (проверено в пробе). Здесь строка
-// уходит в UTF-16 через EM_FINDTEXTW.
+// Ищет свой редактор прямо в буфере (TEdRichEmu.FindText), без сообщения
+// окну и без строки всего текста.
 function TForm1.FindTextEd(const Str: string; StartPos, Len: Integer;
                            Options: TSearchTypes): Integer;
 const
-  EM_FINDTEXTW_ = WM_USER + 123;
   FR_DOWN_ = $00000001;
   FR_WHOLEWORD_ = $00000002;
   FR_MATCHCASE_ = $00000004;
-type
-  TFindTextW_ = record
-    chrg: TCharRange;
-    lpstrText: PWideChar;
-  end;
 var
-  FT: TFindTextW_;
-  WordStr: WideString;
   Flags: Integer;
 begin
   Result := -1;
-  if (Str = '') or not RichEdit1.HandleAllocated then
+  if (Str = '') or (FEdEmu = nil) then
     Exit;
-
-  WordStr := Str; // из ANSI по кодовой странице системы
-  FT.chrg.cpMin := StartPos;
-  FT.chrg.cpMax := StartPos + Len;
-  FT.lpstrText := PWideChar(WordStr);
-
   Flags := FR_DOWN_;
   if stWholeWord in Options then
     Flags := Flags or FR_WHOLEWORD_;
   if stMatchCase in Options then
     Flags := Flags or FR_MATCHCASE_;
-
-  Result := EdApi.FindTextW(Flags, FT);
+  // Строка - из ANSI по кодовой странице системы
+  Result := FEdEmu.FindText(Flags, StartPos, StartPos + Len, WideString(Str));
 end;
 
 
@@ -26162,7 +26125,6 @@ begin
   FPerfRebuild := 0;
   if not QueryPerformanceFrequency(FPerfFreq) then
     FPerfFreq := 0;
-  FPerfPaint := 0;
   FLpwLine := -1;   // 0 - настоящий номер строки, кэш должен быть пуст
   FFoundLine := -1;
 
@@ -48283,7 +48245,6 @@ procedure TForm1.InvalidateWidthCache;
 begin
   FLpwLine := -1;
   Inc(FTextVer);
-  Inc(FInvalAll);
 end;
 
 // Текст строки ALine без перевода строки, длиной не больше ALen. AStart -
@@ -48417,7 +48378,6 @@ begin
       Exit;
     end;
 
-  Inc(FInfoBuilds);
   AText := ReadLineText(ALine, AStart, ALen);
   Num := Length(AText);
   CharPtr := PChar(Pointer(AText));
@@ -48925,13 +48885,8 @@ begin
       Continue // строка целиком левее правки
     else if FLineInfo[I].CStart > RangeTo then
       Inc(FLineInfo[I].CStart, Delta) // правее: текст тот же, начало сдвинулось
-    else if UpdateLineAfterEdit(I, RangeFrom, RangeTo, Delta) then
-      Inc(FEditUpd) // правка внутри строки - поправили точки
-    else
-    begin
-      FLineInfo[I].CUsed := False;
-      Inc(FEditDrop);
-    end;
+    else if not UpdateLineAfterEdit(I, RangeFrom, RangeTo, Delta) then
+      FLineInfo[I].CUsed := False; // правку внутри строки поправить не вышло
   end;
 end;
 
@@ -80852,7 +80807,6 @@ end;
 // Здесь оба прохода идут в память, на экран уходит один BitBlt.
 procedure TForm1.PaintDoubleBuffered;
 var
-  PerfT: Int64;
   PS: TPaintStruct;
   ScreenDC, MemDC: HDC;
   Bmp, OldBmp: HBITMAP;
@@ -80877,7 +80831,6 @@ begin
   // Шва при этом нет: HighlightVisibleText рисует всю видимую область в буфер,
   // а BitBlt кладёт его целиком, так что содержимое всегда согласовано.
 
-  PerfT := PerfNow;
   // Метки направляющих у краёв окна (HighlightVisibleText): прокрутка
   // сдвигает готовые точки вместе с ними, а область обновления - только
   // открывшаяся полоса. Были метки в прошлом кадре или есть в этом - кадр
@@ -81001,7 +80954,6 @@ begin
     PaintBox1.Update;
 
   UpdateScrollBars; // FMaxVisW к этому моменту уже посчитан отрисовкой
-  FPerfPaint := PerfNow - PerfT;
 end;
 
 // Сообщения, после которых текст или его метрика могут стать другими
@@ -81732,7 +81684,6 @@ var
   LinePtr: PChar; // = PChar(LineStr), чтобы не копировать куски строки
   Pt: TPoint;
   LineStartX: Integer;
-  TMark: Int64;   // ЗАМЕР: момент последней отметки, см. Lap
 
   // Выделение мыши читается ОДИН раз на кадр: внутри отрисовки оно не меняется,
   // а раньше EM_EXGETSEL уходил в RichEdit на каждый токен и на каждый символ.
@@ -81769,7 +81720,6 @@ var
   // экране: от него TabbedTextOut считает табуляции.
   WinStart, WinEnd, XOff, TabOrigin, LineTotalW: Integer;
   InfoIdx, KFrom, KTo, WK: Integer;
-  TMarkC: Int64;
   FullStr: string;
   LineCommentBefore: Boolean;
   LineCommentLevel: Integer;
@@ -81783,21 +81733,6 @@ var
   BcEnd: string;
   MarkBr: HBRUSH;
   DbgKind: Integer;       // точка останова, строка остановки - DbgLineKind
-
-  // ЗАМЕР: время с прошлой отметки - в указанную статью.
-  //
-  // GdiFlush обязателен. GDI копит вызовы пачкой и выполняет их позже, и без
-  // сброса время вывода текста досталось бы не той статье, а то и вовсе
-  // BitBlt в конце кадра.
-  procedure Lap(var Acc: Int64);
-  var
-    StartTick: Int64;
-  begin
-    GdiFlush;
-    StartTick := PerfNow;
-    Inc(Acc, StartTick - TMark);
-    TMark := StartTick;
-  end;
 
 // Первый символ строки (1..LineLen), правый край которого правее X;
 // LineLen + 1, если такого нет. Двоичный поиск по LineXPos.
@@ -81949,7 +81884,6 @@ var
       end;
       TabbedTextOut(DC, LineStartX + LineXPos[P1 - 1], Pt.Y,
                     LinePtr + (P1 - 1), P2 - P1 + 1, 1, TabStopN, TabOrigin);
-      Inc(FDrawCalls);
     end;
 
   var
@@ -82666,9 +82600,7 @@ var
       HighlightTokenSet(FScheme.OpGroups[OpI].Chars, FScheme.OpGroups[OpI].FgColor,
                         FScheme.OpGroups[OpI].BgColor, FromPos, ToPos);
     HighlightNumbers(FScheme.FDgFG, FScheme.FDgBG, FromPos, ToPos);
-    Lap(FPerfTok);
     HighlightKeywordsAll(FromPos, ToPos);
-    Lap(FPerfKw);
     HighlightStrings(FromPos, ToPos);
   end;
 
@@ -82693,15 +82625,6 @@ begin
     RescanVisibleMap(FMapPartialEnd, False);
   if FUseSyntaxHighlight then
     EnsureKeywordHash;
-
-  FPerfXPos := 0;
-  FPerfBase := 0;
-  FPerfKw := 0;
-  FPerfTok := 0;
-  FDrawCalls := 0;
-  FInfoBuilds := 0;
-  FCmtCalls := 0;
-  FPerfCmt := 0;
 
   FLockHighlight := True;
   // Идёт буферизованная отрисовка - пишем в буфер, иначе прямо на экран
@@ -82781,11 +82704,8 @@ begin
       YOffset := 0;
 
     // ГЛАВНЫЙ ПОСТРОЧНЫЙ ЦИКЛ ПО ВИДИМОЙ ОБЛАСТИ
-    GdiFlush;
-    TMark := PerfNow;
     for CurrentLineIdx := FirstVisibleLine to LastVisibleLine do
     begin
-      Lap(FPerfTok); // хвост разбора предыдущей строки
       LineStartCharIdx := EdApi.LineIndex(CurrentLineIdx);
       LineLen := EdApi.LineLength(LineStartCharIdx);
 
@@ -82832,12 +82752,7 @@ begin
         if FUseSyntaxHighlight and
            not (FLineInfo[InfoIdx].CCommentKnown and
                 (FLineInfo[InfoIdx].CMapVer = FMapVer)) then
-        begin
-          Inc(FCmtCalls);
-          TMarkC := PerfNow;
           ComputeLineComment(InfoIdx);
-          Inc(FPerfCmt, PerfNow - TMarkC);
-        end;
         if not LineMarked and FUseSyntaxHighlight and
            (Length(FScheme.MarkGroups) > 0) then
         begin
@@ -82927,7 +82842,6 @@ begin
       VisTo := CharRightOf(FScrollX - XOff + ViewWidth) + 1;
       if VisTo > LineLen then
         VisTo := LineLen;
-      Lap(FPerfXPos);
 
       // БАЗОВЫЙ СЛОЙ: вся строка обычными цветами редактора. DrawRun сам разрежет
       // её по границам выделения, поэтому выделение работает и на тех словах,
@@ -82997,7 +82911,6 @@ begin
       end;
 
       DrawRun(1, LineLen, RichEdit1.Font.Color, FScheme.FTextBG);
-      Lap(FPerfBase);
 
       // Подсветка может быть отключена в настройках - тогда остаёмся на
       // базовом слое, но направляющие отступов рисуем в любом случае.
@@ -83140,7 +83053,6 @@ begin
       if FUseHotTab and not GuidesOff and (WinStart = 1) then
         DrawTabGuides;
     end;
-    Lap(FPerfTok);
   finally
     for HB := 0 to HotTabLevels - 1 do
     begin

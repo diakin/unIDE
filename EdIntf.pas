@@ -53,9 +53,7 @@ type
     // --- Поиск ---
     // Текст целиком и куски Unit1 берёт прямо из буфера своего редактора
     // (TEdRichEmu.GetRange, GetAllText), без сообщений.
-    // Поиск (EM_FINDTEXTW через SendMessageW, AFind - FINDTEXTW). Результат -
-    // позиция найденного, -1 - нет
-    function FindTextW(AFlags: Integer; var AFind): Integer;
+    // Поиск - тоже напрямую (TEdRichEmu.FindText).
 
     // --- Выделение и правка ---
     procedure GetSel(var ASel: TCharRange);           // EM_EXGETSEL
@@ -99,7 +97,6 @@ const
   // Сообщения RichEdit по RichEdit.h. Свои константы, а не из RichEdit.pas:
   // в модуле Delphi 7 части из них нет, у других другие имена. Значения -
   // те же, что у локальных констант, которыми Unit1 пользовался раньше
-  EM_FINDTEXTW_        = WM_USER + 123;
 
 constructor TEdIntf.Create(AGetHandle: TEdHandleFunc);
 begin
@@ -142,10 +139,6 @@ end;
 
 // --- Поиск ---
 
-function TEdIntf.FindTextW(AFlags: Integer; var AFind): Integer;
-begin
-  Result := SendMessageW(Wnd, EM_FINDTEXTW_, AFlags, Integer(@AFind));
-end;
 
 // --- Выделение и правка ---
 

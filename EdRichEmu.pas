@@ -101,8 +101,6 @@ type
     function RangeText(AMin, AMax: Integer; AUseCrlf: Boolean): WideString;
     procedure SetAllText(const AText: WideString);
     procedure ReplaceSelText(const AText: WideString; ACanUndo: Boolean);
-    function FindText(AFlags: Integer; AMin, AMax: Integer;
-      const AWhat: WideString): Integer;
     // Сообщения
     procedure DoStreamIn(var Message: TMessage);
     procedure DoStreamOut(var Message: TMessage);
@@ -114,6 +112,13 @@ type
     procedure DoTimer;
     procedure Notify;
   public
+    // Поиск AWhat (EM_FINDTEXTW; Unit1 - напрямую). AFlags - FR_DOWN,
+    // FR_WHOLEWORD, FR_MATCHCASE. Вперёд - в [AMin .. AMax] (AMax < 0 - до
+    // конца), назад - от AMin к AMax. Индексы - перевод строки один знак.
+    // Текст читается кусками (EmuFindChunk), а не весь сразу. Результат -
+    // начало найденного, -1 - нет
+    function FindText(AFlags: Integer; AMin, AMax: Integer;
+      const AWhat: WideString): Integer;
     // AGetHandle - окно RichEdit1 (спрашивается каждый раз: VCL пересоздаёт
     // окно); ADefProc - прежняя оконная процедура (сам RichEdit)
     constructor Create(AGetHandle: TEdEmuHandleFunc; ADefProc: TEdEmuDefProc);
@@ -848,24 +853,56 @@ end;
 
 // Поиск AWhat в [AMin, AMax) (AMax = -1 - до конца); без FR_DOWN - назад
 // от AMin до AMax. Результат - позиция или -1
+const
+  // Знаков в куске текста при поиске: весь текст одной строкой (на файле
+  // в 64 МБ - 128 МБ WideString и столько же заглавными) не собирается
+  EmuFindChunk = 256 * 1024;
+
 function TEdRichEmu.FindText(AFlags: Integer; AMin, AMax: Integer;
   const AWhat: WideString): Integer;
 var
   Hay, Needle: WideString;
-  TextLen, FromIdx, ToIdx, PosIdx, MatchIdx: Integer;
-  WholeOk: Boolean;
+  TextLen, NeedLen, FromIdx, ToIdx, ChunkLo, ChunkHi, ReadFrom, ReadTo,
+  MatchIdx: Integer;
+
+  // Кусок текста [ReadFrom .. ReadTo) - в Hay (заглавными без учёта
+  // регистра). С запасом в знак по краям - для проверки целого слова
+  procedure ReadChunk(ALo, AHi: Integer);
+  begin
+    ReadFrom := ALo - 1;
+    if ReadFrom < 0 then
+      ReadFrom := 0;
+    ReadTo := AHi + NeedLen + 1;
+    if ReadTo > TextLen then
+      ReadTo := TextLen;
+    Hay := RangeText(ReadFrom, ReadTo, False);
+    if AFlags and FR_MATCHCASE_ = 0 then
+      Hay := WideUpper(Hay);
+  end;
+
+  // Совпадение с начала AIdx (индекс в тексте), с проверкой целого слова
+  function MatchAt(AIdx: Integer): Boolean;
+  var
+    LocIdx: Integer;
+  begin
+    LocIdx := AIdx - ReadFrom + 1;
+    Result := CompareMem(@Hay[LocIdx], @Needle[1],
+      NeedLen * SizeOf(WideChar));
+    if Result and (AFlags and FR_WHOLEWORD_ <> 0) then
+      Result := ((AIdx = 0) or not EdIsWordChar(Hay[LocIdx - 1])) and
+        ((AIdx + NeedLen >= TextLen) or
+         not EdIsWordChar(Hay[LocIdx + NeedLen]));
+  end;
+
 begin
   Result := -1;
   if AWhat = '' then
     Exit;
   TextLen := FBuffer.TextLength;
-  Hay := WideText(False);
   Needle := AWhat;
   if AFlags and FR_MATCHCASE_ = 0 then
-  begin
-    Hay := WideUpper(Hay);
     Needle := WideUpper(Needle);
-  end;
+  NeedLen := Length(Needle);
   if AFlags and FR_DOWN_ <> 0 then
   begin
     FromIdx := AMin;
@@ -874,24 +911,21 @@ begin
       ToIdx := TextLen;
     if FromIdx < 0 then
       FromIdx := 0;
-    PosIdx := FromIdx;
-    while PosIdx + Length(Needle) <= ToIdx do
+    // Начала совпадений - [FromIdx .. ToIdx - NeedLen], кусками
+    ChunkLo := FromIdx;
+    while ChunkLo <= ToIdx - NeedLen do
     begin
-      if CompareMem(@Hay[PosIdx + 1], @Needle[1],
-         Length(Needle) * SizeOf(WideChar)) then
-      begin
-        WholeOk := True;
-        if AFlags and FR_WHOLEWORD_ <> 0 then
-          WholeOk := ((PosIdx = 0) or not EdIsWordChar(Hay[PosIdx])) and
-            ((PosIdx + Length(Needle) >= Length(Hay)) or
-             not EdIsWordChar(Hay[PosIdx + Length(Needle) + 1]));
-        if WholeOk then
+      ChunkHi := ChunkLo + EmuFindChunk - 1;
+      if ChunkHi > ToIdx - NeedLen then
+        ChunkHi := ToIdx - NeedLen;
+      ReadChunk(ChunkLo, ChunkHi);
+      for MatchIdx := ChunkLo to ChunkHi do
+        if MatchAt(MatchIdx) then
         begin
-          Result := PosIdx;
+          Result := MatchIdx;
           Exit;
         end;
-      end;
-      Inc(PosIdx);
+      ChunkLo := ChunkHi + 1;
     end;
   end
   else
@@ -903,24 +937,21 @@ begin
     ToIdx := AMax;
     if ToIdx < 0 then
       ToIdx := 0;
-    MatchIdx := FromIdx - Length(Needle);
-    while MatchIdx >= ToIdx do
+    // Начала совпадений - [ToIdx .. FromIdx - NeedLen], от конца кусками
+    ChunkHi := FromIdx - NeedLen;
+    while ChunkHi >= ToIdx do
     begin
-      if CompareMem(@Hay[MatchIdx + 1], @Needle[1],
-         Length(Needle) * SizeOf(WideChar)) then
-      begin
-        WholeOk := True;
-        if AFlags and FR_WHOLEWORD_ <> 0 then
-          WholeOk := ((MatchIdx = 0) or not EdIsWordChar(Hay[MatchIdx])) and
-            ((MatchIdx + Length(Needle) >= Length(Hay)) or
-             not EdIsWordChar(Hay[MatchIdx + Length(Needle) + 1]));
-        if WholeOk then
+      ChunkLo := ChunkHi - EmuFindChunk + 1;
+      if ChunkLo < ToIdx then
+        ChunkLo := ToIdx;
+      ReadChunk(ChunkLo, ChunkHi);
+      for MatchIdx := ChunkHi downto ChunkLo do
+        if MatchAt(MatchIdx) then
         begin
           Result := MatchIdx;
           Exit;
         end;
-      end;
-      Dec(MatchIdx);
+      ChunkHi := ChunkLo - 1;
     end;
   end;
 end;
