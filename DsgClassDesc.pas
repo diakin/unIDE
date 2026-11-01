@@ -27,8 +27,6 @@ unit DsgClassDesc;
 //    type TCaption string
 //    type TFont class
 //    type TNotifyEvent method procedure|Sender: TObject|
-//  Одноимённые типы из разных модулей (TTabStyle в Tabs и ComCtrls) - с
-//  ~2, ~3 после имени: type TTabStyle~2 enum ...; prop Style TTabStyle~2 w.
 //  Строки, начинающиеся с ';', и пустые - пропускаются.
 // ---------------------------------------------------------------------------
 
@@ -85,6 +83,10 @@ type
     Props: TStringList;         // имя -> TDsgPropDesc, порядок как в RTTI
     Defaults: TStringList;      // Имя=значение
     NewText: TStringList;       // object Button1: TButton ... end
+    // Описание полное: с умолчаниями и текстом нового компонента (класс
+    // палитры). False - класс вложенного объекта (TFont), описанный
+    // попутно. Из файла все классы читаются полными.
+    Filled: Boolean;
     constructor Create;
     destructor Destroy; override;
     function FindProp(const AName: string): TDsgPropDesc;
@@ -528,6 +530,7 @@ begin
           Exit;
         end;
         Cls := AddClass(Trim(Rest));
+        Cls.Filled := True;
       end
       else if Key = 'type' then
       begin

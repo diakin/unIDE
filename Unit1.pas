@@ -41,6 +41,7 @@ uses
   ProcRun,        // запуск внешних программ: канал вывода, ожидание, код выхода
   PathKit,        // пути: разделитель папок, имя exe, папки рядом с программой
   OsShell,        // оболочка ОС: открыть по ассоциации, показать в папке, корзина
+  DsgClassDesc,   // описание классов Delphi 7 данными: инспектор, конструктор (0.8)
   EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
   DlgEdPreview,   // свой редактор - окно пробы (шаги 0.7.2 - 0.7.3)
   EdRichEmu,      // свой редактор вместо RichEdit1 (шаг 0.7.4)
@@ -1616,7 +1617,7 @@ type
     FObjActive: TWinControl;
     FObjEditInsert: Boolean; // свойства нет в .dfm - строка добавится
     FObjEditName: string;
-    FObjEditType: Pointer;   // PTypeInfo свойства, nil - класс неизвестен
+    FObjEditType: TDsgTypeDesc; // тип свойства, nil - класс неизвестен
     // Серые строки сетки - свойства класса, которых нет в .dfm: Имя=умолчание
     FObjMissing: TStringList;
     FObjEditCode: Boolean;  // правим свойство компонента, созданного в коде
@@ -1689,6 +1690,10 @@ type
     FRqPlacePt: TPoint;
     // Умолчания по классам: имя класса -> TStringList Имя=значение
     FRttiDefaults: TStringList;
+    // Описание классов Delphi 7 (DsgDescOf); FDsgNoDefaults - пустой
+    // список умолчаний для неизвестного класса
+    FDsgDescBase: TDsgClassBase;
+    FDsgNoDefaults: TStringList;
     FObjCurNode: TObject;   // TDfmNode выбранного объекта
     FObjEditing: Boolean;
     FObjEditIsStr: Boolean; // строка: правится без кавычек, пишется с ними
@@ -3019,6 +3024,8 @@ type
     procedure DsgPlace(const AParent: string; X, Y, AFormX, AFormY: Integer;
                        var AHandled: Boolean);
     procedure WMDsgPlace(var Msg: TMessage); message WM_USER + 313;
+    function  DsgDescNewText(const AClassName, AName: string;
+                             X, Y: Integer): string;
     function  DsgNewObjectText(ACls: TComponentClass; const AName: string;
                                X, Y: Integer): string;
     procedure DsgInsert;
@@ -3499,12 +3506,18 @@ type
     function  WindowOfFile(const AFile: string): Integer;
     procedure ObjBeginEdit;
     procedure RegisterVclClasses;
-    function  RttiClassFor(ANode: TObject): TClass;
     function  PropTypeFor(AClass: TClass; const APath: string;
                           var AWritable: Boolean): Pointer;
     function  DefaultsFor(AClass: TClass): TStringList;
+    function  DsgDescBase: TDsgClassBase;
+    function  DsgDescOf(const AClassName: string): TDsgClassDesc;
+    function  DescClassFor(ANode: TObject): string;
+    function  DescPropType(const AClassName, APath: string;
+                           var AWritable: Boolean): TDsgTypeDesc;
+    function  DescDefaults(const AClassName: string): TStringList;
+    function  DescUnitOf(const AClassName: string): string;
     procedure ObjAddValue(const S: string);
-    function  ObjThemeColorFor(AClass: TClass; const AProp: string): string;
+    function  ObjThemeColorFor(const AClassName, AProp: string): string;
     function  ObjCodeProps: TStringList;
     procedure ObjScanCodeProps(const ASrc: string; AResIdx: TStringList;
                                ALive: TCustomForm);
@@ -3515,7 +3528,7 @@ type
     function  ObjCodeSetterLine(const AName, AProp: string;
                                 var AVia: string): Integer;
     procedure ObjPropsCodeColumn;
-    function  ValidatePropValue(ATypeInfo: Pointer; const ARaw: string;
+    function  ValidatePropValue(ATyp: TDsgTypeDesc; const ARaw: string;
                                 var AMsg: string): Boolean;
     procedure ObjTreeDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
                               State: TCustomDrawState;
@@ -3573,7 +3586,7 @@ type
     procedure RqPropExpand(const AName: string; AExpand: Boolean);
     procedure RqGotoParent(AItem: TListItem);
     procedure ObjParentRow(ANode: TTreeNode; AObj: TObject);
-    procedure ObjMarkSchemeItem(AItem: TListItem; AClass: TClass);
+    procedure ObjMarkSchemeItem(AItem: TListItem; const AClassName: string);
     procedure ObjGotoParent;
     procedure ObjComboWndProc(var Message: TMessage);
     procedure ObjComboDrawItem(Control: TWinControl; Index: Integer;
@@ -4393,8 +4406,7 @@ var
     Unit2, // Подключили вторую форму к первой!
     FormSnapshot, // снимок живой формы для инспектора объектов
     OsReg,        // чтение реестра Windows: установленные Delphi, AutoHotkey, Lazarus
-    DsgClassDesc, // описание классов Delphi 7 данными (шаг 0.8)
-    DsgClassDescW, // его запись по RTTI
+    DsgClassDescW, // запись описания классов по RTTI (шаг 0.8)
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
     DelphiOpts,   // Project options Delphi: номер сборки и версия в .res
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
@@ -26715,6 +26727,8 @@ begin
     for I := 0 to FRttiDefaults.Count - 1 do
       FRttiDefaults.Objects[I].Free;
   FreeAndNil(FRttiDefaults);
+  FreeAndNil(FDsgDescBase);
+  FreeAndNil(FDsgNoDefaults);
   FreeAndNil(FObjMissing);
   FreeAndNil(FRqExpanded);
   FreeAndNil(FDesigner);
@@ -35946,27 +35960,131 @@ begin
   RegisterDesignClasses;
 end;
 
-// Класс по имени из .dfm. Корень формы (TForm0, TForm1) - класс проекта,
-// которого в редакторе нет: для него берём TForm, свойства у них общие.
-function TForm1.RttiClassFor(ANode: TObject): TClass;
+// ---------------------------------------------------------------------------
+//  Описание классов Delphi 7 (план портирования, шаг 0.8)
+//
+//  Инспектор и конструктор берут сведения о классах .dfm из описания
+//  (DsgClassDesc), а не из RTTI живых классов. В Delphi 7-сборке описание
+//  строится здесь же по RTTI - класс при первом обращении (DsgDescOf), с
+//  умолчаниями и текстом нового компонента; совпадение с прежним путём
+//  проверено сверкой (View - "Описание классов Delphi 7"). Сборка FPC
+//  читает его из designer\delphi7_classes.txt.
+// ---------------------------------------------------------------------------
+
+function TForm1.DsgDescBase: TDsgClassBase;
+{$IFDEF FPC}
+var
+  LoadError: string;
+{$ENDIF}
+begin
+  if FDsgDescBase = nil then
+  begin
+    FDsgDescBase := TDsgClassBase.Create;
+    {$IFDEF FPC}
+    if not FDsgDescBase.LoadFromFile(AppFile('designer\' + DsgDescFileName),
+                                     LoadError) then
+      LogDiag('Описание классов Delphi 7 не прочитано: ' + LoadError);
+    {$ENDIF}
+  end;
+  Result := FDsgDescBase;
+end;
+
+// Описание класса по имени; nil - класс неизвестен. Класс вложенного
+// объекта (TFont) описан без умолчаний и текста нового компонента.
+function TForm1.DsgDescOf(const AClassName: string): TDsgClassDesc;
+{$IFNDEF FPC}
+var
+  Cls: TPersistentClass;
+{$ENDIF}
+begin
+  Result := nil;
+  if AClassName = '' then
+    Exit;
+  Result := DsgDescBase.FindClass(AClassName);
+  {$IFNDEF FPC}
+  if (Result <> nil) and Result.Filled then
+    Exit;
+  // Классы, которые знает конструктор, - зарегистрированные (DsgClasses)
+  Cls := GetClass(AClassName);
+  if Cls = nil then
+    Exit;
+  Result := DsgDescribeClass(FDsgDescBase, Cls, '');
+  if Result.Filled then
+    Exit;
+  Result.Filled := True;
+  if not Cls.InheritsFrom(TComponent) then
+    Exit;
+  Result.Defaults.Assign(DefaultsFor(Cls));
+  // Форму и фрейм с палитры не ставят - текст нового не нужен
+  if not Cls.InheritsFrom(TCustomForm) and
+     not Cls.InheritsFrom(TCustomFrame) then
+    Result.NewText.Text := DsgNewObjectText(TComponentClass(Cls),
+      DsgDescNewName(Cls.ClassName), DsgDescNewLeft, DsgDescNewTop);
+  {$ENDIF}
+end;
+
+// Класс объекта .dfm для инспектора, '' - неизвестен. Корень формы
+// (TForm0, TForm1) - класс проекта, которого в редакторе нет: для него
+// берём TForm, свойства у них общие.
+function TForm1.DescClassFor(ANode: TObject): string;
 var
   N: TDfmNode;
 begin
-  Result := nil;
-  // Классы RapidQ (QForm, QRichEdit) - не классы VCL
+  Result := '';
+  // Классы RapidQ (QForm, QRichEdit) - не классы Delphi
   if FObjRapidQ then
     Exit;
   N := TDfmNode(ANode);
   if (N = nil) or (N.ClassNm = '') then
     Exit;
-  Result := GetClass(N.ClassNm);
-  if (Result = nil) and (N.Parent = nil) then
-    Result := TForm;
+  if DsgDescOf(N.ClassNm) <> nil then
+    Result := N.ClassNm
+  else if (N.Parent = nil) and (DsgDescOf('TForm') <> nil) then
+    Result := 'TForm';
 end;
 
-// Тип свойства по пути "Font.Style": спуск по вложенным объектам. nil -
-// такого свойства у класса нет. AWritable - у свойства есть запись: только
-// такие можно добавить в .dfm.
+// Тип свойства по пути "Font.Style"; nil - такого свойства у класса нет
+function TForm1.DescPropType(const AClassName, APath: string;
+                             var AWritable: Boolean): TDsgTypeDesc;
+begin
+  AWritable := False;
+  Result := nil;
+  if DsgDescOf(AClassName) = nil then
+    Exit;
+  Result := DsgDescBase.PropType(AClassName, APath, AWritable);
+end;
+
+// Умолчания класса: строки "Имя=значение"; неизвестный класс - пустой
+// список. Список не освобождать.
+function TForm1.DescDefaults(const AClassName: string): TStringList;
+var
+  Desc: TDsgClassDesc;
+begin
+  Desc := DsgDescOf(AClassName);
+  if Desc <> nil then
+    Result := Desc.Defaults
+  else
+  begin
+    if FDsgNoDefaults = nil then
+      FDsgNoDefaults := TStringList.Create;
+    Result := FDsgNoDefaults;
+  end;
+end;
+
+// Модуль класса для uses; '' - класс неизвестен
+function TForm1.DescUnitOf(const AClassName: string): string;
+var
+  Desc: TDsgClassDesc;
+begin
+  Result := '';
+  Desc := DsgDescOf(AClassName);
+  if Desc <> nil then
+    Result := Desc.ModuleName;
+end;
+
+// Тип свойства по пути "Font.Style" по RTTI - для сверки описания классов:
+// спуск по вложенным объектам. nil - такого свойства у класса нет.
+// AWritable - у свойства есть запись: только такие можно добавить в .dfm.
 function TForm1.PropTypeFor(AClass: TClass; const APath: string;
                             var AWritable: Boolean): Pointer;
 var
@@ -36084,28 +36202,34 @@ const
   //   Font.Color - clWindowText (у логов текст тема не трогает);
   //   FixedColor - clBtnFace (шапка таблицы).
   // '' - этот класс или это свойство тема не красит.
-function TForm1.ObjThemeColorFor(AClass: TClass; const AProp: string): string;
+function TForm1.ObjThemeColorFor(const AClassName, AProp: string): string;
 var
   IsEditLike, IsWindowLike: Boolean;
+
+  function Inh(const AAncestor: string): Boolean;
+  begin
+    Result := DsgDescBase.InheritsFromName(AClassName, AAncestor);
+  end;
+
 begin
   Result := '';
-  if AClass = nil then
+  if DsgDescOf(AClassName) = nil then
     Exit;
-  IsEditLike := AClass.InheritsFrom(TCustomEdit) or
-                AClass.InheritsFrom(TCustomComboBox) or
-                AClass.InheritsFrom(TCustomListBox) or
-                AClass.InheritsFrom(TCustomTreeView) or
-                AClass.InheritsFrom(TCustomListView) or
-                AClass.InheritsFrom(TCustomGrid);
-  IsWindowLike := AClass.InheritsFrom(TCustomForm) or
-                  AClass.InheritsFrom(TCustomPanel) or
-                  AClass.InheritsFrom(TCustomGroupBox) or
-                  AClass.InheritsFrom(TTabSheet) or
-                  AClass.InheritsFrom(TScrollingWinControl) or
-                  AClass.InheritsFrom(TSplitter) or
-                  AClass.InheritsFrom(TCustomLabel) or
-                  AClass.InheritsFrom(TCustomCheckBox) or
-                  AClass.InheritsFrom(TRadioButton);
+  IsEditLike := Inh('TCustomEdit') or
+                Inh('TCustomComboBox') or
+                Inh('TCustomListBox') or
+                Inh('TCustomTreeView') or
+                Inh('TCustomListView') or
+                Inh('TCustomGrid');
+  IsWindowLike := Inh('TCustomForm') or
+                  Inh('TCustomPanel') or
+                  Inh('TCustomGroupBox') or
+                  Inh('TTabSheet') or
+                  Inh('TScrollingWinControl') or
+                  Inh('TSplitter') or
+                  Inh('TCustomLabel') or
+                  Inh('TCustomCheckBox') or
+                  Inh('TRadioButton');
   if CompareText(AProp, 'Color') = 0 then
   begin
     if IsEditLike then
@@ -36116,12 +36240,12 @@ begin
   else if CompareText(AProp, 'Font.Color') = 0 then
   begin
     if (IsEditLike or IsWindowLike) and
-       not AClass.InheritsFrom(TCustomRichEdit) then
+       not Inh('TCustomRichEdit') then
       Result := 'clWindowText';
   end
   else if CompareText(AProp, 'FixedColor') = 0 then
   begin
-    if AClass.InheritsFrom(TCustomGrid) then
+    if Inh('TCustomGrid') then
       Result := 'clBtnFace';
   end;
 end;
@@ -36135,54 +36259,52 @@ end;
 
 // Подходит ли значение типу свойства. Тип неизвестен - подходит всё: для
 // сторонних компонентов проверить нечем.
-function TForm1.ValidatePropValue(ATypeInfo: Pointer; const ARaw: string;
+function TForm1.ValidatePropValue(ATyp: TDsgTypeDesc; const ARaw: string;
                                   var AMsg: string): Boolean;
 var
-  TI, CT: PTypeInfo;
-  TD: PTypeData;
+  ElemTyp: TDsgTypeDesc;
   S, El, Allowed: string;
   P, V, Code: Integer;
   F: Extended;
 
-  function EnumNames(T: PTypeInfo): string;
+  function EnumNames(AEnum: TDsgTypeDesc): string;
   var
-    K: Integer;
-    D: PTypeData;
+    ValIdx: Integer;
   begin
     Result := '';
-    D := GetTypeData(T);
-    for K := D^.MinValue to D^.MaxValue do
+    if AEnum = nil then
+      Exit;
+    for ValIdx := 0 to AEnum.Values.Count - 1 do
     begin
       if Result <> '' then
         Result := Result + ', ';
-      Result := Result + GetEnumName(T, K);
+      Result := Result + AEnum.Values[ValIdx];
     end;
   end;
 
 begin
   Result := True;
   AMsg := '';
-  TI := PTypeInfo(ATypeInfo);
-  if TI = nil then
+  if ATyp = nil then
     Exit;
 
-  case TI^.Kind of
-    tkEnumeration:
-      if GetEnumValue(TI, ARaw) < 0 then
+  case ATyp.Kind of
+    dtkEnum:
+      if ATyp.ValueIndex(ARaw) < 0 then
     begin
       Result := False;
-      AMsg := 'Допустимо: ' + EnumNames(TI);
+      AMsg := 'Допустимо: ' + EnumNames(ATyp);
     end;
 
-    tkSet:
+    dtkSet:
     begin
-      CT := GetTypeData(TI)^.CompType^;
+      ElemTyp := DsgDescBase.FindType(ATyp.ElemType);
       S := Trim(ARaw);
       if (Length(S) < 2) or (S[1] <> '[') or (S[Length(S)] <> ']') then
       begin
         Result := False;
         AMsg := 'Набор пишется в квадратных скобках: [a, b]. ' +
-        'Допустимо: ' + EnumNames(CT);
+        'Допустимо: ' + EnumNames(ElemTyp);
 Exit;
       end;
       S := Copy(S, 2, Length(S) - 2);
@@ -36199,42 +36321,42 @@ Exit;
           El := Trim(S);
           S := '';
         end;
-        if (El <> '') and (GetEnumValue(CT, El) < 0) then
+        if (El <> '') and (ElemTyp <> nil) and
+           (ElemTyp.ValueIndex(El) < 0) then
         begin
           Result := False;
           AMsg := 'Нет такого элемента: ' + El + '. Допустимо: ' +
-                  EnumNames(CT);
+                  EnumNames(ElemTyp);
           Exit;
         end;
       end;
     end;
 
-    tkInteger:
+    dtkInteger:
     begin
-      if (TI^.Name = 'TColor') and IdentToColor(ARaw, V) then
+      if (ATyp.Name = 'TColor') and IdentToColor(ARaw, V) then
         Exit;
-      if (TI^.Name = 'TCursor') and IdentToCursor(ARaw, V) then
+      if (ATyp.Name = 'TCursor') and IdentToCursor(ARaw, V) then
         Exit;
-      if (TI^.Name = 'TFontCharset') and IdentToCharset(ARaw, V) then
+      if (ATyp.Name = 'TFontCharset') and IdentToCharset(ARaw, V) then
         Exit;
       Val(ARaw, V, Code);
       if Code <> 0 then
       begin
         Result := False;
-        if TI^.Name = 'TColor' then
+        if ATyp.Name = 'TColor' then
           AMsg := 'Нужно имя цвета (clRed) или число ($00RRGGBB)'
-        else if TI^.Name = 'TCursor' then
+        else if ATyp.Name = 'TCursor' then
           AMsg := 'Нужно имя курсора (crDefault) или число'
         else
         begin
-          TD := GetTypeData(TI);
           AMsg := Format('Нужно целое число от %d до %d',
-                         [TD^.MinValue, TD^.MaxValue]);
+                         [ATyp.MinValue, ATyp.MaxValue]);
         end;
       end;
     end;
 
-    tkInt64:
+    dtkInt64:
     begin
       Val(ARaw, F, Code);   // без дробной части проверит Val по Int64 ниже
       if (Code <> 0) or (Pos('.', ARaw) > 0) then
@@ -36244,7 +36366,7 @@ Exit;
       end;
     end;
 
-    tkFloat:
+    dtkFloat:
     begin
       // В .dfm дробная часть всегда через точку, Val её и ждёт
       Val(ARaw, F, Code);
@@ -36260,7 +36382,7 @@ Exit;
   begin
     Allowed := AMsg;
     AMsg := 'Значение "' + ARaw + '" не подходит свойству типа ' +
-            string(TI^.Name) + '.'#13#10#13#10 + Allowed;
+            ATyp.Name + '.'#13#10#13#10 + Allowed;
   end;
 end;
 
@@ -36387,9 +36509,8 @@ var
   Idx, K, H: Integer;
   Raw, Why, S, El: string;
   R: TRect;
-  Cls: TClass;
-  TI, CT: PTypeInfo;
-  TD: PTypeData;
+  DescCls: string;
+  TI, ElemTyp: TDsgTypeDesc;
   W: Boolean;
   N: TDfmNode;
 begin
@@ -36419,7 +36540,7 @@ begin
   FObjEditLine := -1;
   if FObjEditCode then
   begin
-    if RttiClassFor(N) = nil then
+    if DescClassFor(N) = '' then
     begin
       // Класс редактору неизвестен - выбирать значение не из чего,
       // остаётся переход к строке
@@ -36546,9 +36667,9 @@ ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: '
   // Тип свойства - для выбора редактора и проверки. Неизвестный класс -
   // тип nil: простой ввод текстом.
   TI := nil;
-  Cls := RttiClassFor(N);
-  if Cls <> nil then
-    TI := PTypeInfo(PropTypeFor(Cls, FObjEditName, W));
+  DescCls := DescClassFor(N);
+  if DescCls <> '' then
+    TI := DescPropType(DescCls, FObjEditName, W);
   FObjEditType := TI;
 
   R.Top := 1;               // колонка значения
@@ -36559,30 +36680,28 @@ ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: '
   FObjThemeColor := '';
   FObjActive := nil;
 
-  if (TI <> nil) and (TI^.Kind = tkEnumeration) then
+  if (TI <> nil) and (TI.Kind = dtkEnum) then
   begin
     // Перечисление и Boolean - только значения из списка
     FObjComboColors := False;
     FObjCombo.Style := csDropDownList;
     FObjCombo.Items.Clear;
-    TD := GetTypeData(TI);
-    for K := TD^.MinValue to TD^.MaxValue do
-      FObjCombo.Items.Add(GetEnumName(TI, K));
+    FObjCombo.Items.AddStrings(TI.Values);
     FObjCombo.ItemIndex := FObjCombo.Items.IndexOf(Raw);
     FObjActive := FObjCombo;
   end
-  else if (TI <> nil) and (TI^.Kind = tkInteger) and
-          ((TI^.Name = 'TColor') or (TI^.Name = 'TCursor')) then
+  else if (TI <> nil) and (TI.Kind = dtkInteger) and
+          ((TI.Name = 'TColor') or (TI.Name = 'TCursor')) then
   begin
     // Цвет и курсор - имена из списка или число руками
-    FObjComboColors := TI^.Name = 'TColor';
+    FObjComboColors := TI.Name = 'TColor';
     FObjColorRq := False;
     FObjCombo.Style := csDropDown;
     FObjCombo.Items.Clear;
-    if TI^.Name = 'TColor' then
+    if TI.Name = 'TColor' then
     begin
       // Первым - как вернуть цвет, который перекрашивает тема IDE
-      FObjThemeColor := ObjThemeColorFor(Cls, FObjEditName);
+      FObjThemeColor := ObjThemeColorFor(DescCls, FObjEditName);
       if FObjThemeColor <> '' then
         FObjCombo.Items.Add(ObjThemeItem);
       GetColorValues(ObjAddValue);
@@ -36592,14 +36711,13 @@ ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: '
     FObjCombo.Text := Raw;
     FObjActive := FObjCombo;
   end
-  else if (TI <> nil) and (TI^.Kind = tkSet) then
+  else if (TI <> nil) and (TI.Kind = dtkSet) then
   begin
     // Набор - галки по элементам
     FObjSetList.Items.Clear;
-    CT := GetTypeData(TI)^.CompType^;
-    TD := GetTypeData(CT);
-    for K := TD^.MinValue to TD^.MaxValue do
-      FObjSetList.Items.Add(GetEnumName(CT, K));
+    ElemTyp := DsgDescBase.FindType(TI.ElemType);
+    if ElemTyp <> nil then
+      FObjSetList.Items.AddStrings(ElemTyp.Values);
     S := Trim(Raw);
     if (S <> '') and (S[1] = '[') then
       Delete(S, 1, 1);
@@ -36629,7 +36747,7 @@ ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: '
     // Строку правим в читаемом виде, без кавычек и #кодов - при записи
     // она закодируется обратно
     FObjEditIsStr := ((TI <> nil) and
-                      (TI^.Kind in [tkString, tkLString, tkWString])) or
+                      (TI.Kind = dtkString)) or
                      ((TI = nil) and (Raw <> '') and (Raw[1] in ['''', '#']));
     if FObjEditIsStr then
       FObjEdit.Text := DecodeDfmString(Raw)
@@ -36997,8 +37115,7 @@ begin
   end;
 
   // Горячая клавиша: в .dfm она числом, а вводят её как Ctrl+S
-  if (FObjEditType <> nil) and
-     (PTypeInfo(FObjEditType)^.Name = 'TShortCut') then
+  if (FObjEditType <> nil) and (FObjEditType.Name = 'TShortCut') then
   begin
     Val(NewRaw, K, P);
     if (P <> 0) and (TextToShortCut(NewRaw) <> 0) then
@@ -37366,7 +37483,7 @@ begin
         It.Data := Pointer(Idx);
         // Новое значение - снова «Theme color» или уже свой цвет
         if not N.IsSnap and not N.IsLink then
-          ObjMarkSchemeItem(It, RttiClassFor(N));
+          ObjMarkSchemeItem(It, DescClassFor(N));
         FObjProps.UpdateItems(I, I);
         Break;
       end;
@@ -43986,7 +44103,6 @@ var
   Base, V, First: string;
   SL, Map, Names, Clss: TStringList;
   I, P, N, Ind, A, B: Integer;
-  Cls: TPersistentClass;
 
   // Имя последнего Cut в этой же форме: идентификатор в .pas - ссылки кода
   // на вырезанный компонент, имя ему можно вернуть
@@ -44116,10 +44232,8 @@ begin
       for I := 0 to Names.Count - 1 do
       begin
         NewPas := PasAddField(NewPas, Root, Names[I], Clss[I]);
-        Cls := GetClass(Clss[I]);
-        if Cls <> nil then
-          NewPas := PasAddUses(NewPas,
-                               GetTypeData(PTypeInfo(Cls.ClassInfo))^.UnitName);
+        if DescUnitOf(Clss[I]) <> '' then
+          NewPas := PasAddUses(NewPas, DescUnitOf(Clss[I]));
       end;
     end;
 
@@ -44359,8 +44473,7 @@ Pick := ChooseFromList('Replace Components', Prompt, Items);
         Exit;
       end;
     if NewPas <> '' then
-      NewPas := PasAddUses(NewPas,
-                           GetTypeData(PTypeInfo(NewCls.ClassInfo))^.UnitName);
+      NewPas := PasAddUses(NewPas, DescUnitOf(NewCls.ClassName));
 
     LogRaw('Replace: ' + IntToStr(Done) + ' -> ' + Pick);
     DsgApply(OldDfm, NewDfm, PasFile, OldPas, NewPas, Names[0]);
@@ -44705,20 +44818,21 @@ end;
 procedure TForm1.DsgDefaultEvent(const AName, AEvent: string);
 var
   Dfm, NewDfm, PasFile, Pas, NewPas, Root, ClsNm, Ev, Meth, Decl, Pat: string;
-  C: TClass;
+  DescCls: string;
+  Writable: Boolean;
+  EvType: TDsgTypeDesc;
   L: TStringList;
   P, Line: Integer;
-  PI: PPropInfo;
 begin
   Dfm := DsgGetText;
   Root := DfmRootClass(Dfm);
   if CompareText(AName, FDesigner.RootName) = 0 then
-    C := TForm // класс корня (TForm0) не зарегистрирован, события - у TForm
+    DescCls := 'TForm' // класс корня (TForm0) не известен, события - у TForm
   else
   begin
     ClsNm := DfmObjectClass(Dfm, AName);
-    C := GetClass(ClsNm);
-    if C = nil then
+    DescCls := ClsNm;
+    if DsgDescOf(DescCls) = nil then
     begin
       ShowMessage('21645:Класс ' + ClsNm + ' конструктору неизвестен - ' +
       'какое у него основное событие, не определить.');
@@ -44726,21 +44840,22 @@ begin
     end;
   end;
 
+  DsgDescOf(DescCls);
   if AEvent <> '' then
   begin
     Ev := AEvent;
-    PI := GetPropInfo(C, Ev);
-    if (PI = nil) or (PI^.PropType^^.Kind <> tkMethod) then
+    EvType := DescPropType(DescCls, Ev, Writable);
+    if (EvType = nil) or (EvType.Kind <> dtkMethod) then
     begin
-      ShowMessage('21652:У ' + C.ClassName + ' нет события ' + Ev + '.');
+      ShowMessage('21652:У ' + DescCls + ' нет события ' + Ev + '.');
       Exit;
     end;
   end
   else
-    Ev := DsgDefaultEventOf(C);
+    Ev := DsgDescBase.DefaultEvent(DescCls);
   if Ev = '' then
   begin
-    ShowMessage('21654:У ' + C.ClassName + ' нет событий.');
+    ShowMessage('21654:У ' + DescCls + ' нет событий.');
     Exit;
   end;
 
@@ -44764,7 +44879,7 @@ begin
     NewPas := Pas;
     if not PasHasIdent(Pas, Meth) then
     begin
-      Decl := DsgEventDecl(C, Ev, Meth);
+      Decl := DsgDescBase.EventDecl(DescCls, Ev, Meth);
       if Decl <> '' then
         NewPas := PasAddMethod(Pas, Root, Decl);
       if NewPas = Pas then
@@ -44938,6 +45053,22 @@ begin
 
   if Result = '' then
     Result := 'object ' + AName + ': ' + ACls.ClassName + #13#10 +
+    '  Left = ' + IntToStr(X) + #13#10 +
+    '  Top = ' + IntToStr(Y) + #13#10 +
+    'end'#13#10;
+end;
+
+// Текст object ... end нового компонента по описанию классов (шаг 0.8):
+// то же, что DsgNewObjectText, без создания экземпляра. Класса в описании
+// нет - минимальный текст с Left/Top.
+function TForm1.DsgDescNewText(const AClassName, AName: string;
+                               X, Y: Integer): string;
+begin
+  Result := '';
+  if DsgDescOf(AClassName) <> nil then
+    Result := DsgDescBase.NewObjectText(AClassName, AName, X, Y);
+  if Result = '' then
+    Result := 'object ' + AName + ': ' + AClassName + #13#10 +
     '  Left = ' + IntToStr(X) + #13#10 +
     '  Top = ' + IntToStr(Y) + #13#10 +
     'end'#13#10;
@@ -45311,7 +45442,7 @@ begin
   if Cls <> nil then
   begin
     ClsName := Cls.ClassName;
-    UnitNm := GetTypeData(PTypeInfo(Cls.ClassInfo))^.UnitName;
+    UnitNm := DescUnitOf(ClsName);
   end
   else
   begin
@@ -45348,7 +45479,7 @@ begin
         ((OldPas = '') or not PasHasIdent(OldPas, Nm));
 
   if Cls <> nil then
-    Obj := DsgNewObjectText(Cls, Nm, FDsgPlacePt.X, FDsgPlacePt.Y)
+    Obj := DsgDescNewText(ClsName, Nm, FDsgPlacePt.X, FDsgPlacePt.Y)
   else
     Obj := DsgForeignObjectText(ClsName, Nm, FDsgPlacePt.X, FDsgPlacePt.Y,
                                 ForeignCls);
@@ -45514,7 +45645,7 @@ begin
       ForeignType := AForeign.ClassInfo;
     ObjLines := TStringList.Create;
     try
-      ObjLines.Text := DsgNewObjectText(Analog, AName, X, Y);
+      ObjLines.Text := DsgDescNewText(Analog.ClassName, AName, X, Y);
       if ObjLines.Count > 0 then
         ObjLines[0] := 'object ' + AName + ': ' + AClass;
       SkipProp := False;
@@ -45885,7 +46016,7 @@ var
   Nodes: TList;
   I, J: Integer;
   N: TDfmNode;
-  Cls: TClass;
+  DescCls: string;
   It: TListItem;
   P, V0, V, Cap: string;
   Common, Same, W: Boolean;
@@ -45954,18 +46085,18 @@ begin
       for J := 0 to Nodes.Count - 1 do
       begin
         N := TDfmNode(Nodes[J]);
-        Cls := RttiClassFor(N);
-        if (Cls = nil) or (PropTypeFor(Cls, P, W) = nil) then
+        DescCls := DescClassFor(N);
+        if (DescCls = '') or (DescPropType(DescCls, P, W) = nil) then
         begin
           // Свойство не у всех (или класс неизвестен и в .dfm его нет)
-          if (Cls <> nil) or (N.PropN.IndexOf(P) < 0) then
+          if (DescCls <> '') or (N.PropN.IndexOf(P) < 0) then
           begin
             Common := False;
             Break;
           end;
         end;
-        if Cls <> nil then
-          V := ObjGroupValueOf(DefaultsFor(Cls), N, P)
+        if DescCls <> '' then
+          V := ObjGroupValueOf(DescDefaults(DescCls), N, P)
         else
           V := ObjGroupValueOf(nil, N, P);
         if J = 0 then
@@ -46262,13 +46393,13 @@ end;
 // clBtnFace у панели, clWindow у поля, clWindowText у шрифта): в ячейке
 // значения - «Theme color», справа за чертой - сам системный цвет из
 // .dfm (SubItems[3], ObjPropsPostPaint). Любой другой цвет - как записан.
-procedure TForm1.ObjMarkSchemeItem(AItem: TListItem; AClass: TClass);
+procedure TForm1.ObjMarkSchemeItem(AItem: TListItem; const AClassName: string);
 var
   ThemeColor, CellText: string;
 begin
-  if (AItem = nil) or (AClass = nil) or (AItem.SubItems.Count = 0) then
+  if (AItem = nil) or (AClassName = '') or (AItem.SubItems.Count = 0) then
     Exit;
-  ThemeColor := ObjThemeColorFor(AClass, AItem.Caption);
+  ThemeColor := ObjThemeColorFor(AClassName, AItem.Caption);
   if ThemeColor = '' then
     Exit;
   CellText := Trim(AItem.SubItems[0]);
@@ -46336,14 +46467,13 @@ var
   DC: TComponent;
   I: Integer;
   It: TListItem;
-  Cls: TClass;
+  DescCls: string;
   Defs: TStringList;
   Nm: string;
-  TI: PTypeInfo;
+  TI: TDsgTypeDesc;
+  Events: TStringList;
   W: Boolean;
   StartTick, StageTick, TList, TDefaults, TEvents, TCodeCol: Cardinal;
-  EvCount: Integer;
-  EvList: PPropList;
 begin
   StartTick := GetTickCount;
   TList := 0;
@@ -46469,20 +46599,20 @@ begin
     // показываются серыми, и правка добавит их строкой в .pas
     if not Obj.IsSnap and not Obj.IsLink then
     begin
-      Cls := RttiClassFor(Obj);
-      if Cls <> nil then
+      DescCls := DescClassFor(Obj);
+      if DescCls <> '' then
       begin
-        Defs := DefaultsFor(Cls);
+        Defs := DescDefaults(DescCls);
         for I := 0 to Defs.Count - 1 do
         begin
           Nm := Defs.Names[I];
           if (Copy(Nm, 1, 2) = 'On') or (Obj.PropN.IndexOf(Nm) >= 0) then
             Continue;
-          TI := PTypeInfo(PropTypeFor(Cls, Nm, W));
-          if (TI = nil) or not W or (TI^.Kind in [tkClass, tkMethod]) then
+          TI := DescPropType(DescCls, Nm, W);
+          if (TI = nil) or not W or (TI.Kind in [dtkClass, dtkMethod]) then
             Continue;
           // Горячую клавишу снимок пишет текстом, а .dfm хранит числом
-          if TI^.Name = 'TShortCut' then
+          if TI.Name = 'TShortCut' then
             FObjMissing.Add(Nm + '=0')
           else
             FObjMissing.Add(Defs[I]);
@@ -46502,10 +46632,10 @@ begin
     // «Theme color», сам цвет - справа в той же ячейке
     if not Obj.IsSnap and not Obj.IsLink then
     begin
-      Cls := RttiClassFor(Obj);
-      if Cls <> nil then
+      DescCls := DescClassFor(Obj);
+      if DescCls <> '' then
         for I := 0 to FObjProps.Items.Count - 1 do
-          ObjMarkSchemeItem(FObjProps.Items[I], Cls);
+          ObjMarkSchemeItem(FObjProps.Items[I], DescCls);
     end;
     TDefaults := GetTickCount - StageTick;
 
@@ -46524,30 +46654,26 @@ begin
     // назначено: обработчик пишется в .dfm.
     if not Obj.IsSnap and not Obj.IsLink and not Obj.FromCode then
     begin
-      Cls := RttiClassFor(Obj);
-      if Cls <> nil then
+      DescCls := DescClassFor(Obj);
+      if DescCls <> '' then
       begin
-        EvCount := GetPropList(Cls.ClassInfo, [tkMethod], nil);
-        if EvCount > 0 then
-        begin
-          GetMem(EvList, EvCount * SizeOf(PPropInfo));
-          try
-            GetPropList(Cls.ClassInfo, [tkMethod], EvList);
-            for I := 0 to EvCount - 1 do
-            begin
-              Nm := EvList^[I]^.Name;
-              if Obj.EvN.IndexOf(Nm) >= 0 then
-                Continue;
-              It := FObjEvents.Items.Add;
-              It.Caption := Nm;
-              It.SubItems.Add('');
-              It.Data := Pointer(-1);
-            end;
-          finally
-            FreeMem(EvList);
+        Events := TStringList.Create;
+        try
+          DsgDescBase.EventNames(DescCls, Events);
+          for I := 0 to Events.Count - 1 do
+          begin
+            Nm := Events[I];
+            if Obj.EvN.IndexOf(Nm) >= 0 then
+              Continue;
+            It := FObjEvents.Items.Add;
+            It.Caption := Nm;
+            It.SubItems.Add('');
+            It.Data := Pointer(-1);
           end;
-          FObjEvents.AlphaSort;
+        finally
+          Events.Free;
         end;
+        FObjEvents.AlphaSort;
       end;
     end;
 
