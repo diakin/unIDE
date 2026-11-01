@@ -4469,6 +4469,7 @@ var
 
   uses
     Unit2, // Подключили вторую форму к первой!
+    FastMM4,      // FastGetHeapStatus - состояние кучи в hang.log и логе
     FormSnapshot, // снимок живой формы для инспектора объектов
     OsReg,        // чтение реестра Windows: установленные Delphi, AutoHotkey, Lazarus
     DsgClassDescW, // запись описания классов по RTTI (шаг 0.8)
@@ -26040,6 +26041,9 @@ begin
   // editor.ini записан самим редактором (TBufIniFile) - не правка снаружи
   IniBufOnWritten := IniOwnWritten;
   // Сборка в каждой записи hang.log - то же, что в скобках заголовка окна
+  // Менеджер памяти - FastMM4 (первый модуль .dpr); System.GetHeapStatus
+  // его кучу не видит
+  HangHeapStatus := FastGetHeapStatus;
   HangWatchStart(Application.Handle,
                  ExtractFilePath(Application.ExeName) + 'hang.log', Handle,
                  Copy(AppTitle, Pos('[', AppTitle) + 1,

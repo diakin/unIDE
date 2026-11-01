@@ -80,6 +80,11 @@ procedure HangWatchCallStack(ALines: TStrings);
 // свободный участок, в МБ
 function AddressSpaceText: string;
 
+var
+  // Состояние кучи, если менеджер памяти не тот, что в System (FastMM4:
+  // FastGetHeapStatus); nil - System.GetHeapStatus
+  HangHeapStatus: function: THeapStatus = nil;
+
 implementation
 
 // В Windows.pas Delphi 7 её нет; в user32 - с Windows 2000
@@ -997,7 +1002,10 @@ begin
   // Куча Delphi: сколько занято данными программы и сколько адресов
   // держит сама куча. Занято адресов много, а данных мало - адреса
   // раздроблены; данных много - их действительно столько
-  HeapInfo := GetHeapStatus;
+  if Assigned(HangHeapStatus) then
+    HeapInfo := HangHeapStatus()
+  else
+    HeapInfo := GetHeapStatus;
   Result := Result + Format('; куча Delphi - данные %d МБ, адресов у кучи ' +
     '%d МБ, свободно в ней %d МБ', [HeapInfo.TotalAllocated div (1024 * 1024),
     HeapInfo.TotalAddrSpace div (1024 * 1024),
