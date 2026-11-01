@@ -321,7 +321,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.36';
+  DfmMoveBuild = 'b.37';
 
 constructor TMoveInfo.Create;
 begin
@@ -1304,41 +1304,6 @@ begin
   Result := IsValidIdent(AChild);
 end;
 
-// Строка S.Parent.Insert(S.MenuIndex + 1, X); - пункт X встаёт сразу после
-// пункта S у его родителя. ASibling = S, AChild = X (как в строке).
-// ALine - без комментария и пробелов по краям.
-function ParseSiblingInsert(const ALine: string;
-  var ASibling, AChild: string): Boolean;
-var
-  Key, Head, Rest: string;
-  At, Comma, Close: Integer;
-begin
-  Result := False;
-  ASibling := '';
-  AChild := '';
-  Key := CodeKey(ALine);
-  At := Pos('.PARENT.INSERT(', Key);
-  if At <= 1 then
-    Exit;
-  Head := Copy(Key, 1, At - 1);
-  if not IsValidIdent(Head) then
-    Exit;
-  Rest := Copy(Key, At + Length('.PARENT.INSERT('), MaxInt);
-  if Copy(Rest, 1, Length(Head) + 13) <> Head + '.MENUINDEX+1,' then
-    Exit;
-  Rest := Copy(Rest, Length(Head) + 14, MaxInt);
-  if Copy(Rest, Length(Rest) - 1, 2) <> ');' then
-    Exit;
-  if not IsValidIdent(Copy(Rest, 1, Length(Rest) - 2)) then
-    Exit;
-  // Имена - как написаны в строке
-  ASibling := Trim(Copy(ALine, 1, Pos('.', ALine) - 1));
-  Comma := LastDelimiter(',', ALine);
-  Close := LastDelimiter(')', ALine);
-  AChild := Trim(Copy(ALine, Comma + 1, Close - Comma - 1));
-  Result := (CompareText(ASibling, Head) = 0) and IsValidIdent(AChild);
-end;
-
 // Строка P.Remove(X); или P.Items.Remove(X); - AParent = P, AChild = X
 function ParseRemoveLine(const ALine: string; var AParent, AChild: string): Boolean;
 var
@@ -1853,6 +1818,41 @@ begin
       Result[Into] := Code[From];
     end;
   SetLength(Result, Into);
+end;
+
+// Строка S.Parent.Insert(S.MenuIndex + 1, X); - пункт X встаёт сразу после
+// пункта S у его родителя. ASibling = S, AChild = X (как в строке).
+// ALine - без комментария и пробелов по краям.
+function ParseSiblingInsert(const ALine: string;
+  var ASibling, AChild: string): Boolean;
+var
+  Key, Head, Rest: string;
+  At, Comma, Close: Integer;
+begin
+  Result := False;
+  ASibling := '';
+  AChild := '';
+  Key := CodeKey(ALine);
+  At := Pos('.PARENT.INSERT(', Key);
+  if At <= 1 then
+    Exit;
+  Head := Copy(Key, 1, At - 1);
+  if not IsValidIdent(Head) then
+    Exit;
+  Rest := Copy(Key, At + Length('.PARENT.INSERT('), MaxInt);
+  if Copy(Rest, 1, Length(Head) + 13) <> Head + '.MENUINDEX+1,' then
+    Exit;
+  Rest := Copy(Rest, Length(Head) + 14, MaxInt);
+  if Copy(Rest, Length(Rest) - 1, 2) <> ');' then
+    Exit;
+  if not IsValidIdent(Copy(Rest, 1, Length(Rest) - 2)) then
+    Exit;
+  // Имена - как написаны в строке
+  ASibling := Trim(Copy(ALine, 1, Pos('.', ALine) - 1));
+  Comma := LastDelimiter(',', ALine);
+  Close := LastDelimiter(')', ALine);
+  AChild := Trim(Copy(ALine, Comma + 1, Close - Comma - 1));
+  Result := (CompareText(ASibling, Head) = 0) and IsValidIdent(AChild);
 end;
 
 // Аргументы вызова верхнего уровня: запятые внутри строк, скобок ( ) и
