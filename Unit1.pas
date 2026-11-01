@@ -25950,6 +25950,10 @@ begin
   // .dfm: MainMenu1.Items.Insert(mWindows.MenuIndex + 1, FUtilMenu);
   FUtilSig := #1;
   UtilMenuUpdate;
+  // Git-панель - в .dfm; здесь только то, что .dfm не хранит (списки
+  // проверок, счётчики, OnChange ветки). Раньше вызывалось лениво из
+  // GitShowBar, но таймер Git (GitRefreshBar) мог прийти раньше.
+  GitBuildBar;
 
   Position := poDesigned; // иначе VCL сам сдвинет окно при показе
 
@@ -70860,7 +70864,6 @@ procedure TForm1.GitShowBar(AShow: Boolean);
 begin
   if AShow then
   begin
-  if FGitStatusErrors = nil then   // было: if FGitBar = nil then      GitBuildBar;
     if FDsgPalette <> nil then
       FDsgPalette.Visible := False;
     FGitBar.Visible := True;
