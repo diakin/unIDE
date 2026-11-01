@@ -968,6 +968,9 @@ var
   MemInfo: TMemoryBasicInformation;
   Addr: Cardinal;
   FreeTotal, Largest, UsedTotal: Int64;
+{$IFNDEF FPC}
+  HeapInfo: THeapStatus;
+{$ENDIF}
 begin
   FreeTotal := 0;
   Largest := 0;
@@ -990,7 +993,16 @@ begin
   end;
   Result := Format('адреса - занято %d МБ, свободно %d МБ, самый большой ' +
     'свободный участок %d МБ', [UsedTotal div (1024 * 1024),
-    FreeTotal div (1024 * 1024), Largest div (1024 * 1024)]);
+    FreeTotal div (1024 * 1024), Largest div (1024 * 1024)]);{$IFNDEF FPC}
+  // Куча Delphi: сколько занято данными программы и сколько адресов
+  // держит сама куча. Занято адресов много, а данных мало - адреса
+  // раздроблены; данных много - их действительно столько
+  HeapInfo := GetHeapStatus;
+  Result := Result + Format('; куча Delphi - данные %d МБ, адресов у кучи ' +
+    '%d МБ, свободно в ней %d МБ', [HeapInfo.TotalAllocated div (1024 * 1024),
+    HeapInfo.TotalAddrSpace div (1024 * 1024),
+    HeapInfo.TotalFree div (1024 * 1024)]);
+{$ENDIF}
 end;
 
 // ---------------------------------------------------------------------------

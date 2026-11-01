@@ -48894,6 +48894,12 @@ begin
     FNeedLineInv := False;
     InvalidateCaretLine;
   end;
+  // Большой текст (от MapProgressMinLen) изменился на 4 КБ и больше -
+  // запас адресов в лог: по таким строкам видно, сколько памяти уходит
+  // на правки (нехватка памяти на файле в 32 МБ, 01.11.2026)
+  if (NewLen >= MapProgressMinLen) and (Abs(NewLen - FCachePreLen) >= 4096) then
+    LogAddressSpace(Format('правка %d знаков, текст %d знаков',
+      [NewLen - FCachePreLen, NewLen]));
 end;
 
 // Текст изменился (EN_CHANGE). Если есть снимок - строки после правки
