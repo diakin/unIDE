@@ -318,7 +318,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.22';
+  DfmMoveBuild = 'b.23';
 
 constructor TMoveInfo.Create;
 begin
@@ -557,18 +557,76 @@ begin
     end;
 end;
 
+type
+  // Посчитанное CountUses для одного имени (кэш на время разбора)
+  TUsesCount = class
+  public
+    Calls, Assigns: Integer;
+  end;
+
+var
+  // Кэш CountUses на время DfmMoveAnalyze (модуль в это время не меняется):
+  // строки модуля заглавными и посчитанное по именам. Вне разбора - nil.
+  GUsesLines: TStrings = nil;
+  GUsesUpper: TStringList = nil;
+  GUsesCache: TStringList = nil;
+
+procedure UsesCacheReset;
+var
+  Index: Integer;
+begin
+  if GUsesCache <> nil then
+    for Index := 0 to GUsesCache.Count - 1 do
+      GUsesCache.Objects[Index].Free;
+  GUsesCache.Free;
+  GUsesCache := nil;
+  GUsesUpper.Free;
+  GUsesUpper := nil;
+  GUsesLines := nil;
+end;
+
+// Начало разбора модуля ALines: CountUses по нему - с кэшем
+procedure UsesCacheStart(ALines: TStrings);
+var
+  Index: Integer;
+begin
+  UsesCacheReset;
+  GUsesLines := ALines;
+  GUsesUpper := TStringList.Create;
+  GUsesUpper.Capacity := ALines.Count;
+  for Index := 0 to ALines.Count - 1 do
+    GUsesUpper.Add(UpperCase(ALines[Index]));
+  GUsesCache := TStringList.Create;
+  GUsesCache.Sorted := True;
+end;
+
 // Сколько раз метод формы вызывается и назначается обработчиком (вне
 // своего объявления и заголовка реализации)
 procedure CountUses(ALines: TStrings; const AMethod: string;
   var ACalls, AAssigns: Integer);
 var
-  Index, P: Integer;
-  T, U: string;
+  Index, P, CacheAt: Integer;
+  T, U, MethodUpper: string;
+  Cached: Boolean;
+  Counted: TUsesCount;
 begin
   ACalls := 0;
   AAssigns := 0;
+  // Во время разбора: то же имя - из кэша; строки без имени (заглавными)
+  // пропускаются сразу - HasWord в них его тоже не найдёт
+  Cached := (GUsesLines = ALines) and (GUsesUpper <> nil) and
+            (GUsesUpper.Count = ALines.Count) and (AMethod <> '');
+  MethodUpper := UpperCase(AMethod);
+  if Cached and GUsesCache.Find(MethodUpper, CacheAt) then
+  begin
+    ACalls := TUsesCount(GUsesCache.Objects[CacheAt]).Calls;
+    AAssigns := TUsesCount(GUsesCache.Objects[CacheAt]).Assigns;
+    Exit;
+  end;
   for Index := 0 to ALines.Count - 1 do
   begin
+    if Cached and (Pos(MethodUpper, GUsesUpper[Index]) = 0) then
+      Continue;
     T := Trim(ALines[Index]);
     U := UpperCase(T);
     if (Pos('PROCEDURE ', U) = 1) or (Pos('FUNCTION ', U) = 1) or
@@ -582,6 +640,13 @@ begin
       Inc(AAssigns)
     else
       Inc(ACalls);
+  end;
+  if Cached then
+  begin
+    Counted := TUsesCount.Create;
+    Counted.Calls := ACalls;
+    Counted.Assigns := AAssigns;
+    GUsesCache.AddObject(MethodUpper, Counted);
   end;
 end;
 
@@ -4223,7 +4288,7 @@ var
   NodeClass: TPersistentClass;
   Line, Code, Upper, Lhs, Owner, Ctor, Rest, PropName, Value, Target,
     AddParent, AddChild, Guard, SwitchProp, SwitchOn, RemoveParent,
-    RemoveChild: string;
+    RemoveChild, NameUpper: string;
   CreatePos, Open, Close, Index, Head, RoutineEnd, Calls, Assigns,
     Creates, Assign, OwnerAt, Count, KeyNumber, LazyCond, LazyOpen,
     LazyEnd, RangeFirst, RangeLast, BadLine, SwitchLine, OtherLine,
@@ -5078,9 +5143,13 @@ begin
   // несколько компонентов, их быть не должно).
   Creates := 0;
   OtherAssigns := 0;
+  NameUpper := UpperCase(Node.VarName);
   if not Info.NewField then
     for Index := ScopeFirst to ScopeLast do
     begin
+      // Строка без имени (AKeys - заглавными) не присваивает ему
+      if (NameUpper <> '') and (Pos(NameUpper, AKeys[Index]) = 0) then
+        Continue;
       Code := StripComment(ALines[Index]);
       Assign := Pos(':=', Code);
       if (Assign = 0) or
@@ -5259,10 +5328,14 @@ begin
 
   // Добавление в меню или список вне процедуры создания: после переноса
   // пункт добавился бы второй раз (в .dfm он уже вложен)
+  NameUpper := UpperCase(Node.VarName);
   if not Info.NewField then
   for Index := ScopeFirst to ScopeLast do
   begin
     if (Index >= RangeFirst) and (Index <= RangeLast) then
+      Continue;
+    // Строка без имени (AKeys - заглавными) его не добавляет
+    if (NameUpper <> '') and (Pos(NameUpper, AKeys[Index]) = 0) then
       Continue;
     if ParseAddLine(Trim(StripComment(ALines[Index])), AddParent, AddChild) and
        (CompareText(AddChild, Node.VarName) = 0) and
@@ -6377,6 +6450,10 @@ var
   LineHead, LineEnd, Calls, Assigns: Integer;
   RoutineName, ReorderKey, ReorderProblem: string;
   ParentNode: TDfmNode;
+  // Узлы дерева по номерам: Data и уровень. Items[N] дерева в Delphi 7
+  // идёт от первого узла (N шагов) - в циклах по дереву это N*N.
+  TreeData, TreeLevel: TList;
+  TreeNode: TTreeNode;
 
   // Новое имя для компонента из вызова без переменной: родитель + класс +
   // номер (FTabsPopupItem1). Не занято ни в дереве, ни в модуле.
@@ -7255,11 +7332,11 @@ var
     Blocked: Boolean;
     PropName: string;
   begin
-    for ItemIndex := 0 to ATree.Items.Count - 1 do
+    for ItemIndex := 0 to TreeData.Count - 1 do
     begin
-      if ATree.Items[ItemIndex].Data = nil then
+      if TreeData[ItemIndex] = nil then
         Continue;
-      DfmNode := TDfmNode(ATree.Items[ItemIndex].Data);
+      DfmNode := TDfmNode(TreeData[ItemIndex]);
       if (DfmNode.Name = '') or DfmNode.IsRuntime or DfmNode.FromCode or
          DfmNode.IsSnap or DfmNode.IsLive or DfmNode.IsLink or
          (DfmNode.Parent = nil) then
@@ -7675,22 +7752,32 @@ begin
   Routines := TList.Create;
   RoutineNames := TStringList.Create;
   InitHandlers := TStringList.Create;
+  TreeData := TList.Create;
+  TreeLevel := TList.Create;
   try
+    TreeNode := ATree.Items.GetFirstNode;
+    while TreeNode <> nil do
+    begin
+      TreeData.Add(TreeNode.Data);
+      TreeLevel.Add(TObject(TreeNode.Level));
+      TreeNode := TreeNode.GetNext;
+    end;
     Lines.Text := APasText;
     ReportStep('разбор модуля', 0, 0);
     for Index := 0 to Lines.Count - 1 do
       Keys.Add(CodeKey(Lines[Index]));
     Scan.Scan(Lines);
+    UsesCacheStart(Lines);
     ReportStep('процедуры-создатели', 0, 0);
     FindClassDecl(Lines, AFormClass, ClassFirst, ClassLast);
     CollectHelpers(Lines, Helpers);
     CollectLocalCreators(Lines, AFormClass, Helpers);
     MarkBareSafe;
     // Имена всех узлов дерева - возможные родители и владельцы
-    for Index := 0 to ATree.Items.Count - 1 do
-      if ATree.Items[Index].Data <> nil then
+    for Index := 0 to TreeData.Count - 1 do
+      if TreeData[Index] <> nil then
       begin
-        Node := TDfmNode(ATree.Items[Index].Data);
+        Node := TDfmNode(TreeData[Index]);
         if Node.Name <> '' then
           Names.AddObject(Node.Name, Node);
         if (Node.VarName <> '') and (Names.IndexOf(Node.VarName) < 0) then
@@ -7699,17 +7786,17 @@ begin
     GDfmIntValues := TStringList.Create;
     CollectDfmIntValues;
 
-    for Index := 0 to ATree.Items.Count - 1 do
+    for Index := 0 to TreeData.Count - 1 do
     begin
-      ReportStep('компоненты', Index, ATree.Items.Count);
-      if ATree.Items[Index].Data = nil then
+      ReportStep('компоненты', Index, TreeData.Count);
+      if TreeData[Index] = nil then
         Continue;
-      Node := TDfmNode(ATree.Items[Index].Data);
+      Node := TDfmNode(TreeData[Index]);
       if Node.IsLink or Node.SnapRoot then
         Continue;
       Info := TMoveInfo.Create;
       Info.Node := Node;
-      Info.Depth := ATree.Items[Index].Level;
+      Info.Depth := Integer(TreeLevel[Index]);
       if Node.Name <> '' then
         Info.Title := Node.Name + ': ' + Node.ClassNm
       else if Node.VarName <> '' then
@@ -7752,16 +7839,16 @@ begin
       // Локальная переменная, которой создают несколько компонентов
       // (Grp): родитель - созданный ей последним перед вызовом
       ParentNode := TDfmNode(Names.Objects[ParentAt]);
-      for Other := 0 to ATree.Items.Count - 1 do
-        if (ATree.Items[Other].Data <> nil) and
-           (CompareText(TDfmNode(ATree.Items[Other].Data).VarName,
+      for Other := 0 to TreeData.Count - 1 do
+        if (TreeData[Other] <> nil) and
+           (CompareText(TDfmNode(TreeData[Other]).VarName,
                         ParentName) = 0) and
-           (TDfmNode(ATree.Items[Other].Data).CreateLine >= 0) and
-           (TDfmNode(ATree.Items[Other].Data).CreateLine < Index) and
+           (TDfmNode(TreeData[Other]).CreateLine >= 0) and
+           (TDfmNode(TreeData[Other]).CreateLine < Index) and
            ((ParentNode.CreateLine < 0) or (ParentNode.CreateLine >= Index) or
-            (TDfmNode(ATree.Items[Other].Data).CreateLine >
+            (TDfmNode(TreeData[Other]).CreateLine >
              ParentNode.CreateLine)) then
-          ParentNode := TDfmNode(ATree.Items[Other].Data);
+          ParentNode := TDfmNode(TreeData[Other]);
       ParentInfo := nil;
       for Other := 0 to AList.Count - 1 do
         if TMoveInfo(AList[Other]).Node = ParentNode then
@@ -8163,10 +8250,10 @@ begin
     // Проверки на nil, которые могут выполниться до прежнего создания.
     // Обработчики событий загрузки - из дерева (.dfm и код) и из
     // назначений в коде.
-    for Index := 0 to ATree.Items.Count - 1 do
-      if ATree.Items[Index].Data <> nil then
+    for Index := 0 to TreeData.Count - 1 do
+      if TreeData[Index] <> nil then
       begin
-        Node := TDfmNode(ATree.Items[Index].Data);
+        Node := TDfmNode(TreeData[Index]);
         for Other := 0 to Node.EvN.Count - 1 do
           if (Other < Node.EvV.Count) and
              IsInitEventOf(Node.ClassNm, Node.EvN[Other]) and
@@ -8271,6 +8358,9 @@ begin
       end;
     end;
   finally
+    UsesCacheReset;
+    TreeLevel.Free;
+    TreeData.Free;
     for Index := 0 to Routines.Count - 1 do
       TObject(Routines[Index]).Free;
     Routines.Free;
