@@ -1405,6 +1405,7 @@ type
     FObjMoveStageStart: Cardinal;
     FObjMovePeek: Cardinal;    // когда последний раз звали PeekMessage
     FObjMoveTimes: TStringList;
+    FObjMoveBusyStart: Cardinal; // начало переноса или отката (ObjMoveBusy)
     // Визуальный конструктор: какая форма в нём и откат его правок
     FDesigner: TFormDesigner;
     FDsgDfm: string;
@@ -3099,6 +3100,7 @@ type
     procedure ObjMoveSetTexts(const APasFile, APasText, ADfmFile,
                               ADfmText: string);
     procedure ObjMoveDone;
+    procedure ObjMoveBusy(const AStage: string; AActive: Boolean);
     procedure ObjMoveProgress(const AStage: string; ADone, ATotal: Integer);
     procedure ObjMovePump;
     procedure ObjMoveStageDone(ATick: Cardinal);
@@ -43404,6 +43406,7 @@ begin
     Host.GetText := ObjMoveGetText;
     Host.SetTexts := ObjMoveSetTexts;
     Host.Done := ObjMoveDone;
+    Host.Busy := ObjMoveBusy;
     FObjMoveDfm := FObjDfmFile;
     MoveCount := List.Count;
     BusyStage('Перенести в .dfm: окно разбора');
@@ -43527,11 +43530,57 @@ begin
   ObjCancelEdit;
   InDesigner := (FDesigner <> nil) and (CompareText(FDsgDfm, ADfmFile) = 0);
   if InDesigner then
+  begin
+    ObjMoveProgress('откат конструктора', 0, 0);
     DsgPushUndo(DsgFileText(ADfmFile), DsgFileText(APasFile));
+  end;
+  ObjMoveProgress('модуль во вкладку', 0, 0);
   DsgSetFileText(APasFile, APasText);
+  ObjMoveProgress('форма во вкладку', 0, 0);
   DsgSetFileText(ADfmFile, ADfmText);
   if InDesigner then
+  begin
+    ObjMoveProgress('конструктор формы', 0, 0);
     DsgReload;
+  end;
+end;
+
+// Перенос или откат из окна разбора: на время работы - панель хода и
+// DfmMoveProgress (этапы с долей), в конце - время по этапам строками в
+// Compilation log, как у разбора
+procedure TForm1.ObjMoveBusy(const AStage: string; AActive: Boolean);
+var
+  Times: TStringList;
+  TimeIdx: Integer;
+  StageText: string;
+begin
+  if AActive then
+  begin
+    FObjMoveTimes.Free;
+    FObjMoveTimes := TStringList.Create;
+    FObjMoveStage := '';
+    FObjMoveBusyStart := GetTickCount;
+    BusyBegin('Перенести в .dfm: ' + AStage);
+    DfmMoveProgress := ObjMoveProgress;
+    Exit;
+  end;
+  ObjMoveStageDone(GetTickCount);
+  DfmMoveProgress := nil;
+  Times := FObjMoveTimes;
+  FObjMoveTimes := nil;
+  try
+    LogComp(Format('Перенести в .dfm, %s: %d мс',
+                   [AStage, GetTickCount - FObjMoveBusyStart]));
+    if Times <> nil then
+      for TimeIdx := 0 to Times.Count - 1 do
+      begin
+        StageText := Times.Names[TimeIdx];
+        LogComp(Format('  %s: %s мс', [StageText, Times.Values[StageText]]));
+      end;
+  finally
+    Times.Free;
+    BusyEnd('', True);
+  end;
 end;
 
 // Перенос или откат сделан. Окно разбора в этот момент ещё внутри своего
@@ -43544,9 +43593,19 @@ end;
 // Дерево объектов - по новым текстам; разбор - заново, если на вкладке
 // Objects та же форма
 procedure TForm1.WMObjMoveAgain(var Msg: TMessage);
+var
+  TreeStart: Cardinal;
 begin
   FObjDfmKey := '';
-  RefreshObjectInspector(True);
+  TreeStart := GetTickCount;
+  BusyBegin('Перенести в .dfm: дерево объектов');
+  try
+    RefreshObjectInspector(True);
+  finally
+    BusyEnd('', True);
+  end;
+  LogComp(Format('Перенести в .dfm, дерево объектов: %d мс',
+                 [GetTickCount - TreeStart]));
   if (FObjMoveDfm <> '') and (CompareText(FObjDfmFile, FObjMoveDfm) = 0) then
     ObjMoveClick(nil);
 end;
