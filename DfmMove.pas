@@ -325,7 +325,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.28';
+  DfmMoveBuild = 'b.29';
 
 constructor TMoveInfo.Create;
 begin
@@ -6784,6 +6784,29 @@ var
   TreeData, TreeLevel: TList;
   TreeNode: TTreeNode;
 
+  // Слово AIdent есть в тексте модуля (как PasHasIdent, с комментариями).
+  // Во время разбора - по строкам заглавными из кэша: PasHasIdent каждый
+  // раз переводит в заглавные весь текст модуля.
+  function TextHasIdent(const AIdent: string): Boolean;
+  var
+    Upper: TStringList;
+    IdentUpper: string;
+    LineIndex: Integer;
+  begin
+    Upper := UsesUpperFor(Lines);
+    if (Upper = nil) or not IsValidIdent(AIdent) then
+    begin
+      Result := PasHasIdent(APasText, AIdent);
+      Exit;
+    end;
+    Result := True;
+    IdentUpper := UpperCase(AIdent);
+    for LineIndex := 0 to Upper.Count - 1 do
+      if HasPattern(Upper[LineIndex], IdentUpper) then
+        Exit;
+    Result := False;
+  end;
+
   // Новое имя для компонента из вызова без переменной: родитель + класс +
   // номер (FTabsPopupItem1). Не занято ни в дереве, ни в модуле.
   function NewComponentName(const AParent, AClass: string): string;
@@ -6802,7 +6825,7 @@ var
     Number := 1;
     while (Names.IndexOf(Base + IntToStr(Number)) >= 0) or
           (NewNames.IndexOf(Base + IntToStr(Number)) >= 0) or
-          PasHasIdent(APasText, Base + IntToStr(Number)) do
+          TextHasIdent(Base + IntToStr(Number)) do
       Inc(Number);
     Result := Base + IntToStr(Number);
     NewNames.Add(Result);
