@@ -1475,6 +1475,7 @@ type
     FDelTabItem: TMenuItem;
     FWv2ViewItem: TMenuItem;  // View - Просмотр в WebView2
     FEdPreviewItem: TMenuItem; // View - свой редактор, проба (0.7.3)
+    FDsgDescItem: TMenuItem;   // View - описание классов Delphi 7 (0.8)
     // Options - unIDE FAR: Files highlighting (окно раскраски файлов)
     FFarColorsItem: TMenuItem;
     // Options - unIDE FAR: Colors (палитра окна FAR)
@@ -2951,6 +2952,7 @@ type
     procedure DsgPaletteGlyph(Sender: TObject);
     procedure PaletteIconsClick(Sender: TObject);
     procedure EdPreviewClick(Sender: TObject);
+    procedure DsgDescWriteClick(Sender: TObject);
     procedure DefEditProc(var Message: TMessage);
     procedure EdEmuStart;
     procedure EdEmuLog(const AText: string);
@@ -4391,6 +4393,8 @@ var
     Unit2, // Подключили вторую форму к первой!
     FormSnapshot, // снимок живой формы для инспектора объектов
     OsReg,        // чтение реестра Windows: установленные Delphi, AutoHotkey, Lazarus
+    DsgClassDesc, // описание классов Delphi 7 данными (шаг 0.8)
+    DsgClassDescW, // его запись по RTTI
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
     DelphiOpts,   // Project options Delphi: номер сборки и версия в .res
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
@@ -26367,6 +26371,14 @@ begin
                          'RichEdit; в файл не записывается';
   FEdPreviewItem.OnClick := EdPreviewClick;
   mView.Insert(FWv2ViewItem.MenuIndex + 1, FEdPreviewItem);
+  // View - описание классов Delphi 7 для Lazarus-сборки (план, шаг 0.8)
+  FDsgDescItem := TMenuItem.Create(Self);
+  FDsgDescItem.Caption := 'Описание классов Delphi 7 - записать и сверить (0.8)';
+  FDsgDescItem.Hint := 'Свойства, типы, события, умолчания классов палитры - ' +
+                       'в designer\delphi7_classes.txt; сверка с RTTI - ' +
+                       'в Compilation log';
+  FDsgDescItem.OnClick := DsgDescWriteClick;
+  mView.Insert(FEdPreviewItem.MenuIndex + 1, FDsgDescItem);
   // Раскраска файлов в unIDE FAR - то же окно, что F9 - Options - Files
   // highlighting в самом FAR
   FFarColorsItem := TMenuItem.Create(Self);
@@ -44929,6 +44941,346 @@ begin
     '  Left = ' + IntToStr(X) + #13#10 +
     '  Top = ' + IntToStr(Y) + #13#10 +
     'end'#13#10;
+end;
+
+// Тип по RTTI строкой для сверки с описанием классов (DsgDescTypeText):
+// "TAlign enum alNone alTop ...", "TColor integer -2147483648 2147483647"
+function DsgRttiTypeText(ATypeInfo: PTypeInfo): string;
+var
+  TypeRec: PTypeData;
+  ValIdx: Integer;
+begin
+  Result := '';
+  if ATypeInfo = nil then
+    Exit;
+  Result := ATypeInfo^.Name;
+  TypeRec := GetTypeData(ATypeInfo);
+  case ATypeInfo^.Kind of
+    tkInteger:
+      Result := Result + ' integer ' + IntToStr(TypeRec^.MinValue) + ' ' +
+                IntToStr(TypeRec^.MaxValue);
+    tkChar:
+      Result := Result + ' char';
+    tkWChar:
+      Result := Result + ' wchar';
+    tkEnumeration:
+    begin
+      Result := Result + ' enum';
+      for ValIdx := TypeRec^.MinValue to TypeRec^.MaxValue do
+        Result := Result + ' ' + GetEnumName(ATypeInfo, ValIdx);
+    end;
+    tkFloat:
+      Result := Result + ' float';
+    tkString, tkLString, tkWString:
+      Result := Result + ' string';
+    tkSet:
+      Result := Result + ' set ' + TypeRec^.CompType^^.Name;
+    tkClass:
+      Result := Result + ' class';
+    tkMethod:
+      Result := Result + ' method';
+    tkInt64:
+      Result := Result + ' int64 ' + IntToStr(TypeRec^.MinInt64Value) + ' ' +
+                IntToStr(TypeRec^.MaxInt64Value);
+    tkVariant:
+      Result := Result + ' variant';
+  else
+    Result := Result + ' other';
+  end;
+end;
+
+// То же по описанию классов
+function DsgDescTypeText(ATyp: TDsgTypeDesc): string;
+var
+  ValIdx: Integer;
+begin
+  Result := '';
+  if ATyp = nil then
+    Exit;
+  Result := ATyp.Name + ' ' + DsgTypeKindName(ATyp.Kind);
+  case ATyp.Kind of
+    dtkInteger, dtkInt64:
+      Result := Result + ' ' + IntToStr(ATyp.MinValue) + ' ' +
+                IntToStr(ATyp.MaxValue);
+    dtkEnum:
+      for ValIdx := 0 to ATyp.Values.Count - 1 do
+        Result := Result + ' ' + ATyp.Values[ValIdx];
+    dtkSet:
+      Result := Result + ' ' + ATyp.ElemType;
+  end;
+end;
+
+// Первая строка, где тексты расходятся: "строка 3: "..." / "..."";
+// '' - тексты одинаковы
+function DsgFirstDiff(const AFirst, ASecond: string): string;
+var
+  FirstLines, SecondLines: TStringList;
+  LineIdx: Integer;
+  FirstLine, SecondLine: string;
+begin
+  Result := '';
+  if AFirst = ASecond then
+    Exit;
+  FirstLines := TStringList.Create;
+  SecondLines := TStringList.Create;
+  try
+    FirstLines.Text := AFirst;
+    SecondLines.Text := ASecond;
+    LineIdx := 0;
+    while (LineIdx < FirstLines.Count) or (LineIdx < SecondLines.Count) do
+    begin
+      FirstLine := '(нет)';
+      SecondLine := '(нет)';
+      if LineIdx < FirstLines.Count then
+        FirstLine := FirstLines[LineIdx];
+      if LineIdx < SecondLines.Count then
+        SecondLine := SecondLines[LineIdx];
+      if FirstLine <> SecondLine then
+      begin
+        Result := Format('строка %d: RTTI "%s", описание "%s"',
+                         [LineIdx + 1, Trim(FirstLine), Trim(SecondLine)]);
+        Exit;
+      end;
+      Inc(LineIdx);
+    end;
+    Result := 'отличаются концы строк';
+  finally
+    SecondLines.Free;
+    FirstLines.Free;
+  end;
+end;
+
+// View - описание классов Delphi 7 (план портирования, шаг 0.8).
+//
+// Файл designer\delphi7_classes.txt пишется по RTTI классов палитры
+// (DsgClasses: страницы и ряд Custom) и служебных классов (TForm, TFrame,
+// TMenuItem, TAction, TTabSheet, TToolButton). Затем он читается обратно и
+// сверяется с тем, что инспектор и конструктор берут из RTTI сейчас: типы
+// свойств (и вложенных - Font.Style), список событий, событие двойного
+// щелчка, объявления обработчиков, умолчания, текст нового компонента.
+// Lazarus-сборка будет брать всё это из файла. Итог - в Compilation log.
+procedure TForm1.DsgDescWriteClick(Sender: TObject);
+const
+  ServiceNames: array[0..5] of string = (
+    'TForm', 'TFrame', 'TMenuItem', 'TAction', 'TTabSheet', 'TToolButton');
+  MaxReported = 60;
+var
+  WriteBase, ReadBack: TDsgClassBase;
+  ClassList, PageList: TList;
+  PageIdx, ItemIdx, EvIdx, Mismatches, Checks, PaletteCount: Integer;
+  FileName, LoadError, ClsName, NameTwo, MethodName: string;
+  Cls: TClass;
+  Desc: TDsgClassDesc;
+  RttiEvents, DescEvents: TStringList;
+  EvCount: Integer;
+  EvList: PPropList;
+
+  procedure Report(const AText: string);
+  begin
+    Inc(Mismatches);
+    if Mismatches <= MaxReported then
+      LogTo(CompLogEdit, '  ' + AText, clRed)
+    else if Mismatches = MaxReported + 1 then
+      LogTo(CompLogEdit, '  ... дальше не выводится', clRed);
+  end;
+
+  procedure Check(const AWhat, ARtti, ADesc: string);
+  var
+    Diff: string;
+  begin
+    Inc(Checks);
+    Diff := DsgFirstDiff(ARtti, ADesc);
+    if Diff <> '' then
+      Report(AWhat + ': ' + Diff);
+  end;
+
+  procedure AddClass(ACls: TClass; const APage: string);
+  var
+    NewDesc: TDsgClassDesc;
+  begin
+    if ACls = nil then
+      Exit;
+    NewDesc := DsgDescribeClass(WriteBase, ACls, APage);
+    if ClassList.IndexOf(ACls) >= 0 then
+      Exit;
+    ClassList.Add(ACls);
+    if not ACls.InheritsFrom(TComponent) then
+      Exit;
+    NewDesc.Defaults.Assign(DefaultsFor(ACls));
+    // Форму и фрейм с палитры не ставят - текст нового не нужен
+    if not ACls.InheritsFrom(TCustomForm) and
+       not ACls.InheritsFrom(TCustomFrame) then
+      NewDesc.NewText.Text := DsgNewObjectText(TComponentClass(ACls),
+        DsgDescNewName(ACls.ClassName), DsgDescNewLeft, DsgDescNewTop);
+  end;
+
+  // Свойства класса ATopCls по пути APrefix (вложенный объект - один
+  // уровень, как Font.Style)
+  procedure CheckProps(ATopCls, ACls: TClass; const APrefix: string;
+                       ADepth: Integer);
+  var
+    PropCount, PropIdx: Integer;
+    PropList: PPropList;
+    PropRec: PPropInfo;
+    Path: string;
+    RttiType: Pointer;
+    DescType: TDsgTypeDesc;
+    RttiWritable, DescWritable: Boolean;
+  begin
+    if (ACls = nil) or (ACls.ClassInfo = nil) then
+      Exit;
+    PropCount := GetPropList(ACls.ClassInfo, tkAny, nil);
+    if ADepth = 0 then
+    begin
+      Desc := ReadBack.FindClass(ATopCls.ClassName);
+      Inc(Checks);
+      if Desc = nil then
+      begin
+        Report(ATopCls.ClassName + ': нет в описании');
+        Exit;
+      end;
+      if Desc.Props.Count <> PropCount then
+        Report(Format('%s: свойств в RTTI %d, в описании %d',
+                      [ATopCls.ClassName, PropCount, Desc.Props.Count]));
+    end;
+    if PropCount <= 0 then
+      Exit;
+    GetMem(PropList, PropCount * SizeOf(PPropInfo));
+    try
+      GetPropList(ACls.ClassInfo, tkAny, PropList);
+      for PropIdx := 0 to PropCount - 1 do
+      begin
+        PropRec := PropList^[PropIdx];
+        Path := APrefix + PropRec^.Name;
+        RttiType := PropTypeFor(ATopCls, Path, RttiWritable);
+        DescType := ReadBack.PropType(ATopCls.ClassName, Path, DescWritable);
+        if DescType = nil then
+        begin
+          Inc(Checks);
+          Report(ATopCls.ClassName + '.' + Path + ': нет в описании');
+          Continue;
+        end;
+        Check(ATopCls.ClassName + '.' + Path,
+              DsgRttiTypeText(PTypeInfo(RttiType)) + ' ' +
+                BoolToStr(RttiWritable, True),
+              DsgDescTypeText(DescType) + ' ' +
+                BoolToStr(DescWritable, True));
+        if (ADepth = 0) and (PropRec^.PropType^^.Kind = tkClass) then
+          CheckProps(ATopCls, GetTypeData(PropRec^.PropType^)^.ClassType,
+                     Path + '.', 1);
+      end;
+    finally
+      FreeMem(PropList);
+    end;
+  end;
+
+begin
+  ShowCompLog;
+  LogComp('--- Описание классов Delphi 7 (0.8)');
+  RegisterDesignClasses;
+  Screen.Cursor := crHourGlass;
+  WriteBase := TDsgClassBase.Create;
+  ReadBack := TDsgClassBase.Create;
+  ClassList := TList.Create;
+  RttiEvents := TStringList.Create;
+  DescEvents := TStringList.Create;
+  try
+    // --- Запись
+    for PageIdx := 0 to DsgPageCount - 1 do
+    begin
+      PageList := DsgPageClasses(PageIdx);
+      for ItemIdx := 0 to PageList.Count - 1 do
+        AddClass(TClass(PageList[ItemIdx]), DsgPageName(PageIdx));
+      PageList := DsgPageCustomClasses(PageIdx);
+      if PageList <> nil then
+        for ItemIdx := 0 to PageList.Count - 1 do
+          AddClass(TClass(PageList[ItemIdx]),
+                   DsgPageName(PageIdx) + '/Custom');
+    end;
+    PaletteCount := ClassList.Count;
+    for ItemIdx := Low(ServiceNames) to High(ServiceNames) do
+      AddClass(GetClass(ServiceNames[ItemIdx]), '');
+
+    FileName := AppSubDir('designer');
+    ForceDirectories(FileName);
+    FileName := FileName + DsgDescFileName;
+    WriteBase.SaveToFile(FileName);
+    LogComp(Format('Записано: классов %d (с палитры %d, всего с вложенными ' +
+                   '%d), типов %d - %s',
+                   [ClassList.Count, PaletteCount, WriteBase.ClassCount,
+                    WriteBase.TypeCount, FileName]));
+
+    // --- Сверка прочитанного из файла с RTTI
+    if not ReadBack.LoadFromFile(FileName, LoadError) then
+    begin
+      LogTo(CompLogEdit, 'Файл не прочитался: ' + LoadError, clRed);
+      Exit;
+    end;
+    Mismatches := 0;
+    Checks := 0;
+    for ItemIdx := 0 to ClassList.Count - 1 do
+    begin
+      Cls := TClass(ClassList[ItemIdx]);
+      ClsName := Cls.ClassName;
+      CheckProps(Cls, Cls, '', 0);
+      Desc := ReadBack.FindClass(ClsName);
+      if Desc = nil then
+        Continue;
+
+      // События: список, событие двойного щелчка, объявления
+      RttiEvents.Clear;
+      EvCount := GetPropList(Cls.ClassInfo, [tkMethod], nil);
+      if EvCount > 0 then
+      begin
+        GetMem(EvList, EvCount * SizeOf(PPropInfo));
+        try
+          GetPropList(Cls.ClassInfo, [tkMethod], EvList);
+          for EvIdx := 0 to EvCount - 1 do
+            RttiEvents.Add(EvList^[EvIdx]^.Name);
+        finally
+          FreeMem(EvList);
+        end;
+      end;
+      ReadBack.EventNames(ClsName, DescEvents);
+      Check(ClsName + ' события', RttiEvents.Text, DescEvents.Text);
+      Check(ClsName + ' событие двойного щелчка', DsgDefaultEventOf(Cls),
+            ReadBack.DefaultEvent(ClsName));
+      for EvIdx := 0 to RttiEvents.Count - 1 do
+      begin
+        MethodName := DsgDescNewName(ClsName) +
+                      Copy(RttiEvents[EvIdx], 3, MaxInt);
+        Check(ClsName + '.' + RttiEvents[EvIdx],
+              DsgEventDecl(Cls, RttiEvents[EvIdx], MethodName),
+              ReadBack.EventDecl(ClsName, RttiEvents[EvIdx], MethodName));
+      end;
+
+      if not Cls.InheritsFrom(TComponent) then
+        Continue;
+      Check(ClsName + ' умолчания', DefaultsFor(Cls).Text, Desc.Defaults.Text);
+      if Desc.NewText.Count > 0 then
+      begin
+        // Другое имя и место, чем при записи: проверяется и замена
+        NameTwo := DsgDescNewName(ClsName);
+        NameTwo := Copy(NameTwo, 1, Length(NameTwo) - 1) + '2';
+        Check(ClsName + ' новый компонент',
+              DsgNewObjectText(TComponentClass(Cls), NameTwo, 24, 40),
+              ReadBack.NewObjectText(ClsName, NameTwo, 24, 40));
+      end;
+    end;
+    if Mismatches = 0 then
+      LogTo(CompLogEdit, Format('Сверка с RTTI: проверок %d, ' +
+            'расхождений нет', [Checks]), clGreen)
+    else
+      LogTo(CompLogEdit, Format('Сверка с RTTI: проверок %d, ' +
+            'расхождений %d', [Checks, Mismatches]), clRed);
+  finally
+    DescEvents.Free;
+    RttiEvents.Free;
+    ClassList.Free;
+    ReadBack.Free;
+    WriteBase.Free;
+    Screen.Cursor := crDefault;
+  end;
 end;
 
 // Вставка компонента, выбранного на палитре, туда, где щёлкнули: имя -

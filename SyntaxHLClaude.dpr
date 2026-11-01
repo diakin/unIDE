@@ -75,6 +75,8 @@ uses
   PathKit in 'PathKit.pas',
   OsShell in 'OsShell.pas',
   OsReg in 'OsReg.pas',
+  DsgClassDesc in 'DsgClassDesc.pas',
+  DsgClassDescW in 'DsgClassDescW.pas',
   MdHtml in 'MdHtml.pas',
   FmtView in 'FmtView.pas',
   SplitPane in 'SplitPane.pas',
