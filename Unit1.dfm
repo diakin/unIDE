@@ -980,6 +980,51 @@ object Form1: TForm1
         Caption = '-'
         Hint = ''
       end
+      object RepoMenuItem11: TMenuItem
+        Caption = 'New Repository...'
+        Hint = 'Создать репозиторий git в папке (git init)'
+        OnClick = GitNewRepoClick
+      end
+      object RepoMenuItem12: TMenuItem
+        Caption = 'Add Local Repository...'
+        Hint = 'Выбрать папку с репозиторием - с ним работают панель Git и это меню'
+        OnClick = GitAddRepoClick
+      end
+      object RepoMenuItem13: TMenuItem
+        Caption = 'Clone Repository...'
+        Hint = 'Скачать репозиторий с GitHub (git clone)'
+        OnClick = GitCloneClick
+      end
+      object RepoMenuItem14: TMenuItem
+        Caption = 'Use Repository of Current Project'
+        Hint = 'Снова репозиторий открытого проекта (выбор вручную снимается)'
+        OnClick = GitUseProjectRepoClick
+      end
+      object RepoMenuItem15: TMenuItem
+        Caption = 'Create Project from Repository...'
+        Hint = 'Проект unIDE на основе текущего репозитория: окно New Project с его папкой'
+        OnClick = GitCreateProjectClick
+      end
+      object RepoMenuItem16: TMenuItem
+        Caption = 'Commit...'
+        Hint = 'Окно Commit: изменения, разница, заголовок и описание'
+        OnClick = GitCommitClick
+      end
+      object RepoMenuItem17: TMenuItem
+        Caption = 'Open in Git Bash'
+        Hint = 'Терминал Git Bash в папке репозитория'
+        OnClick = GitBashClick
+      end
+      object RepoMenuItem18: TMenuItem
+        Caption = 'Repository Settings...'
+        Hint = 'Адрес remote origin (git remote set-url)'
+        OnClick = GitRepoSettingsClick
+      end
+      object RepoMenuItem19: TMenuItem
+        Caption = 'Delete Local Repository...'
+        Hint = 'Папку текущего репозитория - в корзину (на сервере он остаётся)'
+        OnClick = GitDeleteRepoClick
+      end
     end
     object BranchMenu: TMenuItem
       Caption = 'Branch'
@@ -1004,6 +1049,86 @@ object Form1: TForm1
       object BranchMenuItem5: TMenuItem
         Caption = '-'
         Hint = ''
+      end
+      object BranchMenuItem6: TMenuItem
+        Caption = 'New Branch...'
+        Hint = 'Новая ветка от текущего коммита и переход на неё (git checkout -b)'
+        OnClick = GitNewBranchClick
+      end
+      object BranchMenuItem7: TMenuItem
+        Caption = 'Switch Branch...'
+        Hint = 'Перейти на другую ветку (git checkout)'
+        OnClick = GitSwitchBranchClick
+      end
+      object BranchMenuItem8: TMenuItem
+        Caption = 'Rename Branch...'
+        Hint = 'Переименовать текущую ветку (git branch -m)'
+        OnClick = GitRenameBranchClick
+      end
+      object BranchMenuItem9: TMenuItem
+        Caption = 'Delete Branch...'
+        Hint = 'Удалить локальную ветку (git branch -d)'
+        OnClick = GitDeleteBranchClick
+      end
+      object BranchMenuItem10: TMenuItem
+        Caption = 'Discard All Changes...'
+        Hint = 'Отменить все изменения: файлы - как в последнем коммите, новые - в корзину'
+        OnClick = GitDiscardAllClick
+      end
+      object BranchMenuItem11: TMenuItem
+        Caption = 'Stash All Changes'
+        Hint = 'Убрать все изменения (и новые файлы) в stash (git stash push -u)'
+        OnClick = GitStashClick
+      end
+      object BranchMenuItem12: TMenuItem
+        Caption = 'Restore Stash...'
+        Hint = 'Вернуть изменения из stash (git stash pop)'
+        OnClick = GitStashRestoreClick
+      end
+      object BranchMenuItem13: TMenuItem
+        Caption = 'Drop Stash...'
+        Hint = 'Удалить запись stash (git stash drop)'
+        OnClick = GitStashDropClick
+      end
+      object BranchMenuItem14: TMenuItem
+        Caption = 'Hidden Local Changes...'
+        Hint = 'Файлы, чьи изменения скрыты (Ignore - скрыть свои изменения, skip-worktree): вернуть в список изменений'
+        OnClick = GitHiddenClick
+      end
+      object BranchMenuItem15: TMenuItem
+        Caption = 'Tracked but Ignored Files...'
+        Hint = 'Файлы в репозитории, которые подходят под .gitignore: оставить (исключение в .gitignore) или убрать из репозитория (git rm --cached)'
+        OnClick = GitTrackedClick
+      end
+      object BranchMenuItem16: TMenuItem
+        Caption = 'Update from Default Branch'
+        Hint = 'Влить в текущую ветку основную ветку сервера (git merge origin/<основная>)'
+        OnClick = GitUpdateFromDefaultClick
+      end
+      object BranchMenuItem17: TMenuItem
+        Caption = 'Merge into Current Branch...'
+        Hint = 'Влить выбранную ветку в текущую (git merge)'
+        OnClick = GitMergeClick
+      end
+      object BranchMenuItem18: TMenuItem
+        Caption = 'Merge Current Branch Into...'
+        Hint = 'Влить текущую ветку в другую (например mainTest в main) и отправить ту на сервер'
+        OnClick = GitMergeIntoClick
+      end
+      object BranchMenuItem19: TMenuItem
+        Caption = 'Compare Branches...'
+        Hint = 'Сравнить две ветки: коммиты, которые есть только в одной из них, и разные файлы'
+        OnClick = GitCompareClick
+      end
+      object BranchMenuItem20: TMenuItem
+        Caption = 'Commits Not in Current Branch...'
+        Hint = 'Коммиты всех веток, которых нет в текущей: перенести (cherry-pick), влить ветку, удалить ветку'
+        OnClick = GitUnmergedClick
+      end
+      object BranchMenuItem21: TMenuItem
+        Caption = 'Create Pull Request'
+        Hint = 'Страница нового pull request для текущей ветки на GitHub'
+        OnClick = GitPullRequestClick
       end
     end
   end

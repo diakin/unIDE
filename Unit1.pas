@@ -910,6 +910,31 @@ type
     BranchMenuItem3: TMenuItem;
     BranchMenuItem4: TMenuItem;
     BranchMenuItem5: TMenuItem;
+    RepoMenuItem11: TMenuItem;
+    RepoMenuItem12: TMenuItem;
+    RepoMenuItem13: TMenuItem;
+    RepoMenuItem14: TMenuItem;
+    RepoMenuItem15: TMenuItem;
+    RepoMenuItem16: TMenuItem;
+    RepoMenuItem17: TMenuItem;
+    RepoMenuItem18: TMenuItem;
+    RepoMenuItem19: TMenuItem;
+    BranchMenuItem6: TMenuItem;
+    BranchMenuItem7: TMenuItem;
+    BranchMenuItem8: TMenuItem;
+    BranchMenuItem9: TMenuItem;
+    BranchMenuItem10: TMenuItem;
+    BranchMenuItem11: TMenuItem;
+    BranchMenuItem12: TMenuItem;
+    BranchMenuItem13: TMenuItem;
+    BranchMenuItem14: TMenuItem;
+    BranchMenuItem15: TMenuItem;
+    BranchMenuItem16: TMenuItem;
+    BranchMenuItem17: TMenuItem;
+    BranchMenuItem18: TMenuItem;
+    BranchMenuItem19: TMenuItem;
+    BranchMenuItem20: TMenuItem;
+    BranchMenuItem21: TMenuItem;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -1166,6 +1191,31 @@ type
     procedure GitViewOnGitHubClick(Sender: TObject);
     procedure GitExplorerClick(Sender: TObject);
     procedure GitViewBranchClick(Sender: TObject);
+    procedure GitNewRepoClick(Sender: TObject);
+    procedure GitAddRepoClick(Sender: TObject);
+    procedure GitCloneClick(Sender: TObject);
+    procedure GitUseProjectRepoClick(Sender: TObject);
+    procedure GitCreateProjectClick(Sender: TObject);
+    procedure GitCommitClick(Sender: TObject);
+    procedure GitBashClick(Sender: TObject);
+    procedure GitRepoSettingsClick(Sender: TObject);
+    procedure GitDeleteRepoClick(Sender: TObject);
+    procedure GitNewBranchClick(Sender: TObject);
+    procedure GitSwitchBranchClick(Sender: TObject);
+    procedure GitRenameBranchClick(Sender: TObject);
+    procedure GitDeleteBranchClick(Sender: TObject);
+    procedure GitDiscardAllClick(Sender: TObject);
+    procedure GitStashClick(Sender: TObject);
+    procedure GitStashRestoreClick(Sender: TObject);
+    procedure GitStashDropClick(Sender: TObject);
+    procedure GitHiddenClick(Sender: TObject);
+    procedure GitTrackedClick(Sender: TObject);
+    procedure GitUpdateFromDefaultClick(Sender: TObject);
+    procedure GitMergeClick(Sender: TObject);
+    procedure GitMergeIntoClick(Sender: TObject);
+    procedure GitCompareClick(Sender: TObject);
+    procedure GitUnmergedClick(Sender: TObject);
+    procedure GitPullRequestClick(Sender: TObject);
 
   private
     // Прослойка редактора (EdIntf; план Lazarus, шаг 0.1). Все сообщения
@@ -3275,7 +3325,6 @@ type
     procedure GitRepoBtnClick(Sender: TObject);
     procedure GitRecentRepoClick(Sender: TObject);
     procedure GitRecentRemoveClick(Sender: TObject);
-    procedure GitDeleteRepoClick(Sender: TObject);
     procedure GitHelpClick(Sender: TObject);
     procedure GitShowRepoFields(AShow: Boolean);
     procedure GitLayoutRepoRow;
@@ -3307,7 +3356,6 @@ type
     function  GitTrackedLoad(var AFiles: TGitTrackedFiles): Boolean;
     function  GitTrackedKeep(const AFiles: TGitTrackedFiles): Boolean;
     function  GitTrackedUntrack(const AFiles: TGitTrackedFiles): Boolean;
-    procedure GitTrackedClick(Sender: TObject);
     function  GitKeepBefore(const AGit, ARepo, AArgs: string;
                             AFiles: TStrings; var AKeepDir: string): Boolean;
     procedure GitKeepAfter(const ARepo, AKeepDir: string; AFiles: TStrings);
@@ -3339,33 +3387,15 @@ type
       AMaxLen: Integer): WideString;
     procedure GitDiffTraceLog(const AText: string);
     procedure GitCommitIn(const AGit, ARepo: string);
-    procedure GitCommitClick(Sender: TObject);
-    procedure GitBashClick(Sender: TObject);
     procedure GitBuildMenus;
-    procedure GitNewRepoClick(Sender: TObject);
-    procedure GitCreateProjectClick(Sender: TObject);
-    procedure GitAddRepoClick(Sender: TObject);
-    procedure GitCloneClick(Sender: TObject);
-    procedure GitUseProjectRepoClick(Sender: TObject);
     procedure GitOpenUrl(const AUrl: string);
     function  GitWebUrl(const AGit, ARepo: string): string;
-    procedure GitRepoSettingsClick(Sender: TObject);
-    procedure GitNewBranchClick(Sender: TObject);
-    procedure GitSwitchBranchClick(Sender: TObject);
-    procedure GitRenameBranchClick(Sender: TObject);
-    procedure GitDeleteBranchClick(Sender: TObject);
     function  GitDefaultRemoteBranch(const AGit, ARepo: string): string;
-    procedure GitUpdateFromDefaultClick(Sender: TObject);
-    procedure GitMergeClick(Sender: TObject);
-    procedure GitCompareClick(Sender: TObject);
     procedure GitCompareShow(const Git, Repo, LeftBranch, RightBranch: string);
     procedure GitViewSyncClick(Sender: TObject);
-    procedure GitMergeIntoClick(Sender: TObject);
-    procedure GitUnmergedClick(Sender: TObject);
     function  GitDeleteBranchAll(const AGit, ARepo, ABranch, ARefs: string;
                                  AUnmerged: Integer;
                                  AAsk: Boolean = True): Boolean;
-    procedure GitPullRequestClick(Sender: TObject);
     function  GitHistQuery(const AArgs: string; var AOutput: WideString): Integer;
     function  GitTickIdle: Boolean;
     procedure GitUnmergedProgress(const AText: string);
@@ -3385,17 +3415,12 @@ type
     function  GitDlgDiscard(const AChanges: TGitChanges): Boolean;
     function  GitAllChanges(const AGit, ARepo: string;
                             var AChanges: TGitChanges): Boolean;
-    procedure GitDiscardAllClick(Sender: TObject);
-    procedure GitStashClick(Sender: TObject);
     function  GitStashList(const AGit, ARepo: string;
                            AList, ARefs: TStrings): Boolean;
     function  GitChooseStash(const AGit, ARepo, ACaption,
                              APrompt: string): string;
-    procedure GitStashRestoreClick(Sender: TObject);
-    procedure GitStashDropClick(Sender: TObject);
     function  GitDlgStatus(var AChanges: TGitChanges): Boolean;
     function  GitDlgIgnore(const AChanges: TGitChanges): Boolean;
-    procedure GitHiddenClick(Sender: TObject);
     function  RosKnownEnvScript: string;
     function  RosPciSourceDir(var ASettings: TRosSettings): Boolean;
     function  RosDownloadPciIds(const ASourceDir, AVendors: string;
@@ -72661,86 +72686,86 @@ begin
   // .dfm: BranchMenu.AutoHotkeys := maManual;
   // .dfm: MainMenu1.Items.Insert(RepoMenu.MenuIndex + 1, BranchMenu);
 
-  AddItem(RepoMenu, 'New Repository...', 'Создать репозиторий git в папке ' +
-    '(git init)', GitNewRepoClick);
-  AddItem(RepoMenu, 'Add Local Repository...', 'Выбрать папку с ' +
-    'репозиторием - с ним работают панель Git и это меню', GitAddRepoClick);
-  AddItem(RepoMenu, 'Clone Repository...', 'Скачать репозиторий с GitHub ' +
-    '(git clone)', GitCloneClick);
-  AddItem(RepoMenu, 'Use Repository of Current Project', 'Снова ' +
-    'репозиторий открытого проекта (выбор вручную снимается)',
-    GitUseProjectRepoClick);
-  AddItem(RepoMenu, 'Create Project from Repository...', 'Проект unIDE ' +
-    'на основе текущего репозитория: окно New Project с его папкой',
-    GitCreateProjectClick);
+  // .dfm: AddItem(RepoMenu, 'New Repository...', 'Создать репозиторий git в папке ' +
+    // .dfm: '(git init)', GitNewRepoClick);
+  // .dfm: AddItem(RepoMenu, 'Add Local Repository...', 'Выбрать папку с ' +
+    // .dfm: 'репозиторием - с ним работают панель Git и это меню', GitAddRepoClick);
+  // .dfm: AddItem(RepoMenu, 'Clone Repository...', 'Скачать репозиторий с GitHub ' +
+    // .dfm: '(git clone)', GitCloneClick);
+  // .dfm: AddItem(RepoMenu, 'Use Repository of Current Project', 'Снова ' +
+    // .dfm: 'репозиторий открытого проекта (выбор вручную снимается)',
+    // .dfm: GitUseProjectRepoClick);
+  // .dfm: AddItem(RepoMenu, 'Create Project from Repository...', 'Проект unIDE ' +
+    // .dfm: 'на основе текущего репозитория: окно New Project с его папкой',
+    // .dfm: GitCreateProjectClick);
   // .dfm: AddItem(RepoMenu, '-', '', nil);
   // .dfm: AddItem(RepoMenu, 'Fetch', 'git fetch --all --prune', GitFetchClick);
   // .dfm: AddItem(RepoMenu, 'Pull', 'git pull (merge)', GitPullClick);
   // .dfm: AddItem(RepoMenu, 'Push', 'git push (ветки на сервере нет - опубликовать)',
     // .dfm: GitPushClick);
-  AddItem(RepoMenu, 'Commit...', 'Окно Commit: изменения, разница, ' +
-    'заголовок и описание', GitCommitClick);
+  // .dfm: AddItem(RepoMenu, 'Commit...', 'Окно Commit: изменения, разница, ' +
+    // .dfm: 'заголовок и описание', GitCommitClick);
   // .dfm: AddItem(RepoMenu, 'Commits history...', 'История коммитов текущей ветки',
     // .dfm: GitHistoryClick);
   // .dfm: AddItem(RepoMenu, '-', '', nil);
   // .dfm: AddItem(RepoMenu, 'View on GitHub', 'Страница репозитория в браузере',
     // .dfm: GitViewOnGitHubClick);
-  AddItem(RepoMenu, 'Open in Git Bash', 'Терминал Git Bash в папке ' +
-    'репозитория', GitBashClick);
+  // .dfm: AddItem(RepoMenu, 'Open in Git Bash', 'Терминал Git Bash в папке ' +
+    // .dfm: 'репозитория', GitBashClick);
   // .dfm: AddItem(RepoMenu, 'Show in Explorer', 'Папка репозитория в Проводнике',
     // .dfm: GitExplorerClick);
   // .dfm: AddItem(RepoMenu, '-', '', nil);
-  AddItem(RepoMenu, 'Repository Settings...', 'Адрес remote origin ' +
-    '(git remote set-url)', GitRepoSettingsClick);
-  AddItem(RepoMenu, 'Delete Local Repository...', 'Папку текущего ' +
-    'репозитория - в корзину (на сервере он остаётся)', GitDeleteRepoClick);
+  // .dfm: AddItem(RepoMenu, 'Repository Settings...', 'Адрес remote origin ' +
+    // .dfm: '(git remote set-url)', GitRepoSettingsClick);
+  // .dfm: AddItem(RepoMenu, 'Delete Local Repository...', 'Папку текущего ' +
+    // .dfm: 'репозитория - в корзину (на сервере он остаётся)', GitDeleteRepoClick);
   // .dfm: AddItem(RepoMenu, '-', '', nil);
   AddItem(RepoMenu, 'Help', 'Справка: что делает каждый пункт меню ' +
     'Repository (git_ref\help\git.chm)', GitHelpClick).Tag := 1;
 
-  AddItem(BranchMenu, 'New Branch...', 'Новая ветка от текущего коммита и ' +
-    'переход на неё (git checkout -b)', GitNewBranchClick);
-  AddItem(BranchMenu, 'Switch Branch...', 'Перейти на другую ветку (git ' +
-    'checkout)', GitSwitchBranchClick);
-  AddItem(BranchMenu, 'Rename Branch...', 'Переименовать текущую ветку ' +
-    '(git branch -m)', GitRenameBranchClick);
-  AddItem(BranchMenu, 'Delete Branch...', 'Удалить локальную ветку (git ' +
-    'branch -d)', GitDeleteBranchClick);
+  // .dfm: AddItem(BranchMenu, 'New Branch...', 'Новая ветка от текущего коммита и ' +
+    // .dfm: 'переход на неё (git checkout -b)', GitNewBranchClick);
+  // .dfm: AddItem(BranchMenu, 'Switch Branch...', 'Перейти на другую ветку (git ' +
+    // .dfm: 'checkout)', GitSwitchBranchClick);
+  // .dfm: AddItem(BranchMenu, 'Rename Branch...', 'Переименовать текущую ветку ' +
+    // .dfm: '(git branch -m)', GitRenameBranchClick);
+  // .dfm: AddItem(BranchMenu, 'Delete Branch...', 'Удалить локальную ветку (git ' +
+    // .dfm: 'branch -d)', GitDeleteBranchClick);
   // .dfm: AddItem(BranchMenu, '-', '', nil);
-  AddItem(BranchMenu, 'Discard All Changes...', 'Отменить все изменения: ' +
-    'файлы - как в последнем коммите, новые - в корзину', GitDiscardAllClick);
-  AddItem(BranchMenu, 'Stash All Changes', 'Убрать все изменения (и новые ' +
-    'файлы) в stash (git stash push -u)', GitStashClick);
-  AddItem(BranchMenu, 'Restore Stash...', 'Вернуть изменения из stash ' +
-    '(git stash pop)', GitStashRestoreClick);
-  AddItem(BranchMenu, 'Drop Stash...', 'Удалить запись stash (git stash ' +
-    'drop)', GitStashDropClick);
-  AddItem(BranchMenu, 'Hidden Local Changes...', 'Файлы, чьи изменения ' +
-    'скрыты (Ignore - скрыть свои изменения, skip-worktree): вернуть в ' +
-    'список изменений', GitHiddenClick);
-  AddItem(BranchMenu, 'Tracked but Ignored Files...', 'Файлы в ' +
-    'репозитории, которые подходят под .gitignore: оставить (исключение в ' +
-    '.gitignore) или убрать из репозитория (git rm --cached)',
-    GitTrackedClick);
+  // .dfm: AddItem(BranchMenu, 'Discard All Changes...', 'Отменить все изменения: ' +
+    // .dfm: 'файлы - как в последнем коммите, новые - в корзину', GitDiscardAllClick);
+  // .dfm: AddItem(BranchMenu, 'Stash All Changes', 'Убрать все изменения (и новые ' +
+    // .dfm: 'файлы) в stash (git stash push -u)', GitStashClick);
+  // .dfm: AddItem(BranchMenu, 'Restore Stash...', 'Вернуть изменения из stash ' +
+    // .dfm: '(git stash pop)', GitStashRestoreClick);
+  // .dfm: AddItem(BranchMenu, 'Drop Stash...', 'Удалить запись stash (git stash ' +
+    // .dfm: 'drop)', GitStashDropClick);
+  // .dfm: AddItem(BranchMenu, 'Hidden Local Changes...', 'Файлы, чьи изменения ' +
+    // .dfm: 'скрыты (Ignore - скрыть свои изменения, skip-worktree): вернуть в ' +
+    // .dfm: 'список изменений', GitHiddenClick);
+  // .dfm: AddItem(BranchMenu, 'Tracked but Ignored Files...', 'Файлы в ' +
+    // .dfm: 'репозитории, которые подходят под .gitignore: оставить (исключение в ' +
+    // .dfm: '.gitignore) или убрать из репозитория (git rm --cached)',
+    // .dfm: GitTrackedClick);
   // .dfm: AddItem(BranchMenu, '-', '', nil);
-  AddItem(BranchMenu, 'Update from Default Branch', 'Влить в текущую ' +
-    'ветку основную ветку сервера (git merge origin/<основная>)',
-    GitUpdateFromDefaultClick);
-  AddItem(BranchMenu, 'Merge into Current Branch...', 'Влить выбранную ' +
-    'ветку в текущую (git merge)', GitMergeClick);
-  AddItem(BranchMenu, 'Merge Current Branch Into...', 'Влить текущую ветку ' +
-    'в другую (например mainTest в main) и отправить ту на сервер',
-    GitMergeIntoClick);
-  AddItem(BranchMenu, 'Compare Branches...', 'Сравнить две ветки: коммиты, ' +
-    'которые есть только в одной из них, и разные файлы', GitCompareClick);
-  AddItem(BranchMenu, 'Commits Not in Current Branch...', 'Коммиты всех ' +
-    'веток, которых нет в текущей: перенести (cherry-pick), влить ветку, ' +
-    'удалить ветку', GitUnmergedClick);
+  // .dfm: AddItem(BranchMenu, 'Update from Default Branch', 'Влить в текущую ' +
+    // .dfm: 'ветку основную ветку сервера (git merge origin/<основная>)',
+    // .dfm: GitUpdateFromDefaultClick);
+  // .dfm: AddItem(BranchMenu, 'Merge into Current Branch...', 'Влить выбранную ' +
+    // .dfm: 'ветку в текущую (git merge)', GitMergeClick);
+  // .dfm: AddItem(BranchMenu, 'Merge Current Branch Into...', 'Влить текущую ветку ' +
+    // .dfm: 'в другую (например mainTest в main) и отправить ту на сервер',
+    // .dfm: GitMergeIntoClick);
+  // .dfm: AddItem(BranchMenu, 'Compare Branches...', 'Сравнить две ветки: коммиты, ' +
+    // .dfm: 'которые есть только в одной из них, и разные файлы', GitCompareClick);
+  // .dfm: AddItem(BranchMenu, 'Commits Not in Current Branch...', 'Коммиты всех ' +
+    // .dfm: 'веток, которых нет в текущей: перенести (cherry-pick), влить ветку, ' +
+    // .dfm: 'удалить ветку', GitUnmergedClick);
   // .dfm: AddItem(BranchMenu, '-', '', nil);
   // .dfm: AddItem(BranchMenu, 'View Branch on GitHub', 'Ветка на GitHub в браузере',
     // .dfm: GitViewBranchClick);
-  AddItem(BranchMenu, 'Create Pull Request', 'Страница нового pull request ' +
-    'для текущей ветки на GitHub', GitPullRequestClick);
+  // .dfm: AddItem(BranchMenu, 'Create Pull Request', 'Страница нового pull request ' +
+    // .dfm: 'для текущей ветки на GitHub', GitPullRequestClick);
   // .dfm: AddItem(BranchMenu, '-', '', nil);
   AddItem(BranchMenu, 'Help', 'Справка: что делает каждый пункт меню ' +
     'Branch (git_ref\help\git.chm)', GitHelpClick).Tag := 2;
