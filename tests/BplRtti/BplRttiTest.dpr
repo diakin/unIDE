@@ -29,7 +29,8 @@ program BplRttiTest;
 
 uses
   Windows, SysUtils, Classes, Registry, TypInfo,
-  BplRtti in '..\..\BplRtti.pas';
+  BplRtti in '..\..\BplRtti.pas',
+  Unit2 in 'Unit2.pas' {Form2};
 
 var
   LogLines: TStringList;
