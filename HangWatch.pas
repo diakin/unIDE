@@ -295,6 +295,7 @@ procedure THangWatch.LoadMap;
 var
   SL, StrList: TStringList;
   I, Idx3, Num, IntU, LineNo: Integer;
+  LineWrap, LinePrev: Integer;
   Str, Txt: string;
   InPub: Boolean;
   Ofs: Cardinal;
@@ -313,6 +314,8 @@ begin
     end;
     InPub := False;
     IntU := -1;
+    LineWrap := 0;
+    LinePrev := 0;
     for I := 0 to SL.Count - 1 do
     begin
       Str := SL[I];
@@ -335,6 +338,8 @@ begin
           IntU := FUnits.Add(Copy(Txt, Idx3 + 1, Num - Idx3 - 1))
         else
           IntU := FUnits.Add(Copy(Txt, 18, MaxInt));
+        LineWrap := 0;
+        LinePrev := 0;
         Continue;
       end;
       if (Copy(Txt, 1, 13) = 'Bound resourc') or (Copy(Txt, 1, 7) = 'Program') then
@@ -368,6 +373,17 @@ begin
           LineNo := StrToIntDef(StrList[Idx3], -1);
           if (LineNo > 0) and MapOfs(StrList[Idx3 + 1], Ofs) then
           begin
+            // Delphi 7 пишет номер строки 16-битным: в модуле длиннее 65535
+            // строк (Unit1) после 65535 идёт 0, 1, ... Записи идут по
+            // адресам, а код - в порядке текста, поэтому резкий спад номера
+            // (больше чем на половину диапазона) - это переполнение
+            LineNo := LineNo + LineWrap;
+            if LineNo < LinePrev - 32768 then
+            begin
+              Inc(LineWrap, 65536);
+              Inc(LineNo, 65536);
+            end;
+            LinePrev := LineNo;
             if FLineCount = Length(FLineOfs) then
             begin
               SetLength(FLineOfs, FLineCount + 16384);
@@ -395,7 +411,7 @@ end;
 // Адрес словами: процедура+смещение (модуль, строка) или системный модуль
 function THangWatch.Describe(Addr: Cardinal): string;
 var
-  Ofs, Best: Cardinal;
+  Ofs, Best, ProcOfs: Cardinal;
   I, BI: Integer;
   MBI: TMemoryBasicInformation;
   Buf: array[0..MAX_PATH] of Char;
@@ -424,6 +440,7 @@ begin
   // Процедура: ближайшее публичное имя не выше адреса
   BI := -1;
   Best := 0;
+  ProcOfs := 0;
   for I := 0 to FPubCount - 1 do
     if (FPubOfs[I] <= Ofs) and ((BI < 0) or (FPubOfs[I] >= Best)) then
     begin
@@ -431,7 +448,10 @@ begin
       BI := I;
     end;
   if BI >= 0 then
-    Result := FPubName[BI] + '+$' + IntToHex(Ofs - Best, 1)
+  begin
+    Result := FPubName[BI] + '+$' + IntToHex(Ofs - Best, 1);
+    ProcOfs := Best;
+  end
   else
     Result := '?';
 
@@ -444,7 +464,9 @@ begin
       Best := FLineOfs[I];
       BI := I;
     end;
-  if BI >= 0 then
+  // Запись строки раньше начала процедуры - от другого модуля (у модулей
+  // VCL номеров строк нет, ближайшая снизу - чужая): строку не писать
+  if (BI >= 0) and (Best >= ProcOfs) then
     Result := Result + '  (' + FUnits[FLineUnit[BI]] + ', строка ' +
               IntToStr(FLineNo[BI]) + ')';
 end;
