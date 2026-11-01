@@ -38402,17 +38402,73 @@ var
     end;
   end;
 
+  // В строке ALine есть идентификатор AWord целым словом
+  function HasWord(const ALine, AWord: string): Boolean;
+  var
+    Up, WordUp: string;
+    From, Found: Integer;
+  begin
+    Result := False;
+    if AWord = '' then
+      Exit;
+    Up := AnsiUpperCase(ALine);
+    WordUp := AnsiUpperCase(AWord);
+    From := 1;
+    repeat
+      Found := PosEx(WordUp, Up, From);
+      if Found <= 0 then
+        Exit;
+      if ((Found = 1) or
+          not (Up[Found - 1] in ['A'..'Z', '0'..'9', '_', '.'])) and
+         ((Found + Length(WordUp) > Length(Up)) or
+          not (Up[Found + Length(WordUp)] in ['A'..'Z', '0'..'9', '_'])) then
+      begin
+        Result := True;
+        Exit;
+      end;
+      From := Found + 1;
+    until False;
+  end;
+
+  // Строка - объявление константы: "Имя: array[..] of string = (...)" или
+  // "Имя = '...'". Имя - в AName
+  function IsConstDecl(const ALine: string; var AName: string): Boolean;
+  var
+    Txt: string;
+    EndPos: Integer;
+  begin
+    Result := False;
+    Txt := Trim(ALine);
+    EndPos := 1;
+    while (EndPos <= Length(Txt)) and
+          (Txt[EndPos] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) do
+      Inc(EndPos);
+    if EndPos = 1 then
+      Exit;
+    AName := Copy(Txt, 1, EndPos - 1);
+    Txt := TrimLeft(Copy(Txt, EndPos, MaxInt));
+    Result := (Txt <> '') and
+      ((Txt[1] = '=') or ((Txt[1] = ':') and (Copy(Txt, 1, 2) <> ':=')));
+  end;
+
   // Создание в строке ALine кладётся в родителя узла: на той же строке
   // TКласс.Create(Родитель) или ниже, до следующего создания,
-  // Родитель.Add(X), Родитель.Insert(..., X), X.Parent := Родитель
+  // Родитель.Add(X), Родитель.Insert(..., X), X.Parent := Родитель.
+  // Строка без создания (вызов помощника MakeItem(Self, EncMenu, ...)) -
+  // если в ней есть имя родителя
   function HasParentLink(ALine: Integer): Boolean;
   var
     LineIdx: Integer;
     Up, ParentUp, LhsUp, CreCls, CreLhs, NextCls, NextLhs: string;
   begin
     Result := False;
-    if (ParentNm = '') or not ParseCreate(Lines[ALine], CreCls, CreLhs) then
+    if ParentNm = '' then
       Exit;
+    if not ParseCreate(Lines[ALine], CreCls, CreLhs) then
+    begin
+      Result := (Pos('(', Lines[ALine]) > 0) and HasWord(Lines[ALine], ParentNm);
+      Exit;
+    end;
     ParentUp := AnsiUpperCase(ParentNm);
     LhsUp := AnsiUpperCase(CreLhs);
     Up := AnsiUpperCase(StringReplace(Lines[ALine], ' ', '', [rfReplaceAll]));
@@ -38641,6 +38697,26 @@ begin
           Continue;
         if Pos(Lit, LineStr) > 0 then
           AddCand(LitHit, I);
+      end;
+      // Литерал в объявлении константы (EncCaptions: array of string =
+      // ('UTF-8', ...)) - вместо него строка ниже, где константа
+      // используется (MakeItem(Self, EncMenu, EncCaptions[EncIdx], ...))
+      for J := 0 to LitHit.Count - 1 do
+      begin
+        Idx3 := Integer(LitHit.Objects[J]);
+        if not IsConstDecl(Lines[Idx3], Str) then
+          Continue;
+        for I := Idx3 + 1 to Idx3 + 100 do
+        begin
+          if I >= Lines.Count then
+            Break;
+          if HasWord(Lines[I], Str) then
+          begin
+            LitHit[J] := Format('%5d:  %s', [I + 1, Trim(Lines[I])]);
+            LitHit.Objects[J] := TObject(I);
+            Break;
+          end;
+        end;
       end;
       // Строки с литералом, которые относятся к созданной выше переменной
       // того же класса (cmbLazBits.Items.Add('64') под cmbLazBits :=
