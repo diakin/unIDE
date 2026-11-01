@@ -519,6 +519,9 @@ object Form1: TForm1
         OnClick = SaveAsClick
         ShortCut = 0
       end
+      object EncMenu: TMenuItem
+        Caption = '&Encoding'
+      end
       object mSepPrj: TMenuItem
         Caption = '-'
         ShortCut = 0
@@ -922,6 +925,85 @@ object Form1: TForm1
       object mHelpAbout: TMenuItem
         Caption = '&About...'
         OnClick = mHelpClick
+      end
+    end
+    object RosMenu: TMenuItem
+      Caption = 'ReactOS'
+      AutoHotkeys = maManual
+    end
+    object RepoMenu: TMenuItem
+      Caption = 'Repository'
+      AutoHotkeys = maManual
+      object RepoMenuItem1: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object RepoMenuItem2: TMenuItem
+        Caption = 'Fetch'
+        Hint = 'git fetch --all --prune'
+        OnClick = GitFetchClick
+      end
+      object RepoMenuItem3: TMenuItem
+        Caption = 'Pull'
+        Hint = 'git pull (merge)'
+        OnClick = GitPullClick
+      end
+      object RepoMenuItem4: TMenuItem
+        Caption = 'Push'
+        Hint = 'git push (ветки на сервере нет - опубликовать)'
+        OnClick = GitPushClick
+      end
+      object RepoMenuItem5: TMenuItem
+        Caption = 'Commits history...'
+        Hint = 'История коммитов текущей ветки'
+        OnClick = GitHistoryClick
+      end
+      object RepoMenuItem6: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object RepoMenuItem7: TMenuItem
+        Caption = 'View on GitHub'
+        Hint = 'Страница репозитория в браузере'
+        OnClick = GitViewOnGitHubClick
+      end
+      object RepoMenuItem8: TMenuItem
+        Caption = 'Show in Explorer'
+        Hint = 'Папка репозитория в Проводнике'
+        OnClick = GitExplorerClick
+      end
+      object RepoMenuItem9: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object RepoMenuItem10: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+    end
+    object BranchMenu: TMenuItem
+      Caption = 'Branch'
+      AutoHotkeys = maManual
+      object BranchMenuItem1: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object BranchMenuItem2: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object BranchMenuItem3: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object BranchMenuItem4: TMenuItem
+        Caption = 'View Branch on GitHub'
+        Hint = 'Ветка на GitHub в браузере'
+        OnClick = GitViewBranchClick
+      end
+      object BranchMenuItem5: TMenuItem
+        Caption = '-'
+        Hint = ''
       end
     end
   end
@@ -1950,5 +2032,39 @@ object Form1: TForm1
       Caption = 'Show .dfm values'
       OnClick = DsgMenuClick
     end
+  end
+  object FLargeTimer: TTimer
+    Left = 16
+    Top = 16
+    Enabled = False
+    Interval = 30
+    OnTimer = LargeTimerTick
+  end
+  object FObjCacheTimer: TTimer
+    Left = 56
+    Top = 16
+    Enabled = False
+    Interval = 1500
+    OnTimer = ObjCacheTimerTick
+  end
+  object FObjPropsTimer: TTimer
+    Left = 96
+    Top = 16
+    Enabled = False
+    Interval = 300
+    OnTimer = ObjPropsTimerTick
+  end
+  object FModPreviewTimer: TTimer
+    Left = 136
+    Top = 16
+    Enabled = False
+    OnTimer = ModPreviewTick
+  end
+  object FGitTimer: TTimer
+    Left = 176
+    Top = 16
+    Enabled = False
+    Interval = 300
+    OnTimer = GitTimerTick
   end
 end

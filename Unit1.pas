@@ -886,6 +886,30 @@ type
     btnCut: TUiIconButton;
     btnCopy: TUiIconButton;
     btnPaste: TUiIconButton;
+    FLargeTimer: TTimer;
+    EncMenu: TMenuItem;
+    FObjCacheTimer: TTimer;
+    FObjPropsTimer: TTimer;
+    FModPreviewTimer: TTimer; // задержка перед построением превью
+    RosMenu: TMenuItem;
+    FGitTimer: TTimer; // обновить панель чуть позже (GitShowBar)
+    RepoMenu: TMenuItem;
+    BranchMenu: TMenuItem;
+    RepoMenuItem1: TMenuItem;
+    RepoMenuItem2: TMenuItem;
+    RepoMenuItem3: TMenuItem;
+    RepoMenuItem4: TMenuItem;
+    RepoMenuItem5: TMenuItem;
+    RepoMenuItem6: TMenuItem;
+    RepoMenuItem7: TMenuItem;
+    RepoMenuItem8: TMenuItem;
+    RepoMenuItem9: TMenuItem;
+    RepoMenuItem10: TMenuItem;
+    BranchMenuItem1: TMenuItem;
+    BranchMenuItem2: TMenuItem;
+    BranchMenuItem3: TMenuItem;
+    BranchMenuItem4: TMenuItem;
+    BranchMenuItem5: TMenuItem;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -1130,6 +1154,18 @@ type
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
     procedure FObjSetListClick(Sender: TObject);
+    procedure LargeTimerTick(Sender: TObject);
+    procedure ObjCacheTimerTick(Sender: TObject);
+    procedure ObjPropsTimerTick(Sender: TObject);
+    procedure ModPreviewTick(Sender: TObject);
+    procedure GitTimerTick(Sender: TObject);
+    procedure GitFetchClick(Sender: TObject);
+    procedure GitPullClick(Sender: TObject);
+    procedure GitPushClick(Sender: TObject);
+    procedure GitHistoryClick(Sender: TObject);
+    procedure GitViewOnGitHubClick(Sender: TObject);
+    procedure GitExplorerClick(Sender: TObject);
+    procedure GitViewBranchClick(Sender: TObject);
 
   private
     // Прослойка редактора (EdIntf; план Lazarus, шаг 0.1). Все сообщения
@@ -1248,7 +1284,6 @@ type
     FGitHistWin: TForm;
     FGitHistGit: string;
     FGitHistRepo: string;
-    FGitTimer: TTimer;            // обновить панель чуть позже (GitShowBar)
     // Слежение за репозиторием, пока панель видна: раз в 5 с, пока открыт
     // Git Bash, запущенный кнопкой (FGitBashProc), - раз в секунду. Панель
     // обновляется, когда меняются служебные файлы .git (FGitStateSig - их
@@ -1300,7 +1335,6 @@ type
     FModHintItem: TListItem;  // строка, для которой показана подсказка
     FModPreview: TImage;      // превью формы справа в окне модулей
     FModPreviewNote: TLabel;  // подпись под превью
-    FModPreviewTimer: TTimer; // задержка перед построением превью
     FModPreviewItem: TListItem; // строка, чьё превью ждёт таймера
     FModPreviewShown: string; // файл формы, чьё превью сейчас показано
     FModPreviewCache: TStringList; // файл|время и размер -> TBitmap (до 640 точек)
@@ -1739,7 +1773,6 @@ type
     // (FObjPropsTimer). Пока таблица пуста - свойства компонента и так
     // никто не смотрит, пока не выберут другой.
     FObjDeferProps: Boolean;
-    FObjPropsTimer: TTimer;
     // Указатели строк других модулей (Strings - ключ FObjSetKey, Objects -
     // TObjSetterEntry)
     FObjSetStash: TStringList;
@@ -1821,7 +1854,6 @@ type
     // Отложенная запись кэша после правки в конструкторе: правки идут
     // подряд, файл пишется, когда они стихли (ObjCacheWriteLater). Ключ и
     // первый корень дерева на момент заказа - дерево с тех пор то же.
-    FObjCacheTimer: TTimer;
     FObjCacheDueKey: string;
     FObjCacheDueRoot: Pointer;
     // Ключ и .dfm дерева, что сейчас в памяти: тот же ключ - перестраивать
@@ -2115,7 +2147,6 @@ type
     FLargeSafe: TIntArray;
     FLargeSafeBuffer: TEdBuffer;
     FLargeWant: Integer;
-    FLargeTimer: TTimer;
     // Шаг 4 - карта после правки разбирается от места правки до схождения
     // со старой картой (ResyncMap), а не по всему тексту. FMapBuffer -
     // буфер, по которому построена карта, FMapBufLen - его длина на момент
@@ -2809,7 +2840,6 @@ type
     function  LargeSafeNext: Boolean;
     procedure LargeMapEnsure;
     procedure LargeMapEdited(ABuffer: TEdBuffer; AFirstRow: Integer);
-    procedure LargeTimerTick(Sender: TObject);
 
     procedure UpdateStatusBarInfo; // Заказать обновление статус-бара
     procedure RefreshStatusBar;    // Собственно пересчёт полей
@@ -2830,7 +2860,6 @@ type
     procedure RenderObjTree(ARoots: TList);
     procedure RefreshObjectInspector(AEvenHidden: Boolean);
     procedure ObjTreeChange(Sender: TObject; Node: TTreeNode);
-    procedure ObjPropsTimerTick(Sender: TObject);
     // TDfmNode (ObjParse - в uses раздела implementation)
     function  ObjLinkTarget(ALink: TObject): TObject;
     procedure RightPagesChange(Sender: TObject);
@@ -3296,17 +3325,13 @@ type
     procedure GitRefreshBar;
     procedure GitRefreshLater;
     procedure GitRefreshClick(Sender: TObject);
-    procedure GitTimerTick(Sender: TObject);
     procedure GitPollStart;
     procedure GitPollTick(Sender: TObject);
     function  GitStateSig: string;
     procedure PalTabsChange(Sender: TObject);
     procedure PalSetCaption(const AText: string);
     procedure GitBranchComboChange(Sender: TObject);
-    procedure GitFetchClick(Sender: TObject);
-    procedure GitPullClick(Sender: TObject);
     procedure GitPushIn(const AGit, ARepo: string);
-    procedure GitPushClick(Sender: TObject);
     function  GitDiffOf(const AChange: TGitChange): WideString;
     function  GitNewFileDiff(const ARelPath: WideString;
       AMaxLen: Integer): WideString;
@@ -3322,8 +3347,6 @@ type
     procedure GitUseProjectRepoClick(Sender: TObject);
     procedure GitOpenUrl(const AUrl: string);
     function  GitWebUrl(const AGit, ARepo: string): string;
-    procedure GitViewOnGitHubClick(Sender: TObject);
-    procedure GitExplorerClick(Sender: TObject);
     procedure GitRepoSettingsClick(Sender: TObject);
     procedure GitNewBranchClick(Sender: TObject);
     procedure GitSwitchBranchClick(Sender: TObject);
@@ -3340,12 +3363,10 @@ type
     function  GitDeleteBranchAll(const AGit, ARepo, ABranch, ARefs: string;
                                  AUnmerged: Integer;
                                  AAsk: Boolean = True): Boolean;
-    procedure GitViewBranchClick(Sender: TObject);
     procedure GitPullRequestClick(Sender: TObject);
     function  GitHistQuery(const AArgs: string; var AOutput: WideString): Integer;
     function  GitTickIdle: Boolean;
     procedure GitUnmergedProgress(const AText: string);
-    procedure GitHistoryClick(Sender: TObject);
     function  GitHistWinQuery(const AArgs: string;
                               var AOutput: WideString): Integer;
     procedure GitHistWinAction(Sender: TObject);
@@ -3582,7 +3603,6 @@ type
                           ASnapKey: string): string;
     procedure ObjCacheWrite(const AFile, AKey: string);
     procedure ObjCacheWriteLater;
-    procedure ObjCacheTimerTick(Sender: TObject);
     function  ObjCacheRead(const AFile, AKey: string; ARoots: TList): Boolean;
     procedure ObjCacheSaveCurrent;
     function  ProbeCacheFile: string;
@@ -3946,7 +3966,6 @@ type
     procedure ModListCheckDpr;
     procedure ProjectListDblClick(Sender: TObject);
     procedure ModPreviewSchedule(AItem: TListItem);
-    procedure ModPreviewTick(Sender: TObject);
     procedure ModPreviewFreeCache;
     procedure ProjectListMouseMove(Sender: TObject; Shift: TShiftState;
                                    X, Y: Integer);
@@ -5245,13 +5264,13 @@ begin
     if High(FLargeSafe) < BlockIdx then
     begin
       FLargeWant := BlockIdx;
-      if FLargeTimer = nil then
-      begin
-        FLargeTimer := TTimer.Create(Self);
-        FLargeTimer.Enabled := False;
-        FLargeTimer.Interval := 30;
-        FLargeTimer.OnTimer := LargeTimerTick;
-      end;
+      // .dfm: if FLargeTimer = nil then
+      // .dfm: begin
+        // .dfm: FLargeTimer := TTimer.Create(Self);
+        // .dfm: FLargeTimer.Enabled := False;
+        // .dfm: FLargeTimer.Interval := 30;
+        // .dfm: FLargeTimer.OnTimer := LargeTimerTick;
+      // .dfm: end;
       FLargeTimer.Enabled := True;
     end;
   end;
@@ -9046,7 +9065,7 @@ end;
 
 procedure TForm1.BuildFileMenu;
 var
-  EncMenu, DelItem: TMenuItem;
+  DelItem: TMenuItem;
   EncIdx: Integer;
 const
   EncCaptions: array[0..2] of string = ('UTF-8', 'UTF-8 BOM', 'ANSI');
@@ -9057,9 +9076,9 @@ begin
   mSave.ShortCut := ShortCut(Ord('S'), [ssCtrl]);
 
   // Encoding - сразу после Save As
-  EncMenu := TMenuItem.Create(Self);
-  EncMenu.Caption := '&Encoding';
-  mSaveAs.Parent.Insert(mSaveAs.MenuIndex + 1, EncMenu);
+  // .dfm: EncMenu := TMenuItem.Create(Self);
+  // .dfm: EncMenu.Caption := '&Encoding';
+  // .dfm: mSaveAs.Parent.Insert(mSaveAs.MenuIndex + 1, EncMenu);
   for EncIdx := 0 to High(FEncItems) do
   begin
     FEncItems[EncIdx] := MakeItem(Self, EncMenu, EncCaptions[EncIdx],
@@ -34991,13 +35010,13 @@ begin
     Exit;
   FObjCacheDueKey := FObjTreeKey;
   FObjCacheDueRoot := FObjRoots[0];
-  if FObjCacheTimer = nil then
-  begin
-    FObjCacheTimer := TTimer.Create(Self);
-    FObjCacheTimer.Enabled := False;
-    FObjCacheTimer.Interval := 1500;
-    FObjCacheTimer.OnTimer := ObjCacheTimerTick;
-  end;
+  // .dfm: if FObjCacheTimer = nil then
+  // .dfm: begin
+    // .dfm: FObjCacheTimer := TTimer.Create(Self);
+    // .dfm: FObjCacheTimer.Enabled := False;
+    // .dfm: FObjCacheTimer.Interval := 1500;
+    // .dfm: FObjCacheTimer.OnTimer := ObjCacheTimerTick;
+  // .dfm: end;
   FObjCacheTimer.Enabled := False;
   FObjCacheTimer.Enabled := True;
 end;
@@ -47070,13 +47089,13 @@ begin
     FObjProps.Items.Clear;
     FObjEvents.Items.Clear;
     FObjHeader.Caption := '';
-    if FObjPropsTimer = nil then
-    begin
-      FObjPropsTimer := TTimer.Create(Self);
-      FObjPropsTimer.Enabled := False;
-      FObjPropsTimer.Interval := 300;
-      FObjPropsTimer.OnTimer := ObjPropsTimerTick;
-    end;
+    // .dfm: if FObjPropsTimer = nil then
+    // .dfm: begin
+      // .dfm: FObjPropsTimer := TTimer.Create(Self);
+      // .dfm: FObjPropsTimer.Enabled := False;
+      // .dfm: FObjPropsTimer.Interval := 300;
+      // .dfm: FObjPropsTimer.OnTimer := ObjPropsTimerTick;
+    // .dfm: end;
     FObjPropsTimer.Enabled := False;
     FObjPropsTimer.Enabled := True;
     Exit;
@@ -61308,12 +61327,12 @@ procedure TForm1.ModPreviewSchedule(AItem: TListItem);
 begin
   if FModPreview = nil then
     Exit;
-  if FModPreviewTimer = nil then
-  begin
-    FModPreviewTimer := TTimer.Create(Self);
-    FModPreviewTimer.Enabled := False;
-    FModPreviewTimer.OnTimer := ModPreviewTick;
-  end;
+  // .dfm: if FModPreviewTimer = nil then
+  // .dfm: begin
+    // .dfm: FModPreviewTimer := TTimer.Create(Self);
+    // .dfm: FModPreviewTimer.Enabled := False;
+    // .dfm: FModPreviewTimer.OnTimer := ModPreviewTick;
+  // .dfm: end;
   FModPreviewTimer.Enabled := False;
   if AItem = nil then
     Exit;    // мышь ушла со строк - остаётся последнее превью
@@ -68390,14 +68409,14 @@ end;
 // строке состояния.
 procedure TForm1.RosBuildMenu;
 var
-  RosMenu, ToolsMenu, LinkItem: TMenuItem;
+  ToolsMenu, LinkItem: TMenuItem;
   Links: TStringList;
   LinkIdx: Integer;
 begin
-  RosMenu := TMenuItem.Create(Self);
-  RosMenu.Caption := 'ReactOS';
-  RosMenu.AutoHotkeys := maManual;
-  MainMenu1.Items.Insert(mArduino.MenuIndex + 1, RosMenu);
+  // .dfm: RosMenu := TMenuItem.Create(Self);
+  // .dfm: RosMenu.Caption := 'ReactOS';
+  // .dfm: RosMenu.AutoHotkeys := maManual;
+  // .dfm: MainMenu1.Items.Insert(mArduino.MenuIndex + 1, RosMenu);
 
   LinkItem := TMenuItem.Create(Self);
   LinkItem.Caption := 'Run Image (QEMU)';
@@ -71009,13 +71028,13 @@ begin
   if (FGitBar = nil) or not FGitBar.Visible then
     Exit;
   FGitLblBuild.Caption := 'Build: обновляется...';
-  if FGitTimer = nil then
-  begin
-    FGitTimer := TTimer.Create(Self);
-    FGitTimer.Enabled := False;
-    FGitTimer.Interval := 300;
-    FGitTimer.OnTimer := GitTimerTick;
-  end;
+  // .dfm: if FGitTimer = nil then
+  // .dfm: begin
+    // .dfm: FGitTimer := TTimer.Create(Self);
+    // .dfm: FGitTimer.Enabled := False;
+    // .dfm: FGitTimer.Interval := 300;
+    // .dfm: FGitTimer.OnTimer := GitTimerTick;
+  // .dfm: end;
   FGitTimer.Enabled := False;
   FGitTimer.Enabled := True;
 end;
@@ -72574,16 +72593,16 @@ procedure TForm1.GitBuildMenus;
   end;
 
 var
-  RepoMenu, BranchMenu: TMenuItem;
+  // .dfm: BranchMenu: TMenuItem;
 begin
-  RepoMenu := TMenuItem.Create(Self);
-  RepoMenu.Caption := 'Repository';
-  RepoMenu.AutoHotkeys := maManual;
-  MainMenu1.Items.Insert(mArduino.MenuIndex + 2, RepoMenu);
-  BranchMenu := TMenuItem.Create(Self);
-  BranchMenu.Caption := 'Branch';
-  BranchMenu.AutoHotkeys := maManual;
-  MainMenu1.Items.Insert(RepoMenu.MenuIndex + 1, BranchMenu);
+  // .dfm: RepoMenu := TMenuItem.Create(Self);
+  // .dfm: RepoMenu.Caption := 'Repository';
+  // .dfm: RepoMenu.AutoHotkeys := maManual;
+  // .dfm: MainMenu1.Items.Insert(mArduino.MenuIndex + 2, RepoMenu);
+  // .dfm: BranchMenu := TMenuItem.Create(Self);
+  // .dfm: BranchMenu.Caption := 'Branch';
+  // .dfm: BranchMenu.AutoHotkeys := maManual;
+  // .dfm: MainMenu1.Items.Insert(RepoMenu.MenuIndex + 1, BranchMenu);
 
   AddItem(RepoMenu, 'New Repository...', 'Создать репозиторий git в папке ' +
     '(git init)', GitNewRepoClick);
@@ -72597,28 +72616,28 @@ begin
   AddItem(RepoMenu, 'Create Project from Repository...', 'Проект unIDE ' +
     'на основе текущего репозитория: окно New Project с его папкой',
     GitCreateProjectClick);
-  AddItem(RepoMenu, '-', '', nil);
-  AddItem(RepoMenu, 'Fetch', 'git fetch --all --prune', GitFetchClick);
-  AddItem(RepoMenu, 'Pull', 'git pull (merge)', GitPullClick);
-  AddItem(RepoMenu, 'Push', 'git push (ветки на сервере нет - опубликовать)',
-    GitPushClick);
+  // .dfm: AddItem(RepoMenu, '-', '', nil);
+  // .dfm: AddItem(RepoMenu, 'Fetch', 'git fetch --all --prune', GitFetchClick);
+  // .dfm: AddItem(RepoMenu, 'Pull', 'git pull (merge)', GitPullClick);
+  // .dfm: AddItem(RepoMenu, 'Push', 'git push (ветки на сервере нет - опубликовать)',
+    // .dfm: GitPushClick);
   AddItem(RepoMenu, 'Commit...', 'Окно Commit: изменения, разница, ' +
     'заголовок и описание', GitCommitClick);
-  AddItem(RepoMenu, 'Commits history...', 'История коммитов текущей ветки',
-    GitHistoryClick);
-  AddItem(RepoMenu, '-', '', nil);
-  AddItem(RepoMenu, 'View on GitHub', 'Страница репозитория в браузере',
-    GitViewOnGitHubClick);
+  // .dfm: AddItem(RepoMenu, 'Commits history...', 'История коммитов текущей ветки',
+    // .dfm: GitHistoryClick);
+  // .dfm: AddItem(RepoMenu, '-', '', nil);
+  // .dfm: AddItem(RepoMenu, 'View on GitHub', 'Страница репозитория в браузере',
+    // .dfm: GitViewOnGitHubClick);
   AddItem(RepoMenu, 'Open in Git Bash', 'Терминал Git Bash в папке ' +
     'репозитория', GitBashClick);
-  AddItem(RepoMenu, 'Show in Explorer', 'Папка репозитория в Проводнике',
-    GitExplorerClick);
-  AddItem(RepoMenu, '-', '', nil);
+  // .dfm: AddItem(RepoMenu, 'Show in Explorer', 'Папка репозитория в Проводнике',
+    // .dfm: GitExplorerClick);
+  // .dfm: AddItem(RepoMenu, '-', '', nil);
   AddItem(RepoMenu, 'Repository Settings...', 'Адрес remote origin ' +
     '(git remote set-url)', GitRepoSettingsClick);
   AddItem(RepoMenu, 'Delete Local Repository...', 'Папку текущего ' +
     'репозитория - в корзину (на сервере он остаётся)', GitDeleteRepoClick);
-  AddItem(RepoMenu, '-', '', nil);
+  // .dfm: AddItem(RepoMenu, '-', '', nil);
   AddItem(RepoMenu, 'Help', 'Справка: что делает каждый пункт меню ' +
     'Repository (git_ref\help\git.chm)', GitHelpClick).Tag := 1;
 
@@ -72630,7 +72649,7 @@ begin
     '(git branch -m)', GitRenameBranchClick);
   AddItem(BranchMenu, 'Delete Branch...', 'Удалить локальную ветку (git ' +
     'branch -d)', GitDeleteBranchClick);
-  AddItem(BranchMenu, '-', '', nil);
+  // .dfm: AddItem(BranchMenu, '-', '', nil);
   AddItem(BranchMenu, 'Discard All Changes...', 'Отменить все изменения: ' +
     'файлы - как в последнем коммите, новые - в корзину', GitDiscardAllClick);
   AddItem(BranchMenu, 'Stash All Changes', 'Убрать все изменения (и новые ' +
@@ -72646,7 +72665,7 @@ begin
     'репозитории, которые подходят под .gitignore: оставить (исключение в ' +
     '.gitignore) или убрать из репозитория (git rm --cached)',
     GitTrackedClick);
-  AddItem(BranchMenu, '-', '', nil);
+  // .dfm: AddItem(BranchMenu, '-', '', nil);
   AddItem(BranchMenu, 'Update from Default Branch', 'Влить в текущую ' +
     'ветку основную ветку сервера (git merge origin/<основная>)',
     GitUpdateFromDefaultClick);
@@ -72660,12 +72679,12 @@ begin
   AddItem(BranchMenu, 'Commits Not in Current Branch...', 'Коммиты всех ' +
     'веток, которых нет в текущей: перенести (cherry-pick), влить ветку, ' +
     'удалить ветку', GitUnmergedClick);
-  AddItem(BranchMenu, '-', '', nil);
-  AddItem(BranchMenu, 'View Branch on GitHub', 'Ветка на GitHub в браузере',
-    GitViewBranchClick);
+  // .dfm: AddItem(BranchMenu, '-', '', nil);
+  // .dfm: AddItem(BranchMenu, 'View Branch on GitHub', 'Ветка на GitHub в браузере',
+    // .dfm: GitViewBranchClick);
   AddItem(BranchMenu, 'Create Pull Request', 'Страница нового pull request ' +
     'для текущей ветки на GitHub', GitPullRequestClick);
-  AddItem(BranchMenu, '-', '', nil);
+  // .dfm: AddItem(BranchMenu, '-', '', nil);
   AddItem(BranchMenu, 'Help', 'Справка: что делает каждый пункт меню ' +
     'Branch (git_ref\help\git.chm)', GitHelpClick).Tag := 2;
 end;
