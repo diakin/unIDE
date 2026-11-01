@@ -318,7 +318,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.33';
+  DfmMoveBuild = 'b.34';
 
 constructor TMoveInfo.Create;
 begin
@@ -4139,6 +4139,25 @@ end;
 // процедурах, где AName объявлена своей локальной переменной (там она
 // закрывает поле формы с тем же именем, и смысл этих строк не меняется).
 // False - есть другое место; его строка - в AOtherLine.
+// Строка кода, где текст в кавычках заменён пробелами: имя внутри строки
+// ('unide.html#repomenu') - не упоминание переменной
+function BlankQuoted(const ACode: string): string;
+var
+  CharIndex: Integer;
+  InQuote: Boolean;
+begin
+  Result := ACode;
+  InQuote := False;
+  for CharIndex := 1 to Length(Result) do
+    if Result[CharIndex] = '''' then
+    begin
+      InQuote := not InQuote;
+      Result[CharIndex] := ' ';
+    end
+    else if InQuote then
+      Result[CharIndex] := ' ';
+end;
+
 function NameFreeForField(ALines: TStrings; const AName: string;
   AFirst, ALast: Integer; var AOtherLine: Integer): Boolean;
 var
@@ -4166,7 +4185,7 @@ begin
       Index := Integer(Hits[HitAt]);
     end;
     if ((Index < AFirst) or (Index > ALast)) and
-       HasWord(StripComment(ALines[Index]), AName) then
+       HasWord(BlankQuoted(StripComment(ALines[Index])), AName) then
     begin
       // Процедура вокруг строки: заголовок с начала строки выше, её end;
       // - первый такой с начала строки после заголовка
