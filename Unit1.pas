@@ -634,12 +634,12 @@ type
     mSep2: TMenuItem; // Разделительные линии (меню-сепараторы)
     mSelectAll: TMenuItem;
     mNew: TMenuItem;
-    FTabsPopupItem1: TMenuItem;
-    FTabsPopupItem2: TMenuItem;
-    FTabsPopupItem3: TMenuItem;
-    FTabsPopupItem4: TMenuItem;
-    FTabsPopupItem5: TMenuItem;
-    FTabsPopupItem6: TMenuItem;
+    FTabsReload: TMenuItem;
+    FTabsSep1: TMenuItem;
+    FTabsClose: TMenuItem;
+    FTabsCloseOthers: TMenuItem;
+    FTabsSep2: TMenuItem;
+    FTabsToSplit: TMenuItem;
     mSepFind: TMenuItem;
     mFind: TMenuItem;
     mUndoReplace: TMenuItem;
@@ -764,7 +764,7 @@ type
     mProjectLine2: TMenuItem;
     mPrjAdd: TMenuItem;
     mPrjFolder: TMenuItem;
-    mProjectItem1: TMenuItem;
+    mProjectFixPaths: TMenuItem;
     mPrjRelease: TMenuItem;
     mPrjReleaseFiles: TMenuItem;
     mPrjSep: TMenuItem;
@@ -773,8 +773,8 @@ type
     FObjPages: TUiPageControl;
     lvSubList: TUiListView;
     FIncTree: TUiTreeView;
-    FObjPagesSheet1: TTabSheet;
-    FObjPagesSheet2: TTabSheet;
+    FObjPropsSheet: TTabSheet;
+    FObjEventsSheet: TTabSheet;
     FObjEvents: TUiListView;
     FObjProps: TUiListView;
     FObjEdit: TUiEdit;
@@ -805,22 +805,22 @@ type
     mBmDelMissing: TMenuItem;
     mBmClear: TMenuItem;
     mBmSep: TMenuItem;
-    FLogPopupItem1: TMenuItem;
-    FLogPopupItem2: TMenuItem;
-    FLogPopupItem3: TMenuItem;
-    FLogPopupItem4: TMenuItem;
-    FLogPopupItem5: TMenuItem;
-    FLogPopupItem6: TMenuItem;
-    FLogPopupItem7: TMenuItem;
-    FLogPopupItem8: TMenuItem;
-    FLogPopupItem9: TMenuItem;
-    FLogPopupItem10: TMenuItem;
-    mNewItem1: TMenuItem;
-    mNewItem2: TMenuItem;
-    mNewItem3: TMenuItem;
-    mNewItem4: TMenuItem;
-    mNewItem5: TMenuItem;
-    mNewItem6: TMenuItem;
+    FLogUndo: TMenuItem;
+    FLogSep1: TMenuItem;
+    FLogCut: TMenuItem;
+    FLogCopy: TMenuItem;
+    FLogPaste: TMenuItem;
+    FLogDelete: TMenuItem;
+    FLogSep2: TMenuItem;
+    FLogSelectAll: TMenuItem;
+    FLogSep3: TMenuItem;
+    FLogSaveAll: TMenuItem;
+    mNewText: TMenuItem;
+    mNewPascal: TMenuItem;
+    mNewBasic: TMenuItem;
+    mNewCpp: TMenuItem;
+    mNewHtml: TMenuItem;
+    mNewSql: TMenuItem;
     mNewPasApp: TMenuItem;
     mNewPasForm: TMenuItem;
     mNewPasUnit: TMenuItem;
@@ -843,25 +843,25 @@ type
     mNewFbGui: TMenuItem;
     mNewFbDll: TMenuItem;
     FDsgMenu: TUiPopupMenu; // меню конструктора по правому щелчку
-    FDsgMenuGrp1: TMenuItem;
+    FDsgMenuGrpEdit: TMenuItem;
     FDsgMiUndo: TMenuItem;
-    FDsgMenuGrp1Item1: TMenuItem;
+    FDsgMenuGrpEditSep: TMenuItem;
     FDsgMiCut: TMenuItem;
     FDsgMiCopy: TMenuItem;
     FDsgMiPaste: TMenuItem;
     FDsgMiDelete: TMenuItem;
-    FDsgMenuGrp2: TMenuItem;
+    FDsgMenuGrpControl: TMenuItem;
     FDsgMiFront: TMenuItem;
     FDsgMiBack: TMenuItem;
     FDsgMiRename: TMenuItem;
     FDsgMiReplace: TMenuItem;
     FDsgMiCopyNames: TMenuItem;
-    FDsgMenuGrp3: TMenuItem;
+    FDsgMenuGrpMenu: TMenuItem;
     FDsgMiItemIns: TMenuItem;
     FDsgMiItemDel: TMenuItem;
-    FDsgMenuGrp3Item1: TMenuItem;
+    FDsgMenuGrpMenuSep1: TMenuItem;
     FDsgMiItemSub: TMenuItem;
-    FDsgMenuGrp3Item2: TMenuItem;
+    FDsgMenuGrpMenuSep2: TMenuItem;
     FDsgMiMenuSelect: TMenuItem;
     FDsgMiMenuEdit: TMenuItem;
     FDsgMiMenuSave: TMenuItem;
@@ -895,46 +895,46 @@ type
     FGitTimer: TTimer; // обновить панель чуть позже (GitShowBar)
     RepoMenu: TMenuItem;
     BranchMenu: TMenuItem;
-    RepoMenuItem1: TMenuItem;
-    RepoMenuItem2: TMenuItem;
-    RepoMenuItem3: TMenuItem;
-    RepoMenuItem4: TMenuItem;
-    RepoMenuItem5: TMenuItem;
-    RepoMenuItem6: TMenuItem;
-    RepoMenuItem7: TMenuItem;
-    RepoMenuItem8: TMenuItem;
-    RepoMenuItem9: TMenuItem;
-    RepoMenuItem10: TMenuItem;
-    BranchMenuItem1: TMenuItem;
-    BranchMenuItem2: TMenuItem;
-    BranchMenuItem3: TMenuItem;
-    BranchMenuItem4: TMenuItem;
-    BranchMenuItem5: TMenuItem;
-    RepoMenuItem11: TMenuItem;
-    RepoMenuItem12: TMenuItem;
-    RepoMenuItem13: TMenuItem;
-    RepoMenuItem14: TMenuItem;
-    RepoMenuItem15: TMenuItem;
-    RepoMenuItem16: TMenuItem;
-    RepoMenuItem17: TMenuItem;
-    RepoMenuItem18: TMenuItem;
-    RepoMenuItem19: TMenuItem;
-    BranchMenuItem6: TMenuItem;
-    BranchMenuItem7: TMenuItem;
-    BranchMenuItem8: TMenuItem;
-    BranchMenuItem9: TMenuItem;
-    BranchMenuItem10: TMenuItem;
-    BranchMenuItem11: TMenuItem;
-    BranchMenuItem12: TMenuItem;
-    BranchMenuItem13: TMenuItem;
-    BranchMenuItem14: TMenuItem;
-    BranchMenuItem15: TMenuItem;
-    BranchMenuItem16: TMenuItem;
-    BranchMenuItem17: TMenuItem;
-    BranchMenuItem18: TMenuItem;
-    BranchMenuItem19: TMenuItem;
-    BranchMenuItem20: TMenuItem;
-    BranchMenuItem21: TMenuItem;
+    mRepoSep1: TMenuItem;
+    mRepoFetch: TMenuItem;
+    mRepoPull: TMenuItem;
+    mRepoPush: TMenuItem;
+    mRepoHistory: TMenuItem;
+    mRepoSep2: TMenuItem;
+    mRepoViewOnGitHub: TMenuItem;
+    mRepoExplorer: TMenuItem;
+    mRepoSep3: TMenuItem;
+    mRepoSep4: TMenuItem;
+    mBranchSep1: TMenuItem;
+    mBranchSep2: TMenuItem;
+    mBranchSep3: TMenuItem;
+    mBranchViewOnGitHub: TMenuItem;
+    mBranchSep4: TMenuItem;
+    mRepoNew: TMenuItem;
+    mRepoAddLocal: TMenuItem;
+    mRepoClone: TMenuItem;
+    mRepoUseProject: TMenuItem;
+    mRepoCreateProject: TMenuItem;
+    mRepoCommit: TMenuItem;
+    mRepoGitBash: TMenuItem;
+    mRepoSettings: TMenuItem;
+    mRepoDelete: TMenuItem;
+    mBranchNew: TMenuItem;
+    mBranchSwitch: TMenuItem;
+    mBranchRename: TMenuItem;
+    mBranchDelete: TMenuItem;
+    mBranchDiscardAll: TMenuItem;
+    mBranchStash: TMenuItem;
+    mBranchStashRestore: TMenuItem;
+    mBranchStashDrop: TMenuItem;
+    mBranchHidden: TMenuItem;
+    mBranchTracked: TMenuItem;
+    mBranchUpdateFromDefault: TMenuItem;
+    mBranchMerge: TMenuItem;
+    mBranchMergeInto: TMenuItem;
+    mBranchCompare: TMenuItem;
+    mBranchUnmerged: TMenuItem;
+    mBranchPullRequest: TMenuItem;
     FHlTabItem: TMenuItem;
     FDelTabItem: TMenuItem;
     FHlViewItem: TMenuItem;
@@ -943,30 +943,30 @@ type
     FDsgDescItem: TMenuItem; // View - описание классов Delphi 7 (0.8)
     FFarColorsItem: TMenuItem;
     FFarPaletteItem: TMenuItem;
-    RosMenuLinkItem10: TMenuItem;
-    RosMenuLinkItem11: TMenuItem;
-    RosMenuLinkItem1: TMenuItem;
-    RosMenuLinkItem2: TMenuItem;
-    RosMenuLinkItem3: TMenuItem;
-    RosMenuLinkItem4: TMenuItem;
-    RosMenuLinkItem5: TMenuItem;
-    RosMenuLinkItem12: TMenuItem;
-    RosMenuLinkItem6: TMenuItem;
-    RosMenuLinkItem7: TMenuItem;
-    RosMenuLinkItem13: TMenuItem;
-    RosMenuLinkItem8: TMenuItem;
-    RosMenuLinkItem9: TMenuItem;
-    RosMenuLinkItem14: TMenuItem;
+    mRosRunImage: TMenuItem;
+    mRosRufusWrite: TMenuItem;
+    mRosSep1: TMenuItem;
+    mRosInstallRosBE: TMenuItem;
+    mRosInstall7Zip: TMenuItem;
+    mRosInstallQemu: TMenuItem;
+    mRosInstallRufus: TMenuItem;
+    mRosSep2: TMenuItem;
+    mRosGitTerminal: TMenuItem;
+    mRosGitInstall: TMenuItem;
+    mRosSep3: TMenuItem;
+    mRosUpdatePciIds: TMenuItem;
+    mRosGenPciInf: TMenuItem;
+    mRosSep4: TMenuItem;
     ToolsMenu: TMenuItem;
     FGitCopyMenu: TUiPopupMenu;
-    MenuItem: TMenuItem;
+    FGitMiCopyPath: TMenuItem;
     FGitMiCopyRemote: TMenuItem;
     FGitMiCopyBranch: TMenuItem;
-    SubMenu: TMenuItem;
-    mHelpManualItem1: TMenuItem;
-    mHelpManualItem2: TMenuItem;
-    mHelpManualItem3: TMenuItem;
-    mHelpManualItem4: TMenuItem;
+    mHelpFb: TMenuItem;
+    mHelpUnide: TMenuItem;
+    mHelpGit: TMenuItem;
+    mHelpQemu: TMenuItem;
+    mHelpRosbe: TMenuItem;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
@@ -26432,7 +26432,7 @@ begin
   // .dfm: FDelTabItem := TMenuItem.Create(Self);
   // .dfm: FDelTabItem.Caption := 'Удалить файл (в Корзину)';
   // .dfm: FDelTabItem.OnClick := DeleteFileClick;
-  // .dfm: FTabsPopup.Items.Insert(FTabsPopupItem4.MenuIndex + 1, FDelTabItem);
+  // .dfm: FTabsPopup.Items.Insert(FTabsCloseOthers.MenuIndex + 1, FDelTabItem);
   // .dfm: FHlViewItem := TMenuItem.Create(Self);
   // .dfm: FHlViewItem.Caption := 'Highlighting';
   // .dfm: FHlViewItem.OnClick := HighlightMenuFill;
@@ -43262,7 +43262,7 @@ begin
   // Меню общее с конструктором RapidQ: пункты, которые он прячет, - назад
   FDsgMenuRq := False;
   FDsgMiReplace.Visible := True;
-  FDsgMenuGrp3.Visible := True;
+  FDsgMenuGrpMenu.Visible := True;
   FDsgMiLiveSep.Visible := True;
   FDsgMiLiveView.Visible := True;
 
@@ -63286,7 +63286,7 @@ begin
   FDsgMenuGrpAlign.Enabled := FRqDesigner.GroupCount > 1;
   // Только у Delphi: замена класса, меню формы, вид по .dfm
   FDsgMiReplace.Visible := False;
-  FDsgMenuGrp3.Visible := False;
+  FDsgMenuGrpMenu.Visible := False;
   FDsgMiLiveSep.Visible := False;
   FDsgMiLiveView.Visible := False;
   FDsgMenu.Popup(AScreen.X, AScreen.Y);
@@ -68575,47 +68575,47 @@ begin
   // .dfm: MainMenu1.Items.Insert(mArduino.MenuIndex + 1, RosMenu);
 
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem10;
+  LinkItem := mRosRunImage;
   // .dfm: LinkItem.Caption := 'Run Image (QEMU)';
   LinkItem.Hint := 'Запустить собранный образ (<цель>.iso) без сборки - в ' +
                    'своём QEMU unIDE или командой из свойств проекта';
   // .dfm: LinkItem.OnClick := RosRunImageClick;
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem11;
+  LinkItem := mRosRufusWrite;
   // .dfm: LinkItem.Caption := 'Write Image to USB (Rufus)...';
   LinkItem.Hint := 'Записать образ (собранный <цель>.iso или другой) на ' +
                    'флешку - своим Rufus unIDE (tools\rufus)';
   // .dfm: LinkItem.OnClick := RufusWriteClick;
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem1;
+  LinkItem := mRosSep1;
   // .dfm: LinkItem.Caption := '-';
   // .dfm: RosMenu.Add(LinkItem);
 
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem2;
+  LinkItem := mRosInstallRosBE;
   // .dfm: LinkItem.Caption := 'Install RosBE 2.2.1 (reactosVG14)...';
   LinkItem.Hint := 'Скачать установщик RosBE 2.2.1 и установить; путь к ' +
                    'RosBE.cmd - в проект ReactOS';
   // .dfm: LinkItem.OnClick := RosInstallRosBEClick;
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem3;
+  LinkItem := mRosInstall7Zip;
   LinkItem.Caption := 'Install 7-Zip ' + SzVersion + ' (tools\7zip)...';
   LinkItem.Hint := 'Скачать свой 7-Zip unIDE в tools\7zip - для Install ' +
                    'RosBE и архивов unIDE FAR; системный 7-Zip не меняется';
   // .dfm: LinkItem.OnClick := RosInstall7ZipClick;
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem4;
+  LinkItem := mRosInstallQemu;
   LinkItem.Caption := 'Install QEMU ' + QemuVersion + ' (tools\qemu)...';
   LinkItem.Hint := 'Скачать свой QEMU unIDE в tools\qemu - для Run проекта ' +
                    'ReactOS (образ в эмуляторе); в системе ничего не ставится';
   // .dfm: LinkItem.OnClick := RosInstallQemuClick;
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem5;
+  LinkItem := mRosInstallRufus;
   // .dfm: LinkItem.Caption := 'Install Rufus (tools\rufus)...';
   LinkItem.Hint := 'Скачать свой Rufus unIDE в tools\rufus - запись образа ' +
                    'на флешку; сборка - по Windows, в системе ничего не ' +
@@ -68623,18 +68623,18 @@ begin
   // .dfm: LinkItem.OnClick := RufusInstallClick;
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem12;
+  LinkItem := mRosSep2;
   // .dfm: LinkItem.Caption := '-';
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem6;
+  LinkItem := mRosGitTerminal;
   // .dfm: LinkItem.Caption := 'Git Terminal (Git Bash)';
   LinkItem.Hint := 'Терминал Git Bash в папке проекта: Git, установленный ' +
                    'в системе, иначе свой Git unIDE (tools\git)';
   // .dfm: LinkItem.OnClick := GitTerminalClick;
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem7;
+  LinkItem := mRosGitInstall;
   LinkItem.Caption := 'Find or Install Git ' + GitVersion + ' (tools\git)...';
   LinkItem.Hint := 'Найти Git for Windows в системе; нет - скачать свой ' +
                    'PortableGit ' + GitVersion + ' в tools\git (последний ' +
@@ -68642,26 +68642,26 @@ begin
   // .dfm: LinkItem.OnClick := GitInstallClick;
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem13;
+  LinkItem := mRosSep3;
   // .dfm: LinkItem.Caption := '-';
   // .dfm: RosMenu.Add(LinkItem);
 
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem8;
+  LinkItem := mRosUpdatePciIds;
   // .dfm: LinkItem.Caption := 'Update pci.ids...';
   LinkItem.Hint := 'Скачать базу pci.ids в ' + PciIdsRelFile + ' открытого ' +
                    'проекта ReactOS';
   // .dfm: LinkItem.OnClick := RosUpdatePciIdsClick;
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem9;
+  LinkItem := mRosGenPciInf;
   // .dfm: LinkItem.Caption := 'Generate System Devices INF...';
   LinkItem.Hint := 'Создать ' + PciInfRelFile + ' из pci.ids: имена мостов ' +
                    'и служебных устройств чипсетов';
   // .dfm: LinkItem.OnClick := RosGenPciInfClick;
   // .dfm: RosMenu.Add(LinkItem);
   // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := RosMenuLinkItem14;
+  LinkItem := mRosSep4;
   // .dfm: LinkItem.Caption := '-';
   // .dfm: RosMenu.Add(LinkItem);
 
@@ -70742,7 +70742,7 @@ end;
 
 procedure TForm1.GitBuildBar;
 // .dfm: var
-  // .dfm: MenuItem: TMenuItem;
+  // .dfm: FGitMiCopyPath: TMenuItem;
 
   function NewButton(const ACaption, AHint: string; ALeft, AWidth: Integer;
     AClick: TNotifyEvent): TUiButton;
@@ -70848,10 +70848,10 @@ begin
   // origin - своё меню Windows с Копировать)
   // .dfm: FGitCopyMenu := TUiPopupMenu.Create(Self);
   // .dfm: FGitCopyMenu.OnPopup := GitCopyMenuPopup;
-  // .dfm: MenuItem := TMenuItem.Create(FGitCopyMenu);
-  // .dfm: MenuItem.Caption := 'Copy Local Path';
-  // .dfm: MenuItem.OnClick := GitCopyPathClick;
-  // .dfm: FGitCopyMenu.Items.Add(MenuItem);
+  // .dfm: FGitMiCopyPath := TMenuItem.Create(FGitCopyMenu);
+  // .dfm: FGitMiCopyPath.Caption := 'Copy Local Path';
+  // .dfm: FGitMiCopyPath.OnClick := GitCopyPathClick;
+  // .dfm: FGitCopyMenu.Items.Add(FGitMiCopyPath);
   // .dfm: FGitMiCopyRemote := TMenuItem.Create(FGitCopyMenu);
   // .dfm: FGitMiCopyRemote.Caption := 'Copy origin URL';
   // .dfm: FGitMiCopyRemote.OnClick := GitCopyRemoteClick;
@@ -86784,27 +86784,27 @@ var
     NewItem.Tag := ATag;
     if ATag > 0 then
       NewItem.OnClick := mHelpFbClick;
-    SubMenu.Add(NewItem);
+    mHelpFb.Add(NewItem);
   end;
 
 begin
   if (mHelp = nil) or (mHelpRq = nil) then
     Exit;
-  // .dfm: SubMenu := TMenuItem.Create(Self);
-  // .dfm: SubMenu.Caption := '&FreeBASIC';
-  SubMenu.Hint := 'Руководство FreeBASIC (FB-manual-*.chm); F1 в файле ' +
+  // .dfm: mHelpFb := TMenuItem.Create(Self);
+  // .dfm: mHelpFb.Caption := '&FreeBASIC';
+  mHelpFb.Hint := 'Руководство FreeBASIC (FB-manual-*.chm); F1 в файле ' +
                   'FreeBASIC - по слову под кареткой';
-  // .dfm: mHelp.Insert(mHelp.IndexOf(mHelpRq) + 1, SubMenu);
+  // .dfm: mHelp.Insert(mHelp.IndexOf(mHelpRq) + 1, mHelpFb);
   // Руководство unIDE - первым пунктом Help
   // .dfm: ManualItem := TMenuItem.Create(Self);
-  ManualItem := mHelpManualItem1;
+  ManualItem := mHelpUnide;
   // .dfm: ManualItem.Caption := '&unIDE manual';
   // .dfm: ManualItem.Hint := 'Руководство пользователя unIDE (unide_ref\help\unide.chm)';
   // .dfm: ManualItem.OnClick := mHelpUnideClick;
   // .dfm: mHelp.Insert(0, ManualItem);
   // Справка по Git - после руководства unIDE
   // .dfm: ManualItem := TMenuItem.Create(Self);
-  ManualItem := mHelpManualItem2;
+  ManualItem := mHelpGit;
   // .dfm: ManualItem.Caption := '&Git';
   ManualItem.Hint := 'Справка по Git и его командам (git_ref\help\git.chm); ' +
                      'терминал - ReactOS - Git Terminal';
@@ -86812,7 +86812,7 @@ begin
   // .dfm: mHelp.Insert(1, ManualItem);
   // Справка по QEMU - после Git
   // .dfm: ManualItem := TMenuItem.Create(Self);
-  ManualItem := mHelpManualItem3;
+  ManualItem := mHelpQemu;
   // .dfm: ManualItem.Caption := '&QEMU';
   ManualItem.Hint := 'Справка по QEMU (qemu_ref\help\qemu.chm): запуск ' +
                      'ReactOS, окно, монитор, диски, параметры';
@@ -86820,7 +86820,7 @@ begin
   // .dfm: mHelp.Insert(2, ManualItem);
   // Справка по RosBE - после QEMU
   // .dfm: ManualItem := TMenuItem.Create(Self);
-  ManualItem := mHelpManualItem4;
+  ManualItem := mHelpRosbe;
   // .dfm: ManualItem.Caption := 'Ros&BE';
   ManualItem.Hint := 'Справка по RosBE (rosbe_ref\help\rosbe.chm): установка, ' +
                      'сборка ReactOS в unIDE и вручную, команды RosBE';

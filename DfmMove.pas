@@ -166,9 +166,14 @@ type
     Items: TList;             // TMoveLine - строки, которые уходят в .dfm
     NestParent: string;       // родитель в .dfm по коду; '' - форма (Self)
     NestLine: Integer;        // строка вложенности (порядок среди соседей)
-    // Вставка рядом: S.Parent.Insert(S.MenuIndex + 1, X) - в .dfm сразу
-    // после объекта S; '' - последним ребёнком родителя
-    InsertAfter: string;
+    // Вставка на место (P.Insert(N, X), P.Insert(S.MenuIndex + K, X),
+    // P.Insert(P.IndexOf(S) + K, X), S.Parent.Insert(S.MenuIndex + 1, X)):
+    // InsertAt; номер = номер S среди детей (InsertBase = S) или 0
+    // (InsertBase = '') плюс InsertOffset. InsertBase = '?' - номер не
+    // разобран. Без InsertAt - последним ребёнком родителя.
+    InsertAt: Boolean;
+    InsertBase: string;
+    InsertOffset: Integer;
     Selected: Boolean;        // отмечен в окне для переноса
     // Вызов помощника без переменной (MakeItem(Self, P, ...);): узел
     // создан разбором и принадлежит ему, имя - новое, поле добавится при
@@ -326,7 +331,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.44';
+  DfmMoveBuild = 'b.45';
 
 constructor TMoveInfo.Create;
 begin
@@ -1469,7 +1474,9 @@ begin
   Info.ChildAdds.Clear;
   Info.NestParent := '';
   Info.NestLine := -1;
-  Info.InsertAfter := '';
+  Info.InsertAt := False;
+  Info.InsertBase := '';
+  Info.InsertOffset := 0;
 end;
 
 function LineRef(ALines: TStrings; AIndex: Integer): string;
@@ -1916,6 +1923,69 @@ begin
   Close := LastDelimiter(')', ALine);
   AChild := Trim(Copy(ALine, Comma + 1, Close - Comma - 1));
   Result := (CompareText(ASibling, Head) = 0) and IsValidIdent(AChild);
+end;
+
+// Номер в строке P.Insert(N, X); / P.Items.Insert(N, X);:
+//   N - число: ABase = '', AOffset = N;
+//   S.MenuIndex [+ K] или Q.IndexOf(S) [+ K]: ABase = S, AOffset = K.
+// False - строка не Insert или номер другого вида.
+function ParseInsertPos(const ALine: string; var ABase: string;
+  var AOffset: Integer): Boolean;
+var
+  Key, Arg, Head: string;
+  At, Comma, Plus, Close, Value, Code: Integer;
+begin
+  Result := False;
+  ABase := '';
+  AOffset := 0;
+  Key := StringReplace(StringReplace(StripComment(ALine), ' ', '', [rfReplaceAll]),
+                       #9, '', [rfReplaceAll]);
+  At := Pos('.INSERT(', UpperCase(Key));
+  if At = 0 then
+    Exit;
+  Arg := Copy(Key, At + Length('.INSERT('), MaxInt);
+  Comma := LastDelimiter(',', Arg);
+  if Comma = 0 then
+    Exit;
+  Arg := Copy(Arg, 1, Comma - 1);
+  Val(Arg, Value, Code);
+  if Code = 0 then
+  begin
+    AOffset := Value;
+    Result := Value >= 0;
+    Exit;
+  end;
+  // Слагаемое + K
+  Plus := LastDelimiter('+', Arg);
+  if Plus > 0 then
+  begin
+    Val(Copy(Arg, Plus + 1, MaxInt), Value, Code);
+    if Code <> 0 then
+      Exit;
+    AOffset := Value;
+    Arg := Copy(Arg, 1, Plus - 1);
+  end;
+  if CompareText(Copy(Arg, Length(Arg) - 9, 10), '.MenuIndex') = 0 then
+  begin
+    Head := Copy(Arg, 1, Length(Arg) - 10);
+    if IsValidIdent(Head) then
+    begin
+      ABase := Head;
+      Result := True;
+    end;
+    Exit;
+  end;
+  At := Pos('.INDEXOF(', UpperCase(Arg));
+  Close := Length(Arg);
+  if (At > 0) and (Arg[Close] = ')') then
+  begin
+    Head := Copy(Arg, At + Length('.INDEXOF('), Close - At - Length('.INDEXOF('));
+    if IsValidIdent(Head) then
+    begin
+      ABase := Head;
+      Result := True;
+    end;
+  end;
 end;
 
 // Аргументы вызова верхнего уровня: запятые внутри строк, скобок ( ) и
@@ -5961,6 +6031,13 @@ begin
           AddMoveItem(Info, Index, mlNesting, '', AddParent);
           Info.NestParent := AddParent;
           Info.NestLine := Index;
+          // P.Insert(N, X) - в .dfm на то же место, не последним
+          if Pos('.INSERT(', UpperCase(Code)) > 0 then
+          begin
+            Info.InsertAt := True;
+            if not ParseInsertPos(Code, Info.InsertBase, Info.InsertOffset) then
+              Info.InsertBase := '?';
+          end;
           HasNesting := True;
           Continue;
         end;
@@ -6012,7 +6089,9 @@ begin
         AddMoveItem(Info, Index, mlNesting, '', AddParent);
         Info.NestParent := AddParent;
         Info.NestLine := Index;
-        Info.InsertAfter := Sibling;
+        Info.InsertAt := True;
+        Info.InsertBase := Sibling;
+        Info.InsertOffset := 1;
         HasNesting := True;
         Continue;
       end;
@@ -10151,15 +10230,26 @@ begin
       ObjText.Clear;
       BuildObject(Info, 0);
       Before := Dfm;
-      // Вставка рядом с пунктом (S.Parent.Insert(S.MenuIndex + 1, X)):
-      // сразу после S. S нет в .dfm (не отмечен) - последним ребёнком.
-      if Info.InsertAfter <> '' then
+      // Вставка на место (P.Insert(N, X), S.MenuIndex + K, IndexOf):
+      // номер считается по детям родителя в .dfm на этот момент - блоки
+      // идут в порядке строк кода. S нет в .dfm или номер не разобран -
+      // последним ребёнком, с предупреждением.
+      if Info.InsertAt then
       begin
-        Dfm := DfmInsertObjectAfter(Dfm, Info.InsertAfter, ObjText.Text);
+        if Info.InsertBase <> '?' then
+          Dfm := DfmInsertObjectAt(Dfm, ParentName, Info.InsertBase,
+                                   Info.InsertOffset, ObjText.Text);
         if Dfm = Before then
-          AReport.Add('Внимание: ' + Info.Title + ' - ' + Info.InsertAfter +
-                      ' нет в .dfm, пункт встал последним в ' + ParentName +
-                      ': проверить порядок.');
+        begin
+          if Info.InsertBase = '?' then
+            AReport.Add('Внимание: ' + Info.Title + ' - номер вставки не ' +
+                        'разобран, пункт встал последним в ' + ParentName +
+                        ': проверить порядок.')
+          else
+            AReport.Add('Внимание: ' + Info.Title + ' - ' + Info.InsertBase +
+                        ' нет среди детей ' + ParentName + ' в .dfm, пункт ' +
+                        'встал последним: проверить порядок.');
+        end;
       end;
       if Dfm = Before then
         Dfm := DfmInsertObject(Dfm, ParentName, ObjText.Text);

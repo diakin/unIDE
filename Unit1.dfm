@@ -365,13 +365,13 @@ object Form1: TForm1
       object mNew: TMenuItem
         Caption = '&New'
         ShortCut = 0
-        object mNewItem1: TMenuItem
+        object mNewText: TMenuItem
           Caption = 'Text File'
           OnClick = NewFileClick
           ShortCut = 0
           Hint = '.txt'
         end
-        object mNewItem2: TMenuItem
+        object mNewPascal: TMenuItem
           Caption = 'Pascal'
           ShortCut = 0
           object mNewPasApp: TMenuItem
@@ -476,25 +476,25 @@ object Form1: TForm1
             ShortCut = 0
           end
         end
-        object mNewItem3: TMenuItem
+        object mNewBasic: TMenuItem
           Caption = 'BASIC File'
           OnClick = NewFileClick
           ShortCut = 0
           Hint = '.bas'
         end
-        object mNewItem4: TMenuItem
+        object mNewCpp: TMenuItem
           Caption = 'C++ File'
           OnClick = NewFileClick
           ShortCut = 0
           Hint = '.cpp'
         end
-        object mNewItem5: TMenuItem
+        object mNewHtml: TMenuItem
           Caption = 'HTML File'
           OnClick = NewFileClick
           ShortCut = 0
           Hint = '.html'
         end
-        object mNewItem6: TMenuItem
+        object mNewSql: TMenuItem
           Caption = 'SQL Script'
           OnClick = NewFileClick
           ShortCut = 0
@@ -642,6 +642,18 @@ object Form1: TForm1
         OnClick = FmtViewClick
         ShortCut = 123
       end
+      object FWv2ViewItem: TMenuItem
+        Caption = 'Просмотр в WebView2 (Chromium)'
+        OnClick = Wv2ViewClick
+      end
+      object FEdPreviewItem: TMenuItem
+        Caption = 'Свой редактор - проба (0.7.3)'
+        OnClick = EdPreviewClick
+      end
+      object FDsgDescItem: TMenuItem
+        Caption = 'Описание классов Delphi 7 - записать и сверить (0.8)'
+        OnClick = DsgDescWriteClick
+      end
       object mViewSplitSep: TMenuItem
         Caption = '-'
       end
@@ -663,18 +675,6 @@ object Form1: TForm1
       end
       object mViewIcons: TMenuItem
         Caption = 'Palette Icons...'
-      end
-      object FWv2ViewItem: TMenuItem
-        Caption = 'Просмотр в WebView2 (Chromium)'
-        OnClick = Wv2ViewClick
-      end
-      object FEdPreviewItem: TMenuItem
-        Caption = 'Свой редактор - проба (0.7.3)'
-        OnClick = EdPreviewClick
-      end
-      object FDsgDescItem: TMenuItem
-        Caption = 'Описание классов Delphi 7 - записать и сверить (0.8)'
-        OnClick = DsgDescWriteClick
       end
     end
     object mProject: TMenuItem
@@ -733,7 +733,7 @@ object Form1: TForm1
         Caption = 'Open Project Folder'
         OnClick = OpenProjectFolderClick
       end
-      object mProjectItem1: TMenuItem
+      object mProjectFixPaths: TMenuItem
         Caption = 'Fix paths after move'
         OnClick = FixPathsAfterMoveClick
       end
@@ -853,6 +853,263 @@ object Form1: TForm1
         Hint = 'Команды arduino-cli и их справка'
       end
     end
+    object RosMenu: TMenuItem
+      Caption = 'ReactOS'
+      AutoHotkeys = maManual
+      object mRosRunImage: TMenuItem
+        Caption = 'Run Image (QEMU)'
+        OnClick = RosRunImageClick
+      end
+      object mRosRufusWrite: TMenuItem
+        Caption = 'Write Image to USB (Rufus)...'
+        OnClick = RufusWriteClick
+      end
+      object mRosSep1: TMenuItem
+        Caption = '-'
+      end
+      object mRosInstallRosBE: TMenuItem
+        Caption = 'Install RosBE 2.2.1 (reactosVG14)...'
+        OnClick = RosInstallRosBEClick
+      end
+      object mRosInstall7Zip: TMenuItem
+        OnClick = RosInstall7ZipClick
+      end
+      object mRosInstallQemu: TMenuItem
+        OnClick = RosInstallQemuClick
+      end
+      object mRosInstallRufus: TMenuItem
+        Caption = 'Install Rufus (tools\rufus)...'
+        OnClick = RufusInstallClick
+      end
+      object mRosSep2: TMenuItem
+        Caption = '-'
+      end
+      object mRosGitTerminal: TMenuItem
+        Caption = 'Git Terminal (Git Bash)'
+        OnClick = GitTerminalClick
+      end
+      object mRosGitInstall: TMenuItem
+        OnClick = GitInstallClick
+      end
+      object mRosSep3: TMenuItem
+        Caption = '-'
+      end
+      object mRosUpdatePciIds: TMenuItem
+        Caption = 'Update pci.ids...'
+        OnClick = RosUpdatePciIdsClick
+      end
+      object mRosGenPciInf: TMenuItem
+        Caption = 'Generate System Devices INF...'
+        OnClick = RosGenPciInfClick
+      end
+      object mRosSep4: TMenuItem
+        Caption = '-'
+      end
+      object ToolsMenu: TMenuItem
+        Caption = 'Download Build Tools'
+        AutoHotkeys = maManual
+      end
+    end
+    object RepoMenu: TMenuItem
+      Caption = 'Repository'
+      AutoHotkeys = maManual
+      object mRepoSep1: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object mRepoFetch: TMenuItem
+        Caption = 'Fetch'
+        Hint = 'git fetch --all --prune'
+        OnClick = GitFetchClick
+      end
+      object mRepoPull: TMenuItem
+        Caption = 'Pull'
+        Hint = 'git pull (merge)'
+        OnClick = GitPullClick
+      end
+      object mRepoPush: TMenuItem
+        Caption = 'Push'
+        Hint = 'git push (ветки на сервере нет - опубликовать)'
+        OnClick = GitPushClick
+      end
+      object mRepoHistory: TMenuItem
+        Caption = 'Commits history...'
+        Hint = 'История коммитов текущей ветки'
+        OnClick = GitHistoryClick
+      end
+      object mRepoSep2: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object mRepoViewOnGitHub: TMenuItem
+        Caption = 'View on GitHub'
+        Hint = 'Страница репозитория в браузере'
+        OnClick = GitViewOnGitHubClick
+      end
+      object mRepoExplorer: TMenuItem
+        Caption = 'Show in Explorer'
+        Hint = 'Папка репозитория в Проводнике'
+        OnClick = GitExplorerClick
+      end
+      object mRepoSep3: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object mRepoSep4: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object mRepoNew: TMenuItem
+        Caption = 'New Repository...'
+        Hint = 'Создать репозиторий git в папке (git init)'
+        OnClick = GitNewRepoClick
+      end
+      object mRepoAddLocal: TMenuItem
+        Caption = 'Add Local Repository...'
+        Hint = 'Выбрать папку с репозиторием - с ним работают панель Git и это меню'
+        OnClick = GitAddRepoClick
+      end
+      object mRepoClone: TMenuItem
+        Caption = 'Clone Repository...'
+        Hint = 'Скачать репозиторий с GitHub (git clone)'
+        OnClick = GitCloneClick
+      end
+      object mRepoUseProject: TMenuItem
+        Caption = 'Use Repository of Current Project'
+        Hint = 'Снова репозиторий открытого проекта (выбор вручную снимается)'
+        OnClick = GitUseProjectRepoClick
+      end
+      object mRepoCreateProject: TMenuItem
+        Caption = 'Create Project from Repository...'
+        Hint = 'Проект unIDE на основе текущего репозитория: окно New Project с его папкой'
+        OnClick = GitCreateProjectClick
+      end
+      object mRepoCommit: TMenuItem
+        Caption = 'Commit...'
+        Hint = 'Окно Commit: изменения, разница, заголовок и описание'
+        OnClick = GitCommitClick
+      end
+      object mRepoGitBash: TMenuItem
+        Caption = 'Open in Git Bash'
+        Hint = 'Терминал Git Bash в папке репозитория'
+        OnClick = GitBashClick
+      end
+      object mRepoSettings: TMenuItem
+        Caption = 'Repository Settings...'
+        Hint = 'Адрес remote origin (git remote set-url)'
+        OnClick = GitRepoSettingsClick
+      end
+      object mRepoDelete: TMenuItem
+        Caption = 'Delete Local Repository...'
+        Hint = 'Папку текущего репозитория - в корзину (на сервере он остаётся)'
+        OnClick = GitDeleteRepoClick
+      end
+    end
+    object BranchMenu: TMenuItem
+      Caption = 'Branch'
+      AutoHotkeys = maManual
+      object mBranchSep1: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object mBranchSep2: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object mBranchSep3: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object mBranchViewOnGitHub: TMenuItem
+        Caption = 'View Branch on GitHub'
+        Hint = 'Ветка на GitHub в браузере'
+        OnClick = GitViewBranchClick
+      end
+      object mBranchSep4: TMenuItem
+        Caption = '-'
+        Hint = ''
+      end
+      object mBranchNew: TMenuItem
+        Caption = 'New Branch...'
+        Hint = 'Новая ветка от текущего коммита и переход на неё (git checkout -b)'
+        OnClick = GitNewBranchClick
+      end
+      object mBranchSwitch: TMenuItem
+        Caption = 'Switch Branch...'
+        Hint = 'Перейти на другую ветку (git checkout)'
+        OnClick = GitSwitchBranchClick
+      end
+      object mBranchRename: TMenuItem
+        Caption = 'Rename Branch...'
+        Hint = 'Переименовать текущую ветку (git branch -m)'
+        OnClick = GitRenameBranchClick
+      end
+      object mBranchDelete: TMenuItem
+        Caption = 'Delete Branch...'
+        Hint = 'Удалить локальную ветку (git branch -d)'
+        OnClick = GitDeleteBranchClick
+      end
+      object mBranchDiscardAll: TMenuItem
+        Caption = 'Discard All Changes...'
+        Hint = 'Отменить все изменения: файлы - как в последнем коммите, новые - в корзину'
+        OnClick = GitDiscardAllClick
+      end
+      object mBranchStash: TMenuItem
+        Caption = 'Stash All Changes'
+        Hint = 'Убрать все изменения (и новые файлы) в stash (git stash push -u)'
+        OnClick = GitStashClick
+      end
+      object mBranchStashRestore: TMenuItem
+        Caption = 'Restore Stash...'
+        Hint = 'Вернуть изменения из stash (git stash pop)'
+        OnClick = GitStashRestoreClick
+      end
+      object mBranchStashDrop: TMenuItem
+        Caption = 'Drop Stash...'
+        Hint = 'Удалить запись stash (git stash drop)'
+        OnClick = GitStashDropClick
+      end
+      object mBranchHidden: TMenuItem
+        Caption = 'Hidden Local Changes...'
+        Hint = 'Файлы, чьи изменения скрыты (Ignore - скрыть свои изменения, skip-worktree): вернуть в список изменений'
+        OnClick = GitHiddenClick
+      end
+      object mBranchTracked: TMenuItem
+        Caption = 'Tracked but Ignored Files...'
+        Hint = 'Файлы в репозитории, которые подходят под .gitignore: оставить (исключение в .gitignore) или убрать из репозитория (git rm --cached)'
+        OnClick = GitTrackedClick
+      end
+      object mBranchUpdateFromDefault: TMenuItem
+        Caption = 'Update from Default Branch'
+        Hint = 'Влить в текущую ветку основную ветку сервера (git merge origin/<основная>)'
+        OnClick = GitUpdateFromDefaultClick
+      end
+      object mBranchMerge: TMenuItem
+        Caption = 'Merge into Current Branch...'
+        Hint = 'Влить выбранную ветку в текущую (git merge)'
+        OnClick = GitMergeClick
+      end
+      object mBranchMergeInto: TMenuItem
+        Caption = 'Merge Current Branch Into...'
+        Hint = 'Влить текущую ветку в другую (например mainTest в main) и отправить ту на сервер'
+        OnClick = GitMergeIntoClick
+      end
+      object mBranchCompare: TMenuItem
+        Caption = 'Compare Branches...'
+        Hint = 'Сравнить две ветки: коммиты, которые есть только в одной из них, и разные файлы'
+        OnClick = GitCompareClick
+      end
+      object mBranchUnmerged: TMenuItem
+        Caption = 'Commits Not in Current Branch...'
+        Hint = 'Коммиты всех веток, которых нет в текущей: перенести (cherry-pick), влить ветку, удалить ветку'
+        OnClick = GitUnmergedClick
+      end
+      object mBranchPullRequest: TMenuItem
+        Caption = 'Create Pull Request'
+        Hint = 'Страница нового pull request для текущей ветки на GitHub'
+        OnClick = GitPullRequestClick
+      end
+    end
     object mUtils: TMenuItem
       Caption = '&Utils'
       object mIncManager: TMenuItem
@@ -897,6 +1154,23 @@ object Form1: TForm1
     end
     object mHelp: TMenuItem
       Caption = '&Help'
+      object mHelpUnide: TMenuItem
+        Caption = '&unIDE manual'
+        Hint = 'Руководство пользователя unIDE (unide_ref\help\unide.chm)'
+        OnClick = mHelpUnideClick
+      end
+      object mHelpGit: TMenuItem
+        Caption = '&Git'
+        OnClick = mHelpGitClick
+      end
+      object mHelpQemu: TMenuItem
+        Caption = '&QEMU'
+        OnClick = mHelpQemuClick
+      end
+      object mHelpRosbe: TMenuItem
+        Caption = 'Ros&BE'
+        OnClick = mHelpRosbeClick
+      end
       object mHelpRq: TMenuItem
         Caption = '&RapidQ'
         Hint = 'Справка RapidQ: rapidq_ref\help\rapidq.chm (F1 - по слову под кареткой)'
@@ -943,289 +1217,15 @@ object Form1: TForm1
           Hint = 'rapidq_ref\html_doc\contents.html - та же справка страницами HTML'
         end
       end
+      object mHelpFb: TMenuItem
+        Caption = '&FreeBASIC'
+      end
       object mHelpSep: TMenuItem
         Caption = '-'
       end
       object mHelpAbout: TMenuItem
         Caption = '&About...'
         OnClick = mHelpClick
-      end
-      object SubMenu: TMenuItem
-        Caption = '&FreeBASIC'
-      end
-      object mHelpManualItem1: TMenuItem
-        Caption = '&unIDE manual'
-        Hint = 'Руководство пользователя unIDE (unide_ref\help\unide.chm)'
-        OnClick = mHelpUnideClick
-      end
-      object mHelpManualItem2: TMenuItem
-        Caption = '&Git'
-        OnClick = mHelpGitClick
-      end
-      object mHelpManualItem3: TMenuItem
-        Caption = '&QEMU'
-        OnClick = mHelpQemuClick
-      end
-      object mHelpManualItem4: TMenuItem
-        Caption = 'Ros&BE'
-        OnClick = mHelpRosbeClick
-      end
-    end
-    object RosMenu: TMenuItem
-      Caption = 'ReactOS'
-      AutoHotkeys = maManual
-      object RosMenuLinkItem10: TMenuItem
-        Caption = 'Run Image (QEMU)'
-        OnClick = RosRunImageClick
-      end
-      object RosMenuLinkItem11: TMenuItem
-        Caption = 'Write Image to USB (Rufus)...'
-        OnClick = RufusWriteClick
-      end
-      object RosMenuLinkItem1: TMenuItem
-        Caption = '-'
-      end
-      object RosMenuLinkItem2: TMenuItem
-        Caption = 'Install RosBE 2.2.1 (reactosVG14)...'
-        OnClick = RosInstallRosBEClick
-      end
-      object RosMenuLinkItem3: TMenuItem
-        OnClick = RosInstall7ZipClick
-      end
-      object RosMenuLinkItem4: TMenuItem
-        OnClick = RosInstallQemuClick
-      end
-      object RosMenuLinkItem5: TMenuItem
-        Caption = 'Install Rufus (tools\rufus)...'
-        OnClick = RufusInstallClick
-      end
-      object RosMenuLinkItem12: TMenuItem
-        Caption = '-'
-      end
-      object RosMenuLinkItem6: TMenuItem
-        Caption = 'Git Terminal (Git Bash)'
-        OnClick = GitTerminalClick
-      end
-      object RosMenuLinkItem7: TMenuItem
-        OnClick = GitInstallClick
-      end
-      object RosMenuLinkItem13: TMenuItem
-        Caption = '-'
-      end
-      object RosMenuLinkItem8: TMenuItem
-        Caption = 'Update pci.ids...'
-        OnClick = RosUpdatePciIdsClick
-      end
-      object RosMenuLinkItem9: TMenuItem
-        Caption = 'Generate System Devices INF...'
-        OnClick = RosGenPciInfClick
-      end
-      object RosMenuLinkItem14: TMenuItem
-        Caption = '-'
-      end
-      object ToolsMenu: TMenuItem
-        Caption = 'Download Build Tools'
-        AutoHotkeys = maManual
-      end
-    end
-    object RepoMenu: TMenuItem
-      Caption = 'Repository'
-      AutoHotkeys = maManual
-      object RepoMenuItem1: TMenuItem
-        Caption = '-'
-        Hint = ''
-      end
-      object RepoMenuItem2: TMenuItem
-        Caption = 'Fetch'
-        Hint = 'git fetch --all --prune'
-        OnClick = GitFetchClick
-      end
-      object RepoMenuItem3: TMenuItem
-        Caption = 'Pull'
-        Hint = 'git pull (merge)'
-        OnClick = GitPullClick
-      end
-      object RepoMenuItem4: TMenuItem
-        Caption = 'Push'
-        Hint = 'git push (ветки на сервере нет - опубликовать)'
-        OnClick = GitPushClick
-      end
-      object RepoMenuItem5: TMenuItem
-        Caption = 'Commits history...'
-        Hint = 'История коммитов текущей ветки'
-        OnClick = GitHistoryClick
-      end
-      object RepoMenuItem6: TMenuItem
-        Caption = '-'
-        Hint = ''
-      end
-      object RepoMenuItem7: TMenuItem
-        Caption = 'View on GitHub'
-        Hint = 'Страница репозитория в браузере'
-        OnClick = GitViewOnGitHubClick
-      end
-      object RepoMenuItem8: TMenuItem
-        Caption = 'Show in Explorer'
-        Hint = 'Папка репозитория в Проводнике'
-        OnClick = GitExplorerClick
-      end
-      object RepoMenuItem9: TMenuItem
-        Caption = '-'
-        Hint = ''
-      end
-      object RepoMenuItem10: TMenuItem
-        Caption = '-'
-        Hint = ''
-      end
-      object RepoMenuItem11: TMenuItem
-        Caption = 'New Repository...'
-        Hint = 'Создать репозиторий git в папке (git init)'
-        OnClick = GitNewRepoClick
-      end
-      object RepoMenuItem12: TMenuItem
-        Caption = 'Add Local Repository...'
-        Hint = 'Выбрать папку с репозиторием - с ним работают панель Git и это меню'
-        OnClick = GitAddRepoClick
-      end
-      object RepoMenuItem13: TMenuItem
-        Caption = 'Clone Repository...'
-        Hint = 'Скачать репозиторий с GitHub (git clone)'
-        OnClick = GitCloneClick
-      end
-      object RepoMenuItem14: TMenuItem
-        Caption = 'Use Repository of Current Project'
-        Hint = 'Снова репозиторий открытого проекта (выбор вручную снимается)'
-        OnClick = GitUseProjectRepoClick
-      end
-      object RepoMenuItem15: TMenuItem
-        Caption = 'Create Project from Repository...'
-        Hint = 'Проект unIDE на основе текущего репозитория: окно New Project с его папкой'
-        OnClick = GitCreateProjectClick
-      end
-      object RepoMenuItem16: TMenuItem
-        Caption = 'Commit...'
-        Hint = 'Окно Commit: изменения, разница, заголовок и описание'
-        OnClick = GitCommitClick
-      end
-      object RepoMenuItem17: TMenuItem
-        Caption = 'Open in Git Bash'
-        Hint = 'Терминал Git Bash в папке репозитория'
-        OnClick = GitBashClick
-      end
-      object RepoMenuItem18: TMenuItem
-        Caption = 'Repository Settings...'
-        Hint = 'Адрес remote origin (git remote set-url)'
-        OnClick = GitRepoSettingsClick
-      end
-      object RepoMenuItem19: TMenuItem
-        Caption = 'Delete Local Repository...'
-        Hint = 'Папку текущего репозитория - в корзину (на сервере он остаётся)'
-        OnClick = GitDeleteRepoClick
-      end
-    end
-    object BranchMenu: TMenuItem
-      Caption = 'Branch'
-      AutoHotkeys = maManual
-      object BranchMenuItem1: TMenuItem
-        Caption = '-'
-        Hint = ''
-      end
-      object BranchMenuItem2: TMenuItem
-        Caption = '-'
-        Hint = ''
-      end
-      object BranchMenuItem3: TMenuItem
-        Caption = '-'
-        Hint = ''
-      end
-      object BranchMenuItem4: TMenuItem
-        Caption = 'View Branch on GitHub'
-        Hint = 'Ветка на GitHub в браузере'
-        OnClick = GitViewBranchClick
-      end
-      object BranchMenuItem5: TMenuItem
-        Caption = '-'
-        Hint = ''
-      end
-      object BranchMenuItem6: TMenuItem
-        Caption = 'New Branch...'
-        Hint = 'Новая ветка от текущего коммита и переход на неё (git checkout -b)'
-        OnClick = GitNewBranchClick
-      end
-      object BranchMenuItem7: TMenuItem
-        Caption = 'Switch Branch...'
-        Hint = 'Перейти на другую ветку (git checkout)'
-        OnClick = GitSwitchBranchClick
-      end
-      object BranchMenuItem8: TMenuItem
-        Caption = 'Rename Branch...'
-        Hint = 'Переименовать текущую ветку (git branch -m)'
-        OnClick = GitRenameBranchClick
-      end
-      object BranchMenuItem9: TMenuItem
-        Caption = 'Delete Branch...'
-        Hint = 'Удалить локальную ветку (git branch -d)'
-        OnClick = GitDeleteBranchClick
-      end
-      object BranchMenuItem10: TMenuItem
-        Caption = 'Discard All Changes...'
-        Hint = 'Отменить все изменения: файлы - как в последнем коммите, новые - в корзину'
-        OnClick = GitDiscardAllClick
-      end
-      object BranchMenuItem11: TMenuItem
-        Caption = 'Stash All Changes'
-        Hint = 'Убрать все изменения (и новые файлы) в stash (git stash push -u)'
-        OnClick = GitStashClick
-      end
-      object BranchMenuItem12: TMenuItem
-        Caption = 'Restore Stash...'
-        Hint = 'Вернуть изменения из stash (git stash pop)'
-        OnClick = GitStashRestoreClick
-      end
-      object BranchMenuItem13: TMenuItem
-        Caption = 'Drop Stash...'
-        Hint = 'Удалить запись stash (git stash drop)'
-        OnClick = GitStashDropClick
-      end
-      object BranchMenuItem14: TMenuItem
-        Caption = 'Hidden Local Changes...'
-        Hint = 'Файлы, чьи изменения скрыты (Ignore - скрыть свои изменения, skip-worktree): вернуть в список изменений'
-        OnClick = GitHiddenClick
-      end
-      object BranchMenuItem15: TMenuItem
-        Caption = 'Tracked but Ignored Files...'
-        Hint = 'Файлы в репозитории, которые подходят под .gitignore: оставить (исключение в .gitignore) или убрать из репозитория (git rm --cached)'
-        OnClick = GitTrackedClick
-      end
-      object BranchMenuItem16: TMenuItem
-        Caption = 'Update from Default Branch'
-        Hint = 'Влить в текущую ветку основную ветку сервера (git merge origin/<основная>)'
-        OnClick = GitUpdateFromDefaultClick
-      end
-      object BranchMenuItem17: TMenuItem
-        Caption = 'Merge into Current Branch...'
-        Hint = 'Влить выбранную ветку в текущую (git merge)'
-        OnClick = GitMergeClick
-      end
-      object BranchMenuItem18: TMenuItem
-        Caption = 'Merge Current Branch Into...'
-        Hint = 'Влить текущую ветку в другую (например mainTest в main) и отправить ту на сервер'
-        OnClick = GitMergeIntoClick
-      end
-      object BranchMenuItem19: TMenuItem
-        Caption = 'Compare Branches...'
-        Hint = 'Сравнить две ветки: коммиты, которые есть только в одной из них, и разные файлы'
-        OnClick = GitCompareClick
-      end
-      object BranchMenuItem20: TMenuItem
-        Caption = 'Commits Not in Current Branch...'
-        Hint = 'Коммиты всех веток, которых нет в текущей: перенести (cherry-pick), влить ветку, удалить ветку'
-        OnClick = GitUnmergedClick
-      end
-      object BranchMenuItem21: TMenuItem
-        Caption = 'Create Pull Request'
-        Hint = 'Страница нового pull request для текущей ветки на GitHub'
-        OnClick = GitPullRequestClick
       end
     end
   end
@@ -1262,41 +1262,41 @@ object Form1: TForm1
   object FTabsPopup: TUiPopupMenu
     Left = 16
     Top = 264
-    object FTabsPopupItem1: TMenuItem
+    object FTabsReload: TMenuItem
       Caption = 'Перечитать файл с диска'
       OnClick = ReloadFileClick
-      ShortCut = 0
-    end
-    object FTabsPopupItem2: TMenuItem
-      Caption = '-'
-      ShortCut = 0
-    end
-    object FTabsPopupItem3: TMenuItem
-      Caption = 'Закрыть вкладку'
-      OnClick = CloseTabClick
-      ShortCut = 0
-    end
-    object FTabsPopupItem4: TMenuItem
-      Caption = 'Закрыть остальные вкладки'
-      OnClick = CloseAllTabsClick
-      ShortCut = 0
-    end
-    object FTabsPopupItem5: TMenuItem
-      Caption = '-'
-      ShortCut = 0
-    end
-    object FTabsPopupItem6: TMenuItem
-      Caption = 'Во второй панели'
-      OnClick = TabToSplitClick
       ShortCut = 0
     end
     object FHlTabItem: TMenuItem
       Caption = 'Подсветка'
       OnClick = HighlightMenuFill
     end
+    object FTabsSep1: TMenuItem
+      Caption = '-'
+      ShortCut = 0
+    end
+    object FTabsClose: TMenuItem
+      Caption = 'Закрыть вкладку'
+      OnClick = CloseTabClick
+      ShortCut = 0
+    end
+    object FTabsCloseOthers: TMenuItem
+      Caption = 'Закрыть остальные вкладки'
+      OnClick = CloseAllTabsClick
+      ShortCut = 0
+    end
     object FDelTabItem: TMenuItem
       Caption = 'Удалить файл (в Корзину)'
       OnClick = DeleteFileClick
+    end
+    object FTabsSep2: TMenuItem
+      Caption = '-'
+      ShortCut = 0
+    end
+    object FTabsToSplit: TMenuItem
+      Caption = 'Во второй панели'
+      OnClick = TabToSplitClick
+      ShortCut = 0
     end
   end
   object FPopupMenu: TUiPopupMenu
@@ -1454,49 +1454,49 @@ object Form1: TForm1
     OnPopup = LogPopupPopup
     Left = 16
     Top = 544
-    object FLogPopupItem1: TMenuItem
+    object FLogUndo: TMenuItem
       Caption = '&Undo'#9'Ctrl+Z'
       Tag = 1
       OnClick = LogPopupClick
     end
-    object FLogPopupItem2: TMenuItem
+    object FLogSep1: TMenuItem
       Caption = '-'
       Tag = 0
     end
-    object FLogPopupItem3: TMenuItem
+    object FLogCut: TMenuItem
       Caption = 'Cu&t'#9'Ctrl+X'
       Tag = 2
       OnClick = LogPopupClick
     end
-    object FLogPopupItem4: TMenuItem
+    object FLogCopy: TMenuItem
       Caption = '&Copy'#9'Ctrl+C'
       Tag = 3
       OnClick = LogPopupClick
     end
-    object FLogPopupItem5: TMenuItem
+    object FLogPaste: TMenuItem
       Caption = '&Paste'#9'Ctrl+V'
       Tag = 4
       OnClick = LogPopupClick
     end
-    object FLogPopupItem6: TMenuItem
+    object FLogDelete: TMenuItem
       Caption = '&Delete'#9'Del'
       Tag = 5
       OnClick = LogPopupClick
     end
-    object FLogPopupItem7: TMenuItem
+    object FLogSep2: TMenuItem
       Caption = '-'
       Tag = 0
     end
-    object FLogPopupItem8: TMenuItem
+    object FLogSelectAll: TMenuItem
       Caption = 'Select &All'#9'Ctrl+A'
       Tag = 6
       OnClick = LogPopupClick
     end
-    object FLogPopupItem9: TMenuItem
+    object FLogSep3: TMenuItem
       Caption = '-'
       Tag = 0
     end
-    object FLogPopupItem10: TMenuItem
+    object FLogSaveAll: TMenuItem
       Caption = 'Sa&ve all logs'
       Tag = 7
       OnClick = LogPopupClick
@@ -1974,7 +1974,7 @@ object Form1: TForm1
         end
         object FObjPages: TUiPageControl
           Align = alClient
-          object FObjPagesSheet1: TTabSheet
+          object FObjPropsSheet: TTabSheet
             Caption = 'Properties'
             object FObjProps: TUiListView
               Align = alClient
@@ -2030,7 +2030,7 @@ object Form1: TForm1
               end
             end
           end
-          object FObjPagesSheet2: TTabSheet
+          object FObjEventsSheet: TTabSheet
             Caption = 'Events'
             object FObjEvents: TUiListView
               Align = alClient
@@ -2109,14 +2109,14 @@ object Form1: TForm1
     Left = 264
     Top = 240
     AutoHotkeys = maManual
-    object FDsgMenuGrp1: TMenuItem
+    object FDsgMenuGrpEdit: TMenuItem
       Caption = 'Edit'
       object FDsgMiUndo: TMenuItem
         Caption = 'Undo'
         ShortCut = 16474
         OnClick = DsgMenuClick
       end
-      object FDsgMenuGrp1Item1: TMenuItem
+      object FDsgMenuGrpEditSep: TMenuItem
         Caption = '-'
         ShortCut = 0
         OnClick = DsgMenuClick
@@ -2142,7 +2142,7 @@ object Form1: TForm1
         OnClick = DsgMenuClick
       end
     end
-    object FDsgMenuGrp2: TMenuItem
+    object FDsgMenuGrpControl: TMenuItem
       Caption = 'Control'
       object FDsgMiFront: TMenuItem
         Caption = 'Bring to Front'
@@ -2197,7 +2197,7 @@ object Form1: TForm1
         OnClick = DsgMenuClick
       end
     end
-    object FDsgMenuGrp3: TMenuItem
+    object FDsgMenuGrpMenu: TMenuItem
       Caption = 'Menu'
       object FDsgMiItemIns: TMenuItem
         Caption = 'Insert'#9'Ins'
@@ -2209,7 +2209,7 @@ object Form1: TForm1
         ShortCut = 0
         OnClick = DsgMenuClick
       end
-      object FDsgMenuGrp3Item1: TMenuItem
+      object FDsgMenuGrpMenuSep1: TMenuItem
         Caption = '-'
         ShortCut = 0
         OnClick = DsgMenuClick
@@ -2219,7 +2219,7 @@ object Form1: TForm1
         ShortCut = 0
         OnClick = DsgMenuClick
       end
-      object FDsgMenuGrp3Item2: TMenuItem
+      object FDsgMenuGrpMenuSep2: TMenuItem
         Caption = '-'
         ShortCut = 0
         OnClick = DsgMenuClick
@@ -2301,7 +2301,7 @@ object Form1: TForm1
     Left = 216
     Top = 16
     OnPopup = GitCopyMenuPopup
-    object MenuItem: TMenuItem
+    object FGitMiCopyPath: TMenuItem
       Caption = 'Copy Local Path'
       OnClick = GitCopyPathClick
     end

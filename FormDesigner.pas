@@ -528,6 +528,13 @@ function DfmInsertObject(const AText, AParent, AObjText: string): string;
 // отступ). Нет ASibling - AText.
 function DfmInsertObjectAfter(const AText, ASibling, AObjText: string): string;
 
+// Вставка объекта ребёнком AParent на место с номером: ABase = '' -
+// номер AOffset среди детей; ABase - имя ребёнка, номер = его номер +
+// AOffset (Insert(S.MenuIndex + 1, X) - сразу после S). Номер не меньше
+// числа детей - последним. Нет AParent или ABase среди его детей - AText.
+function DfmInsertObjectAt(const AText, AParent, ABase: string;
+  AOffset: Integer; const AObjText: string): string;
+
 // Класс корня формы из первой строки .dfm: TForm0. '' - не .dfm.
 function DfmRootClass(const AText: string): string;
 
@@ -981,6 +988,78 @@ begin
   finally
     Obj.Free;
     SL.Free;
+  end;
+end;
+
+function DfmInsertObjectAt(const AText, AParent, ABase: string;
+  AOffset: Integer; const AObjText: string): string;
+var
+  DfmLines, ObjLines, ChildStarts: TStringList;
+  LineIdx, ParentFirst, ParentLast, ChildEnd, BaseIdx, TargetIdx,
+  InsertLine: Integer;
+  ChildName, ChildClass, Pad: string;
+begin
+  Result := AText;
+  DfmLines := TStringList.Create;
+  ObjLines := TStringList.Create;
+  ChildStarts := TStringList.Create;
+  try
+    DfmLines.Text := AText;
+    ParentFirst := FindObjectHeader(DfmLines, AParent);
+    if ParentFirst < 0 then
+      Exit;
+    ParentLast := FindObjectEnd(DfmLines, ParentFirst);
+    if ParentLast < 0 then
+      Exit;
+    // Прямые дети: имя, в Objects - строка заголовка
+    LineIdx := ParentFirst + 1;
+    while LineIdx < ParentLast do
+    begin
+      if ParseHeader(DfmLines[LineIdx], ChildName, ChildClass) then
+      begin
+        ChildStarts.AddObject(ChildName, TObject(LineIdx));
+        ChildEnd := FindObjectEnd(DfmLines, LineIdx);
+        if ChildEnd < 0 then
+          Exit;
+        LineIdx := ChildEnd + 1;
+      end
+      else
+      begin
+        SkipDfmValue(DfmLines, LineIdx);
+        Inc(LineIdx);
+      end;
+    end;
+    if ABase = '' then
+      TargetIdx := AOffset
+    else
+    begin
+      BaseIdx := -1;
+      for LineIdx := 0 to ChildStarts.Count - 1 do
+        if CompareText(ChildStarts[LineIdx], ABase) = 0 then
+        begin
+          BaseIdx := LineIdx;
+          Break;
+        end;
+      if BaseIdx < 0 then
+        Exit;
+      TargetIdx := BaseIdx + AOffset;
+    end;
+    if TargetIdx < 0 then
+      TargetIdx := 0;
+    if TargetIdx >= ChildStarts.Count then
+      InsertLine := ParentLast
+    else
+      InsertLine := Integer(ChildStarts.Objects[TargetIdx]);
+    Pad := StringOfChar(' ', LeadSpaces(DfmLines[ParentFirst]) + 2);
+    ObjLines.Text := AObjText;
+    for LineIdx := ObjLines.Count - 1 downto 0 do
+      if ObjLines[LineIdx] <> '' then
+        DfmLines.Insert(InsertLine, Pad + ObjLines[LineIdx]);
+    Result := TextLike(DfmLines, AText);
+  finally
+    ChildStarts.Free;
+    ObjLines.Free;
+    DfmLines.Free;
   end;
 end;
 
