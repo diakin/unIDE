@@ -180,6 +180,10 @@ type
     // переносе
     OwnsNode: Boolean;
     NewField: Boolean;
+    // Объекты работающей формы без имени, которые создаёт этот компонент
+    // (тот же объект или проходы цикла/помощника): их строки в списке не
+    // показываются
+    TwinCount: Integer;
     // Проверки на nil в модуле (if X = nil, Assigned(X)): после переноса X
     // не бывает nil - строки для просмотра, в виде «N: текст»
     NilChecks: TStringList;
@@ -331,7 +335,9 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.46';
+  DfmMoveBuild = 'b.47';
+  // Причина у объекта работающей формы без строки создания
+  NotFoundReason = 'в модуле формы не найдено, где создаётся';
 
 constructor TMoveInfo.Create;
 begin
@@ -5494,7 +5500,7 @@ begin
   if (Node.VarName = '') or (Node.CreateLine < 0) or
      (Node.CreateLine >= ALines.Count) then
   begin
-    Info.Reason := 'в модуле формы не найдено, где создаётся';
+    Info.Reason := NotFoundReason;
     Exit;
   end;
   Info.CreateLine := Node.CreateLine;
@@ -7047,6 +7053,161 @@ end;
 // Узлы разбора - свои копии вместо узлов дерева объектов, Parent - на
 // копии же (у родителя вне списка - отдельная копия в ExtraNodes). Одному
 // родителю - одна копия: соседи по-прежнему узнаются по равенству Parent.
+// Строка кода, которая создаёт объект работающей формы без имени (строка
+// AIndex списка, «не найдено, где создаётся»):
+//   1. Сосед того же класса у того же родителя, созданный в коде (цикл,
+//      вызов помощника, условный блок) - их может быть сколько угодно.
+//   2. Компонент того же класса в другом месте списка, чей родитель - этот:
+//      узел-родитель тот же, или строка X.Parent := P / X.Parent :=
+//      S.Parent (S - ребёнок P) рядом со строкой создания. Один объект -
+//      одна строка, кроме созданных в цикле.
+// nil - не нашлось.
+function FindSnapTwin(AList: TList; AIndex: Integer;
+  ALines: TStrings): TMoveInfo;
+var
+  Info, ParentInfo, Mate: TMoveInfo;
+  Node, ParentNode, MateNode: TDfmNode;
+  ParentIdx, Other, LineIdx, LastLine: Integer;
+  ParentName, Key, Head, Expr, SibName: string;
+  Found: Boolean;
+
+  function NodeName(ANode: TDfmNode): string;
+  begin
+    if ANode.Name <> '' then
+      Result := ANode.Name
+    else
+      Result := ANode.VarName;
+  end;
+
+  // S - ребёнок ParentNode
+  function IsChildName(const AName: string): Boolean;
+  var
+    ChildIdx: Integer;
+    ChildNode: TDfmNode;
+  begin
+    Result := False;
+    for ChildIdx := ParentIdx + 1 to AList.Count - 1 do
+    begin
+      if TMoveInfo(AList[ChildIdx]).Depth <= ParentInfo.Depth then
+        Break;
+      if TMoveInfo(AList[ChildIdx]).Depth <> ParentInfo.Depth + 1 then
+        Continue;
+      ChildNode := TDfmNode(TMoveInfo(AList[ChildIdx]).Node);
+      if (CompareText(ChildNode.Name, AName) = 0) or
+         (CompareText(ChildNode.VarName, AName) = 0) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
+
+begin
+  Result := nil;
+  Info := TMoveInfo(AList[AIndex]);
+  Node := TDfmNode(Info.Node);
+  ParentIdx := AIndex - 1;
+  while (ParentIdx >= 0) and
+        (TMoveInfo(AList[ParentIdx]).Depth >= Info.Depth) do
+    Dec(ParentIdx);
+  if ParentIdx < 0 then
+    Exit;
+  ParentInfo := TMoveInfo(AList[ParentIdx]);
+  ParentNode := TDfmNode(ParentInfo.Node);
+  ParentName := NodeName(ParentNode);
+
+  // 1. Соседи
+  for Other := ParentIdx + 1 to AList.Count - 1 do
+  begin
+    Mate := TMoveInfo(AList[Other]);
+    if Mate.Depth <= ParentInfo.Depth then
+      Break;
+    if (Other = AIndex) or (Mate.Depth <> Info.Depth) or
+       (Mate.CreateLine < 0) then
+      Continue;
+    if CompareText(TDfmNode(Mate.Node).ClassNm, Node.ClassNm) = 0 then
+    begin
+      Result := Mate;
+      Exit;
+    end;
+  end;
+
+  // 2. Тот же класс в другом месте, родитель - этот
+  for Other := 0 to AList.Count - 1 do
+  begin
+    Mate := TMoveInfo(AList[Other]);
+    MateNode := TDfmNode(Mate.Node);
+    if (Other = AIndex) or (Mate.CreateLine < 0) or
+       (MateNode.VarName = '') or
+       (CompareText(MateNode.ClassNm, Node.ClassNm) <> 0) then
+      Continue;
+    if (Mate.TwinCount > 0) and (Pos('цикл', Mate.Reason) = 0) then
+      Continue;
+    Found := (MateNode.Parent = ParentNode) and (ParentNode <> nil);
+    if not Found and (ParentName <> '') then
+    begin
+      Head := UpperCase(MateNode.VarName) + '.PARENT:=';
+      LastLine := Mate.CreateLine + 30;
+      if LastLine > ALines.Count - 1 then
+        LastLine := ALines.Count - 1;
+      for LineIdx := Mate.CreateLine to LastLine do
+      begin
+        Key := CodeKey(ALines[LineIdx]);
+        if Copy(Key, 1, Length(Head)) <> Head then
+          Continue;
+        Expr := Copy(Key, Length(Head) + 1, MaxInt);
+        if (Expr <> '') and (Expr[Length(Expr)] = ';') then
+          SetLength(Expr, Length(Expr) - 1);
+        if CompareText(Expr, ParentName) = 0 then
+          Found := True
+        else if CompareText(Copy(Expr, Length(Expr) - 6, 7), '.PARENT') = 0 then
+        begin
+          SibName := Copy(Expr, 1, Length(Expr) - 7);
+          Found := IsValidIdent(SibName) and IsChildName(SibName);
+        end;
+        Break;
+      end;
+    end;
+    if Found then
+    begin
+      Result := Mate;
+      Exit;
+    end;
+  end;
+end;
+
+// Объекты работающей формы без имени, для которых нашлась строка создания
+// (FindSnapTwin), - из списка: их объясняет та строка, у неё - счётчик
+procedure HideSnapTwins(AList: TList; ALines: TStrings);
+var
+  Index: Integer;
+  Info, Mate: TMoveInfo;
+begin
+  for Index := AList.Count - 1 downto 0 do
+  begin
+    Info := TMoveInfo(AList[Index]);
+    if (Info.Kind <> mkNo) or (Info.CreateLine >= 0) or
+       (TDfmNode(Info.Node).VarName <> '') or
+       (TDfmNode(Info.Node).Name <> '') or
+       (Info.Reason <> NotFoundReason) then
+      Continue;
+    Mate := FindSnapTwin(AList, Index, ALines);
+    if Mate = nil then
+      Continue;
+    Inc(Mate.TwinCount);
+    Info.Free;
+    AList.Delete(Index);
+  end;
+  for Index := 0 to AList.Count - 1 do
+  begin
+    Info := TMoveInfo(AList[Index]);
+    if Info.TwinCount > 0 then
+      Info.Notes.Add('В работающей форме объектов без имени, созданных ' +
+                     'этой строкой: ' + IntToStr(Info.TwinCount) +
+                     ' (в списке не показаны).');
+  end;
+end;
+
 procedure DetachFromTree(AList: TList);
 var
   Originals, Copies: TList;
@@ -9137,6 +9298,11 @@ begin
                      '«Отметить всё возможное» его не отмечает:');
       Info.Notes.AddStrings(Info.NilRisk);
     end;
+
+    // Объекты работающей формы без имени, которые создаёт строка из списка
+    // (цикл, помощник, тот же объект без имени в снимке), - не показывать
+    ReportStep('объекты без имени', 0, 0);
+    HideSnapTwins(AList, Lines);
 
     // Окно разбора немодальное и живёт дольше дерева объектов: дальше
     // разбор держит только свои копии узлов
