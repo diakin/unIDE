@@ -10905,6 +10905,38 @@ var
   Text, Rest, ObjName, ObjClass, FieldType, Tail, EventName, Method,
     Where: string;
   IsRoot: Boolean;
+  // Строка класса (от First) - в published-части: один проход по классу
+  // вместо IsPublishedLine на каждое поле (она идёт от заголовка класса,
+  // и на классе в тысячи строк проверка занимала секунды)
+  PubFlags: array of Boolean;
+
+  procedure BuildPubFlags;
+  var
+    LineIdx: Integer;
+    Word, Section: string;
+  begin
+    SetLength(PubFlags, Last - First + 1);
+    Section := '';
+    for LineIdx := First to Last do
+    begin
+      if LineIdx > First then
+      begin
+        Word := FirstWordOf(Pas[LineIdx]);
+        if IsSectionWord(Word) then
+          Section := Word;
+      end;
+      PubFlags[LineIdx - First] := (Section = '') or (Section = 'PUBLISHED');
+    end;
+  end;
+
+  // То же, что IsPublishedLine(Pas, First, ALine), по PubFlags
+  function IsPub(ALine: Integer): Boolean;
+  begin
+    if (ALine >= First) and (ALine <= Last) then
+      Result := PubFlags[ALine - First]
+    else
+      Result := IsPublishedLine(Pas, First, ALine);
+  end;
 
   function IsHeader(const AText: string; var ARest: string): Boolean;
   begin
@@ -10943,11 +10975,12 @@ begin
       Result := False;
       Exit;
     end;
+    BuildPubFlags;
 
     // Типы published-полей: по ним форма находит классы объектов .dfm
     for Index := First + 1 to Last - 1 do
       if ParseFieldLine(Pas[Index], Names, FieldType, Tail) and
-         IsPublishedLine(Pas, First, Index) and
+         IsPub(Index) and
          (PubTypes.IndexOf(FieldType) < 0) then
         PubTypes.Add(FieldType);
 
@@ -10990,7 +11023,7 @@ begin
             AWarnings.Add(ObjName + ': ' + ObjClass + Where + ' - поля в ' +
               'классе нет: из кода к объекту не обратиться');
         end
-        else if not IsPublishedLine(Pas, First, FieldLine) then
+        else if not IsPub(FieldLine) then
           AErrors.Add(ObjName + ': ' + ObjClass + Where + ' - поле объявлено ' +
             'не в published (строка модуля ' + IntToStr(FieldLine + 1) +
             '): при загрузке оно останется nil')
@@ -11025,7 +11058,7 @@ begin
         if not FindMethodDecl(Pas, First, Last, Method, Start, Stop) then
           AErrors.Add(CurrentOwner + '.' + EventName + ' = ' + Method + Where +
             ' - метода ' + Method + ' в классе ' + AFormClass + ' нет')
-        else if not IsPublishedLine(Pas, First, Start) then
+        else if not IsPub(Start) then
           AErrors.Add(CurrentOwner + '.' + EventName + ' = ' + Method + Where +
             ' - метод объявлен не в published (строка модуля ' +
             IntToStr(Start + 1) + '): при загрузке формы будет ошибка ' +
