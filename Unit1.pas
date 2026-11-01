@@ -41168,7 +41168,7 @@ procedure TForm1.LazPrepClick(Sender: TObject);
 const
   LazBuildDir = 'laz';
 var
-  SrcDir, DstDir: string;
+  SrcDir, DstDir, PrjDpr: string;
   DprRec: TSearchRec;
   HasDpr: Boolean;
   Report: TStringList;
@@ -41177,20 +41177,32 @@ var
   LineIdx: Integer;
 begin
   ShowCompLog;
-  if FCurrentFileName = '' then
+  // Папка .dpr: папка открытого файла, иначе - папка .dpr текущего
+  // проекта (панель Project), если открыт файл не из папки проекта
+  // (hang.log в Output и т.п.)
+  SrcDir := '';
+  HasDpr := False;
+  if FCurrentFileName <> '' then
   begin
-    LogComp('Lazarus: откройте файл проекта Delphi (.dpr или модуль из его ' +
-            'папки)');
-    Exit;
+    SrcDir := ExtractFilePath(FCurrentFileName);
+    HasDpr := FindFirst(SrcDir + '*.dpr', faAnyFile, DprRec) = 0;
+    if HasDpr then
+      FindClose(DprRec);
   end;
-  SrcDir := ExtractFilePath(FCurrentFileName);
-  HasDpr := FindFirst(SrcDir + '*.dpr', faAnyFile, DprRec) = 0;
-  if HasDpr then
-    FindClose(DprRec);
+  if not HasDpr and (BuildProject <> '') then
+  begin
+    PrjDpr := ProjectTargetFind(BuildProject);
+    if (PrjDpr <> '') and FileExists(PrjDpr) and
+       (CompareText(ExtractFileExt(PrjDpr), '.dpr') = 0) then
+    begin
+      SrcDir := ExtractFilePath(PrjDpr);
+      HasDpr := True;
+    end;
+  end;
   if not HasDpr then
   begin
-    LogComp('Lazarus: в папке ' + SrcDir + ' нет .dpr - откройте файл из ' +
-            'папки проекта Delphi');
+    LogComp('Lazarus: не найден .dpr ни в папке открытого файла, ни у ' +
+            'текущего проекта - откройте файл из папки проекта Delphi');
     Exit;
   end;
   DstDir := SrcDir + LazBuildDir + PathDelim;
