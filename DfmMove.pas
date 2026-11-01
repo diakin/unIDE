@@ -304,8 +304,8 @@ procedure DfmMoveShowReport(AList: TList; const APasFile, ADfmFile,
 implementation
 
 uses
-  StrUtils, TypInfo, Dialogs, Menus, ObjParse, FormDesigner, UiTheme,
-  UiButton, UiStdCtrls, UiEditCtrls, UiComCtrls, UiDialogs;
+  StrUtils, TypInfo, Dialogs, Menus, CommCtrl, ObjParse, FormDesigner,
+  UiTheme, UiButton, UiStdCtrls, UiEditCtrls, UiComCtrls, UiDialogs;
 
 // Ход разбора - в IDE (DfmMoveProgress). Зовётся и из долгих циклов
 // внутри шагов: окно IDE не должно молчать дольше нескольких секунд.
@@ -318,7 +318,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.21';
+  DfmMoveBuild = 'b.22';
 
 constructor TMoveInfo.Create;
 begin
@@ -9666,6 +9666,14 @@ type
     Shown: Boolean;
   end;
 
+  // Список окна разбора: фон строк «целиком» (зелёный) и «частично»
+  // (жёлтый) ставится прямо в NM_CUSTOMDRAW, после обработки VCL - через
+  // Canvas.Brush в OnCustomDrawItem фон не менялся
+  TMoveListView = class(TUiListView)
+  private
+    procedure CNNotify(var Message: TWMNotify); message CN_NOTIFY;
+  end;
+
   TMoveReportForm = class(TForm)
   public
     List: TList;
@@ -10178,29 +10186,50 @@ begin
   end;
 end;
 
-// Уже в .dfm - серым: их переносить не нужно. Переносится целиком -
-// фон зелёный, частично - жёлтый (выделенная строка - цветом выделения)
-procedure TMoveReportForm.ViewDrawItem(Sender: TCustomListView; Item: TListItem;
-  State: TCustomDrawState; var DefaultDraw: Boolean);
+procedure TMoveListView.CNNotify(var Message: TWMNotify);
 const
   WholeBG = $0090EE90;     // светло-зелёный
   PartialBG = $0080FFFF;   // светло-жёлтый
+var
+  Draw: PNMLVCustomDraw;
+  Stage, RowIndex: Integer;
+  Info: TMoveInfo;
+begin
+  inherited;
+  if (Message.NMHdr^.code <> NM_CUSTOMDRAW) or
+     (csDestroying in ComponentState) then
+    Exit;
+  Draw := PNMLVCustomDraw(Message.NMHdr);
+  Stage := Integer(Draw^.nmcd.dwDrawStage);
+  if (Stage <> CDDS_ITEMPREPAINT) and
+     (Stage <> CDDS_ITEMPREPAINT or CDDS_SUBITEM) then
+    Exit;
+  RowIndex := Integer(Draw^.nmcd.dwItemSpec);
+  if (RowIndex < 0) or (RowIndex >= Items.Count) or
+     (Items[RowIndex].Data = nil) then
+    Exit;
+  // Выделенная строка - цветом выделения
+  if ListView_GetItemState(Handle, RowIndex, LVIS_SELECTED) <> 0 then
+    Exit;
+  Info := TMoveInfo(Items[RowIndex].Data);
+  if Info.Kind = mkWhole then
+    Draw^.clrTextBk := ColorToRGB(WholeBG)
+  else if Info.Kind = mkPartial then
+    Draw^.clrTextBk := ColorToRGB(PartialBG)
+  else
+    Exit;
+  Draw^.clrText := ColorToRGB(clBlack);
+end;
+
+// Уже в .dfm - серым: их переносить не нужно. Фон строк «целиком» и
+// «частично» - в TMoveListView.CNNotify
+procedure TMoveReportForm.ViewDrawItem(Sender: TCustomListView; Item: TListItem;
+  State: TCustomDrawState; var DefaultDraw: Boolean);
 begin
   if (csDestroying in ComponentState) or (Item.Data = nil) then
     Exit;
-  case TMoveInfo(Item.Data).Kind of
-    mkInDfm:
-      Sender.Canvas.Font.Color := UiThemeColor('OffText');
-    mkWhole, mkPartial:
-      if not (cdsSelected in State) then
-      begin
-        if TMoveInfo(Item.Data).Kind = mkWhole then
-          Sender.Canvas.Brush.Color := WholeBG
-        else
-          Sender.Canvas.Brush.Color := PartialBG;
-        Sender.Canvas.Font.Color := clBlack;
-      end;
-  end;
+  if TMoveInfo(Item.Data).Kind = mkInDfm then
+    Sender.Canvas.Font.Color := UiThemeColor('OffText');
 end;
 
 procedure TMoveReportForm.ViewDrawSubItem(Sender: TCustomListView;
@@ -10486,7 +10515,7 @@ begin
     Form.Details.SetBounds(8, Form.ClientHeight - 42 - 200,
                            Form.ClientWidth - 16, 200);
 
-    Form.View := TUiListView.Create(Form);
+    Form.View := TMoveListView.Create(Form);
     Form.View.Parent := Form;
     Form.View.ViewStyle := vsReport;
     Form.View.ReadOnly := True;
