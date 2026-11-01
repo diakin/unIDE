@@ -335,7 +335,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.49';
+  DfmMoveBuild = 'b.50';
   // Причина у объекта работающей формы без строки создания
   NotFoundReason = 'в модуле формы не найдено, где создаётся';
 
@@ -2735,6 +2735,67 @@ end;
 // Строка ALine - вызов помощника: X := Помощник(...); или Помощник(...);
 // (вызов может занимать несколько строк). AHelper, ALhs ('' - без
 // переменной), аргументы, последняя строка вызова. False - не вызов.
+// Помощник с именем AName, видимый из строки ALine. Одноимённых может быть
+// несколько (вложенные NewItem в разных процедурах): вложенный - тот, чей
+// заголовок выше ALine с отступом и между ними нет заголовка процедуры с
+// первой колонки (ближайший); иначе - процедура модуля (заголовок с первой
+// колонки); иначе - первый по списку.
+function FindHelperAt(ALines: TStrings; AHelpers: TList; const AName: string;
+  ALine: Integer): THelperInfo;
+var
+  Index, LineIdx, Best: Integer;
+  Cand, TopLevel, First: THelperInfo;
+  HdrText, Up: string;
+  Visible: Boolean;
+begin
+  Result := nil;
+  TopLevel := nil;
+  First := nil;
+  Best := -1;
+  for Index := 0 to AHelpers.Count - 1 do
+  begin
+    Cand := THelperInfo(AHelpers[Index]);
+    if CompareText(Cand.Name, AName) <> 0 then
+      Continue;
+    if First = nil then
+      First := Cand;
+    if (Cand.HdrLine < 0) or (Cand.HdrLine >= ALines.Count) then
+      Continue;
+    HdrText := ALines[Cand.HdrLine];
+    if (HdrText <> '') and not (HdrText[1] in [' ', #9]) then
+    begin
+      if TopLevel = nil then
+        TopLevel := Cand;
+      Continue;
+    end;
+    if (Cand.HdrLine >= ALine) or (Cand.HdrLine <= Best) then
+      Continue;
+    Visible := True;
+    for LineIdx := Cand.HdrLine + 1 to ALine - 1 do
+    begin
+      HdrText := ALines[LineIdx];
+      if (HdrText = '') or (HdrText[1] in [' ', #9, '/', '{']) then
+        Continue;
+      Up := UpperCase(Copy(HdrText, 1, 12));
+      if (Copy(Up, 1, 10) = 'PROCEDURE ') or (Copy(Up, 1, 9) = 'FUNCTION ') or
+         (Copy(Up, 1, 12) = 'CONSTRUCTOR ') or (Copy(Up, 1, 11) = 'DESTRUCTOR ') then
+      begin
+        Visible := False;
+        Break;
+      end;
+    end;
+    if Visible then
+    begin
+      Result := Cand;
+      Best := Cand.HdrLine;
+    end;
+  end;
+  if Result = nil then
+    Result := TopLevel;
+  if Result = nil then
+    Result := First;
+end;
+
 function ParseHelperCall(ALines: TStrings; ALine: Integer; AHelpers: TList;
   var AHelper: THelperInfo; var ALhs: string; AArgs: TStrings;
   var ALast: Integer): Boolean;
@@ -2764,12 +2825,7 @@ begin
     Name := Trim(Copy(Code, 1, Open - 1));
   if not IsValidIdent(Name) then
     Exit;
-  for Index := 0 to AHelpers.Count - 1 do
-    if CompareText(THelperInfo(AHelpers[Index]).Name, Name) = 0 then
-    begin
-      AHelper := THelperInfo(AHelpers[Index]);
-      Break;
-    end;
+  AHelper := FindHelperAt(ALines, AHelpers, Name, ALine);
   if AHelper = nil then
     Exit;
 
