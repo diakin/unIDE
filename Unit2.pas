@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, Grids, StdCtrls,ExtCtrls,ComCtrls,StrUtils, Menus, IniFiles,
-  FileCtrl, Gauges,
+  FileCtrl, {$IFDEF FPC} FileCtrlLcl, {$ENDIF}
   OsReg,          // чтение реестра Windows: установки Delphi, переменные среды
   UiButton,       // кнопка, которую рисует программа (вместо TButton)
   UiGroupBox,     // рамка с подписью своими цветами (вместо TGroupBox)
@@ -4763,7 +4763,7 @@ begin
   if AName = '' then
     Exit;
 
-  Num := GetEnvironmentVariable(PChar(AName), Buf, SizeOf(Buf));
+  Num := Windows.GetEnvironmentVariable(PChar(AName), Buf, SizeOf(Buf));
   if (Num > 0) and (Num < SizeOf(Buf)) then
   begin
     Result := Buf;

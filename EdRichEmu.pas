@@ -74,7 +74,7 @@ type
     FLogged: TList;             // номера сообщений, уже записанных в журнал
     FOnLog: TEdEmuLogEvent;
     function Wnd: HWND;
-    function DefSend(AMsg: Cardinal; AWParam, ALParam: Integer): Integer;
+    function DefSend(AMsg: Cardinal; AWParam: WPARAM; ALParam: LPARAM): LRESULT;
     procedure BufferChanged(Sender: TObject; AFirst, AOldCount,
       ANewCount: Integer);
     procedure EditorMoved(Sender: TObject);
@@ -411,7 +411,8 @@ begin
 end;
 
 // Сообщение самому RichEdit (прежней оконной процедуре)
-function TEdRichEmu.DefSend(AMsg: Cardinal; AWParam, ALParam: Integer): Integer;
+function TEdRichEmu.DefSend(AMsg: Cardinal; AWParam: WPARAM;
+  ALParam: LPARAM): LRESULT;
 var
   Message: TMessage;
 begin
@@ -449,7 +450,7 @@ begin
   // Текст - в UTF-16, перевод строки - CR, как в модели RichEdit
   LenInfo.flags := 0;
   LenInfo.codepage := CP_UNICODE_;
-  TextChars := DefSend(EM_GETTEXTLENGTHEX_, Integer(@LenInfo), 0);
+  TextChars := DefSend(EM_GETTEXTLENGTHEX_, WPARAM(@LenInfo), 0);
   if TextChars < 0 then
     TextChars := 0;
   SetLength(Text, TextChars + 1);
@@ -457,7 +458,7 @@ begin
   GetInfo.cb := (TextChars + 1) * 2;
   GetInfo.flags := 0;
   GetInfo.codepage := CP_UNICODE_;
-  GotChars := DefSend(EM_GETTEXTEX_, Integer(@GetInfo), Integer(PWideChar(Text)));
+  GotChars := DefSend(EM_GETTEXTEX_, WPARAM(@GetInfo), LPARAM(PWideChar(Text)));
   if GotChars < 0 then
     GotChars := 0;
   if GotChars > TextChars then
@@ -465,7 +466,7 @@ begin
   SetLength(Text, GotChars);
   Range.cpMin := 0;
   Range.cpMax := 0;
-  DefSend(EM_EXGETSEL_, 0, Integer(@Range));
+  DefSend(EM_EXGETSEL_, 0, LPARAM(@Range));
   TopLine := DefSend(EM_GETFIRSTVISIBLELINE, 0, 0);
   WasModified := DefSend(EM_GETMODIFY, 0, 0) <> 0;
 
@@ -480,7 +481,7 @@ begin
   FNeedPaint := True;
 
   // Свой текст у RichEdit больше не нужен; уведомления у него уже выключены
-  DefSend(WM_SETTEXT, 0, Integer(PAnsiChar(NoText)));
+  DefSend(WM_SETTEXT, 0, LPARAM(PAnsiChar(NoText)));
   DefSend(EM_EMPTYUNDOBUFFER, 0, 0);
 end;
 
@@ -497,10 +498,10 @@ begin
   // Уведомления у RichEdit выключены (Start) - текст ставится молча
   SetInfo.flags := 0;
   SetInfo.codepage := CP_UNICODE_;
-  DefSend(EM_SETTEXTEX_, Integer(@SetInfo), Integer(PWideChar(Text)));
+  DefSend(EM_SETTEXTEX_, WPARAM(@SetInfo), LPARAM(PWideChar(Text)));
   Range.cpMin := SelMin;
   Range.cpMax := SelMax;
-  DefSend(EM_EXSETSEL_, 0, Integer(@Range));
+  DefSend(EM_EXSETSEL_, 0, LPARAM(@Range));
   TopLine := DefSend(EM_GETFIRSTVISIBLELINE, 0, 0);
   if TopLine <> FTopRow then
     DefSend(EM_LINESCROLL, 0, FTopRow - TopLine);
@@ -625,7 +626,7 @@ end;
 function TEdRichEmu.TextRect: TRect;
 begin
   Result := Rect(0, 0, 0, 0);
-  DefSend(EM_GETRECT, 0, Integer(@Result));
+  DefSend(EM_GETRECT, 0, LPARAM(@Result));
   if Result.Bottom <= Result.Top then
     Windows.GetClientRect(Wnd, Result);
 end;
@@ -1250,7 +1251,7 @@ begin
         Info.seltyp := SEL_EMPTY_
       else
         Info.seltyp := SEL_TEXT_;
-      SendMessage(Parent, WM_NOTIFY, Info.nmhdr.idFrom, Integer(@Info));
+      SendMessage(Parent, WM_NOTIFY, Info.nmhdr.idFrom, LPARAM(@Info));
     end;
   end;
 end;

@@ -116,6 +116,11 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+{$IFDEF FPC}
+    // Как TListView.UpdateItems в VCL: перерисовать строки с AFirst по
+    // ALast (LVM_REDRAWITEMS) сразу
+    procedure UpdateItems(AFirst, ALast: Integer);
+{$ENDIF}
   published
     property ThemeColors: Boolean read FThemeColors write SetThemeColors
       default True;
@@ -631,6 +636,18 @@ end;
 // ---------------------------------------------------------------------------
 //  TUiListView
 // ---------------------------------------------------------------------------
+
+{$IFDEF FPC}
+procedure TUiListView.UpdateItems(AFirst, ALast: Integer);
+const
+  LVM_REDRAWITEMS_ = $1000 + 21;
+begin
+  if not HandleAllocated then
+    Exit;
+  SendMessage(Handle, LVM_REDRAWITEMS_, AFirst, ALast);
+  UpdateWindow(Handle);
+end;
+{$ENDIF}
 
 constructor TUiListView.Create(AOwner: TComponent);
 begin

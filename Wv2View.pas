@@ -93,7 +93,7 @@ var
   Buf: array[0..MAX_PATH] of Char;
   Len: DWORD;
 begin
-  Len := GetEnvironmentVariable('LOCALAPPDATA', Buf, MAX_PATH);
+  Len := Windows.GetEnvironmentVariable('LOCALAPPDATA', Buf, MAX_PATH);
   if (Len > 0) and (Len < MAX_PATH) then
     Result := IncludeTrailingPathDelimiter(Buf)
   else

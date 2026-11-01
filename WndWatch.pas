@@ -54,6 +54,7 @@ unit WndWatch;
 interface
 
 uses
+  {$IFDEF FPC} LCLIntf, {$ENDIF} // AllocateHWnd: в FPC у Classes её нет
   Windows, Messages, SysUtils, Classes, Controls, Forms,
   HangWatch;    // HangWatchCallStack - цепочка вызовов по .map
 
@@ -445,7 +446,7 @@ begin
   Application.HookMainWindow(AppHook);
   FHooked := True;
   {$ENDIF}
-  FTimerWnd := AllocateHWnd(TimerWndProc);
+  FTimerWnd := {$IFDEF FPC}LCLIntf{$ELSE}Classes{$ENDIF}.AllocateHWnd(TimerWndProc);
   SetTimer(FTimerWnd, 1, PollInterval, nil);
 end;
 
@@ -464,7 +465,7 @@ begin
   if FTimerWnd <> 0 then
   begin
     KillTimer(FTimerWnd, 1);
-    DeallocateHWnd(FTimerWnd);
+    {$IFDEF FPC}LCLIntf{$ELSE}Classes{$ENDIF}.DeallocateHWnd(FTimerWnd);
     FTimerWnd := 0;
   end;
   if FHooked then

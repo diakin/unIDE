@@ -21,6 +21,7 @@ unit ArduinoPorts;
 interface
 
 uses
+  {$IFDEF FPC} LCLIntf, {$ENDIF} // AllocateHWnd: в FPC у Classes её нет
   Windows, Messages, SysUtils, Classes, Registry;
 
 type
@@ -404,7 +405,7 @@ var
   RegisterApi: TRegisterDeviceNotification;
 begin
   inherited Create;
-  FWnd := Classes.AllocateHWnd(WndProc);
+  FWnd := {$IFDEF FPC}LCLIntf{$ELSE}Classes{$ENDIF}.AllocateHWnd(WndProc);
   ArdEnumPorts(FPorts);
 
   FillChar(Filter, SizeOf(Filter), 0);
@@ -432,7 +433,7 @@ begin
   if FWnd <> 0 then
   begin
     KillTimer(FWnd, RefreshTimerId);
-    Classes.DeallocateHWnd(FWnd);
+    {$IFDEF FPC}LCLIntf{$ELSE}Classes{$ENDIF}.DeallocateHWnd(FWnd);
     FWnd := 0;
   end;
   inherited Destroy;

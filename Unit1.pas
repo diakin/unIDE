@@ -4,8 +4,9 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, StdCtrls, ComCtrls, StrUtils, Menus, ExtCtrls, RichEdit, ColorGrd,
-  Buttons, IniFiles, ShellAPI, CheckLst, Grids, Clipbrd, FileCtrl, {$IFDEF FPC} FileCtrlLcl, {$ENDIF}
+  Dialogs, StdCtrls, ComCtrls, StrUtils, Menus, ExtCtrls, RichEdit, {$IFNDEF FPC} ColorGrd, {$ENDIF}
+  Buttons, IniFiles, ShellAPI, CheckLst, Grids, Clipbrd, FileCtrl,
+  {$IFDEF FPC} FileCtrlLcl, LCLProc, RichMemo, AppMsgHook, {$ENDIF}
   FormDesigner,   // визуальный конструктор форм
   DsgClasses,     // классы палитры для конструктора и инспектора
   DsgPalette,     // окно палитры компонентов
@@ -72,6 +73,13 @@ uses
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
+
+{$IFDEF FPC}
+type
+  // Параметры поиска из ComCtrls Delphi (TRichEdit.FindText); в LCL их нет
+  TSearchType = (stWholeWord, stMatchCase);
+  TSearchTypes = set of TSearchType;
+{$ENDIF}
 
 const
   // Кнопок палитры компонентов (массив PalBtn) - по одной на класс всех
@@ -4456,7 +4464,9 @@ var
 
   uses
     Unit2, // Подключили вторую форму к первой!
+  {$IFNDEF FPC}
     FastMM4,      // FastGetHeapStatus - состояние кучи в hang.log и логе
+  {$ENDIF}
     LazPrep,      // исходники в UTF-8 для сборки Lazarus (шаг 1.2)
     FormSnapshot, // снимок живой формы для инспектора объектов
     OsReg,        // чтение реестра Windows: установленные Delphi, AutoHotkey, Lazarus
@@ -4478,7 +4488,7 @@ var
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     FormPreview,  // превью формы по .dfm - список модулей и форм
-    jpeg,         // превью форм на диске - dsgcache\*.preview.jpg
+    {$IFNDEF FPC} jpeg, {$ENDIF} // превью форм (в LCL TJPEGImage - в Graphics) на диске - dsgcache\*.preview.jpg
     RqComponents, // описание компонентов RapidQ (Component.data)
     RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
@@ -7220,7 +7230,7 @@ begin
 
   BgKey := '';
   FgKey := '';
-  if Ctrl is TCustomRichEdit then
+  if Ctrl is {$IFDEF FPC}TCustomRichMemo{$ELSE}TCustomRichEdit{$ENDIF} then
     BgKey := 'Ide.LogBG'
   else if (Ctrl is TCustomTreeView) or (Ctrl is TCustomListView) or
           (Ctrl is TCustomListBox) or (Ctrl is TCustomGrid) then
@@ -7365,14 +7375,14 @@ begin
   if ACell and (ASub > 0) then
   begin
     RectVal.Top := ASub;
-    if SendMessage(LV.Handle, UiLVM_GETSUBITEMRECT, AItem, Integer(@RectVal)) = 0 then
+    if SendMessage(LV.Handle, UiLVM_GETSUBITEMRECT, AItem, LPARAM(@RectVal)) = 0 then
     begin
       if Form1 <> nil then
         Form1.UiGridNote(LV, 'линии: LVM_GETSUBITEMRECT вернул 0');
       Exit;
     end;
   end
-  else if SendMessage(LV.Handle, UiLVM_GETITEMRECT, AItem, Integer(@RectVal)) = 0 then
+  else if SendMessage(LV.Handle, UiLVM_GETITEMRECT, AItem, LPARAM(@RectVal)) = 0 then
   begin
     if Form1 <> nil then
       Form1.UiGridNote(LV, 'линии: LVM_GETITEMRECT вернул 0');
@@ -10269,7 +10279,7 @@ begin
   'Искать потерянные файлы рядом с программой и в горячих папках';
 
   // Подписи здесь - это пути к файлам, ускорители в них только мешают
-mWindows.AutoHotkeys := maManual;
+{$IFNDEF FPC}mWindows.AutoHotkeys := maManual;{$ENDIF}
   mWinDeleteDisabled.OnClick := RemoveMissingClick;
 
   RebuildWindowsMenu;
@@ -11816,7 +11826,7 @@ begin
 
   // Пункты списка строятся из имён папок, и подставлять в них ускорители
   // не нужно - иначе в подписях появляются лишние амперсанды
-  mProject.AutoHotkeys := maManual;
+  {$IFNDEF FPC}mProject.AutoHotkeys := maManual;{$ENDIF}
 
   RebuildProjectsMenu;
 end;
@@ -16208,7 +16218,7 @@ procedure TForm1.HfTreeExpanding(Sender: TObject; Node: TTreeNode;
 begin
   AllowExpansion := True;
   // Заглушка - признак того, что папка ещё не читалась
-  if (Node.Count = 1) and (Node.Item[0].Text = '') then
+  if (Node.Count = 1) and (Node.getFirstChild.Text = '') then
     HfFillNode(Node);
 end;
 
@@ -16793,7 +16803,7 @@ begin
 
     for I := 1 to Parts.Count - 1 do
     begin
-      if (Node.Count = 1) and (Node.Item[0].Text = '') then
+      if (Node.Count = 1) and (Node.getFirstChild.Text = '') then
         HfFillNode(Node);
       Node.Expand(False);
 
@@ -16810,7 +16820,7 @@ begin
       Node := Child;
     end;
 
-    if (Node.Count = 1) and (Node.Item[0].Text = '') then
+    if (Node.Count = 1) and (Node.getFirstChild.Text = '') then
       HfFillNode(Node);
     Node.Expand(False);
     Node.MakeVisible;
@@ -19056,13 +19066,13 @@ end;
 procedure TForm1.BuildBookmarksMenu;
 begin
   // Подписи содержат текст кода - ускорители в них только мешают
-  mBookmarks.AutoHotkeys := maManual;
+  {$IFNDEF FPC}mBookmarks.AutoHotkeys := maManual;{$ENDIF}
   // При открытии меню - квадратики с номерами, текущая закладка выделена
   mBookmarks.OnClick := mBookmarksClick;
   // Hot Bookmarks - список строится при каждом открытии меню
   if mHotBM <> nil then
   begin
-    mHotBM.AutoHotkeys := maManual;
+    {$IFNDEF FPC}mHotBM.AutoHotkeys := maManual;{$ENDIF}
     mHotBM.OnClick := HotBmMenuClick;
   end;
 
@@ -26067,7 +26077,9 @@ begin
   // Сборка в каждой записи hang.log - то же, что в скобках заголовка окна
   // Менеджер памяти - FastMM4 (первый модуль .dpr); System.GetHeapStatus
   // его кучу не видит
+  {$IFNDEF FPC}
   HangHeapStatus := FastGetHeapStatus;
+  {$ENDIF}
   HangWatchStart(Application.Handle,
                  ExtractFilePath(Application.ExeName) + 'hang.log', Handle,
                  Copy(AppTitle, Pos('[', AppTitle) + 1,
@@ -26368,7 +26380,7 @@ begin
   Application.ShowHint := True;
   Application.OnHint := AppHint;
   // Колесо мыши над таблицами - прокрутка строк, см. AppMessage
-  Application.OnMessage := AppMessage;
+  {$IFDEF FPC}AppMsgHookSet(AppMessage);{$ELSE}Application.OnMessage := AppMessage;{$ENDIF}
 
   // КРИТИЧЕСКИЙ ШАГ: Привязываем созданное PopupMenu к нашему текстовому полю RichEdit1
   RichEdit1.PopupMenu := FPopupMenu;
@@ -26632,7 +26644,7 @@ begin
   for I := 0 to WindowsItemCount - 1 do
     FreeAndNil(FWindows[I].Buffer);
   Application.OnHint := nil; // форма уходит, обработчик держать нельзя
-  Application.OnMessage := nil;
+  {$IFDEF FPC}AppMsgHookSet(nil);{$ELSE}Application.OnMessage := nil;{$ENDIF}
   Application.OnActivate := nil;
   if FDiskTimer <> nil then
     FDiskTimer.Enabled := False;
@@ -27210,7 +27222,7 @@ var
     Limit: Integer;
     UR: TRect;
   begin
-    SendMessage(FTabs.Handle, TCM_GETITEMRECT_, Num - 1, Integer(@RectVal));
+    SendMessage(FTabs.Handle, TCM_GETITEMRECT_, Num - 1, LPARAM(@RectVal));
     Limit := FTabs.ClientWidth;
     UpDown := FindWindowEx(FTabs.Handle, 0, 'msctls_updown32', nil);
     if (UpDown <> 0) and IsWindowVisible(UpDown) then
@@ -27233,7 +27245,7 @@ begin
     First := 0;
     for I := 0 to Num - 1 do
     begin
-      SendMessage(FTabs.Handle, TCM_GETITEMRECT_, I, Integer(@RectVal));
+      SendMessage(FTabs.Handle, TCM_GETITEMRECT_, I, LPARAM(@RectVal));
       if RectVal.Left >= 0 then
       begin
         First := I;
@@ -32159,7 +32171,7 @@ begin
   CellRect.Top := 1;               // колонка значения
   CellRect.Left := LVIR_BOUNDS;
   SendMessage(FObjProps.Handle, LVM_GETSUBITEMRECT, AItem.Index,
-              Integer(@CellRect));
+              LPARAM(@CellRect));
 
   IsColor := (Member <> nil) and (Member.Choices.IndexOf('<default>') >= 0);
   IsEnum := (Member <> nil) and (Member.Choices.Count > 0) and not IsColor;
@@ -36066,7 +36078,7 @@ begin
       Exit;
     if Rest = '' then
     begin
-      Result := PI^.PropType^;
+      Result := PI^.PropType{$IFNDEF FPC}^{$ENDIF};
       AWritable := PI^.SetProc <> nil;
       Exit;
     end;
@@ -36404,7 +36416,7 @@ begin
   CellRect.Top := 1;               // колонка значения
   CellRect.Left := LVIR_BOUNDS;
   if SendMessage(FObjProps.Handle, LVM_GETSUBITEMRECT, AItem,
-                 Integer(@CellRect)) = 0 then
+                 LPARAM(@CellRect)) = 0 then
     Exit;
   HalfLeft := (CellRect.Left + CellRect.Right) div 2;
   if CellRect.Right - HalfLeft < 24 then
@@ -36624,7 +36636,7 @@ ShowMessage('18729:' + FObjEditName + ' у ' + DfmNode.Name + ' задаёт к�
 
   RectVal.Top := 1;               // колонка значения
   RectVal.Left := LVIR_BOUNDS;
-  SendMessage(FObjProps.Handle, LVM_GETSUBITEMRECT, It.Index, Integer(@RectVal));
+  SendMessage(FObjProps.Handle, LVM_GETSUBITEMRECT, It.Index, LPARAM(@RectVal));
 
   FObjEditIsStr := False;
   FObjThemeColor := '';
@@ -38182,7 +38194,7 @@ begin
   Dlg := TUiColorDialog.Create(Self);
   FObjInColorDlg := True;
   try
-    Dlg.Options := [cdFullOpen, cdAnyColor];
+    {$IFNDEF FPC}Dlg.Options := [cdFullOpen, cdAnyColor];{$ENDIF}
     if ObjColorOfText(FObjCombo.Text, CurColor) and (CurColor <> clNone) and
        (CurColor <> clDefault) then
       Dlg.Color := ColorToRGB(CurColor);
@@ -39774,7 +39786,7 @@ begin
           Result := Result.getNextSibling;
     end
     else if Idx3 < Result.Count then
-      Result := Result.Item[Idx3]
+      Result := Result{$IFDEF FPC}.Items{$ELSE}.Item{$ENDIF}[Idx3]
     else
       Result := nil;
     if Result = nil then
@@ -41154,9 +41166,11 @@ begin
     for LineIdx := 0 to Report.Count - 1 do
       LogComp('  ' + Report[LineIdx]);
     LogComp(Format('Lazarus: переведено в UTF-8 %d, скопировано %d, без ' +
-                   'изменений %d, ошибок %d (%d мс)',
+                   'изменений %d, форм .lfm %d, проектов .lpr %d, ошибок %d ' +
+                   '(%d мс)',
                    [Stats.Converted, Stats.Copied, Stats.Unchanged,
-                    Stats.Failed, GetTickCount - StartTick]));
+                    Stats.Forms, Stats.Projects, Stats.Failed,
+                    GetTickCount - StartTick]));
   finally
     Report.Free;
   end;
@@ -42558,7 +42572,7 @@ begin
       OneForm := TCustomForm(Listed[FormIdx]);
       Item := TMenuItem.Create(FUtilMenu);
       Item.Caption := StringReplace(OneForm.Caption, '&', '&&', [rfReplaceAll]);
-      Item.Tag := Integer(OneForm);
+      Item.Tag := {$IFDEF FPC}PtrInt{$ELSE}Integer{$ENDIF}(OneForm);
       Item.OnClick := UtilMenuClick;
       FUtilMenu.Add(Item);
     end;
@@ -42588,7 +42602,7 @@ begin
         Chip.Caption := UtilShortName(OneForm.Caption);
         Chip.ShowHint := True;
         Chip.Cursor := crHandPoint;
-        Chip.Tag := Integer(OneForm);
+        Chip.Tag := {$IFDEF FPC}PtrInt{$ELSE}Integer{$ENDIF}(OneForm);
         Chip.OnClick := UtilChipClick;
         FUtilChips.Add(Chip);
       end;
@@ -42977,7 +42991,7 @@ begin
         Exit;
       tkInteger:
       begin
-        if (PI^.PropType^ = TypeInfo(TColor)) and IdentToColor(AValue, Num) then
+        if (PI^.PropType{$IFNDEF FPC}^{$ENDIF} = TypeInfo(TColor)) and IdentToColor(AValue, Num) then
           SetOrdProp(Obj, PI, Num)
         else
           SetOrdProp(Obj, PI, StrToInt(AValue));
@@ -45974,7 +45988,7 @@ begin
     tkString, tkLString, tkWString:
       Result := Result + ' string';
     tkSet:
-      Result := Result + ' set ' + TypeRec^.CompType^^.Name;
+      Result := Result + ' set ' + TypeRec^.CompType{$IFNDEF FPC}^{$ENDIF}^.Name;
     tkClass:
       Result := Result + ' class';
     tkMethod:
@@ -46637,7 +46651,7 @@ begin
   RectVal := LV.Items[0].DisplayRect(drBounds);
   HeightPx := RectVal.Bottom - RectVal.Top;
   if HeightPx > 0 then
-    LV.Scroll(0, ATop * HeightPx);
+    SendMessage(LV.Handle, $1000 + 20, 0, ATop * HeightPx); // LVM_SCROLL
 end;
 
 // ---------------------------------------------------------------------------
@@ -51184,7 +51198,7 @@ begin
   GetCursorPos(HitInfo.Pt);
   HitInfo.Pt := FObjProps.ScreenToClient(HitInfo.Pt);
   if SendMessage(FObjProps.Handle, UiLVM_SUBITEMHITTEST, 0,
-                 Integer(@HitInfo)) < 0 then
+                 LPARAM(@HitInfo)) < 0 then
     Exit;
   if (HitInfo.Item < 0) or (HitInfo.Item >= FObjProps.Items.Count) then
     Exit;
@@ -53581,7 +53595,7 @@ begin
       ValStr := OsRegReadAny(AKey + '\Environment Variables', Nm);
     if ValStr = '' then
     begin
-      Num := GetEnvironmentVariable(PChar(Nm), Buf, SizeOf(Buf));
+      Num := Windows.GetEnvironmentVariable(PChar(Nm), Buf, SizeOf(Buf));
       if (Num > 0) and (Num < SizeOf(Buf)) then
         ValStr := Buf;
     end;
@@ -54694,7 +54708,7 @@ var
   var
     EnvLen: DWORD;
   begin
-    EnvLen := GetEnvironmentVariable(PChar(AEnvName), Buf, SizeOf(Buf));
+    EnvLen := Windows.GetEnvironmentVariable(PChar(AEnvName), Buf, SizeOf(Buf));
     if (EnvLen > 0) and (EnvLen < SizeOf(Buf)) then
       Dirs.Add(IncludeTrailingPathDelimiter(Buf) + ASubDir);
   end;
@@ -55071,7 +55085,7 @@ var
   function ProbeEnv(const AEnvName: string): Boolean;
   begin
     Result := False;
-    EnvLen := GetEnvironmentVariable(PChar(AEnvName), Buf, SizeOf(Buf));
+    EnvLen := Windows.GetEnvironmentVariable(PChar(AEnvName), Buf, SizeOf(Buf));
     if (EnvLen > 0) and (EnvLen < SizeOf(Buf)) then
       Result := Probe(IncludeTrailingPathDelimiter(Buf) + 'Lazarus');
   end;
@@ -56078,7 +56092,7 @@ begin
   end;
   // Тот же вызов, что в подменах переменных окружения: Windows-вариант
   ComSpec := 'cmd.exe';
-  if GetEnvironmentVariable(PChar('ComSpec'), ComBuf, SizeOf(ComBuf)) > 0 then
+  if Windows.GetEnvironmentVariable(PChar('ComSpec'), ComBuf, SizeOf(ComBuf)) > 0 then
     ComSpec := ComBuf;
   // /s /c ""файл"": внешние кавычки снимает cmd, путь с пробелами цел
   Result := RunCompiler(ComSpec, '/s /c ""' + ScriptFile + '""',
@@ -61678,7 +61692,7 @@ begin
   FillChar(Hit, SizeOf(Hit), 0);
   GetCursorPos(Hit.Pt);
   Hit.Pt := LV.ScreenToClient(Hit.Pt);
-  SendMessage(LV.Handle, UiLVM_SUBITEMHITTEST, 0, Integer(@Hit));
+  SendMessage(LV.Handle, UiLVM_SUBITEMHITTEST, 0, LPARAM(@Hit));
   // Колонка формы - или окно открыто как View Form: тогда любая колонка
   // строки с формой
   if (FModFormsMode or (Hit.SubItem = ColForm)) and
@@ -68539,7 +68553,7 @@ begin
   FArdPorts.OnChange := ArdPortsChanged;
 
   // Подписи с именами файлов и плат: & в них - не ускоритель
-  mArduino.AutoHotkeys := maManual;
+  {$IFNDEF FPC}mArduino.AutoHotkeys := maManual;{$ENDIF}
   mArduino.OnClick := mArduinoClick;
   InsertIdx := 0;
   mArdSketchbook := NewItem('Sketchbook', mArdSketchbookClick, True);
@@ -84758,7 +84772,7 @@ begin
     try
       Control := RichEdit1;
       SelectObject(Handle, RichEdit1.Font.Handle);
-      if GetTextMetrics(Handle, Metrics) then
+      if Windows.GetTextMetrics(Handle, Metrics) then
       begin
         LineHeight := Metrics.tmHeight + Metrics.tmExternalLeading;
         ApplyTabStops; // сам пересчитает шаг под новый шрифт
@@ -87623,7 +87637,7 @@ begin
   FSplitPlaceTimer.OnTimer := SplitPlaceTick;
 
   FSplitTabsMenu := TUiPopupMenu.Create(Self);
-  FSplitTabsMenu.AutoHotkeys := maManual;
+  {$IFNDEF FPC}FSplitTabsMenu.AutoHotkeys := maManual;{$ENDIF}
 
   // Заголовок панели редактора - сверху FLeftHost, над номерами строк и
   // текстом

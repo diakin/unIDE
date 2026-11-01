@@ -49,8 +49,10 @@ unit FmtView;
 interface
 
 uses
+  {$IFDEF FPC} LCLIntf, {$ENDIF} // AllocateHWnd: в FPC у Classes её нет
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls,
-  ComCtrls, Menus, Forms, Variants, ComObj, Registry, SHDocVw,
+  ComCtrls, Menus, Forms, Variants, ComObj, Registry,
+  {$IFDEF FPC} WebBrowserLcl, RichMemo, {$ELSE} SHDocVw, {$ENDIF}
   IniFiles, MdHtml, ProcRun;
 
 type
@@ -136,9 +138,13 @@ type
   end;
 
   // RichEdit 4.1 (msftedit.dll, RICHEDIT50W); нет его - RichEdit 2.0/3.0
-  TRtfViewEdit = class(TRichEdit)
+  // В сборке Lazarus - TRichMemo (пакет richmemo): окно RichEdit, те же
+  // сообщения EM_* через Handle
+  TRtfViewEdit = class({$IFDEF FPC}TRichMemo{$ELSE}TRichEdit{$ENDIF})
+{$IFNDEF FPC}
   protected
     procedure CreateParams(var Params: TCreateParams); override;
+{$ENDIF}
   end;
 
   // RichEdit только для чтения: RTF, RVF (через rvf2rtf.exe)
@@ -845,13 +851,13 @@ begin
   Inc(WebPreviewSerial);
   FTempBase := TempFolder + 'unide_fmt_' + IntToStr(GetCurrentProcessId) +
                '_' + IntToStr(WebPreviewSerial);
-  FMsgWnd := Classes.AllocateHWnd(MsgWndProc);
+  FMsgWnd := {$IFDEF FPC}LCLIntf{$ELSE}Classes{$ENDIF}.AllocateHWnd(MsgWndProc);
 end;
 
 destructor TWebPreview.Destroy;
 begin
   if FMsgWnd <> 0 then
-    Classes.DeallocateHWnd(FMsgWnd);
+    {$IFDEF FPC}LCLIntf{$ELSE}Classes{$ENDIF}.DeallocateHWnd(FMsgWnd);
   FreeAndNil(FBrowser);
   if (FTempPage <> '') and FileExists(FTempPage) then
     SysUtils.DeleteFile(FTempPage);
@@ -1372,6 +1378,7 @@ end;
 //  TRtfViewEdit, TRtfPreview
 // ---------------------------------------------------------------------------
 
+{$IFNDEF FPC}
 var
   RtfEditLib: HMODULE = 0;
   RtfEditClass: string = '';
@@ -1400,13 +1407,16 @@ begin
   if RtfEditClass <> '-' then
     CreateSubClass(Params, PChar(RtfEditClass));
 end;
+{$ENDIF}
 
 type
+  // DWORD_PTR: 4 байта в Win32, 8 в Win64
+  TRtfCookie = {$IFDEF FPC}PtrInt{$ELSE}Longint{$ENDIF};
   // EDITSTREAM из richedit.h
-  TRtfStreamCallback = function(ACookie: Longint; ABuffer: PByte;
+  TRtfStreamCallback = function(ACookie: TRtfCookie; ABuffer: PByte;
     ACount: Longint; var ADone: Longint): Longint; stdcall;
   TRtfEditStream = record
-    Cookie: Longint;
+    Cookie: TRtfCookie;
     Error: Longint;
     Callback: TRtfStreamCallback;
   end;
@@ -1422,7 +1432,7 @@ const
   SF_TEXT_ = $0001;
   SF_RTF_ = $0002;
 
-function RtfStreamRead(ACookie: Longint; ABuffer: PByte; ACount: Longint;
+function RtfStreamRead(ACookie: TRtfCookie; ABuffer: PByte; ACount: Longint;
   var ADone: Longint): Longint; stdcall;
 var
   Source: PRtfStreamSource;
@@ -1477,7 +1487,7 @@ begin
     else
       FEdit.ScrollBars := ssBoth;
     FEdit.HideSelection := False;
-    FEdit.PlainText := False;
+    {$IFNDEF FPC}FEdit.PlainText := False;{$ENDIF}
     // Лист по умолчанию белый: цвета текста задаёт документ (см. в начале
     // модуля)
     FEdit.Color := FPaperColor;
@@ -1525,7 +1535,7 @@ var
 begin
   Source.Data := ABytes;
   Source.ReadPos := 1;
-  Stream.Cookie := Longint(@Source);
+  Stream.Cookie := TRtfCookie(@Source);
   Stream.Error := 0;
   Stream.Callback := RtfStreamRead;
   if Copy(TrimLeft(ABytes), 1, 5) = '{\rtf' then
@@ -1533,7 +1543,7 @@ begin
   else
     StreamFormat := SF_TEXT_;
   // ReadOnly на загрузку не влияет: EM_STREAMIN - программная запись
-  SendMessage(FEdit.Handle, EM_STREAMIN_, StreamFormat, Longint(@Stream));
+  SendMessage(FEdit.Handle, EM_STREAMIN_, StreamFormat, LPARAM(@Stream));
   Result := Stream.Error = 0;
   if not Result then
     FLastError := 'RichEdit не загрузил текст (код ' +
@@ -1713,7 +1723,7 @@ begin
      not FEdit.HandleAllocated then
     Exit;
   ClickPt := Point(PosX, PosY);
-  CharIdx := SendMessage(FEdit.Handle, EM_CHARFROMPOS, 0, Longint(@ClickPt));
+  CharIdx := SendMessage(FEdit.Handle, EM_CHARFROMPOS, 0, LPARAM(@ClickPt));
   if CharIdx < 0 then
     CharIdx := 0;
   LineIdx := SendMessage(FEdit.Handle, EM_EXLINEFROMCHAR_, 0, CharIdx);

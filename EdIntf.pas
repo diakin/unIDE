@@ -139,12 +139,12 @@ end;
 
 procedure TEdIntf.GetSel(var ASel: TCharRange);
 begin
-  SendMessageA(Wnd, EM_EXGETSEL, 0, Integer(@ASel));
+  SendMessageA(Wnd, EM_EXGETSEL, 0, LPARAM(@ASel));
 end;
 
 procedure TEdIntf.SetSel(var ASel: TCharRange);
 begin
-  SendMessageA(Wnd, EM_EXSETSEL, 0, Integer(@ASel));
+  SendMessageA(Wnd, EM_EXSETSEL, 0, LPARAM(@ASel));
 end;
 
 procedure TEdIntf.SetSelRange(AFrom, ATo: Integer);
@@ -154,7 +154,7 @@ end;
 
 procedure TEdIntf.ReplaceSel(const AText: string);
 begin
-  SendMessageA(Wnd, EM_REPLACESEL, 1, Integer(PChar(AText)));
+  SendMessageA(Wnd, EM_REPLACESEL, 1, LPARAM(PChar(AText)));
 end;
 
 function TEdIntf.CanUndo: Boolean;
@@ -194,44 +194,44 @@ const
   // В RichEdit.pas Delphi 7 этой константы нет
   EM_GETSCROLLPOS_ = WM_USER + 221;
 begin
-  SendMessageA(Wnd, EM_GETSCROLLPOS_, 0, Integer(@APos));
+  SendMessageA(Wnd, EM_GETSCROLLPOS_, 0, LPARAM(@APos));
 end;
 
 procedure TEdIntf.PosFromChar(var APt: TPoint; ACharIdx: Integer);
 begin
-  SendMessageA(Wnd, EM_POSFROMCHAR, Integer(@APt), ACharIdx);
+  SendMessageA(Wnd, EM_POSFROMCHAR, WPARAM(@APt), ACharIdx);
 end;
 
 function TEdIntf.CharFromPos(const APt: TPoint): Integer;
 begin
-  Result := SendMessageA(Wnd, EM_CHARFROMPOS, 0, Integer(@APt));
+  Result := SendMessageA(Wnd, EM_CHARFROMPOS, 0, LPARAM(@APt));
 end;
 
 procedure TEdIntf.GetRect(var ARect: TRect);
 begin
-  SendMessageA(Wnd, EM_GETRECT, 0, Integer(@ARect));
+  SendMessageA(Wnd, EM_GETRECT, 0, LPARAM(@ARect));
 end;
 
 procedure TEdIntf.SetRect(const ARect: TRect);
 begin
-  SendMessageA(Wnd, EM_SETRECT, 0, Integer(@ARect));
+  SendMessageA(Wnd, EM_SETRECT, 0, LPARAM(@ARect));
 end;
 
 procedure TEdIntf.SetRectNP(const ARect: TRect);
 begin
-  SendMessageA(Wnd, EM_SETRECTNP, 0, Integer(@ARect));
+  SendMessageA(Wnd, EM_SETRECTNP, 0, LPARAM(@ARect));
 end;
 
 // --- Оформление ---
 
 procedure TEdIntf.GetParaFormat(var AFormat);
 begin
-  SendMessageA(Wnd, EM_GETPARAFORMAT, 0, Integer(@AFormat));
+  SendMessageA(Wnd, EM_GETPARAFORMAT, 0, LPARAM(@AFormat));
 end;
 
 procedure TEdIntf.SetParaFormat(var AFormat);
 begin
-  SendMessageA(Wnd, EM_SETPARAFORMAT, 0, Integer(@AFormat));
+  SendMessageA(Wnd, EM_SETPARAFORMAT, 0, LPARAM(@AFormat));
 end;
 
 end.

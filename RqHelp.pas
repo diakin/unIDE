@@ -93,8 +93,11 @@ type
     fIndexOnFail: BOOL;
   end;
 
+  // DWORD_PTR: 4 байта в Win32, 8 в Win64
+  THhData = {$IFDEF FPC}PtrUInt{$ELSE}DWORD{$ENDIF};
+
   THtmlHelpA = function(hwndCaller: HWND; pszFile: PChar; uCommand: UINT;
-                        dwData: DWORD): HWND; stdcall;
+                        dwData: THhData): HWND; stdcall;
 
 var
   HhLib: HMODULE = 0;
@@ -191,7 +194,7 @@ begin
   if (ChmFile = '') or not LoadHtmlHelp then
     Exit;
   Result := HtmlHelpProc(0, PChar(ChmFile + ChmWindow), HH_DISPLAY_INDEX,
-                         DWORD(PChar(AKeyword))) <> 0;
+                         THhData(PChar(AKeyword))) <> 0;
   if not Result then
     HelpError := 'указатель справки не открылся: ' + ChmFile;
 end;
@@ -271,7 +274,7 @@ begin
   if not LoadHtmlHelp then
     Exit;
   Result := HtmlHelpProc(0, PChar(AChm), HH_DISPLAY_INDEX,
-                         DWORD(PChar(AKeyword))) <> 0;
+                         THhData(PChar(AKeyword))) <> 0;
   if not Result then
     HelpError := 'указатель справки не открылся: ' + AChm;
 end;
@@ -301,7 +304,7 @@ begin
   Link.pszKeywords := PChar(AWord);
   Link.fIndexOnFail := True;
   Result := HtmlHelpProc(0, PChar(AChm), HH_KEYWORD_LOOKUP,
-                         DWORD(@Link)) <> 0;
+                         THhData(@Link)) <> 0;
   if not Result then
     // Указатель не открылся по слову - хотя бы указатель с ним
     Result := ChmShowIndex(AChm, AWord);

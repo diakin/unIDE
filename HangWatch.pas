@@ -243,6 +243,11 @@ var
 begin
   FCodeBase := 0;
   FCodeEnd := 0;
+{$IFDEF CPUX64}
+  // Адреса 64-разрядного exe выше 4 ГБ (база $100000000), в Cardinal не
+  // помещаются; стек в этой сборке не разбирается
+  Exit;
+{$ENDIF}
   Base := GetModuleHandle(nil);
   Dos := PImageDosHeader(Base);
   if Dos^.e_magic <> IMAGE_DOS_SIGNATURE then
@@ -1179,8 +1184,14 @@ begin
     end
     else
       Access := '';
+{$IFDEF CPUX64}
+    // Адрес выше 4 ГБ: полностью, без разбора по .map
+    Lines.Add('Место  ' + IntToHex(PtrUInt(AInfo^.ExceptionAddress), 16) +
+              Access);
+{$ELSE}
     Lines.Add(Format('Место  %.8x  %s%s', [Cardinal(AInfo^.ExceptionAddress),
       Watch.Describe(Cardinal(AInfo^.ExceptionAddress)), Access]));
+{$ENDIF}
     HangWatchCallStack(Lines);
     Watch.WriteCrash(Lines);
   finally

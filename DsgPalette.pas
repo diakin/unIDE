@@ -761,7 +761,7 @@ begin
   ABtn.Flat := True;
   ABtn.GroupIndex := 1;
   ABtn.AllowAllUp := True;
-  ABtn.Tag := Integer(AClass);   // класс кнопки - для CompClick
+  ABtn.Tag := {$IFDEF FPC}PtrInt{$ELSE}Integer{$ENDIF}(AClass);   // класс кнопки - для CompClick
   if ACustom then
     ABtn.Hint := AClass.ClassName + ' (Custom - вид по теме Light / Dark / Custom)'
   else
@@ -1019,7 +1019,7 @@ begin
 
   // Место под кнопки внутри вкладок
   ShowArea := FTabs.ClientRect;
-  SendMessage(FTabs.Handle, TCM_ADJUSTRECT, 0, Integer(@ShowArea));
+  SendMessage(FTabs.Handle, TCM_ADJUSTRECT, 0, LPARAM(@ShowArea));
   BtnBottom := FArrow.Top + FArrow.Height;
   for PageIdx := 0 to FPageBtns.Count - 1 do
     for BtnIdx := 0 to TList(FPageBtns[PageIdx]).Count - 1 do

@@ -65,6 +65,7 @@ unit DbgEngine;
 interface
 
 uses
+  {$IFDEF FPC} LCLIntf, {$ENDIF} // AllocateHWnd: в FPC у Classes её нет
   Windows, Messages, SysUtils, Classes,
   DbgSymbols;   // TDbgRegs - регистры потока на остановке
 
@@ -879,7 +880,7 @@ begin
   FMap := AMap;
   InitializeCriticalSection(FLock);
   FResumeEvent := CreateEvent(nil, False, False, nil);
-  FWnd := Classes.AllocateHWnd(WndProc);
+  FWnd := {$IFDEF FPC}LCLIntf{$ELSE}Classes{$ENDIF}.AllocateHWnd(WndProc);
 end;
 
 destructor TDbgSession.Destroy;
@@ -894,7 +895,7 @@ begin
     else
       FLeaked := True;
   end;
-  Classes.DeallocateHWnd(FWnd);
+  {$IFDEF FPC}LCLIntf{$ELSE}Classes{$ENDIF}.DeallocateHWnd(FWnd);
   FWnd := 0;
   // Поток не закончился - он ещё обращается к очереди и событию, их не
   // освобождаем (такого быть не должно, это страховка от падения)
@@ -1232,15 +1233,16 @@ begin
   if (DosHead^.e_magic <> IMAGE_DOS_SIGNATURE) or (DosHead^._lfanew < 0) or
      (DosHead^._lfanew > SizeOf(Head) - SizeOf(TImageNtHeaders)) then
     Exit;
-  NtHead := PImageNtHeaders(Cardinal(@Head) + Cardinal(DosHead^._lfanew));
+  // Арифметика через PAnsiChar: адрес Head в 64-разрядной сборке выше 4 ГБ
+  NtHead := PImageNtHeaders(PAnsiChar(@Head) + DosHead^._lfanew);
   if NtHead^.Signature <> IMAGE_NT_SIGNATURE then
     Exit;
-  SecHead := PImageSectionHeader(Cardinal(@NtHead^.OptionalHeader) +
+  SecHead := PImageSectionHeader(PAnsiChar(@NtHead^.OptionalHeader) +
                                  NtHead^.FileHeader.SizeOfOptionalHeader);
   for SecIdx := 0 to NtHead^.FileHeader.NumberOfSections - 1 do
   begin
-    if Cardinal(SecHead) + SizeOf(TImageSectionHeader) >
-       Cardinal(@Head) + SizeOf(Head) then
+    if PAnsiChar(SecHead) + SizeOf(TImageSectionHeader) >
+       PAnsiChar(@Head) + SizeOf(Head) then
       Exit;
     if (SecHead^.Characteristics and IMAGE_SCN_CNT_CODE) <> 0 then
     begin
