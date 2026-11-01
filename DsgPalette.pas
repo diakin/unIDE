@@ -77,6 +77,7 @@ type
     FNextFree: array of Integer;
     FMeter: TBitmap;          // замер ширины надписи: холст окна может ещё не быть
     FLibs: TList;             // HMODULE пакетов со значками
+    FLibPaths: TStringList;   // их файлы (тот же порядок, что FLibs)
     FSelected: TComponentClass;
     FForeign: TStringList;    // кнопки сторонних: "Модуль.Класс", в Objects - кнопка
     FSelForeign: string;      // выбран сторонний: "Модуль.Класс"
@@ -144,6 +145,10 @@ type
     function AddPage(const AName: string): Integer;
     // Пакет со значками - как файл данных (сторонние design-пакеты)
     procedure AddIconLib(const APath: string);
+    // Отпустить пакеты со значками с именем файла AFileName (без папки):
+    // открытый как файл данных .bpl занят, dcc32 не может его переписать.
+    // Результат - сколько отпущено
+    function ReleaseIconLib(const AFileName: string): Integer;
     // Кнопка стороннего компонента AClass из модуля AUnit - на страницу
     // APage, в первый ряд. Значок - по имени класса.
     procedure PlaceForeign(ABtn: TSpeedButton; const AUnit, AClass,
@@ -247,6 +252,7 @@ begin
   FPageNames := TStringList.Create;
   FTabPages := TList.Create;
   FLibs := TList.Create;
+  FLibPaths := TStringList.Create;
   FForeign := TStringList.Create;
   FGlyphPending := TList.Create;
   FGlyphInfo := TList.Create;
@@ -330,6 +336,7 @@ begin
   for I := 0 to FLibs.Count - 1 do
     FreeLibrary(HMODULE(FLibs[I]));
   FLibs.Free;
+  FLibPaths.Free;
   // Сами кнопки - владельца, здесь только списки
   for I := 0 to FPageBtns.Count - 1 do
     TObject(FPageBtns[I]).Free;
@@ -358,7 +365,10 @@ begin
     repeat
       H := LoadLibraryEx(PChar(ADelphiBin + SR.Name), 0, AsDataFile);
       if H <> 0 then
+      begin
         FLibs.Add(Pointer(H));
+        FLibPaths.Add(ADelphiBin + SR.Name);
+      end;
     until FindNext(SR) <> 0;
   finally
     FindClose(SR);
@@ -1131,7 +1141,25 @@ var
 begin
   LibHandle := LoadLibraryEx(PChar(APath), 0, AsDataFile);
   if LibHandle <> 0 then
+  begin
     FLibs.Add(Pointer(LibHandle));
+    FLibPaths.Add(APath);
+  end;
+end;
+
+function TDsgPalette.ReleaseIconLib(const AFileName: string): Integer;
+var
+  LibIdx: Integer;
+begin
+  Result := 0;
+  for LibIdx := FLibs.Count - 1 downto 0 do
+    if AnsiSameText(ExtractFileName(FLibPaths[LibIdx]), AFileName) then
+    begin
+      FreeLibrary(HMODULE(FLibs[LibIdx]));
+      FLibs.Delete(LibIdx);
+      FLibPaths.Delete(LibIdx);
+      Inc(Result);
+    end;
 end;
 
 procedure TDsgPalette.PlaceForeign(ABtn: TSpeedButton; const AUnit, AClass,

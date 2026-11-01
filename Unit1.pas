@@ -40862,9 +40862,76 @@ end;
 // Delphi при запуске загрузит пакет, и его компоненты будут на палитре.
 //
 // Delphi 7 должна быть закрыта: открытая держит прежний .bpl загруженным,
-// а при выходе переписывает Known Packages своим списком.
+// а при выходе переписывает Known Packages своим списком. Палитра unIDE
+// тоже держит .bpl (значки) - перед сборкой он отпускается. Папка пакетов
+// Delphi без права записи (Program Files) - .bpl и .dcp идут в
+// dsgcache\bpl, в Known Packages - полный путь. Из Search Path берутся
+// папки: $(Имя) - по Environment Variables Delphi 7 или окружению,
+// нераскрытые и пути к файлам (.dcu, .bpl) пропускаются.
 const
   Delphi7RegKey = 'Software\Borland\Delphi\7.0';
+
+// Search Path Delphi 7 для dcc32: $(Имя) раскрыты, оставлены только папки
+function PkgSearchPath(const APath, ADelphiRoot: string): string;
+var
+  Rest, Item, VarName, VarValue: string;
+  SepPos, VarStart, VarEnd: Integer;
+  EnvBuf: array[0..2047] of Char;
+  EnvLen: Cardinal;
+begin
+  Result := '';
+  Rest := ExpandDelphiRoot(APath, ADelphiRoot) + ';';
+  while Rest <> '' do
+  begin
+    SepPos := Pos(';', Rest);
+    Item := Trim(Copy(Rest, 1, SepPos - 1));
+    Delete(Rest, 1, SepPos);
+    VarStart := Pos('$(', Item);
+    while VarStart > 0 do
+    begin
+      VarEnd := PosEx(')', Item, VarStart);
+      if VarEnd = 0 then
+        Break;
+      VarName := Copy(Item, VarStart + 2, VarEnd - VarStart - 2);
+      VarValue := OsRegReadString(orUser,
+                    Delphi7RegKey + '\Environment Variables', VarName);
+      if VarValue = '' then
+      begin
+        EnvLen := Windows.GetEnvironmentVariable(PChar(VarName), EnvBuf,
+                                                 SizeOf(EnvBuf));
+        if (EnvLen > 0) and (EnvLen < SizeOf(EnvBuf)) then
+          SetString(VarValue, EnvBuf, EnvLen);
+      end;
+      if VarValue = '' then
+        Break;
+      Item := Copy(Item, 1, VarStart - 1) + VarValue +
+              Copy(Item, VarEnd + 1, MaxInt);
+      VarStart := Pos('$(', Item);
+    end;
+    if (Item = '') or (Pos('$(', Item) > 0) or
+       not DirectoryExists(ExcludeTrailingPathDelimiter(Item)) then
+      Continue;
+    if Result <> '' then
+      Result := Result + ';';
+    Result := Result + ExcludeTrailingPathDelimiter(Item);
+  end;
+end;
+
+// Можно ли писать в папку ADir (Program Files без прав администратора - нет)
+function PkgDirWritable(const ADir: string): Boolean;
+var
+  ProbeFile: string;
+  ProbeHandle: Integer;
+begin
+  ProbeFile := ADir + '~unide_write_probe.tmp';
+  ProbeHandle := FileCreate(ProbeFile);
+  Result := ProbeHandle >= 0;
+  if Result then
+  begin
+    FileClose(ProbeHandle);
+    DeleteFile(ProbeFile);
+  end;
+end;
 
 procedure TForm1.InstallPackageClick(Sender: TObject);
 var
@@ -40875,7 +40942,7 @@ var
   Roots, Names, DpkText: TStringList;
   RootIdx, NameIdx, DescrPos, QuoteEnd: Integer;
   Params, LineUpper, SectKey: string;
-  SectIdx: Integer;
+  SectIdx, ProbeHandle: Integer;
 begin
   ShowCompLog;
   DpkFile := '';
@@ -40963,10 +41030,17 @@ begin
               ExpandDelphiRoot(BplDir, DelphiRoot));
   DcpDir := IncludeTrailingPathDelimiter(
               ExpandDelphiRoot(DcpDir, DelphiRoot));
-  SearchPath := ExpandDelphiRoot(SearchPath, DelphiRoot);
+  SearchPath := PkgSearchPath(SearchPath, DelphiRoot);
   DcuDir := AppFile('dsgcache\pkg_' + PkgName) + '\';
-  if not ForceDirectories(BplDir) or not ForceDirectories(DcpDir) or
-     not ForceDirectories(DcuDir) then
+  if not (ForceDirectories(BplDir) and PkgDirWritable(BplDir) and
+          ForceDirectories(DcpDir) and PkgDirWritable(DcpDir)) then
+  begin
+    LogComp('Пакет: в ' + BplDir + ' писать нельзя (нет прав) - .bpl и .dcp ' +
+            'будут в dsgcache\bpl');
+    BplDir := AppFile('dsgcache\bpl') + '\';
+    DcpDir := BplDir;
+  end;
+  if not ForceDirectories(BplDir) or not ForceDirectories(DcuDir) then
   begin
     LogComp('Пакет: не удалось создать папку ' + BplDir + ', ' + DcpDir +
             ' или ' + DcuDir);
@@ -40980,6 +41054,22 @@ begin
             ' -U"' + SearchPath + '"' +
             ' -R"' + SearchPath + '"' +
             ' -I"' + SearchPath + '"';
+  // Палитра unIDE держит .bpl пакета ради значков - отпустить
+  if (FDsgPalette <> nil) and
+     (FDsgPalette.ReleaseIconLib(PkgName + '.bpl') > 0) then
+    LogComp('Пакет: палитра unIDE отпустила ' + PkgName + '.bpl');
+  BplFile := BplDir + PkgName + '.bpl';
+  if FileExists(BplFile) then
+  begin
+    ProbeHandle := FileOpen(BplFile, fmOpenReadWrite or fmShareExclusive);
+    if ProbeHandle < 0 then
+    begin
+      LogComp('Пакет: ' + BplFile + ' занят другой программой ' +
+              '(Delphi, другой экземпляр unIDE?) или нет прав на запись');
+      Exit;
+    end;
+    FileClose(ProbeHandle);
+  end;
   LogComp('dcc32 ' + Params);
   if RunCompiler(DccExe, Params, PkgDir) <> 0 then
   begin
@@ -40987,7 +41077,6 @@ begin
     ShowErrLog;
     Exit;
   end;
-  BplFile := BplDir + PkgName + '.bpl';
   if not FileExists(BplFile) then
   begin
     LogComp('Пакет: dcc32 закончил без ошибок, но ' + BplFile +
@@ -41051,6 +41140,8 @@ begin
             'не удалось');
     Exit;
   end;
+  if FDsgPalette <> nil then
+    FDsgPalette.AddIconLib(BplFile);
   LogComp('Пакет установлен: ' + RegName + ' = ' + Descr +
           '. Компоненты появятся на палитре Delphi 7 при её запуске.');
 end;
