@@ -93,11 +93,6 @@ type
 
 implementation
 
-const
-  // Сообщения RichEdit по RichEdit.h. Свои константы, а не из RichEdit.pas:
-  // в модуле Delphi 7 части из них нет, у других другие имена. Значения -
-  // те же, что у локальных констант, которыми Unit1 пользовался раньше
-
 constructor TEdIntf.Create(AGetHandle: TEdHandleFunc);
 begin
   inherited Create;
