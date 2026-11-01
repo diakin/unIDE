@@ -307,6 +307,14 @@ uses
   StrUtils, TypInfo, Dialogs, Menus, ObjParse, FormDesigner, UiTheme,
   UiButton, UiStdCtrls, UiEditCtrls, UiComCtrls, UiDialogs;
 
+// Ход разбора - в IDE (DfmMoveProgress). Зовётся и из долгих циклов
+// внутри шагов: окно IDE не должно молчать дольше нескольких секунд.
+procedure DfmMoveStep(const AStage: string; ADone, ATotal: Integer);
+begin
+  if Assigned(DfmMoveProgress) then
+    DfmMoveProgress(AStage, ADone, ATotal);
+end;
+
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
@@ -1998,9 +2006,11 @@ var
 begin
   Facts := TList.Create;
   try
+    DfmMoveStep('процедуры-создатели', 0, 0);
     CodeCollectFactories(ALines, Facts);
     for Index := 0 to Facts.Count - 1 do
     begin
+      DfmMoveStep('процедуры-создатели', Index, Facts.Count);
       Fact := TFactoryRec(Facts[Index]);
       if Fact.Cls = '' then
         Continue;             // настройщик: сам ничего не создаёт
@@ -2315,6 +2325,7 @@ begin
   try
     for Line := 0 to ALines.Count - 1 do
     begin
+      DfmMoveStep('локальные создатели', Line, ALines.Count);
       if LeadSpacesOf(ALines[Line]) <> 0 then
         Continue;
       Key := CodeKey(ALines[Line]);
@@ -3230,6 +3241,7 @@ begin
   InStar := False;
   for LineIndex := 0 to ALines.Count - 1 do
   begin
+    DfmMoveStep('разбор модуля', LineIndex, ALines.Count);
     BlockEnd[LineIndex] := -1;
     Text := ALines[LineIndex];
     // Заголовок процедуры с начала строки или раздел модуля: всё, что
@@ -5860,6 +5872,7 @@ begin
   Index := 0;
   while Index < ALines.Count do
   begin
+    DfmMoveStep('процедуры формы', Index, ALines.Count);
     Text := ALines[Index];
     if (Text <> '') and (Text[1] <> ' ') then
     begin
@@ -5904,6 +5917,7 @@ begin
   // (без неё это ссылка на метод - аргумент или значение)
   for Index := 0 to ARoutines.Count - 1 do
   begin
+    DfmMoveStep('вызовы процедур формы', Index, ARoutines.Count);
     Routine := TFormRoutine(ARoutines[Index]);
     for LineIndex := Routine.Head + 1 to Routine.EndLine - 1 do
     begin
@@ -7631,8 +7645,7 @@ var
   // Ход разбора - в панель хода IDE (DfmMoveProgress)
   procedure ReportStep(const AStage: string; ADone, ATotal: Integer);
   begin
-    if Assigned(DfmMoveProgress) then
-      DfmMoveProgress(AStage, ADone, ATotal);
+    DfmMoveStep(AStage, ADone, ATotal);
   end;
 
 begin

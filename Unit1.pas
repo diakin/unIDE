@@ -1369,6 +1369,7 @@ type
     // время по этапам "этап=мс"
     FObjMoveStage: string;
     FObjMoveStageStart: Cardinal;
+    FObjMovePeek: Cardinal;    // когда последний раз звали PeekMessage
     FObjMoveTimes: TStringList;
     // Визуальный конструктор: какая форма в нём и откат его правок
     FDesigner: TFormDesigner;
@@ -43147,7 +43148,12 @@ begin
   else
     FBusyStage := 'Перенести в .dfm: ' + AStage;
   BusyTick;
-  PeekMessage(WinMsg, 0, 0, 0, PM_NOREMOVE);
+  // Ход приходит и на каждую строку модуля - PeekMessage не чаще 50 мс
+  if TickNow - FObjMovePeek >= 50 then
+  begin
+    FObjMovePeek := TickNow;
+    PeekMessage(WinMsg, 0, 0, 0, PM_NOREMOVE);
+  end;
 end;
 
 // Время закончившегося этапа - к его сумме в FObjMoveTimes
