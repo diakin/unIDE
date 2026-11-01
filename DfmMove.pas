@@ -326,7 +326,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.43';
+  DfmMoveBuild = 'b.44';
 
 constructor TMoveInfo.Create;
 begin

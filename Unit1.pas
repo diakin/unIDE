@@ -39037,6 +39037,44 @@ begin
     Result := WinText(Idx);
 end;
 
+// Перевод строки CRLF и LF -> один CR (координаты контрола), один проход.
+// StringReplace в Delphi 7 с rfReplaceAll на тексте в мегабайты работает
+// минутами (поиск каждый раз заново и сборка результата по частям) -
+// на Unit1.pas перенос в .dfm висел около 4 минут.
+function TextToEditorCR(const AText: string): string;
+var
+  SrcIdx, DstIdx, SrcLen: Integer;
+  Chr: Char;
+begin
+  SrcLen := Length(AText);
+  SetLength(Result, SrcLen);
+  DstIdx := 0;
+  SrcIdx := 1;
+  while SrcIdx <= SrcLen do
+  begin
+    Chr := AText[SrcIdx];
+    if Chr = #13 then
+    begin
+      Inc(DstIdx);
+      Result[DstIdx] := #13;
+      if (SrcIdx < SrcLen) and (AText[SrcIdx + 1] = #10) then
+        Inc(SrcIdx);
+    end
+    else if Chr = #10 then
+    begin
+      Inc(DstIdx);
+      Result[DstIdx] := #13;
+    end
+    else
+    begin
+      Inc(DstIdx);
+      Result[DstIdx] := Chr;
+    end;
+    Inc(SrcIdx);
+  end;
+  SetLength(Result, DstIdx);
+end;
+
 // Новый текст во вкладку файла. На диск ничего не пишется - до Save.
 //
 // В активной вкладке заменяется только изменившаяся середина: общее начало
@@ -39066,8 +39104,7 @@ begin
     OldCR := GetEditorTextCR;
     if FObjMoveTimes <> nil then
       ObjMoveProgress('вкладка: сравнение', 0, 0);
-    NewCR := StringReplace(AText, #13#10, #13, [rfReplaceAll]);
-    NewCR := StringReplace(NewCR, #10, #13, [rfReplaceAll]);
+    NewCR := TextToEditorCR(AText);
     if NewCR = OldCR then
       Exit;
     OldLen := Length(OldCR);
