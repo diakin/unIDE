@@ -40,7 +40,8 @@ var
 implementation
 
 uses
-  SysUtils, TypInfo, Controls, Graphics, Menus, ComCtrls;
+  SysUtils, TypInfo, Controls, Graphics, Menus, ComCtrls, ExtCtrls, StdCtrls,
+  Forms;
 
 const
   MaxListItems = 30;   // длиннее - только число строк
@@ -235,6 +236,20 @@ begin
   end;
 end;
 
+// Внутренняя часть контрола: без имени, владелец - сам родитель, а родитель
+// не контейнер (полосы прокрутки TEdView, кнопки составных контролов). В
+// .dfm её нет и быть не должно - её создаёт конструктор родителя.
+function IsInnerPart(AChild: TControl; AParent: TWinControl;
+                     ARoot: TComponent): Boolean;
+begin
+  Result := (AParent <> ARoot) and (AChild.Name = '') and
+            (AChild.Owner = AParent) and
+            not (AParent is TCustomPanel) and
+            not (AParent is TCustomGroupBox) and
+            not (AParent is TScrollingWinControl) and
+            not (AParent is TTabSheet);
+end;
+
 // Объект со всем, что под ним. Вложенность - как в .dfm: контролы по
 // Parent, пункты меню - по меню, а у корня ещё его невизуальные компоненты
 // и окна, которыми он владеет.
@@ -254,7 +269,8 @@ begin
 
   if C is TWinControl then
     for I := 0 to TWinControl(C).ControlCount - 1 do
-      WriteObj(TWinControl(C).Controls[I], ALevel + 1, ARoot);
+      if not IsInnerPart(TWinControl(C).Controls[I], TWinControl(C), ARoot) then
+        WriteObj(TWinControl(C).Controls[I], ALevel + 1, ARoot);
 
   if C is TMenu then
     for I := 0 to TMenu(C).Items.Count - 1 do
