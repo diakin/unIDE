@@ -664,6 +664,18 @@ object Form1: TForm1
       object mViewIcons: TMenuItem
         Caption = 'Palette Icons...'
       end
+      object FWv2ViewItem: TMenuItem
+        Caption = 'Просмотр в WebView2 (Chromium)'
+        OnClick = Wv2ViewClick
+      end
+      object FEdPreviewItem: TMenuItem
+        Caption = 'Свой редактор - проба (0.7.3)'
+        OnClick = EdPreviewClick
+      end
+      object FDsgDescItem: TMenuItem
+        Caption = 'Описание классов Delphi 7 - записать и сверить (0.8)'
+        OnClick = DsgDescWriteClick
+      end
     end
     object mProject: TMenuItem
       Caption = '&Project'
@@ -870,6 +882,18 @@ object Form1: TForm1
         Caption = 'IDE Options...'
         OnClick = mOptionsClick
       end
+      object FHlViewItem: TMenuItem
+        Caption = 'Highlighting'
+        OnClick = HighlightMenuFill
+      end
+      object FFarColorsItem: TMenuItem
+        Caption = 'unIDE FAR - Files highlighting...'
+        OnClick = FarColorsClick
+      end
+      object FFarPaletteItem: TMenuItem
+        Caption = 'unIDE FAR - Colors...'
+        OnClick = FarPaletteClick
+      end
     end
     object mHelp: TMenuItem
       Caption = '&Help'
@@ -926,10 +950,83 @@ object Form1: TForm1
         Caption = '&About...'
         OnClick = mHelpClick
       end
+      object SubMenu: TMenuItem
+        Caption = '&FreeBASIC'
+      end
+      object mHelpManualItem1: TMenuItem
+        Caption = '&unIDE manual'
+        Hint = 'Руководство пользователя unIDE (unide_ref\help\unide.chm)'
+        OnClick = mHelpUnideClick
+      end
+      object mHelpManualItem2: TMenuItem
+        Caption = '&Git'
+        OnClick = mHelpGitClick
+      end
+      object mHelpManualItem3: TMenuItem
+        Caption = '&QEMU'
+        OnClick = mHelpQemuClick
+      end
+      object mHelpManualItem4: TMenuItem
+        Caption = 'Ros&BE'
+        OnClick = mHelpRosbeClick
+      end
     end
     object RosMenu: TMenuItem
       Caption = 'ReactOS'
       AutoHotkeys = maManual
+      object RosMenuLinkItem10: TMenuItem
+        Caption = 'Run Image (QEMU)'
+        OnClick = RosRunImageClick
+      end
+      object RosMenuLinkItem11: TMenuItem
+        Caption = 'Write Image to USB (Rufus)...'
+        OnClick = RufusWriteClick
+      end
+      object RosMenuLinkItem1: TMenuItem
+        Caption = '-'
+      end
+      object RosMenuLinkItem2: TMenuItem
+        Caption = 'Install RosBE 2.2.1 (reactosVG14)...'
+        OnClick = RosInstallRosBEClick
+      end
+      object RosMenuLinkItem3: TMenuItem
+        OnClick = RosInstall7ZipClick
+      end
+      object RosMenuLinkItem4: TMenuItem
+        OnClick = RosInstallQemuClick
+      end
+      object RosMenuLinkItem5: TMenuItem
+        Caption = 'Install Rufus (tools\rufus)...'
+        OnClick = RufusInstallClick
+      end
+      object RosMenuLinkItem12: TMenuItem
+        Caption = '-'
+      end
+      object RosMenuLinkItem6: TMenuItem
+        Caption = 'Git Terminal (Git Bash)'
+        OnClick = GitTerminalClick
+      end
+      object RosMenuLinkItem7: TMenuItem
+        OnClick = GitInstallClick
+      end
+      object RosMenuLinkItem13: TMenuItem
+        Caption = '-'
+      end
+      object RosMenuLinkItem8: TMenuItem
+        Caption = 'Update pci.ids...'
+        OnClick = RosUpdatePciIdsClick
+      end
+      object RosMenuLinkItem9: TMenuItem
+        Caption = 'Generate System Devices INF...'
+        OnClick = RosGenPciInfClick
+      end
+      object RosMenuLinkItem14: TMenuItem
+        Caption = '-'
+      end
+      object ToolsMenu: TMenuItem
+        Caption = 'Download Build Tools'
+        AutoHotkeys = maManual
+      end
     end
     object RepoMenu: TMenuItem
       Caption = 'Repository'
@@ -1192,6 +1289,14 @@ object Form1: TForm1
       Caption = 'Во второй панели'
       OnClick = TabToSplitClick
       ShortCut = 0
+    end
+    object FHlTabItem: TMenuItem
+      Caption = 'Подсветка'
+      OnClick = HighlightMenuFill
+    end
+    object FDelTabItem: TMenuItem
+      Caption = 'Удалить файл (в Корзину)'
+      OnClick = DeleteFileClick
     end
   end
   object FPopupMenu: TUiPopupMenu
@@ -2191,5 +2296,22 @@ object Form1: TForm1
     Enabled = False
     Interval = 300
     OnTimer = GitTimerTick
+  end
+  object FGitCopyMenu: TUiPopupMenu
+    Left = 216
+    Top = 16
+    OnPopup = GitCopyMenuPopup
+    object MenuItem: TMenuItem
+      Caption = 'Copy Local Path'
+      OnClick = GitCopyPathClick
+    end
+    object FGitMiCopyRemote: TMenuItem
+      Caption = 'Copy origin URL'
+      OnClick = GitCopyRemoteClick
+    end
+    object FGitMiCopyBranch: TMenuItem
+      Caption = 'Copy Branch Name'
+      OnClick = GitCopyBranchClick
+    end
   end
 end
