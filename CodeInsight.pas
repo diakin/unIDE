@@ -85,7 +85,7 @@ type
     procedure CreateParams(var Params: TCreateParams); override;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
+                        PosX, PosY: Integer); override;
     procedure DblClick; override;
   public
     // Цвета: KindColors - по CiCol* (EnvOptions), BackColor и TextColor -
@@ -1506,14 +1506,14 @@ begin
 end;
 
 procedure TCiListPopup.MouseDown(Button: TMouseButton; Shift: TShiftState;
-                                 X, Y: Integer);
+                                 PosX, PosY: Integer);
 var
   RowIdx: Integer;
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
   if FRowHeight <= 0 then
     Exit;
-  RowIdx := FTop + Y div FRowHeight;
+  RowIdx := FTop + PosY div FRowHeight;
   if (RowIdx >= 0) and (RowIdx < FShownCount) then
   begin
     FSel := RowIdx;

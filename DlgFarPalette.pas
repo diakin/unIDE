@@ -39,7 +39,7 @@ type
     procedure GridDrawCell(Sender: TObject; ACol, ARow: Longint;
       Rect: TRect; State: TGridDrawState);
     procedure GridMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
+      Shift: TShiftState; PosX, PosY: Integer);
     procedure GridKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure DefaultClick(Sender: TObject);
@@ -302,12 +302,12 @@ begin
 end;
 
 procedure TDlgFarPalette.GridMouseDown(Sender: TObject;
-  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+  Button: TMouseButton; Shift: TShiftState; PosX, PosY: Integer);
 var
   CellCol, CellRow: Longint;
   Item: TFarPalItem;
 begin
-  FGrid.MouseToCell(X, Y, CellCol, CellRow);
+  FGrid.MouseToCell(PosX, PosY, CellCol, CellRow);
   if not ItemOfRow(CellRow, Item) then
     Exit;
   if FGrid.Row <> CellRow then

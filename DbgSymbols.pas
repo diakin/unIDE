@@ -386,9 +386,9 @@ begin
       Stream.Free;
     end;
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      AError := 'не удалось прочитать ' + AExeFile + ': ' + E.Message;
+      AError := 'не удалось прочитать ' + AExeFile + ': ' + Err.Message;
       FBuf := '';
       Exit;
     end;

@@ -9115,9 +9115,9 @@ begin
     try
       Lines.LoadFromFile(AFileName);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        Error('не удалось прочитать ' + AFileName + ': ' + E.Message);
+        Error('не удалось прочитать ' + AFileName + ': ' + Err.Message);
         Exit;
       end;
     end;
@@ -9211,8 +9211,8 @@ begin
         ForceDirectories(FOpt.OutDir);
         WriteTextFile(Result, CompactLineDirectives(OutLines.Text));
       except
-        on E: Exception do
-          Error('не удалось записать ' + Result + ': ' + E.Message);
+        on Err: Exception do
+          Error('не удалось записать ' + Result + ': ' + Err.Message);
       end;
     end;
   finally
@@ -9440,9 +9440,9 @@ begin
         RcStream.Free;
       end;
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        Error('не удалось записать ' + Result + ': ' + E.Message);
+        Error('не удалось записать ' + Result + ': ' + Err.Message);
         Result := '';
       end;
     end;

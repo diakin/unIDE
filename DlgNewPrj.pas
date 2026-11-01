@@ -1570,9 +1570,9 @@ begin
     try
       imgIcon.Picture.LoadFromFile(OpenDlg.FileName);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        ShowMessage('Значок не загружен: ' + E.Message);
+        ShowMessage('Значок не загружен: ' + Err.Message);
         Exit;
       end;
     end;
@@ -2039,9 +2039,9 @@ begin
       ALog.Add('Записан ' + ExtractFileName(DofFileOf(FDpr)));
       AChanged := True;
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        ALog.Add('Ошибка: не записан ' + DofFileOf(FDpr) + ': ' + E.Message);
+        ALog.Add('Ошибка: не записан ' + DofFileOf(FDpr) + ': ' + Err.Message);
         Result := False;
       end;
     end;

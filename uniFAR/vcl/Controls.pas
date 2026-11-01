@@ -37,10 +37,10 @@ type
     procedure SetColor(AValue: TColor); virtual;
     procedure Resize; dynamic;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-      X, Y: Integer); dynamic;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); dynamic;
+      PosX, PosY: Integer); dynamic;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); dynamic;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
-      X, Y: Integer); dynamic;
+      PosX, PosY: Integer); dynamic;
     procedure DblClick; dynamic;
     property Color: TColor read FColor write SetColor;
   public
@@ -216,16 +216,16 @@ begin
 end;
 
 procedure TControl.MouseDown(Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+  PosX, PosY: Integer);
 begin
 end;
 
-procedure TControl.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TControl.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 begin
 end;
 
 procedure TControl.MouseUp(Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+  PosX, PosY: Integer);
 begin
 end;
 

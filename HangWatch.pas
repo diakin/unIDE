@@ -131,8 +131,8 @@ type
     FUnits: TStringList;
     procedure FindCode;
     procedure LoadMap;
-    function InCode(A: Cardinal): Boolean;
-    function Describe(A: Cardinal): string;
+    function InCode(Addr: Cardinal): Boolean;
+    function Describe(Addr: Cardinal): string;
     function Snap(var AEip, AEsp, AEbp: Cardinal; var AStack: TStackCopy;
                   var AGot: Cardinal): Boolean;
     procedure Sample(ANum: Integer; AHungMs: Cardinal);
@@ -143,7 +143,7 @@ type
                             const AStack: TStackCopy; AGot: Cardinal;
                             ALines: TStrings);
     procedure CrashReport;
-    procedure WriteLog(const S: string);
+    procedure WriteLog(const Str: string);
     procedure WriteCrash(ALines: TStrings);
     function ThreadCpuMs: Int64;
   protected
@@ -256,24 +256,24 @@ begin
   end;
 end;
 
-function THangWatch.InCode(A: Cardinal): Boolean;
+function THangWatch.InCode(Addr: Cardinal): Boolean;
 begin
-  Result := (A >= FCodeBase) and (A < FCodeEnd);
+  Result := (Addr >= FCodeBase) and (Addr < FCodeEnd);
 end;
 
 // Шестнадцатеричное смещение "0001:0000ABCD" -> $ABCD; не сегмент кода -
 // False
-function MapOfs(const S: string; var AOfs: Cardinal): Boolean;
+function MapOfs(const Str: string; var AOfs: Cardinal): Boolean;
 var
-  V: Integer;
+  IntVal: Integer;
 begin
   Result := False;
-  if (Length(S) < 13) or (Copy(S, 1, 5) <> '0001:') then
+  if (Length(Str) < 13) or (Copy(Str, 1, 5) <> '0001:') then
     Exit;
-  V := StrToIntDef('$' + Copy(S, 6, 8), -1);
-  if V < 0 then
+  IntVal := StrToIntDef('$' + Copy(Str, 6, 8), -1);
+  if IntVal < 0 then
     Exit;
-  AOfs := Cardinal(V);
+  AOfs := Cardinal(IntVal);
   Result := True;
 end;
 
@@ -285,9 +285,9 @@ end;
 // Номера строк есть только у модулей, собранных с отладочной информацией.
 procedure THangWatch.LoadMap;
 var
-  SL, W: TStringList;
-  I, K, N, U, LineNo: Integer;
-  S, T: string;
+  SL, StrList: TStringList;
+  I, Idx3, Num, IntU, LineNo: Integer;
+  Str, Txt: string;
   InPub: Boolean;
   Ofs: Cardinal;
 begin
@@ -296,7 +296,7 @@ begin
   if not FileExists(FMapFile) then
     Exit;
   SL := TStringList.Create;
-  W := TStringList.Create;
+  StrList := TStringList.Create;
   try
     try
       SL.LoadFromFile(FMapFile);
@@ -304,61 +304,61 @@ begin
       Exit;
     end;
     InPub := False;
-    U := -1;
+    IntU := -1;
     for I := 0 to SL.Count - 1 do
     begin
-      S := SL[I];
-      T := Trim(S);
-      if T = '' then
+      Str := SL[I];
+      Txt := Trim(Str);
+      if Txt = '' then
         Continue;
-      if Pos('Publics by Value', T) > 0 then
+      if Pos('Publics by Value', Txt) > 0 then
       begin
         InPub := True;
-        U := -1;
+        IntU := -1;
         Continue;
       end;
-      if Copy(T, 1, 17) = 'Line numbers for ' then
+      if Copy(Txt, 1, 17) = 'Line numbers for ' then
       begin
         InPub := False;
         // "Line numbers for Unit1(Unit1.pas) segment CODE" -> Unit1.pas
-        K := Pos('(', T);
-        N := Pos(')', T);
-        if (K > 0) and (N > K) then
-          U := FUnits.Add(Copy(T, K + 1, N - K - 1))
+        Idx3 := Pos('(', Txt);
+        Num := Pos(')', Txt);
+        if (Idx3 > 0) and (Num > Idx3) then
+          IntU := FUnits.Add(Copy(Txt, Idx3 + 1, Num - Idx3 - 1))
         else
-          U := FUnits.Add(Copy(T, 18, MaxInt));
+          IntU := FUnits.Add(Copy(Txt, 18, MaxInt));
         Continue;
       end;
-      if (Copy(T, 1, 13) = 'Bound resourc') or (Copy(T, 1, 7) = 'Program') then
+      if (Copy(Txt, 1, 13) = 'Bound resourc') or (Copy(Txt, 1, 7) = 'Program') then
       begin
         InPub := False;
-        U := -1;
+        IntU := -1;
         Continue;
       end;
 
       if InPub then
       begin
         // " 0001:0001A2B4       Unit1.TForm1.FormCreate"
-        if MapOfs(Copy(T, 1, 13), Ofs) then
+        if MapOfs(Copy(Txt, 1, 13), Ofs) then
         begin
           // Массивы растут кусками: записей десятки тысяч
           if FPubCount = Length(FPubOfs) then
             SetLength(FPubOfs, FPubCount + 4096);
           FPubOfs[FPubCount] := Ofs;
           Inc(FPubCount);
-          FPubName.Add(Trim(Copy(T, 14, MaxInt)));
+          FPubName.Add(Trim(Copy(Txt, 14, MaxInt)));
         end;
       end
-      else if U >= 0 then
+      else if IntU >= 0 then
       begin
         // Пары "номер строки" и "0001:смещение"
-        W.Clear;
-        ExtractStrings([' ', #9], [], PChar(T), W);
-        K := 0;
-        while K + 1 < W.Count do
+        StrList.Clear;
+        ExtractStrings([' ', #9], [], PChar(Txt), StrList);
+        Idx3 := 0;
+        while Idx3 + 1 < StrList.Count do
         begin
-          LineNo := StrToIntDef(W[K], -1);
-          if (LineNo > 0) and MapOfs(W[K + 1], Ofs) then
+          LineNo := StrToIntDef(StrList[Idx3], -1);
+          if (LineNo > 0) and MapOfs(StrList[Idx3 + 1], Ofs) then
           begin
             if FLineCount = Length(FLineOfs) then
             begin
@@ -368,34 +368,34 @@ begin
             end;
             FLineOfs[FLineCount] := Ofs;
             FLineNo[FLineCount] := LineNo;
-            FLineUnit[FLineCount] := U;
+            FLineUnit[FLineCount] := IntU;
             Inc(FLineCount);
-            Inc(K, 2);
+            Inc(Idx3, 2);
           end
           else
-            Inc(K);
+            Inc(Idx3);
         end;
       end;
     end;
     FMapOk := FPubCount > 0;
   finally
-    W.Free;
+    StrList.Free;
     SL.Free;
   end;
 end;
 
 // Адрес словами: процедура+смещение (модуль, строка) или системный модуль
-function THangWatch.Describe(A: Cardinal): string;
+function THangWatch.Describe(Addr: Cardinal): string;
 var
   Ofs, Best: Cardinal;
   I, BI: Integer;
   MBI: TMemoryBasicInformation;
   Buf: array[0..MAX_PATH] of Char;
 begin
-  if not InCode(A) then
+  if not InCode(Addr) then
   begin
     Result := '';
-    if VirtualQuery(Pointer(A), MBI, SizeOf(MBI)) = SizeOf(MBI) then
+    if VirtualQuery(Pointer(Addr), MBI, SizeOf(MBI)) = SizeOf(MBI) then
       if GetModuleFileName(HMODULE(MBI.AllocationBase), Buf,
                            SizeOf(Buf)) > 0 then
         Result := ExtractFileName(Buf);
@@ -411,7 +411,7 @@ begin
     Result := '(нет карты)';
     Exit;
   end;
-  Ofs := A - FCodeBase;
+  Ofs := Addr - FCodeBase;
 
   // Процедура: ближайшее публичное имя не выше адреса
   BI := -1;
@@ -444,27 +444,27 @@ end;
 // Процессорное время главного потока (ядро + пользователь), мс; -1 - нет
 function THangWatch.ThreadCpuMs: Int64;
 var
-  C, E, K, U: TFileTime;
+  CreateTime, ExitTime, KernelTime, UserTime: TFileTime;
 begin
   Result := -1;
-  if (FMain <> 0) and GetThreadTimes(FMain, C, E, K, U) then
-    Result := (Int64(K) + Int64(U)) div 10000;
+  if (FMain <> 0) and GetThreadTimes(FMain, CreateTime, ExitTime, KernelTime, UserTime) then
+    Result := (Int64(KernelTime) + Int64(UserTime)) div 10000;
 end;
 
-procedure THangWatch.WriteLog(const S: string);
+procedure THangWatch.WriteLog(const Str: string);
 var
-  F: TextFile;
+  TxtFile: TextFile;
 begin
   try
-    AssignFile(F, FLogFile);
+    AssignFile(TxtFile, FLogFile);
     if FileExists(FLogFile) then
-      Append(F)
+      Append(TxtFile)
     else
-      Rewrite(F);
+      Rewrite(TxtFile);
     try
-      Writeln(F, S);
+      Writeln(TxtFile, Str);
     finally
-      CloseFile(F);
+      CloseFile(TxtFile);
     end;
   except
     // журнал не записался - ничего не поделать
@@ -621,7 +621,7 @@ procedure THangWatch.DescribeStack(AEip, AEsp, AEbp: Cardinal;
 var
   Frames: array[0..MaxFrames - 1] of Cardinal;
   Codes: array[0..MaxCodeAddrs - 1] of Cardinal;
-  E, Nxt, V: Cardinal;
+  EndPos, Nxt, IntVal: Cardinal;
   FC, CC, I, J: Integer;
   Dup: Boolean;
 begin
@@ -629,17 +629,17 @@ begin
   FC := 1;
   // Цепочка по EBP: [EBP] - EBP вызывающего, [EBP+4] - адрес возврата.
   // Только внутри копии; процедуры без кадра стека в неё не попадают.
-  E := AEbp;
-  while (FC < MaxFrames) and (E >= AEsp) and (E + 8 <= AEsp + AGot) and
-        ((E and 3) = 0) do
+  EndPos := AEbp;
+  while (FC < MaxFrames) and (EndPos >= AEsp) and (EndPos + 8 <= AEsp + AGot) and
+        ((EndPos and 3) = 0) do
   begin
-    Nxt := AStack[(E - AEsp) div 4];
-    V := AStack[(E - AEsp) div 4 + 1];
-    Frames[FC] := V;
+    Nxt := AStack[(EndPos - AEsp) div 4];
+    IntVal := AStack[(EndPos - AEsp) div 4 + 1];
+    Frames[FC] := IntVal;
     Inc(FC);
-    if Nxt <= E then
+    if Nxt <= EndPos then
       Break;
-    E := Nxt;
+    EndPos := Nxt;
   end;
 
   // Все адреса кода exe в копии стека, кроме уже найденных цепочкой
@@ -648,19 +648,19 @@ begin
   begin
     if CC >= MaxCodeAddrs then
       Break;
-    V := AStack[I];
-    if not InCode(V) then
+    IntVal := AStack[I];
+    if not InCode(IntVal) then
       Continue;
     Dup := False;
     for J := 0 to FC - 1 do
-      if Frames[J] = V then
+      if Frames[J] = IntVal then
         Dup := True;
     for J := 0 to CC - 1 do
-      if Codes[J] = V then
+      if Codes[J] = IntVal then
         Dup := True;
     if not Dup then
     begin
-      Codes[CC] := V;
+      Codes[CC] := IntVal;
       Inc(CC);
     end;
   end;
@@ -795,20 +795,20 @@ end;
 
 procedure THangWatch.WriteCrash(ALines: TStrings);
 var
-  F: TextFile;
+  TxtFile: TextFile;
   LineIdx: Integer;
 begin
   try
-    AssignFile(F, FCrashFile);
+    AssignFile(TxtFile, FCrashFile);
     if FileExists(FCrashFile) then
-      Append(F)
+      Append(TxtFile)
     else
-      Rewrite(F);
+      Rewrite(TxtFile);
     try
       for LineIdx := 0 to ALines.Count - 1 do
-        Writeln(F, ALines[LineIdx]);
+        Writeln(TxtFile, ALines[LineIdx]);
     finally
-      CloseFile(F);
+      CloseFile(TxtFile);
     end;
   except
     // журнал не записался - ничего не поделать
@@ -817,7 +817,7 @@ end;
 
 procedure THangWatch.Execute;
 var
-  R, Waited: DWORD;
+  Res, Waited: DWORD;
   HungSince, Now_, PingStart: Cardinal;
   Samples: Integer;
   Ok: Boolean;
@@ -860,10 +860,10 @@ begin
       Continue;
     if not IsWindow(FWnd) then
       Break;
-    R := 0;
+    Res := 0;
     PingStart := GetTickCount;
     Ok := SendMessageTimeout(FWnd, WM_NULL, 0, 0, SMTO_NORMAL, ShortWait,
-                             R) <> 0;
+                             Res) <> 0;
     // Главный поток не ответил, потому что упал и ждёт в обработчике
     if CrashPending then
       Continue;
@@ -879,7 +879,7 @@ begin
         ShortLines.Clear;
       end;
       Ok := SendMessageTimeout(FWnd, WM_NULL, 0, 0, SMTO_NORMAL,
-                               PingWait - ShortWait, R) <> 0;
+                               PingWait - ShortWait, Res) <> 0;
       if CrashPending then
         Continue;
       if Ok and (HungSince = 0) and not Terminated then

@@ -356,17 +356,17 @@ end;
 procedure TDsgPalette.LoadLibs(const ADelphiBin: string);
 var
   SR: TSearchRec;
-  H: HMODULE;
+  ModHnd: HMODULE;
 begin
   if (ADelphiBin = '') or not DirectoryExists(ADelphiBin) then
     Exit;
   if FindFirst(ADelphiBin + 'dcl*.bpl', faAnyFile, SR) = 0 then
   try
     repeat
-      H := LoadLibraryEx(PChar(ADelphiBin + SR.Name), 0, AsDataFile);
-      if H <> 0 then
+      ModHnd := LoadLibraryEx(PChar(ADelphiBin + SR.Name), 0, AsDataFile);
+      if ModHnd <> 0 then
       begin
-        FLibs.Add(Pointer(H));
+        FLibs.Add(Pointer(ModHnd));
         FLibPaths.Add(ADelphiBin + SR.Name);
       end;
     until FindNext(SR) <> 0;
@@ -724,16 +724,16 @@ function TDsgPalette.LoadGlyphByName(const AName: string;
 var
   I: Integer;
   Nm: string;
-  H: HMODULE;
+  ModHnd: HMODULE;
 begin
   Result := False;
   Nm := UpperCase(AName);
   for I := 0 to FLibs.Count - 1 do
   begin
-    H := HMODULE(FLibs[I]);
-    if FindResource(H, PChar(Nm), RT_BITMAP) <> 0 then
+    ModHnd := HMODULE(FLibs[I]);
+    if FindResource(ModHnd, PChar(Nm), RT_BITMAP) <> 0 then
     try
-      ABmp.LoadFromResourceName(H, Nm);
+      ABmp.LoadFromResourceName(ModHnd, Nm);
       Result := True;
       Exit;
     except
@@ -747,7 +747,7 @@ procedure TDsgPalette.PlaceButton(ABtn: TSpeedButton; AClass: TComponentClass;
 var
   List: TList;
   Twin: TSpeedButton;
-  X, Y, Size, W: Integer;
+  PosX, PosY, Size, WidthPx: Integer;
   HasGlyph: Boolean;
   SmoothName: string;
 begin
@@ -797,23 +797,23 @@ begin
     SetGlyphInfo(ABtn, ABtn.Glyph, SmoothName, ACustom);
     RenderGlyph(ABtn, False, clBlack, clTeal, FBox.Color, nil, ABtn.Glyph);
   end;
-  W := Size;
+  WidthPx := Size;
   if not HasGlyph then
   begin
     // Значка нет - имя класса без T
     ABtn.Caption := Copy(AClass.ClassName, 2, MaxInt);
     FMeter.Canvas.Font := Font;
-    W := FMeter.Canvas.TextWidth(ABtn.Caption) + 10;
-    if W < Size then
-      W := Size;
+    WidthPx := FMeter.Canvas.TextWidth(ABtn.Caption) + 10;
+    if WidthPx < Size then
+      WidthPx := Size;
   end;
 
   if not ACustom then
   begin
     // Первый ряд - подряд слева направо
-    X := FNextX[APage];
-    Y := 1;
-    FNextX[APage] := X + W + 1;
+    PosX := FNextX[APage];
+    PosY := 1;
+    FNextX[APage] := PosX + WidthPx + 1;
     Inc(FRow1Count[APage]);
   end
   else
@@ -821,17 +821,17 @@ begin
     // Свой компонент - под одноимённым компонентом Delphi первого ряда
     // (TUiButton - под TButton). Нет такого на странице - следом за
     // предыдущим своим. Налезать на предыдущий свой не даём.
-    Y := 1 + BtnSize + 1;
+    PosY := 1 + BtnSize + 1;
     Twin := StdButtonFor(AClass, List, FRow1Count[APage]);
     if Twin <> nil then
-      X := Twin.Left
+      PosX := Twin.Left
     else
-      X := FNextFree[APage];
-    if X < FNextFree[APage] then
-      X := FNextFree[APage];
-    FNextFree[APage] := X + W + 1;
+      PosX := FNextFree[APage];
+    if PosX < FNextFree[APage] then
+      PosX := FNextFree[APage];
+    FNextFree[APage] := PosX + WidthPx + 1;
   end;
-  ABtn.SetBounds(X, Y, W, Size);
+  ABtn.SetBounds(PosX, PosY, WidthPx, Size);
   List.Add(ABtn);
 end;
 
@@ -1048,21 +1048,21 @@ end;
 
 procedure TDsgPalette.CompClick(Sender: TObject);
 var
-  B: TSpeedButton;
+  SpeedButton: TSpeedButton;
 begin
-  B := TSpeedButton(Sender);
-  if not B.Down then
+  SpeedButton := TSpeedButton(Sender);
+  if not SpeedButton.Down then
     SetSelected(nil) // повторный щелчок по нажатой - выбор снят
-  else if B.Tag = 0 then
+  else if SpeedButton.Tag = 0 then
   begin
     // Сторонний: класса нет, выбор - строкой
     FSelected := nil;
-    FSelForeign := ForeignOf(B);
+    FSelForeign := ForeignOf(SpeedButton);
     if Assigned(FOnSelect) then
       FOnSelect(Self);
   end
   else
-    SetSelected(TComponentClass(B.Tag));
+    SetSelected(TComponentClass(SpeedButton.Tag));
 end;
 
 procedure TDsgPalette.SetSelected(AClass: TComponentClass);

@@ -533,8 +533,8 @@ begin
       ResData.SaveToFile(AResFile);
       Result := True;
     except
-      on E: Exception do
-        AError := 'Не записан ' + AResFile + ': ' + E.Message;
+      on Err: Exception do
+        AError := 'Не записан ' + AResFile + ': ' + Err.Message;
     end;
   finally
     ResData.Free;
@@ -570,9 +570,9 @@ begin
       try
         ResData.SaveToFile(AResFile);
       except
-        on E: Exception do
+        on Err: Exception do
         begin
-          AError := 'Не записан ' + AResFile + ': ' + E.Message;
+          AError := 'Не записан ' + AResFile + ': ' + Err.Message;
           Result := False;
         end;
       end;
@@ -741,8 +741,8 @@ begin
       ResData.SaveToFile(AResFile);
       Result := True;
     except
-      on E: Exception do
-        AError := 'Не записан ' + AResFile + ': ' + E.Message;
+      on Err: Exception do
+        AError := 'Не записан ' + AResFile + ': ' + Err.Message;
     end;
   finally
     OldIds.Free;

@@ -23,7 +23,7 @@ function DofCompilerParams(const ADpr, ARoot: string;
                            var ASearch, ADefines: string;
                            ALog: TStrings): string;
 // $(DELPHI) и $(BDS) - папка Delphi ARoot
-function ExpandDelphiRoot(const S, ARoot: string): string;
+function ExpandDelphiRoot(const Str, ARoot: string): string;
 
 // Повторы имён компонентов в текстовом .dfm - строками "файл(строка)
 // Error: ..." в AErrors. Результат - число повторов.
@@ -38,17 +38,17 @@ implementation
 // $(DELPHI) в путях. Окно настроек разворачивает макросы при вводе, но
 // editor.ini правят и руками, а dcc32 макросов не понимает - для него это
 // просто несуществующая папка.
-function ExpandDelphiRoot(const S, ARoot: string): string;
+function ExpandDelphiRoot(const Str, ARoot: string): string;
 var
-  R: string;
+  RestStr: string;
 begin
-  Result := S;
-  if (S = '') or (ARoot = '') then
+  Result := Str;
+  if (Str = '') or (ARoot = '') then
     Exit;
 
-  R := ExcludeTrailingPathDelimiter(ARoot);
-  Result := StringReplace(Result, '$(DELPHI)', R, [rfReplaceAll, rfIgnoreCase]);
-  Result := StringReplace(Result, '$(BDS)', R, [rfReplaceAll, rfIgnoreCase]);
+  RestStr := ExcludeTrailingPathDelimiter(ARoot);
+  Result := StringReplace(Result, '$(DELPHI)', RestStr, [rfReplaceAll, rfIgnoreCase]);
+  Result := StringReplace(Result, '$(BDS)', RestStr, [rfReplaceAll, rfIgnoreCase]);
 end;
 
 // Разбор секции uses. Каждая строка списка - UnitName|FileName|Form|Class.
@@ -58,7 +58,7 @@ function ParseDprUnits(const ADpr: string; AList: TStrings): Integer;
 var
   SL, Parts: TStringList;
   Txt, Up, Seg, Item, Brace, UnitNm, FileNm, FormNm, FormCls: string;
-  P, Q, B1, B2, C, Q1, Q2, I: Integer;
+  CharPos, QuotePos, B1, B2, Cnt, Q1, Q2, I: Integer;
 begin
   Result := 0;
   AList.Clear;
@@ -74,14 +74,14 @@ begin
   end;
 
   Up := AnsiUpperCase(Txt);
-  P := Pos('USES', Up);
-  if P <= 0 then
+  CharPos := Pos('USES', Up);
+  if CharPos <= 0 then
     Exit;
-  Q := PosEx(';', Txt, P);
-  if Q <= 0 then
+  QuotePos := PosEx(';', Txt, CharPos);
+  if QuotePos <= 0 then
     Exit;
 
-  Seg := Copy(Txt, P + 4, Q - P - 4);
+  Seg := Copy(Txt, CharPos + 4, QuotePos - CharPos - 4);
 
   Parts := TStringList.Create;
   try
@@ -89,11 +89,11 @@ begin
     // бывает, поэтому хватает простого разбиения
     while Seg <> '' do
     begin
-      C := Pos(',', Seg);
-      if C > 0 then
+      Cnt := Pos(',', Seg);
+      if Cnt > 0 then
       begin
-        Parts.Add(Copy(Seg, 1, C - 1));
-        Seg := Copy(Seg, C + 1, Length(Seg));
+        Parts.Add(Copy(Seg, 1, Cnt - 1));
+        Seg := Copy(Seg, Cnt + 1, Length(Seg));
       end
       else
       begin
@@ -121,11 +121,11 @@ begin
           Item := Trim(Copy(Item, 1, B1 - 1));
 
           // {DataModule1: TDataModule} - имя и класс через двоеточие
-          C := Pos(':', Brace);
-          if C > 0 then
+          Cnt := Pos(':', Brace);
+          if Cnt > 0 then
           begin
-            FormNm := Trim(Copy(Brace, 1, C - 1));
-            FormCls := Trim(Copy(Brace, C + 1, Length(Brace)));
+            FormNm := Trim(Copy(Brace, 1, Cnt - 1));
+            FormCls := Trim(Copy(Brace, Cnt + 1, Length(Brace)));
           end
           else
             FormNm := Brace;
@@ -191,25 +191,25 @@ function DofCompilerParams(const ADpr, ARoot: string;
                            var ASearch, ADefines: string;
                            ALog: TStrings): string;
 var
-  Dof, Cfg, Dir, V, S, Rest, Item, Others: string;
+  Dof, Cfg, Dir, ValStr, Str, Rest, Item, Others: string;
   Ini: TIniFile;
   C: Char;
-  P: Integer;
+  CharPos: Integer;
   SR: TSearchRec;
 
   // Строка для лога компиляции - вызывающий выведет её сам
-  procedure Log(const S: string);
+  procedure Log(const Str: string);
   begin
     if ALog <> nil then
-      ALog.Add(S);
+      ALog.Add(Str);
   end;
 
-  function Quoted(const A: string): string;
+  function Quoted(const ArgStr: string): string;
   begin
-    if Pos(' ', A) > 0 then
-      Result := '"' + A + '"'
+    if Pos(' ', ArgStr) > 0 then
+      Result := '"' + ArgStr + '"'
     else
-      Result := A;
+      Result := ArgStr;
   end;
 
 begin
@@ -259,50 +259,50 @@ begin
     // Ключи $A..$Z
     for C := 'A' to 'Z' do
     begin
-      V := Trim(Ini.ReadString('Compiler', C, ''));
-      if V = '' then
+      ValStr := Trim(Ini.ReadString('Compiler', C, ''));
+      if ValStr = '' then
         Continue;
       case C of
         'A':
-          if V = '0' then
-            S := '-$A-'
+          if ValStr = '0' then
+            Str := '-$A-'
           else
-            S := '-$A' + V;         // 1, 2, 4, 8 - выравнивание
+            Str := '-$A' + ValStr;         // 1, 2, 4, 8 - выравнивание
         'Y':
-          if V = '0' then
-            S := '-$Y-'
-          else if V = '1' then
-            S := '-$YD'             // только объявления
+          if ValStr = '0' then
+            Str := '-$Y-'
+          else if ValStr = '1' then
+            Str := '-$YD'             // только объявления
           else
-            S := '-$Y+';
+            Str := '-$Y+';
         'Z':
-          if V = '0' then
-            S := '-$Z1'
+          if ValStr = '0' then
+            Str := '-$Z1'
           else
-            S := '-$Z' + V;         // 1, 2, 4 - размер перечислений
+            Str := '-$Z' + ValStr;         // 1, 2, 4 - размер перечислений
       else
-        if V = '0' then
-          S := '-$' + C + '-'
+        if ValStr = '0' then
+          Str := '-$' + C + '-'
         else
-          S := '-$' + C + '+';
+          Str := '-$' + C + '+';
       end;
-      Result := Result + ' ' + S;
+      Result := Result + ' ' + Str;
     end;
 
-    V := Trim(Ini.ReadString('Compiler', 'ShowHints', ''));
-    if V = '0' then
+    ValStr := Trim(Ini.ReadString('Compiler', 'ShowHints', ''));
+    if ValStr = '0' then
       Result := Result + ' -H-'
-    else if V = '1' then
+    else if ValStr = '1' then
       Result := Result + ' -H+';
-    V := Trim(Ini.ReadString('Compiler', 'ShowWarnings', ''));
-    if V = '0' then
+    ValStr := Trim(Ini.ReadString('Compiler', 'ShowWarnings', ''));
+    if ValStr = '0' then
       Result := Result + ' -W-'
-    else if V = '1' then
+    else if ValStr = '1' then
       Result := Result + ' -W+';
 
-    V := Trim(Ini.ReadString('Compiler', 'UnitAliases', ''));
-    if V <> '' then
-      Result := Result + ' -A' + Quoted(V);
+    ValStr := Trim(Ini.ReadString('Compiler', 'UnitAliases', ''));
+    if ValStr <> '' then
+      Result := Result + ' -A' + Quoted(ValStr);
 
     if Trim(Ini.ReadString('Compiler', 'UnsafeType', '')) = '0' then
       Result := Result + ' -w-UNSAFE_TYPE';
@@ -314,12 +314,12 @@ begin
     // [Linker] MapFile: 1 - сегменты, 2 - публичные имена, 3 - подробная, с
     // номерами строк. По карте сторож зависаний (HangWatch) переводит
     // адреса в имена процедур и строки.
-    V := Trim(Ini.ReadString('Linker', 'MapFile', ''));
-    if V = '1' then
+    ValStr := Trim(Ini.ReadString('Linker', 'MapFile', ''));
+    if ValStr = '1' then
       Result := Result + ' -GS'
-    else if V = '2' then
+    else if ValStr = '2' then
       Result := Result + ' -GP'
-    else if V = '3' then
+    else if ValStr = '3' then
       Result := Result + ' -GD';
 
     // Остальное с вкладки Linker - так же, как в <проект>.cfg, который
@@ -329,20 +329,20 @@ begin
       Result := Result + ' -V';
     if Trim(Ini.ReadString('Linker', 'RemoteSymbols', '')) = '1' then
       Result := Result + ' -VR';
-    S := Trim(Ini.ReadString('Linker', 'MinStackSize', ''));
-    V := Trim(Ini.ReadString('Linker', 'MaxStackSize', ''));
-    if (StrToIntDef(S, 0) > 0) and (StrToIntDef(V, 0) > 0) then
-      Result := Result + ' -$M' + S + ',' + V;
-    V := Trim(Ini.ReadString('Linker', 'ImageBase', ''));
-    if (StrToInt64Def(V, 0) > 0) and (StrToInt64Def(V, 0) <> 4194304) then
-      Result := Result + ' -K$' + IntToHex(StrToInt64Def(V, 0), 8);
+    Str := Trim(Ini.ReadString('Linker', 'MinStackSize', ''));
+    ValStr := Trim(Ini.ReadString('Linker', 'MaxStackSize', ''));
+    if (StrToIntDef(Str, 0) > 0) and (StrToIntDef(ValStr, 0) > 0) then
+      Result := Result + ' -$M' + Str + ',' + ValStr;
+    ValStr := Trim(Ini.ReadString('Linker', 'ImageBase', ''));
+    if (StrToInt64Def(ValStr, 0) > 0) and (StrToInt64Def(ValStr, 0) <> 4194304) then
+      Result := Result + ' -K$' + IntToHex(StrToInt64Def(ValStr, 0), 8);
 
     // Runtime packages: Build with runtime packages и список пакетов
     if Trim(Ini.ReadString('Directories', 'UsePackages', '')) = '1' then
     begin
-      V := Trim(Ini.ReadString('Directories', 'Packages', ''));
-      if V <> '' then
-        Result := Result + ' -LU' + Quoted(V);
+      ValStr := Trim(Ini.ReadString('Directories', 'Packages', ''));
+      if ValStr <> '' then
+        Result := Result + ' -LU' + Quoted(ValStr);
     end;
 
     ADefines := Trim(Ini.ReadString('Directories', 'Conditionals', ''));
@@ -353,11 +353,11 @@ begin
                                                  '')), ARoot);
     while Rest <> '' do
     begin
-      P := Pos(';', Rest);
-      if P > 0 then
+      CharPos := Pos(';', Rest);
+      if CharPos > 0 then
       begin
-        Item := Trim(Copy(Rest, 1, P - 1));
-        Rest := Copy(Rest, P + 1, MaxInt);
+        Item := Trim(Copy(Rest, 1, CharPos - 1));
+        Rest := Copy(Rest, CharPos + 1, MaxInt);
       end
       else
       begin
@@ -378,12 +378,12 @@ begin
     Ini.Free;
   end;
 
-  S := 'Настройки проекта: ' + ExtractFileName(Dof) + ' -> ключи' + Result;
+  Str := 'Настройки проекта: ' + ExtractFileName(Dof) + ' -> ключи' + Result;
   if ADefines <> '' then
-    S := S + ', символы ' + ADefines;
+    Str := Str + ', символы ' + ADefines;
   if ASearch <> '' then
-    S := S + ', Search path ' + ASearch;
-  Log(S);
+    Str := Str + ', Search path ' + ASearch;
+  Log(Str);
 end;
 
 // Одинаковые имена компонентов в тексте .dfm. dcc32 кладёт .dfm в exe как

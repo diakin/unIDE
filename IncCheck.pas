@@ -213,34 +213,34 @@ begin
 end;
 
 // Первое слово строки (до пробела, "(", "=", ":" или ",")
-function FirstWord(const S: string): string;
+function FirstWord(const Str: string): string;
 var
   Pos1: Integer;
 begin
   Pos1 := 1;
-  while (Pos1 <= Length(S)) and not (S[Pos1] in [' ', #9, '(', '=', ':', ',']) do
+  while (Pos1 <= Length(Str)) and not (Str[Pos1] in [' ', #9, '(', '=', ':', ',']) do
     Inc(Pos1);
-  Result := Copy(S, 1, Pos1 - 1);
+  Result := Copy(Str, 1, Pos1 - 1);
 end;
 
 // Остаток строки после первого слова, без пробелов слева
-function AfterWord(const S: string): string;
+function AfterWord(const Str: string): string;
 begin
-  Result := TrimLeft(Copy(S, Length(FirstWord(S)) + 1, Length(S)));
+  Result := TrimLeft(Copy(Str, Length(FirstWord(Str)) + 1, Length(Str)));
 end;
 
 // Строка начинается словом AWord (за ним пробел, конец строки или "(")
-function StartsWord(const S, AWord: string): Boolean;
+function StartsWord(const Str, AWord: string): Boolean;
 begin
-  Result := (CompareText(Copy(S, 1, Length(AWord)), AWord) = 0) and
-            ((Length(S) = Length(AWord)) or
-             (S[Length(AWord) + 1] in [' ', #9, '(', ':']));
+  Result := (CompareText(Copy(Str, 1, Length(AWord)), AWord) = 0) and
+            ((Length(Str) = Length(AWord)) or
+             (Str[Length(AWord) + 1] in [' ', #9, '(', ':']));
 end;
 
 // Имя после ключевого слова: "SUB Foo(...)" -> Foo
-function NameAfter(const S, AKeyword: string): string;
+function NameAfter(const Str, AKeyword: string): string;
 begin
-  Result := FirstWord(TrimLeft(Copy(S, Length(AKeyword) + 1, Length(S))));
+  Result := FirstWord(TrimLeft(Copy(Str, Length(AKeyword) + 1, Length(Str))));
 end;
 
 // "TYPE Имя AS Тип" - однострочный синоним типа (FreeBASIC), без END TYPE
@@ -393,18 +393,18 @@ begin
 end;
 
 // Ключ текста для поиска совпадений: FNV-1a и длина
-function TextKey(const S: string): string;
+function TextKey(const Str: string): string;
 var
   Hash: Cardinal;
   CharIdx: Integer;
 begin
   Hash := 2166136261;
-  for CharIdx := 1 to Length(S) do
+  for CharIdx := 1 to Length(Str) do
   begin
-    Hash := Hash xor Ord(S[CharIdx]);
+    Hash := Hash xor Ord(Str[CharIdx]);
     Hash := Hash * 16777619;
   end;
-  Result := IntToHex(Hash, 8) + ':' + IntToStr(Length(S));
+  Result := IntToHex(Hash, 8) + ':' + IntToStr(Length(Str));
 end;
 
 function IncFindGuard(ALines: TStrings): string;
@@ -1233,9 +1233,9 @@ begin
     try
       Lines.LoadFromFile(AInfo.FileName);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        AInfo.AddMsg(0, True, 'не прочитан: ' + E.Message);
+        AInfo.AddMsg(0, True, 'не прочитан: ' + Err.Message);
         Exit;
       end;
     end;
@@ -1413,9 +1413,9 @@ begin
     try
       Lines.LoadFromFile(AFile);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        AError := E.Message;
+        AError := Err.Message;
         Result := -1;
         Exit;
       end;
@@ -1508,9 +1508,9 @@ begin
       end;
       Lines.SaveToFile(AFile);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        AError := E.Message;
+        AError := Err.Message;
         Result := -1;
       end;
     end;
@@ -1540,9 +1540,9 @@ begin
         Stream.Free;
       end;
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        AError := E.Message;
+        AError := Err.Message;
         Exit;
       end;
     end;
@@ -1587,9 +1587,9 @@ begin
         Stream.Free;
       end;
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        AError := E.Message;
+        AError := Err.Message;
         Exit;
       end;
     end;
@@ -1881,9 +1881,9 @@ begin
     try
       Lines.LoadFromFile(AIncFile);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        AError := E.Message;
+        AError := Err.Message;
         Result := '';
         Exit;
       end;
@@ -1967,9 +1967,9 @@ begin
     try
       Demo.SaveToFile(Result);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        AError := E.Message;
+        AError := Err.Message;
         Result := '';
       end;
     end;

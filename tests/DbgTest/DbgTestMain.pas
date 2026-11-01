@@ -328,8 +328,8 @@ begin
       raise EDbgTest.Create('проверочное исключение');
     Value := 2;
   except
-    on E: EDbgTest do
-      Report('Исключение: ' + E.Message);   // ТОЧКА 9: E - EDbgTest($...)
+    on Err: EDbgTest do
+      Report('Исключение: ' + Err.Message);   // ТОЧКА 9: E - EDbgTest($...)
   end;
   Report('После исключения: ' + IntToStr(Value));   // 1
 end;

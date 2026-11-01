@@ -62,13 +62,13 @@ type
     // Состояние сменилось (до OnClick)
     procedure StateChanged; virtual;
     procedure Paint; override;
-    procedure PaintBoxNative(const R: TRect);
-    procedure PaintBoxOwn(const R: TRect);
+    procedure PaintBoxNative(const RectVal: TRect);
+    procedure PaintBoxOwn(const BoxRect: TRect);
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+                        PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
-                      X, Y: Integer); override;
+                      PosX, PosY: Integer); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure KeyUp(var Key: Word; Shift: TShiftState); override;
     property State: TCheckBoxState read FState write SetState
@@ -297,10 +297,10 @@ const
   BoxSize = 13;       // квадратик флажка, кружок переключателя
   BoxGap = 4;         // от квадратика до подписи
 
-function UiState(C: TWinControl): Integer;
+function UiState(WinCtrl: TWinControl): Integer;
 begin
-  if C.HandleAllocated then
-    Result := SendMessage(C.Handle, WM_QUERYUISTATE_, 0, 0)
+  if WinCtrl.HandleAllocated then
+    Result := SendMessage(WinCtrl.Handle, WM_QUERYUISTATE_, 0, 0)
   else
     Result := 0;
 end;
@@ -395,10 +395,10 @@ begin
 end;
 
 // Квадратик темы Windows: состояние - отмечен / нет / серый, мышь, нажат
-procedure TUiCheckControl.PaintBoxNative(const R: TRect);
+procedure TUiCheckControl.PaintBoxNative(const RectVal: TRect);
 var
   Base: TThemedButton;
-  K: Integer;
+  Idx3: Integer;
   Details: TThemedElementDetails;
 begin
   if IsRadio then
@@ -417,23 +417,23 @@ begin
     end;
   // За каждым ...Normal в перечне темы идут Hot, Pressed, Disabled
   if not Enabled then
-    K := 3
+    Idx3 := 3
   else if (FPressing and FMouseIn) or FKeyDown then
-    K := 2
+    Idx3 := 2
   else if FHot then
-    K := 1
+    Idx3 := 1
   else
-    K := 0;
-  Details := ThemeServices.GetElementDetails(TThemedButton(Ord(Base) + K));
-  ThemeServices.DrawElement(Canvas.Handle, Details, R);
+    Idx3 := 0;
+  Details := ThemeServices.GetElementDetails(TThemedButton(Ord(Base) + Idx3));
+  ThemeServices.DrawElement(Canvas.Handle, Details, RectVal);
 end;
 
 // Квадратик цветами темы: рамка, фон поля, галочка или точка
-procedure TUiCheckControl.PaintBoxOwn(const R: TRect);
+procedure TUiCheckControl.PaintBoxOwn(const BoxRect: TRect);
 var
   Mark: TColor;
   Pts: array[0..2] of TPoint;
-  C: TRect;
+  InnerRect: TRect;
 begin
   with Canvas do
   begin
@@ -454,36 +454,36 @@ begin
 
     if IsRadio then
     begin
-      Ellipse(R.Left, R.Top, R.Right, R.Bottom);
+      Ellipse(BoxRect.Left, BoxRect.Top, BoxRect.Right, BoxRect.Bottom);
       if FState = cbChecked then
       begin
         Brush.Color := Mark;
         Pen.Color := Mark;
-        C := R;
-        InflateRect(C, -4, -4);
-        Ellipse(C.Left, C.Top, C.Right, C.Bottom);
+        InnerRect := BoxRect;
+        InflateRect(InnerRect, -4, -4);
+        Ellipse(InnerRect.Left, InnerRect.Top, InnerRect.Right, InnerRect.Bottom);
       end;
     end
     else
     begin
-      Rectangle(R.Left, R.Top, R.Right, R.Bottom);
+      Rectangle(BoxRect.Left, BoxRect.Top, BoxRect.Right, BoxRect.Bottom);
       if FState = cbChecked then
       begin
         // Галочка: две линии толщиной в 2 точки
         Pen.Color := Mark;
         Pen.Width := 2;
-        Pts[0] := Point(R.Left + 3, R.Top + 6);
-        Pts[1] := Point(R.Left + 5, R.Top + 9);
-        Pts[2] := Point(R.Left + 10, R.Top + 3);
+        Pts[0] := Point(BoxRect.Left + 3, BoxRect.Top + 6);
+        Pts[1] := Point(BoxRect.Left + 5, BoxRect.Top + 9);
+        Pts[2] := Point(BoxRect.Left + 10, BoxRect.Top + 3);
         Polyline(Pts);
         Pen.Width := 1;
       end
       else if FState = cbGrayed then
       begin
-        C := R;
-        InflateRect(C, -3, -3);
+        InnerRect := BoxRect;
+        InflateRect(InnerRect, -3, -3);
         Brush.Color := UiThemeColorFor(Self, 'OffText');
-        FillRect(C);
+        FillRect(InnerRect);
       end;
     end;
   end;
@@ -492,8 +492,8 @@ end;
 procedure TUiCheckControl.Paint;
 var
   Box, TR, FR: TRect;
-  Y: Integer;
-  S: string;
+  PosY: Integer;
+  Str: string;
   Fl: Cardinal;
   Native: Boolean;
   St: Integer;
@@ -504,15 +504,15 @@ begin
   Canvas.FillRect(ClientRect);
 
   // Квадратик - по середине высоты, у края со стороны Alignment
-  Y := (ClientHeight - BoxSize) div 2;
+  PosY := (ClientHeight - BoxSize) div 2;
   if FAlignment = taRightJustify then
   begin
-    Box := Rect(0, Y, BoxSize, Y + BoxSize);
+    Box := Rect(0, PosY, BoxSize, PosY + BoxSize);
     TR := Rect(BoxSize + BoxGap, 0, ClientWidth, ClientHeight);
   end
   else
   begin
-    Box := Rect(ClientWidth - BoxSize, Y, ClientWidth, Y + BoxSize);
+    Box := Rect(ClientWidth - BoxSize, PosY, ClientWidth, PosY + BoxSize);
     TR := Rect(0, 0, ClientWidth - BoxSize - BoxGap, ClientHeight);
   end;
   if Native then
@@ -521,7 +521,7 @@ begin
     PaintBoxOwn(Box);
 
   // Подпись
-  S := Caption;
+  Str := Caption;
   Canvas.Font := Font;
   if not Enabled then
   begin
@@ -541,14 +541,14 @@ begin
   if (St and UISF_HIDEACCEL_) <> 0 then
     Fl := Fl or DT_HIDEPREFIX_;
   Canvas.Brush.Style := bsClear;
-  DrawText(Canvas.Handle, PChar(S), Length(S), TR, Fl);
+  DrawText(Canvas.Handle, PChar(Str), Length(Str), TR, Fl);
   Canvas.Brush.Style := bsSolid;
 
   // Рамка фокуса - вокруг подписи
-  if Focused and (S <> '') and ((St and UISF_HIDEFOCUS_) = 0) then
+  if Focused and (Str <> '') and ((St and UISF_HIDEFOCUS_) = 0) then
   begin
     FR := TR;
-    DrawText(Canvas.Handle, PChar(S), Length(S), FR, Fl or DT_CALCRECT);
+    DrawText(Canvas.Handle, PChar(Str), Length(Str), FR, Fl or DT_CALCRECT);
     FR.Top := TR.Top + (TR.Bottom - TR.Top - (FR.Bottom - FR.Top)) div 2;
     FR.Bottom := FR.Top + Canvas.TextHeight('0');
     InflateRect(FR, 1, 1);
@@ -563,7 +563,7 @@ begin
 end;
 
 procedure TUiCheckControl.MouseDown(Button: TMouseButton; Shift: TShiftState;
-                                    X, Y: Integer);
+                                    PosX, PosY: Integer);
 begin
   if (Button = mbLeft) and Enabled then
   begin
@@ -573,27 +573,27 @@ begin
     FMouseIn := True;
     Invalidate;
   end;
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
 end;
 
-procedure TUiCheckControl.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TUiCheckControl.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 var
   InNow: Boolean;
 begin
   if FPressing then
   begin
-    InNow := PtInRect(ClientRect, Point(X, Y));
+    InNow := PtInRect(ClientRect, Point(PosX, PosY));
     if InNow <> FMouseIn then
     begin
       FMouseIn := InNow;
       Invalidate;
     end;
   end;
-  inherited MouseMove(Shift, X, Y);
+  inherited MouseMove(Shift, PosX, PosY);
 end;
 
 procedure TUiCheckControl.MouseUp(Button: TMouseButton; Shift: TShiftState;
-                                  X, Y: Integer);
+                                  PosX, PosY: Integer);
 var
   Was: Boolean;
 begin
@@ -603,9 +603,9 @@ begin
     FPressing := False;
     Invalidate;
   end;
-  inherited MouseUp(Button, Shift, X, Y);
+  inherited MouseUp(Button, Shift, PosX, PosY);
   // Отпустили над элементом - это щелчок
-  if Was and PtInRect(ClientRect, Point(X, Y)) then
+  if Was and PtInRect(ClientRect, Point(PosX, PosY)) then
     Toggle;
 end;
 
@@ -724,15 +724,15 @@ end;
 procedure TUiRadioButton.StateChanged;
 var
   I: Integer;
-  C: TControl;
+  Ctrl: TControl;
 begin
   if (FState <> cbChecked) or (Parent = nil) then
     Exit;
   for I := 0 to Parent.ControlCount - 1 do
   begin
-    C := Parent.Controls[I];
-    if (C <> Self) and (C is TUiRadioButton) then
-      TUiRadioButton(C).SetState(cbUnchecked);
+    Ctrl := Parent.Controls[I];
+    if (Ctrl <> Self) and (Ctrl is TUiRadioButton) then
+      TUiRadioButton(Ctrl).SetState(cbUnchecked);
   end;
 end;
 
@@ -817,14 +817,14 @@ end;
 procedure TUiRadioGroup.UpdateButtons;
 var
   I: Integer;
-  B: TUiGroupButton;
+  UiGroupButton: TUiGroupButton;
 begin
   while FButtons.Count < FItems.Count do
   begin
-    B := TUiGroupButton.Create(Self);
-    B.Parent := Self;
-    B.OnClick := ButtonClick;
-    FButtons.Add(B);
+    UiGroupButton := TUiGroupButton.Create(Self);
+    UiGroupButton.Parent := Self;
+    UiGroupButton.OnClick := ButtonClick;
+    FButtons.Add(UiGroupButton);
   end;
   while FButtons.Count > FItems.Count do
   begin
@@ -835,10 +835,10 @@ begin
   try
     for I := 0 to FButtons.Count - 1 do
     begin
-      B := TUiGroupButton(FButtons[I]);
-      B.Caption := FItems[I];
-      B.Enabled := Enabled;
-      B.Checked := I = FItemIndex;
+      UiGroupButton := TUiGroupButton(FButtons[I]);
+      UiGroupButton.Caption := FItems[I];
+      UiGroupButton.Enabled := Enabled;
+      UiGroupButton.Checked := I = FItemIndex;
     end;
   finally
     FUpdating := False;
@@ -851,20 +851,20 @@ end;
 // высоте под подписью
 procedure TUiRadioGroup.ArrangeButtons;
 var
-  PerCol, W, H, I, TopMargin, TextH: Integer;
+  PerCol, WidthPx, HeightPx, I, TopMargin, TextH: Integer;
 begin
   if (FButtons = nil) or (FButtons.Count = 0) or not HandleAllocated then
     Exit;
   Canvas.Font := Font;
   TextH := Canvas.TextHeight('0');
   PerCol := (FButtons.Count + FColumns - 1) div FColumns;
-  W := (Width - 10) div FColumns;
+  WidthPx := (Width - 10) div FColumns;
   I := Height - TextH - 5;
-  H := I div PerCol;
+  HeightPx := I div PerCol;
   TopMargin := TextH + 1 + (I mod PerCol) div 2;
   for I := 0 to FButtons.Count - 1 do
     TUiGroupButton(FButtons[I]).SetBounds(
-      (I div PerCol) * W + 8, (I mod PerCol) * H + TopMargin, W, H);
+      (I div PerCol) * WidthPx + 8, (I mod PerCol) * HeightPx + TopMargin, WidthPx, HeightPx);
 end;
 
 procedure TUiRadioGroup.ButtonClick(Sender: TObject);
@@ -964,8 +964,8 @@ end;
 // линией цветом Group.Border, подпись по середине.
 procedure TUiPanel.Paint;
 var
-  R: TRect;
-  S: string;
+  RectVal: TRect;
+  Str: string;
   Fl: Cardinal;
 begin
   if UiThemeNativeFor(Self) then
@@ -973,24 +973,24 @@ begin
     inherited Paint;
     Exit;
   end;
-  R := GetClientRect;
+  RectVal := GetClientRect;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := Color;
-  Canvas.FillRect(R);
+  Canvas.FillRect(RectVal);
   Canvas.Brush.Color := UiThemeColorFor(Self, 'Group.Border');
   if BevelOuter <> bvNone then
   begin
-    Canvas.FrameRect(R);
-    InflateRect(R, -BevelWidth, -BevelWidth);
+    Canvas.FrameRect(RectVal);
+    InflateRect(RectVal, -BevelWidth, -BevelWidth);
   end;
-  InflateRect(R, -BorderWidth, -BorderWidth);
+  InflateRect(RectVal, -BorderWidth, -BorderWidth);
   if BevelInner <> bvNone then
   begin
-    Canvas.FrameRect(R);
-    InflateRect(R, -BevelWidth, -BevelWidth);
+    Canvas.FrameRect(RectVal);
+    InflateRect(RectVal, -BevelWidth, -BevelWidth);
   end;
-  S := Caption;
-  if S <> '' then
+  Str := Caption;
+  if Str <> '' then
   begin
     Canvas.Font := Font;
     Canvas.Brush.Style := bsClear;
@@ -1001,7 +1001,7 @@ begin
     else
       Fl := Fl or DT_CENTER;
     end;
-    DrawText(Canvas.Handle, PChar(S), Length(S), R, DrawTextBiDiModeFlags(Fl));
+    DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, DrawTextBiDiModeFlags(Fl));
     Canvas.Brush.Style := bsSolid;
   end;
 end;
@@ -1057,23 +1057,23 @@ end;
 // выпуклым серым, как у TLabel (на тёмном фоне он светлый и яркий)
 procedure TUiLabel.DoDrawText(var Rect: TRect; Flags: Longint);
 var
-  S: string;
+  Str: string;
 begin
   if Enabled or UiThemeNativeFor(Self) then
   begin
     inherited DoDrawText(Rect, Flags);
     Exit;
   end;
-  S := GetLabelText;
-  if (Flags and DT_CALCRECT <> 0) and ((S = '') or ShowAccelChar and
-     (S[1] = '&') and (Length(S) = 1)) then
-    S := S + ' ';
+  Str := GetLabelText;
+  if (Flags and DT_CALCRECT <> 0) and ((Str = '') or ShowAccelChar and
+     (Str[1] = '&') and (Length(Str) = 1)) then
+    Str := Str + ' ';
   if not ShowAccelChar then
     Flags := Flags or DT_NOPREFIX;
   Flags := DrawTextBiDiModeFlags(Flags);
   Canvas.Font := Font;
   Canvas.Font.Color := UiThemeColorFor(Self, 'OffText');
-  DrawText(Canvas.Handle, PChar(S), Length(S), Rect, Flags);
+  DrawText(Canvas.Handle, PChar(Str), Length(Str), Rect, Flags);
 end;
 
 initialization

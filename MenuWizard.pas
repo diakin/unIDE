@@ -122,7 +122,7 @@ function MenuTemplateFromDfmObj(const AObjText, AMenuName: string;
 
 // Текст .dfm компонента меню с выбранными пунктами. AItemNames получает
 // имена пунктов (для полей в .pas).
-function MenuBuildDfm(const AChoice: TMenuWizardChoice; X, Y: Integer;
+function MenuBuildDfm(const AChoice: TMenuWizardChoice; PosX, PosY: Integer;
   ANameFree: TMenuNameFree; AItemNames: TStrings): string;
 
 // Шаблон из текста .dfm компонента меню (объект с вложенными TMenuItem) -
@@ -160,7 +160,7 @@ function MenuIsMainClass(const AClassName: string): Boolean;
 function MenuIsPopupClass(const AClassName: string): Boolean;
 
 // Строка для .dfm: в кавычках, кавычка удвоена
-function MenuDfmQuote(const S: string): string;
+function MenuDfmQuote(const Str: string): string;
 
 // Вставить объект AObjText перед объектом AName, тем же родителем. Нет
 // такого объекта - AText.
@@ -1145,9 +1145,9 @@ end;
 // ---------------------------------------------------------------------------
 
 // Строка .dfm: в кавычках, кавычка удваивается
-function DfmQuote(const S: string): string;
+function DfmQuote(const Str: string): string;
 begin
-  Result := '''' + StringReplace(S, '''', '''''', [rfReplaceAll]) + '''';
+  Result := '''' + StringReplace(Str, '''', '''''', [rfReplaceAll]) + '''';
 end;
 
 // Основа имени пункта по подписи: только латинские буквы и цифры (имя
@@ -1173,7 +1173,7 @@ begin
     Result := 'Item' + Result;
 end;
 
-function MenuBuildDfm(const AChoice: TMenuWizardChoice; X, Y: Integer;
+function MenuBuildDfm(const AChoice: TMenuWizardChoice; PosX, PosY: Integer;
   ANameFree: TMenuNameFree; AItemNames: TStrings): string;
 var
   Lines: TStringList;
@@ -1209,8 +1209,8 @@ begin
       Lines.Add('object ' + AChoice.Name + ': TUiMainMenu')
     else
       Lines.Add('object ' + AChoice.Name + ': TMainMenu');
-    Lines.Add('  Left = ' + IntToStr(X));
-    Lines.Add('  Top = ' + IntToStr(Y));
+    Lines.Add('  Left = ' + IntToStr(PosX));
+    Lines.Add('  Top = ' + IntToStr(PosY));
 
     // Depth - сколько пунктов сейчас открыто (object без end)
     Depth := 0;
@@ -1255,23 +1255,23 @@ end;
 // ---------------------------------------------------------------------------
 
 // Значение строки .dfm: 'abc'#1234'def' - склеенная строка
-function DfmUnquote(const S: string): string;
+function DfmUnquote(const Str: string): string;
 var
   Index, Code: Integer;
   Num: string;
 begin
   Result := '';
   Index := 1;
-  while Index <= Length(S) do
+  while Index <= Length(Str) do
   begin
-    if S[Index] = '''' then
+    if Str[Index] = '''' then
     begin
       Inc(Index);
-      while Index <= Length(S) do
+      while Index <= Length(Str) do
       begin
-        if S[Index] = '''' then
+        if Str[Index] = '''' then
         begin
-          if (Index < Length(S)) and (S[Index + 1] = '''') then
+          if (Index < Length(Str)) and (Str[Index + 1] = '''') then
           begin
             Result := Result + '''';
             Inc(Index, 2);
@@ -1280,17 +1280,17 @@ begin
           Inc(Index);
           Break;
         end;
-        Result := Result + S[Index];
+        Result := Result + Str[Index];
         Inc(Index);
       end;
     end
-    else if S[Index] = '#' then
+    else if Str[Index] = '#' then
     begin
       Inc(Index);
       Num := '';
-      while (Index <= Length(S)) and (S[Index] in ['0'..'9']) do
+      while (Index <= Length(Str)) and (Str[Index] in ['0'..'9']) do
       begin
-        Num := Num + S[Index];
+        Num := Num + Str[Index];
         Inc(Index);
       end;
       Code := StrToIntDef(Num, 32);
@@ -1594,14 +1594,14 @@ var
   Started: Boolean;
   Item: TMenuTplItem;
 
-  function FirstWord(const S: string): string;
+  function FirstWord(const Str: string): string;
   var
-    P: Integer;
+    CharPos: Integer;
   begin
-    P := 1;
-    while (P <= Length(S)) and not (S[P] in [' ', #9, ',', '"']) do
-      Inc(P);
-    Result := UpperCase(Copy(S, 1, P - 1));
+    CharPos := 1;
+    while (CharPos <= Length(Str)) and not (Str[CharPos] in [' ', #9, ',', '"']) do
+      Inc(CharPos);
+    Result := UpperCase(Copy(Str, 1, CharPos - 1));
   end;
 
   procedure AddItem(const ACaption: string);
@@ -1818,9 +1818,9 @@ begin
   end;
 end;
 
-function MenuDfmQuote(const S: string): string;
+function MenuDfmQuote(const Str: string): string;
 begin
-  Result := DfmQuote(S);
+  Result := DfmQuote(Str);
 end;
 
 end.

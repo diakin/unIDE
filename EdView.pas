@@ -199,10 +199,10 @@ type
     procedure KeyPress(var Key: Char); override;
     {$ENDIF}
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-      X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+      PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
-      X, Y: Integer); override;
+      PosX, PosY: Integer); override;
     function DoMouseWheel(Shift: TShiftState; WheelDelta: Integer;
       MousePos: TPoint): Boolean; override;
   public
@@ -1122,17 +1122,17 @@ end;
 // ---------------------------------------------------------------------------
 
 procedure TEdView.MouseDown(Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+  PosX, PosY: Integer);
 var
   ClickRow, ClickCol: Integer;
   IsTriple: Boolean;
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
   if CanFocus and not Focused then
     SetFocus;
   if (Button <> mbLeft) or (FBuffer = nil) then
     Exit;
-  PosAt(X, Y, ClickRow, ClickCol);
+  PosAt(PosX, PosY, ClickRow, ClickCol);
   if Assigned(FOnTextClick) and (Shift * [ssShift, ssDouble] = []) then
   begin
     FDblClickTick := 0;
@@ -1146,7 +1146,7 @@ begin
   {$ELSE}
   IsTriple := (FDblClickTick <> 0) and
     (EdTicks - FDblClickTick <= GetDoubleClickTime) and
-    (Abs(X - FDblClickPos.X) <= 4) and (Abs(Y - FDblClickPos.Y) <= 4);
+    (Abs(PosX - FDblClickPos.X) <= 4) and (Abs(PosY - FDblClickPos.Y) <= 4);
   {$ENDIF}
   if IsTriple then
   begin
@@ -1157,7 +1157,7 @@ begin
   if ssDouble in Shift then
   begin
     FDblClickTick := EdTicks;
-    FDblClickPos := Point(X, Y);
+    FDblClickPos := Point(PosX, PosY);
     FEditor.SelectWordAt(ClickRow, ClickCol);
     Exit;
   end;
@@ -1171,29 +1171,29 @@ begin
     FEditor.SetSelection(FEditor.CaretRow, FEditor.CaretCol);
   end;
   FMouseSelecting := True;
-  FLastMouse := Point(X, Y);
+  FLastMouse := Point(PosX, PosY);
 end;
 
-procedure TEdView.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TEdView.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 var
   TextW, TextH: Integer;
 begin
-  inherited MouseMove(Shift, X, Y);
+  inherited MouseMove(Shift, PosX, PosY);
   if not FMouseSelecting then
     Exit;
-  FLastMouse := Point(X, Y);
+  FLastMouse := Point(PosX, PosY);
   ExtendToMouse;
   // За краем текста - прокрутка таймером, пока мышь там
   TextW := ClientWidth - FBarSize;
   TextH := ClientHeight - FBarSize;
-  FScrollTimer.Enabled := (Y < 0) or (Y >= TextH) or (X < FGutterW) or
-    (X >= TextW);
+  FScrollTimer.Enabled := (PosY < 0) or (PosY >= TextH) or (PosX < FGutterW) or
+    (PosX >= TextW);
 end;
 
 procedure TEdView.MouseUp(Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+  PosX, PosY: Integer);
 begin
-  inherited MouseUp(Button, Shift, X, Y);
+  inherited MouseUp(Button, Shift, PosX, PosY);
   if Button <> mbLeft then
     Exit;
   FMouseSelecting := False;

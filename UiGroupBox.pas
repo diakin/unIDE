@@ -108,10 +108,10 @@ end;
 // с отступом 8 точек поверх рамки на фоне рамки
 procedure TUiGroupBox.Paint;
 var
-  H: Integer;
-  R: TRect;
+  HeightPx: Integer;
+  RectVal: TRect;
   Flags: Longint;
-  S: string;
+  Str: string;
 begin
   // Тема Light - как у TGroupBox: при включённых темах Windows рисует тема
   if UiThemeNativeFor(Self) then
@@ -122,31 +122,31 @@ begin
   with Canvas do
   begin
     Font := Self.Font;
-    H := TextHeight('0');
+    HeightPx := TextHeight('0');
 
-    R := Rect(0, H div 2 - 1, Self.Width, Self.Height);
+    RectVal := Rect(0, HeightPx div 2 - 1, Self.Width, Self.Height);
     Brush.Style := bsSolid;
     Brush.Color := UiThemeColorFor(Self, 'Group.Border');
-    FrameRect(R);
+    FrameRect(RectVal);
 
-    S := Self.Caption;
-    if S <> '' then
+    Str := Self.Caption;
+    if Str <> '' then
     begin
       if not UseRightToLeftAlignment then
-        R := Rect(8, 0, 0, H)
+        RectVal := Rect(8, 0, 0, HeightPx)
       else
-        R := Rect(R.Right - 8, 0, 0, H);
+        RectVal := Rect(RectVal.Right - 8, 0, 0, HeightPx);
       Flags := DrawTextBiDiModeFlags(DT_SINGLELINE);
       // Self.: внутри with Canvas Handle - у холста, он и нужен DrawText
-      DrawText(Handle, PChar(S), Length(S), R, Flags or DT_CALCRECT);
+      DrawText(Handle, PChar(Str), Length(Str), RectVal, Flags or DT_CALCRECT);
       if UseRightToLeftAlignment then
-        OffsetRect(R, -(R.Right - R.Left), 0);
+        OffsetRect(RectVal, -(RectVal.Right - RectVal.Left), 0);
       Brush.Color := Self.Color;
       if Self.Enabled then
         Font.Color := UiThemeColorFor(Self, 'Group.Text')
       else
         Font.Color := UiThemeColorFor(Self, 'OffText');
-      DrawText(Handle, PChar(S), Length(S), R, Flags);
+      DrawText(Handle, PChar(Str), Length(Str), RectVal, Flags);
     end;
   end;
 end;

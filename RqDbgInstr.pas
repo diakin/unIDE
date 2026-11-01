@@ -1617,9 +1617,9 @@ var
       try
         FileLines.LoadFromFile(AFile);
       except
-        on E: Exception do
+        on Err: Exception do
         begin
-          FLastError := 'не прочитан ' + AFile + ': ' + E.Message;
+          FLastError := 'не прочитан ' + AFile + ': ' + Err.Message;
           Exit;
         end;
       end;
@@ -2721,9 +2721,9 @@ begin
         OutStream.Free;
       end;
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        FLastError := 'не записана копия ' + ACopyFile + ': ' + E.Message;
+        FLastError := 'не записана копия ' + ACopyFile + ': ' + Err.Message;
         Exit;
       end;
     end;

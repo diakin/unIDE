@@ -36,7 +36,7 @@ type
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure CreateParams(var Params: TCreateParams); override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -51,7 +51,7 @@ type
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
   protected
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure CreateParams(var Params: TCreateParams); override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -124,7 +124,7 @@ type
   private
     FHotPart: Integer;    // 0 - нет, 1 - вверх/влево, 2 - вниз/вправо
     FDownPart: Integer;
-    function PartAt(X, Y: Integer): Integer;
+    function PartAt(PosX, PosY: Integer): Integer;
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
@@ -166,49 +166,49 @@ end;
 // Вкладки целиком: фон, рамка области страниц, ярлычки с подписями. У
 // вкладок OwnerDraw подпись рисует владелец - как при отрисовке Windows,
 // через CN_DRAWITEM (он проходит через WindowProc элемента).
-procedure UiPaintTabs(C: TCustomTabControl; DC: HDC; AHot: Integer);
+procedure UiPaintTabs(CustomTabControl: TCustomTabControl; DC: HDC; AHot: Integer);
 var
   Cv: TCanvas;
-  A: TUiTabAcc;
+  UiTabAcc: TUiTabAcc;
   I, Active: Integer;
-  R, D: TRect;
-  S: string;
+  RectVal2, RectVal: TRect;
+  Str: string;
   DIS: TDrawItemStruct;
 begin
-  A := TUiTabAcc(C);
+  UiTabAcc := TUiTabAcc(CustomTabControl);
   Cv := TCanvas.Create;
   try
     Cv.Handle := DC;
     Cv.Brush.Style := bsSolid;
-    Cv.Brush.Color := UiThemeColorFor(C, 'Window.BG');
-    Cv.FillRect(C.ClientRect);
+    Cv.Brush.Color := UiThemeColorFor(CustomTabControl, 'Window.BG');
+    Cv.FillRect(CustomTabControl.ClientRect);
 
     // Область страниц - рамкой, ярлычки к ней примыкают. Её место даёт
     // сам элемент Windows (TCM_ADJUSTRECT).
-    D := C.ClientRect;
-    if C.HandleAllocated then
-      SendMessage(C.Handle, TCM_ADJUSTRECT, 0, Integer(@D));
-    InflateRect(D, 1, 1);
-    Cv.Brush.Color := UiThemeColorFor(C, 'Tab.Border');
-    Cv.FrameRect(D);
+    RectVal := CustomTabControl.ClientRect;
+    if CustomTabControl.HandleAllocated then
+      SendMessage(CustomTabControl.Handle, TCM_ADJUSTRECT, 0, Integer(@RectVal));
+    InflateRect(RectVal, 1, 1);
+    Cv.Brush.Color := UiThemeColorFor(CustomTabControl, 'Tab.Border');
+    Cv.FrameRect(RectVal);
 
-    Cv.Font := A.Font;
-    Active := A.TabIndex;
-    for I := 0 to A.Tabs.Count - 1 do
+    Cv.Font := UiTabAcc.Font;
+    Active := UiTabAcc.TabIndex;
+    for I := 0 to UiTabAcc.Tabs.Count - 1 do
     begin
-      R := C.TabRect(I);
-      if (R.Right <= R.Left) or (R.Bottom <= R.Top) then
+      RectVal2 := CustomTabControl.TabRect(I);
+      if (RectVal2.Right <= RectVal2.Left) or (RectVal2.Bottom <= RectVal2.Top) then
         Continue;
       if I = Active then
-        Cv.Brush.Color := UiThemeColorFor(C, 'Tab.ActiveBG')
+        Cv.Brush.Color := UiThemeColorFor(CustomTabControl, 'Tab.ActiveBG')
       else if I = AHot then
-        Cv.Brush.Color := UiThemeColorFor(C, 'Tab.HotBG')
+        Cv.Brush.Color := UiThemeColorFor(CustomTabControl, 'Tab.HotBG')
       else
-        Cv.Brush.Color := UiThemeColorFor(C, 'Tab.BG');
-      Cv.FillRect(R);
-      Cv.Brush.Color := UiThemeColorFor(C, 'Tab.Border');
-      Cv.FrameRect(R);
-      if A.OwnerDraw then
+        Cv.Brush.Color := UiThemeColorFor(CustomTabControl, 'Tab.BG');
+      Cv.FillRect(RectVal2);
+      Cv.Brush.Color := UiThemeColorFor(CustomTabControl, 'Tab.Border');
+      Cv.FrameRect(RectVal2);
+      if UiTabAcc.OwnerDraw then
       begin
         FillChar(DIS, SizeOf(DIS), 0);
         DIS.CtlType := ODT_TAB;
@@ -216,20 +216,20 @@ begin
         DIS.itemAction := ODA_DRAWENTIRE;
         if I = Active then
           DIS.itemState := ODS_SELECTED;
-        DIS.hwndItem := C.Handle;
+        DIS.hwndItem := CustomTabControl.Handle;
         DIS.hDC := DC;
-        DIS.rcItem := R;
+        DIS.rcItem := RectVal2;
         InflateRect(DIS.rcItem, -1, -1);   // рамка ярлычка - наша
-        C.Perform(CN_DRAWITEM, 0, Longint(@DIS));
+        CustomTabControl.Perform(CN_DRAWITEM, 0, Longint(@DIS));
         Continue;
       end;
-      S := A.Tabs[I];
-      if C.Enabled then
-        Cv.Font.Color := UiThemeColorFor(C, 'Tab.Text')
+      Str := UiTabAcc.Tabs[I];
+      if CustomTabControl.Enabled then
+        Cv.Font.Color := UiThemeColorFor(CustomTabControl, 'Tab.Text')
       else
-        Cv.Font.Color := UiThemeColorFor(C, 'OffText');
+        Cv.Font.Color := UiThemeColorFor(CustomTabControl, 'OffText');
       Cv.Brush.Style := bsClear;
-      DrawText(Cv.Handle, PChar(S), Length(S), R,
+      DrawText(Cv.Handle, PChar(Str), Length(Str), RectVal2,
                DT_SINGLELINE or DT_CENTER or DT_VCENTER);
       Cv.Brush.Style := bsSolid;
     end;
@@ -240,24 +240,24 @@ begin
 end;
 
 // WM_PAINT своих вкладок: в Light при темах Windows - Windows, иначе свои
-function UiTabsPaint(C: TCustomTabControl; var Message: TWMPaint;
+function UiTabsPaint(CustomTabControl: TCustomTabControl; var Message: TWMPaint;
                      AHot: Integer): Boolean;
 var
   PS: TPaintStruct;
   DC: HDC;
 begin
   Result := False;
-  if UiThemeNativeFor(C) then
+  if UiThemeNativeFor(CustomTabControl) then
     Exit;
   Result := True;
   DC := Message.DC;
   if DC = 0 then
-    DC := BeginPaint(C.Handle, PS);
+    DC := BeginPaint(CustomTabControl.Handle, PS);
   try
-    UiPaintTabs(C, DC, AHot);
+    UiPaintTabs(CustomTabControl, DC, AHot);
   finally
     if Message.DC = 0 then
-      EndPaint(C.Handle, PS);
+      EndPaint(CustomTabControl.Handle, PS);
   end;
   Message.Result := 0;
 end;
@@ -265,7 +265,7 @@ end;
 // Вкладки в несколько рядов (MultiLine): у ярлычков-вкладок Windows ставит
 // ряд выбранной вкладки вниз, к странице, и ряды меняются местами при
 // каждом выборе. У ярлычков-кнопок (TCS_BUTTONS) ряды стоят на месте.
-procedure UiTabsFixRows(C: TCustomTabControl; var Params: TCreateParams);
+procedure UiTabsFixRows(CustomTabControl: TCustomTabControl; var Params: TCreateParams);
 begin
   if Params.Style and TCS_MULTILINE <> 0 then
     Params.Style := Params.Style or TCS_BUTTONS;
@@ -313,15 +313,15 @@ begin
     Message.Result := 1;
 end;
 
-procedure TUiPageControl.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TUiPageControl.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 var
-  H: Integer;
+  HeightPx: Integer;
 begin
-  inherited MouseMove(Shift, X, Y);
-  H := UiTabAt(Self, X, Y);
-  if H <> FHot then
+  inherited MouseMove(Shift, PosX, PosY);
+  HeightPx := UiTabAt(Self, PosX, PosY);
+  if HeightPx <> FHot then
   begin
-    FHot := H;
+    FHot := HeightPx;
     if not UiThemeNativeFor(Self) then
       Invalidate;
   end;
@@ -380,15 +380,15 @@ begin
     Message.Result := 1;
 end;
 
-procedure TUiTabControl.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TUiTabControl.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 var
-  H: Integer;
+  HeightPx: Integer;
 begin
-  inherited MouseMove(Shift, X, Y);
-  H := UiTabAt(Self, X, Y);
-  if H <> FHot then
+  inherited MouseMove(Shift, PosX, PosY);
+  HeightPx := UiTabAt(Self, PosX, PosY);
+  if HeightPx <> FHot then
   begin
-    FHot := H;
+    FHot := HeightPx;
     if not UiThemeNativeFor(Self) then
       Invalidate;
   end;
@@ -462,10 +462,10 @@ procedure TUiStatusBar.PaintOwn(DC: HDC);
 var
   Cv: TCanvas;
   I: Integer;
-  R: TRect;
-  S: string;
+  RectVal: TRect;
+  Str: string;
   Fl: Cardinal;
-  P: TStatusPanel;
+  StatusPanel: TStatusPanel;
 begin
   Cv := TCanvas.Create;
   try
@@ -482,20 +482,20 @@ begin
 
     if SimplePanel or (Panels.Count = 0) then
     begin
-      R := ClientRect;
-      InflateRect(R, -4, 0);
-      S := SimpleText;
-      DrawText(Cv.Handle, PChar(S), Length(S), R,
+      RectVal := ClientRect;
+      InflateRect(RectVal, -4, 0);
+      Str := SimpleText;
+      DrawText(Cv.Handle, PChar(Str), Length(Str), RectVal,
                DT_SINGLELINE or DT_VCENTER or DT_LEFT or DT_END_ELLIPSIS);
       Exit;
     end;
 
     for I := 0 to Panels.Count - 1 do
     begin
-      if SendMessage(Handle, SB_GETRECT, I, Integer(@R)) = 0 then
+      if SendMessage(Handle, SB_GETRECT, I, Integer(@RectVal)) = 0 then
         Continue;
-      P := Panels[I];
-      if P.Style = psOwnerDraw then
+      StatusPanel := Panels[I];
+      if StatusPanel.Style = psOwnerDraw then
       begin
         // Как у TStatusBar: холст панели - в OnDrawPanel
         Canvas.Handle := DC;
@@ -503,30 +503,30 @@ begin
           Canvas.Brush.Color := UiThemeColorFor(Self, 'Window.BG');
           Canvas.Font := Font;
           Canvas.Font.Color := UiThemeColorFor(Self, 'Window.Text');
-          DrawPanel(P, R);
+          DrawPanel(StatusPanel, RectVal);
         finally
           Canvas.Handle := 0;
         end;
       end
       else
       begin
-        S := P.Text;
+        Str := StatusPanel.Text;
         Fl := DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS;
-        case P.Alignment of
+        case StatusPanel.Alignment of
           taRightJustify: Fl := Fl or DT_RIGHT;
           taCenter: Fl := Fl or DT_CENTER;
         else
           Fl := Fl or DT_LEFT;
         end;
-        InflateRect(R, -3, 0);
-        DrawText(Cv.Handle, PChar(S), Length(S), R, Fl);
-        InflateRect(R, 3, 0);
+        InflateRect(RectVal, -3, 0);
+        DrawText(Cv.Handle, PChar(Str), Length(Str), RectVal, Fl);
+        InflateRect(RectVal, 3, 0);
       end;
       // Черта справа от панели, кроме последней
       if I < Panels.Count - 1 then
       begin
-        Cv.MoveTo(R.Right, R.Top + 2);
-        Cv.LineTo(R.Right, R.Bottom - 2);
+        Cv.MoveTo(RectVal.Right, RectVal.Top + 2);
+        Cv.LineTo(RectVal.Right, RectVal.Bottom - 2);
       end;
     end;
   finally
@@ -688,7 +688,7 @@ end;
 
 procedure TUiListView.UMUiThemeChanged(var Message: TMessage);
 var
-  H: HWND;
+  Wnd: HWND;
 begin
   ApplyTheme;
   Invalidate;
@@ -696,9 +696,9 @@ begin
   // Заголовок колонок - отдельное окно: перерисовать и его
   if HandleAllocated then
   begin
-    H := SendMessage(Handle, LVM_GETHEADER, 0, 0);
-    if H <> 0 then
-      InvalidateRect(H, nil, True);
+    Wnd := SendMessage(Handle, LVM_GETHEADER, 0, 0);
+    if Wnd <> 0 then
+      InvalidateRect(Wnd, nil, True);
   end;
   Message.Result := 1;
 end;
@@ -734,13 +734,13 @@ end;
 procedure TUiListView.WMNotify(var Message: TWMNotify);
 var
   CD: PNMCustomDraw;
-  H: HWND;
+  Wnd: HWND;
 begin
   if not UiThemeNativeFor(Self) and HandleAllocated and
      (Message.NMHdr^.code = NM_CUSTOMDRAW) then
   begin
-    H := SendMessage(Handle, LVM_GETHEADER, 0, 0);
-    if (H <> 0) and (Message.NMHdr^.hwndFrom = H) then
+    Wnd := SendMessage(Handle, LVM_GETHEADER, 0, 0);
+    if (Wnd <> 0) and (Message.NMHdr^.hwndFrom = Wnd) then
     begin
       CD := PNMCustomDraw(Message.NMHdr);
       case CD^.dwDrawStage of
@@ -768,13 +768,13 @@ end;
 procedure TUiListView.DrawHeaderItem(CD: PNMCustomDraw);
 var
   Cv: TCanvas;
-  R: TRect;
-  I: Integer;
-  S: string;
+  RectVal: TRect;
+  Idx: Integer;
+  Str: string;
   Fl: Cardinal;
 begin
-  R := CD^.rc;
-  I := Integer(CD^.dwItemSpec);
+  RectVal := CD^.rc;
+  Idx := Integer(CD^.dwItemSpec);
   Cv := TCanvas.Create;
   try
     Cv.Handle := CD^.hdc;
@@ -782,17 +782,17 @@ begin
       Cv.Brush.Color := UiThemeColorFor(Self, 'Button.DownBG')
     else
       Cv.Brush.Color := UiThemeColorFor(Self, 'Button.BG');
-    Cv.FillRect(R);
+    Cv.FillRect(RectVal);
     Cv.Pen.Color := UiThemeColorFor(Self, 'Button.Border');
-    Cv.MoveTo(R.Right - 1, R.Top);
-    Cv.LineTo(R.Right - 1, R.Bottom);
-    Cv.MoveTo(R.Left, R.Bottom - 1);
-    Cv.LineTo(R.Right, R.Bottom - 1);
-    if (I >= 0) and (I < Columns.Count) then
+    Cv.MoveTo(RectVal.Right - 1, RectVal.Top);
+    Cv.LineTo(RectVal.Right - 1, RectVal.Bottom);
+    Cv.MoveTo(RectVal.Left, RectVal.Bottom - 1);
+    Cv.LineTo(RectVal.Right, RectVal.Bottom - 1);
+    if (Idx >= 0) and (Idx < Columns.Count) then
     begin
-      S := Columns[I].Caption;
+      Str := Columns[Idx].Caption;
       Fl := DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS;
-      case Columns[I].Alignment of
+      case Columns[Idx].Alignment of
         taRightJustify: Fl := Fl or DT_RIGHT;
         taCenter: Fl := Fl or DT_CENTER;
       else
@@ -801,8 +801,8 @@ begin
       Cv.Font := Font;
       Cv.Font.Color := UiThemeColorFor(Self, 'Button.Text');
       Cv.Brush.Style := bsClear;
-      InflateRect(R, -6, 0);
-      DrawText(Cv.Handle, PChar(S), Length(S), R, Fl);
+      InflateRect(RectVal, -6, 0);
+      DrawText(Cv.Handle, PChar(Str), Length(Str), RectVal, Fl);
     end;
   finally
     Cv.Handle := 0;
@@ -814,33 +814,33 @@ end;
 procedure TUiListView.DrawHeaderRest(CD: PNMCustomDraw);
 var
   Cv: TCanvas;
-  H: HWND;
-  N: Integer;
-  R, C: TRect;
+  Wnd: HWND;
+  Num: Integer;
+  RectVal2, RectVal: TRect;
 begin
-  H := CD^.hdr.hwndFrom;
-  Windows.GetClientRect(H, C);
-  N := SendMessage(H, HDM_GETITEMCOUNT, 0, 0);
-  R := C;
-  if N > 0 then
+  Wnd := CD^.hdr.hwndFrom;
+  Windows.GetClientRect(Wnd, RectVal);
+  Num := SendMessage(Wnd, HDM_GETITEMCOUNT, 0, 0);
+  RectVal2 := RectVal;
+  if Num > 0 then
   begin
-    if SendMessage(H, HDM_GETITEMRECT, N - 1, Integer(@R)) = 0 then
+    if SendMessage(Wnd, HDM_GETITEMRECT, Num - 1, Integer(@RectVal2)) = 0 then
       Exit;
-    R.Left := R.Right;
-    R.Right := C.Right;
-    R.Top := C.Top;
-    R.Bottom := C.Bottom;
+    RectVal2.Left := RectVal2.Right;
+    RectVal2.Right := RectVal.Right;
+    RectVal2.Top := RectVal.Top;
+    RectVal2.Bottom := RectVal.Bottom;
   end;
-  if R.Right <= R.Left then
+  if RectVal2.Right <= RectVal2.Left then
     Exit;
   Cv := TCanvas.Create;
   try
     Cv.Handle := CD^.hdc;
     Cv.Brush.Color := UiThemeColorFor(Self, 'Button.BG');
-    Cv.FillRect(R);
+    Cv.FillRect(RectVal2);
     Cv.Pen.Color := UiThemeColorFor(Self, 'Button.Border');
-    Cv.MoveTo(R.Left, R.Bottom - 1);
-    Cv.LineTo(R.Right, R.Bottom - 1);
+    Cv.MoveTo(RectVal2.Left, RectVal2.Bottom - 1);
+    Cv.LineTo(RectVal2.Right, RectVal2.Bottom - 1);
   finally
     Cv.Handle := 0;
     Cv.Free;
@@ -869,21 +869,21 @@ begin
 end;
 
 // Половина под точкой: 1 - верхняя (левая), 2 - нижняя (правая)
-function TUiUpDown.PartAt(X, Y: Integer): Integer;
+function TUiUpDown.PartAt(PosX, PosY: Integer): Integer;
 begin
   Result := 0;
-  if not PtInRect(ClientRect, Point(X, Y)) then
+  if not PtInRect(ClientRect, Point(PosX, PosY)) then
     Exit;
   if Orientation = udVertical then
   begin
-    if Y < ClientHeight div 2 then
+    if PosY < ClientHeight div 2 then
       Result := 1
     else
       Result := 2;
   end
   else
   begin
-    if X < ClientWidth div 2 then
+    if PosX < ClientWidth div 2 then
       Result := 1
     else
       Result := 2;
@@ -926,9 +926,9 @@ var
   Cv: TCanvas;
   R1, R2: TRect;
 
-  procedure Part(const R: TRect; APart: Integer; ALow: Boolean);
+  procedure Part(const RectVal: TRect; APart: Integer; ALow: Boolean);
   var
-    Cx, Cy, S: Integer;
+    Cx, Cy, StartPos: Integer;
     Pts: array[0..2] of TPoint;
   begin
     if FDownPart = APart then
@@ -938,43 +938,43 @@ var
     else
       Cv.Brush.Color := UiThemeColorFor(Self, 'Button.BG');
     Cv.Pen.Color := UiThemeColorFor(Self, 'Button.Border');
-    Cv.Rectangle(R.Left, R.Top, R.Right, R.Bottom);
-    Cx := (R.Left + R.Right) div 2;
-    Cy := (R.Top + R.Bottom) div 2;
+    Cv.Rectangle(RectVal.Left, RectVal.Top, RectVal.Right, RectVal.Bottom);
+    Cx := (RectVal.Left + RectVal.Right) div 2;
+    Cy := (RectVal.Top + RectVal.Bottom) div 2;
     if Orientation = udVertical then
-      S := (R.Bottom - R.Top) div 4
+      StartPos := (RectVal.Bottom - RectVal.Top) div 4
     else
-      S := (R.Right - R.Left) div 4;
-    if S < 2 then
-      S := 2;
+      StartPos := (RectVal.Right - RectVal.Left) div 4;
+    if StartPos < 2 then
+      StartPos := 2;
     if Orientation = udVertical then
     begin
       if ALow then
       begin
-        Pts[0] := Point(Cx, Cy - S div 2 - 1);
-        Pts[1] := Point(Cx - S, Cy + S div 2);
-        Pts[2] := Point(Cx + S, Cy + S div 2);
+        Pts[0] := Point(Cx, Cy - StartPos div 2 - 1);
+        Pts[1] := Point(Cx - StartPos, Cy + StartPos div 2);
+        Pts[2] := Point(Cx + StartPos, Cy + StartPos div 2);
       end
       else
       begin
-        Pts[0] := Point(Cx, Cy + S div 2 + 1);
-        Pts[1] := Point(Cx - S, Cy - S div 2);
-        Pts[2] := Point(Cx + S, Cy - S div 2);
+        Pts[0] := Point(Cx, Cy + StartPos div 2 + 1);
+        Pts[1] := Point(Cx - StartPos, Cy - StartPos div 2);
+        Pts[2] := Point(Cx + StartPos, Cy - StartPos div 2);
       end;
     end
     else
     begin
       if ALow then
       begin
-        Pts[0] := Point(Cx - S div 2 - 1, Cy);
-        Pts[1] := Point(Cx + S div 2, Cy - S);
-        Pts[2] := Point(Cx + S div 2, Cy + S);
+        Pts[0] := Point(Cx - StartPos div 2 - 1, Cy);
+        Pts[1] := Point(Cx + StartPos div 2, Cy - StartPos);
+        Pts[2] := Point(Cx + StartPos div 2, Cy + StartPos);
       end
       else
       begin
-        Pts[0] := Point(Cx + S div 2 + 1, Cy);
-        Pts[1] := Point(Cx - S div 2, Cy - S);
-        Pts[2] := Point(Cx - S div 2, Cy + S);
+        Pts[0] := Point(Cx + StartPos div 2 + 1, Cy);
+        Pts[1] := Point(Cx - StartPos div 2, Cy - StartPos);
+        Pts[2] := Point(Cx - StartPos div 2, Cy + StartPos);
       end;
     end;
     if Enabled then
@@ -1045,13 +1045,13 @@ end;
 
 procedure TUiUpDown.WMMouseMove(var Message: TWMMouseMove);
 var
-  P: Integer;
+  CharPos: Integer;
 begin
   inherited;
-  P := PartAt(Message.XPos, Message.YPos);
-  if P <> FHotPart then
+  CharPos := PartAt(Message.XPos, Message.YPos);
+  if CharPos <> FHotPart then
   begin
-    FHotPart := P;
+    FHotPart := CharPos;
     if not UiThemeNativeFor(Self) then
       Invalidate;
   end;

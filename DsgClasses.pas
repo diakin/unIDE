@@ -84,46 +84,46 @@ end;
 // Регистрация и страница палитры
 procedure RegPage(const APage: string; const AList: array of TPersistentClass);
 var
-  I, P: Integer;
-  L: TList;
+  I, CharPos: Integer;
+  ObjList: TList;
 begin
   Reg(AList);
-  P := FPages.IndexOf(APage);
-  if P < 0 then
-    P := FPages.AddObject(APage, TList.Create);
-  L := TList(FPages.Objects[P]);
+  CharPos := FPages.IndexOf(APage);
+  if CharPos < 0 then
+    CharPos := FPages.AddObject(APage, TList.Create);
+  ObjList := TList(FPages.Objects[CharPos]);
   for I := Low(AList) to High(AList) do
     if AList[I].InheritsFrom(TComponent) then
-      L.Add(Pointer(AList[I]));
+      ObjList.Add(Pointer(AList[I]));
 end;
 
 // Свои компоненты страницы: регистрация и ряд Custom палитры
 procedure RegCustom(const APage: string; const AList: array of TPersistentClass);
 var
-  I, P: Integer;
-  L: TList;
+  I, CharPos: Integer;
+  ObjList: TList;
 begin
   Reg(AList);
-  P := FCustom.IndexOf(APage);
-  if P < 0 then
-    P := FCustom.AddObject(APage, TList.Create);
-  L := TList(FCustom.Objects[P]);
+  CharPos := FCustom.IndexOf(APage);
+  if CharPos < 0 then
+    CharPos := FCustom.AddObject(APage, TList.Create);
+  ObjList := TList(FCustom.Objects[CharPos]);
   for I := Low(AList) to High(AList) do
     if AList[I].InheritsFrom(TComponent) then
-      L.Add(Pointer(AList[I]));
+      ObjList.Add(Pointer(AList[I]));
 end;
 
 function DsgPageCustomClasses(AIndex: Integer): TList;
 var
-  P: Integer;
+  CharPos: Integer;
 begin
   Result := nil;
   if (FCustom = nil) or (FPages = nil) or (AIndex < 0) or
      (AIndex >= FPages.Count) then
     Exit;
-  P := FCustom.IndexOf(FPages[AIndex]);
-  if P >= 0 then
-    Result := TList(FCustom.Objects[P]);
+  CharPos := FCustom.IndexOf(FPages[AIndex]);
+  if CharPos >= 0 then
+    Result := TList(FCustom.Objects[CharPos]);
 end;
 
 function DsgPageCount: Integer;

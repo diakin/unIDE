@@ -39,7 +39,7 @@ type
     procedure grdColorsDrawCell(Sender: TObject; ACol, ARow: Integer;
       Rect: TRect; State: TGridDrawState);
     procedure grdColorsMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
+      Shift: TShiftState; PosX, PosY: Integer);
     procedure grdColorsKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure edExtKeyPress(Sender: TObject; var Key: Char);
@@ -276,11 +276,11 @@ begin
 end;
 
 procedure TDlgFarColors.grdColorsMouseDown(Sender: TObject;
-  Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+  Button: TMouseButton; Shift: TShiftState; PosX, PosY: Integer);
 var
   CellCol, CellRow, RuleIndex: Integer;
 begin
-  grdColors.MouseToCell(X, Y, CellCol, CellRow);
+  grdColors.MouseToCell(PosX, PosY, CellCol, CellRow);
   RuleIndex := RuleIndexOfRow(CellRow);
   if RuleIndex < 0 then
     Exit;

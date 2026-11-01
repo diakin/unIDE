@@ -444,13 +444,13 @@ type
     procedure CompUseIdeClick(Sender: TObject);
     procedure CompApplyIdePath;
     procedure NormalizeCompFields;
-    procedure CollectUnresolved(const S: string; AList: TStrings);
+    procedure CollectUnresolved(const Str: string; AList: TStrings);
     procedure WarnUnresolved(ABad, ADropped: TStrings);
     function  IsFileKey(const AKey: string): Boolean;
-    function  ExpandCompMacros(const S: string): string;
+    function  ExpandCompMacros(const Str: string): string;
     procedure CollectDelphiVars(AList: TStrings);
     function  LookupEnvVar(const AName: string): string;
-    function  NormalizePathValue(const S: string; AIsFile, AIsList: Boolean;
+    function  NormalizePathValue(const Str: string; AIsFile, AIsList: Boolean;
                                  ADropped: TStrings): string;
     procedure InitArduinoTab;
     procedure ArdTabLoad;
@@ -475,7 +475,7 @@ type
     function  CompIniKey(const AKey: string): string;
     function  FindDelphiRegKey(const ARoot, ATool: string;
                                var AFoundRoot: string): string;
-    function  ExpandDelphiRegVars(const S, ARoot, AKey: string): string;
+    function  ExpandDelphiRegVars(const Str, ARoot, AKey: string): string;
     function  EditPathList(const ACaption: string; var AValue: string): Boolean;
     procedure SetHotTabPale(AValue: Integer);
     procedure SetTabWidthInCombo(AChars: Integer);
@@ -708,7 +708,7 @@ end;
 // именем из файла - таблица показывает файл, а не наоборот.
 function TForm2.SectionCaption(const AName: string): string;
 var
-  N: Integer;
+  Num: Integer;
 begin
   if IsOpSection(AName) then
   begin
@@ -778,9 +778,9 @@ begin
     Result := 'Pair Mark (bracket under caret)'
   else if (Length(AName) > 6) and (Copy(AName, 1, 6) = 'CUSTOM') then
   begin
-    N := StrToIntDef(Copy(AName, 7, 1), 0);
-    if (N >= 1) and (N <= 5) then
-      Result := 'Custom Comment (' + StringOfChar('!', N) + ')'
+    Num := StrToIntDef(Copy(AName, 7, 1), 0);
+    if (Num >= 1) and (Num <= 5) then
+      Result := 'Custom Comment (' + StringOfChar('!', Num) + ')'
     else
       Result := AName;
   end
@@ -812,7 +812,7 @@ end;
 // соответствие строка-раздел держит FRowSec.
 procedure TForm2.InitGridStructure;
 var
-  I, R, SecCount, W: Integer;
+  I, RowIdx, SecCount, WidthPx: Integer;
   Sec: string;
   Bmp: TBitmap; // Временный холст для замера ширины заголовков
 begin
@@ -850,16 +850,16 @@ begin
   // Подписи разделов - до замера ширины: первый столбец меряется по самой
   // длинной из них, а не по одному заголовку, как раньше. Имена разделов
   // приходят из файла, и заранее их длина неизвестна.
-  R := 0;
+  RowIdx := 0;
   if (Form1 <> nil) and (Form1.FScheme.SchemaSections <> nil) then
     for I := 0 to Form1.FScheme.SchemaSections.Count - 1 do
     begin
       Sec := Form1.FScheme.SchemaSections[I];
       if IsHiddenSection(Sec) then
         Continue;
-      Inc(R);
-      FRowSec[R] := Sec;
-      Grid.Cells[0, R] := SectionCaption(Sec);
+      Inc(RowIdx);
+      FRowSec[RowIdx] := Sec;
+      Grid.Cells[0, RowIdx] := SectionCaption(Sec);
     end;
 
   if SecCount = 0 then
@@ -874,11 +874,11 @@ begin
     for I := 1 to Grid.ColCount - 1 do
       Grid.ColWidths[I] := Bmp.Canvas.TextWidth(Grid.Cells[I, 0]) + 40;
 
-    W := Bmp.Canvas.TextWidth(Grid.Cells[0, 0]);
+    WidthPx := Bmp.Canvas.TextWidth(Grid.Cells[0, 0]);
     for I := 1 to Grid.RowCount - 1 do
-      if Bmp.Canvas.TextWidth(Grid.Cells[0, I]) > W then
-        W := Bmp.Canvas.TextWidth(Grid.Cells[0, I]);
-    Grid.ColWidths[0] := W + 40;
+      if Bmp.Canvas.TextWidth(Grid.Cells[0, I]) > WidthPx then
+        WidthPx := Bmp.Canvas.TextWidth(Grid.Cells[0, I]);
+    Grid.ColWidths[0] := WidthPx + 40;
   finally
     Bmp.Free;
   end;
@@ -1112,8 +1112,8 @@ end;
 procedure TForm2.LoadThemeList;
 var
   Ini: TIniFile;
-  I, N: Integer;
-  S, Cur: string;
+  I, Num: Integer;
+  Str, Cur: string;
   Dark: Boolean;
 begin
   FThemeLock := True;
@@ -1125,12 +1125,12 @@ begin
     begin
       Ini := TIniFile.Create(Form1.SettingsFileName);
       try
-        N := Ini.ReadInteger('Themes', 'Count', 0);
-        for I := 0 to N - 1 do
+        Num := Ini.ReadInteger('Themes', 'Count', 0);
+        for I := 0 to Num - 1 do
         begin
-          S := Trim(Ini.ReadString('Themes', 'Theme_' + IntToStr(I), ''));
-          if (S <> '') and (cmbTheme.Items.IndexOf(S) < 0) then
-            cmbTheme.Items.Add(S);
+          Str := Trim(Ini.ReadString('Themes', 'Theme_' + IntToStr(I), ''));
+          if (Str <> '') and (cmbTheme.Items.IndexOf(Str) < 0) then
+            cmbTheme.Items.Add(Str);
         end;
         Cur := Trim(Ini.ReadString('Themes', 'Current', ''));
         Dark := CompareText(Trim(Ini.ReadString('Themes', 'Mode', 'Light')),
@@ -1214,7 +1214,7 @@ end;
 function TForm2.SwitchToSelectedTheme: Boolean;
 var
   Name: string;
-  I: Integer;
+  Idx: Integer;
 begin
   Result := False;
   if (Form1 = nil) or (cmbTheme.ItemIndex < 0) then
@@ -1227,9 +1227,9 @@ begin
     begin
       FThemeLock := True;
       try
-        I := cmbTheme.Items.IndexOf(Form1.ThemeName);
-        if I >= 0 then
-          cmbTheme.ItemIndex := I;
+        Idx := cmbTheme.Items.IndexOf(Form1.ThemeName);
+        if Idx >= 0 then
+          cmbTheme.ItemIndex := Idx;
       finally
         FThemeLock := False;
       end;
@@ -1266,7 +1266,7 @@ end;
 procedure TForm2.btnThemeAddClick(Sender: TObject);
 var
   Name: string;
-  I: Integer;
+  Idx: Integer;
 begin
   Name := Trim(cmbTheme.Text);
   if Name = '' then
@@ -1275,12 +1275,12 @@ begin
     Exit;
   end;
 
-  I := cmbTheme.Items.IndexOf(Name);
-  if I >= 0 then
+  Idx := cmbTheme.Items.IndexOf(Name);
+  if Idx >= 0 then
   begin
     FThemeLock := True;
     try
-      cmbTheme.ItemIndex := I;
+      cmbTheme.ItemIndex := Idx;
     finally
       FThemeLock := False;
     end;
@@ -1291,8 +1291,8 @@ begin
 
   FThemeLock := True;
   try
-    I := cmbTheme.Items.Add(Name);
-    cmbTheme.ItemIndex := I;
+    Idx := cmbTheme.Items.Add(Name);
+    cmbTheme.ItemIndex := Idx;
   finally
     FThemeLock := False;
   end;
@@ -1303,13 +1303,13 @@ end;
 
 procedure TForm2.btnThemeDelClick(Sender: TObject);
 var
-  I: Integer;
+  Idx: Integer;
   Name: string;
 begin
-  I := cmbTheme.ItemIndex;
-  if I < 0 then
-    I := cmbTheme.Items.IndexOf(Trim(cmbTheme.Text));
-  if I < 0 then
+  Idx := cmbTheme.ItemIndex;
+  if Idx < 0 then
+    Idx := cmbTheme.Items.IndexOf(Trim(cmbTheme.Text));
+  if Idx < 0 then
   begin
     ShowMessage('1330:Темы "' + Trim(cmbTheme.Text) + '" нет в списке');
     Exit;
@@ -1320,7 +1320,7 @@ begin
     Exit;
   end;
 
-  Name := cmbTheme.Items[I];
+  Name := cmbTheme.Items[Idx];
   if CompareText(Name, BaseThemeName) = 0 then
   begin
     ShowMessage('1342:"' + Name + '" - основная тема: её цвета записаны в ' +
@@ -1333,10 +1333,10 @@ begin
 
   FThemeLock := True;
   try
-    cmbTheme.Items.Delete(I);
-    if I >= cmbTheme.Items.Count then
-      I := cmbTheme.Items.Count - 1;
-    cmbTheme.ItemIndex := I;
+    cmbTheme.Items.Delete(Idx);
+    if Idx >= cmbTheme.Items.Count then
+      Idx := cmbTheme.Items.Count - 1;
+    cmbTheme.ItemIndex := Idx;
   finally
     FThemeLock := False;
   end;
@@ -1350,7 +1350,7 @@ end;
 // её выбирает список слева.
 procedure TForm2.rbIdeModeClick(Sender: TObject);
 var
-  Mode, I: Integer;
+  Mode, Idx: Integer;
   CName: string;
 begin
   if FThemeLock or not FBuilt or (Form1 = nil) then
@@ -1367,12 +1367,12 @@ begin
         Form1.UiCustomAdd('Custom 1');
         LoadIdeCustomList;
       end;
-      I := cmbIdeCustom.Items.IndexOf(Trim(cmbIdeCustom.Text));
-      if I < 0 then
-        I := 0;
+      Idx := cmbIdeCustom.Items.IndexOf(Trim(cmbIdeCustom.Text));
+      if Idx < 0 then
+        Idx := 0;
       FThemeLock := True;
       try
-        cmbIdeCustom.ItemIndex := I;
+        cmbIdeCustom.ItemIndex := Idx;
       finally
         FThemeLock := False;
       end;
@@ -1459,17 +1459,17 @@ end;
 procedure TForm2.btnIdeCustomAddClick(Sender: TObject);
 var
   CName: string;
-  N: Integer;
+  Num: Integer;
 begin
   if Form1 = nil then
     Exit;
   CName := Trim(cmbIdeCustom.Text);
   if CName = '' then
   begin
-    N := 1;
+    Num := 1;
     repeat
-      CName := 'Custom ' + IntToStr(N);
-      Inc(N);
+      CName := 'Custom ' + IntToStr(Num);
+      Inc(Num);
     until cmbIdeCustom.Items.IndexOf(CName) < 0;
   end;
   if cmbIdeCustom.Items.IndexOf(CName) < 0 then
@@ -1641,7 +1641,7 @@ end;
 // расширение, взятое из имени файла схемы (bas.clr -> *.bas).
 procedure TForm2.UpdateEditTargetUI;
 var
-  S: string;
+  Str: string;
 begin
   if Form1 = nil then
   begin
@@ -1657,9 +1657,9 @@ begin
   end
   else
   begin
-    S := ChangeFileExt(ExtractFileName(TargetSchemaFile), '');
-    if S <> '' then
-      Caption := 'IDE Options - Color scheme for files *.' + S
+    Str := ChangeFileExt(ExtractFileName(TargetSchemaFile), '');
+    if Str <> '' then
+      Caption := 'IDE Options - Color scheme for files *.' + Str
     else
       Caption := 'IDE Options';
     btnEditDefault.Caption := 'Edit Default';
@@ -1784,7 +1784,7 @@ var
   Dir, Name: string;
   SR: TSearchRec;
   It: TMenuItem;
-  P: TPoint;
+  Pnt: TPoint;
   I: Integer;
 begin
   if Form1 = nil then
@@ -1822,18 +1822,18 @@ begin
     FSchemaMenu.Items.Add(It);
   end;
 
-  P := btnSelectSchema.ClientToScreen(Point(0, btnSelectSchema.Height));
-  FSchemaMenu.Popup(P.X, P.Y);
+  Pnt := btnSelectSchema.ClientToScreen(Point(0, btnSelectSchema.Height));
+  FSchemaMenu.Popup(Pnt.X, Pnt.Y);
 end;
 
 procedure TForm2.SchemaMenuItemClick(Sender: TObject);
 var
-  I: Integer;
+  Idx: Integer;
 begin
-  I := (Sender as TMenuItem).Tag;
-  if (I < 0) or (I >= FSchemaFiles.Count) then
+  Idx := (Sender as TMenuItem).Tag;
+  if (Idx < 0) or (Idx >= FSchemaFiles.Count) then
     Exit;
-  MergeSchemaForEdit(FSchemaFiles[I]);
+  MergeSchemaForEdit(FSchemaFiles[Idx]);
 end;
 
 // Имя раздела из строки-заголовка схемы: первое слово после метки
@@ -2059,7 +2059,7 @@ end;
 // задаёт файл схемы, и считать его постоянным нельзя.
 procedure TForm2.ApplyGridToForm1(SaveSchema: Boolean);
 var
-  R, G, CIdx: Integer;
+  R, GrpIdx, CIdx: Integer;
   Sec: string;
 begin
   if (Form1 = nil) or not FGridReady then
@@ -2073,23 +2073,23 @@ begin
 
     if IsKeywordSection(Sec) then
     begin
-      G := KeywordGroupIndex(Sec);
-      if G >= 0 then
+      GrpIdx := KeywordGroupIndex(Sec);
+      if GrpIdx >= 0 then
       begin
-        Form1.FScheme.KeywordGroups[G].FgColor := TColor(Grid.Objects[1, R]);
-        Form1.FScheme.KeywordGroups[G].BgColor := TColor(Grid.Objects[2, R]);
-        Form1.FScheme.KeywordGroups[G].Words.CommaText := Grid.Cells[3, R];
+        Form1.FScheme.KeywordGroups[GrpIdx].FgColor := TColor(Grid.Objects[1, R]);
+        Form1.FScheme.KeywordGroups[GrpIdx].BgColor := TColor(Grid.Objects[2, R]);
+        Form1.FScheme.KeywordGroups[GrpIdx].Words.CommaText := Grid.Cells[3, R];
       end;
     end
     else if IsOpSection(Sec) then
     begin
-      G := Form1.FScheme.OpGroupIndex(Sec);
-      if G >= 0 then
+      GrpIdx := Form1.FScheme.OpGroupIndex(Sec);
+      if GrpIdx >= 0 then
       begin
-        Form1.FScheme.OpGroups[G].FgColor := TColor(Grid.Objects[1, R]);
-        Form1.FScheme.OpGroups[G].BgColor := TColor(Grid.Objects[2, R]);
+        Form1.FScheme.OpGroups[GrpIdx].FgColor := TColor(Grid.Objects[1, R]);
+        Form1.FScheme.OpGroups[GrpIdx].BgColor := TColor(Grid.Objects[2, R]);
         // Строка данных группы - набор её символов
-        Form1.FScheme.SetOpChars(G, Grid.Cells[3, R]);
+        Form1.FScheme.SetOpChars(GrpIdx, Grid.Cells[3, R]);
       end;
     end
     // Маркер как есть, без Trim: в схеме заголовки помечены (SchemaHeadMark
@@ -2113,14 +2113,14 @@ begin
     // Дополнительные пары маркеров: BlockComment2 и дальше
     else if (Length(Sec) > 12) and (Copy(Sec, 1, 12) = 'BlockComment') then
     begin
-      G := Form1.FScheme.BcExtraIndex(Sec);
-      if G >= 0 then
+      GrpIdx := Form1.FScheme.BcExtraIndex(Sec);
+      if GrpIdx >= 0 then
       begin
-        Form1.FScheme.FBcExtra[G].FgColor := TColor(Grid.Objects[1, R]);
-        Form1.FScheme.FBcExtra[G].BgColor := TColor(Grid.Objects[2, R]);
+        Form1.FScheme.FBcExtra[GrpIdx].FgColor := TColor(Grid.Objects[1, R]);
+        Form1.FScheme.FBcExtra[GrpIdx].BgColor := TColor(Grid.Objects[2, R]);
         // Одного маркера мало - пара выключается
-        SplitMarkers(Grid.Cells[3, R], Form1.FScheme.FBcExtra[G].StartMark,
-                           Form1.FScheme.FBcExtra[G].EndMark);
+        SplitMarkers(Grid.Cells[3, R], Form1.FScheme.FBcExtra[GrpIdx].StartMark,
+                           Form1.FScheme.FBcExtra[GrpIdx].EndMark);
       end;
     end
     else if Sec = 'Strings' then
@@ -2148,12 +2148,12 @@ begin
     end
     else if IsMarkSection(Sec) then
     begin
-      G := Form1.FScheme.MarkGroupIndex(Sec);
-      if (G >= 0) and (Form1.FScheme.MarkGroups[G].Words <> nil) then
+      GrpIdx := Form1.FScheme.MarkGroupIndex(Sec);
+      if (GrpIdx >= 0) and (Form1.FScheme.MarkGroups[GrpIdx].Words <> nil) then
       begin
-        Form1.FScheme.MarkGroups[G].FgColor := TColor(Grid.Objects[1, R]);
-        Form1.FScheme.MarkGroups[G].BgColor := TColor(Grid.Objects[2, R]);
-        SetWordsByComma(Form1.FScheme.MarkGroups[G].Words, Grid.Cells[3, R]);
+        Form1.FScheme.MarkGroups[GrpIdx].FgColor := TColor(Grid.Objects[1, R]);
+        Form1.FScheme.MarkGroups[GrpIdx].BgColor := TColor(Grid.Objects[2, R]);
+        SetWordsByComma(Form1.FScheme.MarkGroups[GrpIdx].Words, Grid.Cells[3, R]);
       end;
     end
     // Строка раздела есть в таблице - значит раздел есть и в схеме
@@ -2233,7 +2233,7 @@ end;
 // списку разделов файла схемы.
 procedure TForm2.RefreshGridFromForm1;
 var
-  R, G, CIdx: Integer;
+  R, GrpIdx, CIdx: Integer;
   Sec: string;
 begin
   if (Form1 = nil) or not FGridReady then
@@ -2254,22 +2254,22 @@ begin
 
     if IsKeywordSection(Sec) then
     begin
-      G := KeywordGroupIndex(Sec);
-      if G >= 0 then
+      GrpIdx := KeywordGroupIndex(Sec);
+      if GrpIdx >= 0 then
       begin
-        Grid.Objects[1, R] := TObject(Form1.FScheme.KeywordGroups[G].FgColor);
-        Grid.Objects[2, R] := TObject(Form1.FScheme.KeywordGroups[G].BgColor);
-        Grid.Cells[3, R] := Form1.FScheme.KeywordGroups[G].Words.CommaText;
+        Grid.Objects[1, R] := TObject(Form1.FScheme.KeywordGroups[GrpIdx].FgColor);
+        Grid.Objects[2, R] := TObject(Form1.FScheme.KeywordGroups[GrpIdx].BgColor);
+        Grid.Cells[3, R] := Form1.FScheme.KeywordGroups[GrpIdx].Words.CommaText;
       end;
     end
     else if IsOpSection(Sec) then
     begin
-      G := Form1.FScheme.OpGroupIndex(Sec);
-      if G >= 0 then
+      GrpIdx := Form1.FScheme.OpGroupIndex(Sec);
+      if GrpIdx >= 0 then
       begin
-        Grid.Objects[1, R] := TObject(Form1.FScheme.OpGroups[G].FgColor);
-        Grid.Objects[2, R] := TObject(Form1.FScheme.OpGroups[G].BgColor);
-        Grid.Cells[3, R] := Form1.FScheme.OpCharsStr(G);
+        Grid.Objects[1, R] := TObject(Form1.FScheme.OpGroups[GrpIdx].FgColor);
+        Grid.Objects[2, R] := TObject(Form1.FScheme.OpGroups[GrpIdx].BgColor);
+        Grid.Cells[3, R] := Form1.FScheme.OpCharsStr(GrpIdx);
       end;
     end
     else if Sec = 'LineComment' then
@@ -2288,13 +2288,13 @@ begin
     // Дополнительные пары маркеров: BlockComment2 и дальше
     else if (Length(Sec) > 12) and (Copy(Sec, 1, 12) = 'BlockComment') then
     begin
-      G := Form1.FScheme.BcExtraIndex(Sec);
-      if G >= 0 then
+      GrpIdx := Form1.FScheme.BcExtraIndex(Sec);
+      if GrpIdx >= 0 then
       begin
-        Grid.Objects[1, R] := TObject(Form1.FScheme.FBcExtra[G].FgColor);
-        Grid.Objects[2, R] := TObject(Form1.FScheme.FBcExtra[G].BgColor);
-        Grid.Cells[3, R] := Form1.FScheme.FBcExtra[G].StartMark + ' ' +
-                           Form1.FScheme.FBcExtra[G].EndMark;
+        Grid.Objects[1, R] := TObject(Form1.FScheme.FBcExtra[GrpIdx].FgColor);
+        Grid.Objects[2, R] := TObject(Form1.FScheme.FBcExtra[GrpIdx].BgColor);
+        Grid.Cells[3, R] := Form1.FScheme.FBcExtra[GrpIdx].StartMark + ' ' +
+                           Form1.FScheme.FBcExtra[GrpIdx].EndMark;
       end;
     end
     else if Sec = 'Strings' then
@@ -2329,12 +2329,12 @@ begin
     end
     else if IsMarkSection(Sec) then
     begin
-      G := Form1.FScheme.MarkGroupIndex(Sec);
-      if (G >= 0) and (Form1.FScheme.MarkGroups[G].Words <> nil) then
+      GrpIdx := Form1.FScheme.MarkGroupIndex(Sec);
+      if (GrpIdx >= 0) and (Form1.FScheme.MarkGroups[GrpIdx].Words <> nil) then
       begin
-        Grid.Objects[1, R] := TObject(Form1.FScheme.MarkGroups[G].FgColor);
-        Grid.Objects[2, R] := TObject(Form1.FScheme.MarkGroups[G].BgColor);
-        Grid.Cells[3, R] := WordsByComma(Form1.FScheme.MarkGroups[G].Words);
+        Grid.Objects[1, R] := TObject(Form1.FScheme.MarkGroups[GrpIdx].FgColor);
+        Grid.Objects[2, R] := TObject(Form1.FScheme.MarkGroups[GrpIdx].BgColor);
+        Grid.Cells[3, R] := WordsByComma(Form1.FScheme.MarkGroups[GrpIdx].Words);
       end;
     end
     else if Sec = 'SubBody' then
@@ -2446,7 +2446,7 @@ end;
 // раздела - первое свободное: Keywords3, Operators2, LineMark2 и так далее.
 procedure TForm2.btnAddGroupClick(Sender: TObject);
 var
-  I, N, Place, Cnt: Integer;
+  I, Num, Place, Cnt: Integer;
   Prefix, NewName: string;
 begin
   if (Form1 = nil) or not FGridReady then
@@ -2475,17 +2475,17 @@ begin
     NewName := Prefix
   else
   begin
-    N := 1;
+    Num := 1;
     while True do
     begin
-      NewName := Prefix + IntToStr(N);
+      NewName := Prefix + IntToStr(Num);
       if (KeywordGroupIndex(NewName) < 0) and
          (Form1.FScheme.OpGroupIndex(NewName) < 0) and
          (Form1.FScheme.MarkGroupIndex(NewName) < 0) and
          (Form1.FScheme.BcExtraIndex(NewName) < 0) and
          (Form1.FScheme.SchemaSections.IndexOf(NewName) < 0) then
         Break;
-      Inc(N);
+      Inc(Num);
     end;
   end;
 
@@ -2754,8 +2754,8 @@ end;
 // место пересчитывается здесь; строка не видна - кнопка прячется.
 procedure TForm2.PlaceBaseColorsButton;
 var
-  R: TRect;
-  W: Integer;
+  RectVal: TRect;
+  WidthPx: Integer;
   Bmp: TBitmap;
 begin
   // Строк ещё нет (окно не заполнено) - и ставить кнопку некуда
@@ -2769,8 +2769,8 @@ begin
     Exit;
   end;
 
-  R := Grid.CellRect(0, SectionRow('Text'));
-  if (R.Right <= R.Left) or (R.Bottom <= R.Top) then
+  RectVal := Grid.CellRect(0, SectionRow('Text'));
+  if (RectVal.Right <= RectVal.Left) or (RectVal.Bottom <= RectVal.Top) then
   begin
     btnBaseColors.Visible := False;
     Exit;
@@ -2779,12 +2779,12 @@ begin
   Bmp := TBitmap.Create;
   try
     Bmp.Canvas.Font.Assign(btnBaseColors.Font);
-    W := Bmp.Canvas.TextWidth(btnBaseColors.Caption) + 12;
+    WidthPx := Bmp.Canvas.TextWidth(btnBaseColors.Caption) + 12;
   finally
     Bmp.Free;
   end;
 
-  btnBaseColors.SetBounds(R.Right - W - 2, R.Top + 2, W, R.Bottom - R.Top - 4);
+  btnBaseColors.SetBounds(RectVal.Right - WidthPx - 2, RectVal.Top + 2, WidthPx, RectVal.Bottom - RectVal.Top - 4);
   btnBaseColors.Visible := True;
 end;
 
@@ -2906,17 +2906,17 @@ end;
 
 procedure TForm2.edtPaleChange(Sender: TObject);
 var
-  V: Integer;
+  IntVal: Integer;
 begin
   // До заполнения окна текст поля пишет счётчик (udPale) - это не правка
   if (Form1 = nil) or not FBuilt then
     Exit;
 
-  V := StrToIntDef(Trim(edtPale.Text), -1);
-  if (V < 0) or (V > 100) then
+  IntVal := StrToIntDef(Trim(edtPale.Text), -1);
+  if (IntVal < 0) or (IntVal > 100) then
     Exit; // промежуточный ввод, например пустое поле - просто ждём
 
-  Form1.FHotTabPale := V;
+  Form1.FHotTabPale := IntVal;
   Form1.SaveSettings;
   Form1.RichEdit1.Invalidate;
 end;
@@ -2952,14 +2952,14 @@ end;
 
 procedure TForm2.cmbIndentSizeChange(Sender: TObject);
 var
-  N: Integer;
+  Num: Integer;
 begin
   if (Form1 = nil) or not FBuilt then
     Exit;
-  N := StrToIntDef(cmbIndentSize.Text, 0);
-  if N < 1 then
+  Num := StrToIntDef(cmbIndentSize.Text, 0);
+  if Num < 1 then
     Exit;
-  Form1.FIndentSize := N;
+  Form1.FIndentSize := Num;
   Form1.SaveSettings;
   lblIndentHint.Visible := True;
   // Полосы считают уровни по этому числу
@@ -3031,7 +3031,7 @@ end;
 
 procedure TForm2.MemoSchemaDetailsChange(Sender: TObject);
 var
-  S: string;
+  Str: string;
 begin
   // Если флаг взведен (текст меняет программа при переключении строк) — игнорируем событие!
   // Таблица ещё без строк (окно не заполнено) - сохранять некуда.
@@ -3045,12 +3045,12 @@ begin
   // обрезаются по пробелам, и CRLF стал бы частью маркера.
   // Изменением считается только настоящая разница - программная запись в
   // поле того же значения изменением не является.
-  S := MemoSchemaDetails.Text;
-  while (S <> '') and ((S[Length(S)] = #13) or (S[Length(S)] = #10)) do
-    SetLength(S, Length(S) - 1);
-  if Grid.Cells[3, Grid.Row] <> S then
+  Str := MemoSchemaDetails.Text;
+  while (Str <> '') and ((Str[Length(Str)] = #13) or (Str[Length(Str)] = #10)) do
+    SetLength(Str, Length(Str) - 1);
+  if Grid.Cells[3, Grid.Row] <> Str then
   begin
-    Grid.Cells[3, Grid.Row] := S;
+    Grid.Cells[3, Grid.Row] := Str;
     FPreviewDirty := True;
   end;
 end;
@@ -3065,32 +3065,32 @@ const
   Gap = 8;
 var
   Bmp: TBitmap;
-  X: Integer;
+  PosX: Integer;
 
-  function CheckW(C: TUiCheckBox): Integer;
+  function CheckW(UiCheckBox: TUiCheckBox): Integer;
   begin
     // квадратик флажка + отступ до надписи + надпись + запас на рамку фокуса
     Result := GetSystemMetrics(SM_CXMENUCHECK) + 4 +
-              Bmp.Canvas.TextWidth(C.Caption) + 6;
+              Bmp.Canvas.TextWidth(UiCheckBox.Caption) + 6;
   end;
 
-  function ButtonW(B: TUiButton): Integer;
+  function ButtonW(UiButton: TUiButton): Integer;
   begin
-    Result := Bmp.Canvas.TextWidth(B.Caption) + 20;
+    Result := Bmp.Canvas.TextWidth(UiButton.Caption) + 20;
   end;
 
-  procedure PlaceCheck(C: TUiCheckBox);
+  procedure PlaceCheck(UiCheckBox: TUiCheckBox);
   begin
-    C.Left := X;
-    C.Width := CheckW(C);
-    Inc(X, C.Width + Gap);
+    UiCheckBox.Left := PosX;
+    UiCheckBox.Width := CheckW(UiCheckBox);
+    Inc(PosX, UiCheckBox.Width + Gap);
   end;
 
-  procedure PlaceButton(B: TUiButton);
+  procedure PlaceButton(UiButton: TUiButton);
   begin
-    B.Left := X;
-    B.Width := ButtonW(B);
-    Inc(X, B.Width + Gap);
+    UiButton.Left := PosX;
+    UiButton.Width := ButtonW(UiButton);
+    Inc(PosX, UiButton.Width + Gap);
   end;
 
 begin
@@ -3100,15 +3100,15 @@ begin
   Bmp := TBitmap.Create;
   try
     Bmp.Canvas.Font.Assign(AGroup.Font);
-    X := 6;
+    PosX := 6;
 
     PlaceCheck(chkUseHighlight);
     PlaceCheck(chkShowSpaces);
 
-    lblTabWidth.Left := X;
-    Inc(X, Bmp.Canvas.TextWidth(lblTabWidth.Caption) + 4);
-    cmbTabWidth.Left := X;
-    Inc(X, cmbTabWidth.Width + Gap);
+    lblTabWidth.Left := PosX;
+    Inc(PosX, Bmp.Canvas.TextWidth(lblTabWidth.Caption) + 4);
+    cmbTabWidth.Left := PosX;
+    Inc(PosX, cmbTabWidth.Width + Gap);
 
     PlaceCheck(chkShowLineNumbers);
     PlaceButton(btnFontChange);
@@ -3126,8 +3126,8 @@ end;
 procedure TForm2.LoadToolList(const AType: string);
 var
   Ini: TIniFile;
-  S, Def: string;
-  I: Integer;
+  Str, Def: string;
+  Idx: Integer;
 begin
   cbTool.Items.Clear;
   Def := '';
@@ -3136,21 +3136,21 @@ begin
   begin
     Ini := TIniFile.Create(Form1.SettingsFileName);
     try
-      S := Ini.ReadString('Compiler.' + AType, 'Tools', '');
+      Str := Ini.ReadString('Compiler.' + AType, 'Tools', '');
       Def := Ini.ReadString('Compiler.' + AType, 'Default', '');
     finally
       Ini.Free;
     end;
   end;
 
-  while S <> '' do
+  while Str <> '' do
   begin
-    I := Pos(';', S);
-    if I = 0 then
-      I := Length(S) + 1;
-    if Trim(Copy(S, 1, I - 1)) <> '' then
-      cbTool.Items.Add(Trim(Copy(S, 1, I - 1)));
-    S := Copy(S, I + 1, Length(S));
+    Idx := Pos(';', Str);
+    if Idx = 0 then
+      Idx := Length(Str) + 1;
+    if Trim(Copy(Str, 1, Idx - 1)) <> '' then
+      cbTool.Items.Add(Trim(Copy(Str, 1, Idx - 1)));
+    Str := Copy(Str, Idx + 1, Length(Str));
   end;
 
   if cbTool.Items.Count = 0 then
@@ -3164,24 +3164,24 @@ end;
 procedure TForm2.SaveToolList(const AType: string);
 var
   Ini: TIniFile;
-  S: string;
+  Str: string;
   I: Integer;
 begin
   if Form1 = nil then
     Exit;
 
-  S := '';
+  Str := '';
   for I := 0 to cbTool.Items.Count - 1 do
     if cbTool.Items[I] <> '(default)' then
     begin
-      if S <> '' then
-        S := S + ';';
-      S := S + cbTool.Items[I];
+      if Str <> '' then
+        Str := Str + ';';
+      Str := Str + cbTool.Items[I];
     end;
 
   Ini := TIniFile.Create(Form1.SettingsFileName);
   try
-    Ini.WriteString('Compiler.' + AType, 'Tools', S);
+    Ini.WriteString('Compiler.' + AType, 'Tools', Str);
     if cbTool.ItemIndex >= 0 then
       Ini.WriteString('Compiler.' + AType, 'Default',
                       cbTool.Items[cbTool.ItemIndex]);
@@ -3198,35 +3198,35 @@ end;
 
 procedure TForm2.btnToolAddClick(Sender: TObject);
 var
-  S: string;
+  Str: string;
 begin
-  S := '';
-  if not InputQuery('Инструмент сборки', 'Название:', S) then
+  Str := '';
+  if not InputQuery('Инструмент сборки', 'Название:', Str) then
     Exit;
-  S := Trim(S);
-  if (S = '') or (cbTool.Items.IndexOf(S) >= 0) then
+  Str := Trim(Str);
+  if (Str = '') or (cbTool.Items.IndexOf(Str) >= 0) then
     Exit;
 
   if (cbTool.Items.Count = 1) and (cbTool.Items[0] = '(default)') then
     cbTool.Items.Clear;
-  cbTool.ItemIndex := cbTool.Items.Add(S);
+  cbTool.ItemIndex := cbTool.Items.Add(Str);
   SaveToolList(FCompType);
   ShowCompilerPage(FCompType);
 end;
 
 procedure TForm2.btnToolDelClick(Sender: TObject);
 var
-  I: Integer;
+  Idx: Integer;
 begin
-  I := cbTool.ItemIndex;
-  if (I < 0) or (cbTool.Items[I] = '(default)') then
+  Idx := cbTool.ItemIndex;
+  if (Idx < 0) or (cbTool.Items[Idx] = '(default)') then
     Exit;
-  if MessageDlg('2753:Убрать инструмент ' + cbTool.Items[I] + ' из списка? ' +
+  if MessageDlg('2753:Убрать инструмент ' + cbTool.Items[Idx] + ' из списка? ' +
                 'Его настройки останутся в editor.ini.',
                 mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
     Exit;
 
-  cbTool.Items.Delete(I);
+  cbTool.Items.Delete(Idx);
   if cbTool.Items.Count = 0 then
     cbTool.Items.Add('(default)');
   cbTool.ItemIndex := 0;
@@ -3247,9 +3247,9 @@ var
 
   // Развернуть $(DELPHI) и прочие переменные среды Delphi. Их список
   // лежит в той же ветке реестра, в Environment Variables.
-  function ExpandVars(const S, ARoot, AKey: string): string;
+  function ExpandVars(const Str, ARoot, AKey: string): string;
   begin
-    Result := ExpandDelphiRegVars(S, ARoot, AKey);
+    Result := ExpandDelphiRegVars(Str, ARoot, AKey);
   end;
 
   procedure AddFound(const AName, ARoot, AKey: string);
@@ -3434,12 +3434,12 @@ end;
 procedure TForm2.UiGridDrawCell(Sender: TObject; ACol, ARow: Integer;
                                 Rect: TRect; State: TGridDrawState);
 var
-  C: TCanvas;
-  R: TRect;
-  S: string;
+  Cnv: TCanvas;
+  RectVal: TRect;
+  Str: string;
   SampleColor: TColor;
 begin
-  C := UiGrid.Canvas;
+  Cnv := UiGrid.Canvas;
   if (ACol <> 1) or (ARow = 0) or (ARow > UiKeys.Count) then
     Exit;
 
@@ -3447,56 +3447,56 @@ begin
   // сдвигом под образец цвета. Поэтому сначала затираем ячейку.
   if gdSelected in State then
   begin
-    C.Brush.Color := clHighlight;
-    C.Font.Color := clHighlightText;
+    Cnv.Brush.Color := clHighlight;
+    Cnv.Font.Color := clHighlightText;
   end
   else
   begin
     // Цвета самой таблицы: их ставят цвета IDE (IDE Light / IDE Dark)
-    C.Brush.Color := UiGrid.Color;
-    C.Font.Color := UiGrid.Font.Color;
+    Cnv.Brush.Color := UiGrid.Color;
+    Cnv.Font.Color := UiGrid.Font.Color;
   end;
-  C.Brush.Style := bsSolid;
-  C.FillRect(Rect);
+  Cnv.Brush.Style := bsSolid;
+  Cnv.FillRect(Rect);
 
-  S := UiGrid.Cells[1, ARow];
+  Str := UiGrid.Cells[1, ARow];
   // Шрифт: подпись - самим этим шрифтом
   if IsUiFontKey(UiKeys[ARow - 1]) then
   begin
-    SampleColor := C.Font.Color;
-    Form1.UiFontGet(UiKeys[ARow - 1], C.Font);
-    C.Font.Color := SampleColor;
-    C.Brush.Style := bsClear;
-    R := Rect;
-    R.Left := R.Left + 4;
-    DrawText(C.Handle, PChar(S), Length(S), R,
+    SampleColor := Cnv.Font.Color;
+    Form1.UiFontGet(UiKeys[ARow - 1], Cnv.Font);
+    Cnv.Font.Color := SampleColor;
+    Cnv.Brush.Style := bsClear;
+    RectVal := Rect;
+    RectVal.Left := RectVal.Left + 4;
+    DrawText(Cnv.Handle, PChar(Str), Length(Str), RectVal,
              DT_SINGLELINE or DT_VCENTER or DT_END_ELLIPSIS);
-    C.Font.Assign(UiGrid.Font);
+    Cnv.Font.Assign(UiGrid.Font);
     Exit;
   end;
-  R := Rect;
-  R.Left := R.Left + 2;
-  R.Top := R.Top + 3;
-  R.Right := R.Left + 16;
-  R.Bottom := R.Top + 12;
+  RectVal := Rect;
+  RectVal.Left := RectVal.Left + 2;
+  RectVal.Top := RectVal.Top + 3;
+  RectVal.Right := RectVal.Left + 16;
+  RectVal.Bottom := RectVal.Top + 12;
   // clDefault - «как у другого элемента» (своего цвета нет): пустой
   // квадратик с диагональю
   if Form1.UiColor(UiKeys[ARow - 1]) <> clDefault then
   begin
-    C.Brush.Color := Form1.UiColor(UiKeys[ARow - 1]);
-    C.FillRect(R);
+    Cnv.Brush.Color := Form1.UiColor(UiKeys[ARow - 1]);
+    Cnv.FillRect(RectVal);
   end;
-  C.Brush.Style := bsClear;
-  C.Pen.Color := clGray;
-  C.Rectangle(R.Left, R.Top, R.Right, R.Bottom);
+  Cnv.Brush.Style := bsClear;
+  Cnv.Pen.Color := clGray;
+  Cnv.Rectangle(RectVal.Left, RectVal.Top, RectVal.Right, RectVal.Bottom);
   if Form1.UiColor(UiKeys[ARow - 1]) = clDefault then
   begin
-    C.MoveTo(R.Left, R.Bottom - 1);
-    C.LineTo(R.Right, R.Top - 1);
+    Cnv.MoveTo(RectVal.Left, RectVal.Bottom - 1);
+    Cnv.LineTo(RectVal.Right, RectVal.Top - 1);
   end;
 
-  C.Brush.Style := bsClear;
-  C.TextOut(Rect.Left + 24, Rect.Top + 2, S);
+  Cnv.Brush.Style := bsClear;
+  Cnv.TextOut(Rect.Left + 24, Rect.Top + 2, Str);
 end;
 
 // Двойной щелчок по строке - выбор цвета. Значение сразу применяется к
@@ -3564,16 +3564,16 @@ end;
 procedure TForm2.ShowCompilerPage(const AType: string);
 var
   Fields: TStringList;
-  I, Y, LabW: Integer;
-  L: TLabel;
-  E: TUiEdit;
-  B: TUiButton;
-  T: TLabel;
+  I, PosY, LabW: Integer;
+  Lbl: TLabel;
+  UiEdit: TUiEdit;
+  UiButton: TUiButton;
+  Lbl2: TLabel;
   Ini: TIniFile;
   Bmp: TBitmap;
   Key, Cap: string;
   NoBrowse: Boolean;
-  P: Integer;
+  CharPos: Integer;
 begin
   // Поля прежней страницы сейчас исчезнут вместе с их OnExit - приводим
   // значения в порядок, пока они ещё на месте. Раздел настроек тоже пока
@@ -3705,19 +3705,19 @@ begin
     btnDelphiImport.Visible := AType = 'Delphi';
     btnArdImport.Visible := AType = 'Arduino';
 
-    T := TLabel.Create(Self);
-    T.Parent := pnlCompPage;
-    T.Caption := AType;
-    T.Left := 12;
-    T.Top := 40;
-    T.Font.Style := [fsBold];
+    Lbl2 := TLabel.Create(Self);
+    Lbl2.Parent := pnlCompPage;
+    Lbl2.Caption := AType;
+    Lbl2.Left := 12;
+    Lbl2.Top := 40;
+    Lbl2.Font.Style := [fsBold];
 
     // Ширина колонки подписей - по самой длинной
     LabW := 0;
     for I := 0 to Fields.Count - 1 do
     begin
-      P := Pos('|', Fields[I]);
-      Cap := Copy(Fields[I], P + 1, Length(Fields[I]));
+      CharPos := Pos('|', Fields[I]);
+      Cap := Copy(Fields[I], CharPos + 1, Length(Fields[I]));
       if Bmp.Canvas.TextWidth(Cap) > LabW then
         LabW := Bmp.Canvas.TextWidth(Cap);
     end;
@@ -3727,7 +3727,7 @@ begin
     if (Form1 <> nil) and FileExists(Form1.SettingsFileName) then
       Ini := TIniFile.Create(Form1.SettingsFileName);
     try
-      Y := 66;
+      PosY := 66;
       SetLength(FCompEdits, Fields.Count);
       SetLength(FCompKeys, Fields.Count);
       SetLength(FCompIsList, Fields.Count);
@@ -3741,21 +3741,21 @@ begin
         FCompUseIde.Parent := pnlCompPage;
         FCompUseIde.Caption := 'Use IDE path';
         FCompUseIde.Left := 12 + LabW;
-        FCompUseIde.Top := Y;
+        FCompUseIde.Top := PosY;
         FCompUseIde.Width := 200;
         if Ini <> nil then
           FCompUseIde.Checked := Ini.ReadBool(FCompSection, 'UseIdePath',
                                               False);
         // Обработчик - после чтения: OnClick бывает и при смене из кода
         FCompUseIde.OnClick := CompUseIdeClick;
-        Inc(Y, 28);
+        Inc(PosY, 28);
       end;
 
       for I := 0 to Fields.Count - 1 do
       begin
-        P := Pos('|', Fields[I]);
-        Key := Copy(Fields[I], 1, P - 1);
-        Cap := Copy(Fields[I], P + 1, Length(Fields[I]));
+        CharPos := Pos('|', Fields[I]);
+        Key := Copy(Fields[I], 1, CharPos - 1);
+        Cap := Copy(Fields[I], CharPos + 1, Length(Fields[I]));
         NoBrowse := (Key <> '') and (Key[1] = '-');
         FCompIsList[I] := NoBrowse;
         if NoBrowse then
@@ -3765,49 +3765,49 @@ begin
           Key := Copy(Key, 2, Length(Key));
         FCompKeys[I] := Key;
 
-        L := TLabel.Create(Self);
-        L.Parent := pnlCompPage;
-        L.Caption := Cap;
-        L.Left := 12;
-        L.Top := Y + 4;
+        Lbl := TLabel.Create(Self);
+        Lbl.Parent := pnlCompPage;
+        Lbl.Caption := Cap;
+        Lbl.Left := 12;
+        Lbl.Top := PosY + 4;
 
-        E := TUiEdit.Create(Self);
-        E.Parent := pnlCompPage;
-        E.Left := 12 + LabW;
-        E.Top := Y;
-        E.Width := pnlCompPage.ClientWidth - E.Left - 46;
-        E.Anchors := [akLeft, akTop, akRight];
-        E.Tag := I;
+        UiEdit := TUiEdit.Create(Self);
+        UiEdit.Parent := pnlCompPage;
+        UiEdit.Left := 12 + LabW;
+        UiEdit.Top := PosY;
+        UiEdit.Width := pnlCompPage.ClientWidth - UiEdit.Left - 46;
+        UiEdit.Anchors := [akLeft, akTop, akRight];
+        UiEdit.Tag := I;
         if Ini <> nil then
-          E.Text := Ini.ReadString(CompIniSection(Key), CompIniKey(Key), '');
-        E.OnChange := CompEditChange;
-        E.OnExit := CompEditExit;   // нормализация при уходе из поля
-        FCompEdits[I] := E;
+          UiEdit.Text := Ini.ReadString(CompIniSection(Key), CompIniKey(Key), '');
+        UiEdit.OnChange := CompEditChange;
+        UiEdit.OnExit := CompEditExit;   // нормализация при уходе из поля
+        FCompEdits[I] := UiEdit;
 
         // Простое значение - без кнопки выбора
         if FCompIsText[I] then
         begin
           FCompBtns[I] := nil;
-          Inc(Y, 28);
+          Inc(PosY, 28);
           Continue;
         end;
 
         // Кнопка выбора: у папки и файла - системный диалог, у списка
         // путей (поля со знаком минус перед ключом в таблице) - окно
         // списка, EditPathList
-        B := TUiButton.Create(Self);
-        B.Parent := pnlCompPage;
-        B.Caption := '...';
-        B.Left := E.Left + E.Width + 4;
-        B.Top := Y - 1;
-        B.Width := 30;
-        B.Height := 23;
-        B.Anchors := [akTop, akRight];
-        B.Tag := I;
-        B.OnClick := CompBrowseClick;
-        FCompBtns[I] := B;
+        UiButton := TUiButton.Create(Self);
+        UiButton.Parent := pnlCompPage;
+        UiButton.Caption := '...';
+        UiButton.Left := UiEdit.Left + UiEdit.Width + 4;
+        UiButton.Top := PosY - 1;
+        UiButton.Width := 30;
+        UiButton.Height := 23;
+        UiButton.Anchors := [akTop, akRight];
+        UiButton.Tag := I;
+        UiButton.OnClick := CompBrowseClick;
+        FCompBtns[I] := UiButton;
 
-        Inc(Y, 28);
+        Inc(PosY, 28);
       end;
     finally
       if Ini <> nil then
@@ -3824,16 +3824,16 @@ begin
   // Порядок поиска модулей при сборке Delphi - под полями
   if AType = 'Delphi' then
   begin
-    L := TLabel.Create(Self);
-    L.Parent := pnlCompPage;
-    L.Left := 12;
-    L.Top := Y + 8;
-    L.AutoSize := False;
-    L.WordWrap := True;
-    L.Width := pnlCompPage.ClientWidth - 24;
-    L.Height := 150;
-    L.Anchors := [akLeft, akTop, akRight];
-    L.Caption :=
+    Lbl := TLabel.Create(Self);
+    Lbl.Parent := pnlCompPage;
+    Lbl.Left := 12;
+    Lbl.Top := PosY + 8;
+    Lbl.AutoSize := False;
+    Lbl.WordWrap := True;
+    Lbl.Width := pnlCompPage.ClientWidth - 24;
+    Lbl.Height := 150;
+    Lbl.Anchors := [akLeft, akTop, akRight];
+    Lbl.Caption :=
       'Модули при сборке (dcc32 -U, -I, -O, -R) ищутся по порядку: папка ' +
       'проекта; Search path проекта из его .dof; UiLib рядом с программой ' +
       '(туда копируются Ui*.pas из папки Ui components; она пустая - из ' +
@@ -3850,16 +3850,16 @@ begin
 
   if AType = 'FreeBASIC' then
   begin
-    L := TLabel.Create(Self);
-    L.Parent := pnlCompPage;
-    L.Left := 12;
-    L.Top := Y + 8;
-    L.AutoSize := False;
-    L.WordWrap := True;
-    L.Width := pnlCompPage.ClientWidth - 24;
-    L.Height := 120;
-    L.Anchors := [akLeft, akTop, akRight];
-    L.Caption :=
+    Lbl := TLabel.Create(Self);
+    Lbl.Parent := pnlCompPage;
+    Lbl.Left := 12;
+    Lbl.Top := PosY + 8;
+    Lbl.AutoSize := False;
+    Lbl.WordWrap := True;
+    Lbl.Width := pnlCompPage.ClientWidth - 24;
+    Lbl.Height := 120;
+    Lbl.Anchors := [akLeft, akTop, akRight];
+    Lbl.Caption :=
       'FB compiler 32 - папка с fbc32.exe (или fbc.exe), FB compiler 64 - ' +
       'папка с fbc64.exe (или fbc.exe). Если оба компилятора в одной папке, ' +
       'достаточно заполнить FB compiler 32.' + #13#10#13#10 +
@@ -3872,16 +3872,16 @@ begin
 
   if AType = 'Lazarus' then
   begin
-    L := TLabel.Create(Self);
-    L.Parent := pnlCompPage;
-    L.Left := 12;
-    L.Top := Y + 8;
-    L.AutoSize := False;
-    L.WordWrap := True;
-    L.Width := pnlCompPage.ClientWidth - 24;
-    L.Height := 150;
-    L.Anchors := [akLeft, akTop, akRight];
-    L.Caption :=
+    Lbl := TLabel.Create(Self);
+    Lbl.Parent := pnlCompPage;
+    Lbl.Left := 12;
+    Lbl.Top := PosY + 8;
+    Lbl.AutoSize := False;
+    Lbl.WordWrap := True;
+    Lbl.Width := pnlCompPage.ClientWidth - 24;
+    Lbl.Height := 150;
+    Lbl.Anchors := [akLeft, akTop, akRight];
+    Lbl.Caption :=
       'Lazarus path - папка с lazbuild.exe; пустая - lazbuild ищется в ' +
       'PATH, реестре и <диск>:\lazarus.' + #13#10#13#10 +
       'fpc.exe задан - программа собирается им напрямую, без lazbuild: ' +
@@ -3906,12 +3906,12 @@ end;
 // Развернуть $(DELPHI) и прочие переменные среды Delphi: список - в той же
 // ветке реестра (AKey), в Environment Variables; не раскрылось - шире, по
 // всем установкам (переменные от установщиков компонентов лежат в HKLM)
-function TForm2.ExpandDelphiRegVars(const S, ARoot, AKey: string): string;
+function TForm2.ExpandDelphiRegVars(const Str, ARoot, AKey: string): string;
 var
   Vars: TStringList;
   VarIdx: Integer;
 begin
-  Result := S;
+  Result := Str;
   if ARoot <> '' then
     Result := StringReplace(Result, '$(DELPHI)',
                 ExcludeTrailingPathDelimiter(ARoot),
@@ -4678,15 +4678,15 @@ end;
 // среда Delphi, а dcc32 о макросах не знает вовсе и получит путь как есть.
 // Значение берём из поля Delphi path этой же страницы. %VAR% раскрывает
 // Windows.
-function TForm2.ExpandCompMacros(const S: string): string;
+function TForm2.ExpandCompMacros(const Str: string): string;
 var
   I: Integer;
   Root: string;
   Vars: TStringList;
   Buf: array[0..2047] of Char;
-  N: DWORD;
+  Num: DWORD;
 begin
-  Result := S;
+  Result := Str;
 
   Root := '';
   for I := 0 to High(FCompKeys) do
@@ -4743,8 +4743,8 @@ begin
     end;
   end;
 
-  N := ExpandEnvironmentStrings(PChar(Result), Buf, SizeOf(Buf));
-  if (N > 0) and (N <= SizeOf(Buf)) then
+  Num := ExpandEnvironmentStrings(PChar(Result), Buf, SizeOf(Buf));
+  if (Num > 0) and (Num <= SizeOf(Buf)) then
     Result := Buf;
 end;
 
@@ -4757,14 +4757,14 @@ end;
 function TForm2.LookupEnvVar(const AName: string): string;
 var
   Buf: array[0..2047] of Char;
-  N: DWORD;
+  Num: DWORD;
 begin
   Result := '';
   if AName = '' then
     Exit;
 
-  N := GetEnvironmentVariable(PChar(AName), Buf, SizeOf(Buf));
-  if (N > 0) and (N < SizeOf(Buf)) then
+  Num := GetEnvironmentVariable(PChar(AName), Buf, SizeOf(Buf));
+  if (Num > 0) and (Num < SizeOf(Buf)) then
   begin
     Result := Buf;
     Exit;
@@ -4832,14 +4832,14 @@ end;
 // Поле, хранящее файл, остаётся файлом: там разворачиваются только макросы.
 // Одиночное поле пути на существование не проверяется: папка вывода может
 // быть ещё не создана.
-function TForm2.NormalizePathValue(const S: string; AIsFile, AIsList: Boolean;
+function TForm2.NormalizePathValue(const Str: string; AIsFile, AIsList: Boolean;
                                    ADropped: TStrings): string;
 var
   Seen: TStringList;
-  Rest, V: string;
-  P: Integer;
+  Rest, ValStr: string;
+  CharPos: Integer;
 begin
-  Result := Trim(ExpandCompMacros(Trim(S)));
+  Result := Trim(ExpandCompMacros(Trim(Str)));
   if AIsFile or (Result = '') then
     Exit;
 
@@ -4852,41 +4852,41 @@ begin
 
     while Rest <> '' do
     begin
-      P := Pos(';', Rest);
-      if P > 0 then
+      CharPos := Pos(';', Rest);
+      if CharPos > 0 then
       begin
-        V := Trim(Copy(Rest, 1, P - 1));
-        Rest := Copy(Rest, P + 1, Length(Rest));
+        ValStr := Trim(Copy(Rest, 1, CharPos - 1));
+        Rest := Copy(Rest, CharPos + 1, Length(Rest));
       end
       else
       begin
-        V := Trim(Rest);
+        ValStr := Trim(Rest);
         Rest := '';
       end;
 
-      if V = '' then
+      if ValStr = '' then
         Continue;
 
       // Файл - берём папку, в которой он лежит
-      if FileExists(V) and not DirectoryExists(V) then
-        V := ExtractFilePath(V);
+      if FileExists(ValStr) and not DirectoryExists(ValStr) then
+        ValStr := ExtractFilePath(ValStr);
 
       // Хвостовой слэш снимаем везде, кроме корня диска: в параметре с
       // кавычками он съел бы закрывающую кавычку
-      if Length(V) > 3 then
-        V := ExcludeTrailingPathDelimiter(V);
+      if Length(ValStr) > 3 then
+        ValStr := ExcludeTrailingPathDelimiter(ValStr);
 
-      if Seen.IndexOf(AnsiUpperCase(V)) >= 0 then
+      if Seen.IndexOf(AnsiUpperCase(ValStr)) >= 0 then
         Continue;
-      Seen.Add(AnsiUpperCase(V));
+      Seen.Add(AnsiUpperCase(ValStr));
 
       // Несуществующую папку не выбрасываем (см. выше): она может быть
       // путём с другого компьютера
 
       if Result = '' then
-        Result := V
+        Result := ValStr
       else
-        Result := Result + ';' + V;
+        Result := Result + ';' + ValStr;
     end;
   finally
     Seen.Free;
@@ -4898,24 +4898,24 @@ end;
 // Всё, что осталось после развёртки, для компилятора просто часть имени
 // папки: такой путь молча не ищется, и ошибка приходит потом из dcc32 уже
 // без связи с настройками.
-procedure TForm2.CollectUnresolved(const S: string; AList: TStrings);
+procedure TForm2.CollectUnresolved(const Str: string; AList: TStrings);
 var
-  P, Q: Integer;
+  CharPos, QuotePos: Integer;
   Rest, Nm: string;
 begin
-  Rest := S;
+  Rest := Str;
   repeat
-    P := Pos('$(', Rest);
-    if P <= 0 then
+    CharPos := Pos('$(', Rest);
+    if CharPos <= 0 then
       Break;
 
-    Rest := Copy(Rest, P + 2, Length(Rest));
-    Q := Pos(')', Rest);
-    if Q <= 0 then
+    Rest := Copy(Rest, CharPos + 2, Length(Rest));
+    QuotePos := Pos(')', Rest);
+    if QuotePos <= 0 then
       Break;
 
-    Nm := Copy(Rest, 1, Q - 1);
-    Rest := Copy(Rest, Q + 1, Length(Rest));
+    Nm := Copy(Rest, 1, QuotePos - 1);
+    Rest := Copy(Rest, QuotePos + 1, Length(Rest));
 
     if (Nm <> '') and (AList.IndexOf(Nm) < 0) then
       AList.Add(Nm);
@@ -4927,20 +4927,20 @@ end;
 procedure TForm2.WarnUnresolved(ABad, ADropped: TStrings);
 var
   I: Integer;
-  M, L: string;
+  MsgStr, LineStr: string;
 begin
-  M := '';
+  MsgStr := '';
 
   if (ABad <> nil) and (ABad.Count > 0) then
   begin
-    L := '';
+    LineStr := '';
     for I := 0 to ABad.Count - 1 do
     begin
-      if L <> '' then
-        L := L + ', ';
-      L := L + '$(' + ABad[I] + ')';
+      if LineStr <> '' then
+        LineStr := LineStr + ', ';
+      LineStr := LineStr + '$(' + ABad[I] + ')';
     end;
-    M := 'Не удалось раскрыть: ' + L + #13#10#13#10 +
+    MsgStr := 'Не удалось раскрыть: ' + LineStr + #13#10#13#10 +
          'Такие переменные задаёт сама Delphi (Environment Options - ' +
          'Environment Variables) или Windows. Компилятор их не понимает - ' +
          'впишите полный путь.';
@@ -4948,15 +4948,15 @@ begin
 
   if (ADropped <> nil) and (ADropped.Count > 0) then
   begin
-    if M <> '' then
-      M := M + #13#10#13#10;
-    M := M + 'Убраны из списка - таких папок нет:' + #13#10;
+    if MsgStr <> '' then
+      MsgStr := MsgStr + #13#10#13#10;
+    MsgStr := MsgStr + 'Убраны из списка - таких папок нет:' + #13#10;
     for I := 0 to ADropped.Count - 1 do
-      M := M + #13#10 + ADropped[I];
+      MsgStr := MsgStr + #13#10 + ADropped[I];
   end;
 
-  if M <> '' then
-    ShowMessage('3686:' + M);
+  if MsgStr <> '' then
+    ShowMessage('3686:' + MsgStr);
 end;
 
 // Нормализация всех полей текущей страницы с записью в editor.ini.
@@ -4968,7 +4968,7 @@ end;
 procedure TForm2.NormalizeCompFields;
 var
   I: Integer;
-  V: string;
+  ValStr: string;
   Ini: TIniFile;
   Bad, Dropped: TStringList;
 begin
@@ -4989,20 +4989,20 @@ begin
       if (I <= High(FCompIsText)) and FCompIsText[I] then
       begin
         // Не путь: только пробелы по краям
-        V := Trim(FCompEdits[I].Text);
-        if V <> FCompEdits[I].Text then
-          FCompEdits[I].Text := V;
+        ValStr := Trim(FCompEdits[I].Text);
+        if ValStr <> FCompEdits[I].Text then
+          FCompEdits[I].Text := ValStr;
         Ini.WriteString(CompIniSection(FCompKeys[I]),
-                        CompIniKey(FCompKeys[I]), V);
+                        CompIniKey(FCompKeys[I]), ValStr);
         Continue;
       end;
-      V := NormalizePathValue(FCompEdits[I].Text, IsFileKey(FCompKeys[I]),
+      ValStr := NormalizePathValue(FCompEdits[I].Text, IsFileKey(FCompKeys[I]),
                               FCompIsList[I], Dropped);
-      if V <> FCompEdits[I].Text then
-        FCompEdits[I].Text := V;   // если поле ещё живо - показываем как есть
+      if ValStr <> FCompEdits[I].Text then
+        FCompEdits[I].Text := ValStr;   // если поле ещё живо - показываем как есть
       Ini.WriteString(CompIniSection(FCompKeys[I]), CompIniKey(FCompKeys[I]),
-                      V);
-      CollectUnresolved(V, Bad);
+                      ValStr);
+      CollectUnresolved(ValStr, Bad);
     end;
   finally
     Ini.Free;
@@ -5022,32 +5022,32 @@ end;
 // Text поднимает OnChange, а он и сохраняет значение в editor.ini.
 procedure TForm2.CompEditExit(Sender: TObject);
 var
-  I: Integer;
-  V: string;
+  Idx: Integer;
+  ValStr: string;
   Bad, Dropped: TStringList;
 begin
-  I := TUiEdit(Sender).Tag;
-  if (I < 0) or (I > High(FCompKeys)) then
+  Idx := TUiEdit(Sender).Tag;
+  if (Idx < 0) or (Idx > High(FCompKeys)) then
     Exit;
   // Не путь: только пробелы по краям
-  if (I <= High(FCompIsText)) and FCompIsText[I] then
+  if (Idx <= High(FCompIsText)) and FCompIsText[Idx] then
   begin
-    V := Trim(TUiEdit(Sender).Text);
-    if V <> TUiEdit(Sender).Text then
-      TUiEdit(Sender).Text := V;
+    ValStr := Trim(TUiEdit(Sender).Text);
+    if ValStr <> TUiEdit(Sender).Text then
+      TUiEdit(Sender).Text := ValStr;
     Exit;
   end;
 
   Bad := TStringList.Create;
   Dropped := TStringList.Create;
 
-  V := NormalizePathValue(TUiEdit(Sender).Text, IsFileKey(FCompKeys[I]),
-                          FCompIsList[I], Dropped);
-  if V <> TUiEdit(Sender).Text then
-    TUiEdit(Sender).Text := V;
+  ValStr := NormalizePathValue(TUiEdit(Sender).Text, IsFileKey(FCompKeys[Idx]),
+                          FCompIsList[Idx], Dropped);
+  if ValStr <> TUiEdit(Sender).Text then
+    TUiEdit(Sender).Text := ValStr;
 
   try
-    CollectUnresolved(V, Bad);
+    CollectUnresolved(ValStr, Bad);
     WarnUnresolved(Bad, Dropped);
   finally
     Dropped.Free;
@@ -5105,52 +5105,52 @@ end;
 
 procedure TForm2.CompBrowseClick(Sender: TObject);
 var
-  I: Integer;
+  Idx: Integer;
   Dir: string;
   Dlg: TOpenDialog;
 begin
-  I := TUiButton(Sender).Tag;
-  if (I < 0) or (I > High(FCompEdits)) then
+  Idx := TUiButton(Sender).Tag;
+  if (Idx < 0) or (Idx > High(FCompEdits)) then
     Exit;
 
-  if FCompIsList[I] then
+  if FCompIsList[Idx] then
   begin
-    Dir := FCompEdits[I].Text;
-    if EditPathList(FCompType + ': ' + FCompKeys[I], Dir) then
+    Dir := FCompEdits[Idx].Text;
+    if EditPathList(FCompType + ': ' + FCompKeys[Idx], Dir) then
     begin
-      FCompEdits[I].Text := Dir;      // OnChange пишет в editor.ini
-      CompEditExit(FCompEdits[I]);    // и нормализация, как при уходе
+      FCompEdits[Idx].Text := Dir;      // OnChange пишет в editor.ini
+      CompEditExit(FCompEdits[Idx]);    // и нормализация, как при уходе
     end;
     Exit;
   end;
 
-  if IsFileKey(FCompKeys[I]) then
+  if IsFileKey(FCompKeys[Idx]) then
   begin
     Dlg := TOpenDialog.Create(Self);
     try
       Dlg.Title := 'Выберите файл';
-      Dlg.FileName := FCompEdits[I].Text;
+      Dlg.FileName := FCompEdits[Idx].Text;
       if Dlg.Execute then
-        FCompEdits[I].Text := Dlg.FileName;
+        FCompEdits[Idx].Text := Dlg.FileName;
     finally
       Dlg.Free;
     end;
   end
   else
   begin
-    Dir := Trim(FCompEdits[I].Text);
+    Dir := Trim(FCompEdits[Idx].Text);
     // FreeBASIC, поле пустое: Include и Library - с inc и lib компилятора
     // (их fbc и берёт, когда поля пустые), папка второго компилятора - с
     // папки над первым (обе версии обычно лежат рядом)
     if (Dir = '') and (CompareText(FCompType, 'FreeBASIC') = 0) then
-      Dir := FbBrowseStart(FCompKeys[I]);
+      Dir := FbBrowseStart(FCompKeys[Idx]);
     // Поле пустое - начинаем с папки текущего проекта, а её нет - с папки
     // самой программы: искать с корня диска неудобно
     if (Dir = '') and (Form1 <> nil) then
       Dir := Form1.CurrentProjectDir;
 
     if BrowseFolderDialog('Выберите папку', Dir) then
-      FCompEdits[I].Text := IncludeTrailingPathDelimiter(Dir);
+      FCompEdits[Idx].Text := IncludeTrailingPathDelimiter(Dir);
   end;
 end;
 
@@ -5158,18 +5158,18 @@ end;
 // этой вкладке нет, как и на прочих настройках редактора
 procedure TForm2.CompEditChange(Sender: TObject);
 var
-  I: Integer;
+  Idx: Integer;
   Ini: TIniFile;
 begin
   if Form1 = nil then
     Exit;
-  I := TUiEdit(Sender).Tag;
-  if (I < 0) or (I > High(FCompKeys)) then
+  Idx := TUiEdit(Sender).Tag;
+  if (Idx < 0) or (Idx > High(FCompKeys)) then
     Exit;
 
   Ini := TIniFile.Create(Form1.SettingsFileName);
   try
-    Ini.WriteString(CompIniSection(FCompKeys[I]), CompIniKey(FCompKeys[I]),
+    Ini.WriteString(CompIniSection(FCompKeys[Idx]), CompIniKey(FCompKeys[Idx]),
                     TUiEdit(Sender).Text);
   finally
     Ini.Free;
@@ -5177,11 +5177,11 @@ begin
 
   // То же поле на вкладке Arduino
   if CompareText(FCompType, 'Arduino') = 0 then
-    ArdTabSetField(FCompKeys[I], TUiEdit(Sender).Text);
+    ArdTabSetField(FCompKeys[Idx], TUiEdit(Sender).Text);
 
   // Сменился IDE path - поля от него следом (Use IDE path)
   if (FCompUseIde <> nil) and FCompUseIde.Checked and
-     (CompareText(FCompKeys[I], 'IdePath') = 0) then
+     (CompareText(FCompKeys[Idx], 'IdePath') = 0) then
     CompApplyIdePath;
 end;
 
@@ -5249,28 +5249,28 @@ const
   Gap = 8;
 var
   Bmp: TBitmap;
-  X: Integer;
+  PosX: Integer;
 begin
   Bmp := TBitmap.Create;
   try
     Bmp.Canvas.Font.Assign(grpIndent.Font);
-    X := 6;
+    PosX := 6;
 
-    lblIndent.Left := X;
-    Inc(X, Bmp.Canvas.TextWidth(lblIndent.Caption) + 4);
-    cmbIndentKind.Left := X;
-    Inc(X, cmbIndentKind.Width + 4);
-    cmbIndentSize.Left := X;
-    Inc(X, cmbIndentSize.Width + Gap * 2);
+    lblIndent.Left := PosX;
+    Inc(PosX, Bmp.Canvas.TextWidth(lblIndent.Caption) + 4);
+    cmbIndentKind.Left := PosX;
+    Inc(PosX, cmbIndentKind.Width + 4);
+    cmbIndentSize.Left := PosX;
+    Inc(PosX, cmbIndentSize.Width + Gap * 2);
 
-    chkHotTabHighlight.Left := X;
+    chkHotTabHighlight.Left := PosX;
     chkHotTabHighlight.Width := GetSystemMetrics(SM_CXMENUCHECK) + 4 +
       Bmp.Canvas.TextWidth(chkHotTabHighlight.Caption) + 6;
-    Inc(X, chkHotTabHighlight.Width + Gap);
+    Inc(PosX, chkHotTabHighlight.Width + Gap);
 
     // UpDown встаёт вплотную к полю при привязке, поэтому после переноса
     // поля привязываем заново
-    edtPale.Left := X;
+    edtPale.Left := PosX;
     udPale.Associate := nil;
     udPale.Associate := edtPale;
   finally
@@ -5283,38 +5283,38 @@ const
   Gap = 8;
 var
   Bmp: TBitmap;
-  X: Integer;
+  PosX: Integer;
 begin
   Bmp := TBitmap.Create;
   try
     Bmp.Canvas.Font.Assign(grpEditorColors.Font);
-    X := 6;
+    PosX := 6;
 
-    lblEditorColor.Left := X;
-    Inc(X, Bmp.Canvas.TextWidth(lblEditorColor.Caption) + Gap);
-    pnlEditorFG.Left := X;
-    Inc(X, pnlEditorFG.Width + 3);
-    pnlEditorBG.Left := X;
-    Inc(X, pnlEditorBG.Width + Gap * 3);
+    lblEditorColor.Left := PosX;
+    Inc(PosX, Bmp.Canvas.TextWidth(lblEditorColor.Caption) + Gap);
+    pnlEditorFG.Left := PosX;
+    Inc(PosX, pnlEditorFG.Width + 3);
+    pnlEditorBG.Left := PosX;
+    Inc(PosX, pnlEditorBG.Width + Gap * 3);
 
-    lblGutterColor.Left := X;
-    Inc(X, Bmp.Canvas.TextWidth(lblGutterColor.Caption) + Gap);
+    lblGutterColor.Left := PosX;
+    Inc(PosX, Bmp.Canvas.TextWidth(lblGutterColor.Caption) + Gap);
 
-    pnlGutterFG.Left := X;
-    Inc(X, pnlGutterFG.Width + 3);
-    pnlGutterBG.Left := X;
-    grpEditorColors.Width := X + pnlGutterBG.Width + 8;
+    pnlGutterFG.Left := PosX;
+    Inc(PosX, pnlGutterFG.Width + 3);
+    pnlGutterBG.Left := PosX;
+    grpEditorColors.Width := PosX + pnlGutterBG.Width + 8;
   finally
     Bmp.Free;
   end;
 end;
 
 // Цвет надписи для заливки C: белый на тёмном, чёрный на светлом
-function ContrastTextColor(C: TColor): TColor;
+function ContrastTextColor(Clr: TColor): TColor;
 var
   RGBColor: Longint;
 begin
-  RGBColor := ColorToRGB(C);
+  RGBColor := ColorToRGB(Clr);
   if (GetRValue(RGBColor) * 299 + GetGValue(RGBColor) * 587 +
       GetBValue(RGBColor) * 114) < 128000 then
     Result := clWhite
@@ -5323,12 +5323,12 @@ begin
 end;
 
 // Квадратик залит цветом C, надпись - контрастная
-procedure PaintSwatch(APanel: TPanel; C: TColor);
+procedure PaintSwatch(APanel: TPanel; Clr: TColor);
 begin
   if APanel = nil then
     Exit;
-  APanel.Color := C;
-  APanel.Font.Color := ContrastTextColor(C);
+  APanel.Color := Clr;
+  APanel.Font.Color := ContrastTextColor(Clr);
 end;
 
 // Образцы цветов (рамка Editor colors на вкладке Color Scheme) - по текущим
@@ -5346,35 +5346,35 @@ end;
 // Щелчок по квадратику цвета: выбор цвета, сразу на экран и в editor.ini
 procedure TForm2.ColorSwatchClick(Sender: TObject);
 var
-  C: TColor;
+  Clr: TColor;
 begin
   if Form1 = nil then
     Exit;
 
   if Sender = pnlEditorFG then
-    C := Form1.BaseFontColor
+    Clr := Form1.BaseFontColor
   else if Sender = pnlEditorBG then
-    C := Form1.EditorBG
+    Clr := Form1.EditorBG
   else if Sender = pnlGutterFG then
-    C := Form1.GutterFG
+    Clr := Form1.GutterFG
   else if Sender = pnlGutterBG then
-    C := Form1.GutterBG
+    Clr := Form1.GutterBG
   else
     Exit;
 
-  ColorDlg.Color := C;
+  ColorDlg.Color := Clr;
   if not ColorDlg.Execute then
     Exit;
-  C := ColorDlg.Color;
+  Clr := ColorDlg.Color;
 
   if Sender = pnlEditorFG then
-    Form1.SetBaseFontColor(C)
+    Form1.SetBaseFontColor(Clr)
   else if Sender = pnlEditorBG then
-    Form1.SetEditorBG(C)
+    Form1.SetEditorBG(Clr)
   else if Sender = pnlGutterFG then
-    Form1.SetGutterColors(C, Form1.GutterBG)
+    Form1.SetGutterColors(Clr, Form1.GutterBG)
   else
-    Form1.SetGutterColors(Form1.GutterFG, C);
+    Form1.SetGutterColors(Form1.GutterFG, Clr);
   UpdateColorSwatches;
 end;
 
@@ -5437,7 +5437,7 @@ end;
 // Результат - в таблице и в редакторе; в файл его пишет Save.
 procedure TForm2.btnRestoreDefaultsClick(Sender: TObject);
 var
-  I, N, G: Integer;
+  I, Num, GrpIdx: Integer;
   SavedNames, SavedWords: array of string;
   OpNames, OpChars: array of string;   // группы операторов: имя и символы
   MkNames, MkWords: array of string;   // группы отметки строк
@@ -5454,10 +5454,10 @@ begin
   ApplyGridToForm1(False);
 
   // 2. Данные языка - запомнить
-  N := Length(Form1.FScheme.KeywordGroups);
-  SetLength(SavedNames, N);
-  SetLength(SavedWords, N);
-  for I := 0 to N - 1 do
+  Num := Length(Form1.FScheme.KeywordGroups);
+  SetLength(SavedNames, Num);
+  SetLength(SavedWords, Num);
+  for I := 0 to Num - 1 do
   begin
     SavedNames[I] := Form1.FScheme.KeywordGroups[I].Name;
     if Form1.FScheme.KeywordGroups[I].Words <> nil then
@@ -5512,8 +5512,8 @@ begin
 
   // 4. Данные языка - обратно, с цветами умолчаний
   Form1.FScheme.ClearKeywordGroups;
-  SetLength(Form1.FScheme.KeywordGroups, N);
-  for I := 0 to N - 1 do
+  SetLength(Form1.FScheme.KeywordGroups, Num);
+  for I := 0 to Num - 1 do
   begin
     Form1.FScheme.KeywordGroups[I].Name := SavedNames[I];
     Form1.FScheme.KeywordGroups[I].Words := TStringList.Create;
@@ -5546,34 +5546,34 @@ begin
   // Группы, которой в умолчаниях нет, заводим заново.
   for I := 0 to High(OpNames) do
   begin
-    G := Form1.FScheme.OpGroupIndex(OpNames[I]);
-    if G < 0 then
+    GrpIdx := Form1.FScheme.OpGroupIndex(OpNames[I]);
+    if GrpIdx < 0 then
     begin
       SetLength(Form1.FScheme.OpGroups, Length(Form1.FScheme.OpGroups) + 1);
-      G := High(Form1.FScheme.OpGroups);
-      Form1.FScheme.OpGroups[G].Name := OpNames[I];
-      Form1.FScheme.OpGroups[G].FgColor := clRed;
-      Form1.FScheme.OpGroups[G].BgColor := Form1.FScheme.FTextBG;
+      GrpIdx := High(Form1.FScheme.OpGroups);
+      Form1.FScheme.OpGroups[GrpIdx].Name := OpNames[I];
+      Form1.FScheme.OpGroups[GrpIdx].FgColor := clRed;
+      Form1.FScheme.OpGroups[GrpIdx].BgColor := Form1.FScheme.FTextBG;
     end;
-    Form1.FScheme.SetOpChars(G, OpChars[I]);
+    Form1.FScheme.SetOpChars(GrpIdx, OpChars[I]);
   end;
 
   for I := 0 to High(MkNames) do
   begin
-    G := Form1.FScheme.MarkGroupIndex(MkNames[I]);
-    if G < 0 then
+    GrpIdx := Form1.FScheme.MarkGroupIndex(MkNames[I]);
+    if GrpIdx < 0 then
     begin
       SetLength(Form1.FScheme.MarkGroups, Length(Form1.FScheme.MarkGroups) + 1);
-      G := High(Form1.FScheme.MarkGroups);
-      Form1.FScheme.MarkGroups[G].Name := MkNames[I];
-      Form1.FScheme.MarkGroups[G].FgColor := clNone;
-      Form1.FScheme.MarkGroups[G].BgColor := clYellow;
-      Form1.FScheme.MarkGroups[G].Words := TStringList.Create;
-      Form1.FScheme.MarkGroups[G].Words.Sorted := True;
-      Form1.FScheme.MarkGroups[G].Words.Duplicates := dupIgnore;
-      Form1.FScheme.MarkGroups[G].Words.CaseSensitive := False;
+      GrpIdx := High(Form1.FScheme.MarkGroups);
+      Form1.FScheme.MarkGroups[GrpIdx].Name := MkNames[I];
+      Form1.FScheme.MarkGroups[GrpIdx].FgColor := clNone;
+      Form1.FScheme.MarkGroups[GrpIdx].BgColor := clYellow;
+      Form1.FScheme.MarkGroups[GrpIdx].Words := TStringList.Create;
+      Form1.FScheme.MarkGroups[GrpIdx].Words.Sorted := True;
+      Form1.FScheme.MarkGroups[GrpIdx].Words.Duplicates := dupIgnore;
+      Form1.FScheme.MarkGroups[GrpIdx].Words.CaseSensitive := False;
     end;
-    SetWordsByComma(Form1.FScheme.MarkGroups[G].Words, MkWords[I]);
+    SetWordsByComma(Form1.FScheme.MarkGroups[GrpIdx].Words, MkWords[I]);
   end;
 
   Form1.FScheme.SchemaSections.Assign(Sections);

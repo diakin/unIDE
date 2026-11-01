@@ -959,11 +959,11 @@ type
     procedure Paint; override;
     procedure Resize; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-      X, Y: Integer); override;
+      PosX, PosY: Integer); override;
     procedure DblClick; override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
-      X, Y: Integer); override;
+      PosX, PosY: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -4100,13 +4100,13 @@ begin
 end;
 
 procedure TFarView.MouseDown(Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+  PosX, PosY: Integer);
 var
   PanelIndex, ItemIndex: Integer;
   HasItem: Boolean;
   EditX0, EditW0: Integer;
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
   EditX0 := 0;
   EditW0 := 0;
   if DocOpen then
@@ -4117,7 +4117,7 @@ begin
   if FHelp <> nil then
   begin
     if Button = mbLeft then
-      HelpMouse(X, Y);
+      HelpMouse(PosX, PosY);
     Invalidate;
     Exit;
   end;
@@ -4125,14 +4125,14 @@ begin
   if FPickOpen then
   begin
     if Button = mbLeft then
-      PickMouse(X, Y);
+      PickMouse(PosX, PosY);
     Invalidate;
     Exit;
   end;
   // Открыто меню: щелчок по пункту выбирает его, мимо меню - закрывает
   if FMenuKind <> fmNone then
   begin
-    ItemIndex := MenuItemAt(X, Y);
+    ItemIndex := MenuItemAt(PosX, PosY);
     if ItemIndex >= 0 then
       MenuActivate(ItemIndex)
     else
@@ -4146,7 +4146,7 @@ begin
     // Открыт список поля: щелчок по нему выбирает, мимо - закрывает
     if FDlgDrop >= 0 then
     begin
-      if (Button = mbLeft) and DlgDropMouse(X, Y) then
+      if (Button = mbLeft) and DlgDropMouse(PosX, PosY) then
       begin
         Invalidate;
         Exit;
@@ -4154,19 +4154,19 @@ begin
       FDlgDrop := -1;
     end;
     if (Button = mbLeft) and (Length(FDlgRows) > 0) and
-       (Y div FCellH >= FDlgRowsTop) and
-       (Y div FCellH < FDlgRowsTop + Length(FDlgRows)) then
+       (PosY div FCellH >= FDlgRowsTop) and
+       (PosY div FCellH < FDlgRowsTop + Length(FDlgRows)) then
     begin
-      DlgRowsMouse(X, Y);
+      DlgRowsMouse(PosX, PosY);
       // Двойной щелчок по полю - выделить слово
       if (ssDouble in Shift) and DlgRowIsEdit and (FDlgDrop < 0) and
-         (X div FCellW >= FDlgRowsLeft) then
+         (PosX div FCellW >= FDlgRowsLeft) then
         DlgRowsDblClick;
     end
-    else if (Button = mbLeft) and (Y div FCellH = FDlgButtonRow) then
+    else if (Button = mbLeft) and (PosY div FCellH = FDlgButtonRow) then
       for ItemIndex := 0 to High(FDlgButtonCol) do
-        if (X div FCellW >= FDlgButtonCol[ItemIndex]) and
-           (X div FCellW < FDlgButtonCol[ItemIndex] +
+        if (PosX div FCellW >= FDlgButtonCol[ItemIndex]) and
+           (PosX div FCellW < FDlgButtonCol[ItemIndex] +
                            Length(FDlgButtons[ItemIndex]) + 4) then
         begin
           DlgActivate(ItemIndex);
@@ -4179,21 +4179,21 @@ begin
   if FFindOpen then
   begin
     if Button = mbLeft then
-      FindMouse(X, Y);
+      FindMouse(PosX, PosY);
     Invalidate;
     Exit;
   end;
   // Панели спрятаны или щелчок ниже панелей (вывод, командная строка);
   // редактор и просмотр - во всю высоту
-  if FPanelsHidden or ((Y div FCellH >= PanelHeight) and
-     not InDocArea(X, Y)) then
+  if FPanelsHidden or ((PosY div FCellH >= PanelHeight) and
+     not InDocArea(PosX, PosY)) then
   begin
     Invalidate;
     Exit;
   end;
   // Просмотр (F3): щелчок - перейти в него
   if (FViewer <> nil) and (FEditWide or
-     ((X div FCellW >= EditX0) and (X div FCellW < EditX0 + EditW0))) then
+     ((PosX div FCellW >= EditX0) and (PosX div FCellW < EditX0 + EditW0))) then
   begin
     FActive := FEditPanel;
     Invalidate;
@@ -4201,18 +4201,18 @@ begin
   end;
   // Редактор (F4): каретка под мышь, Shift - выделение до неё
   if (FEditor <> nil) and (FEditWide or
-     ((X div FCellW >= EditX0) and (X div FCellW < EditX0 + EditW0))) then
+     ((PosX div FCellW >= EditX0) and (PosX div FCellW < EditX0 + EditW0))) then
   begin
     FActive := FEditPanel;
     if Button = mbLeft then
     begin
-      EditMouse(X, Y, ssShift in Shift, False);
+      EditMouse(PosX, PosY, ssShift in Shift, False);
       FEditDragging := True;
     end;
     Invalidate;
     Exit;
   end;
-  HasItem := ItemAt(X, Y, PanelIndex, ItemIndex);
+  HasItem := ItemAt(PosX, PosY, PanelIndex, ItemIndex);
   FActive := PanelIndex;
   if HasItem then
   begin
@@ -4337,21 +4337,21 @@ begin
   Message.Result := 1;
 end;
 
-procedure TFarView.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TFarView.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 begin
-  inherited MouseMove(Shift, X, Y);
+  inherited MouseMove(Shift, PosX, PosY);
   // Протяжка в редакторе - выделение
   if FEditDragging and (FEditor <> nil) and (ssLeft in Shift) then
-    EditMouse(X, Y, True, True);
+    EditMouse(PosX, PosY, True, True);
   // Протяжка в поле окна - выделение
   if (FDlgDragRow >= 0) and (FDlgKind <> fdNone) and (ssLeft in Shift) then
-    DlgRowsMouseMove(X);
+    DlgRowsMouseMove(PosX);
 end;
 
 procedure TFarView.MouseUp(Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+  PosX, PosY: Integer);
 begin
-  inherited MouseUp(Button, Shift, X, Y);
+  inherited MouseUp(Button, Shift, PosX, PosY);
   if Button = mbLeft then
   begin
     FEditDragging := False;

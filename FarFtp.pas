@@ -1658,8 +1658,8 @@ begin
       if (FCancelled <> 0) and (FErrorText = '') then
         FErrorText := 'прервано';
     except
-      on E: Exception do
-        FErrorText := E.Message;
+      on Err: Exception do
+        FErrorText := Err.Message;
     end;
   finally
     InterlockedExchange(FFinished, 1);

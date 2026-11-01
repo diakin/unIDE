@@ -287,26 +287,26 @@ end;
 
 function UiThemeColor(const ARole: string): TColor;
 var
-  I: Integer;
+  Idx: Integer;
 begin
   if not ColorsReady then
     FillDefaults(Kind);
-  I := RoleIndex(ARole);
-  if I < 0 then
+  Idx := RoleIndex(ARole);
+  if Idx < 0 then
     Result := clNone
   else
-    Result := Colors[I];
+    Result := Colors[Idx];
 end;
 
 procedure UiThemeSetColor(const ARole: string; AColor: TColor);
 var
-  I: Integer;
+  Idx: Integer;
 begin
   if not ColorsReady then
     FillDefaults(Kind);
-  I := RoleIndex(ARole);
-  if I >= 0 then
-    Colors[I] := AColor;
+  Idx := RoleIndex(ARole);
+  if Idx >= 0 then
+    Colors[Idx] := AColor;
 end;
 
 procedure ProfAdd(const AClass: string; ATicks: Int64);
@@ -330,7 +330,7 @@ end;
 procedure UiThemeChanged;
 var
   I: Integer;
-  C: TControl;
+  Ctrl: TControl;
   TickBefore, TickAfter: Int64;
 begin
   if Clients = nil then
@@ -338,15 +338,15 @@ begin
   for I := Clients.Count - 1 downto 0 do
     if I < Clients.Count then
     begin
-      C := TControl(Clients[I]);
+      Ctrl := TControl(Clients[I]);
       if ProfNames <> nil then
         QueryPerformanceCounter(TickBefore);
-      if C.Perform(UM_UITHEMECHANGED, 0, 0) = 0 then
-        C.Invalidate;
+      if Ctrl.Perform(UM_UITHEMECHANGED, 0, 0) = 0 then
+        Ctrl.Invalidate;
       if ProfNames <> nil then
       begin
         QueryPerformanceCounter(TickAfter);
-        ProfAdd(C.ClassName, TickAfter - TickBefore);
+        ProfAdd(Ctrl.ClassName, TickAfter - TickBefore);
       end;
     end;
 end;

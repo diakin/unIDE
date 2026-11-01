@@ -331,8 +331,8 @@ begin
       Lines.SaveToFile(DsgIconUserFile);
       Result := True;
     except
-      on E: Exception do
-        AError := E.Message;
+      on Err: Exception do
+        AError := Err.Message;
     end;
   finally
     Lines.Free;

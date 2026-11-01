@@ -64,23 +64,23 @@ type
     function  Len: Integer;
     function  Thick: Integer;
     function  ArrowLen: Integer;
-    function  Along(X, Y: Integer): Integer;
+    function  Along(PosX, PosY: Integer): Integer;
     procedure ThumbSpan(var AStart, ALen: Integer);
-    function  PartAt(X, Y: Integer): TUiScrollPart;
+    function  PartAt(PosX, PosY: Integer): TUiScrollPart;
     function  PartRect(AFrom, ATo: Integer): TRect;
     procedure DoStep(APart: TUiScrollPart);
     procedure TimerTick(Sender: TObject);
-    procedure DrawArrow(const R: TRect; ALow: Boolean; APart: TUiScrollPart);
+    procedure DrawArrow(const RectVal: TRect; ALow: Boolean; APart: TUiScrollPart);
     procedure PaintNative;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+                        PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
-                      X, Y: Integer); override;
+                      PosX, PosY: Integer); override;
     procedure Change; virtual;
     function  GetDragging: Boolean;
   public
@@ -138,7 +138,7 @@ type
     procedure BarChange(Sender: TObject);
     procedure HBarChange(Sender: TObject);
     procedure SyncBar(ABar: TUiScrollBar; ASB: Integer; AShow: Boolean;
-                      const R: TRect);
+                      const RectVal: TRect);
     function  GetRange(ASB: Integer;
                        var AMin, AMax, APage, APos: Integer): Boolean;
     procedure HideAll;
@@ -164,7 +164,7 @@ function UiScrollFind(ACtl: TWinControl): TUiListScroll;
 // Служебная часть TUiListScroll (полоса или угол поверх полос элемента), а
 // не полоса, которую поставили в форму сами. Для снимка формы: таких
 // элементов нет ни в коде, ни в .dfm.
-function UiScrollIsService(C: TComponent): Boolean;
+function UiScrollIsService(Comp: TComponent): Boolean;
 
 implementation
 
@@ -307,12 +307,12 @@ begin
     Result := Len div 2;
 end;
 
-function TUiScrollBar.Along(X, Y: Integer): Integer;
+function TUiScrollBar.Along(PosX, PosY: Integer): Integer;
 begin
   if FKind = sbVertical then
-    Result := Y
+    Result := PosY
   else
-    Result := X;
+    Result := PosX;
 end;
 
 // Ползунок: начало и длина вдоль полосы. Длина - доля видимого (LargeChange)
@@ -335,23 +335,23 @@ begin
   AStart := ArrowLen + MulDiv(Track - ALen, FPosition - FMin, Range);
 end;
 
-function TUiScrollBar.PartAt(X, Y: Integer): TUiScrollPart;
+function TUiScrollBar.PartAt(PosX, PosY: Integer): TUiScrollPart;
 var
-  P, S, L: Integer;
+  CharPos, StartPos, Len2: Integer;
 begin
-  P := Along(X, Y);
-  if P < ArrowLen then
+  CharPos := Along(PosX, PosY);
+  if CharPos < ArrowLen then
     Result := spArrowLo
-  else if P >= Len - ArrowLen then
+  else if CharPos >= Len - ArrowLen then
     Result := spArrowHi
   else
   begin
-    ThumbSpan(S, L);
-    if L = 0 then
+    ThumbSpan(StartPos, Len2);
+    if Len2 = 0 then
       Result := spNone
-    else if P < S then
+    else if CharPos < StartPos then
       Result := spTrackLo
-    else if P >= S + L then
+    else if CharPos >= StartPos + Len2 then
       Result := spTrackHi
     else
       Result := spThumb;
@@ -391,21 +391,21 @@ begin
 end;
 
 procedure TUiScrollBar.MouseDown(Button: TMouseButton; Shift: TShiftState;
-                                 X, Y: Integer);
+                                 PosX, PosY: Integer);
 var
-  S, L: Integer;
+  StartPos, Len: Integer;
 begin
   inherited;
   if Button <> mbLeft then
     Exit;
-  FMouse := Point(X, Y);
-  FDown := PartAt(X, Y);
+  FMouse := Point(PosX, PosY);
+  FDown := PartAt(PosX, PosY);
   case FDown of
     spThumb:
       begin
-        ThumbSpan(S, L);
-        FDragOffset := Along(X, Y) - S;
-        FDragFrom := Along(X, Y);
+        ThumbSpan(StartPos, Len);
+        FDragOffset := Along(PosX, PosY) - StartPos;
+        FDragFrom := Along(PosX, PosY);
       end;
     spArrowLo, spArrowHi, spTrackLo, spTrackHi:
       begin
@@ -417,47 +417,47 @@ begin
   Invalidate;
 end;
 
-procedure TUiScrollBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TUiScrollBar.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 var
-  S, L, Track, NewStart: Integer;
-  P: TUiScrollPart;
+  StartPos, Len2, Track, NewStart: Integer;
+  UiScrollPart: TUiScrollPart;
 begin
   inherited;
-  FMouse := Point(X, Y);
+  FMouse := Point(PosX, PosY);
   if FDown = spThumb then
   begin
     // Мышь ещё не сдвинулась с точки захвата - позицию не пересчитываем:
     // пересчёт через пиксели округляет, и один щелчок сдвинул бы текст
-    if Along(X, Y) = FDragFrom then
+    if Along(PosX, PosY) = FDragFrom then
       Exit;
     FDragFrom := MaxInt;
     // Ползунок - за мышью; позиция - той же долей от диапазона
-    ThumbSpan(S, L);
+    ThumbSpan(StartPos, Len2);
     Track := Len - 2 * ArrowLen;
-    if Track - L > 0 then
+    if Track - Len2 > 0 then
     begin
-      NewStart := Along(X, Y) - FDragOffset - ArrowLen;
-      Position := FMin + MulDiv(NewStart, FMax - FMin, Track - L);
+      NewStart := Along(PosX, PosY) - FDragOffset - ArrowLen;
+      Position := FMin + MulDiv(NewStart, FMax - FMin, Track - Len2);
     end;
   end
   else if FDown = spNone then
   begin
-    P := PartAt(X, Y);
-    if P <> FHot then
+    UiScrollPart := PartAt(PosX, PosY);
+    if UiScrollPart <> FHot then
     begin
-      FHot := P;
+      FHot := UiScrollPart;
       Invalidate;
     end;
   end;
 end;
 
 procedure TUiScrollBar.MouseUp(Button: TMouseButton; Shift: TShiftState;
-                               X, Y: Integer);
+                               PosX, PosY: Integer);
 begin
   inherited;
   FTimer.Enabled := False;
   FDown := spNone;
-  FHot := PartAt(X, Y);
+  FHot := PartAt(PosX, PosY);
   Invalidate;
 end;
 
@@ -479,10 +479,10 @@ end;
 
 // Стрелка: подложка (нажата - цветом нажатого ползунка, под мышью - цветом
 // ползунка) и треугольник
-procedure TUiScrollBar.DrawArrow(const R: TRect; ALow: Boolean;
+procedure TUiScrollBar.DrawArrow(const RectVal: TRect; ALow: Boolean;
                                  APart: TUiScrollPart);
 var
-  Cx, Cy, S: Integer;
+  Cx, Cy, StartPos: Integer;
   Pts: array[0..2] of TPoint;
   Off: Boolean;
 begin
@@ -492,46 +492,46 @@ begin
     Canvas.Brush.Color := FThumbColor
   else
     Canvas.Brush.Color := FTrackColor;
-  Canvas.FillRect(R);
+  Canvas.FillRect(RectVal);
 
   Off := FMax <= FMin;
-  Cx := (R.Left + R.Right) div 2;
-  Cy := (R.Top + R.Bottom) div 2;
+  Cx := (RectVal.Left + RectVal.Right) div 2;
+  Cy := (RectVal.Top + RectVal.Bottom) div 2;
   // Размер треугольника - от толщины полосы
   if FKind = sbVertical then
-    S := (R.Right - R.Left) div 4
+    StartPos := (RectVal.Right - RectVal.Left) div 4
   else
-    S := (R.Bottom - R.Top) div 4;
-  if S < 2 then
-    S := 2;
+    StartPos := (RectVal.Bottom - RectVal.Top) div 4;
+  if StartPos < 2 then
+    StartPos := 2;
   if FKind = sbVertical then
   begin
     if ALow then
     begin
-      Pts[0] := Point(Cx, Cy - S div 2 - 1);
-      Pts[1] := Point(Cx - S, Cy + S div 2);
-      Pts[2] := Point(Cx + S, Cy + S div 2);
+      Pts[0] := Point(Cx, Cy - StartPos div 2 - 1);
+      Pts[1] := Point(Cx - StartPos, Cy + StartPos div 2);
+      Pts[2] := Point(Cx + StartPos, Cy + StartPos div 2);
     end
     else
     begin
-      Pts[0] := Point(Cx, Cy + S div 2 + 1);
-      Pts[1] := Point(Cx - S, Cy - S div 2);
-      Pts[2] := Point(Cx + S, Cy - S div 2);
+      Pts[0] := Point(Cx, Cy + StartPos div 2 + 1);
+      Pts[1] := Point(Cx - StartPos, Cy - StartPos div 2);
+      Pts[2] := Point(Cx + StartPos, Cy - StartPos div 2);
     end;
   end
   else
   begin
     if ALow then
     begin
-      Pts[0] := Point(Cx - S div 2 - 1, Cy);
-      Pts[1] := Point(Cx + S div 2, Cy - S);
-      Pts[2] := Point(Cx + S div 2, Cy + S);
+      Pts[0] := Point(Cx - StartPos div 2 - 1, Cy);
+      Pts[1] := Point(Cx + StartPos div 2, Cy - StartPos);
+      Pts[2] := Point(Cx + StartPos div 2, Cy + StartPos);
     end
     else
     begin
-      Pts[0] := Point(Cx + S div 2 + 1, Cy);
-      Pts[1] := Point(Cx - S div 2, Cy - S);
-      Pts[2] := Point(Cx - S div 2, Cy + S);
+      Pts[0] := Point(Cx + StartPos div 2 + 1, Cy);
+      Pts[1] := Point(Cx - StartPos div 2, Cy - StartPos);
+      Pts[2] := Point(Cx - StartPos div 2, Cy + StartPos);
     end;
   end;
   if Off then
@@ -546,69 +546,69 @@ end;
 // (стрелки, дорожка до и после ползунка, ползунок с насечкой)
 procedure TUiScrollBar.PaintNative;
 var
-  A, S, L: Integer;
+  Num1, StartPos, Len2: Integer;
   Off, Vert: Boolean;
 
   // Состояние части: за каждым ...Normal в перечне темы идут Hot, Pressed,
   // Disabled
   procedure Draw(ABase: TThemedScrollBar; APart: TUiScrollPart;
-                 const R: TRect);
+                 const RectVal: TRect);
   var
-    K: Integer;
+    Idx3: Integer;
   begin
-    if (R.Right <= R.Left) or (R.Bottom <= R.Top) then
+    if (RectVal.Right <= RectVal.Left) or (RectVal.Bottom <= RectVal.Top) then
       Exit;
     if Off then
-      K := 3
+      Idx3 := 3
     else if FDown = APart then
-      K := 2
+      Idx3 := 2
     else if FHot = APart then
-      K := 1
+      Idx3 := 1
     else
-      K := 0;
+      Idx3 := 0;
     ThemeServices.DrawElement(Canvas.Handle,
-      ThemeServices.GetElementDetails(TThemedScrollBar(Ord(ABase) + K)), R);
+      ThemeServices.GetElementDetails(TThemedScrollBar(Ord(ABase) + Idx3)), RectVal);
   end;
 
 begin
   Off := (FMax <= FMin) or not Enabled;
   Vert := FKind = sbVertical;
-  A := ArrowLen;
-  ThumbSpan(S, L);
+  Num1 := ArrowLen;
+  ThumbSpan(StartPos, Len2);
   if Vert then
   begin
-    Draw(tsArrowBtnUpNormal, spArrowLo, PartRect(0, A));
-    Draw(tsArrowBtnDownNormal, spArrowHi, PartRect(Len - A, Len));
-    if L > 0 then
+    Draw(tsArrowBtnUpNormal, spArrowLo, PartRect(0, Num1));
+    Draw(tsArrowBtnDownNormal, spArrowHi, PartRect(Len - Num1, Len));
+    if Len2 > 0 then
     begin
-      Draw(tsLowerTrackVertNormal, spTrackLo, PartRect(A, S));
-      Draw(tsUpperTrackVertNormal, spTrackHi, PartRect(S + L, Len - A));
-      Draw(tsThumbBtnVertNormal, spThumb, PartRect(S, S + L));
-      Draw(tsGripperVertNormal, spThumb, PartRect(S, S + L));
+      Draw(tsLowerTrackVertNormal, spTrackLo, PartRect(Num1, StartPos));
+      Draw(tsUpperTrackVertNormal, spTrackHi, PartRect(StartPos + Len2, Len - Num1));
+      Draw(tsThumbBtnVertNormal, spThumb, PartRect(StartPos, StartPos + Len2));
+      Draw(tsGripperVertNormal, spThumb, PartRect(StartPos, StartPos + Len2));
     end
     else
-      Draw(tsLowerTrackVertNormal, spNone, PartRect(A, Len - A));
+      Draw(tsLowerTrackVertNormal, spNone, PartRect(Num1, Len - Num1));
   end
   else
   begin
-    Draw(tsArrowBtnLeftNormal, spArrowLo, PartRect(0, A));
-    Draw(tsArrowBtnRightNormal, spArrowHi, PartRect(Len - A, Len));
-    if L > 0 then
+    Draw(tsArrowBtnLeftNormal, spArrowLo, PartRect(0, Num1));
+    Draw(tsArrowBtnRightNormal, spArrowHi, PartRect(Len - Num1, Len));
+    if Len2 > 0 then
     begin
-      Draw(tsLowerTrackHorzNormal, spTrackLo, PartRect(A, S));
-      Draw(tsUpperTrackHorzNormal, spTrackHi, PartRect(S + L, Len - A));
-      Draw(tsThumbBtnHorzNormal, spThumb, PartRect(S, S + L));
-      Draw(tsGripperHorzNormal, spThumb, PartRect(S, S + L));
+      Draw(tsLowerTrackHorzNormal, spTrackLo, PartRect(Num1, StartPos));
+      Draw(tsUpperTrackHorzNormal, spTrackHi, PartRect(StartPos + Len2, Len - Num1));
+      Draw(tsThumbBtnHorzNormal, spThumb, PartRect(StartPos, StartPos + Len2));
+      Draw(tsGripperHorzNormal, spThumb, PartRect(StartPos, StartPos + Len2));
     end
     else
-      Draw(tsLowerTrackHorzNormal, spNone, PartRect(A, Len - A));
+      Draw(tsLowerTrackHorzNormal, spNone, PartRect(Num1, Len - Num1));
   end;
 end;
 
 procedure TUiScrollBar.Paint;
 var
-  A, S, L, Inset: Integer;
-  R: TRect;
+  Num1, StartPos, Len2, Inset: Integer;
+  RectVal: TRect;
 begin
   // Тема Light при темах Windows, своих цветов владелец не задавал - как
   // полоса Windows
@@ -629,15 +629,15 @@ begin
   Canvas.Brush.Color := FTrackColor;
   Canvas.FillRect(ClientRect);
 
-  A := ArrowLen;
-  if A > 0 then
+  Num1 := ArrowLen;
+  if Num1 > 0 then
   begin
-    DrawArrow(PartRect(0, A), True, spArrowLo);
-    DrawArrow(PartRect(Len - A, Len), False, spArrowHi);
+    DrawArrow(PartRect(0, Num1), True, spArrowLo);
+    DrawArrow(PartRect(Len - Num1, Len), False, spArrowHi);
   end;
 
-  ThumbSpan(S, L);
-  if L > 0 then
+  ThumbSpan(StartPos, Len2);
+  if Len2 > 0 then
   begin
     if FDown = spThumb then
       Canvas.Brush.Color := FThumbHotColor
@@ -646,15 +646,15 @@ begin
     else
       Canvas.Brush.Color := FThumbColor;
     // Поперёк - с отступом от краёв, вдоль - с зазором в пиксель
-    R := PartRect(S + 1, S + L - 1);
+    RectVal := PartRect(StartPos + 1, StartPos + Len2 - 1);
     Inset := Thick div 5;
     if Inset < 2 then
       Inset := 2;
     if FKind = sbVertical then
-      InflateRect(R, -Inset, 0)
+      InflateRect(RectVal, -Inset, 0)
     else
-      InflateRect(R, 0, -Inset);
-    Canvas.FillRect(R);
+      InflateRect(RectVal, 0, -Inset);
+    Canvas.FillRect(RectVal);
   end;
 end;
 
@@ -788,15 +788,15 @@ begin
     end;
 end;
 
-function UiScrollIsService(C: TComponent): Boolean;
+function UiScrollIsService(Comp: TComponent): Boolean;
 var
   LS: TUiListScroll;
 begin
-  Result := C is TUiScrollCorner;
-  if Result or not (C is TUiScrollBar) or not (C.Owner is TWinControl) then
+  Result := Comp is TUiScrollCorner;
+  if Result or not (Comp is TUiScrollBar) or not (Comp.Owner is TWinControl) then
     Exit;
-  LS := UiScrollFind(TWinControl(C.Owner));
-  Result := (LS <> nil) and ((LS.Bar = C) or (LS.HBar = C));
+  LS := UiScrollFind(TWinControl(Comp.Owner));
+  Result := (LS <> nil) and ((LS.Bar = Comp) or (LS.HBar = Comp));
 end;
 
 constructor TUiListScroll.Attach(ACtl: TWinControl);
@@ -910,7 +910,7 @@ end;
 // Одна полоса: место R (в координатах родителя), диапазон и позиция - как у
 // полосы Windows ASB элемента
 procedure TUiListScroll.SyncBar(ABar: TUiScrollBar; ASB: Integer;
-                                AShow: Boolean; const R: TRect);
+                                AShow: Boolean; const RectVal: TRect);
 var
   AMin, AMax, APage, APos: Integer;
   Moved: Boolean;
@@ -925,11 +925,11 @@ begin
   end;
   if ABar.Parent <> FCtl.Parent then
     ABar.Parent := FCtl.Parent;
-  Moved := (ABar.Left <> R.Left) or (ABar.Top <> R.Top) or
-           (ABar.Width <> R.Right - R.Left) or
-           (ABar.Height <> R.Bottom - R.Top);
+  Moved := (ABar.Left <> RectVal.Left) or (ABar.Top <> RectVal.Top) or
+           (ABar.Width <> RectVal.Right - RectVal.Left) or
+           (ABar.Height <> RectVal.Bottom - RectVal.Top);
   if Moved then
-    ABar.SetBounds(R.Left, R.Top, R.Right - R.Left, R.Bottom - R.Top);
+    ABar.SetBounds(RectVal.Left, RectVal.Top, RectVal.Right - RectVal.Left, RectVal.Bottom - RectVal.Top);
 
   if GetRange(ASB, AMin, AMax, APage, APos) then
   begin
@@ -977,26 +977,26 @@ function TUiListScroll.GetRange(ASB: Integer;
                                 var AMin, AMax, APage, APos: Integer): Boolean;
 var
   SI: TScrollInfo;
-  G: TUiGridAcc;
+  UiGridAcc: TUiGridAcc;
   Lines, Span: Integer;
 begin
   Result := False;
   if FCtl is TCustomGrid then
   begin
-    G := TUiGridAcc(FCtl);
+    UiGridAcc := TUiGridAcc(FCtl);
     if ASB = SB_VERT then
     begin
-      AMin := G.FixedRows;
-      APage := G.VisibleRowCount;
-      AMax := G.RowCount - APage;
-      APos := G.TopRow;
+      AMin := UiGridAcc.FixedRows;
+      APage := UiGridAcc.VisibleRowCount;
+      AMax := UiGridAcc.RowCount - APage;
+      APos := UiGridAcc.TopRow;
     end
     else
     begin
-      AMin := G.FixedCols;
-      APage := G.VisibleColCount;
-      AMax := G.ColCount - APage;
-      APos := G.LeftCol;
+      AMin := UiGridAcc.FixedCols;
+      APage := UiGridAcc.VisibleColCount;
+      AMax := UiGridAcc.ColCount - APage;
+      APos := UiGridAcc.LeftCol;
     end;
     if APage < 1 then
       APage := 1;
@@ -1045,9 +1045,9 @@ end;
 
 procedure TUiListScroll.Sync;
 var
-  R: TRect;
-  P: TPoint;
-  W, H: Integer;
+  RectVal: TRect;
+  Pnt: TPoint;
+  WidthPx, HeightPx: Integer;
   Style: Longint;
   VOn, HOn: Boolean;
 begin
@@ -1080,16 +1080,16 @@ begin
   // Рабочая область элемента в координатах родителя. Вертикальная полоса
   // Windows - справа от неё во всю её высоту, горизонтальная - снизу во всю
   // ширину, угол - между ними.
-  Windows.GetClientRect(FCtl.Handle, R);
-  P := Point(R.Left, R.Top);
-  Windows.ClientToScreen(FCtl.Handle, P);
-  P := FCtl.Parent.ScreenToClient(P);
-  OffsetRect(R, P.X - R.Left, P.Y - R.Top);
-  W := GetSystemMetrics(SM_CXVSCROLL);
-  H := GetSystemMetrics(SM_CYHSCROLL);
+  Windows.GetClientRect(FCtl.Handle, RectVal);
+  Pnt := Point(RectVal.Left, RectVal.Top);
+  Windows.ClientToScreen(FCtl.Handle, Pnt);
+  Pnt := FCtl.Parent.ScreenToClient(Pnt);
+  OffsetRect(RectVal, Pnt.X - RectVal.Left, Pnt.Y - RectVal.Top);
+  WidthPx := GetSystemMetrics(SM_CXVSCROLL);
+  HeightPx := GetSystemMetrics(SM_CYHSCROLL);
 
-  SyncBar(FBar, SB_VERT, VOn, Rect(R.Right, R.Top, R.Right + W, R.Bottom));
-  SyncBar(FHBar, SB_HORZ, HOn, Rect(R.Left, R.Bottom, R.Right, R.Bottom + H));
+  SyncBar(FBar, SB_VERT, VOn, Rect(RectVal.Right, RectVal.Top, RectVal.Right + WidthPx, RectVal.Bottom));
+  SyncBar(FHBar, SB_HORZ, HOn, Rect(RectVal.Left, RectVal.Bottom, RectVal.Right, RectVal.Bottom + HeightPx));
 
   if FCorner <> nil then
   begin
@@ -1097,10 +1097,10 @@ begin
     begin
       if FCorner.Parent <> FCtl.Parent then
         FCorner.Parent := FCtl.Parent;
-      if (FCorner.Left <> R.Right) or (FCorner.Top <> R.Bottom) or
-         (FCorner.Width <> W) or (FCorner.Height <> H) then
+      if (FCorner.Left <> RectVal.Right) or (FCorner.Top <> RectVal.Bottom) or
+         (FCorner.Width <> WidthPx) or (FCorner.Height <> HeightPx) then
       begin
-        FCorner.SetBounds(R.Right, R.Bottom, W, H);
+        FCorner.SetBounds(RectVal.Right, RectVal.Bottom, WidthPx, HeightPx);
         if FCorner.HandleAllocated then
           FCorner.Update;
       end;
@@ -1150,28 +1150,28 @@ end;
 // Нашу вертикальную полосу сдвинули - прокрутить элемент к её позиции
 procedure TUiListScroll.BarChange(Sender: TObject);
 var
-  RowH, Count, K, First, V, MaxV: Integer;
-  H, N: THandle;
-  R: TRect;
+  RowH, Count, Idx3, First, IntVal, MaxV: Integer;
+  Hnd, Hnd2: THandle;
+  RectVal: TRect;
   SI: TScrollInfo;
-  G: TUiGridAcc;
+  UiGridAcc: TUiGridAcc;
 begin
   if FLock or (FCtl = nil) or (FBar = nil) or not FCtl.HandleAllocated then
     Exit;
   if FCtl is TCustomGrid then
   begin
     // Таблица: полоса в строках (GetRange) - первая видимая строка
-    G := TUiGridAcc(FCtl);
-    MaxV := G.RowCount - G.VisibleRowCount;
-    if MaxV < G.FixedRows then
-      MaxV := G.FixedRows;
-    V := FBar.Position;
-    if V > MaxV then
-      V := MaxV;
-    if V < G.FixedRows then
-      V := G.FixedRows;
-    if G.TopRow <> V then
-      G.TopRow := V;
+    UiGridAcc := TUiGridAcc(FCtl);
+    MaxV := UiGridAcc.RowCount - UiGridAcc.VisibleRowCount;
+    if MaxV < UiGridAcc.FixedRows then
+      MaxV := UiGridAcc.FixedRows;
+    IntVal := FBar.Position;
+    if IntVal > MaxV then
+      IntVal := MaxV;
+    if IntVal < UiGridAcc.FixedRows then
+      IntVal := UiGridAcc.FixedRows;
+    if UiGridAcc.TopRow <> IntVal then
+      UiGridAcc.TopRow := IntVal;
   end
   else if FCtl is TCustomListView then
   begin
@@ -1184,12 +1184,12 @@ begin
     if not GetScrollInfo(FCtl.Handle, SB_VERT, SI) then
       Exit;
     Count := SendMessage(FCtl.Handle, LVM_GETITEMCOUNT_, 0, 0);
-    FillChar(R, SizeOf(R), 0);
-    R.Left := 0;             // LVIR_BOUNDS
+    FillChar(RectVal, SizeOf(RectVal), 0);
+    RectVal.Left := 0;             // LVIR_BOUNDS
     RowH := 0;
     if (Count > 0) and
-       (SendMessage(FCtl.Handle, LVM_GETITEMRECT_, 0, Integer(@R)) <> 0) then
-      RowH := R.Bottom - R.Top;
+       (SendMessage(FCtl.Handle, LVM_GETITEMRECT_, 0, Integer(@RectVal)) <> 0) then
+      RowH := RectVal.Bottom - RectVal.Top;
     if RowH <= 0 then
       Exit;
     if SI.nMax + 1 > Count * 2 then
@@ -1205,18 +1205,18 @@ begin
     // узел с этим номером среди раскрытых (TVGN_FIRSTVISIBLE). WM_VSCROLL
     // с SB_THUMBPOSITION дерево не слушает: позицию оно берёт у своей
     // полосы, которую никто не тянул.
-    H := SendMessage(FCtl.Handle, TVM_GETNEXTITEM_, TVGN_ROOT_, 0);
-    K := 0;
-    while (H <> 0) and (K < FBar.Position) do
+    Hnd := SendMessage(FCtl.Handle, TVM_GETNEXTITEM_, TVGN_ROOT_, 0);
+    Idx3 := 0;
+    while (Hnd <> 0) and (Idx3 < FBar.Position) do
     begin
-      N := SendMessage(FCtl.Handle, TVM_GETNEXTITEM_, TVGN_NEXTVISIBLE_, H);
-      if N = 0 then
+      Hnd2 := SendMessage(FCtl.Handle, TVM_GETNEXTITEM_, TVGN_NEXTVISIBLE_, Hnd);
+      if Hnd2 = 0 then
         Break;
-      H := N;
-      Inc(K);
+      Hnd := Hnd2;
+      Inc(Idx3);
     end;
-    if H <> 0 then
-      SendMessage(FCtl.Handle, TVM_SELECTITEM_, TVGN_FIRSTVISIBLE_, H);
+    if Hnd <> 0 then
+      SendMessage(FCtl.Handle, TVM_SELECTITEM_, TVGN_FIRSTVISIBLE_, Hnd);
   end
   else if FCtl is TCustomMemo then
   begin
@@ -1242,25 +1242,25 @@ end;
 procedure TUiListScroll.HBarChange(Sender: TObject);
 var
   SI: TScrollInfo;
-  G: TUiGridAcc;
-  V, MaxV: Integer;
+  UiGridAcc: TUiGridAcc;
+  IntVal, MaxV: Integer;
 begin
   if FLock or (FCtl = nil) or (FHBar = nil) or not FCtl.HandleAllocated then
     Exit;
   if FCtl is TCustomGrid then
   begin
     // Таблица: полоса в колонках (GetRange) - первая видимая колонка
-    G := TUiGridAcc(FCtl);
-    MaxV := G.ColCount - G.VisibleColCount;
-    if MaxV < G.FixedCols then
-      MaxV := G.FixedCols;
-    V := FHBar.Position;
-    if V > MaxV then
-      V := MaxV;
-    if V < G.FixedCols then
-      V := G.FixedCols;
-    if G.LeftCol <> V then
-      G.LeftCol := V;
+    UiGridAcc := TUiGridAcc(FCtl);
+    MaxV := UiGridAcc.ColCount - UiGridAcc.VisibleColCount;
+    if MaxV < UiGridAcc.FixedCols then
+      MaxV := UiGridAcc.FixedCols;
+    IntVal := FHBar.Position;
+    if IntVal > MaxV then
+      IntVal := MaxV;
+    if IntVal < UiGridAcc.FixedCols then
+      IntVal := UiGridAcc.FixedCols;
+    if UiGridAcc.LeftCol <> IntVal then
+      UiGridAcc.LeftCol := IntVal;
   end
   else if FCtl is TCustomListView then
   begin

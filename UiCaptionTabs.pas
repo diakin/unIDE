@@ -36,15 +36,15 @@ type
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-      X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+      PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     // Ширина и высота - по текстам и шрифту
     procedure AutoWidth;
     // Номер вкладки под точкой X (-1 - нет)
-    function TabAt(X: Integer): Integer;
+    function TabAt(PosX: Integer): Integer;
   published
     // Tabs - раньше TabIndex: при чтении .dfm номер проверяется по числу
     // вкладок
@@ -161,7 +161,7 @@ begin
     SetBounds(Left, Top, NewWidth, NewHeight);
 end;
 
-function TUiCaptionTabs.TabAt(X: Integer): Integer;
+function TUiCaptionTabs.TabAt(PosX: Integer): Integer;
 var
   TabIdx: Integer;
   Bounds: TRect;
@@ -170,7 +170,7 @@ begin
   for TabIdx := 0 to FTabs.Count - 1 do
   begin
     Bounds := TabRect(TabIdx);
-    if (X >= Bounds.Left) and (X < Bounds.Right) then
+    if (PosX >= Bounds.Left) and (PosX < Bounds.Right) then
     begin
       Result := TabIdx;
       Exit;
@@ -209,14 +209,14 @@ begin
 end;
 
 procedure TUiCaptionTabs.MouseDown(Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+  PosX, PosY: Integer);
 var
   Picked: Integer;
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
   if Button <> mbLeft then
     Exit;
-  Picked := TabAt(X);
+  Picked := TabAt(PosX);
   if (Picked < 0) or (Picked = FTabIndex) then
     Exit;
   FTabIndex := Picked;
@@ -225,12 +225,12 @@ begin
     FOnChange(Self);
 end;
 
-procedure TUiCaptionTabs.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TUiCaptionTabs.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 var
   Hovered: Integer;
 begin
-  inherited MouseMove(Shift, X, Y);
-  Hovered := TabAt(X);
+  inherited MouseMove(Shift, PosX, PosY);
+  Hovered := TabAt(PosX);
   if (Hovered >= 0) and (Hovered <> FTabIndex) then
     Cursor := crHandPoint
   else

@@ -47,25 +47,25 @@ implementation
 // Подходит ли имя под одну из масок через ';' (*.pas;*.dpr)
 function FifMatchMasks(const AName, AMasks: string): Boolean;
 var
-  Rest, M: string;
-  P: Integer;
+  Rest, MsgStr: string;
+  CharPos: Integer;
 begin
   Result := False;
   Rest := AMasks;
   while Rest <> '' do
   begin
-    P := Pos(';', Rest);
-    if P > 0 then
+    CharPos := Pos(';', Rest);
+    if CharPos > 0 then
     begin
-      M := Trim(Copy(Rest, 1, P - 1));
-      Rest := Copy(Rest, P + 1, MaxInt);
+      MsgStr := Trim(Copy(Rest, 1, CharPos - 1));
+      Rest := Copy(Rest, CharPos + 1, MaxInt);
     end
     else
     begin
-      M := Trim(Rest);
+      MsgStr := Trim(Rest);
       Rest := '';
     end;
-    if (M <> '') and MatchesMask(AName, M) then
+    if (MsgStr <> '') and MatchesMask(AName, MsgStr) then
     begin
       Result := True;
       Exit;
@@ -77,22 +77,22 @@ end;
 // двоичный.
 function FifReadFile(const AFile: string; var AText: string): Boolean;
 var
-  F: TFileStream;
+  FileStrm: TFileStream;
   Size, I, Lim: Integer;
 begin
   Result := False;
   AText := '';
   try
-    F := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
+    FileStrm := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
     try
-      Size := F.Size;
+      Size := FileStrm.Size;
       if Size > FifMaxFileSize then
         Exit;
       SetLength(AText, Size);
       if Size > 0 then
-        F.ReadBuffer(AText[1], Size);
+        FileStrm.ReadBuffer(AText[1], Size);
     finally
-      F.Free;
+      FileStrm.Free;
     end;
   except
     Exit;

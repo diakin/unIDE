@@ -48,9 +48,9 @@ type
     procedure memScriptChange(Sender: TObject);
     procedure pbPreviewPaint(Sender: TObject);
     procedure pbPreviewMouseMove(Sender: TObject; Shift: TShiftState;
-                                 X, Y: Integer);
+                                 PosX, PosY: Integer);
     procedure pbPreviewMouseDown(Sender: TObject; Button: TMouseButton;
-                                 Shift: TShiftState; X, Y: Integer);
+                                 Shift: TShiftState; PosX, PosY: Integer);
     procedure memScriptClick(Sender: TObject);
     procedure memScriptKeyUp(Sender: TObject; var Key: Word;
                              Shift: TShiftState);
@@ -432,15 +432,15 @@ begin
 end;
 
 procedure TDlgIconEdit.pbPreviewMouseMove(Sender: TObject; Shift: TShiftState;
-                                          X, Y: Integer);
+                                          PosX, PosY: Integer);
 var
   PanelIdx, LocalY, LocalX: Integer;
 begin
   lblCoords.Caption := '';
   for PanelIdx := 0 to 1 do
   begin
-    LocalX := X - BigLeft;
-    LocalY := Y - PanelIdx * (PanelHeight + 4) - BigTop;
+    LocalX := PosX - BigLeft;
+    LocalY := PosY - PanelIdx * (PanelHeight + 4) - BigTop;
     if (LocalX >= 0) and (LocalY >= 0) and
        (LocalX < PreviewSide * PreviewZoom) and
        (LocalY < PreviewSide * PreviewZoom) then
@@ -654,7 +654,7 @@ end;
 
 procedure TDlgIconEdit.pbPreviewMouseDown(Sender: TObject;
                                           Button: TMouseButton;
-                                          Shift: TShiftState; X, Y: Integer);
+                                          Shift: TShiftState; PosX, PosY: Integer);
 var
   PanelIdx, LocalX, LocalY, LineIdx: Integer;
 begin
@@ -662,8 +662,8 @@ begin
     Exit;
   for PanelIdx := 0 to 1 do
   begin
-    LocalX := X - BigLeft;
-    LocalY := Y - PanelIdx * (PanelHeight + 4) - BigTop;
+    LocalX := PosX - BigLeft;
+    LocalY := PosY - PanelIdx * (PanelHeight + 4) - BigTop;
     if (LocalX < 0) or (LocalY < 0) or
        (LocalX >= PreviewSide * PreviewZoom) or
        (LocalY >= PreviewSide * PreviewZoom) then

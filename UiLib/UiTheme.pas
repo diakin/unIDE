@@ -269,41 +269,41 @@ end;
 
 function UiThemeColor(const ARole: string): TColor;
 var
-  I: Integer;
+  Idx: Integer;
 begin
   if not ColorsReady then
     FillDefaults(Kind);
-  I := RoleIndex(ARole);
-  if I < 0 then
+  Idx := RoleIndex(ARole);
+  if Idx < 0 then
     Result := clNone
   else
-    Result := Colors[I];
+    Result := Colors[Idx];
 end;
 
 procedure UiThemeSetColor(const ARole: string; AColor: TColor);
 var
-  I: Integer;
+  Idx: Integer;
 begin
   if not ColorsReady then
     FillDefaults(Kind);
-  I := RoleIndex(ARole);
-  if I >= 0 then
-    Colors[I] := AColor;
+  Idx := RoleIndex(ARole);
+  if Idx >= 0 then
+    Colors[Idx] := AColor;
 end;
 
 procedure UiThemeChanged;
 var
   I: Integer;
-  C: TControl;
+  Ctrl: TControl;
 begin
   if Clients = nil then
     Exit;
   for I := Clients.Count - 1 downto 0 do
     if I < Clients.Count then
     begin
-      C := TControl(Clients[I]);
-      if C.Perform(UM_UITHEMECHANGED, 0, 0) = 0 then
-        C.Invalidate;
+      Ctrl := TControl(Clients[I]);
+      if Ctrl.Perform(UM_UITHEMECHANGED, 0, 0) = 0 then
+        Ctrl.Invalidate;
     end;
 end;
 

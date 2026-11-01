@@ -117,7 +117,7 @@ type
   public
     procedure Clear; override;
     procedure Delete(Index: Integer); override;
-    procedure Insert(Index: Integer; const S: string); override;
+    procedure Insert(Index: Integer; const Str: string); override;
   end;
 
 // Число строк как у TRichEdit.Lines: пустая последняя строка не считается
@@ -181,19 +181,19 @@ begin
   SendMessage(FEdit.Handle, EM_REPLACESEL, 0, Integer(PChar('')));
 end;
 
-procedure TEdHostLines.Insert(Index: Integer; const S: string);
+procedure TEdHostLines.Insert(Index: Integer; const Str: string);
 var
   LineStart: Integer;
   Line: string;
 begin
   LineStart := SendMessage(FEdit.Handle, EM_LINEINDEX, Index, 0);
   if LineStart >= 0 then
-    Line := S + #13#10
+    Line := Str + #13#10
   else
   begin
     // За последней строкой - в конец текста, с новой строки
     LineStart := FEdit.GetTextLen;
-    Line := #13#10 + S;
+    Line := #13#10 + Str;
   end;
   SendMessage(FEdit.Handle, EM_SETSEL, LineStart, LineStart);
   SendMessage(FEdit.Handle, EM_REPLACESEL, 0, Integer(PChar(Line)));

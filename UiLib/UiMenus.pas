@@ -60,8 +60,8 @@ type
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+                        PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure Notification(AComponent: TComponent;
                            Operation: TOperation); override;
     procedure SetParent(AParent: TWinControl); override;
@@ -72,7 +72,7 @@ type
     function  TopCount: Integer;
     function  TopItem(AIndex: Integer): TMenuItem;
     function  TopRect(AIndex: Integer): TRect;
-    function  TopAt(X, Y: Integer): Integer;
+    function  TopAt(PosX, PosY: Integer): Integer;
     // Раскрыть меню пункта AIndex (номер среди видимых) - до закрытия
     procedure OpenItem(AIndex: Integer; AByKeyboard: Boolean);
     // По теме: своя строка (Dark, Custom) или меню Windows у окна (Light)
@@ -87,7 +87,7 @@ type
 
   TUiPopupMenu = class(TPopupMenu)
   public
-    procedure Popup(X, Y: Integer); override;
+    procedure Popup(PosX, PosY: Integer); override;
   end;
 
   TUiMainMenu = class(TMainMenu)
@@ -105,7 +105,7 @@ type
 // ABar/ABarIndex - меню раскрыто из строки меню (стрелки влево-вправо
 // переходят по её пунктам). Результат - выбранный пункт (его Click - за
 // вызывающим) или nil.
-function UiTrackMenu(AItems: TMenuItem; X, Y: Integer; ABar: TUiMenuBar;
+function UiTrackMenu(AItems: TMenuItem; PosX, PosY: Integer; ABar: TUiMenuBar;
   ABarIndex: Integer; AByKeyboard: Boolean): TMenuItem;
 
 implementation
@@ -195,30 +195,30 @@ begin
 end;
 
 // Размер значка пункта; 0 - значка нет
-procedure ItemIconSize(AItem: TMenuItem; var W, H: Integer);
+procedure ItemIconSize(AItem: TMenuItem; var WidthPx, HeightPx: Integer);
 var
   Images: TCustomImageList;
 begin
-  W := 0;
-  H := 0;
+  WidthPx := 0;
+  HeightPx := 0;
   Images := ItemImages(AItem);
   if (Images <> nil) and (AItem.ImageIndex >= 0) and
      (AItem.ImageIndex < Images.Count) then
   begin
-    W := Images.Width;
-    H := Images.Height;
+    WidthPx := Images.Width;
+    HeightPx := Images.Height;
   end
   else if not AItem.Bitmap.Empty then
   begin
-    W := AItem.Bitmap.Width;
-    H := AItem.Bitmap.Height;
+    WidthPx := AItem.Bitmap.Width;
+    HeightPx := AItem.Bitmap.Height;
   end;
 end;
 
 // Размер окна и места строк
 procedure TUiMenuWindow.Layout(var AWidth, AHeight: Integer);
 var
-  Index, Y, W: Integer;
+  Index, PosY, WidthPx: Integer;
   Item: TMenuItem;
   Measure: TRect;
 begin
@@ -229,11 +229,11 @@ begin
   for Index := 0 to Items.Count - 1 do
     if Items[Index].Visible and not IsSeparator(Items[Index]) then
     begin
-      ItemIconSize(Items[Index], W, Y);
-      if W > IconWidth then
-        IconWidth := W;
-      if Y > IconHeight then
-        IconHeight := Y;
+      ItemIconSize(Items[Index], WidthPx, PosY);
+      if WidthPx > IconWidth then
+        IconWidth := WidthPx;
+      if PosY > IconHeight then
+        IconHeight := PosY;
     end;
   Gutter := GutterWidth;
   if IconWidth + 8 > Gutter then
@@ -247,18 +247,18 @@ begin
   ShortCutWidth := 0;
   SetLength(RowTop, Items.Count);
   SetLength(RowBottom, Items.Count);
-  Y := 2;
+  PosY := 2;
   for Index := 0 to Items.Count - 1 do
   begin
     Item := Items[Index];
-    RowTop[Index] := Y;
+    RowTop[Index] := PosY;
     if not Item.Visible then
     begin
-      RowBottom[Index] := Y;
+      RowBottom[Index] := PosY;
       Continue;
     end;
     if IsSeparator(Item) then
-      Inc(Y, SeparatorHeight)
+      Inc(PosY, SeparatorHeight)
     else
     begin
       if Item.Default then
@@ -268,19 +268,19 @@ begin
       Measure := Rect(0, 0, 0, 0);
       DrawText(Canvas.Handle, PChar(ItemText(Item)), -1, Measure,
                DT_CALCRECT or DT_SINGLELINE);
-      W := Measure.Right;
-      if W > CaptionWidth then
-        CaptionWidth := W;
-      W := Canvas.TextWidth(ItemShortCut(Item));
-      if W > ShortCutWidth then
-        ShortCutWidth := W;
-      Inc(Y, ItemHeight);
+      WidthPx := Measure.Right;
+      if WidthPx > CaptionWidth then
+        CaptionWidth := WidthPx;
+      WidthPx := Canvas.TextWidth(ItemShortCut(Item));
+      if WidthPx > ShortCutWidth then
+        ShortCutWidth := WidthPx;
+      Inc(PosY, ItemHeight);
     end;
-    RowBottom[Index] := Y;
+    RowBottom[Index] := PosY;
   end;
   Canvas.Font.Style := [];
   AWidth := Gutter + CaptionWidth + 24 + ShortCutWidth + ArrowWidth + 2;
-  AHeight := Y + 2 + 2;       // + рамка
+  AHeight := PosY + 2 + 2;       // + рамка
 end;
 
 function TUiMenuWindow.Selectable(AIndex: Integer): Boolean;
@@ -340,7 +340,7 @@ var
   Hot, Enabled: Boolean;
   Fore: TColor;
   Flags: Cardinal;
-  S: string;
+  Str: string;
   Images: TCustomImageList;
   Icon: TBitmap;
 begin
@@ -435,14 +435,14 @@ begin
     Flags := DT_SINGLELINE or DT_VCENTER or DT_LEFT;
     if not ShowAccel then
       Flags := Flags or DT_HIDEPREFIX_;
-    S := ItemText(Item);
-    DrawText(Canvas.Handle, PChar(S), Length(S), TextRect, Flags);
-    S := ItemShortCut(Item);
-    if S <> '' then
+    Str := ItemText(Item);
+    DrawText(Canvas.Handle, PChar(Str), Length(Str), TextRect, Flags);
+    Str := ItemShortCut(Item);
+    if Str <> '' then
     begin
       TextRect := Rect(Row.Right - ArrowWidth - ShortCutWidth, Row.Top,
                        Row.Right - ArrowWidth, Row.Bottom);
-      DrawText(Canvas.Handle, PChar(S), Length(S), TextRect,
+      DrawText(Canvas.Handle, PChar(Str), Length(Str), TextRect,
                DT_SINGLELINE or DT_VCENTER or DT_LEFT or DT_NOPREFIX);
     end;
     Canvas.Font.Style := [];
@@ -478,7 +478,7 @@ type
     constructor Create;
     destructor Destroy; override;
     function  Deepest: TUiMenuWindow;
-    procedure OpenLevel(AItems: TMenuItem; X, Y: Integer;
+    procedure OpenLevel(AItems: TMenuItem; PosX, PosY: Integer;
                         AFromRight: Integer; ASelectFirst: Boolean);
     procedure CloseAfter(ALevel: Integer);
     procedure OpenSub(ALevel: Integer; ASelectFirst: Boolean);
@@ -516,11 +516,11 @@ end;
 
 // Окно пунктов AItems в X, Y. AFromRight >= 0 - это подменю: если справа
 // не влезает, окно встаёт слева от родителя (AFromRight - его левый край).
-procedure TUiMenuTracker.OpenLevel(AItems: TMenuItem; X, Y: Integer;
+procedure TUiMenuTracker.OpenLevel(AItems: TMenuItem; PosX, PosY: Integer;
   AFromRight: Integer; ASelectFirst: Boolean);
 var
   Win: TUiMenuWindow;
-  W, H: Integer;
+  WidthPx, HeightPx: Integer;
   Work: TRect;
 begin
   // Меню, которые строятся на лету, заполняются в OnClick пункта с
@@ -537,23 +537,23 @@ begin
   Win.Selected := -1;
   Win.Font := Screen.MenuFont;
   Win.HandleNeeded;
-  Win.Layout(W, H);
+  Win.Layout(WidthPx, HeightPx);
 
   Work := Screen.WorkAreaRect;
-  if X + W > Work.Right then
+  if PosX + WidthPx > Work.Right then
   begin
     if AFromRight >= 0 then
-      X := AFromRight - W + 2
+      PosX := AFromRight - WidthPx + 2
     else
-      X := Work.Right - W;
+      PosX := Work.Right - WidthPx;
   end;
-  if X < Work.Left then
-    X := Work.Left;
-  if Y + H > Work.Bottom then
-    Y := Work.Bottom - H;
-  if Y < Work.Top then
-    Y := Work.Top;
-  SetWindowPos(Win.Handle, HWND_TOP, X, Y, W, H,
+  if PosX < Work.Left then
+    PosX := Work.Left;
+  if PosY + HeightPx > Work.Bottom then
+    PosY := Work.Bottom - HeightPx;
+  if PosY < Work.Top then
+    PosY := Work.Top;
+  SetWindowPos(Win.Handle, HWND_TOP, PosX, PosY, WidthPx, HeightPx,
                SWP_NOACTIVATE or SWP_SHOWWINDOW);
   Levels.Add(Win);
   if ASelectFirst then
@@ -596,7 +596,7 @@ end;
 procedure TUiMenuTracker.OpenBarItem(AIndex: Integer; ASelectFirst: Boolean);
 var
   Item: TMenuItem;
-  R: TRect;
+  RectVal: TRect;
   Origin: TPoint;
 begin
   if (Bar = nil) or (AIndex < 0) or (AIndex >= Bar.TopCount) then
@@ -608,8 +608,8 @@ begin
   Item := Bar.TopItem(AIndex);
   if Assigned(Item.OnClick) then
     Item.Click;
-  R := Bar.TopRect(AIndex);
-  Origin := Bar.ClientToScreen(Point(R.Left, R.Bottom));
+  RectVal := Bar.TopRect(AIndex);
+  Origin := Bar.ClientToScreen(Point(RectVal.Left, RectVal.Bottom));
   // OnClick пункта уже вызван: у корня (Levels пуст) OpenLevel его второй
   // раз не вызывает
   if Item.Count > 0 then
@@ -810,7 +810,7 @@ begin
   end;
 end;
 
-function UiTrackMenu(AItems: TMenuItem; X, Y: Integer; ABar: TUiMenuBar;
+function UiTrackMenu(AItems: TMenuItem; PosX, PosY: Integer; ABar: TUiMenuBar;
   ABarIndex: Integer; AByKeyboard: Boolean): TMenuItem;
 var
   Tracker: TUiMenuTracker;
@@ -829,7 +829,7 @@ begin
     if ABar <> nil then
       Tracker.OpenBarItem(ABarIndex, AByKeyboard)
     else
-      Tracker.OpenLevel(AItems, X, Y, -1, AByKeyboard);
+      Tracker.OpenLevel(AItems, PosX, PosY, -1, AByKeyboard);
     if Tracker.Levels.Count = 0 then
       Exit;
     // Мышь - у корневого окна меню: сообщения мыши приходят и из-за его
@@ -1085,37 +1085,37 @@ end;
 
 function TUiMenuBar.TopRect(AIndex: Integer): TRect;
 var
-  Index, X, W: Integer;
+  Index, PosX, WidthPx: Integer;
   Measure: TRect;
-  S: string;
+  Str: string;
 begin
   Result := Rect(0, 0, 0, 0);
   Canvas.Font := Font;
-  X := 2;
+  PosX := 2;
   for Index := 0 to TopCount - 1 do
   begin
-    S := TopItem(Index).Caption;
+    Str := TopItem(Index).Caption;
     Measure := Rect(0, 0, 0, 0);
-    DrawText(Canvas.Handle, PChar(S), -1, Measure, DT_CALCRECT or DT_SINGLELINE);
-    W := Measure.Right + 16;
+    DrawText(Canvas.Handle, PChar(Str), -1, Measure, DT_CALCRECT or DT_SINGLELINE);
+    WidthPx := Measure.Right + 16;
     if Index = AIndex then
     begin
-      Result := Rect(X, 0, X + W, ClientHeight);
+      Result := Rect(PosX, 0, PosX + WidthPx, ClientHeight);
       Exit;
     end;
-    Inc(X, W);
+    Inc(PosX, WidthPx);
   end;
 end;
 
-function TUiMenuBar.TopAt(X, Y: Integer): Integer;
+function TUiMenuBar.TopAt(PosX, PosY: Integer): Integer;
 var
   Index: Integer;
 begin
   Result := -1;
-  if (Y < 0) or (Y >= ClientHeight) then
+  if (PosY < 0) or (PosY >= ClientHeight) then
     Exit;
   for Index := 0 to TopCount - 1 do
-    if PtInRect(TopRect(Index), Point(X, Y)) then
+    if PtInRect(TopRect(Index), Point(PosX, PosY)) then
     begin
       Result := Index;
       Exit;
@@ -1155,12 +1155,12 @@ begin
   end;
 end;
 
-procedure TUiMenuBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TUiMenuBar.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 var
   Hot: Integer;
 begin
-  inherited MouseMove(Shift, X, Y);
-  Hot := TopAt(X, Y);
+  inherited MouseMove(Shift, PosX, PosY);
+  Hot := TopAt(PosX, PosY);
   if Hot <> FHot then
   begin
     FHot := Hot;
@@ -1169,14 +1169,14 @@ begin
 end;
 
 procedure TUiMenuBar.MouseDown(Button: TMouseButton; Shift: TShiftState;
-                               X, Y: Integer);
+                               PosX, PosY: Integer);
 var
   Index: Integer;
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
   if Button <> mbLeft then
     Exit;
-  Index := TopAt(X, Y);
+  Index := TopAt(PosX, PosY);
   if Index < 0 then
     Exit;
   // Пункт без подменю - сразу его OnClick, как у меню Windows
@@ -1192,9 +1192,9 @@ end;
 procedure TUiMenuBar.Paint;
 var
   Index: Integer;
-  R: TRect;
+  RectVal: TRect;
   Item: TMenuItem;
-  S: string;
+  Str: string;
   Flags: Cardinal;
 begin
   Canvas.Font := Font;
@@ -1204,11 +1204,11 @@ begin
   for Index := 0 to TopCount - 1 do
   begin
     Item := TopItem(Index);
-    R := TopRect(Index);
+    RectVal := TopRect(Index);
     if ((Index = FOpen) or (Index = FHot)) and Item.Enabled then
     begin
       Canvas.Brush.Color := UiThemeColor('Menu.HotBG');
-      Canvas.FillRect(R);
+      Canvas.FillRect(RectVal);
       Canvas.Font.Color := UiThemeColor('Menu.HotText');
     end
     else if Item.Enabled then
@@ -1218,9 +1218,9 @@ begin
     Flags := DT_SINGLELINE or DT_VCENTER or DT_CENTER;
     if not FShowAccel then
       Flags := Flags or DT_HIDEPREFIX_;
-    S := Item.Caption;
+    Str := Item.Caption;
     Canvas.Brush.Style := bsClear;
-    DrawText(Canvas.Handle, PChar(S), Length(S), R, Flags);
+    DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, Flags);
     Canvas.Brush.Style := bsSolid;
   end;
   // Черта снизу - граница с тем, что под меню
@@ -1233,7 +1233,7 @@ end;
 //  TUiPopupMenu, TUiMainMenu
 // ---------------------------------------------------------------------------
 
-procedure TUiPopupMenu.Popup(X, Y: Integer);
+procedure TUiPopupMenu.Popup(PosX, PosY: Integer);
 var
   Chosen: TMenuItem;
   Probe: TControl;
@@ -1245,11 +1245,11 @@ begin
     Probe := TControl(PopupComponent);
   if UiThemeNativeFor(Probe) then
   begin
-    inherited Popup(X, Y);
+    inherited Popup(PosX, PosY);
     Exit;
   end;
   DoPopup(Self);
-  Chosen := UiTrackMenu(Items, X, Y, nil, -1, False);
+  Chosen := UiTrackMenu(Items, PosX, PosY, nil, -1, False);
   if Chosen <> nil then
     Chosen.Click;
 end;

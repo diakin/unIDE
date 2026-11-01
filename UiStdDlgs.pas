@@ -49,77 +49,77 @@ uses
 //  Цвет: HSL
 // ---------------------------------------------------------------------------
 
-procedure RgbToHsl(AColor: TColor; var H, S, L: Double);
+procedure RgbToHsl(AColor: TColor; var Hue, Sat, Light: Double);
 var
-  R, G, B, MaxV, MinV, Delta: Double;
+  Red, Green, Blue, MaxV, MinV, Delta: Double;
   Rgb: Longint;
 begin
   Rgb := ColorToRGB(AColor);
-  R := GetRValue(Rgb) / 255;
-  G := GetGValue(Rgb) / 255;
-  B := GetBValue(Rgb) / 255;
-  MaxV := R;
-  if G > MaxV then MaxV := G;
-  if B > MaxV then MaxV := B;
-  MinV := R;
-  if G < MinV then MinV := G;
-  if B < MinV then MinV := B;
-  L := (MaxV + MinV) / 2;
+  Red := GetRValue(Rgb) / 255;
+  Green := GetGValue(Rgb) / 255;
+  Blue := GetBValue(Rgb) / 255;
+  MaxV := Red;
+  if Green > MaxV then MaxV := Green;
+  if Blue > MaxV then MaxV := Blue;
+  MinV := Red;
+  if Green < MinV then MinV := Green;
+  if Blue < MinV then MinV := Blue;
+  Light := (MaxV + MinV) / 2;
   Delta := MaxV - MinV;
   if Delta = 0 then
   begin
-    H := 0;
-    S := 0;
+    Hue := 0;
+    Sat := 0;
     Exit;
   end;
-  if L < 0.5 then
-    S := Delta / (MaxV + MinV)
+  if Light < 0.5 then
+    Sat := Delta / (MaxV + MinV)
   else
-    S := Delta / (2 - MaxV - MinV);
-  if MaxV = R then
-    H := (G - B) / Delta
-  else if MaxV = G then
-    H := 2 + (B - R) / Delta
+    Sat := Delta / (2 - MaxV - MinV);
+  if MaxV = Red then
+    Hue := (Green - Blue) / Delta
+  else if MaxV = Green then
+    Hue := 2 + (Blue - Red) / Delta
   else
-    H := 4 + (R - G) / Delta;
-  H := H * 60;
-  if H < 0 then
-    H := H + 360;
+    Hue := 4 + (Red - Green) / Delta;
+  Hue := Hue * 60;
+  if Hue < 0 then
+    Hue := Hue + 360;
 end;
 
-function HslToColor(H, S, L: Double): TColor;
+function HslToColor(Hue2, Sat, Light: Double): TColor;
 
-  function Part(P, Q, T: Double): Double;
+  function Part(ValP, ValQ, TimeVal: Double): Double;
   begin
-    if T < 0 then T := T + 1;
-    if T > 1 then T := T - 1;
-    if T < 1 / 6 then
-      Result := P + (Q - P) * 6 * T
-    else if T < 1 / 2 then
-      Result := Q
-    else if T < 2 / 3 then
-      Result := P + (Q - P) * (2 / 3 - T) * 6
+    if TimeVal < 0 then TimeVal := TimeVal + 1;
+    if TimeVal > 1 then TimeVal := TimeVal - 1;
+    if TimeVal < 1 / 6 then
+      Result := ValP + (ValQ - ValP) * 6 * TimeVal
+    else if TimeVal < 1 / 2 then
+      Result := ValQ
+    else if TimeVal < 2 / 3 then
+      Result := ValP + (ValQ - ValP) * (2 / 3 - TimeVal) * 6
     else
-      Result := P;
+      Result := ValP;
   end;
 
 var
-  P, Q, Hue: Double;
+  ValP, ValQ, Hue: Double;
 begin
-  if S <= 0 then
+  if Sat <= 0 then
   begin
-    Result := RGB(Round(L * 255), Round(L * 255), Round(L * 255));
+    Result := RGB(Round(Light * 255), Round(Light * 255), Round(Light * 255));
     Exit;
   end;
-  if L < 0.5 then
-    Q := L * (1 + S)
+  if Light < 0.5 then
+    ValQ := Light * (1 + Sat)
   else
-    Q := L + S - L * S;
-  P := 2 * L - Q;
-  Hue := H / 360;
-  Result := RGB(Round(Part(P, Q, Hue + 1 / 3) * 255),
-                Round(Part(P, Q, Hue) * 255),
-                Round(Part(P, Q, Hue - 1 / 3) * 255));
+    ValQ := Light + Sat - Light * Sat;
+  ValP := 2 * Light - ValQ;
+  Hue := Hue2 / 360;
+  Result := RGB(Round(Part(ValP, ValQ, Hue + 1 / 3) * 255),
+                Round(Part(ValP, ValQ, Hue) * 255),
+                Round(Part(ValP, ValQ, Hue - 1 / 3) * 255));
 end;
 
 // ---------------------------------------------------------------------------
@@ -140,7 +140,7 @@ type
     function CellRect(AIndex: Integer): TRect;
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
+                        PosX, PosY: Integer); override;
   end;
 
   // Поле оттенка (вправо) и насыщенности (вниз - меньше), яркость 0.5
@@ -152,10 +152,10 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Paint; override;
-    procedure PickAt(X, Y: Integer);
+    procedure PickAt(PosX, PosY: Integer);
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+                        PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
   end;
 
   // Полоса яркости для текущих оттенка и насыщенности (вверху - светлее)
@@ -164,10 +164,10 @@ type
     Hue, Sat, Lum: Double;
     OnChangeL: TNotifyEvent;
     procedure Paint; override;
-    procedure PickAt(Y: Integer);
+    procedure PickAt(PosY: Integer);
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+                        PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
   end;
 
   // Образец: слева «было», справа «стало»
@@ -201,36 +201,36 @@ end;
 procedure TUiSwatchGrid.Paint;
 var
   Index: Integer;
-  R: TRect;
+  RectVal: TRect;
 begin
   Canvas.Brush.Color := UiThemeColor('Window.BG');
   Canvas.FillRect(ClientRect);
   for Index := 0 to Length(Colors) - 1 do
   begin
-    R := CellRect(Index);
-    InflateRect(R, -2, -2);
+    RectVal := CellRect(Index);
+    InflateRect(RectVal, -2, -2);
     if Index = Selected then
     begin
       Canvas.Brush.Color := UiThemeColor('Focus');
-      Canvas.FillRect(R);
+      Canvas.FillRect(RectVal);
     end;
-    InflateRect(R, -2, -2);
+    InflateRect(RectVal, -2, -2);
     Canvas.Brush.Color := UiThemeColor('Button.Border');
-    Canvas.FrameRect(R);
-    InflateRect(R, -1, -1);
+    Canvas.FrameRect(RectVal);
+    InflateRect(RectVal, -1, -1);
     Canvas.Brush.Color := Colors[Index];
-    Canvas.FillRect(R);
+    Canvas.FillRect(RectVal);
   end;
 end;
 
 procedure TUiSwatchGrid.MouseDown(Button: TMouseButton; Shift: TShiftState;
-                                  X, Y: Integer);
+                                  PosX, PosY: Integer);
 var
   Index: Integer;
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
   for Index := 0 to Length(Colors) - 1 do
-    if PtInRect(CellRect(Index), Point(X, Y)) then
+    if PtInRect(CellRect(Index), Point(PosX, PosY)) then
     begin
       Selected := Index;
       Invalidate;
@@ -255,24 +255,24 @@ end;
 
 procedure TUiHueSatArea.Paint;
 var
-  X, Y, W, H, MarkX, MarkY: Integer;
+  X, Y, WidthPx, HeightPx, MarkX, MarkY: Integer;
 begin
-  W := ClientWidth;
-  H := ClientHeight;
+  WidthPx := ClientWidth;
+  HeightPx := ClientHeight;
   // Картинка поля - один раз на размер
-  if (Picture.Width <> W) or (Picture.Height <> H) then
+  if (Picture.Width <> WidthPx) or (Picture.Height <> HeightPx) then
   begin
-    Picture.Width := W;
-    Picture.Height := H;
-    for Y := 0 to H - 1 do
-      for X := 0 to W - 1 do
+    Picture.Width := WidthPx;
+    Picture.Height := HeightPx;
+    for Y := 0 to HeightPx - 1 do
+      for X := 0 to WidthPx - 1 do
         Picture.Canvas.Pixels[X, Y] :=
-          HslToColor(X * 360 / W, 1 - Y / H, 0.5);
+          HslToColor(X * 360 / WidthPx, 1 - Y / HeightPx, 0.5);
   end;
   Canvas.Draw(0, 0, Picture);
   // Крестик - на выбранном
-  MarkX := Round(Hue / 360 * W);
-  MarkY := Round((1 - Sat) * H);
+  MarkX := Round(Hue / 360 * WidthPx);
+  MarkY := Round((1 - Sat) * HeightPx);
   Canvas.Pen.Color := clBlack;
   Canvas.MoveTo(MarkX - 6, MarkY);
   Canvas.LineTo(MarkX - 1, MarkY);
@@ -284,49 +284,49 @@ begin
   Canvas.LineTo(MarkX, MarkY + 7);
 end;
 
-procedure TUiHueSatArea.PickAt(X, Y: Integer);
+procedure TUiHueSatArea.PickAt(PosX, PosY: Integer);
 begin
-  if X < 0 then X := 0;
-  if X > ClientWidth - 1 then X := ClientWidth - 1;
-  if Y < 0 then Y := 0;
-  if Y > ClientHeight - 1 then Y := ClientHeight - 1;
-  Hue := X * 360 / ClientWidth;
-  Sat := 1 - Y / ClientHeight;
+  if PosX < 0 then PosX := 0;
+  if PosX > ClientWidth - 1 then PosX := ClientWidth - 1;
+  if PosY < 0 then PosY := 0;
+  if PosY > ClientHeight - 1 then PosY := ClientHeight - 1;
+  Hue := PosX * 360 / ClientWidth;
+  Sat := 1 - PosY / ClientHeight;
   Invalidate;
   if Assigned(OnChangeHS) then
     OnChangeHS(Self);
 end;
 
 procedure TUiHueSatArea.MouseDown(Button: TMouseButton; Shift: TShiftState;
-                                  X, Y: Integer);
+                                  PosX, PosY: Integer);
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
   if Button = mbLeft then
-    PickAt(X, Y);
+    PickAt(PosX, PosY);
 end;
 
-procedure TUiHueSatArea.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TUiHueSatArea.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 begin
-  inherited MouseMove(Shift, X, Y);
+  inherited MouseMove(Shift, PosX, PosY);
   if ssLeft in Shift then
-    PickAt(X, Y);
+    PickAt(PosX, PosY);
 end;
 
 procedure TUiLumBar.Paint;
 var
-  Y, H, MarkY: Integer;
+  Y, HeightPx, MarkY: Integer;
 begin
-  H := ClientHeight;
-  for Y := 0 to H - 1 do
+  HeightPx := ClientHeight;
+  for Y := 0 to HeightPx - 1 do
   begin
-    Canvas.Pen.Color := HslToColor(Hue, Sat, 1 - Y / (H - 1));
+    Canvas.Pen.Color := HslToColor(Hue, Sat, 1 - Y / (HeightPx - 1));
     Canvas.MoveTo(0, Y);
     Canvas.LineTo(ClientWidth - 6, Y);
   end;
   Canvas.Brush.Color := UiThemeColor('Window.BG');
-  Canvas.FillRect(Rect(ClientWidth - 6, 0, ClientWidth, H));
+  Canvas.FillRect(Rect(ClientWidth - 6, 0, ClientWidth, HeightPx));
   // Треугольник справа - на выбранной яркости
-  MarkY := Round((1 - Lum) * (H - 1));
+  MarkY := Round((1 - Lum) * (HeightPx - 1));
   Canvas.Pen.Color := UiThemeColor('Window.Text');
   Canvas.Brush.Color := UiThemeColor('Window.Text');
   Canvas.Polygon([Point(ClientWidth - 6, MarkY),
@@ -334,29 +334,29 @@ begin
                   Point(ClientWidth - 1, MarkY + 4)]);
 end;
 
-procedure TUiLumBar.PickAt(Y: Integer);
+procedure TUiLumBar.PickAt(PosY: Integer);
 begin
-  if Y < 0 then Y := 0;
-  if Y > ClientHeight - 1 then Y := ClientHeight - 1;
-  Lum := 1 - Y / (ClientHeight - 1);
+  if PosY < 0 then PosY := 0;
+  if PosY > ClientHeight - 1 then PosY := ClientHeight - 1;
+  Lum := 1 - PosY / (ClientHeight - 1);
   Invalidate;
   if Assigned(OnChangeL) then
     OnChangeL(Self);
 end;
 
 procedure TUiLumBar.MouseDown(Button: TMouseButton; Shift: TShiftState;
-                              X, Y: Integer);
+                              PosX, PosY: Integer);
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
   if Button = mbLeft then
-    PickAt(Y);
+    PickAt(PosY);
 end;
 
-procedure TUiLumBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TUiLumBar.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 begin
-  inherited MouseMove(Shift, X, Y);
+  inherited MouseMove(Shift, PosX, PosY);
   if ssLeft in Shift then
-    PickAt(Y);
+    PickAt(PosY);
 end;
 
 procedure TUiColorPreview.Paint;
@@ -412,31 +412,31 @@ type
   end;
 
 function NewLabel(AOwner: TWinControl; const ACaption: string;
-  X, Y, W: Integer): TUiLabel;
+  PosX, PosY, WidthPx: Integer): TUiLabel;
 begin
   Result := TUiLabel.Create(AOwner);
   Result.Parent := AOwner;
   Result.Caption := ACaption;
-  Result.SetBounds(X, Y, W, 15);
+  Result.SetBounds(PosX, PosY, WidthPx, 15);
 end;
 
-function NewEdit(AOwner: TWinControl; X, Y, W: Integer): TUiEdit;
+function NewEdit(AOwner: TWinControl; PosX, PosY, WidthPx: Integer): TUiEdit;
 begin
   Result := TUiEdit.Create(AOwner);
   Result.Parent := AOwner;
-  Result.SetBounds(X, Y, W, 21);
+  Result.SetBounds(PosX, PosY, WidthPx, 21);
 end;
 
 function NewButton(AOwner: TWinControl; const ACaption: string;
-  X, Y, W: Integer): TUiButton;
+  PosX, PosY, WidthPx: Integer): TUiButton;
 begin
   Result := TUiButton.Create(AOwner);
   Result.Parent := AOwner;
   Result.Caption := ACaption;
-  Result.SetBounds(X, Y, W, 25);
+  Result.SetBounds(PosX, PosY, WidthPx, 25);
 end;
 
-procedure PrepareForm(AForm: TForm; const ACaption: string; W, H: Integer);
+procedure PrepareForm(AForm: TForm; const ACaption: string; WidthPx, HeightPx: Integer);
 begin
   AForm.Caption := ACaption;
   AForm.BorderStyle := bsDialog;
@@ -445,8 +445,8 @@ begin
     AForm.Font := Application.MainForm.Font;
   AForm.Color := UiThemeColor('Window.BG');
   AForm.Font.Color := UiThemeColor('Window.Text');
-  AForm.ClientWidth := W;
-  AForm.ClientHeight := H;
+  AForm.ClientWidth := WidthPx;
+  AForm.ClientHeight := HeightPx;
 end;
 
 constructor TUiColorForm.CreateFor(ADialog: TColorDialog);
@@ -550,7 +550,7 @@ end;
 // определён, и крестик прыгал бы)
 procedure TUiColorForm.SetColorFrom(AColor: TColor; AFromPicker: Boolean);
 var
-  H, S, L: Double;
+  Hue2, Sat2, Light: Double;
   Rgb: Longint;
 begin
   FUpdating := True;
@@ -559,12 +559,12 @@ begin
     Rgb := ColorToRGB(AColor);
     if not AFromPicker then
     begin
-      RgbToHsl(AColor, H, S, L);
-      areaHS.Hue := H;
-      areaHS.Sat := S;
-      barL.Hue := H;
-      barL.Sat := S;
-      barL.Lum := L;
+      RgbToHsl(AColor, Hue2, Sat2, Light);
+      areaHS.Hue := Hue2;
+      areaHS.Sat := Sat2;
+      barL.Hue := Hue2;
+      barL.Sat := Sat2;
+      barL.Lum := Light;
     end;
     areaHS.Invalidate;
     barL.Invalidate;
@@ -614,16 +614,16 @@ end;
 
 procedure TUiColorForm.RgbChange(Sender: TObject);
 var
-  R, G, B: Integer;
+  Red, Green, Blue: Integer;
 begin
   if FUpdating then
     Exit;
-  R := StrToIntDef(edR.Text, -1);
-  G := StrToIntDef(edG.Text, -1);
-  B := StrToIntDef(edB.Text, -1);
-  if (R < 0) or (R > 255) or (G < 0) or (G > 255) or (B < 0) or (B > 255) then
+  Red := StrToIntDef(edR.Text, -1);
+  Green := StrToIntDef(edG.Text, -1);
+  Blue := StrToIntDef(edB.Text, -1);
+  if (Red < 0) or (Red > 255) or (Green < 0) or (Green > 255) or (Blue < 0) or (Blue > 255) then
     Exit;                     // пока вводят - ждём целого числа
-  SetColorFrom(RGB(R, G, B), False);
+  SetColorFrom(RGB(Red, Green, Blue), False);
 end;
 
 procedure TUiColorForm.HexChange(Sender: TObject);
@@ -734,18 +734,18 @@ end;
 
 procedure TUiFontPreview.Paint;
 var
-  R: TRect;
-  S: string;
+  RectVal: TRect;
+  Str: string;
 begin
-  R := ClientRect;
+  RectVal := ClientRect;
   Canvas.Brush.Color := UiThemeColor('Edit.BG');
-  Canvas.FillRect(R);
+  Canvas.FillRect(RectVal);
   Canvas.Brush.Color := UiThemeColor('Button.Border');
-  Canvas.FrameRect(R);
+  Canvas.FrameRect(RectVal);
   Canvas.Font := SampleFont;
   Canvas.Brush.Style := bsClear;
-  S := 'AaBbYyZz АаБбЯя 0123';
-  DrawText(Canvas.Handle, PChar(S), Length(S), R,
+  Str := 'AaBbYyZz АаБбЯя 0123';
+  DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal,
            DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
 end;

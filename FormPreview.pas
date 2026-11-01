@@ -553,8 +553,8 @@ begin
       ABitmap.Canvas.FrameRect(Rect(0, 0, DstW, DstH));
       Result := True;
     except
-      on E: Exception do
-        AError := E.Message;
+      on Err: Exception do
+        AError := Err.Message;
     end;
   finally
     Form.Free;

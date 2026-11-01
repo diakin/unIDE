@@ -135,7 +135,7 @@ type
     // Текст object ... end нового компонента с именем и местом; '' - нет.
     // Свойства-даты (TDate, TTime, TDateTime - Date у TDateTimePicker)
     // получают текущее время, как у Delphi при установке компонента.
-    function NewObjectText(const AClass, AName: string; X, Y: Integer): string;
+    function NewObjectText(const AClass, AName: string; PosX, PosY: Integer): string;
     // Свойство AProp класса - дата или время
     function IsDateProp(const AClass, AProp: string): Boolean;
     // Значения свойств-дат в тексте object ... end заменены на "(дата)":
@@ -846,7 +846,7 @@ begin
 end;
 
 function TDsgClassBase.NewObjectText(const AClass, AName: string;
-  X, Y: Integer): string;
+  PosX, PosY: Integer): string;
 var
   Cls: TDsgClassDesc;
   Lines: TStringList;
@@ -865,9 +865,9 @@ begin
       if IsDateProp(AClass, DateLineProp(Line)) then
         Line := '  ' + DateLineProp(Line) + ' = ' + DateText(Now)
       else if Line = '  Left = ' + IntToStr(DsgDescNewLeft) then
-        Line := '  Left = ' + IntToStr(X)
+        Line := '  Left = ' + IntToStr(PosX)
       else if Line = '  Top = ' + IntToStr(DsgDescNewTop) then
-        Line := '  Top = ' + IntToStr(Y)
+        Line := '  Top = ' + IntToStr(PosY)
       else
         Line := StringReplace(Line, DsgDescNewName(AClass), AName,
                               [rfReplaceAll]);

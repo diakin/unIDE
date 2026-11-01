@@ -349,11 +349,11 @@ type
 
 // Рамка элемента в темах Dark и Custom - поверх рамки Windows (из WM_NCPAINT
 // после inherited)
-procedure UiPaintNcBorder(C: TWinControl; ABack: TColor);
+procedure UiPaintNcBorder(WinCtrl: TWinControl; ABack: TColor);
 // Перерисовать рамку (служебную область окна)
-procedure UiRedrawFrame(C: TWinControl);
+procedure UiRedrawFrame(WinCtrl: TWinControl);
 // Поставить свои полосы прокрутки (TUiListScroll), если их ещё нет
-procedure UiAttachScroll(C: TWinControl);
+procedure UiAttachScroll(WinCtrl: TWinControl);
 
 implementation
 
@@ -367,60 +367,60 @@ uses
 // Рамка элемента в темах Dark и Custom - поверх рамки, которую только что
 // нарисовал Windows: внешняя линия - цветом рамки, остальная ширина рамки -
 // цветом фона. Полосы прокрутки внутри рамки не задеваются.
-procedure UiPaintNcBorder(C: TWinControl; ABack: TColor);
+procedure UiPaintNcBorder(WinCtrl: TWinControl; ABack: TColor);
 var
   DC: HDC;
-  R: TRect;
-  P: TPoint;
-  B, I: Integer;
+  RectVal: TRect;
+  Pnt: TPoint;
+  BorderW, I: Integer;
   Br: HBRUSH;
   Line: TColor;
 begin
-  if UiThemeNativeFor(C) or not C.HandleAllocated then
+  if UiThemeNativeFor(WinCtrl) or not WinCtrl.HandleAllocated then
     Exit;
-  GetWindowRect(C.Handle, R);
-  P := Point(0, 0);
-  Windows.ClientToScreen(C.Handle, P);
-  B := P.X - R.Left;          // ширина рамки слева - такая же со всех сторон
-  if B <= 0 then
+  GetWindowRect(WinCtrl.Handle, RectVal);
+  Pnt := Point(0, 0);
+  Windows.ClientToScreen(WinCtrl.Handle, Pnt);
+  BorderW := Pnt.X - RectVal.Left;          // ширина рамки слева - такая же со всех сторон
+  if BorderW <= 0 then
     Exit;
-  if B > 3 then
-    B := 3;
-  OffsetRect(R, -R.Left, -R.Top);
-  if C.Focused then
-    Line := UiThemeColorFor(C, 'Focus')
+  if BorderW > 3 then
+    BorderW := 3;
+  OffsetRect(RectVal, -RectVal.Left, -RectVal.Top);
+  if WinCtrl.Focused then
+    Line := UiThemeColorFor(WinCtrl, 'Focus')
   else
-    Line := UiThemeColorFor(C, 'Button.Border');
-  DC := GetWindowDC(C.Handle);
+    Line := UiThemeColorFor(WinCtrl, 'Button.Border');
+  DC := GetWindowDC(WinCtrl.Handle);
   try
     Br := CreateSolidBrush(ColorToRGB(Line));
-    FrameRect(DC, R, Br);
+    FrameRect(DC, RectVal, Br);
     DeleteObject(Br);
     Br := CreateSolidBrush(ColorToRGB(ABack));
-    for I := 2 to B do
+    for I := 2 to BorderW do
     begin
-      InflateRect(R, -1, -1);
-      FrameRect(DC, R, Br);
+      InflateRect(RectVal, -1, -1);
+      FrameRect(DC, RectVal, Br);
     end;
     DeleteObject(Br);
   finally
-    ReleaseDC(C.Handle, DC);
+    ReleaseDC(WinCtrl.Handle, DC);
   end;
 end;
 
 // Перерисовать рамку (служебную область окна)
-procedure UiRedrawFrame(C: TWinControl);
+procedure UiRedrawFrame(WinCtrl: TWinControl);
 begin
-  if C.HandleAllocated then
-    RedrawWindow(C.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE or
+  if WinCtrl.HandleAllocated then
+    RedrawWindow(WinCtrl.Handle, nil, 0, RDW_FRAME or RDW_INVALIDATE or
                  RDW_NOCHILDREN);
 end;
 
 // Поставить свои полосы прокрутки, если их ещё нет
-procedure UiAttachScroll(C: TWinControl);
+procedure UiAttachScroll(WinCtrl: TWinControl);
 begin
-  if (C.Parent <> nil) and (UiScrollFind(C) = nil) then
-    TUiListScroll.Attach(C);
+  if (WinCtrl.Parent <> nil) and (UiScrollFind(WinCtrl) = nil) then
+    TUiListScroll.Attach(WinCtrl);
 end;
 
 // ---------------------------------------------------------------------------
@@ -820,22 +820,22 @@ end;
 
 procedure TUiComboBox.PaintOver(DC: HDC);
 var
-  R, B: TRect;
-  W, Cx, Cy, S: Integer;
+  RectVal2, RectVal: TRect;
+  WidthPx, Cx, Cy, StartPos: Integer;
   Br: HBRUSH;
   Pen, OldPen: HPEN;
   OldBr: HBRUSH;
   Pts: array[0..2] of TPoint;
   Down: Boolean;
   Face, Mark, Line, Back, Fore: TColor;
-  T: TRect;
+  RectVal3: TRect;
   Cv: TCanvas;
   Txt: string;
   EditWnd: HWND;
   EditRect: TRect;
   SavedDC: Integer;
 begin
-  R := ClientRect;
+  RectVal2 := ClientRect;
   // Цвета поля: пока ThemeColors - прямо из темы
   if FThemeColors then
   begin
@@ -847,7 +847,7 @@ begin
     Back := Color;
     Fore := Font.Color;
   end;
-  W := GetSystemMetrics(SM_CXVSCROLL);
+  WidthPx := GetSystemMetrics(SM_CXVSCROLL);
   Down := SendMessage(Handle, CB_GETDROPPEDSTATE, 0, 0) <> 0;
   if Focused or Down then
     Line := UiThemeColorFor(Self, 'Focus')
@@ -880,7 +880,7 @@ begin
                         EditRect.Bottom);
       end;
       Br := CreateSolidBrush(ColorToRGB(Back));
-      FillRect(DC, R, Br);
+      FillRect(DC, RectVal2, Br);
       DeleteObject(Br);
     finally
       RestoreDC(DC, SavedDC);
@@ -889,22 +889,22 @@ begin
 
   // Рамка: линия и полоса в точку цветом фона внутри
   Br := CreateSolidBrush(ColorToRGB(Line));
-  FrameRect(DC, R, Br);
+  FrameRect(DC, RectVal2, Br);
   DeleteObject(Br);
-  InflateRect(R, -1, -1);
+  InflateRect(RectVal2, -1, -1);
   Br := CreateSolidBrush(ColorToRGB(Back));
-  FrameRect(DC, R, Br);
+  FrameRect(DC, RectVal2, Br);
   DeleteObject(Br);
 
   // Кнопка списка - справа во всю высоту внутри рамки
-  B := Rect(R.Right - W, R.Top, R.Right, R.Bottom);
+  RectVal := Rect(RectVal2.Right - WidthPx, RectVal2.Top, RectVal2.Right, RectVal2.Bottom);
 
   // Список без поля ввода (csDropDownList): выбранный пункт - тоже сами.
   // Windows рисует его поле по-своему и не всегда цветом Color. В фокусе -
   // фон цветом Focus, как выделение у системного.
   if Style = csDropDownList then
   begin
-    T := Rect(R.Left + 1, R.Top + 1, B.Left, R.Bottom - 1);
+    RectVal3 := Rect(RectVal2.Left + 1, RectVal2.Top + 1, RectVal.Left, RectVal2.Bottom - 1);
     Cv := TCanvas.Create;
     try
       Cv.Handle := DC;
@@ -912,16 +912,16 @@ begin
         Cv.Brush.Color := UiThemeColorFor(Self, 'Focus')
       else
         Cv.Brush.Color := Back;
-      Cv.FillRect(T);
+      Cv.FillRect(RectVal3);
       Cv.Font := Font;
       if Enabled then
         Cv.Font.Color := Fore
       else
         Cv.Font.Color := UiThemeColorFor(Self, 'OffText');
       Txt := Text;
-      InflateRect(T, -2, 0);
+      InflateRect(RectVal3, -2, 0);
       Cv.Brush.Style := bsClear;
-      DrawText(Cv.Handle, PChar(Txt), Length(Txt), T,
+      DrawText(Cv.Handle, PChar(Txt), Length(Txt), RectVal3,
                DT_SINGLELINE or DT_VCENTER or DT_LEFT or DT_END_ELLIPSIS or
                DT_NOPREFIX);
     finally
@@ -930,18 +930,18 @@ begin
     end;
   end;
   Br := CreateSolidBrush(ColorToRGB(Face));
-  FillRect(DC, B, Br);
+  FillRect(DC, RectVal, Br);
   DeleteObject(Br);
 
   // Стрелка вниз
-  Cx := (B.Left + B.Right) div 2;
-  Cy := (B.Top + B.Bottom) div 2;
-  S := W div 4;
-  if S < 2 then
-    S := 2;
-  Pts[0] := Point(Cx - S, Cy - S div 2);
-  Pts[1] := Point(Cx + S, Cy - S div 2);
-  Pts[2] := Point(Cx, Cy + S div 2 + 1);
+  Cx := (RectVal.Left + RectVal.Right) div 2;
+  Cy := (RectVal.Top + RectVal.Bottom) div 2;
+  StartPos := WidthPx div 4;
+  if StartPos < 2 then
+    StartPos := 2;
+  Pts[0] := Point(Cx - StartPos, Cy - StartPos div 2);
+  Pts[1] := Point(Cx + StartPos, Cy - StartPos div 2);
+  Pts[2] := Point(Cx, Cy + StartPos div 2 + 1);
   Br := CreateSolidBrush(ColorToRGB(Mark));
   Pen := CreatePen(PS_SOLID, 1, ColorToRGB(Mark));
   OldBr := SelectObject(DC, Br);

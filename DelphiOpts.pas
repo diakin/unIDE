@@ -356,9 +356,9 @@ begin
         LogLine(ALog, 'Номер сборки: ' + OldText + ' -> ' +
                       VerNumberText(Info));
       except
-        on E: Exception do
+        on Err: Exception do
           LogLine(ALog, 'Номер сборки не записан в ' +
-                        ExtractFileName(DofFileOf(ADpr)) + ': ' + E.Message);
+                        ExtractFileName(DofFileOf(ADpr)) + ': ' + Err.Message);
       end;
     end;
 
@@ -682,9 +682,9 @@ begin
       try
         NewLines.SaveToFile(ADpr);
       except
-        on E: Exception do
+        on Err: Exception do
         begin
-          AError := 'Не записан ' + ADpr + ': ' + E.Message;
+          AError := 'Не записан ' + ADpr + ': ' + Err.Message;
           Exit;
         end;
       end;
@@ -785,9 +785,9 @@ begin
       Stream.Free;
     end;
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      AError := 'не прочитан ' + ADpr + ': ' + E.Message;
+      AError := 'не прочитан ' + ADpr + ': ' + Err.Message;
       Exit;
     end;
   end;
@@ -829,9 +829,9 @@ begin
       Stream.Free;
     end;
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      AError := 'не записан ' + ADpr + ': ' + E.Message;
+      AError := 'не записан ' + ADpr + ': ' + Err.Message;
       AOldName := '';
       Exit;
     end;

@@ -78,8 +78,8 @@ type
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-      X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+      PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
   public
     constructor Create(AOwner: TComponent; AView: TFarView); reintroduce;
     destructor Destroy; override;
@@ -565,12 +565,12 @@ begin
   Invalidate;
 end;
 
-procedure TFarTabBar.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TFarTabBar.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 var
   TrackInfo: TTabTrackMouse;
   TabIdx: Integer;
 begin
-  inherited MouseMove(Shift, X, Y);
+  inherited MouseMove(Shift, PosX, PosY);
   if FView = nil then
     Exit;
   if not FTracking then
@@ -581,7 +581,7 @@ begin
     TrackInfo.dwHoverTime := 0;
     FTracking := TabTrackMouseEvent(TrackInfo);
   end;
-  TabIdx := TabAt(X, Y);
+  TabIdx := TabAt(PosX, PosY);
   if (TabIdx < 0) or (TabIdx = FHoverIdx) then
     Exit;
   FHoverIdx := TabIdx;
@@ -758,17 +758,17 @@ begin
 end;
 
 procedure TFarTabBar.MouseDown(Button: TMouseButton; Shift: TShiftState;
-  X, Y: Integer);
+  PosX, PosY: Integer);
 var
   TabIdx: Integer;
 begin
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
   if (FView = nil) or (Button <> mbLeft) then
     Exit;
-  TabIdx := TabAt(X, Y);
+  TabIdx := TabAt(PosX, PosY);
   if TabIdx >= 0 then
   begin
-    if (TabIdx > 0) and PtInRect(FCloseRects[TabIdx], Point(X, Y)) then
+    if (TabIdx > 0) and PtInRect(FCloseRects[TabIdx], Point(PosX, PosY)) then
       RemoveTab(TabIdx)
     else if FView.TabsAllowed or FModeOn then
     begin

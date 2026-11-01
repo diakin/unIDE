@@ -1242,8 +1242,8 @@ begin
         lvDeps.Color);
     end;
   except
-    on E: Exception do
-      EmptyPreview('Не прочитан: ' + E.Message);
+    on Err: Exception do
+      EmptyPreview('Не прочитан: ' + Err.Message);
   end;
 end;
 

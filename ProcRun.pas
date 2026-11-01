@@ -550,9 +550,9 @@ begin
   try
     FProc.Execute;
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      SetError(0, 'не запустить: ' + E.Message);
+      SetError(0, 'не запустить: ' + Err.Message);
       FreeAndNil(FProc);
       Exit;
     end;

@@ -74,10 +74,10 @@ type
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+                        PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
-                      X, Y: Integer); override;
+                      PosX, PosY: Integer); override;
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure KeyUp(var Key: Word; Shift: TShiftState); override;
   public
@@ -153,10 +153,10 @@ type
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
-                        X, Y: Integer); override;
-    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+                        PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
-                      X, Y: Integer); override;
+                      PosX, PosY: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -289,19 +289,19 @@ end;
 // системным цветом текста кнопки
 procedure TUiButton.PaintNative;
 var
-  R: TRect;
+  RectVal: TRect;
   TB: TThemedButton;
   Details: TThemedElementDetails;
-  S: string;
+  Str: string;
   Fl: Cardinal;
 begin
-  R := ClientRect;
+  RectVal := ClientRect;
   // Углы кнопки темы скруглены - под ними цвет родителя
   if Parent <> nil then
     Canvas.Brush.Color := TUiParentAcc(Parent).Color
   else
     Canvas.Brush.Color := clBtnFace;
-  Canvas.FillRect(R);
+  Canvas.FillRect(RectVal);
 
   if not Enabled then
     TB := tbPushButtonDisabled
@@ -314,7 +314,7 @@ begin
   else
     TB := tbPushButtonNormal;
   Details := ThemeServices.GetElementDetails(TB);
-  ThemeServices.DrawElement(Canvas.Handle, Details, R);
+  ThemeServices.DrawElement(Canvas.Handle, Details, RectVal);
 
   Canvas.Font := Font;
   if not Enabled then
@@ -323,25 +323,25 @@ begin
     Canvas.Font.Color := FTextColor
   else
     Canvas.Font.Color := clBtnText;
-  S := Caption;
-  InflateRect(R, -3, -2);
+  Str := Caption;
+  InflateRect(RectVal, -3, -2);
   Fl := DT_CENTER or DT_VCENTER or DT_SINGLELINE;
   if HandleAllocated and
      ((SendMessage(Handle, WM_QUERYUISTATE_, 0, 0) and UISF_HIDEACCEL_) <> 0) then
     Fl := Fl or DT_HIDEPREFIX_;
   Canvas.Brush.Style := bsClear;
-  DrawText(Canvas.Handle, PChar(S), Length(S), R, Fl);
+  DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, Fl);
   Canvas.Brush.Style := bsSolid;
 
   // Рамка фокуса, как у системной кнопки
   if Focused and HandleAllocated and
      ((SendMessage(Handle, WM_QUERYUISTATE_, 0, 0) and UISF_HIDEFOCUS_) = 0) then
   begin
-    R := ClientRect;
-    InflateRect(R, -3, -3);
+    RectVal := ClientRect;
+    InflateRect(RectVal, -3, -3);
     Canvas.Brush.Color := clBtnFace;
     Canvas.Font.Color := clBtnText;
-    Canvas.DrawFocusRect(R);
+    Canvas.DrawFocusRect(RectVal);
   end;
 end;
 
@@ -349,12 +349,12 @@ end;
 // цветами ролей
 procedure TUiButton.PaintOwn;
 var
-  R: TRect;
+  RectVal: TRect;
   Off, Down, Mark: Boolean;
-  S: string;
+  Str: string;
   Fl: Cardinal;
 begin
-  R := ClientRect;
+  RectVal := ClientRect;
   Off := not Enabled;
   Down := (FPressing and FMouseIn) or FKeyDown;
   // Двойная рамка цветом фокуса: кнопка в фокусе или та, что нажмётся по
@@ -376,11 +376,11 @@ begin
       Pen.Color := UiThemeColorFor(Self, 'Focus')
     else
       Pen.Color := UiThemeColorFor(Self, 'Button.Border');
-    Rectangle(R.Left, R.Top, R.Right, R.Bottom);
+    Rectangle(RectVal.Left, RectVal.Top, RectVal.Right, RectVal.Bottom);
     if Mark then
     begin
       Brush.Style := bsClear;
-      Rectangle(R.Left + 1, R.Top + 1, R.Right - 1, R.Bottom - 1);
+      Rectangle(RectVal.Left + 1, RectVal.Top + 1, RectVal.Right - 1, RectVal.Bottom - 1);
       Brush.Style := bsSolid;
     end;
 
@@ -391,10 +391,10 @@ begin
       Font.Color := FTextColor
     else
       Font.Color := UiThemeColorFor(Self, 'Button.Text');
-    S := Caption;
-    InflateRect(R, -3, -2);
+    Str := Caption;
+    InflateRect(RectVal, -3, -2);
     if Down then
-      OffsetRect(R, 1, 1);
+      OffsetRect(RectVal, 1, 1);
     Fl := DT_CENTER or DT_VCENTER or DT_SINGLELINE;
     // Self.: внутри with Canvas Handle и HandleAllocated - у холста
     if Self.HandleAllocated and
@@ -402,13 +402,13 @@ begin
          UISF_HIDEACCEL_) <> 0) then
       Fl := Fl or DT_HIDEPREFIX_;
     Brush.Style := bsClear;
-    DrawText(Handle, PChar(S), Length(S), R, Fl);
+    DrawText(Handle, PChar(Str), Length(Str), RectVal, Fl);
     Brush.Style := bsSolid;
   end;
 end;
 
 procedure TUiButton.MouseDown(Button: TMouseButton; Shift: TShiftState;
-                              X, Y: Integer);
+                              PosX, PosY: Integer);
 begin
   if (Button = mbLeft) and Enabled then
   begin
@@ -419,34 +419,34 @@ begin
     FMouseIn := True;
     Invalidate;
   end;
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
 end;
 
-procedure TUiButton.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TUiButton.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 var
   InNow: Boolean;
 begin
   if FPressing then
   begin
-    InNow := PtInRect(ClientRect, Point(X, Y));
+    InNow := PtInRect(ClientRect, Point(PosX, PosY));
     if InNow <> FMouseIn then
     begin
       FMouseIn := InNow;
       Invalidate;
     end;
   end;
-  inherited MouseMove(Shift, X, Y);
+  inherited MouseMove(Shift, PosX, PosY);
 end;
 
 procedure TUiButton.MouseUp(Button: TMouseButton; Shift: TShiftState;
-                            X, Y: Integer);
+                            PosX, PosY: Integer);
 begin
   if (Button = mbLeft) and FPressing then
   begin
     FPressing := False;
     Invalidate;
   end;
-  inherited MouseUp(Button, Shift, X, Y);
+  inherited MouseUp(Button, Shift, PosX, PosY);
 end;
 
 procedure TUiButton.KeyDown(var Key: Word; Shift: TShiftState);
@@ -926,7 +926,7 @@ begin
 end;
 
 procedure TUiIconButton.MouseDown(Button: TMouseButton; Shift: TShiftState;
-                                  X, Y: Integer);
+                                  PosX, PosY: Integer);
 begin
   if (Button = mbLeft) and Enabled then
   begin
@@ -934,34 +934,34 @@ begin
     FMouseIn := True;
     Invalidate;
   end;
-  inherited MouseDown(Button, Shift, X, Y);
+  inherited MouseDown(Button, Shift, PosX, PosY);
 end;
 
-procedure TUiIconButton.MouseMove(Shift: TShiftState; X, Y: Integer);
+procedure TUiIconButton.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
 var
   Inside: Boolean;
 begin
   if FPressing then
   begin
-    Inside := PtInRect(ClientRect, Point(X, Y));
+    Inside := PtInRect(ClientRect, Point(PosX, PosY));
     if Inside <> FMouseIn then
     begin
       FMouseIn := Inside;
       Invalidate;
     end;
   end;
-  inherited MouseMove(Shift, X, Y);
+  inherited MouseMove(Shift, PosX, PosY);
 end;
 
 procedure TUiIconButton.MouseUp(Button: TMouseButton; Shift: TShiftState;
-                                X, Y: Integer);
+                                PosX, PosY: Integer);
 begin
   if (Button = mbLeft) and FPressing then
   begin
     FPressing := False;
     Invalidate;
   end;
-  inherited MouseUp(Button, Shift, X, Y);   // здесь TControl вызовет Click
+  inherited MouseUp(Button, Shift, PosX, PosY);   // здесь TControl вызовет Click
 end;
 
 procedure TUiIconButton.Click;

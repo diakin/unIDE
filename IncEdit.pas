@@ -1165,10 +1165,10 @@ begin
         try
           NewLines.SaveToFile(OutFile);
         except
-          on E: Exception do
+          on Err: Exception do
           begin
             AReport.Add(Item.Name + ': не изъят - ' + ExtractFileName(OutFile) +
-                        ' не записан (' + E.Message + ')');
+                        ' не записан (' + Err.Message + ')');
             for MemberIdx := 0 to Closure.Count - 1 do
             begin
               Member := TIncUnit(Closure[MemberIdx]);
@@ -1210,9 +1210,9 @@ begin
           ADoc.Lines.SaveToFile(ChangeFileExt(ADoc.FileName, '.bak'));
           NewLines.SaveToFile(ADoc.FileName);
         except
-          on E: Exception do
+          on Err: Exception do
             AReport.Add(ExtractFileName(ADoc.FileName) + ' не записан: ' +
-                        E.Message);
+                        Err.Message);
         end;
       finally
         NewLines.Free;
@@ -1388,9 +1388,9 @@ begin
       end;
       OutLines.SaveToFile(AOutFile);
     except
-      on E: Exception do
+      on Err: Exception do
       begin
-        AReport.Add(AOutFile + ' не записан: ' + E.Message);
+        AReport.Add(AOutFile + ' не записан: ' + Err.Message);
         Exit;
       end;
     end;

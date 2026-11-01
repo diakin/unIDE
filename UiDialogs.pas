@@ -29,7 +29,7 @@ procedure ShowMessageFmt(const Msg: string; Params: array of const);
 function MessageDlg(const Msg: string; DlgType: TMsgDlgType;
   Buttons: TMsgDlgButtons; HelpCtx: Longint): Integer;
 function MessageDlgPos(const Msg: string; DlgType: TMsgDlgType;
-  Buttons: TMsgDlgButtons; HelpCtx: Longint; X, Y: Integer): Integer;
+  Buttons: TMsgDlgButtons; HelpCtx: Longint; PosX, PosY: Integer): Integer;
 function InputQuery(const ACaption, APrompt: string;
   var Value: string): Boolean;
 function InputBox(const ACaption, APrompt, ADefault: string): string;
@@ -163,7 +163,7 @@ var
   Kind: TMsgDlgBtn;
   TextRect: TRect;
   Measure: TBitmap;
-  TextLeft, ButtonsWidth, ButtonWidth, ButtonCount, X, Y, W, H: Integer;
+  TextLeft, ButtonsWidth, ButtonWidth, ButtonCount, PosX, PosY, WidthPx, HeightPx: Integer;
   Flags: Cardinal;
 begin
   Form := NewDialogForm(ACaption);
@@ -203,10 +203,10 @@ begin
       if (Kind in AButtons) and (Kind <> mbHelp) then
       begin
         Inc(ButtonCount);
-        W := Measure.Canvas.TextWidth(StringReplace(ButtonCaption(Kind), '&',
+        WidthPx := Measure.Canvas.TextWidth(StringReplace(ButtonCaption(Kind), '&',
                                                     '', [])) + 24;
-        if W > ButtonWidth then
-          ButtonWidth := W;
+        if WidthPx > ButtonWidth then
+          ButtonWidth := WidthPx;
       end;
     if ButtonCount = 0 then
     begin
@@ -218,18 +218,18 @@ begin
     ButtonsWidth := ButtonCount * ButtonWidth + (ButtonCount - 1) * Gap;
 
     // Размер окна
-    W := TextLeft + TextRect.Right + 4 + Margin;
-    if W < ButtonsWidth + 2 * Margin then
-      W := ButtonsWidth + 2 * Margin;
-    H := TextRect.Bottom;
-    if (AIcon <> 0) and (H < IconSize) then
-      H := IconSize;
-    Y := Margin + H + Margin + 4;
-    Form.ClientWidth := W;
-    Form.ClientHeight := Y + ButtonHeight + Margin;
+    WidthPx := TextLeft + TextRect.Right + 4 + Margin;
+    if WidthPx < ButtonsWidth + 2 * Margin then
+      WidthPx := ButtonsWidth + 2 * Margin;
+    HeightPx := TextRect.Bottom;
+    if (AIcon <> 0) and (HeightPx < IconSize) then
+      HeightPx := IconSize;
+    PosY := Margin + HeightPx + Margin + 4;
+    Form.ClientWidth := WidthPx;
+    Form.ClientHeight := PosY + ButtonHeight + Margin;
 
     // Кнопки - по центру внизу
-    X := (W - ButtonsWidth) div 2;
+    PosX := (WidthPx - ButtonsWidth) div 2;
     for Kind := Low(TMsgDlgBtn) to High(TMsgDlgBtn) do
       if (Kind in AButtons) and (Kind <> mbHelp) then
       begin
@@ -237,12 +237,12 @@ begin
         Btn.Parent := Form;
         Btn.Caption := ButtonCaption(Kind);
         Btn.ModalResult := ButtonResult(Kind);
-        Btn.SetBounds(X, Y, ButtonWidth, ButtonHeight);
+        Btn.SetBounds(PosX, PosY, ButtonWidth, ButtonHeight);
         Btn.Default := Kind = ADefault;
         Btn.Cancel := Kind = ACancel;
         if Kind = ADefault then
           Form.ActiveControl := Btn;
-        Inc(X, ButtonWidth + Gap);
+        Inc(PosX, ButtonWidth + Gap);
       end;
 
     if (ALeft >= 0) and (ATop >= 0) then
@@ -272,7 +272,7 @@ var
   TextRect: TRect;
   Measure: TBitmap;
   Icon: HICON;
-  BtnIdx, TextLeft, ButtonsWidth, X, Y, W, H, Answer: Integer;
+  BtnIdx, TextLeft, ButtonsWidth, PosX, PosY, WidthPx, HeightPx, Answer: Integer;
   Widths: array of Integer;
   Title: string;
 begin
@@ -319,29 +319,29 @@ begin
         Inc(ButtonsWidth, Gap);
     end;
 
-    W := TextLeft + TextRect.Right + 4 + Margin;
-    if W < ButtonsWidth + 2 * Margin then
-      W := ButtonsWidth + 2 * Margin;
-    H := TextRect.Bottom;
-    if (Icon <> 0) and (H < IconSize) then
-      H := IconSize;
-    Y := Margin + H + Margin + 4;
-    Form.ClientWidth := W;
-    Form.ClientHeight := Y + ButtonHeight + Margin;
+    WidthPx := TextLeft + TextRect.Right + 4 + Margin;
+    if WidthPx < ButtonsWidth + 2 * Margin then
+      WidthPx := ButtonsWidth + 2 * Margin;
+    HeightPx := TextRect.Bottom;
+    if (Icon <> 0) and (HeightPx < IconSize) then
+      HeightPx := IconSize;
+    PosY := Margin + HeightPx + Margin + 4;
+    Form.ClientWidth := WidthPx;
+    Form.ClientHeight := PosY + ButtonHeight + Margin;
 
-    X := (W - ButtonsWidth) div 2;
+    PosX := (WidthPx - ButtonsWidth) div 2;
     for BtnIdx := 0 to High(AButtons) do
     begin
       Btn := TUiButton.Create(Form);
       Btn.Parent := Form;
       Btn.Caption := AButtons[BtnIdx];
       Btn.ModalResult := ResultBase + BtnIdx;
-      Btn.SetBounds(X, Y, Widths[BtnIdx], ButtonHeight);
+      Btn.SetBounds(PosX, PosY, Widths[BtnIdx], ButtonHeight);
       Btn.Default := BtnIdx = ADefaultIndex;
       Btn.Cancel := BtnIdx = ACancelIndex;
       if BtnIdx = ADefaultIndex then
         Form.ActiveControl := Btn;
-      Inc(X, Widths[BtnIdx] + Gap);
+      Inc(PosX, Widths[BtnIdx] + Gap);
     end;
 
     Answer := Form.ShowModal;
@@ -385,13 +385,13 @@ begin
 end;
 
 function MessageDlgPos(const Msg: string; DlgType: TMsgDlgType;
-  Buttons: TMsgDlgButtons; HelpCtx: Longint; X, Y: Integer): Integer;
+  Buttons: TMsgDlgButtons; HelpCtx: Longint; PosX, PosY: Integer): Integer;
 var
   Def, Cancel: TMsgDlgBtn;
 begin
   PickDefaults(Buttons, Def, Cancel);
   Result := RunMessage(Msg, DlgCaption(DlgType), DlgIcon(DlgType), Buttons,
-                       Def, Cancel, X, Y);
+                       Def, Cancel, PosX, PosY);
 end;
 
 function MessageDlg(const Msg: string; DlgType: TMsgDlgType;
@@ -476,38 +476,38 @@ var
   Edit: TUiEdit;
   BtnOk, BtnCancel: TUiButton;
   Measure: TBitmap;
-  W, Y: Integer;
+  WidthPx, PosY: Integer;
 begin
   Result := False;
   Form := NewDialogForm(ACaption);
   Measure := TBitmap.Create;
   try
     Measure.Canvas.Font := Form.Font;
-    W := Measure.Canvas.TextWidth(APrompt) + 2 * Margin;
-    if W < 320 then
-      W := 320;
-    Form.ClientWidth := W;
+    WidthPx := Measure.Canvas.TextWidth(APrompt) + 2 * Margin;
+    if WidthPx < 320 then
+      WidthPx := 320;
+    Form.ClientWidth := WidthPx;
 
     PromptLabel := TUiLabel.Create(Form);
     PromptLabel.Parent := Form;
     PromptLabel.Caption := APrompt;
-    PromptLabel.SetBounds(Margin, Margin, W - 2 * Margin,
+    PromptLabel.SetBounds(Margin, Margin, WidthPx - 2 * Margin,
                           Measure.Canvas.TextHeight('0'));
-    Y := PromptLabel.Top + PromptLabel.Height + 4;
+    PosY := PromptLabel.Top + PromptLabel.Height + 4;
 
     Edit := TUiEdit.Create(Form);
     Edit.Parent := Form;
-    Edit.SetBounds(Margin, Y, W - 2 * Margin, 21);
+    Edit.SetBounds(Margin, PosY, WidthPx - 2 * Margin, 21);
     Edit.Text := Value;
     Edit.SelectAll;
-    Inc(Y, Edit.Height + Margin);
+    Inc(PosY, Edit.Height + Margin);
 
     BtnCancel := TUiButton.Create(Form);
     BtnCancel.Parent := Form;
     BtnCancel.Caption := SMsgDlgCancel;
     BtnCancel.ModalResult := mrCancel;
     BtnCancel.Cancel := True;
-    BtnCancel.SetBounds(W - Margin - MinButtonWidth, Y, MinButtonWidth,
+    BtnCancel.SetBounds(WidthPx - Margin - MinButtonWidth, PosY, MinButtonWidth,
                         ButtonHeight);
 
     BtnOk := TUiButton.Create(Form);
@@ -515,10 +515,10 @@ begin
     BtnOk.Caption := SMsgDlgOK;
     BtnOk.ModalResult := mrOk;
     BtnOk.Default := True;
-    BtnOk.SetBounds(BtnCancel.Left - Gap - MinButtonWidth, Y,
+    BtnOk.SetBounds(BtnCancel.Left - Gap - MinButtonWidth, PosY,
                     MinButtonWidth, ButtonHeight);
 
-    Form.ClientHeight := Y + ButtonHeight + Margin;
+    Form.ClientHeight := PosY + ButtonHeight + Margin;
     Form.ActiveControl := Edit;
 
     if Form.ShowModal = mrOk then

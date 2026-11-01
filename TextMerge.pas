@@ -21,10 +21,10 @@ uses
   SysUtils, Classes;
 
 // Текст без CR и LF - чтобы переводы строк не считались разницей
-function NoEols(const S: string): string;
+function NoEols(const Str: string): string;
 
 // Равны ли тексты, если не считать CR и LF (без копий строк)
-function SameNoEols(const A, B: string): Boolean;
+function SameNoEols(const ArgStr, BufStr: string): Boolean;
 
 // Слить: предок ABase, окно AMine, диск ATheirs. AConflicts - число
 // участков с метками.
@@ -41,52 +41,52 @@ implementation
 // 16 000 строк (734 КБ) - около 12 с на один вызов. На файле размером с
 // Unit1.pas (31 000 строк) - порядка минуты, а проверка изменений на диске
 // (CheckDiskChanges) зовёт NoEols дважды.
-function NoEols(const S: string): string;
+function NoEols(const Str: string): string;
 var
-  I, N: Integer;
-  P: PChar;
+  I, Num: Integer;
+  CharPtr: PChar;
 begin
-  SetLength(Result, Length(S));
-  N := 0;
-  P := PChar(Result);
-  for I := 1 to Length(S) do
-    if (S[I] <> #13) and (S[I] <> #10) then
+  SetLength(Result, Length(Str));
+  Num := 0;
+  CharPtr := PChar(Result);
+  for I := 1 to Length(Str) do
+    if (Str[I] <> #13) and (Str[I] <> #10) then
     begin
-      P[N] := S[I];
-      Inc(N);
+      CharPtr[Num] := Str[I];
+      Inc(Num);
     end;
-  SetLength(Result, N);
+  SetLength(Result, Num);
 end;
 
 // Равны ли тексты, если не считать CR и LF. Идёт по обоим сразу, пропуская
 // переводы строк; на первом несовпадении выходит. Копий строк не делает,
 // в отличие от NoEols(A) = NoEols(B).
-function SameNoEols(const A, B: string): Boolean;
+function SameNoEols(const ArgStr, BufStr: string): Boolean;
 var
-  I, J, LA, LB: Integer;
+  Idx, Idx2, LA, LB: Integer;
 begin
-  I := 1;
-  J := 1;
-  LA := Length(A);
-  LB := Length(B);
+  Idx := 1;
+  Idx2 := 1;
+  LA := Length(ArgStr);
+  LB := Length(BufStr);
   while True do
   begin
-    while (I <= LA) and ((A[I] = #13) or (A[I] = #10)) do
-      Inc(I);
-    while (J <= LB) and ((B[J] = #13) or (B[J] = #10)) do
-      Inc(J);
-    if (I > LA) or (J > LB) then
+    while (Idx <= LA) and ((ArgStr[Idx] = #13) or (ArgStr[Idx] = #10)) do
+      Inc(Idx);
+    while (Idx2 <= LB) and ((BufStr[Idx2] = #13) or (BufStr[Idx2] = #10)) do
+      Inc(Idx2);
+    if (Idx > LA) or (Idx2 > LB) then
       Break;
-    if A[I] <> B[J] then
+    if ArgStr[Idx] <> BufStr[Idx2] then
     begin
       Result := False;
       Exit;
     end;
-    Inc(I);
-    Inc(J);
+    Inc(Idx);
+    Inc(Idx2);
   end;
   // Равны, только если оба кончились
-  Result := (I > LA) and (J > LB);
+  Result := (Idx > LA) and (Idx2 > LB);
 end;
 
 type
@@ -101,43 +101,43 @@ type
 // Правки от A (предок) к B. Общие начало и конец отбрасываются; середина -
 // по наибольшей общей подпоследовательности строк, если она не слишком
 // велика, иначе одним участком.
-procedure MergeDiff(A, B: TStrings; ASide: Integer; var H: TMergeHunks);
+procedure MergeDiff(StrList, StrList2: TStrings; ASide: Integer; var MergeHunks: TMergeHunks);
 const
   MaxCells = 4000000;
 var
-  Pre, SufA, SufB, N, M, I, J, K, S1, S2: Integer;
-  L: array of array of SmallInt;
+  Pre, SufA, SufB, Num, Mid, I, J, Idx3, S1, S2: Integer;
+  LcsLen: array of array of SmallInt;
 
   procedure Add(ABS, ABE, AOS, AOE: Integer);
   begin
     if (ABS = ABE) and (AOS = AOE) then
       Exit;
-    K := Length(H);
-    SetLength(H, K + 1);
-    H[K].BS := ABS;
-    H[K].BE := ABE;
-    H[K].OS := AOS;
-    H[K].OE := AOE;
-    H[K].Side := ASide;
+    Idx3 := Length(MergeHunks);
+    SetLength(MergeHunks, Idx3 + 1);
+    MergeHunks[Idx3].BS := ABS;
+    MergeHunks[Idx3].BE := ABE;
+    MergeHunks[Idx3].OS := AOS;
+    MergeHunks[Idx3].OE := AOE;
+    MergeHunks[Idx3].Side := ASide;
   end;
 
 begin
   Pre := 0;
-  while (Pre < A.Count) and (Pre < B.Count) and (A[Pre] = B[Pre]) do
+  while (Pre < StrList.Count) and (Pre < StrList2.Count) and (StrList[Pre] = StrList2[Pre]) do
     Inc(Pre);
-  SufA := A.Count;
-  SufB := B.Count;
-  while (SufA > Pre) and (SufB > Pre) and (A[SufA - 1] = B[SufB - 1]) do
+  SufA := StrList.Count;
+  SufB := StrList2.Count;
+  while (SufA > Pre) and (SufB > Pre) and (StrList[SufA - 1] = StrList2[SufB - 1]) do
   begin
     Dec(SufA);
     Dec(SufB);
   end;
-  N := SufA - Pre;
-  M := SufB - Pre;
-  if (N = 0) and (M = 0) then
+  Num := SufA - Pre;
+  Mid := SufB - Pre;
+  if (Num = 0) and (Mid = 0) then
     Exit;
-  if (N = 0) or (M = 0) or (Int64(N + 1) * (M + 1) > MaxCells) or
-     (N > 32000) or (M > 32000) then
+  if (Num = 0) or (Mid = 0) or (Int64(Num + 1) * (Mid + 1) > MaxCells) or
+     (Num > 32000) or (Mid > 32000) then
   begin
     Add(Pre, SufA, Pre, SufB);
     Exit;
@@ -145,23 +145,23 @@ begin
 
   // L[I][J] - длина общей подпоследовательности хвостов A[Pre+I..] и
   // B[Pre+J..] в пределах середины
-  SetLength(L, N + 1, M + 1);
-  for I := N - 1 downto 0 do
-    for J := M - 1 downto 0 do
-      if A[Pre + I] = B[Pre + J] then
-        L[I][J] := L[I + 1][J + 1] + 1
-      else if L[I + 1][J] >= L[I][J + 1] then
-        L[I][J] := L[I + 1][J]
+  SetLength(LcsLen, Num + 1, Mid + 1);
+  for I := Num - 1 downto 0 do
+    for J := Mid - 1 downto 0 do
+      if StrList[Pre + I] = StrList2[Pre + J] then
+        LcsLen[I][J] := LcsLen[I + 1][J + 1] + 1
+      else if LcsLen[I + 1][J] >= LcsLen[I][J + 1] then
+        LcsLen[I][J] := LcsLen[I + 1][J]
       else
-        L[I][J] := L[I][J + 1];
+        LcsLen[I][J] := LcsLen[I][J + 1];
 
   I := 0;
   J := 0;
   S1 := -1;
   S2 := -1;
-  while (I < N) or (J < M) do
+  while (I < Num) or (J < Mid) do
   begin
-    if (I < N) and (J < M) and (A[Pre + I] = B[Pre + J]) then
+    if (I < Num) and (J < Mid) and (StrList[Pre + I] = StrList2[Pre + J]) then
     begin
       if S1 >= 0 then
       begin
@@ -178,40 +178,40 @@ begin
         S1 := I;
         S2 := J;
       end;
-      if (J >= M) or ((I < N) and (L[I + 1][J] >= L[I][J + 1])) then
+      if (J >= Mid) or ((I < Num) and (LcsLen[I + 1][J] >= LcsLen[I][J + 1])) then
         Inc(I)
       else
         Inc(J);
     end;
   end;
   if S1 >= 0 then
-    Add(Pre + S1, Pre + N, Pre + S2, Pre + M);
+    Add(Pre + S1, Pre + Num, Pre + S2, Pre + Mid);
 end;
 
 // Версия стороны на участке предка [GS, GE): строки предка, где сторона
 // ничего не меняла, и её строки на месте её правок
-procedure MergeSideText(Base, Own: TStrings; const H: TMergeHunks;
+procedure MergeSideText(Base, Own: TStrings; const MergeHunks: TMergeHunks;
                         ASide, GS, GE: Integer; AOut: TStrings);
 var
-  I, K, P: Integer;
+  I, K, CharPos: Integer;
 begin
-  P := GS;
-  for I := 0 to High(H) do
+  CharPos := GS;
+  for I := 0 to High(MergeHunks) do
   begin
-    if (H[I].Side <> ASide) or (H[I].BS < GS) or (H[I].BE > GE) then
+    if (MergeHunks[I].Side <> ASide) or (MergeHunks[I].BS < GS) or (MergeHunks[I].BE > GE) then
       Continue;
-    if (H[I].BS = H[I].BE) and (H[I].BS = GE) and (GE > GS) then
+    if (MergeHunks[I].BS = MergeHunks[I].BE) and (MergeHunks[I].BS = GE) and (GE > GS) then
       Continue;   // вставка на границе - не этого участка
-    for K := P to H[I].BS - 1 do
+    for K := CharPos to MergeHunks[I].BS - 1 do
       AOut.Add(Base[K]);
-    for K := H[I].OS to H[I].OE - 1 do
+    for K := MergeHunks[I].OS to MergeHunks[I].OE - 1 do
       AOut.Add(Own[K]);
-    if H[I].BE > P then
-      P := H[I].BE
-    else if H[I].BS > P then
-      P := H[I].BS;
+    if MergeHunks[I].BE > CharPos then
+      CharPos := MergeHunks[I].BE
+    else if MergeHunks[I].BS > CharPos then
+      CharPos := MergeHunks[I].BS;
   end;
-  for K := P to GE - 1 do
+  for K := CharPos to GE - 1 do
     AOut.Add(Base[K]);
 end;
 
@@ -220,101 +220,101 @@ end;
 function Merge3(const ABase, AMine, ATheirs: string;
                 var AConflicts: Integer): string;
 var
-  B, Mi, Th, Res, X, Y: TStringList;
-  H: TMergeHunks;
-  I, J, K, Pos0, GS, GE: Integer;
-  T: TMergeHunk;
+  StrList, Mi, Th, Res, StrList2, StrList3: TStringList;
+  MergeHunks: TMergeHunks;
+  I, Idx2, K, Pos0, GS, GE: Integer;
+  MergeHunk: TMergeHunk;
   HasMine, HasTheirs: Boolean;
 begin
   AConflicts := 0;
-  B := TStringList.Create;
+  StrList := TStringList.Create;
   Mi := TStringList.Create;
   Th := TStringList.Create;
   Res := TStringList.Create;
-  X := TStringList.Create;
-  Y := TStringList.Create;
+  StrList2 := TStringList.Create;
+  StrList3 := TStringList.Create;
   try
-    B.Text := ABase;
+    StrList.Text := ABase;
     Mi.Text := AMine;
     Th.Text := ATheirs;
-    SetLength(H, 0);
-    MergeDiff(B, Mi, 0, H);
-    MergeDiff(B, Th, 1, H);
+    SetLength(MergeHunks, 0);
+    MergeDiff(StrList, Mi, 0, MergeHunks);
+    MergeDiff(StrList, Th, 1, MergeHunks);
 
     // По началу участка; при равном начале - сначала вставки
-    for I := 1 to High(H) do
+    for I := 1 to High(MergeHunks) do
     begin
-      T := H[I];
-      J := I - 1;
-      while (J >= 0) and ((H[J].BS > T.BS) or
-            ((H[J].BS = T.BS) and (H[J].BE > T.BE))) do
+      MergeHunk := MergeHunks[I];
+      Idx2 := I - 1;
+      while (Idx2 >= 0) and ((MergeHunks[Idx2].BS > MergeHunk.BS) or
+            ((MergeHunks[Idx2].BS = MergeHunk.BS) and (MergeHunks[Idx2].BE > MergeHunk.BE))) do
       begin
-        H[J + 1] := H[J];
-        Dec(J);
+        MergeHunks[Idx2 + 1] := MergeHunks[Idx2];
+        Dec(Idx2);
       end;
-      H[J + 1] := T;
+      MergeHunks[Idx2 + 1] := MergeHunk;
     end;
 
     Pos0 := 0;
     I := 0;
-    while I <= High(H) do
+    while I <= High(MergeHunks) do
     begin
       // Группа пересекающихся участков: правки обеих сторон в ней
       // касаются одних и тех же строк предка
-      GS := H[I].BS;
-      GE := H[I].BE;
-      HasMine := H[I].Side = 0;
-      HasTheirs := H[I].Side = 1;
-      J := I + 1;
-      while (J <= High(H)) and ((H[J].BS < GE) or (H[J].BS = GS)) do
+      GS := MergeHunks[I].BS;
+      GE := MergeHunks[I].BE;
+      HasMine := MergeHunks[I].Side = 0;
+      HasTheirs := MergeHunks[I].Side = 1;
+      Idx2 := I + 1;
+      while (Idx2 <= High(MergeHunks)) and ((MergeHunks[Idx2].BS < GE) or (MergeHunks[Idx2].BS = GS)) do
       begin
-        if H[J].BE > GE then
-          GE := H[J].BE;
-        if H[J].Side = 0 then
+        if MergeHunks[Idx2].BE > GE then
+          GE := MergeHunks[Idx2].BE;
+        if MergeHunks[Idx2].Side = 0 then
           HasMine := True
         else
           HasTheirs := True;
-        Inc(J);
+        Inc(Idx2);
       end;
 
       for K := Pos0 to GS - 1 do
-        Res.Add(B[K]);
+        Res.Add(StrList[K]);
 
-      X.Clear;
-      Y.Clear;
+      StrList2.Clear;
+      StrList3.Clear;
       if HasMine then
-        MergeSideText(B, Mi, Copy(H, I, J - I), 0, GS, GE, X);
+        MergeSideText(StrList, Mi, Copy(MergeHunks, I, Idx2 - I), 0, GS, GE, StrList2);
       if HasTheirs then
-        MergeSideText(B, Th, Copy(H, I, J - I), 1, GS, GE, Y);
+        MergeSideText(StrList, Th, Copy(MergeHunks, I, Idx2 - I), 1, GS, GE, StrList3);
 
       if HasMine and not HasTheirs then
-        Res.AddStrings(X)
+        Res.AddStrings(StrList2)
       else if HasTheirs and not HasMine then
-        Res.AddStrings(Y)
-      else if X.Text = Y.Text then
-        Res.AddStrings(X)   // обе стороны сделали одно и то же
+        Res.AddStrings(StrList3)
+      else if StrList2.Text = StrList3.Text then
+        Res.AddStrings(StrList2)   // обе стороны сделали одно и то же
       else
       begin
         Inc(AConflicts);
         Res.Add('<<<<<<< в окне');
-        Res.AddStrings(X);
+        Res.AddStrings(StrList2);
         Res.Add('=======');
-        Res.AddStrings(Y);
+        Res.AddStrings(StrList3);
         Res.Add('>>>>>>> на диске');
       end;
       Pos0 := GE;
-      I := J;
+      I := Idx2;
     end;
-    for K := Pos0 to B.Count - 1 do
-      Res.Add(B[K]);
+    for K := Pos0 to StrList.Count - 1 do
+      Res.Add(StrList[K]);
     Result := Res.Text;
   finally
-    Y.Free;
-    X.Free;
+    StrList3.Free;
+    StrList2.Free;
     Res.Free;
     Th.Free;
     Mi.Free;
-    B.Free;
+    StrList.Free;
   end;
 end;
 

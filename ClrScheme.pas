@@ -68,11 +68,11 @@ type
     FMinLen, FMaxLen: Integer;
     procedure RebuildHash;
     function SameWord(const AItem, AWord: string): Boolean;
-    function FindInSlots(const S: string): Integer;
+    function FindInSlots(const Str: string): Integer;
   protected
     procedure Changed; override;
   public
-    function IndexOf(const S: string): Integer; override;
+    function IndexOf(const Str: string): Integer; override;
     // Может ли слово AText[APos..APos+ALen-1] быть в списке: проверка по
     // длине и первой букве, без копии слова. False - точно нет
     function MayContain(const AText: string; APos, ALen: Integer): Boolean;
@@ -297,12 +297,12 @@ type
     // Цвета выбранной темы (FTheme) - поверх основных. После чтения всех
     // файлов схемы. Результат - сколько разделов получили цвета темы.
     function  ApplyTheme: Integer;
-    function  IsCommentLine(const S: string): Boolean;
+    function  IsCommentLine(const Str: string): Boolean;
     // Строка данных раздела LineComment: маркер, с ^ впереди при
     // FLineCommentAtStart. Set разбирает её обратно (none не трогает -
     // это делает SchemaMarkerValue при чтении файла).
     function  LineCommentSchemeText: string;
-    procedure SetLineCommentSchemeText(const S: string);
+    procedure SetLineCommentSchemeText(const Str: string);
     // Маркер строчного комментария, найденный в AText на позиции MarkPos,
     // действительно открывает комментарий: без FLineCommentAtStart - всегда,
     // с ним - если левее, до начала строки (#13, #10 или начало AText),
@@ -317,7 +317,7 @@ type
     // Раздел в таблице схемы, даже если в файле его нет (PairMark): строка
     // есть - цвет можно поменять, и при сохранении раздел допишется
     procedure EnsureSchemaSection(const AName: string);
-    procedure ParseDigitFormats(const S: string);
+    procedure ParseDigitFormats(const Str: string);
     function  BuildDigitFormats: string;
     procedure SaveClrSchemaTo(const APath: string);
     procedure WriteSchemaSection(SL: TStringList; const AName: string);
@@ -334,21 +334,21 @@ type
     function  StrExtraIndex(const AName: string): Integer;
     function  StrMark(AKind: Integer): string;
     procedure StrColors(AKind: Integer; var AFg, ABg: TColor);
-    procedure SetOpChars(AIndex: Integer; const S: string);
+    procedure SetOpChars(AIndex: Integer; const Str: string);
     procedure ParseClrFile(const APath: string);
   end;
 
 // Имя темы для FTheme: основная тема и пустое имя - ''
 function ThemeKey(const AName: string): string;
 // Строка - заголовок раздела (с меткой SchemaHeadMark)
-function IsSchemaHead(const S: string): Boolean;
-function SchemaMarkerValue(const S: string): string;
+function IsSchemaHead(const Str: string): Boolean;
+function SchemaMarkerValue(const Str: string): string;
 function  IsKeywordSection(const AName: string): Boolean;
-function  SplitMarkers(const S: string; var AStart, AEnd: string): Boolean;
-procedure SetWordsByComma(List: TStringList; const S: string;
+function  SplitMarkers(const Str: string; var AStart, AEnd: string): Boolean;
+procedure SetWordsByComma(List: TStringList; const Str: string;
                           ATrimEdges: Boolean = False);
 function  WordsByComma(List: TStringList): string;
-procedure SetWordsBySpace(List: TStringList; const S: string);
+procedure SetWordsBySpace(List: TStringList; const Str: string);
 function  WordsBySpace(List: TStringList): string;
 
 // То же для любого списка: не TSchemeWords - всегда True (проверять IndexOf)
@@ -471,12 +471,12 @@ begin
     Result := True;
 end;
 
-function TSchemeWords.IndexOf(const S: string): Integer;
+function TSchemeWords.IndexOf(const Str: string): Integer;
 begin
   // С учётом регистра - как у TStringList
   if CaseSensitive then
   begin
-    Result := inherited IndexOf(S);
+    Result := inherited IndexOf(Str);
     Exit;
   end;
   Result := -1;
@@ -484,26 +484,26 @@ begin
     Exit;
   if not FHashValid then
     RebuildHash;
-  if (Length(S) < FMinLen) or (Length(S) > FMaxLen) then
+  if (Length(Str) < FMinLen) or (Length(Str) > FMaxLen) then
     Exit;
-  if (S <> '') and not (WordLower[S[1]] in FFirstChars) then
+  if (Str <> '') and not (WordLower[Str[1]] in FFirstChars) then
     Exit;
-  Result := FindInSlots(S);
+  Result := FindInSlots(Str);
 end;
 
 // Поиск по хешу вынесен из IndexOf: строка Strings[] - временная, и
 // компилятор ставит на неё защитный блок try/finally на входе в функцию.
 // В IndexOf он стоял бы на каждом вызове, хотя большинство слов
 // отсекается раньше, по длине и первой букве
-function TSchemeWords.FindInSlots(const S: string): Integer;
+function TSchemeWords.FindInSlots(const Str: string): Integer;
 var
   SlotIdx: Integer;
 begin
   Result := -1;
-  SlotIdx := Integer(WordHash(S) and Cardinal(FSlotMask));
+  SlotIdx := Integer(WordHash(Str) and Cardinal(FSlotMask));
   while FSlots[SlotIdx] <> 0 do
   begin
-    if SameWord(Strings[FSlots[SlotIdx] - 1], S) then
+    if SameWord(Strings[FSlots[SlotIdx] - 1], Str) then
     begin
       Result := FSlots[SlotIdx] - 1;
       Exit;
@@ -633,10 +633,10 @@ end;
 function TClrScheme.SectionColors(const AName: string;
                                   var AFg, ABg: TColor): Boolean;
 var
-  I, G: Integer;
+  I, GrpIdx: Integer;
 begin
   Result := False;
-  G := -1;
+  GrpIdx := -1;
   if AName = '' then
     Exit;
   if IsKeywordSection(AName) then
@@ -652,11 +652,11 @@ begin
   end
   else if (Length(AName) >= 9) and (Copy(AName, 1, 9) = 'Operators') then
   begin
-    G := OpGroupIndex(AName);
-    if G >= 0 then
+    GrpIdx := OpGroupIndex(AName);
+    if GrpIdx >= 0 then
     begin
-      AFg := OpGroups[G].FgColor;
-      ABg := OpGroups[G].BgColor;
+      AFg := OpGroups[GrpIdx].FgColor;
+      ABg := OpGroups[GrpIdx].BgColor;
       Result := True;
     end;
   end
@@ -674,11 +674,11 @@ begin
   end
   else if (Length(AName) > 12) and (Copy(AName, 1, 12) = 'BlockComment') then
   begin
-    G := BcExtraIndex(AName);
-    if G >= 0 then
+    GrpIdx := BcExtraIndex(AName);
+    if GrpIdx >= 0 then
     begin
-      AFg := FBcExtra[G].FgColor;
-      ABg := FBcExtra[G].BgColor;
+      AFg := FBcExtra[GrpIdx].FgColor;
+      ABg := FBcExtra[GrpIdx].BgColor;
       Result := True;
     end;
   end
@@ -690,11 +690,11 @@ begin
   end
   else if (Length(AName) > 7) and (Copy(AName, 1, 7) = 'Strings') then
   begin
-    G := StrExtraIndex(AName);
-    if G >= 0 then
+    GrpIdx := StrExtraIndex(AName);
+    if GrpIdx >= 0 then
     begin
-      AFg := FStrExtra[G].FgColor;
-      ABg := FStrExtra[G].BgColor;
+      AFg := FStrExtra[GrpIdx].FgColor;
+      ABg := FStrExtra[GrpIdx].BgColor;
       Result := True;
     end;
   end
@@ -718,11 +718,11 @@ begin
   end
   else if (Length(AName) >= 8) and (Copy(AName, 1, 8) = 'LineMark') then
   begin
-    G := MarkGroupIndex(AName);
-    if G >= 0 then
+    GrpIdx := MarkGroupIndex(AName);
+    if GrpIdx >= 0 then
     begin
-      AFg := MarkGroups[G].FgColor;
-      ABg := MarkGroups[G].BgColor;
+      AFg := MarkGroups[GrpIdx].FgColor;
+      ABg := MarkGroups[GrpIdx].BgColor;
       Result := True;
     end;
   end
@@ -740,11 +740,11 @@ begin
   end
   else if (Length(AName) > 6) and (Copy(AName, 1, 6) = 'CUSTOM') then
   begin
-    G := StrToIntDef(Copy(AName, 7, 1), 0);
-    if (G >= 1) and (G <= 5) then
+    GrpIdx := StrToIntDef(Copy(AName, 7, 1), 0);
+    if (GrpIdx >= 1) and (GrpIdx <= 5) then
     begin
-      AFg := FCustomFG[G];
-      ABg := FCustomBG[G];
+      AFg := FCustomFG[GrpIdx];
+      ABg := FCustomBG[GrpIdx];
       Result := True;
     end;
   end;
@@ -756,10 +756,10 @@ end;
 function TClrScheme.SetSectionColors(const AName: string;
                                      AFg, ABg: TColor): Boolean;
 var
-  I, G: Integer;
+  I, GrpIdx: Integer;
 begin
   Result := False;
-  G := -1;
+  GrpIdx := -1;
   if AName = '' then
     Exit;
   if IsKeywordSection(AName) then
@@ -775,11 +775,11 @@ begin
   end
   else if (Length(AName) >= 9) and (Copy(AName, 1, 9) = 'Operators') then
   begin
-    G := OpGroupIndex(AName);
-    if G >= 0 then
+    GrpIdx := OpGroupIndex(AName);
+    if GrpIdx >= 0 then
     begin
-      OpGroups[G].FgColor := AFg;
-      OpGroups[G].BgColor := ABg;
+      OpGroups[GrpIdx].FgColor := AFg;
+      OpGroups[GrpIdx].BgColor := ABg;
       Result := True;
     end;
   end
@@ -797,11 +797,11 @@ begin
   end
   else if (Length(AName) > 12) and (Copy(AName, 1, 12) = 'BlockComment') then
   begin
-    G := BcExtraIndex(AName);
-    if G >= 0 then
+    GrpIdx := BcExtraIndex(AName);
+    if GrpIdx >= 0 then
     begin
-      FBcExtra[G].FgColor := AFg;
-      FBcExtra[G].BgColor := ABg;
+      FBcExtra[GrpIdx].FgColor := AFg;
+      FBcExtra[GrpIdx].BgColor := ABg;
       Result := True;
     end;
   end
@@ -813,11 +813,11 @@ begin
   end
   else if (Length(AName) > 7) and (Copy(AName, 1, 7) = 'Strings') then
   begin
-    G := StrExtraIndex(AName);
-    if G >= 0 then
+    GrpIdx := StrExtraIndex(AName);
+    if GrpIdx >= 0 then
     begin
-      FStrExtra[G].FgColor := AFg;
-      FStrExtra[G].BgColor := ABg;
+      FStrExtra[GrpIdx].FgColor := AFg;
+      FStrExtra[GrpIdx].BgColor := ABg;
       Result := True;
     end;
   end
@@ -843,11 +843,11 @@ begin
   end
   else if (Length(AName) >= 8) and (Copy(AName, 1, 8) = 'LineMark') then
   begin
-    G := MarkGroupIndex(AName);
-    if G >= 0 then
+    GrpIdx := MarkGroupIndex(AName);
+    if GrpIdx >= 0 then
     begin
-      MarkGroups[G].FgColor := AFg;
-      MarkGroups[G].BgColor := ABg;
+      MarkGroups[GrpIdx].FgColor := AFg;
+      MarkGroups[GrpIdx].BgColor := ABg;
       Result := True;
     end;
   end
@@ -867,30 +867,30 @@ begin
   end
   else if (Length(AName) > 6) and (Copy(AName, 1, 6) = 'CUSTOM') then
   begin
-    G := StrToIntDef(Copy(AName, 7, 1), 0);
-    if (G >= 1) and (G <= 5) then
+    GrpIdx := StrToIntDef(Copy(AName, 7, 1), 0);
+    if (GrpIdx >= 1) and (GrpIdx <= 5) then
     begin
-      FCustomFG[G] := AFg;
-      FCustomBG[G] := ABg;
+      FCustomFG[GrpIdx] := AFg;
+      FCustomBG[GrpIdx] := ABg;
       Result := True;
     end;
   end;
 end;
 
 // "цвет цвет" -> два цвета; False - не разобралось
-function SplitColorPair(const S: string; var AFg, ABg: TColor): Boolean;
+function SplitColorPair(const Str: string; var AFg, ABg: TColor): Boolean;
 var
-  P: Integer;
-  T: string;
+  CharPos: Integer;
+  Txt: string;
 begin
   Result := False;
-  T := Trim(S);
-  P := Pos(' ', T);
-  if P = 0 then
+  Txt := Trim(Str);
+  CharPos := Pos(' ', Txt);
+  if CharPos = 0 then
     Exit;
   try
-    AFg := StringToColor(Trim(Copy(T, 1, P - 1)));
-    ABg := StringToColor(Trim(Copy(T, P + 1, MaxInt)));
+    AFg := StringToColor(Trim(Copy(Txt, 1, CharPos - 1)));
+    ABg := StringToColor(Trim(Copy(Txt, CharPos + 1, MaxInt)));
     Result := True;
   except
     // не цвет - строку темы пропускаем
@@ -899,7 +899,7 @@ end;
 
 function TClrScheme.ApplyTheme: Integer;
 var
-  I, P: Integer;
+  I, CharPos: Integer;
   Key: string;
   Fg, Bg: TColor;
 begin
@@ -909,28 +909,28 @@ begin
   for I := 0 to FThemeColors.Count - 1 do
   begin
     Key := FThemeColors.Names[I];
-    P := Pos('@', Key);
-    if (P <= 1) or (CompareText(Copy(Key, P + 1, MaxInt), FTheme) <> 0) then
+    CharPos := Pos('@', Key);
+    if (CharPos <= 1) or (CompareText(Copy(Key, CharPos + 1, MaxInt), FTheme) <> 0) then
       Continue;
     if SplitColorPair(Copy(FThemeColors[I], Length(FThemeColors.Names[I]) + 2, MaxInt), Fg, Bg) then
-      if SetSectionColors(Copy(Key, 1, P - 1), Fg, Bg) then
+      if SetSectionColors(Copy(Key, 1, CharPos - 1), Fg, Bg) then
         Inc(Result);
   end;
 end;
 
 // Строка файла схемы - заголовок раздела (с меткой SchemaHeadMark)?
-function IsSchemaHead(const S: string): Boolean;
+function IsSchemaHead(const Str: string): Boolean;
 begin
-  Result := Copy(S, 1, Length(SchemaHeadMark)) = SchemaHeadMark;
+  Result := Copy(Str, 1, Length(SchemaHeadMark)) = SchemaHeadMark;
 end;
 
 // Значение маркера из строки данных: слово none - маркера нет
-function SchemaMarkerValue(const S: string): string;
+function SchemaMarkerValue(const Str: string): string;
 begin
-  if CompareText(S, 'none') = 0 then
+  if CompareText(Str, 'none') = 0 then
     Result := ''
   else
-    Result := S;
+    Result := Str;
 end;
 
 // Имя раздела - группа ключевых слов (Keywords1, Keywords2, ...)?
@@ -943,7 +943,7 @@ end;
 // кавычки - иначе в файле схемы этот край не отличить от отступа
 // Образцы через пробел - для списков, где запятая сама образец
 // (FmtContinueFirst)
-procedure SetWordsBySpace(List: TStringList; const S: string);
+procedure SetWordsBySpace(List: TStringList; const Str: string);
 var
   P, Start: Integer;
 begin
@@ -951,11 +951,11 @@ begin
     Exit;
   List.Clear;
   Start := 1;
-  for P := 1 to Length(S) + 1 do
-    if (P > Length(S)) or (S[P] = ' ') or (S[P] = #9) then
+  for P := 1 to Length(Str) + 1 do
+    if (P > Length(Str)) or (Str[P] = ' ') or (Str[P] = #9) then
     begin
       if P > Start then
-        List.Add(Copy(S, Start, P - Start));
+        List.Add(Copy(Str, Start, P - Start));
       Start := P + 1;
     end;
 end;
@@ -1006,7 +1006,7 @@ end;
 // ("end sub","end function"). Пустой образец и образец из одних пробелов
 // пропускаются: иначе лишняя запятая в конце строки дала бы образец,
 // совпадающий с чем угодно.
-procedure SetWordsByComma(List: TStringList; const S: string;
+procedure SetWordsByComma(List: TStringList; const Str: string;
   ATrimEdges: Boolean = False);
 var
   P, Start: Integer;
@@ -1016,10 +1016,10 @@ begin
     Exit;
   List.Clear;
   Start := 1;
-  for P := 1 to Length(S) + 1 do
-    if (P > Length(S)) or (S[P] = ',') then
+  for P := 1 to Length(Str) + 1 do
+    if (P > Length(Str)) or (Str[P] = ',') then
     begin
-      Item := Copy(S, Start, P - Start);
+      Item := Copy(Str, Start, P - Start);
       Start := P + 1;
 
       Bare := Trim(Item);
@@ -1044,25 +1044,25 @@ end;
 // пробела и всё после него. Разбирать через DelimitedText нельзя: там
 // кавычка служебная, и питоновское """ """ превращается в пустую строку.
 // False - маркеров не два или стоит none: блочных комментариев нет.
-function SplitMarkers(const S: string; var AStart, AEnd: string): Boolean;
+function SplitMarkers(const Str: string; var AStart, AEnd: string): Boolean;
 var
-  P: Integer;
-  T: string;
+  CharPos: Integer;
+  Txt: string;
 begin
   Result := False;
   AStart := '';
   AEnd := '';
 
-  T := Trim(S);
-  if (T = '') or (CompareText(T, 'none') = 0) then
+  Txt := Trim(Str);
+  if (Txt = '') or (CompareText(Txt, 'none') = 0) then
     Exit;
 
-  P := Pos(' ', T);
-  if P <= 1 then
+  CharPos := Pos(' ', Txt);
+  if CharPos <= 1 then
     Exit;
 
-  AStart := Copy(T, 1, P - 1);
-  AEnd := Trim(Copy(T, P + 1, Length(T)));
+  AStart := Copy(Txt, 1, CharPos - 1);
+  AEnd := Trim(Copy(Txt, CharPos + 1, Length(Txt)));
   Result := AEnd <> '';
   if not Result then
   begin
@@ -1075,13 +1075,13 @@ end;
 procedure TClrScheme.ParseClrFile(const APath: string);
 var
   Lines: TStringList;
-  I: Integer;
+  Idx: Integer;
   HeaderStr, TokensStr: string;
   ParamSL: TStringList;
   OpStr, CIdx, K: Integer;
   GroupIdx: Integer; // Переменная для индексации динамических групп ключевых слов
   HasData, Handled: Boolean;
-  DataStr, S, SecName: string;
+  DataStr, Str, SecName: string;
   FgC, BgC: TColor;
 begin
   // Список разделов - этого файла и только его: он заполняется заново даже
@@ -1103,20 +1103,20 @@ begin
 
     // Заголовок раздела начинается с SchemaHeadMark - так строку данных с
     // заголовком не спутать, даже если в маркере есть пробелы
-    I := 0;
-    while I < Lines.Count do
+    Idx := 0;
+    while Idx < Lines.Count do
     begin
       // --- Заголовок (без метки) и строка данных под ним
-      if not IsSchemaHead(Lines[I]) then
+      if not IsSchemaHead(Lines[Idx]) then
       begin
-        Inc(I); // не заголовок: пустая строка или лишние данные
+        Inc(Idx); // не заголовок: пустая строка или лишние данные
         Continue;
       end;
-      HeaderStr := Trim(Copy(Lines[I], Length(SchemaHeadMark) + 1, MaxInt));
+      HeaderStr := Trim(Copy(Lines[Idx], Length(SchemaHeadMark) + 1, MaxInt));
       // Данных может не быть вовсе - следом сразу другой заголовок
-      HasData := (I + 1 < Lines.Count) and not IsSchemaHead(Lines[I + 1]);
+      HasData := (Idx + 1 < Lines.Count) and not IsSchemaHead(Lines[Idx + 1]);
       if HasData then
-        DataStr := Lines[I + 1]
+        DataStr := Lines[Idx + 1]
       else
         DataStr := '';
 
@@ -1135,7 +1135,7 @@ begin
       if (Pos('@', SecName) > 1) and (ParamSL.Count >= 3) then
       begin
         FThemeColors.Values[SecName] := ParamSL[1] + ' ' + ParamSL[2];
-        Inc(I);
+        Inc(Idx);
         Continue;
       end;
 
@@ -1174,11 +1174,11 @@ begin
         begin
           // Знак экранирования внутри литерала: обратная косая в C и
           // JavaScript. Пусто - экранирование удвоением маркера.
-          S := Trim(DataStr);
-          if S = '' then
+          Str := Trim(DataStr);
+          if Str = '' then
             FStrEscape := #0
           else
-            FStrEscape := S[1];
+            FStrEscape := Str[1];
         end
         else if ParamSL[0] = 'SubScope' then
           // Слово, ниже которого искать: в Паскале implementation
@@ -1219,8 +1219,8 @@ begin
         if FFileSections.IndexOf(SecName) < 0 then
           FFileSections.Add(SecName);
         if Handled and HasData then
-          Inc(I);
-        Inc(I);
+          Inc(Idx);
+        Inc(Idx);
         Continue;
       end;
 
@@ -1463,8 +1463,8 @@ begin
 
       // Строка данных известного раздела разобрана - перешагиваем её
       if Handled and HasData then
-        Inc(I);
-      Inc(I);
+        Inc(Idx);
+      Inc(Idx);
     end;
   finally
     // Блок гарантированно выполнится при любых ошибках, память чиста!
@@ -1593,7 +1593,7 @@ end;
 // имя), не пишется вовсе.
 procedure TClrScheme.WriteSchemaSection(SL: TStringList; const AName: string);
 var
-  I, G, CIdx: Integer;
+  I, GrpIdx, CIdx: Integer;
 begin
   if AName = '' then
     Exit;
@@ -1602,29 +1602,29 @@ begin
   // не подряд, и номер в имени уже не равен индексу в массиве
   if IsKeywordSection(AName) then
   begin
-    G := -1;
+    GrpIdx := -1;
     for I := 0 to High(KeywordGroups) do
       if (KeywordGroups[I].Words <> nil) and (KeywordGroups[I].Name = AName) then
       begin
-        G := I;
+        GrpIdx := I;
         Break;
       end;
-    if G < 0 then
+    if GrpIdx < 0 then
       Exit;
     SL.Add(SchemaHeadMark + AName + ' ' +
-           ColorToString(KeywordGroups[G].FgColor) + ' ' +
-           ColorToString(KeywordGroups[G].BgColor));
-    SL.Add(KeywordGroups[G].Words.CommaText);
+           ColorToString(KeywordGroups[GrpIdx].FgColor) + ' ' +
+           ColorToString(KeywordGroups[GrpIdx].BgColor));
+    SL.Add(KeywordGroups[GrpIdx].Words.CommaText);
   end
   // ОПЕРАТОРЫ: строка данных - набор символов, собранный обратно из множества
   else if (Length(AName) >= 9) and (Copy(AName, 1, 9) = 'Operators') then
   begin
-    G := OpGroupIndex(AName);
-    if G < 0 then
+    GrpIdx := OpGroupIndex(AName);
+    if GrpIdx < 0 then
       Exit;
-    SL.Add(SchemaHeadMark + AName + ' ' + ColorToString(OpGroups[G].FgColor) +
-           ' ' + ColorToString(OpGroups[G].BgColor));
-    SL.Add(OpCharsStr(G));
+    SL.Add(SchemaHeadMark + AName + ' ' + ColorToString(OpGroups[GrpIdx].FgColor) +
+           ' ' + ColorToString(OpGroups[GrpIdx].BgColor));
+    SL.Add(OpCharsStr(GrpIdx));
   end
   // Маркер - строкой как есть: заголовки помечены SchemaHeadMark, так что
   // пробелы в маркере разбору не мешают, а пустая строка означает, что
@@ -1644,21 +1644,21 @@ begin
   // Дополнительные пары маркеров: BlockComment2 и дальше
   else if (Length(AName) > 12) and (Copy(AName, 1, 12) = 'BlockComment') then
   begin
-    G := -1;
+    GrpIdx := -1;
     for I := 0 to High(FBcExtra) do
       if FBcExtra[I].Name = AName then
       begin
-        G := I;
+        GrpIdx := I;
         Break;
       end;
-    if G < 0 then
+    if GrpIdx < 0 then
       Exit;
-    SL.Add(SchemaHeadMark + AName + ' ' + ColorToString(FBcExtra[G].FgColor) +
-           ' ' + ColorToString(FBcExtra[G].BgColor));
-    if FBcExtra[G].StartMark = '' then
+    SL.Add(SchemaHeadMark + AName + ' ' + ColorToString(FBcExtra[GrpIdx].FgColor) +
+           ' ' + ColorToString(FBcExtra[GrpIdx].BgColor));
+    if FBcExtra[GrpIdx].StartMark = '' then
       SL.Add('none')
     else
-      SL.Add(FBcExtra[G].StartMark + ' ' + FBcExtra[G].EndMark);
+      SL.Add(FBcExtra[GrpIdx].StartMark + ' ' + FBcExtra[GrpIdx].EndMark);
   end
   else if AName = 'Strings' then
   begin
@@ -1669,15 +1669,15 @@ begin
   // Дополнительные маркеры литералов: Strings2 и дальше
   else if (Length(AName) > 7) and (Copy(AName, 1, 7) = 'Strings') then
   begin
-    G := StrExtraIndex(AName);
-    if G < 0 then
+    GrpIdx := StrExtraIndex(AName);
+    if GrpIdx < 0 then
       Exit;
-    SL.Add(SchemaHeadMark + AName + ' ' + ColorToString(FStrExtra[G].FgColor) +
-           ' ' + ColorToString(FStrExtra[G].BgColor));
-    if FStrExtra[G].StartMark = '' then
+    SL.Add(SchemaHeadMark + AName + ' ' + ColorToString(FStrExtra[GrpIdx].FgColor) +
+           ' ' + ColorToString(FStrExtra[GrpIdx].BgColor));
+    if FStrExtra[GrpIdx].StartMark = '' then
       SL.Add('none')
     else
-      SL.Add(FStrExtra[G].StartMark);
+      SL.Add(FStrExtra[GrpIdx].StartMark);
   end
   else if AName = 'StrEscape' then
   begin
@@ -1808,13 +1808,13 @@ begin
   // на которую перешли из списка подпрограмм
   else if (Length(AName) >= 8) and (Copy(AName, 1, 8) = 'LineMark') then
   begin
-    G := MarkGroupIndex(AName);
-    if G < 0 then
+    GrpIdx := MarkGroupIndex(AName);
+    if GrpIdx < 0 then
       Exit;
     SL.Add(SchemaHeadMark + AName + ' ' +
-           ColorToString(MarkGroups[G].FgColor) + ' ' +
-           ColorToString(MarkGroups[G].BgColor));
-    SL.Add(WordsByComma(MarkGroups[G].Words));
+           ColorToString(MarkGroups[GrpIdx].FgColor) + ' ' +
+           ColorToString(MarkGroups[GrpIdx].BgColor));
+    SL.Add(WordsByComma(MarkGroups[GrpIdx].Words));
   end
   // Заголовок тела подпрограммы: только цвета, строки данных у раздела нет
   else if AName = 'SubBody' then
@@ -1996,14 +1996,14 @@ procedure TClrScheme.BuildMarkerChars;
 var
   K: Integer;
 
-  procedure AddMarker(const S: string);
+  procedure AddMarker(const Str: string);
   var
     K: Integer;
   begin
-    for K := 1 to Length(S) do
-      Include(FMarkerChars, S[K]);
-    if Length(S) > FMaxMarkerLen then
-      FMaxMarkerLen := Length(S);
+    for K := 1 to Length(Str) do
+      Include(FMarkerChars, Str[K]);
+    if Length(Str) > FMaxMarkerLen then
+      FMaxMarkerLen := Length(Str);
   end;
 
 begin
@@ -2054,7 +2054,7 @@ end;
 //   &H        шестнадцатеричный/восьмеричный/двоичный в стиле BASIC: &H1F &O17 &B1010
 //   exp       экспонента: 1e5, 1.5E-3
 //   suffix=.. хвостовые символы типа: suffix=LlUuFf&%!#
-procedure TClrScheme.ParseDigitFormats(const S: string);
+procedure TClrScheme.ParseDigitFormats(const Str: string);
 var
   SL: TStringList;
   K, M: Integer;
@@ -2066,7 +2066,7 @@ begin
   FNumExp := False;
   FNumSuffix := [];
 
-  if (Trim(S) = '') or (CompareText(Trim(S), 'Digits_Auto_Processing') = 0) then
+  if (Trim(Str) = '') or (CompareText(Trim(Str), 'Digits_Auto_Processing') = 0) then
     Exit; // старый формат файла, оставляем умолчания
 
   // Строка задана явно - дальше включаем только то, что в ней перечислено
@@ -2075,7 +2075,7 @@ begin
   SL := TStringList.Create;
   try
     SL.Delimiter := ' ';
-    SL.DelimitedText := S;
+    SL.DelimitedText := Str;
     for K := 0 to SL.Count - 1 do
     begin
       Tok := LowerCase(Trim(SL[K]));
@@ -2192,16 +2192,16 @@ begin
 end;
 
 // Обратно: строка - в набор символов группы
-procedure TClrScheme.SetOpChars(AIndex: Integer; const S: string);
+procedure TClrScheme.SetOpChars(AIndex: Integer; const Str: string);
 var
   I: Integer;
 begin
   if (AIndex < 0) or (AIndex > High(OpGroups)) then
     Exit;
   OpGroups[AIndex].Chars := [];
-  for I := 1 to Length(S) do
-    if S[I] > ' ' then
-      Include(OpGroups[AIndex].Chars, S[I]);
+  for I := 1 to Length(Str) do
+    if Str[I] > ' ' then
+      Include(OpGroups[AIndex].Chars, Str[I]);
 end;
 
 // Дополнительная пара по имени раздела; -1 - такой нет
@@ -2294,16 +2294,16 @@ end;
 
 // Строка целиком закомментирована: первый непробельный текст - маркер
 // строчного комментария активной схемы
-function TClrScheme.IsCommentLine(const S: string): Boolean;
+function TClrScheme.IsCommentLine(const Str: string): Boolean;
 var
-  T: string;
+  Txt: string;
 begin
   Result := False;
   if FLineCommentMarker = '' then
     Exit;
-  T := TrimLeft(S);
-  Result := (T <> '') and
-            (AnsiCompareText(Copy(T, 1, Length(FLineCommentMarker)),
+  Txt := TrimLeft(Str);
+  Result := (Txt <> '') and
+            (AnsiCompareText(Copy(Txt, 1, Length(FLineCommentMarker)),
                              FLineCommentMarker) = 0);
 end;
 
@@ -2317,17 +2317,17 @@ end;
 
 // ^ только как приставка к непустому маркеру: одиночный ^ остаётся
 // маркером как есть
-procedure TClrScheme.SetLineCommentSchemeText(const S: string);
+procedure TClrScheme.SetLineCommentSchemeText(const Str: string);
 begin
-  if (Length(S) > 1) and (S[1] = '^') then
+  if (Length(Str) > 1) and (Str[1] = '^') then
   begin
     FLineCommentAtStart := True;
-    FLineCommentMarker := Copy(S, 2, MaxInt);
+    FLineCommentMarker := Copy(Str, 2, MaxInt);
   end
   else
   begin
     FLineCommentAtStart := False;
-    FLineCommentMarker := S;
+    FLineCommentMarker := Str;
   end;
 end;
 

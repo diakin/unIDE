@@ -165,16 +165,16 @@ type
     procedure LoadFiles(const ADir: string);
     procedure CollectSymbols;
     procedure ScanOps;
-    procedure ScanDfm(F: TSrcFile);
+    procedure ScanDfm(SrcFile: TSrcFile);
     procedure ScanLiterals;
     function Eval(const AExpr: string; var AValue: string): Boolean;
     function EvalIdent(const AName: string; var AValue: string): Boolean;
-    function OpArgs(F: TSrcFile; ALine, APos: Integer; AArgs: TStrings;
+    function OpArgs(SrcFile: TSrcFile; ALine, APos: Integer; AArgs: TStrings;
                     var AText: string): Boolean;
-    function AssignedName(F: TSrcFile; ALine: Integer;
+    function AssignedName(SrcFile: TSrcFile; ALine: Integer;
                           const AVar: string): string;
     procedure AddName(const AValue: string; AUses: TRelUses; AByOp: Boolean;
-                      F: TSrcFile; ALine: Integer; const ANote: string);
+                      SrcFile: TSrcFile; ALine: Integer; const ANote: string);
   public
     constructor Create(AItems: TStringList; AUnresolved: TStrings);
     destructor Destroy; override;
@@ -240,9 +240,9 @@ begin
   AItems.Clear;
 end;
 
-function IsIdChar(C: Char): Boolean;
+function IsIdChar(CharVal: Char): Boolean;
 begin
-  Result := C in ['A'..'Z', 'a'..'z', '0'..'9', '_'];
+  Result := CharVal in ['A'..'Z', 'a'..'z', '0'..'9', '_'];
 end;
 
 { TSrcFile }
@@ -267,72 +267,72 @@ end;
 function CleanLine(const ALine: string; var AState: Integer;
                    AIsDfm: Boolean): string;
 var
-  I, N: Integer;
+  Idx, Num: Integer;
   InStr: Boolean;
 begin
   Result := ALine;
   if AIsDfm then
     Exit;
-  N := Length(Result);
-  I := 1;
+  Num := Length(Result);
+  Idx := 1;
   InStr := False;
-  while I <= N do
+  while Idx <= Num do
   begin
     if AState = 1 then
     begin
-      if Result[I] = '}' then
+      if Result[Idx] = '}' then
         AState := 0;
-      Result[I] := ' ';
-      Inc(I);
+      Result[Idx] := ' ';
+      Inc(Idx);
       Continue;
     end;
     if AState = 2 then
     begin
-      if (Result[I] = '*') and (I < N) and (Result[I + 1] = ')') then
+      if (Result[Idx] = '*') and (Idx < Num) and (Result[Idx + 1] = ')') then
       begin
         AState := 0;
-        Result[I] := ' ';
-        Inc(I);
+        Result[Idx] := ' ';
+        Inc(Idx);
       end;
-      Result[I] := ' ';
-      Inc(I);
+      Result[Idx] := ' ';
+      Inc(Idx);
       Continue;
     end;
     if InStr then
     begin
-      if Result[I] = '''' then
+      if Result[Idx] = '''' then
         InStr := False;
-      Inc(I);
+      Inc(Idx);
       Continue;
     end;
-    case Result[I] of
+    case Result[Idx] of
       '''':
         InStr := True;
       '/':
-        if (I < N) and (Result[I + 1] = '/') then
+        if (Idx < Num) and (Result[Idx + 1] = '/') then
         begin
-          while I <= N do
+          while Idx <= Num do
           begin
-            Result[I] := ' ';
-            Inc(I);
+            Result[Idx] := ' ';
+            Inc(Idx);
           end;
           Break;
         end;
       '{':
         begin
           AState := 1;
-          Result[I] := ' ';
+          Result[Idx] := ' ';
         end;
       '(':
-        if (I < N) and (Result[I + 1] = '*') then
+        if (Idx < Num) and (Result[Idx + 1] = '*') then
         begin
           AState := 2;
-          Result[I] := ' ';
-          Inc(I);
-          Result[I] := ' ';
+          Result[Idx] := ' ';
+          Inc(Idx);
+          Result[Idx] := ' ';
         end;
     end;
-    Inc(I);
+    Inc(Idx);
   end;
 end;
 
@@ -343,43 +343,43 @@ end;
 function FileLikeName(const AText: string; var AName: string;
                       var ADir: Boolean): Boolean;
 var
-  S, Ext: string;
+  Str, Ext: string;
   I: Integer;
   HasLetter: Boolean;
 begin
   Result := False;
-  S := Trim(AText);
-  while (S <> '') and (S[1] in ['\', '/']) do
-    Delete(S, 1, 1);
-  if (S = '') or (Length(S) > 100) then
+  Str := Trim(AText);
+  while (Str <> '') and (Str[1] in ['\', '/']) do
+    Delete(Str, 1, 1);
+  if (Str = '') or (Length(Str) > 100) then
     Exit;
-  for I := 1 to Length(S) do
-    if S[I] in ['*', '?', '<', '>', '|', '"', ':', '@', '%', #9, #1, #2] then
+  for I := 1 to Length(Str) do
+    if Str[I] in ['*', '?', '<', '>', '|', '"', ':', '@', '%', #9, #1, #2] then
       Exit;
-  if (Pos('//', S) > 0) or (S[1] in ['.', '_', ' ']) then
+  if (Pos('//', Str) > 0) or (Str[1] in ['.', '_', ' ']) then
     Exit;
 
-  ADir := S[Length(S)] in ['\', '/'];
+  ADir := Str[Length(Str)] in ['\', '/'];
   if ADir then
   begin
-    while (S <> '') and (S[Length(S)] in ['\', '/']) do
-      Delete(S, Length(S), 1);
-    if S = '' then
+    while (Str <> '') and (Str[Length(Str)] in ['\', '/']) do
+      Delete(Str, Length(Str), 1);
+    if Str = '' then
       Exit;
-    AName := S;
+    AName := Str;
     Result := True;
     Exit;
   end;
 
-  Ext := ExtractFileExt(S);
+  Ext := ExtractFileExt(Str);
   if Ext = '' then
   begin
     // Слово без расширения - кандидат в папки ('schemes'); фразы - нет
-    for I := 1 to Length(S) do
-      if not (S[I] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '-', '\', '/']) then
+    for I := 1 to Length(Str) do
+      if not (Str[I] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '-', '\', '/']) then
         Exit;
     ADir := True;
-    AName := S;
+    AName := Str;
     Result := True;
     Exit;
   end;
@@ -395,32 +395,32 @@ begin
       Exit;
   if not HasLetter or InList(SourceExts, Ext) then
     Exit;
-  if (Length(S) > Length(Ext)) and (S[Length(S) - Length(Ext)] = ' ') then
+  if (Length(Str) > Length(Ext)) and (Str[Length(Str) - Length(Ext)] = ' ') then
     Exit;
-  AName := S;
+  AName := Str;
   Result := True;
 end;
 
 // Значение строки Паскаля с позиции AI: 'abc''d'#13#10'e'. AI - за ней.
-function ReadPasString(const S: string; var AI: Integer;
+function ReadPasString(const Str: string; var AI: Integer;
                        var AValue: string): Boolean;
 var
-  N: Integer;
+  Num2: Integer;
   Num: string;
 begin
   Result := False;
   AValue := '';
-  N := Length(S);
-  while AI <= N do
+  Num2 := Length(Str);
+  while AI <= Num2 do
   begin
-    if S[AI] = '''' then
+    if Str[AI] = '''' then
     begin
       Inc(AI);
-      while AI <= N do
+      while AI <= Num2 do
       begin
-        if S[AI] = '''' then
+        if Str[AI] = '''' then
         begin
-          if (AI < N) and (S[AI + 1] = '''') then
+          if (AI < Num2) and (Str[AI + 1] = '''') then
           begin
             AValue := AValue + '''';
             Inc(AI, 2);
@@ -428,21 +428,21 @@ begin
           end;
           Break;
         end;
-        AValue := AValue + S[AI];
+        AValue := AValue + Str[AI];
         Inc(AI);
       end;
-      if AI > N then
+      if AI > Num2 then
         Exit;   // строка не закрыта
       Inc(AI);
       Result := True;
     end
-    else if S[AI] = '#' then
+    else if Str[AI] = '#' then
     begin
       Inc(AI);
       Num := '';
-      while (AI <= N) and (S[AI] in ['0'..'9']) do
+      while (AI <= Num2) and (Str[AI] in ['0'..'9']) do
       begin
-        Num := Num + S[AI];
+        Num := Num + Str[AI];
         Inc(AI);
       end;
       if Num = '' then
@@ -457,29 +457,29 @@ end;
 
 // Аргументы вызова с открывающей скобки AI: на верхнем уровне, по
 // запятым. AI - за закрывающей скобкой.
-function SplitArgs(const S: string; var AI: Integer; AArgs: TStrings): Boolean;
+function SplitArgs(const Str: string; var AI: Integer; AArgs: TStrings): Boolean;
 var
-  Depth, N, Start: Integer;
+  Depth, Num, Start: Integer;
   InStr: Boolean;
 begin
   Result := False;
   AArgs.Clear;
-  N := Length(S);
-  if (AI > N) or (S[AI] <> '(') then
+  Num := Length(Str);
+  if (AI > Num) or (Str[AI] <> '(') then
     Exit;
   Inc(AI);
   Start := AI;
   Depth := 0;
   InStr := False;
-  while AI <= N do
+  while AI <= Num do
   begin
     if InStr then
     begin
-      if S[AI] = '''' then
+      if Str[AI] = '''' then
         InStr := False;
     end
     else
-      case S[AI] of
+      case Str[AI] of
         '''':
           InStr := True;
         '(', '[':
@@ -487,7 +487,7 @@ begin
         ')', ']':
           if Depth = 0 then
           begin
-            AArgs.Add(Trim(Copy(S, Start, AI - Start)));
+            AArgs.Add(Trim(Copy(Str, Start, AI - Start)));
             Inc(AI);
             Result := True;
             Exit;
@@ -497,7 +497,7 @@ begin
         ',':
           if Depth = 0 then
           begin
-            AArgs.Add(Trim(Copy(S, Start, AI - Start)));
+            AArgs.Add(Trim(Copy(Str, Start, AI - Start)));
             Start := AI + 1;
           end;
       end;
@@ -535,7 +535,7 @@ const
 var
   M, I, State: Integer;
   SR: TSearchRec;
-  F: TSrcFile;
+  SrcFile: TSrcFile;
   Raw: TStringList;
 begin
   Raw := TStringList.Create;
@@ -553,18 +553,18 @@ begin
           except
             Continue;   // файл занят - без него
           end;
-          F := TSrcFile.Create;
-          F.Path := ADir + SR.Name;
-          F.IsDfm := CompareText(ExtractFileExt(SR.Name), '.dfm') = 0;
+          SrcFile := TSrcFile.Create;
+          SrcFile.Path := ADir + SR.Name;
+          SrcFile.IsDfm := CompareText(ExtractFileExt(SR.Name), '.dfm') = 0;
           State := 0;
           for I := 0 to Raw.Count - 1 do
-            F.Clean.Add(CleanLine(Raw[I], State, F.IsDfm));
-          F.Upper.Text := AnsiUpperCase(F.Clean.Text);
+            SrcFile.Clean.Add(CleanLine(Raw[I], State, SrcFile.IsDfm));
+          SrcFile.Upper.Text := AnsiUpperCase(SrcFile.Clean.Text);
           // AnsiUpperCase не меняет длину строки, а Text у пустого файла -
           // пустая строка: число строк сверяем
-          while F.Upper.Count < F.Clean.Count do
-            F.Upper.Add('');
-          FFiles.Add(F);
+          while SrcFile.Upper.Count < SrcFile.Clean.Count do
+            SrcFile.Upper.Add('');
+          FFiles.Add(SrcFile);
         until FindNext(SR) <> 0;
       finally
         FindClose(SR);
@@ -593,96 +593,96 @@ end;
 // папку exe, - остальное к именам файлов отношения не имеет.
 procedure TScanner.CollectSymbols;
 var
-  I, J, P, K, E: Integer;
-  F: TSrcFile;
-  S, U, Name, Expr, CurFunc, T: string;
+  I, J, CharPos, Idx3, EndPos: Integer;
+  SrcFile: TSrcFile;
+  Str, UpStr, Name, Expr, CurFunc, Txt: string;
 begin
   for I := 0 to FFiles.Count - 1 do
   begin
-    F := TSrcFile(FFiles[I]);
-    if F.IsDfm then
+    SrcFile := TSrcFile(FFiles[I]);
+    if SrcFile.IsDfm then
       Continue;
     CurFunc := '';
-    for J := 0 to F.Clean.Count - 1 do
+    for J := 0 to SrcFile.Clean.Count - 1 do
     begin
-      S := F.Clean[J];
-      U := F.Upper[J];
+      Str := SrcFile.Clean[J];
+      UpStr := SrcFile.Upper[J];
 
       // Заголовок функции: её Result дальше - значение самой функции
-      T := TrimLeft(U);
-      if Copy(T, 1, 9) = 'FUNCTION ' then
+      Txt := TrimLeft(UpStr);
+      if Copy(Txt, 1, 9) = 'FUNCTION ' then
       begin
-        T := Trim(Copy(T, 10, MaxInt));
-        P := 1;
-        while (P <= Length(T)) and (IsIdChar(T[P]) or (T[P] = '.')) do
-          Inc(P);
-        CurFunc := Copy(T, 1, P - 1);
-        P := LastDelimiter('.', CurFunc);
-        if P > 0 then
-          CurFunc := Copy(CurFunc, P + 1, MaxInt);
+        Txt := Trim(Copy(Txt, 10, MaxInt));
+        CharPos := 1;
+        while (CharPos <= Length(Txt)) and (IsIdChar(Txt[CharPos]) or (Txt[CharPos] = '.')) do
+          Inc(CharPos);
+        CurFunc := Copy(Txt, 1, CharPos - 1);
+        CharPos := LastDelimiter('.', CurFunc);
+        if CharPos > 0 then
+          CurFunc := Copy(CurFunc, CharPos + 1, MaxInt);
       end
-      else if (Copy(T, 1, 10) = 'PROCEDURE ') or
-              (Copy(T, 1, 12) = 'CONSTRUCTOR ') or
-              (Copy(T, 1, 11) = 'DESTRUCTOR ') then
+      else if (Copy(Txt, 1, 10) = 'PROCEDURE ') or
+              (Copy(Txt, 1, 12) = 'CONSTRUCTOR ') or
+              (Copy(Txt, 1, 11) = 'DESTRUCTOR ') then
         CurFunc := '';
 
       // GetDir(0, X) - текущая папка, при запуске это папка exe
-      P := Pos('GETDIR(', U);
-      if P > 0 then
+      CharPos := Pos('GETDIR(', UpStr);
+      if CharPos > 0 then
       begin
-        K := Pos(',', Copy(U, P, MaxInt));
-        E := Pos(')', Copy(U, P, MaxInt));
-        if (K > 0) and (E > K) then
+        Idx3 := Pos(',', Copy(UpStr, CharPos, MaxInt));
+        EndPos := Pos(')', Copy(UpStr, CharPos, MaxInt));
+        if (Idx3 > 0) and (EndPos > Idx3) then
         begin
-          Name := Trim(Copy(U, P + K, E - K - 1));
+          Name := Trim(Copy(UpStr, CharPos + Idx3, EndPos - Idx3 - 1));
           if Name <> '' then
             AddSymbol(Name, ExeDirMark, I, J);
         end;
       end;
 
       // X := выражение;   или   X = выражение;
-      P := Pos(':=', S);
-      if P = 0 then
+      CharPos := Pos(':=', Str);
+      if CharPos = 0 then
       begin
-        P := Pos('=', S);
-        if (P = 0) or (Pos('''', S) = 0) then
+        CharPos := Pos('=', Str);
+        if (CharPos = 0) or (Pos('''', Str) = 0) then
           Continue;
-        K := P;
-        E := P + 1;
+        Idx3 := CharPos;
+        EndPos := CharPos + 1;
       end
       else
       begin
-        K := P;
-        E := P + 2;
+        Idx3 := CharPos;
+        EndPos := CharPos + 2;
       end;
-      Name := Trim(Copy(U, 1, K - 1));
+      Name := Trim(Copy(UpStr, 1, Idx3 - 1));
       // Левая часть - одно имя, можно через точку (FormB.MyDir)
       if Name = '' then
         Continue;
-      P := Length(Name);
-      while (P > 0) and (IsIdChar(Name[P]) or (Name[P] = '.')) do
-        Dec(P);
-      if P > 0 then
+      CharPos := Length(Name);
+      while (CharPos > 0) and (IsIdChar(Name[CharPos]) or (Name[CharPos] = '.')) do
+        Dec(CharPos);
+      if CharPos > 0 then
         Continue;
-      P := LastDelimiter('.', Name);
-      if P > 0 then
-        Name := Copy(Name, P + 1, MaxInt);
-      Expr := Copy(S, E, MaxInt);
+      CharPos := LastDelimiter('.', Name);
+      if CharPos > 0 then
+        Name := Copy(Name, CharPos + 1, MaxInt);
+      Expr := Copy(Str, EndPos, MaxInt);
       // До точки с запятой; нет её - присваивание переносится, добираем
       // следующие строки
-      K := J + 1;
-      while (Pos(';', Expr) = 0) and (K < F.Clean.Count) and (K <= J + 3) do
+      Idx3 := J + 1;
+      while (Pos(';', Expr) = 0) and (Idx3 < SrcFile.Clean.Count) and (Idx3 <= J + 3) do
       begin
-        Expr := Expr + ' ' + F.Clean[K];
-        Inc(K);
+        Expr := Expr + ' ' + SrcFile.Clean[Idx3];
+        Inc(Idx3);
       end;
       if Pos(';', Expr) > 0 then
         Expr := Copy(Expr, 1, Pos(';', Expr) - 1);
       Expr := Trim(Expr);
-      U := AnsiUpperCase(Expr);
-      if (Pos('''', Expr) > 0) or (Pos('EXENAME', U) > 0) or
-         (Pos('PARAMSTR(0)', StringReplace(U, ' ', '', [rfReplaceAll])) > 0) or
-         (Pos('GETCURRENTDIR', U) > 0) then
+      UpStr := AnsiUpperCase(Expr);
+      if (Pos('''', Expr) > 0) or (Pos('EXENAME', UpStr) > 0) or
+         (Pos('PARAMSTR(0)', StringReplace(UpStr, ' ', '', [rfReplaceAll])) > 0) or
+         (Pos('GETCURRENTDIR', UpStr) > 0) then
       begin
         if (Name = 'RESULT') and (CurFunc <> '') then
           AddSymbol(CurFunc, Expr, I, J)
@@ -778,8 +778,8 @@ end;
 // что по тексту не вычислить.
 function TScanner.Eval(const AExpr: string; var AValue: string): Boolean;
 var
-  S, Part, Id, UId, V: string;
-  I, N, P: Integer;
+  Str, Part, Id, UId, ValStr: string;
+  Idx, Num, CharPos: Integer;
   Args: TStringList;
 
   function EvalArg(AIdx: Integer; var AV: string): Boolean;
@@ -790,57 +790,57 @@ var
 begin
   Result := False;
   AValue := '';
-  S := Trim(AExpr);
-  N := Length(S);
-  I := 1;
+  Str := Trim(AExpr);
+  Num := Length(Str);
+  Idx := 1;
   Args := TStringList.Create;
   try
     while True do
     begin
-      while (I <= N) and (S[I] = ' ') do
-        Inc(I);
-      if I > N then
+      while (Idx <= Num) and (Str[Idx] = ' ') do
+        Inc(Idx);
+      if Idx > Num then
         Exit;
       Part := '';
-      if S[I] in ['''', '#'] then
+      if Str[Idx] in ['''', '#'] then
       begin
-        if not ReadPasString(S, I, Part) then
+        if not ReadPasString(Str, Idx, Part) then
           Exit;
       end
-      else if S[I] = '(' then
+      else if Str[Idx] = '(' then
       begin
-        if not SplitArgs(S, I, Args) or (Args.Count <> 1) or
+        if not SplitArgs(Str, Idx, Args) or (Args.Count <> 1) or
            not Eval(Args[0], Part) then
           Exit;
       end
-      else if IsIdChar(S[I]) then
+      else if IsIdChar(Str[Idx]) then
       begin
-        P := I;
-        while (I <= N) and (IsIdChar(S[I]) or (S[I] = '.')) do
-          Inc(I);
-        Id := Copy(S, P, I - P);
+        CharPos := Idx;
+        while (Idx <= Num) and (IsIdChar(Str[Idx]) or (Str[Idx] = '.')) do
+          Inc(Idx);
+        Id := Copy(Str, CharPos, Idx - CharPos);
         UId := AnsiUpperCase(Id);
-        while (I <= N) and (S[I] = ' ') do
-          Inc(I);
-        if (I <= N) and (S[I] = '(') then
+        while (Idx <= Num) and (Str[Idx] = ' ') do
+          Inc(Idx);
+        if (Idx <= Num) and (Str[Idx] = '(') then
         begin
           // Вызов функции
-          if not SplitArgs(S, I, Args) then
+          if not SplitArgs(Str, Idx, Args) then
             Exit;
-          P := LastDelimiter('.', UId);
-          if P > 0 then
-            UId := Copy(UId, P + 1, MaxInt);
+          CharPos := LastDelimiter('.', UId);
+          if CharPos > 0 then
+            UId := Copy(UId, CharPos + 1, MaxInt);
           if (UId = 'PARAMSTR') and (Args.Count = 1) and
              (Trim(Args[0]) = '0') then
             Part := ExeFileMark
           else if (UId = 'EXTRACTFILEPATH') or (UId = 'EXTRACTFILEDIR') then
           begin
-            if not EvalArg(0, V) then
+            if not EvalArg(0, ValStr) then
               Exit;
-            if V = ExeFileMark then
+            if ValStr = ExeFileMark then
               Part := ExeDirMark
             else
-              Part := ExtractFilePath(V);
+              Part := ExtractFilePath(ValStr);
           end
           else if (UId = 'INCLUDETRAILINGPATHDELIMITER') or
                   (UId = 'INCLUDETRAILINGBACKSLASH') or
@@ -857,12 +857,12 @@ begin
           end
           else if UId = 'CHANGEFILEEXT' then
           begin
-            if not EvalArg(0, V) or not EvalArg(1, Part) then
+            if not EvalArg(0, ValStr) or not EvalArg(1, Part) then
               Exit;
-            if V = ExeFileMark then
+            if ValStr = ExeFileMark then
               Part := ExeDirMark + ExeFileMark + Part   // <exe без расш.>+ext
             else
-              Part := ChangeFileExt(V, Part);
+              Part := ChangeFileExt(ValStr, Part);
           end
           else if (UId = 'GETCURRENTDIR') or (UId = 'GETCURRENTDIRECTORY') then
             Part := ExeDirMark
@@ -881,8 +881,8 @@ begin
         else if not EvalIdent(Id, Part) then
         begin
           // Имя через точку (FormB.MyDir) - по последней части
-          P := LastDelimiter('.', Id);
-          if (P = 0) or not EvalIdent(Copy(Id, P + 1, MaxInt), Part) then
+          CharPos := LastDelimiter('.', Id);
+          if (CharPos = 0) or not EvalIdent(Copy(Id, CharPos + 1, MaxInt), Part) then
             Exit;
         end;
       end
@@ -890,16 +890,16 @@ begin
         Exit;
 
       AValue := AValue + Part;
-      while (I <= N) and (S[I] = ' ') do
-        Inc(I);
-      if I > N then
+      while (Idx <= Num) and (Str[Idx] = ' ') do
+        Inc(Idx);
+      if Idx > Num then
       begin
         Result := True;
         Exit;
       end;
-      if S[I] <> '+' then
+      if Str[Idx] <> '+' then
         Exit;
-      Inc(I);
+      Inc(Idx);
     end;
   finally
     Args.Free;
@@ -909,49 +909,49 @@ end;
 // Аргументы вызова, у которого имя стоит в строке ALine до позиции APos
 // (APos - на символе после имени). Вызов может переноситься - добираются
 // следующие строки. AText - текст вызова для лога.
-function TScanner.OpArgs(F: TSrcFile; ALine, APos: Integer; AArgs: TStrings;
+function TScanner.OpArgs(SrcFile: TSrcFile; ALine, APos: Integer; AArgs: TStrings;
                          var AText: string): Boolean;
 var
-  S: string;
-  K, I: Integer;
+  Str: string;
+  K, Idx: Integer;
 begin
-  S := Copy(F.Clean[ALine], APos, MaxInt);
+  Str := Copy(SrcFile.Clean[ALine], APos, MaxInt);
   for K := ALine + 1 to ALine + MaxJoin do
-    if K < F.Clean.Count then
-      S := S + ' ' + F.Clean[K];
-  I := 1;
-  while (I <= Length(S)) and (S[I] = ' ') do
-    Inc(I);
-  Result := SplitArgs(S, I, AArgs);
-  AText := Trim(Copy(S, 1, I - 1));
+    if K < SrcFile.Clean.Count then
+      Str := Str + ' ' + SrcFile.Clean[K];
+  Idx := 1;
+  while (Idx <= Length(Str)) and (Str[Idx] = ' ') do
+    Inc(Idx);
+  Result := SplitArgs(Str, Idx, AArgs);
+  AText := Trim(Copy(Str, 1, Idx - 1));
 end;
 
 // Имя файла у файловой переменной AVar: ближайший AssignFile(AVar, ...)
 // выше строки ALine в том же файле. '' - не нашлось или не вычислилось.
-function TScanner.AssignedName(F: TSrcFile; ALine: Integer;
+function TScanner.AssignedName(SrcFile: TSrcFile; ALine: Integer;
                                const AVar: string): string;
 var
-  J, P: Integer;
+  J, CharPos: Integer;
   Args: TStringList;
-  Txt, V: string;
+  Txt, ValStr: string;
 begin
   Result := '';
   Args := TStringList.Create;
   try
     for J := ALine downto 0 do
     begin
-      P := Pos('ASSIGNFILE', F.Upper[J]);
-      if P = 0 then
-        P := Pos('ASSIGN(', F.Upper[J]);
-      if P = 0 then
+      CharPos := Pos('ASSIGNFILE', SrcFile.Upper[J]);
+      if CharPos = 0 then
+        CharPos := Pos('ASSIGN(', SrcFile.Upper[J]);
+      if CharPos = 0 then
         Continue;
-      while (P <= Length(F.Upper[J])) and (F.Upper[J][P] <> '(') do
-        Inc(P);
-      if not OpArgs(F, J, P, Args, Txt) or (Args.Count < 2) or
+      while (CharPos <= Length(SrcFile.Upper[J])) and (SrcFile.Upper[J][CharPos] <> '(') do
+        Inc(CharPos);
+      if not OpArgs(SrcFile, J, CharPos, Args, Txt) or (Args.Count < 2) or
          (AnsiUpperCase(Args[0]) <> AVar) then
         Continue;
-      if Eval(Args[1], V) then
-        Result := V
+      if Eval(Args[1], ValStr) then
+        Result := ValStr
       else
         Result := #0 + Args[1];   // есть AssignFile, но имя не вычислить
       Exit;
@@ -964,38 +964,38 @@ end;
 // Вычисленное значение - в список имён от папки exe. Абсолютный путь
 // (C:\...) - не файл программы, пропускается.
 procedure TScanner.AddName(const AValue: string; AUses: TRelUses;
-                           AByOp: Boolean; F: TSrcFile; ALine: Integer;
+                           AByOp: Boolean; SrcFile: TSrcFile; ALine: Integer;
                            const ANote: string);
 var
-  V, Name: string;
+  ValStr, Name: string;
   IsDir: Boolean;
-  Idx, P: Integer;
+  Idx, CharPos: Integer;
   Ref: TRelRef;
 begin
-  V := AValue;
+  ValStr := AValue;
   // <папка exe><exe>.ext - файл с именем самого exe (ChangeFileExt)
-  P := Pos(ExeDirMark + ExeFileMark, V);
-  if P = 1 then
-    V := '<exe>' + Copy(V, 3, MaxInt)
-  else if (V <> '') and (V[1] = ExeDirMark) then
-    V := Copy(V, 2, MaxInt)
-  else if (Pos(':', V) > 0) or (Copy(V, 1, 2) = '\\') then
+  CharPos := Pos(ExeDirMark + ExeFileMark, ValStr);
+  if CharPos = 1 then
+    ValStr := '<exe>' + Copy(ValStr, 3, MaxInt)
+  else if (ValStr <> '') and (ValStr[1] = ExeDirMark) then
+    ValStr := Copy(ValStr, 2, MaxInt)
+  else if (Pos(':', ValStr) > 0) or (Copy(ValStr, 1, 2) = '\\') then
     Exit;
-  if Pos(ExeDirMark, V) + Pos(ExeFileMark, V) > 0 then
+  if Pos(ExeDirMark, ValStr) + Pos(ExeFileMark, ValStr) > 0 then
     Exit;
   // Маска в FindFirst - имеется в виду папка
-  if (Pos('*', V) > 0) or (Pos('?', V) > 0) then
+  if (Pos('*', ValStr) > 0) or (Pos('?', ValStr) > 0) then
   begin
-    V := ExtractFilePath(V);
-    if V = '' then
+    ValStr := ExtractFilePath(ValStr);
+    if ValStr = '' then
       Exit;
   end;
-  if Copy(V, 1, 5) = '<exe>' then
+  if Copy(ValStr, 1, 5) = '<exe>' then
   begin
-    Name := V;
+    Name := ValStr;
     IsDir := False;
   end
-  else if not FileLikeName(V, Name, IsDir) then
+  else if not FileLikeName(ValStr, Name, IsDir) then
     Exit;
 
   Idx := FItems.IndexOf(Name);
@@ -1009,14 +1009,14 @@ begin
   Ref.Uses_ := Ref.Uses_ + AUses;
   if AByOp then
     Ref.ByOp := True;
-  Ref.Places.Add(F.Path + #9 + IntToStr(ALine + 1) + #9 + ANote);
+  Ref.Places.Add(SrcFile.Path + #9 + IntToStr(ALine + 1) + #9 + ANote);
 end;
 
 procedure TScanner.ScanOps;
 var
-  I, J, K, P, Q, A: Integer;
-  F: TSrcFile;
-  U, Txt, V, Note, Arg0: string;
+  I, J, K, CharPos, QuotePos, Num1: Integer;
+  SrcFile: TSrcFile;
+  UpStr, Txt, ValStr, Note, Arg0: string;
   Args: TStringList;
   Use: TRelUses;
   Ok: Boolean;
@@ -1025,52 +1025,52 @@ begin
   try
     for I := 0 to FFiles.Count - 1 do
     begin
-      F := TSrcFile(FFiles[I]);
-      if F.IsDfm then
+      SrcFile := TSrcFile(FFiles[I]);
+      if SrcFile.IsDfm then
       begin
-        ScanDfm(F);
+        ScanDfm(SrcFile);
         Continue;
       end;
-      for J := 0 to F.Upper.Count - 1 do
+      for J := 0 to SrcFile.Upper.Count - 1 do
       begin
-        U := F.Upper[J];
+        UpStr := SrcFile.Upper[J];
 
         // external 'x.dll'
-        P := Pos('EXTERNAL', U);
-        if (P > 0) and ((P = 1) or not IsIdChar(U[P - 1])) then
+        CharPos := Pos('EXTERNAL', UpStr);
+        if (CharPos > 0) and ((CharPos = 1) or not IsIdChar(UpStr[CharPos - 1])) then
         begin
-          Q := P + 8;
-          while (Q <= Length(U)) and (U[Q] = ' ') do
-            Inc(Q);
-          if (Q <= Length(U)) and (U[Q] = '''') and
-             ReadPasString(F.Clean[J], Q, V) then
-            AddName(V, [ruRead], True, F, J, 'external');
+          QuotePos := CharPos + 8;
+          while (QuotePos <= Length(UpStr)) and (UpStr[QuotePos] = ' ') do
+            Inc(QuotePos);
+          if (QuotePos <= Length(UpStr)) and (UpStr[QuotePos] = '''') and
+             ReadPasString(SrcFile.Clean[J], QuotePos, ValStr) then
+            AddName(ValStr, [ruRead], True, SrcFile, J, 'external');
         end;
 
         for K := Low(Ops) to High(Ops) do
         begin
-          P := Pos(Ops[K].Name, U);
-          while P > 0 do
+          CharPos := Pos(Ops[K].Name, UpStr);
+          while CharPos > 0 do
           begin
-            Q := P + Length(Ops[K].Name);
-            Ok := ((P = 1) or not IsIdChar(U[P - 1])) and
-                  ((Q > Length(U)) or not IsIdChar(U[Q]));
+            QuotePos := CharPos + Length(Ops[K].Name);
+            Ok := ((CharPos = 1) or not IsIdChar(UpStr[CharPos - 1])) and
+                  ((QuotePos > Length(UpStr)) or not IsIdChar(UpStr[QuotePos]));
             // Метод - только через точку (SL.LoadFromFile), процедура
             // Reset / Append - только без неё (SL.Append - метод списка)
             if Ok and (Ops[K].Kind = 1) then
-              Ok := (P > 1) and (U[P - 1] = '.');
+              Ok := (CharPos > 1) and (UpStr[CharPos - 1] = '.');
             if Ok and (Ops[K].Kind = 2) then
-              Ok := (P = 1) or (U[P - 1] <> '.');
+              Ok := (CharPos = 1) or (UpStr[CharPos - 1] <> '.');
             if Ok then
             begin
-              while (Q <= Length(U)) and (U[Q] = ' ') do
-                Inc(Q);
-              Ok := (Q <= Length(U)) and (U[Q] = '(') and
-                    OpArgs(F, J, Q, Args, Txt) and (Args.Count > Ops[K].Arg);
+              while (QuotePos <= Length(UpStr)) and (UpStr[QuotePos] = ' ') do
+                Inc(QuotePos);
+              Ok := (QuotePos <= Length(UpStr)) and (UpStr[QuotePos] = '(') and
+                    OpArgs(SrcFile, J, QuotePos, Args, Txt) and (Args.Count > Ops[K].Arg);
             end;
             if Ok and (Ops[K].Kind >= 0) then
             begin
-              Note := Copy(F.Clean[J], P, Length(Ops[K].Name)) + Txt;
+              Note := Copy(SrcFile.Clean[J], CharPos, Length(Ops[K].Name)) + Txt;
               if Length(Note) > 80 then
                 Note := Copy(Note, 1, 77) + '...';
               Use := Ops[K].Uses_;
@@ -1088,25 +1088,25 @@ begin
               FCtxLine := J;
               if Ops[K].Kind = 2 then
               begin
-                V := AssignedName(F, J, AnsiUpperCase(Trim(Arg0)));
-                A := Ord((V <> '') and (V[1] <> #0));
+                ValStr := AssignedName(SrcFile, J, AnsiUpperCase(Trim(Arg0)));
+                Num1 := Ord((ValStr <> '') and (ValStr[1] <> #0));
               end
               else
-                A := Ord(Eval(Arg0, V));
-              if A = 1 then
-                AddName(V, Use, True, F, J, Note)
+                Num1 := Ord(Eval(Arg0, ValStr));
+              if Num1 = 1 then
+                AddName(ValStr, Use, True, SrcFile, J, Note)
               // Не вычислилось. В лог - только если в вызове есть строка в
               // кавычках: имя из параметра или поля ввода (FindFirst(ADir +
               // Mask)) к файлам программы не относится
               else if (FUnresolved <> nil) and (Pos('''', Note) > 0) then
-                FUnresolved.Add(F.Path + #9 + IntToStr(J + 1) + #9 + Note);
+                FUnresolved.Add(SrcFile.Path + #9 + IntToStr(J + 1) + #9 + Note);
             end;
             // Следующее вхождение в той же строке
-            Q := Pos(Ops[K].Name, Copy(U, P + 1, MaxInt));
-            if Q > 0 then
-              P := P + Q
+            QuotePos := Pos(Ops[K].Name, Copy(UpStr, CharPos + 1, MaxInt));
+            if QuotePos > 0 then
+              CharPos := CharPos + QuotePos
             else
-              P := 0;
+              CharPos := 0;
           end;
         end;
       end;
@@ -1118,27 +1118,27 @@ end;
 
 // .dfm: имя файла в свойстве компонента - TableName, FileName,
 // DatabaseName - его читают
-procedure TScanner.ScanDfm(F: TSrcFile);
+procedure TScanner.ScanDfm(SrcFile: TSrcFile);
 const
   Props: array[0..2] of string = ('TABLENAME', 'FILENAME', 'DATABASENAME');
 var
-  J, K, P, Q: Integer;
-  U, V: string;
+  J, K, CharPos, QuotePos: Integer;
+  UpStr, ValStr: string;
 begin
-  for J := 0 to F.Upper.Count - 1 do
+  for J := 0 to SrcFile.Upper.Count - 1 do
   begin
-    U := TrimLeft(F.Upper[J]);
+    UpStr := TrimLeft(SrcFile.Upper[J]);
     for K := Low(Props) to High(Props) do
-      if Copy(U, 1, Length(Props[K])) = Props[K] then
+      if Copy(UpStr, 1, Length(Props[K])) = Props[K] then
       begin
-        P := Pos('=', F.Clean[J]);
-        if P = 0 then
+        CharPos := Pos('=', SrcFile.Clean[J]);
+        if CharPos = 0 then
           Continue;
-        Q := P + 1;
-        while (Q <= Length(F.Clean[J])) and (F.Clean[J][Q] = ' ') do
-          Inc(Q);
-        if ReadPasString(F.Clean[J], Q, V) then
-          AddName(V, [ruRead], True, F, J, Trim(F.Clean[J]));
+        QuotePos := CharPos + 1;
+        while (QuotePos <= Length(SrcFile.Clean[J])) and (SrcFile.Clean[J][QuotePos] = ' ') do
+          Inc(QuotePos);
+        if ReadPasString(SrcFile.Clean[J], QuotePos, ValStr) then
+          AddName(ValStr, [ruRead], True, SrcFile, J, Trim(SrcFile.Clean[J]));
       end;
   end;
 end;
@@ -1146,35 +1146,35 @@ end;
 // Способ 2: строки в кавычках, похожие на имена, которых операции не дали
 procedure TScanner.ScanLiterals;
 var
-  I, J, P, N: Integer;
-  F: TSrcFile;
-  S, V, Name: string;
+  I, J, CharPos, Num: Integer;
+  SrcFile: TSrcFile;
+  Str, ValStr, Name: string;
   IsDir: Boolean;
   Idx: Integer;
 begin
   for I := 0 to FFiles.Count - 1 do
   begin
-    F := TSrcFile(FFiles[I]);
-    for J := 0 to F.Clean.Count - 1 do
+    SrcFile := TSrcFile(FFiles[I]);
+    for J := 0 to SrcFile.Clean.Count - 1 do
     begin
-      S := F.Clean[J];
-      N := Length(S);
-      P := 1;
-      while P <= N do
+      Str := SrcFile.Clean[J];
+      Num := Length(Str);
+      CharPos := 1;
+      while CharPos <= Num do
       begin
-        if S[P] <> '''' then
+        if Str[CharPos] <> '''' then
         begin
-          Inc(P);
+          Inc(CharPos);
           Continue;
         end;
-        if not ReadPasString(S, P, V) then
+        if not ReadPasString(Str, CharPos, ValStr) then
           Break;
-        if not FileLikeName(V, Name, IsDir) then
+        if not FileLikeName(ValStr, Name, IsDir) then
           Continue;
         Idx := FItems.IndexOf(Name);
         if (Idx >= 0) and TRelRef(FItems.Objects[Idx]).ByOp then
           Continue;   // уже найдено по операции
-        AddName(V, [], False, F, J, 'строка в кавычках');
+        AddName(ValStr, [], False, SrcFile, J, 'строка в кавычках');
       end;
     end;
   end;

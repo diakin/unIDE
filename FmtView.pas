@@ -159,7 +159,7 @@ type
     procedure SetPaperColor(AColor: TColor);
     procedure SetWrapLines(AValue: Boolean);
     procedure EditMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
+      Shift: TShiftState; PosX, PosY: Integer);
     function EnsureEdit: Boolean;
     procedure RememberScroll;
     procedure Log(const AText: string);
@@ -611,8 +611,8 @@ begin
       else
         Result := 'режим IE: ключ реестра не открылся';
     except
-      on E: Exception do
-        Result := 'режим IE: не записан - ' + E.Message;
+      on Err: Exception do
+        Result := 'режим IE: не записан - ' + Err.Message;
     end;
   finally
     Reg.Free;
@@ -881,9 +881,9 @@ begin
     FBrowser.OnDocumentComplete := BrowserDocumentComplete;
     Result := True;
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      FLastError := 'Встроенный Internet Explorer не создан: ' + E.Message;
+      FLastError := 'Встроенный Internet Explorer не создан: ' + Err.Message;
       FreeAndNil(FBrowser);
     end;
   end;
@@ -942,8 +942,8 @@ begin
     FTempPage := NewPage;
     Result := True;
   except
-    on E: Exception do
-      FLastError := 'Не записана страница ' + NewPage + ': ' + E.Message;
+    on Err: Exception do
+      FLastError := 'Не записана страница ' + NewPage + ': ' + Err.Message;
   end;
 end;
 
@@ -967,8 +967,8 @@ begin
     FBrowser.Navigate(WideString(APage), Flags);
     Result := True;
   except
-    on E: Exception do
-      FLastError := 'Просмотр не открылся: ' + E.Message;
+    on Err: Exception do
+      FLastError := 'Просмотр не открылся: ' + Err.Message;
   end;
 end;
 
@@ -1489,9 +1489,9 @@ begin
     FEdit.OnMouseDown := EditMouseDown;
     Result := True;
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      FLastError := 'Окно RTF не создано: ' + E.Message;
+      FLastError := 'Окно RTF не создано: ' + Err.Message;
       FreeAndNil(FEdit);
     end;
   end;
@@ -1702,7 +1702,7 @@ end;
 // EM_CHARFROMPOS у RichEdit: lParam - адрес точки (POINTL), а не
 // координаты в самом lParam, как у простого поля
 procedure TRtfPreview.EditMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
+  Shift: TShiftState; PosX, PosY: Integer);
 const
   EM_EXLINEFROMCHAR_ = WM_USER + 54;
 var
@@ -1712,7 +1712,7 @@ begin
   if (Button <> mbLeft) or not Assigned(FOnClickPos) or
      not FEdit.HandleAllocated then
     Exit;
-  ClickPt := Point(X, Y);
+  ClickPt := Point(PosX, PosY);
   CharIdx := SendMessage(FEdit.Handle, EM_CHARFROMPOS, 0, Longint(@ClickPt));
   if CharIdx < 0 then
     CharIdx := 0;

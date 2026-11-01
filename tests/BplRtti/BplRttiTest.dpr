@@ -257,8 +257,8 @@ begin
       try
         BplDumpProps(FoundClass, Props);
       except
-        on E: Exception do
-          Props.Add('    ошибка чтения свойств: ' + E.Message);
+        on Err: Exception do
+          Props.Add('    ошибка чтения свойств: ' + Err.Message);
       end;
       for LineIdx := 0 to Props.Count - 1 do
         Say(Props[LineIdx]);

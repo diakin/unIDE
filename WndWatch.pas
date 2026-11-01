@@ -571,8 +571,8 @@ begin
     try
       HangWatchCallStack(StackLines);
     except
-      on E: Exception do
-        StackLines.Add('цепочка не получена: ' + E.Message);
+      on Err: Exception do
+        StackLines.Add('цепочка не получена: ' + Err.Message);
     end;
     Log(Format('%s: %s - %s; на переднем плане %s',
                [AWho, AWhat, SenderText, WndText(GetForegroundWindow)]));
@@ -1098,12 +1098,12 @@ begin
   try
     OldProc(Message);
   except
-    on E: Exception do
+    on Err: Exception do
     begin
       if (MsgId = WM_PAINT) or (MsgId = WM_ERASEBKGND) or
          (MsgId = WM_NCPAINT) then
         Watcher.Log(Format('%s: исключение в $%x: %s: %s',
-                           [ItemName, MsgId, E.ClassName, E.Message]));
+                           [ItemName, MsgId, Err.ClassName, Err.Message]));
       raise;
     end;
   end;

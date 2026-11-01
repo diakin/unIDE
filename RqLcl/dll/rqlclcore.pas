@@ -123,8 +123,8 @@ type
     procedure FireKey(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FireUTF8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
     procedure FireMouse(Sender: TObject; Button: TMouseButton;
-                        Shift: TShiftState; X, Y: Integer);
-    procedure FireMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+                        Shift: TShiftState; PosX, PosY: Integer);
+    procedure FireMouseMove(Sender: TObject; Shift: TShiftState; PosX, PosY: Integer);
     procedure FireSelectCell(Sender: TObject; aCol, aRow: Integer;
                              var CanSelect: Boolean);
     procedure FireDrawCell(Sender: TObject; aCol, aRow: Integer; aRect: TRect;
@@ -157,7 +157,7 @@ type
     procedure FireColRow(Sender: TObject; aCol, aRow: Integer);
     procedure FireListDropDown(Sender: TObject; ACol, ARow: Integer;
                                var AList: string);
-    procedure FireTreeEdited(Sender: TObject; Node: TTreeNode; var S: string);
+    procedure FireTreeEdited(Sender: TObject; Node: TTreeNode; var Str: string);
     procedure FireHint(Sender: TObject);
     destructor Destroy; override;
   end;
@@ -488,7 +488,7 @@ end;
 
 // OnMouseDown / OnMouseUp: Button (0 левая, 1 правая, 2 средняя), X, Y, Shift
 procedure TRqEventLink.FireMouse(Sender: TObject; Button: TMouseButton;
-                                 Shift: TShiftState; X, Y: Integer);
+                                 Shift: TShiftState; PosX, PosY: Integer);
 var
   Args: TRqEventArgs;
 begin
@@ -496,22 +496,22 @@ begin
     Exit;
   FillChar(Args, SizeOf(Args), 0);
   Args.IntArgs[0] := Ord(Button);
-  Args.IntArgs[1] := X;
-  Args.IntArgs[2] := Y;
+  Args.IntArgs[1] := PosX;
+  Args.IntArgs[2] := PosY;
   Args.IntArgs[3] := ShiftToInt(Shift);
   ProcEx(User, Owner, EventId, @Args);
 end;
 
 procedure TRqEventLink.FireMouseMove(Sender: TObject; Shift: TShiftState;
-                                     X, Y: Integer);
+                                     PosX, PosY: Integer);
 var
   Args: TRqEventArgs;
 begin
   if not Assigned(ProcEx) then
     Exit;
   FillChar(Args, SizeOf(Args), 0);
-  Args.IntArgs[0] := X;
-  Args.IntArgs[1] := Y;
+  Args.IntArgs[0] := PosX;
+  Args.IntArgs[1] := PosY;
   Args.IntArgs[2] := ShiftToInt(Shift);
   ProcEx(User, Owner, EventId, @Args);
 end;
@@ -781,7 +781,7 @@ end;
 // QTREEVIEW: OnEdited - номер пункта и новый текст (обработчик может
 // заменить)
 procedure TRqEventLink.FireTreeEdited(Sender: TObject; Node: TTreeNode;
-                                      var S: string);
+                                      var Str: string);
 var
   Args: TRqEventArgs;
   AnsiText: string;
@@ -793,10 +793,10 @@ begin
     Args.IntArgs[0] := -1
   else
     Args.IntArgs[0] := Node.AbsoluteIndex;
-  AnsiText := UTF8ToWinCP(S);
+  AnsiText := UTF8ToWinCP(Str);
   Args.StrArg := PChar(AnsiText);
   ProcEx(User, Owner, EventId, @Args);
-  S := WinCPToUTF8(EventStrResult(Args, AnsiText));
+  Str := WinCPToUTF8(EventStrResult(Args, AnsiText));
 end;
 
 // QFORM: OnHint - подсказка (длинная часть Hint) элемента под мышью на
@@ -940,9 +940,9 @@ begin
     Application.Initialize;
     RqInitDone := True;
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      SetError('RqInit: ' + E.Message);
+      SetError('RqInit: ' + Err.Message);
       Result := 0;
     end;
   end;
@@ -959,8 +959,8 @@ begin
     RqInitDone := False;
     FreeWidgetSet;
   except
-    on E: Exception do
-      SetError('RqDone: ' + E.Message);
+    on Err: Exception do
+      SetError('RqDone: ' + Err.Message);
   end;
 end;
 
@@ -1020,8 +1020,8 @@ begin
     end;
     Result := Comp;
   except
-    on E: Exception do
-      SetError('RqCreate ' + string(AClassName) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqCreate ' + string(AClassName) + ': ' + Err.Message);
   end;
 end;
 
@@ -1031,8 +1031,8 @@ begin
     if not SysIsGlobal(TObject(AObj)) and not ExtraIsGlobal(TObject(AObj)) then
       TObject(AObj).Free;
   except
-    on E: Exception do
-      SetError('RqFree: ' + E.Message);
+    on Err: Exception do
+      SetError('RqFree: ' + Err.Message);
   end;
 end;
 
@@ -1092,8 +1092,8 @@ begin
       SetOrdProp(TObject(AObj), Info, AValue);
     Result := 1;
   except
-    on E: Exception do
-      SetError('RqSetInt ' + string(AProp) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqSetInt ' + string(AProp) + ': ' + Err.Message);
   end;
 end;
 
@@ -1118,8 +1118,8 @@ begin
       Exit;
     Result := Integer(GetOrdProp(TObject(AObj), Info));
   except
-    on E: Exception do
-      SetError('RqGetInt ' + string(AProp) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqGetInt ' + string(AProp) + ': ' + Err.Message);
   end;
 end;
 
@@ -1155,8 +1155,8 @@ begin
     SetStrProp(TObject(AObj), Info, WinCPToUTF8(string(AValue)));
     Result := 1;
   except
-    on E: Exception do
-      SetError('RqSetStr ' + string(AProp) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqSetStr ' + string(AProp) + ': ' + Err.Message);
   end;
 end;
 
@@ -1192,8 +1192,8 @@ begin
     if (ABuf <> nil) and (ABufLen > 0) then
       StrPLCopy(ABuf, Value, ABufLen - 1);
   except
-    on E: Exception do
-      SetError('RqGetStr ' + string(AProp) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqGetStr ' + string(AProp) + ': ' + Err.Message);
   end;
 end;
 
@@ -1252,8 +1252,8 @@ begin
     SetObjectProp(TObject(AObj), Info, TObject(AValue));
     Result := 1;
   except
-    on E: Exception do
-      SetError('RqSetObj ' + string(AProp) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqSetObj ' + string(AProp) + ': ' + Err.Message);
   end;
 end;
 
@@ -1335,8 +1335,8 @@ begin
     SetMethodProp(Comp, Info, Handler);
     Result := 1;
   except
-    on E: Exception do
-      SetError('RqSetEvent ' + string(AEvent) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqSetEvent ' + string(AEvent) + ': ' + Err.Message);
   end;
 end;
 
@@ -1544,8 +1544,8 @@ begin
     SetMethodProp(Comp, Info, Handler);
     Result := 1;
   except
-    on E: Exception do
-      SetError('RqSetEventEx ' + string(AEvent) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqSetEventEx ' + string(AEvent) + ': ' + Err.Message);
   end;
 end;
 
@@ -1570,9 +1570,9 @@ begin
       SetError(TObject(AObj).ClassName + ': no method ' + string(AMethod));
     Result := 0;
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      SetError(string(AMethod) + ': ' + E.Message);
+      SetError(string(AMethod) + ': ' + Err.Message);
       Result := 0;
     end;
   end;
@@ -1591,8 +1591,8 @@ begin
     else
       SetError(TObject(AObj).ClassName + ': no method ' + string(AMethod));
   except
-    on E: Exception do
-      SetError(string(AMethod) + ': ' + E.Message);
+    on Err: Exception do
+      SetError(string(AMethod) + ': ' + Err.Message);
   end;
 end;
 
@@ -1618,9 +1618,9 @@ begin
     else
       SetError(TObject(AObj).ClassName + ': no method ' + string(AMethod));
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      SetError(string(AMethod) + ': ' + E.Message);
+      SetError(string(AMethod) + ': ' + Err.Message);
       Result := 0;
     end;
   end;
@@ -1694,8 +1694,8 @@ begin
     end;
     SetError('RqCall ' + string(AMethod) + ': no object');
   except
-    on E: Exception do
-      SetError('RqCall ' + string(AMethod) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqCall ' + string(AMethod) + ': ' + Err.Message);
   end;
 end;
 
@@ -1758,8 +1758,8 @@ begin
     else
       SetError(Obj.ClassName + ': no method ' + string(AMethod));
   except
-    on E: Exception do
-      SetError('RqCallInt ' + string(AMethod) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqCallInt ' + string(AMethod) + ': ' + Err.Message);
   end;
 end;
 
@@ -1786,8 +1786,8 @@ begin
     end;
     Result := GetObjectProp(TObject(AObj), Info);
   except
-    on E: Exception do
-      SetError('RqGetObj ' + string(AProp) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqGetObj ' + string(AProp) + ': ' + Err.Message);
   end;
 end;
 
@@ -1803,8 +1803,8 @@ begin
     else
       SetError('RqGetHandle: object has no handle');
   except
-    on E: Exception do
-      SetError('RqGetHandle: ' + E.Message);
+    on Err: Exception do
+      SetError('RqGetHandle: ' + Err.Message);
   end;
 end;
 
@@ -1856,9 +1856,9 @@ begin
     if (ABuf <> nil) and (ABufLen > 0) then
       StrPLCopy(ABuf, Value, ABufLen - 1);
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      SetError('RqGetItemStr ' + string(AProp) + ': ' + E.Message);
+      SetError('RqGetItemStr ' + string(AProp) + ': ' + Err.Message);
       Result := -1;
     end;
   end;
@@ -1882,8 +1882,8 @@ begin
     else
       SetError(TObject(AObj).ClassName + ': no list ' + string(AProp));
   except
-    on E: Exception do
-      SetError('RqSetItemStr ' + string(AProp) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqSetItemStr ' + string(AProp) + ': ' + Err.Message);
   end;
 end;
 
@@ -1901,8 +1901,8 @@ begin
     else
       SetError(TObject(AObj).ClassName + ': no method ' + string(AMethod));
   except
-    on E: Exception do
-      SetError('RqCallStr ' + string(AMethod) + ': ' + E.Message);
+    on Err: Exception do
+      SetError('RqCallStr ' + string(AMethod) + ': ' + Err.Message);
   end;
 end;
 
@@ -1930,8 +1930,8 @@ begin
     else
       SetError('RqGetCell: object has no cells');
   except
-    on E: Exception do
-      SetError(E.Message);
+    on Err: Exception do
+      SetError(Err.Message);
   end;
 end;
 
@@ -1946,8 +1946,8 @@ begin
     else
       SetError('RqSetCell: object has no cells');
   except
-    on E: Exception do
-      SetError(E.Message);
+    on Err: Exception do
+      SetError(Err.Message);
   end;
 end;
 
@@ -1967,8 +1967,8 @@ begin
        not AddGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
       SetError('RqGetItemInt: no list ' + string(AProp));
   except
-    on E: Exception do
-      SetError(E.Message);
+    on Err: Exception do
+      SetError(Err.Message);
   end;
 end;
 
@@ -1987,8 +1987,8 @@ begin
     else
       SetError('RqSetItemInt: no list ' + string(AProp));
   except
-    on E: Exception do
-      SetError(E.Message);
+    on Err: Exception do
+      SetError(Err.Message);
   end;
 end;
 
@@ -2034,9 +2034,9 @@ begin
     else
       SetError(TObject(AObj).ClassName + ': no method ' + string(AMethod));
   except
-    on E: Exception do
+    on Err: Exception do
     begin
-      SetError(string(AMethod) + ': ' + E.Message);
+      SetError(string(AMethod) + ': ' + Err.Message);
       if IsStr then
         Result := -1;
     end;
@@ -2049,8 +2049,8 @@ begin
   try
     Application.ProcessMessages;
   except
-    on E: Exception do
-      SetError('RqDoEvents: ' + E.Message);
+    on Err: Exception do
+      SetError('RqDoEvents: ' + Err.Message);
   end;
 end;
 
