@@ -325,7 +325,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.30';
+  DfmMoveBuild = 'b.31';
 
 constructor TMoveInfo.Create;
 begin
@@ -6779,6 +6779,8 @@ var
   // Вызовы без переменной: строки с именами помощников
   HelperLines, OneHelperLines, MergedLines: TList;
   HelperLineIndex: Integer;
+  // NewComponentName: основа имени (заглавными) -> занятые в тексте номера
+  BaseNumbers: TStringList;
   // Узлы дерева по номерам: Data и уровень. Items[N] дерева в Delphi 7
   // идёт от первого узла (N шагов) - в циклах по дереву это N*N.
   TreeData, TreeLevel: TList;
@@ -6807,12 +6809,60 @@ var
     Result := False;
   end;
 
+  // Номера N, при которых слово ABase + N есть в тексте модуля (по строкам
+  // заглавными, с комментариями - как TextHasIdent). Один проход на ABase;
+  // nil - кэша строк нет.
+  function UsedNumbers(const ABase: string): TStringList;
+  var
+    Upper: TStringList;
+    BaseUpper, Line, Digits: string;
+    BaseAt, LineIndex, At, After: Integer;
+  begin
+    Result := nil;
+    Upper := UsesUpperFor(Lines);
+    if (Upper = nil) or not IsValidIdent(ABase) then
+      Exit;
+    BaseUpper := UpperCase(ABase);
+    if BaseNumbers.Find(BaseUpper, BaseAt) then
+    begin
+      Result := TStringList(BaseNumbers.Objects[BaseAt]);
+      Exit;
+    end;
+    Result := TStringList.Create;
+    Result.Sorted := True;
+    Result.Duplicates := dupIgnore;
+    BaseNumbers.AddObject(BaseUpper, Result);
+    for LineIndex := 0 to Upper.Count - 1 do
+    begin
+      Line := Upper[LineIndex];
+      At := Pos(BaseUpper, Line);
+      while At > 0 do
+      begin
+        After := At + Length(BaseUpper);
+        if (At = 1) or not IsIdentChar(Line[At - 1]) then
+        begin
+          Digits := '';
+          while (After <= Length(Line)) and (Line[After] in ['0'..'9']) do
+          begin
+            Digits := Digits + Line[After];
+            Inc(After);
+          end;
+          if (Digits <> '') and
+             ((After > Length(Line)) or not IsIdentChar(Line[After])) then
+            Result.Add(Digits);
+        end;
+        At := PosEx(BaseUpper, Line, At + 1);
+      end;
+    end;
+  end;
+
   // Новое имя для компонента из вызова без переменной: родитель + класс +
   // номер (FTabsPopupItem1). Не занято ни в дереве, ни в модуле.
   function NewComponentName(const AParent, AClass: string): string;
   var
     Base: string;
-    Number: Integer;
+    Number, NumberAt: Integer;
+    Used: TStringList;
   begin
     Base := AClass;
     if (Base <> '') and (UpCase(Base[1]) = 'T') then
@@ -6823,9 +6873,11 @@ var
       Base := 'Item';
     Base := AParent + Base;
     Number := 1;
+    Used := UsedNumbers(Base);
     while (Names.IndexOf(Base + IntToStr(Number)) >= 0) or
           (NewNames.IndexOf(Base + IntToStr(Number)) >= 0) or
-          TextHasIdent(Base + IntToStr(Number)) do
+          ((Used <> nil) and Used.Find(IntToStr(Number), NumberAt)) or
+          ((Used = nil) and TextHasIdent(Base + IntToStr(Number))) do
       Inc(Number);
     Result := Base + IntToStr(Number);
     NewNames.Add(Result);
@@ -8149,6 +8201,9 @@ begin
   HelperLines := TList.Create;
   OneHelperLines := TList.Create;
   MergedLines := TList.Create;
+  BaseNumbers := TStringList.Create;
+  BaseNumbers.Sorted := True;
+  BaseNumbers.CaseSensitive := True;
   try
     TreeNode := ATree.Items.GetFirstNode;
     while TreeNode <> nil do
@@ -8772,6 +8827,9 @@ begin
   finally
     WordIndexReset;
     UsesCacheReset;
+    for Index := 0 to BaseNumbers.Count - 1 do
+      BaseNumbers.Objects[Index].Free;
+    BaseNumbers.Free;
     MergedLines.Free;
     OneHelperLines.Free;
     HelperLines.Free;
