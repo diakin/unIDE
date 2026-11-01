@@ -18,7 +18,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
-  StdCtrls, ExtCtrls, FileCtrl, CheckLst,
+  StdCtrls, ExtCtrls, FileCtrl, {$IFDEF FPC} FileCtrlLcl, {$ENDIF} CheckLst,
   UiButton,     // TUiButton
   UiEditCtrls;  // TUiEdit
 
@@ -54,7 +54,7 @@ type
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 // По нажатию Alt Windows меняет режим показа подчёркиваний, и кнопки окна
 // пропадают с экрана - та же беда, что у главного окна (см.

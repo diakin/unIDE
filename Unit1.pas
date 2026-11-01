@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ComCtrls, StrUtils, Menus, ExtCtrls, RichEdit, ColorGrd,
-  Buttons, IniFiles, ShellAPI, CheckLst, Grids, Clipbrd, FileCtrl,
+  Buttons, IniFiles, ShellAPI, CheckLst, Grids, Clipbrd, FileCtrl, {$IFDEF FPC} FileCtrlLcl, {$ENDIF}
   FormDesigner,   // визуальный конструктор форм
   DsgClasses,     // классы палитры для конструктора и инспектора
   DsgPalette,     // окно палитры компонентов
@@ -4513,7 +4513,7 @@ var
     PrjStore,     // проекты в editor.ini, выбор editor.ini по папке программы
     TypInfo;      // свойства классов VCL для инспектора объектов
 
-  {$R *.dfm}
+  {$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
   {$R formsnapshot_src.res} // FormSnapshot.pas для пробного запуска - ProbeRun
   {$R toolbar_icons.res} // ЭТА СТРОЧКА ЗАСТАВИТ DELPHI ИЗ RC-ФАЙЛА СДЕЛАТЬ ВШИТЫЙ РЕСУРС!
 

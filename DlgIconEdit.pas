@@ -100,7 +100,7 @@ type
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 const
   // Превью: крупно - в 4 раза, точка значка = 4 точки экрана

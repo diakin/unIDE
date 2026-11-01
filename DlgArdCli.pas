@@ -91,7 +91,7 @@ implementation
 uses
   DlgArdWait;    // окно хода загрузки - ArdWaitBegin
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 const
   // Команды и флаги arduino-cli 0.18 - из RQdebugger (ArdCliHelpFormShow);

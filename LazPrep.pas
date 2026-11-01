@@ -18,6 +18,12 @@ unit LazPrep;
 //  только изменённое. Файлы папки сборки, которых нет в исходной, не
 //  удаляются (там же будут .lfm шага 1.4 и результаты lazbuild).
 //
+//  Шаг 1.4: из каждой .dfm рядом пишется .lfm (форма для LCL) - тот же
+//  текст в UTF-8 без свойств, которых в LCL нет (LazPrepSkipProps). Сама
+//  .dfm остаётся единственным источником: формы правятся в Delphi или
+//  конструкторе unIDE, .lfm пересоздаётся при подготовке. Модули форм
+//  подключают {$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}.
+//
 //  Без VCL и без WinAPI: собирается Delphi 7 и Free Pascal.
 // ---------------------------------------------------------------------------
 
@@ -32,6 +38,8 @@ type
     Copied: Integer;      // скопировано как есть (UTF-8, ASCII, двоичные)
     Unchanged: Integer;   // уже есть с той же датой и размером
     Failed: Integer;      // не прочитан или не записан
+    Forms: Integer;       // записано .lfm
+    Skipped: Integer;     // строк свойств, которых нет в LCL
   end;
 
 // Перевод текста CP1251 -> UTF-8
@@ -41,6 +49,10 @@ function Cp1251ToUtf8(const AText: string): string;
 // правильные последовательности UTF-8. Только ASCII - False (переводить
 // нечего, перевод ничего не изменит)
 function LooksUtf8(const AText: string): Boolean;
+
+// Текст .dfm (UTF-8) -> текст .lfm: без свойств из LazPrepSkipProps.
+// ASkipped - сколько строк свойств выброшено
+function DfmToLfm(const AText: string; var ASkipped: Integer): string;
 
 // Подготовить папку сборки ADstDir из папки проекта ASrcDir. В ALog -
 // строки отчёта (ошибки и итог), можно nil
@@ -55,6 +67,14 @@ const
                                              '.ico');
   // Папка рядом с .dpr со своими файлами Lazarus (.lpi, .lpr, .lpk)
   LazPrepTemplateDir = 'lazarus';
+  // Свойства .dfm, которых нет в LCL: «Класс.Свойство» или «*.Свойство».
+  // Список - по проверке всех .dfm unIDE через RTTI LCL 3.0 (2026-11-01)
+  LazPrepSkipProps: array[0..4] of string = (
+    '*.OldCreateOrder',          // TForm
+    '*.TextHeight',              // TForm
+    '*.AutoHotkeys',             // TMenuItem, TPopupMenu
+    'TColorDialog.Options',      // в LCL у TColorDialog нет Options
+    'TUiColorDialog.Options');
 
 implementation
 
@@ -268,6 +288,122 @@ begin
     Inc(AStats.Copied);
 end;
 
+// Строка .dfm - начало объекта: «object Имя: Класс» (inherited, inline);
+// AClass - класс
+function DfmObjectLine(const ALine: string; var AClass: string): Boolean;
+var
+  Txt: string;
+  ColonPos: Integer;
+begin
+  Result := False;
+  AClass := '';
+  Txt := TrimLeft(ALine);
+  if not ((Copy(Txt, 1, 7) = 'object ') or (Copy(Txt, 1, 10) = 'inherited ') or
+          (Copy(Txt, 1, 7) = 'inline ')) then
+    Exit;
+  ColonPos := Pos(':', Txt);
+  if ColonPos = 0 then
+    Exit;
+  AClass := Trim(Copy(Txt, ColonPos + 1, MaxInt));
+  // «object X: TY [0]» - индекс у унаследованных
+  if Pos(' ', AClass) > 0 then
+    AClass := Copy(AClass, 1, Pos(' ', AClass) - 1);
+  Result := AClass <> '';
+end;
+
+function SkipProp(const AClass, AProp: string): Boolean;
+var
+  RuleIdx: Integer;
+begin
+  Result := False;
+  for RuleIdx := Low(LazPrepSkipProps) to High(LazPrepSkipProps) do
+    if SameText(LazPrepSkipProps[RuleIdx], '*.' + AProp) or
+       SameText(LazPrepSkipProps[RuleIdx], AClass + '.' + AProp) then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+function DfmToLfm(const AText: string; var ASkipped: Integer): string;
+var
+  Lines, Classes: TStringList;
+  LineIdx, EqPos: Integer;
+  Txt, ClassNm, PropNm: string;
+begin
+  ASkipped := 0;
+  Lines := TStringList.Create;
+  Classes := TStringList.Create;
+  try
+    Lines.Text := AText;
+    LineIdx := 0;
+    while LineIdx < Lines.Count do
+    begin
+      Txt := Trim(Lines[LineIdx]);
+      if DfmObjectLine(Lines[LineIdx], ClassNm) then
+        Classes.Add(ClassNm)
+      else if (Txt = 'end') and (Classes.Count > 0) then
+        Classes.Delete(Classes.Count - 1)
+      else if Classes.Count > 0 then
+      begin
+        // «Свойство = значение» в одну строку: значения на несколько строк
+        // (списки, двоичные данные) у выбрасываемых свойств не бывает
+        EqPos := Pos(' = ', Txt);
+        if EqPos > 0 then
+        begin
+          PropNm := Copy(Txt, 1, EqPos - 1);
+          if (Pos(' ', PropNm) = 0) and
+             SkipProp(Classes[Classes.Count - 1], PropNm) then
+          begin
+            Lines.Delete(LineIdx);
+            Inc(ASkipped);
+            Continue;
+          end;
+        end;
+      end;
+      Inc(LineIdx);
+    end;
+    Result := Lines.Text;
+  finally
+    Classes.Free;
+    Lines.Free;
+  end;
+end;
+
+// .lfm из .dfm ASrc: перевод в UTF-8 (если нужен) и DfmToLfm. Дата - как у
+// .dfm; та же дата - не переписывается
+procedure PrepLfm(const ASrc, ADst: string; ALog: TStrings;
+  var AStats: TLazPrepStats);
+var
+  SrcText, OutText: string;
+  SrcAge, Skipped: Integer;
+begin
+  SrcAge := FileAge(ASrc);
+  if FileExists(ADst) and (FileAge(ADst) = SrcAge) then
+    Exit;
+  if not ReadFileText(ASrc, SrcText) then
+  begin
+    Inc(AStats.Failed);
+    if ALog <> nil then
+      ALog.Add('не прочитан: ' + ASrc);
+    Exit;
+  end;
+  if not LooksUtf8(SrcText) then
+    SrcText := Cp1251ToUtf8(SrcText);
+  OutText := DfmToLfm(SrcText, Skipped);
+  if not WriteFileText(ADst, OutText) then
+  begin
+    Inc(AStats.Failed);
+    if ALog <> nil then
+      ALog.Add('не записан: ' + ADst);
+    Exit;
+  end;
+  if SrcAge <> -1 then
+    FileSetDate(ADst, SrcAge);
+  Inc(AStats.Forms);
+  Inc(AStats.Skipped, Skipped);
+end;
+
 function LazPrepSources(const ASrcDir, ADstDir: string; ALog: TStrings;
   var AStats: TLazPrepStats): Boolean;
 var
@@ -304,8 +440,13 @@ begin
         Continue;
       Ext := ExtractFileExt(SearchRec.Name);
       if ExtIn(Ext, LazPrepTextExts) then
+      begin
         PrepFile(SrcDir + SearchRec.Name, DstDir + SearchRec.Name, True,
-                 ALog, AStats)
+                 ALog, AStats);
+        if SameText(Ext, '.dfm') then
+          PrepLfm(SrcDir + SearchRec.Name,
+                  DstDir + ChangeFileExt(SearchRec.Name, '.lfm'), ALog, AStats);
+      end
       else if ExtIn(Ext, LazPrepCopyExts) then
         PrepFile(SrcDir + SearchRec.Name, DstDir + SearchRec.Name, False,
                  ALog, AStats);

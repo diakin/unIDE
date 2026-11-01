@@ -491,7 +491,7 @@ uses Unit1, ClrScheme,
   DlgPathList,   // окно списка путей (EditPathList)
   DlgEnvVar;     // окно имени и значения переменной (EnvEditDialog)
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 // Раздел схемы, показанный в строке ARow; пусто - строка ничему не отвечает
 function TForm2.RowSection(ARow: Integer): string;

@@ -100,7 +100,7 @@ type
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 const
   BaudRates: array[0..14] of Integer = (

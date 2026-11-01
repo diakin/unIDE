@@ -40,7 +40,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics,
-  Controls, Forms, Dialogs, ExtCtrls, FileCtrl, StdCtrls, Buttons, CheckLst,
+  Controls, Forms, Dialogs, ExtCtrls, FileCtrl, {$IFDEF FPC} FileCtrlLcl, {$ENDIF} StdCtrls, Buttons, CheckLst,
   IniFiles,
   IncCheck,     // сравнение с эталоном, проверки, защита, демо
   IncEdit,      // состав файла, изъятие пунктов, сборка файлов в один
@@ -172,7 +172,7 @@ var
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 const
   // Цвета значков: совпадает / отличается / нет в эталоне

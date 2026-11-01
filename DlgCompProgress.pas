@@ -120,7 +120,7 @@ function CompMsText(AMs: Cardinal): string;
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 const
   MarkWidth = 22;   // место под значок этапа слева

@@ -384,7 +384,7 @@ type
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 const
   // Высота окна без вкладки Project options и с ней; с рамкой папки inc

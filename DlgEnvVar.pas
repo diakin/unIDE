@@ -32,7 +32,7 @@ type
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 // По нажатию Alt Windows меняет режим показа подчёркиваний, и кнопки окна
 // пропадают с экрана (см. TForm1.WMUpdateUIState). Сообщение дальше не

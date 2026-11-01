@@ -76,7 +76,7 @@ implementation
 uses
   ArduinoCli;    // ArdLogLine, ArdLogProgress, ArdRunCancelled
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 const
   GaugeRunColor = $000080FF;    // оранжевый: идёт загрузка

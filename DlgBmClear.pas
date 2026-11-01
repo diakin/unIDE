@@ -47,7 +47,7 @@ type
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 procedure TDlgBmClear.WMUpdateUIState(var Message: TMessage);
 begin

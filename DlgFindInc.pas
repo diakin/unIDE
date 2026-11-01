@@ -107,7 +107,7 @@ type
 
 implementation
 
-{$R *.dfm}
+{$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 const
   // Цвета значков: не проверен / совпадает / отличается / нет в эталоне
