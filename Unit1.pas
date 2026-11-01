@@ -55400,8 +55400,32 @@ begin
   end;
 end;
 
+// В .lpi есть пакеты (RequiredPackages: LCL и др.). Пути к их модулям
+// знает только lazbuild: fpc.exe с путями из .lpi их не найдёт
+// (Can't find unit Interfaces)
+function LpiNeedsPackages(const ALpi: string): Boolean;
+var
+  LpiText: TStringList;
+begin
+  Result := False;
+  if not FileExists(ALpi) then
+    Exit;
+  LpiText := TStringList.Create;
+  try
+    try
+      LpiText.LoadFromFile(ALpi);
+      Result := Pos('<PackageName ', LpiText.Text) > 0;
+    except
+      Result := False;
+    end;
+  finally
+    LpiText.Free;
+  end;
+end;
+
 // Сборка идёт fpc.exe, а не lazbuild (как решает CompileLazarus): нет
-// .lpi; .lpi с .lpr того же имени и задано поле fpc.exe или нет lazbuild
+// .lpi; .lpi с .lpr того же имени и задано поле fpc.exe или нет lazbuild.
+// .lpi с пакетами при найденном lazbuild - всегда lazbuild
 function TForm1.LazBuildViaFpc(const ALpi: string): Boolean;
 var
   Problem: string;
@@ -55412,7 +55436,10 @@ begin
   if (CompareText(ExtractFileExt(ALpi), '.lpi') <> 0) or
      not FileExists(ChangeFileExt(ALpi, '.lpr')) then
     Exit;
-  Result := (FpcSetting('FpcFile') <> '') or (LazbuildExe(Problem) = '');
+  if LazbuildExe(Problem) = '' then
+    Result := True
+  else
+    Result := (FpcSetting('FpcFile') <> '') and not LpiNeedsPackages(ALpi);
 end;
 
 // Разрядность сборки fpc.exe: Target CPU проекта (пусто - IDE Options);
@@ -55654,7 +55681,7 @@ end;
 
 function TForm1.CompileLazarus: Boolean;
 var
-  Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName, Src: string;
+  Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName, Src, FpcFile: string;
   Cpu, TargetOs: string;
   LogLine, ErrFile, FirstFile, Where: string;
   Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount: Integer;
@@ -55699,10 +55726,13 @@ begin
     'цель проекта unIDE (Project Properties)');
     Exit;
   end;
-  // Поле fpc.exe задано - сборка им напрямую, lazbuild не нужен
+  // Поле fpc.exe задано - сборка им напрямую, lazbuild не нужен. Кроме
+  // .lpi с пакетами (LCL): их собирает lazbuild с этим fpc.exe
+  // (--compiler), если lazbuild найден
   Src := ChangeFileExt(Lpi, '.lpr');
   if (FpcSetting('FpcFile') <> '') and
-     (CompareText(ExtractFileExt(Lpi), '.lpi') = 0) and FileExists(Src) then
+     (CompareText(ExtractFileExt(Lpi), '.lpi') = 0) and FileExists(Src) and
+     not (LpiNeedsPackages(Lpi) and (LazbuildExe(Problem) <> '')) then
   begin
     LogComp('Сборка fpc.exe из настроек Lazarus (поле fpc.exe), режим и ' +
       'пути из ' + ExtractFileName(Lpi));
@@ -55742,6 +55772,14 @@ begin
     Params := '--cpu=' + Cpu + ' ' + Params;
   if TargetOs <> '' then
     Params := '--os=' + TargetOs + ' ' + Params;
+  // Поле fpc.exe задано (.lpi с пакетами сюда попадает и с ним): lazbuild
+  // собирает этим компилятором, пакеты (LCL) - тоже, под нужную платформу
+  if FpcSetting('FpcFile') <> '' then
+  begin
+    FpcFile := FpcExe(Problem);
+    if FpcFile <> '' then
+      Params := '--compiler="' + FpcFile + '" ' + Params;
+  end;
   LogComp('--- Компиляция: ' + ShortName);
   LogComp('"' + Lazbuild + '" ' + Params);
   WriteCompileBat(Lazbuild, Params, Dir, Lpi);
