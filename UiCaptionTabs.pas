@@ -15,6 +15,7 @@ unit UiCaptionTabs;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls,
   UiTheme;
 

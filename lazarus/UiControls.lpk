@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="5">
+    <Name Value="UiControls"/>
+    <Type Value="RunAndDesignTime"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <SearchPaths>
+        <UnitOutputDirectory Value="lib/$(TargetCPU)-$(TargetOS)/UiControls"/>
+      </SearchPaths>
+      <Parsing>
+        <SyntaxOptions>
+          <SyntaxMode Value="Delphi"/>
+        </SyntaxOptions>
+      </Parsing>
+    </CompilerOptions>
+    <Description Value="unIDE Ui controls (step 1.3 of the Lazarus port; same sources as UiControls.dpk, LCL differences under {$IFDEF FPC})"/>
+    <Version Major="1"/>
+    <Files Count="18">
+      <Item1>
+        <Filename Value="UiTheme.pas"/>
+        <UnitName Value="UiTheme"/>
+      </Item1>
+      <Item2>
+        <Filename Value="UiScroll.pas"/>
+        <UnitName Value="UiScroll"/>
+      </Item2>
+      <Item3>
+        <Filename Value="UiButton.pas"/>
+        <UnitName Value="UiButton"/>
+      </Item3>
+      <Item4>
+        <Filename Value="UiGroupBox.pas"/>
+        <UnitName Value="UiGroupBox"/>
+      </Item4>
+      <Item5>
+        <Filename Value="UiStdCtrls.pas"/>
+        <UnitName Value="UiStdCtrls"/>
+      </Item5>
+      <Item6>
+        <Filename Value="UiEditCtrls.pas"/>
+        <UnitName Value="UiEditCtrls"/>
+      </Item6>
+      <Item7>
+        <Filename Value="UiComCtrls.pas"/>
+        <UnitName Value="UiComCtrls"/>
+      </Item7>
+      <Item8>
+        <Filename Value="UiMenus.pas"/>
+        <UnitName Value="UiMenus"/>
+      </Item8>
+      <Item9>
+        <Filename Value="UiStdDlgs.pas"/>
+        <UnitName Value="UiStdDlgs"/>
+      </Item9>
+      <Item10>
+        <Filename Value="EdClip.pas"/>
+        <UnitName Value="EdClip"/>
+      </Item10>
+      <Item11>
+        <Filename Value="EdBuffer.pas"/>
+        <UnitName Value="EdBuffer"/>
+      </Item11>
+      <Item12>
+        <Filename Value="EdEditor.pas"/>
+        <UnitName Value="EdEditor"/>
+      </Item12>
+      <Item13>
+        <Filename Value="EdView.pas"/>
+        <UnitName Value="EdView"/>
+      </Item13>
+      <Item14>
+        <Filename Value="EdLog.pas"/>
+        <UnitName Value="EdLog"/>
+      </Item14>
+      <Item15>
+        <Filename Value="EdHostWin.pas"/>
+        <UnitName Value="EdHostWin"/>
+      </Item15>
+      <Item16>
+        <Filename Value="EdHost.pas"/>
+        <UnitName Value="EdHost"/>
+      </Item16>
+      <Item17>
+        <Filename Value="UiCaptionTabs.pas"/>
+        <UnitName Value="UiCaptionTabs"/>
+      </Item17>
+      <Item18>
+        <Filename Value="UiReg.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="UiReg"/>
+      </Item18>
+    </Files>
+    <RequiredPkgs Count="1">
+      <Item1>
+        <PackageName Value="LCL"/>
+      </Item1>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+    </PublishOptions>
+  </Package>
+</CONFIG>

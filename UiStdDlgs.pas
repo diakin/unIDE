@@ -26,6 +26,7 @@ unit UiStdDlgs;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   UiTheme;
 
@@ -995,8 +996,14 @@ end;
 procedure TUiFontForm.ApplyClick(Sender: TObject);
 begin
   ReadResult(FDialog.Font);
+  {$IFDEF FPC}
+  // В LCL событие - OnApplyClicked, без окна
+  if Assigned(FDialog.OnApplyClicked) then
+    FDialog.OnApplyClicked(FDialog);
+  {$ELSE}
   if Assigned(FDialog.OnApply) then
     FDialog.OnApply(FDialog, Handle);
+  {$ENDIF}
 end;
 
 function TUiFontDialog.Execute: Boolean;

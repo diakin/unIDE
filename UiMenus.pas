@@ -34,6 +34,7 @@ unit UiMenus;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, LCLProc, LMessages, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Menus,
   ImgList, UiTheme;
 
@@ -52,7 +53,8 @@ type
     procedure HookForm;
     procedure UnhookForm;
     procedure FormWndProc(var Message: TMessage);
-    procedure FormShortCut(var Msg: TWMKey; var Handled: Boolean);
+    procedure FormShortCut(var Msg: {$IFDEF FPC}TLMKey{$ELSE}TWMKey{$ENDIF};
+      var Handled: Boolean);
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
@@ -1117,7 +1119,8 @@ begin
   FOldFormProc(Message);
 end;
 
-procedure TUiMenuBar.FormShortCut(var Msg: TWMKey; var Handled: Boolean);
+procedure TUiMenuBar.FormShortCut(var Msg: {$IFDEF FPC}TLMKey{$ELSE}TWMKey{$ENDIF};
+  var Handled: Boolean);
 begin
   if Assigned(FOldShortCut) then
     FOldShortCut(Msg, Handled);
@@ -1361,7 +1364,8 @@ begin
   if PopupComponent is TControl then
     Probe := TControl(PopupComponent);
   DoPopup(Self);
-  if UiThemeNativeFor(Probe) then
+  // В LCL окна PopupList нет - там меню всегда своё
+  if {$IFDEF FPC}False and{$ENDIF} UiThemeNativeFor(Probe) then
   begin
     // Меню Windows, но выбранный пункт - нам (TPM_RETURNCMD), а не через
     // WM_COMMAND окну PopupList: так после его Click известно, какой он
@@ -1374,7 +1378,8 @@ begin
       Flags := Flags or TPM_LEFTALIGN;
     end;
     Cmd := Integer(TrackPopupMenu(Items.Handle, Flags, PosX, PosY, 0,
-                                  PopupList.Window, nil));
+                                  {$IFDEF FPC}0{$ELSE}PopupList.Window{$ENDIF},
+                                  nil));
     Chosen := nil;
     if Cmd <> 0 then
       Chosen := FindItem(Cmd, fkCommand);

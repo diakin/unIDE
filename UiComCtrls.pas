@@ -24,6 +24,7 @@ unit UiComCtrls;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, ComCtrls,
   CommCtrl, UiTheme, UiEditCtrls;
 
@@ -187,7 +188,7 @@ begin
     // сам элемент Windows (TCM_ADJUSTRECT).
     RectVal := CustomTabControl.ClientRect;
     if CustomTabControl.HandleAllocated then
-      SendMessage(CustomTabControl.Handle, TCM_ADJUSTRECT, 0, Integer(@RectVal));
+      SendMessage(CustomTabControl.Handle, TCM_ADJUSTRECT, 0, LPARAM(@RectVal));
     InflateRect(RectVal, 1, 1);
     Cv.Brush.Color := UiThemeColorFor(CustomTabControl, 'Tab.Border');
     Cv.FrameRect(RectVal);
@@ -220,7 +221,7 @@ begin
         DIS.hDC := DC;
         DIS.rcItem := RectVal2;
         InflateRect(DIS.rcItem, -1, -1);   // рамка ярлычка - наша
-        CustomTabControl.Perform(CN_DRAWITEM, 0, Longint(@DIS));
+        CustomTabControl.Perform(CN_DRAWITEM, 0, LPARAM(@DIS));
         Continue;
       end;
       Str := UiTabAcc.Tabs[I];
@@ -492,7 +493,7 @@ begin
 
     for I := 0 to Panels.Count - 1 do
     begin
-      if SendMessage(Handle, SB_GETRECT, I, Integer(@RectVal)) = 0 then
+      if SendMessage(Handle, SB_GETRECT, I, LPARAM(@RectVal)) = 0 then
         Continue;
       StatusPanel := Panels[I];
       if StatusPanel.Style = psOwnerDraw then
@@ -737,7 +738,7 @@ var
   Wnd: HWND;
 begin
   if not UiThemeNativeFor(Self) and HandleAllocated and
-     (Message.NMHdr^.code = NM_CUSTOMDRAW) then
+     (Integer(Message.NMHdr^.code) = Integer(NM_CUSTOMDRAW)) then
   begin
     Wnd := SendMessage(Handle, LVM_GETHEADER, 0, 0);
     if (Wnd <> 0) and (Message.NMHdr^.hwndFrom = Wnd) then
@@ -824,7 +825,7 @@ begin
   RectVal2 := RectVal;
   if Num > 0 then
   begin
-    if SendMessage(Wnd, HDM_GETITEMRECT, Num - 1, Integer(@RectVal2)) = 0 then
+    if SendMessage(Wnd, HDM_GETITEMRECT, Num - 1, LPARAM(@RectVal2)) = 0 then
       Exit;
     RectVal2.Left := RectVal2.Right;
     RectVal2.Right := RectVal.Right;

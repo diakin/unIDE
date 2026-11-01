@@ -40,6 +40,7 @@ unit UiButton;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
   UiTheme;
 
@@ -64,7 +65,13 @@ type
     procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
     procedure CMDialogKey(var Message: TCMDialogKey); message CM_DIALOGKEY;
     procedure CMDialogChar(var Message: TCMDialogChar); message CM_DIALOGCHAR;
+    {$IFDEF FPC}
+    // LCL не рассылает CM_FOCUSCHANGED; о смене фокуса форма сообщает
+    // прежнему фокусу и кнопке Default
+    procedure ActiveDefaultControlChanged(NewControl: TControl); override;
+    {$ELSE}
     procedure CMFocusChanged(var Message: TCMFocusChanged); message CM_FOCUSCHANGED;
+    {$ENDIF}
     procedure WMSetFocus(var Message: TWMSetFocus); message WM_SETFOCUS;
     procedure WMKillFocus(var Message: TWMKillFocus); message WM_KILLFOCUS;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
@@ -196,6 +203,14 @@ implementation
 
 uses
   Themes;
+
+{$IFDEF FPC}
+// В модуле Windows Free Pascal нет AlphaBlend (msimg32.dll)
+function UiAlphaBlend(ADestDC: HDC; ADestX, ADestY, ADestW, ADestH: Integer;
+  ASrcDC: HDC; ASrcX, ASrcY, ASrcW, ASrcH: Integer;
+  ABlend: TBlendFunction): BOOL; stdcall;
+  external 'msimg32.dll' name 'AlphaBlend';
+{$ENDIF}
 
 const
   // WM_QUERYUISTATE: скрыто ли подчёркивание букв (пока не нажат Alt)
@@ -542,6 +557,21 @@ begin
 end;
 
 // Фокус перешёл: на кнопку - Enter нажимает её; на другое - кнопку Default
+{$IFDEF FPC}
+procedure TUiButton.ActiveDefaultControlChanged(NewControl: TControl);
+var
+  Was: Boolean;
+begin
+  Was := FActive;
+  if (NewControl is TUiButton) or (NewControl is TButton) then
+    FActive := NewControl = Self
+  else
+    FActive := FDefault;
+  if Was <> FActive then
+    Invalidate;
+  inherited ActiveDefaultControlChanged(NewControl);
+end;
+{$ELSE}
 procedure TUiButton.CMFocusChanged(var Message: TCMFocusChanged);
 var
   Was: Boolean;
@@ -555,6 +585,7 @@ begin
     Invalidate;
   inherited;
 end;
+{$ENDIF}
 
 procedure TUiButton.WMSetFocus(var Message: TWMSetFocus);
 begin
@@ -904,7 +935,8 @@ begin
         Blend.BlendFlags := 0;
         Blend.SourceConstantAlpha := 255;
         Blend.AlphaFormat := IconSrcAlpha;
-        Windows.AlphaBlend(Buf.Canvas.Handle, PosX, PosY, Cell.Width,
+        {$IFDEF FPC}UiAlphaBlend{$ELSE}Windows.AlphaBlend{$ENDIF}(
+                           Buf.Canvas.Handle, PosX, PosY, Cell.Width,
                            Cell.Height, Cell.Canvas.Handle, 0, 0, Cell.Width,
                            Cell.Height, Blend);
       end

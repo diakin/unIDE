@@ -56,6 +56,7 @@ unit UiTheme;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls;
 
 type
@@ -176,6 +177,9 @@ function UiThemeFor(AControl: TControl): TUiTheme;
 // она есть, иначе общие (UiThemeColor, UiThemeNative)
 function UiThemeColorFor(AControl: TControl; const ARole: string): TColor;
 function UiThemeNativeFor(AControl: TControl): Boolean;
+// Флаги DrawText с учётом направления текста контрола (в Delphi -
+// TControl.DrawTextBiDiModeFlags, в LCL такого метода нет)
+function UiDrawTextFlags(AControl: TControl; AFlags: Longint): Longint;
 
 implementation
 
@@ -466,6 +470,17 @@ begin
     Result := Theme.RoleColor(ARole)
   else
     Result := UiThemeColor(ARole);
+end;
+
+function UiDrawTextFlags(AControl: TControl; AFlags: Longint): Longint;
+begin
+  {$IFDEF FPC}
+  Result := AFlags;
+  if AControl.UseRightToLeftReading then
+    Result := Result or DT_RTLREADING;
+  {$ELSE}
+  Result := AControl.DrawTextBiDiModeFlags(AFlags);
+  {$ENDIF}
 end;
 
 function UiThemeNativeFor(AControl: TControl): Boolean;

@@ -18,6 +18,7 @@ unit EdHost;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls,
   EdHostWin;
 
@@ -146,7 +147,7 @@ begin
   // Первое слово буфера EM_GETLINE - его размер; не меньше двух байт
   SetLength(Result, LineLen + 2);
   PWord(PChar(Result))^ := LineLen + 2;
-  Got := SendMessage(FEdit.Handle, EM_GETLINE, Index, Integer(PChar(Result)));
+  Got := SendMessage(FEdit.Handle, EM_GETLINE, Index, LPARAM(PChar(Result)));
   if Got < 0 then
     Got := 0;
   if Got > LineLen then
@@ -178,7 +179,7 @@ begin
     NextStart := LineStart + SendMessage(FEdit.Handle, EM_LINELENGTH,
       LineStart, 0);
   SendMessage(FEdit.Handle, EM_SETSEL, LineStart, NextStart);
-  SendMessage(FEdit.Handle, EM_REPLACESEL, 0, Integer(PChar('')));
+  SendMessage(FEdit.Handle, EM_REPLACESEL, 0, LPARAM(PChar('')));
 end;
 
 procedure TEdHostLines.Insert(Index: Integer; const Str: string);
@@ -196,7 +197,7 @@ begin
     Line := #13#10 + Str;
   end;
   SendMessage(FEdit.Handle, EM_SETSEL, LineStart, LineStart);
-  SendMessage(FEdit.Handle, EM_REPLACESEL, 0, Integer(PChar(Line)));
+  SendMessage(FEdit.Handle, EM_REPLACESEL, 0, LPARAM(PChar(Line)));
 end;
 
 // ---------------------------------------------------------------------------
@@ -278,7 +279,7 @@ function TEdHostEdit.GetSelStart: Integer;
 var
   Range: TEdCharRange;
 begin
-  SendMessage(Handle, EM_EXGETSEL_, 0, Integer(@Range));
+  SendMessage(Handle, EM_EXGETSEL_, 0, LPARAM(@Range));
   Result := Range.cpMin;
 end;
 
@@ -288,14 +289,14 @@ var
 begin
   Range.cpMin := AValue;
   Range.cpMax := AValue;
-  SendMessage(Handle, EM_EXSETSEL_, 0, Integer(@Range));
+  SendMessage(Handle, EM_EXSETSEL_, 0, LPARAM(@Range));
 end;
 
 function TEdHostEdit.GetSelLength: Integer;
 var
   Range: TEdCharRange;
 begin
-  SendMessage(Handle, EM_EXGETSEL_, 0, Integer(@Range));
+  SendMessage(Handle, EM_EXGETSEL_, 0, LPARAM(@Range));
   Result := Range.cpMax - Range.cpMin;
 end;
 
@@ -304,9 +305,9 @@ procedure TEdHostEdit.SetSelLength(AValue: Integer);
 var
   Range: TEdCharRange;
 begin
-  SendMessage(Handle, EM_EXGETSEL_, 0, Integer(@Range));
+  SendMessage(Handle, EM_EXGETSEL_, 0, LPARAM(@Range));
   Range.cpMax := Range.cpMin + AValue;
-  SendMessage(Handle, EM_EXSETSEL_, 0, Integer(@Range));
+  SendMessage(Handle, EM_EXSETSEL_, 0, LPARAM(@Range));
   SendMessage(Handle, EM_SCROLLCARET_, 0, 0);
 end;
 
@@ -317,12 +318,12 @@ var
   Got: Integer;
 begin
   Result := '';
-  SendMessage(Handle, EM_EXGETSEL_, 0, Integer(@Range.chrg));
+  SendMessage(Handle, EM_EXGETSEL_, 0, LPARAM(@Range.chrg));
   if Range.chrg.cpMax <= Range.chrg.cpMin then
     Exit;
   SetLength(Text, Range.chrg.cpMax - Range.chrg.cpMin + 1);
   Range.lpstrText := PWideChar(Text);
-  Got := SendMessage(Handle, EM_GETTEXTRANGE_, 0, Integer(@Range));
+  Got := SendMessage(Handle, EM_GETTEXTRANGE_, 0, LPARAM(@Range));
   if Got <= 0 then
     Exit;
   if Got > Length(Text) - 1 then
@@ -333,7 +334,7 @@ end;
 
 procedure TEdHostEdit.SetSelText(const AValue: string);
 begin
-  SendMessage(Handle, EM_REPLACESEL, 0, Integer(PChar(AValue)));
+  SendMessage(Handle, EM_REPLACESEL, 0, LPARAM(PChar(AValue)));
 end;
 
 function TEdHostEdit.GetModified: Boolean;

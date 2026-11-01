@@ -16,6 +16,7 @@ procedure Register;
 implementation
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Classes, UiTheme, UiScroll, UiButton, UiGroupBox, UiStdCtrls, UiEditCtrls,
   UiComCtrls, UiMenus, UiStdDlgs, EdLog,
   EdHost, UiCaptionTabs;

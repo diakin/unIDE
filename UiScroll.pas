@@ -35,6 +35,7 @@ unit UiScroll;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
   ComCtrls, StdCtrls, Grids;
 
@@ -1200,7 +1201,7 @@ begin
     RectVal.Left := 0;             // LVIR_BOUNDS
     RowH := 0;
     if (Count > 0) and
-       (SendMessage(FCtl.Handle, LVM_GETITEMRECT_, 0, Integer(@RectVal)) <> 0) then
+       (SendMessage(FCtl.Handle, LVM_GETITEMRECT_, 0, LPARAM(@RectVal)) <> 0) then
       RowH := RectVal.Bottom - RectVal.Top;
     if RowH <= 0 then
       Exit;
