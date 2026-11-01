@@ -82,6 +82,10 @@ type
 {$ENDIF}
 
 const
+  // Точки-разделители в подписях и логе. Строки в Delphi-сборке в CP1251,
+  // в Lazarus-сборке в UTF-8: там тот же знак - другими байтами
+  TextBullet = {$IFDEF FPC}#$E2#$80#$A2{$ELSE}#149{$ENDIF};  // •
+  TextMiddot = {$IFDEF FPC}#$C2#$B7{$ELSE}#183{$ENDIF};      // ·
   // Кнопок палитры компонентов (массив PalBtn) - по одной на класс всех
   // страниц DsgClasses; сейчас их чуть больше сотни
   PalBtnMax = 256;
@@ -11851,7 +11855,7 @@ begin
     begin
       if Nm <> '' then
       begin
-        LogRaw('Убран из списка: ' + Nm + '  ' + #149 + '  ' + Path);
+        LogRaw('Убран из списка: ' + Nm + '  ' + TextBullet + '  ' + Path);
         IniReplaceSection(SettingsFileName, ProjectSectionPrefix + Nm, nil);
       end;
       FProjectReg.Delete(I);
@@ -12007,7 +12011,7 @@ begin
     for ItemIdx := 0 to FTidyFound.Count - 1 do
       with TTidyFound(FTidyFound[ItemIdx]) do
       begin
-        FTidyDlg.lstFound.Items.Add(Name + '   ' + #149 + '   ' + Folder +
+        FTidyDlg.lstFound.Items.Add(Name + '   ' + TextBullet + '   ' + Folder +
         '   (' + Source + ')');
                                     FTidyDlg.lstFound.Checked[ItemIdx] := True;
       end;
@@ -12076,7 +12080,7 @@ begin
     IniReplaceSection(SettingsFileName, ProjectSectionPrefix + Item.Name,
                       Item.Body);
     FProjectReg.Values[Item.Name] := Item.Folder;
-    LogRaw('  ' + Item.Name + '  ' + #149 + '  ' + Item.Folder + '  (из ' +
+    LogRaw('  ' + Item.Name + '  ' + TextBullet + '  ' + Item.Folder + '  (из ' +
            Item.Source + ')');
     Inc(Added);
   end;
@@ -12923,8 +12927,8 @@ begin
     Keys.Free;
     Prj.Free;
   end;
-  LogRaw('Project Properties: ' + NewName + '  ' + #149 + '  ' + NewType +
-  '  ' + #149 + '  ' + NewDir);
+  LogRaw('Project Properties: ' + NewName + '  ' + TextBullet + '  ' + NewType +
+  '  ' + TextBullet + '  ' + NewDir);
 
   // Тот же проект под новым именем: имя меняем до загрузки, иначе
   // LoadProject сочтёт его другим проектом и сбросит снимки форм и
@@ -16104,7 +16108,7 @@ begin
       Continue;
 
     It := TMenuItem.Create(Self);
-    It.Caption := Nm + '  ' + #149 + '  ' + ProjectTypeOf(Nm);
+    It.Caption := Nm + '  ' + TextBullet + '  ' + ProjectTypeOf(Nm);
     // В Hint - папка проекта (её показывает строка состояния); имя -
     // начало Caption, до " • " (ProjectItemClick)
     It.Hint := FProjectReg.ValueFromIndex[I];
@@ -18349,7 +18353,7 @@ begin
 
   if not Result then
     LogRaw('Delete Project: папка не удалена, код ' + IntToStr(Res) +
-    '  ' + #149 + '  ' + ADir);
+    '  ' + TextBullet + '  ' + ADir);
 end;
 
 // Удаление проектов: окно со списком всех проектов реестра, нужные
@@ -18446,7 +18450,7 @@ begin
     begin
       Nm := Sorted[I];
       DirSl := ProjectDir(Nm);
-      Str := Nm + '   ' + #149 + '   ' + DirSl;
+      Str := Nm + '   ' + TextBullet + '   ' + DirSl;
       if CompareText(Nm, FCurrentProject) = 0 then
         Str := Str + '   (открыт)';
       if not DirectoryExists(DirSl) then
@@ -18534,7 +18538,7 @@ if MessageDlg('8865:' + Str, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
       if not DirectoryExists(DirSl) then
       begin
         // Папки уже нет - только запись в списке
-        LogRaw('Убран из списка: ' + Nm + '  ' + #149 + '  ' + DirSl);
+        LogRaw('Убран из списка: ' + Nm + '  ' + TextBullet + '  ' + DirSl);
         DoneReport := DoneReport + #13#10 + Nm + ': папки не было, убран ' +
           'из списка';
       end
@@ -18572,11 +18576,11 @@ if MessageDlg('8865:' + Str, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
           IntToStr(DirCount) + ', ' + SizeText(ByteCount);
         DoneReport := DoneReport + #13#10 + Nm + ': ' + Str;
         LogRaw('Проект удалён вместе с папкой (в корзину): ' + Nm + '  ' +
-          #149 + '  ' + Dir + '  ' + #149 + '  ' + Str);
+          TextBullet + '  ' + Dir + '  ' + TextBullet + '  ' + Str);
       end
       else
       begin
-        LogRaw('Убран из списка проектов: ' + Nm + '  ' + #149 + '  ' +
+        LogRaw('Убран из списка проектов: ' + Nm + '  ' + TextBullet + '  ' +
                DirSl);
         DoneReport := DoneReport + #13#10 + Nm + ': убран из списка, ' +
           'файлы на месте';
@@ -18662,7 +18666,7 @@ var
   SepAt: Integer;
 begin
   Result := StripHotkey(AItem.Caption);
-  SepAt := Pos('  ' + #149, Result);
+  SepAt := Pos('  ' + TextBullet, Result);
   if SepAt > 0 then
     Result := Copy(Result, 1, SepAt - 1);
 end;
@@ -18929,7 +18933,7 @@ begin
         Exit;
       end;
       LogRaw(Format('Save Project As: скопировано файлов %d  %s  %s',
-                    [Cnt, #149, NewDir]));
+                    [Cnt, TextBullet, NewDir]));
     end;
   end;
 
@@ -52452,7 +52456,7 @@ begin
   if FCurrentProject = '' then
     FCompilerBox.Caption := 'Project'
   else
-    FCompilerBox.Caption := 'Project - ' + FCurrentProject + '  ' + #149 +
+    FCompilerBox.Caption := 'Project - ' + FCurrentProject + '  ' + TextBullet +
       '  ' + ProjectTypeOf(FCurrentProject);
 end;
 
@@ -52585,9 +52589,9 @@ begin
   Str := '';
   for I := 0 to Track - 1 do
     if (I >= Frame) and (I < Frame + 3) or (I < Frame + 3 - Track) then
-      Str := Str + #149     // жирная точка
+      Str := Str + TextBullet     // жирная точка
     else
-      Str := Str + #183;    // мелкая точка
+      Str := Str + TextMiddot;    // мелкая точка
   FBusyPanel.Caption := '  ' + FBusyStage + '   ' +
                         IntToStr((Ms - FBusyStart) div 1000) + ' с   ' + Str;
   FBusyPanel.Update;

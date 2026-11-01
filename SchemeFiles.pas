@@ -62,7 +62,9 @@ implementation
 
 function SchemeDefaultPath(const ASchemesDir: string): string;
 begin
-  Result := ASchemesDir + #149 + 'default' + #149 + '.clr';
+  // Имя файла с точками •: строка имени в Lazarus-сборке в UTF-8
+  Result := ASchemesDir + {$IFDEF FPC}#$E2#$80#$A2{$ELSE}#149{$ENDIF} + 'default' +
+            {$IFDEF FPC}#$E2#$80#$A2{$ELSE}#149{$ENDIF} + '.clr';
 end;
 
 function SchemeAliasOf(const ASchemesDir, AExtName: string): string;
