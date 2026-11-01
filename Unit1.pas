@@ -153,10 +153,6 @@ const
   // см. GutterDigitsFor и UpdateGutterWidth.
   GutterMinDigits = 5;
 
-  // Предел объёма текста для RichEdit1 (EM_EXLIMITTEXT), символов.
-  // Раньше был 65535 * 32 = 2 097 120 - меньше больших файлов в 15 раз.
-  EditorTextLimit = $7FFFFFF0;
-
   // Размерность массива текстовых окон
   WindowsItemCount = 48;
 
@@ -2296,8 +2292,6 @@ type
     FOwnCaretDrawn: Boolean;  // сейчас она на экране (в режиме XOR)
     FOwnCaretPt: TPoint;      // где нарисована / где должна быть
 
-    // Окно контрола, которому уже запрещён перенос - см. EnsureNoWrap
-    FNoWrapHandle: HWND;
 
     // Индикатор хода долгой операции. Окно создаётся один раз и дальше
     // только показывается и прячется - см. ProgressStart.
@@ -2394,9 +2388,6 @@ type
 
     // Мы сами двигаем Position - без этого флага OnChange ушёл бы в рекурсию
     FLockScroll: Boolean;
-    // Сколько раз RichEdit отказался прокрутиться (ScrollEditTo) - в лог
-    // пишутся только первые
-    FScrollRefusals: Integer;
     // SubListFitColumns уже идёт - смена ширины колонки может вызвать
     // повторный OnResize (появилась или ушла полоса)
     FSubListFitting: Boolean;
@@ -2940,7 +2931,6 @@ type
     procedure ScheduleMapRebuild; // заказать пересборку карты
     procedure FlushMapRebuild;    // выполнить заказанную немедленно
     procedure InvalidateCaretLine;
-    function  NativePaintMode: Boolean;
     procedure BuildScrollBars;
     procedure BuildRightPanel;
     procedure UpdateRightPanelCaptions;
@@ -3930,9 +3920,6 @@ type
     function  FreeBusyExe(const AExe: string): Boolean;
     procedure DeleteOldExes(const AExe: string);
     procedure RunTarget;
-    procedure EnsureTextLimit;
-    procedure EnsureNoWrap;
-    procedure EnsureEventMask;
     procedure UpdateGutterWidth;
     function  GutterDigitsFor(ALineCount: Integer): Integer;
     function  MarksAutoColor: TColor;
@@ -3971,7 +3958,7 @@ type
     procedure HScrollChange(Sender: TObject);
     procedure FormResizeEvent(Sender: TObject);
     function  TextRange(AFrom, ACount: Integer): string;
-    function  SelTextA(AMaxLen: Integer): string;
+    function  SelTextHead(AMaxLen: Integer): string;
     function  FindTextEd(const Str: string; StartPos, Len: Integer;
                          Options: TSearchTypes): Integer;
     function  BcStartAt(const AText: string; APos: Integer;
@@ -4033,7 +4020,7 @@ type
     public
     // ---- ПОЛЯ. В Delphi внутри одной секции все поля обязаны идти ДО методов,
     //      поэтому объявления методов собраны ниже одним блоком.
-    RichEditLinesCount: Integer; // по EM_GETLINECOUNT, не по Lines.Count
+    EditorLineCount: Integer; // по EM_GETLINECOUNT, не по Lines.Count
 
 
     // Геометрия отрисовки
@@ -5556,21 +5543,6 @@ end;
 // перерисовались бы по устаревшим диапазонам - отсюда и бегущие артефакты
 // на подсветке строковых литералов. Не трогаем их пиксели - остаётся
 // прежняя, верная картинка.
-// Родная отрисовка RichEdit - ОТКЛЮЧЕНА.
-//
-// Раньше при снятых галках подсветки и направляющих WM_PAINT отдавался
-// контролу. С нынешней конструкцией это не работает: контрол не знает ни
-// нашего горизонтального сдвига FScrollX, ни своей каретки (её рисуем мы,
-// см. SyncCaretX), а на длинных строках его координаты правее 32767
-// недостоверны. При снятых галках на экране оказывался не тот кусок текста.
-//
-// Своя отрисовка без подсветки рисует только базовый слой и выделение -
-// это недорого. Функция оставлена, чтобы не трогать места вызова.
-function TForm1.NativePaintMode: Boolean;
-begin
-  Result := False;
-end;
-
 procedure TForm1.InvalidateCaretLine;
 var
   Sel: TCharRange;
@@ -10052,11 +10024,6 @@ begin
     FSuppressMapRebuild := False;
   end;
   TSchema := GetTickCount - TA;
-
-  // До заливки: перестройка разметки при включении режима стоит тем больше,
-  // чем больше текста уже в контроле
-  EnsureNoWrap;
-  EnsureEventMask; // до заливки: с ENM_REQUESTRESIZE текст размечается сразу
 
   // Шаг табуляции - до заливки, на пустом тексте: так это почти даром, а
   // залитый текст перенимает оформление абзаца (проверка после заливки -
@@ -21771,7 +21738,7 @@ begin
 
       // Текст сменился целиком - карта строится заново, один раз
       RebuildCommentRangeMap;
-      RichEditLinesCount := EdApi.LineCount;
+      EditorLineCount := EdApi.LineCount;
       UpdateVisibleBounds;
       RichEdit1.Invalidate;
       RefreshTabsModified;
@@ -22125,7 +22092,7 @@ begin
   Result := False;
   if RichEdit1.SelLength <> Length(APattern) then
     Exit;
-  SelText := SelTextA(Length(APattern) + 1);
+  SelText := SelTextHead(Length(APattern) + 1);
   if chkCase.Checked then
     Result := SelText = APattern
   else
@@ -22413,7 +22380,7 @@ begin
     RichEdit1.SelLength := 0;
     RichEdit1.Modified := True;
     RebuildCommentRangeMap;
-    RichEditLinesCount := EdApi.LineCount;
+    EditorLineCount := EdApi.LineCount;
     UpdateVisibleBounds;
     RichEdit1.Invalidate;
   end
@@ -22694,7 +22661,7 @@ begin
   end;
 
   // Для подписи хватает начала выделения
-  Str := SelTextA(MaxLen * 4);
+  Str := SelTextHead(MaxLen * 4);
   for I := 1 to Length(Str) do
     if Str[I] in [#13, #10, #9] then
       Str[I] := ' ';
@@ -22754,7 +22721,7 @@ begin
          (ClickChar >= RichEdit1.SelStart) and
          (ClickChar <= RichEdit1.SelStart + RichEdit1.SelLength) then
       begin
-        PopupSel := SelTextA(200);
+        PopupSel := SelTextHead(200);
         if (Pos(#13, PopupSel) = 0) and (Pos(#10, PopupSel) = 0) then
           FPopupWatchExpr := Trim(PopupSel);
       end;
@@ -22795,7 +22762,7 @@ procedure TForm1.SearchSelectedClick(Sender: TObject);
 var
   Str: string;
 begin
-  Str := SelTextA(MaxInt);
+  Str := RichEdit1.SelText;
   if Str = '' then
     Exit;
 
@@ -25233,12 +25200,10 @@ begin
   SetLength(Result, Got);
 end;
 
-// Выделенный текст, не длиннее AMaxLen символов.
-//
-// Вместо RichEdit1.SelText: VCL читает его через EM_GETSELTEXT в буфер по
-// байту на символ, а RichEdit 4.1 пишет туда UTF-16, по два байта - это
-// порча памяти.
-function TForm1.SelTextA(AMaxLen: Integer): string;
+// Начало выделенного текста, не длиннее AMaxLen символов: весь текст
+// выделения (RichEdit1.SelText) для подписи или слова не нужен, а
+// выделение может быть во весь файл.
+function TForm1.SelTextHead(AMaxLen: Integer): string;
 var
   Sel: TCharRange;
   Num: Integer;
@@ -27055,9 +27020,9 @@ begin
   // единицу, когда последняя строка пуста: другая величина, чем в гуттере
   // и в UpdateVisibleBounds.
   LineCountNow := EdApi.LineCount;
-  if RichEditLinesCount <> LineCountNow then
+  if EditorLineCount <> LineCountNow then
   begin
-    RichEditLinesCount := LineCountNow;
+    EditorLineCount := LineCountNow;
     // Тот же заказ, что и в NewRichEditProc. Два вызова подряд не удваивают
     // работу: таймер один, и сработает он один раз.
     ScheduleMapRebuild;
@@ -47655,27 +47620,9 @@ end;
 //
 // ATarget ограничивается диапазоном нашей полосы: 0 .. строк - видимых
 // (видимые - по EditViewHeight). Прокручивает EM_LINESCROLL.
-//
-// Если RichEdit не сдвинулся туда, куда просили, хотя по нашему счёту
-// место есть, - по очереди пробуем заставить его пересчитать вид и
-// повторяем прокрутку:
-//   1. EM_SETRECT с текущей областью текста (с перерисовкой, в отличие от
-//      EM_SETRECTNP в FitEditRect);
-//   2. WM_SIZE с текущим размером клиентской области;
-//   3. EM_SETTARGETDEVICE(0, 1) - полная переразметка строк.
-// В HiLite log пишется строка с размерами до попыток и с тем, после какой
-// попытки прокрутка прошла (первые 20 случаев за сеанс).
 function TForm1.ScrollEditTo(ATarget: Integer): Integer;
-const
-  EM_SETTARGETDEVICE_ = WM_USER + 72;
-  EM_GETSCROLLPOS_ = WM_USER + 221;
-  StepNames: array[1..3] of string = ('EM_SETRECT', 'WM_SIZE',
-  'EM_SETTARGETDEVICE');
-                                      var
-                                      StartLine, FirstLine, LineCount, VisLines, MaxFirst, StepIdx: Integer;
-                                      TextRect, ClientRc: TRect;
-                                      ScrollPt: TPoint;
-                                      Report: string;
+var
+  StartLine, LineCount, VisLines, MaxFirst: Integer;
 begin
   Result := 0;
   if not RichEdit1.HandleAllocated then
@@ -47700,48 +47647,7 @@ begin
     Exit;
 
   EdApi.LineScroll(ATarget - StartLine);
-  FirstLine := EdApi.FirstVisibleLine;
-  Result := FirstLine;
-  if FirstLine = ATarget then
-    Exit;
-
-  // RichEdit не дошёл до нужной строки - снимок до попыток
-  Inc(FScrollRefusals);
-  Windows.GetClientRect(RichEdit1.Handle, ClientRc);
-  EdApi.GetRect(TextRect);
-  ScrollPt := Point(0, 0);
-  EdApi.GetScrollPos(ScrollPt);
-  Report := Format('RichEdit не прокрутил: первая видимая %d, просили %d, ' +
-  'стала %d; строк %d, видно %d (LineHeight %d); клиент %dx%d, панель %d, ' +
-  'область текста %d..%d, scrollpos %d',
-                   [StartLine, ATarget, FirstLine, LineCount, VisLines, LineHeight,
-                   ClientRc.Right, ClientRc.Bottom, EditViewHeight, TextRect.Top,
-                   TextRect.Bottom, ScrollPt.Y]);
-
-  for StepIdx := 1 to 3 do
-  begin
-    case StepIdx of
-      1: EdApi.SetRect(TextRect);
-      2: SendMessageA(RichEdit1.Handle, WM_SIZE, SIZE_RESTORED,
-                      MakeLong(ClientRc.Right, ClientRc.Bottom));
-      3: EdApi.SetTargetDevice(1);
-    end;
-    FirstLine := EdApi.FirstVisibleLine;
-    if FirstLine <> ATarget then
-    begin
-      EdApi.LineScroll(ATarget - FirstLine);
-      FirstLine := EdApi.FirstVisibleLine;
-    end;
-    Report := Report + Format('; после %s: %d', [StepNames[StepIdx], FirstLine]);
-    if FirstLine = ATarget then
-      Break;
-  end;
-  Result := FirstLine;
-
-  if FScrollRefusals <= 20 then
-    LogDiag(Report);
-  // Кадр - по новому положению, полоса - по нему же
-  InvalidateRect(RichEdit1.Handle, nil, False);
+  Result := EdApi.FirstVisibleLine;
 end;
 
 // Высота видимой части редактора, пиксели.
@@ -67995,7 +67901,7 @@ begin
     Exit;
   if RichEdit1.SelLength > 0 then
   begin
-    SelText := SelTextA(200);
+    SelText := SelTextHead(200);
     if (Pos(#13, SelText) = 0) and (Pos(#10, SelText) = 0) then
     begin
       Result := Trim(SelText);
@@ -80044,8 +79950,7 @@ begin
 
   if RichEdit1.SelLength > 0 then
   begin
-    // Не RichEdit1.SelText: его чтение портит память (см. SelTextA)
-    SelTxt := SelTextA(255);
+    SelTxt := SelTextHead(255);
     if (SelTxt <> '') and (Pos(#13, SelTxt) = 0) and (Pos(#10, SelTxt) = 0) then
     begin
       cmbFind.Text := SelTxt;
@@ -80592,7 +80497,7 @@ end;
 // Что выводить: выделение в одну строку, без него - выражение под кареткой
 function TForm1.DebugExpr(const ALang: string): string;
 begin
-  Result := Trim(SelTextA(200));
+  Result := Trim(SelTextHead(200));
   if (Pos(#13, Result) > 0) or (Pos(#10, Result) > 0) then
     Result := '';
   if Result = '' then
@@ -81222,47 +81127,6 @@ begin
   FPerfPaint := PerfNow - PerfT;
 end;
 
-// Предел объёма текста - EditorTextLimit.
-//
-// Одного вызова в FormShow мало. Предел живёт в окне контрола, а окно
-// пересоздаётся (например, при смене ScrollBars), и новое получает предел
-// заново от VCL. Проверка дешёвая - одно сообщение, - поэтому она стоит
-// перед каждым вводом, см. NewRichEditProc.
-procedure TForm1.EnsureTextLimit;
-const
-  EM_GETLIMITTEXT = WM_USER + 37;
-  EM_EXLIMITTEXT = WM_USER + 53;
-begin
-  if not RichEdit1.HandleAllocated then
-    Exit;
-  if Cardinal(EdApi.GetLimitText) <
-     Cardinal(EditorTextLimit) then
-    EdApi.SetLimitText(EditorTextLimit);
-end;
-
-// Запрет мягкого переноса строк.
-//
-// WordWrap = False контролу перенос не запрещает: замер показал, что строка
-// шире 24575 пикселей разбивается им на несколько строк отображения без
-// перевода в тексте (диагностика "перенос МЯГКИЙ"). EM_SETTARGETDEVICE с
-// hdc = 0 и шириной 1 - это режим "без переноса"; тем же вызовом его
-// включает MFC (CRichEditView, WrapNone).
-//
-// Установка перестраивает разметку всего текста, поэтому делается один раз
-// на окно контрола. Окно пересоздаётся (смена ScrollBars и т.п.), и новое
-// режим не помнит - отсюда проверка по FNoWrapHandle.
-procedure TForm1.EnsureNoWrap;
-const
-  EM_SETTARGETDEVICE_ = WM_USER + 72;
-begin
-  if not RichEdit1.HandleAllocated then
-    Exit;
-  if FNoWrapHandle = RichEdit1.Handle then
-    Exit;
-  FNoWrapHandle := RichEdit1.Handle;
-  EdApi.SetTargetDevice(1);
-end;
-
 // Сообщения, после которых текст или его метрика могут стать другими
 function IsTextChangeMsg(Msg: Cardinal): Boolean;
 begin
@@ -81274,33 +81138,6 @@ begin
   else
     Result := False;
   end;
-end;
-
-// Маска уведомлений контрола: нужен EN_SELCHANGE, не нужен EN_REQUESTRESIZE.
-//
-// VCL при создании окна включает ENM_REQUESTRESIZE - уведомление о размере
-// всего содержимого. Замер в пробе (файл 32 МБ): с ним смена ширины стоит
-// ~690 мс и весь текст размечается сразу при загрузке, без него - ~5 мс, и
-// разметка откладывается до первого запроса. EN_REQUESTRESIZE здесь нигде
-// не обрабатывается.
-//
-// Маска живёт в окне и при его пересоздании возвращается к той, что ставит
-// VCL. Проверка - одно сообщение, поэтому стоит там же, где EnsureTextLimit.
-procedure TForm1.EnsureEventMask;
-const
-  EM_GETEVENTMASK_ = WM_USER + 59;
-  EM_SETEVENTMASK_ = WM_USER + 69;
-  ENM_SELCHANGE_ = $00080000;
-  ENM_REQUESTRESIZE_ = $00040000;
-var
-  Mask, Need: Integer;
-begin
-  if not RichEdit1.HandleAllocated then
-    Exit;
-  Mask := EdApi.GetEventMask;
-  Need := (Mask or ENM_SELCHANGE_) and not ENM_REQUESTRESIZE_;
-  if Need <> Mask then
-    EdApi.SetEventMask(Need);
 end;
 
 // Обёртка: считает глубину вложенности.
@@ -81482,21 +81319,6 @@ begin
     Exit;
   end;
 
-  // Всё, что добавляет текст, - после проверки предела объёма. Стоит до
-  // FLockHighlight: массовые правки идут как раз под ним. Ctrl+V контрол
-  // разбирает сам внутри WM_KEYDOWN, без WM_PASTE, поэтому WM_KEYDOWN тоже
-  // здесь. WM_LBUTTONDOWN - начало перетаскивания текста мышью.
-  if (Message.Msg = WM_CHAR) or (Message.Msg = WM_KEYDOWN) or
-     (Message.Msg = WM_PASTE) or (Message.Msg = EM_REPLACESEL) or
-     (Message.Msg = EM_STREAMIN) or (Message.Msg = WM_SETTEXT) or
-     (Message.Msg = WM_LBUTTONDOWN) or
-     (Message.Msg = WM_USER + 97) {EM_SETTEXTEX} then
-  begin
-    EnsureTextLimit;
-    EnsureNoWrap;
-    EnsureEventMask;
-  end;
-
   // Колесо мыши обрабатываем САМИ, склеивая накопившиеся щелчки.
   //
   // Каждый WM_MOUSEWHEEL вызывает прокрутку и следом полную перерисовку
@@ -81526,13 +81348,6 @@ begin
   // Без этого перед каждым кадром успевал мелькнуть чистый фон контрола.
   if Message.Msg = WM_ERASEBKGND then
   begin
-    // В родном режиме фон стирает сам контрол - иначе останется мусор
-    if NativePaintMode then
-    begin
-      DefEditProc(Message);
-      Exit;
-    end;
-
     Message.Result := 1;
     Exit;
   end;
@@ -81541,14 +81356,6 @@ begin
   // в чужой DC - такие сообщения пропускаем без изменений.
   if (Message.Msg = WM_PAINT) and (Message.WParam = 0) and not FInPaint then
   begin
-    if NativePaintMode then
-    begin
-      // Рисует сам RichEdit. Номера строк всё равно наши, их обновляем сами
-      DefEditProc(Message);
-      UpdateLineNumbers;
-      Exit;
-    end;
-
     FInPaint := True;
     try
       PaintDoubleBuffered;
@@ -83524,10 +83331,6 @@ begin
     StartupStage('Показ окна: редактор');
     PostMessage(Handle, WM_USER + 330, 0, 0);
   end;
-  // Снимаем ограничение на объём текста - см. EnsureTextLimit
-  EnsureTextLimit;
-  EnsureNoWrap;
-  EnsureEventMask;
 
 
   // Итог проверки путей editor.ini (CheckIniPaths в FormCreate)
@@ -83583,7 +83386,7 @@ begin
 
   // Строим карту для стартового текста
   RebuildCommentRangeMap;
-  RichEditLinesCount := EdApi.LineCount;
+  EditorLineCount := EdApi.LineCount;
   UpdateVisibleBounds;
 
   // CS_HREDRAW / CS_VREDRAW у класса окна редактора сняты в
@@ -83610,10 +83413,6 @@ begin
   // ДО установки маски событий: смена ScrollBars пересоздаёт оконный хэндл,
   // а вместе с ним теряется всё, что выставлено сообщениями напрямую.
   RichEdit1.ScrollBars := ssNone;
-
-  // Маска уведомлений: EN_SELCHANGE нужен, EN_REQUESTRESIZE - нет.
-  // См. EnsureEventMask.
-  EnsureEventMask;
 
   // Обновляем и перерисовываем
   RichEdit1.Invalidate;
@@ -84908,8 +84707,8 @@ end;
 
 // Цвет текста редактора - в RichEdit1.Font.Color, БЕЗ передачи контролу.
 //
-// Текст рисуем мы (PaintDoubleBuffered, родная отрисовка выключена -
-// NativePaintMode), цвет по умолчанию берём из RichEdit1.Font.Color. Сам
+// Текст рисуем мы (PaintDoubleBuffered, своей отрисовки текста у окна
+// нет), цвет по умолчанию берём из RichEdit1.Font.Color. Сам
 // контрол на смену шрифта (CM_FONTCHANGED) переписывает оформление всего
 // текста: на Unit1.pas это около 0,5 с на каждое присваивание, а при
 // смене темы их было несколько подряд. Его собственный цвет на экране не
@@ -86476,7 +86275,7 @@ begin
         'сборка и текст в редактор %d, карта %d',
         [GetTickCount - TickStart, TickPrep - TickStart, TickLoop - TickPrep,
          TickSet - TickLoop, GetTickCount - TickSet]), clGray);
-    RichEditLinesCount := EdApi.LineCount;
+    EditorLineCount := EdApi.LineCount;
     UpdateVisibleBounds;
     RichEdit1.Invalidate;
     if PaintBox1 <> nil then
@@ -87059,8 +86858,7 @@ begin
     Exit;
   if RichEdit1.SelLength > 0 then
   begin
-    // Не RichEdit1.SelText: его чтение портит память (см. SelTextA)
-    SelText := Trim(SelTextA(100));
+    SelText := Trim(SelTextHead(100));
     if (SelText <> '') and (Pos(#13, SelText) = 0) and
        (Pos(#10, SelText) = 0) then
     begin
