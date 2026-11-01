@@ -4,7 +4,8 @@ unit OsReg;
 // AutoHotkey, Lazarus) и сохранённые переменные окружения.
 //
 // Настройки самой среды в реестр не пишутся - они в editor.ini. Здесь
-// только чтение чужих записей. На других системах реестра нет: функции
+// чтение чужих записей; запись - только HKCU по явной команде (Utils -
+// установить пакет Delphi 7: Known Packages). На других системах реестра нет: функции
 // возвращают пустую строку или False, и вызывающий код идёт дальше по
 // своим запасным путям (переменные окружения, папки по умолчанию).
 //
@@ -43,6 +44,15 @@ function OsRegValueNames(ARoot: TOsRegRoot; const AKey: string;
 // False - ветки нет; AList при этом пуст.
 function OsRegValues(ARoot: TOsRegRoot; const AKey: string;
                      AList: TStrings): Boolean;
+
+// Записать строковое значение (REG_SZ); ветка создаётся. False - не удалось
+// или не Windows.
+function OsRegWriteString(ARoot: TOsRegRoot;
+                          const AKey, AName, AValue: string): Boolean;
+
+// Удалить значение. False - не было, не удалось или не Windows.
+function OsRegDeleteValue(ARoot: TOsRegRoot;
+                          const AKey, AName: string): Boolean;
 
 // Переменная окружения в том виде, как она сохранена в системе: сначала
 // пользовательская (HKCU\Environment), потом общая (Session Manager).
@@ -211,7 +221,80 @@ begin
   end;
 end;
 
+function OsRegOpenWrite(ARoot: TOsRegRoot; const AKey: string;
+                        ACreate: Boolean): TRegistry;
+begin
+  Result := TRegistry.Create;
+  try
+    if ARoot = orUser then
+      Result.RootKey := HKEY_CURRENT_USER
+    else
+      Result.RootKey := HKEY_LOCAL_MACHINE;
+    if (AKey = '') or not Result.OpenKey(AKey, ACreate) then
+    begin
+      Result.Free;
+      Result := nil;
+    end;
+  except
+    Result.Free;
+    Result := nil;
+  end;
+end;
+
+function OsRegWriteString(ARoot: TOsRegRoot;
+                          const AKey, AName, AValue: string): Boolean;
+var
+  Reg: TRegistry;
+begin
+  Result := False;
+  Reg := OsRegOpenWrite(ARoot, AKey, True);
+  if Reg = nil then
+    Exit;
+  try
+    try
+      Reg.WriteString(AName, AValue);
+      Result := True;
+    except
+      Result := False;
+    end;
+  finally
+    Reg.Free;
+  end;
+end;
+
+function OsRegDeleteValue(ARoot: TOsRegRoot;
+                          const AKey, AName: string): Boolean;
+var
+  Reg: TRegistry;
+begin
+  Result := False;
+  Reg := OsRegOpenWrite(ARoot, AKey, False);
+  if Reg = nil then
+    Exit;
+  try
+    try
+      Result := Reg.DeleteValue(AName);
+    except
+      Result := False;
+    end;
+  finally
+    Reg.Free;
+  end;
+end;
+
 {$ELSE}
+
+function OsRegWriteString(ARoot: TOsRegRoot;
+                          const AKey, AName, AValue: string): Boolean;
+begin
+  Result := False;
+end;
+
+function OsRegDeleteValue(ARoot: TOsRegRoot;
+                          const AKey, AName: string): Boolean;
+begin
+  Result := False;
+end;
 
 function OsRegKeyExists(ARoot: TOsRegRoot; const AKey: string): Boolean;
 begin

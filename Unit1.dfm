@@ -753,6 +753,10 @@ object Form1: TForm1
         Caption = 'Find inc file...'
         OnClick = FindIncClick
       end
+      object mInstallPkg: TMenuItem
+        Caption = 'Install Delphi 7 package (.dpk)...'
+        OnClick = InstallPackageClick
+      end
       object mUtilsSep1: TMenuItem
         Caption = '-'
       end

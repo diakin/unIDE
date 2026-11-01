@@ -720,6 +720,7 @@ type
     mViewIcons: TMenuItem;
     mIncManager: TMenuItem;
     mFindInc: TMenuItem;
+    mInstallPkg: TMenuItem;
     BtnPnl: TPanel;
     FObjSnapBtn: TUiButton; // снимок поверх .dfm: показать / убрать (SnapCapShow)
     FObjDsgBtn: TUiButton; // Design form - открыть конструктор
@@ -1081,6 +1082,8 @@ type
     procedure UtilsMenuOpen(Sender: TObject);
     procedure LostFilesAsk;
     procedure FindIncClick(Sender: TObject);
+    // Utils - собрать .dpk и записать в Known Packages Delphi 7
+    procedure InstallPackageClick(Sender: TObject);
     // Utils - unIDE FAR
     procedure FarMenuClick(Sender: TObject);
     procedure FarLayout;
@@ -40847,6 +40850,209 @@ end;
 procedure TForm1.FindIncClick(Sender: TObject);
 begin
   FindIncShow('');
+end;
+
+// Utils - Собрать и установить пакет Delphi 7. Пакет - открытый .dpk или
+// выбранный в окне открытия. dcc32 установленной Delphi 7 собирает его в
+// папку пакетов из её настроек (Library: Package DPL Output, обычно
+// $(DELPHI)\Projects\Bpl), .dcu - в dsgcache\pkg_<имя> рядом с unIDE,
+// чтобы не мешались с .dcu сборки самой программы. Собрался - .bpl
+// записывается в Known Packages (HKCU\Software\Borland\Delphi\7.0), прежние
+// записи с тем же именем .bpl убираются, в том числе из Disabled Packages.
+// Delphi при запуске загрузит пакет, и его компоненты будут на палитре.
+//
+// Delphi 7 должна быть закрыта: открытая держит прежний .bpl загруженным,
+// а при выходе переписывает Known Packages своим списком.
+const
+  Delphi7RegKey = 'Software\Borland\Delphi\7.0';
+
+procedure TForm1.InstallPackageClick(Sender: TObject);
+var
+  DpkFile, PkgDir, PkgName, DelphiRoot, DccExe: string;
+  BplDir, DcpDir, DcuDir, SearchPath, BplFile, RegName, Descr: string;
+  OldFilter, OldInitDir, OldFileName: string;
+  OldFilterIndex: Integer;
+  Roots, Names, DpkText: TStringList;
+  RootIdx, NameIdx, DescrPos, QuoteEnd: Integer;
+  Params, LineUpper, SectKey: string;
+  SectIdx: Integer;
+begin
+  ShowCompLog;
+  DpkFile := '';
+  if LowerCase(ExtractFileExt(FCurrentFileName)) = '.dpk' then
+    DpkFile := FCurrentFileName
+  else
+  begin
+    OldFilter := OpenDialog1.Filter;
+    OldFilterIndex := OpenDialog1.FilterIndex;
+    OldInitDir := OpenDialog1.InitialDir;
+    OldFileName := OpenDialog1.FileName;
+    try
+      OpenDialog1.Filter := 'Пакет Delphi (*.dpk)|*.dpk';
+      OpenDialog1.FilterIndex := 1;
+      OpenDialog1.FileName := '';
+      if FCurrentFileName <> '' then
+        OpenDialog1.InitialDir := ExtractFilePath(FCurrentFileName);
+      if OpenDialog1.Execute then
+        DpkFile := OpenDialog1.FileName;
+    finally
+      OpenDialog1.Filter := OldFilter;
+      OpenDialog1.FilterIndex := OldFilterIndex;
+      OpenDialog1.InitialDir := OldInitDir;
+      OpenDialog1.FileName := OldFileName;
+    end;
+    if DpkFile = '' then
+      Exit;
+  end;
+  if not FileExists(DpkFile) then
+  begin
+    LogComp('Пакет: файл не найден - ' + DpkFile +
+            ' (новый .dpk сначала сохраните)');
+    Exit;
+  end;
+  PkgDir := ExtractFilePath(DpkFile);
+  PkgName := ChangeFileExt(ExtractFileName(DpkFile), '');
+  LogComp('--- Пакет: ' + DpkFile);
+
+  // Delphi 7 - по реестру, как у палитры (FindDelphiRoots)
+  DelphiRoot := '';
+  Roots := TStringList.Create;
+  try
+    if FindDelphiRoots(Roots) > 0 then
+    begin
+      RootIdx := Roots.IndexOfName('Delphi 7');
+      if RootIdx >= 0 then
+        DelphiRoot := Copy(Roots[RootIdx], Pos('=', Roots[RootIdx]) + 1,
+                           MaxInt);
+    end;
+  finally
+    Roots.Free;
+  end;
+  if DelphiRoot = '' then
+  begin
+    LogComp('Пакет: Delphi 7 не найдена (реестр Borland\Delphi\7.0, ' +
+            'RootDir с Bin\dcc32.exe)');
+    Exit;
+  end;
+  DelphiRoot := IncludeTrailingPathDelimiter(DelphiRoot);
+  DccExe := DelphiRoot + 'Bin\dcc32.exe';
+
+  // Главное окно среды Delphi - класс TAppBuilder
+  if FindWindow('TAppBuilder', nil) <> 0 then
+  begin
+    LogComp('Пакет: закройте Delphi 7 - открытая среда держит прежний .bpl ' +
+            'и при выходе перепишет список пакетов');
+    Exit;
+  end;
+
+  // Папки - из настроек Delphi 7 (Library), по умолчанию - как у неё
+  BplDir := OsRegReadString(orUser, Delphi7RegKey + '\Library',
+                            'Package DPL Output');
+  if BplDir = '' then
+    BplDir := '$(DELPHI)\Projects\Bpl';
+  DcpDir := OsRegReadString(orUser, Delphi7RegKey + '\Library',
+                            'Package DCP Output');
+  if DcpDir = '' then
+    DcpDir := BplDir;
+  SearchPath := OsRegReadString(orUser, Delphi7RegKey + '\Library',
+                                'Search Path');
+  if SearchPath = '' then
+    SearchPath := '$(DELPHI)\Lib;$(DELPHI)\Bin;$(DELPHI)\Imports;' +
+                  '$(DELPHI)\Projects\Bpl';
+  BplDir := IncludeTrailingPathDelimiter(
+              ExpandDelphiRoot(BplDir, DelphiRoot));
+  DcpDir := IncludeTrailingPathDelimiter(
+              ExpandDelphiRoot(DcpDir, DelphiRoot));
+  SearchPath := ExpandDelphiRoot(SearchPath, DelphiRoot);
+  DcuDir := AppFile('dsgcache\pkg_' + PkgName) + '\';
+  if not ForceDirectories(BplDir) or not ForceDirectories(DcpDir) or
+     not ForceDirectories(DcuDir) then
+  begin
+    LogComp('Пакет: не удалось создать папку ' + BplDir + ', ' + DcpDir +
+            ' или ' + DcuDir);
+    Exit;
+  end;
+
+  Params := '-B -Q "' + DpkFile + '"' +
+            ' -LE"' + ExcludeTrailingPathDelimiter(BplDir) + '"' +
+            ' -LN"' + ExcludeTrailingPathDelimiter(DcpDir) + '"' +
+            ' -N"' + ExcludeTrailingPathDelimiter(DcuDir) + '"' +
+            ' -U"' + SearchPath + '"' +
+            ' -R"' + SearchPath + '"' +
+            ' -I"' + SearchPath + '"';
+  LogComp('dcc32 ' + Params);
+  if RunCompiler(DccExe, Params, PkgDir) <> 0 then
+  begin
+    LogComp('Пакет: не собран, в Known Packages не записан');
+    ShowErrLog;
+    Exit;
+  end;
+  BplFile := BplDir + PkgName + '.bpl';
+  if not FileExists(BplFile) then
+  begin
+    LogComp('Пакет: dcc32 закончил без ошибок, но ' + BplFile +
+            ' нет (в .dpk задан другой суффикс или папка?) - ' +
+            'в Known Packages не записан');
+    Exit;
+  end;
+
+  // Описание - из {$DESCRIPTION '...'}, как его показывает Delphi
+  Descr := PkgName;
+  DpkText := TStringList.Create;
+  try
+    DpkText.LoadFromFile(DpkFile);
+    for NameIdx := 0 to DpkText.Count - 1 do
+    begin
+      LineUpper := UpperCase(DpkText[NameIdx]);
+      DescrPos := Pos('{$DESCRIPTION ''', LineUpper);
+      if DescrPos = 0 then
+        Continue;
+      DescrPos := DescrPos + Length('{$DESCRIPTION ''');
+      QuoteEnd := PosEx('''', DpkText[NameIdx], DescrPos);
+      if QuoteEnd > DescrPos then
+        Descr := Copy(DpkText[NameIdx], DescrPos, QuoteEnd - DescrPos);
+      Break;
+    end;
+  finally
+    DpkText.Free;
+  end;
+
+  // Путь внутри папки Delphi - через $(DELPHI), как пишет сама Delphi
+  RegName := BplFile;
+  if AnsiSameText(Copy(BplFile, 1, Length(DelphiRoot)), DelphiRoot) then
+    RegName := '$(DELPHI)\' + Copy(BplFile, Length(DelphiRoot) + 1, MaxInt);
+
+  // Прежние записи того же .bpl (в другой папке или другим написанием пути)
+  Names := TStringList.Create;
+  try
+    for SectIdx := 0 to 1 do
+    begin
+      if SectIdx = 0 then
+        SectKey := Delphi7RegKey + '\Known Packages'
+      else
+        SectKey := Delphi7RegKey + '\Disabled Packages';
+      if not OsRegValueNames(orUser, SectKey, Names) then
+        Continue;
+      for NameIdx := 0 to Names.Count - 1 do
+        if AnsiSameText(ExtractFileName(Names[NameIdx]),
+                        ExtractFileName(BplFile)) then
+        begin
+          OsRegDeleteValue(orUser, SectKey, Names[NameIdx]);
+          LogComp('Пакет: убрана прежняя запись ' + Names[NameIdx]);
+        end;
+    end;
+  finally
+    Names.Free;
+  end;
+  if not OsRegWriteString(orUser, Delphi7RegKey + '\Known Packages',
+                          RegName, Descr) then
+  begin
+    LogComp('Пакет: собран (' + BplFile + '), но записать в Known Packages ' +
+            'не удалось');
+    Exit;
+  end;
+  LogComp('Пакет установлен: ' + RegName + ' = ' + Descr +
+          '. Компоненты появятся на палитре Delphi 7 при её запуске.');
 end;
 
 const
