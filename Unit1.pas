@@ -51881,17 +51881,36 @@ begin
   end
   else
   begin
+    // Большой файл (отображение) - построчно весь текст не читаем
+    if IsLargeText then
+    begin
+      LargeSkip('панель объявления');
+      DeclPanelShow;
+      Exit;
+    end;
+    // Прежний кэш - до сборки нового, а не после: иначе на время сборки
+    // в памяти обе копии всех строк
+    FreeAndNil(FDeclSrc);
+    FreeAndNil(FDeclCl);
+    FDeclKey := '';
     Src := TStringList.Create;
     Cl := TStringList.Create;
-    Src.Text := GetEditorText;
+    // Строки - прямо из буфера, по одной: без строки всего текста
+    // (WideString и её ANSI-копия - два больших сплошных куска, на файле
+    // в десятки МБ их в 32-разрядном процессе может не найтись)
+    if FEdEmu <> nil then
+    begin
+      Src.Capacity := FEdEmu.Buffer.Count;
+      Cl.Capacity := FEdEmu.Buffer.Count;
+      for I := 0 to FEdEmu.Buffer.Count - 1 do
+        Src.Add(string(FEdEmu.Buffer.Lines[I]));
+    end;
     St := 0;
     for I := 0 to Src.Count - 1 do
       Cl.Add(UpperCase(DeclCleanLine(Src[I], St)));
     OwnLists := Key = '';
     if not OwnLists then
     begin
-      FDeclSrc.Free;
-      FDeclCl.Free;
       FDeclSrc := Src;
       FDeclCl := Cl;
       FDeclKey := Key;
