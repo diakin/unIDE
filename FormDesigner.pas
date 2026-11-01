@@ -3782,7 +3782,7 @@ begin
   if CharPos > 0 then
   begin
     PI := GetPropInfo(AObj, Copy(AProp, 1, CharPos - 1));
-    if (PI = nil) or (PI^.PropType^^.Kind <> tkClass) then
+    if (PI = nil) or (PI^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind <> tkClass) then
       Exit;
     Sub := GetObjectProp(AObj, PI);
     if Sub is TPersistent then
@@ -3797,7 +3797,7 @@ begin
   if ValStr = '' then
     Exit;
   try
-    case PI^.PropType^^.Kind of
+    case PI^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind of
       tkInteger:
         if IdentToColor(ValStr, Cnt) then
         SetOrdProp(AObj, PI, Cnt)
@@ -3808,7 +3808,7 @@ begin
         SetOrdProp(AObj, PI, Ord(ValStr[2]));
       tkEnumeration:
       begin
-        Num := GetEnumValue(PI^.PropType^, ValStr);
+        Num := GetEnumValue(PI^.PropType{$IFNDEF FPC}^{$ENDIF}, ValStr);
         if Num >= 0 then
           SetOrdProp(AObj, PI, Num);
       end;
@@ -4123,7 +4123,8 @@ begin
     Exit;
   HasBorderProp := False;
   if PropOn('BevelOuter', Ord(bvNone)) or PropOn('BevelInner', Ord(bvNone)) or
-     PropOn('BevelKind', Ord(bkNone)) or PropOn('BorderStyle', Ord(bsNone)) then
+     {$IFNDEF FPC}PropOn('BevelKind', Ord(bkNone)) or{$ENDIF}
+     PropOn('BorderStyle', Ord(bsNone)) then
     Exit;
   Result := HasBorderProp;
 end;

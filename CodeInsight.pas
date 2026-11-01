@@ -23,6 +23,7 @@ unit CodeInsight;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls;
 
 type

@@ -14,7 +14,7 @@ unit DlgFindInc;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
+  Windows, {$IFDEF FPC} LCLType, {$ENDIF} Messages, SysUtils, Classes, Graphics, Controls, Forms, Dialogs,
   StdCtrls, ExtCtrls,
   IncCheck,     // сравнение с эталоном, проверки, защита, поиск на дисках
   FolderDlg,    // выбор папки - BrowseFolderDialog

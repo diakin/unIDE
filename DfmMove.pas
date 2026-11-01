@@ -1273,9 +1273,9 @@ begin
         Result := Info;
       Exit;
     end;
-    if Info^.PropType^^.Kind <> tkClass then
+    if Info^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind <> tkClass then
       Exit;
-    AClass := GetTypeData(Info^.PropType^)^.ClassType;
+    AClass := GetTypeData(Info^.PropType{$IFNDEF FPC}^{$ENDIF})^.ClassType;
   end;
 end;
 
@@ -5105,7 +5105,7 @@ var
         if Info.Handlers.IndexOf(Value) < 0 then
           Info.Handlers.Add(Value);
       end
-      else if HelperProp^.PropType^^.Kind = tkClass then
+      else if HelperProp^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind = tkClass then
       begin
         if CompareText(Value, 'nil') = 0 then
           Continue;
@@ -5123,7 +5123,7 @@ var
         AddMoveItem(Info, Node.CreateLine, mlProp, PropText,
                     DfmLiteral(Value))
       // Целое из констант и посчитанных переменных: Top := Row1, Left := X
-      else if (HelperProp^.PropType^^.Kind = tkInteger) and
+      else if (HelperProp^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind = tkInteger) and
               IntValueAt(Value, Node.CreateLine, KeyValue) then
       begin
         AddMoveItem(Info, Node.CreateLine, mlProp, PropText,
@@ -6314,7 +6314,7 @@ begin
       end;
       // Ссылка на компонент (PopupMenu := FTabsPopup): уйдёт ли она,
       // зависит от того, будет ли Y в .dfm - решается после разбора всех
-      if PropInfo^.PropType^^.Kind = tkClass then
+      if PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind = tkClass then
       begin
         if IsValidIdent(Value) and (CompareText(Value, 'Self') <> 0) and
            (CompareText(Value, 'nil') <> 0) then
@@ -6341,7 +6341,7 @@ begin
         AddMoveItem(Info, Index, mlProp, PropName, DfmLiteral(Value));
       end
       // Целое из констант процедуры и посчитанных переменных: Row1 + 3
-      else if (PropInfo^.PropType^^.Kind = tkInteger) and
+      else if (PropInfo^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind = tkInteger) and
               IntValueAt(Value, Index, KeyNumber) then
       begin
         Info.MoveLines.Add(LineRef(ALines, Index) + '   [в .dfm числом: ' +
@@ -8504,7 +8504,7 @@ var
                 if Member.Handlers.IndexOf(PropExpr) < 0 then
                   Member.Handlers.Add(PropExpr);
               end
-              else if MemberProp^.PropType^^.Kind = tkClass then
+              else if MemberProp^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind = tkClass then
               begin
                 Reason := CallLhs + '.' + PropName + ' - ссылка, в цикле не ' +
                           'разбирается';
@@ -8854,7 +8854,7 @@ var
         end;
         Exit;
       end;
-      if MateProp^.PropType^^.Kind = tkClass then
+      if MateProp^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind = tkClass then
         Exit;
       if ShortCutValue(AValue, Number) then
       begin
@@ -8868,7 +8868,7 @@ var
         Result := True;
         Exit;
       end;
-      if MateProp^.PropType^^.Kind = tkInteger then
+      if MateProp^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind = tkInteger then
       begin
         HelperScopeValues(AHelper, TStringList(MemberArgs[AIndex]),
                           TStringList(MemberValues[AIndex]), AStmtIndex, Scope);

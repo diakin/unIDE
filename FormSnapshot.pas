@@ -41,7 +41,7 @@ implementation
 
 uses
   SysUtils, TypInfo, Controls, Graphics, Menus, ComCtrls, ExtCtrls, StdCtrls,
-  Forms;
+  Forms {$IFDEF FPC}, LCLProc{$ENDIF};
 
 const
   MaxListItems = 30;   // длиннее - только число строк
@@ -121,9 +121,9 @@ begin
   if (APrefix = '') and (PropInf^.Name = 'Name') then
     Exit; // имя уже стоит в заголовке object
 
-  TypeNm := PropInf^.PropType^^.Name;
+  TypeNm := PropInf^.PropType{$IFNDEF FPC}^{$ENDIF}^.Name;
   try
-    case PropInf^.PropType^^.Kind of
+    case PropInf^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind of
       tkInteger:
         begin
           Ord_ := GetOrdProp(AObj, PropInf);
@@ -183,7 +183,8 @@ begin
           begin
             SL := TStrings(Sub);
             // Текст богатого редактора не читаем вовсе - см. шапку модуля
-            if (AObj is TCustomRichEdit) or (SL.Count > MaxListItems) then
+            if {$IFNDEF FPC}(AObj is TCustomRichEdit) or{$ENDIF}
+               (SL.Count > MaxListItems) then
               Emit(ALevel, Nm + ' = ' +
                    SnapQuote('(строк: ' + IntToStr(SL.Count) + ')'))
             else if SL.Count = 0 then

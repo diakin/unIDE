@@ -35,8 +35,8 @@ unit UiScroll;
 interface
 
 uses
-  {$IFDEF FPC} LCLType, {$ENDIF}
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
+  // LCLType - до Windows: TScrollInfo нужен виндовый (SetScrollInfo)
+  {$IFDEF FPC} LCLType, {$ENDIF} Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
   ComCtrls, StdCtrls, Grids;
 
 type

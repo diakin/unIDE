@@ -49,7 +49,28 @@ function UiMessageBox(Text, Caption: PChar; Flags: Longint): Integer;
 implementation
 
 uses
-  Consts, ExtCtrls, UiTheme, UiButton, UiStdCtrls, UiEditCtrls;
+  {$IFNDEF FPC} Consts, {$ENDIF} ExtCtrls, UiTheme, UiButton, UiStdCtrls,
+  UiEditCtrls;
+
+{$IFDEF FPC}
+// В Free Pascal модуля Consts нет; подписи - те же, что в Consts Delphi 7
+resourcestring
+  SMsgDlgWarning = 'Warning';
+  SMsgDlgError = 'Error';
+  SMsgDlgInformation = 'Information';
+  SMsgDlgConfirm = 'Confirm';
+  SMsgDlgYes = '&Yes';
+  SMsgDlgNo = '&No';
+  SMsgDlgOK = 'OK';
+  SMsgDlgCancel = 'Cancel';
+  SMsgDlgHelp = '&Help';
+  SMsgDlgAbort = '&Abort';
+  SMsgDlgRetry = '&Retry';
+  SMsgDlgIgnore = '&Ignore';
+  SMsgDlgAll = '&All';
+  SMsgDlgNoToAll = 'N&o to All';
+  SMsgDlgYesToAll = 'Yes to &All';
+{$ENDIF}
 
 const
   // Части флагов MessageBox: кнопки, значок, кнопка по умолчанию

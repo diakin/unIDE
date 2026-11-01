@@ -381,7 +381,7 @@ end;
 function RosRunInstaller(const AExe, AParams: string; AOnWait: TRosStepEvent;
                          var AExitCode: DWORD; var AError: string): Boolean;
 var
-  ExecInfo: TShellExecuteInfo;
+  ExecInfo: TShellExecuteInfoA;
   WaitTicks: Cardinal;
 begin
   Result := False;
@@ -396,7 +396,7 @@ begin
   ExecInfo.lpFile := PChar(AExe);
   ExecInfo.lpParameters := PChar(AParams);
   ExecInfo.nShow := SW_SHOWNORMAL;
-  if not ShellExecuteEx(@ExecInfo) then
+  if not ShellExecuteExA(@ExecInfo) then
   begin
     if GetLastError = ERROR_CANCELLED then
       AError := 'установка отменена в запросе Windows (UAC)'

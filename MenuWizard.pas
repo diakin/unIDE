@@ -26,7 +26,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
-  CheckLst, Menus;
+  CheckLst, Menus {$IFDEF FPC}, LCLProc{$ENDIF};
 
 type
   // Пункт шаблона

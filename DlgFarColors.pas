@@ -236,7 +236,7 @@ begin
     Exit;
   ColorDlg := TUiColorDialog.Create(Self);
   try
-    ColorDlg.Options := [cdFullOpen, cdAnyColor];
+    {$IFNDEF FPC}ColorDlg.Options := [cdFullOpen, cdAnyColor];{$ENDIF}
     if ABackground then
     begin
       if FRules[ARuleIndex].Back <> clNone then

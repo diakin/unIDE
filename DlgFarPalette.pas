@@ -269,7 +269,7 @@ var
 begin
   ColorDlg := TUiColorDialog.Create(Self);
   try
-    ColorDlg.Options := [cdFullOpen, cdAnyColor];
+    {$IFNDEF FPC}ColorDlg.Options := [cdFullOpen, cdAnyColor];{$ENDIF}
     if FPalette[AItem] = clNone then
     begin
       // Цвет редактора «из схемы» - начать с белого фона / чёрного текста

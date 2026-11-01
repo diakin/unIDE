@@ -162,7 +162,7 @@ var
   Buf: array[0..1023] of Char;
   Len: DWORD;
 begin
-  Len := GetEnvironmentVariable(PChar(AName), Buf, SizeOf(Buf));
+  Len := Windows.GetEnvironmentVariable(PChar(AName), Buf, SizeOf(Buf));
   if (Len > 0) and (Len < SizeOf(Buf)) then
     Result := Buf
   else

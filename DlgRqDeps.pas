@@ -13,7 +13,7 @@ unit DlgRqDeps;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
+  Windows, {$IFDEF FPC} LCLType, {$ENDIF} Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
   ExtCtrls, ComCtrls, Dialogs, CommCtrl, IniFiles,
   ClrScheme,    // схема подсветки для просмотра
   SchemeRtf,    // SchemePageColor - фон схемы

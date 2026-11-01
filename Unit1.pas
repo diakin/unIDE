@@ -36071,9 +36071,9 @@ begin
       Exit;
     end;
     // Середина пути - только вложенный объект (Font, Constraints)
-    if PI^.PropType^^.Kind <> tkClass then
+    if PI^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind <> tkClass then
       Exit;
-    ClassRef := GetTypeData(PI^.PropType^)^.ClassType;
+    ClassRef := GetTypeData(PI^.PropType{$IFNDEF FPC}^{$ENDIF})^.ClassType;
   end;
 end;
 
@@ -42955,7 +42955,7 @@ begin
   while CharPos > 0 do
   begin
     PI := GetPropInfo(Obj, Copy(Path, 1, CharPos - 1));
-    if (PI = nil) or (PI^.PropType^^.Kind <> tkClass) then
+    if (PI = nil) or (PI^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind <> tkClass) then
       Exit;
     Obj := GetObjectProp(Obj, PI);
     if Obj = nil then
@@ -42967,7 +42967,7 @@ begin
   if (PI = nil) or (PI^.SetProc = nil) then
     Exit;
   try
-    case PI^.PropType^^.Kind of
+    case PI^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind of
       tkString, tkLString, tkWString:
         SetStrProp(Obj, PI, AValue);
       tkChar:
@@ -45454,7 +45454,7 @@ begin
   for I := Low(Pref) to High(Pref) do
   begin
     PI := GetPropInfo(AClass, Pref[I]);
-    if (PI <> nil) and (PI^.PropType^^.Kind = tkMethod) then
+    if (PI <> nil) and (PI^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind = tkMethod) then
     begin
       Result := Pref[I];
       Exit;
@@ -45487,9 +45487,9 @@ var
 begin
   Result := '';
   PI := GetPropInfo(AClass, AEvent);
-  if (PI = nil) or (PI^.PropType^^.Kind <> tkMethod) then
+  if (PI = nil) or (PI^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind <> tkMethod) then
     Exit;
-  TD := GetTypeData(PI^.PropType^);
+  TD := GetTypeData(PI^.PropType{$IFNDEF FPC}^{$ENDIF});
   CharPtr := @TD^.ParamList;
   Params := '';
   Grp := '';
@@ -46165,8 +46165,8 @@ var
                 BoolToStr(RttiWritable, True),
               DsgDescTypeText(DescType) + ' ' +
                 BoolToStr(DescWritable, True));
-        if (ADepth = 0) and (PropRec^.PropType^^.Kind = tkClass) then
-          CheckProps(ATopCls, GetTypeData(PropRec^.PropType^)^.ClassType,
+        if (ADepth = 0) and (PropRec^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind = tkClass) then
+          CheckProps(ATopCls, GetTypeData(PropRec^.PropType{$IFNDEF FPC}^{$ENDIF})^.ClassType,
                      Path + '.', 1);
       end;
     finally

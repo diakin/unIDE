@@ -19,6 +19,7 @@ unit DlgStrictFix;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls,
   ExtCtrls, ComCtrls, IniFiles,
   StrictFix,    // разбор записей и варианты исправления

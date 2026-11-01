@@ -47,7 +47,8 @@ uses
   UiEditCtrls,  // TUiEdit - поле фильтра состава
   FolderDlg,    // выбор папки эталона - BrowseFolderDialog
   UiStdCtrls,   // TUiPanel
-  UiButton;     // TUiButton - кнопки в цветах темы (TBitBtn рисуется белым)
+  UiButton      // TUiButton - кнопки в цветах темы (TBitBtn рисуется белым)
+  {$IFDEF FPC}, LCLType{$ENDIF}; // odSelected - из LCLType (TOwnerDrawStateType)
 
 type
   // Открыть файл в редакторе на строке (с 1; 0 - без перехода)

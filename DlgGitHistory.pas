@@ -36,6 +36,7 @@ unit DlgGitHistory;
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   StdCtrls, ExtCtrls, ComCtrls, Clipbrd, OsShell,
   UiButton,      // TUiButton
