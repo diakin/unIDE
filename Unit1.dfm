@@ -88,6 +88,22 @@ object Form1: TForm1
         BevelOuter = bvNone
         ParentBackground = False
         TabOrder = 1
+        object CompLogEdit: TEdLogView
+          Left = 0
+          Top = 0
+          Width = 0
+          Height = 105
+          Align = alClient
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -12
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          ShowGutter = False
+          TabOrder = 0
+          TabStop = True
+        end
       end
       object pnlErrLog: TPanel
         Left = 0
@@ -99,6 +115,22 @@ object Form1: TForm1
         ParentBackground = False
         TabOrder = 3
         Visible = False
+        object ErrLogEdit: TEdLogView
+          Left = 0
+          Top = 0
+          Width = 0
+          Height = 105
+          Align = alClient
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -14
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          ShowGutter = False
+          TabOrder = 0
+          TabStop = True
+        end
       end
       object pnlHiLog: TPanel
         Left = 0
@@ -110,6 +142,22 @@ object Form1: TForm1
         ParentBackground = False
         TabOrder = 2
         Visible = False
+        object LogEdit: TEdLogView
+          Left = 0
+          Top = 0
+          Width = 0
+          Height = 105
+          Align = alClient
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -14
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          ShowGutter = False
+          TabOrder = 0
+          TabStop = True
+        end
       end
       object pnlRunLog: TPanel
         Left = 0
@@ -121,6 +169,22 @@ object Form1: TForm1
         ParentBackground = False
         TabOrder = 4
         Visible = False
+        object RuntimeLog: TEdLogView
+          Left = 0
+          Top = 0
+          Width = 0
+          Height = 105
+          Align = alClient
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -14
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          ShowGutter = False
+          TabOrder = 0
+          TabStop = True
+        end
       end
       object pnlGitLog: TPanel
         Left = 0
@@ -132,6 +196,22 @@ object Form1: TForm1
         ParentBackground = False
         TabOrder = 5
         Visible = False
+        object GitLogEdit: TEdLogView
+          Left = 0
+          Top = 0
+          Width = 0
+          Height = 105
+          Align = alClient
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -14
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          ShowGutter = False
+          TabOrder = 0
+          TabStop = True
+        end
       end
     end
     object FTabs: TUiTabControl
@@ -253,6 +333,21 @@ object Form1: TForm1
       OnMouseDown = MarksBoxMouseDown
       OnPaint = MarksBoxPaint
     end
+  end
+  object RichEdit1: TEdHostEdit
+    Left = 57
+    Top = 8
+    Width = 3000
+    Height = 457
+    Align = alLeft
+    Color = clBtnShadow
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clGray
+    Font.Height = -15
+    Font.Name = 'Source Code Pro'
+    Font.Style = []
+    ParentFont = False
+    TabOrder = 0
   end
   object OpenDialog1: TOpenDialog
     Left = 16
@@ -1430,11 +1525,20 @@ object Form1: TForm1
     end
     object grpPalette: TUiGroupBox
       Align = alClient
-      Caption = 'Components'
+      Caption = ''
       object pnlPaletteIn: TPanel
         Align = alClient
         BevelOuter = bvNone
         ParentFont = True
+      end
+      object FPalTabs: TUiCaptionTabs
+        Left = 8
+        Top = 0
+        Width = 100
+        Height = 16
+        Tabs.Strings = (
+          'Components'
+          'Git')
       end
     end
   end

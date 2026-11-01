@@ -532,6 +532,24 @@ type
   TDelphiNewKind = (dnkForm, dnkUnit, dnkDataModule, dnkFrame);
 
   TForm1 = class(TForm)
+    // Окно основного редактора (шаг 0.7.7: своё окно, не RichEdit). Имя
+    // прежнее; текст, выделение, ввод - у своего редактора (FEdEmu,
+    // EdEmuStart), свойства - как у TRichEdit (EdHost.TEdHostEdit). В .dfm
+    // (пакет UiControls)
+    RichEdit1: TEdHostEdit;
+    // Окна логов на своём редакторе (шаг 0.7.6; с шага 0.7.7 - без
+    // TRichEdit). CompLogEdit - вывод компилятора и сообщения сборки,
+    // ErrLogEdit - ошибки, LogEdit - HiLite log (диагностика),
+    // RuntimeLog - сообщения работающей программы (AddClrString, пункт
+    // Debug), GitLogEdit - команды git и их вывод (команды отделены пустой
+    // строкой). В .dfm, на панелях pnl*Log
+    CompLogEdit: TEdLogView;
+    ErrLogEdit: TEdLogView;
+    LogEdit: TEdLogView;
+    RuntimeLog: TEdLogView;
+    GitLogEdit: TEdLogView;
+    // Вкладки Components | Git на верхней линии рамки палитры (в .dfm)
+    FPalTabs: TUiCaptionTabs;
     MainMenu1: TMainMenu;
     OpenDialog1: TOpenDialog;
     SaveDialog1: TSaveDialog;
@@ -1123,26 +1141,7 @@ type
   public
     property EdApi: TEdIntf read GetEdApi;
 
-  protected
-    // Окно редактора и окна логов - сразу после чтения формы из .dfm, до
-    // FormCreate: в лог пишут и при создании формы
-    procedure Loaded; override;
   public
-    // Окно основного редактора (шаг 0.7.7: своё окно, не RichEdit). Имя
-    // прежнее; текст, выделение, ввод - у своего редактора (FEdEmu,
-    // EdEmuStart), свойства - как у TRichEdit (EdHost.TEdHostEdit)
-    RichEdit1: TEdHostEdit;
-    // Окна логов на своём редакторе (шаг 0.7.6; с шага 0.7.7 - без
-    // TRichEdit). CompLogEdit - вывод компилятора и сообщения сборки,
-    // ErrLogEdit - ошибки, LogEdit - HiLite log (диагностика),
-    // RuntimeLog - сообщения работающей программы (AddClrString, пункт
-    // Debug), GitLogEdit - команды git и их вывод (команды отделены пустой
-    // строкой)
-    CompLogEdit: TEdLogView;
-    ErrLogEdit: TEdLogView;
-    LogEdit: TEdLogView;
-    RuntimeLog: TEdLogView;
-    GitLogEdit: TEdLogView;
 
     private
     OldRichEditProc: TWndMethod;
@@ -1257,8 +1256,6 @@ type
     FGitPollTimer: TTimer;
     FGitBashProc: TProcRun;
     FGitStateSig: string;
-    // Вкладки Components | Git на верхней линии рамки палитры
-    FPalTabs: TUiCaptionTabs;
     // Режим F4 unIDE FAR: окно FAR - половина области редактора (одна
     // панель), другая половина - редактор; место FAR держит FFarSpacer
     // (alLeft / alRight в pnlMain). FFarOwnWin - окно, которое открыл F4
@@ -26338,16 +26335,9 @@ begin
   FToolbarBaseHeight := FToolbar.Height;
   FDsgPalette.OnTabRows := PaletteTabRows;
   FDsgPalette.OnSelect := DsgPaletteSelect;
-  // Вкладки Components | Git - на месте подписи рамки палитры: место не
-  // занимают. Git - панель Git (GitShowBar) для любого проекта
-  grpPalette.Caption := '';
-  FPalTabs := TUiCaptionTabs.Create(Self);
-  FPalTabs.Parent := grpPalette;
-  FPalTabs.Tabs.Add('Components');
-  FPalTabs.Tabs.Add('Git');
-  FPalTabs.Left := 8;
-  FPalTabs.Top := 0;
-  FPalTabs.AutoWidth;
+  // Вкладки Components | Git (FPalTabs, .dfm) - на месте подписи рамки
+  // палитры: место не занимают. Git - панель Git (GitShowBar) для любого
+  // проекта
   FPalTabs.OnChange := PalTabsChange;
   FPalTabs.BringToFront;
   FDsgPalette.OnGlyphLoaded := DsgPaletteGlyph;
@@ -49279,7 +49269,7 @@ begin
 end;
 
 // Настройка панели лога. Панель, вкладки и панели логов описаны в форме,
-// окна логов созданы в Loaded; здесь - обработчики, цвета и начальное
+// окна логов тоже в форме; здесь - обработчики, цвета и начальное
 // состояние вкладок.
 procedure TForm1.InitLogPanel;
 begin
@@ -49312,48 +49302,6 @@ begin
   LogViewsSyncAll;
 
   LogTabsChange(nil);
-end;
-
-// Окно лога на панели AParent (из .dfm); шрифт - как был у TRichEdit
-// логов в .dfm, цвета - LogViewSync
-function NewLogView(AOwner: TComponent; AParent: TWinControl;
-  AFontHeight: Integer): TEdLogView;
-begin
-  Result := TEdLogView.Create(AOwner);
-  Result.Font.Name := 'Tahoma';
-  Result.Font.Height := AFontHeight;
-  Result.Align := alClient;
-  Result.Parent := AParent;
-end;
-
-procedure TForm1.Loaded;
-begin
-  inherited Loaded;
-  // Окно редактора - как было в .dfm (потом его переносит в FEditHost
-  // FormCreate)
-  RichEdit1 := TEdHostEdit.Create(Self);
-  RichEdit1.Name := 'RichEdit1';
-  RichEdit1.SetBounds(57, 8, 3000, 457);
-  RichEdit1.Align := alLeft;
-  RichEdit1.Color := clBtnShadow;
-  RichEdit1.ParentFont := False;
-  RichEdit1.Font.Charset := DEFAULT_CHARSET;
-  RichEdit1.Font.Color := clGray;
-  RichEdit1.Font.Height := -15;
-  RichEdit1.Font.Name := 'Source Code Pro';
-  RichEdit1.Font.Style := [];
-  RichEdit1.Parent := Self;
-  RichEdit1.TabOrder := 0;
-  if pnlCompLog <> nil then
-    CompLogEdit := NewLogView(Self, pnlCompLog, -12);
-  if pnlErrLog <> nil then
-    ErrLogEdit := NewLogView(Self, pnlErrLog, -14);
-  if pnlHiLog <> nil then
-    LogEdit := NewLogView(Self, pnlHiLog, -14);
-  if pnlRunLog <> nil then
-    RuntimeLog := NewLogView(Self, pnlRunLog, -14);
-  if pnlGitLog <> nil then
-    GitLogEdit := NewLogView(Self, pnlGitLog, -14);
 end;
 
 // Очистить лог
