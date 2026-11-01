@@ -335,7 +335,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.50';
+  DfmMoveBuild = 'b.51';
   // Причина у объекта работающей формы без строки создания
   NotFoundReason = 'в модуле формы не найдено, где создаётся';
 
@@ -6852,7 +6852,7 @@ end;
 // вызывается Application.ProcessMessages (тогда может прийти любое
 // событие) - рискованны все проверки. У каждой рискованной строки - как до
 // неё доходит.
-procedure FindNilRisks(Info: TMoveInfo; ALines: TStrings; ARoutines: TList;
+procedure FindNilRisksPlain(Info: TMoveInfo; ALines: TStrings; ARoutines: TList;
   ANames: TStringList; AInitHandlers: TStrings);
 var
   Index, Current, Limit, Target, CheckLine, Queued, Start, Handler,
@@ -7083,6 +7083,227 @@ begin
     end;
     if Risky then
       Info.NilRisk.Add(Info.NilChecks[Index] + '   [' + Chain + ']');
+  end;
+end;
+
+// Строка кода для разбора слов: без комментария, текст в кавычках -
+// пробелами, заглавными
+function GuardCode(ALines: TStrings; AIndex: Integer): string;
+begin
+  Result := UpperCase(BlankQuoted(StripComment(ALines[AIndex])));
+end;
+
+// Позиция слова AWord (заглавными) в ACode (заглавными) начиная с AFrom;
+// 0 - нет
+function WordPosFrom(const ACode, AWord: string; AFrom: Integer): Integer;
+var
+  CharPos: Integer;
+begin
+  Result := 0;
+  CharPos := PosEx(AWord, ACode, AFrom);
+  while CharPos > 0 do
+  begin
+    if ((CharPos = 1) or not IsIdentChar(ACode[CharPos - 1])) and
+       ((CharPos + Length(AWord) > Length(ACode)) or
+        not IsIdentChar(ACode[CharPos + Length(AWord)])) then
+    begin
+      Result := CharPos;
+      Exit;
+    end;
+    CharPos := PosEx(AWord, ACode, CharPos + 1);
+  end;
+end;
+
+// Изменение глубины блоков по словам ACode начиная с AFrom: begin, try,
+// case - +1, end - -1. ADone - глубина дошла до нуля (после того, как
+// была больше нуля)
+function BlockDepthStep(const ACode: string; AFrom: Integer;
+  var ADepth: Integer): Boolean;
+var
+  CharPos, WordStart: Integer;
+  WordStr: string;
+begin
+  Result := False;
+  CharPos := AFrom;
+  while CharPos <= Length(ACode) do
+  begin
+    if IsIdentChar(ACode[CharPos]) and
+       ((CharPos = 1) or not IsIdentChar(ACode[CharPos - 1])) then
+    begin
+      WordStart := CharPos;
+      while (CharPos <= Length(ACode)) and IsIdentChar(ACode[CharPos]) do
+        Inc(CharPos);
+      WordStr := Copy(ACode, WordStart, CharPos - WordStart);
+      if (WordStr = 'BEGIN') or (WordStr = 'TRY') or (WordStr = 'CASE') then
+        Inc(ADepth)
+      else if WordStr = 'END' then
+      begin
+        Dec(ADepth);
+        if ADepth <= 0 then
+        begin
+          Result := True;
+          Exit;
+        end;
+      end;
+    end
+    else
+      Inc(CharPos);
+  end;
+end;
+
+// Строки, которые выполняются только при условии if на строке ACheck:
+// от неё до ALast. if ... then Оператор; - строка then или следующая;
+// if ... then begin ... end - до end. False - не if ... then
+function GuardedRange(ALines: TStrings; ACheck: Integer;
+  var ALast: Integer): Boolean;
+const
+  ThenLookAhead = 3;    // условие на нескольких строках
+  BlockLimit = 3000;    // дальше блок не ищется
+var
+  Code, Rest: string;
+  ThenLine, ThenPos, LineIndex, Depth: Integer;
+begin
+  Result := False;
+  ALast := ACheck;
+  if WordPosFrom(GuardCode(ALines, ACheck), 'IF', 1) = 0 then
+    Exit;
+  ThenLine := -1;
+  ThenPos := 0;
+  for LineIndex := ACheck to ACheck + ThenLookAhead do
+  begin
+    if LineIndex >= ALines.Count then
+      Break;
+    ThenPos := WordPosFrom(GuardCode(ALines, LineIndex), 'THEN', 1);
+    if ThenPos > 0 then
+    begin
+      ThenLine := LineIndex;
+      Break;
+    end;
+  end;
+  if ThenLine < 0 then
+    Exit;
+  Result := True;
+  Code := GuardCode(ALines, ThenLine);
+  Rest := Trim(Copy(Code, ThenPos + 4, MaxInt));
+  LineIndex := ThenLine;
+  if Rest = '' then
+  begin
+    // Оператор - на следующей непустой строке
+    LineIndex := ThenLine + 1;
+    while (LineIndex < ALines.Count) and
+          (Trim(GuardCode(ALines, LineIndex)) = '') do
+      Inc(LineIndex);
+    if LineIndex >= ALines.Count then
+    begin
+      ALast := ThenLine;
+      Exit;
+    end;
+    Code := GuardCode(ALines, LineIndex);
+    ThenPos := 0;
+    Rest := Trim(Code);
+  end;
+  if Copy(Rest, 1, 5) <> 'BEGIN' then
+  begin
+    ALast := LineIndex;
+    Exit;
+  end;
+  // Блок begin ... end: до парного end
+  Depth := 0;
+  ALast := LineIndex;
+  if BlockDepthStep(Code, ThenPos + 1, Depth) then
+    Exit;
+  while (LineIndex + 1 < ALines.Count) and (LineIndex - ACheck < BlockLimit) do
+  begin
+    Inc(LineIndex);
+    ALast := LineIndex;
+    if BlockDepthStep(GuardCode(ALines, LineIndex), 1, Depth) then
+      Exit;
+  end;
+end;
+
+// Info.NilRisk (см. FindNilRisksPlain) и отдельно - проверки X = nil (not
+// Assigned(X)), под которыми вызывается процедура создания:
+//   if FGitBar = nil then
+//     GitBuildBar;
+// После переноса X не nil, процедура больше не вызывается, и строки,
+// которые в ней остаются (списки, счётчики, обработчики), не выполнятся.
+// Такие строки - первыми в Info.NilRisk, с пометкой GuardCallMark.
+const
+  GuardCallMark = '[охраняет вызов ';
+
+procedure FindNilRisks(Info: TMoveInfo; ALines: TStrings; ARoutines: TList;
+  ANames: TStringList; AInitHandlers: TStrings);
+var
+  Index, Other, Target, CallIndex, CheckLine, GuardLast, RiskLine: Integer;
+  Routine: TFormRoutine;
+  CallLines: TList;
+  Guards: TStringList;
+  Key: string;
+begin
+  FindNilRisksPlain(Info, ALines, ARoutines, ANames, AInitHandlers);
+  if (Info.NilChecks.Count = 0) or (Info.LazyGroup >= 0) then
+    Exit;
+  Target := ANames.IndexOf(Info.Routine);
+  if Target < 0 then
+    Exit;
+  Target := ARoutines.IndexOf(ANames.Objects[Target]);
+  if Target < 0 then
+    Exit;
+  CallLines := TList.Create;
+  Guards := TStringList.Create;
+  try
+    // Строки вызова процедуры создания
+    for Index := 0 to ARoutines.Count - 1 do
+    begin
+      Routine := TFormRoutine(ARoutines[Index]);
+      for CallIndex := 0 to Routine.CallCount - 1 do
+        if Routine.CallTargets[CallIndex] = Target then
+          CallLines.Add(Pointer(Routine.CallLines[CallIndex]));
+    end;
+    if CallLines.Count = 0 then
+      Exit;
+    for Index := 0 to Info.NilChecks.Count - 1 do
+    begin
+      CheckLine := LineOfRef(Info.NilChecks[Index]);
+      if (CheckLine < 0) or (CheckLine >= ALines.Count) then
+        Continue;
+      Key := StringReplace(GuardCode(ALines, CheckLine), ' ', '',
+                           [rfReplaceAll]);
+      if (Pos('=NIL', Key) = 0) and (Pos('NOTASSIGNED(', Key) = 0) then
+        Continue;
+      if not GuardedRange(ALines, CheckLine, GuardLast) then
+        Continue;
+      for CallIndex := 0 to CallLines.Count - 1 do
+        if (Integer(CallLines[CallIndex]) >= CheckLine) and
+           (Integer(CallLines[CallIndex]) <= GuardLast) then
+        begin
+          Guards.Add(Info.NilChecks[Index] + '   ' + GuardCallMark +
+                     Info.Routine + ' (строка ' +
+                     IntToStr(Integer(CallLines[CallIndex]) + 1) +
+                     '): после переноса проверка не пропустит, ' +
+                     Info.Routine + ' не будет вызываться, и строки, ' +
+                     'которые в ней остаются в коде, не выполнятся]');
+          Break;
+        end;
+    end;
+    if Guards.Count = 0 then
+      Exit;
+    // Прежние записи о тех же строках - заменить
+    for Index := Info.NilRisk.Count - 1 downto 0 do
+    begin
+      RiskLine := LineOfRef(Info.NilRisk[Index]);
+      for Other := 0 to Guards.Count - 1 do
+        if LineOfRef(Guards[Other]) = RiskLine then
+        begin
+          Info.NilRisk.Delete(Index);
+          Break;
+        end;
+    end;
+    for Index := Guards.Count - 1 downto 0 do
+      Info.NilRisk.Insert(0, Guards[Index]);
+  finally
+    Guards.Free;
+    CallLines.Free;
   end;
 end;
 
@@ -9524,6 +9745,13 @@ begin
       end;
       if Info.Reason <> '' then
         Info.Reason := Info.Reason + '; ';
+      if Pos(GuardCallMark, Info.NilRisk[0]) > 0 then
+        Info.Reason := Info.Reason + 'проверка на nil охраняет вызов ' +
+                       Info.Routine + ' (строка ' +
+                       IntToStr(LineOfRef(Info.NilRisk[0]) + 1) +
+                       '): после переноса ' + Info.Routine + ' не ' +
+                       'вызовется - перенести оставшиеся в ней строки в ' +
+                       'FormCreate или поменять условие; ';
       if Info.NilRisk.Count = 1 then
         Info.Reason := Info.Reason + 'проверить: проверка на nil до ' +
                        'создания (строка ' + RefName + ')'
