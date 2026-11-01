@@ -136,6 +136,9 @@ function CiParamType(const ADetail, AName: string): string;
 
 implementation
 
+uses
+  UiTheme;   // UiDrawText, UiTextExtent - текст в Delphi и Lazarus
+
 const
   ColAbstract = 0;
   ColConstant = 1;
@@ -1390,7 +1393,7 @@ begin
     begin
       KindText := CiKindText(KindIdx);
       if (KindText <> '') and
-         GetTextExtentPoint32(ScreenDC, PChar(KindText), Length(KindText),
+         UiTextExtent(ScreenDC, PChar(KindText), Length(KindText),
                               TextSize) and (TextSize.cx + 12 > FKindWidth) then
         FKindWidth := TextSize.cx + 12;
     end;
@@ -1480,7 +1483,7 @@ begin
     else
       Canvas.Font.Color := KindColors[CiColorIndex(Symbol)];
     Canvas.Font.Style := [];
-    DrawText(Canvas.Handle, PChar(KindText), Length(KindText), TextRect,
+    UiDrawText(Canvas.Handle, PChar(KindText), Length(KindText), TextRect,
              DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
 
     TextX := 4 + FKindWidth;
@@ -1490,7 +1493,7 @@ begin
     else
       Canvas.Font.Color := TextColor;
     Canvas.Font.Style := [fsBold];
-    DrawText(Canvas.Handle, PChar(Symbol.Name), Length(Symbol.Name), TextRect,
+    UiDrawText(Canvas.Handle, PChar(Symbol.Name), Length(Symbol.Name), TextRect,
              DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
     Inc(TextX, Canvas.TextWidth(Symbol.Name) + 2);
     Canvas.Font.Style := [];
@@ -1498,7 +1501,7 @@ begin
     begin
       TextRect.Left := TextX;
       TextRect.Right := RowRect.Right - 4;
-      DrawText(Canvas.Handle, PChar(Symbol.Detail), Length(Symbol.Detail),
+      UiDrawText(Canvas.Handle, PChar(Symbol.Detail), Length(Symbol.Detail),
                TextRect, DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX or
                DT_END_ELLIPSIS);
     end;

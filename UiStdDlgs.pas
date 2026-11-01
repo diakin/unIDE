@@ -746,7 +746,7 @@ begin
   Canvas.Font := SampleFont;
   Canvas.Brush.Style := bsClear;
   Str := 'AaBbYyZz АаБбЯя 0123';
-  DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal,
+  UiDrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal,
            DT_SINGLELINE or DT_CENTER or DT_VCENTER or DT_NOPREFIX);
   Canvas.Brush.Style := bsSolid;
 end;

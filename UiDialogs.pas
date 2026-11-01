@@ -207,7 +207,7 @@ begin
     // Текст: ширина - до половины экрана, строки переносятся
     TextRect := Rect(0, 0, Screen.Width div 2, 0);
     Flags := DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX or DT_EXPANDTABS;
-    DrawText(Measure.Canvas.Handle, PChar(AMsg), Length(AMsg), TextRect,
+    UiDrawText(Measure.Canvas.Handle, PChar(AMsg), Length(AMsg), TextRect,
              Flags);
     TextLabel := TUiLabel.Create(Form);
     TextLabel.Parent := Form;
@@ -316,7 +316,7 @@ begin
       TextLeft := Margin + IconSize + Gap + 4;
     end;
     TextRect := Rect(0, 0, Screen.Width div 2, 0);
-    DrawText(Measure.Canvas.Handle, PChar(Msg), Length(Msg), TextRect,
+    UiDrawText(Measure.Canvas.Handle, PChar(Msg), Length(Msg), TextRect,
              DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX or DT_EXPANDTABS);
     TextLabel := TUiLabel.Create(Form);
     TextLabel.Parent := Form;

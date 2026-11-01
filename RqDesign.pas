@@ -178,6 +178,9 @@ function RqDsgNameOk(const AName: string): Boolean;
 
 implementation
 
+uses
+  UiTheme;   // UiDrawText - текст в Delphi и Lazarus
+
 const
   KindNames: array[0..29] of string = (
     'QBUTTON', 'QCOOLBTN', 'QOVALBTN', 'QEDIT', 'QMAXEDIT', 'QREDIT',
@@ -525,7 +528,7 @@ begin
   if CaptionText <> '' then
   begin
     TextBox := Rect(0, 0, BoxWidth, 0);
-    DrawText(Canvas.Handle, PChar(CaptionText), Length(CaptionText), TextBox,
+    UiDrawText(Canvas.Handle, PChar(CaptionText), Length(CaptionText), TextBox,
              DT_CALCRECT or DT_SINGLELINE or DT_NOPREFIX);
     TextWidth := TextBox.Right - TextBox.Left;
     TextHeight := TextBox.Bottom - TextBox.Top;
@@ -821,7 +824,7 @@ begin
       Canvas.FillRect(TabBox);
       DrawEdge(Canvas.Handle, TabBox, EDGE_RAISED,
                BF_LEFT or BF_TOP or BF_RIGHT or BF_SOFT);
-      DrawText(Canvas.Handle, PChar(TabName), Length(TabName), TabBox,
+      UiDrawText(Canvas.Handle, PChar(TabName), Length(TabName), TabBox,
                DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
                DT_END_ELLIPSIS);
       Inc(TabLeft, TabWide);
@@ -925,7 +928,7 @@ begin
   if FDisabled then
     Canvas.Font.Color := clGrayText;
   SetBkMode(Canvas.Handle, TRANSPARENT);
-  DrawText(Canvas.Handle, PChar(CaptionText), Length(CaptionText), ARect,
+  UiDrawText(Canvas.Handle, PChar(CaptionText), Length(CaptionText), ARect,
            AFlags or DT_NOPREFIX);
 end;
 
@@ -942,7 +945,7 @@ begin
   Canvas.Font.Color := clGrayText;
   SetBkMode(Canvas.Handle, TRANSPARENT);
   InflateRect(ARect, -3, -2);
-  DrawText(Canvas.Handle, PChar(TagText), Length(TagText), ARect,
+  UiDrawText(Canvas.Handle, PChar(TagText), Length(TagText), ARect,
            DT_LEFT or DT_TOP or DT_SINGLELINE or DT_END_ELLIPSIS or
            DT_NOPREFIX);
 end;
@@ -1003,7 +1006,7 @@ begin
           if FDisabled then
             Canvas.Font.Color := clGrayText;
           SetBkMode(Canvas.Handle, TRANSPARENT);
-          DrawText(Canvas.Handle, PChar(ShownText), Length(ShownText), Part,
+          UiDrawText(Canvas.Handle, PChar(ShownText), Length(ShownText), Part,
                    DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
                    DT_END_ELLIPSIS);
         end;
@@ -1022,7 +1025,7 @@ begin
         begin
           Canvas.Font := Font;
           TextBox := ClientBox;
-          DrawText(Canvas.Handle, PChar(Caption), Length(Caption), TextBox,
+          UiDrawText(Canvas.Handle, PChar(Caption), Length(Caption), TextBox,
                    DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
           TextHeight := TextBox.Bottom - TextBox.Top;
           if FLayout = 1 then

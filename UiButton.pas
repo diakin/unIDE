@@ -345,7 +345,7 @@ begin
      ((SendMessage(Handle, WM_QUERYUISTATE_, 0, 0) and UISF_HIDEACCEL_) <> 0) then
     Fl := Fl or DT_HIDEPREFIX_;
   Canvas.Brush.Style := bsClear;
-  DrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, Fl);
+  UiDrawText(Canvas.Handle, PChar(Str), Length(Str), RectVal, Fl);
   Canvas.Brush.Style := bsSolid;
 
   // Рамка фокуса, как у системной кнопки
@@ -417,7 +417,7 @@ begin
          UISF_HIDEACCEL_) <> 0) then
       Fl := Fl or DT_HIDEPREFIX_;
     Brush.Style := bsClear;
-    DrawText(Handle, PChar(Str), Length(Str), RectVal, Fl);
+    UiDrawText(Handle, PChar(Str), Length(Str), RectVal, Fl);
     Brush.Style := bsSolid;
   end;
 end;
