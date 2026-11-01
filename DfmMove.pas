@@ -326,7 +326,7 @@ end;
 const
   // Номер сборки модуля: пишется в файл разбора рядом с датой, чтобы было
   // видно, какой версией DfmMove сделан разбор. Растёт с каждой правкой.
-  DfmMoveBuild = 'b.41';
+  DfmMoveBuild = 'b.42';
 
 constructor TMoveInfo.Create;
 begin
@@ -7031,7 +7031,8 @@ var
   GeometryCalls: TStringList;
   // Вызовы без переменной: строки с именами помощников
   HelperLines, OneHelperLines, MergedLines: TList;
-  HelperLineIndex: Integer;
+  HelperLineIndex, ParentIdx, TwinIdx: Integer;
+  TwinInfo: TMoveInfo;
   // NewComponentName: основа имени (заглавными) -> занятые в тексте номера
   BaseNumbers: TStringList;
   // Узлы дерева по номерам: Data и уровень. Items[N] дерева в Delphi 7
@@ -8567,10 +8568,12 @@ begin
              ParentNode.CreateLine)) then
           ParentNode := TDfmNode(TreeData[Other]);
       ParentInfo := nil;
+      ParentIdx := -1;
       for Other := 0 to AList.Count - 1 do
         if TMoveInfo(AList[Other]).Node = ParentNode then
         begin
           ParentInfo := TMoveInfo(AList[Other]);
+          ParentIdx := Other;
           InsertAt := Other + 1;
           while (InsertAt < AList.Count) and
                 (TMoveInfo(AList[InsertAt]).Depth > ParentInfo.Depth) do
@@ -8579,6 +8582,23 @@ begin
         end;
       if ParentInfo = nil then
         Continue;
+      // Тот же объект в снимке формы - без имени, «не найдено, где
+      // создаётся»: первый такой ребёнок того же класса. Вызов его
+      // объясняет: переносимый - вместо него, нет - причина ему
+      TwinIdx := -1;
+      for Other := ParentIdx + 1 to InsertAt - 1 do
+      begin
+        TwinInfo := TMoveInfo(AList[Other]);
+        if (TwinInfo.Depth = ParentInfo.Depth + 1) and
+           (TwinInfo.Kind = mkNo) and (TwinInfo.CreateLine < 0) and
+           (TDfmNode(TwinInfo.Node).VarName = '') and
+           (CompareText(TDfmNode(TwinInfo.Node).ClassNm, Helper.Cls) = 0) and
+           (TwinInfo.Reason = 'в модуле формы не найдено, где создаётся') then
+        begin
+          TwinIdx := Other;
+          Break;
+        end;
+      end;
       Node := TDfmNode.Create;
       Node.ClassNm := Helper.Cls;
       Node.CreateLine := Index;
@@ -8596,9 +8616,22 @@ begin
                   Helpers, Scan);
       if Info.Kind = mkNo then
       begin
+        if TwinIdx >= 0 then
+        begin
+          TwinInfo := TMoveInfo(AList[TwinIdx]);
+          TwinInfo.Reason := 'вызов ' + Helper.Name + ', строка ' +
+                             IntToStr(Index + 1) + ': ' + Info.Reason;
+          TwinInfo.CreateLine := Index;
+        end;
         NewNames.Delete(NewNames.IndexOf(Node.VarName));
         Info.Free;
         Continue;
+      end;
+      if TwinIdx >= 0 then
+      begin
+        TMoveInfo(AList[TwinIdx]).Free;
+        AList.Delete(TwinIdx);
+        Dec(InsertAt);
       end;
       Info.Notes.Add('Вызов без переменной: при переносе объект получит ' +
                      'имя ' + Node.VarName + ' и published-поле.');
