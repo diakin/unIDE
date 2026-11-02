@@ -12218,7 +12218,7 @@ begin
   Notes := TStringList.Create;
   try
     TidyApplyNew(ExtractFilePath(FRestartExe), Notes);
-    MessageBox(0, PChar('Не удалось запустить ' + FRestartExe + #13#10 +
+    UiSysMessageBox(0, ('Не удалось запустить ' + FRestartExe + #13#10 +
                         Notes.Text + 'Запустите unIDE вручную.'), 'unIDE',
                MB_OK or MB_ICONWARNING);
   finally
@@ -26601,7 +26601,7 @@ begin
     OldMain := OwnOldName(MainExe);
     if not MoveFile(PChar(MainExe), PChar(OldMain)) then
     begin
-      MessageBox(0, PChar('Не удалось переименовать ' + MainExe + ' в ' +
+      UiSysMessageBox(0, ('Не удалось переименовать ' + MainExe + ' в ' +
                           ExtractFileName(OldMain) + ': ' +
                           SysErrorMessage(GetLastError) + #13#10 +
       'Пробная сборка остаётся под именем ' +
@@ -26612,7 +26612,7 @@ begin
   end;
   if not MoveFile(PChar(TrialExe), PChar(MainExe)) then
   begin
-    MessageBox(0, PChar('Не удалось переименовать ' + TrialExe + ' в ' +
+    UiSysMessageBox(0, ('Не удалось переименовать ' + TrialExe + ' в ' +
                         ExtractFileName(MainExe) + ': ' +
                         SysErrorMessage(GetLastError)), 'unIDE',
                MB_OK or MB_ICONWARNING);

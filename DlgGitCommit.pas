@@ -148,7 +148,7 @@ function GitKindColor(AKind: Integer; ABack: TColor): TColor;
 implementation
 
 uses
-  PathKit;
+  PathKit, UiDialogs;
 
 const
   // Подписи флажков видов над списком
@@ -590,7 +590,7 @@ begin
     Exit;
   if SelectedChanges(Picked) = 0 then
   begin
-    MessageBox(Handle, 'Выделите строки (щелчок, Ctrl+щелчок, Shift+щелчок) ' +
+    UiMessageBox('Выделите строки (щелчок, Ctrl+щелчок, Shift+щелчок) ' +
       '- какие файлы игнорировать.'#13#10#13#10'Флажки - это что войдёт в ' +
       'коммит; Ignore работает только с выделенными строками.', 'Ignore',
       MB_OK or MB_ICONINFORMATION);
@@ -874,7 +874,7 @@ begin
     Exit;
   if SelectedChanges(Picked) = 0 then
   begin
-    MessageBox(Handle, 'Выделите строки (щелчок, Ctrl+щелчок, Shift+щелчок) ' +
+    UiMessageBox('Выделите строки (щелчок, Ctrl+щелчок, Shift+щелчок) ' +
       '- изменения каких файлов отменить.'#13#10#13#10'Флажки - это что ' +
       'войдёт в коммит; Discard работает только с выделенными строками, ' +
       'чтобы не отменить лишнего.', 'Discard', MB_OK or
@@ -914,13 +914,13 @@ begin
       AnyChecked := True;
   if not AnyChecked then
   begin
-    MessageBox(Handle, 'Не отмечено ни одного файла.', 'Commit',
+    UiMessageBox('Не отмечено ни одного файла.', 'Commit',
       MB_OK or MB_ICONINFORMATION);
     Exit;
   end;
   if Trim(FSummary.Text) = '' then
   begin
-    MessageBox(Handle, 'Нужен заголовок коммита (Summary).', 'Commit',
+    UiMessageBox('Нужен заголовок коммита (Summary).', 'Commit',
       MB_OK or MB_ICONINFORMATION);
     if FSummary.CanFocus then
       FSummary.SetFocus;

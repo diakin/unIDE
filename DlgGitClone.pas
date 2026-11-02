@@ -105,6 +105,9 @@ type
 
 implementation
 
+uses
+  UiDialogs;
+
 const
   CloneCaption = 'Clone Repository';
 
@@ -292,7 +295,7 @@ end;
 
 procedure TDlgGitClone.Warn(const AText: string);
 begin
-  MessageBox(Handle, PChar(AText), CloneCaption, MB_OK or MB_ICONWARNING);
+  UiMessageBox(PChar(AText), PChar(CloneCaption), MB_OK or MB_ICONWARNING);
 end;
 
 // Окно уже на экране - список грузится после отрисовки

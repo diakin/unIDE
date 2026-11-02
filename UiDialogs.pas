@@ -46,6 +46,11 @@ function MessageDlgButtons(const Msg: string; DlgType: TMsgDlgType;
 // MB_DEFBUTTON2 и т. д.; ответ - IDOK, IDYES, IDNO...
 function UiMessageBox(Text, Caption: PChar; Flags: Longint): Integer;
 
+// Системное окно MessageBox (когда своих окон ещё/уже нет). Под FPC
+// строки UTF-8 -> MessageBoxW (MessageBoxA показал бы их как CP_ACP)
+function UiSysMessageBox(AWnd: HWND; const AText, ACaption: string;
+  AFlags: UINT): Integer;
+
 implementation
 
 uses
@@ -429,6 +434,23 @@ end;
 procedure ShowMessageFmt(const Msg: string; Params: array of const);
 begin
   ShowMessage(Format(Msg, Params));
+end;
+
+function UiSysMessageBox(AWnd: HWND; const AText, ACaption: string;
+  AFlags: UINT): Integer;
+{$IFDEF FPC}
+var
+  WideText, WideCaption: WideString;
+{$ENDIF}
+begin
+  {$IFDEF FPC}
+  WideText := UTF8Decode(AText);
+  WideCaption := UTF8Decode(ACaption);
+  Result := MessageBoxW(AWnd, PWideChar(WideText), PWideChar(WideCaption),
+    AFlags);
+  {$ELSE}
+  Result := MessageBox(AWnd, PChar(AText), PChar(ACaption), AFlags);
+  {$ENDIF}
 end;
 
 function UiMessageBox(Text, Caption: PChar; Flags: Longint): Integer;
