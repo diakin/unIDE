@@ -140,6 +140,35 @@ procedure DedupeSnapNodes(ANode: TDfmNode; AByLine: TStringList;
 
 implementation
 
+{$IFDEF FPC}{$IFDEF MSWINDOWS}
+uses
+  Windows;
+{$ENDIF}{$ENDIF}
+
+// Символ Юникода (#1053 в .dfm) - в кодировке редактора (CP_ACP). В Delphi 7
+// это делает string(WideString); в Lazarus string(WideString) дал бы UTF-8
+function WideCharToEditor(ACode: Integer): string;
+var
+  WordStr: WideString;
+  {$IFDEF FPC}{$IFDEF MSWINDOWS}
+  Buf: array[0..7] of AnsiChar;
+  Len: Integer;
+  {$ENDIF}{$ENDIF}
+begin
+  WordStr := WideChar(ACode);
+  {$IFDEF FPC}
+  {$IFDEF MSWINDOWS}
+  Len := WideCharToMultiByte(CP_ACP, 0, PWideChar(WordStr), 1, @Buf[0],
+    SizeOf(Buf), nil, nil);
+  SetString(Result, PAnsiChar(@Buf[0]), Len);
+  {$ELSE}
+  Result := UTF8Encode(WordStr);
+  {$ENDIF}
+  {$ELSE}
+  Result := string(WordStr);
+  {$ENDIF}
+end;
+
 constructor TDfmNode.Create;
 begin
   inherited Create;
@@ -275,7 +304,6 @@ end;
 function DecodeDfmString(const Str: string): string;
 var
   Idx, Num, Code: Integer;
-  WordStr: WideString;
 begin
   Result := '';
   if (Str = '') or not (Str[1] in ['''', '#']) then
@@ -321,10 +349,7 @@ begin
       if Code < 256 then
         Result := Result + Chr(Code)
       else
-      begin
-        WordStr := WideChar(Code);
-        Result := Result + string(WordStr);
-      end;
+        Result := Result + WideCharToEditor(Code);
     end
     else if Str[Idx] in [' ', '+'] then
       Inc(Idx)

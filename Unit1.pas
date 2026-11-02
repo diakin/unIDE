@@ -31982,14 +31982,16 @@ begin
       Item := FObjProps.Items.Add;
       Item.Caption := Obj.PropN[ItemIdx];
       SrcText := Obj.PropV[ItemIdx];
-      LiveText := SrcText;
+      // Текст исходника - кодировки редактора, в список - текстом
+      // интерфейса (EdUiText)
+      LiveText := EdUiText(SrcText);
       if (Live <> nil) and (Live.IndexOfName(Obj.PropN[ItemIdx]) >= 0) then
       begin
         // Число перечисления - словом: BorderStyle 2 -> bsSizeable
         RqDefaultOf(Chain, Obj.PropN[ItemIdx], RqMember);
-        LiveText := RqChoiceText(RqMember, Live.Values[Obj.PropN[ItemIdx]]);
-        if CompareText(Trim(LiveText), Trim(SrcText)) <> 0 then
-          LiveText := LiveText + '   (код: ' + SrcText + ')';
+        LiveText := EdUiText(RqChoiceText(RqMember, Live.Values[Obj.PropN[ItemIdx]]));
+        if CompareText(Trim(LiveText), Trim(EdUiText(SrcText))) <> 0 then
+          LiveText := LiveText + '   (код: ' + EdUiText(SrcText) + ')';
       end;
       Item.SubItems.Add(LiveText);
       Item.SubItems.Add(IntToStr(Integer(Obj.PropN.Objects[ItemIdx]) + 1));
@@ -32273,18 +32275,18 @@ begin
       if FObjEditInsert then
       begin
         FObjEditIsStr := True;
-        FObjEdit.Text := OldText;
+        FObjEdit.Text := EdUiText(OldText);
       end
       else if RapidQUnquote(OldText, LitText) then
       begin
         FObjEditIsStr := True;
-        FObjEdit.Text := LitText;
+        FObjEdit.Text := EdUiText(LitText);
       end
       else
-        FObjEdit.Text := OldText;
+        FObjEdit.Text := EdUiText(OldText);
     end
     else
-      FObjEdit.Text := OldText;
+      FObjEdit.Text := EdUiText(OldText);
     FObjEditOld := FObjEdit.Text;
     FObjActive := FObjEdit;
   end;
@@ -32328,6 +32330,9 @@ begin
     ObjCancelEdit;
     Exit;
   end;
+  // Поле правки - текст интерфейса (UTF-8 в Lazarus), исходник - кодировки
+  // редактора
+  EditText := EdFromUiText(EditText);
   if FObjEditIsStr then
     NewText := RapidQQuote(EditText)
   else
@@ -36811,9 +36816,9 @@ ShowMessage('18729:' + FObjEditName + ' у ' + DfmNode.Name + ' задаёт к�
                       (TI.Kind = dtkString)) or
                      ((TI = nil) and (Raw <> '') and (Raw[1] in ['''', '#']));
     if FObjEditIsStr then
-      FObjEdit.Text := DecodeDfmString(Raw)
+      FObjEdit.Text := EdUiText(DecodeDfmString(Raw))
     else
-      FObjEdit.Text := Raw;
+      FObjEdit.Text := EdUiText(Raw);
     FObjActive := FObjEdit;
   end;
 
@@ -37160,9 +37165,9 @@ begin
       NewRaw := FObjThemeColor;
   end
   else if FObjEditIsStr then
-    NewRaw := EncodeDfmString(FObjEdit.Text)
+    NewRaw := EncodeDfmString(EdFromUiText(FObjEdit.Text))
   else
-    NewRaw := Trim(FObjEdit.Text);
+    NewRaw := Trim(EdFromUiText(FObjEdit.Text));
 
   // Не изменилось - просто закрываем. Серое свойство без правки в .dfm не
   // добавляем: там было бы то же значение по умолчанию.
@@ -37538,9 +37543,9 @@ begin
       if Integer(It.Data) = FObjEditIdx then
       begin
         if It.SubItems.Count > 0 then
-          It.SubItems[0] := Shown
+          It.SubItems[0] := EdUiText(Shown)
         else
-          It.SubItems.Add(Shown);
+          It.SubItems.Add(EdUiText(Shown));
         It.Data := Pointer(Idx);
         // Новое значение - снова «Theme color» или уже свой цвет
         if not DfmNode.IsSnap and not DfmNode.IsLink then
@@ -47650,7 +47655,7 @@ begin
     begin
       It := FObjProps.Items.Add;
       It.Caption := Obj.PropN[I];
-      It.SubItems.Add(Obj.PropV[I]);
+      It.SubItems.Add(EdUiText(Obj.PropV[I]));   // значение - из текста .dfm
       It.Data := Pointer(I);   // номер свойства в узле
     end;
     TList := GetTickCount - StageTick;
@@ -47687,8 +47692,8 @@ begin
             FObjMissing.Add(Defs[I]);
           It := FObjProps.Items.Add;
           It.Caption := Nm;
-          It.SubItems.Add(DecodeDfmString(Copy(FObjMissing[FObjMissing.Count - 1],
-                                               Length(Nm) + 2, MaxInt)));
+          It.SubItems.Add(EdUiText(DecodeDfmString(Copy(
+            FObjMissing[FObjMissing.Count - 1], Length(Nm) + 2, MaxInt))));
           It.Data := Pointer(-FObjMissing.Count);
         end;
         FObjProps.AlphaSort;
