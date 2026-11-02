@@ -3845,6 +3845,10 @@ type
     function  LazFolder(const ADir: string): Boolean;
     function  LazbuildExe(var AProblem: string): string;
     function  LazExeOf(const ALpi: string): string;
+    function  LazExeOfOptions(const ALpi, AOptions: string): string;
+    function  LazTargetExe(const ALpi: string): string;
+    function  LazModeForCpu(const ALpi, ACpu: string;
+                            var AModeOptions: string): string;
     function  LazUnitPathOf(const ALpi: string): string;
     function  CompileLazarus: Boolean;
     procedure LazRefreshPrep(const ASrcDir: string);
@@ -15370,9 +15374,10 @@ cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target
       end
       else
         cmbLazBits.Hint := 'Разрядность сборки lazbuild по ' +
-          ExtractFileName(LazLpi) + ': 32 - --cpu=i386 --os=win32, 64 - ' +
-          '--cpu=x86_64 --os=win64 (нужен ppcrossx64 в fpc Lazarus). Exe ' +
-          'одно для обеих: ' + ExtractFileName(LazExeOf(LazLpi));
+          ExtractFileName(LazLpi) + ': режим сборки .lpi под этот ' +
+          'процессор (--bm), нет такого - --cpu / --os (64 - нужен ' +
+          'ppcrossx64 в fpc Lazarus). Exe: ' +
+          ExtractFileName(LazTargetExe(LazLpi));
     end;
   end;
   // RapidQ: папка inc проекта - верхней строкой, за подписью цели, до
@@ -55244,13 +55249,33 @@ end;
 // расширения - .exe); не задано - имя .lpi. Пакет (.lpk) или имя с
 // макросами $(...) - пусто
 function TForm1.LazExeOf(const ALpi: string): string;
+begin
+  Result := LazExeOfOptions(ALpi, LazCompilerOptions(ALpi));
+end;
+
+// Exe сборки lazbuild с разрядностью из рамки Project: exe режима сборки
+// под этот процессор (LazModeForCpu), нет такого - основное имя .lpi
+function TForm1.LazTargetExe(const ALpi: string): string;
+var
+  ModeOptions: string;
+begin
+  if LazModeForCpu(ALpi, FpcBuildSetting('LazCpu', 'FpcCpu'),
+                   ModeOptions) <> '' then
+    Result := LazExeOfOptions(ALpi, ModeOptions)
+  else
+    Result := LazExeOf(ALpi);
+end;
+
+// Имя exe по разделу CompilerOptions AOptions (основному или режима
+// сборки)
+function TForm1.LazExeOfOptions(const ALpi, AOptions: string): string;
 var
   Name: string;
 begin
   Result := '';
   if CompareText(ExtractFileExt(ALpi), '.lpi') <> 0 then
     Exit;
-  Name := LazXmlValue(LazCompilerOptions(ALpi), '<Target>', '<Filename');
+  Name := LazXmlValue(AOptions, '<Target>', '<Filename');
   if Name = '' then
     Name := ChangeFileExt(ExtractFileName(ALpi), '');
   if Pos('$(', Name) > 0 then
@@ -55261,6 +55286,74 @@ begin
   if not PathIsAbs(Name) then
     Name := ExtractFilePath(ALpi) + Name;
   Result := ExpandFileName(Name);
+end;
+
+// Режим сборки .lpi (BuildModes) для процессора ACpu: тот, у которого
+// TargetCPU = ACpu; у режима по умолчанию без своих настроек (Item ... />)
+// - основные CompilerOptions. AModeOptions - его CompilerOptions (для
+// имени exe). '' - такого режима нет
+function TForm1.LazModeForCpu(const ALpi, ACpu: string;
+  var AModeOptions: string): string;
+var
+  Lines: TStringList;
+  Text, Rest, ItemText, ModeName, Options: string;
+  ItemPos, EndPos, NamePos: Integer;
+begin
+  Result := '';
+  AModeOptions := '';
+  if (ACpu = '') or not FileExists(ALpi) then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(ALpi);
+    except
+      Exit;
+    end;
+    Text := Lines.Text;
+  finally
+    Lines.Free;
+  end;
+  ItemPos := Pos('<BuildModes', Text);
+  if ItemPos = 0 then
+    Exit;
+  Rest := Copy(Text, ItemPos, MaxInt);
+  EndPos := Pos('</BuildModes>', Rest);
+  if EndPos > 0 then
+    Rest := Copy(Rest, 1, EndPos - 1);
+  repeat
+    ItemPos := Pos('<Item Name="', Rest);
+    if ItemPos = 0 then
+      Exit;
+    Rest := Copy(Rest, ItemPos + Length('<Item Name="'), MaxInt);
+    NamePos := Pos('"', Rest);
+    if NamePos = 0 then
+      Exit;
+    ModeName := Copy(Rest, 1, NamePos - 1);
+    EndPos := Pos('>', Rest);
+    if (EndPos > 1) and (Rest[EndPos - 1] = '/') then
+    begin
+      // Режим без своих настроек - основные
+      Options := LazCompilerOptions(ALpi);
+      Rest := Copy(Rest, EndPos + 1, MaxInt);
+    end
+    else
+    begin
+      EndPos := Pos('</Item>', Rest);
+      if EndPos = 0 then
+        EndPos := Length(Rest) + 1;
+      ItemText := Copy(Rest, 1, EndPos - 1);
+      Rest := Copy(Rest, EndPos + 1, MaxInt);
+      Options := ItemText;
+    end;
+    if CompareText(LazXmlValue(Options, '<CodeGeneration>', '<TargetCPU'),
+                   ACpu) = 0 then
+    begin
+      Result := ModeName;
+      AModeOptions := Options;
+      Exit;
+    end;
+  until False;
 end;
 
 // Папки поиска файлов из сообщений fpc: пути модулей и include из .lpi,
@@ -55817,7 +55910,7 @@ end;
 function TForm1.CompileLazarus: Boolean;
 var
   Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName, Src, FpcFile: string;
-  Cpu, TargetOs, PrepSrc, BuildSrc: string;
+  Cpu, TargetOs, PrepSrc, BuildSrc, BuildMode, ModeOptions: string;
   LogLine, ErrFile, FirstFile, Where: string;
   Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount: Integer;
   StartTick: Cardinal;
@@ -55894,22 +55987,33 @@ begin
   end;
   Dir := ExtractFilePath(Lpi);
   ShortName := ExtractFileName(Lpi);
-  Exe := LazExeOf(Lpi);
+  // Разрядность из рамки Project / Project Properties (Target CPU / OS).
+  // Есть в .lpi режим сборки под этот процессор - он (--bm): с ним и имя
+  // exe этого режима (_laz32 / _laz64). Иначе - ключи --cpu и --os, они
+  // главнее значений в .lpi; exe - основное имя. Пусто - как в .lpi.
+  // x86_64 у 32-битного Lazarus - нужен ppcrossx64 в его fpc
+  Cpu := FpcBuildSetting('LazCpu', 'FpcCpu');
+  TargetOs := FpcBuildSetting('LazOs', 'FpcOs');
+  BuildMode := LazModeForCpu(Lpi, Cpu, ModeOptions);
+  if BuildMode <> '' then
+    Exe := LazExeOfOptions(Lpi, ModeOptions)
+  else
+    Exe := LazExeOf(Lpi);
   // Запущенный exe переименовывается в .old (как у Delphi и FreeBASIC)
   if (Exe <> '') and not FreeBusyExe(Exe) then
     Exit;
   FLastBuildDir := Dir;
   FLastUnitPath := LazUnitPathOf(Lpi);
   Params := '"' + Lpi + '"';
-  // Разрядность из рамки Project / Project Properties (Target CPU / OS):
-  // ключи lazbuild --cpu и --os, они главнее значений в .lpi. Пусто - как
-  // в .lpi. x86_64 у 32-битного Lazarus - нужен ppcrossx64 в его fpc
-  Cpu := FpcBuildSetting('LazCpu', 'FpcCpu');
-  TargetOs := FpcBuildSetting('LazOs', 'FpcOs');
-  if Cpu <> '' then
-    Params := '--cpu=' + Cpu + ' ' + Params;
-  if TargetOs <> '' then
-    Params := '--os=' + TargetOs + ' ' + Params;
+  if BuildMode <> '' then
+    Params := '--bm="' + BuildMode + '" ' + Params
+  else
+  begin
+    if Cpu <> '' then
+      Params := '--cpu=' + Cpu + ' ' + Params;
+    if TargetOs <> '' then
+      Params := '--os=' + TargetOs + ' ' + Params;
+  end;
   // Поле fpc.exe задано (.lpi с пакетами сюда попадает и с ним): lazbuild
   // собирает этим компилятором, пакеты (LCL) - тоже, под нужную платформу
   if FpcSetting('FpcFile') <> '' then
@@ -62120,9 +62224,10 @@ begin
     TargetSrc := LazTargetLpi;
     if TargetSrc <> '' then
     begin
-      Result := LazExeOf(TargetSrc);
       if LazBuildViaFpc(TargetSrc) then
-        Result := LazBitsExe(Result);
+        Result := LazBitsExe(LazExeOf(TargetSrc))
+      else
+        Result := LazTargetExe(TargetSrc);
     end
     else
     begin
@@ -65654,9 +65759,10 @@ begin
     end
     else
     begin
-      Exe := LazExeOf(Dpr);
       if LazBuildViaFpc(Dpr) then
-        Exe := LazBitsExe(Exe);
+        Exe := LazBitsExe(LazExeOf(Dpr))
+      else
+        Exe := LazTargetExe(Dpr);
     end;
     if Exe = '' then
     begin
