@@ -391,11 +391,21 @@ function TUiMenuWindow.RowAt(const AScreen: TPoint): Integer;
 var
   Local: TPoint;
   Index: Integer;
+  {$IFDEF FPC}
+  Client: TRect;
+  {$ENDIF}
 begin
   Result := -1;
   Local := ScreenToClient(AScreen);
+  {$IFDEF FPC}
+  // Ширина - от окна: LCL размер окна не знает (см. Paint)
+  Windows.GetClientRect(Handle, Client);
+  if (Local.X < 0) or (Local.X >= Client.Right) then
+    Exit;
+  {$ELSE}
   if (Local.X < 0) or (Local.X >= ClientWidth) then
     Exit;
+  {$ENDIF}
   for Index := 0 to Items.Count - 1 do
     if (Local.Y >= RowTop[Index]) and (Local.Y < RowBottom[Index]) and
        (Local.X >= RowLeft[Index]) and
@@ -422,7 +432,14 @@ begin
   Canvas.Font := Font;
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := UiThemeColor('Menu.BG');
+  {$IFDEF FPC}
+  // Размер окну ставит SetWindowPos (OpenLevel), мимо LCL: её ClientRect
+  // у окна без родителя остаётся пустым, и фон не заливался
+  Windows.GetClientRect(Handle, Row);
+  Canvas.FillRect(Row);
+  {$ELSE}
   Canvas.FillRect(ClientRect);
+  {$ENDIF}
   for Index := 0 to Items.Count - 1 do
   begin
     Item := Items[Index];
