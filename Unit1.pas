@@ -5932,6 +5932,11 @@ begin
     SL := TStringList.Create;
     try
       SL.LoadFromFile(UiSchemaFileName);
+      {$IFDEF FPC}
+      // Файл - в кодировке Windows (как у сборки Delphi 7 и в git), строки
+      // LCL - UTF-8 (имена своих тем IDE)
+      SL.Text := EdUiText(SL.Text);
+      {$ENDIF}
       for I := 0 to SL.Count - 1 do
       begin
         Key := Trim(SL.Names[I]);
@@ -7663,6 +7668,12 @@ begin
     if FUiExtra <> nil then
       for I := 0 to FUiExtra.Count - 1 do
         SL.Add(FUiExtra[I]);
+    {$IFDEF FPC}
+    // В файл - в кодировке Windows: строки здесь UTF-8, а IDE.clr общий со
+    // сборкой Delphi 7 и лежит в git как windows-1251 (UTF-8 в нём git не
+    // переводит: failed to encode ... from windows-1251)
+    SL.Text := EdAnsiText(UTF8Decode(SL.Text));
+    {$ENDIF}
     SL.SaveToFile(UiSchemaFileName);
   except
     // не записалось - не беда, останутся умолчания
