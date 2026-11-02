@@ -22788,7 +22788,7 @@ begin
   if Length(Str) > MaxLen then
     Str := Copy(Str, 1, MaxLen) + '...';
 
-  pmuSearch.Caption := 'Search {' + Str + '}';
+  pmuSearch.Caption := 'Search {' + EdUiText(Str) + '}';
   pmuSearch.Enabled := Str <> '';
 
   // Регистр: выделение, а без него - слово под кареткой
@@ -22796,9 +22796,9 @@ begin
     Str := IdentAtCaret;
   if pmuUpper <> nil then
   begin
-    pmuUpper.Caption := 'To UpperCase {' + Str + '}';
+    pmuUpper.Caption := 'To UpperCase {' + EdUiText(Str) + '}';
     pmuUpper.Enabled := Str <> '';
-    pmuLower.Caption := 'To LowerCase {' + Str + '}';
+    pmuLower.Caption := 'To LowerCase {' + EdUiText(Str) + '}';
     pmuLower.Enabled := Str <> '';
   end;
 
@@ -22849,7 +22849,7 @@ begin
     else
       FPopupWatchExpr := DbgExprAtCaret;
     if FPopupWatchExpr <> '' then
-      pmuAddWatch.Caption := 'Add watch {' + FPopupWatchExpr + '}'#9'Ctrl+F5'
+      pmuAddWatch.Caption := 'Add watch {' + EdUiText(FPopupWatchExpr) + '}'#9'Ctrl+F5'
     else
       pmuAddWatch.Caption := 'Add watch'#9'Ctrl+F5';
     pmuAddWatch.Enabled := FPopupWatchExpr <> '';
@@ -25588,7 +25588,7 @@ begin
 CurrentChar := CharAt(CursorPos);
   if CurrentChar <> #0 then
     StatusBar1.Panels[4].Text :=
-    'ASCII: ' + IntToStr(Ord(CurrentChar)) + ' (''' + CurrentChar + ''')'
+    'ASCII: ' + IntToStr(Ord(CurrentChar)) + ' (''' + EdUiText(CurrentChar) + ''')'
   else
     StatusBar1.Panels[4].Text := 'ASCII: ---';
 
