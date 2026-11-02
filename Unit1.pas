@@ -56091,6 +56091,9 @@ begin
     Exe := LazExeOfOptions(Lpi, ModeOptions)
   else
     Exe := LazExeOf(Lpi);
+  // Папка exe (Output\ у .lpi unIDE) может ещё не существовать
+  if (Exe <> '') and not DirectoryExists(ExtractFilePath(Exe)) then
+    ForceDirectories(ExtractFilePath(Exe));
   // Запущенный exe переименовывается в .old (как у Delphi и FreeBASIC)
   if (Exe <> '') and not FreeBusyExe(Exe) then
     Exit;

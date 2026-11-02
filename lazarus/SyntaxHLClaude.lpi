@@ -23,7 +23,7 @@
           <Version Value="11"/>
           <PathDelim Value="\"/>
           <Target>
-            <Filename Value="..\SyntaxHLClaude_laz64"/>
+            <Filename Value="..\Output\SyntaxHLClaude_laz64"/>
           </Target>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir);..\WebView4Delphi\source;..\RqLcl\dll\richmemo"/>
@@ -75,7 +75,7 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="..\SyntaxHLClaude_laz32"/>
+      <Filename Value="..\Output\SyntaxHLClaude_laz32"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);..\WebView4Delphi\source;..\RqLcl\dll\richmemo"/>
