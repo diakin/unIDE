@@ -26355,6 +26355,13 @@ begin
   // окна pnlMain сначала заливал своим цветом и полосу сплиттера, потом
   // сплиттер рисовал себя - полоса мигала. Дети-окна буфер не задевает.
   pnlMain.DoubleBuffered := True;
+  {$IFDEF FPC}
+  // В LCL TSplitter по умолчанию ResizeStyle = rsUpdate: раскладка окна
+  // пересчитывается на каждом движении мыши. В Delphi 7 по умолчанию
+  // rsPattern - размеры меняются, когда кнопку отпустили
+  Splitter1.ResizeStyle := rsPattern;
+  Split.ResizeStyle := rsPattern;
+  {$ENDIF}
 
   pnlPaletteIn.DoubleBuffered := True;
 
