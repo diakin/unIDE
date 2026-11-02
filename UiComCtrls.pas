@@ -47,6 +47,12 @@ type
   TUiTabControl = class(TTabControl)
   private
     FHot: Integer;
+    {$IFDEF FPC}
+    FInnerWnd: HWND;              // окно ярлычков LCL, подменённое (HookInner)
+    FInnerOldProc: Pointer;
+    procedure HookInner;
+    procedure PaintInner(ADC: HDC);
+    {$ENDIF}
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
@@ -152,6 +158,12 @@ type
   end;
 
 implementation
+
+{$IFDEF FPC}
+const
+  // Свойство окна ярлычков LCL: свой TUiTabControl (UiInnerTabProc)
+  UiTabOuterProp = 'UiTabOuter';
+{$ENDIF}
 
 type
   // Доступ к защищённым Tabs и TabIndex вкладок
@@ -364,10 +376,165 @@ end;
 destructor TUiTabControl.Destroy;
 begin
   UiThemeRemoveClient(Self);
+  {$IFDEF FPC}
+  if (FInnerWnd <> 0) and IsWindow(FInnerWnd) then
+  begin
+    SetWindowLongPtrW(FInnerWnd, GWLP_WNDPROC, LONG_PTR(FInnerOldProc));
+    RemoveProp(FInnerWnd, UiTabOuterProp);
+  end;
+  FInnerWnd := 0;
+  {$ENDIF}
   inherited Destroy;
 end;
 
 {$IFDEF FPC}
+// Ярлычки в LCL рисует вложенный системный элемент вкладок (TPageControl
+// внутри TTabControl). OwnerDraw ему LCL не передаёт: ярлычки выходили
+// системными, белыми и в тёмной теме. Его окно подменяется: WM_PAINT -
+// своя отрисовка (как UiPaintTabs), подписи - тем же CN_DRAWITEM, что
+// у VCL (его ловит владелец через WindowProc самого TUiTabControl).
+function UiInnerTabProc(AWnd: HWND; AMsg: UINT; AWParam: WPARAM;
+  ALParam: LPARAM): LRESULT; stdcall;
+var
+  Outer: TUiTabControl;
+  PS: TPaintStruct;
+  DC: HDC;
+  OldProc: Pointer;
+begin
+  Outer := TUiTabControl(GetProp(AWnd, UiTabOuterProp));
+  if Outer = nil then
+  begin
+    Result := DefWindowProcW(AWnd, AMsg, AWParam, ALParam);
+    Exit;
+  end;
+  OldProc := Outer.FInnerOldProc;
+  case AMsg of
+    WM_ERASEBKGND:
+      begin
+        Result := 1;
+        Exit;
+      end;
+    WM_PAINT:
+      begin
+        DC := HDC(AWParam);
+        if DC = 0 then
+          DC := BeginPaint(AWnd, PS);
+        try
+          Outer.PaintInner(DC);
+        finally
+          if AWParam = 0 then
+            EndPaint(AWnd, PS);
+        end;
+        Result := 0;
+        Exit;
+      end;
+    WM_NCDESTROY:
+      begin
+        SetWindowLongPtrW(AWnd, GWLP_WNDPROC, LONG_PTR(OldProc));
+        RemoveProp(AWnd, UiTabOuterProp);
+        Outer.FInnerWnd := 0;
+      end;
+  end;
+  Result := CallWindowProcW(OldProc, AWnd, AMsg, AWParam, ALParam);
+end;
+
+procedure TUiTabControl.HookInner;
+var
+  CtlIdx: Integer;
+  Inner: TWinControl;
+begin
+  if FInnerWnd <> 0 then
+    Exit;
+  for CtlIdx := 0 to ControlCount - 1 do
+    if (Controls[CtlIdx] is TCustomTabControl) and
+       TWinControl(Controls[CtlIdx]).HandleAllocated then
+    begin
+      Inner := TWinControl(Controls[CtlIdx]);
+      FInnerWnd := Inner.Handle;
+      SetProp(FInnerWnd, UiTabOuterProp, THandle(Self));
+      FInnerOldProc := Pointer(SetWindowLongPtrW(FInnerWnd, GWLP_WNDPROC,
+        LONG_PTR(@UiInnerTabProc)));
+      InvalidateRect(FInnerWnd, nil, True);
+      Exit;
+    end;
+end;
+
+// Ярлычки вложенного элемента: фон, ярлычки рамкой, подписи (OwnerDraw -
+// через CN_DRAWITEM владельцу). Координаты - вложенного окна
+procedure TUiTabControl.PaintInner(ADC: HDC);
+var
+  Cv: TCanvas;
+  CtlIdx, TabIdx, Active: Integer;
+  Inner: TCustomTabControl;
+  Area, Box: TRect;
+  Str: string;
+  DIS: TDrawItemStruct;
+  WndOrigin: TPoint;
+begin
+  Inner := nil;
+  for CtlIdx := 0 to ControlCount - 1 do
+    if Controls[CtlIdx] is TCustomTabControl then
+      Inner := TCustomTabControl(Controls[CtlIdx]);
+  if Inner = nil then
+    Exit;
+  Cv := TCanvas.Create;
+  try
+    Cv.Handle := ADC;
+    Cv.Brush.Style := bsSolid;
+    Cv.Brush.Color := UiThemeColorFor(Self, 'Window.BG');
+    Windows.GetClientRect(FInnerWnd, Area);
+    Cv.FillRect(Area);
+    Cv.Font := Font;
+    Active := TabIndex;
+    // TabRect LCL - от клиентской области LCL (страница под ярлычками),
+    // рисуем в координатах окна
+    WndOrigin := Point(0, 0);
+    Windows.ClientToScreen(FInnerWnd, WndOrigin);
+    for TabIdx := 0 to Tabs.Count - 1 do
+    begin
+      Box := Inner.TabRect(TabIdx);
+      OffsetRect(Box, Inner.ClientOrigin.X - WndOrigin.X,
+        Inner.ClientOrigin.Y - WndOrigin.Y);
+      if (Box.Right <= Box.Left) or (Box.Bottom <= Box.Top) then
+        Continue;
+      if TabIdx = Active then
+        Cv.Brush.Color := UiThemeColorFor(Self, 'Tab.ActiveBG')
+      else
+        Cv.Brush.Color := UiThemeColorFor(Self, 'Tab.BG');
+      Cv.FillRect(Box);
+      Cv.Brush.Color := UiThemeColorFor(Self, 'Tab.Border');
+      Cv.FrameRect(Box);
+      if OwnerDraw then
+      begin
+        FillChar(DIS, SizeOf(DIS), 0);
+        DIS.CtlType := ODT_TAB;
+        DIS.itemID := TabIdx;
+        DIS.itemAction := ODA_DRAWENTIRE;
+        if TabIdx = Active then
+          DIS.itemState := ODS_SELECTED;
+        DIS.hwndItem := Handle;
+        DIS.hDC := ADC;
+        DIS.rcItem := Box;
+        InflateRect(DIS.rcItem, -1, -1);
+        Perform(CN_DRAWITEM, 0, LPARAM(@DIS));
+        Continue;
+      end;
+      Str := Tabs[TabIdx];
+      if Enabled then
+        Cv.Font.Color := UiThemeColorFor(Self, 'Tab.Text')
+      else
+        Cv.Font.Color := UiThemeColorFor(Self, 'OffText');
+      Cv.Brush.Style := bsClear;
+      UiDrawText(Cv.Handle, PChar(Str), Length(Str), Box,
+        DT_SINGLELINE or DT_CENTER or DT_VCENTER);
+      Cv.Brush.Style := bsSolid;
+    end;
+  finally
+    Cv.Handle := 0;
+    Cv.Free;
+  end;
+end;
+
 function TUiTabControl.TabRect(Index: Integer): TRect;
 var
   CtlIdx: Integer;
@@ -398,6 +565,10 @@ end;
 
 procedure TUiTabControl.UMUiThemeChanged(var Message: TMessage);
 begin
+  {$IFDEF FPC}
+  if FInnerWnd <> 0 then
+    InvalidateRect(FInnerWnd, nil, True);
+  {$ENDIF}
   Message.Result := 0;
 end;
 
@@ -409,6 +580,7 @@ var
 {$ENDIF}
 begin
   {$IFDEF FPC}
+  HookInner;
   // В LCL ярлычки рисует вложенный элемент вкладок, а сам TTabControl
   // (Paint) - область страницы темой Windows (ttPane): при включённых темах
   // это белая полоса с рамкой под ярлычками, и у вкладок-кнопок тоже. Здесь
