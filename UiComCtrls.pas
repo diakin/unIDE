@@ -32,6 +32,9 @@ type
   TUiPageControl = class(TPageControl)
   private
     FHot: Integer;
+    {$IFDEF FPC}
+    FTabHook: TObject;            // подмена окна ярлычков (UiTabHookAttach)
+    {$ENDIF}
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
@@ -39,6 +42,9 @@ type
   protected
     procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure CreateParams(var Params: TCreateParams); override;
+    {$IFDEF FPC}
+    procedure CreateWnd; override;
+    {$ENDIF}
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -48,10 +54,8 @@ type
   private
     FHot: Integer;
     {$IFDEF FPC}
-    FInnerWnd: HWND;              // окно ярлычков LCL, подменённое (HookInner)
-    FInnerOldProc: Pointer;
+    FTabHook: TObject;            // подмена окна ярлычков (UiTabHookAttach)
     procedure HookInner;
-    procedure PaintInner(ADC: HDC);
     {$ENDIF}
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
@@ -158,12 +162,6 @@ type
   end;
 
 implementation
-
-{$IFDEF FPC}
-const
-  // Свойство окна ярлычков LCL: свой TUiTabControl (UiInnerTabProc)
-  UiTabOuterProp = 'UiTabOuter';
-{$ENDIF}
 
 type
   // Доступ к защищённым Tabs и TabIndex вкладок
@@ -295,6 +293,217 @@ begin
     Params.Style := Params.Style or TCS_BUTTONS;
 end;
 
+{$IFDEF FPC}
+// ---------------------------------------------------------------------------
+//  Lazarus: подмена окна ярлычков
+// ---------------------------------------------------------------------------
+//  В LCL ярлычки TPageControl и ярлычки внутри TTabControl (вложенный
+//  TPageControl) рисует сам Windows: свой WM_PAINT элемента до них не
+//  доходит, OwnerDraw TTabControl вложенному не передаётся. Ярлычки были
+//  системными, белыми и в тёмной теме. Окно ярлычков подменяется
+//  (SetWindowLongPtrW): WM_PAINT - своя отрисовка цветами темы, подписи
+//  OwnerDraw - тем же CN_DRAWITEM, что у VCL.
+
+const
+  UiTabHookProp = 'UiTabHook';
+
+type
+  TUiTabHook = class
+    Wnd: HWND;
+    OldProc: Pointer;
+    Source: TCustomTabControl;   // ярлычки, выбранный, OwnerDraw, шрифт, тема
+    Rects: TCustomTabControl;    // чей TabRect и ClientOrigin
+    Frame: Boolean;              // рамка области страниц (TPageControl)
+  end;
+
+procedure UiTabHookPaint(AHook: TUiTabHook; ADC: HDC);
+var
+  Cv: TCanvas;
+  Acc: TUiTabAcc;
+  TabIdx, Active: Integer;
+  Area, Box: TRect;
+  WndOrigin: TPoint;
+  Str: string;
+  DIS: TDrawItemStruct;
+  TabList: TStrings;
+  IsOwnerDraw: Boolean;
+begin
+  Acc := TUiTabAcc(AHook.Source);
+  // У TTabControl LCL свои Tabs и TabIndex (TCustomTabControl.Tabs у него -
+  // пустой список страниц)
+  if AHook.Source is TTabControl then
+  begin
+    TabList := TTabControl(AHook.Source).Tabs;
+    Active := TTabControl(AHook.Source).TabIndex;
+    IsOwnerDraw := TTabControl(AHook.Source).OwnerDraw;
+  end
+  else
+  begin
+    TabList := Acc.Tabs;
+    Active := Acc.TabIndex;
+    IsOwnerDraw := Acc.OwnerDraw;
+  end;
+  Cv := TCanvas.Create;
+  try
+    Cv.Handle := ADC;
+    Cv.Brush.Style := bsSolid;
+    Cv.Brush.Color := UiThemeColorFor(Acc, 'Window.BG');
+    Windows.GetClientRect(AHook.Wnd, Area);
+    Cv.FillRect(Area);
+    if AHook.Frame then
+    begin
+      Box := Area;
+      SendMessage(AHook.Wnd, TCM_ADJUSTRECT, 0, LPARAM(@Box));
+      InflateRect(Box, 1, 1);
+      Cv.Brush.Color := UiThemeColorFor(Acc, 'Tab.Border');
+      Cv.FrameRect(Box);
+    end;
+    Cv.Font := Acc.Font;
+    // TabRect LCL - от клиентской области LCL (страница под ярлычками),
+    // рисуем в координатах окна
+    WndOrigin := Point(0, 0);
+    Windows.ClientToScreen(AHook.Wnd, WndOrigin);
+    for TabIdx := 0 to TabList.Count - 1 do
+    begin
+      Box := AHook.Rects.TabRect(TabIdx);
+      if (Box.Right <= Box.Left) or (Box.Bottom <= Box.Top) then
+        Continue;
+      OffsetRect(Box, AHook.Rects.ClientOrigin.X - WndOrigin.X,
+        AHook.Rects.ClientOrigin.Y - WndOrigin.Y);
+      if TabIdx = Active then
+        Cv.Brush.Color := UiThemeColorFor(Acc, 'Tab.ActiveBG')
+      else
+        Cv.Brush.Color := UiThemeColorFor(Acc, 'Tab.BG');
+      Cv.FillRect(Box);
+      Cv.Brush.Color := UiThemeColorFor(Acc, 'Tab.Border');
+      Cv.FrameRect(Box);
+      if IsOwnerDraw then
+      begin
+        FillChar(DIS, SizeOf(DIS), 0);
+        DIS.CtlType := ODT_TAB;
+        DIS.itemID := TabIdx;
+        DIS.itemAction := ODA_DRAWENTIRE;
+        if TabIdx = Active then
+          DIS.itemState := ODS_SELECTED;
+        DIS.hwndItem := Acc.Handle;
+        DIS.hDC := ADC;
+        DIS.rcItem := Box;
+        InflateRect(DIS.rcItem, -1, -1);
+        Acc.Perform(CN_DRAWITEM, 0, LPARAM(@DIS));
+        Continue;
+      end;
+      Str := TabList[TabIdx];
+      if Acc.Enabled then
+        Cv.Font.Color := UiThemeColorFor(Acc, 'Tab.Text')
+      else
+        Cv.Font.Color := UiThemeColorFor(Acc, 'OffText');
+      Cv.Brush.Style := bsClear;
+      UiDrawText(Cv.Handle, PChar(Str), Length(Str), Box,
+        DT_SINGLELINE or DT_CENTER or DT_VCENTER);
+      Cv.Brush.Style := bsSolid;
+    end;
+  finally
+    Cv.Handle := 0;
+    Cv.Free;
+  end;
+end;
+
+function UiTabHookProc(AWnd: HWND; AMsg: UINT; AWParam: WPARAM;
+  ALParam: LPARAM): LRESULT; stdcall;
+var
+  Hook: TUiTabHook;
+  PS: TPaintStruct;
+  DC: HDC;
+  OldProc: Pointer;
+begin
+  Hook := TUiTabHook(GetProp(AWnd, UiTabHookProp));
+  if Hook = nil then
+  begin
+    Result := DefWindowProcW(AWnd, AMsg, AWParam, ALParam);
+    Exit;
+  end;
+  OldProc := Hook.OldProc;
+  case AMsg of
+    WM_ERASEBKGND:
+      begin
+        Result := 1;
+        Exit;
+      end;
+    WM_PAINT:
+      begin
+        DC := HDC(AWParam);
+        if DC = 0 then
+          DC := BeginPaint(AWnd, PS);
+        try
+          UiTabHookPaint(Hook, DC);
+        finally
+          if AWParam = 0 then
+            EndPaint(AWnd, PS);
+        end;
+        Result := 0;
+        Exit;
+      end;
+    WM_NCDESTROY:
+      begin
+        // Окно уходит (в том числе пересоздание): подмену снять, при
+        // новом окне - поставить заново
+        SetWindowLongPtrW(AWnd, GWLP_WNDPROC, LONG_PTR(OldProc));
+        RemoveProp(AWnd, UiTabHookProp);
+        Hook.Wnd := 0;
+      end;
+  end;
+  Result := CallWindowProcW(OldProc, AWnd, AMsg, AWParam, ALParam);
+end;
+
+function UiTabHookActive(AHook: TObject): Boolean;
+begin
+  Result := (AHook <> nil) and (TUiTabHook(AHook).Wnd <> 0);
+end;
+
+procedure UiTabHookAttach(var AHook: TObject; ASource, ARects: TCustomTabControl;
+  AFrame: Boolean);
+var
+  Hook: TUiTabHook;
+begin
+  if not ARects.HandleAllocated then
+    Exit;
+  if AHook = nil then
+    AHook := TUiTabHook.Create;
+  Hook := TUiTabHook(AHook);
+  if Hook.Wnd = ARects.Handle then
+    Exit;
+  Hook.Source := ASource;
+  Hook.Rects := ARects;
+  Hook.Frame := AFrame;
+  Hook.Wnd := ARects.Handle;
+  SetProp(Hook.Wnd, UiTabHookProp, THandle(Hook));
+  Hook.OldProc := Pointer(SetWindowLongPtrW(Hook.Wnd, GWLP_WNDPROC,
+    LONG_PTR(@UiTabHookProc)));
+  InvalidateRect(Hook.Wnd, nil, True);
+end;
+
+procedure UiTabHookInvalidate(AHook: TObject);
+begin
+  if UiTabHookActive(AHook) then
+    InvalidateRect(TUiTabHook(AHook).Wnd, nil, True);
+end;
+
+procedure UiTabHookFree(var AHook: TObject);
+var
+  Hook: TUiTabHook;
+begin
+  if AHook = nil then
+    Exit;
+  Hook := TUiTabHook(AHook);
+  if (Hook.Wnd <> 0) and IsWindow(Hook.Wnd) then
+  begin
+    SetWindowLongPtrW(Hook.Wnd, GWLP_WNDPROC, LONG_PTR(Hook.OldProc));
+    RemoveProp(Hook.Wnd, UiTabHookProp);
+  end;
+  FreeAndNil(AHook);
+end;
+{$ENDIF}
+
 // ---------------------------------------------------------------------------
 //  TUiPageControl
 // ---------------------------------------------------------------------------
@@ -309,8 +518,21 @@ end;
 destructor TUiPageControl.Destroy;
 begin
   UiThemeRemoveClient(Self);
+  {$IFDEF FPC}
+  UiTabHookFree(FTabHook);
+  {$ENDIF}
   inherited Destroy;
 end;
+
+{$IFDEF FPC}
+// Ярлычки TPageControl в LCL рисует Windows: WM_PAINT до своего
+// обработчика не доходит. Окно подменяется (UiTabHookAttach)
+procedure TUiPageControl.CreateWnd;
+begin
+  inherited CreateWnd;
+  UiTabHookAttach(FTabHook, Self, Self, True);
+end;
+{$ENDIF}
 
 procedure TUiPageControl.CreateParams(var Params: TCreateParams);
 begin
@@ -320,6 +542,9 @@ end;
 
 procedure TUiPageControl.UMUiThemeChanged(var Message: TMessage);
 begin
+  {$IFDEF FPC}
+  UiTabHookInvalidate(FTabHook);
+  {$ENDIF}
   Message.Result := 0;   // UiThemeChanged перерисует
 end;
 
@@ -377,162 +602,26 @@ destructor TUiTabControl.Destroy;
 begin
   UiThemeRemoveClient(Self);
   {$IFDEF FPC}
-  if (FInnerWnd <> 0) and IsWindow(FInnerWnd) then
-  begin
-    SetWindowLongPtrW(FInnerWnd, GWLP_WNDPROC, LONG_PTR(FInnerOldProc));
-    RemoveProp(FInnerWnd, UiTabOuterProp);
-  end;
-  FInnerWnd := 0;
+  UiTabHookFree(FTabHook);
   {$ENDIF}
   inherited Destroy;
 end;
 
 {$IFDEF FPC}
-// Ярлычки в LCL рисует вложенный системный элемент вкладок (TPageControl
-// внутри TTabControl). OwnerDraw ему LCL не передаёт: ярлычки выходили
-// системными, белыми и в тёмной теме. Его окно подменяется: WM_PAINT -
-// своя отрисовка (как UiPaintTabs), подписи - тем же CN_DRAWITEM, что
-// у VCL (его ловит владелец через WindowProc самого TUiTabControl).
-function UiInnerTabProc(AWnd: HWND; AMsg: UINT; AWParam: WPARAM;
-  ALParam: LPARAM): LRESULT; stdcall;
-var
-  Outer: TUiTabControl;
-  PS: TPaintStruct;
-  DC: HDC;
-  OldProc: Pointer;
-begin
-  Outer := TUiTabControl(GetProp(AWnd, UiTabOuterProp));
-  if Outer = nil then
-  begin
-    Result := DefWindowProcW(AWnd, AMsg, AWParam, ALParam);
-    Exit;
-  end;
-  OldProc := Outer.FInnerOldProc;
-  case AMsg of
-    WM_ERASEBKGND:
-      begin
-        Result := 1;
-        Exit;
-      end;
-    WM_PAINT:
-      begin
-        DC := HDC(AWParam);
-        if DC = 0 then
-          DC := BeginPaint(AWnd, PS);
-        try
-          Outer.PaintInner(DC);
-        finally
-          if AWParam = 0 then
-            EndPaint(AWnd, PS);
-        end;
-        Result := 0;
-        Exit;
-      end;
-    WM_NCDESTROY:
-      begin
-        SetWindowLongPtrW(AWnd, GWLP_WNDPROC, LONG_PTR(OldProc));
-        RemoveProp(AWnd, UiTabOuterProp);
-        Outer.FInnerWnd := 0;
-      end;
-  end;
-  Result := CallWindowProcW(OldProc, AWnd, AMsg, AWParam, ALParam);
-end;
-
 procedure TUiTabControl.HookInner;
 var
   CtlIdx: Integer;
-  Inner: TWinControl;
 begin
-  if FInnerWnd <> 0 then
+  if UiTabHookActive(FTabHook) then
     Exit;
   for CtlIdx := 0 to ControlCount - 1 do
     if (Controls[CtlIdx] is TCustomTabControl) and
        TWinControl(Controls[CtlIdx]).HandleAllocated then
     begin
-      Inner := TWinControl(Controls[CtlIdx]);
-      FInnerWnd := Inner.Handle;
-      SetProp(FInnerWnd, UiTabOuterProp, THandle(Self));
-      FInnerOldProc := Pointer(SetWindowLongPtrW(FInnerWnd, GWLP_WNDPROC,
-        LONG_PTR(@UiInnerTabProc)));
-      InvalidateRect(FInnerWnd, nil, True);
+      UiTabHookAttach(FTabHook, Self, TCustomTabControl(Controls[CtlIdx]),
+        False);
       Exit;
     end;
-end;
-
-// Ярлычки вложенного элемента: фон, ярлычки рамкой, подписи (OwnerDraw -
-// через CN_DRAWITEM владельцу). Координаты - вложенного окна
-procedure TUiTabControl.PaintInner(ADC: HDC);
-var
-  Cv: TCanvas;
-  CtlIdx, TabIdx, Active: Integer;
-  Inner: TCustomTabControl;
-  Area, Box: TRect;
-  Str: string;
-  DIS: TDrawItemStruct;
-  WndOrigin: TPoint;
-begin
-  Inner := nil;
-  for CtlIdx := 0 to ControlCount - 1 do
-    if Controls[CtlIdx] is TCustomTabControl then
-      Inner := TCustomTabControl(Controls[CtlIdx]);
-  if Inner = nil then
-    Exit;
-  Cv := TCanvas.Create;
-  try
-    Cv.Handle := ADC;
-    Cv.Brush.Style := bsSolid;
-    Cv.Brush.Color := UiThemeColorFor(Self, 'Window.BG');
-    Windows.GetClientRect(FInnerWnd, Area);
-    Cv.FillRect(Area);
-    Cv.Font := Font;
-    Active := TabIndex;
-    // TabRect LCL - от клиентской области LCL (страница под ярлычками),
-    // рисуем в координатах окна
-    WndOrigin := Point(0, 0);
-    Windows.ClientToScreen(FInnerWnd, WndOrigin);
-    for TabIdx := 0 to Tabs.Count - 1 do
-    begin
-      Box := Inner.TabRect(TabIdx);
-      OffsetRect(Box, Inner.ClientOrigin.X - WndOrigin.X,
-        Inner.ClientOrigin.Y - WndOrigin.Y);
-      if (Box.Right <= Box.Left) or (Box.Bottom <= Box.Top) then
-        Continue;
-      if TabIdx = Active then
-        Cv.Brush.Color := UiThemeColorFor(Self, 'Tab.ActiveBG')
-      else
-        Cv.Brush.Color := UiThemeColorFor(Self, 'Tab.BG');
-      Cv.FillRect(Box);
-      Cv.Brush.Color := UiThemeColorFor(Self, 'Tab.Border');
-      Cv.FrameRect(Box);
-      if OwnerDraw then
-      begin
-        FillChar(DIS, SizeOf(DIS), 0);
-        DIS.CtlType := ODT_TAB;
-        DIS.itemID := TabIdx;
-        DIS.itemAction := ODA_DRAWENTIRE;
-        if TabIdx = Active then
-          DIS.itemState := ODS_SELECTED;
-        DIS.hwndItem := Handle;
-        DIS.hDC := ADC;
-        DIS.rcItem := Box;
-        InflateRect(DIS.rcItem, -1, -1);
-        Perform(CN_DRAWITEM, 0, LPARAM(@DIS));
-        Continue;
-      end;
-      Str := Tabs[TabIdx];
-      if Enabled then
-        Cv.Font.Color := UiThemeColorFor(Self, 'Tab.Text')
-      else
-        Cv.Font.Color := UiThemeColorFor(Self, 'OffText');
-      Cv.Brush.Style := bsClear;
-      UiDrawText(Cv.Handle, PChar(Str), Length(Str), Box,
-        DT_SINGLELINE or DT_CENTER or DT_VCENTER);
-      Cv.Brush.Style := bsSolid;
-    end;
-  finally
-    Cv.Handle := 0;
-    Cv.Free;
-  end;
 end;
 
 function TUiTabControl.TabRect(Index: Integer): TRect;
@@ -566,8 +655,7 @@ end;
 procedure TUiTabControl.UMUiThemeChanged(var Message: TMessage);
 begin
   {$IFDEF FPC}
-  if FInnerWnd <> 0 then
-    InvalidateRect(FInnerWnd, nil, True);
+  UiTabHookInvalidate(FTabHook);
   {$ENDIF}
   Message.Result := 0;
 end;
