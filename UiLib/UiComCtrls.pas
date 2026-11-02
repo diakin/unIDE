@@ -418,6 +418,11 @@ end;
 constructor TUiStatusBar.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  {$IFDEF FPC}
+  // В LCL по умолчанию SimplePanel = True (в VCL - False, в .dfm его нет):
+  // панели не показывались бы
+  SimplePanel := False;
+  {$ENDIF}
   UiThemeAddClient(Self);
 end;
 

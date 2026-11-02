@@ -18208,6 +18208,11 @@ var
 begin
   if FStatus2 = nil then
     Exit;
+  // Полоса пути (Panel2) - по высоте строки состояния: в сборке Lazarus
+  // высоту FStatus2 задаёт окно Windows уже после FormCreate
+  if (Panel2 <> nil) and (FStatus2.Parent = Panel2) and
+     (Panel2.Height <> FStatus2.Height) then
+    Panel2.Height := FStatus2.Height;
 
   WidthPx := FStatus2.Width - FStatus2.Panels[1].Width - FStatus2.Panels[2].Width - 8;
   if WidthPx < 80 then
@@ -85029,6 +85034,11 @@ begin
       LineH := SampleBmp.Canvas.TextHeight('Wg') + 8;
       if LineH > FStatus2.Height then
         FStatus2.Height := LineH;
+      // Полоса пути (Panel2) - по высоте строки: в FormCreate её высота
+      // взята у FStatus2 до подгонки (в сборке Lazarus там 0 - полосы
+      // не было видно)
+      if (Panel2 <> nil) and (Panel2.Height <> FStatus2.Height) then
+        Panel2.Height := FStatus2.Height;
       Status2Resize(nil);
     end;
     if (StatusBar1 <> nil) and (StatusBar1.Panels.Count > 6) then

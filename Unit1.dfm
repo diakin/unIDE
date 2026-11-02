@@ -1795,6 +1795,7 @@ object Form1: TForm1
       end
     end
     object grpSearch: TUiGroupBox
+      Left = 477
       Align = alLeft
       Width = 267
       Caption = 'Search and replace'
