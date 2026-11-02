@@ -19158,7 +19158,7 @@ begin
   begin
     It := TMenuItem.Create(nil);
     It.Caption := BookmarkCaption(FWindowsIndex, I);
-    It.Hint := FWindows[FWindowsIndex].Bookmarks[I].Text; // полная строка
+    It.Hint := EdUiText(FWindows[FWindowsIndex].Bookmarks[I].Text); // полная строка
     It.Tag := I;
     It.OnClick := BookmarkItemClick;
     // Строки закладки в файле нет (BmValidateWindow)
@@ -19437,7 +19437,7 @@ begin
      (Idx >= 0) and (Idx <= High(FWindows[FWindowsIndex].Bookmarks)) then
   begin
     TMenuItem(Sender).Caption := BookmarkCaption(FWindowsIndex, Idx);
-    TMenuItem(Sender).Hint := FWindows[FWindowsIndex].Bookmarks[Idx].Text;
+    TMenuItem(Sender).Hint := EdUiText(FWindows[FWindowsIndex].Bookmarks[Idx].Text);
   end;
 end;
 
@@ -19676,6 +19676,8 @@ begin
   Result := FWindows[WinIdx].Bookmarks[BmIdx].Text;
   if Length(Result) > MaxCaptionLen then
     Result := Copy(Result, 1, MaxCaptionLen) + '...';
+  // Строка редактора (CP_ACP) - в подпись меню (в Lazarus-сборке UTF-8)
+  Result := EdUiText(Result);
   Result := Format('%d %s', [FWindows[WinIdx].Bookmarks[BmIdx].LineNo, Result]);
 end;
 
@@ -86797,6 +86799,7 @@ begin
   BmText := FWindows[WinIdx].Bookmarks[BmIdx].Text;
   if Length(BmText) > MaxTextLen then
     BmText := Copy(BmText, 1, MaxTextLen) + '...';
+  BmText := EdUiText(BmText);
   Result := Format('%s   %d   %s', [ExtractFileName(FWindows[WinIdx].FileName),
                    FWindows[WinIdx].Bookmarks[BmIdx].LineNo, BmText]);
 end;

@@ -61,6 +61,9 @@ function EdAnsiLine(const ALine: WideString): string;
 // рисования показывают его неверно), поэтому перевод - явно через CP_ACP
 function EdAnsiText(const AText: WideString): string;
 function EdWideText(const AText: string): WideString;
+// Текст редактора (CP_ACP) для подписей и подсказок LCL: под FPC - UTF-8,
+// в Delphi 7 - как есть
+function EdUiText(const AText: string): string;
 
 implementation
 
@@ -120,6 +123,15 @@ begin
   Result := EdAnsiLine(AText);
   {$ELSE}
   Result := string(AText);
+  {$ENDIF}
+end;
+
+function EdUiText(const AText: string): string;
+begin
+  {$IFDEF FPC}
+  Result := UTF8Encode(EdWideText(AText));
+  {$ELSE}
+  Result := AText;
   {$ENDIF}
 end;
 
