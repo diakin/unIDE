@@ -328,6 +328,11 @@ type
     procedure EdDefaultColorsClick(Sender: TObject);
   protected
     procedure WndProc(var Message: TMessage); override;
+    // Шрифт окна сменился (Font.Windows из IDE colors and Fonts ставится при
+    // активации окна, уже после InitOptions) - ряд IDE Color scheme заново,
+    // когда шрифт дойдёт и до подписей (UM_F2RELAYOUT - после них)
+    procedure CMFontChanged(var Message: TMessage); message CM_FONTCHANGED;
+    procedure UMRelayout(var Message: TMessage); message WM_USER + 931;
   private
     // InitOptions прошла: окно заполнено данными. До неё элементы из .dfm
     // уже есть, но пустые, и обработчики ничего не пишут в настройки.
@@ -1041,6 +1046,19 @@ end;
 
 // Ряд кнопок над таблицей схемы: список групп шириной по самому длинному
 // пункту, кнопки подряд за ним. Окно может оказаться уже ряда - тогда шире.
+procedure TForm2.CMFontChanged(var Message: TMessage);
+begin
+  inherited;
+  if FBuilt and HandleAllocated then
+    PostMessage(Handle, WM_USER + 931, 0, 0);
+end;
+
+procedure TForm2.UMRelayout(var Message: TMessage);
+begin
+  if FBuilt then
+    LayoutGroupActions;
+end;
+
 procedure TForm2.LayoutGroupActions;
 var
   TextBmp: TBitmap;
