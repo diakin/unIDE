@@ -49685,6 +49685,11 @@ begin
   if AEdit.BackColor <> NewBack then
     AEdit.BackColor := NewBack;
   NewText := UiLogColor(AEdit, clNone);
+  // Светлый фон: UiLogColor оставляет clNone, а окно ставит TextColor
+  // прямо в Font.Color. В Delphi 7 текст выходил тёмным, в LCL clNone
+  // (ColorToRGB = $FFFFFF) - белым. Явно - цвет текста окна
+  if NewText = clNone then
+    NewText := clWindowText;
   if AEdit.TextColor <> NewText then
   begin
     AEdit.TextColor := NewText;
