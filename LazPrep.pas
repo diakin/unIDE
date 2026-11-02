@@ -262,21 +262,37 @@ begin
 end;
 
 // Один файл. AConvert - переводить CP1251 -> UTF-8 (если он не в UTF-8)
+const
+  LazCp1251Directive = '{$CODEPAGE CP1251}';
+
+// Переведённая копия ещё с директивой CP1251 (подготовлена до того, как
+// директиву стали менять) - её надо переписать, хотя дата та же
+function HasCp1251Directive(const AFileName: string): Boolean;
+var
+  Text: string;
+begin
+  Result := ReadFileText(AFileName, Text) and
+            (Pos(LazCp1251Directive, Text) > 0);
+end;
+
 procedure PrepFile(const ASrc, ADst: string; AConvert: Boolean;
   ALog: TStrings; var AStats: TLazPrepStats);
 var
   SrcText, OutText: string;
   SrcAge, DstAge: Integer;
-  Converted: Boolean;
+  Converted, Upgrade: Boolean;
 begin
   SrcAge := FileAge(ASrc);
+  Upgrade := False;
   if FileExists(ADst) then
   begin
     DstAge := FileAge(ADst);
+    Upgrade := (DstAge = SrcAge) and AConvert and HasCp1251Directive(ADst);
     // Та же дата: файл не менялся с прошлой подготовки. Размер сверяется
     // только у копий без перевода (у переведённого он другой)
     if (DstAge = SrcAge) and
-       (AConvert or (FileSizeOf(ADst) = FileSizeOf(ASrc))) then
+       (AConvert or (FileSizeOf(ADst) = FileSizeOf(ASrc))) and
+       not Upgrade then
     begin
       Inc(AStats.Unchanged);
       Exit;
@@ -291,7 +307,17 @@ begin
   end;
   Converted := AConvert and not LooksUtf8(SrcText);
   if Converted then
-    OutText := Cp1251ToUtf8(SrcText)
+  begin
+    OutText := Cp1251ToUtf8(SrcText);
+    // Текст теперь в UTF-8 - и директива кодировки тоже. С прежней
+    // {$CODEPAGE CP1251} FPC читал бы байты UTF-8 как CP1251: строковые
+    // константы получали кодировку 1251 и при сравнении со строками LCL
+    // (UTF-8) перекодировались - так не находились заголовки схемы
+    // (ClrScheme.IsSchemaHead), а кириллица в константах портилась
+    if Pos(LazCp1251Directive, OutText) > 0 then
+      OutText := StringReplace(OutText, LazCp1251Directive,
+                               '{$CODEPAGE UTF8}', [rfReplaceAll]);
+  end
   else
     OutText := SrcText;
   if not WriteFileText(ADst, OutText) then
@@ -301,7 +327,10 @@ begin
       ALog.Add('не записан: ' + ADst);
     Exit;
   end;
-  if SrcAge <> -1 then
+  // Дата - исходного. Кроме копии, переписанной из-за директивы: у неё
+  // дата остаётся новой, иначе Free Pascal по прежней дате в .ppu не
+  // пересоберёт модуль (дата исходного встанет при следующей подготовке)
+  if (SrcAge <> -1) and not Upgrade then
     FileSetDate(ADst, SrcAge);
   if Converted then
     Inc(AStats.Converted)
