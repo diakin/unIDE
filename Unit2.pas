@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
-  Dialogs, Grids, StdCtrls,ExtCtrls,ComCtrls,StrUtils, Menus, IniFiles,
+  Dialogs, Grids, StdCtrls,ExtCtrls,ComCtrls,StrUtils, Menus, IniFiles, IniCp,
   FileCtrl, {$IFDEF FPC} FileCtrlLcl, {$ENDIF}
   OsReg,          // чтение реестра Windows: установки Delphi, переменные среды
   UiButton,       // кнопка, которую рисует программа (вместо TButton)

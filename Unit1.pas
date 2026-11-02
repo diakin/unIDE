@@ -5,7 +5,7 @@ interface
 uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ComCtrls, StrUtils, Menus, ExtCtrls, RichEdit, {$IFNDEF FPC} ColorGrd, {$ENDIF}
-  Buttons, IniFiles, ShellAPI, CheckLst, Grids, Clipbrd, FileCtrl,
+  Buttons, IniFiles, IniCp, ShellAPI, CheckLst, Grids, Clipbrd, FileCtrl,
   {$IFDEF FPC} FileCtrlLcl, LCLProc, RichMemo, AppMsgHook, {$ENDIF}
   FormDesigner,   // визуальный конструктор форм
   DsgClasses,     // классы палитры для конструктора и инспектора
