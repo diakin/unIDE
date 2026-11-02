@@ -1044,7 +1044,7 @@ end;
 procedure TForm2.LayoutGroupActions;
 var
   TextBmp: TBitmap;
-  MaxWidth, ItemIdx: Integer;
+  MaxWidth, ItemIdx, LabelWidth: Integer;
 begin
   // Высоту списка VCL подгоняет под шрифт (он в .dfm крупнее); по ней -
   // сдвиг, чтобы список встал по центру высоты кнопок
@@ -1058,6 +1058,13 @@ begin
     for ItemIdx := 0 to cmbGroupType.Items.Count - 1 do
       if TextBmp.Canvas.TextWidth(cmbGroupType.Items[ItemIdx]) > MaxWidth then
         MaxWidth := TextBmp.Canvas.TextWidth(cmbGroupType.Items[ItemIdx]);
+    // Ширина подписи IDE Color scheme - по тексту: в LCL AutoSize подписи
+    // срабатывает позже (при показе), и Width здесь ещё прежняя - кнопки
+    // вставали на подпись
+    TextBmp.Canvas.Font.Assign(lblIdeScheme.Font);
+    LabelWidth := TextBmp.Canvas.TextWidth(lblIdeScheme.Caption);
+    if LabelWidth < lblIdeScheme.Width then
+      LabelWidth := lblIdeScheme.Width;
   finally
     TextBmp.Free;
   end;
@@ -1073,7 +1080,7 @@ begin
   btnOpenClr.Left := cmbGroupType.Left;
   btnSelectSchema.Left := btnOpenClr.Left + btnOpenClr.Width + 6;
   // Ряд режима IDE - за подписью
-  rbIdeLight.Left := lblIdeScheme.Left + lblIdeScheme.Width + 12;
+  rbIdeLight.Left := lblIdeScheme.Left + LabelWidth + 12;
   rbIdeDark.Left := rbIdeLight.Left + rbIdeLight.Width + 6;
   rbIdeCustom.Left := rbIdeDark.Left + rbIdeDark.Width + 6;
   cmbIdeCustom.Left := rbIdeCustom.Left + rbIdeCustom.Width + 2;
