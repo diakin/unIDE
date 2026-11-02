@@ -44755,7 +44755,7 @@ begin
   end;
   if Txt <> '' then
   begin
-    Clipboard.AsText := Txt;
+    Clipboard.AsText := EdUiText(Txt);   // текст .dfm - кодировки редактора
     DsgClipRemember(AKind, Txt);
   end;
 end;
@@ -44927,7 +44927,7 @@ begin
   Picked := StrToIntDef(Copy(Pick, 1, Pos('.', Pick) - 1), 0) - 1;
   if (Picked < 0) or (Picked >= FDsgClipTexts.Count) then
     Exit;
-  Clipboard.AsText := FDsgClipTexts[Picked];
+  Clipboard.AsText := EdUiText(FDsgClipTexts[Picked]);
 end;
 
 // Пункт «Clipboard history...» - в подменю Edit меню конструктора, после
@@ -45191,7 +45191,7 @@ var
 begin
   if FDesigner = nil then
     Exit;
-  Txt := Clipboard.AsText;
+  Txt := EdFromUiText(Clipboard.AsText);
   // В буфере обмена уже не компонент (его перезаписала другая программа) -
   // последний Cut или Copy из истории
   if CompareText(Copy(TrimLeft(Txt), 1, 7), 'object ') <> 0 then
@@ -63867,7 +63867,7 @@ begin
       for LineIdx := FirstLine to LastLine do
         ClipText := ClipText + Lines[LineIdx] + #13#10;
     end;
-    Clipboard.AsText := ClipText;
+    Clipboard.AsText := EdUiText(ClipText);
     if not ADelete then
     begin
       LogComp('Конструктор RapidQ: в буфер обмена - блоков ' +
@@ -63983,7 +63983,7 @@ begin
   PasteNodes := TList.Create;
   PasteRoots := TList.Create;
   try
-    Paste.Text := Clipboard.AsText;
+    Paste.Text := EdFromUiText(Clipboard.AsText);
     while (Paste.Count > 0) and (Trim(Paste[Paste.Count - 1]) = '') do
       Paste.Delete(Paste.Count - 1);
     if (Paste.Count = 0) or
@@ -85569,7 +85569,7 @@ begin
     Exit;
   if not Clipboard.HasFormat(CF_TEXT) then
     Exit;
-  PasteText := Clipboard.AsText;
+  PasteText := EdFromUiText(Clipboard.AsText);
   if PasteText = '' then
     Exit;
   EdApi.ReplaceSel(PasteText);
