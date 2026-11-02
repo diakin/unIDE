@@ -402,9 +402,31 @@ begin
 end;
 
 procedure TUiTabControl.WMPaint(var Message: TWMPaint);
+{$IFDEF FPC}
+var
+  PS: TPaintStruct;
+  DC: HDC;
+{$ENDIF}
 begin
+  {$IFDEF FPC}
+  // В LCL ярлычки рисует вложенный элемент вкладок, а сам TTabControl
+  // (Paint) - область страницы темой Windows (ttPane): при включённых темах
+  // это белая полоса с рамкой под ярлычками, и у вкладок-кнопок тоже. Здесь
+  // всегда своя заливка фоном окна, как у VCL TTabControl с кнопками
+  DC := Message.DC;
+  if DC = 0 then
+    DC := BeginPaint(Handle, PS);
+  try
+    UiPaintTabs(Self, DC, FHot);
+  finally
+    if Message.DC = 0 then
+      EndPaint(Handle, PS);
+  end;
+  Message.Result := 0;
+  {$ELSE}
   if not UiTabsPaint(Self, Message, FHot) then
     inherited;
+  {$ENDIF}
 end;
 
 procedure TUiTabControl.WMEraseBkgnd(var Message: TWMEraseBkgnd);
