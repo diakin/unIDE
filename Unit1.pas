@@ -27208,6 +27208,14 @@ begin
      (Message.Msg = TCM_INSERTITEMA_) or (Message.Msg = TCM_SETITEMA_) or
      (Message.Msg = TCM_DELETEALLITEMS_) or (Message.Msg = WM_SETFONT) then
     UpdateTabsHeight;
+  {$IFDEF FPC}
+  // В LCL вкладки живут во внутреннем окне (TNoteBookStringsTabControl):
+  // TCM_INSERTITEM и прочие сюда не приходят, и при запуске второй ряд
+  // оставался обрезанным. Сверка после отрисовки; высота меняется, только
+  // если число рядов другое.
+  if Message.Msg = WM_PAINT then
+    UpdateTabsHeight;
+  {$ENDIF}
 end;
 
 // Стиль вкладок - tsButtons (Unit1.dfm): у обычных вкладок в несколько
@@ -27228,6 +27236,11 @@ var
 begin
   if (FTabs = nil) or not FTabs.HandleAllocated or FInTabsHeight or
      (FTabsBaseHeight <= 0) then
+    Exit;
+  // Свёрнутое окно: в LCL полосу при этом сжимают, ряды считаются по
+  // узкой ширине, а после разворота размер полосы тот же - WM_SIZE нет,
+  // и лишняя высота оставалась пустой полосой над редактором
+  if IsIconic(Handle) or (FTabs.ClientWidth < 50) then
     Exit;
   TopBottom := MaxInt;
   LowBottom := 0;
