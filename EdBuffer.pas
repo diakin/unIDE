@@ -58,14 +58,16 @@ const
   // границу блока
   EdAddBlock = 1024 * 1024;
   // Больше стольких знаков кусок текста отображённого файла строкой не
-  // отдаётся (TextRange - пусто), удаление - без отката: строка была бы
-  // сотнями мегабайт
+  // отдаётся (TextRange - пусто): строка была бы сотнями мегабайт. Откат
+  // такого удаления хранит не текст, а вынутые куски дерева (TreeLen)
   EdMaxRangeText = 16 * 1024 * 1024;
 
 type
   TEdLines = array of WideString;
   // Байт однобайтовой кодовой страницы -> знак
   TEdCharMap = array[0..255] of WideChar;
+
+  PEdPiece = ^TEdPiece;
 
   TEdUndoItem = record
     IsInsert: Boolean;      // True - вставка Text в (Row, Col); False -
@@ -77,6 +79,11 @@ type
     CurRow: Integer;        // каретка до правки
     CurCol: Integer;
     Typing: Boolean;        // набор с клавиатуры (сливается при откате)
+    // Удаление больше EdMaxRangeText: Text пуст, TreeLen - знаков; Tree -
+    // вынутое поддерево кусков (данные FOrig/FAdd/файла не копируются).
+    // В FUndo Tree <> nil; после отката куски снова в буфере, Tree = nil
+    TreeLen: Integer;
+    Tree: PEdPiece;
   end;
   TEdUndoItems = array of TEdUndoItem;
 
@@ -88,7 +95,6 @@ type
   // (с 0; у FAdd - сквозной номер по всем блокам) длиной Len, в нём Lf
   // переводов строки; SubLen / SubLf - то же для всего поддерева. Source = 2 - байты отображённого файла: Start - байт
   // (с 0), ByteLen - байтов, Len - знаков после декодирования
-  PEdPiece = ^TEdPiece;
   TEdPiece = record
     Left: PEdPiece;
     Right: PEdPiece;
@@ -134,6 +140,8 @@ type
     function GetLine(AIndex: Integer): WideString;
     procedure Changed(AFirst, AOldCount, ANewCount: Integer);
     procedure PushUndo(const AItem: TEdUndoItem);
+    function TakeTree(ARow, ACol, ACount: Integer): PEdPiece;
+    procedure PutTree(var AItem: TEdUndoItem);
     // --- дерево кусков ---
     function NextPrio: Cardinal;
     function PieceText(ANode: PEdPiece): PWideChar;
@@ -357,6 +365,7 @@ end;
 
 destructor TEdBuffer.Destroy;
 begin
+  ClearUndo;
   FreeTree(FRoot);
   FRoot := nil;
   ReleaseMap;
@@ -1372,6 +1381,8 @@ begin
     end;
   end;
   Item.IsInsert := True;
+  Item.TreeLen := 0;
+  Item.Tree := nil;
   Item.Row := ARow;
   Item.Col := ACol;
   Item.Text := AText;
@@ -1387,6 +1398,8 @@ procedure TEdBuffer.RecordDelete(ARow, ACol: Integer; const AText: WideString;
 var
   Item: TEdUndoItem;
 begin
+  Item.TreeLen := 0;
+  Item.Tree := nil;
   Item.IsInsert := False;
   Item.Row := ARow;
   Item.Col := ACol;
@@ -1411,22 +1424,55 @@ end;
 
 function TEdBuffer.DeleteText(ARow1, ACol1, ARow2, ACol2: Integer;
   ACurRow, ACurCol: Integer): WideString;
+var
+  Item: TEdUndoItem;
 begin
   Result := '';
   if (ARow1 = ARow2) and (ACol1 = ACol2) then
     Exit;
   if RangeTooLarge(ARow1, ACol1, ARow2, ACol2) then
   begin
-    // Удалённое строкой не читается: откат очищается, текст - изменён
-    DeleteAt(CharIndex(ARow1, ACol1),
-      CharIndex(ARow2, ACol2) - CharIndex(ARow1, ACol1));
-    ClearUndo;
-    FSavedUndo := -1;
-    Changed(ARow1, ARow2 - ARow1 + 1, 1);
+    // Удалённое строкой не читается: в откат - вынутые куски дерева, не
+    // текст
+    Item.IsInsert := False;
+    Item.Row := ARow1;
+    Item.Col := ACol1;
+    Item.Text := '';
+    Item.TreeLen := CharIndex(ARow2, ACol2) - CharIndex(ARow1, ACol1);
+    Item.Group := FGroup;
+    Item.CurRow := ACurRow;
+    Item.CurCol := ACurCol;
+    Item.Typing := False;
+    Item.Tree := TakeTree(ARow1, ACol1, Item.TreeLen);
+    PushUndo(Item);
     Exit;
   end;
   Result := DeleteRaw(ARow1, ACol1, ARow2, ACol2);
   RecordDelete(ARow1, ACol1, Result, ACurRow, ACurCol);
+end;
+
+// Вынуть ACount знаков с (ARow, ACol) - поддерево для отката
+function TEdBuffer.TakeTree(ARow, ACol, ACount: Integer): PEdPiece;
+var
+  LeftTree, Rest, RightTree: PEdPiece;
+begin
+  SplitTree(FRoot, CharIndex(ARow, ACol), LeftTree, Rest);
+  SplitTree(Rest, ACount, Result, RightTree);
+  FRoot := MergeTree(LeftTree, RightTree);
+  Changed(ARow, SubLfOf(Result) + 1, 1);
+end;
+
+// Откат TakeTree: поддерево - обратно на место
+procedure TEdBuffer.PutTree(var AItem: TEdUndoItem);
+var
+  LeftTree, RightTree: PEdPiece;
+  LfCount: Integer;
+begin
+  LfCount := SubLfOf(AItem.Tree);
+  SplitTree(FRoot, CharIndex(AItem.Row, AItem.Col), LeftTree, RightTree);
+  FRoot := MergeTree(MergeTree(LeftTree, AItem.Tree), RightTree);
+  AItem.Tree := nil;
+  Changed(AItem.Row, 1, LfCount + 1);
 end;
 
 procedure TEdBuffer.ReplaceText(ARow1, ACol1, ARow2, ACol2: Integer;
@@ -1452,7 +1498,10 @@ begin
   begin
     Item := FUndo[FUndoCount - 1];
     Dec(FUndoCount);
-    if Item.IsInsert then
+    FUndo[FUndoCount].Tree := nil;
+    if Item.TreeLen > 0 then
+      PutTree(Item)
+    else if Item.IsInsert then
     begin
       EndPosOf(Item.Row, Item.Col, Item.Text, EndRow, EndCol);
       DeleteRaw(Item.Row, Item.Col, EndRow, EndCol);
@@ -1490,7 +1539,14 @@ begin
   begin
     Item := FRedo[FRedoCount - 1];
     Dec(FRedoCount);
-    if Item.IsInsert then
+    if Item.TreeLen > 0 then
+    begin
+      // Снова вынуть те же знаки
+      Item.Tree := TakeTree(Item.Row, Item.Col, Item.TreeLen);
+      ARow := Item.Row;
+      ACol := Item.Col;
+    end
+    else if Item.IsInsert then
     begin
       InsertRaw(Item.Row, Item.Col, Item.Text, EndRow, EndCol);
       ARow := EndRow;
@@ -1524,7 +1580,14 @@ begin
 end;
 
 procedure TEdBuffer.ClearUndo;
+var
+  ItemIdx: Integer;
 begin
+  for ItemIdx := 0 to FUndoCount - 1 do
+  begin
+    FreeTree(FUndo[ItemIdx].Tree);
+    FUndo[ItemIdx].Tree := nil;
+  end;
   FUndoCount := 0;
   FRedoCount := 0;
   FSavedUndo := 0;

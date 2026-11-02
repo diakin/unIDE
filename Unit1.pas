@@ -2666,6 +2666,9 @@ type
     procedure WMTabSwitched(var Msg: TMessage); message WM_USER + 319;
     // Конец запуска: окно готово - показать его, закрыть окно загрузки
     procedure WMStartupFinish(var Msg: TMessage); message WM_USER + 330;
+    {$IFDEF FPC}
+    procedure MaximizeLater(Data: PtrInt);
+    {$ENDIF}
     procedure TabWorkStage(const AStage: string);
 
     // Поиск
@@ -3107,6 +3110,8 @@ type
     procedure UtilChipClick(Sender: TObject);
     procedure UtilChipsPlace;
     procedure UtilChipsPaint;
+    procedure UtilOwnByMain(AForm: TCustomForm);
+    function UtilFormHidden(AForm: TCustomForm): Boolean;
     function  UtilFormOf(ATag: Integer): TCustomForm;
     procedure UtilShowForm(AForm: TCustomForm);
     procedure SettingsAlert(const AText: string);
@@ -8034,7 +8039,14 @@ begin
   SetBounds(SavedLeft, SavedTop, SavedWidth, SavedHeight);
 
   if Ini.ReadBool('MainForm', 'Maximized', False) then
+    {$IFDEF FPC}
+    // LCL: развернуть, когда окно уже показано. Окно, развёрнутое до
+    // показа, на Windows 7 открывалось не во весь экран и без изменения
+    // размера рамкой (причина не проверена)
+    Application.QueueAsyncCall(MaximizeLater, 0);
+    {$ELSE}
     WindowState := wsMaximized;
+    {$ENDIF}
 end;
 
 // editor.ini - одной записью (TBufIniFile): через TIniFile каждый ключ
@@ -42631,7 +42643,53 @@ begin
     AForm.SetFocus;
 end;
 
-// Цвет и подсказка плашек - по тому, свёрнуто ли окно
+// Окно утилиты - над главным окном: его владелец - главное окно. В Delphi 7 -
+// SetWindowLong после Show; в LCL - PopupParent до показа: смену владельца
+// LCL делает пересозданием окна, а владельца, поставленного мимо неё, не
+// знает
+procedure TForm1.UtilOwnByMain(AForm: TCustomForm);
+begin
+  {$IFDEF FPC}
+  if AForm.PopupParent <> Self then
+  begin
+    AForm.PopupMode := pmExplicit;
+    AForm.PopupParent := Self;
+  end;
+  {$ELSE}
+  SetWindowLong(AForm.Handle, GWL_HWNDPARENT, Integer(Handle));
+  {$ENDIF}
+end;
+
+// Окно утилиты не видно: свёрнуто или ушло под главное окно (ниже его по
+// оси Z и хоть частью под ним)
+function TForm1.UtilFormHidden(AForm: TCustomForm): Boolean;
+var
+  Wnd: HWND;
+  FormBox, MainBox, Common: TRect;
+begin
+  Result := (AForm.WindowState = wsMinimized) or not AForm.HandleAllocated;
+  if Result then
+    Exit;
+  Result := IsIconic(AForm.Handle);
+  if Result or not HandleAllocated then
+    Exit;
+  GetWindowRect(AForm.Handle, FormBox);
+  GetWindowRect(Handle, MainBox);
+  if not IntersectRect(Common, FormBox, MainBox) then
+    Exit;
+  Wnd := GetWindow(Handle, GW_HWNDNEXT);
+  while Wnd <> 0 do
+  begin
+    if Wnd = AForm.Handle then
+    begin
+      Result := True;
+      Exit;
+    end;
+    Wnd := GetWindow(Wnd, GW_HWNDNEXT);
+  end;
+end;
+
+// Цвет и подсказка плашек - по тому, видно ли окно
 procedure TForm1.UtilChipsPaint;
 var
   ChipIdx: Integer;
@@ -42646,7 +42704,7 @@ begin
     OneForm := UtilFormOf(Chip.Tag);
     if OneForm = nil then
       Continue;
-    if OneForm.WindowState <> wsMinimized then
+    if not UtilFormHidden(OneForm) then
     begin
       if Chip.Color <> UtilChipShownColor then
         Chip.Color := UtilChipShownColor;
@@ -42656,7 +42714,7 @@ begin
     begin
       if Chip.Color <> UtilChipHiddenColor then
         Chip.Color := UtilChipHiddenColor;
-      Chip.Hint := OneForm.Caption + ' - окно свёрнуто, щелчок разворачивает';
+      Chip.Hint := OneForm.Caption + ' - окно скрыто, щелчок показывает его';
     end;
   end;
 end;
@@ -42765,8 +42823,8 @@ begin
   UtilChipsPaint;
 end;
 
-// Плашка окна в строке меню: окно развёрнуто - свернуть (плашка серая),
-// свёрнуто - развернуть и наверх (плашка снова яркая).
+// Плашка окна в строке меню: окно видно - свернуть (плашка серая); свёрнуто
+// или ушло под главное окно - развернуть и наверх (плашка снова яркая).
 //
 // Сворачивание, а не Hide: свёрнутое окно для программы остаётся видимым
 // (Visible = True), и конструктор форм работает с ним так же, как с
@@ -42782,7 +42840,10 @@ begin
   OneForm := UtilFormOf(TComponent(Sender).Tag);
   if OneForm = nil then
     Exit;
-  if OneForm.WindowState = wsMinimized then
+  // По цвету, а не заново: нажатие на плашку уже подняло главное окно, и
+  // окно утилиты без владельца оказалось бы под ним
+  if (TPanel(Sender).Color = UtilChipHiddenColor) or
+     (OneForm.WindowState = wsMinimized) then
     UtilShowForm(OneForm)
   else
     OneForm.WindowState := wsMinimized;
@@ -68739,8 +68800,13 @@ begin
   end;
   if not FWatchWnd.Visible then
   begin
+    {$IFDEF FPC}
+    UtilOwnByMain(FWatchWnd);
+    {$ENDIF}
     FWatchWnd.Show;
-    SetWindowLong(FWatchWnd.Handle, GWL_HWNDPARENT, Integer(Handle));
+    {$IFNDEF FPC}
+    UtilOwnByMain(FWatchWnd);
+    {$ENDIF}
   end;
   // Работа - в редакторе: фокус обратно
   if RichEdit1.CanFocus then
@@ -68760,8 +68826,13 @@ procedure TForm1.ArdWndShow(AWnd: TForm);
 begin
   if not AWnd.Visible then
   begin
+    {$IFDEF FPC}
+    UtilOwnByMain(AWnd);
+    {$ENDIF}
     AWnd.Show;
-    SetWindowLong(AWnd.Handle, GWL_HWNDPARENT, Integer(Handle));
+    {$IFNDEF FPC}
+    UtilOwnByMain(AWnd);
+    {$ENDIF}
   end
   else if AWnd.WindowState = wsMinimized then
     AWnd.WindowState := wsNormal;
@@ -78029,9 +78100,14 @@ begin
   Result.BeginBuild(AProgram);
   if not Result.Visible then
   begin
-    Result.Show;
     // Над главным окном, как окна Arduino
-    SetWindowLong(Result.Handle, GWL_HWNDPARENT, Integer(Handle));
+    {$IFDEF FPC}
+    UtilOwnByMain(Result);
+    {$ENDIF}
+    Result.Show;
+    {$IFNDEF FPC}
+    UtilOwnByMain(Result);
+    {$ENDIF}
   end;
   Result.Update;
 end;
@@ -83792,6 +83868,16 @@ begin
     FLockHighlight := False;
   end;
 end;
+
+{$IFDEF FPC}
+// Развернуть окно, когда оно уже показано (RestoreFormBounds)
+procedure TForm1.MaximizeLater(Data: PtrInt);
+begin
+  WindowState := wsMaximized;
+  if HandleAllocated and not IsZoomed(Handle) then
+    ShowWindow(Handle, SW_SHOWMAXIMIZED);
+end;
+{$ENDIF}
 
 procedure TForm1.FormShow(Sender: TObject);
 var

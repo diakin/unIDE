@@ -942,17 +942,46 @@ begin
     while Buf.Redo(CurRow, CurCol) do
       ;
     CheckText(Buf, Model, 'mapped edit: redo all');
-    // Отрезок больше EdMaxRangeText: строкой не отдаётся, удаляется без
-    // отката
-    Raw := StringOfChar(AnsiChar('a'), EdMaxRangeText) + #13#10'tail';
+    // Отрезок больше EdMaxRangeText: строкой не отдаётся; удаление
+    // откатывается вынутыми кусками дерева
+    Raw := 'head'#13#10 + StringOfChar(AnsiChar('a'), EdMaxRangeText) +
+      #13#10'tail';
+    Original := RefDecode(Raw, False, Map);
     Buf.LoadMapped(PAnsiChar(Raw), Length(Raw), False, Map, nil);
-    Check(Buf.RangeTooLarge(0, 0, 1, 2), 'mapped big: too large');
+    Check(Buf.RangeTooLarge(0, 0, 2, 2), 'mapped big: too large');
     Check(not Buf.RangeTooLarge(0, 0, 0, 10), 'mapped big: small range');
-    Check(Buf.TextRange(0, 0, 1, 2) = '', 'mapped big: no text');
-    Check(Buf.TextRange(1, 0, 1, 4) = 'tail', 'mapped big: small text');
-    Buf.DeleteText(0, 0, 1, 2, 0, 0);
-    Check(Buf.GetText(#10) = 'il', 'mapped big: deleted');
-    Check(Buf.Modified and not Buf.CanUndo, 'mapped big: modified, no undo');
+    Check(Buf.TextRange(0, 0, 2, 2) = '', 'mapped big: no text');
+    Check(Buf.TextRange(2, 0, 2, 4) = 'tail', 'mapped big: small text');
+    Buf.BeginGroup;
+    Buf.DeleteText(0, 2, 2, 2, 0, 2);
+    Check(Buf.GetText(#10) = 'heil', 'mapped big: deleted');
+    Check(Buf.Modified and Buf.CanUndo, 'mapped big: modified, can undo');
+    Buf.BeginGroup;
+    Buf.InsertText(0, 1, 'XY', False, 0, 1, EndRow, EndCol);
+    Check(Buf.GetText(#10) = 'hXYeil', 'mapped big: insert after');
+    Check(Buf.Undo(CurRow, CurCol) and (Buf.GetText(#10) = 'heil'),
+      'mapped big: undo insert');
+    Check(Buf.Undo(CurRow, CurCol), 'mapped big: undo delete');
+    CheckText(Buf, Original, 'mapped big: restored');
+    Check((Buf.Count = 3) and (Buf[2] = 'tail') and
+      (Buf.LineLength(1) = EdMaxRangeText), 'mapped big: lines restored');
+    Check(not Buf.Modified, 'mapped big: not modified after undo');
+    Check(Buf.Redo(CurRow, CurCol) and (Buf.GetText(#10) = 'heil'),
+      'mapped big: redo delete');
+    Check(Buf.Redo(CurRow, CurCol) and (Buf.GetText(#10) = 'hXYeil'),
+      'mapped big: redo insert');
+    while Buf.Undo(CurRow, CurCol) do
+      ;
+    CheckText(Buf, Original, 'mapped big: undo all again');
+    // Выделить всё и заменить (ReplaceText) - тоже откатывается
+    Buf.PosOfIndex(Length(Original), Row2, Col2);
+    Buf.ReplaceText(0, 0, Row2, Col2, 'new', 0, 0, EndRow, EndCol);
+    Check(Buf.GetText(#10) = 'new', 'mapped big: replaced all');
+    Check(Buf.Undo(CurRow, CurCol), 'mapped big: undo replace');
+    CheckText(Buf, Original, 'mapped big: replace undone');
+    // Удалить всё и загрузить другой текст: вынутые куски освобождаются
+    Buf.DeleteText(0, 0, Row2, Col2, 0, 0);
+    Check(Buf.GetText(#10) = '', 'mapped big: deleted all');
     // Новый текст снимает отображение
     Buf.SetText('x');
     Check(not Buf.IsMapped, 'mapped: SetText releases');

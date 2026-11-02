@@ -2943,6 +2943,16 @@ begin
   // такое окно уже видимо для Windows и рисуется целиком в свой буфер,
   // но на экране его нет. Нарисовали всё сразу (FlushPaint) - прозрачность
   // снимается, и форма появляется готовой.
+  {$IFDEF FPC}
+  // Владелец - главное окно (см. ниже). В LCL - через PopupParent и до
+  // создания окна: смена владельца у LCL пересоздаёт окно, а владельца,
+  // поставленного SetWindowLong мимо неё, она не знает
+  if (Application.MainForm <> nil) and (FForm <> Application.MainForm) then
+  begin
+    FForm.PopupMode := pmExplicit;
+    FForm.PopupParent := Application.MainForm;
+  end;
+  {$ENDIF}
   FForm.HandleNeeded;
   // Новое окно на месте прежнего - без анимации появления
   DsgNoWindowAnimation(FForm.Handle);
@@ -2958,10 +2968,12 @@ begin
     // поставить. Владелец, а не fsStayOnTop: форма остаётся над
     // редактором, но не над окнами других программ, и сворачивается
     // вместе с редактором.
+    {$IFNDEF FPC}
     if (Application.MainForm <> nil) and
        Application.MainForm.HandleAllocated then
       SetWindowLong(FForm.Handle, GWL_HWNDPARENT,
                     Integer(Application.MainForm.Handle));
+    {$ENDIF}
     // Свои полосы прокрутки элементов (UiScroll): пока форма была спрятана,
     // их убрала сверка по таймеру. Вернуть сейчас, пока форма прозрачная, -
     // иначе до следующей сверки видны полосы Windows.
