@@ -18,8 +18,10 @@ for d in srcdirs + [here, os.path.join(here, 'wininc')]:
         texts.append(open(f, encoding='latin-1').read())
 big = '\n'.join(texts)
 
-manual = set(m.group(1) for m in re.finditer(r"public name 'unidewin_(\w+)'",
-             open(os.path.join(here, 'winimpl.pas'), encoding='cp1251').read()))
+manual = set()
+for manual_file, manual_enc in (('winimpl.pas', 'cp1251'), ('winimpl_rt.inc', 'utf-8')):
+    manual |= set(m.group(1) for m in re.finditer(r"public name 'unidewin_(\w+)'",
+                  open(os.path.join(here, manual_file), encoding=manual_enc).read()))
 
 
 def header_for(sym):

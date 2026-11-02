@@ -8,7 +8,7 @@ unit WinImpl;
 interface
 implementation
 uses Windows, Messages, CommCtrl, ShellAPI, ActiveX, WinInet, RichEdit, ctypes,
-  Types, LCLType, LCLIntf, SysUtils;
+  Types, LCLType, LCLIntf, SysUtils, Classes, Controls, BaseUnix, Unix;
 
 // --- Через LCLIntf (тот же вызов у LCL) ---
 
@@ -171,11 +171,6 @@ begin
 end;
 
 // LCL: function DrawText(DC: HDC; Str: PChar; Count: Integer; var Rect: TRect; Flags: Cardinal)
-function Impl_DrawTextA(hDC:HDC; lpString:LPCSTR; nCount:longint; lpRect:LPRECT; uFormat:UINT): longint; stdcall; public name 'unidewin_DrawTextA';
-begin
-  Result := LCLIntf.DrawText(hDC, lpString, nCount, lpRect^, uFormat);
-end;
-
 // LCL: function EndPaint(Handle : hwnd; var PS : TPaintStruct)
 function Impl_EndPaint(hWnd:HWND; lpPaint:LPPAINTSTRUCT): WINBOOL; stdcall; public name 'unidewin_EndPaint';
 var
@@ -320,17 +315,7 @@ begin
 end;
 
 // LCL: function GetTextExtentExPoint(DC: HDC; Str: PChar; Count, MaxWidth: Integer; MaxCount, PartialWidths: PInteger; var Size: TSize)
-function Impl_GetTextExtentExPointA(DC: HDC; Str: PChar; Count, MaxExtent: Integer; Fit: PInteger; Dx: PInteger; var Size: TSize): BOOL; stdcall; public name 'unidewin_GetTextExtentExPointA';
-begin
-  Result := LCLIntf.GetTextExtentExPoint(DC, Str, Count, MaxExtent, Fit, Dx, Size);
-end;
-
 // LCL: function GetTextExtentPoint32(DC: HDC; Str: PChar; Count: Integer; var Size: TSize)
-function Impl_GetTextExtentPoint32A(_para1:HDC; _para2:LPCSTR; _para3:longint; _para4:LPSIZE): WINBOOL; stdcall; public name 'unidewin_GetTextExtentPoint32A';
-begin
-  Result := LCLIntf.GetTextExtentPoint32(_para1, _para2, _para3, _para4^);
-end;
-
 // LCL: function GetTextMetrics(DC: HDC; var TM: TTextMetric)
 function Impl_GetTextMetricsA(_para1:HDC; _para2:LPTEXTMETRIC): WINBOOL; stdcall; public name 'unidewin_GetTextMetricsA';
 begin
@@ -671,11 +656,6 @@ begin
 end;
 
 // LCL:  function TextOut(DC: HDC; X,Y : Integer; Str : Pchar; Count: Integer)
-function Impl_TextOutA(_para1:HDC; _para2:longint; _para3:longint; _para4:LPCSTR; _para5:longint): WINBOOL; stdcall; public name 'unidewin_TextOutA';
-begin
-  Result := LCLIntf.TextOut(_para1, _para2, _para3, _para4, _para5);
-end;
-
 // LCL:  function UnionRect(var DestRect: TRect; const SrcRect1, SrcRect2: TRect)
 function Impl_UnionRect(lprcDst:LPRECT; const lprcSrc1:RECT; const lprcSrc2:RECT): WINBOOL; stdcall; public name 'unidewin_UnionRect';
 begin
@@ -694,6 +674,7 @@ begin
   Result := LCLIntf.WindowFromPoint(Point);
 end;
 
+{$I winimpl_rt.inc}
 {$I winimpl_auto.inc}
 
 end.

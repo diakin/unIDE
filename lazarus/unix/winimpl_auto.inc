@@ -20,29 +20,9 @@ begin
   Result := Default(LRESULT);
 end;
 
-function Impl_CharLowerBuffW(AText: PWideChar; ALength: DWORD): DWORD; stdcall; public name 'unidewin_CharLowerBuffW';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_CharLowerW(AText: PWideChar): PWideChar; stdcall; public name 'unidewin_CharLowerW';
-begin
-  Result := Default(PWideChar);
-end;
-
 function Impl_CharToOemBuffA(lpszSrc:LPCSTR; lpszDst:LPSTR; cchDstLength:DWORD): WINBOOL; stdcall; public name 'unidewin_CharToOemBuffA';
 begin
   Result := Default(WINBOOL);
-end;
-
-function Impl_CharUpperBuffW(lpsz:LPWSTR; cchLength:DWORD): DWORD; stdcall; public name 'unidewin_CharUpperBuffW';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_CharUpperW(AText: PWideChar): PWideChar; stdcall; public name 'unidewin_CharUpperW';
-begin
-  Result := Default(PWideChar);
 end;
 
 function Impl_ChooseColorW(var AChoose): BOOL; stdcall; public name 'unidewin_ChooseColorW';
@@ -58,11 +38,6 @@ end;
 function Impl_CloseClipboard: BOOL; stdcall; public name 'unidewin_CloseClipboard';
 begin
   Result := Default(BOOL);
-end;
-
-function Impl_CloseHandle(hObject:HANDLE): WINBOOL; stdcall; public name 'unidewin_CloseHandle';
-begin
-  Result := Default(WINBOOL);
 end;
 
 function Impl_CoCreateInstance(const _para1:TCLSID; _para2:IUnknown; _para3:DWORD; const _para4:TIID; out _para5): HRESULT; stdcall; public name 'unidewin_CoCreateInstance';
@@ -88,22 +63,12 @@ begin
   Result := Default(Longint);
 end;
 
-function Impl_CompareStringW(ALocale: LCID; AFlags: DWORD; AStr1: PWideChar; ALen1: Integer; AStr2: PWideChar; ALen2: Integer): Integer; stdcall; public name 'unidewin_CompareStringW';
-begin
-  Result := Default(Integer);
-end;
-
 function Impl_ContinueDebugEvent(AProcessId, AThreadId, AStatus: DWORD): BOOL; stdcall; public name 'unidewin_ContinueDebugEvent';
 begin
   Result := Default(BOOL);
 end;
 
 function Impl_CopyFileA(lpExistingFileName:LPCSTR; lpNewFileName:LPCSTR; bFailIfExists:WINBOOL): WINBOOL; stdcall; public name 'unidewin_CopyFileA';
-begin
-  Result := Default(WINBOOL);
-end;
-
-function Impl_CopyFileW(lpExistingFileName:LPCWSTR; lpNewFileName:LPCWSTR; bFailIfExists:WINBOOL): WINBOOL; stdcall; public name 'unidewin_CopyFileW';
 begin
   Result := Default(WINBOOL);
 end;
@@ -128,24 +93,9 @@ begin
   Result := Default(HWND);
 end;
 
-function Impl_CreateDirectoryW(APath: PWideChar; ASecurity: Pointer): BOOL; stdcall; public name 'unidewin_CreateDirectoryW';
-begin
-  Result := Default(BOOL);
-end;
-
 function Impl_CreateEventA(lpEventAttributes:LPSECURITY_ATTRIBUTES; bManualReset:WINBOOL; bInitialState:WINBOOL; lpName:LPCSTR): HANDLE; stdcall; public name 'unidewin_CreateEventA';
 begin
   Result := Default(HANDLE);
-end;
-
-function Impl_CreateFileA(lpFileName:LPCSTR; dwDesiredAccess:DWORD; dwShareMode:DWORD; lpSecurityAttributes:LPSECURITY_ATTRIBUTES; dwCreationDisposition:DWORD; dwFlagsAndAttributes:DWORD; hTemplateFile:HANDLE): HANDLE; stdcall; public name 'unidewin_CreateFileA';
-begin
-  Result := Default(HANDLE);
-end;
-
-function Impl_CreateFileW(AName: PWideChar; AAccess, AShare: DWORD; ASecurity: Pointer; ACreation, AFlags: DWORD; ATemplate: THandle): THandle; stdcall; public name 'unidewin_CreateFileW';
-begin
-  Result := Default(THandle);
 end;
 
 function Impl_CreateJobObjectA(lpJobAttributes: Pointer; lpName: PChar): THandle; stdcall; public name 'unidewin_CreateJobObjectA';
@@ -218,11 +168,6 @@ begin
   Result := Default(LRESULT);
 end;
 
-function Impl_DeleteFileW(AFileName: PWideChar): BOOL; stdcall; public name 'unidewin_DeleteFileW';
-begin
-  Result := Default(BOOL);
-end;
-
 function Impl_DestroyCaret: WINBOOL; stdcall; public name 'unidewin_DestroyCaret';
 begin
   Result := Default(WINBOOL);
@@ -258,11 +203,6 @@ begin
   Result := Default(LONG);
 end;
 
-function Impl_DrawTextW(ADC: HDC; AText: PWideChar; ACount: Integer; var ARect: TRect; AFormat: UINT): Integer; stdcall; public name 'unidewin_DrawTextW';
-begin
-  Result := Default(Integer);
-end;
-
 function Impl_DuplicateHandle(hSourceProcessHandle:HANDLE; hSourceHandle:HANDLE; hTargetProcessHandle:HANDLE; lpTargetHandle:LPHANDLE; dwDesiredAccess:DWORD; bInheritHandle:WINBOOL; dwOptions:DWORD): WINBOOL; stdcall; public name 'unidewin_DuplicateHandle';
 begin
   Result := Default(WINBOOL);
@@ -293,21 +233,6 @@ begin
   Result := Default(DWORD);
 end;
 
-function Impl_ExtTextOutW(ADC: HDC; AX, AY: Integer; AOptions: UINT; ARect: PRect; AStr: PWideChar; ACount: UINT; ADx: PInteger): BOOL; stdcall; public name 'unidewin_ExtTextOutW';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_FileTimeToLocalFileTime(lpFileTime:LPFILETIME; lpLocalFileTime:LPFILETIME): WINBOOL; stdcall; public name 'unidewin_FileTimeToLocalFileTime';
-begin
-  Result := Default(WINBOOL);
-end;
-
-function Impl_FileTimeToSystemTime(lpFileTime:LPFILETIME; lpSystemTime:LPSYSTEMTIME): WINBOOL; stdcall; public name 'unidewin_FileTimeToSystemTime';
-begin
-  Result := Default(WINBOOL);
-end;
-
 function Impl_FindClose(AFindHandle: THandle): BOOL; stdcall; public name 'unidewin_FindClose';
 begin
   Result := Default(BOOL);
@@ -336,11 +261,6 @@ end;
 function Impl_FindNextFileW(AFindHandle: THandle; var AFindData): BOOL; stdcall; public name 'unidewin_FindNextFileW';
 begin
   Result := Default(BOOL);
-end;
-
-function Impl_FindResourceA(hModule:HINST; lpName:LPCSTR; lpType:LPCSTR): HRSRC; stdcall; public name 'unidewin_FindResourceA';
-begin
-  Result := Default(HRSRC);
 end;
 
 function Impl_FindWindowA(lpClassName:LPCSTR; lpWindowName:LPCSTR): HWND; stdcall; public name 'unidewin_FindWindowA';
@@ -423,21 +343,6 @@ begin
   Result := Default(BOOL);
 end;
 
-function Impl_GdiFlush: WINBOOL; stdcall; public name 'unidewin_GdiFlush';
-begin
-  Result := Default(WINBOOL);
-end;
-
-function Impl_GetACP: UINT; stdcall; public name 'unidewin_GetACP';
-begin
-  Result := Default(UINT);
-end;
-
-function Impl_GetAncestor(AWnd: HWND; AFlags: UINT): HWND; stdcall; public name 'unidewin_GetAncestor';
-begin
-  Result := Default(HWND);
-end;
-
 function Impl_GetAsyncKeyState(vKey:longint): SHORT; stdcall; public name 'unidewin_GetAsyncKeyState';
 begin
   Result := Default(SHORT);
@@ -483,19 +388,9 @@ begin
   Result := Default(HANDLE);
 end;
 
-function Impl_GetCurrentProcessId: DWORD; stdcall; public name 'unidewin_GetCurrentProcessId';
-begin
-  Result := Default(DWORD);
-end;
-
 function Impl_GetCurrentThread: HANDLE; stdcall; public name 'unidewin_GetCurrentThread';
 begin
   Result := Default(HANDLE);
-end;
-
-function Impl_GetCurrentThreadId: DWORD; stdcall; public name 'unidewin_GetCurrentThreadId';
-begin
-  Result := Default(DWORD);
 end;
 
 function Impl_GetDCEx(hWnd:HWND; hrgnClip:HRGN; flags:DWORD): HDC; stdcall; public name 'unidewin_GetDCEx';
@@ -533,34 +428,9 @@ begin
   Result := Default(PWideChar);
 end;
 
-function Impl_GetEnvironmentVariableA(lpName:LPCSTR; lpBuffer:LPSTR; nSize:DWORD): DWORD; stdcall; public name 'unidewin_GetEnvironmentVariableA';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_GetEnvironmentVariableW(AName: PWideChar; ABuffer: PWideChar; ASize: DWORD): DWORD; stdcall; public name 'unidewin_GetEnvironmentVariableW';
-begin
-  Result := Default(DWORD);
-end;
-
 function Impl_GetExitCodeProcess(hProcess:HANDLE; lpExitCode:LPDWORD): WINBOOL; stdcall; public name 'unidewin_GetExitCodeProcess';
 begin
   Result := Default(WINBOOL);
-end;
-
-function Impl_GetFileAttributesExA(lpFileName:LPCSTR; fInfoLevelId:TGET_FILEEX_INFO_LEVELS; lpFileInformation:pointer): BOOL; stdcall; public name 'unidewin_GetFileAttributesExA';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_GetFileAttributesW(AFileName: PWideChar): DWORD; stdcall; public name 'unidewin_GetFileAttributesW';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_GetFileSize(hFile:HANDLE; lpFileSizeHigh:LPDWORD): DWORD; stdcall; public name 'unidewin_GetFileSize';
-begin
-  Result := Default(DWORD);
 end;
 
 function Impl_GetFileVersionInfoSizeW(AFileName: PWideChar; var AHandle: DWORD): DWORD; stdcall; public name 'unidewin_GetFileVersionInfoSizeW';
@@ -573,19 +443,9 @@ begin
   Result := Default(BOOL);
 end;
 
-function Impl_GetFullPathNameW(AFileName: PWideChar; ABufferLen: DWORD; ABuffer: PWideChar; AFilePart: Pointer): DWORD; stdcall; public name 'unidewin_GetFullPathNameW';
-begin
-  Result := Default(DWORD);
-end;
-
 function Impl_GetLargestConsoleWindowSize(hConsoleOutput:HANDLE): COORD; stdcall; public name 'unidewin_GetLargestConsoleWindowSize';
 begin
   Result := Default(COORD);
-end;
-
-function Impl_GetLastError: DWORD; stdcall; public name 'unidewin_GetLastError';
-begin
-  Result := Default(DWORD);
 end;
 
 function Impl_GetLocaleInfoA(Locale:LCID; LCType:LCTYPE; lpLCData:LPSTR; cchData:longint): longint; stdcall; public name 'unidewin_GetLocaleInfoA';
@@ -611,26 +471,6 @@ end;
 function Impl_GetMessageA(lpMsg:LPMSG; hWnd:HWND; wMsgFilterMin:UINT; wMsgFilterMax:UINT): WINBOOL; stdcall; public name 'unidewin_GetMessageA';
 begin
   Result := Default(WINBOOL);
-end;
-
-function Impl_GetModuleFileNameA(hModule:HINST; lpFilename:LPSTR; nSize:DWORD): DWORD; stdcall; public name 'unidewin_GetModuleFileNameA';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_GetModuleFileNameW(AModule: HMODULE; ABuffer: PWideChar; ASize: DWORD): DWORD; stdcall; public name 'unidewin_GetModuleFileNameW';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_GetModuleHandleA(lpModuleName:LPCSTR): HMODULE; stdcall; public name 'unidewin_GetModuleHandleA';
-begin
-  Result := Default(HMODULE);
-end;
-
-function Impl_GetOEMCP: UINT; stdcall; public name 'unidewin_GetOEMCP';
-begin
-  Result := Default(UINT);
 end;
 
 function Impl_GetOpenFileNameW(var AOpen): BOOL; stdcall; public name 'unidewin_GetOpenFileNameW';
@@ -663,26 +503,6 @@ begin
   Result := Default(UINT);
 end;
 
-function Impl_GetTabbedTextExtentA(hDC:HDC; lpString:LPCSTR; nCount:longint; nTabPositions:longint; lpnTabStopPositions:LPINT): DWORD; stdcall; public name 'unidewin_GetTabbedTextExtentA';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_GetTempPathA(nBufferLength:DWORD; lpBuffer:LPSTR): DWORD; stdcall; public name 'unidewin_GetTempPathA';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_GetTempPathW(ABufferLen: DWORD; ABuffer: PWideChar): DWORD; stdcall; public name 'unidewin_GetTempPathW';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_GetTextExtentPoint32W(ADC: HDC; AText: PWideChar; ACount: Integer; var ASize): BOOL; stdcall; public name 'unidewin_GetTextExtentPoint32W';
-begin
-  Result := Default(BOOL);
-end;
-
 function Impl_GetTextFaceA(_para1:HDC; _para2:longint; _para3:LPSTR): longint; stdcall; public name 'unidewin_GetTextFaceA';
 begin
   Result := Default(longint);
@@ -691,11 +511,6 @@ end;
 function Impl_GetThreadTimes(hThread:HANDLE; lpCreationTime:LPFILETIME; lpExitTime:LPFILETIME; lpKernelTime:LPFILETIME; lpUserTime:LPFILETIME): WINBOOL; stdcall; public name 'unidewin_GetThreadTimes';
 begin
   Result := Default(WINBOOL);
-end;
-
-function Impl_GetTickCount: DWORD; stdcall; public name 'unidewin_GetTickCount';
-begin
-  Result := Default(DWORD);
 end;
 
 function Impl_GetTopWindow(hWnd:HWND): HWND; stdcall; public name 'unidewin_GetTopWindow';
@@ -736,11 +551,6 @@ end;
 function Impl_GetWindowTextLengthA(hWnd:HWND): longint; stdcall; public name 'unidewin_GetWindowTextLengthA';
 begin
   Result := Default(longint);
-end;
-
-function Impl_GetWindowTextW(AWnd: HWND; AText: PWideChar; AMax: Integer): Integer; stdcall; public name 'unidewin_GetWindowTextW';
-begin
-  Result := Default(Integer);
 end;
 
 function Impl_GetWindowThreadProcessId(hWnd:HWND; lpdwProcessId:LPDWORD): DWORD; stdcall; public name 'unidewin_GetWindowThreadProcessId';
@@ -898,16 +708,6 @@ begin
   Result := Default(WINBOOL);
 end;
 
-function Impl_IsCharAlphaNumericW(AChar: WideChar): BOOL; stdcall; public name 'unidewin_IsCharAlphaNumericW';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_IsChild(hWndParent:HWND; hWnd:HWND): WINBOOL; stdcall; public name 'unidewin_IsChild';
-begin
-  Result := Default(WINBOOL);
-end;
-
 function Impl_IsClipboardFormatAvailable(format:UINT): WINBOOL; stdcall; public name 'unidewin_IsClipboardFormatAvailable';
 begin
   Result := Default(WINBOOL);
@@ -928,11 +728,6 @@ begin
   Result := Default(HINST);
 end;
 
-function Impl_LoadResource(hModule:HINST; hResInfo:HRSRC): HGLOBAL; stdcall; public name 'unidewin_LoadResource';
-begin
-  Result := Default(HGLOBAL);
-end;
-
 function Impl_LocalFileTimeToFileTime(lpLocalFileTime:LPFILETIME; lpFileTime:LPFILETIME): WINBOOL; stdcall; public name 'unidewin_LocalFileTimeToFileTime';
 begin
   Result := Default(WINBOOL);
@@ -948,44 +743,9 @@ begin
   Result := Default(HLOCAL);
 end;
 
-function Impl_LockResource(hResData:HGLOBAL): LPVOID; stdcall; public name 'unidewin_LockResource';
-begin
-  Result := Default(LPVOID);
-end;
-
-function Impl_MapWindowPoints(hWndFrom:HWND; hWndTo:HWND; lpPoints:LPPOINT; cPoints:UINT): longint; stdcall; public name 'unidewin_MapWindowPoints';
-begin
-  Result := Default(longint);
-end;
-
-function Impl_MessageBeep(uType:UINT): WINBOOL; stdcall; public name 'unidewin_MessageBeep';
-begin
-  Result := Default(WINBOOL);
-end;
-
-function Impl_MessageBoxW(AWnd: HWND; AText, ACaption: PWideChar; AType: UINT): Integer; stdcall; public name 'unidewin_MessageBoxW';
-begin
-  Result := Default(Integer);
-end;
-
 function Impl_MoveFileA(lpExistingFileName:LPCSTR; lpNewFileName:LPCSTR): WINBOOL; stdcall; public name 'unidewin_MoveFileA';
 begin
   Result := Default(WINBOOL);
-end;
-
-function Impl_MoveFileExW(AExisting, ANew: PWideChar; AFlags: DWORD): BOOL; stdcall; public name 'unidewin_MoveFileExW';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_MulDiv(nNumber:longint; nNumerator:longint; nDenominator:longint): longint; stdcall; public name 'unidewin_MulDiv';
-begin
-  Result := Default(longint);
-end;
-
-function Impl_MultiByteToWideChar(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar; AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall; public name 'unidewin_MultiByteToWideChar';
-begin
-  Result := Default(Integer);
 end;
 
 function Impl_OemToCharBuffA(lpszSrc:LPCSTR; lpszDst:LPSTR; cchDstLength:DWORD): WINBOOL; stdcall; public name 'unidewin_OemToCharBuffA';
@@ -1008,16 +768,6 @@ begin
   Result := Default(HANDLE);
 end;
 
-function Impl_PatBlt(_para1:HDC; _para2:longint; _para3:longint; _para4:longint; _para5:longint; _para6:DWORD): WINBOOL; stdcall; public name 'unidewin_PatBlt';
-begin
-  Result := Default(WINBOOL);
-end;
-
-function Impl_Polygon(_para1:HDC; _para2:LPPOINT; _para3:longint): WINBOOL; stdcall; public name 'unidewin_Polygon';
-begin
-  Result := Default(WINBOOL);
-end;
-
 procedure Impl_PostQuitMessage(nExitCode:longint); stdcall; public name 'unidewin_PostQuitMessage';
 begin
 end;
@@ -1032,22 +782,7 @@ begin
   Result := Default(BOOL);
 end;
 
-function Impl_QueryPerformanceCounter(lpPerformanceCount:PLARGE_INTEGER): WINBOOL; stdcall; public name 'unidewin_QueryPerformanceCounter';
-begin
-  Result := Default(WINBOOL);
-end;
-
-function Impl_QueryPerformanceFrequency(lpFrequency:PLARGE_INTEGER): WINBOOL; stdcall; public name 'unidewin_QueryPerformanceFrequency';
-begin
-  Result := Default(WINBOOL);
-end;
-
 function Impl_ReadConsoleOutputCharacterW(hConsoleOutput: THandle; lpCharacter: PWideChar; nLength: DWORD; dwReadCoord: TCoord; var lpNumberOfCharsRead: DWORD): BOOL; stdcall; public name 'unidewin_ReadConsoleOutputCharacterW';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_ReadFile(AFile: THandle; ABuffer: Pointer; AToRead: DWORD; var ARead: DWORD; AOverlapped: Pointer): BOOL; stdcall; public name 'unidewin_ReadFile';
 begin
   Result := Default(BOOL);
 end;
@@ -1082,11 +817,6 @@ begin
   Result := Default(UINT);
 end;
 
-function Impl_RemoveDirectoryW(APath: PWideChar): BOOL; stdcall; public name 'unidewin_RemoveDirectoryW';
-begin
-  Result := Default(BOOL);
-end;
-
 function Impl_ResetEvent(hEvent:HANDLE): WINBOOL; stdcall; public name 'unidewin_ResetEvent';
 begin
   Result := Default(WINBOOL);
@@ -1113,11 +843,6 @@ begin
 end;
 
 function Impl_SendMessageTimeoutA(hWnd:HWND; Msg:UINT; wParam:WPARAM; lParam:LPARAM; fuFlags:UINT; uTimeout:UINT; lpdwResult:PDWORD_PTR): LRESULT; stdcall; public name 'unidewin_SendMessageTimeoutA';
-begin
-  Result := Default(LRESULT);
-end;
-
-function Impl_SendMessageW(hWnd:HWND; Msg:UINT; wParam:WPARAM; lParam:LPARAM): LRESULT; stdcall; public name 'unidewin_SendMessageW';
 begin
   Result := Default(LRESULT);
 end;
@@ -1167,18 +892,9 @@ begin
   Result := Default(BOOL);
 end;
 
-function Impl_SetFilePointer(hFile:HANDLE; lDistanceToMove:LONG; lpDistanceToMoveHigh:PLONG; dwMoveMethod:DWORD): DWORD; stdcall; public name 'unidewin_SetFilePointer';
-begin
-  Result := Default(DWORD);
-end;
-
 function Impl_SetFileTime(hFile:HANDLE; lpCreationTime:LPFILETIME; lpLastAccessTime:LPFILETIME; lpLastWriteTime:LPFILETIME): WINBOOL; stdcall; public name 'unidewin_SetFileTime';
 begin
   Result := Default(WINBOOL);
-end;
-
-procedure Impl_SetLastError(dwErrCode:DWORD); stdcall; public name 'unidewin_SetLastError';
-begin
 end;
 
 function Impl_SetTextAlign(_para1:HDC; _para2:UINT): UINT; stdcall; public name 'unidewin_SetTextAlign';
@@ -1201,11 +917,6 @@ begin
   Result := Default(LONG_PTR);
 end;
 
-function Impl_SetWindowTextW(AWnd: HWND; AText: PWideChar): BOOL; stdcall; public name 'unidewin_SetWindowTextW';
-begin
-  Result := Default(BOOL);
-end;
-
 function Impl_SetWindowsHookExA(idHook:longint; lpfn:HOOKPROC; hmod:HINST; dwThreadId:DWORD): HHOOK; stdcall; public name 'unidewin_SetWindowsHookExA';
 begin
   Result := Default(HHOOK);
@@ -1226,19 +937,9 @@ begin
   Result := Default(THandle);
 end;
 
-function Impl_SizeofResource(hModule:HINST; hResInfo:HRSRC): DWORD; stdcall; public name 'unidewin_SizeofResource';
-begin
-  Result := Default(DWORD);
-end;
-
 function Impl_SystemTimeToFileTime(lpSystemTime:LPSYSTEMTIME; lpFileTime:LPFILETIME): WINBOOL; stdcall; public name 'unidewin_SystemTimeToFileTime';
 begin
   Result := Default(WINBOOL);
-end;
-
-function Impl_TabbedTextOutA(hDC:HDC; X:longint; Y:longint; lpString:LPCSTR; nCount:longint; nTabPositions:longint; lpnTabStopPositions:LPINT; nTabOrigin:longint): LONG; stdcall; public name 'unidewin_TabbedTextOutA';
-begin
-  Result := Default(LONG);
 end;
 
 function Impl_TerminateJobObject(hJob: THandle; uExitCode: UINT): BOOL; stdcall; public name 'unidewin_TerminateJobObject';
@@ -1296,22 +997,12 @@ begin
   Result := Default(DWORD);
 end;
 
-function Impl_WideCharToMultiByte(ACodePage: UINT; AFlags: DWORD; AWide: PWideChar; AWideLen: Integer; AMulti: PAnsiChar; AMultiLen: Integer; ADefault: PAnsiChar; AUsedDefault: Pointer): Integer; stdcall; public name 'unidewin_WideCharToMultiByte';
-begin
-  Result := Default(Integer);
-end;
-
 function Impl_Wow64GetThreadContext(AThread: THandle; var ACtx): BOOL; stdcall; public name 'unidewin_Wow64GetThreadContext';
 begin
   Result := Default(BOOL);
 end;
 
 function Impl_Wow64SetThreadContext(AThread: THandle; const ACtx): BOOL; stdcall; public name 'unidewin_Wow64SetThreadContext';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_WriteFile(AFile: THandle; const ABuffer; ACount: DWORD; var AWritten: DWORD; AOverlapped: Pointer): BOOL; stdcall; public name 'unidewin_WriteFile';
 begin
   Result := Default(BOOL);
 end;

@@ -929,7 +929,13 @@ begin
         Shift := 1;
       PosX := (ClientWidth - Cell.Width) div 2 + Shift;
       PosY := (ClientHeight - Cell.Height) div 2 + Shift;
+      {$IFDEF UNIX}
+      // LCL gtk2: 32-битный TBitmap рисуется со своей альфой (AlphaBlend
+      // из Windows здесь нет)
+      if False then
+      {$ELSE}
       if FCellAlpha then
+      {$ENDIF}
       begin
         Blend.BlendOp := AC_SRC_OVER;
         Blend.BlendFlags := 0;

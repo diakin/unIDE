@@ -1515,6 +1515,11 @@ type
     FIsMouseSelecting: Boolean; // Хранит состояние: зажата ли мышь на редакторе
     // Состояние, при котором номера строк были нарисованы в последний раз
     FNumTopLine, FNumTotalLines, FNumCaretLine: Integer;
+    {$IFDEF UNIX}
+    // LCL gtk2: DC и PAINTSTRUCT из LM_PAINT (BeginPaint уже сделан LCL)
+    FLclPaintDC: HDC;
+    FLclPaintPS: PPaintStruct;
+    {$ENDIF}
     FInPaint: Boolean; // защита от повторного входа в отрисовку
     FPaintDC: HDC;     // ненулевой - подсветка пишет в буфер, а не на экран
     // КАРТА ДИАПАЗОНОВ (КЭШ)
@@ -2017,6 +2022,9 @@ type
     FRqProbeAges: TStringList; // файлы снимка: "путь=FileAge" (RapidQSnapStale)
     FObjSnapHint: string;      // обычная подсказка кнопки снимка
     FRqStaleTick: Cardinal;    // когда UpdateToolbarState проверял снимок
+    {$IFDEF UNIX}
+    FPasteCheckTick: Cardinal; // последняя проверка буфера обмена (кнопка Paste)
+    {$ENDIF}
     FIdleSlowTick: Cardinal;   // последняя запись о долгом простое (AppIdle)
     FPromoted: Boolean;        // пробная сборка уже стала рабочей (OwnPromoteTrial)
     // Окно поиска inc-файла (TDlgFindInc, FindIncShow). Тип - TForm: модуль
@@ -62782,7 +62790,17 @@ begin
     btnUndo.Enabled := EdApi.CanUndo;
     btnCut.Enabled := HasSel;
     btnCopy.Enabled := HasSel;
+    {$IFDEF UNIX}
+    // X11: запрос к буферу обмена - ответ приходит событием, оно снова
+    // будило простой, и простой шёл без остановки. Проверка - раз в секунду
+    if GetTickCount - FPasteCheckTick >= 1000 then
+    begin
+      FPasteCheckTick := GetTickCount;
+      btnPaste.Enabled := Clipboard.HasFormat(CF_TEXT);
+    end;
+    {$ELSE}
     btnPaste.Enabled := Clipboard.HasFormat(CF_TEXT);
+    {$ENDIF}
   end;
 
   // Окно конструктора: кнопка Hide/Show form
@@ -81648,6 +81666,18 @@ begin
   // лишнего прохода перерисовки.
   HadMarks := Length(FGuideMarks) > 0;
 
+  {$IFDEF UNIX}
+  if FLclPaintDC <> 0 then
+  begin
+    ScreenDC := FLclPaintDC;
+    FillChar(PS, SizeOf(PS), 0);
+    if FLclPaintPS <> nil then
+      PS := FLclPaintPS^
+    else
+      Windows.GetClientRect(RichEdit1.Handle, PS.rcPaint);
+  end
+  else
+  {$ENDIF}
   ScreenDC := BeginPaint(RichEdit1.Handle, PS);
   try
     Windows.GetClientRect(RichEdit1.Handle, RectVal);
@@ -81743,6 +81773,9 @@ begin
       DeleteDC(MemDC);
     end;
   finally
+    {$IFDEF UNIX}
+    if FLclPaintDC = 0 then
+    {$ENDIF}
     EndPaint(RichEdit1.Handle, PS);
   end;
 
@@ -81991,6 +82024,25 @@ begin
 
   // Весь WM_PAINT берём на себя. WParam <> 0 означает, что рисовать просят
   // в чужой DC - такие сообщения пропускаем без изменений.
+  {$IFDEF UNIX}
+  // LCL gtk2 присылает WM_PAINT только с готовым DC в WParam (BeginPaint
+  // делает сама LCL) - рисуем в него
+  if (Message.Msg = WM_PAINT) and (Message.WParam <> 0) and not FInPaint then
+  begin
+    FInPaint := True;
+    FLclPaintDC := HDC(Message.WParam);
+    FLclPaintPS := PPaintStruct(Message.LParam);
+    try
+      PaintDoubleBuffered;
+    finally
+      FLclPaintDC := 0;
+      FLclPaintPS := nil;
+      FInPaint := False;
+    end;
+    Message.Result := 0;
+    Exit;
+  end;
+  {$ENDIF}
   if (Message.Msg = WM_PAINT) and (Message.WParam = 0) and not FInPaint then
   begin
     FInPaint := True;
@@ -83950,7 +84002,8 @@ begin
   ApplyTabStops;
 
   // Демонстрационный стартовый текст
-  SetEditorText('// Однострочный комментарий /* begin ' + #13#10 + '/* Много''строчн''ый блок кода, /* // begin   ' + #13#10 + '   который теперь идеально' + #13#10 + '   переносится на новые строки! */' + #13#10 + 'procedure Init;' + #13#10 + 'begin' + #13#10 + '  mov eax, 1 // Коммент/* арий ''до конца'' строки' + #13#10 + '  push eax' + #13#10 + 'end;  exit cstriing=' + '''qw//erty /*5434*/5''');
+  // Текст - из исходника (UTF-8 в сборке Lazarus), редактору - CP_ACP
+  SetEditorText(EdFromUiText('// Однострочный комментарий /* begin ' + #13#10 + '/* Много''строчн''ый блок кода, /* // begin   ' + #13#10 + '   который теперь идеально' + #13#10 + '   переносится на новые строки! */' + #13#10 + 'procedure Init;' + #13#10 + 'begin' + #13#10 + '  mov eax, 1 // Коммент/* арий ''до конца'' строки' + #13#10 + '  push eax' + #13#10 + 'end;  exit cstriing=' + '''qw//erty /*5434*/5'''));
 
   // Строим карту для стартового текста
   RebuildCommentRangeMap;

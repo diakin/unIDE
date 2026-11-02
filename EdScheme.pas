@@ -73,6 +73,28 @@ implementation
 var
   WideToAnsiMap: array of AnsiChar;
 
+{$IFNDEF MSWINDOWS}
+const
+  // cp1251, байты $80..$FF -> Unicode ($98 в cp1251 не занят)
+  EdCp1251High: array[$80..$FF] of Word = (
+    $0402, $0403, $201A, $0453, $201E, $2026, $2020, $2021,
+    $20AC, $2030, $0409, $2039, $040A, $040C, $040B, $040F,
+    $0452, $2018, $2019, $201C, $201D, $2022, $2013, $2014,
+    $003F, $2122, $0459, $203A, $045A, $045C, $045B, $045F,
+    $00A0, $040E, $045E, $0408, $00A4, $0490, $00A6, $00A7,
+    $0401, $00A9, $0404, $00AB, $00AC, $00AD, $00AE, $0407,
+    $00B0, $00B1, $0406, $0456, $0491, $00B5, $00B6, $00B7,
+    $0451, $2116, $0454, $00BB, $0458, $0405, $0455, $0457,
+    $0410, $0411, $0412, $0413, $0414, $0415, $0416, $0417,
+    $0418, $0419, $041A, $041B, $041C, $041D, $041E, $041F,
+    $0420, $0421, $0422, $0423, $0424, $0425, $0426, $0427,
+    $0428, $0429, $042A, $042B, $042C, $042D, $042E, $042F,
+    $0430, $0431, $0432, $0433, $0434, $0435, $0436, $0437,
+    $0438, $0439, $043A, $043B, $043C, $043D, $043E, $043F,
+    $0440, $0441, $0442, $0443, $0444, $0445, $0446, $0447,
+    $0448, $0449, $044A, $044B, $044C, $044D, $044E, $044F);
+{$ENDIF}
+
 procedure BuildWideToAnsiMap;
 var
   CharCode: Integer;
@@ -96,17 +118,16 @@ begin
       AnsiCh := '?';
     WideToAnsiMap[CharCode] := AnsiCh;
     {$ELSE}
-    // Не Windows: кириллица - как в cp1251, остальное - '?'
-    if (CharCode >= $0410) and (CharCode <= $044F) then
-      WideToAnsiMap[CharCode] := AnsiChar(CharCode - $0410 + $C0)
-    else if CharCode = $0401 then
-      WideToAnsiMap[CharCode] := AnsiChar($A8)
-    else if CharCode = $0451 then
-      WideToAnsiMap[CharCode] := AnsiChar($B8)
-    else
-      WideToAnsiMap[CharCode] := '?';
+    WideToAnsiMap[CharCode] := '?';
     {$ENDIF}
   end;
+  {$IFNDEF MSWINDOWS}
+  // Не Windows: строки редактора - в cp1251, как в Windows с русской
+  // кодовой страницей
+  for CharCode := $80 to $FF do
+    if EdCp1251High[CharCode] <> $3F then
+      WideToAnsiMap[EdCp1251High[CharCode]] := AnsiChar(CharCode);
+  {$ENDIF}
 end;
 
 function EdAnsiLine(const ALine: WideString): string;
@@ -149,9 +170,11 @@ end;
 
 function EdWideText(const AText: string): WideString;
 {$IFDEF FPC}
-{$IFDEF MSWINDOWS}
 var
+{$IFDEF MSWINDOWS}
   WideLen: Integer;
+{$ELSE}
+  CharIdx: Integer;
 {$ENDIF}
 {$ENDIF}
 begin
@@ -167,7 +190,12 @@ begin
     MultiByteToWideChar(CP_ACP, 0, PAnsiChar(AText), Length(AText),
       PWideChar(Result), WideLen);
   {$ELSE}
-  Result := UTF8Decode(AText);
+  SetLength(Result, Length(AText));
+  for CharIdx := 1 to Length(AText) do
+    if Ord(AText[CharIdx]) < $80 then
+      Result[CharIdx] := WideChar(Ord(AText[CharIdx]))
+    else
+      Result[CharIdx] := WideChar(EdCp1251High[Ord(AText[CharIdx])]);
   {$ENDIF}
   {$ELSE}
   Result := WideString(AText);
