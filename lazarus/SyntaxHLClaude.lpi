@@ -13,7 +13,8 @@
       <Title Value="unIDE"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
-      <UseXPManifest Value="True"/>
+      <!-- Без манифеста тем Windows, как сборка Delphi 7: свои Ui* рисуют сами (UiThemeNativeFor = False), стандартные элементы - классические -->
+      <UseXPManifest Value="False"/>
       <Icon Value="0"/>
     </General>
     <BuildModes>
