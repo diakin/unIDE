@@ -57,6 +57,12 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    {$IFDEF FPC}
+    // В LCL ярлычки TTabControl - у вложенного элемента вкладок, а свой
+    // TabRect у TTabControl возвращает пустой прямоугольник. Здесь - место
+    // ярлычка у вложенного элемента, в координатах самого TUiTabControl
+    function TabRect(Index: Integer): TRect; reintroduce;
+    {$ENDIF}
   end;
 
   TUiStatusBar = class(TStatusBar)
@@ -360,6 +366,29 @@ begin
   UiThemeRemoveClient(Self);
   inherited Destroy;
 end;
+
+{$IFDEF FPC}
+function TUiTabControl.TabRect(Index: Integer): TRect;
+var
+  CtlIdx: Integer;
+  Inner: TCustomTabControl;
+begin
+  Result := inherited TabRect(Index);
+  if not IsRectEmpty(Result) then
+    Exit;
+  for CtlIdx := 0 to ControlCount - 1 do
+    if Controls[CtlIdx] is TCustomTabControl then
+    begin
+      Inner := TCustomTabControl(Controls[CtlIdx]);
+      // TabRect вложенного - в его клиентских координатах; в тех же
+      // координатах, что и здесь, LCL отдаёт OnMouseDown (AdjustXY)
+      Result := Inner.TabRect(Index);
+      OffsetRect(Result, Inner.ClientOrigin.X - ClientOrigin.X,
+                 Inner.ClientOrigin.Y - ClientOrigin.Y);
+      Exit;
+    end;
+end;
+{$ENDIF}
 
 procedure TUiTabControl.CreateParams(var Params: TCreateParams);
 begin
