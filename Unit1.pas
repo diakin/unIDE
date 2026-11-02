@@ -1802,7 +1802,8 @@ type
     FObjEditCode: Boolean;  // правим свойство компонента, созданного в коде
     // Правим свойство элемента массива компонентов (PalBtn17 при
     // PalBtn: array[...] of TSpeedButton): запись в editor.ini, раздел
-    // [Array <массив>], ключ <номер>.<свойство>. См. ObjApplyArrayEdit.
+    // [Array <массив>], ключ <элемент>.<свойство> (ArrayElemKey: у PalBtn
+    // имя класса кнопки, у других - номер). См. ObjApplyArrayEdit.
     FObjEditArray: Boolean;
     FObjEditArrName: string;
     FObjEditArrIdx: Integer;
@@ -3113,6 +3114,8 @@ type
     procedure PaletteIconsShow(const ASelect: string);
     procedure PaletteIconsApplied(Sender: TObject);
     procedure ApplyArrayIni(const AArray, ACodeProps: string);
+    function  ArrayElemKey(const AArray: string; AIndex: Integer): string;
+    procedure ArrayElemsOf(const AArray, AElem: string; AList: TList);
     function  SetPropFromText(AObj: TObject; const AProp, AValue: string): Boolean;
     procedure DsgPaletteReset;
     procedure DsgAddRuntime;
@@ -42980,27 +42983,36 @@ begin
 end;
 
 // Поправки свойств элементов массива AArray из editor.ini, раздел
-// [Array <массив>], строки "<номер>.<свойство>=<значение>":
+// [Array <массив>], строки "<элемент>.<свойство>=<значение>":
 //   [Array PalBtn]
-//   17.Caption=Надпись
-//   17.Hint=Надпись на форме
-// Элемент - компонент формы <массив><номер>. Значение - как в .dfm, без
-// кавычек у строк. Не нашёлся элемент или свойство, не подошло значение -
-// строка пропускается, причина - в HiLite log. Так же пропускаются Name и
-// свойства из ACodeProps (список через запятую): ими управляет код.
+//   TButton.Caption=Надпись
+//   TButton.Hint=Надпись на форме
+// Элемент - ArrayElemKey: у кнопок палитры имя класса кнопки (номер кнопки
+// зависит от списка классов: в сборке Lazarus он другой, новый класс в
+// середине сдвигает номера), у других массивов - номер, компонент формы
+// <массив><номер>. Значение - как в .dfm, без кавычек у строк. Не нашёлся
+// элемент или свойство, не подошло значение - строка пропускается,
+// причина - в HiLite log. Так же пропускаются Name и свойства из
+// ACodeProps (список через запятую): ими управляет код.
+// Старые ключи PalBtn по номеру: в сборке Delphi 7 (номера те, с которыми
+// их записали) ставятся и переписываются на имя класса; в сборке Lazarus
+// пропускаются - номера там других кнопок.
 procedure TForm1.ApplyArrayIni(const AArray, ACodeProps: string);
 var
   Ini: TIniFile;
   Keys: TStringList;
-  I, CharPos: Integer;
-  Section, Key, Prop, Value: string;
+  Elems: TList;
+  I, ElemIdx, CharPos, Num, Skipped: Integer;
+  Section, Key, Elem, Prop, Value, NewKey: string;
   Comp: TComponent;
 begin
   if not FileExists(SettingsFileName) then
     Exit;
   Section := 'Array ' + AArray;
+  Skipped := 0;
   Ini := TIniFile.Create(SettingsFileName);
   Keys := TStringList.Create;
+  Elems := TList.Create;
   try
     Ini.ReadSection(Section, Keys);
     for I := 0 to Keys.Count - 1 do
@@ -43009,6 +43021,7 @@ begin
       CharPos := Pos('.', Key);
       if CharPos < 2 then
         Continue;
+      Elem := Copy(Key, 1, CharPos - 1);
       Prop := Copy(Key, CharPos + 1, MaxInt);
       if (CompareText(Prop, 'Name') = 0) or PropInList(ACodeProps, Prop) then
       begin
@@ -43016,22 +43029,87 @@ begin
         'строка пропущена');
             Continue;
       end;
-      Comp := FindComponent(AArray + Copy(Key, 1, CharPos - 1));
-      if Comp = nil then
+      Value := Ini.ReadString(Section, Key, '');
+      Num := StrToIntDef(Elem, -1);
+      Elems.Clear;
+      if Num < 0 then
+        ArrayElemsOf(AArray, Elem, Elems)
+      else
       begin
-        Dbg('21946: [' + Section + '] ' + Key + ': компонента ' + AArray +
-            Copy(Key, 1, CharPos - 1) + ' нет');
+        // Старый ключ по номеру
+        NewKey := ArrayElemKey(AArray, Num);
+        {$IFDEF FPC}
+        if CompareText(AArray, 'PalBtn') = 0 then
+        begin
+          Inc(Skipped);
+          Continue;
+        end;
+        {$ENDIF}
+        Comp := FindComponent(AArray + Elem);
+        if Comp <> nil then
+          Elems.Add(Comp);
+        if (Comp <> nil) and (NewKey <> Elem) then
+        begin
+          // Номер -> имя класса; поправка по имени уже есть - она новее
+          NewKey := NewKey + '.' + Prop;
+          if not Ini.ValueExists(Section, NewKey) then
+            Ini.WriteString(Section, NewKey, Value)
+          else
+            Value := Ini.ReadString(Section, NewKey, '');
+          Ini.DeleteKey(Section, Key);
+          Dbg('21944: [' + Section + '] ' + Key + ' -> ' + NewKey, clGray);
+          Key := NewKey;
+        end;
+      end;
+      if Elems.Count = 0 then
+      begin
+        Dbg('21946: [' + Section + '] ' + Key + ': элемента ' + Elem +
+            ' в массиве ' + AArray + ' нет');
         Continue;
       end;
-      Value := Ini.ReadString(Section, Key, '');
-      if not SetPropFromText(Comp, Prop, Value) then
-        Dbg('21952: [' + Section + '] ' + Key + ': свойство не записано (' +
-            Comp.ClassName + ', значение "' + Value + '")');
+      for ElemIdx := 0 to Elems.Count - 1 do
+      begin
+        Comp := TComponent(Elems[ElemIdx]);
+        if not SetPropFromText(Comp, Prop, Value) then
+          Dbg('21952: [' + Section + '] ' + Key + ': свойство не записано (' +
+              Comp.Name + ': ' + Comp.ClassName + ', значение "' + Value + '")');
+      end;
     end;
+    if Skipped > 0 then
+      Dbg('21958: [' + Section + '] ключей по номеру кнопки: ' +
+          IntToStr(Skipped) + ' - пропущены (номера из сборки Delphi 7; ' +
+          'там они при запуске переписываются на имя класса)', clGray);
   finally
+    Elems.Free;
     Keys.Free;
     Ini.Free;
   end;
+end;
+
+// Элемент AArray[AIndex] в ключе editor.ini: у кнопок палитры (PalBtn) -
+// имя класса кнопки, у других массивов и кнопок без класса - номер.
+function TForm1.ArrayElemKey(const AArray: string; AIndex: Integer): string;
+begin
+  Result := IntToStr(AIndex);
+  if (CompareText(AArray, 'PalBtn') = 0) and (AIndex >= 1) and
+     (AIndex <= PalBtnCount) and (PalBtn[AIndex] <> nil) and
+     (PalBtn[AIndex].Tag <> 0) then
+    Result := TComponentClass(PalBtn[AIndex].Tag).ClassName;
+end;
+
+// Элементы массива AArray с ключом AElem (имя класса) - в AList. Класс
+// может стоять на палитре не один раз - тогда все его кнопки.
+procedure TForm1.ArrayElemsOf(const AArray, AElem: string; AList: TList);
+var
+  BtnIdx: Integer;
+begin
+  if CompareText(AArray, 'PalBtn') <> 0 then
+    Exit;
+  for BtnIdx := 1 to PalBtnCount do
+    if (PalBtn[BtnIdx] <> nil) and (PalBtn[BtnIdx].Tag <> 0) and
+       (CompareText(TComponentClass(PalBtn[BtnIdx].Tag).ClassName,
+                    AElem) = 0) then
+      AList.Add(PalBtn[BtnIdx]);
 end;
 
 // Свойство AProp объекта AObj из текста AValue - через RTTI: строка,
@@ -47218,8 +47296,12 @@ begin
       begin
         DfmNode := TDfmNode(Nodes[I]);
         Section := 'Array ' + Arrs.Names[I];
-        Key := Copy(Arrs[I], Pos('=', Arrs[I]) + 1, MaxInt) + '.' + AProp;
+        Idx := StrToInt(Copy(Arrs[I], Pos('=', Arrs[I]) + 1, MaxInt));
+        Key := ArrayElemKey(Arrs.Names[I], Idx) + '.' + AProp;
         Ini.WriteString(Section, Key, Value);
+        // Старый ключ по номеру того же элемента - больше не нужен
+        if Key <> IntToStr(Idx) + '.' + AProp then
+          Ini.DeleteKey(Section, IntToStr(Idx) + '.' + AProp);
         // Живой компонент - сразу, без перезапуска
         Comp := nil;
         if Frm <> nil then
@@ -50596,10 +50678,13 @@ begin
   else
     Value := ARaw;
   Section := 'Array ' + FObjEditArrName;
-  Key := IntToStr(FObjEditArrIdx) + '.' + AProp;
+  Key := ArrayElemKey(FObjEditArrName, FObjEditArrIdx) + '.' + AProp;
   Ini := TIniFile.Create(SettingsFileName);
   try
     Ini.WriteString(Section, Key, Value);
+    // Старый ключ по номеру того же элемента - больше не нужен
+    if Key <> IntToStr(FObjEditArrIdx) + '.' + AProp then
+      Ini.DeleteKey(Section, IntToStr(FObjEditArrIdx) + '.' + AProp);
   finally
     Ini.Free;
   end;
