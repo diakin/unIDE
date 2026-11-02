@@ -26,7 +26,7 @@ unit EdView;
 //  - Цвета кусков строки даёт владелец (OnLineRuns): подсветка - не дело
 //    окна. Нет обработчика - строка цветом текста.
 //  - Слева - номера строк (поле Gutter), справа и снизу - полосы прокрутки
-//    (в Delphi 7 - TUiScrollBar по теме IDE, в Lazarus - TScrollBar).
+//    (TUiScrollBar по теме IDE).
 //  - Буфер не принадлежит окну; изменения буфера окно получает подпиской
 //    (AddListener) и перерисовывается.
 //
@@ -45,15 +45,13 @@ uses
   Windows, Messages,
   {$ENDIF}
   SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls,
-  {$IFNDEF FPC}UiScroll,{$ENDIF}
+  UiScroll,
   EdBuffer, EdEditor;
 
 type
-  {$IFDEF FPC}
-  TEdScrollBar = TScrollBar;
-  {$ELSE}
+  // Свои полосы и в Lazarus: TScrollBar LCL - системная полоса, светлая
+  // и в тёмной теме IDE
   TEdScrollBar = TUiScrollBar;
-  {$ENDIF}
 
   // Кусок строки одного вида: символы Start .. Start + Len - 1 (с 0)
   TEdRun = record
@@ -577,9 +575,8 @@ begin
     FBarSize);
 end;
 
-// Диапазон и место полос. В Delphi 7 (TUiScrollBar) Max - наибольшее место,
-// ползунок - LargeChange; в LCL (TScrollBar) Max - конец всего, PageSize -
-// видимая часть
+// Диапазон и место полос (TUiScrollBar): Max - наибольшее место, ползунок -
+// LargeChange
 procedure TEdView.UpdateBars;
 var
   RowMax, ColMax, PageRows, PageCols: Integer;
@@ -606,19 +603,12 @@ begin
   PageCols := VisibleCols;
   FLockBars := True;
   try
-    {$IFDEF FPC}
-    FVBar.SetParams(FTopRow, 0, RowMax + PageRows - 1, PageRows);
-    FVBar.LargeChange := PageRows;
-    FHBar.SetParams(FLeftCol, 0, ColMax + PageCols - 1, PageCols);
-    FHBar.LargeChange := PageCols;
-    {$ELSE}
     FVBar.Max := RowMax;
     FVBar.LargeChange := PageRows;
     FVBar.Position := FTopRow;
     FHBar.Max := ColMax;
     FHBar.LargeChange := PageCols;
     FHBar.Position := FLeftCol;
-    {$ENDIF}
     FVBar.SmallChange := 1;
     FHBar.SmallChange := 1;
   finally
