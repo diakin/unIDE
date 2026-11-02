@@ -288,6 +288,14 @@ begin
     Result := DefWindowProcA(AWnd, AMsg, AWParam, ALParam);
     Exit;
   end;
+  // Попадание мыши - окно целиком клиентская область (как у окна в сборке
+  // Delphi 7). Через LCL здесь получался HTNOWHERE: Windows не слала окну
+  // WM_LBUTTONDOWN и прочие сообщения мыши
+  if AMsg = WM_NCHITTEST then
+  begin
+    Result := DefWindowProcA(AWnd, AMsg, AWParam, ALParam);
+    Exit;
+  end;
   if EdHostRoutes(AMsg) then
   begin
     FillChar(HostMsg, SizeOf(HostMsg), 0);
