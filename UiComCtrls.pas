@@ -908,6 +908,9 @@ end;
 procedure TUiTreeView.CreateWnd;
 begin
   inherited CreateWnd;
+  {$IFDEF FPC}
+  UiNcHookAttach(Self);
+  {$ENDIF}
   PostMessage(Handle, UM_UIATTACHSCROLL, 0, 0);
 end;
 
@@ -1012,6 +1015,9 @@ end;
 procedure TUiListView.CreateWnd;
 begin
   inherited CreateWnd;
+  {$IFDEF FPC}
+  UiNcHookAttach(Self);
+  {$ENDIF}
   PostMessage(Handle, UM_UIATTACHSCROLL, 0, 0);
 end;
 

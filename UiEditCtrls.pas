@@ -52,6 +52,9 @@ type
   protected
     procedure ApplyTheme;
     procedure Loaded; override;
+    {$IFDEF FPC}
+    procedure CreateWnd; override;
+    {$ENDIF}
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -353,6 +356,13 @@ type
 procedure UiPaintNcBorder(WinCtrl: TWinControl; ABack: TColor);
 // Перерисовать рамку (служебную область окна)
 procedure UiRedrawFrame(WinCtrl: TWinControl);
+{$IFDEF FPC}
+// Lazarus: рамку системного элемента LCL рисует Windows уже после своего
+// WM_NCPAINT элемента - своя рамка (UiPaintNcBorder) пропадала. Окно
+// подменяется: после WM_NCPAINT Windows - своя рамка цветом Color.
+// Вызывать из CreateWnd
+procedure UiNcHookAttach(WinCtrl: TWinControl);
+{$ENDIF}
 // Поставить свои полосы прокрутки (TUiListScroll), если их ещё нет
 procedure UiAttachScroll(WinCtrl: TWinControl);
 
@@ -417,6 +427,56 @@ begin
                  RDW_NOCHILDREN);
 end;
 
+{$IFDEF FPC}
+const
+  UiNcHookProp = 'UiNcHook';
+
+type
+  TUiNcHook = class
+    Ctrl: TWinControl;
+    OldProc: Pointer;
+  end;
+  TUiNcColorAcc = class(TWinControl);
+
+function UiNcHookProc(AWnd: HWND; AMsg: UINT; AWParam: WPARAM;
+  ALParam: LPARAM): LRESULT; stdcall;
+var
+  Hook: TUiNcHook;
+begin
+  Hook := TUiNcHook(GetProp(AWnd, UiNcHookProp));
+  if Hook = nil then
+  begin
+    Result := DefWindowProcW(AWnd, AMsg, AWParam, ALParam);
+    Exit;
+  end;
+  Result := CallWindowProcW(Hook.OldProc, AWnd, AMsg, AWParam, ALParam);
+  case AMsg of
+    WM_NCPAINT:
+      UiPaintNcBorder(Hook.Ctrl, TUiNcColorAcc(Hook.Ctrl).Color);
+    WM_NCDESTROY:
+      begin
+        SetWindowLongPtrW(AWnd, GWLP_WNDPROC, LONG_PTR(Hook.OldProc));
+        RemoveProp(AWnd, UiNcHookProp);
+        Hook.Free;
+      end;
+  end;
+end;
+
+procedure UiNcHookAttach(WinCtrl: TWinControl);
+var
+  Hook: TUiNcHook;
+begin
+  if not WinCtrl.HandleAllocated or
+     (GetProp(WinCtrl.Handle, UiNcHookProp) <> 0) then
+    Exit;
+  Hook := TUiNcHook.Create;
+  Hook.Ctrl := WinCtrl;
+  SetProp(WinCtrl.Handle, UiNcHookProp, THandle(Hook));
+  Hook.OldProc := Pointer(SetWindowLongPtrW(WinCtrl.Handle, GWLP_WNDPROC,
+    LONG_PTR(@UiNcHookProc)));
+end;
+{$ENDIF}
+
 // Поставить свои полосы прокрутки, если их ещё нет
 procedure UiAttachScroll(WinCtrl: TWinControl);
 begin
@@ -442,6 +502,14 @@ begin
   UiThemeRemoveClient(Self);
   inherited Destroy;
 end;
+
+{$IFDEF FPC}
+procedure TUiEdit.CreateWnd;
+begin
+  inherited CreateWnd;
+  UiNcHookAttach(Self);
+end;
+{$ENDIF}
 
 procedure TUiEdit.ApplyTheme;
 begin
@@ -557,6 +625,9 @@ end;
 procedure TUiMemo.CreateWnd;
 begin
   inherited CreateWnd;
+  {$IFDEF FPC}
+  UiNcHookAttach(Self);
+  {$ENDIF}
   PostMessage(Handle, UM_UIATTACHSCROLL, 0, 0);
 end;
 
@@ -648,6 +719,9 @@ end;
 procedure TUiListBox.CreateWnd;
 begin
   inherited CreateWnd;
+  {$IFDEF FPC}
+  UiNcHookAttach(Self);
+  {$ENDIF}
   PostMessage(Handle, UM_UIATTACHSCROLL, 0, 0);
 end;
 
