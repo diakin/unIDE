@@ -109,6 +109,11 @@ function SelectEditorIni(const AExeDir: string; ANotes: TStrings): Boolean;
 
 implementation
 
+{$IFDEF FPC}
+uses
+  IniCp;   // IniFileToText / IniTextToFile: файл в CP1251, строки - UTF-8
+{$ENDIF}
+
 const
   MaxIniCopies = 99;
 
@@ -154,6 +159,9 @@ end;
 function IniLoadLinesEx(const AFile: string; AFresh: Boolean): TStringList;
 var
   Stamp: string;
+{$IFDEF FPC}
+  LineIdx: Integer;
+{$ENDIF}
 begin
   Result := nil;
   if not FileExists(AFile) then
@@ -173,6 +181,11 @@ begin
     FreeAndNil(Result);
     Exit;
   end;
+  {$IFDEF FPC}
+  // Файл в CP1251 (его пишет и сборка Delphi 7): пути с кириллицей - в UTF-8
+  for LineIdx := 0 to Result.Count - 1 do
+    Result[LineIdx] := IniFileToText(Result[LineIdx]);
+  {$ENDIF}
   if CacheLines = nil then
     CacheLines := TStringList.Create;
   CacheLines.Assign(Result);
@@ -187,10 +200,28 @@ end;
 
 // Запись строк в файл; запомненный текст - сброшен
 function IniSaveLines(ALines: TStrings; const AFile: string): Boolean;
+{$IFDEF FPC}
+var
+  FileLines: TStringList;
+  LineIdx: Integer;
+{$ENDIF}
 begin
   IniCacheReset;
   try
+    {$IFDEF FPC}
+    // Строки UTF-8 - в файл в CP1251, как пишет сборка Delphi 7
+    FileLines := TStringList.Create;
+    try
+      FileLines.Assign(ALines);
+      for LineIdx := 0 to FileLines.Count - 1 do
+        FileLines[LineIdx] := IniTextToFile(FileLines[LineIdx]);
+      FileLines.SaveToFile(AFile);
+    finally
+      FileLines.Free;
+    end;
+    {$ELSE}
     ALines.SaveToFile(AFile);
+    {$ENDIF}
     Result := True;
   except
     Result := False;
