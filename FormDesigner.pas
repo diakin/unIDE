@@ -2809,6 +2809,28 @@ begin
   Handled := True;
 end;
 
+{$IFDEF FPC}
+// Текст .dfm приходит из редактора в кодировке Windows (CP_ACP), строки
+// LCL - UTF-8. Без перевода ObjectTextToBinary принимал байты кириллицы за
+// UTF-8, и в подписях формы были '?'
+function DsgAnsiToUtf8(const AText: string): string;
+var
+  WideText: WideString;
+  WideLen: Integer;
+begin
+  Result := AText;
+  if AText = '' then
+    Exit;
+  WideLen := MultiByteToWideChar(CP_ACP, 0, PAnsiChar(AText), Length(AText),
+    nil, 0);
+  SetLength(WideText, WideLen);
+  if WideLen > 0 then
+    MultiByteToWideChar(CP_ACP, 0, PAnsiChar(AText), Length(AText),
+      PWideChar(WideText), WideLen);
+  Result := UTF8Encode(WideText);
+end;
+{$ENDIF}
+
 function TFormDesigner.Load(const ADfmText: string; var AError: string;
                             AHidden: Boolean): Boolean;
 var
@@ -2831,7 +2853,11 @@ begin
   end;
   Clear;
 
+  {$IFDEF FPC}
+  Src := TStringStream.Create(DsgAnsiToUtf8(PrepareText(ADfmText)));
+  {$ELSE}
   Src := TStringStream.Create(PrepareText(ADfmText));
+  {$ENDIF}
   Bin := TMemoryStream.Create;
   try
     try
