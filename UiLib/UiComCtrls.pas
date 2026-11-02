@@ -864,6 +864,17 @@ end;
 constructor TUiTreeView.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  {$IFDEF FPC}
+  // С tvoThemedDraw дерево LCL пишет текст и фон выделенного узла
+  // цветами темы Windows (ThemeServices.DrawText): Canvas.Font.Color из
+  // OnCustomDrawItem и тёмная тема IDE не действуют, текст чёрный. Без
+  // него - Canvas.Font.Color, а выделенный узел - SelectionColor и
+  // SelectionFontColor (Delphi 7 рисует так же, без тем: манифеста нет).
+  Options := Options - [tvoThemedDraw];
+  SelectionColor := clHighlight;
+  SelectionFontColor := clHighlightText;
+  SelectionFontColorUsed := True;
+  {$ENDIF}
   FThemeColors := True;
   UiThemeAddClient(Self);
   ApplyTheme;

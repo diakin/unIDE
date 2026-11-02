@@ -46798,6 +46798,13 @@ begin
   begin
     Sender.Canvas.Brush.Color := UiColor('ObjTree.SelBG');
     Sender.Canvas.Font.Color := UiColor('ObjTree.SelText');
+    {$IFDEF FPC}
+    // Фон и текст выделенного узла LCL берёт не с холста, а из
+    // SelectionColor/SelectionFontColor (сеттеры перерисовывают только
+    // при смене значения)
+    TUiTreeView(Sender).SelectionColor := UiColor('ObjTree.SelBG');
+    TUiTreeView(Sender).SelectionFontColor := UiColor('ObjTree.SelText');
+    {$ENDIF}
   end;
   DefaultDraw := True;
 end;
